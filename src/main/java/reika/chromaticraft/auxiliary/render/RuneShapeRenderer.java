@@ -1,0 +1,149 @@
+/*******************************************************************************
+ * @author Reika Kalseki
+ *
+ * Copyright 2017
+ *
+ * All rights reserved.
+ * Distribution of the software in any form is only allowed with
+ * explicit, prior permission from the owner.
+ ******************************************************************************/
+package reika.chromaticraft.auxiliary.render;
+
+import java.util.Map;
+import java.util.Map.Entry;
+
+import org.lwjgl.opengl.GL11;
+
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.RenderBlocks;
+import net.minecraft.client.renderer.Tessellator;
+import net.minecraft.client.renderer.entity.RenderItem;
+import net.minecraft.util.IIcon;
+
+import reika.chromaticraft.magic.RuneShape;
+import reika.chromaticraft.magic.runeshape.RuneViewer;
+import reika.chromaticraft.registry.ChromaBlocks;
+import reika.chromaticraft.registry.ChromaTiles;
+import reika.chromaticraft.registry.CrystalElement;
+import reika.dragonapi.instantiable.data.immutable.Coordinate;
+import reika.dragonapi.libraries.io.ReikaTextureHelper;
+
+import cpw.mods.fml.relauncher.Side;
+import cpw.mods.fml.relauncher.SideOnly;
+
+@SideOnly(Side.CLIENT)
+public class RuneShapeRenderer {
+
+	public static final RuneShapeRenderer instance = new RuneShapeRenderer();
+
+	private final RenderBlocks render = new RenderBlocks();
+	private final RenderItem itemrender = new RenderItem();
+
+	private RuneShapeRenderer() {
+
+	}
+
+	public void render(RuneShape s, int x, int y) {
+		this.render(s.getView(), x, y);
+	}
+
+	public void render(RuneViewer s, int midx, int midy) {
+		int y = s.isEmpty() ? 0 : s.getMinY()+(int)((System.currentTimeMillis()/5000)%s.getSizeY());
+		this.render(s, midx, midy, y);
+	}
+
+	public void render(RuneViewer s, int midx, int midy, int y) {
+		Map<Coordinate, CrystalElement> map = s.getRunes();
+		GL11.glPushMatrix();
+
+		/*
+		int dy = 16;//50;
+		int dx = 16;
+		int dz = dx/2;
+		/*
+		for (int i = -5; i <= 5; i++) {
+			for (int k = -5; k <= 5; k++) {
+				int px = midx-8+i*dx+k*dx;
+				int py = midy-8-i*dz+k*dz-50;
+				ReikaGuiAPI.instance.drawItemStack(itemrender, new ItemStack(ChromaBlocks.PYLONSTRUCT.getBlockInstance(), 1, 0), px, py);
+			}
+		}*//*
+		for (Coordinate c : map.keySet()) {
+			CrystalElement e = map.get(c);
+			int meta = e.ordinal();
+			int px = midx-8+c.xCoord*dx+c.zCoord*dx;
+			int py = midy-8-c.xCoord*dz+c.zCoord*dz-c.yCoord*dy;
+			//render.renderBlockAsItem(ChromaBlocks.RUNE.getBlockInstance(), meta, 1);
+			ReikaGuiAPI.instance.drawItemStack(itemrender, new ItemStack(ChromaBlocks.RUNE.getBlockInstance(), 1, meta), px, py);
+		}
+		 */
+		ReikaTextureHelper.bindTerrainTexture();
+		Tessellator v5 = Tessellator.instance;
+		int w = 16;
+		int dx = midx-w/2;
+		int dy = midy-w/2;
+		v5.startDrawingQuads();
+		for (int x = -5; x <= 5; x++) {
+			for (int z = -5; z <= 5; z++) {
+				IIcon ico = ChromaBlocks.PYLONSTRUCT.getBlockInstance().getIcon(0, 0);
+				Coordinate c = new Coordinate(x, y, z);
+
+				if (x == 0 && z == 0) {
+					ico = ChromaTiles.TABLE.getBlock().getIcon(1, ChromaTiles.TABLE.getBlockMetadata());
+				}
+
+				float u = ico.getMinU();
+				float v = ico.getMinV();
+				float du = ico.getMaxU();
+				float dv = ico.getMaxV();
+
+				v5.addVertexWithUV(dx+x*w, dy+(z+1)*w, 0, u, dv);
+				v5.addVertexWithUV(dx+(x+1)*w, dy+(z+1)*w, 0, du, dv);
+				v5.addVertexWithUV(dx+(x+1)*w, dy+z*w, 0, du, v);
+				v5.addVertexWithUV(dx+x*w, dy+z*w, 0, u, v);
+			}
+		}
+
+		GL11.glEnable(GL11.GL_BLEND);
+
+		for (Entry<Coordinate, CrystalElement> e : map.entrySet()) {
+			Coordinate c = e.getKey();
+			if (c.yCoord == y) {
+
+				c = RuneShape.modifyRuneBySeed(c, null);
+
+				int x = c.xCoord;
+				int z = c.zCoord;
+
+				IIcon ico = e.getValue().getBlockRune();
+				float u = ico.getMinU();
+				float v = ico.getMinV();
+				float du = ico.getMaxU();
+				float dv = ico.getMaxV();
+
+				v5.addVertexWithUV(dx+x*w, dy+(z+1)*w, 0, u, dv);
+				v5.addVertexWithUV(dx+(x+1)*w, dy+(z+1)*w, 0, du, dv);
+				v5.addVertexWithUV(dx+(x+1)*w, dy+z*w, 0, du, v);
+				v5.addVertexWithUV(dx+x*w, dy+z*w, 0, u, v);
+
+				ico = e.getValue().getFaceRune();
+				u = ico.getMinU();
+				v = ico.getMinV();
+				du = ico.getMaxU();
+				dv = ico.getMaxV();
+
+				v5.addVertexWithUV(dx+x*w, dy+(z+1)*w, 0, u, dv);
+				v5.addVertexWithUV(dx+(x+1)*w, dy+(z+1)*w, 0, du, dv);
+				v5.addVertexWithUV(dx+(x+1)*w, dy+z*w, 0, du, v);
+				v5.addVertexWithUV(dx+x*w, dy+z*w, 0, u, v);
+			}
+		}
+		v5.draw();
+
+		if (!map.isEmpty())
+			Minecraft.getMinecraft().fontRenderer.drawString("y="+y, midx+93, midy-4, 0xffffff);
+
+		GL11.glPopMatrix();
+	}
+
+}

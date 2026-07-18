@@ -1,0 +1,268 @@
+/*******************************************************************************
+ * @author Reika Kalseki
+ *
+ * Copyright 2017
+ *
+ * All rights reserved.
+ * Distribution of the software in any form is only allowed with
+ * explicit, prior permission from the owner.
+ ******************************************************************************/
+package reika.chromaticraft.block.dye;
+
+import java.awt.Color;
+import java.util.ArrayList;
+import java.util.Random;
+
+import net.minecraft.block.Block;
+import net.minecraft.creativetab.CreativeTabs;
+import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.init.Items;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+import net.minecraft.world.IBlockAccess;
+import net.minecraft.world.World;
+
+import reika.chromaticraft.ChromatiCraft;
+import reika.chromaticraft.magic.network.CrystalNetworker;
+import reika.chromaticraft.magic.progression.ProgressStage;
+import reika.chromaticraft.registry.ChromaBlocks;
+import reika.chromaticraft.registry.ChromaItems;
+import reika.chromaticraft.registry.ChromaOptions;
+import reika.chromaticraft.registry.CrystalElement;
+import reika.chromaticraft.tileentity.networking.TileEntityCrystalPylon;
+import reika.chromaticraft.world.BiomeRainbowForest;
+import reika.dragonapi.ModList;
+import reika.dragonapi.base.BlockCustomLeaf;
+import reika.dragonapi.libraries.java.ReikaRandomHelper;
+import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
+import reika.dragonapi.libraries.registry.ReikaDyeHelper;
+import reika.dragonapi.libraries.registry.ReikaParticleHelper;
+import reika.dragonapi.libraries.registry.ReikaTreeHelper;
+import reika.dragonapi.libraries.rendering.ReikaColorAPI;
+import reika.dragonapi.modinteract.itemhandlers.ForestryHandler;
+import reika.dragonapi.modregistry.ModWoodList;
+import reika.rotarycraft.api.interfaces.LeafBlockWithExtras;
+
+public class BlockDyeLeaf extends BlockCustomLeaf implements LeafBlockWithExtras {
+
+	private final boolean decay;
+
+	public BlockDyeLeaf(boolean decay) {
+		super(decay);
+		this.decay = decay;
+	}
+
+	@Override
+	public final int getRenderColor(int dmg) {
+		return ReikaDyeHelper.dyes[dmg].getColor();
+	}
+
+	@Override
+	public final int colorMultiplier(IBlockAccess iba, int x, int y, int z) {
+		int dmg = iba.getBlockMetadata(x, y, z);
+		return getColor(dmg, BiomeRainbowForest.isDamaged(iba, x, z));
+	}
+
+	public static int getColor(int meta, boolean damage) {
+		Color c = ReikaDyeHelper.dyes[meta].getJavaColor();
+		return damage ? ReikaColorAPI.mixColors(0xa0a0a0, ReikaColorAPI.getColorWithBrightnessMultiplier(c.getRGB(), 0.85F), 0.4F) : c.brighter().getRGB();
+	}
+
+	@Override
+	public final Item getItemDropped(int id, Random r, int fortune) {
+		return Item.getItemFromBlock(ChromaBlocks.DYESAPLING.getBlockInstance());
+	}
+
+	@Override
+	public int damageDropped(int dmg) {
+		return dmg;
+	}
+
+	@Override
+	protected void onRandomUpdate(World world, int x, int y, int z, Random r) {
+		if (r.nextInt(10) == 0) {
+			CrystalElement e = CrystalElement.elements[world.getBlockMetadata(x, y, z)];
+			ArrayList<TileEntityCrystalPylon> c = new ArrayList(CrystalNetworker.instance.getNearbyPylons(world, x, y, z, e, 16, false));
+			if (c == null || c.isEmpty())
+				return;
+			TileEntityCrystalPylon te = c.get(r.nextInt(c.size()));
+			te.speedRegenShortly(4);
+		}
+	}
+
+	@Override
+	public boolean removedByPlayer(World world, EntityPlayer player, int x, int y, int z, boolean willHarvest) {
+		if (willHarvest)
+			ProgressStage.DYETREE.stepPlayerTo(player);
+		return super.removedByPlayer(world, player, x, y, z, willHarvest);
+	}
+
+	@Override
+	public final ArrayList<ItemStack> getDrops(World world, int x, int y, int z, int meta, int fortune) {
+		ArrayList<ItemStack> li = new ArrayList();
+		float saplingChance = 0.05F;
+		float appleChance = 0.005F;
+		float dyeChance = 0.1F;
+		float rainbowChance = 0.0001F;
+
+		saplingChance *= (1+fortune);
+		appleChance *= (1+fortune*5);
+		dyeChance *= (1+fortune);
+		rainbowChance *= (1+fortune)*(1+fortune);
+
+		float berryChance = 0.1F*ReikaMathLibrary.intpow2(2, fortune);
+		int berryNum = 1;
+		while (berryChance > 1) {
+			berryChance = Math.max(1, berryChance-0.5F);
+			berryNum++;
+		}
+
+		if (ReikaRandomHelper.doWithChance(saplingChance))
+			li.add(new ItemStack(ChromaBlocks.DYESAPLING.getBlockInstance(), 1, meta));
+		if (ReikaRandomHelper.doWithChance(appleChance))
+			li.add(new ItemStack(Items.apple, 1, 0));
+		if (ReikaRandomHelper.doWithChance(dyeChance))
+			li.add(this.getDye(world, x, y, z, meta));
+		if (ReikaRandomHelper.doWithChance(rainbowChance))
+			li.add(new ItemStack(ChromaBlocks.RAINBOWSAPLING.getBlockInstance(), 1, 0));
+		if (ReikaRandomHelper.doWithChance(berryChance))
+			li.add(ChromaItems.BERRY.getCraftedMetadataProduct(berryNum+(int)berryChance, meta));
+		return li;
+	}
+
+	@Override
+	public final void dropBlockAsItemWithChance(World world, int x, int y, int z, int metadata, float chance, int fortune) {
+		if (!world.isRemote) {
+			ArrayList<ItemStack> li = this.getDrops(world, x, y, z, metadata, fortune);
+			for (int i = 0; i < li.size(); i++) {
+				if (chance >= 1 || ReikaRandomHelper.doWithChance(chance))
+					this.dropBlockAsItem(world, x, y, z, li.get(i));
+			}
+		}
+	}
+
+	private final ItemStack getDye(World world, int x, int y, int z, int metadata) {
+		float c = ChromatiCraft.config.getVanillaDyeChance(metadata);
+		if (ReikaRandomHelper.doWithChance(c)) {
+			return new ItemStack(Items.dye, 1, metadata);
+		}
+		else {
+			return ChromaItems.DYE.getStackOfMetadata(metadata);
+		}
+	}
+
+	@Override
+	public final ArrayList<ItemStack> onSheared(ItemStack item, IBlockAccess world, int x, int y, int z, int fortune) {
+		ArrayList<ItemStack> ret = new ArrayList<ItemStack>();
+		ret.add(new ItemStack(ChromaBlocks.DYELEAF.getBlockInstance(), 1, world.getBlockMetadata(x, y, z)));
+		return ret;
+	}
+
+	@Override
+	protected final ItemStack createStackedBlock(int par1) {
+		return new ItemStack(ChromaBlocks.DYELEAF.getBlockInstance(), 1, par1);
+	}
+
+	@Override
+	public final void randomDisplayTick(World world, int x, int y, int z, Random rand) {
+		if (!ChromaOptions.BLOCKPARTICLES.getState() || rand.nextInt(12) > 0)
+			return;
+		double offset = 0.125;
+		int meta = world.getBlockMetadata(x, y, z);
+		ReikaDyeHelper dye = ReikaDyeHelper.getColorFromDamage(meta);
+		Color color = dye.getJavaColor();
+		double r = color.getRed()/255D;
+		double g = color.getGreen()/255D;
+		double b = dye.getBlue()/255D;
+		ReikaParticleHelper.spawnColoredParticlesWithOutset(world, x, y, z, r, g, b, 1, offset);
+	}
+
+	@Override
+	public final Item getItem(World par1World, int par2, int par3, int par4) {
+		return Item.getItemFromBlock(ChromaBlocks.DYELEAF.getBlockInstance());
+	}
+
+	@Override
+	public boolean decays() {
+		return decay;
+	}
+
+	@Override
+	public boolean showInCreative() {
+		return !decay;
+	}
+
+	@Override
+	public CreativeTabs getCreativeTab() {
+		return ChromatiCraft.tabChromaGen;
+	}
+
+	@Override
+	public String getFastGraphicsIcon(int meta) {
+		return "ChromatiCraft:dye/leaves_opaque";
+	}
+
+	@Override
+	public String getFancyGraphicsIcon(int meta) {
+		return "ChromatiCraft:dye/leaves";
+	}
+
+	@Override
+	public boolean shouldTryDecay(World world, int x, int y, int z, int meta) {
+		return this.decays();
+	}
+
+	@Override
+	public boolean shouldRandomTick() {
+		return false;
+	}
+
+	@Override
+	public boolean allowModDecayControl() {
+		return true;
+	}
+
+	@Override
+	public boolean isNatural() {
+		return this.decays();
+	}
+
+	@Override
+	public boolean isMatchingLeaf(IBlockAccess iba, int x, int y, int z, int lookX, int lookY, int lookZ) {
+		Block b = iba.getBlock(lookX, lookY, lookZ);
+		return (ModList.FORESTRY.isLoaded() && b == ForestryHandler.BlockEntry.LEAF.getBlock()) || (b == this && iba.getBlockMetadata(x, y, z) == iba.getBlockMetadata(lookX, lookY, lookZ));
+	}
+
+	@Override
+	public boolean isValidLog(IBlockAccess iba, int thisX, int thisY, int thisZ, int lookX, int lookY, int lookZ) {
+		Block b = iba.getBlock(lookX, lookY, lookZ);
+		int meta = iba.getBlockMetadata(lookX, lookY, lookZ);
+		return ReikaTreeHelper.getTree(b, meta) != null || ModWoodList.isModWood(b, meta);
+	}
+
+	@Override
+	public int getMaximumLogSearchRadius() {
+		return 6;
+	}
+
+	@Override
+	public int getMaximumLogSearchDepth() {
+		return 5;
+	}
+
+	@Override
+	protected int getMetaLimit() {
+		return 16;
+	}
+
+	@Override
+	public void onPreWoodcutterBreak(World world, int x, int y, int z) {
+		LeafBlockWithExtras.breakHangingVines(world, x, y, z, b -> b.blockID instanceof BlockDyeVine);
+	}
+
+	@Override
+	public ArrayList<ItemStack> getExtraDrops(World world, int x, int y, int z, int fortune) {
+		return LeafBlockWithExtras.getExtraDropsForHangingVines(world, x, y, z, fortune, b -> b.blockID instanceof BlockDyeVine);
+	}
+
+}

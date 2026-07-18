@@ -1,0 +1,114 @@
+/*******************************************************************************
+ * @author Reika Kalseki
+ *
+ * Copyright 2017
+ *
+ * All rights reserved.
+ * Distribution of the software in any form is only allowed with
+ * explicit, prior permission from the owner.
+ ******************************************************************************/
+package reika.chromaticraft.items.tools.wands;
+
+import java.util.HashMap;
+
+import net.minecraft.block.Block;
+import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.init.Blocks;
+import net.minecraft.item.ItemStack;
+import net.minecraft.util.MovingObjectPosition;
+import net.minecraft.world.World;
+import net.minecraft.world.WorldServer;
+import net.minecraftforge.fluids.Fluid;
+
+import reika.chromaticraft.base.ItemWandBase;
+import reika.chromaticraft.registry.CrystalElement;
+import reika.dragonapi.auxiliary.ProgressiveRecursiveBreaker;
+import reika.dragonapi.auxiliary.progressiverecursivebreaker.BreakerCallback;
+import reika.dragonapi.auxiliary.progressiverecursivebreaker.ProgressiveBreaker;
+import reika.dragonapi.instantiable.data.immutable.BlockBox;
+import reika.dragonapi.libraries.ReikaFluidHelper;
+import reika.dragonapi.libraries.ReikaPlayerAPI;
+import reika.dragonapi.libraries.world.ReikaBlockHelper;
+
+public class ItemFluidWand extends ItemWandBase implements BreakerCallback {
+
+	private static final int MAX_DEPTH = 18;
+	private static final int MAX_DEPTH_BOOST = 24;
+
+	private static final HashMap<Integer, EntityPlayer> breakers = new HashMap();
+
+	public ItemFluidWand(int index) {
+		super(index);
+		this.addEnergyCost(CrystalElement.CYAN, 1);
+		this.addEnergyCost(CrystalElement.YELLOW, 2);
+	}
+
+	@Override
+	public ItemStack onItemRightClick(ItemStack is, World world, EntityPlayer ep) {
+		MovingObjectPosition mov = ReikaPlayerAPI.getLookedAtBlock(ep, 5, true);
+		if (mov != null && !world.isRemote) {
+			int x = mov.blockX;
+			int y = mov.blockY;
+			int z = mov.blockZ;
+			Block id = world.getBlock(x, y, z);
+			if (id != Blocks.air) {
+				Fluid f = ReikaFluidHelper.lookupFluidForBlock(id);
+				if (f != null) {
+					ProgressiveBreaker b = ProgressiveRecursiveBreaker.instance.addCoordinateWithReturn(world, x, y, z, 900);
+					//b.looseMatches.put(Blocks.redstone_ore, new BlockKey(Blocks.lit_redstone_ore));
+					b.call = this;
+					b.drops = false;
+					b.player = ep;
+					b.tickRate = 5;
+					b.bounds = new BlockBox(x, y, z, x, y, z).expand(128, 128, 128);
+					b.blockValidity = bk -> ReikaBlockHelper.isLiquid(bk.blockID) && ReikaFluidHelper.lookupFluidForBlock(id) == ReikaFluidHelper.lookupFluidForBlock(bk.blockID);
+					breakers.put(b.hashCode(), ep);
+				}
+			}
+		}
+		return is;
+	}
+
+	public static int getDepth(EntityPlayer ep) {
+		return canUseBoostedEffect(ep) ? MAX_DEPTH_BOOST : MAX_DEPTH;
+	}
+
+	@Override
+	public void onPreBreak(ProgressiveBreaker b, World world, int x, int y, int z, Block id, int meta) {
+
+	}
+
+	@Override
+	public void onPostBreak(ProgressiveBreaker b, World world, int x, int y, int z, Block id, int meta) {
+		EntityPlayer ep = breakers.get(b.hashCode());
+		if (ep != null) {
+			boolean exists = world.getPlayerEntityByName(ep.getCommandSenderName()) != null;
+			if (exists) {
+				this.drainPlayer(ep);
+			}
+			else {
+				b.terminate();
+			}
+		}
+	}
+
+	@Override
+	public boolean canBreak(ProgressiveBreaker b, World world, int x, int y, int z, Block id, int meta) {
+		EntityPlayer ep = breakers.get(b.hashCode());
+		if (ep != null) {
+			boolean exists = world.getPlayerEntityByName(ep.getCommandSenderName()) != null;
+			if (exists) {
+				return this.sufficientEnergy(ep) && (world.isRemote || ReikaPlayerAPI.playerCanBreakAt((WorldServer)world, x, y, z, (EntityPlayerMP)ep));
+			}
+		}
+		return false;
+	}
+
+	@Override
+	public void onFinish(ProgressiveBreaker b) {
+		breakers.remove(b.hashCode());
+	}
+
+
+}

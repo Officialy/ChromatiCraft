@@ -1,0 +1,21 @@
+ext {
+    mod_id          = "chromaticraft"
+    mod_name        = "ChromatiCraft"
+    mod_group_id    = "reika.chromaticraft"
+    mod_description = "ChromatiCraft is a large magic mod based on the manipulation of colour, light and crystal energy, powered by DragonAPI."
+}
+
+dependencies {
+    implementation project(":DragonAPI")
+    implementation project(":RotaryCraft")
+    implementation project(":GeoStrata")
+    implementation project(":ReactorCraft")
+}
+
+// PORT-IN-PROGRESS (scaffolding pass — nothing ported yet). The 1680 sources are still original
+// 1.7.10 and will not compile against 26.2, so compile ZERO files for now. `exclude '**'` beats
+// any include, giving a clean zero-state build. As files are ported, delete this exclude and switch
+// to ReactorCraft's include-list allowlist model (the include list becomes the done-tracker).
+sourceSets.main.java {
+    exclude '**'
+}

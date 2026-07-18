@@ -1,0 +1,32 @@
+/*******************************************************************************
+ * @author Reika Kalseki
+ * 
+ * Copyright 2017
+ * 
+ * All rights reserved.
+ * Distribution of the software in any form is only allowed with
+ * explicit, prior permission from the owner.
+ ******************************************************************************/
+package reika.chromaticraft.world.dimension.structure.tesellation;
+
+
+public class PentominoState {
+
+	public final Pentomino shape;
+
+	private int rotation;
+
+	public PentominoState(Pentomino p, int r) {
+		shape = p;
+		rotation = r;
+	}
+
+	public void rotate() {
+		rotation += 90;
+	}
+
+	public int getRotation() {
+		return rotation;
+	}
+
+}

@@ -1,0 +1,151 @@
+/*******************************************************************************
+ * @author Reika Kalseki
+ *
+ * Copyright 2017
+ *
+ * All rights reserved.
+ * Distribution of the software in any form is only allowed with
+ * explicit, prior permission from the owner.
+ ******************************************************************************/
+package reika.chromaticraft.modinterface.thaumcraft;
+
+import java.util.Random;
+
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.particle.EntityFX;
+import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.item.ItemStack;
+import net.minecraft.util.MathHelper;
+import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.Vec3;
+
+import reika.chromaticraft.ChromatiCraft;
+import reika.chromaticraft.auxiliary.ChromaFX;
+import reika.chromaticraft.auxiliary.ChromaStacks;
+import reika.chromaticraft.magic.ElementTagCompound;
+import reika.chromaticraft.magic.PlayerElementBuffer;
+import reika.chromaticraft.registry.ChromaPackets;
+import reika.chromaticraft.registry.ChromaSounds;
+import reika.chromaticraft.registry.CrystalElement;
+import reika.chromaticraft.render.particle.EntityRuneFX;
+import reika.dragonapi.io.DirectResourceManager;
+import reika.dragonapi.instantiable.rendering.ColorBlendList;
+import reika.dragonapi.libraries.ReikaPlayerAPI;
+import reika.dragonapi.libraries.io.ReikaPacketHelper;
+import reika.dragonapi.libraries.java.ReikaArrayHelper;
+import reika.dragonapi.libraries.java.ReikaRandomHelper;
+import reika.dragonapi.libraries.registry.ReikaItemHelper;
+import reika.dragonapi.modinteract.deepinteract.ReikaThaumHelper;
+
+import cpw.mods.fml.common.FMLCommonHandler;
+import cpw.mods.fml.relauncher.Side;
+import cpw.mods.fml.relauncher.SideOnly;
+import thaumcraft.api.aspects.Aspect;
+import thaumcraft.api.aspects.AspectList;
+import thaumcraft.api.wands.IWandRodOnUpdate;
+import thaumcraft.api.wands.WandRod;
+
+public class CrystalWand extends WandRod {
+
+	private static final Random rand = new Random();
+
+	private final IWandRodOnUpdate updater = new WandUpdater();
+	private ColorBlendList colors;
+
+	public CrystalWand() {
+		super("CRYSTALWAND", 6000, ChromaStacks.crystalWand, 18, null, null);
+		if (FMLCommonHandler.instance().getEffectiveSide() == Side.CLIENT)
+			this.registerTexture();
+		this.setGlowing(true);
+	}
+
+	@SideOnly(Side.CLIENT)
+	private void registerTexture() {
+		this.setTexture(DirectResourceManager.getResource("Reika/ChromatiCraft/Textures/Wands/crystalwand.png"));
+		colors = new ColorBlendList(10, ChromaFX.getChromaColorTiles());
+	}
+
+	@Override
+	public IWandRodOnUpdate getOnUpdate() {
+		return updater;
+	}
+
+	@Override
+	public ResourceLocation getTexture() {
+		/*
+		int c = colors != null ? colors.getColor(System.currentTimeMillis()/50D) : 0;
+		float r = ReikaColorAPI.getRed(c)/255F;
+		float g = ReikaColorAPI.getGreen(c)/255F;
+		float b = ReikaColorAPI.getBlue(c)/255F;
+		GL11.glColor4f(r, g, b, 1);
+		 */
+		return super.getTexture();
+	}
+
+	private static class WandUpdater implements IWandRodOnUpdate {
+
+		@Override
+		public void onUpdate(ItemStack is, EntityPlayer player) {
+
+			if (ReikaPlayerAPI.isFake(player))
+				return;
+			int n = ReikaItemHelper.matchStacks(is, player.getCurrentEquippedItem()) ? 100 : 800;
+			if (rand.nextInt(n) == 0) {
+
+				AspectList al = ReikaThaumHelper.getVisInWand(is);
+
+				ElementTagCompound tag = new ElementTagCompound();
+
+				boolean flag = false;
+
+				for (Aspect a : Aspect.getPrimalAspects()) {
+					if (al.getAmount(a) > 0) {
+						int sp = Math.min(10, ReikaThaumHelper.getWandSpaceFor(is, a));
+						if (sp > 0) {
+							ElementTagCompound cost = ChromaAspectManager.instance.getElementCost(a, 1).scale(sp*4).power(1.25);
+							if (PlayerElementBuffer.instance.playerHas(player, cost)) {
+								PlayerElementBuffer.instance.removeFromPlayer(player, cost);
+								ReikaThaumHelper.addVisToWand(is, a, sp);
+								flag = true;
+							}
+						}
+					}
+				}
+
+				if (flag && player instanceof EntityPlayerMP) {
+					int[] arr = ReikaArrayHelper.getLinearArray(16);//tag.toArray();
+					ReikaPacketHelper.sendDataPacket(ChromatiCraft.packetChannel, ChromaPackets.WANDCHARGE.ordinal(), (EntityPlayerMP)player, arr);
+					ChromaSounds.CAST.playSound(player, 1, 1);
+				}
+
+			}
+		}
+
+	}
+
+	@SideOnly(Side.CLIENT)
+	public static void updateWandClient(EntityPlayer player, int[] data) {/*
+		ElementTagCompound tag = new ElementTagCompound();
+		for (int i = 0; i < CrystalElement.elements.length; i++) {
+			CrystalElement e = CrystalElement.elements[i];
+			tag.addValueToColor(e, data[i]);
+		}*/
+
+		Vec3 vec = player.getLookVec();
+		for (CrystalElement e : CrystalElement.elements) {
+			if (data[e.ordinal()] > 0) {
+				int amt = MathHelper.clamp_int(data[e.ordinal()]/2000, 1, 20);
+				for (int i = 0; i < amt; i++) {
+					double px = ReikaRandomHelper.getRandomPlusMinus(player.posX+vec.xCoord, 1);
+					double py = ReikaRandomHelper.getRandomPlusMinus(player.posY+vec.yCoord, 0.5);
+					double pz = ReikaRandomHelper.getRandomPlusMinus(player.posZ+vec.zCoord, 1);
+					EntityFX fx = new EntityRuneFX(player.worldObj, px, py, pz, e).setLife(40).setScale(2).setGravity(0.1F);
+					Minecraft.getMinecraft().effectRenderer.addEffect(fx);
+				}
+			}
+		}
+		//ReikaSoundHelper.playClientSound(ChromaSounds.CAST, player, 1, 1);
+	}
+
+}

@@ -1,0 +1,132 @@
+/*******************************************************************************
+ * @author Reika Kalseki
+ *
+ * Copyright 2017
+ *
+ * All rights reserved.
+ * Distribution of the software in any form is only allowed with
+ * explicit, prior permission from the owner.
+ ******************************************************************************/
+package reika.chromaticraft.render.tesr;
+
+import org.lwjgl.opengl.GL11;
+
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.Tessellator;
+import net.minecraft.client.renderer.entity.RenderManager;
+import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.util.IIcon;
+import net.minecraftforge.client.MinecraftForgeClient;
+
+import reika.chromaticraft.base.RenderLocusPoint;
+import reika.chromaticraft.base.tileentity.TileEntityLocusPoint;
+import reika.chromaticraft.gui.book.GuiMachineDescription;
+import reika.chromaticraft.registry.ChromaIcons;
+import reika.chromaticraft.registry.ChromaShaders;
+import reika.chromaticraft.tileentity.aoe.TileEntityAuraPoint;
+import reika.dragonapi.interfaces.tileentity.RenderFetcher;
+import reika.dragonapi.libraries.io.ReikaTextureHelper;
+import reika.dragonapi.libraries.java.reikaglhelper.BlendMode;
+import reika.dragonapi.libraries.rendering.ReikaColorAPI;
+
+public class RenderAuraPoint extends RenderLocusPoint {
+
+	@Override
+	public String getImageFileName(RenderFetcher te) {
+		return null;
+	}
+
+	@Override
+	protected void doOtherRendering(TileEntityLocusPoint tile, float par8) {
+		if (!tile.isInWorld() || MinecraftForgeClient.getRenderPass() == 1) {
+			TileEntityAuraPoint te = (TileEntityAuraPoint)tile;
+			double d = 1.25+0.25*(Math.sin(System.currentTimeMillis()/1000D));
+			GL11.glPushMatrix();
+			//GL11.glTranslated(0.5, 0.5, 0.5);
+			//GL11.glScaled(d, d, d);
+			//GL11.glTranslated(-0.5, -0.5, -0.5);
+			double dx = tile.xCoord+0.5;
+			double dy = tile.yCoord+0.5;
+			double dz = tile.zCoord+0.5;
+			int color = 0xff000000 | ReikaColorAPI.getModifiedSat(tile.getRenderColor(), 0.875F);
+			GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
+			GL11.glDepthMask(false);
+
+			if (te.isInWorld()) {
+				EntityPlayer ep = Minecraft.getMinecraft().thePlayer;
+				//LOS.update(te);
+				LOS.setOrigins(te.xCoord+0.5, te.yCoord+0.5, te.zCoord+0.5, ep.posX, ep.posY, ep.posZ);
+				if (LOS.isClearLineOfSight(te)) {
+					double dist = ep.getDistance(te.xCoord+0.5, te.yCoord+0.5, te.zCoord+0.5);
+					float f = 0;
+					if (dist <= 8) {
+						f = 1;
+					}
+					else if (dist <= 40) {
+						f = 1-(float)((dist-8D)/32D);
+					}
+					if (te.getTileEntityAge() < 50)
+						f *= te.getTileEntityAge()/50F;
+					ChromaShaders.AURALOC.clearOnRender = true;
+					ChromaShaders.AURALOC.setIntensity(f);
+					ChromaShaders.AURALOC.getShader().setFocus(te);
+					ChromaShaders.AURALOC.getShader().setMatricesToCurrent();
+				}
+			}
+
+			if (te.doPvP() && te.isInWorld()) {
+				ReikaTextureHelper.bindTerrainTexture();
+				GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
+				Tessellator v5 = Tessellator.instance;
+				GL11.glDisable(GL11.GL_LIGHTING);
+				GL11.glDisable(GL11.GL_ALPHA_TEST);
+				BlendMode.ADDITIVEDARK.apply();
+				GL11.glPushMatrix();
+				GL11.glTranslated(0.5, 0.5, 0.5);
+				RenderManager rm = RenderManager.instance;
+				GL11.glRotatef(-rm.playerViewY, 0.0F, 1.0F, 0.0F);
+				GL11.glRotatef(rm.playerViewX, 1.0F, 0.0F, 0.0F);
+
+				double t = Math.sin((te.getTicksExisted()+par8)/32D);
+
+				v5.startDrawingQuads();
+				v5.setBrightness(240);
+				IIcon ico = ChromaIcons.STARFLARE.getIcon();
+				double s = 3.5+1*t;
+				float u = ico.getMinU();
+				float v = ico.getMinV();
+				float du = ico.getMaxU();
+				float dv = ico.getMaxV();
+				v5.setColorOpaque_I(color);
+				v5.addVertexWithUV(-s, -s, 0, u, v);
+				v5.addVertexWithUV(s, -s, 0, du, v);
+				v5.addVertexWithUV(s, s, 0, du, dv);
+				v5.addVertexWithUV(-s, s, 0, u, dv);
+				v5.draw();
+
+				GL11.glPopAttrib();
+				GL11.glPopMatrix();
+			}
+
+			float w = GL11.glGetFloat(GL11.GL_LINE_WIDTH);
+			if (!tile.isInWorld()) {
+				dx = dy = dz = 0;
+				GL11.glDisable(GL11.GL_DEPTH_TEST);
+				float f = 0.5F;
+				GL11.glColor4f(f, f, f, f);
+				int hue = (int)((System.currentTimeMillis()/100)%360);
+				//color = ((int)(f*255) << 24) | ReikaColorAPI.getModifiedHue(0xff9090, hue);
+				GL11.glLineWidth(1.5F);
+			}
+			if (GuiMachineDescription.runningRender) {
+				GL11.glLineWidth(2.5F);
+				GL11.glTranslated(0, 0.1875, 0);
+			}
+			te.knot.render(dx, dy, dz, color, tile.isInWorld());
+			GL11.glLineWidth(w);
+			GL11.glPopAttrib();
+			GL11.glPopMatrix();
+		}
+	}
+
+}

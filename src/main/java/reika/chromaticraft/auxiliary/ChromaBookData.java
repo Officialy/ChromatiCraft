@@ -1,0 +1,366 @@
+/*******************************************************************************
+ * @author Reika Kalseki
+ *
+ * Copyright 2017
+ *
+ * All rights reserved.
+ * Distribution of the software in any form is only allowed with
+ * explicit, prior permission from the owner.
+ ******************************************************************************/
+package reika.chromaticraft.auxiliary;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+
+import org.lwjgl.opengl.GL11;
+
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.FontRenderer;
+import net.minecraft.client.renderer.entity.RenderItem;
+import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.item.ItemStack;
+import net.minecraft.util.MathHelper;
+import net.minecraftforge.oredict.OreDictionary;
+
+import reika.chromaticraft.ChromatiCraft;
+import reika.chromaticraft.auxiliary.recipemanagers.CastingRecipe;
+import reika.chromaticraft.auxiliary.recipemanagers.castingrecipe.MultiBlockCastingRecipe;
+import reika.chromaticraft.auxiliary.recipemanagers.castingrecipe.PylonCastingRecipe;
+import reika.chromaticraft.auxiliary.recipemanagers.castingrecipe.RecipeType;
+import reika.chromaticraft.auxiliary.recipemanagers.castingrecipe.TempleCastingRecipe;
+import reika.chromaticraft.auxiliary.recipemanagers.poolrecipes.PoolRecipe;
+import reika.chromaticraft.auxiliary.recipemanagers.RecipesCastingTable;
+import reika.chromaticraft.auxiliary.render.ChromaFontRenderer;
+import reika.chromaticraft.auxiliary.render.RuneShapeRenderer;
+import reika.chromaticraft.magic.ElementTagCompound;
+import reika.chromaticraft.magic.castingtuning.CastingTuningManager;
+import reika.chromaticraft.magic.progression.chromaresearchmanager.ProgressIndicator;
+import reika.chromaticraft.magic.progression.ProgressAccess;
+import reika.chromaticraft.magic.progression.ProgressStage;
+import reika.chromaticraft.registry.ChromaIcons;
+import reika.chromaticraft.registry.ChromaResearch;
+import reika.chromaticraft.registry.CrystalElement;
+import reika.dragonapi.instantiable.data.Proportionality;
+import reika.dragonapi.instantiable.recipe.ItemMatch;
+import reika.dragonapi.libraries.ReikaNBTHelper;
+import reika.dragonapi.libraries.io.ReikaTextureHelper;
+import reika.dragonapi.libraries.java.ReikaArrayHelper;
+import reika.dragonapi.libraries.java.reikaglhelper.BlendMode;
+import reika.dragonapi.libraries.java.ReikaRandomHelper;
+import reika.dragonapi.libraries.registry.ReikaItemHelper;
+import reika.dragonapi.libraries.rendering.ReikaGuiAPI;
+
+public class ChromaBookData {
+
+	private static final ReikaGuiAPI gui = ReikaGuiAPI.instance;
+
+	private static final int[][] permuOffset = new int[5][5];
+	private static final Random rand = new Random();
+
+	public static void drawPage(FontRenderer fr, RenderItem ri, ChromaResearch h, int subpage, int recipe, int posX, int posY, boolean isBook) {
+		if (h.isCrafting()) {
+			ArrayList<CastingRecipe> li = h.getCraftingRecipes();
+			if (!li.isEmpty()) {
+				CastingRecipe c = li.get(recipe);
+				drawCastingRecipe(fr, ri, c, subpage, posX, posY, isBook);
+				if (h.getTitle().isEmpty()) {
+					fr.drawString(c.getOutputForDisplay().getDisplayName(), posX+6, posY-2, 0);
+				}
+			}
+		}
+	}
+
+	public static void drawCastingRecipe(FontRenderer fr, RenderItem ri, CastingRecipe c, int subpage, int posX, int posY, boolean isBook) {
+		rand.setSeed(System.currentTimeMillis()/1000);
+		rand.nextBoolean();
+		ItemStack isout = c.getOutputForDisplay();
+		ItemStack ctr = c instanceof MultiBlockCastingRecipe ? ((MultiBlockCastingRecipe)c).getMainInput() : c.getArrayForDisplay()[4];
+		GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
+		if (ctr != null && isout.stackTagCompound != null)
+			ReikaNBTHelper.combineNBT(isout.stackTagCompound, c.getOutputTag(Minecraft.getMinecraft().thePlayer, ctr.stackTagCompound));
+		gui.drawItemStack(ri, fr, isout, posX+7, posY+5);
+		GL11.glDisable(GL11.GL_LIGHTING);
+		if (subpage == 0 || subpage == 2) {
+			ItemStack[] arr = c.getArrayForDisplay();
+			if (c.type == RecipeType.CRAFTING && c.isShapeless()) {
+				ReikaArrayHelper.shuffleArray(arr, rand);
+			}
+			for (int i = 0; i < 9; i++) {
+				ItemStack in = arr[i];
+				if (in != null) {
+					if (i == 4 && c instanceof MultiBlockCastingRecipe)
+						in = ReikaItemHelper.getSizedItemStack(in, ((MultiBlockCastingRecipe)c).getRequiredCentralItemCount());
+					int x = subpage == 0 ? 54 : 102;
+					int y = subpage == 0 ? 10 : 76;
+					int dx = x+posX+i%3*18;
+					int dy = y+posY+i/3*18;
+					//FontRenderer fr2 = in.getDisplayName().contains(FontType.OBFUSCATED.id) ? FontType.OBFUSCATED.renderer : fr;
+					gui.drawItemStackWithTooltip(ri, fr, in, dx, dy);
+				}
+			}
+		}
+		GL11.glPopAttrib();
+		GL11.glColor4f(1, 1, 1, 1);
+		if (subpage == 1) {
+			RuneShapeRenderer.instance.render(((TempleCastingRecipe)c).getRunes(), posX+128, posY+110);
+		}
+		if (subpage == 2) {
+			Map<List<Integer>, ItemMatch> items = ((MultiBlockCastingRecipe)c).getAuxItems();
+			for (List<Integer> key : items.keySet()) {
+				int i = key.get(0);
+				int k = key.get(1);
+				int sx = i == 0 ? 0 : i < 0 ? -1 : 1;
+				int sy = k == 0 ? 0 : k < 0 ? -1 : 1;
+				int tx = Math.abs(i) == 2 ? 38 : 64;
+				int ty = Math.abs(k) == 2 ? 38 : 63;
+				int dx = posX+120+sx*tx;
+				int dy = posY+94+sy*ty;
+				ItemStack out = items.get(key).getCycledItem();
+				if (out.getItemDamage() == OreDictionary.WILDCARD_VALUE) {
+					List<ItemStack> dmg = ReikaItemHelper.getAllMetadataPermutations(out.getItem());
+					if (System.currentTimeMillis()%1000 == 0) {
+						for (int f = 0; f < permuOffset.length; f++) {
+							for (int g = 0; g < permuOffset[f].length; g++) {
+								permuOffset[f][g] = ReikaRandomHelper.getRandomPlusMinus(0, 16);
+							}
+						}
+					}
+					out = dmg.get((int)((System.currentTimeMillis()/1000+permuOffset[i/2+2][k/2+2])%dmg.size()));
+				}
+				gui.drawItemStackWithTooltip(ri, fr, out, dx, dy);
+			}
+		}
+		GL11.glColor4f(1, 1, 1, 1);
+		GL11.glDisable(GL11.GL_LIGHTING);
+		if (subpage == 3) {
+			ElementTagCompound tag = ((PylonCastingRecipe)c).getRequiredAura();
+			int max = tag.getMaximumValue();
+			for (CrystalElement e : tag.elementSet()) {
+				int color = e.getColor();
+				//int dx = posX+24*e.ordinal();
+				//int dy = posY+20;
+
+				int energy = (int)((System.currentTimeMillis())%max);
+				int w = 10;
+				int h2 = 48;
+				int x = posX+7+e.ordinal()*(w+4);
+				//int ht = energy*h2/tag.getValue(e);
+				//int dy = Math.max(h2-ht, 0); //prevent gui overflow
+				int y1 = posY+26;
+				//int y = posY+26+h2;
+				//gui.drawRect(x, y1, x+w, y, e.getJavaColor().darker().darker().getRGB());
+				//gui.drawRect(x, y1+dy, x+w, y, e.getColor());
+
+				ChromaFX.drawFillBar(e, x, y1, w, h2, energy/(float)max);
+			}
+
+			/*
+			if (tag.tagCount() <= 8) {
+				int r = 40;
+				int dx = posX+192;
+				int dy = posY+140;
+				p.renderAsPie(dx, dy, r, 0, colors);
+				ReikaGuiAPI.instance.drawCircle(dx, dy, r+0.25, 0x000000);
+			}
+			 */
+
+			Proportionality<CrystalElement> p = tag.getProportionality();
+			FontRenderer f = ChromaFontRenderer.FontType.LEXICON.renderer;
+
+			int px = posX+8;
+			int py = posY+88;
+
+			double r = 57.5;
+			int dx = px+184;
+			int dy = py+56;
+			double zang = System.identityHashCode(c);
+			p.setGeometry(dx, dy, r, zang);
+			p.render(CrystalElement.getColorMap());
+
+			ReikaTextureHelper.bindTerrainTexture();
+			double ba = zang;
+			double ir = r*0.625;
+			int si = 8;
+			for (CrystalElement e : p.getElements()) {
+				double ang = 360D*p.getFraction(e);
+				double a = ba+ang/2D;
+				int ix = (int)Math.round(dx+ir*Math.cos(Math.toRadians(a)));
+				int iy = (int)Math.round(dy+ir*Math.sin(Math.toRadians(a)));
+				if (p.getElements().size() == 1) {
+					ix = dx;
+					iy = dy;
+				}
+				ReikaGuiAPI.instance.drawTexturedModelRectFromIcon(ix-si/2, iy-si/2, e.getOutlineRune(), si, si);
+				ba += ang;
+			}
+
+			//ReikaGuiAPI.instance.drawCircle(dx, dy, r+0.25, 0x000000);
+			int tot = tag.getTotalEnergy();
+			int h = f.FONT_HEIGHT*3/2;
+			f.drawSplitString("Total Energy:", px+3+40, py-5+3, 80, 0xffffff);
+			f.drawSplitString(String.valueOf(tot), px+3+40, py-5+3+h, 80, 0xffffff);
+			f.drawSplitString("Lumens", px+3+40, py-5+3+h*2, 80, 0xffffff);
+
+			int frac = (int)(117*Math.pow((double)tot/RecipesCastingTable.instance.getMaxRecipeTotalEnergyCost(), 0.5));
+
+			ReikaTextureHelper.bindTerrainTexture();
+			BlendMode.ADDITIVEDARK.apply();
+			for (int i = 0; i < 4; i++)
+				ReikaGuiAPI.instance.drawTexturedModelRectFromIcon(px+11, py+108-frac+3, ChromaIcons.RIFT.getIcon(), 16, frac+6);
+			BlendMode.DEFAULT.apply();
+
+			String s = "Textures/GUIs/Handbook/misc.png";
+			ReikaTextureHelper.bindFinalTexture(ChromatiCraft.class, s);
+			ReikaGuiAPI.instance.drawTexturedModalRect(dx-(int)Math.ceil(r), dy-(int)Math.ceil(r), 0, 0, (int)(r*2), (int)(r*2));
+
+			ReikaGuiAPI.instance.drawTexturedModalRect(px+1, py+108-frac, 0, 118, 36, 7);
+		}
+		if (subpage == 0 && isBook && ChromaResearch.DOUBLECRAFT.playerHas(Minecraft.getMinecraft().thePlayer)) {
+			ReikaTextureHelper.bindFinalTexture(ChromatiCraft.class, "Textures/GUIs/Handbook/misc.png");
+			gui.drawTexturedModalRect(posX+10, posY+31, 224, c.canGiveDoubleOutput() ? 32 : 64, 32, 32);
+			if (gui.isMouseInBox(posX+10, posX+42, posY+31, posY+63)) {
+				ReikaTextureHelper.bindFinalTexture(ChromatiCraft.class, "Textures/Ability/doublecraft.png");
+				GL11.glPushMatrix();
+				double s = 0.1;
+				GL11.glScaled(s, s, s);
+				gui.drawTexturedModalRect((int)((gui.getMouseRealX()+10)/s), (int)((gui.getMouseRealY()+10)/s), 0, 0, 256, 256);
+				GL11.glPopMatrix();
+			}
+		}
+		c.drawAdditionalBookData(fr, ri, posX+9, posY+80, subpage);
+	}
+
+	public static void drawRecipeMissingProgress(CastingRecipe r, EntityPlayer player, RenderItem itemRender, FontRenderer fontRendererObj, int x0, int y0, boolean showMissingTuning) {
+		ArrayList<ProgressIndicator> li = new ArrayList();
+		ArrayList<ProgressStage> temp = new ArrayList();
+		r.getRequiredProgress(temp);
+		li.addAll(temp);
+		ChromaResearch frag = r.getFragment();
+		if (frag != null) {
+			li.add(0, frag);
+		}
+		li.removeIf(e -> e instanceof ProgressAccess && ((ProgressAccess)e).playerHas(player));
+		if (showMissingTuning && r instanceof TempleCastingRecipe && ((TempleCastingRecipe)r).requiresTuningKey()) {
+			li.add(CastingTuningManager.instance.tuningDisplay);
+		}
+		if (!li.isEmpty()) {
+			int idx = 0;
+			int count = li.size();
+			int gap = 2;
+			int cols = 3;//4;
+			int w = (16+gap)*Math.min(cols, count);
+			int h = (16+gap)*MathHelper.ceiling_float_int(count/(float)cols);
+			int dx = x0-w/2;
+			ReikaGuiAPI.instance.drawRect(dx-gap, y0-gap, w+gap, h+gap, 0x000000, false);
+			ReikaGuiAPI.instance.drawRectFrame(dx-gap, y0-gap, w+gap, h+gap, 0x22aaff);
+			for (ProgressIndicator e : li) {
+				int x = dx+(idx%cols)*(16+gap);
+				int y = y0+(idx/cols)*(16+gap);
+				e.renderIcon(itemRender, fontRendererObj, x, y);
+				idx++;
+			}
+		}
+	}
+
+	public static void drawCompressedCastingRecipe(FontRenderer fr, RenderItem ri, CastingRecipe c, int posX, int posY) {
+		GL11.glDisable(GL11.GL_LIGHTING);
+
+		ItemStack[] arr = c.getArrayForDisplay();
+		for (int i = 0; i < 9; i++) {
+			ItemStack in = arr[i];
+			if (in != null) {
+				if (i == 4 && c instanceof MultiBlockCastingRecipe)
+					in = ReikaItemHelper.getSizedItemStack(in, ((MultiBlockCastingRecipe)c).getRequiredCentralItemCount());
+				int x = 47;
+				int y = 96;
+				int dx = x+posX+i%3*18;
+				int dy = y+posY+i/3*18;
+				//FontRenderer fr2 = in.getDisplayName().contains(FontType.OBFUSCATED.id) ? FontType.OBFUSCATED.renderer : fr;
+				gui.drawItemStackWithTooltip(ri, fr, in, dx, dy);
+			}
+		}
+
+		GL11.glColor4f(1, 1, 1, 1);
+
+		if (c instanceof MultiBlockCastingRecipe) {
+			Map<List<Integer>, ItemMatch> items = ((MultiBlockCastingRecipe)c).getAuxItems();
+			for (List<Integer> key : items.keySet()) {
+				int i = key.get(0);
+				int k = key.get(1);
+				int sx = i == 0 ? 0 : i < 0 ? -1 : 1;
+				int sy = k == 0 ? 0 : k < 0 ? -1 : 1;
+				int tx = Math.abs(i) == 2 ? 37 : 57;
+				int ty = Math.abs(k) == 2 ? 37 : 57;
+				int dx = posX+65+sx*tx;
+				int dy = posY+114+sy*ty;
+				ItemStack out = items.get(key).getCycledItem().copy();
+				if (out.getItemDamage() == OreDictionary.WILDCARD_VALUE) {
+					List<ItemStack> dmg = ReikaItemHelper.getAllMetadataPermutations(out.getItem());
+					if (System.currentTimeMillis()%1000 == 0) {
+						for (int f = 0; f < permuOffset.length; f++) {
+							for (int g = 0; g < permuOffset[f].length; g++) {
+								permuOffset[f][g] = ReikaRandomHelper.getRandomPlusMinus(0, 16);
+							}
+						}
+					}
+					out = dmg.get((int)((System.currentTimeMillis()/1000+permuOffset[i/2+2][k/2+2])%dmg.size()));
+				}
+				gui.drawItemStackWithTooltip(ri, fr, out, dx, dy);
+			}
+		}
+
+		GL11.glColor4f(1, 1, 1, 1);
+		GL11.glDisable(GL11.GL_LIGHTING);
+		if (c instanceof PylonCastingRecipe) {
+			ElementTagCompound tag = ((PylonCastingRecipe)c).getRequiredAura();
+			int max = tag.getMaximumValue();
+			for (CrystalElement e : tag.elementSet()) {
+				int color = e.getColor();
+				//int dx = posX+24*e.ordinal();
+				//int dy = posY+20;
+
+				int energy = (int)((System.currentTimeMillis())%max);
+				int h = 3;
+				int w = 30;
+				int x = posX+7+(e.ordinal()/4)*(w+4);
+				//int ht = Math.min(h2, energy*h2/tag.getValue(e)); //prevent gui overflow
+				int y = posY+193+(e.ordinal()%4)*7;
+				//int y1 = posY+26+h2;
+				//gui.drawRect(x, y, x+h2, y+w, e.getJavaColor().darker().darker().getRGB());
+				//gui.drawRect(x, y, x+ht, y+w, e.getColor());
+
+				float f = energy/(float)tag.getValue(e);
+				ChromaFX.drawHorizontalFillBar(e, x, y, w, h, f);
+			}
+		}
+	}
+
+	public static void drawPoolRecipe(FontRenderer fr, RenderItem ri, PoolRecipe r, int subpage, int posX, int posY) {
+		rand.setSeed(System.currentTimeMillis()/1000);
+		rand.nextBoolean();
+		gui.drawItemStackWithTooltip(ri, fr, r.getOutput(), posX+120, posY+128);
+		gui.drawItemStackWithTooltip(ri, fr, r.getMainInput(), posX+34, posY+91);
+		int i = 0;
+		for (ItemStack is : r.getInputs()) {
+			if (is.getItemDamage() == OreDictionary.WILDCARD_VALUE) {
+				ArrayList<ItemStack> li = new ArrayList();
+				is.getItem().getSubItems(is.getItem(), is.getItem().getCreativeTab(), li);
+				if (!li.isEmpty())
+					is = li.get(rand.nextInt(li.size()));
+			}
+			int dx = posX+103+(i%3)*17;
+			int dy = posY+29+(i/3)*17;
+			gui.drawItemStackWithTooltip(ri, fr, is, dx, dy);
+			i++;
+		}
+		ReikaTextureHelper.bindTerrainTexture();
+		GL11.glDisable(GL11.GL_BLEND);
+		GL11.glColor4f(1, 1, 1, 1);
+		GL11.glDisable(GL11.GL_LIGHTING);
+		gui.drawTexturedModelRectFromIcon(posX+196, posY+81, ChromatiCraft.chroma.getIcon(), 36, 36);
+		GL11.glEnable(GL11.GL_LIGHTING);
+		GL11.glEnable(GL11.GL_BLEND);
+	}
+}

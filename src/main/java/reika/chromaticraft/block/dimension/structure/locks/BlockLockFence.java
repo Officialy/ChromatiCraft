@@ -1,0 +1,82 @@
+/*******************************************************************************
+ * @author Reika Kalseki
+ *
+ * Copyright 2017
+ *
+ * All rights reserved.
+ * Distribution of the software in any form is only allowed with
+ * explicit, prior permission from the owner.
+ ******************************************************************************/
+package reika.chromaticraft.block.dimension.structure.locks;
+
+import java.util.List;
+
+import net.minecraft.block.material.Material;
+import net.minecraft.client.renderer.texture.IIconRegister;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.util.AxisAlignedBB;
+import net.minecraft.world.IBlockAccess;
+import net.minecraft.world.World;
+
+import reika.chromaticraft.base.BlockDimensionStructure;
+import reika.chromaticraft.registry.ChromaBlocks;
+import reika.dragonapi.libraries.ReikaInventoryHelper;
+
+public class BlockLockFence extends BlockDimensionStructure {
+
+	public BlockLockFence(Material mat) {
+		super(mat);
+	}
+
+	@Override
+	public void registerBlockIcons(IIconRegister ico) {
+		blockIcon = ico.registerIcon("chromaticraft:dimstruct/lockfence");
+	}
+
+	@Override
+	public boolean isOpaqueCube() {
+		return false;
+	}
+
+	@Override
+	public boolean renderAsNormalBlock() {
+		return false;
+	}
+
+	@Override
+	public AxisAlignedBB getCollisionBoundingBoxFromPool(World world, int x, int y, int z) {
+		return super.getCollisionBoundingBoxFromPool(world, x, y, z);
+	}
+
+	@Override
+	public void addCollisionBoxesToList(World world, int x, int y, int z, AxisAlignedBB box, List li, Entity e) {
+		if (this.canEntityPass(e)) {
+
+		}
+		else {
+			//if (e instanceof EntityPlayer)
+			//	ReikaChatHelper.sendChatToPlayer((EntityPlayer)e, "You cannot pass through with a key.");
+			super.addCollisionBoxesToList(world, x, y, z, box, li, e);
+		}
+	}
+
+	@Override
+	public void onEntityCollision(World world, int x, int y, int z, Entity e) {
+		if (!canEntityPass(e)) {
+
+		}
+	}
+
+	@Override
+	public boolean shouldSideBeRendered(IBlockAccess iba, int x, int y, int z, int side) {
+		return iba.getBlock(x, y, z) != this; //already translated by side
+	}
+
+	private static boolean canEntityPass(Entity e) {
+		if (!(e instanceof EntityPlayer))
+			return false;
+		return !ReikaInventoryHelper.checkForItem(ChromaBlocks.LOCKKEY.getBlockInstance(), ((EntityPlayer)e).inventory);
+	}
+
+}

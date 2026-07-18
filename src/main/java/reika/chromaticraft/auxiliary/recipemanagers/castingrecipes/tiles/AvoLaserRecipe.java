@@ -1,0 +1,58 @@
+/*******************************************************************************
+ * @author Reika Kalseki
+ * 
+ * Copyright 2017
+ * 
+ * All rights reserved.
+ * Distribution of the software in any form is only allowed with
+ * explicit, prior permission from the owner.
+ ******************************************************************************/
+package reika.chromaticraft.auxiliary.recipemanagers.castingrecipes.tiles;
+
+import net.minecraft.init.Items;
+import net.minecraft.item.ItemStack;
+
+import reika.chromaticraft.auxiliary.ChromaStacks;
+import reika.chromaticraft.auxiliary.recipemanagers.castingrecipe.PylonCastingRecipe;
+import reika.chromaticraft.registry.ChromaBlocks;
+import reika.chromaticraft.registry.CrystalElement;
+
+
+public class AvoLaserRecipe extends PylonCastingRecipe {
+
+	public AvoLaserRecipe(ItemStack out, ItemStack main) {
+		super(out, main);
+
+		this.addAuxItem(ChromaBlocks.PYLONSTRUCT.getBlockInstance(), -4, 2);
+		this.addAuxItem(ChromaBlocks.PYLONSTRUCT.getBlockInstance(), -4, 4);
+		this.addAuxItem(ChromaBlocks.PYLONSTRUCT.getBlockInstance(), -2, 4);
+		this.addAuxItem(ChromaBlocks.PYLONSTRUCT.getBlockInstance(), 0, 4);
+		this.addAuxItem(ChromaBlocks.PYLONSTRUCT.getBlockInstance(), 2, 4);
+		this.addAuxItem(ChromaBlocks.PYLONSTRUCT.getBlockInstance(), 4, 4);
+		this.addAuxItem(ChromaBlocks.PYLONSTRUCT.getBlockInstance(), 4, 2);
+
+		this.addAuxItem(Items.diamond, -2, 2);
+		this.addAuxItem(Items.emerald, 0, 2);
+		this.addAuxItem(Items.diamond, 2, 2);
+
+		this.addAuxItem(Items.gold_ingot, -4, 0);
+		this.addAuxItem(Items.diamond, -2, 0);
+		this.addAuxItem(Items.diamond, 2, 0);
+		this.addAuxItem(Items.gold_ingot, 4, 0);
+
+		this.addAuxItem(Items.gold_ingot, -4, -2);
+		this.addAuxItem(ChromaStacks.avolite, -2, -2);
+		this.addAuxItem(ChromaStacks.avolite, 0, -2);
+		this.addAuxItem(ChromaStacks.avolite, 2, -2);
+		this.addAuxItem(Items.gold_ingot, 4, -2);
+
+		this.addAuxItem(ChromaStacks.focusDust, -2, -4);
+		this.addAuxItem(ChromaStacks.avolite, 0, -4);
+		this.addAuxItem(ChromaStacks.focusDust, 2, -4);
+
+		this.addAuraRequirement(CrystalElement.PINK, 40000);
+		this.addAuraRequirement(CrystalElement.YELLOW, 20000);
+		this.addAuraRequirement(CrystalElement.BLUE, 10000);
+	}
+
+}

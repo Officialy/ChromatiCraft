@@ -1,0 +1,580 @@
+/*******************************************************************************
+ * @author Reika Kalseki
+ *
+ * Copyright 2017
+ *
+ * All rights reserved.
+ * Distribution of the software in any form is only allowed with
+ * explicit, prior permission from the owner.
+ ******************************************************************************/
+package reika.chromaticraft.auxiliary;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.Locale;
+
+import com.google.common.base.Strings;
+
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.resources.Language;
+import net.minecraftforge.common.MinecraftForge;
+
+import reika.chromaticraft.ChromatiCraft;
+import reika.chromaticraft.auxiliary.interfaces.DynamicallyGeneratedSubpage;
+import reika.chromaticraft.auxiliary.recipemanagers.FabricationRecipes;
+import reika.chromaticraft.base.tileentity.TileEntityAdjacencyUpgrade;
+import reika.chromaticraft.base.tileentity.TileEntityAreaDistributor;
+import reika.chromaticraft.items.tools.ItemWarpCapsule;
+import reika.chromaticraft.magic.interfaces.CrystalNetworkTile;
+import reika.chromaticraft.magic.interfaces.CrystalReceiver;
+import reika.chromaticraft.magic.interfaces.CrystalTransmitter;
+import reika.chromaticraft.magic.lore.LoreManager;
+import reika.chromaticraft.magic.lore.LoreScripts;
+import reika.chromaticraft.magic.lore.lorescripts.ScriptLocations;
+import reika.chromaticraft.magic.network.RelayNetworker;
+import reika.chromaticraft.magic.progression.ProgressStage;
+import reika.chromaticraft.modinterface.RFWeb;
+import reika.chromaticraft.modinterface.TileEntityManaBooster;
+import reika.chromaticraft.modinterface.bees.TileEntityLumenAlveary;
+import reika.chromaticraft.modinterface.bees.tileentitylumenalveary.AlvearyEffect;
+import reika.chromaticraft.modinterface.thaumcraft.TileEntityAspectJar;
+import reika.chromaticraft.registry.ChromaBlocks;
+import reika.chromaticraft.registry.ChromaEnchants;
+import reika.chromaticraft.registry.ChromaItems;
+import reika.chromaticraft.registry.ChromaResearch;
+import reika.chromaticraft.registry.ChromaStructures;
+import reika.chromaticraft.registry.ChromaTiles;
+import reika.chromaticraft.registry.Chromabilities;
+import reika.chromaticraft.registry.CrystalElement;
+import reika.chromaticraft.tileentity.aoe.TileEntityAreaBreaker;
+import reika.chromaticraft.tileentity.aoe.TileEntityCrystalLaser;
+import reika.chromaticraft.tileentity.aoe.TileEntityItemCollector;
+import reika.chromaticraft.tileentity.aoe.TileEntityLampController;
+import reika.chromaticraft.tileentity.aoe.defence.TileEntityChromaLamp;
+import reika.chromaticraft.tileentity.aoe.defence.TileEntityCrystalBeacon;
+import reika.chromaticraft.tileentity.aoe.defence.TileEntityExplosionShield;
+import reika.chromaticraft.tileentity.aoe.defence.TileEntityGuardianStone;
+import reika.chromaticraft.tileentity.aoe.defence.TileEntityLumenTurret;
+import reika.chromaticraft.tileentity.acquisition.TileEntityCollector;
+import reika.chromaticraft.tileentity.auxiliary.TileEntityCrystalCharger;
+import reika.chromaticraft.tileentity.networking.TileEntityCrystalPylon;
+import reika.chromaticraft.tileentity.networking.TileEntityWirelessSource;
+import reika.chromaticraft.tileentity.processing.TileEntityAutoEnchanter;
+import reika.chromaticraft.tileentity.processing.TileEntityCrystalFurnace;
+import reika.chromaticraft.tileentity.storage.TileEntityCrystalTank;
+import reika.chromaticraft.tileentity.storage.TileEntityPowerTree;
+import reika.chromaticraft.tileentity.storage.TileEntityToolStorage;
+import reika.dragonapi.ModList;
+import reika.dragonapi.instantiable.data.maps.PluralMap;
+import reika.dragonapi.instantiable.event.client.ResourceReloadEvent;
+import reika.dragonapi.instantiable.io.XMLInterface;
+import reika.dragonapi.libraries.ReikaDirectionHelper;
+import reika.dragonapi.libraries.java.ReikaObfuscationHelper;
+import reika.dragonapi.libraries.java.ReikaStringParser;
+
+import cpw.mods.fml.common.FMLCommonHandler;
+import cpw.mods.fml.common.eventhandler.SubscribeEvent;
+import cpw.mods.fml.relauncher.Side;
+import cpw.mods.fml.relauncher.SideOnly;
+
+public final class ChromaDescriptions {
+
+	private static String PARENT = getParent(true);
+	private static final String DESC_SUFFIX = ":desc";
+	private static final String NOTE_SUFFIX = ":note";
+
+	private static final HashMap<ChromaResearch, String> data = new HashMap<ChromaResearch, String>();
+	private static final PluralMap<String> notes = new PluralMap(2);
+
+	private static final HashMap<ChromaTiles, Object[]> machineData = new HashMap<ChromaTiles, Object[]>();
+	private static final HashMap<ChromaTiles, Object[]> machineNotes = new HashMap<ChromaTiles, Object[]>();
+	private static final HashMap<ChromaBlocks, Object[]> blockData = new HashMap<ChromaBlocks, Object[]>();
+	private static final HashMap<ChromaItems, Object[]> itemData = new HashMap<ChromaItems, Object[]>();
+	private static final HashMap<ChromaItems, Object[]> itemNotes = new HashMap<ChromaItems, Object[]>();
+	private static final HashMap<ChromaResearch, Object[]> miscData = new HashMap<ChromaResearch, Object[]>();
+	private static final EnumMap<Chromabilities, Object[]> abilityData = new EnumMap(Chromabilities.class);
+	private static final HashMap<String, Object[]> hoverData = new HashMap<String, Object[]>();
+	private static final HashMap<CrystalElement, Object[]> elementData = new HashMap<CrystalElement, Object[]>();
+
+	private static final HashMap<String, String> hoverText = new HashMap<String, String>();
+	private static final EnumMap<ProgressStage, ProgressNote> progressText = new EnumMap(ProgressStage.class);
+	private static final EnumMap<Chromabilities, String> abilityText = new EnumMap(Chromabilities.class);
+	private static final EnumMap<CrystalElement, String> elementText = new EnumMap(CrystalElement.class);
+	//private static final MultiMap<ScriptLocations, String> loreText = new MultiMap();
+
+	private static final XMLInterface machines = loadData("machines");
+	private static final XMLInterface elements = loadData("elements");
+	private static final XMLInterface blocks = loadData("blocks");
+	private static final XMLInterface abilities = loadData("abilities");
+	private static final XMLInterface structures = loadData("structure");
+	private static final XMLInterface tools = loadData("tools");
+	private static final XMLInterface resources = loadData("resource");
+	private static final XMLInterface infos = loadData("info");
+	private static final XMLInterface hover = loadData("hover");
+	private static final XMLInterface progress = loadData("progression");
+	private static final XMLInterface enchants = loadData("enchants");
+	private static final XMLInterface lore = getLorePath().init();
+
+	private static XMLInterface loadData(String name) {
+		XMLInterface xml = new XMLInterface(ChromatiCraft.class, PARENT+name+".xml", !ReikaObfuscationHelper.isDeObfEnvironment());
+		xml.setFallback(getParent(false)+name+".xml");
+		xml.init();
+		return xml;
+	}
+
+	private static XMLInterface getLorePath() {
+		if (LoreScripts.instance.hasReroutePath())
+			return new XMLInterface(LoreScripts.instance.getReroutedLoreFile(), true);
+		return new XMLInterface(LoreScripts.instance, true);
+	}
+
+	private static String getParent(boolean locale) {
+		return locale && FMLCommonHandler.instance().getEffectiveSide() == Side.CLIENT ? getLocalizedParent() : "Resources/";
+	}
+
+	@SideOnly(Side.CLIENT)
+	private static String getLocalizedParent() {
+		Language language = Minecraft.getMinecraft().getLanguageManager().getCurrentLanguage();
+		String lang = language.getLanguageCode();
+		if (hasLocalizedFor(language) && !"en_US".equals(lang))
+			return "Resources/"+lang+"/";
+		return "Resources/";
+	}
+
+	@SideOnly(Side.CLIENT)
+	private static boolean hasLocalizedFor(Language language) {
+		String lang = language.getLanguageCode();
+		try (InputStream o = ChromatiCraft.class.getResourceAsStream("Resources/"+lang+"/categories.xml")) {
+			return o != null;
+		}
+		catch (IOException e) {
+			e.printStackTrace();
+			return false;
+		}
+	}
+
+	public static String getHoverText(String key) {
+		return hoverText.get(key);
+	}
+
+	private static void addData(ChromaTiles m, Object... data) {
+		machineData.put(m, data);
+	}
+
+	private static void addData(ChromaBlocks m, Object... data) {
+		blockData.put(m, data);
+	}
+
+	private static void addData(ChromaItems m, Object... data) {
+		itemData.put(m, data);
+	}
+
+	private static void addData(ChromaResearch h, Object... data) {
+		miscData.put(h, data);
+	}
+
+	private static void addData(CrystalElement e, Object... data) {
+		elementData.put(e, data);
+	}
+
+	private static void addData(Chromabilities a, Object... data) {
+		abilityData.put(a, data);
+	}
+
+	private static void addData(String s, Object... data) {
+		hoverData.put(s, data);
+	}
+
+	private static void addData(ChromaResearch h, int[] data) {
+		Object[] o = new Object[data.length];
+		for (int i = 0; i < o.length; i++)
+			o[i] = data[i];
+		miscData.put(h, o);
+	}
+
+	private static void addNotes(ChromaTiles m, Object... data) {
+		machineNotes.put(m, data);
+	}
+
+	private static void addNotes(ChromaItems m, Object... data) {
+		itemNotes.put(m, data);
+	}
+
+	public static void reload() {
+		PARENT = getParent(true);
+
+		loadNumericalData();
+
+		machines.reread();
+		elements.reread();
+		blocks.reread();
+		abilities.reread();
+		tools.reread();
+		resources.reread();
+		infos.reread();
+		structures.reread();
+		hover.reread();
+		progress.reread();
+		enchants.reread();
+		lore.reread();
+
+		loadRosetta();
+
+		loadData();
+	}
+
+	@SideOnly(Side.CLIENT)
+	private static void loadRosetta() {
+		if (Minecraft.getMinecraft().thePlayer != null)
+			LoreManager.instance.getOrCreateRosetta(Minecraft.getMinecraft().thePlayer).loadText();
+	}
+
+	private static void addEntry(ChromaResearch h, String sg) {
+		data.put(h, sg);
+	}
+
+	public static void loadData() {
+		ArrayList<ChromaResearch> infotabs = ChromaResearch.getInfoTabs();
+		ArrayList<ChromaResearch> machinetabs = ChromaResearch.getMachineTabs();
+		ArrayList<ChromaResearch> blocktabs = ChromaResearch.getBlockTabs();
+		ArrayList<ChromaResearch> abilitytabs = ChromaResearch.getAbilityTabs();
+		ArrayList<ChromaResearch> tooltabs = ChromaResearch.getToolTabs();
+		ArrayList<ChromaResearch> resourcetabs = ChromaResearch.getResourceTabs();
+		ArrayList<ChromaResearch> structuretabs = ChromaResearch.getStructureTabs();
+
+		for (ChromaResearch h : machinetabs) {
+			ChromaTiles m = h.getMachine();
+			if (m == ChromaTiles.ADJACENCY) {
+				ArrayList<String> pages = new ArrayList();
+				pages.add(DESC_SUFFIX);
+				pages.add(NOTE_SUFFIX);
+				for (int i = 0; i < 16; i++) {
+					pages.add(":"+CrystalElement.elements[i].name().toLowerCase());
+				}
+				int i = 0;
+				for (String s : pages) {
+					String text = machines.getValueAtNode("machines:"+m.name().toLowerCase(Locale.ENGLISH)+s);
+					boolean desc = s.equals(DESC_SUFFIX);
+					boolean note = s.equals(NOTE_SUFFIX);
+					if (desc)
+						text = String.format(text, machineData.get(m));
+					else if (note)
+						text = String.format(text, machineNotes.get(m));
+					if (XMLInterface.NULL_VALUE.equals(text))
+						text = "There is no lexicon data for this machine yet.";
+					if (m.isIncomplete()) {
+						text += "\nThis machine is incomplete. Use at your own risk.";
+					}
+					if (desc)
+						addEntry(h, text);
+					else
+						notes.put(text, h, i-1);
+					i++;
+				}
+			}
+			else if (m == ChromaTiles.ALVEARY && ModList.FORESTRY.isLoaded()) {
+				ArrayList<String> pages = new ArrayList();
+				pages.add(DESC_SUFFIX);
+				pages.add(NOTE_SUFFIX);
+				for (AlvearyEffect e : TileEntityLumenAlveary.getEffectSet()) {
+					String text = machines.getValueAtNode("machines:"+m.name().toLowerCase(Locale.ENGLISH)+":"+e.getClass().getSimpleName());
+					if (XMLInterface.NULL_VALUE.equals(text))
+						text = "There is no lexicon data for this effect yet.";
+					e.setXMLText(text);
+				}
+				int i = 0;
+				for (String s : pages) {
+					String text = machines.getValueAtNode("machines:"+m.name().toLowerCase(Locale.ENGLISH)+s);
+					boolean desc = s.equals(DESC_SUFFIX);
+					boolean note = s.equals(NOTE_SUFFIX);
+					if (desc)
+						text = String.format(text, machineData.get(m));
+					else if (note)
+						text = String.format(text, machineNotes.get(m));
+					if (XMLInterface.NULL_VALUE.equals(text))
+						text = "There is no lexicon data for this machine yet.";
+					if (m.isIncomplete()) {
+						text += "\nThis machine is incomplete. Use at your own risk.";
+					}
+					if (desc)
+						addEntry(h, text);
+					else
+						notes.put(text, h, i-1);
+					i++;
+				}
+			}
+			else {
+				String desc = machines.getValueAtNode("machines:"+m.name().toLowerCase(Locale.ENGLISH)+DESC_SUFFIX);
+				String aux = machines.getValueAtNode("machines:"+m.name().toLowerCase(Locale.ENGLISH)+NOTE_SUFFIX);
+				desc = String.format(desc, machineData.get(m));
+				aux = String.format(aux, machineNotes.get(m));
+
+				if (XMLInterface.NULL_VALUE.equals(desc))
+					desc = "There is no lexicon data for this machine yet.";
+				//ReikaJavaLibrary.pConsole(m.name().toLowerCase()+":"+desc);
+
+				if (m.isDummiedOut()) {
+					desc += "\nThis machine is currently unavailable.";
+					if (m.hasPrerequisite() && !m.getPrerequisite().isLoaded())
+						desc += "\nThis machine depends on another mod.";
+					aux += "\nNote: Dummied Out";
+				}
+				if (m.isCrystalNetworkTile()) {
+					CrystalNetworkTile te = (CrystalNetworkTile)m.createTEInstanceForRender(0);
+					if (te instanceof CrystalReceiver) {
+						aux += String.format("Lumen Reception Range: %d m\n", ((CrystalReceiver)te).getReceiveRange());
+					}
+					if (te instanceof CrystalTransmitter) {
+						aux += String.format("Lumen Transmission Range: %d m\n", ((CrystalTransmitter)te).getSendRange());
+					}
+				}
+				if (m.hasPrerequisite()) {
+					String sg = m.getPrerequisite().getModLabel().replaceAll("[|]", "");
+					aux += "\nDependencies: "+ReikaStringParser.capitalizeWords(ReikaStringParser.splitCamelCase(sg).replaceAll(" Craft", "Craft"));
+				}
+				if (m.isIncomplete()) {
+					desc += "\nThis machine is incomplete. Use at your own risk.";
+				}
+				while(aux.startsWith("\n"))
+					aux = aux.substring("\n".length());
+
+				addEntry(h, desc);
+				notes.put(aux, h, 0);
+			}
+		}
+
+		for (ChromaResearch h : blocktabs) {
+			String desc = blocks.getValueAtNode("blocks:"+h.name().toLowerCase(Locale.ENGLISH));
+			if (h == ChromaResearch.HEATLAMP) {
+				desc = blocks.getValueAtNode("blocks:"+h.name().toLowerCase(Locale.ENGLISH)+":desc");
+				notes.put(blocks.getValueAtNode("blocks:"+h.name().toLowerCase(Locale.ENGLISH)+":heat"), h, 0);
+				notes.put(blocks.getValueAtNode("blocks:"+h.name().toLowerCase(Locale.ENGLISH)+":cold"), h, 1);
+			}
+			desc = String.format(desc, blockData.get(h.getBlock()));
+			addEntry(h, desc);
+		}
+
+		for (ChromaResearch h : tooltabs) {
+			String key = "tools:"+h.name().toLowerCase(Locale.ENGLISH);
+			String desc = tools.getValueAtNode(key);
+			desc = String.format(desc, itemData.get(h.getItem()));
+			if (h.getItem().getItemInstance() instanceof DynamicallyGeneratedSubpage && ((DynamicallyGeneratedSubpage)h.getItem().getItemInstance()).replaceOriginal()) {
+				DynamicallyGeneratedSubpage iw = (DynamicallyGeneratedSubpage)h.getItem().getItemInstance();
+				for (int p = 0; p < iw.getMaxSubpage(); p++)
+					notes.put(iw.getNotes(p), h, p);
+			}
+			else if (tools.nodeExists(key+":notes")) {
+				notes.put(String.format(tools.getValueAtNode(key+":notes"), itemNotes.get(h.getItem())), h, 0);
+				desc = tools.getValueAtNode(key+":desc");
+				desc = String.format(desc, itemData.get(h.getItem()));
+			}
+			addEntry(h, desc);
+		}
+
+		for (ChromaResearch h : resourcetabs) {
+			String desc = resources.getValueAtNode("resource:"+h.name().toLowerCase(Locale.ENGLISH));
+			addEntry(h, desc);
+		}
+
+		for (ChromaResearch h : structuretabs) {
+			String desc = structures.getValueAtNode("structure:"+h.name().toLowerCase(Locale.ENGLISH));
+			addEntry(h, desc);
+		}
+
+		for (ChromaResearch h : infotabs) {
+			String desc = infos.getValueAtNode("info:"+h.name().toLowerCase(Locale.ENGLISH));
+			desc = String.format(desc, miscData.get(h));
+			addEntry(h, desc);
+		}
+
+		for (ChromaResearch h : abilitytabs) {
+			Chromabilities a = h.getAbility();
+			String desc = abilities.getValueAtNode("ability:"+a.name().toLowerCase(Locale.ENGLISH));
+			desc = String.format(desc, abilityData.get(a));
+			abilityText.put(a, desc);
+		}
+
+		for (CrystalElement e : CrystalElement.elements) {
+			String desc = elements.getValueAtNode("elements:"+e.name().toLowerCase(Locale.ENGLISH));
+			desc = String.format(desc, elementData.get(e));
+			elementText.put(e, desc);
+		}
+
+		Collection<String> keys = ChromaHelpData.instance.getHelpKeys();
+		for (String s : keys) {
+			String desc = hover.getValueAtNode("hover:"+s);
+			desc = String.format(desc, hoverData.get(s));
+			hoverText.put(s, desc);
+		}
+
+		for (int i = 0; i < ProgressStage.list.length; i++) {
+			ProgressStage p = ProgressStage.list[i];
+			String title = progress.getValueAtNode("progression:"+p.name().toLowerCase(Locale.ENGLISH)+":title");
+			String hint = progress.getValueAtNode("progression:"+p.name().toLowerCase(Locale.ENGLISH)+":hint");
+			String reveal = progress.getValueAtNode("progression:"+p.name().toLowerCase(Locale.ENGLISH)+":reveal");
+			String desc = progress.getValueAtNode("progression:"+p.name().toLowerCase(Locale.ENGLISH)+":desc");
+			if (Strings.isNullOrEmpty(desc))
+				desc = reveal;
+			progressText.put(p, new ProgressNote(title.replaceAll("\\n", ""), hint.replaceAll("\\n", ""), reveal.replaceAll("\\n", ""), desc.replaceAll("\\n", "")));
+		}
+
+		for (int i = 0; i < ChromaEnchants.enchantmentList.length; i++) {
+			ChromaEnchants e = ChromaEnchants.enchantmentList[i];
+			String desc = enchants.getValueAtNode("enchants:"+e.name().toLowerCase(Locale.ENGLISH));
+			notes.put(desc, ChromaResearch.ENCHANTS, i+1);
+		}
+		String desc = enchants.getValueAtNode("enchants:boostedlevel");
+		notes.put(desc, ChromaResearch.ENCHANTS, ChromaEnchants.enchantmentList.length+1);
+
+		for (int i = 0; i < ScriptLocations.list.length; i++) {
+			ScriptLocations l = ScriptLocations.list[i];
+			l.reload();
+			String pre = "lore:"+l.name().toLowerCase(Locale.ENGLISH);
+			//String s = lore.getValueAtNode(pre);
+			Collection<String> li = lore.getNodesWithin(pre);
+			for (String s : li) {
+				l.loadText(lore.getValueAtNode(s));
+				//loreText.addValue(l, lore.getValueAtNode(s));
+			}
+		}
+	}
+
+	public static String getAbilityDescription(Chromabilities c) {
+		String s = abilityText.get(c);
+		return s != null ? s : "This ability has no lexicon info yet.";
+	}
+
+	public static String getElementDescription(CrystalElement e) {
+		return elementText.get(e);
+	}
+
+	public static String getData(ChromaResearch h) {
+		if (h.getAbility() != null)
+			return abilityText.get(h.getAbility());
+		if (!data.containsKey(h))
+			return "This item has no lexicon info yet.";
+		return data.get(h);
+	}
+
+	public static String getNotes(ChromaResearch h, int page) {
+		if (!notes.containsKeyV(h, page))
+			return "";
+		return notes.get(h, page);
+	}
+
+	static {
+		loadNumericalData();
+		if (FMLCommonHandler.instance().getEffectiveSide() == Side.CLIENT)
+			registerReloadListener();
+	}
+
+	@SideOnly(Side.CLIENT)
+	public static final class ReloadListener {
+
+		@SubscribeEvent
+		@SideOnly(Side.CLIENT)
+		public void reload(ResourceReloadEvent evt) {
+			ChromaDescriptions.reload();
+		}
+
+	}
+
+	@SideOnly(Side.CLIENT)
+	private static void registerReloadListener() {
+		MinecraftForge.EVENT_BUS.register(new ReloadListener());
+	}
+
+	private static void loadNumericalData() {
+		addData(ChromaTiles.WEAKREPEATER, TileEntityCrystalPylon.RANGE);
+		addData(ChromaTiles.LASER, TileEntityCrystalLaser.MAX_RANGE);
+		addData(ChromaTiles.BEACON, CrystalElement.RED.displayName);
+		addData(ChromaTiles.LIGHTER, CrystalElement.BLUE.displayName);
+
+		addNotes(ChromaTiles.ADJACENCY, TileEntityAdjacencyUpgrade.MAX_TIER);
+		addNotes(ChromaTiles.ENCHANTER, TileEntityAutoEnchanter.CHROMA_PER_LEVEL_BASE);
+		addNotes(ChromaTiles.GUARDIAN, TileEntityGuardianStone.RANGE);
+		//addNotes(ChromaTiles.TELEPUMP, TileEntityTeleportationPump.getRequiredEnergy().toDisplay());
+		//addNotes(ChromaTiles.MINER, TileEntityMiner.getRequiredEnergy().toDisplay());
+
+		//addNotes(ChromaTiles.REPROGRAMMER, TileEntitySpawnerReprogrammer.getRequiredEnergy().toDisplay());
+		addNotes(ChromaTiles.TANK, TileEntityCrystalTank.FACTOR/1000, TileEntityCrystalTank.MAXCAPACITY/1000);
+		addNotes(ChromaTiles.CHARGER, TileEntityCrystalCharger.CAPACITY);
+		//addNotes(ChromaTiles.TICKER, TileEntityInventoryTicker.getRequiredEnergy().toDisplay());
+		addNotes(ChromaTiles.FURNACE, TileEntityCrystalFurnace.MULTIPLY);
+		addNotes(ChromaTiles.INSERTER, ReikaDirectionHelper.getDirectionInfoAsString());
+		addNotes(ChromaTiles.FABRICATOR, FabricationRecipes.FACTOR, FabricationRecipes.INITFACTOR, FabricationRecipes.POWER);
+		addNotes(ChromaTiles.BEACON, TileEntityCrystalBeacon.RATIO, TileEntityCrystalBeacon.POWER, TileEntityCrystalBeacon.MAXRANGE);
+		addNotes(ChromaTiles.COLLECTOR, TileEntityCollector.XP_PER_CHROMA);
+		addNotes(ChromaTiles.ITEMCOLLECTOR, TileEntityItemCollector.MAXRANGE);
+		addNotes(ChromaTiles.EXPLOSIONSHIELD, TileEntityExplosionShield.MAXRANGE);
+		addNotes(ChromaTiles.LAMP, TileEntityChromaLamp.FACTOR);
+		addNotes(ChromaTiles.LASER, TileEntityCrystalLaser.getEffectsAsString());
+		addNotes(ChromaTiles.POWERTREE, TileEntityPowerTree.BASE, TileEntityPowerTree.RATIO, TileEntityPowerTree.POWER);
+		addNotes(ChromaTiles.LAMPCONTROL, TileEntityLampController.MAXRANGE, TileEntityLampController.MAXCHANNEL);
+		addNotes(ChromaTiles.ASPECTJAR, TileEntityAspectJar.CAPACITY_PRIMAL, TileEntityAspectJar.CAPACITY);
+		addNotes(ChromaTiles.WIRELESS, TileEntityWirelessSource.TRANSMIT_RANGE, ChromaStructures.WIRELESSPEDESTAL.getDisplayName(), ChromaTiles.WIRELESS.getName());
+		addNotes(ChromaTiles.TOOLSTORAGE, TileEntityToolStorage.ToolType.getTypesAsString());
+		addNotes(ChromaTiles.ITEMRIFT, CrystalElement.LIME.displayName);
+		addNotes(ChromaTiles.RFDISTRIBUTOR, TileEntityAreaDistributor.SCAN_RADIUS_XZ);
+		addNotes(ChromaTiles.FLUIDDISTRIBUTOR, TileEntityAreaDistributor.SCAN_RADIUS_XZ);
+		addNotes(ChromaTiles.AREABREAKER, TileEntityAreaBreaker.MAX_RANGE);
+		addNotes(ChromaTiles.TURRET, TileEntityLumenTurret.getUpgradesListString());
+		addNotes(ChromaTiles.FUNCTIONRELAY, ChromaTiles.FUNCTIONRELAY.getName());
+		addNotes(ChromaTiles.MANABOOSTER, TileEntityManaBooster.FLOWER_RANGE, TileEntityManaBooster.POOL_RANGE);
+
+		addData(ChromaBlocks.RELAY, RelayNetworker.instance.maxRange);
+		addData(ChromaBlocks.RFPOD, RFWeb.RANGE, RFWeb.THROUGHPUT);
+
+		for (int i = 0; i < 16; i++) {
+			CrystalElement e = CrystalElement.elements[i];
+			if (e == CrystalElement.LIGHTGRAY)
+				addData(e, e.displayName, CrystalElement.WHITE.displayName);
+			else
+				addData(e, e.displayName);
+		}
+
+		addData(ChromaItems.SHARE, ChromaTiles.TABLE.getName(), ChromaTiles.RITUAL.getName());
+		addNotes(ChromaItems.WARPCAPSULE, ItemWarpCapsule.MAXRANGE);
+
+		addData(Chromabilities.REACH, new Object[]{Chromabilities.MAX_REACH});
+		addData(Chromabilities.LIFEPOINT, new Object[]{CrystalElement.MAGENTA.displayName});
+
+		miscData.put(ChromaResearch.ENCHANTS, new Object[]{ChromaTiles.ENCHANTER.getName()});
+	}
+
+	public static String getParentPage() {
+		return PARENT;
+	}
+
+	public static ProgressNote getProgressText(ProgressStage p) {
+		return progressText.containsKey(p) ? progressText.get(p) : new ProgressNote("#NULL", "#NULL", "#NULL", "#NULL");
+	}
+	/*
+	public static Collection<String> getScriptTexts(ScriptLocations s) {
+		return Collections.unmodifiableCollection(loreText.get(s));
+	}
+	 */
+	public static boolean isUnfilled(String s) {
+		return s == null || s.isEmpty() || s.endsWith(XMLInterface.NULL_VALUE);
+	}
+
+	public static class ProgressNote {
+
+		public final String title;
+		public final String hint;
+		public final String reveal;
+		public final String desc;
+
+		private ProgressNote(String t, String h, String rvl, String desc) {
+			title = t;
+			hint = h;
+			reveal = rvl;
+			this.desc = desc;
+		}
+
+	}
+}

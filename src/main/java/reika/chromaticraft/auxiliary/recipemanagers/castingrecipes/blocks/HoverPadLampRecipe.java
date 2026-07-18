@@ -1,0 +1,48 @@
+/*******************************************************************************
+ * @author Reika Kalseki
+ *
+ * Copyright 2017
+ *
+ * All rights reserved.
+ * Distribution of the software in any form is only allowed with
+ * explicit, prior permission from the owner.
+ ******************************************************************************/
+package reika.chromaticraft.auxiliary.recipemanagers.castingrecipes.blocks;
+
+import net.minecraft.init.Items;
+import net.minecraft.item.ItemStack;
+
+import reika.chromaticraft.registry.ChromaBlocks;
+import reika.dragonapi.libraries.ReikaRecipeHelper;
+
+
+public class HoverPadLampRecipe extends DecoCastingRecipe {
+
+	public HoverPadLampRecipe(ChromaBlocks b) {
+		super(calcOutput(), ReikaRecipeHelper.getShapedRecipeFor(calcOutput(), getRecipe(b)));
+	}
+
+	private static Object[] getRecipe(ChromaBlocks b) {
+		return new Object[]{" g ", "grg", " g ", 'r', b.getStackOfMetadata(0), 'g', Items.glowstone_dust};
+	}
+
+	private static ItemStack calcOutput() {
+		return ChromaBlocks.PAD.getStackOfMetadata(1);
+	}
+
+	@Override
+	public int getNumberProduced() {
+		return 12;
+	}
+
+	@Override
+	public int getExperience() {
+		return 1;
+	}
+
+	@Override
+	protected int getTypicalTotalAmount() {
+		return 36;
+	}
+
+}

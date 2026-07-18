@@ -1,0 +1,54 @@
+/*******************************************************************************
+ * @author Reika Kalseki
+ *
+ * Copyright 2017
+ *
+ * All rights reserved.
+ * Distribution of the software in any form is only allowed with
+ * explicit, prior permission from the owner.
+ ******************************************************************************/
+package reika.chromaticraft.magic.enchantment;
+
+import net.minecraft.enchantment.EnumEnchantmentType;
+import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.item.ItemStack;
+
+import reika.chromaticraft.base.ChromaticEnchantment;
+import reika.chromaticraft.magic.progression.ProgressStage;
+import reika.chromaticraft.registry.Chromabilities;
+
+
+public class EnchantmentAggroMask extends ChromaticEnchantment {
+
+	public EnchantmentAggroMask(int id) {
+		super(id, EnumEnchantmentType.weapon);
+	}
+
+	@Override
+	public int getMaxLevel() {
+		return 3;
+	}
+
+	@Override
+	public boolean canApply(ItemStack is) {
+		return EnumEnchantmentType.weapon.canEnchantItem(is.getItem()) || EnumEnchantmentType.bow.canEnchantItem(is.getItem());
+	}
+
+	public static boolean hidePigmanSpreadDamage(int level) {
+		return level >= 1;
+	}
+
+	public static boolean hideDirectDamage(int level) {
+		return level >= 2;
+	}
+
+	public static boolean preservePeace(int level) {
+		return level >= 3;
+	}
+
+	@Override
+	public boolean isVisibleToPlayer(EntityPlayer ep, int level) {
+		return level == 3 ? ProgressStage.DIMENSION.playerHasPrerequisites(ep) && Chromabilities.COMMUNICATE.isAvailableToPlayer(ep) : ProgressStage.KILLMOB.isPlayerAtStage(ep);
+	}
+
+}

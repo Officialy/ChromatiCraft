@@ -1,0 +1,59 @@
+/*******************************************************************************
+ * @author Reika Kalseki
+ *
+ * Copyright 2017
+ *
+ * All rights reserved.
+ * Distribution of the software in any form is only allowed with
+ * explicit, prior permission from the owner.
+ ******************************************************************************/
+package reika.chromaticraft.auxiliary.recipemanagers.castingrecipes.tools;
+
+import net.minecraft.init.Blocks;
+import net.minecraft.init.Items;
+
+import reika.chromaticraft.auxiliary.CrystalMusicManager;
+import reika.chromaticraft.auxiliary.recipemanagers.castingrecipe.MultiBlockCastingRecipe;
+import reika.chromaticraft.registry.ChromaBlocks;
+import reika.chromaticraft.registry.ChromaItems;
+import reika.chromaticraft.registry.CrystalElement;
+
+public class PendantRecipe extends MultiBlockCastingRecipe {
+
+	public PendantRecipe(CrystalElement e) {
+		super(ChromaItems.PENDANT.getStackOf(e), ChromaBlocks.CRYSTAL.getStackOfMetadata(e.ordinal()));
+
+		this.addAuxItem(Blocks.glowstone, -2, -2);
+		this.addAuxItem(Items.string, 0, -2);
+		this.addAuxItem(Blocks.glowstone, 2, -2);
+
+		this.addAuxItem(Items.quartz, -2, 0);
+		this.addAuxItem(Items.quartz, 2, 0);
+
+		this.addAuxItem(Items.ender_pearl, -2, 2);
+		this.addAuxItem(Items.ender_pearl, 2, 2);
+
+		this.addAuxItem(Items.diamond, 0, 2);
+
+		this.addRuneRingRune(e);
+
+		//this.addAuraRequirement(CrystalElement.PURPLE, 2000);
+		//this.addAuraRequirement(CrystalElement.WHITE, 1000);
+		//this.addAuraRequirement(CrystalElement.elements[out.getItemDamage()], 5000);
+	}
+
+	@Override
+	public int getDuration() {
+		return 4*super.getDuration();
+	}
+
+	@Override
+	public float[] getHarmonics() {
+		CrystalElement e = CrystalElement.elements[this.getOutput().getItemDamage()%16];
+		float[] ret = new float[3];
+		for (int i = 0; i <= 2; i++) {
+			ret[i] = CrystalMusicManager.instance.getScaledDing(e, i);
+		}
+		return ret;
+	}
+}

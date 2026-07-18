@@ -1,0 +1,167 @@
+/*******************************************************************************
+ * @author Reika Kalseki
+ *
+ * Copyright 2017
+ *
+ * All rights reserved.
+ * Distribution of the software in any form is only allowed with
+ * explicit, prior permission from the owner.
+ ******************************************************************************/
+package reika.chromaticraft.base.tileentity;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.UUID;
+
+import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.nbt.NBTTagList;
+import net.minecraft.nbt.NBTTagString;
+
+import reika.chromaticraft.ChromatiCraft;
+import reika.chromaticraft.auxiliary.interfaces.OwnedTile;
+import reika.chromaticraft.auxiliary.render.ChromaRenderList;
+import reika.chromaticraft.registry.ChromaItems;
+import reika.chromaticraft.registry.ChromaTiles;
+import reika.dragonapi.ModList;
+import reika.dragonapi.asm.dependentmethodstripper.ModDependent;
+import reika.dragonapi.base.TileEntityRegistryBase;
+import reika.dragonapi.interfaces.TextureFetcher;
+import reika.dragonapi.interfaces.tileentity.RenderFetcher;
+import reika.dragonapi.libraries.ReikaNBTHelper;
+import reika.dragonapi.libraries.reikanbthelper.NBTTypes;
+import reika.dragonapi.libraries.ReikaPlayerAPI;
+
+import li.cil.oc.api.network.Visibility;
+
+public abstract class TileEntityChromaticBase extends TileEntityRegistryBase<ChromaTiles> implements RenderFetcher {
+
+	protected final HashSet<UUID> owners = new HashSet();
+
+	public final TextureFetcher getRenderer() {
+		if (this.getTile().hasRender())
+			return ChromaRenderList.getRenderForMachine(this.getTile());
+		else
+			return null;
+	}
+
+	@Override
+	protected final void onSetPlacer(EntityPlayer ep) {
+		this.addOwner(ep);
+	}
+
+	public final void addOwner(EntityPlayer ep) {
+		owners.add(ep.getUniqueID());
+	}
+
+	@Override
+	public final boolean allowTickAcceleration() {
+		return this.getTile().allowsAcceleration();
+	}
+
+	@Override
+	public final boolean canUpdate() {
+		return !ChromatiCraft.instance.isLocked();
+	}
+
+	@Override
+	protected void writeSyncTag(NBTTagCompound NBT) {
+		super.writeSyncTag(NBT);
+	}
+
+	@Override
+	protected void readSyncTag(NBTTagCompound NBT) {
+		super.readSyncTag(NBT);
+	}
+
+	@Override
+	public void writeToNBT(NBTTagCompound NBT) {
+		super.writeToNBT(NBT);
+
+		NBTTagList li = new NBTTagList();
+		for (UUID uid : owners) {
+			li.appendTag(new NBTTagString(uid.toString()));
+		}
+		NBT.setTag("owners", li);
+	}
+
+	@Override
+	public void readFromNBT(NBTTagCompound NBT) {
+		super.readFromNBT(NBT);
+
+		owners.clear();
+		NBTTagList li = NBT.getTagList("owners", NBTTypes.STRING.ID);
+		for (Object o : li.tagList) {
+			NBTTagString tag = (NBTTagString)o;
+			UUID uid = UUID.fromString(tag.func_150285_a_());
+			owners.add(uid);
+		}
+	}
+
+	@Override
+	public final boolean shouldRenderInPass(int pass) {
+		ChromaTiles r = this.getTile();
+		return pass == 0 || (r.renderInPass1() && pass == 1);
+	}
+
+	@Override
+	public int getRedstoneOverride() {
+		return 0;
+	}
+
+	@Override
+	@ModDependent(ModList.OPENCOMPUTERS)
+	public final Visibility getOCNetworkVisibility() {
+		return Visibility.Network;//this.getMachine().isPipe() ? Visibility.Neighbors : Visibility.Network;
+	}
+
+	public final boolean isOwnedByPlayer(EntityPlayer ep) {
+		return this.isOwnedByPlayer(ep.getUniqueID());
+	}
+
+	public final boolean isOwnedByPlayer(UUID id) {
+		return owners.isEmpty() || owners.contains(id);
+	}
+
+	public final Collection<EntityPlayer> getOwners(boolean allowFake) {
+		Collection<EntityPlayer> c = new ArrayList();
+		for (UUID uid : owners) {
+			EntityPlayer ep = worldObj.func_152378_a(uid);
+			if (ep != null && (allowFake || !ReikaPlayerAPI.isFake(ep))) {
+				c.add(ep);
+			}
+		}
+		return c;
+	}
+
+	public boolean onlyAllowOwnersToUse() {
+		return false;
+	}
+
+	public boolean onlyAllowOwnersToMine() {
+		return true;
+	}
+
+	public boolean renderModelsInPass1() {
+		return false;
+	}
+
+	protected final void writeOwnerData(NBTTagCompound NBT) {
+		if (this instanceof OwnedTile && !owners.isEmpty())
+			ReikaNBTHelper.writeCollectionToNBT(owners, NBT, "owners", ReikaNBTHelper.UUIDConverter.instance);
+	}
+
+	protected final void readOwnerData(ItemStack is) {
+		if (ChromaItems.PLACER.matchWith(is)) {
+			if (is.getItemDamage() == this.getTile().ordinal()) {
+				if (is.stackTagCompound != null && is.stackTagCompound.hasKey("owners")) {
+					if (this instanceof OwnedTile) {
+						ReikaNBTHelper.readCollectionFromNBT(owners, is.stackTagCompound, "owners", ReikaNBTHelper.UUIDConverter.instance);
+					}
+				}
+			}
+		}
+	}
+}

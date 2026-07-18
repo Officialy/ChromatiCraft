@@ -1,0 +1,46 @@
+/*******************************************************************************
+ * @author Reika Kalseki
+ * 
+ * Copyright 2017
+ * 
+ * All rights reserved.
+ * Distribution of the software in any form is only allowed with
+ * explicit, prior permission from the owner.
+ ******************************************************************************/
+package reika.chromaticraft.auxiliary.ability;
+
+import net.minecraft.command.IEntitySelector;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.player.EntityPlayer;
+
+import reika.chromaticraft.registry.Chromabilities;
+
+
+class PlayerExemptAITarget implements IEntitySelector {
+
+	private final IEntitySelector base;
+
+	public PlayerExemptAITarget(IEntitySelector ie)
+	{
+		base = ie;
+	}
+
+	@Override
+	public boolean isEntityApplicable(Entity e) {
+		if (base.isEntityApplicable(e)) {
+			if (e instanceof EntityPlayer) {
+				if (Chromabilities.COMMUNICATE.enabledOn((EntityPlayer)e)) {
+					return false;
+				}
+				else {
+					return true;
+				}
+			}
+			else {
+				return true;
+			}
+		}
+		return false;
+	}
+
+}
