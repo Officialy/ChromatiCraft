@@ -11,9 +11,9 @@ package reika.chromaticraft.api.interfaces;
 
 import java.util.ArrayList;
 
-import net.minecraft.block.Block;
-import net.minecraft.item.ItemStack;
-import net.minecraft.world.World;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
 
 /** Implement this to make the Mineral Extractor care about and mine your block. */
 public interface MinerBlock {
@@ -24,13 +24,13 @@ public interface MinerBlock {
 	public boolean allowSilkTouch(int meta);
 
 	/** What items the block will provide when harvested. Normally returns getDrops(world, x, y, z, meta, fortune). */
-	public ArrayList<ItemStack> getHarvestItems(World world, int x, int y, int z, int meta, int fortune);
+	public ArrayList<ItemStack> getHarvestItems(Level world, int x, int y, int z, int meta, int fortune);
 
 	/** For when the mineral extractor is tuned to only mine specific categories. */
 	public MineralCategory getCategory();
 
 	/** What block is placed down when your block is mined. */
-	public Block getReplacedBlock(World world, int x, int y, int z);
+	public Block getReplacedBlock(Level world, int x, int y, int z);
 
 	public static enum MineralCategory {
 		UBIQUITOUS_ORE(),

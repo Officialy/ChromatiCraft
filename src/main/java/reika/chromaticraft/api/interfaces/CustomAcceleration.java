@@ -11,7 +11,7 @@ package reika.chromaticraft.api.interfaces;
 
 import reika.chromaticraft.api.AdjacencyUpgradeAPI;
 
-/** Supply an instance of this to the {@link AdjacencyUpgradeAPI} to specify custom accelerator behavior on your TileEntity.
+/** Supply an instance of this to the {@link AdjacencyUpgradeAPI} to specify custom accelerator behavior on your BlockEntity.
 <b>Do not use this for blacklisting.</b> Use the dedicated handler for that. */
 public interface CustomAcceleration extends CustomAdjacencyHandler {
 

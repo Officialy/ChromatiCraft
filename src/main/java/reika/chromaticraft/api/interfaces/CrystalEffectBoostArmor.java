@@ -1,6 +1,6 @@
 package reika.chromaticraft.api.interfaces;
 
-import net.minecraft.item.ItemStack;
+import net.minecraft.world.item.ItemStack;
 
 public interface CrystalEffectBoostArmor {
 

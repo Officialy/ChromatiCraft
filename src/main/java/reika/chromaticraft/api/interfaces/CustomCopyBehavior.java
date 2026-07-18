@@ -9,7 +9,7 @@
  ******************************************************************************/
 package reika.chromaticraft.api.interfaces;
 
-import net.minecraft.block.Block;
+import net.minecraft.world.level.block.Block;
 
 /** Implement this to have special copying behavior on your block.
  * Implementing this is strongly recommended for blocks that form multiblock structures. */

@@ -9,7 +9,7 @@
  ******************************************************************************/
 package reika.chromaticraft.api.interfaces;
 
-import net.minecraft.item.ItemStack;
+import net.minecraft.world.item.ItemStack;
 
 
 /** Implement this on an item class in order to mark it as "crystal element types" (16 colors, tied to the elements, etc)

@@ -11,7 +11,7 @@ package reika.chromaticraft.api.interfaces;
 
 import java.util.Collection;
 
-import net.minecraft.item.ItemStack;
+import net.minecraft.world.item.ItemStack;
 
 public interface CustomAdjacencyHandler {
 

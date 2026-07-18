@@ -1,16 +1,16 @@
 package reika.chromaticraft.api;
 
-import net.minecraft.block.Block;
-import net.minecraft.item.ItemStack;
-import net.minecraft.tileentity.TileEntity;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.entity.BlockEntity;
 
-import reika.chromaticraft.api.crystalelementaccessor.CrystalElementProxy;
+import reika.chromaticraft.api.CrystalElementAccessor.CrystalElementProxy;
 import reika.chromaticraft.api.interfaces.AdjacencyCheckHandler;
 import reika.chromaticraft.api.interfaces.CustomAcceleration;
-import reika.chromaticraft.api.interfaces.customhealing.CustomBlockHealing;
-import reika.chromaticraft.api.interfaces.customhealing.CustomTileHealing;
+import reika.chromaticraft.api.interfaces.CustomHealing.CustomBlockHealing;
+import reika.chromaticraft.api.interfaces.CustomHealing.CustomTileHealing;
 import reika.chromaticraft.api.interfaces.CustomRangeUpgrade;
-import reika.chromaticraft.api.interfaces.customrangeupgrade.RangeUpgradeable;
+import reika.chromaticraft.api.interfaces.CustomRangeUpgrade.RangeUpgradeable;
 
 public interface AdjacencyUpgradeAPI {
 
@@ -19,27 +19,27 @@ public interface AdjacencyUpgradeAPI {
 
 	public double getFactor(CrystalElementProxy e, int tier);
 
-	public void addCustomAcceleration(Class<? extends TileEntity> c, CustomAcceleration a);
+	public void addCustomAcceleration(Class<? extends BlockEntity> c, CustomAcceleration a);
 
-	public void addCustomRangeBoost(Class<? extends TileEntity> c, CustomRangeUpgrade a);
+	public void addCustomRangeBoost(Class<? extends BlockEntity> c, CustomRangeUpgrade a);
 	/** The ItemStacks here are the item forms of the relevant machines, used the same way as the "relevant items" on the full handlers */
 	public void addBasicRangeBoost(Class<? extends RangeUpgradeable> c, ItemStack... items);
 
 	public void addCustomHealing(Block b, CustomBlockHealing h);
 	public void addCustomHealing(Block b, int meta, CustomBlockHealing h);
-	public void addCustomHealing(Class<? extends TileEntity> c, CustomTileHealing h);
+	public void addCustomHealing(Class<? extends BlockEntity> c, CustomTileHealing h);
 
 
-	/** Use this to blacklist your TileEntity class from being accelerated with the TileEntity acclerator.
+	/** Use this to blacklist your BlockEntity class from being accelerated with the BlockEntity acclerator.
 	 * You must specify a reason (from the {@link BlacklistReason} enum) which will be put into the loading log.
-	 * Arguments: TileEntity class, Reason.
+	 * Arguments: BlockEntity class, Reason.
 	 * Sample log message:<br>
 	 * <i> CHROMATICRAFT:
-	 * "TileEntity "Miner" has been blacklisted from the TileEntity Accelerator, because the creator finds it unbalanced or overpowered."
+	 * "BlockEntity "Miner" has been blacklisted from the BlockEntity Accelerator, because the creator finds it unbalanced or overpowered."
 	 * </i>*/
-	public void addAcceleratorBlacklist(Class<? extends TileEntity> cl, String name, ItemStack item, BlacklistReason r);
+	public void addAcceleratorBlacklist(Class<? extends BlockEntity> cl, String name, ItemStack item, BlacklistReason r);
 
-	public void addAcceleratorBlacklist(Class<? extends TileEntity> cl, ItemStack item, BlacklistReason r);
+	public void addAcceleratorBlacklist(Class<? extends BlockEntity> cl, ItemStack item, BlacklistReason r);
 
 	public static enum BlacklistReason {
 		BUGS("it will cause bugs or other errors."),

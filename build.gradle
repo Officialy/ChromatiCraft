@@ -12,10 +12,33 @@ dependencies {
     implementation project(":ReactorCraft")
 }
 
-// PORT-IN-PROGRESS (scaffolding pass — nothing ported yet). The 1680 sources are still original
-// 1.7.10 and will not compile against 26.2, so compile ZERO files for now. `exclude '**'` beats
-// any include, giving a clean zero-state build. As files are ported, delete this exclude and switch
-// to ReactorCraft's include-list allowlist model (the include list becomes the done-tracker).
+// PORT-IN-PROGRESS allowlist (mirrors ReactorCraft). The sources are still mostly original 1.7.10
+// and will not compile, so we compile ONLY files fully ported to 26.2. This list IS the done-tracker:
+// add a file the moment it is ported. Remove this whole block once the entire mod is ported.
 sourceSets.main.java {
-    exclude '**'
+    // api/ implementable interfaces (leaf contracts). Deferred: OrePings (dead IIcon system),
+    // EnchantableItem (DragonAPI CustomEnchantingCategory not yet ported).
+    include 'reika/chromaticraft/api/CrystalElementAccessor.java'
+    include 'reika/chromaticraft/api/AdjacencyUpgradeAPI.java'
+    include 'reika/chromaticraft/api/interfaces/AdjacencyCheckHandler.java'
+    include 'reika/chromaticraft/api/interfaces/CrystalEffectBoostArmor.java'
+    include 'reika/chromaticraft/api/interfaces/CrystalFurnaceMultiplier.java'
+    include 'reika/chromaticraft/api/interfaces/CrystalTank.java'
+    include 'reika/chromaticraft/api/interfaces/CrystalTypesProxy.java'
+    include 'reika/chromaticraft/api/interfaces/CustomAcceleration.java'
+    include 'reika/chromaticraft/api/interfaces/CustomAdjacencyHandler.java'
+    include 'reika/chromaticraft/api/interfaces/CustomCopyBehavior.java'
+    include 'reika/chromaticraft/api/interfaces/CustomEnderDragon.java'
+    include 'reika/chromaticraft/api/interfaces/CustomExcavationStarBehavior.java'
+    include 'reika/chromaticraft/api/interfaces/CustomHealing.java'
+    include 'reika/chromaticraft/api/interfaces/CustomRangeUpgrade.java'
+    include 'reika/chromaticraft/api/interfaces/DyeTreeBlocker.java'
+    include 'reika/chromaticraft/api/interfaces/LinkerCallback.java'
+    include 'reika/chromaticraft/api/interfaces/LootChest.java'
+    include 'reika/chromaticraft/api/interfaces/ManipulatorInteraction.java'
+    include 'reika/chromaticraft/api/interfaces/MinerBlock.java'
+    include 'reika/chromaticraft/api/interfaces/NonconvertibleBiome.java'
+    include 'reika/chromaticraft/api/interfaces/ProgrammableSpawner.java'
+    include 'reika/chromaticraft/api/interfaces/ProjectileFiringTool.java'
+    include 'reika/chromaticraft/api/interfaces/WorldRift.java'
 }

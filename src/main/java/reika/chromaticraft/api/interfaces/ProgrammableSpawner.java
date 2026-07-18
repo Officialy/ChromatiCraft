@@ -9,20 +9,20 @@
  ******************************************************************************/
 package reika.chromaticraft.api.interfaces;
 
-import net.minecraft.entity.EntityLiving;
-import net.minecraft.item.ItemStack;
-import net.minecraft.tileentity.MobSpawnerBaseLogic;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.BaseSpawner;
 
 /** Implement this if you want the spawner controller to be able to reprogram your spawner item. */
 public interface ProgrammableSpawner {
 
 	/** The entity class that the spawner corresponds to. Args: Spawner itemstack */
-	public Class<? extends EntityLiving> getSpawnerEntity(ItemStack is);
+	public Class<? extends Mob> getSpawnerEntity(ItemStack is);
 
 	/** Actually sets the spawner's entity type. Args: Spawner itemstack, entity class */
-	public void setSpawnerType(ItemStack is, Class<? extends EntityLiving> cl);
+	public void setSpawnerType(ItemStack is, Class<? extends Mob> cl);
 
-	/** Actually sets the spawner's data. See {@link MobSpawnerBaseLogic}. */
+	/** Actually sets the spawner's data. See {@link BaseSpawner}. */
 	public void setSpawnerData(ItemStack is, int minDelay, int maxDelay, int maxNear, int spawnCount, int spawnRange, int activeRange);
 
 }

@@ -9,11 +9,11 @@
  ******************************************************************************/
 package reika.chromaticraft.api.interfaces;
 
-import net.minecraft.world.World;
+import net.minecraft.world.level.Level;
 
 
 public interface LinkerCallback {
 
-	void linkTo(World world, int x, int y, int z);
+	void linkTo(Level world, int x, int y, int z);
 
 }

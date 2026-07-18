@@ -1,12 +1,12 @@
 package reika.chromaticraft.api.interfaces;
 
-import net.minecraftforge.fluids.Fluid;
-import net.minecraftforge.fluids.IFluidHandler;
+import net.minecraft.world.level.material.Fluid;
+import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 
 
 public interface CrystalTank extends IFluidHandler {
 
-	/** The controller TileEntity. Will return self for the controller itself, so just call this every time you want to "do anything". */
+	/** The controller BlockEntity. Will return self for the controller itself, so just call this every time you want to "do anything". */
 	public CrystalTank getController();
 
 	public boolean isController();

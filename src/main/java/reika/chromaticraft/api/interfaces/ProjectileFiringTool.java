@@ -9,14 +9,14 @@
  ******************************************************************************/
 package reika.chromaticraft.api.interfaces;
 
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
-import net.minecraft.world.World;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
 
 /** Implement this on tools that fire projectiles, to allow CC systems to fire them */
 public interface ProjectileFiringTool {
 
-	public void fire(ItemStack is, World world, EntityPlayer ep, boolean randomVec);
+	public void fire(ItemStack is, Level world, Player ep, boolean randomVec);
 
 	/** How many ticks per shot */
 	public int getAutofireRate();

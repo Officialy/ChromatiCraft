@@ -1,14 +1,14 @@
 package reika.chromaticraft.api.interfaces;
 
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.inventory.ISidedInventory;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.WorldlyContainer;
 
-public interface LootChest extends ISidedInventory {
+public interface LootChest extends WorldlyContainer {
 
 
-	public boolean isOwnedBy(EntityPlayer ep);
+	public boolean isOwnedBy(Player ep);
 
-	public boolean isAccessibleBy(EntityPlayer ep);
+	public boolean isAccessibleBy(Player ep);
 
 	public boolean isUntouchedWorldgen();
 
