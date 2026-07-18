@@ -13,60 +13,46 @@ import java.awt.Color;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 
-import net.minecraft.client.renderer.texture.IIconRegister;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.util.EnumChatFormatting;
-import net.minecraft.util.IIcon;
+import net.minecraft.ChatFormatting;
+import net.minecraft.world.entity.player.Player;
 
-import reika.chromaticraft.api.crystalelementaccessor.CrystalElementProxy;
+import reika.chromaticraft.api.CrystalElementAccessor.CrystalElementProxy;
+import reika.chromaticraft.api.ProgressionAPI;
 import reika.chromaticraft.auxiliary.OverlayColor;
 import reika.chromaticraft.magic.ElementMixer;
 import reika.chromaticraft.magic.progression.ProgressAccess;
-import reika.chromaticraft.magic.progression.ProgressionManager;
 import reika.dragonapi.instantiable.data.maps.MultiMap;
-import reika.dragonapi.instantiable.data.maps.multimap.CollectionType;
-import reika.dragonapi.interfaces.IconEnum;
+import reika.dragonapi.instantiable.data.maps.MultiMap.CollectionType;
 import reika.dragonapi.libraries.java.ReikaJavaLibrary;
 import reika.dragonapi.libraries.registry.ReikaDyeHelper;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
+public enum CrystalElement implements OverlayColor, ProgressAccess, CrystalElementProxy {
 
-
-public enum CrystalElement implements IconEnum, OverlayColor, ProgressAccess, CrystalElementProxy {
-
-	BLACK("Kuro", 0x191919, EnumChatFormatting.BLACK), //Magic
-	RED("Karmir", 0xFF0000, EnumChatFormatting.DARK_RED), //Endurance
-	GREEN("Kijani", 0x007F0E, EnumChatFormatting.DARK_GREEN), //Nature
-	BROWN("Ruskea", 0x724528, EnumChatFormatting.GOLD), //Mineral
-	BLUE("Nila", 0x0026FF, EnumChatFormatting.BLUE), //Light
-	PURPLE("Zambarau", 0x8C00EA, EnumChatFormatting.DARK_PURPLE), //Enhancement
-	CYAN("Vadali", 0x009FBF, EnumChatFormatting.DARK_AQUA), //Water
-	LIGHTGRAY("Argia", 0x979797, EnumChatFormatting.GRAY), //Deception
-	GRAY("Ykri", 0x404040, EnumChatFormatting.DARK_GRAY), //Change
-	PINK("Ruzova", 0xFFBAD9, EnumChatFormatting.RED), //Aggression
-	LIME("Asveste", 0x00FF00, EnumChatFormatting.GREEN), //Motion
-	YELLOW("Kitrino", 0xFFFF00, EnumChatFormatting.YELLOW), //Energy
-	LIGHTBLUE("Galazio", 0x7FD4FF, EnumChatFormatting.AQUA), //Time
-	MAGENTA("Kurauri", 0xFF00DC, EnumChatFormatting.LIGHT_PURPLE), //Life
-	ORANGE("Portokali", 0xFF6A00, EnumChatFormatting.GOLD), //Fire
-	WHITE("Tahara", 0xFFFFFF, EnumChatFormatting.WHITE); //Purity/Harmony
+	BLACK("Kuro", 0x191919, ChatFormatting.BLACK), //Magic
+	RED("Karmir", 0xFF0000, ChatFormatting.DARK_RED), //Endurance
+	GREEN("Kijani", 0x007F0E, ChatFormatting.DARK_GREEN), //Nature
+	BROWN("Ruskea", 0x724528, ChatFormatting.GOLD), //Mineral
+	BLUE("Nila", 0x0026FF, ChatFormatting.BLUE), //Light
+	PURPLE("Zambarau", 0x8C00EA, ChatFormatting.DARK_PURPLE), //Enhancement
+	CYAN("Vadali", 0x009FBF, ChatFormatting.DARK_AQUA), //Water
+	LIGHTGRAY("Argia", 0x979797, ChatFormatting.GRAY), //Deception
+	GRAY("Ykri", 0x404040, ChatFormatting.DARK_GRAY), //Change
+	PINK("Ruzova", 0xFFBAD9, ChatFormatting.RED), //Aggression
+	LIME("Asveste", 0x00FF00, ChatFormatting.GREEN), //Motion
+	YELLOW("Kitrino", 0xFFFF00, ChatFormatting.YELLOW), //Energy
+	LIGHTBLUE("Galazio", 0x7FD4FF, ChatFormatting.AQUA), //Time
+	MAGENTA("Kurauri", 0xFF00DC, ChatFormatting.LIGHT_PURPLE), //Life
+	ORANGE("Portokali", 0xFF6A00, ChatFormatting.GOLD), //Fire
+	WHITE("Tahara", 0xFFFFFF, ChatFormatting.WHITE); //Purity/Harmony
 
 	private final ReikaDyeHelper color;
 	public final String displayName;
-	private IIcon glowIcon;
-	private IIcon animatedFace;
-	private IIcon engraving;
-	private IIcon outline;
-	private IIcon overbright;
-	//private IIcon overlay;
 	private final int rgb;
-	private final EnumChatFormatting chat;
+	private final ChatFormatting chat;
 
 	private final float[] hsb;
 
@@ -77,8 +63,8 @@ public enum CrystalElement implements IconEnum, OverlayColor, ProgressAccess, Cr
 	private static final HashMap<String, CrystalElement> nameMap = new HashMap();
 	private static final HashMap<CrystalElement, Integer> colorMap = new HashMap();
 
-	private CrystalElement(String n, int rgb, EnumChatFormatting c) {
-		color = ReikaDyeHelper.getColorFromDamage(this.ordinal());
+	private CrystalElement(String n, int rgb, ChatFormatting c) {
+		color = ReikaDyeHelper.dyes[this.ordinal()];
 		displayName = n;
 		this.rgb = 0xff000000 | rgb;
 		chat = c;
@@ -87,7 +73,7 @@ public enum CrystalElement implements IconEnum, OverlayColor, ProgressAccess, Cr
 	}
 
 	public String getEnglishName() {
-		return color.colorName;
+		return color.dye.getName();
 	}
 
 	public int getColor() {
@@ -164,53 +150,8 @@ public enum CrystalElement implements IconEnum, OverlayColor, ProgressAccess, Cr
 		return this.getLevel() == 0;
 	}
 
-	@SideOnly(Side.CLIENT)
-	public void setIcons(IIconRegister ico) {
-		glowIcon = ico.registerIcon("chromaticraft:runes/glow/tile"+this.ordinal()+"_0");
-		animatedFace = ico.registerIcon("chromaticraft:runes/frontpng/tile"+this.ordinal()+"_0");
-		engraving = ico.registerIcon("chromaticraft:runes/engraved/tile"+this.ordinal()+"_0");
-		outline = ico.registerIcon("chromaticraft:runes/outline/tile"+this.ordinal()+"_0");
-		overbright = ico.registerIcon("chromaticraft:crystal/overbright/bloom_"+this.name().toLowerCase(Locale.ENGLISH));
-		//overlay = ico.registerIcon("chromaticraft:runes/overlay/tile"+this.ordinal()+"_0");
-	}
-
-	@SideOnly(Side.CLIENT)
-	public IIcon getGlowRune() {
-		return glowIcon;
-	}
-
-	@SideOnly(Side.CLIENT)
-	public IIcon getFaceRune() {
-		return animatedFace;
-	}
-
-	@SideOnly(Side.CLIENT)
-	public IIcon getBlockRune() {
-		return ChromaBlocks.RUNE.getBlockInstance().getIcon(0, this.ordinal());
-	}
-
-	@SideOnly(Side.CLIENT)
-	public IIcon getEngravingRune() {
-		return engraving;
-	}
-
-	@SideOnly(Side.CLIENT)
-	public IIcon getOutlineRune() {
-		return outline;
-	}
-
-	@SideOnly(Side.CLIENT)
-	public IIcon getOverbrightIcon() {
-		return overbright;
-	}
-	/*
-	@SideOnly(Side.CLIENT)
-	public IIcon getOverlayRune() {
-		return overlay;
-	}
-	 */
 	public static CrystalElement randomElement() {
-		return elements[ReikaDyeHelper.getRandomColor().ordinal()];
+		return elements[rand.nextInt(elements.length)];
 	}
 
 	public static CrystalElement randomElement(int level) {
@@ -254,13 +195,12 @@ public enum CrystalElement implements IconEnum, OverlayColor, ProgressAccess, Cr
 	}
 
 	@Override
-	public IIcon getIcon() {
-		return this.getGlowRune();
-	}
-
-	@Override
-	public boolean playerHas(EntityPlayer ep) {
-		return ProgressionManager.instance.hasPlayerDiscoveredColor(ep, this);
+	public boolean playerHas(Player ep) {
+		// Route through the ProgressRegistry API interface rather than the concrete ProgressionManager
+		// hub (which pulls in the casting/rendering/registry batch). ProgressionManager sets
+		// ProgressionAPI.instance.progressManager on load; playerDiscoveredElement delegates straight
+		// to hasPlayerDiscoveredColor, so this is behaviourally identical.
+		return ProgressionAPI.instance.progressManager.playerDiscoveredElement(ep, this);
 	}
 
 	@Override
