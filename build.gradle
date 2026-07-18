@@ -54,4 +54,12 @@ sourceSets.main.java {
     // (IconEnum gone from DragonAPI; rune sprites move to the eventual model/BER redesign).
     include 'reika/chromaticraft/registry/CrystalElement.java'
     include 'reika/chromaticraft/magic/ElementMixer.java'
+
+    // Registration foundation (DeferredRegister rewrite of the enum registries + minimal @Mod class
+    // + creative tab), mirroring ReactorCraft. Grows as blocks/items port. First block: STORAGE.
+    include 'reika/chromaticraft/ChromatiCraft.java'
+    include 'reika/chromaticraft/registry/ChromaBlocks.java'
+    include 'reika/chromaticraft/registry/ChromaItems.java'
+    include 'reika/chromaticraft/registry/ChromaTabs.java'
+    include 'reika/chromaticraft/block/BlockMultiStorage.java'
 }
