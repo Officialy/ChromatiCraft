@@ -41,4 +41,11 @@ sourceSets.main.java {
     include 'reika/chromaticraft/api/interfaces/ProgrammableSpawner.java'
     include 'reika/chromaticraft/api/interfaces/ProjectileFiringTool.java'
     include 'reika/chromaticraft/api/interfaces/WorldRift.java'
+
+    // Shared subsystem leaves (progression + crystal-network both need these). CrystalElement, the
+    // 16-colour keystone, is deferred: it is saturated with the dead 1.7.10 icon system (IIcon/
+    // IIconRegister/rune sprites) and pulls in ElementMixer + ProgressionManager + the block registry
+    // — a rendering redesign, ported as its own focused effort.
+    include 'reika/chromaticraft/auxiliary/OverlayColor.java'
+    include 'reika/chromaticraft/magic/progression/ProgressAccess.java'
 }

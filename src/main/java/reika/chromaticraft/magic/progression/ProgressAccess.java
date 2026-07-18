@@ -1,9 +1,9 @@
 package reika.chromaticraft.magic.progression;
 
-import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.world.entity.player.Player;
 
 public interface ProgressAccess {
 
-	public boolean playerHas(EntityPlayer ep);
+	public boolean playerHas(Player ep);
 
 }
