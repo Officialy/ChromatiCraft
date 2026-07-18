@@ -62,4 +62,10 @@ sourceSets.main.java {
     include 'reika/chromaticraft/registry/ChromaItems.java'
     include 'reika/chromaticraft/registry/ChromaTabs.java'
     include 'reika/chromaticraft/block/BlockMultiStorage.java'
+
+    // Datagen (client: lang + models; server: loot) — mirrors ReactorCraft data/.
+    include 'reika/chromaticraft/data/ChromaDataProviders.java'
+    include 'reika/chromaticraft/data/ChromaLang.java'
+    include 'reika/chromaticraft/data/ChromaModelProvider.java'
+    include 'reika/chromaticraft/data/ChromaLootProvider.java'
 }
