@@ -20,5 +20,6 @@ public class ChromaLang extends LanguageProvider {
 	protected void addTranslations() {
 		add("tab.chromaticraft", "ChromatiCraft");
 		add("block.chromaticraft.storage", "Storage Block");
+		add("block.chromaticraft.cave_crystal", "Cave Crystal");
 	}
 }
