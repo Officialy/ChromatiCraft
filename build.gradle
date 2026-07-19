@@ -55,6 +55,9 @@ sourceSets.main.java {
     include 'reika/chromaticraft/registry/CrystalElement.java'
     include 'reika/chromaticraft/magic/ElementMixer.java'
 
+    // Crystal block base chain (metadata->blockstate COLOR property; sound/glow deferred)
+    include 'reika/chromaticraft/base/CrystalTypeBlock.java'
+
     // Registration foundation (DeferredRegister rewrite of the enum registries + minimal @Mod class
     // + creative tab), mirroring ReactorCraft. Grows as blocks/items port. First block: STORAGE.
     include 'reika/chromaticraft/ChromatiCraft.java'

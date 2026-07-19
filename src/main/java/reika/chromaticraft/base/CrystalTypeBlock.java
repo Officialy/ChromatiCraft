@@ -9,86 +9,38 @@
  ******************************************************************************/
 package reika.chromaticraft.base;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.material.Material;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.world.IBlockAccess;
-import net.minecraft.world.World;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.IntegerProperty;
 
-import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.auxiliary.CrystalMusicManager;
-import reika.chromaticraft.registry.ChromaSounds;
 import reika.chromaticraft.registry.CrystalElement;
-import reika.dragonapi.ModList;
-import reika.dragonapi.libraries.java.ReikaRandomHelper;
-import reika.dragonapi.libraries.rendering.ReikaColorAPI;
 
+/**
+ * Base for the 16-colour crystal blocks. The 1.7.10 int metadata (0-15 = {@link CrystalElement}
+ * ordinal) becomes the {@link #COLOR} blockstate property — this is the metadata→blockstate template
+ * for the mod. Port deferrals (cosmetic / framework not yet ported): the "ding" note on
+ * add/break/walk/click routed through {@code ChromaSounds}+{@code CrystalMusicManager} (sound
+ * framework unported), and the per-position / COLORLIGHT glow (26.2 light is per-blockstate — the
+ * concrete block sets {@code Properties.lightLevel}). The colour is set by worldgen / the concrete
+ * block, not carried on a placement item, so the legacy {@code damageDropped} is not needed.
+ */
 public abstract class CrystalTypeBlock extends Block {
 
-	public CrystalTypeBlock(Material mat) {
-		super(mat);
-		this.setCreativeTab(ChromatiCraft.tabChroma);
-		stepSound = new SoundType("stone", 0, 0);
+	public static final IntegerProperty COLOR = IntegerProperty.create("color", 0, CrystalElement.elements.length - 1);
+
+	protected CrystalTypeBlock(BlockBehaviour.Properties props) {
+		super(props);
+		this.registerDefaultState(this.stateDefinition.any().setValue(COLOR, 0));
 	}
 
 	@Override
-	public final void onBlockAdded(World world, int x, int y, int z) {
-		ding(world, x, y, z);
+	protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+		builder.add(COLOR);
 	}
 
-	@Override
-	public final void breakBlock(World world, int x, int y, int z, Block b, int meta) {
-		ding(world, x, y, z, CrystalElement.elements[meta]);
-		this.onBroken(world, x, y, z);
+	public final CrystalElement getCrystalElement(BlockState state) {
+		return CrystalElement.elements[state.getValue(COLOR)];
 	}
-
-	protected void onBroken(World world, int x, int y, int z) {
-
-	}
-
-	@Override
-	public final void onEntityWalking(World world, int x, int y, int z, Entity ent) {
-		ding(world, x, y, z);
-	}
-
-	@Override
-	public void onBlockClicked(World world, int x, int y, int z, EntityPlayer ep) {
-		ding(world, x, y, z);
-	}
-
-	public static void ding(World world, int x, int y, int z) {
-		ding(world, x, y, z, CrystalElement.elements[world.getBlockMetadata(x, y, z)]);
-	}
-
-	public static void ding(World world, int x, int y, int z, CrystalElement e, float pitch) {
-		ChromaSounds.DING.playSoundAtBlock(world, x, y, z, (float)ReikaRandomHelper.getRandomPlusMinus(1, 0.2), pitch);
-	}
-
-	public static void ding(World world, int x, int y, int z, CrystalElement e) {
-		ding(world, x, y, z, e, getRandomPitch(e));
-	}
-
-	private static float getRandomPitch(CrystalElement e) { //Generates a major or minor chord
-		return CrystalMusicManager.instance.getRandomScaledDing(e);
-	}
-
-	@Override
-	public final int getLightValue(IBlockAccess iba, int x, int y, int z) {
-		int color = CrystalElement.elements[iba.getBlockMetadata(x, y, z)].getColor();
-		int l = this.getBrightness(iba, x, y, z);
-		return ModList.COLORLIGHT.isLoaded() ? ReikaColorAPI.getPackedIntForColoredLight(color, l) : l;
-	}
-
-	public abstract int getBrightness(IBlockAccess iba, int x, int y, int z);
-
-	public final CrystalElement getCrystalElement(IBlockAccess iba, int x, int y, int z) {
-		return CrystalElement.elements[iba.getBlockMetadata(x, y, z)];
-	}
-
-	@Override
-	public final int damageDropped(int meta) {
-		return meta;
-	}
-
 }
