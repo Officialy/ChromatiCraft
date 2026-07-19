@@ -13,237 +13,97 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.material.Material;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.particle.EffectRenderer;
-import net.minecraft.client.particle.EntityFX;
-import net.minecraft.client.renderer.texture.IIconRegister;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.AxisAlignedBB;
-import net.minecraft.util.IIcon;
-import net.minecraft.util.MovingObjectPosition;
-import net.minecraft.world.IBlockAccess;
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.AABB;
 
-import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.api.interfaces.CrystalEffectBoostArmor;
-import reika.chromaticraft.auxiliary.CrystalMusicManager;
-import reika.chromaticraft.auxiliary.interfaces.CrystalRenderedBlock;
 import reika.chromaticraft.magic.CrystalPotionController;
-import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaISBRH;
-import reika.chromaticraft.registry.ChromaIcons;
-import reika.chromaticraft.registry.ChromaPackets;
 import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.render.particle.EntityCCBlurFX;
-import reika.chromaticraft.render.particle.EntityCCFloatingSeedsFX;
-import reika.dragonapi.asm.apistripper.Strippable;
-import reika.dragonapi.instantiable.effects.EntityBlurFX;
-import reika.dragonapi.instantiable.io.PacketTarget;
 import reika.dragonapi.interfaces.block.SemiUnbreakable;
-import reika.dragonapi.interfaces.block.Submergeable;
-import reika.dragonapi.libraries.ReikaAABBHelper;
-import reika.dragonapi.libraries.io.ReikaPacketHelper;
-import reika.dragonapi.libraries.java.ReikaRandomHelper;
-import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
 import reika.dragonapi.libraries.registry.ReikaDyeHelper;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
-import thaumcraft.api.crafting.IInfusionStabiliser;
-
-@Strippable(value={"thaumcraft.api.crafting.IInfusionStabiliser"})
-public abstract class CrystalBlock extends CrystalTypeBlock implements CrystalRenderedBlock, IInfusionStabiliser, SemiUnbreakable, Submergeable {
-
-	protected final IIcon[] icons = new IIcon[CrystalElement.elements.length];
+/**
+ * Base for the effect-giving crystal blocks. Port note: the 1.7.10 ISBRH/IIcon render surface is
+ * stripped (getRenderType/getIcon/registerBlockIcons/canRenderInPass etc. gone) — 26.2 renders via a
+ * model + a per-element tint colour provider using {@link #getTintColor}. The particle effects
+ * (randomDisplayTick/addHitEffects, EntityCCBlurFX/FloatingSeedsFX + ChromaPackets) and the redstone
+ * "ding" note are deferred (client cosmetic / sound framework unported). Thaumcraft IInfusionStabiliser
+ * and DragonAPI Submergeable interfaces are deferred (unported). The potion effect (the block's core
+ * function) is kept via {@link CrystalPotionController}.
+ */
+public abstract class CrystalBlock extends CrystalTypeBlock implements SemiUnbreakable {
 
 	protected static final Random rand = new Random();
 
-	public CrystalBlock(Material mat) {
-		super(mat);
-		this.setHardness(1F);
-		this.setResistance(2F);
+	protected CrystalBlock(BlockBehaviour.Properties props) {
+		super(props);
 	}
 
 	@Override
-	public final float getEnchantPowerBonus(World world, int x, int y, int z) {
-		return this != ChromaBlocks.LAMP.getBlockInstance() && world.getBlockMetadata(x, y, z) == CrystalElement.PURPLE.ordinal() ? (this == ChromaBlocks.SUPER.getBlockInstance() ? 1.5F : 1) : 0;
+	public float getEnchantPowerBonus(BlockState state, BlockGetter level, BlockPos pos) {
+		// LAMP (no bonus) / SUPER (1.5x) specialisations deferred until those blocks port.
+		return state.getValue(COLOR) == CrystalElement.PURPLE.ordinal() ? 1 : 0;
 	}
 
 	@Override
-	public float getPlayerRelativeBlockHardness(EntityPlayer ep, World world, int x, int y, int z) {
-		return this.isUnbreakable(world, x, y, z, world.getBlockMetadata(x, y, z)) ? -1 : super.getPlayerRelativeBlockHardness(ep, world, x, y, z);
+	protected float getDestroyProgress(BlockState state, Player player, BlockGetter level, BlockPos pos) {
+		if (level instanceof Level l && this.isUnbreakable(l, pos))
+			return 0;
+		return super.getDestroyProgress(state, player, level, pos);
 	}
 
-	public boolean isUnbreakable(World world, int x, int y, int z, int meta) {
+	@Override
+	public boolean isUnbreakable(Level world, BlockPos pos) {
 		return false;
 	}
 
-	@Override
-	public final void onNeighborBlockChange(World world, int x, int y, int z, Block b) {
-		if (world.isBlockIndirectlyGettingPowered(x, y, z)) {
-			CrystalElement e = CrystalElement.elements[world.getBlockMetadata(x, y, z)];
-			ding(world, x, y, z, e, (float)getDingPitchFromRedstone(e, world.getBlockPowerInput(x, y, z)));
-		}
-	}
-
-	private static double getDingPitchFromRedstone(CrystalElement e, int power) {
-		if (power >= 12) {
-			return CrystalMusicManager.instance.getOctave(e);
-		}
-		else if (power >= 8) {
-			return CrystalMusicManager.instance.getFifth(e);
-		}
-		else if (power >= 4) {
-			return CrystalMusicManager.instance.getThird(e);
-		}
-		else {
-			return CrystalMusicManager.instance.getDingPitchScale(e);
-		}
-	}
-
-	@SideOnly(Side.CLIENT)
-	@Override
-	public final IIcon getIcon(int s, int meta) {
-		return icons[meta];
-	}
-
-	@SideOnly(Side.CLIENT)
-	@Override
-	public final void registerBlockIcons(IIconRegister ico) {
-		for (int i = 0; i < ReikaDyeHelper.dyes.length; i++) {
-			icons[i] = ico.registerIcon("ChromatiCraft:crystal/crystal_outline");
-		}
-	}
-
-	@Override
-	public final int getRenderType() {
-		return ChromaISBRH.crystal.getRenderID();
-	}
-
-	@Override
-	public final boolean isOpaqueCube() {
-		return false;
-	}
-
-	@Override
-	public final boolean renderAsNormalBlock() {
-		return false;
-	}
-
-	@Override
-	public final int getRenderBlockPass() {
-		return 1;
-	}
-
-	@Override
-	public boolean canRenderInPass(int pass) {
-		ChromaISBRH.crystal.setRenderPass(pass);
-		return pass <= 1;
-	}
-
-	@Override
-	@SideOnly(Side.CLIENT)
-	public void randomDisplayTick(World world, int x, int y, int z, Random rand) {
-		CrystalElement e = this.getCrystalElement(world, x, y, z);
-
-		this.doParticles(world, x, y, z, e, rand);
-
-		if (this.shouldGiveEffects(e) && this.performEffect(e)) {
-			if (rand.nextInt(3) == 0)
-				ReikaPacketHelper.sendUpdatePacket(ChromatiCraft.packetChannel, ChromaPackets.CRYSTALEFFECT.ordinal(), x, y, z, PacketTarget.server);
-		}
-	}
-
-	@Override
-	@SideOnly(Side.CLIENT)
-	public boolean addHitEffects(World world, MovingObjectPosition target, EffectRenderer effectRenderer) {
-		int x = target.blockX;
-		int y = target.blockY;
-		int z = target.blockZ;;
-		CrystalElement e = this.getCrystalElement(world, x, y, z);
-
-		this.doParticles(world, x, y, z, e, rand);
-
-		if (this.shouldGiveEffects(e) && this.performEffect(e)) {
-			if (e != CrystalElement.PURPLE && e != CrystalElement.BROWN) //prevent exploit
-				ReikaPacketHelper.sendUpdatePacket(ChromatiCraft.packetChannel, ChromaPackets.CRYSTALEFFECT.ordinal(), x, y, z, PacketTarget.server);
-		}
-		return false;
-	}
-
-	@SideOnly(Side.CLIENT)
-	private void doParticles(World world, int x, int y, int z, CrystalElement e, Random rand) {
-		EntityFX fx;
-		if (rand.nextInt(20) > 0) {
-			double rx = ReikaRandomHelper.getRandomPlusMinus(x+0.5, 0.5);
-			double rz = ReikaRandomHelper.getRandomPlusMinus(z+0.5, 0.5);
-			double ry = ReikaRandomHelper.getRandomPlusMinus(y+0.5+0.125, 0.5);
-			float s = 1+rand.nextFloat()*1.5F;
-			int l = 5+rand.nextInt(60);
-			int n = 3+rand.nextInt(6);
-			float f = s/16F;
-			float s2 = s/4F;
-			for (int i = 0; i < n; i++) {
-				double rrx = ReikaRandomHelper.getRandomPlusMinus(rx, f);
-				double rry = ReikaRandomHelper.getRandomPlusMinus(ry, f);
-				double rrz = ReikaRandomHelper.getRandomPlusMinus(rz, f);
-				fx = new EntityCCBlurFX(e, world, rrx, rry, rrz, 0, 0, 0).setIcon(ChromaIcons.SPARKLEPARTICLE).setLife(l).setScale(s2).enableAlphaTest();
-				if (rand.nextBoolean())
-					((EntityBlurFX)fx).setRapidExpand();
-				if (rand.nextBoolean())
-					((EntityBlurFX)fx).setBasicBlend();
-				Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-			}
-		}
-		else {
-			double rx = ReikaRandomHelper.getRandomPlusMinus(x+0.5, 0.35);
-			double rz = ReikaRandomHelper.getRandomPlusMinus(z+0.5, 0.35);
-			fx = new EntityCCFloatingSeedsFX(world, rx, y+0.5, rz, 0, 90, ChromaIcons.CENTER).setColor(e.getColor()).setScale(4).setLife(120).setColliding();
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-		}
-	}
-
-	public final void updateEffects(World world, int x, int y, int z) {
-		if (!world.isRemote) {
-			CrystalElement color = CrystalElement.elements[world.getBlockMetadata(x, y, z)];
+	public final void updateEffects(Level world, BlockPos pos) {
+		if (!world.isClientSide()) {
+			CrystalElement color = this.getCrystalElement(world.getBlockState(pos));
 			if (this.shouldMakeNoise()) {
-				float f1 = rand.nextFloat();
-				float f2 = rand.nextFloat();
-				float f3 = 0.5F*((f1-f2)*0.7F+1.8F);
-				world.playSoundEffect(x+0.5, y+0.5, z+0.5, "random.orb", 0.05F, f3/*this.getRandomPitch(color)*/);
+				float f3 = 0.5F * ((rand.nextFloat() - rand.nextFloat()) * 0.7F + 1.8F);
+				world.playSound(null, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, SoundEvents.EXPERIENCE_ORB_PICKUP, SoundSource.BLOCKS, 0.05F, f3);
 			}
 			int r = this.getRange();
-			AxisAlignedBB box = ReikaAABBHelper.getBlockAABB(x, y, z).expand(r, r, r);
-			List<EntityLivingBase> inbox = world.getEntitiesWithinAABB(EntityLivingBase.class, box);
+			AABB box = new AABB(pos).inflate(r);
+			List<LivingEntity> inbox = world.getEntitiesOfClass(LivingEntity.class, box);
 			Collections.shuffle(inbox);
-			this.applyEffect(color, inbox, x, y, z, r);
+			this.applyEffect(color, inbox, pos, r);
 		}
 	}
 
-	public final void applyEffect(CrystalElement color, List<EntityLivingBase> li, int x, int y, int z, int r) {
+	public final void applyEffect(CrystalElement color, List<LivingEntity> li, BlockPos pos, int r) {
 		int level = this.getPotionLevel(color);
 		int dura = this.getDuration(color);
-		boolean boost = level > 0;
 		boolean player = false;
-		for (EntityLivingBase e : li) {
-			if (e instanceof EntityPlayer) {
+		for (LivingEntity e : li) {
+			if (e instanceof Player) {
 				if (player)
 					continue;
 				else
 					player = true;
 			}
-			if (ReikaMathLibrary.py3d(e.posX-x-0.5, e.posY+e.getEyeHeight()/2F-y-0.5, e.posZ-z-0.5) <= r) {
+			double dx = e.getX() - pos.getX() - 0.5;
+			double dy = e.getY() + e.getEyeHeight() / 2F - pos.getY() - 0.5;
+			double dz = e.getZ() - pos.getZ() - 0.5;
+			if (Math.sqrt(dx * dx + dy * dy + dz * dz) <= r) {
 				int dura2 = dura;
 				int level2 = level;
 				float slug = this.getSlugPower(e);
 				if (slug > 0) {
-					dura2 *= 1-0.2*slug;
+					dura2 *= 1 - 0.2 * slug;
 					level2 += slug;
 				}
 				CrystalPotionController.instance.applyEffectFromColor(dura2, level2, e, color, true);
@@ -251,55 +111,43 @@ public abstract class CrystalBlock extends CrystalTypeBlock implements CrystalRe
 		}
 	}
 
-	private float getSlugPower(EntityLivingBase e) {
+	private float getSlugPower(LivingEntity e) {
 		float ret = 0;
-		for (int i = 1; i < 4; i++) {
-			ItemStack is = e.getEquipmentInSlot(i); //helm is 4
-			if (is != null && is.getItem() instanceof CrystalEffectBoostArmor) {
-				ret += ((CrystalEffectBoostArmor)is.getItem()).getPower(is);
-			}
+		for (EquipmentSlot slot : new EquipmentSlot[]{EquipmentSlot.FEET, EquipmentSlot.LEGS, EquipmentSlot.CHEST}) {
+			ItemStack is = e.getItemBySlot(slot);
+			if (!is.isEmpty() && is.getItem() instanceof CrystalEffectBoostArmor a)
+				ret += a.getPower(is);
 		}
 		return ret;
+	}
+
+	@Override
+	public boolean canEntityDestroy(BlockState state, BlockGetter level, BlockPos pos, Entity e) {
+		return false;
+	}
+
+	/** Per-element tint colour for the block/item colour provider (replaces the ISBRH getTintColor). */
+	public final int getTintColor(int meta) {
+		int c0 = ReikaColorAPI.getModifiedSat(CrystalElement.elements[meta].getColor(), 0.65F);
+		int c1 = ReikaDyeHelper.dyes[meta].color;
+		return ReikaColorAPI.mixColors(c0, c1, 0.65F);
 	}
 
 	public abstract boolean shouldMakeNoise();
 
 	public abstract boolean shouldGiveEffects(CrystalElement e);
+
 	public abstract boolean performEffect(CrystalElement e);
 
 	public abstract int getRange();
 
 	public abstract int getDuration(CrystalElement e);
 
-	public boolean renderAllArms() {
-		return this.renderBase();
-	}
-
 	public abstract int getPotionLevel(CrystalElement e);
 
-	@Override
-	public boolean canEntityDestroy(IBlockAccess world, int x, int y, int z, Entity e) {
-		return false;
-	}
+	public abstract boolean renderBase();
 
-	public final int getTintColor(int meta) {
-		int c0 = ReikaColorAPI.getModifiedSat(CrystalElement.elements[meta].getColor(), 0.65F);
-		int c1 = ReikaDyeHelper.dyes[meta].color;
-		//int c2 = ReikaColorAPI.getColorWithBrightnessMultiplier(c0, 0.85F);
-		return ReikaColorAPI.mixColors(c0, c1, 0.65F);
-	}
-
-	public final boolean canStabaliseInfusion(World world, int x, int y, int z) {
-		return true;
-	}
-
-	@Override
-	public final boolean isSubmergeable(IBlockAccess iba, int x, int y, int z) {
-		return true;
-	}
-
-	@Override
-	public final boolean renderLiquid(int meta) {
-		return true;
+	public boolean renderAllArms() {
+		return this.renderBase();
 	}
 }

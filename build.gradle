@@ -58,6 +58,7 @@ sourceSets.main.java {
 
     // Crystal block base chain (metadata->blockstate COLOR property; sound/glow deferred)
     include 'reika/chromaticraft/base/CrystalTypeBlock.java'
+    include 'reika/chromaticraft/base/CrystalBlock.java'
     include 'reika/chromaticraft/magic/potions/PotionCustomRegen.java'
     include 'reika/chromaticraft/magic/potions/PotionBetterSaturation.java'
     include 'reika/chromaticraft/magic/CrystalPotionController.java'
