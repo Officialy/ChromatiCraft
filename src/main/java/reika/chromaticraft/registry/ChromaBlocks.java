@@ -5,6 +5,7 @@ import java.util.function.Supplier;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 
 import net.neoforged.neoforge.registries.DeferredBlock;
@@ -12,6 +13,7 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.block.BlockMultiStorage;
+import reika.chromaticraft.block.crystal.BlockCaveCrystal;
 
 /**
  * ChromatiCraft block registry. Port-in-progress rewrite of the 1.7.10 {@code ChromaBlocks} enum
@@ -50,6 +52,10 @@ public final class ChromaBlocks {
 
 	public static final DeferredBlock<Block> STORAGE =
 			register("storage", () -> new BlockMultiStorage(blockProperties().strength(2F, 8F)));
+
+	public static final DeferredBlock<Block> CAVE_CRYSTAL =
+			register("cave_crystal", () -> new BlockCaveCrystal(
+					blockProperties().strength(1F, 2F).lightLevel(s -> 10).noOcclusion().sound(SoundType.GLASS)));
 
 	private ChromaBlocks() {}
 }
