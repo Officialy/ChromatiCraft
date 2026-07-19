@@ -62,6 +62,13 @@ sourceSets.main.java {
     include 'reika/chromaticraft/block/crystal/BlockCaveCrystal.java'
     include 'reika/chromaticraft/block/crystal/BlockCrystalLamp.java'
     include 'reika/chromaticraft/block/crystal/BlockSuperCrystal.java'
+
+    // TE infrastructure (BlockEntityBase/TileEnum re-arch): registry + base + first TE + tile block
+    include 'reika/chromaticraft/registry/ChromaTiles.java'
+    include 'reika/chromaticraft/registry/ChromaBlockEntities.java'
+    include 'reika/chromaticraft/base/tileentity/TileEntityChromaticBase.java'
+    include 'reika/chromaticraft/tileentity/TileEntityDisplayPoint.java'
+    include 'reika/chromaticraft/block/BlockChromaticTile.java'
     include 'reika/chromaticraft/magic/potions/PotionCustomRegen.java'
     include 'reika/chromaticraft/magic/potions/PotionBetterSaturation.java'
     include 'reika/chromaticraft/magic/CrystalPotionController.java'

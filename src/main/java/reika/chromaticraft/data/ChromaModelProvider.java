@@ -45,6 +45,7 @@ public class ChromaModelProvider extends ModelProvider {
 	@SuppressWarnings("unchecked")
 	protected void registerModels(BlockModelGenerators blockModels, ItemModelGenerators itemModels) {
 		blockModels.createTrivialCube(ChromaBlocks.STORAGE.get());
+		blockModels.createTrivialCube(ChromaBlocks.DISPLAY_POINT.get());
 
 		Consumer<BlockModelDefinitionGenerator> blockStateOut;
 		ItemModelOutput itemModelOut;

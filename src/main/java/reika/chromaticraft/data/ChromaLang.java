@@ -23,5 +23,6 @@ public class ChromaLang extends LanguageProvider {
 		add("block.chromaticraft.cave_crystal", "Cave Crystal");
 		add("block.chromaticraft.crystal_lamp", "Crystal Lamp");
 		add("block.chromaticraft.super_crystal", "Super Crystal");
+		add("block.chromaticraft.display_point", "Display Point");
 	}
 }

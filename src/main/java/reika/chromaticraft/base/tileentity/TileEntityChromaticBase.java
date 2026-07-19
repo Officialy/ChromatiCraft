@@ -9,159 +9,46 @@
  ******************************************************************************/
 package reika.chromaticraft.base.tileentity;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.UUID;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.state.BlockState;
 
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.nbt.NBTTagList;
-import net.minecraft.nbt.NBTTagString;
-
-import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.auxiliary.interfaces.OwnedTile;
-import reika.chromaticraft.auxiliary.render.ChromaRenderList;
-import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.ChromaTiles;
-import reika.dragonapi.ModList;
-import reika.dragonapi.asm.dependentmethodstripper.ModDependent;
-import reika.dragonapi.base.TileEntityRegistryBase;
-import reika.dragonapi.interfaces.TextureFetcher;
-import reika.dragonapi.interfaces.tileentity.RenderFetcher;
-import reika.dragonapi.libraries.ReikaNBTHelper;
-import reika.dragonapi.libraries.reikanbthelper.NBTTypes;
-import reika.dragonapi.libraries.ReikaPlayerAPI;
+import reika.dragonapi.base.BlockEntityBase;
 
-import li.cil.oc.api.network.Visibility;
+/**
+ * Base for all ChromatiCraft block entities. Re-based from the 1.7.10
+ * {@code TileEntityRegistryBase<ChromaTiles>} (dropped from the port) onto DragonAPI's 26.2
+ * {@link BlockEntityBase} (the pattern ReactorCraft uses): the concrete TE passes its
+ * {@link BlockEntityType} from {@link reika.chromaticraft.registry.ChromaBlockEntities} and
+ * implements {@link #getTile()} + the tick hooks {@code updateEntity(Level, BlockPos)} /
+ * {@code animateWithTick(Level, BlockPos)}.
+ *
+ * <p>Deferred (features that reference unported content — re-add as they port): the owner/UUID system
+ * (needs the ChromaItems.PLACER item + ReikaPlayerAPI), the render fetcher (ChromaRenderList /
+ * RenderFetcher), the OpenComputers network hook, and the mod-lock {@code canUpdate} check.
+ */
+public abstract class TileEntityChromaticBase extends BlockEntityBase {
 
-public abstract class TileEntityChromaticBase extends TileEntityRegistryBase<ChromaTiles> implements RenderFetcher {
+	protected TileEntityChromaticBase(BlockEntityType<?> type, BlockPos pos, BlockState state) {
+		super(type, pos, state);
+	}
 
-	protected final HashSet<UUID> owners = new HashSet();
+	public abstract ChromaTiles getTile();
 
-	public final TextureFetcher getRenderer() {
-		if (this.getTile().hasRender())
-			return ChromaRenderList.getRenderForMachine(this.getTile());
-		else
-			return null;
+	@Override
+	public Block getBlockEntityBlockID() {
+		return this.getTile().getBlock();
 	}
 
 	@Override
-	protected final void onSetPlacer(EntityPlayer ep) {
-		this.addOwner(ep);
-	}
-
-	public final void addOwner(EntityPlayer ep) {
-		owners.add(ep.getUniqueID());
-	}
-
-	@Override
-	public final boolean allowTickAcceleration() {
-		return this.getTile().allowsAcceleration();
-	}
-
-	@Override
-	public final boolean canUpdate() {
-		return !ChromatiCraft.instance.isLocked();
-	}
-
-	@Override
-	protected void writeSyncTag(NBTTagCompound NBT) {
-		super.writeSyncTag(NBT);
-	}
-
-	@Override
-	protected void readSyncTag(NBTTagCompound NBT) {
-		super.readSyncTag(NBT);
-	}
-
-	@Override
-	public void writeToNBT(NBTTagCompound NBT) {
-		super.writeToNBT(NBT);
-
-		NBTTagList li = new NBTTagList();
-		for (UUID uid : owners) {
-			li.appendTag(new NBTTagString(uid.toString()));
-		}
-		NBT.setTag("owners", li);
-	}
-
-	@Override
-	public void readFromNBT(NBTTagCompound NBT) {
-		super.readFromNBT(NBT);
-
-		owners.clear();
-		NBTTagList li = NBT.getTagList("owners", NBTTypes.STRING.ID);
-		for (Object o : li.tagList) {
-			NBTTagString tag = (NBTTagString)o;
-			UUID uid = UUID.fromString(tag.func_150285_a_());
-			owners.add(uid);
-		}
-	}
-
-	@Override
-	public final boolean shouldRenderInPass(int pass) {
-		ChromaTiles r = this.getTile();
-		return pass == 0 || (r.renderInPass1() && pass == 1);
+	public String getTEName() {
+		return this.getTile().getName();
 	}
 
 	@Override
 	public int getRedstoneOverride() {
 		return 0;
-	}
-
-	@Override
-	@ModDependent(ModList.OPENCOMPUTERS)
-	public final Visibility getOCNetworkVisibility() {
-		return Visibility.Network;//this.getMachine().isPipe() ? Visibility.Neighbors : Visibility.Network;
-	}
-
-	public final boolean isOwnedByPlayer(EntityPlayer ep) {
-		return this.isOwnedByPlayer(ep.getUniqueID());
-	}
-
-	public final boolean isOwnedByPlayer(UUID id) {
-		return owners.isEmpty() || owners.contains(id);
-	}
-
-	public final Collection<EntityPlayer> getOwners(boolean allowFake) {
-		Collection<EntityPlayer> c = new ArrayList();
-		for (UUID uid : owners) {
-			EntityPlayer ep = worldObj.func_152378_a(uid);
-			if (ep != null && (allowFake || !ReikaPlayerAPI.isFake(ep))) {
-				c.add(ep);
-			}
-		}
-		return c;
-	}
-
-	public boolean onlyAllowOwnersToUse() {
-		return false;
-	}
-
-	public boolean onlyAllowOwnersToMine() {
-		return true;
-	}
-
-	public boolean renderModelsInPass1() {
-		return false;
-	}
-
-	protected final void writeOwnerData(NBTTagCompound NBT) {
-		if (this instanceof OwnedTile && !owners.isEmpty())
-			ReikaNBTHelper.writeCollectionToNBT(owners, NBT, "owners", ReikaNBTHelper.UUIDConverter.instance);
-	}
-
-	protected final void readOwnerData(ItemStack is) {
-		if (ChromaItems.PLACER.matchWith(is)) {
-			if (is.getItemDamage() == this.getTile().ordinal()) {
-				if (is.stackTagCompound != null && is.stackTagCompound.hasKey("owners")) {
-					if (this instanceof OwnedTile) {
-						ReikaNBTHelper.readCollectionFromNBT(owners, is.stackTagCompound, "owners", ReikaNBTHelper.UUIDConverter.instance);
-					}
-				}
-			}
-		}
 	}
 }

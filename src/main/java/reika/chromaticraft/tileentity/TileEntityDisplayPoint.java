@@ -1,20 +1,18 @@
-/*******************************************************************************
- * @author Reika Kalseki
- * 
- * Copyright 2017
- * 
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
- ******************************************************************************/
 package reika.chromaticraft.tileentity;
 
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
 
 import reika.chromaticraft.base.tileentity.TileEntityChromaticBase;
+import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.ChromaTiles;
 
 public class TileEntityDisplayPoint extends TileEntityChromaticBase {
+
+	public TileEntityDisplayPoint(BlockPos pos, BlockState state) {
+		super(ChromaBlockEntities.DISPLAY.get(), pos, state);
+	}
 
 	@Override
 	public ChromaTiles getTile() {
@@ -22,13 +20,12 @@ public class TileEntityDisplayPoint extends TileEntityChromaticBase {
 	}
 
 	@Override
-	public void updateEntity(World world, int x, int y, int z, int meta) {
+	public void updateEntity(Level world, BlockPos pos) {
 
 	}
 
 	@Override
-	protected void animateWithTick(World world, int x, int y, int z) {
+	protected void animateWithTick(Level world, BlockPos pos) {
 
 	}
-
 }

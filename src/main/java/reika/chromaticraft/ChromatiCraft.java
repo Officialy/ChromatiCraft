@@ -15,6 +15,7 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 
 import reika.chromaticraft.magic.potions.PotionBetterSaturation;
 import reika.chromaticraft.magic.potions.PotionCustomRegen;
+import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.ChromaTabs;
@@ -48,6 +49,7 @@ public class ChromatiCraft {
 		ChromaBlocks.BLOCKS.register(modEventBus);
 		ChromaBlocks.ITEMS.register(modEventBus);
 		ChromaItems.ITEMS.register(modEventBus);
+		ChromaBlockEntities.BLOCK_ENTITIES.register(modEventBus);
 		ChromaTabs.CREATIVE_MODE_TABS.register(modEventBus);
 		MOB_EFFECTS.register(modEventBus);
 	}

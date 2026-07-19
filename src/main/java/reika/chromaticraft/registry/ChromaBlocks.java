@@ -12,6 +12,7 @@ import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
 import reika.chromaticraft.ChromatiCraft;
+import reika.chromaticraft.block.BlockChromaticTile;
 import reika.chromaticraft.block.BlockMultiStorage;
 import reika.chromaticraft.block.crystal.BlockCaveCrystal;
 import reika.chromaticraft.block.crystal.BlockCrystalLamp;
@@ -66,6 +67,12 @@ public final class ChromaBlocks {
 	public static final DeferredBlock<Block> SUPER =
 			register("super_crystal", () -> new BlockSuperCrystal(
 					blockProperties().strength(1F, 2F).lightLevel(s -> 15).noOcclusion().sound(SoundType.GLASS)));
+
+	// First TileEntity block (the TE-infrastructure proving vertical). References ChromaTiles.DISPLAY,
+	// which back-references this DeferredBlock — both are lazy holders, so no init-order cycle.
+	public static final DeferredBlock<Block> DISPLAY_POINT =
+			register("display_point", () -> new BlockChromaticTile(
+					blockProperties().strength(2F).noOcclusion(), reika.chromaticraft.registry.ChromaTiles.DISPLAY));
 
 	private ChromaBlocks() {}
 }
