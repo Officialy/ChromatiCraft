@@ -1,57 +1,43 @@
 /*******************************************************************************
  * @author Reika Kalseki
- * 
+ *
  * Copyright 2017
- * 
+ *
  * All rights reserved.
  * Distribution of the software in any form is only allowed with
  * explicit, prior permission from the owner.
  ******************************************************************************/
 package reika.chromaticraft.block.crystal;
 
-import java.util.Random;
-
-import net.minecraft.block.material.Material;
-import net.minecraft.init.Blocks;
-import net.minecraft.item.Item;
-import net.minecraft.world.IBlockAccess;
-import net.minecraftforge.common.util.ForgeDirection;
+import net.minecraft.world.level.block.state.BlockBehaviour;
 
 import reika.chromaticraft.base.CrystalBlock;
-import reika.chromaticraft.registry.ChromaOptions;
 import reika.chromaticraft.registry.CrystalElement;
-import reika.dragonapi.instantiable.data.immutable.BlockKey;
 
+/**
+ * Super crystal (large-range, high-level effect crystal). Ported core. Deferred (unported content):
+ * the ChromaOptions NOISE toggle (config unported), the base-block (obsidian) ISBRH render hook, and
+ * the drops (loot dropSelf). Light 15 + the SUPER 1.5x enchant boost are set at registration / in
+ * CrystalBlock.getEnchantPowerBonus.
+ */
 public class BlockSuperCrystal extends CrystalBlock {
 
-	public BlockSuperCrystal(Material mat) {
-		super(mat);
-		this.setLightLevel(1F);
-		this.setResistance(6000);
+	public BlockSuperCrystal(BlockBehaviour.Properties props) {
+		super(props);
 	}
-
-	@Override
-	public final Item getItemDropped(int id, Random r, int fortune) {
-		return Item.getItemFromBlock(this);
-	}
-
-	/*
-	@SideOnly(Side.CLIENT)
-	@Override
-	public void registerBlockIcons(IIconRegister ico) {
-		for (int i = 0; i < ReikaDyeHelper.dyes.length; i++) {
-			icons[i] = ico.registerIcon("ChromatiCraft:crystal/lamp_"+ReikaDyeHelper.dyes[i].name().toLowerCase());
-		}
-	}
-	 */
 
 	@Override
 	public boolean shouldMakeNoise() {
-		return ChromaOptions.NOISE.getState();
+		return true;
 	}
 
 	@Override
 	public boolean shouldGiveEffects(CrystalElement e) {
+		return true;
+	}
+
+	@Override
+	public boolean performEffect(CrystalElement e) {
 		return true;
 	}
 
@@ -66,28 +52,12 @@ public class BlockSuperCrystal extends CrystalBlock {
 	}
 
 	@Override
-	public boolean renderBase() {
-		return true;
-	}
-
-	@Override
-	public BlockKey getBaseBlock(IBlockAccess iba, int x, int y, int z, ForgeDirection side) {
-		return new BlockKey(Blocks.obsidian);
-	}
-
-	@Override
 	public int getPotionLevel(CrystalElement e) {
 		return 2;
 	}
 
 	@Override
-	public int getBrightness(IBlockAccess iba, int x, int y, int z) {
-		return 15;
-	}
-
-	@Override
-	public boolean performEffect(CrystalElement e) {
+	public boolean renderBase() {
 		return true;
 	}
-
 }

@@ -1,55 +1,42 @@
 /*******************************************************************************
  * @author Reika Kalseki
- * 
+ *
  * Copyright 2017
- * 
+ *
  * All rights reserved.
  * Distribution of the software in any form is only allowed with
  * explicit, prior permission from the owner.
  ******************************************************************************/
 package reika.chromaticraft.block.crystal;
 
-import java.util.Random;
+import net.minecraft.world.level.block.state.BlockBehaviour;
 
-import net.minecraft.block.material.Material;
-import net.minecraft.init.Blocks;
-import net.minecraft.item.Item;
-import net.minecraft.world.IBlockAccess;
-import net.minecraft.world.World;
-import net.minecraftforge.common.util.ForgeDirection;
-
-import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.base.CrystalBlock;
-import reika.chromaticraft.block.worldgen.BlockStructureShield;
-import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaOptions;
 import reika.chromaticraft.registry.CrystalElement;
-import reika.dragonapi.instantiable.data.immutable.BlockKey;
 
+/**
+ * Crystal lamp (decorative full-bright crystal, no effects). Ported core. Deferred (unported content):
+ * the structure-shield unbreakable/base logic (MUSICTRIGGER/STRUCTSHIELD blocks), the ChromaOptions
+ * NOISE toggle (config unported — noise always on for now), and the drops (loot dropSelf).
+ */
 public class BlockCrystalLamp extends CrystalBlock {
 
-	public BlockCrystalLamp(Material mat) {
-		super(mat);
-		this.setCreativeTab(ChromatiCraft.tabChromaDeco);
-	}
-
-	@Override
-	public final Item getItemDropped(int id, Random r, int fortune) {
-		return Item.getItemFromBlock(this);
-	}
-
-	@Override
-	public final int quantityDropped(Random r) {
-		return 1;
+	public BlockCrystalLamp(BlockBehaviour.Properties props) {
+		super(props);
 	}
 
 	@Override
 	public boolean shouldMakeNoise() {
-		return ChromaOptions.NOISE.getState();
+		return true;
 	}
 
 	@Override
 	public boolean shouldGiveEffects(CrystalElement e) {
+		return false;
+	}
+
+	@Override
+	public boolean performEffect(CrystalElement e) {
 		return false;
 	}
 
@@ -64,40 +51,12 @@ public class BlockCrystalLamp extends CrystalBlock {
 	}
 
 	@Override
-	public boolean renderBase() {
-		return true;
-	}
-
-	@Override
-	public BlockKey getBaseBlock(IBlockAccess iba, int x, int y, int z, ForgeDirection side) {
-		if (this.unMineable(iba, x, y, z))
-			return new BlockKey(ChromaBlocks.STRUCTSHIELD.getBlockInstance(), 1);
-		return side.offsetY == 0 ? new BlockKey(Blocks.stone, 0) : new BlockKey(Blocks.double_stone_slab, 0);
-	}
-
-	@Override
-	public boolean isUnbreakable(World world, int x, int y, int z, int meta) {
-		return this.unMineable(world, x, y, z);
-	}
-
-	private boolean unMineable(IBlockAccess world, int x, int y, int z) {
-		if (world.getBlock(x, y-1, z) == ChromaBlocks.MUSICTRIGGER.getBlockInstance())
-			return true;
-		return world.getBlock(x, y-1, z) instanceof BlockStructureShield && world.getBlockMetadata(x, y-1, z) >= 8;
-	}
-
-	@Override
 	public int getPotionLevel(CrystalElement e) {
 		return 0;
 	}
 
 	@Override
-	public int getBrightness(IBlockAccess iba, int x, int y, int z) {
-		return 15;
-	}
-
-	@Override
-	public boolean performEffect(CrystalElement e) {
-		return false;
+	public boolean renderBase() {
+		return true;
 	}
 }

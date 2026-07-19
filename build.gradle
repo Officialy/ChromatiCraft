@@ -60,6 +60,8 @@ sourceSets.main.java {
     include 'reika/chromaticraft/base/CrystalTypeBlock.java'
     include 'reika/chromaticraft/base/CrystalBlock.java'
     include 'reika/chromaticraft/block/crystal/BlockCaveCrystal.java'
+    include 'reika/chromaticraft/block/crystal/BlockCrystalLamp.java'
+    include 'reika/chromaticraft/block/crystal/BlockSuperCrystal.java'
     include 'reika/chromaticraft/magic/potions/PotionCustomRegen.java'
     include 'reika/chromaticraft/magic/potions/PotionBetterSaturation.java'
     include 'reika/chromaticraft/magic/CrystalPotionController.java'

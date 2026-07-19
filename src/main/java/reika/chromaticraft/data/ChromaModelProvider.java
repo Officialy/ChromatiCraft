@@ -64,21 +64,29 @@ public class ChromaModelProvider extends ModelProvider {
 			throw new IllegalStateException("Failed to access BlockModelGenerators sinks — vanilla shape changed?", e);
 		}
 
-		// cave_crystal: the COLOR property (0..15 = CrystalElement) maps to a per-colour cube model
-		// using the dedicated block/crystal/crystal_<colour> textures.
-		Block cave = ChromaBlocks.CAVE_CRYSTAL.get();
+		// The crystal-coloured blocks: the COLOR property (0..15 = CrystalElement) maps to a per-colour
+		// cube model using the dedicated block/crystal/crystal_<colour> textures. (The renderBase base+arm
+		// geometry of the lamp/super crystals is deferred; a coloured cube is the placeholder.)
+		crystalColourBlock(ChromaBlocks.CAVE_CRYSTAL.get(), "cave_crystal", blockStateOut, itemModelOut, modelOut);
+		crystalColourBlock(ChromaBlocks.LAMP.get(), "crystal_lamp", blockStateOut, itemModelOut, modelOut);
+		crystalColourBlock(ChromaBlocks.SUPER.get(), "super_crystal", blockStateOut, itemModelOut, modelOut);
+	}
+
+	private static void crystalColourBlock(Block block, String name,
+			Consumer<BlockModelDefinitionGenerator> blockStateOut, ItemModelOutput itemModelOut,
+			BiConsumer<Identifier, ModelInstance> modelOut) {
 		Identifier[] colorModels = new Identifier[CrystalElement.elements.length];
 		for (int i = 0; i < colorModels.length; i++) {
 			String cn = CrystalElement.elements[i].name().toLowerCase(Locale.ENGLISH);
 			colorModels[i] = ModelTemplates.CUBE_ALL.create(
-					Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/cave_crystal_" + cn),
+					Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/" + name + "_" + cn),
 					TextureMapping.cube(new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/crystal/crystal_" + cn))),
 					modelOut);
 		}
 		PropertyDispatch<MultiVariant> dispatch = PropertyDispatch
 				.initial(CrystalTypeBlock.COLOR)
 				.generate(i -> new MultiVariant(WeightedList.of(new Variant(colorModels[i]))));
-		blockStateOut.accept(MultiVariantGenerator.dispatch(cave).with(dispatch));
-		itemModelOut.accept(cave.asItem(), ItemModelUtils.plainModel(colorModels[CrystalElement.WHITE.ordinal()]));
+		blockStateOut.accept(MultiVariantGenerator.dispatch(block).with(dispatch));
+		itemModelOut.accept(block.asItem(), ItemModelUtils.plainModel(colorModels[CrystalElement.WHITE.ordinal()]));
 	}
 }

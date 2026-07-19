@@ -1,0 +1,52 @@
+{
+  "variants": {
+    "color=0": {
+      "model": "chromaticraft:block/crystal_lamp_black"
+    },
+    "color=1": {
+      "model": "chromaticraft:block/crystal_lamp_red"
+    },
+    "color=10": {
+      "model": "chromaticraft:block/crystal_lamp_lime"
+    },
+    "color=11": {
+      "model": "chromaticraft:block/crystal_lamp_yellow"
+    },
+    "color=12": {
+      "model": "chromaticraft:block/crystal_lamp_lightblue"
+    },
+    "color=13": {
+      "model": "chromaticraft:block/crystal_lamp_magenta"
+    },
+    "color=14": {
+      "model": "chromaticraft:block/crystal_lamp_orange"
+    },
+    "color=15": {
+      "model": "chromaticraft:block/crystal_lamp_white"
+    },
+    "color=2": {
+      "model": "chromaticraft:block/crystal_lamp_green"
+    },
+    "color=3": {
+      "model": "chromaticraft:block/crystal_lamp_brown"
+    },
+    "color=4": {
+      "model": "chromaticraft:block/crystal_lamp_blue"
+    },
+    "color=5": {
+      "model": "chromaticraft:block/crystal_lamp_purple"
+    },
+    "color=6": {
+      "model": "chromaticraft:block/crystal_lamp_cyan"
+    },
+    "color=7": {
+      "model": "chromaticraft:block/crystal_lamp_lightgray"
+    },
+    "color=8": {
+      "model": "chromaticraft:block/crystal_lamp_gray"
+    },
+    "color=9": {
+      "model": "chromaticraft:block/crystal_lamp_pink"
+    }
+  }
+}

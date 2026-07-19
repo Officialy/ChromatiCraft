@@ -53,8 +53,9 @@ public abstract class CrystalBlock extends CrystalTypeBlock implements SemiUnbre
 
 	@Override
 	public float getEnchantPowerBonus(BlockState state, BlockGetter level, BlockPos pos) {
-		// LAMP (no bonus) / SUPER (1.5x) specialisations deferred until those blocks port.
-		return state.getValue(COLOR) == CrystalElement.PURPLE.ordinal() ? 1 : 0;
+		if (this == reika.chromaticraft.registry.ChromaBlocks.LAMP.get() || state.getValue(COLOR) != CrystalElement.PURPLE.ordinal())
+			return 0;
+		return this == reika.chromaticraft.registry.ChromaBlocks.SUPER.get() ? 1.5F : 1;
 	}
 
 	@Override

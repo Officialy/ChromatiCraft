@@ -14,6 +14,8 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.block.BlockMultiStorage;
 import reika.chromaticraft.block.crystal.BlockCaveCrystal;
+import reika.chromaticraft.block.crystal.BlockCrystalLamp;
+import reika.chromaticraft.block.crystal.BlockSuperCrystal;
 
 /**
  * ChromatiCraft block registry. Port-in-progress rewrite of the 1.7.10 {@code ChromaBlocks} enum
@@ -56,6 +58,14 @@ public final class ChromaBlocks {
 	public static final DeferredBlock<Block> CAVE_CRYSTAL =
 			register("cave_crystal", () -> new BlockCaveCrystal(
 					blockProperties().strength(1F, 2F).lightLevel(s -> 10).noOcclusion().sound(SoundType.GLASS)));
+
+	public static final DeferredBlock<Block> LAMP =
+			register("crystal_lamp", () -> new BlockCrystalLamp(
+					blockProperties().strength(1F, 2F).lightLevel(s -> 15).noOcclusion().sound(SoundType.GLASS)));
+
+	public static final DeferredBlock<Block> SUPER =
+			register("super_crystal", () -> new BlockSuperCrystal(
+					blockProperties().strength(1F, 2F).lightLevel(s -> 15).noOcclusion().sound(SoundType.GLASS)));
 
 	private ChromaBlocks() {}
 }
