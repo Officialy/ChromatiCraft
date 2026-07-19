@@ -9,139 +9,138 @@
  ******************************************************************************/
 package reika.chromaticraft.magic;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Random;
 import java.util.Set;
 
-import net.minecraft.entity.EntityCreature;
-import net.minecraft.entity.EntityLiving;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.EnumCreatureAttribute;
-import net.minecraft.entity.monster.EntityMob;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.potion.Potion;
-import net.minecraft.potion.PotionEffect;
-import net.minecraft.util.DamageSource;
-import net.minecraft.util.StatCollector;
-import net.minecraft.world.World;
+import net.minecraft.core.Holder;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.effect.MobEffectCategory;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.monster.Monster;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
 
 import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.api.crystalelementaccessor.CrystalElementProxy;
+import reika.chromaticraft.api.CrystalElementAccessor.CrystalElementProxy;
 import reika.chromaticraft.api.CrystalPotionAPI;
-import reika.chromaticraft.items.tools.ItemPendant;
-import reika.chromaticraft.items.tools.powered.ItemPurifyCrystal;
-import reika.chromaticraft.modinterface.MystPages;
 import reika.chromaticraft.registry.CrystalElement;
-import reika.dragonapi.ModList;
-import reika.dragonapi.libraries.ReikaPotionHelper;
-import reika.dragonapi.modinteract.itemhandlers.ExtraUtilsHandler;
-import reika.dragonapi.modinteract.itemhandlers.ThaumIDHandler;
 
+/**
+ * Maps crystal colours to potion (26.2 {@link MobEffect}) effects and applies them. Port note: the
+ * 1.7.10 {@code Potion}/{@code PotionEffect} + int-id API became {@code Holder<MobEffect>} /
+ * {@code MobEffectInstance}. DEFERRED integrations (reference unported content, so cannot function
+ * yet — re-add when those port): the ItemPurifyCrystal / ItemPendant player-item modifiers, and the
+ * ExtraUtils/Thaumcraft/Mystcraft "hostile world" checks (only the vanilla Nether remains). The
+ * ReikaPotionHelper bad-effect helpers are inlined via {@link MobEffectCategory#HARMFUL}.
+ */
 public class CrystalPotionController implements CrystalPotionAPI {
 
 	public static final CrystalPotionController instance = new CrystalPotionController();
 
-	private final EnumMap<CrystalElement, Potion> potions = new EnumMap(CrystalElement.class);
-	private final EnumMap<CrystalElement, Potion> potionsNether = new EnumMap(CrystalElement.class);
+	private final EnumMap<CrystalElement, Holder<MobEffect>> potions = new EnumMap<>(CrystalElement.class);
+	private final EnumMap<CrystalElement, Holder<MobEffect>> potionsNether = new EnumMap<>(CrystalElement.class);
 
-	private final HashSet<Integer> ignoredPotions = new HashSet();
+	private final HashSet<Holder<MobEffect>> ignoredPotions = new HashSet<>();
 
 	private final Random rand = new Random();
 
 	private CrystalPotionController() {
-		this.addColorPotion(CrystalElement.BLUE, Potion.nightVision);
-		this.addColorPotion(CrystalElement.CYAN, Potion.waterBreathing);
-		this.addColorPotion(CrystalElement.GRAY, Potion.moveSlowdown);
-		this.addColorPotion(CrystalElement.GREEN, Potion.poison); //change
-		this.addColorPotion(CrystalElement.LIGHTBLUE, Potion.moveSpeed);
-		this.addColorPotion(CrystalElement.LIGHTGRAY, Potion.weakness);
-		this.addColorPotion(CrystalElement.LIME, Potion.jump);
+		this.addColorPotion(CrystalElement.BLUE, MobEffects.NIGHT_VISION);
+		this.addColorPotion(CrystalElement.CYAN, MobEffects.WATER_BREATHING);
+		this.addColorPotion(CrystalElement.GRAY, MobEffects.SLOWNESS);
+		this.addColorPotion(CrystalElement.GREEN, MobEffects.POISON);
+		this.addColorPotion(CrystalElement.LIGHTBLUE, MobEffects.SPEED);
+		this.addColorPotion(CrystalElement.LIGHTGRAY, MobEffects.WEAKNESS);
+		this.addColorPotion(CrystalElement.LIME, MobEffects.JUMP_BOOST);
 		this.addColorPotion(CrystalElement.MAGENTA, ChromatiCraft.betterRegen);
-		this.addColorPotion(CrystalElement.RED, Potion.resistance);
-		this.addColorPotion(CrystalElement.ORANGE, Potion.fireResistance);
-		this.addColorPotion(CrystalElement.PINK, Potion.damageBoost);
-		this.addColorPotion(CrystalElement.YELLOW, Potion.digSpeed);
-		//this.addColorPotion(CrystalElement.WHITE, Potion.invisibility);
+		this.addColorPotion(CrystalElement.RED, MobEffects.RESISTANCE);
+		this.addColorPotion(CrystalElement.ORANGE, MobEffects.FIRE_RESISTANCE);
+		this.addColorPotion(CrystalElement.PINK, MobEffects.STRENGTH);
+		this.addColorPotion(CrystalElement.YELLOW, MobEffects.HASTE);
 		this.addColorPotion(CrystalElement.BROWN, ChromatiCraft.betterSat);
 
-		this.addNetherPotion(CrystalElement.BLACK, Potion.wither);
-		this.addNetherPotion(CrystalElement.CYAN, Potion.hunger);
-		this.addNetherPotion(CrystalElement.GRAY, Potion.blindness);
-		this.addNetherPotion(CrystalElement.GREEN, Potion.poison);
-		this.addNetherPotion(CrystalElement.LIGHTBLUE, Potion.moveSlowdown);
-		this.addNetherPotion(CrystalElement.LIGHTGRAY, Potion.weakness);
-		this.addNetherPotion(CrystalElement.YELLOW, Potion.digSlowdown);
-		this.addNetherPotion(CrystalElement.WHITE, Potion.invisibility);
-		this.addNetherPotion(CrystalElement.BROWN, Potion.confusion);
-		this.addNetherPotion(CrystalElement.BLUE, Potion.nightVision);
-		this.addNetherPotion(CrystalElement.PINK, Potion.damageBoost);
+		this.addNetherPotion(CrystalElement.BLACK, MobEffects.WITHER);
+		this.addNetherPotion(CrystalElement.CYAN, MobEffects.HUNGER);
+		this.addNetherPotion(CrystalElement.GRAY, MobEffects.BLINDNESS);
+		this.addNetherPotion(CrystalElement.GREEN, MobEffects.POISON);
+		this.addNetherPotion(CrystalElement.LIGHTBLUE, MobEffects.SLOWNESS);
+		this.addNetherPotion(CrystalElement.LIGHTGRAY, MobEffects.WEAKNESS);
+		this.addNetherPotion(CrystalElement.YELLOW, MobEffects.MINING_FATIGUE);
+		this.addNetherPotion(CrystalElement.WHITE, MobEffects.INVISIBILITY);
+		this.addNetherPotion(CrystalElement.BROWN, MobEffects.NAUSEA);
+		this.addNetherPotion(CrystalElement.BLUE, MobEffects.NIGHT_VISION);
+		this.addNetherPotion(CrystalElement.PINK, MobEffects.STRENGTH);
 		this.addNetherPotion(CrystalElement.MAGENTA, ChromatiCraft.betterRegen);
 	}
 
-	private void addColorPotion(CrystalElement color, Potion pot) {
+	private static boolean isBadEffect(Holder<MobEffect> pot) {
+		return pot.value().getCategory() == MobEffectCategory.HARMFUL;
+	}
+
+	private void addColorPotion(CrystalElement color, Holder<MobEffect> pot) {
 		potions.put(color, pot);
 	}
 
-	private void addNetherPotion(CrystalElement color, Potion pot) {
+	private void addNetherPotion(CrystalElement color, Holder<MobEffect> pot) {
 		potionsNether.put(color, pot);
 	}
 
-	public boolean shouldBeHostile(EntityLivingBase e, World world) {
-		if (e instanceof EntityPlayer && ItemPurifyCrystal.isActive((EntityPlayer)e))
-			return false;
+	public boolean shouldBeHostile(LivingEntity e, Level world) {
+		// ItemPurifyCrystal player check deferred (item unported).
 		return this.isWorldHostile(world);
 	}
 
-	public boolean isWorldHostile(World world) {
-		if (ModList.EXTRAUTILS.isLoaded() && ExtraUtilsHandler.getInstance().initializedProperly() && world.provider.dimensionId == ExtraUtilsHandler.getInstance().darkID)
-			return true;
-		if (ModList.THAUMCRAFT.isLoaded() && ThaumIDHandler.getInstance().initializedProperly() && world.provider.dimensionId == ThaumIDHandler.getInstance().dimensionID)
-			return true;
-		if (ModList.MYSTCRAFT.isLoaded() && MystPages.Pages.HOSTILE.existsInWorld(world))
-			return true;
-		return world.provider.isHellWorld;
+	@Override
+	public boolean isWorldHostile(Level world) {
+		// ExtraUtils dark / Thaumcraft / Mystcraft hostile-page checks deferred (mods unported).
+		return world.dimension() == Level.NETHER;
 	}
 
-	public boolean isPotionAllowed(PotionEffect eff, EntityLivingBase e) {
+	@Override
+	public boolean isPotionAllowed(MobEffectInstance eff, LivingEntity e) {
 		if (eff == null)
 			return false;
-		Potion pot = Potion.potionTypes[eff.getPotionID()];
-		PotionEffect has = e.getActivePotionEffect(pot);
+		Holder<MobEffect> pot = eff.getEffect();
+		MobEffectInstance has = e.getEffect(pot);
 		if (has != null) {
 			if (has.getAmplifier() > eff.getAmplifier())
 				return false;
 			if (has.getDuration() > eff.getDuration())
 				return false;
 		}
-		if (e instanceof EntityPlayer && ItemPurifyCrystal.isActive((EntityPlayer)e))
-			return !ReikaPotionHelper.isBadEffect(pot);
-		if (!(e instanceof EntityPlayer)) {
-			boolean flag = false;
-			if (e instanceof EntityCreature) {
-				flag = ((EntityCreature)e).getCreatureAttribute() == EnumCreatureAttribute.UNDEAD;
-			}
-			return this.shouldBeHostile(e, e.worldObj) ? ReikaPotionHelper.isBadEffect(pot) == flag : true;
+		// ItemPurifyCrystal "only good effects" override deferred (item unported).
+		if (!(e instanceof Player)) {
+			boolean flag = e.isInvertedHealAndHarm(); // undead
+			return this.shouldBeHostile(e, e.level()) ? isBadEffect(pot) == flag : true;
 		}
-		if (this.shouldBeHostile(e, e.worldObj))
-			return eff.getPotionID() == Potion.nightVision.id || ReikaPotionHelper.isBadEffect(pot);
-		if (e.worldObj.provider.dimensionId == 1)
+		if (this.shouldBeHostile(e, e.level()))
+			return pot == MobEffects.NIGHT_VISION || isBadEffect(pot);
+		if (e.level().dimension() == Level.END)
 			return true;
-		return !ReikaPotionHelper.isBadEffect(pot);
+		return !isBadEffect(pot);
 	}
 
 	public boolean isBadPotion(CrystalElement e) {
-		Potion pot = potions.get(e);
-		return pot != null && ReikaPotionHelper.isBadEffect(pot);
+		Holder<MobEffect> pot = potions.get(e);
+		return pot != null && isBadEffect(pot);
 	}
 
-	public PotionEffect getEffectFromColor(CrystalElement color, int dura, int level, boolean evil) {
-		EnumMap<CrystalElement, Potion> map = evil ? potionsNether : potions;
-		Potion pot = map.get(color);
+	public MobEffectInstance getEffectFromColor(CrystalElement color, int dura, int level, boolean evil) {
+		EnumMap<CrystalElement, Holder<MobEffect>> map = evil ? potionsNether : potions;
+		Holder<MobEffect> pot = map.get(color);
 		if (pot == null)
 			return null;
-		return new PotionEffect(pot.id, dura, level, true);
+		return new MobEffectInstance(pot, dura, level, true, true);
 	}
 
 	public String getPotionName(CrystalElement color) {
@@ -149,44 +148,33 @@ public class CrystalPotionController implements CrystalPotionAPI {
 			return "corrupting";
 		if (color == CrystalElement.PURPLE)
 			return "enhancing";
-		Potion pot = potions.get(color);
+		Holder<MobEffect> pot = potions.get(color);
 		if (pot == null && color == CrystalElement.BROWN)
 			return "lengthening";
 		if (pot == null)
 			return "[None]";
-		return StatCollector.translateToLocal(pot.getName());
+		return pot.value().getDisplayName().getString();
 	}
 
 	public boolean requiresCustomPotion(CrystalElement color) {
-		if (color == CrystalElement.CYAN)
-			return true;
-		if (color == CrystalElement.YELLOW)
-			return true;
-		if (color == CrystalElement.LIME)
-			return true;
-		if (color == CrystalElement.RED)
-			return true;
-		if (color == CrystalElement.BROWN)
-			return true;
-		return false;
+		switch (color) {
+			case CYAN:
+			case YELLOW:
+			case LIME:
+			case RED:
+			case BROWN:
+				return true;
+			default:
+				return false;
+		}
 	}
 
 	public boolean isCorruptedPotion(CrystalElement color) {
-		if (color == CrystalElement.GRAY)
-			return true;
-		if (color == CrystalElement.LIGHTGRAY)
-			return true;
-		if (color == CrystalElement.WHITE)
-			return true;
-		return false;
+		return color == CrystalElement.GRAY || color == CrystalElement.LIGHTGRAY || color == CrystalElement.WHITE;
 	}
 
 	public boolean isPotionModifier(CrystalElement color) {
-		if (color == CrystalElement.BLACK)
-			return true;
-		if (color == CrystalElement.PURPLE)
-			return true;
-		return false;
+		return color == CrystalElement.BLACK || color == CrystalElement.PURPLE;
 	}
 
 	public String getEffectName(CrystalElement color, boolean boost) {
@@ -200,7 +188,7 @@ public class CrystalPotionController implements CrystalPotionAPI {
 			return "Protects from Extreme Heat";
 		if (color == CrystalElement.WHITE)
 			return boost ? "Clears All Negative Effects" : "Clears Most Negative Effects";
-		return StatCollector.translateToLocal(potions.get(color).getName());
+		return potions.get(color).value().getDisplayName().getString();
 	}
 
 	public String getNetherEffectName(CrystalElement color) {
@@ -214,94 +202,84 @@ public class CrystalPotionController implements CrystalPotionAPI {
 			return "Jump Disability";
 		if (color == CrystalElement.RED)
 			return "Direct Damage";
-		return StatCollector.translateToLocal(potionsNether.get(color).getName());
+		return potionsNether.get(color).value().getDisplayName().getString();
 	}
 
-	public Set<Integer> ignoredBadPotionsForLevelZero() {
+	@Override
+	public Set<Holder<MobEffect>> ignoredBadPotionsForLevelZero() {
 		return Collections.unmodifiableSet(ignoredPotions);
 	}
 
-	public void addBadPotionForIgnore(Potion p) {
-		ignoredPotions.add(p.id);
+	@Override
+	public void addBadPotionForIgnore(Holder<MobEffect> p) {
+		ignoredPotions.add(p);
 	}
 
-	public void applyEffectFromColor(int dura, int level, EntityLivingBase e, CrystalElement color, boolean doFX) {
+	public void applyEffectFromColor(int dura, int level, LivingEntity e, CrystalElement color, boolean doFX) {
 		this.applyEffectFromColor(dura, level, e, color, doFX, false, false);
 	}
 
-	public void applyEffectFromColor(int dura, int level, EntityLivingBase e, CrystalElement color, boolean doFX, boolean forceGood, boolean forceBad) {
-		if (forceBad || (!forceGood && this.shouldBeHostile(e, e.worldObj))) {
-			switch(color) {
+	public void applyEffectFromColor(int dura, int level, LivingEntity e, CrystalElement color, boolean doFX, boolean forceGood, boolean forceBad) {
+		if (forceBad || (!forceGood && this.shouldBeHostile(e, e.level()))) {
+			switch (color) {
 				case ORANGE:
-					e.setFire(2);
+					e.igniteForSeconds(2);
 					break;
 				case RED:
-					e.attackEntityFrom(DamageSource.magic, 1);
+					if (e.level() instanceof ServerLevel sl)
+						e.hurtServer(sl, sl.damageSources().magic(), 1);
 					break;
 				case PURPLE:
-					if (!e.worldObj.isRemote) {
-						if (e instanceof EntityPlayer) {
+					if (!e.level().isClientSide()) {
+						if (e instanceof Player ep) {
 							if (rand.nextInt(5) == 0) {
-								EntityPlayer ep = (EntityPlayer)e;
 								if (ep.experienceLevel > 0) {
-									ep.addExperienceLevel(-1);
+									ep.giveExperienceLevels(-1);
 								}
 								else {
-									ep.experienceTotal = 0;
-									ep.experience = 0;
+									ep.experienceLevel = 0;
+									ep.totalExperience = 0;
+									ep.experienceProgress = 0;
 								}
 							}
 						}
-						else if (e instanceof EntityLiving) {
-							((EntityLiving)e).experienceValue++;
-						}
+						// Legacy: hostile mobs gained +1 xpReward — no clean 26.2 API, dropped.
 					}
 					break;
 				case BROWN:
-					if (!e.isPotionActive(Potion.confusion.id))
-						addPotionEffect(e, new PotionEffect(Potion.confusion.id, Math.max(100, (int)(dura*1.8)), level, true));
+					if (!e.hasEffect(MobEffects.NAUSEA))
+						addPotionEffect(e, new MobEffectInstance(MobEffects.NAUSEA, Math.max(100, (int) (dura * 1.8)), level, true, true));
 					break;
 				case LIME:
-					addPotionEffect(e, new PotionEffect(Potion.jump.id, dura, -5, true));
+					addPotionEffect(e, new MobEffectInstance(MobEffects.JUMP_BOOST, dura, -5, true, true));
 					break;
 				default:
-					PotionEffect eff = this.getEffectFromColor(color, dura, level, true);
+					MobEffectInstance eff = this.getEffectFromColor(color, dura, level, true);
 					if (forceBad || this.isPotionAllowed(eff, e))
 						addPotionEffect(e, eff);
 			}
 		}
 		else {
-			switch(color) {
+			switch (color) {
 				case BLACK:
-					if (e instanceof EntityMob) {  //clear AI
-						EntityMob m = (EntityMob)e;
-						m.setAttackTarget(null);
-						m.getNavigator().clearPathEntity();
+					if (e instanceof Monster m) { //clear AI
+						m.setTarget(null);
+						m.getNavigation().stop();
 					}
 					break;
 				case WHITE:
-					//ReikaPotionHelper.clearPotionsExceptPerma(e);
-					ReikaPotionHelper.clearBadPotions(e, level > 0 ? null : this.ignoredBadPotionsForLevelZero());
+					clearBadPotions(e, level > 0 ? Collections.emptySet() : this.ignoredBadPotionsForLevelZero());
 					break;
 				case PURPLE:
-					if (e instanceof EntityPlayer && !e.worldObj.isRemote && (level > 0 || rand.nextInt(2) == 0)) {
-						EntityPlayer ep = (EntityPlayer)e;
+					if (e instanceof Player ep && !e.level().isClientSide() && (level > 0 || rand.nextInt(2) == 0)) {
 						if (doFX)
-							ep.worldObj.playSoundAtEntity(ep, "random.orb", 0.2F, rand.nextFloat()*2);
-						int amt = 1;
-
-						int lvl = ItemPendant.getActivePendantLevel(ep, CrystalElement.PURPLE);
-						if (lvl == 1) {
-							amt *= 3;
-						}
-						else if (lvl == 0) {
-							amt *= 2;
-						}
-						ep.addExperience(amt);
+							ep.level().playSound(null, ep.getX(), ep.getY(), ep.getZ(), SoundEvents.EXPERIENCE_ORB_PICKUP, SoundSource.PLAYERS, 0.2F, rand.nextFloat() * 2);
+						// ItemPendant PURPLE-boost multiplier deferred (item unported).
+						ep.giveExperiencePoints(1);
 					}
 					break;
 				default:
-					PotionEffect eff = this.getEffectFromColor(color, dura, level, false);
+					MobEffectInstance eff = this.getEffectFromColor(color, dura, level, false);
 					if (eff != null) {
 						if (forceGood || this.isPotionAllowed(eff, e)) {
 							addPotionEffect(e, eff);
@@ -311,14 +289,25 @@ public class CrystalPotionController implements CrystalPotionAPI {
 		}
 	}
 
-	private static void addPotionEffect(EntityLivingBase e, PotionEffect eff) {
-		PotionEffect cur = e.getActivePotionEffect(Potion.potionTypes[eff.getPotionID()]);
-		if (e instanceof EntityPlayer || cur == null || cur.getAmplifier() < eff.getAmplifier() || cur.getDuration() < 20 || eff.getDuration() < 80)
-			e.addPotionEffect(eff);
+	private static void clearBadPotions(LivingEntity e, Set<Holder<MobEffect>> ignore) {
+		List<Holder<MobEffect>> toRemove = new ArrayList<>();
+		for (MobEffectInstance mei : e.getActiveEffects()) {
+			Holder<MobEffect> h = mei.getEffect();
+			if (isBadEffect(h) && !ignore.contains(h))
+				toRemove.add(h);
+		}
+		for (Holder<MobEffect> h : toRemove)
+			e.removeEffect(h);
+	}
+
+	private static void addPotionEffect(LivingEntity e, MobEffectInstance eff) {
+		MobEffectInstance cur = e.getEffect(eff.getEffect());
+		if (e instanceof Player || cur == null || cur.getAmplifier() < eff.getAmplifier() || cur.getDuration() < 20 || eff.getDuration() < 80)
+			e.addEffect(eff);
 	}
 
 	@Override
-	public PotionEffect getEffectFromColor(CrystalElementProxy color, int dura, int level, boolean evil) {
+	public MobEffectInstance getEffectFromColor(CrystalElementProxy color, int dura, int level, boolean evil) {
 		return this.getEffectFromColor(CrystalElement.elements[color.ordinal()], dura, level, evil);
 	}
 }

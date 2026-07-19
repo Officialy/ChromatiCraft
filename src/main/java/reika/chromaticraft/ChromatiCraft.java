@@ -3,10 +3,18 @@ package reika.chromaticraft;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.effect.MobEffectCategory;
+
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.neoforge.registries.DeferredHolder;
+import net.neoforged.neoforge.registries.DeferredRegister;
 
+import reika.chromaticraft.magic.potions.PotionBetterSaturation;
+import reika.chromaticraft.magic.potions.PotionCustomRegen;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.ChromaTabs;
@@ -26,6 +34,14 @@ public class ChromatiCraft {
 
 	public static ChromatiCraft instance;
 
+	public static final DeferredRegister<MobEffect> MOB_EFFECTS =
+			DeferredRegister.create(BuiltInRegistries.MOB_EFFECT, MODID);
+
+	public static final DeferredHolder<MobEffect, MobEffect> betterRegen = MOB_EFFECTS.register("regeneration",
+			() -> new PotionCustomRegen(MobEffectCategory.BENEFICIAL, 0xCD5CAB));
+	public static final DeferredHolder<MobEffect, MobEffect> betterSat = MOB_EFFECTS.register("saturation",
+			() -> new PotionBetterSaturation(MobEffectCategory.BENEFICIAL, 0xA55926));
+
 	public ChromatiCraft(IEventBus modEventBus, ModContainer modContainer) {
 		instance = this;
 
@@ -33,5 +49,6 @@ public class ChromatiCraft {
 		ChromaBlocks.ITEMS.register(modEventBus);
 		ChromaItems.ITEMS.register(modEventBus);
 		ChromaTabs.CREATIVE_MODE_TABS.register(modEventBus);
+		MOB_EFFECTS.register(modEventBus);
 	}
 }

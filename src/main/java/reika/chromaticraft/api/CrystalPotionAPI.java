@@ -11,29 +11,30 @@ package reika.chromaticraft.api;
 
 import java.util.Set;
 
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.potion.Potion;
-import net.minecraft.potion.PotionEffect;
-import net.minecraft.world.World;
+import net.minecraft.core.Holder;
+import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.level.Level;
 
-import reika.chromaticraft.api.crystalelementaccessor.CrystalElementProxy;
+import reika.chromaticraft.api.CrystalElementAccessor.CrystalElementProxy;
 
 
 public interface CrystalPotionAPI {
 
 	/** Whether a world is "evil" like the Nether, thus corrupting the effect of the crystals. */
-	public boolean isWorldHostile(World world);
+	public boolean isWorldHostile(Level world);
 
 	/** Whether crystals can even apply this potion effect to this entity. */
-	public boolean isPotionAllowed(PotionEffect eff, EntityLivingBase e);
+	public boolean isPotionAllowed(MobEffectInstance eff, LivingEntity e);
 
 	/** Registers a potion to the ignore list for T1 white pendants. */
-	public void addBadPotionForIgnore(Potion p);
+	public void addBadPotionForIgnore(Holder<MobEffect> p);
 
 	/** Fetches the ignore list for T1 white pendants. */
-	public Set<Integer> ignoredBadPotionsForLevelZero();
+	public Set<Holder<MobEffect>> ignoredBadPotionsForLevelZero();
 
 	/** Constructs a potion effect for the given color, with a specified duration and amplifier, optionally corrupting it. */
-	public PotionEffect getEffectFromColor(CrystalElementProxy color, int dura, int level, boolean evil);
+	public MobEffectInstance getEffectFromColor(CrystalElementProxy color, int dura, int level, boolean evil);
 
 }

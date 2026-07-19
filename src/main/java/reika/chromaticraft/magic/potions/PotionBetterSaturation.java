@@ -9,62 +9,34 @@
  ******************************************************************************/
 package reika.chromaticraft.magic.potions;
 
-import net.minecraft.client.Minecraft;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.potion.Potion;
-import net.minecraft.potion.PotionEffect;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.effect.MobEffectCategory;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
 
-import reika.chromaticraft.base.ChromaPotion;
-import reika.dragonapi.ModList;
-import reika.dragonapi.modinteract.itemhandlers.HungerOverhaulHandler;
+/**
+ * Custom saturation effect (was PotionBetterSaturation extends ChromaPotion/Potion). Icon surface
+ * dropped (26.2 texture-based). The HungerOverhaul max-food integration is deferred (unported mod) —
+ * uses the vanilla threshold of 17.
+ */
+public class PotionBetterSaturation extends MobEffect {
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
-
-public class PotionBetterSaturation extends ChromaPotion {
-
-	public PotionBetterSaturation(int par1) {
-		super(par1, false, 0xA55926, 0);
+	public PotionBetterSaturation(MobEffectCategory category, int color) {
+		super(category, color);
 	}
 
 	@Override
-	public void performEffect(EntityLivingBase e, int level) {
-		if (!e.worldObj.isRemote && e instanceof EntityPlayer) {
-			EntityPlayer ep = (EntityPlayer)e;
-			if (level > 0 || ep.getFoodStats().getFoodLevel() < this.getMaxBaseFoodLevel())
-				ep.getFoodStats().addStats(level + 1, 1.0F);
+	public boolean shouldApplyEffectTickThisTick(int dura, int level) {
+		return level > 0 || dura == 5;
+	}
+
+	@Override
+	public boolean applyEffectTick(ServerLevel level, LivingEntity e, int amplification) {
+		if (e instanceof Player ep) {
+			if (amplification > 0 || ep.getFoodData().getFoodLevel() < 17)
+				ep.getFoodData().eat(amplification + 1, 1.0F);
 		}
+		return true;
 	}
-
-	private int getMaxBaseFoodLevel() {
-		return ModList.HUNGEROVERHAUL.isLoaded() ? HungerOverhaulHandler.getInstance().regenHungerValue : 17;
-	}
-
-	@Override
-	public String getName() {
-		return Potion.field_76443_y.getName();//StatCollector.translateToLocal("chromapotion.sat");
-	}
-
-	@Override
-	public boolean isReady(int time, int amp) {
-		return amp > 0 || time == 5;
-	}
-
-	@Override
-	public int getStatusIconIndex() {
-		return Potion.field_76443_y.getStatusIconIndex();
-	}
-
-	@Override
-	public boolean hasStatusIcon() {
-		return Potion.field_76443_y.hasStatusIcon();
-	}
-
-	@Override
-	@SideOnly(Side.CLIENT)
-	public void renderInventoryEffect(int x, int y, PotionEffect effect, Minecraft mc) {
-		Potion.field_76443_y.renderInventoryEffect(x, y, effect, mc);
-	}
-
 }

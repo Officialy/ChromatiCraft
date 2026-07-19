@@ -42,6 +42,7 @@ sourceSets.main.java {
     include 'reika/chromaticraft/api/interfaces/ProjectileFiringTool.java'
     include 'reika/chromaticraft/api/interfaces/WorldRift.java'
     include 'reika/chromaticraft/api/ProgressionAPI.java'
+    include 'reika/chromaticraft/api/CrystalPotionAPI.java'
 
     // Shared subsystem leaves (progression + crystal-network both need these). CrystalElement, the
     // 16-colour keystone, is deferred: it is saturated with the dead 1.7.10 icon system (IIcon/
@@ -57,6 +58,9 @@ sourceSets.main.java {
 
     // Crystal block base chain (metadata->blockstate COLOR property; sound/glow deferred)
     include 'reika/chromaticraft/base/CrystalTypeBlock.java'
+    include 'reika/chromaticraft/magic/potions/PotionCustomRegen.java'
+    include 'reika/chromaticraft/magic/potions/PotionBetterSaturation.java'
+    include 'reika/chromaticraft/magic/CrystalPotionController.java'
 
     // Registration foundation (DeferredRegister rewrite of the enum registries + minimal @Mod class
     // + creative tab), mirroring ReactorCraft. Grows as blocks/items port. First block: STORAGE.
