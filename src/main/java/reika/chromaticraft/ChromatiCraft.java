@@ -1,5 +1,8 @@
 package reika.chromaticraft;
 
+import java.io.File;
+import java.net.URL;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -18,7 +21,9 @@ import reika.chromaticraft.magic.potions.PotionCustomRegen;
 import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaItems;
+import reika.chromaticraft.registry.ChromaOptions;
 import reika.chromaticraft.registry.ChromaTabs;
+import reika.dragonapi.base.DragonAPIMod;
 
 /**
  * ChromatiCraft main mod class. Port-in-progress: this is the minimal 26.2 @Mod entry point that
@@ -27,13 +32,16 @@ import reika.chromaticraft.registry.ChromaTabs;
  * preserved in origin/master and re-expressed subsystem-by-subsystem as those areas port.
  */
 @Mod(ChromatiCraft.MODID)
-public class ChromatiCraft {
+public class ChromatiCraft extends DragonAPIMod {
 
 	public static final String MODID = "chromaticraft";
 	public static final String packetChannel = "ChromaData";
 	public static final Logger LOGGER = LogManager.getLogger("ChromatiCraft");
 
 	public static ChromatiCraft instance;
+
+	/** DragonAPI ControlledConfig; read by {@link ChromaOptions}. ID registry is null (see ChromaConfig). */
+	public static ChromaConfig config;
 
 	public static final DeferredRegister<MobEffect> MOB_EFFECTS =
 			DeferredRegister.create(BuiltInRegistries.MOB_EFFECT, MODID);
@@ -45,6 +53,10 @@ public class ChromatiCraft {
 
 	public ChromatiCraft(IEventBus modEventBus, ModContainer modContainer) {
 		instance = this;
+
+		config = new ChromaConfig(instance, ChromaOptions.optionList, null);
+		config.loadSubfolderedConfigFile();
+		config.initProps();
 
 		ChromaBlocks.BLOCKS.register(modEventBus);
 		ChromaBlocks.ITEMS.register(modEventBus);
@@ -60,5 +72,40 @@ public class ChromatiCraft {
 		// Force-load the progression singleton so it wires ProgressionAPI.instance.progressManager
 		// (consumed by CrystalElement.playerHas and others) before any gameplay query.
 		reika.chromaticraft.magic.progression.ProgressionManager.init();
+	}
+
+	@Override
+	public URL getDocumentationSite() {
+		return null;
+	}
+
+	@Override
+	public URL getBugSite() {
+		return null;
+	}
+
+	@Override
+	public File getConfigFolder() {
+		return config.getConfigFolder();
+	}
+
+	@Override
+	public String getUpdateCheckURL() {
+		return null;
+	}
+
+	@Override
+	public String getModId() {
+		return MODID;
+	}
+
+	@Override
+	public String getDisplayName() {
+		return "ChromatiCraft";
+	}
+
+	@Override
+	public String getModAuthorName() {
+		return "Reika";
 	}
 }

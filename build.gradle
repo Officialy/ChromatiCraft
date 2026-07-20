@@ -87,6 +87,8 @@ sourceSets.main.java {
     // Registration foundation (DeferredRegister rewrite of the enum registries + minimal @Mod class
     // + creative tab), mirroring ReactorCraft. Grows as blocks/items port. First block: STORAGE.
     include 'reika/chromaticraft/ChromatiCraft.java'
+    include 'reika/chromaticraft/ChromaConfig.java'
+    include 'reika/chromaticraft/registry/ChromaOptions.java'
     include 'reika/chromaticraft/registry/ChromaBlocks.java'
     include 'reika/chromaticraft/registry/ChromaItems.java'
     include 'reika/chromaticraft/registry/ChromaTabs.java'
