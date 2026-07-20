@@ -15,6 +15,7 @@ import java.util.Collections;
 import java.util.HashSet;
 
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 
 import reika.chromaticraft.ChromatiCraft;
@@ -324,11 +325,13 @@ public class ProgressionManager implements ProgressRegistry {
 			return;
 		CompoundTag tag = this.getStageTag(ep);
 		boolean has = NBTCompat.getBoolean(tag, s.name(), false);
+		boolean changed = false;
 		if (set) {
 			if (!has) {
 				tag.putBoolean(s.name(), true);
 				for (ProgressLink l : progressMap.getRecursiveParents(new ProgressLink(s)))
 					tag.putBoolean(l.parent.name(), true);
+				changed = true;
 			}
 		}
 		else {
@@ -336,9 +339,32 @@ public class ProgressionManager implements ProgressRegistry {
 				tag.remove(s.name());
 				for (ProgressLink l : progressMap.getRecursiveChildren(new ProgressLink(s)))
 					tag.remove(l.parent.name());
+				changed = true;
 			}
 		}
-		//Deferred: client packet sync, co-op sharing, handbook notify, ProgressionEvent, backup cache.
+		if (changed)
+			this.syncToClient(ep);
+		//Deferred: co-op sharing, handbook toast notify, ProgressionEvent, backup cache.
+	}
+
+	/**
+	 * Pushes the player's data (which carries the progression NBT in the persistent player tag) to
+	 * their client, so client-side {@link #isPlayerAtStage}/{@link #hasPlayerDiscoveredColor} reads
+	 * (e.g. {@code CrystalElement.playerHas}) see the change. The whole-player sync
+	 * ({@link ReikaPlayerAPI#syncCustomData}) is the same mechanism the 1.7.10 original used; the
+	 * targeted per-stage GIVEPROGRESS packet (handbook toast only) stays deferred.
+	 */
+	private void syncToClient(Player ep) {
+		if (ep instanceof ServerPlayer sp) {
+			try {
+				ReikaPlayerAPI.syncCustomData(sp);
+			}
+			catch (Exception e) {
+				// Best-effort: a client that can't currently receive the sync (mid-disconnect, or a
+				// game-test mock connection) must not abort the server-authoritative progression write.
+				ChromatiCraft.LOGGER.debug("Could not sync progression to client {}: {}", sp.getName().getString(), e.toString());
+			}
+		}
 	}
 
 	public void resetPlayerProgression(Player ep, boolean notify) {
@@ -347,6 +373,7 @@ public class ProgressionManager implements ProgressRegistry {
 		ReikaPlayerAPI.getDeathPersistentNBT(ep).put(MAIN_NBT_TAG, new CompoundTag());
 		for (CrystalElement e : CrystalElement.elements)
 			this.setPlayerDiscoveredColor(ep, e, false, notify);
+		this.syncToClient(ep); //the stage-tag clear above is a direct write, so sync it explicitly
 	}
 
 	public void maxPlayerProgression(Player ep, boolean notify) {
@@ -367,7 +394,8 @@ public class ProgressionManager implements ProgressRegistry {
 		if (had != disc) {
 			if (disc)
 				this.checkPlayerColors(ep);
-			//Deferred: client sync, handbook notify, ProgressionEvent, backup cache.
+			this.syncToClient(ep);
+			//Deferred: handbook toast notify, ProgressionEvent, backup cache.
 			return true;
 		}
 		return false;
