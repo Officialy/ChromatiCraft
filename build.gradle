@@ -96,6 +96,13 @@ sourceSets.main.java {
     include 'reika/chromaticraft/magic/interfaces/EnergyBeamReceiver.java'
     include 'reika/chromaticraft/magic/interfaces/LumenTile.java'
 
+    // Progression system CORE (user-chosen foundation): the ProgressStage DAG + per-player achieved-
+    // stage/discovered-colour storage + the ProgressRegistry facade impl. Verifiable server-side (grant
+    // a stage → query it); the color path is live via CrystalElement.playerHas. Handbook/UI, packet
+    // sync, coop-linking, research-tier gating, and casting-unlock hooks are deferred.
+    include 'reika/chromaticraft/magic/progression/ProgressStage.java'
+    include 'reika/chromaticraft/magic/progression/ProgressionManager.java'
+
     // Datagen (client: lang + models; server: loot) — mirrors ReactorCraft data/.
     include 'reika/chromaticraft/data/ChromaDataProviders.java'
     include 'reika/chromaticraft/data/ChromaLang.java'

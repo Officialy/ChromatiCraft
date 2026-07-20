@@ -52,5 +52,9 @@ public class ChromatiCraft {
 		ChromaBlockEntities.BLOCK_ENTITIES.register(modEventBus);
 		ChromaTabs.CREATIVE_MODE_TABS.register(modEventBus);
 		MOB_EFFECTS.register(modEventBus);
+
+		// Force-load the progression singleton so it wires ProgressionAPI.instance.progressManager
+		// (consumed by CrystalElement.playerHas and others) before any gameplay query.
+		reika.chromaticraft.magic.progression.ProgressionManager.init();
 	}
 }
