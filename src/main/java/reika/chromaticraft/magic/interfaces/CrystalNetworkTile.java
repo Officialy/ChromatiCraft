@@ -11,7 +11,7 @@ package reika.chromaticraft.magic.interfaces;
 
 import java.util.UUID;
 
-import net.minecraft.world.World;
+import net.minecraft.world.level.Level;
 
 import reika.chromaticraft.registry.CrystalElement;
 
@@ -25,7 +25,7 @@ public interface CrystalNetworkTile {
 
 	public double getDistanceSqTo(double x, double y, double z);
 
-	public World getWorld();
+	public Level getWorld();
 
 	public int getX();
 

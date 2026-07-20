@@ -85,6 +85,17 @@ sourceSets.main.java {
     include 'reika/chromaticraft/block/BlockPylonStructure.java'
     include 'reika/chromaticraft/item/BlockItemPylonStructure.java'
 
+    // Crystal-network CORE — slice 1 (leaf layer only: the energy data type + the standalone
+    // interfaces). This is invisible infrastructure — it does nothing observable until a source→
+    // networker→receiver loop closes (deferred: CrystalFlow/CrystalNetworker/CrystalNetworkLogger +
+    // the transmitter/receiver/source interfaces, which couple to the 1006-line pathfinder, and the
+    // TE base chain). Committed as complete leaf components, not runtime-verifiable yet.
+    include 'reika/chromaticraft/magic/ElementTag.java'
+    include 'reika/chromaticraft/magic/ElementTagCompound.java'
+    include 'reika/chromaticraft/magic/interfaces/CrystalNetworkTile.java'
+    include 'reika/chromaticraft/magic/interfaces/EnergyBeamReceiver.java'
+    include 'reika/chromaticraft/magic/interfaces/LumenTile.java'
+
     // Datagen (client: lang + models; server: loot) — mirrors ReactorCraft data/.
     include 'reika/chromaticraft/data/ChromaDataProviders.java'
     include 'reika/chromaticraft/data/ChromaLang.java'

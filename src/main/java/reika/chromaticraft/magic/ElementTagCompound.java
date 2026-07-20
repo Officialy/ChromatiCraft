@@ -15,7 +15,8 @@ import java.util.EnumMap;
 import java.util.Iterator;
 import java.util.Set;
 
-import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 
 import reika.chromaticraft.registry.CrystalElement;
 import reika.dragonapi.instantiable.data.Proportionality;
@@ -253,38 +254,34 @@ public final class ElementTagCompound {
 		return f;
 	}
 
-	public void readFromNBT(String name, NBTTagCompound NBT) {
-		if (!NBT.hasKey(name))
-			return;
-		NBTTagCompound tag = NBT.getCompoundTag(name);
-		for (int i = 0; i < CrystalElement.elements.length; i++) {
-			CrystalElement e = CrystalElement.elements[i];
-			int amt = tag.getInteger(e.name());
-			data.put(e, amt);
-		}
-		this.clearEmptyKeys();
+	public void readFromNBT(String name, ValueInput parent) {
+		parent.child(name).ifPresent(tag -> {
+			for (int i = 0; i < CrystalElement.elements.length; i++) {
+				CrystalElement e = CrystalElement.elements[i];
+				data.put(e, tag.getIntOr(e.name(), 0));
+			}
+			this.clearEmptyKeys();
+		});
 	}
 
-	public static ElementTagCompound createFromNBT(NBTTagCompound tag) {
+	public static ElementTagCompound createFromNBT(ValueInput tag) {
 		ElementTagCompound c = new ElementTagCompound();
 		for (int i = 0; i < CrystalElement.elements.length; i++) {
 			CrystalElement e = CrystalElement.elements[i];
-			int amt = tag.getInteger(e.name());
-			c.data.put(e, amt);
+			c.data.put(e, tag.getIntOr(e.name(), 0));
 		}
 		c.clearEmptyKeys();
 		return c;
 	}
 
-	public void writeToNBT(String name, NBTTagCompound NBT) {
-		NBTTagCompound tag = new NBTTagCompound();
+	public void writeToNBT(String name, ValueOutput parent) {
+		ValueOutput tag = parent.child(name);
 		for (int i = 0; i < CrystalElement.elements.length; i++) {
 			CrystalElement e = CrystalElement.elements[i];
 			int amt = this.getValue(e);
 			if (amt > 0)
-				tag.setInteger(e.name(), amt);
+				tag.putInt(e.name(), amt);
 		}
-		NBT.setTag(name, tag);
 	}
 
 	public static ElementTagCompound getUniformTag(int level) {
