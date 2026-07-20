@@ -5,6 +5,17 @@ ext {
     mod_description = "ChromatiCraft is a large magic mod based on the manipulation of colour, light and crystal energy, powered by DragonAPI."
 }
 
+// Headless in-world game tests: `gradlew :ChromatiCraft:runGameTest` launches a GameTestServer that
+// runs every test in the chromaticraft namespace (progression core) and exits non-zero on failure.
+neoForge {
+    runs {
+        gameTest {
+            type = "gameTestServer"
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+        }
+    }
+}
+
 dependencies {
     implementation project(":DragonAPI")
     implementation project(":RotaryCraft")
@@ -102,6 +113,10 @@ sourceSets.main.java {
     // sync, coop-linking, research-tier gating, and casting-unlock hooks are deferred.
     include 'reika/chromaticraft/magic/progression/ProgressStage.java'
     include 'reika/chromaticraft/magic/progression/ProgressionManager.java'
+
+    // In-world game tests for the progression core + the arena structure they run on.
+    include 'reika/chromaticraft/ChromaGameTests.java'
+    include 'reika/chromaticraft/data/ChromaTestStructureProvider.java'
 
     // Datagen (client: lang + models; server: loot) — mirrors ReactorCraft data/.
     include 'reika/chromaticraft/data/ChromaDataProviders.java'

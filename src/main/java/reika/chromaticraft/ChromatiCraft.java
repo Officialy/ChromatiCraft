@@ -53,6 +53,10 @@ public class ChromatiCraft {
 		ChromaTabs.CREATIVE_MODE_TABS.register(modEventBus);
 		MOB_EFFECTS.register(modEventBus);
 
+		// In-world game tests (progression core). Runnable via `gradlew :ChromatiCraft:runGameTest`.
+		modEventBus.addListener(ChromaGameTests::onRegisterGameTests);
+		ChromaGameTests.TEST_INSTANCE_TYPES.register(modEventBus);
+
 		// Force-load the progression singleton so it wires ProgressionAPI.instance.progressManager
 		// (consumed by CrystalElement.playerHas and others) before any gameplay query.
 		reika.chromaticraft.magic.progression.ProgressionManager.init();

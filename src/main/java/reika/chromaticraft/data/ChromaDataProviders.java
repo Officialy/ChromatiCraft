@@ -24,5 +24,6 @@ public final class ChromaDataProviders {
 	@SubscribeEvent
 	public static void onGatherServer(GatherDataEvent.Server event) {
 		event.createProvider(ChromaLootProvider::new);
+		event.createProvider(ChromaTestStructureProvider::new);
 	}
 }
