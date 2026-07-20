@@ -81,6 +81,10 @@ sourceSets.main.java {
     include 'reika/chromaticraft/registry/ChromaTabs.java'
     include 'reika/chromaticraft/block/BlockMultiStorage.java'
 
+    // Crystalline stone (step-1 target): one block + TYPE property + 16 variant BlockItems.
+    include 'reika/chromaticraft/block/BlockPylonStructure.java'
+    include 'reika/chromaticraft/item/BlockItemPylonStructure.java'
+
     // Datagen (client: lang + models; server: loot) — mirrors ReactorCraft data/.
     include 'reika/chromaticraft/data/ChromaDataProviders.java'
     include 'reika/chromaticraft/data/ChromaLang.java'

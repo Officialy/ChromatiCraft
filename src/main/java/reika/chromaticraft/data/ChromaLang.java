@@ -24,5 +24,24 @@ public class ChromaLang extends LanguageProvider {
 		add("block.chromaticraft.crystal_lamp", "Crystal Lamp");
 		add("block.chromaticraft.super_crystal", "Super Crystal");
 		add("block.chromaticraft.display_point", "Display Point");
+
+		// Crystalline stone — the 16 StoneTypes variants (names verbatim from the 1.7.10 en_US.lang,
+		// keyed by BlockItemPylonStructure's per-variant description id).
+		add("block.chromaticraft.pylon_structure_smooth", "Crystalline Stone");
+		add("block.chromaticraft.pylon_structure_beam", "Crystalline Stone Beam");
+		add("block.chromaticraft.pylon_structure_column", "Crystalline Stone Column");
+		add("block.chromaticraft.pylon_structure_glowcol", "Crystalline Energy Stabilizer");
+		add("block.chromaticraft.pylon_structure_glowbeam", "Energized Crystalline Stone Beam");
+		add("block.chromaticraft.pylon_structure_focus", "Crystal Pylon Focus");
+		add("block.chromaticraft.pylon_structure_corner", "Crystalline Stone Corner");
+		add("block.chromaticraft.pylon_structure_engraved", "Engraved Crystalline Stone");
+		add("block.chromaticraft.pylon_structure_embossed", "Embossed Crystalline Stone");
+		add("block.chromaticraft.pylon_structure_focusframe", "Crystal Pylon Focus Frame");
+		add("block.chromaticraft.pylon_structure_groove1", "Crystalline Stone Groove 2");
+		add("block.chromaticraft.pylon_structure_groove2", "Crystalline Stone Groove");
+		add("block.chromaticraft.pylon_structure_bricks", "Crystalline Stone Bricks");
+		add("block.chromaticraft.pylon_structure_multichromic", "Multichromic Rune");
+		add("block.chromaticraft.pylon_structure_stabilizer", "Aura Stabilizer");
+		add("block.chromaticraft.pylon_structure_resoring", "Resonance Ring");
 	}
 }

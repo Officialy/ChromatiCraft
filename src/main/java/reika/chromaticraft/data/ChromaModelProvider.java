@@ -26,6 +26,7 @@ import net.minecraft.world.level.block.Block;
 
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.base.CrystalTypeBlock;
+import reika.chromaticraft.block.BlockPylonStructure;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.CrystalElement;
 
@@ -71,6 +72,34 @@ public class ChromaModelProvider extends ModelProvider {
 		crystalColourBlock(ChromaBlocks.CAVE_CRYSTAL.get(), "cave_crystal", blockStateOut, itemModelOut, modelOut);
 		crystalColourBlock(ChromaBlocks.LAMP.get(), "crystal_lamp", blockStateOut, itemModelOut, modelOut);
 		crystalColourBlock(ChromaBlocks.SUPER.get(), "super_crystal", blockStateOut, itemModelOut, modelOut);
+
+		pylonStructureBlock(blockStateOut, itemModelOut, modelOut);
+	}
+
+	/**
+	 * Crystalline stone: the {@link BlockPylonStructure#TYPE} property (0..15) → a per-variant cube
+	 * using the real {@code block/pylon/block_<ordinal>} texture, plus a matching item model for each of
+	 * the 16 variant BlockItems. (The connected-texture / directional / bright-pass render is deferred —
+	 * a plain cube of the base texture is the honest simple form, not a fabrication.)
+	 */
+	private static void pylonStructureBlock(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		Block block = ChromaBlocks.PYLONSTRUCT.get();
+		int n = BlockPylonStructure.StoneTypes.list.length;
+		Identifier[] models = new Identifier[n];
+		for (int i = 0; i < n; i++) {
+			models[i] = ModelTemplates.CUBE_ALL.create(
+					Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/pylon_structure_" + i),
+					TextureMapping.cube(new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/pylon/block_" + i))),
+					modelOut);
+		}
+		PropertyDispatch<MultiVariant> dispatch = PropertyDispatch
+				.initial(BlockPylonStructure.TYPE)
+				.generate(i -> new MultiVariant(WeightedList.of(new Variant(models[i]))));
+		blockStateOut.accept(MultiVariantGenerator.dispatch(block).with(dispatch));
+		for (int i = 0; i < n; i++) {
+			itemModelOut.accept(ChromaBlocks.PYLONSTRUCT_ITEMS.get(i).get(), ItemModelUtils.plainModel(models[i]));
+		}
 	}
 
 	private static void crystalColourBlock(Block block, String name,

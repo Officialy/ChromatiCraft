@@ -40,10 +40,12 @@ public final class ChromaTabs {
 		if (event.getTab() != CHROMATICRAFT.get())
 			return;
 		HashSet<Item> seen = new HashSet<>();
-		for (var holder : ChromaBlocks.BLOCKS.getEntries()) {
-			Item asItem = holder.get().asItem();
-			if (asItem != Items.AIR && seen.add(asItem))
-				event.accept(asItem);
+		// Iterate the BlockItem registry (not block.asItem()) so multi-variant blocks like crystalline
+		// stone contribute all 16 of their BlockItems, not just the variant-0 item.
+		for (var holder : ChromaBlocks.ITEMS.getEntries()) {
+			Item item = holder.get();
+			if (item != Items.AIR && seen.add(item))
+				event.accept(item);
 		}
 		for (var holder : ChromaItems.ITEMS.getEntries()) {
 			Item item = holder.get();
