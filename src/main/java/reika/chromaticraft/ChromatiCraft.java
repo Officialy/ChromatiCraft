@@ -64,6 +64,7 @@ public class ChromatiCraft extends DragonAPIMod {
 		ChromaBlockEntities.BLOCK_ENTITIES.register(modEventBus);
 		ChromaTabs.CREATIVE_MODE_TABS.register(modEventBus);
 		MOB_EFFECTS.register(modEventBus);
+		reika.chromaticraft.registry.ChromaSounds.SOUND_EVENTS.register(modEventBus);
 
 		// In-world game tests (progression core). Runnable via `gradlew :ChromatiCraft:runGameTest`.
 		modEventBus.addListener(ChromaGameTests::onRegisterGameTests);

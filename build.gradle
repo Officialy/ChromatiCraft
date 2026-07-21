@@ -89,6 +89,8 @@ sourceSets.main.java {
     include 'reika/chromaticraft/ChromatiCraft.java'
     include 'reika/chromaticraft/ChromaConfig.java'
     include 'reika/chromaticraft/registry/ChromaOptions.java'
+    include 'reika/chromaticraft/registry/ChromaSounds.java'
+    include 'reika/chromaticraft/auxiliary/interfaces/ChromaSound.java'
     include 'reika/chromaticraft/registry/ChromaBlocks.java'
     include 'reika/chromaticraft/registry/ChromaItems.java'
     include 'reika/chromaticraft/registry/ChromaTabs.java'
