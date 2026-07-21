@@ -9,9 +9,16 @@
  ******************************************************************************/
 package reika.chromaticraft.registry;
 
-import reika.chromaticraft.auxiliary.command.StructureMapCommand;
 import reika.dragonapi.auxiliary.PacketTypes;
 
+/**
+ * ChromatiCraft's packet classification enum (ordinal + payload shape), used by the DragonAPI packet
+ * helpers when sending. The receiving packet handler is separate infrastructure and stays deferred
+ * until a ported subsystem needs to react to a packet.
+ *
+ * <p>Port note: {@code STRUCTMAPDAT} inlines {@code StructureMapCommand.PACKET_COMPILE} (= 2048, its
+ * fixed value) rather than depend on the unported command.
+ */
 public enum ChromaPackets {
 
 	ENCHANTER(3),
@@ -26,9 +33,7 @@ public enum ChromaPackets {
 	PYLONATTACKRECEIVE(1),
 	ABILITYCHOOSE(1),
 	BUFFERSET(2),
-	//BUFFERINC(1),
 	TELEPUMP(1),
-	//TRANSMIT(3),
 	ASPECT(),
 	LAMPCHANNEL(1),
 	LAMPCONTROL(2),
@@ -53,7 +58,6 @@ public enum ChromaPackets {
 	FARMERHARVEST(3),
 	PYLONCACHE(-1),
 	PYLONLINKCACHE(0, PacketTypes.NBT),
-	//PYLONCACHECLEAR(1),
 	TRANSITIONWAND(1),
 	TELEPORT(),
 	MAPTELEPORT(4),
@@ -108,7 +112,6 @@ public enum ChromaPackets {
 	MUSICPAUSE(),
 	MUSICSTOP(),
 	MUSICBASS(),
-	//MUSICDISC(),
 	PYLONTURBOSTART(),
 	PYLONTURBOEVENT(2),
 	PYLONTURBOCOMPLETE(),
@@ -116,16 +119,12 @@ public enum ChromaPackets {
 	MUSICPLAY(1),
 	TURRETATTACK(1),
 	MONUMENTSTART(),
-	//MONUMENTSYNC(2),
-	//MONUMENTEVENT(4),
 	MONUMENTCOMPLETE(3),
 	RESETMONUMENT(3),
 	MONUMENTEND(),
 	DASH(1),
 	FENCETRIGGER(2),
 	FENCEBREAK(),
-	//MAZEDISTREQ(),
-	//MAZEDISTINFO(1);
 	MINERJAM(),
 	REPEATERCONN(),
 	CHARGERTOGGLE(1),
@@ -147,7 +146,6 @@ public enum ChromaPackets {
 	LIGHTEREND(),
 	POWERCRYSDESTROY(),
 	PARTICLESPAWNER(),
-	//PYLONJAR(),
 	PYLONCRYSTALBREAK(),
 	WIRELESS(5),
 	METEORIMPACT(1),
@@ -184,8 +182,6 @@ public enum ChromaPackets {
 	LOREPUZZLECOMPLETE(),
 	INSCRIBE(1),
 	TOWERLOC(),
-	//DIGARTEFACT(3),
-	//ARTEFACTCONFIRM(3),
 	ARTEFACTCLICK(),
 	FERTILITYSEED(),
 	NUKERLOC(4),
@@ -222,12 +218,11 @@ public enum ChromaPackets {
 	ENDERBUCKETREMOVE(1),
 	COLLECTORROW(1),
 	STRUCTMAPSTART(6),
-	STRUCTMAPDAT(1+3*StructureMapCommand.PACKET_COMPILE),
+	STRUCTMAPDAT(1 + 3 * 2048), //StructureMapCommand.PACKET_COMPILE (=2048)
 	STRUCTMAPEND(1),
 	ALLOYITEMS(0, PacketTypes.STRING),
 	ARTEALLOYBURST(1),
 	ITEMRIFTMOVE(4),
-	//CLEARSTAND(4),
 	RUNEPARTICLE(6, PacketTypes.POS),
 	ABILITYFOCUS(1, PacketTypes.STRINGINT),
 	DOGGOSONAR(3),
@@ -256,9 +251,9 @@ public enum ChromaPackets {
 		type = t;
 	}
 
-	public static final ChromaPackets getPacket(int id) {
+	public static ChromaPackets getPacket(int id) {
 		ChromaPackets[] list = values();
-		id = Math.max(0, Math.min(id, list.length-1));
+		id = Math.max(0, Math.min(id, list.length - 1));
 		return list[id];
 	}
 
