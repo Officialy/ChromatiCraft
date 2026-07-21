@@ -26,6 +26,7 @@ import net.minecraft.world.level.block.Block;
 
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.base.CrystalTypeBlock;
+import reika.chromaticraft.block.BlockCrystalRune;
 import reika.chromaticraft.block.BlockPylonStructure;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.CrystalElement;
@@ -74,6 +75,32 @@ public class ChromaModelProvider extends ModelProvider {
 		crystalColourBlock(ChromaBlocks.SUPER.get(), "super_crystal", blockStateOut, itemModelOut, modelOut);
 
 		pylonStructureBlock(blockStateOut, itemModelOut, modelOut);
+		runeBlock(blockStateOut, itemModelOut, modelOut);
+	}
+
+	/**
+	 * Crystal rune: the {@link BlockCrystalRune#COLOR} property (0..15 = CrystalElement) → a per-colour
+	 * cube using the real {@code block/runes/backpng/tile<i>_0} texture, plus a matching item model for
+	 * each of the 16 colour BlockItems.
+	 */
+	private static void runeBlock(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		Block block = ChromaBlocks.RUNE.get();
+		int n = CrystalElement.elements.length;
+		Identifier[] models = new Identifier[n];
+		for (int i = 0; i < n; i++) {
+			models[i] = ModelTemplates.CUBE_ALL.create(
+					Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/crystal_rune_" + i),
+					TextureMapping.cube(new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/runes/backpng/tile" + i + "_0"))),
+					modelOut);
+		}
+		PropertyDispatch<MultiVariant> dispatch = PropertyDispatch
+				.initial(BlockCrystalRune.COLOR)
+				.generate(i -> new MultiVariant(WeightedList.of(new Variant(models[i]))));
+		blockStateOut.accept(MultiVariantGenerator.dispatch(block).with(dispatch));
+		for (int i = 0; i < n; i++) {
+			itemModelOut.accept(ChromaBlocks.RUNE_ITEMS.get(i).get(), ItemModelUtils.plainModel(models[i]));
+		}
 	}
 
 	/**

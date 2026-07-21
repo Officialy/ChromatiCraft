@@ -98,6 +98,10 @@ sourceSets.main.java {
     include 'reika/chromaticraft/block/BlockPylonStructure.java'
     include 'reika/chromaticraft/item/BlockItemPylonStructure.java'
 
+    // Crystal rune (16-colour block, structure component for casting/network multiblocks).
+    include 'reika/chromaticraft/block/BlockCrystalRune.java'
+    include 'reika/chromaticraft/item/BlockItemCrystalRune.java'
+
     // Crystal-network CORE — slice 1 (leaf layer only: the energy data type + the standalone
     // interfaces). This is invisible infrastructure — it does nothing observable until a source→
     // networker→receiver loop closes (deferred: CrystalFlow/CrystalNetworker/CrystalNetworkLogger +

@@ -16,12 +16,14 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.block.BlockChromaticTile;
+import reika.chromaticraft.block.BlockCrystalRune;
 import reika.chromaticraft.block.BlockMultiStorage;
 import reika.chromaticraft.block.BlockPylonStructure;
 import reika.chromaticraft.block.BlockPylonStructure.StoneTypes;
 import reika.chromaticraft.block.crystal.BlockCaveCrystal;
 import reika.chromaticraft.block.crystal.BlockCrystalLamp;
 import reika.chromaticraft.block.crystal.BlockSuperCrystal;
+import reika.chromaticraft.item.BlockItemCrystalRune;
 import reika.chromaticraft.item.BlockItemPylonStructure;
 
 /**
@@ -119,6 +121,23 @@ public final class ChromaBlocks {
 			final int ord = t.ordinal();
 			items[ord] = registerItemOnly("pylon_structure_" + t.name().toLowerCase(java.util.Locale.ENGLISH),
 					() -> new BlockItemPylonStructure(PYLONSTRUCT.get(), ord, itemProperties()));
+		}
+		return List.of(items);
+	}
+
+	// Crystal rune: one block + the COLOR property + 16 distinct BlockItems (one per CrystalElement).
+	public static final DeferredBlock<Block> RUNE =
+			registerBlockOnly("crystal_rune", () -> new BlockCrystalRune(blockProperties().strength(3F, 12F)));
+
+	/** One BlockItem per {@link reika.chromaticraft.registry.CrystalElement} colour, indexed by ordinal. */
+	public static final List<DeferredItem<Item>> RUNE_ITEMS = registerRuneItems();
+
+	private static List<DeferredItem<Item>> registerRuneItems() {
+		DeferredItem<Item>[] items = new DeferredItem[reika.chromaticraft.registry.CrystalElement.elements.length];
+		for (reika.chromaticraft.registry.CrystalElement e : reika.chromaticraft.registry.CrystalElement.elements) {
+			final int ord = e.ordinal();
+			items[ord] = registerItemOnly("rune_" + e.name().toLowerCase(java.util.Locale.ENGLISH),
+					() -> new BlockItemCrystalRune(RUNE.get(), ord, itemProperties()));
 		}
 		return List.of(items);
 	}

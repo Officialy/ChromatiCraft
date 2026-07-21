@@ -43,5 +43,12 @@ public class ChromaLang extends LanguageProvider {
 		add("block.chromaticraft.pylon_structure_multichromic", "Multichromic Rune");
 		add("block.chromaticraft.pylon_structure_stabilizer", "Aura Stabilizer");
 		add("block.chromaticraft.pylon_structure_resoring", "Resonance Ring");
+
+		// Crystal runes — one per CrystalElement colour ("<Colour> Crystal Rune"), keyed by
+		// BlockItemCrystalRune's per-colour description id.
+		for (reika.chromaticraft.registry.CrystalElement e : reika.chromaticraft.registry.CrystalElement.elements) {
+			add("block.chromaticraft.rune_" + e.name().toLowerCase(java.util.Locale.ENGLISH),
+					e.displayName + " Crystal Rune");
+		}
 	}
 }

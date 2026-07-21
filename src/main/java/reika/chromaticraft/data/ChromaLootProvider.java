@@ -21,9 +21,11 @@ import net.minecraft.world.level.storage.loot.predicates.LootItemCondition;
 import net.minecraft.world.level.storage.loot.providers.number.ConstantValue;
 import net.minecraft.advancements.predicates.StatePropertiesPredicate;
 
+import reika.chromaticraft.block.BlockCrystalRune;
 import reika.chromaticraft.block.BlockPylonStructure;
 import reika.chromaticraft.block.BlockPylonStructure.StoneTypes;
 import reika.chromaticraft.registry.ChromaBlocks;
+import reika.chromaticraft.registry.CrystalElement;
 
 /**
  * ChromatiCraft loot tables (port-in-progress). Emits a drops-self table for every registered block so
@@ -56,6 +58,9 @@ public final class ChromaLootProvider extends LootTableProvider {
 				if (block instanceof BlockPylonStructure) {
 					this.add(block, this.pylonStructureTable(block));
 				}
+				else if (block instanceof BlockCrystalRune) {
+					this.add(block, this.runeTable(block));
+				}
 				else {
 					this.dropSelf(block);
 				}
@@ -81,6 +86,20 @@ public final class ChromaLootProvider extends LootTableProvider {
 					pool.add(selfEntry);
 				}
 				table.withPool(pool);
+			}
+			return table;
+		}
+
+		/** Per-colour loot: each COLOR value drops its own rune item. */
+		private LootTable.Builder runeTable(Block block) {
+			LootTable.Builder table = LootTable.lootTable();
+			for (CrystalElement e : CrystalElement.elements) {
+				LootItemCondition.Builder isColor = LootItemBlockStatePropertyCondition
+						.hasBlockStateProperties(block)
+						.setProperties(StatePropertiesPredicate.Builder.properties()
+								.hasProperty(BlockCrystalRune.COLOR, e.ordinal()));
+				table.withPool(LootPool.lootPool().setRolls(ConstantValue.exactly(1)).when(isColor)
+						.add(LootItem.lootTableItem(ChromaBlocks.RUNE_ITEMS.get(e.ordinal()).get())));
 			}
 			return table;
 		}

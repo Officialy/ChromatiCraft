@@ -9,162 +9,53 @@
  ******************************************************************************/
 package reika.chromaticraft.block;
 
-import java.util.Random;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.IntegerProperty;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.material.Material;
-import net.minecraft.client.Minecraft;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.world.World;
-import net.minecraftforge.common.util.ForgeDirection;
-
-import reika.chromaticraft.auxiliary.interfaces.MultiBlockChromaTile;
-import reika.chromaticraft.auxiliary.interfaces.OwnedTile;
-import reika.chromaticraft.base.BlockDyeTypes;
-import reika.chromaticraft.magic.interfaces.CrystalNetworkTile;
-import reika.chromaticraft.magic.interfaces.CrystalSource;
 import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaISBRH;
-import reika.chromaticraft.registry.ChromaTiles;
 import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.registry.ExtraChromaIDs;
-import reika.chromaticraft.render.particle.EntityRuneFX;
-import reika.chromaticraft.tileentity.recipe.TileEntityCastingTable;
-import reika.dragonapi.instantiable.data.immutable.Coordinate;
-import reika.dragonapi.interfaces.block.SemiUnbreakable;
-import reika.dragonapi.libraries.java.ReikaRandomHelper;
-import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
-import reika.dragonapi.libraries.registry.ReikaDyeHelper;
-import reika.dragonapi.libraries.registry.ReikaParticleHelper;
-import reika.dragonapi.libraries.world.ReikaWorldHelper;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
+/**
+ * Crystal rune — the coloured runes placed in ChromatiCraft's casting-table and network multiblocks.
+ * The 1.7.10 original was a 16-metadata {@code BlockDyeTypes} keyed by {@link CrystalElement}; here that
+ * becomes one block with the {@link #COLOR} property (0..15) and 16 distinct BlockItems (the
+ * one-block-many-items pattern crystalline stone / {@code BlockPylonStructure} uses). hardness 3 /
+ * resistance 12 as in the original.
+ *
+ * <p><b>Deferred</b> (re-add with the crystal-network + casting-table + structure-protection systems —
+ * all reference unported content): the {@code SemiUnbreakable}/{@code getDestroyProgress} structure
+ * protection (via {@code MultiBlockChromaTile}), the {@code onBlockPlacedBy} owner assignment
+ * ({@code OwnedTile}), the {@code breakBlock} structure invalidation, the {@code CrystalSource}/network
+ * behaviour, the casting-table right-click interaction ({@code TileEntityCastingTable}), and the rune
+ * particle FX ({@code EntityRuneFX}). The block is a complete, structure-matchable coloured block now;
+ * its active behaviour lights up as those systems port.
+ */
+public class BlockCrystalRune extends Block {
 
-public class BlockCrystalRune extends BlockDyeTypes implements SemiUnbreakable {
+	public static final IntegerProperty COLOR = IntegerProperty.create("color", 0, CrystalElement.elements.length - 1);
 
-	public BlockCrystalRune(Material par2Material) {
-		super(par2Material);
-		this.setHardness(3);
-		this.setResistance(12);
+	public BlockCrystalRune(BlockBehaviour.Properties props) {
+		super(props);
+		this.registerDefaultState(this.stateDefinition.any().setValue(COLOR, CrystalElement.WHITE.ordinal()));
 	}
 
 	@Override
-	public float getExplosionResistance(Entity e, World world, int x, int y, int z, double eX, double eY, double eZ) {
-		return this.isUnbreakable(world, x, y, z, world.getBlockMetadata(x, y, z)) ? 1000000F : super.getExplosionResistance(e, world, x, y, z, eX, eY, eZ);
+	protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+		builder.add(COLOR);
+	}
+
+	public static CrystalElement getColor(BlockState state) {
+		return CrystalElement.elements[state.getValue(COLOR)];
 	}
 
 	@Override
-	public void onBlockPlacedBy(World world, int x, int y, int z, EntityLivingBase e, ItemStack is) {
-		int meta = world.getBlockMetadata(x, y, z);
-		ReikaDyeHelper dye = ReikaDyeHelper.getColorFromDamage(meta);
-		if (world.isRemote)
-			ReikaParticleHelper.spawnColoredParticles(world, x, y, z, dye, 256);
-
-		for (int i = 0; i < 6; i++) {
-			ForgeDirection dir = ForgeDirection.VALID_DIRECTIONS[i];
-			int dx = x+dir.offsetX;
-			int dy = y+dir.offsetY;
-			int dz = z+dir.offsetZ;
-			Block b = world.getBlock(dx, dy, dz);
-			if (b == ChromaBlocks.PYLONSTRUCT.getBlockInstance()) {
-				((BlockPylonStructure)b).triggerAddCheck(world, dx, dy, dz);
-			}
-		}
-		if (e instanceof EntityPlayer && ReikaWorldHelper.checkForAdjBlockWithCorners(world, x, y, z, ChromaBlocks.PYLONSTRUCT.getBlockInstance()) != null) {
-			Coordinate c = ReikaWorldHelper.findNearBlock(world, x, y, z, 6, ChromaTiles.TABLE.getBlock(), ChromaTiles.TABLE.getBlockMetadata());
-			if (c != null) {
-				TileEntityCastingTable te = (TileEntityCastingTable)c.getTileEntity(world);
-				te.onAddRune(world, x, y, z, (EntityPlayer)e, is);
-			}
-		}
-		super.onBlockAdded(world, x, y, z);
+	protected ItemStack getCloneItemStack(LevelReader level, BlockPos pos, BlockState state, boolean includeData) {
+		return new ItemStack(ChromaBlocks.RUNE_ITEMS.get(state.getValue(COLOR)).get());
 	}
-
-	@Override
-	public float getPlayerRelativeBlockHardness(EntityPlayer ep, World world, int x, int y, int z) {
-		if (world.provider.dimensionId == ExtraChromaIDs.DIMID.getValue())
-			return -1;
-		for (int i = 0; i < 6; i++) {
-			ForgeDirection dir = ForgeDirection.VALID_DIRECTIONS[i];
-			TileEntity te = world.getTileEntity(x+dir.offsetX, y+dir.offsetY, z+dir.offsetZ);
-			if (te instanceof CrystalSource) {
-				return -1;
-			}
-			else if (te instanceof CrystalNetworkTile || te instanceof MultiBlockChromaTile) {
-				if (te instanceof OwnedTile && !((OwnedTile)te).isOwnedByPlayer(ep))
-					return -1;
-			}
-		}
-		return super.getPlayerRelativeBlockHardness(ep, world, x, y, z);
-	}
-
-	@Override
-	public void breakBlock(World world, int x, int y, int z, Block id, int meta) {
-		ReikaDyeHelper dye = ReikaDyeHelper.getColorFromDamage(meta);
-		if (world.isRemote)
-			ReikaParticleHelper.spawnColoredParticles(world, x, y, z, dye, 256);
-
-		for (int i = 0; i < 6; i++) {
-			ForgeDirection dir = ForgeDirection.VALID_DIRECTIONS[i];
-			int dx = x+dir.offsetX;
-			int dy = y+dir.offsetY;
-			int dz = z+dir.offsetZ;
-			Block b = world.getBlock(dx, dy, dz);
-			if (b == ChromaBlocks.PYLONSTRUCT.getBlockInstance()) {
-				((BlockPylonStructure)b).triggerBreakCheck(world, dx, dy, dz);
-			}
-		}
-
-		super.breakBlock(world, x, y, z, id, meta);
-	}
-
-	@Override
-	public void randomDisplayTick(World world, int x, int y, int z, Random r) {
-		super.randomDisplayTick(world, x, y, z, r);
-		int meta = world.getBlockMetadata(x, y, z);
-		ReikaDyeHelper dye = ReikaDyeHelper.getColorFromDamage(meta);
-		ReikaParticleHelper.spawnColoredParticles(world, x, y, z, dye, 8);
-		//this.runeParticles(world, x, y, z, meta, r);
-	}
-
-	@SideOnly(Side.CLIENT)
-	private void runeParticles(World world, int x, int y, int z, int meta, Random rand) {
-		double r = 0.75;
-		double dx = ReikaRandomHelper.getRandomPlusMinus(0, r);
-		double dy = rand.nextDouble();
-		double dz = ReikaRandomHelper.getRandomPlusMinus(0, r);
-		while (ReikaMathLibrary.py3d(dx, 0, dz) < 0.65) {
-			dx = ReikaRandomHelper.getRandomPlusMinus(0, r);
-			dz = ReikaRandomHelper.getRandomPlusMinus(0, r);
-		}
-
-		CrystalElement e = CrystalElement.elements[meta];
-		Minecraft.getMinecraft().effectRenderer.addEffect(new EntityRuneFX(world, x+dx+0.5, y+dy+0.5, z+dz+0.5, e));
-	}
-
-	@Override
-	public String getIconFolder() {
-		return "runes/backpng/";
-	}
-
-	@Override
-	public boolean useNamedIcons() {
-		return false;
-	}
-
-	@Override
-	public int getRenderType() {
-		return ChromaISBRH.rune.getRenderID();
-	}
-
-	@Override
-	public boolean isUnbreakable(World world, int x, int y, int z, int meta) {
-		return world.provider.dimensionId == ExtraChromaIDs.DIMID.getValue();
-	}
-
 }
