@@ -36,6 +36,14 @@ public final class ChromaBiomes {
     private static final int WATER_COLOR = 0x00ffff;
     private static final int SKY_COLOR = 0x648cff;
 
+    /**
+     * Vanilla forest's grass/foliage colours. Both V33a Rainbow Forest and V33a Luminous Cliffs
+     * derive their palette from {@code BiomeGenBase.forest}, so this is the shared base rather than
+     * a per-biome choice.
+     */
+    private static final int FOREST_GRASS = 0x79c05a;
+    private static final int FOREST_FOLIAGE = 0x59ae30;
+
     private ChromaBiomes() {}
 
     public static void bootstrap(BootstrapContext<Biome> context) {
@@ -86,8 +94,8 @@ public final class ChromaBiomes {
                         new BackgroundMusic(SoundEvents.MUSIC_BIOME_FOREST))
                 .specialEffects(new BiomeSpecialEffects.Builder()
                         .waterColor(WATER_COLOR)
-                        .grassColorOverride(0x79c05a)
-                        .foliageColorOverride(0x59ae30)
+                        .grassColorOverride(FOREST_GRASS)
+                        .foliageColorOverride(FOREST_FOLIAGE)
                         .build())
                 .mobSpawnSettings(mobs.build())
                 .generationSettings(generation.build())
@@ -140,9 +148,18 @@ public final class ChromaBiomes {
                 .setAttribute(EnvironmentAttributes.BACKGROUND_MUSIC,
                         new BackgroundMusic(SoundEvents.MUSIC_BIOME_LUSH_CAVES))
                 .specialEffects(new BiomeSpecialEffects.Builder()
+                        // V33a getWaterColorMultiplier(). The per-position teal/pink/clear variation
+                        // in getWaterColor() cannot be hooked in 26.2 (FluidRenderer picks the
+                        // FluidModel per FluidState, never per position) -- see ISSUES_2026-07-30 E2.
                         .waterColor(0x22ffbb)
-                        .grassColorOverride(shore ? 0x8bcf89 : 0x88d493)
-                        .foliageColorOverride(0x8ac987)
+                        // V33a resolves grass/foliage as forest's colour *then* shifts hue by
+                        // position and brightness by altitude (BiomeGlowingCliffs#getBiomeGrassColor
+                        // -> BiomeGenBase.forest.getBiomeGrassColor + shiftHue + shiftBrightness).
+                        // These overrides are therefore forest's exact palette -- the base the shift
+                        // is applied to -- and LuminousCliffsColors does the shifting client-side.
+                        // They are NOT the final in-world colour; do not "brighten" them here.
+                        .grassColorOverride(FOREST_GRASS)
+                        .foliageColorOverride(FOREST_FOLIAGE)
                         .build())
                 .mobSpawnSettings(mobs.build())
                 .generationSettings(generation.build())
