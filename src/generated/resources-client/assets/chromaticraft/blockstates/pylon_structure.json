@@ -1,52 +1,148 @@
 {
   "variants": {
-    "type=0": {
-      "model": "chromaticraft:block/pylon_structure_0"
+    "axis=x,type=0": {
+      "model": "chromaticraft:block/pylon_structure_0_x"
     },
-    "type=1": {
-      "model": "chromaticraft:block/pylon_structure_1"
+    "axis=x,type=1": {
+      "model": "chromaticraft:block/pylon_structure_1_x"
     },
-    "type=10": {
-      "model": "chromaticraft:block/pylon_structure_10"
+    "axis=x,type=10": {
+      "model": "chromaticraft:block/pylon_structure_10_x"
     },
-    "type=11": {
-      "model": "chromaticraft:block/pylon_structure_11"
+    "axis=x,type=11": {
+      "model": "chromaticraft:block/pylon_structure_11_x"
     },
-    "type=12": {
-      "model": "chromaticraft:block/pylon_structure_12"
+    "axis=x,type=12": {
+      "model": "chromaticraft:block/pylon_structure_12_x"
     },
-    "type=13": {
-      "model": "chromaticraft:block/pylon_structure_13"
+    "axis=x,type=13": {
+      "model": "chromaticraft:block/pylon_structure_13_x"
     },
-    "type=14": {
-      "model": "chromaticraft:block/pylon_structure_14"
+    "axis=x,type=14": {
+      "model": "chromaticraft:block/pylon_structure_14_x"
     },
-    "type=15": {
-      "model": "chromaticraft:block/pylon_structure_15"
+    "axis=x,type=15": {
+      "model": "chromaticraft:block/pylon_structure_15_x"
     },
-    "type=2": {
-      "model": "chromaticraft:block/pylon_structure_2"
+    "axis=x,type=2": {
+      "model": "chromaticraft:block/pylon_structure_2_x"
     },
-    "type=3": {
-      "model": "chromaticraft:block/pylon_structure_3"
+    "axis=x,type=3": {
+      "model": "chromaticraft:block/pylon_structure_3_x"
     },
-    "type=4": {
-      "model": "chromaticraft:block/pylon_structure_4"
+    "axis=x,type=4": {
+      "model": "chromaticraft:block/pylon_structure_4_x"
     },
-    "type=5": {
-      "model": "chromaticraft:block/pylon_structure_5"
+    "axis=x,type=5": {
+      "model": "chromaticraft:block/pylon_structure_5_x"
     },
-    "type=6": {
-      "model": "chromaticraft:block/pylon_structure_6"
+    "axis=x,type=6": {
+      "model": "chromaticraft:block/pylon_structure_6_x"
     },
-    "type=7": {
-      "model": "chromaticraft:block/pylon_structure_7"
+    "axis=x,type=7": {
+      "model": "chromaticraft:block/pylon_structure_7_x"
     },
-    "type=8": {
-      "model": "chromaticraft:block/pylon_structure_8"
+    "axis=x,type=8": {
+      "model": "chromaticraft:block/pylon_structure_8_x"
     },
-    "type=9": {
-      "model": "chromaticraft:block/pylon_structure_9"
+    "axis=x,type=9": {
+      "model": "chromaticraft:block/pylon_structure_9_x"
+    },
+    "axis=y,type=0": {
+      "model": "chromaticraft:block/pylon_structure_0_y"
+    },
+    "axis=y,type=1": {
+      "model": "chromaticraft:block/pylon_structure_1_y"
+    },
+    "axis=y,type=10": {
+      "model": "chromaticraft:block/pylon_structure_10_y"
+    },
+    "axis=y,type=11": {
+      "model": "chromaticraft:block/pylon_structure_11_y"
+    },
+    "axis=y,type=12": {
+      "model": "chromaticraft:block/pylon_structure_12_y"
+    },
+    "axis=y,type=13": {
+      "model": "chromaticraft:block/pylon_structure_13_y"
+    },
+    "axis=y,type=14": {
+      "model": "chromaticraft:block/pylon_structure_14_y"
+    },
+    "axis=y,type=15": {
+      "model": "chromaticraft:block/pylon_structure_15_y"
+    },
+    "axis=y,type=2": {
+      "model": "chromaticraft:block/pylon_structure_2_y"
+    },
+    "axis=y,type=3": {
+      "model": "chromaticraft:block/pylon_structure_3_y"
+    },
+    "axis=y,type=4": {
+      "model": "chromaticraft:block/pylon_structure_4_y"
+    },
+    "axis=y,type=5": {
+      "model": "chromaticraft:block/pylon_structure_5_y"
+    },
+    "axis=y,type=6": {
+      "model": "chromaticraft:block/pylon_structure_6_y"
+    },
+    "axis=y,type=7": {
+      "model": "chromaticraft:block/pylon_structure_7_y"
+    },
+    "axis=y,type=8": {
+      "model": "chromaticraft:block/pylon_structure_8_y"
+    },
+    "axis=y,type=9": {
+      "model": "chromaticraft:block/pylon_structure_9_y"
+    },
+    "axis=z,type=0": {
+      "model": "chromaticraft:block/pylon_structure_0_z"
+    },
+    "axis=z,type=1": {
+      "model": "chromaticraft:block/pylon_structure_1_z"
+    },
+    "axis=z,type=10": {
+      "model": "chromaticraft:block/pylon_structure_10_z"
+    },
+    "axis=z,type=11": {
+      "model": "chromaticraft:block/pylon_structure_11_z"
+    },
+    "axis=z,type=12": {
+      "model": "chromaticraft:block/pylon_structure_12_z"
+    },
+    "axis=z,type=13": {
+      "model": "chromaticraft:block/pylon_structure_13_z"
+    },
+    "axis=z,type=14": {
+      "model": "chromaticraft:block/pylon_structure_14_z"
+    },
+    "axis=z,type=15": {
+      "model": "chromaticraft:block/pylon_structure_15_z"
+    },
+    "axis=z,type=2": {
+      "model": "chromaticraft:block/pylon_structure_2_z"
+    },
+    "axis=z,type=3": {
+      "model": "chromaticraft:block/pylon_structure_3_z"
+    },
+    "axis=z,type=4": {
+      "model": "chromaticraft:block/pylon_structure_4_z"
+    },
+    "axis=z,type=5": {
+      "model": "chromaticraft:block/pylon_structure_5_z"
+    },
+    "axis=z,type=6": {
+      "model": "chromaticraft:block/pylon_structure_6_z"
+    },
+    "axis=z,type=7": {
+      "model": "chromaticraft:block/pylon_structure_7_z"
+    },
+    "axis=z,type=8": {
+      "model": "chromaticraft:block/pylon_structure_8_z"
+    },
+    "axis=z,type=9": {
+      "model": "chromaticraft:block/pylon_structure_9_z"
     }
   }
 }

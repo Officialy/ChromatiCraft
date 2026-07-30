@@ -95,7 +95,8 @@ public enum ProgressStage implements ProgressAccess {
 	PYLONLINK(		Shareability.SELFONLY,	Reloadability.TRIGGER),
 	RELAYS(			Shareability.PROXIMITY,	Reloadability.TRIGGER),
 	ENERGYIDEA(		Shareability.SELFONLY,	Reloadability.NEVER),
-	NODE(			Shareability.PROXIMITY,	Reloadability.NEVER,	ModList.THAUMCRAFT.isLoaded()),
+	// CHROMA-PORT: Thaumcraft node progression is retained by name but cannot trigger on 26.2.
+	NODE(			Shareability.PROXIMITY,	Reloadability.NEVER,	false),
 	POTION(			Shareability.SELFONLY,	Reloadability.NEVER),
 	MINE(			Shareability.PROXIMITY,	Reloadability.NEVER),
 	DEEPCAVE(		Shareability.PROXIMITY,	Reloadability.NEVER),

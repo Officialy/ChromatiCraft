@@ -1,84 +1,76 @@
-/*******************************************************************************
- * @author Reika Kalseki
- * 
- * Copyright 2017
- * 
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
- ******************************************************************************/
 package reika.chromaticraft.render.entity;
 
-import org.lwjgl.opengl.GL11;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 
-import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.client.renderer.entity.Render;
-import net.minecraft.client.renderer.entity.RenderManager;
-import net.minecraft.entity.Entity;
-import net.minecraft.util.IIcon;
-import net.minecraft.util.ResourceLocation;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.entity.EntityRenderer;
+import net.minecraft.client.renderer.entity.EntityRendererProvider;
+import net.minecraft.client.renderer.entity.state.EntityRenderState;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.resources.Identifier;
 
+import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.entity.EntityLumaBurst;
-import reika.chromaticraft.registry.ChromaIcons;
-import reika.dragonapi.libraries.io.ReikaTextureHelper;
-import reika.dragonapi.libraries.java.reikaglhelper.BlendMode;
-import reika.dragonapi.libraries.mathsci.ReikaPhysicsHelper;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
 
-public class RenderLumaBurst extends Render {
+/**
+ * V33a RenderLumaBurst: two nested camera-facing, fullbright, additive quads (an opaque outer flare
+ * and a smaller inner core mixed toward white), on the same flare sprite/RenderType template as the
+ * accepted {@link RenderPylonOverloadShock}. V33a oriented the quad by the polar angle from the
+ * render camera to the entity; the modern {@code camera.orientation} billboard used here produces
+ * the same camera-facing result.
+ */
+public class RenderLumaBurst extends EntityRenderer<EntityLumaBurst, RenderLumaBurst.State> {
 
-	@Override
-	public void doRender(Entity e, double par2, double par4, double par6, float par8, float ptick) {
-		ReikaTextureHelper.bindTerrainTexture();
-		EntityLumaBurst eb = (EntityLumaBurst)e;
-		Tessellator v5 = Tessellator.instance;
-		IIcon icon = ChromaIcons.FLARE.getIcon();
-		float u = icon.getMinU();
-		float v = icon.getMinV();
-		float du = icon.getMaxU();
-		float dv = icon.getMaxV();
-		GL11.glPushMatrix();
-		GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
-		GL11.glEnable(GL11.GL_BLEND);
-		GL11.glDisable(GL11.GL_LIGHTING);
-		BlendMode.ADDITIVEDARK.apply();
-		GL11.glDepthMask(false);
-		GL11.glTranslated(par2, par4, par6);
-		if (!e.isDead) {
-			RenderManager rm = RenderManager.instance;
-			double dx = e.posX-RenderManager.renderPosX;
-			double dy = e.posY-RenderManager.renderPosY;
-			double dz = e.posZ-RenderManager.renderPosZ;
-			double[] angs = ReikaPhysicsHelper.cartesianToPolar(dx, dy, dz);
-			GL11.glRotated(angs[2], 0, 1, 0);
-			GL11.glRotated(90-angs[1], 1, 0, 0);
-		}
-		//GL11.glRotatef(rm.playerViewX, 1.0F, 0.0F, 0.0F);
-		v5.startDrawingQuads();
-		v5.setBrightness(240);
-		double s1 = 0.1875*1.125;
-		int c1 = eb.getColor().getColor();
-		v5.setColorOpaque_I(c1);
-		v5.addVertexWithUV(-s1, -s1, 0, u, v);
-		v5.addVertexWithUV(s1, -s1, 0, du, v);
-		v5.addVertexWithUV(s1, s1, 0, du, dv);
-		v5.addVertexWithUV(-s1, s1, 0, u, dv);
+	private static final Identifier TEXTURE = Identifier.fromNamespaceAndPath(
+			ChromatiCraft.MODID, "textures/block/icons/flare.png");
 
-		int c2 = ReikaColorAPI.mixColors(c1, 0xffffff, 0.25F);
-		v5.setColorOpaque_I(c2);
-		s1 *= 0.5;
-		v5.addVertexWithUV(-s1, -s1, 0, u, v);
-		v5.addVertexWithUV(s1, -s1, 0, du, v);
-		v5.addVertexWithUV(s1, s1, 0, du, dv);
-		v5.addVertexWithUV(-s1, s1, 0, u, dv);
-		v5.draw();
-		GL11.glPopAttrib();
-		GL11.glPopMatrix();
+	/** V33a: s1 = 0.1875 * 1.125 (outer), halved for the inner core. */
+	private static final float OUTER_SIZE = (float)(0.1875 * 1.125);
+	private static final float INNER_SIZE = OUTER_SIZE * 0.5F;
+
+	public RenderLumaBurst(EntityRendererProvider.Context context) {
+		super(context);
 	}
 
 	@Override
-	protected ResourceLocation getEntityTexture(Entity e) {
-		return null;
+	public State createRenderState() {
+		return new State();
 	}
 
+	@Override
+	public void extractRenderState(EntityLumaBurst entity, State state, float partialTicks) {
+		super.extractRenderState(entity, state, partialTicks);
+		state.color = 0xFF000000 | entity.getColor().getColor();
+	}
+
+	@Override
+	public void submit(State state, PoseStack poseStack, SubmitNodeCollector collector,
+			CameraRenderState camera) {
+		poseStack.pushPose();
+		poseStack.mulPose(camera.orientation);
+		int innerRgb = ReikaColorAPI.mixColors(state.color & 0xFFFFFF, 0xFFFFFF, 0.25F) & 0xFFFFFF;
+		int inner = 0xFF000000 | innerRgb;
+		collector.submitCustomGeometry(poseStack, RenderTypes.entityTranslucentEmissive(TEXTURE),
+				(pose, buffer) -> {
+					quad(pose, buffer, state.color, OUTER_SIZE);
+					quad(pose, buffer, inner, INNER_SIZE);
+				});
+		poseStack.popPose();
+	}
+
+	private static void quad(PoseStack.Pose pose, VertexConsumer buffer, int color, float size) {
+		int light = 0xF000F0;
+		buffer.addVertex(pose, -size, -size, 0).setColor(color).setUv(0, 1).setOverlay(OverlayTexture.NO_OVERLAY).setLight(light).setNormal(pose, 0, 1, 0);
+		buffer.addVertex(pose, size, -size, 0).setColor(color).setUv(1, 1).setOverlay(OverlayTexture.NO_OVERLAY).setLight(light).setNormal(pose, 0, 1, 0);
+		buffer.addVertex(pose, size, size, 0).setColor(color).setUv(1, 0).setOverlay(OverlayTexture.NO_OVERLAY).setLight(light).setNormal(pose, 0, 1, 0);
+		buffer.addVertex(pose, -size, size, 0).setColor(color).setUv(0, 0).setOverlay(OverlayTexture.NO_OVERLAY).setLight(light).setNormal(pose, 0, 1, 0);
+	}
+
+	public static final class State extends EntityRenderState {
+		private int color = 0xFFFFFFFF;
+	}
 }

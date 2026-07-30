@@ -15,8 +15,18 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 
 import net.neoforged.neoforge.registries.DeferredBlock;
+import reika.chromaticraft.tileentity.auxiliary.TileEntityChromaCrystal;
 
 import reika.chromaticraft.tileentity.TileEntityDisplayPoint;
+import reika.chromaticraft.tileentity.networking.TileEntityCompoundRepeater;
+import reika.chromaticraft.tileentity.networking.TileEntityPylonLink;
+import reika.chromaticraft.tileentity.networking.TileEntityCreativeSource;
+import reika.chromaticraft.tileentity.networking.TileEntityCrystalPylon;
+import reika.chromaticraft.tileentity.networking.TileEntityCrystalRepeater;
+import reika.chromaticraft.tileentity.networking.TileEntitySkypeater;
+import reika.chromaticraft.tileentity.recipe.TileEntityCastingTable;
+import reika.chromaticraft.tileentity.auxiliary.TileEntityFocusCrystalPort;
+import reika.chromaticraft.tileentity.recipe.TileEntityItemStand;
 import reika.dragonapi.interfaces.registry.TileEnum;
 
 /**
@@ -27,7 +37,17 @@ import reika.dragonapi.interfaces.registry.TileEnum;
  */
 public enum ChromaTiles implements TileEnum {
 
-	DISPLAY("chroma.display", ChromaBlocks.DISPLAY_POINT, TileEntityDisplayPoint.class);
+	DISPLAY("chroma.display", ChromaBlocks.DISPLAY_POINT, TileEntityDisplayPoint.class),
+	PYLON("chroma.pylon", ChromaBlocks.PYLON, TileEntityCrystalPylon.class),
+	REPEATER("chroma.repeater", ChromaBlocks.REPEATER, TileEntityCrystalRepeater.class),
+	SKYPEATER("chroma.skypeater", ChromaBlocks.SKYPEATER, TileEntitySkypeater.class),
+	CREATIVEPYLON("chroma.creativepylon", ChromaBlocks.CREATIVEPYLON, TileEntityCreativeSource.class),
+	COMPOUND("chroma.compound", ChromaBlocks.COMPOUND, TileEntityCompoundRepeater.class),
+	PYLONLINK("chroma.pylonlink", ChromaBlocks.PYLON_LINK, TileEntityPylonLink.class),
+	CRYSTAL("chroma.chromacrystal", ChromaBlocks.POWER_CRYSTAL, TileEntityChromaCrystal.class),
+	STAND("chroma.itemstand", ChromaBlocks.ITEM_STAND, TileEntityItemStand.class),
+	TABLE("chroma.castingtable", ChromaBlocks.CASTING_TABLE, TileEntityCastingTable.class),
+	FOCUSCRYSTAL("chroma.focuscrystal", ChromaBlocks.FOCUS_CRYSTAL, TileEntityFocusCrystalPort.class);
 
 	private final String nameKey;
 	private final DeferredBlock<Block> block;

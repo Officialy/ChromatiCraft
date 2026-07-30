@@ -1,0 +1,81 @@
+{
+  "type": "chromaticraft:casting",
+  "duration": 100,
+  "experience": 200,
+  "grid": [
+    {
+      "ingredient": "chromaticraft:primary_crystal_cluster",
+      "slot": 4
+    }
+  ],
+  "result": {
+    "id": "chromaticraft:crystal_focus"
+  },
+  "stands": [
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_blue",
+      "offset": [
+        -2,
+        0,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_blue",
+      "offset": [
+        2,
+        0,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_yellow",
+      "offset": [
+        0,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_yellow",
+      "offset": [
+        0,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_purple",
+      "offset": [
+        -2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_purple",
+      "offset": [
+        -2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_purple",
+      "offset": [
+        2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_purple",
+      "offset": [
+        2,
+        0,
+        2
+      ]
+    }
+  ],
+  "tier": "multiblock"
+}

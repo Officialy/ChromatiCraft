@@ -11,14 +11,14 @@ package reika.chromaticraft.tileentity.networking;
 
 import java.util.ArrayList;
 
-import net.minecraft.block.Block;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.particle.EntityFX;
-import net.minecraft.init.Blocks;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.world.World;
-import net.minecraftforge.common.util.ForgeDirection;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.level.Level;
+import net.minecraft.core.Direction;
 
 import reika.chromaticraft.auxiliary.CrystalMusicManager;
 import reika.chromaticraft.block.BlockCrystalPylon;
@@ -84,13 +84,13 @@ public class TileEntityWeakRepeater extends TileEntityCrystalRepeater implements
 	}
 
 	@Override
-	public void updateEntity(World world, int x, int y, int z, int meta) {
+	public void updateEntity(Level world, int x, int y, int z, int meta) {
 		super.updateEntity(world, x, y, z, meta);
 
 		if (this.isRuptured())
 			return;
 
-		if (world.isRemote) {
+		if (world.isClientSide()) {
 			this.doLifespanParticles(world, x, y, z);
 		}
 
@@ -101,26 +101,26 @@ public class TileEntityWeakRepeater extends TileEntityCrystalRepeater implements
 		}
 	}
 
-	private void doDestroyFX(World world, int x, int y, int z) {
+	private void doDestroyFX(Level world, int x, int y, int z) {
 		if (eolTicks > 320) {
 			RepeaterFailures r = RepeaterFailures.failureModes.getRandomEntry();
 			r.doEffect(world, x, y, z, this);
 			ProgressStage.BLOWREPEATER.stepPlayerTo(this.getPlacer());
 			placerUUID = null;
-			if (world.isRemote) {
+			if (world.isClientSide()) {
 				this.doDestroyFXClient(world, x, y, z);
 			}
 		}
 		else {
 			if (ReikaRandomHelper.doWithChance(Math.pow(eolTicks/320D, 0.5))) {
-				if (world.isRemote)
+				if (world.isClientSide())
 					this.doDestroyingFXClient(world, x, y, z);
 			}
 		}
 	}
 
 	@SideOnly(Side.CLIENT)
-	private void doDestroyingFXClient(World world, int x, int y, int z) {
+	private void doDestroyingFXClient(Level world, int x, int y, int z) {
 		double dx = ReikaRandomHelper.getRandomPlusMinus(x+0.5, 1);
 		double dy = ReikaRandomHelper.getRandomPlusMinus(y+0.5, 1);
 		double dz = ReikaRandomHelper.getRandomPlusMinus(z+0.5, 1);
@@ -136,7 +136,7 @@ public class TileEntityWeakRepeater extends TileEntityCrystalRepeater implements
 	}
 
 	@SideOnly(Side.CLIENT)
-	private void doDestroyFXClient(World world, int x, int y, int z) {
+	private void doDestroyFXClient(Level world, int x, int y, int z) {
 		int n = 32+rand.nextInt(64);
 		for (int i = 0; i < n; i++) {
 			double phi = rand.nextDouble()*360;
@@ -161,7 +161,7 @@ public class TileEntityWeakRepeater extends TileEntityCrystalRepeater implements
 	}
 
 	@SideOnly(Side.CLIENT)
-	private void doLifespanParticles(World world, int x, int y, int z) {
+	private void doLifespanParticles(Level world, int x, int y, int z) {
 		if (eolTicks > 0) {
 			double frac = eolTicks/320D;
 			double f = 0.8*(1-Math.pow(frac, 1/6D));
@@ -211,43 +211,43 @@ public class TileEntityWeakRepeater extends TileEntityCrystalRepeater implements
 	}
 
 	@Override
-	protected void readSyncTag(NBTTagCompound NBT) {
+	protected void readSyncTag(CompoundTag NBT) {
 		super.readSyncTag(NBT);
 
-		//remainingUse = NBT.getInteger("remaining");
+		//remainingUse = NBT.getIntOr("remaining", 0);
 
-		eolTicks = NBT.getInteger("eol");
-		overloadColor = CrystalElement.elements[NBT.getInteger("overload")];
+		eolTicks = NBT.getIntOr("eol", 0);
+		overloadColor = CrystalElement.elements[NBT.getIntOr("overload", 0)];
 
-		ruptured = NBT.getBoolean("rupture");
+		ruptured = NBT.getBooleanOr("rupture", false);
 	}
 
 	@Override
-	protected void writeSyncTag(NBTTagCompound NBT) {
+	protected void writeSyncTag(CompoundTag NBT) {
 		super.writeSyncTag(NBT);
 
-		//NBT.setInteger("remaining", remainingUse);
+		//NBT.putInt("remaining", remainingUse);
 
-		NBT.setInteger("eol", eolTicks);
+		NBT.putInt("eol", eolTicks);
 		if (overloadColor != null) {
-			NBT.setInteger("overload", overloadColor.ordinal());
+			NBT.putInt("overload", overloadColor.ordinal());
 		}
 
-		NBT.setBoolean("rupture", ruptured);
+		NBT.putBoolean("rupture", ruptured);
 	}
 
 	@Override
-	public void readFromNBT(NBTTagCompound NBT) {
+	public void readFromNBT(CompoundTag NBT) {
 		super.readFromNBT(NBT);
 
-		//originalUse = NBT.getInteger("lifespan");
+		//originalUse = NBT.getIntOr("lifespan", 0);
 	}
 
 	@Override
-	public void writeToNBT(NBTTagCompound NBT) {
+	public void writeToNBT(CompoundTag NBT) {
 		super.writeToNBT(NBT);
 
-		//NBT.setInteger("lifespan", originalUse);
+		//NBT.putInt("lifespan", originalUse);
 	}
 
 	@Override
@@ -280,8 +280,8 @@ public class TileEntityWeakRepeater extends TileEntityCrystalRepeater implements
 
 	@Override
 	protected boolean checkForStructure() {
-		ForgeDirection dir = facing;
-		World world = worldObj;
+		Direction dir = facing;
+		Level world = worldObj;
 		int x = xCoord;
 		int y = yCoord;
 		int z = zCoord;
@@ -320,19 +320,19 @@ public class TileEntityWeakRepeater extends TileEntityCrystalRepeater implements
 	}
 
 	@Override
-	public void getTagsToWriteToStack(NBTTagCompound NBT) {
+	public void getTagsToWriteToStack(CompoundTag NBT) {
 		super.getTagsToWriteToStack(NBT);
 
-		//NBT.setInteger("total", originalUse);
-		//NBT.setInteger("remain", remainingUse);
+		//NBT.putInt("total", originalUse);
+		//NBT.putInt("remain", remainingUse);
 	}
 
 	@Override
 	public void setDataFromItemStackTag(ItemStack is) {
 		super.setDataFromItemStackTag(is);
 
-		//remainingUse = is.stackTagCompound != null && is.stackTagCompound.hasKey("remain") ? is.stackTagCompound.getInteger("remain") : remainingUse;
-		//originalUse = is.stackTagCompound != null && is.stackTagCompound.hasKey("total") ? is.stackTagCompound.getInteger("total") : originalUse;
+		//remainingUse = is.stackTagCompound != null && is.stackTagCompound.contains("remain") ? is.stackTagCompound.getIntOr("remain", 0) : remainingUse;
+		//originalUse = is.stackTagCompound != null && is.stackTagCompound.contains("total") ? is.stackTagCompound.getIntOr("total", 0) : originalUse;
 	}
 
 	@Override
@@ -404,7 +404,7 @@ public class TileEntityWeakRepeater extends TileEntityCrystalRepeater implements
 			weight = w;
 		}
 
-		private void doEffect(World world, int x, int y, int z, TileEntityWeakRepeater te) {
+		private void doEffect(Level world, int x, int y, int z, TileEntityWeakRepeater te) {
 			switch(this) {
 				case BURN:
 					te.delete();
@@ -419,7 +419,7 @@ public class TileEntityWeakRepeater extends TileEntityCrystalRepeater implements
 					for (int i = 0; i < 6; i++) {
 						ReikaWorldHelper.ignite(world, x+te.dirs[i].offsetX, y+te.dirs[i].offsetY, z+te.dirs[i].offsetZ);
 					}
-					world.newExplosion(null, x+0.5, y+0.5, z+0.5, 2, !world.isRemote, !world.isRemote);
+					world.newExplosion(null, x+0.5, y+0.5, z+0.5, 2, !world.isClientSide(), !world.isClientSide());
 					break;
 				case RUPTURE:
 					ReikaSoundHelper.playSoundAtBlock(world, x, y, z, "random.fizz", 2, 0.5F);

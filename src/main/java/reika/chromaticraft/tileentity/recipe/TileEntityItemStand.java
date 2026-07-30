@@ -1,265 +1,145 @@
-/*******************************************************************************
- * @author Reika Kalseki
- *
- * Copyright 2017
- *
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
- ******************************************************************************/
 package reika.chromaticraft.tileentity.recipe;
 
-import java.util.List;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.particle.EntityFX;
-import net.minecraft.entity.item.EntityItem;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.world.World;
-import net.minecraftforge.common.util.ForgeDirection;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.NonNullList;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.ContainerHelper;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.WorldlyContainer;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 
-import reika.chromaticraft.auxiliary.interfaces.ItemOnRightClick;
+import reika.chromaticraft.auxiliary.interfaces.NBTTile;
 import reika.chromaticraft.auxiliary.interfaces.OwnedTile;
-import reika.chromaticraft.base.tileentity.InventoriedChromaticBase;
-import reika.chromaticraft.magic.ElementTagCompound;
-import reika.chromaticraft.magic.ItemElementCalculator;
-import reika.chromaticraft.registry.ChromaItems;
+import reika.chromaticraft.base.tileentity.TileEntityChromaticBase;
+import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.ChromaSounds;
 import reika.chromaticraft.registry.ChromaTiles;
-import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.render.particle.EntityCCBlurFX;
-import reika.chromaticraft.render.particle.EntityCenterBlurFX;
-import reika.dragonapi.ModList;
-import reika.dragonapi.asm.apistripper.Strippable;
-import reika.dragonapi.asm.dependentmethodstripper.ModDependent;
-import reika.dragonapi.instantiable.InertItem;
-import reika.dragonapi.instantiable.data.immutable.Coordinate;
-import reika.dragonapi.instantiable.data.immutable.WorldLocation;
-import reika.dragonapi.instantiable.data.maps.MultiMap;
-import reika.dragonapi.instantiable.data.maps.multimap.CollectionType;
-import reika.dragonapi.interfaces.tileentity.ConditionalUnbreakability;
-import reika.dragonapi.interfaces.tileentity.InertIInv;
-import reika.dragonapi.libraries.java.ReikaJavaLibrary;
-import reika.dragonapi.libraries.java.ReikaRandomHelper;
-import reika.dragonapi.libraries.registry.ReikaItemHelper;
+import reika.dragonapi.interfaces.blockentity.InertIInv;
 
-import buildcraft.api.transport.IPipeConnection;
-import buildcraft.api.transport.IPipeTile.PipeType;
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
+/** V33a casting stand: one inert slot, owner access, locking, table linking, and spread-fill. */
+public class TileEntityItemStand extends TileEntityChromaticBase
+		implements WorldlyContainer, OwnedTile, NBTTile, InertIInv {
 
-@Strippable(value={"buildcraft.api.transport.IPipeConnection"})
-public class TileEntityItemStand extends InventoriedChromaticBase implements ItemOnRightClick, OwnedTile/*, HitAction*/, InertIInv, IPipeConnection, ConditionalUnbreakability {
-
-	private InertItem item;
-	private Coordinate tile;
+	private final NonNullList<ItemStack> inventory = NonNullList.withSize(1, ItemStack.EMPTY);
+	private BlockPos table;
 	private boolean locked;
+	private static final Map<UUID, Set<TileEntityItemStand>> SPREAD_SET = new HashMap<>();
 
-	private int updateRadius = 96;
-
-	private static final MultiMap<UUID, WorldLocation> spreadSet = new MultiMap(CollectionType.HASHSET);
-
-	@Override
-	public int getSizeInventory() {
-		return 1;
+	public TileEntityItemStand(BlockPos pos, BlockState state) {
+		super(ChromaBlockEntities.ITEM_STAND.get(), pos, state);
 	}
 
-	@Override
-	public int getInventoryStackLimit() {
-		return 64;
-	}
-
-	@Override
-	public void updateEntity(World world, int x, int y, int z, int meta) {
-		if (world.isRemote) {
-			if (tile != null) {
-				TileEntity te = tile.getTileEntity(world);
-				if (te instanceof TileEntityCastingTable && ((TileEntityCastingTable)te).getCraftingTick() > 0) {
-					this.spawnCraftParticles(world, x, y, z);
-				}
-			}
-			if (item != null) {
-				this.spawnItemParticles(world, x, y, z);
-			}
+	public boolean interact(Player player, InteractionHand hand) {
+		if (locked || !this.isOwnedByPlayer(player)) return false;
+		ItemStack held = player.getItemInHand(hand);
+		Set<TileEntityItemStand> spread = SPREAD_SET.remove(player.getUUID());
+		if (spread != null && !spread.isEmpty() && !held.isEmpty()) {
+			spreadItems(spread, held, player);
+			return true;
 		}
-	}
-
-	@SideOnly(Side.CLIENT)
-	private void spawnItemParticles(World world, int x, int y, int z) {
-		if (rand.nextInt(2) == 0) {
-			double rx = ReikaRandomHelper.getRandomPlusMinus(x+0.5, 0.375);
-			double ry = ReikaRandomHelper.getRandomPlusMinus(y+0.5, 0.125);
-			double rz = ReikaRandomHelper.getRandomPlusMinus(z+0.5, 0.375);
-			float gv = -(float)ReikaRandomHelper.getRandomPlusMinus(0.03125, 0.025);
-			int l = ReikaRandomHelper.getRandomPlusMinus(60, 15);
-			ElementTagCompound tag = ItemElementCalculator.instance.getValueForItem(inv[0]);
-			CrystalElement e = tag != null ? ReikaJavaLibrary.getRandomCollectionEntry(rand, tag.elementSet()) : null;
-			int r = e != null ? e.getRed() : 0;
-			int g = e != null ? e.getGreen() : 96;
-			int b = e != null ? e.getBlue() : 255;
-			EntityFX fx = new EntityCCBlurFX(world, rx, ry, rz, 0, 0, 0).setColor(r, g, b).setGravity(gv).setLife(l);
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx);
+		ItemStack present = inventory.getFirst();
+		if (present.isEmpty()) {
+			if (held.isEmpty()) return true;
+			inventory.set(0, held.copyWithCount(1));
+			if (!player.isCreative()) held.shrink(1);
 		}
-	}
-
-	@SideOnly(Side.CLIENT)
-	private void spawnCraftParticles(World world, int x, int y, int z) {
-		if (rand.nextInt(32) == 0) {
-			double rx = ReikaRandomHelper.getRandomPlusMinus(x+0.5, 0.375);
-			double rz = ReikaRandomHelper.getRandomPlusMinus(z+0.5, 0.375);
-			EntityFX fx = new EntityCenterBlurFX(world, rx, y, rz, 0, 0.1, 0);
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-		}
-	}
-
-	@Override
-	protected void onFirstTick(World world, int x, int y, int z) {
-		this.updateItem();
-	}
-
-	@Override
-	public boolean isItemValidForSlot(int slot, ItemStack is) {
-		return false;
-	}
-
-	@Override
-	public boolean canExtractItem(int slot, ItemStack is, int side) {
-		return false;
-	}
-
-	@Override
-	public ItemStack onRightClickWith(ItemStack item, EntityPlayer ep) {
-		/*
-		int has = inv[0] != null ? inv[0].stackSize : 0;
-		int sum = item != null ? has+item.stackSize : has;
-		boolean all = this.recentClicked() && ReikaItemHelper.matchStacks(item, inv[0]) && item != null && sum <= item.getMaxStackSize();
-		if (!all)
-			this.dropSlot();
-		/*
-		if (!all && inv[0] != null) {
-			ChromaSounds.ERROR.playSoundAtBlock(this);
-			return item;
-		}
-		 *//*
-		ItemStack put = item != null ? (all ? ReikaItemHelper.getSizedItemStack(item, sum) : ReikaItemHelper.getSizedItemStack(item, 1)) : null;
-		inv[0] = put;
-		this.updateItem();
-		if (item != null) {
-			if (all)
-				item = null;
-			else
-				item.stackSize--;
-		}
-		  */
-
-		if (this.isLocked())
-			return item;
-
-		if (ChromaItems.HELP.matchWith(item))
-			return item;
-
-		UUID uid = ep.getUniqueID();
-
-		if (!spreadSet.isEmpty() && !worldObj.isRemote) {
-			ItemStack ret = item == null && spreadSet.containsValueForKey(uid, new WorldLocation(this)) ? null : spreadItems(ep, item);
-			spreadSet.remove(uid);
-			return ret;
-		}
-
-		if (inv[0] == null) {
-			if (item == null)
-				return null;
-			inv[0] = ReikaItemHelper.getSizedItemStack(item, 1);
-			item.stackSize--;
+		else if (!held.isEmpty() && ItemStack.isSameItemSameComponents(present, held)) {
+			int moved = Math.min(held.getCount(), present.getMaxStackSize() - present.getCount());
+			present.grow(moved);
+			if (!player.isCreative()) held.shrink(moved);
 		}
 		else {
-			if (ReikaItemHelper.matchStacks(inv[0], item)) {
-				int add = Math.min(item.stackSize, inv[0].getMaxStackSize()-inv[0].stackSize);
-				inv[0].stackSize += add;
-				item.stackSize -= add;
-			}
-			else if (item == null) {
-				this.dropSlot();
-			}
-			else {
-				this.dropSlot();
-				inv[0] = ReikaItemHelper.getSizedItemStack(item, 1);
-				item.stackSize--;
+			this.giveOrDrop(player, present.copy());
+			inventory.set(0, ItemStack.EMPTY);
+			if (!held.isEmpty()) {
+				inventory.set(0, held.copyWithCount(1));
+				if (!player.isCreative()) held.shrink(1);
 			}
 		}
-
-		if (item != null && item.stackSize <= 0)
-			item = null;
-
+		this.inventoryChanged();
 		ChromaSounds.ITEMSTAND.playSoundAtBlock(this);
-		return item;
+		return true;
 	}
 
-	public void spreadItemWith(EntityPlayer ep, ItemStack is) {
-		//if (is != null) {
-		//if (inv[0] == null || ReikaItemHelper.matchStacks(is, inv[0])) {
-		if (inv[0] == null)
-			spreadSet.addValue(ep.getUniqueID(), new WorldLocation(this));
-		//}
-		//spreadItems(ep, is);
-		//}
+	private void giveOrDrop(Player player, ItemStack stack) {
+		if (!player.addItem(stack) && this.getLevel() != null)
+			net.minecraft.world.level.block.Block.popResource(this.getLevel(), this.getBlockPos().above(), stack);
 	}
 
-	private static ItemStack spreadItems(EntityPlayer ep, ItemStack is) {
-		if (is == null)
-			return null;
-		UUID uid = ep.getUniqueID();
-		int n = spreadSet.get(uid).size();
-		int amt = is.stackSize;
-		for (WorldLocation loc : spreadSet.get(uid)) {
-			TileEntityItemStand te = (TileEntityItemStand)loc.getTileEntity(ep.worldObj);
-			if (te.inv[0] != null)
-				amt += te.inv[0].stackSize;
+	public void queueSpread(Player player) {
+		if (inventory.getFirst().isEmpty())
+			SPREAD_SET.computeIfAbsent(player.getUUID(), key -> new HashSet<>()).add(this);
+	}
+
+	private static void spreadItems(Set<TileEntityItemStand> locations, ItemStack held, Player player) {
+		java.util.ArrayList<TileEntityItemStand> stands = new java.util.ArrayList<>();
+		for (TileEntityItemStand stand : locations) {
+			if (!stand.isRemoved() && stand.getLevel() == player.level() && stand.isOwnedByPlayer(player) && !stand.locked)
+				stands.add(stand);
 		}
-		int div = amt/n;
-		int left = amt-div*n;
-		//ReikaJavaLibrary.pConsole(amt+" by "+n+", = "+div+" leaving "+left);
-		for (WorldLocation loc : spreadSet.get(uid)) {
-			TileEntityItemStand te = (TileEntityItemStand)loc.getTileEntity();
-			te.inv[0] = ReikaItemHelper.getSizedItemStack(is, div);
-			ChromaSounds.ITEMSTAND.playSoundAtBlock(te);
-			te.syncAllData(true);
+		if (stands.isEmpty()) return;
+		int total = held.getCount();
+		for (TileEntityItemStand stand : stands) total += stand.getItem(0).getCount();
+		int each = Math.min(held.getMaxStackSize(), total / stands.size());
+		int placed = 0;
+		for (TileEntityItemStand stand : stands) {
+			stand.setItem(0, held.copyWithCount(each));
+			placed += each;
 		}
-		return ReikaItemHelper.getSizedItemStack(is, left);
+		if (!player.isCreative()) held.setCount(Math.max(0, total - placed));
 	}
 
-	/*
+	private void inventoryChanged() {
+		this.setChanged();
+		if (this.getLevel() != null && table != null) {
+			BlockEntity blockEntity = this.getLevel().getBlockEntity(table);
+			if (blockEntity != null) blockEntity.setChanged();
+		}
+		if (this.getLevel() != null && !this.getLevel().isClientSide())
+			this.syncAllData(true);
+	}
+
+	public void setTable(BlockPos table) { this.table = table != null ? table.immutable() : null; this.setChanged(); }
+	public BlockPos getTable() { return table; }
 	@Override
-	public void onHit(World world, int x, int y, int z, EntityPlayer ep) {
-		ChromaSounds.ITEMSTAND.playSoundAtBlock(this, 1, 0.875F);
-		this.dropSlot();
-		inv[0] = null;
-		this.updateItem();
-	}
-	 */
-	private void updateItem() {
-		item = inv[0] != null ? new InertItem(worldObj, ReikaItemHelper.getSizedItemStack(inv[0], 1)) : null;
-		if (worldObj != null) {
-			TileEntity te = tile != null ? tile.getTileEntity(worldObj) : null;
-			if (te instanceof TileEntityCastingTable) {
-				((TileEntityCastingTable)te).markDirty();
-			}
+	public void updateEntity(Level world, BlockPos pos) {
+		if (!world.isClientSide() && table != null && world.hasChunkAt(table) && world.getBlockEntity(table) == null) {
+			table = null;
+			this.setChanged();
 		}
 	}
 
-	public EntityItem getItem() {
-		return item;
-	}
+	public void lock(boolean lock) { locked = lock; this.setChanged(); }
+	public boolean isLocked() { return locked; }
 
-	public void dropSlot() {
-		if (inv[0] != null) {
-			ReikaItemHelper.dropItem(worldObj, xCoord+0.5, yCoord+1, zCoord+0.5, inv[0]);
-			inv[0] = null;
+	@Override
+	protected void animateWithTick(Level world, BlockPos pos) {
+		if (world == null || !world.isClientSide() || inventory.getFirst().isEmpty()) return;
+		RandomSource random = world.getRandom();
+		if (random.nextBoolean()) {
+			double x = pos.getX()+0.5+(random.nextDouble()-0.5)*0.75;
+			double y = pos.getY()+0.5+(random.nextDouble()-0.5)*0.25;
+			double z = pos.getZ()+0.5+(random.nextDouble()-0.5)*0.75;
+			world.addParticle(ParticleTypes.ENCHANT, x, y, z, 0, 0.01+random.nextDouble()*0.025, 0);
 		}
+		if (table != null && random.nextInt(32) == 0)
+			world.addParticle(ParticleTypes.END_ROD, pos.getX()+0.5, pos.getY()+0.25, pos.getZ()+0.5, 0, 0.08, 0);
 	}
 
 	@Override
@@ -267,85 +147,56 @@ public class TileEntityItemStand extends InventoriedChromaticBase implements Ite
 		return ChromaTiles.STAND;
 	}
 
-	@Override
-	protected void animateWithTick(World world, int x, int y, int z) {
-
+	@Override protected void loadAdditional(ValueInput input) {
+		super.loadAdditional(input);
+		inventory.set(0, ItemStack.EMPTY);
+		ContainerHelper.loadAllItems(input, inventory);
+		table = input.read("table", BlockPos.CODEC).orElse(null);
+		locked = input.getBooleanOr("locked", false);
+	}
+	@Override protected void saveAdditional(ValueOutput output) {
+		super.saveAdditional(output);
+		ContainerHelper.saveAllItems(output, inventory);
+		if (table != null) output.store("table", BlockPos.CODEC, table);
+		output.putBoolean("locked", locked);
 	}
 
-	@Override
-	public void readFromNBT(NBTTagCompound NBT) {
-		super.readFromNBT(NBT);
-
-		this.updateItem();
-
-		if (NBT.hasKey("table"))
-			tile = Coordinate.readFromNBT("table", NBT);
-
-		locked = NBT.getBoolean("lock");
-	}
-
-	@Override
-	public void writeToNBT(NBTTagCompound NBT) {
-		super.writeToNBT(NBT);
-
-		if (tile != null)
-			tile.writeToNBT("table", NBT);
-
-		NBT.setBoolean("lock", locked);
-	}
-
-	public void setTable(TileEntityCastingTable te) {
-		tile = te != null ? new Coordinate(te) : null;
-	}
-
-	@Override
-	public boolean onlyAllowOwnersToUse() {
-		return true;
-	}
-
-	@Override
-	@ModDependent(ModList.BCTRANSPORT)
-	public ConnectOverride overridePipeConnection(PipeType type, ForgeDirection with) {
-		return ConnectOverride.DISCONNECT;
-	}
-
-	public void lock(boolean lock) {
-		locked = lock;
-	}
-
-	public boolean isLocked() {
-		return locked;
-	}
-
-	@Override
-	public int getUpdatePacketRadius() {
-		return updateRadius;
-	}
-
-	@Override
-	public boolean isUnbreakable(EntityPlayer ep) {
-		return this.isLocked();
-	}
-
-	@Override
-	public void getTagsToWriteToStack(NBTTagCompound NBT) {
-		this.writeOwnerData(NBT);
-	}
-
-	@Override
-	public void setDataFromItemStackTag(ItemStack is) {
-		this.readOwnerData(is);
-	}
-
+	@Override public int getContainerSize() { return 1; }
+	@Override public boolean isEmpty() { return inventory.getFirst().isEmpty(); }
+	@Override public ItemStack getItem(int slot) { return inventory.get(slot); }
+	@Override public ItemStack removeItem(int slot, int amount) { ItemStack out = ContainerHelper.removeItem(inventory, slot, amount); if (!out.isEmpty()) inventoryChanged(); return out; }
+	@Override public ItemStack removeItemNoUpdate(int slot) { ItemStack out = ContainerHelper.takeItem(inventory, slot); if (!out.isEmpty()) inventoryChanged(); return out; }
+	@Override public void setItem(int slot, ItemStack stack) { inventory.set(slot, stack); stack.limitSize(getMaxStackSize()); inventoryChanged(); }
+	@Override public boolean stillValid(Player player) { return this.isPlayerAccessible(player) && this.isOwnedByPlayer(player); }
+	@Override public void clearContent() { inventory.set(0, ItemStack.EMPTY); inventoryChanged(); }
+	/** Pushes the post-craft item change to every client tracking this chunk. */
 	public void syncAfterCraft() {
-		updateRadius = -1;
-		this.syncAllData(true);
-		updateRadius = 96;
+		if (this.getLevel() != null && !this.getLevel().isClientSide()) this.syncAllData(true);
 	}
 
-	@Override
-	public void addTooltipInfo(List li, boolean shift) {
+	// V33a's BuildCraft IPipeConnection returned DISCONNECT. With no 26.2 BuildCraft target, the
+	// same invariant is enforced natively: no sided slots are exposed and all automation is rejected.
+	@Override public int[] getSlotsForFace(Direction side) { return new int[0]; }
+	@Override public boolean canPlaceItemThroughFace(int slot, ItemStack stack, Direction side) { return false; }
+	@Override public boolean canTakeItemThroughFace(int slot, ItemStack stack, Direction side) { return false; }
+	@Override public boolean canPlaceItem(int slot, ItemStack stack) { return false; }
 
+	@Override public boolean onlyAllowOwnersToMine() { return true; }
+	@Override public boolean onlyAllowOwnersToUse() { return true; }
+	@Override public boolean isOwnedByPlayer(Player player) { return placerUUID == null || placerUUID.equals(player.getUUID()); }
+	@Override public void getTagsToWriteToStack(CompoundTag tag) {
+		if (placer != null && !placer.isEmpty()) tag.putString("place", placer);
+		if (placerUUID != null) tag.putString("placeUUID", placerUUID.toString());
 	}
-
+	@Override public void setDataFromItemStackTag(ItemStack stack) {
+		CompoundTag tag = stack.get(net.minecraft.core.component.DataComponents.CUSTOM_DATA) != null
+				? stack.get(net.minecraft.core.component.DataComponents.CUSTOM_DATA).copyTag() : new CompoundTag();
+		placer = tag.getStringOr("place", "");
+		String ownerId = tag.getStringOr("placeUUID", "");
+		placerUUID = ownerId.isEmpty() ? null : UUID.fromString(ownerId);
+	}
+	@Override public void addTooltipInfo(java.util.List list, boolean shift) {
+		if (placer != null && !placer.isEmpty()) list.add(Component.literal("Owner: "+placer));
+		if (locked) list.add(Component.literal("Locked"));
+	}
 }

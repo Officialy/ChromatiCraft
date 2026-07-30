@@ -19,11 +19,18 @@ public final class ChromaDataProviders {
 	public static void onGatherClient(GatherDataEvent.Client event) {
 		event.createProvider(output -> new ChromaLang(output, "en_us"));
 		event.createProvider(ChromaModelProvider::new);
+		event.createProvider(ChromaSoundProvider::new);
 	}
 
 	@SubscribeEvent
 	public static void onGatherServer(GatherDataEvent.Server event) {
 		event.createProvider(ChromaLootProvider::new);
 		event.createProvider(ChromaTestStructureProvider::new);
+		event.createProvider(ChromaStructureTemplateProvider::new);
+		event.createProvider(ChromaCastingRecipeProvider::new);
+		event.createDatapackRegistryObjects(ChromaWorldGenProvider.buildRegistrySet());
+		event.createProvider(ChromaBiomeModifierProvider::new);
+		event.createProvider(output -> new ChromaBiomeTagProvider(output, event.getLookupProvider()));
+		event.createProvider(output -> new ChromaBlockTagsProvider(output, event.getLookupProvider()));
 	}
 }

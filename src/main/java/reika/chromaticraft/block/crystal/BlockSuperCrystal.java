@@ -10,54 +10,58 @@
 package reika.chromaticraft.block.crystal;
 
 import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.block.state.BlockState;
 
 import reika.chromaticraft.base.CrystalBlock;
 import reika.chromaticraft.registry.CrystalElement;
 
-/**
- * Super crystal (large-range, high-level effect crystal). Ported core. Deferred (unported content):
- * the ChromaOptions NOISE toggle (config unported), the base-block (obsidian) ISBRH render hook, and
- * the drops (loot dropSelf). Light 15 + the SUPER 1.5x enchant boost are set at registration / in
- * CrystalBlock.getEnchantPowerBonus.
- */
+/** Super crystal: a fixed-colour, large-range, high-level effect crystal. */
 public class BlockSuperCrystal extends CrystalBlock {
 
-	public BlockSuperCrystal(BlockBehaviour.Properties props) {
-		super(props);
-	}
+    private final CrystalElement element;
 
-	@Override
-	public boolean shouldMakeNoise() {
-		return true;
-	}
+    public BlockSuperCrystal(BlockBehaviour.Properties props, CrystalElement element) {
+        super(props);
+        this.element = element;
+    }
 
-	@Override
-	public boolean shouldGiveEffects(CrystalElement e) {
-		return true;
-	}
+    @Override
+    public CrystalElement getCrystalElement(BlockState state) {
+        return element;
+    }
 
-	@Override
-	public boolean performEffect(CrystalElement e) {
-		return true;
-	}
+    @Override
+    public boolean shouldMakeNoise() {
+        return true;
+    }
 
-	@Override
-	public int getRange() {
-		return 12;
-	}
+    @Override
+    public boolean shouldGiveEffects(CrystalElement e) {
+        return true;
+    }
 
-	@Override
-	public int getDuration(CrystalElement e) {
-		return 6000;
-	}
+    @Override
+    public boolean performEffect(CrystalElement e) {
+        return true;
+    }
 
-	@Override
-	public int getPotionLevel(CrystalElement e) {
-		return 2;
-	}
+    @Override
+    public int getRange() {
+        return 12;
+    }
 
-	@Override
-	public boolean renderBase() {
-		return true;
-	}
+    @Override
+    public int getDuration(CrystalElement e) {
+        return 6000;
+    }
+
+    @Override
+    public int getPotionLevel(CrystalElement e) {
+        return 2;
+    }
+
+    @Override
+    public boolean renderBase() {
+        return true;
+    }
 }

@@ -1,33 +1,43 @@
 /*******************************************************************************
  * @author Reika Kalseki
- * 
+ *
  * Copyright 2017
- * 
+ *
  * All rights reserved.
  * Distribution of the software in any form is only allowed with
  * explicit, prior permission from the owner.
  ******************************************************************************/
 package reika.chromaticraft.api.event;
 
-import java.util.Random;
+import net.minecraft.core.BlockPos;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.WorldGenLevel;
+import net.neoforged.bus.api.Event;
 
-import net.minecraft.world.World;
+import reika.chromaticraft.api.CrystalElementAccessor.CrystalElementProxy;
 
-import reika.chromaticraft.api.crystalelementaccessor.CrystalElementProxy;
-import reika.dragonapi.instantiable.event.WorldGenEvent;
+/** Fired after a pylon and its NBT-backed monument are successfully generated. */
+public class PylonGenerationEvent extends Event {
 
-/** Fired when a pylon is successfully generated. */
-public class PylonGenerationEvent extends WorldGenEvent {
+    /** Whether the structure is damaged and thus inactive until repaired. */
+    public final boolean isBroken;
+    public final CrystalElementProxy color;
+    public final WorldGenLevel world;
+    public final BlockPos position;
+    public final RandomSource random;
+    public final int x;
+    public final int y;
+    public final int z;
 
-	/** Whether or not the structure is damaged and thus the pylon is inactive and must be repaired. */
-	public final boolean isBroken;
-	/** Pylon color */
-	public final CrystalElementProxy color;
-
-	public PylonGenerationEvent(World world, int x, int y, int z, Random r, boolean br, CrystalElementProxy e) {
-		super(world, x, y, z, r);
-		isBroken = br;
-		color = e;
-	}
-
+    public PylonGenerationEvent(WorldGenLevel world, BlockPos pos, RandomSource random,
+            boolean broken, CrystalElementProxy color) {
+        this.world = world;
+        position = pos.immutable();
+        this.random = random;
+        x = pos.getX();
+        y = pos.getY();
+        z = pos.getZ();
+        isBroken = broken;
+        this.color = color;
+    }
 }

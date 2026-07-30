@@ -1,0 +1,31 @@
+{
+  "type": "chromaticraft:casting",
+  "experience": 5,
+  "grid": [
+    {
+      "ingredient": "#minecraft:stone_crafting_materials",
+      "slot": 1
+    },
+    {
+      "ingredient": "#minecraft:stone_crafting_materials",
+      "slot": 3
+    },
+    {
+      "ingredient": "chromaticraft:crystal_shard_pink",
+      "slot": 4
+    },
+    {
+      "ingredient": "#minecraft:stone_crafting_materials",
+      "slot": 5
+    },
+    {
+      "ingredient": "#minecraft:stone_crafting_materials",
+      "slot": 7
+    }
+  ],
+  "result": {
+    "count": 8,
+    "id": "chromaticraft:pylon_structure_smooth"
+  },
+  "tier": "crafting"
+}

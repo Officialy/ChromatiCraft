@@ -1,0 +1,12 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "chromaticraft:block/dye_sapling_black",
+    "tints": [
+      {
+        "type": "minecraft:constant",
+        "value": -15132391
+      }
+    ]
+  }
+}

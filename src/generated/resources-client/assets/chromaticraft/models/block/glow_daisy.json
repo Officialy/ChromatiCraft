@@ -1,0 +1,93 @@
+{
+  "ambientocclusion": false,
+  "elements": [
+    {
+      "faces": {
+        "east": {
+          "texture": "#plant"
+        },
+        "west": {
+          "texture": "#plant"
+        }
+      },
+      "from": [
+        4.0,
+        0.0,
+        0.0
+      ],
+      "shade": false,
+      "to": [
+        4.0,
+        16.0,
+        16.0
+      ]
+    },
+    {
+      "faces": {
+        "east": {
+          "texture": "#plant"
+        },
+        "west": {
+          "texture": "#plant"
+        }
+      },
+      "from": [
+        12.0,
+        0.0,
+        0.0
+      ],
+      "shade": false,
+      "to": [
+        12.0,
+        16.0,
+        16.0
+      ]
+    },
+    {
+      "faces": {
+        "north": {
+          "texture": "#plant"
+        },
+        "south": {
+          "texture": "#plant"
+        }
+      },
+      "from": [
+        0.0,
+        0.0,
+        4.0
+      ],
+      "shade": false,
+      "to": [
+        16.0,
+        16.0,
+        4.0
+      ]
+    },
+    {
+      "faces": {
+        "north": {
+          "texture": "#plant"
+        },
+        "south": {
+          "texture": "#plant"
+        }
+      },
+      "from": [
+        0.0,
+        0.0,
+        12.0
+      ],
+      "shade": false,
+      "to": [
+        16.0,
+        16.0,
+        12.0
+      ]
+    }
+  ],
+  "textures": {
+    "particle": "chromaticraft:block/plant/flower_6",
+    "plant": "chromaticraft:block/plant/flower_6"
+  }
+}

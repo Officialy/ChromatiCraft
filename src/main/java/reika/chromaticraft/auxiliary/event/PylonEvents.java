@@ -1,66 +1,61 @@
 /*******************************************************************************
  * @author Reika Kalseki
- * 
+ *
  * Copyright 2017
- * 
+ *
  * All rights reserved.
  * Distribution of the software in any form is only allowed with
  * explicit, prior permission from the owner.
  ******************************************************************************/
 package reika.chromaticraft.auxiliary.event;
 
-import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.world.entity.player.Player;
+
+import net.neoforged.bus.api.Event;
 
 import reika.chromaticraft.tileentity.networking.TileEntityCrystalPylon;
 
-import cpw.mods.fml.common.eventhandler.Event;
+/** NeoForge ports of the public V33a pylon lifecycle events. */
+public final class PylonEvents {
 
-public class PylonEvents {
-
-	protected abstract static class PylonEvent extends Event {
-
+	public abstract static class PylonEvent extends Event {
 		public final TileEntityCrystalPylon pylon;
 
 		protected PylonEvent(TileEntityCrystalPylon te) {
 			pylon = te;
 		}
-
 	}
 
-	/** Called when a pylon fully recharges */
-	public static class PylonFullyChargedEvent extends PylonEvent {
-
+	/** Fired when a pylon reaches its current capacity. */
+	public static final class PylonFullyChargedEvent extends PylonEvent {
 		public PylonFullyChargedEvent(TileEntityCrystalPylon te) {
 			super(te);
 		}
-
 	}
 
-	/** Called when a pylon comes back online */
-	public static class PylonRechargedEvent extends PylonEvent {
-
+	/** Fired when a regenerating pylon crosses from offline to conducting. */
+	public static final class PylonRechargedEvent extends PylonEvent {
 		public PylonRechargedEvent(TileEntityCrystalPylon te) {
 			super(te);
 		}
-
 	}
 
-	public static class PylonDrainedEvent extends PylonEvent {
-
+	/** Fired when a transfer drains a pylon completely. */
+	public static final class PylonDrainedEvent extends PylonEvent {
 		public PylonDrainedEvent(TileEntityCrystalPylon te) {
 			super(te);
 		}
-
 	}
 
-	public static class PlayerChargedFromPylonEvent extends PylonEvent {
+	/** Fired when a player uses this pylon as a charging source. */
+	public static final class PlayerChargedFromPylonEvent extends PylonEvent {
+		public final Player player;
 
-		public final EntityPlayer player;
-
-		public PlayerChargedFromPylonEvent(TileEntityCrystalPylon te, EntityPlayer ep) {
+		public PlayerChargedFromPylonEvent(TileEntityCrystalPylon te, Player ep) {
 			super(te);
 			player = ep;
 		}
 	}
 
+	private PylonEvents() {}
 }

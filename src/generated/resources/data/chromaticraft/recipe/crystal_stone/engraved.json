@@ -1,0 +1,27 @@
+{
+  "type": "chromaticraft:casting",
+  "experience": 5,
+  "grid": [
+    {
+      "ingredient": "chromaticraft:pylon_structure_smooth",
+      "slot": 1
+    },
+    {
+      "ingredient": "chromaticraft:pylon_structure_smooth",
+      "slot": 3
+    },
+    {
+      "ingredient": "chromaticraft:pylon_structure_smooth",
+      "slot": 5
+    },
+    {
+      "ingredient": "chromaticraft:pylon_structure_smooth",
+      "slot": 7
+    }
+  ],
+  "result": {
+    "count": 4,
+    "id": "chromaticraft:pylon_structure_engraved"
+  },
+  "tier": "crafting"
+}

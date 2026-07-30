@@ -43,7 +43,7 @@ import reika.dragonapi.libraries.rendering.ReikaColorAPI;
  * and DragonAPI Submergeable interfaces are deferred (unported). The potion effect (the block's core
  * function) is kept via {@link CrystalPotionController}.
  */
-public abstract class CrystalBlock extends CrystalTypeBlock implements SemiUnbreakable {
+public abstract class CrystalBlock extends net.minecraft.world.level.block.Block implements SemiUnbreakable {
 
 	protected static final Random rand = new Random();
 
@@ -53,9 +53,9 @@ public abstract class CrystalBlock extends CrystalTypeBlock implements SemiUnbre
 
 	@Override
 	public float getEnchantPowerBonus(BlockState state, BlockGetter level, BlockPos pos) {
-		if (this == reika.chromaticraft.registry.ChromaBlocks.LAMP.get() || state.getValue(COLOR) != CrystalElement.PURPLE.ordinal())
+		if (this instanceof reika.chromaticraft.block.crystal.BlockCrystalLamp || this.getCrystalElement(state) != CrystalElement.PURPLE)
 			return 0;
-		return this == reika.chromaticraft.registry.ChromaBlocks.SUPER.get() ? 1.5F : 1;
+		return this instanceof reika.chromaticraft.block.crystal.BlockSuperCrystal ? 1.5F : 1;
 	}
 
 	@Override
@@ -126,6 +126,8 @@ public abstract class CrystalBlock extends CrystalTypeBlock implements SemiUnbre
 	public boolean canEntityDestroy(BlockState state, BlockGetter level, BlockPos pos, Entity e) {
 		return false;
 	}
+
+	public abstract CrystalElement getCrystalElement(BlockState state);
 
 	/** Per-element tint colour for the block/item colour provider (replaces the ISBRH getTintColor). */
 	public final int getTintColor(int meta) {

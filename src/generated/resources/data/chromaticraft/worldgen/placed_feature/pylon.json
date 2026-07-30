@@ -1,0 +1,8 @@
+{
+  "feature": "chromaticraft:pylon",
+  "placement": [
+    {
+      "type": "chromaticraft:pylon_grid"
+    }
+  ]
+}

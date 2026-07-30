@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "chromaticraft:item/boosted_crystal_shard_blue"
+  }
+}

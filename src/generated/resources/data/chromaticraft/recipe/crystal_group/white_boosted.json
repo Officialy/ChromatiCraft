@@ -1,0 +1,66 @@
+{
+  "type": "chromaticraft:casting",
+  "duration": 40,
+  "experience": 160,
+  "grid": [
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_black",
+      "slot": 1
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_gray",
+      "slot": 3
+    },
+    {
+      "ingredient": "chromaticraft:icy_dust",
+      "slot": 4
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_light_gray",
+      "slot": 5
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_white",
+      "slot": 7
+    }
+  ],
+  "result": {
+    "count": 4,
+    "id": "chromaticraft:white_crystal_group"
+  },
+  "runes": [
+    {
+      "element": "black",
+      "offset": [
+        2,
+        0,
+        -4
+      ]
+    },
+    {
+      "element": "gray",
+      "offset": [
+        -4,
+        0,
+        -2
+      ]
+    },
+    {
+      "element": "lightgray",
+      "offset": [
+        4,
+        0,
+        2
+      ]
+    },
+    {
+      "element": "white",
+      "offset": [
+        -2,
+        0,
+        4
+      ]
+    }
+  ],
+  "tier": "temple"
+}

@@ -1,0 +1,66 @@
+{
+  "type": "chromaticraft:casting",
+  "duration": 40,
+  "experience": 160,
+  "grid": [
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_brown",
+      "slot": 1
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_pink",
+      "slot": 3
+    },
+    {
+      "ingredient": "chromaticraft:chromic_dust",
+      "slot": 4
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_orange",
+      "slot": 5
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_light_blue",
+      "slot": 7
+    }
+  ],
+  "result": {
+    "count": 4,
+    "id": "chromaticraft:orange_crystal_group"
+  },
+  "runes": [
+    {
+      "element": "brown",
+      "offset": [
+        -2,
+        0,
+        -4
+      ]
+    },
+    {
+      "element": "pink",
+      "offset": [
+        -4,
+        0,
+        2
+      ]
+    },
+    {
+      "element": "orange",
+      "offset": [
+        4,
+        0,
+        -2
+      ]
+    },
+    {
+      "element": "lightblue",
+      "offset": [
+        2,
+        0,
+        4
+      ]
+    }
+  ],
+  "tier": "temple"
+}

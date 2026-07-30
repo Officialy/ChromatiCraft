@@ -9,333 +9,165 @@
  ******************************************************************************/
 package reika.chromaticraft.magic.network;
 
+import com.mojang.serialization.Codec;
+
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
+import java.util.List;
 
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.nbt.NBTTagList;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.world.World;
-import net.minecraft.world.WorldSavedData;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.datafix.DataFixTypes;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.saveddata.SavedData;
+import net.minecraft.world.level.saveddata.SavedDataType;
 
 import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.registry.ChromaPackets;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.tileentity.networking.TileEntityCrystalPylon;
 import reika.chromaticraft.tileentity.networking.TileEntityPylonLink;
 import reika.dragonapi.instantiable.data.immutable.WorldLocation;
-import reika.dragonapi.instantiable.io.PacketTarget;
-import reika.dragonapi.instantiable.io.packettarget.PlayerTarget;
-import reika.dragonapi.libraries.reikanbthelper.NBTTypes;
-import reika.dragonapi.libraries.io.ReikaPacketHelper;
 
-import cpw.mods.fml.common.FMLCommonHandler;
-import cpw.mods.fml.relauncher.Side;
-
-
-public class PylonLinkNetwork {
-
-	private static final String NBT_TAG = "pylonlinknet";
+/** Persistent owner/colour web connecting the pylon-link tiles in all loaded dimensions. */
+public final class PylonLinkNetwork {
 
 	public static final PylonLinkNetwork instance = new PylonLinkNetwork();
 
-	private long lastUpdate;
-	private final HashMap<UUID, PylonWeb> links = new HashMap();
+	private final Map<UUID, EnumMap<CrystalElement, Map<WorldLocation, PylonNode>>> links = new HashMap<>();
+	private PylonLinkData activeData;
 
 	private PylonLinkNetwork() {
-
 	}
 
-	public PylonNode addLocation(TileEntityPylonLink te, TileEntityCrystalPylon p) {
-		if (te.worldObj.isRemote)
+	public PylonNode addLocation(TileEntityPylonLink tile, TileEntityCrystalPylon pylon) {
+		if (!(tile.getLevel() instanceof ServerLevel server) || tile.getUUID() == null)
 			return null;
-		PylonLinkData.initNetworkData(te.worldObj).setDirty(true);
-		PylonWeb web = this.getOrCreateWeb(te.getUUID());
-		PylonSubweb sw = web.getSubweb(p.getColor());
-		PylonNode connection = sw.addNode(te, p);
-		p.link(te);
-		if (web.needsSync) {
-			this.sync(null);
-			ChromatiCraft.logger.log("Updating pylon link network: added a tile @ "+te);
-		}
-		return connection;
+		this.ensureLoaded(server);
+		Map<WorldLocation, PylonNode> subweb = this.getSubweb(tile.getUUID(), pylon.getColor());
+		WorldLocation tileLocation = new WorldLocation(tile);
+		PylonNode node = subweb.computeIfAbsent(tileLocation, ignored ->
+				new PylonNode(tile.getUUID(), pylon.getColor(), tileLocation, new WorldLocation(pylon)));
+		pylon.link(tile);
+		this.markDirty();
+		return node;
 	}
 
-	public void removeLocation(World world, PylonNode connection) {
-		if (world.isRemote)
+	public void removeLocation(Level world, PylonNode connection) {
+		if (!(world instanceof ServerLevel server) || connection == null)
 			return;
-		PylonLinkData.initNetworkData(world).setDirty(true);
-		TileEntity te = connection.pylon.getTileEntity();
-		if (te instanceof TileEntityCrystalPylon) {
-			((TileEntityCrystalPylon)te).link(null);
+		this.ensureLoaded(server);
+		EnumMap<CrystalElement, Map<WorldLocation, PylonNode>> web = links.get(connection.owner());
+		if (web != null) {
+			Map<WorldLocation, PylonNode> subweb = web.get(connection.color());
+			if (subweb != null)
+				subweb.remove(connection.tile());
 		}
-		connection.parent.remove(connection);
-		ChromatiCraft.logger.log("Updating pylon link network: removed a tile @ "+connection);
-		this.sync(null);
+		BlockEntity pylon = connection.pylon().getBlockEntity();
+		if (pylon instanceof TileEntityCrystalPylon crystalPylon)
+			crystalPylon.link(null);
+		this.markDirty();
 	}
 
-	private PylonWeb getOrCreateWeb(UUID uid) {
-		PylonWeb web = links.get(uid);
-		if (web == null) {
-			web = new PylonWeb(uid);
-			links.put(uid, web);
-		}
-		return web;
+	public Collection<WorldLocation> getLinkedPylons(Level world, UUID owner, CrystalElement color) {
+		if (owner == null)
+			return List.of();
+		if (world instanceof ServerLevel server)
+			this.ensureLoaded(server);
+		EnumMap<CrystalElement, Map<WorldLocation, PylonNode>> web = links.get(owner);
+		Map<WorldLocation, PylonNode> subweb = web != null ? web.get(color) : null;
+		if (subweb == null)
+			return List.of();
+		ArrayList<WorldLocation> pylons = new ArrayList<>(subweb.size());
+		for (PylonNode node : subweb.values())
+			pylons.add(node.pylon());
+		return List.copyOf(pylons);
 	}
 
-	public Collection<WorldLocation> getLinkedPylons(World world, UUID uid, CrystalElement color) {
-		if (!world.isRemote && world.getTotalWorldTime()-lastUpdate > 30*20)
-			PylonLinkData.initNetworkData(world).setDirty(true);
-		ArrayList<WorldLocation> li = new ArrayList();
-		PylonWeb w = links.get(uid);
-		if (w == null) {
-			//ChromatiCraft.logger.logError("Tried to get link list for unregistered ID "+uid);
-			return li;
-		}
-		if (w.data[color.ordinal()] != null) {
-			li.addAll(w.data[color.ordinal()].pylonSet.keySet());
-		}
-		return li;
+	private Map<WorldLocation, PylonNode> getSubweb(UUID owner, CrystalElement color) {
+		return links.computeIfAbsent(owner, ignored -> new EnumMap<>(CrystalElement.class))
+				.computeIfAbsent(color, ignored -> new HashMap<>());
 	}
 
-	public void clear() {
+	private void ensureLoaded(ServerLevel level) {
+		PylonLinkData data = level.getServer().overworld().getDataStorage().computeIfAbsent(PylonLinkData.TYPE);
+		activeData = data;
+	}
+
+	private void markDirty() {
+		if (activeData != null)
+			activeData.setDirty();
+	}
+
+	private void load(CompoundTag root) {
 		links.clear();
+		ListTag entries = root.getListOrEmpty("entries");
+		for (int i = 0; i < entries.size(); i++) {
+			PylonNode node = PylonNode.fromTag(entries.getCompoundOrEmpty(i));
+			if (node != null)
+				this.getSubweb(node.owner(), node.color()).put(node.tile(), node);
+		}
 	}
 
-	public void load(NBTTagCompound NBT) {
-		ChromatiCraft.logger.log("Reloading pylon link data...");
-		this.clear();
-		NBTTagList li = NBT.getTagList("entries", NBTTypes.COMPOUND.ID);
-		for (Object o : li.tagList) {
-			NBTTagCompound tag = (NBTTagCompound)o;
-			PylonWeb pw = PylonWeb.readFromNBT(tag);
-			links.put(pw.owner, pw);
-		}
-		ChromatiCraft.logger.log("Updating pylon link network from disk");
-		this.sync(null);
+	private CompoundTag save() {
+		CompoundTag root = new CompoundTag();
+		ListTag entries = new ListTag();
+		for (EnumMap<CrystalElement, Map<WorldLocation, PylonNode>> web : links.values())
+			for (Map<WorldLocation, PylonNode> subweb : web.values())
+				for (PylonNode node : subweb.values())
+					entries.add(node.toTag());
+		root.put("entries", entries);
+		return root;
 	}
 
-	public NBTTagCompound save() {
-		NBTTagCompound tag = new NBTTagCompound();
-		NBTTagList li = new NBTTagList();
-		tag.setTag("entries", li);
-		for (PylonWeb pw : links.values()) {
-			li.appendTag(pw.writeToNBT());
+	private static final class PylonLinkData extends SavedData {
+		private static final Codec<PylonLinkData> CODEC = CompoundTag.CODEC.xmap(PylonLinkData::new, PylonLinkData::saveData);
+		private static final SavedDataType<PylonLinkData> TYPE = new SavedDataType<>(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "pylon_link_network"),
+				PylonLinkData::new, CODEC, DataFixTypes.SAVED_DATA_COMMAND_STORAGE);
+
+		private PylonLinkData() {
 		}
-		return tag;
+
+		private PylonLinkData(CompoundTag tag) {
+			instance.load(tag);
+		}
+
+		private CompoundTag saveData() {
+			return instance.save();
+		}
 	}
 
-	public void sync(EntityPlayerMP ep) {
-		if (ep != null)
-			ChromatiCraft.logger.log("Updating pylon link network for "+ep);
-		else
-			ChromatiCraft.logger.log("Updating pylon link network for all players");
-		if (FMLCommonHandler.instance().getEffectiveSide() == Side.CLIENT)
-			return;
-		PacketTarget pt = ep != null ? new PlayerTarget(ep) : PacketTarget.allPlayers;
-		NBTTagCompound nbt = this.save();
-		ReikaPacketHelper.sendNBTPacket(ChromatiCraft.packetChannel, ChromaPackets.PYLONLINKCACHE.ordinal(), nbt, pt);
-	}
-
-	public static class PylonLinkData extends WorldSavedData {
-
-		private static final String IDENTIFIER = NBT_TAG;
-
-		public PylonLinkData() {
-			super(IDENTIFIER);
+	public record PylonNode(UUID owner, CrystalElement color, WorldLocation tile, WorldLocation pylon) {
+		public CompoundTag toTag() {
+			CompoundTag tag = new CompoundTag();
+			tag.putString("owner", owner.toString());
+			tag.putInt("color", color.ordinal());
+			tag.put("tile", tile.writeToTag());
+			tag.put("pylon", pylon.writeToTag());
+			return tag;
 		}
 
-		public PylonLinkData(String s) {
-			super(s);
-		}
-
-		@Override
-		public void readFromNBT(NBTTagCompound NBT) {
-			instance.load(NBT.getCompoundTag("data"));
-		}
-
-		@Override
-		public void writeToNBT(NBTTagCompound NBT) {
-			NBT.setTag("data", instance.save());
-		}
-
-		private static PylonLinkData initNetworkData(World world) {
-			PylonLinkData data = (PylonLinkData)world.loadItemData(PylonLinkData.class, IDENTIFIER);
-			if (data == null) {
-				data = new PylonLinkData();
-				world.setItemData(IDENTIFIER, data);
+		public static PylonNode fromTag(CompoundTag tag) {
+			String ownerText = tag.getStringOr("owner", "");
+			if (ownerText.isEmpty() || !tag.contains("tile") || !tag.contains("pylon"))
+				return null;
+			try {
+				UUID owner = UUID.fromString(ownerText);
+				int index = Math.max(0, Math.min(CrystalElement.elements.length - 1, tag.getIntOr("color", 0)));
+				return new PylonNode(owner, CrystalElement.elements[index],
+						WorldLocation.readTag(tag.getCompoundOrEmpty("tile")),
+						WorldLocation.readTag(tag.getCompoundOrEmpty("pylon")));
 			}
-			return data;
+			catch (IllegalArgumentException ex) {
+				return null;
+			}
 		}
 	}
-
-	private static class PylonWeb {
-
-		private final UUID owner;
-		private final PylonSubweb[] data = new PylonSubweb[16];
-		private boolean needsSync = false;
-
-		private PylonWeb(UUID uid) {
-			owner = uid;
-		}
-
-		private PylonSubweb getSubweb(CrystalElement e) {
-			if (data[e.ordinal()] == null) {
-				data[e.ordinal()] = new PylonSubweb(this, e);
-			}
-			return data[e.ordinal()];
-		}
-
-		private static PylonWeb readFromNBT(NBTTagCompound NBT) {
-			String uid = NBT.getString("owner");
-			PylonWeb pw = new PylonWeb(UUID.fromString(uid));
-			for (int i = 0; i < 16; i++) {
-				String key = "sub_"+i;
-				if (NBT.hasKey(key)) {
-					pw.data[i] = PylonSubweb.readFromNBT(pw, NBT.getCompoundTag(key));
-				}
-			}
-			return pw;
-		}
-
-		private NBTTagCompound writeToNBT() {
-			NBTTagCompound NBT = new NBTTagCompound();
-			NBT.setString("owner", owner.toString());
-			for (int i = 0; i < 16; i++) {
-				if (data[i] != null) {
-					String key = "sub_"+i;
-					NBT.setTag(key, data[i].writeToNBT());
-				}
-			}
-			return NBT;
-		}
-
-	}
-
-	private static class PylonSubweb {
-
-		private final PylonWeb parent;
-		private final CrystalElement color;
-		private final HashMap<WorldLocation, PylonNode> pylonSet = new HashMap();
-		private final HashMap<WorldLocation, PylonNode> linkSet = new HashMap();
-
-		private PylonSubweb(PylonWeb w, CrystalElement e) {
-			parent = w;
-			color = e;
-		}
-
-		private PylonNode addNode(TileEntityPylonLink te, TileEntityCrystalPylon p) {
-			return this.addNode(new WorldLocation(te), new WorldLocation(p));
-		}
-
-		private PylonNode addNode(WorldLocation loc, WorldLocation py) {
-			PylonNode ret = linkSet.get(loc);
-			if (ret != null)
-				return ret;
-			ret = new PylonNode(this, loc, py);
-			linkSet.put(loc, ret);
-			pylonSet.put(py, ret);
-			parent.needsSync = true;
-			return ret;
-		}
-
-		private void remove(PylonNode pn) {
-			pylonSet.remove(pn.pylon);
-			linkSet.remove(pn.tile);
-			parent.needsSync = true;
-		}
-
-		private static PylonSubweb readFromNBT(PylonWeb pw, NBTTagCompound NBT) {
-			int color = NBT.getInteger("color");
-			PylonSubweb ps = new PylonSubweb(pw, CrystalElement.elements[color]);
-			NBTTagList li = NBT.getTagList("nodes", NBTTypes.COMPOUND.ID);
-			for (Object o : li.tagList) {
-				NBTTagCompound tag = (NBTTagCompound)o;
-				PylonNode pn = PylonNode.readFromNBT(ps, tag);
-				ps.pylonSet.put(pn.pylon, pn);
-				ps.linkSet.put(pn.tile, pn);
-			}
-			return ps;
-		}
-
-		private NBTTagCompound writeToNBT() {
-			NBTTagCompound NBT = new NBTTagCompound();
-			NBT.setInteger("color", color.ordinal());
-			NBTTagList li = new NBTTagList();
-			for (PylonNode pn : linkSet.values()) {
-				li.appendTag(pn.writeToNBT());
-			}
-			NBT.setTag("nodes", li);
-			return NBT;
-		}
-	}
-
-	public static class PylonNode {
-
-		private final PylonSubweb parent;
-		private final WorldLocation tile;
-		private final WorldLocation pylon;
-
-		private PylonNode(PylonSubweb w, WorldLocation loc, WorldLocation py) {
-			parent = w;
-			tile = loc;
-			pylon = py;
-		}
-
-		private static PylonNode readFromNBT(PylonSubweb pw, NBTTagCompound NBT) {
-			WorldLocation loc = WorldLocation.readFromNBT("loc", NBT);
-			WorldLocation py = WorldLocation.readFromNBT("pylon", NBT);
-			return new PylonNode(pw, loc, py);
-		}
-
-		private NBTTagCompound writeToNBT() {
-			NBTTagCompound NBT = new NBTTagCompound();
-			tile.writeToNBT("loc", NBT);
-			pylon.writeToNBT("pylon", NBT);
-			return NBT;
-		}
-
-		@Override
-		public String toString() {
-			return this.getColor()+" : "+tile.toString();
-		}
-
-		@Override
-		public int hashCode() {
-			return tile.hashCode();
-		}
-
-		@Override
-		public boolean equals(Object o) {
-			if (o instanceof PylonNode) {
-				PylonNode pn = (PylonNode)o;
-				return pn.tile.equals(tile) && pn.pylon.equals(pylon) && pn.getColor() == this.getColor();
-			}
-			return false;
-		}
-
-		public CrystalElement getColor() {
-			return parent.color;
-		}
-
-		public void sync(NBTTagCompound tag) {
-			tag.setInteger("color", parent.color.ordinal());
-			tag.setString("id", parent.parent.owner.toString());
-			tile.writeToNBT("loc", tag);
-		}
-
-		public static PylonNode fromSync(NBTTagCompound tag) {
-			CrystalElement e = CrystalElement.elements[tag.getInteger("color")];
-			UUID uid = UUID.fromString(tag.getString("id"));
-			WorldLocation loc = WorldLocation.readFromNBT("loc", tag);
-			PylonWeb pw = instance.getOrCreateWeb(uid);
-			PylonSubweb ps = pw.getSubweb(e);
-			return ps.linkSet.get(loc);
-		}
-
-	}
-
 }

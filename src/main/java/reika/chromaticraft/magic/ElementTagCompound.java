@@ -78,6 +78,11 @@ public final class ElementTagCompound {
 			data.put(e, value);
 	}
 
+	/** Alias for {@link #setTag} (the migration renamed {@code CompoundTag.setTag}→{@code put}). */
+	public void put(CrystalElement e, int value) {
+		this.setTag(e, value);
+	}
+
 	public int removeTag(CrystalElement e) {
 		return data.remove(e);
 	}
@@ -282,6 +287,38 @@ public final class ElementTagCompound {
 			if (amt > 0)
 				tag.putInt(e.name(), amt);
 		}
+	}
+
+	// CompoundTag overloads for the network/flow classes that round-trip energy through a raw
+	// CompoundTag (rather than a BlockEntity ValueInput/ValueOutput).
+	public void readFromNBT(String name, net.minecraft.nbt.CompoundTag NBT) {
+		net.minecraft.nbt.CompoundTag tag = reika.dragonapi.libraries.io.NBTCompat.getCompound(NBT, name);
+		for (int i = 0; i < CrystalElement.elements.length; i++) {
+			CrystalElement e = CrystalElement.elements[i];
+			data.put(e, reika.dragonapi.libraries.io.NBTCompat.getInt(tag, e.name(), 0));
+		}
+		this.clearEmptyKeys();
+	}
+
+	public static ElementTagCompound createFromNBT(net.minecraft.nbt.CompoundTag tag) {
+		ElementTagCompound c = new ElementTagCompound();
+		for (int i = 0; i < CrystalElement.elements.length; i++) {
+			CrystalElement e = CrystalElement.elements[i];
+			c.data.put(e, reika.dragonapi.libraries.io.NBTCompat.getInt(tag, e.name(), 0));
+		}
+		c.clearEmptyKeys();
+		return c;
+	}
+
+	public void writeToNBT(String name, net.minecraft.nbt.CompoundTag NBT) {
+		net.minecraft.nbt.CompoundTag tag = new net.minecraft.nbt.CompoundTag();
+		for (int i = 0; i < CrystalElement.elements.length; i++) {
+			CrystalElement e = CrystalElement.elements[i];
+			int amt = this.getValue(e);
+			if (amt > 0)
+				tag.putInt(e.name(), amt);
+		}
+		NBT.put(name, tag);
 	}
 
 	public static ElementTagCompound getUniformTag(int level) {

@@ -1,1724 +1,587 @@
-/*******************************************************************************
- * @author Reika Kalseki
- *
- * Copyright 2017
- *
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
- ******************************************************************************/
 package reika.chromaticraft.tileentity.recipe;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
+import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map.Entry;
+import java.util.Map;
 import java.util.Set;
+import java.util.Objects;
 import java.util.UUID;
 
-import net.minecraft.block.Block;
-import net.minecraft.client.Minecraft;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.inventory.IInventory;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.nbt.NBTTagList;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.AxisAlignedBB;
-import net.minecraft.world.World;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.common.util.ForgeDirection;
-import net.minecraftforge.fluids.FluidContainerRegistry;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtOps;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.MenuProvider;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.ItemStackTemplate;
+import net.minecraft.world.item.crafting.Recipe;
+import net.minecraft.core.RegistryAccess;
+import net.minecraft.world.item.crafting.RecipeHolder;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 
-import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.api.crystalelementaccessor.CrystalElementProxy;
-import reika.chromaticraft.api.event.CastingEvent;
-import reika.chromaticraft.auxiliary.ChromaFX;
-import reika.chromaticraft.auxiliary.crystalnetworklogger.FlowFail;
-import reika.chromaticraft.auxiliary.HoldingChecks;
-import reika.chromaticraft.auxiliary.interfaces.FocusAcceleratable;
-import reika.chromaticraft.auxiliary.interfaces.MultiBlockChromaTile;
-import reika.chromaticraft.auxiliary.interfaces.OperationInterval;
+import reika.chromaticraft.auxiliary.interfaces.NBTTile;
 import reika.chromaticraft.auxiliary.interfaces.OwnedTile;
-import reika.chromaticraft.auxiliary.interfaces.VariableTexture;
-import reika.chromaticraft.auxiliary.recipemanagers.CastingRecipe;
-import reika.chromaticraft.auxiliary.recipemanagers.castingrecipe.MultiBlockCastingRecipe;
-import reika.chromaticraft.auxiliary.recipemanagers.castingrecipe.PylonCastingRecipe;
-import reika.chromaticraft.auxiliary.recipemanagers.castingrecipe.RecipeType;
-import reika.chromaticraft.auxiliary.recipemanagers.castingrecipe.TempleCastingRecipe;
-import reika.chromaticraft.auxiliary.recipemanagers.RecipesCastingTable;
-import reika.chromaticraft.auxiliary.recipemanagers.castingrecipes.items.CrystalGroupRecipe;
+import reika.chromaticraft.auxiliary.recipemanagers.CastingRecipeInput;
+import reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe;
+import reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe.AuraRequirement;
+import reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe.GridIngredient;
+import reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe.StandIngredient;
 import reika.chromaticraft.base.tileentity.InventoriedCrystalReceiver;
-import reika.chromaticraft.gui.book.GuiCastingRecipe;
-import reika.chromaticraft.magic.CrystalTarget;
+import reika.chromaticraft.block.BlockCrystalRune;
 import reika.chromaticraft.magic.ElementTagCompound;
-import reika.chromaticraft.magic.RuneShape;
-import reika.chromaticraft.magic.castingtuning.CastingTuningManager;
-import reika.chromaticraft.magic.castingtuning.CastingTuningMismatchReaction;
-import reika.chromaticraft.magic.network.CrystalFlow;
-import reika.chromaticraft.magic.network.CrystalNetworker;
+import reika.chromaticraft.magic.castingtuning.CastingTuningRegistry;
 import reika.chromaticraft.magic.progression.ProgressStage;
-import reika.chromaticraft.magic.progression.progressioncatchuphandling.CastingProgressSyncTriggers;
-import reika.chromaticraft.magic.progression.ProgressionLinking;
-import reika.chromaticraft.magic.progression.ProgressionManager;
+import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaIcons;
-import reika.chromaticraft.registry.ChromaItems;
-import reika.chromaticraft.registry.ChromaSounds;
+import reika.chromaticraft.registry.ChromaRecipeTypes;
 import reika.chromaticraft.registry.ChromaStructures;
 import reika.chromaticraft.registry.ChromaTiles;
-import reika.chromaticraft.registry.Chromabilities;
 import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.render.BotaniaPetalShower;
-import reika.chromaticraft.render.particle.EntityCCBlurFX;
-import reika.chromaticraft.render.particle.EntityCCFloatingSeedsFX;
-import reika.chromaticraft.render.particle.EntityGlobeFX;
-import reika.chromaticraft.render.particle.EntityLaserFX;
-import reika.chromaticraft.render.particle.EntityRuneFX;
-import reika.chromaticraft.render.particle.EntitySparkleFX;
-import reika.chromaticraft.tileentity.aoe.TileEntityAuraPoint;
-import reika.chromaticraft.tileentity.auxiliary.TileEntityFocusCrystal;
-import reika.chromaticraft.tileentity.auxiliary.tileentityfocuscrystal.FocusLocation;
+import reika.chromaticraft.container.MenuCastingTable;
+
+import reika.chromaticraft.tileentity.auxiliary.TileEntityFocusCrystalPort;
 import reika.chromaticraft.tileentity.networking.TileEntityCrystalRepeater;
-import reika.chromaticraft.world.iwg.PylonGenerator;
-import reika.dragonapi.DragonAPICore;
-import reika.dragonapi.ModList;
-import reika.dragonapi.asm.dependentmethodstripper.ModDependent;
-import reika.dragonapi.instantiable.data.KeyedItemStack;
-import reika.dragonapi.instantiable.data.blockstruct.BlockArray;
-import reika.dragonapi.instantiable.data.blockstruct.FilledBlockArray;
-import reika.dragonapi.instantiable.data.blockstruct.filledblockarray.BlockMatchFailCallback;
-import reika.dragonapi.instantiable.data.immutable.BlockKey;
-import reika.dragonapi.instantiable.data.immutable.Coordinate;
-import reika.dragonapi.instantiable.data.immutable.WorldLocation;
-import reika.dragonapi.instantiable.data.maps.ItemHashMap;
-import reika.dragonapi.instantiable.effects.EntityFloatingSeedsFX;
-import reika.dragonapi.instantiable.effects.EntityParticleEmitterFX;
-import reika.dragonapi.instantiable.recipe.ItemMatch;
-import reika.dragonapi.interfaces.BlockCheck;
-import reika.dragonapi.interfaces.tileentity.BreakAction;
-import reika.dragonapi.interfaces.tileentity.ConditionalUnbreakability;
-import reika.dragonapi.interfaces.tileentity.TriggerableAction;
-import reika.dragonapi.libraries.ReikaAABBHelper;
-import reika.dragonapi.libraries.ReikaDirectionHelper;
-import reika.dragonapi.libraries.ReikaEntityHelper;
-import reika.dragonapi.libraries.ReikaInventoryHelper;
-import reika.dragonapi.libraries.ReikaNBTHelper;
-import reika.dragonapi.libraries.reikanbthelper.NBTTypes;
-import reika.dragonapi.libraries.ReikaPlayerAPI;
-import reika.dragonapi.libraries.io.ReikaSoundHelper;
-import reika.dragonapi.libraries.java.ReikaRandomHelper;
-import reika.dragonapi.libraries.java.ReikaStringParser;
-import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
-import reika.dragonapi.libraries.mathsci.ReikaPhysicsHelper;
-import reika.dragonapi.libraries.registry.ReikaDyeHelper;
-import reika.dragonapi.libraries.registry.ReikaItemHelper;
-import reika.dragonapi.libraries.rendering.ReikaColorAPI;
-
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
-
-public class TileEntityCastingTable extends InventoriedCrystalReceiver implements BreakAction, TriggerableAction, OwnedTile,
-OperationInterval, MultiBlockChromaTile, FocusAcceleratable, VariableTexture, BlockMatchFailCallback, ConditionalUnbreakability {
-
-	private CastingRecipe activeRecipe = null;
-	private int craftingTick = 0;
-	private int craftSoundTimer = 20000;
-	private int craftingAmount;
-
-	private EntityPlayer craftingPlayer;
-
-	public boolean hasStructure = false;
-	public boolean hasStructure2 = false;
-	public boolean hasPylonConnections = false;
-	private int tableXP;
-	private RecipeType tier = RecipeType.CRAFTING;
-
-	private boolean isEnhanced;
-	private boolean isTuned;
-	private boolean hasRunes;
-
-	private float throughputBonus = 0;
-
-	private final HashSet<KeyedItemStack> completedRecipes = new HashSet();
-	private final ItemHashMap<Integer> craftedItems = new ItemHashMap();
-
-	private CastingTuningMismatchReaction mismatch = null;
-
-	public HashMap<Coordinate, CrystalElement> getCurrentTuningMap() {
-		HashMap<Coordinate, CrystalElement> map = new HashMap();
-		for (Coordinate c : CastingTuningManager.instance.getTuningKeyLocations()) {
-			Coordinate c2 = c.offset(xCoord, yCoord, zCoord);
-			if (c2.getBlock(worldObj) == ChromaBlocks.RUNE.getBlockInstance())
-				map.put(c, CrystalElement.elements[c2.getBlockMetadata(worldObj)]);
-		}
-		return map;
-	}
-
-	public boolean hasTuningKey() {
-		return this.getCurrentTuningMap().size() == CastingTuningManager.instance.getTuningKeyLocations().size();
-	}
-
-	public RecipeType getTier() {
-		return tier;
-	}
-
-	public boolean isAtLeast(RecipeType type) {
-		if (!this.getTier().isAtLeast(type))
-			return false;
-		switch(type) {
-			case CRAFTING:
-				return true;
-			case TEMPLE:
-				return hasStructure;
-			case MULTIBLOCK:
-				return hasStructure2;
-			case PYLON:
-				return hasPylonConnections;
-		}
-		return false;
-	}
-
-	private void setTier(RecipeType lvl) {
-		if (lvl != tier) {
-			tier = lvl;
-			ChromaSounds.UPGRADE.playSoundAtBlock(this);
-			if (worldObj.isRemote)
-				this.particleBurst();
-			this.validateStructure();
-		}
-	}
-
-	public boolean isTuned() {
-		return isTuned;
-	}
-
-	public CastingRecipe getActiveRecipe() {
-		return activeRecipe;
-	}
-
-	@Override
-	public ChromaTiles getTile() {
-		return ChromaTiles.TABLE;
-	}
-
-	@Override
-	public void updateEntity(World world, int x, int y, int z, int meta) {
-		super.updateEntity(world, x, y, z, meta);
-		if (mismatch != null) {
-			if (mismatch.tick())
-				mismatch = null;
-			return;
-		}
-		if (!world.isRemote && this.getTicksExisted() == 1) {
-			this.evaluateRecipeAndRequest();
-		}
-		if (craftingTick > 0) {
-			this.onCraftingTick(world, x, y, z);
-		}
-
-		if (!world.isRemote && this.getTicksExisted()%20 == 0) {
-			this.attemptTriggerProgressSync(world, x, y, z);
-		}
-
-		if (isEnhanced && hasPylonConnections) {
-			if (world.isRemote) {
-				this.doEnhancedParticles(world, x, y, z);
-			}
-		}
-
-		if (world.isRemote) {
-			ChromaFX.doFocusCrystalParticles(world, x, y, z, this);
-			if (/*HoldingChecks.RUNE.isClientHolding()*/this.isAtLeast(CastingRecipe.RecipeType.TEMPLE)) {
-				this.doRuneHintFX(world, x, y, z);
-			}
-			if (ChromaTiles.getTile(world, x, y+5, z) != ChromaTiles.AUTOMATOR && HoldingChecks.DELEGATE.isClientHolding()) {
-				this.doDelegateFX(world, x, y, z);
-			}
-		}
-
-		//ChromaStructures.getCastingLevelThree(world, x, y-1, z).place();
-
-		if (DragonAPICore.debugtest) {
-			this.addXP(800000);
-			isEnhanced = false;
-
-			for (CastingRecipe cr : RecipesCastingTable.instance.getAllRecipes()) {
-				completedRecipes.add(new KeyedItemStack(cr.getOutput()));
-			}
-			this.markDirty();
-			this.syncAllData(true);
-		}
-
-		//if (world.isRemote)
-		//	this.spawnIdleParticles(world, x, y, z);
-
-		/*
-		TuningKey tk = CastingTuningManager.instance.getTuningKey(this.getPlacer());
-		Map<Coordinate, CrystalElement> map = tk.getRunes();
-		for (Coordinate c : map.keySet()) {
-			CrystalElement e = map.get(c);
-			c = c.offset(x, y, z);
-			c.setBlock(world, ChromaBlocks.RUNE.getBlockInstance(), e.ordinal());
-		}
-
-		Collection<CastingRecipe> li = RecipesCastingTable.instance.getAllRecipes();
-		for (CastingRecipe cr : li) {
-			if (cr instanceof TempleCastingRecipe) {
-				TempleCastingRecipe t = (TempleCastingRecipe)cr;
-				Map<Coordinate, CrystalElement> map2 = t.getRunes().getRunes();
-				for (Coordinate c : map2.keySet()) {
-					Coordinate c2 = c.offset(x, y, z);
-					CrystalElement e = map2.get(c);
-					c2.setBlock(world, ChromaBlocks.RUNE.getBlockInstance(), e.ordinal());
-				}
-			}
-		}
-		 */
-
-		/*
-		if (DragonAPICore.debugtest) {
-			for (CastingRecipe c : RecipesCastingTable.instance.getAllRecipesMaking(ChromaStacks.crystalCore)) {
-				if (c instanceof MultiBlockCastingRecipe) {
-					MultiBlockCastingRecipe rc = (MultiBlockCastingRecipe)c;
-					Map<List<Integer>, ItemMatch> map = rc.getAuxItems();
-					for (int dx = x-4; dx <= x+4; dx += 2) {
-						for (int dz = z-4; dz <= z+4; dz += 2) {
-							int dy = Math.abs(dx) <= 2 && Math.abs(dz) <= 2 ? y : y+1;
-							TileEntityItemStand te = (TileEntityItemStand)world.getTileEntity(dx, dy, dz);
-							if (te != null) {
-								te.setInventorySlotContents(0, null);
-								te.syncAllData(true);
-							}
-						}
-					}
-					for (List<Integer> li : map.keySet()) {
-						ItemMatch m = map.get(li);
-						int dx = x+li.get(0);
-						int dz = z+li.get(1);
-						int dy = Math.abs(li.get(0)) <= 2 && Math.abs(li.get(1)) <= 2 ? y : y+1;
-						TileEntityItemStand te = (TileEntityItemStand)world.getTileEntity(dx, dy, dz);
-						ItemStack is = ReikaItemHelper.getSizedItemStack(ReikaJavaLibrary.getRandomCollectionEntry(rand, m.getItemList()).getItemStack(), 64);
-						te.setInventorySlotContents(0, is);
-						te.markDirty();
-						te.syncAllData(true);
-					}
-					inv[4] = rc.getMainInput();
-					break;
-				}
-			}
-		}
-		 */
-
-		//ReikaJavaLibrary.pConsole(hasStructure, Side.SERVER);
-	}
-
-	@SideOnly(Side.CLIENT)
-	private void doRuneHintFX(World world, int x, int y, int z) {
-		if (GuiCastingRecipe.runeHintRecipe != null) {
-			for (Entry<List<Integer>, CrystalElementProxy> e : GuiCastingRecipe.runeHintRecipe.getRunePositions().entrySet()) {
-				List<Integer> li = e.getKey();
-				Coordinate c = new Coordinate(li.get(0), li.get(1), li.get(2));
-				c = RuneShape.modifyRuneBySeed(c, world);
-				c = c.setY(0);
-				ChromaFX.doPlacementHintParticles(world, x, y, z, Arrays.asList(c), f -> f.setColor(e.getValue().getColor()));
-			}
-		}
-	}
-
-	@SideOnly(Side.CLIENT)
-	private void doDelegateFX(World world, int x, int y, int z) {
-		double dx = x+0.5;
-		double dy = y+5.5;
-		double dz = z+0.5;
-		int l = 20;
-		if (this.getTicksExisted()%8 == 0) {
-			EntityCCBlurFX fx = new EntityCCBlurFX(world, dx, dy, dz);
-			fx.setIcon(ChromaIcons.RADIATE).setColor(0xff0000).setLife(l).setScale(6).setGravity(0).setRapidExpand().setAlphaFading();
-			EntityCCBlurFX fx2 = new EntityCCBlurFX(world, dx, dy, dz);
-			fx2.setIcon(ChromaIcons.GUARDIANINNER).setColor(0xffffff).setLife(l).setScale(3.6F).setGravity(0).setRapidExpand().setAlphaFading();
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx2);
-		}
-		for (int i = 0; i < 6; i++) {
-			dx = ReikaRandomHelper.getRandomBetween(x, x+1D);
-			dy = ReikaRandomHelper.getRandomBetween(y+5D, y+6D);
-			dz = ReikaRandomHelper.getRandomBetween(z, z+1D);
-			switch(rand.nextInt(12)) {
-				case 0:
-					dx = x;
-					dy = y+5;
-					break;
-				case 1:
-					dx = x;
-					dy = y+6;
-					break;
-				case 2:
-					dx = x+1;
-					dy = y+5;
-					break;
-				case 3:
-					dx = x+1;
-					dy = y+6;
-					break;
-				case 4:
-					dz = z;
-					dy = y+5;
-					break;
-				case 5:
-					dz = z;
-					dy = y+6;
-					break;
-				case 6:
-					dz = z+1;
-					dy = y+6;
-					break;
-				case 7:
-					dz = z+1;
-					dy = y+5;
-					break;
-				case 8:
-					dx = x;
-					dz = z;
-					break;
-				case 9:
-					dx = x+1;
-					dz = z;
-					break;
-				case 10:
-					dx = x+1;
-					dz = z+1;
-					break;
-				case 11:
-					dx = x;
-					dz = z+1;
-					break;
-				default:
-					break;
-			}
-			EntityCCBlurFX fx = new EntityCCBlurFX(world, dx, dy, dz);
-			fx.setIcon(ChromaIcons.CENTER).setColor(0xffffff).setLife(l).setScale(0.8F).setGravity(0).setRapidExpand().setAlphaFading();
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-		}
-	}
-
-	private void attemptTriggerProgressSync(World world, int x, int y, int z) {
-		for (EntityPlayer ep : this.getOwners(false)) {
-			if (ep.getDistanceSq(x+0.5, y+0.5, z+0.5) <= 100 && ProgressionLinking.instance.hasLinkedPlayers(ep)) {
-				for (CastingProgressSyncTriggers cp : CastingProgressSyncTriggers.getTriggers()) {
-					if (cp.isValid(this) && ProgressionManager.instance.canStepPlayerTo(ep, cp.progress)) {
-						ProgressionLinking.instance.attemptSyncTriggerProgressFor(ep, cp.progress);
-					}
-				}
-			}
-		}
-	}
-
-	@SideOnly(Side.CLIENT)
-	private void doEnhancedParticles(World world, int x, int y, int z) {
-		EntityFloatingSeedsFX fx = new EntityCCFloatingSeedsFX(world, x+0.5, y+0.5, z+0.5, rand.nextDouble()*360, ReikaRandomHelper.getRandomPlusMinus(0, 45D), ChromaIcons.HOLE);
-		fx.angleVelocity *= 16;
-		fx.freedom *= 0.25;
-		fx.tolerance *= 2;
-		fx.particleVelocity *= 1.25;
-		fx.setRapidExpand().setScale(1.5F);
-		//fx.setColor(CrystalElement.getBlendedColor(this.getTicksExisted(), 15));
-		fx.setColor(ReikaColorAPI.getModifiedHue(0xff0000, (this.getTicksExisted()*3)%360));
-		//fx.setColliding();
-		fx.setGravity(-0.03125F*8);
-		Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-	}
-
-	/*
-	@SideOnly(Side.CLIENT)
-	private void spawnIdleParticles(World world, int x, int y, int z) {
-		CrystalElement e = CrystalElement.randomElement();
-		EngravedRuneFX fx = new EngravedRuneFX(world, x, y, z, e, ForgeDirection.UP);
-		Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-	}
-	 */
-	@Override
-	protected void onFirstTick(World world, int x, int y, int z) {
-		super.onFirstTick(world, x, y, z);
-		this.validateStructure();
-		craftingTick = 0;
-	}
-
-	public int getCraftingTick() {
-		return craftingTick;
-	}
-
-	public int getCraftAmountQueued() {
-		return craftingAmount;
-	}
-
-	private void killCrafting() {
-		craftingTick = 0;
-
-		this.setStandLock(false);
-
-		craftSoundTimer = 20000;
-		//make something bad happen
-	}
-
-	private void onCraftingTick(World world, int x, int y, int z) {
-		if (activeRecipe == null)
-			return;
-		if (world.isRemote) {
-			this.spawnCraftingParticles(world, x, y, z);
-		}
-
-		craftSoundTimer++;
-		ChromaSounds sound = activeRecipe.getSoundOverride(this, craftSoundTimer);
-		if (sound != null) {
-			sound.playSoundAtBlock(this, 2, 1);
-			craftSoundTimer = 0;
-		}
-		else if (craftSoundTimer >= this.getSoundLength() && activeRecipe.getDuration() > 20) {
-			craftSoundTimer = 0;
-			ChromaSounds s = isEnhanced ? ChromaSounds.CRAFTING_BOOST : ChromaSounds.CRAFTING;
-			s.playSoundAtBlock(this);
-		}
-		if (rand.nextInt(12) == 0) {
-			float[] fa = activeRecipe.getHarmonics();
-			if (fa != null) {
-				for (float f : fa) {
-					if (f != 1) {
-						if (rand.nextInt(50) == 0) {
-							ChromaSounds.CASTHARMONIC.playSoundAtBlock(this, 1, f);
-						}
-					}
-				}
-				if (rand.nextInt(25) == 0) {
-					ChromaSounds.CASTHARMONIC.playSoundAtBlock(this, 1, 1);
-				}
-			}
-		}
-		//ReikaJavaLibrary.pConsole(craftingTick, Side.SERVER);
-		activeRecipe.onRecipeTick(this);
-		if (activeRecipe instanceof PylonCastingRecipe) {
-			ElementTagCompound req = this.getRequiredEnergy();
-			if (!energy.containsAtLeast(req)) {
-				if (this.getCooldown() == 0 && checkTimer.checkCap()) {
-					this.requestEnergyDifference(req);
-				}
-				return;
-			}
-		}
-		craftingTick--;
-		if (craftingTick <= 0) {
-			if (world.isRemote) {
-				activeRecipe.onCrafted(this, craftingPlayer, inv[9], 1);
-			}
-			else {
-				this.craft();
-			}
-			//craftingTick = activeRecipe.getDuration();
-		}
-	}
-
-	@SideOnly(Side.CLIENT)
-	private void spawnCraftingParticles(World world, int x, int y, int z) {
-		if (this.getTier().isAtLeast(RecipeType.TEMPLE) && hasStructure) {
-			BlockArray blocks = this.getStructureAccentLocations();
-
-			for (int i = 0; i < blocks.getSize(); i++) {
-				Coordinate c = blocks.getNthBlock(i);
-
-				int dx = c.xCoord;
-				int dy = c.yCoord;
-				int dz = c.zCoord;
-				double dd = ReikaMathLibrary.py3d(dx-x, dy-y, dz-z);
-				double dr = rand.nextDouble();
-				double px = 0.5+dr*(dx-x)+x;
-				double py = 1+dr*(dy-y)+y;
-				double pz = 0.5+dr*(dz-z)+z;
-				//double v = 0;//.125;
-				//double vx = v*(x-px)/dd;
-				//double vy = v*(y-py)/dd;
-				//double vz = v*(z-pz)/dd;
-				Block b = world.getBlock(dx, dy, dz);
-				CrystalElement e = CrystalElement.elements[(this.getTicksExisted()/20)%16];
-				EntityLaserFX fx = new EntityLaserFX(e, world, px, py, pz).setScale(2);
-				Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-			}
-		}
-
-		if (this.getTier().isAtLeast(RecipeType.MULTIBLOCK) && hasStructure2) {
-			double a = 60*Math.sin(Math.toRadians((this.getTicksExisted()*4)%360));
-			for (int i = 0; i < 360; i += 60) {
-				double ang = Math.toRadians(a+i);
-				double r = 2;
-				double rx = x+0.5+r*Math.cos(ang);
-				double ry = y;
-				double rz = z+0.5+r*Math.sin(ang);
-				double v = 0.0625;
-				double vx = v*(x+0.5-rx);
-				double vy = 0.0125+v*(y+0.5-ry);
-				double vz = v*(z+0.5-rz);
-				EntityGlobeFX fx = new EntityGlobeFX(world, rx, ry, rz, vx, vy, vz);
-				Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-			}
-		}
-
-		if (this.getTier().isAtLeast(RecipeType.PYLON) && hasPylonConnections && activeRecipe instanceof PylonCastingRecipe) {
-			BlockArray blocks = this.getStructureRuneLocations(((PylonCastingRecipe)activeRecipe).getRequiredAura());
-			int mod = 17-blocks.getSize();
-			if (blocks.getSize() > 0 && this.getTicksExisted()%mod == 0) {
-				Coordinate c = blocks.getNthBlock(this.getTicksExisted()%blocks.getSize());
-				int dx = c.xCoord;
-				int dy = c.yCoord;
-				int dz = c.zCoord;
-				Block b = world.getBlock(dx, dy, dz);
-				if (b == ChromaBlocks.RUNE.getBlockInstance()) {
-					int meta = world.getBlockMetadata(dx, dy, dz);
-					CrystalElement e = CrystalElement.elements[meta];
-					double dd = ReikaMathLibrary.py3d(dx-x, dy-y, dz-z);
-					double v = 0.125;
-					double vx = v*(x-dx)/dd;
-					double vy = v*(y-dy)/dd;
-					double vz = v*(z-dz)/dd;
-					int t = dd < 9 ? 70 : 80;
-					EntityRuneFX fx = new EntityRuneFX(world, dx+0.5, dy+0.5, dz+0.5, vx, vy, vz, e).setLife(t).setScale(2);
-					Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-				}
-			}
-		}
-	}
-
-	public BlockArray getStructureAccentLocations() {
-		BlockArray blocks = new BlockArray();
-		blocks.addBlockCoordinate(xCoord-6, yCoord+5, zCoord);
-		blocks.addBlockCoordinate(xCoord+6, yCoord+5, zCoord);
-
-		blocks.addBlockCoordinate(xCoord, yCoord+5, zCoord-6);
-		blocks.addBlockCoordinate(xCoord, yCoord+5, zCoord+6);
-
-		blocks.addBlockCoordinate(xCoord+6, yCoord+4, zCoord+6);
-		blocks.addBlockCoordinate(xCoord+6, yCoord+4, zCoord-6);
-		blocks.addBlockCoordinate(xCoord-6, yCoord+4, zCoord-6);
-		blocks.addBlockCoordinate(xCoord-6, yCoord+4, zCoord+6);
-		return blocks;
-	}
-
-	public BlockArray getStructureRuneLocations(ElementTagCompound elements) {
-		BlockArray blocks = new BlockArray();
-		HashSet<BlockKey> li = new HashSet();
-		for (CrystalElement e : elements.elementSet()) {
-			li.add(new BlockKey(ChromaBlocks.RUNE.getBlockInstance(), e.ordinal()));
-		}
-		blocks.addBlockCoordinateIf(worldObj, xCoord-8, yCoord+2, zCoord+2, li);
-		blocks.addBlockCoordinateIf(worldObj, xCoord-8, yCoord+2, zCoord-2, li);
-		blocks.addBlockCoordinateIf(worldObj, xCoord-8, yCoord+2, zCoord+6, li);
-		blocks.addBlockCoordinateIf(worldObj, xCoord-8, yCoord+2, zCoord-6, li);
-
-		blocks.addBlockCoordinateIf(worldObj, xCoord+8, yCoord+2, zCoord+2, li);
-		blocks.addBlockCoordinateIf(worldObj, xCoord+8, yCoord+2, zCoord-2, li);
-		blocks.addBlockCoordinateIf(worldObj, xCoord+8, yCoord+2, zCoord+6, li);
-		blocks.addBlockCoordinateIf(worldObj, xCoord+8, yCoord+2, zCoord-6, li);
-
-		blocks.addBlockCoordinateIf(worldObj, xCoord+2, yCoord+2, zCoord-8, li);
-		blocks.addBlockCoordinateIf(worldObj, xCoord-2, yCoord+2, zCoord-8, li);
-		blocks.addBlockCoordinateIf(worldObj, xCoord+6, yCoord+2, zCoord-8, li);
-		blocks.addBlockCoordinateIf(worldObj, xCoord-6, yCoord+2, zCoord-8, li);
-
-		blocks.addBlockCoordinateIf(worldObj, xCoord+2, yCoord+2, zCoord+8, li);
-		blocks.addBlockCoordinateIf(worldObj, xCoord-2, yCoord+2, zCoord+8, li);
-		blocks.addBlockCoordinateIf(worldObj, xCoord+6, yCoord+2, zCoord+8, li);
-		blocks.addBlockCoordinateIf(worldObj, xCoord-6, yCoord+2, zCoord+8, li);
-		return blocks;
-	}
-
-	public int getSoundLength() {
-		switch(this.getTier()) {
-			case CRAFTING:
-				return 1;
-			case TEMPLE:
-				return 1;
-			case MULTIBLOCK:
-				//return 1;
-			case PYLON:
-				return 152;
-			default:
-				return 1;
-		}
-	}
-
-	public void validateStructure() {
-		World world = worldObj;
-		int x = xCoord;
-		int y = yCoord-1;
-		int z = zCoord;
-		ChromaStructures.CASTING1.getStructure().resetToDefaults();
-		ChromaStructures.CASTING2.getStructure().resetToDefaults();
-		ChromaStructures.CASTING3.getStructure().resetToDefaults();
-		FilledBlockArray b = ChromaStructures.CASTING1.getArray(world, x, y, z);
-		FilledBlockArray b2 = ChromaStructures.CASTING2.getArray(world, x, y, z);
-		FilledBlockArray b3 = ChromaStructures.CASTING3.getArray(world, x, y, z);
-
-		if (this.getTier().isAtLeast(RecipeType.PYLON)) {
-			if (b3.matchInWorld(this)) {
-				hasStructure = hasStructure2 = hasPylonConnections = true;
-			}
-			else if (b2.matchInWorld()) {
-				hasStructure = hasStructure2 = true;
-				hasPylonConnections = false;
-			}
-			else if (b.matchInWorld()) {
-				hasStructure = true;
-				hasStructure2 = hasPylonConnections = false;
-			}
-			else {
-				hasStructure = hasStructure2 = hasPylonConnections = false;
-			}
-		}
-		else if (this.getTier().isAtLeast(RecipeType.MULTIBLOCK)) {
-			if (b2.matchInWorld(this)) {
-				hasStructure = hasStructure2 = true;
-			}
-			else if (b.matchInWorld()) {
-				hasStructure = true;
-				hasStructure2 = false;
-			}
-			else {
-				hasStructure = hasStructure2 = false;
-			}
-			hasPylonConnections = false;
-		}
-		else if (this.getTier().isAtLeast(RecipeType.TEMPLE)) {
-			if (b.matchInWorld(this)) {
-				hasStructure = true;
-			}
-			else {
-				hasStructure = false;
-			}
-			hasStructure2 = hasPylonConnections = false;
-		}
-		else {
-			hasStructure = hasStructure2 = hasPylonConnections = false;
-		}
-
-		if (hasStructure2)
-			ProgressStage.MULTIBLOCK.stepPlayerTo(this.getPlacer());
-
-		if (activeRecipe != null && !this.getValidRecipeTypes().contains(activeRecipe.type)) {
-			if (craftingTick > 0) {
-				this.killCrafting();
-			}
-			activeRecipe = null;
-		}
-		this.recountFocusCrystals();
-		if (!world.isRemote) {
-			hasRunes = false;
-			if (hasStructure) {
-				for (Coordinate c : b.keySet()) {
-					if (c.getBlock(world) == ChromaBlocks.RUNE.getBlockInstance()) {
-						hasRunes = true;
-						break;
-					}
-				}
-			}
-			isTuned = false;
-			if (hasStructure2) {
-				for (UUID uid : owners) {
-					EntityPlayer ep = world.func_152378_a(uid);
-					if (ep != null && !ReikaPlayerAPI.isFake(ep)) {
-						isTuned |= CastingTuningManager.instance.getTuningKey(ep).check(this);
-						if (isTuned) {
-							ProgressStage.TUNECAST.stepPlayerTo(ep);
-						}
-					}
-				}
-			}
-			this.applyRepeaterGroupingBonus(b3);
-		}
-		this.syncAllData(true);
-	}
-
-	private void applyRepeaterGroupingBonus(FilledBlockArray arr) {
-		throughputBonus = 0;
-		EnumMap<ForgeDirection, ArrayList<CrystalElement>> map = new EnumMap(ForgeDirection.class);
-		EnumMap<CrystalElement, Coordinate> locations = new EnumMap(CrystalElement.class);
-		for (Coordinate c : arr.getAllLocationsOf(new BlockKey(ChromaTiles.REPEATER))) {
-			ForgeDirection dir = ReikaDirectionHelper.getApproximateDirection(xCoord, yCoord, zCoord, c.xCoord, c.yCoord, c.zCoord, false);
-			ArrayList<CrystalElement> li = map.get(dir);
-			if (li == null) {
-				li = new ArrayList();
-				map.put(dir, li);
-			}
-			TileEntity tile = c.getTileEntity(worldObj);
-			if (tile instanceof TileEntityCrystalRepeater) {
-				TileEntityCrystalRepeater te = (TileEntityCrystalRepeater)tile;
-				te.markAsTableGrouped(false);
-				CrystalElement e = te.getActiveColor();
-				if (e != null && hasPylonConnections) {
-					li.add(e);
-					locations.put(e, c);
-				}
-			}
-		}
-		if (!hasPylonConnections || locations.size() != CrystalElement.elements.length) //fail if any duplicates
-			return;
-		for (ArrayList<CrystalElement> li : map.values()) {
-			int idx = CrystalGroupRecipe.getGroupIndex(li.get(0));
-			boolean matched = true;
-			for (int i = 1; i < li.size(); i++) {
-				if (CrystalGroupRecipe.getGroupIndex(li.get(i)) != idx) {
-					matched = false;
-					break;
-				}
-			}
-			if (matched) {
-				throughputBonus += 0.25F;
-				for (CrystalElement e : li) {
-					Coordinate c = locations.get(e);
-					if (c != null) {
-						TileEntityCrystalRepeater te = (TileEntityCrystalRepeater)c.getTileEntity(worldObj);
-						te.markAsTableGrouped(true);
-					}
-				}
-			}
-		}
-	}
-
-	public boolean triggerCrafting(EntityPlayer ep) {
-		if (ep == null || ReikaPlayerAPI.isFake(ep) || !ReikaEntityHelper.isInWorld(ep))
-			return false;
-		if (mismatch != null)
-			return false;
-		if (activeRecipe != null && craftingTick == 0) {
-			if (this.isOwnedByPlayer(ep)) {
-				if (activeRecipe.canRunRecipe(this, ep)) {
-					craftingPlayer = ep;
-					if (worldObj.isRemote)
-						return true;
-					this.syncAllData(true);
-					ChromaSounds.CAST.playSoundAtBlock(this);
-
-					this.setStandLock(true);
-
-					craftingAmount = ReikaInventoryHelper.getSmallestStack(inv, 0, 8).stackSize;
-
-					if (activeRecipe instanceof MultiBlockCastingRecipe) {
-						MultiBlockCastingRecipe mult = (MultiBlockCastingRecipe)activeRecipe;
-						HashMap<WorldLocation, ItemMatch> map = mult.getOtherInputs(worldObj, xCoord, yCoord, zCoord);
-						for (WorldLocation loc : map.keySet()) {
-							TileEntityItemStand te = (TileEntityItemStand)loc.getTileEntity(worldObj);//loc.getTileEntity();
-							if (te != null) {
-								craftingAmount = Math.min(craftingAmount, te.getStackInSlot(0).stackSize);
-							}
-						}
-					}
-
-					if (activeRecipe instanceof PylonCastingRecipe) {
-						this.requestEnergyDifference(this.getRequiredEnergy());
-						//ReikaJavaLibrary.pConsole("Energy is "+this.getRequiredEnergy()+" from "+((PylonCastingRecipe)activeRecipe).getRequiredAura());
-					}
-
-					if (!activeRecipe.canBeStacked()) {
-						;//craftingAmount = 1;
-					}
-
-					this.setRecipeTickDuration(activeRecipe);
-					//ReikaJavaLibrary.pConsole("Crafting x"+craftingAmount+", time = "+craftingTick+" from "+activeRecipe.getDuration());
-					return true;
-				}
-			}
-			else if (this.hasTuningKey()) {
-				this.triggerTuningMismatch(ep);
-			}
-		}
-		ChromaSounds.ERROR.playSoundAtBlock(this);
-		return false;
-	}
-
-	private void triggerTuningMismatch(EntityPlayer ep) {
-		mismatch = new CastingTuningMismatchReaction(this, ep);
-	}
-
-	public ElementTagCompound getRequiredEnergy() {
-		if (activeRecipe instanceof PylonCastingRecipe) {
-			ElementTagCompound tag = ((PylonCastingRecipe)activeRecipe).getRequiredAura();
-			return tag.scale(craftingAmount);
-		}
-		return null;
-	}
-
-	private void setRecipeTickDuration(CastingRecipe r) {
-		craftingTick = this.getRecipeTickDuration(r);
-	}
-
-	public int getRecipeTickDuration(CastingRecipe r) {
-		int t = r.getDuration();
-		if (isEnhanced)
-			t = Math.max(t/r.getEnhancedTableAccelerationFactor(), Math.min(t, 20));
-		if (r.canBeStacked())
-			t *= r.getRecipeStackedTimeFactor(this, craftingAmount);
-		if (t > 20 && r instanceof MultiBlockCastingRecipe) {
-			t = Math.max(20, (int)(t/this.getAccelerationFactor()));
-		}
-		return t;
-	}
-
-	public boolean isReadyToCraft() {
-		return craftingTick == 0 && inv[9] == null && mismatch == null;
-	}
-
-	/*
-	private boolean getRecipeRequirements() {
-		if (activeRecipe instanceof PylonRecipe) {
-			ElementTagCompound req = ((PylonRecipe)activeRecipe).getRequiredAura();
-			return energy.containsAtLeast(req);
-		}
-		else {
-			return true;
-		}
-	}*/
-
-	@Override
-	public void readFromNBT(NBTTagCompound NBT) {
-		super.readFromNBT(NBT);
-
-		this.readRecipes(NBT);
-
-		if (NBT.hasKey("crafter") && worldObj != null && craftingPlayer == null) {
-			UUID uid = UUID.fromString(NBT.getString("crafter"));
-			craftingPlayer = worldObj.func_152378_a(uid);
-		}
-
-		throughputBonus = NBT.getFloat("throughputBonus");
-	}
-
-	@Override
-	public void writeToNBT(NBTTagCompound NBT) {
-		super.writeToNBT(NBT);
-
-		this.writeRecipes(NBT);
-
-		if (craftingPlayer != null)
-			NBT.setString("crafter", craftingPlayer.getUniqueID().toString());
-
-		NBT.setFloat("throughputBonus", throughputBonus);
-	}
-
-	private void writeRecipes(NBTTagCompound NBT) {
-		NBTTagList li = new NBTTagList();
-		for (KeyedItemStack is : completedRecipes) {
-			NBTTagCompound tag = new NBTTagCompound();
-			is.getItemStack().writeToNBT(tag);
-			li.appendTag(tag);
-		}
-		NBT.setTag("recipes", li);
-
-		li = new NBTTagList();
-		for (ItemStack is : craftedItems.keySet()) {
-			NBTTagCompound tag = new NBTTagCompound();
-			is.writeToNBT(tag);
-			tag.setInteger("total", craftedItems.get(is));
-			li.appendTag(tag);
-		}
-		NBT.setTag("counts", li);
-	}
-
-	private void readRecipes(NBTTagCompound NBT) {
-		completedRecipes.clear();
-		NBTTagList li = NBT.getTagList("recipes", NBTTypes.COMPOUND.ID);
-		for (Object o : li.tagList) {
-			NBTTagCompound tag = (NBTTagCompound)o;
-			ItemStack is = ItemStack.loadItemStackFromNBT(tag);
-			completedRecipes.add(new KeyedItemStack(is));
-		}
-
-		craftedItems.clear();
-		li = NBT.getTagList("counts", NBTTypes.COMPOUND.ID);
-		for (Object o : li.tagList) {
-			NBTTagCompound tag = (NBTTagCompound)o;
-			ItemStack is = ItemStack.loadItemStackFromNBT(tag);
-			int amt = tag.getInteger("total");
-			craftedItems.put(is, amt);
-		}
-	}
-
-	@Override
-	protected void readSyncTag(NBTTagCompound NBT) {
-		super.readSyncTag(NBT);
-
-		hasPylonConnections = NBT.getBoolean("pylons");
-		hasStructure = NBT.getBoolean("struct");
-		hasStructure2 = NBT.getBoolean("struct2");
-
-		tableXP = NBT.getInteger("xp");
-		tier = RecipeType.typeList[NBT.getInteger("tier")];
-
-		craftingTick = NBT.getInteger("craft");
-
-		isEnhanced = NBT.getBoolean("enhance");
-		isTuned = NBT.getBoolean("tune");
-		hasRunes = NBT.getBoolean("runes");
-
-		craftingAmount = NBT.getInteger("crafting");
-
-		if (NBT.hasKey("crafter") && this.isInWorld())
-			craftingPlayer = worldObj.func_152378_a(UUID.fromString(NBT.getString("crafter")));
-	}
-
-	@Override
-	protected void writeSyncTag(NBTTagCompound NBT) {
-		super.writeSyncTag(NBT);
-
-		NBT.setBoolean("struct", hasStructure);
-		NBT.setBoolean("struct2", hasStructure2);
-		NBT.setBoolean("pylons", hasPylonConnections);
-
-		NBT.setInteger("tier", tier.ordinal());
-		NBT.setInteger("xp", tableXP);
-
-		NBT.setInteger("craft", craftingTick);
-
-		NBT.setBoolean("enhance", isEnhanced);
-		NBT.setBoolean("tune", isTuned);
-		NBT.setBoolean("runes", hasRunes);
-
-		NBT.setInteger("crafting", craftingAmount);
-
-		if (craftingPlayer != null) {
-			NBT.setString("crafter", craftingPlayer.getUniqueID().toString());
-		}
-	}
-
-	private void craft() {
-		CastingRecipe recipe = activeRecipe;
-		CastingRecipe cachedRecipe = recipe;
-		//ReikaJavaLibrary.pConsole(recipe, Side.SERVER);
-		int count = 0;
-		boolean repeat = false;
-		NBTTagCompound NBTin = null;
-		int xpToAdd = 0;
-		int max = Math.max(1, activeRecipe.getOutput().getMaxStackSize()/activeRecipe.getOutput().stackSize);
-		while (activeRecipe == recipe && count < max) {
-			if (inv[4] != null)
-				NBTin = recipe.getOutputTag(craftingPlayer, inv[4].stackTagCompound);
-			xpToAdd += (int)(activeRecipe.getExperience()*this.getXPModifier(activeRecipe));
-			if (activeRecipe instanceof MultiBlockCastingRecipe) {
-				MultiBlockCastingRecipe mult = (MultiBlockCastingRecipe)activeRecipe;
-				HashMap<WorldLocation, ItemMatch> map = mult.getOtherInputs(worldObj, xCoord, yCoord, zCoord);
-				for (WorldLocation loc : map.keySet()) {
-					TileEntityItemStand te = (TileEntityItemStand)loc.getTileEntity(worldObj);
-					//ReikaJavaLibrary.pConsole(te+":"+te.getStackInSlot(0), Side.SERVER);
-					if (te != null) {
-						//ReikaJavaLibrary.pConsole(loc+" @ "+te.getStackInSlot(0), Side.SERVER);
-						ItemStack is = te.getStackInSlot(0);
-						if (FluidContainerRegistry.isFilledContainer(is)) {
-							is = FluidContainerRegistry.drainFluidContainer(is);
-							te.setInventorySlotContents(0, is.copy());
-						}
-						else
-							ReikaInventoryHelper.decrStack(0, te, 1);
-						te.syncAllData(true);
-					}
-				}
-				//ReikaJavaLibrary.pConsole("count="+(count+1)+", decr'ing stands");
-			}
-			for (int i = 0; i < 9; i++) {
-				if (i == 4) {
-					ItemStack ret = recipe.getCentralLeftover(inv[i]);
-					if (ret != null) {
-						inv[i] = ret;
-						continue;
-					}
-				}
-				if (inv[i] != null) {
-					ItemStack container = recipe.getContainerItem(inv[i], inv[i].getItem().getContainerItem(inv[i]));
-					if (container == null) {
-						int amt = 1;
-						if (recipe instanceof MultiBlockCastingRecipe)
-							amt = ((MultiBlockCastingRecipe)recipe).getRequiredCentralItemCount();
-						ReikaInventoryHelper.decrStack(i, this, amt);
-					}
-					else {
-						container = container.copy();
-						container.stackSize = 1;
-						if (inv[i].stackSize == 1) {
-							inv[i] = container;
-						}
-						else {
-							ReikaInventoryHelper.decrStack(i, inv);
-							ReikaItemHelper.dropItem(worldObj, xCoord+0.5, yCoord+1.25, zCoord+0.5, container);
-						}
-					}
-				}
-			}
-			count += 1;
-			if (activeRecipe instanceof PylonCastingRecipe) {
-				energy.subtract(((PylonCastingRecipe)activeRecipe).getRequiredAura());
-			}
-			activeRecipe = recipe;
-			recipe = this.getValidRecipe();
-			if (!activeRecipe.canBeStacked() && recipe == activeRecipe) {
-				this.setRecipeTickDuration(activeRecipe);
-				ChromaSounds.CAST.playSoundAtBlock(this);
-				repeat = true;
-				break;
-			}
-		}
-		boolean triggerCrafted = true;
-		int ct = count;
-		ItemStack out = activeRecipe.getOutput();
-		while (count > 0) {
-			//ReikaJavaLibrary.pConsole("count="+count+", adding "+activeRecipe.getOutput().stackSize+" output");
-			//ReikaJavaLibrary.pConsole("tags "+(inv[9] != null ? inv[9].stackTagCompound : "null")+", "+out.stackTagCompound);
-			//ReikaJavaLibrary.pConsole("pre "+inv[9]);
-			count--;
-
-			ItemStack toadd = ReikaItemHelper.getSizedItemStack(out, activeRecipe.getOutput().stackSize);
-			if (Chromabilities.DOUBLECRAFT.enabledOn(craftingPlayer) && activeRecipe.canGiveDoubleOutput())// && toadd.getMaxStackSize() > 1)
-				toadd.stackSize *= 2;
-			NBTTagCompound NBTout = NBTin != null ? (NBTTagCompound)NBTin.copy() : null;
-			if (NBTout != null) {
-				ReikaNBTHelper.combineNBT(NBTout, toadd.stackTagCompound);
-				toadd.stackTagCompound = (NBTTagCompound)NBTout.copy();
-			}
-			toadd.stackTagCompound = activeRecipe.handleNBTResult(this, craftingPlayer, NBTin, toadd.stackTagCompound);
-			activeRecipe.setOwner(toadd, craftingPlayer);
-			ReikaInventoryHelper.addOrSetStack(toadd, inv, 9);
-			//ReikaJavaLibrary.pConsole("post "+inv[9]);
-
-			this.addCrafted(out, 1);
-			craftingAmount--;
-			if (triggerCrafted) {
-				triggerCrafted = false;
-				CastingRecipe temp = activeRecipe;
-				activeRecipe.onCrafted(this, craftingPlayer, inv[9], ct); //this resets the recipe
-				activeRecipe = temp;
-			}
-			if (inv[9] != null) {
-				MinecraftForge.EVENT_BUS.post(new CastingEvent(this, activeRecipe, craftingPlayer, inv[9].copy()));
-				int push = inv[9].stackSize;
-				for (int i = 0; i < 6; i++) {
-					TileEntity te = this.getAdjacentTileEntity(dirs[i]);
-					if (te instanceof IInventory) {
-						int amt = Math.min(inv[9].getMaxStackSize(), push);
-						boolean flag = false;
-						do {
-							flag = false;
-							if (ReikaInventoryHelper.addToIInv(ReikaItemHelper.getSizedItemStack(inv[9], amt), (IInventory)te)) {
-								flag = true;
-								ReikaInventoryHelper.decrStack(9, this, amt);
-								push -= amt;
-								//ReikaJavaLibrary.pConsole(te);
-							}
-						}
-						while (flag && inv[9] != null);
-						if (inv[9] == null)
-							break;
-					}
-				}
-			}
-		}
-
-		this.addXP(xpToAdd);
-		if (inv[9] != null)
-			repeat = false;
-		if (this.getValidRecipe() == cachedRecipe && inv[9] == null) {
-			repeat = true;
-			this.setRecipeTickDuration(activeRecipe);
-		}
-		EntityPlayer ep = craftingPlayer;
-		if (!repeat) {
-			activeRecipe = null;
-			craftSoundTimer = 20000;
-			craftingTick = 0;
-		}
-
-		this.onCraftingComplete(cachedRecipe, ct, ep);
-	}
-
-	private void onCraftingComplete(CastingRecipe rec, int ct, EntityPlayer ep) {
-		ChromatiCraft.logger.log("Player "+ep+" crafted "+rec);
-		RecipesCastingTable.setPlayerHasCrafted(ep, rec.type);
-
-		ChromaSounds.CRAFTDONE.playSoundAtBlock(this);
-		if (worldObj.isRemote)
-			this.particleBurst();
-
-		if (ct > 0) {
-			ProgressStage.CASTING.stepPlayerTo(ep);
-			if (rec instanceof PylonCastingRecipe) {
-				ProgressStage.LINK.stepPlayerTo(ep);
-			}
-		}
-
-		for (TileEntityItemStand te : this.getOtherStands().values()) {
-			te.lock(false);
-			te.syncAfterCraft();
-			//ReikaPacketHelper.sendDataPacketToEntireServer(ChromatiCraft.packetChannel, ChromaPackets.CLEARSTAND.ordinal(), te.worldObj.provider.dimensionId, te.xCoord, te.yCoord, te.zCoord, );
-		}
-	}
-
-	private void setStandLock(boolean lock) {
-		for (TileEntityItemStand te : this.getOtherStands().values()) {
-			te.lock(lock);
-		}
-	}
-
-	private float getXPModifier(CastingRecipe recipe) {
-		Integer get = craftedItems.get(recipe.getOutput());
-		int max = recipe.getPenaltyThreshold();
-		if (get != null && get.intValue() >= max) {
-			float mult = recipe.getPenaltyMultiplier();
-			float fac = (float)Math.pow(mult, get.intValue()-max);
-			return fac;
-		}
-		return 1;
-	}
-
-	private void addCrafted(ItemStack is, int count) {
-		Integer get = craftedItems.get(is);
-		int has = get != null ? get.intValue() : 0;
-		craftedItems.put(is, has+count);
-	}
-
-	public void breakBlock() {
-		HashMap<List<Integer>, TileEntityItemStand> tiles = this.getOtherStands();
-		for (TileEntityItemStand te : tiles.values()) {
-			te.setTable(null);
-		}
-		tiles.clear();
-	}
-
-	@SideOnly(Side.CLIENT)
-	private void particleBurst() {
-		for (int i = 0; i < 128; i++) {
-			double vx = ReikaRandomHelper.getRandomPlusMinus(0, 0.125);
-			double vy = ReikaRandomHelper.getRandomPlusMinus(0.125, 0.125);
-			double vz = ReikaRandomHelper.getRandomPlusMinus(0, 0.125);
-			EntitySparkleFX fx = new EntitySparkleFX(worldObj, xCoord+0.5, yCoord+0.5, zCoord+0.5, vx, vy, vz).setScale(1.5F);
-			fx.noClip = true;
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-		}
-	}
-
-	private void addXP(int experience) {
-		if (!worldObj.isRemote) {
-			tableXP += experience;
-			if (tableXP >= tier.levelUp) {
-				this.setTier(tier.next());
-			}
-			if (tableXP > 1000000) {
-				EntityPlayer ep = this.getPlacer();
-				if (ep != null && !ReikaPlayerAPI.isFake(ep)) {
-					if (ProgressStage.CTM.isPlayerAtStage(ep) && TileEntityAuraPoint.hasAuraPoints(ep)) {
-						isEnhanced = true;
-					}
-				}
-			}
-			this.syncAllData(false);
-			worldObj.markBlockForUpdate(xCoord, yCoord, zCoord);
-		}
-	}
-
-	public int getXP() {
-		return tableXP;
-	}
-
-	private void spawnParticles(World world, int x, int y, int z) {
-
-	}
-
-	@Override
-	public void markDirty() {
-		super.markDirty();
-
-		CastingRecipe r = this.getValidRecipe();
-		if (inv[9] != null)
-			r = null;
-		this.changeRecipe(r);
-	}
-
-	private void changeRecipe(CastingRecipe r) {
-		if (r == null || r != activeRecipe || r.type != RecipeType.PYLON) {
-			CrystalNetworker.instance.breakPaths(this);
-			if (r == null || r != activeRecipe) {
-				this.killCrafting();
-			}
-		}/*
-		else if (r != activeRecipe) {
-			ElementTagCompound tag = ((PylonRecipe)r).getRequiredAura();
-			tag.subtract(energy);
-			for (CrystalElement e : tag.elementSet()) {
-				this.requestEnergy(e, tag.getValue(e));
-			}
-		}*/
-		activeRecipe = r;
-	}
-
-	private CastingRecipe getValidRecipe() {
-		CastingRecipe r = RecipesCastingTable.instance.getRecipe(this, this.getValidRecipeTypes());
-		if (worldObj.provider.dimensionId != 0) {
-			if (r instanceof TempleCastingRecipe && !PylonGenerator.instance.canGenerateIn(worldObj))
-				r = null;
-		}
-		//ReikaJavaLibrary.pConsole(r);
-		if (r instanceof MultiBlockCastingRecipe) {
-			MultiBlockCastingRecipe m = (MultiBlockCastingRecipe)r;
-			HashMap<List<Integer>, TileEntityItemStand> map = this.getOtherStands();
-			for (List<Integer> key : map.keySet()) {
-				int i = key.get(0);
-				int k = key.get(1);
-				int dx = xCoord+i;
-				int dz = zCoord+k;
-				int dy = yCoord+(Math.abs(i) != 4 && Math.abs(k) != 4 ? 0 : 1);
-				TileEntityItemStand te = (TileEntityItemStand)worldObj.getTileEntity(dx, dy, dz);
-				te.setTable(this);
-			}
-		}
-		return r;
-	}
-
-	private ArrayList<RecipeType> getValidRecipeTypes() {
-		ArrayList<RecipeType> li = new ArrayList();
-		li.add(RecipeType.CRAFTING);
-		if (tier.isAtLeast(RecipeType.TEMPLE) && hasStructure) {
-			li.add(RecipeType.TEMPLE);
-			if (tier.isAtLeast(RecipeType.MULTIBLOCK) && hasStructure2) {
-				li.add(RecipeType.MULTIBLOCK);
-				if (tier.isAtLeast(RecipeType.PYLON) && hasPylonConnections)
-					li.add(RecipeType.PYLON);
-			}
-		}
-		return li;
-	}
-
-	private void evaluateRecipeAndRequest() {
-		CastingRecipe r = this.getValidRecipe();
-		if (r != null && r != activeRecipe && r instanceof PylonCastingRecipe) {
-			ElementTagCompound tag = this.getRequiredEnergy();
-			this.requestEnergyDifference(tag);
-		}
-		activeRecipe = r;
-	}
-
-	public HashMap<List<Integer>, TileEntityItemStand> getOtherStands() {
-		HashMap<List<Integer>, TileEntityItemStand> li = new HashMap();
-		for (int i = -4; i <= 4; i += 2) {
-			for (int k = -4; k <= 4; k += 2) {
-				int dx = xCoord+i;
-				int dz = zCoord+k;
-				int dy = yCoord+(Math.abs(i) != 4 && Math.abs(k) != 4 ? 0 : 1);
-				ChromaTiles c = ChromaTiles.getTile(worldObj, dx, dy, dz);
-				if (c == ChromaTiles.STAND) {
-					TileEntityItemStand te = (TileEntityItemStand)worldObj.getTileEntity(dx, dy, dz);
-					li.put(Arrays.asList(i, k), te);
-				}
-			}
-		}
-		return li;
-	}
-
-	@Override
-	protected void animateWithTick(World world, int x, int y, int z) {
-
-	}
-
-	@Override
-	public int getSizeInventory() {
-		return 10;
-	}
-
-	@Override
-	public int getInventoryStackLimit() {
-		return 64;
-	}
-
-	@Override
-	public boolean isItemValidForSlot(int slot, ItemStack is) {
-		return slot != 9;
-	}
-
-	@Override
-	public boolean canExtractItem(int slot, ItemStack is, int side) {
-		return slot == 9;
-	}
-
-	@Override
-	public void onPathBroken(CrystalFlow p, FlowFail f) {
-		//this.killCrafting();
-	}
-
-	@Override
-	public boolean isConductingElement(CrystalElement e) {
-		return e != null;
-	}
-
-	@Override
-	public int maxThroughput() {
-		int base = Math.min(1000, Math.max(100, 100*(tableXP/RecipeType.MULTIBLOCK.levelUp-1)));
-		if (isEnhanced && activeRecipe instanceof PylonCastingRecipe) {
-			PylonCastingRecipe pr = (PylonCastingRecipe)activeRecipe;
-			base = Math.min(2500, Math.max(base, pr.getRequiredAura().getAverageValue()*craftingAmount/40));
-		}
-		return (int)(base*(1+throughputBonus));
-	}
-
-	@Override
-	public boolean canConduct() {
-		return true;
-	}
-
-	@Override
-	public int getReceiveRange() {
-		return 24;
-	}
-
-	@Override
-	public int getMaxStorage(CrystalElement e) {
-		return Integer.MAX_VALUE;//250000;
-	}
-
-	public boolean isCrafting() {
-		return activeRecipe != null;
-	}
-
-	public ArrayList<CrystalTarget> getTargets() {
-		ArrayList<CrystalTarget> li = new ArrayList();
-		return li;
-	}
-
-	@Override
-	public void getTagsToWriteToStack(NBTTagCompound NBT) {
-		super.getTagsToWriteToStack(NBT);
-		NBT.setInteger("lvl", this.getTier().ordinal());
-		NBT.setInteger("xp", tableXP);
-		NBT.setBoolean("enhance", isEnhanced);
-
-		this.writeRecipes(NBT);
-	}
-
-	@Override
-	public void setDataFromItemStackTag(ItemStack is) {
-		super.setDataFromItemStackTag(is);
-		if (ChromaItems.PLACER.matchWith(is)) {
-			if (is.getItemDamage() == this.getTile().ordinal()) {
-				if (is.stackTagCompound != null) {
-					int lvl = is.stackTagCompound.getInteger("lvl");
-					tier = RecipeType.typeList[lvl];
-					tableXP = is.stackTagCompound.getInteger("xp");
-					isEnhanced = is.stackTagCompound.getBoolean("enhance");
-
-					this.readRecipes(is.stackTagCompound);
-				}
-			}
-		}
-	}
-
-	@Override
-	public ElementTagCompound getRequestedTotal() {
-		return craftingTick > 0 && activeRecipe instanceof PylonCastingRecipe ? this.getRequiredEnergy() : null;
-	}
-
-	public BlockArray getBlocks() {
-		switch(tier) {
-			case CRAFTING:
-				return null;
-			case TEMPLE:
-				return ChromaStructures.CASTING1.getArray(worldObj, xCoord, yCoord-1, zCoord);
-			case MULTIBLOCK:
-				return ChromaStructures.CASTING2.getArray(worldObj, xCoord, yCoord-1, zCoord);
-			case PYLON:
-				return ChromaStructures.CASTING3.getArray(worldObj, xCoord, yCoord-1, zCoord);
-			default:
-				return null;
-		}
-	}
-
-	@Override
-	public AxisAlignedBB getRenderBoundingBox() {
-		return ReikaAABBHelper.getBlockAABB(xCoord, yCoord, zCoord).expand(12, 6, 12);
-	}
-
-	@Override
-	public boolean trigger() {
-		return this.getPlacer() != null && !ReikaPlayerAPI.isFake(this.getPlacer()) && this.getPlacer().ticksExisted >= 20 && this.triggerCrafting(this.getPlacer());
-	}
-
-	public void giveRecipe(EntityPlayer ep, CastingRecipe cr) {
-		completedRecipes.add(new KeyedItemStack(cr.getOutput()));
-		this.markDirty();
-		this.syncAllData(true);
-	}
-
-	public HashSet<CastingRecipe> getCompletedRecipes() {
-		HashSet<CastingRecipe> set = new HashSet();
-		for (KeyedItemStack is : completedRecipes) {
-			set.addAll(RecipesCastingTable.instance.getAllRecipesMaking(is.getItemStack()));
-		}
-		return set;
-	}
-
-	public boolean hasRecipeBeenUsed(CastingRecipe cr) {
-		return this.getCompletedRecipes().contains(cr);
-	}
-
-	@Override
-	public int getIconState(int side) {
-		return isEnhanced ? 1 : 0;
-	}
-
-	@Override
-	public boolean onlyAllowOwnersToUse() {
-		return true;
-	}
-
-	@Override
-	public float getOperationFraction() {
-		if (activeRecipe == null)
-			return 0;
-		return 1F-craftingTick/(float)this.getRecipeTickDuration(activeRecipe);
-	}
-
-	@Override
-	public OperationState getState() {
-		if (activeRecipe == null)
-			return OperationState.INVALID;
-		if (activeRecipe instanceof PylonCastingRecipe)
-			return energy.containsAtLeast(this.getRequiredEnergy()) ? OperationState.RUNNING : OperationState.PENDING;
-		else
-			return OperationState.RUNNING;
-	}
-
-	public void dumpAllStands() {
-		if (tier.isAtLeast(RecipeType.MULTIBLOCK)) {
-			for (TileEntityItemStand te : this.getOtherStands().values()) {
-				te.dropSlot();
-				ChromaSounds.ITEMSTAND.playSoundAtBlock(te);
-				te.syncAllData(true);
-			}
-		}
-	}
-
-	@Override
-	public void recountFocusCrystals() {
-		this.getAccelerationFactor();
-		//ReikaJavaLibrary.pConsole(this.getAccelerationFactor());
-	}
-
-	@Override
-	public float getAccelerationFactor() {
-		return TileEntityFocusCrystal.getSummedFocusFactor(this, CastingFocusLocation.set);
-	}
-
-	@Override
-	public float getMaximumAcceleratability() {
-		return TileEntityFocusCrystal.CrystalTier.TURBOCHARGED.efficiencyFactor*CastingFocusLocation.list.length;
-	}
-
-	@Override
-	public float getProgressToNextStep() {
-		return 0;
-	}
-
-	@Override
-	public Collection<Coordinate> getRelativeFocusCrystalLocations() {
-		Collection<Coordinate> c = new ArrayList();
-		for (CastingFocusLocation f : CastingFocusLocation.list) {
-			c.add(f.relativeLocation());
-		}
-		return c;
-	}
-
-	@Override
-	public void onBlockFailure(World world, int x, int y, int z, BlockCheck seek) {
-
-	}
-
-	@SideOnly(Side.CLIENT)
-	@ModDependent(ModList.BOTANIA)
-	public void onClickedWithBotaniaWand(ReikaDyeHelper dye1, ReikaDyeHelper dye2) {
-		ReikaSoundHelper.playNormalClientSound(worldObj, xCoord+0.5, yCoord+0.5, zCoord+0.5, "botania:spreaderFire", 1, 1, true);
-		for (int i = 0; i < 8; i++) {
-			double ang = rand.nextDouble()*360;
-			double vy = ReikaRandomHelper.getRandomBetween(0.125, 0.375);
-			double vel = ReikaRandomHelper.getRandomBetween(0.0625, 0.25);
-			double[] v = ReikaPhysicsHelper.polarToCartesian(vel, 0, ang);
-			double g = ReikaRandomHelper.getRandomBetween(0.03125/4, 0.03125);
-			int l = ReikaRandomHelper.getRandomBetween(20, 80);
-			EntityParticleEmitterFX fx = new EntityParticleEmitterFX(worldObj, xCoord+0.5, yCoord+1, zCoord+0.5, v[0], vy, v[2], new BotaniaPetalShower(rand.nextBoolean() ? dye1 : dye2));
-			fx.setVelocityDeltas(0, -g, 0).setLife(l);
-			fx.noClip = true;
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-		}
-	}
-
-	@Override
-	public boolean isPlayerAccessible(EntityPlayer var1) {
-		return super.isPlayerAccessible(var1) && mismatch == null;
-	}
-
-	@Override
-	public boolean isUnbreakable(EntityPlayer ep) {
-		return mismatch != null;
-	}
-
-	@Override
-	public ChromaStructures getPrimaryStructure() {
-		switch(this.getTier()) {
-			case CRAFTING:
-				return null;
-			case TEMPLE:
-				return ChromaStructures.CASTING1;
-			case MULTIBLOCK:
-				return ChromaStructures.CASTING2;
-			case PYLON:
-				return ChromaStructures.CASTING3;
-		}
-		return null;
-	}
-
-	public boolean hasStructure() {
-		switch(this.getTier()) {
-			case TEMPLE:
-				return hasStructure;
-			case MULTIBLOCK:
-				return hasStructure2;
-			case PYLON:
-				return hasPylonConnections;
-			default:
-				return false;
-		}
-	}
-
-	@Override
-	public Coordinate getStructureOffset() {
-		return new Coordinate(0, -1, 0);
-	}
-
-	public boolean canStructureBeInspected() {
-		return true;
-	}
-
-	public void onAddRune(World world, int x, int y, int z, EntityPlayer e, ItemStack is) {
-		if (this.isAtLeast(RecipeType.TEMPLE)) {
-			ProgressStage.RUNEUSE.stepPlayerTo(e);
-			hasRunes = true;
-		}
-	}
-
-	public boolean hasRunes() {
-		return hasRunes;
-	}
-
-	@Override
-	public boolean hasWork() {
-		return this.getState() == OperationState.RUNNING;
-	}
-
-	@Override
-	public void addTooltipInfo(List li, boolean shift) {
-		li.add("Tier "+ReikaStringParser.parseRomanRumeral(this.getTier().ordinal()+1));
-	}
-
-	@Override
-	public boolean allowsEfficiencyBoost() {
-		return false;
-	}
-
-	public static enum CastingFocusLocation implements FocusLocation {
-
-		N1(-1, 1, -3),
-		N2(1, 1, -3),
-		E1(3, 1, -1),
-		E2(3, 1, 1),
-		S1(1, 1, 3),
-		S2(-1, 1, 3),
-		W1(-3, 1, 1),
-		W2(-3, 1, -1);
-
-		public final Coordinate relativeLocation;
-
-		private static final CastingFocusLocation[] list = values();
-		private static final Set<FocusLocation> set = new HashSet();
-
-		private CastingFocusLocation(int x, int y, int z) {
-			relativeLocation = new Coordinate(x, y, z);
-		}
-
-		@Override
-		public Coordinate relativeLocation() {
-			return relativeLocation;
-		}
-
-		static {
-			for (CastingFocusLocation cf : list) {
-				set.add(cf);
-			}
-		}
-
-	}
-	/*
-	private static class StructureMismatch {
-
-		private static final int LIFESPAN = 50; //2.5s
-
-		private final BlockCheck seek;
-		private final Coordinate location;
-
-		private int age = LIFESPAN;
-		private boolean isActive;
-
-		private StructureMismatch(int x, int y, int z, BlockCheck bc) {
-			seek = bc;
-			location = new Coordinate(x, y, z);
-		}
-
-		private boolean doEffect(TileEntityCastingTable te) {
-			//ChromaSounds.ERROR.playSoundAtBlock(te);
-			//ChromaSounds.ERROR.playSoundAtBlock(world, x, y, z);
-
-			//ReikaJavaLibrary.pConsole(seek+" @ "+new Coordinate(x, y, z));
-
-			BlockKey bk = seek instanceof EmptyCheck ? null : seek.asBlockKey();
-			if (bk == null || bk.blockID == Blocks.air) {
-				bk = new BlockKey(Blocks.bedrock);
-			}
-
-			int r = 2;
-			int n = Math.max(4, r*r*r/3);
-			for (int i = 0; i < n; i++) {
-				int dx = ReikaRandomHelper.getRandomPlusMinus(location.xCoord, r);
-				int dy = ReikaRandomHelper.getRandomPlusMinus(location.yCoord, r);
-				int dz = ReikaRandomHelper.getRandomPlusMinus(location.zCoord, r);
-				//this.spawnMismatchParticles(world, dx, dy, dz);
-				int amt = ReikaRandomHelper.getRandomBetween(4, 12);
-				ReikaPacketHelper.sendDataPacketWithRadius(DragonAPIInit.packetChannel, PacketIDs.BREAKPARTICLES.ordinal(), te.worldObj, dx, dy, dz, amt, Block.getIdFromBlock(bk.blockID), bk.metadata);
-			}
-
-			age--;
-			return age <= 0;
-		}
-
-		@Deprecated
-		@SideOnly(Side.CLIENT)
-		private void spawnMismatchParticles(World world, int x, int y, int z) {
-			int n = 8+rand.nextInt(20);
-			for (int i = 0; i < n; i++) {
-				double dx = x+rand.nextDouble();
-				double dy = y+rand.nextDouble();
-				double dz = z+rand.nextDouble();
-				double vx = ReikaRandomHelper.getRandomPlusMinus(0, 0.03125);
-				double vy = ReikaRandomHelper.getRandomPlusMinus(0, 0.03125);
-				double vz = ReikaRandomHelper.getRandomPlusMinus(0, 0.03125);
-				int c = ReikaColorAPI.getModifiedHue(0xff0000, rand.nextInt(360));
-				int l = ReikaRandomHelper.getRandomBetween(10, 40);
-				EntityBlurFX fx = new EntityBlurFX(world, dx, dy, dz, vx, vy, vz).setColor(c).setLife(l).setIcon(ChromaIcons.SPARKLEPARTICLE).setRapidExpand();
-				Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-			}
-		}
-
-	}
-	 */
-
+/** Complete server-authoritative controller for all four V33a casting tiers. */
+public final class TileEntityCastingTable extends InventoriedCrystalReceiver implements OwnedTile, NBTTile, MenuProvider {
+
+    public enum TableTier {
+        CRAFTING(0), TEMPLE(250), MULTIBLOCK(2000), PYLON(15000);
+        private final int minimumXP;
+        TableTier(int xp) { minimumXP = xp; }
+        public int minimumXP() { return minimumXP; }
+        public static TableTier forXP(int xp) {
+            TableTier result = CRAFTING;
+            for (TableTier tier : values()) if (xp >= tier.minimumXP) result = tier;
+            return result;
+        }
+    }
+    private static final List<BlockPos> CASTING_FOCUS_LOCATIONS = List.of(
+            new BlockPos(-1,1,-3), new BlockPos(1,1,-3), new BlockPos(3,1,-1), new BlockPos(3,1,1),
+            new BlockPos(1,1,3), new BlockPos(-1,1,3), new BlockPos(-3,1,1), new BlockPos(-3,1,-1));
+
+
+    private static final int[][] CASTING_REPEATER_RING = {
+            {-6,-8},{-2,-8},{2,-8},{6,-8},{-6,8},{-2,8},{2,8},{6,8},
+            {-8,-6},{-8,-2},{-8,2},{-8,6},{8,-6},{8,-2},{8,2},{8,6}
+    };
+
+    private RecipeHolder<CastingTableRecipe> activeRecipe;
+    private boolean isTuned;
+    private ResourceKey<Recipe<?>> activeRecipeKey;
+    private UUID craftingPlayer;
+    private int craftingTick;
+    private int craftingAmount;
+    private int tableXP;
+    private boolean hasTemple;
+    private float throughputBonus;
+    private boolean hasMultiblock;
+    private boolean hasPylonStructure;
+    private boolean mutatingInventory;
+    private boolean recipeDirty = true;
+    private final Set<ResourceKey<Recipe<?>>> completedRecipes = new HashSet<>();
+    private ItemStack clientRecipeOutput = ItemStack.EMPTY;
+    private final ElementTagCompound clientRecipeAura = new ElementTagCompound();
+    private final Map<String, Integer> craftedItems = new HashMap<>();
+
+    public TileEntityCastingTable(BlockPos pos, BlockState state) {
+        super(ChromaBlockEntities.CASTING_TABLE.get(), pos, state);
+    }
+
+    @Override public ChromaTiles getTile() { return ChromaTiles.TABLE; }
+    @Override public int getSizeInventory() { return 10; }
+    @Override public boolean canPlaceItem(int slot, ItemStack stack) { return slot >= 0 && slot < 9 && !this.isCrafting(); }
+    @Override public boolean canTakeItemThroughFace(int slot, ItemStack stack, Direction side) { return slot == 9; }
+    @Override public boolean onlyAllowOwnersToMine() { return true; }
+    @Override public boolean onlyAllowOwnersToUse() { return true; }
+    @Override public boolean isOwnedByPlayer(Player player) { return placerUUID == null || placerUUID.equals(player.getUUID()); }
+    @Override public Component getDisplayName() { return Component.translatable("block.chromaticraft.casting_table"); }
+    @Override public AbstractContainerMenu createMenu(int id, Inventory inventory, Player player) {
+        return new MenuCastingTable(id, inventory, this);
+    }
+
+    @Override
+    public void updateEntity(Level world, BlockPos pos) {
+        super.updateEntity(world, pos);
+        if (world.isClientSide()) return;
+        if (activeRecipe == null && activeRecipeKey != null && craftingTick > 0) this.restoreActiveRecipe();
+        if (this.getTicksExisted() == 1 || this.getTicksExisted() % 40 == 0) this.validateStructure();
+        if (recipeDirty && !this.isCrafting()) this.refreshActiveRecipe();
+        if (!this.isCrafting()) return;
+        if (!this.craftStateStillValid()) { this.cancelCraft(); return; }
+        if (!this.hasRequiredAura()) {
+            if (this.getTicksExisted() % 20 == 0) this.requestEnergyDifference(this.requiredAura(craftingAmount), true);
+            return;
+        }
+        if (--craftingTick <= 0) this.completeCraft();
+    }
+
+    @Override
+    protected void onInventorySlotChanged(int slot) {
+        if (mutatingInventory) return;
+        recipeDirty = true;
+        if (slot < 9 && this.isCrafting()) this.cancelCraft();
+    }
+
+    public boolean triggerCrafting(Player player) {
+        if (this.getLevel() == null || this.getLevel().isClientSide() || this.isCrafting() || !this.isOwnedByPlayer(player)) return false;
+        this.validateStructure();
+        this.refreshActiveRecipe();
+        if (activeRecipe == null) return false;
+        if (!this.playerCanRun(activeRecipe.value(), player)) return false;
+        int amount = this.calculateCraftableAmount(activeRecipe.value());
+        if (amount <= 0 || !this.canAccept(activeRecipe.value().output(), amount)) return false;
+        craftingAmount = amount;
+        int duration = activeRecipe.value().duration() * amount;
+        if (activeRecipe.value().tier().ordinal() >= CastingTableRecipe.Tier.MULTIBLOCK.ordinal() && duration > 20)
+            duration = Math.max(20, (int)(duration / this.getAccelerationFactor()));
+        craftingTick = Math.max(1, duration);
+        craftingPlayer = player.getUUID();
+        activeRecipeKey = activeRecipe.id();
+        this.linkAndLockStands(true);
+        if (!this.hasRequiredAura()) this.requestEnergyDifference(this.requiredAura(craftingAmount), true);
+        this.setChanged();
+        this.syncAllData(false);
+        return true;
+    }
+
+    private void restoreActiveRecipe() {
+        if (!(this.getLevel() instanceof ServerLevel server) || activeRecipeKey == null || craftingTick <= 0) return;
+        RecipeHolder<?> holder = server.getServer().getRecipeManager().byKey(activeRecipeKey).orElse(null);
+        if (holder != null && holder.value() instanceof CastingTableRecipe recipe) {
+            @SuppressWarnings("unchecked") RecipeHolder<CastingTableRecipe> cast = (RecipeHolder<CastingTableRecipe>)(RecipeHolder<?>)holder;
+            activeRecipe = cast;
+        }
+    }
+
+    private void refreshActiveRecipe() {
+        recipeDirty = false;
+        activeRecipe = null;
+        ResourceKey<Recipe<?>> previousRecipe = activeRecipeKey;
+        activeRecipeKey = null;
+        if (!(this.getLevel() instanceof ServerLevel server)) return;
+        CastingRecipeInput input = this.snapshot();
+        for (RecipeHolder<?> holder : server.getServer().getRecipeManager().getRecipes()) {
+            if (holder.value().getType() != ChromaRecipeTypes.CASTING.get() || !(holder.value() instanceof CastingTableRecipe recipe)) continue;
+            if (!this.canUseTier(recipe.tier()) || !recipe.matchesIgnoringAura(input)) continue;
+            @SuppressWarnings("unchecked") RecipeHolder<CastingTableRecipe> cast = (RecipeHolder<CastingTableRecipe>)(RecipeHolder<?>)holder;
+            if (activeRecipe == null || recipe.tier().ordinal() > activeRecipe.value().tier().ordinal()) activeRecipe = cast;
+        }
+        if (activeRecipe != null) activeRecipeKey = activeRecipe.id();
+        if (!Objects.equals(previousRecipe, activeRecipeKey))
+            this.syncAllData(false);
+    }
+
+    private boolean canUseTier(CastingTableRecipe.Tier tier) {
+        if (tier.ordinal() > this.getTier().ordinal()) return false;
+        return switch (tier) {
+            case CRAFTING -> true;
+            case TEMPLE -> hasTemple;
+            case MULTIBLOCK -> hasMultiblock;
+            case PYLON -> hasPylonStructure;
+        };
+    }
+
+    private boolean playerCanRun(CastingTableRecipe recipe, Player player) {
+        if (!ProgressStage.CRYSTALS.isPlayerAtStage(player)) return false;
+        return switch (recipe.tier()) {
+            case CRAFTING -> true;
+            case TEMPLE -> ProgressStage.RUNEUSE.isPlayerAtStage(player);
+            case MULTIBLOCK -> ProgressStage.RUNEUSE.isPlayerAtStage(player)
+                    && ProgressStage.MULTIBLOCK.isPlayerAtStage(player);
+            case PYLON -> ProgressStage.RUNEUSE.isPlayerAtStage(player)
+                    && ProgressStage.MULTIBLOCK.isPlayerAtStage(player)
+                    && ProgressStage.PYLON.isPlayerAtStage(player)
+                    && ProgressStage.REPEATER.isPlayerAtStage(player);
+        };
+    }
+
+    public void validateStructure() {
+        if (this.getLevel() == null) return;
+        BlockPos anchor = this.getBlockPos().below();
+        hasTemple = ChromaStructures.CASTING1.getArray(this.getLevel(), anchor.getX(), anchor.getY(), anchor.getZ()).matchInWorld();
+        hasMultiblock = ChromaStructures.CASTING2.getArray(this.getLevel(), anchor.getX(), anchor.getY(), anchor.getZ()).matchInWorld();
+        hasPylonStructure = ChromaStructures.CASTING3.getArray(this.getLevel(), anchor.getX(), anchor.getY(), anchor.getZ()).matchInWorld();
+        this.linkAndLockStands(this.isCrafting());
+        recipeDirty = true;
+        isTuned = placerUUID != null && CastingTuningRegistry.instance.getTuningKey(this.getLevel(), placerUUID).matches(this.getCurrentTuningMap());
+        this.applyRepeaterGroupingBonus();
+        if (isTuned && this.getLevel() instanceof ServerLevel server) {
+            Player owner = server.getPlayerByUUID(placerUUID);
+            if (owner != null) ProgressStage.TUNECAST.stepPlayerTo(owner);
+        }
+
+        this.setChanged();
+    }
+
+    private CastingRecipeInput snapshot() {
+        List<ItemStack> grid = new ArrayList<>(9);
+        for (int slot = 0; slot < 9; slot++) grid.add(this.getItem(slot));
+        Map<BlockPos, ItemStack> stands = new HashMap<>();
+        for (Map.Entry<BlockPos, TileEntityItemStand> entry : this.getOtherStands().entrySet()) {
+            ItemStack stack = entry.getValue().getItem(0);
+            if (!stack.isEmpty()) stands.put(entry.getKey(), stack);
+        }
+        Map<BlockPos, CrystalElement> runes = new HashMap<>();
+        BlockPos table = this.getBlockPos();
+        for (int dx = -8; dx <= 8; dx++) for (int dy = -1; dy <= 1; dy++) for (int dz = -8; dz <= 8; dz++) {
+            BlockState state = this.getLevel().getBlockState(table.offset(dx, dy, dz));
+            if (ChromaBlocks.isRune(state)) runes.put(new BlockPos(dx, dy, dz), BlockCrystalRune.getColor(state));
+        }
+        Map<CrystalElement, Integer> aura = new EnumMap<>(CrystalElement.class);
+        for (CrystalElement element : CrystalElement.elements) aura.put(element, this.getEnergy(element));
+        return new CastingRecipeInput(grid, stands, runes, aura);
+    }
+
+    public Map<BlockPos, TileEntityItemStand> getOtherStands() {
+        Map<BlockPos, TileEntityItemStand> result = new HashMap<>();
+        if (this.getLevel() == null) return result;
+        for (int dx = -4; dx <= 4; dx += 2) for (int dz = -4; dz <= 4; dz += 2) {
+            if (dx == 0 && dz == 0) continue;
+            int dy = Math.abs(dx) == 4 || Math.abs(dz) == 4 ? 1 : 0;
+            BlockPos offset = new BlockPos(dx, dy, dz);
+            BlockEntity blockEntity = this.getLevel().getBlockEntity(this.getBlockPos().offset(offset));
+            if (blockEntity instanceof TileEntityItemStand stand) result.put(offset, stand);
+        }
+        return result;
+    }
+
+    private void linkAndLockStands(boolean locked) {
+        for (TileEntityItemStand stand : this.getOtherStands().values()) {
+            stand.setTable(this.getBlockPos());
+            stand.lock(locked);
+            stand.syncAfterCraft();
+        }
+    }
+
+    /** Returns only the twelve V33a personal-key rune locations, relative to this table. */
+    public Map<BlockPos, CrystalElement> getCurrentTuningMap() {
+        Map<BlockPos, CrystalElement> result = new HashMap<>();
+        if (this.getLevel() == null) return result;
+        for (BlockPos offset : CastingTuningRegistry.instance.locations()) {
+            BlockState state = this.getLevel().getBlockState(this.getBlockPos().offset(offset));
+            if (ChromaBlocks.isRune(state)) result.put(offset, BlockCrystalRune.getColor(state));
+        }
+        return result;
+    }
+
+    public boolean hasTuningKey() {
+        return this.getCurrentTuningMap().size() == CastingTuningRegistry.instance.locations().size();
+    }
+
+    public boolean isTuned() { return isTuned; }
+
+    /** V33a focus acceleration is additive around the eight dedicated casting-table sockets. */
+    public float getAccelerationFactor() {
+        float factor = 1;
+        if (this.getLevel() == null) return factor;
+        for (BlockPos offset : CASTING_FOCUS_LOCATIONS) {
+            BlockEntity tile = this.getLevel().getBlockEntity(this.getBlockPos().offset(offset));
+            if (tile instanceof TileEntityFocusCrystalPort focus) {
+                factor += focus.getTier().efficiencyFactor();
+                if (!this.getLevel().isClientSide()) focus.connectTo(this.getBlockPos());
+            }
+        }
+        return factor;
+    }
+
+    public float getMaximumAcceleratability() {
+        return TileEntityFocusCrystalPort.CrystalTier.TURBOCHARGED.efficiencyFactor() * CASTING_FOCUS_LOCATIONS.size();
+    }
+
+    public List<BlockPos> getRelativeFocusCrystalLocations() { return CASTING_FOCUS_LOCATIONS; }
+
+    public void recountFocusCrystals() { this.getAccelerationFactor(); }
+
+    private int calculateCraftableAmount(CastingTableRecipe recipe) {
+        int amount = Integer.MAX_VALUE;
+        for (GridIngredient required : recipe.grid()) amount = Math.min(amount, this.getItem(required.slot()).getCount());
+        Map<BlockPos, TileEntityItemStand> stands = this.getOtherStands();
+        for (StandIngredient required : recipe.stands()) {
+            TileEntityItemStand stand = stands.get(required.offset());
+            if (stand == null) return 0;
+            amount = Math.min(amount, stand.getItem(0).getCount());
+        }
+        ItemStack output = recipe.output();
+        ItemStack current = this.getItem(9);
+        int room = current.isEmpty() ? output.getMaxStackSize() : ItemStack.isSameItemSameComponents(current, output) ? current.getMaxStackSize() - current.getCount() : 0;
+        amount = Math.min(amount, room / output.getCount());
+        return amount == Integer.MAX_VALUE ? 0 : Math.max(0, amount);
+    }
+
+    /** Restores the V33a four-side, four-color-group pylon casting throughput bonus. */
+    private void applyRepeaterGroupingBonus() {
+        throughputBonus = 0;
+        List<List<TileEntityCrystalRepeater>> sides = List.of(new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>());
+        Set<CrystalElement> colors = new HashSet<>();
+        if (this.getLevel() == null) return;
+        for (int[] offset : CASTING_REPEATER_RING) {
+            BlockEntity tile = this.getLevel().getBlockEntity(this.getBlockPos().offset(offset[0], 3, offset[1]));
+            if (!(tile instanceof TileEntityCrystalRepeater repeater)) continue;
+            repeater.markAsTableGrouped(false);
+            CrystalElement color = repeater.getActiveColor();
+            if (!hasPylonStructure || color == null || !colors.add(color)) continue;
+            int side = offset[1] == -8 ? 0 : offset[0] == 8 ? 1 : offset[1] == 8 ? 2 : 3;
+            sides.get(side).add(repeater);
+        }
+        if (!hasPylonStructure || colors.size() != CrystalElement.elements.length) return;
+        for (List<TileEntityCrystalRepeater> side : sides) {
+            int group = crystalGroup(side.get(0).getActiveColor());
+            if (side.stream().anyMatch(repeater -> crystalGroup(repeater.getActiveColor()) != group)) continue;
+            throughputBonus += 0.25F;
+            side.forEach(repeater -> repeater.markAsTableGrouped(true));
+        }
+    }
+
+    private static int crystalGroup(CrystalElement element) {
+        return switch (element) {
+            case RED, BLUE, PURPLE, MAGENTA -> 0;
+            case YELLOW, CYAN, LIME, GREEN -> 1;
+            case BROWN, PINK, ORANGE, LIGHTBLUE -> 2;
+            case BLACK, GRAY, LIGHTGRAY, WHITE -> 3;
+        };
+    }
+
+    public float getThroughputBonus() { return throughputBonus; }
+
+    private boolean canAccept(ItemStack output, int amount) {
+        ItemStack current = this.getItem(9);
+        int total = output.getCount() * amount;
+        return current.isEmpty() ? total <= output.getMaxStackSize()
+                : ItemStack.isSameItemSameComponents(current, output) && current.getCount() + total <= current.getMaxStackSize();
+    }
+
+    private boolean craftStateStillValid() {
+        return activeRecipe != null && this.canUseTier(activeRecipe.value().tier())
+                && activeRecipe.value().matchesIgnoringAura(this.snapshot())
+                && this.calculateCraftableAmount(activeRecipe.value()) >= craftingAmount
+                && this.canAccept(activeRecipe.value().output(), craftingAmount);
+    }
+
+    private ElementTagCompound requiredAura(int amount) {
+        ElementTagCompound required = new ElementTagCompound();
+        if (activeRecipe != null) for (AuraRequirement aura : activeRecipe.value().aura()) required.put(aura.element(), aura.amount() * amount);
+        return required;
+    }
+
+    private boolean hasRequiredAura() {
+        if (activeRecipe == null) return false;
+        for (AuraRequirement aura : activeRecipe.value().aura()) if (this.getEnergy(aura.element()) < aura.amount() * craftingAmount) return false;
+        return true;
+    }
+
+    private void completeCraft() {
+        if (!this.craftStateStillValid() || !this.hasRequiredAura()) { this.cancelCraft(); return; }
+        CastingTableRecipe recipe = activeRecipe.value();
+        int amount = craftingAmount;
+        ResourceKey<Recipe<?>> recipeKey = activeRecipeKey;
+        UUID playerId = craftingPlayer;
+        mutatingInventory = true;
+        for (GridIngredient required : recipe.grid()) this.consumeGridSlot(required.slot(), amount);
+        Map<BlockPos, TileEntityItemStand> stands = this.getOtherStands();
+        for (StandIngredient required : recipe.stands()) this.consumeStand(stands.get(required.offset()), amount);
+        for (AuraRequirement aura : recipe.aura()) this.drainEnergy(aura.element(), aura.amount() * amount);
+        ItemStack output = recipe.output();
+        output.setCount(output.getCount() * amount);
+        if (this.getItem(9).isEmpty()) this.setItem(9, output);
+        else this.getItem(9).grow(output.getCount());
+        mutatingInventory = false;
+        tableXP += recipe.experience() * amount;
+        if (recipeKey != null) completedRecipes.add(recipeKey);
+        craftedItems.merge(output.getItem().toString(), output.getCount(), Integer::sum);
+        Player player = this.getLevel().getPlayerByUUID(playerId);
+        if (player != null) {
+            ProgressStage.CASTING.stepPlayerTo(player);
+            if (recipe.tier() == CastingTableRecipe.Tier.PYLON) ProgressStage.LINK.stepPlayerTo(player);
+            player.giveExperiencePoints(recipe.experience() * amount / 4);
+        }
+        this.finishCraft();
+    }
+
+    private void consumeGridSlot(int slot, int amount) {
+        ItemStack stack = this.getItem(slot);
+        ItemStackTemplate template = stack.getItem().getCraftingRemainder();
+        stack.shrink(amount);
+        if (template != null) this.returnRemainder(slot, template.create(), amount);
+    }
+
+    private void consumeStand(TileEntityItemStand stand, int amount) {
+        ItemStack stack = stand.getItem(0);
+        ItemStackTemplate template = stack.getItem().getCraftingRemainder();
+        stack.shrink(amount);
+        if (template != null && stack.isEmpty()) stand.setItem(0, template.create().copyWithCount(amount));
+        else if (template != null) Block.popResource(this.getLevel(), stand.getBlockPos().above(), template.create().copyWithCount(amount));
+        stand.syncAfterCraft();
+    }
+
+    private void returnRemainder(int slot, ItemStack remainder, int amount) {
+        ItemStack current = this.getItem(slot);
+        if (current.isEmpty() && amount <= remainder.getMaxStackSize()) this.setItem(slot, remainder.copyWithCount(amount));
+        else Block.popResource(this.getLevel(), this.getBlockPos().above(), remainder.copyWithCount(amount));
+    }
+
+    private void finishCraft() {
+        craftingTick = 0;
+        craftingAmount = 0;
+        craftingPlayer = null;
+        activeRecipe = null;
+        activeRecipeKey = null;
+        this.linkAndLockStands(false);
+        recipeDirty = true;
+        this.setChanged();
+        this.syncAllData(true);
+    }
+
+    public void cancelCraft() { if (this.isCrafting()) this.finishCraft(); }
+    public void breakBlock() {
+        this.cancelCraft();
+        for (TileEntityItemStand stand : this.getOtherStands().values()) if (this.getBlockPos().equals(stand.getTable())) stand.setTable(null);
+    }
+
+    public boolean isCrafting() { return craftingTick > 0; }
+    public int getCraftingTick() { return craftingTick; }
+    public int getCraftingAmount() { return craftingAmount; }
+    public int getTableXP() { return tableXP; }
+    public TableTier getTier() { return TableTier.forXP(tableXP); }
+    public boolean isStructureValid(CastingTableRecipe.Tier tier) { return this.canUseTier(tier); }
+    public RecipeHolder<CastingTableRecipe> getActiveRecipe() { return activeRecipe; }
+    /** Server-authoritative equivalent of V33a CastingRecipe.canRunRecipe for the GUI overlay. */
+    public boolean canRunDisplayedRecipe(Player player) {
+        return activeRecipe != null && this.playerCanRun(activeRecipe.value(), player);
+    }
+    public ItemStack getDisplayOutput() {
+        return activeRecipe != null ? activeRecipe.value().output() : clientRecipeOutput;
+    }
+    public boolean hasDisplayRecipe() { return !this.getDisplayOutput().isEmpty(); }
+    public ElementTagCompound getDisplayAura() {
+        if (activeRecipe != null) return this.requiredAura(this.isCrafting() ? craftingAmount : 1);
+        return clientRecipeAura.copy();
+    }
+    public Set<ResourceKey<Recipe<?>>> getCompletedRecipes() { return Set.copyOf(completedRecipes); }
+    public Map<String, Integer> getCraftedItems() { return Map.copyOf(craftedItems); }
+
+    @Override public boolean canConduct() { return true; }
+    @Override public boolean isConductingElement(CrystalElement element) { return true; }
+    @Override public int getMaxStorage(CrystalElement element) { return Integer.MAX_VALUE; }
+    @Override public int getReceiveRange() { return 24; }
+    @Override public int maxThroughput() {
+        int base = Math.min(1000, Math.max(100, 100 * (tableXP / TableTier.PYLON.minimumXP() - 1)));
+        return (int)(base * (1 + throughputBonus));
+    }
+    @Override public ElementTagCompound getRequestedTotal() { return this.isCrafting() ? this.requiredAura(craftingAmount) : new ElementTagCompound(); }
+
+    @Override
+    protected void animateWithTick(Level world, BlockPos pos) {
+        if (!this.isCrafting() || world.getRandom().nextInt(3) != 0) return;
+        double x = pos.getX() + 0.2 + world.getRandom().nextDouble() * 0.6;
+        double y = pos.getY() + 0.7 + world.getRandom().nextDouble() * 0.5;
+        double z = pos.getZ() + 0.2 + world.getRandom().nextDouble() * 0.6;
+        world.addParticle(ParticleTypes.ENCHANT, x, y, z, 0, 0.025, 0);
+    }
+
+    @Override
+    protected void saveAdditional(ValueOutput output) {
+        super.saveAdditional(output);
+        output.putInt("tableXP", tableXP);
+        output.putInt("craftingTick", craftingTick);
+        output.putInt("craftingAmount", craftingAmount);
+        if (craftingPlayer != null) output.putString("craftingPlayer", craftingPlayer.toString());
+        if (activeRecipeKey != null) output.store("activeRecipe", Recipe.KEY_CODEC, activeRecipeKey);
+        ValueOutput.TypedOutputList<ResourceKey<Recipe<?>>> completed = output.list("completedRecipes", Recipe.KEY_CODEC);
+        completedRecipes.stream().sorted(Comparator.comparing(key -> key.identifier().toString())).forEach(completed::add);
+        ValueOutput.ValueOutputList counts = output.childrenList("craftedItems");
+        craftedItems.entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(entry -> {
+            ValueOutput child = counts.addChild(); child.putString("item", entry.getKey()); child.putInt("count", entry.getValue());
+        });
+        output.putBoolean("tuned", isTuned);
+        output.putFloat("throughputBonus", throughputBonus);
+    }
+
+    @Override
+    protected void loadAdditional(ValueInput input) {
+        super.loadAdditional(input);
+        tableXP = input.getIntOr("tableXP", 0);
+        craftingTick = input.getIntOr("craftingTick", 0);
+        craftingAmount = input.getIntOr("craftingAmount", 0);
+        String player = input.getStringOr("craftingPlayer", "");
+        craftingPlayer = player.isEmpty() ? null : UUID.fromString(player);
+        activeRecipeKey = input.read("activeRecipe", Recipe.KEY_CODEC).orElse(null);
+        completedRecipes.clear();
+        input.listOrEmpty("completedRecipes", Recipe.KEY_CODEC).forEach(completedRecipes::add);
+        craftedItems.clear();
+        for (ValueInput child : input.childrenListOrEmpty("craftedItems")) {
+            String item = child.getStringOr("item", "");
+            if (!item.isEmpty()) craftedItems.put(item, child.getIntOr("count", 0));
+        }
+        recipeDirty = true;
+        isTuned = input.getBooleanOr("tuned", false);
+        throughputBonus = input.getFloatOr("throughputBonus", 0);
+    }
+
+    @Override protected void writeSyncTag(CompoundTag tag) {
+        super.writeSyncTag(tag);
+        tag.putInt("castingTick", craftingTick); tag.putInt("castingAmount", craftingAmount); tag.putInt("tableXP", tableXP);
+        ItemStack preview = this.getDisplayOutput();
+        if (!preview.isEmpty()) {
+            RegistryAccess access = level == null ? RegistryAccess.EMPTY : level.registryAccess();
+            ItemStack.CODEC.encodeStart(access.createSerializationContext(NbtOps.INSTANCE), preview).result()
+                    .ifPresent(encoded -> tag.put("recipeOutput", encoded));
+        }
+        this.getDisplayAura().writeToNBT("recipeAura", tag);
+        tag.putBoolean("temple", hasTemple); tag.putBoolean("multiblock", hasMultiblock); tag.putBoolean("pylonStructure", hasPylonStructure);
+        tag.putBoolean("tuned", isTuned);
+        tag.putFloat("throughputBonus", throughputBonus);
+    }
+    @Override protected void readSyncTag(CompoundTag tag) {
+        super.readSyncTag(tag);
+        craftingTick = tag.getIntOr("castingTick", 0); craftingAmount = tag.getIntOr("castingAmount", 0); tableXP = tag.getIntOr("tableXP", 0);
+        RegistryAccess access = level == null ? RegistryAccess.EMPTY : level.registryAccess();
+        net.minecraft.nbt.Tag outputTag = tag.get("recipeOutput");
+        clientRecipeOutput = outputTag == null ? ItemStack.EMPTY
+                : ItemStack.CODEC.parse(access.createSerializationContext(NbtOps.INSTANCE), outputTag).result().orElse(ItemStack.EMPTY);
+        clientRecipeAura.clear();
+        clientRecipeAura.readFromNBT("recipeAura", tag);
+        hasTemple = tag.getBooleanOr("temple", false); hasMultiblock = tag.getBooleanOr("multiblock", false); hasPylonStructure = tag.getBooleanOr("pylonStructure", false);
+        isTuned = tag.getBooleanOr("tuned", false);
+        throughputBonus = tag.getFloatOr("throughputBonus", 0);
+    }
+
+    @Override public void getTagsToWriteToStack(CompoundTag tag) {
+        super.getTagsToWriteToStack(tag); tag.putInt("tableXP", tableXP);
+        if (placer != null && !placer.isEmpty()) tag.putString("place", placer);
+        if (placerUUID != null) tag.putString("placeUUID", placerUUID.toString());
+        tag.putBoolean("tuned", isTuned);
+    }
+    @Override public void setDataFromItemStackTag(ItemStack stack) {
+        super.setDataFromItemStackTag(stack);
+        CompoundTag tag = stack.get(DataComponents.CUSTOM_DATA) != null ? stack.get(DataComponents.CUSTOM_DATA).copyTag() : new CompoundTag();
+        tableXP = tag.getIntOr("tableXP", 0); placer = tag.getStringOr("place", "");
+        String owner = tag.getStringOr("placeUUID", ""); placerUUID = owner.isEmpty() ? null : UUID.fromString(owner);
+        isTuned = tag.getBooleanOr("tuned", false);
+    }
+    @Override public void addTooltipInfo(List list, boolean shift) {
+        list.add(Component.literal("Tier: " + this.getTier().name())); list.add(Component.literal("Casting XP: " + tableXP));
+        if (placer != null && !placer.isEmpty()) list.add(Component.literal("Owner: " + placer));
+    }
+
+    // CHROMA-PORT: enhancement effects and optional Botania pool interaction remain forward references until those
+    // registered subsystems land; none of their casting inputs or persistent data has been erased.
 }
+
+

@@ -1,0 +1,129 @@
+{
+  "type": "minecraft:tree",
+  "config": {
+    "below_trunk_provider": {
+      "type": "minecraft:rule_based_state_provider",
+      "rules": [
+        {
+          "if_true": {
+            "type": "minecraft:not",
+            "predicate": {
+              "type": "minecraft:matching_block_tag",
+              "tag": "minecraft:cannot_replace_below_tree_trunk"
+            }
+          },
+          "then": {
+            "type": "minecraft:simple_state_provider",
+            "state": {
+              "Name": "minecraft:dirt"
+            }
+          }
+        }
+      ]
+    },
+    "decorators": [],
+    "foliage_placer": {
+      "type": "minecraft:blob_foliage_placer",
+      "height": 4,
+      "offset": 1,
+      "radius": 3
+    },
+    "foliage_provider": {
+      "type": "minecraft:weighted_state_provider",
+      "entries": [
+        {
+          "data": {
+            "Name": "minecraft:oak_leaves",
+            "Properties": {
+              "distance": "7",
+              "persistent": "false",
+              "waterlogged": "false"
+            }
+          },
+          "weight": 15
+        },
+        {
+          "data": {
+            "Name": "chromaticraft:glowing_leaves",
+            "Properties": {
+              "distance": "7",
+              "persistent": "false",
+              "waterlogged": "false"
+            }
+          },
+          "weight": 1
+        }
+      ]
+    },
+    "ignore_vines": true,
+    "minimum_size": {
+      "type": "minecraft:two_layers_feature_size",
+      "upper_size": 2
+    },
+    "trunk_placer": {
+      "type": "minecraft:straight_trunk_placer",
+      "base_height": 6,
+      "height_rand_a": 3,
+      "height_rand_b": 2
+    },
+    "trunk_provider": {
+      "type": "minecraft:weighted_state_provider",
+      "entries": [
+        {
+          "data": {
+            "Name": "minecraft:oak_log",
+            "Properties": {
+              "axis": "y"
+            }
+          },
+          "weight": 1
+        },
+        {
+          "data": {
+            "Name": "minecraft:birch_log",
+            "Properties": {
+              "axis": "y"
+            }
+          },
+          "weight": 1
+        },
+        {
+          "data": {
+            "Name": "minecraft:spruce_log",
+            "Properties": {
+              "axis": "y"
+            }
+          },
+          "weight": 1
+        },
+        {
+          "data": {
+            "Name": "minecraft:jungle_log",
+            "Properties": {
+              "axis": "y"
+            }
+          },
+          "weight": 1
+        },
+        {
+          "data": {
+            "Name": "minecraft:acacia_log",
+            "Properties": {
+              "axis": "y"
+            }
+          },
+          "weight": 1
+        },
+        {
+          "data": {
+            "Name": "minecraft:dark_oak_log",
+            "Properties": {
+              "axis": "y"
+            }
+          },
+          "weight": 1
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,163 @@
+{
+  "type": "chromaticraft:casting",
+  "duration": 100,
+  "experience": 200,
+  "grid": [
+    {
+      "ingredient": "chromaticraft:crystal_core",
+      "slot": 4
+    }
+  ],
+  "result": {
+    "id": "chromaticraft:transformation_core"
+  },
+  "runes": [
+    {
+      "element": "gray",
+      "offset": [
+        3,
+        0,
+        -2
+      ]
+    },
+    {
+      "element": "gray",
+      "offset": [
+        -3,
+        0,
+        2
+      ]
+    }
+  ],
+  "stands": [
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_gray",
+      "offset": [
+        -2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_gray",
+      "offset": [
+        -4,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_gray",
+      "offset": [
+        2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_gray",
+      "offset": [
+        4,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_gray",
+      "offset": [
+        -2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_gray",
+      "offset": [
+        -4,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_gray",
+      "offset": [
+        2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_gray",
+      "offset": [
+        4,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_black",
+      "offset": [
+        2,
+        0,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_black",
+      "offset": [
+        -2,
+        0,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_black",
+      "offset": [
+        0,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_black",
+      "offset": [
+        0,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:teleportation_dust",
+      "offset": [
+        4,
+        1,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:teleportation_dust",
+      "offset": [
+        -4,
+        1,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:teleportation_dust",
+      "offset": [
+        0,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:teleportation_dust",
+      "offset": [
+        0,
+        1,
+        -4
+      ]
+    }
+  ],
+  "tier": "multiblock"
+}

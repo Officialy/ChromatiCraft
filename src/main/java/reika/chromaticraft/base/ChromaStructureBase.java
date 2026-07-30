@@ -11,45 +11,28 @@ package reika.chromaticraft.base;
 
 import java.util.Random;
 
-import net.minecraft.block.Block;
-import net.minecraftforge.common.util.ForgeDirection;
+import net.minecraft.world.level.block.Block;
 
 import reika.chromaticraft.registry.ChromaBlocks;
-import reika.dragonapi.DragonAPICore;
 import reika.dragonapi.base.StructureBase;
 
+/**
+ * Base for ChromatiCraft's multiblock structure definitions (see {@link reika.chromaticraft.registry.ChromaStructures}).
+ *
+ * <p>Deferred (re-add with their blocks): the structure-shield ({@code STRUCTSHIELD}) and loot-chest
+ * ({@code LOOTCHEST}) helpers — those blocks aren't ported, and only worldgen structures use them.
+ */
 public abstract class ChromaStructureBase extends StructureBase {
 
-	protected static final Block crystalstone = ChromaBlocks.PYLONSTRUCT.getBlockInstance();
-	protected static final Block shield = ChromaBlocks.STRUCTSHIELD.getBlockInstance();
+	protected static final Block crystalstone = ChromaBlocks.PYLONSTRUCT.get();
 
-	protected Random rand;
+	protected Random rand = new Random();
 
 	public void setRand(Random r) {
 		rand = r;
 	}
 
 	public void resetToDefaults() {
-		this.setRand(DragonAPICore.rand);
+		this.setRand(new Random());
 	}
-
-	public static Block getChestGen() {
-		return ChromaBlocks.LOOTCHEST.getBlockInstance();//Blocks.chest;
-	}
-
-	public static int getChestMeta(ForgeDirection dir) {
-		switch(dir) {
-			case EAST:
-				return 1+8;
-			case WEST:
-				return 0+8;
-			case NORTH:
-				return 2+8;
-			case SOUTH:
-				return 3+8;
-			default:
-				return 0;
-		}
-	}
-
 }

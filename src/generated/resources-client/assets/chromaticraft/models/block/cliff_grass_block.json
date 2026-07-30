@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/cube_bottom_top",
+  "textures": {
+    "bottom": "chromaticraft:block/cliffstone/dirt_base",
+    "side": "chromaticraft:block/cliffstone/grass_base",
+    "top": "chromaticraft:block/cliffstone/grass_top_base"
+  }
+}

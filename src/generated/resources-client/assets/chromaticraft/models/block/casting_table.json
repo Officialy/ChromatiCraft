@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/cube_bottom_top",
+  "textures": {
+    "bottom": "chromaticraft:block/tile/table_bottom",
+    "side": "chromaticraft:block/tile/table_side",
+    "top": "chromaticraft:block/tile/table_top"
+  }
+}

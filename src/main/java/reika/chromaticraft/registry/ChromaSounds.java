@@ -26,12 +26,10 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.auxiliary.interfaces.ChromaSound;
-import reika.dragonapi.libraries.io.ReikaPacketHelper;
-import reika.dragonapi.libraries.io.ReikaSoundHelper;
 
 /**
  * ChromatiCraft's sound registry, ported to 26.2 on the {@link SoundEvent}-registry pattern
- * ReactorCraft uses ({@link DeferredRegister} of {@code SoundEvent}s, {@link ReikaSoundHelper}
+ * ReactorCraft uses ({@link DeferredRegister} of {@code SoundEvent}s and vanilla
  * server→client playback). Implements {@link ChromaSound}.
  *
  * <p>Port note (deferred): the 1.7.10 pitch-variant sub-sound system ({@code SoundVariant}/
@@ -201,20 +199,25 @@ public enum ChromaSounds implements ChromaSound {
 	public void playSound(Level world, double x, double y, double z, float vol, float pitch) {
 		if (world.isClientSide())
 			return;
-		ReikaSoundHelper.playSound(this, world, x, y, z, vol, pitch);
+		world.playSound(null, x, y, z, this.getSoundEvent(), this.getCategory(),
+				vol * this.getModulatedVolume(), pitch);
 	}
 
 	@Override
 	public void playSound(Level world, BlockPos pos, float vol, float pitch, boolean attenuate) {
 		if (world.isClientSide())
 			return;
-		ReikaSoundHelper.playSound(this, world, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, vol, pitch, attenuate);
+		this.playSound(world, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, vol, pitch, attenuate);
 	}
 
 	public void playSound(Level world, double x, double y, double z, float vol, float pitch, boolean attenuate) {
 		if (world.isClientSide())
 			return;
-		ReikaSoundHelper.playSound(this, world, x, y, z, vol, pitch, attenuate);
+		// SoundEvent is now a real registry entry. Vanilla playback is the authoritative 26.2
+		// path; the old DragonAPI library gate only knew its pre-registry sound collection.
+		float effectiveVolume = attenuate ? vol : Math.max(vol, 16F);
+		world.playSound(null, x, y, z, this.getSoundEvent(), this.getCategory(),
+				effectiveVolume * this.getModulatedVolume(), pitch);
 	}
 
 	@Override
@@ -244,7 +247,10 @@ public enum ChromaSounds implements ChromaSound {
 	public void playSoundNoAttenuation(Level world, BlockPos pos, float vol, float pitch, int broadcast) {
 		if (world.isClientSide())
 			return;
-		ReikaPacketHelper.sendSoundPacket(this, world, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, vol, pitch, false, broadcast);
+		// Registered vanilla events can be heard at range by raising their effective volume.
+		float rangedVolume = Math.max(vol, broadcast / 16F);
+		world.playSound(null, pos, this.getSoundEvent(), this.getCategory(),
+				rangedVolume * this.getModulatedVolume(), pitch);
 	}
 
 	@Override
@@ -325,6 +331,14 @@ public enum ChromaSounds implements ChromaSound {
 	public String getRelativePath() {
 		return SOUND_FOLDER + relative + SOUND_EXT;
 	}
+    public String getEventName() {
+        return eventName;
+    }
+
+    /** Resource location below assets/chromaticraft/sounds/, without the .ogg extension. */
+    public String getSoundFile() {
+        return relative;
+    }
 
 	@Override
 	public float getRangeInterval() {
@@ -336,3 +350,5 @@ public enum ChromaSounds implements ChromaSound {
 		return this == MONUMENT;
 	}
 }
+
+

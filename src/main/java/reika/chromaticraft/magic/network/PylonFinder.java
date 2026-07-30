@@ -18,55 +18,49 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Set;
+import java.util.function.BiFunction;
+import java.util.function.Predicate;
 
-import net.minecraft.block.Block;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.init.Blocks;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.MathHelper;
-import net.minecraft.world.World;
-import net.minecraft.world.biome.BiomeGenBase;
-import net.minecraft.world.biome.BiomeGenDesert;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.Identifier;
+import net.minecraft.tags.TagKey;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.util.Mth;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.levelgen.Heightmap;
+import net.neoforged.neoforge.common.Tags;
 
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.auxiliary.CrystalNetworkLogger;
-import reika.chromaticraft.auxiliary.crystalnetworklogger.LoggingLevel;
+import reika.chromaticraft.auxiliary.CrystalNetworkLogger.LoggingLevel;
 import reika.chromaticraft.magic.interfaces.CrystalNetworkTile;
 import reika.chromaticraft.magic.interfaces.CrystalReceiver;
 import reika.chromaticraft.magic.interfaces.CrystalRepeater;
 import reika.chromaticraft.magic.interfaces.CrystalSource;
 import reika.chromaticraft.magic.interfaces.CrystalTransmitter;
+import reika.chromaticraft.magic.interfaces.TemporaryCrystalReceiverProvider;
 import reika.chromaticraft.magic.interfaces.WrapperTile;
-import reika.chromaticraft.magic.network.networksorters.TransmitterDistanceSorter;
-import reika.chromaticraft.modinterface.thaumcraft.NodeReceiverWrapper;
-import reika.chromaticraft.modinterface.thaumcraft.NodeRecharger;
-import reika.chromaticraft.registry.ChromaBlocks;
+import reika.chromaticraft.magic.network.NetworkSorters.TransmitterDistanceSorter;
 import reika.chromaticraft.registry.ChromaOptions;
 import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.tileentity.decoration.TileEntityCrystalMusic;
 import reika.chromaticraft.tileentity.networking.TileEntityCreativeSource;
 import reika.chromaticraft.tileentity.networking.TileEntityCrystalPylon;
 import reika.chromaticraft.tileentity.networking.TileEntitySkypeater;
-import reika.chromaticraft.tileentity.networking.tileentityskypeater.NodeClass;
-import reika.chromaticraft.world.BiomeGlowingCliffs;
-import reika.chromaticraft.world.iwg.PylonGenerator;
-import reika.dragonapi.ModList;
-import reika.dragonapi.asm.dependentmethodstripper.ModDependent;
+import reika.chromaticraft.tileentity.networking.TileEntitySkypeater.NodeClass;
 import reika.dragonapi.auxiliary.ModularLogger;
 import reika.dragonapi.instantiable.RayTracer;
-import reika.dragonapi.instantiable.data.immutable.Coordinate;
 import reika.dragonapi.instantiable.data.immutable.WorldLocation;
 import reika.dragonapi.instantiable.data.maps.MultiMap;
-import reika.dragonapi.instantiable.data.maps.multimap.CollectionType;
-import reika.dragonapi.libraries.world.ReikaBiomeHelper;
-import reika.dragonapi.modinteract.itemhandlers.ExtraUtilsHandler;
-import reika.dragonapi.modinteract.itemhandlers.TinkerBlockHandler;
-import reika.dragonapi.modregistry.InterfaceCache;
-import reika.geostrata.registry.GeoBlocks;
-import reika.rotarycraft.registry.BlockRegistry;
+import reika.dragonapi.instantiable.data.maps.MultiMap.CollectionType;
 
-import cpw.mods.fml.common.registry.GameRegistry;
+
 
 public class PylonFinder {
 
@@ -79,11 +73,15 @@ public class PylonFinder {
 	private final CrystalNetworker net;
 
 	private static final RayTracer tracer;
+	private static final Collection<Predicate<Level>> pylonWorldPredicates = new ArrayList<>();
+	private static final Collection<BiFunction<BlockEntity, WorldLocation, CrystalNetworkTile>> networkTileAdapters = new ArrayList<>();
+	private static final TagKey<Biome> GLOWING_CLIFFS = TagKey.create(
+			Registries.BIOME, Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "glowing_cliffs"));
 
 	//private final int stepRange;
 	private final CrystalReceiver target;
 	private final CrystalElement element;
-	private final EntityPlayer user;
+	private final Player user;
 
 	private int maxSteps = Integer.MAX_VALUE;
 	private int steps = 0;
@@ -99,20 +97,21 @@ public class PylonFinder {
 
 	private static final HashMap<WorldLocation, EnumMap<CrystalElement, ArrayList<CrystalPath>>> paths = new HashMap();
 
-	//private final HashMap<ChunkCoordIntPair, ChunkCopy> chunkCache = new HashMap();
+	//private final HashMap<ChunkPos, ChunkCopy> chunkCache = new HashMap();
 
 	static {
 		ModularLogger.instance.addLogger(ChromatiCraft.instance, LOGGER_ID);
 	}
 
-	PylonFinder(CrystalElement e, CrystalReceiver r, EntityPlayer ep) {
+	PylonFinder(CrystalElement e, CrystalReceiver r, Player ep) {
 		element = e;
 		target = r;
 		//stepRange = r;
 		net = CrystalNetworker.instance;
 		blacklist.add(this.getLocation(r));
 		user = ep;
-		isValidWorld = r.getWorld().provider.dimensionId == 0 || PylonGenerator.instance.canGenerateIn(r.getWorld());
+		isValidWorld = r.getWorld().dimension() == Level.OVERWORLD
+				|| pylonWorldPredicates.stream().anyMatch(test -> test.test(r.getWorld()));
 	}
 
 	CrystalPath findPylon() {
@@ -298,17 +297,15 @@ public class PylonFinder {
 	static void removePathsWithTile(CrystalNetworkTile te) {
 		if (te == null)
 			return;
-		EnumMap<CrystalElement, ArrayList<CrystalPath>> map = paths.get(getLocation(te));
-		if (map != null) {
-			for (CrystalElement e : map.keySet()) {
-				ArrayList<CrystalPath> c = map.get(e);
-				Iterator<CrystalPath> it = c.iterator();
-				while (it.hasNext()) {
-					CrystalPath p = it.next();
-					if (p.contains(te))
-						it.remove();
-				}
-			}
+		Iterator<EnumMap<CrystalElement, ArrayList<CrystalPath>>> maps = paths.values().iterator();
+		while (maps.hasNext()) {
+			EnumMap<CrystalElement, ArrayList<CrystalPath>> map = maps.next();
+			map.values().removeIf(list -> {
+				list.removeIf(path -> path.contains(te));
+				return list.isEmpty();
+			});
+			if (map.isEmpty())
+				maps.remove();
 		}
 	}
 
@@ -337,7 +334,7 @@ public class PylonFinder {
 			for (WorldLocation l : nodes) {
 				sb.append(i);
 				sb.append("=");
-				sb.append(l.getTileEntity());
+				sb.append(l.getBlockEntity());
 				sb.append(";");
 				i++;
 			}
@@ -442,18 +439,13 @@ public class PylonFinder {
 	 */
 
 	static final CrystalReceiver getReceiverAt(WorldLocation loc, boolean exception) {
-		TileEntity te = loc.getTileEntity();
+		BlockEntity te = loc.getBlockEntity();
 		if (te instanceof CrystalReceiver) {
 			return (CrystalReceiver)te;
 		}
-		if (te instanceof TileEntityCrystalMusic) {
-			return ((TileEntityCrystalMusic)te).createTemporaryReceiver();
-		}
-		if (ModList.THAUMCRAFT.isLoaded() && InterfaceCache.NODE.instanceOf(te)) {
-			NodeReceiverWrapper wrap = NodeRecharger.instance.getWrapper(loc, true);
-			if (wrap != null) {
-				return wrap;
-			}
+		CrystalNetworkTile adapted = getAdaptedNetworkTile(te, loc);
+		if (adapted instanceof CrystalReceiver receiver) {
+			return receiver;
 		}
 		if (exception)
 			throw new IllegalStateException("How did a non-receiver tile ("+te+") get put in the network here ("+loc+")?");
@@ -462,7 +454,7 @@ public class PylonFinder {
 	}
 
 	static final CrystalTransmitter getTransmitterAt(WorldLocation loc, boolean exception) {
-		TileEntity te = loc.getTileEntity();
+		BlockEntity te = loc.getBlockEntity();
 		if (te instanceof CrystalTransmitter) {
 			return (CrystalTransmitter)te;
 		}
@@ -473,7 +465,7 @@ public class PylonFinder {
 	}
 
 	static final CrystalSource getSourceAt(WorldLocation loc, boolean exception) {
-		TileEntity te = loc.getTileEntity();
+		BlockEntity te = loc.getBlockEntity();
 		if (te instanceof CrystalSource) {
 			return (CrystalSource)te;
 		}
@@ -484,24 +476,43 @@ public class PylonFinder {
 	}
 
 	static final CrystalNetworkTile getNetTileAt(WorldLocation loc, boolean exception) {
-		TileEntity te = loc.getTileEntity();
+		BlockEntity te = loc.getBlockEntity();
 		if (te instanceof CrystalNetworkTile) {
 			return (CrystalNetworkTile)te;
 		}
-		if (te instanceof TileEntityCrystalMusic) {
-			return ((TileEntityCrystalMusic)te).createTemporaryReceiver();
-		}
-		if (ModList.THAUMCRAFT.isLoaded() && InterfaceCache.NODE.instanceOf(te)) {
-			NodeReceiverWrapper wrap = NodeRecharger.instance.getWrapper(loc, true);
-			if (wrap != null) {
-				return wrap;
-			}
+		CrystalNetworkTile adapted = getAdaptedNetworkTile(te, loc);
+		if (adapted != null) {
+			return adapted;
 		}
 		if (exception)
 			throw new IllegalStateException("How did a non-network tile ("+te+") get put in the network here ("+loc+")?");
 		else
 			return null;
 	}
+
+	private static CrystalNetworkTile getAdaptedNetworkTile(BlockEntity tile, WorldLocation location) {
+		if (tile instanceof TemporaryCrystalReceiverProvider provider) {
+			return provider.createTemporaryReceiver();
+		}
+		for (BiFunction<BlockEntity, WorldLocation, CrystalNetworkTile> adapter : networkTileAdapters) {
+			CrystalNetworkTile result = adapter.apply(tile, location);
+			if (result != null) {
+				return result;
+			}
+		}
+		return null;
+	}
+
+	/** Registers a compatibility adapter such as the original Thaumcraft node wrapper. */
+	public static void registerNetworkTileAdapter(BiFunction<BlockEntity, WorldLocation, CrystalNetworkTile> adapter) {
+		networkTileAdapters.add(adapter);
+	}
+
+	/** Registers a non-overworld dimension accepted by the pylon world-generation subsystem. */
+	public static void registerPylonWorldPredicate(Predicate<Level> predicate) {
+		pylonWorldPredicates.add(predicate);
+	}
+
 
 	public static CrystalPath convertTileListToPath(LinkedList<CrystalNetworkTile> li, CrystalElement e) {
 		LinkedList<WorldLocation> li2 = new LinkedList();
@@ -521,7 +532,7 @@ public class PylonFinder {
 				return;
 			}
 		}
-		ChromatiCraft.logger.logError("Tried to replace a "+color+" path from "+src+" to "+tgt+", but no such path exists!");
+		ChromatiCraft.LOGGER.error("Tried to replace a "+color+" path from "+src+" to "+tgt+", but no such path exists!");
 	}
 
 	static Collection<? extends CrystalPath> getCachedPaths(CrystalElement e) {
@@ -535,22 +546,22 @@ public class PylonFinder {
 	}
 
 	static LOSData lineOfSight(WorldLocation l1, WorldLocation l2) {
-		return lineOfSight(l1.getWorld(), l1.xCoord, l1.yCoord, l1.zCoord, l2.xCoord, l2.yCoord, l2.zCoord);
+		return lineOfSight(l1.getWorld(), l1.pos.getX(), l1.pos.getY(), l1.pos.getZ(), l2.pos.getX(), l2.pos.getY(), l2.pos.getZ());
 	}
 
 	private LOSData lineOfSight(CrystalNetworkTile te1, CrystalNetworkTile te) {
 		return lineOfSight(te1.getWorld(), te1.getX(), te1.getY(), te1.getZ(), te.getX(), te.getY(), te.getZ());
 	}
 
-	//private boolean lineOfSight(World world, int x, int y, int z, CrystalNetworkTile te) {
+	//private boolean lineOfSight(Level world, int x, int y, int z, CrystalNetworkTile te) {
 	//	return lineOfSight(world, x, y, z, te.getX(), te.getY(), te.getZ());
 	//}
 
-	public static LOSData lineOfSight(World world, int x, int y, int z, Entity e, Block... extra) {
-		return lineOfSight(world, x, y, z, MathHelper.floor_double(e.posX), (int)e.posY, MathHelper.floor_double(e.posZ), extra);
+	public static LOSData lineOfSight(Level world, int x, int y, int z, Entity e, Block... extra) {
+		return lineOfSight(world, x, y, z, Mth.floor(e.getX()), Mth.floor(e.getY()), Mth.floor(e.getZ()), extra);
 	}
 
-	public static LOSData lineOfSight(World world, int x1, int y1, int z1, int x2, int y2, int z2, Block... extra) {
+	public static LOSData lineOfSight(Level world, int x1, int y1, int z1, int x2, int y2, int z2, Block... extra) {
 		tracer.setOrigins(x1, y1, z1, x2, y2, z2);
 		tracer.offset(0.5, 0.5, 0.5);
 		if (extra.length > 0) {
@@ -558,20 +569,21 @@ public class PylonFinder {
 				tracer.addOneTimeIgnoredBlock(b);
 		}
 		boolean los = tracer.isClearLineOfSight(world);
-		Set<Coordinate> set = tracer.getRayBlocks();
+		Set<BlockPos> set = tracer.getRayBlocks();
 		return new LOSData(los, canRainOn(world, set), set);
 	}
 
-	private static boolean canRainOn(World world, Set<Coordinate> set) {
-		for (Coordinate c : set) {
-			if (isRainableBiome(world.getBiomeGenForCoords(c.xCoord, c.zCoord)) && world.getPrecipitationHeight(c.xCoord, c.zCoord) <= c.yCoord)
+	private static boolean canRainOn(Level world, Set<BlockPos> set) {
+		for (BlockPos pos : set) {
+			Holder<Biome> biome = world.getBiome(pos);
+			if (isRainableBiome(biome) && world.getHeight(Heightmap.Types.MOTION_BLOCKING, pos.getX(), pos.getZ()) <= pos.getY())
 				return true;
 		}
 		return false;
 	}
 
-	public static boolean isRainableBiome(BiomeGenBase b) {
-		return !BiomeGlowingCliffs.isGlowingCliffs(b) && (b instanceof BiomeGenDesert || ReikaBiomeHelper.doesBiomeHavePrecipitation(b)); //deserts because sandstorms
+	public static boolean isRainableBiome(Holder<Biome> biome) {
+		return !biome.is(GLOWING_CLIFFS) && (biome.is(Tags.Biomes.IS_DESERT) || biome.value().hasPrecipitation()); //deserts because sandstorms
 	}
 
 	static {
@@ -579,78 +591,31 @@ public class PylonFinder {
 		tracer.softBlocksOnly = true;
 		tracer.allowFluids = false;
 		tracer.uniDirectionalChecks = true;
-		tracer.addTransparentBlock(Blocks.glass);
-		tracer.addTransparentBlock(Blocks.glass_pane);
-		tracer.addTransparentBlock(Blocks.snow_layer, 0);
-		tracer.addTransparentBlock(ChromaBlocks.SELECTIVEGLASS.getBlockInstance());
-		if (ModList.ROTARYCRAFT.isLoaded()) {
-			addRCGlass();
-		}
-		if (ModList.GEOSTRATA.isLoaded()) {
-			addGeoVines();
-		}
-		if (ModList.EXTRAUTILS.isLoaded() && ExtraUtilsHandler.getInstance().initializedProperly()) {
-			Block b = ExtraUtilsHandler.getInstance().deco2ID;
-			if (b != null) {
-				tracer.addTransparentBlock(b, 0);
-				tracer.addTransparentBlock(b, 1);
-				tracer.addTransparentBlock(b, 4);
-				tracer.addTransparentBlock(b, 7);
-			}
+		tracer.addTransparentBlock(Blocks.GLASS);
+		tracer.addTransparentBlock(Blocks.GLASS_PANE);
+		tracer.addTransparentBlock(Blocks.SNOW);
 
-			b = ExtraUtilsHandler.getInstance().etherealBlockID;
-			if (b != null) {
-				tracer.addTransparentBlock(b, ExtraUtilsHandler.getInstance().ethereal);
-				tracer.addTransparentBlock(b, ExtraUtilsHandler.getInstance().invethereal);
-				tracer.addTransparentBlock(b, ExtraUtilsHandler.getInstance().ineffable);
-				tracer.addTransparentBlock(b, ExtraUtilsHandler.getInstance().invineffable);
-			}
-		}
-		if (ModList.TINKERER.isLoaded() && TinkerBlockHandler.getInstance().initializedProperly()) {
-			tracer.addTransparentBlock(TinkerBlockHandler.getInstance().clearGlassID);
-		}
-		if (ModList.ENDERIO.isLoaded()) {
-			Block b = GameRegistry.findBlock(ModList.ENDERIO.modLabel, "blockFusedQuartz");
-			if (b != null) {
-				tracer.addTransparentBlock(b, 1);
-			}
-		}
-
-		tracer.addOpaqueBlock(Blocks.deadbush);
-		tracer.addOpaqueBlock(Blocks.tallgrass, 0);
-		tracer.addOpaqueBlock(Blocks.tallgrass, 2);
-		tracer.addOpaqueBlock(Blocks.fire);
-		tracer.addOpaqueBlock(Blocks.vine);
-
-		/*
-		tracer.addOpaqueBlock(Blocks.standing_sign);
-		tracer.addOpaqueBlock(Blocks.reeds);
-		tracer.addOpaqueBlock(Blocks.carpet);
-		tracer.addOpaqueBlock(Blocks.rail);
-		tracer.addOpaqueBlock(Blocks.web);
-		tracer.addOpaqueBlock(Blocks.torch);
-		tracer.addOpaqueBlock(Blocks.redstone_torch);
-		tracer.addOpaqueBlock(Blocks.unlit_redstone_torch);
-		tracer.addOpaqueBlock(Blocks.powered_comparator);
-		tracer.addOpaqueBlock(Blocks.unpowered_comparator);
-		tracer.addOpaqueBlock(Blocks.powered_repeater);
-		tracer.addOpaqueBlock(Blocks.unpowered_repeater);
-		tracer.addOpaqueBlock(Blocks.wheat);
-		tracer.addOpaqueBlock(Blocks.carrots);
-		tracer.addOpaqueBlock(Blocks.potatoes);*/
+		tracer.addOpaqueBlock(Blocks.DEAD_BUSH);
+		tracer.addOpaqueBlock(Blocks.SHORT_GRASS);
+		tracer.addOpaqueBlock(Blocks.FERN);
+		tracer.addOpaqueBlock(Blocks.FIRE);
+		tracer.addOpaqueBlock(Blocks.VINE);
 
 		tracer.cacheBlockRay = true;
 	}
 
-	@ModDependent(ModList.ROTARYCRAFT)
-	private static void addRCGlass() {
-		tracer.addTransparentBlock(BlockRegistry.BLASTGLASS.getBlockInstance());
-		tracer.addTransparentBlock(BlockRegistry.BLASTPANE.getBlockInstance());
+	/**
+	 * Registers glass-like blocks ignored by network rays. The legacy integrations for selective
+	 * glass, GeoStrata glow vines, Extra Utilities, Tinkers' Construct, and Ender IO register here
+	 * when their modern content adapters are present.
+	 */
+	public static void registerTransparentBlock(Block block) {
+		tracer.addTransparentBlock(block);
 	}
 
-	@ModDependent(ModList.GEOSTRATA)
-	private static void addGeoVines() {
-		tracer.addTransparentBlock(GeoBlocks.GLOWVINE.getBlockInstance());
+	/** Registers a non-solid decorative block that must nevertheless interrupt a network ray. */
+	public static void registerOpaqueBlock(Block block) {
+		tracer.addOpaqueBlock(block);
 	}
 
 	public static final WorldLocation getLocation(CrystalNetworkTile te) {
@@ -661,12 +626,12 @@ public class PylonFinder {
 		invalid = true;
 	}
 
-	public static boolean isBlockPassable(World world, int x, int y, int z) {
+	public static boolean isBlockPassable(Level world, int x, int y, int z) {
 		return tracer.isBlockPassable(world, x, y, z);
 	}
 	/*
 	void receiveChunk(Chunk c) {
-		ChunkCoordIntPair key = c.getChunkCoordIntPair();
+		ChunkPos key = c.getChunkCoordIntPair();
 		ChunkCopy copy = new ChunkCopy(c);
 		chunkCache.put(key, copy);
 	}
@@ -710,7 +675,7 @@ public class PylonFinder {
 		}
 
 		@Override
-		public TileEntity getTileEntity(int x, int y, int z) {return null;}
+		public BlockEntity getTileEntity(int x, int y, int z) {return null;}
 
 		@Override
 		@SideOnly(Side.CLIENT)
@@ -721,7 +686,7 @@ public class PylonFinder {
 
 		@Override
 		@SideOnly(Side.CLIENT)
-		public BiomeGenBase getBiomeGenForCoords(int x, int z) {return null;}
+		public Biome getBiomeGenForCoords(int x, int z) {return null;}
 
 		@Override
 		@SideOnly(Side.CLIENT)
@@ -732,7 +697,7 @@ public class PylonFinder {
 		public boolean extendedLevelsInChunkCache() {return false;}
 
 		@Override
-		public boolean isSideSolid(int x, int y, int z, ForgeDirection side, boolean _default) {return false;}
+		public boolean isSideSolid(int x, int y, int z, Direction side, boolean _default) {return false;}
 	 *//*
 }
 

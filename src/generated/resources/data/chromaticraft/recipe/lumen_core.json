@@ -1,0 +1,223 @@
+{
+  "type": "chromaticraft:casting",
+  "aura": [
+    {
+      "amount": 60000,
+      "element": "black"
+    },
+    {
+      "amount": 60000,
+      "element": "yellow"
+    },
+    {
+      "amount": 60000,
+      "element": "blue"
+    }
+  ],
+  "duration": 400,
+  "experience": 500,
+  "grid": [
+    {
+      "ingredient": "chromaticraft:crystal_star",
+      "slot": 4
+    }
+  ],
+  "result": {
+    "id": "chromaticraft:lumen_core"
+  },
+  "stands": [
+    {
+      "ingredient": "chromaticraft:glow_chunk",
+      "offset": [
+        -4,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:glow_chunk",
+      "offset": [
+        -4,
+        1,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:glow_chunk",
+      "offset": [
+        -4,
+        1,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:glow_chunk",
+      "offset": [
+        -4,
+        1,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:glow_chunk",
+      "offset": [
+        -4,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:glow_chunk",
+      "offset": [
+        -2,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:glow_chunk",
+      "offset": [
+        -2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:purification_powder",
+      "offset": [
+        -2,
+        0,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:glow_chunk",
+      "offset": [
+        -2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:glow_chunk",
+      "offset": [
+        -2,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:glow_chunk",
+      "offset": [
+        0,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:purification_powder",
+      "offset": [
+        0,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:purification_powder",
+      "offset": [
+        0,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:glow_chunk",
+      "offset": [
+        0,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:glow_chunk",
+      "offset": [
+        2,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:glow_chunk",
+      "offset": [
+        2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:purification_powder",
+      "offset": [
+        2,
+        0,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:glow_chunk",
+      "offset": [
+        2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:glow_chunk",
+      "offset": [
+        2,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:glow_chunk",
+      "offset": [
+        4,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:glow_chunk",
+      "offset": [
+        4,
+        1,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:glow_chunk",
+      "offset": [
+        4,
+        1,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:glow_chunk",
+      "offset": [
+        4,
+        1,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:glow_chunk",
+      "offset": [
+        4,
+        1,
+        4
+      ]
+    }
+  ],
+  "tier": "pylon"
+}

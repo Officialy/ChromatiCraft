@@ -9,7 +9,7 @@
  ******************************************************************************/
 package reika.chromaticraft.magic;
 
-import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.nbt.CompoundTag;
 
 import reika.chromaticraft.magic.interfaces.CrystalNetworkTile;
 import reika.chromaticraft.magic.network.PylonFinder;
@@ -56,35 +56,35 @@ public class CrystalTarget {
 		widthLimit = maxW;
 	}
 
-	public void writeToNBT(String name, NBTTagCompound NBT) {
+	public void writeToNBT(String name, CompoundTag NBT) {
 		if (location == null || color == null)
 			return;
-		NBTTagCompound tag = new NBTTagCompound();
-		tag.setInteger("color", color.ordinal());
-		tag.setDouble("dx", offsetX);
-		tag.setDouble("dy", offsetY);
-		tag.setDouble("dz", offsetZ);
-		tag.setDouble("width", endWidth);
-		tag.setDouble("maxw", widthLimit);
-		location.writeToNBT("loc", tag);
-		source.writeToNBT("src", tag);
-		NBT.setTag(name, tag);
+		CompoundTag tag = new CompoundTag();
+		tag.putInt("color", color.ordinal());
+		tag.putDouble("dx", offsetX);
+		tag.putDouble("dy", offsetY);
+		tag.putDouble("dz", offsetZ);
+		tag.putDouble("width", endWidth);
+		tag.putDouble("maxw", widthLimit);
+		location.saveAdditional("loc", tag);
+		source.saveAdditional("src", tag);
+		NBT.put(name, tag);
 	}
 
-	public static CrystalTarget readFromNBT(String name, NBTTagCompound NBT) {
-		if (!NBT.hasKey(name))
+	public static CrystalTarget readFromNBT(String name, CompoundTag NBT) {
+		if (!NBT.contains(name))
 			return null;
-		NBTTagCompound tag = NBT.getCompoundTag(name);
+		CompoundTag tag = NBT.getCompoundOrEmpty(name);
 		if (tag == null)
 			return null;
-		WorldLocation loc = WorldLocation.readFromNBT("loc", tag);
-		WorldLocation src = WorldLocation.readFromNBT("src", tag);
-		CrystalElement e = CrystalElement.elements[tag.getInteger("color")];
-		double dx = tag.getDouble("dx");
-		double dy = tag.getDouble("dy");
-		double dz = tag.getDouble("dz");
-		double w = tag.getDouble("width");
-		double maxw = tag.getDouble("maxw");
+		WorldLocation loc = WorldLocation.load("loc", tag);
+		WorldLocation src = WorldLocation.load("src", tag);
+		CrystalElement e = CrystalElement.elements[tag.getIntOr("color", 0)];
+		double dx = tag.getDoubleOr("dx", 0);
+		double dy = tag.getDoubleOr("dy", 0);
+		double dz = tag.getDoubleOr("dz", 0);
+		double w = tag.getDoubleOr("width", 0);
+		double maxw = tag.getDoubleOr("maxw", 0);
 		return loc != null && src != null && e != null ? new CrystalTarget(src, loc, e, dx, dy, dz, w, maxw) : null;
 	}
 
@@ -104,7 +104,7 @@ public class CrystalTarget {
 
 	@Override
 	public String toString() {
-		return color.name()+": "+location.getTileEntity()+" {"+offsetX+","+offsetY+","+offsetZ+"}";
+		return color.name()+": "+location.getBlockEntity()+" {"+offsetX+","+offsetY+","+offsetZ+"}";
 	}
 
 	public static class TickingCrystalTarget extends CrystalTarget {

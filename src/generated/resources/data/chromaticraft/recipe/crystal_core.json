@@ -1,0 +1,50 @@
+{
+  "type": "chromaticraft:casting",
+  "duration": 200,
+  "experience": 200,
+  "grid": [
+    {
+      "ingredient": "minecraft:diamond",
+      "slot": 4
+    }
+  ],
+  "result": {
+    "count": 4,
+    "id": "chromaticraft:crystal_core"
+  },
+  "stands": [
+    {
+      "ingredient": "chromaticraft:primary_crystal_cluster",
+      "offset": [
+        -2,
+        0,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:primary_crystal_cluster",
+      "offset": [
+        2,
+        0,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:secondary_crystal_cluster",
+      "offset": [
+        0,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:secondary_crystal_cluster",
+      "offset": [
+        0,
+        0,
+        2
+      ]
+    }
+  ],
+  "tier": "multiblock"
+}

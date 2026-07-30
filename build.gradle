@@ -12,6 +12,8 @@ neoForge {
         gameTest {
             type = "gameTestServer"
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+            if (project.hasProperty('gameTestSelector'))
+                programArguments.addAll '--tests', project.property('gameTestSelector').toString()
         }
     }
 }
@@ -21,6 +23,7 @@ dependencies {
     implementation project(":RotaryCraft")
     implementation project(":GeoStrata")
     implementation project(":ReactorCraft")
+    implementation "maven.modrinth:kkmrDlKT:TzDe72Nr"
 }
 
 // PORT-IN-PROGRESS allowlist (mirrors ReactorCraft). The sources are still mostly original 1.7.10
@@ -67,7 +70,7 @@ sourceSets.main.java {
     include 'reika/chromaticraft/registry/CrystalElement.java'
     include 'reika/chromaticraft/magic/ElementMixer.java'
 
-    // Crystal block base chain (metadata->blockstate COLOR property; sound/glow deferred)
+    // Crystal block base chain (each colour has a distinct block/item registry identity; sound/glow deferred)
     include 'reika/chromaticraft/base/CrystalTypeBlock.java'
     include 'reika/chromaticraft/base/CrystalBlock.java'
     include 'reika/chromaticraft/block/crystal/BlockCaveCrystal.java'
@@ -77,12 +80,41 @@ sourceSets.main.java {
     // TE infrastructure (BlockEntityBase/TileEnum re-arch): registry + base + first TE + tile block
     include 'reika/chromaticraft/registry/ChromaTiles.java'
     include 'reika/chromaticraft/registry/ChromaBlockEntities.java'
+    include 'reika/chromaticraft/registry/ChromaMenus.java'
+    include 'reika/chromaticraft/container/MenuCastingTable.java'
+    include 'reika/chromaticraft/client/gui/ScreenCastingTable.java'
     include 'reika/chromaticraft/base/tileentity/TileEntityChromaticBase.java'
     include 'reika/chromaticraft/tileentity/TileEntityDisplayPoint.java'
     include 'reika/chromaticraft/block/BlockChromaticTile.java'
     include 'reika/chromaticraft/magic/potions/PotionCustomRegen.java'
     include 'reika/chromaticraft/magic/potions/PotionBetterSaturation.java'
     include 'reika/chromaticraft/magic/CrystalPotionController.java'
+    include 'reika/chromaticraft/magic/ChromaAbilityData.java'
+    include 'reika/chromaticraft/render/tesr/RenderItemStand.java'
+    include 'reika/chromaticraft/render/tesr/RenderCrystalPylon.java'
+    include 'reika/chromaticraft/render/ChromaRenderPipelines.java'
+    include 'reika/chromaticraft/render/particle/ChromaParticle.java'
+    include 'reika/chromaticraft/client/sound/PylonSoundInstance.java'
+    include 'reika/chromaticraft/client/sound/PylonSoundManager.java'
+      include 'reika/chromaticraft/render/item/ItemStandItemRenderer.java'
+      include 'reika/chromaticraft/render/model/CaveCrystalModel.java'
+      include 'reika/chromaticraft/render/model/CliffDirtModel.java'
+      include 'reika/chromaticraft/client/ChromaBlockStateModels.java'
+      include 'reika/chromaticraft/client/ChromaBlockColors.java'
+      include 'reika/chromaticraft/client/LuminousCliffsColors.java'
+      include 'reika/chromaticraft/client/ChromaModelOutlineRenderer.java'
+      include 'reika/chromaticraft/client/PylonAttackOverlay.java'
+    include 'reika/chromaticraft/registry/ChromaEntityTypes.java'
+    include 'reika/chromaticraft/entity/EntityPylonOverloadShock.java'
+    include 'reika/chromaticraft/entity/EntityGlowCloud.java'
+    include 'reika/chromaticraft/entity/EntityLumaBurst.java'
+    include 'reika/chromaticraft/render/entity/RenderGlowCloud.java'
+    include 'reika/chromaticraft/render/entity/RenderLumaBurst.java'
+    include 'reika/chromaticraft/network/ChromaNetwork.java'
+    include 'reika/chromaticraft/auxiliary/structure/CastingStructure.java'
+    include 'reika/chromaticraft/client/ChromaClientRenderers.java'
+    include 'reika/chromaticraft/client/ChromaFluidModels.java'
+    include 'reika/chromaticraft/render/entity/RenderPylonOverloadShock.java'
 
     // Registration foundation (DeferredRegister rewrite of the enum registries + minimal @Mod class
     // + creative tab), mirroring ReactorCraft. Grows as blocks/items port. First block: STORAGE.
@@ -94,6 +126,39 @@ sourceSets.main.java {
     include 'reika/chromaticraft/auxiliary/interfaces/ChromaSound.java'
     include 'reika/chromaticraft/registry/ChromaBlocks.java'
     include 'reika/chromaticraft/registry/ChromaItems.java'
+    include 'reika/chromaticraft/registry/ChromaFeatures.java'
+    include 'reika/chromaticraft/registry/ChromaPlacementModifiers.java'
+    include 'reika/chromaticraft/world/CrystalFeature.java'
+    include 'reika/chromaticraft/world/PylonFeature.java'
+    include 'reika/chromaticraft/world/luminous/LuminousCliffsTerrainFeature.java'
+    include 'reika/chromaticraft/world/luminous/LumaPatchFeature.java'
+    include 'reika/chromaticraft/world/luminous/LuminousIslandFeature.java'
+    include 'reika/chromaticraft/world/luminous/LuminousFloraFeature.java'
+    include 'reika/chromaticraft/world/PylonGridPlacement.java'
+    include 'reika/chromaticraft/world/biome/ChromaBiomes.java'
+    include 'reika/chromaticraft/world/biome/ChromaRegion.java'
+    include 'reika/chromaticraft/api/event/CrystalGenEvent.java'
+    include 'reika/chromaticraft/api/event/PylonGenerationEvent.java'
+    include 'reika/chromaticraft/registry/ChromaFluids.java'
+    include 'reika/chromaticraft/block/BlockChromaFluid.java'
+    include 'reika/chromaticraft/block/BlockChromaMud.java'
+    include 'reika/chromaticraft/block/worldgen26/BlockCliffStone.java'
+    include 'reika/chromaticraft/block/worldgen26/BlockGlowingLeaf.java'
+    include 'reika/chromaticraft/block/worldgen26/BlockGlowDaisy.java'
+    include 'reika/chromaticraft/block/worldgen26/BlockGlowRoot.java'
+    include 'reika/chromaticraft/block/worldgen26/BlockLumaFluid.java'
+    include 'reika/chromaticraft/block/dye26/BlockDyeLeaf.java'
+    include 'reika/chromaticraft/block/dye26/BlockDyeSapling.java'
+    include 'reika/chromaticraft/block/dye26/BlockRainbowLeaf.java'
+    include 'reika/chromaticraft/block/dye26/BlockRainbowSapling.java'
+    include 'reika/chromaticraft/item/ItemChromaBerry.java'
+    include 'reika/chromaticraft/item/ItemChromaEther.java'
+    include 'reika/chromaticraft/item/ItemElementalStone.java'
+
+    include 'reika/chromaticraft/registry/ChromaCraftingItems.java'
+    include 'reika/chromaticraft/registry/ChromaClusterItems.java'
+    include 'reika/chromaticraft/registry/ChromaTieredItems.java'
+    include 'reika/chromaticraft/item/ItemCrystalShard.java'
     include 'reika/chromaticraft/registry/ChromaTabs.java'
     include 'reika/chromaticraft/block/BlockMultiStorage.java'
 
@@ -101,9 +166,9 @@ sourceSets.main.java {
     include 'reika/chromaticraft/block/BlockPylonStructure.java'
     include 'reika/chromaticraft/item/BlockItemPylonStructure.java'
 
-    // Crystal rune (16-colour block, structure component for casting/network multiblocks).
+    // Crystal runes (16 distinct colour blocks, structure components for casting/network multiblocks).
     include 'reika/chromaticraft/block/BlockCrystalRune.java'
-    include 'reika/chromaticraft/item/BlockItemCrystalRune.java'
+    include 'reika/chromaticraft/block/BlockEncrustedCrystal.java'
 
     // Crystal-network CORE — slice 1 (leaf layer only: the energy data type + the standalone
     // interfaces). This is invisible infrastructure — it does nothing observable until a source→
@@ -116,11 +181,86 @@ sourceSets.main.java {
     include 'reika/chromaticraft/magic/interfaces/EnergyBeamReceiver.java'
     include 'reika/chromaticraft/magic/interfaces/LumenTile.java'
 
+    // Crystal-network CLUSTER (WIP — network engine + TE base chain + concrete TEs + structures +
+    // casting table compile as one unit; grinding it up from the bottom).
+    include 'reika/chromaticraft/magic/interfaces/CrystalReceiver.java'
+    include 'reika/chromaticraft/magic/interfaces/CrystalTransmitter.java'
+    include 'reika/chromaticraft/magic/interfaces/CrystalSource.java'
+    include 'reika/chromaticraft/magic/interfaces/CrystalRepeater.java'
+    include 'reika/chromaticraft/magic/interfaces/DynamicRepeater.java'
+    include 'reika/chromaticraft/magic/interfaces/ReactiveRepeater.java'
+    include 'reika/chromaticraft/magic/interfaces/WrapperTile.java'
+    include 'reika/chromaticraft/magic/interfaces/TemporaryCrystalReceiverProvider.java'
+    include 'reika/chromaticraft/magic/interfaces/NaturalCrystalSource.java'
+    include 'reika/chromaticraft/magic/interfaces/NaturalNetworkTile.java'
+    include 'reika/chromaticraft/magic/interfaces/NotifiedNetworkTile.java'
+    include 'reika/chromaticraft/magic/interfaces/PylonConnector.java'
+    include 'reika/chromaticraft/magic/interfaces/LumenConsumer.java'
+    include 'reika/chromaticraft/magic/interfaces/LumenRequestingTile.java'
+    include 'reika/chromaticraft/magic/interfaces/EnergyBeamRenderer.java'
+    include 'reika/chromaticraft/magic/interfaces/RegionalSensitiveRepeater.java'
+    include 'reika/chromaticraft/magic/interfaces/LinkWatchingRepeater.java'
+    include 'reika/chromaticraft/magic/interfaces/ConnectivityAction.java'
+    include 'reika/chromaticraft/magic/interfaces/ChargingPoint.java'
+    include 'reika/chromaticraft/magic/interfaces/CrystalFuse.java'
+    include 'reika/chromaticraft/magic/interfaces/CrystalBattery.java'
+    include 'reika/chromaticraft/magic/network/*.java'
+    include 'reika/chromaticraft/base/tileentity/TileEntityPylonEnhancer.java'
+    include 'reika/chromaticraft/tileentity/auxiliary/TileEntityChromaCrystal.java'
+    // Relay/link subsystem deferred (RelaySource needs the deferred InventoriedCrystalReceiver;
+    // these are peripheral network features re-added after the casting table).
+    exclude 'reika/chromaticraft/magic/network/RelayNetworker.java'
+    include 'reika/chromaticraft/magic/network/PylonLinkNetwork.java'
+    include 'reika/chromaticraft/tileentity/networking/TileEntityCrystalPylon.java'
+    include 'reika/chromaticraft/tileentity/networking/TileEntityCrystalRepeater.java'
+    include 'reika/chromaticraft/tileentity/networking/TileEntitySkypeater.java'
+    include 'reika/chromaticraft/tileentity/networking/TileEntityCreativeSource.java'
+    include 'reika/chromaticraft/tileentity/networking/TileEntityCompoundRepeater.java'
+    include 'reika/chromaticraft/tileentity/networking/TileEntityPylonLink.java'
+    // TileEntityCrystalBroadcaster deferred (its MultiBlockChromaTile contract needs the 820-line
+    // BroadcasterStructure; wireless broadcasting re-adds later).
+    include 'reika/chromaticraft/auxiliary/interfaces/MultiBlockChromaTile.java'
+    include 'reika/chromaticraft/auxiliary/interfaces/OwnedTile.java'
+    include 'reika/chromaticraft/auxiliary/interfaces/VariableTexture.java'
+    include 'reika/chromaticraft/auxiliary/interfaces/SneakPop.java'
+    include 'reika/chromaticraft/base/ChromaStructureBase.java'
+    include 'reika/chromaticraft/base/ColoredStructureBase.java'
+    include 'reika/chromaticraft/auxiliary/structure/PylonStructure.java'
+    include 'reika/chromaticraft/auxiliary/structure/RepeaterStructure.java'
+    include 'reika/chromaticraft/auxiliary/structure/RegistryBlockCheck.java'
+    include 'reika/chromaticraft/auxiliary/structure/RuneBlockCheck.java'
+    include 'reika/chromaticraft/registry/PylonBroadcastStructure.java'
+    include 'reika/chromaticraft/auxiliary/structure/CompoundRepeaterStructure.java'
+	include 'reika/chromaticraft/magic/castingtuning/CastingTuningKey.java'
+	include 'reika/chromaticraft/magic/castingtuning/CastingTuningRegistry.java'
+	include 'reika/chromaticraft/tileentity/auxiliary/TileEntityFocusCrystalPort.java'
+    include 'reika/chromaticraft/auxiliary/structure/NBTStructureLoader.java'
+    include 'reika/chromaticraft/registry/ChromaStructures.java'
+    include 'reika/chromaticraft/magic/CrystalTarget.java'
+    include 'reika/chromaticraft/auxiliary/CrystalNetworkLogger.java'
+    include 'reika/chromaticraft/auxiliary/event/PylonEvents.java'
+    include 'reika/chromaticraft/auxiliary/interfaces/NBTTile.java'
+    include 'reika/chromaticraft/base/tileentity/TileEntityCrystalBase.java'
+    include 'reika/chromaticraft/base/tileentity/CrystalTransmitterBase.java'
+    include 'reika/chromaticraft/base/tileentity/CrystalReceiverBase.java'
+    // Casting-table inventory foundation: managed container semantics + ValueInput/ValueOutput.
+    include 'reika/chromaticraft/base/tileentity/InventoriedCrystalReceiver.java'
+
     // Progression system CORE (user-chosen foundation): the ProgressStage DAG + per-player achieved-
     // stage/discovered-colour storage + the ProgressRegistry facade impl. Verifiable server-side (grant
     // a stage → query it); the color path is live via CrystalElement.playerHas. Handbook/UI, packet
     // sync, coop-linking, research-tier gating, and casting-unlock hooks are deferred.
     include 'reika/chromaticraft/magic/progression/ProgressStage.java'
+	// Data-driven casting recipe contract: grid, temple runes, auxiliary stands, and pylon aura.
+	include 'reika/chromaticraft/auxiliary/recipemanagers/CastingRecipeInput.java'
+	include 'reika/chromaticraft/auxiliary/recipemanagers/CastingTableRecipe.java'
+	include 'reika/chromaticraft/registry/ChromaRecipeTypes.java'
+	include 'reika/chromaticraft/registry/ChromaRecipeSerializers.java'
+	include 'reika/chromaticraft/block/BlockCastingTable.java'
+	include 'reika/chromaticraft/block/BlockCastingItemStand.java'
+	include 'reika/chromaticraft/tileentity/recipe/TileEntityCastingTable.java'
+	include 'reika/chromaticraft/tileentity/recipe/TileEntityItemStand.java'
+
     include 'reika/chromaticraft/magic/progression/ProgressionManager.java'
 
     // In-world game tests for the progression core + the arena structure they run on.
@@ -129,7 +269,14 @@ sourceSets.main.java {
 
     // Datagen (client: lang + models; server: loot) — mirrors ReactorCraft data/.
     include 'reika/chromaticraft/data/ChromaDataProviders.java'
+    include 'reika/chromaticraft/data/ChromaWorldGenProvider.java'
+    include 'reika/chromaticraft/data/ChromaBiomeModifierProvider.java'
+    include 'reika/chromaticraft/data/ChromaBiomeTagProvider.java'
+    include 'reika/chromaticraft/data/ChromaBlockTagsProvider.java'
+    include 'reika/chromaticraft/data/ChromaStructureTemplateProvider.java'
     include 'reika/chromaticraft/data/ChromaLang.java'
+	include 'reika/chromaticraft/data/ChromaCastingRecipeProvider.java'
     include 'reika/chromaticraft/data/ChromaModelProvider.java'
+    include 'reika/chromaticraft/data/ChromaSoundProvider.java'
     include 'reika/chromaticraft/data/ChromaLootProvider.java'
 }

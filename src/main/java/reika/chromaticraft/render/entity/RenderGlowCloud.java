@@ -1,78 +1,61 @@
-/*******************************************************************************
- * @author Reika Kalseki
- *
- * Copyright 2017
- *
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
- ******************************************************************************/
 package reika.chromaticraft.render.entity;
 
-import java.util.HashMap;
+import com.mojang.blaze3d.vertex.PoseStack;
 
-import org.lwjgl.opengl.GL11;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.entity.EntityRenderer;
+import net.minecraft.client.renderer.entity.EntityRendererProvider;
+import net.minecraft.client.renderer.entity.state.EntityRenderState;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
 
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.entity.Render;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.util.ResourceLocation;
+import reika.chromaticraft.entity.EntityGlowCloud;
 
-import reika.chromaticraft.registry.ChromaShaders;
-import reika.chromaticraft.registry.ExtraChromaIDs;
-import reika.dragonapi.instantiable.RayTracer;
-import reika.dragonapi.instantiable.raytracer.RayTracerWithCache;
+/**
+ * V33a RenderGlowCloud draws no mesh at all: outside the ChromatiCraft pocket dimension it is a
+ * complete no-op, and inside that dimension it feeds the entity's position/distance into a dedicated
+ * post-process glow shader ({@code ChromaShaders.DIMGLOWCLOUD}) gated by a line-of-sight check to the
+ * camera ({@code RayTracer.getVisualLOSForRenderCulling()}). RayTracer itself is fully ported, but
+ * two other V33a dependencies for that dimension-only branch are not:
+ * {@code reika.dragonapi.io.shaders.*} (ShaderHook/ShaderRegistry/ShaderProgram/ShaderDomain) was
+ * replaced wholesale by the modern PostChain-based {@code reika.dragonapi.extras.shader} package and
+ * was never re-created there, and {@code ExtraChromaIDs.DIMID} (the pocket dimension itself) is not
+ * registered in 26.2 yet either.
+ *
+ * <p>Since Glow Cloud currently only spawns in Luminous Cliffs (an overworld biome), this renderer is
+ * legitimately empty for every world it can appear in right now — exactly matching V33a's own
+ * behaviour there. The cloud's visible presence comes entirely from its particles
+ * ({@code ChromaParticle.spawnGlowCloudAmbient/Attack/Death}, driven from {@link EntityGlowCloud}
+ * itself) and, once ported, its placed ethereal light block.
+ *
+ * <p>CHROMA-PORT: original dimension-gated body, preserved here for when the pocket dimension and
+ * shader package are ready:
+ * <pre>
+ * if (level.dimension() == CHROMATICRAFT_DIMENSION) {
+ *     LOS.setOrigins(entity.getX(), entity.getY(), entity.getZ(), camera.getX(), camera.getY(), camera.getZ());
+ *     if (LOS.isClearLineOfSight(entity)) {
+ *         ChromaShaders.DIMGLOWCLOUD.setIntensity(1);
+ *         ChromaShaders.DIMGLOWCLOUD.clearOnRender = true;
+ *         ChromaShaders.DIMGLOWCLOUD.getShader().addFocus(entity);
+ *         // distance/factor falloff exactly as pristine RenderGlowCloud.doRender()
+ *         ChromaShaders.DIMGLOWCLOUD.getShader().modifyLastCompoundFocus(f, vars);
+ *     }
+ * }
+ * </pre>
+ */
+public class RenderGlowCloud extends EntityRenderer<EntityGlowCloud, EntityRenderState> {
 
-public class RenderGlowCloud extends Render {
-
-	private static final RayTracerWithCache LOS = RayTracer.getVisualLOSForRenderCulling();
-
-	@Override
-	public void doRender(Entity e, double par2, double par4, double par6, float par8, float ptick) {
-		if (e.worldObj.provider.dimensionId == ExtraChromaIDs.DIMID.getValue()) {
-			EntityPlayer ep = Minecraft.getMinecraft().thePlayer;
-			//LOS.update(e);
-			LOS.setOrigins(e.posX, e.posY, e.posZ, ep.posX, ep.posY, ep.posZ);
-			if (LOS.isClearLineOfSight(e)) {
-				GL11.glPushMatrix();
-				GL11.glTranslated(par2, par4, par6);
-				ChromaShaders.DIMGLOWCLOUD.setIntensity(1);
-				ChromaShaders.DIMGLOWCLOUD.clearOnRender = true;
-				ChromaShaders.DIMGLOWCLOUD.getShader().addFocus(e);
-				HashMap<String, Object> vars = new HashMap();
-				double dist = e.getDistanceToEntity(ep);
-				float f = 0;
-				if (e.posY < 0) {
-					f = 1;
-					dist *= 0.5;
-				}
-				else {
-					if (dist <= 32) {
-						f = 1;
-					}
-					else if (dist <= 128) {
-						f = (float)((dist-32)/96);
-					}
-				}
-				vars.put("distance", dist);
-				float f2 = 1;
-				if (e.posY < 10) {
-					f2 = 2.5F;
-				}
-				else if (e.posY < 20) {
-					f2 = 1+1.5F*(float)((e.posY-10)/10);
-				}
-				vars.put("factor", f2);
-				ChromaShaders.DIMGLOWCLOUD.getShader().modifyLastCompoundFocus(f, vars);
-				GL11.glPopMatrix();
-			}
-		}
+	public RenderGlowCloud(EntityRendererProvider.Context context) {
+		super(context);
 	}
 
 	@Override
-	protected ResourceLocation getEntityTexture(Entity e) {
-		return null;
+	public EntityRenderState createRenderState() {
+		return new EntityRenderState();
 	}
 
+	@Override
+	public void submit(EntityRenderState state, PoseStack poseStack, SubmitNodeCollector collector,
+			CameraRenderState camera) {
+		// Intentionally empty; see class javadoc.
+	}
 }

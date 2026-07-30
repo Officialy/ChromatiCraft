@@ -9,7 +9,9 @@
  ******************************************************************************/
 package reika.chromaticraft.tileentity.networking;
 
-import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.level.block.state.BlockState;
 
 import reika.chromaticraft.base.tileentity.CrystalTransmitterBase;
 import reika.chromaticraft.magic.interfaces.CrystalReceiver;
@@ -17,14 +19,19 @@ import reika.chromaticraft.magic.interfaces.CrystalRepeater;
 import reika.chromaticraft.magic.interfaces.CrystalSource;
 import reika.chromaticraft.magic.interfaces.CrystalTransmitter;
 import reika.chromaticraft.magic.interfaces.NaturalNetworkTile;
+import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.ChromaTiles;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.dragonapi.instantiable.data.immutable.DecimalPosition;
 
-
+/** The skypeater — a natural long-range network relay (spawned in luminous cliffs / near water). */
 public class TileEntitySkypeater extends CrystalTransmitterBase implements CrystalRepeater, NaturalNetworkTile {
 
 	private NodeClass type;
+
+	public TileEntitySkypeater(BlockPos pos, BlockState state) {
+		super(ChromaBlockEntities.SKYPEATER.get(), pos, state);
+	}
 
 	@Override
 	public int receiveElement(CrystalSource src, CrystalElement e, int amt) {
@@ -135,17 +142,17 @@ public class TileEntitySkypeater extends CrystalTransmitterBase implements Cryst
 	}
 
 	@Override
-	public void writeToNBT(NBTTagCompound NBT) {
-		super.writeToNBT(NBT);
+	protected void saveAdditional(CompoundTag NBT) {
+		super.saveAdditional(NBT);
 
-		NBT.setInteger("type", this.getNodeType().ordinal());
+		NBT.putInt("type", this.getNodeType().ordinal());
 	}
 
 	@Override
-	public void readFromNBT(NBTTagCompound NBT) {
-		super.readFromNBT(NBT);
+	public void load(CompoundTag NBT) {
+		super.load(NBT);
 
-		type = NodeClass.list[NBT.getInteger("type")];
+		type = NodeClass.list[NBT.getIntOr("type", 0)];
 	}
 
 	public static enum NodeClass {

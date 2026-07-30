@@ -1,0 +1,9 @@
+{
+  "feature": "chromaticraft:luma_patch",
+  "placement": [
+    {
+      "type": "minecraft:count",
+      "count": 1
+    }
+  ]
+}

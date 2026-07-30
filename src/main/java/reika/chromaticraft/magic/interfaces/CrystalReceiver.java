@@ -9,7 +9,7 @@
  ******************************************************************************/
 package reika.chromaticraft.magic.interfaces;
 
-import reika.chromaticraft.auxiliary.crystalnetworklogger.FlowFail;
+import reika.chromaticraft.auxiliary.CrystalNetworkLogger.FlowFail;
 import reika.chromaticraft.magic.network.CrystalFlow;
 import reika.chromaticraft.registry.CrystalElement;
 

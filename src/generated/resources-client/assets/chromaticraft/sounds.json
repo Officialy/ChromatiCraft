@@ -1,0 +1,709 @@
+{
+  "ability": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:ability",
+        "preload": true
+      }
+    ]
+  },
+  "abilityfinish2": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:abilityfinish2"
+      }
+    ]
+  },
+  "ambient": {
+    "sounds": [
+      {
+        "type": "file",
+        "attenuation_distance": 27.0,
+        "name": "chromaticraft:ambient"
+      }
+    ]
+  },
+  "ambient1_short": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:ambient1_short",
+        "preload": true
+      }
+    ]
+  },
+  "ambient1_short_boost": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:ambient1_short_boost",
+        "preload": true
+      }
+    ]
+  },
+  "artealloy-hit2": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:artealloy-hit2"
+      }
+    ]
+  },
+  "artealloy2b": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:artealloy2b"
+      }
+    ]
+  },
+  "auralocus": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:auralocus"
+      }
+    ]
+  },
+  "avolaser2": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:avolaser2"
+      }
+    ]
+  },
+  "balllightning": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:balllightning"
+      }
+    ]
+  },
+  "bounce": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:bounce"
+      }
+    ]
+  },
+  "buffer_warning": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:buffer_warning"
+      }
+    ]
+  },
+  "buffer_warning2": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:buffer_warning2"
+      }
+    ]
+  },
+  "buffer_warning3": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:buffer_warning3"
+      }
+    ]
+  },
+  "cast3": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:cast3"
+      }
+    ]
+  },
+  "castingharmonic2": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:castingharmonic2"
+      }
+    ]
+  },
+  "casttunereject": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:casttunereject"
+      }
+    ]
+  },
+  "cliffambience": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:cliffambience"
+      }
+    ]
+  },
+  "cliffambience2": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:cliffambience2"
+      }
+    ]
+  },
+  "cliffambience3": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:cliffambience3"
+      }
+    ]
+  },
+  "cliffambience4": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:cliffambience4"
+      }
+    ]
+  },
+  "craftdone2": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:craftdone2"
+      }
+    ]
+  },
+  "dash": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:dash"
+      }
+    ]
+  },
+  "dimensionhum": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:dimensionhum"
+      }
+    ]
+  },
+  "dimensionhum_hi": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:dimensionhum_hi"
+      }
+    ]
+  },
+  "ding2": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:ding2"
+      }
+    ]
+  },
+  "dingcharge": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:dingcharge"
+      }
+    ]
+  },
+  "discharge": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:discharge"
+      }
+    ]
+  },
+  "discharge2": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:discharge2"
+      }
+    ]
+  },
+  "drone2": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:drone2"
+      }
+    ]
+  },
+  "drone2_hi": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:drone2_hi"
+      }
+    ]
+  },
+  "error": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:error"
+      }
+    ]
+  },
+  "fail": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:fail"
+      }
+    ]
+  },
+  "fire": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:fire"
+      }
+    ]
+  },
+  "flareattack": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:flareattack"
+      }
+    ]
+  },
+  "gui2": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:gui2"
+      }
+    ]
+  },
+  "gui4": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:gui4"
+      }
+    ]
+  },
+  "impact": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:impact"
+      }
+    ]
+  },
+  "infuse": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:infuse"
+      }
+    ]
+  },
+  "infuse2": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:infuse2",
+        "preload": true
+      }
+    ]
+  },
+  "infuse2s": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:infuse2s"
+      }
+    ]
+  },
+  "inscribe": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:inscribe"
+      }
+    ]
+  },
+  "killaura": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:killaura"
+      }
+    ]
+  },
+  "killaura_charge": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:killaura_charge"
+      }
+    ]
+  },
+  "laser": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:laser"
+      }
+    ]
+  },
+  "lightcast": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:lightcast"
+      }
+    ]
+  },
+  "lore": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:lore"
+      }
+    ]
+  },
+  "lorecomplete2": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:lorecomplete2"
+      }
+    ]
+  },
+  "lowambient_fade": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:lowambient_fade"
+      }
+    ]
+  },
+  "lowambient_fade_short": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:lowambient_fade_short"
+      }
+    ]
+  },
+  "lumenstream": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:lumenstream"
+      }
+    ]
+  },
+  "meteor": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:meteor"
+      }
+    ]
+  },
+  "monument/s": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:monument/s",
+        "preload": true,
+        "stream": true
+      }
+    ]
+  },
+  "monumentray": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:monumentray"
+      }
+    ]
+  },
+  "networkopt": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:networkopt"
+      }
+    ]
+  },
+  "networkopt_charge2": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:networkopt_charge2"
+      }
+    ]
+  },
+  "nukercall": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:nukercall"
+      }
+    ]
+  },
+  "nukerfly2": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:nukerfly2"
+      }
+    ]
+  },
+  "orb/orb": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:orb/orb"
+      }
+    ]
+  },
+  "ping2": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:ping2"
+      }
+    ]
+  },
+  "portal2": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:portal2"
+      }
+    ]
+  },
+  "powercraft": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:powercraft",
+        "preload": true
+      }
+    ]
+  },
+  "powercrystal": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:powercrystal"
+      }
+    ]
+  },
+  "powerdown-2": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:powerdown-2"
+      }
+    ]
+  },
+  "progress2": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:progress2"
+      }
+    ]
+  },
+  "pylonboost": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:pylonboost"
+      }
+    ]
+  },
+  "pylonboost_ritual_short": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:pylonboost_ritual_short",
+        "preload": true
+      }
+    ]
+  },
+  "pylonbooststart": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:pylonbooststart"
+      }
+    ]
+  },
+  "pylonturbo": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:pylonturbo"
+      }
+    ]
+  },
+  "radiance2": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:radiance2"
+      }
+    ]
+  },
+  "repeaterring": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:repeaterring"
+      }
+    ]
+  },
+  "repeatersurge": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:repeatersurge",
+        "preload": true
+      }
+    ]
+  },
+  "repeatersurge_weak": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:repeatersurge_weak"
+      }
+    ]
+  },
+  "rift": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:rift"
+      }
+    ]
+  },
+  "rumble": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:rumble"
+      }
+    ]
+  },
+  "rumble-in": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:rumble-in"
+      }
+    ]
+  },
+  "rumble-out": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:rumble-out"
+      }
+    ]
+  },
+  "shockwave3": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:shockwave3"
+      }
+    ]
+  },
+  "slam2": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:slam2"
+      }
+    ]
+  },
+  "stand": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:stand"
+      }
+    ]
+  },
+  "todim": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:todim",
+        "preload": true
+      }
+    ]
+  },
+  "tower_ambient2": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:tower_ambient2"
+      }
+    ]
+  },
+  "tower_extend_1": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:tower_extend_1"
+      }
+    ]
+  },
+  "tower_extend_2b": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:tower_extend_2b"
+      }
+    ]
+  },
+  "upgrade": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:upgrade"
+      }
+    ]
+  },
+  "use2": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:use2"
+      }
+    ]
+  },
+  "waterlock": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:waterlock"
+      }
+    ]
+  }
+}

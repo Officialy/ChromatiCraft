@@ -9,9 +9,9 @@
  ******************************************************************************/
 package reika.chromaticraft.magic.interfaces;
 
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
-import net.minecraft.world.World;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
 
 import reika.chromaticraft.registry.CrystalElement;
 import reika.dragonapi.instantiable.data.immutable.Coordinate;
@@ -19,20 +19,20 @@ import reika.dragonapi.instantiable.data.immutable.Coordinate;
 
 public interface ChargingPoint extends CrystalNetworkTile, LumenTile {
 
-	public CrystalElement getDeliveredColor(EntityPlayer ep, World world, int clickX, int clickY, int clickZ);
+	public CrystalElement getDeliveredColor(Player ep, Level world, int clickX, int clickY, int clickZ);
 
 	public int getEnergy(CrystalElement e);
 
-	public boolean allowCharging(EntityPlayer ep, CrystalElement e);
+	public boolean allowCharging(Player ep, CrystalElement e);
 
-	public float getChargeRateMultiplier(EntityPlayer ep, CrystalElement e);
+	public float getChargeRateMultiplier(Player ep, CrystalElement e);
 
-	public void onUsedBy(EntityPlayer ep, CrystalElement e);
+	public void onUsedBy(Player ep, CrystalElement e);
 
 	public boolean drain(CrystalElement e, int amt);
 
-	public Coordinate getChargeParticleOrigin(EntityPlayer ep, CrystalElement e);
+	public Coordinate getChargeParticleOrigin(Player ep, CrystalElement e);
 
-	public float getHeldToolChargingPower(EntityPlayer ep, CrystalElement e, ItemStack is);
+	public float getHeldToolChargingPower(Player ep, CrystalElement e, ItemStack is);
 
 }

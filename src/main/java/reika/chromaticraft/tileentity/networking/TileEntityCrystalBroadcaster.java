@@ -11,12 +11,12 @@ package reika.chromaticraft.tileentity.networking;
 
 import java.util.Collection;
 
-import net.minecraft.block.Block;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.client.Minecraft;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.world.World;
-import net.minecraftforge.common.util.ForgeDirection;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.Level;
+import net.minecraft.core.Direction;
 
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.auxiliary.CrystalMusicManager;
@@ -76,19 +76,19 @@ public class TileEntityCrystalBroadcaster extends TileEntityCrystalRepeater impl
 	}
 
 	@Override
-	public void updateEntity(World world, int x, int y, int z, int meta) {
+	public void updateEntity(Level world, int x, int y, int z, int meta) {
 		super.updateEntity(world, x, y, z, meta);
 
-		//if (this.getTicksExisted()%200 == 0 && Keyboard.isKeyDown(Keyboard.KEY_INSERT) && world.isRemote)
+		//if (this.getTicksExisted()%200 == 0 && Keyboard.isKeyDown(Keyboard.KEY_INSERT) && world.isClientSide())
 		//	this.onConnected(CrystalElement.randomElement());
 	}
 
 	@Override
-	protected void onFirstTick(World world, int x, int y, int z) {
+	protected void onFirstTick(Level world, int x, int y, int z) {
 		super.onFirstTick(world, x, y, z);
 		this.validateStructure();
 		this.checkInterfere();
-		clearAir = !world.isRemote && this.testAirClear();
+		clearAir = !world.isClientSide() && this.testAirClear();
 		//this.checkConnectivity();
 	}
 
@@ -133,7 +133,7 @@ public class TileEntityCrystalBroadcaster extends TileEntityCrystalRepeater impl
 		int dd = 1;
 		int c = 4;
 		for (int i = 2; i < 6; i++) {
-			ForgeDirection dir = ForgeDirection.VALID_DIRECTIONS[i];
+			Direction dir = Direction.VALID_DIRECTIONS[i];
 			for (int d = 1; d <= r; d += dd) {
 				int dx = xCoord+d*dir.offsetX;
 				int dz = zCoord+d*dir.offsetZ;
@@ -174,7 +174,7 @@ public class TileEntityCrystalBroadcaster extends TileEntityCrystalRepeater impl
 		return (float)c1/c2 > 0.8;
 	}
 
-	private boolean isAir(World world, int x, int y, int z) {
+	private boolean isAir(Level world, int x, int y, int z) {
 		Block b = world.getBlock(x, y, z);
 		if (b.isAir(world, x, y, z))
 			return true;
@@ -198,7 +198,7 @@ public class TileEntityCrystalBroadcaster extends TileEntityCrystalRepeater impl
 		}
 	}
 
-	public static void updateAirCaches(World world, int x, int y, int z) {
+	public static void updateAirCaches(Level world, int x, int y, int z) {
 		if (world.provider.dimensionId == ExtraChromaIDs.DIMID.getValue())
 			return;
 		Collection<TileEntityCrystalBroadcaster> c = CrystalNetworker.instance.getNearTilesOfType(world, x, y, z, TileEntityCrystalBroadcaster.class, AIR_SEARCH);
@@ -251,22 +251,22 @@ public class TileEntityCrystalBroadcaster extends TileEntityCrystalRepeater impl
 	}
 
 	@Override
-	protected void readSyncTag(NBTTagCompound NBT) {
+	protected void readSyncTag(CompoundTag NBT) {
 		super.readSyncTag(NBT);
 
 		interference = WorldLocation.readFromNBT("interfere", NBT);
-		clearAir = NBT.getBoolean("air");
-		glassBlocks = NBT.getInteger("glass");
+		clearAir = NBT.getBooleanOr("air", false);
+		glassBlocks = NBT.getIntOr("glass", 0);
 	}
 
 	@Override
-	protected void writeSyncTag(NBTTagCompound NBT) {
+	protected void writeSyncTag(CompoundTag NBT) {
 		super.writeSyncTag(NBT);
 
 		if (interference != null)
 			interference.writeToNBT("interfere", NBT);
-		NBT.setBoolean("air", clearAir);
-		NBT.setInteger("glass", glassBlocks);
+		NBT.putBoolean("air", clearAir);
+		NBT.putInt("glass", glassBlocks);
 	}
 
 	@Override
@@ -293,7 +293,7 @@ public class TileEntityCrystalBroadcaster extends TileEntityCrystalRepeater impl
 	@Override
 	public void breakBlock() {
 		if (interference != null) {
-			TileEntity te = interference.getTileEntity();
+			BlockEntity te = interference.getBlockEntity();
 			if (te instanceof TileEntityCrystalBroadcaster) {
 				TileEntityCrystalBroadcaster tb = (TileEntityCrystalBroadcaster)te;
 				if (tb.interference != null && tb.interference.equals(worldObj, xCoord, yCoord, zCoord)) {

@@ -11,142 +11,158 @@ package reika.chromaticraft.tileentity.auxiliary;
 
 import java.util.Collection;
 
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.particle.EntityFX;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
 
-import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.base.tileentity.TileEntityPylonEnhancer;
+import reika.chromaticraft.block.BlockCrystalRune;
 import reika.chromaticraft.magic.network.CrystalNetworker;
-import reika.chromaticraft.magic.progression.ProgressStage;
-import reika.chromaticraft.magic.progression.ProgressionCatchupHandling;
+import reika.chromaticraft.network.ChromaNetwork;
+import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaIcons;
-import reika.chromaticraft.registry.ChromaPackets;
 import reika.chromaticraft.registry.ChromaSounds;
 import reika.chromaticraft.registry.ChromaTiles;
 import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.render.particle.EntityCCFloatingSeedsFX;
-import reika.chromaticraft.render.particle.EntityChromaFluidFX;
 import reika.chromaticraft.tileentity.networking.TileEntityCrystalPylon;
-import reika.chromaticraft.world.iwg.PylonGenerator;
 import reika.dragonapi.instantiable.data.immutable.Coordinate;
-import reika.dragonapi.instantiable.effects.EntityFloatingSeedsFX;
-import reika.dragonapi.libraries.io.ReikaPacketHelper;
-import reika.dragonapi.libraries.java.ReikaRandomHelper;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
-
+/** One of the eight owner-bound power crystals surrounding a pylon. */
 public class TileEntityChromaCrystal extends TileEntityPylonEnhancer {
 
-	private int omega;
-	private int torque;
-	private long power;
+    // Retained for V33a save compatibility; the abandoned RotaryCraft mechanical input never
+    // affected the crystal's behavior, but old worlds may still contain these values.
+    private int omega;
+    private int torque;
+    private long power;
 
-	private Coordinate pylonLocation;
+    private Coordinate pylonLocation;
 
-	@Override
-	public ChromaTiles getTile() {
-		return ChromaTiles.CRYSTAL;
-	}
+    public TileEntityChromaCrystal(BlockPos pos, BlockState state) {
+        super(ChromaBlockEntities.POWER_CRYSTAL.get(), pos, state);
+    }
 
-	public boolean isConnected() {
-		return pylonLocation != null;
-	}
+    @Override
+    public ChromaTiles getTile() {
+        return ChromaTiles.CRYSTAL;
+    }
 
-	@Override
-	public void updateEntity(World world, int x, int y, int z, int meta) {
-		if (world.isRemote && pylonLocation != null)
-			ProgressionCatchupHandling.instance.attemptSync(this, 9, ProgressStage.POWERCRYSTAL);
+    public boolean isConnected() {
+        return this.getPylon() != null;
+    }
 
-		if (this.getTicksExisted() < 5)
-			this.update();
-	}
+    public TileEntityCrystalPylon getPylon() {
+        if (pylonLocation == null || this.getLevel() == null)
+            return null;
+        BlockEntity tile = pylonLocation.getBlockEntity(this.getLevel());
+        return tile instanceof TileEntityCrystalPylon pylon ? pylon : null;
+    }
 
-	@Override
-	protected void onFirstTick(World world, int x, int y, int z) {
-		if (!world.isRemote)
-			pylonLocation = this.findPylonLocation(world, x, y, z);
-		this.update();
-	}
+    @Override
+    public void updateEntity(Level world, BlockPos pos) {
+        if (this.getTicksExisted() < 5 && !world.isClientSide())
+            this.refreshConnection();
+    }
 
-	private void update() {
-		this.syncAllData(true);
-		this.triggerBlockUpdate();
-	}
+    @Override
+    protected void onFirstTick(Level world, BlockPos pos) {
+        super.onFirstTick(world, pos);
+        if (!world.isClientSide())
+            this.refreshConnection();
+    }
 
-	private Coordinate findPylonLocation(World world, int x, int y, int z) {
-		if (world.getBlock(x, y-1, z) != ChromaBlocks.RUNE.getBlockInstance())
-			return null;
-		CrystalElement e = CrystalElement.elements[world.getBlockMetadata(x, y-1, z)];
-		Collection<TileEntityCrystalPylon> c = CrystalNetworker.instance.getNearbyPylons(world, x, y, z, e, 8, false);
-		for (TileEntityCrystalPylon te : c) {
-			if (te.isValidPowerCrystal(this)) {
-				PylonGenerator.instance.cachePylon(te);
-				return new Coordinate(te);
-			}
-		}
-		return null;
-	}
+    /** Re-evaluates the rune colour and the eight legal socket positions. */
+    public TileEntityCrystalPylon refreshConnection() {
+        TileEntityCrystalPylon old = this.getPylon();
+        TileEntityCrystalPylon found = this.findPylon();
+        pylonLocation = found != null ? new Coordinate(found) : null;
+        if (found != old) {
+            this.setChanged();
+            this.syncAllData(true);
+            this.triggerBlockUpdate();
+        }
+        return found;
+    }
 
-	@Override
-	protected void animateWithTick(World world, int x, int y, int z) {
+    private TileEntityCrystalPylon findPylon() {
+        Level world = this.getLevel();
+        BlockPos pos = this.getBlockPos();
+        if (world == null || !ChromaBlocks.isRune(world.getBlockState(pos.below())))
+            return null;
+        CrystalElement color = BlockCrystalRune.getColor(world.getBlockState(pos.below()));
+        Collection<TileEntityCrystalPylon> pylons = CrystalNetworker.instance.getNearbyPylons(
+                world, pos.getX(), pos.getY(), pos.getZ(), color, 8, false);
+        for (TileEntityCrystalPylon pylon : pylons) {
+            if (pylon != null && pylon.isValidPowerCrystal(this))
+                return pylon;
+        }
+        return null;
+    }
 
-	}
+    @Override
+    protected void animateWithTick(Level world, BlockPos pos) {
+        if (pylonLocation != null && rand.nextInt(3) == 0) {
+            double x = pos.getX() + rand.nextDouble();
+            double y = pos.getY() + rand.nextDouble();
+            double z = pos.getZ() + rand.nextDouble();
+            world.addParticle(ParticleTypes.END_ROD, x, y, z, 0, 0.015, 0);
+        }
+    }
 
-	public void destroy() {
-		ChromaSounds.POWERDOWN.playSoundAtBlock(this, 2, 1);
-		ReikaPacketHelper.sendDataPacketWithRadius(ChromatiCraft.packetChannel, ChromaPackets.POWERCRYSDESTROY.ordinal(), this, 32);
-		this.delete();
-	}
+    public void destroy() {
+        Level world = this.getLevel();
+        if (world == null)
+            return;
+        ChromaSounds.POWERDOWN.playSoundAtBlock(this, 2, 1);
+        if (world instanceof net.minecraft.server.level.ServerLevel server) {
+            ChromaNetwork.sendPowerCrystalDestroy(server, this.getBlockPos());
+            world.levelEvent(2001, this.getBlockPos(), net.minecraft.world.level.block.Block.getId(this.getBlockState()));
+        }
+        this.delete();
+    }
 
-	@SideOnly(Side.CLIENT)
-	public static void doDestroyParticles(World world, int x, int y, int z) {
-		for (int i = 0; i < 24; i++) {
-			double vx = ReikaRandomHelper.getRandomPlusMinus(0, 0.125);
-			double vz = ReikaRandomHelper.getRandomPlusMinus(0, 0.125);
-			double vy = ReikaRandomHelper.getRandomPlusMinus(0.125, 0.0625);
-			double px = x+rand.nextDouble();
-			double py = y+rand.nextDouble();
-			double pz = z+rand.nextDouble();
-			EntityFX fx = new EntityChromaFluidFX(world, px, py, pz, vx, vy, vz).setLife(80).setGravity(0.25F).setScale(1+rand.nextFloat());
-			fx.noClip = false;
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-		}
-		for (int i = 0; i < 16; i++) {
-			double px = x+rand.nextDouble();
-			double py = y+rand.nextDouble();
-			double pz = z+rand.nextDouble();
-			EntityFloatingSeedsFX fx = (EntityFloatingSeedsFX)new EntityCCFloatingSeedsFX(world, px, py, pz, 0, 90, ChromaIcons.CHROMA).setLife(80);
-			fx.particleVelocity = 0.125;
-			fx.freedom *= 2;
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-		}
-	}
+    public static void doDestroyParticles(Level world, int x, int y, int z) {
+        RandomSource random = RandomSource.create();
+        for (int i = 0; i < 40; i++) {
+            double px = x + random.nextDouble();
+            double py = y + random.nextDouble();
+            double pz = z + random.nextDouble();
+            double vx = (random.nextDouble() - 0.5) * 0.25;
+            double vy = 0.0625 + random.nextDouble() * 0.125;
+            double vz = (random.nextDouble() - 0.5) * 0.25;
+            world.addParticle(i < 24 ? ParticleTypes.END_ROD : ParticleTypes.ENCHANT, px, py, pz, vx, vy, vz);
+        }
+    }
 
-	@Override
-	public void writeToNBT(NBTTagCompound NBT) {
-		super.writeToNBT(NBT);
+    @Override
+    protected void writeSyncTag(CompoundTag tag) {
+        super.writeSyncTag(tag);
+        if (pylonLocation != null)
+            pylonLocation.writeToNBT("pylon", tag);
+        tag.putInt("omega", omega);
+        tag.putInt("torque", torque);
+        tag.putLong("power", power);
+    }
 
-		if (pylonLocation != null)
-			pylonLocation.writeToNBT("pylon", NBT);
-	}
+    @Override
+    protected void readSyncTag(CompoundTag tag) {
+        super.readSyncTag(tag);
+        pylonLocation = tag.contains("pylon") ? Coordinate.readFromNBT("pylon", tag) : null;
+        omega = tag.getIntOr("omega", 0);
+        torque = tag.getIntOr("torque", 0);
+        power = tag.getLongOr("power", 0);
+    }
 
-	@Override
-	public void readFromNBT(NBTTagCompound NBT) {
-		super.readFromNBT(NBT);
-
-		if (NBT.hasKey("pylon"))
-			pylonLocation = Coordinate.readFromNBT("pylon", NBT);
-	}
-
-	@Override
-	public void breakBlock() {
-		if (pylonLocation != null) {
-			TileEntityCrystalPylon te = (TileEntityCrystalPylon)pylonLocation.getTileEntity(worldObj);
-			te.onPowerCrystalBreak(this);
-		}
-	}
+    @Override
+    public void breakBlock() {
+        TileEntityCrystalPylon pylon = this.getPylon();
+        if (pylon != null)
+            pylon.onPowerCrystalBreak(this);
+    }
 }

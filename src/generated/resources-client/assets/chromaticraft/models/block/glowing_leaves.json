@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/leaves",
+  "textures": {
+    "all": "chromaticraft:block/dimgen/glowleaf-light"
+  }
+}

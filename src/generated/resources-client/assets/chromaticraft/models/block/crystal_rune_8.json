@@ -1,6 +1,0 @@
-{
-  "parent": "minecraft:block/cube_all",
-  "textures": {
-    "all": "chromaticraft:block/runes/backpng/tile8_0"
-  }
-}

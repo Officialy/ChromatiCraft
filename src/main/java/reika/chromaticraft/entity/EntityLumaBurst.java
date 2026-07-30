@@ -9,81 +9,82 @@
  ******************************************************************************/
 package reika.chromaticraft.entity;
 
-import net.minecraft.block.Block;
-import net.minecraft.client.Minecraft;
-import net.minecraft.entity.Entity;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 
-import reika.chromaticraft.block.dimension.structure.gravity.blockgravitytile.GravityTiles;
-import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.render.particle.EntityCCBlurFX;
+import reika.chromaticraft.render.particle.ChromaParticle;
 import reika.dragonapi.base.ParticleEntity;
-import reika.dragonapi.instantiable.effects.EntityBlurFX;
-import reika.dragonapi.libraries.reikadirectionhelper.CubeDirections;
-import reika.dragonapi.libraries.rendering.ReikaColorAPI;
+import reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections;
 import reika.dragonapi.libraries.java.ReikaRandomHelper;
 import reika.dragonapi.libraries.mathsci.ReikaPhysicsHelper;
+import reika.dragonapi.libraries.rendering.ReikaColorAPI;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
-import io.netty.buffer.ByteBuf;
-
-
+/**
+ * V33a "Luma Burst": a slow, colour-coded bolt fired by burst emitters/gravity-puzzle machinery that
+ * bounces gently around its spawn height and paints a fading trail. Ported from the pristine
+ * {@code entity/EntityLumaBurst.java} (1.7.10) onto the already-26.2-ported {@link ParticleEntity}
+ * base (shared with the accepted {@code EntityPylonOverloadShock}).
+ *
+ * <p>Registration only; V33a's spawner is the gravity-puzzle structure
+ * ({@code block/dimension/structure/gravity/BlockGravityTile.java}), which is still pristine
+ * 1.7.10, so nothing currently creates one of these in the 26.2 world. The
+ * {@code onEnterBlock}/{@code GravityTiles} pulse-absorption behaviour is marked
+ * {@code CHROMA-PORT} below for the same reason.
+ */
 public class EntityLumaBurst extends ParticleEntity {
 
-	private CrystalElement color;
+	private CrystalElement color = CrystalElement.WHITE;
 	private boolean outOfSpawnZone;
 	private boolean outOfSpawnZoneLast;
 
-	public EntityLumaBurst(World world) {
-		super(world);
+	public EntityLumaBurst(EntityType<? extends EntityLumaBurst> type, Level world) {
+		super(type, world);
 	}
 
-	public EntityLumaBurst(World world, int x, int y, int z, CubeDirections dir, CrystalElement e) {
-		super(world, x, y, z, dir);
+	public EntityLumaBurst(EntityType<? extends EntityLumaBurst> type, Level world, BlockPos pos,
+			CubeDirections dir, CrystalElement e) {
+		super(type, world, pos);
 		this.setColor(e);
+		this.setDirection(dir, true);
 	}
 
-	public EntityLumaBurst(World world, int x, int y, int z, double ang, CrystalElement e) {
-		super(world, x, y, z);
+	public EntityLumaBurst(EntityType<? extends EntityLumaBurst> type, Level world, BlockPos pos,
+			double ang, CrystalElement e) {
+		super(type, world, pos);
 		this.setColor(e);
 		this.setAngle(ang);
 	}
 
-	@Override
-	protected void entityInit() {
-		dataWatcher.addObject(24, 0);
-	}
-
 	public void copyFrom(EntityLumaBurst e) {
 		this.setColor(e.color);
-		motionX = e.motionX;
-		motionY = e.motionY;
-		motionZ = e.motionZ;
+		this.setDeltaMovement(e.getDeltaMovement());
 	}
 
 	public void setColor(CrystalElement e) {
 		color = e;
-		dataWatcher.updateObject(24, e.ordinal());
 	}
 
-	@Override
-	protected void setDirection(CubeDirections dir, boolean setPos) {
-		if (setPos)
-			super.setDirection(dir, setPos);
-
-		double d = 10;//0.03125/4;
+	/** V33a's 8-way diagonal launch direction; distinct from the base class's 6-way
+	 *  {@code setDirection(Direction, boolean)} overload used by other particle entities. */
+	private void setDirection(CubeDirections dir, boolean setPos) {
+		if (setPos) {
+			this.snapTo(this.getBlockX() + 0.5, this.getBlockY() + 0.5, this.getBlockZ() + 0.5, 0, 0);
+		}
+		double d = 10; // V33a: a small random cone around the emitter's face angle.
 		double a = ReikaRandomHelper.getRandomPlusMinus(dir.angle, d);
 		this.setAngle(a);
 	}
 
 	private void setAngle(double a) {
 		double[] vel = ReikaPhysicsHelper.polarToCartesian(this.getSpeed(), 0, -a);
-		motionX = vel[0];//ReikaRandomHelper.getRandomPlusMinus(motionX, d);
-		motionZ = vel[2];//ReikaRandomHelper.getRandomPlusMinus(motionZ, d);
-		motionY = vel[1];//ReikaRandomHelper.getRandomPlusMinus(motionY, d/4D);
+		this.setDeltaMovement(vel[0], vel[1], vel[2]);
 	}
 
 	public void resetSpawnTimer() {
@@ -124,29 +125,28 @@ public class EntityLumaBurst extends ParticleEntity {
 	@Override
 	protected void onTick() {
 		if (this.getSpawnLocation() != null) {
-			double dy = posY-this.getSpawnLocation().yCoord+0.5;
-			if (Math.abs(dy) >= 0.4 && Math.signum(motionY) == Math.signum(dy)) {
-				motionY = -motionY;
+			double dy = this.getY() - this.getSpawnLocation().pos.getY() + 0.5;
+			if (Math.abs(dy) >= 0.4 && Math.signum(this.getDeltaMovement().y) == Math.signum(dy)) {
+				this.setDeltaMovement(this.getDeltaMovement().x, -this.getDeltaMovement().y,
+						this.getDeltaMovement().z);
 			}
 		}
-		if (worldObj.isRemote) {
+		if (this.level().isClientSide()) {
 			this.doParticles();
 		}
-		if (outOfSpawnZone)
+		if (outOfSpawnZone) {
 			outOfSpawnZoneLast = true;
+		}
 		outOfSpawnZone = true;
-		color = CrystalElement.elements[dataWatcher.getWatchableObjectInt(24)];
 	}
 
-	@SideOnly(Side.CLIENT)
 	private void doParticles() {
+		int c = ReikaColorAPI.mixColors(color.getColor(), 0x000000, 0.5F);
 		for (double d = 0; d <= 1; d += 0.25) {
-			double px = posX-(posX-lastTickPosX)*d;
-			double py = posY-(posY-lastTickPosY)*d;
-			double pz = posZ-(posZ-lastTickPosZ)*d;
-			int c = ReikaColorAPI.mixColors(color.getColor(), 0x000000, 0.5F);
-			EntityBlurFX fx = new EntityCCBlurFX(worldObj, px, py, pz).setColor(c).setAlphaFading().setScale(0.5F).setLife(4).setAge((int)Math.round(d));
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx);
+			double px = this.getX() - (this.getX() - this.xo) * d;
+			double py = this.getY() - (this.getY() - this.yo) * d;
+			double pz = this.getZ() - (this.getZ() - this.zo) * d;
+			ChromaParticle.spawnLumaBurstTrail(this.level(), px, py, pz, c, (int)Math.round(d));
 		}
 	}
 
@@ -156,49 +156,51 @@ public class EntityLumaBurst extends ParticleEntity {
 	}
 
 	@Override
-	protected boolean onEnterBlock(World world, int x, int y, int z) {
-		Block b = world.getBlock(x, y, z);
-		if (b.isAir(world, x, y, z))
+	protected boolean onEnterBlock(Level world, BlockPos pos) {
+		BlockState state = world.getBlockState(pos);
+		if (state.isAir()) {
 			return false;
-		if (b == ChromaBlocks.GRAVITY.getBlockInstance()) {
-			int meta = world.getBlockMetadata(x, y, z);
-			GravityTiles g = GravityTiles.list[meta];
-			return g.onPulse(world, x, y, z, this);
 		}
+		// CHROMA-PORT: V33a routes a Luma Burst that enters a Gravity Tile
+		// (ChromaBlocks.GRAVITY / block.dimension.structure.gravity.BlockGravityTile, still pristine
+		// 1.7.10) into `GravityTiles.list[meta].onPulse(world, x, y, z, this)`, which decides whether
+		// the pulse is absorbed. Neither ChromaBlocks.GRAVITY nor a modern GravityTiles enum exists
+		// yet, so every non-air block currently absorbs the burst (matches V33a's own fallback
+		// `return true` for every other solid block).
 		return true;
 	}
 
 	@Override
 	public void applyEntityCollision(Entity e) {
-
 	}
 
 	@Override
-	public void writeSpawnData(ByteBuf data) {
+	public void writeSpawnData(RegistryFriendlyByteBuf data) {
 		super.writeSpawnData(data);
 
-		data.writeInt(color.ordinal());
+		data.writeVarInt(color.ordinal());
 	}
 
 	@Override
-	public void readSpawnData(ByteBuf data) {
+	public void readSpawnData(RegistryFriendlyByteBuf data) {
 		super.readSpawnData(data);
 
-		color = CrystalElement.elements[data.readInt()];
+		color = CrystalElement.elements[data.readVarInt()];
 	}
 
 	@Override
-	protected void readEntityFromNBT(NBTTagCompound tag) {
-		super.readEntityFromNBT(tag);
+	protected void readAdditionalSaveData(ValueInput input) {
+		super.readAdditionalSaveData(input);
 
-		color = CrystalElement.elements[tag.getInteger("color")];
+		color = CrystalElement.elements[Math.floorMod(
+				input.getIntOr("color", CrystalElement.WHITE.ordinal()), CrystalElement.elements.length)];
 	}
 
 	@Override
-	protected void writeEntityToNBT(NBTTagCompound tag) {
-		super.writeEntityToNBT(tag);
+	protected void addAdditionalSaveData(ValueOutput output) {
+		super.addAdditionalSaveData(output);
 
-		tag.setInteger("color", color.ordinal());
+		output.putInt("color", color.ordinal());
 	}
 
 	public CrystalElement getColor() {
@@ -212,16 +214,13 @@ public class EntityLumaBurst extends ParticleEntity {
 
 	public void setRandomDirection(boolean fullFreedom) {
 		if (fullFreedom) {
-			double ang = rand.nextDouble()*360;
+			double ang = this.random.nextDouble() * 360;
 			double slope = ReikaRandomHelper.getRandomPlusMinus(0, 5);
 			double[] vel = ReikaPhysicsHelper.polarToCartesian(this.getSpeed(), slope, ang);
-			motionX = vel[0];
-			motionY = vel[1];
-			motionZ = vel[2];
-			velocityChanged = true;
+			this.setDeltaMovement(vel[0], vel[1], vel[2]);
 		}
 		else {
-			this.setDirection(CubeDirections.list[rand.nextInt(CubeDirections.list.length)], false);
+			this.setDirection(CubeDirections.list[this.random.nextInt(CubeDirections.list.length)], false);
 		}
 	}
 

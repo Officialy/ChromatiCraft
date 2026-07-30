@@ -11,14 +11,14 @@ package reika.chromaticraft.magic.network;
 
 import java.util.HashSet;
 
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.MathHelper;
-import net.minecraft.world.ChunkCoordIntPair;
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.util.Mth;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
 
 import reika.chromaticraft.magic.interfaces.CrystalNetworkTile;
 import reika.chromaticraft.magic.interfaces.LinkWatchingRepeater;
-import reika.dragonapi.instantiable.data.immutable.Coordinate;
 import reika.dragonapi.instantiable.data.immutable.WorldChunk;
 import reika.dragonapi.instantiable.data.immutable.WorldLocation;
 
@@ -27,7 +27,7 @@ public final class CrystalLink {
 	public final WorldLocation loc1;
 	public final WorldLocation loc2;
 	final HashSet<WorldChunk> chunks = new HashSet();
-	private final HashSet<Coordinate> locations = new HashSet();
+	private final HashSet<BlockPos> locations = new HashSet<>();
 
 	boolean hasLOS = false;
 	boolean isRainable = false;
@@ -41,16 +41,16 @@ public final class CrystalLink {
 		loc1 = l1;
 		loc2 = l2;
 		double dd = l1.getDistanceTo(l2);
-		World world = l1.getWorld();
+		Level world = l1.getWorld();
 		for (int i = 0; i < dd; i++) {
-			int x = MathHelper.floor_double(l1.xCoord+i*(l2.xCoord-l1.xCoord)/dd);
-			int z = MathHelper.floor_double(l1.zCoord+i*(l2.zCoord-l1.zCoord)/dd);
-			WorldChunk ch = new WorldChunk(world, new ChunkCoordIntPair(x >> 4, z >> 4));
+			int x = Mth.floor(l1.pos.getX()+i*(l2.pos.getX()-l1.pos.getX())/dd);
+			int z = Mth.floor(l1.pos.getZ()+i*(l2.pos.getZ()-l1.pos.getZ())/dd);
+			WorldChunk ch = new WorldChunk(world, new ChunkPos(x >> 4, z >> 4));
 			if (!chunks.contains(ch))
 				chunks.add(ch);
 		}
-		activeEndpoint1 = l1.getTileEntity() instanceof LinkWatchingRepeater;
-		activeEndpoint2 = l2.getTileEntity() instanceof LinkWatchingRepeater;
+		activeEndpoint1 = l1.getBlockEntity() instanceof LinkWatchingRepeater;
+		activeEndpoint2 = l2.getBlockEntity() instanceof LinkWatchingRepeater;
 		length = l1.getDistanceTo(l2);
 	}
 
@@ -70,13 +70,13 @@ public final class CrystalLink {
 
 	private void updateEndpoints() {
 		if (activeEndpoint1) {
-			TileEntity te1 = loc1.getTileEntity();
+			BlockEntity te1 = loc1.getBlockEntity();
 			if (te1 instanceof LinkWatchingRepeater) {
 				((LinkWatchingRepeater)te1).onLinkRecalculated(this);
 			}
 		}
 		if (activeEndpoint2) {
-			TileEntity te2 = loc2.getTileEntity();
+			BlockEntity te2 = loc2.getBlockEntity();
 			if (te2 instanceof LinkWatchingRepeater) {
 				((LinkWatchingRepeater)te2).onLinkRecalculated(this);
 			}
@@ -87,8 +87,8 @@ public final class CrystalLink {
 		return chunks.contains(wc);
 	}
 
-	public boolean containsBlock(Coordinate c) {
-		return locations.contains(c);
+	public boolean containsBlock(BlockPos pos) {
+		return locations.contains(pos);
 	}
 
 	@Override
@@ -127,7 +127,7 @@ public final class CrystalLink {
 
 	/** Returns loc2 if the tile is on neither end */
 	public CrystalNetworkTile getOtherEnd(CrystalNetworkTile te) {
-		return PylonFinder.getNetTileAt(loc1.equals(te.getWorld(), te.getX(), te.getY(), te.getZ()) ? loc2 : loc1, true);
+		return PylonFinder.getNetTileAt(loc1.equals(te.getWorld(), new BlockPos(te.getX(), te.getY(), te.getZ())) ? loc2 : loc1, true);
 	}
 
 }

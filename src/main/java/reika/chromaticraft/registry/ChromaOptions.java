@@ -60,7 +60,8 @@ public enum ChromaOptions implements SegmentedConfigList, SelectiveConfig, Integ
 	ENDERTNT("Enable Ender TNT", true),
 	KEYBINDABILITY("Use vanilla keybind system for ability selection GUI", false),
 	COPYTILE("Allow duplication wand to copy TileEntities", false),
-	HARDTHAUM("More difficult ThaumCraft integration", true),
+	// CHROMA-PORT: Thaumcraft has no Minecraft 26.2 target; keep HARDTHAUM unregistered.
+	// HARDTHAUM("More difficult ThaumCraft integration", true),
 	PIELOC("Energy Buffer Overlay Location", 0),
 	RAINBOWWEIGHT("Rainbow Forest Biome Weight", 10),
 	ENDERWEIGHT("Ender Forest Biome Weight", 10),
@@ -88,7 +89,8 @@ public enum ChromaOptions implements SegmentedConfigList, SelectiveConfig, Integ
 	MIDISIZE("Orchestra MIDI Size Limit (KB)", 80),
 	SUPERBUILDKEYBIND("Superbuild Ability Activation", Key.LCTRL.name()),
 	VILLAGERATE("Village Structure Frequency", 1F),
-	NODECHARGESPEED("Crystal-Network-Integrated ThaumCraft Node Improvement Speed", 1F),
+	// CHROMA-PORT: Thaumcraft has no Minecraft 26.2 target; keep NODECHARGESPEED unregistered.
+	// NODECHARGESPEED("Crystal-Network-Integrated ThaumCraft Node Improvement Speed", 1F),
 	METEORFIRE("Meteor Tower Projectiles Start Fires On Impact", true),
 	PANELLAMPCOLLISION("Panel-Form Lumen Lamps Have No Hitbox", false),
 	EPILEPSY("Epilepsy Mode", false),
@@ -248,10 +250,8 @@ public enum ChromaOptions implements SegmentedConfigList, SelectiveConfig, Integ
 		return Math.min(3, Math.max(1, base));
 	}
 
-	public static float getNodeGrowthSpeed() {
-		float base = NODECHARGESPEED.getFloat();
-		return Math.min(6F, Math.max(0.2F, base));
-	}
+	// CHROMA-PORT: Thaumcraft node growth is dormant; V33a used NODECHARGESPEED here.
+	// public static float getNodeGrowthSpeed() { ... }
 
 	public static float getRFEfficiency() {
 		float base = RFEFFICIENCY.getFloat()/100F;
@@ -265,7 +265,7 @@ public enum ChromaOptions implements SegmentedConfigList, SelectiveConfig, Integ
 			case RAINBOWSPREAD:
 			case EASYFRAG:
 			case ENDERTNT:
-			case HARDTHAUM:
+			// CHROMA-PORT: case HARDTHAUM disabled with the dormant Thaumcraft option.
 			case MIDISIZE:
 			case PANELLAMPCOLLISION:
 				return true;

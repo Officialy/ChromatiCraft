@@ -1,0 +1,12 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "chromaticraft:block/rainbow_leaves",
+    "tints": [
+      {
+        "type": "minecraft:constant",
+        "value": -65281
+      }
+    ]
+  }
+}

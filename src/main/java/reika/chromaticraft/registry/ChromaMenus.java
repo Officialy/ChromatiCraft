@@ -1,0 +1,25 @@
+package reika.chromaticraft.registry;
+
+import java.util.function.Supplier;
+
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.world.flag.FeatureFlags;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.MenuType;
+import net.neoforged.neoforge.network.IContainerFactory;
+import net.neoforged.neoforge.registries.DeferredRegister;
+
+import reika.chromaticraft.ChromatiCraft;
+import reika.chromaticraft.container.MenuCastingTable;
+
+/** Modern menu registrations for ChromatiCraft's accepted GUI slice. */
+public interface ChromaMenus {
+
+    DeferredRegister<MenuType<?>> REGISTRY = DeferredRegister.create(BuiltInRegistries.MENU, ChromatiCraft.MODID);
+
+    static <T extends AbstractContainerMenu> Supplier<MenuType<T>> register(String id, IContainerFactory<T> factory) {
+        return REGISTRY.register(id, () -> new MenuType<>(factory, FeatureFlags.DEFAULT_FLAGS));
+    }
+
+    Supplier<MenuType<MenuCastingTable>> CASTING_TABLE = register("casting_table", MenuCastingTable::new);
+}

@@ -1,241 +1,210 @@
-/*******************************************************************************
- * @author Reika Kalseki
- *
- * Copyright 2017
- *
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
- ******************************************************************************/
 package reika.chromaticraft.render.tesr;
 
-import org.lwjgl.opengl.GL11;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
+
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.math.Axis;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.client.renderer.entity.RenderManager;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.IIcon;
-import net.minecraftforge.client.MinecraftForgeClient;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
+import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
+import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
+import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.client.renderer.texture.TextureAtlas;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.data.AtlasIds;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.phys.Vec3;
 
-import reika.chromaticraft.base.CrystalTransmitterRender;
-import reika.chromaticraft.magic.lore.lorescripts.ScriptLocations;
-import reika.chromaticraft.magic.potions.potionvoidgaze.VoidGazeLevels;
-import reika.chromaticraft.registry.ChromaIcons;
-import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.render.InWorldScriptRenderer;
+import org.joml.Vector3f;
+import org.jspecify.annotations.Nullable;
+
+import reika.chromaticraft.ChromatiCraft;
+import reika.chromaticraft.magic.CrystalTarget;
+import reika.chromaticraft.render.ChromaRenderPipelines;
 import reika.chromaticraft.tileentity.networking.TileEntityCrystalPylon;
-import reika.dragonapi.auxiliary.trackers.SpecialDayTracker;
-import reika.dragonapi.instantiable.rendering.StructureRenderer;
-import reika.dragonapi.libraries.io.ReikaTextureHelper;
-import reika.dragonapi.libraries.java.reikaglhelper.BlendMode;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
-import reika.dragonapi.libraries.rendering.ReikaRenderHelper;
 
-public class RenderCrystalPylon extends CrystalTransmitterRender {
+/** V33a pylon core, enhanced halo, and inherited transmitter beam pass on the 26.2 submit pipeline. */
+public final class RenderCrystalPylon implements BlockEntityRenderer<TileEntityCrystalPylon, RenderCrystalPylon.State> {
 
-	@Override
-	public void renderTileEntityAt(TileEntity tile, double par2, double par4, double par6, float par8) {
-		super.renderTileEntityAt(tile, par2, par4, par6, par8);
-		TileEntityCrystalPylon te = (TileEntityCrystalPylon)tile;
+    private static final Identifier ROUND_FLARE = sprite("roundflare");
+    private static final Identifier SUN_FLARE = sprite("sunflare");
+    private static final Identifier TURBO = sprite("turbo");
+    private static final Identifier BEAM = Identifier.fromNamespaceAndPath(
+            ChromatiCraft.MODID, "textures/effect/beam.png");
 
-		if (tile.hasWorldObj() && (MinecraftForgeClient.getRenderPass() == 1 || StructureRenderer.isRenderingTiles())) {
-			ReikaTextureHelper.bindTerrainTexture();
-			IIcon ico = ChromaIcons.ROUNDFLARE.getIcon();
-			float u = ico.getMinU();
-			float v = ico.getMinV();
-			float du = ico.getMaxU();
-			float dv = ico.getMaxV();
-			ico = ChromaIcons.SUNFLARE.getIcon();
-			float u2 = ico.getMinU();
-			float v2 = ico.getMinV();
-			float du2 = ico.getMaxU();
-			float dv2 = ico.getMaxV();
-			GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
-			GL11.glDisable(GL11.GL_LIGHTING);
-			GL11.glDisable(GL11.GL_ALPHA_TEST);
-			ReikaRenderHelper.disableEntityLighting();
-			GL11.glEnable(GL11.GL_BLEND);
-			GL11.glDisable(GL11.GL_CULL_FACE);
-			GL11.glDepthMask(false);
-			BlendMode.ADDITIVEDARK.apply();
-			if (VoidGazeLevels.PYLONXRAY.isActiveOnPlayer(Minecraft.getMinecraft().thePlayer))
-				GL11.glDisable(GL11.GL_DEPTH_TEST);
-			GL11.glPushMatrix();
-			GL11.glTranslated(par2, par4, par6);
+    public RenderCrystalPylon(BlockEntityRendererProvider.Context context) {}
 
-			Tessellator v5 = Tessellator.instance;
+    @Override
+    public State createRenderState() {
+        return new State();
+    }
 
-			if (MinecraftForgeClient.getRenderPass() == 1 && ScriptLocations.PYLON.isEnabled() && Minecraft.getMinecraft().thePlayer.getDistanceSq(te.xCoord+0.5, te.yCoord+0.5, te.zCoord+0.5) < 576) {
-				GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
-				InWorldScriptRenderer.renderPylonScript(te, par8, v5, 0.03125/2);
-				GL11.glPopAttrib();
-			}
+    @Override
+    public void extractRenderState(TileEntityCrystalPylon pylon, State state, float partialTick,
+            Vec3 cameraPosition, ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress) {
+        BlockEntityRenderer.super.extractRenderState(pylon, state, partialTick, cameraPosition, breakProgress);
+        state.enhanced = pylon.isEnhanced();
+        state.unstable = pylon.isUnstable();
+        state.conducting = pylon.canConduct();
+        state.beams.clear();
+        double startWidth = pylon.getOutgoingBeamRadius();
+        for (CrystalTarget target : pylon.getTargets()) {
+            state.beams.add(new Beam(
+                    target.location.pos.getX() - pylon.getBlockPos().getX() + target.offsetX,
+                    target.location.pos.getY() - pylon.getBlockPos().getY() + target.offsetY,
+                    target.location.pos.getZ() - pylon.getBlockPos().getZ() + target.offsetZ,
+                    Math.min(startWidth, target.widthLimit),
+                    Math.min(target.endWidth, target.widthLimit),
+                    target.color.getColor()));
+        }
+        state.hasTargets = !state.beams.isEmpty();
+        state.color = 0xff000000 | pylon.getRenderColor();
+        state.randomOffset = pylon.randomOffset;
+        state.time = System.currentTimeMillis();
+    }
 
-			GL11.glTranslated(0.5, 0.5, 0.5);
+    @Override
+    public void submit(State state, PoseStack poseStack, SubmitNodeCollector collector,
+            CameraRenderState camera) {
+        this.submitBeams(state, poseStack, collector);
 
-			int count = te.isEnhanced() ? 2 : 1;
-			if (te.isUnstable())
-				count++;
-			for (int di = 0; di < count; di++) {
-				int i = di;
-				boolean flag = false;
-				GL11.glPushMatrix();
-				double s0 = 0;
-				if (te.isUnstable()) {
-					if (i == 0) {
-						flag = true;
-						s0 = 0.25;
-					}
-					else {
-						i--;
-						s0 = -0.125+0.25*te.getRandom().nextDouble();
-					}
-				}
-				double t = (i*60+te.randomOffset+System.currentTimeMillis()/2000D*(1+3*i))%360;
-				double s = s0+i*0.5+2.5+0.5*Math.sin(t);
-				if (!te.getTargets().isEmpty()) {
-					s += 1;
-				}
-				if (SpecialDayTracker.instance.loadXmasTextures()) {
-					s *= 0.7;
-				}
-				if (!te.canConduct() && !StructureRenderer.isRenderingTiles()) {
-					s = 0.75;
-				}
-				GL11.glScaled(s, s, s);
-				if (StructureRenderer.isRenderingTiles()) {
-					GL11.glRotated(-StructureRenderer.getRenderRY(), 0, 1, 0);
-					GL11.glRotated(-StructureRenderer.getRenderRX(), 1, 0, 0);
-				}
-				else {
-					RenderManager rm = RenderManager.instance;
-					GL11.glRotatef(-rm.playerViewY, 0.0F, 1.0F, 0.0F);
-					GL11.glRotatef(rm.playerViewX, 1.0F, 0.0F, 0.0F);
-				}
+        poseStack.pushPose();
+        poseStack.translate(0.5, 0.5, 0.5);
 
-				int alpha = 255;//te.getEnergy()*255/te.MAX_ENERGY;
-				//ReikaJavaLibrary.pConsole(te.getEnergy());
+        int count = state.enhanced ? 2 : 1;
+        if (state.unstable) count++;
+        for (int drawIndex = 0; drawIndex < count; drawIndex++) {
+            int layer = drawIndex;
+            boolean sun = false;
+            double baseScale = 0;
+            if (state.unstable) {
+                if (layer == 0) {
+                    sun = true;
+                    baseScale = 0.25;
+                } else {
+                    layer--;
+                    baseScale = ThreadLocalRandom.current().nextDouble(-0.125, 0.125);
+                }
+            }
+            double phase = (layer * 60 + state.randomOffset
+                    + state.time / 2000D * (1 + 3 * layer)) % 360;
+            double scale = baseScale + layer * 0.5 + 2.5 + 0.5 * Math.sin(phase);
+            if (state.hasTargets) scale++;
+            if (!state.conducting) scale = 0.75;
+            this.submitBillboard(poseStack, collector, camera, sun ? SUN_FLARE : ROUND_FLARE,
+                    (float)scale, state.color, 0);
+        }
 
-				int color = te.getRenderColor();
+        if (state.conducting && state.enhanced) {
+            double angle = (state.time / 50D) % 360;
+            int mix = (int)(127 + 92 * Math.sin(Math.toRadians(angle / 2D)));
+            int haloColor = 0xff000000 | ReikaColorAPI.mixColors(
+                    state.color & 0xffffff, 0, mix / 255F);
+            float scale = (float)(3 + Math.sin(Math.toRadians(angle)));
+            this.submitBillboard(poseStack, collector, camera, TURBO, scale,
+                    haloColor, (float)-angle);
+        }
+        poseStack.popPose();
+    }
 
-				if (StructureRenderer.isRenderingTiles() && !StructureRenderer.isRenderingRealTiles()) {
-					color = CrystalElement.elements[(int)((System.currentTimeMillis()/4000)%16)].getColor();
-				}
+    private void submitBeams(State state, PoseStack poseStack, SubmitNodeCollector collector) {
+        if (state.beams.isEmpty()) return;
+        float scroll = (float)((state.time / 600D % 360) / 30D);
+        for (Beam beam : state.beams) {
+            PoseStack renderPose = new PoseStack();
+            renderPose.last().set(poseStack.last());
+            collector.submitCustomGeometry(poseStack, ChromaRenderPipelines.additiveSprite(BEAM),
+                    (pose, vertices) -> beamTube(renderPose.last(), vertices, beam, scroll));
+        }
+    }
 
-				v5.startDrawingQuads();
-				v5.setColorRGBA_I(color, alpha);
-				v5.addVertexWithUV(-1, -1, 0, flag ? u2 : u, flag ? v2 : v);
-				v5.addVertexWithUV(1, -1, 0, flag ? du2 : du, flag ? v2 : v);
-				v5.addVertexWithUV(1, 1, 0, flag ? du2 : du, flag ? dv2 : dv);
-				v5.addVertexWithUV(-1, 1, 0, flag ? u2 : u, flag ? dv2 : dv);
-				v5.draw();
-				GL11.glPopMatrix();
-			}
+    /** Six-sided tapered tube from V33a ChromaFX.drawEnergyTransferBeam. */
+    private static void beamTube(PoseStack.Pose pose, VertexConsumer vertices, Beam beam, float scroll) {
+        Vector3f axis = new Vector3f((float)beam.x, (float)beam.y, (float)beam.z);
+        if (axis.lengthSquared() < 1.0E-6F) return;
+        axis.normalize();
+        Vector3f side = Math.abs(axis.y) < 0.99F
+                ? axis.cross(new Vector3f(0, 1, 0), new Vector3f()).normalize()
+                : axis.cross(new Vector3f(1, 0, 0), new Vector3f()).normalize();
+        Vector3f up = axis.cross(side, new Vector3f()).normalize();
+        int color = 0xff000000 | beam.color;
+        for (int sideIndex = 0; sideIndex < 6; sideIndex++) {
+            double a0 = sideIndex * Math.PI * 2 / 6D;
+            double a1 = (sideIndex + 1) * Math.PI * 2 / 6D;
+            Vector3f s0 = ring(side, up, a0, beam.startRadius * 0.75);
+            Vector3f s1 = ring(side, up, a1, beam.startRadius * 0.75);
+            Vector3f e0 = ring(side, up, a0, beam.endRadius * 0.75)
+                    .add((float)beam.x, (float)beam.y, (float)beam.z);
+            Vector3f e1 = ring(side, up, a1, beam.endRadius * 0.75)
+                    .add((float)beam.x, (float)beam.y, (float)beam.z);
+            vertices.addVertex(pose, s0.x, s0.y, s0.z).setUv(scroll, scroll + 1).setColor(color);
+            vertices.addVertex(pose, s1.x, s1.y, s1.z).setUv(scroll, scroll + 1).setColor(color);
+            vertices.addVertex(pose, e1.x, e1.y, e1.z).setUv(scroll + 1, scroll).setColor(color);
+            vertices.addVertex(pose, e0.x, e0.y, e0.z).setUv(scroll + 1, scroll).setColor(color);
+        }
+    }
 
-			if (te.canConduct() && te.isEnhanced()) {
-				GL11.glPushMatrix();
-				RenderManager rm = RenderManager.instance;
-				GL11.glRotatef(-rm.playerViewY, 0.0F, 1.0F, 0.0F);
-				GL11.glRotatef(rm.playerViewX, 1.0F, 0.0F, 0.0F);
-				this.renderBoostedHalo(te, par8);
-				GL11.glPopMatrix();
-			}
+    private static Vector3f ring(Vector3f side, Vector3f up, double angle, double radius) {
+        return new Vector3f(side).mul((float)(Math.sin(angle) * radius))
+                .add(new Vector3f(up).mul((float)(Math.cos(angle) * radius)));
+    }
 
-			GL11.glPopMatrix();
-			GL11.glPopAttrib();
-		}
-		else if (!tile.hasWorldObj()) {
-			IIcon ico = ChromaIcons.ROUNDFLARE.getIcon();
-			ReikaTextureHelper.bindTerrainTexture();
-			float u = ico.getMinU();
-			float v = ico.getMinV();
-			float du = ico.getMaxU();
-			float dv = ico.getMaxV();
-			GL11.glDisable(GL11.GL_LIGHTING);
-			//ReikaRenderHelper.disableEntityLighting();
-			GL11.glEnable(GL11.GL_BLEND);
-			GL11.glDisable(GL11.GL_CULL_FACE);
-			BlendMode.ADDITIVEDARK.apply();
-			GL11.glPushMatrix();
-			GL11.glRotated(45, 0, 1, 0);
-			GL11.glRotated(-45, 1, 0, 0);
-			Tessellator v5 = Tessellator.instance;
-			CrystalElement c = te.getColor();
-			v5.startDrawingQuads();
-			v5.setColorOpaque(c.getRed(), c.getGreen(), c.getBlue());
-			v5.addVertexWithUV(-1, -1, 0, u, v);
-			v5.addVertexWithUV(1, -1, 0, du, v);
-			v5.addVertexWithUV(1, 1, 0, du, dv);
-			v5.addVertexWithUV(-1, 1, 0, u, dv);
-			v5.draw();
+    private void submitBillboard(PoseStack poseStack, SubmitNodeCollector collector,
+            CameraRenderState camera, Identifier spriteId, float scale, int color, float roll) {
+        TextureAtlasSprite sprite = Minecraft.getInstance().getAtlasManager()
+                .getAtlasOrThrow(AtlasIds.BLOCKS).getSprite(spriteId);
+        poseStack.pushPose();
+        poseStack.mulPose(camera.orientation);
+        if (roll != 0) poseStack.mulPose(Axis.ZP.rotationDegrees(roll));
+        PoseStack renderPose = new PoseStack();
+        renderPose.last().set(poseStack.last());
+        collector.submitCustomGeometry(poseStack,
+                ChromaRenderPipelines.additiveSprite(TextureAtlas.LOCATION_BLOCKS),
+                (pose, vertices) -> quad(renderPose.last(), vertices, sprite, scale, color));
+        poseStack.popPose();
+    }
 
-			GL11.glPopMatrix();
-			BlendMode.DEFAULT.apply();
-			GL11.glEnable(GL11.GL_CULL_FACE);
-			GL11.glDisable(GL11.GL_BLEND);
-			//RenderHelper.enableStandardItemLighting();
-			GL11.glEnable(GL11.GL_LIGHTING);
-		}
-	}
+    private static void quad(PoseStack.Pose pose, VertexConsumer vertices,
+            TextureAtlasSprite sprite, float scale, int color) {
+        vertices.addVertex(pose, -scale, -scale, 0).setUv(sprite.getU0(), sprite.getV1()).setColor(color);
+        vertices.addVertex(pose, scale, -scale, 0).setUv(sprite.getU1(), sprite.getV1()).setColor(color);
+        vertices.addVertex(pose, scale, scale, 0).setUv(sprite.getU1(), sprite.getV0()).setColor(color);
+        vertices.addVertex(pose, -scale, scale, 0).setUv(sprite.getU0(), sprite.getV0()).setColor(color);
+    }
 
-	private void renderBoostedHalo(TileEntityCrystalPylon te, float ptick) {
-		int c = te.getRenderColor();
-		GL11.glAlphaFunc(GL11.GL_GEQUAL, 1/255F);
-		Tessellator v5 = Tessellator.instance;
+    @Override
+    public int getViewDistance() {
+        return 128;
+    }
 
-		double d = ((System.currentTimeMillis())/50D)%360;
-		int a = (int)(127+92*Math.sin(Math.toRadians(d/2D)));
-		c = ReikaColorAPI.mixColors(c, 0, a/255F);
+    @Override
+    public boolean shouldRenderOffScreen() {
+        return true;
+    }
 
-		IIcon ico = ChromaIcons.TURBO.getIcon();
-		float u = ico.getMinU();
-		float v = ico.getMinV();
-		float du = ico.getMaxU();
-		float dv = ico.getMaxV();
-		GL11.glRotated(-d, 0, 0, 1);
+    private static Identifier sprite(String name) {
+        return Identifier.fromNamespaceAndPath(
+                ChromatiCraft.MODID, "block/icons/" + name);
+    }
 
-		double z = -0.01;
+    public static final class State extends BlockEntityRenderState {
+        private boolean enhanced;
+        private boolean unstable;
+        private boolean conducting;
+        private boolean hasTargets;
+        private int color = 0xffffffff;
+        private int randomOffset;
+        private long time;
+        private final List<Beam> beams = new ArrayList<>();
+    }
 
-		double s = 3+1*Math.sin(Math.toRadians(d));
-		//u = 0;//(te.getTicksExisted()+n*2)%18/18F;
-		//du = u+1/18F;
-		v5.startDrawingQuads();
-		v5.setColorOpaque_I(c);
-		v5.addVertexWithUV(-s, -s, z, u, v);
-		v5.addVertexWithUV(s, -s, z, du, v);
-		v5.addVertexWithUV(s, s, z, du, dv);
-		v5.addVertexWithUV(-s, s, z, u, dv);
-		v5.draw();
-		/*
-
-		int step = 15;
-		double d = (System.currentTimeMillis()/50D)%360;
-		int n = 0;
-		int mn = 90/step;
-
-		IIcon ico = ChromaIcons.TRIDOT.getIcon();
-		float u = ico.getMinU();
-		float v = ico.getMinV();
-		float du = ico.getMaxU();
-		float dv = ico.getMaxV();
-		for (int i = 0; i < 90; i += step) {
-			GL11.glRotated(i+d, 0, 0, 1);
-
-			double s = 2+4*Math.sin(Math.toRadians(4*d+i*2));
-			//u = 0;//(te.getTicksExisted()+n*2)%18/18F;
-			//du = u+1/18F;
-			v5.startDrawingQuads();
-			v5.setColorOpaque_I(c);
-			v5.addVertexWithUV(-s, -s, 0, u, v);
-			v5.addVertexWithUV(s, -s, 0, du, v);
-			v5.addVertexWithUV(s, s, 0, du, dv);
-			v5.addVertexWithUV(-s, s, 0, u, dv);
-			v5.draw();
-			n++;
-		}
-		 */
-		GL11.glAlphaFunc(GL11.GL_GEQUAL, 0.1F);
-	}
-
+    private record Beam(double x, double y, double z, double startRadius,
+            double endRadius, int color) {}
 }

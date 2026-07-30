@@ -13,17 +13,31 @@ import net.minecraft.world.effect.MobEffectCategory;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.fml.loading.FMLEnvironment;
+import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
+import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
+import reika.chromaticraft.magic.network.PylonFinder;
+import reika.chromaticraft.network.ChromaNetwork;
 import reika.chromaticraft.magic.potions.PotionBetterSaturation;
 import reika.chromaticraft.magic.potions.PotionCustomRegen;
 import reika.chromaticraft.registry.ChromaBlockEntities;
+import reika.chromaticraft.registry.ChromaEntityTypes;
 import reika.chromaticraft.registry.ChromaBlocks;
+import reika.chromaticraft.registry.ChromaFeatures;
 import reika.chromaticraft.registry.ChromaItems;
+import reika.chromaticraft.registry.ChromaMenus;
 import reika.chromaticraft.registry.ChromaOptions;
+import reika.chromaticraft.registry.ChromaPlacementModifiers;
 import reika.chromaticraft.registry.ChromaTabs;
+import reika.chromaticraft.entity.EntityGlowCloud;
 import reika.dragonapi.base.DragonAPIMod;
+import reika.rotarycraft.registry.RotaryBlocks;
 
 /**
  * ChromatiCraft main mod class. Port-in-progress: this is the minimal 26.2 @Mod entry point that
@@ -62,17 +76,52 @@ public class ChromatiCraft extends DragonAPIMod {
 		ChromaBlocks.ITEMS.register(modEventBus);
 		ChromaItems.ITEMS.register(modEventBus);
 		ChromaBlockEntities.BLOCK_ENTITIES.register(modEventBus);
+		ChromaMenus.REGISTRY.register(modEventBus);
+		ChromaEntityTypes.ENTITY_TYPES.register(modEventBus);
+		modEventBus.addListener(EntityGlowCloud::registerAttributes);
+		modEventBus.addListener(EntityGlowCloud::registerSpawnPlacements);
 		ChromaTabs.CREATIVE_MODE_TABS.register(modEventBus);
+		ChromaFeatures.FEATURES.register(modEventBus);
+		ChromaPlacementModifiers.TYPES.register(modEventBus);
 		MOB_EFFECTS.register(modEventBus);
+		reika.chromaticraft.registry.ChromaRecipeTypes.RECIPE_TYPES.register(modEventBus);
+		reika.chromaticraft.registry.ChromaRecipeSerializers.RECIPE_SERIALIZERS.register(modEventBus);
 		reika.chromaticraft.registry.ChromaSounds.SOUND_EVENTS.register(modEventBus);
+		reika.chromaticraft.registry.ChromaFluids.FLUID_TYPES.register(modEventBus);
+		reika.chromaticraft.registry.ChromaFluids.FLUIDS.register(modEventBus);
 
 		// In-world game tests (progression core). Runnable via `gradlew :ChromatiCraft:runGameTest`.
 		modEventBus.addListener(ChromaGameTests::onRegisterGameTests);
+		modEventBus.addListener(ChromaNetwork::register);
 		ChromaGameTests.TEST_INSTANCE_TYPES.register(modEventBus);
+		modEventBus.addListener(this::commonSetup);
 
 		// Force-load the progression singleton so it wires ProgressionAPI.instance.progressManager
 		// (consumed by CrystalElement.playerHas and others) before any gameplay query.
 		reika.chromaticraft.magic.progression.ProgressionManager.init();
+		if (FMLEnvironment.getDist() == Dist.CLIENT) {
+			reika.chromaticraft.client.ChromaClientRenderers.init(modEventBus);
+			modEventBus.addListener(ChromatiCraft::registerScreens);
+		}
+
+		NeoForge.EVENT_BUS.addListener(ChromatiCraft::registerCommands);
+	}
+
+	private void commonSetup(FMLCommonSetupEvent event) {
+		event.enqueueWork(() -> {
+			PylonFinder.registerTransparentBlock(RotaryBlocks.BLASTGLASS.get());
+			PylonFinder.registerTransparentBlock(RotaryBlocks.BLASTPANE.get());
+			terrablender.api.Regions.register(new reika.chromaticraft.world.biome.ChromaRegion());
+		});
+	}
+
+	private static void registerCommands(RegisterCommandsEvent event) {
+		reika.chromaticraft.auxiliary.CrystalNetworkLogger.registerCommand(event.getDispatcher());
+	}
+
+	private static void registerScreens(RegisterMenuScreensEvent event) {
+		event.register(ChromaMenus.CASTING_TABLE.get(),
+				reika.chromaticraft.client.gui.ScreenCastingTable::new);
 	}
 
 	@Override

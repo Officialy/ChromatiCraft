@@ -9,23 +9,36 @@
  ******************************************************************************/
 package reika.chromaticraft.api.event;
 
-import java.util.Random;
+import net.minecraft.core.BlockPos;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.WorldGenLevel;
 
-import net.minecraft.world.World;
+import net.neoforged.bus.api.Event;
 
-import reika.chromaticraft.api.CrystalElementAccessor;
-import reika.chromaticraft.api.crystalelementaccessor.CrystalElementProxy;
-import reika.dragonapi.instantiable.event.WorldGenEvent;
+import reika.chromaticraft.api.CrystalElementAccessor.CrystalElementProxy;
+import reika.chromaticraft.registry.CrystalElement;
 
 /** Fired when a crystal is generated. */
-public class CrystalGenEvent extends WorldGenEvent {
+public class CrystalGenEvent extends Event {
 
 	/** Crystal color */
 	public final CrystalElementProxy color;
+	public final WorldGenLevel world;
+	public final BlockPos position;
+	public final RandomSource random;
+	/** Source-compatible coordinate mirrors for consumers that previously read WorldGenEvent fields. */
+	public final int x;
+	public final int y;
+	public final int z;
 
-	public CrystalGenEvent(World world, int x, int y, int z, Random random, int meta) {
-		super(world, x, y, z, random);
-		color = CrystalElementAccessor.getByIndex(meta%16);
+	public CrystalGenEvent(WorldGenLevel world, BlockPos pos, RandomSource random, int colorIndex) {
+		this.world = world;
+		this.position = pos.immutable();
+		this.random = random;
+		x = pos.getX();
+		y = pos.getY();
+		z = pos.getZ();
+		color = CrystalElement.elements[Math.floorMod(colorIndex, CrystalElement.elements.length)];
 	}
 
 }

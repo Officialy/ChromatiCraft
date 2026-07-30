@@ -21,12 +21,16 @@ import reika.chromaticraft.magic.interfaces.CrystalSource;
 import reika.chromaticraft.magic.interfaces.CrystalTransmitter;
 import reika.chromaticraft.magic.interfaces.ReactiveRepeater;
 import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.tileentity.aoe.TileEntityAuraPoint;
 import reika.dragonapi.instantiable.data.immutable.DecimalPosition;
 import reika.dragonapi.instantiable.data.immutable.WorldChunk;
 import reika.dragonapi.instantiable.data.immutable.WorldLocation;
 
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.Level;
+
 public class CrystalPath implements Comparable<CrystalPath> {
+
+	private static final List<AuraPointLocator> auraPointLocators = new ArrayList<>();
 
 	protected final ArrayList<PathNode> nodes;
 	public final CrystalSource transmitter;
@@ -60,7 +64,7 @@ public class CrystalPath implements Comparable<CrystalPath> {
 		element = e;
 		network = net;
 		hasRealTarget = real;
-		hasLocus = TileEntityAuraPoint.isPointWithin(transmitter.getWorld(), transmitter.getX(), transmitter.getY(), transmitter.getZ(), 1024);
+		hasLocus = auraPointLocators.stream().anyMatch(locator -> locator.isPointWithin(transmitter.getWorld(), new BlockPos(transmitter.getX(), transmitter.getY(), transmitter.getZ()), 1024));
 		this.initialize();
 		//remainingAmount = amt;
 		if (this.getClass() == CrystalPath.class) {
@@ -68,6 +72,16 @@ public class CrystalPath implements Comparable<CrystalPath> {
 				p.flush();
 			}
 		}
+	}
+
+	/** Registers the Aura Point proximity query once that optional tile subsystem is ported. */
+	public static void registerAuraPointLocator(AuraPointLocator locator) {
+		auraPointLocators.add(locator);
+	}
+
+	@FunctionalInterface
+	public interface AuraPointLocator {
+		boolean isPointWithin(Level level, BlockPos center, int range);
 	}
 
 	static ArrayList<PathNode> createNodeList(List<WorldLocation> li) {
@@ -115,7 +129,7 @@ public class CrystalPath implements Comparable<CrystalPath> {
 			}
 			links.add(l);
 		}
-		attenuation = loss;
+		attenuation += loss;
 		totalDistance = dist;
 		theoreticalRange = range;
 	}
@@ -151,7 +165,14 @@ public class CrystalPath implements Comparable<CrystalPath> {
 	}
 
 	public final boolean contains(CrystalNetworkTile te) {
-		return nodes.contains(new PathNode(te));
+		if (te == null)
+			return false;
+		WorldLocation location = PylonFinder.getLocation(te);
+		for (PathNode node : nodes) {
+			if (node.location.equals(location))
+				return true;
+		}
+		return false;
 	}
 
 	public final boolean checkLineOfSight() {
@@ -159,7 +180,7 @@ public class CrystalPath implements Comparable<CrystalPath> {
 	}
 
 	public final boolean checkLineOfSight(CrystalLink l) {
-		for (int i = 0; i < nodes.size()-2; i++) {
+		for (int i = 0; i < nodes.size()-1; i++) {
 			PathNode tgt = nodes.get(i);
 			if (l == null || tgt.location.equals(l.loc1) || tgt.location.equals(l.loc2)) {
 				PathNode src = nodes.get(i+1);

@@ -1,99 +1,47 @@
 package reika.chromaticraft.registry;
 
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.level.Level;
 
-import reika.chromaticraft.auxiliary.structure.worldgen.PylonStructure;
-import reika.chromaticraft.block.blockpylonstructure.StoneTypes;
+import reika.chromaticraft.auxiliary.structure.NBTStructureLoader;
+import reika.chromaticraft.auxiliary.structure.RegistryBlockCheck;
+import reika.chromaticraft.base.ColoredStructureBase;
+import reika.chromaticraft.block.BlockCrystalRune;
 import reika.dragonapi.instantiable.data.blockstruct.FilledBlockArray;
+import reika.dragonapi.interfaces.BlockCheck;
 
-public class PylonBroadcastStructure extends PylonStructure {
+/** The V33a pylon broadcast-upgrade monument, sourced from canonical structure NBT. */
+public final class PylonBroadcastStructure extends ColoredStructureBase {
+
+	private static final Identifier TEMPLATE = NBTStructureLoader.chromaTemplate("multiblock/pylon_broadcast");
+	private static final Identifier CHROMA = Identifier.fromNamespaceAndPath("chromaticraft", "chroma");
+	private static final BlockPos ANCHOR = new BlockPos(5, 10, 5);
+	private static final BlockCheck CHROMA_CHECK = new RegistryBlockCheck(CHROMA);
 
 	@Override
-	public FilledBlockArray getArray(World world, int x, int y, int z) {
-		FilledBlockArray array = super.getArray(world, x, y, z);
-		y -= 9;
-
-		array.setBlock(x, y, z, crystalstone, StoneTypes.STABILIZER.ordinal());
-
-		for (int i = 1; i <= 2; i++) {
-			array.setBlock(x+i, y, z, crystalstone, StoneTypes.RESORING.ordinal());
-			array.setBlock(x-i, y, z, crystalstone, StoneTypes.RESORING.ordinal());
-			array.setBlock(x, y, z+i, crystalstone, StoneTypes.RESORING.ordinal());
-			array.setBlock(x, y, z-i, crystalstone, StoneTypes.RESORING.ordinal());
+	public FilledBlockArray getArray(Level world, int x, int y, int z) {
+		FilledBlockArray array = NBTStructureLoader.load(world, TEMPLATE, new BlockPos(x, y, z), ANCHOR, state ->
+				ChromaBlocks.isRune(state)
+						? ChromaBlocks.rune(this.getCurrentColor()).get().defaultBlockState()
+						: state);
+		int baseY = y - 9;
+		for (int offset = -2; offset <= 2; offset++) {
+			this.requireChroma(array, x + offset, baseY, z + 4);
+			this.requireChroma(array, x + offset, baseY, z - 4);
+			this.requireChroma(array, x + 4, baseY, z + offset);
+			this.requireChroma(array, x - 4, baseY, z + offset);
 		}
-
-		for (int i = -3; i <= 3; i++) {
-			int m = Math.abs(i) == 3 || i == 0 ? StoneTypes.EMBOSSED.ordinal() : StoneTypes.BRICKS.ordinal();
-			array.setBlock(x+i, y, z+5, crystalstone, m);
-			array.setBlock(x+i, y, z-5, crystalstone, m);
-			array.setBlock(x+5, y, z+i, crystalstone, m);
-			array.setBlock(x-5, y, z+i, crystalstone, m);
+		for (int offset = 2; offset <= 3; offset++) {
+			for (int xSign : new int[] {-1, 1}) for (int zSign : new int[] {-1, 1}) {
+				this.requireChroma(array, x + xSign * offset, baseY, z + zSign * 2);
+				this.requireChroma(array, x + xSign * 2, baseY, z + zSign * offset);
+			}
 		}
-
-
-		for (int i = -2; i <= 2; i++) {
-			array.setBlock(x+i, y, z+4, ChromaBlocks.CHROMA.getBlockInstance(), 0);
-			array.setBlock(x+i, y, z-4, ChromaBlocks.CHROMA.getBlockInstance(), 0);
-			array.setBlock(x+4, y, z+i, ChromaBlocks.CHROMA.getBlockInstance(), 0);
-			array.setBlock(x-4, y, z+i, ChromaBlocks.CHROMA.getBlockInstance(), 0);
-
-			array.setBlock(x+i, y-1, z+4, crystalstone, 0);
-			array.setBlock(x+i, y-1, z-4, crystalstone, 0);
-			array.setBlock(x+4, y-1, z+i, crystalstone, 0);
-			array.setBlock(x-4, y-1, z+i, crystalstone, 0);
-		}
-
-		for (int i = 3; i <= 4; i++) {
-			array.setBlock(x+i, y, z+3, crystalstone, StoneTypes.BRICKS.ordinal());
-			array.setBlock(x+i, y, z-3, crystalstone, StoneTypes.BRICKS.ordinal());
-			array.setBlock(x-i, y, z+3, crystalstone, StoneTypes.BRICKS.ordinal());
-			array.setBlock(x-i, y, z-3, crystalstone, StoneTypes.BRICKS.ordinal());
-			array.setBlock(x+3, y, z+i, crystalstone, StoneTypes.BRICKS.ordinal());
-			array.setBlock(x-3, y, z+i, crystalstone, StoneTypes.BRICKS.ordinal());
-			array.setBlock(x+3, y, z-i, crystalstone, StoneTypes.BRICKS.ordinal());
-			array.setBlock(x-3, y, z-i, crystalstone, StoneTypes.BRICKS.ordinal());
-		}
-
-		for (int i = 2; i <= 3; i++) {
-			array.setBlock(x+i, y, z+2, ChromaBlocks.CHROMA.getBlockInstance(), 0);
-			array.setBlock(x+i, y, z-2, ChromaBlocks.CHROMA.getBlockInstance(), 0);
-			array.setBlock(x-i, y, z+2, ChromaBlocks.CHROMA.getBlockInstance(), 0);
-			array.setBlock(x-i, y, z-2, ChromaBlocks.CHROMA.getBlockInstance(), 0);
-			array.setBlock(x+2, y, z+i, ChromaBlocks.CHROMA.getBlockInstance(), 0);
-			array.setBlock(x-2, y, z+i, ChromaBlocks.CHROMA.getBlockInstance(), 0);
-			array.setBlock(x+2, y, z-i, ChromaBlocks.CHROMA.getBlockInstance(), 0);
-			array.setBlock(x-2, y, z-i, ChromaBlocks.CHROMA.getBlockInstance(), 0);
-
-			array.setBlock(x+i, y-1, z+2, crystalstone, 0);
-			array.setBlock(x+i, y-1, z-2, crystalstone, 0);
-			array.setBlock(x-i, y-1, z+2, crystalstone, 0);
-			array.setBlock(x-i, y-1, z-2, crystalstone, 0);
-			array.setBlock(x+2, y-1, z+i, crystalstone, 0);
-			array.setBlock(x-2, y-1, z+i, crystalstone, 0);
-			array.setBlock(x+2, y-1, z-i, crystalstone, 0);
-			array.setBlock(x-2, y-1, z-i, crystalstone, 0);
-		}
-
-		for (int i = 1; i <= 4; i++) {
-			int m = i == 4 ? StoneTypes.MULTICHROMIC.ordinal() : StoneTypes.COLUMN.ordinal();
-			array.setBlock(x-3, y+i, z-5, crystalstone, m);
-			array.setBlock(x-5, y+i, z-3, crystalstone, m);
-			array.setBlock(x+3, y+i, z-5, crystalstone, m);
-			array.setBlock(x+5, y+i, z-3, crystalstone, m);
-			array.setBlock(x-3, y+i, z+5, crystalstone, m);
-			array.setBlock(x-5, y+i, z+3, crystalstone, m);
-			array.setBlock(x+3, y+i, z+5, crystalstone, m);
-			array.setBlock(x+5, y+i, z+3, crystalstone, m);
-		}
-
-		for (int i = 1; i <= 6; i++) {
-			int m = i == 3 ? StoneTypes.GLOWCOL.ordinal() : (i == 6 ? StoneTypes.FOCUS.ordinal() : StoneTypes.COLUMN.ordinal());
-			array.setBlock(x+5, y+i, z, crystalstone, m);
-			array.setBlock(x-5, y+i, z, crystalstone, m);
-			array.setBlock(x, y+i, z+5, crystalstone, m);
-			array.setBlock(x, y+i, z-5, crystalstone, m);
-		}
-
 		return array;
+	}
+
+	private void requireChroma(FilledBlockArray array, int x, int y, int z) {
+		array.setBlock(x, y, z, CHROMA_CHECK);
 	}
 }

@@ -36,7 +36,9 @@ class NetworkSorters {
 
 		@Override
 		public int compare(CrystalTransmitter o1, CrystalTransmitter o2) {
-			return (int)(o1.getDistanceSqTo(location.xCoord, location.yCoord, location.zCoord)-o2.getDistanceSqTo(location.xCoord, location.yCoord, location.zCoord));
+			return Double.compare(
+					o1.getDistanceSqTo(location.pos.getX(), location.pos.getY(), location.pos.getZ()),
+					o2.getDistanceSqTo(location.pos.getX(), location.pos.getY(), location.pos.getZ()));
 		}
 
 	}

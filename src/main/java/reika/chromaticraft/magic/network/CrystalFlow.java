@@ -13,7 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import reika.chromaticraft.auxiliary.CrystalNetworkLogger;
-import reika.chromaticraft.auxiliary.crystalnetworklogger.LoggingLevel;
+import reika.chromaticraft.auxiliary.CrystalNetworkLogger.LoggingLevel;
 import reika.chromaticraft.magic.interfaces.CrystalNetworkTile;
 import reika.chromaticraft.magic.interfaces.CrystalReceiver;
 import reika.chromaticraft.magic.interfaces.CrystalRepeater;
@@ -37,6 +37,9 @@ public final class CrystalFlow extends CrystalPath {
 	private final int throughputLimit;
 
 	private int remainingAmount;
+	private int remainingLoss;
+	private int offeredThisTick;
+	private int lossThisTick;
 
 	private int throttle = Integer.MAX_VALUE;
 
@@ -48,7 +51,8 @@ public final class CrystalFlow extends CrystalPath {
 		super(net, !(r instanceof WrapperTile), e, li);
 		requestedAmount = amt;
 		totalCost = requestedAmount+this.getSignalLoss();
-		remainingAmount = totalCost;
+		remainingAmount = requestedAmount;
+		remainingLoss = this.getSignalLoss();
 		receiver = r;
 		CrystalNetworkLogger.logPathCalculation("maxthru", maxthru);
 		throughputLimit = maxthru;
@@ -125,7 +129,7 @@ public final class CrystalFlow extends CrystalPath {
 	}
 
 	private void buildLeyLines() {
-		//nodes.getFirst().getTileEntity().NOT A TILE
+		//nodes.getFirst().getBlockEntity().NOT A TILE
 		PathNode locs = nodes.get(nodes.size()-2);
 		CrystalReceiver r = (CrystalReceiver)locs.getTile(true);
 		DecimalPosition offset = r.getTargetRenderOffset(element);
@@ -184,27 +188,59 @@ public final class CrystalFlow extends CrystalPath {
 	}
 
 	public boolean isComplete() {
-		return remainingAmount <= 0;
+		return remainingAmount <= 0 && remainingLoss <= 0;
 	}
 
 	public int getRemainingLumens() {
-		return remainingAmount;
+		return remainingAmount + remainingLoss;
 	}
 
 	public int estimateLifetime() {
 		return this.getRemainingLumens()/this.getDrainThisTick();
 	}
 
+	/**
+	 * Prepares one flow step and returns only the lumens offered to the receiver. Signal attenuation
+	 * consumes the same throughput budget but is paid by the source, never delivered as payload.
+	 */
 	int drain() {
-		int ret = Math.min(transmitter.getEnergy(element), this.getDrainThisTick());
-		if (ret <= 0)
+		int budget = Math.min(transmitter.getEnergy(element), this.getDrainThisTick());
+		offeredThisTick = 0;
+		lossThisTick = 0;
+		if (budget <= 0)
 			return 0;
-		remainingAmount -= ret;
-		return ret;
+
+		if (remainingAmount > 0) {
+			lossThisTick = Math.min(remainingLoss, Math.max(0, budget - 1));
+			offeredThisTick = Math.min(remainingAmount, budget - lossThisTick);
+			remainingAmount -= offeredThisTick;
+			remainingLoss -= lossThisTick;
+		}
+		else {
+			lossThisTick = Math.min(remainingLoss, budget);
+			remainingLoss -= lossThisTick;
+		}
+		return offeredThisTick;
+	}
+
+	/** Finalizes the prepared step after the receiver reports what it actually accepted. */
+	int commitTransfer(int accepted) {
+		accepted = Math.max(0, Math.min(accepted, offeredThisTick));
+		int rejected = offeredThisTick - accepted;
+		remainingAmount += rejected;
+		if (accepted == 0 && offeredThisTick > 0) {
+			remainingLoss += lossThisTick;
+			lossThisTick = 0;
+		}
+		int sourceCost = accepted + lossThisTick;
+		offeredThisTick = 0;
+		lossThisTick = 0;
+		return sourceCost;
 	}
 
 	public int getDrainThisTick() {
-		return Math.min(Math.min(Math.min(throttle, maxFlow), transmitter.maxThroughput()), remainingAmount);
+		int outstanding = remainingAmount + remainingLoss;
+		return Math.min(Math.min(Math.min(throttle, maxFlow), transmitter.maxThroughput()), outstanding);
 	}
 
 	void tickRepeaters(int amt) {

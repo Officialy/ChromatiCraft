@@ -1,0 +1,244 @@
+{
+  "type": "chromaticraft:casting",
+  "duration": 400,
+  "experience": 400,
+  "grid": [
+    {
+      "ingredient": "minecraft:nether_star",
+      "slot": 4
+    }
+  ],
+  "result": {
+    "count": 4,
+    "id": "chromaticraft:crystal_star"
+  },
+  "runes": [
+    {
+      "element": "black",
+      "offset": [
+        -3,
+        -1,
+        -3
+      ]
+    },
+    {
+      "element": "black",
+      "offset": [
+        3,
+        -1,
+        -3
+      ]
+    },
+    {
+      "element": "black",
+      "offset": [
+        -3,
+        -1,
+        3
+      ]
+    },
+    {
+      "element": "black",
+      "offset": [
+        3,
+        -1,
+        3
+      ]
+    }
+  ],
+  "stands": [
+    {
+      "ingredient": "chromaticraft:crystal_core",
+      "offset": [
+        -2,
+        0,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:crystal_core",
+      "offset": [
+        2,
+        0,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:crystal_core",
+      "offset": [
+        0,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:crystal_core",
+      "offset": [
+        0,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:element_unit",
+      "offset": [
+        -2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:element_unit",
+      "offset": [
+        2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:element_unit",
+      "offset": [
+        -2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:element_unit",
+      "offset": [
+        2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_black",
+      "offset": [
+        -4,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_red",
+      "offset": [
+        -2,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_green",
+      "offset": [
+        0,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_brown",
+      "offset": [
+        2,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_blue",
+      "offset": [
+        4,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_purple",
+      "offset": [
+        4,
+        1,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_cyan",
+      "offset": [
+        4,
+        1,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_light_gray",
+      "offset": [
+        4,
+        1,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_gray",
+      "offset": [
+        4,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_pink",
+      "offset": [
+        2,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_lime",
+      "offset": [
+        0,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_yellow",
+      "offset": [
+        -2,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_light_blue",
+      "offset": [
+        -4,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_magenta",
+      "offset": [
+        -4,
+        1,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_orange",
+      "offset": [
+        -4,
+        1,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_white",
+      "offset": [
+        -4,
+        1,
+        -2
+      ]
+    }
+  ],
+  "tier": "multiblock"
+}

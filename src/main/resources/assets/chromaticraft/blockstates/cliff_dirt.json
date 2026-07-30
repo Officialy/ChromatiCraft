@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "": {
+      "type": "chromaticraft:cliff_dirt",
+      "dirt_base": "chromaticraft:block/cliffstone/dirt_base",
+      "dirt_blend": "chromaticraft:block/cliffstone/dirt_blend_down",
+      "stone_base": "chromaticraft:block/cliffstone/stone_base"
+    }
+  }
+}

@@ -1,8 +1,8 @@
 /*******************************************************************************
  * @author Reika Kalseki
- * 
+ *
  * Copyright 2017
- * 
+ *
  * All rights reserved.
  * Distribution of the software in any form is only allowed with
  * explicit, prior permission from the owner.
@@ -11,104 +11,90 @@ package reika.chromaticraft.auxiliary;
 
 import java.util.Locale;
 
-import net.minecraft.command.ICommandSender;
+import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.StringArgumentType;
+
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
+import net.minecraft.network.chat.Component;
 
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.magic.interfaces.CrystalNetworkTile;
 import reika.chromaticraft.magic.interfaces.CrystalReceiver;
 import reika.chromaticraft.magic.network.CrystalFlow;
 import reika.chromaticraft.registry.CrystalElement;
-import reika.dragonapi.command.DragonCommandBase;
-import reika.dragonapi.libraries.io.ReikaChatHelper;
 
-public class CrystalNetworkLogger {
+public final class CrystalNetworkLogger {
 
 	private static LoggingLevel level = LoggingLevel.NONE;
 
-	public static void logRequest(CrystalReceiver r, CrystalElement e, int amount, CrystalFlow p) {
+	private CrystalNetworkLogger() {}
+
+	public static void logRequest(CrystalReceiver receiver, CrystalElement element, int amount, CrystalFlow path) {
 		if (level.isAtLeast(LoggingLevel.CORE)) {
-			String st = p == null ? "failed" : "succeeded from "+p.transmitter;
-			String s = r+" has requested "+amount+" of "+e+"; request "+st;
-			if (p != null)
-				s = s+"; max throughput of "+p.maxFlow+", total cost "+p.totalCost+" (loss = "+p.getSignalLoss()+")";
-			ChromatiCraft.logger.log(s);
-			dumpStack();
+			String status = path == null ? "failed" : "succeeded from " + path.transmitter;
+			String message = receiver + " has requested " + amount + " of " + element + "; request " + status;
+			if (path != null) {
+				message += "; max throughput of " + path.maxFlow + ", total cost " + path.totalCost
+						+ " (loss = " + path.getSignalLoss() + ")";
+			}
+			log(message);
 		}
 	}
 
-	public static void logPathFind(CrystalReceiver target, CrystalElement e, CrystalReceiver r, String transmitters, String steps) {
+	public static void logPathFind(CrystalReceiver target, CrystalElement element, CrystalReceiver receiver,
+			String transmitters, String steps) {
 		if (level.isAtLeast(LoggingLevel.PATHFIND)) {
-			String s = "Pathfinding "+e+" to "+target+", at "+r;
-			s += "  Potential next hops:"+transmitters;
-			s += "  Current path: "+steps;
-			ChromatiCraft.logger.log(s);
-			dumpStack();
+			log("Pathfinding " + element + " to " + target + ", at " + receiver
+					+ "  Potential next hops:" + transmitters + "  Current path: " + steps);
 		}
 	}
 
-	public static void logPathCalculation(String name, Object val) {
+	public static void logPathCalculation(String name, Object value) {
 		if (level.isAtLeast(LoggingLevel.PATHCALC)) {
-			String s = "Path calculation; key="+name+", value="+val;
-			ChromatiCraft.logger.log(s);
-			dumpStack();
+			log("Path calculation; key=" + name + ", value=" + value);
 		}
 	}
 
-	public static void logFlowBreak(CrystalFlow p, FlowFail f) {
+	public static void logFlowBreak(CrystalFlow path, FlowFail reason) {
 		if (level.isAtLeast(LoggingLevel.CORE)) {
-			String s = p.element+" flow from "+p.transmitter+" to "+p.receiver+" broken due to: "+f.text+". "+p.getRemainingLumens()+" lumens left untransferred.";
-			ChromatiCraft.logger.log(s);
-			dumpStack();
+			log(path.element + " flow from " + path.transmitter + " to " + path.receiver
+					+ " broken due to: " + reason.text + ". " + path.getRemainingLumens()
+					+ " lumens left untransferred.");
 		}
 	}
 
-	public static void logFlowSatisfy(CrystalFlow p) {
+	public static void logFlowSatisfy(CrystalFlow path) {
 		if (level.isAtLeast(LoggingLevel.CORE)) {
-			String s = p.element+" flow from "+p.transmitter+" to "+p.receiver+" satisfied and terminated. "+p.totalCost+" lumens transferred.";
-			ChromatiCraft.logger.log(s);
-			dumpStack();
+			log(path.element + " flow from " + path.transmitter + " to " + path.receiver
+					+ " satisfied and terminated. " + path.totalCost + " lumens transferred.");
 		}
 	}
 
-	public static void logFlowTick(CrystalFlow p, int amt) {
+	public static void logFlowTick(CrystalFlow path, int amount) {
 		if (level.isAtLeast(LoggingLevel.ALL)) {
-			String s = "Ticking "+p.element+" flow from "+p.transmitter+" to "+p.receiver+"; "+amt+" lumens transferred this tick; "+p.getRemainingLumens()+" remaining.";
-			ChromatiCraft.logger.log(s);
-			dumpStack();
+			log("Ticking " + path.element + " flow from " + path.transmitter + " to " + path.receiver
+					+ "; " + amount + " lumens transferred this tick; " + path.getRemainingLumens()
+					+ " remaining.");
 		}
 	}
 
-	public static void logTileAdd(CrystalNetworkTile te) {
+	public static void logTileAdd(CrystalNetworkTile tile) {
 		if (level.isAtLeast(LoggingLevel.STATE)) {
-			String s = "Added tile "+te+" to network; UUID = "+(te != null ? te.getUniqueID() : "[]");
-			ChromatiCraft.logger.log(s);
-			dumpStack();
+			log("Added tile " + tile + " to network; UUID = " + (tile != null ? tile.getUniqueID() : "[]"));
 		}
 	}
 
-	public static void logTileRemove(CrystalNetworkTile te) {
+	public static void logTileRemove(CrystalNetworkTile tile) {
 		if (level.isAtLeast(LoggingLevel.STATE)) {
-			String s = "Removed tile "+te+" from network; UUID = "+(te != null ? te.getUniqueID() : "[]");
-			ChromatiCraft.logger.log(s);
-			dumpStack();
+			log("Removed tile " + tile + " from network; UUID = " + (tile != null ? tile.getUniqueID() : "[]"));
 		}
 	}
 
-	private static void dumpStack() {
-		if (level == LoggingLevel.STACK)
-			Thread.dumpStack();
-	}
-
-	public static enum FlowFail {
-		SIGHT("Line of Sight"),
-		ENERGY("Insufficient Energy or Disabled Transmitter"),
-		TILE("Missing Network Tile"),
-		FULL("Target is full");
-
-		public final String text;
-
-		private FlowFail(String s) {
-			text = s;
+	private static void log(String message) {
+		ChromatiCraft.LOGGER.info(message);
+		if (level == LoggingLevel.STACK) {
+			ChromatiCraft.LOGGER.info("Crystal network logging stack", new Exception("Network log call site"));
 		}
 	}
 
@@ -116,43 +102,63 @@ public class CrystalNetworkLogger {
 		return level;
 	}
 
-	public static class NetworkLoggerCommand extends DragonCommandBase {
-
-		@Override
-		public void processCommand(ICommandSender ics, String[] args) {
-			try {
-				level = LoggingLevel.valueOf(args[0].toUpperCase(Locale.ENGLISH));
-			}
-			catch (Exception e) {
-				level = LoggingLevel.NONE;
-			}
-			ReikaChatHelper.sendChatToAllOnServer("Crystal Network Logger Status: "+level);
-		}
-
-		@Override
-		public String getCommandString() {
-			return "networklog";
-		}
-
-		@Override
-		protected boolean isAdminOnly() {
-			return true;
-		}
-
+	public static void registerCommand(CommandDispatcher<CommandSourceStack> dispatcher) {
+		dispatcher.register(Commands.literal("networklog")
+				.requires(Commands.hasPermission(Commands.LEVEL_ADMINS))
+				.executes(context -> setLoggingLevel(context.getSource(), LoggingLevel.NONE))
+				.then(Commands.argument("level", StringArgumentType.word())
+						.suggests((context, builder) -> {
+							for (LoggingLevel value : LoggingLevel.values()) {
+								builder.suggest(value.name().toLowerCase(Locale.ENGLISH));
+							}
+							return builder.buildFuture();
+						})
+						.executes(context -> {
+							String value = StringArgumentType.getString(context, "level");
+							try {
+								return setLoggingLevel(context.getSource(),
+										LoggingLevel.valueOf(value.toUpperCase(Locale.ENGLISH)));
+							} catch (IllegalArgumentException ex) {
+								context.getSource().sendFailure(Component.literal("Unknown crystal network log level: " + value));
+								return 0;
+							}
+						})));
 	}
 
-	public static enum LoggingLevel {
-		NONE(),
-		CORE(),
-		PATHCALC(),
-		PATHFIND(),
-		STATE(),
-		ALL(),
-		STACK();
+	private static int setLoggingLevel(CommandSourceStack source, LoggingLevel newLevel) {
+		level = newLevel;
+		Component message = Component.literal("Crystal Network Logger Status: " + level);
+		source.getServer().getPlayerList().broadcastSystemMessage(message, false);
+		if (source.getEntity() == null) {
+			source.sendSuccess(() -> message, false);
+		}
+		return 1;
+	}
 
-		public boolean isAtLeast(LoggingLevel l) {
-			return this.ordinal() >= l.ordinal();
+	public enum FlowFail {
+		SIGHT("Line of Sight"),
+		ENERGY("Insufficient Energy or Disabled Transmitter"),
+		TILE("Missing Network Tile"),
+		FULL("Target is full");
+
+		public final String text;
+
+		FlowFail(String text) {
+			this.text = text;
 		}
 	}
 
+	public enum LoggingLevel {
+		NONE,
+		CORE,
+		PATHCALC,
+		PATHFIND,
+		STATE,
+		ALL,
+		STACK;
+
+		public boolean isAtLeast(LoggingLevel other) {
+			return ordinal() >= other.ordinal();
+		}
+	}
 }

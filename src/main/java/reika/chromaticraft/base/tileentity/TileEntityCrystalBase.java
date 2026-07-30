@@ -11,19 +11,25 @@ package reika.chromaticraft.base.tileentity;
 
 import java.util.UUID;
 
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.state.BlockState;
 
-import reika.chromaticraft.auxiliary.crystalnetworklogger.FlowFail;
+import reika.chromaticraft.auxiliary.CrystalNetworkLogger.FlowFail;
 import reika.chromaticraft.magic.interfaces.CrystalNetworkTile;
 import reika.chromaticraft.magic.network.CrystalFlow;
 import reika.chromaticraft.magic.network.CrystalNetworker;
 import reika.chromaticraft.magic.network.CrystalPath;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
-
+/**
+ * Base for every crystal-network BlockEntity — registers itself with the {@link CrystalNetworker} on
+ * first tick and carries the network UUID + bottleneck-display state. Re-based onto DragonAPI's 26.2
+ * {@link TileEntityChromaticBase} (tick hooks {@code (Level, BlockPos)}, NBT via
+ * {@code saveAdditional(ValueOutput)} / {@code loadAdditional(ValueInput)}).
+ */
 public abstract class TileEntityCrystalBase extends TileEntityChromaticBase implements CrystalNetworkTile {
 
 	public static final double DEFAULT_BEAM_RADIUS = 0.35;
@@ -32,54 +38,90 @@ public abstract class TileEntityCrystalBase extends TileEntityChromaticBase impl
 
 	private int bottleNeckDisplayTick = 0;
 
+	private boolean networkCached;
+
+	protected TileEntityCrystalBase(BlockEntityType<?> type, BlockPos pos, BlockState state) {
+		super(type, pos, state);
+	}
+
 	@Override
-	public void updateEntity(World world, int x, int y, int z, int meta) {
+	public void updateEntity(Level world, BlockPos pos) {
 		if (bottleNeckDisplayTick > 0) {
-			if (world.isRemote)
+			if (world.isClientSide())
 				this.doBottleneckDisplay();
 			bottleNeckDisplayTick--;
 		}
 	}
 
 	@Override
-	protected void onFirstTick(World world, int x, int y, int z) {
+	protected void onFirstTick(Level world, BlockPos pos) {
 		this.cachePosition();
 	}
 
 	@Override
-	public final void cachePosition() {
-		CrystalNetworker.instance.addTile(this);
-	}
-
-	public final void removeFromCache() {
-		CrystalNetworker.instance.removeTile(this);
-	}
-
-	public final double getDistanceSqTo(double x, double y, double z) {
-		double dx = x-xCoord;
-		double dy = y-yCoord;
-		double dz = z-zCoord;
-		return dx*dx+dy*dy+dz*dz;
+	public void onLoad() {
+		super.onLoad();
+		if (this.getLevel() != null && !this.getLevel().isClientSide())
+			this.cachePosition();
 	}
 
 	@Override
-	public final World getWorld() {
-		return worldObj;
+	public void onChunkUnloaded() {
+		if (networkCached && this.getLevel() != null && !this.getLevel().isClientSide()) {
+			CrystalNetworker.instance.unloadTile(this);
+			networkCached = false;
+		}
+		super.onChunkUnloaded();
+	}
+
+	@Override
+	public void setRemoved() {
+		if (this.getLevel() != null && !this.getLevel().isClientSide())
+			this.removeFromCache();
+		super.setRemoved();
+	}
+	@Override
+	public final void cachePosition() {
+		if (!networkCached) {
+			CrystalNetworker.instance.addTile(this);
+			networkCached = true;
+		}
+	}
+
+	@Override
+	public final void removeFromCache() {
+		if (networkCached) {
+			CrystalNetworker.instance.removeTile(this);
+			networkCached = false;
+		}
+	}
+
+	@Override
+	public final double getDistanceSqTo(double x, double y, double z) {
+		double dx = x - this.getX();
+		double dy = y - this.getY();
+		double dz = z - this.getZ();
+		return dx * dx + dy * dy + dz * dz;
+	}
+
+	@Override
+	public final Level getWorld() {
+		return this.getLevel();
 	}
 
 	@Override
 	public final int getX() {
-		return xCoord;
+		return this.getBlockPos().getX();
 	}
 
 	@Override
 	public final int getY() {
-		return yCoord;
+		return this.getBlockPos().getY();
 	}
 
 	@Override
 	public final int getZ() {
-		return zCoord;
+		return this.getBlockPos().getZ();
 	}
 
 	@Override
@@ -88,43 +130,39 @@ public abstract class TileEntityCrystalBase extends TileEntityChromaticBase impl
 	}
 
 	@Override
-	public void writeToNBT(NBTTagCompound NBT) {
-		super.writeToNBT(NBT);
-
-		NBT.setString("netuid", uniqueID.toString());
+	protected void saveAdditional(CompoundTag NBT) {
+		super.saveAdditional(NBT);
+		NBT.putString("netuid", uniqueID.toString());
 	}
 
 	@Override
-	public void readFromNBT(NBTTagCompound NBT) {
-		super.readFromNBT(NBT);
-
-		if (NBT.hasKey("netuid"))
-			uniqueID = UUID.fromString(NBT.getString("netuid"));
-		else
-			uniqueID = CrystalNetworker.instance.getNewUniqueID();
+	public void load(CompoundTag NBT) {
+		super.load(NBT);
+		String s = NBT.getStringOr("netuid", "");
+		uniqueID = s.isEmpty() ? CrystalNetworker.instance.getNewUniqueID() : UUID.fromString(s);
 	}
 
 	@Override
-	protected void writeSyncTag(NBTTagCompound NBT) {
+	protected void writeSyncTag(CompoundTag NBT) {
 		super.writeSyncTag(NBT);
-
-		NBT.setInteger("bottleneck", bottleNeckDisplayTick);
+		NBT.putInt("bottleneck", bottleNeckDisplayTick);
 	}
 
 	@Override
-	protected void readSyncTag(NBTTagCompound NBT) {
+	protected void readSyncTag(CompoundTag NBT) {
 		super.readSyncTag(NBT);
-
-		bottleNeckDisplayTick = NBT.getInteger("bottleneck");
+		bottleNeckDisplayTick = NBT.getIntOr("bottleneck", 0);
 	}
 
+	@Override
 	public final UUID getUniqueID() {
 		return uniqueID;
 	}
 
+	@Override
 	public final UUID getPlacerUUID() {
-		EntityPlayer ep = this.getPlacer();
-		return ep != null ? ep.getUniqueID() : null;
+		Player ep = this.getPlacer();
+		return ep != null ? ep.getUUID() : null;
 	}
 
 	public double getIncomingBeamRadius() {
@@ -147,16 +185,11 @@ public abstract class TileEntityCrystalBase extends TileEntityChromaticBase impl
 
 	}
 
-	/*
-	public ResearchLevel getResearchTier() {
-		return ResearchLevel.PYLONCRAFT;
-	}
-	 */
-
 	public boolean canConductInterdimensionally() {
 		return false;
 	}
 
+	@Override
 	public final void triggerBottleneckDisplay(int duration) {
 		bottleNeckDisplayTick = duration;
 		this.syncAllData(false);
@@ -166,13 +199,7 @@ public abstract class TileEntityCrystalBase extends TileEntityChromaticBase impl
 		return bottleNeckDisplayTick > 0;
 	}
 
-	@SideOnly(Side.CLIENT)
 	protected void doBottleneckDisplay() {
 
 	}
-
-	public final boolean isRemoved() {
-		return this.isInvalid();
-	}
-
 }

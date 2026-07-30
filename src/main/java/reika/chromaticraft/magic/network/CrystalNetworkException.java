@@ -24,7 +24,7 @@ public abstract class CrystalNetworkException extends DragonAPIException {
 
 		public InvalidLocationException(CrystalNetworkTile te, WorldLocation loc, WorldLocation correct) {
 			message.append("Network tile #"+te.getUniqueID()+" moved to invalid location "+loc+"! It is supposed to be at "+correct+"!\n");
-			message.append("Moving pylons with TileEntity moving devices has a VERY high risk of world corruption, ");
+			message.append("Moving pylons with BlockEntity moving devices has a VERY high risk of world corruption, ");
 			message.append("and the game has been terminated to prevent damage to your world save.");
 			this.crash();
 		}

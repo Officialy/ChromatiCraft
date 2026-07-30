@@ -9,6 +9,10 @@
  ******************************************************************************/
 package reika.chromaticraft.magic.network;
 
+import com.mojang.serialization.Codec;
+
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -22,19 +26,27 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Random;
 import java.util.UUID;
+import java.util.WeakHashMap;
 
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.init.Blocks;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.MathHelper;
-import net.minecraft.world.World;
-import net.minecraft.world.WorldSavedData;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.world.WorldEvent;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.util.Mth;
+import net.minecraft.world.level.Level;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.datafix.DataFixTypes;
+import net.minecraft.world.level.saveddata.SavedData;
+import net.minecraft.world.level.saveddata.SavedDataType;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.level.LevelEvent;
+import net.neoforged.neoforge.event.level.BlockEvent;
 
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.auxiliary.CrystalNetworkLogger;
-import reika.chromaticraft.auxiliary.crystalnetworklogger.FlowFail;
+import reika.chromaticraft.auxiliary.CrystalNetworkLogger.FlowFail;
 import reika.chromaticraft.base.tileentity.TileEntityChromaticBase;
 import reika.chromaticraft.magic.interfaces.CrystalFuse;
 import reika.chromaticraft.magic.interfaces.CrystalNetworkTile;
@@ -45,34 +57,32 @@ import reika.chromaticraft.magic.interfaces.NaturalCrystalSource;
 import reika.chromaticraft.magic.interfaces.NotifiedNetworkTile;
 import reika.chromaticraft.magic.interfaces.PylonConnector;
 import reika.chromaticraft.magic.interfaces.RegionalSensitiveRepeater;
-import reika.chromaticraft.magic.network.crystalnetworkexception.InvalidLocationException;
+import reika.chromaticraft.magic.network.CrystalNetworkException.InvalidLocationException;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.tileentity.networking.TileEntityCompoundRepeater;
-import reika.chromaticraft.tileentity.networking.TileEntityCrystalBroadcaster;
+//import reika.chromaticraft.tileentity.networking.TileEntityCrystalBroadcaster; //deferred
 import reika.chromaticraft.tileentity.networking.TileEntityCrystalPylon;
 import reika.chromaticraft.tileentity.networking.TileEntityCrystalRepeater;
 import reika.chromaticraft.tileentity.networking.TileEntitySkypeater;
-import reika.chromaticraft.world.iwg.PylonGenerator;
 import reika.dragonapi.auxiliary.ModularLogger;
-import reika.dragonapi.auxiliary.trackers.CrashNotifications;
-import reika.dragonapi.auxiliary.trackers.crashnotifications.CrashNotification;
-import reika.dragonapi.auxiliary.trackers.tickregistry.TickHandler;
-import reika.dragonapi.auxiliary.trackers.tickregistry.TickType;
+import reika.dragonapi.auxiliary.trackers.TickRegistry.Phase;
+import reika.dragonapi.auxiliary.trackers.TickRegistry.TickHandler;
+import reika.dragonapi.auxiliary.trackers.TickRegistry.TickType;
 import reika.dragonapi.instantiable.data.WeightedRandom;
 import reika.dragonapi.instantiable.data.immutable.Coordinate;
 import reika.dragonapi.instantiable.data.immutable.WorldChunk;
 import reika.dragonapi.instantiable.data.immutable.WorldLocation;
 import reika.dragonapi.instantiable.data.maps.MultiMap;
-import reika.dragonapi.instantiable.data.maps.multimap.CollectionType;
+import reika.dragonapi.instantiable.data.maps.MultiMap.CollectionType;
 import reika.dragonapi.instantiable.data.maps.PluralMap;
 import reika.dragonapi.instantiable.data.maps.TileEntityCache;
 import reika.dragonapi.instantiable.event.SetBlockEvent;
 import reika.dragonapi.libraries.java.ReikaJavaLibrary;
 
-import cpw.mods.fml.common.FMLCommonHandler;
-import cpw.mods.fml.common.eventhandler.SubscribeEvent;
-import cpw.mods.fml.common.gameevent.TickEvent.Phase;
-import cpw.mods.fml.relauncher.Side;
+import reika.dragonapi.auxiliary.trackers.TickRegistry;
+import net.neoforged.bus.api.SubscribeEvent;
+
+
 
 public class CrystalNetworker implements TickHandler {
 
@@ -83,9 +93,10 @@ public class CrystalNetworker implements TickHandler {
 	private static final Random rand = new Random();
 
 	private final TileEntityCache<CrystalNetworkTile> tiles = new TileEntityCache();
+	private final HashSet<WorldLocation> persistedTiles = new HashSet<>();
 	private final EnumMap<CrystalElement, TileEntityCache<TileEntityCrystalPylon>> pylons = new EnumMap(CrystalElement.class);
 	//private final MultiMap<CrystalElement, WorldLocation> sourceCounts = new MultiMap(new MultiMap.HashSetFactory());
-	private final MultiMap<Integer, CrystalFlow> flows = new MultiMap(CollectionType.HASHSET);
+	private final MultiMap<ResourceKey<Level>, CrystalFlow> flows = new MultiMap(CollectionType.HASHSET);
 	private final HashMap<UUID, WorldLocation> verifier = new HashMap();
 	private final MultiMap<WorldChunk, CrystalLink> losCache = new MultiMap(CollectionType.HASHSET).setNullEmpty();
 	private final PluralMap<CrystalLink> links = new PluralMap(2).setBidirectional();
@@ -95,19 +106,17 @@ public class CrystalNetworker implements TickHandler {
 
 
 	private CrystalNetworker() {
-		MinecraftForge.EVENT_BUS.register(this);
+		NeoForge.EVENT_BUS.register(this);
+		TickRegistry.instance.registerTickHandler(this);
 		ModularLogger.instance.addLogger(ChromatiCraft.instance, NBT_TAG);
-		CrashNotifications.instance.addNotification(ConcurrentModificationException.class, new CMENote());
 	}
 
-	private static class CMENote implements CrashNotification {
+	private static final class CMENote {
 
-		@Override
 		public String getLabel() {
 			return "Crystal Network CME";
 		}
 
-		@Override
 		public String addMessage(Throwable crash) {
 			if (ReikaJavaLibrary.exceptionMentions(crash, CrystalNetworker.class))
 				return "This CME was thrown during crystal network pathfinding, and is likely the result of MC being multithreaded or otherwise optimized by mods like Optifine and FastCraft. Do not report this unless you can reproduce it with only ChromatiCraft.";
@@ -117,42 +126,61 @@ public class CrystalNetworker implements TickHandler {
 
 	}
 
+	/** Diagnostic/query seam used by world-change handlers and network regression tests. */
+	public boolean hasCachedLineThrough(Level world, BlockPos pos) {
+		Collection<CrystalLink> cached = losCache.get(new WorldChunk(world, new net.minecraft.world.level.ChunkPos(pos.getX() >> 4, pos.getZ() >> 4)));
+		if (cached != null) {
+			for (CrystalLink link : cached) {
+				if (link.containsBlock(pos))
+					return true;
+			}
+		}
+		return false;
+	}
 	@SubscribeEvent
 	public void markChunkCache(SetBlockEvent.Post evt) {
-		if (!evt.world.isRemote) {
-			WorldChunk wc = new WorldChunk(evt.dimensionID(), evt.chunkLocation);
-			Collection<CrystalLink> c = losCache.get(wc);
-			if (c != null) {
-				Coordinate loc = new Coordinate(evt.xCoord, evt.yCoord, evt.zCoord);
-				for (CrystalLink l : c) {
-					/*
-					WorldLocation l1 = l.loc1;
-					WorldLocation l2 = l.loc2;
+		this.handleBlockChange(evt.world, new BlockPos(evt.xCoord, evt.yCoord, evt.zCoord));
+	}
 
-					boolean close = l1.isWithinSquare(evt.world, evt.xCoord, evt.yCoord, evt.zCoord, 2) || l2.isWithinSquare(evt.world, evt.xCoord, evt.yCoord, evt.zCoord, 2);
-					double[] angs = close ? null : ReikaPhysicsHelper.cartesianToPolar(l1.xCoord-l2.xCoord, l1.yCoord-l2.yCoord, l1.zCoord-l2.zCoord);
-					double[] angs2 = close ? null : ReikaPhysicsHelper.cartesianToPolar(l1.xCoord-evt.xCoord, l1.yCoord-evt.yCoord, l1.zCoord-evt.zCoord);
-					//Only check link if block near it
-					//ReikaJavaLibrary.pConsole(Arrays.toString(angs)+" , "+Arrays.toString(angs2));
-					if (close || (ReikaMathLibrary.approxrAbs(angs[1], angs2[1], 5) && ReikaMathLibrary.approxrAbs(angs[2], angs2[2], 5))) {
-					 */
-					if (l.containsBlock(loc)) {
-						l.needsCalculation = true;
-						//ReikaJavaLibrary.pConsole("Invalidating LOS for "+l+" (#"+System.identityHashCode(l)+")");
+	/** NeoForge's neighbor notification is a second reliable signal for ordinary flagged world edits. */
+	@SubscribeEvent
+	public void markChunkCache(BlockEvent.NeighborNotifyEvent evt) {
+		if (evt.getLevel() instanceof Level level)
+			this.handleBlockChange(level, evt.getPos());
+	}
 
-						//Kill active flows if blocked
-						for (CrystalFlow p : flows.get(evt.dimensionID())) {
-							if (!toBreak.contains(p) && p.containsLink(l) && !p.checkLineOfSight(l)) { //make only link check, not entire path
-								CrystalNetworkLogger.logFlowBreak(p, FlowFail.SIGHT);
-								this.schedulePathBreak(p);
-							}
-						}
-					}
+	private void handleBlockChange(Level world, BlockPos changedPos) {
+		if (world.isClientSide())
+			return;
+		WorldChunk wc = new WorldChunk(world, new net.minecraft.world.level.ChunkPos(changedPos.getX() >> 4, changedPos.getZ() >> 4));
+		Collection<CrystalLink> cached = losCache.get(wc);
+		if (cached == null)
+			return;
+		for (CrystalLink link : new ArrayList<>(cached)) {
+			if (!link.containsBlock(changedPos))
+				continue;
+			link.needsCalculation = true;
+			for (CrystalFlow flow : flows.get(world.dimension())) {
+				if (!toBreak.contains(flow) && flow.containsLink(link) && !flow.checkLineOfSight(link)) {
+					CrystalNetworkLogger.logFlowBreak(flow, FlowFail.SIGHT);
+					this.schedulePathBreak(flow);
 				}
 			}
 		}
 	}
-
+	private void removeLinksWithTile(WorldLocation location) {
+		Collection<CrystalLink> removed = new ArrayList<>();
+		for (Object value : new ArrayList<>(links.values())) {
+			CrystalLink link = (CrystalLink)value;
+			if (link.loc1.equals(location) || link.loc2.equals(location))
+				removed.add(link);
+		}
+		for (CrystalLink link : removed) {
+			links.remove(link.loc1, link.loc2);
+			for (WorldChunk chunk : link.chunks)
+				losCache.remove(chunk, link);
+		}
+	}
 	public void schedulePathBreak(CrystalFlow p) {
 		toBreak.add(p);
 	}
@@ -179,12 +207,12 @@ public class CrystalNetworker implements TickHandler {
 	}
 
 	@SubscribeEvent
-	public void clearOnUnload(WorldEvent.Unload evt) {
-		if (evt.world.isRemote)
+	public void clearOnUnload(LevelEvent.Unload evt) {
+		if (!(evt.getLevel() instanceof Level level) || level.isClientSide())
 			return;
-		int dim = evt.world.provider.dimensionId;
+		ResourceKey<Level> dim = level.dimension();
 		PylonFinder.stopAllSearches();
-		ChromatiCraft.logger.debug("Unloading dimension "+dim+", clearing crystal network.");
+		ChromatiCraft.LOGGER.debug("Unloading dimension "+dim+", clearing crystal network.");
 		try {
 			this.clear(dim);
 			for (WorldLocation c : tiles.keySet()) {
@@ -193,44 +221,59 @@ public class CrystalNetworker implements TickHandler {
 				if (te instanceof CrystalTransmitter)
 					((CrystalTransmitter)te).clearTargets(true);
 			}
-			tiles.removeWorld(evt.world);
+			tiles.removeWorld(level);
 			for (TileEntityCache c : pylons.values())
-				c.removeWorld(evt.world);
+				c.removeWorld(level);
 		}
 		catch (ConcurrentModificationException e) {
-			ChromatiCraft.logger.logError("Clearing the crystal network on world unload caused a CME. This is indicative of a deeper problem.");
+			ChromatiCraft.LOGGER.error("Clearing the crystal network on world unload caused a CME. {}",
+				new CMENote().addMessage(e), e);
 			e.printStackTrace();
 		}
 	}
 
-	private void save(NBTTagCompound NBT) {
-		NBTTagCompound tag = NBT.getCompoundTag(NBT_TAG);
-		tiles.writeToNBT(tag);
-		NBT.setTag(NBT_TAG, tag);
-		//ChromatiCraft.logger.log("Saved crystal network: ");
-		//ChromatiCraft.logger.log("");
-		//this.printCrystalNetwork(null, -1, -1);
-		//ChromatiCraft.logger.log("");
-		//ChromatiCraft.logger.log("NBT: "+NBT);
-		//ReikaJavaLibrary.pConsole(tiles+" to "+tag, Side.SERVER);
+	private void save(CompoundTag NBT) {
+		CompoundTag tag = new CompoundTag();
+		ListTag locations = new ListTag();
+		for (WorldLocation location : persistedTiles)
+			locations.add(location.writeToTag());
+		tag.put("locs", locations);
+		NBT.put(NBT_TAG, tag);
 	}
 
-	private void load(NBTTagCompound NBT) {
-		NBTTagCompound tag = NBT.getCompoundTag(NBT_TAG);
-		tiles.readFromNBT(tag);
-		//ChromatiCraft.logger.log("Loaded crystal network: ");
-		//ChromatiCraft.logger.log("");
-		//ChromatiCraft.logger.log("NBT: "+NBT);
-		//ChromatiCraft.logger.log("");
-		//this.printCrystalNetwork(null, -1, -1);
+	private void load(CompoundTag NBT) {
+		CompoundTag tag = NBT.getCompoundOrEmpty(NBT_TAG);
+		ListTag locations = tag.getList("locs").orElse(new ListTag());
+		for (Tag value : locations) {
+			if (value instanceof CompoundTag entry)
+				persistedTiles.add(WorldLocation.readTag(entry));
+		}
+		this.resolvePersistedTiles();
+	}
 
-		for (CrystalNetworkTile te : tiles.values()) {
-			if (te instanceof TileEntityCrystalPylon) {
-				TileEntityCrystalPylon tile = (TileEntityCrystalPylon)te;
-				this.addPylon(tile);
+	private void resolvePersistedTiles() {
+		for (WorldLocation location : new ArrayList<>(persistedTiles)) {
+			if (tiles.containsKey(location))
+				continue;
+			if (location.getBlockEntity() instanceof CrystalNetworkTile tile) {
+				tiles.put(location, tile);
+				this.verifyTileAt(tile, location);
+				if (tile instanceof TileEntityCrystalPylon pylon)
+					this.addPylon(pylon);
 			}
 		}
-		//ReikaJavaLibrary.pConsole(tiles+" from "+tag, Side.SERVER);
+	}
+
+	/** Production serialization seam shared by SavedData and reload regression tests. */
+	public CompoundTag writePersistentState() {
+		CompoundTag tag = new CompoundTag();
+		this.save(tag);
+		return tag;
+	}
+
+	/** Reconciles durable locations with currently loaded block entities without clearing live caches. */
+	public void readPersistentState(CompoundTag tag) {
+		this.load(tag);
 	}
 
 	public boolean checkConnectivity(CrystalElement e, CrystalReceiver r) {
@@ -238,14 +281,14 @@ public class CrystalNetworker implements TickHandler {
 	}
 
 	public CrystalPath getConnectivity(CrystalElement e, CrystalReceiver r) {
-		EntityPlayer ep = r.getPlacerUUID() != null ? r.getWorld().func_152378_a(r.getPlacerUUID()) : null;
+		Player ep = r.getPlacerUUID() != null ? r.getWorld().getPlayerByUUID(r.getPlacerUUID()) : null;
 		try {
 			CrystalPath p = new PylonFinder(e, r, ep).findPylon();
 			return p != null && p.canTransmit() ? p : null;
 		}
 		catch (ConcurrentModificationException ex) {
 			ex.printStackTrace();
-			ChromatiCraft.logger.logError("CME during pathfinding!");
+			ChromatiCraft.LOGGER.error("CME during pathfinding!");
 			return null;
 		}
 	}
@@ -258,23 +301,23 @@ public class CrystalNetworker implements TickHandler {
 		return this.makeRequest(r, e, amount, r.getWorld(), range, maxthru);
 	}
 
-	public boolean makeRequest(CrystalReceiver r, CrystalElement e, int amount, World world, int range, int maxthru) {
+	public boolean makeRequest(CrystalReceiver r, CrystalElement e, int amount, Level world, int range, int maxthru) {
 		//require the source have at least 10% of the requested amount, or be at least 75% full
 		SourceValidityRule rule = new SourceValidityRule(0, amount/10, 0.75F);
 		return this.makeRequest(r, e, amount, world, range, maxthru, rule);
 	}
 
-	public boolean makeRequest(CrystalReceiver r, CrystalElement e, int amount, World world, int range, int maxthru, SourceValidityRule rule) {
+	public boolean makeRequest(CrystalReceiver r, CrystalElement e, int amount, Level world, int range, int maxthru, SourceValidityRule rule) {
 		if (amount <= 0)
 			return false;
 		if (this.hasFlowTo(r, e, world))
 			return false;
-		EntityPlayer ep = r.getPlacerUUID() != null ? world.func_152378_a(r.getPlacerUUID()) : null;
+		Player ep = r.getPlacerUUID() != null ? world.getPlayerByUUID(r.getPlacerUUID()) : null;
 		CrystalFlow p = new PylonFinder(e, r, ep).findPylon(amount, maxthru, rule);
 		//ReikaJavaLibrary.pConsole(p, Side.SERVER);
 		CrystalNetworkLogger.logRequest(r, e, amount, p);
 		if (p != null/* && (p.maxFlow > 0 || amount == 0)*/) {
-			flows.addValue(world.provider.dimensionId, p);
+			flows.addValue(world.dimension(), p);
 			p.transmitter.onUsedBy(ep, e);
 			return true;
 		}
@@ -282,7 +325,7 @@ public class CrystalNetworker implements TickHandler {
 	}
 
 	public CrystalSource findSourceWithX(CrystalReceiver r, CrystalElement e, int amount, int range, boolean consume) {
-		EntityPlayer ep = r.getPlacerUUID() != null ? r.getWorld().func_152378_a(r.getPlacerUUID()) : null;
+		Player ep = r.getPlacerUUID() != null ? r.getWorld().getPlayerByUUID(r.getPlacerUUID()) : null;
 		CrystalPath p = new PylonFinder(e, r, ep).findPylonWith(new SourceValidityRule(amount));
 		if (p != null) {
 			if (consume)
@@ -292,8 +335,8 @@ public class CrystalNetworker implements TickHandler {
 		return null;
 	}
 
-	public boolean hasFlowTo(CrystalReceiver r, CrystalElement e, World world) {
-		Collection<CrystalFlow> li = flows.get(world.provider.dimensionId);
+	public boolean hasFlowTo(CrystalReceiver r, CrystalElement e, Level world) {
+		Collection<CrystalFlow> li = flows.get(world.dimension());
 		for (CrystalFlow f : li) {
 			if (f.element == e && f.receiver == r)
 				return true;
@@ -302,7 +345,7 @@ public class CrystalNetworker implements TickHandler {
 	}
 
 	public void tick(TickType type, Object... data) {
-		for (int dim : flows.keySet()) {
+		for (ResourceKey<Level> dim : flows.keySet()) {
 			Collection<CrystalFlow> c = flows.get(dim);
 			Iterator<CrystalFlow> it = c.iterator();
 			while (it.hasNext()) {
@@ -319,25 +362,24 @@ public class CrystalNetworker implements TickHandler {
 							p.tickRepeaters(0);
 						}
 						else {
-							int amt = p.drain();
-							CrystalNetworkLogger.logFlowTick(p, amt);
-							if (amt > 0) {
-								int add = p.receiver.receiveElement(p.transmitter, p.element, amt);
-								p.transmitter.drain(p.element, add);
-								if (add > 0)
-									p.tickRepeaters(add);
-								if (p.isComplete()) {
-									p.resetTiles();
-									it.remove();
-									CrystalNetworkLogger.logFlowSatisfy(p);
-									p.receiver.onPathCompleted(p);
-								}
-								else if (add <= 0) {
-									CrystalNetworkLogger.logFlowBreak(p, FlowFail.FULL);
-									//p.receiver.onPathBroken(p.element);
-									p.resetTiles();
-									it.remove();
-								}
+							int offered = p.drain();
+							CrystalNetworkLogger.logFlowTick(p, offered);
+							int accepted = offered > 0 ? p.receiver.receiveElement(p.transmitter, p.element, offered) : 0;
+							int sourceCost = p.commitTransfer(accepted);
+							if (sourceCost > 0)
+								p.transmitter.drain(p.element, sourceCost);
+							if (accepted > 0)
+								p.tickRepeaters(accepted);
+							if (p.isComplete()) {
+								p.resetTiles();
+								it.remove();
+								CrystalNetworkLogger.logFlowSatisfy(p);
+								p.receiver.onPathCompleted(p);
+							}
+							else if (offered > 0 && accepted <= 0) {
+								CrystalNetworkLogger.logFlowBreak(p, FlowFail.FULL);
+								p.resetTiles();
+								it.remove();
 							}
 						}
 					}
@@ -360,23 +402,24 @@ public class CrystalNetworker implements TickHandler {
 		 */
 	}
 
-	public void clear(int dim) {
+	public void clear(ResourceKey<Level> dimension) {
 		//do not clear tiles!
-		Collection<CrystalFlow> li = flows.get(dim);
+		Collection<CrystalFlow> li = flows.get(dimension);
 		for (CrystalFlow f : li) {
 			f.resetTiles();
 		}
-		flows.remove(dim);
+		flows.remove(dimension);
 	}
 
 	public void addTile(CrystalNetworkTile te) {
-		if (FMLCommonHandler.instance().getEffectiveSide() == Side.SERVER) {
+		if (!te.getWorld().isClientSide()) {
 			WorldLocation loc = PylonFinder.getLocation(te);
 			CrystalNetworkTile old = tiles.get(loc);
 			if (old != null) { //cache cleaning; old TEs may get out of sync for things like charge
 				this.removeTile(old);
 			}
 			tiles.put(loc, te);
+			persistedTiles.add(loc);
 
 			/*
 			if (te instanceof CrystalSource) {
@@ -406,24 +449,36 @@ public class CrystalNetworker implements TickHandler {
 				notifyCache.add((NotifiedNetworkTile)te);
 			}
 
-			WorldCrystalNetworkData.initNetworkData(te.getWorld()).setDirty(true);
+			WorldCrystalNetworkData.initNetworkData(te.getWorld()).setDirty();
 			if (te instanceof TileEntityCrystalPylon) {
-				PylonLocationData.initNetworkData(te.getWorld()).setDirty(true);
+				PylonLocationData.initNetworkData(te.getWorld()).setDirty();
 			}
 
 			CrystalNetworkLogger.logTileAdd(te);
 		}
 	}
 
-	public Collection<CrystalFlow> getActiveFlows(World world) {
-		return Collections.unmodifiableCollection(flows.get(world.provider.dimensionId));
+	public Collection<CrystalFlow> getActiveFlows(Level world) {
+		return Collections.unmodifiableCollection(flows.get(world.dimension()));
+	}
+	public boolean isTileCached(CrystalNetworkTile tile) {
+		return tile != null && tiles.get(PylonFinder.getLocation(tile)) == tile;
+	}
+	public boolean hasFlowContaining(CrystalNetworkTile tile) {
+		if (tile == null || tile.getWorld() == null)
+			return false;
+		for (CrystalFlow flow : flows.get(tile.getWorld().dimension())) {
+			if (flow.contains(tile))
+				return true;
+		}
+		return false;
 	}
 
 	private void verifyTileAt(CrystalNetworkTile te, WorldLocation loc) {
 		UUID key = te.getUniqueID();
 		WorldLocation prev = verifier.get(key);
 		if (prev != null && !prev.equals(loc)) {
-			te.getWorld().setBlockToAir(te.getX(), te.getY(), te.getZ());
+			te.getWorld().removeBlock(new BlockPos(te.getX(), te.getY(), te.getZ()), false);
 			throw new InvalidLocationException(te, loc, prev);
 		}
 		else
@@ -447,11 +502,11 @@ public class CrystalNetworker implements TickHandler {
 		c.put(te);
 	}
 
-	public Collection<TileEntityCrystalPylon> getNearbyPylons(World world, double x, double y, double z, CrystalElement e, int range, boolean LOS) {
-		return this.getNearbyPylons(world, MathHelper.floor_double(x), MathHelper.floor_double(y), MathHelper.floor_double(z), e, range, LOS);
+	public Collection<TileEntityCrystalPylon> getNearbyPylons(Level world, double x, double y, double z, CrystalElement e, int range, boolean LOS) {
+		return this.getNearbyPylons(world, Mth.floor(x), Mth.floor(y), Mth.floor(z), e, range, LOS);
 	}
 
-	public Collection<TileEntityCrystalPylon> getNearbyPylons(World world, int x, int y, int z, CrystalElement e, int range, boolean LOS) {
+	public Collection<TileEntityCrystalPylon> getNearbyPylons(Level world, int x, int y, int z, CrystalElement e, int range, boolean LOS) {
 		TileEntityCache<TileEntityCrystalPylon> c = pylons.get(e);
 		Collection<TileEntityCrystalPylon> li = new ArrayList();
 		//HashSet<WorldLocation> remove = new HashSet();
@@ -459,12 +514,12 @@ public class CrystalNetworker implements TickHandler {
 			WorldLocation p = new WorldLocation(world, x, y, z);
 			for (WorldLocation loc : c.getAllLocationsNear(p, range)) {
 				if (loc.getDistanceTo(x, y, z) <= range) {
-					if (!LOS || PylonFinder.lineOfSight(world, x, y, z, loc.xCoord, loc.yCoord, loc.zCoord).hasLineOfSight) {
+					if (!LOS || PylonFinder.lineOfSight(world, x, y, z, loc.pos.getX(), loc.pos.getY(), loc.pos.getZ()).hasLineOfSight) {
 						TileEntityCrystalPylon te = c.get(loc);
 						if (te == null) {
-							ChromatiCraft.logger.logError("Null tile returned for location "+loc+"; "+loc.getBlockKey().getLocalized());
+							ChromatiCraft.LOGGER.error("Null tile returned for location "+loc+"; "+loc.getBlockKey().getDisplay().getHoverName());
 							//remove.add(loc);
-							te = (TileEntityCrystalPylon)loc.getTileEntity(world);
+							te = (TileEntityCrystalPylon)loc.getBlockEntity(world);
 							c.put(loc, te);
 						}
 						//else
@@ -488,7 +543,7 @@ public class CrystalNetworker implements TickHandler {
 		return this.getAllNearbyPylons(te.getWorld(), te.getX(), te.getY(), te.getZ(), range, excludeSelf);
 	}
 
-	public ArrayList<TileEntityCrystalPylon> getAllNearbyPylons(World world, int x, int y, int z, double range, boolean excludeSelf) {
+	public ArrayList<TileEntityCrystalPylon> getAllNearbyPylons(Level world, int x, int y, int z, double range, boolean excludeSelf) {
 		ArrayList<TileEntityCrystalPylon> li = new ArrayList();
 		//MultiMap<CrystalElement, WorldLocation> remove = new MultiMap(CollectionType.HASHSET);
 		for (CrystalElement e : pylons.keySet()) {
@@ -496,13 +551,13 @@ public class CrystalNetworker implements TickHandler {
 			if (c != null) {
 				WorldLocation p = new WorldLocation(world, x, y, z);
 				for (WorldLocation loc : c.getAllLocationsNear(p, range)) {
-					if (!excludeSelf || !loc.equals(world, x, y, z)) {
+					if (!excludeSelf || !loc.equals(world, new BlockPos(x, y, z))) {
 						if (range == Double.POSITIVE_INFINITY || loc.getDistanceTo(x, y, z) <= range) {
 							TileEntityCrystalPylon te = c.get(loc);
 							if (te == null) {
-								ChromatiCraft.logger.logError("Null tile returned for location "+loc+"; "+loc.getBlockKey().getLocalized());
+								ChromatiCraft.LOGGER.error("Null tile returned for location "+loc+"; "+loc.getBlockKey().getDisplay().getHoverName());
 								//remove.addValue(e, loc);
-								te = (TileEntityCrystalPylon)loc.getTileEntity(world);
+								te = (TileEntityCrystalPylon)loc.getBlockEntity(world);
 								c.put(loc, te);
 							}
 							//else
@@ -527,7 +582,21 @@ public class CrystalNetworker implements TickHandler {
 	}
 
 	public void removeTile(CrystalNetworkTile te) {
-		tiles.remove(PylonFinder.getLocation(te));
+		this.removeTile(te, false);
+	}
+
+	/** Evicts a chunk-unloaded tile while retaining its durable SavedData location. */
+	public void unloadTile(CrystalNetworkTile te) {
+		this.removeTile(te, true);
+	}
+
+	private void removeTile(CrystalNetworkTile te, boolean retainPersistentLocation) {
+		WorldLocation location = PylonFinder.getLocation(te);
+		tiles.remove(location);
+		if (!retainPersistentLocation)
+			persistedTiles.remove(location);
+		verifier.remove(te.getUniqueID(), location);
+		this.removeLinksWithTile(location);
 
 		if (te instanceof NotifiedNetworkTile) {
 			notifyCache.remove(te);
@@ -557,7 +626,7 @@ public class CrystalNetworker implements TickHandler {
 		}
 		//}
 
-		Collection<CrystalFlow> li = flows.get(te.getWorld().provider.dimensionId);
+		Collection<CrystalFlow> li = flows.get(te.getWorld().dimension());
 		Iterator<CrystalFlow> it = li.iterator();
 		while (it.hasNext()) {
 			CrystalFlow p = it.next();
@@ -569,16 +638,16 @@ public class CrystalNetworker implements TickHandler {
 			}
 		}
 		PylonFinder.removePathsWithTile(te);
-		WorldCrystalNetworkData.initNetworkData(te.getWorld()).setDirty(true); //was false, then true (which broke things?)
+		WorldCrystalNetworkData.initNetworkData(te.getWorld()).setDirty(); //was false, then true (which broke things?)
 		if (te instanceof TileEntityCrystalPylon) {
-			PylonLocationData.initNetworkData(te.getWorld()).setDirty(true);
+			PylonLocationData.initNetworkData(te.getWorld()).setDirty();
 		}
 
 		CrystalNetworkLogger.logTileRemove(te);
 	}
 
 	public void breakPaths(CrystalNetworkTile te) {
-		Collection<CrystalFlow> li = flows.get(te.getWorld().provider.dimensionId);
+		Collection<CrystalFlow> li = flows.get(te.getWorld().dimension());
 		Iterator<CrystalFlow> it = li.iterator();
 		while (it.hasNext()) {
 			CrystalFlow p = it.next();
@@ -678,7 +747,7 @@ public class CrystalNetworker implements TickHandler {
 		}
 		catch (ConcurrentModificationException ex) {
 			ex.printStackTrace();
-			ChromatiCraft.logger.logError("CME when trying to pathfind on the crystal network. This indicates a deeper issue.");
+			ChromatiCraft.LOGGER.error("CME when trying to pathfind on the crystal network. This indicates a deeper issue.");
 		}
 		return li;
 	}
@@ -701,7 +770,7 @@ public class CrystalNetworker implements TickHandler {
 
 
 
-	public <T extends CrystalNetworkTile> T getNearestTileOfType(World world, int x, int y, int z, Class<T> type, double range) {
+	public <T extends CrystalNetworkTile> T getNearestTileOfType(Level world, int x, int y, int z, Class<T> type, double range) {
 		return this.getNearestTileOfType(null, new WorldLocation(world, x, y, z), type, range);
 	}
 
@@ -717,16 +786,16 @@ public class CrystalNetworker implements TickHandler {
 		for (WorldLocation c : tiles.getAllLocationsNear(loc, range)) {
 			CrystalNetworkTile tile = tiles.get(c);
 			if (tile == null) {
-				ChromatiCraft.logger.logError("Null tile at "+c+" but still cached?!");
+				ChromatiCraft.LOGGER.error("Null tile at "+c+" but still cached?!");
 				//c.setBlock(Blocks.brick_block);
 				rem.add(c);
 			}
 			else if (te != null && tile == te) {
 
 			}
-			else if (loc.dimensionID == c.dimensionID) {
+			else if (loc.getDimension().equals(c.getDimension())) {
 				if (type.isAssignableFrom(tile.getClass())) {
-					double d = tile.getDistanceSqTo(loc.xCoord, loc.yCoord, loc.zCoord);
+					double d = tile.getDistanceSqTo(loc.pos.getX(), loc.pos.getY(), loc.pos.getZ());
 					if (d <= range*range && d < dist) {
 						dist = d;
 						ret = (T)tile;
@@ -745,18 +814,18 @@ public class CrystalNetworker implements TickHandler {
 		return this.getNearTilesOfType(te.getWorld(), te.getX(), te.getY(), te.getZ(), type, range);
 	}
 
-	public <T extends CrystalNetworkTile> Collection<T> getNearTilesOfType(World world, int x, int y, int z, Class<T> type, int range) {
+	public <T extends CrystalNetworkTile> Collection<T> getNearTilesOfType(Level world, int x, int y, int z, Class<T> type, int range) {
 		Collection<T> ret = new ArrayList();
 		HashSet<WorldLocation> rem = new HashSet();
 		WorldLocation loc = new WorldLocation(world, x, y, z);
 		for (WorldLocation c : tiles.getAllLocationsNear(loc, range)) {
 			CrystalNetworkTile tile = tiles.get(c);
 			if (tile == null) {
-				ChromatiCraft.logger.logError("Null tile at "+c+" but still cached?!");
+				ChromatiCraft.LOGGER.error("Null tile at "+c+" but still cached?!");
 				//c.setBlock(Blocks.brick_block);
 				rem.add(c);
 			}
-			else if (world.provider.dimensionId == c.dimensionID) {
+			else if (world.dimension().equals(c.getDimension())) {
 				if (type.isAssignableFrom(tile.getClass())) {
 					double d = tile.getDistanceSqTo(x, y, z);
 					if (d <= range*range) {
@@ -786,67 +855,99 @@ public class CrystalNetworker implements TickHandler {
 		return "Crystal Networker";
 	}
 
-	public static class PylonLocationData extends WorldSavedData {
+	/**
+	 * Connects the network save file to the pylon generator without forcing that large subsystem
+	 * into this compilation cluster. Until it registers, loaded V33a pylon NBT is retained exactly
+	 * and written back unchanged rather than being discarded.
+	 */
+	public static void registerPylonLocationDataHandler(PylonLocationDataHandler handler) {
+		PylonLocationData.setHandler(handler);
+	}
 
-		private static final String IDENTIFIER = PylonGenerator.NBT_TAG;
+	public interface PylonLocationDataHandler {
+		void loadPylonLocations(CompoundTag tag);
+		void savePylonLocations(CompoundTag tag);
+	}
 
-		public PylonLocationData() {
-			super(IDENTIFIER);
+	public static class PylonLocationData extends SavedData {
+
+		private static final String IDENTIFIER = "pylonloc";
+		private static final Collection<PylonLocationData> loadedData = Collections.newSetFromMap(new WeakHashMap<>());
+		private static PylonLocationDataHandler handler;
+		private static final Codec<PylonLocationData> CODEC = CompoundTag.CODEC.xmap(
+				PylonLocationData::new, PylonLocationData::save);
+		private static final SavedDataType<PylonLocationData> TYPE = new SavedDataType<>(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, IDENTIFIER),
+				PylonLocationData::new, CODEC, DataFixTypes.SAVED_DATA_MAP_DATA);
+
+		private CompoundTag retainedData;
+
+		private PylonLocationData() {
+			this(new CompoundTag());
 		}
 
-		public PylonLocationData(String s) {
-			super(s);
+		private PylonLocationData(CompoundTag tag) {
+			retainedData = tag.copy();
+			loadedData.add(this);
+			this.loadIntoHandler();
 		}
 
-		@Override
-		public void readFromNBT(NBTTagCompound NBT) {
-			PylonGenerator.instance.loadPylonLocations(NBT);
-		}
-
-		@Override
-		public void writeToNBT(NBTTagCompound NBT) {
-			PylonGenerator.instance.savePylonLocations(NBT);
-		}
-
-		private static PylonLocationData initNetworkData(World world) {
-			PylonLocationData data = (PylonLocationData)world.loadItemData(PylonLocationData.class, IDENTIFIER);
-			if (data == null) {
-				data = new PylonLocationData();
-				world.setItemData(IDENTIFIER, data);
+		private void loadIntoHandler() {
+			if (handler != null) {
+				handler.loadPylonLocations(retainedData.copy());
 			}
-			return data;
+		}
+
+		private CompoundTag save() {
+			if (handler != null) {
+				CompoundTag tag = new CompoundTag();
+				handler.savePylonLocations(tag);
+				retainedData = tag.copy();
+				return tag;
+			}
+			return retainedData.copy();
+		}
+
+		private static void setHandler(PylonLocationDataHandler newHandler) {
+			handler = newHandler;
+			for (PylonLocationData data : loadedData) {
+				data.loadIntoHandler();
+			}
+		}
+
+		private static PylonLocationData initNetworkData(Level level) {
+			if (!(level instanceof ServerLevel serverLevel)) {
+				throw new IllegalStateException("Pylon location data is server-side only");
+			}
+			return serverLevel.getDataStorage().computeIfAbsent(TYPE);
 		}
 	}
 
-	public static class WorldCrystalNetworkData extends WorldSavedData {
+	public static class WorldCrystalNetworkData extends SavedData {
 
-		private static final String IDENTIFIER = NBT_TAG;
+		private static final Codec<WorldCrystalNetworkData> CODEC = CompoundTag.CODEC.xmap(
+				WorldCrystalNetworkData::new, WorldCrystalNetworkData::save);
+		private static final SavedDataType<WorldCrystalNetworkData> TYPE = new SavedDataType<>(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, NBT_TAG),
+				WorldCrystalNetworkData::new, CODEC, DataFixTypes.SAVED_DATA_MAP_DATA);
 
-		public WorldCrystalNetworkData() {
-			super(IDENTIFIER);
+		private WorldCrystalNetworkData() {}
+
+		private WorldCrystalNetworkData(CompoundTag tag) {
+			instance.load(tag);
 		}
 
-		public WorldCrystalNetworkData(String s) {
-			super(s);
+		private CompoundTag save() {
+			CompoundTag tag = new CompoundTag();
+			instance.save(tag);
+			return tag;
 		}
 
-		@Override
-		public void readFromNBT(NBTTagCompound NBT) {
-			instance.load(NBT);
-		}
-
-		@Override
-		public void writeToNBT(NBTTagCompound NBT) {
-			instance.save(NBT);
-		}
-
-		private static WorldCrystalNetworkData initNetworkData(World world) {
-			WorldCrystalNetworkData data = (WorldCrystalNetworkData)world.loadItemData(WorldCrystalNetworkData.class, IDENTIFIER);
-			if (data == null) {
-				data = new WorldCrystalNetworkData();
-				world.setItemData(IDENTIFIER, data);
+		private static WorldCrystalNetworkData initNetworkData(Level level) {
+			if (!(level instanceof ServerLevel serverLevel)) {
+				throw new IllegalStateException("Crystal network data is server-side only");
 			}
-			return data;
+			return serverLevel.getDataStorage().computeIfAbsent(TYPE);
 		}
 	}
 
@@ -877,8 +978,8 @@ public class CrystalNetworker implements TickHandler {
 				double x = tile.getX()+0.5;
 				double y = tile.getY()+0.5;
 				double z = tile.getZ()+0.5;
-				tile.getWorld().setBlock(tile.getX(), tile.getY(), tile.getZ(), Blocks.air);
-				tile.getWorld().createExplosion(null, x, y, z, 1.5F+rand.nextFloat()*1.5F, true);
+				tile.getWorld().removeBlock(new BlockPos(tile.getX(), tile.getY(), tile.getZ()), false);
+				tile.getWorld().explode(null, x, y, z, 1.5F + rand.nextFloat() * 1.5F, true, Level.ExplosionInteraction.BLOCK);
 			}
 		}
 	}
@@ -940,20 +1041,20 @@ public class CrystalNetworker implements TickHandler {
 		PylonFinder.replacePath(p.transmitter, p.origin, p.element, p);
 	}
 
-	public void printCrystalNetwork(World world, int chunkX, int chunkZ) {
-		MultiMap<Integer, String> data = new MultiMap();
+	public void printCrystalNetwork(Level world, int chunkX, int chunkZ) {
+		MultiMap<ResourceKey<Level>, String> data = new MultiMap();
 		for (WorldLocation loc : tiles.keySet()) {
-			if (world == null || loc.dimensionID == world.provider.dimensionId)
-				if (chunkX == -1 || loc.xCoord/16 == chunkX)
-					if (chunkZ == -1 || loc.zCoord/16 == chunkZ)
-						data.addValue(loc.dimensionID, "("+loc+" @ "+this.getString(tiles.get(loc))+")");
+			if (world == null || loc.getDimension().equals(world.dimension()))
+				if (chunkX == -1 || loc.pos.getX()/16 == chunkX)
+					if (chunkZ == -1 || loc.pos.getZ()/16 == chunkZ)
+						data.addValue(loc.getDimension(), "("+loc+" @ "+this.getString(tiles.get(loc))+")");
 		}
 		if (data.isEmpty()) {
 			ReikaJavaLibrary.pConsole("[]");
 		}
 		else {
-			for (int dim : data.keySet()) {
-				ReikaJavaLibrary.pConsole("DIM"+dim+":");
+			for (ResourceKey<Level> dim : data.keySet()) {
+				ReikaJavaLibrary.pConsole("DIM " + dim.identifier() + ":");
 				Collection li = data.get(dim);
 				ReikaJavaLibrary.pConsole(li.size()+"# "+li);
 			}
@@ -970,9 +1071,9 @@ public class CrystalNetworker implements TickHandler {
 			if (te instanceof TileEntityCompoundRepeater) {
 				return "Compound Repeater, Struct="+te.canConduct()+", Turbo="+te.isTurbocharged();
 			}
-			else if (te instanceof TileEntityCrystalBroadcaster) {
-				return "Broadcast Repeater, Struct="+te.canConduct()+", Turbo="+te.isTurbocharged();
-			}
+			//else if (te instanceof TileEntityCrystalBroadcaster) { //broadcaster deferred
+			//	return "Broadcast Repeater, Struct="+te.canConduct()+", Turbo="+te.isTurbocharged();
+			//}
 			else {
 				return te.getActiveColor()+" Repeater, Struct="+te.canConduct()+", Turbo="+te.isTurbocharged();
 			}

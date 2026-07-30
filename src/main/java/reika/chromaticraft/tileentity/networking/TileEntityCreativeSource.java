@@ -11,8 +11,10 @@ package reika.chromaticraft.tileentity.networking;
 
 import java.util.UUID;
 
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.state.BlockState;
 
 import reika.chromaticraft.base.tileentity.CrystalTransmitterBase;
 import reika.chromaticraft.base.tileentity.TileEntityChromaticBase;
@@ -20,12 +22,17 @@ import reika.chromaticraft.base.tileentity.TileEntityCrystalBase;
 import reika.chromaticraft.magic.ElementTagCompound;
 import reika.chromaticraft.magic.interfaces.CrystalReceiver;
 import reika.chromaticraft.magic.interfaces.CrystalSource;
+import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.ChromaTiles;
 import reika.chromaticraft.registry.CrystalElement;
-import reika.dragonapi.DragonAPICore;
-import reika.dragonapi.libraries.java.ReikaObfuscationHelper;
+import reika.dragonapi.DragonAPI;
 
+/** A creative infinite-energy source (the creative pylon). Supplies only its creative-mode owner. */
 public class TileEntityCreativeSource extends CrystalTransmitterBase implements CrystalSource {
+
+	public TileEntityCreativeSource(BlockPos pos, BlockState state) {
+		super(ChromaBlockEntities.CREATIVEPYLON.get(), pos, state);
+	}
 
 	@Override
 	public int getSendRange() {
@@ -67,13 +74,6 @@ public class TileEntityCreativeSource extends CrystalTransmitterBase implements 
 		return 1000000;
 	}
 
-	/*
-	@Override
-	public int getTransmissionStrength() {
-		return 500;
-	}
-	 */
-
 	@Override
 	public boolean drain(CrystalElement e, int amt) {
 		return true;
@@ -95,23 +95,21 @@ public class TileEntityCreativeSource extends CrystalTransmitterBase implements 
 	}
 
 	@Override
-	public void onUsedBy(EntityPlayer ep, CrystalElement e) {
+	public void onUsedBy(Player ep, CrystalElement e) {
 
 	}
 
 	@Override
-	public boolean playerCanUse(EntityPlayer ep) {
-		return ep.capabilities.isCreativeMode;
+	public boolean playerCanUse(Player ep) {
+		return ep.getAbilities().instabuild;
 	}
 
 	public static boolean canSupply(TileEntityChromaticBase src, CrystalReceiver te) {
-		EntityPlayer ep = src.getPlacer();
+		Player ep = src.getPlacer();
 		UUID other = te.getPlacerUUID();
-		if (DragonAPICore.isReikasComputer() && ReikaObfuscationHelper.isDeObfEnvironment())
+		if (ep != null && ep.getUUID().equals(DragonAPI.Reika_UUID))
 			return true;
-		if (ep.getUniqueID().equals(DragonAPICore.Reika_UUID))
-			return true;
-		return ep != null && other != null && ep.getUniqueID().equals(other) && ep.capabilities.isCreativeMode;
+		return ep != null && other != null && ep.getUUID().equals(other) && ep.getAbilities().instabuild;
 	}
 
 	@Override
@@ -128,5 +126,4 @@ public class TileEntityCreativeSource extends CrystalTransmitterBase implements 
 	public float getDroppedItemChargeRate(ItemStack is) {
 		return 50;
 	}
-
 }

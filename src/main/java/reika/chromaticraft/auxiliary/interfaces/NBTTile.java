@@ -11,12 +11,12 @@ package reika.chromaticraft.auxiliary.interfaces;
 
 import java.util.List;
 
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.nbt.CompoundTag;
 
 public interface NBTTile {
 
-	public void getTagsToWriteToStack(NBTTagCompound NBT);
+	public void getTagsToWriteToStack(CompoundTag NBT);
 
 	public void setDataFromItemStackTag(ItemStack is);
 

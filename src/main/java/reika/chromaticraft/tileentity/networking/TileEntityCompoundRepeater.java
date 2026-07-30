@@ -11,93 +11,62 @@ package reika.chromaticraft.tileentity.networking;
 
 import java.util.EnumMap;
 
-import net.minecraft.block.Block;
-import net.minecraft.client.Minecraft;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
 
-import reika.chromaticraft.block.blockpylonstructure.StoneTypes;
+import reika.chromaticraft.block.BlockPylonStructure;
+import reika.chromaticraft.block.BlockPylonStructure.StoneTypes;
 import reika.chromaticraft.magic.interfaces.ConnectivityAction;
 import reika.chromaticraft.magic.interfaces.CrystalReceiver;
 import reika.chromaticraft.magic.interfaces.CrystalTransmitter;
 import reika.chromaticraft.magic.network.CrystalPath;
+import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.ChromaBlocks;
+import reika.chromaticraft.registry.ChromaStructures;
 import reika.chromaticraft.registry.ChromaTiles;
 import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.render.particle.EntityRuneFX;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
-
+/**
+ * Compound repeater — a colour-cycling repeater (conducts all colours in turn) built on a taller
+ * crystalline-stone column. Extends {@link TileEntityCrystalRepeater}.
+ *
+ * <p>Deferred: the client colour-cycle particle FX.
+ */
 public class TileEntityCompoundRepeater extends TileEntityCrystalRepeater implements ConnectivityAction {
 
-	private final EnumMap<CrystalElement, Integer> depth = new EnumMap(CrystalElement.class);
+	private final EnumMap<CrystalElement, Integer> depth = new EnumMap<>(CrystalElement.class);
 
 	private boolean connectedToPylon = false;
 
-	@Override
-	public void updateEntity(World world, int x, int y, int z, int meta) {
-		super.updateEntity(world, x, y, z, meta);
-		if (world.isRemote && this.canConduct())
-			this.particles(world, x, y, z);
-		//ReikaJavaLibrary.pConsole(colorTimer+":"+this.getSide()+">"+this.getActiveColor());
-	}
-
-
-	@Override
-	protected void onFirstTick(World world, int x, int y, int z) {
-		super.onFirstTick(world, x, y, z);
-		/* Not performant
-		Collection<TileEntityCrystalPylon> c = CrystalNetworker.instance.getAllNearbyPylons(this, this.getReceiveRange());
-		for (TileEntityCrystalPylon te : c) {
-			if (te.canConduct() && PylonFinder.lineOfSight(world, x, y, z, te.xCoord, te.yCoord, te.zCoord)) {
-				connectedToPylon = true;
-				break;
-			}
-		}
-		 */
+	public TileEntityCompoundRepeater(BlockPos pos, BlockState state) {
+		super(ChromaBlockEntities.COMPOUND.get(), pos, state);
 	}
 
 	@Override
-	public void readFromNBT(NBTTagCompound NBT) {
-		super.readFromNBT(NBT);
-	}
-
-	@Override
-	public void writeToNBT(NBTTagCompound NBT) {
-		super.writeToNBT(NBT);
-	}
-
-	@SideOnly(Side.CLIENT)
-	private void particles(World world, int x, int y, int z) {
-		if (this.getColorCycleTick()%32 == 5) {
-			double px = x+0.5;//rand.nextDouble();
-			double py = y+0.5;//0.25+y+rand.nextDouble();
-			double pz = z+0.5;//rand.nextDouble();
-			CrystalElement e = this.getParticleColor(); //compensate for particle delay
-			Minecraft.getMinecraft().effectRenderer.addEffect(new EntityRuneFX(world, px, py, pz, 0, 0, 0, e).setScale(5).setFading());
-		}
-	}
-
-	private CrystalElement getParticleColor() {
-		return this.getRenderColorWithOffset(64);
+	public void updateEntity(Level world, BlockPos pos) {
+		super.updateEntity(world, pos);
+		//Deferred: client colour-cycle particles.
 	}
 
 	public CrystalElement getRenderColorWithOffset(int i) {
-		return CrystalElement.elements[((this.getColorCycleTick()+i)/32)%16];
+		return CrystalElement.elements[((this.getColorCycleTick() + i) / 32) % 16];
 	}
 
 	public int getColorCycleTick() {
-		return (int)((worldObj.getTotalWorldTime()+xCoord/8D%16+zCoord/8D%16)%512D);//this.getTicksExisted();
+		BlockPos p = this.getBlockPos();
+		return (int)((this.getLevel().getGameTime() + p.getX() / 8D % 16 + p.getZ() / 8D % 16) % 512D);
 	}
 
 	@Override
 	public boolean isConductingElement(CrystalElement e) {
-		return e != null && this.canConduct();// && (e != CrystalElement.BLUE && e != CrystalElement.RED && e != CrystalElement.WHITE && e != CrystalElement.YELLOW && e != CrystalElement.MAGENTA && e != CrystalElement.LIME && e != CrystalElement.ORANGE);
+		return e != null && this.canConduct();
 	}
 
 	@Override
-	public int maxThroughput() { //no clustering bonuses
+	public int maxThroughput() {
 		return this.isTurbocharged() ? (this.isEnhancedStructure() ? 20000 : 12000) : 1000;
 	}
 
@@ -108,75 +77,50 @@ public class TileEntityCompoundRepeater extends TileEntityCrystalRepeater implem
 
 	@Override
 	protected boolean checkForStructure() {
+		Direction f = this.getFacing();
 		for (int i = 1; i <= 5; i++) {
-			int dx = xCoord+facing.offsetX*i;
-			int dy = yCoord+facing.offsetY*i;
-			int dz = zCoord+facing.offsetZ*i;
-			Block b = worldObj.getBlock(dx, dy, dz);
-			int meta = worldObj.getBlockMetadata(dx, dy, dz);
-			int m2 = i == 3 ? 13 : i == 1 || i == 5 ? 12 : this.getColumnBeam();
-			int m2b = m2 == this.getColumnBeam() && this.isTurbocharged() ? StoneTypes.list[m2].getGlowingVariant().ordinal() : m2;
-			if (b != ChromaBlocks.PYLONSTRUCT.getBlockInstance() || (meta != m2 && meta != m2b)) {
+			BlockState s = this.stateAt(f.getStepX() * i, f.getStepY() * i, f.getStepZ() * i);
+			if (s.getBlock() != ChromaBlocks.PYLONSTRUCT.get())
 				return false;
-			}
+			int m2 = i == 3 ? 13 : (i == 1 || i == 5 ? 12 : this.getColumnBeam());
+			int m2b = m2 == this.getColumnBeam() && this.isTurbocharged() ? StoneTypes.list[m2].getGlowingVariant().ordinal() : m2;
+			int type = s.getValue(BlockPylonStructure.TYPE);
+			if (type != m2 && type != m2b)
+				return false;
 		}
 		return true;
 	}
 
 	private int getColumnBeam() {
-		return facing.offsetY == 0 ? 1 : 2;
+		return this.getFacing().getStepY() == 0 ? 1 : 2;
 	}
 
 	@Override
 	protected boolean checkEnhancedStructure() {
+		Direction f = this.getFacing();
 		for (int i = 2; i <= 4; i += 2) {
-			int dx = xCoord+facing.offsetX*i;
-			int dy = yCoord+facing.offsetY*i;
-			int dz = zCoord+facing.offsetZ*i;
-			Block b = worldObj.getBlock(dx, dy, dz);
-			int meta = worldObj.getBlockMetadata(dx, dy, dz);
-			if (b != ChromaBlocks.PYLONSTRUCT.getBlockInstance() || meta != StoneTypes.list[this.getColumnBeam()].getGlowingVariant().ordinal()) {
+			BlockState s = this.stateAt(f.getStepX() * i, f.getStepY() * i, f.getStepZ() * i);
+			if (s.getBlock() != ChromaBlocks.PYLONSTRUCT.get()
+					|| s.getValue(BlockPylonStructure.TYPE) != StoneTypes.list[this.getColumnBeam()].getGlowingVariant().ordinal())
 				return false;
-			}
 		}
 		return true;
+	}
+
+	@Override
+	public ChromaStructures getPrimaryStructure() {
+		return ChromaStructures.COMPOUND;
 	}
 
 	@Override
 	public ChromaTiles getTile() {
 		return ChromaTiles.COMPOUND;
 	}
-	/*
-	@Override
-	public boolean checkConnectivity() {
-		for (int i = 0; i < CrystalElement.elements.length; i++) {
-			CrystalElement e = CrystalElement.elements[i];
-			if (CrystalNetworker.instance.checkConnectivity(e, worldObj, xCoord, yCoord, zCoord, this.getReceiveRange()))
-				return true;
-		}
-		return false;
-	}
-	 */
+
 	@Override
 	public CrystalElement getActiveColor() {
-		return CrystalElement.elements[(this.getRenderColorWithOffset(7).ordinal()+2)%16];
+		return CrystalElement.elements[(this.getRenderColorWithOffset(7).ordinal() + 2) % 16];
 	}
-	/*
-	@Override
-	public CrystalSource getEnergySource(CrystalElement e) {
-		return e != null ? CrystalNetworker.instance.getConnectivity(e, worldObj, xCoord, yCoord, zCoord, this.getReceiveRange()) : null;
-	}*/
-
-	/*
-	@Override
-	public void onRelayPlayerCharge(EntityPlayer player, TileEntityCrystalPylon p) {
-		if (!worldObj.isRemote) {
-			if (!player.capabilities.isCreativeMode && !Chromabilities.PYLON.enabledOn(player) && rand.nextInt(20) == 0)
-				p.attackEntityByProxy(player, this);
-			CrystalNetworker.instance.makeRequest(this, p.getColor(), 15000, this.getReceiveRange());
-		}
-	}
-	 */
 
 	@Override
 	public void setSignalDepth(CrystalElement e, int d) {
@@ -190,27 +134,22 @@ public class TileEntityCompoundRepeater extends TileEntityCrystalRepeater implem
 	}
 
 	@Override
-	protected void readSyncTag(NBTTagCompound NBT) {
+	protected void readSyncTag(CompoundTag NBT) {
 		super.readSyncTag(NBT);
-
-		for (int i = 0; i < CrystalElement.elements.length; i++) {
-			CrystalElement e = CrystalElement.elements[i];
-			String s = "depth_"+e.ordinal();
-			if (NBT.hasKey(s))
-				depth.put(e, NBT.getInteger(s));
+		for (CrystalElement e : CrystalElement.elements) {
+			String s = "depth_" + e.ordinal();
+			if (NBT.contains(s))
+				depth.put(e, NBT.getIntOr(s, 0));
 		}
-
-		connectedToPylon = NBT.getBoolean("pylon");
+		connectedToPylon = NBT.getBooleanOr("pylon", false);
 	}
 
 	@Override
-	protected void writeSyncTag(NBTTagCompound NBT) {
+	protected void writeSyncTag(CompoundTag NBT) {
 		super.writeSyncTag(NBT);
-
 		for (CrystalElement e : depth.keySet())
-			NBT.setInteger("depth_"+e.ordinal(), depth.get(e));
-
-		NBT.setBoolean("pylon", connectedToPylon);
+			NBT.putInt("depth_" + e.ordinal(), depth.get(e));
+		NBT.putBoolean("pylon", connectedToPylon);
 	}
 
 	@Override
@@ -231,7 +170,7 @@ public class TileEntityCompoundRepeater extends TileEntityCrystalRepeater implem
 	@Override
 	public void notifyReceivingFrom(CrystalPath p, CrystalTransmitter t) {
 		if (t instanceof TileEntityCrystalPylon) {
-			p.addBaseAttenuation(1000); //== 50 multis
+			p.addBaseAttenuation(1000);
 			connectedToPylon = true;
 		}
 		else {
@@ -242,5 +181,4 @@ public class TileEntityCompoundRepeater extends TileEntityCrystalRepeater implem
 	public boolean connectedToPylon() {
 		return connectedToPylon;
 	}
-
 }

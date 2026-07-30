@@ -8,213 +8,173 @@
  * explicit, prior permission from the owner.
  ******************************************************************************/
 package reika.chromaticraft.tileentity.networking;
-
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
-import net.minecraft.block.Block;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.particle.EntityFX;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.effect.EntityLightningBolt;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.init.Blocks;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.potion.PotionEffect;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.AxisAlignedBB;
-import net.minecraft.util.DamageSource;
-import net.minecraft.util.MathHelper;
-import net.minecraft.world.ChunkCoordIntPair;
-import net.minecraft.world.World;
-import net.minecraftforge.common.MinecraftForge;
 
-import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.auxiliary.ChromaAux;
-import reika.chromaticraft.auxiliary.ChromaFX;
-import reika.chromaticraft.auxiliary.CrystalMusicManager;
-import reika.chromaticraft.auxiliary.HoldingChecks;
-import reika.chromaticraft.auxiliary.event.pylonevents.PlayerChargedFromPylonEvent;
-import reika.chromaticraft.auxiliary.event.pylonevents.PylonDrainedEvent;
-import reika.chromaticraft.auxiliary.event.pylonevents.PylonFullyChargedEvent;
-import reika.chromaticraft.auxiliary.event.pylonevents.PylonRechargedEvent;
-import reika.chromaticraft.base.tileentity.CrystalTransmitterBase;
-import reika.chromaticraft.base.tileentity.TileEntityCrystalBase;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+
+import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.core.Direction;
+import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.LightningBolt;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.ChunkPos;
+
 import reika.chromaticraft.block.BlockEncrustedCrystal;
-import reika.chromaticraft.block.blockencrustedcrystal.TileCrystalEncrusted;
-import reika.chromaticraft.entity.EntityBallLightning;
-import reika.chromaticraft.entity.EntityGlowCloud;
-import reika.chromaticraft.entity.EntityOverloadingPylonShock;
+import net.minecraft.world.level.block.Blocks;
+import reika.chromaticraft.entity.EntityPylonOverloadShock;
+import reika.chromaticraft.block.BlockEncrustedCrystal.TileCrystalEncrusted;
+import reika.chromaticraft.magic.ChromaAbilityData;
 import reika.chromaticraft.magic.CrystalPotionController;
-import reika.chromaticraft.magic.ElementTagCompound;
-import reika.chromaticraft.magic.interfaces.ChargingPoint;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.phys.AABB;
+import net.neoforged.neoforge.common.NeoForge;
+
+import reika.chromaticraft.auxiliary.event.PylonEvents.PlayerChargedFromPylonEvent;
 import reika.chromaticraft.magic.interfaces.CrystalNetworkTile;
-import reika.chromaticraft.magic.interfaces.CrystalReceiver;
-import reika.chromaticraft.magic.interfaces.CrystalTransmitter;
-import reika.chromaticraft.magic.interfaces.NaturalCrystalSource;
+import reika.chromaticraft.auxiliary.event.PylonEvents.PylonDrainedEvent;
+import reika.chromaticraft.auxiliary.event.PylonEvents.PylonFullyChargedEvent;
 import reika.chromaticraft.magic.network.CrystalNetworker;
 import reika.chromaticraft.magic.network.CrystalPath;
+import reika.chromaticraft.auxiliary.event.PylonEvents.PylonRechargedEvent;
 import reika.chromaticraft.magic.network.PylonFinder;
-import reika.chromaticraft.magic.progression.ProgressStage;
-import reika.chromaticraft.modinterface.MystPages;
-import reika.chromaticraft.modinterface.thaumcraft.ChromaAspectManager;
+import reika.chromaticraft.network.ChromaNetwork;
 import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaIcons;
-import reika.chromaticraft.registry.ChromaOptions;
-import reika.chromaticraft.registry.ChromaPackets;
+import reika.chromaticraft.base.tileentity.CrystalTransmitterBase;
+import reika.chromaticraft.magic.ElementTagCompound;
+import reika.chromaticraft.magic.interfaces.ChargingPoint;
+import reika.chromaticraft.magic.interfaces.CrystalReceiver;
+import reika.chromaticraft.magic.interfaces.NaturalCrystalSource;
 import reika.chromaticraft.registry.ChromaSounds;
+import reika.chromaticraft.magic.progression.ProgressStage;
+import reika.chromaticraft.tileentity.auxiliary.TileEntityChromaCrystal;
 import reika.chromaticraft.registry.ChromaStructures;
 import reika.chromaticraft.registry.ChromaTiles;
-import reika.chromaticraft.registry.Chromabilities;
 import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.render.particle.EntityBallLightningFX;
-import reika.chromaticraft.render.particle.EntityCCBlurFX;
-import reika.chromaticraft.render.particle.EntityCCFloatingSeedsFX;
-import reika.chromaticraft.render.particle.EntityFlareFX;
-import reika.chromaticraft.render.particle.EntityRuneFX;
-import reika.chromaticraft.tileentity.auxiliary.TileEntityChromaCrystal;
-import reika.chromaticraft.tileentity.auxiliary.TileEntityPylonTurboCharger;
-import reika.chromaticraft.world.iwg.PylonGenerator;
-import reika.dragonapi.DragonAPICore;
-import reika.dragonapi.ModList;
-import reika.dragonapi.asm.apistripper.Strippable;
-import reika.dragonapi.asm.dependentmethodstripper.ModDependent;
-import reika.dragonapi.auxiliary.ChunkManager;
-import reika.dragonapi.instantiable.data.blockstruct.BlockArray;
+import reika.chromaticraft.render.particle.ChromaParticle;
+import reika.chromaticraft.client.sound.PylonSoundManager;
 import reika.dragonapi.instantiable.data.blockstruct.FilledBlockArray;
-import reika.dragonapi.instantiable.data.immutable.BlockKey;
+import reika.dragonapi.libraries.level.ReikaWorldHelper;
 import reika.dragonapi.instantiable.data.immutable.Coordinate;
 import reika.dragonapi.instantiable.data.immutable.WorldLocation;
-import reika.dragonapi.instantiable.effects.EntityBlurFX;
-import reika.dragonapi.instantiable.effects.EntityFloatingSeedsFX;
-import reika.dragonapi.interfaces.tileentity.ChunkLoadingTile;
-import reika.dragonapi.libraries.ReikaAABBHelper;
-import reika.dragonapi.libraries.ReikaDirectionHelper;
-import reika.dragonapi.libraries.io.ReikaPacketHelper;
-import reika.dragonapi.libraries.io.ReikaSoundHelper;
-import reika.dragonapi.libraries.java.ReikaJavaLibrary;
-import reika.dragonapi.libraries.java.ReikaRandomHelper;
-import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
-import reika.dragonapi.libraries.registry.ReikaParticleHelper;
+import reika.dragonapi.auxiliary.ChunkManager;
+import reika.dragonapi.interfaces.blockentity.ChunkLoadingTile;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
-import reika.dragonapi.libraries.world.ReikaWorldHelper;
-import reika.dragonapi.modinteract.deepinteract.ReikaMystcraftHelper;
-import reika.dragonapi.modinteract.deepinteract.ReikaThaumHelper;
-import reika.rotarycraft.tileentities.weaponry.TileEntityEMP;
+import reika.dragonapi.instantiable.data.blockstruct.BlockArray;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
-import thaumcraft.api.aspects.Aspect;
-import thaumcraft.api.aspects.AspectList;
-import thaumcraft.api.nodes.INode;
-import thaumcraft.api.nodes.NodeModifier;
-import thaumcraft.api.nodes.NodeType;
-import thaumcraft.api.wands.IWandable;
-import thaumcraft.api.wands.WandCap;
-import thaumcraft.api.wands.WandRod;
-
-@Strippable(value = {"thaumcraft.api.nodes.INode", "thaumcraft.api.wands.IWandable"})
-public class TileEntityCrystalPylon extends CrystalTransmitterBase implements NaturalCrystalSource, ChargingPoint, ChunkLoadingTile, INode, IWandable {
-
-	private FilledBlockArray structure;
-	private boolean hasMultiblock = false;
-	private boolean enhanced = false;
-	private boolean broadcast = false;
-
-	private CrystalElement color = CrystalElement.WHITE;
-	public int randomOffset = rand.nextInt(360);
+/**
+ * The crystal pylon, ChromatiCraft's primary natural crystal-network source.
+ *
+ * <p>This class now carries the complete V33a server-side storage, regeneration, structure,
+ * enhancement, player-placement, charging-rate, event, and persistence behavior. Booster crystals,
+ * linked-pylon donation, encrusted growth, ordinary and vertical hostile attacks, chunk tickets,
+ * unstable overload routing, typed client effects, ability immunity, and anti-capture rejection are
+ * restored against the active 26.2 dependency cluster.
+ */
+public class TileEntityCrystalPylon extends CrystalTransmitterBase implements NaturalCrystalSource, ChargingPoint, ChunkLoadingTile {
 
 	public static final int MAX_ENERGY = 180000;
-
-	private static final Collection<Coordinate> crystalPositions = new HashSet();
-
-	private static Class node;
-	private static HashMap<String, ArrayList<Integer>> nodeCache;
 	public static final int MAX_ENERGY_ENHANCED = 900000;
-
-	private int energy = MAX_ENERGY;
-	private int energyStep = 1;
-
-	private long lastWorldTick;
-	private boolean forceLoad;
-	private boolean placedByHand = false;
-
 	public static final int RANGE = 48;
-
 	public static final boolean TUNED_PYLONS = true;
-
-	public boolean enhancing = false;
-	private boolean destabilized = false;
-
 	public static final int MAX_ATTACK_DELAY = 80;
 	public static final int MIN_ATTACK_DELAY = 12;
 
-	private long lastAttackTime = -1;
-	private int minTicksBetweenAttack = MAX_ATTACK_DELAY;
+	/** Set by the turbocharger while the V33a enhancement ritual is active. */
+	public boolean enhancing;
+	private static final List<BlockPos> POWER_CRYSTAL_POSITIONS = List.of(
+			new BlockPos(-3, -3, -1), new BlockPos(-1, -3, -3),
+			new BlockPos(3, -3, -1), new BlockPos(1, -3, -3),
+			new BlockPos(-3, -3, 1), new BlockPos(-1, -3, 3),
+			new BlockPos(3, -3, 1), new BlockPos(1, -3, 3));
 
-	private WorldLocation linkTile;
-
-	private final HashSet<Coordinate> encrustedBlocks = new HashSet();
-
-	static {
-		if (ModList.THAUMCRAFT.isLoaded()) {
-			try {
-				node = Class.forName("thaumcraft.common.tiles.TileNode");
-				Field f = node.getDeclaredField("locations");
-				f.setAccessible(true);
-				nodeCache = (HashMap<String, ArrayList<Integer>>)f.get(null);
-			}
-			catch (Exception e) {
-				e.printStackTrace();
-			}
-		}
-
-		crystalPositions.add(new Coordinate(-3, -3, -1));
-		crystalPositions.add(new Coordinate(-1, -3, -3));
-		crystalPositions.add(new Coordinate(3, -3, -1));
-		crystalPositions.add(new Coordinate(1, -3, -3));
-		crystalPositions.add(new Coordinate(-3, -3, 1));
-		crystalPositions.add(new Coordinate(-1, -3, 3));
-		crystalPositions.add(new Coordinate(3, -3, 1));
-		crystalPositions.add(new Coordinate(1, -3, 3));
+	/** Relative offsets of the eight V33a pylon power-crystal sockets. */
+	public static Collection<BlockPos> getPowerCrystalLocations() {
+		return Collections.unmodifiableList(POWER_CRYSTAL_POSITIONS);
 	}
 
-	public static Collection<Coordinate> getPowerCrystalLocations() {
-		return Collections.unmodifiableCollection(crystalPositions);
+
+	private FilledBlockArray structure;
+	private CrystalElement color = CrystalElement.WHITE;
+	public int randomOffset = rand.nextInt(360);
+
+	private boolean hasMultiblock;
+	private boolean enhanced;
+	private boolean broadcast;
+	private boolean destabilized;
+	private boolean placedByHand;
+	private boolean forceLoad;
+
+	private int energy = MAX_ENERGY;
+	private int energyStep = 1;
+	private long lastAttackTime = -1;
+	private int minTicksBetweenAttack = MAX_ATTACK_DELAY;
+	private long lastWorldTick;
+
+	/** Raw V33a pylon-link location data, retained until the link-network tile lands. */
+	private final Set<BlockPos> encrustedBlocks = new HashSet<>();
+	private WorldLocation linkTile;
+
+	public TileEntityCrystalPylon(BlockPos pos, net.minecraft.world.level.block.state.BlockState state) {
+		super(reika.chromaticraft.registry.ChromaBlockEntities.PYLON.get(), pos, state);
+	}
+
+	@Override
+	protected void onFirstTick(Level world, BlockPos pos) {
+		super.onFirstTick(world, pos);
+		if (!world.isClientSide()) {
+			this.refreshStructure();
+			if (structure != null)
+				this.reloadEncrusted();
+		}
+		if (!world.isClientSide()) {
+			if (forceLoad && this.getEnergy(color) < this.getMaxStorage(color) && this.hasStructure())
+				ChunkManager.instance.loadChunks(this);
+			else {
+				forceLoad = false;
+				ChunkManager.instance.unloadChunks(this);
+			}
+		}
+	}
+
+	@Override
+	public ChromaTiles getTile() {
+		return ChromaTiles.PYLON;
 	}
 
 	public void destabilize() {
 		destabilized = true;
+		this.syncAllData(true);
 	}
 
 	public boolean isUnstable() {
 		return destabilized;
 	}
 
-	public void link(TileEntityPylonLink te) {
-		linkTile = te == null ? null : new WorldLocation(te);
-		this.syncAllData(true);
-		if (te != null)
-			PylonGenerator.instance.cachePylon(this);
-	}
-
 	public void markPlaced() {
 		placedByHand = true;
+		this.setChanged();
 	}
 
-	@Override
-	public ChromaTiles getTile() {
-		return ChromaTiles.PYLON;
+	public boolean isPlayerPlaced() {
+		return placedByHand;
 	}
 
 	@Override
@@ -231,837 +191,448 @@ public class TileEntityCrystalPylon extends CrystalTransmitterBase implements Na
 		return color;
 	}
 
+	@Override
 	public int getEnergy(CrystalElement e) {
 		return e == color ? energy : 0;
 	}
 
+	@Override
+	public ElementTagCompound getEnergy() {
+		return ElementTagCompound.of(color, energy);
+	}
+
 	public int getRenderColor() {
-		return ReikaColorAPI.mixColors(color.getColor(), 0x888888, (float)energy/this.getCapacity());
+		return ReikaColorAPI.mixColors(color.getColor(), 0x888888, (float)energy / this.getCapacity());
 	}
 
 	@Override
-	protected void onFirstTick(World world, int x, int y, int z) {
-		super.onFirstTick(world, x, y, z);
-		PylonGenerator.instance.cachePylon(this);
-		if (ChromaOptions.PYLONLOAD.getState()) {
-			if (forceLoad && this.getEnergy(color) < this.getMaxStorage(color) && this.hasStructure()) {
-				ChunkManager.instance.loadChunks(this);
-			}
-			else {
-				forceLoad = false;
-				this.unload();
-			}
-		}
-		else {
-			forceLoad = false;
-			this.unload();
-		}
+	public void updateEntity(Level world, BlockPos pos) {
+		super.updateEntity(world, pos);
+		if (world.isClientSide()) {
+            if (hasMultiblock) {
+                this.animatePylon(world, pos);
+                PylonSoundManager.tick(this);
+            }
+            return;
+        }
 
-		if (ModList.THAUMCRAFT.isLoaded() && nodeCache != null) {
-			ArrayList li = new ArrayList();
-			li.add(world.provider.dimensionId);
-			li.add(x);
-			li.add(y);
-			li.add(z);
-			nodeCache.put(this.getId(), li);
-		}
-	}
-
-	private void reloadEncrusted(World world, int x, int y, int z) {
-		for (Coordinate c : structure.keySet()) {
-			for (Coordinate c2 : c.getAdjacentCoordinates()) {
-				if (!structure.hasBlock(c2)) {
-					if (c2.getBlock(world) == ChromaBlocks.ENCRUSTED.getBlockInstance())
-						encrustedBlocks.add(c2);
-				}
-			}
-		}
-	}
-
-	private void updateLinkColor(World world, int x, int y, int z) {
-		if (linkTile != null) {
-			TileEntityPylonLink te = (TileEntityPylonLink)linkTile.getTileEntity(world);
-			if (te == null)
-				world.setBlock(linkTile.xCoord, linkTile.yCoord, linkTile.zCoord, ChromaTiles.PYLONLINK.getBlock(), ChromaTiles.PYLONLINK.getBlockMetadata(), 2);
-			te = (TileEntityPylonLink)linkTile.getTileEntity(world);
-			te.link();
-		}
-	}
-
-	private void forceLoading() {
-		if (!forceLoad) {
-			if (ChromaOptions.PYLONLOAD.getState()) {
-				forceLoad = true;
-				ChunkManager.instance.loadChunks(this);
-			}
-		}
-	}
-
-	@Override
-	public void updateEntity(World world, int x, int y, int z, int meta) {
-		super.updateEntity(world, x, y, z, meta);
-
-		if (hasMultiblock && structure == null) {
-			structure = ChromaStructures.PYLON.getArray(world, x, y, z, this.getColor());
-		}
-
-		if (structure != null && this.getTicksExisted() == 0) {
-			this.reloadEncrusted(world, x, y, z);
-			this.updateLinkColor(world, x, y, z);
-		}
-
-		if (DragonAPICore.debugtest) {
-			if (!hasMultiblock) {
-				CrystalElement e = CrystalElement.randomElement();
-				FilledBlockArray b = ChromaStructures.PYLON.getArray(world, x, y, z, e);
-				b.place();
-				//world.setBlock(x, y+9, z, this.getTile().getBlock(), this.getTile().getBlockMetadata(), 3);
-				//TileEntityCrystalPylon te = (TileEntityCrystalPylon)world.getTileEntity(x, y+9, z);
-				color = e;
-				hasMultiblock = true;
-				this.syncAllData(true);
-			}
-		}
-
-		if (!world.getBlock(x, y-1, z).isAir(world, x, y-1, z) && ReikaWorldHelper.isBlockEncased(world, x, y, z, null)) { //Someone attempting to jar
-			this.doJarRejection(world, x, y, z);
-			//ReikaPacketHelper.sendDataPacketWithRadius(ChromatiCraft.packetChannel, ChromaPackets.PYLONJAR.ordinal(), this, 128);
-		}
-
-		if (this.isUnstable()) {
-			if (world.isRemote) {
-
-			}
-			else {
-				this.doDestabilizedTick(world, x, y, z);
-			}
-		}
-
-		long diff = world.getTotalWorldTime()-lastWorldTick; //1; //was commented out, not sure why
-		lastWorldTick = world.getTotalWorldTime();
-
-		if (hasMultiblock) {
-			//ReikaJavaLibrary.pConsole(energy, Side.SERVER, color == CrystalElement.BLUE);
-
-			int max = this.getCapacity();
-			if (diff > 0) {
-				if (energy >= max/2) {
-					TileEntityPylonLink te = this.getLinkTile();
-					if (te != null) {
-						Collection<WorldLocation> c = te.getLinkedPylons();
-						for (WorldLocation loc : c) {
-							if (!loc.equals(world, x, y, z)) {
-								TileEntity tile2 = loc.getTileEntity();
-								if (tile2 instanceof TileEntityCrystalPylon) {
-									TileEntityCrystalPylon tp = (TileEntityCrystalPylon)tile2;
-									if (tp.color == color) {
-										int amt = Math.min(this.getDonatedRecharge(), tp.getCapacity()-tp.energy);
-										tp.energy += amt;
-										energy -= amt;
-									}
-								}
-							}
-						}
-					}
-				}
-
-				this.charge(world, x, y, z, max, Math.max(1, (int)diff));
-			}
-
-			if (world.isRemote) {
-				this.spawnParticle(world, x, y, z);
-
-				if (HoldingChecks.POWERCRYS.isClientHolding())
-					ChromaFX.doPlacementHintParticles(world, x, y, z, crystalPositions, fx -> {
-						fx.setColor(this.getColor().getColor());
-						fx.setLife(fx.getMaxAge()*2);
-						fx.particleScale = 1.5F;
-						fx.setGravity(fx.getGravity()*1.25F);
-					});
-			}
-
-			if (!world.isRemote && hasMultiblock && structure != null) {
-				Coordinate c = structure.getRandomBlock();
-				BlockKey bk = c.getBlockKey(world);
-				if (bk.blockID == ChromaBlocks.PYLONSTRUCT.getBlockInstance() || bk.blockID == ChromaBlocks.RUNE.getBlockInstance()) {
-					c = c.offset(0, 1, 0);
-					if (c.getBlock(world) == Blocks.snow_layer)
-						c.setBlock(world, Blocks.air);
-				}
-			}
-
-			if (!world.isRemote && ModList.MYSTCRAFT.isLoaded() && ReikaMystcraftHelper.isMystAge(world) && MystPages.Pages.UNSTABLEPYLONS.existsInWorld(world) && rand.nextInt(2000) == 0)
-				this.destabilize();
-
-			if (!world.isRemote) {
-				int rate = this.getAttackRate(world);
-				if (rand.nextInt(rate) == 0) {
-					boolean canAttack = world.getTotalWorldTime()-lastAttackTime >= minTicksBetweenAttack;
-					if (canAttack) {
-						int r = this.getAttackRange();
-						AxisAlignedBB box = ReikaAABBHelper.getBlockAABB(x, y, z).expand(r, r, r);
-						this.attackEntitiesInBox(world, x, y, z, box);
-					}
-				}
-				AxisAlignedBB box = ReikaAABBHelper.getBlockAABB(x, y, z).expand(1, 6, 1);
-				box = box.addCoord(0, 32, 0);
-				for (EntityPlayer ep : ((List<EntityPlayer>)world.playerEntities)) {
-					if (ep.capabilities.isCreativeMode || Chromabilities.PYLON.enabledOn(ep))
-						continue;
-					int d = (int)MathHelper.clamp_double(Math.abs(ep.posY-y-0.5)/6D, 1, 10);
-					if (ep.hurtResistantTime <= rand.nextInt(11-d) && ep.boundingBox.intersectsWith(box) && PylonFinder.lineOfSight(world, x, y, z, ep).hasLineOfSight) {
-						this.attackEntity(ep, false);
-						ReikaPacketHelper.sendDataPacketWithRadius(ChromatiCraft.packetChannel, ChromaPackets.FIREDUMPSHOCK.ordinal(), world, x, y, z, 64, color.ordinal(), ep.getEntityId(), Float.floatToRawIntBits(1.5F));
-						if (ep instanceof EntityPlayerMP)
-							ReikaPacketHelper.sendDataPacket(ChromatiCraft.packetChannel, ChromaPackets.PYLONATTACKRECEIVE.ordinal(), this, (EntityPlayerMP)ep, this.getColor().ordinal());
-					}
-				}
-
-				//ReikaJavaLibrary.pConsole(minTicksBetweenAttack, worldObj.getClosestPlayer(x, y, z, 12) != null);
-				minTicksBetweenAttack = Math.min(minTicksBetweenAttack+1, MAX_ATTACK_DELAY);
-			}
-
-			float f = this.isEnhanced() ? 1.125F : 1;
-
-			if (TileEntityCrystalPylon.TUNED_PYLONS)
-				f *= CrystalMusicManager.instance.getDingPitchScale(color);
-
-			if (this.getTicksExisted()%(int)(72/f) == 0) {
-				ChromaSounds.POWER.playSoundAtBlock(this, 1, f);
-			}
-
-			int n = this.isUnstable() ? 12 : this.isEnhanced() ? 24 : 36;
-			if (world.isRemote && rand.nextInt(n) == 0) {
-				this.spawnLightning(world, x, y, z);
-			}
-
-			if (!world.isRemote && ChromaOptions.BALLLIGHTNING.getState() && energy >= this.getCapacity()/2 && rand.nextInt(1000) == 0 && ReikaWorldHelper.isRadiusLoaded(world, x, z, 2) && EntityBallLightning.canSpawnHere(world, x+0.5, y+0.5, z+0.5)) {
-				world.spawnEntityInWorld(new EntityBallLightning(world, color, x+0.5, y+0.5, z+0.5).setPylon().setNoDrops());
-			}
-
-			energy = Math.max(0, Math.min(energy, max));
-
-			//if (world.getClosestPlayer(xCoord, y, z, 25) != null)
-			//	for (int i = 0; i < 500; i++)
-			if (!world.isRemote && hasMultiblock && energy == this.getCapacity() && !this.isEnhanced() && !this.isEnhancing() && !this.isUnstable() && this.getBoosterCrystals(world, max, y, z, false).isEmpty()) {
-				if (rand.nextInt(120) == 0)
-					this.tryGrowEncrusted(world, x, y, z);
-
-				int r = 12;
-				Coordinate c1 = new Coordinate(this).offset(0, -9, 0);
-				//for (int i = 0; i < 6; i++) {
-				Coordinate c = c1.offset(ReikaRandomHelper.getRandomPlusMinus(0, r), ReikaRandomHelper.getRandomPlusMinus(0, 2), ReikaRandomHelper.getRandomPlusMinus(0, r));
-				if (c.getTaxicabDistanceTo(c1) >= 4 && !structure.hasBlock(c) && c.getBlock(world) == ChromaBlocks.PYLONSTRUCT.getBlockInstance()) {
-					Coordinate c2 = c.offset(ReikaDirectionHelper.getRandomDirection(true, rand), 1);
-					this.tryGrowEncrustedAt(world, c, c2, false);
-				}
-			}
-		}
-	}
-
-	private void attackEntitiesInBox(World world, int x, int y, int z, AxisAlignedBB box) {
-		List<EntityLivingBase> li = world.getEntitiesWithinAABB(EntityLivingBase.class, box);
-		for (EntityLivingBase e : li) {
-			boolean attack = !e.isDead && e.getHealth() > 0;
-			if (e instanceof EntityPlayer) {
-				EntityPlayer ep = (EntityPlayer)e;
-				attack = attack && !ep.capabilities.isCreativeMode && !Chromabilities.PYLON.enabledOn(ep);
-			}
-			else if (e instanceof EntityBallLightning) {
-				attack = ((EntityBallLightning)e).getElement() != color;
-			}
-			else if (e.getClass().getName().equals("openblocks.common.entity.EntityLuggage")) {
-				attack = false;
-			}
-			if (attack) {
-				this.attackEntity(e, true);
-				this.sendClientAttack(this, e);
-			}
-		}
-	}
-
-	private void tryGrowEncrusted(World world, int x, int y, int z) {
-		Coordinate c = structure.getRandomBlock();
-		Coordinate c2 = c.offset(ReikaDirectionHelper.getRandomDirection(true, rand), 1);
-		this.tryGrowEncrustedAt(world, c, c2, c.getBlock(world) != ChromaBlocks.RUNE.getBlockInstance());
-		//}
-	}
-
-	private void tryGrowEncrustedAt(World world, Coordinate from, Coordinate c, boolean addToCount) {
-		if (!structure.hasBlock(c)) {
-			Block b = c.getBlock(world);
-			if (isEncrustedGrowable(world, c, b) && (!addToCount || encrustedBlocks.size() < 6))
-				this.growEncrustedAt(world, from, c.xCoord, c.yCoord, c.zCoord, true, addToCount);
-			else if (b == ChromaBlocks.ENCRUSTED.getBlockInstance() && c.getBlockMetadata(world) == this.getColor().ordinal())
-				this.growEncrustedAt(world, from, c.xCoord, c.yCoord, c.zCoord, false, addToCount);
-		}
-	}
-
-	public static boolean isEncrustedGrowable(World world, Coordinate c, Block b) {
-		return b.isAir(world, c.xCoord, c.yCoord, c.zCoord) || b == Blocks.snow_layer;
-	}
-
-	private void growEncrustedAt(World world, Coordinate from, int x, int y, int z, boolean place, boolean addToCount) {
-		boolean special = x == xCoord && y == yCoord-8 && z == zCoord;
-		int growth = 1;
-		if (place) {
-			world.setBlock(x, y, z, ChromaBlocks.ENCRUSTED.getBlockInstance(), this.getColor().ordinal(), 3);
-			for (Coordinate c : crystalPositions) {
-				if (c.equals(x-xCoord, y-yCoord, z-zCoord)) {
-					special = true;
-					growth = 4;
-					break;
-				}
-			}
-			if (from.getBlock(world) == ChromaBlocks.RUNE.getBlockInstance())
-				growth = 2;
-			if (addToCount)
-				encrustedBlocks.add(new Coordinate(x, y, z));
-		}
-		TileCrystalEncrusted te = (TileCrystalEncrusted)world.getTileEntity(x, y, z);
-		if (te == null) {
-			world.setBlock(x, y, z, Blocks.air);
-			encrustedBlocks.remove(new Coordinate(x, y, z));
-			return;
-		}
-		te.markReady();
-		if (special) {
-			te.makeSpecial();
-		}
-		if (!te.grow(world, x, y, z)) {
-			if (te.getGrowths().isEmpty()) {
-				world.setBlock(x, y, z, Blocks.air);
-				if (addToCount)
-					encrustedBlocks.remove(new Coordinate(te));
-			}
-		}
-	}
-
-	private TileEntityPylonLink getLinkTile() {
-		if (linkTile != null) {
-			TileEntity tile = linkTile.getTileEntity();
-			return tile instanceof TileEntityPylonLink ? (TileEntityPylonLink)tile : null;
-		}
-		return null;
-	}
-
-	public UUID getLinkTileUUID() {
-		TileEntityPylonLink te = this.getLinkTile();
-		return te != null ? te.getUUID() : null;
-	}
-
-	private int getAttackRate(World world) {
-		int base = 80;
+		if (structure == null && hasMultiblock)
+			structure = this.createStructure();
+		if (!world.getBlockState(pos.below()).isAir() && this.isEncased())
+			this.rejectEnclosure((ServerLevel)world);
 		if (this.isUnstable())
-			base /= 8;
-		if (ModList.MYSTCRAFT.isLoaded() && ReikaMystcraftHelper.isMystAge(world) && MystPages.Pages.VIOLENTPYLONS.existsInWorld(world))
-			base /= 4;
-		return base;
+			this.doDestabilizedTick((ServerLevel)world);
+		if (this.getTicksExisted() > 0 && this.getTicksExisted() % 10 == 0 && structure != null) {
+			if (!structure.matchInWorld()) {
+				this.invalidateMultiblock();
+				return;
+			}
+			this.refreshBroadcastUpgrade();
+		}
+		if (hasMultiblock) {
+			this.tickHostileAttacks((ServerLevel)world);
+			this.tickVerticalDefense((ServerLevel)world);
+			minTicksBetweenAttack = Math.min(minTicksBetweenAttack + 1, MAX_ATTACK_DELAY);
+        }
+
+		long time = world.getGameTime();
+		long diff = time - lastWorldTick;
+		lastWorldTick = time;
+		if (hasMultiblock && diff > 0) {
+			int ticks = (int)Math.min(Integer.MAX_VALUE, Math.max(1L, diff));
+			this.donateEnergyToLinkedPylons();
+			this.charge(this.getCapacity(), ticks);
+		}
+		if (hasMultiblock && structure != null) {
+			this.clearSnowFromStructure(world);
+			if (energy == this.getCapacity() && !this.isEnhanced() && !enhancing
+					&& !this.isUnstable() && this.getBoosterCrystals(false).isEmpty() && rand.nextInt(120) == 0)
+				this.tryGrowEncrusted();
+		}
 	}
 
-	private void doDestabilizedTick(World world, int x, int y, int z) {
-		if (rand.nextInt(40) == 0) {
-			this.sendRandomShock(world, true, 8);
+    /** V33a flare cloud, enhanced floating seeds, and ball-lightning cadence. */
+    private void animatePylon(Level world, BlockPos pos) {
+        ChromaParticle.spawnPylon(world, pos, color, this.isEnhanced(), this.isUnstable(),
+                this.getTicksExisted(), this.getAttackDensity(), rand);
+    }
+
+    private float getAttackDensity() {
+        return 1F - (minTicksBetweenAttack - MIN_ATTACK_DELAY)
+                / (float)(MAX_ATTACK_DELAY - MIN_ATTACK_DELAY);
+    }
+	private void charge(int max, int ticks) {
+		int previousEnergy = energy;
+		boolean previouslyConducting = this.canConduct();
+		if (energy < max) {
+			long regenerated = (long)energy + (long)energyStep * ticks;
+			energy = (int)Math.min(max, regenerated);
 		}
+		if (energy < max) {
+			ArrayList<TileEntityChromaCrystal> boosters = this.getBoosterCrystals(true);
+			long increment = ticks;
+			int multiplier = this.isEnhanced() ? 3 : 2;
+			for (int i = 0; i < boosters.size() && energy < max; i++) {
+				energy = (int)Math.min(max, energy + increment * energyStep);
+				increment *= multiplier;
+				if (i == 7)
+					energy = (int)Math.min(max, energy + increment * 2L * energyStep);
+			}
+			if (boosters.size() == 8) {
+				Player owner = boosters.get(0).getPlacer();
+				if (owner != null)
+					ProgressStage.POWERCRYSTAL.stepPlayerTo(owner);
+			}
+		}
+		if (energyStep > 1)
+			energyStep--;
+		energy = Math.min(energy, max);
+
+		if (energy != previousEnergy)
+			this.setChanged();
+		if (energy == this.getCapacity() && previousEnergy != this.getCapacity()) {
+			NeoForge.EVENT_BUS.post(new PylonFullyChargedEvent(this));
+			ChunkManager.instance.unloadChunks(this);
+		}
+		if (this.canConduct() && !previouslyConducting)
+			NeoForge.EVENT_BUS.post(new PylonRechargedEvent(this));
+	}
+
+	public void speedRegenShortly(int power) {
+		energyStep = Math.max(1, power);
+		this.setChanged();
+	}
+	private void tickHostileAttacks(ServerLevel world) {
+		int rate = this.getAttackRate();
+		if (rand.nextInt(rate) != 0 || world.getGameTime() - lastAttackTime < minTicksBetweenAttack)
+			return;
+		int range = this.getAttackRange();
+		AABB box = new AABB(this.getBlockPos()).inflate(range);
+		this.attackEntitiesInBox(world, box);
+	}
+
+	private int getAttackRate() {
+		return this.isUnstable() ? 10 : 80;
+	}
+
+	private int getAttackRange() {
+		int base = enhancing ? 16 : this.isEnhanced() ? 12 : 8;
+		return base + rand.nextInt(enhancing ? 16 : 8);
+	}
+
+	private void attackEntitiesInBox(ServerLevel world, AABB box) {
+		boolean attacked = false;
+		for (LivingEntity entity : world.getEntitiesOfClass(LivingEntity.class, box)) {
+			if (!this.canAttack(entity))
+				continue;
+			this.attackEntity(entity, true);
+			attacked = true;
+		}
+		if (attacked)
+			lastAttackTime = world.getGameTime();
+	}
+
+	private boolean canAttack(LivingEntity entity) {
+		if (!entity.isAlive())
+			return false;
+		if (entity instanceof Player player && ChromaAbilityData.hasPylonImmunity(player))
+			return false;
+		if (entity instanceof Player player && player.isCreative())
+			return false;
+		// OpenBlocks luggage remains excluded by name without a hard dependency.
+		return !entity.getClass().getName().equals("openblocks.common.entity.EntityLuggage");
+	}
+
+	private void tickVerticalDefense(ServerLevel world) {
+		AABB column = new AABB(this.getBlockPos()).inflate(1, 6, 1).expandTowards(0, 32, 0);
+		for (Player player : world.getEntitiesOfClass(Player.class, column))
+			this.tryAttackClimber(player);
+	}
+
+	/**
+	 * Applies the V33a anti-climb eligibility, height-weighted cooldown, and LOS rules to one player.
+	 * Exposed for deterministic regression coverage; normal gameplay reaches it through the column scan.
+	 */
+	public boolean tryAttackClimber(Player player) {
+		if (!(this.getLevel() instanceof ServerLevel world) || !this.canAttack(player))
+			return false;
+		int distanceBand = Math.max(1, Math.min(10,
+				(int)(Math.abs(player.getY() - this.getY() - 0.5) / 6D)));
+		if (player.invulnerableTime > rand.nextInt(11 - distanceBand))
+			return false;
+		if (!PylonFinder.lineOfSight(world, this.getX(), this.getY(), this.getZ(), player).hasLineOfSight)
+			return false;
+		this.attackEntity(player, false);
+		return true;
+	}
+
+	/** Applies the V33a pylon strike and its accelerating repeat-attack cadence. */
+	public boolean attackEntity(LivingEntity entity, boolean sound) {
+		if (!(this.getLevel() instanceof ServerLevel server) || !this.canAttack(entity))
+			return false;
+		if (sound) {
+			ChromaSounds.DISCHARGE.playSoundAtBlock(this);
+			ChromaSounds.DISCHARGE.playSound(entity, 1, 1);
+		}
+		float amount = Math.max(this.isEnhanced() ? 10 : 5, entity.getHealth() / 4F);
+		boolean hurt = entity.hurtServer(server, server.damageSources().magic(), amount);
+		var effect = CrystalPotionController.instance.getEffectFromColor(color, 200, 2, false);
+		if (effect != null)
+			entity.addEffect(effect);
+		if (entity instanceof Player)
+			minTicksBetweenAttack = Math.max(MIN_ATTACK_DELAY,
+					minTicksBetweenAttack - (18 + rand.nextInt(43)));
+		ChromaNetwork.sendAttack(server, this.getBlockPos(), entity, color, 1.5F);
+		return hurt;
+	}
+
+	private void doDestabilizedTick(ServerLevel world) {
+		if (rand.nextInt(40) == 0)
+			this.sendRandomShock(true, 8);
 		if (rand.nextInt(120) == 0) {
-			ArrayList<TileEntityCrystalPylon> li = CrystalNetworker.instance.getAllNearbyPylons(this, 128, true);
-			while (!li.isEmpty()) {
-				int idx = rand.nextInt(li.size());
-				TileEntityCrystalPylon te = li.remove(idx);
-				if (te.hasStructure() && !te.isUnstable()) {
-					this.shortCircuitWith(world, x, y, z, te);
+			ArrayList<TileEntityCrystalPylon> pylons =
+					CrystalNetworker.instance.getAllNearbyPylons(this, 128, true);
+			while (!pylons.isEmpty()) {
+				TileEntityCrystalPylon target = pylons.remove(rand.nextInt(pylons.size()));
+				if (target != null && target.hasStructure() && !target.isUnstable()) {
+					this.shortCircuitWith(target);
 					break;
 				}
 			}
 		}
 		if (rand.nextInt(1000) == 0) {
 			destabilized = false;
-			this.destroyPowerCrystals(1+rand.nextInt(8));
-			world.newExplosion(null, x+0.5-1+rand.nextInt(3), y+0.5-1, z+0.5-1+rand.nextInt(3), 4, true, true);
+			this.destroyPowerCrystals(1 + rand.nextInt(8));
+			BlockPos pos = this.getBlockPos();
+			world.explode(null,
+					pos.getX() + 0.5 - 1 + rand.nextInt(3),
+					pos.getY() - 0.5,
+					pos.getZ() + 0.5 - 1 + rand.nextInt(3),
+					4, true, Level.ExplosionInteraction.BLOCK);
+			this.syncAllData(true);
 		}
 	}
 
-	public void sendRandomShock(World world, boolean canJumpColors, int dmg) {
-		LinkedList<CrystalNetworkTile> li = CrystalNetworker.instance.findPathToRandomReceiverFromSource(this, canJumpColors && rand.nextInt(2) == 0 ? null : color, false);
-		if (li.size() > 1) {
-			ArrayList<Coordinate> li2 = new ArrayList();
-			for (CrystalNetworkTile te : li) {
-				li2.add(new Coordinate(te.getX(), te.getY(), te.getZ()));
-			}
-			CrystalReceiver r = (CrystalReceiver)li.getLast();
-			Collections.reverse(li);
-			CrystalPath p = PylonFinder.convertTileListToPath(li, color);
-			double sp = EntityOverloadingPylonShock.getRandomSpeed();
-			int l = (int)(sp*li.size());
-			p.blink(l, r);
-			world.spawnEntityInWorld(new EntityOverloadingPylonShock(world, this, li2, sp, dmg));
+	public boolean sendRandomShock(boolean canJumpColors, int damage) {
+		if (!(this.getLevel() instanceof ServerLevel world))
+			return false;
+		CrystalElement searchColor = canJumpColors && rand.nextBoolean() ? null : color;
+		LinkedList<CrystalNetworkTile> route =
+				CrystalNetworker.instance.findPathToRandomReceiverFromSource(this, searchColor, false);
+		if (route.size() <= 1)
+			return false;
+
+		ArrayList<BlockPos> entityRoute = new ArrayList<>();
+		for (CrystalNetworkTile tile : route)
+			entityRoute.add(new BlockPos(tile.getX(), tile.getY(), tile.getZ()));
+		CrystalReceiver receiver = (CrystalReceiver)route.getLast();
+		Collections.reverse(route);
+		CrystalPath path = PylonFinder.convertTileListToPath(route, color);
+		double speed = EntityPylonOverloadShock.getRandomSpeed();
+		path.blink((int)(speed * route.size()), receiver);
+		return world.addFreshEntity(new EntityPylonOverloadShock(world, this, entityRoute, speed, damage));
+	}
+
+	/** Creates the V33a two-pylon overload beam and travelling destructive pulse. */
+	public boolean shortCircuitWith(TileEntityCrystalPylon target) {
+		if (!(this.getLevel() instanceof ServerLevel world) || target == null
+				|| target.getLevel() != world || target == this)
+			return false;
+		double speed = EntityPylonOverloadShock.getRandomSpeed();
+		int duration = (int)speed;
+		WorldLocation location = new WorldLocation(target);
+		this.addSelfTickingTarget(location, color, 0, 0, 0,
+				this.getOutgoingBeamRadius() * 2.5, Double.POSITIVE_INFINITY, duration);
+		ArrayList<BlockPos> route = new ArrayList<>(List.of(this.getBlockPos(), target.getBlockPos()));
+		boolean spawned = world.addFreshEntity(new EntityPylonOverloadShock(world, this, route, speed, 1));
+		if (target.getColor() != color) {
+			this.addSelfTickingTarget(location, target.getColor(), 0, 0, 0,
+					target.getOutgoingBeamRadius() * 2.5, Double.POSITIVE_INFINITY, duration);
+			if (rand.nextInt(8) == 0)
+				target.destabilize();
 		}
+		return spawned;
 	}
-
-	private void shortCircuitWith(World world, int x, int y, int z, TileEntityCrystalPylon te) {
-		double sp = EntityOverloadingPylonShock.getRandomSpeed();
-		int l = (int)sp;
-		this.addSelfTickingTarget(new WorldLocation(te), color, 0, 0, 0, this.getOutgoingBeamRadius()*2.5, Double.POSITIVE_INFINITY, l);
-		ArrayList<Coordinate> li = ReikaJavaLibrary.makeListFrom(new Coordinate(this), new Coordinate(te));
-		world.spawnEntityInWorld(new EntityOverloadingPylonShock(world, this, li, sp, 1));
-		if (te.getColor() != color) {
-			this.addSelfTickingTarget(new WorldLocation(te), te.getColor(), 0, 0, 0, te.getOutgoingBeamRadius()*2.5, Double.POSITIVE_INFINITY, l);
-			if (rand.nextInt(8) == 0) {
-				te.destabilize();
-			}
-		}
-	}
-
-	private int getDonatedRecharge() {
-		return Math.min(energy/2, this.isEnhanced() ? 500 : 100);
-	}
-
-	private int getAttackRange() {
-		return (this.isEnhancing() ? 16 : this.isEnhanced() ? 12 : 8)+rand.nextInt(this.isEnhancing() ? 16 : 8);
-	}
-
-	private float getAttackDensity() {
-		return 1F-(minTicksBetweenAttack-MIN_ATTACK_DELAY)/(float)(MAX_ATTACK_DELAY-MIN_ATTACK_DELAY);
-	}
-
-	private boolean isEnhancing() {
-		if (ChromaTiles.getTile(worldObj, xCoord, yCoord-8, zCoord) == ChromaTiles.PYLONTURBO) {
-			TileEntityPylonTurboCharger te = (TileEntityPylonTurboCharger)worldObj.getTileEntity(xCoord, yCoord-8, zCoord);
-			return te.getTick() > 0;
-		}
-		return false;
-	}
-
-	private void doJarRejection(World world, int x, int y, int z) {
-		for (int i = -1; i <= 1; i++) {
-			for (int j = -1; j <= 1; j++) {
-				for (int k = -1; k <= 1; k++) {
-					if (i != 0 || j != 0 || k != 0) {
-						int dx = x+i;
-						int dy = y+j;
-						int dz = z+k;
-						ReikaSoundHelper.playBreakSound(world, dx, dy, dz, world.getBlock(dx, dy, dz));
-						world.setBlock(dx, dy, dz, Blocks.air);
-					}
-				}
-			}
-		}
-		ReikaSoundHelper.playSoundAtBlock(world, x, y, z, "random.explode", 2, 0.5F);
-		ReikaSoundHelper.playSoundAtBlock(world, x, y, z, "random.explode", 2, 1);
-		ReikaSoundHelper.playSoundAtBlock(world, x, y, z, "random.explode", 2, 2);
-		ChromaSounds.DISCHARGE.playSoundAtBlockNoAttenuation(this, 2, 0.5F, 64);
-		ChromaSounds.DISCHARGE.playSoundAtBlockNoAttenuation(this, 2, 1F, 64);
-		ChromaSounds.DISCHARGE.playSoundAtBlockNoAttenuation(this, 2, 2F, 64);
-		AxisAlignedBB box = ReikaAABBHelper.getBlockAABB(x, y, z).expand(16, 16, 16);
-		List<EntityLivingBase> li = world.getEntitiesWithinAABB(EntityLivingBase.class, box);
-		for (EntityLivingBase e : li) {
-			double dx = e.posX-x-0.5;
-			double dy = e.posY-y-0.5;
-			double dz = e.posZ-z-0.5;
-			double dd = ReikaMathLibrary.py3d(dx, dy, dz);
-			double v = 10;
-			double vy = 3;
-			e.addVelocity(v*dx/dd, vy+0*Math.max(v*dy/dd, vy), v*dz/dd);
-			e.fallDistance = 250;
-			if (e instanceof EntityPlayer) {
-				((EntityPlayer)e).capabilities.allowFlying = false;
-				((EntityPlayer)e).capabilities.isFlying = false;
-			}
-		}
-		if (!world.isRemote) {
-			int n = 8+rand.nextInt(12);
-			for (int i = 0; i < n; i++) {
-				int rx = ReikaRandomHelper.getRandomPlusMinus(x, 12);
-				int ry = ReikaRandomHelper.getRandomPlusMinus(y, 4);
-				int rz = ReikaRandomHelper.getRandomPlusMinus(z, 12);
-				ReikaWorldHelper.ignite(world, rx, ry, rz);
-			}
-			if (rand.nextBoolean())
-				this.destroyPowerCrystals(1);
-		}
-		else
-			this.doJarRejectionParticles(world, x, y, z);
-	}
-
-	@SideOnly(Side.CLIENT)
-	private void doJarRejectionParticles(World world, int x, int y, int z) {
-		ReikaParticleHelper.EXPLODE.spawnAroundBlockWithOutset(world, x, y, z, 0, 0, 0, 16, 0.25);
-		for (int i = 0; i < 256; i++) {
-			EntityFloatingSeedsFX fx = new EntityCCFloatingSeedsFX(world, x+0.5, y+0.5, z+0.5, rand.nextDouble()*360, -90+rand.nextDouble()*180);
-			fx.setColor(color.getColor()).setScale(2+rand.nextFloat()*8).setLife(40+rand.nextInt(120));
-			fx.particleVelocity = 0.5;
-			fx.angleVelocity *= 2;
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-		}
-		for (int i = 0; i < 16; i++) {
-			this.spawnLightning(world, x, y, z);
-		}
-	}
-
-	@SideOnly(Side.CLIENT)
-	private void spawnLightning(World world, int x, int y, int z) {
-		EntityBallLightningFX e = new EntityBallLightningFX(world, x+0.5, y+0.5, z+0.5, color);
-		e.setVelocity(0.125, rand.nextInt(360), 0);
-		Minecraft.getMinecraft().effectRenderer.addEffect(e);
-	}
-
-	public void destroyPowerCrystals(int n) {
-		ArrayList<TileEntityChromaCrystal> crys = this.getBoosterCrystals(worldObj, xCoord, yCoord, zCoord, false);
-		for (int i = 0; i < n && !crys.isEmpty(); i++) {
-			int idx = rand.nextInt(crys.size());
-			crys.get(idx).destroy();
-			crys.remove(idx);
-		}
-	}
-
-	private void charge(World world, int x, int y, int z, int max, int ticks) {
-		int laste = energy;
-		boolean lastconn = this.canConduct();
-
-		if (energy < max) {
-			energy += energyStep*ticks;
-		}
-
-		int a = ticks;
-		if (energy < max) {
-			ArrayList<TileEntityChromaCrystal> blocks = this.getBoosterCrystals(world, x, y, z, true);
-			int c = this.isEnhanced() ? 3 : 2;
-			for (int i = 0; i < blocks.size(); i++) {
-				energy += a*energyStep;
-				a *= c;
-				if (i == 7) { //8 crystals
-					energy += a*2*energyStep;
-				}
-				if (energy >= max) {
-					break;
-				}
-			}
-			//if (blocks.size() > 0 && this.getTicksExisted()%875 == 0) {
-			//	ChromaSounds.POWERCRYS.playSoundAtBlock(this);
-			//}
-			if (blocks.size() == 8) {
-				ProgressStage.POWERCRYSTAL.stepPlayerTo(blocks.get(0).getPlacer());
-			}
-			if (world.isRemote && !blocks.isEmpty()) {
-				this.spawnRechargeParticles(world, x, y, z, blocks);
-			}
-		}
-
-		if (energyStep > 1)
-			energyStep--;
-
-		energy = Math.min(energy, this.getCapacity());
-
-		if (energy == this.getCapacity() && laste != this.getCapacity()) {
-			MinecraftForge.EVENT_BUS.post(new PylonFullyChargedEvent(this));
-			this.unload();
-		}
-		if (this.canConduct() && !lastconn) {
-			MinecraftForge.EVENT_BUS.post(new PylonRechargedEvent(this));
-		}
-	}
-
-	public void speedRegenShortly(int power) {
-		energyStep = power;
-	}
-
-	@SideOnly(Side.CLIENT)
-	private void spawnRechargeParticles(World world, int x, int y, int z, ArrayList<TileEntityChromaCrystal> blocks) {
-		int i = 0;
-		for (TileEntityChromaCrystal te : blocks) {
-			int dx = te.xCoord;
-			int dy = te.yCoord;
-			int dz = te.zCoord;
-			double ddx = dx-x;
-			double ddy = dy-y-0.25;
-			double ddz = dz-z;
-			double dd = ReikaMathLibrary.py3d(ddx, ddy, ddz);
-			double v = 0.125;
-			double vx = -v*ddx/dd;
-			double vy = -v*ddy/dd;
-			double vz = -v*ddz/dd;
-			double px = dx+0.5;
-			double py = dy+0.125;
-			double pz = dz+0.5;
-			//EntityRuneFX fx = new EntityRuneFX(world, dx+0.5, dy+0.5, dz+0.5, vx, vy, vz, color);
-			float sc = (float)(2F+Math.sin(4*Math.toRadians(this.getTicksExisted()+i*90/blocks.size())));
-			EntityBlurFX fx = new EntityCCBlurFX(color, world, px, py, pz, vx, vy, vz).setScale(sc).setLife(38).setNoSlowdown();
-			//EntityLaserFX fx = new EntityLaserFX(color, world, px, py, pz, vx, vy, vz).setScale(3);
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-			i++;
-		}
-	}
-
-	public BlockArray getRuneLocations(World world, int x, int y, int z) {
-		BlockArray blocks = new BlockArray();
-		blocks.addBlockCoordinate(x-3, y-4, z-1);
-		blocks.addBlockCoordinate(x-1, y-4, z-3);
-
-		blocks.addBlockCoordinate(x+3, y-4, z-1);
-		blocks.addBlockCoordinate(x+1, y-4, z-3);
-
-		blocks.addBlockCoordinate(x-3, y-4, z+1);
-		blocks.addBlockCoordinate(x-1, y-4, z+3);
-
-		blocks.addBlockCoordinate(x+3, y-4, z+1);
-		blocks.addBlockCoordinate(x+1, y-4, z+3);
-		return blocks;
-	}
-
-	public ArrayList<TileEntityChromaCrystal> getBoosterCrystals(World world, int x, int y, int z, boolean matchOwner) {
-		ArrayList<TileEntityChromaCrystal> li = new ArrayList();
-		EntityPlayer owner = null;
-		for (Coordinate c : crystalPositions) {
-			if (world.checkChunksExist(c.xCoord+x, c.yCoord+y, c.zCoord+z, c.xCoord+x, c.yCoord+y, c.zCoord+z)) {
-				if (ChromaTiles.getTile(world, x+c.xCoord, y+c.yCoord, z+c.zCoord) == ChromaTiles.CRYSTAL) {
-					TileEntityChromaCrystal te = (TileEntityChromaCrystal)world.getTileEntity(x+c.xCoord, y+c.yCoord, z+c.zCoord); {
-						EntityPlayer ep = te.getPlacer();
-						if (!matchOwner || (ep != null && (owner == null || ep == owner))) {
-							if (owner == null)
-								owner = ep;
-							li.add(te);
-						}
-					}
-				}
-			}
-		}
-		return li;
-	}
-
-	public boolean isValidPowerCrystal(TileEntityChromaCrystal te) {
-		return crystalPositions.contains(new Coordinate(te).offset(-xCoord, -yCoord, -zCoord));
-	}
-
-	public void onPowerCrystalBreak(TileEntityChromaCrystal te) {
-		this.disenhance();
-		this.drain(color, energy/4);
-		worldObj.addWeatherEffect(new EntityLightningBolt(worldObj, te.xCoord+0.5, te.yCoord+0.5, te.zCoord+0.5));
-		AxisAlignedBB box = ReikaAABBHelper.getBlockAABB(xCoord, yCoord, zCoord).expand(24, 16, 24);
-		List<EntityLivingBase> li = worldObj.getEntitiesWithinAABB(EntityLivingBase.class, box);
-		for (EntityLivingBase e : li) {
-			if (e instanceof EntityPlayer) {
-				if (((EntityPlayer)e).capabilities.isCreativeMode) {
-					e.attackEntityFrom(DamageSource.outOfWorld, 0.001F);
-				}
-				else {
-					float amt = Math.max(5, Math.min(e.getHealth()-4, e.getMaxHealth()*0.75F));
-					ChromaAux.doPylonAttack(color, e, amt);
-					ChromaSounds.DISCHARGE.playSound(e.worldObj, e.posX, e.posY, e.posZ, 1, 1);
-				}
-			}
-			else {
-				e.attackEntityFrom(DamageSource.magic, 0); //only appear to hurt
-			}
-		}
-		ReikaPacketHelper.sendDataPacketWithRadius(ChromatiCraft.packetChannel, ChromaPackets.PYLONCRYSTALBREAK.ordinal(), this, 64);
-		this.syncAllData(true);
-	}
-
-	@SideOnly(Side.CLIENT)
-	public void doPowerCrystalBreakFX(World world, int x, int y, int z) {
-		int n = 24+rand.nextInt(32);
-		for (int i = 0; i < n; i++) {
-			float s = 1+rand.nextFloat()*2;
-			int l = 30+rand.nextInt(50);
-			EntityFX fx = new EntityCCFloatingSeedsFX(world, x+0.5, y+0.5, z+0.5, rand.nextDouble()*360, rand.nextDouble()*360, ChromaIcons.NODE2).setColor(color.getColor()).setScale(s).setLife(l);
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-		}
-		ReikaSoundHelper.playClientSound(ChromaSounds.DISCHARGE, x+0.5, y+0.5, z+0.5, 1, 1, false);
-	}
-
-	@SideOnly(Side.CLIENT)
-	public void particleAttack(int sx, int sy, int sz, int x, int y, int z) {
-		int n = 8+rand.nextInt(24);
-		for (int i = 0; i < n; i++) {
-			float rx = sx+rand.nextFloat();
-			float ry = sy+rand.nextFloat();
-			float rz = sz+rand.nextFloat();
-			double dx = x-sx;
-			double dy = y-sy;
-			double dz = z-sz;
-			double dd = ReikaMathLibrary.py3d(dx, dy, dz);
-			double vx = 2*dx/dd;
-			double vy = 2*dy/dd;
-			double vz = 2*dz/dd;
-			EntityFlareFX f = new EntityFlareFX(color, worldObj, rx, ry, rz, vx, vy, vz).setNoGravity();
-			Minecraft.getMinecraft().effectRenderer.addEffect(f);
-		}
-	}
-	/*
-	void attackEntityByProxy(EntityPlayer player, CrystalRepeater te) {
-		this.attackEntity(player);
-		this.sendClientAttack(te, player);
-	}
-	 */
-	void attackEntity(EntityLivingBase e, boolean sound) {
-		if (sound) {
-			ChromaSounds.DISCHARGE.playSoundAtBlock(this);
-			ChromaSounds.DISCHARGE.playSound(e);
-		}
-
-		ChromaAux.doPylonAttack(color, e, Math.max(this.isEnhanced() ? 10 : 5, e.getHealth()/4F), true, 0, true);
-
-		PotionEffect eff = CrystalPotionController.instance.getEffectFromColor(color, 200, 2, false);
-		if (eff != null) {
-			e.addPotionEffect(eff);
-		}
-
-		if (e instanceof EntityPlayer) {
-			minTicksBetweenAttack = Math.max(minTicksBetweenAttack-ReikaRandomHelper.getRandomBetween(18, 60), MIN_ATTACK_DELAY);
-		}
-		else if (e instanceof EntityGlowCloud) {
-			((EntityGlowCloud)e).aimAwayFrom(xCoord, yCoord, zCoord, 0.25);
-		}
-	}
-
-	private void sendClientAttack(CrystalTransmitter te, EntityLivingBase e) {
-		int tx = te.getX();
-		int ty = te.getY();
-		int tz = te.getZ();
-		int x = MathHelper.floor_double(e.posX);
-		int y = MathHelper.floor_double(e.posY)+1;
-		int z = MathHelper.floor_double(e.posZ);
-		ReikaPacketHelper.sendDataPacketWithRadius(ChromatiCraft.packetChannel, ChromaPackets.PYLONATTACK.ordinal(), te.getWorld(), tx, ty, tz, 128, tx, ty, tz, x, y, z);
-		if (e instanceof EntityPlayerMP)
-			ReikaPacketHelper.sendDataPacket(ChromatiCraft.packetChannel, ChromaPackets.PYLONATTACKRECEIVE.ordinal(), this, (EntityPlayerMP)e, this.getColor().ordinal());
-	}
-
-	public void invalidateMultiblock() {
-		if (hasMultiblock) {
-			ChromaSounds.POWERDOWN.playSoundAtBlock(this);
-			ChromaSounds.POWERDOWN.playSound(worldObj, xCoord, yCoord, zCoord, 1F, 2F);
-			ChromaSounds.POWERDOWN.playSound(worldObj, xCoord, yCoord, zCoord, 1F, 0.5F);
-
-			if (worldObj.isRemote)
-				this.invalidatationParticles();
-		}
-		structure = null;
-		hasMultiblock = false;
-		this.unload();
-		this.clearTargets(false);
-		energy = 0;
-		this.syncAllData(true);
-		PylonGenerator.instance.cachePylon(this);
-	}
-
-	@SideOnly(Side.CLIENT)
-	private void invalidatationParticles() {
-		double d = 1.25;
-		int n = 64+rand.nextInt(64);
-		for (int i = 0; i < n; i++) {
-			double rx = ReikaRandomHelper.getRandomPlusMinus(xCoord+0.5, d);
-			double ry = ReikaRandomHelper.getRandomPlusMinus(yCoord+0.5, d);
-			double rz = ReikaRandomHelper.getRandomPlusMinus(zCoord+0.5, d);
-			double vx = rand.nextDouble()-0.5;
-			double vy = rand.nextDouble()-0.5;
-			double vz = rand.nextDouble()-0.5;
-			EntityRuneFX fx = new EntityRuneFX(worldObj, rx, ry, rz, vx, vy, vz, color);
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-		}
-	}
-
-	public void validateMultiblock(FilledBlockArray struct) {
-		hasMultiblock = true;
-		structure = struct;
-
-		broadcast = !worldObj.isRemote && ChromaStructures.PYLONBROADCAST.getArray(worldObj, xCoord, yCoord, zCoord, color).matchInWorld();
-
-		this.syncAllData(true);
-		PylonGenerator.instance.cachePylon(this);
-	}
-
-	public boolean hasStructure() {
-		return hasMultiblock;
-	}
-
-	@SideOnly(Side.CLIENT)
-	private void spawnParticle(World world, int x, int y, int z) {
-		int p = Minecraft.getMinecraft().gameSettings.particleSetting;
-		if (rand.nextInt(1+p/2) == 0) {
-			float dt = this.getAttackDensity();
-			float n = 1+dt*2F;
-			while (n > 0) {
-				if (rand.nextFloat() > n)
-					break;
-				double d = 1.25;
-				double rx = ReikaRandomHelper.getRandomPlusMinus(x+0.5, d);
-				double ry = ReikaRandomHelper.getRandomPlusMinus(y+0.5, d);
-				double rz = ReikaRandomHelper.getRandomPlusMinus(z+0.5, d);
-				EntityFlareFX fx = new EntityFlareFX(color, world, rx, ry, rz, 0.6F+dt*0.15F);
-				fx.setScale(3+dt*1.5F);
-				Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-				n--;
-			}
-		}
-
-		if (this.isEnhanced()) {
-			int n = 2+(int)Math.sin(Math.toRadians(this.getTicksExisted()));
-			for (int i = 0; i < n; i++) {
-				float s = (float)ReikaRandomHelper.getRandomPlusMinus(2D, 1);
-				int l = 10+rand.nextInt(50);
-				EntityFloatingSeedsFX fx = new EntityCCFloatingSeedsFX(world, x+0.5, y+0.5, z+0.5, rand.nextInt(360), ReikaRandomHelper.getRandomPlusMinus(0, 90));
-				fx.fadeColors(ReikaColorAPI.mixColors(color.getColor(), 0xffffff, 0.375F), color.getColor()).setScale(s).setLife(l).setRapidExpand();
-				fx.freedom *= 3;
-				fx.angleVelocity *= 3;
-				Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-			}
-		}
-	}
-
-	@Override
-	protected void readSyncTag(NBTTagCompound NBT) {
-		super.readSyncTag(NBT);
-
-		color = CrystalElement.elements[NBT.getInteger("color")];
-		hasMultiblock = NBT.getBoolean("multi");
-		energy = NBT.getInteger("energy");
-		enhanced = NBT.getBoolean("enhance");
-		broadcast = NBT.getBoolean("broadcast");
-		destabilized = NBT.getBoolean("unstable");
-
-		minTicksBetweenAttack = NBT.getInteger("attackDelay");
-	}
-
-	@Override
-	protected void writeSyncTag(NBTTagCompound NBT) {
-		super.writeSyncTag(NBT);
-
-		NBT.setInteger("color", color.ordinal());
-		NBT.setBoolean("multi", hasMultiblock);
-		NBT.setInteger("energy", energy);
-		NBT.setBoolean("enhance", enhanced);
-		NBT.setBoolean("broadcast", broadcast);
-		NBT.setBoolean("unstable", destabilized);
-
-		NBT.setInteger("attackDelay", minTicksBetweenAttack);
-	}
-
-	@Override
-	public void writeToNBT(NBTTagCompound NBT) {
-		super.writeToNBT(NBT);
-
-		NBT.setBoolean("load", forceLoad);
-		NBT.setBoolean("placed", placedByHand);
-
-		if (linkTile != null)
-			linkTile.writeToNBT("link", NBT);
-	}
-
-	@Override
-	public void readFromNBT(NBTTagCompound NBT) {
-		super.readFromNBT(NBT);
-
-		forceLoad = NBT.getBoolean("load");
-		placedByHand = NBT.getBoolean("placed");
-
-		if (NBT.hasKey("link"))
-			linkTile = WorldLocation.readFromNBT("link", NBT);
+	public int getMinimumTicksBetweenAttacks() {
+		return minTicksBetweenAttack;
 	}
 
 	@Override
 	public int getSendRange() {
 		return RANGE;
 	}
+
+	/** V33a anti-capture rule: every one of the 26 surrounding cells must be occupied. */
+	private boolean isEncased() {
+		for (int x = -1; x <= 1; x++) {
+			for (int y = -1; y <= 1; y++) {
+				for (int z = -1; z <= 1; z++) {
+					if ((x != 0 || y != 0 || z != 0)
+							&& this.getLevel().getBlockState(this.getBlockPos().offset(x, y, z)).isAir())
+						return false;
+				}
+			}
+		}
+		return true;
+	}
+
+	/**
+	 * Restores the pylon's V33a response to being sealed inside a 3x3x3 shell: tear the shell
+	 * apart without drops, throw nearby life clear, seed fires, and sometimes consume a booster.
+	 */
+	private void rejectEnclosure(ServerLevel world) {
+		BlockPos center = this.getBlockPos();
+		for (int x = -1; x <= 1; x++) {
+			for (int y = -1; y <= 1; y++) {
+				for (int z = -1; z <= 1; z++) {
+					if (x == 0 && y == 0 && z == 0)
+						continue;
+					BlockPos target = center.offset(x, y, z);
+					BlockState state = world.getBlockState(target);
+					world.playSound(null, target, state.getSoundType().getBreakSound(), SoundSource.BLOCKS,
+							state.getSoundType().getVolume(), state.getSoundType().getPitch());
+					world.removeBlock(target, false);
+				}
+			}
+		}
+		for (float pitch : new float[] {0.5F, 1, 2}) {
+			world.playSound(null, center, SoundEvents.GENERIC_EXPLODE.value(), SoundSource.BLOCKS, 2, pitch);
+			ChromaSounds.DISCHARGE.playSoundAtBlockNoAttenuation(this, 2, pitch, 64);
+		}
+
+		AABB box = new AABB(center).inflate(16);
+		for (LivingEntity entity : world.getEntitiesOfClass(LivingEntity.class, box)) {
+			double dx = entity.getX() - center.getX() - 0.5;
+			double dy = entity.getY() - center.getY() - 0.5;
+			double dz = entity.getZ() - center.getZ() - 0.5;
+			double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+			if (distance > 0)
+				entity.push(10 * dx / distance, 3, 10 * dz / distance);
+			else
+				entity.push(0, 3, 0);
+			entity.fallDistance = 250;
+			if (entity instanceof Player player) {
+				player.getAbilities().mayfly = false;
+				player.getAbilities().flying = false;
+				if (player instanceof ServerPlayer serverPlayer)
+					serverPlayer.onUpdateAbilities();
+			}
+		}
+
+		int fires = 8 + rand.nextInt(12);
+		for (int i = 0; i < fires; i++) {
+			BlockPos fireCenter = center.offset(rand.nextInt(25) - 12, rand.nextInt(9) - 4,
+					rand.nextInt(25) - 12);
+			ReikaWorldHelper.ignite(world, fireCenter);
+		}
+		if (rand.nextBoolean())
+			this.destroyPowerCrystals(1);
+		ChromaNetwork.sendJarRejection(world, center, color);
+	}
+	private void clearSnowFromStructure(Level world) {
+		BlockPos selected = structure.getRandomBlock();
+		if (selected == null)
+			return;
+		if (world.getBlockState(selected).is(ChromaBlocks.PYLONSTRUCT.get())
+				|| ChromaBlocks.isRune(world.getBlockState(selected))) {
+			BlockPos above = selected.above();
+			if (world.getBlockState(above).is(Blocks.SNOW))
+				world.removeBlock(above, false);
+		}
+	}
+	private void reloadEncrusted() {
+		encrustedBlocks.clear();
+		if (structure == null || this.getLevel() == null)
+			return;
+		for (BlockPos structurePos : structure.keySet()) {
+			for (Direction direction : Direction.values()) {
+				BlockPos adjacent = structurePos.relative(direction);
+				if (!structure.hasBlock(adjacent) && ChromaBlocks.isEncrustedCrystal(this.getLevel().getBlockState(adjacent)))
+					encrustedBlocks.add(adjacent.immutable());
+			}
+		}
+	}
+
+	private void tryGrowEncrusted() {
+		BlockPos from = structure.getRandomBlock();
+		if (from == null)
+			return;
+		Direction direction = Direction.values()[rand.nextInt(Direction.values().length)];
+		BlockPos target = from.relative(direction);
+		this.tryGrowEncrustedAt(from, target, !ChromaBlocks.isRune(this.getLevel().getBlockState(from)));
+	}
+
+	private void tryGrowEncrustedAt(BlockPos from, BlockPos target, boolean addToCount) {
+		if (structure.hasBlock(target))
+			return;
+		BlockState targetState = this.getLevel().getBlockState(target);
+		boolean place = BlockEncrustedCrystal.isEncrustedGrowable(this.getLevel(), target);
+		if (place) {
+			if (addToCount && encrustedBlocks.size() >= 6)
+				return;
+		}
+		else if (!(targetState.getBlock() instanceof BlockEncrustedCrystal crystal)
+				|| crystal.getColor() != color) {
+			return;
+		}
+		this.growEncrustedAt(from, target, place, addToCount);
+	}
+
+	private void growEncrustedAt(BlockPos from, BlockPos target, boolean place, boolean addToCount) {
+		boolean special = target.equals(this.getBlockPos().below(8));
+		if (place) {
+			this.getLevel().setBlock(target, ChromaBlocks.encrustedCrystal(color).get().defaultBlockState(), 3);
+			for (BlockPos offset : POWER_CRYSTAL_POSITIONS) {
+				if (target.equals(this.getBlockPos().offset(offset))) {
+					special = true;
+					break;
+				}
+			}
+			if (addToCount)
+				encrustedBlocks.add(target.immutable());
+		}
+		BlockEntity blockEntity = this.getLevel().getBlockEntity(target);
+		if (!(blockEntity instanceof TileCrystalEncrusted tile)) {
+			this.getLevel().removeBlock(target, false);
+			encrustedBlocks.remove(target);
+			return;
+		}
+		tile.markReady();
+		if (special)
+			tile.makeSpecial();
+		if (!tile.grow() && tile.getGrowths().isEmpty()) {
+			this.getLevel().removeBlock(target, false);
+			if (addToCount)
+				encrustedBlocks.remove(target);
+		}
+	}
+
+	public Set<BlockPos> getEncrustedCrystals() {
+		return Collections.unmodifiableSet(encrustedBlocks);
+	}
+
+	public void forceCrystalColorMatch() {
+		if (this.getLevel() == null)
+			return;
+		for (BlockPos pos : List.copyOf(encrustedBlocks)) {
+			if (ChromaBlocks.isEncrustedCrystal(this.getLevel().getBlockState(pos)))
+				BlockEncrustedCrystal.setColor(this.getLevel(), pos, color);
+			else
+				encrustedBlocks.remove(pos);
+		}
+	}
+
+
+	/** Absolute positions of the eight colored runes in the V33a pylon base. */
+	public BlockArray getRuneLocations() {
+		BlockArray runes = new BlockArray();
+		for (BlockPos offset : POWER_CRYSTAL_POSITIONS) {
+			BlockPos rune = this.getBlockPos().offset(offset.getX(), offset.getY() - 1, offset.getZ());
+			runes.addBlockCoordinate(rune);
+		}
+		return runes;
+	}
+
 
 	@Override
 	public boolean canConduct() {
@@ -1071,302 +642,114 @@ public class TileEntityCrystalPylon extends CrystalTransmitterBase implements Na
 	@Override
 	public int maxThroughput() {
 		int base = this.getBaseThroughput();
-		int thresh = this.getCapacity()/4;
-		return energy >= thresh ? this.getLinkedThroughput(base) : this.getReducedThroughput(thresh, base);
+		int threshold = this.getCapacity() / 4;
+		return energy >= threshold ? this.getLinkedThroughput(base) : this.getReducedThroughput(threshold, base);
 	}
 
 	private int getBaseThroughput() {
 		return this.isEnhanced() ? 18000 : 6000;
 	}
 
-	private int getLinkedThroughput(int base) {
-		TileEntityPylonLink te = this.getLinkTile();
-		if (te != null) {
-			Collection<WorldLocation> c = te.getLinkedPylons();
-			for (WorldLocation loc : c) {
-				if (!loc.equals(worldObj, xCoord, yCoord, zCoord)) {
-					TileEntity tile2 = loc.getTileEntity();
-					if (tile2 instanceof TileEntityCrystalPylon) {
-						TileEntityCrystalPylon tp = (TileEntityCrystalPylon)tile2;
-						if (tp.color == color) {
-							base += tp.getBaseThroughput();
-						}
-					}
+	private void donateEnergyToLinkedPylons() {
+		if (energy < this.getCapacity() / 2)
+			return;
+		TileEntityPylonLink link = this.getLinkTile();
+		if (link == null)
+			return;
+		for (WorldLocation location : link.getLinkedPylons()) {
+			if (location.pos.equals(this.getBlockPos()) && location.getDimension().equals(this.getLevel().dimension()))
+				continue;
+			BlockEntity tile = location.getBlockEntity();
+			if (tile instanceof TileEntityCrystalPylon other && other.color == color) {
+				int amount = Math.min(this.getDonatedRecharge(), other.getCapacity() - other.energy);
+				if (amount > 0) {
+					other.energy += amount;
+					energy -= amount;
+					other.setChanged();
+					this.setChanged();
 				}
+			}
+		}
+	}
+
+	private int getDonatedRecharge() {
+		return Math.min(energy / 2, this.isEnhanced() ? 500 : 100);
+	}
+
+	private int getLinkedThroughput(int base) {
+		TileEntityPylonLink link = this.getLinkTile();
+		if (link != null) {
+			for (WorldLocation location : link.getLinkedPylons()) {
+				if (location.pos.equals(this.getBlockPos()) && location.getDimension().equals(this.getLevel().dimension()))
+					continue;
+				BlockEntity tile = location.getBlockEntity();
+				if (tile instanceof TileEntityCrystalPylon other && other.color == color)
+					base += other.getBaseThroughput();
 			}
 		}
 		return base;
 	}
 
-	private int getReducedThroughput(int thresh, int max) {
-		if (energy == 0)
-			return 0;
-		int sigx = energy/(thresh/12)-6;
-		int sig = (int)(max/(1+Math.pow(Math.E, -sigx))); //sigmoid function
-		return Math.max(1, Math.min(energy-1, sig-10));
+	public void link(TileEntityPylonLink tile) {
+		linkTile = tile != null ? new WorldLocation(tile) : null;
+		this.syncAllData(true);
 	}
 
-	/*
-	@Override
+	private TileEntityPylonLink getLinkTile() {
+		BlockEntity tile = linkTile != null ? linkTile.getBlockEntity() : null;
+		return tile instanceof TileEntityPylonLink link ? link : null;
+	}
+
+	public UUID getLinkTileUUID() {
+		TileEntityPylonLink link = this.getLinkTile();
+		return link != null ? link.getUUID() : null;
+	}
+	private int getReducedThroughput(int threshold, int max) {
+		if (energy == 0)
+			return 0;
+		int sigmoidX = energy / (threshold / 12) - 6;
+		int sigmoid = (int)(max / (1 + Math.pow(Math.E, -sigmoidX)));
+		return Math.max(1, Math.min(energy - 1, sigmoid - 10));
+	}
+
 	public int getTransmissionStrength() {
 		return this.isEnhanced() ? 50000 : 10000;
 	}
-	 */
 
 	public void generateColor(CrystalElement e) {
 		color = e;
+		this.setChanged();
+	}
+	/**
+	 * Initializes a naturally generated pylon without running the Level-backed structure matcher
+	 * inside chunk decoration. The first normal server tick rebuilds the matcher after worldgen has
+	 * completed; broken pylons remain inactive exactly as in V33a.
+	 */
+	public void initializeGenerated(CrystalElement e, boolean intact) {
+		color = e;
+		structure = null;
+		hasMultiblock = intact;
+		broadcast = false;
+		energy = 0;
+		this.setChanged();
 	}
 
 	public void setColor(CrystalElement e) {
 		color = e;
+		structure = null;
 		this.forceCrystalColorMatch();
-	}
-
-	public Set<Coordinate> getEncrustedCrystals() {
-		return Collections.unmodifiableSet(encrustedBlocks);
-	}
-
-	public void forceCrystalColorMatch() {
-		for (Coordinate c : encrustedBlocks) {
-			if (c.getBlock(worldObj) == ChromaBlocks.ENCRUSTED.getBlockInstance()) {
-				BlockEncrustedCrystal.setColor(worldObj, c.xCoord, c.yCoord, c.zCoord, color);
-			}
-		}
+		this.syncAllData(true);
 	}
 
 	@Override
-	public boolean drain(CrystalElement e, int amt) {
-		if (e == color && energy >= amt && amt > 0) {
-			if (ModList.MYSTCRAFT.isLoaded() && MystPages.Pages.LOSSY.existsInWorld(worldObj))
-				amt = amt*3/2;
-			energy -= amt;
-			energy = Math.max(energy, 0);
-			if (energy <= 0) {
-				MinecraftForge.EVENT_BUS.post(new PylonDrainedEvent(this));
-			}
-			return true;
-		}
-		return false;
-	}
-
-	@Override
-	@ModDependent(ModList.THAUMCRAFT)
-	public AspectList getAspects() {
-		AspectList as = new AspectList();
-		int n = this.isEnhanced() ? 6000 : 400;
-		as.add(Aspect.AURA, n);
-		Collection<Aspect> li = ChromaAspectManager.instance.getAspects(this.getColor(), true);
-		for (Aspect a : li) {
-			as.add(a, n);
-		}
-		return as;
-	}
-
-	@Override
-	@ModDependent(ModList.THAUMCRAFT)
-	public void setAspects(AspectList aspects) {}
-
-	@Override
-	@ModDependent(ModList.THAUMCRAFT)
-	public boolean doesContainerAccept(Aspect tag) {
-		return this.getAspects().getAmount(tag) > 0;
-	}
-
-	@Override
-	@ModDependent(ModList.THAUMCRAFT)
-	public int addToContainer(Aspect tag, int amount) {return 0;}
-
-	@Override
-	@ModDependent(ModList.THAUMCRAFT)
-	public boolean takeFromContainer(Aspect tag, int amount) {
-		return this.doesContainerContainAmount(tag, amount);
-	}
-
-	@Override
-	@Deprecated
-	@ModDependent(ModList.THAUMCRAFT)
-	public boolean takeFromContainer(AspectList ot) {
-		return false;
-	}
-
-	@Override
-	@ModDependent(ModList.THAUMCRAFT)
-	public boolean doesContainerContainAmount(Aspect tag, int amount) {
-		return this.getAspects().getAmount(tag) > amount;
-	}
-
-	@Override
-	@Deprecated
-	@ModDependent(ModList.THAUMCRAFT)
-	public boolean doesContainerContain(AspectList ot) {
-		return false;
-	}
-
-	@Override
-	@ModDependent(ModList.THAUMCRAFT)
-	public int containerContains(Aspect tag) {
-		return this.getAspects().getAmount(tag);
-	}
-
-	@Override
-	public String getId() { //Normally based on world coords, but uses just color to make each pylon color scannable once
-		String s = "Pylon_"+color.toString();//"Pylon_"+worldObj.provider.dimensionId+":"+xCoord+":"+yCoord+":"+zCoord;
-		if (this.isEnhanced())
-			s = s+"_E";
-		return s;
-	}
-
-	@Override
-	@ModDependent(ModList.THAUMCRAFT)
-	public AspectList getAspectsBase() {
-		return this.getAspects();
-	}
-
-	@Override
-	@ModDependent(ModList.THAUMCRAFT)
-	public NodeType getNodeType() {
-		switch(color) {
-			case BLACK:
-				return NodeType.DARK;
-			case GRAY:
-				return NodeType.UNSTABLE;
-			case WHITE:
-				return NodeType.PURE;
-			default:
-				return NodeType.NORMAL;
-		}
-	}
-
-	@Override
-	@ModDependent(ModList.THAUMCRAFT)
-	public void setNodeType(NodeType nodeType) {}
-
-	@Override
-	@ModDependent(ModList.THAUMCRAFT)
-	public void setNodeModifier(NodeModifier nodeModifier) {}
-
-	@Override
-	@ModDependent(ModList.THAUMCRAFT)
-	public NodeModifier getNodeModifier() {
-		return NodeModifier.BRIGHT;
-	}
-
-	@Override
-	@ModDependent(ModList.THAUMCRAFT)
-	public int getNodeVisBase(Aspect aspect) {
-		return this.containerContains(aspect);
-	}
-
-	@Override
-	@ModDependent(ModList.THAUMCRAFT)
-	public void setNodeVisBase(Aspect aspect, short nodeVisBase) {}
-
-	@Override
-	@ModDependent(ModList.THAUMCRAFT)
-	public int onWandRightClick(World world, ItemStack wandstack, EntityPlayer player, int x, int y, int z, int side, int mode) {
-		return -1;
-	}
-
-	@Override
-	@ModDependent(ModList.THAUMCRAFT)
-	public ItemStack onWandRightClick(World world, ItemStack wandstack, EntityPlayer player) {
-		player.setItemInUse(wandstack, Integer.MAX_VALUE);
-		ReikaThaumHelper.setWandInUse(wandstack, this);
-		this.forceLoading();
-		return wandstack;
-	}
-
-	@Override
-	@ModDependent(ModList.THAUMCRAFT)
-	public void onUsingWandTick(ItemStack wandstack, EntityPlayer player, int count) {
-		if (!worldObj.isRemote && this.canConduct() && player.ticksExisted%5 == 0) {
-			if (this.canPlayerWandPylon(wandstack, player)) {
-				AspectList al = ReikaThaumHelper.decompose(this.getAspects());
-				for (Aspect a : al.aspects.keySet()) {
-					int amt = 1;
-					int eff = 1800;//2400;
-					if (ReikaThaumHelper.isResearchComplete(player, "NODETAPPER1")) {
-						amt *= 2;
-						eff *= 0.9;
-					}
-					if (ReikaThaumHelper.isResearchComplete(player, "NODETAPPER2")) {
-						amt *= 2;
-						eff *= 0.8;
-					}
-					if (ReikaThaumHelper.isResearchComplete(player, "ROD_silverwood_staff")) {
-						amt *= 1.5;
-						eff *= 0.8;
-					}
-					if (ReikaThaumHelper.isResearchComplete(player, "FOCUSPRIMAL")) {
-						amt *= 1.25;
-						eff *= 0.6;
-					}
-					if (ReikaThaumHelper.isResearchComplete(player, "WARPPROOF")) {
-						eff *= 0.5;
-					}
-					if (ReikaThaumHelper.isResearchComplete(player, "CRYSTALWAND")) {
-						amt *= 2;
-					}
-					if (!ProgressStage.ALLCOLORS.isPlayerAtStage(player)) {
-						eff *= 1.75;
-						amt *= 0.75;
-						amt = Math.max(1, amt);
-					}
-					if (ProgressStage.RUNEUSE.isPlayerAtStage(player)) {
-						eff *= 0.95;
-					}
-					if (ProgressStage.LINK.isPlayerAtStage(player)) {
-						eff *= 0.8;
-						amt *= 1.2;
-					}
-					if (ProgressStage.POWERCRYSTAL.isPlayerAtStage(player)) {
-						eff *= 0.7;
-						amt *= 1.8;
-					}
-					if (ProgressStage.TURBOCHARGE.isPlayerAtStage(player)) {
-						eff *= 0.6;
-						amt *= 2;
-					}
-					if (ProgressStage.CTM.isPlayerAtStage(player)) {
-						eff *= 0.5;
-						amt *= 2.5;
-					}
-					amt = Math.min(amt, al.getAmount(a));
-					amt = Math.min(amt, ReikaThaumHelper.getWandSpaceFor(wandstack, a));
-					int ret = ReikaThaumHelper.addVisToWand(wandstack, a, amt);
-					int added = amt-ret;
-					if (added > 0) {
-						this.drain(color, Math.min(energy, added*eff));
-					}
-				}
-			}
-		}
-	}
-
-	private boolean canPlayerWandPylon(ItemStack wandstack, EntityPlayer player) {
-		if (!ReikaThaumHelper.isResearchComplete(player, "PYLONWANDING"))
+	public boolean drain(CrystalElement e, int amount) {
+		if (e != color || amount <= 0 || energy < amount)
 			return false;
-		if (ChromaOptions.HARDTHAUM.getState()) {
-			WandCap cap = ReikaThaumHelper.getWandCap(wandstack);
-			WandRod rod = ReikaThaumHelper.getWandRod(wandstack);
-			WandCap gold = WandCap.caps.get("gold");
-			WandRod great = WandRod.rods.get("greatwood");
-			if (cap.getBaseCostModifier() > gold.getBaseCostModifier() || rod.getCapacity() < great.getCapacity())
-				return false;
-		}
-		return (ChromaOptions.HARDTHAUM.getState() ? ProgressStage.ALLCOLORS : ProgressStage.PYLON).isPlayerAtStage(player);
-	}
-
-	@Override
-	@ModDependent(ModList.THAUMCRAFT)
-	public void onWandStoppedUsing(ItemStack wandstack, World world, EntityPlayer player, int count) {
-
-	}
-
-	public final ElementTagCompound getEnergy() {
-		ElementTagCompound tag = new ElementTagCompound();
-		tag.setTag(color, energy);
-		return tag;
+		energy -= amount;
+		this.setChanged();
+		if (energy == 0)
+			NeoForge.EVENT_BUS.post(new PylonDrainedEvent(this));
+		return true;
 	}
 
 	@Override
@@ -1374,7 +757,7 @@ public class TileEntityCrystalPylon extends CrystalTransmitterBase implements Na
 		return this.getCapacity();
 	}
 
-	private int getCapacity() {
+	public int getCapacity() {
 		return this.isEnhanced() ? MAX_ENERGY_ENHANCED : MAX_ENERGY;
 	}
 
@@ -1382,91 +765,10 @@ public class TileEntityCrystalPylon extends CrystalTransmitterBase implements Na
 		return enhanced && this.canConduct();
 	}
 
-	@Override
-	public boolean canSupply(CrystalReceiver te, CrystalElement e) {
-		if (!placedByHand)
-			return true;
-		return TileEntityCreativeSource.canSupply(this, te);
-	}
-
-	@Override
-	public boolean canTransmitTo(CrystalReceiver te) {
-		return true;
-	}
-
-	@Override
-	public boolean regeneratesEnergy() {
-		return true;
-	}
-
-	@ModDependent(ModList.ROTARYCRAFT)
-	public void onEMP(TileEntityEMP te) {
-		//energy = rand.nextBoolean() ? 0 : this.getCapacity();
-		//worldObj.createExplosion(null, xCoord+0.5, yCoord+0.5, zCoord+0.5, 16, false);
-		//ChromaSounds.DISCHARGE.playSoundAtBlock(this);
-		this.destabilize();
-	}
-
-	@Override
-	@SideOnly(Side.CLIENT)
-	public final double getMaxRenderDistanceSquared() {
-		return 65536D;
-	}
-
-	@Override
-	public void breakBlock() {
-		this.unload();
-	}
-
-	private void unload() {
-		ChunkManager.instance.unloadChunks(this);
-	}
-
-	@Override
-	public Collection<ChunkCoordIntPair> getChunksToLoad() {
-		return ChunkManager.getChunkSquare(xCoord, zCoord, 1); //load a 3x3 to ensure power crystals
-	}
-
-	@Override
-	protected final void onInvalidateOrUnload(World world, int x, int y, int z, boolean invalid) {
-		if (!world.isRemote) {
-			if (invalid) {
-				this.unload();
-			}
-		}
-	}
-
-	@Override
-	public void onUsedBy(EntityPlayer ep, CrystalElement e) {
-		this.forceLoading();
-		MinecraftForge.EVENT_BUS.post(new PlayerChargedFromPylonEvent(this, ep));
-	}
-
-	@Override
-	public boolean playerCanUse(EntityPlayer ep) {
-		return true;
-	}
-
-	@Override
-	public boolean allowCharging(EntityPlayer ep, CrystalElement e) {
-		return true;
-	}
-
-	@Override
-	public float getChargeRateMultiplier(EntityPlayer ep, CrystalElement e) {
-		return 1;
-	}
-
-	@Override
-	public CrystalElement getDeliveredColor(EntityPlayer ep, World world, int clickX, int clickY, int clickZ) {
-		return color;
-	}
-
 	public void enhance() {
 		enhanced = true;
 		enhancing = false;
 		this.syncAllData(true);
-		PylonGenerator.instance.cachePylon(this);
 	}
 
 	public void disenhance() {
@@ -1474,17 +776,6 @@ public class TileEntityCrystalPylon extends CrystalTransmitterBase implements Na
 		enhancing = false;
 		energy = Math.min(energy, this.getMaxStorage(color));
 		this.syncAllData(true);
-		PylonGenerator.instance.cachePylon(this);
-	}
-
-	@Override
-	public Coordinate getChargeParticleOrigin(EntityPlayer ep, CrystalElement e) {
-		return new Coordinate(this);
-	}
-
-	@Override
-	public int getPathPriority() {
-		return 0;
 	}
 
 	public boolean hasBroadcastUpgrade() {
@@ -1492,18 +783,274 @@ public class TileEntityCrystalPylon extends CrystalTransmitterBase implements Na
 	}
 
 	@Override
+	public boolean canSupply(CrystalReceiver receiver, CrystalElement e) {
+		return !placedByHand || TileEntityCreativeSource.canSupply(this, receiver);
+	}
+
+	@Override
+	public boolean canTransmitTo(CrystalReceiver receiver) {
+		return true;
+	}
+
+	@Override
+	public int getPathPriority() {
+		return 0;
+	}
+
+	@Override
+	public void onUsedBy(Player ep, CrystalElement e) {
+		this.forceLoading();
+		NeoForge.EVENT_BUS.post(new PlayerChargedFromPylonEvent(this, ep));
+	}
+
+	@Override
+	public boolean playerCanUse(Player ep) {
+		return true;
+	}
+
+	@Override
 	public double getMaximumBeamRadius() {
-		return TileEntityCrystalBase.DEFAULT_BEAM_RADIUS;
+		return DEFAULT_BEAM_RADIUS;
 	}
 
 	@Override
-	public float getHeldToolChargingPower(EntityPlayer ep, CrystalElement e, ItemStack is) {
-		return this.isEnhanced() ? 3 : 1.5F;
-	}
-
-	@Override
-	public float getDroppedItemChargeRate(ItemStack is) {
+	public float getDroppedItemChargeRate(ItemStack stack) {
 		return this.isEnhanced() ? 2 : 1;
 	}
 
+	@Override
+	public boolean regeneratesEnergy() {
+		return true;
+	}
+
+	@Override
+	public CrystalElement getDeliveredColor(Player ep, Level world, int clickX, int clickY, int clickZ) {
+		return color;
+	}
+
+	@Override
+	public boolean allowCharging(Player ep, CrystalElement e) {
+		return true;
+	}
+
+	@Override
+	public float getChargeRateMultiplier(Player ep, CrystalElement e) {
+		return 1;
+	}
+
+	@Override
+	public Coordinate getChargeParticleOrigin(Player ep, CrystalElement e) {
+		return new Coordinate(this);
+	}
+
+	@Override
+	public float getHeldToolChargingPower(Player ep, CrystalElement e, ItemStack stack) {
+		return this.isEnhanced() ? 3 : 1.5F;
+	}
+
+	private FilledBlockArray createStructure() {
+		return ChromaStructures.PYLON.getArray(this.getLevel(), this.getX(), this.getY(), this.getZ(), color);
+	}
+
+	/** Rebuilds and matches the original colored pylon structure at this tile. */
+	public boolean refreshStructure() {
+		FilledBlockArray candidate = this.createStructure();
+		if (candidate.matchInWorld()) {
+			this.validateMultiblock(candidate);
+			return true;
+		}
+		this.invalidateMultiblock();
+		return false;
+	}
+
+	/** Accepts only an array that actually matches the world; empty arrays cannot activate a pylon. */
+	public void validateMultiblock(FilledBlockArray candidate) {
+		if (candidate == null || !candidate.matchInWorld()) {
+			this.invalidateMultiblock();
+			return;
+		}
+		structure = candidate;
+		hasMultiblock = true;
+		this.refreshBroadcastUpgrade();
+		this.syncAllData(true);
+	}
+
+	/** Rechecks the complete NBT-backed broadcast monument and synchronizes LOS behavior. */
+	public boolean refreshBroadcastUpgrade() {
+		boolean upgraded = false;
+		if (hasMultiblock && this.getLevel() != null && !this.getLevel().isClientSide()) {
+			upgraded = ChromaStructures.PYLONBROADCAST.getArray(
+					this.getLevel(), this.getX(), this.getY(), this.getZ(), color).matchInWorld();
+		}
+		if (broadcast != upgraded) {
+			broadcast = upgraded;
+			this.syncAllData(true);
+		}
+		return broadcast;
+	}
+	public void invalidateMultiblock() {
+		boolean wasValid = hasMultiblock;
+		structure = null;
+		hasMultiblock = false;
+		broadcast = false;
+		this.clearTargets(false);
+		energy = 0;
+		if (wasValid && this.getLevel() != null)
+			ChromaSounds.POWERDOWN.playSoundAtBlock(this);
+		if (this.getLevel() != null) {
+			ChunkManager.instance.unloadChunks(this);
+			this.syncAllData(true);
+		}
+		else {
+			this.setChanged();
+		}
+	}
+
+	public boolean hasStructure() {
+		return hasMultiblock;
+	}
+
+	private void forceLoading() {
+		if (!forceLoad && this.getLevel() != null && !this.getLevel().isClientSide()) {
+			forceLoad = true;
+			ChunkManager.instance.loadChunks(this);
+			this.setChanged();
+		}
+	}
+
+	@Override
+	public Collection<ChunkPos> getChunksToLoad() {
+		return ChunkManager.getChunkSquare(this.getX(), this.getZ(), 1);
+	}
+
+	/** Returns occupied legal sockets, optionally requiring one consistent non-null owner UUID. */
+	public ArrayList<TileEntityChromaCrystal> getBoosterCrystals(boolean matchOwner) {
+		ArrayList<TileEntityChromaCrystal> crystals = new ArrayList<>();
+		java.util.UUID owner = null;
+		for (BlockPos offset : POWER_CRYSTAL_POSITIONS) {
+			BlockPos at = this.getBlockPos().offset(offset);
+			if (!this.getLevel().hasChunkAt(at))
+				continue;
+			BlockEntity blockEntity = this.getLevel().getBlockEntity(at);
+			if (blockEntity instanceof TileEntityChromaCrystal crystal) {
+				java.util.UUID crystalOwner = crystal.getPlacerID();
+				if (!matchOwner || crystalOwner != null && (owner == null || owner.equals(crystalOwner))) {
+					if (owner == null)
+						owner = crystalOwner;
+					crystals.add(crystal);
+				}
+			}
+		}
+		return crystals;
+	}
+
+	public boolean isValidPowerCrystal(TileEntityChromaCrystal crystal) {
+		return crystal != null && POWER_CRYSTAL_POSITIONS.contains(crystal.getBlockPos().subtract(this.getBlockPos()));
+	}
+
+	public void destroyPowerCrystals(int count) {
+		ArrayList<TileEntityChromaCrystal> crystals = this.getBoosterCrystals(false);
+		for (int i = 0; i < count && !crystals.isEmpty(); i++) {
+			int index = rand.nextInt(crystals.size());
+			crystals.remove(index).destroy();
+		}
+	}
+
+	/** V33a backlash: lose enhancement, drain one quarter, strike the socket, and shock nearby life. */
+	public void onPowerCrystalBreak(TileEntityChromaCrystal crystal) {
+		Level world = this.getLevel();
+		if (world == null || world.isClientSide())
+			return;
+		this.disenhance();
+		this.drain(color, energy / 4);
+
+		if (world instanceof ServerLevel server)
+			ChromaNetwork.sendPylonCrystalBreak(server, this.getBlockPos(), color);
+
+		if (world instanceof ServerLevel server) {
+			LightningBolt bolt = EntityTypes.LIGHTNING_BOLT.create(
+					server, null, crystal.getBlockPos(), EntitySpawnReason.TRIGGERED, false, false);
+			if (bolt != null) {
+				bolt.setVisualOnly(true);
+				server.addFreshEntity(bolt);
+			}
+			AABB area = new AABB(this.getBlockPos()).inflate(24, 16, 24);
+			for (LivingEntity entity : server.getEntitiesOfClass(LivingEntity.class, area)) {
+				if (entity instanceof Player player) {
+					if (player.isCreative()) {
+						entity.hurtServer(server, server.damageSources().fellOutOfWorld(), 0.001F);
+					}
+					else {
+						float amount = Math.max(5, Math.min(entity.getHealth() - 4, entity.getMaxHealth() * 0.75F));
+						if (amount > 0)
+							entity.hurtServer(server, server.damageSources().magic(), amount);
+						ChromaSounds.DISCHARGE.playSound(entity, 1, 1);
+					}
+				}
+				else {
+					entity.hurtServer(server, server.damageSources().magic(), 0.001F);
+				}
+			}
+		}
+		this.syncAllData(true);
+	}
+	@Override
+	public void breakBlock() {
+		ChunkManager.instance.unloadChunks(this);
+	}
+
+	/** Exposes the live ticket state for diagnostics and regression tests. */
+	public boolean isForceLoading() {
+		return forceLoad && ChunkManager.instance.isLoaded(this);
+	}
+
+
+	@Override
+	protected void readSyncTag(CompoundTag NBT) {
+		super.readSyncTag(NBT);
+		int colorIndex = Math.max(0, Math.min(CrystalElement.elements.length - 1, NBT.getIntOr("color", 0)));
+		color = CrystalElement.elements[colorIndex];
+		hasMultiblock = NBT.getBooleanOr("multi", false);
+		energy = Math.max(0, NBT.getIntOr("energy", 0));
+		enhanced = NBT.getBooleanOr("enhance", false);
+		broadcast = NBT.getBooleanOr("broadcast", false);
+		destabilized = NBT.getBooleanOr("unstable", false);
+		minTicksBetweenAttack = NBT.getIntOr("attackDelay", MAX_ATTACK_DELAY);
+		energy = Math.min(energy, enhanced ? MAX_ENERGY_ENHANCED : MAX_ENERGY);
+	}
+
+	@Override
+	protected void writeSyncTag(CompoundTag NBT) {
+		super.writeSyncTag(NBT);
+		NBT.putInt("color", color.ordinal());
+		NBT.putBoolean("multi", hasMultiblock);
+		NBT.putInt("energy", energy);
+		NBT.putBoolean("enhance", enhanced);
+		NBT.putBoolean("broadcast", broadcast);
+		NBT.putBoolean("unstable", destabilized);
+		NBT.putInt("attackDelay", minTicksBetweenAttack);
+	}
+
+	@Override
+	protected void saveAdditional(CompoundTag NBT) {
+		super.saveAdditional(NBT);
+		NBT.putBoolean("load", forceLoad);
+		NBT.putBoolean("placed", placedByHand);
+		if (linkTile != null)
+			linkTile.saveAdditional("link", NBT);
+	}
+
+	@Override
+	public void load(CompoundTag NBT) {
+		super.load(NBT);
+		forceLoad = NBT.getBooleanOr("load", false);
+		placedByHand = NBT.getBooleanOr("placed", false);
+		linkTile = WorldLocation.load("link", NBT);
+		structure = null;
+	}
+	// CHROMA-PORT: Thaumcraft compatibility is intentionally dormant. V33a implemented INode and
+	// IWandable here: it reported the pylon color as aspects, exposed a bright/pure node, and allowed
+	// a wand to draw vis by draining pylon energy. Minecraft 26.2 has no modern Thaumcraft target, so
+	// keep all Thaumcraft imports, interfaces, adapter registration, and runtime calls disabled.
+	// If a compatible API appears, restore these semantics in an isolated optional integration layer.
 }

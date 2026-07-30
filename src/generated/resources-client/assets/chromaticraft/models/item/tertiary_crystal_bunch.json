@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "chromaticraft:item/tertiary_crystal_bunch"
+  }
+}

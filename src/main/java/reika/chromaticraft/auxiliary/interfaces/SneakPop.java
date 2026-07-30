@@ -9,14 +9,14 @@
  ******************************************************************************/
 package reika.chromaticraft.auxiliary.interfaces;
 
-import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.world.entity.player.Player;
 
 public interface SneakPop {
 
 	public void drop();
 
-	public boolean canDrop(EntityPlayer ep);
+	public boolean canDrop(Player ep);
 	
-	public boolean allowMining(EntityPlayer ep);
+	public boolean allowMining(Player ep);
 
 }

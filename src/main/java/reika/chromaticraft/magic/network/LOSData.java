@@ -11,16 +11,16 @@ package reika.chromaticraft.magic.network;
 
 import java.util.Set;
 
-import reika.dragonapi.instantiable.data.immutable.Coordinate;
+import net.minecraft.core.BlockPos;
 
 
 public class LOSData {
 
 	public final boolean hasLineOfSight;
 	public final boolean canRain;
-	final Set<Coordinate> blocks;
+	final Set<BlockPos> blocks;
 
-	LOSData(boolean los, boolean rain, Set<Coordinate> ray) {
+	LOSData(boolean los, boolean rain, Set<BlockPos> ray) {
 		hasLineOfSight = los;
 		canRain = rain;
 		blocks = ray;

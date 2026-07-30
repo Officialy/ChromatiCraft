@@ -1,0 +1,12 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "chromaticraft:block/dye_leaves_lime",
+    "tints": [
+      {
+        "type": "minecraft:constant",
+        "value": -16711936
+      }
+    ]
+  }
+}

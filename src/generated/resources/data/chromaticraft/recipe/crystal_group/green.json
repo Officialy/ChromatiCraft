@@ -1,0 +1,65 @@
+{
+  "type": "chromaticraft:casting",
+  "duration": 20,
+  "experience": 40,
+  "grid": [
+    {
+      "ingredient": "chromaticraft:crystal_shard_yellow",
+      "slot": 1
+    },
+    {
+      "ingredient": "chromaticraft:crystal_shard_cyan",
+      "slot": 3
+    },
+    {
+      "ingredient": "chromaticraft:living_essence",
+      "slot": 4
+    },
+    {
+      "ingredient": "chromaticraft:crystal_shard_lime",
+      "slot": 5
+    },
+    {
+      "ingredient": "chromaticraft:crystal_shard_green",
+      "slot": 7
+    }
+  ],
+  "result": {
+    "id": "chromaticraft:green_crystal_group"
+  },
+  "runes": [
+    {
+      "element": "yellow",
+      "offset": [
+        0,
+        0,
+        -4
+      ]
+    },
+    {
+      "element": "cyan",
+      "offset": [
+        -4,
+        0,
+        0
+      ]
+    },
+    {
+      "element": "lime",
+      "offset": [
+        4,
+        0,
+        0
+      ]
+    },
+    {
+      "element": "green",
+      "offset": [
+        0,
+        0,
+        4
+      ]
+    }
+  ],
+  "tier": "temple"
+}

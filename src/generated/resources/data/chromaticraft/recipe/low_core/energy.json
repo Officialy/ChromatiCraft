@@ -1,0 +1,163 @@
+{
+  "type": "chromaticraft:casting",
+  "duration": 100,
+  "experience": 200,
+  "grid": [
+    {
+      "ingredient": "chromaticraft:crystal_core",
+      "slot": 4
+    }
+  ],
+  "result": {
+    "id": "chromaticraft:energy_core"
+  },
+  "runes": [
+    {
+      "element": "yellow",
+      "offset": [
+        -3,
+        0,
+        -2
+      ]
+    },
+    {
+      "element": "yellow",
+      "offset": [
+        3,
+        0,
+        2
+      ]
+    }
+  ],
+  "stands": [
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_yellow",
+      "offset": [
+        -2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_yellow",
+      "offset": [
+        -4,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_yellow",
+      "offset": [
+        2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_yellow",
+      "offset": [
+        4,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_yellow",
+      "offset": [
+        -2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_yellow",
+      "offset": [
+        -4,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_yellow",
+      "offset": [
+        2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_yellow",
+      "offset": [
+        4,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_white",
+      "offset": [
+        2,
+        0,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_white",
+      "offset": [
+        -2,
+        0,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_white",
+      "offset": [
+        0,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_white",
+      "offset": [
+        0,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:energy_powder",
+      "offset": [
+        4,
+        1,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:energy_powder",
+      "offset": [
+        -4,
+        1,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:energy_powder",
+      "offset": [
+        0,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:energy_powder",
+      "offset": [
+        0,
+        1,
+        -4
+      ]
+    }
+  ],
+  "tier": "multiblock"
+}

@@ -10,53 +10,58 @@
 package reika.chromaticraft.block.crystal;
 
 import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.block.state.BlockState;
 
 import reika.chromaticraft.base.CrystalBlock;
 import reika.chromaticraft.registry.CrystalElement;
 
-/**
- * Crystal lamp (decorative full-bright crystal, no effects). Ported core. Deferred (unported content):
- * the structure-shield unbreakable/base logic (MUSICTRIGGER/STRUCTSHIELD blocks), the ChromaOptions
- * NOISE toggle (config unported — noise always on for now), and the drops (loot dropSelf).
- */
+/** Crystal lamp: a fixed-colour, decorative full-bright crystal with no potion effects. */
 public class BlockCrystalLamp extends CrystalBlock {
 
-	public BlockCrystalLamp(BlockBehaviour.Properties props) {
-		super(props);
-	}
+    private final CrystalElement element;
 
-	@Override
-	public boolean shouldMakeNoise() {
-		return true;
-	}
+    public BlockCrystalLamp(BlockBehaviour.Properties props, CrystalElement element) {
+        super(props);
+        this.element = element;
+    }
 
-	@Override
-	public boolean shouldGiveEffects(CrystalElement e) {
-		return false;
-	}
+    @Override
+    public CrystalElement getCrystalElement(BlockState state) {
+        return element;
+    }
 
-	@Override
-	public boolean performEffect(CrystalElement e) {
-		return false;
-	}
+    @Override
+    public boolean shouldMakeNoise() {
+        return true;
+    }
 
-	@Override
-	public int getRange() {
-		return 3;
-	}
+    @Override
+    public boolean shouldGiveEffects(CrystalElement e) {
+        return false;
+    }
 
-	@Override
-	public int getDuration(CrystalElement e) {
-		return 200;
-	}
+    @Override
+    public boolean performEffect(CrystalElement e) {
+        return false;
+    }
 
-	@Override
-	public int getPotionLevel(CrystalElement e) {
-		return 0;
-	}
+    @Override
+    public int getRange() {
+        return 3;
+    }
 
-	@Override
-	public boolean renderBase() {
-		return true;
-	}
+    @Override
+    public int getDuration(CrystalElement e) {
+        return 200;
+    }
+
+    @Override
+    public int getPotionLevel(CrystalElement e) {
+        return 0;
+    }
+
+    @Override
+    public boolean renderBase() {
+        return true;
+    }
 }

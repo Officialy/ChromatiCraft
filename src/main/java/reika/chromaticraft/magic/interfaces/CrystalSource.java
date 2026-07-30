@@ -9,8 +9,8 @@
  ******************************************************************************/
 package reika.chromaticraft.magic.interfaces;
 
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 
 import reika.chromaticraft.registry.CrystalElement;
 
@@ -25,9 +25,9 @@ public interface CrystalSource extends CrystalTransmitter, LumenTile {
 
 	public boolean canSupply(CrystalReceiver te, CrystalElement e);
 
-	public void onUsedBy(EntityPlayer ep, CrystalElement e);
+	public void onUsedBy(Player ep, CrystalElement e);
 
-	public boolean playerCanUse(EntityPlayer ep);
+	public boolean playerCanUse(Player ep);
 
 	public double getMaximumBeamRadius();
 

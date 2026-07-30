@@ -14,12 +14,12 @@ import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 
-import net.minecraft.block.Block;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.init.Blocks;
-import net.minecraft.util.MathHelper;
-import net.minecraft.world.World;
-import net.minecraftforge.common.util.ForgeDirection;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.util.Mth;
+import net.minecraft.world.level.Level;
+import net.minecraft.core.Direction;
 
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.block.relay.BlockRelayBase;
@@ -63,10 +63,10 @@ public final class RelayNetworker {
 	}
 
 	private static int getConfigurableRange() {
-		return MathHelper.clamp_int(ChromaOptions.RELAYRANGE.getValue(), 8, 24);
+		return Mth.clamp(ChromaOptions.RELAYRANGE.getValue(), 8, 24);
 	}
 
-	public TileEntityRelaySource findRelaySource(World world, int x, int y, int z, ForgeDirection dir, CrystalElement e, int amt, int dist) {
+	public TileEntityRelaySource findRelaySource(Level world, int x, int y, int z, Direction dir, CrystalElement e, int amt, int dist) {
 		if (amt <= 0)
 			return null;
 		RelayFinder rf = new RelayFinder(new Coordinate(x, y, z), Math.min(dist, maxRange), maxDepth, e, amt);
@@ -100,7 +100,7 @@ public final class RelayNetworker {
 		}
 
 		public void transmit(CrystalElement e) {
-			if (!source.worldObj.isRemote) {
+			if (!source.worldObj.isClientSide()) {
 				List<Integer> dat = new ArrayList();
 				for (Coordinate c : path) {
 					dat.add(c.xCoord);
@@ -114,9 +114,9 @@ public final class RelayNetworker {
 		}
 
 		private PacketTarget getTarget() {
-			Collection<EntityPlayerMP> li = new ArrayList();
+			Collection<ServerPlayer> li = new ArrayList();
 			for (Object o : source.worldObj.playerEntities) {
-				EntityPlayerMP ep = (EntityPlayerMP)o;
+				ServerPlayer ep = (ServerPlayer)o;
 				for (Coordinate c : path) {
 					if (c.getDistanceTo(ep) <= 64) {
 						li.add(ep);
@@ -137,7 +137,7 @@ public final class RelayNetworker {
 		private final CrystalElement color;
 		private final int amount;
 
-		private ForgeDirection look = ForgeDirection.UNKNOWN;
+		private Direction look = Direction.UNKNOWN;
 
 		private final LinkedList<Coordinate> path = new LinkedList();
 
@@ -151,11 +151,11 @@ public final class RelayNetworker {
 			ModularLogger.instance.log(LOGGER_ID, "Relay pathfinding start @ "+loc+" for "+amt+" of "+e);
 		}
 
-		private RelayPath find(World world) {
+		private RelayPath find(Level world) {
 			return this.findFrom(world, target, 0);
 		}
 
-		private RelayPath findFrom(World world, Coordinate start, int depth) {
+		private RelayPath findFrom(Level world, Coordinate start, int depth) {
 			if (depth > maxDepth)
 				return null;
 			for (int i = 1; i < maxRange; i++) {
@@ -186,7 +186,7 @@ public final class RelayNetworker {
 					TileEntityRift te = (TileEntityRift)c.getTileEntity(world);
 					WorldLocation loc = te.getLinkTarget();
 					if (loc != null) {
-						World world2 = loc.getWorld();
+						Level world2 = loc.getWorld();
 						if (world2.provider.dimensionId == world.provider.dimensionId || PylonGenerator.instance.canGenerateIn(world2)) {
 							path.addLast(c);
 							return this.findFrom(world2, new Coordinate(loc), depth+1);
@@ -216,11 +216,11 @@ public final class RelayNetworker {
 
 	}
 
-	public boolean isRelayPassable(World world, int x, int y, int z) {
+	public boolean isRelayPassable(Level world, int x, int y, int z) {
 		return PylonFinder.isBlockPassable(world, x, y, z) || this.isBlockRelayTransparent(world, x, y, z);
 	}
 
-	private boolean isBlockRelayTransparent(World world, int x, int y, int z) {
+	private boolean isBlockRelayTransparent(Level world, int x, int y, int z) {
 		Block b = world.getBlock(x, y, z);
 		int meta = world.getBlockMetadata(x, y, z);
 		if (b == ChromaBlocks.ROUTERNODE.getBlockInstance())

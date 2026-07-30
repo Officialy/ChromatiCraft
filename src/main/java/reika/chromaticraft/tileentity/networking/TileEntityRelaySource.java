@@ -10,11 +10,11 @@
 package reika.chromaticraft.tileentity.networking;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.util.AxisAlignedBB;
-import net.minecraft.world.World;
+import net.minecraft.world.level.Level;
 
 import reika.chromaticraft.auxiliary.interfaces.ItemOnRightClick;
 import reika.chromaticraft.auxiliary.interfaces.MultiBlockChromaTile;
@@ -72,14 +72,14 @@ public class TileEntityRelaySource extends InventoriedCrystalReceiver implements
 	 */
 
 	@Override
-	public void updateEntity(World world, int x, int y, int z, int meta) {
+	public void updateEntity(Level world, int x, int y, int z, int meta) {
 		super.updateEntity(world, x, y, z, meta);
 
-		if (!world.isRemote && /*this.getCooldown() == 0 && */checkTimer.checkCap()) {
+		if (!world.isClientSide() && /*this.getCooldown() == 0 && */checkTimer.checkCap()) {
 			this.checkAndRequest();
 		}
 
-		if (world.isRemote && enhanced) {
+		if (world.isClientSide() && enhanced) {
 			this.spawnParticles(world, x, y, z);
 		}
 
@@ -109,7 +109,7 @@ public class TileEntityRelaySource extends InventoriedCrystalReceiver implements
 	}
 
 	@SideOnly(Side.CLIENT)
-	private void spawnParticles(World world, int x, int y, int z) {
+	private void spawnParticles(Level world, int x, int y, int z) {
 		if (rand.nextInt(3) == 0) {
 			int dx = rand.nextBoolean() ? x+1 : x-1;
 			int dz = rand.nextBoolean() ? z+1 : z-1;
@@ -138,10 +138,10 @@ public class TileEntityRelaySource extends InventoriedCrystalReceiver implements
 	}
 
 	@Override
-	protected void onFirstTick(World world, int x, int y, int z) {
+	protected void onFirstTick(Level world, int x, int y, int z) {
 		super.onFirstTick(world, x, y, z);
-		EntityPlayer ep = this.getPlacer();
-		if (ep != null && !ReikaPlayerAPI.isFake(ep) && !world.isRemote) {
+		Player ep = this.getPlacer();
+		if (ep != null && !ReikaPlayerAPI.isFake(ep) && !world.isClientSide()) {
 			this.validateStructure();
 			enhanced = ChromaResearchManager.instance.playerHasFragment(ep, ChromaResearch.RELAYSTRUCT) && hasEnhancedStructure;
 		}
@@ -197,24 +197,24 @@ public class TileEntityRelaySource extends InventoriedCrystalReceiver implements
 	}
 
 	@Override
-	protected void animateWithTick(World world, int x, int y, int z) {
+	protected void animateWithTick(Level world, int x, int y, int z) {
 
 	}
 
 	@Override
-	public void readSyncTag(NBTTagCompound NBT) {
+	public void readSyncTag(CompoundTag NBT) {
 		super.readSyncTag(NBT);
 
-		enhanced = NBT.getBoolean("enhance");
-		hasEnhancedStructure = NBT.getBoolean("enstruct");
+		enhanced = NBT.getBooleanOr("enhance", false);
+		hasEnhancedStructure = NBT.getBooleanOr("enstruct", false);
 	}
 
 	@Override
-	public void writeSyncTag(NBTTagCompound NBT) {
+	public void writeSyncTag(CompoundTag NBT) {
 		super.writeSyncTag(NBT);
 
-		NBT.setBoolean("enhance", enhanced);
-		NBT.setBoolean("enstruct", hasEnhancedStructure);
+		NBT.putBoolean("enhance", enhanced);
+		NBT.putBoolean("enstruct", hasEnhancedStructure);
 	}
 
 	@Override
@@ -238,7 +238,7 @@ public class TileEntityRelaySource extends InventoriedCrystalReceiver implements
 	}
 
 	@Override
-	public ItemStack onRightClickWith(ItemStack item, EntityPlayer ep) {
+	public ItemStack onRightClickWith(ItemStack item, Player ep) {
 		this.dropItem(inv[0]);
 		inv[0] = null;
 		if (this.isItemValidForSlot(0, item)) {
@@ -254,7 +254,7 @@ public class TileEntityRelaySource extends InventoriedCrystalReceiver implements
 
 	public void onDrain(CrystalElement e, int amt) {
 		drainValue[e.ordinal()] += amt;
-		if (worldObj.isRemote) {
+		if (worldObj.isClientSide()) {
 			ProgressionCatchupHandling.instance.attemptSync(this, 8, ProgressStage.RELAYS, true);
 		}
 	}

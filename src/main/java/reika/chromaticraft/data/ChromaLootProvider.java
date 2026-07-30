@@ -18,12 +18,18 @@ import net.minecraft.world.level.storage.loot.entries.LootPoolSingletonContainer
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.level.storage.loot.predicates.LootItemBlockStatePropertyCondition;
 import net.minecraft.world.level.storage.loot.predicates.LootItemCondition;
+import net.minecraft.world.level.storage.loot.predicates.LootItemRandomChanceCondition;
 import net.minecraft.world.level.storage.loot.providers.number.ConstantValue;
 import net.minecraft.advancements.predicates.StatePropertiesPredicate;
+import reika.chromaticraft.block.BlockEncrustedCrystal;
 
+import reika.chromaticraft.block.BlockChromaFluid;
+import reika.chromaticraft.block.BlockChromaMud;
 import reika.chromaticraft.block.BlockCrystalRune;
 import reika.chromaticraft.block.BlockPylonStructure;
 import reika.chromaticraft.block.BlockPylonStructure.StoneTypes;
+import reika.chromaticraft.block.worldgen26.BlockGlowDaisy;
+import reika.chromaticraft.block.worldgen26.BlockGlowRoot;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.CrystalElement;
 
@@ -59,7 +65,22 @@ public final class ChromaLootProvider extends LootTableProvider {
 					this.add(block, this.pylonStructureTable(block));
 				}
 				else if (block instanceof BlockCrystalRune) {
-					this.add(block, this.runeTable(block));
+					this.dropSelf(block);
+				}
+				else if (block instanceof BlockEncrustedCrystal) {
+					this.add(block, noDrop()); // Synchronized face-growth state emits the original shard drops.
+				}
+				else if (block instanceof BlockChromaFluid || block.asItem() == net.minecraft.world.item.Items.AIR) {
+					this.add(block, noDrop());
+				}
+				else if (block instanceof BlockChromaMud) {
+					this.add(block, createSingleItemTable(net.minecraft.world.level.block.Blocks.DIRT));
+				}
+				else if (block instanceof BlockGlowDaisy) {
+					this.add(block, this.glowstoneDustTable(block, 0.5F));
+				}
+				else if (block instanceof BlockGlowRoot) {
+					this.add(block, this.glowstoneDustTable(block, 0.25F));
 				}
 				else {
 					this.dropSelf(block);
@@ -67,6 +88,11 @@ public final class ChromaLootProvider extends LootTableProvider {
 			}
 		}
 
+		private LootTable.Builder glowstoneDustTable(Block block, float chance) {
+			return createShearsDispatchTable(block,
+					LootItem.lootTableItem(net.minecraft.world.item.Items.GLOWSTONE_DUST)
+							.when(LootItemRandomChanceCondition.randomChance(chance)));
+		}
 		private LootTable.Builder pylonStructureTable(Block block) {
 			LootTable.Builder table = LootTable.lootTable();
 			for (StoneTypes t : StoneTypes.list) {
@@ -90,19 +116,6 @@ public final class ChromaLootProvider extends LootTableProvider {
 			return table;
 		}
 
-		/** Per-colour loot: each COLOR value drops its own rune item. */
-		private LootTable.Builder runeTable(Block block) {
-			LootTable.Builder table = LootTable.lootTable();
-			for (CrystalElement e : CrystalElement.elements) {
-				LootItemCondition.Builder isColor = LootItemBlockStatePropertyCondition
-						.hasBlockStateProperties(block)
-						.setProperties(StatePropertiesPredicate.Builder.properties()
-								.hasProperty(BlockCrystalRune.COLOR, e.ordinal()));
-				table.withPool(LootPool.lootPool().setRolls(ConstantValue.exactly(1)).when(isColor)
-						.add(LootItem.lootTableItem(ChromaBlocks.RUNE_ITEMS.get(e.ordinal()).get())));
-			}
-			return table;
-		}
 
 		@Override
 		protected Iterable<Block> getKnownBlocks() {

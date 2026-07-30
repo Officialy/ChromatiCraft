@@ -9,7 +9,7 @@
  ******************************************************************************/
 package reika.chromaticraft.auxiliary.interfaces;
 
-import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.world.entity.player.Player;
 
 
 public interface OwnedTile extends NBTTile {
@@ -17,6 +17,6 @@ public interface OwnedTile extends NBTTile {
 	boolean onlyAllowOwnersToMine();
 	boolean onlyAllowOwnersToUse();
 
-	boolean isOwnedByPlayer(EntityPlayer ep);
+	boolean isOwnedByPlayer(Player ep);
 
 }

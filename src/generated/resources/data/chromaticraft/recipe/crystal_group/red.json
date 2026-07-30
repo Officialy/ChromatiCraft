@@ -1,0 +1,65 @@
+{
+  "type": "chromaticraft:casting",
+  "duration": 20,
+  "experience": 40,
+  "grid": [
+    {
+      "ingredient": "chromaticraft:crystal_shard_red",
+      "slot": 1
+    },
+    {
+      "ingredient": "chromaticraft:crystal_shard_blue",
+      "slot": 3
+    },
+    {
+      "ingredient": "chromaticraft:aura_dust",
+      "slot": 4
+    },
+    {
+      "ingredient": "chromaticraft:crystal_shard_purple",
+      "slot": 5
+    },
+    {
+      "ingredient": "chromaticraft:crystal_shard_magenta",
+      "slot": 7
+    }
+  ],
+  "result": {
+    "id": "chromaticraft:red_crystal_group"
+  },
+  "runes": [
+    {
+      "element": "red",
+      "offset": [
+        0,
+        0,
+        -3
+      ]
+    },
+    {
+      "element": "blue",
+      "offset": [
+        -3,
+        0,
+        0
+      ]
+    },
+    {
+      "element": "purple",
+      "offset": [
+        3,
+        0,
+        0
+      ]
+    },
+    {
+      "element": "magenta",
+      "offset": [
+        0,
+        0,
+        3
+      ]
+    }
+  ],
+  "tier": "temple"
+}

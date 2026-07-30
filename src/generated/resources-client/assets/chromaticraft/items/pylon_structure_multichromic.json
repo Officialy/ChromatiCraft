@@ -1,6 +1,6 @@
 {
   "model": {
     "type": "minecraft:model",
-    "model": "chromaticraft:block/pylon_structure_13"
+    "model": "chromaticraft:block/pylon_structure_13_y"
   }
 }
