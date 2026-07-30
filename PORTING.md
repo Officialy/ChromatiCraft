@@ -859,3 +859,41 @@ spawner is that same still-pristine gravity-puzzle structure.
 `:ChromatiCraft:compileJava` passes. This adds a Luminous Cliffs biome spawn entry and therefore needs
 a server-datagen rerun (owner-run, per process rules) before the spawn is live in a built datapack;
 in-client verification (particle look, billboard orientation, actual natural spawning) is still needed.
+## Early progression: game start → casting stands — 2026-07-31
+
+The opening arc is now walkable end to end. Three things were missing, each of which alone made it
+unreachable:
+
+1. **`ExplorationMonitor` was never ported.** It is V33a's discovery mechanism — a per-player tick
+   scan that grants stages purely for *looking at* the right block — and it is the only grant site
+   for `ProgressStage.CRYSTALS`, the root of the progression DAG and a prerequisite of `CASTING`.
+   Without it CRYSTALS was reachable only from the game tests. 1.7.10 registered it as a DragonAPI
+   `TickHandler` on `TickType.PLAYER`; the 26.2 equivalent is a server-side `PlayerTickEvent.Pre`
+   listener. Ported together with the `ProgressionTrigger` interface; `BlockCaveCrystal` implements
+   it as in V33a. The same scan also now drives pylon colour discovery, `BEDROCK`, `FINDSPAWNER`,
+   `DEEPCAVE`, `NETHERROOF`, `RAINBOWFOREST` and `GLOWCLIFFS`.
+2. **Cave crystals dropped themselves.** V33a never drops the block — it always yields shards of its
+   own colour, count `1 + rand(6+f) + (1+f)*rand(3) + rand(1+f)`. Three rolls whose ranges each scale
+   differently with Fortune, so not a composition of vanilla number providers; registered as
+   `chromaticraft:crystal_shard_count` so the loot table stays data-driven.
+3. **The Casting Table had no crafting recipe** — the mod had no ordinary recipe provider at all —
+   and the Item Stand had none either. Both now emitted verbatim from V33a. Note the Item Stand is
+   *not* a grid recipe upstream: it is itself a base-tier casting recipe, which is what gates tier-2
+   casting behind owning a table.
+
+Validation: `:ChromatiCraft:compileJava`, `:ChromatiCraft:runServerData` and
+`:ChromatiCraft:runClientData` pass, and `:ChromatiCraft:runGameTest` reports **all 62 required tests
+passed** against a real server world.
+
+Still unported inside this same window, and deliberately marked `CHROMA-PORT` rather than guessed:
+
+- **the guide book** (`ChromaItems.HELP` / `ItemChromaBook`) — V33a's main in-game guidance, and the
+  thing a new player is expected to craft first;
+- **the Manipulator** (`ChromaItems.TOOL` / `ItemManipulator`) — the inspect/link tool;
+- both of their grid recipes, which are recorded in `ChromaRecipeProvider` as comments so they can be
+  restored verbatim the moment the items land;
+- Mystcraft (`MYST`) and Thaumcraft (`NODE`, Thaumometer pylon scan) branches of the exploration scan.
+
+Not yet runtime-verified in a client: that looking at a cave crystal visibly grants the stage, the
+in-world shard drop counts, and the casting table GUI/craft flow. The GameTest suite covers the
+progression core and casting logic headlessly, not the client interaction.
