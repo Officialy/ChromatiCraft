@@ -94,6 +94,7 @@ public class ChromatiCraft extends DragonAPIMod {
 		modEventBus.addListener(ChromaGameTests::onRegisterGameTests);
 		modEventBus.addListener(ChromaNetwork::register);
 		ChromaGameTests.TEST_INSTANCE_TYPES.register(modEventBus);
+		reika.chromaticraft.registry.ChromaLootProviders.NUMBER_PROVIDERS.register(modEventBus);
 		modEventBus.addListener(this::commonSetup);
 
 		// Force-load the progression singleton so it wires ProgressionAPI.instance.progressManager
@@ -105,6 +106,8 @@ public class ChromatiCraft extends DragonAPIMod {
 		}
 
 		NeoForge.EVENT_BUS.addListener(ChromatiCraft::registerCommands);
+		// The discovery scan that grants CRYSTALS (and BEDROCK/DEEPCAVE/biome stages) on sight.
+		reika.chromaticraft.auxiliary.ExplorationMonitor.register();
 	}
 
 	private void commonSetup(FMLCommonSetupEvent event) {

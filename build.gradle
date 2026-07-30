@@ -251,6 +251,13 @@ sourceSets.main.java {
     // a stage → query it); the color path is live via CrystalElement.playerHas. Handbook/UI, packet
     // sync, coop-linking, research-tier gating, and casting-unlock hooks are deferred.
     include 'reika/chromaticraft/magic/progression/ProgressStage.java'
+    // Exploration discovery scan: grants CRYSTALS on sight of a cave crystal (the mod's opening
+    // step), plus BEDROCK/FINDSPAWNER/DEEPCAVE/NETHERROOF and the two biome stages.
+    include 'reika/chromaticraft/auxiliary/interfaces/ProgressionTrigger.java'
+    include 'reika/chromaticraft/auxiliary/ExplorationMonitor.java'
+    // V33a cave-crystal shard drop formula as a custom loot number provider.
+    include 'reika/chromaticraft/auxiliary/loot/CrystalShardCount.java'
+    include 'reika/chromaticraft/registry/ChromaLootProviders.java'
 	// Data-driven casting recipe contract: grid, temple runes, auxiliary stands, and pylon aura.
 	include 'reika/chromaticraft/auxiliary/recipemanagers/CastingRecipeInput.java'
 	include 'reika/chromaticraft/auxiliary/recipemanagers/CastingTableRecipe.java'

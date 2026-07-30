@@ -9,124 +9,103 @@
  ******************************************************************************/
 package reika.chromaticraft.auxiliary;
 
-import java.util.EnumSet;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LightLayer;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
 
-import net.minecraft.block.Block;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.init.Blocks;
-import net.minecraft.util.MathHelper;
-import net.minecraft.util.MovingObjectPosition;
-import net.minecraft.world.EnumSkyBlock;
-import net.minecraft.world.World;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 
-import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.auxiliary.interfaces.ProgressionTrigger;
 import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.magic.progression.ProgressionManager;
-import reika.chromaticraft.modinterface.ModInteraction;
-import reika.chromaticraft.registry.ChromaTiles;
 import reika.chromaticraft.tileentity.networking.TileEntityCrystalPylon;
-import reika.chromaticraft.world.BiomeGlowingCliffs;
-import reika.dragonapi.ModList;
-import reika.dragonapi.auxiliary.trackers.tickregistry.TickHandler;
-import reika.dragonapi.auxiliary.trackers.tickregistry.TickType;
+import reika.chromaticraft.world.biome.ChromaBiomes;
 import reika.dragonapi.libraries.ReikaPlayerAPI;
-import reika.dragonapi.libraries.registry.ReikaItemHelper;
-import reika.dragonapi.modinteract.deepinteract.ReikaMystcraftHelper;
-import reika.dragonapi.modinteract.itemhandlers.ThaumItemHelper;
 
-import cpw.mods.fml.common.gameevent.TickEvent.Phase;
+/**
+ * V33a's per-player exploration scan, the mod's discovery mechanism: several progression stages are
+ * granted purely by looking at the right block or standing in the right place, with no interaction.
+ * Most importantly this is what grants {@link ProgressStage#CRYSTALS} — the opening step of the whole
+ * mod — when a player looks at a cave crystal.
+ *
+ * <p>1.7.10 registered this as a DragonAPI {@code TickHandler} on {@code TickType.PLAYER}; the 26.2
+ * equivalent is a server-side {@link PlayerTickEvent.Pre} listener. The scan stays server-side, as in
+ * the original, because progression is server-authoritative.
+ */
+public final class ExplorationMonitor {
 
-public class ExplorationMonitor implements TickHandler {
+	/** V33a used a 4-block ray with liquids counted as hits. */
+	private static final double REACH = 4;
 
-	public static final ExplorationMonitor instance = new ExplorationMonitor();
+	private ExplorationMonitor() {}
 
-	private ExplorationMonitor() {
-
+	public static void register() {
+		NeoForge.EVENT_BUS.addListener(ExplorationMonitor::onPlayerTick);
 	}
 
-	@Override
-	public void tick(TickType type, Object... tickData) {
-		EntityPlayer ep = (EntityPlayer)tickData[0];
-		World world = ep.worldObj;
-		if (!world.isRemote) {
-			if (ModList.MYSTCRAFT.isLoaded() && ReikaMystcraftHelper.isMystAge(world)) {
-				ProgressStage.MYST.stepPlayerTo(ep);
-			}
-			//ProgressionManager.instance.setPlayerDiscoveredColor(ep, CrystalElement.RED, true);
-			int x0 = MathHelper.floor_double(ep.posX);
-			int y0 = MathHelper.floor_double(ep.posY)+1;
-			int z0 = MathHelper.floor_double(ep.posZ);
-			MovingObjectPosition mov = ReikaPlayerAPI.getLookedAtBlock(ep, 4, true);
-			if (mov != null) {
-				int x = mov.blockX;
-				int y = mov.blockY;
-				int z = mov.blockZ;
+	@SubscribeEvent
+	private static void onPlayerTick(PlayerTickEvent.Pre event) {
+		Player ep = event.getEntity();
+		Level world = ep.level();
+		if (world.isClientSide())
+			return;
 
-				if (ChromaTiles.getTile(world, x, y, z) == ChromaTiles.PYLON) {
-					TileEntityCrystalPylon te = (TileEntityCrystalPylon)world.getTileEntity(x, y, z);
-					if (te.hasStructure() && te.getEnergy(te.getColor()) >= te.getMaxStorage(te.getColor())/10) {
-						ProgressionManager.instance.setPlayerDiscoveredColor(ep, te.getColor(), true, true);
-						if (ModList.THAUMCRAFT.isLoaded() && ReikaItemHelper.matchStacks(ep.getCurrentEquippedItem(), ThaumItemHelper.ItemEntry.THAUMOMETER.getItem())) {
-							if (ep.isUsingItem() && ep.itemInUseCount <= 5)
-								if (!ModInteraction.triggerPylonScanProgress(ep, te))
-									ep.clearItemInUse();
-						}
-					}
-				}
+		// CHROMA-PORT: V33a also grants MYST here when the player is inside a Mystcraft age. The
+		// Mystcraft integration (ReikaMystcraftHelper) is not ported; do not substitute a stand-in.
 
-				Block b = world.getBlock(x, y, z);
-				if (b instanceof ProgressionTrigger) {
-					ProgressStage[] ps = ((ProgressionTrigger)b).getTriggers(ep, world, x, y, z);
-					if (ps != null) {
-						for (int i = 0; i < ps.length; i++) {
-							ProgressStage p = ps[i];
-							p.stepPlayerTo(ep);
-						}
-					}
-				}
-				else if (b == Blocks.bedrock && y < 6) {
-					ProgressStage.BEDROCK.stepPlayerTo(ep);
-				}
-				else if (b == Blocks.mob_spawner) {
-					ProgressStage.FINDSPAWNER.stepPlayerTo(ep);
-				}
-				else if (ModList.THAUMCRAFT.isLoaded() && b == ThaumItemHelper.BlockEntry.NODE.getBlock() && world.getBlockMetadata(x, y, z) == ThaumItemHelper.BlockEntry.NODE.metadata) {
-					ProgressStage.NODE.stepPlayerTo(ep);
-				}
-			}
+		BlockPos eye = BlockPos.containing(ep.getX(), ep.getY() + 1, ep.getZ());
+		BlockHitResult look = ReikaPlayerAPI.getLookedAtBlock(ep, REACH, true);
+		if (look != null && look.getType() == HitResult.Type.BLOCK)
+			scanLookedAtBlock(ep, world, look.getBlockPos());
 
-			if (world.provider.dimensionId == -1 && ep.posY > 128) {
-				ProgressStage.NETHERROOF.stepPlayerTo(ep);
-			}
+		if (world.dimension() == Level.NETHER && ep.getY() > 128)
+			ProgressStage.NETHERROOF.stepPlayerTo(ep);
 
-			if (world.provider.dimensionId == 0 && ep.posY < 18 && world.getSavedLightValue(EnumSkyBlock.Sky, x0, y0, z0) == 0) {
-				ProgressStage.DEEPCAVE.stepPlayerTo(ep);
-			}
+		if (world.dimension() == Level.OVERWORLD && ep.getY() < 18
+				&& world.getBrightness(LightLayer.SKY, eye) == 0)
+			ProgressStage.DEEPCAVE.stepPlayerTo(ep);
 
-			if (world.provider.dimensionId == 0 && ChromatiCraft.isRainbowForest(world.getBiomeGenForCoords(x0, z0))) {
+		if (world.dimension() == Level.OVERWORLD) {
+			var biome = world.getBiome(eye);
+			if (biome.is(ChromaBiomes.RAINBOW_FOREST) || biome.is(ChromaBiomes.RAINBOW_STREAM))
 				ProgressStage.RAINBOWFOREST.stepPlayerTo(ep);
-			}
-
-			if (world.provider.dimensionId == 0 && BiomeGlowingCliffs.isGlowingCliffs(world.getBiomeGenForCoords(x0, z0))) {
+			if (biome.is(ChromaBiomes.LUMINOUS_CLIFFS) || biome.is(ChromaBiomes.LUMINOUS_CLIFFS_SHORES))
 				ProgressStage.GLOWCLIFFS.stepPlayerTo(ep);
-			}
 		}
 	}
 
-	@Override
-	public EnumSet<TickType> getType() {
-		return EnumSet.of(TickType.PLAYER);
-	}
+	private static void scanLookedAtBlock(Player ep, Level world, BlockPos pos) {
+		BlockEntity te = world.getBlockEntity(pos);
+		if (te instanceof TileEntityCrystalPylon pylon && pylon.hasStructure()
+				&& pylon.getEnergy(pylon.getColor()) >= pylon.getMaxStorage(pylon.getColor()) / 10) {
+			ProgressionManager.instance.setPlayerDiscoveredColor(ep, pylon.getColor(), true, true);
+			// CHROMA-PORT: V33a additionally lets a Thaumcraft Thaumometer scan of a charged pylon
+			// drive ModInteraction.triggerPylonScanProgress. Thaumcraft is not ported.
+		}
 
-	@Override
-	public boolean canFire(Phase p) {
-		return p == Phase.START;
+		BlockState state = world.getBlockState(pos);
+		if (state.getBlock() instanceof ProgressionTrigger trigger) {
+			ProgressStage[] stages = trigger.getTriggers(ep, world, pos);
+			if (stages != null) {
+				for (ProgressStage stage : stages)
+					stage.stepPlayerTo(ep);
+			}
+			return;
+		}
+		if (state.is(Blocks.BEDROCK) && pos.getY() < 6) {
+			ProgressStage.BEDROCK.stepPlayerTo(ep);
+		}
+		else if (state.is(Blocks.SPAWNER)) {
+			ProgressStage.FINDSPAWNER.stepPlayerTo(ep);
+		}
+		// CHROMA-PORT: V33a's third branch here grants NODE for a looked-at Thaumcraft aura node.
 	}
-
-	@Override
-	public String getLabel() {
-		return "ChromatiCraft Exploration Monitor";
-	}
-
 }

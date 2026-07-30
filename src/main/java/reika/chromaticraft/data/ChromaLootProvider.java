@@ -12,6 +12,7 @@ import net.minecraft.world.flag.FeatureFlags;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.storage.loot.LootPool;
+import net.minecraft.world.level.storage.loot.functions.SetItemCountFunction;
 import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.entries.LootItem;
 import net.minecraft.world.level.storage.loot.entries.LootPoolSingletonContainer;
@@ -30,6 +31,7 @@ import reika.chromaticraft.block.BlockPylonStructure;
 import reika.chromaticraft.block.BlockPylonStructure.StoneTypes;
 import reika.chromaticraft.block.worldgen26.BlockGlowDaisy;
 import reika.chromaticraft.block.worldgen26.BlockGlowRoot;
+import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.CrystalElement;
 
@@ -61,7 +63,11 @@ public final class ChromaLootProvider extends LootTableProvider {
 		protected void generate() {
 			for (var holder : ChromaBlocks.BLOCKS.getEntries()) {
 				Block block = holder.get();
-				if (block instanceof BlockPylonStructure) {
+				if (block instanceof reika.chromaticraft.block.crystal.BlockCaveCrystal crystal) {
+					// V33a BlockCaveCrystal.getDrops: never itself, always N shards of its own colour.
+					this.add(block, this.caveCrystalTable(block, crystal.getCrystalElement()));
+				}
+				else if (block instanceof BlockPylonStructure) {
 					this.add(block, this.pylonStructureTable(block));
 				}
 				else if (block instanceof BlockCrystalRune) {
@@ -86,6 +92,21 @@ public final class ChromaLootProvider extends LootTableProvider {
 					this.dropSelf(block);
 				}
 			}
+		}
+
+		/**
+		 * V33a cave crystals are not silk-touchable into themselves and have no explosion drop; they
+		 * always yield shards of their own colour, in the compound Fortune-scaled count from
+		 * {@link reika.chromaticraft.auxiliary.loot.CrystalShardCount}. The
+		 * {@code survives_explosion} condition reproduces V33a's {@code canDropFromExplosion()==false}.
+		 */
+		private LootTable.Builder caveCrystalTable(Block block, CrystalElement element) {
+			return LootTable.lootTable().withPool(this.applyExplosionCondition(block,
+					LootPool.lootPool()
+							.setRolls(ConstantValue.exactly(1))
+							.add(LootItem.lootTableItem(ChromaItems.SHARDS.get(element).get())
+									.apply(SetItemCountFunction.setCount(
+											reika.chromaticraft.auxiliary.loot.CrystalShardCount.INSTANCE)))));
 		}
 
 		private LootTable.Builder glowstoneDustTable(Block block, float chance) {

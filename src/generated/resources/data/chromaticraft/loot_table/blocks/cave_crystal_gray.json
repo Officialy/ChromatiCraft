@@ -10,7 +10,15 @@
       "entries": [
         {
           "type": "minecraft:item",
-          "name": "chromaticraft:cave_crystal_gray"
+          "functions": [
+            {
+              "count": {
+                "type": "chromaticraft:crystal_shard_count"
+              },
+              "function": "minecraft:set_count"
+            }
+          ],
+          "name": "chromaticraft:crystal_shard_gray"
         }
       ],
       "rolls": 1.0

@@ -10,11 +10,16 @@ import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
+
+import reika.chromaticraft.auxiliary.interfaces.ProgressionTrigger;
 import reika.chromaticraft.base.CrystalBlock;
+import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.registry.CrystalElement;
 
 /** One property-free cave-crystal block identity for a single element. */
-public final class BlockCaveCrystal extends CrystalBlock {
+public final class BlockCaveCrystal extends CrystalBlock implements ProgressionTrigger {
 
     private static final VoxelShape[][][][] SHAPES = createShapes();
 
@@ -23,6 +28,15 @@ public final class BlockCaveCrystal extends CrystalBlock {
     public BlockCaveCrystal(BlockBehaviour.Properties properties, CrystalElement element) {
         super(properties);
         this.element = element;
+    }
+
+    /**
+     * V33a {@code BlockCaveCrystal.getTriggers}: simply looking at a cave crystal is the mod's
+     * opening progression step. Fired by {@link reika.chromaticraft.auxiliary.ExplorationMonitor}.
+     */
+    @Override
+    public ProgressStage[] getTriggers(Player ep, Level world, BlockPos pos) {
+        return new ProgressStage[]{ProgressStage.CRYSTALS};
     }
 
     /** Matches the two discarded booleans and four-bit arm selector in V33a CrystalRenderer. */
