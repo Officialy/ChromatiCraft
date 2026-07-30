@@ -89,6 +89,11 @@ public final class ChromaItems {
 	}
 
 	public static final DeferredItem<Item> CRYSTAL_POWDER = CRAFTING.get(ChromaCraftingItems.CRYSTAL_POWDER);
+
+	/** V33a ChromaItems.TOOL: the Manipulator, the universal ChromatiCraft interaction tool. */
+	public static final DeferredItem<reika.chromaticraft.item.ItemManipulator> MANIPULATOR =
+			reg("manipulator", () -> new reika.chromaticraft.item.ItemManipulator(
+					itemProperties().stacksTo(1)));
 	/** The former SHARD metadata item, split into one registered item per crystal element. */
 	public static final EnumMap<CrystalElement, DeferredItem<ItemCrystalShard>> SHARDS = new EnumMap<>(CrystalElement.class);
 	/** V33a {@code case SHARD: meta >= 16 ? "Boosted " : ""} — the port previously mis-called this "Charged". */

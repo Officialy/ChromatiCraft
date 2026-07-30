@@ -256,6 +256,7 @@ sourceSets.main.java {
     include 'reika/chromaticraft/auxiliary/interfaces/ProgressionTrigger.java'
     include 'reika/chromaticraft/auxiliary/ExplorationMonitor.java'
     // V33a cave-crystal shard drop formula as a custom loot number provider.
+    include 'reika/chromaticraft/item/ItemManipulator.java'
     include 'reika/chromaticraft/auxiliary/loot/CrystalShardCount.java'
     include 'reika/chromaticraft/registry/ChromaLootProviders.java'
 	// Data-driven casting recipe contract: grid, temple runes, auxiliary stands, and pylon aura.

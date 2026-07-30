@@ -121,6 +121,10 @@ public class ChromaModelProvider extends ModelProvider {
 		// cube model using the dedicated block/crystal/crystal_<colour> textures. (The renderBase base+arm
 		// geometry of the lamp/super crystals is deferred; a coloured cube is the placeholder.)
 		caveCrystalItems(itemModelOut, modelOut);
+		// V33a ChromaItems.TOOL — flat item icon from items_tool.png sprite 32.
+		Item manipulator = ChromaItems.MANIPULATOR.get();
+		itemModelOut.accept(manipulator, ItemModelUtils.plainModel(ModelTemplates.FLAT_ITEM.create(
+				ModelLocationUtils.getModelLocation(manipulator), TextureMapping.layer0(manipulator), modelOut)));
 		crystalColourBlocks(ChromaBlocks.CRYSTAL_LAMPS, "crystal_lamp", blockStateOut, itemModelOut, modelOut);
 		// Every former CRAFTING metadata is a distinct 26.2 item. Models are generated from the
 		// matching item/<registry_name> texture, keeping JSON in datagen rather than runtime maps.

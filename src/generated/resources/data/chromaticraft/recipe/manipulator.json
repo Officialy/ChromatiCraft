@@ -1,0 +1,49 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "key": {
+    "S": "minecraft:stick",
+    "s": [
+      "chromaticraft:crystal_shard_black",
+      "chromaticraft:boosted_crystal_shard_black",
+      "chromaticraft:crystal_shard_red",
+      "chromaticraft:boosted_crystal_shard_red",
+      "chromaticraft:crystal_shard_green",
+      "chromaticraft:boosted_crystal_shard_green",
+      "chromaticraft:crystal_shard_brown",
+      "chromaticraft:boosted_crystal_shard_brown",
+      "chromaticraft:crystal_shard_blue",
+      "chromaticraft:boosted_crystal_shard_blue",
+      "chromaticraft:crystal_shard_purple",
+      "chromaticraft:boosted_crystal_shard_purple",
+      "chromaticraft:crystal_shard_cyan",
+      "chromaticraft:boosted_crystal_shard_cyan",
+      "chromaticraft:crystal_shard_light_gray",
+      "chromaticraft:boosted_crystal_shard_light_gray",
+      "chromaticraft:crystal_shard_gray",
+      "chromaticraft:boosted_crystal_shard_gray",
+      "chromaticraft:crystal_shard_pink",
+      "chromaticraft:boosted_crystal_shard_pink",
+      "chromaticraft:crystal_shard_lime",
+      "chromaticraft:boosted_crystal_shard_lime",
+      "chromaticraft:crystal_shard_yellow",
+      "chromaticraft:boosted_crystal_shard_yellow",
+      "chromaticraft:crystal_shard_light_blue",
+      "chromaticraft:boosted_crystal_shard_light_blue",
+      "chromaticraft:crystal_shard_magenta",
+      "chromaticraft:boosted_crystal_shard_magenta",
+      "chromaticraft:crystal_shard_orange",
+      "chromaticraft:boosted_crystal_shard_orange",
+      "chromaticraft:crystal_shard_white",
+      "chromaticraft:boosted_crystal_shard_white"
+    ]
+  },
+  "pattern": [
+    "  s",
+    " S ",
+    "S  "
+  ],
+  "result": {
+    "id": "chromaticraft:manipulator"
+  }
+}

@@ -80,6 +80,8 @@ public class ChromaLang extends LanguageProvider {
 			add("block.chromaticraft.cave_crystal_" + element.getEnglishName(),
 					element.displayName + " Cave Crystal");
 		}
+		add(ChromaItems.MANIPULATOR.get(), "Elemental Manipulator"); // V33a chroma.tool
+
 		for (CrystalElement element : CrystalElement.elements) {
 			String suffix = element.getEnglishName();
 			// V33a crystal.lamp = "Crystal Lamp" — matches.

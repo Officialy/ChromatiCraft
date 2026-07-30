@@ -69,10 +69,20 @@ public final class ChromaRecipeProvider extends RecipeProvider.Runner {
 					.unlockedBy("has_shard", has(ChromaItems.SHARDS.get(CrystalElement.BLUE).get()))
 					.save(out, key("casting_table"));
 
-			// CHROMA-PORT: V33a also crafts the Manipulator here --
-			//   ChromaItems.TOOL.addRecipe("  s", " S ", "S  ", 'S', Items.stick, 's', SHARD wildcard)
-			// and the guide book (ChromaItems.HELP) from a book plus six specific shards. Neither
-			// ItemManipulator nor ItemChromaBook is ported yet; add both recipes verbatim when they land.
+			// V33a: ChromaItems.TOOL.addRecipe("  s", " S ", "S  ", 'S', Items.stick, 's', SHARD wildcard)
+			shaped(RecipeCategory.TOOLS, ChromaItems.MANIPULATOR.get())
+					.define('S', Items.STICK)
+					.define('s', anyShard)
+					.pattern("  s")
+					.pattern(" S ")
+					.pattern("S  ")
+					.unlockedBy("has_shard", has(ChromaItems.SHARDS.get(CrystalElement.BLUE).get()))
+					.save(out, key("manipulator"));
+
+			// CHROMA-PORT: V33a also crafts the guide book (ChromaItems.HELP, "Chromic Lexicon") here:
+			//   "abc", "gBg", "def" with 'B' book, 'g' glowstone dust, and a/b/c/d/e/f the black,
+			//   blue, green, yellow, red and white shards. ItemChromaBook is not ported -- it needs
+			//   ChromaResearch, the gui/book family and the XML help-data pipeline first.
 		}
 
 		/** V33a's wildcard-metadata shard stack: any colour, plain or boosted. */
