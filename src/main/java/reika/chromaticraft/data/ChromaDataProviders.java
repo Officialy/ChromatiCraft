@@ -28,6 +28,7 @@ public final class ChromaDataProviders {
 		event.createProvider(ChromaTestStructureProvider::new);
 		event.createProvider(ChromaStructureTemplateProvider::new);
 		event.createProvider(ChromaCastingRecipeProvider::new);
+		event.createProvider(ChromaRecipeProvider::new);
 		event.createDatapackRegistryObjects(ChromaWorldGenProvider.buildRegistrySet());
 		event.createProvider(ChromaBiomeModifierProvider::new);
 		event.createProvider(output -> new ChromaBiomeTagProvider(output, event.getLookupProvider()));

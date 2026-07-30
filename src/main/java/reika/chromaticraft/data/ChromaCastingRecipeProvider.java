@@ -79,6 +79,18 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 			save("crystal_stone/groove1", StoneTypes.GROOVE1, 3, smoothOnly, "S", "S", "S");
 			save("crystal_stone/groove2", StoneTypes.GROOVE2, 3, smoothOnly, "SSS");
 
+			// V33a StandRecipe: the Casting Item Stand is itself a base-tier casting recipe, which is
+			// what unlocks tier-2 (auxiliary-stand) casting.
+			//   new ShapedOreRecipe(STAND, "I I", "SLS", "CCC",
+			//       'I', Items.iron_ingot, 'C', "cobblestone", 'S', stoneSlab, 'L', lapisDye)
+			saveShaped("casting_item_stand",
+					new ItemStackTemplate(ChromaBlocks.ITEM_STAND.get().asItem()), 5, 5,
+					Map.of('I', Ingredient.of(net.minecraft.world.item.Items.IRON_INGOT),
+							'C', tag(net.minecraft.tags.ItemTags.STONE_CRAFTING_MATERIALS),
+							'S', Ingredient.of(net.minecraft.world.item.Items.STONE_SLAB),
+							'L', Ingredient.of(net.minecraft.world.item.Items.LAPIS_LAZULI)),
+					"I I", "SLS", "CCC");
+
 			// Complete V33a CrystalGroupRecipe family: ordinary and boosted inputs.
 			saveGroup("red", ChromaClusterItems.RED_GROUP, Ingredient.of(ChromaItems.TIERED.get(ChromaTieredItems.AURA_DUST).get()), new CrystalElement[] {CrystalElement.RED, CrystalElement.BLUE, CrystalElement.PURPLE, CrystalElement.MAGENTA}, false);
 			saveGroup("green", ChromaClusterItems.GREEN_GROUP, Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.LIVING_ESSENCE).get()), new CrystalElement[] {CrystalElement.YELLOW, CrystalElement.CYAN, CrystalElement.LIME, CrystalElement.GREEN}, false);
@@ -331,6 +343,34 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 					grid, List.of(), List.of(), List.of(),
 					new ItemStackTemplate(ChromaBlocks.PYLONSTRUCT_ITEMS.get(result.ordinal()).get(), count), 5, 5);
 			saveRecipe(name, recipe);
+		}
+
+		/**
+		 * A base-tier (bare table, no runes) shaped casting recipe with an arbitrary result. V33a
+		 * expresses these as a {@code ShapedOreRecipe} wrapped in a {@code CastingRecipe} subclass.
+		 */
+		private void saveShaped(String name, ItemStackTemplate result, int duration, int energy,
+				Map<Character, Ingredient> ingredients, String... pattern) {
+			if (pattern.length < 1 || pattern.length > 3)
+				throw new IllegalArgumentException("Casting pattern must contain one to three rows");
+			int width = pattern[0].length();
+			if (width < 1 || width > 3)
+				throw new IllegalArgumentException("Casting pattern must contain one to three columns");
+			List<GridIngredient> grid = new ArrayList<>();
+			for (int row = 0; row < pattern.length; row++) {
+				if (pattern[row].length() != width) throw new IllegalArgumentException("Unequal casting pattern rows");
+				int xOffset = (3-width)/2;
+				int yOffset = (3-pattern.length)/2;
+				for (int column = 0; column < width; column++) {
+					char symbol = pattern[row].charAt(column);
+					if (symbol == ' ') continue;
+					Ingredient ingredient = ingredients.get(symbol);
+					if (ingredient == null) throw new IllegalArgumentException("Undefined casting symbol '"+symbol+"'");
+					grid.add(new GridIngredient((row+yOffset)*3+column+xOffset, ingredient));
+				}
+			}
+			saveRecipe(name, new CastingTableRecipe(CastingTableRecipe.Tier.CRAFTING,
+					grid, List.of(), List.of(), List.of(), result, duration, energy));
 		}
 
 		private void saveRecipe(String name, CastingTableRecipe recipe) {

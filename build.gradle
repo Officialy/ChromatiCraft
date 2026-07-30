@@ -283,6 +283,7 @@ sourceSets.main.java {
     include 'reika/chromaticraft/data/ChromaStructureTemplateProvider.java'
     include 'reika/chromaticraft/data/ChromaLang.java'
 	include 'reika/chromaticraft/data/ChromaCastingRecipeProvider.java'
+    include 'reika/chromaticraft/data/ChromaRecipeProvider.java'
     include 'reika/chromaticraft/data/ChromaModelProvider.java'
     include 'reika/chromaticraft/data/ChromaSoundProvider.java'
     include 'reika/chromaticraft/data/ChromaLootProvider.java'

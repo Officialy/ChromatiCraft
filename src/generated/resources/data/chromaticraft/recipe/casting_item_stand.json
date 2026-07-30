@@ -1,0 +1,42 @@
+{
+  "type": "chromaticraft:casting",
+  "experience": 5,
+  "grid": [
+    {
+      "ingredient": "minecraft:iron_ingot",
+      "slot": 0
+    },
+    {
+      "ingredient": "minecraft:iron_ingot",
+      "slot": 2
+    },
+    {
+      "ingredient": "minecraft:stone_slab",
+      "slot": 3
+    },
+    {
+      "ingredient": "minecraft:lapis_lazuli",
+      "slot": 4
+    },
+    {
+      "ingredient": "minecraft:stone_slab",
+      "slot": 5
+    },
+    {
+      "ingredient": "#minecraft:stone_crafting_materials",
+      "slot": 6
+    },
+    {
+      "ingredient": "#minecraft:stone_crafting_materials",
+      "slot": 7
+    },
+    {
+      "ingredient": "#minecraft:stone_crafting_materials",
+      "slot": 8
+    }
+  ],
+  "result": {
+    "id": "chromaticraft:casting_item_stand"
+  },
+  "tier": "crafting"
+}
