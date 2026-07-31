@@ -75,6 +75,12 @@ public final class ChromaBlockColors {
         LuminousCliffsColors.onLevelChanged(null);
     }
 
+    /** Drains the progression-sound cooldown (V33a ProgressOverlayRenderer ticks it the same way). */
+    @SubscribeEvent
+    public static void onClientTick(net.neoforged.neoforge.client.event.ClientTickEvent.Post event) {
+        reika.chromaticraft.network.ChromaNetwork.tickProgressSoundCooldown();
+    }
+
     /** Builds the cached, blend-radius-aware tint cache the cliff tint wrappers probe. */
     @SubscribeEvent
     public static void registerColorResolvers(RegisterColorHandlersEvent.ColorResolvers event) {

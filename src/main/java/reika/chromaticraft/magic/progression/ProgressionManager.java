@@ -344,7 +344,12 @@ public class ProgressionManager implements ProgressRegistry {
 		}
 		if (changed)
 			this.syncToClient(ep);
-		//Deferred: co-op sharing, handbook toast notify, ProgressionEvent, backup cache.
+		// V33a ChromaResearchManager.notifyPlayerOfProgression -> PROGRESSNOTE -> the client's
+		// ChromaSounds.GAINPROGRESS. Without this a granted stage gives the player no feedback at all.
+		if (changed && set && notify && ep instanceof net.minecraft.server.level.ServerPlayer player)
+			reika.chromaticraft.network.ChromaNetwork.sendProgressionNote(player, s.ordinal());
+		//Deferred: co-op sharing, the handbook overlay note (needs the progression.xml titles),
+		//ProgressionEvent, backup cache.
 	}
 
 	/**

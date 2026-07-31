@@ -34,6 +34,7 @@ public final class ChromaNetwork {
 		registrar.playToClient(JarRejection.TYPE, JarRejection.CODEC, ChromaNetwork::handleJarRejection);
 		registrar.playToClient(PowerCrystalDestroy.TYPE, PowerCrystalDestroy.CODEC, ChromaNetwork::handlePowerCrystalDestroy);
 		registrar.playToClient(PylonCrystalBreak.TYPE, PylonCrystalBreak.CODEC, ChromaNetwork::handlePylonCrystalBreak);
+		registrar.playToClient(ProgressionNote.TYPE, ProgressionNote.CODEC, ChromaNetwork::handleProgressionNote);
 	}
 
 	public static void sendAttack(ServerLevel level, BlockPos source, LivingEntity target, CrystalElement color, float size) {
@@ -81,6 +82,18 @@ public final class ChromaNetwork {
 		@Override public Type<AttackReceive> type() { return TYPE; }
 	}
 
+	/**
+	 * V33a fires this whenever a player gains a progression stage; the client answers with
+	 * ChromaSounds.GAINPROGRESS. Without it a granted stage is completely silent, so there is no way
+	 * to tell a working trigger from a broken one.
+	 */
+	public record ProgressionNote(int stage) implements CustomPacketPayload {
+		public static final Type<ProgressionNote> TYPE = createType("progression_note");
+		public static final StreamCodec<ByteBuf, ProgressionNote> CODEC =
+				StreamCodec.composite(ByteBufCodecs.VAR_INT, ProgressionNote::stage, ProgressionNote::new);
+		@Override public Type<ProgressionNote> type() { return TYPE; }
+	}
+
 	public record JarRejection(BlockPos source, int color) implements CustomPacketPayload {
 		public static final Type<JarRejection> TYPE = createType("pylon_jar_rejection");
 		public static final StreamCodec<ByteBuf, JarRejection> CODEC = StreamCodec.composite(
@@ -126,6 +139,32 @@ public final class ChromaNetwork {
 								entity.getZ()), element(payload.color));
 		});
 	}
+	public static void sendProgressionNote(net.minecraft.server.level.ServerPlayer player, int stageOrdinal) {
+		// GameTest mock players (and any connection that never negotiated our channel) throw on send,
+		// so check before distributing rather than letting progression grants blow up.
+		if (player.connection == null || !player.connection.hasChannel(ProgressionNote.TYPE))
+			return;
+		PacketDistributor.sendToPlayer(player, new ProgressionNote(stageOrdinal));
+	}
+
+	/** V33a ProgressOverlayRenderer: 0.5 volume, and a 24-tick cooldown so a burst does not stack. */
+	private static int progressSoundCooldown;
+
+	private static void handleProgressionNote(ProgressionNote payload, IPayloadContext context) {
+		context.enqueueWork(() -> {
+			Minecraft mc = Minecraft.getInstance();
+			if (mc.player == null) return;
+			if (progressSoundCooldown > 0) return;
+			progressSoundCooldown = 24;
+			reika.chromaticraft.registry.ChromaSounds.GAINPROGRESS.playSound(mc.player, 0.5F, 1);
+		});
+	}
+
+	/** Ticked from the client so the cooldown above drains. */
+	public static void tickProgressSoundCooldown() {
+		if (progressSoundCooldown > 0) progressSoundCooldown--;
+	}
+
 	private static void handleAttackReceive(AttackReceive payload, IPayloadContext context) {
 		context.enqueueWork(() -> PylonAttackOverlay.trigger(element(payload.color)));
 	}
