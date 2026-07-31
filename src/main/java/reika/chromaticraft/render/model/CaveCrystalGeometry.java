@@ -198,6 +198,55 @@ private static void zSpike(QuadSink sink, float out, boolean below, boolean flip
 		return new BodyUv(u0, v0, u1, v1);
 	}
 
+
+	/** Vertical extent of the V33a base plinth, as a fraction of the block. */
+	public static final float BASE_HEIGHT = 0.125F;
+
+	/**
+	 * V33a {@code CrystalRenderer.renderBase}: the stone plinth drawn under crystal lamps and potion
+	 * crystals (cave crystals return {@code renderBase() == false} and get none). It is a 2-pixel-high
+	 * slab whose faces carry the original flat shading — white top, 110 underside, 200 north/west and
+	 * 170 south/east — baked in through {@link ShadedQuadSink} rather than lit by the block pipeline.
+	 *
+	 * <p>UVs span the whole base sprite except the side faces, which in V33a take only the top two
+	 * texture rows so the plinth reads as a slab edge rather than a squashed full block.
+	 */
+	public static void emitBase(ShadedQuadSink sink, boolean flip) {
+		float top = BASE_HEIGHT;
+		float sideV = 2F/TEXTURE_SIZE;
+		if (flip) {
+			baseQuad(sink, 255, p(0,1,1,0,0), p(1,1,1,1,0), p(1,1,0,1,1), p(0,1,0,0,1));
+			baseQuad(sink, 110, p(0,1-top,0,0,1), p(1,1-top,0,1,1), p(1,1-top,1,1,0), p(0,1-top,1,0,0));
+			baseQuad(sink, 200, p(0,1,0,0,sideV), p(1,1,0,1,sideV), p(1,1-top,0,1,0), p(0,1-top,0,0,0));
+			baseQuad(sink, 170, p(0,1-top,1,0,0), p(1,1-top,1,1,0), p(1,1,1,1,sideV), p(0,1,1,0,sideV));
+			baseQuad(sink, 200, p(0,1-top,0,0,0), p(0,1-top,1,1,0), p(0,1,1,1,sideV), p(0,1,0,0,sideV));
+			baseQuad(sink, 170, p(1,1,0,0,sideV), p(1,1,1,1,sideV), p(1,1-top,1,1,0), p(1,1-top,0,0,0));
+		}
+		else {
+			baseQuad(sink, 255, p(0,top,1,0,1), p(1,top,1,1,1), p(1,top,0,1,0), p(0,top,0,0,0));
+			baseQuad(sink, 110, p(0,0,0,0,0), p(1,0,0,1,0), p(1,0,1,1,1), p(0,0,1,0,1));
+			baseQuad(sink, 200, p(0,top,0,0,sideV), p(1,top,0,1,sideV), p(1,0,0,1,0), p(0,0,0,0,0));
+			baseQuad(sink, 170, p(0,0,1,0,0), p(1,0,1,1,0), p(1,top,1,1,sideV), p(0,top,1,0,sideV));
+			baseQuad(sink, 200, p(0,0,0,0,0), p(0,0,1,1,0), p(0,top,1,1,sideV), p(0,top,0,0,sideV));
+			baseQuad(sink, 170, p(1,top,0,0,sideV), p(1,top,1,1,sideV), p(1,0,1,1,0), p(1,0,0,0,0));
+		}
+	}
+
+	/** A base quad plus its opposite winding, carrying V33a's flat per-face shade. */
+	private static void baseQuad(ShadedQuadSink sink, int shade, Point... source) {
+		Point[] points = source.clone();
+		Vector3f normal = normal(points);
+		sink.accept(points, normal, shade);
+		Point[] back = {points[3], points[2], points[1], points[0]};
+		sink.accept(back, new Vector3f(normal).negate(), shade);
+	}
+
+	/** Like {@link QuadSink} but carries V33a's flat 0-255 face shade. */
+	@FunctionalInterface
+	public interface ShadedQuadSink {
+		void accept(Point[] points, Vector3f normal, int shade);
+	}
+
 	private static Point p(float x, float y, float z, float u, float v) {
 		return new Point(new Vector3f(x, y, z), u, v);
 	}

@@ -60,14 +60,26 @@ Goal: **game start → working casting stands**. The mechanical chain is unbroke
 All of these are V33a BER/ISBRH geometry that the port currently substitutes with a plain cube or a
 flat icon. Best done as a single pass over the crystal family:
 
-- [ ] cave crystals — **item** renderer (block render already exists via `CaveCrystalModel`)
-- [ ] lumen-encrusted crystals — block + item renderer
-- [ ] crystal lamps — block + item renderer
-- [ ] potion crystals (`BlockSuperCrystal`) — block + item renderer
-- [ ] power crystal — block + item renderer
-- [ ] focus crystals — block + item renderer
-- [ ] item casting stand — item renderer sits too high in the inventory; needs re-centering
-      (`ItemStandItemRenderer`)
+- [x] ~~cave crystals — **item** renderer~~ — done 2026-07-31. Geometry extracted to
+      `render/model/CaveCrystalGeometry` and emitted through a `QuadSink`, so the block model bakes
+      it into the chunk mesh and `render/item/CaveCrystalItemRenderer` writes the same quads to a
+      `VertexConsumer` — the two cannot drift. Needs a `SpecialModelRenderer` because the shapes are
+      arbitrary four-point polygons with hand-authored UVs (V33a immediate mode), not box elements.
+- [ ] **lamps / potion crystals / power crystal / focus crystals** — groundwork done, wiring left.
+      V33a draws these with the *same* spikes as the cave crystal plus a base plinth, decided by
+      `CrystalRenderedBlock.renderBase()` (cave crystal false; lamp, super/potion crystal and rainbow
+      crystal true). `CaveCrystalGeometry.emitBase` now reproduces that plinth exactly — 2px slab,
+      V33a's flat per-face shading (255 top / 110 underside / 200 north+west / 170 south+east), and
+      the side faces taking only the top two texture rows. `getBaseBlock` picks the sprite:
+      `Blocks.stone` for the side faces, `double_stone_slab` for top/bottom, or `STRUCTSHIELD` meta 1
+      when the crystal is unmineable.
+
+      Remaining: generalise `CaveCrystalModel` to take a `renderBase` flag plus the base texture
+      (it is currently hardcoded to the no-base cave-crystal case), register dynamic block models and
+      special item renderers for `crystal_lamp` and `super_crystal`, and point their datagen at them
+      instead of `crystalColourBlocks`' placeholder coloured cube. Power crystal and focus crystals
+      are separate: they are block entities with their own V33a TESRs (`RenderFocusCrystal`), not
+      `CrystalRenderer` blocks.
 - [ ] **retest whether looking at a cave crystal grants the stage** — it now plays a sound, so this
       is answerable directly.
 - [ ] casting-table GUI: confirm the recipe-ready feedback shows. The plumbing looks correct —
