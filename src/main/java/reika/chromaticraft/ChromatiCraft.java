@@ -95,6 +95,7 @@ public class ChromatiCraft extends DragonAPIMod {
 		modEventBus.addListener(ChromaNetwork::register);
 		ChromaGameTests.TEST_INSTANCE_TYPES.register(modEventBus);
 		reika.chromaticraft.registry.ChromaLootProviders.NUMBER_PROVIDERS.register(modEventBus);
+		reika.chromaticraft.registry.ChromaLootProviders.CONDITIONS.register(modEventBus);
 		modEventBus.addListener(this::commonSetup);
 
 		// Force-load the progression singleton so it wires ProgressionAPI.instance.progressManager

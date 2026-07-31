@@ -259,6 +259,8 @@ sourceSets.main.java {
     include 'reika/chromaticraft/block/BlockCrystalPylonTile.java'
     include 'reika/chromaticraft/item/ItemManipulator.java'
     include 'reika/chromaticraft/auxiliary/loot/CrystalShardCount.java'
+    include 'reika/chromaticraft/auxiliary/loot/ChromaBerryCount.java'
+    include 'reika/chromaticraft/auxiliary/loot/FortuneScaledChance.java'
     include 'reika/chromaticraft/registry/ChromaLootProviders.java'
 	// Data-driven casting recipe contract: grid, temple runes, auxiliary stands, and pylon aura.
 	include 'reika/chromaticraft/auxiliary/recipemanagers/CastingRecipeInput.java'

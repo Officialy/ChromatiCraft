@@ -44,7 +44,8 @@ public record CrystalShardCount() implements NumberProvider {
 		return this.getInt(context);
 	}
 
-	private static int fortuneLevel(LootContext context) {
+	/** Shared with the dye-leaf drop providers. */
+	static int fortuneLevel(LootContext context) {
 		ItemInstance tool = context.getOptionalParameter(LootContextParams.TOOL);
 		if (tool == null || tool.count() <= 0)
 			return 0;

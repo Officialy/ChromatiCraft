@@ -31,6 +31,9 @@ import reika.chromaticraft.block.BlockPylonStructure;
 import reika.chromaticraft.block.BlockPylonStructure.StoneTypes;
 import reika.chromaticraft.block.worldgen26.BlockGlowDaisy;
 import reika.chromaticraft.block.worldgen26.BlockGlowRoot;
+import net.minecraft.world.item.Items;
+import reika.chromaticraft.auxiliary.loot.ChromaBerryCount;
+import reika.chromaticraft.auxiliary.loot.FortuneScaledChance;
 import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.CrystalElement;
@@ -66,6 +69,9 @@ public final class ChromaLootProvider extends LootTableProvider {
 				if (block instanceof reika.chromaticraft.block.crystal.BlockCaveCrystal crystal) {
 					// V33a BlockCaveCrystal.getDrops: never itself, always N shards of its own colour.
 					this.add(block, this.caveCrystalTable(block, crystal.getCrystalElement()));
+				}
+				else if (block instanceof reika.chromaticraft.block.dye26.BlockDyeLeaf leaf) {
+					this.add(block, this.dyeLeafTable(block, leaf.getElement()));
 				}
 				else if (block instanceof BlockPylonStructure) {
 					this.add(block, this.pylonStructureTable(block));
@@ -107,6 +113,72 @@ public final class ChromaLootProvider extends LootTableProvider {
 							.add(LootItem.lootTableItem(ChromaItems.SHARDS.get(element).get())
 									.apply(SetItemCountFunction.setCount(
 											reika.chromaticraft.auxiliary.loot.CrystalShardCount.INSTANCE)))));
+		}
+
+		/**
+		 * V33a {@code BlockDyeLeaf.getDrops}. Shearing (or silk touch) yields the leaf block and
+		 * nothing else, matching {@code onSheared}; otherwise every entry below rolls independently
+		 * with its own Fortune curve, and the leaf itself never drops.
+		 *
+		 * <p>The dye entry is the vanilla dye rather than ChromatiCraft's own: V33a rolls
+		 * {@code getVanillaDyeChance}, whose default is 100, and {@code doWithChance(>=100)} always
+		 * succeeds — so on default config the vanilla dye is the only outcome. ItemCrystalDye is not
+		 * ported, so the non-default branch is a CHROMA-PORT for when it lands.
+		 */
+		private LootTable.Builder dyeLeafTable(Block block, CrystalElement element) {
+			LootTable.Builder table = LootTable.lootTable();
+			table.withPool(LootPool.lootPool().setRolls(ConstantValue.exactly(1))
+					.when(this.hasShears().or(this.hasSilkTouch()))
+					.add(LootItem.lootTableItem(block)));
+
+			LootItemCondition.Builder notSheared = this.hasShears().or(this.hasSilkTouch()).invert();
+			this.addDyeLeafDrop(table, notSheared, LootItem.lootTableItem(
+					ChromaBlocks.dyeSapling(element).get()), FortuneScaledChance.linear(0.05, 1));
+			this.addDyeLeafDrop(table, notSheared, LootItem.lootTableItem(Items.APPLE),
+					FortuneScaledChance.linear(0.005, 5));
+			this.addDyeLeafDrop(table, notSheared, LootItem.lootTableItem(vanillaDye(element)),
+					FortuneScaledChance.linear(0.1, 1));
+			this.addDyeLeafDrop(table, notSheared, LootItem.lootTableItem(
+					ChromaBlocks.RAINBOW_SAPLING.get()), FortuneScaledChance.quadratic(0.0001));
+			this.addDyeLeafDrop(table, notSheared,
+					LootItem.lootTableItem(ChromaItems.BERRIES.get(element).get())
+							.apply(SetItemCountFunction.setCount(ChromaBerryCount.INSTANCE)),
+					FortuneScaledChance.exponential(ChromaBerryCount.BASE_CHANCE));
+			return table;
+		}
+
+		private void addDyeLeafDrop(LootTable.Builder table, LootItemCondition.Builder notSheared,
+				LootPoolSingletonContainer.Builder<?> entry, FortuneScaledChance chance) {
+			table.withPool(LootPool.lootPool().setRolls(ConstantValue.exactly(1))
+					.when(notSheared).when(() -> chance).add(entry));
+		}
+
+		/**
+		 * The vanilla dye whose colour matches this crystal element. Mapped by name, not by ordinal:
+		 * CrystalElement's order is the 1.7.10 dye *damage* order (black=0, red=1, green=2, ...),
+		 * which is not modern DyeColor's id order, so DyeColor.byId(ordinal) would give wrong colours.
+		 * 26.2 folded the sixteen dye items into one ColorCollection, hence Items.DYE.pick(...).
+		 */
+		private static Item vanillaDye(CrystalElement element) {
+			net.minecraft.world.item.DyeColor colour = switch (element) {
+				case BLACK -> net.minecraft.world.item.DyeColor.BLACK;
+				case RED -> net.minecraft.world.item.DyeColor.RED;
+				case GREEN -> net.minecraft.world.item.DyeColor.GREEN;
+				case BROWN -> net.minecraft.world.item.DyeColor.BROWN;
+				case BLUE -> net.minecraft.world.item.DyeColor.BLUE;
+				case PURPLE -> net.minecraft.world.item.DyeColor.PURPLE;
+				case CYAN -> net.minecraft.world.item.DyeColor.CYAN;
+				case LIGHTGRAY -> net.minecraft.world.item.DyeColor.LIGHT_GRAY;
+				case GRAY -> net.minecraft.world.item.DyeColor.GRAY;
+				case PINK -> net.minecraft.world.item.DyeColor.PINK;
+				case LIME -> net.minecraft.world.item.DyeColor.LIME;
+				case YELLOW -> net.minecraft.world.item.DyeColor.YELLOW;
+				case LIGHTBLUE -> net.minecraft.world.item.DyeColor.LIGHT_BLUE;
+				case MAGENTA -> net.minecraft.world.item.DyeColor.MAGENTA;
+				case ORANGE -> net.minecraft.world.item.DyeColor.ORANGE;
+				case WHITE -> net.minecraft.world.item.DyeColor.WHITE;
+			};
+			return Items.DYE.pick(colour);
 		}
 
 		private LootTable.Builder glowstoneDustTable(Block block, float chance) {

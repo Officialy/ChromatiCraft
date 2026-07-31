@@ -106,15 +106,14 @@ Confirmed to have **no live grant site** outside GameTests:
       — the village-generated casting structure. Depends on that village worldgen landing.
 - [x] ~~**`DYETREE`**~~ — done 2026-07-31. V33a grants it in `removedByPlayer`; ported as
       `playerWillDestroy` on `block/dye26/BlockDyeLeaf`, creative-mode-guarded (V33a's `willHarvest`).
-- [ ] **Dye-leaf drop table** (found while doing DYETREE). Dye leaves currently `dropSelf` and
-      nothing else, so dye trees yield no saplings, berries, dye, apples or rainbow saplings —
-      berries in particular feed the pool/alloy chain. V33a `BlockDyeLeaf.getDrops`: sapling
-      `0.05*(1+f)`, apple `0.005*(1+f*5)`, dye `0.1*(1+f)`, rainbow sapling `0.0001*(1+f)^2`, and
-      berries at `0.1*2^f` with a count that grows as that chance overflows 1 — another compound
-      formula needing its own number provider, like `CrystalShardCount`. Shearing drops the leaf
-      block itself and nothing else. Note the dye branch is partly blocked: V33a rolls
-      `getVanillaDyeChance` between a vanilla dye and ChromatiCraft's own dye item, which is
-      unported.
+- [x] ~~**Dye-leaf drop table**~~ — done 2026-07-31. Full V33a `BlockDyeLeaf.getDrops`: shears/silk
+      yield the leaf and nothing else (`onSheared`), otherwise five independent rolls and the leaf
+      never drops — sapling `0.05*(1+f)`, apple `0.005*(1+f*5)`, vanilla dye `0.1*(1+f)`, rainbow
+      sapling `0.0001*(1+f)^2`, and berries at `0.1*2^f` with the overflow-to-count loop. Needed two
+      new registered loot types, `FortuneScaledChance` (linear/quadratic/exponential) and
+      `ChromaBerryCount`. The dye branch turned out **not** to be blocked: V33a's
+      `getVanillaDyeChance` defaults to 100 and `doWithChance(>=100)` always succeeds, so the vanilla
+      dye is the only outcome on default config; the unported ItemCrystalDye branch is unreachable.
 - [ ] **`MAKECHROMA`** — grant site located: `TileEntity/Acquisition/TileEntityCollector.java:123`
       (the Chroma Collector). Blocked on that machine being ported.
 - [ ] **`ALLOY`** — grant site located: `Auxiliary/RecipeManagers/PoolRecipes.java:182`. Blocked on
