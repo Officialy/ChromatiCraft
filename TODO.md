@@ -32,15 +32,28 @@ Goal: **game start → working casting stands**. The mechanical chain is unbroke
       started because it is a real chunk (all four neighbour rules + removing the property +
       regenerating 48 → 16 variants), not a one-liner.
 
-**Could not reproduce statically — need more detail:**
-- [ ] **"No texture" on resonance ring, energized crystalline beam, aura stabilizer, crystal pylon
-      focus, crystalline energy stabilizer.** All five resolve cleanly on inspection: the blockstate
-      has all 48 variants, every referenced `block/pylon/block_*` PNG exists, every animated one has
-      a valid `.mcmeta` with an exact frame ratio (checked all nine), and all five item models point
-      at existing block models. Need to know whether this is the held/inventory item, the placed
-      block, or both — ideally a screenshot. Note these five are exactly the types that use the
-      **glow/emissive** layer, so if it is the placed block the suspect is the emissive pass rather
-      than the textures.
+**Blocked on a client log line — every static cause eliminated:**
+- [ ] **"No texture" on the glowing crystalline-stone types, item *and* placed block.** Narrowed
+      precisely: the reported blocks map to V33a ordinals **3, 4, 5, 14, 15** (Crystalline Energy
+      Stabilizer, Energized Crystalline Stone Beam, Crystal Pylon Focus, Aura Stabilizer, Resonance
+      Ring) — which together with 13 (Multichromic Rune) is exactly the six types `StoneTypes.glows()`
+      returns true for, i.e. the ones whose model carries a second emissive element. Nothing else is
+      affected, so it is the glow layer.
+
+      Checked and ruled out, so do not redo these:
+      - every referenced `block/pylon/block_*` PNG exists;
+      - all nine animated PNGs have a valid `.mcmeta` with an exact frame ratio (16xN, N%16==0);
+      - those `.mcmeta` files *do* reach `build/resources/main` (9 in src, 9 in build), so the atlas
+        is not seeing a strip as one oversized non-square sprite;
+      - every `#base_*` / `#glow_*` reference resolves against the model's own texture map;
+      - the emissive element's `from -0.002` / `to 16.002` is inside vanilla's -16..32 bound, and
+        `light_emission: 15` and `shade: false` are both legal fields in 26.2 `CuboidModelElement`;
+      - the blockstate has all 48 variants and every one points at a model file that exists;
+      - all five item models point at existing block models.
+
+      **What would settle it in one step:** the client log from startup. A stitching failure names
+      the sprite; a model parse failure names the model. Either line points straight at the cause.
+      Grep the log for `chromaticraft` alongside `Missing`/`Unable to load`/`JsonParseException`.
 
 ## 0b. Renderers still needed (one coherent chunk)
 
