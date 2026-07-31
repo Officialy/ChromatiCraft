@@ -230,7 +230,7 @@ public final class ChromaBlocks {
 	// Crystal pylon (network energy source). The block hosts the server-authoritative TE; its
 	// multiblock is canonical structure NBT and its block/item definitions are datagen-owned.
 	public static final DeferredBlock<Block> PYLON =
-			register("pylon", () -> new BlockChromaticTile(
+			register("pylon", () -> new reika.chromaticraft.block.BlockCrystalPylonTile(
 					blockProperties().strength(5F, 30F).noOcclusion().lightLevel(s -> 12),
 					reika.chromaticraft.registry.ChromaTiles.PYLON));
 
