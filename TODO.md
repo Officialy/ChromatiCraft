@@ -22,7 +22,8 @@ Same class of bug as PYLON/RUNEUSE — the stage exists and is gated on, but not
 Confirmed to have **no live grant site** outside GameTests:
 
 - [ ] **`VILLAGECASTING`** — a prerequisite of MULTIBLOCK, so tier-3 casting is blocked the way
-      tier-2 was. Find V33a's grant site (village-generated casting table?) and port it.
+      tier-2 was. Grant site located: `World/VillagersFailChromatiCraft.java` (lines 799 and 1122)
+      — the village-generated casting structure. Depends on that village worldgen landing.
 - [x] ~~**`DYETREE`**~~ — done 2026-07-31. V33a grants it in `removedByPlayer`; ported as
       `playerWillDestroy` on `block/dye26/BlockDyeLeaf`, creative-mode-guarded (V33a's `willHarvest`).
 - [ ] **Dye-leaf drop table** (found while doing DYETREE). Dye leaves currently `dropSelf` and
@@ -34,8 +35,10 @@ Confirmed to have **no live grant site** outside GameTests:
       block itself and nothing else. Note the dye branch is partly blocked: V33a rolls
       `getVanillaDyeChance` between a vanilla dye and ChromatiCraft's own dye item, which is
       unported.
-- [ ] **`MAKECHROMA`** and **`ALLOY`** — check where V33a grants these and whether they gate
-      anything in this window.
+- [ ] **`MAKECHROMA`** — grant site located: `TileEntity/Acquisition/TileEntityCollector.java:123`
+      (the Chroma Collector). Blocked on that machine being ported.
+- [ ] **`ALLOY`** — grant site located: `Auxiliary/RecipeManagers/PoolRecipes.java:182`. Blocked on
+      the chroma-pool recipe system, which is also what item 3 below needs — do them together.
 
 ## 3. Boosted shards / the chroma pool
 
