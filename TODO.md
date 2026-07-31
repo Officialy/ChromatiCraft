@@ -9,31 +9,38 @@ Goal: **game start → working casting stands**. The mechanical chain is unbroke
 - [x] Manipulator right-click didn't start a craft — `BlockCastingTable.useItemOn` returned SUCCESS
       unconditionally, and vanilla only falls through to the held item's `useOn` on PASS, so the
       GUI-open swallowed the click. Returns PASS for a Manipulator now.
+- [x] Progression was completely silent — `setPlayerStage` never notified. Ported V33a's
+      PROGRESSNOTE packet + `ChromaSounds.GAINPROGRESS` at 0.5 volume with the 24-tick cooldown.
+      The on-screen *note* is still deferred: its text comes from `progression.xml`, part of the
+      unported XML pipeline the guide book needs.
+- [x] Casting-stand inventory icon too high — the item renderer reused the in-world BER anchor,
+      putting the model at y 0.875..1.595, above the unit cube. Bottom is now 0.14.
 - [x] Cliff grass white on top — `grass_top_base.png` is greyscale (avg 143,143,143), like vanilla's
       grass top, and expects a biome tint; the model had no `tintindex` and no tint source was
       registered. Now a hand-built cube with `tintindex 0` on the up face plus vanilla's grassBlock
       tint source, wrapped in `LuminousCliffsColors`.
 
 **Diagnosed, not yet fixed:**
-- [ ] **No progression feedback on looking at a cave crystal.** The grant itself is probably working
-      — `ProgressionManager.setPlayerStage` has an explicit `// Deferred: ... handbook toast notify`
-      and never notifies, so a granted stage is completely silent. V33a:
-      `ChromaResearchManager.notifyPlayerOfProgression` → PROGRESSNOTE packet → client
-      `ChromaOverlays.addProgressionNote`. Port a minimal version (packet + sound + toast) and the
-      "did it work?" question answers itself. **Confirm separately whether the stage is granted** —
-      e.g. try casting after looking at a crystal.
-- [ ] **Crystalline stone beam Y variant.** V33a's `BlockPylonStructure` has **no axis/orientation
-      state at all** — top/bottom artwork is picked by neighbour scanning in `getIconIndex`. The
-      port invented an `AXIS` blockstate property (48 variants = 16 types x 3 axes). Removing it in
-      favour of the source's neighbour scan is the faithful fix, but confirm that's the intent.
+- [ ] **Crystalline stone beam Y variant.** Fully diagnosed — this is a *connected-texture* rule in
+      V33a, not a placement axis. `BlockPylonStructure` has **no axis/orientation state at all**;
+      `getIconIndex` picks the top/bottom art from neighbouring beams:
+      X-neighbour → `block_1-3`, Z-neighbour → `block_1-2`, otherwise `block_1`. RESORING and CORNER
+      have their own neighbour rules in the same method. The port invented an `AXIS` blockstate
+      property (48 variants = 16 types x 3 axes), so appearance follows how you placed the block
+      rather than what it connects to. Faithful fix: a `DynamicBlockStateModel` doing the neighbour
+      scan — same pattern as the existing `CliffDirtModel` — and drop the `AXIS` property. Not
+      started because it is a real chunk (all four neighbour rules + removing the property +
+      regenerating 48 → 16 variants), not a one-liner.
 
 **Could not reproduce statically — need more detail:**
 - [ ] **"No texture" on resonance ring, energized crystalline beam, aura stabilizer, crystal pylon
-      focus, crystalline energy stabilizer.** All five resolve cleanly on inspection: blockstate has
-      all 48 variants, every referenced `block/pylon/block_*` PNG exists, every animated one has a
-      valid `.mcmeta` with an exact frame ratio, and all five item models point at existing block
-      models. Need to know whether this is the held/inventory item, the placed block, or both — and
-      ideally a screenshot.
+      focus, crystalline energy stabilizer.** All five resolve cleanly on inspection: the blockstate
+      has all 48 variants, every referenced `block/pylon/block_*` PNG exists, every animated one has
+      a valid `.mcmeta` with an exact frame ratio (checked all nine), and all five item models point
+      at existing block models. Need to know whether this is the held/inventory item, the placed
+      block, or both — ideally a screenshot. Note these five are exactly the types that use the
+      **glow/emissive** layer, so if it is the placed block the suspect is the emissive pass rather
+      than the textures.
 
 ## 0b. Renderers still needed (one coherent chunk)
 
@@ -48,6 +55,8 @@ flat icon. Best done as a single pass over the crystal family:
 - [ ] focus crystals — block + item renderer
 - [ ] item casting stand — item renderer sits too high in the inventory; needs re-centering
       (`ItemStandItemRenderer`)
+- [ ] **retest whether looking at a cave crystal grants the stage** — it now plays a sound, so this
+      is answerable directly.
 - [ ] casting-table GUI: confirm the recipe-ready feedback shows. The plumbing looks correct —
       `writeSyncTag` sends `recipeOutput`, the screen draws a ghost output plus a `NO_ENTRY` overlay
       when `!canRunDisplayedRecipe()` — so retest now that the Manipulator works; if the ghost never
@@ -55,9 +64,11 @@ flat icon. Best done as a single pass over the crystal family:
 
 ## 0c. Known flaky test
 
-- [ ] `chromaticraft:network_compound_repeater_multicolor` failed once on "tick 6 attenuation", then
-      passed both in isolation and on a full re-run. Timing/order dependent — worth hardening before
-      it wastes someone's afternoon.
+Two now seen flaking, both timing-sensitive, both passing on re-run. Worth hardening before they
+waste someone's afternoon:
+
+- [ ] `chromaticraft:network_compound_repeater_multicolor` — "tick 6 attenuation"
+- [ ] `chromaticraft:pylon_enclosure_rejection` — "on tick 0"
 
 ## 1. Verify the chain in a client — nothing below matters if this is broken
 
