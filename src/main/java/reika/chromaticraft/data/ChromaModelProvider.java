@@ -402,11 +402,16 @@ public class ChromaModelProvider extends ModelProvider {
 			BiConsumer<Identifier, ModelInstance> modelOut) {
 		for (CrystalElement element : CrystalElement.elements) {
 			Block block = ChromaBlocks.caveCrystal(element).get();
-			Identifier model = ModelTemplates.CUBE_ALL.create(
+			// V33a drew the real spike geometry in the inventory, not a flat cube; the special
+			// renderer shares CaveCrystalGeometry with the in-world block model.
+			Identifier base = ModelTemplates.CUBE_ALL.create(
 					Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/cave_crystal_item_" + element.getEnglishName()),
 					TextureMapping.cube(new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/crystal/crystal_outline"), true)),
 					modelOut);
-			itemModelOut.accept(block.asItem(), ItemModelUtils.plainModel(model));
+			itemModelOut.accept(block.asItem(), ItemModelUtils.specialModel(base,
+					new reika.chromaticraft.render.item.CaveCrystalItemRenderer.Unbaked(
+							Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/crystal/crystal_outline"),
+							element)));
 		}
 	}
 	private static void crystalColourBlocks(List<? extends net.neoforged.neoforge.registries.DeferredBlock<? extends Block>> blocks,

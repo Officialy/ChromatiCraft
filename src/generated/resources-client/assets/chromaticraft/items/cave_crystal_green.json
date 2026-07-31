@@ -1,6 +1,11 @@
 {
   "model": {
-    "type": "minecraft:model",
-    "model": "chromaticraft:block/cave_crystal_item_green"
+    "type": "minecraft:special",
+    "base": "chromaticraft:block/cave_crystal_item_green",
+    "model": {
+      "type": "chromaticraft:cave_crystal",
+      "element": "green",
+      "texture": "chromaticraft:block/crystal/crystal_outline"
+    }
   }
 }
