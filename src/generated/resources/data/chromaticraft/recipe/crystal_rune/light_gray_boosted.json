@@ -1,0 +1,49 @@
+{
+  "type": "chromaticraft:casting",
+  "experience": 10,
+  "grid": [
+    {
+      "ingredient": "chromaticraft:pylon_structure_smooth",
+      "slot": 0
+    },
+    {
+      "ingredient": "chromaticraft:pylon_structure_smooth",
+      "slot": 1
+    },
+    {
+      "ingredient": "chromaticraft:pylon_structure_smooth",
+      "slot": 2
+    },
+    {
+      "ingredient": "chromaticraft:pylon_structure_smooth",
+      "slot": 3
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_light_gray",
+      "slot": 4
+    },
+    {
+      "ingredient": "chromaticraft:pylon_structure_smooth",
+      "slot": 5
+    },
+    {
+      "ingredient": "chromaticraft:pylon_structure_smooth",
+      "slot": 6
+    },
+    {
+      "ingredient": "chromaticraft:pylon_structure_smooth",
+      "slot": 7
+    },
+    {
+      "ingredient": "chromaticraft:pylon_structure_smooth",
+      "slot": 8
+    }
+  ],
+  "required_progress": [
+    "allcolors"
+  ],
+  "result": {
+    "id": "chromaticraft:crystal_rune_light_gray"
+  },
+  "tier": "crafting"
+}

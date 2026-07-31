@@ -28,6 +28,7 @@ import net.minecraft.world.level.Level;
 
 import reika.chromaticraft.registry.ChromaRecipeSerializers;
 import reika.chromaticraft.registry.ChromaRecipeTypes;
+import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.registry.CrystalElement;
 
 /** Data-driven physical contract shared by the four V33a casting tiers. */
@@ -78,10 +79,25 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 	private final ItemStackTemplate output;
 	private final int duration;
 	private final int experience;
+	/**
+	 * Progression the caster needs beyond whatever their recipe tier already implies. V33a declares
+	 * this per recipe via {@code CastingRecipe.getRequiredProgress}; the base implementation adds
+	 * CRYSTALS (covered here by the tier rules) and subclasses add their own — e.g. RuneRecipe adds
+	 * ALLCOLORS, so runes stay gated behind discovering every colour even though they cast at the
+	 * bare-table tier.
+	 */
+	private final List<ProgressStage> requiredProgress;
 
 	public CastingTableRecipe(Tier tier, List<GridIngredient> grid, List<StandIngredient> stands,
 			List<RuneRequirement> runes, List<AuraRequirement> aura, ItemStackTemplate output,
 			int duration, int experience) {
+		this(tier, grid, stands, runes, aura, output, duration, experience, List.of());
+	}
+
+	public CastingTableRecipe(Tier tier, List<GridIngredient> grid, List<StandIngredient> stands,
+			List<RuneRequirement> runes, List<AuraRequirement> aura, ItemStackTemplate output,
+			int duration, int experience, List<ProgressStage> requiredProgress) {
+		this.requiredProgress = List.copyOf(requiredProgress);
 		this.tier = tier;
 		this.grid = List.copyOf(grid);
 		this.stands = List.copyOf(stands);
@@ -92,6 +108,8 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 		this.experience = experience;
 		this.validate();
 	}
+
+	public List<ProgressStage> requiredProgress() { return requiredProgress; }
 
 	private void validate() {
 		Set<Integer> slots = new HashSet<>();
@@ -158,6 +176,11 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 	@Override public RecipeSerializer<? extends Recipe<CastingRecipeInput>> getSerializer() { return ChromaRecipeSerializers.CASTING.get(); }
 	@Override public RecipeType<? extends Recipe<CastingRecipeInput>> getType() { return ChromaRecipeTypes.CASTING.get(); }
 
+	private static final Codec<ProgressStage> PROGRESS_CODEC = Codec.STRING.comapFlatMap(name -> {
+		try { return DataResult.success(ProgressStage.valueOf(name.toUpperCase(Locale.ROOT))); }
+		catch (IllegalArgumentException e) { return DataResult.error(() -> "Unknown progress stage '" + name + "'"); }
+	}, stage -> stage.name().toLowerCase(Locale.ROOT));
+
 	public static final MapCodec<CastingTableRecipe> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
 			Tier.CODEC.fieldOf("tier").forGetter(recipe -> recipe.tier),
 			GridIngredient.CODEC.listOf().optionalFieldOf("grid", List.of()).forGetter(recipe -> recipe.grid),
@@ -166,8 +189,10 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 			AuraRequirement.CODEC.listOf().optionalFieldOf("aura", List.of()).forGetter(recipe -> recipe.aura),
 			ItemStackTemplate.CODEC.fieldOf("result").forGetter(recipe -> recipe.output),
 			Codec.intRange(1, Integer.MAX_VALUE).optionalFieldOf("duration", 5).forGetter(recipe -> recipe.duration),
-			Codec.intRange(0, Integer.MAX_VALUE).optionalFieldOf("experience", 0).forGetter(recipe -> recipe.experience)
+			Codec.intRange(0, Integer.MAX_VALUE).optionalFieldOf("experience", 0).forGetter(recipe -> recipe.experience),
+			PROGRESS_CODEC.listOf().optionalFieldOf("required_progress", List.of()).forGetter(recipe -> recipe.requiredProgress)
 	).apply(instance, CastingTableRecipe::new));
+
 
 	public static final StreamCodec<RegistryFriendlyByteBuf, CastingTableRecipe> STREAM_CODEC = StreamCodec.of(CastingTableRecipe::encode, CastingTableRecipe::decode);
 	private static void encode(RegistryFriendlyByteBuf buffer, CastingTableRecipe recipe) {
@@ -183,6 +208,8 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 		ItemStackTemplate.STREAM_CODEC.encode(buffer, recipe.output);
 		buffer.writeVarInt(recipe.duration);
 		buffer.writeVarInt(recipe.experience);
+		buffer.writeVarInt(recipe.requiredProgress.size());
+		for (ProgressStage stage : recipe.requiredProgress) buffer.writeVarInt(stage.ordinal());
 	}
 	private static CastingTableRecipe decode(RegistryFriendlyByteBuf buffer) {
 		int tierOrdinal = buffer.readVarInt();
@@ -195,8 +222,13 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 		for (int i = buffer.readVarInt(); i > 0; i--) runes.add(new RuneRequirement(buffer.readBlockPos(), element(buffer.readVarInt())));
 		List<AuraRequirement> aura = new ArrayList<>();
 		for (int i = buffer.readVarInt(); i > 0; i--) aura.add(new AuraRequirement(element(buffer.readVarInt()), buffer.readVarInt()));
+		ItemStackTemplate result = ItemStackTemplate.STREAM_CODEC.decode(buffer);
+		int duration = buffer.readVarInt();
+		int experience = buffer.readVarInt();
+		List<ProgressStage> progress = new ArrayList<>();
+		for (int i = buffer.readVarInt(); i > 0; i--) progress.add(ProgressStage.list[buffer.readVarInt()]);
 		return new CastingTableRecipe(Tier.values()[tierOrdinal], grid, stands, runes, aura,
-				ItemStackTemplate.STREAM_CODEC.decode(buffer), buffer.readVarInt(), buffer.readVarInt());
+				result, duration, experience, progress);
 	}
 	private static CrystalElement element(int ordinal) {
 		if (ordinal < 0 || ordinal >= CrystalElement.elements.length) throw new IllegalArgumentException("Invalid crystal element ordinal " + ordinal);

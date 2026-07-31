@@ -93,6 +93,8 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver imp
     private float throughputBonus;
     private boolean hasMultiblock;
     private boolean hasPylonStructure;
+    /** V33a: set the first time a rune is placed against a temple-tier table. */
+    private boolean hasRunes;
     private boolean mutatingInventory;
     private boolean recipeDirty = true;
     private final Set<ResourceKey<Recipe<?>>> completedRecipes = new HashSet<>();
@@ -200,6 +202,10 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver imp
 
     private boolean playerCanRun(CastingTableRecipe recipe, Player player) {
         if (!ProgressStage.CRYSTALS.isPlayerAtStage(player)) return false;
+        // V33a declares extra progression per recipe (CastingRecipe.getRequiredProgress) on top of
+        // whatever the tier implies -- e.g. RuneRecipe adds ALLCOLORS despite casting at bare-table tier.
+        for (ProgressStage stage : recipe.requiredProgress())
+            if (!stage.isPlayerAtStage(player)) return false;
         return switch (recipe.tier()) {
             case CRAFTING -> true;
             case TEMPLE -> ProgressStage.RUNEUSE.isPlayerAtStage(player);
@@ -226,9 +232,29 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver imp
             Player owner = server.getPlayerByUUID(placerUUID);
             if (owner != null) ProgressStage.TUNECAST.stepPlayerTo(owner);
         }
+        // V33a: "if (hasStructure2) ProgressStage.MULTIBLOCK.stepPlayerTo(this.getPlacer())" --
+        // completing the CASTING2 structure is the only way MULTIBLOCK is granted.
+        if (hasMultiblock && placerUUID != null && this.getLevel() instanceof ServerLevel server) {
+            Player owner = server.getPlayerByUUID(placerUUID);
+            if (owner != null) ProgressStage.MULTIBLOCK.stepPlayerTo(owner);
+        }
 
         this.setChanged();
     }
+
+    /**
+     * V33a {@code onAddRune}: placing a crystal rune against a temple-tier table is the only way
+     * {@link ProgressStage#RUNEUSE} is granted, and RUNEUSE is what unlocks tier-2 (stand) casting.
+     * Called from {@link reika.chromaticraft.block.BlockCrystalRune} on placement.
+     */
+    public void onAddRune(Player player) {
+        if (!hasTemple) return;
+        hasRunes = true;
+        ProgressStage.RUNEUSE.stepPlayerTo(player);
+        this.setChanged();
+    }
+
+    public boolean hasRunes() { return hasRunes; }
 
     private CastingRecipeInput snapshot() {
         List<ItemStack> grid = new ArrayList<>(9);
@@ -544,7 +570,7 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver imp
                     .ifPresent(encoded -> tag.put("recipeOutput", encoded));
         }
         this.getDisplayAura().writeToNBT("recipeAura", tag);
-        tag.putBoolean("temple", hasTemple); tag.putBoolean("multiblock", hasMultiblock); tag.putBoolean("pylonStructure", hasPylonStructure);
+        tag.putBoolean("runes", hasRunes); tag.putBoolean("temple", hasTemple); tag.putBoolean("multiblock", hasMultiblock); tag.putBoolean("pylonStructure", hasPylonStructure);
         tag.putBoolean("tuned", isTuned);
         tag.putFloat("throughputBonus", throughputBonus);
     }
@@ -557,7 +583,7 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver imp
                 : ItemStack.CODEC.parse(access.createSerializationContext(NbtOps.INSTANCE), outputTag).result().orElse(ItemStack.EMPTY);
         clientRecipeAura.clear();
         clientRecipeAura.readFromNBT("recipeAura", tag);
-        hasTemple = tag.getBooleanOr("temple", false); hasMultiblock = tag.getBooleanOr("multiblock", false); hasPylonStructure = tag.getBooleanOr("pylonStructure", false);
+        hasRunes = tag.getBooleanOr("runes", false); hasTemple = tag.getBooleanOr("temple", false); hasMultiblock = tag.getBooleanOr("multiblock", false); hasPylonStructure = tag.getBooleanOr("pylonStructure", false);
         isTuned = tag.getBooleanOr("tuned", false);
         throughputBonus = tag.getFloatOr("throughputBonus", 0);
     }

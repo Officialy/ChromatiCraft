@@ -29,6 +29,7 @@ import reika.chromaticraft.registry.ChromaClusterItems;
 import reika.chromaticraft.registry.ChromaCraftingItems;
 import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.ChromaTieredItems;
+import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.registry.CrystalElement;
 
 /**
@@ -83,6 +84,23 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 			// what unlocks tier-2 (auxiliary-stand) casting.
 			//   new ShapedOreRecipe(STAND, "I I", "SLS", "CCC",
 			//       'I', Items.iron_ingot, 'C', "cobblestone", 'S', stoneSlab, 'L', lapisDye)
+			// V33a RuneRecipe / EnhancedRuneRecipe: a shard ringed by eight crystalline stone, at the
+			// bare-table tier but gated behind ALLCOLORS. Enhanced uses the boosted shard and is the
+			// same output; both give double the base experience and can double their output.
+			for (CrystalElement element : CrystalElement.elements) {
+				Ingredient runeStone = Ingredient.of(ChromaBlocks.PYLONSTRUCT_ITEMS.get(StoneTypes.SMOOTH.ordinal()).get());
+				saveShapedProgress("crystal_rune/" + element.getEnglishName(),
+						new ItemStackTemplate(ChromaBlocks.RUNES.get(element.ordinal()).get().asItem()), 5, 10,
+						List.of(ProgressStage.ALLCOLORS),
+						Map.of('S', runeStone, 'C', Ingredient.of(ChromaItems.SHARDS.get(element).get())),
+						"SSS", "SCS", "SSS");
+				saveShapedProgress("crystal_rune/" + element.getEnglishName() + "_boosted",
+						new ItemStackTemplate(ChromaBlocks.RUNES.get(element.ordinal()).get().asItem()), 5, 10,
+						List.of(ProgressStage.ALLCOLORS),
+						Map.of('S', runeStone, 'C', Ingredient.of(ChromaItems.BOOSTED_SHARDS.get(element).get())),
+						"SSS", "SCS", "SSS");
+			}
+
 			saveShaped("casting_item_stand",
 					new ItemStackTemplate(ChromaBlocks.ITEM_STAND.get().asItem()), 5, 5,
 					Map.of('I', Ingredient.of(net.minecraft.world.item.Items.IRON_INGOT),
@@ -351,6 +369,11 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 		 */
 		private void saveShaped(String name, ItemStackTemplate result, int duration, int energy,
 				Map<Character, Ingredient> ingredients, String... pattern) {
+			this.saveShapedProgress(name, result, duration, energy, List.of(), ingredients, pattern);
+		}
+
+		private void saveShapedProgress(String name, ItemStackTemplate result, int duration, int energy,
+				List<ProgressStage> progress, Map<Character, Ingredient> ingredients, String... pattern) {
 			if (pattern.length < 1 || pattern.length > 3)
 				throw new IllegalArgumentException("Casting pattern must contain one to three rows");
 			int width = pattern[0].length();
@@ -370,7 +393,7 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 				}
 			}
 			saveRecipe(name, new CastingTableRecipe(CastingTableRecipe.Tier.CRAFTING,
-					grid, List.of(), List.of(), List.of(), result, duration, energy));
+					grid, List.of(), List.of(), List.of(), result, duration, energy, progress));
 		}
 
 		private void saveRecipe(String name, CastingTableRecipe recipe) {
