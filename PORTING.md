@@ -897,3 +897,43 @@ Still unported inside this same window, and deliberately marked `CHROMA-PORT` ra
 Not yet runtime-verified in a client: that looking at a cave crystal visibly grants the stage, the
 in-world shard drop counts, and the casting table GUI/craft flow. The GameTest suite covers the
 progression core and casting logic headlessly, not the client interaction.
+
+### The tier-2 casting dependency chain — 2026-07-31
+
+Walking the V33a chain backwards from "casting stands work" found four more independent breaks. Any
+one of them alone left tier-2 permanently locked, so they only surface by tracing the whole chain:
+
+```
+look at cave crystal ──> CRYSTALS ──> craft Casting Table ──> CASTING
+                                            │
+look at conducting pylon ──> PYLON ──> (discover all 16 colours) ──> ALLCOLORS
+                                            │
+                            crystal rune recipe (bare-table tier, gated on ALLCOLORS)
+                                            │
+              place rune touching crystalline stone within 6 blocks of a table
+                                            │
+                                        RUNEUSE ──> TEMPLE tier ──> stand casting
+```
+
+What was missing, and where V33a puts it:
+
+| Break | V33a source |
+|---|---|
+| `PYLON` ungrantable — port registered the pylon as the shared generic `BlockChromaticTile` | `BlockCrystalPylon implements ProgressionTrigger`, requires `canConduct()` |
+| crystal runes had no recipe at all | `RuneRecipe` / `EnhancedRuneRecipe` — shard ringed by eight crystalline stone |
+| `RUNEUSE` ungrantable | `TileEntityCastingTable.onAddRune`, fired from `BlockCrystalRune.onBlockPlacedBy` |
+| `MULTIBLOCK` ungrantable | granted to the table's placer when CASTING2 validates |
+
+**Per-recipe progression was not modelled.** V33a declares it per recipe via
+`CastingRecipe.getRequiredProgress`; the port derived it only from the recipe tier. That is not
+equivalent — `RuneRecipe` adds `ALLCOLORS` while still casting at the bare-table tier, so emitting
+runes without it would hand players runes immediately and skip the entire colour-discovery arc.
+`CastingTableRecipe` now carries an optional `required_progress` list (codec, stream codec, and
+enforcement in `playerCanRun`), defaulting to empty so no existing recipe changed.
+
+Note the chain has no deadlock: `onAddRune` needs the *structure* (`hasTemple`), not the RUNEUSE
+stage, so building the temple and placing a rune is what unlocks casting with it.
+
+`ProgressionCatchupHandling` is deliberately **not** ported. It looks like a grant path but is gated
+on `ProgressionLinking.hasLinkedPlayers` — it is the co-op catch-up mechanism for linked players, not
+the primary route, and it depends on the unported linking subsystem.
