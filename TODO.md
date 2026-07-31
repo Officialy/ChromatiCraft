@@ -3,6 +3,62 @@
 Goal: **game start → working casting stands**. The mechanical chain is unbroken as of 2026-07-31
 (see `PORTING.md` → "The tier-2 casting dependency chain"). What's left, roughly in order of value.
 
+## 0. From in-game testing 2026-07-31 — triage
+
+**Fixed:**
+- [x] Manipulator right-click didn't start a craft — `BlockCastingTable.useItemOn` returned SUCCESS
+      unconditionally, and vanilla only falls through to the held item's `useOn` on PASS, so the
+      GUI-open swallowed the click. Returns PASS for a Manipulator now.
+- [x] Cliff grass white on top — `grass_top_base.png` is greyscale (avg 143,143,143), like vanilla's
+      grass top, and expects a biome tint; the model had no `tintindex` and no tint source was
+      registered. Now a hand-built cube with `tintindex 0` on the up face plus vanilla's grassBlock
+      tint source, wrapped in `LuminousCliffsColors`.
+
+**Diagnosed, not yet fixed:**
+- [ ] **No progression feedback on looking at a cave crystal.** The grant itself is probably working
+      — `ProgressionManager.setPlayerStage` has an explicit `// Deferred: ... handbook toast notify`
+      and never notifies, so a granted stage is completely silent. V33a:
+      `ChromaResearchManager.notifyPlayerOfProgression` → PROGRESSNOTE packet → client
+      `ChromaOverlays.addProgressionNote`. Port a minimal version (packet + sound + toast) and the
+      "did it work?" question answers itself. **Confirm separately whether the stage is granted** —
+      e.g. try casting after looking at a crystal.
+- [ ] **Crystalline stone beam Y variant.** V33a's `BlockPylonStructure` has **no axis/orientation
+      state at all** — top/bottom artwork is picked by neighbour scanning in `getIconIndex`. The
+      port invented an `AXIS` blockstate property (48 variants = 16 types x 3 axes). Removing it in
+      favour of the source's neighbour scan is the faithful fix, but confirm that's the intent.
+
+**Could not reproduce statically — need more detail:**
+- [ ] **"No texture" on resonance ring, energized crystalline beam, aura stabilizer, crystal pylon
+      focus, crystalline energy stabilizer.** All five resolve cleanly on inspection: blockstate has
+      all 48 variants, every referenced `block/pylon/block_*` PNG exists, every animated one has a
+      valid `.mcmeta` with an exact frame ratio, and all five item models point at existing block
+      models. Need to know whether this is the held/inventory item, the placed block, or both — and
+      ideally a screenshot.
+
+## 0b. Renderers still needed (one coherent chunk)
+
+All of these are V33a BER/ISBRH geometry that the port currently substitutes with a plain cube or a
+flat icon. Best done as a single pass over the crystal family:
+
+- [ ] cave crystals — **item** renderer (block render already exists via `CaveCrystalModel`)
+- [ ] lumen-encrusted crystals — block + item renderer
+- [ ] crystal lamps — block + item renderer
+- [ ] potion crystals (`BlockSuperCrystal`) — block + item renderer
+- [ ] power crystal — block + item renderer
+- [ ] focus crystals — block + item renderer
+- [ ] item casting stand — item renderer sits too high in the inventory; needs re-centering
+      (`ItemStandItemRenderer`)
+- [ ] casting-table GUI: confirm the recipe-ready feedback shows. The plumbing looks correct —
+      `writeSyncTag` sends `recipeOutput`, the screen draws a ghost output plus a `NO_ENTRY` overlay
+      when `!canRunDisplayedRecipe()` — so retest now that the Manipulator works; if the ghost never
+      appears, the recipe is not matching rather than the highlight being absent.
+
+## 0c. Known flaky test
+
+- [ ] `chromaticraft:network_compound_repeater_multicolor` failed once on "tick 6 attenuation", then
+      passed both in isolation and on a full re-run. Timing/order dependent — worth hardening before
+      it wastes someone's afternoon.
+
 ## 1. Verify the chain in a client — nothing below matters if this is broken
 
 Everything so far is verified headlessly (62 GameTests + datagen). **Never runtime-verified in a
