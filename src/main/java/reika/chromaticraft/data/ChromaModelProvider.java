@@ -290,6 +290,29 @@ public class ChromaModelProvider extends ModelProvider {
 		return element;
 	}
 
+	/** Full cube whose top face carries tintindex 0, the way vanilla's grass block does. */
+	private static JsonObject cliffGrassModel(String top, String side, String bottom) {
+		JsonObject textures = new JsonObject();
+		textures.addProperty("particle", side);
+		textures.addProperty("top", top);
+		textures.addProperty("side", side);
+		textures.addProperty("bottom", bottom);
+		JsonObject faces = new JsonObject();
+		faces.add("down", modelFace("#bottom", "down"));
+		JsonObject up = modelFace("#top", "up");
+		up.addProperty("tintindex", 0);
+		faces.add("up", up);
+		for (String dir : new String[] {"north", "south", "east", "west"})
+			faces.add(dir, modelFace("#side", dir));
+		JsonArray elements = new JsonArray();
+		elements.add(modelElement(0, 16, faces, false));
+		JsonObject model = new JsonObject();
+		model.addProperty("parent", "minecraft:block/block");
+		model.add("textures", textures);
+		model.add("elements", elements);
+		return model;
+	}
+
 	private static JsonObject modelFace(String texture, String cullFace) {
 		JsonObject face = new JsonObject();
 		face.addProperty("texture", texture);
@@ -468,12 +491,16 @@ public class ChromaModelProvider extends ModelProvider {
 		// item icon (a plain dirt_base cube) is datagen'd here.
 		itemModelOut.accept(dirt.asItem(), ItemModelUtils.plainModel(dirtModel));
 
+		// grass_top_base.png is greyscale, exactly like vanilla's grass_block_top: it is meant to be
+		// biome-tinted. CUBE_BOTTOM_TOP carries no tintindex, so the raw grey showed through as a
+		// white top. Hand-build the cube with tintindex 0 on the up face, and see ChromaBlockColors
+		// for the matching tint source.
 		Block grass = ChromaBlocks.CLIFF_GRASS.get();
-		TextureMapping grassTextures = new TextureMapping()
-				.put(TextureSlot.BOTTOM, new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/cliffstone/dirt_base")))
-				.put(TextureSlot.TOP, new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/cliffstone/grass_top_base")))
-				.put(TextureSlot.SIDE, new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/cliffstone/grass_base")));
-		Identifier grassModel = ModelTemplates.CUBE_BOTTOM_TOP.create(grass, grassTextures, modelOut);
+		Identifier grassModel = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/cliff_grass_block");
+		modelOut.accept(grassModel, () -> cliffGrassModel(
+				ChromatiCraft.MODID + ":block/cliffstone/grass_top_base",
+				ChromatiCraft.MODID + ":block/cliffstone/grass_base",
+				ChromatiCraft.MODID + ":block/cliffstone/dirt_base"));
 		registerSimple(grass, grassModel, blockStateOut, itemModelOut);
 
 		Block farmland = ChromaBlocks.CLIFF_FARMLAND.get();

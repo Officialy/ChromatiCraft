@@ -42,6 +42,10 @@ public final class ChromaBlockColors {
         }
     };
 
+    /** Vanilla's grass-block tint, plus the Luminous Cliffs hue/altitude shift. */
+    private static final BlockTintSource CLIFF_GRASS =
+            LuminousCliffsColors.wrapTerrain(net.minecraft.client.color.block.BlockTintSources.grassBlock());
+
     private static final BlockTintSource RAINBOW_LEAF = new BlockTintSource() {
         @Override public int color(BlockState state) { return BlockRainbowLeaf.getTintColor(BlockPos.ZERO); }
         @Override public int colorInWorld(BlockState state, BlockAndTintGetter level, BlockPos pos) {
@@ -86,6 +90,10 @@ public final class ChromaBlockColors {
                 .toArray(net.minecraft.world.level.block.Block[]::new);
         event.register(List.of(DYE_TREE), dyeBlocks);
         event.register(List.of(RAINBOW_LEAF), ChromaBlocks.RAINBOW_LEAVES.get());
+        // Cliff grass' top texture is greyscale like vanilla's, so it needs the biome grass tint or
+        // it renders white. It is a Luminous Cliffs block, so it takes the same position/altitude
+        // shift as the vanilla grass around it.
+        event.register(List.of(CLIFF_GRASS), ChromaBlocks.CLIFF_GRASS.get());
         registerLuminousCliffsTints(event);
     }
 

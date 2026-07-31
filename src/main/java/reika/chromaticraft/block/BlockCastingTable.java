@@ -33,7 +33,14 @@ public final class BlockCastingTable extends BlockChromaticTile {
     }
 
     @Override protected InteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos,
-            Player player, InteractionHand hand, BlockHitResult hit) { return this.activate(level, pos, player); }
+            Player player, InteractionHand hand, BlockHitResult hit) {
+        // Vanilla calls the block's useItemOn before the held item's useOn, and only falls through to
+        // the item on PASS. Returning SUCCESS here unconditionally meant the Manipulator could never
+        // run, so a craft could never be started -- opening the GUI swallowed the click instead.
+        if (stack.getItem() instanceof reika.chromaticraft.item.ItemManipulator)
+            return InteractionResult.PASS;
+        return this.activate(level, pos, player);
+    }
     @Override protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos,
             Player player, BlockHitResult hit) { return this.activate(level, pos, player); }
 
