@@ -989,7 +989,7 @@ tracking. The focused glow_cloud_spherical_movement GameTest verifies real serve
 The next beta-critical Elemental Manipulator dispatch is restored for the active crystal repeater
 family. Ordinary use refreshes the source 100-tick connection-display state, checks live network
 connectivity, plays CAST/ERROR feedback, and emits the original coloured and signal-depth diagnostic
-particles. A typed epeater_connections client payload replaces V33a's ordinal packet for the
+particles. A typed `repeater_connections` client payload replaces V33a's ordinal packet for the
 connection-overlay trigger. SneakPop remains earlier in dispatch exactly as V33a orders it: owners pop
 their droppable repeater; a denied non-owner pop falls through without changing its orientation. The
 focused manipulator_repeater_dispatch GameTest locks that precedence and ownership behavior.

@@ -112,7 +112,7 @@
       ]
     },
     {
-      "ingredient": "#chromaticraft:boosted_crystal_shards/black",
+      "ingredient": "chromaticraft:boosted_crystal_shard_black",
       "offset": [
         -4,
         1,
@@ -120,7 +120,7 @@
       ]
     },
     {
-      "ingredient": "#chromaticraft:boosted_crystal_shards/red",
+      "ingredient": "chromaticraft:boosted_crystal_shard_red",
       "offset": [
         -2,
         1,
@@ -128,7 +128,7 @@
       ]
     },
     {
-      "ingredient": "#chromaticraft:boosted_crystal_shards/green",
+      "ingredient": "chromaticraft:boosted_crystal_shard_green",
       "offset": [
         0,
         1,
@@ -136,7 +136,7 @@
       ]
     },
     {
-      "ingredient": "#chromaticraft:boosted_crystal_shards/brown",
+      "ingredient": "chromaticraft:boosted_crystal_shard_brown",
       "offset": [
         2,
         1,
@@ -144,7 +144,7 @@
       ]
     },
     {
-      "ingredient": "#chromaticraft:boosted_crystal_shards/blue",
+      "ingredient": "chromaticraft:boosted_crystal_shard_blue",
       "offset": [
         4,
         1,
@@ -152,7 +152,7 @@
       ]
     },
     {
-      "ingredient": "#chromaticraft:boosted_crystal_shards/purple",
+      "ingredient": "chromaticraft:boosted_crystal_shard_purple",
       "offset": [
         4,
         1,
@@ -160,7 +160,7 @@
       ]
     },
     {
-      "ingredient": "#chromaticraft:boosted_crystal_shards/cyan",
+      "ingredient": "chromaticraft:boosted_crystal_shard_cyan",
       "offset": [
         4,
         1,
@@ -168,7 +168,7 @@
       ]
     },
     {
-      "ingredient": "#chromaticraft:boosted_crystal_shards/light_gray",
+      "ingredient": "chromaticraft:boosted_crystal_shard_light_gray",
       "offset": [
         4,
         1,
@@ -176,7 +176,7 @@
       ]
     },
     {
-      "ingredient": "#chromaticraft:boosted_crystal_shards/gray",
+      "ingredient": "chromaticraft:boosted_crystal_shard_gray",
       "offset": [
         4,
         1,
@@ -184,7 +184,7 @@
       ]
     },
     {
-      "ingredient": "#chromaticraft:boosted_crystal_shards/pink",
+      "ingredient": "chromaticraft:boosted_crystal_shard_pink",
       "offset": [
         2,
         1,
@@ -192,7 +192,7 @@
       ]
     },
     {
-      "ingredient": "#chromaticraft:boosted_crystal_shards/lime",
+      "ingredient": "chromaticraft:boosted_crystal_shard_lime",
       "offset": [
         0,
         1,
@@ -200,7 +200,7 @@
       ]
     },
     {
-      "ingredient": "#chromaticraft:boosted_crystal_shards/yellow",
+      "ingredient": "chromaticraft:boosted_crystal_shard_yellow",
       "offset": [
         -2,
         1,
@@ -208,7 +208,7 @@
       ]
     },
     {
-      "ingredient": "#chromaticraft:boosted_crystal_shards/light_blue",
+      "ingredient": "chromaticraft:boosted_crystal_shard_light_blue",
       "offset": [
         -4,
         1,
@@ -216,7 +216,7 @@
       ]
     },
     {
-      "ingredient": "#chromaticraft:boosted_crystal_shards/magenta",
+      "ingredient": "chromaticraft:boosted_crystal_shard_magenta",
       "offset": [
         -4,
         1,
@@ -224,7 +224,7 @@
       ]
     },
     {
-      "ingredient": "#chromaticraft:boosted_crystal_shards/orange",
+      "ingredient": "chromaticraft:boosted_crystal_shard_orange",
       "offset": [
         -4,
         1,
@@ -232,7 +232,7 @@
       ]
     },
     {
-      "ingredient": "#chromaticraft:boosted_crystal_shards/white",
+      "ingredient": "chromaticraft:boosted_crystal_shard_white",
       "offset": [
         -4,
         1,

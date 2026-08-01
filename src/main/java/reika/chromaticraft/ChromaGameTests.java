@@ -22,6 +22,10 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.Ingredient;
+import net.minecraft.world.item.crafting.CraftingInput;
+import net.minecraft.world.item.crafting.CraftingRecipe;
+import net.minecraft.world.item.crafting.RecipeHolder;
+import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.nbt.Tag;
 import net.minecraft.util.RandomSource;
 import net.minecraft.resources.Identifier;
@@ -194,6 +198,7 @@ public final class ChromaGameTests {
 		register(event, env, "manipulator_repeater_dispatch", ChromaGameTests::manipulatorRepeaterDispatch);
 		register(event, env, "pylon_worldgen_grid_density", ChromaGameTests::pylonWorldgenGridDensity);
 		register(event, env, "casting_table_menu_grid", ChromaGameTests::castingTableMenuGrid);
+		register(event, env, "early_game_casting_stand_chain", ChromaGameTests::earlyGameCastingStandChain);
 	}
 
 	/** The V33a spherical velocity must pass through 26.2 LivingEntity travel and entity tracking. */
@@ -1481,6 +1486,75 @@ public final class ChromaGameTests {
 		helper.succeed();
 	}
 
+	/**
+	 * Complete beta opening gate: discover and mine cave crystals, resolve the registered ordinary
+	 * Casting Table recipe, then use that owned table and the registered base-tier StandRecipe to
+	 * produce the first Casting Item Stand. No progression stage or recipe object is injected.
+	 */
+	private static void earlyGameCastingStandChain(GameTestHelper helper) {
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		BlockPos crystalOrigin = helper.absolutePos(new BlockPos(2, 4, 2));
+		for (int i = 0; i < 4; i++) {
+			BlockPos crystalPos = crystalOrigin.offset(i, 0, 0);
+			helper.getLevel().setBlock(crystalPos.below(), Blocks.STONE.defaultBlockState(), 3);
+			helper.getLevel().setBlock(crystalPos,
+					ChromaBlocks.caveCrystal(CrystalElement.BLUE).get().defaultBlockState(), 3);
+		}
+
+		helper.assertTrue(!ProgressStage.CRYSTALS.isPlayerAtStage(player),
+				"a new beta-path player must begin before CRYSTALS");
+		ExplorationMonitor.scanLookedAtBlock(player, helper.getLevel(), crystalOrigin);
+		helper.assertTrue(ProgressStage.CRYSTALS.isPlayerAtStage(player),
+				"looking at the first cave crystal must unlock the opening CRYSTALS stage");
+
+		for (int i = 0; i < 4; i++)
+			helper.getLevel().destroyBlock(crystalOrigin.offset(i, 0, 0), true, player);
+		int droppedShards = helper.getLevel().getEntitiesOfClass(ItemEntity.class,
+				new AABB(crystalOrigin).expandTowards(4, 1, 1).inflate(1)).stream()
+				.filter(entity -> entity.getItem().is(ChromaItems.SHARDS.get(CrystalElement.BLUE).get()))
+				.mapToInt(entity -> entity.getItem().getCount()).sum();
+		helper.assertTrue(droppedShards >= 4,
+				"four mined cave crystals must supply at least four blue shards for the table; got " + droppedShards);
+
+		ItemStack shard = ChromaItems.shardStack(CrystalElement.BLUE);
+		CraftingInput tableInput = CraftingInput.of(3, 3, List.of(
+				new ItemStack(Blocks.STONE), new ItemStack(Blocks.CRAFTING_TABLE), new ItemStack(Blocks.STONE),
+				new ItemStack(Blocks.STONE), shard.copy(), new ItemStack(Blocks.STONE),
+				shard.copy(), shard.copy(), shard.copy()));
+		Optional<RecipeHolder<CraftingRecipe>> tableRecipe = helper.getLevel().getServer().getRecipeManager()
+				.getRecipeFor(RecipeType.CRAFTING, tableInput, helper.getLevel());
+		helper.assertTrue(tableRecipe.isPresent(), "the source-exact ordinary Casting Table recipe must resolve");
+		helper.assertTrue(tableRecipe.get().id().identifier().equals(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "casting_table")),
+				"the opening grid must resolve chromaticraft:casting_table, not another recipe");
+		ItemStack craftedTable = tableRecipe.get().value().assemble(tableInput);
+		helper.assertTrue(craftedTable.is(ChromaBlocks.CASTING_TABLE.get().asItem()),
+				"the registered opening recipe must assemble a Casting Table");
+
+		BlockPos tablePos = helper.absolutePos(new BlockPos(10, 4, 10));
+		helper.getLevel().setBlock(tablePos, ChromaBlocks.CASTING_TABLE.get().defaultBlockState(), 3);
+		TileEntityCastingTable table = (TileEntityCastingTable)helper.getLevel().getBlockEntity(tablePos);
+		table.setPlacer(player);
+		table.setItem(0, new ItemStack(Items.IRON_INGOT));
+		table.setItem(2, new ItemStack(Items.IRON_INGOT));
+		table.setItem(3, new ItemStack(Items.STONE_SLAB));
+		table.setItem(4, new ItemStack(Items.LAPIS_LAZULI));
+		table.setItem(5, new ItemStack(Items.STONE_SLAB));
+		table.setItem(6, new ItemStack(Items.COBBLESTONE));
+		table.setItem(7, new ItemStack(Items.COBBLESTONE));
+		table.setItem(8, new ItemStack(Items.COBBLESTONE));
+
+		helper.assertTrue(table.triggerCrafting(player),
+				"the registered V33a StandRecipe must start for the naturally unlocked player");
+		helper.assertTrue(table.getCraftingTick() == 5,
+				"the base-tier Casting Item Stand recipe must retain its five-tick duration");
+		for (int i = 0; i < 5; i++) table.updateEntity(helper.getLevel(), tablePos);
+		helper.assertTrue(!table.isCrafting() && table.getItem(9).is(ChromaBlocks.ITEM_STAND.get().asItem()),
+				"the beta opening chain must finish with a usable Casting Item Stand in the output slot");
+		helper.assertTrue(table.getTableXP() == 5 && ProgressStage.CASTING.isPlayerAtStage(player),
+				"the first stand craft must award its XP and the CASTING progression stage");
+		helper.succeed();
+	}
 	private static void castingTableAtomicCraft(GameTestHelper helper) {
 		BlockPos pos = helper.absolutePos(new BlockPos(4, 3, 4));
 		helper.getLevel().setBlock(pos, ChromaBlocks.CASTING_TABLE.get().defaultBlockState(), 3);

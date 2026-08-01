@@ -45,7 +45,7 @@
       ]
     },
     {
-      "ingredient": "#chromaticraft:crystal_shards/white",
+      "ingredient": "chromaticraft:crystal_shard_white",
       "offset": [
         -2,
         0,
@@ -53,7 +53,7 @@
       ]
     },
     {
-      "ingredient": "#chromaticraft:crystal_shards/white",
+      "ingredient": "chromaticraft:crystal_shard_white",
       "offset": [
         2,
         0,
@@ -61,7 +61,7 @@
       ]
     },
     {
-      "ingredient": "#chromaticraft:crystal_shards/blue",
+      "ingredient": "chromaticraft:crystal_shard_blue",
       "offset": [
         0,
         0,
@@ -69,7 +69,7 @@
       ]
     },
     {
-      "ingredient": "#chromaticraft:crystal_shards/blue",
+      "ingredient": "chromaticraft:crystal_shard_blue",
       "offset": [
         0,
         0,

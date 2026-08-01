@@ -27,7 +27,6 @@ import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaClusterItems;
 import reika.chromaticraft.registry.ChromaCraftingItems;
-import reika.chromaticraft.registry.ChromaItemTags;
 import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.ChromaTieredItems;
 import reika.chromaticraft.magic.progression.ProgressStage;
@@ -66,7 +65,7 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 			for (CrystalElement element : CrystalElement.elements) {
 				Map<Character, Ingredient> ingredients = Map.of(
 						'S', stone,
-						'C', tag(ChromaItemTags.crystalShards(element)));
+						'C', Ingredient.of(ChromaItems.SHARDS.get(element).get()));
 				save("crystal_stone/smooth_"+element.getEnglishName(),
 						StoneTypes.SMOOTH, 8, ingredients, " S ", "SCS", " S ");
 			}
@@ -94,12 +93,12 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 				saveShapedProgress("crystal_rune/" + element.getEnglishName(),
 						new ItemStackTemplate(ChromaBlocks.RUNES.get(element.ordinal()).get().asItem()), 5, 10,
 						List.of(ProgressStage.ALLCOLORS),
-						Map.of('S', runeStone, 'C', tag(ChromaItemTags.crystalShards(element))),
+						Map.of('S', runeStone, 'C', Ingredient.of(ChromaItems.SHARDS.get(element).get())),
 						"SSS", "SCS", "SSS");
 				saveShapedProgress("crystal_rune/" + element.getEnglishName() + "_boosted",
 						new ItemStackTemplate(ChromaBlocks.RUNES.get(element.ordinal()).get().asItem()), 5, 10,
 						List.of(ProgressStage.ALLCOLORS),
-						Map.of('S', runeStone, 'C', tag(ChromaItemTags.boostedCrystalShards(element))),
+						Map.of('S', runeStone, 'C', Ingredient.of(ChromaItems.BOOSTED_SHARDS.get(element).get())),
 						"SSS", "SCS", "SSS");
 			}
 
@@ -161,9 +160,14 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 		 * black shard it accepts a boosted black shard. A recipe that genuinely requires the boosted
 		 * form asks for the boosted tag instead.
 		 */
+		/**
+		 * A shard of one specific colour. This deliberately names the exact item rather than the
+		 * colour tag: V33a ships plain and boosted variants of the group and rune recipes that differ
+		 * only in which shard they consume, so a plain recipe that also accepted boosted shards would
+		 * match alongside its boosted sibling and rob it of its doubled duration and output.
+		 */
 		private Ingredient shard(CrystalElement element, boolean boosted) {
-			return tag(boosted ? ChromaItemTags.boostedCrystalShards(element)
-					: ChromaItemTags.crystalShards(element));
+			return Ingredient.of((boosted ? ChromaItems.BOOSTED_SHARDS : ChromaItems.SHARDS).get(element).get());
 		}
 
 		private List<RuneRequirement> groupRunes(CrystalElement[] shards) {
@@ -185,7 +189,7 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 		private void saveCluster(String name, ChromaClusterItems output, ChromaClusterItems first, ChromaClusterItems second, CrystalElement center, List<RuneRequirement> runes) {
 			List<GridIngredient> grid = List.of(new GridIngredient(1, Ingredient.of(ChromaItems.CLUSTERS.get(first).get())),
 					new GridIngredient(3, Ingredient.of(ChromaItems.CLUSTERS.get(second).get())),
-					new GridIngredient(4, tag(ChromaItemTags.crystalShards(center))),
+					new GridIngredient(4, Ingredient.of(ChromaItems.SHARDS.get(center).get())),
 					new GridIngredient(5, Ingredient.of(ChromaItems.CLUSTERS.get(second).get())),
 					new GridIngredient(7, Ingredient.of(ChromaItems.CLUSTERS.get(first).get())));
 			saveRecipe("crystal_cluster/" + name, new CastingTableRecipe(CastingTableRecipe.Tier.TEMPLE,
@@ -210,7 +214,7 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 			for (int[] pos : new int[][] {{-2,0},{2,0},{0,-2},{0,2}}) stands.add(stand(pos[0], pos[1], ChromaClusterItems.CRYSTAL_CORE));
 			for (int[] pos : new int[][] {{-2,-2},{2,-2},{-2,2},{2,2}}) stands.add(new CastingTableRecipe.StandIngredient(new net.minecraft.core.BlockPos(pos[0], 0, pos[1]), Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.ELEMENT_UNIT).get())));
 			int[][] ring = {{-4,-4},{-2,-4},{0,-4},{2,-4},{4,-4},{4,-2},{4,0},{4,2},{4,4},{2,4},{0,4},{-2,4},{-4,4},{-4,2},{-4,0},{-4,-2}};
-			for (int i = 0; i < ring.length; i++) stands.add(new CastingTableRecipe.StandIngredient(new net.minecraft.core.BlockPos(ring[i][0], 1, ring[i][1]), tag(ChromaItemTags.boostedCrystalShards(CrystalElement.elements[i]))));
+			for (int i = 0; i < ring.length; i++) stands.add(new CastingTableRecipe.StandIngredient(new net.minecraft.core.BlockPos(ring[i][0], 1, ring[i][1]), Ingredient.of(ChromaItems.BOOSTED_SHARDS.get(CrystalElement.elements[i]).get())));
 			List<RuneRequirement> runes = List.of(new RuneRequirement(new net.minecraft.core.BlockPos(-3,-1,-3), CrystalElement.BLACK), new RuneRequirement(new net.minecraft.core.BlockPos(3,-1,-3), CrystalElement.BLACK), new RuneRequirement(new net.minecraft.core.BlockPos(-3,-1,3), CrystalElement.BLACK), new RuneRequirement(new net.minecraft.core.BlockPos(3,-1,3), CrystalElement.BLACK));
 			saveRecipe("crystal_star", new CastingTableRecipe(CastingTableRecipe.Tier.MULTIBLOCK,
 					List.of(new GridIngredient(4, Ingredient.of(Items.NETHER_STAR))), stands, runes, List.of(),
@@ -321,9 +325,9 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 				ChromaCraftingItems dust) {
 			List<CastingTableRecipe.StandIngredient> stands = new ArrayList<>();
 			for (int[] pos : new int[][] {{-2,-2},{2,-2},{-2,2},{2,2}})
-				stands.add(stand(pos[0], 0, pos[1], tag(ChromaItemTags.boostedCrystalShards(primary))));
+				stands.add(stand(pos[0], 0, pos[1], Ingredient.of(ChromaItems.BOOSTED_SHARDS.get(primary).get())));
 			for (int[] pos : new int[][] {{2,0},{-2,0},{0,2},{0,-2}})
-				stands.add(stand(pos[0], 0, pos[1], tag(ChromaItemTags.boostedCrystalShards(secondary))));
+				stands.add(stand(pos[0], 0, pos[1], Ingredient.of(ChromaItems.BOOSTED_SHARDS.get(secondary).get())));
 			for (int[] pos : new int[][] {{-4,-4},{4,-4},{-4,4},{4,4}})
 				stands.add(stand(pos[0], 1, pos[1], Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.IRIDESCENT_CRYSTAL).get())));
 			stands.add(stand(-2, 1, -4, tiered(ChromaTieredItems.FIRE_ESSENCE)));
