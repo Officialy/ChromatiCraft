@@ -1,20 +1,36 @@
 {
   "values": [
     "#chromaticraft:crystal_shards/black",
+    "#chromaticraft:boosted_crystal_shards/black",
     "#chromaticraft:crystal_shards/red",
+    "#chromaticraft:boosted_crystal_shards/red",
     "#chromaticraft:crystal_shards/green",
+    "#chromaticraft:boosted_crystal_shards/green",
     "#chromaticraft:crystal_shards/brown",
+    "#chromaticraft:boosted_crystal_shards/brown",
     "#chromaticraft:crystal_shards/blue",
+    "#chromaticraft:boosted_crystal_shards/blue",
     "#chromaticraft:crystal_shards/purple",
+    "#chromaticraft:boosted_crystal_shards/purple",
     "#chromaticraft:crystal_shards/cyan",
+    "#chromaticraft:boosted_crystal_shards/cyan",
     "#chromaticraft:crystal_shards/light_gray",
+    "#chromaticraft:boosted_crystal_shards/light_gray",
     "#chromaticraft:crystal_shards/gray",
+    "#chromaticraft:boosted_crystal_shards/gray",
     "#chromaticraft:crystal_shards/pink",
+    "#chromaticraft:boosted_crystal_shards/pink",
     "#chromaticraft:crystal_shards/lime",
+    "#chromaticraft:boosted_crystal_shards/lime",
     "#chromaticraft:crystal_shards/yellow",
+    "#chromaticraft:boosted_crystal_shards/yellow",
     "#chromaticraft:crystal_shards/light_blue",
+    "#chromaticraft:boosted_crystal_shards/light_blue",
     "#chromaticraft:crystal_shards/magenta",
+    "#chromaticraft:boosted_crystal_shards/magenta",
     "#chromaticraft:crystal_shards/orange",
-    "#chromaticraft:crystal_shards/white"
+    "#chromaticraft:boosted_crystal_shards/orange",
+    "#chromaticraft:crystal_shards/white",
+    "#chromaticraft:boosted_crystal_shards/white"
   ]
 }
