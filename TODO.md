@@ -110,6 +110,32 @@ regression.
 Next concrete step: in game, stand at a pylon and check whether `hasMultiblock` is true (the pylon
 renders its aura only when it is). That splits "structure never validates" from "flow never starts".
 
+## 0d-bis. Manipulator craft-progress HUD — scoped 2026-08-01
+
+Traced in V33a. This is **not** part of the big `ChromaOverlays` dispatcher work and does not need
+`PlayerElementBuffer` or the ability system — it is a small, self-contained slice:
+
+`ChromaOverlays` line ~163, on `ElementType.HELMET`:
+```java
+boolean manip = HoldingChecks.MANIPULATOR.isClientHolding();
+if (manip) MouseoverOverlayRenderer.instance.renderTileOverlays(ep, gsc);
+```
+`renderTileOverlays` ray-traces 4 blocks, resolves `TileEntityDummyAux` to its linked tile, then for
+`te instanceof OperationInterval` calls `renderStatusOverlay`, which draws a state icon plus the
+progress arc from `Textures/infoicons.png` near the crosshair (`ar = 12`, offset from
+`displayWidth/(gsc*2)`). It also renders a storage bar for `LumenTile` and an acceleration overlay
+for `FocusAcceleratable`.
+
+To port, in order:
+1. `Auxiliary/Interfaces/OperationInterval` + its `OperationState` enum.
+2. Implement it on `TileEntityCastingTable` (it already tracks `craftingTick` and the recipe
+   duration, so the fraction is available).
+3. A client `HoldingChecks.MANIPULATOR` equivalent.
+4. `MouseoverOverlayRenderer.renderStatusOverlay` on a 26.2 HUD layer.
+
+Note the earlier TODO entry saying "V33a has no craft progress bar" was about the casting **GUI** —
+correct there, but the bar does exist as this world overlay.
+
 ## 0d. HUD — findings 2026-07-31
 
 **Casting-table GUI: already at V33a parity.** Checked against
