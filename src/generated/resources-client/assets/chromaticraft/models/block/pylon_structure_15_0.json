@@ -117,17 +117,17 @@
     }
   ],
   "textures": {
-    "base_down": "chromaticraft:block/pylon/block_15",
+    "base_down": "chromaticraft:block/pylon/block_15-2",
     "base_east": "chromaticraft:block/pylon/block_15-2",
     "base_north": "chromaticraft:block/pylon/block_15-2",
     "base_south": "chromaticraft:block/pylon/block_15-2",
-    "base_up": "chromaticraft:block/pylon/block_15",
+    "base_up": "chromaticraft:block/pylon/block_15-2",
     "base_west": "chromaticraft:block/pylon/block_15-2",
-    "glow_down": "chromaticraft:block/pylon/block_15-3",
+    "glow_down": "chromaticraft:block/pylon/block_15-4",
     "glow_east": "chromaticraft:block/pylon/block_15-4",
     "glow_north": "chromaticraft:block/pylon/block_15-4",
     "glow_south": "chromaticraft:block/pylon/block_15-4",
-    "glow_up": "chromaticraft:block/pylon/block_15-3",
+    "glow_up": "chromaticraft:block/pylon/block_15-4",
     "glow_west": "chromaticraft:block/pylon/block_15-4",
     "particle": "chromaticraft:block/pylon/block_15-2"
   }

@@ -17,6 +17,8 @@ public final class ChromaBlockStateModels {
 	@SubscribeEvent
 	public static void register(RegisterBlockStateModels event) {
 		event.registerModel(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "cave_crystal"), CaveCrystalModel.Unbaked.CODEC);
+		event.registerModel(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "pylon_structure"),
+				reika.chromaticraft.render.model.PylonStructureModel.Unbaked.CODEC);
 		event.registerModel(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "cliff_dirt"), CliffDirtModel.Unbaked.CODEC);
 	}
 }

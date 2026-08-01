@@ -32,14 +32,17 @@ import reika.chromaticraft.registry.ChromaBlocks;
  * {@link ChromaBlocks}) — the one-block-many-items convention GeoStrata's rock/lava blocks use, which
  * keeps the same-block-different-value neighbour checks used by structure and network code.
  *
- * <p>The original directional beam/ring faces are represented by {@link #AXIS}; model datagen emits
- * each animated full-bright overlay without adding world light. Remaining deferred behavior is the
+ * <p>The original directional beam/ring faces come from neighbour scanning, not orientation state —
+ * see {@link reika.chromaticraft.render.model.PylonStructureModel}. Model datagen emits each animated
+ * full-bright overlay without adding world light. Remaining deferred behavior is the
  * {@code BlockProtectedByStructure} break protection and Christmas particles.
  */
 public class BlockPylonStructure extends Block {
 
 	public static final IntegerProperty TYPE = IntegerProperty.create("type", 0, StoneTypes.list.length - 1);
-	public static final EnumProperty<Direction.Axis> AXIS = BlockStateProperties.AXIS;
+	// V33a BlockPylonStructure has no axis or orientation state: beams and resonance rings pick
+	// their top/bottom artwork from neighbouring blocks of the same type (getIconIndex), which
+	// PylonStructureModel reproduces. An AXIS property made appearance depend on placement instead.
 
 	public enum StoneTypes {
 		SMOOTH(),
@@ -107,18 +110,14 @@ public class BlockPylonStructure extends Block {
 
 	public BlockPylonStructure(BlockBehaviour.Properties props) {
 		super(props);
-		this.registerDefaultState(this.stateDefinition.any().setValue(TYPE, StoneTypes.SMOOTH.ordinal()).setValue(AXIS, Direction.Axis.Y));
+		this.registerDefaultState(this.stateDefinition.any().setValue(TYPE, StoneTypes.SMOOTH.ordinal()));
 	}
 
 	@Override
 	protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-		builder.add(TYPE, AXIS);
+		builder.add(TYPE);
 	}
 
-	@Override
-	public BlockState getStateForPlacement(BlockPlaceContext context) {
-		return this.defaultBlockState().setValue(AXIS, context.getClickedFace().getAxis());
-	}
 	public static StoneTypes getStoneType(BlockState state) {
 		return StoneTypes.list[state.getValue(TYPE)];
 	}

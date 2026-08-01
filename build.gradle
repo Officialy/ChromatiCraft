@@ -99,6 +99,7 @@ sourceSets.main.java {
       include 'reika/chromaticraft/render/item/ItemStandItemRenderer.java'
       include 'reika/chromaticraft/render/model/CaveCrystalModel.java'
       include 'reika/chromaticraft/render/model/CaveCrystalGeometry.java'
+      include 'reika/chromaticraft/render/model/PylonStructureModel.java'
       include 'reika/chromaticraft/render/item/CaveCrystalItemRenderer.java'
       include 'reika/chromaticraft/render/model/CliffDirtModel.java'
       include 'reika/chromaticraft/client/ChromaBlockStateModels.java'

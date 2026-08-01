@@ -21,16 +21,17 @@ Goal: **game start → working casting stands**. The mechanical chain is unbroke
       tint source, wrapped in `LuminousCliffsColors`.
 
 **Diagnosed, not yet fixed:**
-- [ ] **Crystalline stone beam Y variant.** Fully diagnosed — this is a *connected-texture* rule in
-      V33a, not a placement axis. `BlockPylonStructure` has **no axis/orientation state at all**;
-      `getIconIndex` picks the top/bottom art from neighbouring beams:
-      X-neighbour → `block_1-3`, Z-neighbour → `block_1-2`, otherwise `block_1`. RESORING and CORNER
-      have their own neighbour rules in the same method. The port invented an `AXIS` blockstate
-      property (48 variants = 16 types x 3 axes), so appearance follows how you placed the block
-      rather than what it connects to. Faithful fix: a `DynamicBlockStateModel` doing the neighbour
-      scan — same pattern as the existing `CliffDirtModel` — and drop the `AXIS` property. Not
-      started because it is a real chunk (all four neighbour rules + removing the property +
-      regenerating 48 → 16 variants), not a one-liner.
+- [x] ~~Crystalline stone beam Y variant.~~ Done 2026-07-31. The invented `AXIS` blockstate property
+      is gone; `PylonStructureModel` reproduces V33a's `getIconIndex` neighbour rule instead —
+      same-type neighbour on X takes `block_1-3`, on Z `block_1-2`, otherwise `block_1`, X checked
+      first. Only beams ever consulted the axis, so the other fourteen types keep ordinary generated
+      models; the blockstate is hand-authored (48 variants down to 16) because a custom model type
+      cannot come out of `MultiVariantGenerator`.
+- [ ] **Resonance ring neighbour rule.** Left as a `CHROMA-PORT` marker in `createPylonStoneModel`.
+      V33a's ring has a longer multi-step scan in the same `getIconIndex` — vertical pairs first,
+      then the flag/flag2/flag3 walk over all six neighbours — and `CORNER` has its own four-way
+      rotation selection. Neither is ported; the ring currently always draws its non-adjacent
+      artwork. `PylonStructureModel` is the place to add both.
 
 **Fixed with the client log (2026-07-31):**
 - [x] ~~"No texture" on the glowing crystalline-stone types, item *and* placed block.~~ The log named
