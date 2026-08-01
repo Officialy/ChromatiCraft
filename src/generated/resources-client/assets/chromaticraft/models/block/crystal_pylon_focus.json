@@ -1,4 +1,5 @@
 {
+  "parent": "minecraft:block/block",
   "ambientocclusion": false,
   "elements": [
     {
@@ -41,16 +42,6 @@
     },
     {
       "faces": {
-        "down": {
-          "cullface": "down",
-          "texture": "#glow_down",
-          "uv": [
-            0.0,
-            0.0,
-            16.0,
-            16.0
-          ]
-        },
         "east": {
           "cullface": "east",
           "texture": "#glow_east",
@@ -74,16 +65,6 @@
         "south": {
           "cullface": "south",
           "texture": "#glow_south",
-          "uv": [
-            0.0,
-            0.0,
-            16.0,
-            16.0
-          ]
-        },
-        "up": {
-          "cullface": "up",
-          "texture": "#glow_up",
           "uv": [
             0.0,
             0.0,
@@ -117,17 +98,15 @@
     }
   ],
   "textures": {
-    "base_down": "chromaticraft:block/pylon/block_5",
+    "base_down": "chromaticraft:block/pylon/block_0",
     "base_east": "chromaticraft:block/pylon/block_5",
     "base_north": "chromaticraft:block/pylon/block_5",
     "base_south": "chromaticraft:block/pylon/block_5",
-    "base_up": "chromaticraft:block/pylon/block_5",
+    "base_up": "chromaticraft:block/pylon/block_0",
     "base_west": "chromaticraft:block/pylon/block_5",
-    "glow_down": "chromaticraft:block/pylon/block_5-2",
     "glow_east": "chromaticraft:block/pylon/block_5-2",
     "glow_north": "chromaticraft:block/pylon/block_5-2",
     "glow_south": "chromaticraft:block/pylon/block_5-2",
-    "glow_up": "chromaticraft:block/pylon/block_5-2",
     "glow_west": "chromaticraft:block/pylon/block_5-2",
     "particle": "chromaticraft:block/pylon/block_5"
   }

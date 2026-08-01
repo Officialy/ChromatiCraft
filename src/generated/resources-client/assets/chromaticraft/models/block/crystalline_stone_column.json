@@ -1,4 +1,5 @@
 {
+  "parent": "minecraft:block/block",
   "ambientocclusion": false,
   "elements": [
     {
@@ -41,11 +42,11 @@
     }
   ],
   "textures": {
-    "base_down": "chromaticraft:block/pylon/block_2",
+    "base_down": "chromaticraft:block/pylon/block_0",
     "base_east": "chromaticraft:block/pylon/block_2",
     "base_north": "chromaticraft:block/pylon/block_2",
     "base_south": "chromaticraft:block/pylon/block_2",
-    "base_up": "chromaticraft:block/pylon/block_2",
+    "base_up": "chromaticraft:block/pylon/block_0",
     "base_west": "chromaticraft:block/pylon/block_2",
     "particle": "chromaticraft:block/pylon/block_2"
   }

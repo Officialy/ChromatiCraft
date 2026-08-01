@@ -22,6 +22,7 @@ import net.minecraft.world.level.block.state.BlockState;
 
 import reika.chromaticraft.base.ColoredStructureBase;
 import reika.chromaticraft.block.BlockCrystalRune;
+import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.dragonapi.instantiable.data.blockstruct.FilledBlockArray;
@@ -62,10 +63,25 @@ public class PylonStructure extends ColoredStructureBase {
 	 */
 	public static List<BlockPos> placeForWorldgen(WorldGenLevel world, BlockPos worldAnchor,
 			CrystalElement color, int flags) {
-		return NBTStructureLoader.place(world, TEMPLATE, worldAnchor, ANCHOR, state ->
-				ChromaBlocks.isRune(state)
-						? ChromaBlocks.rune(color).get().defaultBlockState()
-						: state, flags);
+		return NBTStructureLoader.place(world, TEMPLATE, worldAnchor, ANCHOR, state -> {
+			if (isPlayerUpgrade(state))
+				return Blocks.STRUCTURE_VOID.defaultBlockState();
+			return ChromaBlocks.isRune(state)
+					? ChromaBlocks.rune(color).get().defaultBlockState()
+					: state;
+		}, flags);
+	}
+
+	/**
+	 * The aura stabilizer and resonance ring are player-applied pylon upgrades, not part of the
+	 * natural structure, so worldgen must not pre-place them. They stay in the template because the
+	 * template also backs the matcher, which has to recognise a fully upgraded pylon; the worldgen
+	 * path maps them to structure void so {@link NBTStructureLoader#place} skips the cell and leaves
+	 * the surrounding terrain untouched (returning air would instead punch holes around the base).
+	 */
+	private static boolean isPlayerUpgrade(BlockState state) {
+		return state.is(ChromaBlocks.crystallineStone(StoneTypes.STABILIZER).get())
+				|| state.is(ChromaBlocks.crystallineStone(StoneTypes.RESORING).get());
 	}
 	private static final class FutureTileCheck implements BlockCheck {
 		private final Identifier blockId;

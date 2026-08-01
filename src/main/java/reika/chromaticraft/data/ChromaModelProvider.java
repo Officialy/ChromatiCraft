@@ -258,12 +258,29 @@ public class ChromaModelProvider extends ModelProvider {
 				if (type.glows()) glow[i] = p + type.ordinal() + "-2";
 			}
 		}
+		// V33a getIcon(int s, int meta): "if (s < 2 && meta < 6) return icons[0][idx]" -- for the
+		// first six types the up/down faces are the plain smooth stone, not the type's own artwork.
+		// That is what gives a lone beam (and the column, energy stabilizer and pylon focus) flat
+		// ends instead of the running-beam texture bleeding onto its top and bottom.
+		if (type.ordinal() < 6) {
+			for (Direction face : Direction.values()) {
+				if (face.getAxis() != Direction.Axis.Y) continue;
+				base[face.ordinal()] = ChromatiCraft.MODID + ":block/pylon/block_"
+						+ BlockCrystallineStone.StoneTypes.SMOOTH.ordinal();
+				glow[face.ordinal()] = null;
+			}
+		}
+
 		modelOut.accept(id, () -> layeredCube(base, glow));
 		return id;
 	}
 
 	private static JsonObject layeredCube(String[] base, String[] glow) {
 		JsonObject root = new JsonObject();
+		// Inherit the vanilla block display transforms. Without a parent these models carry no
+		// "display" section at all, so the item form is drawn with an identity transform and looks
+		// far too small in inventories and in hand; the local elements/textures still win.
+		root.addProperty("parent", "minecraft:block/block");
 		root.addProperty("ambientocclusion", false);
 		JsonObject textures = new JsonObject();
 		JsonObject baseFaces = new JsonObject();

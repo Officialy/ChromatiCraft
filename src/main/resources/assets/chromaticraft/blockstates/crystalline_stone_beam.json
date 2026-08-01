@@ -4,7 +4,7 @@
       "type": "chromaticraft:pylon_structure",
       "stone_type": 1,
       "top": [
-        "chromaticraft:block/pylon/block_1",
+        "chromaticraft:block/pylon/block_0",
         "chromaticraft:block/pylon/block_1-2",
         "chromaticraft:block/pylon/block_1-3"
       ],
@@ -16,7 +16,7 @@
       "type": "chromaticraft:pylon_structure",
       "stone_type": 1,
       "top": [
-        "chromaticraft:block/pylon/block_1",
+        "chromaticraft:block/pylon/block_0",
         "chromaticraft:block/pylon/block_1-2",
         "chromaticraft:block/pylon/block_1-3"
       ],
