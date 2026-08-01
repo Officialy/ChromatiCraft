@@ -5,10 +5,14 @@
     },
     "type=1": {
       "type": "chromaticraft:pylon_structure",
-      "models": [
-        "chromaticraft:block/pylon_structure_1_0",
-        "chromaticraft:block/pylon_structure_1_1",
-        "chromaticraft:block/pylon_structure_1_2"
+      "stone_type": 1,
+      "top": [
+        "chromaticraft:block/pylon/block_1",
+        "chromaticraft:block/pylon/block_1-2",
+        "chromaticraft:block/pylon/block_1-3"
+      ],
+      "side": [
+        "chromaticraft:block/pylon/block_1"
       ]
     },
     "type=2": {
@@ -19,17 +23,37 @@
     },
     "type=4": {
       "type": "chromaticraft:pylon_structure",
-      "models": [
-        "chromaticraft:block/pylon_structure_4_0",
-        "chromaticraft:block/pylon_structure_4_1",
-        "chromaticraft:block/pylon_structure_4_2"
+      "stone_type": 4,
+      "top": [
+        "chromaticraft:block/pylon/block_1",
+        "chromaticraft:block/pylon/block_1-2",
+        "chromaticraft:block/pylon/block_1-3"
+      ],
+      "side": [
+        "chromaticraft:block/pylon/block_4"
+      ],
+      "side_glow": [
+        "chromaticraft:block/pylon/block_4-4"
       ]
     },
     "type=5": {
       "model": "chromaticraft:block/pylon_structure_5_0"
     },
     "type=6": {
-      "model": "chromaticraft:block/pylon_structure_6_0"
+      "type": "chromaticraft:pylon_structure",
+      "stone_type": 6,
+      "top": [
+        "chromaticraft:block/pylon/block_6",
+        "chromaticraft:block/pylon/block_6-2",
+        "chromaticraft:block/pylon/block_6-3",
+        "chromaticraft:block/pylon/block_6-4"
+      ],
+      "side": [
+        "chromaticraft:block/pylon/block_6",
+        "chromaticraft:block/pylon/block_6-2",
+        "chromaticraft:block/pylon/block_6-3",
+        "chromaticraft:block/pylon/block_6-4"
+      ]
     },
     "type=7": {
       "model": "chromaticraft:block/pylon_structure_7_0"
@@ -56,7 +80,24 @@
       "model": "chromaticraft:block/pylon_structure_14_0"
     },
     "type=15": {
-      "model": "chromaticraft:block/pylon_structure_15_0"
+      "type": "chromaticraft:pylon_structure",
+      "stone_type": 15,
+      "top": [
+        "chromaticraft:block/pylon/block_15",
+        "chromaticraft:block/pylon/block_15-2"
+      ],
+      "side": [
+        "chromaticraft:block/pylon/block_15",
+        "chromaticraft:block/pylon/block_15-2"
+      ],
+      "top_glow": [
+        "chromaticraft:block/pylon/block_15-3",
+        "chromaticraft:block/pylon/block_15-4"
+      ],
+      "side_glow": [
+        "chromaticraft:block/pylon/block_15-3",
+        "chromaticraft:block/pylon/block_15-4"
+      ]
     }
   }
 }

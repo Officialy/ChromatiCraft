@@ -203,9 +203,10 @@ public class ChromaModelProvider extends ModelProvider {
 	/**
 	 * V33a face selection plus its full-bright animated second render pass.
 	 *
-	 * <p>Emits one model per neighbour index (see {@link reika.chromaticraft.render.model.PylonStructureModel}):
-	 * beams genuinely differ across the three, every other type is neighbour-invariant and emits index
-	 * 0 only. The blockstate itself is hand-authored at
+	 * <p>Emits one whole-cube model per type. That serves the item icon for every type, and the
+	 * in-world blockstate for the eleven types with no neighbour rule; beams, corners and resonance
+	 * rings instead build their faces in {@link reika.chromaticraft.render.model.PylonStructureModel},
+	 * which needs per-face selection that a static model cannot express. The blockstate is hand-authored at
 	 * {@code assets/chromaticraft/blockstates/pylon_structure.json} because beams need the custom
 	 * model type, which {@code MultiVariantGenerator} cannot express.
 	 */
@@ -214,15 +215,9 @@ public class ChromaModelProvider extends ModelProvider {
 		int n = BlockPylonStructure.StoneTypes.list.length;
 		for (int i = 0; i < n; i++) {
 			BlockPylonStructure.StoneTypes type = BlockPylonStructure.StoneTypes.list[i];
-			int variants = type.isBeam() ? 3 : 1;
-			Identifier first = null;
-			for (int index = 0; index < variants; index++) {
-				Identifier id = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
-						"block/pylon_structure_" + i + "_" + index);
-				Identifier made = createPylonStoneModel(id, type, index, modelOut);
-				if (index == 0) first = made;
-			}
-			itemModelOut.accept(ChromaBlocks.PYLONSTRUCT_ITEMS.get(i).get(), ItemModelUtils.plainModel(first));
+			Identifier id = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/pylon_structure_" + i + "_0");
+			Identifier model = createPylonStoneModel(id, type, 0, modelOut);
+			itemModelOut.accept(ChromaBlocks.PYLONSTRUCT_ITEMS.get(i).get(), ItemModelUtils.plainModel(model));
 		}
 	}
 

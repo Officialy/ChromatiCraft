@@ -27,11 +27,14 @@ Goal: **game start → working casting stands**. The mechanical chain is unbroke
       first. Only beams ever consulted the axis, so the other fourteen types keep ordinary generated
       models; the blockstate is hand-authored (48 variants down to 16) because a custom model type
       cannot come out of `MultiVariantGenerator`.
-- [ ] **Resonance ring neighbour rule.** Left as a `CHROMA-PORT` marker in `createPylonStoneModel`.
-      V33a's ring has a longer multi-step scan in the same `getIconIndex` — vertical pairs first,
-      then the flag/flag2/flag3 walk over all six neighbours — and `CORNER` has its own four-way
-      rotation selection. Neither is ported; the ring currently always draws its non-adjacent
-      artwork. `PylonStructureModel` is the place to add both.
+- [x] ~~**Resonance ring and corner neighbour rules.**~~ Done 2026-07-31. `PylonStructureModel` now
+      reproduces all of V33a's `getIconIndex` and selects **per face**, which the earlier whole-cube
+      swap could not: the ring's rule differs between top/bottom and sides, and corners pick a
+      four-way rotation per face. Rings use the X/Z pair first, then any vertical neighbour, then
+      V33a's isolated-but-touching walk; corners match on the block alone, not the type. Icon indices
+      come from V33a's `variants[]` table (BEAM/GLOWBEAM 3, CORNER 4, RESORING 2, doubled when
+      glowing, with the glow overlay at `variants/2 + index`), and `getWrappedMeta` is honoured so a
+      glow beam joins an ordinary one on top/bottom.
 
 **Fixed with the client log (2026-07-31):**
 - [x] ~~"No texture" on the glowing crystalline-stone types, item *and* placed block.~~ The log named
