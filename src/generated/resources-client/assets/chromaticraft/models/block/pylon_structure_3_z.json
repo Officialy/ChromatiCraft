@@ -43,19 +43,43 @@
       "faces": {
         "east": {
           "cullface": "east",
-          "texture": "#glow_east"
+          "texture": "#glow_east",
+          "uv": [
+            0.0,
+            0.0,
+            16.0,
+            16.0
+          ]
         },
         "north": {
           "cullface": "north",
-          "texture": "#glow_north"
+          "texture": "#glow_north",
+          "uv": [
+            0.0,
+            0.0,
+            16.0,
+            16.0
+          ]
         },
         "south": {
           "cullface": "south",
-          "texture": "#glow_south"
+          "texture": "#glow_south",
+          "uv": [
+            0.0,
+            0.0,
+            16.0,
+            16.0
+          ]
         },
         "west": {
           "cullface": "west",
-          "texture": "#glow_west"
+          "texture": "#glow_west",
+          "uv": [
+            0.0,
+            0.0,
+            16.0,
+            16.0
+          ]
         }
       },
       "from": [

@@ -32,28 +32,23 @@ Goal: **game start → working casting stands**. The mechanical chain is unbroke
       started because it is a real chunk (all four neighbour rules + removing the property +
       regenerating 48 → 16 variants), not a one-liner.
 
-**Blocked on a client log line — every static cause eliminated:**
-- [ ] **"No texture" on the glowing crystalline-stone types, item *and* placed block.** Narrowed
-      precisely: the reported blocks map to V33a ordinals **3, 4, 5, 14, 15** (Crystalline Energy
-      Stabilizer, Energized Crystalline Stone Beam, Crystal Pylon Focus, Aura Stabilizer, Resonance
-      Ring) — which together with 13 (Multichromic Rune) is exactly the six types `StoneTypes.glows()`
-      returns true for, i.e. the ones whose model carries a second emissive element. Nothing else is
-      affected, so it is the glow layer.
+**Fixed with the client log (2026-07-31):**
+- [x] ~~"No texture" on the glowing crystalline-stone types, item *and* placed block.~~ The log named
+      it: `Cannot compute translucency out of bounds: [-1, -1, 17, 17]` from
+      `SpriteContents.computeTransparency`, via `FaceBakery.computeMaterialTransparency`.
 
-      Checked and ruled out, so do not redo these:
-      - every referenced `block/pylon/block_*` PNG exists;
-      - all nine animated PNGs have a valid `.mcmeta` with an exact frame ratio (16xN, N%16==0);
-      - those `.mcmeta` files *do* reach `build/resources/main` (9 in src, 9 in build), so the atlas
-        is not seeing a strip as one oversized non-square sprite;
-      - every `#base_*` / `#glow_*` reference resolves against the model's own texture map;
-      - the emissive element's `from -0.002` / `to 16.002` is inside vanilla's -16..32 bound, and
-        `light_emission: 15` and `shade: false` are both legal fields in 26.2 `CuboidModelElement`;
-      - the blockstate has all 48 variants and every one points at a model file that exists;
-      - all five item models point at existing block models.
+      The glow element is deliberately inflated to `-0.002 .. 16.002` to beat z-fighting with the
+      base cube. When a face carries no explicit `uv`, the bakery *derives* one from the element
+      bounds — here `[-1,-1,17,17]` — and `computeTransparency` rejects it, which aborts the whole
+      model bake. Hence missing-texture in world and inventory, and only for the six `glows()` types,
+      since they are the only ones with a second inflated element.
 
-      **What would settle it in one step:** the client log from startup. A stitching failure names
-      the sprite; a model parse failure names the model. Either line points straight at the cause.
-      Grep the log for `chromaticraft` alongside `Missing`/`Unable to load`/`JsonParseException`.
+      Fix: emit `"uv": [0,0,16,16]` on every glow face. A sweep confirms no other generated model has
+      an out-of-0..16 element without explicit UVs.
+
+      Worth remembering: this parses fine and every static check passes — element bounds are legal
+      (-16..32), textures exist, mcmeta is valid. It only fails at *bake*, so static inspection can
+      never find it. Go to the client log first for render bugs of this shape.
 
 ## 0b. Renderers still needed (one coherent chunk)
 

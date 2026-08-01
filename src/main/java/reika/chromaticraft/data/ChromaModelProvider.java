@@ -265,7 +265,16 @@ public class ChromaModelProvider extends ModelProvider {
 			baseFaces.add(name, modelFace("#base_" + name, name));
 			if (glow[face.ordinal()] != null) {
 				textures.addProperty("glow_" + name, glow[face.ordinal()]);
-				glowFaces.add(name, modelFace("#glow_" + name, name));
+				// Explicit full-sprite UVs are load-bearing, not cosmetic. The glow element is
+				// inflated past the block to beat z-fighting, and when a face has no "uv" the
+				// bakery derives one from the element bounds -- here [-1,-1,17,17], which
+				// FaceBakery.computeMaterialTransparency then hands to
+				// SpriteContents.computeTransparency and it throws "Cannot compute translucency
+				// out of bounds". That aborted the whole model bake, so every glowing
+				// crystalline-stone type rendered as missing-texture in world *and* inventory.
+				JsonObject glowFace = modelFace("#glow_" + name, name);
+				glowFace.add("uv", uvFull());
+				glowFaces.add(name, glowFace);
 				hasGlow = true;
 			}
 		}
@@ -276,6 +285,13 @@ public class ChromaModelProvider extends ModelProvider {
 		if (hasGlow) elements.add(modelElement(-0.002F, 16.002F, glowFaces, true));
 		root.add("elements", elements);
 		return root;
+	}
+
+	/** 0..16 across the whole sprite; see the glow-face comment in layeredCube. */
+	private static JsonArray uvFull() {
+		JsonArray uv = new JsonArray();
+		uv.add(0F); uv.add(0F); uv.add(16F); uv.add(16F);
+		return uv;
 	}
 
 	private static JsonObject modelElement(float from, float to, JsonObject faces, boolean emissive) {
