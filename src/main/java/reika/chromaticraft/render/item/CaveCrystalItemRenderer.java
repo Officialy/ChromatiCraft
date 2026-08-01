@@ -39,10 +39,13 @@ public final class CaveCrystalItemRenderer implements NoDataSpecialModelRenderer
 
 	private final TextureAtlasSprite sprite;
 	private final int tint;
+	/** Non-null for renderBase() crystals (lamp, potion crystal); null for cave crystals. */
+	private final TextureAtlasSprite baseSprite;
 
-	private CaveCrystalItemRenderer(TextureAtlasSprite sprite, int tint) {
+	private CaveCrystalItemRenderer(TextureAtlasSprite sprite, int tint, TextureAtlasSprite baseSprite) {
 		this.sprite = sprite;
 		this.tint = tint;
+		this.baseSprite = baseSprite;
 	}
 
 	@Override
@@ -63,6 +66,21 @@ public final class CaveCrystalItemRenderer implements NoDataSpecialModelRenderer
 								.setNormal(pose, normal.x, normal.y, normal.z);
 					}
 				}, ITEM_ARM_MASK, false, false, false));
+		if (baseSprite != null) {
+			collector.submitCustomGeometry(poseStack, RenderTypes.entitySolid(TextureAtlas.LOCATION_BLOCKS),
+					(unused, vertices) -> CaveCrystalGeometry.emitBase((points, normal, shade) -> {
+						int colour = 0xFF000000 | (shade << 16) | (shade << 8) | shade;
+						for (CaveCrystalGeometry.Point point : points) {
+							Vector3f position = point.position();
+							vertices.addVertex(pose, position.x, position.y, position.z)
+									.setColor(colour)
+									.setUv(baseSprite.getU(point.u()), baseSprite.getV(point.v()))
+									.setOverlay(overlayCoords)
+									.setLight(lightCoords)
+									.setNormal(pose, normal.x, normal.y, normal.z);
+						}
+					}, false));
+		}
 		poseStack.popPose();
 	}
 
@@ -76,7 +94,7 @@ public final class CaveCrystalItemRenderer implements NoDataSpecialModelRenderer
 	 * @param texture the crystal outline sprite, matching the block model's
 	 * @param element  the crystal's colour; V33a tinted the shared greyscale outline per element
 	 */
-	public record Unbaked(Identifier texture, CrystalElement element)
+	public record Unbaked(Identifier texture, CrystalElement element, java.util.Optional<Identifier> baseTexture)
 			implements NoDataSpecialModelRenderer.Unbaked {
 
 		/** CrystalElement has no codec of its own; serialise by enum name as the recipes do. */
@@ -87,7 +105,8 @@ public final class CaveCrystalItemRenderer implements NoDataSpecialModelRenderer
 
 		public static final MapCodec<Unbaked> MAP_CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
 				Identifier.CODEC.fieldOf("texture").forGetter(Unbaked::texture),
-				ELEMENT_CODEC.fieldOf("element").forGetter(Unbaked::element)
+				ELEMENT_CODEC.fieldOf("element").forGetter(Unbaked::element),
+				Identifier.CODEC.optionalFieldOf("base_texture").forGetter(Unbaked::baseTexture)
 		).apply(instance, Unbaked::new));
 
 		@Override
@@ -99,8 +118,12 @@ public final class CaveCrystalItemRenderer implements NoDataSpecialModelRenderer
 		public CaveCrystalItemRenderer bake(SpecialModelRenderer.BakingContext context) {
 			TextureAtlasSprite baked = context.sprites().get(
 					new net.minecraft.client.resources.model.sprite.SpriteId(TextureAtlas.LOCATION_BLOCKS, texture));
+			TextureAtlasSprite base = baseTexture
+					.map(id -> context.sprites().get(
+							new net.minecraft.client.resources.model.sprite.SpriteId(TextureAtlas.LOCATION_BLOCKS, id)))
+					.orElse(null);
 			// Alpha 220 is V33a's pass-1 crystal alpha, the same value the block model bakes in.
-			return new CaveCrystalItemRenderer(baked, ARGB.color(220, element.getColor()));
+			return new CaveCrystalItemRenderer(baked, ARGB.color(220, element.getColor()), base);
 		}
 	}
 }

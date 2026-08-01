@@ -1,0 +1,9 @@
+{
+  "variants": {
+    "": {
+      "type": "chromaticraft:cave_crystal",
+      "texture": "chromaticraft:block/crystal/crystal_outline",
+      "base_texture": "minecraft:block/smooth_stone"
+    }
+  }
+}

@@ -1,6 +1,12 @@
 {
   "model": {
-    "type": "minecraft:model",
-    "model": "chromaticraft:block/crystal_lamp_blue"
+    "type": "minecraft:special",
+    "base": "chromaticraft:block/crystal_lamp_item_blue",
+    "model": {
+      "type": "chromaticraft:cave_crystal",
+      "base_texture": "minecraft:block/smooth_stone",
+      "element": "blue",
+      "texture": "chromaticraft:block/crystal/crystal_outline"
+    }
   }
 }

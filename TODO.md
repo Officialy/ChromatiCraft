@@ -60,21 +60,17 @@ flat icon. Best done as a single pass over the crystal family:
       it into the chunk mesh and `render/item/CaveCrystalItemRenderer` writes the same quads to a
       `VertexConsumer` — the two cannot drift. Needs a `SpecialModelRenderer` because the shapes are
       arbitrary four-point polygons with hand-authored UVs (V33a immediate mode), not box elements.
-- [ ] **lamps / potion crystals / power crystal / focus crystals** — groundwork done, wiring left.
-      V33a draws these with the *same* spikes as the cave crystal plus a base plinth, decided by
-      `CrystalRenderedBlock.renderBase()` (cave crystal false; lamp, super/potion crystal and rainbow
-      crystal true). `CaveCrystalGeometry.emitBase` now reproduces that plinth exactly — 2px slab,
-      V33a's flat per-face shading (255 top / 110 underside / 200 north+west / 170 south+east), and
-      the side faces taking only the top two texture rows. `getBaseBlock` picks the sprite:
-      `Blocks.stone` for the side faces, `double_stone_slab` for top/bottom, or `STRUCTSHIELD` meta 1
-      when the crystal is unmineable.
-
-      Remaining: generalise `CaveCrystalModel` to take a `renderBase` flag plus the base texture
-      (it is currently hardcoded to the no-base cave-crystal case), register dynamic block models and
-      special item renderers for `crystal_lamp` and `super_crystal`, and point their datagen at them
-      instead of `crystalColourBlocks`' placeholder coloured cube. Power crystal and focus crystals
-      are separate: they are block entities with their own V33a TESRs (`RenderFocusCrystal`), not
-      `CrystalRenderer` blocks.
+- [x] ~~**crystal lamps / potion crystals**~~ — done 2026-07-31. The shared crystal model now takes
+      an optional `base_texture`, so lamps and potion crystals draw the cave crystal's spikes plus
+      V33a's stone plinth instead of the placeholder coloured cube; the item side goes through the
+      same special renderer with the plinth. `below` is forced false whenever a base is drawn, which
+      is V33a's `!renderBase() && blockBelow instanceof CrystalBlock`. The plinth is smooth stone
+      because `renderBase` queries `getBaseBlock(..., UP)` for the side faces too, not just top and
+      bottom. 32 hand-authored blockstates, and both blocks excluded from the datagen completeness
+      check so nothing regenerates over them.
+- [ ] **power crystal / focus crystals** — these are *not* CrystalRenderer blocks: they are block
+      entities with their own V33a TESRs (`RenderFocusCrystal`, and the power crystal's own), so they
+      need BER ports rather than a share of the crystal geometry. Currently plain cubes.
 - [ ] **retest whether looking at a cave crystal grants the stage** — it now plays a sound, so this
       is answerable directly.
 - [ ] casting-table GUI: confirm the recipe-ready feedback shows. The plumbing looks correct —

@@ -125,7 +125,10 @@ public class ChromaModelProvider extends ModelProvider {
 		Item manipulator = ChromaItems.MANIPULATOR.get();
 		itemModelOut.accept(manipulator, ItemModelUtils.plainModel(ModelTemplates.FLAT_ITEM.create(
 				ModelLocationUtils.getModelLocation(manipulator), TextureMapping.layer0(manipulator), modelOut)));
-		crystalColourBlocks(ChromaBlocks.CRYSTAL_LAMPS, "crystal_lamp", blockStateOut, itemModelOut, modelOut);
+		// V33a draws lamps and potion crystals with the cave crystal's spikes plus the stone plinth
+		// (CrystalRenderedBlock.renderBase()); the old coloured-cube placeholder was wrong for both.
+		basedCrystalBlocks(ChromaBlocks.CRYSTAL_LAMPS, "crystal_lamp", blockStateOut, itemModelOut, modelOut);
+		basedCrystalBlocks(ChromaBlocks.SUPER_CRYSTALS, "super_crystal", blockStateOut, itemModelOut, modelOut);
 		// Every former CRAFTING metadata is a distinct 26.2 item. Models are generated from the
 		// matching item/<registry_name> texture, keeping JSON in datagen rather than runtime maps.
 		for (ChromaCraftingItems crafting : ChromaCraftingItems.list) {
@@ -169,7 +172,6 @@ public class ChromaModelProvider extends ModelProvider {
 		itemModelOut.accept(bucket, ItemModelUtils.plainModel(bucketModel));
 
 
-		crystalColourBlocks(ChromaBlocks.SUPER_CRYSTALS, "super_crystal", blockStateOut, itemModelOut, modelOut);
 
 		pylonStructureBlock(blockStateOut, itemModelOut, modelOut);
 		runeBlock(blockStateOut, itemModelOut, modelOut);
@@ -427,9 +429,37 @@ public class ChromaModelProvider extends ModelProvider {
 			itemModelOut.accept(block.asItem(), ItemModelUtils.specialModel(base,
 					new reika.chromaticraft.render.item.CaveCrystalItemRenderer.Unbaked(
 							Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/crystal/crystal_outline"),
-							element)));
+							element, java.util.Optional.empty())));
 		}
 	}
+	/**
+	 * Crystal blocks that draw the V33a base plinth: the block side is the shared dynamic model with
+	 * a {@code base_texture}, and the item side the matching special renderer.
+	 *
+	 * <p>V33a's {@code getBaseBlock} returns {@code double_stone_slab} for the {@code UP} query, and
+	 * {@code renderBase} uses that one query for the top, bottom and side faces alike, so the whole
+	 * plinth is smooth stone.
+	 */
+	private static final Identifier CRYSTAL_BASE_TEXTURE =
+			Identifier.fromNamespaceAndPath("minecraft", "block/smooth_stone");
+
+	private static void basedCrystalBlocks(List<? extends net.neoforged.neoforge.registries.DeferredBlock<? extends Block>> blocks,
+			String name, Consumer<BlockModelDefinitionGenerator> blockStateOut, ItemModelOutput itemModelOut,
+			BiConsumer<Identifier, ModelInstance> modelOut) {
+		Identifier outline = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/crystal/crystal_outline");
+		for (CrystalElement element : CrystalElement.elements) {
+			Block block = blocks.get(element.ordinal()).get();
+			// The in-world model is hand-authored per colour (see the cave crystal blockstates); the
+			// item icon is the same geometry through the special renderer.
+			Identifier base = ModelTemplates.CUBE_ALL.create(
+					Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/" + name + "_item_" + element.getEnglishName()),
+					TextureMapping.cube(new Material(outline, true)), modelOut);
+			itemModelOut.accept(block.asItem(), ItemModelUtils.specialModel(base,
+					new reika.chromaticraft.render.item.CaveCrystalItemRenderer.Unbaked(
+							outline, element, java.util.Optional.of(CRYSTAL_BASE_TEXTURE))));
+		}
+	}
+
 	private static void crystalColourBlocks(List<? extends net.neoforged.neoforge.registries.DeferredBlock<? extends Block>> blocks,
 			String name, Consumer<BlockModelDefinitionGenerator> blockStateOut, ItemModelOutput itemModelOut,
 			BiConsumer<Identifier, ModelInstance> modelOut) {
@@ -454,7 +484,11 @@ public class ChromaModelProvider extends ModelProvider {
 		return BuiltInRegistries.BLOCK.listElements()
 				.filter(h -> h.getKey().identifier().getNamespace().equals(ChromatiCraft.MODID))
 				.filter(h -> !(h.value() instanceof reika.chromaticraft.block.crystal.BlockCaveCrystal))
-				.filter(h -> h.value() != ChromaBlocks.CLIFF_DIRT.get());
+				.filter(h -> h.value() != ChromaBlocks.CLIFF_DIRT.get())
+				// Lamps and potion crystals now ship hand-authored blockstates pointing at the
+				// shared dynamic crystal model, exactly as the cave crystals do.
+				.filter(h -> !(h.value() instanceof reika.chromaticraft.block.crystal.BlockCrystalLamp))
+				.filter(h -> !(h.value() instanceof reika.chromaticraft.block.crystal.BlockSuperCrystal));
 	}
 
 	private static void dyeTreeBlocks(Consumer<BlockModelDefinitionGenerator> blockStateOut,
