@@ -166,8 +166,8 @@ sourceSets.main.java {
     include 'reika/chromaticraft/block/BlockMultiStorage.java'
 
     // Crystalline stone (step-1 target): one block + TYPE property + 16 variant BlockItems.
-    include 'reika/chromaticraft/block/BlockPylonStructure.java'
-    include 'reika/chromaticraft/item/BlockItemPylonStructure.java'
+    include 'reika/chromaticraft/block/BlockCrystallineStone.java'
+    include 'reika/chromaticraft/block/BlockCrystallineStoneBeam.java'
 
     // Crystal runes (16 distinct colour blocks, structure components for casting/network multiblocks).
     include 'reika/chromaticraft/block/BlockCrystalRune.java'

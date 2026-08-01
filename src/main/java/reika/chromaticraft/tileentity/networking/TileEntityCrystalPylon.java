@@ -78,6 +78,7 @@ import reika.dragonapi.auxiliary.ChunkManager;
 import reika.dragonapi.interfaces.blockentity.ChunkLoadingTile;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
 import reika.dragonapi.instantiable.data.blockstruct.BlockArray;
+import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
 
 /**
  * The crystal pylon, ChromatiCraft's primary natural crystal-network source.
@@ -533,7 +534,7 @@ public class TileEntityCrystalPylon extends CrystalTransmitterBase implements Na
 		BlockPos selected = structure.getRandomBlock();
 		if (selected == null)
 			return;
-		if (world.getBlockState(selected).is(ChromaBlocks.PYLONSTRUCT.get())
+		if (BlockCrystallineStone.isCrystallineStone(world.getBlockState(selected).getBlock())
 				|| ChromaBlocks.isRune(world.getBlockState(selected))) {
 			BlockPos above = selected.above();
 			if (world.getBlockState(above).is(Blocks.SNOW))

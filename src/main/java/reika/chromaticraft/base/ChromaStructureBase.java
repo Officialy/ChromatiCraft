@@ -15,6 +15,7 @@ import net.minecraft.world.level.block.Block;
 
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.dragonapi.base.StructureBase;
+import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
 
 /**
  * Base for ChromatiCraft's multiblock structure definitions (see {@link reika.chromaticraft.registry.ChromaStructures}).
@@ -24,7 +25,7 @@ import reika.dragonapi.base.StructureBase;
  */
 public abstract class ChromaStructureBase extends StructureBase {
 
-	protected static final Block crystalstone = ChromaBlocks.PYLONSTRUCT.get();
+	protected static final Block crystalstone = ChromaBlocks.crystallineStone(StoneTypes.SMOOTH).get();
 
 	protected Random rand = new Random();
 

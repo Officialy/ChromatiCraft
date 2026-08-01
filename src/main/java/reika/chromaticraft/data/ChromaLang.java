@@ -11,6 +11,8 @@ import reika.chromaticraft.registry.ChromaClusterItems;
 import reika.chromaticraft.registry.ChromaCraftingItems;
 import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.ChromaTieredItems;
+import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
+import reika.chromaticraft.registry.ChromaBlocks;
 /**
  * ChromatiCraft language provider (port-in-progress; grows as content ports). The 1.7.10 original
  * shipped a flat en_US.lang (preserved as the reference file); names are re-added here per ported block/item.
@@ -116,24 +118,18 @@ public class ChromaLang extends LanguageProvider {
 			add(ChromaItems.ELEMENTAL_STONES.get(element).get(), element.displayName + " Elemental Stone");
 		}
 
-		// Crystalline stone — the 16 StoneTypes variants (names verbatim from the 1.7.10 en_US.lang,
-		// keyed by BlockItemPylonStructure's per-variant description id).
-		add("block.chromaticraft.pylon_structure_smooth", "Crystalline Stone");
-		add("block.chromaticraft.pylon_structure_beam", "Crystalline Stone Beam");
-		add("block.chromaticraft.pylon_structure_column", "Crystalline Stone Column");
-		add("block.chromaticraft.pylon_structure_glowcol", "Crystalline Energy Stabilizer");
-		add("block.chromaticraft.pylon_structure_glowbeam", "Energized Crystalline Stone Beam");
-		add("block.chromaticraft.pylon_structure_focus", "Crystal Pylon Focus");
-		add("block.chromaticraft.pylon_structure_corner", "Crystalline Stone Corner");
-		add("block.chromaticraft.pylon_structure_engraved", "Engraved Crystalline Stone");
-		add("block.chromaticraft.pylon_structure_embossed", "Embossed Crystalline Stone");
-		add("block.chromaticraft.pylon_structure_focusframe", "Crystal Pylon Focus Frame");
-		add("block.chromaticraft.pylon_structure_groove1", "Crystalline Stone Groove 2");
-		add("block.chromaticraft.pylon_structure_groove2", "Crystalline Stone Groove");
-		add("block.chromaticraft.pylon_structure_bricks", "Crystalline Stone Bricks");
-		add("block.chromaticraft.pylon_structure_multichromic", "Multichromic Rune");
-		add("block.chromaticraft.pylon_structure_stabilizer", "Aura Stabilizer");
-		add("block.chromaticraft.pylon_structure_resoring", "Resonance Ring");
+		// Crystalline stone — each variant is its own block now, so the names key off the real block
+		// rather than a per-metadata description id. Text verbatim from V33a's chromablock.pylon.N.
+		// Note V33a's own quirk: GROOVE1 is labelled "Groove 2" and GROOVE2 "Groove"; kept as-is.
+		String[] crystallineStoneNames = {
+			"Crystalline Stone", "Crystalline Stone Beam", "Crystalline Stone Column",
+			"Crystalline Energy Stabilizer", "Energized Crystalline Stone Beam", "Crystal Pylon Focus",
+			"Crystalline Stone Corner", "Engraved Crystalline Stone", "Embossed Crystalline Stone",
+			"Crystal Pylon Focus Frame", "Crystalline Stone Groove 2", "Crystalline Stone Groove",
+			"Crystalline Stone Bricks", "Multichromic Rune", "Aura Stabilizer", "Resonance Ring",
+		};
+		for (StoneTypes t : StoneTypes.list)
+			add(ChromaBlocks.crystallineStone(t).get(), crystallineStoneNames[t.ordinal()]);
 
 		// Crystal runes — one per CrystalElement colour ("<Colour> Crystal Rune"), keyed by the actual
 		// registered block id (ChromaBlocks.coloredName("crystal_rune", element); the key was

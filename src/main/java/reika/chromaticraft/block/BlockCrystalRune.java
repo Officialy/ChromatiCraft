@@ -65,7 +65,7 @@ public final class BlockCrystalRune extends Block {
         for (BlockPos check : BlockPos.betweenClosed(pos.offset(-1, -1, -1), pos.offset(1, 1, 1))) {
             if (check.equals(pos))
                 continue;
-            if (level.getBlockState(check).getBlock() instanceof BlockPylonStructure)
+            if (level.getBlockState(check).getBlock() instanceof BlockCrystallineStone)
                 return true;
         }
         return false;

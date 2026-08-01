@@ -27,8 +27,8 @@ import reika.chromaticraft.block.BlockEncrustedCrystal;
 import reika.chromaticraft.block.BlockChromaFluid;
 import reika.chromaticraft.block.BlockChromaMud;
 import reika.chromaticraft.block.BlockCrystalRune;
-import reika.chromaticraft.block.BlockPylonStructure;
-import reika.chromaticraft.block.BlockPylonStructure.StoneTypes;
+import reika.chromaticraft.block.BlockCrystallineStone;
+import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
 import reika.chromaticraft.block.worldgen26.BlockGlowDaisy;
 import reika.chromaticraft.block.worldgen26.BlockGlowRoot;
 import net.minecraft.world.item.Items;
@@ -42,7 +42,7 @@ import reika.chromaticraft.registry.CrystalElement;
  * ChromatiCraft loot tables (port-in-progress). Emits a drops-self table for every registered block so
  * the vanilla loot-table validator is satisfied; specialised drops are added as those blocks port.
  *
- * <p>Crystalline stone ({@link BlockPylonStructure}) is one block with 16 {@code TYPE} variants, each
+ * <p>Crystalline stone ({@link BlockCrystallineStone}) is one block with 16 {@code TYPE} variants, each
  * its own {@link net.minecraft.world.item.BlockItem}. A plain {@code dropSelf} would drop only the
  * variant-0 item for every state (the metadata-collapse trap), so it gets a per-state table: each
  * {@code TYPE} value drops its own item, and the three glow variants drop their base form unless
@@ -73,8 +73,8 @@ public final class ChromaLootProvider extends LootTableProvider {
 				else if (block instanceof reika.chromaticraft.block.dye26.BlockDyeLeaf leaf) {
 					this.add(block, this.dyeLeafTable(block, leaf.getElement()));
 				}
-				else if (block instanceof BlockPylonStructure) {
-					this.add(block, this.pylonStructureTable(block));
+				else if (block instanceof BlockCrystallineStone stone) {
+					this.add(block, this.crystallineStoneTable(stone));
 				}
 				else if (block instanceof BlockCrystalRune) {
 					this.dropSelf(block);
@@ -186,27 +186,24 @@ public final class ChromaLootProvider extends LootTableProvider {
 					LootItem.lootTableItem(net.minecraft.world.item.Items.GLOWSTONE_DUST)
 							.when(LootItemRandomChanceCondition.randomChance(chance)));
 		}
-		private LootTable.Builder pylonStructureTable(Block block) {
-			LootTable.Builder table = LootTable.lootTable();
-			for (StoneTypes t : StoneTypes.list) {
-				LootItemCondition.Builder isType = LootItemBlockStatePropertyCondition
-						.hasBlockStateProperties(block)
-						.setProperties(StatePropertiesPredicate.Builder.properties()
-								.hasProperty(BlockPylonStructure.TYPE, t.ordinal()));
-				Item self = ChromaBlocks.PYLONSTRUCT_ITEMS.get(t.ordinal()).get();
-				LootPoolSingletonContainer.Builder<?> selfEntry = LootItem.lootTableItem(self);
-				LootPool.Builder pool = LootPool.lootPool().setRolls(ConstantValue.exactly(1)).when(isType);
-				if (t.needsSilkTouch()) {
-					// With silk touch drops itself; otherwise the glow variant degrades to its base form.
-					Item base = ChromaBlocks.PYLONSTRUCT_ITEMS.get(t.getDropVariant().ordinal()).get();
-					pool.add(selfEntry.when(this.hasSilkTouch()).otherwise(LootItem.lootTableItem(base)));
-				}
-				else {
-					pool.add(selfEntry);
-				}
-				table.withPool(pool);
+		/**
+		 * Each crystalline-stone variant is its own block now, so this is a plain self-drop except for
+		 * the three glow variants, which V33a degrades to their base form unless silk-touched
+		 * ({@code needsSilkTouch} + {@code damageDropped}). The old per-{@code TYPE} state dispatch
+		 * existed only because all sixteen shared one block.
+		 */
+		private LootTable.Builder crystallineStoneTable(BlockCrystallineStone block) {
+			StoneTypes type = block.getStoneType();
+			LootPoolSingletonContainer.Builder<?> self = LootItem.lootTableItem(block);
+			LootPool.Builder pool = LootPool.lootPool().setRolls(ConstantValue.exactly(1));
+			if (type.needsSilkTouch()) {
+				Item base = ChromaBlocks.crystallineStone(type.getDropVariant()).get().asItem();
+				pool.add(self.when(this.hasSilkTouch()).otherwise(LootItem.lootTableItem(base)));
 			}
-			return table;
+			else {
+				pool.add(self);
+			}
+			return LootTable.lootTable().withPool(pool);
 		}
 
 

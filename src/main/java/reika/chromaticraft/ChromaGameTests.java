@@ -51,7 +51,7 @@ import reika.chromaticraft.block.crystal.BlockCaveCrystal;
 import reika.chromaticraft.block.BlockEncrustedCrystal.TileCrystalEncrusted;
 import reika.chromaticraft.data.ChromaTestStructureProvider;
 import reika.chromaticraft.block.BlockCrystalRune;
-import reika.chromaticraft.block.BlockPylonStructure;
+import reika.chromaticraft.block.BlockCrystallineStone;
 import reika.chromaticraft.base.CrystalTypeBlock;
 import reika.chromaticraft.entity.EntityPylonOverloadShock;
 import reika.chromaticraft.auxiliary.CrystalNetworkLogger.FlowFail;
@@ -95,6 +95,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Consumer;
+import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
 
 /**
  * In-world game tests for the progression core — runnable headless via
@@ -338,7 +339,7 @@ public final class ChromaGameTests {
         TileEntityCrystalPylon pylon = (TileEntityCrystalPylon)helper.getLevel().getBlockEntity(pylonPos);
         helper.assertTrue(pylon.hasStructure() && pylon.refreshStructure(),
                 "generated NBT monument must immediately validate as the pylon multiblock");
-        helper.assertTrue(helper.getLevel().getBlockState(base.below()).is(ChromaBlocks.PYLONSTRUCT.get()),
+        helper.assertTrue(BlockCrystallineStone.isCrystallineStone(helper.getLevel().getBlockState(base.below()).getBlock()),
                 "worldgen must extend the adaptive pylon foundation below soft terrain");
         helper.assertTrue(helper.getLevel().getBlockState(pylonPos.offset(3, -4, 1)).getBlock() instanceof BlockCrystalRune,
                 "generated monument must include the canonical coloured rune sockets");
@@ -458,8 +459,8 @@ public final class ChromaGameTests {
 		TileEntityCrystalRepeater repeater = (TileEntityCrystalRepeater)helper.getLevel().getBlockEntity(repeaterPos);
 		Direction structureDirection = Direction.NORTH;
 		helper.getLevel().setBlock(repeaterPos.relative(structureDirection), ChromaBlocks.rune(CrystalElement.WHITE).get().defaultBlockState(), 3);
-		helper.getLevel().setBlock(repeaterPos.relative(structureDirection, 2), ChromaBlocks.PYLONSTRUCT.get().defaultBlockState(), 3);
-		helper.getLevel().setBlock(repeaterPos.relative(structureDirection, 3), ChromaBlocks.PYLONSTRUCT.get().defaultBlockState(), 3);
+		helper.getLevel().setBlock(repeaterPos.relative(structureDirection, 2), ChromaBlocks.crystallineStone(StoneTypes.SMOOTH).get().defaultBlockState(), 3);
+		helper.getLevel().setBlock(repeaterPos.relative(structureDirection, 3), ChromaBlocks.crystallineStone(StoneTypes.SMOOTH).get().defaultBlockState(), 3);
 		repeater.redirect(structureDirection.getOpposite().get3DDataValue());
 		repeater.cachePosition();
 		helper.assertTrue(repeater.hasStructure(), "repeater structure should validate");
@@ -513,10 +514,10 @@ public final class ChromaGameTests {
 				helper.getLevel(), pylonPos.getX(), pylonPos.getY(), pylonPos.getZ(), CrystalElement.MAGENTA);
 		monument.place();
 
-		assertPylonStone(helper, pylonPos.offset(5, -9, 0), BlockPylonStructure.StoneTypes.EMBOSSED);
-		assertPylonStone(helper, pylonPos.offset(5, -3, 0), BlockPylonStructure.StoneTypes.FOCUS);
-		assertPylonStone(helper, pylonPos.offset(3, -5, 5), BlockPylonStructure.StoneTypes.MULTICHROMIC);
-		assertPylonStone(helper, pylonPos.offset(2, -10, 4), BlockPylonStructure.StoneTypes.SMOOTH);
+		assertPylonStone(helper, pylonPos.offset(5, -9, 0), BlockCrystallineStone.StoneTypes.EMBOSSED);
+		assertPylonStone(helper, pylonPos.offset(5, -3, 0), BlockCrystallineStone.StoneTypes.FOCUS);
+		assertPylonStone(helper, pylonPos.offset(3, -5, 5), BlockCrystallineStone.StoneTypes.MULTICHROMIC);
+		assertPylonStone(helper, pylonPos.offset(2, -10, 4), BlockCrystallineStone.StoneTypes.SMOOTH);
 		helper.assertTrue(helper.getLevel().getBlockState(pylonPos.offset(2, -9, 4)).isAir(),
 				"deferred chroma-fluid cells must remain empty rather than silently accepting a substitute");
 		helper.assertTrue(!monument.matchInWorld(),
@@ -528,9 +529,9 @@ public final class ChromaGameTests {
 		helper.succeed();
 	}
 
-	private static void assertPylonStone(GameTestHelper helper, BlockPos pos, BlockPylonStructure.StoneTypes type) {
-		helper.assertTrue(helper.getLevel().getBlockState(pos).is(ChromaBlocks.PYLONSTRUCT.get())
-				&& helper.getLevel().getBlockState(pos).getValue(BlockPylonStructure.TYPE) == type.ordinal(),
+	private static void assertPylonStone(GameTestHelper helper, BlockPos pos, BlockCrystallineStone.StoneTypes type) {
+		helper.assertTrue(BlockCrystallineStone.isCrystallineStone(helper.getLevel().getBlockState(pos).getBlock())
+				&& BlockCrystallineStone.isType(helper.getLevel().getBlockState(pos).getBlock(), type),
 				"expected " + type + " pylon stone at " + pos);
 	}
 
@@ -728,9 +729,19 @@ public final class ChromaGameTests {
 		for (int x = -1; x <= 1; x++) {
 			for (int y = -1; y <= 1; y++) {
 				for (int z = -1; z <= 1; z++) {
-					if (x != 0 || y != 0 || z != 0)
-						helper.assertTrue(helper.getLevel().getBlockState(pylonPos.offset(x, y, z)).isAir(),
-								"jar rejection must remove every enclosing block without drops");
+					if (x != 0 || y != 0 || z != 0) {
+						BlockPos shellPos = pylonPos.offset(x, y, z);
+						// Name the offending position and what is actually there: this assertion has
+						// flaked once with no way to tell which block survived or why.
+						// V33a's anti-capture path also seeds fires in the cleared shell, so a position
+						// may legitimately hold fire rather than air. Which positions catch is random,
+						// which is exactly why asserting plain air flaked.
+						BlockState shell = helper.getLevel().getBlockState(shellPos);
+						helper.assertTrue(shell.isAir() || shell.is(net.minecraft.world.level.block.Blocks.FIRE),
+								"jar rejection must remove every enclosing block without drops; offset "
+										+ x + "," + y + "," + z + " still holds "
+										+ shell + " (below=" + helper.getLevel().getBlockState(pylonPos.below()) + ")");
+					}
 				}
 			}
 		}
@@ -932,13 +943,27 @@ public final class ChromaGameTests {
 				"compound repeater should retain independent per-color depths");
 		helper.assertTrue(compound.connectedToPylon(),
 				"direct pylon connection should set the V33a compound status flag");
+		// Sample every tick and assert on the deepest dip, not on the endpoint. Pylons regenerate
+		// energyStep*ticks in charge(), so by tick 6 the attenuation debit can be fully refilled and
+		// the endpoint comparison passes or fails depending on where the pylon's charge cycle happens
+		// to sit -- which is what made this test flaky.
+		int[] blackMin = {blackBefore};
+		int[] orangeMin = {orangeBefore};
+		for (int tick = 1; tick <= 6; tick++) {
+			helper.runAfterDelay(tick, () -> {
+				blackMin[0] = Math.min(blackMin[0], blackPylon.getEnergy(CrystalElement.BLACK));
+				orangeMin[0] = Math.min(orangeMin[0], orangePylon.getEnergy(CrystalElement.ORANGE));
+			});
+		}
 		helper.runAfterDelay(6, () -> {
 			helper.assertTrue(receiver.energy == 2,
 					"receiver should accept both one-lumen colors; received=" + receiver.energy);
-			helper.assertTrue(blackBefore - blackPylon.getEnergy(CrystalElement.BLACK) > 1,
-					"direct-pylon compound route should charge the extra 1000 attenuation");
-			helper.assertTrue(orangeBefore - orangePylon.getEnergy(CrystalElement.ORANGE) > 1,
-					"each color should pay its own direct-pylon attenuation");
+			helper.assertTrue(blackBefore - blackMin[0] > 1,
+					"direct-pylon compound route should charge the extra 1000 attenuation; before="
+							+ blackBefore + " lowest=" + blackMin[0]);
+			helper.assertTrue(orangeBefore - orangeMin[0] > 1,
+					"each color should pay its own direct-pylon attenuation; before="
+							+ orangeBefore + " lowest=" + orangeMin[0]);
 			receiver.removeFromCache();
 			testReceivers.remove(new WorldLocation(helper.getLevel(), receiverPos));
 			helper.succeed();
@@ -1177,8 +1202,7 @@ public final class ChromaGameTests {
 		repeater.setDataFromItemStackTag(stack);
 
 		BlockPos resonantStone = repeaterPos.relative(structureDirection, 3);
-		helper.getLevel().setBlock(resonantStone, ChromaBlocks.PYLONSTRUCT.get().defaultBlockState()
-				.setValue(BlockPylonStructure.TYPE, BlockPylonStructure.StoneTypes.RESORING.ordinal()), 3);
+		helper.getLevel().setBlock(resonantStone, ChromaBlocks.crystallineStone(BlockCrystallineStone.StoneTypes.RESORING).get().defaultBlockState(), 3);
 		repeater.validateStructure();
 		helper.assertTrue(repeater.isTurbocharged(), "boosted custom data should restore turbo state");
 		helper.assertTrue(repeater.isEnhancedStructure(), "resonant end stone should activate enhanced structure");
@@ -1234,16 +1258,15 @@ public final class ChromaGameTests {
 		helper.getLevel().setBlock(pos, ChromaBlocks.COMPOUND.get().defaultBlockState(), 3);
 		TileEntityCompoundRepeater compound = (TileEntityCompoundRepeater)helper.getLevel().getBlockEntity(pos);
 		for (int distance = 1; distance <= 5; distance++) {
-			BlockPylonStructure.StoneTypes type = distance == 3
-					? BlockPylonStructure.StoneTypes.MULTICHROMIC
+			BlockCrystallineStone.StoneTypes type = distance == 3
+					? BlockCrystallineStone.StoneTypes.MULTICHROMIC
 					: distance == 1 || distance == 5
-							? BlockPylonStructure.StoneTypes.BRICKS
+							? BlockCrystallineStone.StoneTypes.BRICKS
 							: structureDirection.getAxis().isVertical()
-									? BlockPylonStructure.StoneTypes.COLUMN
-									: BlockPylonStructure.StoneTypes.BEAM;
+									? BlockCrystallineStone.StoneTypes.COLUMN
+									: BlockCrystallineStone.StoneTypes.BEAM;
 			helper.getLevel().setBlock(pos.relative(structureDirection, distance),
-					ChromaBlocks.PYLONSTRUCT.get().defaultBlockState()
-							.setValue(BlockPylonStructure.TYPE, type.ordinal()), 3);
+					ChromaBlocks.crystallineStone(type).get().defaultBlockState(), 3);
 		}
 		compound.redirect(structureDirection.getOpposite().get3DDataValue());
 		compound.cachePosition();
@@ -1253,8 +1276,8 @@ public final class ChromaGameTests {
 		helper.getLevel().setBlock(pos, ChromaBlocks.REPEATER.get().defaultBlockState(), 3);
 		TileEntityCrystalRepeater repeater = (TileEntityCrystalRepeater)helper.getLevel().getBlockEntity(pos);
 		helper.getLevel().setBlock(pos.relative(structureDirection), ChromaBlocks.rune(CrystalElement.WHITE).get().defaultBlockState(), 3);
-		helper.getLevel().setBlock(pos.relative(structureDirection, 2), ChromaBlocks.PYLONSTRUCT.get().defaultBlockState(), 3);
-		helper.getLevel().setBlock(pos.relative(structureDirection, 3), ChromaBlocks.PYLONSTRUCT.get().defaultBlockState(), 3);
+		helper.getLevel().setBlock(pos.relative(structureDirection, 2), ChromaBlocks.crystallineStone(StoneTypes.SMOOTH).get().defaultBlockState(), 3);
+		helper.getLevel().setBlock(pos.relative(structureDirection, 3), ChromaBlocks.crystallineStone(StoneTypes.SMOOTH).get().defaultBlockState(), 3);
 		repeater.redirect(structureDirection.getOpposite().get3DDataValue());
 		repeater.cachePosition();
 		return repeater;
@@ -1333,8 +1356,7 @@ public final class ChromaGameTests {
 		var owner = helper.makeMockPlayer(GameType.SURVIVAL);
 		table.setPlacer(owner);
 		ProgressionManager.instance.setPlayerStage(owner, ProgressStage.CRYSTALS, true, false, false);
-		ItemStack smooth = new ItemStack(ChromaBlocks.PYLONSTRUCT_ITEMS
-				.get(BlockPylonStructure.StoneTypes.SMOOTH.ordinal()).get());
+		ItemStack smooth = new ItemStack(ChromaBlocks.crystallineStone(BlockCrystallineStone.StoneTypes.SMOOTH).get().asItem());
 		table.setItem(3, smooth.copy());
 		table.setItem(4, smooth.copy());
 		helper.assertTrue(table.triggerCrafting(owner), "the registered two-smooth-stone beam recipe should start");
@@ -1347,8 +1369,7 @@ public final class ChromaGameTests {
 		helper.assertTrue(!table.isCrafting(), "craft should finish on the declared duration");
 		helper.assertTrue(table.getItem(3).isEmpty() && table.getItem(4).isEmpty(),
 				"the final commit should consume both declared grid inputs");
-		helper.assertTrue(table.getItem(9).is(ChromaBlocks.PYLONSTRUCT_ITEMS
-				.get(BlockPylonStructure.StoneTypes.BEAM.ordinal()).get()) && table.getItem(9).getCount() == 2,
+		helper.assertTrue(table.getItem(9).is(ChromaBlocks.crystallineStone(BlockCrystallineStone.StoneTypes.BEAM).get().asItem()) && table.getItem(9).getCount() == 2,
 				"the final commit should produce the V33a beam output");
 		helper.assertTrue(table.getTableXP() == 5 && table.getCompletedRecipes().size() == 1,
 				"completion should award recipe XP and remember the recipe key");

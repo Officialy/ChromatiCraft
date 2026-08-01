@@ -17,8 +17,8 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 
-import reika.chromaticraft.block.BlockPylonStructure;
-import reika.chromaticraft.block.BlockPylonStructure.StoneTypes;
+import reika.chromaticraft.block.BlockCrystallineStone;
+import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
 import reika.chromaticraft.magic.interfaces.ConnectivityAction;
 import reika.chromaticraft.magic.interfaces.CrystalReceiver;
 import reika.chromaticraft.magic.interfaces.CrystalTransmitter;
@@ -80,12 +80,14 @@ public class TileEntityCompoundRepeater extends TileEntityCrystalRepeater implem
 		Direction f = this.getFacing();
 		for (int i = 1; i <= 5; i++) {
 			BlockState s = this.stateAt(f.getStepX() * i, f.getStepY() * i, f.getStepZ() * i);
-			if (s.getBlock() != ChromaBlocks.PYLONSTRUCT.get())
+			if (!BlockCrystallineStone.isCrystallineStone(s.getBlock()))
 				return false;
 			int m2 = i == 3 ? 13 : (i == 1 || i == 5 ? 12 : this.getColumnBeam());
-			int m2b = m2 == this.getColumnBeam() && this.isTurbocharged() ? StoneTypes.list[m2].getGlowingVariant().ordinal() : m2;
-			int type = s.getValue(BlockPylonStructure.TYPE);
-			if (type != m2 && type != m2b)
+			StoneTypes expected = StoneTypes.list[m2];
+			StoneTypes turbo = m2 == this.getColumnBeam() && this.isTurbocharged()
+					? expected.getGlowingVariant() : expected;
+			StoneTypes type = ((BlockCrystallineStone)s.getBlock()).getStoneType();
+			if (type != expected && type != turbo)
 				return false;
 		}
 		return true;
@@ -100,8 +102,8 @@ public class TileEntityCompoundRepeater extends TileEntityCrystalRepeater implem
 		Direction f = this.getFacing();
 		for (int i = 2; i <= 4; i += 2) {
 			BlockState s = this.stateAt(f.getStepX() * i, f.getStepY() * i, f.getStepZ() * i);
-			if (s.getBlock() != ChromaBlocks.PYLONSTRUCT.get()
-					|| s.getValue(BlockPylonStructure.TYPE) != StoneTypes.list[this.getColumnBeam()].getGlowingVariant().ordinal())
+			if (!BlockCrystallineStone.isCrystallineStone(s.getBlock())
+					|| !BlockCrystallineStone.isType(s.getBlock(), StoneTypes.list[this.getColumnBeam()].getGlowingVariant()))
 				return false;
 		}
 		return true;

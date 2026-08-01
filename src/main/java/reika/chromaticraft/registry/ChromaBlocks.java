@@ -23,11 +23,13 @@ import reika.chromaticraft.block.BlockCastingTable;
 import reika.chromaticraft.block.BlockChromaFluid;
 import reika.chromaticraft.block.BlockChromaMud;
 import reika.chromaticraft.block.BlockChromaticTile;
+import reika.chromaticraft.block.BlockCrystallineStone;
+import reika.chromaticraft.block.BlockCrystallineStoneBeam;
 import reika.chromaticraft.block.BlockCrystalRune;
 import reika.chromaticraft.block.BlockEncrustedCrystal;
 import reika.chromaticraft.block.BlockMultiStorage;
-import reika.chromaticraft.block.BlockPylonStructure;
-import reika.chromaticraft.block.BlockPylonStructure.StoneTypes;
+import reika.chromaticraft.block.BlockCrystallineStone;
+import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
 import reika.chromaticraft.block.crystal.BlockCaveCrystal;
 import reika.chromaticraft.block.crystal.BlockCrystalLamp;
 import reika.chromaticraft.block.crystal.BlockSuperCrystal;
@@ -40,7 +42,6 @@ import reika.chromaticraft.block.worldgen26.BlockGlowingLeaf;
 import reika.chromaticraft.block.worldgen26.BlockGlowDaisy;
 import reika.chromaticraft.block.worldgen26.BlockGlowRoot;
 import reika.chromaticraft.block.worldgen26.BlockLumaFluid;
-import reika.chromaticraft.item.BlockItemPylonStructure;
 
 /**
  * ChromatiCraft block registry. Port-in-progress rewrite of the 1.7.10 {@code ChromaBlocks} enum
@@ -292,20 +293,46 @@ public final class ChromaBlocks {
 	public static boolean isEncrustedCrystal(BlockState state) {
 		return state.getBlock() instanceof BlockEncrustedCrystal;
 	}
-	public static final DeferredBlock<Block> PYLONSTRUCT =
-			registerBlockOnly("pylon_structure", () -> new BlockPylonStructure(blockProperties().strength(3F, 12F)));
+	/**
+	 * The sixteen crystalline-stone variants, each its own block and BlockItem.
+	 *
+	 * <p>V33a packed these into one block's metadata; that is exactly the legacy-metadata shape the
+	 * project rule forbids re-creating, and it also meant every one of them reported as
+	 * {@code chromaticraft:pylon_structure} when looked at. Registry names come from the enum so they
+	 * stay stable against display-name edits; the display names themselves come from V33a's
+	 * {@code chromablock.pylon.N} lang keys.
+	 */
+	private static final String[] CRYSTALLINE_STONE_NAMES = {
+		"crystalline_stone", "crystalline_stone_beam", "crystalline_stone_column",
+		"crystalline_energy_stabilizer", "energized_crystalline_stone_beam", "crystal_pylon_focus",
+		"crystalline_stone_corner", "engraved_crystalline_stone", "embossed_crystalline_stone",
+		"crystal_pylon_focus_frame", "crystalline_stone_groove_1", "crystalline_stone_groove_2",
+		"crystalline_stone_bricks", "multichromic_rune", "aura_stabilizer", "resonance_ring",
+	};
 
-	/** One BlockItem per {@link StoneTypes} variant, indexed by ordinal. */
-	public static final List<DeferredItem<Item>> PYLONSTRUCT_ITEMS = registerPylonItems();
+	public static final List<DeferredBlock<BlockCrystallineStone>> CRYSTALLINE_STONE = registerCrystallineStone();
 
-	private static List<DeferredItem<Item>> registerPylonItems() {
-		DeferredItem<Item>[] items = new DeferredItem[StoneTypes.list.length];
+
+	@SuppressWarnings("unchecked")
+	private static List<DeferredBlock<BlockCrystallineStone>> registerCrystallineStone() {
+		DeferredBlock<BlockCrystallineStone>[] blocks = new DeferredBlock[StoneTypes.list.length];
 		for (StoneTypes t : StoneTypes.list) {
-			final int ord = t.ordinal();
-			items[ord] = registerItemOnly("pylon_structure_" + t.name().toLowerCase(java.util.Locale.ENGLISH),
-					() -> new BlockItemPylonStructure(PYLONSTRUCT.get(), ord, itemProperties()));
+			// blockProperties() reads the CURRENT_BLOCK_KEY thread-local that registerBlockOnly sets,
+			// so it has to be called inside the supplier -- hoisting it leaves the block id unset.
+			blocks[t.ordinal()] = register(CRYSTALLINE_STONE_NAMES[t.ordinal()],
+					t.isBeam()
+							? () -> new BlockCrystallineStoneBeam(blockProperties().strength(3F, 12F), t)
+							: () -> new BlockCrystallineStone(blockProperties().strength(3F, 12F), t));
 		}
-		return List.of(items);
+		return List.of(blocks);
+	}
+
+	public static String crystallineStoneName(StoneTypes type) {
+		return CRYSTALLINE_STONE_NAMES[type.ordinal()];
+	}
+
+	public static DeferredBlock<BlockCrystallineStone> crystallineStone(StoneTypes type) {
+		return CRYSTALLINE_STONE.get(type.ordinal());
 	}
 
 	/** One real block and BlockItem registry identity per crystal-rune colour. */

@@ -23,7 +23,7 @@ import reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe;
 import reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe.AuraRequirement;
 import reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe.GridIngredient;
 import reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe.RuneRequirement;
-import reika.chromaticraft.block.BlockPylonStructure.StoneTypes;
+import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaClusterItems;
 import reika.chromaticraft.registry.ChromaCraftingItems;
@@ -31,6 +31,7 @@ import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.ChromaTieredItems;
 import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.registry.CrystalElement;
+import reika.chromaticraft.block.BlockCrystallineStone;
 
 /**
  * Datapack-owned casting recipes, transcribed from V33a {@code RecipesCastingTable}. This first
@@ -69,7 +70,7 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 						StoneTypes.SMOOTH, 8, ingredients, " S ", "SCS", " S ");
 			}
 
-			Ingredient smooth = Ingredient.of(ChromaBlocks.PYLONSTRUCT_ITEMS.get(StoneTypes.SMOOTH.ordinal()).get());
+			Ingredient smooth = Ingredient.of(ChromaBlocks.crystallineStone(StoneTypes.SMOOTH).get().asItem());
 			Map<Character, Ingredient> smoothOnly = Map.of('S', smooth);
 			save("crystal_stone/column", StoneTypes.COLUMN, 2, smoothOnly, "S", "S");
 			save("crystal_stone/bricks", StoneTypes.BRICKS, 4, smoothOnly, "SS", "SS");
@@ -88,7 +89,7 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 			// bare-table tier but gated behind ALLCOLORS. Enhanced uses the boosted shard and is the
 			// same output; both give double the base experience and can double their output.
 			for (CrystalElement element : CrystalElement.elements) {
-				Ingredient runeStone = Ingredient.of(ChromaBlocks.PYLONSTRUCT_ITEMS.get(StoneTypes.SMOOTH.ordinal()).get());
+				Ingredient runeStone = Ingredient.of(ChromaBlocks.crystallineStone(StoneTypes.SMOOTH).get().asItem());
 				saveShapedProgress("crystal_rune/" + element.getEnglishName(),
 						new ItemStackTemplate(ChromaBlocks.RUNES.get(element.ordinal()).get().asItem()), 5, 10,
 						List.of(ProgressStage.ALLCOLORS),
@@ -359,7 +360,7 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 			}
 			CastingTableRecipe recipe = new CastingTableRecipe(CastingTableRecipe.Tier.CRAFTING,
 					grid, List.of(), List.of(), List.of(),
-					new ItemStackTemplate(ChromaBlocks.PYLONSTRUCT_ITEMS.get(result.ordinal()).get(), count), 5, 5);
+					new ItemStackTemplate(ChromaBlocks.crystallineStone(result).get().asItem(), count), 5, 5);
 			saveRecipe(name, recipe);
 		}
 

@@ -5,9 +5,10 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import reika.chromaticraft.base.ChromaStructureBase;
-import reika.chromaticraft.block.BlockPylonStructure;
+import reika.chromaticraft.block.BlockCrystallineStone;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.dragonapi.instantiable.data.blockstruct.FilledBlockArray;
+import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
 
 /**
  * NBT-backed V33a casting temple tiers. Templates own all geometry; Java only restores the
@@ -57,31 +58,27 @@ public abstract class CastingStructure extends ChromaStructureBase {
 		if (tier == 3) {
 			for (int[] post : OUTER_REPEATER_POSTS)
 				array.addBlock(x + post[0], y + 3, z + post[1], RuneBlockCheck.INSTANCE);
-			BlockPylonStructure.StoneTypes alternate = BlockPylonStructure.StoneTypes.BRICKS;
+			BlockCrystallineStone.StoneTypes alternate = BlockCrystallineStone.StoneTypes.BRICKS;
 			for (int i = -7; i <= 7; i++) {
-				array.addBlock(x - 7, y, z + i, ChromaBlocks.PYLONSTRUCT.get().defaultBlockState()
-						.setValue(BlockPylonStructure.TYPE, alternate.ordinal()));
-				array.addBlock(x + 7, y, z + i, ChromaBlocks.PYLONSTRUCT.get().defaultBlockState()
-						.setValue(BlockPylonStructure.TYPE, alternate.ordinal()));
-				array.addBlock(x + i, y, z - 7, ChromaBlocks.PYLONSTRUCT.get().defaultBlockState()
-						.setValue(BlockPylonStructure.TYPE, alternate.ordinal()));
-				array.addBlock(x + i, y, z + 7, ChromaBlocks.PYLONSTRUCT.get().defaultBlockState()
-						.setValue(BlockPylonStructure.TYPE, alternate.ordinal()));
+				array.addBlock(x - 7, y, z + i, ChromaBlocks.crystallineStone(alternate).get().defaultBlockState());
+				array.addBlock(x + 7, y, z + i, ChromaBlocks.crystallineStone(alternate).get().defaultBlockState());
+				array.addBlock(x + i, y, z - 7, ChromaBlocks.crystallineStone(alternate).get().defaultBlockState());
+				array.addBlock(x + i, y, z + 7, ChromaBlocks.crystallineStone(alternate).get().defaultBlockState());
 			}
-			BlockPylonStructure.StoneTypes resourceRing = BlockPylonStructure.StoneTypes.RESORING;
+			BlockCrystallineStone.StoneTypes resourceRing = BlockCrystallineStone.StoneTypes.RESORING;
 			int[] offsets = {-6, -2, 2, 6};
 			for (int offset : offsets) {
-				array.addBlock(x + offset, y + 1, z - 8, ChromaBlocks.PYLONSTRUCT.get().defaultBlockState().setValue(BlockPylonStructure.TYPE, resourceRing.ordinal()));
-				array.addBlock(x + offset, y + 1, z + 8, ChromaBlocks.PYLONSTRUCT.get().defaultBlockState().setValue(BlockPylonStructure.TYPE, resourceRing.ordinal()));
-				array.addBlock(x - 8, y + 1, z + offset, ChromaBlocks.PYLONSTRUCT.get().defaultBlockState().setValue(BlockPylonStructure.TYPE, resourceRing.ordinal()));
-				array.addBlock(x + 8, y + 1, z + offset, ChromaBlocks.PYLONSTRUCT.get().defaultBlockState().setValue(BlockPylonStructure.TYPE, resourceRing.ordinal()));
+				array.addBlock(x + offset, y + 1, z - 8, ChromaBlocks.crystallineStone(resourceRing).get().defaultBlockState());
+				array.addBlock(x + offset, y + 1, z + 8, ChromaBlocks.crystallineStone(resourceRing).get().defaultBlockState());
+				array.addBlock(x - 8, y + 1, z + offset, ChromaBlocks.crystallineStone(resourceRing).get().defaultBlockState());
+				array.addBlock(x + 8, y + 1, z + offset, ChromaBlocks.crystallineStone(resourceRing).get().defaultBlockState());
 			}
 		}
 		return array;
 	}
 
 	private void addRuneAlternative(FilledBlockArray array, int x, int y, int z) {
-		if (array.getBlockAt(x, y, z) == ChromaBlocks.PYLONSTRUCT.get())
+		if (BlockCrystallineStone.isCrystallineStone(array.getBlockAt(x, y, z)))
 			array.addBlock(x, y, z, RuneBlockCheck.INSTANCE);
 	}
 

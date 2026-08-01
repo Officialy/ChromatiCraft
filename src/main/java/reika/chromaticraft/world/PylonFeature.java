@@ -20,11 +20,12 @@ import net.neoforged.neoforge.common.NeoForge;
 
 import reika.chromaticraft.api.event.PylonGenerationEvent;
 import reika.chromaticraft.auxiliary.structure.PylonStructure;
-import reika.chromaticraft.block.BlockPylonStructure;
+import reika.chromaticraft.block.BlockCrystallineStone;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaOptions;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.tileentity.networking.TileEntityCrystalPylon;
+import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
 
 /**
  * Natural pylon generation, expressed as a modern feature while preserving V33a's shuffled
@@ -145,7 +146,7 @@ public final class PylonFeature extends Feature<NoneFeatureConfiguration> {
     }
 
     private static void placeFoundation(WorldGenLevel world, BlockPos base) {
-        BlockState stone = ChromaBlocks.PYLONSTRUCT.get().defaultBlockState();
+        BlockState stone = ChromaBlocks.crystallineStone(StoneTypes.SMOOTH).get().defaultBlockState();
         for (int y = -4; y < 0; y++) {
             for (int direction = 0; direction < 4; direction++) {
                 int stepX = direction == 0 ? 1 : direction == 1 ? -1 : 0;
@@ -166,14 +167,11 @@ public final class PylonFeature extends Feature<NoneFeatureConfiguration> {
     private static void breakPylon(WorldGenLevel world, List<BlockPos> templateBlocks, RandomSource random) {
         List<BlockPos> eligible = templateBlocks.stream().filter(pos -> {
             BlockState state = world.getBlockState(pos);
-            if (!state.is(ChromaBlocks.PYLONSTRUCT.get()))
+            if (!BlockCrystallineStone.isCrystallineStone(state.getBlock()))
                 return false;
-            int type = state.getValue(BlockPylonStructure.TYPE);
-            return type == BlockPylonStructure.StoneTypes.SMOOTH.ordinal()
-                    || type == BlockPylonStructure.StoneTypes.BEAM.ordinal()
-                    || type == BlockPylonStructure.StoneTypes.COLUMN.ordinal()
-                    || type == BlockPylonStructure.StoneTypes.ENGRAVED.ordinal()
-                    || type == BlockPylonStructure.StoneTypes.EMBOSSED.ordinal();
+            StoneTypes type = ((BlockCrystallineStone)state.getBlock()).getStoneType();
+            return type == StoneTypes.SMOOTH || type == StoneTypes.BEAM || type == StoneTypes.COLUMN
+                    || type == StoneTypes.ENGRAVED || type == StoneTypes.EMBOSSED;
         }).collect(java.util.stream.Collectors.toCollection(java.util.ArrayList::new));
         int count = 3 + random.nextInt(4);
         for (int removed = 0; removed < count && !eligible.isEmpty(); removed++) {

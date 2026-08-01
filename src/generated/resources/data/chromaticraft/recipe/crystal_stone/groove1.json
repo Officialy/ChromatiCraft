@@ -3,21 +3,21 @@
   "experience": 5,
   "grid": [
     {
-      "ingredient": "chromaticraft:pylon_structure_smooth",
+      "ingredient": "chromaticraft:crystalline_stone",
       "slot": 1
     },
     {
-      "ingredient": "chromaticraft:pylon_structure_smooth",
+      "ingredient": "chromaticraft:crystalline_stone",
       "slot": 4
     },
     {
-      "ingredient": "chromaticraft:pylon_structure_smooth",
+      "ingredient": "chromaticraft:crystalline_stone",
       "slot": 7
     }
   ],
   "result": {
     "count": 3,
-    "id": "chromaticraft:pylon_structure_groove1"
+    "id": "chromaticraft:crystalline_stone_groove_1"
   },
   "tier": "crafting"
 }

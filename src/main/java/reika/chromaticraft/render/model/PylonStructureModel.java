@@ -24,15 +24,15 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.client.model.DynamicBlockStateModel;
 import net.neoforged.neoforge.client.model.block.CustomUnbakedBlockStateModel;
 
-import reika.chromaticraft.block.BlockPylonStructure;
-import reika.chromaticraft.block.BlockPylonStructure.StoneTypes;
+import reika.chromaticraft.block.BlockCrystallineStone;
+import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
 import reika.dragonapi.instantiable.rendering.connected.ConnectedQuads;
 
 /**
  * Crystalline-stone types whose artwork V33a picks from neighbouring blocks rather than from any
- * placement state, reproducing {@code BlockPylonStructure.getIconIndex}.
+ * placement state, reproducing {@code BlockCrystallineStone.getIconIndex}.
  *
- * <p>V33a's {@code BlockPylonStructure} has no axis or orientation state at all — the port had
+ * <p>V33a's {@code BlockCrystallineStone} has no axis or orientation state at all — the port had
  * invented an {@code AXIS} property, which made appearance depend on how a block was placed instead
  * of what it connects to. Three types use the neighbour scan, each with its own rule, and every rule
  * is evaluated <em>per face</em>:
@@ -134,15 +134,14 @@ public final class PylonStructureModel implements DynamicBlockStateModel {
 
 	private boolean sameType(BlockAndTintGetter level, BlockPos pos, BlockState self) {
 		BlockState other = level.getBlockState(pos);
-		return other.getBlock() == self.getBlock()
-				&& other.getValue(BlockPylonStructure.TYPE).intValue() == self.getValue(BlockPylonStructure.TYPE).intValue();
+		// Concrete blocks now, so identity is the type check.
+		return other.getBlock() == self.getBlock();
 	}
 
 	/** V33a {@code getWrappedMeta}: on top/bottom faces every beam type reads as BEAM. */
 	private boolean sameBeam(BlockAndTintGetter level, BlockPos pos, BlockState self) {
 		BlockState other = level.getBlockState(pos);
-		if (other.getBlock() != self.getBlock()) return false;
-		return StoneTypes.list[other.getValue(BlockPylonStructure.TYPE)].isBeam();
+		return other.getBlock() instanceof BlockCrystallineStone stone && stone.getStoneType().isBeam();
 	}
 
 	@Override public Material.Baked particleMaterial() { return particle; }

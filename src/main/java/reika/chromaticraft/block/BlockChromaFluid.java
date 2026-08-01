@@ -33,6 +33,7 @@ import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
+import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
 
 /**
  * V33a active Liquid Chroma re-expressed as a 26.2 flowing-fluid block. Source blocks own the pool
@@ -75,7 +76,7 @@ public final class BlockChromaFluid extends LiquidBlock implements EntityBlock {
 	private void notifyPylonStructure(Level level, BlockPos pos) {
 		for (Direction direction : Direction.Plane.HORIZONTAL) {
 			BlockPos neighbor = pos.relative(direction);
-			if (level.getBlockState(neighbor).is(ChromaBlocks.PYLONSTRUCT.get()))
+			if (BlockCrystallineStone.isCrystallineStone(level.getBlockState(neighbor).getBlock()))
 				level.updateNeighborsAt(neighbor, this);
 		}
 	}

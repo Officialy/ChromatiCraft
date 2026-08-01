@@ -22,7 +22,8 @@ import net.minecraft.nbt.NbtIo;
 import net.minecraft.resources.Identifier;
 
 import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.block.BlockPylonStructure.StoneTypes;
+import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
+import reika.chromaticraft.block.BlockCrystallineStone;
 
 /** Generates the canonical NBT templates for every active ChromatiCraft multiblock. */
 public final class ChromaStructureTemplateProvider implements DataProvider {
@@ -353,8 +354,14 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
             data.set(point[0], y, point[1], state);
     }
 
+    /**
+     * Each crystalline-stone variant is its own block, so the template records a block id rather
+     * than one id plus a {@code type} property. Beams additionally carry HORIZONTAL_AXIS; templates
+     * pin the X orientation, which is what the V33a layouts assume.
+     */
     private static StateDef stone(StoneTypes type) {
-        return new StateDef("chromaticraft:pylon_structure", Map.of("type", Integer.toString(type.ordinal())));
+        String name = "chromaticraft:" + reika.chromaticraft.registry.ChromaBlocks.crystallineStoneName(type);
+        return type.isBeam() ? new StateDef(name, Map.of("axis", "x")) : new StateDef(name, Map.of());
     }
 
     private static Identifier id(String path) {

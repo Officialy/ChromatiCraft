@@ -3,19 +3,19 @@
   "experience": 10,
   "grid": [
     {
-      "ingredient": "chromaticraft:pylon_structure_smooth",
+      "ingredient": "chromaticraft:crystalline_stone",
       "slot": 0
     },
     {
-      "ingredient": "chromaticraft:pylon_structure_smooth",
+      "ingredient": "chromaticraft:crystalline_stone",
       "slot": 1
     },
     {
-      "ingredient": "chromaticraft:pylon_structure_smooth",
+      "ingredient": "chromaticraft:crystalline_stone",
       "slot": 2
     },
     {
-      "ingredient": "chromaticraft:pylon_structure_smooth",
+      "ingredient": "chromaticraft:crystalline_stone",
       "slot": 3
     },
     {
@@ -23,19 +23,19 @@
       "slot": 4
     },
     {
-      "ingredient": "chromaticraft:pylon_structure_smooth",
+      "ingredient": "chromaticraft:crystalline_stone",
       "slot": 5
     },
     {
-      "ingredient": "chromaticraft:pylon_structure_smooth",
+      "ingredient": "chromaticraft:crystalline_stone",
       "slot": 6
     },
     {
-      "ingredient": "chromaticraft:pylon_structure_smooth",
+      "ingredient": "chromaticraft:crystalline_stone",
       "slot": 7
     },
     {
-      "ingredient": "chromaticraft:pylon_structure_smooth",
+      "ingredient": "chromaticraft:crystalline_stone",
       "slot": 8
     }
   ],

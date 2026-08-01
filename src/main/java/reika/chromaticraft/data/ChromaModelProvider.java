@@ -39,7 +39,8 @@ import net.minecraft.world.item.Item;
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.base.CrystalTypeBlock;
 import reika.chromaticraft.block.BlockCrystalRune;
-import reika.chromaticraft.block.BlockPylonStructure;
+import reika.chromaticraft.block.BlockCrystallineStone;
+import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.registry.ChromaClusterItems;
@@ -203,28 +204,28 @@ public class ChromaModelProvider extends ModelProvider {
 	/**
 	 * V33a face selection plus its full-bright animated second render pass.
 	 *
-	 * <p>Emits one whole-cube model per type. That serves the item icon for every type, and the
-	 * in-world blockstate for the eleven types with no neighbour rule; beams, corners and resonance
-	 * rings instead build their faces in {@link reika.chromaticraft.render.model.PylonStructureModel},
-	 * which needs per-face selection that a static model cannot express. The blockstate is hand-authored at
-	 * {@code assets/chromaticraft/blockstates/pylon_structure.json} because beams need the custom
-	 * model type, which {@code MultiVariantGenerator} cannot express.
+	 * <p>Emits one whole-cube model per variant. That serves the item icon for every one, and the
+	 * in-world blockstate for the twelve with no neighbour rule; beams, corners and resonance rings
+	 * instead build their faces in {@link reika.chromaticraft.render.model.PylonStructureModel},
+	 * which needs per-face selection that a static model cannot express. Each variant ships a
+	 * hand-authored blockstate under its own registry name, because the custom model type cannot come
+	 * out of {@code MultiVariantGenerator}.
 	 */
 	private static void pylonStructureBlock(Consumer<BlockModelDefinitionGenerator> blockStateOut,
 			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
-		int n = BlockPylonStructure.StoneTypes.list.length;
-		for (int i = 0; i < n; i++) {
-			BlockPylonStructure.StoneTypes type = BlockPylonStructure.StoneTypes.list[i];
-			Identifier id = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/pylon_structure_" + i + "_0");
+		for (StoneTypes type : StoneTypes.list) {
+			Block block = ChromaBlocks.crystallineStone(type).get();
+			// Model id follows the block's registry name now that each variant is its own block.
+			Identifier id = ModelLocationUtils.getModelLocation(block);
 			Identifier model = createPylonStoneModel(id, type, 0, modelOut);
-			itemModelOut.accept(ChromaBlocks.PYLONSTRUCT_ITEMS.get(i).get(), ItemModelUtils.plainModel(model));
+			itemModelOut.accept(block.asItem(), ItemModelUtils.plainModel(model));
 		}
 	}
 
 	/**
 	 * @param neighbourIndex V33a {@code getIconIndex}: 0 = no same-type neighbour, 1 = Z, 2 = X.
 	 */
-	private static Identifier createPylonStoneModel(Identifier id, BlockPylonStructure.StoneTypes type,
+	private static Identifier createPylonStoneModel(Identifier id, BlockCrystallineStone.StoneTypes type,
 			int neighbourIndex, BiConsumer<Identifier, ModelInstance> modelOut) {
 		String[] base = new String[Direction.values().length];
 		String[] glow = new String[Direction.values().length];
@@ -237,14 +238,14 @@ public class ChromaModelProvider extends ModelProvider {
 					base[i] = p + (neighbourIndex == 2 ? "1-3" : neighbourIndex == 1 ? "1-2" : "1");
 				else {
 					base[i] = p + type.ordinal();
-					if (type == BlockPylonStructure.StoneTypes.GLOWBEAM) glow[i] = p + "4-4";
+					if (type == BlockCrystallineStone.StoneTypes.GLOWBEAM) glow[i] = p + "4-4";
 				}
 			}
 			else if (type.isColumn()) {
-				base[i] = p + (face.getAxis() == Direction.Axis.Y ? BlockPylonStructure.StoneTypes.COLUMN.ordinal() : type.ordinal());
-				if (type == BlockPylonStructure.StoneTypes.GLOWCOL && face.getAxis() != Direction.Axis.Y) glow[i] = p + "3-2";
+				base[i] = p + (face.getAxis() == Direction.Axis.Y ? BlockCrystallineStone.StoneTypes.COLUMN.ordinal() : type.ordinal());
+				if (type == BlockCrystallineStone.StoneTypes.GLOWCOL && face.getAxis() != Direction.Axis.Y) glow[i] = p + "3-2";
 			}
-			else if (type == BlockPylonStructure.StoneTypes.RESORING) {
+			else if (type == BlockCrystallineStone.StoneTypes.RESORING) {
 				// CHROMA-PORT: V33a's resonance ring has its own multi-step neighbour rule in
 				// getIconIndex (vertical pairs, then the flag/flag2/flag3 scan). Only the beam rule
 				// is ported so far, so the ring keeps its non-adjacent artwork.
@@ -496,9 +497,9 @@ public class ChromaModelProvider extends ModelProvider {
 				// shared dynamic crystal model, exactly as the cave crystals do.
 				.filter(h -> !(h.value() instanceof reika.chromaticraft.block.crystal.BlockCrystalLamp))
 				.filter(h -> !(h.value() instanceof reika.chromaticraft.block.crystal.BlockSuperCrystal))
-				// Crystalline stone ships a hand-authored blockstate: its beams need the custom
-				// connected-texture model type, which MultiVariantGenerator cannot emit.
-				.filter(h -> !(h.value() instanceof BlockPylonStructure));
+				// Every crystalline-stone variant ships a hand-authored blockstate: the neighbour-scanned
+				// ones need the custom model type, which MultiVariantGenerator cannot emit.
+				.filter(h -> !(h.value() instanceof BlockCrystallineStone));
 	}
 
 	private static void dyeTreeBlocks(Consumer<BlockModelDefinitionGenerator> blockStateOut,

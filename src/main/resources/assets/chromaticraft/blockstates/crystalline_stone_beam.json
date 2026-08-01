@@ -1,0 +1,28 @@
+{
+  "variants": {
+    "axis=x": {
+      "type": "chromaticraft:pylon_structure",
+      "stone_type": 1,
+      "top": [
+        "chromaticraft:block/pylon/block_1",
+        "chromaticraft:block/pylon/block_1-2",
+        "chromaticraft:block/pylon/block_1-3"
+      ],
+      "side": [
+        "chromaticraft:block/pylon/block_1"
+      ]
+    },
+    "axis=z": {
+      "type": "chromaticraft:pylon_structure",
+      "stone_type": 1,
+      "top": [
+        "chromaticraft:block/pylon/block_1",
+        "chromaticraft:block/pylon/block_1-2",
+        "chromaticraft:block/pylon/block_1-3"
+      ],
+      "side": [
+        "chromaticraft:block/pylon/block_1"
+      ]
+    }
+  }
+}

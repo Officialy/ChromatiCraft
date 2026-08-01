@@ -1,0 +1,20 @@
+{
+  "variants": {
+    "": {
+      "type": "chromaticraft:pylon_structure",
+      "stone_type": 6,
+      "top": [
+        "chromaticraft:block/pylon/block_6",
+        "chromaticraft:block/pylon/block_6-2",
+        "chromaticraft:block/pylon/block_6-3",
+        "chromaticraft:block/pylon/block_6-4"
+      ],
+      "side": [
+        "chromaticraft:block/pylon/block_6",
+        "chromaticraft:block/pylon/block_6-2",
+        "chromaticraft:block/pylon/block_6-3",
+        "chromaticraft:block/pylon/block_6-4"
+      ]
+    }
+  }
+}

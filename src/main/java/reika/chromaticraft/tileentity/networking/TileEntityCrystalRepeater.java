@@ -26,8 +26,8 @@ import reika.chromaticraft.auxiliary.interfaces.OwnedTile;
 import reika.chromaticraft.auxiliary.interfaces.SneakPop;
 import reika.chromaticraft.base.tileentity.CrystalTransmitterBase;
 import reika.chromaticraft.block.BlockCrystalRune;
-import reika.chromaticraft.block.BlockPylonStructure;
-import reika.chromaticraft.block.BlockPylonStructure.StoneTypes;
+import reika.chromaticraft.block.BlockCrystallineStone;
+import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
 import reika.chromaticraft.magic.interfaces.CrystalFuse;
 import reika.chromaticraft.magic.interfaces.CrystalReceiver;
 import reika.chromaticraft.magic.interfaces.CrystalSource;
@@ -176,11 +176,11 @@ public class TileEntityCrystalRepeater extends CrystalTransmitterBase
 			return false;
 		for (int i = 2; i < 4; i++) {
 			BlockState s = this.stateAt(dir.getStepX() * i, dir.getStepY() * i, dir.getStepZ() * i);
-			if (s.getBlock() != ChromaBlocks.PYLONSTRUCT.get())
+			if (!BlockCrystallineStone.isCrystallineStone(s.getBlock()))
 				return false;
-			int type = s.getValue(BlockPylonStructure.TYPE);
-			int m2 = (i == 3 && this.isTurbocharged()) ? StoneTypes.RESORING.ordinal() : 0;
-			if (type != 0 && type != m2)
+			StoneTypes type = ((BlockCrystallineStone)s.getBlock()).getStoneType();
+			StoneTypes expected = (i == 3 && this.isTurbocharged()) ? StoneTypes.RESORING : StoneTypes.SMOOTH;
+			if (type != StoneTypes.SMOOTH && type != expected)
 				return false;
 		}
 		return true;
@@ -188,7 +188,7 @@ public class TileEntityCrystalRepeater extends CrystalTransmitterBase
 
 	protected boolean checkEnhancedStructure() {
 		BlockState s = this.stateAt(facing.getStepX() * 3, facing.getStepY() * 3, facing.getStepZ() * 3);
-		return s.getBlock() == ChromaBlocks.PYLONSTRUCT.get() && s.getValue(BlockPylonStructure.TYPE) == StoneTypes.RESORING.ordinal();
+		return BlockCrystallineStone.isType(s.getBlock(), StoneTypes.RESORING);
 	}
 
 	public void redirect(int side) {
@@ -363,7 +363,7 @@ public class TileEntityCrystalRepeater extends CrystalTransmitterBase
 		for (int distance = 1; distance < this.getLevel().getMaxY() - this.getLevel().getMinY(); distance++) {
 			BlockPos target = this.getBlockPos().relative(facing, distance);
 			BlockState state = this.getLevel().getBlockState(target);
-			if (state.getBlock() != ChromaBlocks.PYLONSTRUCT.get() && !ChromaBlocks.isRune(state))
+			if (!BlockCrystallineStone.isCrystallineStone(state.getBlock()) && !ChromaBlocks.isRune(state))
 				break;
 			this.getLevel().destroyBlock(target, true);
 		}
