@@ -29,6 +29,8 @@ import net.minecraft.world.level.levelgen.placement.CountPlacement;
 import net.minecraft.world.level.levelgen.placement.PlacementModifier;
 import net.minecraft.world.level.levelgen.placement.RarityFilter;
 
+import net.minecraft.tags.BlockTags;
+import reika.dragonapi.libraries.RandomTagSingleStateProvider;
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.CrystalElement;
@@ -138,15 +140,18 @@ public final class ChromaWorldGenProvider {
                 TreeConfiguration.defaultPlaceBelowTreeTrunkProvider(biomes)).ignoreVines().build();
     }
 
-    /** V33a accepted many wood types; vanilla's codec-backed provider is the modern random-log equivalent. */
-    private static WeightedStateProvider randomOverworldLog() {
-        return new WeightedStateProvider(WeightedList.<BlockState>builder()
-                .add(Blocks.OAK_LOG.defaultBlockState(), 1)
-                .add(Blocks.BIRCH_LOG.defaultBlockState(), 1)
-                .add(Blocks.SPRUCE_LOG.defaultBlockState(), 1)
-                .add(Blocks.JUNGLE_LOG.defaultBlockState(), 1)
-                .add(Blocks.ACACIA_LOG.defaultBlockState(), 1)
-                .add(Blocks.DARK_OAK_LOG.defaultBlockState(), 1));
+    /**
+     * V33a picked the trunk wood from its whole tree registry — every vanilla overworld wood plus
+     * whatever modded woods were present — so a hardcoded six-entry weighted list was wrong twice
+     * over: it fixed the set at datagen time, and it silently excluded every modded log.
+     *
+     * <p>{@link RandomTagSingleStateProvider} resolves {@code minecraft:overworld_natural_logs}
+     * lazily at generation time and picks uniformly, so modded woods that join the tag are included
+     * and nether stems are not. Vanilla's {@code WeightedStateProvider} cannot express this: it needs
+     * every state enumerated with a weight when the feature is built, before datapack tags resolve.
+     */
+    private static BlockStateProvider randomOverworldLog() {
+        return new RandomTagSingleStateProvider(BlockTags.OVERWORLD_NATURAL_LOGS);
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})

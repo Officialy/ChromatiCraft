@@ -50,63 +50,8 @@
       "height_rand_b": 0
     },
     "trunk_provider": {
-      "type": "minecraft:weighted_state_provider",
-      "entries": [
-        {
-          "data": {
-            "Name": "minecraft:oak_log",
-            "Properties": {
-              "axis": "y"
-            }
-          },
-          "weight": 1
-        },
-        {
-          "data": {
-            "Name": "minecraft:birch_log",
-            "Properties": {
-              "axis": "y"
-            }
-          },
-          "weight": 1
-        },
-        {
-          "data": {
-            "Name": "minecraft:spruce_log",
-            "Properties": {
-              "axis": "y"
-            }
-          },
-          "weight": 1
-        },
-        {
-          "data": {
-            "Name": "minecraft:jungle_log",
-            "Properties": {
-              "axis": "y"
-            }
-          },
-          "weight": 1
-        },
-        {
-          "data": {
-            "Name": "minecraft:acacia_log",
-            "Properties": {
-              "axis": "y"
-            }
-          },
-          "weight": 1
-        },
-        {
-          "data": {
-            "Name": "minecraft:dark_oak_log",
-            "Properties": {
-              "axis": "y"
-            }
-          },
-          "weight": 1
-        }
-      ]
+      "type": "dragonapi:random_tag_single_state",
+      "tag": "minecraft:overworld_natural_logs"
     }
   }
 }

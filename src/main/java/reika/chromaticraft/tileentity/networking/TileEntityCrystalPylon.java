@@ -78,6 +78,7 @@ import reika.dragonapi.auxiliary.ChunkManager;
 import reika.dragonapi.interfaces.blockentity.ChunkLoadingTile;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
 import reika.dragonapi.instantiable.data.blockstruct.BlockArray;
+import reika.chromaticraft.block.BlockCrystallineStone;
 import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
 
 /**
