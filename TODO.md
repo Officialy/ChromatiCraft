@@ -82,6 +82,34 @@ flat icon. Best done as a single pass over the crystal family:
       when `!canRunDisplayedRecipe()` — so retest now that the Manipulator works; if the ghost never
       appears, the recipe is not matching rather than the highlight being absent.
 
+## 0c-bis. Pylon energy / casting — diagnosis 2026-07-31
+
+Ruled out, with evidence, so nobody re-walks these:
+
+- **Network tick is live.** `CrystalNetworker.tick` is registered via `TickRegistry` as
+  `TickType.SERVER` + `canFire(START)`, and DragonAPI's `TickRegistry` is genuinely wired to
+  `ServerTickEvent.Pre` — it is not a dead stub. Flows are processed.
+- **Tiles register.** `TileEntityCrystalBase` calls `cachePosition()` from both `onFirstTick` and
+  server-side `onLoad`.
+- **The whole `magic/network` package is compiled** (wildcard include, line 210) and contains no
+  `CHROMA-PORT` deferrals.
+- **The structure templates are current.** All the `multiblock/*.nbt` files carry the post-split
+  block ids (`crystalline_stone`, `crystalline_stone_beam`, ...), not the old `pylon_structure`.
+  The remaining `ChromaBlocks.PYLONSTRUCT` references are all in files outside the allowlist.
+
+Live lead, not yet confirmed in game: `TileEntityCrystalPylon.canConduct()` requires
+`hasMultiblock`, which is set only by `validateMultiblock` matching `ChromaStructures.PYLON`.
+`NBTStructureLoader` feeds `FilledBlockArray.setBlock` the **full BlockState**, so matching includes
+`crystalline_stone_beam[axis=...]`. The pylon palette contains only `axis=x` beams. A worldgen pylon
+is placed from that same template so it should self-match — but a **hand-built** pylon will only
+validate if every beam ends up on the same axis the template recorded, and placement derives the
+axis from the clicked face. Worth checking against V33a, which encoded beam direction in metadata
+(1 = z, 2 = x) and so did constrain orientation too — meaning this may be faithful rather than a
+regression.
+
+Next concrete step: in game, stand at a pylon and check whether `hasMultiblock` is true (the pylon
+renders its aura only when it is). That splits "structure never validates" from "flow never starts".
+
 ## 0d. HUD — findings 2026-07-31
 
 **Casting-table GUI: already at V33a parity.** Checked against
