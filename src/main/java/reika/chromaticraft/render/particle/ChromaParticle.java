@@ -7,6 +7,7 @@ import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ParticleStatus;
 import java.util.Random;
+import java.util.Collection;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.Level;
 import net.minecraft.data.AtlasIds;
@@ -14,6 +15,8 @@ import net.minecraft.resources.Identifier;
 
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.registry.CrystalElement;
+import reika.chromaticraft.registry.ChromaBlocks;
+import reika.chromaticraft.tileentity.auxiliary.TileEntityChromaCrystal;
 import reika.chromaticraft.render.ChromaRenderPipelines;
 import reika.dragonapi.instantiable.particlecontroller.CollectingPositionController;
 import reika.dragonapi.interfaces.PositionController;
@@ -54,10 +57,12 @@ public abstract class ChromaParticle extends SingleQuadParticle {
             for (int i = 0; i < count; i++) {
                 float scale = 1F + random.nextFloat() * 2F;
                 int life = 10 + random.nextInt(50);
-                Minecraft.getInstance().particleEngine.add(new FloatingSeed(level,
+                FloatingSeed seed = new FloatingSeed(level,
                         pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5,
                         random.nextInt(360), -90 + random.nextDouble() * 180,
-                        scale, life, startColor, color.getColor()));
+                        scale, life, startColor, color.getColor());
+                seed.setMotion(0.0625, 180, 6.75);
+                Minecraft.getInstance().particleEngine.add(seed);
             }
         }
         int lightningRate = unstable ? 12 : enhanced ? 24 : 36;
@@ -68,6 +73,77 @@ public abstract class ChromaParticle extends SingleQuadParticle {
         }
     }
 
+    /** V33a booster trail: one no-slowdown color blur per connected crystal per client tick. */
+    public static void spawnPylonBoosterRecharge(Level world, BlockPos pylonPos, CrystalElement color,
+            Collection<TileEntityChromaCrystal> boosters, int ticksExisted) {
+        if (!(world instanceof ClientLevel level) || boosters.isEmpty()) return;
+        int index = 0;
+        for (TileEntityChromaCrystal crystal : boosters) {
+            double x = crystal.getBlockPos().getX() + 0.5;
+            double y = crystal.getBlockPos().getY() + 0.5;
+            double z = crystal.getBlockPos().getZ() + 0.5;
+            double dx = pylonPos.getX() + 0.5 - x;
+            double dy = pylonPos.getY() + 0.5 - y;
+            double dz = pylonPos.getZ() + 0.5 - z;
+            double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+            float scale = 2F + (float)Math.sin(Math.toRadians(
+                    4D * (ticksExisted + index * 90D / boosters.size())));
+            Blur blur = new Blur(level, x, y, z, color.getColor(), scale, 38);
+            if (distance > 0) {
+                blur.xd = dx / distance * 0.125;
+                blur.yd = dy / distance * 0.125;
+                blur.zd = dz / distance * 0.125;
+            }
+            Minecraft.getInstance().particleEngine.add(blur);
+            index++;
+        }
+    }
+
+    /** Original power-crystal socket hints, emitted only while the player holds a power crystal. */
+    public static void spawnPowerCrystalPlacementHints(Level world, BlockPos pylonPos,
+            CrystalElement color, Collection<BlockPos> offsets, Random random) {
+        if (!(world instanceof ClientLevel level)) return;
+        var player = Minecraft.getInstance().player;
+        if (player == null || !(player.getMainHandItem().is(ChromaBlocks.POWER_CRYSTAL.get().asItem())
+                || player.getOffhandItem().is(ChromaBlocks.POWER_CRYSTAL.get().asItem()))) return;
+        for (BlockPos offset : offsets) {
+            BlockPos socket = pylonPos.offset(offset);
+            if (world.getBlockEntity(socket) instanceof TileEntityChromaCrystal) continue;
+            int count = 1 + random.nextInt(3);
+            for (int i = 0; i < count; i++) {
+                double angle = Math.toRadians((world.getGameTime() / 2D + random.nextInt(6) * 60
+                        + random.nextDouble() * 12 - 6) % 360);
+                boolean centered = random.nextInt(3) == 0;
+                double radius = centered ? 0 : 0.15 + random.nextDouble() * 0.1;
+                double x = socket.getX() + 0.5 + Math.cos(angle) * radius;
+                double y = socket.getY() + 0.125 + (random.nextDouble() - 0.5) * 0.0625;
+                double z = socket.getZ() + 0.5 + Math.sin(angle) * radius;
+                int life = 8 + random.nextInt(33);
+                float scale = 0.25F + random.nextFloat();
+                Minecraft.getInstance().particleEngine.add(new Blur(level, x, y, z,
+                        color.getColor(), scale, life, true));
+                Minecraft.getInstance().particleEngine.add(new Blur(level, x, y, z,
+                        0xffffff, scale * 0.6F, life, true));
+            }
+        }
+    }
+
+    /** V33a structure-loss burst around the pylon core. */
+    public static void spawnPylonInvalidation(Level world, BlockPos pos, CrystalElement color,
+            Random random) {
+        if (!(world instanceof ClientLevel level)) return;
+        int count = 64 + random.nextInt(64);
+        for (int i = 0; i < count; i++) {
+            double x = pos.getX() + 0.5 + random.nextDouble() * 2.5 - 1.25;
+            double y = pos.getY() + 0.5 + random.nextDouble() * 2.5 - 1.25;
+            double z = pos.getZ() + 0.5 + random.nextDouble() * 2.5 - 1.25;
+            Flare flare = new Flare(level, x, y, z, color, 0, 1F + random.nextFloat() * 2F);
+            flare.xd = random.nextDouble() - 0.5;
+            flare.yd = random.nextDouble() - 0.5;
+            flare.zd = random.nextDouble() - 0.5;
+            Minecraft.getInstance().particleEngine.add(flare);
+        }
+    }
     /** V33a pylon attack streak: 8-31 no-gravity flares travelling half a block per tick. */
     public static void spawnPylonAttack(ClientLevel level, BlockPos source, BlockPos target,
             CrystalElement color) {
@@ -146,6 +222,19 @@ public abstract class ChromaParticle extends SingleQuadParticle {
                     1F + random.nextFloat() * 2F, 30 + random.nextInt(50),
                     color.getColor(), color.getColor(), "node2", true, 0.0625, 60));
         }
+    }
+    /** V33a maximum-tier Focus Crystal: short-lived colored flare within the crystal volume. */
+    public static void spawnFocusCrystal(Level world, BlockPos pos, int color, Random random) {
+        if (!(world instanceof ClientLevel level)) return;
+        ParticleStatus setting = Minecraft.getInstance().options.particles().get();
+        int particleSetting = setting == ParticleStatus.ALL ? 0
+                : setting == ParticleStatus.DECREASED ? 1 : 2;
+        if (random.nextInt(2 + particleSetting) != 0) return;
+        double x = pos.getX() + 0.5 + (random.nextDouble() - 0.5) * 0.825;
+        double y = pos.getY() + 0.375 + (random.nextDouble() - 0.5) * 0.375;
+        double z = pos.getZ() + 0.5 + (random.nextDouble() - 0.5) * 0.825;
+        Minecraft.getInstance().particleEngine.add(
+                new FocusFlare(level, x, y, z, color, 6 + random.nextInt(6)));
     }
     /** V33a Glow Daisy's paired blue/white rapidly expanding floating seeds. */
     public static void spawnGlowDaisy(ClientLevel level, BlockPos pos,
@@ -286,6 +375,15 @@ public abstract class ChromaParticle extends SingleQuadParticle {
         }
     }
 
+    /** V33a focus crystal's stationary EntityCCBlurFX using the flare icon. */
+    private static final class FocusFlare extends ChromaParticle {
+        FocusFlare(ClientLevel level, double x, double y, double z, int color, int life) {
+            super(level, x, y, z, "flare", true);
+            this.lifetime = life;
+            this.quadSize = 0.1F;
+            this.setRgb(color);
+        }
+    }
     /** V33a EntityCCFloatingSeedsFX, including wandering polar motion and rapid-expand fade. */
     public static final class FloatingSeed extends ChromaParticle {
         private double angleXZ;
@@ -309,6 +407,7 @@ public abstract class ChromaParticle extends SingleQuadParticle {
 
         private double particleVelocity = 0.0625;
         private double freedom = 60;
+        private double angularSpeed = 2.25;
 
         private FloatingSeed(ClientLevel level, double x, double y, double z,
                 double windAngle, double climbAngle, float scale, int lifetime,
@@ -338,6 +437,15 @@ public abstract class ChromaParticle extends SingleQuadParticle {
             this.updateAppearance();
         }
 
+        public FloatingSeed setMotion(double velocity, double freedom, double angularSpeed) {
+            this.particleVelocity = velocity;
+            this.freedom = freedom;
+            this.angularSpeed = angularSpeed;
+            this.randomizeXZ();
+            this.randomizeY();
+            this.updateVelocity();
+            return this;
+        }
         @Override
         public void tick() {
             this.xo = this.x;
@@ -358,12 +466,12 @@ public abstract class ChromaParticle extends SingleQuadParticle {
 
         private void randomizeXZ() {
             this.targetXZ = this.windAngle - this.freedom + this.random.nextDouble() * this.freedom * 2;
-            this.angleXZVelocity = this.targetXZ > this.angleXZ ? 2.25 : -2.25;
+            this.angleXZVelocity = this.targetXZ > this.angleXZ ? angularSpeed : -angularSpeed;
         }
 
         private void randomizeY() {
             this.targetY = this.climbAngle - this.freedom + this.random.nextDouble() * this.freedom * 2;
-            this.angleYVelocity = this.targetY > this.angleY ? 2.25 : -2.25;
+            this.angleYVelocity = this.targetY > this.angleY ? angularSpeed : -angularSpeed;
         }
 
         private void updateVelocity() {

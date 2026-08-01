@@ -34,6 +34,7 @@ public final class ChromaNetwork {
 		registrar.playToClient(JarRejection.TYPE, JarRejection.CODEC, ChromaNetwork::handleJarRejection);
 		registrar.playToClient(PowerCrystalDestroy.TYPE, PowerCrystalDestroy.CODEC, ChromaNetwork::handlePowerCrystalDestroy);
 		registrar.playToClient(PylonCrystalBreak.TYPE, PylonCrystalBreak.CODEC, ChromaNetwork::handlePylonCrystalBreak);
+		registrar.playToClient(RepeaterConnections.TYPE, RepeaterConnections.CODEC, ChromaNetwork::handleRepeaterConnections);
 		registrar.playToClient(ProgressionNote.TYPE, ProgressionNote.CODEC, ChromaNetwork::handleProgressionNote);
 	}
 
@@ -53,6 +54,10 @@ public final class ChromaNetwork {
 	public static void sendPylonCrystalBreak(ServerLevel level, BlockPos pylon, CrystalElement color) {
 		PacketDistributor.sendToPlayersNear(level, null, pylon.getX() + 0.5, pylon.getY() + 0.5,
 				pylon.getZ() + 0.5, 64, new PylonCrystalBreak(pylon, color.ordinal()));
+	}
+	public static void sendRepeaterConnections(ServerLevel level, BlockPos repeater) {
+		PacketDistributor.sendToPlayersNear(level, null, repeater.getX() + 0.5, repeater.getY() + 0.5,
+				repeater.getZ() + 0.5, 128, new RepeaterConnections(repeater));
 	}
 	public static void sendJarRejection(ServerLevel level, BlockPos pylon, CrystalElement color) {
 		PacketDistributor.sendToPlayersNear(level, null, pylon.getX() + 0.5, pylon.getY() + 0.5,
@@ -115,6 +120,12 @@ public final class ChromaNetwork {
 				BlockPos.STREAM_CODEC, PylonCrystalBreak::source, ByteBufCodecs.VAR_INT,
 				PylonCrystalBreak::color, PylonCrystalBreak::new);
 		@Override public Type<PylonCrystalBreak> type() { return TYPE; }
+	}
+	public record RepeaterConnections(BlockPos source) implements CustomPacketPayload {
+		public static final Type<RepeaterConnections> TYPE = createType("repeater_connections");
+		public static final StreamCodec<ByteBuf, RepeaterConnections> CODEC =
+				StreamCodec.composite(BlockPos.STREAM_CODEC, RepeaterConnections::source, RepeaterConnections::new);
+		@Override public Type<RepeaterConnections> type() { return TYPE; }
 	}
 	private static <T extends CustomPacketPayload> CustomPacketPayload.Type<T> createType(String path) {
 		return new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, path));
@@ -184,6 +195,14 @@ public final class ChromaNetwork {
 		});
 	}
 
+	private static void handleRepeaterConnections(RepeaterConnections payload, IPayloadContext context) {
+		context.enqueueWork(() -> {
+			Minecraft mc = Minecraft.getInstance();
+			if (mc.level != null && mc.level.getBlockEntity(payload.source)
+					instanceof reika.chromaticraft.tileentity.networking.TileEntityCrystalRepeater repeater)
+				repeater.refreshConnectionRender();
+		});
+	}
 	private static void handlePylonCrystalBreak(PylonCrystalBreak payload, IPayloadContext context) {
 		context.enqueueWork(() -> {
 			Minecraft mc = Minecraft.getInstance();

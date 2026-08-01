@@ -21,7 +21,7 @@ import reika.chromaticraft.tileentity.networking.TileEntityCrystalPylon;
 import reika.chromaticraft.tileentity.networking.TileEntityCrystalRepeater;
 import reika.chromaticraft.tileentity.networking.TileEntitySkypeater;
 import reika.chromaticraft.tileentity.recipe.TileEntityCastingTable;
-import reika.chromaticraft.tileentity.auxiliary.TileEntityFocusCrystalPort;
+import reika.chromaticraft.tileentity.auxiliary.TileEntityFocusCrystal;
 import reika.chromaticraft.tileentity.recipe.TileEntityItemStand;
 
 /**
@@ -56,7 +56,7 @@ public final class ChromaBlockEntities {
 			register("casting_item_stand", ChromaTiles.STAND);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityCastingTable>> CASTING_TABLE =
 			register("casting_table", ChromaTiles.TABLE);
-	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityFocusCrystalPort>> FOCUS_CRYSTAL =
+	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityFocusCrystal>> FOCUS_CRYSTAL =
 			register("focus_crystal", ChromaTiles.FOCUSCRYSTAL);
 
 

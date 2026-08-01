@@ -25,6 +25,7 @@ import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaOptions;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.tileentity.networking.TileEntityCrystalPylon;
+import reika.chromaticraft.tileentity.auxiliary.TileEntityChromaCrystal;
 import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
 
 /**
@@ -34,14 +35,26 @@ import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
  */
 public final class PylonFeature extends Feature<NoneFeatureConfiguration> {
 
+    public enum Variant {
+        NORMAL,
+        TURBOCHARGED,
+        POWER_CRYSTAL_BOOSTED
+    }
+
     private static final int GRID_SIZE = 256;
     private static final int GRID_DEVIATION = 4;
     private static final int GRID_SEPARATION = 10;
     private static final int ATTEMPTS = 24;
     private static final ConcurrentHashMap<Long, BitSet> GRIDS = new ConcurrentHashMap<>();
+    private final Variant variant;
 
     public PylonFeature() {
+        this(Variant.NORMAL);
+    }
+
+    public PylonFeature(Variant variant) {
         super(NoneFeatureConfiguration.CODEC);
+        this.variant = variant;
     }
 
     @Override
@@ -55,7 +68,7 @@ public final class PylonFeature extends Feature<NoneFeatureConfiguration> {
             int x = origin.getX() + random.nextInt(16);
             int z = origin.getZ() + random.nextInt(16);
             int y = world.getHeight(Heightmap.Types.WORLD_SURFACE_WG, x, z) - 1;
-            if (tryPlaceAt(world, new BlockPos(x, y, z), random))
+            if (tryPlaceAt(world, new BlockPos(x, y, z), random, variant))
                 return true;
         }
         return false;
@@ -85,13 +98,19 @@ public final class PylonFeature extends Feature<NoneFeatureConfiguration> {
 
     /** Deterministic placement seam for worldgen and focused GameTests. */
     public static boolean tryPlaceAt(WorldGenLevel world, BlockPos base, RandomSource random) {
+        return tryPlaceAt(world, base, random, Variant.NORMAL);
+    }
+
+    public static boolean tryPlaceAt(WorldGenLevel world, BlockPos base, RandomSource random, Variant variant) {
         if (!canGenerateAt(world, base))
             return false;
 
         CrystalElement color = CrystalElement.elements[random.nextInt(CrystalElement.elements.length)];
         BlockPos pylonPos = base.above(9);
-        List<BlockPos> templateBlocks = PylonStructure.placeForWorldgen(world, pylonPos, color, 3);
-        boolean broken = ChromaOptions.BROKENPYLON.getState() && random.nextInt(2) == 0;
+        List<BlockPos> templateBlocks = PylonStructure.placeForWorldgen(world, pylonPos, color, 3,
+                variant == Variant.TURBOCHARGED);
+        boolean broken = variant == Variant.NORMAL && ChromaOptions.BROKENPYLON.getState()
+                && random.nextInt(2) == 0;
         if (broken)
             breakPylon(world, templateBlocks, random);
         placeFoundation(world, base);
@@ -100,10 +119,25 @@ public final class PylonFeature extends Feature<NoneFeatureConfiguration> {
         if (!(world.getBlockEntity(pylonPos) instanceof TileEntityCrystalPylon pylon))
             return false;
         pylon.initializeGenerated(color, !broken);
+        if (variant == Variant.TURBOCHARGED)
+            pylon.enhance();
+        else if (variant == Variant.POWER_CRYSTAL_BOOSTED)
+            placePowerCrystals(world, pylon, pylonPos);
         NeoForge.EVENT_BUS.post(new PylonGenerationEvent(world, pylonPos, random, broken, color));
         return true;
     }
 
+    private static void placePowerCrystals(WorldGenLevel world, TileEntityCrystalPylon pylon,
+            BlockPos pylonPos) {
+        long value = pylonPos.asLong();
+        java.util.UUID sharedOwner = new java.util.UUID(value, ~value);
+        for (BlockPos offset : TileEntityCrystalPylon.getPowerCrystalLocations()) {
+            BlockPos crystalPos = pylonPos.offset(offset);
+            world.setBlock(crystalPos, ChromaBlocks.POWER_CRYSTAL.get().defaultBlockState(), 3);
+            if (world.getBlockEntity(crystalPos) instanceof TileEntityChromaCrystal crystal)
+                crystal.initializeGeneratedBoost(pylonPos, sharedOwner);
+        }
+    }
     public static boolean canGenerateAt(WorldGenLevel world, BlockPos base) {
         if (base.getY() <= world.getMinY() || base.getY() + 9 >= world.getMaxY())
             return false;

@@ -1,416 +1,382 @@
-/*******************************************************************************
- * @author Reika Kalseki
- *
- * Copyright 2017
- *
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
- ******************************************************************************/
 package reika.chromaticraft.render.tesr;
 
-import java.util.UUID;
+import java.util.ArrayList;
+import java.util.List;
 
-import org.lwjgl.opengl.GL11;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.math.Axis;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.RenderBlocks;
-import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.client.renderer.entity.RenderManager;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.IIcon;
-import net.minecraft.util.MovingObjectPosition;
-import net.minecraft.util.MovingObjectPosition.MovingObjectType;
-import net.minecraftforge.client.MinecraftForgeClient;
-import net.minecraftforge.common.util.ForgeDirection;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
+import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
+import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
+import net.minecraft.client.renderer.feature.CustomFeatureRenderer;
+import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.client.renderer.texture.TextureAtlas;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.data.AtlasIds;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 
-import reika.chromaticraft.ChromaClient;
+import org.joml.Vector3f;
+import org.jspecify.annotations.Nullable;
+
+import net.neoforged.neoforge.client.extensions.OrderedSubmitNodeCollectorExtension;
+import net.neoforged.neoforge.client.submit.RenderPhaseKeys;
+
 import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.auxiliary.HoldingChecks;
-import reika.chromaticraft.base.CrystalTransmitterRender;
-import reika.chromaticraft.magic.castingtuning.CastingTuningManager;
+import reika.chromaticraft.magic.CrystalTarget;
+import reika.chromaticraft.magic.castingtuning.CastingTuningRegistry;
 import reika.chromaticraft.magic.network.PylonFinder;
-import reika.chromaticraft.registry.ChromaIcons;
-import reika.chromaticraft.registry.ChromaOptions;
-import reika.chromaticraft.registry.ChromaTiles;
+import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.CrystalElement;
+import reika.chromaticraft.render.ChromaRenderPipelines;
 import reika.chromaticraft.tileentity.networking.TileEntityCrystalRepeater;
-import reika.dragonapi.instantiable.io.RemoteSourcedAsset;
-import reika.dragonapi.instantiable.rendering.StructureRenderer;
-import reika.dragonapi.libraries.ReikaPlayerAPI;
-import reika.dragonapi.libraries.io.ReikaTextureHelper;
-import reika.dragonapi.libraries.java.reikaglhelper.BlendMode;
-import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
-import reika.dragonapi.libraries.rendering.ReikaRenderHelper;
-import reika.dragonapi.objects.LineType;
 
-public class RenderCrystalRepeater extends CrystalTransmitterRender {
+/** Full V33a crystal-repeater presentation on Minecraft 26.2's submit pipeline. */
+public class RenderCrystalRepeater implements BlockEntityRenderer<TileEntityCrystalRepeater, RenderCrystalRepeater.State> {
 
-	private final RemoteSourcedAsset rangeTexture = ChromaClient.dynamicAssets.createAsset("Textures/repeaterrange3.png");
+    private static final Identifier SPARKLE = sprite("sparkle");
+    private static final Identifier RAIN_FLARE = sprite("rainflare");
+    private static final Identifier SUN_FLARE = sprite("sunflare");
+    private static final Identifier CELL_FLARE = sprite("cellflare");
+    private static final Identifier BEAM = effect("beam.png");
+    private static final Identifier RANGE = effect("repeater_range.png");
+    private static final Identifier TURBO_SECTIONS = effect("turbo/sections.png");
+    private static final Identifier TURBO_RADIATE = effect("turbo/radiate.png");
+    private static final Identifier TUNING_ICONS = effect("cast_tuning_icons.png");
 
-	@Override
-	public void renderTileEntityAt(TileEntity tile, double par2, double par4, double par6, float par8) {
-		super.renderTileEntityAt(tile, par2, par4, par6, par8);
-		TileEntityCrystalRepeater te = (TileEntityCrystalRepeater)tile;
+    private static long fadeTick = Long.MIN_VALUE;
+    private static float manipulatorFade;
 
-		ChromaTiles c = te.getTile();
-		if (tile.hasWorldObj() && ((MinecraftForgeClient.getRenderPass() == 1 && te.canConduct()) || StructureRenderer.isRenderingTiles())) {
-			//TileEntityCrystalRepeater te = (TileEntityCrystalRepeater)tile;
-			IIcon ico = ChromaIcons.SPARKLE.getIcon();
-			ReikaTextureHelper.bindTerrainTexture();
-			float u = ico.getMinU();
-			float v = ico.getMinV();
-			float du = ico.getMaxU();
-			float dv = ico.getMaxV();
-			GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
-			GL11.glDisable(GL11.GL_LIGHTING);
-			ReikaRenderHelper.disableEntityLighting();
-			GL11.glEnable(GL11.GL_BLEND);
-			GL11.glDisable(GL11.GL_CULL_FACE);
-			GL11.glDepthMask(false);
-			BlendMode.ADDITIVEDARK.apply();
-			GL11.glPushMatrix();
-			GL11.glTranslated(par2, par4, par6);
+    public RenderCrystalRepeater(BlockEntityRendererProvider.Context context) {}
 
-			Tessellator v5 = Tessellator.instance;
-			GL11.glTranslated(0.5, 0.5, 0.5);
+    @Override
+    public State createRenderState() {
+        return new State();
+    }
 
-			this.renderPlayerConnectivityLine(te, par8);
-			this.renderRangeSphere(te, par8);
+    @Override
+    public void extractRenderState(TileEntityCrystalRepeater repeater, State state, float partialTick,
+            Vec3 cameraPosition, ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress) {
+        BlockEntityRenderer.super.extractRenderState(repeater, state, partialTick, cameraPosition, breakProgress);
+        state.conducting = repeater.canConduct();
+        state.rainAffected = repeater.isRainAffected();
+        state.tableGrouped = repeater.isTableGrouped();
+        state.cluster = repeater.hasClusterRender();
+        state.turbo = repeater.isTurbocharged();
+        state.color = 0xff000000 | this.getHaloRenderColor(repeater);
+        state.ticks = repeater.getTicksExisted();
+        state.time = System.currentTimeMillis();
+        state.range = Math.min(repeater.getReceiveRange(), repeater.getSendRange());
+        state.rangeAlpha = repeater.getRangeAlpha();
+        state.connectionAlpha = repeater.updateAndGetConnectionRenderAlpha();
+        state.manipulatorFade = updateManipulatorFade(repeater);
+        state.tuningIcon = -1;
+        if (state.manipulatorFade > 0 && repeater.getCaster() != null && repeater.getLevel() != null) {
+            state.tuningIcon = CastingTuningRegistry.instance
+                    .getTuningKey(repeater.getLevel(), repeater.getCaster()).iconIndex();
+        }
+        state.playerLine = findPlayerLine(repeater, state.connectionAlpha);
 
-			double s = 0.75;
-			GL11.glScaled(s, s, s);
-			if (StructureRenderer.isRenderingTiles()) {
-				GL11.glRotated(-StructureRenderer.getRenderRY(), 0, 1, 0);
-				GL11.glRotated(-StructureRenderer.getRenderRX(), 1, 0, 0);
-			}
-			else {
-				RenderManager rm = RenderManager.instance;
-				GL11.glRotatef(-rm.playerViewY, 0.0F, 1.0F, 0.0F);
-				GL11.glRotatef(rm.playerViewX, 1.0F, 0.0F, 0.0F);
-			}
+        state.beams.clear();
+        double startWidth = repeater.getOutgoingBeamRadius();
+        for (CrystalTarget target : repeater.getTargets()) {
+            state.beams.add(new Beam(
+                    target.location.pos.getX() - repeater.getBlockPos().getX() + target.offsetX - 0.5,
+                    target.location.pos.getY() - repeater.getBlockPos().getY() + target.offsetY - 0.5,
+                    target.location.pos.getZ() - repeater.getBlockPos().getZ() + target.offsetZ - 0.5,
+                    Math.min(startWidth, target.widthLimit),
+                    Math.min(target.endWidth, target.widthLimit), target.color.getColor()));
+        }
+    }
 
-			v5.startDrawingQuads();
-			v5.addVertexWithUV(-1, -1, 0, u, v);
-			v5.addVertexWithUV(1, -1, 0, du, v);
-			v5.addVertexWithUV(1, 1, 0, du, dv);
-			v5.addVertexWithUV(-1, 1, 0, u, dv);
-			v5.draw();
+    @Override
+    public void submit(State state, PoseStack poseStack, SubmitNodeCollector collector, CameraRenderState camera) {
+        submitBeams(state, poseStack, collector);
+        if (!state.conducting) return;
 
-			this.doAuxRendering(te, par8);
+        poseStack.pushPose();
+        poseStack.translate(0.5, 0.5, 0.5);
 
-			if (te.canConduct()) {
-				if (te.isRainAffected())
-					this.renderIconHalo(te, ChromaIcons.RAINFLARE.getIcon(), 1, par8);
-				if (te.isTableGrouped())
-					this.renderIconHalo(te, ChromaIcons.SUNFLARE.getIcon(), 1, par8);
-				else if (te.hasClusterRender())
-					this.renderIconHalo(te, ChromaIcons.CELLFLARE.getIcon(), 1.25, par8);
-				float f = HoldingChecks.MANIPULATOR.getFade();
-				if (f > 0) {
-					UUID uid = te.getCaster();
-					if (uid != null) {
-						this.renderCasterHalo(te, f, uid, par8);
-					}
-				}
-				if (te.isTurbocharged()) {
-					this.renderHalo(te, par8);
-				}
-			}
+        if (state.playerLine != null)
+            submitDashedLine(poseStack, collector, state.playerLine, state.connectionAlpha);
+        if (state.rangeAlpha > 0)
+            submitRangeSphere(state, poseStack, collector);
 
-			GL11.glPopMatrix();
-			GL11.glPopAttrib();
-		}
-		else if (!tile.hasWorldObj()) {
-			GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
-			GL11.glEnable(GL11.GL_BLEND);
-			GL11.glDisable(GL11.GL_LIGHTING);
-			if (par8 < 0)
-				ReikaRenderHelper.disableEntityLighting();
-			ReikaTextureHelper.bindTerrainTexture();
-			GL11.glPushMatrix();
-			RenderBlocks.getInstance().renderBlockAsItem(c.getBlock(), c.getBlockMetadata(), 1);
-			GL11.glPopMatrix();
+        poseStack.pushPose();
+        poseStack.mulPose(camera.orientation);
+        submitAtlasBillboard(poseStack, collector, SPARKLE, 0.75F, 0xffffffff, 0);
 
-			IIcon ico = ChromaIcons.SPARKLE.getIcon();
-			float u = ico.getMinU();
-			float v = ico.getMinV();
-			float du = ico.getMaxU();
-			float dv = ico.getMaxV();
-			GL11.glDisable(GL11.GL_CULL_FACE);
-			GL11.glDepthMask(false);
-			BlendMode.ADDITIVEDARK.apply();
-			GL11.glPushMatrix();
-			GL11.glRotated(45, 0, 1, 0);
-			GL11.glRotated(-45, 1, 0, 0);
-			double s = 0.8;
-			GL11.glScaled(s, s, s);
-			Tessellator v5 = Tessellator.instance;
-			v5.startDrawingQuads();
-			v5.addVertexWithUV(-1, -1, 0, u, v);
-			v5.addVertexWithUV(1, -1, 0, du, v);
-			v5.addVertexWithUV(1, 1, 0, du, dv);
-			v5.addVertexWithUV(-1, 1, 0, u, dv);
-			v5.draw();
+        float iconScale = (float)((2.75 + 0.125 * Math.sin(state.ticks / 40D)) * 0.75);
+        if (state.rainAffected)
+            submitAtlasBillboard(poseStack, collector, RAIN_FLARE, iconScale, state.color, 0);
+        if (state.tableGrouped)
+            submitAtlasBillboard(poseStack, collector, SUN_FLARE, iconScale, state.color, 0);
+        else if (state.cluster)
+            submitAtlasBillboard(poseStack, collector, CELL_FLARE, iconScale * 1.25F, state.color, 0);
 
-			if (te.isTurbocharged()) {
-				GL11.glPushMatrix();
-				this.renderHalo(te, par8);
-				GL11.glPopMatrix();
-			}
+        if (state.tuningIcon >= 0 && state.manipulatorFade > 0)
+            submitTuningIcon(state, poseStack, collector);
+        if (state.turbo)
+            submitTurboHalo(state, poseStack, collector);
+        poseStack.popPose();
+        poseStack.popPose();
+    }
 
-			GL11.glPopMatrix();
-			GL11.glPopAttrib();
-		}
-	}
+    protected int getHaloRenderColor(TileEntityCrystalRepeater repeater) {
+        CrystalElement element = repeater.getActiveColor();
+        return element != null ? element.getColor() : 0xffffff;
+    }
 
-	private void renderCasterHalo(TileEntityCrystalRepeater te, float fade, UUID uid, float par8) {
-		int clr = this.getHaloRenderColor(te);
-		clr = ReikaColorAPI.mixColors(clr, 0xffffff, 0.875F+0.125F*(float)Math.sin(te.getTicksExisted()/90D));
-		clr = ReikaColorAPI.getColorWithBrightnessMultiplier(clr, fade);
-		double s = 1.75+0.0625*Math.sin(te.getTicksExisted()/6D);
-		if (te.isTurbocharged())
-			s *= 1.25;
-		CastingTuningManager.instance.getTuningKey(te.worldObj, uid).drawIcon(Tessellator.instance, s, clr);
-	}
+    private static float updateManipulatorFade(TileEntityCrystalRepeater repeater) {
+        if (repeater.getLevel() == null) return 0;
+        long tick = repeater.getLevel().getGameTime();
+        if (tick != fadeTick) {
+            fadeTick = tick;
+            var player = Minecraft.getInstance().player;
+            ItemStack held = player != null ? player.getMainHandItem() : ItemStack.EMPTY;
+            if (held.is(ChromaItems.MANIPULATOR.get()))
+                manipulatorFade = Math.min(1, manipulatorFade + 0.125F);
+            else
+                manipulatorFade = Math.max(0, manipulatorFade - 0.03125F);
+        }
+        return manipulatorFade;
+    }
 
-	private void renderIconHalo(TileEntityCrystalRepeater te, IIcon ico, double sizeScale, float par8) {
-		//GL11.glDisable(GL11.GL_DEPTH_TEST);
-		Tessellator v5 = Tessellator.instance;
-		GL11.glDepthMask(false);
-		float u = ico.getMinU();
-		float v = ico.getMinV();
-		float du = ico.getMaxU();
-		float dv = ico.getMaxV();
-		double s = (2.75+0.125*Math.sin(te.getTileEntityAge()/40D))*sizeScale;
-		v5.startDrawingQuads();
-		v5.setColorOpaque_I(this.getHaloRenderColor(te));
-		v5.addVertexWithUV(-s, -s, 0, u, v);
-		v5.addVertexWithUV(s, -s, 0, du, v);
-		v5.addVertexWithUV(s, s, 0, du, dv);
-		v5.addVertexWithUV(-s, s, 0, u, dv);
-		v5.draw();
-	}
+    private static @Nullable Vec3 findPlayerLine(TileEntityCrystalRepeater repeater, int alpha) {
+        if (alpha <= 0 || repeater.getLevel() == null) return null;
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.player == null) return null;
+        HitResult hit = minecraft.player.pick(4.5, 0, false);
+        if (!(hit instanceof BlockHitResult blockHit) || hit.getType() != HitResult.Type.BLOCK) return null;
+        var target = blockHit.getBlockPos().relative(blockHit.getDirection());
+        double dx = target.getX() - repeater.getBlockPos().getX();
+        double dy = target.getY() - repeater.getBlockPos().getY();
+        double dz = target.getZ() - repeater.getBlockPos().getZ();
+        if (dx * dx + dy * dy + dz * dz > repeater.getSendRange() * repeater.getSendRange()) return null;
+        return PylonFinder.lineOfSight(repeater.getLevel(), repeater.getX(), repeater.getY(), repeater.getZ(),
+                target.getX(), target.getY(), target.getZ()).hasLineOfSight ? new Vec3(dx, dy, dz) : null;
+    }
 
-	protected void doAuxRendering(TileEntityCrystalRepeater te, float par8) {
+    private static void submitTuningIcon(State state, PoseStack poseStack, SubmitNodeCollector collector) {
+        int color = ReikaColorAPI.mixColors(state.color & 0xffffff, 0xffffff,
+                0.875F + 0.125F * (float)Math.sin(state.ticks / 90D));
+        color = 0xff000000 | ReikaColorAPI.getColorWithBrightnessMultiplier(color, state.manipulatorFade);
+        float scale = (float)(1.3125 + 0.046875 * Math.sin(state.ticks / 6D));
+        if (state.turbo) scale *= 1.25F;
+        int col = state.tuningIcon % 4;
+        int row = state.tuningIcon / 4;
+        submitTexturedQuad(poseStack, collector, TUNING_ICONS, scale, color, 0,
+                col / 4F, row / 4F, (col + 1) / 4F, (row + 1) / 4F);
+    }
 
-	}
+    private static void submitTurboHalo(State state, PoseStack poseStack, SubmitNodeCollector collector) {
+        double phase = state.time / 50D % 360;
+        float cumulative = 0;
+        int layer = 0;
+        for (int angle = 0; angle < 90; angle += 15) {
+            cumulative += angle + (float)phase;
+            poseStack.pushPose();
+            poseStack.mulPose(Axis.ZP.rotationDegrees(cumulative));
+            float z = -angle / 15F * 0.0075F;
+            float scale = (float)((1.5 + 0.5 * Math.sin(Math.toRadians(4 * phase + angle * 2))) * 0.75);
+            submitTexturedQuad(poseStack, collector, TURBO_SECTIONS, scale, state.color, z, 0, 0, 1, 1);
+            float u = (state.ticks + layer * 2) % 18 / 18F;
+            submitTexturedQuad(poseStack, collector, TURBO_RADIATE, 2.25F, state.color, z - 0.00375F,
+                    u, 0, u + 1 / 18F, 1);
+            poseStack.popPose();
+            layer++;
+        }
+    }
 
-	/*
-	private void renderConnectivityLines(TileEntityCrystalRepeater te, float par8) {
-		int a = te.updateAndGetConnectionRenderAlpha();
-		if (a != 0) {
-			HashSet<WorldLocation> c = te.getRenderedConnectableTiles();
-			//ReikaJavaLibrary.pConsole(c);
-			if (c != null) {
-				GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
-				GL11.glDisable(GL11.GL_LIGHTING);
-				GL11.glDisable(GL11.GL_TEXTURE_2D);
-				GL11.glEnable(GL11.GL_LINE_STIPPLE);
-				GL11.glLineWidth(6);
-				GL11.glLineStipple(24, (short)0xAAAA);
-				BlendMode.DEFAULT.apply();
+    private static void submitRangeSphere(State state, PoseStack poseStack, SubmitNodeCollector collector) {
+        int color = 0xff000000 | ReikaColorAPI.getColorWithBrightnessMultiplier(
+                state.color & 0xffffff, state.rangeAlpha / 512F);
+        double radius = state.range;
+        double stepY = 0.5 * radius / 16D;
+        double pulse = 0.75 * Math.sin(state.ticks / 128D);
+        PoseStack renderPose = copy(poseStack);
+        submitAfterTerrain(poseStack, collector, ChromaRenderPipelines.additiveSprite(RANGE),
+                (pose, vertices) -> {
+                    for (double y = -radius; y <= radius; y += stepY) {
+                        double nextY = y + stepY;
+                        double ring = pulse + Math.sqrt(Math.max(0, radius * radius - y * y));
+                        double nextRing = pulse + Math.sqrt(Math.max(0, radius * radius - nextY * nextY));
+                        for (int degrees = 0; degrees < 360; degrees += 10) {
+                            double a0 = Math.toRadians(degrees);
+                            double a1 = Math.toRadians(degrees + 10);
+                            double ti = degrees + state.time / 50D % 360;
+                            double tk = y + state.time / 220D % 360;
+                            float u0 = (float)(ti / 360D * 3);
+                            float u1 = (float)((ti + 10) / 360D * 3);
+                            float v0 = (float)(tk * radius / 1024D);
+                            float v1 = (float)((tk + stepY) * radius / 1024D);
+                            vertex(vertices, renderPose.last(), 0.5 + ring * Math.cos(a0), 0.5 + y,
+                                    0.5 + ring * Math.sin(a0), u0, v0, color);
+                            vertex(vertices, renderPose.last(), 0.5 + ring * Math.cos(a1), 0.5 + y,
+                                    0.5 + ring * Math.sin(a1), u1, v0, color);
+                            vertex(vertices, renderPose.last(), 0.5 + nextRing * Math.cos(a1), 0.5 + nextY,
+                                    0.5 + nextRing * Math.sin(a1), u1, v1, color);
+                            vertex(vertices, renderPose.last(), 0.5 + nextRing * Math.cos(a0), 0.5 + nextY,
+                                    0.5 + nextRing * Math.sin(a0), u0, v1, color);
+                        }
+                    }
+                });
+    }
 
-				Tessellator v5 = Tessellator.instance;
-				v5.startDrawing(GL11.GL_LINES);
+    private static void submitDashedLine(PoseStack poseStack, SubmitNodeCollector collector, Vec3 end, int alpha) {
+        PoseStack renderPose = copy(poseStack);
+        int color = (alpha << 24) | 0xffffff;
+        submitAfterTerrain(poseStack, collector, RenderTypes.linesTranslucent(), (pose, vertices) -> {
+            double length = end.length();
+            int segments = Math.max(1, (int)Math.ceil(length * 4));
+            Vector3f normal = new Vector3f((float)end.x, (float)end.y, (float)end.z).normalize();
+            for (int i = 0; i < segments; i += 2) {
+                double f0 = i / (double)segments;
+                double f1 = Math.min(1, (i + 1) / (double)segments);
+                lineVertex(vertices, renderPose.last(), end.scale(f0), normal, color);
+                lineVertex(vertices, renderPose.last(), end.scale(f1), normal, color);
+            }
+        });
+    }
 
-				v5.setColorRGBA_I(0xffffff, a);
+    private static void submitBeams(State state, PoseStack poseStack, SubmitNodeCollector collector) {
+        if (state.beams.isEmpty()) return;
+        float scroll = (float)((state.time / 600D % 360) / 30D);
+        poseStack.pushPose();
+        poseStack.translate(0.5, 0.5, 0.5);
+        for (Beam beam : state.beams) {
+            PoseStack renderPose = copy(poseStack);
+            submitAfterTerrain(poseStack, collector, ChromaRenderPipelines.additiveSprite(BEAM),
+                    (pose, vertices) -> beamTube(renderPose.last(), vertices, beam, scroll));
+        }
+        poseStack.popPose();
+    }
 
-				for (WorldLocation loc : c) {
-					if (loc.xCoord+loc.yCoord+loc.zCoord > te.xCoord+te.yCoord+te.zCoord) { //hack to ensure 1-way rendering
-						v5.addVertex(0, 0, 0);
-						v5.addVertex(loc.xCoord-te.xCoord, loc.yCoord-te.yCoord, loc.zCoord-te.zCoord);
-					}
-				}
+    private static void beamTube(PoseStack.Pose pose, VertexConsumer vertices, Beam beam, float scroll) {
+        Vector3f axis = new Vector3f((float)beam.x, (float)beam.y, (float)beam.z);
+        if (axis.lengthSquared() < 1.0E-6F) return;
+        axis.normalize();
+        Vector3f side = Math.abs(axis.y) < 0.99F
+                ? axis.cross(new Vector3f(0, 1, 0), new Vector3f()).normalize()
+                : axis.cross(new Vector3f(1, 0, 0), new Vector3f()).normalize();
+        Vector3f up = axis.cross(side, new Vector3f()).normalize();
+        int color = 0xff000000 | beam.color;
+        for (int i = 0; i < 6; i++) {
+            double a0 = i * Math.PI * 2 / 6D;
+            double a1 = (i + 1) * Math.PI * 2 / 6D;
+            Vector3f s0 = ring(side, up, a0, beam.startRadius * 0.75);
+            Vector3f s1 = ring(side, up, a1, beam.startRadius * 0.75);
+            Vector3f e0 = ring(side, up, a0, beam.endRadius * 0.75).add((float)beam.x, (float)beam.y, (float)beam.z);
+            Vector3f e1 = ring(side, up, a1, beam.endRadius * 0.75).add((float)beam.x, (float)beam.y, (float)beam.z);
+            vertex(vertices, pose, s0.x, s0.y, s0.z, scroll, scroll + 1, color);
+            vertex(vertices, pose, s1.x, s1.y, s1.z, scroll, scroll + 1, color);
+            vertex(vertices, pose, e1.x, e1.y, e1.z, scroll + 1, scroll, color);
+            vertex(vertices, pose, e0.x, e0.y, e0.z, scroll + 1, scroll, color);
+        }
+    }
 
-				v5.draw();
+    private static Vector3f ring(Vector3f side, Vector3f up, double angle, double radius) {
+        return new Vector3f(side).mul((float)(Math.sin(angle) * radius))
+                .add(new Vector3f(up).mul((float)(Math.cos(angle) * radius)));
+    }
 
-				GL11.glPopAttrib();
-			}
-		}
-	}
-	 */
-	private void renderRangeSphere(TileEntityCrystalRepeater te, float par8) {
-		int a = te.getRangeAlpha();
-		if (a > 0) {
-			double r = Math.min(te.getReceiveRange(), te.getSendRange());
-			//r += 0.75*Math.sin(te.getTicksExisted()/5D);
-			this.renderSphere(te, par8, ReikaColorAPI.getColorWithBrightnessMultiplier(this.getHaloRenderColor(te), a/512F), r);
-		}
-	}
+    private static void submitAtlasBillboard(PoseStack poseStack, SubmitNodeCollector collector,
+            Identifier spriteId, float scale, int color, float z) {
+        TextureAtlasSprite sprite = Minecraft.getInstance().getAtlasManager()
+                .getAtlasOrThrow(AtlasIds.BLOCKS).getSprite(spriteId);
+        PoseStack renderPose = copy(poseStack);
+        submitAfterTerrain(poseStack, collector,
+                ChromaRenderPipelines.additiveSprite(TextureAtlas.LOCATION_BLOCKS),
+                (pose, vertices) -> quad(vertices, renderPose.last(), scale, z, color,
+                        sprite.getU0(), sprite.getV1(), sprite.getU1(), sprite.getV0()));
+    }
 
-	protected void renderSphere(TileEntityCrystalRepeater te, float par8, int color, double r) {
-		GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
-		GL11.glEnable(GL11.GL_TEXTURE_2D);
-		GL11.glDisable(GL11.GL_CULL_FACE);
-		GL11.glDisable(GL11.GL_LIGHTING);
-		GL11.glEnable(GL11.GL_BLEND);
-		ReikaRenderHelper.disableEntityLighting();
-		BlendMode.ADDITIVEDARK.apply();
-		GL11.glDepthMask(false);
+    private static void submitTexturedQuad(PoseStack poseStack, SubmitNodeCollector collector,
+            Identifier texture, float scale, int color, float z, float u0, float v0, float u1, float v1) {
+        PoseStack renderPose = copy(poseStack);
+        submitAfterTerrain(poseStack, collector, ChromaRenderPipelines.additiveSprite(texture),
+                (pose, vertices) -> quad(vertices, renderPose.last(), scale, z, color, u0, v1, u1, v0));
+    }
 
-		ReikaTextureHelper.bindTexture(rangeTexture);
-		Tessellator var5 = Tessellator.instance;
-		var5.startDrawingQuads();
-		var5.setColorOpaque_I(color);
-		double dx = 0.5;
-		double dy = 0.5;
-		double dz = 0.5;
-		double dk = 0.5*r/16;
-		double di = 10;
-		double f = 0.75*Math.sin(te.getTicksExisted()/128D);
-		for (double k = -r; k <= r; k += dk) {
-			double r2 = f+Math.sqrt(r*r-k*k);
-			double r3 = f+Math.sqrt(r*r-(k+dk)*(k+dk));
-			if (Double.isNaN(r2) || Double.isNaN(r3))
-				continue;
-			for (int i = 0; i < 360; i += di) {
-				double a = Math.toRadians(i);
-				double a2 = Math.toRadians(i+di);
-				double ti = i+(System.currentTimeMillis()/50D%360);
-				double tk = k+(System.currentTimeMillis()/220D%360);
-				double u = ti/360D*3;
-				double du = (ti+di)/360D*3;
-				double v = tk*r/1024D;
-				double dv = (tk+dk)*r/1024D;
-				double s1 = Math.sin(a);
-				double s2 = Math.sin(a2);
-				double c1 = Math.cos(a);
-				double c2 = Math.cos(a2);
-				var5.addVertexWithUV(dx+r2*c1, dy+k, dz+r2*s1, u, v);
-				var5.addVertexWithUV(dx+r2*c2, dy+k, dz+r2*s2, du, v);
-				var5.addVertexWithUV(dx+r3*c2, dy+k+dk, dz+r3*s2, du, dv);
-				var5.addVertexWithUV(dx+r3*c1, dy+k+dk, dz+r3*s1, u, dv);
-			}
-		}
-		var5.draw();
-		/*
-		var5.startDrawing(GL11.GL_TRIANGLE_FAN);
-		var5.setColorRGBA_I(color, color >> 24 & 255);
-		var5.addVertexWithUV(x, y+0.5, z, 0.5, 0.5);
-		double dr = 2;
-		for (int i = 0; i < 360; i += 10) {
-			double a = Math.toRadians(i);
-			double a2 = a+Math.toRadians(System.currentTimeMillis()/20D%360);
-			double dx = Math.cos(a);
-			double dz = Math.sin(a);
-			double ux = (System.currentTimeMillis()/3100D)%10;
-			double uy = (System.currentTimeMillis()/4700D)%10;
-			double u = Math.cos(a2)+ux;
-			double v = Math.sin(a2)+uy;
-			u = u*0.25;
-			v = v*0.25;
-			var5.addVertexWithUV(x+dx*dr, y+r-0.25, z+dz*dr, u, v);
-		}
-		var5.draw();*/
+    private static void quad(VertexConsumer vertices, PoseStack.Pose pose, float scale, float z,
+            int color, float u0, float v0, float u1, float v1) {
+        vertex(vertices, pose, -scale, -scale, z, u0, v0, color);
+        vertex(vertices, pose, scale, -scale, z, u1, v0, color);
+        vertex(vertices, pose, scale, scale, z, u1, v1, color);
+        vertex(vertices, pose, -scale, scale, z, u0, v1, color);
+    }
 
-		GL11.glPopAttrib();
-	}
+    private static void vertex(VertexConsumer vertices, PoseStack.Pose pose, double x, double y, double z,
+            float u, float v, int color) {
+        vertices.addVertex(pose, (float)x, (float)y, (float)z).setUv(u, v).setColor(color);
+    }
 
-	private void renderPlayerConnectivityLine(TileEntityCrystalRepeater te, float par8) {
-		int a = te.updateAndGetConnectionRenderAlpha();
-		if (a > 0) {
-			//ReikaJavaLibrary.pConsole(c);
-			MovingObjectPosition mov = ReikaPlayerAPI.getLookedAtBlockClient(4.5, false);
-			if (mov != null && mov.typeOfHit == MovingObjectType.BLOCK) {
-				ForgeDirection dir = mov.sideHit >= 0 ? ForgeDirection.VALID_DIRECTIONS[mov.sideHit] : ForgeDirection.UNKNOWN;
-				int x = mov.blockX+dir.offsetX;
-				int y = mov.blockY+dir.offsetY;
-				int z = mov.blockZ+dir.offsetZ;
-				if (ReikaMathLibrary.py3d(x-te.xCoord, y-te.yCoord, z-te.zCoord) <= te.getSendRange()) {
-					if (PylonFinder.lineOfSight(Minecraft.getMinecraft().theWorld, te.xCoord, te.yCoord, te.zCoord, x, y, z).hasLineOfSight) {
-						GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
-						GL11.glDisable(GL11.GL_LIGHTING);
-						GL11.glDisable(GL11.GL_TEXTURE_2D);
-						GL11.glEnable(GL11.GL_LINE_STIPPLE);
-						GL11.glLineWidth(6);
-						LineType.DASHED.setMode(128);
-						BlendMode.DEFAULT.apply();
+    private static void lineVertex(VertexConsumer vertices, PoseStack.Pose pose, Vec3 point,
+            Vector3f normal, int color) {
+        vertices.addVertex(pose, (float)point.x, (float)point.y, (float)point.z).setColor(color)
+                .setNormal(pose, normal.x, normal.y, normal.z).setLineWidth(6);
+    }
 
-						Tessellator v5 = Tessellator.instance;
-						v5.startDrawing(GL11.GL_LINES);
+    private static PoseStack copy(PoseStack source) {
+        PoseStack copy = new PoseStack();
+        copy.last().set(source.last());
+        return copy;
+    }
 
-						v5.setColorRGBA_I(0xffffff, a);
+    private static void submitAfterTerrain(PoseStack poseStack, SubmitNodeCollector collector,
+            RenderType renderType, SubmitNodeCollector.CustomGeometryRenderer renderer) {
+        CustomFeatureRenderer.Submit submit = new CustomFeatureRenderer.Submit(
+                poseStack.last().copy(), renderType, renderer);
+        ((OrderedSubmitNodeCollectorExtension)collector.order(0))
+                .submitSpecial(RenderPhaseKeys.AFTER_TERRAIN, submit);
+    }
 
-						v5.addVertex(0, 0, 0);
-						v5.addVertex(x-te.xCoord, y-te.yCoord, z-te.zCoord);
+    @Override
+    public int getViewDistance() {
+        return 128;
+    }
 
-						v5.draw();
+    @Override
+    public boolean shouldRenderOffScreen() {
+        return true;
+    }
 
-						GL11.glPopAttrib();
-					}
-				}
-			}
-		}
-	}
+    private static Identifier sprite(String name) {
+        return Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/icons/" + name);
+    }
 
-	private void renderHalo(TileEntityCrystalRepeater te, float par8) {
-		float f = 1;
-		if (te.worldObj != null) {
-			if (ChromaOptions.EPILEPSY.getState()) {
-				f = HoldingChecks.MANIPULATOR.getFade();
-				if (f <= 0)
-					return;
-			}
-		}
+    private static Identifier effect(String name) {
+        return Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "textures/effect/" + name);
+    }
 
-		GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
-		GL11.glDisable(GL11.GL_ALPHA_TEST);
-		int c = te.worldObj != null ? this.getHaloRenderColor(te) : 0xffffff;
-		if (f < 1)
-			c = ReikaColorAPI.getColorWithBrightnessMultiplier(c, f);
-		if (te.worldObj == null)
-			GL11.glDisable(GL11.GL_DEPTH_TEST);
-		GL11.glDepthMask(false);
-		Tessellator v5 = Tessellator.instance;
+    public static final class State extends BlockEntityRenderState {
+        private boolean conducting;
+        private boolean rainAffected;
+        private boolean tableGrouped;
+        private boolean cluster;
+        private boolean turbo;
+        private int color;
+        private int ticks;
+        private int range;
+        private int rangeAlpha;
+        private int connectionAlpha;
+        private int tuningIcon;
+        private float manipulatorFade;
+        private long time;
+        private @Nullable Vec3 playerLine;
+        private final List<Beam> beams = new ArrayList<>();
+    }
 
-		int step = 15;
-		double d = (System.currentTimeMillis()/50D)%360;
-		int a = te.worldObj != null ? 90 : 30;
-		int n = 0;
-		for (int i = 0; i < a; i += step) {
-			float u = 0;//ico.getMinU();
-			float v = 0;//ico.getMinV();
-			float du = 1;//ico.getMaxU();
-			float dv = 1;//ico.getMaxV();
-
-			double z = -i/(double)step*0.01;
-			double z2 = z-0.005;
-
-			GL11.glRotated(i+d, 0, 0, 1);
-
-			ReikaTextureHelper.bindTexture(ChromatiCraft.class, "Textures/Turbo/sections.png");
-			double s = te.worldObj != null ? 1.5+0.5*Math.sin(Math.toRadians(4*d+i*2)) : 1.75;
-			v5.startDrawingQuads();
-			v5.setColorOpaque_I(c);
-			v5.addVertexWithUV(-s, -s, z, u, v);
-			v5.addVertexWithUV(s, -s, z, du, v);
-			v5.addVertexWithUV(s, s, z, du, dv);
-			v5.addVertexWithUV(-s, s, z, u, dv);
-			v5.draw();
-
-			if (te.worldObj != null) {
-				ReikaTextureHelper.bindTexture(ChromatiCraft.class, "Textures/Turbo/radiate.png");
-				s = 3;//2+1*Math.sin(Math.toRadians(4*d+i*2));
-				u = (te.getTicksExisted()+n*2)%18/18F;
-				du = u+1/18F;
-				v5.startDrawingQuads();
-				v5.setColorOpaque_I(c);
-				v5.addVertexWithUV(-s, -s, z2, u, v);
-				v5.addVertexWithUV(s, -s, z2, du, v);
-				v5.addVertexWithUV(s, s, z2, du, dv);
-				v5.addVertexWithUV(-s, s, z2, u, dv);
-				v5.draw();
-			}
-			n++;
-		}
-		GL11.glPopAttrib();
-	}
-
-	protected int getHaloRenderColor(TileEntityCrystalRepeater te) {
-		CrystalElement e = te.getActiveColor();
-		return e != null ? e.getColor() : 0xffffff;
-	}
-
+    private record Beam(double x, double y, double z, double startRadius, double endRadius, int color) {}
 }

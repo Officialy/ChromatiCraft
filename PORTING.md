@@ -889,7 +889,8 @@ Still unported inside this same window, and deliberately marked `CHROMA-PORT` ra
 
 - **the guide book** (`ChromaItems.HELP` / `ItemChromaBook`) — V33a's main in-game guidance, and the
   thing a new player is expected to craft first;
-- **the Manipulator** (`ChromaItems.TOOL` / `ItemManipulator`) — the inspect/link tool;
+- **the remaining Manipulator dispatch** beyond the active casting trigger, `SneakPop`, and generic
+  `ManipulatorInteraction` hook — each branch stays dependency-gated until its target tile lands;
 - both of their grid recipes, which are recorded in `ChromaRecipeProvider` as comments so they can be
   restored verbatim the moment the items land;
 - Mystcraft (`MYST`) and Thaumcraft (`NODE`, Thaumometer pylon scan) branches of the exploration scan.
@@ -937,3 +938,106 @@ stage, so building the temple and placing a rune is what unlocks casting with it
 `ProgressionCatchupHandling` is deliberately **not** ported. It looks like a grant path but is gated
 on `ProgressionLinking.hasLinkedPlayers` — it is the co-op catch-up mechanism for linked players, not
 the primary route, and it depends on the unported linking subsystem.
+
+### Casting operation HUD and pylon recovery/feature variants — 2026-08-01
+
+- `OperationInterval` is accepted into the compile slice again. `TileEntityCastingTable` implements
+  the full modern contract, persists/synchronizes the active batch duration, exposes a clamped
+  progress fraction, and distinguishes invalid, aura-pending, and running recipe states for the
+  Elemental Manipulator overlay path.
+- A damaged pylon now rebuilds its NBT matcher every ten server ticks while inactive. Replacing the
+  missing block reactivates energy generation and network conductance without a chunk reload; the
+  focused `pylon_structure_lifecycle` GameTest covers break, shutdown, repair, and restart.
+- Ordinary pylon worldgen substitutes smooth crystalline foundation blocks for the aura stabilizer
+  and resonance ring recorded in the canonical NBT. Those are player upgrades and no longer appear
+  naturally. The matcher accepts either smooth or upgraded cells.
+- Two command-only configured/placed features are generated: `chromaticraft:turbocharged_pylon` and
+  `chromaticraft:power_crystal_boosted_pylon`. Neither is attached to a biome modifier. The first
+  retains upgrade geometry and initializes enhancement; the second creates eight persistent,
+  mutually owned functional booster crystals.
+- Restored pylon client effects include power-crystal recharge streams, power-crystal socket hints,
+  structure-loss bursts, and the original threefold enhanced-seed angular freedom/speed.
+
+Verification: `:ChromatiCraft:compileJava`, server datagen, and the focused
+`pylon_structure_lifecycle`, `pylon_feature_variants`, and `pylon_worldgen_nbt_contract` GameTests
+pass. No unrelated GameTests were rerun.
+### Pylon client presentation, Glow Cloud travel, and Manipulator repeater dispatch — 2026-08-01
+
+The pylon BER and all active custom additive particles were using vanilla BlendFunction.ADDITIVE
+(ONE, ONE). V33a's renderer explicitly uses DragonAPI BlendMode.ADDITIVEDARK, whose source factors
+are ONE, ONE_MINUS_SRC_COLOR. The custom sprite and particle pipelines now reproduce those exact
+factors while retaining Minecraft 26.2's correct reversed-depth GREATER_THAN_OR_EQUAL test. This
+restores colour contrast against bright sky, cloud, and water backgrounds without making the effect
+visible through solid terrain. Because the same pipeline backs the restored pylon flare, seed,
+lightning, socket-hint, booster-stream, and invalidation families, the correction applies to the
+missing/washed-out pylon particles as well as the central BER flare.
+
+Pylon repair initially synchronizes hasMultiblock=true while its energy is still zero. The server
+previously never sent another block-entity update as it recharged, leaving the client renderer at the
+empty grey state even after the server crossed the conduction threshold. Charging now synchronizes
+that transition immediately and sends low-rate (20-tick) energy updates while filling, preserving the
+source energy-dependent colour ramp without one packet per tick. Pylon ambience keeps one client
+instance alive per assembled pylon, starts silently, and applies the source 27-block linear falloff
+explicitly each client tick; approaching an already loaded pylon therefore fades in immediately.
+
+The earlier Glow Cloud ledger statement that the entity intentionally bypasses super.aiStep() was
+incorrect and is superseded here. V33a computes its SphericalVector motion in onUpdate() and then
+calls vanilla super.onLivingUpdate(), which consumes that motion. The modern entity now mirrors that
+ordering: compute velocity first, then delegate once to 26.2 LivingEntity.aiStep() for travel and
+tracking. The focused glow_cloud_spherical_movement GameTest verifies real server displacement.
+
+The next beta-critical Elemental Manipulator dispatch is restored for the active crystal repeater
+family. Ordinary use refreshes the source 100-tick connection-display state, checks live network
+connectivity, plays CAST/ERROR feedback, and emits the original coloured and signal-depth diagnostic
+particles. A typed epeater_connections client payload replaces V33a's ordinal packet for the
+connection-overlay trigger. SneakPop remains earlier in dispatch exactly as V33a orders it: owners pop
+their droppable repeater; a denied non-owner pop falls through without changing its orientation. The
+focused manipulator_repeater_dispatch GameTest locks that precedence and ownership behavior.
+
+Verification for this slice: :ChromatiCraft:compileJava passes, and the only newly relevant focused
+GameTests pass independently: glow_cloud_spherical_movement and manipulator_repeater_dispatch
+(1/1 each). Rendering, audible fade, and the client connection overlay still require an in-client
+visual/audio check because the headless GameTest server cannot exercise GPU or OpenAL output.
+
+### Pylon/repeater visibility, Focus Crystal parity, and casting engravings — 2026-08-01
+
+The pylon's additive geometry is now submitted after terrain into Minecraft's item/entity transparency
+target. Its beams also originate at the block centre instead of the north-west-bottom corner. This is
+the 26.2 render-order correction needed to keep the V33a flare and beam colour legible against
+translucent terrain such as water while retaining ordinary depth occlusion. The original pylon
+particle families and emission cadence were audited at the same time; their shared apparent absence
+was the stale client `hasMultiblock`/energy state described above, not omitted spawn branches.
+
+`RenderCrystalRepeater` is now a complete submit-pipeline BER under its canonical name. It restores
+outgoing crystal beams, the sparkle core, rain/table-group/cluster flares, Manipulator dashed LOS and
+range displays, caster tuning icons, and turbocharged layered animation. The four V33a-only effect
+assets (`repeater_range`, tuning icons, turbo sections, and turbo radiate) were recovered from repository
+history rather than replaced. These effects use the same after-terrain additive ordering as pylons.
+
+The temporary `TileEntityFocusCrystalPort` fork has been removed and all registrations/references now
+use the canonical `TileEntityFocusCrystal`. The canonical class again carries all five V33a tiers,
+efficiency values and stack persistence, target-class/relative-position connections, target
+invalidation and recounting, break notification, aggregate acceleration helpers, turbo colour cycling,
+and max-tier focus flares. `FocusAcceleratable` now uses `BlockPos`, and the Casting Table consumes the
+shared focus calculation instead of maintaining a parallel approximation.
+
+`RenderCastingTable` is also a real 26.2 BER now. As in V33a, it does not invent a replacement table
+model: every 50 ticks it selects an eligible smooth/beam/column block from the table tier's actual
+NBT-backed casting structure, assigns a random element, and draws that element's engraved rune over
+all six faces using the source full-bright four-pass alpha overlay. The table once again exposes its
+tier-selected structure and a render bound large enough for the entire temple. Rune state remains
+renderer-owned and weakly keyed, matching the old client-only `WorldLocation` cache without leaking
+removed tables.
+
+The current game-start-to-stand beta path is mechanically reachable: crystal sight/progression,
+shard drops, table recipe, base casting, rune/temple unlock, nine input slots plus output, stand recipe,
+Manipulator trigger, and Focus Crystal acceleration are active. The guide book remains a separate
+research/handbook vertical and must be ported with its real data and GUI; adding a hollow substitute
+item would not make the beta path faithful.
+
+Verification: `:ChromatiCraft:compileJava` passes. The only newly relevant server test,
+`chromaticraft:casting_table_focus_acceleration`, ran alone and passed 1/1; no unrelated GameTests were
+rerun. Pylon/repeater/casting blend, animation, sound, and renderer reactivation still require an
+in-client visual/audio check because a headless GameTest server cannot exercise GPU or OpenAL output.
+The 26.2 `ItemTagsProvider` signature was also corrected while compiling this slice; it no longer
+carries the removed block-tag lookup constructor argument.

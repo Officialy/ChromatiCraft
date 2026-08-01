@@ -9,23 +9,26 @@
  ******************************************************************************/
 package reika.chromaticraft.auxiliary.interfaces;
 
-import reika.dragonapi.asm.apistripper.Strippable;
+/**
+ * A tile that exposes how far through a discrete operation it is, so the mouseover HUD shown while
+ * holding the Elemental Manipulator can draw a progress arc and a state icon over it.
+ *
+ * <p>V33a declared this as {@code extends IHasWork} to feed BuildCraft's work indicator. BuildCraft
+ * is not ported, so that supertype is dropped; nothing on the overlay path used it.
+ */
+public interface OperationInterval {
 
-import buildcraft.api.tiles.IHasWork;
+	/** 0 at the start of the operation, 1 when it completes. */
+	float getOperationFraction();
 
-@Strippable("buildcraft.api.tiles.IHasWork")
-public interface OperationInterval extends IHasWork {
+	OperationState getState();
 
-	public float getOperationFraction();
-
-	public OperationState getState();
-
-	public static enum OperationState {
-
-		INVALID(),
-		PENDING(),
-		RUNNING();
-
+	enum OperationState {
+		/** No operation is set up -- for the casting table, no recipe currently matches. */
+		INVALID,
+		/** Set up, but waiting on something external (the casting table: not enough aura yet). */
+		PENDING,
+		/** Actively working. */
+		RUNNING;
 	}
-
 }

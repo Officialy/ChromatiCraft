@@ -24,7 +24,13 @@ public final class ChromaFeatures {
     public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> CAVE_CRYSTAL =
             FEATURES.register("cave_crystal", CrystalFeature::new);
     public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> PYLON =
-            FEATURES.register("pylon", PylonFeature::new);
+            FEATURES.register("pylon", () -> new PylonFeature());
+    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> TURBOCHARGED_PYLON =
+            FEATURES.register("turbocharged_pylon",
+                    () -> new PylonFeature(PylonFeature.Variant.TURBOCHARGED));
+    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> POWER_CRYSTAL_BOOSTED_PYLON =
+            FEATURES.register("power_crystal_boosted_pylon",
+                    () -> new PylonFeature(PylonFeature.Variant.POWER_CRYSTAL_BOOSTED));
 
     public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> LUMINOUS_CLIFFS_TERRAIN =
             FEATURES.register("luminous_cliffs_terrain", LuminousCliffsTerrainFeature::new);

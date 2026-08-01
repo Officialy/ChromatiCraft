@@ -1,33 +1,22 @@
 package reika.chromaticraft.tileentity.recipe;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.Objects;
-import java.util.UUID;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.MenuProvider;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.item.crafting.Recipe;
-import net.minecraft.core.RegistryAccess;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
@@ -35,8 +24,11 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
-
+import net.minecraft.world.phys.AABB;
+import reika.chromaticraft.auxiliary.interfaces.FocusAcceleratable;
 import reika.chromaticraft.auxiliary.interfaces.NBTTile;
+import reika.chromaticraft.auxiliary.interfaces.OperationInterval;
+import reika.chromaticraft.auxiliary.interfaces.OperationInterval.OperationState;
 import reika.chromaticraft.auxiliary.interfaces.OwnedTile;
 import reika.chromaticraft.auxiliary.recipemanagers.CastingRecipeInput;
 import reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe;
@@ -45,21 +37,20 @@ import reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe.GridIngre
 import reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe.StandIngredient;
 import reika.chromaticraft.base.tileentity.InventoriedCrystalReceiver;
 import reika.chromaticraft.block.BlockCrystalRune;
+import reika.chromaticraft.container.MenuCastingTable;
 import reika.chromaticraft.magic.ElementTagCompound;
 import reika.chromaticraft.magic.castingtuning.CastingTuningRegistry;
 import reika.chromaticraft.magic.progression.ProgressStage;
-import reika.chromaticraft.registry.ChromaBlockEntities;
-import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaRecipeTypes;
-import reika.chromaticraft.registry.ChromaStructures;
-import reika.chromaticraft.registry.ChromaTiles;
-import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.container.MenuCastingTable;
-
-import reika.chromaticraft.tileentity.auxiliary.TileEntityFocusCrystalPort;
+import reika.chromaticraft.registry.*;
+import reika.chromaticraft.tileentity.auxiliary.TileEntityFocusCrystal;
 import reika.chromaticraft.tileentity.networking.TileEntityCrystalRepeater;
+import reika.dragonapi.instantiable.data.blockstruct.BlockArray;
+
+import java.util.*;
+
 /** Complete server-authoritative controller for all four V33a casting tiers. */
-public final class TileEntityCastingTable extends InventoriedCrystalReceiver implements OwnedTile, NBTTile, MenuProvider {
+public final class TileEntityCastingTable extends InventoriedCrystalReceiver
+        implements OwnedTile, NBTTile, MenuProvider, OperationInterval, FocusAcceleratable {
 
     public enum TableTier {
         CRAFTING(0), TEMPLE(250), MULTIBLOCK(2000), PYLON(15000);
@@ -87,6 +78,8 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver imp
     private ResourceKey<Recipe<?>> activeRecipeKey;
     private UUID craftingPlayer;
     private int craftingTick;
+    /** Total duration of the active batch; persisted so HUD progress survives reloads. */
+    private int craftingDuration;
     private int craftingAmount;
     private int tableXP;
     private boolean hasTemple;
@@ -154,6 +147,7 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver imp
         if (activeRecipe.value().tier().ordinal() >= CastingTableRecipe.Tier.MULTIBLOCK.ordinal() && duration > 20)
             duration = Math.max(20, (int)(duration / this.getAccelerationFactor()));
         craftingTick = Math.max(1, duration);
+        craftingDuration = craftingTick;
         craftingPlayer = player.getUUID();
         activeRecipeKey = activeRecipe.id();
         this.linkAndLockStands(true);
@@ -314,26 +308,24 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver imp
     public boolean isTuned() { return isTuned; }
 
     /** V33a focus acceleration is additive around the eight dedicated casting-table sockets. */
+    @Override
     public float getAccelerationFactor() {
-        float factor = 1;
-        if (this.getLevel() == null) return factor;
-        for (BlockPos offset : CASTING_FOCUS_LOCATIONS) {
-            BlockEntity tile = this.getLevel().getBlockEntity(this.getBlockPos().offset(offset));
-            if (tile instanceof TileEntityFocusCrystalPort focus) {
-                factor += focus.getTier().efficiencyFactor();
-                if (!this.getLevel().isClientSide()) focus.connectTo(this.getBlockPos());
-            }
-        }
-        return factor;
+        return TileEntityFocusCrystal.getSummedFocusFactorDirect(this, CASTING_FOCUS_LOCATIONS);
     }
 
+    @Override
     public float getMaximumAcceleratability() {
-        return TileEntityFocusCrystalPort.CrystalTier.TURBOCHARGED.efficiencyFactor() * CASTING_FOCUS_LOCATIONS.size();
+        return TileEntityFocusCrystal.CrystalTier.TURBOCHARGED.efficiencyFactor() * CASTING_FOCUS_LOCATIONS.size();
     }
 
+    @Override
     public List<BlockPos> getRelativeFocusCrystalLocations() { return CASTING_FOCUS_LOCATIONS; }
 
+    @Override
     public void recountFocusCrystals() { this.getAccelerationFactor(); }
+
+    @Override
+    public float getProgressToNextStep() { return 0; }
 
     private int calculateCraftableAmount(CastingTableRecipe recipe) {
         int amount = Integer.MAX_VALUE;
@@ -464,6 +456,7 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver imp
 
     private void finishCraft() {
         craftingTick = 0;
+        craftingDuration = 0;
         craftingAmount = 0;
         craftingPlayer = null;
         activeRecipe = null;
@@ -483,8 +476,44 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver imp
     public boolean isCrafting() { return craftingTick > 0; }
     public int getCraftingTick() { return craftingTick; }
     public int getCraftingAmount() { return craftingAmount; }
+
+    @Override
+    public float getOperationFraction() {
+        if (!this.isCrafting() || craftingDuration <= 0)
+            return 0;
+        return net.minecraft.util.Mth.clamp(1F - craftingTick / (float)craftingDuration, 0F, 1F);
+    }
+
+    @Override
+    public OperationState getState() {
+        if (!this.hasDisplayRecipe())
+            return OperationState.INVALID;
+        ElementTagCompound required = this.getDisplayAura();
+        for (CrystalElement element : CrystalElement.elements) {
+            if (this.getEnergy(element) < required.getValue(element))
+                return OperationState.PENDING;
+        }
+        return OperationState.RUNNING;
+    }
     public int getTableXP() { return tableXP; }
     public TableTier getTier() { return TableTier.forXP(tableXP); }
+
+    /** V33a renderer input: the active tier's complete casting structure, anchored below the table. */
+    public BlockArray getBlocks() {
+        if (this.getLevel() == null) return null;
+        BlockPos anchor = this.getBlockPos().below();
+        return switch (this.getTier()) {
+            case CRAFTING -> null;
+            case TEMPLE -> ChromaStructures.CASTING1.getArray(this.getLevel(), anchor.getX(), anchor.getY(), anchor.getZ());
+            case MULTIBLOCK -> ChromaStructures.CASTING2.getArray(this.getLevel(), anchor.getX(), anchor.getY(), anchor.getZ());
+            case PYLON -> ChromaStructures.CASTING3.getArray(this.getLevel(), anchor.getX(), anchor.getY(), anchor.getZ());
+        };
+    }
+
+    @Override
+    public AABB getRenderBoundingBox() {
+        return new AABB(this.getBlockPos()).inflate(12, 6, 12);
+    }
     public boolean isStructureValid(CastingTableRecipe.Tier tier) { return this.canUseTier(tier); }
     public RecipeHolder<CastingTableRecipe> getActiveRecipe() { return activeRecipe; }
     /** Server-authoritative equivalent of V33a CastingRecipe.canRunRecipe for the GUI overlay. */
@@ -526,6 +555,7 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver imp
         super.saveAdditional(output);
         output.putInt("tableXP", tableXP);
         output.putInt("craftingTick", craftingTick);
+        output.putInt("craftingDuration", craftingDuration);
         output.putInt("craftingAmount", craftingAmount);
         if (craftingPlayer != null) output.putString("craftingPlayer", craftingPlayer.toString());
         if (activeRecipeKey != null) output.store("activeRecipe", Recipe.KEY_CODEC, activeRecipeKey);
@@ -544,6 +574,7 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver imp
         super.loadAdditional(input);
         tableXP = input.getIntOr("tableXP", 0);
         craftingTick = input.getIntOr("craftingTick", 0);
+        craftingDuration = input.getIntOr("craftingDuration", craftingTick);
         craftingAmount = input.getIntOr("craftingAmount", 0);
         String player = input.getStringOr("craftingPlayer", "");
         craftingPlayer = player.isEmpty() ? null : UUID.fromString(player);
@@ -562,7 +593,7 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver imp
 
     @Override protected void writeSyncTag(CompoundTag tag) {
         super.writeSyncTag(tag);
-        tag.putInt("castingTick", craftingTick); tag.putInt("castingAmount", craftingAmount); tag.putInt("tableXP", tableXP);
+        tag.putInt("castingTick", craftingTick); tag.putInt("castingDuration", craftingDuration); tag.putInt("castingAmount", craftingAmount); tag.putInt("tableXP", tableXP);
         ItemStack preview = this.getDisplayOutput();
         if (!preview.isEmpty()) {
             RegistryAccess access = level == null ? RegistryAccess.EMPTY : level.registryAccess();
@@ -576,7 +607,7 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver imp
     }
     @Override protected void readSyncTag(CompoundTag tag) {
         super.readSyncTag(tag);
-        craftingTick = tag.getIntOr("castingTick", 0); craftingAmount = tag.getIntOr("castingAmount", 0); tableXP = tag.getIntOr("tableXP", 0);
+        craftingTick = tag.getIntOr("castingTick", 0); craftingDuration = tag.getIntOr("castingDuration", craftingTick); craftingAmount = tag.getIntOr("castingAmount", 0); tableXP = tag.getIntOr("tableXP", 0);
         RegistryAccess access = level == null ? RegistryAccess.EMPTY : level.registryAccess();
         net.minecraft.nbt.Tag outputTag = tag.get("recipeOutput");
         clientRecipeOutput = outputTag == null ? ItemStack.EMPTY

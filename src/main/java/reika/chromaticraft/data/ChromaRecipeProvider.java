@@ -19,6 +19,7 @@ import net.minecraft.world.level.block.Blocks;
 
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.registry.ChromaBlocks;
+import reika.chromaticraft.registry.ChromaItemTags;
 import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.CrystalElement;
 
@@ -85,14 +86,12 @@ public final class ChromaRecipeProvider extends RecipeProvider.Runner {
 			//   ChromaResearch, the gui/book family and the XML help-data pipeline first.
 		}
 
-		/** V33a's wildcard-metadata shard stack: any colour, plain or boosted. */
-		private static Ingredient anyShard() {
-			List<Item> shards = new ArrayList<>();
-			for (CrystalElement element : CrystalElement.elements) {
-				shards.add(ChromaItems.SHARDS.get(element).get());
-				shards.add(ChromaItems.BOOSTED_SHARDS.get(element).get());
-			}
-			return Ingredient.of(shards.toArray(new Item[0]));
+		/**
+		 * V33a's wildcard-metadata shard stack: any colour, plain or boosted. The tag already spans
+		 * both forms in all sixteen colours, so this no longer spells out the 32 items.
+		 */
+		private Ingredient anyShard() {
+			return tag(ChromaItemTags.CRYSTAL_SHARDS);
 		}
 
 		private static ResourceKey<Recipe<?>> key(String name) {

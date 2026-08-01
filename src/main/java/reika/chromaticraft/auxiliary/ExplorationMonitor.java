@@ -82,7 +82,11 @@ public final class ExplorationMonitor {
 		}
 	}
 
-	private static void scanLookedAtBlock(Player ep, Level world, BlockPos pos) {
+	/**
+	 * The looked-at-block half of the scan, exposed so tests can drive it without having to fake a
+	 * player's view vector. Everything the discovery mechanism grants on sight goes through here.
+	 */
+	public static void scanLookedAtBlock(Player ep, Level world, BlockPos pos) {
 		BlockEntity te = world.getBlockEntity(pos);
 		if (te instanceof TileEntityCrystalPylon pylon && pylon.hasStructure()
 				&& pylon.getEnergy(pylon.getColor()) >= pylon.getMaxStorage(pylon.getColor()) / 10) {

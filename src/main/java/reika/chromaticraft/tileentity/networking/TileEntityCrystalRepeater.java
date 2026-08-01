@@ -69,6 +69,7 @@ public class TileEntityCrystalRepeater extends CrystalTransmitterBase
 	private int surgeTicks = 0;
 	private CrystalElement surgeColor;
 	protected int connectionRenderTick = 0;
+	private int rangeSphereAlpha = -256;
 	private boolean redstoneCache;
 	private UUID casterID;
 
@@ -272,6 +273,28 @@ public class TileEntityCrystalRepeater extends CrystalTransmitterBase
 	public boolean checkConnectivity() {
 		CrystalElement c = this.getActiveColor();
 		return c != null && CrystalNetworker.instance.checkConnectivity(c, this);
+	}
+
+	/** V33a's Manipulator-triggered 100-tick connection overlay state. */
+	public final void refreshConnectionRender() {
+		if (this.getLevel() != null && this.getLevel().isClientSide())
+			connectionRenderTick = 100;
+		else if (this.getLevel() instanceof net.minecraft.server.level.ServerLevel level)
+			reika.chromaticraft.network.ChromaNetwork.sendRepeaterConnections(level, this.getBlockPos());
+	}
+
+	public int updateAndGetConnectionRenderAlpha() {
+		return connectionRenderTick > 0 ? (connectionRenderTick > 10 ? 255 : 25 * connectionRenderTick) : 0;
+	}
+
+	public int getRangeAlpha() {
+		if (rangeSphereAlpha > -256)
+			rangeSphereAlpha--;
+		return Math.min(255, Math.max(0, rangeSphereAlpha));
+	}
+
+	public void updateRangeAlpha() {
+		rangeSphereAlpha = rangeSphereAlpha >= -20 ? 1024 : 0;
 	}
 
 	public CrystalElement getActiveColor() {

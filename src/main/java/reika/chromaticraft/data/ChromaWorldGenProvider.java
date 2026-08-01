@@ -42,6 +42,8 @@ public final class ChromaWorldGenProvider {
 
     private static final Identifier CAVE_CRYSTAL = id("cave_crystal");
     private static final Identifier PYLON = id("pylon");
+    private static final Identifier TURBOCHARGED_PYLON = id("turbocharged_pylon");
+    private static final Identifier POWER_CRYSTAL_BOOSTED_PYLON = id("power_crystal_boosted_pylon");
     private static final Identifier LUMINOUS_CLIFFS_TERRAIN = id("luminous_cliffs_terrain");
     private static final Identifier LUMA_PATCH = id("luma_patch");
     private static final Identifier LUMINOUS_ISLAND = id("luminous_island");
@@ -72,6 +74,8 @@ public final class ChromaWorldGenProvider {
             HolderGetter<Feature<?>> features = bootstrap.lookup(Registries.FEATURE);
             registerConfigured(bootstrap, features, CAVE_CRYSTAL);
             registerConfigured(bootstrap, features, PYLON);
+            registerConfigured(bootstrap, features, TURBOCHARGED_PYLON);
+            registerConfigured(bootstrap, features, POWER_CRYSTAL_BOOSTED_PYLON);
             registerConfigured(bootstrap, features, LUMINOUS_CLIFFS_TERRAIN);
             registerConfigured(bootstrap, features, LUMA_PATCH);
             registerConfigured(bootstrap, features, LUMINOUS_ISLAND);
@@ -90,6 +94,8 @@ public final class ChromaWorldGenProvider {
             HolderGetter<ConfiguredFeature<?, ?>> configured = bootstrap.lookup(Registries.CONFIGURED_FEATURE);
             registerPlaced(bootstrap, configured, CAVE_CRYSTAL);
             registerPlaced(bootstrap, configured, PYLON);
+            registerPlaced(bootstrap, configured, TURBOCHARGED_PYLON);
+            registerPlaced(bootstrap, configured, POWER_CRYSTAL_BOOSTED_PYLON);
             registerPlaced(bootstrap, configured, LUMINOUS_CLIFFS_TERRAIN, List.of());
             registerPlaced(bootstrap, configured, LUMA_PATCH,
                     List.of(CountPlacement.of(1)));

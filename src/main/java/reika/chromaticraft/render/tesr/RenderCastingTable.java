@@ -1,178 +1,172 @@
-/*******************************************************************************
- * @author Reika Kalseki
- * 
- * Copyright 2017
- * 
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
- ******************************************************************************/
 package reika.chromaticraft.render.tesr;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.WeakHashMap;
 
-import org.lwjgl.opengl.GL11;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 
-import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.IIcon;
-import net.minecraftforge.common.util.ForgeDirection;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
+import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
+import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
+import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.core.BlockPos;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.Vec3;
 
-import reika.chromaticraft.base.ChromaRenderBase;
-import reika.chromaticraft.registry.ChromaBlocks;
+import org.jspecify.annotations.Nullable;
+
+import reika.chromaticraft.ChromatiCraft;
+import reika.chromaticraft.block.BlockCrystallineStone;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.tileentity.recipe.TileEntityCastingTable;
 import reika.dragonapi.instantiable.data.blockstruct.BlockArray;
-import reika.dragonapi.instantiable.data.immutable.Coordinate;
-import reika.dragonapi.instantiable.data.immutable.WorldLocation;
-import reika.dragonapi.interfaces.tileentity.RenderFetcher;
-import reika.dragonapi.libraries.io.ReikaTextureHelper;
-import reika.dragonapi.libraries.java.reikaglhelper.BlendMode;
-import reika.dragonapi.libraries.rendering.ReikaRenderHelper;
-import reika.dragonapi.libraries.java.ReikaJavaLibrary;
 
-public class RenderCastingTable extends ChromaRenderBase {
+/** V33a's full-bright, transient elemental engravings across an upgraded casting structure. */
+public final class RenderCastingTable implements BlockEntityRenderer<TileEntityCastingTable, RenderCastingTable.State> {
 
-	private HashMap<WorldLocation, HashMap<Coordinate, Location>> runes = new HashMap();
-	private HashMap<WorldLocation, Integer> ptick = new HashMap();
-	private HashMap<WorldLocation, Integer> lastptick = new HashMap();
+    private static final int SPAWN_INTERVAL = 50;
+    private static final int MAX_AGE = 2000;
+    private static final int ORIGINAL_ALPHA = 40;
+    private static final int FULL_BRIGHT = 0xF000F0;
+    private static final double FACE_OFFSET = 0.001;
 
-	private static class Location {
+    /** Renderer-owned like V33a's WorldLocation map; weak keys prevent removed tables leaking forever. */
+    private final Map<TileEntityCastingTable, Animation> animations = new WeakHashMap<>();
 
-		private final CrystalElement color;
-		private int age = 0;
+    public RenderCastingTable(BlockEntityRendererProvider.Context context) {}
 
-		private Location(CrystalElement e) {
-			color = e;
-		}
+    @Override
+    public State createRenderState() {
+        return new State();
+    }
 
-	}
+    @Override
+    public void extractRenderState(TileEntityCastingTable table, State state, float partialTick,
+            Vec3 cameraPosition, ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress) {
+        BlockEntityRenderer.super.extractRenderState(table, state, partialTick, cameraPosition, breakProgress);
+        state.runes.clear();
+        if (table.getLevel() == null) return;
 
-	@Override
-	public String getImageFileName(RenderFetcher te) {
-		return "";
-	}
+        BlockArray structure = table.getBlocks();
+        if (structure == null) {
+            animations.remove(table);
+            return;
+        }
 
-	@Override
-	public void renderTileEntityAt(TileEntity tile, double par2, double par4, double par6, float par8) {
-		TileEntityCastingTable te = (TileEntityCastingTable)tile;
-		GL11.glPushMatrix();
-		this.renderRunes(te, par2, par4, par6, par8);
-		GL11.glPopMatrix();
-	}
+        Animation animation = animations.computeIfAbsent(table, unused -> new Animation());
+        animation.advance(table, structure);
+        BlockPos origin = table.getBlockPos();
+        for (Map.Entry<BlockPos, Rune> entry : animation.runes.entrySet()) {
+            BlockPos relative = entry.getKey().subtract(origin);
+            state.runes.add(new RenderedRune(relative.getX(), relative.getY(), relative.getZ(), entry.getValue().element));
+        }
+    }
 
-	private void renderRunes(TileEntityCastingTable te, double par2, double par4, double par6, float par8) {
-		BlockArray blocks = te.getBlocks();
-		if (blocks == null)
-			return;
-		WorldLocation loc = new WorldLocation(te);
-		ptick.put(loc, te.getTicksExisted());
-		int d = 50;
-		int tick = te.getTicksExisted()/d;
-		HashMap<Coordinate, Location> colors = runes.get(loc);
-		if (colors == null) {
-			colors = new HashMap();
-			runes.put(loc, colors);
-		}
-		Integer lastp = lastptick.get(loc);
-		int last = lastp != null ? lastp.intValue() : -1;
-		if (te.getTicksExisted() != last && te.getTicksExisted()%d == 0) {
-			Coordinate dat = blocks.getRandomBlock();
-			Coordinate c = new Coordinate(dat.xCoord, dat.yCoord, dat.zCoord);
-			while (c.getBlock(te.worldObj) != ChromaBlocks.PYLONSTRUCT.getBlockInstance() || c.getBlockMetadata(te.worldObj) > 2) {
-				dat = blocks.getRandomBlock();
-				c = new Coordinate(dat.xCoord, dat.yCoord, dat.zCoord);
-			}
-			colors.put(c, new Location(CrystalElement.randomElement()));
-			lastptick.put(loc, te.getTicksExisted());
-		}
-		if (!colors.isEmpty()) {
-			GL11.glPushMatrix();
-			GL11.glTranslated(par2, par4, par6);
-			Tessellator v5 = Tessellator.instance;
-			GL11.glEnable(GL11.GL_BLEND);
-			BlendMode.DEFAULT.apply();
-			ReikaTextureHelper.bindTerrainTexture();
-			v5.startDrawingQuads();
-			v5.setBrightness(240);
-			GL11.glAlphaFunc(GL11.GL_GREATER, 1/255F);
-			v5.setColorRGBA_I(0xffffff, 40);
-			float sp = Math.min(0.005F, 0.5F/ReikaRenderHelper.getFPS());
-			ArrayList<Coordinate> remove = new ArrayList();
-			for (Coordinate key : colors.keySet()) {
-				Location l = colors.get(key);
-				CrystalElement e = l.color;
-				//ReikaJavaLibrary.pConsole(gs+" @ "+(te.getTicksExisted()%d));
-				int x = key.xCoord;
-				int y = key.yCoord;
-				int z = key.zCoord;
-				ArrayList<ForgeDirection> li = ReikaJavaLibrary.makeListFromArray(ForgeDirection.VALID_DIRECTIONS);
-				//ReikaJavaLibrary.pConsole(li+" @ "+Arrays.toString(xyz));
+    @Override
+    public void submit(State state, PoseStack poseStack, SubmitNodeCollector collector, CameraRenderState camera) {
+        for (RenderedRune rune : state.runes) {
+            Identifier texture = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
+                    "textures/block/runes/engraved/tile" + rune.element.ordinal() + "_0.png");
+            PoseStack runePose = copy(poseStack);
+            runePose.translate(rune.x, rune.y, rune.z);
+            collector.submitCustomGeometry(runePose, RenderTypes.entityTranslucentEmissive(texture),
+                    (pose, vertices) -> emitRuneCube(pose, vertices));
+        }
+    }
 
-				IIcon ico = e.getEngravingRune();
+    private static void emitRuneCube(PoseStack.Pose pose, VertexConsumer vertices) {
+        int color = (ORIGINAL_ALPHA << 24) | 0xFFFFFF;
+        // V33a intentionally submitted the same six faces four times, strengthening the faint overlay.
+        for (int pass = 0; pass < 4; pass++) {
+            face(vertices, pose, 0, 0, 1 + FACE_OFFSET, 1, 0, 1 + FACE_OFFSET, 1, 1, 1 + FACE_OFFSET, 0, 1, 1 + FACE_OFFSET, 0, 0, 1, color);
+            face(vertices, pose, 0, 1, -FACE_OFFSET, 1, 1, -FACE_OFFSET, 1, 0, -FACE_OFFSET, 0, 0, -FACE_OFFSET, 0, 0, -1, color);
+            face(vertices, pose, -FACE_OFFSET, 0, 0, -FACE_OFFSET, 0, 1, -FACE_OFFSET, 1, 1, -FACE_OFFSET, 1, 0, -1, 0, 0, color);
+            face(vertices, pose, 1 + FACE_OFFSET, 1, 0, 1 + FACE_OFFSET, 1, 1, 1 + FACE_OFFSET, 0, 1, 1 + FACE_OFFSET, 0, 0, 1, 0, 0, color);
+            face(vertices, pose, 0, 1 + FACE_OFFSET, 1, 1, 1 + FACE_OFFSET, 1, 1, 1 + FACE_OFFSET, 0, 0, 1 + FACE_OFFSET, 0, 0, 1, 0, color);
+            face(vertices, pose, 0, -FACE_OFFSET, 0, 1, -FACE_OFFSET, 0, 1, -FACE_OFFSET, 1, 0, -FACE_OFFSET, 1, 0, -1, 0, color);
+        }
+    }
 
-				float u = ico.getMinU();
-				float du = ico.getMaxU();
-				float v = ico.getMinV();
-				float dv = ico.getMaxV();
-				double o = 0.001;
-				int dx = x-te.xCoord;
-				int dy = y-te.yCoord;
-				int dz = z-te.zCoord;
+    private static void face(VertexConsumer vertices, PoseStack.Pose pose,
+            double x0, double y0, double z0, double x1, double y1, double z1,
+            double x2, double y2, double z2, double x3, double y3, double z3,
+            float nx, float ny, float nz, int color) {
+        vertex(vertices, pose, x0, y0, z0, 0, 1, nx, ny, nz, color);
+        vertex(vertices, pose, x1, y1, z1, 1, 1, nx, ny, nz, color);
+        vertex(vertices, pose, x2, y2, z2, 1, 0, nx, ny, nz, color);
+        vertex(vertices, pose, x3, y3, z3, 0, 0, nx, ny, nz, color);
+    }
 
-				for (int i = 0; i < 4; i++) {
-					if (li.contains(ForgeDirection.SOUTH)) {
-						v5.addVertexWithUV(dx-0-o, dy-0-o, dz+1+o, u, dv);
-						v5.addVertexWithUV(dx+1+o, dy-0-o, dz+1+o, du, dv);
-						v5.addVertexWithUV(dx+1+o, dy+1+o, dz+1+o, du, v);
-						v5.addVertexWithUV(dx-0-o, dy+1+o, dz+1+o, u, v);
-					}
-					if (li.contains(ForgeDirection.NORTH)) {
-						v5.addVertexWithUV(dx-0-o, dy+1+o, dz-0-o, du, v);
-						v5.addVertexWithUV(dx+1+o, dy+1+o, dz-0-o, u, v);
-						v5.addVertexWithUV(dx+1+o, dy-0-o, dz-0-o, u, dv);
-						v5.addVertexWithUV(dx-0-o, dy-0-o, dz-0-o, du, dv);
-					}
-					if (li.contains(ForgeDirection.WEST)) {
-						v5.addVertexWithUV(dx-0-o, dy-0-o, dz-0-o, u, dv);
-						v5.addVertexWithUV(dx-0-o, dy-0-o, dz+1+o, du, dv);
-						v5.addVertexWithUV(dx-0-o, dy+1+o, dz+1+o, du, v);
-						v5.addVertexWithUV(dx-0-o, dy+1+o, dz-0-o, u, v);
-					}
-					if (li.contains(ForgeDirection.EAST)) {
-						v5.addVertexWithUV(dx+1+o, dy+1+o, dz-0-o, u, v);
-						v5.addVertexWithUV(dx+1+o, dy+1+o, dz+1+o, du, v);
-						v5.addVertexWithUV(dx+1+o, dy-0-o, dz+1+o, du, dv);
-						v5.addVertexWithUV(dx+1+o, dy-0-o, dz-0-o, u, dv);
-					}
-					if (li.contains(ForgeDirection.UP)) {
-						v5.addVertexWithUV(dx-0-o, dy+1+o, dz+1+o, u, dv);
-						v5.addVertexWithUV(dx+1+o, dy+1+o, dz+1+o, du, dv);
-						v5.addVertexWithUV(dx+1+o, dy+1+o, dz-0-o, du, v);
-						v5.addVertexWithUV(dx-0-o, dy+1+o, dz-0-o, u, v);
-					}
-					if (li.contains(ForgeDirection.DOWN)) {
-						v5.addVertexWithUV(dx-0-o, dy-0-o, dz-0-o, u, v);
-						v5.addVertexWithUV(dx+1+o, dy-0-o, dz-0-o, du, v);
-						v5.addVertexWithUV(dx+1+o, dy-0-o, dz+1+o, du, dv);
-						v5.addVertexWithUV(dx-0-o, dy-0-o, dz+1+o, u, dv);
-					}
-				}
+    private static void vertex(VertexConsumer vertices, PoseStack.Pose pose, double x, double y, double z,
+            float u, float v, float nx, float ny, float nz, int color) {
+        vertices.addVertex(pose, (float)x, (float)y, (float)z).setColor(color).setUv(u, v)
+                .setOverlay(OverlayTexture.NO_OVERLAY).setLight(FULL_BRIGHT).setNormal(pose, nx, ny, nz);
+    }
 
-				l.age++;
-				if (l.age > 2000)
-					remove.add(key);
-			}
-			for (Coordinate key : remove)
-				colors.remove(key);
+    private static PoseStack copy(PoseStack source) {
+        PoseStack copy = new PoseStack();
+        copy.last().set(source.last());
+        return copy;
+    }
 
-			v5.draw();
-			GL11.glDisable(GL11.GL_BLEND);
-			GL11.glAlphaFunc(GL11.GL_GREATER, 0.1F);
-			//GL11.glEnable(GL11.GL_LIGHTING);
-			GL11.glPopMatrix();
-		}
-	}
+    @Override
+    public int getViewDistance() {
+        return 128;
+    }
 
+    @Override
+    public boolean shouldRenderOffScreen() {
+        return true;
+    }
+
+    private static final class Animation {
+        private final Map<BlockPos, Rune> runes = new LinkedHashMap<>();
+        private long lastSpawnTick = Long.MIN_VALUE;
+
+        private void advance(TileEntityCastingTable table, BlockArray structure) {
+            Iterator<Rune> iterator = runes.values().iterator();
+            while (iterator.hasNext()) {
+                Rune rune = iterator.next();
+                if (++rune.age > MAX_AGE) iterator.remove();
+            }
+
+            long tick = table.getLevel().getGameTime();
+            if (tick == lastSpawnTick || tick % SPAWN_INTERVAL != 0) return;
+            lastSpawnTick = tick;
+
+            List<BlockPos> candidates = new ArrayList<>();
+            for (BlockPos pos : structure.keySet()) {
+                BlockState blockState = table.getLevel().getBlockState(pos);
+                if (blockState.getBlock() instanceof BlockCrystallineStone stone
+                        && stone.getStoneType().ordinal() <= BlockCrystallineStone.StoneTypes.COLUMN.ordinal())
+                    candidates.add(pos.immutable());
+            }
+            if (!candidates.isEmpty()) {
+                BlockPos selected = candidates.get(table.getLevel().getRandom().nextInt(candidates.size()));
+                runes.put(selected, new Rune(CrystalElement.randomElement()));
+            }
+        }
+    }
+
+    private static final class Rune {
+        private final CrystalElement element;
+        private int age;
+        private Rune(CrystalElement element) { this.element = element; }
+    }
+
+    private record RenderedRune(int x, int y, int z, CrystalElement element) {}
+
+    public static final class State extends BlockEntityRenderState {
+        private final List<RenderedRune> runes = new ArrayList<>();
+    }
 }

@@ -224,12 +224,18 @@ public class TileEntityCrystalPylon extends CrystalTransmitterBase implements Na
 			this.rejectEnclosure((ServerLevel)world);
 		if (this.isUnstable())
 			this.doDestabilizedTick((ServerLevel)world);
-		if (this.getTicksExisted() > 0 && this.getTicksExisted() % 10 == 0 && structure != null) {
-			if (!structure.matchInWorld()) {
+		if (this.getTicksExisted() > 0 && this.getTicksExisted() % 10 == 0) {
+			if (!hasMultiblock) {
+				// Invalidation clears the cached array; rebuild it so a repaired pylon can recover.
+				this.refreshStructure();
+			}
+			else if (structure != null && !structure.matchInWorld()) {
 				this.invalidateMultiblock();
 				return;
 			}
-			this.refreshBroadcastUpgrade();
+			else {
+				this.refreshBroadcastUpgrade();
+			}
 		}
 		if (hasMultiblock) {
 			this.tickHostileAttacks((ServerLevel)world);
@@ -257,6 +263,11 @@ public class TileEntityCrystalPylon extends CrystalTransmitterBase implements Na
     private void animatePylon(Level world, BlockPos pos) {
         ChromaParticle.spawnPylon(world, pos, color, this.isEnhanced(), this.isUnstable(),
                 this.getTicksExisted(), this.getAttackDensity(), rand);
+        ChromaParticle.spawnPowerCrystalPlacementHints(world, pos, color,
+                POWER_CRYSTAL_POSITIONS, rand);
+        if (energy < this.getCapacity())
+            ChromaParticle.spawnPylonBoosterRecharge(world, pos, color,
+                    this.getBoosterCrystals(true), this.getTicksExisted());
     }
 
     private float getAttackDensity() {
@@ -290,14 +301,24 @@ public class TileEntityCrystalPylon extends CrystalTransmitterBase implements Na
 			energyStep--;
 		energy = Math.min(energy, max);
 
+		boolean conducting = this.canConduct();
 		if (energy != previousEnergy)
 			this.setChanged();
 		if (energy == this.getCapacity() && previousEnergy != this.getCapacity()) {
 			NeoForge.EVENT_BUS.post(new PylonFullyChargedEvent(this));
 			ChunkManager.instance.unloadChunks(this);
 		}
-		if (this.canConduct() && !previouslyConducting)
+		if (conducting && !previouslyConducting) {
 			NeoForge.EVENT_BUS.post(new PylonRechargedEvent(this));
+			// Repair validation initially syncs an empty pylon. Resend the threshold crossing so the
+			// client renderer, ambience, and network-facing state do not remain visually discharged.
+			this.syncAllData(true);
+		}
+		else if (energy != previousEnergy && (this.getTicksExisted() % 20 == 0 || energy == max)) {
+			// The flare colour is energy-dependent; a low-rate update preserves the original charge
+			// transition without sending one block-entity packet per tick.
+			this.syncAllData(false);
+		}
 	}
 
 	public void speedRegenShortly(int power) {
@@ -732,7 +753,7 @@ public class TileEntityCrystalPylon extends CrystalTransmitterBase implements Na
 		structure = null;
 		hasMultiblock = intact;
 		broadcast = false;
-		energy = 0;
+		energy = intact ? this.getCapacity() : 0;
 		this.setChanged();
 	}
 
@@ -861,7 +882,8 @@ public class TileEntityCrystalPylon extends CrystalTransmitterBase implements Na
 			this.validateMultiblock(candidate);
 			return true;
 		}
-		this.invalidateMultiblock();
+		if (hasMultiblock)
+			this.invalidateMultiblock();
 		return false;
 	}
 
@@ -935,7 +957,7 @@ public class TileEntityCrystalPylon extends CrystalTransmitterBase implements Na
 				continue;
 			BlockEntity blockEntity = this.getLevel().getBlockEntity(at);
 			if (blockEntity instanceof TileEntityChromaCrystal crystal) {
-				java.util.UUID crystalOwner = crystal.getPlacerID();
+				java.util.UUID crystalOwner = crystal.getBoostOwnerID();
 				if (!matchOwner || crystalOwner != null && (owner == null || owner.equals(crystalOwner))) {
 					if (owner == null)
 						owner = crystalOwner;
@@ -1009,6 +1031,7 @@ public class TileEntityCrystalPylon extends CrystalTransmitterBase implements Na
 
 	@Override
 	protected void readSyncTag(CompoundTag NBT) {
+		boolean wasStructured = hasMultiblock;
 		super.readSyncTag(NBT);
 		int colorIndex = Math.max(0, Math.min(CrystalElement.elements.length - 1, NBT.getIntOr("color", 0)));
 		color = CrystalElement.elements[colorIndex];
@@ -1019,6 +1042,8 @@ public class TileEntityCrystalPylon extends CrystalTransmitterBase implements Na
 		destabilized = NBT.getBooleanOr("unstable", false);
 		minTicksBetweenAttack = NBT.getIntOr("attackDelay", MAX_ATTACK_DELAY);
 		energy = Math.min(energy, enhanced ? MAX_ENERGY_ENHANCED : MAX_ENERGY);
+		if (wasStructured && !hasMultiblock && this.getLevel() != null && this.getLevel().isClientSide())
+			ChromaParticle.spawnPylonInvalidation(this.getLevel(), this.getBlockPos(), color, rand);
 	}
 
 	@Override

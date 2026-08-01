@@ -48,6 +48,14 @@ public class PylonStructure extends ColoredStructureBase {
 						? ChromaBlocks.rune(this.getCurrentColor()).get().defaultBlockState()
 						: state);
 
+		// The NBT records the two player upgrade families so handbook/command variants can place
+		// them, but an ordinary pylon uses smooth foundation cells there. Preserve both alternatives.
+		for (BlockPos pos : List.copyOf(array.keySet())) {
+			BlockKey key = array.getBlockKeyAt(pos.getX(), pos.getY(), pos.getZ());
+			if (key != null && isPlayerUpgrade(key.blockID))
+				array.addBlock(pos.getX(), pos.getY(), pos.getZ(),
+                        ChromaBlocks.crystallineStone(StoneTypes.SMOOTH).get().defaultBlockState());
+		}
 		int baseY = y - ANCHOR.getY();
 		// V33a permits the stabilizer to be replaced by a pylon-link tile, and the cell above it
 		// to be either air or the turbocharger. Match their future registry ids without creating
@@ -63,9 +71,14 @@ public class PylonStructure extends ColoredStructureBase {
 	 */
 	public static List<BlockPos> placeForWorldgen(WorldGenLevel world, BlockPos worldAnchor,
 			CrystalElement color, int flags) {
+		return placeForWorldgen(world, worldAnchor, color, flags, false);
+	}
+
+	public static List<BlockPos> placeForWorldgen(WorldGenLevel world, BlockPos worldAnchor,
+			CrystalElement color, int flags, boolean includePlayerUpgrades) {
 		return NBTStructureLoader.place(world, TEMPLATE, worldAnchor, ANCHOR, state -> {
-			if (isPlayerUpgrade(state))
-				return Blocks.STRUCTURE_VOID.defaultBlockState();
+			if (!includePlayerUpgrades && isPlayerUpgrade(state))
+				return ChromaBlocks.crystallineStone(StoneTypes.SMOOTH).get().defaultBlockState();
 			return ChromaBlocks.isRune(state)
 					? ChromaBlocks.rune(color).get().defaultBlockState()
 					: state;
@@ -74,10 +87,8 @@ public class PylonStructure extends ColoredStructureBase {
 
 	/**
 	 * The aura stabilizer and resonance ring are player-applied pylon upgrades, not part of the
-	 * natural structure, so worldgen must not pre-place them. They stay in the template because the
-	 * template also backs the matcher, which has to recognise a fully upgraded pylon; the worldgen
-	 * path maps them to structure void so {@link NBTStructureLoader#place} skips the cell and leaves
-	 * the surrounding terrain untouched (returning air would instead punch holes around the base).
+	 * natural structure. The NBT retains their exact upgraded geometry for matching and command
+	 * variants; ordinary worldgen substitutes the smooth crystalline foundation blocks they replace.
 	 */
 	private static boolean isPlayerUpgrade(BlockState state) {
 		return state.is(ChromaBlocks.crystallineStone(StoneTypes.STABILIZER).get())

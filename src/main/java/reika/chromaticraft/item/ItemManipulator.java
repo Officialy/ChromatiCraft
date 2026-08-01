@@ -7,12 +7,17 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
 
 import reika.chromaticraft.api.interfaces.ManipulatorInteraction;
 import reika.chromaticraft.auxiliary.interfaces.SneakPop;
 import reika.chromaticraft.registry.ChromaSounds;
+import reika.chromaticraft.tileentity.networking.TileEntityCrystalRepeater;
 import reika.chromaticraft.tileentity.recipe.TileEntityCastingTable;
+import reika.dragonapi.APIPacketHandler;
+import reika.dragonapi.DragonAPI;
+import reika.dragonapi.libraries.io.ReikaPacketHelper;
 
 /**
  * V33a {@code ItemManipulator} — the mod's universal "interact with a ChromatiCraft block" tool.
@@ -63,6 +68,40 @@ public class ItemManipulator extends Item {
 			if (level.isClientSide())
 				return InteractionResult.SUCCESS;
 			return table.triggerCrafting(player) ? InteractionResult.SUCCESS : InteractionResult.FAIL;
+		}
+
+		// V33a repeater diagnostic/reorientation branch. All active repeater subtypes inherit this tile.
+		if (tile instanceof TileEntityCrystalRepeater repeater) {
+			repeater.refreshConnectionRender();
+			if (level.isClientSide()) {
+				repeater.updateRangeAlpha();
+				return InteractionResult.SUCCESS;
+			}
+			if (player.isShiftKeyDown()) {
+				if (repeater.isOwnedByPlayer(player)) {
+					repeater.redirect(context.getClickedFace().get3DDataValue());
+					var sound = Blocks.STONE.defaultBlockState().getSoundType();
+					level.playSound(null, pos, sound.getStepSound(), net.minecraft.sounds.SoundSource.BLOCKS,
+							2F, 0.5F);
+				}
+			}
+			else if (repeater.checkConnectivity()) {
+				var element = repeater.getActiveColor();
+				ChromaSounds.CAST.playSoundAtBlock(repeater);
+				if (element != null) {
+					int color = element.getColor();
+					ReikaPacketHelper.sendDataPacketWithRadius(DragonAPI.packetChannel,
+							APIPacketHandler.PacketIDs.COLOREDPARTICLE.ordinal(), repeater, 128,
+							color >> 16 & 255, color >> 8 & 255, color & 255, 32, 8);
+					ReikaPacketHelper.sendDataPacketWithRadius(DragonAPI.packetChannel,
+							APIPacketHandler.PacketIDs.NUMBERPARTICLE.ordinal(), repeater, 128,
+							repeater.getSignalDepth(element));
+				}
+			}
+			else {
+				ChromaSounds.ERROR.playSoundAtBlock(repeater);
+			}
+			return InteractionResult.SUCCESS;
 		}
 
 		// Generic API hook, so third-party and not-yet-ported tiles can claim the click themselves.

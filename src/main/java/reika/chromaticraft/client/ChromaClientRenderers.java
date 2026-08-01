@@ -13,6 +13,8 @@ import reika.chromaticraft.render.entity.RenderLumaBurst;
 import reika.chromaticraft.render.entity.RenderPylonOverloadShock;
 import reika.chromaticraft.render.item.ItemStandItemRenderer;
 import reika.chromaticraft.render.tesr.RenderCrystalPylon;
+import reika.chromaticraft.render.tesr.RenderCastingTable;
+import reika.chromaticraft.render.tesr.RenderCrystalRepeater;
 import reika.chromaticraft.render.tesr.RenderItemStand;
 
 public final class ChromaClientRenderers {
@@ -40,7 +42,9 @@ public final class ChromaClientRenderers {
 
 	private static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
 		event.registerBlockEntityRenderer(ChromaBlockEntities.ITEM_STAND.get(), RenderItemStand::new);
+		event.registerBlockEntityRenderer(ChromaBlockEntities.CASTING_TABLE.get(), RenderCastingTable::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.PYLON.get(), RenderCrystalPylon::new);
+		event.registerBlockEntityRenderer(ChromaBlockEntities.REPEATER.get(), RenderCrystalRepeater::new);
 		event.registerEntityRenderer(ChromaEntityTypes.PYLON_OVERLOAD.get(), RenderPylonOverloadShock::new);
 		event.registerEntityRenderer(ChromaEntityTypes.GLOW_CLOUD.get(), RenderGlowCloud::new);
 		event.registerEntityRenderer(ChromaEntityTypes.LUMA_BURST.get(), RenderLumaBurst::new);

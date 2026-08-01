@@ -1,346 +1,221 @@
-/*******************************************************************************
- * @author Reika Kalseki
- *
- * Copyright 2017
- *
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
- ******************************************************************************/
 package reika.chromaticraft.tileentity.auxiliary;
 
 import java.util.Collection;
 import java.util.List;
 
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.particle.EntityFX;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.AxisAlignedBB;
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.util.Mth;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 
 import reika.chromaticraft.auxiliary.interfaces.FocusAcceleratable;
 import reika.chromaticraft.auxiliary.interfaces.NBTTile;
 import reika.chromaticraft.base.tileentity.TileEntityChromaticBase;
-import reika.chromaticraft.block.BlockPylonStructure;
-import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaIcons;
+import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.ChromaTiles;
-import reika.chromaticraft.render.particle.EntityCCBlurFX;
-import reika.dragonapi.instantiable.data.immutable.Coordinate;
-import reika.dragonapi.instantiable.rendering.ColorBlendList;
-import reika.dragonapi.interfaces.tileentity.BreakAction;
-import reika.dragonapi.libraries.ReikaAABBHelper;
-import reika.dragonapi.libraries.java.ReikaRandomHelper;
-import reika.dragonapi.libraries.java.ReikaStringParser;
-import reika.dragonapi.libraries.rendering.ReikaRenderHelper;
+import reika.chromaticraft.render.particle.ChromaParticle;
+import reika.dragonapi.interfaces.blockentity.BreakAction;
+import reika.dragonapi.libraries.rendering.ReikaColorAPI;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
+/** Complete 26.2 port of V33a's focus crystal and its accelerator connection contract. */
+public final class TileEntityFocusCrystal extends TileEntityChromaticBase implements NBTTile, BreakAction {
 
+    public enum CrystalTier {
+        FLAWED(0.0625F),
+        DEFAULT(0.125F),
+        REFINED(0.375F),
+        EXQUISITE(0.875F),
+        TURBOCHARGED(1.375F);
 
-public class TileEntityFocusCrystal extends TileEntityChromaticBase implements NBTTile, BreakAction {
+        public static final CrystalTier[] VALUES = values();
+        private final float efficiencyFactor;
 
-	private static ColorBlendList turboBlend = new ColorBlendList(70);
+        CrystalTier(float efficiencyFactor) {
+            this.efficiencyFactor = efficiencyFactor;
+        }
 
-	static {
-		int n = 3;
-		for (int i = 0; i < n; i++)
-			turboBlend.addColor(CrystalTier.EXQUISITE.getRenderColor(0));
-		turboBlend.addColor(0x7010ff);
-		turboBlend.addColor(0x7010ff);
-		for (int i = 0; i < n; i++)
-			turboBlend.addColor(CrystalTier.EXQUISITE.getRenderColor(0));
-	}
+        public float efficiencyFactor() { return efficiencyFactor; }
+        public boolean usesOrganizedModel() { return ordinal() >= REFINED.ordinal(); }
+        public boolean isMaximumPower() { return ordinal() >= EXQUISITE.ordinal(); }
+        public int effectiveOrdinal() { return this == TURBOCHARGED ? EXQUISITE.ordinal() : ordinal(); }
 
-	public static enum CrystalTier {
-		FLAWED(0.0625F), //total 1.5x
-		DEFAULT(0.125F), //total 2x
-		REFINED(0.375F), //total 4x
-		EXQUISITE(0.875F), //total 8x
-		TURBOCHARGED(1.375F), //total 12x
-		;
+        public String textureSuffix() {
+            return switch (this) {
+                case FLAWED -> "_cracked";
+                case EXQUISITE, TURBOCHARGED -> "_sparkle";
+                default -> "";
+            };
+        }
 
-		public final float efficiencyFactor;
+        public String displayPrefix() {
+            return switch (this) {
+                case DEFAULT -> "";
+                case TURBOCHARGED -> EXQUISITE.displayPrefix();
+                default -> name().charAt(0) + name().substring(1).toLowerCase();
+            };
+        }
 
-		public static final CrystalTier[] tierList = values();
+        public int renderColor(float tick) {
+            return switch (this) {
+                case FLAWED -> 0x30e040;
+                case DEFAULT, REFINED -> 0xe06060;
+                case EXQUISITE -> 0x22aaff;
+                case TURBOCHARGED -> turboColor(tick);
+            };
+        }
 
-		private CrystalTier(float f) {
-			efficiencyFactor = f;
-		}
+        private static int turboColor(float tick) {
+            int blue = 0x22aaff;
+            int purple = 0x7010ff;
+            int[] cycle = {blue, blue, blue, purple, purple, blue, blue, blue};
+            double position = Math.floorMod((long)Math.floor(tick), 70L * cycle.length) / 70D;
+            int index = (int)position;
+            float fraction = (float)(position - index);
+            return ReikaColorAPI.mixColors(cycle[(index + 1) % cycle.length], cycle[index], fraction);
+        }
 
-		public String getTextureSuffix() {
-			switch(this) {
-				case FLAWED:
-					return "_cracked";
-				case EXQUISITE:
-				case TURBOCHARGED:
-					return "_sparkle";
-				default:
-					return "";
-			}
-		}
+        public ItemStack craftedItem() {
+            ItemStack stack = new ItemStack(ChromaTiles.FOCUSCRYSTAL.getBlock());
+            CompoundTag tag = new CompoundTag();
+            tag.putInt("tier", ordinal());
+            stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
+            return stack;
+        }
+    }
 
-		public boolean useOrganizedModel() {
-			return this.ordinal() >= REFINED.ordinal();
-		}
+    /** Source-relative offset plus the target identity used by renderer and invalidation logic. */
+    public record FocusConnection(BlockPos relativeLocation, BlockPos target, Class<?> tileClass) {}
 
-		public int getRenderColor(float tick) {
-			switch(this) {
-				case FLAWED:
-					return 0x30e040;
-				case DEFAULT:
-				case REFINED:
-					return 0xe06060;
-				case EXQUISITE:
-					return 0x22aaff;
-				case TURBOCHARGED:
-					return turboBlend.getColor(tick);
-			}
-			return 0xffffff;
-		}
+    private CrystalTier tier = CrystalTier.FLAWED;
+    private FocusConnection connection;
 
-		public ItemStack getCraftedItem() {
-			ItemStack is = ChromaTiles.FOCUSCRYSTAL.getCraftedProduct();
-			is.stackTagCompound = new NBTTagCompound();
-			is.stackTagCompound.setInteger("tier", this.ordinal());
-			return is;
-		}
+    public TileEntityFocusCrystal(BlockPos pos, BlockState state) {
+        super(ChromaBlockEntities.FOCUS_CRYSTAL.get(), pos, state);
+    }
 
-		public String getDisplayName() {
-			switch(this) {
-				case DEFAULT:
-					return "";
-				case TURBOCHARGED:
-					return EXQUISITE.getDisplayName();
-				default:
-					return ReikaStringParser.capFirstChar(this.name());
-			}
-		}
+    @Override public ChromaTiles getTile() { return ChromaTiles.FOCUSCRYSTAL; }
 
-		public boolean isMaxPower() {
-			return this.ordinal() >= EXQUISITE.ordinal();
-		}
+    @Override
+    public void updateEntity(Level world, BlockPos pos) {
+        if (world.isClientSide() && tier.isMaximumPower())
+            ChromaParticle.spawnFocusCrystal(world, pos, tier.renderColor(this.getTicksExisted()), rand);
+        if (connection != null && this.getTicksExisted() % 8 == 0) {
+            BlockEntity target = world.getBlockEntity(connection.target());
+            if (!(target instanceof FocusAcceleratable)) {
+                connection = null;
+                this.setChanged();
+                if (!world.isClientSide()) this.syncAllData(true);
+            }
+        }
+    }
 
-		public int getEffectiveOrdinal() {
-			return this == TURBOCHARGED ? EXQUISITE.getEffectiveOrdinal() : this.ordinal();
-		}
-	}
+    @Override protected void animateWithTick(Level world, BlockPos pos) {}
 
-	public static interface FocusLocation {
+    public CrystalTier getTier() { return tier; }
+    public FocusConnection getConnection() { return connection; }
+    public BlockPos getConnectedTarget() { return connection != null ? connection.target() : null; }
 
-		Coordinate relativeLocation();
+    public void setTier(CrystalTier tier) {
+        this.tier = tier != null ? tier : CrystalTier.FLAWED;
+        this.setChanged();
+        this.syncAllData(true);
+    }
 
-	}
+    public void connectTo(BlockPos target) {
+        if (target == null) {
+            connection = null;
+        }
+        else {
+            BlockEntity tile = this.getLevel() != null ? this.getLevel().getBlockEntity(target) : null;
+            connection = new FocusConnection(this.getBlockPos().subtract(target), target.immutable(),
+                    tile != null ? tile.getClass() : BlockEntity.class);
+        }
+        this.setChanged();
+    }
 
-	private static class SimpleFocusLocation implements FocusLocation {
+    public void addConnection(FocusAcceleratable source, boolean sync) {
+        if (!(source instanceof BlockEntity target))
+            throw new IllegalArgumentException("FocusAcceleratable must also be a BlockEntity");
+        connection = new FocusConnection(this.getBlockPos().subtract(target.getBlockPos()),
+                target.getBlockPos().immutable(), target.getClass());
+        this.setChanged();
+        if (sync) this.syncAllData(true);
+    }
 
-		public final Coordinate offset;
+    /** V33a helper used by all acceleratable tiles: base factor one plus every installed focus. */
+    public static float getSummedFocusFactorDirect(FocusAcceleratable target,
+            Collection<BlockPos> relativeLocations) {
+        if (!(target instanceof BlockEntity tile) || tile.getLevel() == null) return 1;
+        return getSummedFocusFactor(target, tile.getLevel(), tile.getBlockPos(), relativeLocations);
+    }
 
-		private SimpleFocusLocation(FocusAcceleratable src, TileEntityFocusCrystal te) {
-			offset = new Coordinate(te).offset(new Coordinate((TileEntity)src).negate());
-		}
+    public static float getSummedFocusFactor(FocusAcceleratable target, Level level, BlockPos origin,
+            Collection<BlockPos> relativeLocations) {
+        float sum = 1;
+        for (BlockPos offset : relativeLocations) {
+            if (level.getBlockEntity(origin.offset(offset)) instanceof TileEntityFocusCrystal focus) {
+                sum += focus.tier.efficiencyFactor();
+                if (!level.isClientSide()) focus.addConnection(target, true);
+            }
+        }
+        return sum;
+    }
 
-		@Override
-		public Coordinate relativeLocation() {
-			return offset;
-		}
+    @Override
+    public void breakBlock() {
+        if (this.getLevel() != null && connection != null
+                && this.getLevel().getBlockEntity(connection.target()) instanceof FocusAcceleratable target)
+            target.recountFocusCrystals();
+    }
 
-	}
+    @Override
+    protected void saveAdditional(ValueOutput output) {
+        super.saveAdditional(output);
+        output.putInt("tier", tier.ordinal());
+        if (connection != null) output.store("connection", BlockPos.CODEC, connection.target());
+    }
 
-	public static class FocusConnection {
+    @Override
+    protected void loadAdditional(ValueInput input) {
+        super.loadAdditional(input);
+        tier = CrystalTier.VALUES[Mth.clamp(input.getIntOr("tier", 0), 0, CrystalTier.VALUES.length - 1)];
+        BlockPos target = input.read("connection", BlockPos.CODEC).orElse(null);
+        connection = target != null ? new FocusConnection(this.getBlockPos().subtract(target), target,
+                BlockEntity.class) : null;
+    }
 
-		public final FocusLocation relativeLocation;
-		public final Coordinate target;
-		public final Class tileClass;
+    @Override protected void writeSyncTag(CompoundTag tag) {
+        super.writeSyncTag(tag);
+        tag.putInt("tier", tier.ordinal());
+        if (connection != null) tag.putLong("connection", connection.target().asLong());
+    }
 
-		private FocusConnection(FocusLocation loc, TileEntity te) {
-			relativeLocation = loc;
-			target = new Coordinate(te);
-			tileClass = te.getClass();
-		}
+    @Override protected void readSyncTag(CompoundTag tag) {
+        super.readSyncTag(tag);
+        tier = CrystalTier.VALUES[Mth.clamp(tag.getIntOr("tier", 0), 0, CrystalTier.VALUES.length - 1)];
+        BlockPos target = tag.contains("connection") ? BlockPos.of(tag.getLongOr("connection", 0)) : null;
+        connection = target != null ? new FocusConnection(this.getBlockPos().subtract(target), target,
+                BlockEntity.class) : null;
+    }
 
-	}
+    @Override public void getTagsToWriteToStack(CompoundTag tag) { tag.putInt("tier", tier.ordinal()); }
 
-	private FocusConnection connection;
-	private CrystalTier tier = CrystalTier.FLAWED;
+    @Override public void setDataFromItemStackTag(ItemStack stack) {
+        CompoundTag tag = stack.get(DataComponents.CUSTOM_DATA) != null
+                ? stack.get(DataComponents.CUSTOM_DATA).copyTag() : new CompoundTag();
+        tier = CrystalTier.VALUES[Mth.clamp(tag.getIntOr("tier", 0), 0, CrystalTier.VALUES.length - 1)];
+    }
 
-	public static float getSummedFocusFactorDirect(FocusAcceleratable f, Collection<Coordinate> locations) {
-		TileEntity te = (TileEntity)f;
-		return getSummedFocusFactorDirect(f, te.worldObj, te.xCoord, te.yCoord, te.zCoord, locations);
-	}
-
-	public static float getSummedFocusFactor(FocusAcceleratable f, Collection<FocusLocation> locations) {
-		TileEntity te = (TileEntity)f;
-		return getSummedFocusFactor(f, te.worldObj, te.xCoord, te.yCoord, te.zCoord, locations);
-	}
-
-	public static float getSummedFocusFactorDirect(FocusAcceleratable acc, World world, int x, int y, int z, Collection<Coordinate> locations) {
-		float sum = 1;
-		for (Coordinate c : locations) {
-			c = c.offset(x, y, z);
-			if (ChromaTiles.getTile(world, c.xCoord, c.yCoord, c.zCoord) == ChromaTiles.FOCUSCRYSTAL) {
-				TileEntityFocusCrystal te = (TileEntityFocusCrystal)c.getTileEntity(world);
-				sum += te.getTier().efficiencyFactor;
-				te.addConnection(acc, true);
-			}
-		}
-		return sum;
-	}
-
-	public static float getSummedFocusFactor(FocusAcceleratable acc, World world, int x, int y, int z, Collection<FocusLocation> locations) {
-		float sum = 1;
-		for (FocusLocation f : locations) {
-			Coordinate c = f.relativeLocation().offset(x, y, z);
-			if (ChromaTiles.getTile(world, c.xCoord, c.yCoord, c.zCoord) == ChromaTiles.FOCUSCRYSTAL) {
-				TileEntityFocusCrystal te = (TileEntityFocusCrystal)c.getTileEntity(world);
-				sum += te.getTier().efficiencyFactor;
-				te.addConnection(acc, true);
-			}
-		}
-		return sum;
-	}
-
-	@Override
-	public ChromaTiles getTile() {
-		return ChromaTiles.FOCUSCRYSTAL;
-	}
-
-	@Override
-	protected void onFirstTick(World world, int x, int y, int z) {
-		super.onFirstTick(world, x, y, z);
-		if (world.getBlock(x, y-1, z) == ChromaBlocks.PYLONSTRUCT.getBlockInstance())
-			BlockPylonStructure.triggerAddCheck(world, x, y-1, z);
-		//this.scanConnections(world, x, y, z);
-	}
-
-	/*
-	private void scanConnections(World world, int x, int y, int z) {
-		connections.clear();
-
-		for (int i = 0; i < FocusLocation.list.length; i++) {
-			FocusLocation loc = FocusLocation.list[i];
-			Coordinate c = loc.relativeLocation.negate().offset(x, y, z);
-			TileEntity te = c.getTileEntity(world);
-			if (te instanceof FocusAcceleratable) {
-				connections.add(new FocusConnection(loc, te));
-			}
-		}
-	}
-	 */
-	public void addConnection(FocusAcceleratable src, boolean sync) {
-		connection = new FocusConnection(new SimpleFocusLocation(src, this), (TileEntity)src);
-		//ReikaJavaLibrary.pConsole("Add connection"+src);
-		if (sync)
-			this.syncAllData(true);
-	}
-
-	@Override
-	public void updateEntity(World world, int x, int y, int z, int meta) {
-		if (this.getTier().isMaxPower() && world.isRemote) {
-			this.doParticles(world, x, y, z);
-		}
-
-		if (connection != null && this.getTicksExisted()%8 == 0) {
-			if (this.getConnection().target.getTileEntity(world) instanceof FocusAcceleratable) {
-
-			}
-			else {
-				connection = null;
-			}
-		}
-	}
-
-	@SideOnly(Side.CLIENT)
-	private void doParticles(World world, int x, int y, int z) {
-		if (rand.nextInt(2+Minecraft.getMinecraft().gameSettings.particleSetting) == 0) {
-			double hr = 0.825;
-			double vr = 0.375;
-			double px = ReikaRandomHelper.getRandomPlusMinus(x+0.5, hr/2);
-			double pz = ReikaRandomHelper.getRandomPlusMinus(z+0.5, hr/2);
-			double py = ReikaRandomHelper.getRandomPlusMinus(y+0.375, vr/2);
-			int l = 6+rand.nextInt(6);
-			int c = this.getTier().getRenderColor(this.getTicksExisted()+ReikaRenderHelper.getPartialTickTime()+System.identityHashCode(this));
-			EntityFX fx = new EntityCCBlurFX(world, px, py, pz).setIcon(ChromaIcons.FLARE).setLife(l).setColor(c);
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-		}
-	}
-
-	@Override
-	protected void animateWithTick(World world, int x, int y, int z) {
-
-	}
-
-	public CrystalTier getTier() {
-		return tier;
-	}
-
-	public FocusConnection getConnection() {
-		return connection;
-	}
-
-	@Override
-	public void getTagsToWriteToStack(NBTTagCompound NBT) {
-		this.writeOwnerData(NBT);
-		NBT.setInteger("tier", tier.ordinal());
-	}
-
-	@Override
-	public void setDataFromItemStackTag(ItemStack is) {
-		this.readOwnerData(is);
-		if (is != null && is.stackTagCompound != null) {
-			tier = CrystalTier.tierList[is.stackTagCompound.getInteger("tier")];
-		}
-		else {
-			tier = CrystalTier.FLAWED;
-		}
-	}
-
-	@Override
-	public void writeToNBT(NBTTagCompound NBT) {
-		super.writeToNBT(NBT);
-
-		NBT.setInteger("tier", this.getTier().ordinal());
-		if (connection != null) {
-			connection.target.writeToNBT("connection", NBT);
-		}
-	}
-
-	@Override
-	public void readFromNBT(NBTTagCompound NBT) {
-		super.readFromNBT(NBT);
-
-		tier = CrystalTier.tierList[NBT.getInteger("tier")];
-		if (NBT.hasKey("connection") && worldObj != null) {
-			Coordinate c = Coordinate.readFromNBT("connection", NBT);
-			TileEntity te = c.getTileEntity(worldObj);
-			if (te instanceof FocusAcceleratable)
-				this.addConnection((FocusAcceleratable)te, false);
-		}
-	}
-
-	@Override
-	public AxisAlignedBB getRenderBoundingBox() {
-		return ReikaAABBHelper.getBlockAABB(this).expand(4, 2, 4);
-	}
-
-	@Override
-	public void breakBlock() {
-		if (worldObj.getBlock(xCoord, yCoord-1, zCoord) == ChromaBlocks.PYLONSTRUCT.getBlockInstance()) {
-			BlockPylonStructure.triggerAddCheck(worldObj, xCoord, yCoord-1, zCoord);
-		}
-		if (connection != null) {
-			TileEntity tgt = connection.target.getTileEntity(worldObj);
-			if (tgt instanceof FocusAcceleratable) {
-				((FocusAcceleratable)tgt).recountFocusCrystals();
-			}
-		}
-	}
-
-	@Override
-	public void addTooltipInfo(List li, boolean shift) {
-
-	}
-
+    @Override public void addTooltipInfo(List list, boolean shift) {
+        String prefix = tier.displayPrefix();
+        list.add(Component.literal(prefix.isEmpty() ? "Focus Crystal" : prefix + " Focus Crystal"));
+    }
 }

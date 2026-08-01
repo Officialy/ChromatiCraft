@@ -31,7 +31,7 @@
   ],
   "stands": [
     {
-      "ingredient": "chromaticraft:boosted_crystal_shard_gray",
+      "ingredient": "#chromaticraft:boosted_crystal_shards/gray",
       "offset": [
         -2,
         0,
@@ -39,7 +39,7 @@
       ]
     },
     {
-      "ingredient": "chromaticraft:boosted_crystal_shard_gray",
+      "ingredient": "#chromaticraft:boosted_crystal_shards/gray",
       "offset": [
         -4,
         1,
@@ -47,7 +47,7 @@
       ]
     },
     {
-      "ingredient": "chromaticraft:boosted_crystal_shard_gray",
+      "ingredient": "#chromaticraft:boosted_crystal_shards/gray",
       "offset": [
         2,
         0,
@@ -55,7 +55,7 @@
       ]
     },
     {
-      "ingredient": "chromaticraft:boosted_crystal_shard_gray",
+      "ingredient": "#chromaticraft:boosted_crystal_shards/gray",
       "offset": [
         4,
         1,
@@ -63,7 +63,7 @@
       ]
     },
     {
-      "ingredient": "chromaticraft:boosted_crystal_shard_gray",
+      "ingredient": "#chromaticraft:boosted_crystal_shards/gray",
       "offset": [
         -2,
         0,
@@ -71,7 +71,7 @@
       ]
     },
     {
-      "ingredient": "chromaticraft:boosted_crystal_shard_gray",
+      "ingredient": "#chromaticraft:boosted_crystal_shards/gray",
       "offset": [
         -4,
         1,
@@ -79,7 +79,7 @@
       ]
     },
     {
-      "ingredient": "chromaticraft:boosted_crystal_shard_gray",
+      "ingredient": "#chromaticraft:boosted_crystal_shards/gray",
       "offset": [
         2,
         0,
@@ -87,7 +87,7 @@
       ]
     },
     {
-      "ingredient": "chromaticraft:boosted_crystal_shard_gray",
+      "ingredient": "#chromaticraft:boosted_crystal_shards/gray",
       "offset": [
         4,
         1,
@@ -95,7 +95,7 @@
       ]
     },
     {
-      "ingredient": "chromaticraft:boosted_crystal_shard_black",
+      "ingredient": "#chromaticraft:boosted_crystal_shards/black",
       "offset": [
         2,
         0,
@@ -103,7 +103,7 @@
       ]
     },
     {
-      "ingredient": "chromaticraft:boosted_crystal_shard_black",
+      "ingredient": "#chromaticraft:boosted_crystal_shards/black",
       "offset": [
         -2,
         0,
@@ -111,7 +111,7 @@
       ]
     },
     {
-      "ingredient": "chromaticraft:boosted_crystal_shard_black",
+      "ingredient": "#chromaticraft:boosted_crystal_shards/black",
       "offset": [
         0,
         0,
@@ -119,7 +119,7 @@
       ]
     },
     {
-      "ingredient": "chromaticraft:boosted_crystal_shard_black",
+      "ingredient": "#chromaticraft:boosted_crystal_shards/black",
       "offset": [
         0,
         0,

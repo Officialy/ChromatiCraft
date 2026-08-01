@@ -11,7 +11,7 @@ package reika.chromaticraft.auxiliary.interfaces;
 
 import java.util.Collection;
 
-import reika.dragonapi.instantiable.data.immutable.Coordinate;
+import net.minecraft.core.BlockPos;
 
 public interface FocusAcceleratable {
 
@@ -23,6 +23,6 @@ public interface FocusAcceleratable {
 
 	public void recountFocusCrystals();
 
-	public Collection<Coordinate> getRelativeFocusCrystalLocations();
+	public Collection<BlockPos> getRelativeFocusCrystalLocations();
 
 }

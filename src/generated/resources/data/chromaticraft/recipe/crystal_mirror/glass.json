@@ -37,7 +37,7 @@
       ]
     },
     {
-      "ingredient": "chromaticraft:boosted_crystal_shard_blue",
+      "ingredient": "#chromaticraft:boosted_crystal_shards/blue",
       "offset": [
         -2,
         0,
@@ -45,7 +45,7 @@
       ]
     },
     {
-      "ingredient": "chromaticraft:boosted_crystal_shard_blue",
+      "ingredient": "#chromaticraft:boosted_crystal_shards/blue",
       "offset": [
         2,
         0,

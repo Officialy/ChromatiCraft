@@ -13,6 +13,7 @@ import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
+import net.minecraft.client.renderer.feature.CustomFeatureRenderer;
 import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.renderer.texture.TextureAtlas;
@@ -20,6 +21,8 @@ import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.data.AtlasIds;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.client.extensions.OrderedSubmitNodeCollectorExtension;
+import net.neoforged.neoforge.client.submit.RenderPhaseKeys;
 
 import org.joml.Vector3f;
 import org.jspecify.annotations.Nullable;
@@ -57,9 +60,9 @@ public final class RenderCrystalPylon implements BlockEntityRenderer<TileEntityC
         double startWidth = pylon.getOutgoingBeamRadius();
         for (CrystalTarget target : pylon.getTargets()) {
             state.beams.add(new Beam(
-                    target.location.pos.getX() - pylon.getBlockPos().getX() + target.offsetX,
-                    target.location.pos.getY() - pylon.getBlockPos().getY() + target.offsetY,
-                    target.location.pos.getZ() - pylon.getBlockPos().getZ() + target.offsetZ,
+                    target.location.pos.getX() - pylon.getBlockPos().getX() + target.offsetX - 0.5,
+                    target.location.pos.getY() - pylon.getBlockPos().getY() + target.offsetY - 0.5,
+                    target.location.pos.getZ() - pylon.getBlockPos().getZ() + target.offsetZ - 0.5,
                     Math.min(startWidth, target.widthLimit),
                     Math.min(target.endWidth, target.widthLimit),
                     target.color.getColor()));
@@ -117,12 +120,15 @@ public final class RenderCrystalPylon implements BlockEntityRenderer<TileEntityC
     private void submitBeams(State state, PoseStack poseStack, SubmitNodeCollector collector) {
         if (state.beams.isEmpty()) return;
         float scroll = (float)((state.time / 600D % 360) / 30D);
+        poseStack.pushPose();
+        poseStack.translate(0.5, 0.5, 0.5);
         for (Beam beam : state.beams) {
             PoseStack renderPose = new PoseStack();
             renderPose.last().set(poseStack.last());
-            collector.submitCustomGeometry(poseStack, ChromaRenderPipelines.additiveSprite(BEAM),
+            submitAfterTerrain(poseStack, collector, ChromaRenderPipelines.additiveSprite(BEAM),
                     (pose, vertices) -> beamTube(renderPose.last(), vertices, beam, scroll));
         }
+        poseStack.popPose();
     }
 
     /** Six-sided tapered tube from V33a ChromaFX.drawEnergyTransferBeam. */
@@ -165,10 +171,23 @@ public final class RenderCrystalPylon implements BlockEntityRenderer<TileEntityC
         if (roll != 0) poseStack.mulPose(Axis.ZP.rotationDegrees(roll));
         PoseStack renderPose = new PoseStack();
         renderPose.last().set(poseStack.last());
-        collector.submitCustomGeometry(poseStack,
+        submitAfterTerrain(poseStack, collector,
                 ChromaRenderPipelines.additiveSprite(TextureAtlas.LOCATION_BLOCKS),
                 (pose, vertices) -> quad(renderPose.last(), vertices, sprite, scale, color));
         poseStack.popPose();
+    }
+
+    /**
+     * V33a drew the pylon after translucent world geometry. The ordinary 26.2 custom-geometry
+     * phase runs before water, which lets water and clouds wash the additive colour away.
+     */
+    private static void submitAfterTerrain(PoseStack poseStack, SubmitNodeCollector collector,
+            net.minecraft.client.renderer.rendertype.RenderType renderType,
+            SubmitNodeCollector.CustomGeometryRenderer renderer) {
+        CustomFeatureRenderer.Submit submit = new CustomFeatureRenderer.Submit(
+                poseStack.last().copy(), renderType, renderer);
+        ((OrderedSubmitNodeCollectorExtension)collector.order(0))
+                .submitSpecial(RenderPhaseKeys.AFTER_TERRAIN, submit);
     }
 
     private static void quad(PoseStack.Pose pose, VertexConsumer vertices,

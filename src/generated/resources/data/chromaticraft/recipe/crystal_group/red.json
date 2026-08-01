@@ -4,11 +4,11 @@
   "experience": 40,
   "grid": [
     {
-      "ingredient": "chromaticraft:crystal_shard_red",
+      "ingredient": "#chromaticraft:crystal_shards/red",
       "slot": 1
     },
     {
-      "ingredient": "chromaticraft:crystal_shard_blue",
+      "ingredient": "#chromaticraft:crystal_shards/blue",
       "slot": 3
     },
     {
@@ -16,11 +16,11 @@
       "slot": 4
     },
     {
-      "ingredient": "chromaticraft:crystal_shard_purple",
+      "ingredient": "#chromaticraft:crystal_shards/purple",
       "slot": 5
     },
     {
-      "ingredient": "chromaticraft:crystal_shard_magenta",
+      "ingredient": "#chromaticraft:crystal_shards/magenta",
       "slot": 7
     }
   ],

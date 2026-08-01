@@ -10,6 +10,7 @@
 package reika.chromaticraft.tileentity.auxiliary;
 
 import java.util.Collection;
+import java.util.UUID;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
@@ -43,6 +44,8 @@ public class TileEntityChromaCrystal extends TileEntityPylonEnhancer {
     private long power;
 
     private Coordinate pylonLocation;
+    /** Synthetic shared owner used only by explicit generated booster-pylon features. */
+    private UUID generatedBoostOwner;
 
     public TileEntityChromaCrystal(BlockPos pos, BlockState state) {
         super(ChromaBlockEntities.POWER_CRYSTAL.get(), pos, state);
@@ -53,6 +56,16 @@ public class TileEntityChromaCrystal extends TileEntityPylonEnhancer {
         return ChromaTiles.CRYSTAL;
     }
 
+    public void initializeGeneratedBoost(BlockPos pylonPos, UUID sharedOwner) {
+        pylonLocation = new Coordinate(pylonPos);
+        generatedBoostOwner = sharedOwner;
+        this.setChanged();
+        this.syncAllData(true);
+    }
+
+    public UUID getBoostOwnerID() {
+        return generatedBoostOwner != null ? generatedBoostOwner : this.getPlacerID();
+    }
     public boolean isConnected() {
         return this.getPylon() != null;
     }
@@ -148,6 +161,8 @@ public class TileEntityChromaCrystal extends TileEntityPylonEnhancer {
         tag.putInt("omega", omega);
         tag.putInt("torque", torque);
         tag.putLong("power", power);
+        if (generatedBoostOwner != null)
+            tag.putString("generatedBoostOwner", generatedBoostOwner.toString());
     }
 
     @Override
@@ -157,6 +172,8 @@ public class TileEntityChromaCrystal extends TileEntityPylonEnhancer {
         omega = tag.getIntOr("omega", 0);
         torque = tag.getIntOr("torque", 0);
         power = tag.getLongOr("power", 0);
+        String generatedOwner = tag.getStringOr("generatedBoostOwner", "");
+        generatedBoostOwner = generatedOwner.isEmpty() ? null : UUID.fromString(generatedOwner);
     }
 
     @Override

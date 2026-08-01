@@ -24,7 +24,6 @@ import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.SpawnGroupData;
 import net.minecraft.world.entity.SpawnPlacementTypes;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
@@ -62,8 +61,8 @@ import reika.dragonapi.libraries.rendering.ReikaColorAPI;
  *
  * <p>Movement is fully self-driven (a {@link SphericalVector} recomputed every tick), so this
  * extends {@link Mob} directly (not {@link net.minecraft.world.entity.PathfinderMob}) with an empty
- * goal selector; {@link #aiStep()} never calls {@code super.aiStep()} and instead reimplements the
- * merged V33a {@code onUpdate()}/{@code onLivingUpdate()} body end to end.
+ * goal selector. {@link #aiStep()} computes the V33a spherical velocity before delegating to
+ * vanilla travel, matching the original onUpdate()/onLivingUpdate() ordering.
  *
  * <p>Several V33a subsystems are still pristine 1.7.10 and are not yet importable from here; each is
  * marked {@code CHROMA-PORT} at its call site with the original logic preserved rather than deleted:
@@ -208,12 +207,13 @@ public class EntityGlowCloud extends Mob implements DestroyOnUnload {
 
 	@Override
 	public void aiStep() {
-		// Merged V33a onUpdate() + onLivingUpdate(); intentionally never calls super.aiStep() so that
-		// vanilla gravity/travel/goal-selector logic never fights the hand-driven SphericalVector.
-		if (!this.level().isClientSide()) {
+		// V33a onUpdate() selects motion first; its subsequent super.onLivingUpdate() performs travel.
+		// Preserve that ordering so 26.2's LivingEntity movement and tracking actually see the velocity.
+		if (!this.level().isClientSide())
 			this.tickMovement();
+		super.aiStep();
+		if (!this.level().isClientSide())
 			this.doAmbientEffects();
-		}
 
 		colorTransitionTick++;
 		if (colorTransitionTick >= COLOR_TRANSITION_LENGTH) {
@@ -263,7 +263,6 @@ public class EntityGlowCloud extends Mob implements DestroyOnUnload {
 
 		double[] v = velocity.getCartesian();
 		this.setDeltaMovement(v[0], v[1], v[2]);
-		this.move(MoverType.SELF, this.getDeltaMovement());
 	}
 
 	/** CHROMA-PORT: V33a tops off a Crystal Tank's Luma fluid and donates 40 (120 if angry) RF/IC2

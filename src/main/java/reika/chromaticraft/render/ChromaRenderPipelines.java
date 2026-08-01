@@ -7,11 +7,13 @@ import com.mojang.blaze3d.pipeline.BlendFunction;
 import com.mojang.blaze3d.pipeline.ColorTargetState;
 import com.mojang.blaze3d.pipeline.DepthStencilState;
 import com.mojang.blaze3d.pipeline.RenderPipeline;
+import com.mojang.blaze3d.platform.BlendFactor;
 import com.mojang.blaze3d.platform.CompareOp;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 
 import net.minecraft.util.Util;
 import net.minecraft.client.renderer.BindGroupLayouts;
+import net.minecraft.client.renderer.rendertype.OutputTarget;
 import net.minecraft.client.renderer.rendertype.RenderSetup;
 import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.resources.Identifier;
@@ -23,6 +25,10 @@ import reika.chromaticraft.ChromatiCraft;
 /** Additive, full-bright pipelines matching V33a's ADDITIVEDARK pylon passes. */
 public final class ChromaRenderPipelines {
 
+    /** V33a {@code BlendMode.ADDITIVEDARK}: GL_ONE, GL_ONE_MINUS_SRC_COLOR. */
+    private static final BlendFunction ADDITIVE_DARK =
+            new BlendFunction(BlendFactor.ONE, BlendFactor.ONE_MINUS_SRC_COLOR);
+
     public static final RenderPipeline ADDITIVE_SPRITE = RenderPipeline.builder()
             .withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "pipeline/additive_sprite"))
             .withBindGroupLayout(BindGroupLayouts.GLOBALS)
@@ -30,7 +36,7 @@ public final class ChromaRenderPipelines {
             .withVertexShader("core/position_tex_color")
             .withFragmentShader("core/position_tex_color")
             .withBindGroupLayout(BindGroupLayouts.SAMPLER0)
-            .withColorTargetState(new ColorTargetState(BlendFunction.ADDITIVE))
+            .withColorTargetState(new ColorTargetState(ADDITIVE_DARK))
             .withVertexBinding(0, DefaultVertexFormat.POSITION_TEX_COLOR)
             .withPrimitiveTopology(PrimitiveTopology.QUADS)
             .withDepthStencilState(new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL, false))
@@ -45,7 +51,7 @@ public final class ChromaRenderPipelines {
             .withVertexShader("core/particle")
             .withFragmentShader("core/particle")
             .withBindGroupLayout(BindGroupLayouts.SAMPLER0_SAMPLER2)
-            .withColorTargetState(new ColorTargetState(BlendFunction.ADDITIVE))
+            .withColorTargetState(new ColorTargetState(ADDITIVE_DARK))
             .withVertexBinding(0, DefaultVertexFormat.PARTICLE)
             .withPrimitiveTopology(PrimitiveTopology.QUADS)
             .withDepthStencilState(new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL, false))
@@ -54,7 +60,9 @@ public final class ChromaRenderPipelines {
 
     private static final Function<Identifier, RenderType> ADDITIVE_TYPES = Util.memoize(texture ->
             RenderType.create("chromaticraft_additive_sprite", RenderSetup.builder(ADDITIVE_SPRITE)
-                    .withTexture("Sampler0", texture).sortOnUpload().createRenderSetup()));
+                    .withTexture("Sampler0", texture)
+                    .setOutputTarget(OutputTarget.ITEM_ENTITY_TARGET)
+                    .sortOnUpload().createRenderSetup()));
 
     private ChromaRenderPipelines() {}
 

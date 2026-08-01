@@ -40,6 +40,7 @@ import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 import net.neoforged.neoforge.event.RegisterGameTestsEvent;
+import reika.chromaticraft.auxiliary.ExplorationMonitor;
 import reika.chromaticraft.auxiliary.recipemanagers.CastingRecipeInput;
 import reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe;
 import reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe.AuraRequirement;
@@ -53,6 +54,7 @@ import reika.chromaticraft.data.ChromaTestStructureProvider;
 import reika.chromaticraft.block.BlockCrystalRune;
 import reika.chromaticraft.block.BlockCrystallineStone;
 import reika.chromaticraft.base.CrystalTypeBlock;
+import reika.chromaticraft.entity.EntityGlowCloud;
 import reika.chromaticraft.entity.EntityPylonOverloadShock;
 import reika.chromaticraft.auxiliary.CrystalNetworkLogger.FlowFail;
 import reika.chromaticraft.magic.castingtuning.CastingTuningRegistry;
@@ -64,6 +66,7 @@ import reika.chromaticraft.magic.network.CrystalFlow;
 import reika.chromaticraft.magic.network.CrystalNetworker;
 import reika.chromaticraft.magic.network.PylonFinder;
 import reika.chromaticraft.registry.ChromaCraftingItems;
+import reika.chromaticraft.registry.ChromaEntityTypes;
 import reika.chromaticraft.registry.ChromaClusterItems;
 import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.ChromaTieredItems;
@@ -73,7 +76,7 @@ import reika.chromaticraft.tileentity.recipe.TileEntityItemStand;
 import reika.chromaticraft.tileentity.recipe.TileEntityCastingTable;
 import reika.chromaticraft.magic.progression.ProgressionManager;
 import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.tileentity.auxiliary.TileEntityFocusCrystalPort;
+import reika.chromaticraft.tileentity.auxiliary.TileEntityFocusCrystal;
 import reika.chromaticraft.registry.ChromaStructures;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.tileentity.TileEntityDisplayPoint;
@@ -136,7 +139,7 @@ public final class ChromaGameTests {
 		register(event, env, "progression_color_discovery", ChromaGameTests::colorDiscovery);
 		register(event, env, "network_pylon_to_receiver", ChromaGameTests::pylonToReceiver);
 		register(event, env, "network_pylon_repeater_receiver", ChromaGameTests::pylonRepeaterReceiver);
-		register(event, env, "pylon_structure_lifecycle", ChromaGameTests::pylonStructureLifecycle);
+		register(event, env, "pylon_structure_lifecycle", 35, ChromaGameTests::pylonStructureLifecycle);
 		register(event, env, "pylon_broadcast_template_contract", ChromaGameTests::pylonBroadcastTemplateContract);
 		register(event, env, "encrusted_growth_persistence", ChromaGameTests::encrustedGrowthPersistence);
 		register(event, env, "pylon_encrusted_discovery_recolor", ChromaGameTests::pylonEncrustedDiscoveryRecolor);
@@ -164,6 +167,7 @@ public final class ChromaGameTests {
 		register(event, env, "casting_stand_ownership_lock", ChromaGameTests::castingStandOwnershipLock);
 		register(event, env, "casting_stand_spread", ChromaGameTests::castingStandSpread);
 		register(event, env, "casting_table_atomic_craft", ChromaGameTests::castingTableAtomicCraft);
+		register(event, env, "exploration_grants_crystals", ChromaGameTests::explorationGrantsCrystals);
 		register(event, env, "casting_table_temple_group", ChromaGameTests::castingTableTempleGroup);
 		register(event, env, "crystal_shard_charging_identity", ChromaGameTests::crystalShardChargingIdentity);
 		register(event, env, "liquid_chroma_bucket_mud", ChromaGameTests::liquidChromaBucketMud);
@@ -185,10 +189,56 @@ public final class ChromaGameTests {
 		register(event, env, "crystal_worldgen_placement_contract", ChromaGameTests::crystalWorldgenPlacementContract);
 		register(event, env, "cave_crystal_dynamic_shape_contract", ChromaGameTests::caveCrystalDynamicShapeContract);
 		register(event, env, "pylon_worldgen_nbt_contract", ChromaGameTests::pylonWorldgenNbtContract);
+        register(event, env, "pylon_feature_variants", 40, ChromaGameTests::pylonFeatureVariants);
+		register(event, env, "glow_cloud_spherical_movement", ChromaGameTests::glowCloudSphericalMovement);
+		register(event, env, "manipulator_repeater_dispatch", ChromaGameTests::manipulatorRepeaterDispatch);
 		register(event, env, "pylon_worldgen_grid_density", ChromaGameTests::pylonWorldgenGridDensity);
 		register(event, env, "casting_table_menu_grid", ChromaGameTests::castingTableMenuGrid);
 	}
 
+	/** The V33a spherical velocity must pass through 26.2 LivingEntity travel and entity tracking. */
+	private static void glowCloudSphericalMovement(GameTestHelper helper) {
+		EntityGlowCloud cloud = ChromaEntityTypes.GLOW_CLOUD.get().create(
+				helper.getLevel(), EntitySpawnReason.COMMAND);
+		helper.assertTrue(cloud != null, "glow cloud should instantiate from its registered entity type");
+		cloud.setCustomName(Component.literal("movement test"));
+		cloud.snapTo(net.minecraft.world.phys.Vec3.atCenterOf(helper.absolutePos(new BlockPos(8, 8, 8))));
+		var start = cloud.position();
+		helper.assertTrue(helper.getLevel().addFreshEntity(cloud), "glow cloud should enter the test level");
+		helper.runAfterDelay(5, () -> {
+			helper.assertTrue(cloud.position().distanceToSqr(start) > 0.01,
+					"glow cloud must travel under its source-faithful spherical velocity");
+			helper.succeed();
+		});
+	}
+	/** Repeater diagnostics remain usable, while the earlier SneakPop check keeps source precedence. */
+	private static void manipulatorRepeaterDispatch(GameTestHelper helper) {
+		BlockPos pos = helper.absolutePos(new BlockPos(8, 8, 8));
+		TileEntityCrystalRepeater repeater = placeRepeater(helper, pos, Direction.NORTH);
+		var owner = helper.makeMockPlayer(GameType.SURVIVAL);
+		var other = helper.makeMockPlayer(GameType.SURVIVAL);
+		repeater.setPlacer(owner);
+		owner.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND,
+				new ItemStack(ChromaItems.MANIPULATOR.get()));
+		other.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND,
+				new ItemStack(ChromaItems.MANIPULATOR.get()));
+
+		var hit = new net.minecraft.world.phys.BlockHitResult(
+				net.minecraft.world.phys.Vec3.atCenterOf(pos), Direction.EAST, pos, false);
+		var diagnostic = ChromaItems.MANIPULATOR.get().useOn(new net.minecraft.world.item.context.UseOnContext(
+				owner, net.minecraft.world.InteractionHand.MAIN_HAND, hit));
+		helper.assertTrue(diagnostic.consumesAction() && repeater.hasStructure()
+				&& helper.getLevel().getBlockEntity(pos) == repeater,
+				"ordinary Manipulator use must run the repeater diagnostic without changing its stalk");
+
+		other.setShiftKeyDown(true);
+		var deniedPop = ChromaItems.MANIPULATOR.get().useOn(new net.minecraft.world.item.context.UseOnContext(
+				other, net.minecraft.world.InteractionHand.MAIN_HAND, hit));
+		helper.assertTrue(deniedPop.consumesAction() && repeater.hasStructure()
+				&& helper.getLevel().getBlockEntity(pos) == repeater,
+				"a non-owner cannot SneakPop or redirect another player's repeater");
+		helper.succeed();
+	}
 	/** Every former CrystalElement metadata family owns sixteen stable block and item registry ids. */
 	private static void coloredBlockRegistryIdentity(GameTestHelper helper) {
 		java.util.Set<net.minecraft.world.level.block.Block> blocks = new java.util.HashSet<>();
@@ -346,6 +396,61 @@ public final class ChromaGameTests {
         helper.succeed();
     }
 
+    /** Command-only pylon features carry their requested upgrades without entering biome worldgen. */
+    private static void pylonFeatureVariants(GameTestHelper helper) {
+        BlockPos turboBase = helper.absolutePos(new BlockPos(12, 3, 12));
+        BlockPos boostedBase = helper.absolutePos(new BlockPos(36, 3, 36));
+        preparePylonFeatureSite(helper, turboBase);
+        preparePylonFeatureSite(helper, boostedBase);
+
+        helper.assertTrue(PylonFeature.tryPlaceAt(helper.getLevel(), turboBase,
+                RandomSource.create(0x7A11L), PylonFeature.Variant.TURBOCHARGED),
+                "turbocharged command feature should place on valid terrain");
+        TileEntityCrystalPylon turbo = (TileEntityCrystalPylon)helper.getLevel()
+                .getBlockEntity(turboBase.above(9));
+        helper.assertTrue(turbo != null && turbo.isEnhanced(),
+                "turbocharged command feature must initialize the enhanced pylon state");
+        helper.assertTrue(countPylonUpgradeBlocks(helper, turboBase.above(9)) > 0,
+                "turbocharged command feature should retain its upgrade-ring geometry");
+
+        helper.assertTrue(PylonFeature.tryPlaceAt(helper.getLevel(), boostedBase,
+                RandomSource.create(0xB0057L), PylonFeature.Variant.POWER_CRYSTAL_BOOSTED),
+                "power-crystal command feature should place on valid terrain");
+        TileEntityCrystalPylon boosted = (TileEntityCrystalPylon)helper.getLevel()
+                .getBlockEntity(boostedBase.above(9));
+        helper.assertTrue(boosted != null && boosted.getBoosterCrystals(true).size() == 8,
+                "power-crystal command feature must create eight mutually owned functional boosters");
+        helper.succeed();
+    }
+
+    private static void preparePylonFeatureSite(GameTestHelper helper, BlockPos base) {
+        helper.getLevel().setBlock(new BlockPos(base.getX(), helper.getLevel().getMinY(), base.getZ()),
+                Blocks.BEDROCK.defaultBlockState(), 3);
+        for (int direction = 0; direction < 4; direction++) {
+            int stepX = direction == 0 ? 1 : direction == 1 ? -1 : 0;
+            int stepZ = direction == 2 ? 1 : direction == 3 ? -1 : 0;
+            for (int distance = 0; distance <= 3; distance++) {
+                for (int lateral = -1; lateral <= 1; lateral++) {
+                    int dx = stepX * distance + stepZ * lateral;
+                    int dz = stepZ * distance + stepX * lateral;
+                    helper.getLevel().setBlock(base.offset(dx, 0, dz), Blocks.STONE.defaultBlockState(), 3);
+                    for (int y = 1; y <= 9; y++)
+                        helper.getLevel().setBlock(base.offset(dx, y, dz), Blocks.AIR.defaultBlockState(), 3);
+                }
+            }
+        }
+    }
+
+    private static int countPylonUpgradeBlocks(GameTestHelper helper, BlockPos pylonPos) {
+        int count = 0;
+        for (int x = -4; x <= 4; x++) for (int y = -9; y <= 0; y++) for (int z = -4; z <= 4; z++) {
+            BlockState state = helper.getLevel().getBlockState(pylonPos.offset(x, y, z));
+            if (state.is(ChromaBlocks.crystallineStone(StoneTypes.STABILIZER).get())
+                    || state.is(ChromaBlocks.crystallineStone(StoneTypes.RESORING).get()))
+                count++;
+        }
+        return count;
+    }
     /** The V33a shuffled grid contains exactly one candidate per 10x10-chunk cell. */
     private static void pylonWorldgenGridDensity(GameTestHelper helper) {
         int selected = 0;
@@ -494,12 +599,20 @@ public final class ChromaGameTests {
 		helper.assertTrue(pylon.canConduct(), "a full charged structured pylon should conduct");
 
 		BlockPos requiredStone = pylonPos.offset(3, -8, 1);
+		BlockState requiredState = helper.getLevel().getBlockState(requiredStone);
 		helper.getLevel().destroyBlock(requiredStone, false);
 		helper.runAfterDelay(12, () -> {
 			helper.assertTrue(!pylon.hasStructure(), "periodic structure check should invalidate the damaged pylon");
 			helper.assertTrue(pylon.getEnergy(CrystalElement.BLUE) == 0, "structure loss should drain the pylon");
 			helper.assertTrue(!pylon.canConduct(), "invalidated pylon must leave the network");
-			helper.succeed();
+			helper.getLevel().setBlock(requiredStone, requiredState, 3);
+			helper.runAfterDelay(12, () -> {
+				helper.assertTrue(pylon.hasStructure(),
+						"replacing the missing structure block should reactivate the pylon without a reload");
+				helper.assertTrue(pylon.getEnergy(CrystalElement.BLUE) > 0,
+						"a reactivated pylon should resume regenerating energy");
+				helper.succeed();
+			});
 		});
 	}
 
@@ -1349,6 +1462,25 @@ public final class ChromaGameTests {
 	}
 
 	/** A registered ordinary recipe runs for its declared duration and commits input/output/XP together. */
+	/**
+	 * The opening move of the whole mod: looking at a cave crystal must grant CRYSTALS, and that
+	 * grant must be what unlocks tier-1 casting. Everything else in the casting chain is covered by
+	 * castingTableAtomicCraft, which grants the stage directly -- this covers the link that one
+	 * skips, so a silently refused grant cannot masquerade as "casting is broken".
+	 */
+	private static void explorationGrantsCrystals(GameTestHelper helper) {
+		BlockPos pos = helper.absolutePos(new BlockPos(2, 3, 2));
+		helper.getLevel().setBlock(pos,
+				ChromaBlocks.caveCrystal(CrystalElement.BLUE).get().defaultBlockState(), 3);
+		var ep = helper.makeMockPlayer(GameType.SURVIVAL);
+		helper.assertTrue(!ProgressStage.CRYSTALS.isPlayerAtStage(ep),
+				"a fresh player must not already hold CRYSTALS");
+		ExplorationMonitor.scanLookedAtBlock(ep, helper.getLevel(), pos);
+		helper.assertTrue(ProgressStage.CRYSTALS.isPlayerAtStage(ep),
+				"looking at a cave crystal must grant CRYSTALS");
+		helper.succeed();
+	}
+
 	private static void castingTableAtomicCraft(GameTestHelper helper) {
 		BlockPos pos = helper.absolutePos(new BlockPos(4, 3, 4));
 		helper.getLevel().setBlock(pos, ChromaBlocks.CASTING_TABLE.get().defaultBlockState(), 3);
@@ -1706,8 +1838,8 @@ public final class ChromaGameTests {
 		for (BlockPos offset : table.getRelativeFocusCrystalLocations()) {
 			BlockPos pos = tablePos.offset(offset);
 			helper.getLevel().setBlock(pos, ChromaBlocks.FOCUS_CRYSTAL.get().defaultBlockState(), 3);
-			TileEntityFocusCrystalPort focus = (TileEntityFocusCrystalPort)helper.getLevel().getBlockEntity(pos);
-			focus.setTier(TileEntityFocusCrystalPort.CrystalTier.EXQUISITE);
+			TileEntityFocusCrystal focus = (TileEntityFocusCrystal)helper.getLevel().getBlockEntity(pos);
+			focus.setTier(TileEntityFocusCrystal.CrystalTier.EXQUISITE);
 		}
 		helper.assertTrue(Math.abs(table.getAccelerationFactor() - 8F) < 0.0001F,
 				"eight exquisite crystals must contribute 8 x 0.875 to the base factor of one");
@@ -1723,7 +1855,7 @@ public final class ChromaGameTests {
 		for (int i = 0; i < 20; i++) table.updateEntity(helper.getLevel(), tablePos);
 		helper.assertTrue(table.getItem(9).is(ChromaItems.CRAFTING.get(ChromaCraftingItems.ELEMENT_UNIT).get()),
 				"focus acceleration must change duration without changing the atomic result");
-		TileEntityFocusCrystalPort focus = (TileEntityFocusCrystalPort)helper.getLevel().getBlockEntity(
+		TileEntityFocusCrystal focus = (TileEntityFocusCrystal)helper.getLevel().getBlockEntity(
 				tablePos.offset(table.getRelativeFocusCrystalLocations().get(0)));
 		helper.assertTrue(tablePos.equals(focus.getConnectedTarget()),
 				"participating focus crystals must retain their target connection");
