@@ -82,6 +82,32 @@ flat icon. Best done as a single pass over the crystal family:
       when `!canRunDisplayedRecipe()` — so retest now that the Manipulator works; if the ghost never
       appears, the recipe is not matching rather than the highlight being absent.
 
+## 0d. HUD — findings 2026-07-31
+
+**Casting-table GUI: already at V33a parity.** Checked against
+`5cde0068^:GUI/Tile/Inventory/GuiCastingTable.java`. V33a draws the tier diamonds with NO_ENTRY
+overlays for unmet tiers, the per-element aura fill bars, and the output stack — and the port's
+`ScreenCastingTable` already does all three. Two things V33a has that the port does not, both blocked:
+
+- the "recipe missing progress" hint (`ChromaBookData.drawRecipeMissingProgress`), which needs the
+  research/book subsystem;
+- nothing else. **V33a has no craft progress bar here** — worth knowing before adding one.
+
+The output *is* drawn solid in V33a via `drawItemStack`, not faded. So an empty output slot means the
+recipe is not matching, which is the same root cause as "casting does not work" — not a render bug.
+
+**World HUD (`ChromaOverlays`, 1056 lines): blocked, nothing portable yet.** It is a dispatcher over
+~15 overlays — element pie, ability status, boosted health bar, kill-aura crosshair, pylon aura,
+lore hexes, probe info, ping, transition/ore HUDs, progression notes. Every dependency is still
+pristine 1.7.10: `PlayerElementBuffer`, `Chromabilities`, `ProgressOverlayRenderer`,
+`FullScreenOverlayRenderer`, `MouseoverOverlayRenderer`.
+
+Natural first slice, and the one players actually recognise as "the HUD":
+`PlayerElementBuffer` (299 lines — player-attached elemental storage, so NBT via data attachments
+plus client sync) then `ChromaOverlays.renderElementPie` (~line 816), which depends on essentially
+nothing else beyond it and `CrystalElement`. Everything else in the HUD hangs off the ability system
+and should wait for it.
+
 ## 0c. Known flaky test
 
 Two now seen flaking, both timing-sensitive, both passing on re-run. Worth hardening before they
