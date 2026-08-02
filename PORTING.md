@@ -1540,3 +1540,40 @@ the discovery mechanism separately, which is a deliberate split rather than an u
 
 Next thing to bite after the stand: `MULTIBLOCK ← VILLAGECASTING` is a live upstream edge, so the
 MULTIBLOCK grant to a table's placer silently no-ops until `VILLAGECASTING` has a grant site.
+
+### Casting-system slice: pylon upgrade stone, stand FX, stand locking — 2026-08-02
+
+Continuing along table → temple → runes → stands.
+
+**The two pylon upgrade blocks were uncraftable.** V33a registers ten `CrystalStoneRecipe` shape
+conversions; the port had eight. The missing pair is the Aura Stabilizer (4, `sSs`/`ScS`/`sSs` from
+smooth stone, white runes and a charged white shard) and the Resonance Ring (6, `SSS`/`ccc`/`SSS`).
+Since ordinary pylon worldgen substitutes plain foundation for both, these recipes were the only way
+to obtain them. V33a's `CrystalStoneRecipe` also derives its progression from its own ingredients — a
+charged shard implies SHARDCHARGE, a rune implies ALLCOLORS, `iridCrystal` implies INFUSE, and a
+tiered resource implies its discovery tier — so the two new recipes carry exactly the gates that rule
+produces. The other eight were re-checked against source and all their counts and patterns match.
+
+**The Item Stand's particles were vanilla stand-ins.** `ParticleTypes.ENCHANT` and `END_ROD` are now
+V33a's own effects: `spawnItemStandItem` reproduces the half-chance-per-tick `EntityCCBlurFX` rising
+out of the held item with the source ±0.375/±0.125 spread, 45–75-tick life and small negative
+gravity, and `spawnItemStandCrafting` reproduces the 1-in-32 white `EntityCenterBlurFX` on the legacy
+64-frame sheet at the stand's base. Two source details the port had also lost: the crafting mote is
+driven by the **linked table** being mid-craft, not by this stand holding anything, and V33a tints
+the item mote from `ItemElementCalculator`. That calculator is still pristine 1.7.10, so the port
+uses the source's own null-tag fallback colour rather than inventing a tint.
+
+**A locked stand is unbreakable in V33a, not merely undroppable.** `BlockChromaTile` returned -1
+player-relative hardness for any `ConditionalUnbreakability` tile; the modern `BlockChromaticTile`
+only had the owner check, and the stand did not implement the interface at all, so a running cast
+could have its ingredients mined out from under it. Both the destroy hook and `getDestroyProgress`
+now honour it. Note `Level.destroyBlock` does not consult `onDestroyedByPlayer` in 26.2 — only the
+player game-mode path does, which is what the regression drives.
+
+`canGiveDoubleOutput` was investigated and is **not** a gap: V33a only consumes it under
+`Chromabilities.DOUBLECRAFT`, a player ability far past this arc, so it is correctly dormant.
+
+Verification: `:ChromatiCraft:runServerData` emits the two new stone recipes, and
+`:ChromatiCraft:runGameTest` reports **all 71 required tests passed**, with the stand test extended
+to cover locked-stand unbreakability. The two restored particle families still need an in-client
+look, as headless tests cannot assert submitted particles.

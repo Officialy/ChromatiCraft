@@ -1,0 +1,51 @@
+{
+  "type": "chromaticraft:casting",
+  "experience": 5,
+  "grid": [
+    {
+      "ingredient": "chromaticraft:crystal_rune_white",
+      "slot": 0
+    },
+    {
+      "ingredient": "chromaticraft:crystalline_stone",
+      "slot": 1
+    },
+    {
+      "ingredient": "chromaticraft:crystal_rune_white",
+      "slot": 2
+    },
+    {
+      "ingredient": "chromaticraft:crystalline_stone",
+      "slot": 3
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_white",
+      "slot": 4
+    },
+    {
+      "ingredient": "chromaticraft:crystalline_stone",
+      "slot": 5
+    },
+    {
+      "ingredient": "chromaticraft:crystal_rune_white",
+      "slot": 6
+    },
+    {
+      "ingredient": "chromaticraft:crystalline_stone",
+      "slot": 7
+    },
+    {
+      "ingredient": "chromaticraft:crystal_rune_white",
+      "slot": 8
+    }
+  ],
+  "required_progress": [
+    "allcolors",
+    "shardcharge"
+  ],
+  "result": {
+    "count": 4,
+    "id": "chromaticraft:aura_stabilizer"
+  },
+  "tier": "crafting"
+}

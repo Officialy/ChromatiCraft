@@ -346,6 +346,37 @@ public abstract class ChromaParticle extends SingleQuadParticle {
     }
 
     /** V33a casting-table structure effects: accent lasers, multiblock globes, and aura-rune streams. */
+    /**
+     * V33a TileEntityItemStand.spawnItemParticles: a half-chance-per-tick EntityCCBlurFX drifting up
+     * out of the held item. The original tints it from ItemElementCalculator's element tag; that
+     * calculator is still pristine 1.7.10, so this uses the source's own null-tag fallback colour
+     * rather than inventing a tint.
+     */
+    public static void spawnItemStandItem(Level world, BlockPos pos, RandomSource random) {
+        if (!(world instanceof ClientLevel level) || random.nextInt(2) != 0) return;
+        double x = pos.getX() + 0.5 + (random.nextDouble() * 2 - 1) * 0.375;
+        double y = pos.getY() + 0.5 + (random.nextDouble() * 2 - 1) * 0.125;
+        double z = pos.getZ() + 0.5 + (random.nextDouble() * 2 - 1) * 0.375;
+        int life = 60 + (int)((random.nextDouble() * 2 - 1) * 15);
+        FadeGlow glow = new FadeGlow(level, x, y, z, 0, 0, 0, 0x0060ff, life, 1F, false);
+        // V33a setGravity(-(0.03125 +/- 0.025)): a small negative gravity, so the mote rises.
+        glow.gravity = -(float)(0.03125 + (random.nextDouble() * 2 - 1) * 0.025);
+        Minecraft.getInstance().particleEngine.add(glow);
+    }
+
+    /**
+     * V33a TileEntityItemStand.spawnCraftParticles: a 1-in-32 EntityCenterBlurFX rising from the
+     * stand's base while its linked table is mid-craft. That effect is white, gravity-free, and
+     * 63 ticks long on the legacy 64-frame sheet.
+     */
+    public static void spawnItemStandCrafting(Level world, BlockPos pos, RandomSource random) {
+        if (!(world instanceof ClientLevel level) || random.nextInt(32) != 0) return;
+        double x = pos.getX() + 0.5 + (random.nextDouble() * 2 - 1) * 0.375;
+        double z = pos.getZ() + 0.5 + (random.nextDouble() * 2 - 1) * 0.375;
+        Minecraft.getInstance().particleEngine.add(new AnimatedSheetParticle(level,
+                x, pos.getY(), z, 0, 0.1, 0, CrystalElement.WHITE, 1F, ADDITIVE_LASER_SHEET));
+    }
+
     public static void spawnCasting(Level world, BlockPos pos,
             reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe.Tier tier,
             boolean hasTemple, boolean hasMultiblock, boolean hasPylonStructure,

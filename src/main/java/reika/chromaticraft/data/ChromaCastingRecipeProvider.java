@@ -81,6 +81,20 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 			save("crystal_stone/corner", StoneTypes.CORNER, 5, smoothOnly, "SSS", "S  ", "S  ");
 			save("crystal_stone/groove1", StoneTypes.GROOVE1, 3, smoothOnly, "S", "S", "S");
 			save("crystal_stone/groove2", StoneTypes.GROOVE2, 3, smoothOnly, "SSS");
+			// The two pylon upgrade blocks. V33a CrystalStoneRecipe derives its progression from its
+			// own ingredients: a charged shard implies SHARDCHARGE and a rune block implies
+			// ALLCOLORS. These no longer generate naturally, so without these recipes the aura
+			// stabilizer and resonance ring are unobtainable.
+			Ingredient chargedWhite = Ingredient.of(ChromaItems.BOOSTED_SHARDS.get(CrystalElement.WHITE).get());
+			save("crystal_stone/stabilizer", StoneTypes.STABILIZER, 4,
+					List.of(ProgressStage.ALLCOLORS, ProgressStage.SHARDCHARGE),
+					Map.of('S', smooth, 'c', chargedWhite,
+							's', Ingredient.of(ChromaBlocks.rune(CrystalElement.WHITE).get().asItem())),
+					"sSs", "ScS", "sSs");
+			save("crystal_stone/resonance_ring", StoneTypes.RESORING, 6,
+					List.of(ProgressStage.SHARDCHARGE),
+					Map.of('S', smooth, 'c', chargedWhite),
+					"SSS", "ccc", "SSS");
 
 			// V33a StandRecipe: the Casting Item Stand is itself a base-tier casting recipe, which is
 			// what unlocks tier-2 (auxiliary-stand) casting.
@@ -393,6 +407,11 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 		private CastingTableRecipe.StandIngredient stand(int x, int y, int z, Ingredient item) { return new CastingTableRecipe.StandIngredient(new net.minecraft.core.BlockPos(x, y, z), item); }
 		private void save(String name, StoneTypes result, int count,
 				Map<Character, Ingredient> ingredients, String... pattern) {
+			save(name, result, count, List.of(), ingredients, pattern);
+		}
+
+		private void save(String name, StoneTypes result, int count, List<ProgressStage> progress,
+				Map<Character, Ingredient> ingredients, String... pattern) {
 			if (pattern.length < 1 || pattern.length > 3)
 				throw new IllegalArgumentException("Casting pattern must contain one to three rows");
 			int width = pattern[0].length();
@@ -413,7 +432,8 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 			}
 			CastingTableRecipe recipe = new CastingTableRecipe(CastingTableRecipe.Tier.CRAFTING,
 					grid, List.of(), List.of(), List.of(),
-					new ItemStackTemplate(ChromaBlocks.crystallineStone(result).get().asItem(), count), 5, 5);
+					new ItemStackTemplate(ChromaBlocks.crystallineStone(result).get().asItem(), count), 5, 5,
+					progress);
 			saveRecipe(name, recipe);
 		}
 

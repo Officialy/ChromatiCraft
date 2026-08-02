@@ -2568,6 +2568,23 @@ public final class ChromaGameTests {
 		helper.assertTrue(helper.getLevel().getBlockState(tablePos).useWithoutItem(helper.getLevel(), owner, tableHit).consumesAction(),
 				"sneak-empty-hand table click should claim the mass-empty action");
 		helper.assertTrue(first.isEmpty() && second.isEmpty(), "tier-III table should dump every stand in its ring");
+
+		// V33a makes a locked stand outright unbreakable, not merely undroppable, so an active cast
+		// cannot have its ingredients mined away mid-craft.
+		helper.assertTrue(helper.getLevel().getBlockState(firstPos)
+				.getDestroyProgress(owner, helper.getLevel(), firstPos) > 0,
+				"an unlocked owned stand must be mineable by its owner");
+		first.lock(true);
+		helper.assertTrue(helper.getLevel().getBlockState(firstPos)
+				.getDestroyProgress(owner, helper.getLevel(), firstPos) == 0,
+				"a stand locked by a running cast must be unbreakable");
+		BlockState standState = helper.getLevel().getBlockState(firstPos);
+		helper.assertTrue(!standState.getBlock().onDestroyedByPlayer(standState, helper.getLevel(), firstPos,
+						owner, ItemStack.EMPTY, false, standState.getFluidState()),
+				"the player-destroy path must refuse a locked stand");
+		helper.assertTrue(helper.getLevel().getBlockEntity(firstPos) instanceof TileEntityItemStand,
+				"the locked stand must survive the attempt");
+		first.lock(false);
 		helper.succeed();
 	}
 

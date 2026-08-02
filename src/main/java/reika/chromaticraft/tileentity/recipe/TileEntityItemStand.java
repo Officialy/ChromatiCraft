@@ -9,7 +9,6 @@ import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.NonNullList;
-import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.ContainerHelper;
@@ -30,11 +29,13 @@ import reika.chromaticraft.base.tileentity.TileEntityChromaticBase;
 import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.ChromaSounds;
 import reika.chromaticraft.registry.ChromaTiles;
+import reika.chromaticraft.render.particle.ChromaParticle;
+import reika.dragonapi.interfaces.blockentity.ConditionalUnbreakability;
 import reika.dragonapi.interfaces.blockentity.InertIInv;
 
 /** V33a casting stand: one inert slot, owner access, locking, table linking, and spread-fill. */
 public class TileEntityItemStand extends TileEntityChromaticBase
-		implements WorldlyContainer, OwnedTile, NBTTile, InertIInv {
+		implements WorldlyContainer, OwnedTile, NBTTile, InertIInv, ConditionalUnbreakability {
 
 	private final NonNullList<ItemStack> inventory = NonNullList.withSize(1, ItemStack.EMPTY);
 	private BlockPos table;
@@ -137,18 +138,20 @@ public class TileEntityItemStand extends TileEntityChromaticBase
 	public void lock(boolean lock) { locked = lock; this.setChanged(); }
 	public boolean isLocked() { return locked; }
 
+	/** V33a: a stand locked by an in-progress cast cannot be mined out from under the table. */
+	@Override public boolean isUnbreakable(Player player) { return this.isLocked(); }
+
 	@Override
 	protected void animateWithTick(Level world, BlockPos pos) {
-		if (world == null || !world.isClientSide() || inventory.getFirst().isEmpty()) return;
+		if (world == null || !world.isClientSide()) return;
 		RandomSource random = world.getRandom();
-		if (random.nextBoolean()) {
-			double x = pos.getX()+0.5+(random.nextDouble()-0.5)*0.75;
-			double y = pos.getY()+0.5+(random.nextDouble()-0.5)*0.25;
-			double z = pos.getZ()+0.5+(random.nextDouble()-0.5)*0.75;
-			world.addParticle(ParticleTypes.ENCHANT, x, y, z, 0, 0.01+random.nextDouble()*0.025, 0);
-		}
-		if (table != null && random.nextInt(32) == 0)
-			world.addParticle(ParticleTypes.END_ROD, pos.getX()+0.5, pos.getY()+0.25, pos.getZ()+0.5, 0, 0.08, 0);
+		// V33a emits the crafting mote whenever the *linked table* is mid-craft, independently of
+		// whether this particular stand is holding anything.
+		if (table != null && world.getBlockEntity(table) instanceof TileEntityCastingTable linked
+				&& linked.getCraftingTick() > 0)
+			ChromaParticle.spawnItemStandCrafting(world, pos, random);
+		if (!inventory.getFirst().isEmpty())
+			ChromaParticle.spawnItemStandItem(world, pos, random);
 	}
 
 	@Override

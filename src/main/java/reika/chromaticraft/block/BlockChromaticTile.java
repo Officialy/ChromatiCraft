@@ -9,6 +9,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityTicker;
@@ -20,6 +21,7 @@ import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 
 import reika.chromaticraft.auxiliary.interfaces.NBTTile;
 import reika.chromaticraft.auxiliary.interfaces.OwnedTile;
+import reika.dragonapi.interfaces.blockentity.ConditionalUnbreakability;
 import reika.chromaticraft.registry.ChromaTiles;
 import reika.dragonapi.base.BlockEntityBase;
 import reika.dragonapi.base.BlockTEBase;
@@ -89,6 +91,24 @@ public class BlockChromaticTile extends BlockTEBase {
         if (blockEntity instanceof OwnedTile owned && owned.onlyAllowOwnersToMine()
                 && !owned.isOwnedByPlayer(player))
             return false;
+        // V33a BlockChromaTile.getPlayerRelativeBlockHardness returns -1 for these, which makes the
+        // block unbreakable rather than merely undroppable — a casting stand locked by a running
+        // cast must not be mineable out from under its table.
+        if (blockEntity instanceof ConditionalUnbreakability conditional
+                && conditional.isUnbreakable(player))
+            return false;
         return super.onDestroyedByPlayer(state, level, pos, player, toolStack, willHarvest, fluid);
+    }
+
+    @Override
+    public float getDestroyProgress(BlockState state, Player player, BlockGetter level, BlockPos pos) {
+        BlockEntity blockEntity = level.getBlockEntity(pos);
+        if (blockEntity instanceof OwnedTile owned && owned.onlyAllowOwnersToMine()
+                && !owned.isOwnedByPlayer(player))
+            return 0;
+        if (blockEntity instanceof ConditionalUnbreakability conditional
+                && conditional.isUnbreakable(player))
+            return 0;
+        return super.getDestroyProgress(state, player, level, pos);
     }
 }

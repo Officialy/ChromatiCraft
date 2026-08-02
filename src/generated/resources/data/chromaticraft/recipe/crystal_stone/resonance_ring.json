@@ -1,0 +1,50 @@
+{
+  "type": "chromaticraft:casting",
+  "experience": 5,
+  "grid": [
+    {
+      "ingredient": "chromaticraft:crystalline_stone",
+      "slot": 0
+    },
+    {
+      "ingredient": "chromaticraft:crystalline_stone",
+      "slot": 1
+    },
+    {
+      "ingredient": "chromaticraft:crystalline_stone",
+      "slot": 2
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_white",
+      "slot": 3
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_white",
+      "slot": 4
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_white",
+      "slot": 5
+    },
+    {
+      "ingredient": "chromaticraft:crystalline_stone",
+      "slot": 6
+    },
+    {
+      "ingredient": "chromaticraft:crystalline_stone",
+      "slot": 7
+    },
+    {
+      "ingredient": "chromaticraft:crystalline_stone",
+      "slot": 8
+    }
+  ],
+  "required_progress": [
+    "shardcharge"
+  ],
+  "result": {
+    "count": 6,
+    "id": "chromaticraft:resonance_ring"
+  },
+  "tier": "crafting"
+}
