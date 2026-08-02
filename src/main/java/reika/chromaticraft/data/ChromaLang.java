@@ -13,6 +13,7 @@ import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.ChromaTieredItems;
 import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
 import reika.chromaticraft.registry.ChromaBlocks;
+import reika.chromaticraft.magic.progression.ResearchLevel;
 /**
  * ChromatiCraft language provider (port-in-progress; grows as content ports). The 1.7.10 original
  * shipped a flat en_US.lang (preserved as the reference file); names are re-added here per ported block/item.
@@ -83,6 +84,14 @@ public class ChromaLang extends LanguageProvider {
 					element.displayName + " Cave Crystal");
 		}
 		add(ChromaItems.MANIPULATOR.get(), "Elemental Manipulator"); // V33a chroma.tool
+
+		// V33a chromaresearch.* strings, now emitted through the 26.2 language provider.
+		String[] researchNames = {
+			"Entry-Level", "Exploration", "Basic Crafting", "Rune Crafting", "Energy And Elements",
+			"Multiblock Casting", "Transmitting Energy", "Pylon Casting", "Endgame", "Elemental Mastery"
+		};
+		for (ResearchLevel level : ResearchLevel.levelList)
+			add("chromaresearch." + level.name().toLowerCase(java.util.Locale.ROOT), researchNames[level.ordinal()]);
 
 		for (CrystalElement element : CrystalElement.elements) {
 			String suffix = element.getEnglishName();

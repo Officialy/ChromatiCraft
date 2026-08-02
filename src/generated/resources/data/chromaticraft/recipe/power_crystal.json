@@ -1,0 +1,137 @@
+{
+  "type": "chromaticraft:casting",
+  "aura": [
+    {
+      "amount": 15000,
+      "element": "yellow"
+    },
+    {
+      "amount": 25000,
+      "element": "black"
+    },
+    {
+      "amount": 10000,
+      "element": "purple"
+    }
+  ],
+  "duration": 1600,
+  "experience": 500,
+  "grid": [
+    {
+      "ingredient": "minecraft:diamond",
+      "slot": 4
+    }
+  ],
+  "requires_tuning_key": true,
+  "result": {
+    "id": "chromaticraft:power_crystal"
+  },
+  "stacking_factor": 0.97489,
+  "stands": [
+    {
+      "ingredient": "chromaticraft:iridescent_chunk",
+      "offset": [
+        -2,
+        0,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:iridescent_chunk",
+      "offset": [
+        -4,
+        1,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:iridescent_chunk",
+      "offset": [
+        2,
+        0,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:iridescent_chunk",
+      "offset": [
+        4,
+        1,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:iridescent_chunk",
+      "offset": [
+        0,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:iridescent_chunk",
+      "offset": [
+        0,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "minecraft:obsidian",
+      "offset": [
+        -4,
+        1,
+        2
+      ]
+    },
+    {
+      "ingredient": "minecraft:obsidian",
+      "offset": [
+        -2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "minecraft:obsidian",
+      "offset": [
+        0,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "minecraft:obsidian",
+      "offset": [
+        2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "minecraft:obsidian",
+      "offset": [
+        4,
+        1,
+        2
+      ]
+    },
+    {
+      "ingredient": "minecraft:glowstone",
+      "offset": [
+        -2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "minecraft:glowstone",
+      "offset": [
+        2,
+        0,
+        -2
+      ]
+    }
+  ],
+  "tier": "pylon"
+}

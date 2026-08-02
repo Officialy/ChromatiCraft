@@ -303,6 +303,7 @@ public enum ChromaSounds implements ChromaSound {
 	public boolean preload() {
 		switch (this) {
 			case MONUMENT:
+			case POWER:
 			case CRAFTING:
 			case CRAFTING_BOOST:
 			case POWERCRAFT:

@@ -454,8 +454,12 @@ public class TileEntityCrystalRepeater extends CrystalTransmitterBase
 	}
 
 	public final void markAsTableGrouped(boolean grouped) {
+		if (this.isTableGrouped() == grouped)
+			return;
 		this.setState(StateFlags.TABLEGROUPED, grouped);
 		CrystalNetworker.instance.breakPaths(this);
+		if (this.getLevel() != null && !this.getLevel().isClientSide())
+			this.syncAllData(false);
 	}
 
 	// ---- SneakPop / OwnedTile ----

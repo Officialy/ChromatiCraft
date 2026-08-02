@@ -67,7 +67,7 @@ public final class ChromaRecipeProvider extends RecipeProvider.Runner {
 					.pattern("SCS")
 					.pattern("SsS")
 					.pattern("sss")
-					.unlockedBy("has_shard", has(ChromaItems.SHARDS.get(CrystalElement.BLUE).get()))
+					.unlockedBy("has_shard", has(ChromaItemTags.CRYSTAL_SHARDS))
 					.save(out, key("casting_table"));
 
 			// V33a: ChromaItems.TOOL.addRecipe("  s", " S ", "S  ", 'S', Items.stick, 's', SHARD wildcard)
@@ -77,7 +77,7 @@ public final class ChromaRecipeProvider extends RecipeProvider.Runner {
 					.pattern("  s")
 					.pattern(" S ")
 					.pattern("S  ")
-					.unlockedBy("has_shard", has(ChromaItems.SHARDS.get(CrystalElement.BLUE).get()))
+					.unlockedBy("has_shard", has(ChromaItemTags.CRYSTAL_SHARDS))
 					.save(out, key("manipulator"));
 
 			// CHROMA-PORT: V33a also crafts the guide book (ChromaItems.HELP, "Chromic Lexicon") here:

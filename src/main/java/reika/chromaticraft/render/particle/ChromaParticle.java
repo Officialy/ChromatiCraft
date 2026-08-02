@@ -26,8 +26,18 @@ import reika.dragonapi.libraries.rendering.ReikaColorAPI;
 /** Reusable V33a ChromatiCraft particle families on the 26.2 particle pipeline. */
 public abstract class ChromaParticle extends SingleQuadParticle {
 
+    // False intentionally routes ADDITIVEDARK particles to the main framebuffer. The 26.2 particle
+    // target is an empty premultiplied-alpha layer; applying screen blending there and compositing it
+    // again destroys the original color equation. Main-target depth writes still let water/clouds
+    // sort correctly around the glow in the transparency post-pass.
     private static final Layer ADDITIVE_TERRAIN = new Layer(
-            true, net.minecraft.client.renderer.texture.TextureAtlas.LOCATION_BLOCKS,
+            false, net.minecraft.client.renderer.texture.TextureAtlas.LOCATION_BLOCKS,
+            ChromaRenderPipelines.ADDITIVE_PARTICLE);
+    private static final Layer ADDITIVE_LASER_SHEET = new Layer(false,
+            Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "textures/particle/64x.png"),
+            ChromaRenderPipelines.ADDITIVE_PARTICLE);
+    private static final Layer ADDITIVE_GLOBE_SHEET = new Layer(false,
+            Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "textures/particle/16x.png"),
             ChromaRenderPipelines.ADDITIVE_PARTICLE);
 
     private final boolean additive;
@@ -335,6 +345,80 @@ public abstract class ChromaParticle extends SingleQuadParticle {
                 new FadeGlow(clientLevel, x, y, z, 0, 0, 0, color, 4, 0.5F, false, null, age));
     }
 
+    /** V33a casting-table structure effects: accent lasers, multiblock globes, and aura-rune streams. */
+    public static void spawnCasting(Level world, BlockPos pos,
+            reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe.Tier tier,
+            boolean hasTemple, boolean hasMultiblock, boolean hasPylonStructure,
+            reika.chromaticraft.magic.ElementTagCompound aura, int ticks, Random random) {
+        if (!(world instanceof ClientLevel level)) return;
+        if (tier.ordinal() >= reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe.Tier.TEMPLE.ordinal()
+                && hasTemple) {
+            int[][] accents = {{-6,5,0},{6,5,0},{0,5,-6},{0,5,6},
+                    {6,4,6},{6,4,-6},{-6,4,-6},{-6,4,6}};
+            CrystalElement color = CrystalElement.elements[(ticks / 20) % CrystalElement.elements.length];
+            for (int[] offset : accents) {
+                double fraction = random.nextDouble();
+                double x = pos.getX() + 0.5 + fraction * offset[0];
+                double y = pos.getY() + 1 + fraction * offset[1];
+                double z = pos.getZ() + 0.5 + fraction * offset[2];
+                Minecraft.getInstance().particleEngine.add(new AnimatedSheetParticle(level,
+                        x, y, z, 0, 0, 0, color, 2F, ADDITIVE_LASER_SHEET));
+            }
+        }
+        if (tier.ordinal() >= reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe.Tier.MULTIBLOCK.ordinal()
+                && hasMultiblock) {
+            double phase = 60 * Math.sin(Math.toRadians((ticks * 4) % 360));
+            for (int i = 0; i < 360; i += 60) {
+                double angle = Math.toRadians(phase + i);
+                double x = pos.getX() + 0.5 + 2 * Math.cos(angle);
+                double y = pos.getY();
+                double z = pos.getZ() + 0.5 + 2 * Math.sin(angle);
+                double speed = 0.0625;
+                Minecraft.getInstance().particleEngine.add(new AnimatedSheetParticle(level,
+                        x, y, z, speed * (pos.getX() + 0.5 - x),
+                        0.0125 + speed * (pos.getY() + 0.5 - y),
+                        speed * (pos.getZ() + 0.5 - z), CrystalElement.WHITE, 1F,
+                        ADDITIVE_GLOBE_SHEET));
+            }
+        }
+        if (tier != reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe.Tier.PYLON
+                || !hasPylonStructure || aura.isEmpty()) return;
+        int[][] runeOffsets = {{-8,2,2},{-8,2,-2},{-8,2,6},{-8,2,-6},
+                {8,2,2},{8,2,-2},{8,2,6},{8,2,-6},{2,2,-8},{-2,2,-8},
+                {6,2,-8},{-6,2,-8},{2,2,8},{-2,2,8},{6,2,8},{-6,2,8}};
+        java.util.List<BlockPos> runes = new java.util.ArrayList<>();
+        for (int[] offset : runeOffsets) {
+            BlockPos rune = pos.offset(offset[0], offset[1], offset[2]);
+            var state = world.getBlockState(rune);
+            if (ChromaBlocks.isRune(state)
+                    && aura.contains(reika.chromaticraft.block.BlockCrystalRune.getColor(state)))
+                runes.add(rune);
+        }
+        int interval = 17 - runes.size();
+        if (runes.isEmpty() || ticks % interval != 0) return;
+        BlockPos rune = runes.get(ticks % runes.size());
+        CrystalElement color = reika.chromaticraft.block.BlockCrystalRune.getColor(world.getBlockState(rune));
+        double dx = pos.getX() - rune.getX();
+        double dy = pos.getY() - rune.getY();
+        double dz = pos.getZ() - rune.getZ();
+        double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        double speed = 0.125;
+        Minecraft.getInstance().particleEngine.add(new Rune(level,
+                rune.getX() + 0.5, rune.getY() + 0.5, rune.getZ() + 0.5,
+                speed * dx / distance, speed * dy / distance, speed * dz / distance,
+                color, distance < 9 ? 70 : 80, 2F));
+    }
+
+    /** V33a 128-spark completion/upgrade burst. */
+    public static void spawnCastingBurst(Level world, BlockPos pos, Random random) {
+        if (!(world instanceof ClientLevel level)) return;
+        for (int i = 0; i < 128; i++) {
+            Minecraft.getInstance().particleEngine.add(new Sparkle(level,
+                    pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5,
+                    (random.nextDouble() - 0.5) * 0.25, random.nextDouble() * 0.25,
+                    (random.nextDouble() - 0.5) * 0.25, 1.5F));
+        }
+    }
     protected ChromaParticle(ClientLevel level, double x, double y, double z,
             String icon, boolean additive) {
         super(level, x, y, z, sprite(icon));
@@ -343,7 +427,7 @@ public abstract class ChromaParticle extends SingleQuadParticle {
     }
 
     @Override
-    protected final Layer getLayer() {
+    protected Layer getLayer() {
         return additive ? ADDITIVE_TERRAIN : Layer.TRANSLUCENT_TERRAIN;
     }
 
@@ -580,6 +664,55 @@ public abstract class ChromaParticle extends SingleQuadParticle {
         }
     }
 
+    /** The original 64-frame ping-pong particles backed by the retained 16x2 legacy sheets. */
+    private static final class AnimatedSheetParticle extends ChromaParticle {
+        private final Layer sheet;
+        AnimatedSheetParticle(ClientLevel level, double x, double y, double z,
+                double vx, double vy, double vz, CrystalElement color, float scale, Layer sheet) {
+            super(level, x, y, z, "flare", true);
+            this.sheet = sheet;
+            this.xd = vx;
+            this.yd = vy;
+            this.zd = vz;
+            this.lifetime = 63;
+            this.quadSize = 0.1F * scale;
+            this.gravity = sheet == ADDITIVE_LASER_SHEET ? 0.0005F : 0;
+            this.setColor(color.getRed() / 192F, color.getGreen() / 192F, color.getBlue() / 192F);
+        }
+        @Override protected Layer getLayer() { return sheet; }
+        private int frameX() {
+            if (age < 16) return age;
+            if (age < 32) return age - 16;
+            return 15 - age % 16;
+        }
+        private int frameY() { return age >= 16 && age < 48 ? 1 : 0; }
+        @Override protected float getU0() { return frameX() / 16F; }
+        @Override protected float getU1() { return (frameX() + 1) / 16F; }
+        @Override protected float getV0() { return frameY() / 2F; }
+        @Override protected float getV1() { return (frameY() + 1) / 2F; }
+    }
+
+    /** V33a EntityRuneFX with constant no-gravity motion and the real per-element rune sprite. */
+    private static final class Rune extends ChromaParticle {
+        Rune(ClientLevel level, double x, double y, double z, double vx, double vy, double vz,
+                CrystalElement color, int life, float scale) {
+            super(level, x, y, z, "runes/real/tile" + color.ordinal() + "_0", true);
+            this.xd = vx;
+            this.yd = vy;
+            this.zd = vz;
+            this.lifetime = life;
+            this.quadSize = 0.1F * scale;
+        }
+        @Override public void tick() {
+            double vx = xd;
+            double vy = yd;
+            double vz = zd;
+            super.tick();
+            xd = vx;
+            yd = vy;
+            zd = vz;
+        }
+    }
     private static final class Blur extends ChromaParticle {
         private final float fullScale;
         private final boolean fadeAlpha;
@@ -690,12 +823,16 @@ public abstract class ChromaParticle extends SingleQuadParticle {
 
     private static final class Sparkle extends ChromaParticle {
         Sparkle(ClientLevel level, double x, double y, double z, double vx, double vy, double vz) {
+            this(level, x, y, z, vx, vy, vz, 1F);
+        }
+        Sparkle(ClientLevel level, double x, double y, double z,
+                double vx, double vy, double vz, float scale) {
             super(level, x, y, z, "sparkle-particle", false);
-            this.lifetime = 20 + this.random.nextInt(20);
+            this.lifetime = 10 + this.random.nextInt(20);
             this.xd = vx;
             this.yd = vy;
             this.zd = vz;
-            this.quadSize = 0.1F;
+            this.quadSize = 0.1F * scale;
         }
     }
 }

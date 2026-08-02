@@ -12,11 +12,13 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 
 import reika.chromaticraft.api.interfaces.ManipulatorInteraction;
 import reika.chromaticraft.auxiliary.interfaces.SneakPop;
+import reika.chromaticraft.block.worldgen26.BlockCliffStone;
 import reika.chromaticraft.registry.ChromaSounds;
 import reika.chromaticraft.tileentity.networking.TileEntityCrystalRepeater;
 import reika.chromaticraft.tileentity.recipe.TileEntityCastingTable;
 import reika.dragonapi.APIPacketHandler;
 import reika.dragonapi.DragonAPI;
+import reika.dragonapi.libraries.ReikaPlayerAPI;
 import reika.dragonapi.libraries.io.ReikaPacketHelper;
 
 /**
@@ -43,12 +45,11 @@ public class ItemManipulator extends Item {
 		Player player = context.getPlayer();
 		Level level = context.getLevel();
 		BlockPos pos = context.getClickedPos();
-		if (player == null)
+		if (player == null || ReikaPlayerAPI.isFake(player))
 			return InteractionResult.PASS;
 
-		// CHROMA-PORT: V33a first calls BlockCliffStone.transparify(world, x, y, z, ep) here, which
-		// toggles the Luminous Cliffs stone's transparent semantic bit. The ported worldgen26
-		// BlockCliffStone keeps that bit as a blockstate but has no transparify equivalent yet.
+		BlockCliffStone.transparify(level, pos, player);
+
 
 		BlockEntity tile = level.getBlockEntity(pos);
 

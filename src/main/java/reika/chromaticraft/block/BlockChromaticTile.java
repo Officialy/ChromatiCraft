@@ -66,8 +66,12 @@ public class BlockChromaticTile extends BlockTEBase {
     public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> type) {
         if (level.isClientSide()) {
             return (lvl, pos, st, be) -> {
-                if (be instanceof BlockEntityBase base)
+                if (be instanceof BlockEntityBase base) {
+                    // The compatibility hook carries each ported tile's client animation work.
+                    // Skipping it silenced pylon ambience and all pylon/focus-crystal particles.
                     base.updateEntity();
+                    base.updateEntity(lvl, pos);
+                }
             };
         }
         return (lvl, pos, st, be) -> {

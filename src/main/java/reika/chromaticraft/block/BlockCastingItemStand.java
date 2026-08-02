@@ -30,6 +30,13 @@ public final class BlockCastingItemStand extends BlockChromaticTile {
 		BlockEntity blockEntity = level.getBlockEntity(pos);
 		if (!(blockEntity instanceof TileEntityItemStand stand)) return InteractionResult.PASS;
 		if (level.isClientSide()) return InteractionResult.SUCCESS;
+		// V33a: sneak-right-clicking an empty stand with an empty hand adds it to the
+		// player's spread set. The next stand click with an item distributes that stack
+		// evenly over every selected stand.
+		if (player.isShiftKeyDown() && player.getItemInHand(hand).isEmpty()) {
+			stand.queueSpread(player);
+			return InteractionResult.SUCCESS;
+		}
 		return stand.interact(player, hand) ? InteractionResult.SUCCESS : InteractionResult.FAIL;
 	}
 	@Override public boolean onDestroyedByPlayer(BlockState state, Level level, BlockPos pos, Player player, ItemStack toolStack, boolean willHarvest, FluidState fluid) {

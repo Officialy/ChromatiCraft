@@ -137,6 +137,7 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 			saveCrystalLens();
 			saveIridescentChunk();
 			saveLumenCore();
+			savePowerCrystal();
 			saveElementUnit();
 			saveHighCore("transformation", ChromaCraftingItems.HIGH_TRANSFORMATION_CORE, CrystalElement.GRAY, CrystalElement.BLACK, new net.minecraft.core.BlockPos(3,0,-2), new net.minecraft.core.BlockPos(-3,0,2), ChromaCraftingItems.TELEPORTATION_DUST);
 			saveHighCore("void", ChromaCraftingItems.HIGH_VOID_CORE, CrystalElement.BLACK, CrystalElement.WHITE, new net.minecraft.core.BlockPos(3,-1,-2), new net.minecraft.core.BlockPos(-3,-1,2), ChromaCraftingItems.VOID_DUST);
@@ -320,6 +321,31 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 					stands, List.of(), aura, new ItemStackTemplate(ChromaItems.CRAFTING.get(ChromaCraftingItems.LUMEN_CORE).get()), 400, 500));
 		}
 
+		/** V33a IridescentCrystalRecipe: the player-tuned, stackable Power Crystal cast. */
+		private void savePowerCrystal() {
+			List<CastingTableRecipe.StandIngredient> stands = List.of(
+					stand(-2, 0, 0, Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.IRIDESCENT_CHUNK).get())),
+					stand(-4, 1, 0, Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.IRIDESCENT_CHUNK).get())),
+					stand(2, 0, 0, Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.IRIDESCENT_CHUNK).get())),
+					stand(4, 1, 0, Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.IRIDESCENT_CHUNK).get())),
+					stand(0, 0, -2, Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.IRIDESCENT_CHUNK).get())),
+					stand(0, 1, -4, Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.IRIDESCENT_CHUNK).get())),
+					stand(-4, 1, 2, Ingredient.of(Items.OBSIDIAN)),
+					stand(-2, 0, 2, Ingredient.of(Items.OBSIDIAN)),
+					stand(0, 0, 2, Ingredient.of(Items.OBSIDIAN)),
+					stand(2, 0, 2, Ingredient.of(Items.OBSIDIAN)),
+					stand(4, 1, 2, Ingredient.of(Items.OBSIDIAN)),
+					stand(-2, 0, -2, Ingredient.of(Items.GLOWSTONE)),
+					stand(2, 0, -2, Ingredient.of(Items.GLOWSTONE)));
+			List<AuraRequirement> aura = List.of(
+					new AuraRequirement(CrystalElement.YELLOW, 15000),
+					new AuraRequirement(CrystalElement.BLACK, 25000),
+					new AuraRequirement(CrystalElement.PURPLE, 10000));
+			saveRecipe("power_crystal", new CastingTableRecipe(CastingTableRecipe.Tier.PYLON,
+					List.of(new GridIngredient(4, Ingredient.of(Items.DIAMOND))), stands, List.of(), aura,
+					new ItemStackTemplate(ChromaBlocks.POWER_CRYSTAL.get().asItem()), 1600, 500,
+					List.of(), 0.97489F, true, true));
+		}
 		private void saveHighCore(String name, ChromaCraftingItems output, CrystalElement primary,
 				CrystalElement secondary, net.minecraft.core.BlockPos rune1, net.minecraft.core.BlockPos rune2,
 				ChromaCraftingItems dust) {

@@ -354,9 +354,10 @@ Rendering/querying acceleration is read-only on the client; linkage remains serv
 Pylon casting repeater groups are restored from source. The controller inspects the exact sixteen
 outer repeater locations, requires all sixteen distinct colours, validates the four original
 four-colour groups by side, marks qualifying repeaters, and awards +25% throughput per matching side.
-The base V33a throughput formula is exact: a PYLON-tier table begins at 100 lumens/tick and scales up
-to 1000 before the persisted grouping multiplier is applied. A focused regression proves the full
-+100% case and proves a duplicate colour clears both the bonus and prior grouped state.
+The base V33a throughput formula scales against the MULTIBLOCK XP threshold: a newly PYLON-tier table
+at 15000 XP receives 600 lumens/tick and scales up to 1000 before the persisted grouping multiplier
+is applied. A focused regression proves the full +100% case reaches 1200 at unlock and proves a
+duplicate colour clears both the bonus and prior grouped state.
 
 That regression exposed a generated-structure parity defect: the L3 outer repeater stalks had used
 column stone at y+2, while V33a requires smooth stone at both y+1 and y+2. The canonical
@@ -1041,3 +1042,353 @@ rerun. Pylon/repeater/casting blend, animation, sound, and renderer reactivation
 in-client visual/audio check because a headless GameTest server cannot exercise GPU or OpenAL output.
 The 26.2 `ItemTagsProvider` signature was also corrected while compiling this slice; it no longer
 carries the removed block-tag lookup constructor argument.
+### Early-game casting gate, shard tag parity, and Glow Cloud tick-order correction — 2026-08-01
+
+A focused integrated `early_game_casting_stand_chain` GameTest now exercises the real opening loop
+without directly granting progression or constructing an ad-hoc casting recipe: a fresh player scans
+an in-world cave crystal, receives the CRYSTALS stage, breaks four supported blue crystals for their
+real loot, resolves and crafts the registered ordinary Casting Table recipe, fills the table's exact
+nine-slot V33a StandRecipe grid, triggers it through the table, and receives the Item Stand plus five
+casting XP and the CASTING stage. It passes independently (1/1).
+
+The boosted crystal-group reload failure exposed a metadata-porting regression in item tags. Each
+per-colour plain shard tag contained its boosted counterpart, so boosted inputs matched both the
+ordinary 20-tick and boosted 40-tick recipes and recipe-manager iteration order chose between them.
+V33a used exact plain-versus-charged metadata ingredients. The per-colour tag families are now
+disjoint; only the aggregate `crystal_shards` tag includes both families for old wildcard recipes
+that accepted all 32 variants. Server datagen regenerated all sixteen plain colour tags plus the
+aggregate, and the focused `casting_table_boosted_group_reload` test passes 1/1.
+
+The preceding Glow Cloud ledger entry stated the opposite of the pristine source's actual update
+order and is superseded here. V33a calls `super.onUpdate()` first and assigns `motionX/Y/Z` afterward,
+so its newly computed spherical vector is consumed on the following tick. The 26.2 entity now calls
+`super.aiStep()` first and then computes the next server velocity, preserving that explicit handoff.
+The movement GameTest itself also had an intermittent scheduling bug: relative `(8,8,8)` lies outside
+the generated 5x4x5 test structure and could cross the randomly selected origin's chunk boundary,
+leaving the entity in an unticked neighbouring chunk. It now spawns at relative `(2,2,2)` inside the
+forced structure and reports tick count/velocity on failure. After reconstructing the class-output
+tree with a forced single-worker compile, the focused `glow_cloud_spherical_movement` test passes 1/1.
+### Manipulator cliff reveal and DragonAPI progressive-breaker seam — 2026-08-02
+
+The Elemental Manipulator again invokes V33a's Luminous Cliffs `BlockCliffStone.transparify` branch.
+The modern implementation starts from an opaque stone-type cliff block, uses the original depth 30
+progressive recursive traversal with diagonal spreading and no drops/ordinary neighbour updates, and
+replaces each visited state with the same registered block identity carrying `transparent=true`.
+Each conversion rechecks the original vertical light range (-1 through +4) and plays the source
+placement sound. Dirt, grass, farmland, and already-transparent states are deliberately excluded.
+
+This exposed a cross-module DragonAPI port seam: `ProgressiveRecursiveBreaker` was fully modernized
+but never registered with `TickRegistry`, so queued operations in every Reika module remained inert.
+DragonAPI common setup now registers the singleton alongside `PlayerChunkTracker`. The focused
+`manipulator_cliff_transparify` GameTest places three connected opaque cliff stones, uses the real
+Manipulator, waits for the progressive worker, and verifies all three retain their block identity and
+become transparent. It passes 1/1; `:ChromatiCraft:compileJava` also passes. No unrelated tests ran.
+### Lexicon persistence and casting-backed research tiers — 2026-08-02
+
+The guide-book vertical now has a 26.2-safe persistence boundary in `LexiconData`. It retains V33a's
+exact `pages`, `creative`, `blanks`, and `notes` keys in the stack custom-data component, preserves
+unrelated custom fields, canonicalizes duplicate page identifiers without reordering them, clamps
+blank-fragment counts at zero, and removes empty owned fields rather than replacing the whole tag.
+The focused `lexicon_custom_data_roundtrip` GameTest passes 1/1. The actual Chromic Lexicon item is
+intentionally not registered yet: right-clicking it must open the real ported navigation/recovery UI,
+not an inert or invented substitute. The next guide slice is the research catalog and those screens.
+
+A missing V33a casting/research seam was restored before building that catalog. Successful casts now
+write the exact player-owned death-persistent `castingprog` booleans (`crafting`, `temple`,
+`multiblock`, `pylon`) in addition to the table's local recipe history. This matters because research
+tier eligibility belongs to the player and must survive replacing the table. `ResearchLevel` is now
+a modern ten-tier enum with all source gates intact, and `ResearchProgress` stores the selected level
+by name under `Chroma_Research/research_level`, including V33a's old numeric-ordinal migration. Tier
+changes sync player data and reuse the existing GAINPROGRESS notification payload. The source-exact
+research names are emitted by client datagen rather than read from the obsolete `.lang` file.
+
+Verification: `:ChromatiCraft:compileJava` passes. Only the focused
+`chromaticraft:early_game_casting_stand_chain` test was rerun after this change; it passes 1/1 and now
+also proves that the first Item Stand cast records only the CRAFTING tier, opens the RUNECRAFT gate,
+and round-trips named research-level persistence. No unrelated GameTests ran.
+
+### Ported block-entity client ticking and pylon effect recovery — 2026-08-02
+
+`BlockChromaticTile` had only invoked `BlockEntityBase.updateEntity()` on the client, omitting the
+ported `updateEntity(Level, BlockPos)` compatibility hook that the server ticker already invokes.
+That hook is where the active pylon performs all of its V33a client work: flare clouds, enhanced
+floating seeds, ball lightning, power-crystal hints/recharge streams, and the continuously
+attenuated ambient loop. The omission therefore made the whole effect cluster inert and also made a
+successfully repaired pylon appear not to reactivate on the client, despite the repaired
+`hasMultiblock` value being synchronized correctly. Client tickers now invoke both halves in the
+same order as server tickers. This also restores the already-ported client hooks for Focus Crystals
+and repeaters instead of adding pylon-specific parallel ticking.
+
+The pylon renderer remains submitted in the post-terrain feature phase and tests against the
+solid-scene depth. The later compositor audit below supersedes the initial item/entity-target
+assumption: V33a's direct-framebuffer `ADDITIVEDARK` equation cannot be evaluated correctly inside
+an initially transparent premultiplied-alpha target. The accepted pipeline therefore writes the
+glow directly to the main colour/depth targets while preserving solid occlusion and supplying a
+real depth for the later translucent-target sort.
+
+Verification: `:ChromatiCraft:compileJava` passes. Only
+`chromaticraft:pylon_structure_lifecycle` was rerun and passes 1/1, covering shutdown, structure
+repair, and server restart. GPU rendering and OpenAL output still require the next in-client visual
+and audio check; headless GameTests cannot assert submitted pixels or an audible stream.
+
+### Casting-table V33a sound and structure-particle loop — 2026-08-02
+
+The casting table now runs the source client effect loop while an active recipe is synchronized.
+Temple casts emit the eight original accent-point laser streams; multiblock casts emit the rotating
+six-globe ring; pylon casts select only matching aura-rune positions and send the original rune
+sprites inward with their source cadence, speed, scale, and lifetime. The client countdown pauses
+when synchronized aura is insufficient, matching the old pylon-recipe wait instead of finishing its
+visual sequence early. Completion produces the original 128-spark burst.
+
+The legacy `Textures/Particle/16x.png` and `64x.png` ping-pong animation sheets were restored as
+lowercase 26.2 resources and are sampled directly by dedicated additive particle layers; the
+64-frame UV traversal remains forward across both rows and then reverses. Long casts again play the
+source crafting ambience (152-tick loop at multiblock/pylon tiers), every completed craft plays
+`CRAFTDONE`, and crossing a table-XP tier boundary also plays `UPGRADE`.
+
+Verification: `:ChromatiCraft:compileJava` and resource processing pass, and both restored particle
+sheets are present in the processed resource tree. Only the focused
+`chromaticraft:early_game_casting_stand_chain` GameTest was run; it passes 1/1 after the completion
+path changes. Submitted particles and the two sound cues still need an in-client presentation check.
+
+### Pylon/translucent-effect compositor depth and complete bootstrap interaction — 2026-08-02
+
+The remaining pylon/cloud/water defect was in the 26.2 transparency-target contract, not the
+billboard geometry. ChromatiCraft's additive sprite and particle pipelines tested against the copied
+reverse-Z solid depth but disabled depth writes. Their colour reached the item/entity or particle
+target, while that target retained depth zero at every effect pixel. The vanilla transparency
+post-shader therefore sorted pylon cores, beams, and all additive ChromatiCraft particles as the
+farthest layer and composited water, clouds, weather, and other translucent content over them
+regardless of real position. Both additive pipelines now write fragment depth, matching vanilla's
+`TRANSLUCENT_PARTICLE` pipeline. Solid blocks still occlude through the copied main depth, while the
+post-chain can now order the pylon and particles correctly against translucent geometry. Compilation
+passes; pixel-level confirmation remains an in-client check.
+
+The start-to-stand audit also removed two hidden shortcuts. Casting Table and Elemental Manipulator
+recipe advancements had been unlocked only by the blue shard item even though both source recipes
+accept V33a's wildcard shard identity (all sixteen colours, plain or boosted). Their advancement
+criteria now use `#chromaticraft:crystal_shards`, and server datagen emits that tag criterion for
+both recipes. The integrated opening GameTest now resolves and assembles the real Manipulator recipe,
+places and owns the crafted table, fills the nine-slot StandRecipe, and starts casting through
+`ItemManipulator.useOn` with an actual block hit instead of calling the table controller directly.
+
+Verification: `:ChromatiCraft:compileJava` and `:ChromatiCraft:runServerData` pass. Only the focused
+`chromaticraft:early_game_casting_stand_chain` test ran after the audit and passes 1/1. Its coverage
+now spans crystal discovery, in-world shard drops, both bootstrap crafting-grid recipes, Manipulator
+dispatch, owned-table casting, the nine-slot stand recipe, output, XP, casting progression, and the
+first research-tier gate.
+### Lexicon dependency boundary and restored casting-stand shortcuts — 2026-08-02
+
+The next player-facing audit traced the original Chromic Lexicon before registering it. V33a's guide
+is not an isolated book screen: `ChromaResearch` contains roughly 320 catalog constants and its
+navigation, recovery, notes, recipe, structure, machine, ability, and progression pages bind directly
+to most of the remaining mod. The original localized XML descriptions and handbook artwork are
+retained, and `LexiconData` remains the accepted persistence seam, but the item is deliberately not
+registered against a reduced early-only catalog. Doing so would expose a plausible-looking substitute
+that omits most source behavior. The truthful dependency order is to keep expanding the casting and
+content registries, then port the complete catalog and screens over those stable identities.
+
+That source audit found two reachable Casting Table interactions omitted by the modern block split.
+Sneak-right-clicking empty Item Stands with an empty hand now selects each stand for V33a's spread-fill
+mode; the next ordinary stand click distributes the held stack evenly across the selected stands and
+leaves the remainder in hand. Sneak-right-clicking an owned Casting Table with an empty hand now uses
+the original tier-III mass-empty action instead of opening the GUI: every stand in the auxiliary ring
+drops its full stack, plays `ITEMSTAND`, clears and synchronizes. Lower-tier tables retain the source
+no-op restriction, and non-owners remain rejected before either shortcut runs.
+
+Verification: `:ChromatiCraft:compileJava` passes. Only
+`chromaticraft:casting_stand_spread` was run; it passes 1/1 and now drives both behaviors through the
+actual 26.2 `BlockState.useWithoutItem`/`useItemOn` routes rather than calling the tile helpers directly.
+No unrelated GameTests ran.
+### Direct-framebuffer ADDITIVEDARK and preloaded pylon ambience — 2026-08-02
+
+The final compositor audit found that depth writes alone could not restore V33a colour parity while
+the glow was rendered into an off-screen transparency target. The original `ADDITIVEDARK` pass is
+screen blending (`GL_ONE`, `GL_ONE_MINUS_SRC_COLOR`) performed directly against the already-rendered
+world colour. Minecraft 26.2 instead composites item/entity and particle targets as premultiplied
+alpha (`world * (1 - layer.a) + layer.rgb`). Applying screen blend to an empty target and then that
+second equation necessarily loses the original background-dependent colour, producing the reported
+washed-out, barely coloured pylon and effects that appeared to sit behind sky, clouds, or water.
+
+ChromatiCraft additive sprite render types now use the main framebuffer, and additive quad-particle
+layers are submitted through the main-target phase rather than the dedicated particle target. Both
+pipelines retain reverse-Z solid-depth testing and now write depth. This recreates the source blend
+against the world colour, keeps opaque terrain in front, and gives the vanilla transparency
+post-chain a main-layer depth with which to order later water, cloud, weather, and translucent
+layers. This correction applies to the pylon core/rays as well as the restored pylon, casting, and
+Glow Cloud particle families; it does not introduce an always-visible or no-depth pass.
+
+The pylon repair route was re-audited end to end. Replacing a missing structure block makes the
+server validation restore `hasMultiblock`, sends the full block-entity sync packet immediately, and
+the renderer extracts the synchronized flag on every frame. The restored `BlockChromaticTile`
+client ticker then resumes the original pylon update hook on the next client tick, restarting both
+its particle families and its managed ambient sound. No additional cached-render invalidation is
+required.
+
+`ChromaSounds.POWER` is now preloaded by client datagen. The generated `ambient` sound declaration
+retains its 27-block attenuation distance and now carries `preload: true`, avoiding the first-visit
+decode delay that could leave a fast-arriving player beside a silent pylon. The modern sound
+instance remains a continuously ticking, position-bound loop with explicit linear volume, so it
+begins silent at range and increases smoothly rather than starting at full volume after the old
+periodic replay interval.
+
+Verification: `:ChromatiCraft:compileJava` and `:ChromatiCraft:runClientData` pass, and the generated
+sound declaration contains the preload flag. No GameTest was rerun for this client-only correction;
+headless tests cannot assert framebuffer pixels or OpenAL output. GPU/OpenAL confirmation remains an
+in-client visual and listening check.
+### Casting Manipulator start feedback parity — 2026-08-02
+
+The live Casting Table trigger now restores V33a's audible Manipulator contract at the authoritative
+controller boundary. A successful recipe start plays `CAST` before the stands lock, while every
+server-side rejection (already crafting, wrong owner, no matching recipe, progression/tier failure,
+or an invalid batch/output) plays `ERROR`. Keeping the cues in `triggerCrafting` means direct/API
+triggers and `ItemManipulator.useOn` cannot silently diverge; the client-side item branch still only
+acknowledges the interaction and does not duplicate either sound.
+
+Verification: `:ChromatiCraft:compileJava` passes. Only
+`chromaticraft:early_game_casting_stand_chain` was rerun; it passes 1/1 through the real Manipulator
+block-use route. No unrelated GameTests ran.
+### Casting structure and repeater-group client transition synchronization — 2026-08-02
+
+The Casting Table's periodic validator had retained the server calculations for temple, multiblock,
+pylon-casting, personal tuning, and repeater-group throughput, but unlike V33a it never synchronized
+those derived transitions. A client could therefore retain stale GUI/particle/render state after a
+structure was assembled, damaged, or repaired. Validation now compares the complete derived state
+before and after its audit and sends full table data only when a value changes. This preserves the
+source-visible transition while avoiding V33a's unconditional full-NBT packet every forty ticks.
+The first accepted adjacent rune also sends the `hasRunes` transition immediately.
+
+`TileEntityCrystalRepeater.markAsTableGrouped` is now edge-triggered. A real group-state change
+invalidates affected crystal paths and synchronizes the repeater's state bit to clients, allowing the
+repeater renderer to display the table-grouped state. Repeated Casting Table validation with an
+unchanged ring no longer breaks the same network paths or emits redundant block-entity packets.
+
+Verification: `:ChromatiCraft:compileJava` passes. Only the focused
+`chromaticraft:casting_table_tuning_key` and `chromaticraft:casting_table_repeater_grouping` tests
+were run after their respective changes; each passes 1/1. No unrelated GameTests ran.
+### Elemental Manipulator fake-player boundary — 2026-08-02
+
+V33a's universal Manipulator rejects fake and dummy players before any block-specific dispatch. The
+26.2 item now restores that guard before cliff transparification, SneakPop removal, Casting Table
+activation, repeater redirection, or API hooks. `TileEntityCastingTable.triggerCrafting` independently
+applies the same check so automation cannot bypass it through a direct controller call while still
+receiving the normal rejected-cast feedback.
+
+A focused `chromaticraft:casting_manipulator_fake_player_guard` GameTest now builds a valid casting
+recipe for a NeoForge fake player and proves that both the real item-use route and direct table route
+leave the table idle. It passes 1/1. `:ChromatiCraft:compileJava` also passes; no unrelated GameTests
+were run. The post-test Spark sampler cancellation is a shutdown-only profiler message after the
+GameTest server has already reported success.
+### V33a casting aura throughput and geometric batch timing — 2026-08-02
+
+A source comparison corrected two controller values that the earlier port and its regression had
+both encoded incorrectly. Casting Table aura throughput is based on the MULTIBLOCK level-up value
+(2000 XP), not the PYLON unlock value (15000 XP). A table at the 15000-XP pylon threshold therefore
+receives 600 lumens/tick before grouping and 1200 with all four matching repeater sides, rather than
+100/200. The table also again overrides `allowsEfficiencyBoost()` to false, preventing generic
+receiver efficiency scaling from reducing casting-recipe aura costs contrary to V33a.
+
+Stacked casting duration is no longer linear. `CastingTableRecipe` now carries the source
+`stacking_factor` through its JSON codec and network stream codec, with V33a's ordinary default of
+0.75. The controller uses the original geometric sum, so four copies of a five-tick ordinary recipe
+take `floor(5 * (1 + .75 + .75^2 + .75^3)) = 13` ticks, then commit all inputs, outputs, and
+per-craft XP atomically. Alternate geometric factors remain recipe data. Pylon recipes use the
+separate source-faithful single-cycle scheduler documented below rather than this geometric batch.
+
+Verification: `:ChromatiCraft:compileJava` passes. Only the focused
+`chromaticraft:casting_table_repeater_grouping`, `chromaticraft:casting_recipe_contract`, and
+`chromaticraft:casting_table_atomic_craft` tests were run. Each passes 1/1; the atomic test now covers
+a 32-batch commit producing a full 64-beam stack, 32 copies of recipe XP, and no partial pre-completion mutation. No unrelated GameTests
+ran.
+### Modern Container insertion seam and Casting Table adjacent output — 2026-08-02
+
+V33a attempts to insert each completed casting output into the six adjacent inventories before
+leaving it in slot 9. The shared DragonAPI `ReikaInventoryHelper.addToIInv(ItemStack, Container)`
+path could not safely implement that on 26.2: it still recognized empty slots with `null` instead of
+`ItemStack.EMPTY`, derived a per-slot item limit from the container's slot count, returned after the
+first empty-slot write even if items remained, and could therefore reject, truncate, or falsely
+report complete insertion. The helper now performs a whole-stack capacity preflight, fills modern
+empty/compatible slots using the container and item stack limits, marks the inventory changed, and
+returns success only when the copied remainder is empty.
+
+Casting completion now runs the source six-direction adjacency pass after assembling its output. The
+result slot is cleared only when one adjacent `Container` accepted the entire stack; otherwise the
+output remains available in slot 9 exactly as before. The focused atomic-craft regression now queues
+32 copies of the two-beam recipe, verifies the converged nineteen-tick V33a batch duration and atomic
+input commit, and requires all 64 beams to arrive in a real adjacent chest as one intact stack. This
+covers both the modern-empty-slot bug and the former 27-slot/27-item truncation case.
+
+Verification: `:DragonAPI:compileJava` and `:ChromatiCraft:compileJava` pass. Only
+`chromaticraft:casting_table_atomic_craft` was rerun for the insertion change and passes 1/1. No
+unrelated GameTests ran.
+
+### V33a non-stackable pylon casting scheduler — 2026-08-02
+
+V33a's ordinary `CastingRecipe` is stackable by default, but `PylonCastingRecipe` overrides that
+contract to false; subclasses opt back in only where the source explicitly says so. The modern
+casting recipe codec and stream codec now carry a `stackable` flag. Existing constructor call sites
+infer the source default from the tier, and server datagen emits `stackable: false` for the currently
+registered `lumen_core` and three `high_core` pylon recipes. Missing data retains the ordinary
+compatibility default of true.
+
+The table still queues the full input-limited amount and buffers the full queued aura requirement,
+but a non-stackable timer consumes, emits, awards XP for, and drains aura for exactly one craft. If
+the source six-direction inventory pass moves that output away, the table keeps its auxiliary stands
+locked and immediately starts the next full-duration cycle. If slot 9 remains occupied, the run ends
+cleanly after that craft; no output is overwritten and no queued ingredients are lost. Remaining
+queue, duration, recipe key, and owner continue to use the existing persisted controller state.
+The focused automation setup also exposed a modern NBT compatibility error: `NBTStructureLoader.load`
+was translating every template air cell into `FilledBlockArray.setEmpty`, making surrounding air a
+required part of every multiblock. V33a arrays described required structure blocks; air in a modern
+structure template is a placement-clearing instruction. Compatibility matching now ignores both air
+and structure void, while `NBTStructureLoader.place` still writes explicit air during actual NBT
+placement. This restores legal neighboring inventories without weakening any required solid block.
+
+Verification: `:ChromatiCraft:compileJava` and `:ChromatiCraft:runServerData` pass. Only the focused
+`chromaticraft:casting_table_lumen_core_multicolor` and
+`chromaticraft:casting_table_structure_loss_cancel` GameTests were run. The first queues two real
+Lumen Cores, requires one 400-tick cycle per item, checks the intermediate 60k aura remainder in each
+of three colors, and requires both outputs to reach one adjacent chest before the queue unlocks. The
+second confirms removing a required NBT solid still cancels atomically after air cells stop
+participating in compatibility matching; its stale 16,000-XP expectation was corrected to the 2,000
+XP actually supplied by that test setup.
+
+### V33a casting rejection detail, tuning contract, and Power Crystal recipe — 2026-08-02
+
+A source audit of `CastingRecipe.canRunRecipe` and the original Casting Table GUI restored the
+information hidden behind the modern no-entry overlay. The table now builds the inherited required
+progress set in V33a order (`CRYSTALS`, then `RUNEUSE`, `MULTIBLOCK`, and the PYLON/REPEATER pair as
+the recipe tier rises, followed by recipe-specific stages). The menu transports that set as packed
+16-bit words because 26.2 container data packets serialize signed shorts, and the GUI identifies the
+missing source progression titles on hover. The headless
+`chromaticraft:casting_table_progress_feedback` test was the only GameTest run for this change and
+passes 1/1.
+
+Casting recipes now also carry V33a's `requiresTuningKey` contract through the JSON codec and recipe
+stream codec as `requires_tuning_key`. Server-authoritative Manipulator activation rejects such a
+recipe unless the table matches its owner's personal twelve-rune key, and the GUI reports the
+personal key separately from progression gates instead of presenting an unexplained disabled output.
+
+The first real consumer is the fully data-driven V33a `IridescentCrystalRecipe`, registered as
+`chromaticraft:power_crystal`: diamond center; six Iridescent Chunks, five obsidian, and two glowstone
+on the exact auxiliary stands; 15,000 yellow, 25,000 black, and 10,000 purple aura; 1,600-tick base
+duration; 500 casting XP; source stacking factor 0.97489; stackable; personal tuning key required.
+Server datagen succeeds and emits the complete recipe JSON.
+
+The focused tuning regression then exposed a separate-per-colour/NBT compatibility omission. V33a
+`CastingL2Structure` explicitly accepted the rune block at every personal-key coordinate, including
+the radius-six fan positions outside its generic -5..5 floor alternatives. The modern NBT-backed
+`CastingStructure` had omitted that loop, so installing a legitimate key invalidated CASTING3.
+Those twelve source alternatives are restored with `RuneBlockCheck`; NBT palette rune entries also
+match every registered colour-specific rune block, preserving old block-plus-metadata wildcard
+semantics under the mandated one-registry-id-per-colour model.
+
+Verification boundary: `:ChromatiCraft:compileJava` passed before the final narrow structure matcher
+correction, and `:ChromatiCraft:runServerData` passes. The focused tuning test correctly exposed the
+structure failure twice; its final rerun after restoring the explicit V33a key-coordinate loop is
+queued because the local Codex execution allowance rejected the next Gradle launch. Do not treat the
+new Power Crystal start path as verified until only
+`chromaticraft:casting_table_tuning_key` is rerun and passes. The long-lived hostile
+`CastingTuningMismatchReaction` remains the next casting/manipulator source cluster; it must be ported
+with its server damage/knockback lifecycle and client sound/particle synchronization, not reduced to
+a cosmetic or inert substitute.

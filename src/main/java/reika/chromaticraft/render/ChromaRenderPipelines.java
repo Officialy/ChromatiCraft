@@ -13,7 +13,6 @@ import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 
 import net.minecraft.util.Util;
 import net.minecraft.client.renderer.BindGroupLayouts;
-import net.minecraft.client.renderer.rendertype.OutputTarget;
 import net.minecraft.client.renderer.rendertype.RenderSetup;
 import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.resources.Identifier;
@@ -22,7 +21,8 @@ import net.neoforged.neoforge.client.event.RegisterRenderPipelinesEvent;
 
 import reika.chromaticraft.ChromatiCraft;
 
-/** Additive, full-bright pipelines matching V33a's ADDITIVEDARK pylon passes. */
+/** Additive, full-bright pipelines matching V33a's direct-framebuffer ADDITIVEDARK passes.
+ * Depth writes let Minecraft 26.2 sort later translucent targets around the resulting glow. */
 public final class ChromaRenderPipelines {
 
     /** V33a {@code BlendMode.ADDITIVEDARK}: GL_ONE, GL_ONE_MINUS_SRC_COLOR. */
@@ -39,7 +39,7 @@ public final class ChromaRenderPipelines {
             .withColorTargetState(new ColorTargetState(ADDITIVE_DARK))
             .withVertexBinding(0, DefaultVertexFormat.POSITION_TEX_COLOR)
             .withPrimitiveTopology(PrimitiveTopology.QUADS)
-            .withDepthStencilState(new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL, false))
+            .withDepthStencilState(new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL, true))
             .withCull(false)
             .build();
 
@@ -54,14 +54,13 @@ public final class ChromaRenderPipelines {
             .withColorTargetState(new ColorTargetState(ADDITIVE_DARK))
             .withVertexBinding(0, DefaultVertexFormat.PARTICLE)
             .withPrimitiveTopology(PrimitiveTopology.QUADS)
-            .withDepthStencilState(new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL, false))
+            .withDepthStencilState(new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL, true))
             .withCull(false)
             .build();
 
     private static final Function<Identifier, RenderType> ADDITIVE_TYPES = Util.memoize(texture ->
             RenderType.create("chromaticraft_additive_sprite", RenderSetup.builder(ADDITIVE_SPRITE)
                     .withTexture("Sampler0", texture)
-                    .setOutputTarget(OutputTarget.ITEM_ENTITY_TARGET)
                     .sortOnUpload().createRenderSetup()));
 
     private ChromaRenderPipelines() {}

@@ -25,6 +25,7 @@
   "result": {
     "id": "chromaticraft:lumen_core"
   },
+  "stackable": false,
   "stands": [
     {
       "ingredient": "chromaticraft:glow_chunk",

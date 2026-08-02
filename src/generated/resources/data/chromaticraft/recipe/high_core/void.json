@@ -35,6 +35,7 @@
       ]
     }
   ],
+  "stackable": false,
   "stands": [
     {
       "ingredient": "chromaticraft:boosted_crystal_shard_black",

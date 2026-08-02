@@ -61,8 +61,8 @@ import reika.dragonapi.libraries.rendering.ReikaColorAPI;
  *
  * <p>Movement is fully self-driven (a {@link SphericalVector} recomputed every tick), so this
  * extends {@link Mob} directly (not {@link net.minecraft.world.entity.PathfinderMob}) with an empty
- * goal selector. {@link #aiStep()} computes the V33a spherical velocity before delegating to
- * vanilla travel, matching the original onUpdate()/onLivingUpdate() ordering.
+ * goal selector. {@link #aiStep()} delegates to vanilla travel before computing the next spherical
+ * velocity, matching V33a's explicit {@code super.onUpdate()}-then-motion ordering.
  *
  * <p>Several V33a subsystems are still pristine 1.7.10 and are not yet importable from here; each is
  * marked {@code CHROMA-PORT} at its call site with the original logic preserved rather than deleted:
@@ -207,13 +207,13 @@ public class EntityGlowCloud extends Mob implements DestroyOnUnload {
 
 	@Override
 	public void aiStep() {
-		// V33a onUpdate() selects motion first; its subsequent super.onLivingUpdate() performs travel.
-		// Preserve that ordering so 26.2's LivingEntity movement and tracking actually see the velocity.
-		if (!this.level().isClientSide())
-			this.tickMovement();
 		super.aiStep();
-		if (!this.level().isClientSide())
+		// V33a calls super.onUpdate() before replacing motionX/Y/Z. In 26.2, aiStep() contains the
+		// LivingEntity travel pass, so this velocity intentionally becomes the following tick's input.
+		if (!this.level().isClientSide()) {
+			this.tickMovement();
 			this.doAmbientEffects();
+		}
 
 		colorTransitionTick++;
 		if (colorTransitionTick >= COLOR_TRANSITION_LENGTH) {

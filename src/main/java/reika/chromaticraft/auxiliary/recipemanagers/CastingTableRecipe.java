@@ -79,6 +79,9 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 	private final ItemStackTemplate output;
 	private final int duration;
 	private final int experience;
+	private final float stackingFactor;
+	private final boolean stackable;
+	private final boolean requiresTuningKey;
 	/**
 	 * Progression the caster needs beyond whatever their recipe tier already implies. V33a declares
 	 * this per recipe via {@code CastingRecipe.getRequiredProgress}; the base implementation adds
@@ -97,6 +100,30 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 	public CastingTableRecipe(Tier tier, List<GridIngredient> grid, List<StandIngredient> stands,
 			List<RuneRequirement> runes, List<AuraRequirement> aura, ItemStackTemplate output,
 			int duration, int experience, List<ProgressStage> requiredProgress) {
+		this(tier, grid, stands, runes, aura, output, duration, experience, requiredProgress, 0.75F,
+				tier != Tier.PYLON, false);
+	}
+
+	public CastingTableRecipe(Tier tier, List<GridIngredient> grid, List<StandIngredient> stands,
+			List<RuneRequirement> runes, List<AuraRequirement> aura, ItemStackTemplate output,
+			int duration, int experience, List<ProgressStage> requiredProgress,
+			float stackingFactor) {
+		this(tier, grid, stands, runes, aura, output, duration, experience, requiredProgress,
+				stackingFactor, tier != Tier.PYLON, false);
+	}
+
+	public CastingTableRecipe(Tier tier, List<GridIngredient> grid, List<StandIngredient> stands,
+			List<RuneRequirement> runes, List<AuraRequirement> aura, ItemStackTemplate output,
+			int duration, int experience, List<ProgressStage> requiredProgress,
+			float stackingFactor, boolean stackable) {
+		this(tier, grid, stands, runes, aura, output, duration, experience, requiredProgress,
+				stackingFactor, stackable, false);
+	}
+
+	public CastingTableRecipe(Tier tier, List<GridIngredient> grid, List<StandIngredient> stands,
+			List<RuneRequirement> runes, List<AuraRequirement> aura, ItemStackTemplate output,
+			int duration, int experience, List<ProgressStage> requiredProgress,
+			float stackingFactor, boolean stackable, boolean requiresTuningKey) {
 		this.requiredProgress = List.copyOf(requiredProgress);
 		this.tier = tier;
 		this.grid = List.copyOf(grid);
@@ -106,6 +133,9 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 		this.output = output;
 		this.duration = duration;
 		this.experience = experience;
+		this.stackingFactor = stackingFactor;
+		this.stackable = stackable;
+		this.requiresTuningKey = requiresTuningKey;
 		this.validate();
 	}
 
@@ -125,6 +155,8 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 		for (AuraRequirement entry : aura)
 			if (!auraElements.add(entry.element())) throw new IllegalArgumentException("Duplicate casting aura element " + entry.element());
 		if (duration < 1 || experience < 0) throw new IllegalArgumentException("Invalid casting duration or experience");
+		if (!(stackingFactor > 0 && stackingFactor <= 1))
+			throw new IllegalArgumentException("Casting stacking factor must be in (0, 1]");
 		if (tier.ordinal() < Tier.TEMPLE.ordinal() && !runes.isEmpty()) throw new IllegalArgumentException("Runes require a temple recipe");
 		if (tier.ordinal() < Tier.MULTIBLOCK.ordinal() && !stands.isEmpty()) throw new IllegalArgumentException("Stands require a multiblock recipe");
 		if (tier != Tier.PYLON && !aura.isEmpty()) throw new IllegalArgumentException("Aura is exclusive to pylon recipes");
@@ -168,6 +200,16 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 	public ItemStack output() { return output.create(); }
 	public int duration() { return duration; }
 	public int experience() { return experience; }
+	public float stackingFactor() { return stackingFactor; }
+	public boolean stackable() { return stackable; }
+	public boolean requiresTuningKey() { return requiresTuningKey; }
+
+	/** V33a's geometric consecutive-crafting duration multiplier. */
+	public float stackedTimeFactor(int amount) {
+		if (!stackable || amount <= 1) return 1;
+		return stackingFactor == 1 ? amount
+				: (float)((1 - Math.pow(stackingFactor, amount)) / (1 - stackingFactor));
+	}
 	@Override public boolean isSpecial() { return true; }
 	@Override public boolean showNotification() { return true; }
 	@Override public String group() { return "chromaticraft_casting"; }
@@ -190,7 +232,10 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 			ItemStackTemplate.CODEC.fieldOf("result").forGetter(recipe -> recipe.output),
 			Codec.intRange(1, Integer.MAX_VALUE).optionalFieldOf("duration", 5).forGetter(recipe -> recipe.duration),
 			Codec.intRange(0, Integer.MAX_VALUE).optionalFieldOf("experience", 0).forGetter(recipe -> recipe.experience),
-			PROGRESS_CODEC.listOf().optionalFieldOf("required_progress", List.of()).forGetter(recipe -> recipe.requiredProgress)
+			PROGRESS_CODEC.listOf().optionalFieldOf("required_progress", List.of()).forGetter(recipe -> recipe.requiredProgress),
+			Codec.floatRange(0.0001F, 1F).optionalFieldOf("stacking_factor", 0.75F).forGetter(recipe -> recipe.stackingFactor),
+			Codec.BOOL.optionalFieldOf("stackable", true).forGetter(recipe -> recipe.stackable),
+			Codec.BOOL.optionalFieldOf("requires_tuning_key", false).forGetter(recipe -> recipe.requiresTuningKey)
 	).apply(instance, CastingTableRecipe::new));
 
 
@@ -210,6 +255,9 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 		buffer.writeVarInt(recipe.experience);
 		buffer.writeVarInt(recipe.requiredProgress.size());
 		for (ProgressStage stage : recipe.requiredProgress) buffer.writeVarInt(stage.ordinal());
+		buffer.writeFloat(recipe.stackingFactor);
+		buffer.writeBoolean(recipe.stackable);
+		buffer.writeBoolean(recipe.requiresTuningKey);
 	}
 	private static CastingTableRecipe decode(RegistryFriendlyByteBuf buffer) {
 		int tierOrdinal = buffer.readVarInt();
@@ -227,8 +275,11 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 		int experience = buffer.readVarInt();
 		List<ProgressStage> progress = new ArrayList<>();
 		for (int i = buffer.readVarInt(); i > 0; i--) progress.add(ProgressStage.list[buffer.readVarInt()]);
+		float stackingFactor = buffer.readFloat();
+		boolean stackable = buffer.readBoolean();
+		boolean requiresTuningKey = buffer.readBoolean();
 		return new CastingTableRecipe(Tier.values()[tierOrdinal], grid, stands, runes, aura,
-				result, duration, experience, progress);
+				result, duration, experience, progress, stackingFactor, stackable, requiresTuningKey);
 	}
 	private static CrystalElement element(int ordinal) {
 		if (ordinal < 0 || ordinal >= CrystalElement.elements.length) throw new IllegalArgumentException("Invalid crystal element ordinal " + ordinal);

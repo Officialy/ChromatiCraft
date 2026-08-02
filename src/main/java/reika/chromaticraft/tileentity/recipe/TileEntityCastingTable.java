@@ -10,6 +10,7 @@ import net.minecraft.nbt.NbtOps;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.Container;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -28,7 +29,6 @@ import net.minecraft.world.phys.AABB;
 import reika.chromaticraft.auxiliary.interfaces.FocusAcceleratable;
 import reika.chromaticraft.auxiliary.interfaces.NBTTile;
 import reika.chromaticraft.auxiliary.interfaces.OperationInterval;
-import reika.chromaticraft.auxiliary.interfaces.OperationInterval.OperationState;
 import reika.chromaticraft.auxiliary.interfaces.OwnedTile;
 import reika.chromaticraft.auxiliary.recipemanagers.CastingRecipeInput;
 import reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe;
@@ -40,11 +40,15 @@ import reika.chromaticraft.block.BlockCrystalRune;
 import reika.chromaticraft.container.MenuCastingTable;
 import reika.chromaticraft.magic.ElementTagCompound;
 import reika.chromaticraft.magic.castingtuning.CastingTuningRegistry;
+import reika.chromaticraft.magic.progression.CastingProgression;
 import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.registry.*;
+import reika.chromaticraft.render.particle.ChromaParticle;
 import reika.chromaticraft.tileentity.auxiliary.TileEntityFocusCrystal;
 import reika.chromaticraft.tileentity.networking.TileEntityCrystalRepeater;
 import reika.dragonapi.instantiable.data.blockstruct.BlockArray;
+import reika.dragonapi.libraries.ReikaInventoryHelper;
+import reika.dragonapi.libraries.ReikaPlayerAPI;
 
 import java.util.*;
 
@@ -81,6 +85,9 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver
     /** Total duration of the active batch; persisted so HUD progress survives reloads. */
     private int craftingDuration;
     private int craftingAmount;
+    private int craftSoundTimer = 20000;
+    private CastingTableRecipe.Tier clientRecipeTier = CastingTableRecipe.Tier.CRAFTING;
+    private boolean clientWasCrafting;
     private int tableXP;
     private boolean hasTemple;
     private float throughputBonus;
@@ -114,12 +121,25 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver
     @Override
     public void updateEntity(Level world, BlockPos pos) {
         super.updateEntity(world, pos);
-        if (world.isClientSide()) return;
+        if (world.isClientSide()) {
+            if (craftingTick > 0) {
+                clientWasCrafting = true;
+                ChromaParticle.spawnCasting(world, pos, clientRecipeTier, hasTemple, hasMultiblock,
+                        hasPylonStructure, clientRecipeAura, this.getTicksExisted(), rand);
+                if (this.getState() != OperationState.PENDING) craftingTick--;
+            }
+            else if (clientWasCrafting) {
+                clientWasCrafting = false;
+                ChromaParticle.spawnCastingBurst(world, pos, rand);
+            }
+            return;
+        }
         if (activeRecipe == null && activeRecipeKey != null && craftingTick > 0) this.restoreActiveRecipe();
         if (this.getTicksExisted() == 1 || this.getTicksExisted() % 40 == 0) this.validateStructure();
         if (recipeDirty && !this.isCrafting()) this.refreshActiveRecipe();
         if (!this.isCrafting()) return;
         if (!this.craftStateStillValid()) { this.cancelCraft(); return; }
+        this.tickCraftingSound();
         if (!this.hasRequiredAura()) {
             if (this.getTicksExisted() % 20 == 0) this.requestEnergyDifference(this.requiredAura(craftingAmount), true);
             return;
@@ -135,26 +155,33 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver
     }
 
     public boolean triggerCrafting(Player player) {
-        if (this.getLevel() == null || this.getLevel().isClientSide() || this.isCrafting() || !this.isOwnedByPlayer(player)) return false;
+        if (this.getLevel() == null || this.getLevel().isClientSide()) return false;
+        if (player == null || ReikaPlayerAPI.isFake(player) || this.isCrafting() || !this.isOwnedByPlayer(player)) return this.rejectCraftingTrigger();
         this.validateStructure();
         this.refreshActiveRecipe();
-        if (activeRecipe == null) return false;
-        if (!this.playerCanRun(activeRecipe.value(), player)) return false;
-        int amount = this.calculateCraftableAmount(activeRecipe.value());
-        if (amount <= 0 || !this.canAccept(activeRecipe.value().output(), amount)) return false;
+        if (activeRecipe == null) return this.rejectCraftingTrigger();
+        if (!this.playerCanRun(activeRecipe.value(), player)) return this.rejectCraftingTrigger();
+        CastingTableRecipe recipe = activeRecipe.value();
+        int amount = this.calculateCraftableAmount(recipe);
+        int outputAmount = recipe.stackable() ? amount : 1;
+        if (amount <= 0 || !this.canAccept(recipe.output(), outputAmount)) return this.rejectCraftingTrigger();
         craftingAmount = amount;
-        int duration = activeRecipe.value().duration() * amount;
-        if (activeRecipe.value().tier().ordinal() >= CastingTableRecipe.Tier.MULTIBLOCK.ordinal() && duration > 20)
-            duration = Math.max(20, (int)(duration / this.getAccelerationFactor()));
-        craftingTick = Math.max(1, duration);
+        craftingTick = this.calculateCraftDuration(recipe, amount);
         craftingDuration = craftingTick;
         craftingPlayer = player.getUUID();
         activeRecipeKey = activeRecipe.id();
+        ChromaSounds.CAST.playSoundAtBlock(this);
         this.linkAndLockStands(true);
         if (!this.hasRequiredAura()) this.requestEnergyDifference(this.requiredAura(craftingAmount), true);
         this.setChanged();
         this.syncAllData(false);
         return true;
+    }
+
+    /** V33a gives every rejected Manipulator start the same audible error response. */
+    private boolean rejectCraftingTrigger() {
+        ChromaSounds.ERROR.playSoundAtBlock(this);
+        return false;
     }
 
     private void restoreActiveRecipe() {
@@ -195,25 +222,43 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver
     }
 
     private boolean playerCanRun(CastingTableRecipe recipe, Player player) {
-        if (!ProgressStage.CRYSTALS.isPlayerAtStage(player)) return false;
-        // V33a declares extra progression per recipe (CastingRecipe.getRequiredProgress) on top of
-        // whatever the tier implies -- e.g. RuneRecipe adds ALLCOLORS despite casting at bare-table tier.
-        for (ProgressStage stage : recipe.requiredProgress())
-            if (!stage.isPlayerAtStage(player)) return false;
-        return switch (recipe.tier()) {
-            case CRAFTING -> true;
-            case TEMPLE -> ProgressStage.RUNEUSE.isPlayerAtStage(player);
-            case MULTIBLOCK -> ProgressStage.RUNEUSE.isPlayerAtStage(player)
-                    && ProgressStage.MULTIBLOCK.isPlayerAtStage(player);
-            case PYLON -> ProgressStage.RUNEUSE.isPlayerAtStage(player)
-                    && ProgressStage.MULTIBLOCK.isPlayerAtStage(player)
-                    && ProgressStage.PYLON.isPlayerAtStage(player)
-                    && ProgressStage.REPEATER.isPlayerAtStage(player);
-        };
+        return this.getMissingProgress(recipe, player).isEmpty()
+                && (!recipe.requiresTuningKey() || isTuned);
+    }
+
+    /**
+     * Source ordering for {@code CastingRecipe.getRequiredProgress}: the universal CRYSTALS gate,
+     * each inherited casting-tier gate, then recipe-specific additions such as RuneRecipe's
+     * ALLCOLORS requirement. Keeping the ordered set here gives the GUI the same information that
+     * V33a displayed when hovering its no-entry overlay instead of reducing it to an opaque boolean.
+     */
+    private List<ProgressStage> requiredProgress(CastingTableRecipe recipe) {
+        LinkedHashSet<ProgressStage> required = new LinkedHashSet<>();
+        required.add(ProgressStage.CRYSTALS);
+        if (recipe.tier().ordinal() >= CastingTableRecipe.Tier.TEMPLE.ordinal())
+            required.add(ProgressStage.RUNEUSE);
+        if (recipe.tier().ordinal() >= CastingTableRecipe.Tier.MULTIBLOCK.ordinal())
+            required.add(ProgressStage.MULTIBLOCK);
+        if (recipe.tier() == CastingTableRecipe.Tier.PYLON) {
+            required.add(ProgressStage.PYLON);
+            required.add(ProgressStage.REPEATER);
+        }
+        required.addAll(recipe.requiredProgress());
+        return List.copyOf(required);
+    }
+
+    private List<ProgressStage> getMissingProgress(CastingTableRecipe recipe, Player player) {
+        if (player == null) return this.requiredProgress(recipe);
+        return this.requiredProgress(recipe).stream().filter(stage -> !stage.isPlayerAtStage(player)).toList();
     }
 
     public void validateStructure() {
         if (this.getLevel() == null) return;
+        boolean previousTemple = hasTemple;
+        boolean previousMultiblock = hasMultiblock;
+        boolean previousPylonStructure = hasPylonStructure;
+        boolean previousTuned = isTuned;
+        float previousThroughputBonus = throughputBonus;
         BlockPos anchor = this.getBlockPos().below();
         hasTemple = ChromaStructures.CASTING1.getArray(this.getLevel(), anchor.getX(), anchor.getY(), anchor.getZ()).matchInWorld();
         hasMultiblock = ChromaStructures.CASTING2.getArray(this.getLevel(), anchor.getX(), anchor.getY(), anchor.getZ()).matchInWorld();
@@ -234,6 +279,16 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver
         }
 
         this.setChanged();
+        if (!this.getLevel().isClientSide()
+                && (previousTemple != hasTemple
+                || previousMultiblock != hasMultiblock
+                || previousPylonStructure != hasPylonStructure
+                || previousTuned != isTuned
+                || Float.compare(previousThroughputBonus, throughputBonus) != 0)) {
+            // V33a ended every validation with syncAllData(true). Preserve the client-visible
+            // transition without resending identical structure NBT on the periodic 40-tick audit.
+            this.syncAllData(true);
+        }
     }
 
     /**
@@ -243,9 +298,12 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver
      */
     public void onAddRune(Player player) {
         if (!hasTemple) return;
+        boolean firstRune = !hasRunes;
         hasRunes = true;
         ProgressStage.RUNEUSE.stepPlayerTo(player);
         this.setChanged();
+        if (firstRune && this.getLevel() != null && !this.getLevel().isClientSide())
+            this.syncAllData(false);
     }
 
     public boolean hasRunes() { return hasRunes; }
@@ -386,10 +444,19 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver
     }
 
     private boolean craftStateStillValid() {
-        return activeRecipe != null && this.canUseTier(activeRecipe.value().tier())
-                && activeRecipe.value().matchesIgnoringAura(this.snapshot())
-                && this.calculateCraftableAmount(activeRecipe.value()) >= craftingAmount
-                && this.canAccept(activeRecipe.value().output(), craftingAmount);
+        if (activeRecipe == null || !this.canUseTier(activeRecipe.value().tier())) return false;
+        CastingTableRecipe recipe = activeRecipe.value();
+        int outputAmount = recipe.stackable() ? craftingAmount : 1;
+        return recipe.matchesIgnoringAura(this.snapshot())
+                && this.calculateCraftableAmount(recipe) >= craftingAmount
+                && this.canAccept(recipe.output(), outputAmount);
+    }
+
+    private int calculateCraftDuration(CastingTableRecipe recipe, int amount) {
+        int duration = (int)(recipe.duration() * recipe.stackedTimeFactor(amount));
+        if (recipe.tier().ordinal() >= CastingTableRecipe.Tier.MULTIBLOCK.ordinal() && duration > 20)
+            duration = Math.max(20, (int)(duration / this.getAccelerationFactor()));
+        return Math.max(1, duration);
     }
 
     private ElementTagCompound requiredAura(int amount) {
@@ -404,10 +471,22 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver
         return true;
     }
 
+    private void tickCraftingSound() {
+        if (activeRecipe == null || activeRecipe.value().duration() <= 20) return;
+        craftSoundTimer++;
+        int interval = switch (this.getTier()) {
+            case CRAFTING, TEMPLE -> 1;
+            case MULTIBLOCK, PYLON -> 152;
+        };
+        if (craftSoundTimer >= interval) {
+            craftSoundTimer = 0;
+            ChromaSounds.CRAFTING.playSoundAtBlock(this);
+        }
+    }
     private void completeCraft() {
         if (!this.craftStateStillValid() || !this.hasRequiredAura()) { this.cancelCraft(); return; }
         CastingTableRecipe recipe = activeRecipe.value();
-        int amount = craftingAmount;
+        int amount = recipe.stackable() ? craftingAmount : 1;
         ResourceKey<Recipe<?>> recipeKey = activeRecipeKey;
         UUID playerId = craftingPlayer;
         mutatingInventory = true;
@@ -419,17 +498,63 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver
         output.setCount(output.getCount() * amount);
         if (this.getItem(9).isEmpty()) this.setItem(9, output);
         else this.getItem(9).grow(output.getCount());
+        this.pushOutputToAdjacentInventories();
         mutatingInventory = false;
+        TableTier previousTier = this.getTier();
         tableXP += recipe.experience() * amount;
+        TableTier upgradedTier = this.getTier();
         if (recipeKey != null) completedRecipes.add(recipeKey);
         craftedItems.merge(output.getItem().toString(), output.getCount(), Integer::sum);
         Player player = this.getLevel().getPlayerByUUID(playerId);
         if (player != null) {
+            CastingProgression.markCrafted(player, recipe.tier());
             ProgressStage.CASTING.stepPlayerTo(player);
             if (recipe.tier() == CastingTableRecipe.Tier.PYLON) ProgressStage.LINK.stepPlayerTo(player);
             player.giveExperiencePoints(recipe.experience() * amount / 4);
         }
-        this.finishCraft();
+        ChromaSounds.CRAFTDONE.playSoundAtBlock(this);
+        if (upgradedTier != previousTier) ChromaSounds.UPGRADE.playSoundAtBlock(this);
+
+        if (!recipe.stackable()) craftingAmount -= amount;
+        if (this.canRepeatNonStackableCraft(recipe, recipeKey)) {
+            craftingTick = this.calculateCraftDuration(recipe, 1);
+            craftingDuration = craftingTick;
+            craftSoundTimer = 20000;
+            ChromaSounds.CAST.playSoundAtBlock(this);
+            if (!this.hasRequiredAura()) this.requestEnergyDifference(this.requiredAura(craftingAmount), true);
+            this.setChanged();
+            this.syncAllData(false);
+        }
+        else {
+            this.finishCraft();
+        }
+    }
+
+    /**
+     * V33a pylon recipes deliberately commit one craft per timer cycle. If automation moved the
+     * output away, the table keeps its stand locks and starts the next queued cycle; a blocked
+     * output slot ends the run cleanly after the completed item instead of deleting or overfilling it.
+     */
+    private boolean canRepeatNonStackableCraft(CastingTableRecipe recipe, ResourceKey<Recipe<?>> recipeKey) {
+        return !recipe.stackable() && craftingAmount > 0 && this.getItem(9).isEmpty()
+                && recipeKey != null && recipeKey.equals(activeRecipeKey)
+                && recipe.matchesIgnoringAura(this.snapshot())
+                && this.calculateCraftableAmount(recipe) >= craftingAmount
+                && this.canAccept(recipe.output(), 1);
+    }
+
+    /** V33a attempts to move the completed output into each of the six adjacent inventories. */
+    private void pushOutputToAdjacentInventories() {
+        ItemStack output = this.getItem(9);
+        if (output.isEmpty() || this.getLevel() == null) return;
+        for (Direction direction : Direction.values()) {
+            BlockEntity adjacent = this.getLevel().getBlockEntity(this.getBlockPos().relative(direction));
+            if (adjacent instanceof Container inventory && inventory != this
+                    && ReikaInventoryHelper.addToIInv(output, inventory)) {
+                this.setItem(9, ItemStack.EMPTY);
+                return;
+            }
+        }
     }
 
     private void consumeGridSlot(int slot, int amount) {
@@ -458,6 +583,7 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver
         craftingTick = 0;
         craftingDuration = 0;
         craftingAmount = 0;
+        craftSoundTimer = 20000;
         craftingPlayer = null;
         activeRecipe = null;
         activeRecipeKey = null;
@@ -471,6 +597,17 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver
     public void breakBlock() {
         this.cancelCraft();
         for (TileEntityItemStand stand : this.getOtherStands().values()) if (this.getBlockPos().equals(stand.getTable())) stand.setTable(null);
+    }
+
+    /** V33a empty-hand sneak action: clear the auxiliary ring once the table has reached tier III. */
+    public void dumpAllStands() {
+        if (this.getTier().ordinal() < TableTier.MULTIBLOCK.ordinal()) return;
+        for (TileEntityItemStand stand : this.getOtherStands().values()) {
+            if (stand.getItem(0).isEmpty()) continue;
+            stand.dropSlot();
+            ChromaSounds.ITEMSTAND.playSoundAtBlock(stand);
+            stand.syncAfterCraft();
+        }
     }
 
     public boolean isCrafting() { return craftingTick > 0; }
@@ -520,6 +657,12 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver
     public boolean canRunDisplayedRecipe(Player player) {
         return activeRecipe != null && this.playerCanRun(activeRecipe.value(), player);
     }
+    public List<ProgressStage> getMissingProgress(Player player) {
+        return activeRecipe != null ? this.getMissingProgress(activeRecipe.value(), player) : List.of();
+    }
+    public boolean displayRecipeRequiresTuningKey() {
+        return activeRecipe != null && activeRecipe.value().requiresTuningKey();
+    }
     public ItemStack getDisplayOutput() {
         return activeRecipe != null ? activeRecipe.value().output() : clientRecipeOutput;
     }
@@ -536,9 +679,11 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver
     @Override public int getMaxStorage(CrystalElement element) { return Integer.MAX_VALUE; }
     @Override public int getReceiveRange() { return 24; }
     @Override public int maxThroughput() {
-        int base = Math.min(1000, Math.max(100, 100 * (tableXP / TableTier.PYLON.minimumXP() - 1)));
+        // V33a scales from RecipeType.MULTIBLOCK.levelUp (2000), not the PYLON unlock (15000).
+        int base = Math.min(1000, Math.max(100, 100 * (tableXP / TableTier.MULTIBLOCK.minimumXP() - 1)));
         return (int)(base * (1 + throughputBonus));
     }
+    @Override public boolean allowsEfficiencyBoost() { return false; }
     @Override public ElementTagCompound getRequestedTotal() { return this.isCrafting() ? this.requiredAura(craftingAmount) : new ElementTagCompound(); }
 
     @Override
@@ -601,6 +746,7 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver
                     .ifPresent(encoded -> tag.put("recipeOutput", encoded));
         }
         this.getDisplayAura().writeToNBT("recipeAura", tag);
+        tag.putInt("recipeTier", activeRecipe != null ? activeRecipe.value().tier().ordinal() : clientRecipeTier.ordinal());
         tag.putBoolean("runes", hasRunes); tag.putBoolean("temple", hasTemple); tag.putBoolean("multiblock", hasMultiblock); tag.putBoolean("pylonStructure", hasPylonStructure);
         tag.putBoolean("tuned", isTuned);
         tag.putFloat("throughputBonus", throughputBonus);
@@ -614,6 +760,9 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver
                 : ItemStack.CODEC.parse(access.createSerializationContext(NbtOps.INSTANCE), outputTag).result().orElse(ItemStack.EMPTY);
         clientRecipeAura.clear();
         clientRecipeAura.readFromNBT("recipeAura", tag);
+        int recipeTier = tag.getIntOr("recipeTier", 0);
+        clientRecipeTier = recipeTier >= 0 && recipeTier < CastingTableRecipe.Tier.values().length
+                ? CastingTableRecipe.Tier.values()[recipeTier] : CastingTableRecipe.Tier.CRAFTING;
         hasRunes = tag.getBooleanOr("runes", false); hasTemple = tag.getBooleanOr("temple", false); hasMultiblock = tag.getBooleanOr("multiblock", false); hasPylonStructure = tag.getBooleanOr("pylonStructure", false);
         isTuned = tag.getBooleanOr("tuned", false);
         throughputBonus = tag.getFloatOr("throughputBonus", 0);

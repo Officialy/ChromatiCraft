@@ -57,6 +57,7 @@ import reika.chromaticraft.block.BlockEncrustedCrystal.TileCrystalEncrusted;
 import reika.chromaticraft.data.ChromaTestStructureProvider;
 import reika.chromaticraft.block.BlockCrystalRune;
 import reika.chromaticraft.block.BlockCrystallineStone;
+import reika.chromaticraft.block.worldgen26.BlockCliffStone;
 import reika.chromaticraft.base.CrystalTypeBlock;
 import reika.chromaticraft.entity.EntityGlowCloud;
 import reika.chromaticraft.entity.EntityPylonOverloadShock;
@@ -75,7 +76,11 @@ import reika.chromaticraft.registry.ChromaClusterItems;
 import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.ChromaTieredItems;
 import reika.chromaticraft.item.ItemCrystalShard;
+import reika.chromaticraft.magic.progression.CastingProgression;
 import reika.chromaticraft.magic.progression.ProgressStage;
+import reika.chromaticraft.magic.progression.ResearchLevel;
+import reika.chromaticraft.magic.progression.ResearchProgress;
+import reika.chromaticraft.magic.progression.LexiconData;
 import reika.chromaticraft.tileentity.recipe.TileEntityItemStand;
 import reika.chromaticraft.tileentity.recipe.TileEntityCastingTable;
 import reika.chromaticraft.magic.progression.ProgressionManager;
@@ -94,6 +99,7 @@ import reika.chromaticraft.world.PylonFeature;
 import reika.chromaticraft.tileentity.networking.TileEntityPylonLink;
 import reika.dragonapi.instantiable.data.immutable.DecimalPosition;
 import reika.dragonapi.instantiable.data.immutable.WorldLocation;
+import reika.dragonapi.libraries.ReikaPlayerAPI;
 import reika.dragonapi.libraries.registry.ReikaItemHelper;
 
 import java.util.HashMap;
@@ -171,6 +177,7 @@ public final class ChromaGameTests {
 		register(event, env, "casting_stand_ownership_lock", ChromaGameTests::castingStandOwnershipLock);
 		register(event, env, "casting_stand_spread", ChromaGameTests::castingStandSpread);
 		register(event, env, "casting_table_atomic_craft", ChromaGameTests::castingTableAtomicCraft);
+		register(event, env, "casting_table_progress_feedback", ChromaGameTests::castingTableProgressFeedback);
 		register(event, env, "exploration_grants_crystals", ChromaGameTests::explorationGrantsCrystals);
 		register(event, env, "casting_table_temple_group", ChromaGameTests::castingTableTempleGroup);
 		register(event, env, "crystal_shard_charging_identity", ChromaGameTests::crystalShardChargingIdentity);
@@ -196,23 +203,59 @@ public final class ChromaGameTests {
         register(event, env, "pylon_feature_variants", 40, ChromaGameTests::pylonFeatureVariants);
 		register(event, env, "glow_cloud_spherical_movement", ChromaGameTests::glowCloudSphericalMovement);
 		register(event, env, "manipulator_repeater_dispatch", ChromaGameTests::manipulatorRepeaterDispatch);
+		register(event, env, "manipulator_cliff_transparify", ChromaGameTests::manipulatorCliffTransparify);
 		register(event, env, "pylon_worldgen_grid_density", ChromaGameTests::pylonWorldgenGridDensity);
 		register(event, env, "casting_table_menu_grid", ChromaGameTests::castingTableMenuGrid);
 		register(event, env, "early_game_casting_stand_chain", ChromaGameTests::earlyGameCastingStandChain);
+		register(event, env, "casting_manipulator_fake_player_guard", ChromaGameTests::castingManipulatorFakePlayerGuard);
+		register(event, env, "lexicon_custom_data_roundtrip", ChromaGameTests::lexiconCustomDataRoundtrip);
 	}
 
+	/** Book contents use 26.2 custom data without losing foreign fields or duplicating pages. */
+	private static void lexiconCustomDataRoundtrip(GameTestHelper helper) {
+		ItemStack book = new ItemStack(Items.BOOK);
+		net.minecraft.nbt.CompoundTag foreign = new net.minecraft.nbt.CompoundTag();
+		foreign.putString("foreign", "preserved");
+		reika.dragonapi.libraries.registry.ReikaItemHelper.setStackTag(book, foreign);
+
+		LexiconData written = new LexiconData(
+				List.of("CRYSTALS", "CASTING", "CRYSTALS"), false, 3, List.of("first", "second"));
+		written.writeTo(book);
+		LexiconData loaded = LexiconData.read(book);
+		helper.assertTrue(loaded.pages().equals(List.of("CRYSTALS", "CASTING")),
+				"Lexicon pages must retain insertion order and canonicalize duplicates");
+		helper.assertTrue(loaded.blanks() == 3 && loaded.notes().equals(List.of("first", "second")),
+				"Lexicon blanks and notes must round-trip through CUSTOM_DATA");
+		helper.assertTrue("preserved".equals(reika.dragonapi.libraries.registry.ReikaItemHelper
+				.getStackTag(book).getStringOr("foreign", "")),
+				"Lexicon writes must preserve unrelated custom-data fields");
+
+		LexiconData changed = loaded.withPage("RUNEUSE").withPage("RUNEUSE")
+				.withBlanksDelta(-20).withoutNotes().withCreative(true);
+		changed.writeTo(book);
+		LexiconData reloaded = LexiconData.read(book);
+		helper.assertTrue(reloaded.creative() && reloaded.hasPage("UNOWNED")
+				&& reloaded.pages().equals(List.of("CRYSTALS", "CASTING", "RUNEUSE")),
+				"creative books expose all pages while stored pages remain canonical");
+		helper.assertTrue(reloaded.blanks() == 0 && reloaded.notes().isEmpty(),
+				"blank counts clamp at zero and clearing notes removes their stored list");
+		helper.succeed();
+	}
 	/** The V33a spherical velocity must pass through 26.2 LivingEntity travel and entity tracking. */
 	private static void glowCloudSphericalMovement(GameTestHelper helper) {
 		EntityGlowCloud cloud = ChromaEntityTypes.GLOW_CLOUD.get().create(
 				helper.getLevel(), EntitySpawnReason.COMMAND);
 		helper.assertTrue(cloud != null, "glow cloud should instantiate from its registered entity type");
 		cloud.setCustomName(Component.literal("movement test"));
-		cloud.snapTo(net.minecraft.world.phys.Vec3.atCenterOf(helper.absolutePos(new BlockPos(8, 8, 8))));
+		// Keep the entity inside the 5x4x5 forced test structure. Relative (8,8,8) could cross the
+		// randomly selected origin's chunk boundary and intermittently leave the entity unticked.
+		cloud.snapTo(net.minecraft.world.phys.Vec3.atCenterOf(helper.absolutePos(new BlockPos(2, 2, 2))));
 		var start = cloud.position();
 		helper.assertTrue(helper.getLevel().addFreshEntity(cloud), "glow cloud should enter the test level");
 		helper.runAfterDelay(5, () -> {
 			helper.assertTrue(cloud.position().distanceToSqr(start) > 0.01,
-					"glow cloud must travel under its source-faithful spherical velocity");
+					"glow cloud must travel under its source-faithful spherical velocity; tickCount="
+							+ cloud.tickCount + ", velocity=" + cloud.getDeltaMovement());
 			helper.succeed();
 		});
 	}
@@ -243,6 +286,35 @@ public final class ChromaGameTests {
 				&& helper.getLevel().getBlockEntity(pos) == repeater,
 				"a non-owner cannot SneakPop or redirect another player's repeater");
 		helper.succeed();
+	}
+	/** The Manipulator restores V33a's progressive connected-cliff reveal without replacing blocks. */
+	private static void manipulatorCliffTransparify(GameTestHelper helper) {
+		BlockPos first = helper.absolutePos(new BlockPos(1, 1, 2));
+		BlockPos second = first.east();
+		BlockPos third = second.east();
+		BlockState opaque = ChromaBlocks.CLIFF_STONE.get().defaultBlockState()
+				.setValue(BlockCliffStone.TRANSPARENT, false);
+		helper.getLevel().setBlock(first, opaque, 3);
+		helper.getLevel().setBlock(second, opaque, 3);
+		helper.getLevel().setBlock(third, opaque, 3);
+
+		var player = helper.makeMockPlayer(GameType.SURVIVAL);
+		player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND,
+				new ItemStack(ChromaItems.MANIPULATOR.get()));
+		var hit = new net.minecraft.world.phys.BlockHitResult(
+				net.minecraft.world.phys.Vec3.atCenterOf(first), Direction.UP, first, false);
+		ChromaItems.MANIPULATOR.get().useOn(new net.minecraft.world.item.context.UseOnContext(
+				player, net.minecraft.world.InteractionHand.MAIN_HAND, hit));
+
+		helper.runAfterDelay(5, () -> {
+			for (BlockPos pos : List.of(first, second, third)) {
+				BlockState state = helper.getLevel().getBlockState(pos);
+				helper.assertTrue(state.is(ChromaBlocks.CLIFF_STONE.get())
+						&& state.getValue(BlockCliffStone.TRANSPARENT),
+						"Manipulator must reveal every connected cliff-stone block without changing identity");
+			}
+			helper.succeed();
+		});
 	}
 	/** Every former CrystalElement metadata family owns sixteen stable block and item registry ids. */
 	private static void coloredBlockRegistryIdentity(GameTestHelper helper) {
@@ -1503,6 +1575,9 @@ public final class ChromaGameTests {
 
 		helper.assertTrue(!ProgressStage.CRYSTALS.isPlayerAtStage(player),
 				"a new beta-path player must begin before CRYSTALS");
+		helper.assertTrue(ResearchProgress.getLevel(player) == ResearchLevel.ENTRY
+				&& !ResearchLevel.RUNECRAFT.canProgressTo(player),
+				"a fresh player must begin at ENTRY without the casting research gate");
 		ExplorationMonitor.scanLookedAtBlock(player, helper.getLevel(), crystalOrigin);
 		helper.assertTrue(ProgressStage.CRYSTALS.isPlayerAtStage(player),
 				"looking at the first cave crystal must unlock the opening CRYSTALS stage");
@@ -1530,6 +1605,19 @@ public final class ChromaGameTests {
 		ItemStack craftedTable = tableRecipe.get().value().assemble(tableInput);
 		helper.assertTrue(craftedTable.is(ChromaBlocks.CASTING_TABLE.get().asItem()),
 				"the registered opening recipe must assemble a Casting Table");
+		CraftingInput manipulatorInput = CraftingInput.of(3, 3, List.of(
+				ItemStack.EMPTY, ItemStack.EMPTY, shard.copy(),
+				ItemStack.EMPTY, new ItemStack(Items.STICK), ItemStack.EMPTY,
+				new ItemStack(Items.STICK), ItemStack.EMPTY, ItemStack.EMPTY));
+		Optional<RecipeHolder<CraftingRecipe>> manipulatorRecipe = helper.getLevel().getServer().getRecipeManager()
+				.getRecipeFor(RecipeType.CRAFTING, manipulatorInput, helper.getLevel());
+		helper.assertTrue(manipulatorRecipe.isPresent()
+				&& manipulatorRecipe.get().id().identifier().equals(
+						Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "manipulator")),
+				"the source-exact shard-and-sticks Elemental Manipulator recipe must resolve");
+		ItemStack craftedManipulator = manipulatorRecipe.get().value().assemble(manipulatorInput);
+		helper.assertTrue(craftedManipulator.is(ChromaItems.MANIPULATOR.get()),
+				"the bootstrap recipe must assemble the real Elemental Manipulator");
 
 		BlockPos tablePos = helper.absolutePos(new BlockPos(10, 4, 10));
 		helper.getLevel().setBlock(tablePos, ChromaBlocks.CASTING_TABLE.get().defaultBlockState(), 3);
@@ -1543,9 +1631,14 @@ public final class ChromaGameTests {
 		table.setItem(6, new ItemStack(Items.COBBLESTONE));
 		table.setItem(7, new ItemStack(Items.COBBLESTONE));
 		table.setItem(8, new ItemStack(Items.COBBLESTONE));
-
-		helper.assertTrue(table.triggerCrafting(player),
-				"the registered V33a StandRecipe must start for the naturally unlocked player");
+		player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, craftedManipulator);
+		net.minecraft.world.InteractionResult manipulation = craftedManipulator.getItem().useOn(
+				new net.minecraft.world.item.context.UseOnContext(player,
+						net.minecraft.world.InteractionHand.MAIN_HAND,
+						new net.minecraft.world.phys.BlockHitResult(
+								net.minecraft.world.phys.Vec3.atCenterOf(tablePos), Direction.UP, tablePos, false)));
+		helper.assertTrue(manipulation.consumesAction() && table.isCrafting(),
+				"right-clicking the owned table with the crafted Manipulator must start the registered V33a StandRecipe");
 		helper.assertTrue(table.getCraftingTick() == 5,
 				"the base-tier Casting Item Stand recipe must retain its five-tick duration");
 		for (int i = 0; i < 5; i++) table.updateEntity(helper.getLevel(), tablePos);
@@ -1553,32 +1646,96 @@ public final class ChromaGameTests {
 				"the beta opening chain must finish with a usable Casting Item Stand in the output slot");
 		helper.assertTrue(table.getTableXP() == 5 && ProgressStage.CASTING.isPlayerAtStage(player),
 				"the first stand craft must award its XP and the CASTING progression stage");
+		helper.assertTrue(CastingProgression.hasCrafted(player, CastingTableRecipe.Tier.CRAFTING)
+				&& !CastingProgression.hasCrafted(player, CastingTableRecipe.Tier.TEMPLE),
+				"the successful stand craft must persist the player's exact V33a CRAFTING tier");
+		helper.assertTrue(ResearchLevel.RUNECRAFT.canProgressTo(player),
+				"a personal CRAFTING-tier completion must unlock the V33a RUNECRAFT research gate");
+		helper.assertTrue(ResearchProgress.setLevel(player, ResearchLevel.RUNECRAFT, false)
+				&& ResearchProgress.getLevel(player) == ResearchLevel.RUNECRAFT
+				&& ResearchLevel.ENTRY.playerHas(player),
+				"research levels must persist by name and include all earlier tiers");
 		helper.succeed();
 	}
-	private static void castingTableAtomicCraft(GameTestHelper helper) {
+	/** V33a rejects fake/dummy actors before the Manipulator can dispatch or a table can cast. */
+	private static void castingManipulatorFakePlayerGuard(GameTestHelper helper) {
+		BlockPos tablePos = helper.absolutePos(new BlockPos(4, 3, 4));
+		helper.getLevel().setBlock(tablePos, ChromaBlocks.CASTING_TABLE.get().defaultBlockState(), 3);
+		TileEntityCastingTable table = (TileEntityCastingTable)helper.getLevel().getBlockEntity(tablePos);
+		ServerPlayer fake = ReikaPlayerAPI.getFakePlayerByNameAndUUID(helper.getLevel(),
+				"ChromatiCraft Casting Guard", UUID.fromString("2176554e-9406-4d70-ae3e-9b39c54aac22"));
+		table.setPlacer(fake);
+		ProgressionManager.instance.setPlayerStage(fake, ProgressStage.CRYSTALS, true, false, false);
+		ItemStack smooth = new ItemStack(ChromaBlocks.crystallineStone(StoneTypes.SMOOTH).get().asItem());
+		table.setItem(3, smooth.copy());
+		table.setItem(4, smooth.copy());
+		ItemStack manipulator = new ItemStack(ChromaItems.MANIPULATOR.get());
+		fake.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, manipulator);
+		net.minecraft.world.InteractionResult result = manipulator.getItem().useOn(
+				new net.minecraft.world.item.context.UseOnContext(fake,
+						net.minecraft.world.InteractionHand.MAIN_HAND,
+						new net.minecraft.world.phys.BlockHitResult(
+								net.minecraft.world.phys.Vec3.atCenterOf(tablePos), Direction.UP, tablePos, false)));
+		helper.assertTrue(result == net.minecraft.world.InteractionResult.PASS && !table.isCrafting(),
+				"a fake player must be rejected before the Elemental Manipulator dispatches to the table");
+		helper.assertTrue(!table.triggerCrafting(fake) && !table.isCrafting(),
+				"the Casting Table controller must independently reject fake-player direct triggers");
+		helper.succeed();
+	}
+
+	/** V33a's GUI no-entry overlay exposes the exact missing progression in source inheritance order. */
+	private static void castingTableProgressFeedback(GameTestHelper helper) {
 		BlockPos pos = helper.absolutePos(new BlockPos(4, 3, 4));
 		helper.getLevel().setBlock(pos, ChromaBlocks.CASTING_TABLE.get().defaultBlockState(), 3);
 		TileEntityCastingTable table = (TileEntityCastingTable)helper.getLevel().getBlockEntity(pos);
 		var owner = helper.makeMockPlayer(GameType.SURVIVAL);
 		table.setPlacer(owner);
+		ItemStack smooth = new ItemStack(ChromaBlocks.crystallineStone(StoneTypes.SMOOTH).get().asItem());
+		for (int slot = 0; slot < 9; slot++) table.setItem(slot, smooth.copy());
+		table.setItem(4, ChromaItems.shardStack(CrystalElement.BLUE));
+
+		helper.assertTrue(!table.triggerCrafting(owner) && table.getActiveRecipe() != null,
+				"a matching rune recipe must remain displayable when player progression rejects it");
+		helper.assertTrue(table.getMissingProgress(owner).equals(
+				List.of(ProgressStage.CRYSTALS, ProgressStage.ALLCOLORS)),
+				"the no-entry overlay must report universal CRYSTALS before RuneRecipe's ALLCOLORS gate");
 		ProgressionManager.instance.setPlayerStage(owner, ProgressStage.CRYSTALS, true, false, false);
-		ItemStack smooth = new ItemStack(ChromaBlocks.crystallineStone(BlockCrystallineStone.StoneTypes.SMOOTH).get().asItem());
+		helper.assertTrue(table.getMissingProgress(owner).equals(List.of(ProgressStage.ALLCOLORS)),
+				"granting CRYSTALS must leave only the recipe-specific ALLCOLORS gate");
+		ProgressionManager.instance.setPlayerStage(owner, ProgressStage.ALLCOLORS, true, false, false);
+		helper.assertTrue(table.getMissingProgress(owner).isEmpty() && table.triggerCrafting(owner),
+				"granting every reported stage must make the same displayed recipe startable");
+		helper.succeed();
+	}
+
+	private static void castingTableAtomicCraft(GameTestHelper helper) {		BlockPos pos = helper.absolutePos(new BlockPos(4, 3, 4));
+		helper.getLevel().setBlock(pos, ChromaBlocks.CASTING_TABLE.get().defaultBlockState(), 3);
+		TileEntityCastingTable table = (TileEntityCastingTable)helper.getLevel().getBlockEntity(pos);
+		BlockPos outputPos = pos.relative(Direction.EAST);
+		helper.getLevel().setBlock(outputPos, Blocks.CHEST.defaultBlockState(), 3);
+		net.minecraft.world.Container outputInventory = (net.minecraft.world.Container)helper.getLevel().getBlockEntity(outputPos);
+		var owner = helper.makeMockPlayer(GameType.SURVIVAL);
+		table.setPlacer(owner);
+		ProgressionManager.instance.setPlayerStage(owner, ProgressStage.CRYSTALS, true, false, false);
+		ItemStack smooth = new ItemStack(ChromaBlocks.crystallineStone(BlockCrystallineStone.StoneTypes.SMOOTH).get().asItem(), 32);
 		table.setItem(3, smooth.copy());
 		table.setItem(4, smooth.copy());
 		helper.assertTrue(table.triggerCrafting(owner), "the registered two-smooth-stone beam recipe should start");
-		helper.assertTrue(table.isCrafting() && table.getCraftingTick() == 5,
-				"ordinary recipe should begin its five-tick work period");
-		for (int i = 0; i < 4; i++) table.updateEntity(helper.getLevel(), pos);
-		helper.assertTrue(table.getItem(9).isEmpty() && !table.getItem(3).isEmpty(),
-				"inputs and output must remain untouched before the final tick");
+		helper.assertTrue(table.isCrafting() && table.getCraftingAmount() == 32 && table.getCraftingTick() == 19,
+				"thirty-two stacked five-tick casts must converge to V33a's nineteen-tick geometric duration");
+		for (int i = 0; i < 18; i++) table.updateEntity(helper.getLevel(), pos);
+		helper.assertTrue(table.getItem(9).isEmpty() && table.getItem(3).getCount() == 32,
+				"batched inputs and output must remain untouched before the final tick");
 		table.updateEntity(helper.getLevel(), pos);
-		helper.assertTrue(!table.isCrafting(), "craft should finish on the declared duration");
+		helper.assertTrue(!table.isCrafting(), "the stacked craft should finish on its source duration");
 		helper.assertTrue(table.getItem(3).isEmpty() && table.getItem(4).isEmpty(),
-				"the final commit should consume both declared grid inputs");
-		helper.assertTrue(table.getItem(9).is(ChromaBlocks.crystallineStone(BlockCrystallineStone.StoneTypes.BEAM).get().asItem()) && table.getItem(9).getCount() == 2,
-				"the final commit should produce the V33a beam output");
-		helper.assertTrue(table.getTableXP() == 5 && table.getCompletedRecipes().size() == 1,
-				"completion should award recipe XP and remember the recipe key");
+				"the final commit should atomically consume all thirty-two batches");
+		helper.assertTrue(table.getItem(9).isEmpty()
+				&& outputInventory.getItem(0).is(ChromaBlocks.crystallineStone(BlockCrystallineStone.StoneTypes.BEAM).get().asItem())
+				&& outputInventory.getItem(0).getCount() == 64,
+				"all 64 beams must move into one adjacent chest stack without truncation or item loss");
+		helper.assertTrue(table.getTableXP() == 160 && table.getCompletedRecipes().size() == 1,
+				"thirty-two committed batches must award per-craft XP and remember one recipe key");
 		helper.succeed();
 	}
 
@@ -1854,6 +2011,53 @@ public final class ChromaGameTests {
 		helper.assertTrue(reloaded instanceof TileEntityCastingTable, "tuned table must reload through its registered type");
 		TileEntityCastingTable loaded = (TileEntityCastingTable)reloaded;
 		helper.assertTrue(loaded.isTuned(), "tuned state must survive block-entity synchronization");
+
+		// Exercise the first real V33a recipe whose canRunRecipe contract requires that key.
+		tablePos = placeCastingTable(helper, ChromaStructures.CASTING3, 15000);
+		table = (TileEntityCastingTable)helper.getLevel().getBlockEntity(tablePos);
+		table.setPlacer(owner);
+		for (ProgressStage stage : new ProgressStage[] {ProgressStage.CRYSTALS, ProgressStage.RUNEUSE,
+				ProgressStage.MULTIBLOCK, ProgressStage.PYLON, ProgressStage.REPEATER})
+			ProgressionManager.instance.setPlayerStage(owner, stage, true, false, false);
+		table.setItem(4, new ItemStack(Items.DIAMOND));
+		for (int[] pos : new int[][] {{-2,0},{-4,0},{2,0},{4,0},{0,-2},{0,-4}})
+			setStand(helper, tablePos, new BlockPos(pos[0], Math.abs(pos[0]) == 4 || Math.abs(pos[1]) == 4 ? 1 : 0, pos[1]),
+					ChromaItems.craftingStack(ChromaCraftingItems.IRIDESCENT_CHUNK), owner);
+		for (int x = -4; x <= 4; x += 2)
+			setStand(helper, tablePos, new BlockPos(x, Math.abs(x) == 4 ? 1 : 0, 2), new ItemStack(Items.OBSIDIAN), owner);
+		setStand(helper, tablePos, new BlockPos(-2,0,-2), new ItemStack(Items.GLOWSTONE), owner);
+		setStand(helper, tablePos, new BlockPos(2,0,-2), new ItemStack(Items.GLOWSTONE), owner);
+		for (Map.Entry<BlockPos, CrystalElement> entry : key.entrySet())
+			placeRune(helper, tablePos, entry.getKey(), entry.getValue());
+		placeRune(helper, tablePos, first.getKey(), wrong);
+		table.validateStructure();
+		helper.assertTrue(table.receiveElement(null, CrystalElement.YELLOW, 15000) == 15000
+				&& table.receiveElement(null, CrystalElement.BLACK, 25000) == 25000
+				&& table.receiveElement(null, CrystalElement.PURPLE, 10000) == 10000,
+				"Power Crystal setup must buffer the source-exact three-color aura");
+		String[] casting3Mismatch = {"none"};
+		BlockPos casting3Anchor = tablePos.below();
+		ChromaStructures.CASTING3.getArray(helper.getLevel(), casting3Anchor.getX(), casting3Anchor.getY(), casting3Anchor.getZ())
+				.matchInWorld((world, x, y, z, wanted) -> casting3Mismatch[0] = new BlockPos(x, y, z)
+						+ " wanted=" + wanted + " found=" + world.getBlockState(new BlockPos(x, y, z)));
+		helper.assertTrue(table.isStructureValid(CastingTableRecipe.Tier.PYLON),
+				"the canonical CASTING3 structure must remain valid after installing its personal tuning runes; first mismatch "
+						+ casting3Mismatch[0]);
+		helper.assertTrue(!table.isTuned(), "the deliberately wrong rune must leave the replacement table untuned");
+		boolean mismatchedStarted = table.triggerCrafting(owner);
+		helper.assertTrue(table.getActiveRecipe() != null,
+				"the complete Power Crystal physical layout must select a casting recipe; nonempty stands="
+						+ table.getOtherStands().values().stream().filter(stand -> !stand.isEmpty()).count());
+		helper.assertTrue(table.getActiveRecipe().id().identifier().getPath().equals("power_crystal")
+				&& table.getActiveRecipe().value().requiresTuningKey(),
+				"the selected recipe must be the data-driven tuning-sensitive Power Crystal recipe, got "
+						+ table.getActiveRecipe().id());
+		helper.assertTrue(!mismatchedStarted,
+				"a complete but mismatched personal key must reject the real tuning-sensitive Power Crystal recipe");
+		placeRune(helper, tablePos, first.getKey(), first.getValue());
+		table.validateStructure();
+		helper.assertTrue(table.triggerCrafting(owner) && table.getCraftingTick() == 1600,
+				"the exact personal key must start the V33a 1600-tick Power Crystal cast");
 		helper.succeed();
 	}
 
@@ -1885,8 +2089,10 @@ public final class ChromaGameTests {
 		table.validateStructure();
 		helper.assertTrue(Math.abs(table.getThroughputBonus() - 1F) < 0.0001F,
 				"four correctly grouped sides must grant the full +100% table throughput bonus");
-		helper.assertTrue(table.maxThroughput() == 200,
-				"the V33a 100-lumen base at 15000 XP must double to 200; actual=" + table.maxThroughput());
+		helper.assertTrue(table.maxThroughput() == 1200,
+				"the V33a 600-lumen base at 15000 XP must double to 1200; actual=" + table.maxThroughput());
+		helper.assertTrue(!table.allowsEfficiencyBoost(),
+				"Casting Tables must retain V33a's explicit immunity to receiver efficiency-cost scaling");
 		for (int[] offset : ring) {
 			TileEntityCrystalRepeater repeater = (TileEntityCrystalRepeater)helper.getLevel()
 					.getBlockEntity(tablePos.offset(offset[0], 3, offset[1]));
@@ -2001,33 +2207,51 @@ public final class ChromaGameTests {
 	private static void castingTableLumenCoreMulticolor(GameTestHelper helper) {
 		BlockPos tablePos = placeCastingTable(helper, ChromaStructures.CASTING3, 15000);
 		TileEntityCastingTable table = (TileEntityCastingTable)helper.getLevel().getBlockEntity(tablePos);
+		BlockPos outputPos = tablePos.relative(Direction.UP);
+		helper.getLevel().setBlock(outputPos, Blocks.CHEST.defaultBlockState(), 3);
+		net.minecraft.world.Container outputInventory = (net.minecraft.world.Container)helper.getLevel().getBlockEntity(outputPos);
 		var owner = helper.makeMockPlayer(GameType.SURVIVAL);
 		table.setPlacer(owner);
 		for (ProgressStage stage : new ProgressStage[] {ProgressStage.RUNEUSE, ProgressStage.MULTIBLOCK, ProgressStage.PYLON, ProgressStage.REPEATER})
 			ProgressionManager.instance.setPlayerStage(owner, stage, true, false, false);
-		table.setItem(4, ChromaItems.clusterStack(ChromaClusterItems.CRYSTAL_STAR));
+		table.setItem(4, ChromaItems.clusterStack(ChromaClusterItems.CRYSTAL_STAR).copyWithCount(2));
 		for (int x = -4; x <= 4; x += 2) for (int z = -4; z <= 4; z += 2) {
 			if (x == 0 && z == 0) continue;
 			boolean cardinal = (x == 0 && Math.abs(z) == 2) || (z == 0 && Math.abs(x) == 2);
 			ItemStack ingredient = cardinal ? ChromaItems.tieredStack(ChromaTieredItems.PURITY_DUST)
 					: ChromaItems.craftingStack(ChromaCraftingItems.GLOW_CHUNK);
-			setStand(helper, tablePos, new BlockPos(x, Math.abs(x) == 4 || Math.abs(z) == 4 ? 1 : 0, z), ingredient, owner);
+			setStand(helper, tablePos, new BlockPos(x, Math.abs(x) == 4 || Math.abs(z) == 4 ? 1 : 0, z),
+					ingredient.copyWithCount(2), owner);
 		}
 		for (CrystalElement element : new CrystalElement[] {CrystalElement.BLACK, CrystalElement.YELLOW, CrystalElement.BLUE})
-			helper.assertTrue(table.receiveElement(null, element, 60000) == 60000,
-					"Lumen Core setup must accept the exact 60000-lumen requirement for "+element);
-		helper.assertTrue(table.triggerCrafting(owner) && table.getCraftingTick() == 400,
-				"Lumen Core must start only with all 24 stands and all three aura colors present");
+			helper.assertTrue(table.receiveElement(null, element, 120000) == 120000,
+					"two queued Lumen Cores must buffer the exact 120000-lumen requirement for "+element);
+		boolean started = table.triggerCrafting(owner);
+		helper.assertTrue(started && table.getCraftingAmount() == 2 && table.getCraftingTick() == 400,
+				"V33a pylon recipes must queue both inputs but schedule only one 400-tick cycle; started="
+						+started+", amount="+table.getCraftingAmount()+", ticks="+table.getCraftingTick()
+						+", tier="+table.getTier()+", recipe="+(table.getActiveRecipe() != null
+								? table.getActiveRecipe().id()+"/stackable="+table.getActiveRecipe().value().stackable() : "none"));
 		for (int i = 0; i < 400; i++) table.updateEntity(helper.getLevel(), tablePos);
-		helper.assertTrue(table.getItem(9).is(ChromaItems.CRAFTING.get(ChromaCraftingItems.LUMEN_CORE).get()),
-				"Lumen Core must commit its source-exact output after 400 ticks");
+		helper.assertTrue(table.isCrafting() && table.getCraftingAmount() == 1 && table.getCraftingTick() == 400,
+				"moving the first output into the adjacent chest must immediately schedule the second pylon cycle");
+		helper.assertTrue(table.getItem(4).getCount() == 1
+				&& outputInventory.getItem(0).is(ChromaItems.CRAFTING.get(ChromaCraftingItems.LUMEN_CORE).get())
+				&& outputInventory.getItem(0).getCount() == 1,
+				"the first non-stackable cycle must consume and emit exactly one recipe batch");
 		for (CrystalElement element : new CrystalElement[] {CrystalElement.BLACK, CrystalElement.YELLOW, CrystalElement.BLUE})
-			helper.assertTrue(table.getEnergy(element) == 0, "Lumen Core completion must debit all 60000 "+element+" lumens");
-		helper.assertTrue(table.getTableXP() == 15500 && table.getOtherStands().values().stream().allMatch(TileEntityItemStand::isEmpty),
-				"Lumen Core completion must award 500 XP and consume all 24 stands atomically");
+			helper.assertTrue(table.getEnergy(element) == 60000,
+					"the first cycle must leave one Lumen Core's buffered "+element+" aura");
+		for (int i = 0; i < 400; i++) table.updateEntity(helper.getLevel(), tablePos);
+		helper.assertTrue(!table.isCrafting() && table.getItem(9).isEmpty()
+				&& outputInventory.getItem(0).getCount() == 2,
+				"the second non-stackable cycle must finish the queue without leaving a table output");
+		for (CrystalElement element : new CrystalElement[] {CrystalElement.BLACK, CrystalElement.YELLOW, CrystalElement.BLUE})
+			helper.assertTrue(table.getEnergy(element) == 0, "both cycles must debit all 120000 "+element+" lumens");
+		helper.assertTrue(table.getTableXP() == 16000 && table.getOtherStands().values().stream().allMatch(TileEntityItemStand::isEmpty),
+				"two Lumen Core cycles must award 1000 XP and consume both layers of all 24 stands");
 		helper.succeed();
 	}
-
 	/** Losing the required NBT multiblock cancels work without consuming or stranding locked inputs. */
 	private static void castingTableStructureLossCancel(GameTestHelper helper) {
 		BlockPos tablePos = placeCastingTable(helper, ChromaStructures.CASTING2, 2000);
@@ -2202,24 +2426,56 @@ public final class ChromaGameTests {
 		helper.succeed();
 	}
 
-	/** V33a spread-fill balances the held stack across every queued empty stand. */
+	/** V33a empty-hand block interactions select spread stands and dump the upgraded table's ring. */
 	private static void castingStandSpread(GameTestHelper helper) {
-		BlockPos firstPos = helper.absolutePos(new BlockPos(4, 3, 4));
-		BlockPos secondPos = firstPos.offset(2, 0, 0);
+		BlockPos tablePos = helper.absolutePos(new BlockPos(8, 3, 8));
+		BlockPos firstPos = tablePos.offset(-2, 0, 0);
+		BlockPos secondPos = tablePos.offset(2, 0, 0);
+		helper.getLevel().setBlock(tablePos, ChromaBlocks.CASTING_TABLE.get().defaultBlockState(), 3);
 		helper.getLevel().setBlock(firstPos, ChromaBlocks.ITEM_STAND.get().defaultBlockState(), 3);
 		helper.getLevel().setBlock(secondPos, ChromaBlocks.ITEM_STAND.get().defaultBlockState(), 3);
+		TileEntityCastingTable table = (TileEntityCastingTable)helper.getLevel().getBlockEntity(tablePos);
 		TileEntityItemStand first = (TileEntityItemStand)helper.getLevel().getBlockEntity(firstPos);
 		TileEntityItemStand second = (TileEntityItemStand)helper.getLevel().getBlockEntity(secondPos);
 		var owner = helper.makeMockPlayer(GameType.SURVIVAL);
+		table.setPlacer(owner);
 		first.setPlacer(owner);
 		second.setPlacer(owner);
-		first.queueSpread(owner);
-		second.queueSpread(owner);
+
+		owner.setShiftKeyDown(true);
+		owner.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+		for (BlockPos standPos : List.of(firstPos, secondPos)) {
+			var hit = new net.minecraft.world.phys.BlockHitResult(
+					net.minecraft.world.phys.Vec3.atCenterOf(standPos), Direction.UP, standPos, false);
+			helper.assertTrue(helper.getLevel().getBlockState(standPos).useWithoutItem(helper.getLevel(), owner, hit).consumesAction(),
+					"sneak-empty-hand stand click should select it for spread filling");
+		}
+		owner.setShiftKeyDown(false);
 		owner.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, new ItemStack(Items.REDSTONE, 5));
-		helper.assertTrue(first.interact(owner, net.minecraft.world.InteractionHand.MAIN_HAND), "queued spread should be handled");
+		var firstHit = new net.minecraft.world.phys.BlockHitResult(
+				net.minecraft.world.phys.Vec3.atCenterOf(firstPos), Direction.UP, firstPos, false);
+		helper.assertTrue(helper.getLevel().getBlockState(firstPos).useItemOn(owner.getMainHandItem(), helper.getLevel(), owner,
+				net.minecraft.world.InteractionHand.MAIN_HAND, firstHit).consumesAction(), "queued spread should be handled through the block");
 		helper.assertTrue(first.getItem(0).getCount() == 2 && second.getItem(0).getCount() == 2,
 				"five items across two stands should place two on each");
 		helper.assertTrue(owner.getMainHandItem().getCount() == 1, "spread remainder should stay in hand");
+
+		ItemStack tieredTable = new ItemStack(ChromaBlocks.CASTING_TABLE.get());
+		CompoundTag tableData = new CompoundTag();
+		tableData.putInt("tableXP", TileEntityCastingTable.TableTier.MULTIBLOCK.minimumXP());
+		ReikaItemHelper.setStackTag(tieredTable, tableData);
+		table.setDataFromItemStackTag(tieredTable);
+		owner.setShiftKeyDown(true);
+		var tableHit = new net.minecraft.world.phys.BlockHitResult(
+				net.minecraft.world.phys.Vec3.atCenterOf(tablePos), Direction.UP, tablePos, false);
+		helper.getLevel().getBlockState(tablePos).useItemOn(owner.getMainHandItem(), helper.getLevel(), owner,
+				net.minecraft.world.InteractionHand.MAIN_HAND, tableHit);
+		helper.assertTrue(!first.isEmpty() && !second.isEmpty(),
+				"the source mass-empty shortcut must require an empty hand");
+		owner.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+		helper.assertTrue(helper.getLevel().getBlockState(tablePos).useWithoutItem(helper.getLevel(), owner, tableHit).consumesAction(),
+				"sneak-empty-hand table click should claim the mass-empty action");
+		helper.assertTrue(first.isEmpty() && second.isEmpty(), "tier-III table should dump every stand in its ring");
 		helper.succeed();
 	}
 

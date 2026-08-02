@@ -15,9 +15,9 @@ import reika.chromaticraft.registry.CrystalElement;
  * Builds the crystal shard tag family.
  *
  * <p>Each colour gets a pair of tags, and the two aggregate tags are composed from those rather than
- * from the items directly, so adding a colour only means adding its per-colour entries. A boosted
- * shard lands in both its own colour tag and the plain one, which is what lets a recipe asking for
- * "a black shard" also accept a boosted black shard.
+ * from the items directly, so adding a colour only means adding its per-colour entries. Plain and
+ * boosted per-colour tags stay disjoint, matching V33a's exact metadata ingredients; only the
+ * aggregate shard tag contains both families for recipes that originally accepted all 32 variants.
  */
 public final class ChromaItemTagsProvider extends ItemTagsProvider {
 
@@ -34,13 +34,11 @@ public final class ChromaItemTagsProvider extends ItemTagsProvider {
 			var boostedColour = tag(ChromaItemTags.boostedCrystalShards(element));
 			boostedColour.add(ChromaItems.BOOSTED_SHARDS.get(element).getKey());
 
-			// The plain per-colour tag carries the boosted variant too, via the tag rather than the
-			// item, so the "is a boosted black shard a black shard" relationship is stated once.
 			var colour = tag(ChromaItemTags.crystalShards(element));
 			colour.add(ChromaItems.SHARDS.get(element).getKey());
-			colour.addTag(ChromaItemTags.boostedCrystalShards(element));
 
 			allShards.addTag(ChromaItemTags.crystalShards(element));
+			allShards.addTag(ChromaItemTags.boostedCrystalShards(element));
 			allBoosted.addTag(ChromaItemTags.boostedCrystalShards(element));
 		}
 	}

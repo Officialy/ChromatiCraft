@@ -5,7 +5,7 @@
       "conditions": {
         "items": [
           {
-            "items": "chromaticraft:crystal_shard_blue"
+            "items": "#chromaticraft:crystal_shards"
           }
         ]
       },

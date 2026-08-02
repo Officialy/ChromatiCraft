@@ -42,9 +42,9 @@ import reika.dragonapi.libraries.io.NBTCompat;
  *
  * <p><b>Port slice (deferred — re-add as those systems port):</b> client packet sync
  * ({@code ChromaPackets}), co-op progression sharing ({@code ProgressionLinking}), handbook
- * notification + research-level gating ({@code ChromaResearchManager}/{@code ResearchLevel}/
- * {@code ChromaResearch}), the {@code ProgressionEvent} bus post, casting-recipe unlock hooks
- * ({@code RecipesCastingTable}), progress-backup caching, and the chained-progression system
+ * handbook fragment/catalog management ({@code ChromaResearchManager}/{@code ChromaResearch}), the
+ * {@code ProgressionEvent} bus post, automatic research-level upgrade checks, progress-backup
+ * caching, and the chained-progression system
  * ({@code addChainedProgression}/{@code ProgressChain}). The {@code notify}/{@code syncToCoop}
  * parameters are kept for call-site parity but are currently inert (no client sync yet), so progression
  * is authoritative server-side only until the packet system lands.

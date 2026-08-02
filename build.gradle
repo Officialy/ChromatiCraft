@@ -281,6 +281,10 @@ sourceSets.main.java {
 	include 'reika/chromaticraft/tileentity/recipe/TileEntityItemStand.java'
 
     include 'reika/chromaticraft/magic/progression/ProgressionManager.java'
+    include 'reika/chromaticraft/magic/progression/LexiconData.java'
+    include 'reika/chromaticraft/magic/progression/CastingProgression.java'
+    include 'reika/chromaticraft/magic/progression/ResearchLevel.java'
+    include 'reika/chromaticraft/magic/progression/ResearchProgress.java'
 
     // In-world game tests for the progression core + the arena structure they run on.
     include 'reika/chromaticraft/ChromaGameTests.java'

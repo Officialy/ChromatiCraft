@@ -1,8 +1,11 @@
 package reika.chromaticraft.client.gui;
 
+import java.util.List;
+
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Inventory;
@@ -13,6 +16,7 @@ import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe;
 import reika.chromaticraft.container.MenuCastingTable;
 import reika.chromaticraft.magic.ElementTagCompound;
+import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.tileentity.recipe.TileEntityCastingTable;
 import reika.chromaticraft.tileentity.recipe.TileEntityItemStand;
@@ -125,7 +129,19 @@ public final class ScreenCastingTable extends AbstractContainerScreen<MenuCastin
 
         if (mouseX >= leftPos + 186 && mouseX <= leftPos + 207
                 && mouseY >= topPos + 10 && mouseY <= topPos + 30) {
-            graphics.setTooltipForNextFrame(font, output, mouseX, mouseY);
+            List<ProgressStage> missing = menu.getMissingProgress();
+            if (!menu.canRunDisplayedRecipe() && (!missing.isEmpty() || menu.isMissingTuningKey())) {
+                List<Component> tooltip = new java.util.ArrayList<>();
+                tooltip.add(Component.literal("Missing Requirements:").withStyle(ChatFormatting.RED));
+                for (ProgressStage stage : missing)
+                    tooltip.add(Component.literal(stageTitle(stage)).withStyle(ChatFormatting.GRAY));
+                if (menu.isMissingTuningKey())
+                    tooltip.add(Component.literal("Personal Casting Tuning Key").withStyle(ChatFormatting.LIGHT_PURPLE));
+                graphics.setTooltipForNextFrame(font, tooltip, java.util.Optional.empty(), mouseX, mouseY);
+            }
+            else {
+                graphics.setTooltipForNextFrame(font, output, mouseX, mouseY);
+            }
         }
 
         ElementTagCompound required = table.getDisplayAura();
@@ -137,6 +153,19 @@ public final class ScreenCastingTable extends AbstractContainerScreen<MenuCastin
             this.drawFillBar(graphics, element, x, y, 4, 35,
                     table.getEnergy(element) / (float)amount);
         }
+    }
+
+    /** Titles are the verbatim V33a progression.xml labels used by the original icon panel. */
+    private static String stageTitle(ProgressStage stage) {
+        return switch (stage) {
+            case CRYSTALS -> "Tangible Energy";
+            case RUNEUSE -> "Weak Magical Foci";
+            case MULTIBLOCK -> "More Complex Crafting";
+            case PYLON -> "Energy Beacons";
+            case REPEATER -> "Broadcasting";
+            case ALLCOLORS -> "Elemental Awareness";
+            default -> stage.name();
+        };
     }
 
     /** Exact geometry and fill order of V33a ChromaFX.drawFillBar. */

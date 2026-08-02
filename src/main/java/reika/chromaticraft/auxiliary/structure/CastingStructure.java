@@ -6,6 +6,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import reika.chromaticraft.base.ChromaStructureBase;
 import reika.chromaticraft.block.BlockCrystallineStone;
+import reika.chromaticraft.magic.castingtuning.CastingTuningRegistry;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.dragonapi.instantiable.data.blockstruct.FilledBlockArray;
 import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
@@ -34,6 +35,11 @@ public abstract class CastingStructure extends ChromaStructureBase {
 	@Override
 	public FilledBlockArray getArray(Level level, int x, int y, int z) {
 		FilledBlockArray array = NBTStructureLoader.load(level, template, new BlockPos(x, y, z), anchor, state -> state);
+		// V33a CastingL2Structure explicitly added every personal-key location as a rune
+		// alternative at table height. This includes the radius-six fan positions outside the
+		// generic -5..5 floor conversion and is essential once each rune color is its own block.
+		if (tier >= 2) for (BlockPos offset : CastingTuningRegistry.instance.locations())
+			array.addBlock(x + offset.getX(), y + 1 + offset.getY(), z + offset.getZ(), RuneBlockCheck.INSTANCE);
 		if (tier == 1) {
 			for (int[] direction : CARDINALS) {
 				for (int distance = 3; distance <= 5; distance++)

@@ -87,6 +87,15 @@ public class TileEntityItemStand extends TileEntityChromaticBase
 			SPREAD_SET.computeIfAbsent(player.getUUID(), key -> new HashSet<>()).add(this);
 	}
 
+	/** Drops and clears the stand's complete stack, as used by the table's V33a mass-empty action. */
+	public void dropSlot() {
+		ItemStack present = inventory.getFirst();
+		if (present.isEmpty() || this.getLevel() == null) return;
+		net.minecraft.world.level.block.Block.popResource(this.getLevel(), this.getBlockPos().above(), present.copy());
+		inventory.set(0, ItemStack.EMPTY);
+		this.inventoryChanged();
+	}
+
 	private static void spreadItems(Set<TileEntityItemStand> locations, ItemStack held, Player player) {
 		java.util.ArrayList<TileEntityItemStand> stands = new java.util.ArrayList<>();
 		for (TileEntityItemStand stand : locations) {

@@ -39,15 +39,21 @@ public final class BlockCastingTable extends BlockChromaticTile {
         // run, so a craft could never be started -- opening the GUI swallowed the click instead.
         if (stack.getItem() instanceof reika.chromaticraft.item.ItemManipulator)
             return InteractionResult.PASS;
-        return this.activate(level, pos, player);
+        return this.activate(level, pos, player, false);
     }
     @Override protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos,
-            Player player, BlockHitResult hit) { return this.activate(level, pos, player); }
+            Player player, BlockHitResult hit) { return this.activate(level, pos, player, true); }
 
-    private InteractionResult activate(Level level, BlockPos pos, Player player) {
+    private InteractionResult activate(Level level, BlockPos pos, Player player, boolean emptyHand) {
         if (!(level.getBlockEntity(pos) instanceof TileEntityCastingTable table)) return InteractionResult.PASS;
         if (level.isClientSide()) return InteractionResult.SUCCESS;
         if (!table.isOwnedByPlayer(player)) return InteractionResult.FAIL;
+        // V33a: an empty-handed sneak click empties the auxiliary stand ring instead
+        // of opening the table GUI.
+        if (emptyHand && player.isShiftKeyDown()) {
+            table.dumpAllStands();
+            return InteractionResult.SUCCESS;
+        }
         if (player instanceof ServerPlayer serverPlayer) serverPlayer.openMenu(table, pos);
         return InteractionResult.SUCCESS;
     }

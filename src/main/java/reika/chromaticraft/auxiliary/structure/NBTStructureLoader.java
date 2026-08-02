@@ -18,7 +18,9 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 
 import reika.chromaticraft.ChromatiCraft;
+import reika.chromaticraft.registry.ChromaBlocks;
 import reika.dragonapi.instantiable.data.blockstruct.FilledBlockArray;
+import reika.dragonapi.instantiable.data.immutable.BlockKey;
 
 /**
  * Loads a canonical Minecraft structure NBT and exposes it through DragonAPI's multiblock matcher.
@@ -59,12 +61,21 @@ public final class NBTStructureLoader {
                 throw new IllegalStateException("Invalid palette index " + paletteIndex + " in structure " + templateId);
             BlockState state = stateTransform.apply(palette.get(paletteIndex));
             BlockPos target = worldAnchor.offset(relative.subtract(templateAnchor));
-            if (state.is(Blocks.STRUCTURE_VOID))
+            // Structure-template air is a placement instruction, not part of V33a's multiblock
+            // contract. The original FilledBlockArray structures listed required solids only; making
+            // every palette air cell a setEmpty check prevents legal adjacent automation (including
+            // the Casting Table's own six-direction output pass) and invalidates structures when the
+            // surrounding volume contains harmless blocks.
+            if (state.is(Blocks.STRUCTURE_VOID) || state.isAir())
                 continue;
-            if (state.isAir())
-                result.setEmpty(target.getX(), target.getY(), target.getZ(), false, false);
-            else
+            if (ChromaBlocks.isRune(state)) {
+                FilledBlockArray.MultiKey colors = new FilledBlockArray.MultiKey();
+                ChromaBlocks.RUNES.forEach(rune -> colors.add(new BlockKey(rune.get().defaultBlockState())));
+                result.setBlock(target.getX(), target.getY(), target.getZ(), colors);
+            }
+            else {
                 result.setBlock(target.getX(), target.getY(), target.getZ(), state);
+            }
         }
         return result;
     }
