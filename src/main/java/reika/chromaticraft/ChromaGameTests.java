@@ -251,11 +251,24 @@ public final class ChromaGameTests {
 		// randomly selected origin's chunk boundary and intermittently leave the entity unticked.
 		cloud.snapTo(net.minecraft.world.phys.Vec3.atCenterOf(helper.absolutePos(new BlockPos(2, 2, 2))));
 		var start = cloud.position();
+		// Other tests in the batch leave mock players in this level thousands of blocks away, so
+		// vanilla Mob.checkDespawn would discard this cloud as "far from any player" before its first
+		// tick. Real Glow Clouds run that despawn rule for real; pin this one so the test measures
+		// movement rather than vanilla despawn.
+		cloud.setPersistenceRequired();
 		helper.assertTrue(helper.getLevel().addFreshEntity(cloud), "glow cloud should enter the test level");
+		// The arena chunk can unload and reload between the spawn and the first tick, which replaces
+		// this instance with one rebuilt from NBT. Re-resolving by UUID keeps the assertion on the
+		// live entity, and surviving that round trip is itself the regression: writing V33a's
+		// `isdead` flag from isRemoved() made every unloaded Glow Cloud discard itself on reload.
+		java.util.UUID id = cloud.getUUID();
 		helper.runAfterDelay(5, () -> {
-			helper.assertTrue(cloud.position().distanceToSqr(start) > 0.01,
+			net.minecraft.world.entity.Entity live = helper.getLevel().getEntity(id);
+			helper.assertTrue(live instanceof EntityGlowCloud,
+					"the glow cloud must still be present after spawning");
+			helper.assertTrue(live.position().distanceToSqr(start) > 0.01,
 					"glow cloud must travel under its source-faithful spherical velocity; tickCount="
-							+ cloud.tickCount + ", velocity=" + cloud.getDeltaMovement());
+							+ live.tickCount + ", velocity=" + live.getDeltaMovement());
 			helper.succeed();
 		});
 	}
@@ -2207,7 +2220,10 @@ public final class ChromaGameTests {
 	private static void castingTableLumenCoreMulticolor(GameTestHelper helper) {
 		BlockPos tablePos = placeCastingTable(helper, ChromaStructures.CASTING3, 15000);
 		TileEntityCastingTable table = (TileEntityCastingTable)helper.getLevel().getBlockEntity(tablePos);
-		BlockPos outputPos = tablePos.relative(Direction.UP);
+		// V33a's casting temple requires the four cells beside the table and the cell above it to be
+		// empty, so the cell below the table is the only one of the six output directions an
+		// automation inventory can legally occupy while the multiblock still validates.
+		BlockPos outputPos = tablePos.below();
 		helper.getLevel().setBlock(outputPos, Blocks.CHEST.defaultBlockState(), 3);
 		net.minecraft.world.Container outputInventory = (net.minecraft.world.Container)helper.getLevel().getBlockEntity(outputPos);
 		var owner = helper.makeMockPlayer(GameType.SURVIVAL);

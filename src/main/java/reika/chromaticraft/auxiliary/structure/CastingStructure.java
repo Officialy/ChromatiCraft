@@ -34,12 +34,16 @@ public abstract class CastingStructure extends ChromaStructureBase {
 
 	@Override
 	public FilledBlockArray getArray(Level level, int x, int y, int z) {
-		FilledBlockArray array = NBTStructureLoader.load(level, template, new BlockPos(x, y, z), anchor, state -> state);
+		FilledBlockArray array = NBTStructureLoader.load(level, template, new BlockPos(x, y, z), anchor, state -> state, false);
 		// V33a CastingL2Structure explicitly added every personal-key location as a rune
 		// alternative at table height. This includes the radius-six fan positions outside the
 		// generic -5..5 floor conversion and is essential once each rune color is its own block.
 		if (tier >= 2) for (BlockPos offset : CastingTuningRegistry.instance.locations())
 			array.addBlock(x + offset.getX(), y + 1 + offset.getY(), z + offset.getZ(), RuneBlockCheck.INSTANCE);
+		// V33a CastingL1Structure guards the four cells beside the table against lightning: they are
+		// setEmpty, with fire as the one accepted occupant. L2/L3 inherit that and never remove it.
+		for (int[] direction : CARDINALS)
+			array.addBlock(x + direction[0], y + 1, z + direction[1], Blocks.FIRE);
 		if (tier == 1) {
 			for (int[] direction : CARDINALS) {
 				for (int distance = 3; distance <= 5; distance++)
@@ -51,8 +55,6 @@ public abstract class CastingStructure extends ChromaStructureBase {
 					this.addRuneAlternative(array, x - 3, y + dy, z + i);
 					this.addRuneAlternative(array, x + 3, y + dy, z + i);
 					this.addRuneAlternative(array, x + i, y + dy, z - 3);
-			for (int[] direction : CARDINALS)
-				array.addBlock(x + direction[0], y + 1, z + direction[1], Blocks.FIRE);
 					this.addRuneAlternative(array, x + i, y + dy, z + 3);
 				}
 			}

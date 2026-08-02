@@ -34,6 +34,18 @@ public final class NBTStructureLoader {
 
     public static FilledBlockArray load(Level world, Identifier templateId, BlockPos worldAnchor,
             BlockPos templateAnchor, UnaryOperator<BlockState> stateTransform) {
+        return load(world, templateId, worldAnchor, templateAnchor, stateTransform, true);
+    }
+
+    /**
+     * @param exactRuneColour V33a wrote most rune cells as {@code setBlock(RUNE, colour.ordinal())},
+     *                        so the colour is part of the contract — the pylon's power-crystal
+     *                        sockets read theirs from the ring. The casting temple instead used the
+     *                        bare {@code RUNE} block instance, which accepted any metadata; pass
+     *                        false there so all sixteen registry identities match.
+     */
+    public static FilledBlockArray load(Level world, Identifier templateId, BlockPos worldAnchor,
+            BlockPos templateAnchor, UnaryOperator<BlockState> stateTransform, boolean exactRuneColour) {
         if (!(world instanceof ServerLevel server))
             throw new IllegalStateException("Structure template " + templateId + " requires a server level");
 
@@ -61,17 +73,30 @@ public final class NBTStructureLoader {
                 throw new IllegalStateException("Invalid palette index " + paletteIndex + " in structure " + templateId);
             BlockState state = stateTransform.apply(palette.get(paletteIndex));
             BlockPos target = worldAnchor.offset(relative.subtract(templateAnchor));
-            // Structure-template air is a placement instruction, not part of V33a's multiblock
-            // contract. The original FilledBlockArray structures listed required solids only; making
-            // every palette air cell a setEmpty check prevents legal adjacent automation (including
-            // the Casting Table's own six-direction output pass) and invalidates structures when the
-            // surrounding volume contains harmless blocks.
-            if (state.is(Blocks.STRUCTURE_VOID) || state.isAir())
+            // Empty cells are part of V33a's multiblock contract, not just a placement instruction:
+            // PylonStructure requires its whole 3-wide cross clearance empty, and CastingL1Structure
+            // requires the shell interior and the cells around the table. The palette encodes the
+            // three distinct meanings the original setEmpty/absent distinction had:
+            //   structure_void -> not part of the array at all (deferred or optional cells)
+            //   air            -> setEmpty(false, false), the strict V33a check
+            //   cave_air       -> setEmpty(true, true), V33a's soft/non-solid-tolerant check
+            if (state.is(Blocks.STRUCTURE_VOID))
                 continue;
-            if (ChromaBlocks.isRune(state)) {
+            if (state.is(Blocks.CAVE_AIR)) {
+                result.setEmpty(target.getX(), target.getY(), target.getZ(), true, true);
+                continue;
+            }
+            if (state.isAir()) {
+                result.setEmpty(target.getX(), target.getY(), target.getZ(), false, false);
+                continue;
+            }
+            // Colour-agnostic runes still place the template's own rune, so the placed structure is
+            // a legal member of the set it matches.
+            if (!exactRuneColour && ChromaBlocks.isRune(state)) {
                 FilledBlockArray.MultiKey colors = new FilledBlockArray.MultiKey();
                 ChromaBlocks.RUNES.forEach(rune -> colors.add(new BlockKey(rune.get().defaultBlockState())));
                 result.setBlock(target.getX(), target.getY(), target.getZ(), colors);
+                result.setPlacementOverride(target.getX(), target.getY(), target.getZ(), state);
             }
             else {
                 result.setBlock(target.getX(), target.getY(), target.getZ(), state);
@@ -115,6 +140,9 @@ public final class NBTStructureLoader {
             BlockState state = stateTransform.apply(palette.get(paletteIndex));
             if (state.is(Blocks.STRUCTURE_VOID))
                 continue;
+            // The soft-empty marker only carries a matching rule; it clears to ordinary air.
+            if (state.is(Blocks.CAVE_AIR))
+                state = Blocks.AIR.defaultBlockState();
             BlockPos target = worldAnchor.offset(relative.subtract(templateAnchor));
             world.setBlock(target, state, flags);
             placed.add(target.immutable());

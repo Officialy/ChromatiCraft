@@ -36,7 +36,10 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
     public static final Identifier COMPOUND_REPEATER = id("multiblock/compound_repeater");
     public static final Identifier PYLON_BROADCAST = id("multiblock/pylon_broadcast");
 
+    /** V33a {@code setEmpty(false, false)}: the cell must be air. */
     private static final StateDef AIR = new StateDef("minecraft:air", Map.of());
+    /** V33a {@code setEmpty(true, true)}: air or a soft/non-collidable block. Placed as air. */
+    private static final StateDef SOFT_AIR = new StateDef("minecraft:cave_air", Map.of());
     private static final StateDef STRUCTURE_VOID = new StateDef("minecraft:structure_void", Map.of());
     private static final StateDef SMOOTH = stone(StoneTypes.SMOOTH);
     private static final StateDef RUNE_PLACEHOLDER = new StateDef("chromaticraft:crystal_rune_black", Map.of());
@@ -80,8 +83,8 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
         int c = 6;
         for (int i = -6; i <= 6; i++) {
             for (int y = 0; y < 6; y++) {
-                data.set(0, y, c + i, AIR); data.set(12, y, c + i, AIR);
-                data.set(c + i, y, 0, AIR); data.set(c + i, y, 12, AIR);
+                data.set(0, y, c + i, SOFT_AIR); data.set(12, y, c + i, SOFT_AIR);
+                data.set(c + i, y, 0, SOFT_AIR); data.set(c + i, y, 12, SOFT_AIR);
             }
         }
         data.set(c, 2, c, AIR);

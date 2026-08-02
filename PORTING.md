@@ -1392,3 +1392,48 @@ new Power Crystal start path as verified until only
 `CastingTuningMismatchReaction` remains the next casting/manipulator source cluster; it must be ported
 with its server damage/knockback lifecycle and client sound/particle synchronization, not reduced to
 a cosmetic or inert substitute.
+### Structure empty-cell semantics, exact rune colours, and a full-suite regression sweep — 2026-08-02
+
+The queued `chromaticraft:casting_table_tuning_key` rerun passes 1/1, so the Power Crystal start path
+and the restored `CastingL2Structure` personal-key rune alternatives are verified.
+
+Running the **complete** suite for the first time in several slices then exposed that the previous
+entry's two NBT-matcher changes were regressions, not fixes. 27 of 71 required tests were failing on
+the committed tree:
+
+1. **Template air is a V33a `setEmpty` requirement, not a placement instruction.** `PylonStructure`
+   requires its entire three-wide cross clearance empty and `CastingL1Structure` requires the shell
+   interior plus the cells around the table; the earlier "ignore air" change deleted both. Worse, the
+   pylon's optional link/turbo upgrade cells are `addBlock` alternatives layered *onto* those empty
+   checks — with the `EmptyCheck` gone they became mandatory blocks, so no pylon could ever validate.
+   The loader now distinguishes the three meanings the original code had, encoded in the palette:
+   `structure_void` is not part of the array, `minecraft:air` is `setEmpty(false, false)`, and
+   `minecraft:cave_air` is V33a's soft `setEmpty(true, true)` (the casting shell interior; it places
+   as ordinary air). The four cells beside a Casting Table keep V33a's fire alternative at every tier,
+   not only tier 1.
+2. **Rune cells are not universally colour-agnostic.** V33a wrote most rune cells as
+   `setBlock(RUNE, colour.ordinal())` and only the casting temple used the bare block instance. Making
+   every NBT rune match all sixteen identities also discarded the caller's colour substitution at
+   *placement* time, so a placed pylon got the wrong-coloured ring and its power crystals — which read
+   their socket colour from the rune below them — could no longer find their pylon. `load` now takes an
+   explicit `exactRuneColour` flag (true everywhere except `CastingStructure`), and the colour-agnostic
+   case carries a placement override so the placed structure stays a legal member of the set it matches.
+
+Because the temple genuinely requires those cells empty, the only one of the Casting Table's six
+output directions an automation inventory can occupy while the multiblock still validates is the cell
+below it. The Lumen Core regression's chest moved accordingly; that is source behaviour, not a
+limitation of the port.
+
+The last failure was a real Glow Cloud defect plus a test artefact. `addAdditionalSaveData` wrote
+V33a's `isdead` flag from `isRemoved()`, but in 26.2 that is also true for `UNLOADED_TO_CHUNK` while a
+genuinely killed entity is never serialised at all (`RemovalReason.shouldSave`) — so the flag was set
+on exactly the clouds being saved for a chunk unload, and each one discarded itself on reload. It now
+writes `RemovalReason.shouldDestroy()`. Separately, vanilla `Mob.checkDespawn` discarded the test's
+cloud before its first tick because other tests leave mock players in the level thousands of blocks
+away; the test pins that one entity with `setPersistenceRequired()` rather than weakening the
+gameplay despawn rule.
+
+Verification: `:ChromatiCraft:runServerData` regenerates the three casting templates, and
+`:ChromatiCraft:runGameTest` reports **all 71 required tests passed**. This is the first full-suite
+green in this cluster; the preceding entries' focused-only runs are what allowed the two matcher
+regressions to survive. Run the whole suite, not a selector, before recording a slice as accepted.

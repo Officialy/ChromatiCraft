@@ -476,7 +476,12 @@ public class EntityGlowCloud extends Mob implements DestroyOnUnload {
 	protected void addAdditionalSaveData(ValueOutput output) {
 		super.addAdditionalSaveData(output);
 
-		output.putBoolean("isdead", this.isRemoved());
+		// V33a's `isDead` meant killed. In 26.2 `isRemoved()` is also true for UNLOADED_TO_CHUNK,
+		// and a KILLED/DISCARDED entity is never serialised at all (RemovalReason.shouldSave), so
+		// writing isRemoved() here set the flag on exactly the entities being saved for a chunk
+		// unload — every Glow Cloud then discarded itself on reload.
+		Entity.RemovalReason removal = this.getRemovalReason();
+		output.putBoolean("isdead", removal != null && removal.shouldDestroy());
 		output.putBoolean("angry", isAngry);
 		output.putBoolean("natural", isNaturalSpawn);
 	}
