@@ -1,0 +1,23 @@
+{
+  "feature": "chromaticraft:firestone",
+  "placement": [
+    {
+      "type": "minecraft:rarity_filter",
+      "chance": 3
+    },
+    {
+      "type": "minecraft:count",
+      "count": 2
+    },
+    {
+      "type": "minecraft:in_square"
+    },
+    {
+      "type": "chromaticraft:tiered_ore_height",
+      "deep_band": true
+    },
+    {
+      "type": "minecraft:biome"
+    }
+  ]
+}

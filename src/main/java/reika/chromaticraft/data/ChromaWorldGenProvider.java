@@ -48,6 +48,18 @@ public final class ChromaWorldGenProvider {
     private static final Identifier LUMA_PATCH = id("luma_patch");
     private static final Identifier LUMINOUS_ISLAND = id("luminous_island");
     private static final Identifier LUMINOUS_FLORA = id("luminous_flora");
+    /** V33a TieredOres: {genChance one-in-N per chunk, veinCount attempts, veinSize}. */
+    private record TieredOre(String name, java.util.function.Supplier<net.minecraft.world.level.block.Block> block,
+            net.minecraft.world.level.block.Block host, int genChance, int veinCount, int veinSize, boolean deepBand) {}
+
+    private static final List<TieredOre> TIERED_ORES = List.of(
+            new TieredOre("energized_rock", () -> ChromaBlocks.ENERGIZED_ROCK.get(),
+                    net.minecraft.world.level.block.Blocks.STONE, 1, 4, 12, false),
+            new TieredOre("elemental_stones", () -> ChromaBlocks.ELEMENTAL_STONES.get(),
+                    net.minecraft.world.level.block.Blocks.STONE, 1, 4, 8, false),
+            new TieredOre("firestone", () -> ChromaBlocks.FIRESTONE.get(),
+                    net.minecraft.world.level.block.Blocks.NETHERRACK, 3, 2, 16, true));
+
     public static final ResourceKey<PlacedFeature> LUMINOUS_CLIFFS_TERRAIN_PLACED = placedKey("luminous_cliffs_terrain");
     public static final ResourceKey<PlacedFeature> LUMA_PATCH_PLACED = placedKey("luma_patch");
     public static final ResourceKey<PlacedFeature> LUMINOUS_ISLAND_PLACED = placedKey("luminous_island");
@@ -80,6 +92,16 @@ public final class ChromaWorldGenProvider {
             registerConfigured(bootstrap, features, LUMA_PATCH);
             registerConfigured(bootstrap, features, LUMINOUS_ISLAND);
             registerConfigured(bootstrap, features, LUMINOUS_FLORA);
+            for (TieredOre ore : TIERED_ORES) {
+                // V33a BlockExcludingOreVein targets only the host block, which is what makes these
+                // ores replace stone/netherrack and never the cliff material it explicitly excluded.
+                bootstrap.register(configuredKey(ore.name()), new ConfiguredFeature<>(Feature.ORE,
+                        new net.minecraft.world.level.levelgen.feature.configurations.OreConfiguration(
+                                List.of(net.minecraft.world.level.levelgen.feature.configurations.OreConfiguration.target(
+                                        new net.minecraft.world.level.levelgen.structure.templatesystem.BlockMatchTest(ore.host()),
+                                        ore.block().get().defaultBlockState())),
+                                ore.veinSize())));
+            }
             HolderGetter<Biome> biomes = bootstrap.lookup(Registries.BIOME);
             for (CrystalElement element : CrystalElement.elements) {
                 bootstrap.register(dyeTree(element), new ConfiguredFeature<>(Feature.TREE,
@@ -93,6 +115,18 @@ public final class ChromaWorldGenProvider {
         builder.add(Registries.PLACED_FEATURE, bootstrap -> {
             HolderGetter<ConfiguredFeature<?, ?>> configured = bootstrap.lookup(Registries.CONFIGURED_FEATURE);
             registerPlaced(bootstrap, configured, CAVE_CRYSTAL);
+            for (TieredOre ore : TIERED_ORES) {
+                // V33a: `if (rand.nextInt(genChance) == 0) for (k < veinCount)` at a random column in
+                // the chunk, each attempt rolling its own y. A genChance of one is every chunk.
+                List<PlacementModifier> modifiers = new java.util.ArrayList<>();
+                if (ore.genChance() > 1)
+                    modifiers.add(net.minecraft.world.level.levelgen.placement.RarityFilter.onAverageOnceEvery(ore.genChance()));
+                modifiers.add(net.minecraft.world.level.levelgen.placement.CountPlacement.of(ore.veinCount()));
+                modifiers.add(net.minecraft.world.level.levelgen.placement.InSquarePlacement.spread());
+                modifiers.add(new reika.chromaticraft.world.TieredOreHeightPlacement(ore.deepBand()));
+                modifiers.add(net.minecraft.world.level.levelgen.placement.BiomeFilter.biome());
+                registerPlaced(bootstrap, configured, id(ore.name()), modifiers);
+            }
             registerPlaced(bootstrap, configured, PYLON);
             registerPlaced(bootstrap, configured, TURBOCHARGED_PYLON);
             registerPlaced(bootstrap, configured, POWER_CRYSTAL_BOOSTED_PYLON);

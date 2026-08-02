@@ -210,6 +210,7 @@ public final class ChromaGameTests {
 		register(event, env, "casting_manipulator_fake_player_guard", ChromaGameTests::castingManipulatorFakePlayerGuard);
 		register(event, env, "lexicon_custom_data_roundtrip", ChromaGameTests::lexiconCustomDataRoundtrip);
 		register(event, env, "tiered_ore_progression_gate", ChromaGameTests::tieredOreProgressionGate);
+		register(event, env, "tiered_ore_worldgen", ChromaGameTests::tieredOreWorldgen);
 	}
 
 	/** Book contents use 26.2 custom data without losing foreign fields or duplicating pages. */
@@ -1792,6 +1793,40 @@ public final class ChromaGameTests {
 	private static int countDrops(GameTestHelper helper, BlockPos pos, net.minecraft.world.item.Item want) {
 		return helper.getLevel().getEntitiesOfClass(ItemEntity.class, new AABB(pos).inflate(2)).stream()
 				.filter(e -> e.getItem().is(want)).mapToInt(e -> e.getItem().getCount()).sum();
+	}
+
+	/**
+	 * The ore vein itself: V33a targets only the host block, so a vein dropped into a stone volume
+	 * replaces stone and leaves anything else (here, the cliff material it explicitly excluded)
+	 * untouched.
+	 */
+	private static void tieredOreWorldgen(GameTestHelper helper) {
+		BlockPos centre = helper.absolutePos(new BlockPos(8, 4, 8));
+		for (int dx = -4; dx <= 4; dx++) for (int dy = -2; dy <= 2; dy++) for (int dz = -4; dz <= 4; dz++)
+			helper.getLevel().setBlock(centre.offset(dx, dy, dz), Blocks.STONE.defaultBlockState(), 3);
+		BlockPos guarded = centre.offset(3, 0, 3);
+		helper.getLevel().setBlock(guarded, ChromaBlocks.CLIFF_STONE.get().defaultBlockState(), 3);
+
+		var registry = helper.getLevel().registryAccess()
+				.lookupOrThrow(net.minecraft.core.registries.Registries.CONFIGURED_FEATURE);
+		var configured = registry.getOrThrow(net.minecraft.resources.ResourceKey.create(
+				net.minecraft.core.registries.Registries.CONFIGURED_FEATURE,
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "energized_rock"))).value();
+		helper.assertTrue(configured.place(helper.getLevel(),
+						helper.getLevel().getChunkSource().getGenerator(),
+						RandomSource.create(0xDEADBEEFL), centre),
+				"the registered tiered-ore configured feature must place a vein in a stone volume");
+
+		int ores = 0;
+		for (int dx = -4; dx <= 4; dx++) for (int dy = -2; dy <= 2; dy++) for (int dz = -4; dz <= 4; dz++) {
+			if (helper.getLevel().getBlockState(centre.offset(dx, dy, dz)).is(ChromaBlocks.ENERGIZED_ROCK.get()))
+				ores++;
+		}
+		helper.assertTrue(ores > 0 && ores <= 12,
+				"the vein must place between one and its V33a size of twelve; got " + ores);
+		helper.assertTrue(helper.getLevel().getBlockState(guarded).is(ChromaBlocks.CLIFF_STONE.get()),
+				"the vein targets the host block only and must not eat non-stone neighbours");
+		helper.succeed();
 	}
 	/** V33a rejects fake/dummy actors before the Manipulator can dispatch or a table can cast. */
 	private static void castingManipulatorFakePlayerGuard(GameTestHelper helper) {

@@ -18,5 +18,8 @@ public final class ChromaPlacementModifiers {
     public static final DeferredHolder<PlacementModifierType<?>, PlacementModifierType<PylonGridPlacement>> PYLON_GRID =
             TYPES.register("pylon_grid", () -> () -> PylonGridPlacement.CODEC);
 
+    public static final DeferredHolder<PlacementModifierType<?>, PlacementModifierType<reika.chromaticraft.world.TieredOreHeightPlacement>> TIERED_ORE_HEIGHT =
+            TYPES.register("tiered_ore_height", () -> () -> reika.chromaticraft.world.TieredOreHeightPlacement.CODEC);
+
     private ChromaPlacementModifiers() {}
 }

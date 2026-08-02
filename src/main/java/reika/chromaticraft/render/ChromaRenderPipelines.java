@@ -39,10 +39,20 @@ public final class ChromaRenderPipelines {
             .withColorTargetState(new ColorTargetState(ADDITIVE_DARK))
             .withVertexBinding(0, DefaultVertexFormat.POSITION_TEX_COLOR)
             .withPrimitiveTopology(PrimitiveTopology.QUADS)
-            .withDepthStencilState(new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL, true))
+            .withDepthStencilState(new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL, false))
             .withCull(false)
             .build();
 
+    /*
+     * Depth WRITE is deliberately off on both additive pipelines. They draw into the main colour and
+     * depth targets so V33a's ADDITIVEDARK screen blend can be evaluated against the already-rendered
+     * world colour; vanilla's own TRANSLUCENT_PARTICLE does write depth, but it writes into the
+     * separate particle target that the post-chain composites, not the main one. Writing depth here
+     * instead stamps the glow quads into the scene depth, and the translucent terrain drawn
+     * afterwards then fails its depth test against them -- which showed up as square holes punched
+     * through water wherever a pylon particle was in front of it. Depth TEST stays on, so solid
+     * terrain still occludes the glow.
+     */
     public static final RenderPipeline ADDITIVE_PARTICLE = RenderPipeline.builder()
             .withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "pipeline/additive_particle"))
             .withBindGroupLayout(BindGroupLayouts.GLOBALS)
@@ -54,7 +64,7 @@ public final class ChromaRenderPipelines {
             .withColorTargetState(new ColorTargetState(ADDITIVE_DARK))
             .withVertexBinding(0, DefaultVertexFormat.PARTICLE)
             .withPrimitiveTopology(PrimitiveTopology.QUADS)
-            .withDepthStencilState(new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL, true))
+            .withDepthStencilState(new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL, false))
             .withCull(false)
             .build();
 

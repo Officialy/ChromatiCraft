@@ -1,0 +1,19 @@
+{
+  "feature": "chromaticraft:elemental_stones",
+  "placement": [
+    {
+      "type": "minecraft:count",
+      "count": 4
+    },
+    {
+      "type": "minecraft:in_square"
+    },
+    {
+      "type": "chromaticraft:tiered_ore_height",
+      "deep_band": false
+    },
+    {
+      "type": "minecraft:biome"
+    }
+  ]
+}

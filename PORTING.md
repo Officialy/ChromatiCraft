@@ -1667,3 +1667,45 @@ the place-back removal. Note the test needs `makeMockPlayer(GameType.SURVIVAL)`:
 stone, y = `rand(128)` for the nether ores and `rand(32)`-or-`rand(64)` otherwise) — until that lands
 these ores exist but never generate; the client chunk re-render when a stage syncs, so a newly
 granted stage reveals ores without a reload; then the geode mesh and the remaining drop identities.
+
+### Tiered-ore worldgen, and two additive-render defects — 2026-08-02
+
+**Worldgen.** The three accepted tiered ores now generate. V33a's `TieredWorldGenerator` runs
+`if (rand.nextInt(genChance) == 0) for (k < veinCount)` per chunk, each attempt dropping a
+`BlockExcludingOreVein` of `veinSize` that targets only the host block. That maps cleanly onto vanilla
+`Feature.ORE` with a single `BlockMatchTest` target — targeting the host block is exactly what made
+the source's explicit cliff-stone exclusion unnecessary — plus `RarityFilter` (omitted when the
+chance is one), `CountPlacement`, and `InSquarePlacement`.
+
+The height roll needed its own modifier. V33a picks
+`ordinal >= FIRESTONE ? rand(128) : (nextBoolean() ? rand(32) : rand(64))`, and that overworld roll
+is a 50/50 mix of two uniform bands — measurably denser toward bedrock than either alone, and not
+expressible with vanilla's height providers. `chromaticraft:tiered_ore_height` reproduces it exactly,
+offset by the level's minimum build height because the source's values assumed a y=0 world floor.
+Biome modifiers add the two stone-hosted ores to `is_overworld` and the netherrack-hosted Firestone
+to `is_nether` at `underground_ores`. A `tiered_ore_worldgen` GameTest places the real registered
+configured feature into a stone volume and checks the vein lands, stays within its V33a size, and
+leaves a non-host neighbour untouched.
+
+**Additive particles punched holes in water.** Reported from a live client with a screenshot: pylon
+particles were visible through water, with square gaps in the surface. Both additive pipelines still
+carried `writeDepth = true`, which was correct while they rendered into the item/entity target but
+became wrong when the ADDITIVEDARK correction moved them onto the **main** colour/depth targets.
+Vanilla's `TRANSLUCENT_PARTICLE` does write depth, but into the separate particle target that the
+post-chain composites — never into the scene depth. Writing there stamps the glow quads into the
+main depth buffer, so the translucent terrain drawn afterwards fails its depth test against them.
+Depth write is now off on both pipelines; the depth *test* stays, so solid terrain still occludes.
+
+**No ChromatiCraft particle sprite was ever stitched into the block atlas.** `ChromaParticle.sprite`
+looks up `chromaticraft:block/icons/<name>` on the blocks atlas, but the mod shipped no atlas
+definition at all and no block model references those icons, so every additive particle was sampling
+an unstitched sprite — which is what the reported "visual issues" (arbitrary textured squares) are.
+This is the same trap already recorded for ReactorCraft: only the `minecraft:` namespace's atlas
+definitions are loaded, which is why NeoForge itself ships `assets/minecraft/atlases/blocks.json`.
+ChromatiCraft now ships one with a `minecraft:directory` source over `block/icons`, giving every icon
+its `chromaticraft:block/icons/<name>` sprite id.
+
+Verification: compilation, both datagen sides, and `:ChromatiCraft:runGameTest` at **73/73**. Both
+render fixes are reasoned from the pipeline contract and cannot be asserted headlessly — they need
+the next in-client look to confirm the water surface is intact and the particles show their real
+sprites.

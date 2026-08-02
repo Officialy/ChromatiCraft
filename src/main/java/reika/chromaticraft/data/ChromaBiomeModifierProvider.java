@@ -1,6 +1,7 @@
 package reika.chromaticraft.data;
 
 import java.nio.file.Path;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 import com.google.common.collect.ImmutableList;
@@ -34,7 +35,28 @@ public final class ChromaBiomeModifierProvider implements DataProvider {
                 CAVE_CRYSTAL, GenerationStep.Decoration.UNDERGROUND_DECORATION));
         futures.add(save(cache, "pylon_overworld", "#minecraft:is_overworld",
                 PYLON, GenerationStep.Decoration.SURFACE_STRUCTURES));
+        // V33a TieredWorldGenerator runs in every ordinary dimension; each ore's own host block and
+        // y band are what confine it, so the overworld pair goes everywhere overworld and the
+        // netherrack-hosted one everywhere nether.
+        futures.add(saveMany(cache, "tiered_ore_overworld", "#minecraft:is_overworld",
+                List.of(id("energized_rock").toString(), id("elemental_stones").toString()),
+                GenerationStep.Decoration.UNDERGROUND_ORES));
+        futures.add(save(cache, "tiered_ore_nether", "#minecraft:is_nether",
+                id("firestone").toString(), GenerationStep.Decoration.UNDERGROUND_ORES));
         return CompletableFuture.allOf(futures.build().toArray(CompletableFuture[]::new));
+    }
+
+    private CompletableFuture<?> saveMany(CachedOutput cache, String name, String biomes,
+            List<String> features, GenerationStep.Decoration step) {
+        Path path = pathProvider.json(id(name));
+        JsonObject json = new JsonObject();
+        json.addProperty("type", "neoforge:add_features");
+        json.addProperty("biomes", biomes);
+        com.google.gson.JsonArray array = new com.google.gson.JsonArray();
+        features.forEach(array::add);
+        json.add("features", array);
+        json.addProperty("step", step.getName());
+        return DataProvider.saveStable(cache, json, path);
     }
 
     private CompletableFuture<?> save(CachedOutput cache, String name, String biomes,
