@@ -1471,3 +1471,54 @@ Verification: `:ChromatiCraft:runServerData` regenerates `casting_l2`/`casting_l
 `:RotaryCraft:runGameTest` passes 5/5 after the shared `ReikaInventoryHelper` change. ReactorCraft
 has no GameTest run configuration, so its four `addToIInv` consumers (waste decayer, nuclear core,
 pebble bed, breeder core — all self-inserts of a single item) are covered by compilation only.
+
+### Start → casting stand: source audit of the opening arc — 2026-08-02
+
+An audit of the whole beta path against V33a, rather than a feature slice. The progression backbone
+checks out: all 84 live `addProgressPrereq` edges match (the three that appear missing are commented
+out upstream), `ExplorationMonitor`'s scan and the colour-discovery/ALLCOLORS path are faithful, and
+the Casting Table and Elemental Manipulator crafting-grid recipes are verbatim. Four defects were
+found in what the path actually gates on.
+
+**The Item Stand is not a base-tier recipe.** V33a `StandRecipe extends TempleCastingRecipe`: it is a
+TEMPLE-tier, 20-tick recipe paying twice the temple experience (80), and it additionally requires two
+purple and two black runes on the floor at (±2, 0, ∓3). The port had emitted it at CRAFTING tier for
+five ticks and five XP with no runes, so a brand-new player could cast a stand immediately. That is
+the single biggest shape error on the beta path: correctly, the arc is
+*find crystals → craft the table → base-tier casts to CASTING and up to 250 table XP → find all
+sixteen pylon colours for ALLCOLORS → cast runes → build the temple and place a rune for RUNEUSE →
+only then cast the Item Stand.* The earlier ledger note calling the stand "a base-tier casting recipe,
+which is what gates tier-2 casting behind owning a table" had the dependency backwards and is
+superseded.
+
+**`onAddRune` dropped half its gate.** V33a gates it on `isAtLeast(TEMPLE)` — the temple structure
+*and* the 250-XP tier. The port checked only the structure, so RUNEUSE (and with it stand casting)
+was available the moment a temple was built, skipping the XP climb entirely.
+
+**The boosted rune recipe was the ordinary one with a different shard.** V33a `EnhancedRuneRecipe`
+also extends `TempleCastingRecipe`: TEMPLE tier, 20 ticks, four times the temple experience (160),
+**eight** runes per cast, and its own colour's rune required in the temple rune ring
+(`TempleCastingRecipe.runeRing`, indexed by element ordinal one block below the table). The port had
+it at CRAFTING tier, 10 XP, one output, no rune.
+
+**Rune-ring offsets are two conventions, both relative to the table.** Group recipes use y=0 and the
+temple rune ring uses y=-1; the table's scan collects dy ∈ [-1, 1] keyed off the table position, so
+both encode directly as `RuneRequirement` offsets.
+
+The opening GameTest was rewritten to walk the real arc: crystal sight, in-world shard drops, both
+bootstrap grid recipes, a base-tier crystalline-stone cast for CASTING and the first table XP, a
+proof that the Item Stand is **not** castable from that bare table, then the temple, RUNEUSE, the
+StandRecipe rune ring, and the Manipulator-driven 20-tick cast for 80 XP. The temple-group test also
+now proves a 249-XP temple refuses runes while the same temple at 250 accepts them.
+
+Not defects, recorded so they are not re-derived: V33a's `addChainedProgression` (four chains, all
+past RUNEUSE) is deliberately deferred with the rest of the co-op/handbook layer, and
+`BlockCrystalRune`'s `triggerAddCheck` call — which re-validates a *hand-built pylon* when a rune
+completes it — is covered by the pylon's own ten-tick rematch.
+
+Verification: `:ChromatiCraft:runServerData` regenerates the stand and all 32 rune recipes, and
+`:ChromatiCraft:runGameTest` reports **all 71 required tests passed**.
+
+Still unaudited on this path: `canGiveDoubleOutput` (V33a lets rune and some other recipes randomly
+double their output — no modern equivalent is implemented yet), the exact cave-crystal shard drop
+counts, and the casting XP award to the player as opposed to the table.

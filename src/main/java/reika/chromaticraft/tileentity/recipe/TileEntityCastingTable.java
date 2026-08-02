@@ -297,7 +297,10 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver
      * Called from {@link reika.chromaticraft.block.BlockCrystalRune} on placement.
      */
     public void onAddRune(Player player) {
-        if (!hasTemple) return;
+        // V33a gates this on isAtLeast(TEMPLE), which is the 250-XP tier *and* the structure — the
+        // table has to be worked up to temple tier first. Checking only the structure would hand out
+        // RUNEUSE, and with it stand casting, the moment the temple is built.
+        if (!this.canUseTier(CastingTableRecipe.Tier.TEMPLE)) return;
         boolean firstRune = !hasRunes;
         hasRunes = true;
         ProgressStage.RUNEUSE.stepPlayerTo(player);

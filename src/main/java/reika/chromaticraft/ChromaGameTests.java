@@ -1632,10 +1632,88 @@ public final class ChromaGameTests {
 		helper.assertTrue(craftedManipulator.is(ChromaItems.MANIPULATOR.get()),
 				"the bootstrap recipe must assemble the real Elemental Manipulator");
 
+		// The first cast a new player can actually run is a base-tier one. V33a's CrystalStoneRecipe
+		// turns a shard plus four stone into eight crystalline stone, and it is what grants CASTING
+		// and starts the table's climb toward the 250-XP temple tier.
 		BlockPos tablePos = helper.absolutePos(new BlockPos(10, 4, 10));
 		helper.getLevel().setBlock(tablePos, ChromaBlocks.CASTING_TABLE.get().defaultBlockState(), 3);
 		TileEntityCastingTable table = (TileEntityCastingTable)helper.getLevel().getBlockEntity(tablePos);
 		table.setPlacer(player);
+		table.setItem(1, new ItemStack(Blocks.COBBLESTONE));
+		table.setItem(3, new ItemStack(Blocks.COBBLESTONE));
+		table.setItem(4, ChromaItems.shardStack(CrystalElement.BLUE));
+		table.setItem(5, new ItemStack(Blocks.COBBLESTONE));
+		table.setItem(7, new ItemStack(Blocks.COBBLESTONE));
+		helper.assertTrue(table.triggerCrafting(player),
+				"a fresh CRYSTALS-stage player must be able to run the base-tier crystalline stone recipe");
+		for (int i = 0; i < 5; i++) table.updateEntity(helper.getLevel(), tablePos);
+		helper.assertTrue(table.getItem(9).is(ChromaBlocks.crystallineStone(
+						BlockCrystallineStone.StoneTypes.SMOOTH).get().asItem())
+				&& table.getItem(9).getCount() == 8,
+				"the base-tier stone cast must yield the source-exact eight crystalline stone");
+		helper.assertTrue(table.getTableXP() == 5 && ProgressStage.CASTING.isPlayerAtStage(player),
+				"the first cast must award its XP and the CASTING progression stage");
+		helper.assertTrue(CastingProgression.hasCrafted(player, CastingTableRecipe.Tier.CRAFTING)
+				&& !CastingProgression.hasCrafted(player, CastingTableRecipe.Tier.TEMPLE),
+				"the successful cast must persist the player's exact V33a CRAFTING tier");
+		helper.assertTrue(ResearchLevel.RUNECRAFT.canProgressTo(player),
+				"a personal CRAFTING-tier completion must unlock the V33a RUNECRAFT research gate");
+		helper.assertTrue(ResearchProgress.setLevel(player, ResearchLevel.RUNECRAFT, false)
+				&& ResearchProgress.getLevel(player) == ResearchLevel.RUNECRAFT
+				&& ResearchLevel.ENTRY.playerHas(player),
+				"research levels must persist by name and include all earlier tiers");
+		table.setItem(9, ItemStack.EMPTY);
+
+		// The Item Stand is a TEMPLE recipe, so the same table cannot make one yet: it has neither
+		// the temple, the 250-XP tier, RUNEUSE, nor the recipe's own four floor runes.
+		setStandGrid(table);
+		helper.assertTrue(!table.triggerCrafting(player),
+				"the Item Stand must not be castable from a bare base-tier table");
+
+		earlyGameStandCast(helper, player, craftedManipulator);
+		helper.succeed();
+	}
+
+	/** The temple half of the opening arc: RUNEUSE, the 250-XP tier, and the StandRecipe rune ring. */
+	private static void earlyGameStandCast(GameTestHelper helper, ServerPlayer player, ItemStack manipulator) {
+		BlockPos tablePos = placeCastingTable(helper, ChromaStructures.CASTING1, 250);
+		TileEntityCastingTable table = (TileEntityCastingTable)helper.getLevel().getBlockEntity(tablePos);
+		table.setPlacer(player);
+		// Colour discovery has its own coverage; this test is about the casting half of the arc.
+		ProgressionManager.instance.setPlayerStage(player, ProgressStage.PYLON, true, false, false);
+		ProgressionManager.instance.setPlayerStage(player, ProgressStage.ALLCOLORS, true, false, false);
+		table.validateStructure();
+		table.onAddRune(player);
+		helper.assertTrue(ProgressStage.RUNEUSE.isPlayerAtStage(player),
+				"a rune placed at a temple-tier table must grant RUNEUSE");
+
+		setStandGrid(table);
+		helper.assertTrue(!table.triggerCrafting(player),
+				"the temple alone is not enough: StandRecipe also wants its own four floor runes");
+		placeRune(helper, tablePos, new BlockPos(-2, 0, 3), CrystalElement.PURPLE);
+		placeRune(helper, tablePos, new BlockPos(2, 0, -3), CrystalElement.PURPLE);
+		placeRune(helper, tablePos, new BlockPos(-2, 0, -3), CrystalElement.BLACK);
+		placeRune(helper, tablePos, new BlockPos(2, 0, 3), CrystalElement.BLACK);
+		player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, manipulator);
+		net.minecraft.world.InteractionResult manipulation = manipulator.getItem().useOn(
+				new net.minecraft.world.item.context.UseOnContext(player,
+						net.minecraft.world.InteractionHand.MAIN_HAND,
+						new net.minecraft.world.phys.BlockHitResult(
+								net.minecraft.world.phys.Vec3.atCenterOf(tablePos), Direction.UP, tablePos, false)));
+		helper.assertTrue(manipulation.consumesAction() && table.isCrafting(),
+				"the crafted Manipulator must start the source-exact StandRecipe once its rune ring is set");
+		helper.assertTrue(table.getCraftingTick() == 20,
+				"StandRecipe is a TempleCastingRecipe and runs for the source twenty ticks");
+		for (int i = 0; i < 20; i++) table.updateEntity(helper.getLevel(), tablePos);
+		helper.assertTrue(!table.isCrafting() && table.getItem(9).is(ChromaBlocks.ITEM_STAND.get().asItem()),
+				"the beta opening chain must finish with a usable Casting Item Stand in the output slot");
+		helper.assertTrue(table.getTableXP() == 330,
+				"StandRecipe pays twice the temple experience; got " + table.getTableXP());
+		helper.assertTrue(CastingProgression.hasCrafted(player, CastingTableRecipe.Tier.TEMPLE),
+				"casting the stand must record the player's TEMPLE tier");
+	}
+
+	private static void setStandGrid(TileEntityCastingTable table) {
 		table.setItem(0, new ItemStack(Items.IRON_INGOT));
 		table.setItem(2, new ItemStack(Items.IRON_INGOT));
 		table.setItem(3, new ItemStack(Items.STONE_SLAB));
@@ -1644,31 +1722,6 @@ public final class ChromaGameTests {
 		table.setItem(6, new ItemStack(Items.COBBLESTONE));
 		table.setItem(7, new ItemStack(Items.COBBLESTONE));
 		table.setItem(8, new ItemStack(Items.COBBLESTONE));
-		player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, craftedManipulator);
-		net.minecraft.world.InteractionResult manipulation = craftedManipulator.getItem().useOn(
-				new net.minecraft.world.item.context.UseOnContext(player,
-						net.minecraft.world.InteractionHand.MAIN_HAND,
-						new net.minecraft.world.phys.BlockHitResult(
-								net.minecraft.world.phys.Vec3.atCenterOf(tablePos), Direction.UP, tablePos, false)));
-		helper.assertTrue(manipulation.consumesAction() && table.isCrafting(),
-				"right-clicking the owned table with the crafted Manipulator must start the registered V33a StandRecipe");
-		helper.assertTrue(table.getCraftingTick() == 5,
-				"the base-tier Casting Item Stand recipe must retain its five-tick duration");
-		for (int i = 0; i < 5; i++) table.updateEntity(helper.getLevel(), tablePos);
-		helper.assertTrue(!table.isCrafting() && table.getItem(9).is(ChromaBlocks.ITEM_STAND.get().asItem()),
-				"the beta opening chain must finish with a usable Casting Item Stand in the output slot");
-		helper.assertTrue(table.getTableXP() == 5 && ProgressStage.CASTING.isPlayerAtStage(player),
-				"the first stand craft must award its XP and the CASTING progression stage");
-		helper.assertTrue(CastingProgression.hasCrafted(player, CastingTableRecipe.Tier.CRAFTING)
-				&& !CastingProgression.hasCrafted(player, CastingTableRecipe.Tier.TEMPLE),
-				"the successful stand craft must persist the player's exact V33a CRAFTING tier");
-		helper.assertTrue(ResearchLevel.RUNECRAFT.canProgressTo(player),
-				"a personal CRAFTING-tier completion must unlock the V33a RUNECRAFT research gate");
-		helper.assertTrue(ResearchProgress.setLevel(player, ResearchLevel.RUNECRAFT, false)
-				&& ResearchProgress.getLevel(player) == ResearchLevel.RUNECRAFT
-				&& ResearchLevel.ENTRY.playerHas(player),
-				"research levels must persist by name and include all earlier tiers");
-		helper.succeed();
 	}
 	/** V33a rejects fake/dummy actors before the Manipulator can dispatch or a table can cast. */
 	private static void castingManipulatorFakePlayerGuard(GameTestHelper helper) {
@@ -1785,6 +1838,23 @@ public final class ChromaGameTests {
 		helper.assertTrue(ChromaItems.CLUSTERS.size() == 13
 				&& ChromaClusterItems.CRYSTAL_STAR.ordinal() == 11,
 				"all V33a CLUSTER identities and their metadata order must be retained");
+
+		// V33a onAddRune is isAtLeast(TEMPLE): the temple structure is not enough on its own, the
+		// table also has to have been worked up to the 250-XP temple tier.
+		ItemStack noviceTable = new ItemStack(ChromaBlocks.CASTING_TABLE.get());
+		CompoundTag noviceData = new CompoundTag();
+		noviceData.putInt("tableXP", 249);
+		ReikaItemHelper.setStackTag(noviceTable, noviceData);
+		table.setDataFromItemStackTag(noviceTable);
+		table.validateStructure();
+		table.onAddRune(owner);
+		helper.assertTrue(!table.hasRunes(),
+				"a temple below the 250-XP tier must not accept runes or grant RUNEUSE");
+		table.setDataFromItemStackTag(tieredTable);
+		table.validateStructure();
+		table.onAddRune(owner);
+		helper.assertTrue(table.hasRunes(),
+				"the same temple at temple tier must accept the rune");
 		helper.assertTrue(!table.triggerCrafting(owner),
 				"temple recipes must reject a player who has not reached RUNEUSE");
 		ProgressionManager.instance.setPlayerStage(owner, ProgressStage.RUNEUSE, true, false, false);

@@ -1,6 +1,7 @@
 {
   "type": "chromaticraft:casting",
-  "experience": 5,
+  "duration": 20,
+  "experience": 80,
   "grid": [
     {
       "ingredient": "minecraft:iron_ingot",
@@ -38,5 +39,39 @@
   "result": {
     "id": "chromaticraft:casting_item_stand"
   },
-  "tier": "crafting"
+  "runes": [
+    {
+      "element": "purple",
+      "offset": [
+        -2,
+        0,
+        3
+      ]
+    },
+    {
+      "element": "purple",
+      "offset": [
+        2,
+        0,
+        -3
+      ]
+    },
+    {
+      "element": "black",
+      "offset": [
+        -2,
+        0,
+        -3
+      ]
+    },
+    {
+      "element": "black",
+      "offset": [
+        2,
+        0,
+        3
+      ]
+    }
+  ],
+  "tier": "temple"
 }

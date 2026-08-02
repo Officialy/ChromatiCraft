@@ -1,6 +1,7 @@
 {
   "type": "chromaticraft:casting",
-  "experience": 10,
+  "duration": 20,
+  "experience": 160,
   "grid": [
     {
       "ingredient": "chromaticraft:crystalline_stone",
@@ -43,7 +44,18 @@
     "allcolors"
   ],
   "result": {
+    "count": 8,
     "id": "chromaticraft:crystal_rune_purple"
   },
-  "tier": "crafting"
+  "runes": [
+    {
+      "element": "purple",
+      "offset": [
+        2,
+        -1,
+        -1
+      ]
+    }
+  ],
+  "tier": "temple"
 }

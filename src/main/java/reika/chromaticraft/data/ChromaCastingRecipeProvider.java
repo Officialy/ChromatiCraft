@@ -13,6 +13,7 @@ import net.minecraft.data.recipes.RecipeProvider;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.tags.ItemTags;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.Ingredient;
@@ -85,25 +86,39 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 			// what unlocks tier-2 (auxiliary-stand) casting.
 			//   new ShapedOreRecipe(STAND, "I I", "SLS", "CCC",
 			//       'I', Items.iron_ingot, 'C', "cobblestone", 'S', stoneSlab, 'L', lapisDye)
-			// V33a RuneRecipe / EnhancedRuneRecipe: a shard ringed by eight crystalline stone, at the
-			// bare-table tier but gated behind ALLCOLORS. Enhanced uses the boosted shard and is the
-			// same output; both give double the base experience and can double their output.
+			// V33a RuneRecipe: a plain shard ringed by eight crystalline stone at the bare-table
+			// tier, gated behind ALLCOLORS, for double the base 5 XP.
+			//
+			// V33a EnhancedRuneRecipe is NOT the same recipe with a boosted shard. It extends
+			// TempleCastingRecipe, so it is a TEMPLE-tier, 20-tick recipe that additionally requires
+			// RUNEUSE and its own colour's rune in the temple rune ring, and it pays out four times
+			// the temple experience for eight runes instead of one.
 			for (CrystalElement element : CrystalElement.elements) {
 				Ingredient runeStone = Ingredient.of(ChromaBlocks.crystallineStone(StoneTypes.SMOOTH).get().asItem());
+				Item rune = ChromaBlocks.RUNES.get(element.ordinal()).get().asItem();
 				saveShapedProgress("crystal_rune/" + element.getEnglishName(),
-						new ItemStackTemplate(ChromaBlocks.RUNES.get(element.ordinal()).get().asItem()), 5, 10,
+						new ItemStackTemplate(rune), 5, 10,
 						List.of(ProgressStage.ALLCOLORS),
 						Map.of('S', runeStone, 'C', Ingredient.of(ChromaItems.SHARDS.get(element).get())),
 						"SSS", "SCS", "SSS");
-				saveShapedProgress("crystal_rune/" + element.getEnglishName() + "_boosted",
-						new ItemStackTemplate(ChromaBlocks.RUNES.get(element.ordinal()).get().asItem()), 5, 10,
-						List.of(ProgressStage.ALLCOLORS),
+				saveShapedTemple("crystal_rune/" + element.getEnglishName() + "_boosted",
+						new ItemStackTemplate(rune, 8), 20, 160,
+						List.of(ProgressStage.ALLCOLORS), List.of(runeRingRune(element)),
 						Map.of('S', runeStone, 'C', Ingredient.of(ChromaItems.BOOSTED_SHARDS.get(element).get())),
 						"SSS", "SCS", "SSS");
 			}
 
-			saveShaped("casting_item_stand",
-					new ItemStackTemplate(ChromaBlocks.ITEM_STAND.get().asItem()), 5, 5,
+			// V33a StandRecipe extends TempleCastingRecipe: the Item Stand is a TEMPLE-tier, 20-tick
+			// recipe worth twice the temple experience, and it wants two purple and two black runes
+			// on the floor beside the table. It is NOT a base-tier recipe — a player reaches it only
+			// after CASTING, ALLCOLORS and RUNEUSE, which is what makes the stands a milestone.
+			saveShapedTemple("casting_item_stand",
+					new ItemStackTemplate(ChromaBlocks.ITEM_STAND.get().asItem()), 20, 80,
+					List.of(),
+					List.of(new RuneRequirement(new net.minecraft.core.BlockPos(-2, 0, 3), CrystalElement.PURPLE),
+							new RuneRequirement(new net.minecraft.core.BlockPos(2, 0, -3), CrystalElement.PURPLE),
+							new RuneRequirement(new net.minecraft.core.BlockPos(-2, 0, -3), CrystalElement.BLACK),
+							new RuneRequirement(new net.minecraft.core.BlockPos(2, 0, 3), CrystalElement.BLACK)),
 					Map.of('I', Ingredient.of(net.minecraft.world.item.Items.IRON_INGOT),
 							'C', tag(net.minecraft.tags.ItemTags.STONE_CRAFTING_MATERIALS),
 							'S', Ingredient.of(net.minecraft.world.item.Items.STONE_SLAB),
@@ -413,6 +428,12 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 
 		private void saveShapedProgress(String name, ItemStackTemplate result, int duration, int energy,
 				List<ProgressStage> progress, Map<Character, Ingredient> ingredients, String... pattern) {
+			saveRecipe(name, new CastingTableRecipe(CastingTableRecipe.Tier.CRAFTING,
+					shapedGrid(ingredients, pattern), List.of(), List.of(), List.of(),
+					result, duration, energy, progress));
+		}
+
+		private static List<GridIngredient> shapedGrid(Map<Character, Ingredient> ingredients, String... pattern) {
 			if (pattern.length < 1 || pattern.length > 3)
 				throw new IllegalArgumentException("Casting pattern must contain one to three rows");
 			int width = pattern[0].length();
@@ -431,9 +452,31 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 					grid.add(new GridIngredient((row+yOffset)*3+column+xOffset, ingredient));
 				}
 			}
-			saveRecipe(name, new CastingTableRecipe(CastingTableRecipe.Tier.CRAFTING,
-					grid, List.of(), List.of(), List.of(), result, duration, energy, progress));
+			return grid;
 		}
+
+		/** As {@link #saveShapedProgress} but at V33a's {@code TempleCastingRecipe} tier, with runes. */
+		private void saveShapedTemple(String name, ItemStackTemplate result, int duration, int energy,
+				List<ProgressStage> progress, List<RuneRequirement> runes,
+				Map<Character, Ingredient> ingredients, String... pattern) {
+			saveRecipe(name, new CastingTableRecipe(CastingTableRecipe.Tier.TEMPLE,
+					shapedGrid(ingredients, pattern), List.of(), runes, List.of(),
+					result, duration, energy, progress));
+		}
+
+		/**
+		 * V33a {@code TempleCastingRecipe.runeRing}: the sixteen floor positions one block below the
+		 * table, indexed by element ordinal, walking the ring from the -X/-Z corner clockwise.
+		 */
+		private static RuneRequirement runeRingRune(CrystalElement element) {
+			int[] offset = RUNE_RING[element.ordinal()];
+			return new RuneRequirement(new net.minecraft.core.BlockPos(offset[0], -1, offset[1]), element);
+		}
+
+		private static final int[][] RUNE_RING = {
+				{-2,-2}, {-1,-2}, {0,-2}, {1,-2}, {2,-2}, {2,-1}, {2,0}, {2,1},
+				{2,2}, {1,2}, {0,2}, {-1,2}, {-2,2}, {-2,1}, {-2,0}, {-2,-1}
+		};
 
 		private void saveRecipe(String name, CastingTableRecipe recipe) {
 			ResourceKey<Recipe<?>> key = ResourceKey.create(Registries.RECIPE,
