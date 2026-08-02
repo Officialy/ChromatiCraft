@@ -1437,3 +1437,37 @@ Verification: `:ChromatiCraft:runServerData` regenerates the three casting templ
 `:ChromatiCraft:runGameTest` reports **all 71 required tests passed**. This is the first full-suite
 green in this cluster; the preceding entries' focused-only runs are what allowed the two matcher
 regressions to survive. Run the whole suite, not a selector, before recording a slice as accepted.
+
+### Casting L2 tuning cells and a non-tautological structure assertion — 2026-08-02
+
+A follow-up audit of the same class of defect found one more. V33a `CastingL2Structure` adds the
+twelve personal-key coordinates with `addBlock`, so the eight outer ones are **smooth-or-rune** and
+the four inner ones are dropped again by its own `remove` loop. The generated `casting_l2` template
+had written all twelve as mandatory rune cells, which meant a correctly built CASTING2/CASTING3
+temple did not validate until its owner had installed a tuning key. (This is also what the previous
+slice was really chasing when a legitimate key "invalidated CASTING3": the cell demanded the black
+placeholder specifically. Colour-agnostic matching hid the symptom instead of fixing the cause.)
+The template no longer writes those cells, and `CastingStructure` supplies the alternative through
+the same `addRuneAlternative` guard the floor conversion uses, so it lands only where the template
+still has a block — reproducing V33a's add-then-remove exactly.
+
+This was invisible to the suite because `placeCastingTable`/`placePylon` place an array and then
+match that same array: a round trip can only detect place/match disagreement, never
+template/V33a disagreement. The tuning test now asserts up front that a freshly built CASTING2
+temple validates with **no** key installed, which is an assertion the round trip cannot make.
+Structure tests added from here should include at least one such independent claim.
+
+Shared-helper divergence, recorded deliberately: V33a's default `addToIInv(stack, inv)` routes to
+`InventoryHandle.iInventory.addItem(..., requireWholeFit=true, doAdd=true) > 0`, which reports
+success on a *partial* insert while the Casting Table then decrements the full pushed amount — so
+upstream silently destroys the remainder when a neighbouring inventory is nearly full. The 26.2
+helper is whole-stack: a destination that cannot take the entire stack is left untouched and the
+output stays in slot 9 for the player. That keeps the non-stackable pylon repeat loop from losing
+queued output. If per-direction partial distribution is wanted later it needs an
+insert-what-fits/return-the-count path, not a revival of the upstream bug.
+
+Verification: `:ChromatiCraft:runServerData` regenerates `casting_l2`/`casting_l3`, and
+`:ChromatiCraft:runGameTest` again reports **all 71 required tests passed**.
+`:RotaryCraft:runGameTest` passes 5/5 after the shared `ReikaInventoryHelper` change. ReactorCraft
+has no GameTest run configuration, so its four `addToIInv` consumers (waste decayer, nuclear core,
+pebble bed, breeder core — all self-inserts of a single item) are covered by compilation only.

@@ -2003,6 +2003,12 @@ public final class ChromaGameTests {
 		ProgressionManager.instance.setPlayerStage(owner, ProgressStage.MULTIBLOCK, true, false, false);
 		ProgressionManager.instance.setPlayerStage(owner, ProgressStage.CHROMA, true, false, false);
 		table.setPlacer(owner);
+		// V33a adds the key positions as rune *alternatives*, so a freshly built temple with no key
+		// installed at all is still a valid MULTIBLOCK-tier structure. This is the assertion that a
+		// place-then-match round trip can never make, because it only ever matches what it placed.
+		table.validateStructure();
+		helper.assertTrue(table.isStructureValid(CastingTableRecipe.Tier.MULTIBLOCK) && !table.hasTuningKey(),
+				"a CASTING2 temple must validate before any personal tuning key is installed");
 		Map<BlockPos, CrystalElement> key = CastingTuningRegistry.instance.getTuningKey(helper.getLevel(), owner.getUUID()).runes();
 		helper.assertTrue(key.size() == 12, "a V33a casting key must contain all twelve non-cardinal fan positions");
 		for (Map.Entry<BlockPos, CrystalElement> entry : key.entrySet())

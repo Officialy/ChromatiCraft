@@ -146,8 +146,9 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
         int c = 6;
         for (int x = -5; x <= 5; x++) for (int z = -5; z <= 5; z++)
             data.set(c + x, 0, c + z, SMOOTH);
-        for (int[] p : CASTING_TUNING_RUNES)
-            data.set(c + p[0], 1, c + p[1], RUNE_PLACEHOLDER);
+        // The personal tuning-key cells are deliberately NOT written here. V33a CastingL2Structure
+        // uses addBlock for them, so the eight outer ones stay smooth-or-rune and the four inner ones
+        // are dropped again by its own remove loop. Runtime supplies those alternatives.
         for (int i = -5; i <= 5; i++) if (i != 0 && Math.abs(i) != 3) {
             StateDef quartz = new StateDef("minecraft:quartz_block", Map.of());
             data.set(0, 0, c + i, quartz); data.set(12, 0, c + i, quartz);
