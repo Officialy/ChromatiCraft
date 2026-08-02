@@ -1522,3 +1522,21 @@ Verification: `:ChromatiCraft:runServerData` regenerates the stand and all 32 ru
 Still unaudited on this path: `canGiveDoubleOutput` (V33a lets rune and some other recipes randomly
 double their output — no modern equivalent is implemented yet), the exact cave-crystal shard drop
 counts, and the casting XP award to the player as opposed to the table.
+
+#### ALLCOLORS is now load-bearing for the beta goal — 2026-08-02
+
+Making the Item Stand a TEMPLE recipe puts `RUNEUSE ← ALLCOLORS ← PYLON` on the critical path, so
+colour discovery had to be checked for reachability, not just fidelity. V33a has exactly two
+non-command grant sites for `setPlayerDiscoveredColor`: the `ExplorationMonitor` sight of a charged
+pylon, and `ChromaAux`'s player-charging path. The port has the first one live and faithful; the
+second is still pristine 1.7.10 (`ChromaAux` is not allowlisted) and is a bonus route that requires
+the unported charging subsystem anyway.
+
+So ALLCOLORS is reachable and matches the source — but it genuinely means sighting sixteen
+differently-coloured charged natural pylons, against a grid of roughly one candidate chunk in 105
+before the twenty-four terrain probes. That length is V33a's design, not a port defect; do not
+"fix" it by adding grant sites. The opening GameTest therefore grants ALLCOLORS directly and covers
+the discovery mechanism separately, which is a deliberate split rather than an untested gap.
+
+Next thing to bite after the stand: `MULTIBLOCK ← VILLAGECASTING` is a live upstream edge, so the
+MULTIBLOCK grant to a table's placer silently no-ops until `VILLAGECASTING` has a grant site.
