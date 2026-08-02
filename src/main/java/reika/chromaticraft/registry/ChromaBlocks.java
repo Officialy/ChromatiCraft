@@ -9,6 +9,8 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.LeavesBlock;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.MapColor;
@@ -42,6 +44,8 @@ import reika.chromaticraft.block.worldgen26.BlockGlowingLeaf;
 import reika.chromaticraft.block.worldgen26.BlockGlowDaisy;
 import reika.chromaticraft.block.worldgen26.BlockGlowRoot;
 import reika.chromaticraft.block.worldgen26.BlockLumaFluid;
+import reika.chromaticraft.block.worldgen26.BlockTieredOre;
+import reika.chromaticraft.magic.progression.ProgressStage;
 
 /**
  * ChromatiCraft block registry. Port-in-progress rewrite of the 1.7.10 {@code ChromaBlocks} enum
@@ -156,6 +160,38 @@ public final class ChromaBlocks {
 			() -> new BlockCliffStone(blockProperties().mapColor(MapColor.GRASS).strength(0.6F).randomTicks(), BlockCliffStone.Type.GRASS));
 	public static final DeferredBlock<BlockCliffStone> CLIFF_FARMLAND = register("cliff_farmland",
 			() -> new BlockCliffStone(blockProperties().mapColor(MapColor.DIRT).strength(0.6F).randomTicks().lightLevel(state -> 6), BlockCliffStone.Type.FARMLAND));
+	/**
+	 * V33a tiered ores: disguised as their host stone until the miner reaches the stage. Only the
+	 * ores whose drop item is registered and which V33a renders as an ordinary overlay ore are here.
+	 * The six geode-rendered ones (BINDING, FOCAL, TELEPORT, FIRAXITE, THERMITE, SPACERIFT) need the
+	 * source's custom geode mesh, and the rest (WATERY, LUMA, ECHO, THERMITE, RESO, RAINBOW, AVOLITE)
+	 * drop tiered resources that are not registered yet; none are stubbed in with stand-in visuals.
+	 */
+	public static final DeferredBlock<BlockTieredOre> ENERGIZED_ROCK = register("energized_rock",
+			() -> new BlockTieredOre(oreProperties(), ProgressStage.CRYSTALS, Blocks.STONE,
+					(into, fortune, random, miner) -> {
+						// V33a INFUSED: min(16, 1 + rand(5)*(1+rand(1+fortune))) chromic dust.
+						int n = Math.min(16, 1 + random.nextInt(5) * (1 + random.nextInt(1 + fortune)));
+						for (int i = 0; i < n; i++)
+							into.add(new ItemStack(ChromaItems.TIERED.get(ChromaTieredItems.CHROMA_DUST).get()));
+					}));
+	public static final DeferredBlock<BlockTieredOre> ELEMENTAL_STONES = register("elemental_stones",
+			() -> new BlockTieredOre(oreProperties(), ProgressStage.RUNEUSE, Blocks.STONE,
+					BlockTieredOre.ELEMENTAL_STONE_DROPS));
+	public static final DeferredBlock<BlockTieredOre> FIRESTONE = register("firestone",
+			() -> new BlockTieredOre(oreProperties(), ProgressStage.LINK, Blocks.NETHERRACK,
+					(into, fortune, random, miner) -> {
+						// V33a FIRESTONE: 1 + rand(6)*(1+fortune/2) fire essence.
+						int n = 1 + random.nextInt(6) * (1 + fortune / 2);
+						for (int i = 0; i < n; i++)
+							into.add(new ItemStack(ChromaItems.TIERED.get(ChromaTieredItems.FIRE_ESSENCE).get()));
+					}));
+
+	/** V33a BlockTieredOre: hardness 4, resistance 5. */
+	private static BlockBehaviour.Properties oreProperties() {
+		return blockProperties().mapColor(MapColor.STONE).strength(4, 5).requiresCorrectToolForDrops();
+	}
+
 	public static final DeferredBlock<BlockLumaFluid> LUMA = registerBlockOnly("luma",
 			() -> new BlockLumaFluid(ChromaFluids.LUMA.get(), blockProperties().mapColor(MapColor.COLOR_PURPLE)
 					.strength(100F, 500F).lightLevel(state -> 15).noCollision().replaceable().liquid()));

@@ -1614,3 +1614,56 @@ exemption default and the decay curve.
 Known flake, recorded rather than papered over: `chromaticraft:network_pylon_to_receiver` failed once
 in a full-suite run with the pylon undrained, then passed alone and in the next full run. It is
 timing-sensitive rather than broken; if it recurs, the transfer's tick budget is the thing to look at.
+
+### Tiered ores: the progression-gated resource layer — 2026-08-02
+
+V33a's tiered ores were entirely pristine: `BlockChromaTiered`, `BlockTieredOre`, `ItemTieredResource`,
+`TieredWorldGenerator` and both ISBRH renderers were all outside the compile slice. The mechanic is
+that an ore is **disguised as the stone it generated in** until the miner reaches its `ProgressStage`
+— not merely unminable, genuinely indistinguishable from the surrounding terrain.
+
+The server half is now accepted, faithful to DragonAPI's `BlockTieredResource`:
+
+- The ore never drops itself; the loot table is empty and every drop is decided in code, as upstream
+  hard-overrides the whole vanilla drop path and re-implements harvesting in `removedByPlayer`.
+- A sufficient miner gets the ore's own per-ore resource formula plus V33a's 2-6 experience splash.
+- An insufficient miner gets **the host block's own drops**, and with Silk Touch the host block
+  itself, so mining reveals nothing.
+- Placing an ore below its stage removes it again with the host block's break effects, closing the
+  obvious way to defeat the disguise from creative.
+
+`TieredOreModel` is the client half: a chunk-mesh `DynamicBlockStateModel` that draws the host
+stone's texture unless the local player has the stage, and otherwise the source's two passes — the
+`_underlay` sprite plus the animated `_overlay` fractionally proud of the face and full-bright. This
+matches V33a, whose `TieredOreRenderer` asks `isPlayerSufficientTier(..., thePlayer)` per rendered
+ore. Progression already reaches the client through the synchronised persistent player tag, so the
+read is valid client-side.
+
+Three of the fifteen ores are accepted, and the boundary is deliberate:
+
+| Accepted | Stage | Host | Drop |
+|---|---|---|---|
+| Energized Rock (INFUSED) | CRYSTALS | stone | `min(16, 1+rand(5)*(1+rand(1+f)))` chromic dust |
+| Elemental Stones (STONES) | RUNEUSE | stone | `min(4, 1+f/2)` from the per-player `StatisticalRandom` |
+| Firestone (FIRESTONE) | LINK | netherrack | `1+rand(6)*(1+f/2)` fire essence |
+
+Elemental Stones keeps V33a's `StatisticalRandom` roll persisted under `elementalstones` rather than
+a uniform pick: it biases toward the colours that player has seen least, which is what stops a player
+being permanently short one colour. Display names are the authoritative `chroma.tieredore.N` strings.
+
+Not registered, and not stubbed: the six geode-rendered ores (BINDING, FOCAL, TELEPORT, FIRAXITE,
+THERMITE, SPACERIFT) need V33a's bespoke geode mesh, and WATERY/LUMA/ECHO/THERMITE/RESO/RAINBOW/
+AVOLITE drop tiered resources that have no registered identity yet. Showing either group as a plain
+overlay ore would have been an invented appearance.
+
+Verification: `:ChromatiCraft:compileJava`, both datagen sides, and `:ChromatiCraft:runGameTest` at
+**72/72** with a new `tiered_ore_progression_gate` test that mines the same ore below and above its
+stage and checks it yields cobblestone in the first case and 1-16 chromic dust in the second, plus
+the place-back removal. Note the test needs `makeMockPlayer(GameType.SURVIVAL)`: GameTest's
+`makeMockServerPlayerInLevel` is hardcoded CREATIVE, and the tiered harvest is a no-op in creative.
+
+**Still to do on this system**, in order: `TieredWorldGenerator` as modern configured/placed features
+(per-ore `genChance` one-in-N per chunk, `veinCount` attempts of a `veinSize` vein excluding cliff
+stone, y = `rand(128)` for the nether ores and `rand(32)`-or-`rand(64)` otherwise) — until that lands
+these ores exist but never generate; the client chunk re-render when a stage syncs, so a newly
+granted stage reveals ores without a reload; then the geode mesh and the remaining drop identities.

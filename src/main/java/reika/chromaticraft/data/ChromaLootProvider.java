@@ -35,6 +35,7 @@ import net.minecraft.world.item.Items;
 import reika.chromaticraft.auxiliary.loot.ChromaBerryCount;
 import reika.chromaticraft.auxiliary.loot.FortuneScaledChance;
 import reika.chromaticraft.registry.ChromaItems;
+import reika.chromaticraft.block.worldgen26.BlockTieredOre;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.CrystalElement;
 
@@ -78,6 +79,11 @@ public final class ChromaLootProvider extends LootTableProvider {
 				}
 				else if (block instanceof BlockCrystalRune) {
 					this.dropSelf(block);
+				}
+				else if (block instanceof BlockTieredOre) {
+					// V33a BlockTieredResource hard-overrides the whole vanilla drop path to nothing;
+					// which resources (if any) a miner gets is decided by their progression in code.
+					this.add(block, noDrop());
 				}
 				else if (block instanceof BlockEncrustedCrystal) {
 					this.add(block, noDrop()); // Synchronized face-growth state emits the original shard drops.

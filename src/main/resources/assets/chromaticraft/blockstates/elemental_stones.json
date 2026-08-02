@@ -1,0 +1,13 @@
+{
+  "variants": {
+    "": {
+      "model": {
+        "type": "chromaticraft:tiered_ore",
+        "underlay": "chromaticraft:block/ore/tier_1_underlay",
+        "overlay": "chromaticraft:block/ore/tier_1_overlay",
+        "host_texture": "minecraft:block/stone",
+        "stage": "RUNEUSE"
+      }
+    }
+  }
+}

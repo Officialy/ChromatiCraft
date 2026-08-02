@@ -209,6 +209,7 @@ public final class ChromaGameTests {
 		register(event, env, "early_game_casting_stand_chain", ChromaGameTests::earlyGameCastingStandChain);
 		register(event, env, "casting_manipulator_fake_player_guard", ChromaGameTests::castingManipulatorFakePlayerGuard);
 		register(event, env, "lexicon_custom_data_roundtrip", ChromaGameTests::lexiconCustomDataRoundtrip);
+		register(event, env, "tiered_ore_progression_gate", ChromaGameTests::tieredOreProgressionGate);
 	}
 
 	/** Book contents use 26.2 custom data without losing foreign fields or duplicating pages. */
@@ -1737,6 +1738,60 @@ public final class ChromaGameTests {
 		table.setItem(6, new ItemStack(Items.COBBLESTONE));
 		table.setItem(7, new ItemStack(Items.COBBLESTONE));
 		table.setItem(8, new ItemStack(Items.COBBLESTONE));
+	}
+
+	/**
+	 * V33a tiered ores are disguised as their host stone until the miner reaches their stage: an
+	 * insufficient player mines the host block's own drops and gets none of the real resource.
+	 */
+	private static void tieredOreProgressionGate(GameTestHelper helper) {
+		// makeMockServerPlayerInLevel is hardcoded to CREATIVE, and V33a's tiered harvest is a
+		// no-op in creative, so this needs a survival actor to exercise the gate at all.
+		net.minecraft.world.entity.player.Player player = helper.makeMockPlayer(GameType.SURVIVAL);
+		BlockPos orePos = helper.absolutePos(new BlockPos(3, 3, 3));
+		net.minecraft.world.level.block.Block ore = ChromaBlocks.ENERGIZED_ROCK.get();
+		helper.assertTrue(!ProgressStage.CRYSTALS.isPlayerAtStage(player),
+				"the gate test must start before the ore's stage");
+
+		int dust = breakTieredOre(helper, orePos, ore, player,
+				ChromaItems.TIERED.get(ChromaTieredItems.CHROMA_DUST).get());
+		int stone = countDrops(helper, orePos, net.minecraft.world.item.Items.COBBLESTONE);
+		helper.assertTrue(dust == 0,
+				"an insufficient miner must get none of the real resource; got " + dust);
+		helper.assertTrue(stone > 0,
+				"an insufficient miner must get the host stone's own drops instead");
+
+		ProgressionManager.instance.setPlayerStage(player, ProgressStage.CRYSTALS, true, false, false);
+		BlockPos secondPos = orePos.offset(0, 0, 3);
+		int realDust = breakTieredOre(helper, secondPos, ore, player,
+				ChromaItems.TIERED.get(ChromaTieredItems.CHROMA_DUST).get());
+		helper.assertTrue(realDust >= 1 && realDust <= 16,
+				"a sufficient miner must get the V33a 1-16 chromic dust; got " + realDust);
+		helper.assertTrue(countDrops(helper, secondPos, net.minecraft.world.item.Items.COBBLESTONE) == 0,
+				"a sufficient miner must not also get the disguise drops");
+
+		// The place-back rule: an ore you cannot see removes itself instead of staying placed.
+		net.minecraft.world.entity.player.Player novice = helper.makeMockPlayer(GameType.SURVIVAL);
+		BlockPos placedPos = orePos.offset(0, 0, 6);
+		helper.getLevel().setBlock(placedPos, ore.defaultBlockState(), 3);
+		ore.setPlacedBy(helper.getLevel(), placedPos, ore.defaultBlockState(), novice, new ItemStack(ore));
+		helper.assertTrue(helper.getLevel().getBlockState(placedPos).isAir(),
+				"placing a tiered ore below its stage must remove it again");
+		helper.succeed();
+	}
+
+	private static int breakTieredOre(GameTestHelper helper, BlockPos pos,
+			net.minecraft.world.level.block.Block ore, net.minecraft.world.entity.player.Player player, net.minecraft.world.item.Item want) {
+		helper.getLevel().setBlock(pos, ore.defaultBlockState(), 3);
+		BlockState state = helper.getLevel().getBlockState(pos);
+		state.getBlock().onDestroyedByPlayer(state, helper.getLevel(), pos, player,
+				new ItemStack(net.minecraft.world.item.Items.IRON_PICKAXE), true, state.getFluidState());
+		return countDrops(helper, pos, want);
+	}
+
+	private static int countDrops(GameTestHelper helper, BlockPos pos, net.minecraft.world.item.Item want) {
+		return helper.getLevel().getEntitiesOfClass(ItemEntity.class, new AABB(pos).inflate(2)).stream()
+				.filter(e -> e.getItem().is(want)).mapToInt(e -> e.getItem().getCount()).sum();
 	}
 	/** V33a rejects fake/dummy actors before the Manipulator can dispatch or a table can cast. */
 	private static void castingManipulatorFakePlayerGuard(GameTestHelper helper) {

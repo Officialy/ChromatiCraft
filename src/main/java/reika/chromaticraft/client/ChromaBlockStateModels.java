@@ -20,5 +20,7 @@ public final class ChromaBlockStateModels {
 		event.registerModel(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "pylon_structure"),
 				reika.chromaticraft.render.model.PylonStructureModel.Unbaked.CODEC);
 		event.registerModel(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "cliff_dirt"), CliffDirtModel.Unbaked.CODEC);
+		event.registerModel(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "tiered_ore"),
+				reika.chromaticraft.render.model.TieredOreModel.Unbaked.CODEC);
 	}
 }

@@ -140,6 +140,11 @@ public class ChromaLang extends LanguageProvider {
 		for (StoneTypes t : StoneTypes.list)
 			add(ChromaBlocks.crystallineStone(t).get(), crystallineStoneNames[t.ordinal()]);
 
+		// Authoritative V33a chroma.tieredore.N display names.
+		add(ChromaBlocks.ENERGIZED_ROCK.get(), "Energized Rock");
+		add(ChromaBlocks.ELEMENTAL_STONES.get(), "Elemental Stones");
+		add(ChromaBlocks.FIRESTONE.get(), "Firestone");
+
 		// Crystal runes — one per CrystalElement colour ("<Colour> Crystal Rune"), keyed by the actual
 		// registered block id (ChromaBlocks.coloredName("crystal_rune", element); the key was
 		// previously "rune_<colour>", orphaned from the real "crystal_rune_<colour>" registry id).

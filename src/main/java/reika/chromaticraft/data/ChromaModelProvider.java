@@ -516,7 +516,10 @@ public class ChromaModelProvider extends ModelProvider {
 				.filter(h -> !(h.value() instanceof reika.chromaticraft.block.crystal.BlockSuperCrystal))
 				// Every crystalline-stone variant ships a hand-authored blockstate: the neighbour-scanned
 				// ones need the custom model type, which MultiVariantGenerator cannot emit.
-				.filter(h -> !(h.value() instanceof BlockCrystallineStone));
+				.filter(h -> !(h.value() instanceof BlockCrystallineStone))
+				// Tiered ores ship a hand-authored blockstate pointing at TieredOreModel: the model has
+				// to pick between the real ore and its host-stone disguise per viewer.
+				.filter(h -> !(h.value() instanceof reika.chromaticraft.block.worldgen26.BlockTieredOre));
 	}
 
 	private static void dyeTreeBlocks(Consumer<BlockModelDefinitionGenerator> blockStateOut,
