@@ -181,7 +181,11 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 			saveRecipe("crystal_group/" + name, new CastingTableRecipe(CastingTableRecipe.Tier.TEMPLE,
 					grid, List.of(), groupRunes(shards), List.of(),
 					new ItemStackTemplate(ChromaItems.CLUSTERS.get(result).get(), boosted ? 4 : 1),
-					boosted ? 40 : 20, boosted ? 160 : 40));
+					boosted ? 40 : 20, boosted ? 160 : 40)
+					// V33a CrystalGroupRecipe is not a CoreRecipe, and its typical crafted amount
+					// resolves to the base 1 (its charged branch calls itself and would recurse), so
+					// max(1, 1*3/4) puts both variants at a threshold of one.
+					.withPenaltyThreshold(1));
 		}
 
 		/**
@@ -223,7 +227,8 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 					new GridIngredient(5, Ingredient.of(ChromaItems.CLUSTERS.get(second).get())),
 					new GridIngredient(7, Ingredient.of(ChromaItems.CLUSTERS.get(first).get())));
 			saveRecipe("crystal_cluster/" + name, new CastingTableRecipe(CastingTableRecipe.Tier.TEMPLE,
-					grid, List.of(), runes, List.of(), new ItemStackTemplate(ChromaItems.CLUSTERS.get(output).get()), 20, 40));
+					grid, List.of(), runes, List.of(), new ItemStackTemplate(ChromaItems.CLUSTERS.get(output).get()), 20, 40)
+					.withPenaltyThreshold(1));
 		}
 
 		private void saveCore() {
@@ -248,7 +253,8 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 			List<RuneRequirement> runes = List.of(new RuneRequirement(new net.minecraft.core.BlockPos(-3,-1,-3), CrystalElement.BLACK), new RuneRequirement(new net.minecraft.core.BlockPos(3,-1,-3), CrystalElement.BLACK), new RuneRequirement(new net.minecraft.core.BlockPos(-3,-1,3), CrystalElement.BLACK), new RuneRequirement(new net.minecraft.core.BlockPos(3,-1,3), CrystalElement.BLACK));
 			saveRecipe("crystal_star", new CastingTableRecipe(CastingTableRecipe.Tier.MULTIBLOCK,
 					List.of(new GridIngredient(4, Ingredient.of(Items.NETHER_STAR))), stands, runes, List.of(),
-					new ItemStackTemplate(ChromaItems.CLUSTERS.get(ChromaClusterItems.CRYSTAL_STAR).get(), 4), 400, 400));
+					new ItemStackTemplate(ChromaItems.CLUSTERS.get(ChromaClusterItems.CRYSTAL_STAR).get(), 4), 400, 400)
+					.withPenaltyThreshold(1));
 		}
 
 		private void saveLowCore(String name, ChromaCraftingItems output, CrystalElement primary,
@@ -279,7 +285,8 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 					stand(2, 0, 2, Ingredient.of(Items.IRON_INGOT)));
 			saveRecipe("crystal_mirror/" + name, new CastingTableRecipe(CastingTableRecipe.Tier.MULTIBLOCK,
 					List.of(new GridIngredient(4, center)), stands, List.of(), List.of(),
-					new ItemStackTemplate(ChromaItems.CRAFTING.get(ChromaCraftingItems.CRYSTAL_MIRROR).get()), 100, 200));
+					new ItemStackTemplate(ChromaItems.CRAFTING.get(ChromaCraftingItems.CRYSTAL_MIRROR).get()), 100, 200)
+					.withPenaltyThreshold(12));
 		}
 
 		private void saveCrystalFocus() {
@@ -289,7 +296,8 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 			for (int[] pos : new int[][] {{-2,-2},{-2,2},{2,-2},{2,2}}) stands.add(stand(pos[0], 0, pos[1], shard(CrystalElement.PURPLE, true)));
 			saveRecipe("crystal_focus", new CastingTableRecipe(CastingTableRecipe.Tier.MULTIBLOCK,
 					List.of(new GridIngredient(4, Ingredient.of(ChromaItems.CLUSTERS.get(ChromaClusterItems.PRIMARY_CLUSTER).get()))),
-					stands, List.of(), List.of(), new ItemStackTemplate(ChromaItems.CRAFTING.get(ChromaCraftingItems.CRYSTAL_FOCUS).get()), 100, 200));
+					stands, List.of(), List.of(), new ItemStackTemplate(ChromaItems.CRAFTING.get(ChromaCraftingItems.CRYSTAL_FOCUS).get()), 100, 200)
+					.withPenaltyThreshold(24));
 		}
 
 		private void saveCrystalLens() {
@@ -302,7 +310,8 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 				stands.add(stand(pos[0], 0, pos[1], shard(CrystalElement.BLUE, false)));
 			saveRecipe("crystal_lens", new CastingTableRecipe(CastingTableRecipe.Tier.MULTIBLOCK,
 					List.of(new GridIngredient(4, Ingredient.of(Items.GLASS))), stands, List.of(), List.of(),
-					new ItemStackTemplate(ChromaItems.CRAFTING.get(ChromaCraftingItems.CRYSTAL_LENS).get()), 100, 200));
+					new ItemStackTemplate(ChromaItems.CRAFTING.get(ChromaCraftingItems.CRYSTAL_LENS).get()), 100, 200)
+					.withPenaltyThreshold(48));
 		}
 
 		private void saveIridescentChunk() {
@@ -317,7 +326,8 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 					stand(2, 0, 2, tiered(ChromaTieredItems.BEACON_DUST)));
 			saveRecipe("iridescent_chunk", new CastingTableRecipe(CastingTableRecipe.Tier.MULTIBLOCK,
 					List.of(new GridIngredient(4, tiered(ChromaTieredItems.BINDING_CRYSTAL))), stands, List.of(), List.of(),
-					new ItemStackTemplate(ChromaItems.CRAFTING.get(ChromaCraftingItems.IRIDESCENT_CHUNK).get()), 100, 200));
+					new ItemStackTemplate(ChromaItems.CRAFTING.get(ChromaCraftingItems.IRIDESCENT_CHUNK).get()), 100, 200)
+					.withPenaltyThreshold(576));
 		}
 
 		private void saveElementUnit() {
@@ -331,7 +341,8 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 			}
 			saveRecipe("element_unit", new CastingTableRecipe(CastingTableRecipe.Tier.MULTIBLOCK,
 					List.of(new GridIngredient(4, tiered(ChromaTieredItems.BINDING_CRYSTAL))), stands,
-					List.of(), List.of(), new ItemStackTemplate(ChromaItems.CRAFTING.get(ChromaCraftingItems.ELEMENT_UNIT).get()), 100, 200));
+					List.of(), List.of(), new ItemStackTemplate(ChromaItems.CRAFTING.get(ChromaCraftingItems.ELEMENT_UNIT).get()), 100, 200)
+					.withPenaltyThreshold(12));
 		}
 
 		private void saveLumenCore() {
@@ -373,7 +384,7 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 			saveRecipe("power_crystal", new CastingTableRecipe(CastingTableRecipe.Tier.PYLON,
 					List.of(new GridIngredient(4, Ingredient.of(Items.DIAMOND))), stands, List.of(), aura,
 					new ItemStackTemplate(ChromaBlocks.POWER_CRYSTAL.get().asItem()), 1600, 500,
-					List.of(), 0.97489F, true, true));
+					List.of(), 0.97489F, true, true).withPenaltyThreshold(96));
 		}
 		private void saveHighCore(String name, ChromaCraftingItems output, CrystalElement primary,
 				CrystalElement secondary, net.minecraft.core.BlockPos rune1, net.minecraft.core.BlockPos rune2,

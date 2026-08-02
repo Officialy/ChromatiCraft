@@ -8,6 +8,7 @@
       "slot": 4
     }
   ],
+  "penalty_threshold": 12,
   "result": {
     "id": "chromaticraft:element_unit"
   },

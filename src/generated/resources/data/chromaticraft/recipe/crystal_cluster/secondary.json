@@ -24,6 +24,7 @@
       "slot": 7
     }
   ],
+  "penalty_threshold": 1,
   "result": {
     "id": "chromaticraft:secondary_crystal_cluster"
   },

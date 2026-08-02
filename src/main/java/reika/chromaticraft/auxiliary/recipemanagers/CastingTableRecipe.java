@@ -83,6 +83,15 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 	private final boolean stackable;
 	private final boolean requiresTuningKey;
 	/**
+	 * V33a {@code getPenaltyThreshold}/{@code getPenaltyMultiplier}: once this table has completed
+	 * the recipe {@code penaltyThreshold} times, each further craft awards
+	 * {@code penaltyMultiplier^(completed - threshold)} of the recipe experience. The source derives
+	 * the threshold as {@code max(1, typicalCraftedAmount*3/4)}, except for its {@code CoreRecipe}
+	 * marker classes, which are never penalised — that exemption is this field's default.
+	 */
+	private final int penaltyThreshold;
+	private final float penaltyMultiplier;
+	/**
 	 * Progression the caster needs beyond whatever their recipe tier already implies. V33a declares
 	 * this per recipe via {@code CastingRecipe.getRequiredProgress}; the base implementation adds
 	 * CRYSTALS (covered here by the tier rules) and subclasses add their own — e.g. RuneRecipe adds
@@ -124,6 +133,17 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 			List<RuneRequirement> runes, List<AuraRequirement> aura, ItemStackTemplate output,
 			int duration, int experience, List<ProgressStage> requiredProgress,
 			float stackingFactor, boolean stackable, boolean requiresTuningKey) {
+		this(tier, grid, stands, runes, aura, output, duration, experience, requiredProgress,
+				stackingFactor, stackable, requiresTuningKey, Integer.MAX_VALUE, 0.75F);
+	}
+
+	public CastingTableRecipe(Tier tier, List<GridIngredient> grid, List<StandIngredient> stands,
+			List<RuneRequirement> runes, List<AuraRequirement> aura, ItemStackTemplate output,
+			int duration, int experience, List<ProgressStage> requiredProgress,
+			float stackingFactor, boolean stackable, boolean requiresTuningKey,
+			int penaltyThreshold, float penaltyMultiplier) {
+		this.penaltyThreshold = penaltyThreshold;
+		this.penaltyMultiplier = penaltyMultiplier;
 		this.requiredProgress = List.copyOf(requiredProgress);
 		this.tier = tier;
 		this.grid = List.copyOf(grid);
@@ -203,6 +223,19 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 	public float stackingFactor() { return stackingFactor; }
 	public boolean stackable() { return stackable; }
 	public boolean requiresTuningKey() { return requiresTuningKey; }
+	/** Datagen convenience: V33a threshold = max(1, typicalCraftedAmount*3/4) for non-core recipes. */
+	public CastingTableRecipe withPenaltyThreshold(int threshold) {
+		return new CastingTableRecipe(tier, grid, stands, runes, aura, output, duration, experience,
+				requiredProgress, stackingFactor, stackable, requiresTuningKey, threshold, penaltyMultiplier);
+	}
+	public int penaltyThreshold() { return penaltyThreshold; }
+	public float penaltyMultiplier() { return penaltyMultiplier; }
+
+	/** V33a TileEntityCastingTable.getXPModifier for a table that has already completed this many. */
+	public float experienceModifier(int alreadyCrafted) {
+		return alreadyCrafted >= penaltyThreshold
+				? (float)Math.pow(penaltyMultiplier, alreadyCrafted - penaltyThreshold) : 1F;
+	}
 
 	/** V33a's geometric consecutive-crafting duration multiplier. */
 	public float stackedTimeFactor(int amount) {
@@ -235,7 +268,9 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 			PROGRESS_CODEC.listOf().optionalFieldOf("required_progress", List.of()).forGetter(recipe -> recipe.requiredProgress),
 			Codec.floatRange(0.0001F, 1F).optionalFieldOf("stacking_factor", 0.75F).forGetter(recipe -> recipe.stackingFactor),
 			Codec.BOOL.optionalFieldOf("stackable", true).forGetter(recipe -> recipe.stackable),
-			Codec.BOOL.optionalFieldOf("requires_tuning_key", false).forGetter(recipe -> recipe.requiresTuningKey)
+			Codec.BOOL.optionalFieldOf("requires_tuning_key", false).forGetter(recipe -> recipe.requiresTuningKey),
+			Codec.intRange(1, Integer.MAX_VALUE).optionalFieldOf("penalty_threshold", Integer.MAX_VALUE).forGetter(recipe -> recipe.penaltyThreshold),
+			Codec.floatRange(0F, 1F).optionalFieldOf("penalty_multiplier", 0.75F).forGetter(recipe -> recipe.penaltyMultiplier)
 	).apply(instance, CastingTableRecipe::new));
 
 
@@ -258,6 +293,8 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 		buffer.writeFloat(recipe.stackingFactor);
 		buffer.writeBoolean(recipe.stackable);
 		buffer.writeBoolean(recipe.requiresTuningKey);
+		buffer.writeVarInt(recipe.penaltyThreshold);
+		buffer.writeFloat(recipe.penaltyMultiplier);
 	}
 	private static CastingTableRecipe decode(RegistryFriendlyByteBuf buffer) {
 		int tierOrdinal = buffer.readVarInt();
@@ -278,8 +315,11 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 		float stackingFactor = buffer.readFloat();
 		boolean stackable = buffer.readBoolean();
 		boolean requiresTuningKey = buffer.readBoolean();
+		int penaltyThreshold = buffer.readVarInt();
+		float penaltyMultiplier = buffer.readFloat();
 		return new CastingTableRecipe(Tier.values()[tierOrdinal], grid, stands, runes, aura,
-				result, duration, experience, progress, stackingFactor, stackable, requiresTuningKey);
+				result, duration, experience, progress, stackingFactor, stackable, requiresTuningKey,
+				penaltyThreshold, penaltyMultiplier);
 	}
 	private static CrystalElement element(int ordinal) {
 		if (ordinal < 0 || ordinal >= CrystalElement.elements.length) throw new IllegalArgumentException("Invalid crystal element ordinal " + ordinal);

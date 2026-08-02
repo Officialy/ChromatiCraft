@@ -1548,6 +1548,21 @@ public final class ChromaGameTests {
 				runes, Map.of(CrystalElement.BLACK, 500)), helper.getLevel()), "undeclared stand occupancy must reject the recipe");
 		helper.assertTrue(!recipe.matches(new CastingRecipeInput(grid, stands, runes,
 				Map.of(CrystalElement.BLACK, 499)), helper.getLevel()), "insufficient aura must reject the recipe");
+
+		// V33a getXPModifier: below the threshold every craft pays in full; at and past it the award
+		// decays by the penalty multiplier per extra craft. CoreRecipe classes are exempt, which is
+		// the schema default, so an ordinary recipe never decays.
+		helper.assertTrue(recipe.penaltyThreshold() == Integer.MAX_VALUE
+				&& recipe.experienceModifier(1_000_000) == 1F,
+				"a recipe with no declared threshold must be exempt like V33a's CoreRecipe marker");
+		CastingTableRecipe penalised = recipe.withPenaltyThreshold(3);
+		helper.assertTrue(penalised.experienceModifier(0) == 1F && penalised.experienceModifier(2) == 1F,
+				"crafts below the threshold must pay full experience");
+		helper.assertTrue(penalised.experienceModifier(3) == 1F,
+				"the threshold craft itself is the last one at full experience");
+		helper.assertTrue(Math.abs(penalised.experienceModifier(4) - 0.75F) < 1e-6
+				&& Math.abs(penalised.experienceModifier(6) - 0.75F*0.75F*0.75F) < 1e-6,
+				"each craft past the threshold must multiply by the V33a 0.75 penalty");
 		helper.succeed();
 	}
 

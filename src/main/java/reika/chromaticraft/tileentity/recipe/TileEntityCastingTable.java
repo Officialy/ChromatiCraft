@@ -504,10 +504,17 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver
         this.pushOutputToAdjacentInventories();
         mutatingInventory = false;
         TableTier previousTier = this.getTier();
-        tableXP += recipe.experience() * amount;
+        // V33a evaluates getXPModifier once per craft cycle, against the count completed *before*
+        // that cycle, and truncates each cycle's award independently. The player's own experience
+        // below is deliberately not penalised — the source applies the modifier to table XP only.
+        String craftedKey = output.getItem().toString();
+        int alreadyCrafted = craftedItems.getOrDefault(craftedKey, 0);
+        for (int cycle = 0; cycle < amount; cycle++)
+            tableXP += (int)(recipe.experience() * recipe.experienceModifier(alreadyCrafted + cycle));
         TableTier upgradedTier = this.getTier();
         if (recipeKey != null) completedRecipes.add(recipeKey);
-        craftedItems.merge(output.getItem().toString(), output.getCount(), Integer::sum);
+        // V33a addCrafted(out, 1) per completed cycle: this counts crafts, not output items.
+        craftedItems.merge(craftedKey, amount, Integer::sum);
         Player player = this.getLevel().getPlayerByUUID(playerId);
         if (player != null) {
             CastingProgression.markCrafted(player, recipe.tier());

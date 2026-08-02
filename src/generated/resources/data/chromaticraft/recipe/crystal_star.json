@@ -8,6 +8,7 @@
       "slot": 4
     }
   ],
+  "penalty_threshold": 1,
   "result": {
     "count": 4,
     "id": "chromaticraft:crystal_star"

@@ -8,6 +8,7 @@
       "slot": 4
     }
   ],
+  "penalty_threshold": 48,
   "result": {
     "id": "chromaticraft:crystal_lens"
   },

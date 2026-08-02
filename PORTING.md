@@ -1577,3 +1577,40 @@ Verification: `:ChromatiCraft:runServerData` emits the two new stone recipes, an
 `:ChromatiCraft:runGameTest` reports **all 71 required tests passed**, with the stand test extended
 to cover locked-stand unbreakability. The two restored particle families still need an in-client
 look, as headless tests cannot assert submitted particles.
+
+### Casting experience: the repeat-craft penalty — 2026-08-02
+
+The table tracked and persisted `craftedItems` but never used it. V33a's `getXPModifier` is the
+casting system's anti-grind rule: once a table has completed a given recipe `getPenaltyThreshold()`
+times, every further craft awards `getPenaltyMultiplier()^(completed - threshold)` of the recipe
+experience. Without it a table farms one cheap recipe at full rate forever, which matters more now
+that reaching temple tier is an explicit 250-XP climb.
+
+`CastingTableRecipe` now carries `penalty_threshold` and `penalty_multiplier` through the JSON codec
+and the recipe stream codec. The source derives the threshold as
+`max(1, getTypicalCraftedAmount()*3/4)` and exempts its `CoreRecipe` marker classes entirely, so
+exemption is the schema default and only V33a's non-core recipes declare a value: groups, clusters
+and Crystal Star at 1, Crystal Mirror and Element Unit at 12, Crystal Focus at 24, Crystal Lens at
+48, Power Crystal at 96, and Iridescent Chunk at 576. Everything on the beta chain — crystalline
+stone, both rune recipes, the Item Stand, and every core — is `CoreRecipe` upstream and therefore
+correctly unpenalised.
+
+Two details the port had to match exactly. V33a evaluates the modifier once **per craft cycle**,
+against the count completed before that cycle, truncating each cycle's award independently, so a
+batch does not all pay at one rate. And `addCrafted(out, 1)` counts **cycles**, not output items —
+the port had been adding the output stack size, which for an eight-per-cast recipe like crystalline
+stone would have advanced the counter eight times too fast. The player's own experience award is
+deliberately left unpenalised: `CastingRecipe.onCrafted` gives `getExperience()*amount/4` from the
+raw recipe value, and only table XP passes through the modifier.
+
+Also verified as already faithful and needing no change: the cave-crystal drop count
+(`1 + rand(6+f) + (1+f)*rand(3) + rand(1+f)`, registered as its own loot number provider) and the
+quarter-rate player experience award.
+
+Verification: `:ChromatiCraft:runServerData` emits the thresholds, and `:ChromatiCraft:runGameTest`
+reports **all 71 required tests passed**, with the recipe-contract test extended to cover the
+exemption default and the decay curve.
+
+Known flake, recorded rather than papered over: `chromaticraft:network_pylon_to_receiver` failed once
+in a full-suite run with the pylon undrained, then passed alone and in the next full run. It is
+timing-sensitive rather than broken; if it recurs, the transfer's tick budget is the thing to look at.
