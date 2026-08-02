@@ -1750,3 +1750,41 @@ looked at in game. Do not stack another blind change on this subsystem first.
 
 Verification: `:ChromatiCraft:compileJava`, `:GeoStrata:compileJava`, `:ChromatiCraft:runServerData`
 and **73/73** GameTests.
+
+### Encrusted crystal and power crystal renderers — 2026-08-02
+
+Both were pristine. Both are static block renderers upstream, not TESRs, so both become chunk-mesh
+`DynamicBlockStateModel`s rather than block entity renderers.
+
+**Encrusted crystals** (`CrystalEncrustingRenderer`). Each of the six faces can carry an
+independently growing crust of small distorted pegs. `EncrustedCrystalModel` reproduces the source
+exactly: the seed is V33a's `ISBRH.calcSeed(x, y, z) = chunkXZ2Int(x, z) ^ y` plus its two discarded
+`nextBoolean()` rolls, so a block grows the same crust it did in 1.7.10; per face it picks 4-8 grid
+cells, distorts the grid at 0.66 deviation, and places `min(n*n/2, 6 + amt*amt/10)` pieces (×1.5 when
+special) of height `(3+2*amt .. 8+4*amt)/96`; each piece mixes the element colour toward white and
+black by two random factors and shifts hue by ±5, draws full-bright, then overdraws the `glowframe2`
+frame and, when special, the special sprite at alpha 48.
+
+The pieces are **not** axis-aligned boxes. V33a distorts each peg by displacing the four corners of
+the growth face and the four of the opposite face, which is what stops a crust looking like a grid of
+identical pegs, so `CrystalPiece` carries eight corners and transcribes DragonAPI `CubePoints
+.applyOffset` per direction — the A/B letter pairs do not index the same axes on every face upstream
+(DOWN/UP read x,z; WEST/EAST read z,y; NORTH/SOUTH read x,y), so that table is written out rather
+than derived from an assumed symmetry. Growth is block-entity state, so the quads are built in
+`collectParts` rather than pre-baked per variant; that is the same work the source did every frame,
+now done only when a chunk section re-meshes.
+
+**The power crystal** turned out to need almost no new geometry. `BlockRainbowCrystal.getRenderType`
+returns `ChromaISBRH.crystal` — the *same* renderer the cave crystals use — with
+`renderAllArms() = true`, `renderBase() = true`, `getBaseBlock(...) = crystalline stone`, and
+`getTintColor = 0xffffff`. The existing `CaveCrystalModel` already modelled `renderBase`, so it gained
+an `all_arms` flag and an optional `inert_texture`; V33a's
+`getIcon(IBlockAccess, ...)` swaps to the inert sprite when the crystal has lost its pylon, which the
+model now reads from `TileEntityChromaCrystal.isConnected()` at collect time. The power crystal's
+blockstate is that model with every arm, the `crystal/chroma` and `crystal/chroma_inert` sprites and a
+smooth crystalline-stone plinth. It had been registered as a plain `BlockChromaticTile`, which is why
+it rendered as an untextured cube.
+
+Verification: `:ChromatiCraft:compileJava`, `:ChromatiCraft:runClientData` and **73/73** GameTests.
+Geometry cannot be asserted headlessly — both need an in-client look, along with the still-outstanding
+particle depth/atlas fixes.

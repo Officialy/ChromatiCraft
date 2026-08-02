@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "": {
+      "type": "chromaticraft:encrusted_crystal",
+      "texture": "chromaticraft:block/crystal/encrusted",
+      "glow_frame": "chromaticraft:block/icons/glowframe2",
+      "special_texture": "chromaticraft:block/crystal/encrusted_special"
+    }
+  }
+}

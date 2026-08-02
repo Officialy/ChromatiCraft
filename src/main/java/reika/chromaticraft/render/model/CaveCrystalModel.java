@@ -47,11 +47,18 @@ public final class CaveCrystalModel implements DynamicBlockStateModel {
     private final int flags;
 
     private final boolean hasBase;
+    /** V33a CrystalRenderedBlock.renderAllArms: the power crystal shows every arm, not a seeded mask. */
+    private final boolean allArms;
+    /** Non-null only for the power crystal, whose block swaps texture when it loses its pylon. */
+    private final BlockStateModelPart[][][][] inertVariants;
 
-    private CaveCrystalModel(BlockStateModelPart[][][][] variants, Material.Baked particle, boolean hasBase) {
+    private CaveCrystalModel(BlockStateModelPart[][][][] variants, Material.Baked particle, boolean hasBase,
+            boolean allArms, BlockStateModelPart[][][][] inertVariants) {
         this.variants = variants;
         this.particle = particle;
         this.hasBase = hasBase;
+        this.allArms = allArms;
+        this.inertVariants = inertVariants;
         int materialFlags = 0;
         for (BlockStateModelPart[][][] flipped : variants)
             for (BlockStateModelPart[][] above : flipped)
@@ -64,7 +71,7 @@ public final class CaveCrystalModel implements DynamicBlockStateModel {
     @Override
     public void collectParts(BlockAndTintGetter level, BlockPos pos, BlockState state,
             RandomSource random, List<BlockStateModelPart> parts) {
-        int arms = BlockCaveCrystal.armMask(pos);
+        int arms = allArms ? 0xF : BlockCaveCrystal.armMask(pos);
         BlockState belowState = level.getBlockState(pos.below());
         BlockState aboveState = level.getBlockState(pos.above());
         boolean flip = BlockCaveCrystal.isCeilingMounted(level, pos);
@@ -72,7 +79,14 @@ public final class CaveCrystalModel implements DynamicBlockStateModel {
         // V33a: below = !renderBase() && blockBelow instanceof CrystalBlock -- a based crystal
         // sits on its own plinth and never joins downward.
         boolean below = !hasBase && belowState.getBlock() instanceof CrystalBlock;
-        parts.add(variants[flip ? 1 : 0][above ? 1 : 0][below ? 1 : 0][arms]);
+        // V33a BlockRainbowCrystal.getIcon(IBlockAccess...): a power crystal that has lost its pylon
+        // draws the inert sprite instead of the live chroma one.
+        BlockStateModelPart[][][][] set = variants;
+        if (inertVariants != null
+                && level.getBlockEntity(pos) instanceof reika.chromaticraft.tileentity.auxiliary.TileEntityChromaCrystal crystal
+                && !crystal.isConnected())
+            set = inertVariants;
+        parts.add(set[flip ? 1 : 0][above ? 1 : 0][below ? 1 : 0][arms]);
     }
 
     @Override public Material.Baked particleMaterial() { return particle; }
@@ -84,12 +98,15 @@ public final class CaveCrystalModel implements DynamicBlockStateModel {
      *                    crystals. V33a calls {@code getBaseBlock(..., UP)} for the top, bottom
      *                    <em>and</em> side faces, so one sprite covers the whole plinth.
      */
-    public record Unbaked(Identifier texture, java.util.Optional<Identifier> baseTexture)
+    public record Unbaked(Identifier texture, java.util.Optional<Identifier> baseTexture,
+            java.util.Optional<Identifier> inertTexture, boolean allArms)
             implements CustomUnbakedBlockStateModel {
         public static final MapCodec<Unbaked> CODEC = com.mojang.serialization.codecs.RecordCodecBuilder.mapCodec(
                 instance -> instance.group(
                         Identifier.CODEC.fieldOf("texture").forGetter(Unbaked::texture),
-                        Identifier.CODEC.optionalFieldOf("base_texture").forGetter(Unbaked::baseTexture)
+                        Identifier.CODEC.optionalFieldOf("base_texture").forGetter(Unbaked::baseTexture),
+                        Identifier.CODEC.optionalFieldOf("inert_texture").forGetter(Unbaked::inertTexture),
+                        com.mojang.serialization.Codec.BOOL.optionalFieldOf("all_arms", false).forGetter(Unbaked::allArms)
                 ).apply(instance, Unbaked::new));
 
         @Override
@@ -103,6 +120,16 @@ public final class CaveCrystalModel implements DynamicBlockStateModel {
                     .map(id -> baker.materials().get(new Material(id, false),
                             () -> "chromaticraft:crystal_base/" + id))
                     .orElse(null);
+            BlockStateModelPart[][][][] variants = bakeSet(baker, material, base);
+            BlockStateModelPart[][][][] inert = inertTexture
+                    .map(id -> bakeSet(baker, baker.materials().get(new Material(id, true),
+                            () -> "chromaticraft:cave_crystal/" + id), base))
+                    .orElse(null);
+            return new CaveCrystalModel(variants, material, base != null, allArms, inert);
+        }
+
+        private static BlockStateModelPart[][][][] bakeSet(ModelBaker baker, Material.Baked material,
+                Material.Baked base) {
             BlockStateModelPart[][][][] variants = new BlockStateModelPart[2][2][2][16];
             for (int flip = 0; flip < 2; flip++)
                 for (int above = 0; above < 2; above++)
@@ -110,7 +137,7 @@ public final class CaveCrystalModel implements DynamicBlockStateModel {
                         for (int mask = 0; mask < 16; mask++)
                             variants[flip][above][below][mask] = bakeVariant(
                                     baker, material, base, mask, flip != 0, above != 0, below != 0);
-            return new CaveCrystalModel(variants, material, base != null);
+            return variants;
         }
 
         private static BlockStateModelPart bakeVariant(ModelBaker baker, Material.Baked material,

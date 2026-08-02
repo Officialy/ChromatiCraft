@@ -519,7 +519,12 @@ public class ChromaModelProvider extends ModelProvider {
 				.filter(h -> !(h.value() instanceof BlockCrystallineStone))
 				// Tiered ores ship a hand-authored blockstate pointing at TieredOreModel: the model has
 				// to pick between the real ore and its host-stone disguise per viewer.
-				.filter(h -> !(h.value() instanceof reika.chromaticraft.block.worldgen26.BlockTieredOre));
+				.filter(h -> !(h.value() instanceof reika.chromaticraft.block.worldgen26.BlockTieredOre))
+				// Encrusted crystals build their crust from live block-entity growth, and the power
+				// crystal reuses the cave-crystal mesh with every arm plus its inert texture swap;
+				// both ship hand-authored blockstates naming those custom model types.
+				.filter(h -> !(h.value() instanceof reika.chromaticraft.block.BlockEncrustedCrystal))
+				.filter(h -> h.value() != ChromaBlocks.POWER_CRYSTAL.get());
 	}
 
 	private static void dyeTreeBlocks(Consumer<BlockModelDefinitionGenerator> blockStateOut,

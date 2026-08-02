@@ -1,0 +1,11 @@
+{
+  "variants": {
+    "": {
+      "type": "chromaticraft:cave_crystal",
+      "texture": "chromaticraft:block/crystal/chroma",
+      "inert_texture": "chromaticraft:block/crystal/chroma_inert",
+      "base_texture": "chromaticraft:block/pylon/block_0",
+      "all_arms": true
+    }
+  }
+}
