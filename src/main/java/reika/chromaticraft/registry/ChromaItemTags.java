@@ -23,6 +23,13 @@ public final class ChromaItemTags {
 	/** Every crystal shard, plain or boosted, in every colour. */
 	public static final TagKey<Item> CRYSTAL_SHARDS = create("crystal_shards");
 
+	/**
+	 * Only the plain shards. V33a's wildcard-looking recipes actually name
+	 * {@code SHARD.getStackOfMetadata(0..15)}, which is an exact metadata match and so never accepts
+	 * a boosted shard (metadata 16-31); this is the tag for "any shard, but not the upgraded form".
+	 */
+	public static final TagKey<Item> PLAIN_CRYSTAL_SHARDS = create("plain_crystal_shards");
+
 	/** Only the boosted shards, for recipes that genuinely require the upgraded form. */
 	public static final TagKey<Item> BOOSTED_CRYSTAL_SHARDS = create("boosted_crystal_shards");
 

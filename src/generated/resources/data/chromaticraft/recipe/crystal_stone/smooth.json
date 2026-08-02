@@ -3,23 +3,23 @@
   "experience": 5,
   "grid": [
     {
-      "ingredient": "#minecraft:stone_crafting_materials",
+      "ingredient": "#c:stones",
       "slot": 1
     },
     {
-      "ingredient": "#minecraft:stone_crafting_materials",
+      "ingredient": "#c:stones",
       "slot": 3
     },
     {
-      "ingredient": "chromaticraft:crystal_shard_cyan",
+      "ingredient": "#chromaticraft:plain_crystal_shards",
       "slot": 4
     },
     {
-      "ingredient": "#minecraft:stone_crafting_materials",
+      "ingredient": "#c:stones",
       "slot": 5
     },
     {
-      "ingredient": "#minecraft:stone_crafting_materials",
+      "ingredient": "#c:stones",
       "slot": 7
     }
   ],

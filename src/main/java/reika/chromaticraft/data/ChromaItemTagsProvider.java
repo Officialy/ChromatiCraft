@@ -29,6 +29,7 @@ public final class ChromaItemTagsProvider extends ItemTagsProvider {
 	protected void addTags(HolderLookup.Provider provider) {
 		var allShards = tag(ChromaItemTags.CRYSTAL_SHARDS);
 		var allBoosted = tag(ChromaItemTags.BOOSTED_CRYSTAL_SHARDS);
+		var allPlain = tag(ChromaItemTags.PLAIN_CRYSTAL_SHARDS);
 
 		for (CrystalElement element : CrystalElement.elements) {
 			var boostedColour = tag(ChromaItemTags.boostedCrystalShards(element));
@@ -40,6 +41,7 @@ public final class ChromaItemTagsProvider extends ItemTagsProvider {
 			allShards.addTag(ChromaItemTags.crystalShards(element));
 			allShards.addTag(ChromaItemTags.boostedCrystalShards(element));
 			allBoosted.addTag(ChromaItemTags.boostedCrystalShards(element));
+			allPlain.addTag(ChromaItemTags.crystalShards(element));
 		}
 	}
 }

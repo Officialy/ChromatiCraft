@@ -1656,11 +1656,11 @@ public final class ChromaGameTests {
 		helper.getLevel().setBlock(tablePos, ChromaBlocks.CASTING_TABLE.get().defaultBlockState(), 3);
 		TileEntityCastingTable table = (TileEntityCastingTable)helper.getLevel().getBlockEntity(tablePos);
 		table.setPlacer(player);
-		table.setItem(1, new ItemStack(Blocks.COBBLESTONE));
-		table.setItem(3, new ItemStack(Blocks.COBBLESTONE));
+		table.setItem(1, new ItemStack(Blocks.STONE));
+		table.setItem(3, new ItemStack(Blocks.STONE));
 		table.setItem(4, ChromaItems.shardStack(CrystalElement.BLUE));
-		table.setItem(5, new ItemStack(Blocks.COBBLESTONE));
-		table.setItem(7, new ItemStack(Blocks.COBBLESTONE));
+		table.setItem(5, new ItemStack(Blocks.STONE));
+		table.setItem(7, new ItemStack(Blocks.STONE));
 		helper.assertTrue(table.triggerCrafting(player),
 				"a fresh CRYSTALS-stage player must be able to run the base-tier crystalline stone recipe");
 		for (int i = 0; i < 5; i++) table.updateEntity(helper.getLevel(), tablePos);

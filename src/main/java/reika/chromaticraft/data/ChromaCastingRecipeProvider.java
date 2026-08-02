@@ -62,14 +62,19 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 
 		@Override
 		protected void buildRecipes() {
-			Ingredient stone = tag(ItemTags.STONE_CRAFTING_MATERIALS);
-			for (CrystalElement element : CrystalElement.elements) {
-				Map<Character, Ingredient> ingredients = Map.of(
-						'S', stone,
-						'C', Ingredient.of(ChromaItems.SHARDS.get(element).get()));
-				save("crystal_stone/smooth_"+element.getEnglishName(),
-						StoneTypes.SMOOTH, 8, ingredients, " S ", "SCS", " S ");
-			}
+			// V33a: `new ShapedOreRecipe(block, " S ", "SCS", " S ", 'S', "stone", 'C', shard)`. The
+			// 1.7.10 "stone" oredict is Blocks.stone -- the smooth stone family, NOT cobblestone, so
+			// the modern equivalent is c:stones and not minecraft:stone_crafting_materials.
+			//
+			// The source builds this once per colour with an exact-metadata shard, which is sixteen
+			// recipes that differ only in which shard they consume and all produce the same eight
+			// smooth crystalline stone. They are collapsed into a single recipe over the plain-shard
+			// tag: identical to craft, one entry to display, and still not accepting boosted shards
+			// because that tag excludes them.
+			Ingredient stone = tag(net.neoforged.neoforge.common.Tags.Items.STONES);
+			save("crystal_stone/smooth", StoneTypes.SMOOTH, 8,
+					Map.of('S', stone, 'C', tag(reika.chromaticraft.registry.ChromaItemTags.PLAIN_CRYSTAL_SHARDS)),
+					" S ", "SCS", " S ");
 
 			Ingredient smooth = Ingredient.of(ChromaBlocks.crystallineStone(StoneTypes.SMOOTH).get().asItem());
 			Map<Character, Ingredient> smoothOnly = Map.of('S', smooth);

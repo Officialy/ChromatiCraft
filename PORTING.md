@@ -1709,3 +1709,44 @@ Verification: compilation, both datagen sides, and `:ChromatiCraft:runGameTest` 
 render fixes are reasoned from the pipeline contract and cannot be asserted headlessly — they need
 the next in-client look to confirm the water surface is intact and the particles show their real
 sprites.
+
+### Crystalline stone ingredients, and the cloud/water ordering tension — 2026-08-02
+
+**The smooth crystalline stone recipe used the wrong stone.** V33a is
+`new ShapedOreRecipe(block, " S ", "SCS", " S ", 'S', "stone", 'C', shard)`, and the 1.7.10 `"stone"`
+oredict is `Blocks.stone` — the smooth stone family. The port had `#minecraft:stone_crafting_materials`,
+which is the **cobblestone** family, so the recipe asked for entirely the wrong rock. It now uses
+`#c:stones`. (This is why the opening GameTest had to be fed cobblestone to match; it is back on real
+stone.)
+
+The sixteen per-colour smooth recipes are also collapsed into one over a new
+`chromaticraft:plain_crystal_shards` tag. The source writes this once per colour with an
+exact-metadata shard, which is sixteen recipes differing only in which shard they consume and all
+producing the same eight stone. One tag-driven recipe crafts identically, displays as one entry, and
+still refuses boosted shards — the existing aggregate `crystal_shards` tag could not be used for this
+because it deliberately contains the boosted family too.
+
+**Ocean spike lower halves rendered near-black.** A spike is a *stack* of `BlockOceanSpike`, so
+without an occlusion/light exemption the lower blocks are boxed in by their own neighbours: they
+occlude each other, block skylight, and take the darkened shade factor, while only the exposed tip
+stays lit. It now publishes the same empty occlusion/visual shape, skylight propagation and full
+shade brightness that `BlockCaveCrystal` uses for exactly this reason. Physical collision is
+untouched.
+
+**Pylons against clouds — diagnosis, deliberately not yet changed.** `LevelRenderer.addCloudsPass`
+renders clouds into their **own** target whenever fancy clouds are on, and only falls back to the
+main target otherwise; that target is composited over main afterwards. The additive pylon glow lives
+in the main target, so how it sorts against a cloud depends entirely on what depth it leaves behind
+in main — which is precisely what the water fix above just turned off. The two reports therefore pull
+in opposite directions: depth-write on sorts the glow correctly against the cloud/particle targets
+but punches holes in the translucent terrain drawn afterwards into main; depth-write off fixes the
+water and leaves clouds compositing over the glow.
+
+The real resolution is likely to keep depth write and instead submit the additive glow **after**
+translucent terrain rather than in the post-terrain feature phase, so the depth it writes can no
+longer reject water. That is a bigger change to submission order and cannot be told apart from the
+current state without a client, so it is deliberately left until the depth-write-off build has been
+looked at in game. Do not stack another blind change on this subsystem first.
+
+Verification: `:ChromatiCraft:compileJava`, `:GeoStrata:compileJava`, `:ChromatiCraft:runServerData`
+and **73/73** GameTests.
