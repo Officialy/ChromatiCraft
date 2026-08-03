@@ -1885,3 +1885,45 @@ world colour, so a bright daytime sky inherently leaves the glow less contrast t
 does. That is the source's own behaviour and has not been altered; if it still reads as wrong once
 the ordering fix is seen in game, the thing to compare against is a V33a screenshot rather than the
 blend equation.
+
+## Dedicated-server load path — 2026-08-03
+
+The beta goal is a **server**, and nothing had ever verified that. `:ChromatiCraft:runServer` did not
+boot at all: DragonAPI failed to construct, so GeoStrata, RotaryCraft, ElectriCraft, ReactorCraft and
+ChromatiCraft were all skipped. Every symptom was the same root cause — **a class the dedicated
+server loads named a client-only type**.
+
+The mechanism is worth stating precisely, because the obvious mental model is wrong. Java resolves
+lazily, so it is tempting to assume a `Minecraft.getInstance()` buried in a method body is harmless
+server-side. It is not:
+
+- **Bytecode verification resolves descriptors used by a method**, so `Minecraft.level` inside any
+  method puts a `ClientLevel` descriptor in that class and loading it server-side fails.
+- **A lambda is compiled into a synthetic method of its enclosing class**, so a client-only type
+  inside a lambda body belongs to the *enclosing* class, not to some separate one.
+- **Reflective construction resolves a class fully**, which is how FML builds a mod instance.
+
+Fixed so far, each verified by the server getting one step further:
+
+| Where | What |
+|---|---|
+| `DragonAPI.openURL` | `ConfirmLinkScreen` lambda → `client/ClientLinkPrompt` |
+| `DragonAPI` game dir / profile / local-server | → `client/ClientEnvironment`, with server fallbacks |
+| `ReikaSoundHelper.playClientSound` | returned `SoundInstance` → `client/ClientSounds`, void |
+| `ReikaSoundHelper.broadcastSound` | reached levels via the *client*; now `ServerLifecycleHooks` |
+| `ReikaPacketHelper.sendPacketToServer` | read `Minecraft.level` → holder |
+| `ReikaPlayerAPI`, `ReikaChatHelper`, `PacketPipeline` | `Minecraft.player` (`LocalPlayer`) → holder |
+| `APIPacketHandler.clientHandle` | `ClientLevel`/`ParticleEngine` → `client/ClientAPIPacketHandler` |
+| `ChromaNetwork` handlers | eight clientbound lambdas → `client/ClientPayloadHandlers` |
+| Rotary/Reactor/Electri book + calculator items | screen opens → each mod's `client/ClientScreens` |
+
+**Remaining blocker, not yet fixed:** `RotaryCraft.commonSetup` iterates `MachineRegistry`, whose
+enum constructors take a `Function<EntityModelSet, ? extends RotaryModelBase>` and whose constants
+pass model constructors. The client types are in the constructor signature, the field type and the
+constants' lambdas, so the enum cannot initialise on a server at all. Its only consumers are the two
+client renderers and the datagen model provider, so the fix is to move the model factories into a
+client-side map keyed by `MachineRegistry` — a mechanical edit across ~100 constants, deliberately
+not started mid-session rather than left half-applied.
+
+Verification: all five modules compile and `:ChromatiCraft:runGameTest` is **73/73**. The server now
+constructs every mod and reaches common setup.

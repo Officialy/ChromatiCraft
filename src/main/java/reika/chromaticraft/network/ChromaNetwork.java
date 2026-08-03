@@ -1,7 +1,6 @@
 package reika.chromaticraft.network;
 
 import io.netty.buffer.ByteBuf;
-import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
@@ -17,6 +16,7 @@ import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 
+import reika.chromaticraft.client.ClientPayloadHandlers;
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.client.PylonAttackOverlay;
 import reika.chromaticraft.registry.CrystalElement;
@@ -131,25 +131,27 @@ public final class ChromaNetwork {
 		return new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, path));
 	}
 
+	// Every body below is a one-line hand-off. The lambdas must not touch Minecraft here: they are
+	// compiled into synthetic methods of THIS class, which the dedicated server loads and verifies
+	// during mod construction, and a ClientLevel/LocalPlayer descriptor in any of them fails the load.
 	private static void handleAttackBeam(AttackBeam payload, IPayloadContext context) {
-		context.enqueueWork(() -> {
-			Minecraft mc = Minecraft.getInstance();
-			if (mc.level != null)
-				ChromaParticle.spawnPylonAttack(mc.level, payload.source, payload.target,
-						element(payload.color));
-		});
+		context.enqueueWork(() -> ClientPayloadHandlers.attackBeam(
+				payload.source, payload.target, element(payload.color)));
 	}
 	private static void handleDischarge(Discharge payload, IPayloadContext context) {
-		context.enqueueWork(() -> {
-			Minecraft mc = Minecraft.getInstance();
-			if (mc.level == null) return;
-			Entity entity = mc.level.getEntity(payload.targetId);
-			if (entity != null)
-				ChromaParticle.spawnPylonAttack(mc.level, payload.source,
-						BlockPos.containing(entity.getX(), entity.getY() + entity.getBbHeight() * 0.5,
-								entity.getZ()), element(payload.color));
-		});
+		context.enqueueWork(() -> ClientPayloadHandlers.discharge(
+				payload.source, payload.targetId, element(payload.color)));
 	}
+	private static void handleProgressionNote(ProgressionNote payload, IPayloadContext context) {
+		context.enqueueWork(ClientPayloadHandlers::progressionNote);
+	}
+
+	/** Ticked from the client so the progress-sound cooldown drains. */
+	public static void tickProgressSoundCooldown() {
+		ClientPayloadHandlers.tickProgressSoundCooldown();
+	}
+
+	/** Server-side sender; kept here beside its payload. */
 	public static void sendProgressionNote(net.minecraft.server.level.ServerPlayer player, int stageOrdinal) {
 		// GameTest mock players (and any connection that never negotiated our channel) throw on send,
 		// so check before distributing rather than letting progression grants blow up.
@@ -158,58 +160,20 @@ public final class ChromaNetwork {
 		PacketDistributor.sendToPlayer(player, new ProgressionNote(stageOrdinal));
 	}
 
-	/** V33a ProgressOverlayRenderer: 0.5 volume, and a 24-tick cooldown so a burst does not stack. */
-	private static int progressSoundCooldown;
-
-	private static void handleProgressionNote(ProgressionNote payload, IPayloadContext context) {
-		context.enqueueWork(() -> {
-			Minecraft mc = Minecraft.getInstance();
-			if (mc.player == null) return;
-			if (progressSoundCooldown > 0) return;
-			progressSoundCooldown = 24;
-			reika.chromaticraft.registry.ChromaSounds.GAINPROGRESS.playSound(mc.player, 0.5F, 1);
-		});
-	}
-
-	/** Ticked from the client so the cooldown above drains. */
-	public static void tickProgressSoundCooldown() {
-		if (progressSoundCooldown > 0) progressSoundCooldown--;
-	}
-
 	private static void handleAttackReceive(AttackReceive payload, IPayloadContext context) {
 		context.enqueueWork(() -> PylonAttackOverlay.trigger(element(payload.color)));
 	}
 	private static void handleJarRejection(JarRejection payload, IPayloadContext context) {
-		context.enqueueWork(() -> {
-			Minecraft mc = Minecraft.getInstance();
-			if (mc.level != null)
-				ChromaParticle.spawnJarRejection(mc.level, payload.source,
-						element(payload.color), new java.util.Random());
-		});
+		context.enqueueWork(() -> ClientPayloadHandlers.jarRejection(payload.source, element(payload.color)));
 	}
 	private static void handlePowerCrystalDestroy(PowerCrystalDestroy payload, IPayloadContext context) {
-		context.enqueueWork(() -> {
-			Minecraft mc = Minecraft.getInstance();
-			if (mc.level != null)
-				ChromaParticle.spawnPowerCrystalDestroy(mc.level, payload.source, new java.util.Random());
-		});
+		context.enqueueWork(() -> ClientPayloadHandlers.powerCrystalDestroy(payload.source));
 	}
-
 	private static void handleRepeaterConnections(RepeaterConnections payload, IPayloadContext context) {
-		context.enqueueWork(() -> {
-			Minecraft mc = Minecraft.getInstance();
-			if (mc.level != null && mc.level.getBlockEntity(payload.source)
-					instanceof reika.chromaticraft.tileentity.networking.TileEntityCrystalRepeater repeater)
-				repeater.refreshConnectionRender();
-		});
+		context.enqueueWork(() -> ClientPayloadHandlers.repeaterConnections(payload.source));
 	}
 	private static void handlePylonCrystalBreak(PylonCrystalBreak payload, IPayloadContext context) {
-		context.enqueueWork(() -> {
-			Minecraft mc = Minecraft.getInstance();
-			if (mc.level != null)
-				ChromaParticle.spawnPylonCrystalBreak(mc.level, payload.source,
-						element(payload.color), new java.util.Random());
-		});
+		context.enqueueWork(() -> ClientPayloadHandlers.pylonCrystalBreak(payload.source, element(payload.color)));
 	}
 	private static CrystalElement element(int ordinal) {
 		CrystalElement[] elements = CrystalElement.elements;

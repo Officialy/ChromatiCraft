@@ -113,6 +113,7 @@ sourceSets.main.java {
       include 'reika/chromaticraft/client/ChromaModelOutlineRenderer.java'
       include 'reika/chromaticraft/client/PylonAttackOverlay.java'
     include 'reika/chromaticraft/client/MouseoverStatusOverlay.java'
+    include 'reika/chromaticraft/client/ClientPayloadHandlers.java'
     include 'reika/chromaticraft/registry/ChromaEntityTypes.java'
     include 'reika/chromaticraft/entity/EntityPylonOverloadShock.java'
     include 'reika/chromaticraft/entity/EntityGlowCloud.java'
