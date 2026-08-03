@@ -2029,3 +2029,45 @@ but are only ever called from `render/` packages.
 What this still does not prove: nobody has walked the actual progression arc against a server.
 Joining and standing at spawn exercises login, chunk load, worldgen and block-entity sync, not
 casting-table interaction, rune placement or progression triggers.
+
+### `/test run` does not reliably drive gametests on a DedicatedServer — 2026-08-04
+
+Attempted to close the remaining gap — "the casting arc has never run against a real dedicated
+server" — by driving the existing suite through the server console rather than `gameTestServer`.
+Commands reach the server fine (pipe them into `runServer`'s stdin), and `chromaticraft:*` resolves
+to **68 tests**, so the selector and the dispatch both work. The tests do not.
+
+What happens: `Running 68 test(s)...`, then `Running test environment 'chromaticraft:default' batch 0
+(50 tests)`, and then nothing. A thread dump shows the server thread parked in
+`MinecraftServer.waitUntilNextTick` with **3 seconds of CPU burned over 10 minutes** and zero
+`reika.*` frames anywhere. The batch is registered and then never ticks. The likely cause is that
+`gameTestServer` force-loads its arena while a dedicated server does not, so with no player online
+the test structures sit in unloaded chunks — but that was not proven, and the fixes for it did not
+work.
+
+Things tried that did **not** help: a superflat throwaway level, `spawn-protection=0`,
+`gamerule spawnChunkRadius 32`, and running tests one at a time instead of as a batch.
+
+One thing that *did* work, early and once: a single `test run` completed in about a second and
+printed `All required tests passed :)`, against the stock `world` at the stock settings. That was not
+reproducible afterwards. Note that the dedicated server's watchdog (`max-tick-time=60000`) does fire
+during batch setup and crashes the server — `GameTestServer` has no watchdog — so any future attempt
+needs `max-tick-time=-1` as a precondition, not as a fix.
+
+`server.properties` has been restored to stock and the throwaway `gametest_srv` level deleted.
+`run/world` does now contain leftover gametest structures near spawn from these runs; it is a
+gradle-generated dev world, so deleting it is the cheapest cleanup if it gets in the way.
+
+**Where the arc actually stands.** Being precise, because the three claims are easy to conflate:
+
+- The casting arc's *logic* is green — 73/73 under `runGameTest`, including after the `WorldLocation`
+  change, and the suite covers the arc properly (`early_game_casting_stand_chain`,
+  `casting_stand_ownership_lock`, twenty-odd `casting_table_*`, `crystal_rune`, `progression_*`,
+  `pylon_*`).
+- The mod stack is *loadable and joinable* on a dedicated server — clean boot, zero
+  `net.minecraft.client` classes loaded under `-PverboseClasses`, a real client connected and played
+  with zero `NoClassDefFoundError` on either side.
+- **Nobody has walked the arc against a server.** That is still open, and neither of the two points
+  above closes it. It needs a human at a client, and it overlaps the client-side visual backlog
+  (encrusted and power crystal meshes, manipulator overlay, pylon against clouds and water) that also
+  cannot be checked headlessly.
