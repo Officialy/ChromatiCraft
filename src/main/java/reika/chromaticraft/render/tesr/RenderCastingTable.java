@@ -57,14 +57,17 @@ public final class RenderCastingTable implements BlockEntityRenderer<TileEntityC
         state.runes.clear();
         if (table.getLevel() == null) return;
 
-        BlockArray structure = table.getBlocks();
-        if (structure == null) {
+        // NOT table.getBlocks(): that builds the tier's FilledBlockArray from the NBT datapack
+        // template, which needs a ServerLevel and hard-crashed the render thread. V33a only used the
+        // array to enumerate candidate coordinates and then tested the world block anyway.
+        List<BlockPos> candidates = table.getEngravableBlocks();
+        if (candidates.isEmpty()) {
             animations.remove(table);
             return;
         }
 
         Animation animation = animations.computeIfAbsent(table, unused -> new Animation());
-        animation.advance(table, structure);
+        animation.advance(table, candidates);
         BlockPos origin = table.getBlockPos();
         for (Map.Entry<BlockPos, Rune> entry : animation.runes.entrySet()) {
             BlockPos relative = entry.getKey().subtract(origin);
@@ -133,7 +136,7 @@ public final class RenderCastingTable implements BlockEntityRenderer<TileEntityC
         private final Map<BlockPos, Rune> runes = new LinkedHashMap<>();
         private long lastSpawnTick = Long.MIN_VALUE;
 
-        private void advance(TileEntityCastingTable table, BlockArray structure) {
+        private void advance(TileEntityCastingTable table, List<BlockPos> engravable) {
             Iterator<Rune> iterator = runes.values().iterator();
             while (iterator.hasNext()) {
                 Rune rune = iterator.next();
@@ -145,7 +148,7 @@ public final class RenderCastingTable implements BlockEntityRenderer<TileEntityC
             lastSpawnTick = tick;
 
             List<BlockPos> candidates = new ArrayList<>();
-            for (BlockPos pos : structure.keySet()) {
+            for (BlockPos pos : engravable) {
                 BlockState blockState = table.getLevel().getBlockState(pos);
                 if (blockState.getBlock() instanceof BlockCrystallineStone stone
                         && stone.getStoneType().ordinal() <= BlockCrystallineStone.StoneTypes.COLUMN.ordinal())

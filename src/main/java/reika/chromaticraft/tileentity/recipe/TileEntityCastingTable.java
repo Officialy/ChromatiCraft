@@ -37,6 +37,7 @@ import reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe.GridIngre
 import reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe.StandIngredient;
 import reika.chromaticraft.base.tileentity.InventoriedCrystalReceiver;
 import reika.chromaticraft.block.BlockCrystalRune;
+import reika.chromaticraft.block.BlockCrystallineStone;
 import reika.chromaticraft.container.MenuCastingTable;
 import reika.chromaticraft.magic.ElementTagCompound;
 import reika.chromaticraft.magic.castingtuning.CastingTuningRegistry;
@@ -644,6 +645,39 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver
     }
     public int getTableXP() { return tableXP; }
     public TableTier getTier() { return TableTier.forXP(tableXP); }
+
+    /**
+     * The blocks the renderer may engrave a rune onto.
+     *
+     * <p>V33a pulled random coordinates out of the tier's structure array and then rejected any whose
+     * <em>world</em> block was not {@code PYLONSTRUCT} with metadata <= 2, so the array was only ever
+     * an enumeration of candidates and the real test was against the world. This scans the world
+     * directly for the same three crystalline-stone types, which matters because the modern structure
+     * is an NBT datapack template: loading it needs a {@link net.minecraft.server.level.ServerLevel},
+     * and the renderer runs on the client. Calling the loader from the render thread crashed the game
+     * on any table at temple tier or above.
+     */
+    public List<BlockPos> getEngravableBlocks() {
+        Level level = this.getLevel();
+        if (level == null) return List.of();
+        int radius = switch (this.getTier()) {
+            case CRAFTING -> 0;
+            case TEMPLE, MULTIBLOCK -> 6;
+            case PYLON -> 8;
+        };
+        if (radius == 0) return List.of();
+        List<BlockPos> found = new ArrayList<>();
+        BlockPos anchor = this.getBlockPos().below();
+        for (int dx = -radius; dx <= radius; dx++)
+            for (int dy = 0; dy <= 6; dy++)
+                for (int dz = -radius; dz <= radius; dz++) {
+                    BlockPos check = anchor.offset(dx, dy, dz);
+                    if (level.getBlockState(check).getBlock() instanceof BlockCrystallineStone stone
+                            && stone.getStoneType().ordinal() <= 2)
+                        found.add(check);
+                }
+        return found;
+    }
 
     /** V33a renderer input: the active tier's complete casting structure, anchored below the table. */
     public BlockArray getBlocks() {

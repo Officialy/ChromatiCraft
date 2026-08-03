@@ -1788,3 +1788,41 @@ it rendered as an untextured cube.
 Verification: `:ChromatiCraft:compileJava`, `:ChromatiCraft:runClientData` and **73/73** GameTests.
 Geometry cannot be asserted headlessly — both need an in-client look, along with the still-outstanding
 particle depth/atlas fixes.
+
+### Casting table render crash, manipulator overlay, and the no-entry flicker — 2026-08-03
+
+All three reported from a live client on a temple-tier table.
+
+**Hard crash in the render thread.** `RenderCastingTable.extractRenderState` called
+`TileEntityCastingTable.getBlocks()`, which builds the tier's `FilledBlockArray` from the NBT
+datapack template — and `NBTStructureLoader.load` requires a `ServerLevel`, because structure
+templates are a server resource. Any table at TEMPLE tier or above therefore killed the client the
+moment it came into view. V33a only ever used that array to enumerate *candidate coordinates* and
+then rejected any whose **world** block was not `PYLONSTRUCT` with metadata <= 2, so the array was
+never the real test. `getEngravableBlocks()` scans the world directly for the same three
+crystalline-stone types over the tier's own extent, which is client-safe and produces the same set.
+`getBlocks()` remains for the server-side consumers; the renderer no longer touches it.
+
+*Standing rule this is the second instance of:* anything a renderer needs must be derivable from
+block state, block entity state, or the client's own world — never from a datapack registry the
+client does not have. The same class of bug hit the icicle/ocean-spike shape work earlier.
+
+**The Elemental Manipulator overlay never existed.** V33a draws it from
+`MouseoverOverlayRenderer.renderStatusOverlay`, reached from `ChromaOverlays` only while the
+Manipulator is held; that class is still pristine 1.7.10 and outside the compile slice, so there was
+nothing to see. `MouseoverStatusOverlay` ports the `OperationInterval` branch as a 26.2 `GuiLayer`
+above the crosshair: the four-block non-liquid ray, the state icon indexed by `OperationState`
+ordinal from row 1 of the restored authoritative `infoicons.png`, the index-4 backing plate, and a
+progress fill while RUNNING. The source drew that fill as a triangle fan; a GUI layer has no
+tessellator, so it is clipped from the following sheet icon instead — same fill, same sheet. The
+renderer's other branches (lumen storage, focus acceleration, crafter contents, lumen wire, Forestry
+and Thaumcraft) belong to tiles outside the slice and are deliberately not stubbed.
+
+**The no-entry icon flickered when the last ingredient landed.** Recipe *presence* was read from the
+block entity's sync packet while *runnability* came from container data, and the block entity's
+arrives first — so for one tick the screen had a recipe to draw but still held the previous "cannot
+run" value. The menu data slot is now tri-state (0 none, 1 present-but-blocked, 2 runnable) so both
+facts travel on the same packet, and the screen gates on the menu rather than the block entity.
+
+Verification: `:ChromatiCraft:compileJava` and **73/73** GameTests. The crash fix is structural and
+certain; the overlay and the flicker both need the next client run to confirm.

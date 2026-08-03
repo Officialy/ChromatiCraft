@@ -113,7 +113,9 @@ public final class ScreenCastingTable extends AbstractContainerScreen<MenuCastin
     }
 
     private void drawRecipe(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
-        if (!table.hasDisplayRecipe()) return;
+        // Gate on the menu's own view, not the block entity's: those are two different packets and
+        // the block entity's lands first, which is what made the no-entry icon flicker.
+        if (!menu.hasDisplayedRecipe() || !table.hasDisplayRecipe()) return;
 
         ItemStack output = table.getDisplayOutput();
         Slot resultSlot = menu.getSlot(9);

@@ -40,11 +40,19 @@ public final class MenuCastingTable extends CoreContainer<TileEntityCastingTable
             @Override public boolean mayPlace(net.minecraft.world.item.ItemStack stack) { return false; }
         });
         this.addPlayerInventoryWithOffset(inventory, 0, multiblock ? 74 : 43);
+        // Tri-state, not a boolean: 0 = no recipe, 1 = a recipe the viewer cannot run, 2 = runnable.
+        // Whether a recipe exists and whether it can be run must arrive on the SAME packet. They used
+        // to come from two -- recipe presence from the block-entity sync, runnability from this
+        // container data -- and the block entity's arrives first, so for one tick after the last
+        // ingredient landed the screen had a recipe to draw but still held the previous "cannot run"
+        // value, which flashed the no-entry icon before settling.
         this.addDataSlot(new DataSlot() {
             @Override public int get() {
-                return table.getLevel() != null && !table.getLevel().isClientSide()
-                        ? (table.canRunDisplayedRecipe(inventory.player) ? 1 : 0)
-                        : displayState[0];
+                if (table.getLevel() == null || table.getLevel().isClientSide())
+                    return displayState[0];
+                if (!table.hasDisplayRecipe())
+                    return 0;
+                return table.canRunDisplayedRecipe(inventory.player) ? 2 : 1;
             }
             @Override public void set(int value) { displayState[0] = value; }
         });
@@ -77,7 +85,11 @@ public final class MenuCastingTable extends CoreContainer<TileEntityCastingTable
         }
     }
 
-    public boolean canRunDisplayedRecipe() { return displayState[0] != 0; }
+    /** True only once the server has confirmed a recipe the viewer may run. */
+    public boolean canRunDisplayedRecipe() { return displayState[0] == 2; }
+
+    /** Whether the server has told this viewer a recipe is displayed at all. */
+    public boolean hasDisplayedRecipe() { return displayState[0] != 0; }
     public boolean isMissingTuningKey() { return (tuningState[0] & 1) != 0 && (tuningState[0] & 2) == 0; }
 
     public List<ProgressStage> getMissingProgress() {

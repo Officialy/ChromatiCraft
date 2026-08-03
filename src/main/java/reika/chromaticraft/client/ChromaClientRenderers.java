@@ -28,6 +28,7 @@ public final class ChromaClientRenderers {
 		bus.addListener(ChromaClientRenderers::registerLayers);
 		bus.addListener(ChromaClientRenderers::registerSpecialModelRenderers);
 		bus.addListener(PylonAttackOverlay::register);
+		bus.addListener(MouseoverStatusOverlay::register);
 	}
 
 	private static void registerSpecialModelRenderers(RegisterSpecialModelRendererEvent event) {
