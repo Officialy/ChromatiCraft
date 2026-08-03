@@ -2071,3 +2071,23 @@ gradle-generated dev world, so deleting it is the cheapest cleanup if it gets in
   above closes it. It needs a human at a client, and it overlaps the client-side visual backlog
   (encrusted and power crystal meshes, manipulator overlay, pylon against clouds and water) that also
   cannot be checked headlessly.
+
+### Temple spawn commands work on a dedicated server — 2026-08-04
+
+The `/place feature` temple spawners are confirmed working against a real dedicated server, which is
+the tooling the manual arc walk depends on:
+
+```
+place feature chromaticraft:casting_temple_l1 16 123 16
+```
+
+All three tiers reported `Placed "chromaticraft:casting_temple_l<n>"` with no exception, and a
+follow-up `execute if block <pos> chromaticraft:casting_table` confirmed a real casting table in each
+— so the structures materialise, rather than the command merely returning success. Worth stating
+because this exercises `NBTStructureLoader.place` and the multiblock templates *server-side*, which is
+gameplay code rather than startup code, and it is the first arc-adjacent logic proven on a real
+dedicated server rather than under `gameTestServer`.
+
+The three temples are left standing in `run/world` at (16,123,16), (56,123,16) and (96,123,16), tiers
+1/2/3, so the arc walk can start from a table instead of building one. Note the area needs
+`forceload add -16 -16 112 112` if placing more while no player is online.
