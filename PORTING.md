@@ -1971,3 +1971,55 @@ they were touched, none of which any test could have caught:
 ChromatiCraft is now down to one gameplay class naming a client type, `ChromatiCraft` itself for
 `RegisterMenuScreensEvent`, and that one demonstrably loads (the server boots). Re-run the scan after
 adding code that touches rendering from a block, block entity or network class.
+
+### A real client joins a real dedicated server — 2026-08-03
+
+The thing the previous two entries said still needed checking now works. `runClient` gained an
+opt-in auto-connect and `runServer` an opt-in class-load trace, both in the root `build.gradle`:
+
+```bash
+./gradlew.bat :ChromatiCraft:runServer
+```
+```bash
+./gradlew.bat :ChromatiCraft:runClient -PjoinServer=localhost
+```
+
+The client connected, `Dev joined the game`, chunks generated around spawn with ChromatiCraft
+worldgen running, and the session ran several minutes before being torn down. **Zero**
+`NoClassDefFoundError` on either side, and zero `reika.*` exceptions on the server. The only server
+errors are pre-existing and unrelated: the two ReactorCraft fluid-component recipe parse failures
+(`reactorcraft:processor/uf6`, `reactorcraft:centrifuge/uf6`), a Jade loot-table warning, and oshi
+performance-counter noise from spark.
+
+**Correction to the previous entry.** That entry called `javap` "the reliable check". It is not — it
+is a *candidate* finder, and it over-reports badly. `-PverboseClasses` (which passes `-verbose:class`)
+settles the question directly, and it shows that `WorldLocation` loads fine on a dedicated server
+**while naming `Minecraft` and `ClientLevel` in a method body**. `TickRegistry`, which names
+`DeltaTracker`, is not loaded server-side at all.
+
+So the rule is not "a server-loaded class may never name a client type". What actually breaks a
+server is *executing* the client code, reflective construction of the class (how FML instantiates a
+mod), or a static/instance initializer touching it. A javap hit on a renderer, GUI or keybind helper
+means nothing; a javap hit on a path a server can reach means everything.
+
+Re-triaged on that basis and fixed the cases a server genuinely reaches:
+
+- `WorldLocation.getWorld()` — the fall-through after the `ServerLifecycleHooks` lookup fails ran
+  `Minecraft.getInstance().level` on the server. This is on nearly every gameplay path.
+- `DirectResourceManager.initToSoundRegistry` — registered as a reload listener on both dists, so it
+  ran on the server's own resource reload and touched the sound manager.
+- `CompoundSyncPacket`, `StructureBase`, `ReikaEnchantmentHelper` (committed separately) — same
+  pattern; the packet one would have broken every synced block entity.
+- `ReikaChatHelper`, `ControlledConfig`, `RemoteSourcedAsset`, `ReikaJVMParser` — already guarded by
+  dist checks, so not live bugs, but routed through the holder anyway since they were being touched.
+
+Deliberately **not** changed, because a server never executes them: the `renderAABB` overloads on
+`ReikaAABBHelper`, and `render` on `Spline` and `Proportionality`. Those name `SubmitNodeCollector`
+but are only ever called from `render/` packages.
+
+`ClientEnvironment` grew `launchedVersion()`, `profileIdentifier()`, `hasGameInstance()`,
+`clearChat()` and `resourceStream()`; `ClientSounds` grew `hasSoundManager()`.
+
+What this still does not prove: nobody has walked the actual progression arc against a server.
+Joining and standing at spawn exercises login, chunk load, worldgen and block-entity sync, not
+casting-table interaction, rune placement or progression triggers.
