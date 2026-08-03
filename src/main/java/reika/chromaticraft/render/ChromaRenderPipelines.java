@@ -39,7 +39,9 @@ public final class ChromaRenderPipelines {
             .withColorTargetState(new ColorTargetState(ADDITIVE_DARK))
             .withVertexBinding(0, DefaultVertexFormat.POSITION_TEX_COLOR)
             .withPrimitiveTopology(PrimitiveTopology.QUADS)
-            .withDepthStencilState(new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL, false))
+            // Writes depth: this pipeline is submitted after the translucent chunk layer, so nothing
+            // it stamps can reject water, and the cloud compositor needs the depth to sort against.
+            .withDepthStencilState(new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL, true))
             .withCull(false)
             .build();
 

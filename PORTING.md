@@ -1860,3 +1860,28 @@ matcher, for the worldgen-deadlock reason recorded earlier.
 
 Verification: `:ChromatiCraft:compileJava`, both datagen sides, **73/73** GameTests, and the three
 configured/placed features are emitted. The models and overlay need the next client run.
+
+#### Resolving the water/cloud ordering properly — 2026-08-03
+
+The previous entry recorded the two reports as pulling in opposite directions and left the choice
+open. They are now both fixed by the submission phase rather than by the depth flag.
+
+`RenderCrystalPylon` and `RenderCrystalRepeater` submitted their additive geometry to
+`RenderPhaseKeys.AFTER_TERRAIN`, which runs **before** the translucent chunk layer. That is what made
+the two symptoms mutually exclusive: with depth write on, the glow stamped main's depth and the water
+drawn afterwards failed its own test against it, punching square holes; with depth write off, the
+cloud target — which the post-chain composites over main — had nothing to sort against, so clouds
+covered pylons standing in front of them.
+
+Both now submit to `TRANSLUCENT_CUSTOM_GEOMETRY`, after the translucent layer, and `ADDITIVE_SPRITE`
+writes depth again. Water is already down so it cannot be rejected; depth *testing* still hides the
+glow behind water and solid terrain; and the depth it writes gives the cloud compositor something to
+order against. `ADDITIVE_PARTICLE` keeps depth write **off** — particles still draw before the
+translucent layer, so writing there would re-open the water holes.
+
+The remaining "looks bad in daylight, better at night" observation is expected from V33a's blend
+itself: `ADDITIVEDARK` is `ONE, ONE_MINUS_SRC_COLOR`, a screen blend against the already-rendered
+world colour, so a bright daytime sky inherently leaves the glow less contrast than a dark night sky
+does. That is the source's own behaviour and has not been altered; if it still reads as wrong once
+the ordering fix is seen in game, the thing to compare against is a V33a screenshot rather than the
+blend equation.

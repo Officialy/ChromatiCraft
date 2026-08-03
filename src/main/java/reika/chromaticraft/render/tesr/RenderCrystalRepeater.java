@@ -339,7 +339,15 @@ public class RenderCrystalRepeater implements BlockEntityRenderer<TileEntityCrys
         CustomFeatureRenderer.Submit submit = new CustomFeatureRenderer.Submit(
                 poseStack.last().copy(), renderType, renderer);
         ((OrderedSubmitNodeCollectorExtension)collector.order(0))
-                .submitSpecial(RenderPhaseKeys.AFTER_TERRAIN, submit);
+        // TRANSLUCENT_CUSTOM_GEOMETRY, not AFTER_TERRAIN. AFTER_TERRAIN runs before the translucent
+        // chunk layer, so the glow was drawn into main *before* water: writing depth there made water
+        // fail its own depth test and punched square holes in the surface, while not writing it left
+        // the cloud target -- which the post-chain composites over main -- with nothing to sort
+        // against, so clouds covered pylons in front of them. Submitting after translucent terrain
+        // resolves both: water is already down so it cannot be rejected, depth testing still hides
+        // the glow behind water and terrain, and the depth this pipeline now writes lets the cloud
+        // compositor order it correctly.
+                .submitSpecial(RenderPhaseKeys.TRANSLUCENT_CUSTOM_GEOMETRY, submit);
     }
 
     @Override
