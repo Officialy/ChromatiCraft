@@ -1917,13 +1917,26 @@ Fixed so far, each verified by the server getting one step further:
 | `ChromaNetwork` handlers | eight clientbound lambdas → `client/ClientPayloadHandlers` |
 | Rotary/Reactor/Electri book + calculator items | screen opens → each mod's `client/ClientScreens` |
 
-**Remaining blocker, not yet fixed:** `RotaryCraft.commonSetup` iterates `MachineRegistry`, whose
-enum constructors take a `Function<EntityModelSet, ? extends RotaryModelBase>` and whose constants
-pass model constructors. The client types are in the constructor signature, the field type and the
-constants' lambdas, so the enum cannot initialise on a server at all. Its only consumers are the two
-client renderers and the datagen model provider, so the fix is to move the model factories into a
-client-side map keyed by `MachineRegistry` — a mechanical edit across ~100 constants, deliberately
-not started mid-session rather than left half-applied.
+**`MachineRegistry` carried the machine models.** Its enum constructors took a
+`Function<EntityModelSet, ? extends RotaryModelBase>` and 104 constants passed model constructors, so
+the client types were in the constructor signature, the field type *and* every constant's lambda —
+the enum could not initialise on a server at all, and `RotaryCraft.commonSetup` iterates it. The
+factories now live in `client/MachineModels`, an `EnumMap` keyed by `MachineRegistry`; the enum keeps
+the registry data the server needs and knows nothing about how a machine looks. Its only consumers
+were the two client renderers, the handbook screen and the datagen model provider. Two traps in the
+mechanical edit: 24 constants had their model argument *already commented out inline*, which a naive
+argument split turns into an unterminated comment, and three used `modelset` rather than `modelSet`.
 
-Verification: all five modules compile and `:ChromatiCraft:runGameTest` is **73/73**. The server now
-constructs every mod and reaches common setup.
+`MachineRegistry.getName` also called the client-only `I18n` during `PowerReceivers.initialize`; it
+now uses `Component.translatable(...).getString()`, which resolves through the active language on a
+client and yields the key on a server. `EntityListCommand` and `BiomeMapCommand` reached
+`Minecraft.player`/`.level` and are registered through `RegisterCommandsEvent`, so both were failing
+command registration; they go through the holder now.
+
+**The dedicated server boots**: `Done (6.099s)! For help, type "help"`, spawn prepared to 100%, with
+no client-class load attempts and no mod-loading failures.
+
+Verification: all five modules compile, `:ChromatiCraft:runGameTest` is **73/73** and
+`:RotaryCraft:runGameTest` **5/5**. What this does *not* yet prove is that a real client can connect
+and walk the arc against a server — that is the next thing to check, and the remaining
+client/server-split risk lives in gameplay paths rather than startup.
