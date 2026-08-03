@@ -104,8 +104,8 @@ public class ChromaModelProvider extends ModelProvider {
 		itemModelOut.accept(ChromaBlocks.MUD.get().asItem(), ItemModelUtils.plainModel(mudModel));
 		// LiquidBlock renders through its registered FluidModel, but still requires a blockstate entry.
 		blockStateOut.accept(MultiVariantGenerator.dispatch(ChromaBlocks.CHROMA.get(), mudVariant));
-		MultiVariant powerCrystalVariant = new MultiVariant(WeightedList.of(new Variant(powerCrystalModel)));
-		blockStateOut.accept(MultiVariantGenerator.dispatch(ChromaBlocks.POWER_CRYSTAL.get(), powerCrystalVariant));
+		// As above: the in-world power crystal is the shared crystal mesh with every arm and its
+		// inert texture swap, so its blockstate is hand-authored and must not be generated over.
 		itemModelOut.accept(ChromaBlocks.POWER_CRYSTAL.get().asItem(), ItemModelUtils.plainModel(powerCrystalModel));
 		pylonModel(blockStateOut, itemModelOut, modelOut);
 		networkTileModel(ChromaBlocks.REPEATER.get(), "crystal_repeater", "block/icons/repeater", blockStateOut, itemModelOut, modelOut);
@@ -377,10 +377,11 @@ public class ChromaModelProvider extends ModelProvider {
 				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/encrusted_crystal"),
 				TextureMapping.cube(new Material(Identifier.fromNamespaceAndPath(
 						ChromatiCraft.MODID, "block/crystal/encrusted"))), modelOut);
-		MultiVariant variant = new MultiVariant(WeightedList.of(new Variant(model)));
 		for (CrystalElement element : CrystalElement.elements) {
 			Block block = ChromaBlocks.encrustedCrystal(element).get();
-			blockStateOut.accept(MultiVariantGenerator.dispatch(block, variant));
+			// Deliberately no blockstate: the crust is built per block entity by
+			// EncrustedCrystalModel, whose hand-authored blockstate this cube_all stub would
+			// silently win the resource merge against. Only the inventory model is generated.
 			itemModelOut.accept(block.asItem(), ItemModelUtils.plainModel(model));
 		}
 	}

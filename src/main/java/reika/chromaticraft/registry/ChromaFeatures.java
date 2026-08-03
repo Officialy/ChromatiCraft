@@ -32,6 +32,17 @@ public final class ChromaFeatures {
             FEATURES.register("power_crystal_boosted_pylon",
                     () -> new PylonFeature(PylonFeature.Variant.POWER_CRYSTAL_BOOSTED));
 
+    /** Command-only: /place feature chromaticraft:casting_temple_l1 (and _l2, _l3). */
+    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> CASTING_TEMPLE_L1 =
+            FEATURES.register("casting_temple_l1",
+                    () -> new reika.chromaticraft.world.CastingTempleFeature(1));
+    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> CASTING_TEMPLE_L2 =
+            FEATURES.register("casting_temple_l2",
+                    () -> new reika.chromaticraft.world.CastingTempleFeature(2));
+    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> CASTING_TEMPLE_L3 =
+            FEATURES.register("casting_temple_l3",
+                    () -> new reika.chromaticraft.world.CastingTempleFeature(3));
+
     public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> LUMINOUS_CLIFFS_TERRAIN =
             FEATURES.register("luminous_cliffs_terrain", LuminousCliffsTerrainFeature::new);
     public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> LUMA_PATCH =

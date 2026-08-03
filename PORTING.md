@@ -1826,3 +1826,37 @@ facts travel on the same packet, and the screen gates on the menu rather than th
 
 Verification: `:ChromatiCraft:compileJava` and **73/73** GameTests. The crash fix is structural and
 certain; the overlay and the flicker both need the next client run to confirm.
+
+### Clobbered crystal models, overlay UVs, and /place temples — 2026-08-03
+
+**Neither new crystal model was ever loading**, for the reason already recorded against GeoStrata:
+`ChromaModelProvider` was still emitting `cube_all` blockstates for the power crystal and all sixteen
+encrusted crystals, and a generated blockstate **wins the resource merge** over a hand-authored one
+of the same name. Excluding them from `getKnownBlocks()` was not enough — that list only gates the
+completeness *check*, not generation. Both emitters now produce the inventory model only and leave
+the blockstate alone, and the stale generated files were deleted. This is the third time this trap
+has cost a slice: **if a block ships a hand-authored blockstate, no datagen path may `accept` a
+blockstate for it.**
+
+**The Manipulator overlay was drawing the sheet wrong.** V33a indexes `infoicons.png` with
+`u = 0.125*idx, v = 0.25` and a `0.125` extent on *both* axes, so it is an 8x8 grid of 32-pixel icons
+and the status row is row 2 — the port had assumed 8x4 and row 1, which sampled the wrong band. The
+backing plate was worse: it is drawn at 38 pixels but must still sample a single 32-pixel icon, and
+passing the inflated size as the source region too pulled in the neighbouring icons, which is the
+stray partial ring in the report. It now uses the blit overload with separate destination and source
+extents.
+
+The progress fill also did not animate as V33a's does. The source sweeps a triangle fan from three
+o'clock counter-clockwise (`dx = sin(a+90), dy = cos(a+90)`), and the port had drawn a bottom-up
+vertical wipe with a bad `v` offset. A GUI layer has no tessellator, so the wedge is now masked per
+scanline: each row emits the maximal horizontal runs whose pixels fall inside the swept angle, with
+the icon's own alpha supplying the circle.
+
+**Casting temples are now spawnable.** `CastingTempleFeature` places a tier's canonical NBT template
+and its table, registered as `chromaticraft:casting_temple_l1` / `_l2` / `_l3`. Like the turbocharged
+and booster-pylon variants these are command-only — no biome modifier names them, because temples are
+player-built and must never generate. Placement goes through `NBTStructureLoader.place`, not the
+matcher, for the worldgen-deadlock reason recorded earlier.
+
+Verification: `:ChromatiCraft:compileJava`, both datagen sides, **73/73** GameTests, and the three
+configured/placed features are emitted. The models and overlay need the next client run.

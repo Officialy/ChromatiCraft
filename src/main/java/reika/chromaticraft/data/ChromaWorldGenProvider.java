@@ -43,6 +43,8 @@ public final class ChromaWorldGenProvider {
     private static final Identifier CAVE_CRYSTAL = id("cave_crystal");
     private static final Identifier PYLON = id("pylon");
     private static final Identifier TURBOCHARGED_PYLON = id("turbocharged_pylon");
+    private static final List<Identifier> CASTING_TEMPLES =
+            List.of(id("casting_temple_l1"), id("casting_temple_l2"), id("casting_temple_l3"));
     private static final Identifier POWER_CRYSTAL_BOOSTED_PYLON = id("power_crystal_boosted_pylon");
     private static final Identifier LUMINOUS_CLIFFS_TERRAIN = id("luminous_cliffs_terrain");
     private static final Identifier LUMA_PATCH = id("luma_patch");
@@ -87,6 +89,8 @@ public final class ChromaWorldGenProvider {
             registerConfigured(bootstrap, features, CAVE_CRYSTAL);
             registerConfigured(bootstrap, features, PYLON);
             registerConfigured(bootstrap, features, TURBOCHARGED_PYLON);
+            for (Identifier temple : CASTING_TEMPLES)
+                registerConfigured(bootstrap, features, temple);
             registerConfigured(bootstrap, features, POWER_CRYSTAL_BOOSTED_PYLON);
             registerConfigured(bootstrap, features, LUMINOUS_CLIFFS_TERRAIN);
             registerConfigured(bootstrap, features, LUMA_PATCH);
@@ -129,6 +133,9 @@ public final class ChromaWorldGenProvider {
             }
             registerPlaced(bootstrap, configured, PYLON);
             registerPlaced(bootstrap, configured, TURBOCHARGED_PYLON);
+            // Command-only, like the pylon variants: no biome modifier names these.
+            for (Identifier temple : CASTING_TEMPLES)
+                registerPlaced(bootstrap, configured, temple);
             registerPlaced(bootstrap, configured, POWER_CRYSTAL_BOOSTED_PYLON);
             registerPlaced(bootstrap, configured, LUMINOUS_CLIFFS_TERRAIN, List.of());
             registerPlaced(bootstrap, configured, LUMA_PATCH,

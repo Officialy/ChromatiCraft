@@ -41,10 +41,12 @@ public final class MouseoverStatusOverlay implements GuiLayer {
 	private static final Identifier ICONS =
 			Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "textures/gui/infoicons.png");
 
-	/** The sheet is 8x4 icons; the status row is the second one. */
+	/**
+	 * V33a indexes this sheet with {@code u = 0.125*idx, v = 0.25} and a {@code 0.125} extent on both
+	 * axes, so it is an 8x8 grid of 32-pixel icons and the status row is row 2.
+	 */
 	private static final int COLUMNS = 8;
-	private static final int ROWS = 4;
-	private static final int STATUS_ROW = 1;
+	private static final int STATUS_ROW = 2;
 	private static final int BACKING_INDEX = 4;
 	/** V33a: a 32-pixel icon offset ar=12 from the screen centre, with a 3-pixel backing bleed. */
 	private static final int SIZE = 32;
@@ -84,26 +86,52 @@ public final class MouseoverStatusOverlay implements GuiLayer {
 	}
 
 	/**
-	 * V33a drew the progress as a triangle fan sweeping clockwise from twelve o'clock. A GUI layer
-	 * has no tessellator, so the same wedge is built from the icon that follows RUNNING on the sheet,
-	 * clipped to the swept fraction by drawing it in horizontal bands — visually the same fill, and
-	 * it stays inside the blit API the rest of this overlay uses.
+	 * V33a swept a triangle fan from three o'clock counter-clockwise:
+	 * {@code dx = sin(a+90), dy = cos(a+90)} puts a=0 at the +X axis and increasing a moves upward on
+	 * screen. A GUI layer has no tessellator, so the same wedge is produced by masking the pie icon
+	 * per scanline: each row emits the maximal horizontal runs whose pixels fall inside the swept
+	 * angle, and the icon's own alpha supplies the circle. That is the same reveal, and it animates
+	 * because {@code getOperationFraction} is read every frame.
 	 */
 	private void renderProgress(GuiGraphicsExtractor gui, int x, int y, float fraction) {
-		int filled = Math.round(SIZE * Math.clamp(fraction, 0F, 1F));
-		if (filled <= 0)
+		float swept = 360F * Math.clamp(fraction, 0F, 1F);
+		if (swept <= 0)
 			return;
 		int index = OperationState.RUNNING.ordinal() + 1;
-		int u = (index % COLUMNS) * (256 / COLUMNS);
-		int v = STATUS_ROW * (256 / ROWS) + (SIZE - filled) * (256 / ROWS) / SIZE;
-		gui.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, ICONS,
-				x, y + SIZE - filled, u, v, SIZE, filled, 256, 256);
+		int iconU = (index % COLUMNS) * SIZE;
+		int iconV = STATUS_ROW * SIZE;
+		float centre = SIZE / 2F;
+		for (int row = 0; row < SIZE; row++) {
+			int runStart = -1;
+			for (int col = 0; col <= SIZE; col++) {
+				boolean inside = col < SIZE && sweptAngle(col + 0.5F - centre, row + 0.5F - centre) <= swept;
+				if (inside && runStart < 0) {
+					runStart = col;
+				}
+				else if (!inside && runStart >= 0) {
+					int width = col - runStart;
+					gui.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, ICONS,
+							x + runStart, y + row, iconU + runStart, iconV + row,
+							width, 1, width, 1, 256, 256);
+					runStart = -1;
+				}
+			}
+		}
+	}
+
+	/** Degrees counter-clockwise from three o'clock, in screen space where +y points down. */
+	private static float sweptAngle(float dx, float dy) {
+		double degrees = Math.toDegrees(Math.atan2(-dy, dx));
+		return (float)(degrees < 0 ? degrees + 360 : degrees);
 	}
 
 	private static void blit(GuiGraphicsExtractor gui, int x, int y, int size, int index) {
-		int u = (index % COLUMNS) * (256 / COLUMNS);
-		int v = STATUS_ROW * (256 / ROWS);
+		int u = (index % COLUMNS) * SIZE;
+		int v = STATUS_ROW * SIZE;
+		// Source stays one 32-pixel icon even when the destination is inflated: passing the inflated
+		// size as the source region too made the backing plate bleed into the neighbouring icons,
+		// which is what drew a stray partial ring beside the status icon.
 		gui.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, ICONS,
-				x, y, u, v, size, size, 256, 256);
+				x, y, u, v, size, size, SIZE, SIZE, 256, 256);
 	}
 }

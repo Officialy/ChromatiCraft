@@ -146,6 +146,7 @@ sourceSets.main.java {
     include 'reika/chromaticraft/world/luminous/LuminousFloraFeature.java'
     include 'reika/chromaticraft/world/PylonGridPlacement.java'
     include 'reika/chromaticraft/world/TieredOreHeightPlacement.java'
+    include 'reika/chromaticraft/world/CastingTempleFeature.java'
     include 'reika/chromaticraft/world/biome/ChromaBiomes.java'
     include 'reika/chromaticraft/world/biome/ChromaRegion.java'
     include 'reika/chromaticraft/api/event/CrystalGenEvent.java'
