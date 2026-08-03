@@ -9,8 +9,8 @@
  ******************************************************************************/
 package reika.chromaticraft.magic.network;
 
-import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Player;
+import net.neoforged.fml.loading.FMLEnvironment;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.AABB;
 
@@ -55,9 +55,13 @@ public class TargetData {
 		return o instanceof TargetData && ((TargetData)o).position.equals(position);
 	}
 
+	/**
+	 * Frustum visibility, which only means anything on a client. Routed through a client-only holder
+	 * so this class -- which is crystal-network data the server loads -- never names the renderer.
+	 */
 	public boolean isRenderable() {
-		//ReikaAABBHelper.renderAABB(renderBox, 0, 0, 0, 0, 0, 0, 160, 255, 255, 255, true);
-		return Minecraft.getInstance().gameRenderer.mainCamera().getCullFrustum().isVisible(renderBox);
+		return FMLEnvironment.getDist().isClient()
+				&& reika.chromaticraft.client.ClientFrustum.isVisible(renderBox);
 	}
 
 	public boolean isMaximumEndpointDistanceWithin(Player ep, double dist) {

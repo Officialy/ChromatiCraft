@@ -1940,3 +1940,34 @@ Verification: all five modules compile, `:ChromatiCraft:runGameTest` is **73/73*
 `:RotaryCraft:runGameTest` **5/5**. What this does *not* yet prove is that a real client can connect
 and walk the arc against a server — that is the next thing to check, and the remaining
 client/server-split risk lives in gameplay paths rather than startup.
+
+### GameTests do not prove server safety — 2026-08-03
+
+An important limit on everything this ledger has claimed: `runGameTest` uses `type = "gameTestServer"`
+in a dev environment where the **client classes are on the classpath**. That is why the suite stayed
+at 73/73 through the entire period in which `runServer` could not even construct DragonAPI. A green
+GameTest run says nothing about whether a class is loadable on a real dedicated server.
+
+The reliable check is `javap` over the compiled classes, filtered to those outside client-named
+packages:
+
+```bash
+javap -p -c build/classes/java/main/<Class>.class | grep -c 'net/minecraft/client/'
+```
+
+Source-level grep is useless here — an `import` alone is harmless, and 367 classes across the six
+modules import client types perfectly legitimately.
+
+That scan found three ChromatiCraft **gameplay** classes that would have crashed a server the moment
+they were touched, none of which any test could have caught:
+
+- `TargetData` — crystal-network data, loaded by the network engine, called
+  `Minecraft.getInstance().gameRenderer.mainCamera()` for a frustum check. Now
+  `client/ClientFrustum`.
+- `BlockGlowDaisy` and `BlockGlowRoot` — `animateTick` narrowed its `Level` to `ClientLevel` in the
+  block class itself. The particle helpers now take a `Level` and narrow internally, which is where
+  that belongs anyway.
+
+ChromatiCraft is now down to one gameplay class naming a client type, `ChromatiCraft` itself for
+`RegisterMenuScreensEvent`, and that one demonstrably loads (the server boots). Re-run the scan after
+adding code that touches rendering from a block, block entity or network class.

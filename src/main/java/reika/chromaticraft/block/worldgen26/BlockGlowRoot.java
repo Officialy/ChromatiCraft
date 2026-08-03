@@ -76,8 +76,8 @@ public final class BlockGlowRoot extends Block {
     public void animateTick(BlockState state, Level level, BlockPos pos, RandomSource random) {
         if (random.nextInt(3) == 0 && (!level.getBlockState(pos.below()).is(this)
                 || Math.floorMod(pos.getY(), 8) == 0)
-                && level instanceof net.minecraft.client.multiplayer.ClientLevel client)
-            ChromaParticle.spawnGlowRoot(client, pos, random);
+                && level.isClientSide())
+            ChromaParticle.spawnGlowRoot(level, pos, random);
     }
 
     @Override

@@ -89,8 +89,8 @@ public final class BlockGlowDaisy extends VegetationBlock {
 
     @Override
     public void animateTick(BlockState state, Level level, BlockPos pos, RandomSource random) {
-        if (level instanceof net.minecraft.client.multiplayer.ClientLevel client)
-            ChromaParticle.spawnGlowDaisy(client, pos, random);
+        if (level.isClientSide())
+            ChromaParticle.spawnGlowDaisy(level, pos, random);
     }
 
     @Override

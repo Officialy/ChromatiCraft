@@ -247,24 +247,26 @@ public abstract class ChromaParticle extends SingleQuadParticle {
                 new FocusFlare(level, x, y, z, color, 6 + random.nextInt(6)));
     }
     /** V33a Glow Daisy's paired blue/white rapidly expanding floating seeds. */
-    public static void spawnGlowDaisy(ClientLevel level, BlockPos pos,
+    public static void spawnGlowDaisy(net.minecraft.world.level.Level level, BlockPos pos,
             net.minecraft.util.RandomSource random) {
+        if (!(level instanceof ClientLevel client)) return;
         double x = pos.getX() - 0.125 + random.nextDouble() * 1.25;
         double y = pos.getY() + 0.125;
         double z = pos.getZ() - 0.125 + random.nextDouble() * 1.25;
         int blue = ReikaColorAPI.mixColors(0x22aaff, 0x0000ff, random.nextFloat());
-        Minecraft.getInstance().particleEngine.add(new FloatingSeed(level, x, y, z,
+        Minecraft.getInstance().particleEngine.add(new FloatingSeed(client, x, y, z,
                 0, 90, 1.5F, 20, blue, blue, "fade", true, 0.0625, 60));
-        Minecraft.getInstance().particleEngine.add(new FloatingSeed(level, x, y, z,
+        Minecraft.getInstance().particleEngine.add(new FloatingSeed(client, x, y, z,
                 0, 90, 0.875F, 20, 0xffffff, 0xffffff, "fade", true, 0.0625, 60));
     }
 
     /** V33a Glow Root's long-lived, falling, colliding purple/white blur. */
-    public static void spawnGlowRoot(ClientLevel level, BlockPos pos,
+    public static void spawnGlowRoot(net.minecraft.world.level.Level level, BlockPos pos,
             net.minecraft.util.RandomSource random) {
+        if (!(level instanceof ClientLevel client)) return;
         int choice = random.nextInt(3);
         int color = choice == 0 ? 0xC89CF4 : choice == 1 ? 0xF29BF2 : 0xffffff;
-        Blur blur = new Blur(level,
+        Blur blur = new Blur(client,
                 pos.getX() + 0.25 + random.nextDouble() * 0.5,
                 pos.getY() + random.nextDouble(),
                 pos.getZ() + 0.25 + random.nextDouble() * 0.5,
