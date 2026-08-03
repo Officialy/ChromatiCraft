@@ -2010,8 +2010,14 @@ Re-triaged on that basis and fixed the cases a server genuinely reaches:
   ran on the server's own resource reload and touched the sound manager.
 - `CompoundSyncPacket`, `StructureBase`, `ReikaEnchantmentHelper` (committed separately) — same
   pattern; the packet one would have broken every synced block entity.
-- `ReikaChatHelper`, `ControlledConfig`, `RemoteSourcedAsset`, `ReikaJVMParser` — already guarded by
-  dist checks, so not live bugs, but routed through the holder anyway since they were being touched.
+- `ReikaChatHelper`, `ControlledConfig`, `ReikaJVMParser` — not live bugs; each already dispatches on
+  the dist before reaching the client call (`ControlledConfig.genUserHash` is the guard for
+  `getClientUserHash`, not anything inside it). Routed through the holder anyway while being touched.
+- `RemoteSourcedAsset` — also not a live bug, but for a weaker reason worth writing down: it has **no
+  dist guard at all**. Its two resource reads are safe only because every `createAsset` call site is
+  a client renderer or overlay. Adding a server-side caller would make it a crash, so guard it then.
+  Its static `mcDir` initialiser, which does run at class load, is safe because
+  `DragonAPI.getMinecraftDirectory()` is itself dist-aware.
 
 Deliberately **not** changed, because a server never executes them: the `renderAABB` overloads on
 `ReikaAABBHelper`, and `render` on `Spline` and `Proportionality`. Those name `SubmitNodeCollector`
