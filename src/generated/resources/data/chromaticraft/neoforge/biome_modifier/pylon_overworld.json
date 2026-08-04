@@ -2,5 +2,5 @@
   "type": "neoforge:add_features",
   "biomes": "#minecraft:is_overworld",
   "features": "chromaticraft:pylon",
-  "step": "surface_structures"
+  "step": "top_layer_modification"
 }

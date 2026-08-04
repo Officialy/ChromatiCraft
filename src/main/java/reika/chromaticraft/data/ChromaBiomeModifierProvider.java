@@ -33,8 +33,15 @@ public final class ChromaBiomeModifierProvider implements DataProvider {
                 CAVE_CRYSTAL, GenerationStep.Decoration.UNDERGROUND_DECORATION));
         futures.add(save(cache, "cave_crystal_nether", "#minecraft:is_nether",
                 CAVE_CRYSTAL, GenerationStep.Decoration.UNDERGROUND_DECORATION));
+        // V33a's PylonGenerator was a RetroactiveGenerator, so it ran after the chunk was fully
+        // populated -- which is why its site test is built around trees (log/leaf replaceability,
+        // getTreeDodgeAttempt, sinking the array through wood and leaves). SURFACE_STRUCTURES is
+        // step 4 and VEGETAL_DECORATION is step 9, so running there meant no tree had been placed
+        // yet: all of that logic was dead during worldgen, and trees then generated on top of the
+        // site the feature had just verified as clear. TOP_LAYER_MODIFICATION is the last step, so
+        // it is the faithful analogue of generating post-population.
         futures.add(save(cache, "pylon_overworld", "#minecraft:is_overworld",
-                PYLON, GenerationStep.Decoration.SURFACE_STRUCTURES));
+                PYLON, GenerationStep.Decoration.TOP_LAYER_MODIFICATION));
         // V33a TieredWorldGenerator runs in every ordinary dimension; each ore's own host block and
         // y band are what confine it, so the overworld pair goes everywhere overworld and the
         // netherrack-hosted one everywhere nether.
