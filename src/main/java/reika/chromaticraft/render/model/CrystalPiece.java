@@ -99,11 +99,16 @@ final class CrystalPiece {
 		return corners[corner][axis];
 	}
 
-	/** Corner indices of one face, wound counter-clockwise seen from outside the piece. */
+	/**
+	 * Corner indices of one face, ordered so that {@code (v1-v0) x (v2-v1)} points out of the piece --
+	 * the same convention {@link CaveCrystalGeometry} uses, and the one the baker needs for the quad
+	 * to face outwards. DOWN and UP were originally wound the other way round, which left the top and
+	 * bottom of every piece back-facing and therefore invisible.
+	 */
 	static int[] face(Direction side) {
 		return switch (side) {
-			case DOWN -> new int[] {4, 5, 1, 0};
-			case UP -> new int[] {2, 3, 7, 6};
+			case DOWN -> new int[] {0, 1, 5, 4};
+			case UP -> new int[] {6, 7, 3, 2};
 			case NORTH -> new int[] {3, 1, 0, 2};
 			case SOUTH -> new int[] {6, 4, 5, 7};
 			case WEST -> new int[] {2, 0, 4, 6};

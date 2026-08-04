@@ -42,8 +42,11 @@ final class CrystalQuads {
 		vertex.setLightEmission(15);
 		vertex.setDirection(face);
 		for (int corner : corners) {
-			float u = (float)Math.clamp(piece.get(corner, uAxis), 0D, 1D) * 16F;
-			float v = (float)Math.clamp(piece.get(corner, vAxis), 0D, 1D) * 16F;
+			// getU/getV take a NORMALISED 0..1 coordinate within the sprite, not the 0..16 block-space
+			// figure the 1.7.10 API wanted. Passing 0..16 ran sixteen sprites past the right edge of
+			// this one and sampled the rest of the atlas, which drew the block as a sheet of icons.
+			float u = (float)Math.clamp(piece.get(corner, uAxis), 0D, 1D);
+			float v = (float)Math.clamp(piece.get(corner, vAxis), 0D, 1D);
 			vertex.addVertex((float)piece.get(corner, 0), (float)piece.get(corner, 1), (float)piece.get(corner, 2))
 					.setColor(colour)
 					.setUv(material.sprite().getU(u), material.sprite().getV(v))
