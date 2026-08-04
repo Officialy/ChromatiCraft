@@ -23,8 +23,13 @@ import reika.chromaticraft.registry.ChromaPlacementModifiers;
  * {@code uniform[0,128)}. Neither is expressible with vanilla's height providers, so the roll is
  * reproduced exactly here.
  *
- * <p>These are absolute y values in the source, where the world floor was 0. The modifier therefore
- * offsets by the level's minimum build height so the same band sits at the bottom of a modern world.
+ * <p>These are absolute y values, and they stay absolute. The earlier port offset them by the level's
+ * minimum build height, reasoning that the band should sit the same distance above bedrock as it did
+ * when the world floor was 0. That put the whole overworld roll in y [-64, 0) — which is deepslate,
+ * while the ore features target {@code minecraft:stone} — so no overworld tiered ore could ever
+ * place. Absolute y is also the faithful reading everywhere else: the Nether and End floors are still
+ * 0, so only the overworld floor ever moved, and V33a's own {@code rand(128)} nether band already
+ * means what it says.
  */
 public final class TieredOreHeightPlacement extends PlacementModifier {
 
@@ -46,7 +51,7 @@ public final class TieredOreHeightPlacement extends PlacementModifier {
 	public Stream<BlockPos> getPositions(PlacementContext context, RandomSource random, BlockPos origin) {
 		int y = deepBand ? random.nextInt(128)
 				: random.nextBoolean() ? random.nextInt(32) : random.nextInt(64);
-		return Stream.of(new BlockPos(origin.getX(), context.getMinY() + y, origin.getZ()));
+		return Stream.of(new BlockPos(origin.getX(), y, origin.getZ()));
 	}
 
 	@Override
