@@ -67,11 +67,32 @@ public final class PylonFeature extends Feature<NoneFeatureConfiguration> {
         for (int i = 0; i < ATTEMPTS; i++) {
             int x = origin.getX() + random.nextInt(16);
             int z = origin.getZ() + random.nextInt(16);
-            int y = world.getHeight(Heightmap.Types.WORLD_SURFACE_WG, x, z) - 1;
-            if (tryPlaceAt(world, new BlockPos(x, y, z), random, variant))
+            if (tryPlaceAt(world, new BlockPos(x, groundLevel(world, x, z), z), random, variant))
                 return true;
         }
         return false;
+    }
+
+    /**
+     * The topmost non-foliage solid block, which is what V33a's site picker gave it.
+     *
+     * <p>1.7.10's {@code getTopSolidOrLiquidBlock} skipped {@code Material.leaves} and anything
+     * {@code isFoliage}, so in a forest it returned the ground under the canopy. The nearest modern
+     * heightmap, {@code WORLD_SURFACE_WG}, is simply "not air" and returns the top of the tree -- so
+     * every attempt that landed in a forest hit leaves and was rejected outright by the log/leaf test
+     * in {@link #canGenerateAt}, and forests are a large share of the overworld. That is a big part of
+     * why pylons became rare. Descending past the canopy restores the original behaviour.
+     */
+    private static int groundLevel(WorldGenLevel world, int x, int z) {
+        int y = world.getHeight(Heightmap.Types.WORLD_SURFACE_WG, x, z) - 1;
+        int floor = world.getMinY();
+        while (y > floor) {
+            BlockState state = world.getBlockState(new BlockPos(x, y, z));
+            if (!state.is(BlockTags.LEAVES) && !state.is(BlockTags.LOGS) && !state.isAir())
+                break;
+            y--;
+        }
+        return y;
     }
 
     public static boolean isSelectedChunk(long worldSeed, int chunkX, int chunkZ) {
