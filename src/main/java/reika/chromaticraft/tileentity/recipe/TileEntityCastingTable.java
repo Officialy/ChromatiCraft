@@ -783,12 +783,15 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver
     @Override protected void writeSyncTag(CompoundTag tag) {
         super.writeSyncTag(tag);
         tag.putInt("castingTick", craftingTick); tag.putInt("castingDuration", craftingDuration); tag.putInt("castingAmount", craftingAmount); tag.putInt("tableXP", tableXP);
-        ItemStack preview = this.getDisplayOutput();
-        if (!preview.isEmpty()) {
-            RegistryAccess access = level == null ? RegistryAccess.EMPTY : level.registryAccess();
-            ItemStack.CODEC.encodeStart(access.createSerializationContext(NbtOps.INSTANCE), preview).result()
-                    .ifPresent(encoded -> tag.put("recipeOutput", encoded));
-        }
+        // This key must be written on EVERY sync, including when the preview is empty.
+        // CompoundSyncPacket diffs by iterating the keys present in the outgoing tag, so a key that
+        // was sent last time and is omitted now is never compared, never marked changed, and never
+        // cleared on the client -- it just keeps the previous value. Omitting it when empty is what
+        // left the last crafted recipe sitting in the result slot after the grid was emptied.
+        // OPTIONAL_CODEC (unlike CODEC) round-trips ItemStack.EMPTY, so the cleared state travels.
+        RegistryAccess access = level == null ? RegistryAccess.EMPTY : level.registryAccess();
+        ItemStack.OPTIONAL_CODEC.encodeStart(access.createSerializationContext(NbtOps.INSTANCE), this.getDisplayOutput())
+                .result().ifPresent(encoded -> tag.put("recipeOutput", encoded));
         this.getDisplayAura().writeToNBT("recipeAura", tag);
         tag.putInt("recipeTier", activeRecipe != null ? activeRecipe.value().tier().ordinal() : clientRecipeTier.ordinal());
         tag.putBoolean("runes", hasRunes); tag.putBoolean("temple", hasTemple); tag.putBoolean("multiblock", hasMultiblock); tag.putBoolean("pylonStructure", hasPylonStructure);
@@ -801,7 +804,7 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver
         RegistryAccess access = level == null ? RegistryAccess.EMPTY : level.registryAccess();
         net.minecraft.nbt.Tag outputTag = tag.get("recipeOutput");
         clientRecipeOutput = outputTag == null ? ItemStack.EMPTY
-                : ItemStack.CODEC.parse(access.createSerializationContext(NbtOps.INSTANCE), outputTag).result().orElse(ItemStack.EMPTY);
+                : ItemStack.OPTIONAL_CODEC.parse(access.createSerializationContext(NbtOps.INSTANCE), outputTag).result().orElse(ItemStack.EMPTY);
         clientRecipeAura.clear();
         clientRecipeAura.readFromNBT("recipeAura", tag);
         int recipeTier = tag.getIntOr("recipeTier", 0);
