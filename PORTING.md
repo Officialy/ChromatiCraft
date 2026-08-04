@@ -2046,7 +2046,12 @@ the test structures sit in unloaded chunks — but that was not proven, and the 
 work.
 
 Things tried that did **not** help: a superflat throwaway level, `spawn-protection=0`,
-`gamerule spawnChunkRadius 32`, and running tests one at a time instead of as a batch.
+`gamerule spawnChunkRadius 32`, running tests one at a time instead of as a batch, and — the most
+promising one, tested last — **forceloading the whole test area** (`forceload add` over 512x512
+blocks in four commands, which the server accepts and reports). That last one directly targeted the
+unloaded-chunk hypothesis, and it failed the same way: `Running 68 test(s)`, then eight and a half
+minutes of setup, then `Running test environment 'chromaticraft:default' batch 0 (50 tests)`, then
+nothing. The unloaded-chunk explanation is therefore **not** the cause, or not the only one.
 
 One thing that *did* work, early and once: a single `test run` completed in about a second and
 printed `All required tests passed :)`, against the stock `world` at the stock settings. That was not
