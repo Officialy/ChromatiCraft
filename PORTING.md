@@ -2096,3 +2096,71 @@ dedicated server rather than under `gameTestServer`.
 The three temples are left standing in `run/world` at (16,123,16), (56,123,16) and (96,123,16), tiers
 1/2/3, so the arc walk can start from a table instead of building one. Note the area needs
 `forceload add -16 -16 112 112` if placing more while no player is online.
+
+### Worldgen audit: pylon step, tiered-ore band, and a generated-content census — 2026-08-04
+
+Two worldgen defects fixed, both found by censusing a pregenerated world's region files for
+ChromatiCraft block ids rather than by reading code.
+
+**Pylons generated before vegetation.** The feature was registered at `SURFACE_STRUCTURES`
+(decoration step 4); `VEGETAL_DECORATION` is step 9. No tree exists in the chunk at step 4, so every
+tree branch in `PylonFeature.canGenerateAt` / `isFloorReplaceable` / `isAirReplaceable` — and the
+canopy-descent commit that preceded this one — was dead code during natural generation and only ever
+affected `/place feature`. Trees then generated on top of the site the feature had just verified as
+clear. V33a's `PylonGenerator` was a `RetroactiveGenerator` and therefore ran post-population, which
+is why its site test is saturated with tree handling (`getTreeDodgeAttempt`, `array.sink` through
+wood and leaves). Now at `TOP_LAYER_MODIFICATION`, the last step, which is the faithful analogue.
+
+**Tiered ores could never generate.** `TieredOreHeightPlacement` offset V33a's y roll by the level's
+minimum build height, so the whole overworld band landed in y [-64, 0) — deepslate — while both
+overworld ore features target `minecraft:stone`. Absolute y is also correct everywhere else: the
+Nether and End floors are still 0, so only the overworld floor moved. Measured on a 2,189-chunk
+pregen, `energized_rock` went 0% -> 22.9% of chunks and `elemental_stones` 0% -> 22.1%, with a y
+histogram matching the source roll (~43% in each of y 0-15 and 16-31, tapering to nil by 48-63 where
+attempts reach the surface). Density remains below V33a's, where y 0-64 was solid stone throughout;
+modern y 0-8 is the deepslate transition and a stone-only target loses it. Adding
+`minecraft:deepslate` to the target list would recover that, but V33a targeted `Blocks.stone` alone,
+so it is recorded here as a separate decision rather than bundled in.
+
+**Census method, worth reusing.** Region chunks store palette names and biome ids as literal strings,
+so decompressing each chunk and substring-searching the raw NBT gives an accurate presence census per
+dimension with no NBT parse. Two traps: the world seed lives in `data/minecraft/world_gen_settings
+.dat`, not `level.dat`, in 26.x; and per-chunk region timestamps are *last-save* times, not
+generation times, so bucketing density by timestamp is biased — visited chunks get re-saved.
+
+**What the census showed as healthy** over a fresh 10,276-chunk overworld: all sixteen cave-crystal
+colours (~1.6-2.0% of chunks each), all sixteen dye-leaf colours, `rainbow_forest` 1.84%,
+`rainbow_stream` 0.40%. A nether pregen (1,764 chunks) confirms `firestone` at 11.05% and nether cave
+crystals across all sixteen colours. `luminous_cliffs` absent from a 10k sample is sample size, not a
+defect — it replaces `WINDSWEPT_HILLS`/`STONY_SHORE` inside a weight-2 TerraBlender region and
+`/locate biome` resolves it.
+
+**Pylon acceptance rate is still the open question.** Roughly 4 pylon chunks against ~98 grid
+candidates in that same fresh world (~4%), and the grid itself is faithful (625 candidate cells per
+256x256 against `ShuffledGrid`'s 676). The site predicate was audited against source and is faithful
+— `ReikaWorldHelper.softBlocks` resolves to air/liquids/`isReplaceable`/vine/tallgrass/deadbush/fire/
+snow_layer, all covered by modern `canBeReplaced()`, and the cross-shaped footprint and both
+replaceable sets match. So the remaining sparsity is terrain roughness, not a coverage gap, and the
+step move above did not change it. Note that `RUNEUSE <- ALLCOLORS <- PYLON` puts sixteen
+distinct-colour pylon sightings on the critical path, so this rate is load-bearing for the beta arc.
+There is also no retrogen: V33a back-filled existing chunks and a placed feature cannot, so any
+already-explored world stays empty regardless.
+
+### Tiered plants: identity layer — 2026-08-04 (in progress, not accepted)
+
+`ChromaTieredPlants` registers V33a's `TieredPlants` as concrete per-plant identities — Aura Bloom,
+Rock Flower, Essence Lily, Element Bulbs, Radiance Bush — carrying each plant's `ProgressStage`,
+tint, drop identity, V33a `getGenerationChance`/`getGenerationCount`, siting branch, and exact
+`getHarvestResources` count formula. Display names are the authoritative `chroma.tieredplant.N`
+strings and the V33a front/back sprite pairs were extracted from the release jar and **renamed onto
+the concrete identities**; the legacy ordinal appears nowhere — not as a field, blockstate property,
+texture, model, or language path.
+
+Vibrant Pod and Glowing Roots are deferred: they drop `glowbeans` and `boostroot`, which have no
+registered identity, so their `bitRound`/`findTreeNear` trunk siting is not ported rather than given
+an invented drop. This is the same boundary the tiered ores draw.
+
+**Not yet written, and therefore not accepted:** the modern block class (V33a gates the selection box
+on tier, so an insufficient player cannot target the plant at all), the five-branch worldgen feature,
+`ChromaBlocks` registration, models/blockstates/loot/lang datagen, biome modifier, allowlist entries,
+and tests. `TieredWorldGenerator`'s plant half therefore still generates nothing.
