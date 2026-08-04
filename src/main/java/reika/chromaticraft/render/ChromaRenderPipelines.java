@@ -22,7 +22,10 @@ import net.neoforged.neoforge.client.event.RegisterRenderPipelinesEvent;
 import reika.chromaticraft.ChromatiCraft;
 
 /** Additive, full-bright pipelines matching V33a's direct-framebuffer ADDITIVEDARK passes.
- * Depth writes let Minecraft 26.2 sort later translucent targets around the resulting glow. */
+ *
+ * <p>Neither pipeline writes depth — see the note above {@link #ADDITIVE_PARTICLE}. Ordering against
+ * water and clouds is handled by <em>when</em> the glow is submitted (after the translucent chunk
+ * layer), not by stamping it into the depth buffer. */
 public final class ChromaRenderPipelines {
 
     /** V33a {@code BlendMode.ADDITIVEDARK}: GL_ONE, GL_ONE_MINUS_SRC_COLOR. */
@@ -39,9 +42,7 @@ public final class ChromaRenderPipelines {
             .withColorTargetState(new ColorTargetState(ADDITIVE_DARK))
             .withVertexBinding(0, DefaultVertexFormat.POSITION_TEX_COLOR)
             .withPrimitiveTopology(PrimitiveTopology.QUADS)
-            // Writes depth: this pipeline is submitted after the translucent chunk layer, so nothing
-            // it stamps can reject water, and the cloud compositor needs the depth to sort against.
-            .withDepthStencilState(new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL, true))
+            .withDepthStencilState(new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL, false))
             .withCull(false)
             .build();
 
@@ -54,6 +55,12 @@ public final class ChromaRenderPipelines {
      * afterwards then fails its depth test against them -- which showed up as square holes punched
      * through water wherever a pylon particle was in front of it. Depth TEST stays on, so solid
      * terrain still occludes the glow.
+     *
+     * This was re-learned the hard way: ADDITIVE_SPRITE was briefly given depth write back, on the
+     * theory that the cloud compositor needed something to sort against. It does not, and the result
+     * was that the pylon glow occluded both water and clouds outright. Ordering is the submission
+     * phase's job (TRANSLUCENT_CUSTOM_GEOMETRY, i.e. after the translucent chunk layer); a glow that
+     * adds light to whatever is behind it must never claim depth. Do not set this to true again.
      */
     public static final RenderPipeline ADDITIVE_PARTICLE = RenderPipeline.builder()
             .withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "pipeline/additive_particle"))
