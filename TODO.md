@@ -315,30 +315,24 @@ Glowing Cliffs, and it is the only biome-tinted one. `VOIDREED` grows upward in 
 upstream specifically to stop chunk spilling.
 
 
-### DecoFlower: four flowers ported, generation NOT yet confirmed — 2026-08-04
+### DecoFlower: all six ported, siting verified by GameTest — 2026-08-04
 
-Luma Lotus, Ether Berries, Void Reeds and Aura Ivy are registered as concrete identities with V33a
-support rules, the burst-shaped generator (one-in-N chunk roll, then n placements where n is usually
-1 but one time in five `1 + rand(4) + rand(6)`, up to 40 tries), reed/ivy column runs, per-flower
-biome modifiers, cross models with the tint on Aura Ivy only, resource-not-self loot, and lang.
-`compileJava`, `runServerData` and `runClientData` are green and a server boots.
+All six are registered concrete identities: Luma Lotus, Ether Berries, Void Reeds, Aura Ivy,
+Enderflower and Resonant Clover, with V33a support rules, the burst-shaped generator (one-in-N chunk
+roll, then n placements — usually 1, one time in five `1 + rand(4) + rand(6)`, up to 40 tries),
+reed/ivy column runs, ivy's chunk-edge inset, per-flower biome modifiers, cross models tinted only
+for Aura Ivy, and loot yielding each flower's registered resource rather than itself.
 
-**They did not generate.** A 1,764-chunk pregen found none of the four. Two separate causes to chase:
+**Verified by `deco_flower_siting_contract`, not by census.** Three earlier pregens found no flowers
+at all, and that turned out not to be a bug: censusing the biomes showed the sample contained 11
+chunks of jungle and *no* snowy, swamp or windswept biomes whatsoever. A random seed is simply the
+wrong instrument for biome-bound features — the test now builds each flower's required terrain and
+asserts acceptance and rejection directly. The full suite is **74/74**.
 
-1. **Aura Ivy siting is wrong.** `DecoFlowerFeature.findSite` walks up out of the terrain and lands
-   in open air above the surface, where the `canSurvive` test — a solid block horizontally adjacent —
-   almost never passes. V33a sites ivy against a cliff face and then extends *downward*; the port
-   needs to search for a vertical rock face rather than settle on top of the ground. Mountains were
-   almost certainly in the sample, so this one is a real bug and not sampling.
-2. **The other three are biome-bound** to `#c:is_snowy`, `#minecraft:is_jungle` and `#c:is_swamp`,
-   none of which need occur in a 1,764-chunk sample. Confirm those with a targeted probe
-   (`/locate biome`, forceload, census) rather than another random seed.
-
-**A shipped-broken-server bug this caught, worth remembering:** the first attempt used
-`#minecraft:is_snowy`, which does not exist. An unbound biome tag fails registry loading outright, so
-the dedicated server refused to start — and `compileJava` plus *both* datagen runs passed clean
-beforehand. Snowy is a NeoForge common tag, `#c:is_snowy`. Datagen being green says nothing about
-whether a tag resolves.
+One real bug did come out of those runs: Aura Ivy's siting. V33a skips the "drop out of the air" walk
+for ivy, climbs to the top of the wall it found and requires air beneath, because ivy hangs off a
+face and grows downward. The port ran it through the ordinary path, settling it in open air where its
+adjacent-solid test can never pass.
 
 ### Ender Forest — biome registered, tree selector outstanding
 

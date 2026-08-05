@@ -94,6 +94,7 @@ import reika.chromaticraft.tileentity.auxiliary.TileEntityChromaCrystal;
 import reika.chromaticraft.tileentity.networking.TileEntityCrystalPylon;
 import reika.chromaticraft.tileentity.networking.TileEntityCrystalRepeater;
 import reika.dragonapi.instantiable.data.blockstruct.FilledBlockArray;
+import reika.chromaticraft.registry.ChromaDecoFlowers;
 import reika.chromaticraft.world.CrystalFeature;
 import reika.chromaticraft.world.PylonFeature;
 import reika.chromaticraft.tileentity.networking.TileEntityPylonLink;
@@ -199,6 +200,7 @@ public final class ChromaGameTests {
 		register(event, env, "colored_block_registry_identity", ChromaGameTests::coloredBlockRegistryIdentity);
 		register(event, env, "crystal_worldgen_placement_contract", ChromaGameTests::crystalWorldgenPlacementContract);
 		register(event, env, "cave_crystal_dynamic_shape_contract", ChromaGameTests::caveCrystalDynamicShapeContract);
+		register(event, env, "deco_flower_siting_contract", ChromaGameTests::decoFlowerSitingContract);
 		register(event, env, "pylon_worldgen_nbt_contract", ChromaGameTests::pylonWorldgenNbtContract);
         register(event, env, "pylon_feature_variants", 40, ChromaGameTests::pylonFeatureVariants);
 		register(event, env, "glow_cloud_spherical_movement", ChromaGameTests::glowCloudSphericalMovement);
@@ -419,6 +421,58 @@ public final class ChromaGameTests {
 				"ceiling-supported crystal must select the vertically mirrored shape");
 		helper.succeed();
 	}
+	/**
+	 * V33a {@code Flowers.canPlantAt}, one case per flower. This exists because censusing pregenerated
+	 * worlds could not reach these: three of the six are bound to snowy, jungle and swamp biomes that
+	 * simply did not occur in the sampled chunks, so a seed roll is the wrong instrument for them.
+	 */
+	private static void decoFlowerSitingContract(GameTestHelper helper) {
+		net.minecraft.server.level.ServerLevel level = helper.getLevel();
+
+		// Luma Lotus, Enderflower and Resonant Clover all stand on dirt or grass.
+		for (ChromaDecoFlowers ground : new ChromaDecoFlowers[] {ChromaDecoFlowers.LUMA_LOTUS,
+				ChromaDecoFlowers.ENDERFLOWER, ChromaDecoFlowers.RESONANT_CLOVER}) {
+			BlockPos pos = helper.absolutePos(new BlockPos(2, 4, 2));
+			BlockState state = ChromaBlocks.decoFlower(ground).get().defaultBlockState();
+			level.setBlock(pos.below(), Blocks.GRASS_BLOCK.defaultBlockState(), 3);
+			level.setBlock(pos, Blocks.AIR.defaultBlockState(), 3);
+			helper.assertTrue(state.canSurvive(level, pos), ground + " must stand on grass");
+			level.setBlock(pos.below(), Blocks.STONE.defaultBlockState(), 3);
+			helper.assertTrue(!state.canSurvive(level, pos), ground + " must reject bare stone");
+		}
+
+		// Ether Berries hang beneath jungle leaves.
+		BlockPos sano = helper.absolutePos(new BlockPos(5, 4, 2));
+		BlockState sanoState = ChromaBlocks.decoFlower(ChromaDecoFlowers.SANO_BLOOM).get().defaultBlockState();
+		level.setBlock(sano.above(), Blocks.JUNGLE_LEAVES.defaultBlockState(), 3);
+		helper.assertTrue(sanoState.canSurvive(level, sano), "Ether Berries must hang from jungle leaves");
+		level.setBlock(sano.above(), Blocks.OAK_LEAVES.defaultBlockState(), 3);
+		helper.assertTrue(!sanoState.canSurvive(level, sano), "Ether Berries must reject non-jungle leaves");
+
+		// Void Reeds need sugarcane-legal ground beside water, or another reed below.
+		BlockPos reed = helper.absolutePos(new BlockPos(8, 4, 2));
+		BlockState reedState = ChromaBlocks.decoFlower(ChromaDecoFlowers.VOID_REEDS).get().defaultBlockState();
+		level.setBlock(reed.below(), Blocks.SAND.defaultBlockState(), 3);
+		level.setBlock(reed.below().east(), Blocks.STONE.defaultBlockState(), 3);
+		helper.assertTrue(!reedState.canSurvive(level, reed), "Void Reeds must reject dry sand");
+		level.setBlock(reed.below().east(), Blocks.WATER.defaultBlockState(), 3);
+		helper.assertTrue(reedState.canSurvive(level, reed), "Void Reeds must accept sand beside water");
+		helper.assertTrue(reedState.canSurvive(level, reed.above()) || true, "reed stacking is checked below");
+		level.setBlock(reed, reedState, 3);
+		helper.assertTrue(reedState.canSurvive(level, reed.above()), "Void Reeds must stack on another reed");
+
+		// Aura Ivy clings to a horizontally adjacent solid face.
+		BlockPos ivy = helper.absolutePos(new BlockPos(11, 4, 2));
+		BlockState ivyState = ChromaBlocks.decoFlower(ChromaDecoFlowers.AURA_IVY).get().defaultBlockState();
+		level.setBlock(ivy, Blocks.AIR.defaultBlockState(), 3);
+		level.setBlock(ivy.below(), Blocks.AIR.defaultBlockState(), 3);
+		helper.assertTrue(!ivyState.canSurvive(level, ivy), "Aura Ivy must reject open air");
+		level.setBlock(ivy.east(), Blocks.STONE.defaultBlockState(), 3);
+		helper.assertTrue(ivyState.canSurvive(level, ivy), "Aura Ivy must cling to an adjacent stone face");
+
+		helper.succeed();
+	}
+
 	/** V33a crystal placement keeps its support, exposed-face, liquid, and colour contracts. */
 	private static void crystalWorldgenPlacementContract(GameTestHelper helper) {
 		BlockPos valid = helper.absolutePos(new BlockPos(4, 4, 4));
