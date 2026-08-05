@@ -90,6 +90,7 @@ public final class ChromaWorldGenProvider {
         builder.add(Registries.CONFIGURED_FEATURE, bootstrap -> {
             HolderGetter<Feature<?>> features = bootstrap.lookup(Registries.FEATURE);
             registerConfigured(bootstrap, features, CAVE_CRYSTAL);
+            registerConfigured(bootstrap, features, id("cave_indicator"));
             for (ChromaTieredPlants plant : ChromaTieredPlants.list)
                 registerConfigured(bootstrap, features, id(plant.registryName()));
             registerConfigured(bootstrap, features, PYLON);
@@ -124,6 +125,7 @@ public final class ChromaWorldGenProvider {
         builder.add(Registries.PLACED_FEATURE, bootstrap -> {
             HolderGetter<ConfiguredFeature<?, ?>> configured = bootstrap.lookup(Registries.CONFIGURED_FEATURE);
             registerPlaced(bootstrap, configured, CAVE_CRYSTAL);
+            registerPlaced(bootstrap, configured, id("cave_indicator"), List.of(BiomeFilter.biome()));
             for (ChromaTieredPlants plant : ChromaTieredPlants.list)
                 registerPlaced(bootstrap, configured, id(plant.registryName()), List.of(
                         RarityFilter.onAverageOnceEvery(plant.generationChance()),

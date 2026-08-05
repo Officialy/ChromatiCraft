@@ -41,6 +41,12 @@ public final class ChromaBiomeModifierProvider implements DataProvider {
         // yet: all of that logic was dead during worldgen, and trees then generated on top of the
         // site the feature had just verified as clear. TOP_LAYER_MODIFICATION is the last step, so
         // it is the faithful analogue of generating post-population.
+        // V33a CaveIndicatorGenerator is gated on BiomeGlowingCliffs.isGlowingCliffs, so this goes
+        // to the two Luminous Cliffs biomes only rather than to an overworld tag.
+        futures.add(saveManyBiomes(cache, "cave_indicator_cliffs",
+                List.of(id("luminous_cliffs").toString(), id("luminous_cliffs_shores").toString()),
+                List.of(id("cave_indicator").toString()),
+                GenerationStep.Decoration.UNDERGROUND_DECORATION));
         futures.add(save(cache, "pylon_overworld", "#minecraft:is_overworld",
                 PYLON, GenerationStep.Decoration.TOP_LAYER_MODIFICATION));
         // V33a TieredWorldGenerator was a RetroactiveGenerator, so plants were sited against a fully
@@ -62,6 +68,22 @@ public final class ChromaBiomeModifierProvider implements DataProvider {
         futures.add(save(cache, "tiered_ore_nether", "#minecraft:is_nether",
                 id("firestone").toString(), GenerationStep.Decoration.UNDERGROUND_ORES));
         return CompletableFuture.allOf(futures.build().toArray(CompletableFuture[]::new));
+    }
+
+    /** Same as {@link #saveMany} but for an explicit biome list rather than a tag. */
+    private CompletableFuture<?> saveManyBiomes(CachedOutput cache, String name, List<String> biomes,
+            List<String> features, GenerationStep.Decoration step) {
+        Path path = pathProvider.json(id(name));
+        JsonObject json = new JsonObject();
+        json.addProperty("type", "neoforge:add_features");
+        com.google.gson.JsonArray biomeArray = new com.google.gson.JsonArray();
+        biomes.forEach(biomeArray::add);
+        json.add("biomes", biomeArray);
+        com.google.gson.JsonArray array = new com.google.gson.JsonArray();
+        features.forEach(array::add);
+        json.add("features", array);
+        json.addProperty("step", step.getName());
+        return DataProvider.saveStable(cache, json, path);
     }
 
     private CompletableFuture<?> saveMany(CachedOutput cache, String name, String biomes,

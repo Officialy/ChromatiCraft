@@ -1,0 +1,11 @@
+{
+  "type": "neoforge:add_features",
+  "biomes": [
+    "chromaticraft:luminous_cliffs",
+    "chromaticraft:luminous_cliffs_shores"
+  ],
+  "features": [
+    "chromaticraft:cave_indicator"
+  ],
+  "step": "underground_decoration"
+}

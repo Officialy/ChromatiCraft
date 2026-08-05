@@ -37,6 +37,7 @@ import reika.chromaticraft.auxiliary.loot.FortuneScaledChance;
 import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.block.worldgen26.BlockTieredOre;
 import reika.chromaticraft.block.worldgen26.BlockTieredPlant;
+import reika.chromaticraft.block.worldgen26.BlockCaveIndicator;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.CrystalElement;
 
@@ -80,6 +81,11 @@ public final class ChromaLootProvider extends LootTableProvider {
 				}
 				else if (block instanceof BlockCrystalRune) {
 					this.dropSelf(block);
+				}
+				else if (block instanceof BlockCaveIndicator) {
+					// V33a getItemDropped defers to Blocks.stone, so mining one yields cobblestone
+					// and the crystal itself is never obtainable from the world.
+					this.add(block, createSingleItemTable(net.minecraft.world.level.block.Blocks.COBBLESTONE));
 				}
 				else if (block instanceof BlockTieredPlant) {
 					// Same contract as the tiered ores: V33a decides every drop in code from the

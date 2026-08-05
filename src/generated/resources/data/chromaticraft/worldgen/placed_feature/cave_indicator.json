@@ -1,0 +1,8 @@
+{
+  "feature": "chromaticraft:cave_indicator",
+  "placement": [
+    {
+      "type": "minecraft:biome"
+    }
+  ]
+}

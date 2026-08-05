@@ -111,6 +111,7 @@ public class ChromaLang extends LanguageProvider {
 		for (ChromaClusterItems cluster : ChromaClusterItems.list) {
 			add(ChromaItems.CLUSTERS.get(cluster).get(), cluster.displayName());
 		}
+		add(ChromaBlocks.CAVE_INDICATOR.get(), "Piezo Crystals");
 		for (ChromaTieredPlants plant : ChromaTieredPlants.list) {
 			add(ChromaBlocks.tieredPlant(plant).get(), plant.displayName());
 		}

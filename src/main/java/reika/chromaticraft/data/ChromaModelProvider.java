@@ -175,6 +175,7 @@ public class ChromaModelProvider extends ModelProvider {
 
 
 
+		caveIndicatorBlock(blockStateOut, itemModelOut, modelOut);
 		tieredPlantBlocks(blockStateOut, itemModelOut, modelOut);
 		pylonStructureBlock(blockStateOut, itemModelOut, modelOut);
 		runeBlock(blockStateOut, itemModelOut, modelOut);
@@ -220,6 +221,65 @@ public class ChromaModelProvider extends ModelProvider {
 	 * element pairs, the second full-bright and offset a hair along its own normal so it does not
 	 * z-fight the first.
 	 */
+	/**
+	 * V33a CaveIndicatorRenderer: an ordinary stone-textured block with its own top sprite, plus one
+	 * extra top-face quad inset 0.1 blocks (1.6 pixels) carrying the inner sprite -- the active one
+	 * at brightness 240, the inactive one lit normally.
+	 */
+	private static void caveIndicatorBlock(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		Block block = ChromaBlocks.CAVE_INDICATOR.get();
+		Identifier base = ModelLocationUtils.getModelLocation(block);
+		Identifier active = base.withSuffix("_active");
+		modelOut.accept(base, () -> caveIndicatorModel("chromaticraft:block/caveindicator_inner_inactive", false));
+		modelOut.accept(active, () -> caveIndicatorModel("chromaticraft:block/caveindicator_inner", true));
+		blockStateOut.accept(MultiVariantGenerator.dispatch(block)
+				.with(net.minecraft.client.data.models.blockstates.PropertyDispatch
+						.initial(reika.chromaticraft.block.worldgen26.BlockCaveIndicator.ACTIVE)
+						.select(false, new MultiVariant(WeightedList.of(new Variant(base))))
+						.select(true, new MultiVariant(WeightedList.of(new Variant(active))))));
+		itemModelOut.accept(block.asItem(), ItemModelUtils.plainModel(base));
+	}
+
+	private static JsonObject caveIndicatorModel(String inner, boolean emissive) {
+		JsonObject root = new JsonObject();
+		root.addProperty("parent", "minecraft:block/block");
+		JsonObject textures = new JsonObject();
+		textures.addProperty("side", "minecraft:block/stone");
+		textures.addProperty("top", "chromaticraft:block/caveindicator_top");
+		textures.addProperty("inner", inner);
+		textures.addProperty("particle", "minecraft:block/stone");
+		root.add("textures", textures);
+		JsonObject faces = new JsonObject();
+		for (Direction face : Direction.values()) {
+			String name = face.getSerializedName();
+			faces.add(name, modelFace(face == Direction.UP ? "#top" : "#side", name));
+		}
+		JsonArray elements = new JsonArray();
+		elements.add(modelElement(0, 16, faces, false));
+		// The inner quad: a flat element whose up face sits 1.6 pixels below the top.
+		JsonObject innerFaces = new JsonObject();
+		JsonObject up = new JsonObject();
+		up.addProperty("texture", "#inner");
+		up.add("uv", uvFull());
+		innerFaces.add("up", up);
+		JsonObject element = new JsonObject();
+		JsonArray from = new JsonArray();
+		from.add(0F); from.add(14.4F); from.add(0F);
+		JsonArray to = new JsonArray();
+		to.add(16F); to.add(14.4F); to.add(16F);
+		element.add("from", from);
+		element.add("to", to);
+		element.add("faces", innerFaces);
+		if (emissive) {
+			element.addProperty("shade", false);
+			element.addProperty("light_emission", 15);
+		}
+		elements.add(element);
+		root.add("elements", elements);
+		return root;
+	}
+
 	private static void tieredPlantBlocks(Consumer<BlockModelDefinitionGenerator> blockStateOut,
 			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
 		for (ChromaTieredPlants plant : ChromaTieredPlants.list) {

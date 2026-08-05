@@ -49,6 +49,7 @@ import reika.chromaticraft.block.worldgen26.BlockGlowRoot;
 import reika.chromaticraft.block.worldgen26.BlockLumaFluid;
 import reika.chromaticraft.block.worldgen26.BlockTieredOre;
 import reika.chromaticraft.block.worldgen26.BlockTieredPlant;
+import reika.chromaticraft.block.worldgen26.BlockCaveIndicator;
 import reika.chromaticraft.magic.progression.ProgressStage;
 
 /**
@@ -214,6 +215,14 @@ public final class ChromaBlocks {
 	public static DeferredBlock<BlockTieredPlant> tieredPlant(ChromaTieredPlants plant) {
 		return TIERED_PLANTS.get(plant);
 	}
+
+	/**
+	 * V33a Piezo Crystal: stone's hardness, a third of its resistance, and light 10 while active.
+	 */
+	public static final DeferredBlock<BlockCaveIndicator> CAVE_INDICATOR = register("cave_indicator",
+			() -> new BlockCaveIndicator(blockProperties().mapColor(MapColor.STONE)
+					.strength(1.5F, 10F / 3F).requiresCorrectToolForDrops()
+					.lightLevel(state -> state.getValue(BlockCaveIndicator.ACTIVE) ? 10 : 0)));
 
 	/** V33a BlockTieredOre: hardness 4, resistance 5. */
 	private static BlockBehaviour.Properties oreProperties() {

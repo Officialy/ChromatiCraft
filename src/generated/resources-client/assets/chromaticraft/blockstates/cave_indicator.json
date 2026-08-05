@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "active=false": {
+      "model": "chromaticraft:block/cave_indicator"
+    },
+    "active=true": {
+      "model": "chromaticraft:block/cave_indicator_active"
+    }
+  }
+}

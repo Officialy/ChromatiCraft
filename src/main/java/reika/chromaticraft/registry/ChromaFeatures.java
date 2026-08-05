@@ -10,6 +10,7 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.world.CrystalFeature;
 import reika.chromaticraft.world.PylonFeature;
+import reika.chromaticraft.world.CaveIndicatorFeature;
 import reika.chromaticraft.world.TieredPlantFeature;
 import reika.chromaticraft.world.luminous.LumaPatchFeature;
 import reika.chromaticraft.world.luminous.LuminousCliffsTerrainFeature;
@@ -39,6 +40,9 @@ public final class ChromaFeatures {
                     () -> ChromaBlocks.tieredPlant(plant).get().defaultBlockState())));
         return map;
     }
+
+    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> CAVE_INDICATOR =
+            FEATURES.register("cave_indicator", CaveIndicatorFeature::new);
 
     public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> PYLON =
             FEATURES.register("pylon", () -> new PylonFeature());

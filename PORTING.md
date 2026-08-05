@@ -2200,3 +2200,42 @@ zero-to-nonzero transitions are the load-bearing evidence, not the exact percent
 (which is how Essence Lily and Radiance Bush should be pinned down rather than by seed lottery), the
 client-side tier check so an insufficient player sees nothing rather than relying on the shape gate
 alone, and Vibrant Pod and Glowing Roots once `glowbeans` and `boostroot` have identities.
+
+### Cave Indicator (Piezo Crystals) — 2026-08-04
+
+`CaveIndicatorGenerator` is the second of V33a's thirteen overworld `IWG` generators to land this
+cycle. It seeds stone under the Glowing Cliffs — this port's Luminous Cliffs — with a block that
+looks like ordinary stone until something steps on it, then lights up and emits redstone.
+
+`BlockCaveIndicator` keeps V33a's on/off in an ordinary boolean blockstate rather than two registered
+blocks. That is not a relaxation of the concrete-identity rule but the case the rule explicitly
+exempts: one object with genuine runtime state, not a variant family. Retained from source: light 10
+while active and 0 otherwise, weak redstone 15 while active, a re-step refreshing the shutdown timer
+instead of stacking a second one, deactivation after 100-300 ticks, and dropping what the stone it
+replaced would drop rather than itself.
+
+`CaveIndicatorFeature` keeps upstream's full 16x16-column loop with two attempts per column. That is
+deliberate: expressing it as vanilla `count` modifiers would turn "twice per column" into "N times
+per chunk" and change the distribution. The y band stays absolute for the same reason the tiered ore
+band does. Biome restriction lives in the biome modifier, which attaches the feature to
+`luminous_cliffs` and `luminous_cliffs_shores` only rather than to an overworld tag — so the provider
+gained an explicit-biome-list variant alongside its tag-based one.
+
+The model reproduces `CaveIndicatorRenderer`: a stone-textured cube with the source's own top sprite,
+plus one extra top-face quad inset 0.1 blocks carrying the inner sprite, full-bright in the active
+variant and normally lit in the inactive one. Both inner sprites keep their original animation
+metadata.
+
+One source dependency is marked rather than faked: V33a plays `ChromaSounds.DING` upshifted to a
+random degree of the C major scale through DragonAPI's `MusicKey`/`KeySignature` interval helper,
+which is not ported. The sound is registered but the pitched variant is left as a `CHROMA-PORT`
+marker instead of substituting an arbitrary pitch.
+
+**Verification boundary, stated precisely.** `compileJava`, `runServerData` and `runClientData` are
+green, and the generated biome modifier, both blockstate variants, models and the cobblestone loot
+table were inspected. It has **not** been observed generating in a world: Luminous Cliffs is a
+weight-2 TerraBlender replacement of `WINDSWEPT_HILLS`/`STONY_SHORE` and did not appear in any of
+this session's random-seed pregens, so a census cannot confirm it by luck. Verifying it needs a
+targeted probe — `/locate biome chromaticraft:luminous_cliffs`, then forceload that area and census
+for `chromaticraft:cave_indicator` — or a focused GameTest that builds the required dark, sky-hidden
+stone itself. Until one of those runs this is wiring-verified only.
