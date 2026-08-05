@@ -35,6 +35,9 @@ public final class ChromaRegion extends Region {
             builder.replaceBiome(Biomes.WINDSWEPT_HILLS, ChromaBiomes.LUMINOUS_CLIFFS);
             builder.replaceBiome(Biomes.WINDSWEPT_FOREST, ChromaBiomes.LUMINOUS_CLIFFS);
             builder.replaceBiome(Biomes.STONY_SHORE, ChromaBiomes.LUMINOUS_CLIFFS_SHORES);
+            // V33a's Ender Forest replaced ordinary forest; dark forest is the closest slot that
+            // does not collide with the Rainbow Forest already taking FOREST.
+            builder.replaceBiome(Biomes.DARK_FOREST, ChromaBiomes.ENDER_FOREST);
         });
     }
 }

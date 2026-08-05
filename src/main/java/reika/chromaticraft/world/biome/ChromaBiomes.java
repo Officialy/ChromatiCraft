@@ -32,6 +32,7 @@ public final class ChromaBiomes {
     public static final ResourceKey<Biome> RAINBOW_STREAM = key("rainbow_stream");
     public static final ResourceKey<Biome> LUMINOUS_CLIFFS = key("luminous_cliffs");
     public static final ResourceKey<Biome> LUMINOUS_CLIFFS_SHORES = key("luminous_cliffs_shores");
+    public static final ResourceKey<Biome> ENDER_FOREST = key("ender_forest");
 
     private static final int WATER_COLOR = 0x00ffff;
     private static final int SKY_COLOR = 0x648cff;
@@ -53,6 +54,7 @@ public final class ChromaBiomes {
         context.register(RAINBOW_STREAM, create(features, carvers, true));
         context.register(LUMINOUS_CLIFFS, createLuminousCliffs(features, carvers, false));
         context.register(LUMINOUS_CLIFFS_SHORES, createLuminousCliffs(features, carvers, true));
+        context.register(ENDER_FOREST, createEnderForest(features, carvers));
     }
 
     private static Biome create(HolderGetter<PlacedFeature> features,
@@ -88,6 +90,58 @@ public final class ChromaBiomes {
         return new Biome.BiomeBuilder()
                 .hasPrecipitation(true)
                 .temperature(stream ? 0.6375F : 0.7F)
+                .downfall(0.8F)
+                .setAttribute(EnvironmentAttributes.SKY_COLOR, SKY_COLOR)
+                .setAttribute(EnvironmentAttributes.BACKGROUND_MUSIC,
+                        new BackgroundMusic(SoundEvents.MUSIC_BIOME_FOREST))
+                .specialEffects(new BiomeSpecialEffects.Builder()
+                        .waterColor(WATER_COLOR)
+                        .grassColorOverride(FOREST_GRASS)
+                        .foliageColorOverride(FOREST_FOLIAGE)
+                        .build())
+                .mobSpawnSettings(mobs.build())
+                .generationSettings(generation.build())
+                .build();
+    }
+
+    /**
+     * V33a {@code BiomeEnderForest}: a rainless forest whose monster list is cleared and rebuilt
+     * around endermen.
+     *
+     * <p>Source spawn weights are Enderman 10 against Creeper, Spider and Skeleton at 1 each, all in
+     * groups of 1-4, which is what makes the biome feel like an enderman wood rather than an ordinary
+     * one. Rain is disabled outright.
+     *
+     * <p>V33a also thins trees to 0.7x and picks between vanilla oak, vanilla big oak and three Ender
+     * Oak variants through a noise-driven weighted table (a {@code Simplex3DGenerator} at frequency
+     * 1/30, with each entry's weight shifted by the local noise value and a "no tree" entry
+     * competing alongside them). That selector has no vanilla equivalent and is not expressible as a
+     * biome tree feature, so it is deliberately absent here rather than approximated with a plain
+     * weighted list: the biome currently carries vanilla forest trees, and the real selector lands
+     * with the Ender Oak feature. See TODO.md.
+     */
+    private static Biome createEnderForest(HolderGetter<PlacedFeature> features,
+            HolderGetter<ConfiguredWorldCarver<?>> carvers) {
+        MobSpawnSettings.Builder mobs = new MobSpawnSettings.Builder()
+                .addSpawn(MobCategory.MONSTER, 10, new MobSpawnSettings.SpawnerData(EntityTypes.ENDERMAN, 1, 4))
+                .addSpawn(MobCategory.MONSTER, 1, new MobSpawnSettings.SpawnerData(EntityTypes.CREEPER, 1, 4))
+                .addSpawn(MobCategory.MONSTER, 1, new MobSpawnSettings.SpawnerData(EntityTypes.SPIDER, 1, 4))
+                .addSpawn(MobCategory.MONSTER, 1, new MobSpawnSettings.SpawnerData(EntityTypes.SKELETON, 1, 4));
+        BiomeGenerationSettings.Builder generation = new BiomeGenerationSettings.Builder(features, carvers);
+        addGlobalOverworldGeneration(generation);
+        BiomeDefaultFeatures.addDefaultOres(generation);
+        BiomeDefaultFeatures.addDefaultSoftDisks(generation);
+        BiomeDefaultFeatures.addForestFlowers(generation);
+        BiomeDefaultFeatures.addBushes(generation);
+        BiomeDefaultFeatures.addDefaultFlowers(generation);
+        BiomeDefaultFeatures.addForestGrass(generation);
+        BiomeDefaultFeatures.addDefaultMushrooms(generation);
+        BiomeDefaultFeatures.addDefaultExtraVegetation(generation, true);
+
+        return new Biome.BiomeBuilder()
+                // V33a setDisableRain().
+                .hasPrecipitation(false)
+                .temperature(0.7F)
                 .downfall(0.8F)
                 .setAttribute(EnvironmentAttributes.SKY_COLOR, SKY_COLOR)
                 .setAttribute(EnvironmentAttributes.BACKGROUND_MUSIC,

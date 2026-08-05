@@ -60,20 +60,43 @@ public final class DecoFlowerFeature extends Feature<NoneFeatureConfiguration> {
 		return done > 0;
 	}
 
-	/** V33a's column walk: settle out of the air onto the first thing that will hold this flower. */
+	/**
+	 * V33a's column walk: start within 25 blocks of the surface, settle, and take the first spot that
+	 * will hold this flower.
+	 *
+	 * <p>Aura Ivy is deliberately not the same walk. V33a skips the "drop out of the air" step for it,
+	 * then climbs to the *top* of whatever wall it found and requires air beneath, because ivy hangs
+	 * off a face and grows downward. Running it through the ordinary path settled it in open air above
+	 * the ground, where its "solid block horizontally adjacent" test cannot pass, and it generated in
+	 * zero chunks.
+	 */
 	private BlockPos findSite(WorldGenLevel world, int x, int z, RandomSource random, BlockState state) {
 		int surface = world.getHeight(Heightmap.Types.WORLD_SURFACE_WG, x, z);
-		// V33a: getTopSolidOrLiquidBlock +/- 25, then walk down out of any air.
+		boolean ivy = flower.siting() == ChromaDecoFlowers.Siting.IVY;
+		// V33a: getRandomPlusMinus(getTopSolidOrLiquidBlock, 25).
 		int y = surface + random.nextInt(51) - 25;
 		y = Math.min(Math.max(y, world.getMinY() + 1), world.getMaxY() - 1);
-		while (y > world.getMinY() + 1 && world.getBlockState(new BlockPos(x, y - 1, z)).isAir())
-			y--;
+		if (!ivy) {
+			while (y > world.getMinY() + 1 && world.getBlockState(new BlockPos(x, y - 1, z)).isAir())
+				y--;
+			if (y <= world.getMinY() + 1)
+				return null;
+		}
 		while (y < world.getMaxY() - 1 && !world.getBlockState(new BlockPos(x, y, z)).isAir())
 			y++;
 		BlockPos pos = new BlockPos(x, y, z);
-		if (!world.getBlockState(pos).isAir())
+		if (!world.getBlockState(pos).isAir() || !state.canSurvive(world, pos))
 			return null;
-		return state.canSurvive(world, pos) ? pos : null;
+		if (ivy) {
+			// Climb the face to its top, then insist on open air below so it hangs rather than sits.
+			while (pos.getY() < world.getMaxY() - 1
+					&& world.getBlockState(pos.above()).isAir()
+					&& state.canSurvive(world, pos.above()))
+				pos = pos.above();
+			if (!world.getBlockState(pos.below()).isAir())
+				return null;
+		}
+		return pos;
 	}
 
 	/** V33a's post-placement runs: reeds stack upward, ivy hangs downward. */

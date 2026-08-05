@@ -7,10 +7,8 @@ package reika.chromaticraft.registry;
  * every asset is named after its identity. Two members of the family — Glowing Daisy and Lumen Root —
  * already landed as concrete identities with the Luminous Cliffs vertical and are not repeated here.
  *
- * <p>Enderflower and Resonant Clover are absent for one reason only: both generate exclusively in the
- * Ender Forest, and {@code BiomeEnderForest} is still pristine and unregistered. They join this enum
- * as soon as that biome does — their drops (Distortion Crystal and Energetic Essence) are already
- * registered, so the biome is the whole of the gap.
+ * <p>Enderflower and Resonant Clover generate only in the Ender Forest, which is registered alongside
+ * them; both stand on dirt or grass exactly as Luma Lotus does.
  *
  * <p>{@code sano_bloom} keeps V33a's own identifier rather than a name derived from its display
  * string, because {@code ether_berries} is already taken by the registered item it drops and a block
@@ -25,7 +23,11 @@ public enum ChromaDecoFlowers {
 	/** Swamp reeds, growing upward in short runs. Drops Void Essence. */
 	VOID_REEDS("void_reeds", "Void Reeds", ChromaCraftingItems.VOID_DUST, Siting.REED, 4),
 	/** Clings to stone and hangs downward. The only biome-tinted flower. Drops Nature Fiber. */
-	AURA_IVY("aura_ivy", "Aura Ivy", ChromaCraftingItems.LIVING_ESSENCE, Siting.IVY, 1);
+	AURA_IVY("aura_ivy", "Aura Ivy", ChromaCraftingItems.LIVING_ESSENCE, Siting.IVY, 1),
+	/** Ender Forest only. Drops Distortion Crystal. */
+	ENDERFLOWER("enderflower", "Enderflower", ChromaCraftingItems.TELEPORTATION_DUST, Siting.GROUND, 4),
+	/** Ender Forest only. Drops Energetic Essence. */
+	RESONANT_CLOVER("resonant_clover", "Resonant Clover", ChromaCraftingItems.ENERGY_POWDER, Siting.GROUND, 2);
 
 	/** Which V33a {@code canPlantAt}/generate branch this flower uses. */
 	public enum Siting { GROUND, JUNGLE_LEAVES, REED, IVY }

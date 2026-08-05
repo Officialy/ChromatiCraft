@@ -49,6 +49,10 @@ public final class ChromaBiomeModifierProvider implements DataProvider {
                 List.of(id("sano_bloom").toString()), GenerationStep.Decoration.VEGETAL_DECORATION));
         futures.add(saveMany(cache, "void_reeds_swamp", "#c:is_swamp",
                 List.of(id("void_reeds").toString()), GenerationStep.Decoration.VEGETAL_DECORATION));
+        futures.add(saveManyBiomes(cache, "ender_forest_flowers",
+                List.of(id("ender_forest").toString()),
+                List.of(id("enderflower").toString(), id("resonant_clover").toString()),
+                GenerationStep.Decoration.VEGETAL_DECORATION));
         futures.add(saveMany(cache, "aura_ivy_hills", "#minecraft:is_mountain",
                 List.of(id("aura_ivy").toString()), GenerationStep.Decoration.VEGETAL_DECORATION));
         // V33a CaveIndicatorGenerator is gated on BiomeGlowingCliffs.isGlowingCliffs, so this goes
