@@ -340,12 +340,21 @@ the dedicated server refused to start — and `compileJava` plus *both* datagen 
 beforehand. Snowy is a NeoForge common tag, `#c:is_snowy`. Datagen being green says nothing about
 whether a tag resolves.
 
-### Ender Forest — scoped, not started
+### Ender Forest — biome registered, tree selector outstanding
 
-Needed for Enderflower and Resonant Clover, the last two of DecoFlower's six. From
-`5cde0068^:World/BiomeEnderForest.java`: rain disabled, monster list cleared and replaced with
-Enderman weight 10 plus Creeper/Spider/Skeleton at 1 each (groups 1-4), trees thinned to 0.7x, and a
-noise-driven weighted tree selector (`Simplex3DGenerator` at 1/30) mixing vanilla oak and big oak
-with three Ender Oak variants and a no-tree entry, each weight shifted by the local noise value.
-That dynamic-weight selector has no vanilla equivalent and needs a custom feature.
-`EnderOakGenerator` is already in the tree.
+`ChromaBiomes.ENDER_FOREST` is registered with V33a's rainless setting, the enderman-dominated spawn
+list (Enderman 10 against Creeper/Spider/Skeleton at 1 each, groups 1-4) and the forest palette, plus
+a TerraBlender entry replacing `DARK_FOREST` — `FOREST` was already taken by Rainbow Forest. That
+unblocked Enderflower and Resonant Clover, which are now ported, so all six deco flowers are in.
+
+**Outstanding: the tree selector.** V33a thins trees to 0.7x and chooses between vanilla oak, vanilla
+big oak and three Ender Oak variants through a noise-driven weighted table — a `Simplex3DGenerator`
+at frequency 1/30, with every entry's weight recomputed as `max(0, base + coefficient * noise)` and a
+"no tree" entry competing alongside the real ones. Weights are oak 25/+10, big oak 5/-2, small ender
+oak 50/+20, large ender oak 10/-5, narrow ender oak 6/-1, nothing 0/+6.
+
+That is a dynamic-weight selector with no vanilla equivalent, and it is deliberately **not**
+approximated with a plain weighted tree list — the whole point is that the mix shifts across the
+biome with the noise field, so a flat list would lose the biome's character. It needs a custom
+feature. `EnderOakGenerator` is already in the tree as the geometry dependency. Until it lands the
+biome carries ordinary vanilla forest trees.
