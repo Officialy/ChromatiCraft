@@ -283,3 +283,33 @@ of them; censusing a pregenerated world caught all three.
 All seven `World/Nether/` files are unported (`LavaRiverGenerator`, `NetherDiorama`, `NetherMaze`,
 `NetherSpiral`, `NetherStructureGenerator`, `NetherStructures`, `NetherTemple`). The only registered
 nether content is `firestone` (11.05% of chunks) and nether cave crystals, both confirmed generating.
+
+### Correction: DecoFlowerGenerator is NOT self-contained — 2026-08-04
+
+An earlier note in this file listed `DecoFlowerGenerator` as self-contained, judged from file sizes
+alone. That was wrong. Checking `Flowers.getDrop()` and `canGenerateIn()` against the registry:
+
+| Flower | Drop | Blocker |
+|---|---|---|
+| `ENDERFLOWER` | `teleDust` | drop unregistered **and** needs the Ender Forest biome |
+| `RESOCLOVER` | `energyPowder` | drop unregistered **and** needs the Ender Forest biome |
+| `LUMALILY` | `icyDust` | drop unregistered |
+| `SANOBLOOM` | `etherBerries` | drop unregistered |
+| `VOIDREED` | `voidDust` | drop unregistered |
+| `FLOWIVY` | `livingEssence` | drop unregistered |
+
+`GLOWDAISY` and `GLOWROOT`, the other two members of the legacy `DECOFLOWER` family, are already
+concrete registered identities and are done.
+
+None of the six drop identities exist in `ChromaTieredItems`, and `ChromaBiomes` registers no Ender
+Forest. So **all six** are blocked by the same rule that defers Vibrant Pod and Glowing Roots: the
+project does not invent a substitute drop. Porting the generator now would produce six flowers that
+either drop nothing or drop something invented.
+
+**Prerequisite, and the right next slice:** register the missing tiered-resource identities
+(`teleDust`, `icyDust`, `energyPowder`, `etherBerries`, `voidDust`, `livingEssence`) with their
+authoritative V33a sprites and `chroma.*` names, the same way `ChromaTieredItems` was built. That one
+item slice unblocks all six flowers, and it is likely to unblock `glowbeans`/`boostroot` for Vibrant
+Pod and Glowing Roots at the same time.
+
+Revised order: identities first, then DecoFlower, then UnknownArtefact.
