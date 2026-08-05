@@ -10,6 +10,7 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.world.CrystalFeature;
 import reika.chromaticraft.world.PylonFeature;
+import reika.chromaticraft.world.TieredPlantFeature;
 import reika.chromaticraft.world.luminous.LumaPatchFeature;
 import reika.chromaticraft.world.luminous.LuminousCliffsTerrainFeature;
 import reika.chromaticraft.world.luminous.LuminousIslandFeature;
@@ -23,6 +24,22 @@ public final class ChromaFeatures {
 
     public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> CAVE_CRYSTAL =
             FEATURES.register("cave_crystal", CrystalFeature::new);
+    /**
+     * The plant half of V33a's TieredWorldGenerator, one feature per plant identity. Each resolves
+     * its own registered block lazily so registration order does not matter.
+     */
+    public static final java.util.Map<ChromaTieredPlants, DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>>> TIERED_PLANTS =
+            registerTieredPlants();
+
+    private static java.util.Map<ChromaTieredPlants, DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>>> registerTieredPlants() {
+        java.util.EnumMap<ChromaTieredPlants, DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>>> map =
+                new java.util.EnumMap<>(ChromaTieredPlants.class);
+        for (ChromaTieredPlants plant : ChromaTieredPlants.list)
+            map.put(plant, FEATURES.register(plant.registryName(), () -> new TieredPlantFeature(plant,
+                    () -> ChromaBlocks.tieredPlant(plant).get().defaultBlockState())));
+        return map;
+    }
+
     public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> PYLON =
             FEATURES.register("pylon", () -> new PylonFeature());
     public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> TURBOCHARGED_PYLON =

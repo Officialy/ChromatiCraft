@@ -25,7 +25,9 @@ import net.minecraft.world.level.levelgen.feature.stateproviders.BlockStateProvi
 import net.minecraft.world.level.levelgen.feature.stateproviders.WeightedStateProvider;
 import net.minecraft.world.level.levelgen.feature.trunkplacers.StraightTrunkPlacer;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
+import net.minecraft.world.level.levelgen.placement.BiomeFilter;
 import net.minecraft.world.level.levelgen.placement.CountPlacement;
+import net.minecraft.world.level.levelgen.placement.InSquarePlacement;
 import net.minecraft.world.level.levelgen.placement.PlacementModifier;
 import net.minecraft.world.level.levelgen.placement.RarityFilter;
 
@@ -33,6 +35,7 @@ import net.minecraft.tags.BlockTags;
 import reika.dragonapi.libraries.RandomTagSingleStateProvider;
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.registry.ChromaBlocks;
+import reika.chromaticraft.registry.ChromaTieredPlants;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.world.PylonGridPlacement;
 import reika.chromaticraft.world.biome.ChromaBiomes;
@@ -87,6 +90,8 @@ public final class ChromaWorldGenProvider {
         builder.add(Registries.CONFIGURED_FEATURE, bootstrap -> {
             HolderGetter<Feature<?>> features = bootstrap.lookup(Registries.FEATURE);
             registerConfigured(bootstrap, features, CAVE_CRYSTAL);
+            for (ChromaTieredPlants plant : ChromaTieredPlants.list)
+                registerConfigured(bootstrap, features, id(plant.registryName()));
             registerConfigured(bootstrap, features, PYLON);
             registerConfigured(bootstrap, features, TURBOCHARGED_PYLON);
             for (Identifier temple : CASTING_TEMPLES)
@@ -119,6 +124,12 @@ public final class ChromaWorldGenProvider {
         builder.add(Registries.PLACED_FEATURE, bootstrap -> {
             HolderGetter<ConfiguredFeature<?, ?>> configured = bootstrap.lookup(Registries.CONFIGURED_FEATURE);
             registerPlaced(bootstrap, configured, CAVE_CRYSTAL);
+            for (ChromaTieredPlants plant : ChromaTieredPlants.list)
+                registerPlaced(bootstrap, configured, id(plant.registryName()), List.of(
+                        RarityFilter.onAverageOnceEvery(plant.generationChance()),
+                        CountPlacement.of(plant.generationCount()),
+                        InSquarePlacement.spread(),
+                        BiomeFilter.biome()));
             for (TieredOre ore : TIERED_ORES) {
                 // V33a: `if (rand.nextInt(genChance) == 0) for (k < veinCount)` at a random column in
                 // the chunk, each attempt rolling its own y. A genChance of one is every chunk.

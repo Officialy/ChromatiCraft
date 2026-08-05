@@ -1,0 +1,12 @@
+{
+  "type": "neoforge:add_features",
+  "biomes": "#minecraft:is_overworld",
+  "features": [
+    "chromaticraft:aura_bloom",
+    "chromaticraft:rock_flower",
+    "chromaticraft:essence_lily",
+    "chromaticraft:element_bulbs",
+    "chromaticraft:radiance_bush"
+  ],
+  "step": "top_layer_modification"
+}

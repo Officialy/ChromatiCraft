@@ -1,6 +1,8 @@
 package reika.chromaticraft.registry;
 
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Supplier;
 
 import net.minecraft.core.registries.Registries;
@@ -8,6 +10,7 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.SoundType;
+import net.minecraft.world.level.material.PushReaction;
 import net.minecraft.world.level.block.LeavesBlock;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Blocks;
@@ -45,6 +48,7 @@ import reika.chromaticraft.block.worldgen26.BlockGlowDaisy;
 import reika.chromaticraft.block.worldgen26.BlockGlowRoot;
 import reika.chromaticraft.block.worldgen26.BlockLumaFluid;
 import reika.chromaticraft.block.worldgen26.BlockTieredOre;
+import reika.chromaticraft.block.worldgen26.BlockTieredPlant;
 import reika.chromaticraft.magic.progression.ProgressStage;
 
 /**
@@ -186,6 +190,30 @@ public final class ChromaBlocks {
 						for (int i = 0; i < n; i++)
 							into.add(new ItemStack(ChromaItems.TIERED.get(ChromaTieredItems.FIRE_ESSENCE).get()));
 					}));
+
+	/**
+	 * V33a tiered plants, one registered identity each; see {@link ChromaTieredPlants}. Vibrant Pod
+	 * and Glowing Roots are absent because their drops have no registered identity yet.
+	 *
+	 * <p>V33a sets hardness 0, resistance 2, the grass step sound, and a constant light of 4.
+	 */
+	public static final Map<ChromaTieredPlants, DeferredBlock<BlockTieredPlant>> TIERED_PLANTS =
+			registerTieredPlants();
+
+	private static Map<ChromaTieredPlants, DeferredBlock<BlockTieredPlant>> registerTieredPlants() {
+		EnumMap<ChromaTieredPlants, DeferredBlock<BlockTieredPlant>> map =
+				new EnumMap<>(ChromaTieredPlants.class);
+		for (ChromaTieredPlants plant : ChromaTieredPlants.list)
+			map.put(plant, register(plant.registryName(),
+					() -> new BlockTieredPlant(blockProperties().noCollision().instabreak()
+							.explosionResistance(2).sound(SoundType.GRASS).lightLevel(state -> 4)
+							.noOcclusion().pushReaction(PushReaction.DESTROY), plant)));
+		return map;
+	}
+
+	public static DeferredBlock<BlockTieredPlant> tieredPlant(ChromaTieredPlants plant) {
+		return TIERED_PLANTS.get(plant);
+	}
 
 	/** V33a BlockTieredOre: hardness 4, resistance 5. */
 	private static BlockBehaviour.Properties oreProperties() {

@@ -42,6 +42,7 @@ import reika.chromaticraft.block.BlockCrystalRune;
 import reika.chromaticraft.block.BlockCrystallineStone;
 import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
 import reika.chromaticraft.registry.ChromaBlocks;
+import reika.chromaticraft.registry.ChromaTieredPlants;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.registry.ChromaClusterItems;
 import reika.chromaticraft.registry.ChromaCraftingItems;
@@ -174,6 +175,7 @@ public class ChromaModelProvider extends ModelProvider {
 
 
 
+		tieredPlantBlocks(blockStateOut, itemModelOut, modelOut);
 		pylonStructureBlock(blockStateOut, itemModelOut, modelOut);
 		runeBlock(blockStateOut, itemModelOut, modelOut);
 		encrustedBlock(blockStateOut, itemModelOut, modelOut);
@@ -211,6 +213,81 @@ public class ChromaModelProvider extends ModelProvider {
 	 * hand-authored blockstate under its own registry name, because the custom model type cannot come
 	 * out of {@code MultiVariantGenerator}.
 	 */
+	/**
+	 * V33a TieredPlantRenderer draws each tiered plant twice: pass 0 is drawCrossedSquares with the
+	 * plant's "backing" sprite at ordinary block brightness, and pass 1 repeats the same cross with
+	 * the "overlay" sprite forced to brightness 240. That is reproduced here as two crossed-plane
+	 * element pairs, the second full-bright and offset a hair along its own normal so it does not
+	 * z-fight the first.
+	 */
+	private static void tieredPlantBlocks(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		for (ChromaTieredPlants plant : ChromaTieredPlants.list) {
+			Block block = ChromaBlocks.tieredPlant(plant).get();
+			Identifier id = ModelLocationUtils.getModelLocation(block);
+			String back = ChromatiCraft.MODID + ":" + plant.backTexture();
+			String front = ChromatiCraft.MODID + ":" + plant.frontTexture();
+			modelOut.accept(id, () -> layeredCross(back, front));
+			blockStateOut.accept(MultiVariantGenerator.dispatch(block,
+					new MultiVariant(WeightedList.of(new Variant(id)))));
+			itemModelOut.accept(block.asItem(), ItemModelUtils.plainModel(id));
+		}
+	}
+
+	/** Two vanilla-style crossed planes, the second emissive; see {@link #tieredPlantBlocks}. */
+	private static JsonObject layeredCross(String back, String front) {
+		JsonObject root = new JsonObject();
+		root.addProperty("parent", "minecraft:block/block");
+		root.addProperty("ambientocclusion", false);
+		JsonObject textures = new JsonObject();
+		textures.addProperty("back", back);
+		textures.addProperty("front", front);
+		textures.addProperty("particle", front);
+		root.add("textures", textures);
+		JsonArray elements = new JsonArray();
+		// Pass 0: the backing cross, ordinary lighting.
+		elements.add(crossPlane("#back", 45, 8F, false));
+		elements.add(crossPlane("#back", -45, 8F, false));
+		// Pass 1: the same cross in the overlay sprite at V33a's fixed brightness 240.
+		elements.add(crossPlane("#front", 45, 8.01F, true));
+		elements.add(crossPlane("#front", -45, 8.01F, true));
+		root.add("elements", elements);
+		return root;
+	}
+
+	private static JsonObject crossPlane(String texture, float angle, float depth, boolean emissive) {
+		JsonObject element = new JsonObject();
+		JsonArray from = new JsonArray();
+		from.add(0.8F); from.add(0F); from.add(depth);
+		JsonArray to = new JsonArray();
+		to.add(15.2F); to.add(16F); to.add(depth);
+		element.add("from", from);
+		element.add("to", to);
+		JsonObject rotation = new JsonObject();
+		JsonArray origin = new JsonArray();
+		origin.add(8F); origin.add(8F); origin.add(8F);
+		rotation.add("origin", origin);
+		rotation.addProperty("axis", "y");
+		rotation.addProperty("angle", angle);
+		rotation.addProperty("rescale", true);
+		element.add("rotation", rotation);
+		JsonObject faces = new JsonObject();
+		// Explicit UVs for the same reason as layeredCube: these elements are not cube-shaped, and a
+		// derived uv on an inflated element aborts the bake.
+		for (String name : new String[] {"north", "south"}) {
+			JsonObject face = new JsonObject();
+			face.addProperty("texture", texture);
+			face.add("uv", uvFull());
+			faces.add(name, face);
+		}
+		element.add("faces", faces);
+		if (emissive) {
+			element.addProperty("shade", false);
+			element.addProperty("light_emission", 15);
+		}
+		return element;
+	}
+
 	private static void pylonStructureBlock(Consumer<BlockModelDefinitionGenerator> blockStateOut,
 			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
 		for (StoneTypes type : StoneTypes.list) {

@@ -36,6 +36,7 @@ import reika.chromaticraft.auxiliary.loot.ChromaBerryCount;
 import reika.chromaticraft.auxiliary.loot.FortuneScaledChance;
 import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.block.worldgen26.BlockTieredOre;
+import reika.chromaticraft.block.worldgen26.BlockTieredPlant;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.CrystalElement;
 
@@ -79,6 +80,12 @@ public final class ChromaLootProvider extends LootTableProvider {
 				}
 				else if (block instanceof BlockCrystalRune) {
 					this.dropSelf(block);
+				}
+				else if (block instanceof BlockTieredPlant) {
+					// Same contract as the tiered ores: V33a decides every drop in code from the
+					// breaker's progression, and an insufficient player cannot target the plant at
+					// all, so there is nothing for a loot table to describe.
+					this.add(block, noDrop());
 				}
 				else if (block instanceof BlockTieredOre) {
 					// V33a BlockTieredResource hard-overrides the whole vanilla drop path to nothing;

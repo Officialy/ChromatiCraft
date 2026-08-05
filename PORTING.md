@@ -2146,7 +2146,7 @@ distinct-colour pylon sightings on the critical path, so this rate is load-beari
 There is also no retrogen: V33a back-filled existing chunks and a placed feature cannot, so any
 already-explored world stays empty regardless.
 
-### Tiered plants: identity layer — 2026-08-04 (in progress, not accepted)
+### Tiered plants: the missing half of TieredWorldGenerator — 2026-08-04
 
 `ChromaTieredPlants` registers V33a's `TieredPlants` as concrete per-plant identities — Aura Bloom,
 Rock Flower, Essence Lily, Element Bulbs, Radiance Bush — carrying each plant's `ProgressStage`,
@@ -2160,7 +2160,43 @@ Vibrant Pod and Glowing Roots are deferred: they drop `glowbeans` and `boostroot
 registered identity, so their `bitRound`/`findTreeNear` trunk siting is not ported rather than given
 an invented drop. This is the same boundary the tiered ores draw.
 
-**Not yet written, and therefore not accepted:** the modern block class (V33a gates the selection box
-on tier, so an insufficient player cannot target the plant at all), the five-branch worldgen feature,
-`ChromaBlocks` registration, models/blockstates/loot/lang datagen, biome modifier, allowlist entries,
-and tests. `TieredWorldGenerator`'s plant half therefore still generates nothing.
+`BlockTieredPlant` reproduces the source behaviour: no collision, light 4, V33a's per-plant support
+rules (surface/sand stand on the block below, cave and leaf plants hang from the block above, the
+lily needs a still water source), and the tier gate. That gate is total, not cosmetic — V33a's
+renderer draws nothing and `getSelectedBoundingBoxFromPool` returns a zero box, so an insufficient
+player cannot even look at the plant. Here it is an empty `getShape` for a `Player` without the
+stage, which unlike V33a's client-only override also holds on a dedicated server. Because such a
+player can never target one, there is no insufficient-harvest branch as the tiered ores have, and the
+loot table is empty with every drop decided in code.
+
+`TieredPlantFeature` owns only the column search, which is the part with no vanilla equivalent; the
+one-in-N chance and attempt count are ordinary `rarity_filter` and `count` modifiers in each placed
+feature.
+
+Three defects were found by pregenerating and censusing, not by reading the code:
+
+1. **The cave scan was in deepslate.** It walked 64 blocks up from `getMinY()` while testing for a
+   `Blocks.STONE` ceiling — the identical absolute-versus-relative-y mistake as the tiered ore band
+   above, repeated in the same session. Rock Flower generated in 1 chunk out of 1,764.
+2. **`VEGETAL_DECORATION` is the wrong step.** It is where the trees themselves are, and ordering
+   within a step is not guaranteed, so a plant could be sited before any leaf existed and then be
+   overwritten by a tree. Element Bulbs generated in 1 chunk out of 1,764. Now at
+   `TOP_LAYER_MODIFICATION`, the same choice the pylon feature makes and the faithful analogue of
+   V33a's post-population `RetroactiveGenerator`.
+3. **V33a's literal air test does not survive that move.** The source requires the block above the
+   ground to be `== Blocks.air`; after vegetation, modern terrain is blanketed in tall grass and
+   flowers, and Aura Bloom fell to zero chunks in 1,941. The test now accepts a replaceable
+   non-fluid block as well. This is the one place in the slice where the source condition was
+   adapted rather than transcribed — it is the freedom vanilla's own flower placement takes, and it
+   preserves the intent that nothing solid is standing there.
+
+Observed generating after the fixes: Rock Flower 6.12%, Aura Bloom 3.91%, Element Bulbs 0.85% of
+chunks in a 1,764-chunk pregen, with Essence Lily (0.21%) and Radiance Bush (0.17%) seen in earlier
+probes — both are water- and sand-bound and did not fall in the final sample. Note each probe world
+is generated with a fresh random seed, so figures are not directly comparable run to run; the
+zero-to-nonzero transitions are the load-bearing evidence, not the exact percentages.
+
+**Still open on this slice:** a focused GameTest asserting each siting branch against built terrain
+(which is how Essence Lily and Radiance Bush should be pinned down rather than by seed lottery), the
+client-side tier check so an insufficient player sees nothing rather than relying on the shape gate
+alone, and Vibrant Pod and Glowing Roots once `glowbeans` and `boostroot` have identities.

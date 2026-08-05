@@ -11,6 +11,7 @@ import reika.chromaticraft.registry.ChromaClusterItems;
 import reika.chromaticraft.registry.ChromaCraftingItems;
 import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.ChromaTieredItems;
+import reika.chromaticraft.registry.ChromaTieredPlants;
 import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.magic.progression.ResearchLevel;
@@ -109,6 +110,9 @@ public class ChromaLang extends LanguageProvider {
 		}
 		for (ChromaClusterItems cluster : ChromaClusterItems.list) {
 			add(ChromaItems.CLUSTERS.get(cluster).get(), cluster.displayName());
+		}
+		for (ChromaTieredPlants plant : ChromaTieredPlants.list) {
+			add(ChromaBlocks.tieredPlant(plant).get(), plant.displayName());
 		}
 		for (ChromaTieredItems tiered : ChromaTieredItems.list) {
 			add(ChromaItems.TIERED.get(tiered).get(), tiered.displayName());

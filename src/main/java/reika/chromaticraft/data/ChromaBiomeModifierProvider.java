@@ -14,6 +14,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.levelgen.GenerationStep;
 
 import reika.chromaticraft.ChromatiCraft;
+import reika.chromaticraft.registry.ChromaTieredPlants;
 
 /** Adds cave crystals and NBT-backed natural pylons to their V33a-compatible biome sets. */
 public final class ChromaBiomeModifierProvider implements DataProvider {
@@ -42,6 +43,16 @@ public final class ChromaBiomeModifierProvider implements DataProvider {
         // it is the faithful analogue of generating post-population.
         futures.add(save(cache, "pylon_overworld", "#minecraft:is_overworld",
                 PYLON, GenerationStep.Decoration.TOP_LAYER_MODIFICATION));
+        // V33a TieredWorldGenerator was a RetroactiveGenerator, so plants were sited against a fully
+        // populated chunk: Element Bulbs looks for leaves, which only exist once trees have run.
+        // VEGETAL_DECORATION is where the trees themselves are, and ordering within a step is not
+        // guaranteed, so a plant placed there can miss the leaves entirely and can be overwritten by
+        // a tree afterwards -- measured as Element Bulbs in 1 chunk of 1,764. TOP_LAYER_MODIFICATION
+        // is the last step and is the same choice the pylon feature makes, for the same reason.
+        futures.add(saveMany(cache, "tiered_plant_overworld", "#minecraft:is_overworld",
+                java.util.Arrays.stream(ChromaTieredPlants.list)
+                        .map(p -> id(p.registryName()).toString()).toList(),
+                GenerationStep.Decoration.TOP_LAYER_MODIFICATION));
         // V33a TieredWorldGenerator runs in every ordinary dimension; each ore's own host block and
         // y band are what confine it, so the overworld pair goes everywhere overworld and the
         // netherrack-hosted one everywhere nether.
