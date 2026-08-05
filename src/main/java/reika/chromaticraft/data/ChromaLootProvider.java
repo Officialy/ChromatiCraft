@@ -38,6 +38,7 @@ import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.block.worldgen26.BlockTieredOre;
 import reika.chromaticraft.block.worldgen26.BlockTieredPlant;
 import reika.chromaticraft.block.worldgen26.BlockCaveIndicator;
+import reika.chromaticraft.block.worldgen26.BlockDecoFlower;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.CrystalElement;
 
@@ -81,6 +82,12 @@ public final class ChromaLootProvider extends LootTableProvider {
 				}
 				else if (block instanceof BlockCrystalRune) {
 					this.dropSelf(block);
+				}
+				else if (block instanceof BlockDecoFlower flower) {
+					// V33a routes these through PlantDropManager rather than the block's own drop:
+					// each flower yields its registered resource, never itself.
+					this.add(block, createSingleItemTable(
+							ChromaItems.CRAFTING.get(flower.getFlower().drop()).get()));
 				}
 				else if (block instanceof BlockCaveIndicator) {
 					// V33a getItemDropped defers to Blocks.stone, so mining one yields cobblestone

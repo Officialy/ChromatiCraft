@@ -314,3 +314,38 @@ Glowing Cliffs, and it is the only biome-tinted one. `VOIDREED` grows upward in 
 `FLOWIVY` hangs downward in runs of up to 12; `FLOWIVY` is inset one block from the chunk edge
 upstream specifically to stop chunk spilling.
 
+
+### DecoFlower: four flowers ported, generation NOT yet confirmed — 2026-08-04
+
+Luma Lotus, Ether Berries, Void Reeds and Aura Ivy are registered as concrete identities with V33a
+support rules, the burst-shaped generator (one-in-N chunk roll, then n placements where n is usually
+1 but one time in five `1 + rand(4) + rand(6)`, up to 40 tries), reed/ivy column runs, per-flower
+biome modifiers, cross models with the tint on Aura Ivy only, resource-not-self loot, and lang.
+`compileJava`, `runServerData` and `runClientData` are green and a server boots.
+
+**They did not generate.** A 1,764-chunk pregen found none of the four. Two separate causes to chase:
+
+1. **Aura Ivy siting is wrong.** `DecoFlowerFeature.findSite` walks up out of the terrain and lands
+   in open air above the surface, where the `canSurvive` test — a solid block horizontally adjacent —
+   almost never passes. V33a sites ivy against a cliff face and then extends *downward*; the port
+   needs to search for a vertical rock face rather than settle on top of the ground. Mountains were
+   almost certainly in the sample, so this one is a real bug and not sampling.
+2. **The other three are biome-bound** to `#c:is_snowy`, `#minecraft:is_jungle` and `#c:is_swamp`,
+   none of which need occur in a 1,764-chunk sample. Confirm those with a targeted probe
+   (`/locate biome`, forceload, census) rather than another random seed.
+
+**A shipped-broken-server bug this caught, worth remembering:** the first attempt used
+`#minecraft:is_snowy`, which does not exist. An unbound biome tag fails registry loading outright, so
+the dedicated server refused to start — and `compileJava` plus *both* datagen runs passed clean
+beforehand. Snowy is a NeoForge common tag, `#c:is_snowy`. Datagen being green says nothing about
+whether a tag resolves.
+
+### Ender Forest — scoped, not started
+
+Needed for Enderflower and Resonant Clover, the last two of DecoFlower's six. From
+`5cde0068^:World/BiomeEnderForest.java`: rain disabled, monster list cleared and replaced with
+Enderman weight 10 plus Creeper/Spider/Skeleton at 1 each (groups 1-4), trees thinned to 0.7x, and a
+noise-driven weighted tree selector (`Simplex3DGenerator` at 1/30) mixing vanilla oak and big oak
+with three Ender Oak variants and a no-tree entry, each weight shifted by the local noise value.
+That dynamic-weight selector has no vanilla equivalent and needs a custom feature.
+`EnderOakGenerator` is already in the tree.

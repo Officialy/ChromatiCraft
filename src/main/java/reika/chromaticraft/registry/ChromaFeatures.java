@@ -11,6 +11,7 @@ import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.world.CrystalFeature;
 import reika.chromaticraft.world.PylonFeature;
 import reika.chromaticraft.world.CaveIndicatorFeature;
+import reika.chromaticraft.world.DecoFlowerFeature;
 import reika.chromaticraft.world.TieredPlantFeature;
 import reika.chromaticraft.world.luminous.LumaPatchFeature;
 import reika.chromaticraft.world.luminous.LuminousCliffsTerrainFeature;
@@ -38,6 +39,17 @@ public final class ChromaFeatures {
         for (ChromaTieredPlants plant : ChromaTieredPlants.list)
             map.put(plant, FEATURES.register(plant.registryName(), () -> new TieredPlantFeature(plant,
                     () -> ChromaBlocks.tieredPlant(plant).get().defaultBlockState())));
+        return map;
+    }
+
+    public static final java.util.Map<ChromaDecoFlowers, DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>>> DECO_FLOWERS =
+            registerDecoFlowers();
+
+    private static java.util.Map<ChromaDecoFlowers, DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>>> registerDecoFlowers() {
+        java.util.EnumMap<ChromaDecoFlowers, DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>>> map =
+                new java.util.EnumMap<>(ChromaDecoFlowers.class);
+        for (ChromaDecoFlowers flower : ChromaDecoFlowers.list)
+            map.put(flower, FEATURES.register(flower.registryName(), () -> new DecoFlowerFeature(flower)));
         return map;
     }
 

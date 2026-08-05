@@ -43,6 +43,7 @@ import reika.chromaticraft.block.BlockCrystallineStone;
 import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaTieredPlants;
+import reika.chromaticraft.registry.ChromaDecoFlowers;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.registry.ChromaClusterItems;
 import reika.chromaticraft.registry.ChromaCraftingItems;
@@ -175,6 +176,7 @@ public class ChromaModelProvider extends ModelProvider {
 
 
 
+		decoFlowerBlocks(blockStateOut, itemModelOut, modelOut);
 		caveIndicatorBlock(blockStateOut, itemModelOut, modelOut);
 		tieredPlantBlocks(blockStateOut, itemModelOut, modelOut);
 		pylonStructureBlock(blockStateOut, itemModelOut, modelOut);
@@ -226,6 +228,21 @@ public class ChromaModelProvider extends ModelProvider {
 	 * extra top-face quad inset 0.1 blocks (1.6 pixels) carrying the inner sprite -- the active one
 	 * at brightness 240, the inactive one lit normally.
 	 */
+	/** V33a renders these as ordinary crossed squares; only Aura Ivy takes the biome grass tint. */
+	private static void decoFlowerBlocks(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		for (ChromaDecoFlowers flower : ChromaDecoFlowers.list) {
+			Block block = ChromaBlocks.decoFlower(flower).get();
+			Material texture = new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
+					flower.texture()));
+			Identifier model = (flower.isBiomeColored() ? ModelTemplates.TINTED_CROSS : ModelTemplates.CROSS)
+					.create(block, TextureMapping.cross(texture), modelOut);
+			blockStateOut.accept(MultiVariantGenerator.dispatch(block,
+					new MultiVariant(WeightedList.of(new Variant(model)))));
+			itemModelOut.accept(block.asItem(), ItemModelUtils.plainModel(model));
+		}
+	}
+
 	private static void caveIndicatorBlock(Consumer<BlockModelDefinitionGenerator> blockStateOut,
 			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
 		Block block = ChromaBlocks.CAVE_INDICATOR.get();

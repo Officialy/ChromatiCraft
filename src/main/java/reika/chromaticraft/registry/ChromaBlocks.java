@@ -50,6 +50,7 @@ import reika.chromaticraft.block.worldgen26.BlockLumaFluid;
 import reika.chromaticraft.block.worldgen26.BlockTieredOre;
 import reika.chromaticraft.block.worldgen26.BlockTieredPlant;
 import reika.chromaticraft.block.worldgen26.BlockCaveIndicator;
+import reika.chromaticraft.block.worldgen26.BlockDecoFlower;
 import reika.chromaticraft.magic.progression.ProgressStage;
 
 /**
@@ -214,6 +215,25 @@ public final class ChromaBlocks {
 
 	public static DeferredBlock<BlockTieredPlant> tieredPlant(ChromaTieredPlants plant) {
 		return TIERED_PLANTS.get(plant);
+	}
+
+	/** V33a deco flowers, one registered identity each; see {@link ChromaDecoFlowers}. */
+	public static final Map<ChromaDecoFlowers, DeferredBlock<BlockDecoFlower>> DECO_FLOWERS =
+			registerDecoFlowers();
+
+	private static Map<ChromaDecoFlowers, DeferredBlock<BlockDecoFlower>> registerDecoFlowers() {
+		EnumMap<ChromaDecoFlowers, DeferredBlock<BlockDecoFlower>> map =
+				new EnumMap<>(ChromaDecoFlowers.class);
+		for (ChromaDecoFlowers flower : ChromaDecoFlowers.list)
+			map.put(flower, register(flower.registryName(),
+					() -> new BlockDecoFlower(blockProperties().noCollision().instabreak()
+							.sound(SoundType.GRASS).noOcclusion()
+							.pushReaction(PushReaction.DESTROY), flower)));
+		return map;
+	}
+
+	public static DeferredBlock<BlockDecoFlower> decoFlower(ChromaDecoFlowers flower) {
+		return DECO_FLOWERS.get(flower);
 	}
 
 	/**

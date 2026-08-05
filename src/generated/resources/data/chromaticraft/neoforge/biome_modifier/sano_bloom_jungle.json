@@ -1,0 +1,8 @@
+{
+  "type": "neoforge:add_features",
+  "biomes": "#minecraft:is_jungle",
+  "features": [
+    "chromaticraft:sano_bloom"
+  ],
+  "step": "vegetal_decoration"
+}

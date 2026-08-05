@@ -36,6 +36,7 @@ import reika.dragonapi.libraries.RandomTagSingleStateProvider;
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaTieredPlants;
+import reika.chromaticraft.registry.ChromaDecoFlowers;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.world.PylonGridPlacement;
 import reika.chromaticraft.world.biome.ChromaBiomes;
@@ -91,6 +92,8 @@ public final class ChromaWorldGenProvider {
             HolderGetter<Feature<?>> features = bootstrap.lookup(Registries.FEATURE);
             registerConfigured(bootstrap, features, CAVE_CRYSTAL);
             registerConfigured(bootstrap, features, id("cave_indicator"));
+            for (ChromaDecoFlowers flower : ChromaDecoFlowers.list)
+                registerConfigured(bootstrap, features, id(flower.registryName()));
             for (ChromaTieredPlants plant : ChromaTieredPlants.list)
                 registerConfigured(bootstrap, features, id(plant.registryName()));
             registerConfigured(bootstrap, features, PYLON);
@@ -126,6 +129,10 @@ public final class ChromaWorldGenProvider {
             HolderGetter<ConfiguredFeature<?, ?>> configured = bootstrap.lookup(Registries.CONFIGURED_FEATURE);
             registerPlaced(bootstrap, configured, CAVE_CRYSTAL);
             registerPlaced(bootstrap, configured, id("cave_indicator"), List.of(BiomeFilter.biome()));
+            for (ChromaDecoFlowers flower : ChromaDecoFlowers.list)
+                registerPlaced(bootstrap, configured, id(flower.registryName()), List.of(
+                        RarityFilter.onAverageOnceEvery(flower.generationChance()),
+                        BiomeFilter.biome()));
             for (ChromaTieredPlants plant : ChromaTieredPlants.list)
                 registerPlaced(bootstrap, configured, id(plant.registryName()), List.of(
                         RarityFilter.onAverageOnceEvery(plant.generationChance()),

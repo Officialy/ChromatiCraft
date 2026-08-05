@@ -1,0 +1,8 @@
+{
+  "type": "neoforge:add_features",
+  "biomes": "#minecraft:is_mountain",
+  "features": [
+    "chromaticraft:aura_ivy"
+  ],
+  "step": "vegetal_decoration"
+}

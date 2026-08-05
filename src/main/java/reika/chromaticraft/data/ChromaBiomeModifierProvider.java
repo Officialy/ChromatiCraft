@@ -41,6 +41,16 @@ public final class ChromaBiomeModifierProvider implements DataProvider {
         // yet: all of that logic was dead during worldgen, and trees then generated on top of the
         // site the feature had just verified as clear. TOP_LAYER_MODIFICATION is the last step, so
         // it is the faithful analogue of generating post-population.
+        // V33a Flowers.canGenerateIn, one modifier per flower's biome set. Snow for Luma Lotus,
+        // jungle for Ether Berries, swamp for Void Reeds, and hills/mountains for Aura Ivy.
+        futures.add(saveMany(cache, "luma_lotus_snowy", "#c:is_snowy",
+                List.of(id("luma_lotus").toString()), GenerationStep.Decoration.VEGETAL_DECORATION));
+        futures.add(saveMany(cache, "sano_bloom_jungle", "#minecraft:is_jungle",
+                List.of(id("sano_bloom").toString()), GenerationStep.Decoration.VEGETAL_DECORATION));
+        futures.add(saveMany(cache, "void_reeds_swamp", "#c:is_swamp",
+                List.of(id("void_reeds").toString()), GenerationStep.Decoration.VEGETAL_DECORATION));
+        futures.add(saveMany(cache, "aura_ivy_hills", "#minecraft:is_mountain",
+                List.of(id("aura_ivy").toString()), GenerationStep.Decoration.VEGETAL_DECORATION));
         // V33a CaveIndicatorGenerator is gated on BiomeGlowingCliffs.isGlowingCliffs, so this goes
         // to the two Luminous Cliffs biomes only rather than to an overworld tag.
         futures.add(saveManyBiomes(cache, "cave_indicator_cliffs",
