@@ -284,32 +284,33 @@ All seven `World/Nether/` files are unported (`LavaRiverGenerator`, `NetherDiora
 `NetherSpiral`, `NetherStructureGenerator`, `NetherStructures`, `NetherTemple`). The only registered
 nether content is `firestone` (11.05% of chunks) and nether cave crystals, both confirmed generating.
 
-### Correction: DecoFlowerGenerator is NOT self-contained — 2026-08-04
+### DecoFlowerGenerator dependency map — 2026-08-04
 
-An earlier note in this file listed `DecoFlowerGenerator` as self-contained, judged from file sizes
-alone. That was wrong. Checking `Flowers.getDrop()` and `canGenerateIn()` against the registry:
+An earlier entry in this file claimed all six remaining flowers were blocked on unregistered drop
+identities. **That was wrong**, and it was wrong because the check grepped for V33a's variable names
+(`teleDust`, `icyDust`, ...) instead of the ported identity names. All six drops are already
+registered in `ChromaCraftingItems`, since the 35 former `CRAFTING` metadata variants landed as
+distinct items:
 
-| Flower | Drop | Blocker |
-|---|---|---|
-| `ENDERFLOWER` | `teleDust` | drop unregistered **and** needs the Ender Forest biome |
-| `RESOCLOVER` | `energyPowder` | drop unregistered **and** needs the Ender Forest biome |
-| `LUMALILY` | `icyDust` | drop unregistered |
-| `SANOBLOOM` | `etherBerries` | drop unregistered |
-| `VOIDREED` | `voidDust` | drop unregistered |
-| `FLOWIVY` | `livingEssence` | drop unregistered |
+| Flower | Drop | Registered as | Blocker |
+|---|---|---|---|
+| `LUMALILY` | `icyDust` | `ICY_DUST` (Frozen Grains) | **none — ready** |
+| `SANOBLOOM` | `etherBerries` | `ETHER_BERRIES` | **none — ready** |
+| `VOIDREED` | `voidDust` | `VOID_DUST` (Void Essence) | **none — ready** |
+| `FLOWIVY` | `livingEssence` | `LIVING_ESSENCE` (Nature Fiber) | **none — ready** |
+| `ENDERFLOWER` | `teleDust` | `TELEPORTATION_DUST` (Distortion Crystal) | Ender Forest biome |
+| `RESOCLOVER` | `energyPowder` | `ENERGY_POWDER` (Energetic Essence) | Ender Forest biome |
 
 `GLOWDAISY` and `GLOWROOT`, the other two members of the legacy `DECOFLOWER` family, are already
 concrete registered identities and are done.
 
-None of the six drop identities exist in `ChromaTieredItems`, and `ChromaBiomes` registers no Ender
-Forest. So **all six** are blocked by the same rule that defers Vibrant Pod and Glowing Roots: the
-project does not invent a substitute drop. Porting the generator now would produce six flowers that
-either drop nothing or drop something invented.
+So four flowers can be ported immediately. The other two need `BiomeEnderForest` registered — the
+class is in the tree, pristine, and `ChromaBiomes` has no Ender Forest entry. Port the biome, then
+the two flowers; do not defer them.
 
-**Prerequisite, and the right next slice:** register the missing tiered-resource identities
-(`teleDust`, `icyDust`, `energyPowder`, `etherBerries`, `voidDust`, `livingEssence`) with their
-authoritative V33a sprites and `chroma.*` names, the same way `ChromaTieredItems` was built. That one
-item slice unblocks all six flowers, and it is likely to unblock `glowbeans`/`boostroot` for Vibrant
-Pod and Glowing Roots at the same time.
+Biome rules to preserve: `LUMALILY` snow biome with a grass top block and not hills; `SANOBLOOM`
+jungle; `VOIDREED` swamp; `FLOWIVY` hills or `rootHeight >= 1` with a grass top block, excluding
+Glowing Cliffs, and it is the only biome-tinted one. `VOIDREED` grows upward in runs of up to 4 and
+`FLOWIVY` hangs downward in runs of up to 12; `FLOWIVY` is inset one block from the chunk edge
+upstream specifically to stop chunk spilling.
 
-Revised order: identities first, then DecoFlower, then UnknownArtefact.
