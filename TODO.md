@@ -238,3 +238,48 @@ From `ISSUES_2026-07-30.md`:
 
 Island rivers/lakes/ores/underground trees and remaining decorations; surface blending and farmland
 semantics; the remaining Rainbow Forest decorator work.
+
+## 7. Overworld worldgen sweep — goal and remaining generators
+
+**Goal:** every one of V33a's thirteen overworld `IWG` generators is either *registered and observed
+generating in a censused world*, or *recorded here with a named blocker*. No generator sits in the
+tree half-ported, and none is called done on wiring alone.
+
+"Observed generating" is the bar deliberately, because this sweep has already produced three defects
+that compiled, datagen'd and reviewed clean and still generated nothing: the tiered-ore band sitting
+in deepslate, the tiered-plant cave scan repeating that same mistake, and V33a's literal
+`== Blocks.air` test failing once plants moved after vegetation. Reading the code did not catch any
+of them; censusing a pregenerated world caught all three.
+
+### Status
+
+| Generator | State |
+|---|---|
+| `CrystalGenerator` (cave crystals) | done — all 16 colours, ~1.6-2.0% of chunks each |
+| `ColorTreeGenerator` (dye trees) | done — all 16 colours |
+| `LumaGenerator`, `GlowingCliffsAuxGenerator` | done — Luminous Cliffs vertical |
+| `PylonGenerator` | generating, but see the acceptance-rate note in PORTING.md |
+| `TieredWorldGenerator` — ores | done — 3 of 15 ores, ~26-28% of chunks |
+| `TieredWorldGenerator` — plants | done — 5 of 7 plants; Essence Lily/Radiance Bush need a GameTest |
+| `CaveIndicatorGenerator` | **wiring-verified only** — never observed generating (task #3) |
+| `DecoFlowerGenerator` | not started — self-contained (task #1) |
+| `UnknownArtefactGenerator` | not started — self-contained (task #2) |
+| `WarpNodeGenerator` | blocked — warp/teleport subsystem |
+| `SkypeaterGenerator` | blocked — `TileEntitySkypeater` not registered |
+| `DataTowerGenerator` | blocked — data-tower tiles + `DataTowerStructure` |
+| `DungeonGenerator` | blocked — 6 structure classes + `BlockLootChest` + `BlockStructureShield`; own subsystem |
+
+### Two traps this sweep keeps hitting — check both on every generator
+
+1. **V33a y values are absolute in a bedrock-at-0 world.** Do not offset by `getMinY()`. The modern
+   space below y 0 is deepslate, so anything targeting `minecraft:stone` there can never place.
+   This bug shipped twice, an hour apart.
+2. **V33a `IWG` generators were `RetroactiveGenerator`s and ran post-population.**
+   `TOP_LAYER_MODIFICATION` is usually the faithful step — but the source's literal air checks were
+   written for a chunk that had not been carpeted in grass and flowers yet, and fail there.
+
+### Nether
+
+All seven `World/Nether/` files are unported (`LavaRiverGenerator`, `NetherDiorama`, `NetherMaze`,
+`NetherSpiral`, `NetherStructureGenerator`, `NetherStructures`, `NetherTemple`). The only registered
+nether content is `firestone` (11.05% of chunks) and nether cave crystals, both confirmed generating.
