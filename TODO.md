@@ -358,3 +358,35 @@ the lowest crown layer. It builds vanilla oak logs and leaves — the Ender Oak 
 new wood type. All three V33a variants (small/large/narrow) carry their source parameters verbatim.
 
 The biome's placed feature uses 7 attempts per chunk, V33a's 0.7x thinning of vanilla forest's 10.
+
+### Overworld sweep: 12 of 13 — 2026-08-04
+
+Done and compiling, with 74/74 required tests green throughout: cave crystals, dye trees, luma/cliffs
+aux, pylons, tiered ores, tiered plants, Piezo Crystals, all six deco flowers, the Ender Forest biome
+with its Ender Oak shape and noise-driven tree selector, Unknown Artefacts with the lore-tower ring,
+Warp Nodes with the direction-addressed warp network, and Skypeaters.
+
+Cross-module work this sweep pulled in: DragonAPI `HexGrid` (geometry ported in full; its four
+immediate-mode drawing methods marked `DRAGONAPI-PORT` until the lore GUI lands), `Towers`, and
+`WarpNetwork` as a modern per-level `SavedData`.
+
+**`DataTowerGenerator` — the last one, and it is a subsystem, not a slice.** `Towers` was its main
+blocker and is now ported, but the rest of the chain is untouched and pristine:
+
+| Dependency | Lines | Note |
+|---|---:|---|
+| `TileEntityDataNode` | 537 | the lore terminal itself |
+| `BlockLootChest` + its TE | 602 | four metadata variants, own inventory |
+| `BlockStructureShield` | 297 | with the MOSS/STONE `BlockType` split |
+| `LoreManager` | 254 | only `getTower`/`initTowers` are needed here |
+| `TileEntityDummyAux` + `Flags` | ? | the four stacked hitbox blocks above the node |
+| `ChromaStructures.DATANODE` | 55 | needs an NBT template plus the moss/stone runtime alternative |
+
+The structure itself is small — a 3x3 shield floor, a four-block plus at y+1, the node at its centre,
+and four linked dummy-aux blocks stacked above for the hitbox — but it wants the NBT-first treatment
+the other multiblocks get, and the per-block 1-in-3 moss/stone roll is exactly the kind of runtime
+alternative that stays in Java.
+
+Roughly 1,700 lines across six files before the generator itself can be written. Comparable in size
+to everything else in this sweep put together, and worth its own focused pass rather than being
+tacked on the end of one.
