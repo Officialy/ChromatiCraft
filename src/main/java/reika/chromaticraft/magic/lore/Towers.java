@@ -112,8 +112,19 @@ public enum Towers {
 	}
 
 	/** In block coords. */
-	static Towers getTowerForChunk(int cx, int cz) {
+	public static Towers getTowerForChunk(int cx, int cz) {
 		return towerChunkCache.get(new ChunkPos(cx, cz));
+	}
+
+	/**
+	 * V33a {@code LoreManager.getTower}, which is only {@code initTowers} followed by this lookup.
+	 * Exposed here so consumers do not have to drag in LoreManager, whose other half belongs to the
+	 * lore/research vertical.
+	 */
+	public static Towers getTower(ServerLevel world, int cx, int cz) {
+		if (!initialized(world))
+			loadPositions(world, 64 * 16 * 2);
+		return getTowerForChunk(cx, cz);
 	}
 
 	public void generatedAt(int x, int y, int z) {

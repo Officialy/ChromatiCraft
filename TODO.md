@@ -390,3 +390,35 @@ alternative that stays in Java.
 Roughly 1,700 lines across six files before the generator itself can be written. Comparable in size
 to everything else in this sweep put together, and worth its own focused pass rather than being
 tacked on the end of one.
+
+### DataTower: chain corrected after porting into it — 2026-08-04
+
+`BlockStructureShield` is ported (eight concrete materials plus a `reinforced` blockstate), which was
+the first item on the list. Working into the rest changed the picture in two ways.
+
+**`LoreManager` is not needed.** Its `getTower` is only `initTowers` followed by
+`Towers.getTowerForChunk`, and both halves are already in the ported `Towers`. `Towers.getTower` now
+exposes exactly that, so the generator never touches LoreManager — whose other half (lore-fragment
+distribution, `KeyAssemblyPuzzle`, `ChromaResearchManager`, `ChromaOverlays`) belongs to the
+guide-book vertical and would have been dragged in for nothing.
+
+**`TileEntityDataNode` is the real gate, and it belongs to that same vertical.** Its 537 lines depend
+on `EntityTunnelNuker`, DragonAPI's `StructureRenderer` and `KeyWatcher`, `ChromaPackets`,
+`ChromaResearchManager` and the lore-fragment system. It is not a standalone tile that happens to be
+unported; it is the lore terminal, and porting it means porting the research/handbook layer that
+TODO item 4 already scopes as ~8,000 lines of its own.
+
+So the honest remaining chain for `DataTowerGenerator` is:
+
+| Piece | Lines | Gate |
+|---|---:|---|
+| `BlockStructureShield` | 297 | **done** |
+| `TileEntityDummyAux` + `Flags` | small | the four stacked hitbox blocks |
+| `BlockLootChest` + its TE | 602 | self-contained inventory block |
+| `ChromaStructures.DATANODE` | 55 | NBT template + moss/stone runtime alternative |
+| `TileEntityDataNode` | 537 | **blocked on the lore/research vertical** |
+
+The first four are reachable now. The last is not, and no amount of ordering changes that — the data
+node's whole purpose is to be a lore terminal, so a version of it without the research layer would be
+the hollow substitute the rules forbid. DataTower should therefore land with, or after, the guide
+book rather than as the tail of the worldgen sweep.
