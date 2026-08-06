@@ -1,0 +1,6 @@
+{
+  "type": "neoforge:add_features",
+  "biomes": "#minecraft:is_overworld",
+  "features": "chromaticraft:unknown_artefact",
+  "step": "surface_structures"
+}

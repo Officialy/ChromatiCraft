@@ -176,6 +176,7 @@ public class ChromaModelProvider extends ModelProvider {
 
 
 
+		unknownArtefactBlock(blockStateOut, itemModelOut, modelOut);
 		decoFlowerBlocks(blockStateOut, itemModelOut, modelOut);
 		caveIndicatorBlock(blockStateOut, itemModelOut, modelOut);
 		tieredPlantBlocks(blockStateOut, itemModelOut, modelOut);
@@ -229,6 +230,43 @@ public class ChromaModelProvider extends ModelProvider {
 	 * at brightness 240, the inactive one lit normally.
 	 */
 	/** V33a renders these as ordinary crossed squares; only Aura Ivy takes the biome grass tint. */
+	/**
+	 * V33a draws the artefact through its own ISBRH, but the shape it draws is a plain box sunk to
+	 * 0.75 of a block with the single {@code ua} sprite on every face, so a slab-height cube_all
+	 * reproduces it. The sprite keeps its original animation metadata.
+	 */
+	private static void unknownArtefactBlock(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		Block block = ChromaBlocks.UNKNOWN_ARTEFACT.get();
+		Identifier id = ModelLocationUtils.getModelLocation(block);
+		modelOut.accept(id, () -> {
+			JsonObject root = new JsonObject();
+			root.addProperty("parent", "minecraft:block/block");
+			JsonObject textures = new JsonObject();
+			textures.addProperty("all", "chromaticraft:block/unknown_artefact");
+			textures.addProperty("particle", "chromaticraft:block/unknown_artefact");
+			root.add("textures", textures);
+			JsonObject faces = new JsonObject();
+			for (Direction face : Direction.values())
+				faces.add(face.getSerializedName(), modelFace("#all", face.getSerializedName()));
+			JsonArray elements = new JsonArray();
+			JsonObject element = new JsonObject();
+			JsonArray from = new JsonArray();
+			from.add(0F); from.add(0F); from.add(0F);
+			JsonArray to = new JsonArray();
+			to.add(16F); to.add(12F); to.add(16F);
+			element.add("from", from);
+			element.add("to", to);
+			element.add("faces", faces);
+			elements.add(element);
+			root.add("elements", elements);
+			return root;
+		});
+		blockStateOut.accept(MultiVariantGenerator.dispatch(block,
+				new MultiVariant(WeightedList.of(new Variant(id)))));
+		itemModelOut.accept(block.asItem(), ItemModelUtils.plainModel(id));
+	}
+
 	private static void decoFlowerBlocks(Consumer<BlockModelDefinitionGenerator> blockStateOut,
 			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
 		for (ChromaDecoFlowers flower : ChromaDecoFlowers.list) {

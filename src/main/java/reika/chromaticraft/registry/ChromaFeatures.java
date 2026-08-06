@@ -13,6 +13,7 @@ import reika.chromaticraft.world.PylonFeature;
 import reika.chromaticraft.world.CaveIndicatorFeature;
 import reika.chromaticraft.world.DecoFlowerFeature;
 import reika.chromaticraft.world.EnderForestTreeFeature;
+import reika.chromaticraft.world.UnknownArtefactFeature;
 import reika.chromaticraft.world.TieredPlantFeature;
 import reika.chromaticraft.world.luminous.LumaPatchFeature;
 import reika.chromaticraft.world.luminous.LuminousCliffsTerrainFeature;
@@ -56,6 +57,9 @@ public final class ChromaFeatures {
 
     public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> ENDER_FOREST_TREE =
             FEATURES.register("ender_forest_tree", EnderForestTreeFeature::new);
+
+    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> UNKNOWN_ARTEFACT =
+            FEATURES.register("unknown_artefact", UnknownArtefactFeature::new);
 
     public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> CAVE_INDICATOR =
             FEATURES.register("cave_indicator", CaveIndicatorFeature::new);

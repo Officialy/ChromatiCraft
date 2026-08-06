@@ -50,6 +50,7 @@ import reika.chromaticraft.block.worldgen26.BlockLumaFluid;
 import reika.chromaticraft.block.worldgen26.BlockTieredOre;
 import reika.chromaticraft.block.worldgen26.BlockTieredPlant;
 import reika.chromaticraft.block.worldgen26.BlockCaveIndicator;
+import reika.chromaticraft.block.worldgen26.BlockUnknownArtefact;
 import reika.chromaticraft.block.worldgen26.BlockDecoFlower;
 import reika.chromaticraft.magic.progression.ProgressStage;
 
@@ -235,6 +236,11 @@ public final class ChromaBlocks {
 	public static DeferredBlock<BlockDecoFlower> decoFlower(ChromaDecoFlowers flower) {
 		return DECO_FLOWERS.get(flower);
 	}
+
+	/** V33a Unknown Artefact: hardness 12, and resistance 300000 so it cannot be blasted out. */
+	public static final DeferredBlock<BlockUnknownArtefact> UNKNOWN_ARTEFACT = register("unknown_artefact",
+			() -> new BlockUnknownArtefact(blockProperties().mapColor(MapColor.STONE)
+					.strength(12F, 300000F).requiresCorrectToolForDrops().noOcclusion()));
 
 	/**
 	 * V33a Piezo Crystal: stone's hardness, a third of its resistance, and light 10 while active.

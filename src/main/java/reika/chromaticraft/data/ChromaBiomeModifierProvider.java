@@ -55,6 +55,10 @@ public final class ChromaBiomeModifierProvider implements DataProvider {
                 GenerationStep.Decoration.VEGETAL_DECORATION));
         futures.add(saveMany(cache, "aura_ivy_hills", "#minecraft:is_mountain",
                 List.of(id("aura_ivy").toString()), GenerationStep.Decoration.VEGETAL_DECORATION));
+        // V33a UnknownArtefactGenerator runs in every ordinary overworld biome; the tower-ring
+        // annulus, not the biome, is what confines it.
+        futures.add(save(cache, "unknown_artefact_overworld", "#minecraft:is_overworld",
+                id("unknown_artefact").toString(), GenerationStep.Decoration.SURFACE_STRUCTURES));
         // V33a CaveIndicatorGenerator is gated on BiomeGlowingCliffs.isGlowingCliffs, so this goes
         // to the two Luminous Cliffs biomes only rather than to an overworld tag.
         futures.add(saveManyBiomes(cache, "cave_indicator_cliffs",
