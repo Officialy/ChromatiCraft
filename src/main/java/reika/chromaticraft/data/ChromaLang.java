@@ -13,6 +13,7 @@ import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.ChromaTieredItems;
 import reika.chromaticraft.registry.ChromaTieredPlants;
 import reika.chromaticraft.registry.ChromaDecoFlowers;
+import reika.chromaticraft.registry.ChromaShieldTypes;
 import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.magic.progression.ResearchLevel;
@@ -114,6 +115,9 @@ public class ChromaLang extends LanguageProvider {
 		}
 		add(ChromaBlocks.CAVE_INDICATOR.get(), "Piezo Crystals");
 		add(ChromaBlocks.UNKNOWN_ARTEFACT.get(), "Unknown Artefact");
+		for (ChromaShieldTypes type : ChromaShieldTypes.list) {
+			add(ChromaBlocks.shielding(type).get(), type.displayName());
+		}
 		add(ChromaBlocks.WARP_NODE.get(), "Warp Node");
 		for (ChromaDecoFlowers flower : ChromaDecoFlowers.list) {
 			add(ChromaBlocks.decoFlower(flower).get(), flower.displayName());

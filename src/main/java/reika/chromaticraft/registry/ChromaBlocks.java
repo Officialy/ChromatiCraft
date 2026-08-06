@@ -51,6 +51,7 @@ import reika.chromaticraft.block.worldgen26.BlockTieredOre;
 import reika.chromaticraft.block.worldgen26.BlockTieredPlant;
 import reika.chromaticraft.block.worldgen26.BlockCaveIndicator;
 import reika.chromaticraft.block.worldgen26.BlockUnknownArtefact;
+import reika.chromaticraft.block.worldgen26.BlockStructureShield;
 import reika.chromaticraft.block.worldgen26.BlockWarpNode;
 import reika.chromaticraft.block.worldgen26.BlockDecoFlower;
 import reika.chromaticraft.magic.progression.ProgressStage;
@@ -242,6 +243,31 @@ public final class ChromaBlocks {
 	public static final DeferredBlock<BlockWarpNode> WARP_NODE = registerBlockOnly("warp_node",
 			() -> new BlockWarpNode(blockProperties().mapColor(MapColor.NONE)
 					.strength(-1F, 6000000F).noOcclusion().noCollision()));
+
+	/** V33a structure shielding, one registered identity per material. */
+	public static final Map<ChromaShieldTypes, DeferredBlock<BlockStructureShield>> SHIELDING =
+			registerShielding();
+
+	private static Map<ChromaShieldTypes, DeferredBlock<BlockStructureShield>> registerShielding() {
+		EnumMap<ChromaShieldTypes, DeferredBlock<BlockStructureShield>> map =
+				new EnumMap<>(ChromaShieldTypes.class);
+		for (ChromaShieldTypes type : ChromaShieldTypes.list)
+			map.put(type, register(type.registryName(), () -> {
+				// V33a hardness 2, resistance 6000; Light emits 15 and the transparent materials do
+				// not occlude.
+				BlockBehaviour.Properties props = blockProperties().mapColor(MapColor.STONE)
+						.strength(2F, 6000F).requiresCorrectToolForDrops()
+						.lightLevel(state -> type.lightValue());
+				if (type.isTransparent())
+					props = props.noOcclusion();
+				return new BlockStructureShield(props, type);
+			}));
+		return map;
+	}
+
+	public static DeferredBlock<BlockStructureShield> shielding(ChromaShieldTypes type) {
+		return SHIELDING.get(type);
+	}
 
 	/** V33a Unknown Artefact: hardness 12, and resistance 300000 so it cannot be blasted out. */
 	public static final DeferredBlock<BlockUnknownArtefact> UNKNOWN_ARTEFACT = register("unknown_artefact",

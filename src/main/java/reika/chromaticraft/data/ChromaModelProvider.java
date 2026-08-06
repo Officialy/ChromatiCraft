@@ -44,6 +44,7 @@ import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaTieredPlants;
 import reika.chromaticraft.registry.ChromaDecoFlowers;
+import reika.chromaticraft.registry.ChromaShieldTypes;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.registry.ChromaClusterItems;
 import reika.chromaticraft.registry.ChromaCraftingItems;
@@ -176,6 +177,7 @@ public class ChromaModelProvider extends ModelProvider {
 
 
 
+		shieldingBlocks(blockStateOut, itemModelOut, modelOut);
 		warpNodeModel(blockStateOut, modelOut);
 		unknownArtefactBlock(blockStateOut, itemModelOut, modelOut);
 		decoFlowerBlocks(blockStateOut, itemModelOut, modelOut);
@@ -241,6 +243,23 @@ public class ChromaModelProvider extends ModelProvider {
 	 * appearance comes from RenderWarpNode. Particle-only, exactly as the pylon is, and no item model
 	 * because the block has no BlockItem.
 	 */
+	/**
+	 * One cube_all per material. The reinforced flag changes behaviour, not appearance -- V33a keys
+	 * its icon off {@code meta % 8} alone -- so both states share a model.
+	 */
+	private static void shieldingBlocks(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		for (ChromaShieldTypes type : ChromaShieldTypes.list) {
+			Block block = ChromaBlocks.shielding(type).get();
+			Material texture = new Material(Identifier.fromNamespaceAndPath(
+					ChromatiCraft.MODID, type.texture()));
+			Identifier model = ModelTemplates.CUBE_ALL.create(block, TextureMapping.cube(texture), modelOut);
+			blockStateOut.accept(MultiVariantGenerator.dispatch(block,
+					new MultiVariant(WeightedList.of(new Variant(model)))));
+			itemModelOut.accept(block.asItem(), ItemModelUtils.plainModel(model));
+		}
+	}
+
 	private static void warpNodeModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
 			BiConsumer<Identifier, ModelInstance> modelOut) {
 		Material particle = new Material(Identifier.fromNamespaceAndPath(

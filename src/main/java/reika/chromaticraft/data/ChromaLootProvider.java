@@ -39,6 +39,7 @@ import reika.chromaticraft.block.worldgen26.BlockTieredOre;
 import reika.chromaticraft.block.worldgen26.BlockTieredPlant;
 import reika.chromaticraft.block.worldgen26.BlockCaveIndicator;
 import reika.chromaticraft.block.worldgen26.BlockDecoFlower;
+import reika.chromaticraft.block.worldgen26.BlockStructureShield;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.CrystalElement;
 
@@ -81,6 +82,11 @@ public final class ChromaLootProvider extends LootTableProvider {
 					this.add(block, this.crystallineStoneTable(stone));
 				}
 				else if (block instanceof BlockCrystalRune) {
+					this.dropSelf(block);
+				}
+				else if (block instanceof BlockStructureShield) {
+					// V33a damageDropped = meta % 8: a reinforced shield yields the plain form of the
+					// same material, and the plain form drops itself.
 					this.dropSelf(block);
 				}
 				else if (block instanceof BlockDecoFlower flower) {
