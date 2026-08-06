@@ -151,6 +151,8 @@ sourceSets.main.java {
     include 'reika/chromaticraft/world/TieredPlantFeature.java'
     include 'reika/chromaticraft/world/CaveIndicatorFeature.java'
     include 'reika/chromaticraft/world/DecoFlowerFeature.java'
+    include 'reika/chromaticraft/world/EnderOakFeature.java'
+    include 'reika/chromaticraft/world/EnderForestTreeFeature.java'
     include 'reika/chromaticraft/world/CastingTempleFeature.java'
     include 'reika/chromaticraft/world/biome/ChromaBiomes.java'
     include 'reika/chromaticraft/world/biome/ChromaRegion.java'

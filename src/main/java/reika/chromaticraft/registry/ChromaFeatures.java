@@ -12,6 +12,7 @@ import reika.chromaticraft.world.CrystalFeature;
 import reika.chromaticraft.world.PylonFeature;
 import reika.chromaticraft.world.CaveIndicatorFeature;
 import reika.chromaticraft.world.DecoFlowerFeature;
+import reika.chromaticraft.world.EnderForestTreeFeature;
 import reika.chromaticraft.world.TieredPlantFeature;
 import reika.chromaticraft.world.luminous.LumaPatchFeature;
 import reika.chromaticraft.world.luminous.LuminousCliffsTerrainFeature;
@@ -52,6 +53,9 @@ public final class ChromaFeatures {
             map.put(flower, FEATURES.register(flower.registryName(), () -> new DecoFlowerFeature(flower)));
         return map;
     }
+
+    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> ENDER_FOREST_TREE =
+            FEATURES.register("ender_forest_tree", EnderForestTreeFeature::new);
 
     public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> CAVE_INDICATOR =
             FEATURES.register("cave_indicator", CaveIndicatorFeature::new);

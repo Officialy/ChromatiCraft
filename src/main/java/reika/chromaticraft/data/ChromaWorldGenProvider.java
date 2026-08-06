@@ -73,6 +73,7 @@ public final class ChromaWorldGenProvider {
     public static final ResourceKey<ConfiguredFeature<?, ?>> RAINBOW_TREE = configuredKey("rainbow_tree");
     public static final ResourceKey<PlacedFeature> RAINBOW_TREE_PLACED = placedKey("rainbow_tree");
     public static final ResourceKey<ConfiguredFeature<?, ?>> GLOWING_TREE = configuredKey("glowing_tree");
+    public static final ResourceKey<PlacedFeature> ENDER_FOREST_TREE_PLACED = placedKey("ender_forest_tree");
     public static final ResourceKey<PlacedFeature> GLOWING_TREE_PLACED = placedKey("glowing_tree");
 
     private ChromaWorldGenProvider() {}
@@ -92,6 +93,7 @@ public final class ChromaWorldGenProvider {
             HolderGetter<Feature<?>> features = bootstrap.lookup(Registries.FEATURE);
             registerConfigured(bootstrap, features, CAVE_CRYSTAL);
             registerConfigured(bootstrap, features, id("cave_indicator"));
+            registerConfigured(bootstrap, features, id("ender_forest_tree"));
             for (ChromaDecoFlowers flower : ChromaDecoFlowers.list)
                 registerConfigured(bootstrap, features, id(flower.registryName()));
             for (ChromaTieredPlants plant : ChromaTieredPlants.list)
@@ -129,6 +131,14 @@ public final class ChromaWorldGenProvider {
             HolderGetter<ConfiguredFeature<?, ?>> configured = bootstrap.lookup(Registries.CONFIGURED_FEATURE);
             registerPlaced(bootstrap, configured, CAVE_CRYSTAL);
             registerPlaced(bootstrap, configured, id("cave_indicator"), List.of(BiomeFilter.biome()));
+            // V33a thins the biome's trees to 0.7x; vanilla forest is 10 per chunk, so 7 attempts,
+            // and the selector's own "no tree" entry does the rest of the thinning per position.
+            registerPlaced(bootstrap, configured, id("ender_forest_tree"), List.of(
+                    CountPlacement.of(7),
+                    InSquarePlacement.spread(),
+                    net.minecraft.world.level.levelgen.placement.HeightmapPlacement
+                            .onHeightmap(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING),
+                    BiomeFilter.biome()));
             for (ChromaDecoFlowers flower : ChromaDecoFlowers.list)
                 registerPlaced(bootstrap, configured, id(flower.registryName()), List.of(
                         RarityFilter.onAverageOnceEvery(flower.generationChance()),

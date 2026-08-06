@@ -132,6 +132,9 @@ public final class ChromaBiomes {
         BiomeDefaultFeatures.addDefaultOres(generation);
         BiomeDefaultFeatures.addDefaultSoftDisks(generation);
         BiomeDefaultFeatures.addForestFlowers(generation);
+        // V33a's own tree selector, not a vanilla tree list -- see EnderForestTreeFeature.
+        generation.addFeature(GenerationStep.Decoration.VEGETAL_DECORATION,
+                features.getOrThrow(ChromaWorldGenProvider.ENDER_FOREST_TREE_PLACED));
         BiomeDefaultFeatures.addBushes(generation);
         BiomeDefaultFeatures.addDefaultFlowers(generation);
         BiomeDefaultFeatures.addForestGrass(generation);

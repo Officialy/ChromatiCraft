@@ -334,21 +334,27 @@ for ivy, climbs to the top of the wall it found and requires air beneath, becaus
 face and grows downward. The port ran it through the ordinary path, settling it in open air where its
 adjacent-solid test can never pass.
 
-### Ender Forest — biome registered, tree selector outstanding
+### Ender Forest — biome and tree selector both ported
 
 `ChromaBiomes.ENDER_FOREST` is registered with V33a's rainless setting, the enderman-dominated spawn
 list (Enderman 10 against Creeper/Spider/Skeleton at 1 each, groups 1-4) and the forest palette, plus
 a TerraBlender entry replacing `DARK_FOREST` — `FOREST` was already taken by Rainbow Forest. That
 unblocked Enderflower and Resonant Clover, which are now ported, so all six deco flowers are in.
 
-**Outstanding: the tree selector.** V33a thins trees to 0.7x and chooses between vanilla oak, vanilla
-big oak and three Ender Oak variants through a noise-driven weighted table — a `Simplex3DGenerator`
-at frequency 1/30, with every entry's weight recomputed as `max(0, base + coefficient * noise)` and a
-"no tree" entry competing alongside the real ones. Weights are oak 25/+10, big oak 5/-2, small ender
-oak 50/+20, large ender oak 10/-5, narrow ender oak 6/-1, nothing 0/+6.
+**The tree selector is ported.** `EnderForestTreeFeature` reproduces V33a's dynamic-weight draw: a
+`Simplex3DGenerator` at frequency 1/30, seeded `(worldSeed << 17) + (worldSeed >> 43)`, with every
+candidate's weight recomputed as `max(0, base + coefficient * noise)` — oak 25/+10, fancy oak 5/-2,
+small ender oak 50/+20, large 10/-5, narrow 6/-1, and a "no tree" entry 0/+6 competing in the same
+draw. That empty entry is why a vanilla weighted tree list cannot express this: species *and* density
+vary together with one noise field, so a static list would reproduce the average and lose the
+structure. The two vanilla entries are resolved from the configured-feature registry and placed for
+real rather than skipped, so the mix is not skewed toward ender oaks.
 
-That is a dynamic-weight selector with no vanilla equivalent, and it is deliberately **not**
-approximated with a plain weighted tree list — the whole point is that the mix shifts across the
-biome with the noise field, so a flat list would lose the biome's character. It needs a custom
-feature. `EnderOakGenerator` is already in the tree as the geometry dependency. Until it lands the
-biome carries ordinary vanilla forest trees.
+`EnderOakFeature` ports the shape itself: a trunk of random height under a crown whose radius
+random-walks upward and whose cross-section is a `LobulatedCurve` clipped by a per-tree height ratio,
+optional branches at evenly spaced jittered azimuths laying logs along a polar vector with 8-20
+leaves scattered per half-step, and the hanging leaf columns that drip from unenclosed edge leaves on
+the lowest crown layer. It builds vanilla oak logs and leaves — the Ender Oak is a silhouette, not a
+new wood type. All three V33a variants (small/large/narrow) carry their source parameters verbatim.
+
+The biome's placed feature uses 7 attempts per chunk, V33a's 0.7x thinning of vanilla forest's 10.
