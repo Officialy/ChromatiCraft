@@ -114,6 +114,7 @@ public class ChromaLang extends LanguageProvider {
 		}
 		add(ChromaBlocks.CAVE_INDICATOR.get(), "Piezo Crystals");
 		add(ChromaBlocks.UNKNOWN_ARTEFACT.get(), "Unknown Artefact");
+		add(ChromaBlocks.WARP_NODE.get(), "Warp Node");
 		for (ChromaDecoFlowers flower : ChromaDecoFlowers.list) {
 			add(ChromaBlocks.decoFlower(flower).get(), flower.displayName());
 		}

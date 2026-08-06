@@ -23,6 +23,7 @@ import reika.chromaticraft.tileentity.networking.TileEntitySkypeater;
 import reika.chromaticraft.tileentity.recipe.TileEntityCastingTable;
 import reika.chromaticraft.tileentity.auxiliary.TileEntityFocusCrystal;
 import reika.chromaticraft.tileentity.recipe.TileEntityItemStand;
+import reika.chromaticraft.tileentity.aoe.TileEntityWarpNode;
 
 /**
  * ChromatiCraft {@link BlockEntityType} registry (mirrors ReactorBlockEntities). One entry per
@@ -73,6 +74,11 @@ public final class ChromaBlockEntities {
 					() -> new BlockEntityType<>(TileEntityChroma::new, ChromaBlocks.CHROMA.get()));
 
 	@SuppressWarnings("unchecked")
+
+	/** Worldgen block rather than a ChromaTiles machine, so it registers against its block directly. */
+	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityWarpNode>> WARP_NODE =
+			BLOCK_ENTITIES.register("warp_node", () -> new BlockEntityType<>(
+					TileEntityWarpNode::new, ChromaBlocks.WARP_NODE.get()));
 
 	private static <T extends BlockEntity> DeferredHolder<BlockEntityType<?>, BlockEntityType<T>> register(
 			String name, ChromaTiles tile) {

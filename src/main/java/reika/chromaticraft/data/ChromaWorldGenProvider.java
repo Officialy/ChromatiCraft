@@ -94,6 +94,7 @@ public final class ChromaWorldGenProvider {
             registerConfigured(bootstrap, features, CAVE_CRYSTAL);
             registerConfigured(bootstrap, features, id("cave_indicator"));
             registerConfigured(bootstrap, features, id("unknown_artefact"));
+            registerConfigured(bootstrap, features, id("warp_node"));
             registerConfigured(bootstrap, features, id("ender_forest_tree"));
             for (ChromaDecoFlowers flower : ChromaDecoFlowers.list)
                 registerConfigured(bootstrap, features, id(flower.registryName()));
@@ -134,6 +135,8 @@ public final class ChromaWorldGenProvider {
             registerPlaced(bootstrap, configured, id("cave_indicator"), List.of(BiomeFilter.biome()));
             // The feature owns its own tower-ring filter and 1-in-40 roll; no count modifiers.
             registerPlaced(bootstrap, configured, id("unknown_artefact"), List.of(BiomeFilter.biome()));
+            // The feature owns its own 2048-chunk grid and biome roll; no count modifiers.
+            registerPlaced(bootstrap, configured, id("warp_node"), List.of(BiomeFilter.biome()));
             // V33a thins the biome's trees to 0.7x; vanilla forest is 10 per chunk, so 7 attempts,
             // and the selector's own "no tree" entry does the rest of the thinning per position.
             registerPlaced(bootstrap, configured, id("ender_forest_tree"), List.of(

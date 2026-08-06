@@ -55,6 +55,9 @@ public final class ChromaBiomeModifierProvider implements DataProvider {
                 GenerationStep.Decoration.VEGETAL_DECORATION));
         futures.add(saveMany(cache, "aura_ivy_hills", "#minecraft:is_mountain",
                 List.of(id("aura_ivy").toString()), GenerationStep.Decoration.VEGETAL_DECORATION));
+        // V33a WarpNodeGenerator is overworld-only; its grid and per-biome chance do the confining.
+        futures.add(save(cache, "warp_node_overworld", "#minecraft:is_overworld",
+                id("warp_node").toString(), GenerationStep.Decoration.TOP_LAYER_MODIFICATION));
         // V33a UnknownArtefactGenerator runs in every ordinary overworld biome; the tower-ring
         // annulus, not the biome, is what confines it.
         futures.add(save(cache, "unknown_artefact_overworld", "#minecraft:is_overworld",

@@ -51,6 +51,7 @@ import reika.chromaticraft.block.worldgen26.BlockTieredOre;
 import reika.chromaticraft.block.worldgen26.BlockTieredPlant;
 import reika.chromaticraft.block.worldgen26.BlockCaveIndicator;
 import reika.chromaticraft.block.worldgen26.BlockUnknownArtefact;
+import reika.chromaticraft.block.worldgen26.BlockWarpNode;
 import reika.chromaticraft.block.worldgen26.BlockDecoFlower;
 import reika.chromaticraft.magic.progression.ProgressStage;
 
@@ -236,6 +237,11 @@ public final class ChromaBlocks {
 	public static DeferredBlock<BlockDecoFlower> decoFlower(ChromaDecoFlowers flower) {
 		return DECO_FLOWERS.get(flower);
 	}
+
+	/** V33a Warp Node: unbreakable, blast resistance 6000000, and invisible without its renderer. */
+	public static final DeferredBlock<BlockWarpNode> WARP_NODE = registerBlockOnly("warp_node",
+			() -> new BlockWarpNode(blockProperties().mapColor(MapColor.NONE)
+					.strength(-1F, 6000000F).noOcclusion().noCollision()));
 
 	/** V33a Unknown Artefact: hardness 12, and resistance 300000 so it cannot be blasted out. */
 	public static final DeferredBlock<BlockUnknownArtefact> UNKNOWN_ARTEFACT = register("unknown_artefact",

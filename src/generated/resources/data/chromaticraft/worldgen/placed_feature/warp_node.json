@@ -1,0 +1,8 @@
+{
+  "feature": "chromaticraft:warp_node",
+  "placement": [
+    {
+      "type": "minecraft:biome"
+    }
+  ]
+}

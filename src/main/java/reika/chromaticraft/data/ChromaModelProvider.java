@@ -176,6 +176,7 @@ public class ChromaModelProvider extends ModelProvider {
 
 
 
+		warpNodeModel(blockStateOut, modelOut);
 		unknownArtefactBlock(blockStateOut, itemModelOut, modelOut);
 		decoFlowerBlocks(blockStateOut, itemModelOut, modelOut);
 		caveIndicatorBlock(blockStateOut, itemModelOut, modelOut);
@@ -235,6 +236,22 @@ public class ChromaModelProvider extends ModelProvider {
 	 * 0.75 of a block with the single {@code ua} sprite on every face, so a slab-height cube_all
 	 * reproduces it. The sprite keeps its original animation metadata.
 	 */
+	/**
+	 * V33a BlockWarpNode returns render type -1: the block itself draws nothing at all and its whole
+	 * appearance comes from RenderWarpNode. Particle-only, exactly as the pylon is, and no item model
+	 * because the block has no BlockItem.
+	 */
+	private static void warpNodeModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			BiConsumer<Identifier, ModelInstance> modelOut) {
+		Material particle = new Material(Identifier.fromNamespaceAndPath(
+				ChromatiCraft.MODID, "block/icons/roundflare"));
+		Identifier model = ModelTemplates.PARTICLE_ONLY.create(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/warp_node"),
+				new TextureMapping().put(TextureSlot.PARTICLE, particle), modelOut);
+		blockStateOut.accept(MultiVariantGenerator.dispatch(ChromaBlocks.WARP_NODE.get(),
+				new MultiVariant(WeightedList.of(new Variant(model)))));
+	}
+
 	private static void unknownArtefactBlock(Consumer<BlockModelDefinitionGenerator> blockStateOut,
 			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
 		Block block = ChromaBlocks.UNKNOWN_ARTEFACT.get();
