@@ -1,0 +1,8 @@
+{
+  "feature": "chromaticraft:skypeater",
+  "placement": [
+    {
+      "type": "minecraft:biome"
+    }
+  ]
+}

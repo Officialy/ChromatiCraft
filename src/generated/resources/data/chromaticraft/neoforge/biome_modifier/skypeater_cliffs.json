@@ -1,0 +1,11 @@
+{
+  "type": "neoforge:add_features",
+  "biomes": [
+    "chromaticraft:luminous_cliffs",
+    "chromaticraft:luminous_cliffs_shores"
+  ],
+  "features": [
+    "chromaticraft:skypeater"
+  ],
+  "step": "top_layer_modification"
+}

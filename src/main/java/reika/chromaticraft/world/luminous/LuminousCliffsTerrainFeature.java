@@ -101,6 +101,33 @@ public final class LuminousCliffsTerrainFeature extends Feature<NoneFeatureConfi
         return changed;
     }
 
+    /**
+     * V33a {@code GlowingCliffsColumnShaper.GlowCliffRegion}: which shelf of the cliffs a column
+     * belongs to. Upstream derived this from the shaper's own {@code hval} against its shoreline,
+     * middle and top thresholds. That shaper was replaced wholesale by this feature, so the region is
+     * read from the same {@code land} noise and the same thresholds this feature bands terrain with,
+     * rather than reviving the abandoned class.
+     */
+    public enum GlowCliffRegion { WATER, SHORES, PLATEAU, HIGH_PLATEAU }
+
+    /** The region of a column, for consumers that site things relative to the cliffs. */
+    public static GlowCliffRegion getRegion(WorldGenLevel level, int x, int z) {
+        NoiseSet noise = NOISE.computeIfAbsent(level.getSeed(), NoiseSet::new);
+        double land = noise.land.getValue(x, z);
+        if (land < -0.18)
+            return GlowCliffRegion.WATER;
+        double upperEdge = land + noise.upperEdge.getValue(x, z) * 0.18;
+        if (upperEdge > 0.43)
+            return GlowCliffRegion.HIGH_PLATEAU;
+        return land < 0.05 ? GlowCliffRegion.SHORES : GlowCliffRegion.PLATEAU;
+    }
+
+    /** The top of the middle shelf at a column; V33a's MAX_MIDDLE_TOP_Y analogue. */
+    public static int getMiddleTop(WorldGenLevel level, int x, int z) {
+        NoiseSet noise = NOISE.computeIfAbsent(level.getSeed(), NoiseSet::new);
+        return 106 + (int)Math.round(noise.middleTop.getValue(x, z) * 6);
+    }
+
     private record NoiseSet(NoiseGeneratorBase land, NoiseGeneratorBase shore,
             NoiseGeneratorBase middleTop, NoiseGeneratorBase upperBottom,
             NoiseGeneratorBase upperTop, NoiseGeneratorBase upperEdge) {

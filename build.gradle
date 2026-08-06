@@ -154,6 +154,7 @@ sourceSets.main.java {
     include 'reika/chromaticraft/world/EnderOakFeature.java'
     include 'reika/chromaticraft/world/UnknownArtefactFeature.java'
     include 'reika/chromaticraft/world/WarpNodeFeature.java'
+    include 'reika/chromaticraft/world/SkypeaterFeature.java'
     include 'reika/chromaticraft/magic/lore/Towers.java'
     include 'reika/chromaticraft/magic/WarpNetwork.java'
     include 'reika/chromaticraft/tileentity/aoe/TileEntityWarpNode.java'
