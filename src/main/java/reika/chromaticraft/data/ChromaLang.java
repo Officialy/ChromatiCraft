@@ -115,6 +115,7 @@ public class ChromaLang extends LanguageProvider {
 		}
 		add(ChromaBlocks.CAVE_INDICATOR.get(), "Piezo Crystals");
 		add(ChromaBlocks.UNKNOWN_ARTEFACT.get(), "Unknown Artefact");
+		add(ChromaBlocks.LOOT_CHEST.get(), "Loot Chest");
 		for (ChromaShieldTypes type : ChromaShieldTypes.list) {
 			add(ChromaBlocks.shielding(type).get(), type.displayName());
 		}

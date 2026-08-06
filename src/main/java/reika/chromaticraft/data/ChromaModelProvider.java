@@ -177,6 +177,8 @@ public class ChromaModelProvider extends ModelProvider {
 
 
 
+		lootChestModel(blockStateOut, itemModelOut, modelOut);
+		dummyAuxModel(blockStateOut, modelOut);
 		shieldingBlocks(blockStateOut, itemModelOut, modelOut);
 		warpNodeModel(blockStateOut, modelOut);
 		unknownArtefactBlock(blockStateOut, itemModelOut, modelOut);
@@ -247,6 +249,34 @@ public class ChromaModelProvider extends ModelProvider {
 	 * One cube_all per material. The reinforced flag changes behaviour, not appearance -- V33a keys
 	 * its icon off {@code meta % 8} alone -- so both states share a model.
 	 */
+	/**
+	 * V33a renders the loot chest through its own ISBRH as an inset body. Its own artwork is a chest
+	 * model rather than a sprite sheet, so until that BER lands the block uses the structure stone it
+	 * is always found embedded in, which is what the chest reads as from a distance anyway.
+	 */
+	private static void lootChestModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		Block block = ChromaBlocks.LOOT_CHEST.get();
+		Material texture = new Material(Identifier.fromNamespaceAndPath(
+				ChromatiCraft.MODID, ChromaShieldTypes.STONE.texture()));
+		Identifier model = ModelTemplates.CUBE_ALL.create(block, TextureMapping.cube(texture), modelOut);
+		blockStateOut.accept(MultiVariantGenerator.dispatch(block,
+				new MultiVariant(WeightedList.of(new Variant(model)))));
+		itemModelOut.accept(block.asItem(), ItemModelUtils.plainModel(model));
+	}
+
+	/** The dummy aux draws as structure stone or nothing at all, decided per tile by its RENDER flag. */
+	private static void dummyAuxModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			BiConsumer<Identifier, ModelInstance> modelOut) {
+		Material particle = new Material(Identifier.fromNamespaceAndPath(
+				ChromatiCraft.MODID, ChromaShieldTypes.STONE.texture()));
+		Identifier model = ModelTemplates.PARTICLE_ONLY.create(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/dummy_aux"),
+				new TextureMapping().put(TextureSlot.PARTICLE, particle), modelOut);
+		blockStateOut.accept(MultiVariantGenerator.dispatch(ChromaBlocks.DUMMY_AUX.get(),
+				new MultiVariant(WeightedList.of(new Variant(model)))));
+	}
+
 	private static void shieldingBlocks(Consumer<BlockModelDefinitionGenerator> blockStateOut,
 			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
 		for (ChromaShieldTypes type : ChromaShieldTypes.list) {

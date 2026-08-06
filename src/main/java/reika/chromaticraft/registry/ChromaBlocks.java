@@ -52,6 +52,8 @@ import reika.chromaticraft.block.worldgen26.BlockTieredPlant;
 import reika.chromaticraft.block.worldgen26.BlockCaveIndicator;
 import reika.chromaticraft.block.worldgen26.BlockUnknownArtefact;
 import reika.chromaticraft.block.worldgen26.BlockStructureShield;
+import reika.chromaticraft.block.BlockDummyAux;
+import reika.chromaticraft.block.worldgen26.BlockLootChest;
 import reika.chromaticraft.block.worldgen26.BlockWarpNode;
 import reika.chromaticraft.block.worldgen26.BlockDecoFlower;
 import reika.chromaticraft.magic.progression.ProgressStage;
@@ -243,6 +245,16 @@ public final class ChromaBlocks {
 	public static final DeferredBlock<BlockWarpNode> WARP_NODE = registerBlockOnly("warp_node",
 			() -> new BlockWarpNode(blockProperties().mapColor(MapColor.NONE)
 					.strength(-1F, 6000000F).noOcclusion().noCollision()));
+
+	/** V33a Loot Chest: hardness 6, resistance 60. */
+	public static final DeferredBlock<BlockLootChest> LOOT_CHEST = register("loot_chest",
+			() -> new BlockLootChest(blockProperties().mapColor(MapColor.WOOD)
+					.strength(6F, 60F).noOcclusion()));
+
+	/** V33a Dummy Aux: a structure's stand-in block; unbreakable, resistance 60000. */
+	public static final DeferredBlock<BlockDummyAux> DUMMY_AUX = registerBlockOnly("dummy_aux",
+			() -> new BlockDummyAux(blockProperties().mapColor(MapColor.STONE)
+					.strength(-1F, 60000F).noOcclusion()));
 
 	/** V33a structure shielding, one registered identity per material. */
 	public static final Map<ChromaShieldTypes, DeferredBlock<BlockStructureShield>> SHIELDING =

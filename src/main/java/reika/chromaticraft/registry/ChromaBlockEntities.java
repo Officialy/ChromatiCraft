@@ -24,6 +24,8 @@ import reika.chromaticraft.tileentity.recipe.TileEntityCastingTable;
 import reika.chromaticraft.tileentity.auxiliary.TileEntityFocusCrystal;
 import reika.chromaticraft.tileentity.recipe.TileEntityItemStand;
 import reika.chromaticraft.tileentity.aoe.TileEntityWarpNode;
+import reika.chromaticraft.tileentity.TileEntityDummyAux;
+import reika.chromaticraft.tileentity.TileEntityLootChest;
 
 /**
  * ChromatiCraft {@link BlockEntityType} registry (mirrors ReactorBlockEntities). One entry per
@@ -74,6 +76,14 @@ public final class ChromaBlockEntities {
 					() -> new BlockEntityType<>(TileEntityChroma::new, ChromaBlocks.CHROMA.get()));
 
 	@SuppressWarnings("unchecked")
+
+	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityLootChest>> LOOT_CHEST =
+			BLOCK_ENTITIES.register("loot_chest", () -> new BlockEntityType<>(
+					TileEntityLootChest::new, ChromaBlocks.LOOT_CHEST.get()));
+
+	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityDummyAux>> DUMMY_AUX =
+			BLOCK_ENTITIES.register("dummy_aux", () -> new BlockEntityType<>(
+					TileEntityDummyAux::new, ChromaBlocks.DUMMY_AUX.get()));
 
 	/** Worldgen block rather than a ChromaTiles machine, so it registers against its block directly. */
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityWarpNode>> WARP_NODE =

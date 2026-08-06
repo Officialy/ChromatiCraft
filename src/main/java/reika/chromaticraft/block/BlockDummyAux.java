@@ -1,232 +1,85 @@
-/*******************************************************************************
- * @author Reika Kalseki
- *
- * Copyright 2017
- *
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
- ******************************************************************************/
 package reika.chromaticraft.block;
 
-import java.util.List;
+import javax.annotation.Nullable;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockContainer;
-import net.minecraft.block.material.Material;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.network.NetworkManager;
-import net.minecraft.network.Packet;
-import net.minecraft.network.play.server.S35PacketUpdateTileEntity;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.AxisAlignedBB;
-import net.minecraft.util.IIcon;
-import net.minecraft.world.IBlockAccess;
-import net.minecraft.world.World;
+import com.mojang.serialization.MapCodec;
 
-import reika.chromaticraft.block.blockdummyaux.tileentitydummyaux.Flags;
-import reika.chromaticraft.block.worldgen.blockstructureshield.BlockType;
-import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaIcons;
-import reika.chromaticraft.registry.ChromaItems;
-import reika.dragonapi.ModList;
-import reika.dragonapi.asm.apistripper.Strippable;
-import reika.dragonapi.asm.dependentmethodstripper.ModDependent;
-import reika.dragonapi.instantiable.data.immutable.Coordinate;
-import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.EntityBlock;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityTicker;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.Shapes;
+import net.minecraft.world.phys.shapes.VoxelShape;
 
-import mcp.mobius.waila.api.IWailaConfigHandler;
-import mcp.mobius.waila.api.IWailaDataAccessor;
-import mcp.mobius.waila.api.IWailaDataProvider;
+import reika.chromaticraft.tileentity.TileEntityDummyAux;
+import reika.chromaticraft.tileentity.TileEntityDummyAux.Flags;
 
+/**
+ * V33a {@code BlockDummyAux}: the block a structure puts where it needs presence but not a machine.
+ *
+ * <p>Everything it does is decided by the flags on its {@link TileEntityDummyAux}. With
+ * {@link Flags#HITBOX} it collides; with {@link Flags#RENDER} it draws as structure stone and is
+ * otherwise invisible; clicking it is forwarded to whatever tile it was linked to. Unbreakable with
+ * resistance 60000, because it is part of a structure and removing it would leave a hole in one.
+ */
+public class BlockDummyAux extends Block implements EntityBlock {
 
-@Strippable(value = {"mcp.mobius.waila.api.IWailaDataProvider"})
-public class BlockDummyAux extends BlockContainer implements IWailaDataProvider {
+	private final MapCodec<BlockDummyAux> codec = MapCodec.unit(this);
 
-	public BlockDummyAux(Material mat) {
-		super(mat);
-		this.setResistance(60000);
-		this.setBlockUnbreakable();
+	public BlockDummyAux(BlockBehaviour.Properties properties) {
+		super(properties);
 	}
 
 	@Override
-	public TileEntity createNewTileEntity(World world, int meta) {
-		return new TileEntityDummyAux();
+	public MapCodec<? extends BlockDummyAux> codec() {
+		return codec;
 	}
 
 	@Override
-	public boolean renderAsNormalBlock() {
-		return false;
+	public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
+		return new TileEntityDummyAux(pos, state);
 	}
 
+	@Nullable
 	@Override
-	public boolean isOpaqueCube() {
-		return false;
+	public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state,
+			BlockEntityType<T> type) {
+		return null; // V33a canUpdate() returns false.
 	}
 
+	/** V33a getCollisionBoundingBoxFromPool: solid only when the HITBOX flag is set. */
 	@Override
-	public IIcon getIcon(IBlockAccess iba, int x, int y, int z, int s) {
-		TileEntityDummyAux te = (TileEntityDummyAux)iba.getTileEntity(x, y, z);
-		return te.getFlag(Flags.RENDER) ? ChromaBlocks.STRUCTSHIELD.getBlockInstance().getIcon(1, BlockType.STONE.metadata) : ChromaIcons.TRANSPARENT.getIcon();
+	protected VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos pos,
+			CollisionContext context) {
+		return level.getBlockEntity(pos) instanceof TileEntityDummyAux dummy
+				&& dummy.getFlag(Flags.HITBOX) ? Shapes.block() : Shapes.empty();
 	}
 
+	/** V33a: the block is only mouse-targetable when it asked to be. */
 	@Override
-	public boolean onBlockActivated(World world, int x, int y, int z, EntityPlayer ep, int s, float a, float b, float c) {
-		TileEntityDummyAux te = (TileEntityDummyAux)world.getTileEntity(x, y, z);
-		return te.relayClick(ep, s, a, b, c);
+	protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos,
+			CollisionContext context) {
+		return level.getBlockEntity(pos) instanceof TileEntityDummyAux dummy
+				&& (dummy.getFlag(Flags.HITBOX) || dummy.getFlag(Flags.MOUSEOVER))
+				? Shapes.block() : Shapes.empty();
 	}
 
+	/** V33a onBlockActivated: forward the click to the linked tile. */
 	@Override
-	public AxisAlignedBB getCollisionBoundingBoxFromPool(World world, int x, int y, int z) {
-		TileEntityDummyAux te = (TileEntityDummyAux)world.getTileEntity(x, y, z);
-		return te.getFlag(Flags.HITBOX) ? super.getCollisionBoundingBoxFromPool(world, x, y, z) : null;
+	protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos,
+			Player player, BlockHitResult hit) {
+		if (level.getBlockEntity(pos) instanceof TileEntityDummyAux dummy)
+			return dummy.relayClick(player, hit);
+		return InteractionResult.PASS;
 	}
-
-	@Override
-	@ModDependent(ModList.WAILA)
-	public ItemStack getWailaStack(IWailaDataAccessor acc, IWailaConfigHandler cfg) {
-		TileEntityDummyAux te = (TileEntityDummyAux)acc.getTileEntity();
-		if (te == null || te.relay == null)
-			return null;
-		Block b = te.relay.getBlock(acc.getWorld());
-		return b instanceof IWailaDataProvider ? ((IWailaDataProvider)b).getWailaStack(acc, cfg) : null;
-	}
-
-	@Override
-	@ModDependent(ModList.WAILA)
-	public List<String> getWailaHead(ItemStack is, List<String> currenttip, IWailaDataAccessor acc, IWailaConfigHandler cfg) {
-		/*
-		TileEntityDummyAux te = (TileEntityDummyAux)acc.getTileEntity();
-		if (te == null || te.relay == null)
-			return currenttip;
-		Block b = te.relay.getBlock(acc.getWorld());
-		return b instanceof IWailaDataProvider ? ((IWailaDataProvider)b).getWailaHead(is, currenttip, acc, cfg) : currenttip;
-		 */
-		return currenttip;
-	}
-
-	@Override
-	@ModDependent(ModList.WAILA)
-	public List<String> getWailaBody(ItemStack is, List<String> currenttip, IWailaDataAccessor acc, IWailaConfigHandler cfg) {
-		/*
-		TileEntityDummyAux te = (TileEntityDummyAux)acc.getTileEntity();
-		if (te == null || te.relay == null)
-			return currenttip;
-		Block b = te.relay.getBlock(acc.getWorld());
-		return b instanceof IWailaDataProvider ? ((IWailaDataProvider)b).getWailaBody(is, currenttip, acc, cfg) : currenttip;
-		 */
-		return currenttip;
-	}
-
-	@Override
-	@ModDependent(ModList.WAILA)
-	public List<String> getWailaTail(ItemStack is, List<String> currenttip, IWailaDataAccessor acc, IWailaConfigHandler cfg) {
-		/*
-		TileEntityDummyAux te = (TileEntityDummyAux)acc.getTileEntity();
-		if (te == null || te.relay == null)
-			return currenttip;
-		Block b = te.relay.getBlock(acc.getWorld());
-		return b instanceof IWailaDataProvider ? ((IWailaDataProvider)b).getWailaTail(is, currenttip, acc, cfg) : currenttip;
-		 */
-		return currenttip;
-	}
-
-	@Override
-	@ModDependent(ModList.WAILA)
-	public final NBTTagCompound getNBTData(EntityPlayerMP player, TileEntity te, NBTTagCompound tag, World world, int x, int y, int z) {
-		return tag;
-	}
-
-	public static class TileEntityDummyAux extends TileEntity {
-
-		private int flags;
-
-		private Coordinate relay;
-
-		@Override
-		public boolean canUpdate() {
-			return false;
-		}
-
-		public void link(Coordinate c) {
-			relay = c;
-		}
-
-		private boolean relayClick(EntityPlayer ep, int s, float a, float b, float c) {
-			if (relay != null)
-				return relay.getBlock(worldObj).onBlockActivated(worldObj, relay.xCoord, relay.yCoord, relay.zCoord, ep, s, a, b, c);
-			return false;
-		}
-
-		public boolean relayManipulatorClick(ItemStack is, EntityPlayer ep, int s, float a, float b, float c) {
-			if (relay == null)
-				return false;
-			return ChromaItems.TOOL.getItemInstance().onItemUse(is, ep, worldObj, relay.xCoord, relay.yCoord, relay.zCoord, s, a, b, c);
-		}
-
-		public void setFlag(Flags f, boolean set) {
-			int base = flags;
-			if (this.getFlag(f) != set) {
-				flags = ReikaMathLibrary.toggleBit(flags, f.ordinal());
-			}
-		}
-
-		public boolean getFlag(Flags f) {
-			return (f.flag & flags) != 0;
-		}
-
-		@Override
-		public void writeToNBT(NBTTagCompound NBT) {
-			super.writeToNBT(NBT);
-
-			if (relay != null)
-				relay.writeToNBT("loc", NBT);
-
-			NBT.setInteger("flags", flags);
-		}
-
-		@Override
-		public void readFromNBT(NBTTagCompound NBT) {
-			super.readFromNBT(NBT);
-
-			relay = Coordinate.readFromNBT("loc", NBT);
-
-			flags = NBT.getInteger("flags");
-		}
-
-		@Override
-		public Packet getDescriptionPacket() {
-			NBTTagCompound NBT = new NBTTagCompound();
-			this.writeToNBT(NBT);
-			S35PacketUpdateTileEntity pack = new S35PacketUpdateTileEntity(xCoord, yCoord, zCoord, 0, NBT);
-			return pack;
-		}
-
-		@Override
-		public void onDataPacket(NetworkManager net, S35PacketUpdateTileEntity p)  {
-			this.readFromNBT(p.field_148860_e);
-			worldObj.markBlockForUpdate(xCoord, yCoord, zCoord);
-		}
-
-		public TileEntity getLinkedTile() {
-			return relay != null ? relay.getTileEntity(worldObj) : null;
-		}
-
-		public static enum Flags {
-			HITBOX(),
-			MOUSEOVER(),
-			RENDER();
-
-			private final int flag;
-
-			private Flags() {
-				flag = 1 << this.ordinal();
-			}
-		}
-
-	}
-
 }
