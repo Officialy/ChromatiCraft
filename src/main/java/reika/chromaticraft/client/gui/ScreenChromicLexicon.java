@@ -67,6 +67,7 @@ public final class ScreenChromicLexicon extends Screen {
 	private LexiconCatalog.Entry selected;
 	private final LexiconScrollPane scrollPane = new LexiconScrollPane();
 	private final LexiconNavigationSheet sheet = new LexiconNavigationSheet();
+	private long guiTick;
 	private int pageOffset = rememberedOffset;
 	private View view;
 	private boolean recipeMode;
@@ -567,6 +568,7 @@ public final class ScreenChromicLexicon extends Screen {
 	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
 		int left = (width - WIDTH) / 2;
 		int top = (height - HEIGHT) / 2;
+		guiTick++;
 		boolean scrolling = selected == null && (view == View.NAVIGATION || view == View.STORED_PAGES);
 		if (scrolling) {
 			// V33a GuiScrollingPage: poll the held movement keys, then lay the backdrop down first so
@@ -587,6 +589,7 @@ public final class ScreenChromicLexicon extends Screen {
 			sheet.render(graphics, font, left + PANE_X, top + PANE_Y,
 					scrollPane.offsetX(), scrollPane.offsetY(),
 					LexiconScrollPane.PANE_WIDTH, LexiconScrollPane.PANE_HEIGHT,
+					mouseX, mouseY, search, guiTick,
 					LexiconIconResolver::icon, this::isEntryActive);
 			LexiconCatalog.Entry hovered = sheetHit(mouseX, mouseY);
 			if (hovered != null)

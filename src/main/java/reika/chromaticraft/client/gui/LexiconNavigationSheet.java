@@ -41,15 +41,65 @@ public final class LexiconNavigationSheet {
 	public static final int SPACING = 4;
 
 	/** One entry's cell, in sheet space; the pan offset is applied at draw time. */
-	public record Cell(LexiconCatalog.Entry entry, int x, int y) {}
+	public static final class Cell {
+		final LexiconCatalog.Entry entry;
+		final int x;
+		final int y;
+		/** V33a SectionElement.searchAlpha: rises 0.05/frame when matching, falls 0.1/frame when not. */
+		float searchAlpha = 1;
+
+		Cell(LexiconCatalog.Entry entry, int x, int y) {
+			this.entry = entry;
+			this.x = x;
+			this.y = y;
+		}
+
+		public LexiconCatalog.Entry entry() { return entry; }
+	}
 
 	/** One research-level group inside a section. */
 	private record Category(ResearchLevel level, List<LexiconCatalog.Entry> entries) {}
 
+	/** A drawn outline with V33a's hover ramp. */
+	public static final class Frame {
+		final int x;
+		final int y;
+		final int width;
+		final int height;
+		/** V33a hoverTime: 0-20, +1 per frame hovered, -1 every other frame otherwise. */
+		int hoverTime;
+
+		Frame(int x, int y, int width, int height) {
+			this.x = x;
+			this.y = y;
+			this.width = width;
+			this.height = height;
+		}
+
+		/** V33a: ReikaColorAPI.GStoHex(15 + hoverTime * 12) -- greyscale 15..255. */
+		int color() {
+			int grey = Math.clamp(15 + hoverTime * 12, 0, 255);
+			return 0xff000000 | (grey << 16) | (grey << 8) | grey;
+		}
+	}
+
 	/** One section box, in sheet space. */
-	public record Box(String title, int x, int y, int width, int height, List<Cell> cells) {}
+	public static final class Box {
+		final String title;
+		final Frame frame;
+		final List<Frame> categories = new ArrayList<>();
+		final List<Cell> cells = new ArrayList<>();
+
+		Box(String title, Frame frame) {
+			this.title = title;
+			this.frame = frame;
+		}
+
+		public List<Cell> cells() { return cells; }
+	}
 
 	private final List<Box> boxes = new ArrayList<>();
+	private String layoutSignature;
 	private int maxX;
 	private int maxY;
 
@@ -72,6 +122,12 @@ public final class LexiconNavigationSheet {
 	public void build(List<LexiconCatalog.Section> sections,
 			java.util.function.Function<LexiconCatalog.Section, List<LexiconCatalog.Entry>> lookup,
 			Font font, int paneWidth, int paneHeight) {
+		// Rebuilding every frame would reset the hover and search ramps, so only lay out again when
+		// the inputs actually change.
+		String signature = sections + "|" + paneWidth + "x" + paneHeight;
+		if (signature.equals(layoutSignature))
+			return;
+		layoutSignature = signature;
 		boxes.clear();
 		maxX = 0;
 		maxY = 0;
@@ -82,16 +138,19 @@ public final class LexiconNavigationSheet {
 				continue;
 			List<Category> categories = group(entries);
 			int cols = categories.size() == 1 ? 10 : 4;
-			List<Cell> cells = new ArrayList<>();
 			int x = 0;
 			int height = 0;
+			List<Frame> catFrames = new ArrayList<>();
+			List<Cell> cells = new ArrayList<>();
+			int gridTop = y + font.lineHeight + 2;
 			for (Category category : categories) {
 				int gridHeight = subHeight(category.entries().size(), cols);
 				height = Math.max(height, gridHeight);
+				catFrames.add(new Frame(x + 4, gridTop + 4, subWidth(category, cols, font), gridHeight));
 				int index = 0;
 				for (LexiconCatalog.Entry entry : category.entries()) {
 					int cx = x + MARGIN + (index % cols) * (ELEMENT + SPACING);
-					int cy = y + font.lineHeight + 2 + MARGIN + (index / cols) * (ELEMENT + SPACING);
+					int cy = gridTop + MARGIN + (index / cols) * (ELEMENT + SPACING);
 					cells.add(new Cell(entry, cx, cy));
 					index++;
 				}
@@ -99,7 +158,10 @@ public final class LexiconNavigationSheet {
 			}
 			x = Math.max(0, x - CATEGORY_GAP);
 			int boxHeight = height + MARGIN + font.lineHeight + 2;
-			boxes.add(new Box(section.title().getString(), 0, y, x, boxHeight, cells));
+			Box box = new Box(section.title().getString(), new Frame(0, y, x, boxHeight));
+			box.categories.addAll(catFrames);
+			box.cells.addAll(cells);
+			boxes.add(box);
 			maxX = Math.max(maxX, x);
 			y += boxHeight + SECTION_GAP;
 		}
@@ -146,34 +208,85 @@ public final class LexiconNavigationSheet {
 	 * title or icon that would fall outside the window.
 	 */
 	public void render(GuiGraphicsExtractor graphics, Font font, int leftX, int topY,
-			int offsetX, int offsetY, int paneWidth, int paneHeight,
+			int offsetX, int offsetY, int paneWidth, int paneHeight, int mouseX, int mouseY,
+			String search, long tick,
 			java.util.function.Function<LexiconCatalog.Entry, ItemStack> icons,
 			java.util.function.Predicate<LexiconCatalog.Entry> unlocked) {
 		int originX = leftX + MARGIN - offsetX;
 		int originY = topY + 1 - offsetY;
 		for (Box box : boxes) {
-			int bx = originX + box.x();
-			int by = originY + box.y();
-			outline(graphics, bx, by, bx + box.width(), by + box.height(),
-					leftX, topY, paneWidth, paneHeight, 0xff5a5a5a);
-			if (bx >= leftX && bx <= leftX + paneWidth - font.width(box.title())
+			int bx = originX + box.frame.x;
+			int by = originY + box.frame.y;
+			boolean anyHover = false;
+
+			for (Frame category : box.categories) {
+				int cxa = originX + category.x;
+				int cya = originY + category.y;
+				boolean hover = mouseX >= cxa && mouseX < cxa + category.width
+						&& mouseY >= cya && mouseY < cya + category.height;
+				ramp(category, hover, tick);
+				anyHover |= hover;
+				outline(graphics, cxa, cya, cxa + category.width, cya + category.height,
+						leftX, topY, paneWidth, paneHeight, category.color());
+			}
+
+			ramp(box.frame, anyHover, tick);
+			outline(graphics, bx, by, bx + box.frame.width, by + box.frame.height,
+					leftX, topY, paneWidth, paneHeight, box.frame.color());
+			if (bx >= leftX && bx <= leftX + paneWidth - font.width(box.title)
 					&& by >= topY && by <= topY + paneHeight - font.lineHeight / 2)
-				graphics.text(font, Component.literal(box.title()), bx + 2, by - font.lineHeight,
-						0xffd8d8d8, false);
-			for (Cell cell : box.cells()) {
-				int cx = originX + cell.x();
-				int cy = originY + cell.y();
+				graphics.text(font, Component.literal(box.title), bx + 2, by - font.lineHeight,
+						mix(box.frame.color(), 0xffffffff, 0.675F), false);
+
+			for (Cell cell : box.cells) {
+				// V33a updateSearch: matching entries fade in at 0.05/frame, others out at 0.1/frame,
+				// so a search dims the rest of the sheet rather than removing it.
+				boolean matches = search == null || search.isBlank()
+						|| cell.entry.title().getString().toLowerCase(java.util.Locale.ENGLISH)
+								.contains(search.toLowerCase(java.util.Locale.ENGLISH));
+				cell.searchAlpha = matches ? Math.min(1, cell.searchAlpha + 0.05F)
+						: Math.max(0, cell.searchAlpha - 0.1F);
+				if (cell.searchAlpha <= 0.02F)
+					continue;
+				int cx = originX + cell.x;
+				int cy = originY + cell.y;
 				if (cx < leftX || cx > leftX + paneWidth - ELEMENT)
 					continue;
 				if (cy < topY || cy > topY + paneHeight - ELEMENT)
 					continue;
-				ItemStack icon = icons.apply(cell.entry());
+				ItemStack icon = icons.apply(cell.entry);
 				if (!icon.isEmpty())
 					graphics.item(icon, cx + 4, cy + 4);
-				if (!unlocked.test(cell.entry()))
+				if (!unlocked.test(cell.entry))
 					graphics.text(font, Component.literal("?"), cx + 9, cy + 9, 0xffff6060, true);
+				if (cell.searchAlpha < 1) {
+					// The faded-out remainder is dimmed with a scrim, matching V33a's squarefog pass.
+					int alpha = (int)((1 - cell.searchAlpha) * 200) << 24;
+					graphics.fill(cx + 2, cy + 2, cx + ELEMENT - 2, cy + ELEMENT - 2, alpha);
+				}
 			}
 		}
+	}
+
+	/** V33a: hoverTime climbs one per frame to 20, and decays one every other frame. */
+	private static void ramp(Frame frame, boolean hovered, long tick) {
+		if (hovered) {
+			if (frame.hoverTime < 20)
+				frame.hoverTime++;
+		}
+		else if (frame.hoverTime > 0 && tick % 2 == 0) {
+			frame.hoverTime--;
+		}
+	}
+
+	/** V33a ReikaColorAPI.mixColors. */
+	private static int mix(int a, int b, float f) {
+		int ar = (a >> 16) & 0xff, ag = (a >> 8) & 0xff, ab = a & 0xff;
+		int br = (b >> 16) & 0xff, bg = (b >> 8) & 0xff, bb = b & 0xff;
+		int r = (int)(ar * f + br * (1 - f));
+		int g = (int)(ag * f + bg * (1 - f));
+		int bl = (int)(ab * f + bb * (1 - f));
+		return 0xff000000 | (r << 16) | (g << 8) | bl;
 	}
 
 	/** The entry under the cursor, or null. Uses the same clipping the renderer does. */
@@ -182,15 +295,15 @@ public final class LexiconNavigationSheet {
 		int originX = leftX + MARGIN - offsetX;
 		int originY = topY + 1 - offsetY;
 		for (Box box : boxes) {
-			for (Cell cell : box.cells()) {
-				int cx = originX + cell.x();
-				int cy = originY + cell.y();
+			for (Cell cell : box.cells) {
+				int cx = originX + cell.x;
+				int cy = originY + cell.y;
 				if (cx < leftX || cx > leftX + paneWidth - ELEMENT)
 					continue;
 				if (cy < topY || cy > topY + paneHeight - ELEMENT)
 					continue;
 				if (mouseX >= cx && mouseX < cx + ELEMENT && mouseY >= cy && mouseY < cy + ELEMENT)
-					return cell.entry();
+					return cell.entry;
 			}
 		}
 		return null;

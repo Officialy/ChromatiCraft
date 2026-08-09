@@ -552,9 +552,11 @@ Still missing, in dependency order:
 
 1. ~~**Spatial navigation sheet.**~~ Done 2026-08-09 — `LexiconNavigationSheet` ports
    `GuiNavigation`'s section/category/grid layout, both pan axes carry content, and cells are
-   clickable with hover titles. Still to add on top of it: V33a's per-section and per-category
-   *hover brightening* (`hoverTime` ramping 0-20 and tinting the outline), and the search
-   fade-out of non-matching cells (`searchAlpha` with `squarefog.png`).
+   clickable with hover titles, plus V33a's per-section and per-category hover brightening
+   (`hoverTime` 0-20 tinting the outline, decaying every other frame) and the search fade
+   (`searchAlpha` in/out at 0.05/0.1 per frame, dimming non-matches rather than hiding them).
+   The fade uses a scrim rather than V33a's `squarefog.png` sprite; swap that in when the icon
+   atlas work lands.
 2. **Specialist page renderers**, now unblocked on art: machines, tools, craftable blocks/resources,
    abilities, rituals, adjacency cores, crafting, casting, alloying, pack changes, structures. Each
    has its own `handbook_*.png` background and its own `Gui*` source to compare against.
