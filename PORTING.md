@@ -2686,3 +2686,30 @@ section laid out across it, which is why upstream computes
 port's navigation is still a vertical list, so horizontal panning is bounded to zero and only the
 vertical axis carries content. Laying the sections out spatially is the next step toward real parity
 and is the prerequisite for the original image-button layout and hover animations.
+
+### Chromic Lexicon: the spatial navigation sheet — 2026-08-09
+
+The gap recorded in the previous entry is closed. V33a's navigation is not a paged list; it is one
+pannable sheet with every section laid out on it, which is why upstream computes a horizontal bound
+at all. `LexiconNavigationSheet` reproduces that layout from `GuiNavigation`:
+
+- sections stack downward separated by `SectionSpacing` (32);
+- within a section, entries are grouped by `ResearchLevel` into categories laid left to right,
+  separated by `Section.sectionSpacing` (64);
+- each category is a grid of 24-pixel cells with 4-pixel spacing and an 8-pixel margin;
+- the column count is V33a's `allOneLevel() ? 10 : 4`, so a single-level section becomes one wide
+  shallow block while a multi-level section gets narrow per-level columns that read as groups;
+- `getSubSectionHeight`/`getSubsectionWidth` are ported verbatim, including the level-title width
+  clamp, so box sizes match upstream rather than being re-derived.
+
+Section and category outlines are drawn clamped to the pane exactly as upstream clamps them, so a
+half-scrolled box still reads as a box instead of spilling across the frame, and titles and icons are
+skipped once they leave the window. Clicking a cell opens its entry and hovering one shows its title,
+both hit-tested through the same clipping the renderer uses so the two cannot disagree.
+
+Both scroll axes now carry content: vertical panning moves between sections, horizontal panning moves
+across research levels within a section. The pane bounds come from the sheet's own measured extent
+minus the visible window, which is V33a's `maxX -= paneWidth + ...` / `maxY -= paneHeight + ...`.
+
+Search results and the stored-fragment list stay a flat set rendered as one synthetic section, since
+those are genuinely unsectioned in the port; the per-section layout applies to ordinary browsing.

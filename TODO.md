@@ -550,9 +550,11 @@ offset.
 
 Still missing, in dependency order:
 
-1. **Spatial navigation sheet.** V33a lays every section out across one pannable sheet; the port
-   still shows a vertical list, so horizontal panning has nothing to reach. This gates the original
-   image-button layout, hover animations and locked-entry treatment.
+1. ~~**Spatial navigation sheet.**~~ Done 2026-08-09 — `LexiconNavigationSheet` ports
+   `GuiNavigation`'s section/category/grid layout, both pan axes carry content, and cells are
+   clickable with hover titles. Still to add on top of it: V33a's per-section and per-category
+   *hover brightening* (`hoverTime` ramping 0-20 and tinting the outline), and the search
+   fade-out of non-matching cells (`searchAlpha` with `squarefog.png`).
 2. **Specialist page renderers**, now unblocked on art: machines, tools, craftable blocks/resources,
    abilities, rituals, adjacency cores, crafting, casting, alloying, pack changes, structures. Each
    has its own `handbook_*.png` background and its own `Gui*` source to compare against.

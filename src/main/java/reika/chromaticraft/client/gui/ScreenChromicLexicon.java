@@ -52,8 +52,11 @@ public final class ScreenChromicLexicon extends Screen {
 	private static final int WIDTH = 256;
 	private static final int HEIGHT = 220;
 	private static final int PAGE_SIZE = 8;
-	/** V33a navigation row pitch. */
+	/** V33a navigation row pitch, still used by the stored-fragment list. */
 	private static final int ENTRY_HEIGHT = 23;
+	/** V33a GuiScrollingPage draws the pane at (left + 7, top - 1). */
+	private static final int PANE_X = 7;
+	private static final int PANE_Y = -1;
 	private static LexiconCatalog.Section rememberedSection = LexiconCatalog.Section.INFO;
 	private static int rememberedOffset;
 
@@ -63,6 +66,7 @@ public final class ScreenChromicLexicon extends Screen {
 	private LexiconCatalog.Section section = rememberedSection;
 	private LexiconCatalog.Entry selected;
 	private final LexiconScrollPane scrollPane = new LexiconScrollPane();
+	private final LexiconNavigationSheet sheet = new LexiconNavigationSheet();
 	private int pageOffset = rememberedOffset;
 	private View view;
 	private boolean recipeMode;
@@ -568,12 +572,10 @@ public final class ScreenChromicLexicon extends Screen {
 			// V33a GuiScrollingPage: poll the held movement keys, then lay the backdrop down first so
 			// the frame's cut-out window sits over it. The vertical offset also drives the entry list,
 			// so holding S slides list and backdrop together rather than stepping a page at a time.
-			int rows = Math.max(0, currentPages().size() - PAGE_SIZE);
-			scrollPane.setBounds(0, rows * ENTRY_HEIGHT);
+			buildSheet();
+			scrollPane.setBounds(sheet.maxX(), sheet.maxY());
 			scrollPane.pan();
 			scrollPane.render(graphics, NAV_SCROLL, left, top);
-			pageOffset = Math.min(scrollPane.offsetY() / ENTRY_HEIGHT, rows);
-			rememberedOffset = pageOffset;
 		}
 		graphics.blit(RenderPipelines.GUI_TEXTURED, selected == null ? NAVIGATION : HANDBOOK,
 				left, top, 0, 0, WIDTH, HEIGHT, 256, 256);
@@ -582,7 +584,14 @@ public final class ScreenChromicLexicon extends Screen {
 					left + WIDTH / 2, top + 4, 0xffffffff);
 			graphics.text(font, search.isBlank() ? section.title() : Component.literal("Search Results"),
 					left + 116, top + 4, 0xff7fffff, false);
-			renderNavigationEntries(graphics, left, top);
+			sheet.render(graphics, font, left + PANE_X, top + PANE_Y,
+					scrollPane.offsetX(), scrollPane.offsetY(),
+					LexiconScrollPane.PANE_WIDTH, LexiconScrollPane.PANE_HEIGHT,
+					LexiconIconResolver::icon, this::isEntryActive);
+			LexiconCatalog.Entry hovered = sheetHit(mouseX, mouseY);
+			if (hovered != null)
+				graphics.text(font, hovered.title(), mouseX + 8, mouseY - 10,
+						isEntryActive(hovered) ? 0xffffffff : 0xffff8080, true);
 			if (!search.isBlank())
 				graphics.text(font, Component.literal((searching ? "> " : "Search: ") + search),
 						left - 58, top + 184, searching ? 0xff80dfff : 0xffb0b0b0, false);
@@ -702,6 +711,27 @@ public final class ScreenChromicLexicon extends Screen {
 				dy += 10;
 			}
 		}
+	}
+
+	/** Rebuilds the spatial sheet for whatever the navigation view is currently showing. */
+	private void buildSheet() {
+		if (view == View.STORED_PAGES || !search.isBlank()) {
+			// Search results and the fragment list are a flat set, so they get one synthetic section
+			// rather than the per-section layout.
+			sheet.build(List.of(section), s -> currentPages(), font,
+					LexiconScrollPane.PANE_WIDTH, LexiconScrollPane.PANE_HEIGHT);
+			return;
+		}
+		sheet.build(List.of(LexiconCatalog.Section.values()), this::pagesOf, font,
+				LexiconScrollPane.PANE_WIDTH, LexiconScrollPane.PANE_HEIGHT);
+	}
+
+	/** The visible entries of one section, filtered exactly as the old paged list filtered them. */
+	private List<LexiconCatalog.Entry> pagesOf(LexiconCatalog.Section target) {
+		return LexiconCatalog.entries(target).stream()
+				.filter(entry -> !entry.parent())
+				.filter(entry -> ItemChromaBook.hasPage(book, entry))
+				.toList();
 	}
 
 	/** The list the navigation view is currently showing. */
@@ -1048,6 +1078,14 @@ public final class ScreenChromicLexicon extends Screen {
 
 	@Override
 	public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+		if (event.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT && selected == null
+				&& (view == View.NAVIGATION || view == View.STORED_PAGES)) {
+			LexiconCatalog.Entry hit = sheetHit((int)event.x(), (int)event.y());
+			if (hit != null) {
+				openEntry(hit);
+				return true;
+			}
+		}
 		if (event.button() == GLFW.GLFW_MOUSE_BUTTON_RIGHT && isInsideStructurePreview(event.x(), event.y())) {
 			structureYaw = 45;
 			structurePitch = 35;
@@ -1055,6 +1093,15 @@ public final class ScreenChromicLexicon extends Screen {
 			return true;
 		}
 		return super.mouseClicked(event, doubleClick);
+	}
+
+	/** The sheet entry under the cursor, in the same coordinate space the sheet renders in. */
+	private LexiconCatalog.Entry sheetHit(int mouseX, int mouseY) {
+		int left = (width - WIDTH) / 2;
+		int top = (height - HEIGHT) / 2;
+		return sheet.hit(mouseX, mouseY, left + PANE_X, top + PANE_Y,
+				scrollPane.offsetX(), scrollPane.offsetY(),
+				LexiconScrollPane.PANE_WIDTH, LexiconScrollPane.PANE_HEIGHT);
 	}
 
 	private boolean isInsideStructurePreview(double x, double y) {
