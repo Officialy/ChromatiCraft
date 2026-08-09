@@ -44,6 +44,22 @@ public final class ScreenChromicLexicon extends Screen {
 
 	private static final Identifier NAVIGATION = Identifier.fromNamespaceAndPath(
 			ChromatiCraft.MODID, "textures/gui/lexicon/navigation.png");
+	/**
+	 * V33a {@code GuiBookSection.PageType}: each page kind has its own frame art, and the casting
+	 * view swaps it per subpage. Only the types the port can currently reach are listed.
+	 */
+	private static Identifier page(String type) {
+		return Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
+				"textures/gui/lexicon/handbook" + (type.isEmpty() ? "" : "_" + type) + ".png");
+	}
+
+	private static final Identifier PAGE_PLAIN = page("");
+	private static final Identifier PAGE_CAST = page("cast");
+	private static final Identifier PAGE_RUNES = page("runes");
+	private static final Identifier PAGE_MULTICAST = page("multicast");
+	private static final Identifier PAGE_PYLONCAST = page("pyloncast2");
+	private static final Identifier PAGE_STRUCTURE = page("structure");
+
 	/** V33a GuiNavigation.getScrollingTexture: the pannable backdrop beneath the frame. */
 	private static final Identifier NAV_SCROLL = Identifier.fromNamespaceAndPath(
 			ChromatiCraft.MODID, "textures/gui/lexicon/navbcg.png");
@@ -151,6 +167,24 @@ public final class ScreenChromicLexicon extends Screen {
 				rebuildWidgets();
 			}).bounds(left - 20, top + 8, 20, 20).build());
 			List<CastingTableRecipe> recipes = castingRecipes();
+			if (recipes.isEmpty() && !craftingRecipes().isEmpty()) {
+				addRenderableWidget(Button.builder(
+						Component.literal(castingRecipeView ? "Description" : "Crafting Recipe"), button -> {
+					castingRecipeView = !castingRecipeView;
+					recipeIndex = 0;
+					rebuildWidgets();
+				}).bounds(left + 8, top + 194, 92, 18).build());
+				if (castingRecipeView && craftingRecipes().size() > 1) {
+					addRenderableWidget(Button.builder(Component.literal("‹"), button -> {
+						recipeIndex--;
+						rebuildWidgets();
+					}).bounds(left + 104, top + 194, 18, 18).build());
+					addRenderableWidget(Button.builder(Component.literal("›"), button -> {
+						recipeIndex++;
+						rebuildWidgets();
+					}).bounds(left + 124, top + 194, 18, 18).build());
+				}
+			}
 			if (!recipes.isEmpty()) {
 				addRenderableWidget(Button.builder(Component.literal(castingRecipeView ? "Description" : "Casting Recipe"), button -> {
 					castingRecipeView = !castingRecipeView;
@@ -243,6 +277,30 @@ public final class ScreenChromicLexicon extends Screen {
 				textPage++;
 				rebuildWidgets();
 			}).bounds(left + 196, top + 194, 52, 18).build());
+	}
+
+	/**
+	 * V33a {@code getGuiLayout()}. The casting view is the interesting one: upstream returns a
+	 * different PageType per subpage, so the frame changes as you page through Grid, Runes, Stands
+	 * and Aura rather than staying on one background.
+	 */
+	private Identifier pageBackground() {
+		if (selected == null)
+			return PAGE_PLAIN;
+		if (castingRecipeView && !castingRecipes().isEmpty())
+			return switch (recipeSubpage) {
+				case 0 -> PAGE_CAST;
+				case 1 -> PAGE_RUNES;
+				case 2 -> PAGE_MULTICAST;
+				case 3 -> PAGE_PYLONCAST;
+				default -> PAGE_PLAIN;
+			};
+		// V33a PageType.CRAFTING reuses the casting frame.
+		if (castingRecipeView && !craftingRecipes().isEmpty())
+			return PAGE_CAST;
+		if (selected.section() == LexiconCatalog.Section.STRUCTURES)
+			return PAGE_STRUCTURE;
+		return PAGE_PLAIN;
 	}
 
 	private void openEntry(LexiconCatalog.Entry entry) {
@@ -484,6 +542,38 @@ public final class ScreenChromicLexicon extends Screen {
 		}
 	}
 
+	/**
+	 * V33a GuiCraftingRecipe's recipe set. 26.2 no longer exposes {@code IRecipe} to the client at
+	 * all: recipes arrive as {@code RecipeDisplayEntry} records in the player's recipe book, so the
+	 * page is built from the same displays vanilla's own recipe book renders rather than from a
+	 * re-derived recipe list.
+	 */
+	private List<net.minecraft.world.item.crafting.display.RecipeDisplayEntry> craftingRecipes() {
+		if (selected == null || minecraft == null || minecraft.level == null || minecraft.player == null)
+			return List.of();
+		ItemStack icon = LexiconIconResolver.icon(selected);
+		if (icon.isEmpty())
+			return List.of();
+		net.minecraft.util.context.ContextMap context =
+				net.minecraft.world.item.crafting.display.SlotDisplayContext.fromLevel(minecraft.level);
+		List<net.minecraft.world.item.crafting.display.RecipeDisplayEntry> out = new java.util.ArrayList<>();
+		for (net.minecraft.client.gui.screens.recipebook.RecipeCollection collection
+				: minecraft.player.getRecipeBook().getCollections()) {
+			for (net.minecraft.world.item.crafting.display.RecipeDisplayEntry entry : collection.getRecipes()) {
+				boolean crafting = entry.display() instanceof net.minecraft.world.item.crafting.display.ShapedCraftingRecipeDisplay
+						|| entry.display() instanceof net.minecraft.world.item.crafting.display.ShapelessCraftingRecipeDisplay;
+				if (!crafting)
+					continue;
+				for (ItemStack result : entry.resultItems(context))
+					if (result.is(icon.getItem())) {
+						out.add(entry);
+						break;
+					}
+			}
+		}
+		return out;
+	}
+
 	private List<CastingTableRecipe> castingRecipes() {
 		if (selected == null || player.level() == null)
 			return List.of();
@@ -579,7 +669,7 @@ public final class ScreenChromicLexicon extends Screen {
 			scrollPane.pan();
 			scrollPane.render(graphics, NAV_SCROLL, left, top);
 		}
-		graphics.blit(RenderPipelines.GUI_TEXTURED, selected == null ? NAVIGATION : HANDBOOK,
+		graphics.blit(RenderPipelines.GUI_TEXTURED, selected == null ? NAVIGATION : pageBackground(),
 				left, top, 0, 0, WIDTH, HEIGHT, 256, 256);
 		if (selected == null && (view == View.NAVIGATION || view == View.STORED_PAGES)) {
 			graphics.centeredText(font, view == View.STORED_PAGES ? "Stored Research Fragments" : "Chromic Lexicon",
@@ -602,6 +692,14 @@ public final class ScreenChromicLexicon extends Screen {
 		else if (selected != null) {
 			if (castingRecipeView && !castingRecipes().isEmpty()) {
 				renderCastingRecipe(graphics, left, top);
+				super.extractRenderState(graphics, mouseX, mouseY, partialTick);
+				return;
+			}
+			// V33a shows an entry's ordinary grid recipe on its own page. When an entry has no
+			// casting recipe but does have a crafting one, Recipes mode lands here instead.
+			if (castingRecipeView && !craftingRecipes().isEmpty()) {
+				graphics.centeredText(font, selected.title(), left + WIDTH / 2, top + 4, 0xffffffff);
+				renderCraftingRecipe(graphics, left, top);
 				super.extractRenderState(graphics, mouseX, mouseY, partialTick);
 				return;
 			}
@@ -1202,6 +1300,81 @@ public final class ScreenChromicLexicon extends Screen {
 		saveNotes();
 		rememberNavigation();
 		super.onClose();
+	}
+
+	/**
+	 * V33a GuiCraftingRecipe.drawAuxData/drawAuxGraphics: the grid sits at (posX+54, posY+10) on an
+	 * 18-pixel pitch with the output at (posX+7, posY+5), where posX/posY are the frame origin offset
+	 * by (-2, -8), and the ingredient tally is an alphabetically sorted "name: xN" list capped at ten
+	 * rows.
+	 *
+	 * <p>A shaped display carries its own width/height, so it is placed into the 3x3 at its true
+	 * shape rather than packed from index 0 -- a 2x2 recipe reads as 2x2, as it does upstream.
+	 */
+	private void renderCraftingRecipe(GuiGraphicsExtractor graphics, int left, int top) {
+		List<net.minecraft.world.item.crafting.display.RecipeDisplayEntry> recipes = craftingRecipes();
+		if (recipes.isEmpty() || minecraft == null || minecraft.level == null)
+			return;
+		int index = Math.floorMod(recipeIndex, recipes.size());
+		net.minecraft.world.item.crafting.display.RecipeDisplayEntry entry = recipes.get(index);
+		net.minecraft.util.context.ContextMap context =
+				net.minecraft.world.item.crafting.display.SlotDisplayContext.fromLevel(minecraft.level);
+		int posX = left - 2;
+		int posY = top - 8;
+
+		ItemStack[] grid = new ItemStack[9];
+		java.util.Arrays.fill(grid, ItemStack.EMPTY);
+		if (entry.display() instanceof net.minecraft.world.item.crafting.display.ShapedCraftingRecipeDisplay shaped) {
+			for (int y = 0; y < shaped.height() && y < 3; y++)
+				for (int x = 0; x < shaped.width() && x < 3; x++) {
+					int from = y * shaped.width() + x;
+					if (from < shaped.ingredients().size())
+						grid[y * 3 + x] = cycle(shaped.ingredients().get(from), context);
+				}
+		}
+		else if (entry.display() instanceof net.minecraft.world.item.crafting.display.ShapelessCraftingRecipeDisplay shapeless) {
+			for (int i = 0; i < shapeless.ingredients().size() && i < 9; i++)
+				grid[i] = cycle(shapeless.ingredients().get(i), context);
+		}
+		else {
+			return;
+		}
+
+		for (int i = 0; i < 9; i++)
+			if (!grid[i].isEmpty())
+				graphics.item(grid[i], posX + 54 + (i % 3) * 18, posY + 10 + (i / 3) * 18);
+		ItemStack result = cycle(entry.display().result(), context);
+		if (!result.isEmpty())
+			graphics.item(result, posX + 7, posY + 5);
+
+		java.util.Map<String, Integer> counts = new java.util.TreeMap<>();
+		for (ItemStack stack : grid)
+			if (!stack.isEmpty())
+				counts.merge(stack.getHoverName().getString(), 1, Integer::sum);
+		int row = 0;
+		for (java.util.Map.Entry<String, Integer> e : counts.entrySet()) {
+			if (row > 9)
+				break;
+			graphics.text(font, Component.literal(e.getKey() + ": x" + e.getValue()),
+					left + 8, top + 80 + row * (font.lineHeight + 2), 0xffffffff, false);
+			row++;
+		}
+		if (recipes.size() > 1)
+			graphics.text(font, Component.literal((index + 1) + " / " + recipes.size()),
+					left + 200, top + 4, 0xffb0b0b0, false);
+	}
+
+	/**
+	 * One slot's shown stack. A slot can accept several items (a tag), and vanilla's recipe book
+	 * cycles them on a timer; this does the same so a tag ingredient does not read as one arbitrary
+	 * item.
+	 */
+	private ItemStack cycle(net.minecraft.world.item.crafting.display.SlotDisplay slot,
+			net.minecraft.util.context.ContextMap context) {
+		List<ItemStack> options = slot.resolveForStacks(context);
+		if (options.isEmpty())
+			return ItemStack.EMPTY;
+		return options.get((int)(guiTick / 20 % options.size()));
 	}
 
 	private void renderCastingRecipe(GuiGraphicsExtractor graphics, int left, int top) {

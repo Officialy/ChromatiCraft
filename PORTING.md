@@ -2713,3 +2713,30 @@ minus the visible window, which is V33a's `maxX -= paneWidth + ...` / `maxY -= p
 
 Search results and the stored-fragment list stay a flat set rendered as one synthetic section, since
 those are genuinely unsectioned in the port; the per-section layout applies to ordinary browsing.
+
+### Chromic Lexicon: per-page frames and the crafting page — 2026-08-09
+
+**Steps 1 and 2 of the ten-step plan.**
+
+`GuiBookSection.PageType` gives every page kind its own frame art, and `GuiCastingRecipe` overrides
+`getGuiLayout()` to return a *different* type per subpage — CAST, RUNES, MULTICAST, PYLONCAST2 — which
+maps exactly onto the port's existing Grid/Runes/Stands/Aura subpages. The port had been blitting one
+`handbook.png` for every page. It now selects the frame per page, and the casting view changes frame
+as you page through its subpages, as upstream does. Structures use `handbook_structure`, and grid
+recipes reuse `handbook_cast` because V33a's `PageType.CRAFTING` maps to the same file.
+
+**`GuiCraftingRecipe` needed a different source of truth than upstream.** 1.7.10 handed the GUI an
+`ArrayList<IRecipe>` and read `getRecipeOutput()` off it. 26.2 does not expose `IRecipe` to the client
+at all — recipes arrive as `RecipeDisplayEntry` records in the player's recipe book, resolved through
+a `ContextMap` from `SlotDisplayContext.fromLevel`. The page is therefore built from the same displays
+vanilla's own recipe book renders, rather than from a re-derived recipe list, and no server round trip
+is needed (unlike the casting recipes, which do request from the server).
+
+Layout is V33a's: the 3x3 at `(posX+54, posY+10)` on an 18-pixel pitch, output at `(posX+7, posY+5)`
+with `posX/posY` the frame origin offset by `(-2, -8)`, and the alphabetically sorted `name: xN`
+ingredient tally capped at ten rows. A shaped display carries its own width and height, so a 2x2
+recipe is placed as 2x2 rather than packed from index 0. Tag ingredients cycle their candidates on a
+timer, as vanilla's recipe book does, so an ore-tag slot does not read as one arbitrary item.
+
+The Recipes toggle now appears for entries with a grid recipe and no casting recipe, with prev/next
+buttons when an item has several.

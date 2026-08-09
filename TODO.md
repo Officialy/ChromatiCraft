@@ -571,11 +571,11 @@ Still missing, in dependency order:
 Ordered so each unblocks the next. V33a `Gui*` source is the spec for every one; compare directly
 rather than generalising one renderer across several pages.
 
-1. **Per-page backgrounds.** `GuiBookSection.PageType` picks a `handbook_*.png` per page, and
+1. ~~**Per-page backgrounds.**~~ Done 2026-08-09. `GuiBookSection.PageType` picks a `handbook_*.png` per page, and
    `GuiCastingRecipe` switches it *per subpage* (0 CAST, 1 RUNES, 2 MULTICAST, 3 PYLONCAST2) — which
    maps straight onto the port's existing Grid/Runes/Stands/Aura subpages. The port currently blits
    one `handbook.png` for everything. All 22 backgrounds are now extracted.
-2. **`GuiCraftingRecipe`** — ordinary grid recipes for craftable entries, server-authoritative like
+2. ~~**`GuiCraftingRecipe`**~~ Done 2026-08-09. — ordinary grid recipes for craftable entries, server-authoritative like
    the casting view already is. Uses PageType.CRAFTING, which reuses `handbook_cast.png`.
 3. **`GuiMachineDescription`** — machine pages (PageType.PLAIN): the machine's own stats block and
    its recipe linkage, not just description text.
