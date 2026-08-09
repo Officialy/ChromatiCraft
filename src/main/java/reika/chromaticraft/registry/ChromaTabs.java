@@ -52,6 +52,11 @@ public final class ChromaTabs {
 			if (seen.add(item))
 				event.accept(item);
 		}
+		// V33a exposed both the empty and fully populated lexicons, plus one programmed fragment for
+		// every obtainable research page. Distinct CUSTOM_DATA stacks must be supplied explicitly.
+		event.accept(reika.chromaticraft.item.ItemChromaBook.creativeStack());
+		for (var page : reika.chromaticraft.magic.progression.LexiconCatalog.obtainablePages())
+			event.accept(reika.chromaticraft.item.ItemInfoFragment.forPage(page));
 	}
 
 	private ChromaTabs() {}

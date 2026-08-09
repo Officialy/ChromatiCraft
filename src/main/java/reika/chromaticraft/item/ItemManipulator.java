@@ -15,6 +15,8 @@ import reika.chromaticraft.auxiliary.interfaces.SneakPop;
 import reika.chromaticraft.block.worldgen26.BlockCliffStone;
 import reika.chromaticraft.registry.ChromaSounds;
 import reika.chromaticraft.tileentity.networking.TileEntityCrystalRepeater;
+import reika.chromaticraft.tileentity.TileEntityDataNode;
+import reika.chromaticraft.tileentity.TileEntityDummyAux;
 import reika.chromaticraft.tileentity.recipe.TileEntityCastingTable;
 import reika.dragonapi.APIPacketHandler;
 import reika.dragonapi.DragonAPI;
@@ -52,6 +54,10 @@ public class ItemManipulator extends Item {
 
 
 		BlockEntity tile = level.getBlockEntity(pos);
+		// Structure dummy blocks are the real hit target for tall models such as DATANODE. Resolve
+		// their controller before the manipulator dispatch, matching V33a relayManipulatorClick.
+		if (tile instanceof TileEntityDummyAux dummy && dummy.getLinkedTile() != null)
+			tile = dummy.getLinkedTile();
 
 		// Sneak + manipulator pops a droppable tile out of the world.
 		if (tile instanceof SneakPop pop && player.isShiftKeyDown()) {
@@ -69,6 +75,13 @@ public class ItemManipulator extends Item {
 			if (level.isClientSide())
 				return InteractionResult.SUCCESS;
 			return table.triggerCrafting(player) ? InteractionResult.SUCCESS : InteractionResult.FAIL;
+		}
+
+		// Holding use against a deployed lore tower advances its original 120-tick scan.
+		if (tile instanceof TileEntityDataNode node) {
+			if (!level.isClientSide())
+				node.scan(player);
+			return InteractionResult.SUCCESS;
 		}
 
 		// V33a repeater diagnostic/reorientation branch. All active repeater subtypes inherit this tile.

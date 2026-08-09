@@ -36,6 +36,7 @@ import reika.chromaticraft.registry.ChromaOptions;
 import reika.chromaticraft.registry.ChromaPlacementModifiers;
 import reika.chromaticraft.registry.ChromaTabs;
 import reika.chromaticraft.entity.EntityGlowCloud;
+import reika.chromaticraft.entity.EntityTunnelNuker;
 import reika.dragonapi.base.DragonAPIMod;
 import reika.rotarycraft.registry.RotaryBlocks;
 
@@ -80,6 +81,8 @@ public class ChromatiCraft extends DragonAPIMod {
 		ChromaEntityTypes.ENTITY_TYPES.register(modEventBus);
 		modEventBus.addListener(EntityGlowCloud::registerAttributes);
 		modEventBus.addListener(EntityGlowCloud::registerSpawnPlacements);
+		modEventBus.addListener((net.neoforged.neoforge.event.entity.EntityAttributeCreationEvent event) ->
+				event.put(ChromaEntityTypes.TUNNEL_NUKER.get(), EntityTunnelNuker.createAttributes().build()));
 		ChromaTabs.CREATIVE_MODE_TABS.register(modEventBus);
 		ChromaFeatures.FEATURES.register(modEventBus);
 		ChromaPlacementModifiers.TYPES.register(modEventBus);
@@ -107,6 +110,8 @@ public class ChromatiCraft extends DragonAPIMod {
 		}
 
 		NeoForge.EVENT_BUS.addListener(ChromatiCraft::registerCommands);
+		NeoForge.EVENT_BUS.addListener(ChromatiCraft::playerLoggedIn);
+		NeoForge.EVENT_BUS.addListener(reika.chromaticraft.magic.TunnelNukerSpawner::tick);
 		// The discovery scan that grants CRYSTALS (and BEDROCK/DEEPCAVE/biome stages) on sight.
 		reika.chromaticraft.auxiliary.ExplorationMonitor.register();
 	}
@@ -121,6 +126,12 @@ public class ChromatiCraft extends DragonAPIMod {
 
 	private static void registerCommands(RegisterCommandsEvent event) {
 		reika.chromaticraft.auxiliary.CrystalNetworkLogger.registerCommand(event.getDispatcher());
+		reika.chromaticraft.command.DataTowerLocateCommand.register(event.getDispatcher());
+	}
+
+	private static void playerLoggedIn(net.neoforged.neoforge.event.entity.player.PlayerEvent.PlayerLoggedInEvent event) {
+		if (event.getEntity() instanceof net.minecraft.server.level.ServerPlayer player)
+			ChromaNetwork.sendTowerLocations(player);
 	}
 
 	private static void registerScreens(RegisterMenuScreensEvent event) {

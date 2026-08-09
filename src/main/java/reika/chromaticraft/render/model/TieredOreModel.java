@@ -64,7 +64,7 @@ public final class TieredOreModel implements DynamicBlockStateModel {
 		// A null player means we are baking outside a live client (item render, model loading); show
 		// the real ore there, as V33a does for its inventory icon.
 		var player = Minecraft.getInstance().player;
-		boolean sufficient = player == null || stage.isPlayerAtStage(player);
+		boolean sufficient = player == null || player.isCreative() || stage.isPlayerAtStage(player);
 		for (BlockStateModelPart part : sufficient ? real : disguise)
 			parts.add(part);
 	}

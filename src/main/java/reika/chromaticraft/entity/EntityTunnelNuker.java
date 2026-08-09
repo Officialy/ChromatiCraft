@@ -1,166 +1,104 @@
-/*******************************************************************************
- * @author Reika Kalseki
- *
- * Copyright 2018
- *
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
- ******************************************************************************/
 package reika.chromaticraft.entity;
 
-import net.minecraft.client.Minecraft;
-import net.minecraft.entity.EntityLiving;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.MathHelper;
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
+import net.minecraft.world.phys.AABB;
 
-import reika.chromaticraft.block.decoration.blockethereallight.Flags;
-import reika.chromaticraft.registry.ChromaBlocks;
+import reika.chromaticraft.registry.ChromaEntityTypes;
 import reika.chromaticraft.registry.ChromaSounds;
-import reika.chromaticraft.registry.ExtraChromaIDs;
-import reika.chromaticraft.render.particle.EntityCCBlurFX;
-import reika.dragonapi.instantiable.effects.EntityBlurFX;
+import reika.chromaticraft.render.particle.ChromaParticle;
 import reika.dragonapi.interfaces.entity.DestroyOnUnload;
-import reika.dragonapi.libraries.ReikaEntityHelper;
-import reika.dragonapi.libraries.java.ReikaRandomHelper;
-import reika.dragonapi.libraries.mathsci.ReikaPhysicsHelper;
-import reika.dragonapi.libraries.rendering.ReikaColorAPI;
-import reika.dragonapi.libraries.world.ReikaWorldHelper;
-import reika.satisforestry.api.SFAPI;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
+/** V33a Lumafly/Tunnel Nuker: a slow circling, terrain-following immortal lore-tower guide. */
+public final class EntityTunnelNuker extends Mob implements DestroyOnUnload {
 
+	public EntityTunnelNuker(EntityType<? extends EntityTunnelNuker> type, Level level) {
+		super(type, level);
+		this.setNoGravity(true);
+		this.noPhysics = false;
+	}
 
-public class EntityTunnelNuker extends EntityLiving implements DestroyOnUnload {
-
-	public EntityTunnelNuker(World world) {
-		super(world);
+	public static AttributeSupplier.Builder createAttributes() {
+		return Mob.createMobAttributes().add(Attributes.MAX_HEALTH, 20).add(Attributes.FLYING_SPEED, 0.075);
 	}
 
 	@Override
-	public void onLivingUpdate() {
-		super.onLivingUpdate();
+	protected void registerGoals() {
+		// Motion is source-driven; V33a had no pathfinder tasks.
+	}
 
-		int x = MathHelper.floor_double(posX);
-		int z = MathHelper.floor_double(posZ);
+	@Override
+	public void aiStep() {
+		super.aiStep();
+		this.setXRot(0);
+		this.setYRot(this.getYRot() + Math.signum(System.identityHashCode(this)) / 8F);
+		this.yRotO = this.getYRot();
+		this.setOnGround(false);
+		this.fallDistance = 0;
 
-		doEntityTick(this);
+		int x = (int)Math.floor(this.getX());
+		int z = (int)Math.floor(this.getZ());
+		int top = this.level().getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
+		double yaw = Math.toRadians(this.getYRot());
+		double speed = 0.075;
+		double vy = Math.clamp((top - this.getY() + 8) / 32D, -0.08, 0.125);
+		this.setDeltaMovement(-Math.sin(yaw) * speed, vy, Math.cos(yaw) * speed);
+		this.hurtMarked = true;
 
-		rotationPitch = 0;
-		//rotationYaw = 0;
-		rotationYaw += Math.signum(System.identityHashCode(this))/8F;
-		prevRotationYaw = rotationYaw;
-
-		onGround = false;
-		isAirBorne = true;
-
-		int top = ReikaWorldHelper.getTopNonAirBlock(worldObj, x, z, true);
-		if (SFAPI.biomeHandler.isPinkForest(worldObj.isRemote ? worldObj.getBiomeGenForCoords(x, z) : ReikaWorldHelper.getNaturalGennedBiomeAt(worldObj, x, z)))
-			top = SFAPI.biomeHandler.getTrueTopAt(worldObj, x, z);
-
-		double vy = motionY;
-
-		if (posY-top < 8) {
-			//posY += 0.125;
-			//motionY = 0;//Math.max(motionY, 0.0625);
+		if (this.level().isClientSide()) {
+			if (this.tickCount % 16 == 0)
+				ChromaParticle.spawnTunnelNuker(this.level(), this.position(), this.random);
 		}
 		else {
-			//motionY = Math.max(motionY, -0.03125);
-			//motionY = 0;
-		}
-
-		double[] xyz = ReikaPhysicsHelper.polarToCartesian(0.075, 0, rotationYaw);
-
-		motionY = MathHelper.clamp_double(((top-posY)+8)/32D, -0.08, 0.125);
-		motionX = xyz[0];
-		motionZ = xyz[2];
-		velocityChanged = true;
-		/*
-		if (Math.abs(motionY-vy) > 0.0625) {
-			motionY = Math.max(motionY*0.25+vy*0.75, -0.03125);
-		}
-
-		motionY += 0.035;*/
-	}
-
-	public static void doEntityTick(EntityLivingBase e) {
-		if (e.worldObj.isRemote) {
-			if (e.ticksExisted%16 == 0) {
-				doTunnelNukerFX(e);
-			}
-		}
-		else {
-			if (e.ticksExisted%8 == 0) {
-				ChromaSounds.TUNNELNUKERAMBIENT.playSound(e, 0.2F+e.getRNG().nextFloat()*0.2F, 1);
-			}
-			if (e.getRNG().nextInt(160) == 0) {
-				ChromaSounds.TUNNELNUKERCALL.playSound(e, 0.25F, 0.75F+e.getRNG().nextFloat()*0.75F);
-			}
-			if (e.worldObj.provider.dimensionId != ExtraChromaIDs.DIMID.getValue() && e.ticksExisted%64 == 0) {
-				int y = MathHelper.floor_double(e.posY);
-				int x = MathHelper.floor_double(e.posX);
-				int z = MathHelper.floor_double(e.posZ);
-				if (e.worldObj.getBlock(x, y, z).isAir(e.worldObj, x, y, z)) {
-					e.worldObj.setBlock(x, y, z, ChromaBlocks.LIGHT.getBlockInstance(), Flags.FASTDECAY.getFlag(), 3);
-				}
-			}
+			if (this.tickCount % 8 == 0)
+				ChromaSounds.TUNNELNUKERAMBIENT.playSound(this, 0.2F + this.random.nextFloat() * 0.2F, 1);
+			if (this.random.nextInt(160) == 0)
+				ChromaSounds.TUNNELNUKERCALL.playSound(this, 0.25F, 0.75F + this.random.nextFloat() * 0.75F);
 		}
 	}
 
-	@SideOnly(Side.CLIENT)
-	private void doParticles() {
-		doTunnelNukerFX(this);
-	}
-
-	@SideOnly(Side.CLIENT)
-	public static void doTunnelNukerFX(EntityLivingBase e) {
-		float s = (e.getRNG().nextFloat()*0.75F+0.25F)*7;
-		int l = ReikaRandomHelper.getRandomBetween(10, 60);
-		int c = ReikaColorAPI.getModifiedHue(0xff0000, e.getRNG().nextInt(60));
-		EntityBlurFX fx = new EntityCCBlurFX(e.worldObj, e.posX, e.posY+0.9, e.posZ);
-		fx.setRapidExpand().setAlphaFading().setScale(s).setLife(l).setColor(c);//.setPositionController();
-		Minecraft.getMinecraft().effectRenderer.addEffect(fx);
+	public boolean isValidSpawnPosition() {
+		BlockPos pos = this.blockPosition();
+		AABB nearby = this.getBoundingBox().inflate(32);
+		return this.level().canSeeSky(pos.above())
+				&& this.level().getEntitiesOfClass(EntityTunnelNuker.class, nearby, e -> e != this).isEmpty();
 	}
 
 	@Override
-	public boolean getCanSpawnHere() {
-		int y = MathHelper.floor_double(posY);
-		int x = MathHelper.floor_double(posX);
-		int z = MathHelper.floor_double(posZ);
-		return worldObj.canBlockSeeTheSky(x, y+1, z) && !ReikaEntityHelper.existsAnotherValidEntityWithin(this, 32, new ReikaEntityHelper.ClassEntitySelector(this.getClass(), true));
-	}
-
-	@Override
-	public void destroy() {
-		this.setDead();
-	}
-
-	@Override
-	public void readEntityFromNBT(NBTTagCompound nbt) {
-		super.readEntityFromNBT(nbt);
-
-		if (nbt.getBoolean("isdead"))
-			this.setDead();
-	}
-
-	@Override
-	public void writeEntityToNBT(NBTTagCompound nbt) {
-		super.writeEntityToNBT(nbt);
-
-		nbt.setBoolean("isdead", isDead);
-	}
-
-	@Override
-	public boolean getAlwaysRenderNameTag() {
+	public boolean hurtServer(ServerLevel level, DamageSource source, float damage) {
 		return false;
 	}
 
 	@Override
-	public String getCommandSenderName() {
-		return "Lumafly";
+	public boolean isInvulnerableTo(ServerLevel level, DamageSource source) {
+		return true;
 	}
 
+	@Override
+	protected void readAdditionalSaveData(ValueInput input) {
+		super.readAdditionalSaveData(input);
+		if (input.getBooleanOr("isdead", false)) this.discard();
+	}
+
+	@Override
+	protected void addAdditionalSaveData(ValueOutput output) {
+		super.addAdditionalSaveData(output);
+		Entity.RemovalReason reason = this.getRemovalReason();
+		output.putBoolean("isdead", reason != null && reason.shouldDestroy());
+	}
+
+	@Override
+	public void destroy() {
+		this.discard();
+	}
 }

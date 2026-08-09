@@ -45,7 +45,8 @@ import reika.chromaticraft.world.biome.ChromaBiomes;
 public final class ChromaWorldGenProvider {
 
     private static final Identifier CAVE_CRYSTAL = id("cave_crystal");
-    private static final Identifier PYLON = id("pylon");
+    private static final Identifier NATURAL_PYLON = id("natural_pylon");
+    private static final Identifier DATA_TOWER = id("data_tower");
     private static final Identifier TURBOCHARGED_PYLON = id("turbocharged_pylon");
     private static final List<Identifier> CASTING_TEMPLES =
             List.of(id("casting_temple_l1"), id("casting_temple_l2"), id("casting_temple_l3"));
@@ -86,6 +87,10 @@ public final class ChromaWorldGenProvider {
         return placedKey("dye_tree_" + element.getEnglishName());
     }
 
+    private static Identifier coloredPylon(CrystalElement element) {
+        return id("pylon_" + element.getEnglishName());
+    }
+
     public static RegistrySetBuilder buildRegistrySet() {
         RegistrySetBuilder builder = new RegistrySetBuilder();
         builder.add(Registries.BIOME, ChromaBiomes::bootstrap);
@@ -97,11 +102,15 @@ public final class ChromaWorldGenProvider {
             registerConfigured(bootstrap, features, id("warp_node"));
             registerConfigured(bootstrap, features, id("skypeater"));
             registerConfigured(bootstrap, features, id("ender_forest_tree"));
+            registerConfigured(bootstrap, features, id("rainbow_tree"));
             for (ChromaDecoFlowers flower : ChromaDecoFlowers.list)
                 registerConfigured(bootstrap, features, id(flower.registryName()));
             for (ChromaTieredPlants plant : ChromaTieredPlants.list)
                 registerConfigured(bootstrap, features, id(plant.registryName()));
-            registerConfigured(bootstrap, features, PYLON);
+            registerConfigured(bootstrap, features, NATURAL_PYLON);
+            for (CrystalElement element : CrystalElement.elements)
+                registerConfigured(bootstrap, features, coloredPylon(element));
+            registerConfigured(bootstrap, features, DATA_TOWER);
             registerConfigured(bootstrap, features, TURBOCHARGED_PYLON);
             for (Identifier temple : CASTING_TEMPLES)
                 registerConfigured(bootstrap, features, temple);
@@ -125,8 +134,6 @@ public final class ChromaWorldGenProvider {
                 bootstrap.register(dyeTree(element), new ConfiguredFeature<>(Feature.TREE,
                         dyeTreeConfiguration(element, biomes)));
             }
-            bootstrap.register(RAINBOW_TREE, new ConfiguredFeature<>(Feature.TREE,
-                    rainbowTreeConfiguration(biomes)));
             bootstrap.register(GLOWING_TREE, new ConfiguredFeature<>(Feature.TREE,
                     glowingTreeConfiguration(biomes)));
         });
@@ -170,7 +177,10 @@ public final class ChromaWorldGenProvider {
                 modifiers.add(net.minecraft.world.level.levelgen.placement.BiomeFilter.biome());
                 registerPlaced(bootstrap, configured, id(ore.name()), modifiers);
             }
-            registerPlaced(bootstrap, configured, PYLON);
+            registerPlaced(bootstrap, configured, NATURAL_PYLON);
+            for (CrystalElement element : CrystalElement.elements)
+                registerPlaced(bootstrap, configured, coloredPylon(element));
+            registerPlaced(bootstrap, configured, DATA_TOWER);
             registerPlaced(bootstrap, configured, TURBOCHARGED_PYLON);
             // Command-only, like the pylon variants: no biome modifier names these.
             for (Identifier temple : CASTING_TEMPLES)
@@ -202,15 +212,6 @@ public final class ChromaWorldGenProvider {
                 BlockStateProvider.simple(ChromaBlocks.dyeLeaves(element).get()),
                 new BlobFoliagePlacer(ConstantInt.of(2), ConstantInt.of(0), 3),
                 new TwoLayersFeatureSize(1, 0, 1),
-                TreeConfiguration.defaultPlaceBelowTreeTrunkProvider(biomes)).ignoreVines().build();
-    }
-
-    private static TreeConfiguration rainbowTreeConfiguration(HolderGetter<Biome> biomes) {
-        return new TreeConfiguration.TreeConfigurationBuilder(randomOverworldLog(),
-                new StraightTrunkPlacer(9, 4, 2),
-                BlockStateProvider.simple(ChromaBlocks.RAINBOW_LEAVES.get()),
-                new BlobFoliagePlacer(ConstantInt.of(3), ConstantInt.of(1), 4),
-                new TwoLayersFeatureSize(1, 0, 2),
                 TreeConfiguration.defaultPlaceBelowTreeTrunkProvider(biomes)).ignoreVines().build();
     }
 
@@ -252,7 +253,7 @@ public final class ChromaWorldGenProvider {
     private static void registerPlaced(BootstrapContext<PlacedFeature> bootstrap,
             HolderGetter<ConfiguredFeature<?, ?>> configured, Identifier id) {
         registerPlaced(bootstrap, configured, id,
-                id.equals(PYLON) ? List.of(PylonGridPlacement.INSTANCE) : List.of());
+                id.equals(NATURAL_PYLON) ? List.of(PylonGridPlacement.INSTANCE) : List.of());
     }
 
     private static void registerPlaced(BootstrapContext<PlacedFeature> bootstrap,

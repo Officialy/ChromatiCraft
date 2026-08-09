@@ -13,6 +13,7 @@ import net.minecraft.world.level.Level;
 
 import reika.chromaticraft.auxiliary.structure.CompoundRepeaterStructure;
 import reika.chromaticraft.auxiliary.structure.CastingStructure;
+import reika.chromaticraft.auxiliary.structure.DataTowerStructure;
 import reika.chromaticraft.auxiliary.structure.PylonStructure;
 import reika.chromaticraft.auxiliary.structure.RepeaterStructure;
 import reika.chromaticraft.base.ChromaStructureBase;
@@ -32,7 +33,8 @@ public enum ChromaStructures implements StructureEnum<ChromaStructureBase> {
 	CASTING3(CastingStructure.Tier3.class),
 	REPEATER(RepeaterStructure.class),
 	COMPOUND(CompoundRepeaterStructure.class),
-	PYLONBROADCAST(PylonBroadcastStructure.class);
+	PYLONBROADCAST(PylonBroadcastStructure.class),
+	DATANODE(DataTowerStructure.class);
 
 	public final boolean requiresColor;
 	private final Class<? extends ChromaStructureBase> structureClass;
@@ -77,6 +79,6 @@ public enum ChromaStructures implements StructureEnum<ChromaStructureBase> {
 
 	@Override
 	public boolean isNatural() {
-		return this == PYLON || this == PYLONBROADCAST;
+		return this == PYLON || this == PYLONBROADCAST || this == DATANODE;
 	}
 }

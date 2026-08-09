@@ -10,12 +10,15 @@ import java.util.Random;
 import java.util.Collection;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.data.AtlasIds;
 import net.minecraft.resources.Identifier;
 
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.registry.ChromaBlocks;
+import reika.chromaticraft.registry.ChromaSounds;
+import reika.chromaticraft.magic.lore.Towers;
 import reika.chromaticraft.tileentity.auxiliary.TileEntityChromaCrystal;
 import reika.chromaticraft.render.ChromaRenderPipelines;
 import reika.dragonapi.instantiable.particlecontroller.CollectingPositionController;
@@ -41,6 +44,97 @@ public abstract class ChromaParticle extends SingleQuadParticle {
             ChromaRenderPipelines.ADDITIVE_PARTICLE);
 
     private final boolean additive;
+
+	/** V33a Lumafly's periodic rapidly-expanding red-to-orange aura. */
+	public static void spawnTunnelNuker(Level world, Vec3 pos, RandomSource random) {
+		if (!(world instanceof ClientLevel level)) return;
+		float scale = (random.nextFloat() * 0.75F + 0.25F) * 7;
+		int life = 10 + random.nextInt(51);
+		float hue = random.nextInt(60) / 360F;
+		int color = java.awt.Color.HSBtoRGB(hue, 1, 1) & 0xffffff;
+		Minecraft.getInstance().particleEngine.add(new FadeGlow(level,
+				pos.x, pos.y + 0.9, pos.z, 0, 0, 0, color, life, scale, true));
+	}
+
+	/** V33a inscription completion: 32 chroma glows around the converted block and the cast cue. */
+	public static void spawnInscription(Level world, BlockPos pos, RandomSource random) {
+		if (!(world instanceof ClientLevel level)) return;
+		for (int i = 0; i < 32; i++) {
+			double x = pos.getX() + 0.5 + (random.nextDouble() * 2 - 1) * 0.75;
+			double y = pos.getY() + 0.5 + (random.nextDouble() * 2 - 1) * 0.75;
+			double z = pos.getZ() + 0.5 + (random.nextDouble() * 2 - 1) * 0.75;
+			int color = java.awt.Color.HSBtoRGB(random.nextFloat(), 1, 1) & 0xffffff;
+			Minecraft.getInstance().particleEngine.add(new FadeGlow(level, x, y, z, 0, 0, 0,
+					color, 10 + random.nextInt(21), 1 + random.nextFloat(), true));
+		}
+		playLocal(level, pos, ChromaSounds.CAST, 1, 1);
+	}
+
+	/** V33a lore tower: one pale fade-ray every deployed tick and paired wandering seeds every five. */
+	public static void spawnDataNodeAmbient(Level world, BlockPos pos, boolean deployed,
+			Towers tower, RandomSource random) {
+		if (!(world instanceof ClientLevel level) || !deployed) return;
+		double x = pos.getX() + 0.5 + (random.nextDouble() * 2 - 1) * 4;
+		double y = pos.getY() + 3.5 + random.nextDouble() * 1.5;
+		double z = pos.getZ() + 0.5 + (random.nextDouble() * 2 - 1) * 4;
+		Minecraft.getInstance().particleEngine.add(new FadeGlow(level, x, y, z,
+				0, 0, 0, 0xa0e0ff, 30, 0.5F, true));
+		if (tower == null || random.nextInt(5) != 0) return;
+		if (tower == Towers.ALPHA) {
+			int index = 1 + (int)((world.getGameTime() / 120) % (Towers.towerList.length - 1));
+			spawnDataNodeLink(level, pos, tower, Towers.towerList[index], random);
+		}
+		else {
+			spawnDataNodeLink(level, pos, tower, tower.getNeighbor1(), random);
+			spawnDataNodeLink(level, pos, tower, tower.getNeighbor2(), random);
+		}
+	}
+
+	private static void spawnDataNodeLink(ClientLevel level, BlockPos pos, Towers source,
+			Towers target, RandomSource random) {
+		if (target == null || source.getRootPosition() == null || target.getRootPosition() == null) return;
+		double dx = target.getRootPosition().x() - source.getRootPosition().x();
+		double dz = target.getRootPosition().z() - source.getRootPosition().z();
+		double angle = Math.toDegrees(Math.atan2(dz, dx));
+		double x = pos.getX() + 0.5 + (random.nextDouble() * 2 - 1);
+		double y = pos.getY() + 3.5 + random.nextDouble() * 1.5;
+		double z = pos.getZ() + 0.5 + (random.nextDouble() * 2 - 1);
+		FloatingSeed seed = new FloatingSeed(level, x, y, z, angle, 0,
+				random.nextFloat() + 0.25F, 120, 0xa0e0ff, 0xa0e0ff);
+		seed.setMotion(0.0625, 30, 2.25);
+		Minecraft.getInstance().particleEngine.add(seed);
+	}
+
+	/** Exact V33a DATASCAN burst counts, heights, colours and completion chord. */
+	public static void spawnDataNodeScan(ClientLevel level, BlockPos pos) {
+		double x = pos.getX() + 0.5;
+		double y = pos.getY() + 4.5;
+		double z = pos.getZ() + 0.5;
+		for (int angle = 0; angle < 360; angle++) {
+			FloatingSeed seed = new FloatingSeed(level, x, y, z, angle, 0,
+					1F, 120, 0xa0e0ff, 0xa0e0ff);
+			seed.setMotion(0.125, 120, 4.5);
+			Minecraft.getInstance().particleEngine.add(seed);
+		}
+		for (double height = 0; height <= 64; height += 0.25) {
+			Minecraft.getInstance().particleEngine.add(new FadeGlow(level, x, y + height, z,
+					0, 0, 0, 0xa0e0ff, 120, 4F, true));
+			Minecraft.getInstance().particleEngine.add(new FadeGlow(level, x, y + height, z,
+					0, 0, 0, 0xffffff, 120, 1.5F, true));
+		}
+		playLocal(level, pos, ChromaSounds.BOUNCE, 2, 1);
+		playLocal(level, pos, ChromaSounds.BOUNCE, 2, 1);
+		playLocal(level, pos, ChromaSounds.MONUMENTRAY, 2, 0.8F);
+		playLocal(level, pos, ChromaSounds.MONUMENTRAY, 2, 1.6F);
+		playLocal(level, pos, ChromaSounds.KILLAURA, 2, 2);
+		playLocal(level, pos, ChromaSounds.KILLAURA, 2, 1);
+	}
+
+	private static void playLocal(ClientLevel level, BlockPos pos, ChromaSounds sound,
+			float volume, float pitch) {
+		level.playLocalSound(pos.getX() + 0.5, pos.getY() + 4.5, pos.getZ() + 0.5,
+				sound.getSoundEvent(), sound.getCategory(), volume, pitch, false);
+	}
 
     /** Exact V33a TileEntityCrystalPylon.spawnParticle/spawnLightning emission policy. */
     public static void spawnPylon(Level world, BlockPos pos, CrystalElement color, boolean enhanced,

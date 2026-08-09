@@ -1,6 +1,6 @@
 {
   "model": {
     "type": "minecraft:model",
-    "model": "chromaticraft:block/energized_rock"
+    "model": "chromaticraft:block/energized_rock_item"
   }
 }

@@ -20,6 +20,8 @@ import net.minecraft.client.data.models.ModelProvider;
 import net.minecraft.client.data.models.MultiVariant;
 import net.minecraft.client.data.models.blockstates.BlockModelDefinitionGenerator;
 import net.minecraft.client.data.models.blockstates.MultiVariantGenerator;
+import net.minecraft.client.data.models.blockstates.MultiPartGenerator;
+import net.minecraft.client.data.models.blockstates.ConditionBuilder;
 import net.minecraft.client.data.models.model.ModelLocationUtils;
 import net.minecraft.client.data.models.blockstates.PropertyDispatch;
 import net.minecraft.client.data.models.model.ItemModelUtils;
@@ -39,6 +41,7 @@ import net.minecraft.world.item.Item;
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.base.CrystalTypeBlock;
 import reika.chromaticraft.block.BlockCrystalRune;
+import reika.chromaticraft.block.decoration.BlockMetaAlloyLamp;
 import reika.chromaticraft.block.BlockCrystallineStone;
 import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
 import reika.chromaticraft.registry.ChromaBlocks;
@@ -119,6 +122,9 @@ public class ChromaModelProvider extends ModelProvider {
 		itemStandModel(blockStateOut, itemModelOut, modelOut);
 		castingTableModel(blockStateOut, itemModelOut, modelOut);
 		networkTileModel(ChromaBlocks.FOCUS_CRYSTAL.get(), "focus_crystal", "block/crystal/chroma", blockStateOut, itemModelOut, modelOut);
+		dataNodeModel(blockStateOut, itemModelOut, modelOut);
+		metaAlloyModel(blockStateOut, itemModelOut, modelOut);
+		tieredOreItems(itemModelOut, modelOut);
 
 
 		// The crystal-coloured blocks: the COLOR property (0..15 = CrystalElement) maps to a per-colour
@@ -129,6 +135,12 @@ public class ChromaModelProvider extends ModelProvider {
 		Item manipulator = ChromaItems.MANIPULATOR.get();
 		itemModelOut.accept(manipulator, ItemModelUtils.plainModel(ModelTemplates.FLAT_ITEM.create(
 				ModelLocationUtils.getModelLocation(manipulator), TextureMapping.layer0(manipulator), modelOut)));
+		for (Item item : List.of(ChromaItems.LEXICON.get(), ChromaItems.INFO_FRAGMENT.get(),
+				ChromaItems.DATA_CRYSTAL.get())) {
+			Identifier model = ModelTemplates.FLAT_ITEM.create(ModelLocationUtils.getModelLocation(item),
+					TextureMapping.layer0(item), modelOut);
+			itemModelOut.accept(item, ItemModelUtils.plainModel(model));
+		}
 		// V33a draws lamps and potion crystals with the cave crystal's spikes plus the stone plinth
 		// (CrystalRenderedBlock.renderBase()); the old coloured-cube placeholder was wrong for both.
 		basedCrystalBlocks(ChromaBlocks.CRYSTAL_LAMPS, "crystal_lamp", blockStateOut, itemModelOut, modelOut);
@@ -191,6 +203,50 @@ public class ChromaModelProvider extends ModelProvider {
 		dyeTreeBlocks(blockStateOut, itemModelOut, modelOut);
 		cliffBlocks(blockStateOut, itemModelOut, modelOut);
 		luminousPlants(blockStateOut, itemModelOut, modelOut);
+	}
+
+	/**
+	 * Tiered ores use a viewer-dependent custom blockstate model and therefore have no ordinary
+	 * {@code block/<id>} model for the automatic BlockItem to inherit. Give each inventory form a
+	 * concrete cube using the source underlay instead of leaving three missing-model references.
+	 * The animated emissive overlay remains an in-world second pass, as in V33a.
+	 */
+	private static void tieredOreItems(ItemModelOutput itemModelOut,
+			BiConsumer<Identifier, ModelInstance> modelOut) {
+		tieredOreItem(ChromaBlocks.ENERGIZED_ROCK.get(), "tier_0_underlay", itemModelOut, modelOut);
+		tieredOreItem(ChromaBlocks.ELEMENTAL_STONES.get(), "tier_1_underlay", itemModelOut, modelOut);
+		tieredOreItem(ChromaBlocks.FIRESTONE.get(), "tier_9_underlay", itemModelOut, modelOut);
+	}
+
+	private static void tieredOreItem(Block block, String texture, ItemModelOutput itemModelOut,
+			BiConsumer<Identifier, ModelInstance> modelOut) {
+		Identifier model = ModelTemplates.CUBE_ALL.create(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
+						"block/" + BuiltInRegistries.BLOCK.getKey(block).getPath() + "_item"),
+				TextureMapping.cube(new Material(Identifier.fromNamespaceAndPath(
+						ChromatiCraft.MODID, "block/ore/" + texture))), modelOut);
+		itemModelOut.accept(block.asItem(), ItemModelUtils.plainModel(model));
+	}
+
+	private static void metaAlloyModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		Block block = ChromaBlocks.META_ALLOY_LAMP.get();
+		Identifier leaves = ModelTemplates.CROSS.create(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/meta_alloy_leaves"),
+				new TextureMapping().put(TextureSlot.CROSS, new Material(Identifier.fromNamespaceAndPath(
+						ChromatiCraft.MODID, "block/metaleaf"))), modelOut);
+		Identifier pod = ModelTemplates.CUBE_BOTTOM_TOP.create(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/meta_alloy_pod"),
+				new TextureMapping()
+						.put(TextureSlot.TOP, new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/metaalloy")))
+						.put(TextureSlot.BOTTOM, new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/metaalloy")))
+						.put(TextureSlot.SIDE, new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/metaalloy_side"))),
+				modelOut);
+		MultiVariant leafVariant = new MultiVariant(WeightedList.of(new Variant(leaves)));
+		MultiVariant podVariant = new MultiVariant(WeightedList.of(new Variant(pod)));
+		blockStateOut.accept(MultiPartGenerator.multiPart(block).with(leafVariant)
+				.with(new ConditionBuilder().term(BlockMetaAlloyLamp.POD, true), podVariant));
+		itemModelOut.accept(block.asItem(), ItemModelUtils.plainModel(pod));
 	}
 
 	/**
@@ -687,6 +743,21 @@ public class ChromaModelProvider extends ModelProvider {
 				TextureMapping.cube(new Material(Identifier.fromNamespaceAndPath(
 						ChromatiCraft.MODID, "block/crystal/chroma"))), modelOut);
 		itemModelOut.accept(ChromaBlocks.PYLON.get().asItem(), ItemModelUtils.plainModel(itemModel));
+	}
+	/** The BER owns the world mesh; the inventory keeps a stable shield-textured representation. */
+	private static void dataNodeModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		Material particle = new Material(Identifier.fromNamespaceAndPath(
+				ChromatiCraft.MODID, "block/shield/moss"));
+		Identifier worldModel = ModelTemplates.PARTICLE_ONLY.create(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/data_node"),
+				new TextureMapping().put(TextureSlot.PARTICLE, particle), modelOut);
+		blockStateOut.accept(MultiVariantGenerator.dispatch(ChromaBlocks.DATA_NODE.get(),
+				new MultiVariant(WeightedList.of(new Variant(worldModel)))));
+		Identifier itemModel = ModelTemplates.CUBE_ALL.create(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/data_node_inventory"),
+				TextureMapping.cube(particle), modelOut);
+		itemModelOut.accept(ChromaBlocks.DATA_NODE.get().asItem(), ItemModelUtils.plainModel(itemModel));
 	}
 	private static void networkTileModel(Block block, String name, String texture,
 			Consumer<BlockModelDefinitionGenerator> blockStateOut, ItemModelOutput itemModelOut,

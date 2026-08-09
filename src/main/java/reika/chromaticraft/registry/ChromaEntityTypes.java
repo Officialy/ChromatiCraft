@@ -25,6 +25,8 @@ import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.entity.EntityGlowCloud;
 import reika.chromaticraft.entity.EntityLumaBurst;
 import reika.chromaticraft.entity.EntityPylonOverloadShock;
+import reika.chromaticraft.entity.EntityTunnelNuker;
+import reika.chromaticraft.entity.EntityDataCrystal;
 
 /** Entity registrations accepted into the active 26.2 port slice. */
 public final class ChromaEntityTypes {
@@ -50,6 +52,17 @@ public final class ChromaEntityTypes {
 			register("luma_burst", () -> EntityType.Builder
 					.<EntityLumaBurst>of(EntityLumaBurst::new, MobCategory.MISC)
 					.sized(0.25F, 0.25F).clientTrackingRange(64).updateInterval(1));
+
+	public static final DeferredHolder<EntityType<?>, EntityType<EntityTunnelNuker>> TUNNEL_NUKER =
+			register("tunnel_nuker", () -> EntityType.Builder
+					.<EntityTunnelNuker>of(EntityTunnelNuker::new, MobCategory.CREATURE)
+					.sized(1.25F, 0.75F).clientTrackingRange(128).updateInterval(1));
+
+	/** V33a's immortal, buoyant dropped Memory Crystal. */
+	public static final DeferredHolder<EntityType<?>, EntityType<EntityDataCrystal>> DATA_CRYSTAL =
+			register("data_crystal", () -> EntityType.Builder
+					.<EntityDataCrystal>of(EntityDataCrystal::new, MobCategory.MISC)
+					.sized(0.25F, 0.25F).clientTrackingRange(128).updateInterval(1));
 
 	private ChromaEntityTypes() {}
 

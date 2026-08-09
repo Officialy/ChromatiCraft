@@ -81,6 +81,9 @@ import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.magic.progression.ResearchLevel;
 import reika.chromaticraft.magic.progression.ResearchProgress;
 import reika.chromaticraft.magic.progression.LexiconData;
+import reika.chromaticraft.magic.progression.LexiconCatalog;
+import reika.chromaticraft.magic.progression.LexiconDescriptions;
+import reika.chromaticraft.magic.progression.ProgressionDescriptions;
 import reika.chromaticraft.tileentity.recipe.TileEntityItemStand;
 import reika.chromaticraft.tileentity.recipe.TileEntityCastingTable;
 import reika.chromaticraft.magic.progression.ProgressionManager;
@@ -96,6 +99,10 @@ import reika.chromaticraft.tileentity.networking.TileEntityCrystalRepeater;
 import reika.dragonapi.instantiable.data.blockstruct.FilledBlockArray;
 import reika.chromaticraft.registry.ChromaDecoFlowers;
 import reika.chromaticraft.world.CrystalFeature;
+import reika.chromaticraft.world.DataTowerFeature;
+import reika.chromaticraft.magic.lore.Towers;
+import reika.chromaticraft.tileentity.TileEntityDataNode;
+import reika.chromaticraft.tileentity.TileEntityDummyAux;
 import reika.chromaticraft.world.PylonFeature;
 import reika.chromaticraft.tileentity.networking.TileEntityPylonLink;
 import reika.dragonapi.instantiable.data.immutable.DecimalPosition;
@@ -211,8 +218,90 @@ public final class ChromaGameTests {
 		register(event, env, "early_game_casting_stand_chain", ChromaGameTests::earlyGameCastingStandChain);
 		register(event, env, "casting_manipulator_fake_player_guard", ChromaGameTests::castingManipulatorFakePlayerGuard);
 		register(event, env, "lexicon_custom_data_roundtrip", ChromaGameTests::lexiconCustomDataRoundtrip);
+		register(event, env, "lexicon_v33a_catalog", ChromaGameTests::lexiconV33aCatalog);
+		register(event, env, "lexicon_casting_recipe_snapshot", ChromaGameTests::lexiconCastingRecipeSnapshot);
+		register(event, env, "information_fragment_research_loop", ChromaGameTests::informationFragmentResearchLoop);
+		register(event, env, "data_node_nbt_feature", ChromaGameTests::dataNodeNbtFeature);
+		register(event, env, "data_node_scan_loop", ChromaGameTests::dataNodeScanLoop);
+		register(event, env, "meta_alloy_ecology_contract", ChromaGameTests::metaAlloyEcologyContract);
+		register(event, env, "tunnel_nuker_entity_contract", ChromaGameTests::tunnelNukerEntityContract);
+		register(event, env, "memory_crystal_inscription_loop", ChromaGameTests::memoryCrystalInscriptionLoop);
+		register(event, env, "lore_key_puzzle_contract", ChromaGameTests::loreKeyPuzzleContract);
 		register(event, env, "tiered_ore_progression_gate", ChromaGameTests::tieredOreProgressionGate);
 		register(event, env, "tiered_ore_worldgen", ChromaGameTests::tieredOreWorldgen);
+		register(event, env, "creative_tiered_resource_access", ChromaGameTests::creativeTieredResourceAccess);
+		register(event, env, "rainbow_tree_shape_and_log", ChromaGameTests::rainbowTreeShapeAndLog);
+	}
+
+	/** Creative inspection must not inherit the survival-only invisible resource gate. */
+	private static void creativeTieredResourceAccess(GameTestHelper helper) {
+		var creative = helper.makeMockPlayer(GameType.CREATIVE);
+		BlockPos plantPos = helper.absolutePos(new BlockPos(3, 3, 3));
+		helper.getLevel().setBlock(plantPos.below(), Blocks.GRASS_BLOCK.defaultBlockState(), 3);
+		BlockState plant = ChromaBlocks.tieredPlant(
+				reika.chromaticraft.registry.ChromaTieredPlants.AURA_BLOOM).get().defaultBlockState();
+		helper.getLevel().setBlock(plantPos, plant, 3);
+		helper.assertTrue(!plant.getShape(helper.getLevel(), plantPos, CollisionContext.of(creative)).isEmpty(),
+				"a creative player must be able to target and remove an Aura Bloom");
+
+		BlockPos orePos = helper.absolutePos(new BlockPos(7, 3, 3));
+		BlockState ore = ChromaBlocks.FIRESTONE.get().defaultBlockState();
+		helper.getLevel().setBlock(orePos, ore, 3);
+		ChromaBlocks.FIRESTONE.get().setPlacedBy(helper.getLevel(), orePos, ore, creative,
+				new ItemStack(ChromaBlocks.FIRESTONE.get()));
+		helper.assertTrue(helper.getLevel().getBlockState(orePos).is(ChromaBlocks.FIRESTONE.get()),
+				"creative-placed Firestone must remain; survival placement stays progression-gated");
+		helper.succeed();
+	}
+
+	/** V33a small Rainbow Tree uses one chosen wood and its rising/falling diamond crown. */
+	private static void rainbowTreeShapeAndLog(GameTestHelper helper) {
+		BlockPos origin = helper.absolutePos(new BlockPos(8, 3, 8));
+		helper.getLevel().setBlock(origin.below(), Blocks.GRASS_BLOCK.defaultBlockState(), 3);
+		var registry = helper.getLevel().registryAccess().lookupOrThrow(Registries.CONFIGURED_FEATURE);
+		var feature = registry.getOrThrow(net.minecraft.resources.ResourceKey.create(
+				Registries.CONFIGURED_FEATURE,
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "rainbow_tree"))).value();
+		helper.assertTrue(feature.place(helper.getLevel(), helper.getLevel().getChunkSource().getGenerator(),
+				RandomSource.create(0x5241494E424F574CL), origin),
+				"the registered Rainbow Tree must place on grass");
+
+		java.util.Set<net.minecraft.world.level.block.Block> logs = new java.util.HashSet<>();
+		int leaves = 0;
+		int maxLeafY = Integer.MIN_VALUE;
+		for (int dx = -6; dx <= 6; dx++) for (int dy = 0; dy <= 24; dy++) for (int dz = -6; dz <= 6; dz++) {
+			BlockPos pos = origin.offset(dx, dy, dz);
+			BlockState state = helper.getLevel().getBlockState(pos);
+			if (state.is(net.minecraft.tags.BlockTags.LOGS)) logs.add(state.getBlock());
+			if (state.is(ChromaBlocks.RAINBOW_LEAVES.get())) {
+				leaves++;
+				maxLeafY = Math.max(maxLeafY, pos.getY());
+			}
+		}
+		helper.assertTrue(logs.size() == 1,
+				"every log in one dye/rainbow tree must share one chosen wood; got " + logs.size());
+		helper.assertTrue(leaves > 20, "the source diamond crown must contain substantial rainbow foliage");
+		BlockPos top = new BlockPos(origin.getX(), maxLeafY, origin.getZ());
+		helper.assertTrue(helper.getLevel().getBlockState(top).is(ChromaBlocks.RAINBOW_LEAVES.get()),
+				"the source crown terminates in a centered rainbow leaf");
+		helper.succeed();
+	}
+
+	/** The guide receives every real recipe for an output, in deterministic tier order. */
+	private static void lexiconCastingRecipeSnapshot(GameTestHelper helper) {
+		var recipes = reika.chromaticraft.network.ChromaNetwork.guideCastingRecipes(
+				helper.getLevel().getServer().getRecipeManager(),
+				ChromaItems.CLUSTERS.get(ChromaClusterItems.GREEN_GROUP).get());
+		helper.assertTrue(recipes.size() == 2,
+				"the green group guide page must include its ordinary and boosted V33a recipes");
+		for (int i = 1; i < recipes.size(); i++) {
+			helper.assertTrue(recipes.get(i - 1).tier().ordinal() <= recipes.get(i).tier().ordinal(),
+					"guide casting recipe snapshots must be sorted by tier");
+		}
+		helper.assertTrue(recipes.stream().allMatch(recipe ->
+				recipe.output().is(ChromaItems.CLUSTERS.get(ChromaClusterItems.GREEN_GROUP).get())),
+				"a guide snapshot must not leak recipes for a different output");
+		helper.succeed();
 	}
 
 	/** Book contents use 26.2 custom data without losing foreign fields or duplicating pages. */
@@ -235,14 +324,247 @@ public final class ChromaGameTests {
 				"Lexicon writes must preserve unrelated custom-data fields");
 
 		LexiconData changed = loaded.withPage("RUNEUSE").withPage("RUNEUSE")
-				.withBlanksDelta(-20).withoutNotes().withCreative(true);
+				.withBlanksDelta(-20).withNotes(List.of("replacement", "atomic save")).withCreative(true);
 		changed.writeTo(book);
 		LexiconData reloaded = LexiconData.read(book);
 		helper.assertTrue(reloaded.creative() && reloaded.hasPage("UNOWNED")
 				&& reloaded.pages().equals(List.of("CRYSTALS", "CASTING", "RUNEUSE")),
 				"creative books expose all pages while stored pages remain canonical");
-		helper.assertTrue(reloaded.blanks() == 0 && reloaded.notes().isEmpty(),
-				"blank counts clamp at zero and clearing notes removes their stored list");
+		helper.assertTrue(reloaded.blanks() == 0
+				&& reloaded.notes().equals(List.of("replacement", "atomic save")),
+				"blank counts clamp at zero and an atomic notebook replacement survives CUSTOM_DATA");
+		reloaded.withoutNotes().writeTo(book);
+		helper.assertTrue(LexiconData.read(book).notes().isEmpty(),
+				"clearing the notebook must remove its stored list without damaging the lexicon");
+		helper.assertTrue(ProgressionDescriptions.title(ProgressStage.CRYSTALS).equals("Tangible Energy")
+				&& ProgressionDescriptions.hint(ProgressStage.CASTING).contains("wooden crafting table")
+				&& ProgressionDescriptions.reveal(ProgressStage.PYLON).contains("energy beacon"),
+				"the Progress screens must load V33a's authored title, hint, and reveal XML");
+		helper.succeed();
+	}
+
+	/** The dependency-free guide catalog must preserve every V33a identity and section boundary. */
+	private static void lexiconV33aCatalog(GameTestHelper helper) {
+		helper.assertTrue(LexiconCatalog.entries().size() == 322,
+				"The complete V33a catalog contains exactly 322 entries");
+		helper.assertTrue(LexiconCatalog.obtainablePages().size() == 313,
+				"Seven section headers and the two always-present pages are not obtainable fragments");
+		var dataTower = LexiconCatalog.byId("DATATOWER");
+		helper.assertTrue(dataTower != null
+				&& dataTower.section() == LexiconCatalog.Section.STRUCTURES
+				&& dataTower.level() == reika.chromaticraft.magic.progression.ResearchLevel.RAWEXPLORE
+				&& dataTower.descriptionResource().equals("structure")
+				&& dataTower.sourceId().equals("datanode")
+				&& dataTower.descriptionNode().equals("datatower")
+				&& dataTower.exactTitle().equals("Ancient Data Tower"),
+				"DATATOWER must retain its V33a research tier and DATANODE structure binding");
+		helper.assertTrue(LexiconCatalog.byId("AISHUTDOWN").exactTitle().equals("chroma.aishutdown"),
+				"The one untranslated V33a title must stay verbatim rather than gaining an invented name");
+		helper.assertTrue(LexiconCatalog.byId("start").alwaysPresent()
+				&& LexiconCatalog.byId("LEXICON").alwaysPresent()
+				&& LexiconCatalog.byId("PACKCHANGES").readableWithoutFragment()
+				&& LexiconCatalog.byId("PACKCHANGES").obtainable(),
+				"V33a always-readable guide pages and fragment membership must remain distinct");
+		helper.assertTrue(LexiconDescriptions.description(LexiconCatalog.byId("CRYSTALS"))
+				.startsWith("Crystal energy, if it reaches a critical density"),
+				"The guide must read the original V33a info.xml prose");
+		helper.assertTrue(LexiconDescriptions.notes(LexiconCatalog.byId("INVLINK"))
+				.contains("reverse the item flow direction"),
+				"Nested V33a tool notes must survive the modern XML loader");
+		helper.succeed();
+	}
+
+	/** Blank -> chroma-soaked -> decoded -> owned -> inserted into a lexicon. */
+	private static void informationFragmentResearchLoop(GameTestHelper helper) {
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		ItemStack fragment = new ItemStack(ChromaItems.INFO_FRAGMENT.get());
+		var blank = reika.chromaticraft.magic.progression.ResearchFragmentData.read(fragment);
+		helper.assertTrue(blank.blank() && !blank.random(), "A fresh information fragment must be undeciphered");
+		blank.soaked().writeTo(fragment);
+		var soaked = reika.chromaticraft.magic.progression.ResearchFragmentData.read(fragment);
+		helper.assertTrue(soaked.blank() && soaked.random(), "Liquid chroma must mark a blank fragment for random decoding");
+
+		var expected = LexiconCatalog.byId("FRAGMENT");
+		var selected = reika.chromaticraft.magic.progression.PlayerResearch.randomNextResearch(
+				player, RandomSource.create(0xC0FFEE));
+		helper.assertTrue(selected == expected,
+				"V33a ENTRY priority must make the fragment-help page the first decoded research");
+		soaked.withPage(selected).writeTo(fragment);
+		helper.assertTrue(reika.chromaticraft.magic.progression.ResearchFragmentData.read(fragment).page() == expected,
+				"Decoded page identity must round-trip through the fragment's CUSTOM_DATA");
+		helper.assertTrue(reika.chromaticraft.magic.progression.PlayerResearch.giveFragment(player, expected, false),
+				"Decoding must grant the selected fragment to death-persistent player research");
+		helper.assertTrue(reika.chromaticraft.magic.progression.PlayerResearch.fragments(player).contains("FRAGMENT")
+				&& !reika.chromaticraft.magic.progression.PlayerResearch.giveFragment(player, expected, false),
+				"Research ownership must persist and reject duplicate grants");
+
+		ItemStack lexicon = new ItemStack(ChromaItems.LEXICON.get());
+		player.getInventory().add(new ItemStack(Items.PAPER));
+		player.getInventory().add(new ItemStack(Items.DYE.black()));
+		helper.assertTrue(reika.chromaticraft.item.ItemChromaBook.recoverFragment(player, lexicon, expected)
+				&& reika.chromaticraft.item.ItemChromaBook.hasPage(lexicon, expected)
+				&& !reika.chromaticraft.item.ItemChromaBook.addPage(lexicon, expected),
+				"A known fragment must recover once into the lexicon for one paper and one black dye");
+		helper.assertTrue(player.getInventory().countItem(Items.PAPER) == 0
+				&& player.getInventory().countItem(Items.DYE.black()) == 0,
+				"Fragment recovery must atomically consume the V33a paper and black-dye cost");
+		var ejected = LexiconData.read(lexicon).withoutPage(expected.id());
+		ejected.writeTo(lexicon);
+		helper.assertTrue(!LexiconData.read(lexicon).pages().contains(expected.id()),
+				"Ejecting a stored page must remove its identity without damaging other book data");
+		helper.succeed();
+	}
+
+	/** Canonical NBT placement must build the node, random shield identities, and four linked relays. */
+	private static void dataNodeNbtFeature(GameTestHelper helper) {
+		BlockPos column = helper.absolutePos(new BlockPos(2, 0, 2));
+		// Decoration runs after trees; reproduce a trunk/canopy through the target column and prove
+		// the monument clears vegetation rather than becoming entombed in it.
+		for (int y = 1; y <= 6; y++)
+			helper.getLevel().setBlock(column.above(y), Blocks.OAK_LOG.defaultBlockState(), 3);
+		for (int x = -2; x <= 2; x++)
+			for (int z = -2; z <= 2; z++)
+				helper.getLevel().setBlock(column.offset(x, 7, z), Blocks.OAK_LEAVES.defaultBlockState(), 3);
+		helper.assertTrue(DataTowerFeature.placeAt(helper.getLevel(), column, Towers.ALPHA,
+				RandomSource.create(0xDA7A)), "DATANODE template should place on the test arena floor");
+		BlockPos nodePos = Towers.ALPHA.getGeneratedLocation();
+		helper.assertTrue(nodePos != null, "successful placement must cache the generated ALPHA node position");
+		helper.assertTrue(helper.getLevel().getBlockEntity(nodePos) instanceof TileEntityDataNode node
+				&& node.getTower() == Towers.ALPHA,
+				"the NBT center must become an ALPHA data-node block entity");
+		for (int i = 1; i <= 4; i++) {
+			BlockEntity relay = helper.getLevel().getBlockEntity(nodePos.above(i));
+			helper.assertTrue(relay instanceof TileEntityDummyAux dummy
+					&& nodePos.equals(dummy.getLink())
+					&& dummy.getFlag(TileEntityDummyAux.Flags.HITBOX)
+					&& !dummy.getFlag(TileEntityDummyAux.Flags.RENDER)
+					&& !dummy.getFlag(TileEntityDummyAux.Flags.MOUSEOVER),
+					"each of the four vertical dummy cells must relay its hitbox to the node");
+		}
+		int shieldCount = 0;
+		for (int x = -1; x <= 1; x++) {
+			for (int z = -1; z <= 1; z++) {
+				BlockState state = helper.getLevel().getBlockState(nodePos.offset(x, -1, z));
+				if (state.getBlock() instanceof reika.chromaticraft.block.worldgen26.BlockStructureShield
+						&& state.getValue(reika.chromaticraft.block.worldgen26.BlockStructureShield.REINFORCED))
+					shieldCount++;
+			}
+		}
+		helper.assertTrue(shieldCount == 9, "the exact V33a 3x3 reinforced shield floor must come from NBT");
+		for (int x = -4; x <= 4; x++) {
+			for (int z = -4; z <= 4; z++) {
+				for (int y = 0; y <= 12; y++) {
+					BlockState state = helper.getLevel().getBlockState(nodePos.offset(x, y, z));
+					helper.assertTrue(!state.is(net.minecraft.tags.BlockTags.LOGS)
+							&& !state.is(net.minecraft.tags.BlockTags.LEAVES),
+							"the complete Data Tower clearance must remove intersecting tree blocks");
+				}
+			}
+		}
+		helper.succeed();
+	}
+
+	/** Deployment and continuous manipulator scanning must award one owner-bound Data Crystal. */
+	private static void dataNodeScanLoop(GameTestHelper helper) {
+		BlockPos pos = helper.absolutePos(new BlockPos(2, 1, 2));
+		helper.getLevel().setBlock(pos, ChromaBlocks.DATA_NODE.get().defaultBlockState(), 3);
+		TileEntityDataNode node = (TileEntityDataNode)helper.getLevel().getBlockEntity(pos);
+		node.setTower(reika.chromaticraft.magic.lore.Towers.BETA);
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		player.snapTo(net.minecraft.world.phys.Vec3.atCenterOf(pos));
+		for (int i = 0; i < 110; i++)
+			node.updateEntity(helper.getLevel(), pos);
+		helper.assertTrue(node.canBeAccessed(), "a nearby player must fully deploy all three tower stages in 110 ticks");
+		for (int i = 0; i < 120; i++) {
+			node.scan(player);
+			node.updateEntity(helper.getLevel(), pos);
+		}
+		helper.assertTrue(node.hasBeenScanned(player) && node.getState() == reika.chromaticraft.auxiliary.interfaces.OperationInterval.OperationState.INVALID,
+				"the completed player scan must persist and enter its 240-tick cooldown");
+		List<ItemEntity> drops = helper.getLevel().getEntitiesOfClass(ItemEntity.class,
+				new AABB(pos).inflate(2, 7, 2), e -> e.getItem().is(ChromaItems.DATA_CRYSTAL.get()));
+		helper.assertTrue(drops.size() == 1, "one completed scan must create exactly one Data Crystal");
+		CompoundTag data = ReikaItemHelper.getStackTag(drops.getFirst().getItem());
+		helper.assertTrue(data != null && player.getUUID().toString().equals(data.getStringOr("owner", "")),
+				"the awarded Data Crystal must retain the scanned player's UUID owner");
+		helper.assertTrue(!reika.chromaticraft.magic.lore.LoreTowerProgress.hasScanned(
+				player, reika.chromaticraft.magic.lore.Towers.BETA),
+				"the lore note must retain V33a's post-scan delay");
+		for (int i = 0; i < 50; i++) node.updateEntity(helper.getLevel(), pos);
+		helper.assertTrue(reika.chromaticraft.magic.lore.LoreTowerProgress.hasScanned(
+				player, reika.chromaticraft.magic.lore.Towers.BETA),
+				"the scanned tower must enter the player's death-persistent lore set after 50 ticks");
+		helper.succeed();
+	}
+
+	private static void metaAlloyEcologyContract(GameTestHelper helper) {
+		var plant = ChromaBlocks.META_ALLOY_LAMP.get();
+		BlockState leaves = plant.defaultBlockState();
+		helper.assertTrue(leaves.hasProperty(reika.chromaticraft.block.decoration.BlockMetaAlloyLamp.FACING)
+				&& leaves.hasProperty(reika.chromaticraft.block.decoration.BlockMetaAlloyLamp.POD)
+				&& !leaves.getValue(reika.chromaticraft.block.decoration.BlockMetaAlloyLamp.POD),
+				"Meta-Alloy must replace V33a metadata with explicit attachment and pod properties");
+		BlockState pod = leaves.setValue(reika.chromaticraft.block.decoration.BlockMetaAlloyLamp.POD, true);
+		VoxelShape leavesShape = leaves.getShape(helper.getLevel(), helper.absolutePos(BlockPos.ZERO));
+		VoxelShape podShape = pod.getShape(helper.getLevel(), helper.absolutePos(BlockPos.ZERO));
+		helper.assertTrue(podShape.bounds().getYsize() > leavesShape.bounds().getYsize(),
+				"grown Meta-Alloy pods must occupy the full plant shape while leaves remain half-height");
+		helper.succeed();
+	}
+
+	private static void tunnelNukerEntityContract(GameTestHelper helper) {
+		var entity = ChromaEntityTypes.TUNNEL_NUKER.get().create(helper.getLevel(), EntitySpawnReason.COMMAND);
+		helper.assertTrue(entity != null && entity.isNoGravity(),
+				"Tunnel Nuker must instantiate as its own no-gravity entity type");
+		entity.snapTo(net.minecraft.world.phys.Vec3.atCenterOf(helper.absolutePos(new BlockPos(2, 2, 2))));
+		entity.aiStep();
+		helper.assertTrue(entity.getDeltaMovement().horizontalDistanceSqr() > 0.005,
+				"Tunnel Nuker must retain V33a's source-driven 0.075 horizontal flight");
+		helper.assertTrue(!entity.hurtServer(helper.getLevel(), helper.getLevel().damageSources().generic(), 100),
+				"Tunnel Nuker must remain invulnerable");
+		helper.succeed();
+	}
+
+	private static void memoryCrystalInscriptionLoop(GameTestHelper helper) {
+		BlockPos pos = helper.absolutePos(new BlockPos(2, 1, 2));
+		helper.getLevel().setBlock(pos, ChromaBlocks.crystallineStone(StoneTypes.SMOOTH).get().defaultBlockState(), 3);
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		ProgressionManager.instance.setPlayerStage(player, ProgressStage.TOWER, true, false, false);
+		ItemStack crystal = new ItemStack(ChromaItems.DATA_CRYSTAL.get());
+		player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, crystal);
+		var hit = new net.minecraft.world.phys.BlockHitResult(net.minecraft.world.phys.Vec3.atCenterOf(pos),
+				Direction.UP, pos, false);
+		var context = new net.minecraft.world.item.context.UseOnContext(
+				player, net.minecraft.world.InteractionHand.MAIN_HAND, hit);
+		for (int i = 0; i <= 100; i++) ChromaItems.DATA_CRYSTAL.get().useOn(context);
+		helper.assertTrue(helper.getLevel().getBlockState(pos).is(ChromaBlocks.PYLON_LINK.get()),
+				"101 sustained uses must complete V33a's 100-tick Smooth Stone to Pylon Link inscription");
+		var dropped = new reika.chromaticraft.entity.EntityDataCrystal(helper.getLevel(),
+				pos.getX(), pos.getY(), pos.getZ(), crystal.copy());
+		helper.assertTrue(dropped.isInvulnerable() && dropped.getItem().is(ChromaItems.DATA_CRYSTAL.get()),
+				"the Memory Crystal's custom dropped entity must preserve identity and invulnerability");
+		helper.succeed();
+	}
+
+	private static void loreKeyPuzzleContract(GameTestHelper helper) {
+		long seed = 0x33A5EEDL;
+		var first = reika.chromaticraft.magic.lore.KeyAssemblyPuzzle.generate(seed);
+		var second = reika.chromaticraft.magic.lore.KeyAssemblyPuzzle.generate(seed);
+		var a = first.cells(0);
+		var b = second.cells(0);
+		helper.assertTrue(a.equals(b) && a.size() == 169,
+				"the V33a 169-cell lore puzzle must be deterministic for one seed");
+		long voids = a.stream().filter(cell -> cell.color() == null).count();
+		helper.assertTrue(voids == 13, "the 15-wide board must retain exactly thirteen moving voids");
+		for (Towers tower : Towers.towerList) {
+			long cells = a.stream().filter(cell -> cell.tower() == tower).count();
+			helper.assertTrue(cells == 12, "each lore tower must reveal three groups of four cells");
+		}
+		long initiallyKnown = a.stream().filter(cell -> cell.color() != null && cell.known()).count();
+		long alphaKnown = first.cells(1 << Towers.ALPHA.ordinal()).stream()
+				.filter(cell -> cell.color() != null && cell.known()).count();
+		helper.assertTrue(alphaKnown - initiallyKnown == 12,
+				"scanning one tower must reveal precisely its twelve assigned key cells");
 		helper.succeed();
 	}
 	/** The V33a spherical velocity must pass through 26.2 LivingEntity travel and entity tracking. */

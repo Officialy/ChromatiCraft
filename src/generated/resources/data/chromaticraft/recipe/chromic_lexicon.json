@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "key": {
+    "B": "minecraft:book",
+    "a": "chromaticraft:crystal_shard_black",
+    "b": "chromaticraft:crystal_shard_blue",
+    "c": "chromaticraft:crystal_shard_green",
+    "d": "chromaticraft:crystal_shard_yellow",
+    "e": "chromaticraft:crystal_shard_red",
+    "f": "chromaticraft:crystal_shard_white",
+    "g": "minecraft:glowstone_dust"
+  },
+  "pattern": [
+    "abc",
+    "gBg",
+    "def"
+  ],
+  "result": {
+    "id": "chromaticraft:chromic_lexicon"
+  }
+}

@@ -18,6 +18,7 @@ import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.auxiliary.interfaces.OperationInterval;
 import reika.chromaticraft.auxiliary.interfaces.OperationInterval.OperationState;
 import reika.chromaticraft.registry.ChromaItems;
+import reika.chromaticraft.tileentity.TileEntityDummyAux;
 import reika.dragonapi.libraries.ReikaPlayerAPI;
 
 /**
@@ -72,6 +73,11 @@ public final class MouseoverStatusOverlay implements GuiLayer {
 		if (!(hit instanceof BlockHitResult block) || hit.getType() != HitResult.Type.BLOCK)
 			return;
 		BlockEntity tile = mc.level.getBlockEntity(block.getBlockPos());
+		// DATANODE's visible/clickable body is four linked dummy blocks above the controller. The
+		// source overlay resolves that relay before testing the tile interfaces; testing the dummy
+		// itself made the activation status disappear whenever the player aimed at the actual model.
+		if (tile instanceof TileEntityDummyAux dummy)
+			tile = dummy.getLinkedTile();
 		if (!(tile instanceof OperationInterval operation))
 			return;
 

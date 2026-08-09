@@ -2239,3 +2239,450 @@ this session's random-seed pregens, so a census cannot confirm it by luck. Verif
 targeted probe — `/locate biome chromaticraft:luminous_cliffs`, then forceload that area and census
 for `chromaticraft:cave_indicator` — or a focused GameTest that builds the required dark, sky-hidden
 stone itself. Until one of those runs this is wiring-verified only.
+### Complete V33a lexicon identity/XML foundation — 2026-08-08
+
+The guide-book vertical is active again. `LexiconCatalog` is a dependency-free modern identity
+boundary mechanically derived from the complete V33a `ChromaResearch` enum: all 322 entries retain
+their original order, seven section boundaries, research tiers, parent/page status, and the source
+registry binding that later icon and specialist-page renderers will use. This is intentionally not
+an early-game subset. In particular, `DATATOWER` already resolves to the RAWEXPLORE structure page
+bound to `ChromaStructures.DATANODE`, giving the forthcoming lore terminal a stable page identity.
+
+`LexiconDescriptions` now reads the original shipped `info.xml`, `machines.xml`, `blocks.xml`,
+`tools.xml`, `resource.xml`, `abilities.xml`, and `structure.xml` directly. It preserves nested
+description/note pages and explicitly tolerates V33a's unusual copyright-comment-before-XML-
+declaration layout. The original navigation, page, and button artwork was recovered unchanged from
+the V33a jar into modern resource paths. No replacement prose or invented guide art was introduced.
+
+Verification: `:ChromatiCraft:compileJava` passes. Only
+`chromaticraft:lexicon_v33a_catalog` was run; it passes 1/1 and checks the complete entry count,
+fragment/readability semantics, DATATOWER binding, original CRYSTALS prose, and nested INVLINK notes.
+The next slice is the registered Chromic Lexicon item plus navigation/page screens over this catalog,
+then fragment/player-research interaction. Once that is live, the NBT DATANODE structure and real
+`TileEntityDataNode` lore terminal can land without a hollow research substitute.
+
+### Guide item, Info Fragment and DATANODE template — 2026-08-08
+
+The guide is now an actual registered `chromic_lexicon` item and V33a `information_fragment` is an
+active component-backed item rather than catalog-only data. The original item sprites were cut from
+V33a `items_tool.png` at indices 5 and 9, and the exact six-colour shard/glowstone/book recipe is
+datagen-owned. Blank fragments can be manually decoded or chroma-soaked for V33a's prioritized
+random choice, grant death-persistent player research, and move into or back out of a lexicon.
+Recovery is server-authoritative and atomically costs one paper plus one black dye.
+
+`PlayerResearch` restores V33a's tier priorities, hard fragment dependencies, progression-stage
+gates, tier-up checks and death-persistent storage. The navigation screen now exposes original XML
+descriptions/notes plus progress, recovery, notebook and stored-page transfer views. All 322 page
+titles are exact V33a values recovered mechanically from `ChromaResearch`, the old registry source
+bindings and `en_US.lang`; the source's sole untranslated value (`chroma.aishutdown`) deliberately
+remains untranslated rather than receiving an invented title. Modern registry icons are bound for
+every content family that is currently registered, with the stable source id retained for later
+content.
+
+The DATANODE chain has crossed its NBT boundary: `ChromaStructures.DATANODE` now loads
+`structure/worldgen/data_node.nbt`, generated from the exact 3x3 shield floor, four shield arms,
+central node and four linked dummy cells. Per-cell moss/stone selection remains a worldgen-time
+alternative as required by V33a; it is not encoded as metadata or split into invented geometry.
+The next implementation boundary is the real `TileEntityDataNode`/data-crystal/lore scan cluster,
+followed by template placement, dummy linking, loot and focused feature/scan GameTests.
+
+Verification at this checkpoint: `compileJava`, `runServerData`, and `runClientData` pass. Server
+datagen emitted the canonical DATANODE NBT and exact lexicon recipe; client datagen emitted the two
+item models and all exact guide translations. Only the focused catalog and information-fragment
+tests are rerun for this vertical.
+
+### DATANODE server loop and fixed-tower generation — 2026-08-08
+
+The canonical `worldgen/data_node.nbt` now has a registered center block and block entity rather
+than referencing a future id. `TileEntityDataNode` restores V33a's 24/50/36-tick three-stage
+deployment, reversed retraction, rotation phases, extension/ambient sounds, 120-tick scan with
+four-tick sustain and eight-tick decay, 240-tick cooldown, per-player UUID set, TOWER progression,
+and the upward owner-tagged Memory Crystal reward. The Elemental Manipulator dispatches to the scan
+without moving authority to the client. The four NBT dummy cells are linked to the center after
+placement and carry the original HITBOX=true, RENDER=false, MOUSEOVER=false flags.
+
+`DataTowerFeature` uses the thirteen deterministic `Towers` positions, places only the NBT template,
+performs the exact one-in-three STONE-to-MOSS choice at placement time, assigns the tower identity,
+and buries a loot chest backed by the vanilla stronghold-library table. It is injected at the final
+overworld decoration step, matching the old retro-generator ordering, and also has a stable
+`chromaticraft:data_tower` feature-command identity. No metadata-like tower or material variants
+were introduced.
+
+Focused verification passes independently: `data_node_nbt_feature` checks the reinforced 3x3 floor,
+node identity, and all four links; `data_node_scan_loop` checks 110-tick deployment, scan completion,
+cooldown, unique reward, and owner UUID. `information_fragment_research_loop` and
+`lexicon_v33a_catalog` also pass independently. Remaining DATANODE parity work is the original
+client renderer/scan and neighbor-tower FX, delayed lore-puzzle notification, Meta-Alloy plants,
+Tunnel Nukers, and the specialized Memory Crystal inscription/entity/rendering cluster.
+
+### Casting guide pages and DATANODE presentation — 2026-08-08
+
+The first specialist guide family is no longer a generic description page. Casting-table entries
+request their recipes from the authoritative server `RecipeManager` through typed 26.2 payloads;
+the response carries the complete `CastingTableRecipe` state rather than reconstructing recipes on
+the client. The lexicon presents V33a's recipe tiers in source order and exposes separate grid,
+rune, stand and aura views. This keeps the screens dedicated-server-safe while preserving the
+actual recipe inputs, rune coordinates, auxiliary stand positions, aura costs and output. The
+focused `lexicon_casting_recipe_snapshot` test proves ordinary and boosted Green Crystal Group
+recipes are returned and ordered by tier.
+
+The Data Node now has a submit-pipeline block-entity renderer built from the original V33a geometry
+and recovered textures: its moss pedestal telescopes with the three deployment stages, both tower
+rows extend independently, the 8x8 symbols rotate around the opened tower, the source flare and
+counter-rotating prism return, and a completed scan produces the twin twisting sky beam. The baked
+world model is intentionally particle-only so it cannot checkerboard or depth-fight over the BER;
+the inventory model remains a shield cube.
+
+Client FX again follow the source choreography. Deployed nodes emit the pale ambient glows and
+neighbor-directed wandering seeds; the server synchronizes all thirteen deterministic tower roots
+on login so those directions are authoritative. Scan completion sends one nearby client event that
+creates the 360-seed radial burst, paired blue/white vertical glow column and the original layered
+sound chord. Payload sends are guarded by negotiated-channel checks, including embedded GameTest
+players.
+
+Finally, scan completion again waits 50 ticks before recording the tower. The resulting per-tower
+flags live in DragonAPI's death-persistent player compound under V33a's `loretowers` key, sync to a
+real client, display the tower character and play the lore cue. The focused
+`data_node_scan_loop` test now proves deployment, scan ownership/reward, the absence of an immediate
+flag, and the delayed persistent BETA flag; it passes 1/1. `compileJava` and `runClientData` also
+pass. Rendering and exact audiovisual appearance still require an in-client observation; the
+headless checks prove registration, serialization and server behavior, not pixels or OpenAL output.
+
+Remaining DATANODE work, in dependency order: Meta-Alloy plant ecology; Tunnel Nuker population;
+the full Memory Crystal inscription, custom-entity and renderer cluster; then the later key-assembly
+puzzle/Rosetta/LoreManager presentation. The next guide work is the remaining specialist machine,
+tool, ability and structure page families plus full icon coverage.
+
+### DATANODE ecology, Memory Crystal and lore-key vertical — 2026-08-08
+
+This section supersedes the remaining-work paragraph immediately above. The eight-part DATANODE and
+guide slice is now implemented end to end; visual, audio and population tuning still requires the
+in-world acceptance pass described below.
+
+1. **Meta-Alloy ecology.** `BlockMetaAlloyLamp` is a registered, explicit-state block (`facing` plus
+   `pod`) rather than a metadata emulation. Data Nodes make source-shaped surface-search attempts on
+   grass around their tower, enforce the original wide separation, and retain the adaptive retry
+   interval. Leaves grow pods through random ticks; left-clicking a
+   mature pod harvests the item without destroying the plant, and removal unregisters the plant
+   from its node. The original leaf, side and pod textures are used by multipart datagen models.
+2. **Tunnel Nukers.** The entity, attributes, population tick, Data Node spawn path, renderer, model,
+   texture, ambient/call audio and movement particles are active. Flight retains the V33a no-goal,
+   terrain-following orbit rather than substituting vanilla pathfinding, with player/tower-relative
+   spawn checks, caps, persistence and source invulnerability behavior.
+3. **Memory Crystal inscription.** `ItemDataCrystal` owns the sustained inscription state in
+   `CUSTOM_DATA`, binds progress to the precise block and recipe, decays interrupted work, plays the
+   original cadence, and completes the exact built-in Smooth Crystalline Stone to Pylon Link recipe.
+   The server owns progress and completion; the client only renders the synced bar and event FX.
+4. **Memory Crystal entity and renderer.** Dropped crystals use a dedicated registered item entity,
+   retain their thrower/pickup semantics, do not expire, float in water and resist ordinary damage.
+   Their renderer restores the large, tilted, counter-rotating V33a prism and flare using the
+   recovered node/flare artwork with no entity shadow.
+5. **Guide integration.** The INSCRIPTION entry resolves to the real Memory Crystal identity, while
+   casting pages continue to request authoritative recipe snapshots. Machine, tool, ability and
+   structure entries have specialist presentation: family-aware machine headers, concrete tool
+   identity, all 77 recovered V33a ability illustrations, and an honest compact structure-footprint
+   preview. The latter is deliberately not labelled as a template render; it can become an NBT-driven
+   three-dimensional preview as each remaining original structure receives its modern NBT template.
+6. **Specialist guide families.** Registered-content icons and the specialist casting, machine,
+   tool, ability and structure paths coexist with all 322 exact source catalog identities and XML
+   pages. Unregistered future content retains its stable source id instead of receiving a fabricated
+   modern item or block identity.
+7. **Key assembly and Rosetta.** The modern deterministic puzzle retains the source 15-wide/169-cell
+   board, 13 voids, 500 legal shuffle moves, Element Mixer adjacency rule, thirteen tower groups and
+   tower-scan visibility. Moves are validated and persisted server-side by replaying the authoritative
+   seed, so a client cannot forge completion. Completion switches to Rosetta, whose recovered image is
+   decoded by the original image-to-string/Base64/filter route rather than replacement prose.
+8. **Lore presentation.** Tower scan notes now carry enough authoritative puzzle state to reconstruct
+   the appropriate three four-cell groups. The overlay restores the delayed five-second color-hex
+   reveal and source fade envelope, and reopening the puzzle restores accepted moves and completion
+   across death and relog through death-persistent player data.
+
+Verification for this slice is deliberately narrow. `compileJava` and `runClientData` pass. Only the
+four new contracts were run, individually: `meta_alloy_ecology_contract`,
+`tunnel_nuker_entity_contract`, `memory_crystal_inscription_loop`, and
+`lore_key_puzzle_contract`; all pass 1/1. The headless checks establish registry identity, state and
+serialization contracts, authoritative gameplay transitions and deterministic puzzle rules. They do
+not establish pixels, sound attenuation, perceived particle choreography or natural-world population
+frequency; those are the required in-world acceptance boundary before this vertical is called
+visually complete.
+
+## Data-tower/tree/tiered-resource rendering follow-up — 2026-08-09
+
+1. **Coordinate-bound tower discovery.** `/place feature chromaticraft:data_tower` remains an exact
+   coordinate-bound diagnostic by design: the feature may only succeed in one of the thirteen seeded
+   lore-tower root chunks. `/locate chromaticraft:data_tower` now resolves the same authoritative
+   `Towers` layout and reports the nearest Overworld tower centre, symbol and horizontal distance.
+   This deliberately does not pretend the lore hex is a vanilla random `StructureSet`.
+2. **Tiered resource interaction.** Aura Bloom and the other tiered plants retain the original
+   survival progression concealment, but creative players can now target and break them. Creative
+   placement receives the same explicit bypass for Elemental Stones and Firestone; insufficient
+   survival placement still self-removes as the original anti-sequence-break behavior requires.
+3. **Tiered ore models.** Elemental Stones, Firestone and Energized Rock now use the direct 26.2
+   custom blockstate-loader schema (the obsolete nested `model` object prevented loader decoding).
+   Their item forms receive concrete underlay models; the original viewer-dependent animated overlay
+   remains the in-world custom-model pass.
+4. **Crystal item rendering.** Cave, lamp and potion/super-crystal items retain the source spike
+   silhouette, element tint, translucency and applicable stone plinth. Sprite lookup is deferred from
+   parallel model baking until submission, matching the 26.2 special-renderer lifecycle and avoiding
+   the pre-atlas `Atlas not initialized` failure that blanked all 48 forms.
+5. **Tree-level log choice.** `RandomTagSingleStateProvider` now selects tagged wood deterministically
+   from the tree's trunk X/Z rather than consuming randomness independently for every trunk cell.
+   Dye trees therefore choose once per tree while neighboring trees can still differ.
+6. **Rainbow-tree source shape.** The configured Rainbow Tree now uses a dedicated port of V33a
+   `tryGenerateSmallRainbowTree(..., 1)`: one wood identity, source height/truncation rules, the
+   rising/falling diamond crown, top cross and terminal leaf. Soil/site selection stays in the placed
+   feature/caller, and the generator preserves the source routine's unconditional trunk placement.
+   The separate 2x2 giant `RainbowTreeBlueprint` is not claimed by this slice; when enabled it must be
+   supplied as a modern NBT structure template, in accordance with the standing structure rule.
+7. **GeoStrata side fix.** The shared luminous-crystal model now emits tint index zero, matching the
+   registered block tint source. Each already-separated luminous-crystal registry identity therefore
+   renders its own concrete colour instead of falling through to white.
+
+Focused verification only: `:ChromatiCraft:compileJava`, `:GeoStrata:compileJava`, client/server
+datagen, `creative_tiered_resource_access` (1/1) and `rainbow_tree_shape_and_log` (1/1) pass. The
+rainbow test initially caught the extra modern placement restriction; it was corrected against V33a
+and only that failed contract was rerun. No unrelated GameTests were repeated. Inventory sprite
+baking, translucent pixels, creative/survival interaction feel, natural tree variety and actual
+tower command travel remain the in-world acceptance boundary.
+
+## Data Node interaction/render acceptance and active block tags — 2026-08-09
+
+This pass closes the code-side defects reported during the first DATANODE client inspection. The
+four visible dummy hitbox cells now relay Elemental Manipulator use and the mouseover operation HUD
+to their linked controller, matching V33a's `relayManipulatorClick` contract. Scan progress and
+sustain are included in the vanilla block-entity update tag, so the operation overlay can display
+the live 120-tick activation instead of remaining pending. The Data Node opts out of DragonAPI's
+legacy broad tile payload and uses vanilla BE updates plus its dedicated completion FX payload;
+this also keeps embedded/headless clients which did not negotiate `dragonapi:dragonapidata` from
+crashing during scan.
+
+The Data Node renderer now contains both complete six-faced, threefold tower rows and the square
+inner stone sleeve that the previous approximation omitted. The scan column is again the V33a
+twelve-sided twisting cage, segmented from the node to y=128 rather than two short crossed ribbons.
+Its renderer bounds cover the complete 130-block column, off-screen rendering remains enabled, and
+the view distance is 256 blocks, preventing controller-frustum culling while any part of the tall
+render is visible. Exact geometry, UV orientation and long-distance blending remain an in-client
+visual acceptance item; compilation cannot certify those pixels.
+
+The shared cave/lamp/potion crystal item special renderer now submits its alpha-220 spike mesh to
+the 26.2 item-translucent target, preserving the same translucent layer used by the world mesh. The
+shared custom outline extractor applies to all three crystal families, derives edges from their
+actual baked/Java-authored model, and uses vanilla's normal translucent-black colour and
+window-selected line width (including vanilla high-contrast behavior). Item Stand uses that same
+vanilla outline styling. This extraction path is intentionally reusable by later non-voxel Reika
+models rather than maintaining hand-copied line geometry.
+
+`/locate chromaticraft:data_tower` now emits the familiar green, hoverable coordinate component;
+clicking it suggests `/tp @s x ~ z`. `/locate chromaticraft:data_tower all` lists all thirteen
+authoritative tower names, symbols and individually clickable Overworld coordinates in puzzle
+order. This remains a coordinate-bound lore layout rather than a fabricated random StructureSet.
+The unfinished key-assembly screen no longer paints an opaque navy rectangle, so the live world is
+visible behind the Memory Crystal puzzle; Rosetta's authored completed background remains intact.
+
+Finally, the active registry slice now emits vanilla mineable tags for its material families:
+pickaxe tags cover crystalline stone and its variants, runes, all registered crystal families,
+shielding, tiered ores and stone/machine content; cliff soils and mud use shovel; leaves use hoe;
+the loot chest uses axe. This restores tool-speed selection that hardness alone cannot provide in
+26.2. Server datagen emitted the canonical `minecraft:mineable/*` files.
+
+Verification was deliberately focused. `:ChromatiCraft:compileJava -x :ElectriCraft:compileJava`,
+client/server datagen, and only `chromaticraft:data_node_scan_loop` pass; the latter is 1/1 and now
+also observes the persistent owner-bound Memory Crystal immediately at completion. A normal
+aggregate compile is presently intercepted by unrelated ElectriCraft WIP errors in its fuse/battery
+slice. Server datagen continues to report the already-known Luminous Cliffs biome-filter diagnostics;
+neither issue was hidden or altered in this pass.
+
+## Data Tower siting and worldgen-safe Skypeaters — 2026-08-09
+
+The fixed lore layout now performs deterministic village exclusion while the thirteen roots are
+being calculated. It queries the world seed's registered `StructurePlacement`s for the vanilla
+`#minecraft:village` tag, never neighboring terrain or partially generated chunks, and nudges a
+conflicting root to the nearest clear chunk. An eight-chunk exclusion around predicted village
+start chunks leaves room for outer jigsaw pieces; prediction deliberately errs on the conservative
+side if a start later rejects its biome. All thirteen enum identities remain present, and locate,
+generation, neighbor FX and puzzle discovery consume the same adjusted authoritative positions.
+
+Tower placement now reproduces V33a's shared-floor preparation across all nine foundation columns
+instead of sampling only the center. Because the modern feature runs after vegetation, it then
+removes intersecting logs, leaves and non-fluid replaceable plants in a compact 9x9, same-chunk
+clearance volume before placing the canonical NBT. Terrain, liquids and non-replaceable structure
+materials are not flattened. The focused `data_node_nbt_feature` contract now grows a six-block oak
+trunk and canopy through the target before placement and proves the complete tower clearance; it
+passes 1/1.
+
+The supplied unsafe-terrain report was from `chromaticraft:skypeater`, not the Data Tower. Its V33a
+32-block proximity scan crossed the FEATURES-stage one-chunk write radius, and its proto-chunk block
+entity setter attempted `syncAllData` before Minecraft attached a `Level`. The scan now ignores
+positions outside `WorldGenLevel.ensureCanWrite`, while `setNodeType` persists immediately and only
+sends a live sync when a level is attached. This removes both the unsafe cross-chunk read and the
+reported null-level crash without removing Skypeater generation.
+
+Focused verification: `:ChromatiCraft:compileJava -x :ElectriCraft:compileJava` succeeds and only
+`chromaticraft:data_node_nbt_feature` was run, passing 1/1. Existing towers and already-generated
+terrain are not retroactively relocated or cleared; village-safe roots and tree clearance apply to
+new world layouts/unexplored tower chunks.
+
+## Rosetta composition and explicit pylon feature identities — 2026-08-09
+
+The completed Memory Crystal/Rosetta page now draws `all-back.png` once across the scaled GUI. The
+256x256 source is one authored composition; the previous nested loop restarted it every 256 pixels,
+producing visible repeated borders and motifs on larger windows. The incomplete puzzle remains
+transparent as established in the preceding pass.
+
+Manual pylon placement is now colour-deterministic. Sixteen feature/configured-feature identities
+are generated as `chromaticraft:pylon_<vanilla dye name>` (`pylon_black`, `pylon_light_gray`,
+`pylon_light_blue`, through `pylon_white`), each backed by a `PylonFeature` with a fixed
+`CrystalElement`. The ambiguous `chromaticraft:pylon` feature/configured-feature was removed, so a
+manual `/place feature` no longer claims a generic identity and then rolls an unrelated colour.
+Natural V33a generation retains its random colour roll under the explicit internal-facing identity
+`chromaticraft:natural_pylon`; the Overworld biome modifier and pylon-grid placement now reference
+that identity. Existing turbocharged and power-crystal-boosted diagnostic features are unchanged.
+
+Verification: `:ChromatiCraft:compileJava` and `:ChromatiCraft:runServerData`, excluding unrelated
+ElectriCraft compilation, succeed. Datagen emits exactly sixteen `pylon_<colour>` configured and
+placed features, emits `natural_pylon`, updates the biome modifier, and does not recreate the stale
+generic `pylon` JSON. No GameTests were needed for this registry/render submission-only change.
+## Chromic Lexicon shared navigation/input parity — 2026-08-09
+
+The accepted 26.2 `ScreenChromicLexicon` now restores the shared interaction grammar which V33a
+provided through `ChromaBookGui`, `GuiScrollingPage`, and `GuiNavigation`, rather than treating the
+book as a static list of buttons:
+
+- the last navigation section and scroll position survive closing an entry or reopening the book;
+- all seven original catalog parents remain independently selectable, backed by the complete
+  322-entry identity catalog and the fragment visibility checks;
+- navigation entries show their resolved block/item icons and their V33a research-level grouping
+  color, including the distinct PYLONCRAFT/CTM tiers;
+- the left Items/Recipes mode pair is restored; recipe mode opens a selected entry directly onto
+  its server-authoritative casting recipe when one exists, without shipping the recipe registry to
+  the client;
+- the Progress, Recovery, and Notebook side tabs remain available, and stored-fragment inventory
+  mode retains insertion/ejection behavior;
+- Search accepts authored page titles across every section, supports `/` activation, backspace,
+  Enter, Escape, and a persistent result set after finishing input;
+- W/S and Up/Down page the navigation or entry text, A/D and Left/Right switch sections or adjacent
+  entries, and the mouse wheel follows the same page movement;
+- inside a casting recipe, A/D, Left/Right, and the wheel change recipe while W/S and Up/Down move
+  through Grid, Runes, Stands, and Aura pages allowed by that recipe tier;
+- long original XML descriptions and notes are no longer truncated at the bottom of the first
+  page; they are paged with controls and a page counter;
+- structure entries use the original A/D yaw and W/S pitch controls; the wheel controls zoom in
+  the 3D presentation and the selected layer in the 2D presentation.
+
+`:ChromatiCraft:compileJava -x :ElectriCraft:compileJava` passes after this slice. No GameTest was
+run: these changes are client input/render-state behavior, while the existing lexicon persistence
+GameTests cover the unchanged server/data-component seam.
+## Chromic Lexicon Notebook and Progress verticals — 2026-08-09
+
+Two more V33a guide subsystems are now live in the accepted 26.2 screen:
+
+### Notebook
+
+- ten editable rows are visible at once, with scrolling, append, clear, and explicit Save controls;
+- switching away from Notes or closing the lexicon also saves dirty content;
+- V33a's reset-then-one-packet-per-line sequence is replaced by one atomic
+  `UpdateLexiconNotes` payload, so a partial packet sequence cannot erase half a notebook;
+- the server accepts the update only while the lexicon is in the player's main hand, strips blank
+  rows, and bounds count, line size, and total stored characters before replacing only the notes in
+  `LexiconData`; pages, creative state, blanks, and foreign custom data remain intact;
+- `LexiconData.withNotes` is the immutable replacement seam used by both runtime and the focused
+  persistence test.
+
+### Progress
+
+- the Progress side tab now exposes separate Tree, Levels, and Stages presentations;
+- Levels renders all ten `ResearchLevel` milestones and distinguishes reached from future tiers;
+- Stages lists every active `ProgressStage`, its achieved state, and opens an inspectable detail;
+- Tree is backed by `ProgressionManager`'s real prerequisite DAG and distinguishes achieved,
+  presently available, and locked stages while showing their immediate prerequisites;
+- A/D or Left/Right switches presentation; W/S, Up/Down, and the wheel page Tree/Stages;
+- `ProgressionDescriptions` securely reads the original V33a `progression.xml`, including exact
+  title, hint, reveal, and short description. A locked stage shows its hint and an achieved stage
+  shows its reveal, matching the source's information boundary.
+
+Navigation also restores V33a's inactive-entry treatment: a page present in the physical book but
+not owned by the player's research is marked with a question overlay, refuses to open, and plays
+the source's paired 0.8/1.2-pitch error cue. Creative and always-readable pages remain active.
+
+Focused verification:
+
+```text
+.\gradlew.bat :ChromatiCraft:compileJava -x :ElectriCraft:compileJava --console=plain
+BUILD SUCCESSFUL
+
+.\gradlew.bat :ChromatiCraft:runGameTest \
+  -PgameTestSelector=chromaticraft:lexicon_custom_data_roundtrip \
+  -x :ElectriCraft:compileJava --console=plain
+1/1 required GameTests passed
+```
+
+The Progress Tree is functionally backed by the real DAG but remains a paged compact presentation.
+V33a's free-panning node topology, link line styles, per-stage icons, hover descriptions, and exact
+layout are still follow-up work, not claimed complete.
+
+## Chromic Lexicon NBT structure viewer — 2026-08-09
+
+The synthetic structure footprints have been removed. Structure guide pages now load the same
+compressed, canonical structure-template NBT used by 26.2 placement from the bundled mod data pack,
+decode its real palette and block positions, and present it through two interactive views. The
+client reads the jar's data-pack resource directly because its normal resource manager indexes
+assets, not server data; this avoids maintaining a second, drift-prone template copy.
+
+- 3D isometric view with continuous left-drag yaw/pitch, A/D yaw, W/S pitch, wheel zoom, depth
+  sorting, automatic fitting, clipping to the handbook pane, right-click reset, and block hover
+  tooltips;
+- 2D top-down layer view with 90-degree A/D rotation and W/S, wheel, or +/- layer selection;
+- both presentations report the exact template identifier, dimensions, and visible-block count;
+- V33a's display-only casting-table, item-stand, pylon-controller, and Data Node relay-column
+  substitutions are retained without changing the placement templates themselves;
+- entries whose structure has not yet been converted to NBT say so explicitly instead of drawing
+  invented geometry.
+
+The current viewer covers all eight canonical templates that have landed: pylon, casting tiers
+one through three, repeater, compound repeater, broadcast pylon, and Data Node tower. Remaining
+V33a guide structures must gain canonical NBT templates before their previews become available.
+
+This is a faithful NBT/data and interaction port, rendered with scaled block-item models inside the
+26.2 GUI submission pipeline. Rendering full world block quads and block-entity renderers inside a
+screen remains a later visual-fidelity enhancement and is not claimed here. No GameTest was added
+for this client-only viewer; compilation and the in-world interaction checklist are the relevant
+verification.
+
+### Chromic Lexicon: scrolling backdrop and V33a movement — 2026-08-09
+
+The guide opened onto a bare frame with no backdrop, and its movement keys stepped one page at a
+time. Both were wrong against V33a, and for the same underlying reason: the port had no equivalent of
+`GuiScrollingPage`.
+
+**Missing art.** V33a ships 28 Handbook textures; only six had been extracted. The other 22 are now
+in `textures/gui/lexicon/`, including `navbcg`/`navbcg2` — the scrolling backdrops — plus `frame`,
+`blank`, `handbook_blank`, `misc`, `notes`, `progress` and the eleven specialist page backgrounds
+(`handbook_cast`, `handbook_casttune`, `handbook_pyloncast`, `handbook_pyloncast2`,
+`handbook_multicast`, `handbook_ritual`, `handbook_ritual2`, `handbook_pool`, `handbook_runes`,
+`handbook_structure`, `handbook_adjacency_effects`, `handbook_element`, `handbook_compass`,
+`handbook_password`). The specialist pages still need their renderers, but the art no longer blocks
+them.
+
+**`LexiconScrollPane`** ports `GuiScrollingPage`. The important detail is that V33a movement is not a
+key event: it polls the held movement binds every frame and slides by `max(1, 180 / fps)` pixels,
+doubled on Shift and halved on Ctrl, clamped at zero and at the content bound. That is why holding W
+in V33a drifts smoothly rather than stepping. It reads the player's own movement binds rather than
+hardcoding WASD, so a remapped keyboard still works, and the arrows are always accepted alongside.
+The backdrop is one 256x256 tile drawn at `offset % 256` at `(left + 7, top - 1)` over 242x206 —
+V33a's `GuiNavigation(BOOKNAV, ep, 256, 220, 242, 206)` — which is what makes it appear to scroll
+under the window cut into the frame.
+
+**Movement now owns the movement keys.** The previous pass had W/A/S/D and the arrows consuming
+discrete section and page steps in the navigation view. Those fought the pan, so they are gone from
+that branch and the vertical pan offset drives the entry list instead: holding S slides the list and
+the backdrop together. The mouse wheel now nudges the same offset rather than a separate page
+counter, so wheel and keys cannot disagree, and sections moved to PageUp/PageDown beside the existing
+tab buttons. Discrete stepping is retained untouched everywhere V33a has no scrolling pane — entry
+text pages, casting recipes, and the structure preview.
+
+**Known remaining gap, stated plainly.** V33a's navigation pane is a single *spatial sheet* with every
+section laid out across it, which is why upstream computes
+`maxX -= paneWidth + sectionSpacing + margin*2` and lets you pan horizontally between sections. The
+port's navigation is still a vertical list, so horizontal panning is bounded to zero and only the
+vertical axis carries content. Laying the sections out spatially is the next step toward real parity
+and is the prerequisite for the original image-button layout and hover animations.

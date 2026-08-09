@@ -1,48 +1,36 @@
-/*******************************************************************************
- * @author Reika Kalseki
- * 
- * Copyright 2017
- * 
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
- ******************************************************************************/
 package reika.chromaticraft.render.entity;
 
-import net.minecraft.client.renderer.entity.RendererLivingEntity;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.util.ResourceLocation;
+import net.minecraft.client.model.geom.ModelLayerLocation;
+import net.minecraft.client.renderer.entity.EntityRendererProvider;
+import net.minecraft.client.renderer.entity.MobRenderer;
+import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
+import net.minecraft.resources.Identifier;
 
 import reika.chromaticraft.ChromatiCraft;
+import reika.chromaticraft.entity.EntityTunnelNuker;
 import reika.chromaticraft.models.ModelTunnelNuker;
-import reika.dragonapi.libraries.io.ReikaTextureHelper;
 
-public class RenderTunnelNuker extends RendererLivingEntity {
+/** V33a Lumafly renderer with its original 64x32 texture and zero nameplate. */
+public final class RenderTunnelNuker extends MobRenderer<EntityTunnelNuker, RenderTunnelNuker.State, ModelTunnelNuker> {
 
-	public RenderTunnelNuker() {
-		super(new ModelTunnelNuker(), 0.125F);
+	public static final ModelLayerLocation MODEL_LAYER = new ModelLayerLocation(
+			Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "tunnel_nuker"), "main");
+	private static final Identifier TEXTURE = Identifier.fromNamespaceAndPath(
+			ChromatiCraft.MODID, "textures/entity/tunnel_nuker.png");
+
+	public RenderTunnelNuker(EntityRendererProvider.Context context) {
+		super(context, new ModelTunnelNuker(context.bakeLayer(MODEL_LAYER)), 0.125F);
 	}
 
 	@Override
-	public void doRender(Entity e, double par2, double par4, double par6, float par8, float ptick) {
-		//ReikaTextureHelper.bindTexture(ChromatiCraft.class, "Textures/tunnelnuker.png");
-		super.doRender(e, par2, par4, par6, par8, ptick);
+	public Identifier getTextureLocation(State state) {
+		return TEXTURE;
 	}
 
 	@Override
-	protected ResourceLocation getEntityTexture(Entity e) {
-		return null;
+	public State createRenderState() {
+		return new State();
 	}
 
-	@Override
-	protected void bindEntityTexture(Entity e) {
-		ReikaTextureHelper.bindTexture(ChromatiCraft.class, "Textures/TunnelNuker.png");
-	}
-
-	@Override
-	protected boolean func_110813_b(EntityLivingBase e) {
-		return false;
-	}
-
+	public static final class State extends LivingEntityRenderState {}
 }

@@ -9,6 +9,7 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.world.CrystalFeature;
+import reika.chromaticraft.world.DataTowerFeature;
 import reika.chromaticraft.world.PylonFeature;
 import reika.chromaticraft.world.CaveIndicatorFeature;
 import reika.chromaticraft.world.DecoFlowerFeature;
@@ -60,6 +61,9 @@ public final class ChromaFeatures {
     public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> ENDER_FOREST_TREE =
             FEATURES.register("ender_forest_tree", EnderForestTreeFeature::new);
 
+    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> RAINBOW_TREE =
+            FEATURES.register("rainbow_tree", reika.chromaticraft.world.RainbowTreeFeature::new);
+
     public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> SKYPEATER =
             FEATURES.register("skypeater", SkypeaterFeature::new);
 
@@ -72,8 +76,23 @@ public final class ChromaFeatures {
     public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> CAVE_INDICATOR =
             FEATURES.register("cave_indicator", CaveIndicatorFeature::new);
 
-    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> PYLON =
-            FEATURES.register("pylon", () -> new PylonFeature());
+    /** Natural worldgen keeps the source random colour roll under an explicitly natural-only id. */
+    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> NATURAL_PYLON =
+            FEATURES.register("natural_pylon", () -> new PylonFeature());
+    /** Command/debug features: /place feature chromaticraft:pylon_<vanilla dye name>. */
+    public static final java.util.Map<CrystalElement, DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>>> COLORED_PYLONS =
+            registerColoredPylons();
+
+    private static java.util.Map<CrystalElement, DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>>> registerColoredPylons() {
+        java.util.EnumMap<CrystalElement, DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>>> map =
+                new java.util.EnumMap<>(CrystalElement.class);
+        for (CrystalElement element : CrystalElement.elements)
+            map.put(element, FEATURES.register("pylon_" + element.getEnglishName(),
+                    () -> new PylonFeature(element)));
+        return java.util.Map.copyOf(map);
+    }
+    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> DATA_TOWER =
+            FEATURES.register("data_tower", DataTowerFeature::new);
     public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> TURBOCHARGED_PYLON =
             FEATURES.register("turbocharged_pylon",
                     () -> new PylonFeature(PylonFeature.Variant.TURBOCHARGED));

@@ -1,6 +1,6 @@
 {
   "model": {
     "type": "minecraft:model",
-    "model": "chromaticraft:block/firestone"
+    "model": "chromaticraft:block/firestone_item"
   }
 }

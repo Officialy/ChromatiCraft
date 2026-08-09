@@ -1,0 +1,323 @@
+# V33a identity catalog: id, section, tier, kind, icon source type/id, progression, exact title
+INTRO	info		parent	info	intro		Introduction
+START	info	entry	page	info	start		Getting Started
+LEXICON	info	entry	page	tool	help		The Lexicon
+ENERGY	info	energy	page	info	energy	ALLCOLORS,CHARGE	Crystal Energy
+ELEMENTS	info	basiccraft	page	tool	elemental	ALLCOLORS	Crystal Elements
+CRYSTALS	info	entry	page	block	crystal	CRYSTALS	Crystals
+PYLONS	info	entry	page	machine	pylon	PYLON	Pylons
+STRUCTURES	info	rawexplore	page	block	pylonstruct		Scattered Structures
+TRANSMISSION	info	energy	page	info	transmission		Signal Transmission
+CRAFTING	info	basiccraft	page	machine	table		Casting
+ENCHANTS	info	basiccraft	page	machine	enchanter		Enchantments
+CRAFTING2	info	runecraft	page	machine	table	RUNEUSE	Casting II
+BALLLIGHTNING	info	energy	page	info	balllightning	BALLLIGHTNING	Ball Lightning
+APIRECIPES	info	basiccraft	page	info	apirecipes		Other Recipes
+LEYLINES	info	networking	page	machine	repeater	REPEATER	Ley Lines
+USINGRUNES	info	runecraft	page	block	rune	RUNEUSE	Crafting With Runes
+DIMENSION	info	endgame	page	block	portal	@DIMENSION	Another World
+DIMENSION2	info	endgame	page	block	glowsapling	DIMENSION	A Volatile World
+FARLANDS	info	endgame	page	info	farlands	FARLANDS	The Far Regions
+TURBO	info	endgame	page	info	turbo	@TURBOCHARGE	Turbocharging
+TURBOREPEATER	info	endgame	page	info	turborepeater	TURBOCHARGE	Repeater Turbocharging
+TURBOREPEATER2	info	ctm	page	info	turborepeater2	TURBOCHARGE	Maximized Networking
+PACKCHANGES	info	entry	page	info	packchanges		Modpack Changes
+NODENET	info	ctm	page	info	nodenet	CTM	Networking Aura Nodes
+SELFCHARGE	info	energy	page	tool	tool	CHARGE	Energy Internalization
+MYSTPAGE	info	rawexplore	page	info	mystpage		World Authoring
+ENCHANTING	info	multicraft	page	info	enchanting	MULTIBLOCK	Crystal Enchanting
+STRUCTUREPASSWORDS	info	endgame	page	block	dimdata	STRUCTCOMPLETE	Structure Keys
+DIMTUNING	info	endgame	page	info	dimtuning	DIMENSION	Portal Tuning
+ABILITIES	info	energy	page	machine	ritual		Abilities
+CASTTUNING	info	networking	page	info	casttuning	@TUNECAST	Personalized Casting
+MULTIBLOCKS	info	basiccraft	page	info	multiblocks		Functional Construction
+PYLONLINK	info	energy	page	machine	pylonlink	PYLONLINK	Interconnected Energy
+ITEMBURNER	info	energy	page	info	itemburner	CHARGE,ALLCOLORS	Item Decomposition
+MONUMENT	info	ctm	page	machine	aurapoint	CTM	Construction Restoration
+MUD	info	rawexplore	page	block	mud	MUDHINT	Magical Residue
+ITEMCHARGE	info	basiccraft	page	info	itemcharge	CHARGE	Passive Charging
+ITEMBUFFERLINK	info	pyloncraft	page	info	itembufferlink	CHARGE	Lumen Buffer Connection
+SKYPEATER	info	energy	page	machine	skypeater	GLOWCLIFFS	Lumen Node
+FRAGMENTSELECT	info	basiccraft	page	info	fragmentselect	CHROMA	Fragment Decoding
+MACHINEDESC	machines		parent	machine	machinedesc		Constructs
+REPEATER	machines	networking	page	machine	repeater	BLOWREPEATER	Crystal Repeater
+GUARDIAN	machines	pyloncraft	page	machine	guardian		Guardian Stone
+REPROGRAMMER	machines	pyloncraft	page	machine	reprogrammer		Spawner Reprogrammer
+ACCEL	machines	endgame	page	machine	adjacency		Tile Accelerator
+RIFT	machines	pyloncraft	page	machine	rift		World Rift
+TANK	machines	pyloncraft	page	machine	tank	OCEAN	Crystal Tank Controller
+COMPOUND	machines	networking	page	machine	compound	REPEATER	Multi-Aura Repeater
+CHARGER	machines	multicraft	page	machine	charger	STORAGE	Storage Crystal Charger
+LILY	machines	runecraft	page	machine	heatlily		Heat Lily
+TICKER	machines	multicraft	page	machine	ticker		Inventory Simulator
+FENCE	machines	multicraft	page	machine	fence		Lumen Fence Emitter
+FURNACE	machines	pyloncraft	page	machine	furnace	MINE	Crystal Furnace
+TELEPUMP	machines	pyloncraft	page	machine	telepump		Teleportation Pump
+MINER	machines	ctm	page	machine	miner	MINE,FARLANDS	Mineral Extractor
+ITEMSTAND	machines	runecraft	page	machine	stand		Item Casting Stand
+LASER	machines	pyloncraft	page	machine	laser		Crystal Laser
+ITEMRIFT	machines	energy	page	machine	itemrift		Item Rift
+CRYSTAL	machines	endgame	page	machine	crystal		Power Crystal
+INFUSER	machines	multicraft	page	machine	infuser		Infusion Stand
+FABRICATOR	machines	pyloncraft	page	machine	fabricator		Item Fabricator
+ENCHANTER	machines	runecraft	page	machine	enchanter		Chromatic Enchanter
+CHROMAFLOWER	machines	basiccraft	page	machine	chromaflower		Chromatic Flower
+COLLECTOR	machines	basiccraft	page	machine	collector		Chroma Collector
+BREWER	machines	basiccraft	page	machine	brewer	POTION	Crystal Brewery
+RITUALTABLE	machines	energy	page	machine	ritual		Ritual Table
+CASTTABLE	machines	entry	page	machine	table		Casting Table
+BEACON	machines	endgame	page	machine	beacon		Protection Beacon
+ITEMCOLLECTOR	machines	pyloncraft	page	machine	itemcollector		Item Collector
+AISHUTDOWN	machines	multicraft	page	machine	aishutdown		chroma.aishutdown
+ASPECT	machines	energy	page	machine	aspect	NODE	Aspect Former
+LAMP	machines	energy	page	machine	lamp		Elemental Lamp
+POWERTREE	machines	endgame	page	machine	powertree	POWERCRYSTAL	Luminescent Battery
+LAMPCONTROL	machines	runecraft	page	machine	lampcontrol		Lumen Lamp Controller
+BIOMEPAINT	machines	endgame	page	machine	biomepainter	RAINBOWFOREST	Biome Painter
+ASPECTJAR	machines	pyloncraft	page	machine	aspectjar	NODE	Aspect Jar
+FARMER	machines	pyloncraft	page	machine	farmer	HARVEST	Elemental Harvester
+AUTO	machines	endgame	page	machine	automator		Casting Delegate
+MEDISTRIB	machines	multicraft	page	machine	medistributor		ME Item Distributor
+WINDOW	machines	multicraft	page	machine	window		Warp Glass
+RFDISTRIB	machines	runecraft	page	machine	rfdistributor		Redstone Flux Radiator
+PERSONAL	machines	energy	page	machine	personal	CHARGE	Energy Focus
+MUSIC	machines	basiccraft	page	machine	music		Crystal Orchestra
+PYLONTURBO	machines	endgame	page	machine	pylonturbo	DIMENSION	Energy Focal Point
+TURRET	machines	basiccraft	page	machine	turret	KILLMOB	Lumen Turret
+BROADCAST	machines	networking	page	machine	broadcast	REPEATER	Lumen Beacon Transmitter
+CLOAKING	machines	multicraft	page	machine	cloaking	KILLMOB	Cloaking Beacon
+CAVELIGHTER	machines	runecraft	page	machine	lighter	DEEPCAVE	Subterranean Illuminator
+GLOWFIRE	machines	energy	page	machine	glowfire	SHARDCHARGE	Transmutation Flame
+ESSENTIA	machines	runecraft	page	machine	essentiarelay	NODE	Essentia Relay
+INSERTER	machines	runecraft	page	machine	inserter		Item Inserter
+LOTUS	machines	runecraft	page	machine	reverter		Reversion Lotus
+COBBLEGEN	machines	runecraft	page	machine	cobblegen		Coalescence Orchid
+PLANTACCEL	machines	runecraft	page	machine	plantaccel		Enrichment Vine
+CROPSPEED	machines	runecraft	page	machine	cropspeed	HARVEST	Fertility Bloom
+WEAKREPEATER	machines	energy	page	machine	weakrepeater	PYLON,MAKECHROMA	Lumen Repeater
+ENCHANTDECOMP	machines	energy	page	machine	enchantdecomp	MAKECHROMA	Enchantment Decomposer
+LUMENWIRE	machines	basiccraft	page	machine	lumenwire		Lumen Wire
+PARTICLES	machines	basiccraft	page	machine	particles		Particle Spawner
+METEOR	machines	pyloncraft	page	machine	meteor		Meteor Tower Core
+FLUIDDISTRIB	machines	runecraft	page	machine	fluiddistributor		Fluid Radiator
+VILLAGEREPAIR	machines	multicraft	page	machine	villagerepair	VILLAGECASTING	Village Replenisher
+AREABREAKER	machines	multicraft	page	machine	areabreaker		Area Breaker
+WIRELESS	machines	multicraft	page	machine	wireless	USEENERGY	Ambient Lumen Distributor
+GATE	machines	endgame	page	machine	teleport	END	Transposition Core
+FLUIDRELAY	machines	runecraft	page	machine	fluidrelay		Fluid Link Anchor
+BOOKDECOMP	machines	energy	page	machine	bookdecomp	MYST	Symbol Extractor
+PLANTHARVEST	machines	runecraft	page	machine	harvestplant	HARVEST	Scissorweed
+AVOLASER	machines	endgame	page	machine	avolaser		Avolite Defence Beam
+ALVEARY	machines	pyloncraft	page	machine	alveary	HIVE	Lumen Alveary Booster
+ROUTER	machines	multicraft	page	machine	routerhub		Item Distribution Node
+FOCUSCRYSTALS	machines	energy	page	machine	focuscrystal	FOCUSCRYSTAL	Focus Crystals
+FLUXMAKER	machines	energy	page	machine	fluxmaker		Lumen Flux Exchanger
+FUNCRELAY	machines	runecraft	page	machine	functionrelay		Area Delegation Point
+CHROMACRAFTER	machines	pyloncraft	page	machine	chromacrafter	ALLOY	Alloying Tank
+MULTIBUILDER	machines	multicraft	page	machine	multibuilder		Construction Mirror
+EXPLOSIONSHIELD	machines	pyloncraft	page	machine	explosionshield		Explosion Shield
+AURALOCUS	machines	ctm	page	machine	aurapoint		Aura Locus
+PROGRESSLINK	machines	basiccraft	page	machine	progresslink		Knowledge Entanglement Pedestal
+MANABOOSTER	machines	pyloncraft	page	machine	manabooster		Mana Booster
+NETWORKOPT	machines	endgame	page	machine	optimizer		Lumen Clarifier
+LANDMARK	machines	basiccraft	page	machine	landmark		Volume Definition Point
+INJECTOR	machines	multicraft	page	machine	injector		Casting Stand Insertion Focus
+HOVERPAD	machines	runecraft	page	machine	hoverpad		Suspension Field Controller
+DEATHFOG	machines	runecraft	page	machine	deathfog	VOIDMONSTER	Vitality Depletion Field
+VOIDTRAP	machines	pyloncraft	page	machine	voidtrap	VOIDMONSTERDIE,CHARGECRYSTAL	Distortion Elimination Focus
+PLAYERINFUSER	machines	multicraft	page	machine	playerinfuser	INFUSE	Personal Infusion Stand
+SMELTERY	machines	runecraft	page	machine	smelterydistributor		Smeltery Casting Distributor
+LAUNCHPAD	machines	basiccraft	page	machine	launchpad		Vertical Propulsion Panel
+TOOLSTORAGE	machines	basiccraft	page	machine	toolstorage		Tool Compression Crate
+BEESTORAGE	machines	runecraft	page	machine	beestorage	HIVE	Genetic Storage Container
+NETWORKTRANSPORT	machines	pyloncraft	page	machine	networkitem		Inventory Network Relay
+BLOCKS	blocks		parent	block	blocks		Other Blocks
+RUNES	blocks	basiccraft	page	block	rune	ALLCOLORS	Crystal Rune
+CHROMA	blocks	rawexplore	page	block	chroma		Liquid Chroma
+HEATLAMP	blocks	runecraft	page	block	heatlamp	NETHER	Heat Lamp
+TNT	blocks	pyloncraft	page	block	tnt		Ender TNT
+TANKAUX	blocks	multicraft	page	block	tank		Crystal Tank Block
+FENCEAUX	blocks	multicraft	page	block	fence		Lumen Fence Relay
+LUMENLEAVES	blocks	endgame	page	block	powertree	POWERCRYSTAL	Lumen Leaves
+DYELEAVES	blocks	entry	page	block	dyeleaf	DYETREE	Leaf
+RAINBOWLEAVES	blocks	rawexplore	page	block	rainbowleaf	RAINBOWLEAF	Rainbow Leaf
+LAMPAUX	blocks	runecraft	page	block	lampblock		Lumen Lamp
+CRYSTALLAMP	blocks	rawexplore	page	block	lamp		Crystal Lamp
+SUPERLAMP	blocks	pyloncraft	page	block	super	POTION	Potion Crystal
+PATH	blocks	runecraft	page	block	path		Travel Path
+GLOW	blocks	basiccraft	page	block	glow		Glow
+RELAY	blocks	energy	page	block	relay		Lumen Relay
+PORTAL	blocks	endgame	page	block	portal	@DIMENSION	Portal Rift
+COLORALTAR	blocks	energy	page	block	coloraltar		Crystal Altar
+DOOR	blocks	basiccraft	page	block	door		Ethereal Barrier
+GLASS	blocks	basiccraft	page	block	glass		Crystal Glass
+MUSICTRIGGER	blocks	basiccraft	page	block	musictrigger	ANYSTRUCT	Crystal Music Trigger
+SELECTIVEGLASS	blocks	basiccraft	page	block	selectiveglass		Defensive Glass
+AVOLAMP	blocks	endgame	page	block	avolamp		Avolite Crystal Lamp
+REPEATERLAMP	blocks	networking	page	block	repeaterlamp	REPEATER	Repeater Lamp
+REDSTONEPOD	blocks	runecraft	page	block	redstonepod		Redstone Pod
+FAKESKY	blocks	runecraft	page	block	fakesky		Artificial Sky
+CHUNKLOADER	blocks	endgame	page	block	chunkloader	DIMENSION	Persistence Crystal
+LUMA	blocks	rawexplore	page	block	luma	LUMA	Ethereal Luma
+ENDER	blocks	rawexplore	page	block	ender		Liquid Ender
+TRAPFLOOR	blocks	rawexplore	page	block	trapfloor	SNOWSTRUCT	Mirrorstone
+WARPNODE	blocks	rawexplore	page	block	warpnode	WARPNODE	Warp Nexus
+RFPOD	blocks	runecraft	page	block	rfpod		Flux Pod
+ENCRUSTED	blocks	rawexplore	page	block	encrusted	PYLON	Lumen-Encrusted Crystals
+INJECTORAUX	blocks	multicraft	page	block	injectoraux		Casting Stand Insertion Relay
+HOVERPADAUX	blocks	runecraft	page	block	pad		Physics Suspension Lamp
+TOOLDESC	tools		parent	tool	tooldesc		Tools
+WAND	tools	entry	page	tool	tool		Elemental Manipulator
+FINDER	tools	basiccraft	page	tool	finder	PYLON	Pylon Compass
+EXCAVATOR	tools	energy	page	tool	excavator	MINE	Excavation Star
+TRANSITION	tools	energy	page	tool	transition		Transition Star
+INVLINK	tools	energy	page	tool	link		Inventory Warp
+PENDANT	tools	energy	page	tool	pendant	POTION	Pendant
+LENS	tools	energy	page	tool	lens		Tinted Crystal Lens
+STORAGE	tools	energy	page	tool	storage	USEENERGY	Energy Storage Crystal
+LINKTOOL	tools	runecraft	page	tool	linktool		Linker
+WARP	tools	pyloncraft	page	tool	warp		Aura Cleaner
+TELEPORT	tools	multicraft	page	tool	teleport		Mobility Star
+DUPLICATOR	tools	pyloncraft	page	tool	duplicator		Replication Star
+BUILDER	tools	multicraft	page	tool	builder		Construction Star
+CAPTURE	tools	multicraft	page	tool	capture	KILLMOB	Capture Star
+VOIDCELL	tools	endgame	page	tool	voidcell		Void Cell
+AURAPOUCH	tools	multicraft	page	tool	aurapouch		Aura Pouch
+MULTITOOL	tools	runecraft	page	tool	multitool	MINE	Multitool
+OREPICK	tools	runecraft	page	tool	orepick	MINE	Ore-Finding Pickaxe
+ORESILK	tools	runecraft	page	tool	oresilk	MINE	Ore Harvester
+GROWTH	tools	multicraft	page	tool	growth	HARVEST	Growth Star
+ENDERCRYS	tools	endgame	page	tool	endercrystal	END	Ender Crystal
+BULKMOVER	tools	runecraft	page	tool	bulkmover		Item Mover
+CHAINGUN	tools	multicraft	page	tool	chaingun	KILLMOB	Chain Gun
+HOVER	tools	pyloncraft	page	tool	hoverwand	KILLMOB	Hover Star
+SPLASH	tools	multicraft	page	tool	splashgun	KILLMOB	Splash Gun
+VACUUMGUN	tools	endgame	page	tool	vacuumgun	DIMENSION	Vacuum Gun
+DOORKEY	tools	basiccraft	page	tool	key		Ethereal Key
+OWNERKEY	tools	basiccraft	page	tool	share		Ownership Expansion Key
+CRYSTALCELL	tools	multicraft	page	tool	crystalcell	CHARGE	Crystal Cell
+PURIFY	tools	endgame	page	tool	purify	RAINBOWLEAF,ALLOY	Aura Purification Gem
+EFFICIENCY	tools	ctm	page	tool	efficiency		Anti-Attenuation Gem
+KILLAURA	tools	endgame	page	tool	killauragun	KILLMOB	Discharge Gun
+FLOATBOOTS	tools	endgame	page	tool	floatboots	DIMENSION	Floatstone Boots
+TELECAPSULE	tools	runecraft	page	tool	warpcapsule	DEEPCAVE	Recall Tablet
+BEEFRAME	tools	runecraft	page	tool	beeframe	HIVE	Lifecycle Acceleration Frame
+STRUCTFIND	tools	runecraft	page	tool	structurefinder	RUNEUSE,ANYSTRUCT	Aura Tracker
+MOBSONAR	tools	runecraft	page	tool	mobsonar	KILLMOB,CHARGE	Creature Sounding Star
+CAVEEXIT	tools	basiccraft	page	tool	cavepather	DEEPCAVE	Subterranean Route Finder
+SPLINEATTACK	tools	runecraft	page	tool	splineattack	KILLMOB	Bezier Crystals
+SHIELDEDCELL	tools	basiccraft	page	tool	shieldedcell	ARTEFACT	Corrosion Resistant Cell
+BOTTLENECK	tools	networking	page	tool	bottleneck	REPEATER	Aura Visualization Crystals
+SPAWNERBYPASS	tools	energy	page	tool	spawnerbypass	FINDSPAWNER	Spawner Interference Crystal
+ENDEREYE	tools	energy	page	tool	endereye	NETHERROOF	Enhanced Ender Eye
+LIGHTGUN	tools	basiccraft	page	tool	lightgun	DEEPCAVE	Illumination Gun
+PROBE	tools	basiccraft	page	tool	probe		Examination Crystals
+TELEGATELOCK	tools	endgame	page	tool	telegatelock		Transposition Crystals
+ENDERBUCKET	tools	runecraft	page	tool	enderbucket	END	Voidlinked Bucket
+WIDECOLLECTOR	tools	multicraft	page	tool	widecollector		Absorption Ring
+NETHERKEY	tools	runecraft	page	tool	netherkey	NETHER,ANYSTRUCT	Nether Layer Crystal
+RECIPECACHE	tools	multicraft	page	tool	recipecache	MULTIBLOCK	Recipe Tablet
+ETHERPENDANT	tools	multicraft	page	tool	etherpendant	LUMA,END	Luma Capsule
+STRUCTMAP	tools	rawexplore	page	tool	structmap	ANYSTRUCT,TOWER,ARTEFACT	Artifact Distribution Map
+RESOURCEDESC	resources		parent	resource	resourcedesc		Resources
+BERRIES	resources	rawexplore	page	tool	berry	DYETREE	Berries
+SHARDS	resources	rawexplore	page	resource	shards	CRYSTALS	Shards
+DUSTS	resources	energy	page	resource	dusts		Plants
+GROUPS	resources	runecraft	page	resource	groups		Groups
+CORES	resources	energy	page	resource	cores		Cores
+HICORES	resources	pyloncraft	page	resource	hicores		Energized Cores
+IRID	resources	multicraft	page	resource	irid	ALLOY	Iridescent Crystal
+ORES	resources	rawexplore	page	resource	ores	CRYSTALS	Buried Secrets
+CRYSTALSTONE	resources	basiccraft	page	block	pylonstruct		Crystal Stone
+SEED	resources	runecraft	page	tool	seed		Crystal Seeds
+FRAGMENT	resources	entry	page	tool	fragment		Fragments
+AUGMENT	resources	pyloncraft	page	resource	augment	STORAGE	Upgrades
+ALLOYS	resources	energy	page	resource	alloys	@ALLOY	Alloying
+INSCRIPTION	resources	rawexplore	page	tool	datacrystal	TOWER	Inscription
+BEES	resources	rawexplore	page	resource	bees	HIVE	Crystal Bees
+TINKERTOOLS	resources	multicraft	page	resource	tinkertools		Mix-And-Magic Tools
+BRANCHES	resources	energy	page	resource	branches		Magic Branches
+FERTILITYSEED	resources	rawexplore	page	tool	fertilityseed	GLOWCLIFFS	Fertility Seeds
+ARTEFACT	resources	rawexplore	page	tool	artefact	ARTEFACT	Mysterious Artifacts
+PROXESSENCE	resources	endgame	page	resource	proxessence	DIMENSION	Proximal Essence
+VOIDESSENCE	resources	rawexplore	page	resource	voidessence	VOIDMONSTER	Corrupted Essence
+ABILITYDESC	abilities		parent	abilitie	abilitydesc		Abilities
+REACH	abilities	pyloncraft	page	ability	reach		Reach Boost
+MAGNET	abilities	pyloncraft	page	ability	magnet		Magnetism
+SONIC	abilities	pyloncraft	page	ability	sonic		Sonic Blast
+SHIFT	abilities	pyloncraft	page	ability	shift		World Shift
+HEAL	abilities	pyloncraft	page	ability	heal		Instant Health
+SHIELD	abilities	pyloncraft	page	ability	shield		Arrow Shield
+FIREBALL	abilities	pyloncraft	page	ability	fireball		Fireball Source
+COMMUNICATE	abilities	pyloncraft	page	ability	communicate		Peace Broker
+HEALTH	abilities	pyloncraft	page	ability	health		Health Boost
+PYLONPROTECT	abilities	energy	page	ability	pylon		Pylon Surge Protection
+LIGHTNING	abilities	pyloncraft	page	ability	lightning		Bolt of Power
+LIFEPOINT	abilities	pyloncraft	page	ability	lifepoint		Luminescent Sacrifice
+DEATHPROOF	abilities	pyloncraft	page	ability	deathproof		Regeneration
+SHOCKWAVE	abilities	pyloncraft	page	ability	shockwave		Shockwave
+WARPLOC	abilities	endgame	page	ability	teleport		Location Warp
+LEECH	abilities	energy	page	ability	leech		Health Leech
+FLOAT	abilities	energy	page	ability	float		Water Strider
+SPAWNERSEE	abilities	endgame	page	ability	spawnersee		Attentive Listening
+BREADCRUMB	abilities	pyloncraft	page	ability	breadcrumb		Breadcrumb
+RANGEBOOST	abilities	pyloncraft	page	ability	rangedboost		Enhanced Transferrence
+DIMPING	abilities	endgame	page	ability	dimping		Elemental Sonar
+DASH	abilities	pyloncraft	page	ability	dash		Lumen Dash
+LASERBILITY	abilities	endgame	page	ability	laser		Skystrike
+FIRERAIN	abilities	ctm	page	ability	firerain		Sky Ember
+KEEPINV	abilities	endgame	page	ability	keepinv		Item Preservation
+ORECLIP	abilities	ctm	page	ability	oreclip		Matter Phase
+DOUBLECRAFT	abilities	ctm	page	ability	doublecraft		Fabrication Duplication
+GROWAURA	abilities	endgame	page	ability	growaura		Fertility Aura
+RECHARGE	abilities	endgame	page	ability	recharge		Passive Draw
+MEINV	abilities	endgame	page	ability	meinv		Applied Hotbars
+MOBSEEK	abilities	endgame	page	ability	mobseek		Piercing Vision
+BEEALYZE	abilities	pyloncraft	page	ability	beealyze		Genetic Insight
+NUKER	abilities	endgame	page	ability	nuker		Matter Dissolution
+LIGHTCAST	abilities	energy	page	ability	lightcast		Lumen Flood
+JUMPABILITY	abilities	energy	page	ability	jump		Lumen Launch
+SUPERBUILD	abilities	energy	page	ability	superbuild		Linear Construction
+CHESTCLEAR	abilities	energy	page	ability	chestclear		Collective Aura
+MOBBAIT	abilities	energy	page	ability	mobbait		Pursuit Diversion
+STRUCTUREDESC	structures		parent	structure	structuredesc		Structures
+PYLON	structures	energy	page	structure	pylon	PYLON	Crystal Pylon
+CASTING1	structures	basiccraft	page	structure	casting1	CRYSTALS	Casting Room
+CASTING2	structures	runecraft	page	structure	casting2	RUNEUSE	Casting Temple
+CASTING3	structures	networking	page	structure	casting3	MULTIBLOCK,BLOWREPEATER	Casting Complex
+RITUAL	structures	energy	page	structure	ritual	CHARGE	Ritual Altar
+INFUSION	structures	multicraft	page	structure	infusion	CHROMA	Infusion Ring
+PLAYERINFUSION	structures	multicraft	page	structure	playerinfusion	INFUSE	Infusion Fountain
+TREE	structures	endgame	page	structure	tree	POWERCRYSTAL	Lumen Tree
+TREESEND	structures	endgame	page	structure	tree_sender	POWERTREE	Lumen Tree Transmission Focus
+REPEATERSTRUCT	structures	networking	page	structure	repeater	RUNEUSE,BLOWREPEATER	Repeater
+COMPOUNDSTRUCT	structures	networking	page	structure	compound	REPEATER	MultiAura Repeater
+CAVERN	structures	rawexplore	page	block	structshield	CAVERN	Shielding
+BURROW	structures	rawexplore	page	block	structshield	BURROW	Shielding
+OCEAN	structures	rawexplore	page	block	structshield	OCEAN	Shielding
+DESERT	structures	rawexplore	page	block	structshield	DESERTSTRUCT	Shielding
+SNOW	structures	rawexplore	page	block	structshield	SNOWSTRUCT	Shielding
+PORTALSTRUCT	structures	endgame	page	structure	portal	@DIMENSION	Portal Beacon
+MINIPYLON	structures	energy	page	structure	personal	CHARGE	Focus Frame
+BROADCASTER	structures	networking	page	structure	broadcast	MULTIBLOCK,REPEATER	Lumen Beacon
+CLOAKTOWER	structures	multicraft	page	structure	cloaktower	KILLMOB	Cloaking Tower
+BOOSTTREE	structures	ctm	page	structure	tree_boosted	TURBOCHARGE	Enriched Lumen Tree
+BEACONSTRUCT	structures	endgame	page	structure	protect		Protection Obelisk
+MINIREPEATER	structures	energy	page	structure	weakrepeater	PYLON	Lumen Repeater
+METEOR1	structures	pyloncraft	page	structure	meteor1		Meteor Tower (Green)
+METEOR2	structures	endgame	page	structure	meteor2		Meteor Tower (Yellow)
+METEOR3	structures	endgame	page	structure	meteor3	DIMENSION	Meteor Tower (Red)
+RITUAL2	structures	endgame	page	structure	ritual2	DIMENSION	Enhanced Ritual Altar
+GATESTRUCT	structures	endgame	page	structure	telegate	END	Transposition Gate
+RELAYSTRUCT	structures	endgame	page	structure	relay	POWERCRYSTAL	Relay Amplification Focus
+PYLONBROADCAST	structures	endgame	page	structure	pylonbroadcast	DIMENSION	Atmospheric Lumen Broadcast Frame
+PYLONTURBORING	structures	endgame	page	structure	pylonturbo	@TURBOCHARGE	Pylon Enhancement Ring
+WIRELESSPED	structures	endgame	page	structure	wirelesspedestal		Lumen Radiation Pedestal
+WIRELESSPED2	structures	ctm	page	structure	wirelesspedestal2		Amplified Lumen Radiation Pedestal
+DATATOWER	structures	rawexplore	page	structure	datanode	TOWER	Ancient Data Tower
+PROGLINKSTRUCT	structures	basiccraft	page	structure	progresslink		Knowledge Entanglement Pedestal
+OPTIMISTRUCT	structures	endgame	page	structure	optimizer		Lumen Purification Obelisk
+VOIDTRAPSTRUCT	structures	pyloncraft	page	structure	voidritual	VOIDMONSTERDIE,CHARGECRYSTAL	Distortion Elimination Spiral
+VOIDTRAPSTRUCTN	structures	pyloncraft	page	structure	nethertrap	VOIDMONSTERDIE,CHARGECRYSTAL	Nether Relocation Focus
+LAUNCHPADSTRUCT	structures	basiccraft	page	structure	launchpad		Vertical Propulsion Panel
+BIOMESTRUCT	structures	multicraft	page	block	colorlock	BIOMESTRUCT	Elemental Lock

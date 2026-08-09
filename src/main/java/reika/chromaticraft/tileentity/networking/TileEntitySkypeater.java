@@ -134,7 +134,11 @@ public class TileEntitySkypeater extends CrystalTransmitterBase implements Cryst
 
 	public void setNodeType(NodeClass c) {
 		type = c;
-		this.syncAllData(false);
+		this.setChanged();
+		// Proto-chunk block entities can be configured before WorldGenRegion attaches their Level.
+		// Their NBT will carry the type; only a live tile needs an immediate client update.
+		if (level != null)
+			this.syncAllData(false);
 	}
 
 	public NodeClass getNodeType() {

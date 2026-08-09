@@ -35,6 +35,7 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
     public static final Identifier REPEATER = id("multiblock/repeater");
     public static final Identifier COMPOUND_REPEATER = id("multiblock/compound_repeater");
     public static final Identifier PYLON_BROADCAST = id("multiblock/pylon_broadcast");
+    public static final Identifier DATANODE = id("worldgen/data_node");
 
     /** V33a {@code setEmpty(false, false)}: the cell must be air. */
     private static final StateDef AIR = new StateDef("minecraft:air", Map.of());
@@ -59,7 +60,8 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
                 write(cache, CASTING_L3, castingL3()),
                 write(cache, REPEATER, repeater()),
                 write(cache, COMPOUND_REPEATER, compoundRepeater()),
-                write(cache, PYLON_BROADCAST, pylonBroadcast()));
+                write(cache, PYLON_BROADCAST, pylonBroadcast()),
+                write(cache, DATANODE, dataNode()));
     }
 
     private CompletableFuture<?> write(CachedOutput cache, Identifier id, TemplateData template) {
@@ -140,6 +142,23 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
         data.remove(c, 0, c);
         return data;
     }
+
+	/** V33a DataTowerStructure geometry; worldgen randomizes the stone/moss shield palette. */
+	private static TemplateData dataNode() {
+		TemplateData data = new TemplateData(3, 6, 3);
+		StateDef shield = new StateDef("chromaticraft:shielding_stone", Map.of("reinforced", "true"));
+		for (int x = 0; x < 3; x++)
+			for (int z = 0; z < 3; z++)
+				data.set(x, 0, z, shield);
+		data.set(0, 1, 1, shield);
+		data.set(2, 1, 1, shield);
+		data.set(1, 1, 0, shield);
+		data.set(1, 1, 2, shield);
+		data.set(1, 1, 1, new StateDef("chromaticraft:data_node", Map.of()));
+		for (int y = 2; y <= 5; y++)
+			data.set(1, y, 1, new StateDef("chromaticraft:dummy_aux", Map.of()));
+		return data;
+	}
 
     private static TemplateData castingL2() {
         TemplateData data = castingL1();

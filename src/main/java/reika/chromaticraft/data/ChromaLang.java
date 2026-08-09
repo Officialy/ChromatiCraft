@@ -17,6 +17,7 @@ import reika.chromaticraft.registry.ChromaShieldTypes;
 import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.magic.progression.ResearchLevel;
+import reika.chromaticraft.magic.progression.LexiconCatalog;
 /**
  * ChromatiCraft language provider (port-in-progress; grows as content ports). The 1.7.10 original
  * shipped a flat en_US.lang (preserved as the reference file); names are re-added here per ported block/item.
@@ -29,6 +30,10 @@ public class ChromaLang extends LanguageProvider {
 
 	@Override
 	protected void addTranslations() {
+		add("commands.chromaticraft.locate_data_tower.success",
+				"Nearest Data Tower (%s) is at %s, %s blocks away");
+		add("commands.chromaticraft.locate_data_tower.all",
+				"All thirteen Data Tower positions (click coordinates to prepare a teleport):");
 		add("tab.chromaticraft", "ChromatiCraft");
 		// V33a Registry/ChromaBlocks basicName keys "chroma.storageblock" and "chroma.display" have
 		// no entry at all in the V33a en_US.lang (never publicly named); no ground truth exists for
@@ -87,6 +92,25 @@ public class ChromaLang extends LanguageProvider {
 					element.displayName + " Cave Crystal");
 		}
 		add(ChromaItems.MANIPULATOR.get(), "Elemental Manipulator"); // V33a chroma.tool
+		add(ChromaItems.LEXICON.get(), "Chromic Lexicon"); // V33a chroma.helpitem
+		add(ChromaItems.INFO_FRAGMENT.get(), "Info Fragment"); // V33a chroma.fragment
+		add(ChromaItems.DATA_CRYSTAL.get(), "Memory Crystal"); // V33a chroma.datacrystal
+		add(ChromaBlocks.DATA_NODE.get(), "Ancient Data Tower"); // V33a chromastruct.datanode
+		add(ChromaBlocks.META_ALLOY_LAMP.get(), "Meta-Alloy Plant");
+		add("entity.chromaticraft.tunnel_nuker", "Lumafly");
+		add("entity.chromaticraft.data_crystal", "Memory Crystal");
+		add("chromaticraft.lore.tower_note", "Lore fragment recorded: %s");
+		add("chromaticraft.lore.key_assembly", "Elemental Key Assembly");
+		add("chromaticraft.lore.key_hint", "Move adjacent known tiles into the empty cells");
+		add("lexicon.chromaticraft.section.info", "Introduction");
+		add("lexicon.chromaticraft.section.machines", "Constructs");
+		add("lexicon.chromaticraft.section.blocks", "Other Blocks");
+		add("lexicon.chromaticraft.section.tools", "Tools");
+		add("lexicon.chromaticraft.section.resources", "Resources");
+		add("lexicon.chromaticraft.section.abilities", "Abilities");
+		add("lexicon.chromaticraft.section.structures", "Structures");
+		for (LexiconCatalog.Entry page : LexiconCatalog.entries())
+			add("lexicon.chromaticraft.page." + page.id().toLowerCase(java.util.Locale.ROOT), page.exactTitle());
 
 		// V33a chromaresearch.* strings, now emitted through the 26.2 language provider.
 		String[] researchNames = {

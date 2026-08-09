@@ -1,98 +1,49 @@
-/*******************************************************************************
- * @author Reika Kalseki
- *
- * Copyright 2018
- *
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
- ******************************************************************************/
 package reika.chromaticraft.magic;
 
 import java.util.ArrayList;
-import java.util.EnumSet;
+import java.util.List;
 
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.util.MathHelper;
-import net.minecraft.world.ChunkCoordIntPair;
-import net.minecraft.world.World;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.level.levelgen.Heightmap;
+import net.neoforged.neoforge.event.tick.LevelTickEvent;
 
 import reika.chromaticraft.entity.EntityTunnelNuker;
-import reika.chromaticraft.magic.lore.LoreManager;
+import reika.chromaticraft.magic.lore.LoreTowerProgress;
 import reika.chromaticraft.magic.lore.Towers;
-import reika.dragonapi.auxiliary.trackers.tickregistry.TickHandler;
-import reika.dragonapi.auxiliary.trackers.tickregistry.TickType;
-import reika.dragonapi.libraries.java.ReikaArrayHelper;
-import reika.dragonapi.libraries.java.ReikaJavaLibrary;
-import reika.dragonapi.libraries.java.ReikaRandomHelper;
-import reika.dragonapi.libraries.mathsci.ReikaPhysicsHelper;
+import reika.chromaticraft.registry.ChromaEntityTypes;
 
-import cpw.mods.fml.common.gameevent.TickEvent.Phase;
+/** V33a world-tick Lumafly guide spawner for players who still have an unscanned lore tower. */
+public final class TunnelNukerSpawner {
 
+	private TunnelNukerSpawner() {}
 
-public class TunnelNukerSpawner implements TickHandler {
+	public static void tick(LevelTickEvent.Post event) {
+		if (!(event.getLevel() instanceof ServerLevel level) || level.players().isEmpty()
+				|| level.getRandom().nextInt(120) != 0)
+			return;
+		ServerPlayer player = level.players().get(level.getRandom().nextInt(level.players().size()));
+		List<Towers> remaining = new ArrayList<>();
+		for (Towers tower : Towers.towerList)
+			if (!LoreTowerProgress.hasScanned(player, tower)) remaining.add(tower);
+		if (remaining.isEmpty()) return;
+		Towers tower = remaining.get(level.getRandom().nextInt(remaining.size()));
+		if (!Towers.initialized(level)) Towers.loadPositions(level, 64 * 16 * 2);
 
-	public static final TunnelNukerSpawner instance = new TunnelNukerSpawner();
+		double x = player.getX() + level.getRandom().nextIntBetweenInclusive(-32, 32) + level.getRandom().nextDouble();
+		double z = player.getZ() + level.getRandom().nextIntBetweenInclusive(-32, 32) + level.getRandom().nextDouble();
+		double y = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
+				(int)Math.floor(x), (int)Math.floor(z)) + 7.5;
+		var destination = tower.getGeneratedLocation();
+		double tx = destination != null ? destination.getX() : tower.getRootPosition().x() + 8;
+		double tz = destination != null ? destination.getZ() : tower.getRootPosition().z() + 8;
+		float yaw = (float)(Math.toDegrees(Math.atan2(-(tx - x), tz - z)));
 
-	private TunnelNukerSpawner() {
-
-	}
-
-	@Override
-	public void tick(TickType type, Object... tickData) {
-		World world = (World)tickData[0];
-		if (!world.isRemote && !world.playerEntities.isEmpty() && world.rand.nextInt(120) == 0) {
-			EntityPlayer ep = (EntityPlayer)world.playerEntities.get(world.rand.nextInt(world.playerEntities.size()));
-
-			ArrayList<Integer> li = ReikaJavaLibrary.makeIntListFromArray(ReikaArrayHelper.getLinearArray(Towers.towerList.length));
-			int idx = li.remove(ep.getRNG().nextInt(li.size()));
-			Towers t = Towers.towerList[idx];
-			while (LoreManager.instance.hasPlayerScanned(ep, t)) {
-				if (li.isEmpty()) {
-					return;
-				}
-				else {
-					idx = li.remove(ep.getRNG().nextInt(li.size()));
-					t = Towers.towerList[idx];
-				}
-			}
-
-			double ex = ReikaRandomHelper.getRandomPlusMinus(ep.posX, 32);
-			double ez = ReikaRandomHelper.getRandomPlusMinus(ep.posZ, 32);
-			double ey = 7.5+world.getTopSolidOrLiquidBlock(MathHelper.floor_double(ex), MathHelper.floor_double(ez));
-			ReikaJavaLibrary.pConsole("Spawning tunnel nuker for tower "+t+" @ "+ex+", "+ez);
-			ChunkCoordIntPair p2 = t.getRootPosition();
-			int tx = p2.chunkXPos+8;
-			int tz = p2.chunkZPos+8;
-
-			if (t.getGeneratedLocation() != null) {
-				tx = t.getGeneratedLocation().xCoord;
-				tz = t.getGeneratedLocation().zCoord;
-			}
-
-			double dx = tx-ex;
-			double dz = tz-ez;
-
-			double[] angs = ReikaPhysicsHelper.cartesianToPolar(dx, 0, dz);
-			EntityTunnelNuker e = new EntityTunnelNuker(world);
-			e.setLocationAndAngles(ex, ey, ez, -(float)angs[2]+90, 0);
-			world.spawnEntityInWorld(e);
+		EntityTunnelNuker nuker = ChromaEntityTypes.TUNNEL_NUKER.get().create(level, EntitySpawnReason.EVENT);
+		if (nuker != null) {
+			nuker.snapTo(x, y, z, yaw, 0);
+			if (nuker.isValidSpawnPosition()) level.addFreshEntity(nuker);
 		}
 	}
-
-	@Override
-	public EnumSet<TickType> getType() {
-		return EnumSet.of(TickType.WORLD);
-	}
-
-	@Override
-	public boolean canFire(Phase p) {
-		return p == Phase.START;
-	}
-
-	@Override
-	public String getLabel() {
-		return "Tunnel Nuker Spawner";
-	}
-
 }

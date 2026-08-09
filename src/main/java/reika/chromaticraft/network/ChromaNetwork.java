@@ -4,6 +4,8 @@ import io.netty.buffer.ByteBuf;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
@@ -21,6 +23,7 @@ import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.client.PylonAttackOverlay;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.render.particle.ChromaParticle;
+import reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe;
 
 public final class ChromaNetwork {
 
@@ -36,6 +39,24 @@ public final class ChromaNetwork {
 		registrar.playToClient(PylonCrystalBreak.TYPE, PylonCrystalBreak.CODEC, ChromaNetwork::handlePylonCrystalBreak);
 		registrar.playToClient(RepeaterConnections.TYPE, RepeaterConnections.CODEC, ChromaNetwork::handleRepeaterConnections);
 		registrar.playToClient(ProgressionNote.TYPE, ProgressionNote.CODEC, ChromaNetwork::handleProgressionNote);
+		registrar.playToServer(SelectResearchFragment.TYPE, SelectResearchFragment.CODEC,
+				ChromaNetwork::handleSelectResearchFragment);
+		registrar.playToServer(RecoverResearchPage.TYPE, RecoverResearchPage.CODEC,
+				ChromaNetwork::handleRecoverResearchPage);
+		registrar.playToServer(TransferLexiconPage.TYPE, TransferLexiconPage.CODEC,
+				ChromaNetwork::handleTransferLexiconPage);
+		registrar.playToServer(UpdateLexiconNotes.TYPE, UpdateLexiconNotes.CODEC,
+				ChromaNetwork::handleUpdateLexiconNotes);
+		registrar.playToServer(RequestGuideCastingRecipes.TYPE, RequestGuideCastingRecipes.CODEC,
+				ChromaNetwork::handleRequestGuideCastingRecipes);
+		registrar.playToClient(GuideCastingRecipes.TYPE, GuideCastingRecipes.CODEC,
+				ChromaNetwork::handleGuideCastingRecipes);
+		registrar.playToClient(DataNodeScan.TYPE, DataNodeScan.CODEC, ChromaNetwork::handleDataNodeScan);
+		registrar.playToClient(TowerLocations.TYPE, TowerLocations.CODEC, ChromaNetwork::handleTowerLocations);
+		registrar.playToClient(LoreNote.TYPE, LoreNote.CODEC, ChromaNetwork::handleLoreNote);
+		registrar.playToClient(Inscription.TYPE, Inscription.CODEC, ChromaNetwork::handleInscription);
+		registrar.playToClient(OpenLorePuzzle.TYPE, OpenLorePuzzle.CODEC, ChromaNetwork::handleOpenLorePuzzle);
+		registrar.playToServer(LorePuzzleMove.TYPE, LorePuzzleMove.CODEC, ChromaNetwork::handleLorePuzzleMove);
 	}
 
 	public static void sendAttack(ServerLevel level, BlockPos source, LivingEntity target, CrystalElement color, float size) {
@@ -99,6 +120,163 @@ public final class ChromaNetwork {
 		@Override public Type<ProgressionNote> type() { return TYPE; }
 	}
 
+	public record SelectResearchFragment(String pageId) implements CustomPacketPayload {
+		public static final Type<SelectResearchFragment> TYPE = createType("select_research_fragment");
+		public static final StreamCodec<ByteBuf, SelectResearchFragment> CODEC = StreamCodec.composite(
+				ByteBufCodecs.STRING_UTF8, SelectResearchFragment::pageId, SelectResearchFragment::new);
+		@Override public Type<SelectResearchFragment> type() { return TYPE; }
+	}
+
+	public record RecoverResearchPage(String pageId) implements CustomPacketPayload {
+		public static final Type<RecoverResearchPage> TYPE = createType("recover_research_page");
+		public static final StreamCodec<ByteBuf, RecoverResearchPage> CODEC = StreamCodec.composite(
+				ByteBufCodecs.STRING_UTF8, RecoverResearchPage::pageId, RecoverResearchPage::new);
+		@Override public Type<RecoverResearchPage> type() { return TYPE; }
+	}
+
+	public record TransferLexiconPage(String pageId, boolean intoBook) implements CustomPacketPayload {
+		public static final Type<TransferLexiconPage> TYPE = createType("transfer_lexicon_page");
+		public static final StreamCodec<ByteBuf, TransferLexiconPage> CODEC = StreamCodec.composite(
+				ByteBufCodecs.STRING_UTF8, TransferLexiconPage::pageId,
+				ByteBufCodecs.BOOL, TransferLexiconPage::intoBook, TransferLexiconPage::new);
+		@Override public Type<TransferLexiconPage> type() { return TYPE; }
+	}
+
+	/** V33a BOOKNOTESRESET + BOOKNOTE combined into one atomic, bounded 26.2 update. */
+	public record UpdateLexiconNotes(java.util.List<String> notes) implements CustomPacketPayload {
+		public static final Type<UpdateLexiconNotes> TYPE = createType("update_lexicon_notes");
+		public UpdateLexiconNotes {
+			java.util.ArrayList<String> bounded = new java.util.ArrayList<>();
+			for (int i = 0; i < Math.min(notes.size(), 256); i++) {
+				String note = notes.get(i);
+				bounded.add(note.length() <= 1024 ? note : note.substring(0, 1024));
+			}
+			notes = java.util.List.copyOf(bounded);
+		}
+		public static final StreamCodec<RegistryFriendlyByteBuf, UpdateLexiconNotes> CODEC = StreamCodec.of(
+				(buffer, payload) -> {
+					buffer.writeVarInt(payload.notes.size());
+					for (String note : payload.notes)
+						buffer.writeUtf(note, 4096);
+				}, buffer -> {
+					int count = buffer.readVarInt();
+					if (count < 0 || count > 256)
+						throw new IllegalArgumentException("Invalid lexicon note count " + count);
+					java.util.ArrayList<String> notes = new java.util.ArrayList<>(count);
+					for (int i = 0; i < count; i++)
+						notes.add(buffer.readUtf(4096));
+					return new UpdateLexiconNotes(java.util.List.copyOf(notes));
+				});
+		@Override public Type<UpdateLexiconNotes> type() { return TYPE; }
+	}
+
+	/** Client asks only for the recipe output currently being viewed; no whole recipe registry sync. */
+	public record RequestGuideCastingRecipes(String itemId) implements CustomPacketPayload {
+		public static final Type<RequestGuideCastingRecipes> TYPE = createType("request_guide_casting_recipes");
+		public static final StreamCodec<ByteBuf, RequestGuideCastingRecipes> CODEC = StreamCodec.composite(
+				ByteBufCodecs.STRING_UTF8, RequestGuideCastingRecipes::itemId, RequestGuideCastingRecipes::new);
+		@Override public Type<RequestGuideCastingRecipes> type() { return TYPE; }
+	}
+
+	/** Exact registered casting recipes needed by one open lexicon page. */
+	public record GuideCastingRecipes(String itemId, java.util.List<CastingTableRecipe> recipes)
+			implements CustomPacketPayload {
+		public static final Type<GuideCastingRecipes> TYPE = createType("guide_casting_recipes");
+		public static final StreamCodec<RegistryFriendlyByteBuf, GuideCastingRecipes> CODEC = StreamCodec.of(
+				(buffer, payload) -> {
+					buffer.writeUtf(payload.itemId);
+					buffer.writeVarInt(payload.recipes.size());
+					for (CastingTableRecipe recipe : payload.recipes)
+						CastingTableRecipe.STREAM_CODEC.encode(buffer, recipe);
+				},
+				buffer -> {
+					String itemId = buffer.readUtf();
+					int count = buffer.readVarInt();
+					java.util.ArrayList<CastingTableRecipe> recipes = new java.util.ArrayList<>(count);
+					for (int i = 0; i < count; i++)
+						recipes.add(CastingTableRecipe.STREAM_CODEC.decode(buffer));
+					return new GuideCastingRecipes(itemId, java.util.List.copyOf(recipes));
+				});
+		@Override public Type<GuideCastingRecipes> type() { return TYPE; }
+	}
+
+	/** V33a DATASCAN: starts the local 360-seed ring, sky column and layered completion chord. */
+	public record DataNodeScan(BlockPos source) implements CustomPacketPayload {
+		public static final Type<DataNodeScan> TYPE = createType("data_node_scan");
+		public static final StreamCodec<ByteBuf, DataNodeScan> CODEC =
+				StreamCodec.composite(BlockPos.STREAM_CODEC, DataNodeScan::source, DataNodeScan::new);
+		@Override public Type<DataNodeScan> type() { return TYPE; }
+	}
+
+	/** The thirteen fixed lore-tower roots; needed by the original inter-tower seed directions. */
+	public record TowerLocations(int[] coordinates) implements CustomPacketPayload {
+		public static final Type<TowerLocations> TYPE = createType("tower_locations");
+		public static final StreamCodec<ByteBuf, TowerLocations> CODEC = StreamCodec.of(
+				(buffer, payload) -> {
+					buffer.writeInt(payload.coordinates.length);
+					for (int value : payload.coordinates) buffer.writeInt(value);
+				},
+				buffer -> {
+					int count = buffer.readInt();
+					if (count < 0 || count > reika.chromaticraft.magic.lore.Towers.towerList.length * 2)
+						throw new IllegalArgumentException("Invalid lore-tower coordinate count " + count);
+					int[] values = new int[count];
+					for (int i = 0; i < count; i++) values[i] = buffer.readInt();
+					return new TowerLocations(values);
+				});
+		@Override public Type<TowerLocations> type() { return TYPE; }
+	}
+
+	/** V33a LORENOTE, emitted after the source's 50-tick post-scan delay. */
+	public record LoreNote(int tower, long seed, int scannedMask) implements CustomPacketPayload {
+		public static final Type<LoreNote> TYPE = createType("lore_note");
+		public static final StreamCodec<RegistryFriendlyByteBuf, LoreNote> CODEC = StreamCodec.of(
+				(buffer, payload) -> {
+					buffer.writeVarInt(payload.tower);
+					buffer.writeLong(payload.seed);
+					buffer.writeVarInt(payload.scannedMask);
+				}, buffer -> new LoreNote(buffer.readVarInt(), buffer.readLong(), buffer.readVarInt()));
+		@Override public Type<LoreNote> type() { return TYPE; }
+	}
+
+	public record Inscription(BlockPos source, int recipe) implements CustomPacketPayload {
+		public static final Type<Inscription> TYPE = createType("inscription");
+		public static final StreamCodec<ByteBuf, Inscription> CODEC = StreamCodec.composite(
+				BlockPos.STREAM_CODEC, Inscription::source, ByteBufCodecs.VAR_INT, Inscription::recipe,
+				Inscription::new);
+		@Override public Type<Inscription> type() { return TYPE; }
+	}
+
+	public record OpenLorePuzzle(long seed, int scannedMask, boolean complete, int[] moves) implements CustomPacketPayload {
+		public static final Type<OpenLorePuzzle> TYPE = createType("open_lore_puzzle");
+		public static final StreamCodec<RegistryFriendlyByteBuf, OpenLorePuzzle> CODEC = StreamCodec.of(
+				(buffer, payload) -> {
+					buffer.writeLong(payload.seed);
+					buffer.writeVarInt(payload.scannedMask);
+					buffer.writeBoolean(payload.complete);
+					buffer.writeVarInt(payload.moves.length);
+					for (int move : payload.moves) buffer.writeVarInt(move);
+				},
+				buffer -> {
+					long seed = buffer.readLong();
+					int mask = buffer.readVarInt();
+					boolean complete = buffer.readBoolean();
+					int count = Mth.clamp(buffer.readVarInt(), 0, 32768);
+					int[] moves = new int[count];
+					for (int i = 0; i < count; i++) moves[i] = buffer.readVarInt();
+					return new OpenLorePuzzle(seed, mask, complete, moves);
+				});
+		@Override public Type<OpenLorePuzzle> type() { return TYPE; }
+	}
+
+	public record LorePuzzleMove(int q, int r, int s) implements CustomPacketPayload {
+		public static final Type<LorePuzzleMove> TYPE = createType("lore_puzzle_move");
+		public static final StreamCodec<ByteBuf, LorePuzzleMove> CODEC = StreamCodec.composite(
+				ByteBufCodecs.VAR_INT, LorePuzzleMove::q, ByteBufCodecs.VAR_INT, LorePuzzleMove::r,
+				ByteBufCodecs.VAR_INT, LorePuzzleMove::s, LorePuzzleMove::new);
+		@Override public Type<LorePuzzleMove> type() { return TYPE; }
+	}
+
 	public record JarRejection(BlockPos source, int color) implements CustomPacketPayload {
 		public static final Type<JarRejection> TYPE = createType("pylon_jar_rejection");
 		public static final StreamCodec<ByteBuf, JarRejection> CODEC = StreamCodec.composite(
@@ -144,6 +322,193 @@ public final class ChromaNetwork {
 	}
 	private static void handleProgressionNote(ProgressionNote payload, IPayloadContext context) {
 		context.enqueueWork(ClientPayloadHandlers::progressionNote);
+	}
+	private static void handleSelectResearchFragment(SelectResearchFragment payload, IPayloadContext context) {
+		context.enqueueWork(() -> {
+			if (!(context.player() instanceof ServerPlayer player))
+				return;
+			var page = reika.chromaticraft.magic.progression.LexiconCatalog.byId(payload.pageId());
+			var stack = player.getMainHandItem();
+			var data = reika.chromaticraft.magic.progression.ResearchFragmentData.read(stack);
+			if (stack.is(reika.chromaticraft.registry.ChromaItems.INFO_FRAGMENT.get()) && data.blank()
+					&& !data.random() && page != null
+					&& reika.chromaticraft.magic.progression.PlayerResearch.nextResearch(player).contains(page))
+				data.withPage(page).writeTo(stack);
+		});
+	}
+	private static void handleRecoverResearchPage(RecoverResearchPage payload, IPayloadContext context) {
+		context.enqueueWork(() -> {
+			if (!(context.player() instanceof ServerPlayer player))
+				return;
+			var page = reika.chromaticraft.magic.progression.LexiconCatalog.byId(payload.pageId());
+			var book = player.getMainHandItem();
+			if (book.is(reika.chromaticraft.registry.ChromaItems.LEXICON.get()) && page != null
+					&& reika.chromaticraft.magic.progression.PlayerResearch.hasFragment(player, page))
+				reika.chromaticraft.item.ItemChromaBook.recoverFragment(player, book, page);
+		});
+	}
+	private static void handleTransferLexiconPage(TransferLexiconPage payload, IPayloadContext context) {
+		context.enqueueWork(() -> {
+			if (!(context.player() instanceof ServerPlayer player))
+				return;
+			var page = reika.chromaticraft.magic.progression.LexiconCatalog.byId(payload.pageId());
+			var book = player.getMainHandItem();
+			if (!book.is(reika.chromaticraft.registry.ChromaItems.LEXICON.get()) || page == null || !page.obtainable())
+				return;
+			if (payload.intoBook()) {
+				for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
+					var stack = player.getInventory().getItem(slot);
+					if (stack.is(reika.chromaticraft.registry.ChromaItems.INFO_FRAGMENT.get())
+							&& reika.chromaticraft.magic.progression.ResearchFragmentData.read(stack).page() == page
+							&& reika.chromaticraft.item.ItemChromaBook.addPage(book, page)) {
+						stack.shrink(1);
+						return;
+					}
+				}
+			}
+			else {
+				var data = reika.chromaticraft.magic.progression.LexiconData.read(book);
+				if (!data.creative() && data.pages().contains(page.id())) {
+					data.withoutPage(page.id()).writeTo(book);
+					player.getInventory().placeItemBackInInventory(reika.chromaticraft.item.ItemInfoFragment.forPage(page));
+				}
+			}
+		});
+	}
+	private static void handleUpdateLexiconNotes(UpdateLexiconNotes payload, IPayloadContext context) {
+		context.enqueueWork(() -> {
+			if (!(context.player() instanceof ServerPlayer player))
+				return;
+			var book = player.getMainHandItem();
+			if (!book.is(reika.chromaticraft.registry.ChromaItems.LEXICON.get()))
+				return;
+			java.util.ArrayList<String> notes = new java.util.ArrayList<>();
+			int characters = 0;
+			for (String raw : payload.notes()) {
+				String note = raw.strip();
+				if (note.isBlank())
+					continue;
+				characters += note.length();
+				if (notes.size() >= 256 || characters > 32768)
+					break;
+				notes.add(note);
+			}
+			var data = reika.chromaticraft.magic.progression.LexiconData.read(book);
+			data.withNotes(notes).writeTo(book);
+		});
+	}
+	private static void handleRequestGuideCastingRecipes(RequestGuideCastingRecipes payload, IPayloadContext context) {
+		context.enqueueWork(() -> {
+			if (!(context.player() instanceof ServerPlayer player))
+				return;
+			Identifier id = Identifier.tryParse(payload.itemId());
+			if (id == null || !BuiltInRegistries.ITEM.containsKey(id))
+				return;
+			var item = BuiltInRegistries.ITEM.getValue(id);
+			java.util.List<CastingTableRecipe> recipes = guideCastingRecipes(
+					player.level().getServer().getRecipeManager(), item);
+			PacketDistributor.sendToPlayer(player, new GuideCastingRecipes(payload.itemId(), recipes));
+		});
+	}
+
+	/**
+	 * Builds the narrow authoritative snapshot used by the lexicon. Keeping this independent of a
+	 * connection makes the dedicated-server selection contract directly verifiable by GameTest.
+	 */
+	public static java.util.List<CastingTableRecipe> guideCastingRecipes(
+			net.minecraft.world.item.crafting.RecipeManager manager, net.minecraft.world.item.Item item) {
+		java.util.ArrayList<CastingTableRecipe> recipes = new java.util.ArrayList<>();
+		for (var holder : manager.getRecipes()) {
+			if (holder.value() instanceof CastingTableRecipe recipe && recipe.output().is(item))
+				recipes.add(recipe);
+		}
+		recipes.sort(java.util.Comparator.comparingInt(recipe -> recipe.tier().ordinal()));
+		return java.util.List.copyOf(recipes);
+	}
+	private static void handleGuideCastingRecipes(GuideCastingRecipes payload, IPayloadContext context) {
+		context.enqueueWork(() -> ClientPayloadHandlers.guideCastingRecipes(payload.itemId(), payload.recipes()));
+	}
+	private static void handleDataNodeScan(DataNodeScan payload, IPayloadContext context) {
+		context.enqueueWork(() -> ClientPayloadHandlers.dataNodeScan(payload.source()));
+	}
+	private static void handleTowerLocations(TowerLocations payload, IPayloadContext context) {
+		context.enqueueWork(() -> ClientPayloadHandlers.towerLocations(payload.coordinates()));
+	}
+	private static void handleLoreNote(LoreNote payload, IPayloadContext context) {
+		context.enqueueWork(() -> ClientPayloadHandlers.loreNote(
+				payload.tower(), payload.seed(), payload.scannedMask()));
+	}
+	private static void handleInscription(Inscription payload, IPayloadContext context) {
+		context.enqueueWork(() -> ClientPayloadHandlers.inscription(payload.source(), payload.recipe()));
+	}
+	private static void handleOpenLorePuzzle(OpenLorePuzzle payload, IPayloadContext context) {
+		context.enqueueWork(() -> ClientPayloadHandlers.openLorePuzzle(
+				payload.seed, payload.scannedMask, payload.complete, payload.moves));
+	}
+	private static void handleLorePuzzleMove(LorePuzzleMove payload, IPayloadContext context) {
+		context.enqueueWork(() -> {
+			if (!(context.player() instanceof ServerPlayer player)) return;
+			if (payload.q < -7 || payload.q > 7 || payload.r < -7 || payload.r > 7
+					|| payload.s < -7 || payload.s > 7 || payload.q + payload.r + payload.s != 0) return;
+			var state = reika.chromaticraft.magic.lore.LoreManager.instance.move(
+					player, payload.q, payload.r, payload.s);
+			if (player.connection != null && player.connection.hasChannel(OpenLorePuzzle.TYPE))
+				PacketDistributor.sendToPlayer(player, openPuzzlePayload(state));
+		});
+	}
+
+	public static void sendDataNodeScan(ServerLevel level, BlockPos source) {
+		double rangeSquared = 128D * 128D;
+		for (ServerPlayer player : level.players()) {
+			if (player.connection != null && player.connection.hasChannel(DataNodeScan.TYPE)
+					&& player.distanceToSqr(source.getX() + 0.5, source.getY() + 4.5,
+							source.getZ() + 0.5) <= rangeSquared)
+				PacketDistributor.sendToPlayer(player, new DataNodeScan(source));
+		}
+	}
+
+	public static void sendTowerLocations(ServerPlayer player) {
+		if (player.connection == null || !player.connection.hasChannel(TowerLocations.TYPE))
+			return;
+		ServerLevel world = player.level().getServer().overworld();
+		if (!reika.chromaticraft.magic.lore.Towers.initialized(world))
+			reika.chromaticraft.magic.lore.Towers.loadPositions(world, 64 * 16 * 2);
+		int[] coordinates = new int[reika.chromaticraft.magic.lore.Towers.towerList.length * 2];
+		for (int i = 0; i < reika.chromaticraft.magic.lore.Towers.towerList.length; i++) {
+			var root = reika.chromaticraft.magic.lore.Towers.towerList[i].getRootPosition();
+			coordinates[i * 2] = root.x();
+			coordinates[i * 2 + 1] = root.z();
+		}
+		PacketDistributor.sendToPlayer(player, new TowerLocations(coordinates));
+	}
+
+	public static void sendLoreNote(ServerPlayer player, reika.chromaticraft.magic.lore.Towers tower) {
+		if (player.connection != null && player.connection.hasChannel(LoreNote.TYPE)) {
+			var state = reika.chromaticraft.magic.lore.LoreManager.instance.state(player);
+			PacketDistributor.sendToPlayer(player, new LoreNote(
+					tower.ordinal(), state.seed(), state.scannedMask()));
+		}
+	}
+
+	public static void sendInscription(ServerLevel level, BlockPos source, int recipe) {
+		double rangeSquared = 128D * 128D;
+		for (ServerPlayer player : level.players()) {
+			if (player.connection != null && player.connection.hasChannel(Inscription.TYPE)
+							&& player.distanceToSqr(net.minecraft.world.phys.Vec3.atCenterOf(source)) <= rangeSquared)
+				PacketDistributor.sendToPlayer(player, new Inscription(source, recipe));
+		}
+	}
+
+	public static void openLorePuzzle(ServerPlayer player) {
+		if (player.connection != null && player.connection.hasChannel(OpenLorePuzzle.TYPE))
+			PacketDistributor.sendToPlayer(player, openPuzzlePayload(
+					reika.chromaticraft.magic.lore.LoreManager.instance.state(player)));
+	}
+
+	private static OpenLorePuzzle openPuzzlePayload(
+			reika.chromaticraft.magic.lore.LoreManager.PuzzleState state) {
+		return new OpenLorePuzzle(state.seed(), state.scannedMask(), state.complete(),
+				state.moves().stream().mapToInt(Integer::intValue).toArray());
 	}
 
 	/** Ticked from the client so the progress-sound cooldown drains. */

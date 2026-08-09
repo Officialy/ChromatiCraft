@@ -11,10 +11,13 @@ import reika.chromaticraft.render.ChromaRenderPipelines;
 import reika.chromaticraft.render.entity.RenderGlowCloud;
 import reika.chromaticraft.render.entity.RenderLumaBurst;
 import reika.chromaticraft.render.entity.RenderPylonOverloadShock;
+import reika.chromaticraft.render.entity.RenderTunnelNuker;
+import reika.chromaticraft.render.entity.RenderDataCrystal;
 import reika.chromaticraft.render.item.ItemStandItemRenderer;
 import reika.chromaticraft.render.tesr.RenderCrystalPylon;
 import reika.chromaticraft.render.tesr.RenderCastingTable;
 import reika.chromaticraft.render.tesr.RenderCrystalRepeater;
+import reika.chromaticraft.render.tesr.RenderDataNode;
 import reika.chromaticraft.render.tesr.RenderItemStand;
 
 public final class ChromaClientRenderers {
@@ -28,6 +31,7 @@ public final class ChromaClientRenderers {
 		bus.addListener(ChromaClientRenderers::registerLayers);
 		bus.addListener(ChromaClientRenderers::registerSpecialModelRenderers);
 		bus.addListener(PylonAttackOverlay::register);
+		bus.addListener(LoreDiscoveryOverlay::register);
 		bus.addListener(MouseoverStatusOverlay::register);
 	}
 
@@ -38,7 +42,8 @@ public final class ChromaClientRenderers {
 	}
 
 	private static void registerLayers(EntityRenderersEvent.RegisterLayerDefinitions event) {
-		event.registerLayerDefinition(RenderItemStand.MODEL_LAYER, RenderItemStand::createStandLayer);
+		 event.registerLayerDefinition(RenderItemStand.MODEL_LAYER, RenderItemStand::createStandLayer);
+		event.registerLayerDefinition(RenderTunnelNuker.MODEL_LAYER, reika.chromaticraft.models.ModelTunnelNuker::createBodyLayer);
 	}
 
 	private static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
@@ -46,8 +51,11 @@ public final class ChromaClientRenderers {
 		event.registerBlockEntityRenderer(ChromaBlockEntities.CASTING_TABLE.get(), RenderCastingTable::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.PYLON.get(), RenderCrystalPylon::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.REPEATER.get(), RenderCrystalRepeater::new);
+		event.registerBlockEntityRenderer(ChromaBlockEntities.DATA_NODE.get(), RenderDataNode::new);
 		event.registerEntityRenderer(ChromaEntityTypes.PYLON_OVERLOAD.get(), RenderPylonOverloadShock::new);
 		event.registerEntityRenderer(ChromaEntityTypes.GLOW_CLOUD.get(), RenderGlowCloud::new);
 		event.registerEntityRenderer(ChromaEntityTypes.LUMA_BURST.get(), RenderLumaBurst::new);
+		event.registerEntityRenderer(ChromaEntityTypes.TUNNEL_NUKER.get(), RenderTunnelNuker::new);
+		event.registerEntityRenderer(ChromaEntityTypes.DATA_CRYSTAL.get(), RenderDataCrystal::new);
 	}
 }

@@ -12,6 +12,8 @@ import net.minecraft.client.renderer.special.NoDataSpecialModelRenderer;
 import net.minecraft.client.renderer.special.SpecialModelRenderer;
 import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.client.resources.model.sprite.SpriteGetter;
+import net.minecraft.client.resources.model.sprite.SpriteId;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.ARGB;
 
@@ -37,12 +39,14 @@ public final class CaveCrystalItemRenderer implements NoDataSpecialModelRenderer
 	/** V33a's inventory crystal: all four side spikes, floor-mounted, no neighbour joins. */
 	private static final int ITEM_ARM_MASK = 0b1111;
 
-	private final TextureAtlasSprite sprite;
+	private final SpriteGetter sprites;
+	private final SpriteId sprite;
 	private final int tint;
 	/** Non-null for renderBase() crystals (lamp, potion crystal); null for cave crystals. */
-	private final TextureAtlasSprite baseSprite;
+	private final SpriteId baseSprite;
 
-	private CaveCrystalItemRenderer(TextureAtlasSprite sprite, int tint, TextureAtlasSprite baseSprite) {
+	private CaveCrystalItemRenderer(SpriteGetter sprites, SpriteId sprite, int tint, SpriteId baseSprite) {
+		this.sprites = sprites;
 		this.sprite = sprite;
 		this.tint = tint;
 		this.baseSprite = baseSprite;
@@ -53,20 +57,25 @@ public final class CaveCrystalItemRenderer implements NoDataSpecialModelRenderer
 			int overlayCoords, boolean hasFoil, int outlineColor) {
 		poseStack.pushPose();
 		PoseStack.Pose pose = poseStack.last();
+		TextureAtlasSprite crystalTexture = sprites.get(sprite);
 		// The geometry is authored in block space (0..1), which is already the item model's cube.
-		collector.submitCustomGeometry(poseStack, RenderTypes.entityTranslucent(TextureAtlas.LOCATION_BLOCKS),
+		// Special item models render into the item target; the entity translucent type can be
+		// flattened by the item compositor even though its vertex alpha is valid. This is the 26.2
+		// item-target translucent path and preserves the same DC alpha used by the world model.
+		collector.submitCustomGeometry(poseStack, RenderTypes.itemTranslucent(TextureAtlas.LOCATION_BLOCKS),
 				(unused, vertices) -> CaveCrystalGeometry.emit((points, normal) -> {
 					for (CaveCrystalGeometry.Point point : points) {
 						Vector3f position = point.position();
 						vertices.addVertex(pose, position.x, position.y, position.z)
 								.setColor(tint)
-								.setUv(sprite.getU(point.u()), sprite.getV(point.v()))
+								.setUv(crystalTexture.getU(point.u()), crystalTexture.getV(point.v()))
 								.setOverlay(overlayCoords)
 								.setLight(lightCoords)
 								.setNormal(pose, normal.x, normal.y, normal.z);
 					}
 				}, ITEM_ARM_MASK, false, false, false));
 		if (baseSprite != null) {
+			TextureAtlasSprite baseTexture = sprites.get(baseSprite);
 			collector.submitCustomGeometry(poseStack, RenderTypes.entitySolid(TextureAtlas.LOCATION_BLOCKS),
 					(unused, vertices) -> CaveCrystalGeometry.emitBase((points, normal, shade) -> {
 						int colour = 0xFF000000 | (shade << 16) | (shade << 8) | shade;
@@ -74,7 +83,7 @@ public final class CaveCrystalItemRenderer implements NoDataSpecialModelRenderer
 							Vector3f position = point.position();
 							vertices.addVertex(pose, position.x, position.y, position.z)
 									.setColor(colour)
-									.setUv(baseSprite.getU(point.u()), baseSprite.getV(point.v()))
+									.setUv(baseTexture.getU(point.u()), baseTexture.getV(point.v()))
 									.setOverlay(overlayCoords)
 									.setLight(lightCoords)
 									.setNormal(pose, normal.x, normal.y, normal.z);
@@ -116,14 +125,11 @@ public final class CaveCrystalItemRenderer implements NoDataSpecialModelRenderer
 
 		@Override
 		public CaveCrystalItemRenderer bake(SpecialModelRenderer.BakingContext context) {
-			TextureAtlasSprite baked = context.sprites().get(
-					new net.minecraft.client.resources.model.sprite.SpriteId(TextureAtlas.LOCATION_BLOCKS, texture));
-			TextureAtlasSprite base = baseTexture
-					.map(id -> context.sprites().get(
-							new net.minecraft.client.resources.model.sprite.SpriteId(TextureAtlas.LOCATION_BLOCKS, id)))
-					.orElse(null);
+			SpriteId baked = new SpriteId(TextureAtlas.LOCATION_BLOCKS, texture);
+			SpriteId base = baseTexture.map(id -> new SpriteId(TextureAtlas.LOCATION_BLOCKS, id)).orElse(null);
 			// Alpha 220 is V33a's pass-1 crystal alpha, the same value the block model bakes in.
-			return new CaveCrystalItemRenderer(baked, ARGB.color(220, element.getColor()), base);
+			return new CaveCrystalItemRenderer(context.sprites(), baked,
+					ARGB.color(220, element.getColor()), base);
 		}
 	}
 }

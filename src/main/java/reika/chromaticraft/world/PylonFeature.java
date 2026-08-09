@@ -47,14 +47,25 @@ public final class PylonFeature extends Feature<NoneFeatureConfiguration> {
     private static final int ATTEMPTS = 24;
     private static final ConcurrentHashMap<Long, BitSet> GRIDS = new ConcurrentHashMap<>();
     private final Variant variant;
+    private final CrystalElement fixedColor;
 
     public PylonFeature() {
-        this(Variant.NORMAL);
+        this(Variant.NORMAL, null);
     }
 
     public PylonFeature(Variant variant) {
+        this(variant, null);
+    }
+
+    /** Command/debug feature whose registry identity guarantees its pylon colour. */
+    public PylonFeature(CrystalElement color) {
+        this(Variant.NORMAL, color);
+    }
+
+    private PylonFeature(Variant variant, CrystalElement fixedColor) {
         super(NoneFeatureConfiguration.CODEC);
         this.variant = variant;
+        this.fixedColor = fixedColor;
     }
 
     @Override
@@ -67,7 +78,7 @@ public final class PylonFeature extends Feature<NoneFeatureConfiguration> {
         for (int i = 0; i < ATTEMPTS; i++) {
             int x = origin.getX() + random.nextInt(16);
             int z = origin.getZ() + random.nextInt(16);
-            if (tryPlaceAt(world, new BlockPos(x, groundLevel(world, x, z), z), random, variant))
+            if (tryPlaceAt(world, new BlockPos(x, groundLevel(world, x, z), z), random, variant, fixedColor))
                 return true;
         }
         return false;
@@ -123,10 +134,16 @@ public final class PylonFeature extends Feature<NoneFeatureConfiguration> {
     }
 
     public static boolean tryPlaceAt(WorldGenLevel world, BlockPos base, RandomSource random, Variant variant) {
+        return tryPlaceAt(world, base, random, variant, null);
+    }
+
+    private static boolean tryPlaceAt(WorldGenLevel world, BlockPos base, RandomSource random,
+            Variant variant, CrystalElement fixedColor) {
         if (!canGenerateAt(world, base))
             return false;
 
-        CrystalElement color = CrystalElement.elements[random.nextInt(CrystalElement.elements.length)];
+        CrystalElement color = fixedColor != null ? fixedColor
+                : CrystalElement.elements[random.nextInt(CrystalElement.elements.length)];
         BlockPos pylonPos = base.above(9);
         List<BlockPos> templateBlocks = PylonStructure.placeForWorldgen(world, pylonPos, color, 3,
                 variant == Variant.TURBOCHARGED);

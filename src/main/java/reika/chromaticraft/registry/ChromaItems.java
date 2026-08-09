@@ -94,6 +94,16 @@ public final class ChromaItems {
 	public static final DeferredItem<reika.chromaticraft.item.ItemManipulator> MANIPULATOR =
 			reg("manipulator", () -> new reika.chromaticraft.item.ItemManipulator(
 					itemProperties().stacksTo(1)));
+	/** V33a HELP: the complete Chromic Lexicon, with pages/notes/blanks in CUSTOM_DATA. */
+	public static final DeferredItem<reika.chromaticraft.item.ItemChromaBook> LEXICON =
+			reg("chromic_lexicon", () -> new reika.chromaticraft.item.ItemChromaBook(itemProperties()));
+	/** V33a FRAGMENT: blank, decoded and chroma-soaked variants share one component-backed item. */
+	public static final DeferredItem<reika.chromaticraft.item.ItemInfoFragment> INFO_FRAGMENT =
+			reg("information_fragment", () -> new reika.chromaticraft.item.ItemInfoFragment(itemProperties()));
+	/** V33a DATACRYSTAL, awarded by a completed data-node scan; owner is stored in CUSTOM_DATA. */
+	public static final DeferredItem<reika.chromaticraft.item.ItemDataCrystal> DATA_CRYSTAL =
+			reg("data_crystal", () -> new reika.chromaticraft.item.ItemDataCrystal(
+					itemProperties().stacksTo(1).fireResistant()));
 	/** The former SHARD metadata item, split into one registered item per crystal element. */
 	public static final EnumMap<CrystalElement, DeferredItem<ItemCrystalShard>> SHARDS = new EnumMap<>(CrystalElement.class);
 	/** V33a {@code case SHARD: meta >= 16 ? "Boosted " : ""} — the port previously mis-called this "Charged". */

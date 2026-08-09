@@ -1,796 +1,417 @@
-/*******************************************************************************
- * @author Reika Kalseki
- *
- * Copyright 2017
- *
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
- ******************************************************************************/
 package reika.chromaticraft.render.tesr;
 
 import java.util.ArrayList;
+import java.util.List;
 
-import org.lwjgl.opengl.GL11;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.math.Axis;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.client.renderer.entity.RenderManager;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.IIcon;
-import net.minecraftforge.client.MinecraftForgeClient;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
+import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
+import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
+import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.core.BlockPos;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.Vec3;
+
+import org.jspecify.annotations.Nullable;
 
 import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.auxiliary.ChromaFX;
-import reika.chromaticraft.base.ChromaRenderBase;
-import reika.chromaticraft.block.worldgen.blockstructureshield.BlockType;
-import reika.chromaticraft.magic.lore.lorescripts.ScriptLocations;
-import reika.chromaticraft.magic.lore.Towers;
-import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaIcons;
-import reika.chromaticraft.registry.ChromaShaders;
-import reika.chromaticraft.render.InWorldScriptRenderer;
+import reika.chromaticraft.render.ChromaRenderPipelines;
 import reika.chromaticraft.tileentity.TileEntityDataNode;
-import reika.dragonapi.instantiable.data.immutable.DecimalPosition;
-import reika.dragonapi.instantiable.rendering.ColorBlendList;
-import reika.dragonapi.instantiable.rendering.StructureRenderer;
-import reika.dragonapi.interfaces.tileentity.RenderFetcher;
-import reika.dragonapi.libraries.io.ReikaTextureHelper;
-import reika.dragonapi.libraries.java.reikaglhelper.BlendMode;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
-import reika.dragonapi.libraries.rendering.ReikaRenderHelper;
 
+/**
+ * Submit-pipeline port of V33a's deployable lore tower. The renderer retains the three telescoping
+ * stages, threefold tower arms, rotating tower glyphs, flare/prism and the post-scan sky beam; only
+ * the obsolete immediate-mode/shader setup has been replaced.
+ */
+public final class RenderDataNode implements BlockEntityRenderer<TileEntityDataNode, RenderDataNode.State> {
 
-public class RenderDataNode extends ChromaRenderBase {
+	private static final Identifier NODE = texture("entity/data_node.png");
+	private static final Identifier SYMBOLS = texture("entity/tower_symbols.png");
+	private static final Identifier MOSS = texture("block/shield/moss.png");
+	private static final Identifier STONE = texture("block/shield/stone.png");
+	private static final Identifier FLARE = texture("block/icons/flare7.png");
+	private static final int FULL_BRIGHT = 0x00f000f0;
 
-	private final ColorBlendList beamColors = new ColorBlendList(30, 0xafafaf, 0x73DCFF, 0xb0e0ff, 0x4C79EE, 0x2C02FF);
+	public RenderDataNode(BlockEntityRendererProvider.Context context) {}
 
 	@Override
-	public String getImageFileName(RenderFetcher te) {
-		return null;
+	public State createRenderState() {
+		return new State();
 	}
 
 	@Override
-	public void renderTileEntityAt(TileEntity tile, double par2, double par4, double par6, float par8) {
-		TileEntityDataNode te = (TileEntityDataNode)tile;
-		GL11.glPushMatrix();
-		GL11.glTranslated(par2+0.5, par4+0.5, par6+0.5);
-		//double s = 7D/3;
-		//GL11.glScaled(s, s, s);
-
-		Tessellator v5 = Tessellator.instance;
-
-		if (MinecraftForgeClient.getRenderPass() == 0 || StructureRenderer.isRenderingTiles() || !te.isInWorld()) {
-			this.renderTower(te, v5);
-		}
-
-		if (MinecraftForgeClient.getRenderPass() == 1 || StructureRenderer.isRenderingTiles() || !te.isInWorld()) {
-			GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
-			GL11.glEnable(GL11.GL_BLEND);
-			BlendMode.ADDITIVEDARK.apply();
-			GL11.glDisable(GL11.GL_LIGHTING);
-			GL11.glDisable(GL11.GL_ALPHA_TEST);
-			ReikaRenderHelper.disableEntityLighting();
-			GL11.glDepthMask(false);
-			//GL11.glDisable(GL11.GL_TEXTURE_2D);
-
-			GL11.glPushMatrix();
-			boolean scan = te.hasBeenScanned(Minecraft.getMinecraft().thePlayer);
-			if (te.isInWorld()) {
-				GL11.glPushMatrix();
-				GL11.glTranslated(0, te.getExtension0()+te.getExtension1()+te.getExtension2(), 0);
-				this.renderSymbol(te, v5);
-				this.renderFlare(te, v5);
-				GL11.glPopMatrix();
-			}
-			if (scan) {
-				this.renderTwistingBeam(te, v5, par8);
-			}
-			else {
-				if (te.isInWorld()) {
-					EntityPlayer ep = Minecraft.getMinecraft().thePlayer;
-					double dist = ep.getDistance(te.xCoord+0.5, te.yCoord+0.5, te.zCoord+0.5);
-					float f = 0;
-					if (te.getExtension1() >= te.EXTENSION_LIMIT_1) {
-						if (dist <= 20) {
-							f = 1;
-						}
-						else if (dist <= 80) {
-							f = 1-(float)((dist-20D)/60D);
-						}
-						f *= te.getExtension2()/te.EXTENSION_LIMIT_2;
-					}
-					ChromaShaders.DATANODE.clearOnRender = true;
-					ChromaShaders.DATANODE.setIntensity(f);
-					ChromaShaders.DATANODE.getShader().setFocus(te);
-					ChromaShaders.DATANODE.getShader().setMatricesToCurrent();
-				}
-				this.renderPrism(te, v5);
-			}
-			GL11.glPopMatrix();
-
-			if ((StructureRenderer.isRenderingTiles() || te.getTower() != null) && te.isInWorld() && ScriptLocations.TOWER.isEnabled() && MinecraftForgeClient.getRenderPass() == 1 && Minecraft.getMinecraft().thePlayer.getDistanceSq(te.xCoord+0.5, te.yCoord+0.5, te.zCoord+0.5) < 4096) {
-				GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
-				InWorldScriptRenderer.renderTowerScript(te, par8, v5, 0.03125/2, 4096);
-				GL11.glPopAttrib();
-			}
-
-			GL11.glPopAttrib();
-		}
-
-		GL11.glPopMatrix();
+	public void extractRenderState(TileEntityDataNode node, State state, float partialTick,
+			Vec3 cameraPosition, ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress) {
+		BlockEntityRenderer.super.extractRenderState(node, state, partialTick, cameraPosition, breakProgress);
+		state.extension0 = node.getExtension0();
+		state.extension1 = node.getExtension1();
+		state.extension2 = node.getExtension2();
+		state.rotation = node.getRotation() + partialTick;
+		state.tick = node.getTicksExisted() + partialTick;
+		state.scanProgress = node.getScanProgress();
+		state.towerTexture = node.getTower() != null ? node.getTower().textureIndex : -1;
+		Player player = Minecraft.getInstance().player;
+		state.scanned = player != null && node.hasBeenScanned(player);
 	}
 
-	private void renderTwistingBeam(TileEntityDataNode te, Tessellator v5, float ptick) {
-		double o1 = ((System.currentTimeMillis()/23.7D)%360);
-		double o2 = ((System.currentTimeMillis()/17.8D)%360);
-		double h = 6;
-		double oy = 0.5;
-		double h2 = 128;
+	@Override
+	public void submit(State state, PoseStack poseStack, SubmitNodeCollector collector,
+			CameraRenderState camera) {
+		poseStack.pushPose();
+		poseStack.translate(0.5, 0.5, 0.5);
 
-		int c2 = beamColors.getColor(System.currentTimeMillis()/100D);
-		int c1 = ReikaColorAPI.mixColors(c2, 0xffffff, 0.75F);
-		double t = 0.0625;
+		PoseStack basePose = copy(poseStack);
+		collector.submitCustomGeometry(poseStack, RenderTypes.entityCutout(MOSS),
+				(pose, vertices) -> renderBase(basePose.last(), vertices, state));
 
-		for (double dy = 0; dy < h2; dy += h) {
-			double r = 0.25;
-			double y1 = dy+oy;
-			double y2 = y1+h;
-			double da = 30;
-			for (double a = 0; a < 360; a += da) {
-				double a1 = Math.toRadians(a+o1);
-				double a2 = Math.toRadians(a+o2);
-				double x1 = r*Math.cos(a1);
-				double z1 = r*Math.sin(a1);
-				double x2 = r*Math.cos(a2);
-				double z2 = r*Math.sin(a2);
+		PoseStack towerPose = copy(poseStack);
+		towerPose.mulPose(Axis.YP.rotationDegrees((float)state.rotation));
+		collector.submitCustomGeometry(poseStack, RenderTypes.entityCutout(NODE),
+				(pose, vertices) -> renderTower(towerPose.last(), vertices, state));
+		PoseStack collarPose = copy(towerPose);
+		collector.submitCustomGeometry(poseStack, RenderTypes.entityCutout(STONE),
+				(pose, vertices) -> renderCollar(collarPose.last(), vertices, state));
 
-				double a1b = Math.toRadians(a+o1+da);
-				double a2b = Math.toRadians(a+o2+da);
-				double x1b = r*Math.cos(a1b);
-				double z1b = r*Math.sin(a1b);
-				double x2b = r*Math.cos(a2b);
-				double z2b = r*Math.sin(a2b);
+		double deployed = deployment(state);
+		if (deployed > 0) {
+			if (state.towerTexture >= 0)
+				submitSymbols(state, poseStack, collector, deployed);
+			submitFlare(state, poseStack, collector, camera, deployed);
+			submitPrism(state, poseStack, collector, deployed);
+		}
+		if (state.scanned)
+			submitSkyBeam(state, poseStack, collector);
+		poseStack.popPose();
+	}
 
-				ChromaFX.renderBeam(x1, y1, z1, x2, y2, z2, ptick, 255, t, c1);
-				ChromaFX.renderBeam(x1, y1, z1, x1b, y1, z1b, ptick, 255, t, c1);
-				ChromaFX.renderBeam(x2, y2, z2, x2b, y2, z2b, ptick, 255, t, c1);
+	/** V33a's moss-clad first-stage telescoping pedestal. */
+	private static void renderBase(PoseStack.Pose pose, VertexConsumer out, State state) {
+		double top = state.extension0;
+		// The source exposes nested skins as each whole block of the lower stage rises.
+		int layers = Math.max(1, (int)Math.ceil(top + 1));
+		for (int i = 0; i < layers; i++) {
+			double y0 = top - i - 0.5;
+			double inset = (i & 1) == 0 ? -0.0625 : 0.0625;
+			box(pose, out, -0.5 - inset, y0, -0.5 - inset,
+					0.5 + inset, y0 + 1, 0.5 + inset, 0xffffffff, state.lightCoords);
+		}
+		// Sloped source cap, represented by the exact 1/8-block inset and drop.
+		frustum(pose, out, -0.5625, top + 0.5, 0.5625,
+				-0.375, top + 0.375, 0.375, 0xffffffff, state.lightCoords, 0, 1);
+	}
 
-				double midx = (x1+x2)/2;
-				double midz = (z1+z2)/2;
-				double midxb = (x1b+x2b)/2;
-				double midzb = (z1b+z2b)/2;
-				double midy = (y1+y2)/2;
-
-				GL11.glDisable(GL11.GL_TEXTURE_2D);
-				GL11.glDisable(GL11.GL_CULL_FACE);
-				v5.startDrawingQuads();
-				v5.setColorOpaque_I(c2);
-				v5.addVertex(x1, y1, z1);
-				v5.addVertex(x1b, y1, z1b);
-				v5.addVertex(midxb, midy, midzb);
-				v5.addVertex(midx, midy, midz);
-
-				v5.addVertex(midx, midy, midx);
-				v5.addVertex(midxb, midy, midzb);
-				v5.addVertex(x2b, y2, z2b);
-				v5.addVertex(x2, y2, z2);
-				v5.draw();
-				GL11.glEnable(GL11.GL_TEXTURE_2D);
-				GL11.glEnable(GL11.GL_CULL_FACE);
-			}
+	/** The two complete six-faced V33a rows, repeated with its 120-degree symmetry. */
+	private static void renderTower(PoseStack.Pose pose, VertexConsumer out, State state) {
+		for (int arm = 0; arm < 3; arm++) {
+			double angle = Math.toRadians(arm * 120D);
+			// Source dy = 0.5+extension1-1; the previous approximation was half a block high.
+			towerRow(pose, out, angle, state.extension1 - 0.5, 2.5,
+					0.125 / Math.sin(Math.toRadians(60)) * 1.5,
+					0.125 / Math.sin(Math.toRadians(60)), -0.5, -0.375,
+					state.lightCoords, 3F/64F, 34F/96F, 45F/64F, 94F/96F);
+			// Source dy2 = 0.5+extension1+extension2.
+			towerRow(pose, out, angle, 0.5 + state.extension1 + state.extension2, 1.5,
+					0.125 / Math.sin(Math.toRadians(60)),
+					0.0625 / Math.sin(Math.toRadians(60)), -0.3671875, -0.2421875,
+					state.lightCoords, 17F/64F, 34F/96F, 31F/64F, 94F/96F);
 		}
 	}
 
-	private void renderTower(TileEntityDataNode te, Tessellator v5) {
-		int l = te.isInWorld() ? te.getBlockType().getMixedBrightnessForBlock(te.worldObj, te.xCoord, te.yCoord, te.zCoord) : 240;
-
-		double t = 0.125;
-
-		if (te.isInWorld()) {
-			this.renderBase(te, v5, l, t);
-		}
-
-		GL11.glPushMatrix();
-		GL11.glRotated(te.getRotation(), 0, 1, 0);
-
-		ReikaTextureHelper.bindTexture(ChromatiCraft.class, "Textures/datanode.png");
-
-		double h1 = te.isInWorld() ? 2.5 : 1.25;
-		double h2 = te.isInWorld() ? 1.5 : 1.25;
-		double R = 0.125;
-		double r = 0.03125/2;
-		double dy = te.isInWorld() ? 0.5+te.getExtension1()-1 : -0.625;
-		double dy2 = te.isInWorld() ? 0.5+te.getExtension1()+te.getExtension2() : -0.5;
-
-		double af = 1D/Math.sin(Math.toRadians(60));
-
-		double oz = -0.5;
-
-		IIcon ico = ChromaBlocks.PYLONSTRUCT.getBlockInstance().getIcon(0, 0);
-		float iw = 64;
-		float ih = 96;
-
-		float u = ico.getMinU();
-		float du = ico.getMaxU();
-		float v = ico.getMinV();
-		float dv = ico.getMaxV();
-		float uu = du-u;
-		float vv = dv-v;
-
-		double w = R*af*1.5+r*0;
-		double oc = R*af*0.5;
-
-		for (int i = 0; i < 360; i += 120) {
-
-			float u1a = 2.5F/iw;
-			float v1a = 31/ih;
-			float u1b = 9.5F/iw;
-			float v1b = 17/ih;
-			float u2a = 46/iw;
-			float v2a = 31/ih;
-			float u2b = 38/iw;
-			float v2b = 17/ih;
-
-			GL11.glPushMatrix();
-			GL11.glRotated(i, 0, 1, 0);
-
-			v5.startDrawingQuads();
-			v5.setBrightness(l);
-			v5.setColorOpaque_F(1, 1, 1);
-			v5.setNormal(0, 1, 0);
-
-			v5.addVertexWithUV(-R*af, dy+h1, oz+R, u1b, v1b);
-			v5.addVertexWithUV(R*af, dy+h1, oz+R, u2b, v2b);
-			v5.addVertexWithUV(w, dy+h1, oz, u2a, v2a);
-			v5.addVertexWithUV(-w, dy+h1, oz, u1a, v1a);
-
-			v5.setColorOpaque_F(0.5F, 0.5F, 0.5F);
-			v5.setNormal(0, 0.5F, 0);
-
-			v5.addVertexWithUV(-w, dy, oz, u1a, v1a);
-			v5.addVertexWithUV(w, dy, oz, u2a, v2a);
-			v5.addVertexWithUV(R*af, dy, oz+R, u2b, v2b);
-			v5.addVertexWithUV(-R*af, dy, oz+R, u1b, v1b);
-
-			v5.setColorOpaque_F(0.675F, 0.675F, 0.675F);
-			v5.setNormal(0, 0.675F, 0);
-
-			u1a = 3/iw;
-			v1a = 34/ih;
-			u1b = 3/iw;
-			v1b = 94/ih;
-			u2a = 45/iw;
-			v2a = 34/ih;
-			u2b = 45/iw;
-			v2b = 94/ih;
-			float u16a = 31/iw;
-			float v16a = 34/ih;
-			float u16b = 31/iw;
-			float v16b = 94/ih;
-			float u13a = 17/iw;
-			float v13a = 34/ih;
-			float u13b = 17/iw;
-			float v13b = 94/ih;
-
-			v5.addVertexWithUV(w, dy+h1, oz, u2a, v2a);
-			v5.addVertexWithUV(w, dy, oz, u2b, v2b);
-			v5.addVertexWithUV(-w, dy, oz, u1b, v1b);
-			v5.addVertexWithUV(-w, dy+h1, oz, u1a, v1a);
-
-			v5.addVertexWithUV(-R*af, dy+h1, oz+R, u1a, v1a);
-			v5.addVertexWithUV(-R*af, dy, oz+R, u1b, v1b);
-			v5.addVertexWithUV(R*af, dy, oz+R, u16b, v16b);
-			v5.addVertexWithUV(R*af, dy+h1, oz+R, u16a, v16a);
-
-			v5.addVertexWithUV(-w, dy+h1, oz, u13a, v13a);
-			v5.addVertexWithUV(-w, dy, oz, u13b, v13b);
-			v5.addVertexWithUV(-R*af, dy, oz+R, u1b, v1b);
-			v5.addVertexWithUV(-R*af, dy+h1, oz+R, u1a, v1a);
-
-			v5.addVertexWithUV(R*af, dy+h1, oz+R, u1a, v1a);
-			v5.addVertexWithUV(R*af, dy, oz+R, u1b, v1b);
-			v5.addVertexWithUV(w, dy, oz, u13b, v13b);
-			v5.addVertexWithUV(w, dy+h1, oz, u13a, v13a);
-
-
-			//Row 2
-			u1a = 9.5F/iw;
-			v1a = 15/ih;
-			u1b = 16.5F/iw;
-			v1b = 1/ih;
-			u2a = 39/iw;
-			v2a = 15/ih;
-			u2b = 30/iw;
-			v2b = 1/ih;
-
-			v5.setColorOpaque_F(1, 1, 1);
-			v5.setNormal(0, 1, 0);
-
-			v5.addVertexWithUV(-oc, dy2+h2, oz+2*R+r/2, u1b, v1b);
-			v5.addVertexWithUV(oc, dy2+h2, oz+2*R+r/2, u2b, v2b);
-			v5.addVertexWithUV(R*af, dy2+h2, oz+R+r/2, u2a, v2a);
-			v5.addVertexWithUV(-R*af, dy2+h2, oz+R+r/2, u1a, v1a);
-
-			v5.setColorOpaque_F(0.5F, 0.5F, 0.5F);
-			v5.setNormal(0, 0.5F, 0);
-
-			v5.addVertexWithUV(-R*af, dy2, oz+R+r/2, u1a, v1a);
-			v5.addVertexWithUV(R*af, dy2, oz+R+r/2, u2a, v2a);
-			v5.addVertexWithUV(oc, dy2, oz+2*R+r/2, u2b, v2b);
-			v5.addVertexWithUV(-oc, dy2, oz+2*R+r/2, u1b, v1b);
-
-			v5.setColorOpaque_F(0.675F, 0.675F, 0.675F);
-			v5.setNormal(0, 0.675F, 0);
-
-			u1a = 3/iw;
-			v1a = 34/ih;
-			u1b = 3/iw;
-			v1b = 94/ih;
-			u2a = 45/iw;
-			v2a = 34/ih;
-			u2b = 45/iw;
-			v2b = 94/ih;
-			u16a = 31/iw;
-			v16a = 34/ih;
-			u16b = 31/iw;
-			v16b = 94/ih;
-			u13a = 17/iw;
-			v13a = 34/ih;
-			u13b = 17/iw;
-			v13b = 94/ih;
-
-			v5.addVertexWithUV(R*af, dy2+h2, oz+R+r/2, u16a, v16a);
-			v5.addVertexWithUV(R*af, dy2, oz+R+r/2, u16b, v16b);
-			v5.addVertexWithUV(-R*af, dy2, oz+R+r/2, u1b, v1b);
-			v5.addVertexWithUV(-R*af, dy2+h2, oz+R+r/2, u1a, v1a);
-
-			v5.addVertexWithUV(-oc, dy2+h2, oz+2*R+r/2, u1a, v1a);
-			v5.addVertexWithUV(-oc, dy2, oz+2*R+r/2, u1b, v1b);
-			v5.addVertexWithUV(oc, dy2, oz+2*R+r/2, u13b, v13b);
-			v5.addVertexWithUV(oc, dy2+h2, oz+2*R+r/2, u13a, v13a);
-
-			v5.addVertexWithUV(-R*af, dy2+h2, oz+R+r/2, u13a, v13a);
-			v5.addVertexWithUV(-R*af, dy2, oz+R+r/2, u13b, v13b);
-			v5.addVertexWithUV(-oc, dy2, oz+2*R+r/2, u1b, v1b);
-			v5.addVertexWithUV(-oc, dy2+h2, oz+2*R+r/2, u1a, v1a);
-
-			v5.addVertexWithUV(oc, dy2+h2, oz+2*R+r/2, u1a, v1a);
-			v5.addVertexWithUV(oc, dy2, oz+2*R+r/2, u1b, v1b);
-			v5.addVertexWithUV(R*af, dy2, oz+R+r/2, u13b, v13b);
-			v5.addVertexWithUV(R*af, dy2+h2, oz+R+r/2, u13a, v13a);
-
-			v5.draw();
-
-			GL11.glPopMatrix();
-		}
-
-		ReikaTextureHelper.bindTerrainTexture();
-
-		GL11.glPushMatrix();
-		GL11.glTranslated(-0.5, -0.5, -0.5);
-
-		double t2 = t*0.75;
-		double t3 = t*1.5;
-
-		double ut3 = u+uu*t3;
-		double vt3 = v+vv*t3;
-		double ut3b = du-uu*t3;
-		double vt3b = dv-vv*t3;
-
-		double dy3 = dy+1.5;
-
-		v5.startDrawingQuads();
-		v5.setBrightness(l);
-
-		v5.setColorOpaque_F(1, 1, 1);
-		v5.setNormal(0, 1, 0);
-
-		v5.addVertexWithUV(0+t2,	dy3, 1-t2, u, dv);
-		v5.addVertexWithUV(0+t2+t3, dy3, 1-t2-t3, ut3, vt3b);
-		v5.addVertexWithUV(0+t2+t3, dy3, 0+t2+t3, ut3, vt3);
-		v5.addVertexWithUV(0+t2,	dy3, 0+t2, u, v);
-
-		v5.addVertexWithUV(1-t2,	dy3, 0+t2, du, v);
-		v5.addVertexWithUV(1-t2-t3, dy3, 0+t2+t3, ut3b, vt3);
-		v5.addVertexWithUV(1-t2-t3, dy3, 1-t2-t3, ut3b, vt3b);
-		v5.addVertexWithUV(1-t2,	dy3, 1-t2, du, dv);
-
-		v5.addVertexWithUV(0+t2,	dy3, 0+t2, u, v);
-		v5.addVertexWithUV(0+t2+t3, dy3, 0+t2+t3, ut3, vt3);
-		v5.addVertexWithUV(1-t2-t3, dy3, 0+t2+t3, ut3b, vt3);
-		v5.addVertexWithUV(1-t2,	dy3, 0+t2, du, v);
-
-		v5.addVertexWithUV(1-t2,	dy3, 1-t2, du, v);
-		v5.addVertexWithUV(1-t2-t3, dy3, 1-t2-t3, ut3b, vt3);
-		v5.addVertexWithUV(0+t2+t3, dy3, 1-t2-t3, ut3, vt3);
-		v5.addVertexWithUV(0+t2,	dy3, 1-t2, u, v);
-
-		v5.setColorOpaque_F(0.5F, 0.5F, 0.5F);
-		v5.setNormal(0, 0.5F, 0);
-
-		v5.addVertexWithUV(0+t2,	dy3-t3, 0+t2, u, v);
-		v5.addVertexWithUV(0+t2+t3, dy3-t3, 0+t2+t3, ut3, vt3);
-		v5.addVertexWithUV(0+t2+t3, dy3-t3, 1-t2-t3, ut3, vt3b);
-		v5.addVertexWithUV(0+t2,	dy3-t3, 1-t2, u, dv);
-
-		v5.addVertexWithUV(1-t2,	dy3-t3, 1-t2, du, dv);
-		v5.addVertexWithUV(1-t2-t3, dy3-t3, 1-t2-t3, ut3b, vt3b);
-		v5.addVertexWithUV(1-t2-t3, dy3-t3, 0+t2+t3, ut3b, vt3);
-		v5.addVertexWithUV(1-t2,	dy3-t3, 0+t2, du, v);
-
-		v5.addVertexWithUV(1-t2,	dy3-t3, 0+t2, du, v);
-		v5.addVertexWithUV(1-t2-t3, dy3-t3, 0+t2+t3, ut3b, vt3);
-		v5.addVertexWithUV(0+t2+t3, dy3-t3, 0+t2+t3, ut3, vt3);
-		v5.addVertexWithUV(0+t2,	dy3-t3, 0+t2, u, v);
-
-		v5.addVertexWithUV(0+t2,	dy3-t3, 1-t2, u, v);
-		v5.addVertexWithUV(0+t2+t3, dy3-t3, 1-t2-t3, ut3, vt3);
-		v5.addVertexWithUV(1-t2-t3, dy3-t3, 1-t2-t3, ut3b, vt3);
-		v5.addVertexWithUV(1-t2,	dy3-t3, 1-t2, du, v);
-
-		v5.setColorOpaque_F(0.675F, 0.675F, 0.675F);
-		v5.setNormal(0, 0.675F, 0);
-
-		v5.addVertexWithUV(0+t2,	dy3,	0+t2, u, v);
-		v5.addVertexWithUV(0+t2, 	dy3-t3, 0+t2, du, v);
-		v5.addVertexWithUV(0+t2, 	dy3-t3, 1-t2, du, dv);
-		v5.addVertexWithUV(0+t2,	dy3,	1-t2, u, dv);
-
-		v5.addVertexWithUV(0+t2+t3,	dy3,	1-t2-t3, u, dv);
-		v5.addVertexWithUV(0+t2+t3, dy3-t3, 1-t2-t3, du, dv);
-		v5.addVertexWithUV(0+t2+t3, dy3-t3, 0+t2+t3, du, v);
-		v5.addVertexWithUV(0+t2+t3,	dy3,	0+t2+t3, u, v);
-
-		v5.addVertexWithUV(1-t2,	dy3,	1-t2, u, dv);
-		v5.addVertexWithUV(1-t2, 	dy3-t3, 1-t2, du, dv);
-		v5.addVertexWithUV(1-t2, 	dy3-t3, 0+t2, du, v);
-		v5.addVertexWithUV(1-t2,	dy3,	0+t2, u, v);
-
-		v5.addVertexWithUV(1-t2-t3,	dy3,	0+t2+t3, u, v);
-		v5.addVertexWithUV(1-t2-t3, dy3-t3, 0+t2+t3, du, v);
-		v5.addVertexWithUV(1-t2-t3, dy3-t3, 1-t2-t3, du, dv);
-		v5.addVertexWithUV(1-t2-t3,	dy3,	1-t2-t3, u, dv);
-
-		v5.addVertexWithUV(1-t2,	dy3,	0+t2, u, dv);
-		v5.addVertexWithUV(1-t2, 	dy3-t3, 0+t2, du, dv);
-		v5.addVertexWithUV(0+t2, 	dy3-t3, 0+t2, du, v);
-		v5.addVertexWithUV(0+t2,	dy3,	0+t2, u, v);
-
-		v5.addVertexWithUV(1-t2-t3,	dy3,	1-t2-t3, u, dv);
-		v5.addVertexWithUV(1-t2-t3, dy3-t3, 1-t2-t3, du, dv);
-		v5.addVertexWithUV(0+t2+t3, dy3-t3, 1-t2-t3, du, v);
-		v5.addVertexWithUV(0+t2+t3,	dy3,	1-t2-t3, u, v);
-
-		v5.addVertexWithUV(0+t2,	dy3,	1-t2, u, v);
-		v5.addVertexWithUV(0+t2, 	dy3-t3, 1-t2, du, v);
-		v5.addVertexWithUV(1-t2, 	dy3-t3, 1-t2, du, dv);
-		v5.addVertexWithUV(1-t2,	dy3,	1-t2, u, dv);
-
-		v5.addVertexWithUV(0+t2+t3,	dy3,	0+t2+t3, u, v);
-		v5.addVertexWithUV(0+t2+t3, dy3-t3, 0+t2+t3, du, v);
-		v5.addVertexWithUV(1-t2-t3, dy3-t3, 0+t2+t3, du, dv);
-		v5.addVertexWithUV(1-t2-t3,	dy3,	0+t2+t3, u, dv);
-
-		v5.draw();
-
-		GL11.glPopMatrix();
-
-		GL11.glPopMatrix();
+	private static void towerRow(PoseStack.Pose pose, VertexConsumer out, double angle,
+			double y0, double height, double backWidth, double frontWidth,
+			double backZ, double frontZ, int light,
+			float u0, float v0, float u1, float v1) {
+		double sin = Math.sin(angle);
+		double cos = Math.cos(angle);
+		double y1 = y0 + height;
+		Vec3 bl = rotate(-backWidth,y0,backZ,sin,cos), br = rotate(backWidth,y0,backZ,sin,cos);
+		Vec3 tl = rotate(-backWidth,y1,backZ,sin,cos), tr = rotate(backWidth,y1,backZ,sin,cos);
+		Vec3 fbl = rotate(-frontWidth,y0,frontZ,sin,cos), fbr = rotate(frontWidth,y0,frontZ,sin,cos);
+		Vec3 ftl = rotate(-frontWidth,y1,frontZ,sin,cos), ftr = rotate(frontWidth,y1,frontZ,sin,cos);
+		pointQuad(pose,out,tl,tr,br,bl,0xffacacac,light,u0,v0,u1,v1);
+		pointQuad(pose,out,ftr,ftl,fbl,fbr,0xffacacac,light,u0,v0,u1,v1);
+		pointQuad(pose,out,ftl,ftr,tr,tl,0xffffffff,light,u0,v0,u1,v1);
+		pointQuad(pose,out,bl,br,fbr,fbl,0xff808080,light,u0,v0,u1,v1);
+		pointQuad(pose,out,tl,bl,fbl,ftl,0xffacacac,light,u0,v0,u1,v1);
+		pointQuad(pose,out,ftr,fbr,br,tr,0xffacacac,light,u0,v0,u1,v1);
 	}
 
-	private void renderBase(TileEntityDataNode te, Tessellator v5, int l, double t) {
-		GL11.glPushMatrix();
-		GL11.glTranslated(-0.5, -0.5, -0.5);
-
-		GL11.glTranslated(0, 1.05, 0);
-
-		ReikaTextureHelper.bindTerrainTexture();
-		IIcon ico = ChromaBlocks.STRUCTSHIELD.getBlockInstance().getIcon(1, BlockType.MOSS.metadata);
-		float u = ico.getMinU();
-		float du = ico.getMaxU();
-		float v = ico.getMinV();
-		float dv = ico.getMaxV();
-		float uu = du-u;
-		float vv = dv-v;
-
-		v5.startDrawingQuads();
-		v5.setBrightness(l);
-
-		double s = 0.0625;//0.125;//(1-i)/16D;
-
-		double ut = u+uu*t;
-		double vt = v+vv*t*2;
-		double ut2 = du-uu*t;
-		double vt2 = dv-vv*t*2;
-
-		double dh = -0.125;
-
-		v5.setColorOpaque_F(1, 1, 1);
-		v5.setNormal(0, 1, 0);
-		/*
-		v5.addVertexWithUV(0-s, te.getExtension0(), 0-s, u, v);
-		v5.addVertexWithUV(0-s, te.getExtension0(), 1+s, u, dv);
-		v5.addVertexWithUV(1+s, te.getExtension0(), 1+s, du, dv);
-		v5.addVertexWithUV(1+s, te.getExtension0(), 0-s, du, v);
-		 */
-
-		v5.addVertexWithUV(0-s, te.getExtension0(), 0-s, u, v);
-		v5.addVertexWithUV(t, te.getExtension0()+dh, t, ut, vt);
-		v5.addVertexWithUV(1+s-t, te.getExtension0()+dh, t, ut2, vt);
-		v5.addVertexWithUV(1+s, te.getExtension0(), 0-s, du, v);
-
-		v5.addVertexWithUV(1+s, te.getExtension0(), 1+s, du, v);
-		v5.addVertexWithUV(1+s-t, te.getExtension0()+dh, 1+s-t, ut2, vt);
-		v5.addVertexWithUV(t, te.getExtension0()+dh, 1+s-t, ut, vt);
-		v5.addVertexWithUV(0-s, te.getExtension0(), 1+s, u, v);
-
-		v5.addVertexWithUV(0-s, te.getExtension0(), 1+s, du, v);
-		v5.addVertexWithUV(t, te.getExtension0()+dh, 1+s-t, ut2, vt);
-		v5.addVertexWithUV(t, te.getExtension0()+dh, t, ut, vt);
-		v5.addVertexWithUV(0-s, te.getExtension0(), 0-s, u, v);
-
-		v5.addVertexWithUV(1+s, te.getExtension0(), 0-s, u, v);
-		v5.addVertexWithUV(1+s-t, te.getExtension0()+dh, t, ut, vt);
-		v5.addVertexWithUV(1+s-t, te.getExtension0()+dh, 1+s-t, ut2, vt);
-		v5.addVertexWithUV(1+s, te.getExtension0(), 1+s, du, v);
-
-		v5.setColorOpaque_F(0.5F, 0.5F, 0.5F);
-		v5.setNormal(0, 0.5F, 0);
-		v5.addVertexWithUV(1, 0, 0, du, v);
-		v5.addVertexWithUV(1, 0, 1, du, dv);
-		v5.addVertexWithUV(0, 0, 1, u, dv);
-		v5.addVertexWithUV(0, 0, 0, u, v);
-
-		for (int i = 0; i < te.getExtension0()+1; i++) {
-			//s = (1-i)/16D;
-			double y = -i+te.getExtension0()-1;
-
-			v5.setColorOpaque_F(0.675F, 0.675F, 0.675F);
-			v5.setNormal(0, 0.675F, 0);
-
-			v5.addVertexWithUV(0-s, y+0, 0-s, u, v);
-			v5.addVertexWithUV(0-s, y+0, 1+s, u, dv);
-			v5.addVertexWithUV(0-s, y+1, 1+s, du, dv);
-			v5.addVertexWithUV(0-s, y+1, 0-s, du, v);
-
-			v5.addVertexWithUV(0-s+t, y+1+dh, 0-s+t, du, v);
-			v5.addVertexWithUV(0-s+t, y+1, 1+s-t, du, dv);
-			v5.addVertexWithUV(0-s+t, y+0+dh, 1+s-t, u, dv);
-			v5.addVertexWithUV(0-s+t, y+0+dh, 0-s+t, u, v);
-
-			v5.addVertexWithUV(1+s, y+1, 0-s, du, v);
-			v5.addVertexWithUV(1+s, y+1, 1+s, du, dv);
-			v5.addVertexWithUV(1+s, y+0, 1+s, u, dv);
-			v5.addVertexWithUV(1+s, y+0, 0-s, u, v);
-
-			v5.addVertexWithUV(1+s-t, y+0+dh, 0-s+t, u, v);
-			v5.addVertexWithUV(1+s-t, y+0+dh, 1+s-t, u, dv);
-			v5.addVertexWithUV(1+s-t, y+1+dh, 1+s-t, du, dv);
-			v5.addVertexWithUV(1+s-t, y+1+dh, 0-s+t, du, v);
-
-			v5.setColorOpaque_F(0.8F, 0.8F, 0.8F);
-			v5.setNormal(0, 0.675F, 0);
-
-			v5.addVertexWithUV(0-s, y+1, 0-s, du, v);
-			v5.addVertexWithUV(1+s, y+1, 0-s, du, dv);
-			v5.addVertexWithUV(1+s, y+0, 0-s, u, dv);
-			v5.addVertexWithUV(0-s, y+0, 0-s, u, v);
-
-			v5.addVertexWithUV(0-s+t, y+0+dh, 0-s+t, u, v);
-			v5.addVertexWithUV(1+s-t, y+0+dh, 0-s+t, u, dv);
-			v5.addVertexWithUV(1+s-t, y+1+dh, 0-s+t, du, dv);
-			v5.addVertexWithUV(0-s+t, y+1+dh, 0-s+t, du, v);
-
-			v5.addVertexWithUV(0-s, y+0, 1+s, u, v);
-			v5.addVertexWithUV(1+s, y+0, 1+s, u, dv);
-			v5.addVertexWithUV(1+s, y+1, 1+s, du, dv);
-			v5.addVertexWithUV(0-s, y+1, 1+s, du, v);
-
-			v5.addVertexWithUV(0-s+t, y+1+dh, 1+s-t, du, v);
-			v5.addVertexWithUV(1+s-t, y+1+dh, 1+s-t, du, dv);
-			v5.addVertexWithUV(1+s-t, y+0+dh, 1+s-t, u, dv);
-			v5.addVertexWithUV(0-s+t, y+0+dh, 1+s-t, u, v);
-		}
-
-		v5.draw();
-
-		GL11.glPopMatrix();
+	/** Source pylon-stone square sleeve between the two extending rows. */
+	private static void renderCollar(PoseStack.Pose pose, VertexConsumer out, State state) {
+		double top = state.extension1 + 1;
+		double bottom = top - 0.1875;
+		double outer = 0.40625;
+		double inner = 0.21875;
+		squareRing(pose, out, outer, inner, bottom, top, 0xffffffff, state.lightCoords);
 	}
 
-	private void renderSymbol(TileEntityDataNode te, Tessellator v5) {
-		Towers t = StructureRenderer.isRenderingTiles() ? Towers.towerList[(int)((System.currentTimeMillis()/1000)%Towers.towerList.length)] : te.getTower();
-		if (t != null) {
-			double d = te.getExtension0()+te.getExtension1()+te.getExtension2();
-			d /= te.EXTENSION_LIMIT_0+te.EXTENSION_LIMIT_1+te.EXTENSION_LIMIT_2;
-			d = Math.pow(d, 6);
-			if (d > 0) {
-				int idx = t.textureIndex;
-				double u = (idx%8)/8D;
-				double v = (idx/8)/8D;
-				double du = u+1/8D;
-				double dv = v+1/8D;
-				double tt = StructureRenderer.isRenderingTiles() ? System.currentTimeMillis()/25D : te.getTicksExisted();
-				double tk = (-tt/1.5D)%360D;
-				ReikaTextureHelper.bindTexture(ChromatiCraft.class, "Textures/towersymbols.png");
-				GL11.glPushMatrix();
-				GL11.glDisable(GL11.GL_CULL_FACE);
-				GL11.glTranslated(0, -0.625, 0);
-				double s = 3;
-				GL11.glScaled(s, s, s);
-				for (int i = 0; i < 360; i += 60) {
-					GL11.glPushMatrix();
-					GL11.glRotated(i+tk, 0, 1, 0);
-					GL11.glTranslated(0, 0, 1.75/s);
-					v5.startDrawingQuads();
-					v5.setColorOpaque_I(ReikaColorAPI.getColorWithBrightnessMultiplier(0xffffff, (float)d));
-					//GL11.glRotated(90, 0, 1, 0);
-					v5.addVertexWithUV(-0.5, 0, 0, u, dv);
-					v5.addVertexWithUV(0.5, 0, 0, du, dv);
-					v5.addVertexWithUV(0.5, 1, 0, du, v);
-					v5.addVertexWithUV(-0.5, 1, 0, u, v);
-					v5.draw();
-					GL11.glPopMatrix();
-				}
-				GL11.glEnable(GL11.GL_CULL_FACE);
-				GL11.glPopMatrix();
+	private static void submitSymbols(State state, PoseStack poseStack, SubmitNodeCollector collector,
+			double deployed) {
+		float brightness = (float)Math.pow(deployed, 6);
+		if (brightness <= 0.002F) return;
+		int cell = state.towerTexture;
+		float u0 = (cell % 8) / 8F;
+		float v0 = (cell / 8) / 8F;
+		float u1 = u0 + 1F / 8F;
+		float v1 = v0 + 1F / 8F;
+		int color = 0xff000000 | ReikaColorAPI.getColorWithBrightnessMultiplier(0xffffff, brightness);
+		double y = state.extension0 + state.extension1 + state.extension2 - 0.625;
+		double rotation = -(state.tick / 1.5D) % 360;
+		for (int i = 0; i < 6; i++) {
+			PoseStack glyphPose = copy(poseStack);
+			glyphPose.translate(0, y, 0);
+			glyphPose.mulPose(Axis.YP.rotationDegrees((float)(rotation + i * 60)));
+			glyphPose.translate(0, 0, 1.75);
+			PoseStack.Pose matrix = glyphPose.last();
+			collector.submitCustomGeometry(poseStack, ChromaRenderPipelines.additiveSprite(SYMBOLS),
+					(pose, out) -> quad(matrix, out, -1.5, 0, 1.5, 3, color, u0, v1, u1, v0));
+		}
+	}
+
+	private static void submitFlare(State state, PoseStack poseStack, SubmitNodeCollector collector,
+			CameraRenderState camera, double deployed) {
+		float factor = (float)(0.125 + 0.875 * ((state.extension1 + state.extension2)
+				/ (TileEntityDataNode.EXTENSION_LIMIT_1 + TileEntityDataNode.EXTENSION_LIMIT_2)));
+		int color = 0xff000000 | ReikaColorAPI.getColorWithBrightnessMultiplier(0xb0e0ff, factor);
+		PoseStack flarePose = copy(poseStack);
+		flarePose.translate(0, state.extension0 + state.extension1 + state.extension2 + 0.75, 0);
+		flarePose.mulPose(camera.orientation);
+		PoseStack.Pose matrix = flarePose.last();
+		collector.submitCustomGeometry(poseStack, ChromaRenderPipelines.additiveSprite(FLARE),
+				(pose, out) -> quad(matrix, out, -3, -3, 3, 3, color, 0, 1, 1, 0));
+	}
+
+	/** Exact alternating 90/15/15-degree V33a prism outline and texture strip. */
+	private static void submitPrism(State state, PoseStack poseStack, SubmitNodeCollector collector,
+			double deployed) {
+		PoseStack prismPose = copy(poseStack);
+		double y = state.extension1 + state.extension2
+				+ 0.0625 * Math.sin((state.tick / 8D) % (Math.PI * 2));
+		prismPose.translate(0, y, 0);
+		PoseStack.Pose matrix = prismPose.last();
+		float factor = (float)(0.5 + 0.5 * deployed);
+		int blue = 0xff000000 | ReikaColorAPI.getColorWithBrightnessMultiplier(0xa0e0ff, factor);
+		int white = 0xff000000 | ReikaColorAPI.getColorWithBrightnessMultiplier(0xffffff, factor);
+		double angle = 45 + state.tick * 2;
+		List<Vec3> ring = new ArrayList<>();
+		double[] steps = {90, 15, 15};
+		double[] radii = {0.19140625, 0.21875, 0.19140625};
+		int step = 0;
+		for (double a = angle; a <= angle + 360.001; a += steps[step]) {
+			double r = radii[step];
+			ring.add(new Vec3(r * Math.cos(Math.toRadians(a)), 0, r * Math.sin(Math.toRadians(a))));
+			step = (step + 1) % 3;
+		}
+		collector.submitCustomGeometry(poseStack, ChromaRenderPipelines.additiveSprite(NODE),
+				(pose, out) -> prism(matrix, out, ring, 1.5, blue, white));
+	}
+
+	private static void submitSkyBeam(State state, PoseStack poseStack, SubmitNodeCollector collector) {
+		PoseStack beamPose = copy(poseStack);
+		PoseStack.Pose matrix = beamPose.last();
+		collector.submitCustomGeometry(poseStack, RenderTypes.lightning(),
+				(pose, out) -> twistingBeam(matrix, out, state.tick));
+	}
+
+	private static void twistingBeam(PoseStack.Pose pose, VertexConsumer out, double tick) {
+		// V33a is a 12-sided twisting cage in six-block sections, not two long crossed ribbons.
+		// Closing each ring and both half-segment surfaces keeps it coherent at long range.
+		double lowerPhase = tick * 3.2;
+		double upperPhase = tick * 4.1;
+		int c1 = 0xb8d8f2ff;
+		int c2 = 0xa873dcff;
+		for (double dy = 0; dy < 128; dy += 6) {
+			double y0 = dy + 0.5;
+			double y1 = y0 + 6;
+			double ym = (y0 + y1) * 0.5;
+			for (int side = 0; side < 12; side++) {
+				double a0 = Math.toRadians(side * 30 + lowerPhase);
+				double a0n = Math.toRadians((side + 1) * 30 + lowerPhase);
+				double a1 = Math.toRadians(side * 30 + upperPhase);
+				double a1n = Math.toRadians((side + 1) * 30 + upperPhase);
+				Vec3 lo = radial(a0, y0), lon = radial(a0n, y0);
+				Vec3 hi = radial(a1, y1), hin = radial(a1n, y1);
+				Vec3 mid = lo.add(hi).scale(0.5), midn = lon.add(hin).scale(0.5);
+				mid = new Vec3(mid.x, ym, mid.z);
+				midn = new Vec3(midn.x, ym, midn.z);
+				colorQuad(pose,out,lo,lon,midn,mid,c1);
+				colorQuad(pose,out,mid,midn,hin,hi,c2);
+				// Source also joins each end ring, making the helix readable instead of dashed.
+				colorQuad(pose,out,lo,lon,
+						new Vec3(lon.x * 0.82, y0, lon.z * 0.82),
+						new Vec3(lo.x * 0.82, y0, lo.z * 0.82),c1);
 			}
 		}
 	}
 
-	private void renderFlare(TileEntityDataNode te, Tessellator v5) {
-		double d = te.getExtension1()+te.getExtension2();
-		d /= te.EXTENSION_LIMIT_1+te.EXTENSION_LIMIT_2;
-		float f = 0.125F+0.875F*(float)d;
-
-		renderFlare(v5, f, true);
+	private static Vec3 radial(double angle, double y) {
+		return new Vec3(0.25 * Math.cos(angle), y, 0.25 * Math.sin(angle));
 	}
 
-	public static void renderFlare(Tessellator v5, float colorFactor, boolean inWorld) {
-		ReikaTextureHelper.bindTerrainTexture();
-		double s = inWorld ? 3 : 32;
-		GL11.glPushMatrix();
-
-		GL11.glDepthMask(false);
-		//GL11.glDisable(GL11.GL_DEPTH_TEST);
-
-
-		IIcon ico = ChromaIcons.FLARE7.getIcon();
-		if (inWorld) {
-			GL11.glTranslated(0, 0.75, 0);
-			RenderManager rm = RenderManager.instance;
-			if (StructureRenderer.isRenderingTiles()) {
-				GL11.glRotated(-StructureRenderer.getRenderRY(), 0, 1, 0);
-				GL11.glRotated(-StructureRenderer.getRenderRX(), 1, 0, 0);
-			}
-			else {
-				GL11.glRotatef(-rm.playerViewY, 0.0F, 1.0F, 0.0F);
-				GL11.glRotatef(rm.playerViewX, 1.0F, 0.0F, 0.0F);
-			}
-		}
-		else {
-
-		}
-		//GL11.glRotated(-(System.currentTimeMillis()/20D)%360D, 0, 0, 1);
-		float u = ico.getMinU();
-		float v = ico.getMinV();
-		float du = ico.getMaxU();
-		float dv = ico.getMaxV();
-		v5.startDrawingQuads();
-		v5.setBrightness(240);
-
-		//f *= 0.5;
-
-		v5.setColorOpaque_I(ReikaColorAPI.getColorWithBrightnessMultiplier(0xb0e0ff, colorFactor));
-
-		double z = 0;//-0.5;
-
-		v5.addVertexWithUV(inWorld ? -s : 0, inWorld ? s : s*2, z, u, dv);
-		v5.addVertexWithUV(inWorld ? s : s*2, inWorld ? s : s*2, z, du, dv);
-		v5.addVertexWithUV(inWorld ? s : s*2, inWorld ? -s : 0, z, du, v);
-		v5.addVertexWithUV(inWorld ? -s : 0, inWorld ? -s : 0, z, u, v);
-		v5.draw();
-
-		GL11.glPopMatrix();
+	private static void colorQuad(PoseStack.Pose pose, VertexConsumer out,
+			Vec3 a, Vec3 b, Vec3 c, Vec3 d, int color) {
+		out.addVertex(pose,(float)a.x,(float)a.y,(float)a.z).setColor(color);
+		out.addVertex(pose,(float)b.x,(float)b.y,(float)b.z).setColor(color);
+		out.addVertex(pose,(float)c.x,(float)c.y,(float)c.z).setColor(color);
+		out.addVertex(pose,(float)d.x,(float)d.y,(float)d.z).setColor(color);
 	}
 
-	private void renderPrism(TileEntityDataNode te, Tessellator v5) {
-		double d = te.getExtension0()+te.getExtension1()+te.getExtension2();
-		d /= te.EXTENSION_LIMIT_0+te.EXTENSION_LIMIT_1+te.EXTENSION_LIMIT_2;
-		float f = 0.5F+0.5F*(float)d;
-		double h = te.isInWorld() ? 1.5 : 1;
-		double t = StructureRenderer.isRenderingTiles() ? System.currentTimeMillis()/50D : te.getTicksExisted();
-		double dy = te.isInWorld() ? 0.5+te.getExtension1()+te.getExtension2()+0.0625*Math.sin((t/8D)%(2*Math.PI)) : -0.5;
-		this.renderPrism(te.isInWorld() ? t*2 : System.currentTimeMillis()/20D, v5, f, h, dy, false);
+	private static void prism(PoseStack.Pose pose, VertexConsumer out, List<Vec3> ring,
+			double height, int bottom, int top) {
+		for (int i = 0; i < ring.size() - 1; i++) {
+			Vec3 a = ring.get(i), b = ring.get(i + 1);
+			quad(pose, out, a.x, 0, a.z, a.x, height, a.z,
+					b.x, height, b.z, b.x, 0, b.z, top, 49F / 64F, 94F / 96F, 1, 34F / 96F);
+			// Triangulated caps encoded as degenerate quads for the registered QUADS pipeline.
+			quad(pose, out, 0, 0, 0, a.x, 0, a.z, b.x, 0, b.z, 0, 0, 0, bottom, 0.78F, 0.31F, 0.98F, 0.18F);
+			quad(pose, out, 0, height, 0, b.x, height, b.z, a.x, height, a.z,
+					0, height, 0, top, 0.78F, 0.31F, 0.98F, 0.18F);
+		}
 	}
 
-	public static void renderPrism(double tick, Tessellator v5, float colorFactor, double h, double dy, boolean orangeglow) {
-		ReikaTextureHelper.bindTexture(ChromatiCraft.class, orangeglow ? "Textures/datanode_orange.png" : "Textures/datanode.png");
-
-		double s = 0.125*0.875;
-
-		int c1 = 0xa0e0ff;//orangeglow ? ReikaColorAPI.getModifiedHue(0xff0000, (int)(33+12*Math.sin(tick/24D))) : 0xa0e0ff; //orange 0xffb070
-		int c2 = 0xffffff;
-		if (orangeglow) {
-			c1 = 0xffffff;
-		}
-
-		c1 = ReikaColorAPI.getColorWithBrightnessMultiplier(c1, colorFactor);
-		c2 = ReikaColorAPI.getColorWithBrightnessMultiplier(c2, colorFactor);
-
-		GL11.glTranslated(0, dy, 0);
-
-		double r1 = 2*s*0.875;
-		double r2 = 2*s;
-
-		double[] da = {90, 15, 15};
-		double[] ra = {r1, r2, r1};
-		int i = 0;
-		double a0 = 45+(tick)%360;
-
-		double u = 50D/64;
-		double v = 17D/96;
-		double du = 63D/64;
-		double dv = 30D/96;
-		double uu = du-u;
-		double vv = dv-v;
-
-		double u1 = u+uu*0.5;
-		double v1 = v+vv*0.5;
-
-		ArrayList<DecimalPosition> li = new ArrayList();
-
-		for (double a = a0; a <= a0+360; a += da[i]) {
-			double r = ra[i];
-			double dx = r*Math.cos(Math.toRadians(a));
-			double dz = r*Math.sin(Math.toRadians(a));
-			li.add(new DecimalPosition(dx, 0, dz));
-			i = (i+1)%da.length;
-		}
-
-		GL11.glDisable(GL11.GL_TEXTURE_2D);
-		GL11.glShadeModel(GL11.GL_SMOOTH);
-
-		v5.startDrawing(GL11.GL_TRIANGLE_FAN);
-		v5.setColorOpaque_I(c1);
-		v5.addVertex(0, 0, 0);
-		v5.setColorOpaque_I(c2);
-		for (DecimalPosition p : li) {
-			v5.addVertex(p.xCoord, p.yCoord, p.zCoord);
-		}
-		v5.draw();
-
-		v5.startDrawing(GL11.GL_TRIANGLE_FAN);
-		v5.setColorOpaque_I(0xa0e0ff);
-		v5.addVertex(0, h, 0);
-		v5.setColorOpaque_I(0xffffff);
-		for (int idx = li.size()-1; idx >= 0; idx--) {
-			DecimalPosition p = li.get(idx);
-			v5.addVertex(p.xCoord, p.yCoord+h, p.zCoord);
-		}
-		v5.draw();
-
-		GL11.glEnable(GL11.GL_TEXTURE_2D);
-		GL11.glShadeModel(GL11.GL_FLAT);
-
-		v5.startDrawingQuads();
-		v5.setBrightness(240);
-		v5.setColorOpaque_I(c2);
-		for (int idx = 0; idx < li.size(); idx++) {
-			DecimalPosition p1 = li.get(idx);
-			DecimalPosition p2 = li.get((idx+1)%li.size());
-			u = idx%3 != 2 ? 63D/64 : 49D/64;
-			v = 34D/96;
-			du = 64D/64;
-			dv = 94D/96;
-
-			v5.addVertexWithUV(p1.xCoord, p1.yCoord, p1.zCoord, u, v);
-			v5.addVertexWithUV(p1.xCoord, p1.yCoord+h, p1.zCoord, u, dv);
-			v5.addVertexWithUV(p2.xCoord, p2.yCoord+h, p2.zCoord, du, dv);
-			v5.addVertexWithUV(p2.xCoord, p2.yCoord, p2.zCoord, du, v);
-		}
-		v5.draw();
+	private static void box(PoseStack.Pose pose, VertexConsumer out, double x0, double y0, double z0,
+			double x1, double y1, double z1, int color, int light) {
+		quadLit(pose, out, x0,y0,z0, x1,y0,z0, x1,y0,z1, x0,y0,z1, color,light, 0,-1,0);
+		quadLit(pose, out, x0,y1,z1, x1,y1,z1, x1,y1,z0, x0,y1,z0, color,light, 0,1,0);
+		quadLit(pose, out, x0,y0,z1, x1,y0,z1, x1,y1,z1, x0,y1,z1, color,light, 0,0,1);
+		quadLit(pose, out, x1,y0,z0, x0,y0,z0, x0,y1,z0, x1,y1,z0, color,light, 0,0,-1);
+		quadLit(pose, out, x0,y0,z0, x0,y0,z1, x0,y1,z1, x0,y1,z0, color,light, -1,0,0);
+		quadLit(pose, out, x1,y0,z1, x1,y0,z0, x1,y1,z0, x1,y1,z1, color,light, 1,0,0);
 	}
 
+	private static void frustum(PoseStack.Pose pose, VertexConsumer out,
+			double x0, double y0, double x1, double ix0, double iy, double ix1,
+			int color, int light, float u, float v) {
+		quadLit(pose,out,x0,y0,x0,x1,y0,x0,ix1,iy,ix0,ix0,iy,ix0,color,light,0,0,-1);
+		quadLit(pose,out,x1,y0,x1,x0,y0,x1,ix0,iy,ix1,ix1,iy,ix1,color,light,0,0,1);
+		quadLit(pose,out,x0,y0,x1,x0,y0,x0,ix0,iy,ix0,ix0,iy,ix1,color,light,-1,0,0);
+		quadLit(pose,out,x1,y0,x0,x1,y0,x1,ix1,iy,ix1,ix1,iy,ix0,color,light,1,0,0);
+	}
+
+	private static void squareRing(PoseStack.Pose pose, VertexConsumer out, double outer,
+			double inner, double bottom, double top, int color, int light) {
+		// Four top and bottom ring strips.
+		quadLit(pose,out,-outer,top,-outer, outer,top,-outer, inner,top,-inner,-inner,top,-inner,color,light,0,1,0);
+		quadLit(pose,out, outer,top,-outer, outer,top, outer, inner,top, inner, inner,top,-inner,color,light,0,1,0);
+		quadLit(pose,out, outer,top, outer,-outer,top, outer,-inner,top, inner, inner,top, inner,color,light,0,1,0);
+		quadLit(pose,out,-outer,top, outer,-outer,top,-outer,-inner,top,-inner,-inner,top, inner,color,light,0,1,0);
+		quadLit(pose,out,-inner,bottom,-inner, inner,bottom,-inner, outer,bottom,-outer,-outer,bottom,-outer,color,light,0,-1,0);
+		quadLit(pose,out, inner,bottom,-inner, inner,bottom, inner, outer,bottom, outer, outer,bottom,-outer,color,light,0,-1,0);
+		quadLit(pose,out, inner,bottom, inner,-inner,bottom, inner,-outer,bottom, outer, outer,bottom, outer,color,light,0,-1,0);
+		quadLit(pose,out,-inner,bottom, inner,-inner,bottom,-inner,-outer,bottom,-outer,-outer,bottom, outer,color,light,0,-1,0);
+		// Outer and inner sleeve walls; inner winding faces the cavity.
+		quadLit(pose,out,-outer,bottom,-outer, outer,bottom,-outer, outer,top,-outer,-outer,top,-outer,color,light,0,0,-1);
+		quadLit(pose,out, outer,bottom,-outer, outer,bottom, outer, outer,top, outer, outer,top,-outer,color,light,1,0,0);
+		quadLit(pose,out, outer,bottom, outer,-outer,bottom, outer,-outer,top, outer, outer,top, outer,color,light,0,0,1);
+		quadLit(pose,out,-outer,bottom, outer,-outer,bottom,-outer,-outer,top,-outer,-outer,top, outer,color,light,-1,0,0);
+		quadLit(pose,out, inner,bottom,-inner,-inner,bottom,-inner,-inner,top,-inner, inner,top,-inner,color,light,0,0,1);
+		quadLit(pose,out, inner,bottom, inner, inner,bottom,-inner, inner,top,-inner, inner,top, inner,color,light,-1,0,0);
+		quadLit(pose,out,-inner,bottom, inner, inner,bottom, inner, inner,top, inner,-inner,top, inner,color,light,0,0,-1);
+		quadLit(pose,out,-inner,bottom,-inner,-inner,bottom, inner,-inner,top, inner,-inner,top,-inner,color,light,1,0,0);
+	}
+
+	private static Vec3 rotate(double x, double y, double z, double sin, double cos) {
+		return new Vec3(x * cos - z * sin, y, x * sin + z * cos);
+	}
+
+	private static void pointQuad(PoseStack.Pose pose, VertexConsumer out, Vec3 a, Vec3 b, Vec3 c, Vec3 d,
+			int color, int light, float u0, float v0, float u1, float v1) {
+		quadLit(pose, out, a.x,a.y,a.z, b.x,b.y,b.z, c.x,c.y,c.z, d.x,d.y,d.z,
+				color, light, 0, 1, 0, u0,v0,u1,v1);
+	}
+
+	private static void quadLit(PoseStack.Pose pose, VertexConsumer out,
+			double ax,double ay,double az,double bx,double by,double bz,
+			double cx,double cy,double cz,double dx,double dy,double dz,
+			int color,int light,float nx,float ny,float nz) {
+		quadLit(pose,out,ax,ay,az,bx,by,bz,cx,cy,cz,dx,dy,dz,color,light,nx,ny,nz,0,1,1,0);
+	}
+
+	private static void quadLit(PoseStack.Pose pose, VertexConsumer out,
+			double ax,double ay,double az,double bx,double by,double bz,
+			double cx,double cy,double cz,double dx,double dy,double dz,
+			int color,int light,float nx,float ny,float nz,float u0,float v0,float u1,float v1) {
+		lit(out,pose,ax,ay,az,color,u0,v0,light,nx,ny,nz);
+		lit(out,pose,bx,by,bz,color,u1,v0,light,nx,ny,nz);
+		lit(out,pose,cx,cy,cz,color,u1,v1,light,nx,ny,nz);
+		lit(out,pose,dx,dy,dz,color,u0,v1,light,nx,ny,nz);
+	}
+
+	private static void lit(VertexConsumer out, PoseStack.Pose pose, double x,double y,double z,
+			int color,float u,float v,int light,float nx,float ny,float nz) {
+		out.addVertex(pose,(float)x,(float)y,(float)z).setColor(color).setUv(u,v)
+				.setOverlay(OverlayTexture.NO_OVERLAY).setLight(light).setNormal(pose,nx,ny,nz);
+	}
+
+	private static void quad(PoseStack.Pose pose, VertexConsumer out, double minX,double minY,
+			double maxX,double maxY,int color,float u0,float v0,float u1,float v1) {
+		quad(pose,out,minX,minY,0,maxX,minY,0,maxX,maxY,0,minX,maxY,0,color,u0,v0,u1,v1);
+	}
+
+	private static void quad(PoseStack.Pose pose, VertexConsumer out,
+			double ax,double ay,double az,double bx,double by,double bz,
+			double cx,double cy,double cz,double dx,double dy,double dz,
+			int color,float u0,float v0,float u1,float v1) {
+		out.addVertex(pose,(float)ax,(float)ay,(float)az).setUv(u0,v0).setColor(color);
+		out.addVertex(pose,(float)bx,(float)by,(float)bz).setUv(u1,v0).setColor(color);
+		out.addVertex(pose,(float)cx,(float)cy,(float)cz).setUv(u1,v1).setColor(color);
+		out.addVertex(pose,(float)dx,(float)dy,(float)dz).setUv(u0,v1).setColor(color);
+	}
+
+	private static double deployment(State state) {
+		return (state.extension0 + state.extension1 + state.extension2)
+				/ (TileEntityDataNode.EXTENSION_LIMIT_0 + TileEntityDataNode.EXTENSION_LIMIT_1
+						+ TileEntityDataNode.EXTENSION_LIMIT_2);
+	}
+
+	private static PoseStack copy(PoseStack source) {
+		PoseStack copy = new PoseStack();
+		copy.last().set(source.last());
+		return copy;
+	}
+
+	private static Identifier texture(String path) {
+		return Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "textures/" + path);
+	}
+
+	@Override
+	public int getViewDistance() {
+		return 256;
+	}
+
+	@Override
+	public net.minecraft.world.phys.AABB getRenderBoundingBox(TileEntityDataNode node) {
+		BlockPos pos = node.getBlockPos();
+		// Includes the deployed body, six rotating symbols/flare and the complete 128-block beam.
+		// The default one-block box caused the renderer to vanish as soon as its controller left the
+		// camera frustum even while the tower or beam remained plainly visible.
+		return new net.minecraft.world.phys.AABB(pos.getX() - 4, pos.getY() - 1, pos.getZ() - 4,
+				pos.getX() + 5, pos.getY() + 130, pos.getZ() + 5);
+	}
+
+	@Override
+	public boolean shouldRenderOffScreen() {
+		return true;
+	}
+
+	public static final class State extends BlockEntityRenderState {
+		private double extension0;
+		private double extension1;
+		private double extension2;
+		private double rotation;
+		private float tick;
+		private float scanProgress;
+		private int towerTexture = -1;
+		private boolean scanned;
+	}
 }

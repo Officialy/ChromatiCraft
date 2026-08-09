@@ -42,6 +42,7 @@ import reika.chromaticraft.block.dye26.BlockDyeLeaf;
 import reika.chromaticraft.block.dye26.BlockDyeSapling;
 import reika.chromaticraft.block.dye26.BlockRainbowLeaf;
 import reika.chromaticraft.block.dye26.BlockRainbowSapling;
+import reika.chromaticraft.block.decoration.BlockMetaAlloyLamp;
 import reika.chromaticraft.block.worldgen26.BlockCliffStone;
 import reika.chromaticraft.block.worldgen26.BlockGlowingLeaf;
 import reika.chromaticraft.block.worldgen26.BlockGlowDaisy;
@@ -126,6 +127,10 @@ public final class ChromaBlocks {
 					.sound(SoundType.GRASS).ignitedByLava()));
 	public static final DeferredBlock<BlockRainbowSapling> RAINBOW_SAPLING = register("rainbow_sapling",
 			() -> new BlockRainbowSapling(blockProperties().noCollision().randomTicks().instabreak().sound(SoundType.GRASS)));
+	public static final DeferredBlock<BlockMetaAlloyLamp> META_ALLOY_LAMP = register("meta_alloy_lamp",
+			() -> new BlockMetaAlloyLamp(blockProperties().strength(0.25F).randomTicks().noOcclusion()
+					.sound(SoundType.GRASS).lightLevel(state -> state.getValue(BlockMetaAlloyLamp.POD) ? 15 : 0)
+					.pushReaction(PushReaction.DESTROY)));
 
 	private static List<DeferredBlock<BlockDyeLeaf>> registerDyeLeaves() {
 		DeferredBlock<BlockDyeLeaf>[] blocks = new DeferredBlock[CrystalElement.elements.length];
@@ -398,6 +403,10 @@ public final class ChromaBlocks {
 					blockProperties().strength(2F, 8F).noOcclusion()));
 	public static final DeferredBlock<Block> CASTING_TABLE =
 			register("casting_table", () -> new BlockCastingTable(blockProperties().strength(4F, 16F).noOcclusion()));
+	public static final DeferredBlock<Block> DATA_NODE =
+			register("data_node", () -> new BlockChromaticTile(
+					blockProperties().strength(-1F, 3600000F).noOcclusion().lightLevel(s -> 12),
+					reika.chromaticraft.registry.ChromaTiles.DATANODE));
 
 	public static final DeferredBlock<Block> FOCUS_CRYSTAL =
 			register("focus_crystal", () -> new BlockChromaticTile(

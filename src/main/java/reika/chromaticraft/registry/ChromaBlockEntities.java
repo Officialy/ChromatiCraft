@@ -11,6 +11,7 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.tileentity.TileEntityDisplayPoint;
+import reika.chromaticraft.tileentity.TileEntityDataNode;
 import reika.chromaticraft.tileentity.auxiliary.TileEntityChromaCrystal;
 import reika.chromaticraft.block.BlockEncrustedCrystal.TileCrystalEncrusted;
 import reika.chromaticraft.block.BlockChromaFluid.TileEntityChroma;
@@ -61,6 +62,8 @@ public final class ChromaBlockEntities {
 			register("casting_table", ChromaTiles.TABLE);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityFocusCrystal>> FOCUS_CRYSTAL =
 			register("focus_crystal", ChromaTiles.FOCUSCRYSTAL);
+	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityDataNode>> DATA_NODE =
+			register("data_node", ChromaTiles.DATANODE);
 
 
 

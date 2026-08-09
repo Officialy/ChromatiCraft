@@ -1,0 +1,17 @@
+{
+  "multipart": [
+    {
+      "apply": {
+        "model": "chromaticraft:block/meta_alloy_leaves"
+      }
+    },
+    {
+      "apply": {
+        "model": "chromaticraft:block/meta_alloy_pod"
+      },
+      "when": {
+        "pod": "true"
+      }
+    }
+  ]
+}

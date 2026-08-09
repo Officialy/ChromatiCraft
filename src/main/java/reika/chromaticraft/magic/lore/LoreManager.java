@@ -1,254 +1,94 @@
-/*******************************************************************************
- * @author Reika Kalseki
- *
- * Copyright 2017
- *
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
- ******************************************************************************/
 package reika.chromaticraft.magic.lore;
 
-import java.util.Collection;
-import java.util.Collections;
+import java.util.ArrayList;
+import java.util.List;
 
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.nbt.NBTTagList;
-import net.minecraft.world.ChunkCoordIntPair;
-import net.minecraft.world.World;
-import net.minecraftforge.common.DimensionManager;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.player.Player;
 
-import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.auxiliary.render.ChromaOverlays;
-import reika.chromaticraft.magic.lore.keyassemblypuzzle.TileGroup;
-import reika.chromaticraft.magic.progression.ChromaResearchManager;
-import reika.chromaticraft.magic.progression.ProgressAccess;
-import reika.chromaticraft.registry.ChromaPackets;
-import reika.chromaticraft.registry.ChromaSounds;
-import reika.chromaticraft.tileentity.TileEntityDataNode;
-import reika.dragonapi.instantiable.data.immutable.Coordinate;
-import reika.dragonapi.instantiable.data.maps.MultiMap;
-import reika.dragonapi.instantiable.io.PacketTarget;
-import reika.dragonapi.libraries.reikanbthelper.NBTTypes;
 import reika.dragonapi.libraries.ReikaPlayerAPI;
-import reika.dragonapi.libraries.io.ReikaPacketHelper;
-import reika.dragonapi.libraries.io.ReikaSoundHelper;
-import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
+import reika.dragonapi.libraries.io.NBTCompat;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
-
-
-public class LoreManager implements ProgressAccess {
+/** Server-authoritative persistence and replay boundary for V33a's lore-key assembly. */
+public final class LoreManager {
 
 	public static final LoreManager instance = new LoreManager();
+	private static final String TAG = "loretowers";
+	private static final String MOVES = "puzzle_moves";
 
-	private static final String NBT_TAG = "loretowers";
+	private LoreManager() {}
 
-	private KeyAssemblyPuzzle puzzle;
-	private RosettaStone rosetta;
-
-	private final MultiMap<Towers, TileGroup> towerGroups = new MultiMap().setNullEmpty();
-
-	private LoreManager() {
-
-	}
-
-	public void triggerLore(EntityPlayer ep, Towers t) {
-		this.setPlayerScanned(ep, t, true);
-		if (ep instanceof EntityPlayerMP) {
-			ReikaPlayerAPI.syncCustomData((EntityPlayerMP)ep);
-			ReikaPacketHelper.sendDataPacket(ChromatiCraft.packetChannel, ChromaPackets.LORENOTE.ordinal(), (EntityPlayerMP)ep, t.ordinal());
-		}
-	}
-
-	@SideOnly(Side.CLIENT)
-	public void addLoreNote(EntityPlayer ep, Towers t) {
-		this.setPlayerScanned(ep, t, true);
-		ReikaSoundHelper.playClientSound(ChromaSounds.LOREHEX, ep, 1, 1, false);
-		ChromaOverlays.instance.addLoreNote(ep, t);
-	}
-
-	/** In block coords */
-	public Towers getTower(World world, int cx, int cz) {
-		this.initTowers(world);
-		return Towers.getTowerForChunk(cx, cz);
-	}
-
-	public void initTowers(World world) {
-		if (!Towers.initialized(world))
-			Towers.loadPositions(world, 64*16*2);
-	}
-
-	/** Block coords */
-	public Towers getNearestTower(World world, double x, double z) {
-		this.initTowers(world);
-		Towers ret = null;
-		double mind = Double.POSITIVE_INFINITY;
-		for (int i = 0; i < Towers.towerList.length; i++) {
-			Towers t = Towers.towerList[i];
-			ChunkCoordIntPair p = t.getRootPosition();
-			Coordinate p2 = t.getGeneratedLocation();
-			double d1 = ReikaMathLibrary.py3d(x-p.chunkXPos, 0, z-p.chunkZPos);
-			double d2 = p2 != null ? p2.getDistanceTo(x, p2.yCoord, z) : Double.POSITIVE_INFINITY;
-			double d = Math.min(d1, d2);
-			if (ret == null || d < mind) {
-				ret = t;
-				mind = d;
-			}
-		}
-		return ret;
-	}
-
-	public Towers getNearestActiveTower(World world, double x, double z, EntityPlayer ep) {
-		this.initTowers(world);
-		Towers ret = null;
-		double mind = Double.POSITIVE_INFINITY;
-		for (int i = 0; i < Towers.towerList.length; i++) {
-			Towers t = Towers.towerList[i];
-			ChunkCoordIntPair p = t.getRootPosition();
-			Coordinate p2 = t.getGeneratedLocation();
-			if (p2 != null) {
-				TileEntityDataNode te = (TileEntityDataNode)p2.getTileEntity(world);
-				if (te.hasBeenScanned(ep))
-					continue;
-			}
-			double d1 = ReikaMathLibrary.py3d(x-p.chunkXPos, 0, z-p.chunkZPos);
-			double d2 = p2 != null ? p2.getDistanceTo(x, p2.yCoord, z) : Double.POSITIVE_INFINITY;
-			double d = Math.min(d1, d2);
-			if (ret == null || d < mind) {
-				ret = t;
-				mind = d;
-			}
-		}
-		return ret;
-	}
-
-	public KeyAssemblyPuzzle getPuzzle(EntityPlayer ep) {
-		//this.initTowers(ep.worldObj);
-		if (puzzle != null && puzzle.isErrored())
-			puzzle = null;
-		if (puzzle == null || puzzle.getSeed() != KeyAssemblyPuzzle.calcSeed(ep))
-			puzzle = KeyAssemblyPuzzle.generatePuzzle(ep);
+	public KeyAssemblyPuzzle puzzle(Player player) {
+		if (!(player.level() instanceof net.minecraft.server.level.ServerLevel level))
+			throw new IllegalStateException("Lore puzzle authority is server-side");
+		long seed = KeyAssemblyPuzzle.calcSeed(level.getSeed(), player.getUUID());
+		KeyAssemblyPuzzle puzzle = KeyAssemblyPuzzle.generate(seed);
+		for (int packed : moves(player))
+			puzzle.move(unpackQ(packed), unpackR(packed), unpackS(packed));
 		return puzzle;
 	}
 
-	public void preparePuzzle(EntityPlayer ep) {
-		//this.initTowers(ep.worldObj);
-		if (towerGroups.isEmpty()) {
-			for (int i = 0; i < Towers.towerList.length; i++) {
-				Towers t = Towers.towerList[i];
-				this.getGroupsForTower(ep, t);
+	public PuzzleState state(Player player) {
+		KeyAssemblyPuzzle puzzle = puzzle(player);
+		return new PuzzleState(puzzle.seed(), KeyAssemblyPuzzle.scannedMask(player),
+				hasPlayerCompletedBoard(player), moves(player));
+	}
+
+	/** Validates against a replay of the authoritative seed before persisting the move. */
+	public PuzzleState move(ServerPlayer player, int q, int r, int s) {
+		if (hasPlayerCompletedBoard(player)) return state(player);
+		KeyAssemblyPuzzle puzzle = puzzle(player);
+		if (puzzle.move(q, r, s)) {
+			List<Integer> moves = new ArrayList<>(moves(player));
+			moves.add(pack(q, r, s));
+			int[] encoded = moves.stream().mapToInt(Integer::intValue).toArray();
+			tag(player).putIntArray(MOVES, encoded);
+			if (puzzle.isComplete()) setBoardCompletion(player, true);
+			try {
+				ReikaPlayerAPI.syncCustomData(player);
+			}
+			catch (Exception ignored) {
+				// GameTest mock players do not negotiate the custom-data channel.
 			}
 		}
+		return state(player);
 	}
 
-	public Collection<TileGroup> getGroupsForTower(EntityPlayer ep, Towers t) {
-		Collection<TileGroup> c = towerGroups.get(t);
-
-		if (c == null) {
-			KeyAssemblyPuzzle p = this.getPuzzle(ep);
-			c = p.getRandomGroupsForTower(t);
-			towerGroups.put(t, c);
-		}
-		return Collections.unmodifiableCollection(c);
+	public boolean hasPlayerCompletedBoard(Player player) {
+		return tag(player).getBooleanOr("complete", false);
 	}
 
-	public void setPlayerScanned(EntityPlayer ep, Towers t, boolean set) {
-		NBTTagCompound NBT = ChromaResearchManager.instance.getRootNBTTag(ep);
-		NBTTagCompound tag = NBT.getCompoundTag(NBT_TAG);
-		tag.setBoolean(t.name(), set);
-		NBT.setTag(NBT_TAG, tag);
-		if (ep instanceof EntityPlayerMP)
-			ReikaPlayerAPI.syncCustomData((EntityPlayerMP)ep);
+	public void setBoardCompletion(Player player, boolean complete) {
+		tag(player).putBoolean("complete", complete);
 	}
 
-	public boolean hasPlayerScanned(EntityPlayer ep, Towers t) {
-		NBTTagCompound NBT = ChromaResearchManager.instance.getRootNBTTag(ep);
-		NBTTagCompound tag = NBT.getCompoundTag(NBT_TAG);
-		return tag.getBoolean(t.name());
+	public void resetBoard(Player player) {
+		tag(player).remove(MOVES);
+		tag(player).putBoolean("complete", false);
 	}
 
-	public boolean hasScannedAllTowers(EntityPlayer ep) {
-		for (int i = 0; i < Towers.towerList.length; i++) {
-			Towers t = Towers.towerList[i];
-			if (!this.hasPlayerScanned(ep, t))
-				return false;
-		}
-		return true;
+	private static List<Integer> moves(Player player) {
+		int[] array = tag(player).getIntArray(MOVES).orElseGet(() -> new int[0]);
+		List<Integer> result = new ArrayList<>(array.length);
+		for (int value : array) result.add(value);
+		return List.copyOf(result);
 	}
 
-	public boolean hasPlayerCompletedBoard(EntityPlayer ep) {
-		NBTTagCompound NBT = ChromaResearchManager.instance.getRootNBTTag(ep);
-		NBTTagCompound tag = NBT.getCompoundTag(NBT_TAG);
-		return tag.getBoolean("complete");
+	private static CompoundTag tag(Player player) {
+		CompoundTag root = ReikaPlayerAPI.getDeathPersistentNBT(player);
+		CompoundTag lore = NBTCompat.getCompound(root, TAG);
+		root.put(TAG, lore);
+		return lore;
 	}
 
-	public void setBoardCompletion(EntityPlayer ep, boolean set) {
-		NBTTagCompound NBT = ChromaResearchManager.instance.getRootNBTTag(ep);
-		NBTTagCompound tag = NBT.getCompoundTag(NBT_TAG);
-		tag.setBoolean("complete", set);
-		NBT.setTag(NBT_TAG, tag);
-		if (ep instanceof EntityPlayerMP)
-			ReikaPlayerAPI.syncCustomData((EntityPlayerMP)ep);
+	private static int pack(int q, int r, int s) {
+		return (q + 8 & 15) << 8 | (r + 8 & 15) << 4 | s + 8 & 15;
 	}
 
-	public void completeBoard(EntityPlayer ep) {
-		this.setBoardCompletion(ep, true);
-		if (ep.worldObj.isRemote) {
-			ReikaSoundHelper.playClientSound(ChromaSounds.LORECOMPLETE, ep, 1, 1, false);
-			ReikaPacketHelper.sendDataPacket(ChromatiCraft.packetChannel, ChromaPackets.LOREPUZZLECOMPLETE.ordinal(), PacketTarget.server);
-		}
-		else {
-			ReikaPlayerAPI.syncCustomData((EntityPlayerMP)ep);
-		}
-	}
+	private static int unpackQ(int value) { return (value >> 8 & 15) - 8; }
+	private static int unpackR(int value) { return (value >> 4 & 15) - 8; }
+	private static int unpackS(int value) { return (value & 15) - 8; }
 
-	public RosettaStone getOrCreateRosetta(EntityPlayer ep) {
-		if (rosetta == null)
-			rosetta = new RosettaStone(ep);
-		return rosetta;
-	}
-
-	public void clearOnLogout() {
-		rosetta = null;
-		puzzle = null;
-		towerGroups.clear();
-	}
-
-	public void sendTowersToClient(EntityPlayerMP ep) {
-		this.initTowers(DimensionManager.getWorld(0));
-		NBTTagCompound data = new NBTTagCompound();
-		NBTTagList li = new NBTTagList();
-		for (Towers t : Towers.towerList) {
-			NBTTagCompound tag = new NBTTagCompound();
-			ChunkCoordIntPair p = t.getRootPosition();
-			tag.setInteger("x", ~p.chunkXPos); //very weak but nontrivial-if-manual encryption
-			tag.setInteger("z", ~p.chunkZPos);
-			tag.setInteger("idx", t.ordinal());
-			li.appendTag(tag);
-		}
-		data.setTag("list", li);
-		ReikaPacketHelper.sendNBTPacket(ChromatiCraft.packetChannel, ChromaPackets.TOWERLOC.ordinal(), data, new PacketTarget.PlayerTarget(ep));
-	}
-
-	@SideOnly(Side.CLIENT)
-	public void readTowersFromServer(NBTTagCompound data) {
-		NBTTagList li = data.getTagList("list", NBTTypes.COMPOUND.ordinal());
-		for (Object o : li.tagList) {
-			NBTTagCompound tag = (NBTTagCompound)o;
-			int x = ~tag.getInteger("x");
-			int z = ~tag.getInteger("z");
-			int idx = tag.getInteger("idx");
-			Towers.towerList[idx].setLocationFromServer(x, z);
-		}
-	}
-
-	@Override
-	public boolean playerHas(EntityPlayer ep) {
-		return this.hasPlayerCompletedBoard(ep);
-	}
-
+	public record PuzzleState(long seed, int scannedMask, boolean complete, List<Integer> moves) {}
 }

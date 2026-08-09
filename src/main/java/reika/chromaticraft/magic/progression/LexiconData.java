@@ -67,6 +67,12 @@ public record LexiconData(List<String> pages, boolean creative, int blanks, List
 		return new LexiconData(new ArrayList<>(ids), creative, blanks, notes);
 	}
 
+	public LexiconData withoutPage(String id) {
+		ArrayList<String> next = new ArrayList<>(pages);
+		next.remove(id);
+		return new LexiconData(next, creative, blanks, notes);
+	}
+
 	public LexiconData withCreative(boolean value) {
 		return new LexiconData(pages, value, blanks, notes);
 	}
@@ -80,6 +86,10 @@ public record LexiconData(List<String> pages, boolean creative, int blanks, List
 		ArrayList<String> next = new ArrayList<>(notes);
 		next.add(requireText(text, "note"));
 		return new LexiconData(pages, creative, blanks, next);
+	}
+
+	public LexiconData withNotes(Collection<String> values) {
+		return new LexiconData(pages, creative, blanks, List.copyOf(values));
 	}
 
 	public LexiconData withoutNotes() {

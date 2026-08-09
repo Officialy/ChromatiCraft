@@ -73,7 +73,11 @@ public class BlockTieredPlant extends Block {
 	}
 
 	public boolean isPlayerSufficientTier(Player player) {
-		return player != null && plant.stage().isPlayerAtStage(player);
+		// Creative is the modern inspection/building path. Treating a creative owner as insufficient
+		// made every tiered plant visible in inventory yet impossible to target after placement, which
+		// also prevented mapmakers from removing one. Survival players retain the exact progression
+		// gate and invisible/untargetable behavior.
+		return player != null && (player.isCreative() || plant.stage().isPlayerAtStage(player));
 	}
 
 	/**

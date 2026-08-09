@@ -110,6 +110,10 @@ public final class SkypeaterFeature extends Feature<NoneFeatureConfiguration> {
 			for (int dz = -SEPARATION; dz <= SEPARATION; dz += 4) {
 				for (int dy = -SEPARATION; dy <= SEPARATION; dy += 4) {
 					cursor.set(pos.getX() + dx, pos.getY() + dy, pos.getZ() + dz);
+					// FEATURES has a one-chunk write/read radius in 26.2. Asking WorldGenRegion for
+					// terrain two chunks away is explicitly unsafe and can terminate generation.
+					if (!world.ensureCanWrite(cursor))
+						continue;
 					if (world.getBlockState(cursor).is(ChromaBlocks.SKYPEATER.get()))
 						return true;
 				}

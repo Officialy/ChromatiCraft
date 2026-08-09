@@ -1,15 +1,20 @@
 package reika.chromaticraft.magic.lore;
 
 import java.util.EnumMap;
+import java.util.HashSet;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.tags.StructureTags;
 import net.minecraft.util.Mth;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
-import net.minecraft.world.level.Level;
+import net.minecraft.world.level.chunk.ChunkGeneratorStructureState;
+import net.minecraft.world.level.levelgen.structure.placement.StructurePlacement;
 
 import reika.dragonapi.DragonOptions;
 import reika.dragonapi.instantiable.math.hexgrid.HexGrid;
@@ -59,6 +64,9 @@ public enum Towers {
 	private static long lastWorldSeed;
 
 	private static final double TOWER_OFFSET_RADIUS = 2500;
+	/** Keep the lore monuments clear of even the outer pieces of a predicted vanilla village. */
+	private static final int VILLAGE_EXCLUSION_CHUNKS = 8;
+	private static final int VILLAGE_RELOCATION_SEARCH = 16;
 
 	Towers(String s, int idx, int x, int y, int z) {
 		character = s;
@@ -81,7 +89,7 @@ public enum Towers {
 	/** Radius is in chunks, and is the size of a hex in "chunks as pixels". */
 	// ServerLevel, not Level: only the server knows the seed in 26.2, which is precisely why V33a
 	// has setLocationFromServer for the client half.
-	public static void loadPositions(ServerLevel world, double radius) {
+	public static synchronized void loadPositions(ServerLevel world, double radius) {
 		towerChunkCache.clear();
 		towerCache.clear();
 
@@ -98,17 +106,74 @@ public enum Towers {
 		double dz = -TOWER_OFFSET_RADIUS + rand.nextDouble() * TOWER_OFFSET_RADIUS * 2
 				+ DragonOptions.WORLDCENTERZ.getValue();
 
+		Set<StructurePlacement> villagePlacements = getVillagePlacements(world);
 		for (Towers t : towerList) {
 			grid.addHex(t.hex.q, t.hex.r, t.hex.s);
 			Hex ref = grid.getHex(t.hex.q, t.hex.r, t.hex.s);
 			Point p = grid.getHexLocation(ref).rotate(a, 0, 0).translate(dx, dz);
 			int x = ReikaMathLibrary.roundToNearestX(16, (int)Math.round(p.x));
 			int y = ReikaMathLibrary.roundToNearestX(16, (int)Math.round(p.y));
+			ChunkPos clear = findVillageClearChunk(world, x >> 4, y >> 4, villagePlacements);
+			x = clear.x() << 4;
+			y = clear.z() << 4;
 			t.position = new ChunkPos(x, y);
 			towerChunkCache.put(t.position, t);
 		}
 
 		lastWorldSeed = world.getSeed();
+	}
+
+	/**
+	 * Village starts are determined entirely by their structure placements and the world seed. Query
+	 * those placements here, before terrain decoration, rather than loading or reading neighboring
+	 * chunks from a worldgen worker. This intentionally errs on the safe side when a predicted start
+	 * later rejects its biome: a lore tower being slightly nudged is preferable to cutting through a
+	 * village whose outer jigsaw pieces extend well beyond its start chunk.
+	 */
+	private static Set<StructurePlacement> getVillagePlacements(ServerLevel world) {
+		if (!world.structureManager().shouldGenerateStructures())
+			return Set.of();
+		ChunkGeneratorStructureState state = world.getChunkSource().getGeneratorState();
+		Set<StructurePlacement> placements = new HashSet<>();
+		world.registryAccess().lookupOrThrow(Registries.STRUCTURE).listElements()
+				.filter(holder -> holder.is(StructureTags.VILLAGE))
+				.forEach(holder -> placements.addAll(state.getPlacementsForStructure(holder)));
+		return Set.copyOf(placements);
+	}
+
+	private static ChunkPos findVillageClearChunk(ServerLevel world, int baseX, int baseZ,
+			Set<StructurePlacement> placements) {
+		if (placements.isEmpty())
+			return new ChunkPos(baseX, baseZ);
+		ChunkGeneratorStructureState state = world.getChunkSource().getGeneratorState();
+		for (int radius = 0; radius <= VILLAGE_RELOCATION_SEARCH; radius++) {
+			for (int dz = -radius; dz <= radius; dz++) {
+				for (int dx = -radius; dx <= radius; dx++) {
+					if (Math.max(Math.abs(dx), Math.abs(dz)) != radius)
+						continue;
+					int x = baseX + dx;
+					int z = baseZ + dz;
+					if (isVillageClear(state, x, z, placements))
+						return new ChunkPos(x, z);
+				}
+			}
+		}
+		// Vanilla village spacing makes this practically unreachable. Retain the authoritative tower
+		// instead of deleting a required puzzle node if a datapack supplies pathological placements.
+		return new ChunkPos(baseX, baseZ);
+	}
+
+	private static boolean isVillageClear(ChunkGeneratorStructureState state, int towerX, int towerZ,
+			Set<StructurePlacement> placements) {
+		for (StructurePlacement placement : placements) {
+			for (int dz = -VILLAGE_EXCLUSION_CHUNKS; dz <= VILLAGE_EXCLUSION_CHUNKS; dz++) {
+				for (int dx = -VILLAGE_EXCLUSION_CHUNKS; dx <= VILLAGE_EXCLUSION_CHUNKS; dx++) {
+					if (placement.isStructureChunk(state, towerX + dx, towerZ + dz))
+						return false;
+				}
+			}
+		}
+		return true;
 	}
 
 	/** In block coords. */

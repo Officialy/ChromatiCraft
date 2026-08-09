@@ -18,6 +18,7 @@ import net.neoforged.neoforge.registries.DeferredBlock;
 import reika.chromaticraft.tileentity.auxiliary.TileEntityChromaCrystal;
 
 import reika.chromaticraft.tileentity.TileEntityDisplayPoint;
+import reika.chromaticraft.tileentity.TileEntityDataNode;
 import reika.chromaticraft.tileentity.networking.TileEntityCompoundRepeater;
 import reika.chromaticraft.tileentity.networking.TileEntityPylonLink;
 import reika.chromaticraft.tileentity.networking.TileEntityCreativeSource;
@@ -47,7 +48,8 @@ public enum ChromaTiles implements TileEnum {
 	CRYSTAL("chroma.chromacrystal", ChromaBlocks.POWER_CRYSTAL, TileEntityChromaCrystal.class),
 	STAND("chroma.itemstand", ChromaBlocks.ITEM_STAND, TileEntityItemStand.class),
 	TABLE("chroma.castingtable", ChromaBlocks.CASTING_TABLE, TileEntityCastingTable.class),
-	FOCUSCRYSTAL("chroma.focuscrystal", ChromaBlocks.FOCUS_CRYSTAL, TileEntityFocusCrystal.class);
+	FOCUSCRYSTAL("chroma.focuscrystal", ChromaBlocks.FOCUS_CRYSTAL, TileEntityFocusCrystal.class),
+	DATANODE("chroma.datanode", ChromaBlocks.DATA_NODE, TileEntityDataNode.class);
 
 	private final String nameKey;
 	private final DeferredBlock<Block> block;

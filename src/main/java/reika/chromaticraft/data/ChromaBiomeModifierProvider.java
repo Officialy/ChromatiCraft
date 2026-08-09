@@ -20,7 +20,8 @@ import reika.chromaticraft.registry.ChromaTieredPlants;
 public final class ChromaBiomeModifierProvider implements DataProvider {
 
     private static final String CAVE_CRYSTAL = id("cave_crystal").toString();
-    private static final String PYLON = id("pylon").toString();
+    private static final String NATURAL_PYLON = id("natural_pylon").toString();
+    private static final String DATA_TOWER = id("data_tower").toString();
     private final PackOutput.PathProvider pathProvider;
 
     public ChromaBiomeModifierProvider(PackOutput output) {
@@ -74,7 +75,9 @@ public final class ChromaBiomeModifierProvider implements DataProvider {
                 List.of(id("cave_indicator").toString()),
                 GenerationStep.Decoration.UNDERGROUND_DECORATION));
         futures.add(save(cache, "pylon_overworld", "#minecraft:is_overworld",
-                PYLON, GenerationStep.Decoration.TOP_LAYER_MODIFICATION));
+                NATURAL_PYLON, GenerationStep.Decoration.TOP_LAYER_MODIFICATION));
+        futures.add(save(cache, "data_tower_overworld", "#minecraft:is_overworld",
+                DATA_TOWER, GenerationStep.Decoration.TOP_LAYER_MODIFICATION));
         // V33a TieredWorldGenerator was a RetroactiveGenerator, so plants were sited against a fully
         // populated chunk: Element Bulbs looks for leaves, which only exist once trees have run.
         // VEGETAL_DECORATION is where the trees themselves are, and ordering within a step is not

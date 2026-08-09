@@ -215,15 +215,17 @@ required by `EnhancedRuneRecipe` and every `crystal_group` recipe.
 ## 4. Guide book — the big one
 
 Without it there is no in-game explanation of any of the above; a player has to already know the
-structure layouts. ~8,000 lines, a subsystem in its own right. Suggested slicing:
+structure layouts. ~8,000 lines, a subsystem in its own right. Current slicing:
 
-- [ ] extract the V33a XML resources (`info.xml`, `machines.xml`, `progression.xml`, …) out of
-      `ChromatiCraft 1.7.10 V33a.jar` into `src/main/resources` — they are **not** in the tree
-- [ ] `ChromaResearch` (1.9k lines) — the entry registry everything else indexes
-- [ ] `ChromaBookData` / `ChromaHelpData` — the XML loaders
-- [ ] `ItemChromaBook` + NBT page storage, then the `gui/book/` family (4.7k lines, 19 GUIs)
-- [ ] its grid recipe is already written out verbatim as a `CHROMA-PORT` comment in
-      `ChromaRecipeProvider`
+- [x] recover and load the shipped V33a XML resources without replacement prose
+- [x] preserve the complete 322-entry `ChromaResearch` identity/order/tier catalog
+- [x] register the Chromic Lexicon and Information Fragment, including the exact book recipe,
+      research ownership, fragment decoding, recovery and stored-page transfer
+- [x] port the navigation, description, progress, recovery and notebook screens
+- [x] port the casting-table specialist pages with server-authoritative grid/rune/stand/aura data
+- [ ] finish specialist machine, tool, ability and structure pages and complete modern icon bindings
+- [ ] port the Memory Crystal inscription/entity/rendering pages and the later lore puzzle/Rosetta
+      presentation
 
 ## 5. Carried over — owner decisions outstanding
 
@@ -422,3 +424,140 @@ The first four are reachable now. The last is not, and no amount of ordering cha
 node's whole purpose is to be a lore terminal, so a version of it without the research layer would be
 the hollow substitute the rules forbid. DataTower should therefore land with, or after, the guide
 book rather than as the tail of the worldgen sweep.
+## Guide book → DATANODE active chain — 2026-08-08
+
+- **Implemented:** complete 322-entry V33a catalog and XML loader; Chromic Lexicon and Information
+  Fragment item/research loop; authoritative casting pages; specialist machine/tool/ability/structure
+  presentations; all 77 original ability illustrations; canonical NBT DATANODE and dummy hitboxes;
+  fixed-tower generation and loot; complete Data Node deploy/scan/cooldown/reward loop and BER/FX;
+  delayed tower notes; Meta-Alloy ecology; Tunnel Nuker population; Memory Crystal inscription,
+  custom entity and renderer; deterministic server-authoritative key assembly; Rosetta decode; and
+  death-persistent lore presentation.
+- **Focused verification:** `compileJava` and `runClientData` pass. The four new contracts
+  `meta_alloy_ecology_contract`, `tunnel_nuker_entity_contract`,
+  `memory_crystal_inscription_loop`, and `lore_key_puzzle_contract` pass individually. Older focused
+  DATANODE, scan, fragment, catalog and casting contracts remain the established checkpoint and were
+  intentionally not rerun wholesale.
+- **Acceptance gate:** inspect the eight-part slice in a real client for exact rendering, audio,
+  particle choreography, interaction feel and natural population rates. Headless tests cannot prove
+  those properties.
+- **After acceptance:** fix only observed parity defects, then continue the guide-bound gameplay
+  catalog. As original structures are ported, create real modern NBT templates and replace their
+  compact guide footprint with an NBT-driven three-dimensional preview. Do not invent previews or
+  runtime geometry for structures that have not crossed that boundary.
+
+## 2026-08-09 acceptance queue
+
+- [ ] In an Overworld, run `/locate chromaticraft:data_tower`, teleport/travel to the returned X/Z,
+  and confirm the corresponding generated tower exists. Keep `/place feature chromaticraft:data_tower`
+  as an exact-root diagnostic; failure away from a seeded root is intentional.
+- [ ] In creative, target and break Aura Bloom and the other tiered plants; place Elemental Stones
+  and Firestone and confirm they persist. In a fresh insufficient survival player, confirm the
+  progression concealment/removal behavior is unchanged.
+- [ ] Inspect Elemental Stones, Firestone and Energized Rock both in inventory and in world: no
+  checkerboard, correct host underlay, and the original animated/emissive overlay when unlocked.
+- [ ] Inspect one cave crystal, lamp crystal and potion/super crystal in inventory, GUI, dropped-item
+  and first-/third-person contexts. Confirm colour, translucency, spike geometry and stone base where
+  applicable, with no atlas/model errors in the client log.
+- [ ] Grow/generate several dye trees and small rainbow trees. Each individual trunk must use one log
+  species, neighboring trees may vary, and the rainbow foliage must form the V33a diamond crown/top
+  cross rather than vanilla blob foliage. The giant 2x2 rainbow tree remains a later NBT-template task.
+- [ ] Inspect all four GeoStrata luminous-crystal block identities and verify blue, green, orange and
+  purple world tinting instead of white.
+- [ ] Aim the Elemental Manipulator at each visible Data Node body/hitbox cell. Confirm every cell
+  relays to the controller and the mouseover operation ring advances continuously through the
+  120-tick activation rather than remaining pending.
+- [ ] Inspect both deploying Data Node tower rows and the square inner sleeve from every side and
+  below. Inspect the twisting sky cage near the node, at medium distance and beyond 150 blocks;
+  keep part of the model/beam visible while looking away from the controller and confirm it is not
+  culled with the block entity.
+- [ ] Confirm cave, lamp and potion/super-crystal blocks use exact model-shaped hover lines with
+  vanilla colour and width, including Minecraft's high-contrast outline mode. Recheck those three
+  item families on an Item Stand as well as the item contexts listed above.
+- [ ] Run `/locate chromaticraft:data_tower`, click its green coordinate component and verify it
+  inserts the safe teleport command. Run `/locate chromaticraft:data_tower all`; verify all thirteen
+  puzzle-order names/symbols have unique, individually clickable coordinates.
+- [ ] Open an incomplete Memory Crystal key puzzle and verify the world is visible behind the board;
+  complete/Rosetta presentation must retain its authored background.
+- [ ] Compare hand, diamond-pickaxe and netherite-pickaxe break speeds on ordinary and several
+  variant Crystalline Stone blocks. Spot-check crystals, runes, shielding, cliff soils/leaves and
+  the loot chest against their generated vanilla tool tags.
+- [ ] In a new world or with previously unexplored tower chunks, use the `all` locate command and
+  inspect any roots near forests or predicted villages. Towers should have a clean 9x9 vegetation
+  envelope and should remain outside the village/jigsaw exclusion area. Existing generated towers
+  are intentionally not rewritten in-place.
+- [ ] Generate new Luminous Cliffs terrain containing Skypeaters and confirm there are no further
+  `unsafe terrain read` reports or null-level `setNodeType` crashes during FEATURES generation.
+- [ ] Reopen the solved Memory Crystal puzzle at multiple GUI scales/aspect ratios. The authored
+  `all-back.png` composition must appear once across the page, with no repeated 256px seams.
+- [ ] Run several explicit colour commands, including `/place feature chromaticraft:pylon_black`,
+  `/place feature chromaticraft:pylon_light_blue`, and `/place feature chromaticraft:pylon_white`;
+  each resulting pylon must have exactly the requested element. The removed generic
+  `chromaticraft:pylon` identity should not autocomplete. Confirm naturally generated pylons still
+  vary in colour through `chromaticraft:natural_pylon` worldgen.
+## Chromic Lexicon in-world acceptance — shared navigation pass (2026-08-09)
+
+- [ ] Reopen the lexicon after changing section and scrolling; verify it returns to that location.
+- [ ] Verify all seven parents: Introduction, Constructs, Other Blocks, Tools, Resources, Abilities,
+      and Structures; locked/missing fragments must remain absent.
+- [ ] Check entry icons and tier-color bars at several progression levels.
+- [ ] Use A/D and Left/Right to change sections/entries; use W/S, Up/Down, and the wheel to page.
+- [ ] Search with the button and `/`, edit with Backspace, finish with Enter, and cancel capture with
+      Escape. A search must include matching pages from every section without exposing locked pages.
+- [ ] Select a known castable entry in Recipes mode and verify it opens the authoritative casting
+      recipe after the server response; Items mode must open its description. In recipe view verify
+      A/D or the wheel changes recipes and W/S changes Grid/Runes/Stands/Aura pages.
+- [ ] Open a long XML-backed entry and verify all description/notes pages are readable and neither
+      overlap the controls nor truncate.
+- [ ] Open Pylon, Casting tiers 1–3, Repeater, Compound Repeater, Pylon Broadcast, and Data Tower
+      structure pages. Verify each reports its canonical `chromaticraft` NBT identifier, correct
+      dimensions, and real placed-block layout rather than a synthetic footprint.
+- [ ] In 3D view, verify A/D yaw, W/S pitch, wheel zoom, continuous left-drag rotation, right-click
+      reset, clipping, depth order, and block-name hover tooltips. In 2D view, verify A/D rotates by
+      90 degrees and W/S, wheel, and +/- traverse every Y layer without leaving the valid range.
+- [ ] Verify casting previews show the table and tier-appropriate item stands, pylon previews show
+      their controller, and the Data Tower preview shows the complete vertical Data Node relay
+      column rather than dropping its block-only auxiliary cells.
+- [ ] Open a Structures entry whose NBT conversion has not landed. It must clearly report that the
+      template is unavailable and must not invent a replacement layout.
+- [ ] Follow-up: add canonical NBT templates for the remaining V33a structure-guide entries, then
+      evaluate rendering full world block/BER models in-screen instead of scaled block-item models.
+- [ ] Follow-up: complete the editable Notebook controls and packet/data-component persistence,
+      plus full V33a progress-tree and fragment-recovery presentations.
+## Guide Notebook/Progress in-world acceptance (2026-08-09)
+
+- [ ] Notes: add more than ten rows, scroll both directions, edit old and new rows, Save, close and
+      reopen the same held lexicon; verify exact nonblank content persists.
+- [ ] Notes: switch directly from Notes to Guide without pressing Save, reopen Notes, and verify the
+      dirty rows were saved automatically.
+- [ ] Notes: use Clear and save; verify pages/fragments and creative state were not altered.
+- [ ] Progress/Levels: verify all ten tiers appear and current/reached coloring matches the player.
+- [ ] Progress/Stages: page with W/S and the wheel, open an achieved and an unachieved stage, and
+      verify the achieved page uses reveal prose while the unachieved page uses hint prose.
+- [ ] Progress/Tree: verify prerequisite names and green/available/locked coloring against known
+      early chains such as CRYSTALS → CASTING and PYLON + CRYSTALS → CHARGE.
+- [ ] Progress: verify A/D and Left/Right cycle Tree, Levels, and Stages.
+- [ ] Put a physically stored page into a lexicon without granting its player research (command or
+      data editing), confirm the red question overlay, refusal to open, and paired error sound.
+- [ ] Follow-up: replace the compact Progress Tree with the exact free-panning V33a topology,
+      connection line types, icons, hover cards, and research-tier grouping frames.
+
+### Chromic Lexicon parity — next steps after the scrolling pass — 2026-08-09
+
+Done: all 28 Handbook textures extracted, `LexiconScrollPane` (V33a `GuiScrollingPage`) with
+frame-rate-normalised held-key panning and the `navbcg` scrolling backdrop, wheel and keys sharing one
+offset.
+
+Still missing, in dependency order:
+
+1. **Spatial navigation sheet.** V33a lays every section out across one pannable sheet; the port
+   still shows a vertical list, so horizontal panning has nothing to reach. This gates the original
+   image-button layout, hover animations and locked-entry treatment.
+2. **Specialist page renderers**, now unblocked on art: machines, tools, craftable blocks/resources,
+   abilities, rituals, adjacency cores, crafting, casting, alloying, pack changes, structures. Each
+   has its own `handbook_*.png` background and its own `Gui*` source to compare against.
+3. **NBT-template-backed structure previews** with layers and mouse-drag rotation.
+4. **Progress Tree / Progress By Level / Progress Stages** presentations (`progress.png` is now
+   available).
+5. **Editable Notebook** with server-authoritative data-component persistence (`notes.png` available).
+6. Search fading, hover tooltips and the original button sounds.

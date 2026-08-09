@@ -10,6 +10,8 @@ import reika.chromaticraft.registry.ChromaSounds;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.render.particle.ChromaParticle;
 import reika.chromaticraft.tileentity.networking.TileEntityCrystalRepeater;
+import reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe;
+import reika.chromaticraft.client.gui.ScreenChromicLexicon;
 
 /**
  * The bodies of ChromatiCraft's clientbound payload handlers.
@@ -76,5 +78,52 @@ public final class ClientPayloadHandlers {
 		Minecraft mc = Minecraft.getInstance();
 		if (mc.level != null)
 			ChromaParticle.spawnPylonCrystalBreak(mc.level, source, colour, new Random());
+	}
+
+	public static void guideCastingRecipes(String itemId, java.util.List<CastingTableRecipe> recipes) {
+		if (Minecraft.getInstance().gui.screen() instanceof ScreenChromicLexicon lexicon)
+			lexicon.acceptCastingRecipes(itemId, recipes);
+	}
+
+	public static void dataNodeScan(BlockPos source) {
+		Minecraft mc = Minecraft.getInstance();
+		if (mc.level != null)
+			ChromaParticle.spawnDataNodeScan(mc.level, source);
+	}
+
+	public static void towerLocations(int[] coordinates) {
+		var towers = reika.chromaticraft.magic.lore.Towers.towerList;
+		if (coordinates.length != towers.length * 2) return;
+		for (int i = 0; i < towers.length; i++)
+			towers[i].setLocationFromServer(coordinates[i * 2], coordinates[i * 2 + 1]);
+	}
+
+	public static void loreNote(int towerOrdinal, long seed, int scannedMask) {
+		Minecraft mc = Minecraft.getInstance();
+		var towers = reika.chromaticraft.magic.lore.Towers.towerList;
+		if (mc.player == null || towerOrdinal < 0 || towerOrdinal >= towers.length) return;
+		var tower = towers[towerOrdinal];
+		reika.chromaticraft.client.LoreDiscoveryOverlay.trigger(tower, seed, scannedMask);
+		mc.player.sendOverlayMessage(net.minecraft.network.chat.Component.translatable(
+				"chromaticraft.lore.tower_note", tower.character));
+		if (mc.level != null)
+			mc.level.playLocalSound(mc.player, ChromaSounds.LOREHEX.getSoundEvent(),
+					ChromaSounds.LOREHEX.getCategory(), 1, 1);
+	}
+
+	public static void inscription(BlockPos source, int recipe) {
+		Minecraft mc = Minecraft.getInstance();
+		if (mc.level != null)
+			ChromaParticle.spawnInscription(mc.level, source, mc.level.getRandom());
+	}
+
+	public static void openLorePuzzle(long seed, int scannedMask, boolean complete, int[] moves) {
+		Minecraft mc = Minecraft.getInstance();
+		if (mc.player == null) return;
+		if (mc.gui.screen() instanceof reika.chromaticraft.client.gui.ScreenLoreKeyAssembly screen)
+			screen.acceptState(seed, scannedMask, complete, moves);
+		else
+			mc.gui.setScreen(new reika.chromaticraft.client.gui.ScreenLoreKeyAssembly(
+					seed, scannedMask, complete, moves));
 	}
 }

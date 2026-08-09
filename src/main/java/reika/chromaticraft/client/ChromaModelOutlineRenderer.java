@@ -26,7 +26,7 @@ import net.neoforged.neoforge.client.event.ExtractBlockOutlineRenderStateEvent;
 import org.joml.Vector3f;
 import org.joml.Vector3fc;
 
-import reika.chromaticraft.block.crystal.BlockCaveCrystal;
+import reika.chromaticraft.base.CrystalBlock;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.render.tesr.RenderItemStand;
 
@@ -39,31 +39,29 @@ public final class ChromaModelOutlineRenderer implements CustomBlockOutlineRende
 
     private final BlockPos pos;
     private final List<Line> lines;
-    private final int crystalColor;
 
-    private ChromaModelOutlineRenderer(BlockPos pos, List<Line> lines, int crystalColor) {
+    private ChromaModelOutlineRenderer(BlockPos pos, List<Line> lines) {
         this.pos = pos;
         this.lines = lines;
-        this.crystalColor = crystalColor;
     }
 
     public static void extract(ExtractBlockOutlineRenderStateEvent event) {
         List<Line> lines;
-        int crystalColor = 0;
-        if (event.getBlockState().getBlock() instanceof BlockCaveCrystal crystal) {
-            lines = caveCrystalLines(event);
-            crystalColor = 0xFF000000 | crystal.getCrystalElement().getColor();
+        if (event.getBlockState().getBlock() instanceof CrystalBlock) {
+            // Cave, potion/super and lamp crystals all use the same Java-authored spike mesh.
+            // Extracting the baked model keeps the outline exact for each family's base/arm rules.
+            lines = modelLines(event);
         } else if (event.getBlockState().is(ChromaBlocks.ITEM_STAND.get())) {
             lines = itemStandLines();
         } else {
             return;
         }
         if (!lines.isEmpty())
-            event.addCustomRenderer(new ChromaModelOutlineRenderer(
-                    event.getBlockPos(), lines, crystalColor));
+            event.addCustomRenderer(new ChromaModelOutlineRenderer(event.getBlockPos(), lines));
     }
 
-    private static List<Line> caveCrystalLines(ExtractBlockOutlineRenderStateEvent event) {
+    /** Reusable Java/baked-model-to-outline bridge for non-voxel ChromatiCraft models. */
+    private static List<Line> modelLines(ExtractBlockOutlineRenderStateEvent event) {
         BlockStateModel model = Minecraft.getInstance().getModelManager()
                 .getBlockStateModelSet().get(event.getBlockState());
         List<BlockStateModelPart> parts = new ArrayList<>(1);
@@ -109,8 +107,8 @@ public final class ChromaModelOutlineRenderer implements CustomBlockOutlineRende
         if (renderState.highContrast())
             submit(collector, poseStack, levelRenderState, RenderTypes.secondaryBlockOutline(),
                     0xFF000000, 7F);
-        int mainColor = crystalColor != 0 ? crystalColor
-                : renderState.highContrast() ? HIGH_CONTRAST_COLOR : NORMAL_COLOR;
+        // Match vanilla exactly: its translucent black and the window-selected normal line width.
+        int mainColor = renderState.highContrast() ? HIGH_CONTRAST_COLOR : NORMAL_COLOR;
         submit(collector, poseStack, levelRenderState, RenderTypes.lines(), mainColor, normalWidth);
         return true;
     }

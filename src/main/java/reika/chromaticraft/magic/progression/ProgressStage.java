@@ -18,13 +18,11 @@ import reika.dragonapi.ModList;
  * obtained and used). Each stage's logic delegates to {@link ProgressionManager} (which holds the
  * prerequisite DAG + per-player achieved-stage storage).
  *
- * <p><b>Port note (deferred):</b> the 1.7.10 original also carried a per-stage display {@code ItemStack}
- * icon and handbook title/description/render methods (implementing {@code ChromaResearchManager}'s
- * {@code ProgressElement}). All of that is the handbook UI, which references unported content — it is
- * dropped here and re-added when the research/handbook system ports. The cross-mod-gated stages keep
- * their {@code ModList} condition (so {@link #active} is correct), even though their triggers are
- * unported. Also deferred: {@code isPlayerAtStage(Level, UUID)} (fake-player backup) and
- * {@code isGating(ResearchLevel)} (research-tier display).
+ * <p>The modern handbook reads the original authored title, hint, reveal, and description through
+ * {@link ProgressionDescriptions}. Per-stage display icons and V33a's full free-panning graphical
+ * topology remain to be bound as their content registries land. Cross-mod-gated stages keep their
+ * {@code ModList} condition so {@link #active} remains exact. Also deferred is the old
+ * {@code isPlayerAtStage(Level, UUID)} fake-player backup overload.
  */
 public enum ProgressStage implements ProgressAccess {
 
@@ -143,6 +141,20 @@ public enum ProgressStage implements ProgressAccess {
 
 	public boolean isGatedAfter(ProgressStage p) {
 		return ProgressionManager.instance.getRecursiveParents(this).contains(new ProgressionManager.ProgressLink(p));
+	}
+
+	/** Exact V33a non-gating thresholds used when deciding whether a research tier is complete. */
+	public boolean isGating(ResearchLevel level) {
+		ResearchLevel nonGatingUntil = switch (this) {
+			case DIE, VOIDMONSTERDIE, TOWER, ARTEFACT, PYLONLINK, BALLLIGHTNING,
+					BREAKSPAWNER, HIVE, STRUCTCHEAT, WARPNODE, NODE, MYST, MUDHINT -> ResearchLevel.CTM;
+			case FINDSPAWNER -> ResearchLevel.PYLONCRAFT;
+			case LUMA, GLOWCLIFFS -> ResearchLevel.ENDGAME;
+			case NETHER -> ResearchLevel.RUNECRAFT;
+			case END -> ResearchLevel.MULTICRAFT;
+			default -> null;
+		};
+		return nonGatingUntil == null || level.isAtLeast(nonGatingUntil);
 	}
 
 	public boolean giveToPlayer(Player ep, boolean notify) {

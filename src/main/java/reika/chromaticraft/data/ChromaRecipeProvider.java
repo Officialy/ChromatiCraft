@@ -80,10 +80,21 @@ public final class ChromaRecipeProvider extends RecipeProvider.Runner {
 					.unlockedBy("has_shard", has(ChromaItemTags.CRYSTAL_SHARDS))
 					.save(out, key("manipulator"));
 
-			// CHROMA-PORT: V33a also crafts the guide book (ChromaItems.HELP, "Chromic Lexicon") here:
-			//   "abc", "gBg", "def" with 'B' book, 'g' glowstone dust, and a/b/c/d/e/f the black,
-			//   blue, green, yellow, red and white shards. ItemChromaBook is not ported -- it needs
-			//   ChromaResearch, the gui/book family and the XML help-data pipeline first.
+			// V33a ChromaRecipes line 69, with metadata shards mapped to their separate 26.2 items.
+			shaped(RecipeCategory.MISC, ChromaItems.LEXICON.get())
+					.define('B', Items.BOOK)
+					.define('g', Items.GLOWSTONE_DUST)
+					.define('a', ChromaItems.SHARDS.get(CrystalElement.BLACK).get())
+					.define('b', ChromaItems.SHARDS.get(CrystalElement.BLUE).get())
+					.define('c', ChromaItems.SHARDS.get(CrystalElement.GREEN).get())
+					.define('d', ChromaItems.SHARDS.get(CrystalElement.YELLOW).get())
+					.define('e', ChromaItems.SHARDS.get(CrystalElement.RED).get())
+					.define('f', ChromaItems.SHARDS.get(CrystalElement.WHITE).get())
+					.pattern("abc")
+					.pattern("gBg")
+					.pattern("def")
+					.unlockedBy("has_shard", has(ChromaItemTags.CRYSTAL_SHARDS))
+					.save(out, key("chromic_lexicon"));
 		}
 
 		/**

@@ -92,7 +92,7 @@ public class BlockTieredOre extends Block {
 	}
 
 	public boolean isPlayerSufficientTier(Player player) {
-		return player != null && stage.isPlayerAtStage(player);
+		return player != null && (player.isCreative() || stage.isPlayerAtStage(player));
 	}
 
 	/**

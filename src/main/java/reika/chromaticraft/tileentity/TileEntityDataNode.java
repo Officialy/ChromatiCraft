@@ -1,116 +1,78 @@
-/*******************************************************************************
- * @author Reika Kalseki
- *
- * Copyright 2017
- *
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
- ******************************************************************************/
 package reika.chromaticraft.tileentity;
 
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 
-import net.minecraft.block.Block;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.particle.EntityFX;
-import net.minecraft.entity.item.EntityItem;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.init.Blocks;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.nbt.NBTTagList;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.AxisAlignedBB;
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.StringTag;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.phys.AABB;
 
-import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.auxiliary.interfaces.OperationInterval;
-import reika.chromaticraft.base.tileentity.TileEntityChromaticBase;
+import reika.chromaticraft.entity.EntityDataCrystal;
 import reika.chromaticraft.block.decoration.BlockMetaAlloyLamp;
-import reika.chromaticraft.entity.EntityTunnelNuker;
-import reika.chromaticraft.magic.lore.LoreManager;
+import reika.chromaticraft.base.tileentity.TileEntityChromaticBase;
 import reika.chromaticraft.magic.lore.Towers;
 import reika.chromaticraft.magic.progression.ProgressStage;
-import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaIcons;
+import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.ChromaItems;
-import reika.chromaticraft.registry.ChromaPackets;
+import reika.chromaticraft.registry.ChromaBlocks;
+import reika.chromaticraft.registry.ChromaEntityTypes;
 import reika.chromaticraft.registry.ChromaSounds;
-import reika.chromaticraft.registry.ChromaStructures;
 import reika.chromaticraft.registry.ChromaTiles;
-import reika.chromaticraft.render.particle.EntityCCBlurFX;
-import reika.chromaticraft.render.particle.EntityCCFloatingSeedsFX;
-import reika.dragonapi.DragonAPICore;
-import reika.dragonapi.ModList;
-import reika.dragonapi.auxiliary.trackers.KeyWatcher;
-import reika.dragonapi.auxiliary.trackers.keywatcher.Key;
-import reika.dragonapi.instantiable.data.blockstruct.FilledBlockArray;
-import reika.dragonapi.instantiable.data.immutable.Coordinate;
-import reika.dragonapi.instantiable.data.maps.ProximityMap;
-import reika.dragonapi.instantiable.effects.EntityFloatingSeedsFX;
-import reika.dragonapi.instantiable.rendering.StructureRenderer;
-import reika.dragonapi.instantiable.rendering.structurerenderer.StructureRenderingParticleSpawner;
-import reika.dragonapi.libraries.ReikaAABBHelper;
-import reika.dragonapi.libraries.ReikaNBTHelper;
-import reika.dragonapi.libraries.reikanbthelper.NBTTypes;
-import reika.dragonapi.libraries.io.ReikaPacketHelper;
-import reika.dragonapi.libraries.io.ReikaSoundHelper;
-import reika.dragonapi.libraries.java.ReikaObfuscationHelper;
-import reika.dragonapi.libraries.java.ReikaRandomHelper;
-import reika.dragonapi.libraries.mathsci.ReikaPhysicsHelper;
+import reika.chromaticraft.render.particle.ChromaParticle;
+import reika.chromaticraft.network.ChromaNetwork;
 import reika.dragonapi.libraries.registry.ReikaItemHelper;
-import reika.dragonapi.libraries.world.ReikaBlockHelper;
-import reika.dragonapi.libraries.world.ReikaWorldHelper;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
+/**
+ * The V33a lore-tower data node. Its three-stage deployment, scan timing, cooldown, per-player
+ * completion set, tower identity, sounds, and data-crystal reward are all server authoritative.
+ * The surrounding monument is the canonical {@code worldgen/data_node.nbt} template.
+ */
+public final class TileEntityDataNode extends TileEntityChromaticBase implements OperationInterval {
 
-
-public class TileEntityDataNode extends TileEntityChromaticBase implements OperationInterval, StructureRenderingParticleSpawner {
+	private static final int EXTENSION_TIME_0 = 24;
+	private static final int EXTENSION_TIME_1 = 50;
+	private static final int EXTENSION_TIME_2 = 36;
+	public static final double EXTENSION_LIMIT_0 = 0.75;
+	public static final double EXTENSION_LIMIT_1 = 1.375;
+	public static final double EXTENSION_LIMIT_2 = 1.125;
+	private static final double EXTENSION_SPEED_0 = EXTENSION_LIMIT_0 / EXTENSION_TIME_0;
+	private static final double EXTENSION_SPEED_1 = EXTENSION_LIMIT_1 / EXTENSION_TIME_1;
+	private static final double EXTENSION_SPEED_2 = EXTENSION_LIMIT_2 / EXTENSION_TIME_2;
+	private static final int SCAN_TIME = 120;
+	private static final int SCAN_COOLDOWN = 240;
 
 	private double extension0;
 	private double extension1;
 	private double extension2;
-
-	private double lastLowerHeight;
-	private double lastUpperHeight;
-
-	//private static final double EXTENSION_SPEED = 0.03125;
-	private static final int EXTENSION_TIME_0 = 24;
-	private static final int EXTENSION_TIME_1 = 50;
-	private static final int EXTENSION_TIME_2 = 36;
-
-	public static final double EXTENSION_LIMIT_0 = 0.75;//1.75;
-	public static final double EXTENSION_LIMIT_1 = 1.375;//2.5;
-	public static final double EXTENSION_LIMIT_2 = 1.125;//1.25;
-
-	private static final double EXTENSION_SPEED_0 = EXTENSION_LIMIT_0/EXTENSION_TIME_0;
-	private static final double EXTENSION_SPEED_1 = EXTENSION_LIMIT_1/EXTENSION_TIME_1;
-	private static final double EXTENSION_SPEED_2 = EXTENSION_LIMIT_2/EXTENSION_TIME_2;
-
 	private double rotation;
 	private double rotationSpeed;
-
-	private static final int SCAN_TIME = 120;
-	private static final int SCAN_COOLDOWN = 240;
-
 	private int scanTick;
 	private int scanSustain;
 	private int scanCooldown;
-
-	private static final int PROGRESS_DELAY_LENGTH = 50;
-
-	private EntityPlayer progressPlayer;
-	private int progressDelay;
-
+	private int loreDelay;
+	private UUID lorePlayer;
 	private Towers tower;
-	private final HashSet<String> scannedPlayers = new HashSet(); //not uuid since written to NBT
-	private final ProximityMap metaAlloyPlants = new ProximityMap(64, 1);
-
+	private final Set<UUID> scannedPlayers = new HashSet<>();
+	private final Set<BlockPos> metaAlloyPlants = new HashSet<>();
 	private int plantRand = 800;
+
+	public TileEntityDataNode(BlockPos pos, BlockState state) {
+		super(ChromaBlockEntities.DATA_NODE.get(), pos, state);
+	}
 
 	@Override
 	public ChromaTiles getTile() {
@@ -118,391 +80,233 @@ public class TileEntityDataNode extends TileEntityChromaticBase implements Opera
 	}
 
 	@Override
-	public void updateEntity(World world, int x, int y, int z, int meta) {
+	protected boolean shouldDoInitialFullSync() {
+		return false;
+	}
+
+	@Override
+	protected boolean shouldSendSyncPackets() {
+		// DATANODE uses vanilla BE update packets for tower/scan state and a dedicated payload for
+		// completion FX. Keeping DragonAPI's legacy delta channel active duplicates that data and
+		// cannot target headless or clients which did not negotiate the legacy payload.
+		return false;
+	}
+
+	@Override
+	public void updateEntity(Level world, BlockPos pos) {
 		this.setUnmineable(true);
-		EntityPlayer ep = world.getClosestPlayer(x+0.5, y+0.5, z+0.5, 16);
-		lastLowerHeight = extension0+extension1;
-		lastUpperHeight = extension2;
-		if (ep != null || (ReikaObfuscationHelper.isDeObfEnvironment() && KeyWatcher.instance.isKeyDown(world.getPlayerEntityByName("Reika"), Key.LCTRL))) {
-			if (extension0 < EXTENSION_LIMIT_0) {
-				extension0 = Math.min(extension0+EXTENSION_SPEED_0, EXTENSION_LIMIT_0);
-			}
-			else if (extension1 < EXTENSION_LIMIT_1) {
-				extension1 = Math.min(extension1+EXTENSION_SPEED_1, EXTENSION_LIMIT_1);
-			}
-			else {
-				extension2 = Math.min(extension2+EXTENSION_SPEED_2, EXTENSION_LIMIT_2);
-			}
-		}
-		else {
-			if (extension1 == 0) {
-				extension0 = Math.max(extension0-EXTENSION_SPEED_0, 0);
-			}
-			else if (extension2 == 0) {
-				extension1 = Math.max(extension1-EXTENSION_SPEED_1, 0);
-			}
-			else {
-				extension2 = Math.max(extension2-EXTENSION_SPEED_2, 0);
-			}
-		}
+		Player nearby = world.getNearestPlayer(pos.getX() + 0.5, pos.getY() + 0.5,
+				pos.getZ() + 0.5, 16, false);
+		double oldLower = extension0 + extension1;
+		double oldUpper = extension2;
+		if (nearby != null)
+			extend();
+		else
+			retract();
 
-		if (extension0 > 0 && !world.isRemote) {
-			List<ChromaSounds> snd = new ArrayList();
-			if (extension0+extension1 > lastLowerHeight || extension2 > lastUpperHeight) {
-				if (this.getTicksExisted()%5 == 0 || lastLowerHeight <= 0)
-					snd.add(ChromaSounds.TOWEREXTEND1);
-			}
-			if (extension1 >= EXTENSION_LIMIT_1) {
-				if (lastLowerHeight < EXTENSION_LIMIT_0+EXTENSION_LIMIT_1) {
-					snd.add(ChromaSounds.TOWEREXTEND2);
-				}
-			}
-			if (extension2 == EXTENSION_LIMIT_2) {
-				if (this.getTicksExisted()%50 == 0 || lastUpperHeight < EXTENSION_LIMIT_2)
-					snd.add(ChromaSounds.TOWERAMBIENT);
-			}
-
-			//ReikaJavaLibrary.pConsole(snd, !snd.isEmpty());
-			for (ChromaSounds s : snd) {
-				s.playSoundAtBlock(world, x, y+3, z, 2, 1);
-				List<EntityPlayer> li = world.getEntitiesWithinAABB(EntityPlayer.class, ReikaAABBHelper.getBlockAABB(this).expand(30, 18, 30));
-				for (EntityPlayer ep2 : li) {
-					float f = (float)Math.max(0.4, 2-ep2.getDistance(x+0.5, y+2.5, z+0.5)/15D);
-					s.playSound(ep2, f, 1);
-				}
-			}
-		}
-
-		if (world.isRemote) {
-			this.doParticles(world, x, y, z);
-		}
-		else {
-			if (tower != null)
-				tower.generatedAt(x, y, z);
-		}
+		if (!world.isClientSide() && extension0 > 0)
+			playExtensionSounds(world, pos, oldLower, oldUpper);
+		if (!world.isClientSide() && tower != null)
+			tower.generatedAt(pos.getX(), pos.getY(), pos.getZ());
+		if (world.isClientSide())
+			ChromaParticle.spawnDataNodeAmbient(world, pos, this.canBeAccessed(), tower, world.getRandom());
 
 		if (scanSustain > 0) {
 			scanSustain--;
 			scanTick++;
 		}
 		else if (scanTick > 0) {
-			scanTick = Math.max(0, scanTick-8);
+			scanTick = Math.max(0, scanTick - 8);
 		}
-
-		if (scanTick > 0) {
-			float f = 0.5F+1.5F*this.getScanProgress();
-			ChromaSounds.KILLAURA_CHARGE.playSoundAtBlock(this, 1, f);
-		}
-
-		if (scanCooldown > 0) {
+		if (scanTick > 0)
+			ChromaSounds.KILLAURA_CHARGE.playSoundAtBlock(this, 1, 0.5F + 1.5F * this.getScanProgress());
+		if (scanCooldown > 0)
 			scanCooldown--;
+		if (!world.isClientSide() && loreDelay > 0 && --loreDelay == 0 && tower != null
+				&& lorePlayer != null && world.getServer() != null) {
+			ServerPlayer player = world.getServer().getPlayerList().getPlayer(lorePlayer);
+			if (player != null)
+				reika.chromaticraft.magic.lore.LoreTowerProgress.trigger(player, tower);
+			lorePlayer = null;
 		}
+		if (!world.isClientSide() && tower != null && world instanceof ServerLevel server)
+			this.tickTowerEcology(server);
+	}
 
-		if (progressDelay > 0) {
-			progressDelay--;
-			if (progressDelay == 0 && tower != null) {
-				LoreManager.instance.triggerLore(progressPlayer, tower);
+	private void tickTowerEcology(ServerLevel world) {
+		if (world.getRandom().nextInt(plantRand) == 0) {
+			if (this.spawnMetaAlloy(world)) {
+				plantRand = 800;
+			}
+			else {
+				plantRand = Math.max(300, plantRand - 50);
+				metaAlloyPlants.removeIf(pos -> !world.getBlockState(pos).is(ChromaBlocks.META_ALLOY_LAMP.get()));
 			}
 		}
-
-		if (tower != null && !world.isRemote) {
-			if (world.getBlock(x, y+1, z) != ChromaBlocks.DUMMYAUX.getBlockInstance() || world.getBlock(x, y-1, z) != ChromaBlocks.STRUCTSHIELD.getBlockInstance()) {
-				FilledBlockArray arr = ChromaStructures.DATANODE.getArray(world, x, y-1, z);
-				arr.remove(x, y, z);
-				arr.place();
-			}
-			if (rand.nextInt(plantRand) == 0) {
-				if (this.spawnMetaAlloy(world, x, y, z)) {
-					plantRand = 800; //reset random rate;
-				}
-				else {
-					plantRand = Math.max(300, plantRand-50);
-					for (Coordinate c : metaAlloyPlants.getLocations()) { //verify all flowers
-						if (c.getBlock(world) != ChromaBlocks.METAALLOYLAMP.getBlockInstance()) {
-							metaAlloyPlants.remove(c);
-						}
-					}
-				}
-			}
-			if (rand.nextInt(300) == 0) {
-				AxisAlignedBB box = ReikaAABBHelper.getBlockAABB(this);
-				box = box.expand(192, 64, 192);
-				List<EntityTunnelNuker> li = world.getEntitiesWithinAABB(EntityTunnelNuker.class, box);
-				if (li.size() < 8) {
-					if (ReikaWorldHelper.isRadiusLoaded(world, x, z, 6)) {
-						EntityTunnelNuker e = new EntityTunnelNuker(worldObj);
-						int dx = ReikaRandomHelper.getRandomPlusMinus(x, 128);
-						int dz = ReikaRandomHelper.getRandomPlusMinus(z, 128);
-						int dy = world.getTopSolidOrLiquidBlock(dx, dz)+3+rand.nextInt(12);
-						e.setLocationAndAngles(dx+rand.nextDouble(), dy, dz+rand.nextDouble(), rand.nextFloat()*360, 0);
-						world.spawnEntityInWorld(e);
-					}
+		if (world.getRandom().nextInt(300) == 0) {
+			AABB range = new AABB(worldPosition).inflate(192, 64, 192);
+			int count = world.getEntitiesOfClass(reika.chromaticraft.entity.EntityTunnelNuker.class, range).size();
+			if (count < 8 && world.hasChunk(worldPosition.getX() >> 4, worldPosition.getZ() >> 4)) {
+				int x = worldPosition.getX() + world.getRandom().nextIntBetweenInclusive(-128, 128);
+				int z = worldPosition.getZ() + world.getRandom().nextIntBetweenInclusive(-128, 128);
+				int y = world.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z)
+						+ 3 + world.getRandom().nextInt(12);
+				var entity = ChromaEntityTypes.TUNNEL_NUKER.get().create(world, EntitySpawnReason.EVENT);
+				if (entity != null) {
+					entity.snapTo(x + world.getRandom().nextDouble(), y, z + world.getRandom().nextDouble(),
+							world.getRandom().nextFloat() * 360, 0);
+					world.addFreshEntity(entity);
 				}
 			}
 		}
 	}
 
-	@Override
-	public void tickFX() {
-		//this.doParticles(worldObj, xCoord, yCoord, zCoord);
-	}
-
-	private boolean spawnMetaAlloy(World world, int x, int y, int z) {
-		int dx = ReikaRandomHelper.getRandomPlusMinus(x, 256);
-		int dz = ReikaRandomHelper.getRandomPlusMinus(z, 256);
-		int dy = world.getTopSolidOrLiquidBlock(x, z)+1;
-		Block b = world.getBlock(dx, dy, dz);
-		while (dy >= 0 && (b.isAir(world, dx, dy, dz) || ReikaBlockHelper.isLeaf(world, dx, dy, dz)) || ReikaBlockHelper.isWood(world, dx, dy, dz)) {
-			dy--;
-			b = world.getBlock(dx, dy, dz);
+	private boolean spawnMetaAlloy(ServerLevel world) {
+		int x = worldPosition.getX() + world.getRandom().nextIntBetweenInclusive(-256, 256);
+		int z = worldPosition.getZ() + world.getRandom().nextIntBetweenInclusive(-256, 256);
+		int y = world.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z) - 1;
+		BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos(x, y, z);
+		while (cursor.getY() > world.getMinY()) {
+			BlockState state = world.getBlockState(cursor);
+			if (!(state.isAir() || state.is(net.minecraft.tags.BlockTags.LEAVES)
+					|| state.is(net.minecraft.tags.BlockTags.LOGS))) break;
+			cursor.move(net.minecraft.core.Direction.DOWN);
 		}
-		if (b == Blocks.grass && world.getBlock(dx, dy+1, dz).isAir(world, dx, dy, dz)) {
-			if (metaAlloyPlants.add(new Coordinate(dx, dy+1, dz))) {
-				world.setBlock(dx, dy+1, dz, ChromaBlocks.METAALLOYLAMP.getBlockInstance());
-				//ReikaJavaLibrary.spamConsole(dx+":"+dz);
-				return true;
-			}
+		BlockPos plant = cursor.above();
+		if (!world.getBlockState(cursor).is(Blocks.GRASS_BLOCK) || !world.getBlockState(plant).isAir()) return false;
+		for (BlockPos other : metaAlloyPlants)
+			if (other.distSqr(plant) < 64 * 64) return false;
+		BlockState state = ChromaBlocks.META_ALLOY_LAMP.get().defaultBlockState()
+				.setValue(BlockMetaAlloyLamp.FACING, net.minecraft.core.Direction.DOWN);
+		if (!state.canSurvive(world, plant)) return false;
+		if (world.setBlock(plant, state, 3)) {
+			metaAlloyPlants.add(plant.immutable());
+			this.setChanged();
+			return true;
 		}
 		return false;
 	}
 
-	@SideOnly(Side.CLIENT)
-	private void doParticles(World world, int x, int y, int z) {
-		if (this.canBeAccessed()) {
-			double px = ReikaRandomHelper.getRandomPlusMinus(x+0.5, 4);
-			double pz = ReikaRandomHelper.getRandomPlusMinus(z+0.5, 4);
-			double py = ReikaRandomHelper.getRandomBetween(y+3.5, y+5);
-			EntityFX fx = new EntityCCBlurFX(world, px, py, pz).setIcon(ChromaIcons.FADE_RAY).setColor(0xa0e0ff).setLife(30).setScale(0.5F);
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-		}
-
-		if (this.canBeAccessed() && rand.nextInt(5) == 0/* && !this.hasBeenScanned(Minecraft.getMinecraft().thePlayer)*/) {
-			if (tower != null) {
-				if (tower == Towers.ALPHA) {
-					int idx = 1+((this.getTicksExisted()/120)%(Towers.towerList.length-1));
-					this.sendParticlesToTower(world, x, y, z, Towers.towerList[idx]);
-				}
-				else {
-					this.sendParticlesToTower(world, x, y, z, tower.getNeighbor1());
-					this.sendParticlesToTower(world, x, y, z, tower.getNeighbor2());
-				}
+	public static void removeMetaAlloy(Level world, BlockPos pos) {
+		if (!(world instanceof ServerLevel server)) return;
+		for (Towers tower : Towers.towerList) {
+			BlockPos nodePos = tower.getGeneratedLocation();
+			if (nodePos != null && server.hasChunkAt(nodePos)
+					&& server.getBlockEntity(nodePos) instanceof TileEntityDataNode node
+					&& node.metaAlloyPlants.remove(pos)) {
+				node.setChanged();
+				node.syncAllData(true);
 			}
 		}
 	}
 
-	@SideOnly(Side.CLIENT)
-	private void sendParticlesToTower(World world, int x, int y, int z, Towers t) {
-		if (t == null || t.getRootPosition() == null) //sync not yet received
+	private void extend() {
+		if (extension0 < EXTENSION_LIMIT_0)
+			extension0 = Math.min(extension0 + EXTENSION_SPEED_0, EXTENSION_LIMIT_0);
+		else if (extension1 < EXTENSION_LIMIT_1)
+			extension1 = Math.min(extension1 + EXTENSION_SPEED_1, EXTENSION_LIMIT_1);
+		else
+			extension2 = Math.min(extension2 + EXTENSION_SPEED_2, EXTENSION_LIMIT_2);
+	}
+
+	private void retract() {
+		if (extension1 == 0)
+			extension0 = Math.max(extension0 - EXTENSION_SPEED_0, 0);
+		else if (extension2 == 0)
+			extension1 = Math.max(extension1 - EXTENSION_SPEED_1, 0);
+		else
+			extension2 = Math.max(extension2 - EXTENSION_SPEED_2, 0);
+	}
+
+	private void playExtensionSounds(Level world, BlockPos pos, double oldLower, double oldUpper) {
+		if (extension0 + extension1 > oldLower || extension2 > oldUpper) {
+			if (this.getTicksExisted() % 5 == 0 || oldLower <= 0)
+				ChromaSounds.TOWEREXTEND1.playSound(world, pos.above(3), 2, 1);
+		}
+		if (extension1 >= EXTENSION_LIMIT_1 && oldLower < EXTENSION_LIMIT_0 + EXTENSION_LIMIT_1)
+			ChromaSounds.TOWEREXTEND2.playSound(world, pos.above(3), 2, 1);
+		if (extension2 == EXTENSION_LIMIT_2 && (this.getTicksExisted() % 50 == 0 || oldUpper < EXTENSION_LIMIT_2))
+			ChromaSounds.TOWERAMBIENT.playSound(world, pos.above(3), 2, 1);
+	}
+
+	@Override
+	protected void animateWithTick(Level world, BlockPos pos) {
+		rotationSpeed = extension2 == EXTENSION_LIMIT_2 ? 1.5
+				: extension1 == EXTENSION_LIMIT_1 ? 1
+				: extension0 == EXTENSION_LIMIT_0 ? 0.5 : 0;
+		rotation += rotationSpeed;
+	}
+
+	public void scan(Player player) {
+		if (scanCooldown > 0 || !this.canBeAccessed() || this.hasBeenScanned(player))
 			return;
+		scanSustain = 4;
+		if (!level.isClientSide()) {
+			this.setChanged();
+			// The status overlay only needs the vanilla block-entity update packet. DragonAPI's broad
+			// legacy sync channel is intentionally unavailable to headless/fallback connections and is
+			// excessive for a four-byte progress update.
+			BlockState state = this.getBlockState();
+			level.sendBlockUpdated(worldPosition, state, state, Block.UPDATE_CLIENTS);
+		}
+		if (scanTick >= SCAN_TIME - 1 && level instanceof ServerLevel server && player instanceof ServerPlayer)
+			completeScan(server, player);
+	}
 
-		double px = ReikaRandomHelper.getRandomPlusMinus(x+0.5, 1);
-		double pz = ReikaRandomHelper.getRandomPlusMinus(z+0.5, 1);
-		double py = ReikaRandomHelper.getRandomBetween(y+3.5, y+5);
+	private void completeScan(ServerLevel world, Player player) {
+		scanTick = 0;
+		scanSustain = 0;
+		scanCooldown = SCAN_COOLDOWN;
+		scannedPlayers.add(player.getUUID());
+		loreDelay = 50;
+		lorePlayer = player.getUUID();
+		ProgressStage.TOWER.stepPlayerTo(player);
 
-		double dx = t.getRootPosition().chunkXPos-tower.getRootPosition().chunkXPos;
-		double dz = t.getRootPosition().chunkZPos-tower.getRootPosition().chunkZPos;
-		double a = -ReikaPhysicsHelper.cartesianToPolar(dx, 0, dz)[2]-90;
-		float s = rand.nextFloat()+0.25F;
-		EntityFloatingSeedsFX fx = new EntityCCFloatingSeedsFX(world, px, py, pz, a, 0, ChromaIcons.FADE);
-		fx.freedom *= 0.5;
-		fx.setColor(0xa0e0ff).setLife(120).setScale(s);
-		Minecraft.getMinecraft().effectRenderer.addEffect(fx);
+		ItemStack crystal = new ItemStack(ChromaItems.DATA_CRYSTAL.get());
+		CompoundTag data = new CompoundTag();
+		data.putString("owner", player.getUUID().toString());
+		ReikaItemHelper.setStackTag(crystal, data);
+		// Spawn the crystal's persistent V33a entity directly. Relying on Item's custom-entity
+		// replacement leaves a one-tick gap in which the ordinary ItemEntity is discarded, which
+		// makes the scan reward observable late and is unnecessary when this is the creation site.
+		EntityDataCrystal drop = new EntityDataCrystal(world, worldPosition.getX() + 0.5,
+				worldPosition.getY() + 5, worldPosition.getZ() + 0.5, crystal);
+		drop.setDeltaMovement(drop.getDeltaMovement().x(),
+				Math.max(drop.getDeltaMovement().y(), 0.75), drop.getDeltaMovement().z());
+		world.addFreshEntity(drop);
+		ChromaNetwork.sendDataNodeScan(world, worldPosition);
+		this.setChanged();
+		BlockState state = this.getBlockState();
+		world.sendBlockUpdated(worldPosition, state, state, Block.UPDATE_CLIENTS);
 	}
 
 	public double getRotation() {
 		return rotation;
 	}
 
-	@Override
-	protected void animateWithTick(World world, int x, int y, int z) {
-		if (extension2 == EXTENSION_LIMIT_2) {
-			rotationSpeed = 1.5;
-		}
-		else if (extension1 == EXTENSION_LIMIT_1) {
-			rotationSpeed = 1;
-		}
-		else if (extension0 == EXTENSION_LIMIT_0) {
-			rotationSpeed = 0.5;
-		}
-		else {
-			rotationSpeed = 0;
-		}
-
-		rotation += rotationSpeed;
-	}
-
 	public double getExtension0() {
-		return StructureRenderer.isRenderingTiles() ? EXTENSION_LIMIT_0 : extension0;
+		return extension0;
 	}
 
 	public double getExtension1() {
-		return StructureRenderer.isRenderingTiles() ? EXTENSION_LIMIT_1 : extension1;
+		return extension1;
 	}
 
 	public double getExtension2() {
-		return StructureRenderer.isRenderingTiles() ? EXTENSION_LIMIT_2 : extension2;
+		return extension2;
 	}
 
 	public boolean canBeAccessed() {
 		return extension2 >= EXTENSION_LIMIT_2;
 	}
 
-	public void scan(EntityPlayer ep) {
-		if (DragonAPICore.isReikasComputer() && ReikaObfuscationHelper.isDeObfEnvironment() && KeyWatcher.instance.isKeyDown(ep, Key.LCTRL)) {
-			scannedPlayers.clear();
-			scanCooldown = 0;
-		}
-
-		if (scanCooldown > 0)
-			return;
-		if (!this.canBeAccessed())
-			return;
-		if (this.hasBeenScanned(ep))
-			return;
-
-		scanTick++;
-		scanSustain = 4;
-
-		if (scanTick >= SCAN_TIME && !worldObj.isRemote) {
-			this.doScan(ep);
-		}
+	public boolean hasBeenScanned(Player player) {
+		return scannedPlayers.contains(player.getUUID());
 	}
 
-	public float getScanProgress() {
-		return (float)scanTick/SCAN_TIME;
-	}
-
-	private void doScan(EntityPlayer ep) {
-		scanTick = 0;
-		scanSustain = 0;
-		scanCooldown = SCAN_COOLDOWN;
-		progressDelay = PROGRESS_DELAY_LENGTH;
-		progressPlayer = ep;
-		ProgressStage.TOWER.stepPlayerTo(ep);
-		scannedPlayers.add(ep.getUniqueID().toString());
-		ReikaPacketHelper.sendDataPacketWithRadius(ChromatiCraft.packetChannel, ChromaPackets.DATASCAN.ordinal(), this, 128);
-		ItemStack is = ChromaItems.DATACRYSTAL.getStackOf();
-		is.stackTagCompound = new NBTTagCompound();
-		is.stackTagCompound.setString("owner", ep.getUniqueID().toString());
-		EntityItem ei = ReikaItemHelper.dropItem(worldObj, xCoord+0.5, yCoord+5, zCoord+0.5, is, 3);
-		ei.motionY = Math.max(ei.motionY, 0.75);
-		ei.velocityChanged = true;
-		scannedPlayers.add(ep.getUniqueID().toString());
-		this.syncAllData(true);
-	}
-
-	@SideOnly(Side.CLIENT)
-	public static void doScanFX(World world, int x, int y, int z) {
-		//ReikaSoundHelper.playClientSound(ChromaSounds.BOUNCE, x+0.5, y+0.5, z+0.5, 2, 2, false);
-		ReikaSoundHelper.playClientSound(ChromaSounds.BOUNCE, x+0.5, y+0.5, z+0.5, 2, 1, false);
-		ReikaSoundHelper.playClientSound(ChromaSounds.BOUNCE, x+0.5, y+0.5, z+0.5, 2, 1, false);
-		ReikaSoundHelper.playClientSound(ChromaSounds.MONUMENTRAY, x+0.5, y+0.5, z+0.5, 2, 0.8F, false);
-		ReikaSoundHelper.playClientSound(ChromaSounds.MONUMENTRAY, x+0.5, y+0.5, z+0.5, 2, 1.6F, false);
-		ReikaSoundHelper.playClientSound(ChromaSounds.KILLAURA, x+0.5, y+0.5, z+0.5, 2, 2F, false);
-		ReikaSoundHelper.playClientSound(ChromaSounds.KILLAURA, x+0.5, y+0.5, z+0.5, 2, 1F, false);
-		//ReikaSoundHelper.playClientSound(ChromaSounds.MONUMENTRAY, x+0.5, y+0.5, z+0.5, 2, 0.4F, false);
-
-		for (double a = 0; a < 360; a += 1) {
-			EntityFloatingSeedsFX fx = new EntityCCFloatingSeedsFX(world, x+0.5, y+4.5, z+0.5, a, 0);
-			fx.setColor(0xa0e0ff).setLife(120).setRapidExpand();
-			fx.particleVelocity *= 2;
-			fx.freedom *= 2;
-			fx.angleVelocity *= 2;
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-		}
-
-		/*
-		for (int i = -8; i <= 8; i++) {
-			float s = (8-Math.abs(i));///2F;
-			EntityFX fx = new EntityBlurFX(world, x+0.5, y+4.5+i*0.25, z+0.5, 0, 0.5, 0).setColor(0xa0e0ff).setLife(120).setRapidExpand().setScale(s);
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-		}
-		 */
-
-		for (double i = 0; i <= 64; i += 0.25) {
-			EntityFX fx = new EntityCCBlurFX(world, x+0.5, y+4.5+i, z+0.5).setColor(0xa0e0ff).setLife(120).setRapidExpand().setAlphaFading().setScale(4);
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-
-			fx = new EntityCCBlurFX(world, x+0.5, y+4.5+i, z+0.5).setColor(0xffffff).setLife(120).setAlphaFading().setScale(1.5F);
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-		}
-	}
-
-	@Override
-	public AxisAlignedBB getRenderBoundingBox() {
-		return AxisAlignedBB.getBoundingBox(xCoord-0.5, yCoord, zCoord-0.5, xCoord+0.5, yCoord+EXTENSION_LIMIT_0+EXTENSION_LIMIT_1+EXTENSION_LIMIT_2+2, zCoord+0.5).expand(6, 6, 6);
-	}
-
-	@Override
-	public double getMaxRenderDistanceSquared() {
-		return super.getMaxRenderDistanceSquared()*16;
-	}
-
-	@Override
-	public float getOperationFraction() {
-		return this.getScanProgress();
-	}
-
-	@Override
-	public OperationState getState() {
-		return !this.canBeAccessed() || scanCooldown > 0 ? OperationState.INVALID : scanTick > 0 ? OperationState.RUNNING : OperationState.PENDING;
-	}
-
-	@Override
-	protected void readSyncTag(NBTTagCompound NBT) {
-		super.readSyncTag(NBT);
-
-		//scanTick = NBT.getInteger("scan");
-		scanCooldown = NBT.getInteger("cooldown");
-
-		ReikaNBTHelper.readCollectionFromNBT(scannedPlayers, NBT, "players");
-		if (NBT.hasKey("tower"))
-			tower = Towers.towerList[NBT.getInteger("tower")];
-	}
-
-	@Override
-	protected void writeSyncTag(NBTTagCompound NBT) {
-		super.writeSyncTag(NBT);
-
-		//NBT.setInteger("scan", scanTick);
-		NBT.setInteger("cooldown", scanCooldown);
-
-		ReikaNBTHelper.writeCollectionToNBT(scannedPlayers, NBT, "players");
-		if (tower != null) {
-			NBT.setInteger("tower", tower.ordinal());
-		}
-	}
-
-	@Override
-	public void writeToNBT(NBTTagCompound NBT) {
-		super.writeToNBT(NBT);
-
-		NBTTagList li = new NBTTagList();
-		for (Coordinate c : metaAlloyPlants.getLocations()) {
-			li.appendTag(c.writeToTag());
-		}
-		NBT.setTag("plants", li);
-	}
-
-	@Override
-	public void readFromNBT(NBTTagCompound NBT) {
-		super.readFromNBT(NBT);
-
-		metaAlloyPlants.clear();
-		NBTTagList li = NBT.getTagList("plants", NBTTypes.COMPOUND.ID);
-		for (Object o : li.tagList) {
-			NBTTagCompound b = (NBTTagCompound)o;
-			Coordinate c = Coordinate.readTag(b);
-			metaAlloyPlants.add(c);
-		}
-	}
-
-	public boolean hasBeenScanned(EntityPlayer ep) {
-		return scannedPlayers.contains(ep.getUniqueID().toString());
-	}
-
-	public void setTower(Towers tower) {
-		this.tower = tower;
+	public void setTower(Towers value) {
+		tower = value;
+		this.setChanged();
 	}
 
 	public Towers getTower() {
@@ -510,28 +314,71 @@ public class TileEntityDataNode extends TileEntityChromaticBase implements Opera
 	}
 
 	@Override
-	public boolean hasWork() {
-		return false;
+	public float getOperationFraction() {
+		return this.getScanProgress();
 	}
 
-	public static void removeMetaAlloy(World world, int x, int y, int z) {
-		LoreManager.instance.initTowers(world);
-		Coordinate c = new Coordinate(x, y, z);
-		for (int i = 0; i < Towers.towerList.length; i++) {
-			Towers t = Towers.towerList[i];
-			Coordinate loc = t.getGeneratedLocation();
-			if (loc != null) {
-				TileEntity te = loc.getTileEntity(world);
-				if (te instanceof TileEntityDataNode) {
-					if (((TileEntityDataNode)te).metaAlloyPlants.remove(c)) {
-						((TileEntityDataNode)te).syncAllData(true);
-						if (ModList.FORESTRY.isLoaded()) {
-							BlockMetaAlloyLamp.doBeeDrops(world, x, y, z);
-						}
-					}
-				}
+	public float getScanProgress() {
+		return (float)scanTick / SCAN_TIME;
+	}
+
+	@Override
+	public OperationState getState() {
+		return !this.canBeAccessed() || scanCooldown > 0 ? OperationState.INVALID
+				: scanTick > 0 ? OperationState.RUNNING : OperationState.PENDING;
+	}
+
+	@Override
+	protected void writeSyncTag(CompoundTag tag) {
+		super.writeSyncTag(tag);
+		tag.putDouble("extension0", extension0);
+		tag.putDouble("extension1", extension1);
+		tag.putDouble("extension2", extension2);
+		tag.putInt("cooldown", scanCooldown);
+		tag.putInt("scanTick", scanTick);
+		tag.putInt("scanSustain", scanSustain);
+		if (tower != null)
+			tag.putInt("tower", tower.ordinal());
+		ListTag players = new ListTag();
+		for (UUID id : scannedPlayers)
+			players.add(StringTag.valueOf(id.toString()));
+		tag.put("players", players);
+		tag.putInt("plantRand", plantRand);
+		ListTag plants = new ListTag();
+		for (BlockPos pos : metaAlloyPlants) {
+			CompoundTag plant = new CompoundTag();
+			plant.putInt("x", pos.getX());
+			plant.putInt("y", pos.getY());
+			plant.putInt("z", pos.getZ());
+			plants.add(plant);
+		}
+		tag.put("plants", plants);
+	}
+
+	@Override
+	protected void readSyncTag(CompoundTag tag) {
+		super.readSyncTag(tag);
+		extension0 = tag.getDoubleOr("extension0", 0);
+		extension1 = tag.getDoubleOr("extension1", 0);
+		extension2 = tag.getDoubleOr("extension2", 0);
+		scanCooldown = tag.getIntOr("cooldown", 0);
+		scanTick = tag.getIntOr("scanTick", 0);
+		scanSustain = tag.getIntOr("scanSustain", 0);
+		int ordinal = tag.getIntOr("tower", -1);
+		tower = ordinal >= 0 && ordinal < Towers.towerList.length ? Towers.towerList[ordinal] : null;
+		scannedPlayers.clear();
+		for (var value : tag.getListOrEmpty("players")) {
+			try {
+				scannedPlayers.add(UUID.fromString(value.asString().orElse("")));
+			}
+			catch (IllegalArgumentException ignored) {
 			}
 		}
+		plantRand = tag.getIntOr("plantRand", 800);
+		metaAlloyPlants.clear();
+		for (var value : tag.getListOrEmpty("plants")) {
+			if (value instanceof CompoundTag plant)
+				metaAlloyPlants.add(new BlockPos(plant.getIntOr("x", 0), plant.getIntOr("y", 0), plant.getIntOr("z", 0)));
+		}
 	}
-
 }

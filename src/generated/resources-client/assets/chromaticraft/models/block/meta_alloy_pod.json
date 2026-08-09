@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/cube_bottom_top",
+  "textures": {
+    "bottom": "chromaticraft:block/metaalloy",
+    "side": "chromaticraft:block/metaalloy_side",
+    "top": "chromaticraft:block/metaalloy"
+  }
+}
