@@ -80,6 +80,12 @@ public final class ClientPayloadHandlers {
 			ChromaParticle.spawnPylonCrystalBreak(mc.level, source, colour, new Random());
 	}
 
+	public static void guideCraftingRecipes(String itemId,
+			java.util.List<net.minecraft.world.item.crafting.display.RecipeDisplayEntry> recipes) {
+		if (Minecraft.getInstance().gui.screen() instanceof ScreenChromicLexicon lexicon)
+			lexicon.acceptCraftingRecipes(itemId, recipes);
+	}
+
 	public static void guideCastingRecipes(String itemId, java.util.List<CastingTableRecipe> recipes) {
 		if (Minecraft.getInstance().gui.screen() instanceof ScreenChromicLexicon lexicon)
 			lexicon.acceptCastingRecipes(itemId, recipes);

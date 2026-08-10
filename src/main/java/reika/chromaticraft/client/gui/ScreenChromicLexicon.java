@@ -124,6 +124,14 @@ public final class ScreenChromicLexicon extends Screen {
 	private int recipeIndex;
 	private int recipeSubpage;
 	private final java.util.Map<String, List<CastingTableRecipe>> castingRecipeCache = new java.util.HashMap<>();
+	/**
+	 * The recipe book only holds what the server has awarded the player, and the client has no other
+	 * copy of a grid recipe in 26.2, so the guide asks the server for the displays it needs and keeps
+	 * the answer. Same arrangement as the casting recipes above.
+	 */
+	private final java.util.Map<String, List<net.minecraft.world.item.crafting.display.RecipeDisplayEntry>>
+			craftingRecipeCache = new java.util.HashMap<>();
+	private final java.util.Set<String> requestedCraftingRecipes = new java.util.HashSet<>();
 	private final java.util.Set<String> requestedCastingRecipes = new java.util.HashSet<>();
 
 	private enum View {
@@ -578,29 +586,25 @@ public final class ScreenChromicLexicon extends Screen {
 	 * re-derived recipe list.
 	 */
 	private List<net.minecraft.world.item.crafting.display.RecipeDisplayEntry> craftingRecipes() {
-		if (selected == null || minecraft == null || minecraft.level == null || minecraft.player == null)
+		if (selected == null || minecraft == null || minecraft.player == null)
 			return List.of();
 		ItemStack icon = LexiconIconResolver.icon(selected);
 		if (icon.isEmpty())
 			return List.of();
-		net.minecraft.util.context.ContextMap context =
-				net.minecraft.world.item.crafting.display.SlotDisplayContext.fromLevel(minecraft.level);
-		List<net.minecraft.world.item.crafting.display.RecipeDisplayEntry> out = new java.util.ArrayList<>();
-		for (net.minecraft.client.gui.screens.recipebook.RecipeCollection collection
-				: minecraft.player.getRecipeBook().getCollections()) {
-			for (net.minecraft.world.item.crafting.display.RecipeDisplayEntry entry : collection.getRecipes()) {
-				boolean crafting = entry.display() instanceof net.minecraft.world.item.crafting.display.ShapedCraftingRecipeDisplay
-						|| entry.display() instanceof net.minecraft.world.item.crafting.display.ShapelessCraftingRecipeDisplay;
-				if (!crafting)
-					continue;
-				for (ItemStack result : entry.resultItems(context))
-					if (result.is(icon.getItem())) {
-						out.add(entry);
-						break;
-					}
-			}
-		}
-		return out;
+		String itemId = BuiltInRegistries.ITEM.getKey(icon.getItem()).toString();
+		List<net.minecraft.world.item.crafting.display.RecipeDisplayEntry> cached = craftingRecipeCache.get(itemId);
+		if (cached != null)
+			return cached;
+		if (requestedCraftingRecipes.add(itemId))
+			ClientPacketDistributor.sendToServer(new ChromaNetwork.RequestGuideCraftingRecipes(itemId));
+		return List.of();
+	}
+
+	/** Server's answer to {@link ChromaNetwork.RequestGuideCraftingRecipes}. */
+	public void acceptCraftingRecipes(String itemId,
+			List<net.minecraft.world.item.crafting.display.RecipeDisplayEntry> recipes) {
+		craftingRecipeCache.put(itemId, List.copyOf(recipes));
+		rebuildWidgets();
 	}
 
 	private List<CastingTableRecipe> castingRecipes() {

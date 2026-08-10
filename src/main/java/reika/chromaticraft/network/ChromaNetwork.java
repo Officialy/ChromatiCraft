@@ -51,6 +51,10 @@ public final class ChromaNetwork {
 				ChromaNetwork::handleRequestGuideCastingRecipes);
 		registrar.playToClient(GuideCastingRecipes.TYPE, GuideCastingRecipes.CODEC,
 				ChromaNetwork::handleGuideCastingRecipes);
+		registrar.playToServer(RequestGuideCraftingRecipes.TYPE, RequestGuideCraftingRecipes.CODEC,
+				ChromaNetwork::handleRequestGuideCraftingRecipes);
+		registrar.playToClient(GuideCraftingRecipes.TYPE, GuideCraftingRecipes.CODEC,
+				ChromaNetwork::handleGuideCraftingRecipes);
 		registrar.playToClient(DataNodeScan.TYPE, DataNodeScan.CODEC, ChromaNetwork::handleDataNodeScan);
 		registrar.playToClient(TowerLocations.TYPE, TowerLocations.CODEC, ChromaNetwork::handleTowerLocations);
 		registrar.playToClient(LoreNote.TYPE, LoreNote.CODEC, ChromaNetwork::handleLoreNote);
@@ -171,6 +175,32 @@ public final class ChromaNetwork {
 	}
 
 	/** Client asks only for the recipe output currently being viewed; no whole recipe registry sync. */
+	/**
+	 * The guide book has to show a grid recipe whether or not the player has unlocked it. The recipe
+	 * book cannot answer that -- it only holds what the server has awarded -- and the client has no
+	 * other copy, since {@code ClientRecipeContainer} carries only item sets and stonecutter recipes.
+	 * So the page asks, exactly as the casting page does.
+	 */
+	public record RequestGuideCraftingRecipes(String itemId) implements CustomPacketPayload {
+		public static final Type<RequestGuideCraftingRecipes> TYPE = createType("request_guide_crafting_recipes");
+		public static final StreamCodec<ByteBuf, RequestGuideCraftingRecipes> CODEC = StreamCodec.composite(
+				ByteBufCodecs.STRING_UTF8, RequestGuideCraftingRecipes::itemId, RequestGuideCraftingRecipes::new);
+		@Override public Type<RequestGuideCraftingRecipes> type() { return TYPE; }
+	}
+
+	/** Vanilla's own display record, so the page renders the same data the recipe book would. */
+	public record GuideCraftingRecipes(String itemId,
+			java.util.List<net.minecraft.world.item.crafting.display.RecipeDisplayEntry> recipes)
+			implements CustomPacketPayload {
+		public static final Type<GuideCraftingRecipes> TYPE = createType("guide_crafting_recipes");
+		public static final StreamCodec<RegistryFriendlyByteBuf, GuideCraftingRecipes> CODEC = StreamCodec.composite(
+				ByteBufCodecs.STRING_UTF8, GuideCraftingRecipes::itemId,
+				net.minecraft.world.item.crafting.display.RecipeDisplayEntry.STREAM_CODEC
+						.apply(ByteBufCodecs.list()), GuideCraftingRecipes::recipes,
+				GuideCraftingRecipes::new);
+		@Override public Type<GuideCraftingRecipes> type() { return TYPE; }
+	}
+
 	public record RequestGuideCastingRecipes(String itemId) implements CustomPacketPayload {
 		public static final Type<RequestGuideCastingRecipes> TYPE = createType("request_guide_casting_recipes");
 		public static final StreamCodec<ByteBuf, RequestGuideCastingRecipes> CODEC = StreamCodec.composite(
@@ -425,6 +455,53 @@ public final class ChromaNetwork {
 		recipes.sort(java.util.Comparator.comparingInt(recipe -> recipe.tier().ordinal()));
 		return java.util.List.copyOf(recipes);
 	}
+	private static void handleRequestGuideCraftingRecipes(RequestGuideCraftingRecipes payload, IPayloadContext context) {
+		context.enqueueWork(() -> {
+			if (!(context.player() instanceof ServerPlayer player))
+				return;
+			Identifier id = Identifier.tryParse(payload.itemId());
+			if (id == null || !BuiltInRegistries.ITEM.containsKey(id))
+				return;
+			PacketDistributor.sendToPlayer(player, new GuideCraftingRecipes(payload.itemId(),
+					guideCraftingRecipes(player.level(), BuiltInRegistries.ITEM.getValue(id))));
+		});
+	}
+
+	/**
+	 * Every grid recipe producing the given item, as the displays vanilla would put in a recipe book.
+	 * Independent of a connection so the selection is directly testable.
+	 */
+	public static java.util.List<net.minecraft.world.item.crafting.display.RecipeDisplayEntry> guideCraftingRecipes(
+			net.minecraft.world.level.Level level, net.minecraft.world.item.Item item) {
+		net.minecraft.world.item.crafting.RecipeManager manager = level.getServer().getRecipeManager();
+		java.util.ArrayList<net.minecraft.world.item.crafting.display.RecipeDisplayEntry> out = new java.util.ArrayList<>();
+		for (var holder : manager.getRecipes()) {
+			if (!(holder.value() instanceof net.minecraft.world.item.crafting.CraftingRecipe))
+				continue;
+			manager.listDisplaysForRecipe(holder.id(), entry -> {
+				boolean grid = entry.display() instanceof net.minecraft.world.item.crafting.display.ShapedCraftingRecipeDisplay
+						|| entry.display() instanceof net.minecraft.world.item.crafting.display.ShapelessCraftingRecipeDisplay;
+				if (grid && !out.contains(entry))
+					out.add(entry);
+			});
+		}
+		// listDisplaysForRecipe cannot filter by result, so narrow here against the item the page is
+		// about. Resolution needs a context, and the server's registry access is the right one.
+		net.minecraft.util.context.ContextMap ctx =
+				net.minecraft.world.item.crafting.display.SlotDisplayContext.fromLevel(level);
+		out.removeIf(entry -> {
+			for (net.minecraft.world.item.ItemStack result : entry.resultItems(ctx))
+				if (result.is(item))
+					return false;
+			return true;
+		});
+		return java.util.List.copyOf(out);
+	}
+
+	private static void handleGuideCraftingRecipes(GuideCraftingRecipes payload, IPayloadContext context) {
+		context.enqueueWork(() -> ClientPayloadHandlers.guideCraftingRecipes(payload.itemId(), payload.recipes()));
+	}
+
 	private static void handleGuideCastingRecipes(GuideCastingRecipes payload, IPayloadContext context) {
 		context.enqueueWork(() -> ClientPayloadHandlers.guideCastingRecipes(payload.itemId(), payload.recipes()));
 	}

@@ -2987,3 +2987,25 @@ everything. The client has no other source: `ClientPacketListener.recipes()` ret
 `ClientRecipeContainer` holding only item sets and stonecutter recipes, so full crafting displays
 genuinely are not client-side data in 26.2. The fix is the pattern the casting page already uses —
 request the display from the server and cache it — which is its own slice, not a layout correction.
+
+### Chromic Lexicon: the crafting recipe page, unblocked — 2026-08-10
+
+The page read `player.getRecipeBook().getCollections()`, which only holds recipes the server has
+*awarded*. ChromatiCraft awards none, so the page was empty for essentially every entry. The client
+has no fallback in 26.2 either: `ClientPacketListener.recipes()` returns a `ClientRecipeContainer`
+carrying only item sets and stonecutter recipes, so a grid recipe genuinely is not client-side data
+until it has been unlocked.
+
+The fix is the arrangement the casting page already used: `RequestGuideCraftingRecipes` goes up,
+`GuideCraftingRecipes` comes back, and the screen caches it per item and asks once. The payload is
+vanilla's own `RecipeDisplayEntry` — it has a `STREAM_CODEC` and it is exactly what the page's
+renderer already consumed, so nothing about the layout changed.
+
+Server side, `ChromaNetwork.guideCraftingRecipes` walks `RecipeManager.getRecipes()` for
+`CraftingRecipe` holders, expands each through `listDisplaysForRecipe`, keeps the shaped and
+shapeless grid displays, and then narrows to those whose resolved result matches the item. It takes a
+`Level` rather than a connection so the selection stays directly testable.
+
+Note the alternative that was *not* taken: awarding the recipes to the player would also have filled
+the page, but it changes game state — the vanilla recipe book would light up with the whole mod — so
+the guide asks instead of unlocking.
