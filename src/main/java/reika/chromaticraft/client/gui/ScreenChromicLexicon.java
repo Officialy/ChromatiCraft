@@ -100,6 +100,9 @@ public final class ScreenChromicLexicon extends Screen {
 	private boolean searching;
 	private String search = "";
 	private int textPage;
+	/** Entries whose V33a structure extends {@code FragmentStructureBase}; see the N# button. */
+	private static final java.util.Set<String> FRAGMENT_STRUCTURES = java.util.Set.of();
+
 	/** V33a GuiStructure {@code mode}: 0 is the 3D view, 1 the flat slice, 2 the block tally. */
 	private int structureMode;
 	private StructureRenderer structureRender;
@@ -333,10 +336,15 @@ public final class ScreenChromicLexicon extends Screen {
 			structureMode = 1;
 			rebuildWidgets();
 		}).bounds(left + 205, top - 2, 20, 20).build());
-		addRenderableWidget(Button.builder(Component.literal("N#"), button -> {
-			structureMode = 2;
-			rebuildWidgets();
-		}).bounds(left + (structureMode == 1 ? 125 : 165), top - 2, 20, 20).build());
+		// V33a suppresses the tally for a FragmentStructureBase -- those pages describe a fragment of
+		// a structure, so a bill of materials for them would be misleading. No fragment structure has
+		// a modern template yet, so nothing is currently suppressed; the condition belongs here the
+		// moment one is added rather than being rediscovered then.
+		if (!FRAGMENT_STRUCTURES.contains(selected.sourceId()))
+			addRenderableWidget(Button.builder(Component.literal("N#"), button -> {
+				structureMode = 2;
+				rebuildWidgets();
+			}).bounds(left + (structureMode == 1 ? 125 : 165), top - 2, 20, 20).build());
 		if (structureMode == 1) {
 			addRenderableWidget(Button.builder(Component.literal("+"), button -> {
 				render.incrementStepY();
@@ -710,14 +718,19 @@ public final class ScreenChromicLexicon extends Screen {
 				super.extractRenderState(graphics, mouseX, mouseY, partialTick);
 				return;
 			}
-			graphics.centeredText(font, selected.title(), left + WIDTH / 2, top + 18, 0xffffffff);
-			graphics.centeredText(font, selected.section().title(), left + WIDTH / 2, top + 33, 0xff80dfff);
-			renderSpecialistHeader(graphics, selected, left, top);
+			// V33a GuiBookSection.drawScreen: the page title is left-aligned at
+			// (posX + getTitleOffset(), posY + 6) with posY already shifted up eight, i.e.
+			// (left + 6, top - 2), in white. It was centred at top+18 here, with an invented section
+			// subtitle under it -- neither is upstream, and on the structure page the subtitle sat
+			// where GuiStructure puts its size caption.
+			graphics.text(font, selected.title(), left + 6, top - 2, 0xffffffff, false);
 			if (selected.section() == LexiconCatalog.Section.STRUCTURES) {
+				// GuiStructure.drawScreen adds the size string and nothing else.
 				renderStructureViewer(graphics, left, top, mouseX, mouseY);
 				super.extractRenderState(graphics, mouseX, mouseY, partialTick);
 				return;
 			}
+			renderSpecialistHeader(graphics, selected, left, top);
 			graphics.text(font, Component.literal("Research: " + selected.level().name()), left + 8, top + 69,
 					0xffb0b0b0, false);
 			renderDescriptionPage(graphics, left, top);

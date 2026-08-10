@@ -2804,11 +2804,12 @@ leaves model +Y pointing *down* because the GUI's orthographic projection invert
 rolls 180 degrees about X to finish the job. `renderState.scale()` is pixels per model unit, so it
 carries V33a's discrete size tier multiplied by its `s = 12`.
 
-**Deliberate divergence.** V33a scales by `(-d*s, -d*s, -d*s)`. That is a point inversion, not a
-rotation: it mirrors the structure and inverts face winding, which upstream lived with — its
-`glFrontFace(GL_CW)` compensation is commented out in the original. The 180-degree roll produces the
-image upstream was drawing towards without the mirror, and keeps winding correct so culling and the
-depth buffer behave.
+**Deliberate divergence.** V33a scales by `(-d*s, -d*s, -d*s)`, which mirrors the structure in X on
+top of orienting it. The port applies `scale(1, -1, -1)` instead — the same step every vanilla
+picture-in-picture renderer takes, paired with the projection's reversed near/far — and so does not
+reproduce the mirror. Most ChromatiCraft multiblocks are symmetric about X, and a view you can spin
+freely hides the difference on the ones that are not. Note that this composes with the base's own
+`scale(s, s, -s)`: reason about the two together, never about either alone.
 
 **The additive pass is real.** V33a shades the blocks an upgrade structure shares with the tier below
 it using `BlendMode.ADDITIVE2`, which is `glBlendFunc(GL_SRC_ALPHA, GL_ONE)` — exactly
@@ -2818,9 +2819,17 @@ pass only. The set of shared blocks is `LexiconStructurePreview.markShared`, mir
 `GuiStructure`'s switch: casting2 -> casting1, casting3 -> casting2, and pylonbroadcast -> pylon,
 which upstream matches on position alone where the casting tiers also require the same block.
 
+**Page chrome.** The entry title was centred at `top+18` with an invented section subtitle beneath
+it; `GuiBookSection.drawScreen` draws it left-aligned at `(posX + getTitleOffset(), posY + 6)` with
+`posY` already shifted up eight, i.e. `(left + 6, top - 2)`, in white, and draws no subtitle at all.
+That is corrected for every entry page — on the structure page the subtitle had been sitting exactly
+where `GuiStructure` puts its size caption.
+
 **Screen side.** `GuiStructure`'s geometry, verbatim: plain `3D`/`2D` 20x20 buttons at `j+185` and
 `j+205, k-2`, the `N#` block-tally mode at `j+165` (`j+125` while slicing) with its `+`/`-` stepper
-at `j+165`/`j+145`, and the `(XxYxZ)` caption at `j+6, k+10`. Left-drag spins the model, right-click
+at `j+165`/`j+145`, and the `(XxYxZ)` caption at `j+6, k+10`. Upstream suppresses the tally button
+for a `FragmentStructureBase`; the condition is in place but its set is empty, since no fragment
+structure has a modern template yet. Left-drag spins the model, right-click
 resets it, and A/D/W/S are polled every frame while held rather than consumed as key events, which is
 what makes the spin continuous. The invented zoom, the arrow-key 15-degree steps and the `3D ✓`
 labels are gone.

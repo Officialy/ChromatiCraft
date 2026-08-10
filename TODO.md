@@ -616,10 +616,10 @@ Ported. `DragonAPI reika.dragonapi.instantiable.rendering.structure` now holds t
 - the discrete scale tiers are V33a's, keyed off `max(sizeY, hypot(sizeX, maxZ))` where `maxZ` is a
   **half**-extent because upstream's arrays are origin-centred.
 
-One deliberate divergence: V33a scales by `(-d*s, -d*s, -d*s)`, a point inversion that mirrors the
-structure and flips face winding (its `glFrontFace(GL_CW)` compensation is commented out upstream).
-The port rolls 180 degrees about X instead, which produces the image upstream was aiming at without
-the mirror and keeps culling and depth correct.
+One deliberate divergence: V33a scales by `(-d*s, -d*s, -d*s)`, which mirrors the structure in X on
+top of orienting it. The port uses `scale(1, -1, -1)`, the step every vanilla picture-in-picture
+renderer takes, and so drops the mirror; the multiblocks are near enough all X-symmetric and the view
+spins freely anyway.
 
 The screen side now matches `GuiStructure` too: plain `3D`/`2D` 20x20 buttons at `j+185`/`j+205,
 k-2`, the `N#` block-tally mode at `j+165` (`j+125` while slicing) with its `+`/`-` stepper, the
