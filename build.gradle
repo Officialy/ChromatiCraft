@@ -344,6 +344,7 @@ sourceSets.main.java {
     include 'reika/chromaticraft/client/gui/LexiconIconResolver.java'
     include 'reika/chromaticraft/client/gui/LexiconScrollPane.java'
     include 'reika/chromaticraft/client/gui/LexiconNavigationSheet.java'
+    include 'reika/chromaticraft/client/gui/LexiconImageButton.java'
     include 'reika/chromaticraft/client/gui/LexiconStructurePreview.java'
     include 'reika/chromaticraft/client/gui/ScreenFragmentSelection.java'
     include 'reika/chromaticraft/client/gui/ScreenLoreKeyAssembly.java'

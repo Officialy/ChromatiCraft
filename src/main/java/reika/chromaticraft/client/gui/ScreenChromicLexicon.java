@@ -146,26 +146,17 @@ public final class ScreenChromicLexicon extends Screen {
 		int left = (width - WIDTH) / 2;
 		int top = (height - HEIGHT) / 2;
 		if (selected == null && (view == View.NAVIGATION || view == View.STORED_PAGES)) {
-			int y = top + 16;
-			for (LexiconCatalog.Section value : LexiconCatalog.Section.values()) {
-				addRenderableWidget(Button.builder(value.title(), button -> {
-					section = value;
-					pageOffset = 0;
-					rememberNavigation();
-					rebuildWidgets();
-				}).bounds(left + 10, y, 94, 18).build());
-				y += 26;
-			}
+			// V33a has no section or entry buttons: both live on the scrolling sheet, which is
+			// clicked directly. The only navigation widgets are the side tabs added below.
 			if (view == View.STORED_PAGES)
 				addStoredPageButtons(left, top);
-			else
-				addPageButtons(left, top, visiblePages());
 		}
 		else if (selected != null) {
-			addRenderableWidget(Button.builder(Component.literal("<"), button -> {
+			// V33a GuiBookSection button 50: back to the navigation sheet.
+			addRenderableWidget(Button.builder(Component.literal("X"), button -> {
 				selected = null;
 				rebuildWidgets();
-			}).bounds(left - 20, top + 8, 20, 20).build());
+			}).bounds(left + WIDTH - 27, top - 2, 20, 20).build());
 			List<CastingTableRecipe> recipes = castingRecipes();
 			if (recipes.isEmpty() && !craftingRecipes().isEmpty()) {
 				addRenderableWidget(Button.builder(
@@ -215,55 +206,42 @@ public final class ScreenChromicLexicon extends Screen {
 			addNotebookWidgets(left, top);
 		}
 		if (!fragmentInventory) {
-			addRenderableWidget(Button.builder(Component.literal(recipeMode ? "Items" : "Items ✓"), button -> {
+			// V33a GuiNavigation.initGui, verbatim geometry. The Items/Recipes tabs are 13x88 strips
+			// down the left edge whose v swaps to show which mode is active, and Search is a 13x35
+			// stub below them. Nothing here is a vanilla widget upstream.
+			addRenderableWidget(new LexiconImageButton(left - 13, top - 7, 13, 88,
+					15, recipeMode ? 4 : 95, Component.literal("Items"), () -> {
 				recipeMode = false;
 				rebuildWidgets();
-			}).bounds(left - 58, top + 4, 56, 18).build());
-			addRenderableWidget(Button.builder(Component.literal(recipeMode ? "Recipes ✓" : "Recipes"), button -> {
+			}));
+			addRenderableWidget(new LexiconImageButton(left - 13, top + 27, 13, 88,
+					15, recipeMode ? 95 : 4, Component.literal("Recipes"), () -> {
 				recipeMode = true;
 				rebuildWidgets();
-			}).bounds(left - 58, top + 25, 56, 18).build());
-			addRenderableWidget(Button.builder(Component.literal(searching ? "Finish" : "Search"), button -> {
+			}));
+			addRenderableWidget(new LexiconImageButton(left - 13, top + 160, 13, 35,
+					15, 221, Component.literal("Search"), () -> {
 				searching = !searching;
 				if (searching) setFocused(null);
 				rebuildWidgets();
-			}).bounds(left - 58, top + 160, 56, 18).build());
-			addRenderableWidget(Button.builder(Component.literal("Guide"), button -> setView(View.NAVIGATION))
-					.bounds(left + WIDTH, top + 4, 58, 18).build());
-			addRenderableWidget(Button.builder(Component.literal("Progress"), button -> setView(View.PROGRESS))
-					.bounds(left + WIDTH, top + 25, 58, 18).build());
-			addRenderableWidget(Button.builder(Component.literal("Recovery"), button -> setView(View.RECOVERY))
-					.bounds(left + WIDTH, top + 46, 58, 18).build());
-			addRenderableWidget(Button.builder(Component.literal("Notes"), button -> setView(View.NOTES))
-					.bounds(left + WIDTH, top + 67, 58, 18).build());
+			}));
+			// V33a: three 22x39 image buttons stacked down the right edge at k, k+40, k+80.
+			addRenderableWidget(new LexiconImageButton(left + WIDTH, top, 22, 39,
+					42, 84, Component.literal("Progress"), () -> setView(View.PROGRESS)));
+			addRenderableWidget(new LexiconImageButton(left + WIDTH, top + 40, 22, 39,
+					65, 168, Component.literal("Recovery"), () -> setView(View.RECOVERY)));
+			addRenderableWidget(new LexiconImageButton(left + WIDTH, top + 80, 22, 39,
+					88, 168, Component.literal("Notebook"), () -> setView(View.NOTES)));
+			// V33a GuiBookSection: Save & Exit, the only way out of a page other than the X.
+			if (view != View.NAVIGATION)
+				addRenderableWidget(new LexiconImageButton(left + WIDTH, top + 5, 22, 39,
+						42, 210, Component.literal("Save & Exit"), this::onClose));
 		}
-		addRenderableWidget(Button.builder(Component.literal("X"), button -> onClose())
-				.bounds(left + WIDTH - 24, top + 6, 18, 18).build());
+		if (selected == null && view == View.NAVIGATION)
+			addRenderableWidget(Button.builder(Component.literal("X"), button -> onClose())
+					.bounds(left + WIDTH - 27, top - 2, 20, 20).build());
 	}
 
-	private void addPageButtons(int left, int top, List<LexiconCatalog.Entry> pages) {
-		int end = Math.min(pageOffset + PAGE_SIZE, pages.size());
-		for (int index = pageOffset; index < end; index++) {
-			LexiconCatalog.Entry entry = pages.get(index);
-			int row = index - pageOffset;
-			addRenderableWidget(Button.builder(entry.title(), button -> {
-				if (isEntryActive(entry))
-					openEntry(entry);
-				else
-					playLockedEntrySound();
-			}).bounds(left + 136, top + 16 + row * 23, 108, 18).build());
-		}
-		if (pageOffset > 0)
-			addRenderableWidget(Button.builder(Component.literal("↑"), button -> {
-				pageOffset = Math.max(0, pageOffset - PAGE_SIZE);
-				rebuildWidgets();
-			}).bounds(left + 112, top + 202, 28, 16).build());
-		if (end < pages.size())
-			addRenderableWidget(Button.builder(Component.literal("↓"), button -> {
-				pageOffset += PAGE_SIZE;
-				rebuildWidgets();
-			}).bounds(left + 216, top + 202, 28, 16).build());
-	}
 
 	private void addTextPageButtons(int left, int top) {
 		int count = descriptionPageCount();
@@ -814,6 +792,11 @@ public final class ScreenChromicLexicon extends Screen {
 		}
 	}
 
+	/** The list the navigation view is currently showing. */
+	private List<LexiconCatalog.Entry> currentPages() {
+		return view == View.STORED_PAGES ? transferablePages() : visiblePages();
+	}
+
 	/** Rebuilds the spatial sheet for whatever the navigation view is currently showing. */
 	private void buildSheet() {
 		if (view == View.STORED_PAGES || !search.isBlank()) {
@@ -835,28 +818,6 @@ public final class ScreenChromicLexicon extends Screen {
 				.toList();
 	}
 
-	/** The list the navigation view is currently showing. */
-	private List<LexiconCatalog.Entry> currentPages() {
-		return view == View.STORED_PAGES ? transferablePages() : visiblePages();
-	}
-
-	private void renderNavigationEntries(GuiGraphicsExtractor graphics, int left, int top) {
-		List<LexiconCatalog.Entry> pages = currentPages();
-		int end = Math.min(pageOffset + PAGE_SIZE, pages.size());
-		for (int index = pageOffset; index < end; index++) {
-			LexiconCatalog.Entry entry = pages.get(index);
-			int y = top + 17 + (index - pageOffset) * 23;
-			ItemStack icon = LexiconIconResolver.icon(entry);
-			if (!icon.isEmpty())
-				graphics.item(icon, left + 114, y);
-			if (!isEntryActive(entry))
-				graphics.text(font, Component.literal("?"), left + 121, y + 5, 0xffff6060, true);
-			int color = researchLevelColor(entry.level());
-			graphics.fill(left + 132, y, left + 134, y + 16, color);
-			if (recipeMode)
-				graphics.text(font, Component.literal("✦"), left + 118, y + 5, 0xffffd060, true);
-		}
-	}
 
 	private static int researchLevelColor(ResearchLevel level) {
 		if (level == null)
@@ -1244,17 +1205,6 @@ public final class ScreenChromicLexicon extends Screen {
 		return true;
 	}
 
-	private boolean moveListPage(int direction) {
-		List<LexiconCatalog.Entry> pages = view == View.STORED_PAGES ? transferablePages() : visiblePages();
-		int next = Math.max(0, Math.min(pageOffset + direction * PAGE_SIZE,
-				Math.max(0, ((pages.size() - 1) / PAGE_SIZE) * PAGE_SIZE)));
-		if (next == pageOffset)
-			return false;
-		pageOffset = next;
-		rememberNavigation();
-		rebuildWidgets();
-		return true;
-	}
 
 	private boolean moveTextPage(int direction) {
 		int next = Math.max(0, Math.min(textPage + direction, descriptionPageCount() - 1));
