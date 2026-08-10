@@ -626,8 +626,13 @@ k-2`, the `N#` block-tally mode at `j+165` (`j+125` while slicing) with its `+`/
 `(XxYxZ)` caption at `j+6, k+10`, LMB-drag to spin, RMB to reset, A/D/W/S polled per frame while
 held. The invented zoom, the arrow-key 15-degree steps and the `3D ✓` labels are gone.
 
-Still outstanding on this page: block entities. V33a runs a TESR pass over the structure so pylons,
-casting tables and the ender crystal render animated; that needs a fake-level `BlockEntity` per
-position and is not attempted here — those blocks currently draw as their static models. The
-`addRenderHook`/`addEntityRender` scale and offset hooks are likewise unported, since their only
-consumers are that pass.
+The block-entity pass landed the same day: `StructureRenderer` builds a stand-in `BlockEntity` per
+position, extracts its renderer state during the GUI extract phase, and the picture-in-picture pass
+submits it. Light is forced to full brightness (the stand-in has a level, so `extractBase` would
+otherwise sample the real world at the structure's local coordinates), and V33a's static
+`isRenderingTiles()` is ported so renderers can skip world reads — `RenderCastingTable`'s rune scan
+is the first consumer. Stand-ins are not ticked, as upstream's are not, so a renderer animated from
+a tick counter stands still while one animated from wall-clock time moves.
+
+Still outstanding on this page: `addRenderHook` and `addEntityRender`, upstream's per-block
+scale/offset overrides and its rendered ender crystal.

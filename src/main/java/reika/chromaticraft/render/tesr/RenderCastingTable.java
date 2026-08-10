@@ -28,6 +28,7 @@ import org.jspecify.annotations.Nullable;
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.block.BlockCrystallineStone;
 import reika.chromaticraft.registry.CrystalElement;
+import reika.dragonapi.instantiable.rendering.structure.StructureRenderer;
 import reika.chromaticraft.tileentity.recipe.TileEntityCastingTable;
 import reika.dragonapi.instantiable.data.blockstruct.BlockArray;
 
@@ -56,6 +57,14 @@ public final class RenderCastingTable implements BlockEntityRenderer<TileEntityC
         BlockEntityRenderer.super.extractRenderState(table, state, partialTick, cameraPosition, breakProgress);
         state.runes.clear();
         if (table.getLevel() == null) return;
+        // Inside the Chromic Lexicon's structure preview this table was never placed: it holds the
+        // client level only so its renderer has one, and its position is wherever the structure's
+        // local coordinates happen to land in the real world. Scanning that for engraved runes would
+        // decorate the guide with whatever is standing at those coordinates.
+        if (StructureRenderer.isRenderingTiles()) {
+            animations.remove(table);
+            return;
+        }
 
         // NOT table.getBlocks(): that builds the tier's FilledBlockArray from the NBT datapack
         // template, which needs a ServerLevel and hard-crashed the render thread. V33a only used the

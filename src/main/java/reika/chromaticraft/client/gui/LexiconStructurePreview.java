@@ -120,7 +120,12 @@ final class LexiconStructurePreview {
 				// V33a rendered the data-node relay column as the data node itself. DUMMY_AUX is
 				// intentionally block-only in 26.2, so it otherwise disappears from an item-icon view.
 				boolean dataNodeRelay = sourceId.equals("datanode") && state.is(ChromaBlocks.DUMMY_AUX.get());
-				ItemStack icon = new ItemStack(dataNodeRelay ? ChromaBlocks.DATA_NODE.get() : state.getBlock());
+				// The substitution has to move the block state as well as the icon. DUMMY_AUX is
+				// deliberately invisible in 26.2, so leaving the state alone made the relay column
+				// disappear from the 3D view even though its icon showed in the flat one.
+				if (dataNodeRelay)
+					state = ChromaBlocks.DATA_NODE.get().defaultBlockState();
+				ItemStack icon = new ItemStack(state.getBlock());
 				if (!icon.isEmpty() && !icon.is(Items.AIR))
 					blocks.add(new PreviewBlock(new BlockPos(pos[0], pos[1], pos[2]), state, icon,
 							dataNodeRelay, false));

@@ -315,8 +315,21 @@ public final class ScreenChromicLexicon extends Screen {
 		for (LexiconStructurePreview.PreviewBlock block : preview.blocks())
 			entries.add(new StructureRenderer.Entry(block.pos(), block.state(), block.icon(), block.shared()));
 		structureRender = new StructureRenderer(entries, preview.sizeX(), preview.sizeY(), preview.sizeZ());
+		// V33a GuiStructure: a rune in the guide is not any one element. Upstream hooks the rune block
+		// to getElementByTick(), which walks the sixteen elements on a four-second cycle, so the page
+		// shows that any rune will do rather than implying the black one specifically. The templates
+		// are all generated with the black rune as the placeholder, so every one of the sixteen has to
+		// be hooked, not just that one.
+		for (CrystalElement element : CrystalElement.elements)
+			structureRender.addBlockHook(ChromaBlocks.rune(element).get(),
+					() -> ChromaBlocks.rune(elementByTick()).get().defaultBlockState());
 		structureRenderFor = selected.sourceId();
 		return structureRender;
+	}
+
+	/** V33a {@code GuiStructure.getElementByTick}. */
+	private static CrystalElement elementByTick() {
+		return CrystalElement.elements[(int)(System.currentTimeMillis() / 4000 % 16)];
 	}
 
 	/**
@@ -726,7 +739,7 @@ public final class ScreenChromicLexicon extends Screen {
 			graphics.text(font, selected.title(), left + 6, top - 2, 0xffffffff, false);
 			if (selected.section() == LexiconCatalog.Section.STRUCTURES) {
 				// GuiStructure.drawScreen adds the size string and nothing else.
-				renderStructureViewer(graphics, left, top, mouseX, mouseY);
+				renderStructureViewer(graphics, left, top, mouseX, mouseY, partialTick);
 				super.extractRenderState(graphics, mouseX, mouseY, partialTick);
 				return;
 			}
@@ -944,7 +957,8 @@ public final class ScreenChromicLexicon extends Screen {
 		}
 	}
 
-	private void renderStructureViewer(GuiGraphicsExtractor graphics, int left, int top, int mouseX, int mouseY) {
+	private void renderStructureViewer(GuiGraphicsExtractor graphics, int left, int top, int mouseX,
+			int mouseY, float partialTick) {
 		LexiconStructurePreview preview = LexiconStructurePreview.get(selected, minecraft);
 		if (!preview.available()) {
 			graphics.centeredText(font, "No modern NBT preview available", left + WIDTH / 2, top + 103,
@@ -969,7 +983,7 @@ public final class ScreenChromicLexicon extends Screen {
 				// a tall structure deliberately overflows the book. The viewport is the whole screen
 				// for the same reason -- the page window is 242x181, and the pylon alone stands 229
 				// pixels tall once tipped by the default -30 degrees, so anything page-sized clips it.
-				render.draw3D(graphics, 0, 0, width, height);
+				render.draw3D(graphics, 0, 0, width, height, partialTick);
 			}
 		}
 	}
@@ -978,6 +992,11 @@ public final class ScreenChromicLexicon extends Screen {
 	 * V33a {@code GuiStructure.draw3d}'s input poll. Dragging with the left button spins the model,
 	 * the right button snaps it back, and A/D/W/S nudge it while held -- all read every frame rather
 	 * than on a key event, which is what makes the rotation continuous.
+	 *
+	 * <p>The pitch increments are the opposite sign to upstream's. Upstream's numbers, transplanted
+	 * literally, made the control invert on screen; flipping them reproduces upstream's behaviour.
+	 * The orientation is composed differently here than in V33a, so the two are not expected to agree
+	 * on signs -- but do not read a specific mechanism into this, it is not one that was verified.
 	 */
 	private void spinStructure(StructureRenderer render) {
 		Window window = minecraft.getWindow();
@@ -986,9 +1005,9 @@ public final class ScreenChromicLexicon extends Screen {
 		else if (InputConstants.isKeyDown(window, GLFW.GLFW_KEY_D))
 			render.rotate(0, -0.75, 0);
 		else if (InputConstants.isKeyDown(window, GLFW.GLFW_KEY_W))
-			render.rotate(-0.75, 0, 0);
-		else if (InputConstants.isKeyDown(window, GLFW.GLFW_KEY_S))
 			render.rotate(0.75, 0, 0);
+		else if (InputConstants.isKeyDown(window, GLFW.GLFW_KEY_S))
+			render.rotate(-0.75, 0, 0);
 	}
 
 	/**
@@ -1128,14 +1147,13 @@ public final class ScreenChromicLexicon extends Screen {
 
 	@Override
 	public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
-		// V33a draw3d: rotate(0.25*dY, 0.25*dX, 0) while the left button is held. Upstream reads the
-		// raw LWJGL mouse delta, whose Y axis points up, so a downward drag tips the model towards
-		// the viewer; the screen-space delta here points down, hence the negated pitch.
+		// V33a draw3d: rotate(0.25*dY, 0.25*dX, 0) while the left button is held. The pitch sign is
+		// flipped for the same reason spinStructure's is -- see the note there.
 		if (event.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT && structureMode == 0
 				&& isInsideStructurePreview(event.x(), event.y())) {
 			StructureRenderer render = structureRenderer();
 			if (render != null) {
-				render.rotate(-0.25 * dy, 0.25 * dx, 0);
+				render.rotate(0.25 * dy, 0.25 * dx, 0);
 				return true;
 			}
 		}

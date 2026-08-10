@@ -2840,7 +2840,45 @@ resets it, and A/D/W/S are polled every frame while held rather than consumed as
 what makes the spin continuous. The invented zoom, the arrow-key 15-degree steps and the `3D ✓`
 labels are gone.
 
-Still outstanding: the block-entity pass. V33a runs a TESR loop over the structure so pylons, casting
-tables and the ender crystal render animated; that needs a fake-level `BlockEntity` per position and
-is not attempted here, so those blocks draw as static models. `addRenderHook`/`addEntityRender` are
-unported for the same reason.
+### Chromic Lexicon: the structure viewer's block-entity pass — 2026-08-10
+
+V33a runs a TESR loop over the structure so pylons, repeaters, casting tables and data nodes render
+animated rather than as bare models. That is in now.
+
+`StructureRenderer` builds one stand-in `BlockEntity` per position whose block is an `EntityBlock`,
+caches it, and gives it the client level exactly as upstream gives its instances `theWorld`. The
+render states are extracted in `draw3D` — the GUI's *extract* phase, which is where vanilla extracts
+block entities too — and the picture-in-picture renderer only translates to each position and
+submits. That split matters: the world-reading code a renderer needs to be kept away from runs during
+extract, not submit.
+
+Two things a stand-in gets wrong unless you handle them:
+
+- **Light.** `BlockEntityRenderState.extractBase` falls back to full brightness only when the block
+  entity has no level. These have one, so it samples the real world at the structure's *local*
+  coordinates — usually inside terrain, so the preview renders black. Every extracted state is
+  overwritten with `LightCoordsUtil.FULL_BRIGHT` afterwards. This is the same defect recorded for the
+  RotaryCraft machine renderers.
+- **World reads.** A stand-in's position is not where the structure is. V33a's answer is a static
+  `isRenderingTiles()` that renderers consult, and that is ported and set across the extract loop.
+  `RenderCastingTable` is the first consumer: its rune animation scans neighbouring blocks for
+  engravings, which in the guide would have decorated the table with whatever happens to stand at
+  those coordinates.
+
+The stand-ins are never ticked, as upstream's are not, so a renderer animated from a tick counter
+stands still while one animated from wall-clock time moves. `RenderCrystalPylon` and
+`RenderCrystalRepeater` are the latter, which is why the pylon still pulses.
+
+`addBlockHook` now takes a supplier rather than a fixed state, because upstream's hooks are not
+constant: `GuiStructure.getElementByTick` walks the sixteen elements on a four-second cycle so a rune
+in the guide reads as "any rune" instead of the one the template happens to contain. All sixteen rune
+blocks are hooked, since the templates were generated with the black one as a placeholder.
+`addBlockEntityHook` is the equivalent for the block entities, for display state an unplaced instance
+would not have.
+
+Also fixed here: the data-node relay substitution moved the icon to `DATA_NODE` but left the block
+state as `DUMMY_AUX`, which is deliberately invisible — so the relay column showed in the flat view
+and vanished from the 3D one.
+
+Still outstanding: `addRenderHook` and `addEntityRender`, upstream's per-block scale/offset overrides
+and its rendered ender crystal.
