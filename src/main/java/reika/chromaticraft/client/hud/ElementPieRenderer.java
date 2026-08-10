@@ -28,6 +28,9 @@ public final class ElementPieRenderer extends PictureInPictureRenderer<ElementPi
 	private static final double STEP = 2;
 	private static final double SECTOR = 360D / CrystalElement.elements.length;
 
+	/** V33a: {@code GL11.glLineWidth(2)} for the spokes. */
+	private static final float SPOKE_WIDTH = 2;
+
 	@SubscribeEvent
 	public static void register(RegisterPictureInPictureRenderersEvent event) {
 		event.register(ElementPieRenderState.class, ElementPieRenderer::new);
@@ -73,13 +76,27 @@ public final class ElementPieRenderer extends PictureInPictureRenderer<ElementPi
 			}
 		});
 
-		// V33a's black spokes, drawn at the wheel's full radius rather than each wedge's.
-		collector.submitCustomGeometry(pose, RenderTypes.lines(), (matrix, buffer) -> {
+		// V33a's black spokes, at the wheel's full radius rather than each wedge's, drawn two pixels
+		// wide as upstream's glLineWidth(2) does.
+		//
+		// They are quads, not RenderTypes.lines(): that pipeline binds
+		// POSITION_COLOR_NORMAL_LINE_WIDTH, so a vertex carrying only position and colour trips
+		// "Missing elements in vertex" and takes the frame down. Quads also keep the whole element on
+		// one render type.
+		collector.submitCustomGeometry(pose, RenderTypes.debugQuads(), (matrix, buffer) -> {
 			for (int i = 0; i < CrystalElement.elements.length; i++) {
 				double a = Math.toRadians(i * SECTOR);
-				buffer.addVertex(matrix, 0, 0, 0).setColor(0xff000000);
-				buffer.addVertex(matrix, (float)(state.radius() * Math.cos(a)),
-						(float)(state.radius() * Math.sin(a)), 0).setColor(0xff000000);
+				float cx = (float)Math.cos(a);
+				float cy = (float)Math.sin(a);
+				// Perpendicular, half the line width either side.
+				float px = -cy * SPOKE_WIDTH / 2;
+				float py = cx * SPOKE_WIDTH / 2;
+				float ex = cx * state.radius();
+				float ey = cy * state.radius();
+				buffer.addVertex(matrix, px, py, 0).setColor(0xff000000);
+				buffer.addVertex(matrix, ex + px, ey + py, 0).setColor(0xff000000);
+				buffer.addVertex(matrix, ex - px, ey - py, 0).setColor(0xff000000);
+				buffer.addVertex(matrix, -px, -py, 0).setColor(0xff000000);
 			}
 		});
 	}

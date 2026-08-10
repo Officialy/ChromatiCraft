@@ -3064,3 +3064,23 @@ elements the construct conducts, breathing on a sine so the wheel is never stati
 For the record, the earlier claim that this page was blocked on `Proportionality` was wrong twice
 over — it was already ported, and `infoicons.png` has since been extracted alongside the HUD wheel
 art. The only real blocker was the two block-entity bases.
+
+### The element wheel's spokes crashed the frame — 2026-08-10
+
+`IllegalStateException: Missing elements in vertex` out of `BufferBuilder`, from the HUD wheel's
+spoke pass. `RenderTypes.lines()` binds `POSITION_COLOR_NORMAL_LINE_WIDTH`; a vertex carrying only
+position and colour is rejected, and it takes the whole render frame with it.
+
+The crash log is also the evidence for the fix: the wedges are submitted on `RenderTypes.debugQuads()`
+in the *same element* and rendered fine — only the second lambda failed. So the spokes moved onto the
+quad path too, drawn two pixels wide to match upstream's `glLineWidth(2)`, which keeps the element on
+one render type and off a format that needs four attributes.
+
+`ReikaRenderHelper` shows the other route works if you feed it properly: `.setColor(...)` followed by
+`.setLineWidth(...)`. `Proportionality` and `Spline` were both missing that and would have failed
+identically — `Proportionality` matters because the machine energy page put it on a user-visible
+path, where its `drawSeparationLines` branch was a crash waiting for the first caller to enable it.
+Both are fixed in DragonAPI.
+
+Worth generalising: a compile-clean `submitCustomGeometry` lambda proves nothing about vertex format.
+The format is a runtime contract of the render type, and the only way to find a mismatch is to run it.
