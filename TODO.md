@@ -672,7 +672,19 @@ is still a raw 1.7.10 file outside the build. Both are prerequisites for the por
 Five separate defects, each its own slice. Evidence gathered so far is recorded per item so none of
 it has to be re-derived.
 
-### 1. Crystal lamps and potion crystals render untinted
+### 1. Crystal lamps and potion crystals render untinted — FIXED 2026-08-10
+
+The cause was two render types in one special item renderer. The crystal went to
+`itemTranslucent` and the plinth to `entitySolid`; the item compositor keeps one, and the survivor
+was the opaque smooth-stone plinth -- so a lamp showed as a plain white stone block with no crystal
+on it. Both now go to `itemTranslucent`. The plinth's vertices are fully opaque, so it looks
+identical. Same shape as the element wheel's spoke crash: keep a special renderer on one render type.
+
+That also settles (2) -- the cave crystals were always translucent through this path, which is what
+proved the path itself was fine.
+
+Original investigation, kept because the eliminations are still useful:
+
 
 **Ruled out, with evidence** — do not re-check these:
 - The generated item model is correct and structurally identical to the cave crystal's, which *does*
@@ -699,7 +711,16 @@ V33a's crystals are translucent in the inventory as well as in world. The render
 `itemTranslucent` and sets alpha 220, so this is likely the same root cause as (1) rather than a
 second bug — fix them together and re-check.
 
-### 3. Flower and plant items render wrong
+### 3. Flower and plant items render wrong — FIXED 2026-08-10
+
+Both the deco flowers and the tiered plants handed `ItemModelUtils.plainModel` their *block* model,
+so the slot got two intersecting planes seen at the inventory's viewing angle -- a pair of slivers.
+They now generate a `ModelTemplates.FLAT_ITEM` sprite model, which is what vanilla gives every one of
+its own flowers. The tiered plants use their front layer, the one carrying the plant's shape. The
+generated models come out with `force_translucent`, so the sprites keep their alpha.
+
+Original note:
+
 
 The tiered plants, deco flowers and similar draw as their block models in the slot, which for a
 cross-shaped plant reads as two intersecting planes seen edge-on. V33a gives them flat item sprites.

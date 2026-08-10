@@ -76,7 +76,12 @@ public final class CaveCrystalItemRenderer implements NoDataSpecialModelRenderer
 				}, ITEM_ARM_MASK, false, false, false));
 		if (baseSprite != null) {
 			TextureAtlasSprite baseTexture = sprites.get(baseSprite);
-			collector.submitCustomGeometry(poseStack, RenderTypes.entitySolid(TextureAtlas.LOCATION_BLOCKS),
+			// The SAME render type as the crystal above, not entitySolid. A special item renderer that
+			// submits two different types loses one of them to the item compositor, and the survivor
+			// here was the opaque plinth -- which is why a lamp or potion crystal showed as a plain
+			// white stone block with no crystal on it at all. The plinth's own vertices are fully
+			// opaque, so drawing them on the translucent type looks identical.
+			collector.submitCustomGeometry(poseStack, RenderTypes.itemTranslucent(TextureAtlas.LOCATION_BLOCKS),
 					(unused, vertices) -> CaveCrystalGeometry.emitBase((points, normal, shade) -> {
 						int colour = 0xFF000000 | (shade << 16) | (shade << 8) | shade;
 						for (CaveCrystalGeometry.Point point : points) {

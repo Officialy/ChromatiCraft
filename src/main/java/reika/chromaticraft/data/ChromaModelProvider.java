@@ -399,7 +399,13 @@ public class ChromaModelProvider extends ModelProvider {
 					.create(block, TextureMapping.cross(texture), modelOut);
 			blockStateOut.accept(MultiVariantGenerator.dispatch(block,
 					new MultiVariant(WeightedList.of(new Variant(model)))));
-			itemModelOut.accept(block.asItem(), ItemModelUtils.plainModel(model));
+			// A flat sprite, not the cross model. Reusing the block model puts two intersecting planes
+			// in the slot, which at the inventory's viewing angle reads as a pair of slivers -- vanilla
+			// gives every one of its own flowers an item/generated model for exactly this reason.
+			Identifier itemModel = ModelTemplates.FLAT_ITEM.create(
+					ModelLocationUtils.getModelLocation(block.asItem()),
+					new TextureMapping().put(TextureSlot.LAYER0, texture), modelOut);
+			itemModelOut.accept(block.asItem(), ItemModelUtils.plainModel(itemModel));
 		}
 	}
 
@@ -467,7 +473,14 @@ public class ChromaModelProvider extends ModelProvider {
 			modelOut.accept(id, () -> layeredCross(back, front));
 			blockStateOut.accept(MultiVariantGenerator.dispatch(block,
 					new MultiVariant(WeightedList.of(new Variant(id)))));
-			itemModelOut.accept(block.asItem(), ItemModelUtils.plainModel(id));
+			// Flat sprite for the slot, as with the deco flowers. The front layer is the one that
+			// carries the plant's shape, so that is the sprite the item shows.
+			Identifier itemModel = ModelTemplates.FLAT_ITEM.create(
+					ModelLocationUtils.getModelLocation(block.asItem()),
+					new TextureMapping().put(TextureSlot.LAYER0, new Material(
+							Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, plant.frontTexture()), true)),
+					modelOut);
+			itemModelOut.accept(block.asItem(), ItemModelUtils.plainModel(itemModel));
 		}
 	}
 

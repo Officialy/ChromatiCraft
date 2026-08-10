@@ -1,6 +1,6 @@
 {
   "model": {
     "type": "minecraft:model",
-    "model": "chromaticraft:block/aura_ivy"
+    "model": "chromaticraft:item/aura_ivy"
   }
 }

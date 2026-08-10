@@ -1,6 +1,6 @@
 {
   "model": {
     "type": "minecraft:model",
-    "model": "chromaticraft:block/resonant_clover"
+    "model": "chromaticraft:item/resonant_clover"
   }
 }

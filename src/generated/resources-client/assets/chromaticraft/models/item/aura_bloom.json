@@ -1,0 +1,9 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": {
+      "force_translucent": true,
+      "sprite": "chromaticraft:block/plant/aura_bloom_front"
+    }
+  }
+}

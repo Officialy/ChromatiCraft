@@ -1,6 +1,6 @@
 {
   "model": {
     "type": "minecraft:model",
-    "model": "chromaticraft:block/rock_flower"
+    "model": "chromaticraft:item/rock_flower"
   }
 }

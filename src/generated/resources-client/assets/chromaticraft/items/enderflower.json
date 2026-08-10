@@ -1,6 +1,6 @@
 {
   "model": {
     "type": "minecraft:model",
-    "model": "chromaticraft:block/enderflower"
+    "model": "chromaticraft:item/enderflower"
   }
 }

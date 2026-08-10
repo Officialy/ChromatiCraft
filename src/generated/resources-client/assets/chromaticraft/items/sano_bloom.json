@@ -1,6 +1,6 @@
 {
   "model": {
     "type": "minecraft:model",
-    "model": "chromaticraft:block/sano_bloom"
+    "model": "chromaticraft:item/sano_bloom"
   }
 }
