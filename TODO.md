@@ -634,5 +634,11 @@ otherwise sample the real world at the structure's local coordinates), and V33a'
 is the first consumer. Stand-ins are not ticked, as upstream's are not, so a renderer animated from
 a tick counter stands still while one animated from wall-clock time moves.
 
-Still outstanding on this page: `addRenderHook` and `addEntityRender`, upstream's per-block
-scale/offset overrides and its rendered ender crystal.
+`addEntityRender` landed too — any entity, ticked once per frame as upstream ticks it, extracted with
+the block entities and drawn half a block in and three eighths up. `addRenderHook` was **not** ported
+on purpose: it is write-only in V33a, its one read site being inside the comment around the old
+item-icon `draw3D`, and its scale/offset are pixel nudges for a 2D layout that no longer exists.
+Implementing it would add behaviour upstream does not have.
+
+Neither has a consumer yet — the portal structure has no NBT template and `EntityChromaEnderCrystal`
+is still a raw 1.7.10 file outside the build. Both are prerequisites for the portal page.

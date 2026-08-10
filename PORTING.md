@@ -2880,5 +2880,20 @@ Also fixed here: the data-node relay substitution moved the icon to `DATA_NODE` 
 state as `DUMMY_AUX`, which is deliberately invisible — so the relay column showed in the flat view
 and vanished from the 3D one.
 
-Still outstanding: `addRenderHook` and `addEntityRender`, upstream's per-block scale/offset overrides
-and its rendered ender crystal.
+**`addEntityRender` is ported; `addRenderHook` deliberately is not.** Some structures are defined
+partly by entities -- upstream's dimension portal is eight ender crystals on a bedrock ring, and
+without them that page shows a ring and nothing else. `StructureRenderer.addEntityRender` takes any
+entity, ticks it once per frame as upstream's `onUpdate()` does, extracts its render state alongside
+the block entities and draws it half a block in and three eighths up. Positions are in the template's
+own coordinates, unlike upstream, which stores entities relative to the structure midpoint while its
+block loop is not — one space is less error-prone than two.
+
+`addRenderHook` is a different matter: in V33a it is **write-only**. `GuiStructure` registers a
+`PylonRenderHook`, but `renderHooks` is read in exactly one place, and that place is inside the block
+comment around the old item-icon `draw3D`. Its `getScale`/`getOffsetX`/`getOffsetY` are pixel nudges
+for a 2D icon layout that no longer exists even upstream. Implementing it against real block models
+would add behaviour V33a does not have, so it is not implemented, and `BlockRenderHook` should not be
+resurrected without a live consumer to justify it.
+
+Neither hook has a ChromatiCraft consumer yet: the portal structure has no modern NBT template and
+`EntityChromaEnderCrystal` is still a raw 1.7.10 file outside the build.
