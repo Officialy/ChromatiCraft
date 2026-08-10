@@ -3038,3 +3038,29 @@ came from `CrystalElement.getOutlineRune`, part of the 1.7.10 icon system stripp
 Also settled: the structure viewer's flipped pitch was confirmed correct in game for both the held
 keys and the drag, so the machine page's `PITCH_DRAG` keeps the same convention. The comments no
 longer hedge — though neither ever claimed a verified mechanism for why upstream's sign had to move.
+
+### Chromic Lexicon: the machine ENERGY subpage — 2026-08-10
+
+A construct that costs lumen energy gets a second page: a 64-pixel supply badge from `infoicons.png`
+centred low, and a proportional wheel of the elements it draws at `(posX+xSize-32-50, posY+42)`,
+radius 32, ringed white then black. It is reached with W/S like every other subpage and is only
+offered when there is a cost to show.
+
+That wheel is a real pie — angles carry the shares — and is DragonAPI's `Proportionality` used as
+designed, `setGeometry` then `render`. It needs a `SubmitNodeCollector`, so it rides a
+picture-in-picture element at `scale = 1`. Worth keeping straight: this is a different shape from the
+manipulator HUD's wheel, where the *radius* carries the value and the angles are fixed.
+
+**How the supply type is detected.** Upstream branches on `ChromaTiles` predicates
+(`isPylonPowered`, `isRelayPowered`, `isChargedCrystalPowered`). The port tests the stand-in block
+entity the machine render already builds — the same question asked of the object rather than of a
+parallel enum, and it needs no new registry surface. Only the pylon-powered branch is live; the other
+two read `getRequiredEnergy()` off `ChargedCrystalPowered` and `TileEntityRelayPowered`, two abstract
+block-entity bases still outside the allowlist, and are marked CHROMA-PORT at the site.
+
+The pylon-powered display is illustrative rather than a true cost even upstream: it shows which
+elements the construct conducts, breathing on a sine so the wheel is never static.
+
+For the record, the earlier claim that this page was blocked on `Proportionality` was wrong twice
+over — it was already ported, and `infoicons.png` has since been extracted alongside the HUD wheel
+art. The only real blocker was the two block-entity bases.

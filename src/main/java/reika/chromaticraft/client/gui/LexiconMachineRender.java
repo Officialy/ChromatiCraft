@@ -19,6 +19,9 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 
+import reika.chromaticraft.magic.ElementTagCompound;
+import reika.chromaticraft.magic.interfaces.CrystalReceiver;
+import reika.chromaticraft.registry.CrystalElement;
 import reika.dragonapi.instantiable.rendering.structure.StructureRenderState;
 import reika.dragonapi.instantiable.rendering.structure.StructureRenderer;
 
@@ -146,6 +149,44 @@ final class LexiconMachineRender {
 		}
 		beState.lightCoords = LightCoordsUtil.FULL_BRIGHT;
 		return List.of(beState);
+	}
+
+	/**
+	 * V33a {@code GuiMachineDescription.getUsedEnergy}: what the construct costs to run, if anything.
+	 *
+	 * <p>Upstream branches on {@code ChromaTiles} predicates -- {@code isChargedCrystalPowered},
+	 * {@code isRelayPowered}, {@code isPylonPowered}. Testing the stand-in block entity directly is the
+	 * same question asked of the object rather than of a parallel enum, and it needs no new registry.
+	 *
+	 * <p>CHROMA-PORT: only the pylon-powered branch is live. The other two read
+	 * {@code getRequiredEnergy()} off {@code ChargedCrystalPowered} and {@code TileEntityRelayPowered},
+	 * two abstract block-entity bases that are not yet in the build; restore them alongside those.
+	 *
+	 * @return null when the machine needs no lumen energy, which is upstream's signal to skip the page
+	 */
+	static ElementTagCompound usedEnergy(ItemStack icon, long guiTick) {
+		Minecraft mc = Minecraft.getInstance();
+		if (mc.level == null || !(icon.getItem() instanceof BlockItem blockItem))
+			return null;
+		Block block = blockItem.getBlock();
+		if (!(block instanceof EntityBlock))
+			return null;
+		BlockEntity be = BLOCK_ENTITIES.get(block);
+		if (be == null) {
+			blockEntityState(block, block.defaultBlockState(), 1);
+			be = BLOCK_ENTITIES.get(block);
+		}
+		if (!(be instanceof CrystalReceiver receiver))
+			return null;
+		// V33a's pylon-powered display is illustrative rather than a real cost: it shows which
+		// elements the construct conducts, breathing so the wheel is never static.
+		ElementTagCompound tag = new ElementTagCompound();
+		for (int i = 0; i < CrystalElement.elements.length; i++) {
+			CrystalElement e = CrystalElement.elements[i];
+			if (receiver.isConductingElement(e))
+				tag.addValueToColor(e, 25 + (int)(20 * Math.sin(i + guiTick / 20D)));
+		}
+		return tag.isEmpty() ? null : tag;
 	}
 
 	/** Dropped when the client disconnects, so nothing holds a stale level. */

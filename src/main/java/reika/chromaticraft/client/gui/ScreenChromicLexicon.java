@@ -64,6 +64,10 @@ public final class ScreenChromicLexicon extends Screen {
 	private static final Identifier PAGE_PYLONCAST = page("pyloncast2");
 	private static final Identifier PAGE_STRUCTURE = page("structure");
 
+	/** V33a {@code Textures/infoicons.png}: the power-supply badges, sixteen to a row. */
+	private static final Identifier INFO_ICONS = Identifier.fromNamespaceAndPath(
+			ChromatiCraft.MODID, "textures/gui/hud/infoicons.png");
+
 	/** V33a RuneShapeRenderer draws its floor from the pylon structure block and the table's top. */
 	private static final Identifier FLOOR_TILE = Identifier.fromNamespaceAndPath(
 			ChromatiCraft.MODID, "textures/block/pylon/block_0.png");
@@ -113,6 +117,8 @@ public final class ScreenChromicLexicon extends Screen {
 	private StructureRenderer structureRender;
 	private String structureRenderFor;
 	private final LexiconMachineRender machineRender = new LexiconMachineRender();
+	/** V33a GuiMachineDescription pages: MAIN first, ENERGY after it when the construct costs energy. */
+	private int machineSubpage;
 	private final ArrayList<String> noteData;
 	private final ArrayList<EditBox> noteFields = new ArrayList<>();
 	private int noteScroll;
@@ -322,6 +328,7 @@ public final class ScreenChromicLexicon extends Screen {
 		structureRender = null;
 		structureRenderFor = null;
 		machineRender.reset();
+		machineSubpage = 0;
 		rebuildWidgets();
 	}
 
@@ -750,7 +757,13 @@ public final class ScreenChromicLexicon extends Screen {
 			renderSpecialistHeader(graphics, selected, left, top, partialTick);
 			graphics.text(font, Component.literal("Research: " + selected.level().name()), left + 8, top + 69,
 					0xffb0b0b0, false);
-			renderDescriptionPage(graphics, left, top);
+			// V33a GuiMachineDescription.getText: the energy subpage replaces the machine's description
+			// with its own sentence rather than repeating it under the wheel.
+			if (selected.section() == LexiconCatalog.Section.MACHINES && machineSubpage == 1)
+				graphics.text(font, Component.literal("This device requires lumen energy to function."),
+						left + 8, top + 94, 0xffffffff, false);
+			else
+				renderDescriptionPage(graphics, left, top);
 		}
 		else if (view == View.PROGRESS) {
 			renderProgress(graphics, left, top, mouseX, mouseY);
@@ -863,7 +876,9 @@ public final class ScreenChromicLexicon extends Screen {
 				// V33a GuiMachineDescription draws the construct itself, slowly turning, and no caption.
 				// The "Crystal network construct" / "Casting-system construct" strings that used to be
 				// here were invented; upstream has nothing of the sort.
-				if (!machineRender.render(graphics, icon, left, top, width, height, partialTick)
+				if (machineSubpage == 1)
+					renderMachineEnergy(graphics, icon, left, top);
+				else if (!machineRender.render(graphics, icon, left, top, width, height, partialTick)
 						&& !icon.isEmpty())
 					graphics.item(icon, left + 120, top + 43);
 			}
@@ -887,6 +902,32 @@ public final class ScreenChromicLexicon extends Screen {
 				if (!icon.isEmpty()) graphics.item(icon, left + 120, top + 43);
 			}
 		}
+	}
+
+	/**
+	 * V33a {@code GuiMachineDescription}'s ENERGY page: a 64-pixel badge naming how the construct is
+	 * powered, and a proportional wheel of the elements it draws.
+	 */
+	private void renderMachineEnergy(GuiGraphicsExtractor graphics, ItemStack icon, int left, int top) {
+		reika.chromaticraft.magic.ElementTagCompound tag = LexiconMachineRender.usedEnergy(icon, guiTick);
+		if (tag == null)
+			return;
+		// V33a: a 64px badge from infoicons.png, centred low on the page. Column 1 is the
+		// pylon-powered symbol, which is the only supply type the port can currently detect.
+		int r = 64;
+		int dx = left + WIDTH / 2 - r / 2;
+		int dy = top + HEIGHT - r - 16;
+		graphics.blit(RenderPipelines.GUI_TEXTURED, INFO_ICONS, dx, dy, 16, 0, r, r, 256, 256);
+
+		// V33a: the wheel sits at (posX+xSize-r-50, posY+r+10) with r = 32, ringed white then black.
+		int pr = 32;
+		int px = left + WIDTH - pr - 50;
+		int py = top + pr + 10;
+		graphics.submitPictureInPictureRenderState(new LexiconEnergyPie.State(
+				tag.getProportionality(), pr, System.identityHashCode(this) + guiTick % 360,
+				px - pr, py - pr, px + pr, py + pr, graphics.peekScissorStack()));
+		reika.dragonapi.libraries.rendering.ReikaGuiAPI.instance.drawCircle(graphics, px, py, pr + 1, 0xffffffff);
+		reika.dragonapi.libraries.rendering.ReikaGuiAPI.instance.drawCircle(graphics, px, py, pr, 0xff000000);
 	}
 
 	private void renderStructureViewer(GuiGraphicsExtractor graphics, int left, int top, int mouseX,
@@ -1008,6 +1049,14 @@ public final class ScreenChromicLexicon extends Screen {
 				}
 			}
 			return super.keyPressed(event);
+		}
+		if (selected != null && !castingRecipeView
+				&& selected.section() == LexiconCatalog.Section.MACHINES
+				&& LexiconMachineRender.usedEnergy(LexiconIconResolver.icon(selected), guiTick) != null) {
+			// V33a gives a machine that costs energy a second subpage, reached the same way every
+			// other page turns.
+			if (key == GLFW.GLFW_KEY_W || key == GLFW.GLFW_KEY_UP) return moveMachineSubpage(-1);
+			if (key == GLFW.GLFW_KEY_S || key == GLFW.GLFW_KEY_DOWN) return moveMachineSubpage(1);
 		}
 		if (selected != null) {
 			if (key == GLFW.GLFW_KEY_A || key == GLFW.GLFW_KEY_LEFT) return moveEntry(-1);
@@ -1181,6 +1230,15 @@ public final class ScreenChromicLexicon extends Screen {
 		if (next == recipeSubpage)
 			return false;
 		recipeSubpage = next;
+		rebuildWidgets();
+		return true;
+	}
+
+	private boolean moveMachineSubpage(int direction) {
+		int next = Math.clamp(machineSubpage + direction, 0, 1);
+		if (next == machineSubpage)
+			return false;
+		machineSubpage = next;
 		rebuildWidgets();
 		return true;
 	}

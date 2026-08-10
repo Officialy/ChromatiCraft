@@ -585,13 +585,18 @@ rather than generalising one renderer across several pages.
          element (`LexiconMachineRender`), so the block entity renderer runs and a construct that is
          mostly its renderer is not a bare cube. The invented "Crystal network construct" captions
          that stood here are gone; upstream draws no caption.
-   - [ ] **ENERGY** — blocked two ways: `Textures/infoicons.png` is not extracted, and `ChromaTiles`
-         has none of `isPylonPowered`/`isRelayPowered`/`isChargedCrystalPowered`/`isWirelessPowered`.
-         **Correction (2026-08-10):** an earlier version of this entry also claimed DragonAPI's
-         `Proportionality` was unported and that there was no filled-sector primitive. Both were
-         false — `Proportionality` and `CircularDivisionRenderer` are both ported and draw through
-         `SubmitNodeCollector.submitCustomGeometry`. The claim came from a `find` run with a drifted
-         shell working directory that never searched DragonAPI at all.
+   - [x] **ENERGY** — done 2026-08-10. A 64-pixel supply badge from `infoicons.png` low on the page
+         and a proportional wheel of the elements the construct draws, at `(posX+xSize-32-50,
+         posY+42)` with radius 32, ringed white then black. The wheel is DragonAPI's
+         `Proportionality` used as designed -- `setGeometry` then `render` -- on a picture-in-picture
+         element, since it needs a `SubmitNodeCollector`. Reached with W/S like any other subpage, and
+         only offered when the construct actually costs energy.
+
+         Upstream branches on `ChromaTiles` predicates; the port tests the stand-in block entity
+         instead, which asks the same question of the object rather than a parallel enum and needed no
+         new registry. Only the pylon-powered branch is live: the other two read `getRequiredEnergy()`
+         off `ChargedCrystalPowered` and `TileEntityRelayPowered`, two abstract block-entity bases not
+         yet in the allowlist.
    - [ ] **AOE** — blocked, and *unreachable* rather than merely unported: `ComplexAOE` and all four
          of its implementors (`TileEntityFarmer`, `TileEntityBiomeReverter`, `TileEntityCropSpeedPlant`,
          `TileEntityHarvesterPlant`) are outside the build allowlist, so no machine can enter this
