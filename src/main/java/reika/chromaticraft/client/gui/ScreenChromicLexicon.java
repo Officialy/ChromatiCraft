@@ -228,11 +228,10 @@ public final class ScreenChromicLexicon extends Screen {
 			// V33a GuiNavigation.initGui, verbatim geometry. The Items/Recipes tabs are 13x88 strips
 			// down the left edge whose v swaps to show which mode is active, and Search is a 13x35
 			// stub below them. Nothing here is a vanilla widget upstream.
-			// The two tabs are 13x88 and overlap by 54 pixels. 26.2 hit-tests children in order and
-			// the first hit wins, so the add order decides which tab owns the shared band -- upstream
-			// adds the INACTIVE one first for the same reason. v=4 is the raised, active look and
-			// v=95 the recessed one; the port had both inverted, so the tab you were on drew and
-			// clicked as though it were the other.
+			// The two tabs are 13x88 but only 34 pixels apart, so each hides 54 pixels of the other.
+			// The art is drawn full height, which is what makes them look stacked, but the click
+			// region is trimmed to the visible part -- otherwise whichever was added first swallowed
+			// every click in the shared band. v=4 is the raised active look, v=95 the recessed one.
 			Runnable toItems = () -> {
 				recipeMode = false;
 				rebuildWidgets();
@@ -241,17 +240,22 @@ public final class ScreenChromicLexicon extends Screen {
 				recipeMode = true;
 				rebuildWidgets();
 			};
+			// Items sits above Recipes, so its visible strip ends where Recipes begins.
+			LexiconImageButton items = new LexiconImageButton(left - 13, top - 7, 13, 88,
+					15, recipeMode ? 95 : 4, Component.literal("Items"), toItems).clickHeight(34);
+			LexiconImageButton recipesTab = new LexiconImageButton(left - 13, top + 27, 13, 88,
+					15, recipeMode ? 4 : 95, Component.literal("Recipes"), toRecipes);
+			// Add the inactive tab first so the active one draws over it, as upstream does. Which tab
+			// owns a click no longer depends on this order -- clickHeight settles that.
 			if (recipeMode) {
-				addRenderableWidget(new LexiconImageButton(left - 13, top + 27, 13, 88,
-						15, 4, Component.literal("Recipes"), toRecipes));
-				addRenderableWidget(new LexiconImageButton(left - 13, top - 7, 13, 88,
-						15, 95, Component.literal("Items"), toItems));
+				addRenderableWidget(items);
+				addRenderableWidget(recipesTab);
 			}
 			else {
-				addRenderableWidget(new LexiconImageButton(left - 13, top + 27, 13, 88,
-						15, 95, Component.literal("Recipes"), toRecipes));
-				addRenderableWidget(new LexiconImageButton(left - 13, top - 7, 13, 88,
-						15, 4, Component.literal("Items"), toItems));
+				addRenderableWidget(recipesTab);
+				addRenderableWidget(items);
+			}
+			if (!recipeMode) {
 				// V33a only offers Search out of recipe mode.
 				addRenderableWidget(new LexiconImageButton(left - 13, top + 160, 13, 35,
 						15, 221, Component.literal("Search"), () -> {
@@ -575,15 +579,8 @@ public final class ScreenChromicLexicon extends Screen {
 				rebuildWidgets();
 			}).bounds(left + 222, top + 6, 18, 18).build());
 		}
-		String[] labels = {"Grid", "Runes", "Stands", "Aura"};
-		int max = recipe.tier().ordinal();
-		for (int i = 0; i <= max; i++) {
-			int subpage = i;
-			addRenderableWidget(Button.builder(Component.literal(labels[i]), button -> {
-				recipeSubpage = subpage;
-				rebuildWidgets();
-			}).bounds(left + 106 + i * 35, top + 194, 34, 18).build());
-		}
+		// No subpage button row: V33a turns these pages with W/S like every other book page, and the
+		// frame art has no room for buttons across the bottom.
 	}
 
 	/**
@@ -1331,7 +1328,10 @@ public final class ScreenChromicLexicon extends Screen {
 		List<ItemStack> options = slot.resolveForStacks(context);
 		if (options.isEmpty())
 			return ItemStack.EMPTY;
-		return options.get((int)(guiTick / 20 % options.size()));
+		// Wall clock, not guiTick: guiTick counts rendered frames, so dividing it by twenty cycled
+		// three times a second at 60fps instead of once. One second per candidate matches vanilla's
+		// own recipe book.
+		return options.get((int)(System.currentTimeMillis() / 1000 % options.size()));
 	}
 
 	private void renderCastingRecipe(GuiGraphicsExtractor graphics, int left, int top) {
@@ -1342,7 +1342,6 @@ public final class ScreenChromicLexicon extends Screen {
 		graphics.centeredText(font, output.getHoverName(), left + WIDTH / 2, top + 16, 0xffffffff);
 		graphics.centeredText(font, Component.literal(recipe.tier().name() + " Casting  " + (recipeIndex + 1)
 				+ "/" + recipes.size()), left + WIDTH / 2, top + 30, 0xff80dfff);
-		graphics.item(output, left + 20, top + 48);
 
 		switch (recipeSubpage) {
 			case 0 -> renderCastingGrid(graphics, recipe, left, top);
@@ -1409,7 +1408,7 @@ public final class ScreenChromicLexicon extends Screen {
 			if (rune.offset().getY() != layer)
 				continue;
 			Identifier tex = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
-					"textures/block/runes/real/tile4_" + rune.element().ordinal() + ".png");
+					"textures/block/runes/engraved/tile" + rune.element().ordinal() + "_0.png");
 			graphics.blit(RenderPipelines.GUI_TEXTURED, tex,
 					dx + rune.offset().getX() * w, dy + rune.offset().getZ() * w, 0, 0, w, w, w, w);
 		}

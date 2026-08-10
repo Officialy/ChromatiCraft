@@ -3084,3 +3084,32 @@ Both are fixed in DragonAPI.
 
 Worth generalising: a compile-clean `submitCustomGeometry` lambda proves nothing about vertex format.
 The format is a runtime contract of the render type, and the only way to find a mismatch is to run it.
+
+### Casting recipe page: five defects from a screenshot — 2026-08-10
+
+**The subpage button row was invented.** A "Grid / Runes / Stands / Aura" strip across the bottom,
+where V33a turns those pages with W/S like every other book page. `moveRecipeSubpage` already did
+that, so the row was pure addition. Removed.
+
+**The rune tiles were a path that does not exist.** `textures/block/runes/real/tile4_<ordinal>.png`
+— there is no `real/` directory and no `tile4_N` naming. The tiles are `tile<element>_0.png`, and the
+set the casting floor wants is `engraved/`, which is 16x16 and so matches the layout's tile size
+exactly. `frontpng/` is the animated 16x1024 strip and would have been badly wrong even if the path
+had resolved.
+
+**The result was drawn twice.** Once at `left+20, top+48` and again at `left+7, top+5`. Upstream
+draws it once, in the frame's own slot at `posX+7, posY+5`; the first was invented and is what looked
+misplaced. Removed.
+
+**The ingredient cycle ran at frame rate.** `guiTick / 20` — but `guiTick` counts *rendered frames*,
+not ticks, so a tag ingredient cycled about three times a second at 60fps instead of once. It reads
+wall-clock now, one second per candidate, which is what vanilla's own recipe book does. Worth
+remembering that `guiTick` is a frame counter: it is correct for the hover and search ramps that use
+it, and wrong for anything that means to measure time.
+
+**The tabs could not be clicked accurately, and the earlier fix was not enough.** Items and Recipes
+are both 13x88 but sit only 34 pixels apart, so each hides 54 pixels of the other. Reordering them
+cannot fix that — whichever is added first still owns the whole shared band, and the band is most of
+both tabs. `LexiconImageButton` now takes a `clickHeight`, so Items only claims the 34 pixels you can
+actually see while still drawing full height. With hit-testing settled explicitly, the add order is
+free to do what upstream uses it for: the inactive tab goes first so the active one draws over it.

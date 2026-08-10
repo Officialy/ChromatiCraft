@@ -26,6 +26,8 @@ public final class LexiconImageButton extends AbstractButton {
 	private final int u;
 	private final int v;
 	private final Runnable action;
+	/** How much of this button's height actually takes clicks; see {@link #clickHeight}. */
+	private int clickHeight;
 
 	public LexiconImageButton(int x, int y, int width, int height, int u, int v,
 			Component tooltip, Runnable action) {
@@ -34,6 +36,28 @@ public final class LexiconImageButton extends AbstractButton {
 		this.v = v;
 		this.action = action;
 		this.setTooltip(net.minecraft.client.gui.components.Tooltip.create(tooltip));
+	}
+
+	/**
+	 * V33a's Items and Recipes tabs are both 13x88 but sit only 34 pixels apart, so 54 pixels of each
+	 * strip is hidden behind the other. The art is drawn at full height -- that overlap is what makes
+	 * the tabs look stacked -- but a click has to go to the tab you can actually see, so the hit
+	 * region is trimmed to the visible part.
+	 *
+	 * @param height the clickable height from this button's top edge
+	 */
+	public LexiconImageButton clickHeight(int height) {
+		clickHeight = height;
+		return this;
+	}
+
+	@Override
+	public boolean isMouseOver(double mouseX, double mouseY) {
+		if (!this.visible)
+			return false;
+		int h = clickHeight > 0 ? clickHeight : this.height;
+		return mouseX >= this.getX() && mouseX < this.getX() + this.width
+				&& mouseY >= this.getY() && mouseY < this.getY() + h;
 	}
 
 	@Override
