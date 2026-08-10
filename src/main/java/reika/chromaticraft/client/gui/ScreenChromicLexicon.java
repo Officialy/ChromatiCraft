@@ -47,7 +47,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 public final class ScreenChromicLexicon extends Screen {
 
 	private static final Identifier NAVIGATION = Identifier.fromNamespaceAndPath(
-			ChromatiCraft.MODID, "textures/gui/lexicon/navigation.png");
+			ChromatiCraft.MODID, "textures/gui/lexicon/navigation2.png");
 	/**
 	 * V33a {@code GuiBookSection.PageType}: each page kind has its own frame art, and the casting
 	 * view swaps it per subpage. Only the types the port can currently reach are listed.
@@ -81,8 +81,13 @@ public final class ScreenChromicLexicon extends Screen {
 	/** V33a navigation row pitch, still used by the stored-fragment list. */
 	private static final int ENTRY_HEIGHT = 23;
 	/** V33a GuiScrollingPage draws the pane at (left + 7, top - 1). */
-	private static final int PANE_X = 7;
-	private static final int PANE_Y = -1;
+	/**
+	 * V33a draws the scrolling backdrop at {@code leftX+7, topY-1} but lays the sections out from
+	 * {@code leftX+11, topY+11} -- two different origins. The port used the backdrop's for both, which
+	 * put every section header eight pixels above the frame instead of inside it.
+	 */
+	private static final int PANE_X = 11;
+	private static final int PANE_Y = 11;
 	private static LexiconCatalog.Section rememberedSection = LexiconCatalog.Section.INFO;
 	private static int rememberedOffset;
 
@@ -112,9 +117,9 @@ public final class ScreenChromicLexicon extends Screen {
 	private final ArrayList<EditBox> noteFields = new ArrayList<>();
 	private int noteScroll;
 	private boolean notesDirty;
-	private ProgressView progressView = ProgressView.TREE;
-	private int progressOffset;
-	private ProgressStage selectedStage;
+	private LexiconProgressGraph.Mode progressView = LexiconProgressGraph.Mode.TREE;
+	private final LexiconProgressGraph progressGraph = new LexiconProgressGraph();
+	private final LexiconScrollPane progressPane = new LexiconScrollPane();
 	private boolean castingRecipeView;
 	private int recipeIndex;
 	private int recipeSubpage;
@@ -129,14 +134,6 @@ public final class ScreenChromicLexicon extends Screen {
 		STORED_PAGES
 	}
 
-	private enum ProgressView {
-		TREE("Tree"),
-		BY_LEVEL("Levels"),
-		STAGES("Stages");
-
-		private final String title;
-		ProgressView(String title) { this.title = title; }
-	}
 
 	public ScreenChromicLexicon(Player player, ItemStack book, boolean fragmentInventory) {
 		super(Component.literal("Chromic Lexicon"));
@@ -217,22 +214,38 @@ public final class ScreenChromicLexicon extends Screen {
 			// V33a GuiNavigation.initGui, verbatim geometry. The Items/Recipes tabs are 13x88 strips
 			// down the left edge whose v swaps to show which mode is active, and Search is a 13x35
 			// stub below them. Nothing here is a vanilla widget upstream.
-			addRenderableWidget(new LexiconImageButton(left - 13, top - 7, 13, 88,
-					15, recipeMode ? 4 : 95, Component.literal("Items"), () -> {
+			// The two tabs are 13x88 and overlap by 54 pixels. 26.2 hit-tests children in order and
+			// the first hit wins, so the add order decides which tab owns the shared band -- upstream
+			// adds the INACTIVE one first for the same reason. v=4 is the raised, active look and
+			// v=95 the recessed one; the port had both inverted, so the tab you were on drew and
+			// clicked as though it were the other.
+			Runnable toItems = () -> {
 				recipeMode = false;
 				rebuildWidgets();
-			}));
-			addRenderableWidget(new LexiconImageButton(left - 13, top + 27, 13, 88,
-					15, recipeMode ? 95 : 4, Component.literal("Recipes"), () -> {
+			};
+			Runnable toRecipes = () -> {
 				recipeMode = true;
 				rebuildWidgets();
-			}));
-			addRenderableWidget(new LexiconImageButton(left - 13, top + 160, 13, 35,
-					15, 221, Component.literal("Search"), () -> {
-				searching = !searching;
-				if (searching) setFocused(null);
-				rebuildWidgets();
-			}));
+			};
+			if (recipeMode) {
+				addRenderableWidget(new LexiconImageButton(left - 13, top + 27, 13, 88,
+						15, 4, Component.literal("Recipes"), toRecipes));
+				addRenderableWidget(new LexiconImageButton(left - 13, top - 7, 13, 88,
+						15, 95, Component.literal("Items"), toItems));
+			}
+			else {
+				addRenderableWidget(new LexiconImageButton(left - 13, top + 27, 13, 88,
+						15, 95, Component.literal("Recipes"), toRecipes));
+				addRenderableWidget(new LexiconImageButton(left - 13, top - 7, 13, 88,
+						15, 4, Component.literal("Items"), toItems));
+				// V33a only offers Search out of recipe mode.
+				addRenderableWidget(new LexiconImageButton(left - 13, top + 160, 13, 35,
+						15, 221, Component.literal("Search"), () -> {
+					searching = !searching;
+					if (searching) setFocused(null);
+					rebuildWidgets();
+				}));
+			}
 			// V33a: three 22x39 image buttons stacked down the right edge at k, k+40, k+80.
 			addRenderableWidget(new LexiconImageButton(left + WIDTH, top, 22, 39,
 					42, 84, Component.literal("Progress"), () -> setView(View.PROGRESS)));
@@ -240,9 +253,11 @@ public final class ScreenChromicLexicon extends Screen {
 					65, 168, Component.literal("Recovery"), () -> setView(View.RECOVERY)));
 			addRenderableWidget(new LexiconImageButton(left + WIDTH, top + 80, 22, 39,
 					88, 168, Component.literal("Notebook"), () -> setView(View.NOTES)));
-			// V33a GuiBookSection: Save & Exit, the only way out of a page other than the X.
+			// V33a GuiBookSection: Save & Exit. It goes BELOW the other three rather than five pixels
+			// down from the top -- the port's offset put it on top of Progress and Recovery, and since
+			// it was added last it could never be clicked at all.
 			if (view != View.NAVIGATION)
-				addRenderableWidget(new LexiconImageButton(left + WIDTH, top + 5, 22, 39,
+				addRenderableWidget(new LexiconImageButton(left + WIDTH, top + 120, 22, 39,
 						42, 210, Component.literal("Save & Exit"), this::onClose));
 		}
 		if (selected == null && view == View.NAVIGATION)
@@ -469,44 +484,28 @@ public final class ScreenChromicLexicon extends Screen {
 				.bounds(left + 102, top + 194, 52, 18).build());
 	}
 
+	/**
+	 * V33a {@code GuiProgressStages.initGui}: a Return tab on the right and two 13x35 mode tabs down
+	 * the left. There is no row of text buttons and no third mode -- upstream has only the tree and
+	 * the by-level ordering.
+	 */
 	private void addProgressWidgets(int left, int top) {
-		for (int i = 0; i < ProgressView.values().length; i++) {
-			ProgressView mode = ProgressView.values()[i];
-			addRenderableWidget(Button.builder(Component.literal(mode == progressView ? mode.title + " ✓" : mode.title),
-					button -> {
-						progressView = mode;
-						progressOffset = 0;
-						selectedStage = null;
-						rebuildWidgets();
-					}).bounds(left + 25 + i * 70, top + 31, 66, 18).build());
-		}
-		if (selectedStage != null) {
-			addRenderableWidget(Button.builder(Component.literal("Back"), button -> {
-				selectedStage = null;
-				rebuildWidgets();
-			}).bounds(left + 10, top + 194, 44, 18).build());
-			return;
-		}
-		if (progressView == ProgressView.STAGES || progressView == ProgressView.TREE) {
-			List<ProgressStage> stages = progressStages();
-			int pageSize = progressView == ProgressView.STAGES ? 8 : 7;
-			int end = Math.min(progressOffset + pageSize, stages.size());
-			for (int index = progressOffset; index < end; index++) {
-				ProgressStage stage = stages.get(index);
-				int row = index - progressOffset;
-				addRenderableWidget(Button.builder(Component.literal(ProgressionDescriptions.title(stage)), button -> {
-					selectedStage = stage;
-					rebuildWidgets();
-				}).bounds(left + (progressView == ProgressView.TREE ? 12 : 30),
-						top + 55 + row * (progressView == ProgressView.TREE ? 19 : 17),
-						progressView == ProgressView.TREE ? 98 : 196, 15).build());
-			}
-		}
+		addRenderableWidget(new LexiconImageButton(left + WIDTH, top, 22, 39,
+				42, 126, Component.literal("Return"), () -> setView(View.NAVIGATION)));
+		addRenderableWidget(new LexiconImageButton(left - 13, top - 7, 13, 35,
+				1, 185, Component.literal("Tree"), () -> setProgressView(LexiconProgressGraph.Mode.TREE)));
+		addRenderableWidget(new LexiconImageButton(left - 13, top + 27, 13, 35,
+				1, 221, Component.literal("Levels"), () -> setProgressView(LexiconProgressGraph.Mode.BY_LEVEL)));
 	}
 
-	private static List<ProgressStage> progressStages() {
-		return java.util.Arrays.stream(ProgressStage.list).filter(stage -> stage.active).toList();
+	private void setProgressView(LexiconProgressGraph.Mode mode) {
+		if (progressView == mode)
+			return;
+		progressView = mode;
+		progressPane.reset();
+		rebuildWidgets();
 	}
+
 
 	private void scrollNotes(int direction) {
 		int max = Math.max(0, noteData.size() - 10);
@@ -702,10 +701,9 @@ public final class ScreenChromicLexicon extends Screen {
 		graphics.blit(RenderPipelines.GUI_TEXTURED, selected == null ? NAVIGATION : pageBackground(),
 				left, top, 0, 0, WIDTH, HEIGHT, 256, 256);
 		if (selected == null && (view == View.NAVIGATION || view == View.STORED_PAGES)) {
-			graphics.centeredText(font, view == View.STORED_PAGES ? "Stored Research Fragments" : "Chromic Lexicon",
-					left + WIDTH / 2, top + 4, 0xffffffff);
-			graphics.text(font, search.isBlank() ? section.title() : Component.literal("Search Results"),
-					left + 116, top + 4, 0xff7fffff, false);
+			// V33a GuiNavigation draws NO title and NO section caption here: the frame art carries the
+			// book's identity and each section labels itself inside the sheet. The two captions that
+			// used to be here overlapped each other on screen.
 			sheet.render(graphics, font, left + PANE_X, top + PANE_Y,
 					scrollPane.offsetX(), scrollPane.offsetY(),
 					LexiconScrollPane.PANE_WIDTH, LexiconScrollPane.PANE_HEIGHT,
@@ -751,7 +749,7 @@ public final class ScreenChromicLexicon extends Screen {
 			renderDescriptionPage(graphics, left, top);
 		}
 		else if (view == View.PROGRESS) {
-			renderProgress(graphics, left, top);
+			renderProgress(graphics, left, top, mouseX, mouseY);
 		}
 		else if (view == View.RECOVERY) {
 			graphics.centeredText(font, "Fragment Recovery", left + WIDTH / 2, top + 16, 0xffffffff);
@@ -766,88 +764,17 @@ public final class ScreenChromicLexicon extends Screen {
 		super.extractRenderState(graphics, mouseX, mouseY, partialTick);
 	}
 
-	private void renderProgress(GuiGraphicsExtractor graphics, int left, int top) {
-		graphics.centeredText(font, "Research Progress", left + WIDTH / 2, top + 16, 0xffffffff);
-		if (selectedStage != null) {
-			renderProgressStageDetail(graphics, left, top, selectedStage);
-			return;
-		}
-		switch (progressView) {
-			case TREE -> renderProgressTree(graphics, left, top);
-			case BY_LEVEL -> renderProgressLevels(graphics, left, top);
-			case STAGES -> renderProgressStages(graphics, left, top);
-		}
+	/**
+	 * V33a's progress screen is a panned field of nodes, not a list. The pane scrolls with the same
+	 * held movement keys the navigation sheet uses.
+	 */
+	private void renderProgress(GuiGraphicsExtractor graphics, int left, int top, int mouseX, int mouseY) {
+		progressPane.setBounds(progressGraph.maxScrollX(progressView), progressGraph.maxScrollY(progressView));
+		progressPane.pan();
+		progressGraph.render(graphics, font, player, progressView, left, top,
+				progressPane.offsetX(), progressPane.offsetY(), mouseX, mouseY);
 	}
 
-	private void renderProgressLevels(GuiGraphicsExtractor graphics, int left, int top) {
-		ResearchLevel current = ResearchProgress.getLevel(player);
-		for (int i = 0; i < ResearchLevel.levelList.length; i++) {
-			ResearchLevel level = ResearchLevel.levelList[i];
-			int column = i / 5;
-			int row = i % 5;
-			int x = left + 18 + column * 116;
-			int y = top + 61 + row * 25;
-			boolean reached = current.isAtLeast(level);
-			graphics.fill(x, y, x + 8, y + 8, reached ? 0xff40d060 : 0xff803030);
-			graphics.text(font, level.getDisplayName(), x + 13, y, researchLevelColor(level), false);
-		}
-		graphics.centeredText(font, Component.literal("Current: ").append(current.getDisplayName()),
-				left + WIDTH / 2, top + 188, 0xff80dfff);
-	}
-
-	private void renderProgressStages(GuiGraphicsExtractor graphics, int left, int top) {
-		List<ProgressStage> stages = progressStages();
-		int end = Math.min(progressOffset + 8, stages.size());
-		for (int index = progressOffset; index < end; index++) {
-			ProgressStage stage = stages.get(index);
-			int y = top + 59 + (index - progressOffset) * 17;
-			boolean reached = stage.isPlayerAtStage(player);
-			graphics.fill(left + 17, y, left + 24, y + 7, reached ? 0xff40d060 : 0xff803030);
-		}
-		graphics.centeredText(font, Component.literal((progressOffset + 1) + "–" + end + " / " + stages.size()),
-				left + WIDTH / 2, top + 194, 0xff909090);
-	}
-
-	private void renderProgressTree(GuiGraphicsExtractor graphics, int left, int top) {
-		List<ProgressStage> stages = progressStages();
-		int end = Math.min(progressOffset + 7, stages.size());
-		for (int index = progressOffset; index < end; index++) {
-			ProgressStage stage = stages.get(index);
-			int y = top + 58 + (index - progressOffset) * 19;
-			boolean reached = stage.isPlayerAtStage(player);
-			int color = reached ? 0xff50e070 : stage.playerHasPrerequisites(player) ? 0xffffc050 : 0xffa06060;
-			graphics.fill(left + 5, y + 3, left + 10, y + 10, color);
-			String prereqs = ProgressionManager.instance.getPrereqs(stage).stream()
-					.map(ProgressionDescriptions::title).collect(java.util.stream.Collectors.joining(", "));
-			if (!prereqs.isBlank())
-				graphics.text(font, Component.literal(font.plainSubstrByWidth("← " + prereqs, 132)),
-						left + 116, y + 3, 0xff909090, false);
-		}
-		graphics.text(font, Component.literal("Green: reached  Gold: available  Red: locked"),
-				left + 10, top + 194, 0xffb0b0b0, false);
-	}
-
-	private void renderProgressStageDetail(GuiGraphicsExtractor graphics, int left, int top, ProgressStage stage) {
-		boolean reached = stage.isPlayerAtStage(player);
-		graphics.centeredText(font, ProgressionDescriptions.title(stage), left + WIDTH / 2, top + 58,
-				reached ? 0xff50e070 : 0xffffc050);
-		String authored = reached ? ProgressionDescriptions.reveal(stage) : ProgressionDescriptions.hint(stage);
-		int y = top + 78;
-		for (var line : font.split(Component.literal(authored), 228)) {
-			if (y > top + 167) break;
-			graphics.text(font, line, left + 14, y, 0xffffffff, false);
-			y += 10;
-		}
-		String desc = ProgressionDescriptions.description(stage);
-		if (!desc.isBlank()) {
-			int dy = top + 174;
-			for (var line : font.split(Component.literal(desc), 228)) {
-				if (dy > top + 194) break;
-				graphics.text(font, line, left + 14, dy, 0xff80dfff, false);
-				dy += 10;
-			}
-		}
-	}
 
 	/** The list the navigation view is currently showing. */
 	private List<LexiconCatalog.Entry> currentPages() {
@@ -1052,12 +979,8 @@ public final class ScreenChromicLexicon extends Screen {
 			}
 		}
 		int key = event.key();
-		if (selected == null && view == View.PROGRESS && selectedStage == null) {
-			if (key == GLFW.GLFW_KEY_A || key == GLFW.GLFW_KEY_LEFT) return moveProgressView(-1);
-			if (key == GLFW.GLFW_KEY_D || key == GLFW.GLFW_KEY_RIGHT) return moveProgressView(1);
-			if (key == GLFW.GLFW_KEY_W || key == GLFW.GLFW_KEY_UP) return moveProgressPage(-1);
-			if (key == GLFW.GLFW_KEY_S || key == GLFW.GLFW_KEY_DOWN) return moveProgressPage(1);
-		}
+		// The progress graph pans with the held movement keys through LexiconScrollPane, the same way
+		// the navigation sheet does, so W/A/S/D are deliberately not consumed as discrete steps here.
 		if (selected != null && castingRecipeView && !castingRecipes().isEmpty()) {
 			if (key == GLFW.GLFW_KEY_A || key == GLFW.GLFW_KEY_LEFT) return moveRecipe(-1);
 			if (key == GLFW.GLFW_KEY_D || key == GLFW.GLFW_KEY_RIGHT) return moveRecipe(1);
@@ -1132,8 +1055,10 @@ public final class ScreenChromicLexicon extends Screen {
 			}
 			return true;
 		}
-		if (selected == null && view == View.PROGRESS && selectedStage == null)
-			return moveProgressPage(direction);
+		if (selected == null && view == View.PROGRESS) {
+			progressPane.scrollBy(0, direction * ENTRY_HEIGHT);
+			return true;
+		}
 		if (selected != null && castingRecipeView && !castingRecipes().isEmpty())
 			return moveRecipe(direction);
 		if (selected != null)
@@ -1223,27 +1148,6 @@ public final class ScreenChromicLexicon extends Screen {
 		return true;
 	}
 
-	private boolean moveProgressView(int direction) {
-		ProgressView[] values = ProgressView.values();
-		progressView = values[Math.floorMod(progressView.ordinal() + direction, values.length)];
-		progressOffset = 0;
-		rebuildWidgets();
-		return true;
-	}
-
-	private boolean moveProgressPage(int direction) {
-		if (progressView == ProgressView.BY_LEVEL)
-			return false;
-		int pageSize = progressView == ProgressView.STAGES ? 8 : 7;
-		int count = progressStages().size();
-		int next = Math.max(0, Math.min(progressOffset + direction * pageSize,
-				Math.max(0, ((count - 1) / pageSize) * pageSize)));
-		if (next == progressOffset)
-			return false;
-		progressOffset = next;
-		rebuildWidgets();
-		return true;
-	}
 
 
 	private boolean moveTextPage(int direction) {

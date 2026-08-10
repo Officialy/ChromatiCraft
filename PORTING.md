@@ -2937,3 +2937,53 @@ and `CircularDivisionRenderer` are both ported and draw through
 drifted into `ChromatiCraft/`, so DragonAPI was never searched — the same working-directory hazard
 that has now produced two wrong conclusions in this repo. Prefer absolute paths for cross-submodule
 searches.
+
+### Chromic Lexicon: navigation, tabs and the progress screen — 2026-08-10
+
+In-world screenshots turned up four separate defects.
+
+**The tabs were unclickable in a 54-pixel band.** Items and Recipes are both 13x88, at `k-7` and
+`k+27`, so they overlap by 54 pixels. 26.2 walks a screen's children and the first whose
+`isMouseOver` passes takes the click, so the add order decides who owns the shared band — which is
+why upstream adds the *inactive* tab first. The port added them unconditionally in one order. Worse,
+the `v` was inverted: `v=4` is the raised active look and `v=95` the recessed one, and the port
+handed Items `v=4` exactly when Items was inactive. Both are fixed, and Search is no longer offered
+in recipe mode, matching upstream's two branches.
+
+Same class of bug: Save & Exit sat at `left+WIDTH, top+5`, on top of Progress and Recovery, and was
+added last — so it could never receive a click at all. It moves below the other three.
+
+**The section headers floated outside the frame.** V33a draws the scrolling backdrop at
+`leftX+7, topY-1` but lays the sections out from `leftX+11, topY+11` — two different origins. The
+port used the backdrop's for both. `drawSections` starts at `dy = y+1` and draws each title at
+`dy - FONT_HEIGHT`, so with `topY-1` that landed eight pixels above the frame. The sheet's own
+clipping gates were already faithful; the origin was the whole bug.
+
+**The navigation frame was the wrong art** — `GuiNavigation.getBackgroundTexture()` is
+`navigation2.png`, not `navigation.png`.
+
+**Two invented captions overlapped.** The port drew a centred "Chromic Lexicon" and a section name at
+`left+116`, on top of each other. V33a's navigation screen draws neither: the frame art carries the
+book's identity and each section labels itself inside the sheet.
+
+**The progress screen was not a port at all.** It was a scrolling list of text buttons with a
+`"Tree ✓"`-style label row, a hand-written "Green: reached  Gold: available  Red: locked" legend, and
+a third "Stages" mode. Upstream has exactly two views and no legend: `GuiProgressStages` is a
+*panned field of 20x20 nodes* with lines drawn to each node's prerequisites, a Return tab at
+`j+xSize, k` and two 13x35 mode tabs at `j-13, k-7` and `j-13, k+27`. A node's border says where the
+player stands — green reached, yellow available, red locked — pulsing on a per-stage phase so the
+field does not blink in unison. `LexiconProgressGraph` is that, panned by the same
+`LexiconScrollPane` the navigation sheet uses. The per-stage description moved from a separate detail
+page into the hover tooltip, which is where upstream puts it.
+
+One adaptation, marked at the site: the by-level view orders by prerequisite count. Upstream orders
+by the earliest research level requiring the stage, which lives in `ChromaResearchManager` — not
+ported.
+
+**The recipe viewer is blocked, and the cause is not layout.** `craftingRecipes()` reads
+`player.getRecipeBook().getCollections()`, and a recipe book only contains recipes the server has
+awarded the player. ChromatiCraft never awards its recipes, so the page is empty for essentially
+everything. The client has no other source: `ClientPacketListener.recipes()` returns a
+`ClientRecipeContainer` holding only item sets and stonecutter recipes, so full crafting displays
+genuinely are not client-side data in 26.2. The fix is the pattern the casting page already uses —
+request the display from the server and cache it — which is its own slice, not a layout correction.
