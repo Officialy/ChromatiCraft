@@ -46,9 +46,9 @@ final class LexiconMachineRender {
 	private static final float PITCH_LIMIT = 45;
 
 	/**
-	 * Which way a drag tips the model. Upstream's numbers, transplanted literally, made the structure
-	 * viewer's pitch run backwards on screen, and this page's drag is the same shape; the sign lives
-	 * in one named constant so that both pages can be corrected together rather than drifting apart.
+	 * Which way a drag tips the model. The structure viewer needed upstream's pitch sign flipped, and
+	 * this page's drag is the same shape, so it takes the same convention -- positive screen-space dy
+	 * tips the model the same way there and here. Confirmed in game on the structure page.
 	 */
 	static final double PITCH_DRAG = 1;
 

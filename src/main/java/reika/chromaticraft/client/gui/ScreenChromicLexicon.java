@@ -926,9 +926,10 @@ public final class ScreenChromicLexicon extends Screen {
 	 * than on a key event, which is what makes the rotation continuous.
 	 *
 	 * <p>The pitch increments are the opposite sign to upstream's. Upstream's numbers, transplanted
-	 * literally, made the control invert on screen; flipping them reproduces upstream's behaviour.
-	 * The orientation is composed differently here than in V33a, so the two are not expected to agree
-	 * on signs -- but do not read a specific mechanism into this, it is not one that was verified.
+	 * literally, made the control invert on screen; flipping them reproduces upstream's behaviour, and
+	 * that was confirmed in game for both the held keys and the drag. The orientation is composed
+	 * differently here than in V33a, so the two are not expected to agree on signs -- but no specific
+	 * mechanism for the disagreement was ever verified, so do not read one into this.
 	 */
 	private void spinStructure(StructureRenderer render) {
 		Window window = minecraft.getWindow();

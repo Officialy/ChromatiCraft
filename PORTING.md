@@ -3009,3 +3009,32 @@ shapeless grid displays, and then narrows to those whose resolved result matches
 Note the alternative that was *not* taken: awarding the recipes to the player would also have filled
 the page, but it changes game state — the vanilla recipe book would light up with the whole mod — so
 the guide asks instead of unlocking.
+
+### The Elemental Manipulator HUD — 2026-08-10
+
+`ChromaOverlays.renderElementPie`, the wheel that appears while a Manipulator is in hand. It is the
+display half of the pylon-charging vertical: extraction fills `PlayerElementBuffer`, this reads it.
+
+It is deliberately **not** a pie chart, and it is not a `Proportionality` render despite the shape.
+Every element owns a fixed 22.5 degree wedge and the *radius* carries the fill, so a colour never
+moves — you learn where each element sits and read the whole buffer as a silhouette. The radius is
+`pow(amt/cap, 0.675)`, not linear, which keeps a nearly-empty element visible. Shift enlarges the
+wheel from 32 to 48, and `ChromaOptions.PIELOC` picks its corner.
+
+The wedges and the black spokes need filled geometry, which GUI space has no primitive for, so they
+go through a picture-in-picture element (`ElementPieRenderer`) with `scale = 1` — one model unit is
+one GUI pixel, so the geometry is written in the same coordinates upstream uses. The two wheel plates
+are ordinary blits at twice the radius and stay outside it. Unlike the structure viewer there is no
+orientation step: the wheel is flat and the base pass already leaves +X right and +Y down, which is
+the handedness V33a's GUI space has, so the angles are transcribed unchanged.
+
+`wheelback_2.png`, `wheelfront2.png` and `infoicons.png` were extracted from the V33a jar into
+`textures/gui/hud/`.
+
+One documented gap: upstream rings the wheel with each element's outline rune at `0.8125*r`. Those
+came from `CrystalElement.getOutlineRune`, part of the 1.7.10 icon system stripped when
+`CrystalElement` was ported, so the glyph ring returns with the rune sprite redesign.
+
+Also settled: the structure viewer's flipped pitch was confirmed correct in game for both the held
+keys and the drag, so the machine page's `PITCH_DRAG` keeps the same convention. The comments no
+longer hedge — though neither ever claimed a verified mechanism for why upstream's sign had to move.
