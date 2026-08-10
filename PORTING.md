@@ -2771,3 +2771,61 @@ than its block distance so the outer ring stays legible. The central 3x3 repeats
 
 Still outstanding on this page: subpage 3's aura list needs `descX`/`descY` from `GuiBookSection`
 before its wrap-every-eight-into-120-pixel-columns layout can be matched exactly.
+
+### Chromic Lexicon: the 3D structure viewer — 2026-08-10
+
+The structure page was a spherical projection of item icons; V33a draws real block models. It now
+does too.
+
+**Why the port needed new infrastructure.** `GuiGraphicsExtractor.pose()` returns a
+`Matrix3x2fStack` in 26.2 — GUI space is strictly two-dimensional, so V33a's `GL11` transform chain
+has no equivalent. The only way a rotatable 3D scene reaches the screen is a *picture-in-picture*
+element, which renders to its own colour and depth texture with a real `PoseStack` and is then
+blitted into the GUI layer. NeoForge exposes it through `RegisterPictureInPictureRenderersEvent` and
+`GuiGraphicsExtractor.submitPictureInPictureRenderState`.
+
+That lives in DragonAPI, in `reika.dragonapi.instantiable.rendering.structure`:
+
+- `StructureRenderer` — the controller, holding what V33a's class held: rotation, the current slice,
+  and per-position/per-block display overrides, plus `drawSlice` and `tally`.
+- `StructureRenderState` — the immutable per-frame snapshot handed to the GUI.
+- `StructurePipRenderer` — the renderer. Blocks are drawn as their real models via
+  `ModelManager.getBlockStateModelSet().get(state)` -> `collectParts` -> `submitBlockModel`, on the
+  translucent or cutout block-item sheet per `hasMaterialFlag(1)`, tinted from
+  `BlockColors.getTintSources`.
+
+The old `reika.dragonapi.instantiable.rendering.StructureRenderer` was commented out wholesale; it is
+kept, annotated, as the 1.7.10 reference for the hooks and the fake-world `RenderAccess`.
+
+**Two things that are easy to get wrong here.** `PictureInPictureRenderer.getTranslateY` defaults to
+`height`, a bottom-centre origin that suits an entity standing on a floor and puts a structure below
+the viewport; it is overridden to the middle. And the base already applies `scale(s, s, -s)`, which
+leaves model +Y pointing *down* because the GUI's orthographic projection inverts Y — the renderer
+rolls 180 degrees about X to finish the job. `renderState.scale()` is pixels per model unit, so it
+carries V33a's discrete size tier multiplied by its `s = 12`.
+
+**Deliberate divergence.** V33a scales by `(-d*s, -d*s, -d*s)`. That is a point inversion, not a
+rotation: it mirrors the structure and inverts face winding, which upstream lived with — its
+`glFrontFace(GL_CW)` compensation is commented out in the original. The 180-degree roll produces the
+image upstream was drawing towards without the mirror, and keeps winding correct so culling and the
+depth buffer behave.
+
+**The additive pass is real.** V33a shades the blocks an upgrade structure shares with the tier below
+it using `BlendMode.ADDITIVE2`, which is `glBlendFunc(GL_SRC_ALPHA, GL_ONE)` — exactly
+`BlendFunction.LIGHTNING`. No stock render type both accepts block-model geometry and blends that
+way, so a NeoForge `PipelineModifier` rebuilds the sheet's pipeline with that blend for the second
+pass only. The set of shared blocks is `LexiconStructurePreview.markShared`, mirroring
+`GuiStructure`'s switch: casting2 -> casting1, casting3 -> casting2, and pylonbroadcast -> pylon,
+which upstream matches on position alone where the casting tiers also require the same block.
+
+**Screen side.** `GuiStructure`'s geometry, verbatim: plain `3D`/`2D` 20x20 buttons at `j+185` and
+`j+205, k-2`, the `N#` block-tally mode at `j+165` (`j+125` while slicing) with its `+`/`-` stepper
+at `j+165`/`j+145`, and the `(XxYxZ)` caption at `j+6, k+10`. Left-drag spins the model, right-click
+resets it, and A/D/W/S are polled every frame while held rather than consumed as key events, which is
+what makes the spin continuous. The invented zoom, the arrow-key 15-degree steps and the `3D ✓`
+labels are gone.
+
+Still outstanding: the block-entity pass. V33a runs a TESR loop over the structure so pylons, casting
+tables and the ender crystal render animated; that needs a fake-level `BlockEntity` per position and
+is not attempted here, so those blocks draw as static models. `addRenderHook`/`addEntityRender` are
+unported for the same reason.

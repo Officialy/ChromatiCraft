@@ -592,32 +592,42 @@ rather than generalising one renderer across several pages.
 Carried alongside: swap the search scrim for V33a's `squarefog.png`, and add the original button
 sounds and image-button hover animations.
 
-### Lexicon 3D structure viewer — what it actually needs (2026-08-09)
+### Lexicon 3D structure viewer — done (2026-08-10)
 
-The current viewer is not a port. V33a's is `DragonAPI StructureRenderer.draw3D(j, k, ptick, transl,
-scale)`, and **that class is commented out wholesale in the ported DragonAPI** — `rotate`,
-`drawSlice` and `draw3D` are all inside block comments, so nothing of it exists on the modern side.
+Ported. `DragonAPI reika.dragonapi.instantiable.rendering.structure` now holds the real thing:
 
-What upstream actually does, and what a real port has to reproduce:
+- `StructureRenderer` keeps the state V33a's class kept — rotation (`rx = -30, ry = 45, rz = 0` by
+  default), the current slice, and the per-position/per-block display overrides — plus `drawSlice`
+  and `tally`;
+- `StructurePipRenderer` + `StructureRenderState` do the drawing. 26.2 has no GL matrix stack in GUI
+  space (`GuiGraphicsExtractor.pose()` is a `Matrix3x2fStack`), so the only route for a rotatable 3D
+  scene is a picture-in-picture element: it renders to its own colour and depth texture with a real
+  `PoseStack` and the result is blitted into the GUI layer. Registered through NeoForge's
+  `RegisterPictureInPictureRenderersEvent`;
+- blocks are **real block models**: `ModelManager.getBlockStateModelSet().get(state)` ->
+  `collectParts` -> `submitBlockModel`, on the translucent or cutout block-item sheet according to
+  `hasMaterialFlag(1)`, with tints from `BlockColors.getTintSources`;
+- V33a's `BlendMode.ADDITIVE2` alpha pass is `glBlendFunc(GL_SRC_ALPHA, GL_ONE)`, i.e. exactly
+  `BlendFunction.LIGHTNING`. There is no stock render type that takes block geometry and blends that
+  way, so a NeoForge `PipelineModifier` rebuilds the sheet's pipeline with that blend for the second
+  pass. The alpha set itself is `LexiconStructurePreview.markShared`, mirroring `GuiStructure`'s
+  switch: casting2 -> casting1, casting3 -> casting2, pylonbroadcast -> pylon (position-only, as
+  upstream);
+- the discrete scale tiers are V33a's, keyed off `max(sizeY, hypot(sizeX, maxZ))` where `maxZ` is a
+  **half**-extent because upstream's arrays are origin-centred.
 
-- renders **actual block models**, not icons: it walks the `FilledBlockArray` and calls
-  `renderer.renderBlockByRenderType` against a fake `RenderAccess` world built from the structure,
-  so blocks appear with their true models and textures;
-- applies a GL transform of translate -> rotate rx/ry/rz -> scale, with rotation defaulting to
-  `rx = -30, ry = 45, rz = 0` and the scale coming from discrete tiers keyed off
-  `max(sizeY, hypot(sizeX, maxZ))`: 0.5 at >=24, 0.625 at >=21, 0.675 at >=18, 0.8 at >=14,
-  0.95 at >=12, 1.2 at >=10, 1.5 at >=8, 1.75 at >=4, else 2;
-- makes a **second additive pass** for blocks flagged alpha, via `BlendMode.ADDITIVE2`, which is what
-  makes glass and energy blocks read correctly inside a solid structure;
-- supports per-block overrides and render hooks (`addOverride`, `addBlockHook`, `addRenderHook`,
-  `addEntityRender`) that `GuiStructure` uses heavily — pylons, beacons, lumen wire, log variants and
-  a rendered crystal entity are all substituted in per structure;
-- `drawSlice` is the 2D layer view, with its own y stepping (`incrementStepY`/`decrementStepY`).
+One deliberate divergence: V33a scales by `(-d*s, -d*s, -d*s)`, a point inversion that mirrors the
+structure and flips face winding (its `glFrontFace(GL_CW)` compensation is commented out upstream).
+The port rolls 180 degrees about X instead, which produces the image upstream was aiming at without
+the mirror and keeps culling and depth correct.
 
-Applied now, since they are faithful and cheap: V33a's rotation defaults and its discrete scale
-tiers, and the invented on-screen control hint is removed. The projection itself is still the
-previous pass's free spherical rotation over item icons, which is **not** what upstream draws.
+The screen side now matches `GuiStructure` too: plain `3D`/`2D` 20x20 buttons at `j+185`/`j+205,
+k-2`, the `N#` block-tally mode at `j+165` (`j+125` while slicing) with its `+`/`-` stepper, the
+`(XxYxZ)` caption at `j+6, k+10`, LMB-drag to spin, RMB to reset, A/D/W/S polled per frame while
+held. The invented zoom, the arrow-key 15-degree steps and the `3D ✓` labels are gone.
 
-Doing this properly means porting `StructureRenderer` in DragonAPI against the 26.2 model pipeline —
-rendering `BlockState` models into GUI space with a pose stack and a separate additive pass — and
-then pointing the Lexicon at it. That is its own slice; it should not be faked further in the screen.
+Still outstanding on this page: block entities. V33a runs a TESR pass over the structure so pylons,
+casting tables and the ender crystal render animated; that needs a fake-level `BlockEntity` per
+position and is not attempted here — those blocks currently draw as their static models. The
+`addRenderHook`/`addEntityRender` scale and offset hooks are likewise unported, since their only
+consumers are that pass.

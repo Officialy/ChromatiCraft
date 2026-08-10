@@ -6,6 +6,9 @@ import java.util.List;
 
 import org.lwjgl.glfw.GLFW;
 
+import com.mojang.blaze3d.platform.InputConstants;
+import com.mojang.blaze3d.platform.Window;
+
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
@@ -37,6 +40,7 @@ import reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.registry.ChromaSounds;
+import reika.dragonapi.instantiable.rendering.structure.StructureRenderer;
 import net.minecraft.core.registries.BuiltInRegistries;
 
 /** First 26.2 rendering pass for V33a's navigation and basic-description guide screens. */
@@ -96,11 +100,10 @@ public final class ScreenChromicLexicon extends Screen {
 	private boolean searching;
 	private String search = "";
 	private int textPage;
-	private double structureYaw = 45;
-	private double structurePitch = 35;
-	private int structureZoom = 2;
-	private StructureViewMode structureView = StructureViewMode.THREE_D;
-	private int structureLayer;
+	/** V33a GuiStructure {@code mode}: 0 is the 3D view, 1 the flat slice, 2 the block tally. */
+	private int structureMode;
+	private StructureRenderer structureRender;
+	private String structureRenderFor;
 	private final ArrayList<String> noteData;
 	private final ArrayList<EditBox> noteFields = new ArrayList<>();
 	private int noteScroll;
@@ -129,11 +132,6 @@ public final class ScreenChromicLexicon extends Screen {
 
 		private final String title;
 		ProgressView(String title) { this.title = title; }
-	}
-
-	private enum StructureViewMode {
-		THREE_D,
-		TWO_D
 	}
 
 	public ScreenChromicLexicon(Player player, ItemStack book, boolean fragmentInventory) {
@@ -293,36 +291,61 @@ public final class ScreenChromicLexicon extends Screen {
 		recipeIndex = 0;
 		recipeSubpage = 0;
 		castingRecipeView = recipeMode;
-		structureYaw = 45;
-		structurePitch = 30;
-		structureZoom = 2;
-		structureView = StructureViewMode.THREE_D;
-		structureLayer = 0;
+		structureMode = 0;
+		structureRender = null;
+		structureRenderFor = null;
 		rebuildWidgets();
 	}
 
-	private void addStructureViewButtons(int left, int top) {
+	/**
+	 * The structure viewer's state, kept across frames so a rotation survives a widget rebuild but is
+	 * dropped when the page changes. V33a keeps one {@code StructureRenderer} per {@code GuiStructure}
+	 * and each page is its own screen, so this is where the equivalent lifetime lands.
+	 */
+	private StructureRenderer structureRenderer() {
 		LexiconStructurePreview preview = LexiconStructurePreview.get(selected, minecraft);
-		addRenderableWidget(Button.builder(Component.literal(structureView == StructureViewMode.THREE_D ? "3D ✓" : "3D"),
-				button -> {
-					structureView = StructureViewMode.THREE_D;
-					rebuildWidgets();
-				}).bounds(left + 164, top + 38, 38, 17).build());
-		addRenderableWidget(Button.builder(Component.literal(structureView == StructureViewMode.TWO_D ? "2D ✓" : "2D"),
-				button -> {
-					structureView = StructureViewMode.TWO_D;
-					structureLayer = Math.clamp(structureLayer, 0, Math.max(0, preview.sizeY() - 1));
-					rebuildWidgets();
-				}).bounds(left + 204, top + 38, 38, 17).build());
-		if (structureView == StructureViewMode.TWO_D && preview.available()) {
-			addRenderableWidget(Button.builder(Component.literal("−"), button -> {
-				structureLayer = Math.max(0, structureLayer - 1);
-				rebuildWidgets();
-			}).bounds(left + 84, top + 38, 24, 17).build());
+		if (!preview.available())
+			return null;
+		if (structureRender != null && selected.sourceId().equals(structureRenderFor))
+			return structureRender;
+		List<StructureRenderer.Entry> entries = new ArrayList<>(preview.blocks().size());
+		for (LexiconStructurePreview.PreviewBlock block : preview.blocks())
+			entries.add(new StructureRenderer.Entry(block.pos(), block.state(), block.icon(), block.shared()));
+		structureRender = new StructureRenderer(entries, preview.sizeX(), preview.sizeY(), preview.sizeZ());
+		structureRenderFor = selected.sourceId();
+		return structureRender;
+	}
+
+	/**
+	 * V33a {@code GuiStructure.initGui}, verbatim geometry: two 20x20 mode buttons at the top right,
+	 * a block-tally button beside them, and the slice stepper only while the slice view is up.
+	 */
+	private void addStructureViewButtons(int left, int top) {
+		StructureRenderer render = structureRenderer();
+		if (render == null)
+			return;
+		addRenderableWidget(Button.builder(Component.literal("3D"), button -> {
+			structureMode = 0;
+			render.reset();
+			rebuildWidgets();
+		}).bounds(left + 185, top - 2, 20, 20).build());
+		addRenderableWidget(Button.builder(Component.literal("2D"), button -> {
+			structureMode = 1;
+			rebuildWidgets();
+		}).bounds(left + 205, top - 2, 20, 20).build());
+		addRenderableWidget(Button.builder(Component.literal("N#"), button -> {
+			structureMode = 2;
+			rebuildWidgets();
+		}).bounds(left + (structureMode == 1 ? 125 : 165), top - 2, 20, 20).build());
+		if (structureMode == 1) {
 			addRenderableWidget(Button.builder(Component.literal("+"), button -> {
-				structureLayer = Math.min(preview.sizeY() - 1, structureLayer + 1);
+				render.incrementStepY();
 				rebuildWidgets();
-			}).bounds(left + 110, top + 38, 24, 17).build());
+			}).bounds(left + 165, top - 2, 20, 20).build());
+			addRenderableWidget(Button.builder(Component.literal("-"), button -> {
+				render.decrementStepY();
+				rebuildWidgets();
+			}).bounds(left + 145, top - 2, 20, 20).build());
 		}
 	}
 
@@ -918,102 +941,58 @@ public final class ScreenChromicLexicon extends Screen {
 					left + WIDTH / 2, top + 138, 0xff80dfff);
 			return;
 		}
-		graphics.text(font, Component.literal(preview.templateId().toString()), left + 8, top + 58,
-				0xff909090, false);
-		graphics.text(font, Component.literal(preview.sizeX() + " × " + preview.sizeY() + " × " + preview.sizeZ()
-				+ "  " + preview.blocks().size() + " visible blocks"), left + 8, top + 69, 0xffb0b0b0, false);
-		graphics.enableScissor(left + 7, top + 80, left + WIDTH - 7, top + 191);
-		if (structureView == StructureViewMode.THREE_D)
-			renderStructure3D(graphics, preview, left, top, mouseX, mouseY);
-		else
-			renderStructureLayer(graphics, preview, left, top, mouseX, mouseY);
-		graphics.disableScissor();
-	}
-
-	private void renderStructure3D(GuiGraphicsExtractor graphics, LexiconStructurePreview preview,
-			int left, int top, int mouseX, int mouseY) {
-		double yaw = Math.toRadians(structureYaw);
-		double pitch = Math.toRadians(structurePitch);
-		double cosY = Math.cos(yaw);
-		double sinY = Math.sin(yaw);
-		double cosP = Math.cos(pitch);
-		double sinP = Math.sin(pitch);
-		// V33a StructureRenderer.draw3D picks a discrete scale from the structure's largest dimension
-		// rather than fitting to the pane, so the same structure is always drawn at the same size.
-		double max = Math.max(preview.sizeY(),
-				Math.sqrt(preview.sizeX() * preview.sizeX() + preview.sizeZ() * preview.sizeZ()));
-		double d = max >= 24 ? 0.5 : max >= 21 ? 0.625 : max >= 18 ? 0.675 : max >= 14 ? 0.8
-				: max >= 12 ? 0.95 : max >= 10 ? 1.2 : max >= 8 ? 1.5 : max >= 4 ? 1.75 : 2;
-		double unit = d * 6 * (0.72 + structureZoom * 0.14);
-		double centerX = left + WIDTH / 2D;
-		double centerY = top + 139D;
-		ArrayList<ProjectedBlock> projected = new ArrayList<>();
-		for (LexiconStructurePreview.PreviewBlock block : preview.blocks()) {
-			double x = block.pos().getX() - (preview.sizeX() - 1) / 2D;
-			double y = block.pos().getY() - (preview.sizeY() - 1) / 2D;
-			double z = block.pos().getZ() - (preview.sizeZ() - 1) / 2D;
-			double rx = x * cosY - z * sinY;
-			double rz = x * sinY + z * cosY;
-			double screenX = centerX + rx * unit;
-			double screenY = centerY + (rz * cosP - y * sinP) * unit;
-			double depth = rz * sinP + y * cosP;
-			projected.add(new ProjectedBlock(block, screenX, screenY, depth));
+		StructureRenderer render = structureRenderer();
+		if (render == null)
+			return;
+		// V33a drawScreen: the footprint sits in the page's top-left corner, nothing else.
+		graphics.text(font, Component.literal("(" + render.getSizeX() + "x" + render.getSizeY()
+				+ "x" + render.getSizeZ() + ")"), left + 6, top + 10, 0xffffffff, false);
+		switch (structureMode) {
+			case 1 -> render.drawSlice(graphics, font, left, top, mouseX, mouseY);
+			case 2 -> renderStructureTally(graphics, render, left, top, mouseX, mouseY);
+			default -> {
+				spinStructure(render);
+				render.draw3D(graphics, left + 7, top + 24, left + WIDTH - 7, top + 205);
+			}
 		}
-		projected.sort(java.util.Comparator.comparingDouble(ProjectedBlock::depth));
-		float iconSize = (float)Math.clamp(unit * 1.45, 4, 12);
-		for (ProjectedBlock projectedBlock : projected)
-			renderStructureIcon(graphics, projectedBlock.block(), projectedBlock.x(), projectedBlock.y(), iconSize,
-					mouseX, mouseY);
 	}
 
-	private void renderStructureLayer(GuiGraphicsExtractor graphics, LexiconStructurePreview preview,
+	/**
+	 * V33a {@code GuiStructure.draw3d}'s input poll. Dragging with the left button spins the model,
+	 * the right button snaps it back, and A/D/W/S nudge it while held -- all read every frame rather
+	 * than on a key event, which is what makes the rotation continuous.
+	 */
+	private void spinStructure(StructureRenderer render) {
+		Window window = minecraft.getWindow();
+		if (InputConstants.isKeyDown(window, GLFW.GLFW_KEY_A))
+			render.rotate(0, 0.75, 0);
+		else if (InputConstants.isKeyDown(window, GLFW.GLFW_KEY_D))
+			render.rotate(0, -0.75, 0);
+		else if (InputConstants.isKeyDown(window, GLFW.GLFW_KEY_W))
+			render.rotate(-0.75, 0, 0);
+		else if (InputConstants.isKeyDown(window, GLFW.GLFW_KEY_S))
+			render.rotate(0.75, 0, 0);
+	}
+
+	/**
+	 * V33a {@code drawTally}: every block the structure needs and how many, in two columns of eight.
+	 */
+	private void renderStructureTally(GuiGraphicsExtractor graphics, StructureRenderer render,
 			int left, int top, int mouseX, int mouseY) {
-		structureLayer = Math.clamp(structureLayer, 0, preview.sizeY() - 1);
-		int rotation = Math.floorMod((int)Math.round(structureYaw / 90D), 4);
-		int gridX = rotation % 2 == 0 ? preview.sizeX() : preview.sizeZ();
-		int gridZ = rotation % 2 == 0 ? preview.sizeZ() : preview.sizeX();
-		double cell = Math.max(3, Math.min(12, Math.min(204D / gridX, 88D / gridZ)));
-		double startX = left + WIDTH / 2D - gridX * cell / 2D;
-		double startY = top + 88 + (88 - gridZ * cell) / 2D;
-		for (LexiconStructurePreview.PreviewBlock block : preview.blocks()) {
-			if (block.pos().getY() != structureLayer) continue;
-			int tx = switch (rotation) {
-				case 1 -> preview.sizeZ() - 1 - block.pos().getZ();
-				case 2 -> preview.sizeX() - 1 - block.pos().getX();
-				case 3 -> block.pos().getZ();
-				default -> block.pos().getX();
-			};
-			int tz = switch (rotation) {
-				case 1 -> block.pos().getX();
-				case 2 -> preview.sizeZ() - 1 - block.pos().getZ();
-				case 3 -> preview.sizeX() - 1 - block.pos().getX();
-				default -> block.pos().getZ();
-			};
-			double x = startX + tx * cell + cell / 2;
-			double y = startY + tz * cell + cell / 2;
-			renderStructureIcon(graphics, block, x, y, (float)Math.min(12, cell), mouseX, mouseY);
+		List<StructureRenderer.TallyEntry> tally = render.tally();
+		ItemStack hovered = ItemStack.EMPTY;
+		for (int i = 0; i < tally.size(); i++) {
+			StructureRenderer.TallyEntry entry = tally.get(i);
+			int x = left + 10 + i / 8 * 50;
+			int y = top + 30 + i % 8 * 22;
+			graphics.item(entry.icon(), x, y);
+			graphics.text(font, Component.literal("x" + entry.count()), x + 19, y + 5, 0xffffffff, true);
+			if (mouseX >= x && mouseX < x + 16 && mouseY >= y && mouseY < y + 16)
+				hovered = entry.icon();
 		}
-		graphics.centeredText(font, Component.literal("Layer " + structureLayer + " / " + (preview.sizeY() - 1)
-				+ "  Rotation " + rotation * 90 + "°"),
-				left + WIDTH / 2, top + 180, 0xff80dfff);
+		if (!hovered.isEmpty())
+			graphics.setTooltipForNextFrame(font, hovered, mouseX, mouseY);
 	}
-
-	private void renderStructureIcon(GuiGraphicsExtractor graphics, LexiconStructurePreview.PreviewBlock block,
-			double x, double y, float size, int mouseX, int mouseY) {
-		if (block.displayOverride())
-			graphics.fill((int)(x - size / 2 - 1), (int)(y - size / 2 - 1),
-					(int)(x + size / 2 + 1), (int)(y + size / 2 + 1), 0x9060e8ff);
-		graphics.pose().pushMatrix();
-		graphics.pose().translate((float)(x - size / 2), (float)(y - size / 2));
-		graphics.pose().scale(size / 16F, size / 16F);
-		graphics.item(block.icon(), 0, 0);
-		graphics.pose().popMatrix();
-		if (mouseX >= x - size / 2 && mouseX <= x + size / 2
-				&& mouseY >= y - size / 2 && mouseY <= y + size / 2)
-			graphics.setTooltipForNextFrame(font, block.icon(), mouseX, mouseY);
-	}
-
-	private record ProjectedBlock(LexiconStructurePreview.PreviewBlock block, double x, double y, double depth) {}
 
 	@Override
 	public boolean keyPressed(KeyEvent event) {
@@ -1049,27 +1028,21 @@ public final class ScreenChromicLexicon extends Screen {
 			if (key == GLFW.GLFW_KEY_S || key == GLFW.GLFW_KEY_DOWN) return moveRecipeSubpage(1);
 		}
 		if (selected != null && selected.section() == LexiconCatalog.Section.STRUCTURES && !castingRecipeView) {
-			if (key == GLFW.GLFW_KEY_A || key == GLFW.GLFW_KEY_LEFT)
-				structureYaw -= structureView == StructureViewMode.THREE_D ? 15 : 90;
-			else if (key == GLFW.GLFW_KEY_D || key == GLFW.GLFW_KEY_RIGHT)
-				structureYaw += structureView == StructureViewMode.THREE_D ? 15 : 90;
-			else if (key == GLFW.GLFW_KEY_W || key == GLFW.GLFW_KEY_UP) {
-				if (structureView == StructureViewMode.THREE_D)
-					structurePitch = Math.max(10, structurePitch - 10);
-				else {
-					LexiconStructurePreview preview = LexiconStructurePreview.get(selected, minecraft);
-					if (preview.available())
-						structureLayer = Math.min(preview.sizeY() - 1, structureLayer + 1);
+			// W/A/S/D are NOT consumed here in the 3D view: V33a polls them every frame so the model
+			// spins for as long as the key is held (see spinStructure). Consuming them as discrete
+			// events would turn that back into a per-press step.
+			StructureRenderer render = structureRenderer();
+			if (render != null && structureMode == 1) {
+				if (key == GLFW.GLFW_KEY_W || key == GLFW.GLFW_KEY_UP) {
+					render.incrementStepY();
+					return true;
+				}
+				if (key == GLFW.GLFW_KEY_S || key == GLFW.GLFW_KEY_DOWN) {
+					render.decrementStepY();
+					return true;
 				}
 			}
-			else if (key == GLFW.GLFW_KEY_S || key == GLFW.GLFW_KEY_DOWN) {
-				if (structureView == StructureViewMode.THREE_D)
-					structurePitch = Math.min(80, structurePitch + 10);
-				else
-					structureLayer = Math.max(0, structureLayer - 1);
-			}
-			else return super.keyPressed(event);
-			return true;
+			return super.keyPressed(event);
 		}
 		if (selected != null) {
 			if (key == GLFW.GLFW_KEY_A || key == GLFW.GLFW_KEY_LEFT) return moveEntry(-1);
@@ -1110,13 +1083,15 @@ public final class ScreenChromicLexicon extends Screen {
 		if (scrollY == 0)
 			return super.mouseScrolled(x, y, scrollX, scrollY);
 		int direction = scrollY > 0 ? -1 : 1;
+		// V33a's 3D view has no zoom -- the size tier is fixed by the structure. Only the slice view
+		// responds to the wheel, and it steps the layer the +/- buttons step.
 		if (selected != null && selected.section() == LexiconCatalog.Section.STRUCTURES && !castingRecipeView) {
-			if (structureView == StructureViewMode.THREE_D)
-				structureZoom = Math.clamp(structureZoom - direction, 1, 5);
-			else {
-				LexiconStructurePreview preview = LexiconStructurePreview.get(selected, minecraft);
-				if (preview.available())
-					structureLayer = Math.clamp(structureLayer - direction, 0, preview.sizeY() - 1);
+			StructureRenderer render = structureRenderer();
+			if (render != null && structureMode == 1) {
+				if (direction < 0)
+					render.incrementStepY();
+				else
+					render.decrementStepY();
 			}
 			return true;
 		}
@@ -1136,11 +1111,16 @@ public final class ScreenChromicLexicon extends Screen {
 
 	@Override
 	public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
-		if (event.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT && isInsideStructurePreview(event.x(), event.y())
-				&& structureView == StructureViewMode.THREE_D) {
-			structureYaw += dx * 0.75;
-			structurePitch = Math.clamp(structurePitch + dy * 0.75, 10, 80);
-			return true;
+		// V33a draw3d: rotate(0.25*dY, 0.25*dX, 0) while the left button is held. Upstream reads the
+		// raw LWJGL mouse delta, whose Y axis points up, so a downward drag tips the model towards
+		// the viewer; the screen-space delta here points down, hence the negated pitch.
+		if (event.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT && structureMode == 0
+				&& isInsideStructurePreview(event.x(), event.y())) {
+			StructureRenderer render = structureRenderer();
+			if (render != null) {
+				render.rotate(-0.25 * dy, 0.25 * dx, 0);
+				return true;
+			}
 		}
 		return super.mouseDragged(event, dx, dy);
 	}
@@ -1155,11 +1135,14 @@ public final class ScreenChromicLexicon extends Screen {
 				return true;
 			}
 		}
-		if (event.button() == GLFW.GLFW_MOUSE_BUTTON_RIGHT && isInsideStructurePreview(event.x(), event.y())) {
-			structureYaw = 45;
-			structurePitch = 30;
-			structureZoom = 2;
-			return true;
+		// V33a draw3d: the right button snaps the model back to its default orientation.
+		if (event.button() == GLFW.GLFW_MOUSE_BUTTON_RIGHT && structureMode == 0
+				&& isInsideStructurePreview(event.x(), event.y())) {
+			StructureRenderer render = structureRenderer();
+			if (render != null) {
+				render.resetRotation();
+				return true;
+			}
 		}
 		return super.mouseClicked(event, doubleClick);
 	}
@@ -1178,7 +1161,7 @@ public final class ScreenChromicLexicon extends Screen {
 			return false;
 		int left = (width - WIDTH) / 2;
 		int top = (height - HEIGHT) / 2;
-		return x >= left + 7 && x < left + WIDTH - 7 && y >= top + 80 && y < top + 191;
+		return x >= left + 7 && x < left + WIDTH - 7 && y >= top + 24 && y < top + 205;
 	}
 
 	private boolean moveSection(int direction) {

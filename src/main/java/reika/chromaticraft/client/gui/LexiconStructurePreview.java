@@ -41,6 +41,20 @@ final class LexiconStructurePreview {
 			Map.entry("pylonbroadcast", "multiblock/pylon_broadcast"),
 			Map.entry("datanode", "worldgen/data_node"));
 
+	/**
+	 * V33a {@code GuiStructure}'s alpha set: a structure that upgrades another one dims everything
+	 * the two have in common, so only the newly required blocks read as solid. Upstream keys this off
+	 * a switch over {@code ChromaResearch}; this is the same relation for the structures that have a
+	 * modern template. Note that upstream's PYLONBROADCAST case tests only whether the base structure
+	 * <em>occupies</em> a position, where the casting tiers additionally require the same block, and
+	 * that difference is preserved by {@link #POSITION_ONLY_TIERS}.
+	 */
+	private static final Map<String, String> PREVIOUS_TIER = Map.of(
+			"casting2", "casting1",
+			"casting3", "casting2",
+			"pylonbroadcast", "pylon");
+	private static final java.util.Set<String> POSITION_ONLY_TIERS = java.util.Set.of("pylonbroadcast");
+
 	private final String sourceId;
 	private final Identifier templateId;
 	private final int sizeX;
@@ -108,9 +122,11 @@ final class LexiconStructurePreview {
 				boolean dataNodeRelay = sourceId.equals("datanode") && state.is(ChromaBlocks.DUMMY_AUX.get());
 				ItemStack icon = new ItemStack(dataNodeRelay ? ChromaBlocks.DATA_NODE.get() : state.getBlock());
 				if (!icon.isEmpty() && !icon.is(Items.AIR))
-					blocks.add(new PreviewBlock(new BlockPos(pos[0], pos[1], pos[2]), state, icon, dataNodeRelay));
+					blocks.add(new PreviewBlock(new BlockPos(pos[0], pos[1], pos[2]), state, icon,
+							dataNodeRelay, false));
 			}
 			addDisplayControllers(sourceId, size, blocks);
+			markShared(sourceId, blocks, minecraft);
 			blocks.sort(Comparator.comparingInt(block -> block.pos().getY()));
 			return new LexiconStructurePreview(sourceId, templateId, size[0], size[1], size[2], blocks, null);
 		}
@@ -150,7 +166,30 @@ final class LexiconStructurePreview {
 		blocks.removeIf(block -> block.pos().equals(pos));
 		ItemStack icon = new ItemStack(state.getBlock());
 		if (!icon.isEmpty())
-			blocks.add(new PreviewBlock(pos, state, icon, true));
+			blocks.add(new PreviewBlock(pos, state, icon, true, false));
+	}
+
+	/** Flags everything this structure inherits from the tier below it. See {@link #PREVIOUS_TIER}. */
+	private static void markShared(String sourceId, List<PreviewBlock> blocks, Minecraft minecraft) {
+		String previousId = PREVIOUS_TIER.get(sourceId);
+		if (previousId == null)
+			return;
+		// Deliberately not through CACHE: this runs inside computeIfAbsent for sourceId, and a
+		// recursive computeIfAbsent on a ConcurrentHashMap is an error rather than a cache hit.
+		LexiconStructurePreview previous = load(previousId, TEMPLATES.get(previousId), minecraft);
+		if (!previous.available())
+			return;
+		boolean positionOnly = POSITION_ONLY_TIERS.contains(sourceId);
+		Map<BlockPos, BlockState> base = new java.util.HashMap<>();
+		for (PreviewBlock block : previous.blocks())
+			base.put(block.pos(), block.state());
+		for (int i = 0; i < blocks.size(); i++) {
+			PreviewBlock block = blocks.get(i);
+			BlockState at = base.get(block.pos());
+			if (at != null && (positionOnly || at == block.state()))
+				blocks.set(i, new PreviewBlock(block.pos(), block.state(), block.icon(),
+						block.displayOverride(), true));
+		}
 	}
 
 	private static int[] ints(ListTag list, int expected) throws IOException {
@@ -178,5 +217,11 @@ final class LexiconStructurePreview {
 	int sizeZ() { return sizeZ; }
 	List<PreviewBlock> blocks() { return blocks; }
 
-	record PreviewBlock(BlockPos pos, BlockState state, ItemStack icon, boolean displayOverride) {}
+	/**
+	 * @param displayOverride whether V33a's {@code GuiStructure} substituted this block for display
+	 * @param shared          whether the tier below this structure already required it; the 3D view
+	 *                        blends these additively, as V33a's alpha set does
+	 */
+	record PreviewBlock(BlockPos pos, BlockState state, ItemStack icon, boolean displayOverride,
+			boolean shared) {}
 }
