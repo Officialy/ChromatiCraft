@@ -965,7 +965,11 @@ public final class ScreenChromicLexicon extends Screen {
 			case 2 -> renderStructureTally(graphics, render, left, top, mouseX, mouseY);
 			default -> {
 				spinStructure(render);
-				render.draw3D(graphics, left + 7, top + 24, left + WIDTH - 7, top + 205);
+				// V33a draw3D translates to the *screen* centre, not the page's, and sets no scissor:
+				// a tall structure deliberately overflows the book. The viewport is the whole screen
+				// for the same reason -- the page window is 242x181, and the pylon alone stands 229
+				// pixels tall once tipped by the default -30 degrees, so anything page-sized clips it.
+				render.draw3D(graphics, 0, 0, width, height);
 			}
 		}
 	}
@@ -1174,6 +1178,9 @@ public final class ScreenChromicLexicon extends Screen {
 			return false;
 		int left = (width - WIDTH) / 2;
 		int top = (height - HEIGHT) / 2;
+		// The 3D view renders over the whole screen, but only the page reacts to a drag. V33a's
+		// Mouse.isButtonDown(0) is unconditional, so upstream spins the model even while you are
+		// pressing one of its own buttons; that is not worth reproducing.
 		return x >= left + 7 && x < left + WIDTH - 7 && y >= top + 24 && y < top + 205;
 	}
 

@@ -2819,6 +2819,12 @@ pass only. The set of shared blocks is `LexiconStructurePreview.markShared`, mir
 `GuiStructure`'s switch: casting2 -> casting1, casting3 -> casting2, and pylonbroadcast -> pylon,
 which upstream matches on position alone where the casting tiers also require the same block.
 
+**Viewport.** The 3D view renders over the whole screen. V33a translates to the *screen* centre, not
+the page's, and sets no scissor, so a tall structure deliberately overflows the book; the page window
+is 242x181 and the pylon alone stands about 229 pixels once tipped by the default -30 degrees, so
+anything page-sized would clip it. Only the page reacts to a drag, though — upstream's unconditional
+`Mouse.isButtonDown(0)` spins the model even while you are pressing one of its own buttons.
+
 **Page chrome.** The entry title was centred at `top+18` with an invented section subtitle beneath
 it; `GuiBookSection.drawScreen` draws it left-aligned at `(posX + getTitleOffset(), posY + 6)` with
 `posY` already shifted up eight, i.e. `(left + 6, top - 2)`, in white, and draws no subtitle at all.
