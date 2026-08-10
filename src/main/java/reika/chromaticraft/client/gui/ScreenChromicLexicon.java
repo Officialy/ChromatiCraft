@@ -294,7 +294,7 @@ public final class ScreenChromicLexicon extends Screen {
 		recipeSubpage = 0;
 		castingRecipeView = recipeMode;
 		structureYaw = 45;
-		structurePitch = 35;
+		structurePitch = 30;
 		structureZoom = 2;
 		structureView = StructureViewMode.THREE_D;
 		structureLayer = 0;
@@ -938,10 +938,13 @@ public final class ScreenChromicLexicon extends Screen {
 		double sinY = Math.sin(yaw);
 		double cosP = Math.cos(pitch);
 		double sinP = Math.sin(pitch);
-		double footprint = Math.hypot(preview.sizeX(), preview.sizeZ());
-		double fitX = 210D / Math.max(1, footprint);
-		double fitY = 92D / Math.max(1, preview.sizeY() * sinP + footprint * cosP);
-		double unit = Math.max(2, Math.min(10, Math.min(fitX, fitY) * (0.72 + structureZoom * 0.14)));
+		// V33a StructureRenderer.draw3D picks a discrete scale from the structure's largest dimension
+		// rather than fitting to the pane, so the same structure is always drawn at the same size.
+		double max = Math.max(preview.sizeY(),
+				Math.sqrt(preview.sizeX() * preview.sizeX() + preview.sizeZ() * preview.sizeZ()));
+		double d = max >= 24 ? 0.5 : max >= 21 ? 0.625 : max >= 18 ? 0.675 : max >= 14 ? 0.8
+				: max >= 12 ? 0.95 : max >= 10 ? 1.2 : max >= 8 ? 1.5 : max >= 4 ? 1.75 : 2;
+		double unit = d * 6 * (0.72 + structureZoom * 0.14);
 		double centerX = left + WIDTH / 2D;
 		double centerY = top + 139D;
 		ArrayList<ProjectedBlock> projected = new ArrayList<>();
@@ -961,8 +964,6 @@ public final class ScreenChromicLexicon extends Screen {
 		for (ProjectedBlock projectedBlock : projected)
 			renderStructureIcon(graphics, projectedBlock.block(), projectedBlock.x(), projectedBlock.y(), iconSize,
 					mouseX, mouseY);
-		graphics.text(font, Component.literal("Drag: rotate  Right click: reset  Wheel: zoom"),
-				left + 12, top + 180, 0xff80dfff, false);
 	}
 
 	private void renderStructureLayer(GuiGraphicsExtractor graphics, LexiconStructurePreview preview,
@@ -1156,7 +1157,7 @@ public final class ScreenChromicLexicon extends Screen {
 		}
 		if (event.button() == GLFW.GLFW_MOUSE_BUTTON_RIGHT && isInsideStructurePreview(event.x(), event.y())) {
 			structureYaw = 45;
-			structurePitch = 35;
+			structurePitch = 30;
 			structureZoom = 2;
 			return true;
 		}

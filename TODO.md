@@ -591,3 +591,33 @@ rather than generalising one renderer across several pages.
 
 Carried alongside: swap the search scrim for V33a's `squarefog.png`, and add the original button
 sounds and image-button hover animations.
+
+### Lexicon 3D structure viewer — what it actually needs (2026-08-09)
+
+The current viewer is not a port. V33a's is `DragonAPI StructureRenderer.draw3D(j, k, ptick, transl,
+scale)`, and **that class is commented out wholesale in the ported DragonAPI** — `rotate`,
+`drawSlice` and `draw3D` are all inside block comments, so nothing of it exists on the modern side.
+
+What upstream actually does, and what a real port has to reproduce:
+
+- renders **actual block models**, not icons: it walks the `FilledBlockArray` and calls
+  `renderer.renderBlockByRenderType` against a fake `RenderAccess` world built from the structure,
+  so blocks appear with their true models and textures;
+- applies a GL transform of translate -> rotate rx/ry/rz -> scale, with rotation defaulting to
+  `rx = -30, ry = 45, rz = 0` and the scale coming from discrete tiers keyed off
+  `max(sizeY, hypot(sizeX, maxZ))`: 0.5 at >=24, 0.625 at >=21, 0.675 at >=18, 0.8 at >=14,
+  0.95 at >=12, 1.2 at >=10, 1.5 at >=8, 1.75 at >=4, else 2;
+- makes a **second additive pass** for blocks flagged alpha, via `BlendMode.ADDITIVE2`, which is what
+  makes glass and energy blocks read correctly inside a solid structure;
+- supports per-block overrides and render hooks (`addOverride`, `addBlockHook`, `addRenderHook`,
+  `addEntityRender`) that `GuiStructure` uses heavily — pylons, beacons, lumen wire, log variants and
+  a rendered crystal entity are all substituted in per structure;
+- `drawSlice` is the 2D layer view, with its own y stepping (`incrementStepY`/`decrementStepY`).
+
+Applied now, since they are faithful and cheap: V33a's rotation defaults and its discrete scale
+tiers, and the invented on-screen control hint is removed. The projection itself is still the
+previous pass's free spherical rotation over item icons, which is **not** what upstream draws.
+
+Doing this properly means porting `StructureRenderer` in DragonAPI against the 26.2 model pipeline —
+rendering `BlockState` models into GUI space with a pose stack and a separate additive pass — and
+then pointing the Lexicon at it. That is its own slice; it should not be faked further in the screen.
