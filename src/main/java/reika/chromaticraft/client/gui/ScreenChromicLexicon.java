@@ -60,6 +60,12 @@ public final class ScreenChromicLexicon extends Screen {
 	private static final Identifier PAGE_PYLONCAST = page("pyloncast2");
 	private static final Identifier PAGE_STRUCTURE = page("structure");
 
+	/** V33a RuneShapeRenderer draws its floor from the pylon structure block and the table's top. */
+	private static final Identifier FLOOR_TILE = Identifier.fromNamespaceAndPath(
+			ChromatiCraft.MODID, "textures/block/pylon/block_0.png");
+	private static final Identifier TABLE_TILE = Identifier.fromNamespaceAndPath(
+			ChromatiCraft.MODID, "textures/block/tile/table_top.png");
+
 	/** V33a GuiNavigation.getScrollingTexture: the pannable backdrop beneath the frame. */
 	private static final Identifier NAV_SCROLL = Identifier.fromNamespaceAndPath(
 			ChromatiCraft.MODID, "textures/gui/lexicon/navbcg.png");
@@ -1350,49 +1356,92 @@ public final class ScreenChromicLexicon extends Screen {
 				0xffb0b0b0, false);
 	}
 
+	/**
+	 * V33a {@code ChromaBookData.drawCastingRecipe}, subpage 0: the 3x3 sits at (posX+54, posY+10) on
+	 * an 18-pixel pitch and the output at (posX+7, posY+5), against the plain frame origin -- the -8
+	 * shift upstream applies only to the page title and the text list, not to the grid. The frame art
+	 * already draws the slots and the arrow, so no labels are drawn over it.
+	 */
 	private void renderCastingGrid(GuiGraphicsExtractor graphics, CastingTableRecipe recipe, int left, int top) {
-		graphics.text(font, Component.literal("Casting Grid"), left + 92, top + 47, 0xffffffff, false);
 		for (CastingTableRecipe.GridIngredient ingredient : recipe.grid()) {
 			int slot = ingredient.slot();
 			ItemStack stack = ingredientStack(ingredient.ingredient());
 			if (!stack.isEmpty())
-				graphics.item(stack, left + 94 + slot % 3 * 20, top + 62 + slot / 3 * 20);
+				graphics.item(stack, left + 54 + slot % 3 * 18, top + 10 + slot / 3 * 18);
 		}
-		graphics.text(font, Component.literal("→"), left + 160, top + 82, 0xffffffff, false);
-		graphics.item(recipe.output(), left + 178, top + 76);
+		graphics.item(recipe.output(), left + 7, top + 5);
 	}
 
+	/**
+	 * V33a {@code RuneShapeRenderer}, drawn from {@code drawCastingRecipe} at (posX+128, posY+110).
+	 *
+	 * <p>It is a top-down map, not a list: an 11x11 floor of 16-pixel crystalline-stone tiles centred
+	 * on the casting table, with the recipe's runes laid on the tiles at their real offsets. Only one
+	 * Y layer is shown at a time and it cycles every five seconds, which is how a multi-layer rune
+	 * pattern reads in the book. The "y=" label sits at (midx+93, midy-4).
+	 */
 	private void renderRuneRequirements(GuiGraphicsExtractor graphics, CastingTableRecipe recipe, int left, int top) {
-		graphics.text(font, Component.literal("Temple Runes"), left + 72, top + 47, 0xffffffff, false);
-		if (recipe.runes().isEmpty()) {
-			graphics.text(font, Component.literal("No rune pattern required."), left + 72, top + 65, 0xffb0b0b0, false);
-			return;
-		}
-		int row = 0;
+		int midX = left + 128;
+		int midY = top + 110;
+		final int w = 16;
+		int dx = midX - w / 2;
+		int dy = midY - w / 2;
+
+		// V33a animates through the pattern's own Y range, one layer per five seconds.
+		int minY = 0;
+		int maxY = 0;
 		for (CastingTableRecipe.RuneRequirement rune : recipe.runes()) {
-			ItemStack stack = new ItemStack(ChromaBlocks.rune(rune.element()).get());
-			graphics.item(stack, left + 72 + row % 2 * 86, top + 62 + row / 2 * 20);
-			graphics.text(font, Component.literal(rune.offset().toShortString()),
-					left + 90 + row % 2 * 86, top + 66 + row / 2 * 20,
-					0xff000000 | rune.element().getColor(), false);
-			row++;
+			minY = Math.min(minY, rune.offset().getY());
+			maxY = Math.max(maxY, rune.offset().getY());
 		}
+		int span = Math.max(1, maxY - minY + 1);
+		int layer = recipe.runes().isEmpty() ? 0
+				: minY + (int)((System.currentTimeMillis() / 5000) % span);
+
+		for (int x = -5; x <= 5; x++)
+			for (int z = -5; z <= 5; z++)
+				graphics.blit(RenderPipelines.GUI_TEXTURED,
+						x == 0 && z == 0 ? TABLE_TILE : FLOOR_TILE,
+						dx + x * w, dy + z * w, 0, 0, w, w, w, w);
+
+		for (CastingTableRecipe.RuneRequirement rune : recipe.runes()) {
+			if (rune.offset().getY() != layer)
+				continue;
+			Identifier tex = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
+					"textures/block/runes/real/tile4_" + rune.element().ordinal() + ".png");
+			graphics.blit(RenderPipelines.GUI_TEXTURED, tex,
+					dx + rune.offset().getX() * w, dy + rune.offset().getZ() * w, 0, 0, w, w, w, w);
+		}
+
+		if (!recipe.runes().isEmpty())
+			graphics.text(font, Component.literal("y=" + layer), midX + 93, midY - 4, 0xffffffff, false);
 	}
 
+	/**
+	 * V33a {@code ChromaBookData.drawCastingRecipe}, subpage 2. The stands are not a list: they are
+	 * drawn at their real positions around the table, so the page reads as a map of where to build
+	 * them. Upstream places each at {@code posX+120 + sign(i)*tx}, {@code posY+94 + sign(k)*ty} with
+	 * {@code tx = |i| == 2 ? 38 : 64} and {@code ty = |k| == 2 ? 38 : 63} -- the inner ring sits
+	 * further out on screen than its block distance suggests, which is what keeps the outer ring
+	 * legible. The central 3x3 repeats at (posX+102, posY+76).
+	 */
 	private void renderStandRequirements(GuiGraphicsExtractor graphics, CastingTableRecipe recipe, int left, int top) {
-		graphics.text(font, Component.literal("Auxiliary Item Stands"), left + 58, top + 47, 0xffffffff, false);
-		if (recipe.stands().isEmpty()) {
-			graphics.text(font, Component.literal("No item stands required."), left + 58, top + 65, 0xffb0b0b0, false);
-			return;
+		for (CastingTableRecipe.GridIngredient ingredient : recipe.grid()) {
+			int slot = ingredient.slot();
+			ItemStack stack = ingredientStack(ingredient.ingredient());
+			if (!stack.isEmpty())
+				graphics.item(stack, left + 102 + slot % 3 * 18, top + 76 + slot / 3 * 18);
 		}
-		for (int i = 0; i < Math.min(12, recipe.stands().size()); i++) {
-			CastingTableRecipe.StandIngredient stand = recipe.stands().get(i);
+		for (CastingTableRecipe.StandIngredient stand : recipe.stands()) {
+			int i = stand.offset().getX();
+			int k = stand.offset().getZ();
+			int sx = Integer.signum(i);
+			int sy = Integer.signum(k);
+			int tx = Math.abs(i) == 2 ? 38 : 64;
+			int ty = Math.abs(k) == 2 ? 38 : 63;
 			ItemStack stack = ingredientStack(stand.ingredient());
-			int column = i / 6;
-			int row = i % 6;
-			graphics.item(stack, left + 58 + column * 96, top + 62 + row * 18);
-			graphics.text(font, Component.literal(stand.offset().toShortString()), left + 76 + column * 96,
-					top + 66 + row * 18, 0xffd0d0d0, false);
+			if (!stack.isEmpty())
+				graphics.item(stack, left + 120 + sx * tx, top + 94 + sy * ty);
 		}
 	}
 

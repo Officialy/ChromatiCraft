@@ -2740,3 +2740,34 @@ timer, as vanilla's recipe book does, so an ore-tag slot does not read as one ar
 
 The Recipes toggle now appears for entries with a grid recipe and no casting recipe, with prev/next
 buttons when an item has several.
+
+### Chromic Lexicon: casting page geometry and the rune map — 2026-08-09
+
+The casting subpages were invented rather than ported, and the offsets were wrong. All three are now
+taken from `ChromaBookData.drawCastingRecipe`, which is the authoritative layout that
+`GuiCastingRecipe` delegates to.
+
+**Origin.** Both the casting and crafting grids draw against the *plain* frame origin,
+`(width - xSize) / 2, (height - ySize) / 2`. The `-8` that appears in `GuiBookSection.drawScreen` and
+the `-2, -8` in `GuiCraftingRecipe.drawGraphics` apply only to the page title and the ingredient text
+list. The crafting grid added in the previous entry had inherited that shift and was drawn eight
+pixels high; that is corrected.
+
+**Subpage 0** is the 3x3 at `(posX+54, posY+10)` on an 18-pixel pitch with the output at
+`(posX+7, posY+5)`. The port had a 20-pixel pitch at invented coordinates with a hand-drawn "Casting
+Grid" caption and an arrow -- all of which the frame art already provides, so the captions are gone.
+
+**Subpage 1 was a two-column text list of runes and coordinates.** Upstream is
+`RuneShapeRenderer`: a top-down 11x11 floor of 16-pixel crystalline-stone tiles centred on the
+casting table's top texture, with the recipe's runes laid on it at their true offsets, showing one Y
+layer at a time and cycling every five seconds, labelled `y=` at `(midx+93, midy-4)`. That is now
+what it draws, so a multi-layer pattern reads as a map you can build from.
+
+**Subpage 2 was also a list.** Upstream places each stand at its real position around the table:
+`posX+120 + sign(i)*tx`, `posY+94 + sign(k)*ty`, with `tx = |i| == 2 ? 38 : 64` and
+`ty = |k| == 2 ? 38 : 63` -- the projection deliberately pushes the inner ring further out on screen
+than its block distance so the outer ring stays legible. The central 3x3 repeats at
+`(posX+102, posY+76)`.
+
+Still outstanding on this page: subpage 3's aura list needs `descX`/`descY` from `GuiBookSection`
+before its wrap-every-eight-into-120-pixel-columns layout can be matched exactly.
