@@ -107,6 +107,7 @@ public final class ScreenChromicLexicon extends Screen {
 	private int structureMode;
 	private StructureRenderer structureRender;
 	private String structureRenderFor;
+	private final LexiconMachineRender machineRender = new LexiconMachineRender();
 	private final ArrayList<String> noteData;
 	private final ArrayList<EditBox> noteFields = new ArrayList<>();
 	private int noteScroll;
@@ -297,6 +298,7 @@ public final class ScreenChromicLexicon extends Screen {
 		structureMode = 0;
 		structureRender = null;
 		structureRenderFor = null;
+		machineRender.reset();
 		rebuildWidgets();
 	}
 
@@ -743,7 +745,7 @@ public final class ScreenChromicLexicon extends Screen {
 				super.extractRenderState(graphics, mouseX, mouseY, partialTick);
 				return;
 			}
-			renderSpecialistHeader(graphics, selected, left, top);
+			renderSpecialistHeader(graphics, selected, left, top, partialTick);
 			graphics.text(font, Component.literal("Research: " + selected.level().name()), left + 8, top + 69,
 					0xffb0b0b0, false);
 			renderDescriptionPage(graphics, left, top);
@@ -923,17 +925,16 @@ public final class ScreenChromicLexicon extends Screen {
 
 	/** Restores the distinct specialist presentations used by V33a's four description screens. */
 	private void renderSpecialistHeader(GuiGraphicsExtractor graphics, LexiconCatalog.Entry entry,
-			int left, int top) {
+			int left, int top, float partialTick) {
 		ItemStack icon = LexiconIconResolver.icon(entry);
 		switch (entry.section()) {
 			case MACHINES -> {
-				if (!icon.isEmpty()) graphics.item(icon, left + 120, top + 43);
-				String power = switch (entry.sourceId()) {
-					case "pylon", "repeater", "skypeater", "compound", "pylonlink" -> "Crystal network construct";
-					case "table", "stand", "focuscrystal" -> "Casting-system construct";
-					default -> "ChromatiCraft construct";
-				};
-				graphics.text(font, Component.literal(power), left + 148, top + 48, 0xff80dfff, false);
+				// V33a GuiMachineDescription draws the construct itself, slowly turning, and no caption.
+				// The "Crystal network construct" / "Casting-system construct" strings that used to be
+				// here were invented; upstream has nothing of the sort.
+				if (!machineRender.render(graphics, icon, left, top, width, height, partialTick)
+						&& !icon.isEmpty())
+					graphics.item(icon, left + 120, top + 43);
 			}
 			case TOOLS -> {
 				if (!icon.isEmpty()) graphics.item(icon, left + 120, top + 43);
@@ -1147,6 +1148,17 @@ public final class ScreenChromicLexicon extends Screen {
 
 	@Override
 	public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
+		// V33a drawMachineRender: holding the left button over the model tips it, one degree per unit
+		// of travel, clamped either side of level. There is no yaw drag -- that runs off a clock.
+		if (event.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT && selected != null && !castingRecipeView
+				&& selected.section() == LexiconCatalog.Section.MACHINES) {
+			int left = (width - WIDTH) / 2;
+			int top = (height - HEIGHT) / 2;
+			if (machineRender.isOver(event.x(), event.y(), left, top)) {
+				machineRender.drag(dy);
+				return true;
+			}
+		}
 		// V33a draw3d: rotate(0.25*dY, 0.25*dX, 0) while the left button is held. The pitch sign is
 		// flipped for the same reason spinStructure's is -- see the note there.
 		if (event.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT && structureMode == 0

@@ -2897,3 +2897,35 @@ resurrected without a live consumer to justify it.
 
 Neither hook has a ChromatiCraft consumer yet: the portal structure has no modern NBT template and
 `EntityChromaEnderCrystal` is still a raw 1.7.10 file outside the build.
+
+### Chromic Lexicon: the machine render — 2026-08-10
+
+`GuiMachineDescription` draws the construct itself, slowly turning, to the right of the page title.
+The port drew a static inventory icon plus a hand-written caption table ("Crystal network construct",
+"Casting-system construct") that upstream has nothing corresponding to; that table is deleted.
+
+`LexiconMachineRender` rides the structure viewer's picture-in-picture element, so the machine's
+block-entity renderer runs and a construct that is mostly its renderer does not appear as a bare
+cube. It is deliberately *not* routed through `StructureRenderer`: none of that class applies here —
+no size tiers, no slice, no tally, no hooks — and upstream's numbers are different in every respect.
+Anchor `posX+167, posY+44`, scale a flat 48 pixels per block, yaw from `nanoTime()/20000000 % 360`,
+pitch starting at 22.5 and draggable to +/-45, and the model lifted by `8*sin(|pitch|)` as it tips.
+
+The pivot is `(0.5, 0, 0.5)`: upstream passes `(a, 0, b)` with `a = b = -0.5` to
+`renderTileEntityAt`, so the model turns about its own centre horizontally but about its base
+vertically. Upstream also carries a per-machine table of other `a`/`b` values and extra translates
+(LUMENWIRE, FLUIDRELAY, TELEPORT, CHROMACRAFTER, PERSONAL and the `needsRenderOffset` group); those
+are not transcribed yet because none of those machines has a page in the port, and inventing values
+for the ones that do would be worse than using upstream's default.
+
+To submit at a fixed point on the page, `StructureRenderState` gained an `offsetX`/`offsetY` in GUI
+pixels, applied *outside* the rotation so it slides the model across the viewport rather than moving
+what it spins about. The structure viewer passes zero, which is upstream's screen-centred behaviour.
+
+The pitch drag sign sits in a single named constant, `LexiconMachineRender.PITCH_DRAG`, because this
+page and the structure page have the same drag and the structure page's sign correction is still
+unconfirmed in game. One edit should fix both.
+
+The other three subpage kinds are blocked rather than skipped; `TODO.md` step 3 records what blocks
+each. AOE is worth singling out: it is not merely unported but *unreachable*, since `ComplexAOE` and
+all four of its implementors are outside the build allowlist, so no machine can enter that branch.

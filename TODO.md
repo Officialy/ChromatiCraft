@@ -577,8 +577,25 @@ rather than generalising one renderer across several pages.
    one `handbook.png` for everything. All 22 backgrounds are now extracted.
 2. ~~**`GuiCraftingRecipe`**~~ Done 2026-08-09. — ordinary grid recipes for craftable entries, server-authoritative like
    the casting view already is. Uses PageType.CRAFTING, which reuses `handbook_cast.png`.
-3. **`GuiMachineDescription`** — machine pages (PageType.PLAIN): the machine's own stats block and
-   its recipe linkage, not just description text.
+3. **`GuiMachineDescription`** — partly done 2026-08-10. Upstream has four subpage kinds; only one is
+   reachable in the port today, and it is the one every machine page shows.
+   - [x] **MAIN** — the slowly turning model of the construct, at `posX+167, posY+44`, scale 48, yaw
+         from `nanoTime()/20000000 % 360`, pitch starting at 22.5 and draggable to +/-45, with the
+         model lifted by `8*sin(|pitch|)` as it tips. Rides the structure viewer's picture-in-picture
+         element (`LexiconMachineRender`), so the block entity renderer runs and a construct that is
+         mostly its renderer is not a bare cube. The invented "Crystal network construct" captions
+         that stood here are gone; upstream draws no caption.
+   - [ ] **ENERGY** — blocked three ways: DragonAPI's `Proportionality` (the pie chart) is not ported,
+         `Textures/infoicons.png` is not extracted, and `ChromaTiles` has none of
+         `isPylonPowered`/`isRelayPowered`/`isChargedCrystalPowered`/`isWirelessPowered`. Also needs a
+         filled-sector primitive: `GuiGraphicsExtractor` has `fill` and lines but no triangles, and
+         the ported `ReikaGuiAPI.drawCircle` is an outline of line segments only.
+   - [ ] **AOE** — blocked, and *unreachable* rather than merely unported: `ComplexAOE` and all four
+         of its implementors (`TileEntityFarmer`, `TileEntityBiomeReverter`, `TileEntityCropSpeedPlant`,
+         `TileEntityHarvesterPlant`) are outside the build allowlist, so no machine can enter this
+         branch. Do it when the plant/farmer machines land, not before.
+   - [ ] **NOTES** — blocked: `ItemSpecificEffectDescription` and `TileEntityFunctionRelay.getEffects()`
+         are its only consumers and neither is ported.
 4. **`GuiToolDescription`** — tool pages, including per-tool usage notes.
 5. **`GuiCraftableDesc`** — craftable blocks and resources.
 6. **`GuiPoolRecipe`** — chroma-pool/alloying display (PageType.POOL). Depends on the pool recipe
