@@ -666,3 +666,54 @@ Implementing it would add behaviour upstream does not have.
 
 Neither has a consumer yet — the portal structure has no NBT template and `EntityChromaEnderCrystal`
 is still a raw 1.7.10 file outside the build. Both are prerequisites for the portal page.
+
+## Item rendering backlog — from in-game inventory screenshot, 2026-08-10
+
+Five separate defects, each its own slice. Evidence gathered so far is recorded per item so none of
+it has to be re-derived.
+
+### 1. Crystal lamps and potion crystals render untinted
+
+**Ruled out, with evidence** — do not re-check these:
+- The generated item model is correct and structurally identical to the cave crystal's, which *does*
+  tint: `assets/chromaticraft/items/crystal_lamp_blue.json` carries
+  `{"type":"minecraft:special","model":{"type":"chromaticraft:cave_crystal","element":"blue",...}}`.
+  So the special renderer is bound and the element reaches it.
+- `CrystalElement.getColor()` returns a plain `0xRRGGBB`, so `ARGB.color(220, rgb)` in
+  `CaveCrystalItemRenderer.Unbaked.bake` composes a valid ARGB and is not being corrupted by an
+  alpha already present in the source.
+- `CaveCrystalGeometry.emitBase` draws a plinth of `BASE_HEIGHT`, not a full cube, so the smooth-stone
+  base is not covering the crystal.
+
+**What is left**: the tint is applied as vertex colour on `RenderTypes.itemTranslucent`. Either that
+path drops vertex colour in the item target, or the item compositor flattens it — the renderer's own
+comment already suspects the compositor. Next step is to compare against a vanilla special item
+renderer that tints successfully, and to test whether `entityTranslucent` behaves differently here.
+The cave crystals tint correctly through the *same* call, which is the strongest clue available: the
+only difference between the two paths is the presence of `base_texture`, so start by rendering a lamp
+with the base suppressed and see whether the tint returns.
+
+### 2. Cave crystal, lamp and potion crystal items need transparency
+
+V33a's crystals are translucent in the inventory as well as in world. The renderer already asks for
+`itemTranslucent` and sets alpha 220, so this is likely the same root cause as (1) rather than a
+second bug — fix them together and re-check.
+
+### 3. Flower and plant items render wrong
+
+The tiered plants, deco flowers and similar draw as their block models in the slot, which for a
+cross-shaped plant reads as two intersecting planes seen edge-on. V33a gives them flat item sprites.
+Needs a per-plant item model pointing at a sprite rather than the block model; check whether the
+sprites already ship (the recorded pattern is that textures are often present before the model is).
+
+### 4. Lumen encrusted crystals need an item renderer
+
+`EncrustedCrystalModel` exists for the block side only, so the item falls back to a cube. Wants the
+same treatment the cave crystals got — geometry shared between block model and special item renderer
+— and it needs transparency, so it should land after (1) and (2) are understood.
+
+### 5. Info fragments need their icon and the shift-view feature
+
+Each fragment should carry the small icon of the page it holds, and V33a shows the full page
+information when shift is held. Both are `ItemInfoFragment`; the icon is a model-side selection and
+the shift view is a tooltip-side hook.
