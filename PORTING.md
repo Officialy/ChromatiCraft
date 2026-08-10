@@ -2929,3 +2929,11 @@ unconfirmed in game. One edit should fix both.
 The other three subpage kinds are blocked rather than skipped; `TODO.md` step 3 records what blocks
 each. AOE is worth singling out: it is not merely unported but *unreachable*, since `ComplexAOE` and
 all four of its implementors are outside the build allowlist, so no machine can enter that branch.
+
+**Correction (2026-08-10):** the first version of this entry listed DragonAPI's `Proportionality` as
+unported and claimed 26.2 GUI space has no filled-sector primitive. Both were wrong. `Proportionality`
+and `CircularDivisionRenderer` are both ported and draw through
+`SubmitNodeCollector.submitCustomGeometry`. The error came from a `find` invocation whose shell had
+drifted into `ChromatiCraft/`, so DragonAPI was never searched — the same working-directory hazard
+that has now produced two wrong conclusions in this repo. Prefer absolute paths for cross-submodule
+searches.

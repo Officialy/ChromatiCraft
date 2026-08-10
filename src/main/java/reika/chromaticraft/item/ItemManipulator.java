@@ -2,10 +2,16 @@ package reika.chromaticraft.item;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.UseOnContext;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -13,6 +19,10 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import reika.chromaticraft.api.interfaces.ManipulatorInteraction;
 import reika.chromaticraft.auxiliary.interfaces.SneakPop;
 import reika.chromaticraft.block.worldgen26.BlockCliffStone;
+import reika.chromaticraft.magic.PylonCharging;
+import reika.chromaticraft.magic.interfaces.ChargingPoint;
+import reika.chromaticraft.magic.progression.ProgressStage;
+import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.registry.ChromaSounds;
 import reika.chromaticraft.tileentity.networking.TileEntityCrystalRepeater;
 import reika.chromaticraft.tileentity.TileEntityDataNode;
@@ -22,6 +32,8 @@ import reika.dragonapi.APIPacketHandler;
 import reika.dragonapi.DragonAPI;
 import reika.dragonapi.libraries.ReikaPlayerAPI;
 import reika.dragonapi.libraries.io.ReikaPacketHelper;
+
+import org.jspecify.annotations.Nullable;
 
 /**
  * V33a {@code ItemManipulator} — the mod's universal "interact with a ChromatiCraft block" tool.
@@ -38,8 +50,46 @@ import reika.dragonapi.libraries.io.ReikaPacketHelper;
  */
 public class ItemManipulator extends Item {
 
+	/** V33a charges from whatever the player's cursor is on, at ordinary interaction range. */
+	private static final double CHARGE_REACH = 5;
+
 	public ItemManipulator(Properties properties) {
 		super(properties);
+	}
+
+	/**
+	 * V33a {@code ItemManipulator.onUpdate}: holding the Manipulator and looking at a pylon drains it
+	 * into the player's elemental buffer, every tick, for as long as the crosshair stays on the
+	 * crystal. It is not a click — charging is an act of standing there.
+	 *
+	 * <p>Upstream reads the player's existing mouse-over. In 26.2 {@code inventoryTick} is
+	 * server-only and the client's {@code Minecraft.hitResult} is not visible here, so the look ray is
+	 * traced server-side instead. That is the authoritative side for a transfer anyway, and it removes
+	 * the need to trust a client-supplied target.
+	 */
+	@Override
+	public void inventoryTick(ItemStack stack, ServerLevel level, Entity owner, @Nullable EquipmentSlot slot) {
+		if (slot != EquipmentSlot.MAINHAND || !(owner instanceof Player player))
+			return;
+		if (!ProgressStage.PYLON.isPlayerAtStage(player))
+			return;
+		if (!(player.pick(CHARGE_REACH, 1, false) instanceof BlockHitResult hit)
+				|| hit.getType() != HitResult.Type.BLOCK)
+			return;
+
+		BlockEntity tile = level.getBlockEntity(hit.getBlockPos());
+		// CHROMA-PORT: V33a also resolves BlockPowerTree's aux blocks to their centre here, so a
+		// player can charge from any part of a power tree. TileEntityPowerTree is not ported.
+		if (tile instanceof TileEntityDummyAux dummy && dummy.getLinkedTile() != null)
+			tile = dummy.getLinkedTile();
+		if (!(tile instanceof ChargingPoint point))
+			return;
+
+		BlockPos at = hit.getBlockPos();
+		CrystalElement colour = point.getDeliveredColor(player, level, at.getX(), at.getY(), at.getZ());
+		// CHROMA-PORT: the client half of upstream's call draws ChromaFX.createPylonChargeBeam between
+		// the crystal and the player. ChromaFX is not ported, so charging is currently silent to look at.
+		PylonCharging.chargePlayerFromPylon(player, point, colour, player.tickCount, false);
 	}
 
 	@Override

@@ -7,11 +7,18 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 
+import reika.chromaticraft.magic.progression.ProgressAccess;
 import reika.dragonapi.libraries.ReikaPlayerAPI;
 import reika.dragonapi.libraries.io.NBTCompat;
 
-/** Server-authoritative persistence and replay boundary for V33a's lore-key assembly. */
-public final class LoreManager {
+/**
+ * Server-authoritative persistence and replay boundary for V33a's lore-key assembly.
+ *
+ * <p>It is also a {@link ProgressAccess}, as upstream's is: finishing the lore board is one of the
+ * gates on the player's elemental buffer capacity. That check reads a persisted flag rather than
+ * replaying the puzzle, so unlike the rest of this class it is safe on either side.
+ */
+public final class LoreManager implements ProgressAccess {
 
 	public static final LoreManager instance = new LoreManager();
 	private static final String TAG = "loretowers";
@@ -53,6 +60,11 @@ public final class LoreManager {
 			}
 		}
 		return state(player);
+	}
+
+	@Override
+	public boolean playerHas(Player ep) {
+		return this.hasPlayerCompletedBoard(ep);
 	}
 
 	public boolean hasPlayerCompletedBoard(Player player) {

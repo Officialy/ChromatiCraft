@@ -1,299 +1,252 @@
-/*******************************************************************************
- * @author Reika Kalseki
- *
- * Copyright 2017
- *
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
- ******************************************************************************/
 package reika.chromaticraft.magic;
 
 import java.util.UUID;
 
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.MathHelper;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Mth;
+import net.minecraft.world.entity.player.Player;
 
-import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.api.crystalelementaccessor.CrystalElementProxy;
-import reika.chromaticraft.api.PlayerBufferAPI;
-import reika.chromaticraft.auxiliary.CrystalMusicManager;
-import reika.chromaticraft.items.tools.ItemPendant;
+import reika.chromaticraft.api.CrystalElementAccessor.CrystalElementProxy;
 import reika.chromaticraft.magic.progression.ProgressStage;
-import reika.chromaticraft.registry.ChromaPackets;
 import reika.chromaticraft.registry.ChromaSounds;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.dragonapi.instantiable.data.maps.CountMap;
 import reika.dragonapi.libraries.ReikaPlayerAPI;
-import reika.dragonapi.libraries.io.ReikaPacketHelper;
+import reika.dragonapi.libraries.io.NBTCompat;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
-
-
-public class PlayerElementBuffer implements PlayerBufferAPI {
+/**
+ * V33a {@code PlayerElementBuffer}: the sixteen-element energy store every player carries, filled by
+ * charging from a pylon and spent by abilities and casting.
+ *
+ * <p>Upstream keeps it in {@code ep.getEntityData()} under a {@code CrystalBuffer} tag, which is
+ * {@link Player#getPersistentData()} here — the same store, and like upstream it is <em>not</em>
+ * death-persistent. The client needs to read it too, because the manipulator's HUD draws from it, so
+ * every server-side change ends with {@link ReikaPlayerAPI#syncCustomData} pushing the player's NBT
+ * down. That is exactly upstream's mechanism, not a new one.
+ */
+public final class PlayerElementBuffer {
 
 	public static final PlayerElementBuffer instance = new PlayerElementBuffer();
 
-	private final CountMap<UUID> recentUpgrades = new CountMap();
+	/** V33a shows a flourish on the pie for a while after the cap goes up; this is its countdown. */
+	private final CountMap<UUID> recentUpgrades = new CountMap<>();
 
 	private static final String NBT_TAG = "CrystalBuffer";
+	private static final String CAP_TAG = "cap";
 
-	private PlayerElementBuffer() {
+	/** V33a: the floor a player starts at, before any capacity boost. */
+	public static final int BASE_CAP = 24;
 
-	}
+	private PlayerElementBuffer() {}
 
-	public float getAndDecrUpgradeTick(EntityPlayer ep) {
-		UUID id = ep.getUniqueID();
+	public float getAndDecrUpgradeTick(Player ep) {
+		UUID id = ep.getUUID();
 		int get = recentUpgrades.get(id);
 		if (get > 0)
 			recentUpgrades.increment(id, -1);
-		return get/2000F;
+		return get / 2000F;
 	}
 
-	NBTTagCompound getTag(EntityPlayer ep) {
-		NBTTagCompound tag = ep.getEntityData().getCompoundTag(NBT_TAG);
-		ep.getEntityData().setTag(NBT_TAG, tag);
+	/** The buffer's own compound, created in place on first read exactly as upstream does. */
+	static CompoundTag bufferTag(Player ep) {
+		CompoundTag root = ep.getPersistentData();
+		CompoundTag tag = NBTCompat.getCompound(root, NBT_TAG);
+		root.put(NBT_TAG, tag);
 		return tag;
 	}
 
-	public ElementTagCompound getPlayerBuffer(EntityPlayer ep) {
-		NBTTagCompound tag = this.getTag(ep);
-		return ElementTagCompound.createFromNBT(tag);
+	public ElementTagCompound getPlayerBuffer(Player ep) {
+		return ElementTagCompound.createFromNBT(bufferTag(ep));
 	}
 
-	public int getPlayerContent(EntityPlayer ep, CrystalElement e) {
-		NBTTagCompound tag = this.getTag(ep);
-		return tag.getInteger(e.name());
+	public int getPlayerContent(Player ep, CrystalElement e) {
+		return bufferTag(ep).getIntOr(e.name(), 0);
 	}
 
-	public boolean playerHas(EntityPlayer ep, CrystalElement e, int amt) {
-		return ep.capabilities.isCreativeMode || this.getPlayerContent(ep, e) >= amt;
+	public boolean playerHas(Player ep, CrystalElement e, int amt) {
+		return ep.getAbilities().instabuild || this.getPlayerContent(ep, e) >= amt;
 	}
 
-	public boolean playerHas(EntityPlayer player, ElementTagCompound tag) {
+	public boolean playerHas(Player player, ElementTagCompound tag) {
 		for (CrystalElement e : tag.elementSet()) {
-			int amt = tag.getValue(e);
-			if (!this.playerHas(player, e, amt))
+			if (!this.playerHas(player, e, tag.getValue(e)))
 				return false;
 		}
 		return true;
 	}
 
-	public boolean addToPlayer(EntityPlayer ep, CrystalElement e, int amt, boolean notify) {
-		NBTTagCompound tag = this.getTag(ep);
-		int has = tag.getInteger(e.name());
-		int val = Math.min(has+amt, this.getElementCap(ep));
-		tag.setInteger(e.name(), val);
-		//this.checkUpgrade(ep, true);
+	public boolean addToPlayer(Player ep, CrystalElement e, int amt, boolean notify) {
+		CompoundTag tag = bufferTag(ep);
+		int has = tag.getIntOr(e.name(), 0);
+		int val = Math.min(has + amt, this.getElementCap(ep));
+		tag.putInt(e.name(), val);
+		// V33a recomputes and re-clamps the cap on every add: the cap is derived from how much energy
+		// the player is carrying, so putting energy in is what raises it.
 		this.setElementCap(ep, this.calcElementCap(ep), notify);
 		return val > has;
 	}
 
-	private void setToPlayer(EntityPlayer ep, CrystalElement e, int amt) {
-		NBTTagCompound tag = this.getTag(ep);
-		tag.setInteger(e.name(), amt);
+	private void setToPlayer(Player ep, CrystalElement e, int amt) {
+		bufferTag(ep).putInt(e.name(), amt);
 	}
 
-	public boolean addToPlayer(EntityPlayer ep, ElementTagCompound tag, boolean notify) {
+	public boolean addToPlayer(Player ep, ElementTagCompound tag, boolean notify) {
 		boolean flag = false;
-		for (CrystalElement e : tag.elementSet()) {
+		for (CrystalElement e : tag.elementSet())
 			flag |= this.addToPlayer(ep, e, tag.getValue(e), notify);
-		}
 		return flag;
 	}
 
-	public void removeFromPlayer(EntityPlayer ep, CrystalElementProxy e, int amt) {
+	public void removeFromPlayer(Player ep, CrystalElementProxy e, int amt) {
 		this.removeFromPlayer(ep, (CrystalElement)e, amt);
 	}
 
-	public void removeFromPlayer(EntityPlayer ep, CrystalElement e, int amt) {
-		if (ep.capabilities.isCreativeMode)
+	public void removeFromPlayer(Player ep, CrystalElement e, int amt) {
+		if (ep.getAbilities().instabuild)
 			return;
 
-		int lvl = ItemPendant.getActivePendantLevel(ep, CrystalElement.BLACK);
-		if (lvl == 1)
-			amt = Math.max(1, (int)(amt*0.5F));
-		else if (lvl == 0)
-			amt = Math.max(1, (int)(amt*0.8F));
+		// CHROMA-PORT: V33a discounts the cost by the player's active black pendant
+		// (ItemPendant.getActivePendantLevel: level 1 halves it, level 0 takes a fifth off). ItemPendant
+		// is not ported, so no discount applies yet. Restore this when the pendant lands.
 
-		NBTTagCompound tag = this.getTag(ep);
-		int has = tag.getInteger(e.name());
-		tag.setInteger(e.name(), Math.max(0, has-amt));
+		CompoundTag tag = bufferTag(ep);
+		int has = tag.getIntOr(e.name(), 0);
+		tag.putInt(e.name(), Math.max(0, has - amt));
 		this.checkAndWarnPlayer(ep, e, has);
 
-		if (ep instanceof EntityPlayerMP)
-			ReikaPlayerAPI.syncCustomData((EntityPlayerMP)ep);
+		if (ep instanceof ServerPlayer sp)
+			ReikaPlayerAPI.syncCustomData(sp);
 	}
 
-	private void checkAndWarnPlayer(EntityPlayer ep, CrystalElement e, int prev) {
-		float f1 = prev/(float)this.getElementCap(ep);
-		float f2 = this.getPlayerContent(ep, e)/(float)this.getElementCap(ep);
-		//ReikaJavaLibrary.pConsole(f1+">"+f2+" @ "+e, Side.SERVER);
+	private void checkAndWarnPlayer(Player ep, CrystalElement e, int prev) {
+		float f1 = prev / (float)this.getElementCap(ep);
+		float f2 = this.getPlayerContent(ep, e) / (float)this.getElementCap(ep);
 		this.warnPlayer(ep, e, f1, f2);
 	}
 
-	private void warnPlayer(EntityPlayer ep, CrystalElement e, float f1, float f2) {
-		if (f2 < f1) {
-			int s1 = -1;
-			int s2 = -1;
-			if (f1 < 0.015625) {
-				s1 = 0;
-			}
-			else if (f1 < 0.03125) {
-				s1 = 1;
-			}
-			else if (f1 < 0.0625) {
-				s1 = 2;
-			}
-			if (f2 < 0.015625) {
-				s2 = 0;
-			}
-			else if (f2 < 0.03125) {
-				s2 = 1;
-			}
-			else if (f2 < 0.0625) {
-				s2 = 2;
-			}
-			//ReikaJavaLibrary.pConsole(s1+","+s2, Side.SERVER);
-			if (s1 != s2) {
-				ChromaSounds snd = null;
-				switch (s2) {
-					case 0:
-						snd = ChromaSounds.BUFFERWARNING;
-						break;
-					case 1:
-						snd = ChromaSounds.BUFFERWARNING_LOW;
-						break;
-					case 2:
-						snd = ChromaSounds.BUFFERWARNING_EMPTY;
-						break;
-				}
-				if (snd != null)
-					snd.playSound(ep, 1, (float)CrystalMusicManager.instance.getDingPitchScale(e));
-			}
-		}
-	}
-
-	public void removeFromPlayer(EntityPlayer player, ElementTagCompound tag) {
-		for (CrystalElement e : tag.elementSet()) {
-			this.removeFromPlayer(player, e, tag.getValue(e));
-		}
-	}
-
-	public int getElementCap(EntityPlayer ep) {
-		NBTTagCompound tag = this.getTag(ep);
-		return Math.max(24, tag.getInteger("cap"));
-	}
-
-	public int getChargeSpeed(EntityPlayer ep) {
-		return (int)Math.pow(this.getElementCap(ep)/24, 0.667);
-	}
-
-	public double getPlayerFraction(EntityPlayer ep, CrystalElement e) {
-		return (double)this.getPlayerContent(ep, e)/this.getElementCap(ep);
-	}
-	/*
-	public boolean upgradeCap(EntityPlayer ep) {
-		return this.setElementCap(ep, this.getElementCap(ep)*4, true);
-	}
+	/**
+	 * V33a's low-buffer chime. It fires only when a spend crosses one of three thresholds — a sixteenth,
+	 * a thirty-second, a sixty-fourth of the cap — so a player draining steadily hears three warnings
+	 * rather than one per tick.
 	 */
-	public boolean setElementCap(EntityPlayer ep, int cap, boolean notify) {
-		NBTTagCompound tag = this.getTag(ep);
+	private void warnPlayer(Player ep, CrystalElement e, float f1, float f2) {
+		if (f2 >= f1)
+			return;
+		int s1 = warnBand(f1);
+		int s2 = warnBand(f2);
+		if (s1 == s2)
+			return;
+		ChromaSounds snd = switch (s2) {
+			case 0 -> ChromaSounds.BUFFERWARNING;
+			case 1 -> ChromaSounds.BUFFERWARNING_LOW;
+			case 2 -> ChromaSounds.BUFFERWARNING_EMPTY;
+			default -> null;
+		};
+		if (snd != null)
+			// CHROMA-PORT: V33a pitches the chime per element, via
+			// CrystalMusicManager.getDingPitchScale(e). CrystalMusicManager needs DragonAPI's
+			// ReikaMusicHelper (KeySignature/MusicKey/Note), which is not ported, so the warning plays
+			// at its natural pitch for now. Everything about when it fires is faithful.
+			snd.playSound(ep, 1, 1);
+	}
+
+	private static int warnBand(float f) {
+		if (f < 0.015625)
+			return 0;
+		if (f < 0.03125)
+			return 1;
+		if (f < 0.0625)
+			return 2;
+		return -1;
+	}
+
+	public void removeFromPlayer(Player player, ElementTagCompound tag) {
+		for (CrystalElement e : tag.elementSet())
+			this.removeFromPlayer(player, e, tag.getValue(e));
+	}
+
+	public int getElementCap(Player ep) {
+		return Math.max(BASE_CAP, bufferTag(ep).getIntOr(CAP_TAG, 0));
+	}
+
+	public int getChargeSpeed(Player ep) {
+		return (int)Math.pow(this.getElementCap(ep) / (double)BASE_CAP, 0.667);
+	}
+
+	public double getPlayerFraction(Player ep, CrystalElement e) {
+		return (double)this.getPlayerContent(ep, e) / this.getElementCap(ep);
+	}
+
+	public boolean setElementCap(Player ep, int cap, boolean notify) {
+		CompoundTag tag = bufferTag(ep);
 		int prev = this.getElementCap(ep);
 		int val = Math.min(cap, this.getPlayerMaximumCap(ep));
-		tag.setInteger("cap", val);
+		tag.putInt(CAP_TAG, val);
 		boolean flag = val != prev;
 		if (flag) {
-			for (int i = 0; i < 16; i++) {
-				CrystalElement e = CrystalElement.elements[i];
-				int amt = Math.min(val, this.getPlayerContent(ep, e));
-				this.setToPlayer(ep, e, amt);
-			}
+			// A cap that went down has to re-clamp what is already stored.
+			for (CrystalElement e : CrystalElement.elements)
+				this.setToPlayer(ep, e, Math.min(val, this.getPlayerContent(ep, e)));
 			if (notify) {
-				if (cap%2 == 0)
-					ChromaSounds.CRAFTDONE.playSound(ep.worldObj, ep.posX, ep.posY, ep.posZ, 0.1F, 0.5F);
-				recentUpgrades.set(ep.getUniqueID(), 2000);
-				//if (ep instanceof EntityPlayerMP)
-				//	this.sendUpgradePacket((EntityPlayerMP)ep);
+				if (cap % 2 == 0)
+					ChromaSounds.CRAFTDONE.playSound(ep.level(), ep.getX(), ep.getY(), ep.getZ(), 0.1F, 0.5F);
+				recentUpgrades.set(ep.getUUID(), 2000);
 			}
 		}
-		if (ep instanceof EntityPlayerMP) {
-			ReikaPacketHelper.sendDataPacket(ChromatiCraft.packetChannel, ChromaPackets.BUFFERSET.ordinal(), (EntityPlayerMP)ep, val, notify ? 1 : 0);
-			ReikaPlayerAPI.syncCustomData((EntityPlayerMP)ep);
-		}
+		if (ep instanceof ServerPlayer sp)
+			ReikaPlayerAPI.syncCustomData(sp);
 		return flag;
 	}
 
-	private int calcElementCap(EntityPlayer ep) {
+	/**
+	 * V33a: the cap follows how much the player is carrying, sublinearly, so it grows as they use the
+	 * system rather than being handed over in steps. CTM makes the curve more generous.
+	 */
+	private int calcElementCap(Player ep) {
 		int amt = this.getPlayerTotalEnergy(ep);
-		double p = ProgressStage.CTM.isPlayerAtStage(ep) ? 0.875 : 0.75;
-		double f = ProgressStage.CTM.isPlayerAtStage(ep) ? 0.9 : 0.8;
-		double m = ProgressStage.CTM.isPlayerAtStage(ep) ? 6 : 4;
-		return Math.max(this.getPlayerBuffer(ep).getMaximumValue(), MathHelper.clamp_int((int)(Math.min(amt*f, m*Math.pow(amt, p))), 24, this.getPlayerMaximumCap(ep)));
+		boolean ctm = ProgressStage.CTM.isPlayerAtStage(ep);
+		double p = ctm ? 0.875 : 0.75;
+		double f = ctm ? 0.9 : 0.8;
+		double m = ctm ? 6 : 4;
+		return Math.max(this.getPlayerBuffer(ep).getMaximumValue(),
+				Mth.clamp((int)Math.min(amt * f, m * Math.pow(amt, p)), BASE_CAP, this.getPlayerMaximumCap(ep)));
 	}
 
-	int getPlayerMaximumCap(EntityPlayer ep) {
+	int getPlayerMaximumCap(Player ep) {
 		return ElementBufferCapacityBoost.calculateCap(ep);
 	}
 
-	public int getChargeInefficiency(EntityPlayer ep) {
-		return ProgressStage.CTM.isPlayerAtStage(ep) ? 1 : ProgressStage.DIMENSION.isPlayerAtStage(ep) ? 2 : 4;
-	}
-	/*
-	private void sendUpgradePacket(EntityPlayerMP ep) {
-		ReikaPacketHelper.sendDataPacket(ChromatiCraft.packetChannel, ChromaPackets.BUFFERINC.ordinal(), ep, 0);
-	}
-	 */
-	@SideOnly(Side.CLIENT)
-	public void setPlayerCapOnClient(EntityPlayer ep, int cap, boolean notify) {
-		this.setElementCap(ep, cap, notify);
-	}
-	/*
-	@SideOnly(Side.CLIENT)
-	public void upgradePlayerOnClient(EntityPlayer ep) {
-		recentUpgrades.set(ep.getUniqueID(), 2000);
-	}
-	 */
-	public boolean canPlayerAccept(EntityPlayer ep, CrystalElement e, int amt) {
-		return this.getPlayerContent(ep, e)+amt <= this.getElementCap(ep);
+	/** How much is drained from the source per unit stored; falls as the player progresses. */
+	public int getChargeInefficiency(Player ep) {
+		return ProgressStage.CTM.isPlayerAtStage(ep) ? 1
+				: ProgressStage.DIMENSION.isPlayerAtStage(ep) ? 2 : 4;
 	}
 
-	public boolean isMaxed(EntityPlayer player, CrystalElement e) {
+	public boolean canPlayerAccept(Player ep, CrystalElement e, int amt) {
+		return this.getPlayerContent(ep, e) + amt <= this.getElementCap(ep);
+	}
+
+	public boolean isMaxed(Player player, CrystalElement e) {
 		return this.getPlayerContent(player, e) == this.getElementCap(player);
 	}
 
-	public boolean isMaxedWithin(EntityPlayer player, CrystalElement e, float frac) {
-		return this.getPlayerContent(player, e) >= this.getElementCap(player)*(1-frac);
+	public boolean isMaxedWithin(Player player, CrystalElement e, float frac) {
+		return this.getPlayerContent(player, e) >= this.getElementCap(player) * (1 - frac);
 	}
-	/*
-	public boolean checkUpgrade(EntityPlayer player, boolean doUpgrade) {
-		for (int i = 0; i < CrystalElement.elements.length; i++) {
-			CrystalElement e = CrystalElement.elements[i];
-			if (!this.isMaxedWithin(player, e, 0.1F))
-				return false;
-		}
-		return doUpgrade ? this.upgradeCap(player) : true;
-	}
-	 */
-	public boolean hasElement(EntityPlayer ep, CrystalElement e) {
+
+	public boolean hasElement(Player ep, CrystalElement e) {
 		return this.getPlayerContent(ep, e) > 0;
 	}
 
-	public int getPlayerTotalEnergy(EntityPlayer ep) {
+	public int getPlayerTotalEnergy(Player ep) {
 		int sum = 0;
-		for (int i = 0; i < CrystalElement.elements.length; i++) {
-			CrystalElement e = CrystalElement.elements[i];
+		for (CrystalElement e : CrystalElement.elements)
 			sum += this.getPlayerContent(ep, e);
-		}
 		return sum;
 	}
 
-	public void copyTo(EntityPlayer from, EntityPlayer to) {
-		NBTTagCompound data = this.getTag(from);
-		to.getEntityData().setTag(NBT_TAG, data);
+	public void copyTo(Player from, Player to) {
+		to.getPersistentData().put(NBT_TAG, bufferTag(from).copy());
 	}
-
 }

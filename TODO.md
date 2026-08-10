@@ -585,11 +585,13 @@ rather than generalising one renderer across several pages.
          element (`LexiconMachineRender`), so the block entity renderer runs and a construct that is
          mostly its renderer is not a bare cube. The invented "Crystal network construct" captions
          that stood here are gone; upstream draws no caption.
-   - [ ] **ENERGY** — blocked three ways: DragonAPI's `Proportionality` (the pie chart) is not ported,
-         `Textures/infoicons.png` is not extracted, and `ChromaTiles` has none of
-         `isPylonPowered`/`isRelayPowered`/`isChargedCrystalPowered`/`isWirelessPowered`. Also needs a
-         filled-sector primitive: `GuiGraphicsExtractor` has `fill` and lines but no triangles, and
-         the ported `ReikaGuiAPI.drawCircle` is an outline of line segments only.
+   - [ ] **ENERGY** — blocked two ways: `Textures/infoicons.png` is not extracted, and `ChromaTiles`
+         has none of `isPylonPowered`/`isRelayPowered`/`isChargedCrystalPowered`/`isWirelessPowered`.
+         **Correction (2026-08-10):** an earlier version of this entry also claimed DragonAPI's
+         `Proportionality` was unported and that there was no filled-sector primitive. Both were
+         false — `Proportionality` and `CircularDivisionRenderer` are both ported and draw through
+         `SubmitNodeCollector.submitCustomGeometry`. The claim came from a `find` run with a drifted
+         shell working directory that never searched DragonAPI at all.
    - [ ] **AOE** — blocked, and *unreachable* rather than merely unported: `ComplexAOE` and all four
          of its implementors (`TileEntityFarmer`, `TileEntityBiomeReverter`, `TileEntityCropSpeedPlant`,
          `TileEntityHarvesterPlant`) are outside the build allowlist, so no machine can enter this
