@@ -22,6 +22,13 @@ public final class ChromaBiomeModifierProvider implements DataProvider {
     private static final String CAVE_CRYSTAL = id("cave_crystal").toString();
     private static final String NATURAL_PYLON = id("natural_pylon").toString();
     private static final String DATA_TOWER = id("data_tower").toString();
+    private static final String NETHER_ROOF_STRUCTURE = id("nether_roof_structure").toString();
+    private static final String NATURAL_CAVERN = id("natural_cavern").toString();
+    private static final String NATURAL_BURROW = id("natural_burrow").toString();
+    private static final String NATURAL_OCEAN = id("natural_ocean").toString();
+    private static final String NATURAL_DESERT = id("natural_desert").toString();
+	private static final String NATURAL_SNOW = id("natural_snow").toString();
+	private static final String NATURAL_BIOME_FRAGMENT = id("natural_biome_fragment").toString();
     private final PackOutput.PathProvider pathProvider;
 
     public ChromaBiomeModifierProvider(PackOutput output) {
@@ -96,6 +103,26 @@ public final class ChromaBiomeModifierProvider implements DataProvider {
                 GenerationStep.Decoration.UNDERGROUND_ORES));
         futures.add(save(cache, "tiered_ore_nether", "#minecraft:is_nether",
                 id("firestone").toString(), GenerationStep.Decoration.UNDERGROUND_ORES));
+        futures.add(save(cache, "nether_roof_structures", "#minecraft:is_nether",
+                NETHER_ROOF_STRUCTURE, GenerationStep.Decoration.SURFACE_STRUCTURES));
+        futures.add(save(cache, "cavern_overworld", "#minecraft:is_overworld",
+                NATURAL_CAVERN, GenerationStep.Decoration.UNDERGROUND_STRUCTURES));
+        futures.add(save(cache, "burrow_overworld", "#minecraft:is_overworld",
+                NATURAL_BURROW, GenerationStep.Decoration.SURFACE_STRUCTURES));
+        futures.add(save(cache, "ocean_structure_oceans", "#minecraft:is_ocean",
+                NATURAL_OCEAN, GenerationStep.Decoration.SURFACE_STRUCTURES));
+        futures.add(save(cache, "desert_structure_sandy", "#c:is_sandy",
+                NATURAL_DESERT, GenerationStep.Decoration.SURFACE_STRUCTURES));
+		futures.add(save(cache, "snow_structure_snowy", "#c:is_snowy",
+				NATURAL_SNOW, GenerationStep.Decoration.TOP_LAYER_MODIFICATION));
+		// V33a BiomeStructureGenerator was restricted to ChromatiCraft's special overworld
+		// biomes. Rainbow Stream is deliberately excluded: it is a river overlay and was not
+		// a legal host for the room. Keep this explicit to avoid NeoForge feature-order cycles
+		// between the custom biomes and vanilla river generation.
+		futures.add(saveManyBiomes(cache, "biome_fragment_special_biomes",
+				List.of(id("rainbow_forest").toString(), id("ender_forest").toString(),
+						id("luminous_cliffs").toString(), id("luminous_cliffs_shores").toString()),
+				List.of(NATURAL_BIOME_FRAGMENT), GenerationStep.Decoration.SURFACE_STRUCTURES));
         return CompletableFuture.allOf(futures.build().toArray(CompletableFuture[]::new));
     }
 

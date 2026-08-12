@@ -137,6 +137,8 @@ public class ChromatiCraft extends DragonAPIMod {
 	private static void registerScreens(RegisterMenuScreensEvent event) {
 		event.register(ChromaMenus.CASTING_TABLE.get(),
 				reika.chromaticraft.client.gui.ScreenCastingTable::new);
+		event.register(ChromaMenus.HEAT_LAMP.get(),
+				reika.chromaticraft.client.gui.ScreenHeatLamp::new);
 	}
 
 	@Override

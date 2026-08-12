@@ -74,6 +74,12 @@ public final class ClientPayloadHandlers {
 			repeater.refreshConnectionRender();
 	}
 
+	public static void repeaterSurgeBurst(BlockPos source, CrystalElement colour) {
+		Minecraft mc = Minecraft.getInstance();
+		if (mc.level != null)
+			ChromaParticle.spawnRepeaterSurgeBurst(mc.level, source, colour, new Random());
+	}
+
 	public static void pylonCrystalBreak(BlockPos source, CrystalElement colour) {
 		Minecraft mc = Minecraft.getInstance();
 		if (mc.level != null)

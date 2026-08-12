@@ -1,0 +1,22 @@
+{
+  "variants": {
+    "facing=down": {
+      "model": "chromaticraft:block/heat_lamp_down"
+    },
+    "facing=east": {
+      "model": "chromaticraft:block/heat_lamp_east"
+    },
+    "facing=north": {
+      "model": "chromaticraft:block/heat_lamp_north"
+    },
+    "facing=south": {
+      "model": "chromaticraft:block/heat_lamp_south"
+    },
+    "facing=up": {
+      "model": "chromaticraft:block/heat_lamp_up"
+    },
+    "facing=west": {
+      "model": "chromaticraft:block/heat_lamp_west"
+    }
+  }
+}

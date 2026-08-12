@@ -4,6 +4,9 @@
     {
       "type": "minecraft:rarity_filter",
       "chance": 4
+    },
+    {
+      "type": "minecraft:biome"
     }
   ]
 }

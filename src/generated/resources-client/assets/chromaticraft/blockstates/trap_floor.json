@@ -1,0 +1,16 @@
+{
+  "variants": {
+    "disguise=oak_planks": {
+      "model": "chromaticraft:block/trap_floor_oak_planks"
+    },
+    "disguise=self": {
+      "model": "chromaticraft:block/trap_floor_self"
+    },
+    "disguise=stone_bricks": {
+      "model": "chromaticraft:block/trap_floor_stone_bricks"
+    },
+    "disguise=structure_stone": {
+      "model": "chromaticraft:block/trap_floor_structure_stone"
+    }
+  }
+}

@@ -15,7 +15,7 @@ import reika.dragonapi.interfaces.BlockCheck;
 public final class PylonBroadcastStructure extends ColoredStructureBase {
 
 	private static final Identifier TEMPLATE = NBTStructureLoader.chromaTemplate("multiblock/pylon_broadcast");
-	private static final Identifier CHROMA = Identifier.fromNamespaceAndPath("chromaticraft", "chroma");
+	private static final Identifier CHROMA = Identifier.fromNamespaceAndPath("chromaticraft", "liquid_chroma");
 	private static final BlockPos ANCHOR = new BlockPos(5, 10, 5);
 	private static final BlockCheck CHROMA_CHECK = new RegistryBlockCheck(CHROMA);
 

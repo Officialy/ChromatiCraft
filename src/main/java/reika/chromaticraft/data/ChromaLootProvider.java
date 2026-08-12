@@ -3,24 +3,35 @@ package reika.chromaticraft.data;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.BiConsumer;
 
 import net.minecraft.core.HolderLookup;
 import net.minecraft.data.PackOutput;
 import net.minecraft.data.loot.BlockLootSubProvider;
 import net.minecraft.data.loot.LootTableProvider;
+import net.minecraft.data.loot.LootTableSubProvider;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.tags.TagKey;
+import net.minecraft.advancements.predicates.LocationPredicate;
+import net.minecraft.core.HolderSet;
 import net.minecraft.world.flag.FeatureFlags;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.storage.loot.LootPool;
 import net.minecraft.world.level.storage.loot.functions.SetItemCountFunction;
 import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.entries.LootItem;
+import net.minecraft.world.level.storage.loot.entries.TagEntry;
 import net.minecraft.world.level.storage.loot.entries.LootPoolSingletonContainer;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.level.storage.loot.predicates.LootItemBlockStatePropertyCondition;
+import net.minecraft.world.level.storage.loot.predicates.LocationCheck;
 import net.minecraft.world.level.storage.loot.predicates.LootItemCondition;
 import net.minecraft.world.level.storage.loot.predicates.LootItemRandomChanceCondition;
 import net.minecraft.world.level.storage.loot.providers.number.ConstantValue;
+import net.minecraft.world.level.storage.loot.providers.number.UniformGenerator;
 import net.minecraft.advancements.predicates.StatePropertiesPredicate;
 import reika.chromaticraft.block.BlockEncrustedCrystal;
 
@@ -43,6 +54,8 @@ import reika.chromaticraft.block.worldgen26.BlockStructureShield;
 import reika.chromaticraft.block.worldgen26.BlockLootChest;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.CrystalElement;
+import reika.chromaticraft.registry.ChromaTieredItems;
+import reika.chromaticraft.world.OverworldStructureFeature;
 
 /**
  * ChromatiCraft loot tables (port-in-progress). Emits a drops-self table for every registered block so
@@ -58,8 +71,137 @@ public final class ChromaLootProvider extends LootTableProvider {
 
 	public ChromaLootProvider(PackOutput output, CompletableFuture<HolderLookup.Provider> registries) {
 		super(output, Set.of(), List.of(
-				new SubProviderEntry(Blocks::new, LootContextParamSets.BLOCK)
+				new SubProviderEntry(Blocks::new, LootContextParamSets.BLOCK),
+				new SubProviderEntry(BurrowCache::new, LootContextParamSets.CHEST)
 		), registries);
+	}
+
+	/** Data-driven form of V33a BurrowStructure.buildLootCache's weighted 13-20 draws. */
+	private record BurrowCache(HolderLookup.Provider registries) implements LootTableSubProvider {
+		@Override
+		public void generate(BiConsumer<ResourceKey<LootTable>, LootTable.Builder> output) {
+			LootPool.Builder pool = LootPool.lootPool().setRolls(UniformGenerator.between(13, 20));
+			add(pool, Items.IRON_ORE, 12, 32, 35);
+			add(pool, Items.GOLD_ORE, 8, 24, 15);
+			addTag(pool, "ores/copper", 16, 40, 40);
+			addTag(pool, "ores/tin", 16, 40, 40);
+			addTag(pool, "ores/silver", 12, 24, 20);
+			addTag(pool, "ores/nickel", 12, 24, 15);
+			addTag(pool, "ores/lead", 12, 24, 20);
+			add(pool, Items.DIAMOND, 1, 4, 5);
+			add(pool, Items.DIAMOND, 3, 12, 2);
+			add(pool, dye(net.minecraft.world.item.DyeColor.BLUE), 2, 6, 20);
+			add(pool, dye(net.minecraft.world.item.DyeColor.BLUE), 12, 30, 5);
+			add(pool, Items.REDSTONE, 4, 64, 40);
+			add(pool, Items.COAL, 16, 64, 40);
+			add(pool, Items.COAL, 4, 24, 60);
+			add(pool, Items.GOLD_INGOT, 4, 16, 25);
+			add(pool, Items.GOLD_INGOT, 16, 40, 10);
+			add(pool, Items.IRON_INGOT, 16, 40, 60);
+			add(pool, Items.IRON_INGOT, 32, 64, 20);
+			addTag(pool, "ingots/nickel", 16, 48, 40);
+			addTag(pool, "ingots/lead", 16, 48, 40);
+			addTag(pool, "ingots/silver", 16, 48, 50);
+			add(pool, Items.FLINT, 12, 32, 40);
+			add(pool, Items.CLAY_BALL, 30, 60, 40);
+			add(pool, Items.SLIME_BALL, 10, 20, 15);
+			add(pool, Items.BONE, 5, 15, 40);
+			add(pool, Items.ROTTEN_FLESH, 5, 15, 50);
+			add(pool, Items.STRING, 10, 30, 50);
+			add(pool, Items.GUNPOWDER, 5, 20, 30);
+			add(pool, Items.LEATHER, 10, 25, 30);
+			add(pool, Items.FEATHER, 5, 15, 25);
+			add(pool, dye(net.minecraft.world.item.DyeColor.BLACK), 5, 15, 30);
+			add(pool, Items.ENDER_PEARL, 4, 12, 10);
+			add(pool, Items.WHEAT, 18, 30, 35);
+			add(pool, Items.CARROT, 18, 30, 35);
+			add(pool, Items.POTATO, 18, 30, 35);
+			add(pool, Items.APPLE, 18, 30, 35);
+			add(pool, Items.PORKCHOP, 8, 16, 20);
+			add(pool, Items.BEEF, 8, 16, 20);
+			add(pool, Items.COD, 8, 16, 20);
+			add(pool, Items.CHICKEN, 8, 16, 20);
+			add(pool, Items.SUGAR_CANE, 1, 6, 20);
+			for (CrystalElement element : CrystalElement.elements) {
+				add(pool, ChromaItems.SHARDS.get(element).get(), 2, 8, 5);
+				add(pool, ChromaBlocks.caveCrystal(element).get(), 2, 8, 1);
+			}
+			add(pool, ChromaItems.TIERED.get(ChromaTieredItems.AURA_DUST).get(), 6, 30, 5);
+			add(pool, Items.LAVA_BUCKET, 1, 1, 10);
+			add(pool, Items.QUARTZ, 12, 32, 15);
+			add(pool, Items.GLOWSTONE_DUST, 4, 12, 25);
+			add(pool, Items.GLOWSTONE_DUST, 16, 32, 5);
+			add(pool, Items.BLAZE_POWDER, 4, 8, 15);
+			// V33a's second blaze-powder entry was Thaumcraft-only; modern Thaumcraft is absent.
+			add(pool, Items.TORCH, 4, 20, 50);
+			add(pool, Items.OAK_PLANKS, 24, 64, 50);
+			add(pool, Items.SAND, 24, 64, 50);
+			add(pool, Items.OBSIDIAN, 4, 8, 10);
+			add(pool, Items.OBSIDIAN, 8, 16, 5);
+			add(pool, Items.MOSSY_COBBLESTONE, 16, 32, 15);
+			add(pool, Items.COBBLESTONE, 32, 64, 100);
+			add(pool, Items.DIRT, 32, 64, 100);
+			add(pool, Items.GRAVEL, 32, 64, 40);
+			add(pool, dye(net.minecraft.world.item.DyeColor.RED), 4, 16, 20);
+			add(pool, dye(net.minecraft.world.item.DyeColor.YELLOW), 4, 16, 20);
+			add(pool, dye(net.minecraft.world.item.DyeColor.GREEN), 4, 16, 20);
+			add(pool, Items.PAPER, 2, 8, 15);
+			LootTable.Builder table = LootTable.lootTable().withPool(pool);
+			// V33a independently adds ice in cold biomes (25%) and the dominant sapling (1/3).
+			table.withPool(biomeBonus(Items.ICE, 12, 32, 0.25F,
+					Biomes.SNOWY_PLAINS, Biomes.SNOWY_TAIGA, Biomes.ICE_SPIKES,
+					Biomes.SNOWY_SLOPES, Biomes.FROZEN_PEAKS, Biomes.JAGGED_PEAKS));
+			table.withPool(biomeBonus(Items.SPRUCE_SAPLING, 1, 6, 1F / 3F,
+					Biomes.TAIGA, Biomes.SNOWY_TAIGA, Biomes.OLD_GROWTH_PINE_TAIGA,
+					Biomes.OLD_GROWTH_SPRUCE_TAIGA));
+			table.withPool(biomeBonus(Items.BIRCH_SAPLING, 1, 6, 1F / 3F,
+					Biomes.BIRCH_FOREST, Biomes.OLD_GROWTH_BIRCH_FOREST));
+			table.withPool(biomeBonus(Items.JUNGLE_SAPLING, 1, 6, 1F / 3F,
+					Biomes.JUNGLE, Biomes.SPARSE_JUNGLE, Biomes.BAMBOO_JUNGLE));
+			table.withPool(biomeBonus(Items.ACACIA_SAPLING, 1, 6, 1F / 3F,
+					Biomes.SAVANNA, Biomes.SAVANNA_PLATEAU, Biomes.WINDSWEPT_SAVANNA));
+			table.withPool(biomeBonus(Items.DARK_OAK_SAPLING, 1, 6, 1F / 3F,
+					Biomes.DARK_FOREST));
+			table.withPool(biomeBonus(Items.MANGROVE_PROPAGULE, 1, 6, 1F / 3F,
+					Biomes.MANGROVE_SWAMP));
+			table.withPool(biomeBonus(Items.CHERRY_SAPLING, 1, 6, 1F / 3F,
+					Biomes.CHERRY_GROVE));
+			table.withPool(biomeBonus(Items.OAK_SAPLING, 1, 6, 1F / 3F,
+					Biomes.PLAINS, Biomes.SUNFLOWER_PLAINS, Biomes.FOREST, Biomes.FLOWER_FOREST,
+					Biomes.SWAMP, Biomes.WINDSWEPT_FOREST, Biomes.WOODED_BADLANDS));
+			output.accept(OverworldStructureFeature.BURROW_CACHE_LOOT, table);
+		}
+
+		@SafeVarargs
+		private LootPool.Builder biomeBonus(net.minecraft.world.level.ItemLike item, int minimum,
+				int maximum, float chance, ResourceKey<Biome>... keys) {
+			var biomes = registries.lookupOrThrow(net.minecraft.core.registries.Registries.BIOME);
+			HolderSet<Biome> set = HolderSet.direct(java.util.Arrays.stream(keys)
+					.map(biomes::getOrThrow).toList());
+			return LootPool.lootPool().setRolls(ConstantValue.exactly(1))
+					.when(LootItemRandomChanceCondition.randomChance(chance))
+					.when(LocationCheck.checkLocation(LocationPredicate.Builder.location().setBiomes(set)))
+					.add(LootItem.lootTableItem(item).apply(SetItemCountFunction.setCount(
+							UniformGenerator.between(minimum, maximum))));
+		}
+
+		private static void add(LootPool.Builder pool, net.minecraft.world.level.ItemLike item,
+				int minimum, int maximum, int weight) {
+			pool.add(LootItem.lootTableItem(item).setWeight(weight).apply(SetItemCountFunction.setCount(
+					UniformGenerator.between(minimum, maximum))));
+		}
+
+		private static void addTag(LootPool.Builder pool, String path, int minimum, int maximum,
+				int weight) {
+			TagKey<Item> tag = TagKey.create(net.minecraft.core.registries.Registries.ITEM,
+					net.minecraft.resources.Identifier.fromNamespaceAndPath("c", path));
+			pool.add(TagEntry.expandTag(tag).setWeight(weight).apply(SetItemCountFunction.setCount(
+					UniformGenerator.between(minimum, maximum))));
+		}
+
+		private static Item dye(net.minecraft.world.item.DyeColor color) {
+			return Items.DYE.pick(color);
+		}
 	}
 
 	private static final class Blocks extends BlockLootSubProvider {
@@ -93,6 +235,13 @@ public final class ChromaLootProvider extends LootTableProvider {
 					// V33a damageDropped = meta % 8: a reinforced shield yields the plain form of the
 					// same material, and the plain form drops itself.
 					this.dropSelf(block);
+				}
+				else if (block instanceof reika.chromaticraft.block.BlockHoverBlock) {
+					this.add(block, noDrop());
+				}
+				else if (block instanceof reika.chromaticraft.block.dimension.structure.locks.BlockLockKey) {
+					// Its channel/delegate/structure identity are emitted manually from the block entity.
+					this.add(block, noDrop());
 				}
 				else if (block instanceof BlockDecoFlower flower) {
 					// V33a routes these through PlantDropManager rather than the block's own drop:

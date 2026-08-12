@@ -28,12 +28,13 @@ import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaStructures;
 import reika.chromaticraft.registry.ChromaTiles;
 import reika.chromaticraft.registry.CrystalElement;
+import reika.chromaticraft.render.particle.ChromaParticle;
 
 /**
  * Compound repeater — a colour-cycling repeater (conducts all colours in turn) built on a taller
  * crystalline-stone column. Extends {@link TileEntityCrystalRepeater}.
  *
- * <p>Deferred: the client colour-cycle particle FX.
+ * <p>The V33a colour-cycle rune particle is emitted at the original 32-tick phase boundary.
  */
 public class TileEntityCompoundRepeater extends TileEntityCrystalRepeater implements ConnectivityAction {
 
@@ -48,7 +49,8 @@ public class TileEntityCompoundRepeater extends TileEntityCrystalRepeater implem
 	@Override
 	public void updateEntity(Level world, BlockPos pos) {
 		super.updateEntity(world, pos);
-		//Deferred: client colour-cycle particles.
+		if (world.isClientSide() && this.canConduct() && this.getColorCycleTick() % 32 == 5)
+			ChromaParticle.spawnCompoundRepeaterRune(world, pos, this.getRenderColorWithOffset(64));
 	}
 
 	public CrystalElement getRenderColorWithOffset(int i) {

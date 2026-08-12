@@ -6,6 +6,7 @@ import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -13,9 +14,12 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityTicker;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
@@ -26,6 +30,7 @@ import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 import reika.chromaticraft.tileentity.TileEntityLootChest;
+import reika.chromaticraft.registry.ChromaBlockEntities;
 
 /**
  * V33a {@code BlockLootChest}: the chest ChromatiCraft's structures hide their rewards in.
@@ -71,6 +76,21 @@ public class BlockLootChest extends Block implements EntityBlock {
 	}
 
 	@Override
+	public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state,
+			BlockEntityType<T> type) {
+		if (!level.isClientSide() || type != ChromaBlockEntities.LOOT_CHEST.get())
+			return null;
+		return (tickLevel, pos, tickState, entity) -> TileEntityLootChest.lidAnimateTick(
+				tickLevel, pos, tickState, (TileEntityLootChest)entity);
+	}
+
+	@Override
+	protected void tick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
+		if (level.getBlockEntity(pos) instanceof TileEntityLootChest chest)
+			chest.recheckOpen();
+	}
+
+	@Override
 	protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
 		return SHAPE;
 	}
@@ -95,7 +115,8 @@ public class BlockLootChest extends Block implements EntityBlock {
 			return false;
 		// CHROMA-PORT: V33a additionally gates on DimensionTuningManager.TuningThresholds.CHESTS
 		// inside the ChromatiCraft pocket dimension, which is not ported.
-		if (level.getBlockState(pos.above()).isFaceSturdy(level, pos.above(), Direction.DOWN))
+		if (chest.isStructureLocked()
+				|| level.getBlockState(pos.above()).isFaceSturdy(level, pos.above(), Direction.DOWN))
 			return player == null || chest.isOwnedBy(player);
 		return player == null || chest.isAccessibleBy(player);
 	}
@@ -121,8 +142,7 @@ public class BlockLootChest extends Block implements EntityBlock {
 			chest.markOpened();
 			return InteractionResult.SUCCESS;
 		}
-		// CHROMA-PORT: V33a grants the chest's ProgressElement triggers here, which the structures
-		// attach when they generate; that set lands with the structure/progression wiring.
+		chest.grantProgress(player);
 		chest.markOpened();
 		player.openMenu(chest);
 		return InteractionResult.SUCCESS;

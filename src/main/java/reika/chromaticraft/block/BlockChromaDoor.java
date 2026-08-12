@@ -1,489 +1,175 @@
-/*******************************************************************************
- * @author Reika Kalseki
- *
- * Copyright 2017
- *
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
- ******************************************************************************/
 package reika.chromaticraft.block;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Random;
-import java.util.UUID;
+import com.mojang.serialization.MapCodec;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockContainer;
-import net.minecraft.block.material.Material;
-import net.minecraft.client.renderer.texture.IIconRegister;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.init.Blocks;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.AxisAlignedBB;
-import net.minecraft.util.DamageSource;
-import net.minecraft.util.IIcon;
-import net.minecraft.world.IBlockAccess;
-import net.minecraft.world.World;
-import net.minecraftforge.common.util.ForgeDirection;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.context.BlockPlaceContext;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.level.ScheduledTickAccess;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.EntityBlock;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityTicker;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.BooleanProperty;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.Shapes;
+import net.minecraft.world.phys.shapes.VoxelShape;
 
-import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.auxiliary.interfaces.SneakPop;
-import reika.chromaticraft.block.worldgen.BlockStructureShield;
-import reika.chromaticraft.registry.ChromaBlocks;
+import org.jspecify.annotations.Nullable;
+
+import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.ChromaSounds;
-import reika.chromaticraft.registry.ExtraChromaIDs;
-import reika.dragonapi.ModList;
-import reika.dragonapi.asm.apistripper.Strippable;
-import reika.dragonapi.asm.dependentmethodstripper.ModDependent;
-import reika.dragonapi.instantiable.data.blockstruct.StructuredBlockArray;
-import reika.dragonapi.instantiable.data.immutable.BlockBounds;
-import reika.dragonapi.instantiable.data.immutable.Coordinate;
-import reika.dragonapi.interfaces.block.SemiUnbreakable;
-import reika.dragonapi.libraries.ReikaEntityHelper;
-import reika.dragonapi.libraries.java.ReikaJavaLibrary;
+import reika.chromaticraft.tileentity.TileEntityChromaDoor;
 
-import mcp.mobius.waila.api.IWailaConfigHandler;
-import mcp.mobius.waila.api.IWailaDataAccessor;
-import mcp.mobius.waila.api.IWailaDataProvider;
+/** V33a's connected, UUID-keyed Chroma Door, expressed with explicit 26.2 state flags. */
+public final class BlockChromaDoor extends Block implements EntityBlock {
 
+	public static final BooleanProperty OPEN = BooleanProperty.create("open");
+	public static final BooleanProperty DAMAGE = BooleanProperty.create("damage");
+	public static final BooleanProperty CONSUME_KEY = BooleanProperty.create("consume_key");
+	public static final BooleanProperty STAY_OPEN = BooleanProperty.create("stay_open");
+	public static final BooleanProperty UP = BooleanProperty.create("up");
+	public static final BooleanProperty DOWN = BooleanProperty.create("down");
+	public static final BooleanProperty NORTH = BooleanProperty.create("north");
+	public static final BooleanProperty SOUTH = BooleanProperty.create("south");
+	public static final BooleanProperty EAST = BooleanProperty.create("east");
+	public static final BooleanProperty WEST = BooleanProperty.create("west");
+	private static final VoxelShape CORE = box(6, 6, 6, 10, 10, 10);
+	private final MapCodec<BlockChromaDoor> codec = MapCodec.unit(this);
 
-@Strippable(value="mcp.mobius.waila.api.IWailaDataProvider")
-public class BlockChromaDoor extends BlockContainer implements SemiUnbreakable, IWailaDataProvider {
+	public BlockChromaDoor(BlockBehaviour.Properties properties) {
+		super(properties);
+		registerDefaultState(stateDefinition.any().setValue(OPEN, false).setValue(DAMAGE, false)
+				.setValue(CONSUME_KEY, false).setValue(STAY_OPEN, false)
+				.setValue(UP, false).setValue(DOWN, false).setValue(NORTH, false)
+				.setValue(SOUTH, false).setValue(EAST, false).setValue(WEST, false));
+	}
 
-	private final IIcon[] icons = new IIcon[2];
+	@Override public MapCodec<? extends BlockChromaDoor> codec() { return codec; }
 
-	public BlockChromaDoor(Material mat) {
-		super(mat);
+	@Override
+	protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+		builder.add(OPEN, DAMAGE, CONSUME_KEY, STAY_OPEN, UP, DOWN, NORTH, SOUTH, EAST, WEST);
+	}
 
-		this.setResistance(600000);
-		//this.setHardness(3);
-		this.setBlockUnbreakable();
-		this.setCreativeTab(ChromatiCraft.tabChroma);
+	public static BlockState state(boolean open, boolean damage, boolean consume, boolean stay) {
+		return reika.chromaticraft.registry.ChromaBlocks.CHROMA_DOOR.get().defaultBlockState()
+				.setValue(OPEN, open).setValue(DAMAGE, damage)
+				.setValue(CONSUME_KEY, consume).setValue(STAY_OPEN, stay);
 	}
 
 	@Override
-	public int getLightValue(IBlockAccess iba, int x, int y, int z) {
-		return (iba instanceof World && ((World)iba).provider.dimensionId == ExtraChromaIDs.DIMID.getValue()) ? 0 : 12;
+	public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
+		return new TileEntityChromaDoor(pos, state);
 	}
 
 	@Override
-	public float getPlayerRelativeBlockHardness(EntityPlayer ep, World world, int x, int y, int z) {
-		TileEntityChromaDoor te = (TileEntityChromaDoor)world.getTileEntity(x, y, z);
-		return te.isOwner(ep) ? super.getPlayerRelativeBlockHardness(ep, world, x, y, z) : -1;
+	public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state,
+			BlockEntityType<T> type) {
+		if (level.isClientSide() || type != ChromaBlockEntities.CHROMA_DOOR.get()) return null;
+		return (tickLevel, pos, tickState, entity) ->
+				TileEntityChromaDoor.serverTick(tickLevel, pos, tickState, (TileEntityChromaDoor)entity);
 	}
 
 	@Override
-	public TileEntity createNewTileEntity(World world, int meta) {
-		return new TileEntityChromaDoor();
+	public BlockState getStateForPlacement(BlockPlaceContext context) {
+		return withConnections(defaultBlockState(), context.getLevel(), context.getClickedPos());
 	}
 
-	public static void setOpen(World world, int x, int y, int z, boolean open) {
-		setOpen(world, x, y, z, open, 0);
+	@Override
+	protected BlockState updateShape(BlockState state, LevelReader level, ScheduledTickAccess ticks,
+			BlockPos pos, Direction direction, BlockPos neighbourPos, BlockState neighbourState,
+			RandomSource random) {
+		return state.setValue(property(direction), connects(level, neighbourPos, direction.getOpposite()));
 	}
 
-	public static void setOpen(World world, int x, int y, int z, boolean open, int delay) {
-		TileEntity te = world.getTileEntity(x, y, z);
-		if (te instanceof TileEntityChromaDoor) {
-			if (open)
-				((TileEntityChromaDoor)te).open(delay);
-			else
-				((TileEntityChromaDoor)te).close();
+	/** Resolves all six multipart arms after bulk/NBT placement has installed the whole component. */
+	public static BlockState withConnections(BlockState state, BlockGetter level, BlockPos pos) {
+		for (Direction direction : Direction.values())
+			state = state.setValue(property(direction), connects(level, pos.relative(direction), direction.getOpposite()));
+		return state;
+	}
+
+	private static boolean connects(BlockGetter level, BlockPos pos, Direction face) {
+		BlockState neighbour = level.getBlockState(pos);
+		return neighbour.is(reika.chromaticraft.registry.ChromaBlocks.CHROMA_DOOR.get())
+				|| neighbour.isFaceSturdy(level, pos, face);
+	}
+
+	private static BooleanProperty property(Direction direction) {
+		return switch (direction) {
+			case UP -> UP;
+			case DOWN -> DOWN;
+			case NORTH -> NORTH;
+			case SOUTH -> SOUTH;
+			case EAST -> EAST;
+			case WEST -> WEST;
+		};
+	}
+
+	@Override
+	public void setPlacedBy(Level level, BlockPos pos, BlockState state, @Nullable LivingEntity placer,
+			ItemStack stack) {
+		super.setPlacedBy(level, pos, state, placer, stack);
+		if (placer instanceof Player player && level.getBlockEntity(pos) instanceof TileEntityChromaDoor door)
+			door.setPlacer(player.getUUID());
+	}
+
+	@Override
+	protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+		VoxelShape shape = CORE;
+		if (state.getValue(UP)) shape = Shapes.or(shape, box(6, 10, 6, 10, 16, 10));
+		if (state.getValue(DOWN)) shape = Shapes.or(shape, box(6, 0, 6, 10, 6, 10));
+		if (state.getValue(EAST)) shape = Shapes.or(shape, box(10, 6, 6, 16, 10, 10));
+		if (state.getValue(WEST)) shape = Shapes.or(shape, box(0, 6, 6, 6, 10, 10));
+		if (state.getValue(SOUTH)) shape = Shapes.or(shape, box(6, 6, 10, 10, 10, 16));
+		if (state.getValue(NORTH)) shape = Shapes.or(shape, box(6, 6, 0, 10, 10, 6));
+		return shape;
+	}
+
+	@Override
+	protected VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos pos,
+			CollisionContext context) {
+		return state.getValue(OPEN) ? Shapes.empty() : getShape(state, level, pos, context);
+	}
+
+	@Override
+	protected float getDestroyProgress(BlockState state, Player player, BlockGetter level, BlockPos pos) {
+		if (level.getBlockEntity(pos) instanceof TileEntityChromaDoor door && !door.isOwner(player))
+			return 0;
+		return super.getDestroyProgress(state, player, level, pos);
+	}
+
+	@Override
+	protected void tick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
+		if (level.getBlockEntity(pos) instanceof TileEntityChromaDoor door)
+			door.close();
+	}
+
+	@Override
+	protected void entityInside(BlockState state, Level level, BlockPos pos, Entity entity,
+			net.minecraft.world.entity.InsideBlockEffectApplier effects, boolean intersects) {
+		if (!state.getValue(OPEN) && state.getValue(DAMAGE) && level instanceof ServerLevel server) {
+			entity.hurtServer(server, server.damageSources().magic(), 5);
+			double dx = entity.getX() - (pos.getX() + 0.5);
+			double dz = entity.getZ() - (pos.getZ() + 0.5);
+			double len = Math.max(0.01, Math.sqrt(dx * dx + dz * dz));
+			entity.push(dx / len * 2, 0.03125, dz / len * 2);
+			ChromaSounds.DISCHARGE.playSoundAtBlock(level, pos, 0.5F, 2F);
 		}
+		super.entityInside(state, level, pos, entity, effects, intersects);
 	}
-
-	public static boolean isOpen(IBlockAccess iba, int x, int y, int z) {
-		return getBitflag(iba, x, y, z, 1);
-	}
-
-	public static boolean dealDamage(IBlockAccess iba, int x, int y, int z) {
-		return getBitflag(iba, x, y, z, 2);
-	}
-
-	public static boolean consumeKey(IBlockAccess iba, int x, int y, int z) {
-		return getBitflag(iba, x, y, z, 4);
-	}
-
-	public static boolean stayOpen(IBlockAccess iba, int x, int y, int z) {
-		return getBitflag(iba, x, y, z, 8);
-	}
-
-	/**
-	 * 1 = open
-	 * 2 = damage
-	 * 4 = one-use
-	 * 8 = stay-open
-	 */
-	private static boolean getBitflag(IBlockAccess iba, int x, int y, int z, int bit) {
-		return (iba.getBlockMetadata(x, y, z) & bit) != 0;
-	}
-
-	public static int getMetadata(boolean open, boolean damage, boolean oneuse, boolean stay) {
-		return (open ? 1 : 0) | (damage ? 2 : 0) | (oneuse ? 4 : 0) | (stay ? 8 : 0);
-	}
-
-	@Override
-	public void onNeighborBlockChange(World world, int x, int y, int z, Block b) {
-		//if (this.isOpen(world, x, y, z) && world.isBlockIndirectlyGettingPowered(x, y, z))
-		//	((TileEntityChromaDoor)world.getTileEntity(x, y, z)).close();
-		this.setBlockBoundsBasedOnState(world, x, y, z);
-	}
-
-	@Override
-	public void setBlockBoundsBasedOnState(IBlockAccess world, int x, int y, int z) {
-		float in = 0.375F;
-		float minx = in;
-		float miny = in;
-		float minz = in;
-		float maxx = 1-in;
-		float maxy = 1-in;
-		float maxz = 1-in;
-
-		if (this.connectToBlock(world, x, y+1, z, ForgeDirection.DOWN))
-			maxy = 1;
-		if (this.connectToBlock(world, x, y-1, z, ForgeDirection.UP))
-			miny = 0;
-		if (this.connectToBlock(world, x+1, y, z, ForgeDirection.WEST))
-			maxx = 1;
-		if (this.connectToBlock(world, x-1, y, z, ForgeDirection.EAST))
-			minx = 0;
-		if (this.connectToBlock(world, x, y, z+1, ForgeDirection.NORTH))
-			maxz = 1;
-		if (this.connectToBlock(world, x, y, z-1, ForgeDirection.SOUTH))
-			minz = 0;
-
-		this.setBlockBounds(minx, miny, minz, maxx, maxy, maxz);
-	}
-
-	@Override
-	public void setBlockBoundsForItemRender() {
-		this.setBlockBounds(0, 0, 0, 1, 1, 1);
-	}
-
-	private boolean connectToBlock(IBlockAccess world, int x, int y, int z, ForgeDirection s) {
-		Block b = world.getBlock(x, y, z);
-		if (b == this)
-			return true;
-		if (b == ChromaBlocks.PYLON.getBlockInstance() || b == ChromaBlocks.HOVER.getBlockInstance())
-			return false;
-		if (b.isOpaqueCube() || b.getRenderType() == 0)
-			return true;
-		if (b instanceof BlockStructureShield)
-			return true;
-		if (b.isSideSolid(world, x, y, z, s))
-			return true;
-		/*
-		String n = b.getClass().getName().toLowerCase(Locale.ENGLISH);
-		if (n.contains("facade"))
-			return true;
-		if (n.contains("conduitbundle"))
-			return true;
-		if (n.contains("cover"))
-			return true;
-		if (n.contains("multipart"))
-			return true;
-		 */
-		return false;
-	}
-
-	@Override
-	public void onBlockPlacedBy(World world, int x, int y, int z, EntityLivingBase e, ItemStack is) {
-		if (e instanceof EntityPlayer)
-			((TileEntityChromaDoor)world.getTileEntity(x, y, z)).setPlacer((EntityPlayer)e);
-	}
-
-	@Override
-	public AxisAlignedBB getCollisionBoundingBoxFromPool(World world, int x, int y, int z) {
-		this.setBlockBoundsBasedOnState(world, x, y, z);
-		return this.isOpen(world, x, y, z) ? null : super.getCollisionBoundingBoxFromPool(world, x, y, z);
-	}
-
-	@Override
-	public int getRenderBlockPass() {
-		return 1;
-	}
-
-	@Override
-	public boolean onBlockActivated(World world, int x, int y, int z, EntityPlayer ep, int s, float a, float b, float c) {
-
-		return false;
-	}
-
-	@Override
-	public void updateTick(World world, int x, int y, int z, Random r) {
-		if (world.getBlock(x, y, z) == this)
-			((TileEntityChromaDoor)world.getTileEntity(x, y, z)).close();
-	}
-
-	@Override
-	public void onEntityCollidedWithBlock(World world, int x, int y, int z, Entity e) {
-		if (!this.isOpen(world, x, y, z)) {
-			TileEntityChromaDoor te = (TileEntityChromaDoor)world.getTileEntity(x, y, z);
-			/*
-			if (te.autoOpen) {
-				te.open(20);
-			}
-			else */if (this.dealDamage(world, x, y, z)) {
-				e.attackEntityFrom(DamageSource.magic, 5F);
-				ReikaEntityHelper.knockbackEntityFromPos(x+0.5, y+0.5, z+0.5, e, 2);
-				e.addVelocity(0, 0.03125, 0);
-				ChromaSounds.DISCHARGE.playSoundAtBlock(world, x, y, z, 0.5F, 2F);
-			}
-		}
-	}
-
-	@Override
-	public int getRenderType() {
-		return 0;
-	}
-
-	@Override
-	public IIcon getIcon(int s, int meta) {
-		return icons[meta%2];
-	}
-
-	@Override
-	public void registerBlockIcons(IIconRegister ico) {
-		icons[0] = ico.registerIcon("chromaticraft:basic/door_closed");
-		icons[1] = ico.registerIcon("chromaticraft:basic/door_open");
-	}
-
-	@Override
-	public boolean shouldSideBeRendered(IBlockAccess iba, int x, int y, int z, int s) {
-		if (!super.shouldSideBeRendered(iba, x, y, z, s))
-			return false;
-		if (iba.getBlock(x, y, z) != this)
-			return true;
-		ForgeDirection dir = ForgeDirection.VALID_DIRECTIONS[s].getOpposite();
-		BlockBounds box1 = BlockBounds.fromBlock(this, iba, x, y, z);
-		BlockBounds box2 = BlockBounds.fromBlock(this, iba, x+dir.offsetX, y+dir.offsetY, z+dir.offsetZ);
-		return !box1.sharesSideSize(box2, dir);
-	}
-
-	@Override
-	public boolean renderAsNormalBlock() {
-		return false;
-	}
-
-	@Override
-	public boolean isOpaqueCube() {
-		return false;
-	}
-
-	@Override
-	public boolean isUnbreakable(World world, int x, int y, int z, int meta) {
-		return true;
-	}
-
-	@Override
-	@ModDependent(ModList.WAILA)
-	public final ItemStack getWailaStack(IWailaDataAccessor acc, IWailaConfigHandler cfg) {
-		return null;
-	}
-
-	@Override
-	@ModDependent(ModList.WAILA)
-	public final List<String> getWailaHead(ItemStack itemStack, List<String> currenttip, IWailaDataAccessor acc, IWailaConfigHandler config) {
-		/*
-		MovingObjectPosition mov = acc.getPosition();
-		if (this.isClientSufficient(acc.getWorld(), mov.blockX, mov.blockY, mov.blockZ))
-			return currenttip;
-		else {
-			for (int i = 0; i < currenttip.size(); i++) {
-
-			}
-		}
-		 */
-		return currenttip;
-	}
-
-	@Override
-	@ModDependent(ModList.WAILA)
-	public final List<String> getWailaBody(ItemStack itemStack, List<String> currenttip, IWailaDataAccessor acc, IWailaConfigHandler config) {
-		TileEntityChromaDoor te = (TileEntityChromaDoor)acc.getTileEntity();
-		if (te.uid != null)
-			currenttip.add("ID: "+te.uid);
-		else
-			currenttip.add("No ID");
-		if (te.autoOpen)
-			currenttip.add("Automatic");
-		return currenttip;
-	}
-
-	@Override
-	@ModDependent(ModList.WAILA)
-	public final List<String> getWailaTail(ItemStack itemStack, List<String> currenttip, IWailaDataAccessor acc, IWailaConfigHandler config) {
-		/*
-		MovingObjectPosition mov = acc.getPosition();
-		if (this.isClientSufficient(acc.getWorld(), mov.blockX, mov.blockY, mov.blockZ))
-			return currenttip;
-		else {
-			for (int i = 0; i < currenttip.size(); i++) {
-
-			}
-		}*/
-		return currenttip;
-	}
-
-	@Override
-	@ModDependent(ModList.WAILA)
-	public final NBTTagCompound getNBTData(EntityPlayerMP player, TileEntity te, NBTTagCompound tag, World world, int x, int y, int z) {
-		return tag;
-	}
-
-	public static class TileEntityChromaDoor extends TileEntity implements SneakPop {
-
-		private UUID uid;
-		private UUID placer;
-
-		private int lastAutoOpenDuration = 20;
-		private boolean autoOpen;
-
-		@Override
-		public void updateEntity() {
-			boolean flag = false;
-			if (!worldObj.isRemote && autoOpen && !isOpen(worldObj, xCoord, yCoord, zCoord)) {
-				if (worldObj.getBlock(xCoord, yCoord-1, zCoord) != this.getBlockType() && worldObj.getBlock(xCoord-1, yCoord, zCoord) != this.getBlockType() && worldObj.getBlock(xCoord, yCoord, zCoord-1) != this.getBlockType()) {
-					EntityPlayer ep = worldObj.func_152378_a(placer);
-					if (ep != null) {
-						double d = ep.getDistanceSq(xCoord+0.5, yCoord, zCoord+0.5);
-						if (Math.abs(ep.posY-yCoord) < 1 && d < 9) {
-							if (d < 2 || ReikaEntityHelper.isLookingAt(ep, xCoord+0.5, yCoord-1.5, zCoord+0.5) || ReikaEntityHelper.isLookingAt(ep, xCoord+0.5, yCoord+0.5, zCoord+0.5)) {
-								lastAutoOpenDuration = Math.min(lastAutoOpenDuration+10, 200);
-								this.open(lastAutoOpenDuration);
-								flag = true;
-							}
-						}
-					}
-				}
-			}
-			if (!flag)
-				lastAutoOpenDuration = Math.max(lastAutoOpenDuration-10, 20);
-		}
-
-		@Override
-		public boolean canUpdate() {
-			return true;
-		}
-
-		public boolean isOwner(EntityPlayer ep) {
-			return ep.getUniqueID().equals(placer);
-		}
-
-		public boolean isOwned() {
-			return placer != null;
-		}
-
-		public boolean canOpen(EntityPlayer ep, UUID uid) {
-			return uid.equals(this.uid);
-		}
-
-		public void openClick() {
-			this.open(50);
-		}
-
-		public void open(int delay) {
-			this.setStates(true);
-			ChromaSounds.ITEMSTAND.playSoundAtBlock(this, 1, 2F);
-			ChromaSounds.ITEMSTAND.playSoundAtBlock(this, 1, 1F);
-			if (delay > 0 && !BlockChromaDoor.stayOpen(worldObj, xCoord, yCoord, zCoord))
-				worldObj.scheduleBlockUpdate(xCoord, yCoord, zCoord, this.getBlockType(), delay);
-		}
-
-		public void close() {
-			this.setStates(false);
-			ChromaSounds.ITEMSTAND.playSoundAtBlock(this, 1, 0.5F);
-		}
-
-		private void setStates(boolean open) {
-			for (Coordinate c : this.getDoorBlocks()) {
-				if (matchUIDs(this, (TileEntityChromaDoor)c.getTileEntity(worldObj)))
-					c.setBlockMetadata(worldObj, (c.getBlockMetadata(worldObj) & 0b1110) | (open ? 1 : 0));
-			}
-		}
-
-		private Collection<Coordinate> getDoorBlocks() {
-			StructuredBlockArray b = new StructuredBlockArray(worldObj);
-			b.recursiveAddWithBounds(worldObj, xCoord, yCoord, zCoord, this.getBlockType(), xCoord-8, yCoord-8, zCoord-8, xCoord+8, yCoord+8, zCoord+8);
-			return b.keySet();
-		}
-
-		private static boolean matchUIDs(TileEntityChromaDoor te1, TileEntityChromaDoor te2) {
-			if (te1 == null || te2 == null) {
-				ReikaJavaLibrary.pConsole("NULL TILE");
-				return false;
-			}
-			if (te1.uid == te2.uid)
-				return true;
-			if (te1.uid == null || te2.uid == null)
-				return false;
-			return te1.uid.equals(te2.uid);
-		}
-
-		public void bindUUID(EntityPlayer ep, UUID id, int flags) {
-			for (Coordinate c : this.getDoorBlocks()) {
-				TileEntityChromaDoor te = (TileEntityChromaDoor)c.getTileEntity(worldObj);
-				if (te == null) {
-					te = new TileEntityChromaDoor();
-					worldObj.setTileEntity(c.xCoord, c.yCoord, c.zCoord, te);
-				}
-				if (ep == null || te.isOwner(ep)) {
-					te.uid = id;
-					te.autoOpen = (flags & 1) > 0;
-				}
-			}
-		}
-
-		public void setPlacer(EntityPlayer ep) {
-			placer = ep.getUniqueID();
-		}
-
-		@Override
-		public void writeToNBT(NBTTagCompound NBT) {
-			super.writeToNBT(NBT);
-
-			if (uid != null)
-				NBT.setString("uid", uid.toString());
-			if (placer != null)
-				NBT.setString("ep", placer.toString());
-
-			NBT.setBoolean("auto", autoOpen);
-		}
-
-		@Override
-		public void readFromNBT(NBTTagCompound NBT) {
-			super.readFromNBT(NBT);
-
-			if (NBT.hasKey("uid"))
-				uid = UUID.fromString(NBT.getString("uid"));
-			if (NBT.hasKey("ep"))
-				placer = UUID.fromString(NBT.getString("ep"));
-
-			autoOpen = NBT.getBoolean("auto");
-		}
-
-		@Override
-		public void drop() {
-			this.getBlockType().dropBlockAsItem(worldObj, xCoord, yCoord, zCoord, 0, 0);
-			worldObj.setBlock(xCoord, yCoord, zCoord, Blocks.air);
-		}
-
-		@Override
-		public boolean canDrop(EntityPlayer ep) {
-			return this.isOwner(ep);
-		}
-
-		@Override
-		public boolean allowMining(EntityPlayer ep) {
-			return this.isOwner(ep);
-		}
-
-	}
-
 }

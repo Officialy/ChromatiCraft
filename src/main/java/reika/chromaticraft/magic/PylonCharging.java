@@ -13,9 +13,9 @@ import reika.chromaticraft.tileentity.networking.TileEntityCrystalPylon;
  * V33a {@code ChromaAux.chargePlayerFromPylon}: draining a charging point into the player's
  * elemental buffer.
  *
- * <p>This is not a right-click. Upstream runs it every tick while the player holds an Elemental
- * Manipulator and looks at a pylon, so charging is a continuous act of standing there rather than a
- * click, and it stops the moment the crosshair leaves the crystal.
+ * <p>Upstream runs it every tick while the player holds right click with an Elemental Manipulator
+ * aimed at a pylon. Charging is therefore a continuous held-use action, and stops when right click
+ * is released or the crosshair leaves the crystal.
  *
  * <p>The drain is deliberately lossy: the player banks {@code chargeSpeed * rateMultiplier} but the
  * source loses that multiplied by {@link PlayerElementBuffer#getChargeInefficiency}, which starts at

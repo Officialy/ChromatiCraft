@@ -1,0 +1,16 @@
+{
+  "variants": {
+    "gate=false,open=false": {
+      "model": "chromaticraft:block/color_lock_closed"
+    },
+    "gate=false,open=true": {
+      "model": "chromaticraft:block/color_lock_open"
+    },
+    "gate=true,open=false": {
+      "model": "chromaticraft:block/color_lock_closed"
+    },
+    "gate=true,open=true": {
+      "model": "chromaticraft:block/color_lock_open"
+    }
+  }
+}

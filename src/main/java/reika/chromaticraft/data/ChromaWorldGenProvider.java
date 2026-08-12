@@ -55,6 +55,22 @@ public final class ChromaWorldGenProvider {
     private static final Identifier LUMA_PATCH = id("luma_patch");
     private static final Identifier LUMINOUS_ISLAND = id("luminous_island");
     private static final Identifier LUMINOUS_FLORA = id("luminous_flora");
+    private static final Identifier NETHER_ROOF_STRUCTURE = id("nether_roof_structure");
+    private static final List<Identifier> NETHER_ROOF_STRUCTURES =
+            List.of(id("nether_hut"), id("nether_temple"), id("nether_maze"),
+                    id("nether_spiral"), id("nether_diorama"));
+    private static final Identifier NATURAL_CAVERN = id("natural_cavern");
+    private static final Identifier CAVERN = id("cavern");
+    private static final Identifier NATURAL_BURROW = id("natural_burrow");
+    private static final Identifier BURROW = id("burrow");
+    private static final Identifier NATURAL_OCEAN = id("natural_ocean");
+    private static final Identifier OCEAN = id("ocean");
+    private static final Identifier NATURAL_DESERT = id("natural_desert");
+    private static final Identifier DESERT = id("desert");
+	private static final Identifier NATURAL_SNOW = id("natural_snow");
+	private static final Identifier SNOW = id("snow");
+	private static final Identifier NATURAL_BIOME_FRAGMENT = id("natural_biome_fragment");
+	private static final Identifier BIOME_FRAGMENT = id("biome_fragment");
     /** V33a TieredOres: {genChance one-in-N per chunk, veinCount attempts, veinSize}. */
     private record TieredOre(String name, java.util.function.Supplier<net.minecraft.world.level.block.Block> block,
             net.minecraft.world.level.block.Block host, int genChance, int veinCount, int veinSize, boolean deepBand) {}
@@ -119,6 +135,21 @@ public final class ChromaWorldGenProvider {
             registerConfigured(bootstrap, features, LUMA_PATCH);
             registerConfigured(bootstrap, features, LUMINOUS_ISLAND);
             registerConfigured(bootstrap, features, LUMINOUS_FLORA);
+            registerConfigured(bootstrap, features, NETHER_ROOF_STRUCTURE);
+            for (Identifier structure : NETHER_ROOF_STRUCTURES)
+                registerConfigured(bootstrap, features, structure);
+            registerConfigured(bootstrap, features, NATURAL_CAVERN);
+            registerConfigured(bootstrap, features, CAVERN);
+            registerConfigured(bootstrap, features, NATURAL_BURROW);
+            registerConfigured(bootstrap, features, BURROW);
+            registerConfigured(bootstrap, features, NATURAL_OCEAN);
+            registerConfigured(bootstrap, features, OCEAN);
+            registerConfigured(bootstrap, features, NATURAL_DESERT);
+            registerConfigured(bootstrap, features, DESERT);
+			registerConfigured(bootstrap, features, NATURAL_SNOW);
+			registerConfigured(bootstrap, features, SNOW);
+			registerConfigured(bootstrap, features, NATURAL_BIOME_FRAGMENT);
+			registerConfigured(bootstrap, features, BIOME_FRAGMENT);
             for (TieredOre ore : TIERED_ORES) {
                 // V33a BlockExcludingOreVein targets only the host block, which is what makes these
                 // ores replace stone/netherrack and never the cliff material it explicitly excluded.
@@ -186,12 +217,42 @@ public final class ChromaWorldGenProvider {
             for (Identifier temple : CASTING_TEMPLES)
                 registerPlaced(bootstrap, configured, temple);
             registerPlaced(bootstrap, configured, POWER_CRYSTAL_BOOSTED_PYLON);
-            registerPlaced(bootstrap, configured, LUMINOUS_CLIFFS_TERRAIN, List.of());
+            registerPlaced(bootstrap, configured, LUMINOUS_CLIFFS_TERRAIN, List.of(BiomeFilter.biome()));
             registerPlaced(bootstrap, configured, LUMA_PATCH,
-                    List.of(CountPlacement.of(1)));
+                    List.of(CountPlacement.of(1), BiomeFilter.biome()));
             registerPlaced(bootstrap, configured, LUMINOUS_ISLAND,
-                    List.of(RarityFilter.onAverageOnceEvery(4)));
-            registerPlaced(bootstrap, configured, LUMINOUS_FLORA, List.of());
+                    List.of(RarityFilter.onAverageOnceEvery(4), BiomeFilter.biome()));
+            registerPlaced(bootstrap, configured, LUMINOUS_FLORA, List.of(BiomeFilter.biome()));
+            // V33a BASE_GEN_FACTOR = 1/64 per Nether chunk; the feature retains its weighted type roll.
+            registerPlaced(bootstrap, configured, NETHER_ROOF_STRUCTURE, List.of(
+                    RarityFilter.onAverageOnceEvery(64), InSquarePlacement.spread(), BiomeFilter.biome()));
+            // Named command/debug seams do not carry a rarity gate.
+            for (Identifier structure : NETHER_ROOF_STRUCTURES)
+                registerPlaced(bootstrap, configured, structure);
+            // A 144-block source noise scale is approximately one candidate per 9x9 chunk area.
+            // The feature then performs V33a's exact y roll and enclosed-cavern/tunnel tests.
+            registerPlaced(bootstrap, configured, NATURAL_CAVERN, List.of(
+                    RarityFilter.onAverageOnceEvery(81), InSquarePlacement.spread(), BiomeFilter.biome()));
+            registerPlaced(bootstrap, configured, CAVERN);
+            // V33a Burrows use a 240-block noise scale, approximately one candidate per 15x15 chunks.
+            registerPlaced(bootstrap, configured, NATURAL_BURROW, List.of(
+                    RarityFilter.onAverageOnceEvery(225), InSquarePlacement.spread(), BiomeFilter.biome()));
+            registerPlaced(bootstrap, configured, BURROW);
+            // V33a Ocean cells use a 640-block noise scale: one candidate per 40x40 chunks.
+            registerPlaced(bootstrap, configured, NATURAL_OCEAN, List.of(
+                    RarityFilter.onAverageOnceEvery(1600), InSquarePlacement.spread(), BiomeFilter.biome()));
+            registerPlaced(bootstrap, configured, OCEAN);
+            registerPlaced(bootstrap, configured, NATURAL_DESERT, List.of(
+                    RarityFilter.onAverageOnceEvery(756), InSquarePlacement.spread(), BiomeFilter.biome()));
+            registerPlaced(bootstrap, configured, DESERT);
+			// V33a Snow cells use a 480-block source noise scale: one candidate per 30x30 chunks.
+			registerPlaced(bootstrap, configured, NATURAL_SNOW, List.of(
+					RarityFilter.onAverageOnceEvery(900), InSquarePlacement.spread(), BiomeFilter.biome()));
+			registerPlaced(bootstrap, configured, SNOW);
+			// V33a Biome Fragment cells use a 640-block scale: one candidate per 40x40 chunks.
+			registerPlaced(bootstrap, configured, NATURAL_BIOME_FRAGMENT, List.of(
+					RarityFilter.onAverageOnceEvery(1600), InSquarePlacement.spread(), BiomeFilter.biome()));
+			registerPlaced(bootstrap, configured, BIOME_FRAGMENT);
             for (CrystalElement element : CrystalElement.elements) {
                 bootstrap.register(dyeTreePlaced(element), new PlacedFeature(configured.getOrThrow(dyeTree(element)),
                         VegetationPlacements.treePlacement(RarityFilter.onAverageOnceEvery(2),

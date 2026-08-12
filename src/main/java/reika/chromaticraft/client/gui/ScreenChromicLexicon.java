@@ -40,6 +40,7 @@ import reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.registry.ChromaSounds;
+import reika.chromaticraft.render.ChromaRenderPipelines;
 import reika.dragonapi.instantiable.rendering.structure.StructureRenderer;
 import net.minecraft.core.registries.BuiltInRegistries;
 
@@ -63,6 +64,7 @@ public final class ScreenChromicLexicon extends Screen {
 	private static final Identifier PAGE_MULTICAST = page("multicast");
 	private static final Identifier PAGE_PYLONCAST = page("pyloncast2");
 	private static final Identifier PAGE_STRUCTURE = page("structure");
+	private static final Identifier PAGE_ELEMENT = page("element");
 
 	/** V33a {@code Textures/infoicons.png}: the power-supply badges, sixteen to a row. */
 	private static final Identifier INFO_ICONS = Identifier.fromNamespaceAndPath(
@@ -109,6 +111,8 @@ public final class ScreenChromicLexicon extends Screen {
 	private boolean searching;
 	private String search = "";
 	private int textPage;
+	/** V33a GuiDescription/GuiBasicInfo subpage; used by tool notes and element pages. */
+	private int descriptionSubpage;
 	/** Entries whose V33a structure extends {@code FragmentStructureBase}; see the N# button. */
 	private static final java.util.Set<String> FRAGMENT_STRUCTURES = java.util.Set.of();
 
@@ -146,6 +150,12 @@ public final class ScreenChromicLexicon extends Screen {
 		RECOVERY,
 		NOTES,
 		STORED_PAGES
+	}
+
+	private enum MachinePage {
+		MAIN,
+		NOTES,
+		ENERGY
 	}
 
 
@@ -285,6 +295,12 @@ public final class ScreenChromicLexicon extends Screen {
 
 
 	private void addTextPageButtons(int left, int top) {
+		if (specialistSubpageCount() > 1) {
+			addRenderableWidget(Button.builder(Component.literal(">"), button ->
+					moveSpecialistSubpage(1)).bounds(left + WIDTH - 27, top + 32, 20, 20).build());
+			addRenderableWidget(Button.builder(Component.literal("<"), button ->
+					moveSpecialistSubpage(-1)).bounds(left + WIDTH - 27, top + 52, 20, 20).build());
+		}
 		int count = descriptionPageCount();
 		if (textPage > 0)
 			addRenderableWidget(Button.builder(Component.literal("‹ Page"), button -> {
@@ -319,12 +335,15 @@ public final class ScreenChromicLexicon extends Screen {
 			return PAGE_CAST;
 		if (selected.section() == LexiconCatalog.Section.STRUCTURES)
 			return PAGE_STRUCTURE;
+		if (selected.id().equals("ELEMENTS") && descriptionSubpage > 0)
+			return PAGE_ELEMENT;
 		return PAGE_PLAIN;
 	}
 
 	private void openEntry(LexiconCatalog.Entry entry) {
 		selected = entry;
 		textPage = 0;
+		descriptionSubpage = 0;
 		recipeIndex = 0;
 		recipeSubpage = 0;
 		castingRecipeView = recipeMode;
@@ -752,15 +771,7 @@ public final class ScreenChromicLexicon extends Screen {
 				return;
 			}
 			renderSpecialistHeader(graphics, selected, left, top, partialTick);
-			graphics.text(font, Component.literal("Research: " + selected.level().name()), left + 8, top + 69,
-					0xffb0b0b0, false);
-			// V33a GuiMachineDescription.getText: the energy subpage replaces the machine's description
-			// with its own sentence rather than repeating it under the wheel.
-			if (selected.section() == LexiconCatalog.Section.MACHINES && machineSubpage == 1)
-				graphics.text(font, Component.literal("This device requires lumen energy to function."),
-						left + 8, top + 94, 0xffffffff, false);
-			else
-				renderDescriptionPage(graphics, left, top);
+			renderDescriptionPage(graphics, left, top);
 		}
 		else if (view == View.PROGRESS) {
 			renderProgress(graphics, left, top, mouseX, mouseY);
@@ -839,7 +850,8 @@ public final class ScreenChromicLexicon extends Screen {
 		int linesPerPage = 10;
 		int first = Math.min(textPage * linesPerPage, Math.max(0, lines.size() - 1));
 		int end = Math.min(first + linesPerPage, lines.size());
-		int y = top + 94;
+		// V33a: posY is the frame origin less eight and descY is 88, hence frame top + 80.
+		int y = top + 80;
 		for (int i = first; i < end; i++) {
 			graphics.text(font, lines.get(i), left + 8, y, 0xffffffff, false);
 			y += 10;
@@ -850,14 +862,55 @@ public final class ScreenChromicLexicon extends Screen {
 	}
 
 	private List<net.minecraft.util.FormattedCharSequence> descriptionLines() {
-		ArrayList<net.minecraft.util.FormattedCharSequence> lines = new ArrayList<>(font.split(
-				Component.literal(LexiconDescriptions.description(selected)), 238));
-		String notes = LexiconDescriptions.notes(selected);
-		if (!notes.isBlank()) {
-			lines.add(net.minecraft.util.FormattedCharSequence.EMPTY);
-			lines.addAll(font.split(Component.literal(notes), 238));
+		String text;
+		if (selected.section() == LexiconCatalog.Section.MACHINES) {
+			text = switch (machinePage()) {
+				case NOTES -> LexiconDescriptions.notes(selected);
+				case ENERGY -> "This device requires lumen energy to function.";
+				case MAIN -> LexiconDescriptions.description(selected);
+			};
 		}
-		return lines;
+		else {
+			if (selected.id().equals("ELEMENTS") && descriptionSubpage > 0)
+				text = LexiconDescriptions.element(CrystalElement.elements[descriptionSubpage - 1]);
+			else
+				text = descriptionSubpage > 0 && selected.section() == LexiconCatalog.Section.TOOLS
+						? LexiconDescriptions.notes(selected) : LexiconDescriptions.description(selected);
+		}
+		return new ArrayList<>(font.split(Component.literal(text), 238));
+	}
+
+	private int descriptionSubpageCount() {
+		if (selected == null)
+			return 1;
+		if (selected.id().equals("ELEMENTS"))
+			return CrystalElement.elements.length + 1;
+		return selected.section() == LexiconCatalog.Section.TOOLS
+				&& !LexiconDescriptions.notes(selected).isBlank() ? 2 : 1;
+	}
+
+	private int specialistSubpageCount() {
+		return selected != null && selected.section() == LexiconCatalog.Section.MACHINES
+				? machinePages().size() : descriptionSubpageCount();
+	}
+
+	/** V33a GuiMachineDescription pageList order: MAIN, authored NOTES, ENERGY, then future AOE. */
+	private List<MachinePage> machinePages() {
+		if (selected == null || selected.section() != LexiconCatalog.Section.MACHINES)
+			return List.of(MachinePage.MAIN);
+		ArrayList<MachinePage> pages = new ArrayList<>();
+		pages.add(MachinePage.MAIN);
+		if (!LexiconDescriptions.notes(selected).isBlank())
+			pages.add(MachinePage.NOTES);
+		if (LexiconMachineRender.usedEnergy(LexiconIconResolver.icon(selected), guiTick) != null)
+			pages.add(MachinePage.ENERGY);
+		return List.copyOf(pages);
+	}
+
+	private MachinePage machinePage() {
+		List<MachinePage> pages = machinePages();
+		machineSubpage = Math.clamp(machineSubpage, 0, pages.size() - 1);
+		return pages.get(machineSubpage);
 	}
 
 	private int descriptionPageCount() {
@@ -867,27 +920,61 @@ public final class ScreenChromicLexicon extends Screen {
 	/** Restores the distinct specialist presentations used by V33a's four description screens. */
 	private void renderSpecialistHeader(GuiGraphicsExtractor graphics, LexiconCatalog.Entry entry,
 			int left, int top, float partialTick) {
-		ItemStack icon = LexiconIconResolver.icon(entry);
+		List<ItemStack> icons = LexiconIconResolver.icons(entry);
+		int cycleMillis = entry.section() == LexiconCatalog.Section.TOOLS
+				|| entry.section() == LexiconCatalog.Section.BLOCKS ? 2000 : 1000;
+		ItemStack icon = cyclingIcon(icons, cycleMillis);
 		switch (entry.section()) {
+			case INFO -> {
+				if (entry.id().equals("ELEMENTS") && descriptionSubpage > 0) {
+					CrystalElement element = CrystalElement.elements[descriptionSubpage - 1];
+					Identifier rune = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
+							"textures/block/runes/glow/tile" + element.ordinal() + "_0.png");
+					// GuiBasicInfo.renderElementPage: the element's glow rune at posX+153,posY+12.
+					graphics.blit(RenderPipelines.GUI_TEXTURED, rune, left + 153, top + 4,
+							0, 0, 64, 64, 16, 16);
+				}
+				else if (entry.id().equals("CRYSTALS")) {
+					if (!machineRender.render(graphics, cyclingIcon(LexiconIconResolver.icons(entry), 2000),
+							left, top, width, height, partialTick) && !icon.isEmpty())
+						renderLargeItem(graphics, icon, left + 132, top + 4);
+				}
+				else if (entry.id().equals("PYLONS"))
+					renderPylonIntroduction(graphics, left, top);
+				else if (entry.id().equals("SKYPEATER"))
+					renderLargeItem(graphics, icon, left + 128, top - 3);
+			}
 			case MACHINES -> {
 				// V33a GuiMachineDescription draws the construct itself, slowly turning, and no caption.
 				// The "Crystal network construct" / "Casting-system construct" strings that used to be
 				// here were invented; upstream has nothing of the sort.
-				if (machineSubpage == 1)
+				if (machinePage() == MachinePage.ENERGY)
 					renderMachineEnergy(graphics, icon, left, top);
-				else if (!machineRender.render(graphics, icon, left, top, width, height, partialTick)
+				else if (machinePage() == MachinePage.MAIN
+						&& !machineRender.render(graphics, icon, left, top, width, height, partialTick)
 						&& !icon.isEmpty())
 					graphics.item(icon, left + 120, top + 43);
 			}
 			case TOOLS -> {
-				if (!icon.isEmpty()) graphics.item(icon, left + 120, top + 43);
-				graphics.text(font, Component.literal("Tool: " + entry.sourceId()), left + 148, top + 48,
-						0xff80dfff, false);
+				// GuiToolDescription: scale 4, translated to (posX+132, posY+12). posY is top-8.
+				renderLargeItem(graphics, icon, left + 132, top + 4);
+			}
+			case BLOCKS -> {
+				// GuiCraftableDesc.renderBlock delegates to GuiBookSection.drawBlockRender, whose
+				// geometry is the same 48px rotating block presentation as the machine renderer.
+				if (!machineRender.render(graphics, icon, left, top, width, height, partialTick)
+						&& !icon.isEmpty())
+					renderLargeItem(graphics, icon, left + 132, top + 4);
+			}
+			case RESOURCES -> {
+				// Resource pages use the same four-times-size cycling item as GuiCraftableDesc.
+				renderLargeItem(graphics, icon, left + 132, top + 4);
 			}
 			case ABILITIES -> {
 				Identifier texture = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
 						"textures/ability/" + entry.sourceId() + ".png");
-				graphics.blit(RenderPipelines.GUI_TEXTURED, texture, left + 103, top + 39,
+				// GuiAbilityDesc uses topY (not the description screens' topY-8): +103,+11, 50px.
+				graphics.blit(RenderPipelines.GUI_TEXTURED, texture, left + 103, top + 11,
 						0, 0, 50, 50, 256, 256);
 			}
 			case STRUCTURES -> {
@@ -899,6 +986,47 @@ public final class ScreenChromicLexicon extends Screen {
 				if (!icon.isEmpty()) graphics.item(icon, left + 120, top + 43);
 			}
 		}
+	}
+
+	private static ItemStack cyclingIcon(List<ItemStack> icons, int intervalMillis) {
+		if (icons.isEmpty())
+			return ItemStack.EMPTY;
+		int index = (int)(System.currentTimeMillis() / intervalMillis % icons.size());
+		return icons.get(index);
+	}
+
+	private void renderLargeItem(GuiGraphicsExtractor graphics, ItemStack icon, int x, int y) {
+		if (icon.isEmpty())
+			return;
+		graphics.pose().pushMatrix();
+		graphics.pose().translate(x, y);
+		graphics.pose().scale(4, 4);
+		graphics.item(icon, 0, 0);
+		graphics.pose().popMatrix();
+	}
+
+	/** V33a GuiBasicInfo.renderPylon: a 96px additive round flare cycling through all elements. */
+	private void renderPylonIntroduction(GuiGraphicsExtractor graphics, int left, int top) {
+		long now = System.currentTimeMillis();
+		double phase = now / 2000D;
+		int first = Math.floorMod((int)Math.floor(phase), CrystalElement.elements.length);
+		int second = (first + 1) % CrystalElement.elements.length;
+		float mix = (float)Math.min((phase - Math.floor(phase)) * 2, 1);
+		int color = mixColors(CrystalElement.elements[first].getColor(),
+				CrystalElement.elements[second].getColor(), mix);
+		Identifier flare = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
+				"textures/block/icons/roundflare.png");
+		// Upstream posY is top-8 and places the flare at y-4, hence top-12 here.
+		graphics.blit(ChromaRenderPipelines.ADDITIVE_SPRITE, flare, left + 115, top - 12,
+				0, 0, 96, 96, 16, 16, 0xff000000 | color);
+	}
+
+	private static int mixColors(int first, int second, float amount) {
+		float inverse = 1 - amount;
+		int red = Math.round(((first >> 16) & 255) * inverse + ((second >> 16) & 255) * amount);
+		int green = Math.round(((first >> 8) & 255) * inverse + ((second >> 8) & 255) * amount);
+		int blue = Math.round((first & 255) * inverse + (second & 255) * amount);
+		return red << 16 | green << 8 | blue;
 	}
 
 	/**
@@ -1049,17 +1177,18 @@ public final class ScreenChromicLexicon extends Screen {
 		}
 		if (selected != null && !castingRecipeView
 				&& selected.section() == LexiconCatalog.Section.MACHINES
-				&& LexiconMachineRender.usedEnergy(LexiconIconResolver.icon(selected), guiTick) != null) {
-			// V33a gives a machine that costs energy a second subpage, reached the same way every
-			// other page turns.
+				&& machinePages().size() > 1) {
+			// V33a pageList is MAIN, NOTES when authored, ENERGY when applicable.
 			if (key == GLFW.GLFW_KEY_W || key == GLFW.GLFW_KEY_UP) return moveMachineSubpage(-1);
 			if (key == GLFW.GLFW_KEY_S || key == GLFW.GLFW_KEY_DOWN) return moveMachineSubpage(1);
 		}
 		if (selected != null) {
 			if (key == GLFW.GLFW_KEY_A || key == GLFW.GLFW_KEY_LEFT) return moveEntry(-1);
 			if (key == GLFW.GLFW_KEY_D || key == GLFW.GLFW_KEY_RIGHT) return moveEntry(1);
-			if (key == GLFW.GLFW_KEY_W || key == GLFW.GLFW_KEY_UP) return moveTextPage(-1);
-			if (key == GLFW.GLFW_KEY_S || key == GLFW.GLFW_KEY_DOWN) return moveTextPage(1);
+			if (key == GLFW.GLFW_KEY_W || key == GLFW.GLFW_KEY_UP)
+				return specialistSubpageCount() > 1 ? moveSpecialistSubpage(-1) : moveTextPage(-1);
+			if (key == GLFW.GLFW_KEY_S || key == GLFW.GLFW_KEY_DOWN)
+				return specialistSubpageCount() > 1 ? moveSpecialistSubpage(1) : moveTextPage(1);
 		}
 		else if (view == View.NAVIGATION || view == View.STORED_PAGES) {
 			// W/A/S/D and the arrows are NOT handled here: V33a pans the navigation sheet with the
@@ -1210,6 +1339,21 @@ public final class ScreenChromicLexicon extends Screen {
 		return true;
 	}
 
+	private boolean moveDescriptionSubpage(int direction) {
+		int next = Math.clamp(descriptionSubpage + direction, 0, descriptionSubpageCount() - 1);
+		if (next == descriptionSubpage)
+			return false;
+		descriptionSubpage = next;
+		textPage = 0;
+		rebuildWidgets();
+		return true;
+	}
+
+	private boolean moveSpecialistSubpage(int direction) {
+		return selected != null && selected.section() == LexiconCatalog.Section.MACHINES
+				? moveMachineSubpage(direction) : moveDescriptionSubpage(direction);
+	}
+
 	private boolean moveRecipe(int direction) {
 		List<CastingTableRecipe> recipes = castingRecipes();
 		if (recipes.size() < 2)
@@ -1232,10 +1376,11 @@ public final class ScreenChromicLexicon extends Screen {
 	}
 
 	private boolean moveMachineSubpage(int direction) {
-		int next = Math.clamp(machineSubpage + direction, 0, 1);
+		int next = Math.clamp(machineSubpage + direction, 0, machinePages().size() - 1);
 		if (next == machineSubpage)
 			return false;
 		machineSubpage = next;
+		textPage = 0;
 		rebuildWidgets();
 		return true;
 	}

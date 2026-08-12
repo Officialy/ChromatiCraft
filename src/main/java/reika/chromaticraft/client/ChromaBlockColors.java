@@ -17,6 +17,7 @@ import reika.chromaticraft.block.crystal.BlockCaveCrystal;
 import reika.chromaticraft.block.dye26.BlockDyeLeaf;
 import reika.chromaticraft.block.dye26.BlockDyeSapling;
 import reika.chromaticraft.block.dye26.BlockRainbowLeaf;
+import reika.chromaticraft.block.BlockHoverBlock;
 import reika.chromaticraft.registry.ChromaBlocks;
 
 /** Block tint sources used by the original tint-indexed crystal outline texture. */
@@ -52,6 +53,12 @@ public final class ChromaBlockColors {
             return BlockRainbowLeaf.getTintColor(pos);
         }
     };
+	private static final BlockTintSource HOVER = new BlockTintSource() {
+		@Override public int color(BlockState state) { return BlockHoverBlock.tint(state); }
+		@Override public int colorInWorld(BlockState state, BlockAndTintGetter level, BlockPos pos) {
+			return BlockHoverBlock.tint(state);
+		}
+	};
     /**
      * Vanilla grass/foliage blocks whose tint the Luminous Cliffs biome shifts per position and
      * altitude. V33a did this by overriding {@code BiomeGenBase.getBiomeGrassColor(x,y,z)}, which
@@ -96,6 +103,9 @@ public final class ChromaBlockColors {
                 .toArray(net.minecraft.world.level.block.Block[]::new);
         event.register(List.of(DYE_TREE), dyeBlocks);
         event.register(List.of(RAINBOW_LEAF), ChromaBlocks.RAINBOW_LEAVES.get());
+		event.register(List.of(HOVER), ChromaBlocks.HOVER.get());
+		event.register(List.of(net.minecraft.client.color.block.BlockTintSources.foliage()),
+				ChromaBlocks.GLOWING_LEAVES.get());
         // Cliff grass' top texture is greyscale like vanilla's, so it needs the biome grass tint or
         // it renders white. It is a Luminous Cliffs block, so it takes the same position/altitude
         // shift as the vanilla grass around it.

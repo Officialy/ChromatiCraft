@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/cube_column",
+  "textures": {
+    "end": "chromaticraft:block/dimstruct/musictrigger",
+    "side": "chromaticraft:block/dimstruct/musictrigger_side"
+  }
+}

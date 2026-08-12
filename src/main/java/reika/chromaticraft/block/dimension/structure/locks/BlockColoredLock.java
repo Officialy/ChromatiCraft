@@ -1,345 +1,113 @@
-/*******************************************************************************
- * @author Reika Kalseki
- *
- * Copyright 2017
- *
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
- ******************************************************************************/
 package reika.chromaticraft.block.dimension.structure.locks;
 
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Random;
+import com.mojang.serialization.MapCodec;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.material.Material;
-import net.minecraft.client.renderer.texture.IIconRegister;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.init.Blocks;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.nbt.NBTTagInt;
-import net.minecraft.nbt.NBTTagList;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.AxisAlignedBB;
-import net.minecraft.util.IIcon;
-import net.minecraft.world.IBlockAccess;
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.DustParticleOptions;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.EntityBlock;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityTicker;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.BooleanProperty;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.Shapes;
+import net.minecraft.world.phys.shapes.VoxelShape;
 
-import reika.chromaticraft.base.BlockDimensionStructureTile;
-import reika.chromaticraft.base.dimensionstructuregenerator.DimensionStructureType;
-import reika.chromaticraft.base.tileentity.StructureBlockTile;
-import reika.chromaticraft.registry.ChromaISBRH;
 import reika.chromaticraft.registry.ChromaItems;
+import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.world.dimension.structure.LocksGenerator;
-import reika.dragonapi.libraries.ReikaAABBHelper;
-import reika.dragonapi.libraries.reikanbthelper.NBTTypes;
-import reika.dragonapi.libraries.io.ReikaSoundHelper;
-import reika.dragonapi.libraries.java.ReikaJavaLibrary;
-import reika.dragonapi.libraries.registry.ReikaItemHelper;
-import reika.dragonapi.libraries.registry.ReikaParticleHelper;
+import reika.chromaticraft.tileentity.TileEntityColorLock;
 
-public class BlockColoredLock extends BlockDimensionStructureTile {
+/** V33a colored lock: solid while any required color remains closed, intangible when solved. */
+public final class BlockColoredLock extends Block implements EntityBlock {
 
-	//private static int[][] keyCodes = new int[BlockLockKey.LockChannel.lockList.length][16];
-	//private static int[] gateCodes = new int[BlockLockKey.LockChannel.lockList.length];
-	//private static int[] whiteLock = new int[BlockLockKey.LockChannel.lockList.length];
+	public static final BooleanProperty OPEN = BooleanProperty.create("open");
+	public static final BooleanProperty GATE = BooleanProperty.create("gate");
+	private final MapCodec<BlockColoredLock> codec = MapCodec.unit(this);
 
-	private IIcon[] icons = new IIcon[2];
-
-	public BlockColoredLock(Material mat) {
-		super(mat);
+	public BlockColoredLock(BlockBehaviour.Properties properties) {
+		super(properties);
+		registerDefaultState(stateDefinition.any().setValue(OPEN, false).setValue(GATE, false));
 	}
-	/*
+
+	@Override public MapCodec<? extends BlockColoredLock> codec() { return codec; }
+
 	@Override
-	public int damageDropped(int meta) {
-		return meta;
+	protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+		builder.add(OPEN, GATE);
 	}
-	 */
-	@Override
-	public void registerBlockIcons(IIconRegister ico) {
-		for (int i = 0; i < 2; i++) {
-			icons[i] = ico.registerIcon("chromaticraft:dimstruct/colorlock_"+i);
-		}
+
+	@Override public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
+		return new TileEntityColorLock(pos, state);
 	}
 
 	@Override
-	public IIcon getIcon(int s, int meta) {
-		return icons[0];
+	public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state,
+			BlockEntityType<T> type) {
+		if (level.isClientSide() || type != ChromaBlockEntities.COLOR_LOCK.get()) return null;
+		return (tickLevel, pos, tickState, entity) ->
+				TileEntityColorLock.serverTick(tickLevel, pos, tickState, (TileEntityColorLock)entity);
 	}
 
 	@Override
-	public IIcon getIcon(IBlockAccess iba, int x, int y, int z, int s) {
-		TileEntity te = iba.getTileEntity(x, y, z);
-		return te instanceof TileEntityColorLock && ((TileEntityColorLock)te).isOpen ? icons[1] : icons[0];
+	protected VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos pos,
+			CollisionContext context) {
+		return state.getValue(OPEN) ? Shapes.empty() : Shapes.block();
 	}
 
 	@Override
-	public void randomDisplayTick(World world, int x, int y, int z, Random rand) {
-		TileEntityColorLock te = (TileEntityColorLock)world.getTileEntity(x, y, z);
-		if (te.isOpen) {
-			if (world.getBlockMetadata(x, y, z) == 0) {
-				CrystalElement e = ReikaJavaLibrary.getRandomCollectionEntry(rand, te.colors);
-				if (e != null) {
-					float r = e.getRed()/255F;
-					float g = e.getGreen()/255F;
-					float b = e.getBlue()/255F;
-					ReikaParticleHelper.spawnColoredParticles(world, x, y, z, r, g, b, 3);
-				}
+	protected InteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos,
+			Player player, InteractionHand hand, BlockHitResult hit) {
+		if (!player.isCreative() || !(level.getBlockEntity(pos) instanceof TileEntityColorLock lock))
+			return InteractionResult.PASS;
+		for (CrystalElement element : CrystalElement.elements) {
+			if (stack.is(ChromaItems.SHARDS.get(element).get())) {
+				if (!level.isClientSide()) lock.addColor(element);
+				return InteractionResult.SUCCESS;
 			}
 		}
+		if (stack.is(Blocks.OBSIDIAN.asItem())) {
+			if (!level.isClientSide()) level.setBlock(pos, state.setValue(GATE, true), 3);
+			return InteractionResult.SUCCESS;
+		}
+		return InteractionResult.PASS;
 	}
 
 	@Override
-	public boolean onRightClicked(World world, int x, int y, int z, EntityPlayer ep, int s, float a, float b, float c) {
-		ItemStack is = ep.getCurrentEquippedItem();
-		if (is != null && ReikaItemHelper.matchStackWithBlock(is, this))
-			return false;
-		if (ep.capabilities.isCreativeMode) {
-			TileEntityColorLock te = (TileEntityColorLock)world.getTileEntity(x, y, z);
-			if (ChromaItems.SHARD.matchWith(is)) {
-				te.addColor(CrystalElement.elements[is.getItemDamage()%16]);
-			}
-			else if (is == null && ep.isSneaking()) {
-				te.colors.clear();
-			}
-			else if (is != null && ReikaItemHelper.matchStackWithBlock(is, Blocks.obsidian)) {
-				world.setBlockMetadataWithNotify(x, y, z, 1, 3);
-			}
-			te.recalc();
+	protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos,
+			Player player, BlockHitResult hit) {
+		if (player.isCreative() && player.isShiftKeyDown()
+				&& level.getBlockEntity(pos) instanceof TileEntityColorLock lock) {
+			if (!level.isClientSide()) lock.clearColors();
+			return InteractionResult.SUCCESS;
 		}
-		world.markBlockForUpdate(x, y, z);
-		//ReikaJavaLibrary.pConsole(Arrays.deepToString(keyCodes));
-		return true;
+		return InteractionResult.PASS;
 	}
 
 	@Override
-	public boolean isOpaqueCube() {
-		return false;
-	}
-
-	@Override
-	public boolean renderAsNormalBlock() {
-		return false;
-	}
-
-	@Override
-	public int getRenderType() {
-		return ChromaISBRH.colorLock.getRenderID();
-	}
-
-	@Override
-	public AxisAlignedBB getCollisionBoundingBoxFromPool(World world, int x, int y, int z) {
-		TileEntity te = world.getTileEntity(x, y, z);
-		return te instanceof TileEntityColorLock && ((TileEntityColorLock)te).isOpen ? null : ReikaAABBHelper.getBlockAABB(x, y, z);
-	}
-
-	/*
-	@Override
-	public int getRenderColor(int meta) {
-		return ReikaColorAPI.mixColors(CrystalElement.elements[meta].getColor(), 0xffffff, 0.8F);
-	}
-
-	@Override
-	public int colorMultiplier(IBlockAccess iba, int x, int y, int z) {
-		return this.getRenderColor(iba.getBlockMetadata(x, y, z));
-	}
-	 */
-	@Override
-	public TileEntity createNewTileEntity(World world, int meta) {
-		return new TileEntityColorLock();
-	}
-
-	@Override
-	public void breakBlock(World world, int x, int y, int z, Block b, int meta) {
-		super.breakBlock(world, x, y, z, b, meta);
-	}
-
-	public static class TileEntityColorLock extends StructureBlockTile<LocksGenerator> {
-
-		private boolean isOpen;
-		private int channel;
-		private HashSet<CrystalElement> colors = new HashSet();
-		private HashSet<CrystalElement> closedColors = new HashSet();
-		private boolean ticked = false;
-		private int queueTick;
-
-		public TileEntityColorLock addColor(CrystalElement e) {
-			colors.add(e);
-			closedColors.add(e);
-			worldObj.markBlockForUpdate(xCoord, yCoord, zCoord);
-			return this;
-		}
-
-		public void setColors(CrystalElement... e) {
-			colors.clear();
-			closedColors.clear();
-			colors.addAll(Arrays.asList(e));
-			closedColors.addAll(colors);
-			worldObj.markBlockForUpdate(xCoord, yCoord, zCoord);
-		}
-
-		private void open() {
-			isOpen = true;
-			ReikaSoundHelper.playBreakSound(worldObj, xCoord, yCoord, zCoord, Blocks.stone, 2, 1);
-			ReikaSoundHelper.playBreakSound(worldObj, xCoord, yCoord, zCoord, Blocks.stone, 2, 1);
-			worldObj.markBlockForUpdate(xCoord, yCoord, zCoord);
-		}
-
-		private void close() {
-			if (queueTick > 0)
-				return;
-			isOpen = false;
-			ReikaSoundHelper.playBreakSound(worldObj, xCoord, yCoord, zCoord, Blocks.stone, 2, 1);
-			ReikaSoundHelper.playBreakSound(worldObj, xCoord, yCoord, zCoord, Blocks.stone, 2, 1);
-			worldObj.markBlockForUpdate(xCoord, yCoord, zCoord);
-		}
-
-		@Override
-		public boolean canUpdate() {
-			return true;
-		}
-
-		@Override
-		public void updateEntity() {
-			if (!ticked) {
-				this.close();
-				closedColors.addAll(colors);
-				ticked = true;
-			}
-			if (queueTick > 0) {
-				queueTick--;
-				if (queueTick == 0) {
-					this.recalc();
-				}
-			}
-		}
-
-		@Override
-		public void writeToNBT(NBTTagCompound NBT) {
-			super.writeToNBT(NBT);
-
-			NBT.setBoolean("open", isOpen);
-			NBT.setInteger("room", channel);
-
-			NBTTagList li = new NBTTagList();
-			for (CrystalElement e : colors) {
-				li.appendTag(new NBTTagInt(e.ordinal()));
-			}
-			NBT.setTag("colors", li);
-
-			NBTTagList li2 = new NBTTagList();
-			for (CrystalElement e : closedColors) {
-				li2.appendTag(new NBTTagInt(e.ordinal()));
-			}
-			NBT.setTag("closed_colors", li2);
-		}
-
-		@Override
-		public void readFromNBT(NBTTagCompound NBT) {
-			super.readFromNBT(NBT);
-
-			isOpen = NBT.getBoolean("open");
-			channel = NBT.getInteger("room");
-
-			colors.clear();
-			NBTTagList li = NBT.getTagList("colors", NBTTypes.INT.ID);
-			for (Object o : li.tagList) {
-				NBTTagInt tag = (NBTTagInt)o;
-				colors.add(CrystalElement.elements[tag.func_150287_d()]);
-			}
-
-			closedColors.clear();
-			NBTTagList li2 = NBT.getTagList("closed_colors", NBTTypes.INT.ID);
-			for (Object o : li2.tagList) {
-				NBTTagInt tag = (NBTTagInt)o;
-				closedColors.add(CrystalElement.elements[tag.func_150287_d()]);
-			}
-
-			//ReikaJavaLibrary.pConsole(colors+":"+FMLCommonHandler.instance().getEffectiveSide(), worldObj != null && this.getBlockMetadata() == 0);
-		}
-
-		private void recalcColors() {
-			LocksGenerator g = this.getGenerator();
-			if (g == null) {
-				return;
-			}
-			boolean flag = true;
-			closedColors.clear();
-			if (g.getWhiteLock(channel) <= 0) {
-				for (CrystalElement e : colors) {
-					if (g.getColorCode(channel, e) <= 0) {
-						flag = false;
-						closedColors.add(e);
-					}
-				}
-			}
-			this.updateState(flag);
-		}
-
-		public void setOpenColors(Collection<CrystalElement> c) {
-			closedColors.clear();
-			closedColors.addAll(colors);
-			closedColors.removeAll(c);
-			this.recalcColors();
-			this.updateState(closedColors.isEmpty());
-		}
-
-		private void updateState(boolean flag) {
-			if (flag != isOpen) {
-				if (flag)
-					this.open();
-				else
-					this.close();
-			}
-			worldObj.markBlockForUpdate(xCoord, yCoord, zCoord);
-		}
-
-		public Collection<CrystalElement> getColors() {
-			return Collections.unmodifiableCollection(colors);
-		}
-
-		public Collection<CrystalElement> getClosedColors() {
-			return Collections.unmodifiableCollection(closedColors);
-		}
-
-		public int getChannel() {
-			return channel;
-		}
-
-		public boolean isHeldOpen() {
-			return isOpen && queueTick > 0;
-		}
-
-		private void recalcGate() {
-			//ReikaJavaLibrary.pConsole(((LocksGenerator)DimensionStructureType.LOCKS.getGenerator(uid)).getGateCode(channel), channel == 0);
-			this.updateState(this.getGenerator().getGateCode(channel) == 0);
-		}
-
-		public void recalc() {
-			if (this.getBlockMetadata() == 0)
-				this.recalcColors();
-			else if (this.getBlockMetadata() == 1)
-				this.recalcGate();
-		}
-
-		public void setChannel(int ch) {
-			channel = ch;
-		}
-
-		public void queueTick(int time) {
-			queueTick = time;
-		}
-
-		@Override
-		public DimensionStructureType getType() {
-			return DimensionStructureType.LOCKS;
+	public void animateTick(BlockState state, Level level, BlockPos pos, RandomSource random) {
+		if (!state.getValue(OPEN) || state.getValue(GATE)
+				|| !(level.getBlockEntity(pos) instanceof TileEntityColorLock lock))
+			return;
+		CrystalElement element = lock.randomColor(random);
+		if (element != null) {
+			int color = element.getColor();
+			level.addParticle(new DustParticleOptions(color, 1F), pos.getX() + random.nextDouble(),
+					pos.getY() + random.nextDouble(), pos.getZ() + random.nextDouble(), 0, 0, 0);
 		}
 	}
-
 }

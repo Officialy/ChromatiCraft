@@ -1,6 +1,9 @@
 {
   "model": {
-    "type": "minecraft:model",
-    "model": "chromaticraft:item/information_fragment"
+    "type": "chromaticraft:info_fragment",
+    "base": {
+      "type": "minecraft:model",
+      "model": "chromaticraft:item/information_fragment"
+    }
   }
 }

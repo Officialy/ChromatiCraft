@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/cube_column",
+  "textures": {
+    "end": "chromaticraft:block/dimstruct/lightpanel",
+    "particle": "chromaticraft:block/dimstruct/lightpanel",
+    "side": "chromaticraft:block/dimstruct/lightpanel_green_1"
+  }
+}

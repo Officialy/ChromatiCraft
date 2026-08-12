@@ -1,0 +1,22 @@
+{
+  "variants": {
+    "active=false,type=block": {
+      "model": "chromaticraft:block/light_panel_block_off"
+    },
+    "active=false,type=cancel": {
+      "model": "chromaticraft:block/light_panel_cancel_off"
+    },
+    "active=false,type=target": {
+      "model": "chromaticraft:block/light_panel_target_off"
+    },
+    "active=true,type=block": {
+      "model": "chromaticraft:block/light_panel_block_on"
+    },
+    "active=true,type=cancel": {
+      "model": "chromaticraft:block/light_panel_cancel_on"
+    },
+    "active=true,type=target": {
+      "model": "chromaticraft:block/light_panel_target_on"
+    }
+  }
+}

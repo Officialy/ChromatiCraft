@@ -2,12 +2,12 @@ package reika.chromaticraft.item;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemUseAnimation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.phys.BlockHitResult;
@@ -50,26 +50,21 @@ import org.jspecify.annotations.Nullable;
  */
 public class ItemManipulator extends Item {
 
-	/** V33a charges from whatever the player's cursor is on, at ordinary interaction range. */
-	private static final double CHARGE_REACH = 5;
+	/** V33a ordinary Manipulator reach; the REACH ability extends this to 96 when that port lands. */
+	private static final double CHARGE_REACH = 24;
 
 	public ItemManipulator(Properties properties) {
 		super(properties);
 	}
 
 	/**
-	 * V33a {@code ItemManipulator.onUpdate}: holding the Manipulator and looking at a pylon drains it
-	 * into the player's elemental buffer, every tick, for as long as the crosshair stays on the
-	 * crystal. It is not a click — charging is an act of standing there.
-	 *
-	 * <p>Upstream reads the player's existing mouse-over. In 26.2 {@code inventoryTick} is
-	 * server-only and the client's {@code Minecraft.hitResult} is not visible here, so the look ray is
-	 * traced server-side instead. That is the authoritative side for a transfer anyway, and it removes
-	 * the need to trust a client-supplied target.
+	 * V33a {@code onItemRightClick}/{@code onUsingTick}: charging only occurs while the player is
+	 * actively holding right click. Merely carrying the Manipulator and looking at a pylon must not
+	 * drain it.
 	 */
 	@Override
-	public void inventoryTick(ItemStack stack, ServerLevel level, Entity owner, @Nullable EquipmentSlot slot) {
-		if (slot != EquipmentSlot.MAINHAND || !(owner instanceof Player player))
+	public void onUseTick(Level level, LivingEntity owner, ItemStack stack, int ticksRemaining) {
+		if (level.isClientSide() || !(owner instanceof Player player))
 			return;
 		if (!ProgressStage.PYLON.isPlayerAtStage(player))
 			return;
@@ -89,7 +84,23 @@ public class ItemManipulator extends Item {
 		CrystalElement colour = point.getDeliveredColor(player, level, at.getX(), at.getY(), at.getZ());
 		// CHROMA-PORT: the client half of upstream's call draws ChromaFX.createPylonChargeBeam between
 		// the crystal and the player. ChromaFX is not ported, so charging is currently silent to look at.
-		PylonCharging.chargePlayerFromPylon(player, point, colour, player.tickCount, false);
+		PylonCharging.chargePlayerFromPylon(player, point, colour, ticksRemaining, true);
+	}
+
+	@Override
+	public InteractionResult use(Level level, Player player, InteractionHand hand) {
+		player.startUsingItem(hand);
+		return InteractionResult.CONSUME;
+	}
+
+	@Override
+	public int getUseDuration(ItemStack stack, LivingEntity user) {
+		return 72000;
+	}
+
+	@Override
+	public ItemUseAnimation getUseAnimation(ItemStack stack) {
+		return ItemUseAnimation.BOW;
 	}
 
 	@Override

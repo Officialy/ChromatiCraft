@@ -36,6 +36,11 @@ public final class ChromaBlockTagsProvider extends BlockTagsProvider {
 				ChromaBlocks.CASTING_TABLE.getKey(), ChromaBlocks.DATA_NODE.getKey(),
 				ChromaBlocks.FOCUS_CRYSTAL.getKey(), ChromaBlocks.PYLON_LINK.getKey(),
 				ChromaBlocks.POWER_CRYSTAL.getKey());
+		pickaxe.add(ChromaBlocks.TRAP_FLOOR.getKey(), ChromaBlocks.SHIFT_LOCK.getKey(),
+				ChromaBlocks.LOCK_KEY.getKey(), ChromaBlocks.COLOR_LOCK.getKey(),
+				ChromaBlocks.LIGHT_PANEL.getKey(), ChromaBlocks.PANEL_SWITCH.getKey(),
+				ChromaBlocks.MUSIC_TRIGGER.getKey());
+		pickaxe.add(ChromaBlocks.BIOME_REPLAY.getKey());
 		ChromaBlocks.SHIELDING.values().forEach(block -> pickaxe.add(block.getKey()));
 		ChromaBlocks.CAVE_CRYSTALS.forEach(block -> pickaxe.add(block.getKey()));
 		ChromaBlocks.CRYSTAL_LAMPS.forEach(block -> pickaxe.add(block.getKey()));

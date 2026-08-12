@@ -1,170 +1,102 @@
-/*******************************************************************************
- * @author Reika Kalseki
- *
- * Copyright 2017
- *
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
- ******************************************************************************/
 package reika.chromaticraft.block.decoration;
 
-import java.util.Random;
+import com.mojang.serialization.MapCodec;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.material.Material;
-import net.minecraft.client.renderer.texture.IIconRegister;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.util.IIcon;
-import net.minecraft.world.World;
-import net.minecraftforge.common.util.ForgeDirection;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.particles.DustParticleOptions;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.redstone.Orientation;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
 
-import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.auxiliary.ChromaFX;
+import org.jspecify.annotations.Nullable;
+
 import reika.chromaticraft.auxiliary.CrystalMusicManager;
 import reika.chromaticraft.base.CrystalTypeBlock;
-import reika.chromaticraft.block.dimension.structure.music.BlockMusicMemory;
-import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaTiles;
+import reika.chromaticraft.registry.ChromaSounds;
 import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.registry.ExtraChromaIDs;
-import reika.chromaticraft.tileentity.technical.TileEntityStructControl;
-import reika.dragonapi.interfaces.block.SemiUnbreakable;
-import reika.dragonapi.libraries.ReikaDirectionHelper;
-import reika.dragonapi.libraries.java.ReikaRandomHelper;
-import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
+import reika.dragonapi.libraries.mathsci.ReikaMusicHelper.MusicKey;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
+/** Four-quadrant V33a crystal music trigger, usable by redstone or direct side clicks. */
+public final class BlockMusicTrigger extends Block {
 
-public class BlockMusicTrigger extends Block implements SemiUnbreakable {
-
-	private static final Random rand = new Random();
-
-	private final IIcon[] icons = new IIcon[2];
-
-	public BlockMusicTrigger(Material mat) {
-		super(mat);
-
-		this.setHardness(6);
-		this.setResistance(60000);
-		this.setCreativeTab(ChromatiCraft.tabChromaGen);
+	public interface Handler {
+		void onMusicTrigger(BlockPos triggerPos, CrystalElement element, MusicKey key,
+				@Nullable Player player);
 	}
 
-	public boolean isUnbreakable(World world, int x, int y, int z, int meta) {
-		return world.provider.dimensionId == ExtraChromaIDs.DIMID.getValue();
+	private final MapCodec<BlockMusicTrigger> codec = MapCodec.unit(this);
+
+	public BlockMusicTrigger(BlockBehaviour.Properties properties) {
+		super(properties);
+	}
+
+	@Override public MapCodec<? extends BlockMusicTrigger> codec() { return codec; }
+
+	@Override
+	protected void neighborChanged(BlockState state, Level level, BlockPos pos, Block neighbor,
+			@Nullable Orientation orientation, boolean movedByPiston) {
+		if (!level.isClientSide() && level.hasNeighborSignal(pos))
+			ping(level, pos, Math.clamp(level.getBestNeighborSignal(pos) / 4, 0, 3), null);
 	}
 
 	@Override
-	public IIcon getIcon(int s, int meta) {
-		return s <= 1 ? icons[0] : icons[1];
+	protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos,
+			Player player, BlockHitResult hit) {
+		int index = quadrant(pos, hit);
+		if (index >= 0 && !level.isClientSide()) ping(level, pos, index, player);
+		return InteractionResult.SUCCESS;
 	}
 
-	@Override
-	public final void onNeighborBlockChange(World world, int x, int y, int z, Block b) {
-		if (world.isBlockIndirectlyGettingPowered(x, y, z)) {
-			this.ping(world, x, y, z, world.getBlockPowerInput(x, y, z)/4, null);
+	private static void ping(Level level, BlockPos pos, int index, @Nullable Player player) {
+		BlockState crystalState = level.getBlockState(pos.above());
+		CrystalElement element;
+		if (crystalState.getBlock() instanceof reika.chromaticraft.base.CrystalBlock crystal)
+			element = crystal.getCrystalElement(crystalState);
+		else if (crystalState.getBlock() instanceof CrystalTypeBlock crystal)
+			element = crystal.getCrystalElement(crystalState);
+		else return;
+		MusicKey key = CrystalMusicManager.instance.getKeys(element).get(index);
+		ChromaSounds.DING.playSoundAtBlock(level, pos, 1,
+				CrystalMusicManager.instance.getScaledDing(element, index));
+		for (int i = 0; i < 8; i++) {
+			double angle = Math.PI * 2 * i / 8D;
+			level.addParticle(new DustParticleOptions(element.getColor(), 1F), pos.getX() + 0.5,
+					pos.getY() + 1.5, pos.getZ() + 0.5, Math.cos(angle) * 0.08, 0.04,
+					Math.sin(angle) * 0.08);
 		}
+		Handler handler = findHandler(level, pos);
+		if (handler != null) handler.onMusicTrigger(pos, element, key, player);
 	}
 
-	@Override
-	public void registerBlockIcons(IIconRegister ico) {
-		icons[0] = ico.registerIcon("chromaticraft:dimstruct/musictrigger");
-		icons[1] = ico.registerIcon("chromaticraft:dimstruct/musictrigger_side");
+	/** V33a searches its authored controller offsets; a bounded BE scan is rotation-safe in NBT. */
+	private static @Nullable Handler findHandler(Level level, BlockPos pos) {
+		for (BlockPos check : BlockPos.betweenClosed(pos.offset(-7, -3, -7), pos.offset(7, 1, 7)))
+			if (level.getBlockEntity(check) instanceof Handler handler) return handler;
+		return null;
 	}
 
-	@Override
-	public boolean onBlockActivated(World world, int x, int y, int z, EntityPlayer ep, int s, float a, float b, float c) {
-		if (s > 1) {
-			int idx = this.getIndex(s, a, b, c);
-			if (idx >= 0) {
-				this.ping(world, x, y, z, idx, ep);
-			}
-		}
-		return true;
-	}
-
-	private void ping(World world, int x, int y, int z, int idx, EntityPlayer ep) {
-		Block bk = world.getBlock(x, y+1, z);
-		if (bk instanceof CrystalTypeBlock) {
-			int meta = world.getBlockMetadata(x, y+1, z);
-			CrystalElement e = CrystalElement.elements[meta];
-			float p = CrystalMusicManager.instance.getScaledDing(e, idx);
-			CrystalTypeBlock.ding(world, x, y, z, e, p);
-			if (world.provider.dimensionId == ExtraChromaIDs.DIMID.getValue())
-				BlockMusicMemory.ping(world, x, y, z, e, idx);
-			else if (world.getBlock(x, y-1, z) == ChromaBlocks.STRUCTSHIELD.getBlockInstance() && world.getBlockMetadata(x, y-1, z) >= 8)
-				this.pingCallback(world, x, y, z, e, idx, ep);
-			if (world.isRemote) {
-				this.createParticle(world, x, y+1, z, e);
-			}
-
-		}
-	}
-
-	private void pingCallback(World world, int x, int y, int z, CrystalElement e, int idx, EntityPlayer ep) {
-		TileEntityStructControl te = null;
-		for (int i = 2; i < 6 && te == null; i++) {
-			for (int d = 4; d <= 5; d++) {
-				ForgeDirection dir = ForgeDirection.VALID_DIRECTIONS[i];
-				ForgeDirection left = ReikaDirectionHelper.getLeftBy90(dir);
-				int dx = x+dir.offsetX*d+left.offsetX;
-				int dy = y-2;
-				int dz = z+dir.offsetZ*d+left.offsetZ;
-				//ReikaJavaLibrary.pConsole(BlockKey.getAt(world, dx, dy, dz)+" @ "+dir+"x"+d+" @ "+new Coordinate(dx, dy, dz));
-				if (ChromaTiles.getTile(world, dx, dy, dz) == ChromaTiles.STRUCTCONTROL) {
-					te = (TileEntityStructControl)world.getTileEntity(dx, dy, dz);
-					break;
-				}
-			}
-		}
-		if (te != null) {
-			te.onMusicTrigger(world, x, y, z, e, CrystalMusicManager.instance.getKeys(e).get(idx), ep);
-		}
-	}
-
-	@SideOnly(Side.CLIENT)
-	public static void createParticle(World world, int x, int y, int z, CrystalElement e) {
-		double v = ReikaRandomHelper.getRandomPlusMinus(0.125, 0.0625);
-		ChromaFX.doElementalParticle(world, x+0.5, y+0.5, z+0.5, e, 4, v, 20);
-
-		for (int i = 0; i < 12; i++) {
-			world.getBlock(x, y, z).randomDisplayTick(world, x, y, z, rand);
-		}
-	}
-
-	private int getIndex(int s, float a, float b, float c) { //0-3 or -1 for none
-		double m1a = 0.125;
-		double m1b = 0.4375;
-		double m2a = 0.5625;
-		double m2b = 0.875;
-
-		if (s == 2 || s == 5) {
-			a = 1-a;
-			c = 1-c;
-		}
-
-		if (s == 4 || s == 5) { //a == 0 or 1
-			if (ReikaMathLibrary.isValueInsideBoundsIncl(m1a, m1b, c) && ReikaMathLibrary.isValueInsideBoundsIncl(m2a, m2b, b))
-				return 0;
-			if (ReikaMathLibrary.isValueInsideBoundsIncl(m2a, m2b, c) && ReikaMathLibrary.isValueInsideBoundsIncl(m2a, m2b, b))
-				return 1;
-			if (ReikaMathLibrary.isValueInsideBoundsIncl(m2a, m2b, c) && ReikaMathLibrary.isValueInsideBoundsIncl(m1a, m1b, b))
-				return 2;
-			if (ReikaMathLibrary.isValueInsideBoundsIncl(m1a, m1b, c) && ReikaMathLibrary.isValueInsideBoundsIncl(m1a, m1b, b))
-				return 3;
-		}
-		else if (s == 2 || s == 3) { //c == 0 or 1
-			if (ReikaMathLibrary.isValueInsideBoundsIncl(m1a, m1b, a) && ReikaMathLibrary.isValueInsideBoundsIncl(m2a, m2b, b))
-				return 0;
-			if (ReikaMathLibrary.isValueInsideBoundsIncl(m2a, m2b, a) && ReikaMathLibrary.isValueInsideBoundsIncl(m2a, m2b, b))
-				return 1;
-			if (ReikaMathLibrary.isValueInsideBoundsIncl(m2a, m2b, a) && ReikaMathLibrary.isValueInsideBoundsIncl(m1a, m1b, b))
-				return 2;
-			if (ReikaMathLibrary.isValueInsideBoundsIncl(m1a, m1b, a) && ReikaMathLibrary.isValueInsideBoundsIncl(m1a, m1b, b))
-				return 3;
-		}
+	private static int quadrant(BlockPos pos, BlockHitResult hit) {
+		Direction side = hit.getDirection();
+		if (side.getAxis().isVertical()) return -1;
+		Vec3 local = hit.getLocation().subtract(pos.getX(), pos.getY(), pos.getZ());
+		double horizontal = side.getAxis() == Direction.Axis.X ? local.z : local.x;
+		double vertical = local.y;
+		if (side == Direction.NORTH || side == Direction.EAST) horizontal = 1 - horizontal;
+		boolean lowHorizontal = horizontal >= 0.125 && horizontal <= 0.4375;
+		boolean highHorizontal = horizontal >= 0.5625 && horizontal <= 0.875;
+		boolean lowVertical = vertical >= 0.125 && vertical <= 0.4375;
+		boolean highVertical = vertical >= 0.5625 && vertical <= 0.875;
+		if (lowHorizontal && highVertical) return 0;
+		if (highHorizontal && highVertical) return 1;
+		if (highHorizontal && lowVertical) return 2;
+		if (lowHorizontal && lowVertical) return 3;
 		return -1;
 	}
-
 }

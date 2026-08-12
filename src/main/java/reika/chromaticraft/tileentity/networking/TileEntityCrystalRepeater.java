@@ -41,9 +41,11 @@ import reika.chromaticraft.magic.network.PylonFinder;
 import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaItems;
+import reika.chromaticraft.registry.ChromaSounds;
 import reika.chromaticraft.registry.ChromaStructures;
 import reika.chromaticraft.registry.ChromaTiles;
 import reika.chromaticraft.registry.CrystalElement;
+import reika.chromaticraft.render.particle.ChromaParticle;
 import reika.dragonapi.instantiable.data.immutable.Coordinate;
 import reika.dragonapi.instantiable.data.immutable.DecimalPosition;
 import reika.dragonapi.libraries.registry.ReikaItemHelper;
@@ -54,8 +56,8 @@ import reika.dragonapi.libraries.registry.ReikaItemHelper;
  *
  * <p>The server-authoritative V33a behavior is active: structure/redstone lifecycle, attenuation and
  * throughput modifiers, regional grouping, rain-sensitive links, overload destruction, owner-aware
- * sneak-pop drops, and custom-data persistence. Client-only particles, range visualization, and surge
- * packets remain presentation work and do not alter network semantics.
+ * sneak-pop drops, custom-data persistence, range/connection visualization, and the source-exact
+ * rain, enhanced-stalk, and overload particle/sound families.
  */
 public class TileEntityCrystalRepeater extends CrystalTransmitterBase
 		implements LinkWatchingRepeater, RegionalSensitiveRepeater, CrystalFuse, NBTTile, SneakPop, OwnedTile, MultiBlockChromaTile {
@@ -128,9 +130,20 @@ public class TileEntityCrystalRepeater extends CrystalTransmitterBase
 			connectionRenderTick--;
 		if (!world.isClientSide())
 			this.setState(StateFlags.RAINLOSS, this.hasState(StateFlags.RAINABLE) && world.isRaining());
-		if (surgeTicks > 0 && --surgeTicks == 0)
-			this.doSurge();
-		// Deferred: rain/enhanced/surge particles and progression-catchup presentation.
+		if (world.isClientSide() && this.canConduct()) {
+			CrystalElement color = this.getActiveColor();
+			if (this.isRainAffected())
+				ChromaParticle.spawnRepeaterRain(world, pos, color, rand);
+			if (this.isTurbocharged() && this.isEnhancedStructure())
+				ChromaParticle.spawnEnhancedRepeater(world, pos, facing, color, rand);
+		}
+		if (surgeTicks > 0) {
+			surgeTicks--;
+			if (surgeTicks == 0)
+				this.doSurge();
+			if (world.isClientSide())
+				ChromaParticle.spawnRepeaterSurge(world, pos, surgeColor, rand);
+		}
 	}
 
 	@Override
@@ -366,6 +379,8 @@ public class TileEntityCrystalRepeater extends CrystalTransmitterBase
 			surgeColor = e;
 			surgeTicks = 55;
 			CrystalNetworker.instance.breakPaths(this);
+			if (this.getLevel() != null && !this.getLevel().isClientSide())
+				ChromaSounds.REPEATERSURGE.playSoundAtBlockNoAttenuation(this, 1, 1, 1024);
 			this.syncAllData(false);
 		}
 	}
@@ -381,6 +396,9 @@ public class TileEntityCrystalRepeater extends CrystalTransmitterBase
 	private void doSurge() {
 		if (this.getLevel() == null || this.getLevel().isClientSide() || surgeColor == null)
 			return;
+		if (this.getLevel() instanceof net.minecraft.server.level.ServerLevel server)
+			reika.chromaticraft.network.ChromaNetwork.sendRepeaterSurgeBurst(
+					server, this.getBlockPos(), surgeColor);
 		this.removeFromCache();
 		CrystalNetworker.instance.breakPaths(this);
 		for (int distance = 1; distance < this.getLevel().getMaxY() - this.getLevel().getMinY(); distance++) {

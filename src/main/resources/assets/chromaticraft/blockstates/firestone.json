@@ -2,7 +2,7 @@
   "variants": {
     "": {
       "type": "chromaticraft:tiered_ore",
-      "underlay": "chromaticraft:block/ore/tier_9_underlay",
+      "underlay": "minecraft:block/netherrack",
       "overlay": "chromaticraft:block/ore/tier_9_overlay",
       "host_texture": "minecraft:block/netherrack",
       "stage": "LINK"

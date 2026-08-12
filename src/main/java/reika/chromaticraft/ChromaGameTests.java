@@ -40,6 +40,8 @@ import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
 import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
@@ -92,6 +94,11 @@ import reika.chromaticraft.tileentity.auxiliary.TileEntityFocusCrystal;
 import reika.chromaticraft.registry.ChromaStructures;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.tileentity.TileEntityDisplayPoint;
+import reika.chromaticraft.tileentity.TileEntityLootChest;
+import reika.chromaticraft.tileentity.TileEntityStructureController;
+import reika.chromaticraft.tileentity.TileEntityLockKey;
+import reika.chromaticraft.tileentity.TileEntityChromaDoor;
+import reika.chromaticraft.world.OverworldStructureFeature;
 import reika.chromaticraft.tileentity.networking.TileEntityCompoundRepeater;
 import reika.chromaticraft.tileentity.auxiliary.TileEntityChromaCrystal;
 import reika.chromaticraft.tileentity.networking.TileEntityCrystalPylon;
@@ -109,6 +116,7 @@ import reika.dragonapi.instantiable.data.immutable.DecimalPosition;
 import reika.dragonapi.instantiable.data.immutable.WorldLocation;
 import reika.dragonapi.libraries.ReikaPlayerAPI;
 import reika.dragonapi.libraries.registry.ReikaItemHelper;
+import reika.dragonapi.libraries.mathsci.ReikaMusicHelper.MusicKey;
 
 import java.util.HashMap;
 import java.util.List;
@@ -117,6 +125,11 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Consumer;
 import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
+import reika.chromaticraft.block.dimension.structure.lightpanel.BlockLightPanel;
+import reika.chromaticraft.block.dimension.structure.lightpanel.BlockLightSwitch;
+import reika.chromaticraft.world.dimension.structure.lightpanel.LightType;
+import reika.chromaticraft.block.dimension.structure.locks.BlockColoredLock;
+import reika.chromaticraft.tileentity.TileEntityColorLock;
 
 /**
  * In-world game tests for the progression core — runnable headless via
@@ -231,6 +244,539 @@ public final class ChromaGameTests {
 		register(event, env, "tiered_ore_worldgen", ChromaGameTests::tieredOreWorldgen);
 		register(event, env, "creative_tiered_resource_access", ChromaGameTests::creativeTieredResourceAccess);
 		register(event, env, "rainbow_tree_shape_and_log", ChromaGameTests::rainbowTreeShapeAndLog);
+		register(event, env, "structure_cavern_nbt_controller", ChromaGameTests::structureCavernNbtController);
+		register(event, env, "structure_burrow_nbt_controller", ChromaGameTests::structureBurrowNbtController);
+		register(event, env, "structure_ocean_nbt_trap", 70, ChromaGameTests::structureOceanNbtTrap);
+		register(event, env, "structure_desert_nbt_controller", ChromaGameTests::structureDesertNbtController);
+		register(event, env, "structure_snow_nbt_route", ChromaGameTests::structureSnowNbtRoute);
+		register(event, env, "biome_fragment_light_panel_switch", ChromaGameTests::biomeFragmentLightPanelSwitch);
+		register(event, env, "biome_fragment_music_loop", ChromaGameTests::biomeFragmentMusicLoop);
+		register(event, env, "biome_fragment_nbt_completion", ChromaGameTests::biomeFragmentNbtCompletion);
+		register(event, env, "chroma_door_uuid_key_loop", 70, ChromaGameTests::chromaDoorUuidKeyLoop);
+		register(event, env, "heat_lamp_temperature_furnace_loop", ChromaGameTests::heatLampTemperatureFurnaceLoop);
+		register(event, env, "burrow_cache_loot_halves", ChromaGameTests::burrowCacheLootHalves);
+	}
+
+	private static void biomeFragmentLightPanelSwitch(GameTestHelper helper) {
+		BlockPos panel = helper.absolutePos(new BlockPos(2, 2, 2));
+		BlockState target = ChromaBlocks.LIGHT_PANEL.get().defaultBlockState()
+				.setValue(BlockLightPanel.TYPE, LightType.TARGET);
+		helper.getLevel().setBlock(panel, target, 3);
+		BlockLightPanel.activate(helper.getLevel(), panel, true);
+		helper.assertTrue(helper.getLevel().getBlockState(panel).getValue(BlockLightPanel.ACTIVE),
+				"Light Panel activation must persist in explicit block state");
+		helper.assertTrue(helper.getLevel().getBlockState(panel).getLightEmission(helper.getLevel(), panel) == 15,
+				"active Light Panel must emit the source-exact light level 15");
+
+		BlockPos toggle = panel.east();
+		helper.getLevel().setBlock(toggle, ChromaBlocks.PANEL_SWITCH.get().defaultBlockState(), 3);
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		BlockHitResult hit = new BlockHitResult(Vec3.atCenterOf(toggle), Direction.UP, toggle, false);
+		helper.assertTrue(helper.getLevel().getBlockState(toggle)
+				.useWithoutItem(helper.getLevel(), player, hit).consumesAction(),
+				"Panel Switch must consume its interaction");
+		helper.assertTrue(BlockLightSwitch.isSwitchUp(helper.getLevel(), toggle),
+				"Panel Switch interaction must toggle the explicit UP state");
+
+		BlockPos colorDoor = toggle.east();
+		helper.getLevel().setBlock(colorDoor, ChromaBlocks.COLOR_LOCK.get().defaultBlockState(), 3);
+		TileEntityColorLock lock = (TileEntityColorLock)helper.getLevel().getBlockEntity(colorDoor);
+		helper.assertTrue(lock != null, "Color Lock must create its persistence entity");
+		lock.setColors(CrystalElement.RED, CrystalElement.BLUE);
+		lock.setOpenColors(java.util.Set.of(CrystalElement.RED));
+		helper.assertTrue(!helper.getLevel().getBlockState(colorDoor).getValue(BlockColoredLock.OPEN),
+				"Color Lock must remain solid while one required color is closed");
+		lock.setOpenColors(java.util.Set.of(CrystalElement.RED, CrystalElement.BLUE));
+		helper.assertTrue(helper.getLevel().getBlockState(colorDoor).getValue(BlockColoredLock.OPEN),
+				"Color Lock must open when all required colors are represented");
+		helper.assertTrue(helper.getLevel().getBlockState(colorDoor).getCollisionShape(helper.getLevel(), colorDoor).isEmpty(),
+				"an open Color Lock must remove collision");
+
+		BlockPos controllerPos = helper.absolutePos(new BlockPos(12, 2, 12));
+		BlockPos puzzleDoor = controllerPos.offset(1, 2, -3);
+		helper.getLevel().setBlock(puzzleDoor, ChromaBlocks.COLOR_LOCK.get().defaultBlockState(), 3);
+		helper.getLevel().setBlock(controllerPos, ChromaBlocks.STRUCTURE_CONTROLLER.get().defaultBlockState(), 3);
+		TileEntityStructureController controller = (TileEntityStructureController)helper.getLevel()
+				.getBlockEntity(controllerPos);
+		helper.assertTrue(controller != null, "Biome Fragment must have a persistent controller");
+		controller.initialize(TileEntityStructureController.StructureType.BIOME_FRAGMENT,
+				CrystalElement.WHITE, 0, false, false);
+		CrystalElement first = controller.getBiomeDoorColor(0, 0);
+		CrystalElement second = controller.getBiomeDoorColor(0, 1);
+		BlockPos firstRune = controllerPos.offset(5, 5, 6);
+		BlockPos secondRune = controllerPos.offset(6, 5, 5);
+		helper.getLevel().setBlock(firstRune, ChromaBlocks.rune(first).get().defaultBlockState(), 3);
+		helper.getLevel().setBlock(secondRune, ChromaBlocks.rune(second).get().defaultBlockState(), 3);
+		for (BlockPos keyPos : List.of(firstRune.above(), secondRune.above())) {
+			helper.getLevel().setBlock(keyPos, ChromaBlocks.LOCK_KEY.get().defaultBlockState()
+					.setValue(reika.chromaticraft.block.dimension.structure.locks.BlockLockKey.CHANNEL,
+							controller.getBiomeKeyChannel()), 3);
+			TileEntityLockKey key = (TileEntityLockKey)helper.getLevel().getBlockEntity(keyPos);
+			helper.assertTrue(key != null, "Lock Key must create its persistence entity");
+			key.setDelegate(controllerPos);
+			key.notifyDelegate(true, player);
+		}
+		helper.assertTrue(helper.getLevel().getBlockState(puzzleDoor).getValue(BlockColoredLock.OPEN),
+				"keys moved above both required runes must open the matching Biome Fragment door");
+		TileEntityLockKey portable = (TileEntityLockKey)helper.getLevel().getBlockEntity(firstRune.above());
+		ItemStack keyStack = portable.createPortableStack(controller.getBiomeKeyChannel());
+		CompoundTag keyData = keyStack.getOrDefault(net.minecraft.core.component.DataComponents.CUSTOM_DATA,
+				net.minecraft.world.item.component.CustomData.EMPTY).copyTag();
+		helper.assertTrue(keyData.getIntOr("channel", -1) == controller.getBiomeKeyChannel()
+				&& keyData.getLong("delegate").map(BlockPos::of).filter(controllerPos::equals).isPresent(),
+				"mined Lock Keys must preserve their channel and delegate in 26.2 custom data");
+		helper.getLevel().removeBlock(firstRune.above(), false);
+		helper.assertTrue(!helper.getLevel().getBlockState(puzzleDoor).getValue(BlockColoredLock.OPEN),
+				"removing a rune key must immediately close doors requiring that color");
+		helper.succeed();
+	}
+
+	private static void biomeFragmentMusicLoop(GameTestHelper helper) {
+		BlockPos controllerPos = helper.absolutePos(new BlockPos(12, 2, 12));
+		helper.getLevel().setBlock(controllerPos,
+				ChromaBlocks.STRUCTURE_CONTROLLER.get().defaultBlockState(), 3);
+		TileEntityStructureController controller = (TileEntityStructureController)helper.getLevel()
+				.getBlockEntity(controllerPos);
+		helper.assertTrue(controller != null, "Biome Fragment music must have a persistent controller");
+		controller.initialize(TileEntityStructureController.StructureType.BIOME_FRAGMENT,
+				CrystalElement.WHITE, 0, false, false);
+
+		List<MusicKey> melody = controller.getBiomeMelody();
+		helper.assertTrue(!melody.isEmpty(), "Biome Fragment must select a V33a prefab melody");
+		java.util.Set<CrystalElement> crystalColors = new java.util.HashSet<>();
+		for (int i = 0; i < 8; i++) crystalColors.add(controller.getBiomeCrystalColor(i));
+		helper.assertTrue(crystalColors.size() == 8,
+				"Biome Fragment must generate eight distinct playable crystal identities");
+		for (MusicKey note : melody)
+			if (note != null)
+				helper.assertTrue(crystalColors.stream().anyMatch(element ->
+						reika.chromaticraft.auxiliary.CrystalMusicManager.instance.getKeys(element).contains(note)),
+						"generated crystals must be capable of playing " + note);
+		MusicKey expected = melody.stream().filter(java.util.Objects::nonNull).findFirst().orElseThrow();
+		CrystalElement triggerElement = crystalColors.stream().filter(element ->
+				reika.chromaticraft.auxiliary.CrystalMusicManager.instance.getKeys(element)
+						.contains(expected)).findFirst().orElseThrow();
+		int triggerIndex = reika.chromaticraft.auxiliary.CrystalMusicManager.instance
+				.getIntervalFor(triggerElement, expected);
+		BlockPos trigger = controllerPos.offset(4, 2, 0);
+		helper.getLevel().setBlock(trigger, ChromaBlocks.MUSIC_TRIGGER.get().defaultBlockState(), 3);
+		helper.getLevel().setBlock(trigger.above(),
+				ChromaBlocks.crystalLamp(triggerElement).get().defaultBlockState(), 3);
+		double clickX = triggerIndex == 0 || triggerIndex == 3 ? 0.25 : 0.75;
+		double clickY = triggerIndex <= 1 ? 0.75 : 0.25;
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		BlockHitResult triggerHit = new BlockHitResult(new Vec3(trigger.getX() + clickX,
+				trigger.getY() + clickY, trigger.getZ() + 1), Direction.SOUTH, trigger, false);
+		helper.assertTrue(helper.getLevel().getBlockState(trigger).useWithoutItem(
+				helper.getLevel(), player, triggerHit).consumesAction(),
+				"the original trigger quadrant must consume a direct interaction");
+		helper.assertTrue(controller.getBiomeGuessIndex() > melody.indexOf(expected),
+				"Music Trigger discovery must route its elemental note into the controller guess");
+
+		for (int x = -1; x <= 1; x++)
+			for (int z = -1; z <= 1; z++)
+				helper.getLevel().setBlock(controllerPos.offset(x, 1, z),
+						reika.chromaticraft.block.BlockChromaDoor.state(false, false, false, true), 3);
+		List<BlockPos> lowerCaches = List.of(controllerPos.offset(-4, 2, -5),
+				controllerPos.offset(5, 2, -4), controllerPos.offset(4, 2, 5),
+				controllerPos.offset(-5, 2, 4));
+		for (BlockPos cache : lowerCaches) {
+			helper.getLevel().setBlock(cache, ChromaBlocks.LOOT_CHEST.get().defaultBlockState(), 3);
+			((TileEntityLootChest)helper.getLevel().getBlockEntity(cache)).setStructureLocked(true);
+		}
+		MusicKey wrong = expected == MusicKey.C1 ? MusicKey.Cs1 : MusicKey.C1;
+		controller.onMusicTrigger(controllerPos.above(), CrystalElement.WHITE, wrong, null);
+		helper.assertTrue(controller.getBiomeGuessIndex() == melody.indexOf(expected),
+				"a wrong note must reset the melody guess to its first non-rest note");
+		for (MusicKey note : melody)
+			if (note != null)
+				controller.onMusicTrigger(controllerPos.above(), CrystalElement.WHITE, note, null);
+		helper.assertTrue(controller.isBiomeComplete(),
+				"entering the complete prefab melody must persist puzzle completion");
+		for (int x = -1; x <= 1; x++)
+			for (int z = -1; z <= 1; z++) {
+				BlockPos barrier = controllerPos.offset(x, 1, z);
+				helper.assertTrue(helper.getLevel().getBlockState(barrier)
+						.getValue(reika.chromaticraft.block.BlockChromaDoor.OPEN),
+						"music completion must open every central barrier cell");
+			}
+		for (BlockPos cache : lowerCaches)
+			helper.assertTrue(!((TileEntityLootChest)helper.getLevel().getBlockEntity(cache)).isStructureLocked(),
+					"music completion must clear the V33a structure lock on every lower cache");
+		helper.succeed();
+	}
+
+	/** Canonical NBT, runtime colour substitution, delegates, loot locks and melody completion. */
+	private static void biomeFragmentNbtCompletion(GameTestHelper helper) {
+		BlockPos origin = helper.absolutePos(new BlockPos(12, 6, 12));
+		FeaturePlaceContext<NoneFeatureConfiguration> context = new FeaturePlaceContext<>(Optional.empty(),
+				helper.getLevel(), helper.getLevel().getChunkSource().getGenerator(),
+				RandomSource.create(0xB10FEA6L), origin, NoneFeatureConfiguration.INSTANCE);
+		helper.assertTrue(new OverworldStructureFeature(
+				OverworldStructureFeature.Type.BIOME_FRAGMENT, false).place(context),
+				"command Biome Fragment feature must place the canonical V33a NBT at its controller coordinate");
+		helper.assertTrue(helper.getLevel().getBlockEntity(origin) instanceof TileEntityStructureController,
+				"the reserved Biome Fragment template cell must become its persistent controller");
+		TileEntityStructureController controller =
+				(TileEntityStructureController)helper.getLevel().getBlockEntity(origin);
+		helper.assertTrue(controller.getStructureType()
+				== TileEntityStructureController.StructureType.BIOME_FRAGMENT,
+				"the controller must persist the Biome Fragment identity");
+
+		int[][] runes = {{5,5,6},{6,5,5},{-5,5,6},{-6,5,5},
+				{5,5,-6},{6,5,-5},{-5,5,-6},{-6,5,-5}};
+		int[][] crystals = {{-4,3,1},{-5,3,1},{-1,3,-4},{-1,3,-5},
+				{4,3,-1},{5,3,-1},{1,3,4},{1,3,5}};
+		for (int i = 0; i < 8; i++) {
+			helper.assertTrue(helper.getLevel().getBlockState(origin.offset(
+					runes[i][0], runes[i][1], runes[i][2]))
+						.is(ChromaBlocks.rune(controller.getBiomeRuneColor(i)).get()),
+					"runtime initialization must replace rune placeholder " + i
+							+ " with its independently registered colour identity");
+			helper.assertTrue(helper.getLevel().getBlockState(origin.offset(
+					crystals[i][0], crystals[i][1], crystals[i][2]))
+						.is(ChromaBlocks.crystalLamp(controller.getBiomeCrystalColor(i)).get()),
+					"runtime initialization must replace music crystal placeholder " + i
+							+ " with its independently registered colour identity");
+		}
+
+		long triggers = BlockPos.betweenClosedStream(origin.offset(-6, 1, -6), origin.offset(6, 4, 6))
+				.filter(pos -> helper.getLevel().getBlockState(pos).is(ChromaBlocks.MUSIC_TRIGGER.get())).count();
+		long chests = BlockPos.betweenClosedStream(origin.offset(-7, -2, -7), origin.offset(7, 11, 7))
+				.filter(pos -> helper.getLevel().getBlockEntity(pos) instanceof TileEntityLootChest).count();
+		helper.assertTrue(triggers == 8,
+				"the source music rooms must retain all eight trigger quadrants; got " + triggers);
+		helper.assertTrue(chests == 8,
+				"the source room must retain four lower and four upper loot caches; got " + chests);
+		helper.assertTrue(helper.getLevel().getBlockState(origin.offset(0, 10, 0))
+				.is(ChromaBlocks.BIOME_REPLAY.get()),
+				"the upper source pedestal must be the melody replay callback block");
+
+		for (BlockPos keyPos : List.of(origin.offset(0, 5, -2), origin.offset(0, 5, 2))) {
+			helper.assertTrue(helper.getLevel().getBlockState(keyPos)
+					.getValue(reika.chromaticraft.block.dimension.structure.locks.BlockLockKey.CHANNEL)
+					== controller.getBiomeKeyChannel(),
+					"each Lock Key must receive the controller's randomized channel");
+			TileEntityLockKey key = (TileEntityLockKey)helper.getLevel().getBlockEntity(keyPos);
+			helper.assertTrue(key != null && origin.equals(key.getDelegate()),
+					"each Lock Key must delegate changes to the placed controller");
+		}
+		List<BlockPos> lowerCaches = List.of(origin.offset(-4, 2, -5), origin.offset(5, 2, -4),
+				origin.offset(4, 2, 5), origin.offset(-5, 2, 4));
+		for (BlockPos cache : lowerCaches)
+			helper.assertTrue(helper.getLevel().getBlockEntity(cache) instanceof TileEntityLootChest chest
+					&& chest.isStructureLocked(),
+					"every lower cache must begin locked behind the melody puzzle");
+
+		for (MusicKey note : controller.getBiomeMelody())
+			if (note != null)
+				controller.onMusicTrigger(origin.above(), CrystalElement.WHITE, note, null);
+		helper.assertTrue(controller.isBiomeComplete(),
+				"entering the exact generated prefab melody must complete the placed structure");
+		for (BlockPos cache : lowerCaches)
+			helper.assertTrue(!((TileEntityLootChest)helper.getLevel().getBlockEntity(cache)).isStructureLocked(),
+					"completion must unlock every placed lower cache");
+		for (int x = -1; x <= 1; x++)
+			for (int z = -1; z <= 1; z++)
+				helper.assertTrue(helper.getLevel().getBlockState(origin.offset(x, 1, z))
+						.getValue(reika.chromaticraft.block.BlockChromaDoor.OPEN),
+						"completion must open every central NBT barrier cell");
+		helper.succeed();
+	}
+
+	private static void structureDesertNbtController(GameTestHelper helper) {
+		BlockPos origin = helper.absolutePos(new BlockPos(10, 10, 10));
+		FeaturePlaceContext<NoneFeatureConfiguration> context = new FeaturePlaceContext<>(Optional.empty(),
+				helper.getLevel(), helper.getLevel().getChunkSource().getGenerator(),
+				RandomSource.create(0xDE5E471L), origin, NoneFeatureConfiguration.INSTANCE);
+		helper.assertTrue(new OverworldStructureFeature(OverworldStructureFeature.Type.DESERT, false).place(context),
+				"command Desert feature must place the canonical V33a NBT at its controller coordinate");
+		TileEntityStructureController controller = (TileEntityStructureController)helper.getLevel().getBlockEntity(origin);
+		helper.assertTrue(controller != null && controller.getStructureType()
+				== TileEntityStructureController.StructureType.DESERT, "Desert controller identity must persist");
+		long chests = BlockPos.betweenClosedStream(origin.offset(-7, -3, -7), origin.offset(7, 9, 8))
+				.filter(pos -> helper.getLevel().getBlockEntity(pos) instanceof TileEntityLootChest).count();
+		long spawners = BlockPos.betweenClosedStream(origin.offset(-7, -3, -7), origin.offset(7, 9, 8))
+				.filter(pos -> helper.getLevel().getBlockState(pos).is(Blocks.SPAWNER)).count();
+		helper.assertTrue(chests == 12, "Desert source geometry must retain twelve loot chests; got " + chests);
+		helper.assertTrue(spawners == 5, "Desert source geometry must retain five programmed spawners; got " + spawners);
+		helper.succeed();
+	}
+
+	/** Exact Snow NBT plus its source-seeded cracks and one-of-four concealed route. */
+	private static void structureSnowNbtRoute(GameTestHelper helper) {
+		BlockPos origin = helper.absolutePos(new BlockPos(10, 10, 10));
+		FeaturePlaceContext<NoneFeatureConfiguration> context = new FeaturePlaceContext<>(Optional.empty(),
+				helper.getLevel(), helper.getLevel().getChunkSource().getGenerator(),
+				RandomSource.create(0x5A0A71L), origin, NoneFeatureConfiguration.INSTANCE);
+		helper.assertTrue(new OverworldStructureFeature(OverworldStructureFeature.Type.SNOW, false).place(context),
+				"command Snow feature must place the canonical V33a NBT at its controller coordinate");
+		TileEntityStructureController controller = (TileEntityStructureController)helper.getLevel().getBlockEntity(origin);
+		helper.assertTrue(controller != null && controller.getStructureType()
+				== TileEntityStructureController.StructureType.SNOW,
+				"Snow controller identity must be explicit and persistent");
+		long chests = BlockPos.betweenClosedStream(origin.offset(-8, -3, -6), origin.offset(8, 11, 10))
+				.filter(pos -> helper.getLevel().getBlockEntity(pos) instanceof TileEntityLootChest).count();
+		long spawners = BlockPos.betweenClosedStream(origin.offset(-8, -3, -6), origin.offset(8, 11, 10))
+				.filter(pos -> helper.getLevel().getBlockState(pos).is(Blocks.SPAWNER)).count();
+		long locks = BlockPos.betweenClosedStream(origin.offset(-2, 3, 0), origin.offset(2, 5, 4))
+				.filter(pos -> helper.getLevel().getBlockState(pos).is(ChromaBlocks.SHIFT_LOCK.get())).count();
+		helper.assertTrue(chests == 11, "Snow source geometry must retain all eleven loot chests; got " + chests);
+		helper.assertTrue(spawners == 3, "Snow source geometry must restore all three intended Wolf spawners; got " + spawners);
+		helper.assertTrue(locks == 36, "Snow center must begin behind all thirty-six concealed Shift Locks; got " + locks);
+
+		ServerPlayer entrant = helper.makeMockServerPlayerInLevel();
+		entrant.snapTo(net.minecraft.world.phys.Vec3.atCenterOf(origin.offset(0, 4, 2)));
+		helper.runAfterDelay(5, () -> {
+			long crackedCenter = BlockPos.betweenClosedStream(origin.offset(-1, 2, 1), origin.offset(1, 2, 4))
+					.filter(pos -> helper.getLevel().getBlockState(pos).is(ChromaBlocks.shielding(
+							reika.chromaticraft.registry.ChromaShieldTypes.CRACKS).get())).count();
+			long routed = BlockPos.betweenClosedStream(origin.offset(-2, 3, 0), origin.offset(2, 5, 4))
+					.filter(pos -> {
+						BlockState state = helper.getLevel().getBlockState(pos);
+						return state.is(ChromaBlocks.SHIFT_LOCK.get()) && state.getValue(
+								reika.chromaticraft.block.dimension.structure.shiftmaze.BlockShiftLock.PASSABILITY)
+								!= reika.chromaticraft.block.dimension.structure.shiftmaze.BlockShiftLock.Passability.CLOSED_HIDDEN;
+					}).count();
+			helper.assertTrue(controller.wasTriggered() && controller.isTriggerPlayer(entrant),
+					"entering the Snow proximity box must persist its one-shot trigger player");
+			helper.assertTrue(crackedCenter == 12,
+					"Snow activation must expose the exact twelve-cell crack path; got " + crackedCenter);
+			helper.assertTrue(routed == 9,
+					"Snow activation must reveal exactly one source 3x3 Shift Lock route; got " + routed);
+			helper.succeed();
+		});
+	}
+
+	/** Exact Ocean NBT, spawners/chests, proximity panels and the timed pit cover operate together. */
+	private static void structureOceanNbtTrap(GameTestHelper helper) {
+		BlockPos origin = helper.absolutePos(new BlockPos(10, 20, 10));
+		FeaturePlaceContext<NoneFeatureConfiguration> context = new FeaturePlaceContext<>(Optional.empty(),
+				helper.getLevel(), helper.getLevel().getChunkSource().getGenerator(),
+				RandomSource.create(0x0CEA711L), origin, NoneFeatureConfiguration.INSTANCE);
+		helper.assertTrue(new OverworldStructureFeature(OverworldStructureFeature.Type.OCEAN, false).place(context),
+				"command Ocean feature must place the canonical V33a NBT at its controller coordinate");
+		helper.assertTrue(helper.getLevel().getBlockEntity(origin) instanceof TileEntityStructureController,
+				"Ocean template anchor must become a structure controller");
+		TileEntityStructureController controller =
+				(TileEntityStructureController)helper.getLevel().getBlockEntity(origin);
+		helper.assertTrue(controller.getStructureType() == TileEntityStructureController.StructureType.OCEAN,
+				"Ocean controller identity must be explicit and persistent");
+		long chests = BlockPos.betweenClosedStream(origin.offset(-3, -5, -3), origin.offset(27, 7, 27))
+				.filter(pos -> helper.getLevel().getBlockEntity(pos) instanceof TileEntityLootChest).count();
+		long spawners = BlockPos.betweenClosedStream(origin.offset(-3, -5, -3), origin.offset(27, 7, 27))
+				.filter(pos -> helper.getLevel().getBlockState(pos).is(Blocks.SPAWNER)).count();
+		helper.assertTrue(chests == 8, "Ocean source geometry must retain all eight loot chests; got " + chests);
+		helper.assertTrue(spawners == 2, "Ocean source geometry must retain both Creeper spawners; got " + spawners);
+		BlockPos cover = origin.offset(0, -3, 0);
+		helper.assertTrue(helper.getLevel().getBlockState(cover).is(ChromaBlocks.shielding(
+				reika.chromaticraft.registry.ChromaShieldTypes.CLOAK).get()),
+				"the 3x3 source pit cover must begin sealed three blocks below the controller");
+		ServerPlayer entrant = helper.makeMockServerPlayerInLevel();
+		entrant.snapTo(net.minecraft.world.phys.Vec3.atCenterOf(origin.above(2)));
+		helper.runAfterDelay(5, () -> {
+			BlockState cracked = helper.getLevel().getBlockState(origin.offset(0, 2, 15));
+			helper.assertTrue(cracked.is(ChromaBlocks.shielding(
+					reika.chromaticraft.registry.ChromaShieldTypes.CRACKS).get()),
+					"Ocean proximity must crack the distant source cover panels");
+			controller.onHit(entrant, origin);
+			helper.assertTrue(helper.getLevel().getBlockState(cover).isAir(),
+					"hitting the Ocean funnel must open its 3x3 pit cover");
+			helper.runAfterDelay(42, () -> {
+				helper.assertTrue(helper.getLevel().getBlockState(cover).is(ChromaBlocks.shielding(
+						reika.chromaticraft.registry.ChromaShieldTypes.CLOAK).get()),
+						"the Ocean trap must reseal after V33a's forty ticks");
+				helper.succeed();
+			});
+		});
+	}
+
+	/** The data-driven cache still collates and separates block drops from ordinary items. */
+	private static void burrowCacheLootHalves(GameTestHelper helper) {
+		BlockPos pos = helper.absolutePos(new BlockPos(8, 4, 8));
+		helper.getLevel().setBlock(pos, ChromaBlocks.LOOT_CHEST.get().defaultBlockState(), 3);
+		TileEntityLootChest chest = (TileEntityLootChest)helper.getLevel().getBlockEntity(pos);
+		chest.setLootTable(OverworldStructureFeature.BURROW_CACHE_LOOT, 0xB0770CA5EL);
+		chest.unpackLootTable(null);
+		int stacks = 0;
+		for (int slot = 0; slot < chest.getContainerSize(); slot++) {
+			ItemStack stack = chest.getItem(slot);
+			if (stack.isEmpty()) continue;
+			stacks++;
+			boolean block = net.minecraft.world.level.block.Block.byItem(stack.getItem())
+					!= net.minecraft.world.level.block.Blocks.AIR;
+			helper.assertTrue(slot < 27 ? block : !block,
+					"Burrow cache slot " + slot + " violated V33a's block/item chest-half split");
+		}
+		helper.assertTrue(stacks > 0, "the Burrow cache's 13-20 weighted rolls must produce loot");
+		helper.succeed();
+	}
+
+	/** Distinct lamp identities, source temperature bounds, facing and fuel-free furnace assistance. */
+	private static void heatLampTemperatureFurnaceLoop(GameTestHelper helper) {
+		BlockPos furnacePos = helper.absolutePos(new BlockPos(8, 4, 8));
+		helper.getLevel().setBlock(furnacePos, net.minecraft.world.level.block.Blocks.FURNACE.defaultBlockState(), 3);
+		BlockPos lampPos = furnacePos.above();
+		BlockState lampState = ChromaBlocks.HEAT_LAMP.get().defaultBlockState()
+				.setValue(reika.chromaticraft.block.BlockHeatLamp.FACING, Direction.UP);
+		helper.getLevel().setBlock(lampPos, lampState, 3);
+		var lamp = (reika.chromaticraft.tileentity.TileEntityHeatLamp)helper.getLevel().getBlockEntity(lampPos);
+		var furnace = (net.minecraft.world.level.block.entity.AbstractFurnaceBlockEntity)
+				helper.getLevel().getBlockEntity(furnacePos);
+		lamp.setTemperature(10000);
+		helper.assertTrue(lamp.getTemperature() == reika.chromaticraft.tileentity.TileEntityHeatLamp.MAXTEMP,
+				"hot Heat Lamp temperature must clamp to V33a's 615 C maximum");
+		furnace.setItem(0, new ItemStack(net.minecraft.world.item.Items.IRON_ORE));
+		for (int i = 0; i < 400; i++)
+			reika.chromaticraft.tileentity.TileEntityHeatLamp.serverTick(helper.getLevel(), lampPos,
+					lampState, lamp);
+		helper.assertTrue(furnace.getItem(2).is(net.minecraft.world.item.Items.IRON_INGOT),
+				"a hot Heat Lamp above 200 C must supplant furnace fuel");
+		BlockPos coldPos = furnacePos.east(2);
+		helper.getLevel().setBlock(coldPos.below(), net.minecraft.world.level.block.Blocks.STONE.defaultBlockState(), 3);
+		helper.getLevel().setBlock(coldPos, ChromaBlocks.COLD_LAMP.get().defaultBlockState()
+				.setValue(reika.chromaticraft.block.BlockHeatLamp.FACING, Direction.UP), 3);
+		var cold = (reika.chromaticraft.tileentity.TileEntityHeatLamp)helper.getLevel().getBlockEntity(coldPos);
+		cold.setTemperature(-10000);
+		helper.assertTrue(cold.getTemperature() == reika.chromaticraft.tileentity.TileEntityHeatLamp.MINTEMP_COLD,
+				"cold Heat Lamp temperature must clamp to V33a's -60 C minimum");
+		helper.assertTrue(ChromaBlocks.HEAT_LAMP.get() != ChromaBlocks.COLD_LAMP.get(),
+				"hot and cold metadata forms must remain separate modern registry identities");
+		helper.succeed();
+	}
+
+	/** Four connected cells share one UUID, consume the matching key, open, and close together. */
+	private static void chromaDoorUuidKeyLoop(GameTestHelper helper) {
+		BlockPos root = helper.absolutePos(new BlockPos(8, 4, 8));
+		BlockState state = reika.chromaticraft.block.BlockChromaDoor.state(false, false, true, false);
+		for (int x = 0; x < 2; x++)
+			for (int y = 0; y < 2; y++)
+				helper.getLevel().setBlock(root.offset(x, y, 0), state, 3);
+		TileEntityChromaDoor door = (TileEntityChromaDoor)helper.getLevel().getBlockEntity(root);
+		java.util.UUID id = java.util.UUID.randomUUID();
+		door.bindUUID(null, id, false);
+		ItemStack key = new ItemStack(ChromaItems.DOOR_KEY.get());
+		ChromaItems.DOOR_KEY.get().setID(key, id);
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, key);
+		var hit = new net.minecraft.world.phys.BlockHitResult(net.minecraft.world.phys.Vec3.atCenterOf(root),
+				Direction.NORTH, root, false);
+		helper.assertTrue(key.getItem().useOn(new net.minecraft.world.item.context.UseOnContext(player,
+				net.minecraft.world.InteractionHand.MAIN_HAND, hit)).consumesAction(),
+				"a matching Door Key must claim the Chroma Door interaction");
+		helper.assertTrue(key.isEmpty(), "a one-use Chroma Door must consume its matching key");
+		for (int x = 0; x < 2; x++)
+			for (int y = 0; y < 2; y++)
+				helper.assertTrue(helper.getLevel().getBlockState(root.offset(x, y, 0))
+						.getValue(reika.chromaticraft.block.BlockChromaDoor.OPEN),
+						"every UUID-matched connected door cell must open together");
+		helper.runAfterDelay(55, () -> {
+			for (int x = 0; x < 2; x++)
+				for (int y = 0; y < 2; y++)
+					helper.assertTrue(!helper.getLevel().getBlockState(root.offset(x, y, 0))
+							.getValue(reika.chromaticraft.block.BlockChromaDoor.OPEN),
+							"the scheduled close must close the whole UUID-matched component");
+			door.bindUUID(null, id, true);
+			door.setPlacer(player.getUUID());
+			player.snapTo(net.minecraft.world.phys.Vec3.atCenterOf(root));
+			TileEntityChromaDoor.serverTick(helper.getLevel(), root,
+					helper.getLevel().getBlockState(root), door);
+			helper.assertTrue(helper.getLevel().getBlockState(root)
+					.getValue(reika.chromaticraft.block.BlockChromaDoor.OPEN),
+					"an automatic binding must reopen for its nearby owner");
+			helper.succeed();
+		});
+	}
+
+	/** Exact Burrow base NBT, colour identity, six chests and proximity crack form one runtime loop. */
+	private static void structureBurrowNbtController(GameTestHelper helper) {
+		BlockPos origin = helper.absolutePos(new BlockPos(10, 8, 10));
+		FeaturePlaceContext<NoneFeatureConfiguration> context = new FeaturePlaceContext<>(Optional.empty(),
+				helper.getLevel(), helper.getLevel().getChunkSource().getGenerator(),
+				RandomSource.create(0xB0770A11L), origin, NoneFeatureConfiguration.INSTANCE);
+		helper.assertTrue(new OverworldStructureFeature(OverworldStructureFeature.Type.BURROW, false).place(context),
+				"command Burrow feature must place its canonical NBT at the requested controller coordinate");
+		helper.assertTrue(helper.getLevel().getBlockEntity(origin) instanceof TileEntityStructureController,
+				"the Burrow template anchor must become a structure controller");
+		TileEntityStructureController controller =
+				(TileEntityStructureController)helper.getLevel().getBlockEntity(origin);
+		helper.assertTrue(controller.getStructureType() == TileEntityStructureController.StructureType.BURROW,
+				"the controller must persist the Burrow identity");
+		BlockState lamp = helper.getLevel().getBlockState(origin.offset(0, -2, 0));
+		helper.assertTrue(lamp.is(ChromaBlocks.crystalLamp(controller.getColor()).get()),
+				"the source-selected Burrow colour must match its independently registered lamp block");
+		long chests = BlockPos.betweenClosedStream(origin.offset(-3, -3, -3), origin.offset(6, 8, 3))
+				.filter(pos -> helper.getLevel().getBlockEntity(pos) instanceof TileEntityLootChest).count();
+		helper.assertTrue(chests == 6, "the exact Burrow base must retain all six loot chests; got " + chests);
+		BlockPos triggerBlock = origin.offset(2, 1, 0);
+		helper.assertTrue(helper.getLevel().getBlockState(triggerBlock).is(ChromaBlocks.shielding(
+				reika.chromaticraft.registry.ChromaShieldTypes.STONE).get()),
+				"the proximity block must begin as the authored reinforced stone cell");
+		ServerPlayer entrant = helper.makeMockServerPlayerInLevel();
+		entrant.snapTo(net.minecraft.world.phys.Vec3.atCenterOf(triggerBlock));
+		helper.runAfterDelay(5, () -> {
+			BlockState cracked = helper.getLevel().getBlockState(triggerBlock);
+			helper.assertTrue(controller.wasTriggered() && controller.isTriggerPlayer(entrant),
+					"entering the Burrow trigger box must persist its one-shot trigger player");
+			helper.assertTrue(cracked.is(ChromaBlocks.shielding(
+					reika.chromaticraft.registry.ChromaShieldTypes.CRACK).get())
+					&& cracked.getValue(reika.chromaticraft.block.worldgen26.BlockStructureShield.REINFORCED),
+					"Burrow proximity must convert the source entrance cell to reinforced crack");
+			helper.succeed();
+		});
+	}
+
+	/** Exact Cavern NBT, persistent controller reward, tunnel and entry trap form one runtime loop. */
+	private static void structureCavernNbtController(GameTestHelper helper) {
+		BlockPos origin = helper.absolutePos(new BlockPos(10, 10, 10));
+		FeaturePlaceContext<NoneFeatureConfiguration> context = new FeaturePlaceContext<>(Optional.empty(),
+				helper.getLevel(), helper.getLevel().getChunkSource().getGenerator(),
+				RandomSource.create(0xCA73A11L), origin, NoneFeatureConfiguration.INSTANCE);
+		helper.assertTrue(new OverworldStructureFeature(OverworldStructureFeature.Type.CAVERN, false).place(context),
+				"command Cavern feature must place its canonical NBT at the requested controller coordinate");
+		helper.assertTrue(helper.getLevel().getBlockEntity(origin) instanceof TileEntityStructureController,
+				"the reserved template anchor must become the registered structure controller");
+		TileEntityStructureController controller =
+				(TileEntityStructureController)helper.getLevel().getBlockEntity(origin);
+		helper.assertTrue(controller.getStructureType()
+				== TileEntityStructureController.StructureType.CAVERN,
+				"the controller must persist the Cavern identity rather than infer it from geometry");
+		int fragments = 0;
+		for (int slot = 0; slot < controller.getContainerSize(); slot++) {
+			ItemStack stack = controller.getItem(slot);
+			if (stack.is(ChromaItems.INFO_FRAGMENT.get()))
+				fragments += stack.getCount();
+		}
+		helper.assertTrue(fragments == 1 || fragments == 2 || fragments == 3 || fragments == 4
+				|| fragments == 5 || fragments == 7,
+				"controller must contain the source random guaranteed fragment reward; got " + fragments);
+		long chests = BlockPos.betweenClosedStream(origin.offset(-7, -2, -5), origin.offset(6, 3, 5))
+				.filter(pos -> helper.getLevel().getBlockEntity(pos) instanceof TileEntityLootChest).count();
+		helper.assertTrue(chests == 2, "the exact Cavern template must retain both loot chests; got " + chests);
+		for (int x = 7; x < 18; x++) {
+			helper.assertTrue(helper.getLevel().getBlockState(origin.offset(x, 0, 0)).isAir()
+					&& helper.getLevel().getBlockState(origin.offset(x, -1, 0)).isAir(),
+					"Cavern placement must carve the source two-block-high east tunnel at offset " + x);
+		}
+		ServerPlayer entrant = helper.makeMockServerPlayerInLevel();
+		entrant.snapTo(net.minecraft.world.phys.Vec3.atCenterOf(origin));
+		helper.runAfterDelay(5, () -> {
+			helper.assertTrue(controller.wasTriggered() && controller.isTriggerPlayer(entrant),
+					"entering the source Cavern AABB must trigger once and persist the triggering player");
+			for (int y = -1; y <= 0; y++) {
+				BlockState seal = helper.getLevel().getBlockState(origin.offset(7, y, 0));
+				helper.assertTrue(seal.is(ChromaBlocks.shielding(
+						reika.chromaticraft.registry.ChromaShieldTypes.CLOAK).get())
+						&& seal.getValue(reika.chromaticraft.block.worldgen26.BlockStructureShield.REINFORCED),
+						"Cavern proximity must seal both east entrance cells with reinforced cloak");
+			}
+			controller.reopenStructure();
+			helper.assertTrue(!controller.wasTriggered()
+					&& helper.getLevel().getBlockState(origin.offset(7, 0, 0)).isAir()
+					&& helper.getLevel().getBlockState(origin.offset(7, -1, 0)).isAir(),
+					"reopen must clear both seals and leave an untriggered Cavern controller");
+			helper.succeed();
+		});
 	}
 
 	/** Creative inspection must not inherit the survival-only invisible resource gate. */
@@ -254,7 +800,7 @@ public final class ChromaGameTests {
 		helper.succeed();
 	}
 
-	/** V33a small Rainbow Tree uses one chosen wood and its rising/falling diamond crown. */
+	/** V33a large Rainbow Tree NBT retains all 1,020 authored cells and one consistently chosen wood. */
 	private static void rainbowTreeShapeAndLog(GameTestHelper helper) {
 		BlockPos origin = helper.absolutePos(new BlockPos(8, 3, 8));
 		helper.getLevel().setBlock(origin.below(), Blocks.GRASS_BLOCK.defaultBlockState(), 3);
@@ -268,22 +814,24 @@ public final class ChromaGameTests {
 
 		java.util.Set<net.minecraft.world.level.block.Block> logs = new java.util.HashSet<>();
 		int leaves = 0;
-		int maxLeafY = Integer.MIN_VALUE;
-		for (int dx = -6; dx <= 6; dx++) for (int dy = 0; dy <= 24; dy++) for (int dz = -6; dz <= 6; dz++) {
+		java.util.EnumMap<Direction.Axis, Integer> axes = new java.util.EnumMap<>(Direction.Axis.class);
+		for (int dx = -6; dx <= 6; dx++) for (int dy = -3; dy <= 30; dy++) for (int dz = -6; dz <= 6; dz++) {
 			BlockPos pos = origin.offset(dx, dy, dz);
 			BlockState state = helper.getLevel().getBlockState(pos);
-			if (state.is(net.minecraft.tags.BlockTags.LOGS)) logs.add(state.getBlock());
-			if (state.is(ChromaBlocks.RAINBOW_LEAVES.get())) {
-				leaves++;
-				maxLeafY = Math.max(maxLeafY, pos.getY());
+			if (state.is(net.minecraft.tags.BlockTags.LOGS)) {
+				logs.add(state.getBlock());
+				axes.merge(state.getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.AXIS),
+						1, Integer::sum);
 			}
+			if (state.is(ChromaBlocks.RAINBOW_LEAVES.get())) leaves++;
 		}
 		helper.assertTrue(logs.size() == 1,
 				"every log in one dye/rainbow tree must share one chosen wood; got " + logs.size());
-		helper.assertTrue(leaves > 20, "the source diamond crown must contain substantial rainbow foliage");
-		BlockPos top = new BlockPos(origin.getX(), maxLeafY, origin.getZ());
-		helper.assertTrue(helper.getLevel().getBlockState(top).is(ChromaBlocks.RAINBOW_LEAVES.get()),
-				"the source crown terminates in a centered rainbow leaf");
+		helper.assertTrue(leaves == 812, "the NBT must retain all 812 authored rainbow-leaf cells; got " + leaves);
+		helper.assertTrue(axes.getOrDefault(Direction.Axis.Y, 0) == 152
+				&& axes.getOrDefault(Direction.Axis.X, 0) == 28
+				&& axes.getOrDefault(Direction.Axis.Z, 0) == 28,
+				"the NBT must retain V33a's 152 vertical and 28+28 branching log axes; got " + axes);
 		helper.succeed();
 	}
 
@@ -1084,10 +1632,7 @@ public final class ChromaGameTests {
 		});
 	}
 
-	/**
-	 * The NBT broadcast monument retains its V33a stone geometry and fails closed until the actual
-	 * chroma-fluid block is registered; structure-void markers must never become substitute blocks.
-	 */
+	/** The complete NBT broadcast monument activates through its exact liquid-chroma identity cells. */
 	private static void pylonBroadcastTemplateContract(GameTestHelper helper) {
 		BlockPos pylonPos = helper.absolutePos(new BlockPos(8, 12, 8));
 		TileEntityCrystalPylon pylon = placePylon(helper, pylonPos, CrystalElement.MAGENTA);
@@ -1099,14 +1644,30 @@ public final class ChromaGameTests {
 		assertPylonStone(helper, pylonPos.offset(5, -3, 0), BlockCrystallineStone.StoneTypes.FOCUS);
 		assertPylonStone(helper, pylonPos.offset(3, -5, 5), BlockCrystallineStone.StoneTypes.MULTICHROMIC);
 		assertPylonStone(helper, pylonPos.offset(2, -10, 4), BlockCrystallineStone.StoneTypes.SMOOTH);
-		helper.assertTrue(helper.getLevel().getBlockState(pylonPos.offset(2, -9, 4)).isAir(),
-				"deferred chroma-fluid cells must remain empty rather than silently accepting a substitute");
-		helper.assertTrue(!monument.matchInWorld(),
-				"broadcast monument must not validate while chromaticraft:chroma is unregistered");
+		BlockState chromaCell = helper.getLevel().getBlockState(pylonPos.offset(2, -9, 4));
+		helper.assertTrue(chromaCell.is(ChromaBlocks.CHROMA.get()),
+				"the canonical monument must place liquid chroma in every source fluid cell; got "
+						+ chromaCell);
+		helper.assertTrue(monument.matchInWorld(),
+				"the complete broadcast monument must validate with exact registered chroma cells");
+		helper.assertTrue(pylon.refreshBroadcastUpgrade() && pylon.hasBroadcastUpgrade(),
+				"the complete monument must synchronize the pylon's broadcast upgrade");
+		helper.assertTrue(!pylon.needsLineOfSightToReceiver(null),
+				"an active broadcast monument must remove ordinary receiver line-of-sight requirements");
+
+		BlockPos brokenCell = pylonPos.offset(2, -9, 4);
+		// Air is immediately refilled by the neighbouring source cells, so use a solid obstruction to
+		// model an actually broken monument cell rather than accidentally testing vanilla fluid flow.
+		helper.getLevel().setBlock(brokenCell, Blocks.STONE.defaultBlockState(), 3);
 		helper.assertTrue(!pylon.refreshBroadcastUpgrade() && !pylon.hasBroadcastUpgrade(),
-				"missing chroma fluid must keep the pylon broadcast upgrade disabled");
+				"removing one required liquid-chroma cell must immediately invalidate the broadcast monument");
 		helper.assertTrue(pylon.needsLineOfSightToReceiver(null),
-				"an inactive broadcast monument must preserve normal receiver line-of-sight requirements");
+				"an invalidated broadcast monument must restore ordinary receiver line-of-sight requirements");
+		helper.getLevel().setBlock(brokenCell, ChromaBlocks.CHROMA.get().defaultBlockState(), 3);
+		helper.assertTrue(pylon.refreshBroadcastUpgrade() && pylon.hasBroadcastUpgrade(),
+				"restoring the required liquid-chroma cell must reactivate the broadcast monument");
+		helper.assertTrue(!pylon.needsLineOfSightToReceiver(null),
+				"a repaired broadcast monument must remove receiver line-of-sight requirements again");
 		helper.succeed();
 	}
 

@@ -269,7 +269,7 @@ of them; censusing a pregenerated world caught all three.
 | `WarpNodeGenerator` | blocked — warp/teleport subsystem |
 | `SkypeaterGenerator` | blocked — `TileEntitySkypeater` not registered |
 | `DataTowerGenerator` | blocked — data-tower tiles + `DataTowerStructure` |
-| `DungeonGenerator` | blocked — 6 structure classes + `BlockLootChest` + `BlockStructureShield`; own subsystem |
+| `DungeonGenerator` | **six-family runtime slice landed** — Cavern/Burrow/Ocean/Desert/Snow/Biome Fragment use canonical NBT, registered natural/command features and persistent controller behavior; remaining acceptance work is world-scale frequency/terrain observation plus exact per-family bonus-loot parity |
 
 ### Two traps this sweep keeps hitting — check both on every generator
 
@@ -282,9 +282,11 @@ of them; censusing a pregenerated world caught all three.
 
 ### Nether
 
-All seven `World/Nether/` files are unported (`LavaRiverGenerator`, `NetherDiorama`, `NetherMaze`,
-`NetherSpiral`, `NetherStructureGenerator`, `NetherStructures`, `NetherTemple`). The only registered
-nether content is `firestone` (11.05% of chunks) and nether cave crystals, both confirmed generating.
+The five V33a roof structures are now canonical generated NBT and registered as one natural weighted
+feature plus named command variants: `nether_hut`, `nether_temple`, `nether_maze`, `nether_spiral`,
+and `nether_diorama`. Their loot tables, mob choices, spawner tuning, and Temple/Diorama
+`NETHERSTRUCT` progression triggers are restored. In-world frequency and individual command
+placement still need acceptance testing. The separate lava-river/roof-bypass decoration work remains.
 
 ### DecoFlowerGenerator dependency map — 2026-08-04
 
@@ -459,9 +461,10 @@ book rather than as the tail of the worldgen sweep.
 - [ ] Inspect one cave crystal, lamp crystal and potion/super crystal in inventory, GUI, dropped-item
   and first-/third-person contexts. Confirm colour, translucency, spike geometry and stone base where
   applicable, with no atlas/model errors in the client log.
-- [ ] Grow/generate several dye trees and small rainbow trees. Each individual trunk must use one log
-  species, neighboring trees may vary, and the rainbow foliage must form the V33a diamond crown/top
-  cross rather than vanilla blob foliage. The giant 2x2 rainbow tree remains a later NBT-template task.
+- [ ] Grow/generate several dye trees and rainbow trees. Each individual trunk must use one log
+  species and neighboring trees may vary. An unobstructed rainbow-tree attempt should place the
+  original 1,020-cell large tree from `worldgen/rainbow_tree.nbt`; obstruct its footprint to exercise
+  the source's one-in-five small-tree fallback and verify its rising/falling diamond canopy.
 - [ ] Inspect all four GeoStrata luminous-crystal block identities and verify blue, green, orange and
   purple world tinting instead of white.
 - [ ] Aim the Elemental Manipulator at each visible Data Node body/hitbox cell. Confirm every cell
@@ -577,8 +580,8 @@ rather than generalising one renderer across several pages.
    one `handbook.png` for everything. All 22 backgrounds are now extracted.
 2. ~~**`GuiCraftingRecipe`**~~ Done 2026-08-09. — ordinary grid recipes for craftable entries, server-authoritative like
    the casting view already is. Uses PageType.CRAFTING, which reuses `handbook_cast.png`.
-3. **`GuiMachineDescription`** — partly done 2026-08-10. Upstream has four subpage kinds; only one is
-   reachable in the port today, and it is the one every machine page shows.
+3. **`GuiMachineDescription`** — active-content pass done 2026-08-11. Upstream has four subpage kinds;
+   MAIN, authored NOTES, and reachable ENERGY are ported in the original order.
    - [x] **MAIN** — the slowly turning model of the construct, at `posX+167, posY+44`, scale 48, yaw
          from `nanoTime()/20000000 % 360`, pitch starting at 22.5 and draggable to +/-45, with the
          model lifted by `8*sin(|pitch|)` as it tips. Rides the structure viewer's picture-in-picture
@@ -601,10 +604,14 @@ rather than generalising one renderer across several pages.
          of its implementors (`TileEntityFarmer`, `TileEntityBiomeReverter`, `TileEntityCropSpeedPlant`,
          `TileEntityHarvesterPlant`) are outside the build allowlist, so no machine can enter this
          branch. Do it when the plant/farmer machines land, not before.
-   - [ ] **NOTES** — blocked: `ItemSpecificEffectDescription` and `TileEntityFunctionRelay.getEffects()`
-         are its only consumers and neither is ported.
-4. **`GuiToolDescription`** — tool pages, including per-tool usage notes.
-5. **`GuiCraftableDesc`** — craftable blocks and resources.
+   - [x] **NOTES** — authored XML notes are restored between MAIN and ENERGY. Function Relay's
+         additional item/effect grid remains dependency-bound to its unported effect provider.
+4. **`GuiToolDescription`** — active-content pass done 2026-08-11: exact four-times-size cycling
+   item presentation, two-second interval, authored usage-note subpage, and arrow/W/S traversal.
+   Aura Pouch's effect grid returns with that item/effect provider rather than being fabricated.
+5. **`GuiCraftableDesc`** — active-content pass done 2026-08-11: rotating 48px block models for
+   BLOCKS, four-times-size one-second cycling for RESOURCES, and exact registered V33a variant lists.
+   Heat Lamp effect pages and Forestry bees remain tied to those content ports.
 6. **`GuiPoolRecipe`** — chroma-pool/alloying display (PageType.POOL). Depends on the pool recipe
    system, so it lands with the ALLOY vertical.
 7. **`GuiAbilityDesc`** — ability pages; depends on the ability subsystem.
@@ -613,8 +620,29 @@ rather than generalising one renderer across several pages.
 10. **`GuiNotes`** — the editable notebook (`notes.png`), with server-authoritative
     data-component persistence rather than client-only text.
 
-Carried alongside: swap the search scrim for V33a's `squarefog.png`, and add the original button
-sounds and image-button hover animations.
+Carried alongside: swap the search scrim for V33a's `squarefog.png`. The image tabs now use the
+original GUICLICK/GUISEL cues; temporary vanilla buttons still need conversion to the source sheet.
+
+### Specialist-description in-world acceptance — 2026-08-11
+
+- [ ] Open a registered Tool page. Its item must be 64px at the upper right, with no `Tool: ...`
+      caption. If it has authored notes, W/S and the right-edge arrows must switch description/notes.
+- [ ] Open Runes, Dye Leaves, Crystal Lamp, Potion Crystal, Crystal Stone, Shards, Plants, Groups,
+      Cores, Energized Cores, Iridescent Crystal, and Alloying. Confirm every registered family
+      cycles through its real independent registry identities, at two seconds for tools/blocks and
+      one second for resources, without unrelated stand-in items.
+- [ ] Open several Other Blocks pages and verify their real block model rotates at V33a's upper-page
+      anchor. Models with block-entity renderers must include that renderer rather than becoming a
+      bare inventory cube.
+- [ ] Open a machine with authored notes and lumen ENERGY. Page order must be MAIN → NOTES → ENERGY;
+      the NOTES page must not be overwritten by the energy wheel.
+- [ ] Open Crystal Elements and traverse overview plus all sixteen element pages. Each must switch to
+      `handbook_element.png`, show its exact 64px glow rune, and display the authored `elements.xml`
+      prose with Kuro/Karmir/etc. substitutions.
+- [ ] Open Crystals, Pylons, and Lumen Node under Introduction. Confirm the rotating cave crystal,
+      smoothly color-cycling additive pylon flare, and 64px Skypeater presentation respectively.
+- [ ] Hover and click the Items/Recipes/Search/Progress/Recovery/Notebook image tabs. Confirm the
+      registered GUISEL/GUICLICK sounds play once and vanilla's button click does not layer over them.
 
 ### Lexicon 3D structure viewer — done (2026-08-10)
 
@@ -672,13 +700,14 @@ is still a raw 1.7.10 file outside the build. Both are prerequisites for the por
 Five separate defects, each its own slice. Evidence gathered so far is recorded per item so none of
 it has to be re-derived.
 
-### 1. Crystal lamps and potion crystals render untinted — FIXED 2026-08-10
+### 1. Crystal lamps and potion crystals render untinted — FIXED 2026-08-11
 
-The cause was two render types in one special item renderer. The crystal went to
-`itemTranslucent` and the plinth to `entitySolid`; the item compositor keeps one, and the survivor
-was the opaque smooth-stone plinth -- so a lamp showed as a plain white stone block with no crystal
-on it. Both now go to `itemTranslucent`. The plinth's vertices are fully opaque, so it looks
-identical. Same shape as the element wheel's spoke crash: keep a special renderer on one render type.
+The first fix correctly moved both pieces onto `itemTranslucent`, but did not fix their order. The
+opaque plinth was still submitted *after* the alpha-220 colour mesh, allowing its depth-writing faces
+to replace the coloured pass with a white silhouette in the 26.2 item target. It is now submitted
+first and the translucent, element-tinted spike mesh second. Generated JSON was audited across
+colours and already carried the right concrete `element` value; this was never a registry/metadata
+problem.
 
 That also settles (2) -- the cave crystals were always translucent through this path, which is what
 proved the path itself was fine.
@@ -705,11 +734,10 @@ The cave crystals tint correctly through the *same* call, which is the strongest
 only difference between the two paths is the presence of `base_texture`, so start by rendering a lamp
 with the base suppressed and see whether the tint returns.
 
-### 2. Cave crystal, lamp and potion crystal items need transparency
+### 2. Cave crystal, lamp and potion crystal items need transparency — FIXED 2026-08-11
 
-V33a's crystals are translucent in the inventory as well as in world. The renderer already asks for
-`itemTranslucent` and sets alpha 220, so this is likely the same root cause as (1) rather than a
-second bug — fix them together and re-check.
+All three families use the shared V33a spike renderer, `itemTranslucent`, and alpha 220. Lamp/potion
+plinths remain opaque vertices on that same target and now precede the crystal pass.
 
 ### 3. Flower and plant items render wrong — FIXED 2026-08-10
 
@@ -727,14 +755,16 @@ cross-shaped plant reads as two intersecting planes seen edge-on. V33a gives the
 Needs a per-plant item model pointing at a sprite rather than the block model; check whether the
 sprites already ship (the recorded pattern is that textures are often present before the model is).
 
-### 4. Lumen encrusted crystals need an item renderer
+### 4. Lumen encrusted crystals need an item renderer — FIXED 2026-08-11
 
-`EncrustedCrystalModel` exists for the block side only, so the item falls back to a cube. Wants the
-same treatment the cave crystals got — geometry shared between block model and special item renderer
-— and it needs transparency, so it should land after (1) and (2) are understood.
+All sixteen concrete item identities now use a special translucent-atlas renderer transcribed from
+`CrystalEncrustingRenderer.renderInventoryBlock`: player/element-seeded layout, discarded source
+roll, 6x6 field, twelve attempts, 0.2..0.8 heights, and the element-to-white 0.85 tint. Transparent
+texture pixels are preserved instead of displaying the former generated cube.
 
-### 5. Info fragments need their icon and the shift-view feature
+### 5. Info fragments need their icon and the shift-view feature — FIXED 2026-08-11
 
-Each fragment should carry the small icon of the page it holds, and V33a shows the full page
-information when shift is held. Both are `ItemInfoFragment`; the icon is a model-side selection and
-the shift view is a tooltip-side hook.
+This is an item-render behavior, not a tooltip hook: V33a draws the decoded page's actual tab icon at
+half size over the paper and, while Shift is held in an inventory GUI, replaces the paper with that
+icon at full size. The custom 26.2 item model now builds a nested render state for the real registered
+page icon, so block, item and special-renderer icons all work without a duplicate icon map.

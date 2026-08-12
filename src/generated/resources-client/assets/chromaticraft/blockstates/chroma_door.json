@@ -1,0 +1,128 @@
+{
+  "multipart": [
+    {
+      "apply": {
+        "model": "chromaticraft:block/chroma_door_core_closed"
+      },
+      "when": {
+        "open": "false"
+      }
+    },
+    {
+      "apply": {
+        "model": "chromaticraft:block/chroma_door_down_closed"
+      },
+      "when": {
+        "down": "true",
+        "open": "false"
+      }
+    },
+    {
+      "apply": {
+        "model": "chromaticraft:block/chroma_door_up_closed"
+      },
+      "when": {
+        "open": "false",
+        "up": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "chromaticraft:block/chroma_door_north_closed"
+      },
+      "when": {
+        "north": "true",
+        "open": "false"
+      }
+    },
+    {
+      "apply": {
+        "model": "chromaticraft:block/chroma_door_south_closed"
+      },
+      "when": {
+        "open": "false",
+        "south": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "chromaticraft:block/chroma_door_west_closed"
+      },
+      "when": {
+        "open": "false",
+        "west": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "chromaticraft:block/chroma_door_east_closed"
+      },
+      "when": {
+        "east": "true",
+        "open": "false"
+      }
+    },
+    {
+      "apply": {
+        "model": "chromaticraft:block/chroma_door_core_open"
+      },
+      "when": {
+        "open": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "chromaticraft:block/chroma_door_down_open"
+      },
+      "when": {
+        "down": "true",
+        "open": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "chromaticraft:block/chroma_door_up_open"
+      },
+      "when": {
+        "open": "true",
+        "up": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "chromaticraft:block/chroma_door_north_open"
+      },
+      "when": {
+        "north": "true",
+        "open": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "chromaticraft:block/chroma_door_south_open"
+      },
+      "when": {
+        "open": "true",
+        "south": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "chromaticraft:block/chroma_door_west_open"
+      },
+      "when": {
+        "open": "true",
+        "west": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "chromaticraft:block/chroma_door_east_open"
+      },
+      "when": {
+        "east": "true",
+        "open": "true"
+      }
+    }
+  ]
+}

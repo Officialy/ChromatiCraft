@@ -1,6 +1,11 @@
 {
   "model": {
-    "type": "minecraft:model",
-    "model": "chromaticraft:block/elemental_stones_item"
+    "type": "minecraft:special",
+    "base": "chromaticraft:block/elemental_stones_item",
+    "model": {
+      "type": "chromaticraft:tiered_ore",
+      "overlay": "chromaticraft:block/ore/tier_1_overlay",
+      "underlay": "chromaticraft:block/ore/tier_1_underlay"
+    }
   }
 }

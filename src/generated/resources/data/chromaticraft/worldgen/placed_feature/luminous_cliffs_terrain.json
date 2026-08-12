@@ -1,4 +1,8 @@
 {
   "feature": "chromaticraft:luminous_cliffs_terrain",
-  "placement": []
+  "placement": [
+    {
+      "type": "minecraft:biome"
+    }
+  ]
 }

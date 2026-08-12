@@ -21,10 +21,10 @@ import java.util.Set;
 import reika.chromaticraft.magic.CrystalPotionController;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.dragonapi.instantiable.data.maps.MultiMap;
-import reika.dragonapi.instantiable.data.maps.multimap.CollectionType;
-import reika.dragonapi.libraries.mathsci.reikamusichelper.KeySignature;
-import reika.dragonapi.libraries.mathsci.reikamusichelper.MusicKey;
-import reika.dragonapi.libraries.mathsci.reikamusichelper.Note;
+import reika.dragonapi.instantiable.data.maps.MultiMap.CollectionType;
+import reika.dragonapi.libraries.mathsci.ReikaMusicHelper.KeySignature;
+import reika.dragonapi.libraries.mathsci.ReikaMusicHelper.MusicKey;
+import reika.dragonapi.libraries.mathsci.ReikaMusicHelper.Note;
 
 public class CrystalMusicManager {
 

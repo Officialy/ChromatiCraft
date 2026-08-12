@@ -38,6 +38,8 @@ public final class ChromaNetwork {
 		registrar.playToClient(PowerCrystalDestroy.TYPE, PowerCrystalDestroy.CODEC, ChromaNetwork::handlePowerCrystalDestroy);
 		registrar.playToClient(PylonCrystalBreak.TYPE, PylonCrystalBreak.CODEC, ChromaNetwork::handlePylonCrystalBreak);
 		registrar.playToClient(RepeaterConnections.TYPE, RepeaterConnections.CODEC, ChromaNetwork::handleRepeaterConnections);
+		registrar.playToClient(RepeaterSurgeBurst.TYPE, RepeaterSurgeBurst.CODEC,
+				ChromaNetwork::handleRepeaterSurgeBurst);
 		registrar.playToClient(ProgressionNote.TYPE, ProgressionNote.CODEC, ChromaNetwork::handleProgressionNote);
 		registrar.playToServer(SelectResearchFragment.TYPE, SelectResearchFragment.CODEC,
 				ChromaNetwork::handleSelectResearchFragment);
@@ -61,6 +63,8 @@ public final class ChromaNetwork {
 		registrar.playToClient(Inscription.TYPE, Inscription.CODEC, ChromaNetwork::handleInscription);
 		registrar.playToClient(OpenLorePuzzle.TYPE, OpenLorePuzzle.CODEC, ChromaNetwork::handleOpenLorePuzzle);
 		registrar.playToServer(LorePuzzleMove.TYPE, LorePuzzleMove.CODEC, ChromaNetwork::handleLorePuzzleMove);
+		registrar.playToServer(SetHeatLampTemperature.TYPE, SetHeatLampTemperature.CODEC,
+				ChromaNetwork::handleSetHeatLampTemperature);
 	}
 
 	public static void sendAttack(ServerLevel level, BlockPos source, LivingEntity target, CrystalElement color, float size) {
@@ -83,6 +87,10 @@ public final class ChromaNetwork {
 	public static void sendRepeaterConnections(ServerLevel level, BlockPos repeater) {
 		PacketDistributor.sendToPlayersNear(level, null, repeater.getX() + 0.5, repeater.getY() + 0.5,
 				repeater.getZ() + 0.5, 128, new RepeaterConnections(repeater));
+	}
+	public static void sendRepeaterSurgeBurst(ServerLevel level, BlockPos repeater, CrystalElement color) {
+		PacketDistributor.sendToPlayersNear(level, null, repeater.getX() + 0.5, repeater.getY() + 0.5,
+				repeater.getZ() + 0.5, 64, new RepeaterSurgeBurst(repeater, color.ordinal()));
 	}
 	public static void sendJarRejection(ServerLevel level, BlockPos pylon, CrystalElement color) {
 		PacketDistributor.sendToPlayersNear(level, null, pylon.getX() + 0.5, pylon.getY() + 0.5,
@@ -335,6 +343,20 @@ public final class ChromaNetwork {
 				StreamCodec.composite(BlockPos.STREAM_CODEC, RepeaterConnections::source, RepeaterConnections::new);
 		@Override public Type<RepeaterConnections> type() { return TYPE; }
 	}
+	public record RepeaterSurgeBurst(BlockPos source, int color) implements CustomPacketPayload {
+		public static final Type<RepeaterSurgeBurst> TYPE = createType("repeater_surge_burst");
+		public static final StreamCodec<ByteBuf, RepeaterSurgeBurst> CODEC = StreamCodec.composite(
+				BlockPos.STREAM_CODEC, RepeaterSurgeBurst::source,
+				ByteBufCodecs.VAR_INT, RepeaterSurgeBurst::color, RepeaterSurgeBurst::new);
+		@Override public Type<RepeaterSurgeBurst> type() { return TYPE; }
+	}
+	public record SetHeatLampTemperature(BlockPos source, int temperature) implements CustomPacketPayload {
+		public static final Type<SetHeatLampTemperature> TYPE = createType("set_heat_lamp_temperature");
+		public static final StreamCodec<ByteBuf, SetHeatLampTemperature> CODEC = StreamCodec.composite(
+				BlockPos.STREAM_CODEC, SetHeatLampTemperature::source, ByteBufCodecs.VAR_INT,
+				SetHeatLampTemperature::temperature, SetHeatLampTemperature::new);
+		@Override public Type<SetHeatLampTemperature> type() { return TYPE; }
+	}
 	private static <T extends CustomPacketPayload> CustomPacketPayload.Type<T> createType(String path) {
 		return new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, path));
 	}
@@ -403,6 +425,17 @@ public final class ChromaNetwork {
 					player.getInventory().placeItemBackInInventory(reika.chromaticraft.item.ItemInfoFragment.forPage(page));
 				}
 			}
+		});
+	}
+	private static void handleSetHeatLampTemperature(SetHeatLampTemperature payload, IPayloadContext context) {
+		context.enqueueWork(() -> {
+			if (!(context.player() instanceof ServerPlayer player)
+					|| !(player.containerMenu instanceof reika.chromaticraft.container.MenuHeatLamp menu)
+					|| !menu.lamp().getBlockPos().equals(payload.source())
+					|| player.distanceToSqr(payload.source().getX() + 0.5, payload.source().getY() + 0.5,
+						payload.source().getZ() + 0.5) > 64)
+				return;
+			menu.lamp().setTemperature(payload.temperature());
 		});
 	}
 	private static void handleUpdateLexiconNotes(UpdateLexiconNotes payload, IPayloadContext context) {
@@ -613,6 +646,10 @@ public final class ChromaNetwork {
 	}
 	private static void handleRepeaterConnections(RepeaterConnections payload, IPayloadContext context) {
 		context.enqueueWork(() -> ClientPayloadHandlers.repeaterConnections(payload.source));
+	}
+	private static void handleRepeaterSurgeBurst(RepeaterSurgeBurst payload, IPayloadContext context) {
+		context.enqueueWork(() -> ClientPayloadHandlers.repeaterSurgeBurst(
+				payload.source, element(payload.color)));
 	}
 	private static void handlePylonCrystalBreak(PylonCrystalBreak payload, IPayloadContext context) {
 		context.enqueueWork(() -> ClientPayloadHandlers.pylonCrystalBreak(payload.source, element(payload.color)));

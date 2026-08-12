@@ -1,0 +1,6 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "chromaticraft:block/light_panel_target_off"
+  }
+}

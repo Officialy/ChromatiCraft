@@ -1,6 +1,11 @@
 {
   "model": {
-    "type": "minecraft:model",
-    "model": "chromaticraft:block/firestone_item"
+    "type": "minecraft:special",
+    "base": "chromaticraft:block/firestone_item",
+    "model": {
+      "type": "chromaticraft:tiered_ore",
+      "overlay": "chromaticraft:block/ore/tier_9_overlay",
+      "underlay": "minecraft:block/netherrack"
+    }
   }
 }

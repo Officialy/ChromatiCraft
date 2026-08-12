@@ -13,14 +13,17 @@ import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.levelgen.feature.Feature;
 import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
 import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
 import reika.chromaticraft.registry.ChromaBlocks;
+import reika.chromaticraft.auxiliary.structure.NBTStructureLoader;
+import reika.chromaticraft.data.ChromaStructureTemplateProvider;
 
 /**
- * V33a small Rainbow Tree silhouette.
+ * V33a Rainbow Tree generator: the authored large tree, with its small-tree fallback.
  *
  * <p>The generic blob-tree configuration previously used here changed both defining properties: it
  * sampled a new tagged log for every trunk block and replaced the source's rising/falling diamond
@@ -28,6 +31,7 @@ import reika.chromaticraft.registry.ChromaBlocks;
  * reproduces {@code tryGenerateSmallRainbowTree(..., 1)} layer for layer.
  */
 public final class RainbowTreeFeature extends Feature<NoneFeatureConfiguration> {
+	private static final BlockPos LARGE_TREE_ANCHOR = new BlockPos(5, 3, 5);
 
 	public RainbowTreeFeature() {
 		super(NoneFeatureConfiguration.CODEC);
@@ -39,6 +43,17 @@ public final class RainbowTreeFeature extends Feature<NoneFeatureConfiguration> 
 		RandomSource random = context.random();
 		BlockPos origin = context.origin();
 		BlockState log = chooseLog(random);
+		if (canPlaceLargeTree(world, origin, log)) {
+			prepareLargeTreeGround(world, origin);
+			NBTStructureLoader.place(world, ChromaStructureTemplateProvider.RAINBOW_TREE,
+					origin, LARGE_TREE_ANCHOR, state -> replaceTemplateLog(state, log), 2);
+			return true;
+		}
+		// V33a only tries the small rainbow silhouette one time in five after the large authored
+		// tree is obstructed. The caller's remaining weighted-tree fallback is outside this feature.
+		if (random.nextInt(5) != 0)
+			return false;
+
 		BlockState leaves = ChromaBlocks.RAINBOW_LEAVES.get().defaultBlockState();
 		int lowerCrown = 2 + random.nextInt(3);
 		int height = lowerCrown + Mth.ceil(5 + random.nextInt(7));
@@ -86,6 +101,46 @@ public final class RainbowTreeFeature extends Feature<NoneFeatureConfiguration> 
 		}
 		placeLeaf(world, origin.above(height + 1), leaves);
 		return true;
+	}
+
+	private static boolean canPlaceLargeTree(WorldGenLevel world, BlockPos origin, BlockState log) {
+		return NBTStructureLoader.canPlace(world, ChromaStructureTemplateProvider.RAINBOW_TREE,
+				origin, LARGE_TREE_ANCHOR, state -> replaceTemplateLog(state, log), (pos, desired) -> {
+					// V33a ignores the four buried root cells during its clearance pass.
+					if (pos.getY() < origin.getY())
+						return true;
+					BlockState existing = world.getBlockState(pos);
+					return existing.is(BlockTags.LEAVES) || existing.is(Blocks.COBWEB)
+							|| existing.is(ChromaBlocks.RAINBOW_SAPLING.get()) || existing.canBeReplaced();
+				});
+	}
+
+	private static BlockState replaceTemplateLog(BlockState template, BlockState selected) {
+		if (!template.is(BlockTags.LOGS))
+			return template;
+		if (template.hasProperty(BlockStateProperties.AXIS) && selected.hasProperty(BlockStateProperties.AXIS))
+			return selected.setValue(BlockStateProperties.AXIS, template.getValue(BlockStateProperties.AXIS));
+		return selected;
+	}
+
+	/** V33a's six-by-six grass/dirt footing and 3x3 sapling cleanup around the trunk. */
+	private static void prepareLargeTreeGround(WorldGenLevel world, BlockPos origin) {
+		for (int x = -1; x <= 1; x++) {
+			for (int z = -1; z <= 1; z++) {
+				BlockPos sapling = origin.offset(x, 0, z);
+				if (world.getBlockState(sapling).is(ChromaBlocks.RAINBOW_SAPLING.get()))
+					world.setBlock(sapling, Blocks.AIR.defaultBlockState(), 2);
+			}
+		}
+		for (int x = -3; x <= 2; x++) {
+			for (int z = -3; z <= 2; z++) {
+				for (int y = -1; y >= -4; y--) {
+					BlockPos pos = origin.offset(x, y, z);
+					if (world.getBlockState(pos).canBeReplaced())
+						world.setBlock(pos, (y == -1 ? Blocks.GRASS_BLOCK : Blocks.DIRT).defaultBlockState(), 2);
+				}
+			}
+		}
 	}
 
 	private static BlockState chooseLog(RandomSource random) {

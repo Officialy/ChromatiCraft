@@ -1,6 +1,11 @@
 {
   "model": {
-    "type": "minecraft:model",
-    "model": "chromaticraft:block/energized_rock_item"
+    "type": "minecraft:special",
+    "base": "chromaticraft:block/energized_rock_item",
+    "model": {
+      "type": "chromaticraft:tiered_ore",
+      "overlay": "chromaticraft:block/ore/tier_0_overlay",
+      "underlay": "chromaticraft:block/ore/tier_0_underlay"
+    }
   }
 }

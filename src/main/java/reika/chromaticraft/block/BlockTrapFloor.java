@@ -1,206 +1,105 @@
 package reika.chromaticraft.block;
 
-import java.util.List;
+import com.mojang.serialization.MapCodec;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.material.Material;
-import net.minecraft.client.renderer.texture.IIconRegister;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.init.Blocks;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.AxisAlignedBB;
-import net.minecraft.util.EnumChatFormatting;
-import net.minecraft.util.IIcon;
-import net.minecraft.util.MovingObjectPosition;
-import net.minecraft.world.IBlockAccess;
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.StringRepresentable;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.InsideBlockEffectApplier;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.VoxelShape;
 
-import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.auxiliary.HoldingChecks;
-import reika.chromaticraft.block.worldgen.BlockStructureShield;
-import reika.chromaticraft.block.worldgen.blockstructureshield.BlockType;
-import reika.chromaticraft.registry.ChromaBlocks;
-import reika.dragonapi.ModList;
-import reika.dragonapi.asm.apistripper.Strippable;
-import reika.dragonapi.asm.dependentmethodstripper.ModDependent;
-import reika.dragonapi.instantiable.data.immutable.BlockKey;
-import reika.dragonapi.instantiable.data.immutable.Coordinate;
-import reika.dragonapi.interfaces.block.CollisionDelegate;
-import reika.dragonapi.interfaces.block.SemiUnbreakable;
-import reika.dragonapi.libraries.io.ReikaSoundHelper;
-import reika.dragonapi.libraries.registry.ReikaItemHelper;
+import reika.chromaticraft.block.worldgen26.BlockStructureShield;
+import reika.chromaticraft.item.ItemManipulator;
+import reika.chromaticraft.registry.ChromaSounds;
 
-import cpw.mods.fml.common.Loader;
-import cpw.mods.fml.common.registry.GameRegistry;
-import cpw.mods.fml.common.registry.GameRegistry.UniqueIdentifier;
-import mcp.mobius.waila.api.IWailaConfigHandler;
-import mcp.mobius.waila.api.IWailaDataAccessor;
-import mcp.mobius.waila.api.IWailaDataProvider;
+/** V33a's disguised 7/8-height floor, with the block below owning its hazards. */
+public final class BlockTrapFloor extends Block {
 
+	public enum Disguise implements StringRepresentable {
+		SELF("self"), STONE_BRICKS("stone_bricks"), OAK_PLANKS("oak_planks"), STRUCTURE_STONE("structure_stone");
 
-@Strippable(value = {"mcp.mobius.waila.api.IWailaDataProvider"})
-public class BlockTrapFloor extends Block implements CollisionDelegate, SemiUnbreakable, IWailaDataProvider {
+		private final String name;
+		Disguise(String name) { this.name = name; }
+		@Override public String getSerializedName() { return name; }
+	}
 
-	public BlockTrapFloor(Material mat) {
-		super(mat);
+	public static final EnumProperty<Disguise> DISGUISE = EnumProperty.create("disguise", Disguise.class);
+	private static final VoxelShape FLOOR = box(0, 0, 0, 16, 14, 16);
+	private final MapCodec<BlockTrapFloor> codec = MapCodec.unit(this);
 
-		this.setCreativeTab(ChromatiCraft.tabChroma);
-		this.setHardness(1F);
-		//this.setLightOpacity(1);
-		this.setResistance(0);
+	public BlockTrapFloor(BlockBehaviour.Properties properties) {
+		super(properties);
+		registerDefaultState(stateDefinition.any().setValue(DISGUISE, Disguise.SELF));
+	}
+
+	@Override public MapCodec<? extends BlockTrapFloor> codec() { return codec; }
+
+	@Override
+	protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+		builder.add(DISGUISE);
 	}
 
 	@Override
-	public void registerBlockIcons(IIconRegister ico) {
-		blockIcon = ico.registerIcon("chromaticraft:basic/trapfloor");
+	protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+		return FLOOR;
 	}
 
 	@Override
-	public IIcon getIcon(int s, int meta) {
-		BlockKey bk = this.getDisguise(meta);
-		return bk.blockID == this ? blockIcon : bk.blockID.getIcon(s, bk.metadata);
+	protected VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+		return FLOOR;
 	}
 
-	private BlockKey getDisguise(int meta) {
-		switch(meta) {
-			case 0:
-			default:
-				return new BlockKey(this);
-			case 1:
-				return new BlockKey(Blocks.stonebrick, 0);
-			case 2:
-				return new BlockKey(Blocks.planks, 0);
-			case 3:
-				return new BlockKey(ChromaBlocks.STRUCTSHIELD.getBlockInstance(), BlockType.STONE.metadata);
+	@Override
+	protected InteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos,
+			Player player, InteractionHand hand, BlockHitResult hit) {
+		if (!(stack.getItem() instanceof ItemManipulator))
+			return InteractionResult.PASS;
+		if (!level.isClientSide()) {
+			Disguise[] values = Disguise.values();
+			level.setBlock(pos, state.setValue(DISGUISE,
+					values[(state.getValue(DISGUISE).ordinal() + 1) % values.length]), 3);
+			ChromaSounds.CAST.playSoundAtBlock(level, pos, 0.5F, 0.75F);
 		}
+		return InteractionResult.SUCCESS;
 	}
 
 	@Override
-	public boolean onBlockActivated(World world, int x, int y, int z, EntityPlayer ep, int s, float a, float b, float c) {
-		if (HoldingChecks.MANIPULATOR.isHolding(ep)) {
-			int meta = 1+(world.getBlockMetadata(x, y, z))%4;
-			world.setBlockMetadataWithNotify(x, y, z, meta, 3);
-			ReikaSoundHelper.playBreakSound(world, x, y, z, Blocks.stone);
+	protected float getDestroyProgress(BlockState state, Player player, BlockGetter level, BlockPos pos) {
+		for (int depth = 1; depth <= 4; depth++) {
+			BlockState below = level.getBlockState(pos.below(depth));
+			if (below.getBlock() instanceof BlockStructureShield shield)
+				return shield.isUnbreakable(below) ? 0 : super.getDestroyProgress(state, player, level, pos);
 		}
-		return false;
+		return super.getDestroyProgress(state, player, level, pos);
 	}
 
 	@Override
-	public AxisAlignedBB getCollisionBoundingBoxFromPool(World world, int x, int y, int z) {
-		return AxisAlignedBB.getBoundingBox(x, y, z, x+1, y+0.875, z+1);
+	protected void entityInside(BlockState state, Level level, BlockPos pos, Entity entity,
+			InsideBlockEffectApplier effects, boolean precise) {
+		BlockState below = level.getBlockState(pos.below());
+		if (below.is(Blocks.LAVA)) entity.lavaIgnite();
+		else if (!below.getFluidState().isEmpty()) entity.clearFire();
+		below.entityInside(level, pos.below(), entity, effects, precise);
 	}
 
 	@Override
-	public void onEntityCollidedWithBlock(World world, int x, int y, int z, Entity e) {
-		this.setBlockBounds(0, 0, 0, 1, 1, 1);
-		if (e instanceof EntityLivingBase) {
-			Block b = world.getBlock(x, y-1, z);
-			b.onEntityCollidedWithBlock(world, x, y-1, z, e);
-			if (b == Blocks.lava || b == Blocks.flowing_lava) {
-				e.setOnFireFromLava();
-			}
-			else if (b == Blocks.water || b == Blocks.flowing_water) {
-				e.extinguish();
-			}
-		}
+	public void stepOn(Level level, BlockPos pos, BlockState state, Entity entity) {
+		level.getBlockState(pos.below()).getBlock().stepOn(level, pos.below(),
+				level.getBlockState(pos.below()), entity);
 	}
-
-	@Override
-	public void onEntityWalking(World world, int x, int y, int z, Entity e) {
-		super.onEntityWalking(world, x, y, z, e);
-		Block b = world.getBlock(x, y-1, z);
-		b.onEntityWalking(world, x, y-1, z, e);
-		//b.onEntityCollidedWithBlock(world, x, y-1, z, e);
-	}
-
-	@Override
-	public boolean isBurning(IBlockAccess world, int x, int y, int z) {
-		Block b = world.getBlock(x, y-1, z);
-		if (b == Blocks.lava || b == Blocks.flowing_lava || b == Blocks.fire)
-			return true;
-		return b.isBurning(world, x, y-1, z);
-	}
-
-	@Override
-	public Coordinate getDelegatedCollision(World world, int x, int y, int z) {
-		return new Coordinate(x, y-1, z);
-	}
-
-	@Override
-	@ModDependent(ModList.WAILA)
-	public ItemStack getWailaStack(IWailaDataAccessor acc, IWailaConfigHandler config) {
-		World world = acc.getWorld();
-		MovingObjectPosition mov = acc.getPosition();
-		if (mov != null) {
-			int x = mov.blockX;
-			int y = mov.blockY;
-			int z = mov.blockZ;
-			BlockKey id = this.getDisguise(acc.getMetadata());
-			//if (b == Blocks.grass)
-			//	b = Blocks.dirt;
-			return id.asItemStack();
-		}
-		return null;
-	}
-
-	@Override
-	@ModDependent(ModList.WAILA)
-	public final List<String> getWailaHead(ItemStack is, List<String> tip, IWailaDataAccessor acc, IWailaConfigHandler config) {
-		return tip;
-	}
-
-	@Override
-	@ModDependent(ModList.WAILA)
-	public final List<String> getWailaBody(ItemStack is, List<String> tip, IWailaDataAccessor acc, IWailaConfigHandler config) {
-		return tip;
-	}
-
-	@ModDependent(ModList.WAILA)
-	public final List<String> getWailaTail(ItemStack itemStack, List<String> currenttip, IWailaDataAccessor acc, IWailaConfigHandler config) {
-		String s1 = EnumChatFormatting.ITALIC.toString();
-		String s2 = EnumChatFormatting.BLUE.toString();
-		String mod = "NULL";
-		MovingObjectPosition pos = acc.getPosition();
-		if (pos != null) {
-			BlockKey id = this.getDisguise(acc.getMetadata());
-			if (ReikaItemHelper.isVanillaBlock(id.blockID))
-				mod = "Minecraft";
-			else {
-				UniqueIdentifier uid = GameRegistry.findUniqueIdentifierFor(id.blockID);
-				if (uid != null) {
-					mod = Loader.instance().getIndexedModList().get(uid.modId).getName();
-				}
-			}
-			//currenttip.add(s2+s1+mod);
-		}
-		return currenttip;
-	}
-
-	@Override
-	@ModDependent(ModList.WAILA)
-	public final NBTTagCompound getNBTData(EntityPlayerMP player, TileEntity te, NBTTagCompound tag, World world, int x, int y, int z) {
-		return tag;
-	}
-
-	@Override
-	public float getBlockHardness(World world, int x, int y, int z) {
-		return this.isUnbreakable(world, x, y, z, world.getBlockMetadata(x, y, z)) ? -1 : super.getBlockHardness(world, x, y, z);
-	}
-
-	@Override
-	public boolean isUnbreakable(World world, int x, int y, int z, int meta) {
-		int dy = y-1;
-		Block b = world.getBlock(x, dy, z);
-		while (dy > y-5 && b != ChromaBlocks.STRUCTSHIELD.getBlockInstance()) {
-			dy--;
-			b = world.getBlock(x, dy, z);
-		}
-		return b == ChromaBlocks.STRUCTSHIELD.getBlockInstance() && ((BlockStructureShield)b).isUnbreakable(world, x, dy, z, world.getBlockMetadata(x, dy, z));//meta >= 8;
-	}
-
 }

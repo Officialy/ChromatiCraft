@@ -1,0 +1,52 @@
+{
+  "variants": {
+    "passability=breakable": {
+      "model": "chromaticraft:block/shift_lock_breakable"
+    },
+    "passability=closed": {
+      "model": "chromaticraft:block/shift_lock_closed"
+    },
+    "passability=closed_hidden": {
+      "model": "chromaticraft:block/shift_lock_closed_hidden"
+    },
+    "passability=east_closed": {
+      "model": "chromaticraft:block/shift_lock_east_closed"
+    },
+    "passability=east_hidden": {
+      "model": "chromaticraft:block/shift_lock_east_hidden"
+    },
+    "passability=east_open": {
+      "model": "chromaticraft:block/shift_lock_east_open"
+    },
+    "passability=north_closed": {
+      "model": "chromaticraft:block/shift_lock_north_closed"
+    },
+    "passability=north_hidden": {
+      "model": "chromaticraft:block/shift_lock_north_hidden"
+    },
+    "passability=north_open": {
+      "model": "chromaticraft:block/shift_lock_north_open"
+    },
+    "passability=open": {
+      "model": "chromaticraft:block/shift_lock_open"
+    },
+    "passability=south_closed": {
+      "model": "chromaticraft:block/shift_lock_south_closed"
+    },
+    "passability=south_hidden": {
+      "model": "chromaticraft:block/shift_lock_south_hidden"
+    },
+    "passability=south_open": {
+      "model": "chromaticraft:block/shift_lock_south_open"
+    },
+    "passability=west_closed": {
+      "model": "chromaticraft:block/shift_lock_west_closed"
+    },
+    "passability=west_hidden": {
+      "model": "chromaticraft:block/shift_lock_west_hidden"
+    },
+    "passability=west_open": {
+      "model": "chromaticraft:block/shift_lock_west_open"
+    }
+  }
+}

@@ -1,346 +1,124 @@
-/*******************************************************************************
- * @author Reika Kalseki
- *
- * Copyright 2017
- *
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
- ******************************************************************************/
 package reika.chromaticraft.block.dimension.structure.locks;
 
-import java.lang.reflect.Constructor;
-import java.util.Random;
-import java.util.UUID;
+import com.mojang.serialization.MapCodec;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.material.Material;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.particle.EntityFX;
-import net.minecraft.client.renderer.texture.IIconRegister;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.IIcon;
-import net.minecraft.world.World;
-import net.minecraftforge.common.util.ForgeDirection;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.level.Explosion;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.EntityBlock;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.IntegerProperty;
 
-import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.base.dimensionstructuregenerator.DimensionStructureType;
-import reika.chromaticraft.base.LockLevel;
-import reika.chromaticraft.base.tileentity.StructureBlockTile;
-import reika.chromaticraft.block.worldgen.blockstructureshield.BlockType;
-import reika.chromaticraft.registry.ChromaBlocks;
+import org.jspecify.annotations.Nullable;
+
+import java.util.function.BiConsumer;
+
+import reika.chromaticraft.block.BlockCrystalRune;
 import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.render.particle.EntitySparkleFX;
-import reika.chromaticraft.tileentity.technical.TileEntityStructControl;
-import reika.chromaticraft.tileentity.technical.tileentitystructcontrol.InteractionDelegateTile;
-import reika.chromaticraft.world.dimension.structure.LocksGenerator;
-import reika.chromaticraft.world.dimension.structure.locks.LocksRoomBig;
-import reika.chromaticraft.world.dimension.structure.locks.LocksRoomEntry;
-import reika.chromaticraft.world.dimension.structure.locks.LocksRoomFence;
-import reika.chromaticraft.world.dimension.structure.locks.LocksRoomHouse;
-import reika.chromaticraft.world.dimension.structure.locks.LocksRoomRecurse;
-import reika.chromaticraft.world.dimension.structure.locks.LocksRoomSpiral;
-import reika.chromaticraft.world.dimension.structure.locks.LocksRoomTriple;
-import reika.chromaticraft.world.dimension.structure.locks.LocksRoomWhite;
-import reika.dragonapi.DragonAPICore;
-import reika.dragonapi.instantiable.data.immutable.Coordinate;
-import reika.dragonapi.libraries.java.ReikaRandomHelper;
-import reika.dragonapi.libraries.registry.ReikaItemHelper;
+import reika.chromaticraft.tileentity.TileEntityLockKey;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
+/**
+ * V33a's portable structure lock key. The old metadata was a generated room channel, so it is an
+ * explicit runtime blockstate value rather than sixteen new content registrations.
+ */
+public final class BlockLockKey extends Block implements EntityBlock {
 
-public class BlockLockKey extends Block {
+	public static final IntegerProperty CHANNEL = IntegerProperty.create("channel", 0, 7);
+	private final MapCodec<BlockLockKey> codec = MapCodec.unit(this);
 
-	private long lastPlace = -1;
-
-	public static enum LockChannel {
-
-		ENTRY("Eniro", 3, LocksRoomEntry.class),
-		BIG("Besar", 4, LocksRoomBig.class),
-		WHITE("Sapheda", 3, LocksRoomWhite.class),
-		TRIPLE("Yerraki", 4, LocksRoomTriple.class),
-		RECURSION("Saiki", 5, LocksRoomRecurse.class),
-		FENCE("Bera", 4, LocksRoomFence.class),
-		HOUSE("Kuka", 5, LocksRoomHouse.class),
-		SPIRAL("Karkace", 5, LocksRoomSpiral.class),
-		//PIPE("Rura", 5, LocksRoomPipe.class),
-		//COMPLEX("Jatila", 15, LocksRoomComplex.class),
-		//LAYER("Shar", 4, LocksRoomLayer.class),
-		//END("Ipari", 5, LocksRoomEnding.class),
-		;
-
-		public final String name;
-		public final int numberKeys;
-		private final Class genClass;
-
-		private LockChannel(String s, int key, Class c) {
-			name = s;
-			numberKeys = key;
-			genClass = c;
-		}
-
-		public static final LockChannel[] lockList = values();
-
-		public LockLevel genRoom(LocksGenerator g) throws Exception {
-			Constructor<LockLevel> c = genClass.getDeclaredConstructor(g.getClass());
-			c.setAccessible(true);
-			return c.newInstance(g);
-		}
+	public BlockLockKey(BlockBehaviour.Properties properties) {
+		super(properties);
+		registerDefaultState(stateDefinition.any().setValue(CHANNEL, 0));
 	}
 
-	public BlockLockKey(Material mat) {
-		super(mat);
-		this.setHardness(0.15F);
-		this.setCreativeTab(DragonAPICore.isReikasComputer() ? ChromatiCraft.tabChromaGen : null);
-		this.setLightLevel(1);
+	@Override public MapCodec<? extends BlockLockKey> codec() { return codec; }
+
+	@Override
+	protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+		builder.add(CHANNEL);
 	}
 
 	@Override
-	public boolean hasTileEntity(int meta) {
-		return true;
+	public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
+		return new TileEntityLockKey(pos, state);
 	}
 
 	@Override
-	public TileEntity createTileEntity(World world, int meta) {
-		return new TileEntityLockKey();
+	protected float getDestroyProgress(BlockState state, Player player, BlockGetter level, BlockPos pos) {
+		if (level.getBlockEntity(pos) instanceof TileEntityLockKey key && !key.canPlayerAccess(player))
+			return 0;
+		return super.getDestroyProgress(state, player, level, pos);
 	}
 
 	@Override
-	public float getPlayerRelativeBlockHardness(EntityPlayer ep, World world, int x, int y, int z) {
-		TileEntityLockKey te = (TileEntityLockKey)world.getTileEntity(x, y, z);
-		if (te.delegate != null) {
-			TileEntity te2 = te.delegate.getTileEntity(world);
-			if (te2 instanceof TileEntityStructControl) {
-				if (((TileEntityStructControl)te2).isInaccessible(world, x, y, z, te, ep))
-					return -1;
-			}
-		}
-		return super.getPlayerRelativeBlockHardness(ep, world, x, y, z);
-	}
-
-	@Override
-	public boolean canHarvestBlock(EntityPlayer player, int meta) {
-		return true;
-	}
-
-	//Metadata corresponds to "structure index"
-	@Override
-	public int damageDropped(int meta) {
-		return meta;
-	}
-
-	@Override
-	public void registerBlockIcons(IIconRegister ico) {
-		blockIcon = ico.registerIcon("chromaticraft:dimstruct/key");
-	}
-
-	@Override
-	public IIcon getIcon(int s, int meta) {
-		return blockIcon;
-	}
-
-	@Override
-	public boolean isOpaqueCube() {
-		return false;
-	}
-
-	@Override
-	public boolean renderAsNormalBlock() {
-		return false;
-	}
-
-	@Override
-	@SideOnly(Side.CLIENT)
-	public void randomDisplayTick(World world, int x, int y, int z, Random r) {
-		int n = 2+r.nextInt(2);
-		for (int i = 0; i < n; i++) {
-			int l = 10+r.nextInt(30);
-			float s = (float)ReikaRandomHelper.getRandomBetween(1, 1.5);
-			EntityFX fx = new EntitySparkleFX(world, x+r.nextDouble(), y+r.nextDouble(), z+r.nextDouble(), 0, 0, 0).setLife(l).setScale(s);
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-		}
-	}
-
-	@Override
-	public void onBlockAdded(World world, int x, int y, int z) {
-		//this.openLocks(world, x, y, z);
-	}
-
-	private void openLocks(World world, int x, int y, int z) {
-		if (world.isRemote)
+	public void setPlacedBy(Level level, BlockPos pos, BlockState state, LivingEntity placer, ItemStack stack) {
+		super.setPlacedBy(level, pos, state, placer, stack);
+		if (level.isClientSide() || !(level.getBlockEntity(pos) instanceof TileEntityLockKey key))
 			return;
-
-		if (lastPlace == world.getTotalWorldTime())
-			return;
-		lastPlace = world.getTotalWorldTime();
-
-		LocksGenerator gen = this.getGenerator(world, x, y, z);
-		if (gen == null)
-			return;
-		for (int i = 0; i < 6; i++) {
-			ForgeDirection dir = ForgeDirection.VALID_DIRECTIONS[i];
-			int dx = x+dir.offsetX;
-			int dy = y+dir.offsetY;
-			int dz = z+dir.offsetZ;
-			Block b = world.getBlock(dx, dy, dz);
-			int m = world.getBlockMetadata(dx, dy, dz);
-			int ch = world.getBlockMetadata(x, y, z);
-			if (b == ChromaBlocks.RUNE.getBlockInstance()) {
-				gen.openColor(CrystalElement.elements[m], world, ch);
-				break;
-			}
-			else if (b == ChromaBlocks.STRUCTSHIELD.getBlockInstance() && m%8 == BlockType.CLOAK.metadata%8) {
-				gen.markOpenGate(world, ch);
-				break;
-			}
-		}
-	}
-
-	private void closeLocks(World world, int x, int y, int z, int meta2) {
-		LocksGenerator gen = this.getGenerator(world, x, y, z);
-		if (gen == null)
-			return;
-		for (int i = 0; i < 6; i++) {
-			ForgeDirection dir = ForgeDirection.VALID_DIRECTIONS[i];
-			int dx = x+dir.offsetX;
-			int dy = y+dir.offsetY;
-			int dz = z+dir.offsetZ;
-			Block b = world.getBlock(dx, dy, dz);
-			int m = world.getBlockMetadata(dx, dy, dz);
-			int ch = meta2;
-			if (b == ChromaBlocks.RUNE.getBlockInstance()) {
-				gen.closeColor(CrystalElement.elements[m], world, ch);
-				break;
-			}
-			else if (b == ChromaBlocks.STRUCTSHIELD.getBlockInstance() && m%8 == BlockType.CLOAK.metadata%8) {
-				gen.markClosedGate(world, ch);
-				break;
-			}
-		}
+		CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+		int channel = Math.clamp(tag.getIntOr("channel", state.getValue(CHANNEL)), 0, 7);
+		if (channel != state.getValue(CHANNEL))
+			level.setBlock(pos, state.setValue(CHANNEL, channel), Block.UPDATE_ALL);
+		key.readPortableData(tag);
+		key.notifyDelegate(true, placer instanceof Player player ? player : null);
 	}
 
 	@Override
-	public void breakBlock(World world, int x, int y, int z, Block b2, int meta2) {
-		if (!world.isRemote) {
-			this.closeLocks(world, x, y, z, meta2);
-			TileEntityLockKey te = (TileEntityLockKey)world.getTileEntity(x, y, z);
-			if (te.delegate != null) {
-				TileEntity te2 = te.delegate.getTileEntity(world);
-				if (te2 instanceof TileEntityStructControl) {
-					((TileEntityStructControl)te2).onDelegatedTileRemoved(world, x, y, z, te);
-				}
-			}
+	public BlockState playerWillDestroy(Level level, BlockPos pos, BlockState state, Player player) {
+		if (!level.isClientSide() && level.getBlockEntity(pos) instanceof TileEntityLockKey key) {
+			key.notifyDelegate(false, player);
+			if (!player.isCreative())
+				popResource(level, pos, key.createPortableStack(state.getValue(CHANNEL)));
 		}
-		super.breakBlock(world, x, y, z, b2, meta2);
-	}
-
-	private static LocksGenerator getGenerator(World world, int x, int y, int z) {
-		return (LocksGenerator)DimensionStructureType.LOCKS.getGenerator(((TileEntityLockKey)world.getTileEntity(x, y, z)).uid);
+		return super.playerWillDestroy(level, pos, state, player);
 	}
 
 	@Override
-	public boolean removedByPlayer(World world, EntityPlayer player, int x, int y, int z, boolean harvest)
-	{
-		if (this.canHarvest(world, player, x, y, z))
-			this.harvestBlock(world, player, x, y, z, world.getBlockMetadata(x, y, z));
-		return world.setBlockToAir(x, y, z);
-	}
-
-	private boolean canHarvest(World world, EntityPlayer ep, int x, int y, int z) {
-		if (ep.capabilities.isCreativeMode)
-			return false;
-		return true;
+	protected void onExplosionHit(BlockState state, ServerLevel level, BlockPos pos,
+			Explosion explosion, BiConsumer<ItemStack, BlockPos> onHit) {
+		if (level.getBlockEntity(pos) instanceof TileEntityLockKey key)
+			key.notifyDelegate(false, null);
+		super.onExplosionHit(state, level, pos, explosion, onHit);
 	}
 
 	@Override
-	public void harvestBlock(World world, EntityPlayer ep, int x, int y, int z, int meta) {
-		if (!this.canHarvest(world, ep, x, y, z))
-			return;
-		if (world.isRemote)
-			return;
-		TileEntityLockKey te = (TileEntityLockKey)world.getTileEntity(x, y, z);
-		if (te == null || (te.uid == null && te.delegate == null))
-			return;
-		ItemStack is = new ItemStack(this, 1, meta);
-		is.stackTagCompound = new NBTTagCompound();
-		if (te.uid != null)
-			is.stackTagCompound.setString("uid", te.uid.toString());
-		if (te.delegate != null)
-			te.delegate.writeToNBT("delegate", is.stackTagCompound);
-		ReikaItemHelper.dropItem(world, x+0.5, y+0.5, z+0.5, is);
+	protected ItemStack getCloneItemStack(LevelReader level, BlockPos pos, BlockState state,
+			boolean includeData) {
+		return level.getBlockEntity(pos) instanceof TileEntityLockKey key
+				? key.createPortableStack(state.getValue(CHANNEL)) : new ItemStack(this);
+	}
+
+	/** Returns the rune touching this key, matching V33a's six-face scan. */
+	public static @Nullable CrystalElement adjacentRune(LevelReader level, BlockPos pos) {
+		for (Direction direction : Direction.values()) {
+			BlockState adjacent = level.getBlockState(pos.relative(direction));
+			if (adjacent.getBlock() instanceof BlockCrystalRune rune)
+				return rune.getColor();
+		}
+		return null;
 	}
 
 	@Override
-	public void onBlockPlacedBy(World world, int x, int y, int z, EntityLivingBase elb, ItemStack is) {
-		if (world.isRemote)
-			return;
-		if (is.stackTagCompound == null)
-			return;
-		TileEntityLockKey te = (TileEntityLockKey)world.getTileEntity(x, y, z);
-		if (is.stackTagCompound.hasKey("uid"))
-			te.uid = UUID.fromString(is.stackTagCompound.getString("uid"));
-		te.delegate = Coordinate.readFromNBT("delegate", is.stackTagCompound);
-
-		this.openLocks(world, x, y, z);
-		if (te.delegate != null) {
-			TileEntity te2 = te.delegate.getTileEntity(world);
-			if (te2 instanceof TileEntityStructControl) {
-				((TileEntityStructControl)te2).onDelegatedTileAdded(world, x, y, z, te);
-			}
-		}
-	}
-
-	/*
-	@Override
-	public int damageDropped(int meta) {
-		return meta;
-	}
-
-	@Override
-	public int getRenderColor(int meta) {
-		return CrystalElement.elements[meta].getColor();
-	}
-
-	@Override
-	public int colorMultiplier(IBlockAccess iba, int x, int y, int z) {
-		return this.getRenderColor(iba.getBlockMetadata(x, y, z));
-	}
-	 */
-
-	public static class TileEntityLockKey extends StructureBlockTile<LocksGenerator> implements InteractionDelegateTile {
-
-		private Coordinate delegate;
-
-		@Override
-		public DimensionStructureType getType() {
-			return DimensionStructureType.LOCKS;
-		}
-
-		@Override
-		public void setDelegate(Coordinate c) {
-			delegate = c;
-		}
-
-		@Override
-		public void writeToNBT(NBTTagCompound NBT) {
-			super.writeToNBT(NBT);
-
-			if (delegate != null) {
-				delegate.writeToNBT("delegate", NBT);
-			}
-		}
-
-		@Override
-		public void readFromNBT(NBTTagCompound NBT) {
-			super.readFromNBT(NBT);
-
-			delegate = Coordinate.readFromNBT("delegate", NBT);
-		}
-
+	public void animateTick(BlockState state, Level level, BlockPos pos, RandomSource random) {
+		int count = 2 + random.nextInt(2);
+		for (int i = 0; i < count; i++)
+			level.addParticle(ParticleTypes.END_ROD, pos.getX() + random.nextDouble(),
+					pos.getY() + random.nextDouble(), pos.getZ() + random.nextDouble(), 0, 0, 0);
 	}
 }

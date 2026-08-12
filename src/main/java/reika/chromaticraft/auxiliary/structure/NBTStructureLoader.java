@@ -3,19 +3,23 @@ package reika.chromaticraft.auxiliary.structure;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.UnaryOperator;
+import java.util.function.BiPredicate;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtUtils;
+import net.minecraft.util.ProblemReporter;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
+import net.minecraft.world.level.storage.TagValueInput;
 
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.registry.ChromaBlocks;
@@ -127,6 +131,8 @@ public final class NBTStructureLoader {
 
         List<BlockPos> placed = new ArrayList<>();
         ListTag blocks = serialized.getListOrEmpty("blocks");
+        try (ProblemReporter.ScopedCollector reporter = new ProblemReporter.ScopedCollector(
+                org.slf4j.LoggerFactory.getLogger(NBTStructureLoader.class))) {
         for (int i = 0; i < blocks.size(); i++) {
             CompoundTag entry = blocks.getCompoundOrEmpty(i);
             ListTag coordinates = entry.getListOrEmpty("pos");
@@ -144,10 +150,62 @@ public final class NBTStructureLoader {
             if (state.is(Blocks.CAVE_AIR))
                 state = Blocks.AIR.defaultBlockState();
             BlockPos target = worldAnchor.offset(relative.subtract(templateAnchor));
+            CompoundTag blockEntityData = entry.getCompound("nbt").orElse(null);
+            // Match StructureTemplate.placeInWorld: force any old block entity out before creating
+            // and hydrating the new one. Without this, spawner timings, loot markers, controller
+            // state, and every future NBT-backed structure callback silently disappear.
+            if (blockEntityData != null)
+                world.setBlock(target, Blocks.BARRIER.defaultBlockState(), 820);
             world.setBlock(target, state, flags);
+            if (blockEntityData != null) {
+                BlockEntity blockEntity = world.getBlockEntity(target);
+                if (blockEntity != null) {
+                    blockEntity.loadWithComponents(TagValueInput.create(
+                            reporter.forChild(blockEntity.problemPath()), world.registryAccess(), blockEntityData));
+                    blockEntity.setChanged();
+                }
+            }
             placed.add(target.immutable());
         }
+        }
         return placed;
+    }
+
+    /**
+     * Tests only the cells actually present in a template against the bounded worldgen view. This
+     * is deliberately separate from {@link #load}: features must never read through the backing
+     * ServerLevel while neighbouring decoration chunks may still be locked by other workers.
+     */
+    public static boolean canPlace(WorldGenLevel world, Identifier templateId, BlockPos worldAnchor,
+            BlockPos templateAnchor, UnaryOperator<BlockState> stateTransform,
+            BiPredicate<BlockPos, BlockState> cellPredicate) {
+        ServerLevel server = world.getLevel();
+        StructureTemplate template = server.getStructureManager().get(templateId).orElseThrow(() ->
+                new IllegalStateException("Missing ChromatiCraft structure template data/" + templateId.getNamespace()
+                        + "/structure/" + templateId.getPath() + ".nbt"));
+        CompoundTag serialized = template.save(new CompoundTag());
+        ListTag paletteTag = serialized.getListOrEmpty("palette");
+        List<BlockState> palette = new ArrayList<>(paletteTag.size());
+        var blockLookup = server.registryAccess().lookupOrThrow(Registries.BLOCK);
+        for (int i = 0; i < paletteTag.size(); i++)
+            palette.add(NbtUtils.readBlockState(blockLookup, paletteTag.getCompoundOrEmpty(i)));
+
+        ListTag blocks = serialized.getListOrEmpty("blocks");
+        for (int i = 0; i < blocks.size(); i++) {
+            CompoundTag entry = blocks.getCompoundOrEmpty(i);
+            ListTag coordinates = entry.getListOrEmpty("pos");
+            if (coordinates.size() != 3)
+                throw new IllegalStateException("Malformed block position in structure " + templateId + ": " + entry);
+            BlockPos relative = new BlockPos(
+                    coordinates.getIntOr(0, 0), coordinates.getIntOr(1, 0), coordinates.getIntOr(2, 0));
+            int paletteIndex = entry.getIntOr("state", -1);
+            if (paletteIndex < 0 || paletteIndex >= palette.size())
+                throw new IllegalStateException("Invalid palette index " + paletteIndex + " in structure " + templateId);
+            BlockPos target = worldAnchor.offset(relative.subtract(templateAnchor));
+            if (!cellPredicate.test(target, stateTransform.apply(palette.get(paletteIndex))))
+                return false;
+        }
+        return true;
     }
     public static Identifier chromaTemplate(String path) {
         return Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, path);

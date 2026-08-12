@@ -1,4 +1,8 @@
 {
   "feature": "chromaticraft:luminous_flora",
-  "placement": []
+  "placement": [
+    {
+      "type": "minecraft:biome"
+    }
+  ]
 }

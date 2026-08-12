@@ -41,6 +41,13 @@ import net.minecraft.world.item.Item;
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.base.CrystalTypeBlock;
 import reika.chromaticraft.block.BlockCrystalRune;
+import reika.chromaticraft.block.BlockChromaDoor;
+import reika.chromaticraft.block.BlockTrapFloor;
+import reika.chromaticraft.block.dimension.structure.shiftmaze.BlockShiftLock;
+import reika.chromaticraft.block.dimension.structure.lightpanel.BlockLightPanel;
+import reika.chromaticraft.block.dimension.structure.lightpanel.BlockLightSwitch;
+import reika.chromaticraft.block.dimension.structure.locks.BlockColoredLock;
+import reika.chromaticraft.world.dimension.structure.lightpanel.LightType;
 import reika.chromaticraft.block.decoration.BlockMetaAlloyLamp;
 import reika.chromaticraft.block.BlockCrystallineStone;
 import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
@@ -123,6 +130,9 @@ public class ChromaModelProvider extends ModelProvider {
 		castingTableModel(blockStateOut, itemModelOut, modelOut);
 		networkTileModel(ChromaBlocks.FOCUS_CRYSTAL.get(), "focus_crystal", "block/crystal/chroma", blockStateOut, itemModelOut, modelOut);
 		dataNodeModel(blockStateOut, itemModelOut, modelOut);
+		structureControllerModel(blockStateOut, modelOut);
+		chromaDoorModel(blockStateOut, itemModelOut, modelOut);
+		heatLampModels(blockStateOut, itemModelOut, modelOut);
 		metaAlloyModel(blockStateOut, itemModelOut, modelOut);
 		tieredOreItems(itemModelOut, modelOut);
 
@@ -135,12 +145,20 @@ public class ChromaModelProvider extends ModelProvider {
 		Item manipulator = ChromaItems.MANIPULATOR.get();
 		itemModelOut.accept(manipulator, ItemModelUtils.plainModel(ModelTemplates.FLAT_ITEM.create(
 				ModelLocationUtils.getModelLocation(manipulator), TextureMapping.layer0(manipulator), modelOut)));
-		for (Item item : List.of(ChromaItems.LEXICON.get(), ChromaItems.INFO_FRAGMENT.get(),
-				ChromaItems.DATA_CRYSTAL.get())) {
+		for (Item item : List.of(ChromaItems.LEXICON.get(), ChromaItems.DATA_CRYSTAL.get())) {
 			Identifier model = ModelTemplates.FLAT_ITEM.create(ModelLocationUtils.getModelLocation(item),
 					TextureMapping.layer0(item), modelOut);
 			itemModelOut.accept(item, ItemModelUtils.plainModel(model));
 		}
+		Item doorKey = ChromaItems.DOOR_KEY.get();
+		Identifier doorKeyModel = ModelTemplates.FLAT_ITEM.create(ModelLocationUtils.getModelLocation(doorKey),
+				TextureMapping.layer0(doorKey), modelOut);
+		itemModelOut.accept(doorKey, ItemModelUtils.plainModel(doorKeyModel));
+		Item fragment = ChromaItems.INFO_FRAGMENT.get();
+		Identifier fragmentModel = ModelTemplates.FLAT_ITEM.create(ModelLocationUtils.getModelLocation(fragment),
+				TextureMapping.layer0(fragment), modelOut);
+		itemModelOut.accept(fragment, new reika.chromaticraft.render.item.InfoFragmentItemModel.Unbaked(
+				ItemModelUtils.plainModel(fragmentModel)));
 		// V33a draws lamps and potion crystals with the cave crystal's spikes plus the stone plinth
 		// (CrystalRenderedBlock.renderBase()); the old coloured-cube placeholder was wrong for both.
 		basedCrystalBlocks(ChromaBlocks.CRYSTAL_LAMPS, "crystal_lamp", blockStateOut, itemModelOut, modelOut);
@@ -192,6 +210,15 @@ public class ChromaModelProvider extends ModelProvider {
 		lootChestModel(blockStateOut, itemModelOut, modelOut);
 		dummyAuxModel(blockStateOut, modelOut);
 		shieldingBlocks(blockStateOut, itemModelOut, modelOut);
+		trapFloorModel(blockStateOut, itemModelOut, modelOut);
+		shiftLockModel(blockStateOut, itemModelOut, modelOut);
+		hoverModel(blockStateOut, itemModelOut, modelOut);
+		lightPanelModel(blockStateOut, itemModelOut, modelOut);
+		lightSwitchModel(blockStateOut, itemModelOut, modelOut);
+		colorLockModel(blockStateOut, itemModelOut, modelOut);
+		lockKeyModel(blockStateOut, itemModelOut, modelOut);
+		musicTriggerModel(blockStateOut, itemModelOut, modelOut);
+		biomeReplayModel(blockStateOut, modelOut);
 		warpNodeModel(blockStateOut, modelOut);
 		unknownArtefactBlock(blockStateOut, itemModelOut, modelOut);
 		decoFlowerBlocks(blockStateOut, itemModelOut, modelOut);
@@ -213,19 +240,26 @@ public class ChromaModelProvider extends ModelProvider {
 	 */
 	private static void tieredOreItems(ItemModelOutput itemModelOut,
 			BiConsumer<Identifier, ModelInstance> modelOut) {
-		tieredOreItem(ChromaBlocks.ENERGIZED_ROCK.get(), "tier_0_underlay", itemModelOut, modelOut);
-		tieredOreItem(ChromaBlocks.ELEMENTAL_STONES.get(), "tier_1_underlay", itemModelOut, modelOut);
-		tieredOreItem(ChromaBlocks.FIRESTONE.get(), "tier_9_underlay", itemModelOut, modelOut);
+		tieredOreItem(ChromaBlocks.ENERGIZED_ROCK.get(), "chromaticraft:block/ore/tier_0_underlay",
+				"chromaticraft:block/ore/tier_0_overlay", itemModelOut, modelOut);
+		tieredOreItem(ChromaBlocks.ELEMENTAL_STONES.get(), "chromaticraft:block/ore/tier_1_underlay",
+				"chromaticraft:block/ore/tier_1_overlay", itemModelOut, modelOut);
+		// The old tier_9_underlay baked 1.7.10 netherrack into the ore. Modern netherrack is the
+		// backing now; the unchanged animated overlay retains the exact firestone cutout positions.
+		tieredOreItem(ChromaBlocks.FIRESTONE.get(), "minecraft:block/netherrack",
+				"chromaticraft:block/ore/tier_9_overlay", itemModelOut, modelOut);
 	}
 
-	private static void tieredOreItem(Block block, String texture, ItemModelOutput itemModelOut,
+	private static void tieredOreItem(Block block, String underlay, String overlay, ItemModelOutput itemModelOut,
 			BiConsumer<Identifier, ModelInstance> modelOut) {
+		Identifier underlayId = Identifier.parse(underlay);
+		Identifier overlayId = Identifier.parse(overlay);
 		Identifier model = ModelTemplates.CUBE_ALL.create(
 				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
 						"block/" + BuiltInRegistries.BLOCK.getKey(block).getPath() + "_item"),
-				TextureMapping.cube(new Material(Identifier.fromNamespaceAndPath(
-						ChromatiCraft.MODID, "block/ore/" + texture))), modelOut);
-		itemModelOut.accept(block.asItem(), ItemModelUtils.plainModel(model));
+				TextureMapping.cube(new Material(underlayId)), modelOut);
+		itemModelOut.accept(block.asItem(), ItemModelUtils.specialModel(model,
+				new reika.chromaticraft.render.item.TieredOreItemRenderer.Unbaked(underlayId, overlayId)));
 	}
 
 	private static void metaAlloyModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
@@ -305,20 +339,18 @@ public class ChromaModelProvider extends ModelProvider {
 	 * One cube_all per material. The reinforced flag changes behaviour, not appearance -- V33a keys
 	 * its icon off {@code meta % 8} alone -- so both states share a model.
 	 */
-	/**
-	 * V33a renders the loot chest through its own ISBRH as an inset body. Its own artwork is a chest
-	 * model rather than a sprite sheet, so until that BER lands the block uses the structure stone it
-	 * is always found embedded in, which is what the chest reads as from a distance anyway.
-	 */
+	/** V33a's loot chest is entirely model-rendered; the baked block model supplies particles only. */
 	private static void lootChestModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
 			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
 		Block block = ChromaBlocks.LOOT_CHEST.get();
-		Material texture = new Material(Identifier.fromNamespaceAndPath(
+		Material particle = new Material(Identifier.fromNamespaceAndPath(
 				ChromatiCraft.MODID, ChromaShieldTypes.STONE.texture()));
-		Identifier model = ModelTemplates.CUBE_ALL.create(block, TextureMapping.cube(texture), modelOut);
+		Identifier model = ModelTemplates.PARTICLE_ONLY.create(block,
+				new TextureMapping().put(TextureSlot.PARTICLE, particle), modelOut);
 		blockStateOut.accept(MultiVariantGenerator.dispatch(block,
 				new MultiVariant(WeightedList.of(new Variant(model)))));
-		itemModelOut.accept(block.asItem(), ItemModelUtils.plainModel(model));
+		itemModelOut.accept(block.asItem(), ItemModelUtils.specialModel(model,
+				new reika.chromaticraft.render.item.LootChestItemRenderer.Unbaked()));
 	}
 
 	/** The dummy aux draws as structure stone or nothing at all, decided per tile by its RENDER flag. */
@@ -700,17 +732,208 @@ public class ChromaModelProvider extends ModelProvider {
 
 	private static void encrustedBlock(Consumer<BlockModelDefinitionGenerator> blockStateOut,
 			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		Identifier texture = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/crystal/encrusted");
 		Identifier model = ModelTemplates.CUBE_ALL.create(
 				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/encrusted_crystal"),
-				TextureMapping.cube(new Material(Identifier.fromNamespaceAndPath(
-						ChromatiCraft.MODID, "block/crystal/encrusted"))), modelOut);
+				TextureMapping.cube(new Material(texture, true)), modelOut);
 		for (CrystalElement element : CrystalElement.elements) {
 			Block block = ChromaBlocks.encrustedCrystal(element).get();
 			// Deliberately no blockstate: the crust is built per block entity by
 			// EncrustedCrystalModel, whose hand-authored blockstate this cube_all stub would
 			// silently win the resource merge against. Only the inventory model is generated.
-			itemModelOut.accept(block.asItem(), ItemModelUtils.plainModel(model));
+			itemModelOut.accept(block.asItem(), ItemModelUtils.specialModel(model,
+					new reika.chromaticraft.render.item.EncrustedCrystalItemRenderer.Unbaked(texture, element)));
 		}
+	}
+
+	private static void trapFloorModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		Block block = ChromaBlocks.TRAP_FLOOR.get();
+		PropertyDispatch.C1<MultiVariant, BlockTrapFloor.Disguise> dispatch = PropertyDispatch.initial(BlockTrapFloor.DISGUISE);
+		Identifier own = null;
+		for (BlockTrapFloor.Disguise disguise : BlockTrapFloor.Disguise.values()) {
+			String texture = switch (disguise) {
+				case SELF -> "chromaticraft:block/basic/trapfloor";
+				case STONE_BRICKS -> "minecraft:block/stone_bricks";
+				case OAK_PLANKS -> "minecraft:block/oak_planks";
+				case STRUCTURE_STONE -> "chromaticraft:block/shield/stone";
+			};
+			Identifier model = ModelTemplates.CUBE_ALL.create(
+					ModelLocationUtils.getModelLocation(block).withSuffix("_" + disguise.getSerializedName()),
+					TextureMapping.cube(new Material(Identifier.parse(texture))), modelOut);
+			dispatch.select(disguise, variant(model));
+			if (disguise == BlockTrapFloor.Disguise.SELF) own = model;
+		}
+		blockStateOut.accept(MultiVariantGenerator.dispatch(block).with(dispatch));
+		itemModelOut.accept(block.asItem(), ItemModelUtils.plainModel(own));
+	}
+
+	private static void shiftLockModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		Block block = ChromaBlocks.SHIFT_LOCK.get();
+		PropertyDispatch.C1<MultiVariant, BlockShiftLock.Passability> dispatch = PropertyDispatch.initial(BlockShiftLock.PASSABILITY);
+		Identifier item = null;
+		for (BlockShiftLock.Passability passability : BlockShiftLock.Passability.values()) {
+			Identifier model = ModelLocationUtils.getModelLocation(block)
+					.withSuffix("_" + passability.getSerializedName());
+			modelOut.accept(model, () -> shiftLockJson(passability));
+			dispatch.select(passability, variant(model));
+			if (passability == BlockShiftLock.Passability.CLOSED) item = model;
+		}
+		blockStateOut.accept(MultiVariantGenerator.dispatch(block).with(dispatch));
+		itemModelOut.accept(block.asItem(), ItemModelUtils.plainModel(item));
+	}
+
+	private static JsonObject shiftLockJson(BlockShiftLock.Passability passability) {
+		JsonObject root = new JsonObject();
+		root.addProperty("parent", "minecraft:block/block");
+		JsonObject textures = new JsonObject();
+		textures.addProperty("lock", "chromaticraft:block/dimstruct/shiftlock-"
+				+ (passability.useOpenTexture() ? "open" : "closed"));
+		textures.addProperty("shield", "chromaticraft:block/shield/stone");
+		textures.addProperty("particle", "chromaticraft:block/shield/stone");
+		root.add("textures", textures);
+		JsonObject faces = new JsonObject();
+		for (Direction face : Direction.values())
+			faces.add(face.getSerializedName(), modelFace(passability.isDisguised(face) ? "#shield" : "#lock",
+					face.getSerializedName()));
+		JsonObject element = new JsonObject();
+		JsonArray from = new JsonArray(); from.add(0); from.add(0); from.add(0);
+		JsonArray to = new JsonArray(); to.add(16); to.add(16); to.add(16);
+		element.add("from", from); element.add("to", to); element.add("faces", faces);
+		JsonArray elements = new JsonArray(); elements.add(element); root.add("elements", elements);
+		return root;
+	}
+
+	private static void hoverModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		Block block = ChromaBlocks.HOVER.get();
+		Identifier model = ModelLocationUtils.getModelLocation(block);
+		modelOut.accept(model, () -> {
+			JsonObject root = new JsonObject();
+			root.addProperty("parent", "minecraft:block/block");
+			JsonObject textures = new JsonObject();
+			textures.addProperty("all", "chromaticraft:block/basic/hover");
+			textures.addProperty("particle", "chromaticraft:block/basic/hover");
+			root.add("textures", textures);
+			JsonObject faces = new JsonObject();
+			for (Direction direction : Direction.values()) {
+				JsonObject face = modelFace("#all", direction.getSerializedName());
+				face.addProperty("tintindex", 0);
+				faces.add(direction.getSerializedName(), face);
+			}
+			JsonObject element = new JsonObject();
+			JsonArray from = new JsonArray(); from.add(0); from.add(0); from.add(0);
+			JsonArray to = new JsonArray(); to.add(16); to.add(16); to.add(16);
+			element.add("from", from); element.add("to", to); element.add("faces", faces);
+			JsonArray elements = new JsonArray(); elements.add(element); root.add("elements", elements);
+			return root;
+		});
+		blockStateOut.accept(MultiVariantGenerator.dispatch(block, variant(model)));
+		itemModelOut.accept(block.asItem(), ItemModelUtils.plainModel(model));
+	}
+
+	private static void lightPanelModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		Block block = ChromaBlocks.LIGHT_PANEL.get();
+		PropertyDispatch.C2<MultiVariant, LightType, Boolean> dispatch =
+				PropertyDispatch.initial(BlockLightPanel.TYPE, BlockLightPanel.ACTIVE);
+		Identifier item = null;
+		for (LightType type : LightType.values()) {
+			for (boolean active : List.of(false, true)) {
+				Identifier model = ModelLocationUtils.getModelLocation(block).withSuffix("_"
+						+ type.getSerializedName() + "_" + (active ? "on" : "off"));
+				String side = "chromaticraft:block/dimstruct/lightpanel_" + switch (type) {
+					case TARGET -> "green";
+					case BLOCK -> "red";
+					case CANCEL -> "blue";
+				} + "_" + (active ? 1 : 0);
+				modelOut.accept(model, () -> lightPanelJson(side));
+				dispatch.select(type, active, variant(model));
+				if (type == LightType.TARGET && !active) item = model;
+			}
+		}
+		blockStateOut.accept(MultiVariantGenerator.dispatch(block).with(dispatch));
+		itemModelOut.accept(block.asItem(), ItemModelUtils.plainModel(item));
+	}
+
+	private static JsonObject lightPanelJson(String side) {
+		JsonObject root = new JsonObject();
+		root.addProperty("parent", "minecraft:block/cube_column");
+		JsonObject textures = new JsonObject();
+		textures.addProperty("end", "chromaticraft:block/dimstruct/lightpanel");
+		textures.addProperty("side", side);
+		textures.addProperty("particle", "chromaticraft:block/dimstruct/lightpanel");
+		root.add("textures", textures);
+		return root;
+	}
+
+	private static void lightSwitchModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		Block block = ChromaBlocks.PANEL_SWITCH.get();
+		PropertyDispatch.C1<MultiVariant, Boolean> dispatch = PropertyDispatch.initial(BlockLightSwitch.UP);
+		Identifier item = null;
+		for (boolean up : List.of(false, true)) {
+			Identifier model = ModelLocationUtils.getModelLocation(block).withSuffix(up ? "_on" : "_off");
+			modelOut.accept(model, () -> lightPanelJson("chromaticraft:block/dimstruct/lightpanel_switch_"
+					+ (up ? "on" : "off")));
+			dispatch.select(up, variant(model));
+			if (!up) item = model;
+		}
+		blockStateOut.accept(MultiVariantGenerator.dispatch(block).with(dispatch));
+		itemModelOut.accept(block.asItem(), ItemModelUtils.plainModel(item));
+	}
+
+	private static void colorLockModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		Block block = ChromaBlocks.COLOR_LOCK.get();
+		PropertyDispatch.C2<MultiVariant, Boolean, Boolean> dispatch =
+				PropertyDispatch.initial(BlockColoredLock.OPEN, BlockColoredLock.GATE);
+		Identifier closed = ModelLocationUtils.getModelLocation(block).withSuffix("_closed");
+		Identifier openModel = ModelLocationUtils.getModelLocation(block).withSuffix("_open");
+		ModelTemplates.CUBE_ALL.create(closed, TextureMapping.cube(new Material(Identifier.fromNamespaceAndPath(
+				ChromatiCraft.MODID, "block/dimstruct/colorlock_0"))), modelOut);
+		ModelTemplates.CUBE_ALL.create(openModel, TextureMapping.cube(new Material(Identifier.fromNamespaceAndPath(
+				ChromatiCraft.MODID, "block/dimstruct/colorlock_1"))), modelOut);
+		for (boolean open : List.of(false, true)) for (boolean gate : List.of(false, true)) {
+			Identifier model = open ? openModel : closed;
+			dispatch.select(open, gate, variant(model));
+		}
+		blockStateOut.accept(MultiVariantGenerator.dispatch(block).with(dispatch));
+		itemModelOut.accept(block.asItem(), ItemModelUtils.plainModel(closed));
+	}
+
+	private static void lockKeyModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		Block block = ChromaBlocks.LOCK_KEY.get();
+		Identifier model = ModelTemplates.CUBE_ALL.create(ModelLocationUtils.getModelLocation(block),
+				TextureMapping.cube(new Material(Identifier.fromNamespaceAndPath(
+						ChromatiCraft.MODID, "block/dimstruct/key"))), modelOut);
+		blockStateOut.accept(MultiVariantGenerator.dispatch(block, variant(model)));
+		itemModelOut.accept(block.asItem(), ItemModelUtils.plainModel(model));
+	}
+
+	private static void musicTriggerModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		Block block = ChromaBlocks.MUSIC_TRIGGER.get();
+		Identifier model = ModelTemplates.CUBE_COLUMN.create(ModelLocationUtils.getModelLocation(block),
+				TextureMapping.column(new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
+						"block/dimstruct/musictrigger_side")),
+						new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
+								"block/dimstruct/musictrigger"))), modelOut);
+		blockStateOut.accept(MultiVariantGenerator.dispatch(block, variant(model)));
+		itemModelOut.accept(block.asItem(), ItemModelUtils.plainModel(model));
+	}
+
+	private static void biomeReplayModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			BiConsumer<Identifier, ModelInstance> modelOut) {
+		Block block = ChromaBlocks.BIOME_REPLAY.get();
+		Identifier model = ModelTemplates.CUBE_COLUMN.create(ModelLocationUtils.getModelLocation(block),
+				TextureMapping.column(new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
+						"block/dimstruct/dimdata_side")),
+						new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
+								"block/dimstruct/dimdata"))), modelOut);
+		blockStateOut.accept(MultiVariantGenerator.dispatch(block, variant(model)));
 	}
 
 	private static void itemStandModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
@@ -889,11 +1112,12 @@ public class ChromaModelProvider extends ModelProvider {
 		}
 
 		Block glowingLeaves = ChromaBlocks.GLOWING_LEAVES.get();
-        Material glowingTexture = new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/dimgen/glowleaf-light"));
-        Identifier glowingModel = ModelTemplates.LEAVES.create(glowingLeaves, TextureMapping.cube(glowingTexture), modelOut);
+		Identifier glowingModel = ModelLocationUtils.getModelLocation(glowingLeaves);
+		modelOut.accept(glowingModel, ChromaModelProvider::glowingLeafModel);
         blockStateOut.accept(MultiVariantGenerator.dispatch(glowingLeaves,
                 new MultiVariant(WeightedList.of(new Variant(glowingModel)))));
-        itemModelOut.accept(glowingLeaves.asItem(), ItemModelUtils.plainModel(glowingModel));
+		itemModelOut.accept(glowingLeaves.asItem(), ItemModelUtils.tintedModel(glowingModel,
+				new Constant(net.minecraft.world.level.FoliageColor.FOLIAGE_DEFAULT)));
 
         Block rainbowLeaves = ChromaBlocks.RAINBOW_LEAVES.get();
 		Identifier rainbowLeavesModel = ModelTemplates.LEAVES.create(rainbowLeaves, TextureMapping.cube(leavesTexture), modelOut);
@@ -907,6 +1131,152 @@ public class ChromaModelProvider extends ModelProvider {
 		blockStateOut.accept(MultiVariantGenerator.dispatch(rainbowSapling,
 				new MultiVariant(WeightedList.of(new Variant(rainbowSaplingModel)))));
 		itemModelOut.accept(rainbowSapling.asItem(), ItemModelUtils.plainModel(rainbowSaplingModel));
+	}
+
+	/** V33a renders the controller entirely through its dynamic structure-script renderer. */
+	private static void structureControllerModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			BiConsumer<Identifier, ModelInstance> modelOut) {
+		Material particle = new Material(Identifier.fromNamespaceAndPath(
+				ChromatiCraft.MODID, "block/icons/roundflare"));
+		Identifier worldModel = ModelTemplates.PARTICLE_ONLY.create(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/structure_controller"),
+				new TextureMapping().put(TextureSlot.PARTICLE, particle), modelOut);
+		blockStateOut.accept(MultiVariantGenerator.dispatch(ChromaBlocks.STRUCTURE_CONTROLLER.get(),
+				new MultiVariant(WeightedList.of(new Variant(worldModel)))));
+	}
+
+	/**
+	 * V33a's state-sized normal renderer: a four-pixel core with an arm to every connected door or
+	 * sturdy neighbour. Separate multipart pieces preserve that geometry in the modern baked model
+	 * pipeline, while the open flag swaps the complete animated texture exactly as metadata bit zero did.
+	 */
+	private static void chromaDoorModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		String closed = ChromatiCraft.MODID + ":block/basic/door_closed";
+		String open = ChromatiCraft.MODID + ":block/basic/door_open";
+		MultiPartGenerator multipart = MultiPartGenerator.multiPart(ChromaBlocks.CHROMA_DOOR.get());
+		for (boolean isOpen : new boolean[] {false, true}) {
+			String texture = isOpen ? open : closed;
+			String suffix = isOpen ? "open" : "closed";
+			Identifier core = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/chroma_door_core_" + suffix);
+			modelOut.accept(core, () -> cuboidModel(texture, 6, 6, 6, 10, 10, 10));
+			multipart.with(new ConditionBuilder().term(BlockChromaDoor.OPEN, isOpen), variant(core));
+			for (Direction direction : Direction.values()) {
+				float minX = 6, minY = 6, minZ = 6, maxX = 10, maxY = 10, maxZ = 10;
+				switch (direction) {
+					case UP -> { minY = 10; maxY = 16; }
+					case DOWN -> { minY = 0; maxY = 6; }
+					case NORTH -> { minZ = 0; maxZ = 6; }
+					case SOUTH -> { minZ = 10; maxZ = 16; }
+					case EAST -> { minX = 10; maxX = 16; }
+					case WEST -> { minX = 0; maxX = 6; }
+				}
+				Identifier arm = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
+						"block/chroma_door_" + direction.getName() + "_" + suffix);
+				float x1 = minX, y1 = minY, z1 = minZ, x2 = maxX, y2 = maxY, z2 = maxZ;
+				modelOut.accept(arm, () -> cuboidModel(texture, x1, y1, z1, x2, y2, z2));
+				multipart.with(new ConditionBuilder().term(BlockChromaDoor.OPEN, isOpen)
+						.term(doorConnection(direction), true), variant(arm));
+			}
+		}
+		blockStateOut.accept(multipart);
+		Identifier itemModel = ModelTemplates.CUBE_ALL.create(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/chroma_door_item"),
+				TextureMapping.cube(new Material(Identifier.parse(closed))), modelOut);
+		itemModelOut.accept(ChromaBlocks.CHROMA_DOOR.get().asItem(), ItemModelUtils.plainModel(itemModel));
+	}
+
+	/** V33a BlockAttachableMini bounds, with hot/cold now represented by distinct registry blocks. */
+	private static void heatLampModels(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		heatLampModel(ChromaBlocks.HEAT_LAMP.get(), "block/ore/tier_6_geode", blockStateOut, itemModelOut, modelOut);
+		heatLampModel(ChromaBlocks.COLD_LAMP.get(), "block/coldlamp", blockStateOut, itemModelOut, modelOut);
+	}
+
+	private static void heatLampModel(Block block, String texturePath,
+			Consumer<BlockModelDefinitionGenerator> blockStateOut, ItemModelOutput itemModelOut,
+			BiConsumer<Identifier, ModelInstance> modelOut) {
+		String texture = ChromatiCraft.MODID + ":" + texturePath;
+		java.util.EnumMap<Direction, MultiVariant> variants = new java.util.EnumMap<>(Direction.class);
+		Identifier[] itemModel = new Identifier[1];
+		for (Direction direction : Direction.values()) {
+			float x1 = 4, y1 = 4, z1 = 4, x2 = 12, y2 = 12, z2 = 12;
+			switch (direction) {
+				case DOWN -> { y1 = 12; y2 = 16; }
+				case UP -> { y1 = 0; y2 = 4; }
+				case NORTH -> { z1 = 12; z2 = 16; }
+				case SOUTH -> { z1 = 0; z2 = 4; }
+				case WEST -> { x1 = 12; x2 = 16; }
+				case EAST -> { x1 = 0; x2 = 4; }
+			}
+			Identifier model = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
+					"block/" + BuiltInRegistries.BLOCK.getKey(block).getPath() + "_" + direction.getName());
+			float minX = x1, minY = y1, minZ = z1, maxX = x2, maxY = y2, maxZ = z2;
+			modelOut.accept(model, () -> cuboidModel(texture, minX, minY, minZ, maxX, maxY, maxZ));
+			variants.put(direction, variant(model));
+			if (direction == Direction.EAST) itemModel[0] = model;
+		}
+		blockStateOut.accept(MultiVariantGenerator.dispatch(block).with(
+				PropertyDispatch.initial(reika.chromaticraft.block.BlockHeatLamp.FACING)
+						.select(Direction.DOWN, variants.get(Direction.DOWN))
+						.select(Direction.UP, variants.get(Direction.UP))
+						.select(Direction.NORTH, variants.get(Direction.NORTH))
+						.select(Direction.SOUTH, variants.get(Direction.SOUTH))
+						.select(Direction.WEST, variants.get(Direction.WEST))
+						.select(Direction.EAST, variants.get(Direction.EAST))));
+		itemModelOut.accept(block.asItem(), ItemModelUtils.plainModel(itemModel[0]));
+	}
+
+	private static net.minecraft.world.level.block.state.properties.BooleanProperty doorConnection(Direction direction) {
+		return switch (direction) {
+			case UP -> BlockChromaDoor.UP;
+			case DOWN -> BlockChromaDoor.DOWN;
+			case NORTH -> BlockChromaDoor.NORTH;
+			case SOUTH -> BlockChromaDoor.SOUTH;
+			case EAST -> BlockChromaDoor.EAST;
+			case WEST -> BlockChromaDoor.WEST;
+		};
+	}
+
+	private static MultiVariant variant(Identifier model) {
+		return new MultiVariant(WeightedList.of(new Variant(model)));
+	}
+
+	private static JsonObject cuboidModel(String texture, float x1, float y1, float z1,
+			float x2, float y2, float z2) {
+		JsonObject root = new JsonObject();
+		JsonObject textures = new JsonObject();
+		textures.addProperty("all", texture);
+		textures.addProperty("particle", texture);
+		root.add("textures", textures);
+		JsonObject element = new JsonObject();
+		element.add("from", modelVector(x1, y1, z1));
+		element.add("to", modelVector(x2, y2, z2));
+		JsonObject faces = new JsonObject();
+		for (Direction direction : Direction.values()) {
+			JsonObject face = new JsonObject();
+			face.addProperty("texture", "#all");
+			faces.add(direction.getName(), face);
+		}
+		element.add("faces", faces);
+		JsonArray elements = new JsonArray();
+		elements.add(element);
+		root.add("elements", elements);
+		return root;
+	}
+
+	/** V33a GlowTreeRenderer: biome-tinted vanilla leaves, then the animated full-bright overlay. */
+	private static JsonObject glowingLeafModel() {
+		String[] base = new String[Direction.values().length];
+		String[] glow = new String[Direction.values().length];
+		java.util.Arrays.fill(base, "minecraft:block/oak_leaves");
+		java.util.Arrays.fill(glow, ChromatiCraft.MODID + ":block/dimgen/glowleaf-light");
+		JsonObject model = layeredCube(base, glow);
+		JsonArray elements = model.getAsJsonArray("elements");
+		JsonObject baseElement = elements.get(0).getAsJsonObject();
+		for (var face : baseElement.getAsJsonObject("faces").entrySet())
+			face.getValue().getAsJsonObject().addProperty("tintindex", 0);
+		return model;
 	}
 	private static void cliffBlocks(Consumer<BlockModelDefinitionGenerator> blockStateOut,
 			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {

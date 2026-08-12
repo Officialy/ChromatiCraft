@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "up=false": {
+      "model": "chromaticraft:block/panel_switch_off"
+    },
+    "up=true": {
+      "model": "chromaticraft:block/panel_switch_on"
+    }
+  }
+}

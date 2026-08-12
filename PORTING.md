@@ -1,5 +1,80 @@
 # ChromatiCraft 1.7.10 V33a → Minecraft 26.2 / NeoForge port
 
+## Working checkpoint — 2026-08-12 (Biome Fragment dependency vertical)
+
+- Fully ported the V33a Hover Field as the first Biome Fragment prerequisite: all four motion modes,
+  permanent/armed/decaying lifecycle, delayed decay, fall-distance reset, sneak bypass, particles,
+  tinting, collision/render policy, and persistent blockstate modes are restored.
+- Fully ported Light Panels with three original signal roles (`TARGET`, `BLOCK`, `CANCEL`), explicit
+  active state, source-exact 0/15 luminance, and generated end/side models using the original six
+  colored panel textures. These modes are runtime state, not registry identities; unlike colored
+  content families they describe one puzzle block changing state.
+- Fully ported the reusable Panel Switch vertical: explicit up/down state, source pitch click,
+  persistent level/channel/controller routing in a modern block entity, registered models, block
+  entity, item, loot and language data. Its callback targets a typed handler so the exact randomized
+  Biome Fragment truth tables can live durably on the structure controller rather than depending on
+  V33a's transient generator singleton.
+- Ported the Color Lock block/entity vertical: required and still-closed element sets persist by
+  element name, open state removes collision, original doubled stone-break transition cue and
+  open-state colored particles are retained, creative shard/obsidian configuration remains
+  available, and color/gate modes are explicit state. This is one dynamically configured lock—not
+  a legacy color-content family—so its colors correctly belong to synchronized block-entity data.
+- Ported Lock Key as a complete portable block/entity vertical. Its original room-index metadata is
+  an explicit 0–7 channel state (not colored content); its structure UUID and controller coordinate
+  survive both world persistence and item pickup through `CUSTOM_DATA`; survival mining emits that
+  exact item while creative mining does not; progression-controlled hardness, adjacent-rune lookup,
+  controller add/remove callbacks, light, translucent model policy and sparkle activity are restored.
+- The natural-structure controller now owns the complete randomized, restart-safe Biome Fragment
+  puzzle state: one key channel, four distinct 4-switch masks excluding each door's trivial corner,
+  eight unique door colors, the shuffled rune assignment, the selected melody, its eight playable
+  crystal identities, player guess, playback clock/cooldown, and completion flag. It binds Panel
+  Switches and Lock Keys to itself, configures Color Locks, recomputes rune/key color availability on
+  placement/removal, updates the exact V33a Shift Lock door coordinates, drives red/green indicators,
+  and rejects players missing BIOMESTRUCT prerequisites.
+- Restored the reusable Crystal Music Trigger and the source-exact Crystal Music Manager mapping.
+  The trigger retains four clickable face quadrants, redstone-strength-to-note selection, each
+  element's tonic/major-or-minor-third/fifth/octave mapping, pitch-scaled ding, elemental burst,
+  bounded structure callback discovery, original textures, and generated model/item/loot/lang/tag
+  data. Fixed-identity Crystal Lamp and Cave/Potion Crystal families are recognized directly rather
+  than requiring the obsolete one-block-plus-color-property model.
+- The full V33a prefab catalog is transcribed in `BiomeStructureMelodies`; generation rejects a
+  melody unless its notes can be covered by at most eight distinct elemental crystals, then fills
+  the remaining positions with unique colors exactly as the source did. Correct trigger notes advance
+  the persisted guess, rests are skipped, a wrong note resets it with the error cue, the first nearby
+  player receives the automatic playback demonstration, and manual replay observes the original
+  forty-tick cooldown. Completion plays the CAST cue, opens the exact central Chroma Door barrier,
+  and clears the explicit persistent structure lock on all four lower Loot Chests. That boolean is
+  the modern replacement for V33a's Loot Chest metadata bit 8, not a lost metadata behavior.
+- The exact 15x14x15 V33a Biome Fragment is now canonical generated NBT. Its shell, stairs (including
+  inverted upper flights), shields, eight music triggers, eight caches, rune/lamp placeholders,
+  Color/Shift Locks, switches and indicator panels, two portable keys, barriers, liquid cells and
+  replay pedestal are authored from the source coordinates. Runtime initialization replaces colored
+  placeholders with independently registered per-colour rune/lamp identities, binds every delegate,
+  selects chroma/luma/ender-fluid/lava from the natural biome, locks the four lower caches, and adds
+  the exact lower/upper Information Fragment count distributions.
+- Both `chromaticraft:natural_biome_fragment` and the command-safe
+  `/place feature chromaticraft:biome_fragment` are registered. Natural generation is restricted to
+  Rainbow Forest, Ender Forest, Luminous Cliffs and its shores (never Rainbow Stream), uses the
+  source 640-block/40-chunk scale, sinks through soft blocks/wood/leaves/plants/fluids before
+  placement, removes adjacent trunks and intruding leaves, applies the original height-weighted
+  moss pass, and clears the roof approach. The explicit biome list avoids the river feature-order
+  cycle previously seen with custom biomes.
+- Verification: focused `:ChromatiCraft:compileJava`, `:ChromatiCraft:runServerData`, and
+  `:ChromatiCraft:runClientData` all pass. The single
+  `chromaticraft:biome_fragment_light_panel_switch` GameTest passes with Light Panel luminance,
+  Panel Switch interaction, Color Lock partial/full color matching and collision, two-rune Lock Key
+  opening/reclosing, and the portable channel/delegate data contract. The stale Luminous Cliffs
+  placed-feature warnings found during verification were corrected by adding the required
+  `BiomeFilter.biome()` placement gate to all four biome-injected features. The focused
+  `chromaticraft:biome_fragment_music_loop` GameTest additionally passes the exact-prefab
+  playability invariant, real clickable Music Trigger dispatch through a fixed-color Crystal Lamp,
+  wrong-note reset, full sequence completion, all nine central barrier cells, and all four cache
+  unlocks. The focused `chromaticraft:biome_fragment_nbt_completion` test passes placement through
+  the generated NBT, all eight rune and lamp substitutions, eight triggers/caches, randomized Lock
+  Key channel/delegates, initial lower-cache locks, full melody completion, barrier opening and cache
+  unlocking. Only that new test was run after this slice; Minecraft reported all required tests
+  passed before Spark's Windows helper lingered during process shutdown.
+
 ## Non-negotiable rules
 
 - Port behavior fully. A compiling simplification is not a completed port.
@@ -40,7 +115,7 @@ The allowlist is a dependency/work tracker, not proof that a file is complete. T
 
 - `:ChromatiCraft:compileJava` is down from **171 errors / 5 warnings** to **0 errors**. Current warnings are deprecations in the GameTest mock-player helper, not port failures.
 - The 2026-07-26 combined GameTest run passes **all 41 required tests** (36 ChromatiCraft, four RotaryCraft, one Minecraft). Coverage now also includes exact vertical anti-climb behavior and ability immunity, deterministic routed pylon-overload impact, generated casting L1→L2→L3 NBT round-trip/alternative-block parity, the four-tier casting recipe contract, casting-stand ownership/lock/spread behavior, timed atomic table crafting, source-exact temple crystal-group crafting with progression rejection/acceptance, and receiver-capacity saturation.
-- The V33a pylon broadcast monument is now canonical generated structure NBT. Its stone/rune geometry is runtime-matched from the template, exact chroma-fluid cells use registry-ID checks, and pylon LOS behavior synchronizes from the complete monument. Until the modern `chromaticraft:chroma` fluid block lands, those cells are structure-void markers and the upgrade deliberately fails closed instead of accepting an invented substitute.
+- The V33a pylon broadcast monument is now canonical generated structure NBT. Its stone/rune geometry is runtime-matched from the template, its source-fluid cells use the registered `chromaticraft:liquid_chroma` identity, and pylon LOS behavior synchronizes from the complete monument. The focused contract test covers activation, one-cell invalidation, ordinary-LOS restoration, repair, and reactivation.
 - A real registered pylon can be discovered as a source, transfer an element to a receiver, and debit its own storage.
 - A real registered repeater can form a valid path between pylon and receiver; the tested transfer respects path attenuation and charges the source for accepted payload plus loss.
 - `CrystalFlow` now keeps receiver payload and source-side loss separate. This fixes the WIP bug where a request for 400 through an attenuating repeater delivered 410.
@@ -55,7 +130,7 @@ The allowlist is a dependency/work tracker, not proof that a file is complete. T
 - `ChromaItems` registers all 35 former V33a `CRAFTING` metadata variants as distinct 26.2 items while preserving original ordinal/name mapping; language and flat item models are datagen-owned. All six active network blocks now have generated blockstate/block/item definitions and client datagen is green.
 - All sixteen encrusted block-item variants and sixteen crystal-shard items are registered. Their language and fallback block/item models are datagen-owned, shard sprites are cropped from the authoritative V33a `items_color.png` sheet, and the block's loot table is deliberately empty because its synchronized block entity emits the original growth-scaled per-face shard drops. Server and client datagen are green.
 
-This checkpoint proves an **operational network-engine slice**, not full V33a parity. The active pylon server vertical, routed overload entity, typed client payload/effect layer, and six network model definitions are complete and tested. Broadcast monument geometry and fail-closed state detection are restored, with positive activation waiting only on the real chroma-fluid registration. Remaining repeater work is subtype interactions plus client connection/range display, surge payloads, sounds, and particles. The next active milestone is the casting recipe/table runtime on top of the completed inventory and NBT-temple foundation.
+This checkpoint proves an **operational network-engine slice**, not full V33a parity. The active pylon server vertical, routed overload entity, typed client payload/effect layer, and six network model definitions are complete and tested. Broadcast monument geometry, registered liquid-chroma matching, activation, invalidation, and repair are restored. Repeater connection/range rendering was subsequently completed, and the source rain-loss, enhanced-stalk, surge, compound-rune, and overload-burst audiovisual families are now implemented pending the compile/client verification recorded at the end of this ledger. Remaining repeater work is progression catch-up and subtype interactions. The next active milestone is the casting recipe/table runtime on top of the completed inventory and NBT-temple foundation.
 
 ## Verified committed foundation
 
@@ -116,10 +191,10 @@ Status meanings:
 | `CrystalTransmitterBase` | 195 | 159 | Active: restore connection cache, invalidation, render state, ownership, range, and throughput. |
 | `CrystalReceiverBase` | 290 | 278 | **Rejected simplification:** restore efficiency-upgrade cost scaling and receiver invariants. |
 | `InventoriedCrystalReceiver` | 126 | 126 | Deferred with managed item handlers/containers/casting. |
-| `TileEntityCrystalPylon` | 1,509 | growing | Active: the server behavior cluster now includes vertical defense, ability immunity, unstable overload routing/short-circuit, colour effects, enclosure rejection, and typed client presentation in addition to the previously restored structure, storage, enhancement, ownership, booster, growth, persistence, and network behavior. Positive broadcast activation still awaits chroma fluid. |
+| `TileEntityCrystalPylon` | 1,509 | growing | Active: the server behavior cluster now includes vertical defense, ability immunity, unstable overload routing/short-circuit, colour effects, enclosure rejection, typed client presentation, and complete broadcast-monument activation/invalidation/repair in addition to the previously restored structure, storage, enhancement, ownership, booster, growth, persistence, and network behavior. |
 | `TileEntityPylonEnhancer`, `TileEntityChromaCrystal` | 26 / 131 | modernized | Active and tested: multi-owner plus legacy placer persistence, item/drop round-trip, owner-only mining, rune-color pylon discovery/reconnect, registered block/entity/tile, break callback, and server-visible destruction FX are restored. V33a destruction droplets/seeds and pylon-backlash node particles now use dedicated client payloads; visual runtime verification remains. |
-| `TileEntityCrystalRepeater` | 782 | growing | Active: structure/redstone lifecycle, priority, degradation/throughput, grouping, rain state, overload with exact powder drops, two-player ownership, custom data, and persistence are restored and tested; client display, surge audiovisual/payload, progression catch-up, and subtype interactions remain. |
-| `TileEntityCompoundRepeater` | 246 | 178 | Active: restore multi-element throughput, structure, and repeater behavior. |
+| `TileEntityCrystalRepeater` | 782 | growing | Active: structure/redstone lifecycle, priority, degradation/throughput, grouping, rain state, overload with exact powder drops, two-player ownership, custom data, persistence, connection/range display, and the source rain/enhanced/surge audiovisual families are restored. The final presentation patch still needs compile/client verification; progression catch-up and subtype interactions remain. |
+| `TileEntityCompoundRepeater` | 246 | growing | Active: multi-element throughput, structure, independent depth, direct-pylon attenuation, persistence, and the source 32-tick colour-rune cycle are restored; the final particle patch still needs compile/client verification. |
 | `TileEntityCreativeSource` | 132 | 129 | Active: verify unlimited-source and ownership/placement semantics. |
 | `TileEntitySkypeater` | 170 | 177 | Active: port sky/rain/biome/environment and node-class behavior. |
 | `TileEntityCrystalBroadcaster` | 386 | 386 | Deferred on broadcaster structure/wireless behavior. |
@@ -3113,3 +3188,477 @@ cannot fix that — whichever is added first still owns the whole shared band, a
 both tabs. `LexiconImageButton` now takes a `clickHeight`, so Items only claims the 34 pixels you can
 actually see while still drawing full height. With hit-testing settled explicitly, the add order is
 free to do what upstream uses it for: the inactive tab goes first so the active one draws over it.
+
+### Chromic Lexicon: specialist descriptions and Basic Info — 2026-08-11
+
+The post-Claude audit checked the 2026-08-10/11 guide commits against V33a and retained their useful
+26.2 conversions. One behavioral loss was found: the first ENERGY implementation assumed it was
+always machine subpage one, displacing authored NOTES. The machine page list now follows the source
+for active content: MAIN, NOTES when the XML has them, then ENERGY when the rendered block entity
+reports a lumen requirement. The original right-edge arrows and W/S movement traverse that list,
+and every subpage retains long-text pagination.
+
+`GuiToolDescription` and `GuiCraftableDesc` no longer share the invented 16px icon-and-caption
+header. Tools render their registered display variant four times size at V33a's `(132, 4)` frame
+offset and cycle every two seconds. Other Blocks use the real rotating 48px block-model/BER path.
+Resources use the four-times-size item presentation and cycle every second. `LexiconIconResolver`
+now returns the complete currently registered variant set for elemental stones, crystals, runes,
+dye leaves, crystal/potion lamps, berries, shards, dusts, groups, cores, energized cores,
+iridescent crystal, alloys, and all sixteen independently registered crystalline-stone blocks. The
+lists are transcribed from `ChromaResearch.getItemStacks`; missing identities remain missing instead
+of being replaced by superficially similar blocks.
+
+The generic description baseline was corrected too: text begins at frame top +80 (`posY+descY` in
+V33a), the invented `Research: ...` line is gone, and authored tool notes are a real subpage rather
+than being concatenated onto the description. Ability art is restored to `(103, 11)` at 50px.
+
+The first `GuiBasicInfo` specialist slice is active. ELEMENTS has its original element frame,
+seventeen pages (overview plus all sixteen colors), exact `elements.xml` prose with authored name
+substitutions, and the corresponding 64px glow rune. CRYSTALS uses the real rotating cave-crystal
+models, PYLONS restores the 96px additively blended color-cycling flare, and SKYPEATER restores its
+four-times-size item presentation. Generic Basic Info entries no longer receive an invented icon.
+
+The Handbook image tabs now use ChromatiCraft's registered GUICLICK and GUISEL cues at V33a's
+one-third and two-thirds volumes rather than vanilla's button click. Remaining temporary ordinary
+buttons still need conversion to the image-button sheet before that sound pass is globally complete.
+
+Focused verification after every slice:
+
+```text
+.\gradlew.bat :ChromatiCraft:compileJava -x :ElectriCraft:compileJava --console=plain
+BUILD SUCCESSFUL
+```
+
+No GameTest was run: these changes are client-only rendering, input, and immutable XML/resource
+loading. The relevant acceptance gate is the guide-page in-world checklist.
+
+### Crystal inventory parity and decoded fragment icons — 2026-08-11
+
+The shared cave-crystal item renderer's colour payload and generated per-colour models were already
+correct. The remaining white lamp/potion result was submission order: their fully opaque stone
+plinth was drawn after the translucent element mesh on the same 26.2 item target. The renderer now
+submits the plinth first and the alpha-220 spike mesh second. Cave crystals, crystal lamps and potion
+(`super`) crystals therefore retain one shared geometry/tint/translucency contract without
+reintroducing metadata or folding the sixteen concrete registry identities together.
+
+Lumen-encrusted crystal items no longer use a cube fallback. Their special model transcribes V33a's
+inventory path: a player-and-element-seeded six-by-six field, twelve placement attempts, source
+random-roll order, 0.2..0.8 peg heights, and the original 85% element/white mix. It uses the
+translucent block-atlas item target, preserving the encrusted sprite's transparent pixels. Datagen
+emits a colour-bearing special model for every independently registered encrusted-crystal item.
+
+Decoded Information Fragments now have their V33a inventory presentation. A custom item-model codec
+keeps the paper sprite as its ordinary base, resolves the decoded catalog entry through the same
+`LexiconIconResolver` used by the guide, and nests that real item/block/special render state at half
+size. Holding either Shift key in GUI context suppresses the paper and presents the page icon at full
+size (the FRAGMENT self-page retains its source overlap behavior). Non-GUI held, ground and frame
+contexts remain the ordinary paper sprite, matching the old callback's inventory-only gate.
+
+Focused verification:
+
+```text
+.\gradlew.bat :ChromatiCraft:compileJava -x :ElectriCraft:compileJava --console=plain
+BUILD SUCCESSFUL
+.\gradlew.bat :ChromatiCraft:runClientData -x :ElectriCraft:compileJava --console=plain
+BUILD SUCCESSFUL (18 affected client assets written)
+```
+
+No GameTests were repeated because this slice changes only client model codecs, generated model JSON
+and rendering. It requires an inventory/hand/dropped-item visual acceptance pass.
+
+### Held pylon charging, worldgen presentation, and V33a large Rainbow Tree — 2026-08-11
+
+Six user-reported presentation/behavior regressions were audited directly against V33a.
+
+The Elemental Manipulator no longer drains a pylon merely because its carrier looks at it.
+`ItemManipulator` restores the original 72,000-tick bow-style use action and performs its 24-block
+`ChargingPoint` ray trace from `onUseTick`; releasing right click stops charging. The not-yet-ported
+REACH ability remains explicitly forward-referenced for the source's 96-block extension.
+
+Glowing Leaves now reproduce `GlowTreeRenderer`: biome-tinted ordinary leaves form the base, then
+the existing animated glow strip is drawn as an unshaded full-bright overlay. Firestone's old
+1.7.10 netherrack-baked underlay was replaced with the modern vanilla netherrack sprite without
+changing its animated overlay cutouts. Energized Rock, Elemental Stones, and Firestone inventory
+forms now use a special two-pass cube renderer, so their animated overlays and full-bright emission
+survive item rendering too.
+
+The Loot Chest cube fallback is gone. Its exact V33a 64x64 chest texture was recovered from the
+published V33a artifact, and its body, hinged lid, and knob cuboids/UVs were transcribed into the
+26.2 model layer. The block entity follows the vanilla lid-controller/openers-counter lifecycle,
+and both the world block and item use the real chest model.
+
+Rainbow Tree generation now uses a canonical NBT structure, as required for modern structures.
+All 1,020 calls in `RainbowTreeBlueprint` were mechanically transcribed into the generated
+10x32x10 `worldgen/rainbow_tree.nbt`: 812 rainbow leaves, 152 vertical logs, 28 X-axis branches,
+and 28 Z-axis branches. Runtime substitutes one randomly selected natural overworld log across the
+whole template while preserving those authored axes. Clearance checks inspect only NBT cells
+through the bounded `WorldGenLevel` (never the backing `ServerLevel`), the original buried roots and
+six-by-six footing are retained, and obstruction falls through to the source's one-in-five small
+rainbow-tree attempt.
+
+Focused verification:
+
+```text
+.\gradlew.bat :ChromatiCraft:compileJava
+BUILD SUCCESSFUL
+.\gradlew.bat :ChromatiCraft:runClientData
+BUILD SUCCESSFUL (8 affected client assets written)
+.\gradlew.bat :ChromatiCraft:runServerData
+BUILD SUCCESSFUL (rainbow_tree.nbt written)
+.\gradlew.bat :ChromatiCraft:runGameTest -PgameTestSelector=chromaticraft:rainbow_tree_shape_and_log
+All 1 required tests passed
+```
+
+The remaining acceptance work is visual/in-world: held Manipulator charging, leaf layer ordering,
+animated item glows, and the Loot Chest's facing/lid/texture. The large-tree geometry itself is now
+source-count-checked by the focused GameTest.
+
+### Overworld/Nether structure port: canonical layouts and persistence foundation — 2026-08-11
+
+The original world-structure boundary has been audited as one subsystem. The Overworld family is
+`CAVERN`, `BURROW`, `OCEAN`, `DESERT`, `SNOWSTRUCT`, and `BIOMEFRAG`; the Nether-roof family is Hut,
+Temple, Maze, Spiral, and Diorama. End and ChromatiCraft-dimension structures are deliberately not
+part of this slice.
+
+The complete Nether-roof layout family is now generated as ordinary compressed structure NBT under
+`worldgen/nether/`. Temple, Maze, and Diorama are mechanically imported at datagen time from every
+literal V33a `world.setBlock` call; Spiral reconstructs the source's four repeated authored layers
+and generated cap; Hut reconstructs its loop-built shell. The checked-in NBT, not those pristine old
+classes, is runtime authority. The conversion preserves Spiral's accidental always-true cap
+condition and Hut's deliberate four missing roof corners rather than silently changing geometry
+during a parity port.
+
+Runtime registration exposes the original 200:15:30:24:8 weighted natural selector and five
+command-only placed features (`nether_hut`, `nether_temple`, `nether_maze`, `nether_spiral`, and
+`nether_diorama`). Loot follows the original chest categories; Maze retains its random Blaze versus
+Zombified Piglin swap. Temple and Diorama chests restore their source `NETHERSTRUCT` progression
+triggers.
+
+Two shared persistence losses were fixed before expanding further:
+
+- the modern loot chest now persists its `ProgressStage` trigger set through
+  `ValueInput`/`ValueOutput` and grants every trigger on legitimate access, matching V33a's
+  idempotent access path;
+- `NBTStructureLoader.place` now hydrates each template cell's block-entity NBT after placement.
+  Previously it discarded that tag entirely, so authored spawner delays/ranges/counts (and any
+  future controller state or data-marker payload) could never survive the NBT conversion.
+
+The first Overworld canonical asset was the exact Cavern shell: all 386 authored block calls and two
+loot-chest calls are source-count checked at datagen, with independently registered colour identities
+for its seven rune/crystal pairs. Its 14x6x11 template reserves the original controller anchor at
+`(7,2,5)`. That dependency is now fulfilled; Cavern and the other five Overworld families are
+registered through the shared persistent controller and canonical NBT feature seam.
+
+The remaining Overworld audit identifies the behavior that makes direct literal-only conversion
+unsafe:
+
+| Family | Source-authored behavior that must accompany its NBT |
+|---|---|
+| Burrow | per-structure element, UUID-bound key door, furnace and loot-room callbacks, optional rooms, ore/drop weighted caches |
+| Ocean | underwater siting, cover/pit trap and timed reset, Creeper spawner programming, widened chest reach |
+| Desert | terrain envelope, sand erosion/cactus pass, three mob-spawner roles, proximity crack/open sequence |
+| Snow | deterministic crack route and hidden access direction, Wolf spawners, support/snow/adjacent-tree cleanup |
+| Biome Fragment | **landed:** persisted puzzle/controller state, delegated puzzle tiles, exact shell/puzzle NBT, biome liquid, terrain sinking/weathering, natural + command placement, focused completion test |
+
+Focused compile after the persistence and Nether runtime work:
+
+```text
+.\gradlew.bat :ChromatiCraft:compileJava
+BUILD SUCCESSFUL
+```
+
+Server datagen successfully wrote the five Nether templates and the Cavern template. The Cavern
+provider initially rejected an incorrect expected-count assertion (388 actual source cells, not
+402); the assertion was corrected to the measured 386 + 2 contract and the full datagen rerun then
+passed. No broad GameTest suite was run.
+
+### Overworld structure controller and live Cavern loop — 2026-08-11
+
+The earlier note that Cavern is deliberately unregistered is now superseded. A dedicated modern
+natural-structure controller block/entity is registered and persisted with `ValueInput`/`ValueOutput`.
+It carries the six source structure identities, independently registered element identity, triggered
+and regeneration state, structure version, Ocean trap timer, both optional Burrow-room flags,
+generation-error state, last triggering player UUID, and the source 27-slot non-insertable reward
+inventory. The old Java-class-name reflection used for auxiliary puzzle data is intentionally not
+copied; Biome Fragment now persists its typed puzzle fields directly on that controller.
+
+Cavern is now a complete NBT-backed runtime feature rather than an inert shell:
+
+- `chromaticraft:cavern` is the command/debug placed feature; `natural_cavern` is the biome-added
+  form and is not exposed as the random command seam;
+- its controller coordinate is the template's exact `(7,2,5)` anchor;
+- natural placement retains the source y=10..49 roll, enclosed/non-liquid cell test, two-high east
+  tunnel-exit requirement and eastward tunnel carving;
+- the two authored Loot Chests receive dungeon loot and the Cavern progression trigger;
+- the hidden controller cache rolls stronghold-library loot and then adds the original
+  `1 + rand(4) * (1 + rand(2))` guaranteed Information Fragments without overwriting rolled loot;
+- entering the source AABB seals the two-block east entrance with reinforced cloak, plays the trap
+  sound, records the player, and grants `ANYSTRUCT` plus `CAVERN`;
+- reopening removes both seals and resets trigger ownership.
+
+The natural candidate rate is the 144-block source noise scale expressed as approximately one
+candidate per 9x9 chunk area, followed by the original physical siting tests. A future migration to
+true `StructureSet` spacing must preserve that density and the 64-block Cavern exclusion distance;
+the current feature registration is kept because `/place feature chromaticraft:cavern` is the
+required deterministic test seam.
+
+The controller currently has a particle-only block model so it cannot checkerboard while the
+source `RenderStructControl` script/flare/shader is ported. The dynamic renderer is explicitly part
+of the remaining structure presentation work, not being mistaken for completed behavior.
+
+Focused verification:
+
+```text
+.\gradlew.bat :ChromatiCraft:compileJava --console=plain
+BUILD SUCCESSFUL
+.\gradlew.bat :ChromatiCraft:runServerData --console=plain
+BUILD SUCCESSFUL (Cavern configured/placed features and biome modifier written)
+.\gradlew.bat :ChromatiCraft:runClientData --console=plain
+BUILD SUCCESSFUL (controller particle-only blockstate/model written)
+.\gradlew.bat :ChromatiCraft:runGameTest -PgameTestSelector=chromaticraft:structure_cavern_nbt_controller --console=plain
+All 1 required tests passed
+```
+
+Only the focused Cavern/controller GameTest was run. The Luminous Cliffs missing-
+`BiomeFilter.biome()` datagen diagnostics recorded at that checkpoint were subsequently fixed by
+adding the biome placement filter to all four injected placed features.
+
+### Live Burrow base and canonical optional annexes — 2026-08-11
+
+Burrow is now the second active NBT-backed Overworld structure. Datagen mechanically transcribes
+the exact V33a `BurrowStructure` coordinate exports and refuses to write assets if their source-call
+contracts drift:
+
+- `worldgen/overworld/burrow.nbt`: 307 base `setBlock` calls plus the six Loot Chests (313 authored
+  placements), normalized around the original controller at template `(3,3,3)`;
+- `worldgen/overworld/burrow_furnace.nbt`: 98 authored cells plus two furnace callbacks (100), with
+  runtime-owned Heat Lamp cells reserved above the furnaces;
+- `worldgen/overworld/burrow_loot.nbt`: 100 authored cells plus the four UUID-door callbacks (104),
+  including the separate vanilla key chest and the two deep reward chests.
+
+The base is active through command and natural seams. `/place feature chromaticraft:burrow` treats
+the command coordinate as the controller anchor. Natural placement converts the source's surface
+coordinate to controller offset `(-5,-8,-2)`, uses the 240-block source scale as approximately one
+candidate per 15x15 chunk area, requires a grass surface, preserves the source eight-by-five clear
+surface column and three-cube no-lake test, and rejects underground shell cells exposed to air or
+fluid. The remaining biome-family/exclusion-distance parity is still to be tightened before calling
+natural distribution final.
+
+Each placed base selects one `CrystalElement`, places the independently registered colour-specific
+Crystal Lamp at controller offset `(0,-2,0)`, and persists the same element on the controller. All
+six Loot Chests receive dungeon loot and `BURROW` progression. The controller cache receives its
+library roll plus guaranteed fragments. Entering the source Burrow AABB records the entrant, grants
+`ANYSTRUCT` and `BURROW`, and replaces controller offset `(2,1,0)` with the original reinforced
+crack transition.
+
+The two optional annex NBT files are canonical but deliberately not selected at runtime yet. Their
+callbacks are behavioral dependencies, not decoration: the furnace annex needs the fully ported
+Heat Lamp temperature/furnace loop and weighted ore inputs, while the loot annex needs the real
+four-cell Chroma Door, one UUID shared by door and key, one-use/stay-open flags, and V33a's weighted
+13–20 item cache sorting. Activating either room before those callbacks exist would create an
+unsolvable or semantically false structure.
+
+Focused verification:
+
+```text
+.\gradlew.bat :ChromatiCraft:compileJava
+BUILD SUCCESSFUL
+.\gradlew.bat :ChromatiCraft:runServerData --console=plain
+BUILD SUCCESSFUL (base, furnace-annex and loot-annex NBT; natural/command registrations written)
+.\gradlew.bat :ChromatiCraft:runGameTest -PgameTestSelector=chromaticraft:structure_burrow_nbt_controller --console=plain
+All 1 required tests passed
+```
+
+Only the new Burrow GameTest was run. It asserts controller/type persistence, per-colour registered
+lamp identity, all six base chests, and the real four-tick proximity transition to reinforced crack.
+The Luminous Cliffs `BiomeFilter.biome()` diagnostics recorded at this checkpoint were subsequently
+fixed. Reactor fluid-recipe diagnostics and the Jade GameTest startup diagnostic remain unrelated
+pre-existing output.
+
+### Ethereal Barrier and key dependency — 2026-08-11
+
+The Burrow loot annex's lock is no longer an inert metadata placeholder. `BlockChromaDoor`, its
+block entity, and `ItemDoorKey` now form the complete modern UUID loop while retaining V33a's four
+independent state flags as named block properties: open, damaging, one-use key, and stay-open.
+Connected cells are discovered with the original bounded recursive flood fill, only cells with the
+same UUID change state, and the open/close sound pair and delayed close are preserved. The barrier
+remains ordinarily unbreakable; placement ownership gates Manipulator SneakPop and rebinding.
+Worldgen may bind an unowned component explicitly.
+The automatic-key mode is persisted and ticked by one component root: the owner's three-block
+proximity and look-direction checks reopen the component, with V33a's adaptive 20–200 tick duration.
+
+The collision/outline and render geometry are the source four-pixel centre with arms toward both
+adjacent barrier cells and sturdy structure neighbours. Six connection properties feed a multipart
+baked model, so the visible model, selection shape, and collision shape agree; an open component
+retains its visible animated mesh but has no collision. The model swaps the original
+`door_closed.png`/`door_open.png` strips. The exact Ethereal Key icon was recovered from sprite 15
+of V33a's `items_tool.png` in the owner's V33a jar rather than redrawn, and the original English
+names (`Ethereal Barrier`, `Ethereal Key`) are datagen-owned.
+
+This completes the loot annex's door/key dependency, but does not change the original generation
+order: V33a only rolls the loot annex after a furnace annex was successfully placed. Natural annex
+activation therefore remains gated on the Heat Lamp/furnace callback; allowing a loot room without
+that preceding room would be a source-semantic change.
+
+Focused verification:
+
+```text
+.\gradlew.bat :ChromatiCraft:compileJava --console=plain
+BUILD SUCCESSFUL
+.\gradlew.bat :ChromatiCraft:runClientData --console=plain
+BUILD SUCCESSFUL (14 multipart barrier pieces, blockstate, item models and language written)
+.\gradlew.bat :ChromatiCraft:runGameTest -PgameTestSelector=chromaticraft:chroma_door_uuid_key_loop --console=plain
+All 1 required tests passed
+```
+
+Only the new barrier test was run. It covers shared UUID propagation across four cells, matching
+key interaction, one-use consumption, scheduled component closing, and automatic owner reopening.
+
+### Heat Lamps and live Burrow annex chain — 2026-08-11
+
+The earlier Burrow-ledger statement that both annexes are intentionally inactive is now
+superseded. The source dependencies have landed and natural Burrows execute the original gated
+sequence: a 50% furnace-room roll, physical-placement validation, then (only when that room really
+placed) a second 50% loot-room roll and validation. The controller persists the two outcomes
+independently.
+
+Heat Lamp is a real six-direction attachable block/entity rather than a metadata shell. Hot and
+cold lamps have separate registry identities, exact source bounds (20..615 C and -60..15 C),
+support loss, persistent target temperature, `ThermalTile` transfer, ReactorCraft reactor-core
+exclusion, and the source fuel-free furnace assistance above 200 C. The slotless temperature GUI
+uses the recovered V33a `heatlamp.png`; its bounded server packet updates only the open lamp. Both
+variants have source-proportioned directional models. The original Tinkers/Railcraft/IC2 hooks are
+not falsely simulated because those integrations are absent from the 26.2 runtime, and the
+Thaumcraft/Automagy branch remains omitted per project-owner instruction.
+
+The furnace annex uses the canonical `burrow_furnace.nbt`, restores both south-facing furnaces,
+their upward Heat Lamps at source-random 50..160 C, and the V33a weighted common-ore input selection
+through modern `c:ores/*` tags. Rare/scarce/scattered stack caps remain 8/24/40.
+
+The cache annex uses `burrow_loot.nbt` and creates one UUID shared by all four Ethereal Barrier
+cells and the key hidden at controller offset `(3,1,1)`. The barriers retain the source
+consume-key/stay-open flags. Both reward chests use the data-generated
+`chromaticraft:chests/burrow_cache` table: 13..20 weighted draws transcribed from V33a, including
+all sixteen independently registered shard and Cave Crystal identities. On first unpack, equal
+stacks are collated and sorted, block drops begin in slots 0..26, and non-block items begin in
+slots 27..53, preserving the source chest-half organization. Separate biome-conditioned pools
+retain the source 25% cold-biome ice bonus and 1/3 dominant-tree sapling bonus for the modern
+vanilla biome families. The old conditional extra
+Thaumcraft blaze-powder entry is intentionally absent.
+
+Focused verification (the broad suite was not rerun):
+
+```text
+.\gradlew.bat :ChromatiCraft:compileJava
+BUILD SUCCESSFUL
+.\gradlew.bat :ChromatiCraft:runClientData --console=plain
+BUILD SUCCESSFUL (hot/cold directional assets, item models, GUI language)
+.\gradlew.bat :ChromatiCraft:runServerData --console=plain
+BUILD SUCCESSFUL (canonical annex NBT and Burrow cache loot table)
+.\gradlew.bat :ChromatiCraft:runGameTest -PgameTestSelector=chromaticraft:heat_lamp_temperature_furnace_loop --console=plain
+All 1 required tests passed
+.\gradlew.bat :ChromatiCraft:runGameTest -PgameTestSelector=chromaticraft:burrow_cache_loot_halves --console=plain
+All 1 required tests passed
+```
+
+The server-datagen Luminous Cliffs missing-`BiomeFilter.biome()` diagnostics recorded at this
+checkpoint were subsequently fixed. The Reactor/Jade startup diagnostics remain pre-existing and
+unrelated to this slice.
+
+### Ocean and Desert fragment structures — 2026-08-12
+
+The active overworld structure family now includes Ocean and Desert alongside Cavern and Burrow.
+Both structures ship as canonical generated NBT transcribed directly from their V33a
+`FilledBlockArray` sources; the legacy Java layouts remain datagen inputs only. Ocean is a
+31x13x31 template plus a separate repeatable NBT pit slice, and Desert is the exact 15x13x16
+template. Command seams are `/place feature chromaticraft:ocean` and
+`/place feature chromaticraft:desert`; independently rare `natural_*` features retain the source
+640- and 440-block noise-scale densities and biome/site gates.
+
+Ocean retains all eight jungle-temple loot chests, both Creeper spawners (8-block activation,
+16 nearby cap, 400-tick maximum delay), widened entrance-chest reach, flooded end validation,
+ocean-bound corners, and the cave-connected five-wide shaft. Its controller parity was corrected:
+proximity cracks the two distant 5x3 cover panels, while a hit in the funnel opens only the source
+3x3 pit cover at y-3 and reseals it after forty ticks. The focused
+`structure_ocean_nbt_trap` GameTest passes and covers this complete loop.
+
+Desert retains twelve desert-pyramid loot chests, five programmed spawners (one Blaze, two Spider,
+two Silverfish), structure version one, sandy/non-badlands siting, and the source controller anchor.
+Its exact NBT and natural/command registrations are generated and compile cleanly. The focused
+`structure_desert_nbt_controller` GameTest also passes, covering all twelve chests, all five
+spawners, and the explicit controller identity. No broad GameTest suite was rerun.
+### 2026-08-12 — Snow Temple and puzzle-block foundation
+
+- Ported V33a `BlockTrapFloor` as `chromaticraft:trap_floor`: four explicit disguise states,
+  source 7/8-height collision, Manipulator cycling, delegated fluid/block hazards, and the original
+  four-block reinforced-shield support lock. Its disguises are blockstate modes, not reconstructed
+  content metadata.
+- Ported V33a `BlockShiftLock` as `chromaticraft:shift_lock` with all sixteen source passability
+  states, hidden shield faces, directional 1/8-inset collision, entity-inside escape behavior,
+  breakable-only mining, and paired open/closed transitions. Generated models preserve the animated
+  open/closed faces and per-face structure-stone disguises.
+- Added canonical `worldgen/overworld/snow.nbt`, transcribed from every authored `getBaseStructure`
+  and `getAirSpaces` cell in `SnowStructure.java`: 17x15x17 bounds, eleven loot chests, trap floors,
+  lava-rock hazards, all thirty-six concealed Shift Locks, and the three intended Wolf spawners
+  (the V33a placement line had accidentally substituted shield blocks even though its complete
+  spawner-programming branch targets Wolves).
+- Added command/debug `/place feature chromaticraft:snow` and natural `natural_snow` generation in
+  snowy biomes. Natural placement restores the source 480-block planning scale (about 1/900 chunks),
+  four-corner same-biome/height/support validation, five-block missing support, and snow cover.
+- Restored the exact controller transition: twelve center-path `CRACKS`, one deterministic four-cell
+  roof `CRACK` group, and one deterministic 3x3 concealed directional Shift-Lock route. The RNG is
+  seeded from the modern `WorldLocation`-equivalent dimension/position hash and retains V33a's
+  deliberately discarded first long.
+- Snow chests use stronghold-corridor loot and grant `SNOWSTRUCT`; the controller keeps the structure
+  identity and guaranteed information-fragment reward.
+- Verification: `:ChromatiCraft:compileJava` and `:ChromatiCraft:runServerData` pass. Focused
+  `chromaticraft:structure_snow_nbt_route` GameTest passes (11 chests, 3 spawners, 36 initial locks,
+  exact 12-cell crack path, exactly one 9-cell route). Existing unrelated ReactorCraft fluid-component
+  and Jade loot-registry warnings remain non-fatal in the focused server.
+
+### 2026-08-12 — Biome Fragment, broadcast repair, and repeater presentation
+
+- Biome Fragment is now the sixth live NBT-backed Overworld fragment structure. Its exact 15x14x15
+  shell, triggers, eight caches, dual randomized lock/key channels, colour-specific rune/lamp
+  substitutions, biome liquid, melody replay, central door, natural sink/weathering, entrance
+  cleanup, and special-biome generation are active. The focused
+  `chromaticraft:biome_fragment_nbt_completion` test passes the complete melody/unlock loop.
+- Pylon Broadcast no longer targets the stale invented `chromaticraft:chroma` identifier. Its
+  canonical NBT and matcher use the registered `chromaticraft:liquid_chroma` block. The focused
+  `chromaticraft:pylon_broadcast_template_contract` test passes activation, solid-cell obstruction,
+  ordinary-LOS restoration, liquid-cell repair, and reactivation.
+- The remaining V33a repeater presentation families have been transcribed onto the active 26.2
+  particle layer: rain-loss flare seeds, paired enhanced-stalk blurs, per-tick surge sprays, the
+  256-particle signed-gravity destruction burst, both final break sounds, and the compound
+  repeater's phase-correct colour rune. The final destruction burst is a typed client payload;
+  surge start restores the source non-attenuated `REPEATERSURGE` cue.
+- Verification boundary: the broadcast lifecycle test and preceding compile passed. The execution
+  service then rejected the compile for the repeater presentation patch because the Codex execution
+  allowance was exhausted until 2026-08-18. `git diff --check` reports no whitespace errors, and
+  the referenced 26.2 `SoundEvents.GLASS_BREAK`/`ClientLevel.playLocalSound` APIs were checked in
+  `Sources/minecraft`, but this final presentation patch must be treated as **not compile-verified**
+  until `:ChromatiCraft:compileJava` and the focused
+  `chromaticraft:repeater_overload_destroys_stalk` test are rerun.
+
+### Structure controller: renderer and hardness — 2026-08-10
+
+The fragment structure's root had a `PARTICLE_ONLY` model, so it drew nothing at all. Upstream's
+`RenderStructControl` is not a solid block either — it is a glowing flare hanging in the air,
+additively blended and turning on its own, from `ChromaIcons.SPINFLARE`
+(`textures/block/icons/rotating flare_pulse.png`, a 64x11520 strip of 180 frames at one tick each).
+
+`RenderStructureController` draws that flare, camera-facing, tinted by the controller's element. The
+strip is sampled **directly** rather than through the block atlas: no model references it, so it is
+not stitched, and walking the V offset by hand reproduces the animation without registering an atlas
+source for a single texture. It uses `entityTranslucentEmissive`, which reads additive against the
+world without a pipeline modifier — and keeps the whole element on one render type, which is now the
+standing rule after two separate failures caused by breaking it.
+
+Hardness drops from 6 to 1.5. This is the block you break to claim a fragment structure's reward, and
+a nine-second bare-handed dig was tedious for no design reason. Blast resistance stays at 6000, so it
+still cannot be opened with explosives — only found and mined.
+
+**Not ported, marked CHROMA-PORT at the site:** upstream also draws the monument line ring over the
+flare (the `monument_lines_big.png` pass and the `structcontrol` shader) and gates the whole renderer
+on `isVisible`/`isMonument`/`isInWorld`. None of those flags exist on the ported block entity, so the
+flare currently draws unconditionally. Both belong with the monument ritual.

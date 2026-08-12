@@ -1,0 +1,6 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "chromaticraft:block/color_lock_closed"
+  }
+}

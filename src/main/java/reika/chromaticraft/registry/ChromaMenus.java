@@ -11,6 +11,7 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.container.MenuCastingTable;
+import reika.chromaticraft.container.MenuHeatLamp;
 
 /** Modern menu registrations for ChromatiCraft's accepted GUI slice. */
 public interface ChromaMenus {
@@ -22,4 +23,5 @@ public interface ChromaMenus {
     }
 
     Supplier<MenuType<MenuCastingTable>> CASTING_TABLE = register("casting_table", MenuCastingTable::new);
+    Supplier<MenuType<MenuHeatLamp>> HEAT_LAMP = register("heat_lamp", MenuHeatLamp::new);
 }

@@ -1,29 +1,19 @@
-/*******************************************************************************
- * @author Reika Kalseki
- * 
- * Copyright 2017
- * 
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
- ******************************************************************************/
 package reika.chromaticraft.world.dimension.structure.lightpanel;
 
+import net.minecraft.util.StringRepresentable;
 
-public enum LightType {
-
-	TARGET(0x00ff00),
-	BLOCK(0xff0000),
-	CANCEL(0x0000ff),
-	//SKIP(0xffff00),
-	;
-
-	public final int renderColor;
+/** The three signal roles used by V33a's light-panel puzzles. */
+public enum LightType implements StringRepresentable {
+	TARGET(0x00FF00),
+	BLOCK(0xFF0000),
+	CANCEL(0x0000FF);
 
 	public static final LightType[] list = values();
+	public final int renderColor;
 
-	private LightType(int color) {
+	LightType(int color) {
 		renderColor = color;
 	}
 
+	@Override public String getSerializedName() { return name().toLowerCase(java.util.Locale.ROOT); }
 }

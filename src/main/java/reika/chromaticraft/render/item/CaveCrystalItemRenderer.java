@@ -57,6 +57,26 @@ public final class CaveCrystalItemRenderer implements NoDataSpecialModelRenderer
 			int overlayCoords, boolean hasFoil, int outlineColor) {
 		poseStack.pushPose();
 		PoseStack.Pose pose = poseStack.last();
+		if (baseSprite != null) {
+			TextureAtlasSprite baseTexture = sprites.get(baseSprite);
+			// renderBase() is the opaque support underneath a lamp/potion crystal. Submit it first:
+			// 26.2 preserves submission order inside the item-translucent target, and drawing this
+			// after the crystal allowed the plinth's depth-writing faces to replace the coloured
+			// mesh with a white silhouette in GUI/hand renders.
+			collector.submitCustomGeometry(poseStack, RenderTypes.itemTranslucent(TextureAtlas.LOCATION_BLOCKS),
+					(unused, vertices) -> CaveCrystalGeometry.emitBase((points, normal, shade) -> {
+						int colour = 0xFF000000 | (shade << 16) | (shade << 8) | shade;
+						for (CaveCrystalGeometry.Point point : points) {
+							Vector3f position = point.position();
+							vertices.addVertex(pose, position.x, position.y, position.z)
+									.setColor(colour)
+									.setUv(baseTexture.getU(point.u()), baseTexture.getV(point.v()))
+									.setOverlay(overlayCoords)
+									.setLight(lightCoords)
+									.setNormal(pose, normal.x, normal.y, normal.z);
+						}
+					}, false));
+		}
 		TextureAtlasSprite crystalTexture = sprites.get(sprite);
 		// The geometry is authored in block space (0..1), which is already the item model's cube.
 		// Special item models render into the item target; the entity translucent type can be
@@ -74,27 +94,6 @@ public final class CaveCrystalItemRenderer implements NoDataSpecialModelRenderer
 								.setNormal(pose, normal.x, normal.y, normal.z);
 					}
 				}, ITEM_ARM_MASK, false, false, false));
-		if (baseSprite != null) {
-			TextureAtlasSprite baseTexture = sprites.get(baseSprite);
-			// The SAME render type as the crystal above, not entitySolid. A special item renderer that
-			// submits two different types loses one of them to the item compositor, and the survivor
-			// here was the opaque plinth -- which is why a lamp or potion crystal showed as a plain
-			// white stone block with no crystal on it at all. The plinth's own vertices are fully
-			// opaque, so drawing them on the translucent type looks identical.
-			collector.submitCustomGeometry(poseStack, RenderTypes.itemTranslucent(TextureAtlas.LOCATION_BLOCKS),
-					(unused, vertices) -> CaveCrystalGeometry.emitBase((points, normal, shade) -> {
-						int colour = 0xFF000000 | (shade << 16) | (shade << 8) | shade;
-						for (CaveCrystalGeometry.Point point : points) {
-							Vector3f position = point.position();
-							vertices.addVertex(pose, position.x, position.y, position.z)
-									.setColor(colour)
-									.setUv(baseTexture.getU(point.u()), baseTexture.getV(point.v()))
-									.setOverlay(overlayCoords)
-									.setLight(lightCoords)
-									.setNormal(pose, normal.x, normal.y, normal.z);
-						}
-					}, false));
-		}
 		poseStack.popPose();
 	}
 

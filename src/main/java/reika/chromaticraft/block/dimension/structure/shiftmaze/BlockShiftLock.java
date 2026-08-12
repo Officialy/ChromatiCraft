@@ -1,367 +1,141 @@
-/*******************************************************************************
- * @author Reika Kalseki
- *
- * Copyright 2017
- *
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
- ******************************************************************************/
 package reika.chromaticraft.block.dimension.structure.shiftmaze;
 
-import java.util.List;
+import com.mojang.serialization.MapCodec;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.material.Material;
-import net.minecraft.client.renderer.texture.IIconRegister;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.init.Blocks;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.AxisAlignedBB;
-import net.minecraft.util.IIcon;
-import net.minecraft.util.MovingObjectPosition;
-import net.minecraft.world.IBlockAccess;
-import net.minecraft.world.World;
-import net.minecraftforge.common.util.ForgeDirection;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.util.StringRepresentable;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.EntityCollisionContext;
+import net.minecraft.world.phys.shapes.Shapes;
+import net.minecraft.world.phys.shapes.VoxelShape;
 
-import reika.chromaticraft.base.BlockDimensionStructure;
-import reika.chromaticraft.block.worldgen.blockstructureshield.BlockType;
 import reika.chromaticraft.registry.ChromaBlocks;
-import reika.dragonapi.ModList;
-import reika.dragonapi.asm.apistripper.Strippable;
-import reika.dragonapi.asm.dependentmethodstripper.ModDependent;
-import reika.dragonapi.libraries.ReikaAABBHelper;
-import reika.dragonapi.libraries.io.ReikaSoundHelper;
-import reika.dragonapi.libraries.registry.ReikaItemHelper;
+import reika.chromaticraft.registry.ChromaSounds;
 
-import mcp.mobius.waila.api.IWailaConfigHandler;
-import mcp.mobius.waila.api.IWailaDataAccessor;
-import mcp.mobius.waila.api.IWailaDataProvider;
+/** Directionally passable, optionally shield-disguised lock used by the Snow and Shift Maze puzzles. */
+public final class BlockShiftLock extends Block {
 
-@Strippable(value = {"mcp.mobius.waila.api.IWailaDataProvider"})
-public class BlockShiftLock extends BlockDimensionStructure implements IWailaDataProvider {
+	public enum Passability implements StringRepresentable {
+		CLOSED, OPEN,
+		EAST_CLOSED, EAST_OPEN, WEST_CLOSED, WEST_OPEN,
+		SOUTH_CLOSED, SOUTH_OPEN, NORTH_CLOSED, NORTH_OPEN,
+		CLOSED_HIDDEN, EAST_HIDDEN, WEST_HIDDEN, SOUTH_HIDDEN, NORTH_HIDDEN,
+		BREAKABLE;
 
-	private IIcon[] icons = new IIcon[2];
-
-	public BlockShiftLock(Material mat) {
-		super(mat);
-	}
-
-	public static enum Passability {
-		CLOSED(),
-		OPEN(),
-		EAST_CLOSED(),
-		EAST_OPEN(),
-		WEST_CLOSED(),
-		WEST_OPEN(),
-		SOUTH_CLOSED(),
-		SOUTH_OPEN(),
-		NORTH_CLOSED(),
-		NORTH_OPEN(),
-		CLOSED_HIDDEN(),
-		EAST_HIDDEN(),
-		WEST_HIDDEN(),
-		SOUTH_HIDDEN(),
-		NORTH_HIDDEN(),
-		BREAKABLE();
-
-		public static final Passability[] list = values();
+		@Override public String getSerializedName() { return name().toLowerCase(java.util.Locale.ROOT); }
 
 		public boolean useOpenTexture() {
-			switch(this) {
-				case CLOSED:
-				case EAST_CLOSED:
-				case WEST_CLOSED:
-				case SOUTH_CLOSED:
-				case NORTH_CLOSED:
-				case CLOSED_HIDDEN:
-					return false;
-				default:
-					return true;
-			}
+			return this != CLOSED && this != EAST_CLOSED && this != WEST_CLOSED
+					&& this != SOUTH_CLOSED && this != NORTH_CLOSED && this != CLOSED_HIDDEN;
 		}
 
-		public boolean isPassable(ForgeDirection side) {
-			switch(this) {
-				default:
-					return false;
-				case OPEN:
-					return true;
-				case EAST_HIDDEN:
-				case WEST_HIDDEN:
-					return side.offsetX != 0;
-				case EAST_OPEN:
-					return side == ForgeDirection.EAST;
-				case NORTH_OPEN:
-					return side == ForgeDirection.NORTH;
-				case NORTH_HIDDEN:
-				case SOUTH_HIDDEN:
-					return side.offsetZ != 0;
-				case SOUTH_OPEN:
-					return side == ForgeDirection.SOUTH;
-				case WEST_OPEN:
-					return side == ForgeDirection.WEST;
-			}
+		public boolean isPassable(Direction side) {
+			return switch (this) {
+				case OPEN -> true;
+				case EAST_HIDDEN, WEST_HIDDEN -> side.getAxis() == Direction.Axis.X;
+				case NORTH_HIDDEN, SOUTH_HIDDEN -> side.getAxis() == Direction.Axis.Z;
+				case EAST_OPEN -> side == Direction.EAST;
+				case WEST_OPEN -> side == Direction.WEST;
+				case NORTH_OPEN -> side == Direction.NORTH;
+				case SOUTH_OPEN -> side == Direction.SOUTH;
+				default -> false;
+			};
 		}
 
-		public boolean isOmniPassable() {
-			switch(this) {
-				case OPEN:
-					return true;
-				default:
-					return false;
-			}
+		public boolean isDisguised(Direction side) {
+			return switch (this) {
+				case CLOSED_HIDDEN -> true;
+				case EAST_HIDDEN -> side != Direction.WEST;
+				case WEST_HIDDEN -> side != Direction.EAST;
+				case SOUTH_HIDDEN -> side != Direction.NORTH;
+				case NORTH_HIDDEN -> side != Direction.SOUTH;
+				case EAST_OPEN, EAST_CLOSED -> side != Direction.EAST;
+				case WEST_OPEN, WEST_CLOSED -> side != Direction.WEST;
+				case SOUTH_OPEN, SOUTH_CLOSED -> side != Direction.SOUTH;
+				case NORTH_OPEN, NORTH_CLOSED -> side != Direction.NORTH;
+				default -> false;
+			};
 		}
 
-		public boolean isDisguised(int side) {
-			switch(this) {
-				case CLOSED_HIDDEN:
-					return true;
-				case EAST_HIDDEN:
-					return side != ForgeDirection.WEST.ordinal();
-				case WEST_HIDDEN:
-					return side != ForgeDirection.EAST.ordinal();
-				case SOUTH_HIDDEN:
-					return side != ForgeDirection.NORTH.ordinal();
-				case NORTH_HIDDEN:
-					return side != ForgeDirection.SOUTH.ordinal();
-				case EAST_OPEN:
-				case EAST_CLOSED:
-					return side != ForgeDirection.EAST.ordinal();
-				case WEST_OPEN:
-				case WEST_CLOSED:
-					return side != ForgeDirection.WEST.ordinal();
-				case SOUTH_OPEN:
-				case SOUTH_CLOSED:
-					return side != ForgeDirection.SOUTH.ordinal();
-				case NORTH_OPEN:
-				case NORTH_CLOSED:
-					return side != ForgeDirection.NORTH.ordinal();
-				default:
-					return false;
-			}
-		}
-
-		public static Passability getDirectionalPassability(ForgeDirection dir, boolean open) {
-			switch(dir) {
-				case EAST:
-					return open ? EAST_OPEN : EAST_CLOSED;
-				case WEST:
-					return open ? WEST_OPEN : WEST_CLOSED;
-				case SOUTH:
-					return open ? SOUTH_OPEN : SOUTH_CLOSED;
-				case NORTH:
-					return open ? NORTH_OPEN : NORTH_CLOSED;
-				default:
-					return null;
-			}
-		}
-
-		public static Passability getHiddenPassability(ForgeDirection dir) {
-			switch(dir) {
-				case EAST:
-					return EAST_HIDDEN;
-				case WEST:
-					return WEST_HIDDEN;
-				case SOUTH:
-					return SOUTH_HIDDEN;
-				case NORTH:
-					return NORTH_HIDDEN;
-				default:
-					return null;
-			}
+		public static Passability hidden(Direction direction) {
+			return switch (direction) {
+				case EAST -> EAST_HIDDEN;
+				case WEST -> WEST_HIDDEN;
+				case SOUTH -> SOUTH_HIDDEN;
+				case NORTH -> NORTH_HIDDEN;
+				default -> throw new IllegalArgumentException("Shift locks require a horizontal direction");
+			};
 		}
 	}
 
-	/*
-	@Override
-	public int damageDropped(int meta) {
-		return meta;
-	}
-	 */
-	@Override
-	public float getBlockHardness(World world, int x, int y, int z) {
-		int meta = world.getBlockMetadata(x, y, z);
-		return meta == Passability.BREAKABLE.ordinal() ? 1 : super.getBlockHardness(world, x, y, z);
+	public static final EnumProperty<Passability> PASSABILITY = EnumProperty.create("passability", Passability.class);
+	private static final double INSET = 2;
+	private final MapCodec<BlockShiftLock> codec = MapCodec.unit(this);
+
+	public BlockShiftLock(BlockBehaviour.Properties properties) {
+		super(properties);
+		registerDefaultState(stateDefinition.any().setValue(PASSABILITY, Passability.CLOSED));
 	}
 
+	@Override public MapCodec<? extends BlockShiftLock> codec() { return codec; }
+
 	@Override
-	public void registerBlockIcons(IIconRegister ico) {
-		icons[0] = ico.registerIcon("chromaticraft:dimstruct/shiftlock-closed");
-		icons[1] = ico.registerIcon("chromaticraft:dimstruct/shiftlock-open");
+	protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+		builder.add(PASSABILITY);
 	}
 
 	@Override
-	public IIcon getIcon(int s, int meta) {
-		Passability p = Passability.list[meta];
-		if (p.isDisguised(s))
-			return ChromaBlocks.STRUCTSHIELD.getBlockInstance().getIcon(0, BlockType.STONE.ordinal());
-		return icons[p.useOpenTexture() ? 1 : 0];
+	protected float getDestroyProgress(BlockState state, Player player, BlockGetter level, BlockPos pos) {
+		return state.getValue(PASSABILITY) == Passability.BREAKABLE
+				? super.getDestroyProgress(state, player, level, pos) : 0;
 	}
 
 	@Override
-	public boolean onRightClicked(World world, int x, int y, int z, EntityPlayer ep, int s, float a, float b, float c) {
-		ItemStack is = ep.getCurrentEquippedItem();
-		if (is != null && ReikaItemHelper.matchStackWithBlock(is, this))
-			return false;
-		world.markBlockForUpdate(x, y, z);
-		return true;
+	protected VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos pos,
+			CollisionContext context) {
+		Passability passability = state.getValue(PASSABILITY);
+		if (passability == Passability.OPEN) return Shapes.empty();
+		if (context instanceof EntityCollisionContext entities) {
+			Entity entity = entities.getEntity();
+			if (entity != null && entity.getBoundingBox().intersects(new AABB(pos)))
+				return Shapes.empty();
+		}
+		double minX = 0, minY = 0, minZ = 0, maxX = 16, maxY = 16, maxZ = 16;
+		if (passability.isPassable(Direction.DOWN)) minY += INSET;
+		if (passability.isPassable(Direction.UP)) maxY -= INSET;
+		if (passability.isPassable(Direction.EAST)) maxX -= INSET;
+		if (passability.isPassable(Direction.WEST)) minX += INSET;
+		if (passability.isPassable(Direction.NORTH)) minZ += INSET;
+		if (passability.isPassable(Direction.SOUTH)) maxZ -= INSET;
+		return box(minX, minY, minZ, maxX, maxY, maxZ);
 	}
 
-	@Override
-	public boolean isOpaqueCube() {
-		return false;
-	}
-
-	@Override
-	public boolean renderAsNormalBlock() {
-		return false;
-	}
-
-	@Override
-	public int getRenderType() {
-		return 0;//ChromatiCraft.proxy.shiftLockRender;
-	}
-
-	@Override
-	public int getRenderBlockPass() {
-		return 1;
-	}
-
-	@Override
-	public void addCollisionBoxesToList(World world, int x, int y, int z, AxisAlignedBB mask, List li, Entity e) {
-		if (e == null || e.boundingBox == null)
-			return;
-		AxisAlignedBB box = ReikaAABBHelper.getBlockAABB(x, y, z);
-		if (e.boundingBox.intersectsWith(box)) //entity inside block space, you can go through
-			return;
-
-		double d = 0.125;
-		Passability p = Passability.list[world.getBlockMetadata(x, y, z)];
-
-		if (p.isOmniPassable())
-			return;
-
-		if (p.isPassable(ForgeDirection.DOWN))
-			box.minY += d;
-		if (p.isPassable(ForgeDirection.UP))
-			box.maxY -= d;
-		if (p.isPassable(ForgeDirection.EAST))
-			box.maxX -= d;
-		if (p.isPassable(ForgeDirection.WEST))
-			box.minX += d;
-		if (p.isPassable(ForgeDirection.NORTH))
-			box.minZ += d;
-		if (p.isPassable(ForgeDirection.SOUTH))
-			box.maxZ -= d;
-
-		if (box != null && box.intersectsWith(mask)) {
-			li.add(box);
+	public static void setOpen(Level level, BlockPos pos, boolean open) {
+		BlockState state = level.getBlockState(pos);
+		if (!state.is(ChromaBlocks.SHIFT_LOCK.get())) return;
+		Passability old = state.getValue(PASSABILITY);
+		Passability next = switch (old) {
+			case CLOSED, OPEN -> open ? Passability.OPEN : Passability.CLOSED;
+			case EAST_CLOSED, EAST_OPEN -> open ? Passability.EAST_OPEN : Passability.EAST_CLOSED;
+			case WEST_CLOSED, WEST_OPEN -> open ? Passability.WEST_OPEN : Passability.WEST_CLOSED;
+			case SOUTH_CLOSED, SOUTH_OPEN -> open ? Passability.SOUTH_OPEN : Passability.SOUTH_CLOSED;
+			case NORTH_CLOSED, NORTH_OPEN -> open ? Passability.NORTH_OPEN : Passability.NORTH_CLOSED;
+			default -> old;
+		};
+		if (old != next) {
+			level.setBlock(pos, state.setValue(PASSABILITY, next), 3);
+			ChromaSounds.CAST.playSoundAtBlock(level, pos, 0.5F, 0.75F);
 		}
 	}
-
-	@Override
-	public int damageDropped(int meta) { //for pick block
-		return meta;
-	}
-
-	@Override
-	public boolean isSideSolid(IBlockAccess world, int x, int y, int z, ForgeDirection side) {
-		Passability p = Passability.list[world.getBlockMetadata(x, y, z)];
-		return !p.isPassable(side) && p.isDisguised(side.ordinal());
-	}
-
-	@Override
-	public AxisAlignedBB getCollisionBoundingBoxFromPool(World world, int x, int y, int z) {
-		return world.getBlockMetadata(x, y, z) == 1 ? null : ReikaAABBHelper.getBlockAABB(x, y, z);
-	}
-
-	@Override
-	public void breakBlock(World world, int x, int y, int z, Block b, int meta) {
-		super.breakBlock(world, x, y, z, b, meta);
-	}
-
-	@Override
-	public boolean shouldSideBeRendered(IBlockAccess iba, int dx, int dy, int dz, int s) {
-		return super.shouldSideBeRendered(iba, dx, dy, dz, s) && iba.getBlock(dx, dy, dz) != this;
-	}
-
-	public static void setOpen(World world, int x, int y, int z, boolean open) {
-		if (world.getBlock(x, y, z) != ChromaBlocks.SHIFTLOCK.getBlockInstance())
-			return;
-		Passability p = Passability.list[world.getBlockMetadata(x, y, z)];
-		Passability put = p;
-		switch(p) {
-			case CLOSED:
-			case OPEN:
-				put = open ? Passability.OPEN : Passability.CLOSED;
-				break;
-			case EAST_CLOSED:
-			case EAST_OPEN:
-				put = open ? Passability.EAST_OPEN : Passability.EAST_CLOSED;
-				break;
-			case NORTH_CLOSED:
-			case NORTH_OPEN:
-				put = open ? Passability.NORTH_OPEN : Passability.NORTH_CLOSED;
-				break;
-			case SOUTH_CLOSED:
-			case SOUTH_OPEN:
-				put = open ? Passability.SOUTH_OPEN : Passability.SOUTH_CLOSED;
-				break;
-			case WEST_CLOSED:
-			case WEST_OPEN:
-				put = open ? Passability.WEST_OPEN : Passability.WEST_CLOSED;
-				break;
-			default:
-				break;
-		}
-		if (put != p) {
-			world.setBlockMetadataWithNotify(x, y, z, put.ordinal(), 3);
-			world.markBlockForUpdate(x, y, z);
-			ReikaSoundHelper.playBreakSound(world, x, y, z, Blocks.stone);
-		}
-	}
-
-	@Override
-	@ModDependent(ModList.WAILA)
-	public ItemStack getWailaStack(IWailaDataAccessor acc, IWailaConfigHandler config) {
-		World world = acc.getWorld();
-		MovingObjectPosition mov = acc.getPosition();
-		if (mov != null) {
-			int x = mov.blockX;
-			int y = mov.blockY;
-			int z = mov.blockZ;
-			if (Passability.list[acc.getMetadata()].isDisguised(mov.sideHit))
-				return ChromaBlocks.STRUCTSHIELD.getStackOfMetadata(BlockType.STONE.metadata);
-		}
-		return null;
-	}
-
-	@Override
-	@ModDependent(ModList.WAILA)
-	public final List<String> getWailaHead(ItemStack is, List<String> tip, IWailaDataAccessor acc, IWailaConfigHandler config) {
-		return tip;
-	}
-
-	@Override
-	@ModDependent(ModList.WAILA)
-	public final List<String> getWailaBody(ItemStack is, List<String> tip, IWailaDataAccessor acc, IWailaConfigHandler config) {
-		return tip;
-	}
-
-	@ModDependent(ModList.WAILA)
-	public final List<String> getWailaTail(ItemStack itemStack, List<String> currenttip, IWailaDataAccessor acc, IWailaConfigHandler config) {
-		return currenttip;
-	}
-
-	@Override
-	@ModDependent(ModList.WAILA)
-	public final NBTTagCompound getNBTData(EntityPlayerMP player, TileEntity te, NBTTagCompound tag, World world, int x, int y, int z) {
-		return tag;
-	}
-
 }

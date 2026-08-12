@@ -1,0 +1,48 @@
+{
+  "parent": "minecraft:block/block",
+  "elements": [
+    {
+      "faces": {
+        "down": {
+          "cullface": "down",
+          "texture": "#shield"
+        },
+        "east": {
+          "cullface": "east",
+          "texture": "#shield"
+        },
+        "north": {
+          "cullface": "north",
+          "texture": "#shield"
+        },
+        "south": {
+          "cullface": "south",
+          "texture": "#lock"
+        },
+        "up": {
+          "cullface": "up",
+          "texture": "#shield"
+        },
+        "west": {
+          "cullface": "west",
+          "texture": "#shield"
+        }
+      },
+      "from": [
+        0,
+        0,
+        0
+      ],
+      "to": [
+        16,
+        16,
+        16
+      ]
+    }
+  ],
+  "textures": {
+    "lock": "chromaticraft:block/dimstruct/shiftlock-closed",
+    "particle": "chromaticraft:block/shield/stone",
+    "shield": "chromaticraft:block/shield/stone"
+  }
+}

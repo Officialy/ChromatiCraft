@@ -1,0 +1,40 @@
+{
+  "elements": [
+    {
+      "faces": {
+        "down": {
+          "texture": "#all"
+        },
+        "east": {
+          "texture": "#all"
+        },
+        "north": {
+          "texture": "#all"
+        },
+        "south": {
+          "texture": "#all"
+        },
+        "up": {
+          "texture": "#all"
+        },
+        "west": {
+          "texture": "#all"
+        }
+      },
+      "from": [
+        0.0,
+        4.0,
+        4.0
+      ],
+      "to": [
+        4.0,
+        12.0,
+        12.0
+      ]
+    }
+  ],
+  "textures": {
+    "all": "chromaticraft:block/ore/tier_6_geode",
+    "particle": "chromaticraft:block/ore/tier_6_geode"
+  }
+}

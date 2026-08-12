@@ -27,6 +27,17 @@ import reika.chromaticraft.block.BlockCastingItemStand;
 import reika.chromaticraft.block.BlockCastingTable;
 import reika.chromaticraft.block.BlockChromaFluid;
 import reika.chromaticraft.block.BlockChromaMud;
+import reika.chromaticraft.block.BlockChromaDoor;
+import reika.chromaticraft.block.BlockHeatLamp;
+import reika.chromaticraft.block.BlockTrapFloor;
+import reika.chromaticraft.block.BlockHoverBlock;
+import reika.chromaticraft.block.dimension.structure.lightpanel.BlockLightPanel;
+import reika.chromaticraft.block.dimension.structure.lightpanel.BlockLightSwitch;
+import reika.chromaticraft.block.dimension.structure.locks.BlockColoredLock;
+import reika.chromaticraft.block.dimension.structure.locks.BlockLockKey;
+import reika.chromaticraft.block.decoration.BlockMusicTrigger;
+import reika.chromaticraft.block.dimension.structure.shiftmaze.BlockShiftLock;
+import reika.chromaticraft.block.dimension.structure.BlockBiomeReplay;
 import reika.chromaticraft.block.BlockChromaticTile;
 import reika.chromaticraft.block.BlockCrystallineStone;
 import reika.chromaticraft.block.BlockCrystallineStoneBeam;
@@ -55,6 +66,7 @@ import reika.chromaticraft.block.worldgen26.BlockUnknownArtefact;
 import reika.chromaticraft.block.worldgen26.BlockStructureShield;
 import reika.chromaticraft.block.BlockDummyAux;
 import reika.chromaticraft.block.worldgen26.BlockLootChest;
+import reika.chromaticraft.block.worldgen26.BlockStructureController;
 import reika.chromaticraft.block.worldgen26.BlockWarpNode;
 import reika.chromaticraft.block.worldgen26.BlockDecoFlower;
 import reika.chromaticraft.magic.progression.ProgressStage;
@@ -255,6 +267,57 @@ public final class ChromaBlocks {
 	public static final DeferredBlock<BlockLootChest> LOOT_CHEST = register("loot_chest",
 			() -> new BlockLootChest(blockProperties().mapColor(MapColor.WOOD)
 					.strength(6F, 60F).noOcclusion()));
+
+	/** Natural fragment-structure root; never exposed as an inventory block. */
+	// Hardness 1.5 rather than 6: this is the root you break to claim a fragment structure's reward,
+	// so a nine-second bare-handed dig was tedious for no design reason. The blast resistance stays at
+	// 6000 -- it still cannot be opened with explosives, only found and mined.
+	public static final DeferredBlock<BlockStructureController> STRUCTURE_CONTROLLER =
+			registerBlockOnly("structure_controller", () -> new BlockStructureController(
+					blockProperties().mapColor(MapColor.NONE).strength(1.5F, 6000F).noOcclusion()));
+
+	/** V33a connected UUID door; explicit properties replace its packed metadata flags. */
+	public static final DeferredBlock<BlockChromaDoor> CHROMA_DOOR = register("chroma_door",
+			() -> new BlockChromaDoor(blockProperties().mapColor(MapColor.COLOR_PURPLE)
+					.strength(-1F, 600000F).lightLevel(state -> 12).noOcclusion()));
+
+	/** V33a Snow/Shift-Maze puzzle blocks; metadata modes are modern blockstate properties. */
+	public static final DeferredBlock<BlockTrapFloor> TRAP_FLOOR = register("trap_floor",
+			() -> new BlockTrapFloor(blockProperties().mapColor(MapColor.STONE).strength(1F, 0F)
+					.sound(SoundType.STONE).noOcclusion()));
+	public static final DeferredBlock<BlockShiftLock> SHIFT_LOCK = register("shift_lock",
+			() -> new BlockShiftLock(blockProperties().mapColor(MapColor.STONE).strength(1F, 600000F)
+					.sound(SoundType.STONE).noOcclusion()));
+	public static final DeferredBlock<BlockHoverBlock> HOVER = register("hover",
+			() -> new BlockHoverBlock(blockProperties().mapColor(MapColor.NONE).strength(-1F, 600000F)
+					.noCollision().noOcclusion().lightLevel(state -> 6)));
+	public static final DeferredBlock<BlockLightPanel> LIGHT_PANEL = register("light_panel",
+			() -> new BlockLightPanel(blockProperties().mapColor(MapColor.STONE).strength(-1F, 600000F)
+					.sound(SoundType.STONE).lightLevel(state -> state.getValue(BlockLightPanel.ACTIVE) ? 15 : 0)));
+	public static final DeferredBlock<BlockLightSwitch> PANEL_SWITCH = register("panel_switch",
+			() -> new BlockLightSwitch(blockProperties().mapColor(MapColor.STONE).strength(-1F, 600000F)
+					.sound(SoundType.STONE)));
+	public static final DeferredBlock<BlockColoredLock> COLOR_LOCK = register("color_lock",
+			() -> new BlockColoredLock(blockProperties().mapColor(MapColor.STONE).strength(-1F, 600000F)
+					.sound(SoundType.STONE).noOcclusion()));
+	public static final DeferredBlock<BlockLockKey> LOCK_KEY = register("lock_key",
+			() -> new BlockLockKey(blockProperties().mapColor(MapColor.NONE).strength(0.15F)
+					.sound(SoundType.GLASS).lightLevel(state -> 15).noOcclusion()));
+	public static final DeferredBlock<BlockMusicTrigger> MUSIC_TRIGGER = register("music_trigger",
+			() -> new BlockMusicTrigger(blockProperties().mapColor(MapColor.STONE).strength(6F, 60000F)
+					.sound(SoundType.STONE)));
+	/** V33a DIMDATA callback cell used by the natural Biome Fragment's melody replay pedestal. */
+	public static final DeferredBlock<BlockBiomeReplay> BIOME_REPLAY = registerBlockOnly("biome_replay",
+			() -> new BlockBiomeReplay(blockProperties().mapColor(MapColor.STONE)
+					.strength(-1F, 600000F).lightLevel(state -> 8)));
+
+	/** V33a metadata 0 and 8 are content identities in 26.2, not a reconstructed variant value. */
+	public static final DeferredBlock<BlockHeatLamp> HEAT_LAMP = register("heat_lamp",
+			() -> new BlockHeatLamp(blockProperties().mapColor(MapColor.COLOR_ORANGE)
+					.instabreak().lightLevel(state -> 7).noOcclusion().noCollision(), false));
+	public static final DeferredBlock<BlockHeatLamp> COLD_LAMP = register("cold_lamp",
+			() -> new BlockHeatLamp(blockProperties().mapColor(MapColor.COLOR_LIGHT_BLUE)
+					.instabreak().lightLevel(state -> 7).noOcclusion().noCollision(), true));
 
 	/** V33a Dummy Aux: a structure's stand-in block; unbreakable, resistance 60000. */
 	public static final DeferredBlock<BlockDummyAux> DUMMY_AUX = registerBlockOnly("dummy_aux",

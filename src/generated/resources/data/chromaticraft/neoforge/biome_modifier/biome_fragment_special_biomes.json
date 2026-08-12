@@ -1,0 +1,13 @@
+{
+  "type": "neoforge:add_features",
+  "biomes": [
+    "chromaticraft:rainbow_forest",
+    "chromaticraft:ender_forest",
+    "chromaticraft:luminous_cliffs",
+    "chromaticraft:luminous_cliffs_shores"
+  ],
+  "features": [
+    "chromaticraft:natural_biome_fragment"
+  ],
+  "step": "surface_structures"
+}

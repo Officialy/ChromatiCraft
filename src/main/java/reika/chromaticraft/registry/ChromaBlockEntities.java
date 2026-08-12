@@ -27,6 +27,12 @@ import reika.chromaticraft.tileentity.recipe.TileEntityItemStand;
 import reika.chromaticraft.tileentity.aoe.TileEntityWarpNode;
 import reika.chromaticraft.tileentity.TileEntityDummyAux;
 import reika.chromaticraft.tileentity.TileEntityLootChest;
+import reika.chromaticraft.tileentity.TileEntityStructureController;
+import reika.chromaticraft.tileentity.TileEntityChromaDoor;
+import reika.chromaticraft.tileentity.TileEntityHeatLamp;
+import reika.chromaticraft.tileentity.TileEntityLightSwitch;
+import reika.chromaticraft.tileentity.TileEntityLockKey;
+import reika.chromaticraft.tileentity.TileEntityColorLock;
 
 /**
  * ChromatiCraft {@link BlockEntityType} registry (mirrors ReactorBlockEntities). One entry per
@@ -84,9 +90,31 @@ public final class ChromaBlockEntities {
 			BLOCK_ENTITIES.register("loot_chest", () -> new BlockEntityType<>(
 					TileEntityLootChest::new, ChromaBlocks.LOOT_CHEST.get()));
 
+	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityStructureController>> STRUCTURE_CONTROLLER =
+			BLOCK_ENTITIES.register("structure_controller", () -> new BlockEntityType<>(
+					TileEntityStructureController::new, ChromaBlocks.STRUCTURE_CONTROLLER.get()));
+
+	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityChromaDoor>> CHROMA_DOOR =
+			BLOCK_ENTITIES.register("chroma_door", () -> new BlockEntityType<>(
+					TileEntityChromaDoor::new, ChromaBlocks.CHROMA_DOOR.get()));
+
+	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityHeatLamp>> HEAT_LAMP =
+			BLOCK_ENTITIES.register("heat_lamp", () -> new BlockEntityType<>(
+					TileEntityHeatLamp::new, ChromaBlocks.HEAT_LAMP.get(), ChromaBlocks.COLD_LAMP.get()));
+
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityDummyAux>> DUMMY_AUX =
 			BLOCK_ENTITIES.register("dummy_aux", () -> new BlockEntityType<>(
 					TileEntityDummyAux::new, ChromaBlocks.DUMMY_AUX.get()));
+
+	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityLightSwitch>> LIGHT_SWITCH =
+			BLOCK_ENTITIES.register("panel_switch", () -> new BlockEntityType<>(
+					TileEntityLightSwitch::new, ChromaBlocks.PANEL_SWITCH.get()));
+	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityColorLock>> COLOR_LOCK =
+			BLOCK_ENTITIES.register("color_lock", () -> new BlockEntityType<>(
+					TileEntityColorLock::new, ChromaBlocks.COLOR_LOCK.get()));
+	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityLockKey>> LOCK_KEY =
+			BLOCK_ENTITIES.register("lock_key", () -> new BlockEntityType<>(
+					TileEntityLockKey::new, ChromaBlocks.LOCK_KEY.get()));
 
 	/** Worldgen block rather than a ChromaTiles machine, so it registers against its block directly. */
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityWarpNode>> WARP_NODE =

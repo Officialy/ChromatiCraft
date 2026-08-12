@@ -3,10 +3,13 @@ package reika.chromaticraft.client.gui;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractButton;
 import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.client.resources.sounds.SimpleSoundInstance;
+import net.minecraft.client.sounds.SoundManager;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
 import reika.chromaticraft.ChromatiCraft;
+import reika.chromaticraft.registry.ChromaSounds;
 
 /**
  * V33a's {@code CustomSoundImagedGuiButton}: the guide's buttons are cut straight out of
@@ -26,6 +29,7 @@ public final class LexiconImageButton extends AbstractButton {
 	private final int u;
 	private final int v;
 	private final Runnable action;
+	private boolean wasHovered;
 	/** How much of this button's height actually takes clicks; see {@link #clickHeight}. */
 	private int clickHeight;
 
@@ -66,12 +70,23 @@ public final class LexiconImageButton extends AbstractButton {
 	}
 
 	@Override
+	public void playDownSound(SoundManager soundManager) {
+		// V33a ChromaBookGui.playButtonSound: GUICLICK at one-third volume and normal pitch.
+		soundManager.play(SimpleSoundInstance.forUI(ChromaSounds.GUICLICK.getSoundEvent(), 1, 0.33F));
+	}
+
+	@Override
 	protected void updateWidgetNarration(net.minecraft.client.gui.narration.NarrationElementOutput output) {
 		this.defaultButtonNarrationText(output);
 	}
 
 	@Override
 	protected void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
+		boolean hovered = this.isMouseOver(mouseX, mouseY);
+		if (hovered && !wasHovered)
+			net.minecraft.client.Minecraft.getInstance().getSoundManager().play(
+					SimpleSoundInstance.forUI(ChromaSounds.GUISEL.getSoundEvent(), 1, 0.67F));
+		wasHovered = hovered;
 		graphics.blit(RenderPipelines.GUI_TEXTURED, TEXTURE,
 				this.getX(), this.getY(), u, v, this.width, this.height, SHEET, SHEET);
 	}

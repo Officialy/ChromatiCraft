@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -17,11 +18,14 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
+import reika.chromaticraft.registry.CrystalElement;
+
 /** Reads the original V33a handbook XML without loading the retired DragonAPI XMLInterface. */
 public final class LexiconDescriptions {
 
 	private static final String ROOT = "/assets/chromaticraft/resources/";
 	private static final Map<String, Map<String, Text>> DOCUMENTS = loadDocuments();
+	private static final Map<CrystalElement, String> ELEMENTS = loadElementDescriptions();
 
 	private LexiconDescriptions() {}
 
@@ -35,6 +39,11 @@ public final class LexiconDescriptions {
 	public static String notes(LexiconCatalog.Entry entry) {
 		Text text = text(entry);
 		return text == null ? "" : text.notes();
+	}
+
+	/** Original V33a {@code elements.xml}, including its authored element-name substitutions. */
+	public static String element(CrystalElement element) {
+		return ELEMENTS.getOrDefault(element, "");
 	}
 
 	private static Text text(LexiconCatalog.Entry entry) {
@@ -77,6 +86,33 @@ public final class LexiconDescriptions {
 		}
 		catch (IOException | ParserConfigurationException | SAXException ex) {
 			throw new IllegalStateException("Could not load V33a lexicon descriptions " + path, ex);
+		}
+	}
+
+	private static Map<CrystalElement, String> loadElementDescriptions() {
+		String path = ROOT + "elements.xml";
+		try (InputStream stream = LexiconDescriptions.class.getResourceAsStream(path)) {
+			if (stream == null)
+				throw new IllegalStateException("Missing V33a element descriptions " + path);
+			var factory = DocumentBuilderFactory.newInstance();
+			factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+			factory.setExpandEntityReferences(false);
+			String xml = new String(stream.readAllBytes(), StandardCharsets.UTF_8)
+					.replaceFirst("<\\?xml[^?]*\\?>", "");
+			Element root = factory.newDocumentBuilder().parse(new ByteArrayInputStream(
+					xml.getBytes(StandardCharsets.UTF_8))).getDocumentElement();
+			EnumMap<CrystalElement, String> descriptions = new EnumMap<>(CrystalElement.class);
+			for (CrystalElement element : CrystalElement.elements) {
+				Element node = child(root, element.name().toLowerCase(Locale.ROOT));
+				String authored = normalize(node != null ? node.getTextContent() : "");
+				descriptions.put(element, element == CrystalElement.LIGHTGRAY
+						? String.format(authored, element.displayName, CrystalElement.WHITE.displayName)
+						: String.format(authored, element.displayName));
+			}
+			return Collections.unmodifiableMap(descriptions);
+		}
+		catch (IOException | ParserConfigurationException | SAXException ex) {
+			throw new IllegalStateException("Could not load V33a element descriptions " + path, ex);
 		}
 	}
 

@@ -95,6 +95,10 @@ public class ChromaLang extends LanguageProvider {
 		add(ChromaItems.LEXICON.get(), "Chromic Lexicon"); // V33a chroma.helpitem
 		add(ChromaItems.INFO_FRAGMENT.get(), "Info Fragment"); // V33a chroma.fragment
 		add(ChromaItems.DATA_CRYSTAL.get(), "Memory Crystal"); // V33a chroma.datacrystal
+		add(ChromaItems.DOOR_KEY.get(), "Ethereal Key"); // V33a chroma.key
+		add(ChromaBlocks.CHROMA_DOOR.get(), "Ethereal Barrier"); // V33a chroma.door
+		add(ChromaBlocks.HEAT_LAMP.get(), "Heat Lamp"); // V33a chroma.heatlamp
+		add(ChromaBlocks.COLD_LAMP.get(), "Cold Heat Lamp"); // distinct registry form of V33a metadata 8
 		add(ChromaBlocks.DATA_NODE.get(), "Ancient Data Tower"); // V33a chromastruct.datanode
 		add(ChromaBlocks.META_ALLOY_LAMP.get(), "Meta-Alloy Plant");
 		add("entity.chromaticraft.tunnel_nuker", "Lumafly");
@@ -140,6 +144,15 @@ public class ChromaLang extends LanguageProvider {
 		add(ChromaBlocks.CAVE_INDICATOR.get(), "Piezo Crystals");
 		add(ChromaBlocks.UNKNOWN_ARTEFACT.get(), "Unknown Artefact");
 		add(ChromaBlocks.LOOT_CHEST.get(), "Loot Chest");
+		add(ChromaBlocks.TRAP_FLOOR.get(), "Trap Floor");
+		add(ChromaBlocks.SHIFT_LOCK.get(), "Shift Lock");
+		add(ChromaBlocks.HOVER.get(), "Hover Field");
+		add(ChromaBlocks.LIGHT_PANEL.get(), "Light Panel");
+		add(ChromaBlocks.PANEL_SWITCH.get(), "Panel Switch");
+		add(ChromaBlocks.COLOR_LOCK.get(), "Color Lock");
+		add(ChromaBlocks.LOCK_KEY.get(), "Lock Key");
+		add(ChromaBlocks.MUSIC_TRIGGER.get(), "Crystal Music Trigger");
+		add(ChromaBlocks.BIOME_REPLAY.get(), "Melody Replay Pedestal");
 		for (ChromaShieldTypes type : ChromaShieldTypes.list) {
 			add(ChromaBlocks.shielding(type).get(), type.displayName());
 		}

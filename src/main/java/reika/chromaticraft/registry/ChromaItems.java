@@ -104,6 +104,9 @@ public final class ChromaItems {
 	public static final DeferredItem<reika.chromaticraft.item.ItemDataCrystal> DATA_CRYSTAL =
 			reg("data_crystal", () -> new reika.chromaticraft.item.ItemDataCrystal(
 					itemProperties().stacksTo(1).fireResistant()));
+	/** V33a KEY: persistent UUID and auto-open binding mode use CUSTOM_DATA. */
+	public static final DeferredItem<reika.chromaticraft.item.ItemDoorKey> DOOR_KEY =
+			reg("door_key", () -> new reika.chromaticraft.item.ItemDoorKey(itemProperties()));
 	/** The former SHARD metadata item, split into one registered item per crystal element. */
 	public static final EnumMap<CrystalElement, DeferredItem<ItemCrystalShard>> SHARDS = new EnumMap<>(CrystalElement.class);
 	/** V33a {@code case SHARD: meta >= 16 ? "Boosted " : ""} — the port previously mis-called this "Charged". */

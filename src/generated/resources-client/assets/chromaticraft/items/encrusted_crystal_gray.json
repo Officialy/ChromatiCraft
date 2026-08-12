@@ -1,6 +1,11 @@
 {
   "model": {
-    "type": "minecraft:model",
-    "model": "chromaticraft:block/encrusted_crystal"
+    "type": "minecraft:special",
+    "base": "chromaticraft:block/encrusted_crystal",
+    "model": {
+      "type": "chromaticraft:encrusted_crystal",
+      "element": "gray",
+      "texture": "chromaticraft:block/crystal/encrusted"
+    }
   }
 }

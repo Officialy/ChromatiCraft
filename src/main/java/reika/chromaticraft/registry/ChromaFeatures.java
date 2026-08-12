@@ -18,6 +18,8 @@ import reika.chromaticraft.world.UnknownArtefactFeature;
 import reika.chromaticraft.world.WarpNodeFeature;
 import reika.chromaticraft.world.SkypeaterFeature;
 import reika.chromaticraft.world.TieredPlantFeature;
+import reika.chromaticraft.world.NetherRoofStructureFeature;
+import reika.chromaticraft.world.OverworldStructureFeature;
 import reika.chromaticraft.world.luminous.LumaPatchFeature;
 import reika.chromaticraft.world.luminous.LuminousCliffsTerrainFeature;
 import reika.chromaticraft.world.luminous.LuminousIslandFeature;
@@ -120,6 +122,69 @@ public final class ChromaFeatures {
 
     public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> LUMINOUS_FLORA =
             FEATURES.register("luminous_flora", LuminousFloraFeature::new);
+
+    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> NETHER_ROOF_STRUCTURE =
+            FEATURES.register("nether_roof_structure", () -> new NetherRoofStructureFeature());
+    /** Command/debug variants: /place feature chromaticraft:nether_hut, ... */
+    public static final java.util.Map<NetherRoofStructureFeature.Type,
+            DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>>> NETHER_ROOF_STRUCTURES =
+            registerNetherRoofStructures();
+
+    private static java.util.Map<NetherRoofStructureFeature.Type,
+            DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>>> registerNetherRoofStructures() {
+        java.util.EnumMap<NetherRoofStructureFeature.Type,
+                DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>>> map =
+                new java.util.EnumMap<>(NetherRoofStructureFeature.Type.class);
+        for (NetherRoofStructureFeature.Type type : NetherRoofStructureFeature.Type.values())
+            map.put(type, FEATURES.register("nether_" + type.name().toLowerCase(java.util.Locale.ROOT),
+                    () -> new NetherRoofStructureFeature(type)));
+        return java.util.Map.copyOf(map);
+    }
+
+    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> NATURAL_CAVERN =
+            FEATURES.register("natural_cavern", () -> new OverworldStructureFeature(
+                    OverworldStructureFeature.Type.CAVERN, true));
+    /** Command/debug seam: /place feature chromaticraft:cavern. */
+    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> CAVERN =
+            FEATURES.register("cavern", () -> new OverworldStructureFeature(
+                    OverworldStructureFeature.Type.CAVERN, false));
+
+    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> NATURAL_BURROW =
+            FEATURES.register("natural_burrow", () -> new OverworldStructureFeature(
+                    OverworldStructureFeature.Type.BURROW, true));
+    /** Command/debug seam: /place feature chromaticraft:burrow, with the command position as controller. */
+    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> BURROW =
+            FEATURES.register("burrow", () -> new OverworldStructureFeature(
+                    OverworldStructureFeature.Type.BURROW, false));
+
+    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> NATURAL_OCEAN =
+            FEATURES.register("natural_ocean", () -> new OverworldStructureFeature(
+                    OverworldStructureFeature.Type.OCEAN, true));
+    /** Command/debug seam: /place feature chromaticraft:ocean, with the command position as controller. */
+    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> OCEAN =
+            FEATURES.register("ocean", () -> new OverworldStructureFeature(
+                    OverworldStructureFeature.Type.OCEAN, false));
+
+    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> NATURAL_DESERT =
+            FEATURES.register("natural_desert", () -> new OverworldStructureFeature(
+                    OverworldStructureFeature.Type.DESERT, true));
+    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> DESERT =
+            FEATURES.register("desert", () -> new OverworldStructureFeature(
+                    OverworldStructureFeature.Type.DESERT, false));
+
+	public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> NATURAL_SNOW =
+			FEATURES.register("natural_snow", () -> new OverworldStructureFeature(
+					OverworldStructureFeature.Type.SNOW, true));
+	public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> SNOW =
+			FEATURES.register("snow", () -> new OverworldStructureFeature(
+					OverworldStructureFeature.Type.SNOW, false));
+	public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> NATURAL_BIOME_FRAGMENT =
+			FEATURES.register("natural_biome_fragment", () -> new OverworldStructureFeature(
+					OverworldStructureFeature.Type.BIOME_FRAGMENT, true));
+	/** Command/debug seam: /place feature chromaticraft:biome_fragment. */
+	public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> BIOME_FRAGMENT =
+			FEATURES.register("biome_fragment", () -> new OverworldStructureFeature(
+					OverworldStructureFeature.Type.BIOME_FRAGMENT, false));
 
     private ChromaFeatures() {}
 }
