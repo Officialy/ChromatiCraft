@@ -778,8 +778,21 @@ Working list; each is worked to completion in order.
       exists; confirm the icon selection is wired and add the shift-held tooltip.
 - [ ] **Loot chest model is wrong, and mis-rotated in structures.** Two parts: the model itself, and
       the facing it is placed with by the structure features.
-- [ ] **Snow structure: breaking the controller does not release the chests.** Breaking the structure
+- [x] **Snow structure: breaking the controller does not release the chests.** FIXED 2026-08-11.
+      V33a's `TileEntityStructControl.breakBlock` rewrites every shield and loot chest in the
+      structure to `meta % 8`, dropping metadata bit 3 -- the reinforced flag -- so the shell becomes
+      ordinary mineable material. Nothing in the port ever cleared `REINFORCED`, so structures stayed
+      sealed forever. `onControllerBroken` now sweeps the structure's bounds and clears it, hooked
+      from `playerWillDestroy` (not `affectNeighborsAfterRemoval`, which runs after the block entity
+      and therefore the structure type and bounds are gone). The chests themselves were never the
+      blocker: they are open to anyone who has not claimed them, and it is the reinforced cap above
+      each that holds them shut. Original text: Breaking the structure
       controller should unlock the loot — specifically it should allow breaking the block above a
       chest so the chest can be opened. Currently the chests stay sealed.
-- [ ] **Desert structure has no shielding crack.** There is no way down to the bottom; upstream
+- [x] **Desert structure has no shielding crack.** FIXED 2026-08-11. `openDesert` placed the corner
+      caps and the concealed lower columns but none of V33a's 32 crack blocks, which are the only way
+      into the lower chamber -- so the structure had no entrance at all. They are placed on player
+      proximity, not at generation, which is why this was invisible to any generation check. Upstream
+      writes them against an anchor seven west, three down and seven north of the controller; the port
+      expresses the same blocks relative to the controller. Original text: There is no way down to the bottom; upstream
       leaves a gap in the shielding as the entrance.

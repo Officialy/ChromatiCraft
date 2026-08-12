@@ -573,6 +573,24 @@ public final class TileEntityStructureController extends RandomizableContainerBl
 			level.setBlock(worldPosition.offset(p[0], p[1], p[2]),
 					ChromaBlocks.shielding(ChromaShieldTypes.CLOAK).get().defaultBlockState()
 							.setValue(BlockStructureShield.REINFORCED, true), 3);
+
+		// The way in. V33a cracks a run of shielding along all four walls, which is the only route to
+		// the lower chamber -- without these the desert structure has no entrance at all. Upstream
+		// writes them against an anchor seven west, three down and seven north of the controller;
+		// these are the same blocks expressed relative to the controller itself.
+		int[][] cracks = {
+				{5, 2, -1}, {5, 2, 0}, {5, 2, 1}, {5, 3, 0},
+				{4, 2, -1}, {4, 2, 0}, {4, 2, 1}, {1, 2, 4},
+				{1, 2, 5}, {1, 2, -5}, {1, 2, -4}, {0, 2, 4},
+				{0, 2, 5}, {-5, 2, -1}, {-5, 2, 0}, {-5, 2, 1},
+				{-5, 3, 0}, {-4, 2, -1}, {-4, 2, 0}, {-4, 2, 1},
+				{-4, 3, 0}, {-1, 2, -5}, {-1, 2, -4}, {-1, 2, 4},
+				{-1, 2, 5}, {0, 2, -5}, {0, 2, -4}, {0, 3, -5},
+				{0, 3, -4}, {0, 3, 4}, {0, 3, 5}, {4, 3, 0}
+		};
+		for (int[] p : cracks)
+			crack(worldPosition.offset(p[0], p[1], p[2]), ChromaShieldTypes.CRACK);
+
 		ChromaSounds.TRAP.playSoundAtBlock(level, worldPosition);
 	}
 
@@ -658,6 +676,36 @@ public final class TileEntityStructureController extends RandomizableContainerBl
 		triggered = false;
 		lastTriggerPlayer = null;
 		setChanged();
+	}
+
+	/**
+	 * V33a {@code TileEntityStructControl.breakBlock}: destroying the controller unseals the whole
+	 * structure. Upstream walks its block array rewriting every shield and loot chest to
+	 * {@code meta % 8} -- dropping metadata bit 3, the reinforced flag -- so the shell becomes ordinary
+	 * mineable material.
+	 *
+	 * <p>That is what makes the reward reachable: the loot chests themselves are open to anyone who has
+	 * not claimed them, and it is the reinforced shield capping each one that actually holds them shut.
+	 * Without this the structure stays sealed forever and the chests can never be opened, which is
+	 * exactly what happened before it was ported.
+	 *
+	 * <p>The sweep is over the structure's own bounds rather than a stored array: the port builds its
+	 * structures from NBT templates and keeps no block list, and clearing a flag on blocks that are
+	 * already unreinforced costs nothing.
+	 */
+	public void onControllerBroken() {
+		if (level == null || level.isClientSide() || structure == null)
+			return;
+		AABB box = proximityBox().inflate(2);
+		BlockPos min = BlockPos.containing(box.minX, box.minY, box.minZ);
+		BlockPos max = BlockPos.containing(box.maxX, box.maxY, box.maxZ);
+		for (BlockPos pos : BlockPos.betweenClosed(min, max)) {
+			BlockState state = level.getBlockState(pos);
+			if (state.getBlock() instanceof BlockStructureShield
+					&& state.getValue(BlockStructureShield.REINFORCED))
+				level.setBlock(pos, state.setValue(BlockStructureShield.REINFORCED, false), 3);
+		}
+		ChromaSounds.POWERDOWN.playSoundAtBlock(level, worldPosition);
 	}
 
 	public boolean canBreak(Player player) {

@@ -61,6 +61,18 @@ public final class BlockStructureController extends Block implements EntityBlock
 		return super.getDestroyProgress(state, player, level, pos);
 	}
 
+	/**
+	 * Breaking the controller unseals the structure. This runs while the block entity is still
+	 * present, which {@code affectNeighborsAfterRemoval} would not -- by then the controller, and with
+	 * it the structure type and bounds the sweep needs, is already gone.
+	 */
+	@Override
+	public BlockState playerWillDestroy(Level level, BlockPos pos, BlockState state, Player player) {
+		if (!level.isClientSide() && level.getBlockEntity(pos) instanceof TileEntityStructureController controller)
+			controller.onControllerBroken();
+		return super.playerWillDestroy(level, pos, state, player);
+	}
+
 	@Override
 	public RenderShape getRenderShape(BlockState state) {
 		return RenderShape.MODEL;
