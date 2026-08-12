@@ -768,3 +768,18 @@ This is an item-render behavior, not a tooltip hook: V33a draws the decoded page
 half size over the paper and, while Shift is held in an inventory GUI, replaces the paper with that
 icon at full size. The custom 26.2 item model now builds a nested render state for the real registered
 page icon, so block, item and special-renderer icons all work without a duplicate icon map.
+
+## Fragment structure + item polish — in-world findings 2026-08-11
+
+Working list; each is worked to completion in order.
+
+- [ ] **Info fragment icons and shift view.** Each fragment should carry the small icon of the page
+      it holds, and holding shift should show the page's full information. `InfoFragmentItemModel`
+      exists; confirm the icon selection is wired and add the shift-held tooltip.
+- [ ] **Loot chest model is wrong, and mis-rotated in structures.** Two parts: the model itself, and
+      the facing it is placed with by the structure features.
+- [ ] **Snow structure: breaking the controller does not release the chests.** Breaking the structure
+      controller should unlock the loot — specifically it should allow breaking the block above a
+      chest so the chest can be opened. Currently the chests stay sealed.
+- [ ] **Desert structure has no shielding crack.** There is no way down to the bottom; upstream
+      leaves a gap in the shielding as the entrance.
