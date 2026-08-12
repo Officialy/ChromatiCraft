@@ -776,8 +776,21 @@ Working list; each is worked to completion in order.
 - [ ] **Info fragment icons and shift view.** Each fragment should carry the small icon of the page
       it holds, and holding shift should show the page's full information. `InfoFragmentItemModel`
       exists; confirm the icon selection is wired and add the shift-held tooltip.
-- [ ] **Loot chest model is wrong, and mis-rotated in structures.** Two parts: the model itself, and
-      the facing it is placed with by the structure features.
+- [ ] **Loot chest model is wrong, and mis-rotated in structures.** Investigated 2026-08-11; the
+      rotation half is narrowed, the model half is not started (and `RenderLootChest`/`ModelLootChest`
+      are currently being edited by hand, so this was left alone rather than conflict with that).
+
+      **Ruled out:** the renderer's transform is equivalent to vanilla's `ChestRenderer` --
+      `translate(0.5, *, 0.5)`, `mulPose(Axis.YP.rotationDegrees(-facing.toYRot()))`, translate back.
+      The port pivots at y=0 where vanilla uses y=0.5, which makes no difference for a rotation about
+      Y. The blockstate correctly has no FACING dispatch, because the block is drawn by its block
+      entity, not a baked model.
+
+      **Where to look:** the facing a chest is *placed* with. `DataTowerFeature` writes
+      `LOOT_CHEST.defaultBlockState()`, which is always NORTH -- it never sets FACING. Structure
+      chests come from the NBT templates instead, so check whether those templates carry a facing at
+      all; a template written from an unrotated capture would give every chest the same one. Compare
+      against the facings V33a's structures use before changing anything.
 - [x] **Snow structure: breaking the controller does not release the chests.** FIXED 2026-08-11.
       V33a's `TileEntityStructControl.breakBlock` rewrites every shield and loot chest in the
       structure to `meta % 8`, dropping metadata bit 3 -- the reinforced flag -- so the shell becomes
