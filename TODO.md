@@ -809,3 +809,49 @@ Working list; each is worked to completion in order.
       writes them against an anchor seven west, three down and seven north of the controller; the port
       expresses the same blocks relative to the controller. Original text: There is no way down to the bottom; upstream
       leaves a gap in the shielding as the entrance.
+
+## The ability subsystem, and the two book pages behind it — scoped 2026-08-11
+
+`GuiRitual` (step 8) and `GuiAbilityDesc` (step 7) both sit behind this, so it was surveyed as one
+piece.
+
+**What exists.** `ChromaAbilityData` is in the build but is *not* the subsystem — it is 43 lines
+holding a pylon-immunity flag. The subsystem proper is three unported files:
+
+| file | lines | what it is |
+|---|---|---|
+| `registry/Chromabilities` | 744 | the ability enum, its display names and its behaviour hooks |
+| `auxiliary/ability/AbilityHelper` | 1847 | the engine: what each ability actually *does* |
+| `auxiliary/recipemanagers/AbilityRituals` | 393 | the ritual aura costs per ability |
+
+The `Ability` interface `Chromabilities` implements does not exist in the tree at all — not unported,
+absent. It has to be written from upstream before any of the three will compile.
+
+**The seam worth knowing: the book does not need the engine.** `GuiRitual` reads
+`AbilityHelper.getElementsFor(a)`, and that method is only `tagMap.get(a).copy()` where `tagMap` was
+filled from `AbilityRituals.instance.getAura(c)`. So the guide's whole data dependency is the enum
+plus the aura table — roughly 1,100 lines — and the 1,847-line behaviour engine can follow later with
+the abilities themselves. Port in that order:
+
+1. `Ability` (write from upstream; it is the contract the other two share).
+2. `AbilityRituals` — the aura costs and `getMaxAbilityTotalCost`, which the ritual page's energy bar
+   scales against.
+3. `Chromabilities` as data only: constants, display names, progression gates. Its behaviour methods
+   forward to `AbilityHelper` and will not compile until that lands, so they stay commented with a
+   CHROMA-PORT marker against the engine, exactly as the manipulator's unported branches are.
+4. `GuiAbilityDesc`, then `GuiRitual`.
+5. `AbilityHelper` last, as its own slice, with the abilities becoming usable at that point.
+
+**Two blockers `GuiRitual` shares with pages already ported**, worth solving once rather than three
+times:
+
+- `descX`/`descY` from `GuiBookSection`. `GuiRitual` positions everything against them — the wheel at
+  `descX+184, descY+52`, the energy column at `descX+43`, the bar at `descX+1`. The casting page's
+  subpage 3 has been waiting on the same two numbers since 2026-08-09.
+- `CrystalElement.getOutlineRune`. The ritual wheel rings its pie with the sixteen rune glyphs at
+  `0.625 * r`, which is the same glyph ring the manipulator HUD's wheel is missing. Both come back
+  with the rune sprite redesign.
+
+Everything else `GuiRitual` needs is already in hand: `handbook_ritual2.png` is extracted, the
+`Proportionality` wheel is proven on the machine ENERGY page, and the port already resolves
+`textures/ability/<id>.png` for the abilities section's header art.
