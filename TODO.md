@@ -833,9 +833,20 @@ filled from `AbilityRituals.instance.getAura(c)`. So the guide's whole data depe
 plus the aura table — roughly 1,100 lines — and the 1,847-line behaviour engine can follow later with
 the abilities themselves. Port in that order:
 
-1. `Ability` (write from upstream; it is the contract the other two share).
-2. `AbilityRituals` — the aura costs and `getMaxAbilityTotalCost`, which the ritual page's energy bar
-   scales against.
+1. ~~`Ability`~~ done 2026-08-11. Flattened out of `AbilityAPI` into `api/abilityapi/Ability.java`,
+   which is the package `Chromabilities` already imports it by. Its `getTexturePath` +
+   `getTextureReferenceClass` pair became a single `getTexture(boolean gray)` returning an
+   `Identifier`, since 26.2 addresses textures by namespace rather than relative to a class's package.
+   Forge's `TickEvent.Phase` is gone in NeoForge 26.2 (replaced by separate Pre/Post event classes),
+   so `Phase { START, END }` is carried on the interface rather than dropped — an ability that must
+   act before the world ticks is not interchangeable with one that acts after.
+2. ~~`AbilityRituals`~~ done 2026-08-11. All 39 abilities and 138 aura entries, verified identical to
+   upstream by re-parsing both. **Keyed by ability ID rather than by the enum**, because the costs are
+   pure data and do not need the 744-line `Chromabilities`: the key is the upstream constant name,
+   which is what `getID` derives from, so it binds to the enum the moment that lands and the book can
+   read it now. Upstream's table-tracking half — the `WorldLocation` set of active ritual tables and
+   its `RitualAPI` surface — is state for *performing* a ritual rather than describing one, and is
+   deferred with the engine.
 3. `Chromabilities` as data only: constants, display names, progression gates. Its behaviour methods
    forward to `AbilityHelper` and will not compile until that lands, so they stay commented with a
    CHROMA-PORT marker against the engine, exactly as the manipulator's unported branches are.
