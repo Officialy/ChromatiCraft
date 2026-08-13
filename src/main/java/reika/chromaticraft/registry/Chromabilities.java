@@ -241,13 +241,20 @@ public enum Chromabilities implements Ability {
 	// ---------------------------------------------------------------------------------------------
 
 	/**
-	 * CHROMA-PORT: whether the player has met the prerequisites to ritual this ability. Upstream asks
-	 * {@code AbilityHelper.playerCanGetAbility}, which walks the progression tree. False until the
-	 * engine lands, so nothing advertises itself as obtainable that cannot in fact be obtained.
+	 * Whether the player has met the prerequisites to ritual this ability. The progression gates are
+	 * ported even though the abilities themselves are not, so this answers honestly rather than
+	 * refusing everything.
 	 */
 	@Override
 	public boolean isAvailableToPlayer(Player player) {
-		return false;
+		return !this.isDummiedOut()
+				&& reika.chromaticraft.auxiliary.ability.AbilityHelper.instance
+						.playerCanGetAbility(this, player);
+	}
+
+	/** What this ability draws from the player's buffer each tick while it runs. */
+	public ElementTagCompound getTickCost(Player player) {
+		return reika.chromaticraft.auxiliary.ability.AbilityHelper.instance.getTickCost(this, player);
 	}
 
 	/** CHROMA-PORT: the ambient half, driven by AbilityHelper's tick handlers. */

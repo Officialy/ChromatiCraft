@@ -876,7 +876,18 @@ the abilities themselves. Port in that order:
    that cannot be written faithfully yet: upstream interpolates AbilityHelper's tuning constants.
    V33a's DragonAPI `ModList` became a plain mod id checked against `net.neoforged.fml.ModList`.
 4. `GuiAbilityDesc`, then `GuiRitual`.
-5. `AbilityHelper` last, as its own slice, with the abilities becoming usable at that point.
+5. `AbilityHelper` — **data half done 2026-08-11**, effects half still outstanding.
+
+   Ported: the progression map (26 gates over 23 abilities, verified identical to upstream) and the
+   per-tick cost, which is the ritual aura scaled by 0.0008 with upstream's three per-ability
+   multipliers and its CTM/DIMENSION progression scaling. `Chromabilities.isAvailableToPlayer` now
+   answers from that instead of always returning false, so the guide gates abilities correctly.
+
+   Still out: the thirty-nine effects and the tick and event handlers that drive them — 1,847 lines
+   across 138 imports upstream, reaching into most of the mod. Until that lands an ability can be
+   shown, gated and priced, but not used. One small dependency noted at the site: upstream applies
+   `power(0.75)` to the running cost while an Efficiency Crystal is held, and `ItemEfficiencyCrystal`
+   is unported.
 
 **Two blockers `GuiRitual` shares with pages already ported**, worth solving once rather than three
 times:

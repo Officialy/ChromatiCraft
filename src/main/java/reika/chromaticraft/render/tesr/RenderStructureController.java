@@ -38,7 +38,7 @@ public final class RenderStructureController
 		implements BlockEntityRenderer<TileEntityStructureController, RenderStructureController.State> {
 
 	private static final Identifier FLARE = Identifier.fromNamespaceAndPath(
-			ChromatiCraft.MODID, "textures/block/icons/rotating flare_pulse.png");
+			ChromatiCraft.MODID, "textures/block/icons/rotating_flare_pulse.png");
 
 	/** The strip is 64 wide and 11520 tall: 180 square frames, one tick each. */
 	private static final int FRAMES = 180;
