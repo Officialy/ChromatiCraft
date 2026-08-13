@@ -625,8 +625,19 @@ rather than generalising one renderer across several pages.
    legible beside an expensive one. The sixteen outline runes upstream rings the wheel with are the
    stripped `getOutlineRune` glyphs, same as the manipulator HUD's, and are marked CHROMA-PORT.
 9. **`GuiAdjacencyDescription`** — adjacency cores (PageType.ADJACENCY).
-10. **`GuiNotes`** — the editable notebook (`notes.png`), with server-authoritative
-    data-component persistence rather than client-only text.
+10. ~~**`GuiNotes`**~~ done 2026-08-11. Persistence was already server-authoritative; what was wrong
+    was the layout and the chrome. Ten lines on a twenty-pixel pitch at `(j+8, k+3+i*20)`, 240x19,
+    and V33a's three-button stack down the left edge — `-` scroll up, `+` scroll down, `*` append —
+    each 20x20 at `j-20`, plus the Return tab. Gone: an invented Save button (upstream writes on
+    close, which the port already did), an invented Clear that could wipe every note at once with no
+    upstream equivalent, and a "Notebook" title and "Lines N-M" counter printed onto what is drawn as
+    a sheet of paper. A new line seeds as `-Add Notes-`, as upstream does, so a blank line reads as
+    typable.
+
+    One deliberate difference: upstream turns only the line being edited into a text field and draws
+    the rest as text truncated at 45 characters. The port leaves all ten as borderless edit boxes —
+    identical at rest, one click cheaper to start typing, and the only visible divergence is that a
+    long unfocused line scrolls instead of ending in an ellipsis.
 
 Carried alongside: swap the search scrim for V33a's `squarefog.png`. The image tabs now use the
 original GUICLICK/GUISEL cues; temporary vanilla buttons still need conversion to the source sheet.

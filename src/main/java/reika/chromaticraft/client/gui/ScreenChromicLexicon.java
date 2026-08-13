@@ -70,6 +70,10 @@ public final class ScreenChromicLexicon extends Screen {
 	private static final Identifier MISC = Identifier.fromNamespaceAndPath(
 			ChromatiCraft.MODID, "textures/gui/lexicon/misc.png");
 
+	/** V33a GuiNotes: ten lines, twenty pixels apart. */
+	private static final int NOTE_LINES = 10;
+	private static final int NOTE_PITCH = 20;
+
 	/** V33a ability art is 50x50, and both the description and ritual pages draw it at native size. */
 	private static final int ABILITY_ICON = 50;
 
@@ -504,14 +508,28 @@ public final class ScreenChromicLexicon extends Screen {
 		rebuildWidgets();
 	}
 
+	/**
+	 * V33a {@code GuiNotes.initGui}: ten lines on a twenty-pixel pitch, a three-button stack down the
+	 * left edge and a Return tab on the right.
+	 *
+	 * <p>Upstream turns only the line you are editing into a text field and draws the rest as plain
+	 * truncated text. The port leaves all ten as borderless edit boxes, which look the same at rest
+	 * and save a click to start typing; the one visible difference is that a long unfocused line
+	 * scrolls rather than ending in an ellipsis.
+	 *
+	 * <p>There is no Save button, and upstream has none: the notebook writes itself out when the book
+	 * closes. The Clear button was invented and is gone -- nothing upstream can wipe every note at
+	 * once, which for a hand-written notebook is a mercy.
+	 */
 	private void addNotebookWidgets(int left, int top) {
 		noteFields.clear();
-		for (int row = 0; row < 10; row++) {
+		for (int row = 0; row < NOTE_LINES; row++) {
 			int index = noteScroll + row;
-			EditBox field = new EditBox(font, left + 10, top + 30 + row * 16, 236, 15,
+			EditBox field = new EditBox(font, left + 8, top + 3 + row * NOTE_PITCH, 240, 19,
 					Component.literal("Lexicon note " + (index + 1)));
-			field.setMaxLength(1024);
+			field.setMaxLength(9999);
 			field.setBordered(false);
+			// V33a TEXTCOLOR: dark ink, because the notebook page is paper rather than the usual frame.
 			field.setTextColor(0xff202020);
 			if (index < noteData.size())
 				field.setValue(noteData.get(index));
@@ -524,16 +542,15 @@ public final class ScreenChromicLexicon extends Screen {
 			});
 			noteFields.add(addRenderableWidget(field));
 		}
-		addRenderableWidget(Button.builder(Component.literal("↑"), button -> scrollNotes(-1))
-				.bounds(left - 20, top + 18, 18, 18).build());
-		addRenderableWidget(Button.builder(Component.literal("↓"), button -> scrollNotes(1))
-				.bounds(left - 20, top + 38, 18, 18).build());
-		addRenderableWidget(Button.builder(Component.literal("+"), button -> appendNote())
-				.bounds(left - 20, top + 68, 18, 18).build());
-		addRenderableWidget(Button.builder(Component.literal("Clear"), button -> clearNotes())
-				.bounds(left - 42, top + 89, 40, 18).build());
-		addRenderableWidget(Button.builder(Component.literal("Save"), button -> saveNotes())
-				.bounds(left + 102, top + 194, 52, 18).build());
+		// V33a: '-' scrolls up, '+' scrolls down, '*' appends a line. Each 20x20 at j-20.
+		addRenderableWidget(Button.builder(Component.literal("-"), button -> scrollNotes(-1))
+				.bounds(left - 20, top - 5, 20, 20).build());
+		addRenderableWidget(Button.builder(Component.literal("+"), button -> scrollNotes(1))
+				.bounds(left - 20, top + 15, 20, 20).build());
+		addRenderableWidget(Button.builder(Component.literal("*"), button -> appendNote())
+				.bounds(left - 20, top + 35, 20, 20).build());
+		addRenderableWidget(new LexiconImageButton(left + WIDTH, top, 22, 39,
+				42, 126, Component.literal("Return"), () -> setView(View.NAVIGATION)));
 	}
 
 	/**
@@ -560,7 +577,7 @@ public final class ScreenChromicLexicon extends Screen {
 
 
 	private void scrollNotes(int direction) {
-		int max = Math.max(0, noteData.size() - 10);
+		int max = Math.max(0, noteData.size() - NOTE_LINES);
 		int next = Math.max(0, Math.min(noteScroll + direction, max));
 		if (next != noteScroll) {
 			noteScroll = next;
@@ -569,7 +586,9 @@ public final class ScreenChromicLexicon extends Screen {
 	}
 
 	private void appendNote() {
-		noteData.add("");
+		// V33a seeds a new line with this placeholder rather than leaving it blank, so an empty line
+		// is visibly a line you can type on.
+		noteData.add("-Add Notes-");
 		noteScroll = Math.max(0, noteData.size() - 10);
 		notesDirty = true;
 		rebuildWidgets();
@@ -577,12 +596,6 @@ public final class ScreenChromicLexicon extends Screen {
 			setFocused(noteFields.getLast());
 	}
 
-	private void clearNotes() {
-		noteData.clear();
-		noteScroll = 0;
-		notesDirty = true;
-		rebuildWidgets();
-	}
 
 	private void saveNotes() {
 		if (!notesDirty)
@@ -795,11 +808,10 @@ public final class ScreenChromicLexicon extends Screen {
 			graphics.text(font, Component.literal("Recovered pages cost one paper and one black dye."),
 					left + 10, top + 38, 0xffc0c0c0, false);
 		}
-		else if (view == View.NOTES) {
-			graphics.centeredText(font, "Notebook", left + WIDTH / 2, top + 16, 0xffffffff);
-			graphics.text(font, Component.literal("Lines " + (noteScroll + 1) + "–" + (noteScroll + 10)),
-					left + 188, top + 5, 0xff909090, false);
-		}
+		// The notebook draws nothing but its own lines. V33a's GuiNotes.drawScreen has no title and no
+		// line counter -- the page art is a sheet of paper, and a caption printed on it reads as part
+		// of the notes rather than as chrome.
+
 		super.extractRenderState(graphics, mouseX, mouseY, partialTick);
 	}
 
