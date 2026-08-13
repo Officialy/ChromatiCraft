@@ -7,6 +7,8 @@ import java.util.Map;
 
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.resources.Identifier;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 
@@ -176,6 +178,11 @@ public final class LexiconNavigationSheet {
 		return rows * ELEMENT + (rows - 1) * SPACING + MARGIN - 1;
 	}
 
+	/** V33a squarefog.png: the haze a non-matching search entry recedes behind. */
+	private static final Identifier SEARCH_FOG = Identifier.fromNamespaceAndPath(
+			reika.chromaticraft.ChromatiCraft.MODID, "textures/gui/lexicon/squarefog.png");
+	private static final int FOG_SIZE = 48;
+
 	/** V33a Section.getSubsectionWidth, with the level title taken into account. */
 	private static int subWidth(Category category, int cols, Font font) {
 		int size = category.entries().size();
@@ -260,9 +267,13 @@ public final class LexiconNavigationSheet {
 				if (!unlocked.test(cell.entry))
 					graphics.text(font, Component.literal("?"), cx + 9, cy + 9, 0xffff6060, true);
 				if (cell.searchAlpha < 1) {
-					// The faded-out remainder is dimmed with a scrim, matching V33a's squarefog pass.
-					int alpha = (int)((1 - cell.searchAlpha) * 200) << 24;
-					graphics.fill(cx + 2, cy + 2, cx + ELEMENT - 2, cy + ELEMENT - 2, alpha);
+					// V33a fades a non-matching entry behind squarefog.png at alpha 1 - searchAlpha,
+					// over the icon's box grown two pixels on every side. A flat black scrim stood here
+					// before, which dimmed the icon rather than fogging it.
+					int alpha = Math.round((1 - cell.searchAlpha) * 255);
+					graphics.blit(RenderPipelines.GUI_TEXTURED, SEARCH_FOG,
+							cx + 2, cy + 2, 0, 0, ELEMENT - 4, ELEMENT - 4, FOG_SIZE, FOG_SIZE,
+							FOG_SIZE, FOG_SIZE, alpha << 24 | 0xffffff);
 				}
 			}
 		}
