@@ -1,63 +1,31 @@
-/*******************************************************************************
- * @author Reika Kalseki
- *
- * Copyright 2017
- *
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
- ******************************************************************************/
 package reika.chromaticraft.registry;
 
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
-import java.util.UUID;
 
-import com.google.common.collect.HashBiMap;
-
-import net.minecraft.client.Minecraft;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.potion.Potion;
-import net.minecraft.potion.PotionEffect;
-import net.minecraft.util.StatCollector;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.player.Player;
 
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.api.abilityapi.Ability;
-import reika.chromaticraft.auxiliary.ChromaDescriptions;
-import reika.chromaticraft.auxiliary.ability.AbilityCalls;
-import reika.chromaticraft.auxiliary.ability.AbilityHelper;
-import reika.chromaticraft.auxiliary.ability.AbilitySorter;
-import reika.chromaticraft.auxiliary.ability.GrowAuraEffect;
-import reika.chromaticraft.auxiliary.render.chromafontrenderer.FontType;
+import reika.chromaticraft.auxiliary.recipemanagers.AbilityRituals;
 import reika.chromaticraft.magic.ElementTagCompound;
-import reika.chromaticraft.magic.PlayerElementBuffer;
-import reika.chromaticraft.magic.progression.ChromaResearchManager;
-import reika.chromaticraft.magic.progression.ProgressStage;
-import reika.chromaticraft.modinterface.MystPages;
-import reika.dragonapi.DragonAPICore;
-import reika.dragonapi.ModList;
-import reika.dragonapi.instantiable.data.immutable.ScaledDirection;
-import reika.dragonapi.instantiable.data.maps.MultiMap;
-import reika.dragonapi.instantiable.data.maps.multimap.CollectionType;
-import reika.dragonapi.instantiable.io.PacketTarget;
-import reika.dragonapi.libraries.ReikaEntityHelper;
-import reika.dragonapi.libraries.ReikaPlayerAPI;
-import reika.dragonapi.libraries.io.ReikaPacketHelper;
-import reika.dragonapi.libraries.java.ReikaObfuscationHelper;
-import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
 
-import cpw.mods.fml.common.FMLCommonHandler;
-import cpw.mods.fml.common.gameevent.TickEvent.Phase;
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
-
+/**
+ * V33a {@code Chromabilities}: the thirty-nine powers a player can ritual into existence.
+ *
+ * <p><b>Data only.</b> Upstream's enum runs to 744 lines because every constant carries its own
+ * behaviour, and every one of those switches calls into the 1,847-line {@code AbilityHelper}, which
+ * is not ported. What is here is everything that <em>describes</em> an ability rather than performs
+ * it: identity, tick shape, power levels, mod gate, ritual cost. That is the whole of what the guide
+ * book reads, which is why its ability and ritual pages do not have to wait for the engine.
+ *
+ * <p>The behaviour methods below are present and honest about being inert. They are not stubs
+ * standing in for missing knowledge — they are the seam the engine attaches at, each marked
+ * CHROMA-PORT so none of them can be mistaken for finished work.
+ */
 public enum Chromabilities implements Ability {
 
 	REACH(null, true),
@@ -71,7 +39,7 @@ public enum Chromabilities implements Ability {
 	HEALTH(null, true),
 	PYLON(null, false),
 	LIGHTNING(null, false),
-	LIFEPOINT(null, false, ModList.BLOODMAGIC),
+	LIFEPOINT(null, false, "BLOODMAGIC"),
 	DEATHPROOF(null, false),
 	HOTBAR(null, true),
 	SHOCKWAVE(null, true),
@@ -90,655 +58,224 @@ public enum Chromabilities implements Ability {
 	DOUBLECRAFT(null, true),
 	GROWAURA(Phase.END, true),
 	RECHARGE(null, false),
-	MEINV(null, false, ModList.APPENG),
+	MEINV(null, false, "APPENG"),
 	MOBSEEK(null, true),
 	BEEALYZE(null, true),
 	NUKER(Phase.START, false),
 	LIGHTCAST(null, false),
 	JUMP(null, false),
-	//VOXELPLACE(null, false);
 	SUPERBUILD(null, false),
 	CHESTCLEAR(Phase.END, false),
-	MOBBAIT(null, false),
-	//ANGELBLOCK(null, false),
-	;
-
+	MOBBAIT(null, false);
 
 	private final boolean tickBased;
 	private final Phase tickPhase;
 	private final boolean actOnClient;
-	private ModList dependency;
+	/** V33a holds a DragonAPI {@code ModList}; the port keeps the mod id, as that enum is not ported. */
+	private final String dependency;
 
-	public static final UUID HEALTH_UUID = UUID.fromString("71d6a916-a54b-11e7-abc4-cec278b6b50a");
-	public static final UUID FAKE_UUID = UUID.randomUUID();
 	public static final int MAX_REACH = 128;
 
-	private static long lastNullPlayerDump = -1;
+	public static final Chromabilities[] abilities = values();
 
-	private Chromabilities(Phase tick, boolean client) {
+	Chromabilities(Phase tick, boolean client) {
 		this(tick, client, null);
 	}
 
-	private Chromabilities(Phase tick, boolean client, ModList mod) {
+	Chromabilities(Phase tick, boolean client, String mod) {
 		tickBased = tick != null;
 		tickPhase = tick;
 		actOnClient = client;
 		dependency = mod;
 	}
 
-	private static final String NBT_TAG = "chromabilities";
-	private static final HashMap<String, Ability> tagMap = new HashMap();
-
-	private static final Chromabilities[] abilities = values();
-
-	private static final HashMap<String, Ability> abilityMap = new HashMap();
-	private static final HashBiMap<Integer, Ability> intMap = HashBiMap.create();
-	private static int maxID = 0;
-	private static ArrayList<Ability> sortedList;
-	private static final MultiMap<Phase, Ability> tickAbilities = new MultiMap(CollectionType.HASHSET);
-
-	public static Ability getAbility(String id) {
-		return abilityMap.get(id);
+	@Override
+	public String getID() {
+		return this.name().toLowerCase(Locale.ROOT);
 	}
 
-	public static List<Ability> getAbilities() {
-		return Collections.unmodifiableList(sortedList);
-	}
-
-	public static Collection<Ability> getAbilitiesAvailableToPlayer(EntityPlayer ep) {
-		Collection<Ability> li = new ArrayList();
-		for (Ability c : sortedList) {
-			if (c.isAvailableToPlayer(ep))
-				li.add(c);
-		}
-		return li;
-	}
-
-	public static Collection<Ability> getAbilitiesForTick(Phase p) {
-		return Collections.unmodifiableCollection(tickAbilities.get(p));
-	}
-
-	public boolean isAvailableToPlayer(EntityPlayer ep) {
-		return AbilityHelper.instance.playerCanGetAbility(this, ep);
-	}
-
+	@Override
 	public String getDisplayName() {
-		String s = StatCollector.translateToLocal("chromability."+this.name().toLowerCase(Locale.ENGLISH));
-		if (FMLCommonHandler.instance().getEffectiveSide() == Side.CLIENT && DragonAPICore.hasGameLoaded()) {
-			s = this.deobfuscateIf(s);
-		}
-		return s;
+		// CHROMA-PORT: V33a scrambles the name until the player holds the ability's lexicon fragment
+		// (deobfuscateIf). The fragment check is ported but the obfuscated font type is not, so the
+		// name currently reads plainly; restore the scramble with the font work.
+		return Component.translatable("chromability." + this.getID()).getString();
 	}
 
-	@SideOnly(Side.CLIENT)
-	private String deobfuscateIf(String s) {
-		if (!ChromaResearchManager.instance.playerHasFragment(Minecraft.getMinecraft().thePlayer, ChromaResearch.getPageFor(this))) {
-			s = FontType.OBFUSCATED.id+s;
-		}
-		return s;
-	}
-
+	@Override
 	public String getDescription() {
-		return ChromaDescriptions.getAbilityDescription(this);
+		return Component.translatable("chromability." + this.getID() + ".desc").getString();
 	}
 
+	@Override
+	public Identifier getTexture(boolean gray) {
+		return Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
+				"textures/ability/" + this.getID() + (gray ? "_g" : "") + ".png");
+	}
+
+	@Override
 	public boolean isTickBased() {
 		return tickBased;
 	}
 
+	@Override
 	public Phase getTickPhase() {
 		return tickPhase;
 	}
 
+	@Override
 	public boolean actOnClient() {
 		return actOnClient;
 	}
 
-	public ModList getModDependency() {
+	/** The mod id this ability needs, or null if it is unconditional. */
+	public String getModDependency() {
 		return dependency;
 	}
 
+	/** V33a: HOTBAR is disabled outright, and a mod-gated ability is absent when its mod is not loaded. */
 	public boolean isDummiedOut() {
-		if (this == HOTBAR)
-			return true;
-		if (DragonAPICore.isReikasComputer() && ReikaObfuscationHelper.isDeObfEnvironment())
-			return false;
-		return dependency != null && !dependency.isLoaded();
+		return this == HOTBAR
+				|| (dependency != null && !net.neoforged.fml.ModList.get().isLoaded(dependency));
 	}
 
-	public ElementTagCompound getTickCost(EntityPlayer ep) {
-		return this.getTickCost(this, ep);
+	/** V33a costsPerTick: the ambient powers, which pay continuously rather than on use. */
+	@Override
+	public boolean costsPerTick() {
+		return switch (this) {
+			case BEEALYZE -> true;
+			case BREADCRUMB -> true;
+			case DASH -> true;
+			case DEATHPROOF -> true;
+			case DOUBLECRAFT -> true;
+			case FIRERAIN -> true;
+			case GROWAURA -> true;
+			case HEALTH -> true;
+			case KEEPINV -> true;
+			case LEECH -> true;
+			case MEINV -> true;
+			case MOBSEEK -> true;
+			case NUKER -> true;
+			case ORECLIP -> true;
+			case PYLON -> true;
+			case RANGEDBOOST -> true;
+			case REACH -> true;
+			case RECHARGE -> true;
+			case SPAWNERSEE -> true;
+			default -> false;
+		};
 	}
 
-	public static ElementTagCompound getTickCost(Ability c, EntityPlayer ep) {
-		if (c.isTickBased() || c.costsPerTick()) {
-			return AbilityHelper.instance.getUsageElementsFor(c, ep);
+	/** V33a getMaxPower: how many levels a trigger-type ability can be fired at. */
+	@Override
+	public int getMaxPower() {
+		return switch (this) {
+			case BREADCRUMB -> 12;
+			case FIREBALL -> 8;
+			case GROWAURA -> 3;
+			case HEAL -> 4;
+			case HEALTH -> 50;
+			case JUMP -> 8;
+			case LIGHTNING -> 2;
+			case MAGNET -> 1;
+			case REACH -> 8;
+			case SHIFT -> 24;
+			case SONIC -> 12;
+			default -> 0;
+		};
+	}
+
+	/**
+	 * V33a isPureEventDriven: an ability with no ambient half at all. The ones returning false have a
+	 * trigger that sets them up and then keep working, which is why the distinction exists.
+	 */
+	@Override
+	public boolean isPureEventDriven() {
+		return switch (this) {
+			case DIMPING -> true;
+			case FIREBALL -> true;
+			case HEAL -> true;
+			case HOTBAR -> true;
+			case JUMP -> true;
+			case LASER -> true;
+			case LIGHTCAST -> true;
+			case LIGHTNING -> true;
+			case MOBBAIT -> true;
+			case SHOCKWAVE -> true;
+			case SONIC -> true;
+			case TELEPORT -> true;
+			default -> false;
+		};
+	}
+
+	/** The elemental aura this ability's ritual consumes. */
+	public ElementTagCompound getRitualCost() {
+		return AbilityRituals.instance.getAura(this);
+	}
+
+	public static Ability getAbility(String id) {
+		for (Chromabilities a : abilities) {
+			if (a.getID().equals(id))
+				return a;
 		}
 		return null;
 	}
 
-	public boolean costsPerTick() {
-		switch(this) {
-			case HEALTH:
-			case PYLON:
-			case LEECH:
-			case DEATHPROOF:
-			case BREADCRUMB:
-			case SPAWNERSEE:
-			case REACH:
-			case RANGEDBOOST:
-			case FIRERAIN:
-			case KEEPINV:
-			case DASH:
-			case ORECLIP:
-			case GROWAURA:
-			case RECHARGE:
-			case MEINV:
-			case MOBSEEK:
-			case BEEALYZE:
-			case NUKER:
-			case DOUBLECRAFT:
-				//case VOXELPLACE:
-				return true;
-			default:
-				return false;
+	/** Every ability the current mod set actually offers. */
+	public static List<Ability> getAbilities() {
+		List<Ability> li = new ArrayList<>();
+		for (Chromabilities a : abilities) {
+			if (!a.isDummiedOut())
+				li.add(a);
 		}
-	}
-
-	public void apply(EntityPlayer ep) {
-		switch(this) {
-			case MAGNET:
-				AbilityCalls.attractItemsAndXP(ep, 24, AbilityHelper.instance.isMagnetNoClip(ep));
-				break;
-			case SHIELD:
-				AbilityCalls.stopArrows(ep);
-				break;
-			case COMMUNICATE:
-				AbilityCalls.deAggroMobs(ep);
-				break;
-			case FLOAT:
-				AbilityCalls.waterRun(ep);
-				break;
-			case DASH:
-				PotionEffect pot = ep.getActivePotionEffect(Potion.moveSpeed);
-				if (pot != null && pot.getAmplifier() >= 60)
-					ep.stepHeight = 2.75F;
-				else
-					ep.stepHeight = 0.5F;
-				break;
-			case FIRERAIN:
-				AbilityCalls.tickFireRain(ep);
-				break;
-			case GROWAURA:
-				AbilityCalls.doGrowthAura(ep);
-				break;
-			case ORECLIP:
-				AbilityCalls.setNoclipState(ep, true);
-				break;
-			case BEEALYZE:
-				AbilityCalls.analyzeBees(ep);
-				break;
-			case NUKER:
-				AbilityCalls.breakSurroundingBlocks(ep);
-				break;
-			case CHESTCLEAR:
-				AbilityCalls.doChestCollection((EntityPlayerMP)ep);
-				break;
-			default:
-				break;
-		}
-	}
-
-	public boolean trigger(EntityPlayer ep, int data) {
-		switch(this) {
-			case REACH:
-				AbilityCalls.setReachDistance(ep, this.enabledOn(ep) ? AbilityHelper.REACH_SCALE[data] : -1);
-				return true;
-			case SONIC:
-				AbilityCalls.destroyBlocksAround(ep, data);
-				return true;
-			case SHIFT:
-				if (this.enabledOn(ep)) {
-					AbilityHelper.instance.startDrawingBoxes(ep);
-					AbilityHelper.instance.shifts.put(ep, new ScaledDirection(ReikaEntityHelper.getDirectionFromEntityLook(ep, true), data));
-				}
-				else {
-					AbilityHelper.instance.stopDrawingBoxes(ep);
-					AbilityHelper.instance.shifts.remove(ep);
-				}
-				return true;
-			case HEAL:
-				AbilityCalls.healPlayer(ep, data);
-				return true;
-			case FIREBALL:
-				AbilityCalls.launchFireball(ep, data);
-				return true;
-			case HEALTH:
-				AbilityCalls.setPlayerMaxHealth(ep, this.enabledOn(ep) ? data : 0);
-				return true;
-			case LIGHTNING:
-				return AbilityCalls.spawnLightning(ep, data);
-			case LIFEPOINT:
-				AbilityCalls.convertBufferToLP(ep, data);
-				return true;
-			case HOTBAR:
-				AbilityCalls.addInvPage(ep);
-				return true;
-			case SHOCKWAVE:
-				AbilityCalls.causeShockwave(ep);
-				return true;
-			case TELEPORT:
-				AbilityCalls.teleportPlayerMenu(ep);
-				return true;
-			case BREADCRUMB:
-				AbilityHelper.instance.setPathLength(ep, this.enabledOn(ep) ? ReikaMathLibrary.intpow2(2, data) : 0);
-				return true;
-			case DIMPING:
-				AbilityCalls.doDimensionPing(ep);
-				return true;
-			case LASER:
-				return AbilityCalls.doLaserPulse(ep);
-			case LIGHTCAST:
-				return AbilityCalls.doLightCast(ep);
-			case JUMP:
-				return AbilityCalls.doJump(ep, data);
-			case MOBBAIT:
-				return AbilityCalls.doMobBait(ep);
-			default:
-				return false;
-		}
-	}
-
-	public static void triggerAbility(EntityPlayer ep, Ability a, int data) {
-		triggerAbility(ep, a, data, 1);
-	}
-
-	public static void triggerAbility(EntityPlayer ep, Ability a, int data, float costScale) {
-		if (ep.worldObj.isRemote) {
-			ReikaPacketHelper.sendPacketToServer(ChromatiCraft.packetChannel, ChromaPackets.ABILITY.ordinal(), getAbilityInt(a), data);
-
-			if (!a.actOnClient())
-				return;
-		}
-		else if (a.actOnClient() && a.isPureEventDriven()) { //notify other players
-			ReikaPacketHelper.sendDataPacket(ChromatiCraft.packetChannel, ChromaPackets.ABILITYSEND.ordinal(), PacketTarget.allPlayers, getAbilityInt(a), data, ep.getEntityId());
-		}
-
-		ProgressStage.ABILITY.stepPlayerTo(ep);
-		ElementTagCompound use = AbilityHelper.instance.getUsageElementsFor(a, ep);
-		use.scale(costScale);
-		if (a == HEALTH)
-			use.scale(10*(1+data));
-		if (a == SHIFT)
-			use.scale(10);
-		if (a == LIGHTNING)
-			use.scale(10*(1+data*data));
-		if (a == BREADCRUMB)
-			use.scale(5*(1+data*4));
-		if (a == LIFEPOINT)
-			use.scale(5);
-		if (a == DIMPING)
-			use.scale(125);
-		if (a == LASER)
-			use.scale(800);
-		if (a == LIGHTCAST)
-			use.scale(20);
-		if (a == JUMP)
-			use.scale(1+data);
-
-		boolean flag = enabledOn(ep, a) || a.isPureEventDriven();
-		setToPlayer(ep, !flag, a);
-		if (flag) {
-			a.onRemoveFromPlayer(ep);
-		}
-
-		if (a == MAGNET)
-			AbilityHelper.instance.setNoClippingMagnet(ep, !flag && data > 0);
-		if (a == GROWAURA)
-			AbilityHelper.instance.setGrowAuraState(ep, !flag ? data : 0);
-
-		if (a.isTickBased()) {
-
-		}
-		else {
-			if (a.trigger(ep, data)) {
-				PlayerElementBuffer.instance.removeFromPlayer(ep, use);
-			}
-		}
-	}
-
-	public boolean isPureEventDriven() {
-		switch(this) {
-			case SONIC:
-			case HEAL:
-			case FIREBALL:
-			case LIGHTNING:
-			case HOTBAR:
-			case SHOCKWAVE:
-			case TELEPORT:
-			case DIMPING:
-			case LASER:
-			case LIGHTCAST:
-			case JUMP:
-			case MOBBAIT:
-				return true;
-			default:
-				return false;
-		}
+		return li;
 	}
 
 	@Override
-	public boolean isFunctioningOn(EntityPlayer ep) {
-		switch(this) {
-			case COMMUNICATE:
-				return AbilityHelper.instance.isPeaceActive(ep);
-			default:
-				return true;
-		}
-	}
-
-	public static ArrayList<Ability> getFrom(EntityPlayer ep) {
-		ArrayList<Ability> li = new ArrayList();
-		NBTTagCompound nbt = ep.getEntityData();
-		NBTTagCompound abilities = nbt.getCompoundTag(NBT_TAG);
-		if (abilities != null && !abilities.hasNoTags()) {
-			Iterator<String> it = abilities.func_150296_c().iterator();
-			while (it.hasNext()) {
-				String n = it.next();
-				//ReikaJavaLibrary.pConsole(n+":"+abilities.getBoolean(n), Side.SERVER);
-				if (abilities.getBoolean(n)) {
-					Ability c = tagMap.get(n);
-					if (c != null)
-						li.add(c);
-				}
-			}
-		}
-		return li;
-	}
-
-	public static ArrayList<Ability> getAvailableFrom(EntityPlayer ep) {
-		ArrayList<Ability> li = new ArrayList();
-		NBTTagCompound nbt = ep.getEntityData();
-		NBTTagCompound abilities = nbt.getCompoundTag(NBT_TAG);
-		if (abilities != null && !abilities.hasNoTags()) {
-			Iterator<String> it = abilities.func_150296_c().iterator();
-			while (it.hasNext()) {
-				String n = it.next();
-				//ReikaJavaLibrary.pConsole(n+":"+abilities.getBoolean(n), Side.SERVER);
-				Ability c = tagMap.get(n);
-				if (c != null)
-					li.add(c);
-			}
-		}
-		return li;
-	}
-
-	public static HashMap<Ability, Boolean> getAbilitiesOn(EntityPlayer ep) {
-		HashMap<Ability, Boolean> li = new HashMap();
-		NBTTagCompound nbt = ep.getEntityData();
-		NBTTagCompound abilities = nbt.getCompoundTag(NBT_TAG);
-		if (abilities != null && !abilities.hasNoTags()) {
-			Iterator<String> it = abilities.func_150296_c().iterator();
-			while (it.hasNext()) {
-				String n = it.next();
-				//ReikaJavaLibrary.pConsole(n+":"+abilities.getBoolean(n), Side.SERVER);
-				Ability c = tagMap.get(n);
-				if (c != null)
-					li.put(c, abilities.getBoolean(n));
-			}
-		}
-		return li;
-	}
-
-	public boolean enabledOn(EntityPlayer ep) {
-		return enabledOn(ep, this);
-	}
-
-	public boolean playerHasAbility(EntityPlayer ep) {
-		return playerHasAbility(ep, this);
-	}
-
-	public void setToPlayer(EntityPlayer ep, boolean set) {
-		this.setToPlayer(ep, set, this);
-	}
-
-	public void give(EntityPlayer ep) {
-		give(ep, this);
-	}
-
-	public static void give(EntityPlayer ep, Ability a) {
-		setToPlayer(ep, false, a, true);
-	}
-
-	public void removeFromPlayer(EntityPlayer ep) {
-		removeFromPlayer(ep, this);
-	}
-
-	public static boolean enabledOn(EntityPlayer ep, Ability a) {
-		if (ep == null) {
-			if (System.currentTimeMillis()-lastNullPlayerDump > 5000) {
-				ChromatiCraft.logger.logError("Tried to get ability status of null player!?");
-				Thread.dumpStack();
-				lastNullPlayerDump = System.currentTimeMillis();
-			}
-			return false;
-		}
-		NBTTagCompound nbt = ep.getEntityData();
-		NBTTagCompound abilities = nbt.getCompoundTag(NBT_TAG);
-		return abilities != null && abilities.getBoolean(a.getID());
-	}
-
-	public static boolean playerHasAbility(EntityPlayer ep, String id) {
-		return playerHasAbility(ep, getAbility(id));
-	}
-
-	public static boolean playerHasAbility(EntityPlayer ep, Ability a) {
-		NBTTagCompound nbt = ep.getEntityData();
-		NBTTagCompound abilities = nbt.getCompoundTag(NBT_TAG);
-		return abilities != null && abilities.hasKey(a.getID());
-	}
-
-	public static void setToPlayer(EntityPlayer ep, boolean set, Ability a) {
-		setToPlayer(ep, set, a, false);
-	}
-
-	private static void setToPlayer(EntityPlayer ep, boolean set, Ability a, boolean force) {
-		NBTTagCompound nbt = ep.getEntityData();
-		NBTTagCompound abilities = nbt.getCompoundTag(NBT_TAG);
-		if (abilities == null) {
-			abilities = new NBTTagCompound();
-		}
-		if (force || set || abilities.hasKey(a.getID()))
-			abilities.setBoolean(a.getID(), set);
-		nbt.setTag(NBT_TAG, abilities);
-		if (ep instanceof EntityPlayerMP)
-			ReikaPlayerAPI.syncCustomData((EntityPlayerMP)ep);
-	}
-
-	public static void removeFromPlayer(EntityPlayer ep, Ability a) {
-		NBTTagCompound nbt = ep.getEntityData();
-		NBTTagCompound abilities = nbt.getCompoundTag(NBT_TAG);
-		if (abilities == null) {
-			abilities = new NBTTagCompound();
-		}
-		abilities.removeTag(a.getID());
-		a.onRemoveFromPlayer(ep);
-		if (ep instanceof EntityPlayerMP)
-			ReikaPlayerAPI.syncCustomData((EntityPlayerMP)ep);
-	}
-
-	public void onRemoveFromPlayer(EntityPlayer ep) {
-		if (this == REACH)
-			AbilityCalls.setReachDistance(ep, -1);
-		else if (this == HEALTH)
-			AbilityCalls.setPlayerMaxHealth(ep, 0);
-		else if (this == MAGNET)
-			AbilityHelper.instance.setNoClippingMagnet(ep, false);
-		else if (this == ORECLIP)
-			AbilityCalls.setNoclipState(ep, false);
-		else if (this == GROWAURA)
-			AbilityHelper.instance.setGrowAuraState(ep, 0);
-	}
-
-	public static boolean canPlayerExecuteAt(EntityPlayer ep, Ability a) {
-		if (ModList.MYSTCRAFT.isLoaded() && MystPages.Pages.ABILITYBLOCK.existsInWorld(ep.worldObj))
-			return false;
-		ElementTagCompound use = AbilityHelper.instance.getUsageElementsFor(a, ep);
-		return PlayerElementBuffer.instance.playerHas(ep, use) && a.canPlayerExecuteAt(ep);
-	}
-
-	public boolean canPlayerExecuteAt(EntityPlayer player) {
+	public boolean canPlayerExecuteAt(Player player) {
 		return true;
 	}
 
-	public static int maxPower(EntityPlayer ep, Ability a) {
-		int base = a.getMaxPower();
-		if (ep.capabilities.isCreativeMode)
-			return base;
-		int lvl = base;
-		ElementTagCompound use = AbilityHelper.instance.getElementsFor(a).scale(0.01F);
-		for (CrystalElement e : use.elementSet()) {
-			lvl = (int)Math.min(lvl, PlayerElementBuffer.instance.getPlayerContent(ep, e)/(float)use.getValue(e));
-		}
-		return Math.max(1, lvl);
-	}
+	// ---------------------------------------------------------------------------------------------
+	// The engine seam. Everything below needs AbilityHelper, which is not ported; see TODO.md.
+	// ---------------------------------------------------------------------------------------------
 
-	public int getMaxPower() {
-		switch(this) {
-			case SONIC:
-				return 12;
-			case SHIFT:
-				return 24;
-			case HEAL:
-				return 4;
-			case FIREBALL:
-				return 8;
-			case HEALTH:
-				return 50;
-			case LIGHTNING:
-				return 2;
-			case MAGNET:
-				return 1;
-			case BREADCRUMB:
-				return 12;
-			case REACH:
-				return AbilityHelper.REACH_SCALE.length-1;
-			case JUMP:
-				return 8;
-			case GROWAURA:
-				return 3;
-			default:
-				return 0;
-		}
-	}
-
+	/**
+	 * CHROMA-PORT: whether the player has met the prerequisites to ritual this ability. Upstream asks
+	 * {@code AbilityHelper.playerCanGetAbility}, which walks the progression tree. False until the
+	 * engine lands, so nothing advertises itself as obtainable that cannot in fact be obtained.
+	 */
 	@Override
-	public String getID() {
-		return this.name().toLowerCase(Locale.ENGLISH);
+	public boolean isAvailableToPlayer(Player player) {
+		return false;
 	}
 
+	/** CHROMA-PORT: the ambient half, driven by AbilityHelper's tick handlers. */
 	@Override
-	@SideOnly(Side.CLIENT)
-	public String getTexturePath(boolean gray) {
-		String base = this.getID();
-		String name = !gray ? base : base+"_g";
-		String path = "Textures/Ability/"+name+".png";
-		return path;
-	}
+	public void apply(Player player) {}
 
+	/** CHROMA-PORT: the trigger half. Returns false, which upstream reads as "did not fire". */
 	@Override
-	@SideOnly(Side.CLIENT)
-	public Class getTextureReferenceClass() {
-		return ChromatiCraft.class;
+	public boolean trigger(Player player, int level) {
+		return false;
 	}
 
-	public int getInt() {
-		return getAbilityInt(this);
+	/** CHROMA-PORT: cleanup when an ability leaves a player. */
+	@Override
+	public void onRemoveFromPlayer(Player player) {}
+
+	/** CHROMA-PORT: whether the ability is doing anything right now, which gates its energy drain. */
+	@Override
+	public boolean isFunctioningOn(Player player) {
+		return false;
 	}
 
-	public static int getAbilityInt(Ability a) {
-		return intMap.inverse().get(a);
-	}
-
-	public static Ability getAbilityByInt(int id) {
-		return intMap.get(id);
-	}
-
-	static {
-		for (int i = 0; i < abilities.length; i++) {
-			Chromabilities c = abilities[i];
-			if (!c.isDummiedOut())
-				addAbility(c);
-		}
-	}
-
-	public static void addAbility(Ability c) {
-		String id = c.getID();
-		checkIDValidity(id);
-		tagMap.put(id, c);
-		abilityMap.put(id, c);
-		intMap.put(maxID, c);
-		if (c.isTickBased()) {
-			tickAbilities.addValue(c.getTickPhase(), c);
-		}
-
-		ChromatiCraft.logger.log("Added ability '"+c.getDisplayName()+"', assigned IDs '"+id+"' and #"+maxID);
-
-		sortedList = new ArrayList(abilityMap.values());
-		Collections.sort(sortedList, AbilitySorter.sorter);
-		maxID++;
-	}
-
-	private static void checkIDValidity(String id) {
-		if (id == null || id.isEmpty())
-			throw new IllegalArgumentException("ID cannot be null or empty!");
-		if (id.equals("null") || id.equals(" "))
-			throw new IllegalArgumentException("Invalid ID string "+id+"!");
-		if (id.equals("all") || id.equals("none"))
-			throw new IllegalArgumentException("Reserved ID string "+id+"!");
-		if (abilityMap.containsKey(id))
-			throw new IllegalArgumentException("ID string "+id+" already taken!");
-	}
-
-	public static void copyTo(EntityPlayer from, EntityPlayer to) {
-		NBTTagCompound nbt = from.getEntityData();
-		NBTTagCompound data = nbt.getCompoundTag(NBT_TAG);
-		to.getEntityData().setTag(NBT_TAG, data);
-	}
-
-	public ChromaResearch getFragment() {
-		return ChromaResearch.getPageFor(this);
-	}
-
+	/**
+	 * CHROMA-PORT: the per-level blurb. Upstream's text interpolates AbilityHelper's tuning constants
+	 * (SONIC_EXPLO_FACTOR and its siblings), so it cannot be written faithfully without the engine.
+	 */
+	@Override
 	public String getPowerDesc(int level) {
-		switch(this) {
-			case SONIC:
-				return level+"m radius\nMax explosion resist "+String.format("%.0f", AbilityHelper.SONIC_EXPLO_FACTOR*level);
-			case SHIFT:
-				return level+"m shift";
-			case HEAL:
-				return String.format("%.1f hearts", level/2F);
-			case MAGNET:
-				return level > 0 ? "Phasing" : "Solid";
-			case REACH:
-				return AbilityHelper.REACH_SCALE[level]+"m";
-			case JUMP:
-			case FIREBALL:
-			case HEALTH:
-			case LIGHTNING:
-			case BREADCRUMB:
-				return "Level "+level;
-			case GROWAURA:
-				StringBuilder sb = new StringBuilder();
-				for (GrowAuraEffect g : AbilityHelper.instance.getGrowAuraEffects(level)) {
-					sb.append(g.getGuiLabel());
-					sb.append("\n");
-				}
-				return sb.toString();
-			default:
-				return null;
-		}
+		return String.valueOf(level);
 	}
-
-
 }

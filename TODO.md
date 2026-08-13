@@ -847,9 +847,15 @@ the abilities themselves. Port in that order:
    read it now. Upstream's table-tracking half — the `WorldLocation` set of active ritual tables and
    its `RitualAPI` surface — is state for *performing* a ritual rather than describing one, and is
    deferred with the engine.
-3. `Chromabilities` as data only: constants, display names, progression gates. Its behaviour methods
-   forward to `AbilityHelper` and will not compile until that lands, so they stay commented with a
-   CHROMA-PORT marker against the engine, exactly as the manipulator's unported branches are.
+3. ~~`Chromabilities` as data only~~ done 2026-08-11. 744 lines down to 281: all 39 constants with
+   their tick phase, client flag and mod gate, plus `costsPerTick` (19 abilities), `getMaxPower`
+   (11) and `isPureEventDriven` (12), each verified against the original by re-parsing both sides.
+   The behaviour methods are present and inert rather than commented out, so the type satisfies
+   `Ability` and the book can hold a real reference; each is marked CHROMA-PORT at the engine seam.
+   `isAvailableToPlayer` returns false deliberately — nothing should advertise itself as obtainable
+   while the progression walk that decides it is unported. `getPowerDesc` is the one piece of text
+   that cannot be written faithfully yet: upstream interpolates AbilityHelper's tuning constants.
+   V33a's DragonAPI `ModList` became a plain mod id checked against `net.neoforged.fml.ModList`.
 4. `GuiAbilityDesc`, then `GuiRitual`.
 5. `AbilityHelper` last, as its own slice, with the abilities becoming usable at that point.
 

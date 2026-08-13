@@ -292,6 +292,7 @@ sourceSets.main.java {
     include 'reika/chromaticraft/magic/interfaces/ChargingPoint.java'
     include 'reika/chromaticraft/api/abilityapi/Ability.java'
     include 'reika/chromaticraft/auxiliary/recipemanagers/AbilityRituals.java'
+    include 'reika/chromaticraft/registry/Chromabilities.java'
     include 'reika/chromaticraft/magic/PlayerElementBuffer.java'
     include 'reika/chromaticraft/magic/PylonCharging.java'
     include 'reika/chromaticraft/magic/ElementBufferCapacityBoost.java'
