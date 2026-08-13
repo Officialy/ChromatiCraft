@@ -66,6 +66,17 @@ public final class ScreenChromicLexicon extends Screen {
 	private static final Identifier PAGE_STRUCTURE = page("structure");
 	private static final Identifier PAGE_ELEMENT = page("element");
 
+	/** V33a GuiRitual overlays the wheel and caps its gauge from this sheet. */
+	private static final Identifier MISC = Identifier.fromNamespaceAndPath(
+			ChromatiCraft.MODID, "textures/gui/lexicon/misc.png");
+
+	/** V33a ability art is 50x50, and both the description and ritual pages draw it at native size. */
+	private static final int ABILITY_ICON = 50;
+
+	/** V33a {@code ChromaBookGui}: every book page lays its body out from these two. */
+	private static final int DESC_X = 8;
+	private static final int DESC_Y = 88;
+
 	/** V33a {@code Textures/infoicons.png}: the power-supply badges, sixteen to a row. */
 	private static final Identifier INFO_ICONS = Identifier.fromNamespaceAndPath(
 			ChromatiCraft.MODID, "textures/gui/hud/infoicons.png");
@@ -123,6 +134,8 @@ public final class ScreenChromicLexicon extends Screen {
 	private final LexiconMachineRender machineRender = new LexiconMachineRender();
 	/** V33a GuiMachineDescription pages: MAIN first, ENERGY after it when the construct costs energy. */
 	private int machineSubpage;
+	/** V33a reaches GuiRitual from an ability page; the port makes it that page's second subpage. */
+	private int abilitySubpage;
 	private final ArrayList<String> noteData;
 	private final ArrayList<EditBox> noteFields = new ArrayList<>();
 	private int noteScroll;
@@ -352,6 +365,7 @@ public final class ScreenChromicLexicon extends Screen {
 		structureRenderFor = null;
 		machineRender.reset();
 		machineSubpage = 0;
+		abilitySubpage = 0;
 		rebuildWidgets();
 	}
 
@@ -974,8 +988,13 @@ public final class ScreenChromicLexicon extends Screen {
 				Identifier texture = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
 						"textures/ability/" + entry.sourceId() + ".png");
 				// GuiAbilityDesc uses topY (not the description screens' topY-8): +103,+11, 50px.
+				// The source size is 50, not 256: these files are 50x50, and upstream's
+				// drawTexturedModalRect(.., 256, 256) at scale 50/256 covers the whole texture. Passing
+				// 256 here sampled the top-left fifth of the image and blew it up.
 				graphics.blit(RenderPipelines.GUI_TEXTURED, texture, left + 103, top + 11,
-						0, 0, 50, 50, 256, 256);
+						0, 0, ABILITY_ICON, ABILITY_ICON, ABILITY_ICON, ABILITY_ICON);
+				if (abilitySubpage == 1)
+					renderAbilityRitual(graphics, entry, left, top);
 			}
 			case STRUCTURES -> {
 				if (!icon.isEmpty()) graphics.item(icon, left + 120, top + 43);
@@ -1027,6 +1046,55 @@ public final class ScreenChromicLexicon extends Screen {
 		int green = Math.round(((first >> 8) & 255) * inverse + ((second >> 8) & 255) * amount);
 		int blue = Math.round((first & 255) * inverse + (second & 255) * amount);
 		return red << 16 | green << 8 | blue;
+	}
+
+	/**
+	 * V33a {@code GuiRitual}: what an ability costs to ritual into being.
+	 *
+	 * <p>The wheel is the proportions between the ability's elements, at {@code descX+184, descY+52}
+	 * with radius 57.5, and the bar to its left is that ability's total cost as a fraction of the most
+	 * expensive one — square-rooted, so the cheap abilities are still visible next to the dear ones.
+	 * The frame art overlays the wheel afterwards, which is what gives it its rim.
+	 */
+	private void renderAbilityRitual(GuiGraphicsExtractor graphics, LexiconCatalog.Entry entry,
+			int left, int top) {
+		reika.chromaticraft.magic.ElementTagCompound tag =
+				reika.chromaticraft.auxiliary.recipemanagers.AbilityRituals.instance.getAura(entry.sourceId());
+		if (tag.isEmpty())
+			return;
+
+		float radius = 57.5F;
+		int dx = left + DESC_X + 184;
+		int dy = top + DESC_Y + 52;
+		graphics.submitPictureInPictureRenderState(new LexiconEnergyPie.State(
+				tag.getProportionality(), radius, System.identityHashCode(entry),
+				dx - (int)Math.ceil(radius), dy - (int)Math.ceil(radius),
+				dx + (int)Math.ceil(radius), dy + (int)Math.ceil(radius),
+				graphics.peekScissorStack()));
+		// V33a lays misc.png over the wheel; that texture carries the rim the pie sits inside.
+		graphics.blit(RenderPipelines.GUI_TEXTURED, MISC,
+				dx - (int)Math.ceil(radius), dy - (int)Math.ceil(radius), 0, 0,
+				(int)(radius * 2), (int)(radius * 2), 256, 256);
+		// CHROMA-PORT: upstream rings the wheel with the sixteen outline runes at 0.625*r, from
+		// CrystalElement.getOutlineRune. Same stripped glyphs the manipulator HUD wheel is missing.
+
+		int total = tag.getTotalEnergy();
+		int lineHeight = font.lineHeight * 3 / 2;
+		int textX = left + DESC_X + 43;
+		int textY = top + DESC_Y - 14;
+		graphics.text(font, Component.literal("Total Energy:"), textX, textY, 0xffffffff, false);
+		graphics.text(font, Component.literal(String.valueOf(total)), textX, textY + lineHeight,
+				0xffffffff, false);
+		graphics.text(font, Component.literal("Lumens"), textX, textY + lineHeight * 2, 0xffffffff, false);
+
+		int max = reika.chromaticraft.auxiliary.recipemanagers.AbilityRituals.instance
+				.getMaxAbilityTotalCost();
+		int frac = max <= 0 ? 0 : (int)(125 * Math.sqrt((double)total / max));
+		// The gauge: a filled column, then misc.png's cap strip sitting on top of it.
+		graphics.fill(left + DESC_X + 11, top + DESC_Y + 108 - frac + 3,
+				left + DESC_X + 27, top + DESC_Y + 111, 0xff30d0ff);
+		graphics.blit(RenderPipelines.GUI_TEXTURED, MISC, left + DESC_X + 1,
+				top + DESC_Y + 108 - frac, 0, 118, 36, 7, 256, 256);
 	}
 
 	/**
@@ -1174,6 +1242,15 @@ public final class ScreenChromicLexicon extends Screen {
 				}
 			}
 			return super.keyPressed(event);
+		}
+		if (selected != null && !castingRecipeView
+				&& selected.section() == LexiconCatalog.Section.ABILITIES
+				&& reika.chromaticraft.auxiliary.recipemanagers.AbilityRituals.instance
+						.hasRitual(selected.sourceId())) {
+			// V33a reaches GuiRitual from the ability's page; here it is that page's second subpage,
+			// turned the same way every other book page turns.
+			if (key == GLFW.GLFW_KEY_W || key == GLFW.GLFW_KEY_UP) return moveAbilitySubpage(-1);
+			if (key == GLFW.GLFW_KEY_S || key == GLFW.GLFW_KEY_DOWN) return moveAbilitySubpage(1);
 		}
 		if (selected != null && !castingRecipeView
 				&& selected.section() == LexiconCatalog.Section.MACHINES
@@ -1371,6 +1448,15 @@ public final class ScreenChromicLexicon extends Screen {
 		if (next == recipeSubpage)
 			return false;
 		recipeSubpage = next;
+		rebuildWidgets();
+		return true;
+	}
+
+	private boolean moveAbilitySubpage(int direction) {
+		int next = Math.clamp(abilitySubpage + direction, 0, 1);
+		if (next == abilitySubpage)
+			return false;
+		abilitySubpage = next;
 		rebuildWidgets();
 		return true;
 	}

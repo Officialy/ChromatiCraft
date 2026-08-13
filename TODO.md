@@ -614,8 +614,16 @@ rather than generalising one renderer across several pages.
    Heat Lamp effect pages and Forestry bees remain tied to those content ports.
 6. **`GuiPoolRecipe`** — chroma-pool/alloying display (PageType.POOL). Depends on the pool recipe
    system, so it lands with the ALLOY vertical.
-7. **`GuiAbilityDesc`** — ability pages; depends on the ability subsystem.
-8. **`GuiRitual`** — ritual pages (PageType.RITUAL -> `handbook_ritual2.png`).
+7. ~~**`GuiAbilityDesc`**~~ done 2026-08-11. Its whole job is the ability's 50x50 art at
+   `(leftX+103, topY+11)`. The port was already drawing it there but sampling it as if the file were
+   256x256, so it showed the top-left fifth blown up; the files are 50x50 and upstream's
+   `drawTexturedModalRect(.., 256, 256)` at scale `50/256` covers the whole image.
+8. ~~**`GuiRitual`**~~ done 2026-08-11. Reached as the ability page's second subpage, turned with
+   W/S like every other page. The `Proportionality` wheel at `descX+184, descY+52` radius 57.5 with
+   `misc.png` laid over it for the rim, the Total Energy column at `descX+43`, and the gauge whose
+   height is `125 * sqrt(total / maxAbilityTotalCost)` — square-rooted so a cheap ability is still
+   legible beside an expensive one. The sixteen outline runes upstream rings the wheel with are the
+   stripped `getOutlineRune` glyphs, same as the manipulator HUD's, and are marked CHROMA-PORT.
 9. **`GuiAdjacencyDescription`** — adjacency cores (PageType.ADJACENCY).
 10. **`GuiNotes`** — the editable notebook (`notes.png`), with server-authoritative
     data-component persistence rather than client-only text.
@@ -862,9 +870,9 @@ the abilities themselves. Port in that order:
 **Two blockers `GuiRitual` shares with pages already ported**, worth solving once rather than three
 times:
 
-- `descX`/`descY` from `GuiBookSection`. `GuiRitual` positions everything against them — the wheel at
-  `descX+184, descY+52`, the energy column at `descX+43`, the bar at `descX+1`. The casting page's
-  subpage 3 has been waiting on the same two numbers since 2026-08-09.
+- ~~`descX`/`descY`~~ resolved 2026-08-11: they are `ChromaBookGui`'s `descX = 8, descY = 88`, not
+  `GuiBookSection`'s — which is why looking for them in the latter kept coming up empty. Two
+  constants were blocking three pages; the casting page's aura subpage can now use them too.
 - `CrystalElement.getOutlineRune`. The ritual wheel rings its pie with the sixteen rune glyphs at
   `0.625 * r`, which is the same glyph ring the manipulator HUD's wheel is missing. Both come back
   with the rune sprite redesign.
