@@ -17,9 +17,20 @@ import java.util.Set;
  * that actually exist in the port are members — a permanently pending entry would be indistinguishable
  * from a broken gate — and each newly ported generator joins by adding its constant here.
  *
- * <p>Deferred: {@code STRUCTURE} (the puzzle-structure calculator) and {@code SKYRIVER}. Both belong
- * in this gate and must be added to {@link Generator} when their generators land, so that the portal
- * automatically starts waiting on them again rather than needing the gate rewritten.
+ * <p>Deferred: {@code STRUCTURE} (the puzzle-structure position calculator), {@code SKYRIVER} and
+ * {@code FISSUREPATTERNS}. All three belong in this gate and must be added to {@link Generator} when
+ * their generators land, so that the portal automatically starts waiting on them again rather than
+ * needing the gate rewritten.
+ *
+ * <p><b>Dependency order matters here and is not obvious.</b> V33a's
+ * {@code ThreadedGenerators.isDependentOn} makes both {@code BIOME} and {@code REGION} depend on
+ * {@code STRUCTURE}, and the dependency is real rather than nominal: {@link RegionMapper} blocks on
+ * {@code StructureCalculator.arePositionsDetermined()} and sizes the central region from
+ * {@code getMaximumDistanceFromOrigin()}, while {@code BiomeDistributor} paints its Structure Field
+ * and Monument Field biomes around those same positions. Proxima's biome layout therefore cannot be
+ * ported before the puzzle-structure <em>position</em> calculator, even though the puzzle mechanics
+ * themselves are deliberately deferred. Only the structure identities, sizes and placement rules are
+ * needed for this — not their contents.
  */
 public final class ProximaGenerators {
 

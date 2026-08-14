@@ -4528,12 +4528,26 @@ mountain, glowing cracks, skyland canyons, sparkling sands).
 per-biome replacement pass with sand beaches, surface grass and a bedrock layer, then decorators. It
 cannot be expressed as vanilla noise settings.
 
-**Recommended next slice, in order.** (1) `RegionMapper` and `BiomeDistributor` as real ported
-generators registering into `ProximaGenerators`; (2) the nine plus four biomes as datagen-registered
-`Biome` entries with the source's colours and the custom `BiomeSource` over the distributor map;
-(3) the `ChunkGenerator` with the terrain shapers; (4) dimension type and level stem datagen, which
-flips `isDimensionLoadable` true and unblocks the remaining portal GameTests (progression transition,
-teleport cooldown, return/safe-arrival serialization); (5) `DimensionJoinHandler`'s arrival carve-out
-(the r=5 / rh=3.5 ellipsoid cleared to air with a Cloak Shielding shell) and the two real exit paths
-(death and the y < -1024 void fall); (6) non-puzzle decoration, entities and the sky/cloud/weather
-renderers.
+**A non-obvious dependency, found while auditing.** V33a's `ThreadedGenerators.isDependentOn` makes
+both `BIOME` and `REGION` depend on `STRUCTURE`, and the dependency is real, not nominal:
+`RegionMapper.run()` blocks on `StructureCalculator.arePositionsDetermined()` and sizes the central
+region from `getMaximumDistanceFromOrigin()`, and `BiomeDistributor` paints its Structure Field and
+Monument Field biomes around those same positions using `LobulatedCurve` blobs per element. **Proxima's
+biome layout therefore cannot be ported before the puzzle-structure position calculator.** That does
+not un-defer the puzzles: `StructureCalculator` needs only the structure identities, sizes and
+placement rules from `DimensionStructureType`, not any puzzle mechanics. The natural boundary is to
+port the structure *registry and placement*, leave every generator's contents unported, and come back
+for the puzzles later.
+
+**Recommended next slice, in order.** (1) `DimensionStructureType` identities/sizes and
+`StructureCalculator` placement only — no puzzle contents — registering into `ProximaGenerators` as
+`STRUCTURE`; (2) `RegionMapper`, which unblocks on it; (3) `BiomeDistributor` and its 4096x4096 blob
+map; (4) the nine plus four biomes as datagen-registered `Biome` entries with the source's colours,
+behind a custom `BiomeSource` reading that map; (5) the `ChunkGenerator` with the
+`world/dimension/terrain` shapers and `ChunkProviderChroma`'s vertical-offset/surface/bedrock passes;
+(6) dimension type and level stem datagen, which flips `isDimensionLoadable` true and unblocks the
+remaining portal GameTests (progression transition, teleport cooldown, return/safe-arrival
+serialization); (7) `DimensionJoinHandler`'s arrival carve-out (the r=5 / rh=3.5 ellipsoid cleared to
+air with a Cloak Shielding shell) and the two real exit paths (death and the y < -1024 void fall);
+(8) non-puzzle decoration, entities, bedrock cracks (which is where Proximal Essence actually comes
+from) and the sky/cloud/weather renderers.
