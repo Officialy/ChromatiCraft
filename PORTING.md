@@ -4396,10 +4396,19 @@ inflated by 8.
 portal cooldown and therefore the loop guard for free), and `getPortalDestination` returns a
 `TeleportTransition`. Transition time is 0 because V33a teleported on contact.
 `ChromaTeleporter.arrivalTransition` reproduces upstream's `placeInPortal` exactly — y = 1024 above
-the origin entering Proxima, y = 1024 above the player's bed or world spawn returning — and the
-post-transition hook carries `ProgressStage.DIMENSION.stepPlayerTo`, both arrival cues (a
-server-wide broadcast on the first ever arrival, a personal cue plus the `DIMSOUND` cue to everyone
-else afterwards) and `CheatingPreventionSystem.postJoin`.
+the origin entering Proxima, y = 1024 above the player's bed or world spawn returning.
+
+Every side effect lives in the post-transition hook, and that placement is load-bearing rather than
+stylistic. 26.2 decides whether a transition is actually permitted (`isAllowedToEnterPortal` /
+`canTeleport`) **after** `getPortalDestination` returns, so doing V33a's work at destination-computation
+time would consume 60% of the rift's tuning and scatter the player's banned items in the departure
+world even on a refused teleport. V33a could order it the other way only because its
+`transferEntityToDimension` call was the last statement in `teleportPlayer`. The hook therefore runs
+the source's exact order once the teleport is committed: the departure-world ban sweep, the tuning the
+trip carries, the arrival cue, and the 60% spend. `CheatingPreventionSystem.preJoin` gained an overload
+taking the captured departure level and position so its drops still land in the world being left.
+`getLocalTransition` returns `NONE`: V33a had no screen warp, and vanilla's `CONFUSION` would have been
+an addition rather than a port.
 
 `CheatingPreventionSystem` is fully ported as a mechanism — ban registry, all six `BanReaction`s, the
 pre-join drop sweep with permanent-lifetime drops, the post-join delete sweep, the held-item tick, the

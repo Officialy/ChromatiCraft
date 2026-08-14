@@ -267,9 +267,10 @@ public class BlockChromaPortal extends Block implements EntityBlock, Portal {
 		return 0;
 	}
 
+	/** V33a teleported with no screen effect at all, so the nether portal's warp is deliberately off. */
 	@Override
 	public Portal.Transition getLocalTransition() {
-		return Portal.Transition.CONFUSION;
+		return Portal.Transition.NONE;
 	}
 
 	/**
@@ -291,17 +292,27 @@ public class BlockChromaPortal extends Block implements EntityBlock, Portal {
 		if (target == null)
 			return null;
 
-		CheatingPreventionSystem.instance.preJoin(player);
-		DimensionTuningManager.instance.tunePlayer(player, te.consumeTuningForTrip());
+		// Nothing here may mutate the player or the rift: 26.2 decides whether the transition is
+		// actually allowed (isAllowedToEnterPortal / canTeleport) AFTER this method returns, so
+		// consuming tuning or dropping banned items now would happen even on a refused teleport.
+		// V33a could order them the other way because its transfer call was the last statement.
+		Vec3 departurePoint = entity.position();
 		return ChromaTeleporter.arrivalTransition(target, player, transported -> {
 			if (!(transported instanceof ServerPlayer arrived))
 				return;
+			// V33a teleportPlayer, in source order: the departure-world sweep, then the tuning the
+			// trip carries, then the arrival cue, then 60% of the rift's stored tuning is spent.
+			CheatingPreventionSystem.instance.preJoin(arrived, currentLevel, departurePoint);
+			DimensionTuningManager.instance.tunePlayer(arrived, te.consumeTuningForTrip());
 			// The first arrival is announced to the whole server; later ones only play locally, plus
-			// the source's global DIMSOUND cue.
-			if (ProgressStage.DIMENSION.stepPlayerTo(arrived))
+			// the source's global DIMSOUND cue for everyone else.
+			if (ProgressStage.DIMENSION.stepPlayerTo(arrived)) {
 				ChromaSounds.GOTODIM.broadcast(arrived.level().getServer(), 1, 1);
-			else
+			}
+			else {
 				ChromaSounds.GOTODIM.playSound(arrived, 1, 1);
+				ChromaSounds.GOTODIM.broadcastExcept(arrived.level().getServer(), arrived, 0.75F, 1);
+			}
 			CheatingPreventionSystem.instance.postJoin(arrived);
 		});
 	}

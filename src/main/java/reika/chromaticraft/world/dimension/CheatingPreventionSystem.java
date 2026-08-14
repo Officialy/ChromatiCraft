@@ -7,6 +7,7 @@ import java.util.Set;
 
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
@@ -107,24 +108,36 @@ public final class CheatingPreventionSystem {
 
 	/** V33a preJoin: banned items are dropped in the world being left, before the transfer. */
 	public void preJoin(Player ep) {
-		this.checkInventory(ep, BanReaction.PREVENTBRING);
+		this.preJoin(ep, null, null);
+	}
+
+	/**
+	 * The same sweep, but dropping into an explicitly captured level and position.
+	 *
+	 * <p>The Portal Rift needs this because the 26.2 transition pipeline decides whether a teleport is
+	 * actually allowed <em>after</em> the destination is computed. Running the sweep at destination
+	 * time would scatter a player's items in the departure world even when the teleport is then
+	 * refused, so the rift runs it from the post-teleport hook instead and passes the level it left.
+	 */
+	public void preJoin(Player ep, ServerLevel departure, Vec3 at) {
+		this.checkInventory(ep, BanReaction.PREVENTBRING, departure, at);
 	}
 
 	/** V33a postJoin: anything banned that still arrived is deleted outright. */
 	public void postJoin(Player ep) {
-		this.checkInventory(ep, BanReaction.DELETEONENTRY);
+		this.checkInventory(ep, BanReaction.DELETEONENTRY, null, null);
 	}
 
-	private void checkInventory(Player ep, BanReaction br) {
+	private void checkInventory(Player ep, BanReaction br, ServerLevel dropInto, Vec3 dropAt) {
 		for (EquipmentSlot slot : EquipmentSlot.values()) {
 			ItemStack is = ep.getItemBySlot(slot);
 			if (this.getReaction(is) == br)
-				br.performOnEquipment(ep, is, slot);
+				br.performOnEquipment(ep, is, slot, dropInto, dropAt);
 		}
 		for (int i = 0; i < ep.getInventory().getContainerSize(); i++) {
 			ItemStack is = ep.getInventory().getItem(i);
 			if (this.getReaction(is) == br)
-				br.perform(ep, is, i);
+				br.perform(ep, is, i, dropInto, dropAt);
 		}
 	}
 
@@ -171,11 +184,15 @@ public final class CheatingPreventionSystem {
 		;
 
 		void perform(Player ep, ItemStack is, int slot) {
+			this.perform(ep, is, slot, null, null);
+		}
+
+		void perform(Player ep, ItemStack is, int slot, ServerLevel dropInto, Vec3 dropAt) {
 			switch (this) {
 				case PREVENTUSE -> ChromaSounds.ERROR.playSound(ep);
 				case PREVENTBRING, DELETEONENTRY -> {
 					if (this == PREVENTBRING)
-						dropPermanently(ep, is);
+						dropPermanently(ep, is, dropInto, dropAt);
 					if (slot >= 0)
 						ep.getInventory().setItem(slot, ItemStack.EMPTY);
 					else
@@ -184,7 +201,7 @@ public final class CheatingPreventionSystem {
 				case DROPONUSE, DELETEONUSE, DELETEONHOLD -> {
 					instance.punishCheatingPlayer(ep);
 					if (this == DROPONUSE)
-						dropPermanently(ep, is);
+						dropPermanently(ep, is, null, null);
 					ep.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, ItemStack.EMPTY);
 				}
 			}
@@ -192,19 +209,35 @@ public final class CheatingPreventionSystem {
 				ProgressStage.STRUCTCHEAT.stepPlayerTo(ep);
 		}
 
-		void performOnEquipment(Player ep, ItemStack is, EquipmentSlot slot) {
+		void performOnEquipment(Player ep, ItemStack is, EquipmentSlot slot,
+				ServerLevel dropInto, Vec3 dropAt) {
 			if (this == PREVENTBRING)
-				dropPermanently(ep, is);
+				dropPermanently(ep, is, dropInto, dropAt);
 			ep.setItemSlot(slot, ItemStack.EMPTY);
 			if (this.givesProgress())
 				ProgressStage.STRUCTCHEAT.stepPlayerTo(ep);
 		}
 
-		/** V33a set the dropped entity's lifespan to Integer.MAX_VALUE so it waits for you. */
-		private static void dropPermanently(Player ep, ItemStack is) {
-			ItemEntity dropped = ep.drop(is.copy(), false);
-			if (dropped != null)
-				dropped.setUnlimitedLifetime();
+		/**
+		 * V33a set the dropped entity's lifespan to Integer.MAX_VALUE so it waits for you.
+		 *
+		 * @param dropInto the level to drop into, or null for the player's current one. The Portal
+		 *                 Rift passes the world being left, because it runs its sweep only once the
+		 *                 teleport is committed and by then the player is already elsewhere.
+		 */
+		private static void dropPermanently(Player ep, ItemStack is, ServerLevel dropInto, Vec3 dropAt) {
+			ItemStack copy = is.copy();
+			if (dropInto == null) {
+				ItemEntity dropped = ep.drop(copy, false);
+				if (dropped != null)
+					dropped.setUnlimitedLifetime();
+				return;
+			}
+			Vec3 at = dropAt != null ? dropAt : ep.position();
+			ItemEntity dropped = new ItemEntity(dropInto, at.x, at.y, at.z, copy);
+			dropped.setDefaultPickUpDelay();
+			dropped.setUnlimitedLifetime();
+			dropInto.addFreshEntity(dropped);
 		}
 
 		public boolean reactsToUse() {
