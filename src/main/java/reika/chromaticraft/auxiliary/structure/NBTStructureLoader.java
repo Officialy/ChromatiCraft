@@ -25,6 +25,7 @@ import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.dragonapi.instantiable.data.blockstruct.FilledBlockArray;
 import reika.dragonapi.instantiable.data.immutable.BlockKey;
+import reika.dragonapi.interfaces.BlockCheck;
 
 /**
  * Loads a canonical Minecraft structure NBT and exposes it through DragonAPI's multiblock matcher.
@@ -50,6 +51,30 @@ public final class NBTStructureLoader {
      */
     public static FilledBlockArray load(Level world, Identifier templateId, BlockPos worldAnchor,
             BlockPos templateAnchor, UnaryOperator<BlockState> stateTransform, boolean exactRuneColour) {
+        return load(world, templateId, worldAnchor, templateAnchor, stateTransform, exactRuneColour, null);
+    }
+
+    /**
+     * A per-position override of the default exact-state comparison. V33a's {@code FilledBlockArray}
+     * accepted three different cell contracts for the same block — an exact {@code (block, metadata)}
+     * pair, a metadata wildcard, and {@code FluidCheck}'s source/non-source distinction — and some
+     * structures (the portal's Luma fountain) use two of them on the same block at different
+     * positions. A structure that needs those semantics supplies them here so they stay attached to
+     * the template cell instead of being flattened into a literal state match.
+     */
+    @FunctionalInterface
+    public interface CellRule {
+        /**
+         * @param relative the position within the template
+         * @param state    the state the template holds there
+         * @return the check this cell requires, or {@code null} to use the default handling
+         */
+        BlockCheck check(BlockPos relative, BlockState state);
+    }
+
+    public static FilledBlockArray load(Level world, Identifier templateId, BlockPos worldAnchor,
+            BlockPos templateAnchor, UnaryOperator<BlockState> stateTransform, boolean exactRuneColour,
+            CellRule cellRule) {
         if (!(world instanceof ServerLevel server))
             throw new IllegalStateException("Structure template " + templateId + " requires a server level");
 
@@ -77,6 +102,14 @@ public final class NBTStructureLoader {
                 throw new IllegalStateException("Invalid palette index " + paletteIndex + " in structure " + templateId);
             BlockState state = stateTransform.apply(palette.get(paletteIndex));
             BlockPos target = worldAnchor.offset(relative.subtract(templateAnchor));
+            if (cellRule != null) {
+                BlockCheck override = cellRule.check(relative, state);
+                if (override != null) {
+                    result.setBlock(target.getX(), target.getY(), target.getZ(), override);
+                    result.setPlacementOverride(target.getX(), target.getY(), target.getZ(), state);
+                    continue;
+                }
+            }
             // Empty cells are part of V33a's multiblock contract, not just a placement instruction:
             // PylonStructure requires its whole 3-wide cross clearance empty, and CastingL1Structure
             // requires the shell interior and the cells around the table. The palette encodes the

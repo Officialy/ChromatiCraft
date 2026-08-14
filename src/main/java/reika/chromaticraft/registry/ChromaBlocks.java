@@ -25,8 +25,11 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.block.BlockCastingItemStand;
 import reika.chromaticraft.block.BlockCastingTable;
+import reika.chromaticraft.block.BlockCrystalCharger;
+import reika.chromaticraft.block.BlockItemAuraInfuser;
 import reika.chromaticraft.block.BlockChromaFluid;
 import reika.chromaticraft.block.BlockChromaMud;
+import reika.chromaticraft.block.BlockChromaPortal;
 import reika.chromaticraft.block.BlockChromaDoor;
 import reika.chromaticraft.block.BlockHeatLamp;
 import reika.chromaticraft.block.BlockTrapFloor;
@@ -55,6 +58,7 @@ import reika.chromaticraft.block.dye26.BlockRainbowLeaf;
 import reika.chromaticraft.block.dye26.BlockRainbowSapling;
 import reika.chromaticraft.block.decoration.BlockMetaAlloyLamp;
 import reika.chromaticraft.block.worldgen26.BlockCliffStone;
+import reika.chromaticraft.block.worldgen26.BlockEnderFluid;
 import reika.chromaticraft.block.worldgen26.BlockGlowingLeaf;
 import reika.chromaticraft.block.worldgen26.BlockGlowDaisy;
 import reika.chromaticraft.block.worldgen26.BlockGlowRoot;
@@ -381,6 +385,32 @@ public final class ChromaBlocks {
 	public static final DeferredBlock<BlockChromaFluid> CHROMA =
 			registerBlockOnly("liquid_chroma", () -> new BlockChromaFluid(ChromaFluids.CHROMA.get(),
 					blockProperties().strength(100F, 500F).lightLevel(state -> 15).noCollision().replaceable().liquid()));
+	/**
+	 * V33a Portal Rift. {@code setBlockUnbreakable()} plus {@code setResistance(50000)}, no collision
+	 * and no model — the whole block is its renderer and its entity trigger. Only the Elemental
+	 * Manipulator removes it, which is why it also drops nothing on its own.
+	 */
+	public static final DeferredBlock<BlockChromaPortal> PORTAL = register("portal_rift",
+			() -> new BlockChromaPortal(portalProperties(), false));
+	/**
+	 * V33a Portal Rift metadata 15: destination is the Overworld and it is complete without any
+	 * structure. Upstream never places it — it exists only through commands/creative — and this port
+	 * does not invent an acquisition path for it, but the behavior is preserved as its own identity
+	 * rather than being lost with the metadata.
+	 */
+	public static final DeferredBlock<BlockChromaPortal> RETURN_PORTAL = register("return_portal_rift",
+			() -> new BlockChromaPortal(portalProperties(), true));
+
+	private static BlockBehaviour.Properties portalProperties() {
+		return blockProperties().mapColor(MapColor.COLOR_PURPLE).strength(-1F, 50000F)
+				.lightLevel(state -> 15).noOcclusion().noCollision().noLootTable();
+	}
+
+	/** V33a BlockLiquidEnder: hardness 100, resistance 500, light opacity 0, luminosity 4. */
+	public static final DeferredBlock<BlockEnderFluid> ENDER =
+			registerBlockOnly("liquid_ender", () -> new BlockEnderFluid(ChromaFluids.ENDER.get(),
+					blockProperties().mapColor(MapColor.COLOR_BLACK).strength(100F, 500F)
+							.lightLevel(state -> 4).noCollision().replaceable().liquid()));
 	/** One block and BlockItem registry identity per former cave-crystal metadata colour. */
 	public static final List<DeferredBlock<BlockCaveCrystal>> CAVE_CRYSTALS = registerCaveCrystals();
 
@@ -466,6 +496,16 @@ public final class ChromaBlocks {
 					blockProperties().strength(2F, 8F).noOcclusion()));
 	public static final DeferredBlock<Block> CASTING_TABLE =
 			register("casting_table", () -> new BlockCastingTable(blockProperties().strength(4F, 16F).noOcclusion()));
+	public static final DeferredBlock<Block> CRYSTAL_CHARGER =
+			register("crystal_charger", () -> new BlockCrystalCharger(
+					blockProperties().strength(3F, 12F).noOcclusion()));
+	public static final DeferredBlock<Block> ITEM_INFUSER =
+			register("item_aura_infuser", () -> new BlockItemAuraInfuser(
+					blockProperties().strength(3F, 12F).noOcclusion().lightLevel(state -> 8)));
+	public static final DeferredBlock<Block> PLAYER_INFUSER =
+			register("player_aura_infuser", () -> new BlockItemAuraInfuser(
+					blockProperties().strength(3F, 12F).noOcclusion().lightLevel(state -> 8),
+					reika.chromaticraft.registry.ChromaTiles.PLAYERINFUSER));
 	public static final DeferredBlock<Block> DATA_NODE =
 			register("data_node", () -> new BlockChromaticTile(
 					blockProperties().strength(-1F, 3600000F).noOcclusion().lightLevel(s -> 12),

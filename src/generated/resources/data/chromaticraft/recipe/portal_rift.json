@@ -1,0 +1,550 @@
+{
+  "type": "chromaticraft:casting",
+  "aura": [
+    {
+      "amount": 120000,
+      "element": "black"
+    },
+    {
+      "amount": 120000,
+      "element": "red"
+    },
+    {
+      "amount": 120000,
+      "element": "green"
+    },
+    {
+      "amount": 120000,
+      "element": "brown"
+    },
+    {
+      "amount": 120000,
+      "element": "blue"
+    },
+    {
+      "amount": 60000,
+      "element": "purple"
+    },
+    {
+      "amount": 60000,
+      "element": "cyan"
+    },
+    {
+      "amount": 60000,
+      "element": "lightgray"
+    },
+    {
+      "amount": 60000,
+      "element": "gray"
+    },
+    {
+      "amount": 60000,
+      "element": "pink"
+    },
+    {
+      "amount": 60000,
+      "element": "lime"
+    },
+    {
+      "amount": 120000,
+      "element": "yellow"
+    },
+    {
+      "amount": 60000,
+      "element": "lightblue"
+    },
+    {
+      "amount": 60000,
+      "element": "magenta"
+    },
+    {
+      "amount": 60000,
+      "element": "orange"
+    },
+    {
+      "amount": 120000,
+      "element": "white"
+    }
+  ],
+  "duration": 2400,
+  "experience": 25000,
+  "grid": [
+    {
+      "ingredient": "chromaticraft:high_void_core",
+      "slot": 4
+    }
+  ],
+  "penalty_multiplier": 0.0,
+  "penalty_threshold": 1,
+  "required_progress": [
+    "allcolors",
+    "end",
+    "netherstruct",
+    "powercrystal",
+    "rainbowforest",
+    "glowcliffs",
+    "cavern",
+    "burrow",
+    "ocean",
+    "desertstruct",
+    "snowstruct"
+  ],
+  "result": {
+    "count": 9,
+    "id": "chromaticraft:portal_rift"
+  },
+  "runes": [
+    {
+      "element": "black",
+      "offset": [
+        -2,
+        -1,
+        -2
+      ]
+    },
+    {
+      "element": "red",
+      "offset": [
+        -1,
+        -1,
+        -2
+      ]
+    },
+    {
+      "element": "green",
+      "offset": [
+        0,
+        -1,
+        -2
+      ]
+    },
+    {
+      "element": "brown",
+      "offset": [
+        1,
+        -1,
+        -2
+      ]
+    },
+    {
+      "element": "blue",
+      "offset": [
+        2,
+        -1,
+        -2
+      ]
+    },
+    {
+      "element": "purple",
+      "offset": [
+        2,
+        -1,
+        -1
+      ]
+    },
+    {
+      "element": "cyan",
+      "offset": [
+        2,
+        -1,
+        0
+      ]
+    },
+    {
+      "element": "lightgray",
+      "offset": [
+        2,
+        -1,
+        1
+      ]
+    },
+    {
+      "element": "gray",
+      "offset": [
+        2,
+        -1,
+        2
+      ]
+    },
+    {
+      "element": "pink",
+      "offset": [
+        1,
+        -1,
+        2
+      ]
+    },
+    {
+      "element": "lime",
+      "offset": [
+        0,
+        -1,
+        2
+      ]
+    },
+    {
+      "element": "yellow",
+      "offset": [
+        -1,
+        -1,
+        2
+      ]
+    },
+    {
+      "element": "lightblue",
+      "offset": [
+        -2,
+        -1,
+        2
+      ]
+    },
+    {
+      "element": "magenta",
+      "offset": [
+        -2,
+        -1,
+        1
+      ]
+    },
+    {
+      "element": "orange",
+      "offset": [
+        -2,
+        -1,
+        0
+      ]
+    },
+    {
+      "element": "white",
+      "offset": [
+        -2,
+        -1,
+        -1
+      ]
+    },
+    {
+      "element": "black",
+      "offset": [
+        0,
+        -1,
+        5
+      ]
+    },
+    {
+      "element": "black",
+      "offset": [
+        0,
+        -1,
+        -5
+      ]
+    },
+    {
+      "element": "black",
+      "offset": [
+        5,
+        -1,
+        0
+      ]
+    },
+    {
+      "element": "black",
+      "offset": [
+        -5,
+        -1,
+        0
+      ]
+    },
+    {
+      "element": "white",
+      "offset": [
+        5,
+        -1,
+        5
+      ]
+    },
+    {
+      "element": "white",
+      "offset": [
+        -5,
+        -1,
+        -5
+      ]
+    },
+    {
+      "element": "white",
+      "offset": [
+        5,
+        -1,
+        -5
+      ]
+    },
+    {
+      "element": "white",
+      "offset": [
+        -5,
+        -1,
+        5
+      ]
+    },
+    {
+      "element": "red",
+      "offset": [
+        -5,
+        -1,
+        -4
+      ]
+    },
+    {
+      "element": "red",
+      "offset": [
+        5,
+        -1,
+        4
+      ]
+    },
+    {
+      "element": "blue",
+      "offset": [
+        5,
+        -1,
+        -4
+      ]
+    },
+    {
+      "element": "blue",
+      "offset": [
+        -5,
+        -1,
+        4
+      ]
+    },
+    {
+      "element": "green",
+      "offset": [
+        -4,
+        -1,
+        -5
+      ]
+    },
+    {
+      "element": "green",
+      "offset": [
+        4,
+        -1,
+        5
+      ]
+    },
+    {
+      "element": "yellow",
+      "offset": [
+        4,
+        -1,
+        -5
+      ]
+    },
+    {
+      "element": "yellow",
+      "offset": [
+        -4,
+        -1,
+        5
+      ]
+    }
+  ],
+  "stackable": false,
+  "stands": [
+    {
+      "ingredient": "chromaticraft:energy_powder",
+      "offset": [
+        -2,
+        0,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:energy_powder",
+      "offset": [
+        2,
+        0,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:energy_powder",
+      "offset": [
+        0,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:energy_powder",
+      "offset": [
+        0,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:spatial_rifting_powder",
+      "offset": [
+        -2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:spatial_rifting_powder",
+      "offset": [
+        2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:spatial_rifting_powder",
+      "offset": [
+        -2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:spatial_rifting_powder",
+      "offset": [
+        2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "minecraft:glowstone_dust",
+      "offset": [
+        -4,
+        1,
+        0
+      ]
+    },
+    {
+      "ingredient": "minecraft:glowstone_dust",
+      "offset": [
+        4,
+        1,
+        0
+      ]
+    },
+    {
+      "ingredient": "minecraft:ender_eye",
+      "offset": [
+        0,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "minecraft:ender_eye",
+      "offset": [
+        0,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:complex_ingot",
+      "offset": [
+        -4,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:complex_ingot",
+      "offset": [
+        4,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "minecraft:beacon",
+      "offset": [
+        -4,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "minecraft:beacon",
+      "offset": [
+        4,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "minecraft:end_stone",
+      "offset": [
+        -2,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "minecraft:end_stone",
+      "offset": [
+        4,
+        1,
+        -2
+      ]
+    },
+    {
+      "ingredient": "minecraft:end_stone",
+      "offset": [
+        2,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "minecraft:end_stone",
+      "offset": [
+        -4,
+        1,
+        2
+      ]
+    },
+    {
+      "ingredient": "minecraft:emerald",
+      "offset": [
+        2,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "minecraft:emerald",
+      "offset": [
+        -4,
+        1,
+        -2
+      ]
+    },
+    {
+      "ingredient": "minecraft:emerald",
+      "offset": [
+        -2,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "minecraft:emerald",
+      "offset": [
+        4,
+        1,
+        2
+      ]
+    }
+  ],
+  "tier": "pylon"
+}

@@ -1,10 +1,5 @@
 package reika.chromaticraft.data;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.PackOutput;
@@ -12,27 +7,26 @@ import net.minecraft.data.recipes.RecipeOutput;
 import net.minecraft.data.recipes.RecipeProvider;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.tags.ItemTags;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
-
+import net.neoforged.neoforge.common.Tags;
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe;
 import reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe.AuraRequirement;
 import reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe.GridIngredient;
 import reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe.RuneRequirement;
 import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
-import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaClusterItems;
-import reika.chromaticraft.registry.ChromaCraftingItems;
-import reika.chromaticraft.registry.ChromaItems;
-import reika.chromaticraft.registry.ChromaTieredItems;
 import reika.chromaticraft.magic.progression.ProgressStage;
-import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.block.BlockCrystallineStone;
+import reika.chromaticraft.magic.progression.ProgressionManager;
+import reika.chromaticraft.registry.*;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Datapack-owned casting recipes, transcribed from V33a {@code RecipesCastingTable}. This first
@@ -62,18 +56,9 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 
 		@Override
 		protected void buildRecipes() {
-			// V33a: `new ShapedOreRecipe(block, " S ", "SCS", " S ", 'S', "stone", 'C', shard)`. The
-			// 1.7.10 "stone" oredict is Blocks.stone -- the smooth stone family, NOT cobblestone, so
-			// the modern equivalent is c:stones and not minecraft:stone_crafting_materials.
-			//
-			// The source builds this once per colour with an exact-metadata shard, which is sixteen
-			// recipes that differ only in which shard they consume and all produce the same eight
-			// smooth crystalline stone. They are collapsed into a single recipe over the plain-shard
-			// tag: identical to craft, one entry to display, and still not accepting boosted shards
-			// because that tag excludes them.
-			Ingredient stone = tag(net.neoforged.neoforge.common.Tags.Items.STONES);
+			Ingredient stone = tag(Tags.Items.STONES);
 			save("crystal_stone/smooth", StoneTypes.SMOOTH, 8,
-					Map.of('S', stone, 'C', tag(reika.chromaticraft.registry.ChromaItemTags.PLAIN_CRYSTAL_SHARDS)),
+					Map.of('S', stone, 'C', tag(ChromaItemTags.PLAIN_CRYSTAL_SHARDS)),
 					" S ", "SCS", " S ");
 
 			Ingredient smooth = Ingredient.of(ChromaBlocks.crystallineStone(StoneTypes.SMOOTH).get().asItem());
@@ -172,7 +157,12 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 			saveIridescentChunk();
 			saveLumenCore();
 			savePowerCrystal();
+			savePortal();
 			saveElementUnit();
+			saveStorageCrystals();
+			saveCrystalCharger();
+			saveItemAuraInfuser();
+			savePlayerAuraInfuser();
 			saveHighCore("transformation", ChromaCraftingItems.HIGH_TRANSFORMATION_CORE, CrystalElement.GRAY, CrystalElement.BLACK, new net.minecraft.core.BlockPos(3,0,-2), new net.minecraft.core.BlockPos(-3,0,2), ChromaCraftingItems.TELEPORTATION_DUST);
 			saveHighCore("void", ChromaCraftingItems.HIGH_VOID_CORE, CrystalElement.BLACK, CrystalElement.WHITE, new net.minecraft.core.BlockPos(3,-1,-2), new net.minecraft.core.BlockPos(-3,-1,2), ChromaCraftingItems.VOID_DUST);
 			saveHighCore("energy", ChromaCraftingItems.HIGH_ENERGY_CORE, CrystalElement.YELLOW, CrystalElement.WHITE, new net.minecraft.core.BlockPos(-3,0,-2), new net.minecraft.core.BlockPos(3,0,2), ChromaCraftingItems.ENERGY_POWDER);
@@ -350,6 +340,105 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 					.withPenaltyThreshold(12));
 		}
 
+		/** Complete seven-tier V33a StorageCrystalRecipe family. */
+		private void saveStorageCrystals() {
+			int[][] outer = {{-4,-4},{-2,-4},{0,-4},{2,-4},{4,-4},{4,-2},{4,0},{4,2},
+					{4,4},{2,4},{0,4},{-2,4},{-4,4},{-4,2},{-4,0},{-4,-2}};
+			int[][] inner = {{-2,-2},{2,-2},{-2,2},{2,2},{0,-2},{0,2},{2,0},{-2,0}};
+			List<RuneRequirement> runes = List.of(
+					new RuneRequirement(new net.minecraft.core.BlockPos(4,0,1), CrystalElement.BLUE),
+					new RuneRequirement(new net.minecraft.core.BlockPos(4,0,-1), CrystalElement.BLUE),
+					new RuneRequirement(new net.minecraft.core.BlockPos(-4,0,1), CrystalElement.GREEN),
+					new RuneRequirement(new net.minecraft.core.BlockPos(-4,0,-1), CrystalElement.GREEN),
+					new RuneRequirement(new net.minecraft.core.BlockPos(1,0,-4), CrystalElement.RED),
+					new RuneRequirement(new net.minecraft.core.BlockPos(-1,0,-4), CrystalElement.RED),
+					new RuneRequirement(new net.minecraft.core.BlockPos(1,0,4), CrystalElement.YELLOW),
+					new RuneRequirement(new net.minecraft.core.BlockPos(-1,0,4), CrystalElement.YELLOW),
+					new RuneRequirement(new net.minecraft.core.BlockPos(4,0,-4), CrystalElement.WHITE),
+					new RuneRequirement(new net.minecraft.core.BlockPos(-4,0,4), CrystalElement.WHITE),
+					new RuneRequirement(new net.minecraft.core.BlockPos(-4,0,-4), CrystalElement.BLACK),
+					new RuneRequirement(new net.minecraft.core.BlockPos(4,0,4), CrystalElement.BLACK));
+
+			for (StorageCrystalTier tier : StorageCrystalTier.list) {
+				List<CastingTableRecipe.StandIngredient> stands = new ArrayList<>();
+				if (tier == StorageCrystalTier.NULA) {
+					for (int i = 0; i < outer.length; i++)
+						stands.add(stand(outer[i][0], 1, outer[i][1],
+								shard(CrystalElement.elements[i], true)));
+				}
+				else {
+					for (int[] pos : outer)
+						stands.add(stand(pos[0], 1, pos[1], tiered(ChromaTieredItems.CHROMA_DUST)));
+				}
+				Ingredient innerDust = tiered(tier == StorageCrystalTier.NULA
+						? ChromaTieredItems.ELEMENT_DUST : ChromaTieredItems.RESONANCE_DUST);
+				for (int[] pos : inner)
+					stands.add(stand(pos[0], 0, pos[1], innerDust));
+
+				Ingredient center = tier.previous() == null
+						? Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.ELEMENT_UNIT).get())
+						: Ingredient.of(ChromaItems.STORAGE_CRYSTALS.get(tier.previous()).get());
+				CastingTableRecipe recipe = new CastingTableRecipe(CastingTableRecipe.Tier.MULTIBLOCK,
+						List.of(new GridIngredient(4, center)), stands, runes, List.of(),
+						new ItemStackTemplate(ChromaItems.STORAGE_CRYSTALS.get(tier).get()),
+						50 << tier.legacyMetadata(), 200)
+						.withCompletionBehavior(true, List.of(ProgressStage.STORAGE), List.of(0.5F, 2F))
+						.withPenaltyThreshold(3);
+				saveRecipe("storage_crystal/" + tier.name().toLowerCase(java.util.Locale.ROOT), recipe);
+			}
+		}
+
+		/** Exact V33a CrystalChargerRecipe: crystal core center and its asymmetric eight-stand ring. */
+		private void saveCrystalCharger() {
+			List<CastingTableRecipe.StandIngredient> stands = List.of(
+					stand(0, 0, 2, Ingredient.of(Items.SMOOTH_STONE_SLAB)),
+					stand(2, 0, -2, Ingredient.of(Items.OBSIDIAN)),
+					stand(2, 0, 2, Ingredient.of(Items.OBSIDIAN)),
+					stand(-2, 0, -2, Ingredient.of(Items.OBSIDIAN)),
+					stand(-2, 0, 2, Ingredient.of(Items.OBSIDIAN)),
+					stand(2, 0, 0, shard(CrystalElement.WHITE, false)),
+					stand(-2, 0, 0, shard(CrystalElement.WHITE, false)),
+					stand(0, 0, -2, shard(CrystalElement.WHITE, false)));
+			saveRecipe("crystal_charger", new CastingTableRecipe(CastingTableRecipe.Tier.MULTIBLOCK,
+					List.of(new GridIngredient(4, Ingredient.of(
+							ChromaItems.CLUSTERS.get(ChromaClusterItems.CRYSTAL_CORE).get()))),
+					stands, List.of(), List.of(),
+					new ItemStackTemplate(ChromaBlocks.CRYSTAL_CHARGER.get().asItem()), 200, 200));
+		}
+
+		/** Exact V33a InfuserRecipe: Item Stand center and eight Chroma Alloy Ingots. */
+		private void saveItemAuraInfuser() {
+			Ingredient alloy = Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.CHROMA_INGOT).get());
+			List<CastingTableRecipe.StandIngredient> stands = List.of(
+					stand(2, 0, 2, alloy), stand(-2, 0, 2, alloy),
+					stand(4, 1, 2, alloy), stand(-4, 1, 2, alloy),
+					stand(4, 1, 0, alloy), stand(-4, 1, 0, alloy),
+					stand(2, 0, -2, alloy), stand(-2, 0, -2, alloy));
+			saveRecipe("item_aura_infuser", new CastingTableRecipe(CastingTableRecipe.Tier.MULTIBLOCK,
+					List.of(new GridIngredient(4, Ingredient.of(ChromaBlocks.ITEM_STAND.get()))),
+					stands, List.of(), List.of(),
+					new ItemStackTemplate(ChromaBlocks.ITEM_INFUSER.get().asItem()), 100, 200));
+		}
+
+		/** Exact V33a PlayerInfuserRecipe; it upgrades the Item Infuser rather than replacing its base recipe. */
+		private void savePlayerAuraInfuser() {
+			Ingredient aura = Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.AURA_INGOT).get());
+			Ingredient diamond = Ingredient.of(Items.DIAMOND);
+			Ingredient resonance = tiered(ChromaTieredItems.RESONANCE_DUST);
+			Ingredient complex = Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.COMPLEX_INGOT).get());
+			List<CastingTableRecipe.StandIngredient> stands = List.of(
+					stand(2, 0, 0, aura), stand(-2, 0, 0, aura),
+					stand(4, 1, -2, aura), stand(-4, 1, -2, aura),
+					stand(2, 0, 2, diamond), stand(-2, 0, 2, diamond),
+					stand(-4, 1, 2, diamond), stand(4, 1, 2, diamond),
+					stand(2, 0, -2, resonance), stand(0, 0, -2, resonance),
+					stand(-2, 0, -2, resonance), stand(0, 0, 2, complex));
+			saveRecipe("player_aura_infuser", new CastingTableRecipe(CastingTableRecipe.Tier.MULTIBLOCK,
+					List.of(new GridIngredient(4, Ingredient.of(ChromaBlocks.ITEM_INFUSER.get()))),
+					stands, List.of(), List.of(),
+					new ItemStackTemplate(ChromaBlocks.PLAYER_INFUSER.get().asItem()), 100, 200));
+		}
+
 		private void saveLumenCore() {
 			List<CastingTableRecipe.StandIngredient> stands = new ArrayList<>();
 			for (int x = -4; x <= 4; x += 2) for (int z = -4; z <= 4; z += 2) {
@@ -391,6 +480,85 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 					new ItemStackTemplate(ChromaBlocks.POWER_CRYSTAL.get().asItem()), 1600, 500,
 					List.of(), 0.97489F, true, true).withPenaltyThreshold(96));
 		}
+		/**
+		 * V33a {@code PortalRecipe}: the Portal Rift cast, and the most expensive recipe in the mod.
+		 *
+		 * <p>An Energized Void Core in the grid centre; sixteen stands ringing it with Energetic
+		 * Essence and Spatial Rifting Powder on the inner ring and glowstone, ender eyes, Chromastone,
+		 * beacons, End Stone and emeralds on the outer; the complete sixteen-rune ring plus the whole
+		 * Crystal Repeater rune layout; and 120,000 aura of each primary element with 60,000 of each
+		 * of the rest. It runs for 2,400 ticks and yields nine rifts — exactly the 3x3 pad.
+		 *
+		 * <p>Experience is the source's {@code super.getExperience()*50}, i.e. the pylon tier's 500
+		 * multiplied fifty-fold. The penalty threshold of 1 with a multiplier of 0 is upstream's way
+		 * of saying the reward is once-only: any repeat cast is worth nothing.
+		 *
+		 * <p>Its required progression is every prerequisite of {@link ProgressStage#DIMENSION}, read
+		 * from the live DAG rather than restated, so the recipe cannot drift from the stage gate the
+		 * rift itself enforces.
+		 */
+		private void savePortal() {
+			List<CastingTableRecipe.StandIngredient> stands = new ArrayList<>();
+			for (int[] pos : new int[][] {{-2,0},{2,0},{0,2},{0,-2}})
+				stands.add(auxStand(pos[0], pos[1], Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.ENERGY_POWDER).get())));
+			for (int[] pos : new int[][] {{-2,-2},{2,-2},{-2,2},{2,2}})
+				stands.add(auxStand(pos[0], pos[1], tiered(ChromaTieredItems.SPACE_DUST)));
+			for (int[] pos : new int[][] {{-4,0},{4,0}})
+				stands.add(auxStand(pos[0], pos[1], Ingredient.of(Items.GLOWSTONE_DUST)));
+			for (int[] pos : new int[][] {{0,4},{0,-4}})
+				stands.add(auxStand(pos[0], pos[1], Ingredient.of(Items.ENDER_EYE)));
+			for (int[] pos : new int[][] {{-4,-4},{4,4}})
+				stands.add(auxStand(pos[0], pos[1], Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.COMPLEX_INGOT).get())));
+			for (int[] pos : new int[][] {{-4,4},{4,-4}})
+				stands.add(auxStand(pos[0], pos[1], Ingredient.of(Items.BEACON)));
+			for (int[] pos : new int[][] {{-2,-4},{4,-2},{2,4},{-4,2}})
+				stands.add(auxStand(pos[0], pos[1], Ingredient.of(Items.END_STONE)));
+			for (int[] pos : new int[][] {{2,-4},{-4,-2},{-2,4},{4,2}})
+				stands.add(auxStand(pos[0], pos[1], Ingredient.of(Items.EMERALD)));
+
+			List<RuneRequirement> runes = new ArrayList<>();
+			List<AuraRequirement> aura = new ArrayList<>();
+			for (CrystalElement e : CrystalElement.elements) {
+				aura.add(new AuraRequirement(e, e.isPrimary() ? 120000 : 60000));
+				runes.add(runeRingRune(e));
+			}
+			runes.addAll(REPEATER_RUNES);
+
+			saveRecipe("portal_rift", new CastingTableRecipe(CastingTableRecipe.Tier.PYLON,
+					List.of(new GridIngredient(4, Ingredient.of(
+							ChromaItems.CRAFTING.get(ChromaCraftingItems.HIGH_VOID_CORE).get()))),
+					stands, runes, aura,
+					new ItemStackTemplate(ChromaBlocks.PORTAL.get().asItem(), 9), 2400,
+					// V33a RecipeType.PYLON carries 500 experience; PortalRecipe multiplies it by 50.
+					500 * 50,
+					List.copyOf(ProgressionManager.instance.getPrereqs(ProgressStage.DIMENSION)),
+					0.75F, false, false, 1, 0F, CastingTableRecipe.CompletionBehavior.DEFAULT));
+		}
+
+		/** V33a addAuxItem(x, z): the inner ring sits on the table's own level, the outer one higher. */
+		private CastingTableRecipe.StandIngredient auxStand(int x, int z, Ingredient item) {
+			return stand(x, Math.abs(x) == 4 || Math.abs(z) == 4 ? 1 : 0, z, item);
+		}
+
+		/** V33a RepeaterRecipe's own rune layout, which PortalRecipe adds on top of the ring. */
+		private static final List<RuneRequirement> REPEATER_RUNES = List.of(
+				new RuneRequirement(new net.minecraft.core.BlockPos(0, -1, 5), CrystalElement.BLACK),
+				new RuneRequirement(new net.minecraft.core.BlockPos(0, -1, -5), CrystalElement.BLACK),
+				new RuneRequirement(new net.minecraft.core.BlockPos(5, -1, 0), CrystalElement.BLACK),
+				new RuneRequirement(new net.minecraft.core.BlockPos(-5, -1, 0), CrystalElement.BLACK),
+				new RuneRequirement(new net.minecraft.core.BlockPos(5, -1, 5), CrystalElement.WHITE),
+				new RuneRequirement(new net.minecraft.core.BlockPos(-5, -1, -5), CrystalElement.WHITE),
+				new RuneRequirement(new net.minecraft.core.BlockPos(5, -1, -5), CrystalElement.WHITE),
+				new RuneRequirement(new net.minecraft.core.BlockPos(-5, -1, 5), CrystalElement.WHITE),
+				new RuneRequirement(new net.minecraft.core.BlockPos(-5, -1, -4), CrystalElement.RED),
+				new RuneRequirement(new net.minecraft.core.BlockPos(5, -1, 4), CrystalElement.RED),
+				new RuneRequirement(new net.minecraft.core.BlockPos(5, -1, -4), CrystalElement.BLUE),
+				new RuneRequirement(new net.minecraft.core.BlockPos(-5, -1, 4), CrystalElement.BLUE),
+				new RuneRequirement(new net.minecraft.core.BlockPos(-4, -1, -5), CrystalElement.GREEN),
+				new RuneRequirement(new net.minecraft.core.BlockPos(4, -1, 5), CrystalElement.GREEN),
+				new RuneRequirement(new net.minecraft.core.BlockPos(4, -1, -5), CrystalElement.YELLOW),
+				new RuneRequirement(new net.minecraft.core.BlockPos(-4, -1, 5), CrystalElement.YELLOW));
+
 		private void saveHighCore(String name, ChromaCraftingItems output, CrystalElement primary,
 				CrystalElement secondary, net.minecraft.core.BlockPos rune1, net.minecraft.core.BlockPos rune2,
 				ChromaCraftingItems dust) {

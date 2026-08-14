@@ -8,6 +8,8 @@ import net.minecraft.world.level.block.state.BlockState;
 
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
+import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.tileentity.TileEntityDisplayPoint;
@@ -22,10 +24,14 @@ import reika.chromaticraft.tileentity.networking.TileEntityCrystalPylon;
 import reika.chromaticraft.tileentity.networking.TileEntityCrystalRepeater;
 import reika.chromaticraft.tileentity.networking.TileEntitySkypeater;
 import reika.chromaticraft.tileentity.recipe.TileEntityCastingTable;
+import reika.chromaticraft.tileentity.recipe.TileEntityItemInfuser;
+import reika.chromaticraft.tileentity.recipe.TileEntityPlayerInfuser;
 import reika.chromaticraft.tileentity.auxiliary.TileEntityFocusCrystal;
+import reika.chromaticraft.tileentity.auxiliary.TileEntityCrystalCharger;
 import reika.chromaticraft.tileentity.recipe.TileEntityItemStand;
 import reika.chromaticraft.tileentity.aoe.TileEntityWarpNode;
 import reika.chromaticraft.tileentity.TileEntityDummyAux;
+import reika.chromaticraft.tileentity.TileEntityCrystalPortal;
 import reika.chromaticraft.tileentity.TileEntityLootChest;
 import reika.chromaticraft.tileentity.TileEntityStructureController;
 import reika.chromaticraft.tileentity.TileEntityChromaDoor;
@@ -66,6 +72,12 @@ public final class ChromaBlockEntities {
 			register("casting_item_stand", ChromaTiles.STAND);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityCastingTable>> CASTING_TABLE =
 			register("casting_table", ChromaTiles.TABLE);
+	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityCrystalCharger>> CRYSTAL_CHARGER =
+			register("crystal_charger", ChromaTiles.CHARGER);
+	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityItemInfuser>> ITEM_INFUSER =
+			register("item_aura_infuser", ChromaTiles.INFUSER);
+	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityPlayerInfuser>> PLAYER_INFUSER =
+			register("player_aura_infuser", ChromaTiles.PLAYERINFUSER);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityFocusCrystal>> FOCUS_CRYSTAL =
 			register("focus_crystal", ChromaTiles.FOCUSCRYSTAL);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityDataNode>> DATA_NODE =
@@ -116,6 +128,14 @@ public final class ChromaBlockEntities {
 			BLOCK_ENTITIES.register("lock_key", () -> new BlockEntityType<>(
 					TileEntityLockKey::new, ChromaBlocks.LOCK_KEY.get()));
 
+	/**
+	 * Both Portal Rift identities share one entity type: V33a had one block and read the destination
+	 * from metadata, so its single tile class serves both.
+	 */
+	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityCrystalPortal>> PORTAL =
+			BLOCK_ENTITIES.register("portal_rift", () -> new BlockEntityType<>(
+					TileEntityCrystalPortal::new, ChromaBlocks.PORTAL.get(), ChromaBlocks.RETURN_PORTAL.get()));
+
 	/** Worldgen block rather than a ChromaTiles machine, so it registers against its block directly. */
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityWarpNode>> WARP_NODE =
 			BLOCK_ENTITIES.register("warp_node", () -> new BlockEntityType<>(
@@ -126,6 +146,13 @@ public final class ChromaBlockEntities {
 		// The tile's reflective (BlockPos, BlockState) factory returns the concrete BlockEntity.
 		BlockEntityType.BlockEntitySupplier<T> factory = (pos, state) -> (T) tile.createBlockEntity(pos, state);
 		return BLOCK_ENTITIES.register(name, () -> new BlockEntityType<>(factory, tile.getBlock()));
+	}
+
+	public static void registerCapabilities(RegisterCapabilitiesEvent event) {
+		event.registerBlockEntity(Capabilities.Fluid.BLOCK, ITEM_INFUSER.get(),
+				(infuser, context) -> infuser.fluidHandler());
+		event.registerBlockEntity(Capabilities.Fluid.BLOCK, PLAYER_INFUSER.get(),
+				(infuser, context) -> infuser.fluidHandler());
 	}
 
 	private ChromaBlockEntities() {}

@@ -1,59 +1,59 @@
 package reika.chromaticraft.world.dimension;
 
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.util.MathHelper;
+import net.minecraft.util.Mth;
+import net.minecraft.world.entity.player.Player;
 
-import reika.chromaticraft.registry.ExtraChromaIDs;
-import reika.dragonapi.libraries.ReikaPlayerAPI;
+import reika.chromaticraft.registry.ChromaDimensions;
 
-public class DimensionTuningManager {
+/**
+ * V33a {@code DimensionTuningManager}: how strongly Proxima responds to the player who just arrived.
+ *
+ * <p>Tuning is set once per trip, from the energy the Portal Rift had absorbed from Proximal Essence,
+ * and stored on the player's persistent data so it survives the dimension change and a relog. Its two
+ * consumers are the drop-rate curve and the {@link TuningThresholds} gates, which decide which parts
+ * of the dimension are willing to appear at all.
+ */
+public final class DimensionTuningManager {
 
 	private static final String NBT_TAG = "dimensionTuning";
 
 	public static final DimensionTuningManager instance = new DimensionTuningManager();
 
-	private DimensionTuningManager() {
+	private DimensionTuningManager() {}
 
+	public void tunePlayer(Player ep, int amt) {
+		ep.getPersistentData().putInt(NBT_TAG, amt);
 	}
 
-	public void tunePlayer(EntityPlayer ep, int amt) {
-		ep.getEntityData().setInteger(NBT_TAG, amt);
-		if (ep instanceof EntityPlayerMP)
-			ReikaPlayerAPI.syncCustomData((EntityPlayerMP)ep);
+	public int getPlayerTuning(Player ep) {
+		return ep.getPersistentData().getIntOr(NBT_TAG, 0);
 	}
 
-	public int getPlayerTuning(EntityPlayer ep) {
-		return ep.getEntityData().getInteger(NBT_TAG);
-	}
-
-	public float getTunedDropRates(EntityPlayer ep) {
+	/**
+	 * V33a getTunedDropRates. Untuned returns -1 (a sentinel meaning "no tuning at all"), up to 16 is
+	 * a flat zero, 16-64 ramps linearly to 1x, 64-576 climbs to 3x, and past that it follows the
+	 * source's {@code 2-23+24*(tune/576)^0.04} curve.
+	 */
+	public float getTunedDropRates(Player ep) {
 		int tune = this.getPlayerTuning(ep);
-		if (tune <= 0) {
+		if (tune <= 0)
 			return -1;
-		}
-		if (tune <= 16) {
+		if (tune <= 16)
 			return 0;
-		}
-		if (tune <= 64) {
-			return (tune-16)/48F;
-		}
-		if (tune <= 576) {
-			return 1+(tune-64)/256F; //up to 3x
-		}
-		else {
-			return 2-23+24*(float)Math.pow(tune/576F, 0.04);
-		}
+		if (tune <= 64)
+			return (tune - 16) / 48F;
+		if (tune <= 576)
+			return 1 + (tune - 64) / 256F;
+		return 2 - 23 + 24 * (float)Math.pow(tune / 576F, 0.04);
 	}
 
-	public int getTunedDropCount(EntityPlayer ep, int base, int min, int max) {
-		if (ep.worldObj.provider.dimensionId != ExtraChromaIDs.DIMID.getValue())
+	public int getTunedDropCount(Player ep, int base, int min, int max) {
+		if (ep.level().dimension() != ChromaDimensions.PROXIMA)
 			return base;
-		int drops = (int)(base*this.getTunedDropRates(ep));
-		return MathHelper.clamp_int(drops, min, max);
+		return Mth.clamp((int)(base * this.getTunedDropRates(ep)), min, max);
 	}
 
-	public static enum TuningThresholds {
+	public enum TuningThresholds {
 		STRUCTURES(192),
 		STRUCTUREBIOMES(96),
 		SKYRIVER(384, 256),
@@ -67,29 +67,29 @@ public class DimensionTuningManager {
 
 		public static final TuningThresholds[] list = values();
 
-		private TuningThresholds(int t) {
+		TuningThresholds(int t) {
 			this(t, 0);
 		}
 
-		private TuningThresholds(int t, int e) {
+		TuningThresholds(int t, int e) {
 			minimumTuning = t;
 			minimumEffect = e;
 		}
 
-		public float getTuningFraction(EntityPlayer ep) {
+		public float getTuningFraction(Player ep) {
 			int amt = instance.getPlayerTuning(ep);
 			if (amt < minimumEffect)
 				return 0;
 			if (amt >= minimumTuning)
 				return 1;
-			return (amt-minimumEffect)/(float)(minimumTuning-minimumEffect);
+			return (amt - minimumEffect) / (float)(minimumTuning - minimumEffect);
 		}
 
-		public boolean isSufficientlyTuned(EntityPlayer ep) {
-			if (ep.worldObj.provider.dimensionId != ExtraChromaIDs.DIMID.getValue())
+		/** Outside Proxima nothing is gated, exactly as V33a short-circuited on the dimension id. */
+		public boolean isSufficientlyTuned(Player ep) {
+			if (ep.level().dimension() != ChromaDimensions.PROXIMA)
 				return true;
 			return instance.getPlayerTuning(ep) >= minimumTuning;
 		}
 	}
-
 }

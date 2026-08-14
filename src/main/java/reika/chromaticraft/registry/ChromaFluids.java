@@ -59,5 +59,25 @@ public static final DeferredHolder<Fluid, FlowingFluid> CHROMA = FLUIDS.register
 					.explosionResistance(500F)
 					.tickRate(2);
 
+	// V33a (git show 5cde0068^:ChromatiCraft.java:277):
+	//   ender = new Fluid("ender").setViscosity(2000).setDensity(1500).setTemperature(270).setLuminosity(4)
+	// Twice water's viscosity -> tickRate = 5 * 2000/1000 = 10, i.e. it creeps rather than flows.
+	// BlockLiquidEnder is a plain BlockFluidClassic subclass, so slopeFindDistance and
+	// levelDecreasePerBlock stay at the water-like defaults; its velocityToAddToEntity override is a
+	// verbatim copy of Forge's BlockFluidBase default, so there is no custom current to carry over
+	// and motionScale stays at the vanilla value.
+	public static final DeferredHolder<Fluid, FlowingFluid> ENDER = FLUIDS.register("ender",
+			() -> new BaseFlowingFluid.Source(ChromaFluids.ENDER_PROPERTIES));
+	public static final DeferredHolder<Fluid, FlowingFluid> FLOWING_ENDER = FLUIDS.register("flowing_ender",
+			() -> new BaseFlowingFluid.Flowing(ChromaFluids.ENDER_PROPERTIES));
+	public static final DeferredHolder<FluidType, FluidType> ENDER_TYPE = FLUID_TYPES.register("ender",
+			() -> new FluidType(FluidType.Properties.create()
+					.density(1500).viscosity(2000).temperature(270).lightLevel(4)));
+	public static final BaseFlowingFluid.Properties ENDER_PROPERTIES =
+			new BaseFlowingFluid.Properties(ENDER_TYPE, ENDER, FLOWING_ENDER)
+					.block(() -> ChromaBlocks.ENDER.get())
+					.explosionResistance(500F)
+					.tickRate(10);
+
 	private ChromaFluids() {}
 }

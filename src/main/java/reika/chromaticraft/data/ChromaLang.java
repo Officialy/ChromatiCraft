@@ -11,6 +11,7 @@ import reika.chromaticraft.registry.ChromaClusterItems;
 import reika.chromaticraft.registry.ChromaCraftingItems;
 import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.ChromaTieredItems;
+import reika.chromaticraft.registry.StorageCrystalTier;
 import reika.chromaticraft.registry.ChromaTieredPlants;
 import reika.chromaticraft.registry.ChromaDecoFlowers;
 import reika.chromaticraft.registry.ChromaShieldTypes;
@@ -96,6 +97,19 @@ public class ChromaLang extends LanguageProvider {
 		add(ChromaItems.INFO_FRAGMENT.get(), "Info Fragment"); // V33a chroma.fragment
 		add(ChromaItems.DATA_CRYSTAL.get(), "Memory Crystal"); // V33a chroma.datacrystal
 		add(ChromaItems.DOOR_KEY.get(), "Ethereal Key"); // V33a chroma.key
+		for (StorageCrystalTier tier : StorageCrystalTier.list)
+			add(ChromaItems.STORAGE_CRYSTALS.get(tier).get(),
+					tier.displayPrefix() + " Energy Storage Crystal");
+		add(ChromaItems.SPEED_UPGRADE.get(), "Speed Upgrade"); // V33a chromamisc.speed
+		add(ChromaBlocks.CRYSTAL_CHARGER.get(), "Storage Crystal Charger"); // V33a chroma.charger
+		add(ChromaBlocks.ITEM_INFUSER.get(), "Item Aura Infuser"); // V33a chroma.infuser
+		add(ChromaBlocks.PLAYER_INFUSER.get(), "Personal Infusion Stand"); // V33a chroma.playerinfuser
+		add(ChromaItems.GLOW_CAVE_DUST.get(), "Glow Cave Dust"); // V33a chromaitem.dimgen.glowcave
+		add(ChromaItems.UNKNOWN_ARTEFACT_FRAGMENT.get(), "Unknown Artefact Fragment");
+		add(ChromaBlocks.PORTAL.get(), "Portal Rift"); // V33a chroma.portal
+		// V33a metadata 15 shared the same display name; the distinct registry identity keeps the
+		// name distinguishable in creative and JEI without inventing new lore.
+		add(ChromaBlocks.RETURN_PORTAL.get(), "Portal Rift (Return)");
 		add(ChromaBlocks.CHROMA_DOOR.get(), "Ethereal Barrier"); // V33a chroma.door
 		add(ChromaBlocks.HEAT_LAMP.get(), "Heat Lamp"); // V33a chroma.heatlamp
 		add(ChromaBlocks.COLD_LAMP.get(), "Cold Heat Lamp"); // distinct registry form of V33a metadata 8

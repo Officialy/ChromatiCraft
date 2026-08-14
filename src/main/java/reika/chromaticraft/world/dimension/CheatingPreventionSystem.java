@@ -2,182 +2,166 @@ package reika.chromaticraft.world.dimension;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
-import net.minecraft.block.Block;
-import net.minecraft.entity.item.EntityItem;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.DamageSource;
-import net.minecraft.util.Vec3;
-import net.minecraftforge.event.entity.player.PlayerInteractEvent;
-import net.minecraftforge.event.entity.player.PlayerInteractEvent.Action;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.phys.Vec3;
 
 import reika.chromaticraft.magic.progression.ProgressStage;
+import reika.chromaticraft.registry.ChromaDimensions;
 import reika.chromaticraft.registry.ChromaSounds;
-import reika.chromaticraft.registry.ExtraChromaIDs;
-import reika.dragonapi.ModList;
-import reika.dragonapi.instantiable.data.KeyedItemStack;
-import reika.dragonapi.instantiable.data.immutable.BlockKey;
-import reika.dragonapi.libraries.ReikaEntityHelper;
-import reika.dragonapi.libraries.io.ReikaSoundHelper;
-import reika.dragonapi.libraries.java.ReikaRandomHelper;
-import reika.dragonapi.libraries.registry.ReikaItemHelper;
-import reika.dragonapi.libraries.registry.ReikaParticleHelper;
 
-import cpw.mods.fml.common.eventhandler.SubscribeEvent;
-import cpw.mods.fml.common.registry.GameRegistry;
-
-public class CheatingPreventionSystem {
+/**
+ * V33a {@code CheatingPreventionSystem}: Proxima's puzzles assume you walk them, so the dimension
+ * confiscates or disables items that would let you skip a wall.
+ *
+ * <p>The mechanism is fully ported — the block/item ban registry, all six {@link BanReaction}s, the
+ * pre-join sweep that drops banned items back into the departure world, the post-join sweep that
+ * deletes them, the held-item tick, the right-click gate, the explosion/knockback punishment, and the
+ * {@link ProgressStage#STRUCTCHEAT} grant for anything past a warning.
+ *
+ * <p>What is legitimately empty is the ban <em>list</em>. Every entry V33a shipped names a 1.7.10
+ * mod — EnderIO's travel anchor/telepad/staff, GraviSuite's Vajra, Thaumic Tinkerer's warp gate,
+ * Draconic Evolution's teleporters, Botania's Flügel Eye, and two NotEnoughWands wands — and none of
+ * them exist for 26.2. {@link #banItem} and {@link #banBlock} are public so an integration layer can
+ * register the modern equivalents the moment any of those ports appear; the exact upstream
+ * item-to-reaction mapping is recorded in {@link #LEGACY_BANS} rather than deleted.
+ */
+public final class CheatingPreventionSystem {
 
 	public static final CheatingPreventionSystem instance = new CheatingPreventionSystem();
 
-	private final HashSet<BlockKey> bannedBlocks = new HashSet();
-	private final HashMap<KeyedItemStack, BanReaction> bannedItems = new HashMap();
+	/**
+	 * The exact V33a ban table, as {@code modid:name -> reaction}. Kept as data so a future 26.2 port
+	 * of any of these mods can be wired up without re-deriving the original severities.
+	 */
+	public static final Map<String, BanReaction> LEGACY_BANS = Map.ofEntries(
+			Map.entry("enderio:blockTravelAnchor", BanReaction.DELETEONUSE),
+			Map.entry("enderio:blockTelePad", BanReaction.DELETEONUSE),
+			Map.entry("enderio:itemTravelStaff", BanReaction.DELETEONUSE),
+			Map.entry("GraviSuite:vajra", BanReaction.PREVENTUSE),
+			Map.entry("ThaumicTinkerer:warpGate", BanReaction.DELETEONUSE),
+			Map.entry("DraconicEvolution:teleporterMKI", BanReaction.DROPONUSE),
+			Map.entry("DraconicEvolution:teleporterMKII", BanReaction.DELETEONUSE),
+			Map.entry("Botania:flugelEye", BanReaction.PREVENTUSE),
+			Map.entry("NotEnoughWands:MovingWand", BanReaction.PREVENTUSE),
+			Map.entry("NotEnoughWands:DisplacementWand", BanReaction.PREVENTUSE));
+
+	private final Set<Block> bannedBlocks = new HashSet<>();
+	private final Map<Item, BanReaction> bannedItems = new HashMap<>();
 
 	private CheatingPreventionSystem() {
-		if (ModList.ENDERIO.isLoaded()) {
-			Block b = GameRegistry.findBlock(ModList.ENDERIO.modLabel, "blockTravelAnchor");
-			this.banBlock(b, BanReaction.DELETEONUSE);
-
-			b = GameRegistry.findBlock(ModList.ENDERIO.modLabel, "blockTelePad");
-			this.banBlock(b, BanReaction.DELETEONUSE);
-
-			Item i = GameRegistry.findItem(ModList.ENDERIO.modLabel, "itemTravelStaff");
-			if (i != null)
-				this.banItem(i, BanReaction.DELETEONUSE);
-		}
-
-		Item i = GameRegistry.findItem("GraviSuite", "vajra");
-		if (i != null)
-			this.banItem(i, BanReaction.PREVENTUSE);
-
-		if (ModList.THAUMICTINKER.isLoaded()) {
-			Block b = GameRegistry.findBlock(ModList.THAUMICTINKER.modLabel, "warpGate");
-			this.banBlock(b, BanReaction.DELETEONUSE);
-		}
-
-		if (ModList.DRACONICEVO.isLoaded()) {
-			i = GameRegistry.findItem(ModList.DRACONICEVO.modLabel, "teleporterMKI");
-			if (i != null)
-				this.banItem(i, BanReaction.DROPONUSE);
-			i = GameRegistry.findItem(ModList.DRACONICEVO.modLabel, "teleporterMKII");
-			if (i != null)
-				this.banItem(i, BanReaction.DELETEONUSE);
-		}
-
-		if (ModList.BOTANIA.isLoaded()) {
-			i = GameRegistry.findItem(ModList.BOTANIA.modLabel, "flugelEye");
-			if (i != null)
-				this.banItem(i, BanReaction.PREVENTUSE);
-		}
-
-		i = GameRegistry.findItem("NotEnoughWands", "MovingWand");
-		if (i != null)
-			this.banItem(i, BanReaction.PREVENTUSE);
-
-		i = GameRegistry.findItem("NotEnoughWands", "DisplacementWand");
-		if (i != null)
-			this.banItem(i, BanReaction.PREVENTUSE);
+		// V33a resolved its bans through GameRegistry lookups that all fail on 26.2; applyLegacyBans
+		// re-applies any of them whose mod does appear later.
+		this.applyLegacyBans();
 	}
 
-	private void banBlock(Block b) {
-		this.banBlock(b, null);
+	/** Re-resolves {@link #LEGACY_BANS} against the live registries; a missing entry is skipped. */
+	public void applyLegacyBans() {
+		LEGACY_BANS.forEach((name, reaction) -> {
+			int split = name.indexOf(':');
+			Identifier id = Identifier.fromNamespaceAndPath(
+					name.substring(0, split).toLowerCase(java.util.Locale.ROOT), name.substring(split + 1));
+			BuiltInRegistries.BLOCK.getOptional(id).ifPresent(block -> this.banBlock(block, reaction));
+			BuiltInRegistries.ITEM.getOptional(id).ifPresent(item -> this.banItem(item, reaction));
+		});
 	}
 
-	private void banBlock(Block b, BanReaction r) {
+	public void banBlock(Block b, BanReaction r) {
 		if (b == null)
 			return;
-		BlockKey bk = new BlockKey(b);
-		bannedBlocks.add(bk);
-		if (r == null)
-			r = BanReaction.DELETEONUSE;
-		Item i = Item.getItemFromBlock(b);
-		if (i != null)
-			bannedItems.put(new KeyedItemStack(i).setIgnoreMetadata(!bk.hasMetadata()).setSimpleHash(true), r);
+		bannedBlocks.add(b);
+		Item item = b.asItem();
+		if (item != Items.AIR)
+			bannedItems.put(item, r == null ? BanReaction.DELETEONUSE : r);
 	}
 
-	private void banItem(Item i, BanReaction r) {
-		bannedItems.put(new KeyedItemStack(i).setIgnoreNBT(true).setSimpleHash(true), r);
+	public void banItem(Item i, BanReaction r) {
+		if (i != null && i != Items.AIR)
+			bannedItems.put(i, r);
 	}
 
-	private void banItem(ItemStack is, BanReaction r) {
-		bannedItems.put(new KeyedItemStack(is).setIgnoreNBT(true).setSimpleHash(true), r);
+	public boolean isBannedDimensionBlock(Block b) {
+		return bannedBlocks.contains(b);
 	}
 
-	public boolean isBannedDimensionBlock(Block b, int meta) {
-		return bannedBlocks.contains(new BlockKey(b, meta));
+	/** V33a handleRightClicks: in Proxima, a banned item's use is intercepted before it happens. */
+	public boolean handleRightClick(Player ep, ItemStack held) {
+		if (!isInProxima(ep))
+			return false;
+		BanReaction r = this.getReaction(held);
+		if (r == null || !r.reactsToUse())
+			return false;
+		r.perform(ep, held, -1);
+		return true;
 	}
 
-	@SubscribeEvent
-	public void handleRightClicks(PlayerInteractEvent evt) {
-		if (evt.action == Action.RIGHT_CLICK_AIR || evt.action == Action.RIGHT_CLICK_BLOCK) {
-			if (evt.entityPlayer.worldObj.provider.dimensionId == ExtraChromaIDs.DIMID.getValue()) {
-				ItemStack is = evt.entityPlayer.getCurrentEquippedItem();
-				BanReaction r = this.getReaction(is);
-				if (r != null && r.reactsToUse()) {
-					r.perform(evt.entityPlayer, is, -1);
-					evt.setCanceled(true);
-				}
-			}
-		}
-	}
-
-	public void preJoin(EntityPlayer ep) {
+	/** V33a preJoin: banned items are dropped in the world being left, before the transfer. */
+	public void preJoin(Player ep) {
 		this.checkInventory(ep, BanReaction.PREVENTBRING);
 	}
 
-	public void postJoin(EntityPlayer ep) {
+	/** V33a postJoin: anything banned that still arrived is deleted outright. */
+	public void postJoin(Player ep) {
 		this.checkInventory(ep, BanReaction.DELETEONENTRY);
 	}
 
-	private void checkInventory(EntityPlayer ep, BanReaction br) {
-		for (int i = 0; i < 5; i++) {
-			ItemStack is = ep.getEquipmentInSlot(i);
-			BanReaction r = this.getReaction(is);
-			if (r == br) {
-				r.perform(ep, is, -i);
-			}
+	private void checkInventory(Player ep, BanReaction br) {
+		for (EquipmentSlot slot : EquipmentSlot.values()) {
+			ItemStack is = ep.getItemBySlot(slot);
+			if (this.getReaction(is) == br)
+				br.performOnEquipment(ep, is, slot);
 		}
-		for (int i = 0; i < 36; i++) {
-			ItemStack is = ep.inventory.mainInventory[i];
-			BanReaction r = this.getReaction(is);
-			if (r == br) {
-				r.perform(ep, is, -i);
-			}
+		for (int i = 0; i < ep.getInventory().getContainerSize(); i++) {
+			ItemStack is = ep.getInventory().getItem(i);
+			if (this.getReaction(is) == br)
+				br.perform(ep, is, i);
 		}
 	}
 
-	public void tick(EntityPlayer ep) {
-		if (ep.worldObj.provider.dimensionId == ExtraChromaIDs.DIMID.getValue()) {
-			ItemStack held = ep.getCurrentEquippedItem();
-			if (held != null) {
-				BanReaction r = this.getReaction(held);
-				if (r != null && r.reactsToTick()) {
-					r.perform(ep, held, -1);
-				}
-			}
-		}
+	/** V33a tick: DELETEONHOLD items are confiscated for merely being in hand in Proxima. */
+	public void tick(Player ep) {
+		if (!isInProxima(ep))
+			return;
+		ItemStack held = ep.getMainHandItem();
+		BanReaction r = this.getReaction(held);
+		if (r != null && r.reactsToTick())
+			r.perform(ep, held, -1);
+	}
+
+	private static boolean isInProxima(Player ep) {
+		return ep.level().dimension() == ChromaDimensions.PROXIMA;
 	}
 
 	private BanReaction getReaction(ItemStack is) {
-		return is == null || is.getItem() == null ? null : bannedItems.get(new KeyedItemStack(is).setSimpleHash(true));
+		return is == null || is.isEmpty() ? null : bannedItems.get(is.getItem());
 	}
 
-	public void punishCheatingPlayer(EntityPlayer ep) {
-		ReikaSoundHelper.playSoundAtEntity(ep.worldObj, ep, "random.explode", 1, 1);
-		ReikaSoundHelper.playSoundAtEntity(ep.worldObj, ep, "random.explode", 1, 0.5F);
-		ReikaParticleHelper.EXPLODE.spawnAt(ep);
-		ep.attackEntityFrom(DamageSource.generic, ReikaRandomHelper.getRandomBetween(5, 10));
-		Vec3 v = ep.getLookVec();
-		ReikaEntityHelper.knockbackEntityFromPos(ep.posX+v.xCoord, ep.posY+v.yCoord-1.5, ep.posZ+v.zCoord, ep, 2.5);
-		ep.velocityChanged = true;
+	/** V33a punishCheatingPlayer: two explosions, 5-10 generic damage, a shove, and +10 fall. */
+	public void punishCheatingPlayer(Player ep) {
+		ChromaSounds.SHOCKWAVE.playSound(ep, 1, 1);
+		ChromaSounds.SHOCKWAVE.playSound(ep, 1, 0.5F);
+		ep.hurt(ep.damageSources().generic(), 5 + ep.getRandom().nextInt(6));
+		Vec3 look = ep.getLookAngle();
+		// V33a knocks the player back from a point one and a half blocks below their own eyeline in
+		// the direction they are facing, i.e. away from whatever they were trying to reach.
+		Vec3 from = ep.position().add(look.x, look.y - 1.5, look.z);
+		Vec3 push = ep.position().subtract(from).normalize().scale(2.5);
+		ep.setDeltaMovement(ep.getDeltaMovement().add(push));
+		ep.hurtMarked = true;
 		ep.fallDistance += 10;
-		//}
-
 	}
 
-	private static enum BanReaction {
+	public enum BanReaction {
 		PREVENTUSE,
 		PREVENTBRING,
 		DROPONUSE,
@@ -186,58 +170,53 @@ public class CheatingPreventionSystem {
 		DELETEONENTRY,
 		;
 
-		private void perform(EntityPlayer ep, ItemStack is, int slot) {
-			switch(this) {
-				case PREVENTUSE:
-					ChromaSounds.ERROR.playSound(ep);
-					break;
-				case PREVENTBRING:
-				case DELETEONENTRY:
-					if (this == PREVENTBRING) {
-						EntityItem ei = ReikaItemHelper.dropItem(ep, is);
-						ei.lifespan = Integer.MAX_VALUE;
-					}
-					if (slot < 0)
-						ep.setCurrentItemOrArmor(-slot, is);
+		void perform(Player ep, ItemStack is, int slot) {
+			switch (this) {
+				case PREVENTUSE -> ChromaSounds.ERROR.playSound(ep);
+				case PREVENTBRING, DELETEONENTRY -> {
+					if (this == PREVENTBRING)
+						dropPermanently(ep, is);
+					if (slot >= 0)
+						ep.getInventory().setItem(slot, ItemStack.EMPTY);
 					else
-						ep.inventory.setInventorySlotContents(slot, null);
-					break;
-				case DROPONUSE:
-				case DELETEONUSE:
-				case DELETEONHOLD:
+						ep.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+				}
+				case DROPONUSE, DELETEONUSE, DELETEONHOLD -> {
 					instance.punishCheatingPlayer(ep);
 					if (this == DROPONUSE)
-						ReikaItemHelper.dropItem(ep, is);
-					ep.setCurrentItemOrArmor(0, null);
-					break;
+						dropPermanently(ep, is);
+					ep.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+				}
 			}
 			if (this.givesProgress())
 				ProgressStage.STRUCTCHEAT.stepPlayerTo(ep);
 		}
 
+		void performOnEquipment(Player ep, ItemStack is, EquipmentSlot slot) {
+			if (this == PREVENTBRING)
+				dropPermanently(ep, is);
+			ep.setItemSlot(slot, ItemStack.EMPTY);
+			if (this.givesProgress())
+				ProgressStage.STRUCTCHEAT.stepPlayerTo(ep);
+		}
+
+		/** V33a set the dropped entity's lifespan to Integer.MAX_VALUE so it waits for you. */
+		private static void dropPermanently(Player ep, ItemStack is) {
+			ItemEntity dropped = ep.drop(is.copy(), false);
+			if (dropped != null)
+				dropped.setUnlimitedLifetime();
+		}
+
 		public boolean reactsToUse() {
-			switch(this) {
-				case PREVENTUSE:
-				case DROPONUSE:
-				case DELETEONUSE:
-					return true;
-				default:
-					return false;
-			}
+			return this == PREVENTUSE || this == DROPONUSE || this == DELETEONUSE;
 		}
 
 		public boolean reactsToTick() {
-			switch(this) {
-				case DELETEONHOLD:
-					return true;
-				default:
-					return false;
-			}
+			return this == DELETEONHOLD;
 		}
 
 		private boolean givesProgress() {
 			return this.ordinal() >= DROPONUSE.ordinal();
 		}
 	}
-
 }

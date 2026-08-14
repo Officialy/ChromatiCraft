@@ -14,7 +14,10 @@ import net.minecraft.world.level.Level;
 import reika.chromaticraft.auxiliary.structure.CompoundRepeaterStructure;
 import reika.chromaticraft.auxiliary.structure.CastingStructure;
 import reika.chromaticraft.auxiliary.structure.DataTowerStructure;
+import reika.chromaticraft.auxiliary.structure.InfusionStructure;
+import reika.chromaticraft.auxiliary.structure.PortalStructure;
 import reika.chromaticraft.auxiliary.structure.PylonStructure;
+import reika.chromaticraft.auxiliary.structure.PlayerInfusionStructure;
 import reika.chromaticraft.auxiliary.structure.RepeaterStructure;
 import reika.chromaticraft.base.ChromaStructureBase;
 import reika.chromaticraft.base.ColoredStructureBase;
@@ -34,6 +37,9 @@ public enum ChromaStructures implements StructureEnum<ChromaStructureBase> {
 	REPEATER(RepeaterStructure.class),
 	COMPOUND(CompoundRepeaterStructure.class),
 	PYLONBROADCAST(PylonBroadcastStructure.class),
+	INFUSION(InfusionStructure.class),
+	PLAYERINFUSION(PlayerInfusionStructure.class),
+	PORTAL(PortalStructure.class),
 	DATANODE(DataTowerStructure.class);
 
 	public final boolean requiresColor;

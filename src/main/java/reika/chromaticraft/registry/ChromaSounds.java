@@ -15,8 +15,11 @@ import java.util.HashMap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
+import net.minecraft.network.protocol.game.ClientboundSoundPacket;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -251,6 +254,42 @@ public enum ChromaSounds implements ChromaSound {
 		float rangedVolume = Math.max(vol, broadcast / 16F);
 		world.playSound(null, pos, this.getSoundEvent(), this.getCategory(),
 				rangedVolume * this.getModulatedVolume(), pitch);
+	}
+
+	/**
+	 * V33a {@code ReikaSoundHelper.broadcastSound}: every player on the server hears this at their
+	 * own position, in whatever dimension they are in. The Portal Rift uses it to announce the very
+	 * first arrival in Proxima.
+	 */
+	public void broadcast(MinecraftServer server, float vol, float pitch) {
+		if (server == null)
+			return;
+		for (ServerPlayer player : server.getPlayerList().getPlayers())
+			this.playPersonally(player, vol, pitch);
+	}
+
+	/**
+	 * V33a's {@code ChromaPackets.DIMSOUND} cue: the same personal playback, but for everyone except
+	 * the player who caused it, and quieter.
+	 *
+	 * <p>CHROMA-PORT: upstream gated this on each listener's own {@code RECEIVEDIMSOUND} client
+	 * option inside the packet handler. There is no per-client option channel in the 26.2 port yet,
+	 * so the cue currently plays for everyone; restore the gate when client options sync.
+	 */
+	public void broadcastExcept(MinecraftServer server, ServerPlayer source, float vol, float pitch) {
+		if (server == null)
+			return;
+		for (ServerPlayer player : server.getPlayerList().getPlayers())
+			if (player != source)
+				this.playPersonally(player, vol, pitch);
+	}
+
+	/** Sends the sound straight to one player at their own position, ignoring distance entirely. */
+	private void playPersonally(ServerPlayer player, float vol, float pitch) {
+		player.connection.send(new ClientboundSoundPacket(
+				BuiltInRegistries.SOUND_EVENT.wrapAsHolder(this.getSoundEvent()), this.getCategory(),
+				player.getX(), player.getY(), player.getZ(), vol * this.getModulatedVolume(), pitch,
+				player.getRandom().nextLong()));
 	}
 
 	@Override

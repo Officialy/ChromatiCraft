@@ -32,6 +32,10 @@ public final class ChromaFluidModels {
 			ChromatiCraft.MODID, "block/fluid/aether/aether_flow"));
 	private static final Material FLOW = new Material(Identifier.fromNamespaceAndPath(
 			ChromatiCraft.MODID, "block/fluid/activechroma_flowing"));
+	private static final Material ENDER_STILL = new Material(Identifier.fromNamespaceAndPath(
+			ChromatiCraft.MODID, "block/fluid/ender"));
+	private static final Material ENDER_FLOW = new Material(Identifier.fromNamespaceAndPath(
+			ChromatiCraft.MODID, "block/fluid/flowingender"));
 
 	private ChromaFluidModels() {}
 
@@ -39,8 +43,12 @@ public final class ChromaFluidModels {
 	public static void registerFluidModels(RegisterFluidModelsEvent event) {
 		FluidModel.Unbaked model = new FluidModel.Unbaked(STILL, FLOW, null, new PoolTint());
 		event.register(model, ChromaFluids.CHROMA.get(), ChromaFluids.FLOWING_CHROMA.get());
-		event.register(new FluidModel.Unbaked(LUMA_STILL, LUMA_FLOW, null, new LumaTint()),
+		event.register(new FluidModel.Unbaked(LUMA_STILL, LUMA_FLOW, null, new UntintedFluid()),
 				ChromaFluids.LUMA.get(), ChromaFluids.FLOWING_LUMA.get());
+		// V33a BlockLiquidEnder.registerBlockIcons: chromaticraft:fluid/ender and .../flowingender,
+		// drawn untinted (the sprites already carry the colour).
+		event.register(new FluidModel.Unbaked(ENDER_STILL, ENDER_FLOW, null, new UntintedFluid()),
+				ChromaFluids.ENDER.get(), ChromaFluids.FLOWING_ENDER.get());
 	}
 
 	private static final class PoolTint implements FluidTintSource {
@@ -75,7 +83,8 @@ public final class ChromaFluidModels {
 			return 0xFFFFFFFF;
 		}
 	}
-	private static final class LumaTint implements FluidTintSource {
+	/** Luma and Liquid Ender both draw their sprites unmodified; neither had a V33a colour multiplier. */
+	private static final class UntintedFluid implements FluidTintSource {
 		@Override public int color(FluidState state) { return 0xFFFFFFFF; }
 		@Override public int colorInWorld(FluidState fluidState, BlockState blockState,
 				BlockAndTintGetter level, BlockPos pos) { return 0xFFFFFFFF; }

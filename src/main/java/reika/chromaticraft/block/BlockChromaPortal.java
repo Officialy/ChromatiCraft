@@ -9,559 +9,367 @@
  ******************************************************************************/
 package reika.chromaticraft.block;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.HashSet;
-import java.util.UUID;
+import java.util.Set;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.material.Material;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.particle.EntityFX;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.item.EntityEnderCrystal;
-import net.minecraft.entity.item.EntityItem;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.init.Blocks;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.network.NetworkManager;
-import net.minecraft.network.Packet;
-import net.minecraft.network.play.server.S35PacketUpdateTileEntity;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.AxisAlignedBB;
-import net.minecraft.world.IBlockAccess;
-import net.minecraft.world.World;
-import net.minecraftforge.common.util.ForgeDirection;
+import javax.annotation.Nullable;
 
-import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.auxiliary.ChromaStacks;
-import reika.chromaticraft.auxiliary.ChromaTeleporter;
-import reika.chromaticraft.auxiliary.HoldingChecks;
-import reika.chromaticraft.auxiliary.interfaces.MultiBlockChromaTile;
+import com.mojang.serialization.MapCodec;
+
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.InsideBlockEffectApplier;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.EntityBlock;
+import net.minecraft.world.level.block.Portal;
+import net.minecraft.world.level.block.RenderShape;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityTicker;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.portal.TeleportTransition;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.Shapes;
+import net.minecraft.world.phys.shapes.VoxelShape;
+
 import reika.chromaticraft.magic.progression.ProgressStage;
-import reika.chromaticraft.magic.progression.ProgressionManager;
 import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaPackets;
+import reika.chromaticraft.registry.ChromaDimensions;
+import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.ChromaSounds;
-import reika.chromaticraft.registry.ChromaStructures;
-import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.registry.ExtraChromaIDs;
-import reika.chromaticraft.render.particle.EntityBallLightningFX;
-import reika.chromaticraft.render.particle.EntityCCBlurFX;
-import reika.chromaticraft.render.particle.EntityCenterBlurFX;
-import reika.chromaticraft.render.particle.EntityRuneFX;
+import reika.chromaticraft.registry.ChromaTieredItems;
+import reika.chromaticraft.tileentity.TileEntityCrystalPortal;
+import reika.chromaticraft.world.dimension.ChromaTeleporter;
 import reika.chromaticraft.world.dimension.CheatingPreventionSystem;
-import reika.chromaticraft.world.dimension.ChunkProviderChroma;
 import reika.chromaticraft.world.dimension.DimensionTuningManager;
-import reika.dragonapi.DragonAPICore;
-import reika.dragonapi.instantiable.data.blockstruct.BlockArray;
-import reika.dragonapi.instantiable.data.immutable.Coordinate;
-import reika.dragonapi.instantiable.effects.EntityBlurFX;
-import reika.dragonapi.instantiable.io.PacketTarget;
-import reika.dragonapi.libraries.ReikaAABBHelper;
-import reika.dragonapi.libraries.ReikaEntityHelper;
-import reika.dragonapi.libraries.io.ReikaPacketHelper;
-import reika.dragonapi.libraries.io.ReikaSoundHelper;
-import reika.dragonapi.libraries.java.ReikaRandomHelper;
-import reika.dragonapi.libraries.registry.ReikaItemHelper;
+import reika.chromaticraft.world.dimension.ProximaGenerators;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
+/**
+ * V33a {@code BlockChromaPortal}: the Portal Rift, the nine-block pad at the bottom of the authored
+ * portal structure that carries a qualified player to Proxima.
+ *
+ * <p>V33a distinguished the two rifts by metadata: metadata 15 targets the Overworld and validates
+ * unconditionally, everything else targets Proxima and must match the whole multiblock. Those are
+ * two different pieces of content, so this class backs two registry identities —
+ * {@code chromaticraft:portal_rift} and {@code chromaticraft:return_portal_rift} — rather than a
+ * property on one. The return form has no producer upstream either (nothing in V33a places metadata
+ * 15; it is reachable only through commands/creative), and this port deliberately does not invent one.
+ *
+ * <p>Everything the rift does happens on entity contact. There is no collision box, no model and no
+ * item interaction other than the Elemental Manipulator's dismantle.
+ */
+public class BlockChromaPortal extends Block implements EntityBlock, Portal {
 
-public class BlockChromaPortal extends Block {
+	private final MapCodec<BlockChromaPortal> codec = MapCodec.unit(this);
 
-	private static final HashSet<Coordinate> portalCheck = new HashSet();
+	/** V33a metadata 15: destination is the Overworld and the structure check is skipped. */
+	private final boolean returnPortal;
 
-	public BlockChromaPortal(Material mat) {
-		super(mat);
-		this.setCreativeTab(ChromatiCraft.tabChroma);
-		this.setResistance(50000);
-		this.setBlockUnbreakable();
+	public BlockChromaPortal(BlockBehaviour.Properties properties, boolean returnPortal) {
+		super(properties);
+		this.returnPortal = returnPortal;
+	}
+
+	public boolean isReturnPortal() {
+		return returnPortal;
 	}
 
 	@Override
-	public boolean hasTileEntity(int meta) {
-		return true;//meta == 1;
+	public MapCodec<? extends BlockChromaPortal> codec() {
+		return codec;
 	}
 
 	@Override
-	public TileEntity createTileEntity(World world, int meta) {
-		return /*meta == 1 ? */new TileEntityCrystalPortal()/* : null*/;
+	public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
+		// V33a hasTileEntity(int meta) returns an unconditional true — its "meta == 1" restriction is
+		// commented out — so all nine pad blocks carry an entity and only the centre one works.
+		return new TileEntityCrystalPortal(pos, state);
 	}
 
+	@Nullable
 	@Override
-	public AxisAlignedBB getCollisionBoundingBoxFromPool(World world, int x, int y, int z) {
-		return null;
+	public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state,
+			BlockEntityType<T> type) {
+		// Both halves are required: updateEntity() runs BlockEntityBase's lifecycle (first tick, sync,
+		// callbacks) and updateEntity(level, pos) is this tile's own body. Calling only the first
+		// leaves the rift permanently uncharged.
+		return (world, pos, blockState, be) -> {
+			if (be instanceof TileEntityCrystalPortal portal) {
+				portal.updateEntity();
+				portal.updateEntity(world, pos);
+			}
+		};
 	}
 
+	/** V33a getCollisionBoundingBoxFromPool returns null: you fall straight into the rift. */
 	@Override
-	public boolean isOpaqueCube() {
-		return false;
+	protected VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos pos,
+			CollisionContext context) {
+		return Shapes.empty();
 	}
 
+	/**
+	 * V33a onEntityCollidedWithBlock ran off the block's full cube even though it has no collision
+	 * box, so contact is tested against the whole block.
+	 */
 	@Override
-	public boolean renderAsNormalBlock() {
-		return false;
+	protected VoxelShape getEntityInsideCollisionShape(BlockState state, BlockGetter level, BlockPos pos,
+			Entity entity) {
+		return Shapes.block();
 	}
 
+	/** V33a isOpaqueCube/renderAsNormalBlock false with getRenderType() == -1: the BER draws it all. */
 	@Override
-	public int getRenderType() {
-		return -1;
+	protected RenderShape getRenderShape(BlockState state) {
+		return RenderShape.INVISIBLE;
 	}
 
+	/**
+	 * V33a onBlockActivated: the Elemental Manipulator dismantles the whole pad. It first puts out
+	 * any fire in the 5x5 at the rift's own level, then flood-fills every connected Portal Rift
+	 * within 16/8/16, clears each one and drops one Portal Rift item per removed block at the block
+	 * that was clicked, and finally plays the rift tear-down and power-down cues.
+	 *
+	 * <p>{@code ownedBy} treats a portal with no recorded placer as owned by everyone, so a rift that
+	 * was never placed by a player can be dismantled by anyone.
+	 */
 	@Override
-	public boolean onBlockActivated(World world, int x, int y, int z, EntityPlayer ep, int s, float a, float b, float c) {
-		if (HoldingChecks.MANIPULATOR.isHolding(ep)) {
-			TileEntityCrystalPortal te = (TileEntityCrystalPortal)world.getTileEntity(x, y, z);
-			if (te.ownedBy(ep)) {
-				//world.addWeatherEffect(new EntityLightningBolt(world, x+0.5, y+0.5, z+0.5));
-				//world.createExplosion(ep, x+0.5, y+0.5, z+0.5, 4, false);
-				for (int i = -2; i <= 2; i++) {
-					for (int k = -2; k <= 2; k++) {
-						if (world.getBlock(x+i, y, z+k) == Blocks.fire)
-							world.setBlock(x+i, y, z+k, Blocks.air);
-					}
-				}
-				BlockArray bk = new BlockArray();
-				bk.recursiveAddWithBounds(world, x, y, z, this, x-16, y-8, z-16, x+16, y+8, z+16);
-				for (Coordinate loc : bk.keySet()) {
-					loc.setBlock(world, Blocks.air);
-					ReikaItemHelper.dropItem(world, x+0.5, y+0.5, z+0.5, new ItemStack(this));
-				}
-				ChromaSounds.RIFT.playSoundAtBlock(te);
-				ChromaSounds.POWERDOWN.playSoundAtBlock(te);
+	protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos,
+			Player player, BlockHitResult hit) {
+		if (!player.getMainHandItem().is(ChromaItems.MANIPULATOR.get()))
+			return InteractionResult.SUCCESS; // V33a returns true unconditionally: no block placement.
+		if (level.isClientSide())
+			return InteractionResult.SUCCESS;
+		if (!(level.getBlockEntity(pos) instanceof TileEntityCrystalPortal te) || !te.ownedBy(player))
+			return InteractionResult.SUCCESS;
+
+		for (int i = -2; i <= 2; i++) {
+			for (int k = -2; k <= 2; k++) {
+				BlockPos fire = pos.offset(i, 0, k);
+				if (level.getBlockState(fire).is(Blocks.FIRE))
+					level.setBlockAndUpdate(fire, Blocks.AIR.defaultBlockState());
 			}
 		}
-		return true;
+
+		for (BlockPos connected : this.collectPad(level, pos)) {
+			level.setBlockAndUpdate(connected, Blocks.AIR.defaultBlockState());
+			popResource(level, pos, new ItemStack(this));
+		}
+		ChromaSounds.RIFT.playSoundAtBlock(level, pos);
+		ChromaSounds.POWERDOWN.playSoundAtBlock(level, pos);
+		return InteractionResult.SUCCESS;
 	}
 
-	@Override
-	public void onEntityCollidedWithBlock(World world, int x, int y, int z, Entity e) {
-		boolean teleport = false;
-		portalCheck.add(new Coordinate(x, y, z));
-		for (int i = 2; i < 6; i++) {
-			ForgeDirection dir = ForgeDirection.VALID_DIRECTIONS[i];
-			int dx = x+dir.offsetX;
-			int dz = z+dir.offsetZ;
-			if (world.getBlock(dx, y, dz) != this) {
-				int ddx = x-dir.offsetX;
-				int ddz = z-dir.offsetZ;
-				if (world.getBlock(ddx, y, ddz) == this && !portalCheck.contains(new Coordinate(ddx, y, ddz))) {
-					this.onEntityCollidedWithBlock(world, ddx, y, ddz, e);
-					portalCheck.remove(new Coordinate(x, y, z));
-					return;
-				}
+	/** V33a BlockArray.recursiveAddWithBounds(world, x, y, z, this, +-16, +-8, +-16). */
+	private Set<BlockPos> collectPad(Level level, BlockPos origin) {
+		Set<BlockPos> found = new HashSet<>();
+		Deque<BlockPos> queue = new ArrayDeque<>();
+		queue.add(origin);
+		found.add(origin);
+		while (!queue.isEmpty()) {
+			BlockPos current = queue.removeFirst();
+			for (Direction dir : Direction.values()) {
+				BlockPos next = current.relative(dir);
+				if (Math.abs(next.getX() - origin.getX()) > 16 || Math.abs(next.getY() - origin.getY()) > 8
+						|| Math.abs(next.getZ() - origin.getZ()) > 16)
+					continue;
+				if (found.contains(next) || !level.getBlockState(next).is(this))
+					continue;
+				found.add(next);
+				queue.addLast(next);
 			}
 		}
-		portalCheck.remove(new Coordinate(x, y, z));
-		TileEntity tile = world.getTileEntity(x, y, z);
-		if (tile instanceof TileEntityCrystalPortal && !world.isRemote) {
-			TileEntityCrystalPortal te = (TileEntityCrystalPortal)tile;
-			if (e instanceof EntityPlayer) {
-				if (te.complete) {
-					EntityPlayer ep = (EntityPlayer)e;
-					if (te.canPlayerUse(ep)) {
-						te.teleportPlayer(ep);
-					}
-					else {
-						this.denyEntity(e);
-					}
-				}
-				else {
-					this.denyEntity(e);
-				}
-			}
-			else if (e instanceof EntityItem) {
-				EntityItem ei = (EntityItem)e;
-				ItemStack is = ei.getEntityItem();
-				if (ReikaItemHelper.matchStacks(is, ChromaStacks.bedrockloot) || ReikaItemHelper.matchStacks(is, ChromaStacks.bedrockloot2)) {
-					te.addTuningEnergy(is);
-					ei.setDead();
-				}
-				else {
-					this.denyEntity(e);
-				}
+		return found;
+	}
+
+	/**
+	 * V33a onEntityCollidedWithBlock. Contact anywhere on the pad walks inward to the centre first:
+	 * for each horizontal direction whose neighbour is not a rift, the block on the opposite side is
+	 * — so the search steps away from the pad's edge — and the whole decision runs there instead. The
+	 * source guarded the walk with a static visited set; a per-call set is the same guard without a
+	 * field shared between worlds and threads.
+	 */
+	@Override
+	protected void entityInside(BlockState state, Level level, BlockPos pos, Entity entity,
+			InsideBlockEffectApplier effects, boolean precise) {
+		BlockPos centre = walkInward(level, pos, new HashSet<>());
+		if (level.isClientSide() || !(level.getBlockEntity(centre) instanceof TileEntityCrystalPortal te))
+			return;
+		if (entity instanceof Player player) {
+			if (te.isComplete() && te.canPlayerUse(player))
+				entity.setAsInsidePortal(this, centre);
+			else
+				denyEntity(level, entity);
+		}
+		else if (entity instanceof ItemEntity item) {
+			ItemStack is = item.getItem();
+			if (is.is(ChromaItems.TIERED.get(ChromaTieredItems.PROXIMAL_ESSENCE).get())
+					|| is.is(ChromaItems.TIERED.get(ChromaTieredItems.PURE_PROXIMAL_ESSENCE).get())) {
+				te.addTuningEnergy(is);
+				item.discard();
 			}
 			else {
-				this.denyEntity(e);
+				denyEntity(level, entity);
 			}
+		}
+		else {
+			denyEntity(level, entity);
 		}
 	}
 
-	private void denyEntity(Entity e) {
-		e.motionY = 1.5;
+	private static BlockPos walkInward(Level level, BlockPos pos, Set<BlockPos> visited) {
+		visited.add(pos);
+		for (Direction dir : Direction.Plane.HORIZONTAL) {
+			if (level.getBlockState(pos.relative(dir)).getBlock() instanceof BlockChromaPortal)
+				continue;
+			BlockPos opposite = pos.relative(dir.getOpposite());
+			if (level.getBlockState(opposite).getBlock() instanceof BlockChromaPortal
+					&& !visited.contains(opposite))
+				return walkInward(level, opposite, visited);
+		}
+		return pos;
+	}
+
+	/**
+	 * V33a denyEntity: anything the rift refuses is thrown 1.5 blocks per tick straight up with a
+	 * random horizontal nudge, and has its fall distance forced to at least 500 so the landing is
+	 * lethal. That is the anti-abuse mechanism, not a cosmetic bounce.
+	 */
+	private static void denyEntity(Level level, Entity e) {
+		Vec3 motion = e.getDeltaMovement();
+		e.setDeltaMovement(motion.x + (level.getRandom().nextDouble() * 2 - 1) * 0.25, 1.5,
+				motion.z + (level.getRandom().nextDouble() * 2 - 1) * 0.25);
 		e.fallDistance = Math.max(e.fallDistance, 500);
-		e.addVelocity(ReikaRandomHelper.getRandomPlusMinus(0, 0.25), 0, ReikaRandomHelper.getRandomPlusMinus(0, 0.25));
-		e.velocityChanged = true;
+		e.hurtMarked = true;
 		ChromaSounds.POWERDOWN.playSound(e);
 	}
 
-	public static boolean isPortalFunctional() {
-		return ChunkProviderChroma.areGeneratorsReady() && ChromatiCraft.instance.isDimensionLoadable();
+	/** V33a teleported on contact; the vanilla portal processor supplies the loop guard for free. */
+	@Override
+	public int getPortalTransitionTime(ServerLevel level, Entity entity) {
+		return 0;
 	}
 
-	public static class TileEntityCrystalPortal extends TileEntity implements MultiBlockChromaTile {
+	@Override
+	public Portal.Transition getLocalTransition() {
+		return Portal.Transition.CONFUSION;
+	}
 
-		private boolean complete;
-		private int charge;
-		public final int MINCHARGE = 300;
-		private int ticks = 0;
-		private UUID placerUUID;
-
-		private int tuning = 0;
-
-		@Override
-		public void updateEntity() {
-			if (ticks == 0)
-				this.onFirstTick();
-			ticks++;
-
-			if (DragonAPICore.debugtest) {
-				//ChromaStructures.getPortalStructure(worldObj, xCoord, yCoord, zCoord, false).place();
-				//DragonAPICore.debugtest = false;
-			}
-
-			if (complete) {
-				if (charge < MINCHARGE || !ChunkProviderChroma.areGeneratorsReady()) {
-					charge++;
-					if (worldObj.isRemote)
-						this.chargingParticles();
-				}
-			}
-			else {
-				charge = 0;
-			}
-			int pos = this.getPortalPosition(worldObj, xCoord, yCoord, zCoord);
-			if (worldObj.isRemote) {
-				if (pos == 5 && this.isFull9x9()) {
-					if (worldObj.isRemote)
-						this.idleParticles();
-					if (complete) {
-						if (charge >= MINCHARGE) {
-							if (worldObj.isRemote)
-								this.activeParticles();
-						}
-					}
-				}
-			}
-			if (pos == 5 && this.isFull9x9()) {
-				if (ticks%20 == 0)
-					this.validateStructure(worldObj, xCoord, yCoord, zCoord);
-				if (complete) {
-					if (ticks%90 == 0)
-						ChromaSounds.PORTAL.playSoundAtBlock(this);
-					if (tuning > 0)
-						if (DragonAPICore.rand.nextInt(400) == 0)
-							tuning--;
-				}
-			}
-		}
-
-		private void teleportPlayer(EntityPlayer ep) {
-			CheatingPreventionSystem.instance.preJoin(ep);
-			int dim = this.getTargetDimension();
-			DimensionTuningManager.instance.tunePlayer(ep, tuning);
-			ReikaEntityHelper.transferEntityToDimension(ep, dim, new ChromaTeleporter(dim));
-			if (ProgressStage.DIMENSION.stepPlayerTo(ep)) {
-				ReikaSoundHelper.broadcastSound(ChromaSounds.GOTODIM, 1, 1);
-			}
-			else {
-				ChromaSounds.GOTODIM.playSoundAtBlockNoAttenuation(this, 1, 1, 32);
-				ReikaSoundHelper.playSound(ChromaSounds.GOTODIM, ep.worldObj, 0, 1024, 0, 1, 1, false);
-				ReikaPacketHelper.sendDataPacket(ChromatiCraft.packetChannel, ChromaPackets.DIMSOUND.ordinal(), PacketTarget.allPlayers);
-			}
-			tuning *= 0.4;
-		}
-
-		public void addTuningEnergy(ItemStack is) {
-			boolean tier2 = ReikaItemHelper.matchStacks(is, ChromaStacks.bedrockloot2);
-			int amt = (int)((tier2 ? 150 : 1)*Math.pow(is.stackSize, tier2 ? 0.85 : 0.5));
-			tuning += amt;
-			worldObj.markBlockForUpdate(xCoord, yCoord, zCoord);
-		}
-
-		public boolean ownedBy(EntityPlayer ep) {
-			return placerUUID == null || placerUUID.equals(ep.getUniqueID());
-		}
-
-		public int getTargetDimension() {
-			return this.getBlockMetadata() == 15 ? 0 : ExtraChromaIDs.DIMID.getValue();
-		}
-
-		public boolean canPlayerUse(EntityPlayer ep) {
-			return isPortalFunctional() && charge >= MINCHARGE && ProgressionManager.instance.playerHasPrerequisites(ep, ProgressStage.DIMENSION);
-		}
-
-		public int getTicks() {
-			return ticks;
-		}
-
-		public int getCharge() {
-			return charge;
-		}
-
-		public boolean isComplete() {
-			return complete;
-		}
-
-		@SideOnly(Side.CLIENT)
-		private void idleParticles() {
-			double px = ReikaRandomHelper.getRandomPlusMinus(xCoord+0.5, 1.5);
-			double pz = ReikaRandomHelper.getRandomPlusMinus(zCoord+0.5, 1.5);
-			float g = -(float)ReikaRandomHelper.getRandomPlusMinus(0.125, 0.0625);
-			int color = CrystalElement.getBlendedColor(ticks, 40);
-			int l = ReikaRandomHelper.getRandomPlusMinus(80, 40);
-			EntityBlurFX fx = new EntityCCBlurFX(worldObj, px, yCoord+1.25, pz, 0, 0, 0).setGravity(g).setLife(l).setColor(color);
-			fx.noClip = true;
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-		}
-
-		@SideOnly(Side.CLIENT)
-		private void chargingParticles() {
-			if (worldObj.rand.nextInt(4) == 0) {
-				int dx = worldObj.rand.nextBoolean() ? 3 : -3;
-				int dz = worldObj.rand.nextBoolean() ? 3 : -3;
-				int x = xCoord+dx;
-				int y = yCoord+5;
-				int z = zCoord+dz;
-				if (worldObj.getBlock(x, y, z) == ChromaBlocks.PYLONSTRUCT.getBlockInstance() && worldObj.getBlockMetadata(x, y, z) == 5) {
-					//EntityFX fx = new EntityBoltFX(worldObj, x+0.5, y+0.5, z+0.5, x+5, y, z+5);
-					double px = x+worldObj.rand.nextDouble();
-					double py = y+worldObj.rand.nextDouble();
-					double pz = z+worldObj.rand.nextDouble();
-					EntityBallLightningFX fx = new EntityBallLightningFX(worldObj, px, py, pz, CrystalElement.elements[ticks/8%16]);
-					fx.noClip = false;
-					double v = 0.125;
-					double vx = v*-Math.signum(dx);
-					double vy = -0.125;
-					double vz = v*-Math.signum(dz);
-					fx.motionX = vx;
-					fx.motionY = vy;
-					fx.motionZ = vz;
-					Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-				}
-			}
-		}
-
-		@SideOnly(Side.CLIENT)
-		private void activeParticles() {
-			CrystalElement e = CrystalElement.elements[ticks/8%16];
-			double vx = ReikaRandomHelper.getRandomPlusMinus(0, 0.03125);
-			double vz = ReikaRandomHelper.getRandomPlusMinus(0, 0.03125);
-			float g = -(float)ReikaRandomHelper.getRandomPlusMinus(0.125, 0.0625);
-			EntityBlurFX fx = new EntityCCBlurFX(worldObj, xCoord+0.5, yCoord+8.25, zCoord+0.5, vx, 0, vz).setGravity(g);
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-
-
-			//---------------------------
-			int dx = worldObj.rand.nextBoolean() ? 3 : -3;
-			int dz = worldObj.rand.nextBoolean() ? 3 : -3;
-			double x = xCoord+dx+worldObj.rand.nextDouble();
-			double y = yCoord+5+worldObj.rand.nextDouble();
-			double z = zCoord+dz+worldObj.rand.nextDouble();
-			double v = 0.0625;
-			vx = x < xCoord ? v : -v;
-			vz = z < zCoord ? v : -v;
-			if (worldObj.rand.nextBoolean())
-				vx = 0;
-			else
-				vz = 0;
-
-			EntityFX fx2 = new EntityCenterBlurFX(e, worldObj, x, y, z, vx, 0, vz).setScale(2).setNoSlowdown();
-			fx2.noClip = true;
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx2);
-
-
-			//----------------------------------
-			dx = worldObj.rand.nextBoolean() ? 7 : -7;
-			dz = worldObj.rand.nextBoolean() ? 7 : -7;
-			if (worldObj.rand.nextBoolean())
-				dx += Math.signum(dx)*-4;
-			else
-				dz += Math.signum(dz)*-4;
-			x = xCoord+dx+worldObj.rand.nextDouble();
-			y = yCoord+5+worldObj.rand.nextDouble();
-			z = zCoord+dz+worldObj.rand.nextDouble();
-			v = 0.0625;
-			vx = x < xCoord ? v : -v;
-			vz = z < zCoord ? v : -v;
-			if (worldObj.rand.nextBoolean())
-				vx = 0;
-			else
-				vz = 0;
-
-			boolean longAxis = (Math.abs(dx) == 7 && vx != 0) || (Math.abs(dz) == 7 && vz != 0);
-			int l = !longAxis ? 100 : 60;
-
-			EntityRuneFX fx3 = new EntityRuneFX(worldObj, x, y, z, vx, 0, vz, e).setScale(2).setLife(l);
-			fx3.noClip = true;
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx3);
-		}
-
-		@Override
-		public boolean canUpdate() {
-			return true;
-		}
-
-		private void onFirstTick() {
-			this.validateStructure(worldObj, xCoord, yCoord, zCoord);
-		}
-
-		public void validateStructure(World world, int x, int y, int z) {
-			if (worldObj.isRemote)
-				return;
-			boolean last = complete;
-			if (this.getBlockMetadata() == 15) {
-				complete = true;
-			}
-			else {
-				ChromaStructures.PORTAL.getStructure().resetToDefaults();
-				complete = ChromaStructures.PORTAL.getArray(world, x, y, z).matchInWorld();
-				complete &= this.getEntities(world, x, y, z);
-			}
-			if (last != complete)
-				worldObj.markBlockForUpdate(xCoord, yCoord, zCoord);
-		}
-
-		private boolean getEntities(World world, int x, int y, int z) {
-			int[][] pos = new int[][]{{-5, 5, -9}, {-5, 5, 9}, {5, 5, -9}, {5, 5, 9}, {-9, 5, -5}, {-9, 5, 5}, {9, 5, -5}, {9, 5, 5}};
-			for (int i = 0; i < pos.length; i++) {
-				int[] loc = pos[i];
-				AxisAlignedBB box = ReikaAABBHelper.getBlockAABB(x+loc[0], y+loc[1], z+loc[2]);
-				if (world.getEntitiesWithinAABB(EntityEnderCrystal.class, box).size() != 1)
-					return false;
-			}
-			return true;
-		}
-
-		@Override
-		public void writeToNBT(NBTTagCompound NBT) {
-			super.writeToNBT(NBT);
-
-			NBT.setBoolean("built", complete);
-
-			NBT.setInteger("charge", charge);
-			NBT.setInteger("tuning", tuning);
-
-			if (placerUUID != null) {
-				NBT.setString("owner", placerUUID.toString());
-			}
-		}
-
-		@Override
-		public void readFromNBT(NBTTagCompound NBT) {
-			super.readFromNBT(NBT);
-
-			complete = NBT.getBoolean("built");
-
-			charge = NBT.getInteger("charge");
-			tuning = NBT.getInteger("tuning");
-
-			String s = NBT.getString("owner");
-			if (s != null && !s.isEmpty()) {
-				placerUUID = UUID.fromString(s);
-			}
-		}
-
-		@Override
-		@SideOnly(Side.CLIENT)
-		public boolean shouldRenderInPass(int pass) {
-			return pass <= 1;//super.shouldRenderInPass(pass);
-		}
-
-		@Override
-		public AxisAlignedBB getRenderBoundingBox() {
-			return ReikaAABBHelper.getBlockAABB(xCoord, yCoord, zCoord).expand(8, 8, 8);
-		}
-
-		public int getPortalPosition(IBlockAccess world, int x, int y, int z) {
-			if (world.getBlock(x-1, y, z) != ChromaBlocks.PORTAL.getBlockInstance()) {
-				if (world.getBlock(x, y, z-1) != ChromaBlocks.PORTAL.getBlockInstance()) {
-					return 7;
-				}
-				else if (world.getBlock(x, y, z+1) != ChromaBlocks.PORTAL.getBlockInstance()) {
-					return 1;
-				}
-				else {
-					return 4;
-				}
-			}
-			else if (world.getBlock(x+1, y, z) != ChromaBlocks.PORTAL.getBlockInstance()) {
-				if (world.getBlock(x, y, z-1) != ChromaBlocks.PORTAL.getBlockInstance()) {
-					return 9;
-				}
-				else if (world.getBlock(x, y, z+1) != ChromaBlocks.PORTAL.getBlockInstance()) {
-					return 3;
-				}
-				else {
-					return 6;
-				}
-			}
-			else {
-				if (world.getBlock(x, y, z-1) != ChromaBlocks.PORTAL.getBlockInstance()) {
-					return 8;
-				}
-				else if (world.getBlock(x, y, z+1) != ChromaBlocks.PORTAL.getBlockInstance()) {
-					return 2;
-				}
-				else {
-					return 5;
-				}
-			}
-		}
-
-		@Override
-		public Packet getDescriptionPacket() {
-			NBTTagCompound NBT = new NBTTagCompound();
-			this.writeToNBT(NBT);
-			S35PacketUpdateTileEntity pack = new S35PacketUpdateTileEntity(xCoord, yCoord, zCoord, 0, NBT);
-			return pack;
-		}
-
-		@Override
-		public void onDataPacket(NetworkManager net, S35PacketUpdateTileEntity p)  {
-			this.readFromNBT(p.field_148860_e);
-			worldObj.markBlockForUpdate(xCoord, yCoord, zCoord);
-		}
-
-		public boolean isFull9x9() {
-			for (int i = -1; i <= 1; i++) {
-				for (int k = -1; k <= 1; k++) {
-					if (worldObj.getBlock(xCoord+i, yCoord, zCoord+k) != ChromaBlocks.PORTAL.getBlockInstance()) {
-						return false;
-					}
-				}
-			}
-			return true;
-		}
-
-		public int getTuning() {
-			return tuning;
-		}
-
-		@Override
-		public void validateStructure() {
-			this.validateStructure(worldObj, xCoord, yCoord, zCoord);
-		}
-
-		@Override
-		public ChromaStructures getPrimaryStructure() {
-			return ChromaStructures.PORTAL;
-		}
-
-		@Override
-		public Coordinate getStructureOffset() {
+	/**
+	 * V33a teleportPlayer: pre-join bookkeeping, tune the player by the rift's stored tuning, hand
+	 * them to {@link ChromaTeleporter} for the destination, then grant {@link ProgressStage#DIMENSION}
+	 * and play whichever arrival cue applies. Sixty percent of the stored tuning is spent per trip.
+	 */
+	@Nullable
+	@Override
+	public TeleportTransition getPortalDestination(ServerLevel currentLevel, Entity entity,
+			BlockPos portalEntryPos) {
+		if (!(entity instanceof ServerPlayer player))
 			return null;
-		}
+		if (!(currentLevel.getBlockEntity(portalEntryPos) instanceof TileEntityCrystalPortal te))
+			return null;
+		if (!te.isComplete() || !te.canPlayerUse(player))
+			return null;
+		ServerLevel target = currentLevel.getServer().getLevel(this.getTargetDimension());
+		if (target == null)
+			return null;
 
-		@Override
-		public boolean canStructureBeInspected() {
-			return true;
-		}
-
-		public final boolean hasStructure() {
-			return complete;
-		}
-
+		CheatingPreventionSystem.instance.preJoin(player);
+		DimensionTuningManager.instance.tunePlayer(player, te.consumeTuningForTrip());
+		return ChromaTeleporter.arrivalTransition(target, player, transported -> {
+			if (!(transported instanceof ServerPlayer arrived))
+				return;
+			// The first arrival is announced to the whole server; later ones only play locally, plus
+			// the source's global DIMSOUND cue.
+			if (ProgressStage.DIMENSION.stepPlayerTo(arrived))
+				ChromaSounds.GOTODIM.broadcast(arrived.level().getServer(), 1, 1);
+			else
+				ChromaSounds.GOTODIM.playSound(arrived, 1, 1);
+			CheatingPreventionSystem.instance.postJoin(arrived);
+		});
 	}
 
+	/** V33a getTargetDimension: metadata 15 goes home, everything else goes to Proxima. */
+	public ResourceKey<Level> getTargetDimension() {
+		return returnPortal ? Level.OVERWORLD : ChromaDimensions.PROXIMA;
+	}
+
+	/**
+	 * V33a isPortalFunctional: the background generators must have finished deciding Proxima's global
+	 * layout, and the dimension itself has to be loadable at all.
+	 */
+	public static boolean isPortalFunctional(Level level) {
+		return ProximaGenerators.areGeneratorsReady() && isDimensionLoadable(level);
+	}
+
+	public static boolean areGeneratorsReady(Level level) {
+		return ProximaGenerators.areGeneratorsReady();
+	}
+
+	/**
+	 * V33a {@code ChromatiCraft.isDimensionLoadable()} answered whether the configured dimension id
+	 * was actually available. The 26.2 equivalent is whether the data-driven level exists on this
+	 * server, which also covers a datapack having removed it.
+	 */
+	public static boolean isDimensionLoadable(Level level) {
+		if (level == null || level.getServer() == null)
+			return false;
+		MinecraftServer server = level.getServer();
+		return server.getLevel(ChromaDimensions.PROXIMA) != null;
+	}
+
+	/**
+	 * V33a getPortalPosition: a 1-9 numpad code for where this block sits in its pad, 5 being the
+	 * middle. It compares against the portal block identity only, so a pad mixing both rift types
+	 * still reads as one pad — which is the upstream behaviour, since metadata was ignored here.
+	 */
+	public static int getPortalPosition(BlockGetter world, BlockPos pos) {
+		boolean west = isPortal(world, pos.west());
+		boolean east = isPortal(world, pos.east());
+		boolean north = isPortal(world, pos.north());
+		boolean south = isPortal(world, pos.south());
+		if (!west)
+			return !north ? 7 : !south ? 1 : 4;
+		if (!east)
+			return !north ? 9 : !south ? 3 : 6;
+		return !north ? 8 : !south ? 2 : 5;
+	}
+
+	/**
+	 * V33a isFull9x9, which despite its name checks the 3x3 at the same height. Renamed here so the
+	 * next reader does not "fix" it into a 9x9 scan.
+	 */
+	public static boolean isFullPad(BlockGetter world, BlockPos pos) {
+		for (int i = -1; i <= 1; i++)
+			for (int k = -1; k <= 1; k++)
+				if (!isPortal(world, pos.offset(i, 0, k)))
+					return false;
+		return true;
+	}
+
+	private static boolean isPortal(BlockGetter world, BlockPos pos) {
+		return world.getBlockState(pos).getBlock() instanceof BlockChromaPortal;
+	}
+
+	/** Both rift identities, for the shared block entity type and for tag/model datagen. */
+	public static Block[] allPortalBlocks() {
+		return new Block[] { ChromaBlocks.PORTAL.get(), ChromaBlocks.RETURN_PORTAL.get() };
+	}
 }

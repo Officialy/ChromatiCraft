@@ -27,6 +27,7 @@ import net.minecraft.nbt.NbtIo;
 import net.minecraft.resources.Identifier;
 
 import reika.chromaticraft.ChromatiCraft;
+import reika.chromaticraft.registry.ChromaShieldTypes;
 import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
 import reika.chromaticraft.block.BlockCrystallineStone;
 
@@ -40,6 +41,9 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
     public static final Identifier REPEATER = id("multiblock/repeater");
     public static final Identifier COMPOUND_REPEATER = id("multiblock/compound_repeater");
     public static final Identifier PYLON_BROADCAST = id("multiblock/pylon_broadcast");
+    public static final Identifier INFUSION = id("multiblock/infusion");
+    public static final Identifier PLAYER_INFUSION = id("multiblock/player_infusion");
+    public static final Identifier PORTAL = id("multiblock/portal");
     public static final Identifier DATANODE = id("worldgen/data_node");
     public static final Identifier RAINBOW_TREE = id("worldgen/rainbow_tree");
     public static final Identifier NETHER_TEMPLE = id("worldgen/nether/temple");
@@ -56,6 +60,7 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
     public static final Identifier OVERWORLD_DESERT = id("worldgen/overworld/desert");
     public static final Identifier OVERWORLD_SNOW = id("worldgen/overworld/snow");
     public static final Identifier OVERWORLD_BIOME_FRAGMENT = id("worldgen/overworld/biome_fragment");
+    public static final List<String> VILLAGE_STYLES = List.of("plains", "desert", "savanna", "snowy", "taiga");
 
     /** V33a {@code setEmpty(false, false)}: the cell must be air. */
     private static final StateDef AIR = new StateDef("minecraft:air", Map.of());
@@ -81,6 +86,9 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
                 write(cache, REPEATER, repeater()),
                 write(cache, COMPOUND_REPEATER, compoundRepeater()),
                 write(cache, PYLON_BROADCAST, pylonBroadcast()),
+                write(cache, INFUSION, infusion()),
+                write(cache, PLAYER_INFUSION, playerInfusion()),
+                write(cache, PORTAL, importPortal()),
                 write(cache, DATANODE, dataNode()),
                 write(cache, RAINBOW_TREE, rainbowTree()),
                 write(cache, NETHER_HUT, netherHut()),
@@ -96,7 +104,227 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
                 write(cache, OVERWORLD_OCEAN_PIT_SLICE, oceanPitSlice()),
                 write(cache, OVERWORLD_DESERT, importDesert()),
                 write(cache, OVERWORLD_SNOW, importSnow()),
-                write(cache, OVERWORLD_BIOME_FRAGMENT, biomeFragment()));
+                write(cache, OVERWORLD_BIOME_FRAGMENT, biomeFragment()),
+                write(cache, villageTemplate("plains", true), importVillageStructure("plains", true)),
+                write(cache, villageTemplate("desert", true), importVillageStructure("desert", true)),
+                write(cache, villageTemplate("savanna", true), importVillageStructure("savanna", true)),
+                write(cache, villageTemplate("snowy", true), importVillageStructure("snowy", true)),
+                write(cache, villageTemplate("taiga", true), importVillageStructure("taiga", true)),
+                write(cache, villageTemplate("plains", false), importVillageStructure("plains", false)),
+                write(cache, villageTemplate("desert", false), importVillageStructure("desert", false)),
+                write(cache, villageTemplate("savanna", false), importVillageStructure("savanna", false)),
+                write(cache, villageTemplate("snowy", false), importVillageStructure("snowy", false)),
+                write(cache, villageTemplate("taiga", false), importVillageStructure("taiga", false)));
+    }
+
+    public static Identifier villageTemplate(String style, boolean wooden) {
+        return id("worldgen/village/" + style + "/" + (wooden ? "wooden_chroma" : "broken_chroma"));
+    }
+
+    /**
+     * Mechanical NBT import of V33a {@code VillagersFailChromatiCraft}. The old placement calls are
+     * deliberately kept as the single geometry authority; datagen translates their block metadata
+     * into concrete 26.2 block identities and states, then supplies the jigsaw entrance which the
+     * pre-jigsaw source could not have contained.
+     */
+    private static TemplateData importVillageStructure(String style, boolean wooden) {
+        Path source = legacyVillageSource();
+        final String java;
+        try { java = Files.readString(source); }
+        catch (IOException e) {
+            throw new IllegalStateException("Could not read V33a failed-casting village source " + source, e);
+        }
+        String classMarker = wooden ? "public static class WoodenChromaStructure"
+                : "public static class BrokenChromaStructure";
+        int classStart = java.indexOf(classMarker);
+        int methodStart = java.indexOf("protected boolean generate", classStart);
+        if (classStart < 0 || methodStart < 0)
+            throw new IllegalStateException("Missing V33a village generator " + classMarker);
+        String body = extractJavaBlock(java, java.indexOf('{', methodStart));
+
+        TemplateData data = new TemplateData(wooden ? 15 : 16, wooden ? 8 : 7, wooden ? 15 : 17);
+        if (wooden) {
+            // V33a clearVolume() writes the full bounding box to air before building the house.
+            for (int x = 0; x < 15; x++) for (int y = 0; y < 8; y++) for (int z = 0; z < 15; z++)
+                data.set(x, y, z, AIR);
+        }
+        Pattern calls = Pattern.compile("this\\.placeBlockAt(?:Fixed|Current)Position\\(world,\\s*(\\d+),\\s*(\\d+),\\s*(\\d+),\\s*(.+)\\);");
+        Matcher matcher = calls.matcher(body);
+        int found = 0;
+        while (matcher.find()) {
+            String argument = matcher.group(4).trim();
+            int split = lastTopLevelComma(argument);
+            String symbol = split >= 0 ? argument.substring(0, split).trim() : argument;
+            int metadata = split >= 0 ? parseLegacyInt(argument.substring(split + 1)) : 0;
+            data.set(Integer.parseInt(matcher.group(1)), Integer.parseInt(matcher.group(2)),
+                    Integer.parseInt(matcher.group(3)), villageState(style, symbol, metadata));
+            found++;
+        }
+        if (found < (wooden ? 500 : 100))
+            throw new IllegalStateException("Parsed only " + found + " cells from " + classMarker);
+
+		// Legacy upper-door metadata stores hinge/power bits, not the lower half's facing. A
+		// structure template has to carry a complete valid state on both halves, so inherit the
+		// facing from each matching lower half after all source placement calls have been parsed.
+		data.inheritDoorFacings();
+
+        if (wooden) {
+            data.set(7, 0, 7, lootChest("north"), villageLootChestNBT("village_casting"));
+            data.set(7, 2, 7, standingSign(9), signNBT("Your thingy was", "weird. It's my",
+                    "house now", "--Villager 19"));
+            data.set(0, 0, 7, jigsaw("west_up"), villageJigsawNBT(style,
+                    villageState(style, "this.getStair(world)", 0)));
+        }
+        else {
+            data.set(7, 0, 10, lootChest("north"), villageLootChestNBT("village_casting"));
+            data.set(7, 1, 11, vanillaChest("west"), vanillaLootChestNBT("village_casting_junk"));
+            data.set(0, 6, 11, wallSign("west"), signNBT("guys i think my", "lapiz is broken", "", "--Villager 26"));
+            data.set(1, 3, 3, wallSign("north"), signNBT("Couldn't reach.", "", "Good enough?", ""));
+            data.set(6, 1, 11, wallSign("west"), signNBT("Propertee", "of Villager", "#73", "~angryface"));
+            data.set(0, 0, 8, jigsaw("west_up"), villageJigsawNBT(style, AIR));
+        }
+        return data;
+    }
+
+    private static String extractJavaBlock(String source, int openingBrace) {
+        int depth = 0;
+        for (int i = openingBrace; i < source.length(); i++) {
+            char c = source.charAt(i);
+            if (c == '{') depth++;
+            else if (c == '}' && --depth == 0) return source.substring(openingBrace + 1, i);
+        }
+        throw new IllegalStateException("Unterminated Java method at " + openingBrace);
+    }
+
+    private static int lastTopLevelComma(String value) {
+        int depth = 0;
+        for (int i = value.length() - 1; i >= 0; i--) {
+            char c = value.charAt(i);
+            if (c == ')') depth++;
+            else if (c == '(') depth--;
+            else if (c == ',' && depth == 0) return i;
+        }
+        return -1;
+    }
+
+    private static StateDef villageState(String style, String symbol, int metadata) {
+        String wood = switch (style) {
+            case "savanna" -> "acacia";
+            case "snowy", "taiga" -> "spruce";
+            default -> "oak";
+        };
+        if (symbol.equals("this.getBase(world)"))
+            return new StateDef(style.equals("desert") ? "minecraft:sandstone" : "minecraft:cobblestone", Map.of());
+        if (symbol.equals("this.getFloor(world)"))
+            return new StateDef(style.equals("desert") ? "minecraft:smooth_sandstone" : "minecraft:" + wood + "_planks", Map.of());
+        if (symbol.startsWith("this.getColumns(world")) {
+            if (style.equals("desert")) return new StateDef("minecraft:cut_sandstone", Map.of());
+            return new StateDef("minecraft:" + wood + "_log", Map.of("axis",
+                    (metadata & 12) == 4 ? "x" : (metadata & 12) == 8 ? "z" : "y"));
+        }
+        if (symbol.equals("this.getStair(world)"))
+            return legacyVillageStair(style.equals("desert") ? "sandstone" : wood, metadata);
+        return switch (symbol) {
+            case "b" -> stone(StoneTypes.list[Math.max(0, Math.min(StoneTypes.list.length - 1, metadata))]);
+			case "Blocks.glass" -> new StateDef("minecraft:glass", Map.of());
+            case "Blocks.glass_pane" -> new StateDef("minecraft:glass_pane", Map.of("east", "false", "north", "false", "south", "false", "waterlogged", "false", "west", "false"));
+            case "Blocks.double_stone_slab" -> new StateDef("minecraft:smooth_stone_slab", Map.of("type", "double", "waterlogged", "false"));
+			case "Blocks.crafting_table" -> new StateDef("minecraft:crafting_table", Map.of());
+			case "Blocks.glowstone" -> new StateDef("minecraft:glowstone", Map.of());
+            case "Blocks.torch" -> legacyVillageTorch(metadata);
+            case "Blocks.wooden_door" -> legacyVillageDoor(wood, metadata);
+            case "Blocks.coal_ore" -> new StateDef("minecraft:coal_ore", Map.of());
+            case "Blocks.wool" -> new StateDef(metadata == 11 ? "minecraft:blue_wool" : "minecraft:white_wool", Map.of());
+            case "Blocks.gravel" -> new StateDef("minecraft:gravel", Map.of());
+            case "Blocks.flowing_water" -> new StateDef("minecraft:water", Map.of("level", "0"));
+            default -> throw new IllegalStateException("Unmapped V33a village block " + symbol + " metadata " + metadata);
+        };
+    }
+
+    private static StateDef legacyVillageStair(String material, int metadata) {
+        String[] facings = {"east", "west", "south", "north"};
+        return new StateDef("minecraft:" + material + "_stairs", Map.of(
+                "facing", facings[metadata & 3], "half", (metadata & 4) != 0 ? "top" : "bottom",
+                "shape", "straight", "waterlogged", "false"));
+    }
+
+    private static StateDef legacyVillageTorch(int metadata) {
+        if (metadata == 0 || metadata == 5) return new StateDef("minecraft:torch", Map.of());
+        String[] facings = {"east", "west", "south", "north"};
+        return new StateDef("minecraft:wall_torch", Map.of("facing", facings[Math.max(1, metadata) - 1]));
+    }
+
+    private static StateDef legacyVillageDoor(String wood, int metadata) {
+        String[] facings = {"east", "south", "west", "north"};
+        boolean upper = (metadata & 8) != 0;
+        return new StateDef("minecraft:" + wood + "_door", Map.of(
+                "facing", facings[metadata & 3], "half", upper ? "upper" : "lower", "hinge", "left",
+                "open", "false", "powered", "false"));
+    }
+
+    private static StateDef standingSign(int rotation) {
+        return new StateDef("minecraft:oak_sign", Map.of("rotation", Integer.toString(rotation & 15), "waterlogged", "false"));
+    }
+
+    private static StateDef wallSign(String facing) {
+        return new StateDef("minecraft:oak_wall_sign", Map.of("facing", facing, "waterlogged", "false"));
+    }
+
+    private static StateDef jigsaw(String orientation) {
+        return new StateDef("minecraft:jigsaw", Map.of("orientation", orientation));
+    }
+
+    private static CompoundTag villageJigsawNBT(String style, StateDef finalState) {
+        CompoundTag nbt = new CompoundTag();
+        nbt.putString("id", "minecraft:jigsaw");
+        nbt.putString("joint", "aligned");
+        nbt.putString("name", "minecraft:building_entrance");
+        nbt.putString("target", "minecraft:building_entrance");
+        nbt.putString("pool", "minecraft:village/" + style + "/streets");
+        nbt.putString("final_state", stateString(finalState));
+        return nbt;
+    }
+
+    private static String stateString(StateDef state) {
+        if (state.properties().isEmpty()) return state.name();
+        return state.name() + "[" + state.properties().entrySet().stream()
+                .sorted(Map.Entry.comparingByKey())
+                .map(e -> e.getKey() + "=" + e.getValue()).collect(java.util.stream.Collectors.joining(",")) + "]";
+    }
+
+    private static CompoundTag villageLootChestNBT(String table) {
+        CompoundTag nbt = vanillaLootChestNBT(table);
+        nbt.putString("id", "chromaticraft:loot_chest");
+        ListTag triggers = new ListTag();
+        triggers.add(net.minecraft.nbt.StringTag.valueOf("VILLAGECASTING"));
+        nbt.put("triggers", triggers);
+        return nbt;
+    }
+
+    private static CompoundTag vanillaLootChestNBT(String table) {
+        CompoundTag nbt = new CompoundTag();
+        nbt.putString("id", "minecraft:chest");
+        nbt.putString("LootTable", "chromaticraft:chests/" + table);
+        return nbt;
+    }
+
+    private static CompoundTag signNBT(String... lines) {
+        CompoundTag nbt = new CompoundTag();
+        nbt.putString("id", "minecraft:sign");
+        nbt.put("front_text", signText(lines));
+        nbt.put("back_text", signText(new String[] {"", "", "", ""}));
+        nbt.putBoolean("is_waxed", false);
+        return nbt;
+    }
+
+    private static CompoundTag signText(String[] lines) {
+        CompoundTag text = new CompoundTag();
+        ListTag messages = new ListTag();
+        for (int i = 0; i < 4; i++) messages.add(net.minecraft.nbt.StringTag.valueOf(lines[i]));
+        text.put("messages", messages);
+        text.putString("color", "black");
+        text.putBoolean("has_glowing_text", false);
+        return text;
     }
 
     /** Exact 15x14x15 V33a Biome Fragment shell plus all runtime-configured puzzle cells. */
@@ -745,6 +973,107 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
         return data;
     }
 
+    /**
+     * Mechanical NBT import of V33a {@code PortalStructure}. Its 581 explicit placement calls are the
+     * single geometry authority; nothing here is retyped by hand.
+     *
+     * <p>The authored volume is 15x10x15 anchored on the controller at template {@code (7,0,7)} —
+     * V33a offsets by {@code i = x-7, j = y+0, k = z-7} and puts the 3x3 Portal Rift pad on the
+     * bottom layer at {@code i+6..i+8, j+0, k+6..k+8}. The four Pylon Focus cells land at
+     * {@code (+-3, +5, +-3)} from the anchor, which is exactly where {@code chargingParticles()}
+     * probes for them, so the anchor is self-checking.
+     *
+     * <p>Deliberately NOT in the template: the eight vanilla Ender Crystals at {@code (+-5,+5,-+9)}
+     * and {@code (+-9,+5,-+5)}, and the bedrock pads beneath them. Both are outside the 15x15
+     * footprint, the bedrock is only placed by {@code isDisplay()} and is never a match requirement,
+     * and entities cannot be a structure-template match condition. The block entity checks those
+     * eight positions separately, exactly as V33a's {@code getEntities()} does.
+     *
+     * <p>Symbol contracts carried over from the source calls:
+     * <ul>
+     * <li>{@code shield, 0} — Shielding, metadata 0. V33a {@code BlockType.metadata = ordinal()+8},
+     *     so bit 3 is the reinforced flag and bits 0-2 are the material: metadata 0 is a plain,
+     *     player-placeable Cloak Shielding, not the unbreakable worldgen form.</li>
+     * <li>{@code crystalstone, N} — the Nth {@link StoneTypes}. Beams additionally carry the 26.2
+     *     axis property, which V33a expressed through its renderer rather than metadata; it is
+     *     recovered here from each beam run's own direction.</li>
+     * <li>{@code setFluid(er)} — V33a {@code FluidCheck(needSource=true)}: the cell must hold a
+     *     Liquid Ender <em>source</em>, so it is written as the exact level-0 state.</li>
+     * <li>{@code setBlock(ch)} — Luma through a metadata-wildcard {@code BlockKey}: any level.</li>
+     * <li>{@code setBlock(ch, 1)} — Luma at legacy quanta 1. {@code BlockEtherealLuma} used
+     *     {@code setQuantaPerBlock(16)} where 26.2's {@code LiquidBlock} has 8, so the exact legacy
+     *     index has no equivalent; what the call means is "flowing, not a source", which is how
+     *     {@link reika.chromaticraft.auxiliary.structure.PortalStructure} matches it.</li>
+     * </ul>
+     * Both Luma contracts are written with their natural placement state and are recognised by
+     * position through the structure's own cell rule, so the wildcard survives in the template
+     * instead of collapsing into a literal state comparison.
+     */
+    private static TemplateData importPortal() {
+        Path source = legacyStructureSource("legacy/PortalStructure.java");
+        final String java;
+        try {
+            java = Files.readString(source);
+        }
+        catch (IOException e) {
+            throw new IllegalStateException("Could not read V33a portal source " + source, e);
+        }
+        TemplateData data = new TemplateData(15, 10, 15);
+        Map<BlockPos, Integer> beams = new LinkedHashMap<>();
+        int found = 0;
+
+        Pattern blocks = Pattern.compile(
+                "array\\.setBlock\\(i\\+(\\d+),\\s*j\\+(\\d+),\\s*k\\+(\\d+),\\s*(shield|crystalstone|ch|p)(?:,\\s*(\\d+))?\\);");
+        Matcher matcher = blocks.matcher(java);
+        while (matcher.find()) {
+            int x = Integer.parseInt(matcher.group(1));
+            int y = Integer.parseInt(matcher.group(2));
+            int z = Integer.parseInt(matcher.group(3));
+            String symbol = matcher.group(4);
+            String rawMeta = matcher.group(5);
+            int meta = rawMeta == null ? -1 : Integer.parseInt(rawMeta);
+            switch (symbol) {
+                case "shield" -> data.set(x, y, z, new StateDef(
+                        "chromaticraft:" + ChromaShieldTypes.list[meta & 7].registryName(),
+                        Map.of("reinforced", String.valueOf(meta >= 8))));
+                case "crystalstone" -> {
+                    StoneTypes type = StoneTypes.list[meta];
+                    if (type.isBeam())
+                        beams.put(new BlockPos(x, y, z), meta);
+                    data.set(x, y, z, stone(type));
+                }
+                // V33a setBlock(ch) is a wildcard-metadata BlockKey and setBlock(ch, 1) is flowing
+                // Luma; both are written in their natural placed state.
+                case "ch" -> data.set(x, y, z, new StateDef("chromaticraft:luma",
+                        Map.of("level", meta < 0 ? "0" : "1")));
+                case "p" -> data.set(x, y, z, new StateDef("chromaticraft:portal_rift", Map.of()));
+                default -> throw new IllegalStateException("Unhandled V33a portal symbol " + symbol);
+            }
+            found++;
+        }
+
+        Pattern fluids = Pattern.compile(
+                "array\\.setFluid\\(i\\+(\\d+),\\s*j\\+(\\d+),\\s*k\\+(\\d+),\\s*er\\);");
+        matcher = fluids.matcher(java);
+        while (matcher.find()) {
+            data.set(Integer.parseInt(matcher.group(1)), Integer.parseInt(matcher.group(2)),
+                    Integer.parseInt(matcher.group(3)),
+                    new StateDef("chromaticraft:liquid_ender", Map.of("level", "0")));
+            found++;
+        }
+
+        if (found != 581)
+            throw new IllegalStateException("Expected 581 V33a portal cells, parsed " + found + " from " + source);
+
+        // Each beam run is a straight line of one variant; take the axis from whichever neighbour
+        // shares its variant. V33a stored no axis at all, so this recovers what its renderer drew.
+        beams.forEach((pos, meta) -> {
+            boolean alongX = meta.equals(beams.get(pos.east())) || meta.equals(beams.get(pos.west()));
+            data.set(pos.getX(), pos.getY(), pos.getZ(), stone(StoneTypes.list[meta], alongX ? "x" : "z"));
+        });
+        return data;
+    }
+
     private static int groupInt(Matcher matcher, int group) {
         String value = matcher.group(group);
         return value == null ? 0 : Integer.parseInt(value);
@@ -917,6 +1246,20 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
         return Path.of("").toAbsolutePath().resolve(relative);
     }
 
+    private static Path legacyStructureSource(String fileName) {
+        Path relative = Path.of("src/main/java/reika/chromaticraft/auxiliary/structure", fileName);
+        Path cursor = Path.of("").toAbsolutePath();
+        for (int depth = 0; depth < 4 && cursor != null; depth++, cursor = cursor.getParent()) {
+            Path direct = cursor.resolve(relative);
+            if (Files.isRegularFile(direct))
+                return direct;
+            Path module = cursor.resolve("ChromatiCraft").resolve(relative);
+            if (Files.isRegularFile(module))
+                return module;
+        }
+        return Path.of("").toAbsolutePath().resolve(relative);
+    }
+
     private static Path legacyWorldgenSource(String fileName) {
         Path relative = Path.of("src/main/java/reika/chromaticraft/auxiliary/structure/worldgen", fileName);
         Path cursor = Path.of("").toAbsolutePath();
@@ -927,6 +1270,18 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
             Path module = cursor.resolve("ChromatiCraft").resolve(relative);
             if (Files.isRegularFile(module))
                 return module;
+        }
+        return Path.of("").toAbsolutePath().resolve(relative);
+    }
+
+    private static Path legacyVillageSource() {
+        Path relative = Path.of("src/main/java/reika/chromaticraft/world/VillagersFailChromatiCraft.java");
+        Path cursor = Path.of("").toAbsolutePath();
+        for (int depth = 0; depth < 4 && cursor != null; depth++, cursor = cursor.getParent()) {
+            Path direct = cursor.resolve(relative);
+            if (Files.isRegularFile(direct)) return direct;
+            Path module = cursor.resolve("ChromatiCraft").resolve(relative);
+            if (Files.isRegularFile(module)) return module;
         }
         return Path.of("").toAbsolutePath().resolve(relative);
     }
@@ -1366,6 +1721,61 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
         // replaces them with a registry-identity BlockCheck for exact matching/display semantics.
         data.set(x, y, z, new StateDef("chromaticraft:liquid_chroma", Map.of("level", "0")));
     }
+
+    /** Exact V33a {@code InfusionStructure}; the machine is anchored at template (3,2,3). */
+    private static TemplateData infusion() {
+        TemplateData data = new TemplateData(7, 3, 7);
+        int c = 3;
+        setInfusionCircle(data, c, 1, 0.6, stone(StoneTypes.BRICKS));
+        setInfusionCircle(data, c, 1, 2,
+                new StateDef("chromaticraft:liquid_chroma", Map.of("level", "0")));
+        setInfusionCircle(data, c, 0, 2, stone(StoneTypes.SMOOTH));
+        setInfusionCircle(data, c, 1, 3.2, stone(StoneTypes.BRICKS));
+        return data;
+    }
+
+	/** Exact V33a {@code PlayerInfusionStructure}; controller anchor is template (4,3,4). */
+	private static TemplateData playerInfusion() {
+		TemplateData data = new TemplateData(9, 4, 9);
+		int c = 4;
+		StateDef chroma = new StateDef("chromaticraft:liquid_chroma", Map.of("level", "0"));
+		for (int x = -3; x <= 3; x++) for (int z = -3; z <= 3; z++) {
+			data.set(c + x, 0, c + z, stone(StoneTypes.SMOOTH));
+			data.set(c + x, 1, c + z, chroma);
+		}
+
+		data.set(c, 1, c, stone(StoneTypes.COLUMN));
+		data.set(c, 2, c, stone(StoneTypes.FOCUS));
+		data.set(c, 3, c, new StateDef("chromaticraft:player_aura_infuser", Map.of()));
+		for (int[] point : new int[][] {{2,0},{-2,0},{0,2},{0,-2}})
+			data.set(c + point[0], 1, c + point[1], stone(StoneTypes.STABILIZER));
+
+		for (int i = -4; i <= 4; i++) {
+			if (i == 0) continue;
+			StoneTypes type = Math.abs(i) <= 1 || Math.abs(i) == 4 ? StoneTypes.CORNER : StoneTypes.BEAM;
+			data.set(c + i, 1, c + 4, stone(type, "x"));
+			data.set(c + i, 1, c - 4, stone(type, "x"));
+			data.set(c - 4, 1, c + i, stone(type, "z"));
+			data.set(c + 4, 1, c + i, stone(type, "z"));
+		}
+		for (int i = -1; i <= 1; i++) {
+			StoneTypes type = i == 0 ? StoneTypes.BRICKS : StoneTypes.CORNER;
+			data.set(c + i, 1, c + 3, stone(type));
+			data.set(c + i, 1, c - 3, stone(type));
+			data.set(c - 3, 1, c + i, stone(type));
+			data.set(c + 3, 1, c + i, stone(type));
+		}
+		return data;
+	}
+
+    private static void setInfusionCircle(TemplateData data, int center, int y, double radius,
+            StateDef state) {
+        for (int angle = 0; angle < 360; angle += 15) {
+            int x = (int)Math.floor(center + 0.5 + radius * Math.sin(Math.toRadians(angle)));
+            int z = (int)Math.floor(center + 0.5 + radius * Math.cos(Math.toRadians(angle)));
+            data.set(x, y, z, state);
+        }
+    }
     private static TemplateData repeater() {
         TemplateData data = new TemplateData(1, 4, 1);
         data.set(0, 3, 0, new StateDef("chromaticraft:crystal_repeater", Map.of()));
@@ -1400,6 +1810,11 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
         String name = "chromaticraft:" + reika.chromaticraft.registry.ChromaBlocks.crystallineStoneName(type);
         return type.isBeam() ? new StateDef(name, Map.of("axis", "x")) : new StateDef(name, Map.of());
     }
+
+	private static StateDef stone(StoneTypes type, String axis) {
+		String name = "chromaticraft:" + reika.chromaticraft.registry.ChromaBlocks.crystallineStoneName(type);
+		return type.isBeam() ? new StateDef(name, Map.of("axis", axis)) : new StateDef(name, Map.of());
+	}
 
     private static Identifier id(String path) {
         return Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, path);
@@ -1499,6 +1914,22 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
         void remove(int x, int y, int z) {
             blocks.remove(new BlockPos(x, y, z));
         }
+
+		void inheritDoorFacings() {
+			for (Map.Entry<BlockPos, Cell> entry : List.copyOf(blocks.entrySet())) {
+				StateDef upper = entry.getValue().state();
+				if (!upper.name().endsWith("_door") || !"upper".equals(upper.properties().get("half")))
+					continue;
+				Cell below = blocks.get(entry.getKey().below());
+				if (below == null || !upper.name().equals(below.state().name())
+						|| !"lower".equals(below.state().properties().get("half")))
+					continue;
+				Map<String, String> properties = new LinkedHashMap<>(upper.properties());
+				properties.put("facing", below.state().properties().get("facing"));
+				blocks.put(entry.getKey(), new Cell(new StateDef(upper.name(), Map.copyOf(properties)),
+						entry.getValue().nbt()));
+			}
+		}
 
         CompoundTag toNBT() {
             CompoundTag root = new CompoundTag();

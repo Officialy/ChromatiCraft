@@ -9,6 +9,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.server.level.ParticleStatus;
 import java.util.Random;
 import java.util.Collection;
+import java.util.List;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
@@ -45,6 +46,72 @@ public abstract class ChromaParticle extends SingleQuadParticle {
             ChromaRenderPipelines.ADDITIVE_PARTICLE);
 
     private final boolean additive;
+
+	/** Exact V33a Item Infuser six-fold inward Liquid Chroma spiral. */
+	public static void spawnItemInfuserCrafting(Level world, BlockPos pos, long tick, RandomSource random) {
+		if (!(world instanceof ClientLevel level)) return;
+		double angle = Math.toRadians(tick * 2 % 360);
+		float phase = (float)Math.sin(Math.toRadians(tick * 4));
+		float scale = 1.25F + 0.25F * phase;
+		for (int degrees = 0; degrees < 360; degrees += 60) {
+			boolean tall = degrees % 120 == 0;
+			float gravity = tall ? 0.375F * (0.5F + 0.5F * phase) : 0.375F;
+			double a = angle + Math.toRadians(degrees);
+			double radius = 1.85;
+			double speed = tall ? 0.0425 * (1 + phase) : 0.0375 + random.nextDouble() * 0.01;
+			double x = pos.getX() + 0.5 + radius * Math.sin(a);
+			double y = pos.getY() - 0.75;
+			double z = pos.getZ() + 0.5 + radius * Math.cos(a);
+			Minecraft.getInstance().particleEngine.add(new Fluid(level, x, y, z,
+					-speed * (x - pos.getX() - 0.5), 0.3,
+					-speed * (z - pos.getZ() - 0.5), scale, 40, gravity));
+		}
+	}
+
+	/** V33a completion ring: 24 white flares, one every fifteen degrees. */
+	public static void spawnItemInfuserCompletion(Level world, BlockPos pos, RandomSource random) {
+		if (!(world instanceof ClientLevel level)) return;
+		for (int degrees = 0; degrees < 360; degrees += 15) {
+			double angle = Math.toRadians(degrees - 5 + random.nextDouble() * 10);
+			double speed = 0.075;
+			Minecraft.getInstance().particleEngine.add(new FadeGlow(level,
+					pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5,
+					speed * Math.sin(angle), 0, speed * Math.cos(angle),
+					0xffffff, 20, 1F, true));
+		}
+	}
+
+	/** Exact V33a Player Infuser stream: random reservoir cells arc inward toward the recipient. */
+	public static void spawnPlayerInfuserCrafting(Level world, BlockPos pos,
+			Collection<BlockPos> chromaCells, RandomSource random) {
+		if (!(world instanceof ClientLevel level) || chromaCells.isEmpty()) return;
+		ParticleStatus status = Minecraft.getInstance().options.particles().get();
+		int setting = status == ParticleStatus.ALL ? 0 : status == ParticleStatus.DECREASED ? 1 : 2;
+		int count = Math.max(1, random.nextInt(4) - setting);
+		BlockPos[] cells = chromaCells.toArray(BlockPos[]::new);
+		for (int i = 0; i < count; i++) {
+			BlockPos cell = cells[random.nextInt(cells.length)];
+			double x = cell.getX() + random.nextDouble();
+			double z = cell.getZ() + random.nextDouble();
+			double vy = 0.125 + random.nextDouble() * 0.275;
+			Minecraft.getInstance().particleEngine.add(new Fluid(level, x, cell.getY() + 0.5, z,
+					-vy * (x - pos.getX() - 0.5) / 6, vy,
+					-vy * (z - pos.getZ() - 0.5) / 6, 1.5F, 40, (float)(vy * 1.2)));
+		}
+	}
+
+	/** Exact V33a idle fountain droplet above one random Liquid Chroma reservoir cell. */
+	public static void spawnPlayerInfuserAmbient(Level world, Collection<BlockPos> chromaCells,
+			RandomSource random) {
+		if (!(world instanceof ClientLevel level) || chromaCells.isEmpty()) return;
+		BlockPos[] cells = chromaCells.toArray(BlockPos[]::new);
+		BlockPos cell = cells[random.nextInt(cells.length)];
+		double vy = 0.0625 + random.nextDouble() * 0.3125;
+		float gravity = (float)Math.max(0.125 + random.nextDouble() * 0.125, vy);
+		Minecraft.getInstance().particleEngine.add(new Fluid(level,
+				cell.getX() + random.nextDouble(), cell.getY() + 0.5,
+				cell.getZ() + random.nextDouble(), 0, vy, 0, 1.75F, 40, gravity));
+	}
 
 	/** V33a Lumafly's periodic rapidly-expanding red-to-orange aura. */
 	public static void spawnTunnelNuker(Level world, Vec3 pos, RandomSource random) {
@@ -591,6 +658,96 @@ public abstract class ChromaParticle extends SingleQuadParticle {
                 x, pos.getY(), z, 0, 0.1, 0, CrystalElement.WHITE, 1F, ADDITIVE_LASER_SHEET));
     }
 
+    /**
+     * V33a {@code TileEntityCrystalPortal.idleParticles}: one rising, colour-cycling fade mote per
+     * tick anywhere in the 3x3 pad's footprint, from a quarter block above the rim. The colour is the
+     * blended 40-tick element cycle, so a formed but uncharged portal already shimmers.
+     */
+    public static void spawnPortalIdle(Level world, BlockPos pos, int ticks, RandomSource random) {
+        if (!(world instanceof ClientLevel level)) return;
+        double px = pos.getX() + 0.5 + (random.nextDouble() * 2 - 1) * 1.5;
+        double pz = pos.getZ() + 0.5 + (random.nextDouble() * 2 - 1) * 1.5;
+        int life = 80 + (int)((random.nextDouble() * 2 - 1) * 40);
+        FadeGlow glow = new FadeGlow(level, px, pos.getY() + 1.25, pz, 0, 0, 0,
+                CrystalElement.getBlendedColor(ticks, 40), life, 1F, false);
+        glow.gravity = -(float)(0.125 + (random.nextDouble() * 2 - 1) * 0.0625);
+        glow.hasPhysics = false;
+        Minecraft.getInstance().particleEngine.add(glow);
+    }
+
+    /**
+     * V33a {@code TileEntityCrystalPortal.chargingParticles}: while the formed portal is filling its
+     * 300-tick charge, a ball of lightning falls inward from one of the four Pylon Focus blocks at
+     * {@code (+-3, +5, +-3)} on average once every four ticks. Unlike the other portal effects this
+     * one collides with the world, so it visibly rolls down the fountain.
+     *
+     * @param focusPositions the focus cells that actually exist right now, as absolute positions
+     */
+    public static void spawnPortalCharging(Level world, BlockPos pos, List<BlockPos> focusPositions,
+            int ticks, RandomSource random) {
+        if (!(world instanceof ClientLevel level) || focusPositions.isEmpty()) return;
+        if (random.nextInt(4) != 0) return;
+        BlockPos focus = focusPositions.get(random.nextInt(focusPositions.size()));
+        CrystalElement color = CrystalElement.elements[ticks / 8 % CrystalElement.elements.length];
+        BallLightning bolt = new BallLightning(level, focus.getX() + random.nextDouble(),
+                focus.getY() + random.nextDouble(), focus.getZ() + random.nextDouble(), color, 0);
+        double v = 0.125;
+        bolt.xd = v * -Math.signum(focus.getX() - pos.getX());
+        bolt.yd = -0.125;
+        bolt.zd = v * -Math.signum(focus.getZ() - pos.getZ());
+        Minecraft.getInstance().particleEngine.add(bolt);
+    }
+
+    /**
+     * V33a {@code TileEntityCrystalPortal.activeParticles}: the fully charged rift's three
+     * simultaneous effects, all on the element that the 8-tick cycle currently selects.
+     *
+     * <ol>
+     * <li>a rising fade mote from the top of the arch, eight and a quarter blocks up;</li>
+     * <li>a 64-frame centre blur drifting inward along one axis from a Pylon Focus corner;</li>
+     * <li>an element rune drifting inward from the outer ring at {@code +-7} on one axis and
+     *     {@code +-3} on the other, living 60 ticks along the long axis and 100 across it.</li>
+     * </ol>
+     */
+    public static void spawnPortalActive(Level world, BlockPos pos, int ticks, RandomSource random) {
+        if (!(world instanceof ClientLevel level)) return;
+        CrystalElement color = CrystalElement.elements[ticks / 8 % CrystalElement.elements.length];
+
+        FadeGlow glow = new FadeGlow(level, pos.getX() + 0.5, pos.getY() + 8.25, pos.getZ() + 0.5,
+                (random.nextDouble() * 2 - 1) * 0.03125, 0, (random.nextDouble() * 2 - 1) * 0.03125,
+                0xFFFFFF, 60, 1F, false);
+        glow.gravity = -(float)(0.125 + (random.nextDouble() * 2 - 1) * 0.0625);
+        Minecraft.getInstance().particleEngine.add(glow);
+
+        int dx = random.nextBoolean() ? 3 : -3;
+        int dz = random.nextBoolean() ? 3 : -3;
+        double x = pos.getX() + dx + random.nextDouble();
+        double y = pos.getY() + 5 + random.nextDouble();
+        double z = pos.getZ() + dz + random.nextDouble();
+        double v = 0.0625;
+        double vx = x < pos.getX() ? v : -v;
+        double vz = z < pos.getZ() ? v : -v;
+        if (random.nextBoolean()) vx = 0; else vz = 0;
+        AnimatedSheetParticle blur = new AnimatedSheetParticle(level, x, y, z, vx, 0, vz,
+                color, 2F, ADDITIVE_LASER_SHEET);
+        blur.hasPhysics = false;
+        Minecraft.getInstance().particleEngine.add(blur);
+
+        dx = random.nextBoolean() ? 7 : -7;
+        dz = random.nextBoolean() ? 7 : -7;
+        if (random.nextBoolean()) dx += Math.signum(dx) * -4; else dz += Math.signum(dz) * -4;
+        x = pos.getX() + dx + random.nextDouble();
+        y = pos.getY() + 5 + random.nextDouble();
+        z = pos.getZ() + dz + random.nextDouble();
+        vx = x < pos.getX() ? v : -v;
+        vz = z < pos.getZ() ? v : -v;
+        if (random.nextBoolean()) vx = 0; else vz = 0;
+        boolean longAxis = (Math.abs(dx) == 7 && vx != 0) || (Math.abs(dz) == 7 && vz != 0);
+        Rune rune = new Rune(level, x, y, z, vx, 0, vz, color, longAxis ? 60 : 100, 2F);
+        rune.hasPhysics = false;
+        Minecraft.getInstance().particleEngine.add(rune);
+    }
+
     public static void spawnCasting(Level world, BlockPos pos,
             reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe.Tier tier,
             boolean hasTemple, boolean hasMultiblock, boolean hasPylonStructure,
@@ -1101,6 +1258,10 @@ public abstract class ChromaParticle extends SingleQuadParticle {
                 this.z = this.controller.getPositionZ(null);
             }
             else {
+                // V33a EntityBlurFX inherits EntityFX's per-tick gravity step; overriding tick()
+                // without it silently pinned every setGravity() caller (glow daisy/root motes, the
+                // portal's rising idle and active blurs) to straight-line motion.
+                this.yd -= 0.04 * this.gravity;
                 this.move(this.xd, this.yd, this.zd);
             }
             this.updateAppearance();

@@ -21,6 +21,8 @@ import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.trading.MerchantOffer;
+import net.minecraft.world.item.trading.VillagerTrade;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.CraftingRecipe;
@@ -30,6 +32,8 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.util.RandomSource;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.boss.enderdragon.EndCrystal;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -39,6 +43,10 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
 import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
+import net.minecraft.world.level.storage.loot.LootContext;
+import net.minecraft.world.level.storage.loot.LootParams;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
@@ -57,6 +65,9 @@ import reika.chromaticraft.block.BlockEncrustedCrystal;
 import reika.chromaticraft.block.crystal.BlockCaveCrystal;
 import reika.chromaticraft.block.BlockEncrustedCrystal.TileCrystalEncrusted;
 import reika.chromaticraft.data.ChromaTestStructureProvider;
+import reika.chromaticraft.data.ChromaStructureTemplateProvider;
+import reika.chromaticraft.data.ChromaWorldGenProvider;
+import reika.chromaticraft.auxiliary.structure.NBTStructureLoader;
 import reika.chromaticraft.block.BlockCrystalRune;
 import reika.chromaticraft.block.BlockCrystallineStone;
 import reika.chromaticraft.block.worldgen26.BlockCliffStone;
@@ -77,7 +88,9 @@ import reika.chromaticraft.registry.ChromaEntityTypes;
 import reika.chromaticraft.registry.ChromaClusterItems;
 import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.ChromaTieredItems;
+import reika.chromaticraft.registry.StorageCrystalTier;
 import reika.chromaticraft.item.ItemCrystalShard;
+import reika.chromaticraft.items.ItemStorageCrystal;
 import reika.chromaticraft.magic.progression.CastingProgression;
 import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.magic.progression.ResearchLevel;
@@ -88,10 +101,16 @@ import reika.chromaticraft.magic.progression.LexiconDescriptions;
 import reika.chromaticraft.magic.progression.ProgressionDescriptions;
 import reika.chromaticraft.tileentity.recipe.TileEntityItemStand;
 import reika.chromaticraft.tileentity.recipe.TileEntityCastingTable;
+import reika.chromaticraft.tileentity.recipe.TileEntityItemInfuser;
+import reika.chromaticraft.tileentity.recipe.TileEntityAuraInfuser;
+import reika.chromaticraft.tileentity.recipe.TileEntityPlayerInfuser;
+import reika.chromaticraft.magic.ElementBufferCapacityBoost;
 import reika.chromaticraft.magic.progression.ProgressionManager;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.tileentity.auxiliary.TileEntityFocusCrystal;
+import reika.chromaticraft.tileentity.auxiliary.TileEntityCrystalCharger;
 import reika.chromaticraft.registry.ChromaStructures;
+import reika.chromaticraft.registry.ChromaFluids;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.tileentity.TileEntityDisplayPoint;
 import reika.chromaticraft.tileentity.TileEntityLootChest;
@@ -124,7 +143,13 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Consumer;
+import net.neoforged.neoforge.transfer.fluid.FluidResource;
+import net.neoforged.neoforge.transfer.transaction.Transaction;
+import net.neoforged.neoforge.fluids.FluidType;
 import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
+import reika.chromaticraft.block.BlockChromaPortal;
+import reika.chromaticraft.tileentity.TileEntityCrystalPortal;
+import reika.chromaticraft.auxiliary.structure.PortalStructure;
 import reika.chromaticraft.block.dimension.structure.lightpanel.BlockLightPanel;
 import reika.chromaticraft.block.dimension.structure.lightpanel.BlockLightSwitch;
 import reika.chromaticraft.world.dimension.structure.lightpanel.LightType;
@@ -168,6 +193,7 @@ public final class ChromaGameTests {
 		register(event, env, "progression_recursive_parents", ChromaGameTests::recursiveParents);
 		register(event, env, "progression_prereq_gating", ChromaGameTests::prereqGating);
 		register(event, env, "progression_color_discovery", ChromaGameTests::colorDiscovery);
+		register(event, env, "progression_chained_energy_idea", ChromaGameTests::chainedEnergyIdea);
 		register(event, env, "network_pylon_to_receiver", ChromaGameTests::pylonToReceiver);
 		register(event, env, "network_pylon_repeater_receiver", ChromaGameTests::pylonRepeaterReceiver);
 		register(event, env, "pylon_structure_lifecycle", 35, ChromaGameTests::pylonStructureLifecycle);
@@ -255,6 +281,168 @@ public final class ChromaGameTests {
 		register(event, env, "chroma_door_uuid_key_loop", 70, ChromaGameTests::chromaDoorUuidKeyLoop);
 		register(event, env, "heat_lamp_temperature_furnace_loop", ChromaGameTests::heatLampTemperatureFurnaceLoop);
 		register(event, env, "burrow_cache_loot_halves", ChromaGameTests::burrowCacheLootHalves);
+		register(event, env, "loot_chest_lid_event", ChromaGameTests::lootChestLidEvent);
+		register(event, env, "village_casting_nbt_contract", ChromaGameTests::villageCastingNbtContract);
+		register(event, env, "focus_crystal_trade_definition", ChromaGameTests::focusCrystalTradeDefinition);
+		register(event, env, "storage_crystal_item_and_recipe", ChromaGameTests::storageCrystalItemAndRecipe);
+		register(event, env, "crystal_charger_item_loop", ChromaGameTests::crystalChargerItemLoop);
+		register(event, env, "item_aura_infuser_loop", ChromaGameTests::itemAuraInfuserLoop);
+		register(event, env, "player_aura_infuser_loop", ChromaGameTests::playerAuraInfuserLoop);
+		register(event, env, "portal_structure_and_charge", 80, ChromaGameTests::portalStructureAndCharge);
+		register(event, env, "portal_entry_rules", ChromaGameTests::portalEntryRules);
+	}
+
+	/**
+	 * The generated 15x10x15 portal NBT must validate as a real multiblock, charge on the source's
+	 * 300-tick timer, invalidate when any required cell is broken, and revalidate when it is restored.
+	 * Charge, tuning and ownership must survive a block-entity save/load.
+	 */
+	private static void portalStructureAndCharge(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		BlockPos pad = helper.absolutePos(new BlockPos(20, 6, 20));
+		NBTStructureLoader.place(level, ChromaStructureTemplateProvider.PORTAL, pad,
+				PortalStructure.ANCHOR, state -> state, 2);
+
+		BlockEntity blockEntity = level.getBlockEntity(pad);
+		helper.assertTrue(blockEntity instanceof TileEntityCrystalPortal,
+				"the portal NBT must place its registered Portal Rift entity at the template anchor");
+		TileEntityCrystalPortal portal = (TileEntityCrystalPortal)blockEntity;
+		helper.assertTrue(portal.isPadCentre(),
+				"template anchor (7,0,7) must be the centre of the 3x3 rift pad");
+
+		portal.validateStructure();
+		helper.assertTrue(!portal.isComplete(),
+				"a portal without its eight Ender Crystals must not validate");
+
+		for (BlockPos relative : PortalStructure.ENDER_CRYSTALS) {
+			BlockPos at = pad.offset(relative);
+			EndCrystal crystal = EntityTypes.END_CRYSTAL.create(level, EntitySpawnReason.COMMAND);
+			helper.assertTrue(crystal != null, "test needs a vanilla Ender Crystal");
+			crystal.snapTo(at.getX() + 0.5, at.getY(), at.getZ() + 0.5, 0, 0);
+			crystal.setShowBottom(false);
+			level.addFreshEntity(crystal);
+		}
+		portal.validateStructure();
+		helper.assertTrue(portal.isComplete(),
+				"the generated portal template plus its eight Ender Crystals must match in world");
+
+		// V33a charges by one per tick with no network cost at all, and refuses travel below 300.
+		// The level's own ticker drives it, so the rate is measured across real ticks rather than by
+		// calling updateEntity() repeatedly (BlockEntityBase collapses same-tick calls by design).
+		helper.assertTrue(portal.getCharge() == 0, "a freshly validated portal starts uncharged");
+		int chargeStart = portal.getCharge();
+		helper.runAfterDelay(20, () -> {
+			helper.assertTrue(portal.getCharge() - chargeStart == 20,
+					"a complete portal must gain exactly one charge per tick, not consume network energy;"
+							+ " gained " + (portal.getCharge() - chargeStart));
+
+			ServerPlayer player = helper.makeMockServerPlayerInLevel();
+			for (ProgressStage stage : ProgressionManager.instance.getPrereqs(ProgressStage.DIMENSION))
+				ProgressionManager.instance.setPlayerStage(player, stage, true, false, false);
+			helper.assertTrue(!portal.canPlayerUse(player),
+					"a fully qualified player must still be refused below the 300-tick charge");
+			// Proxima is not registered in the GameTest server, so isPortalFunctional stays false and
+			// the eligibility gate must reflect that rather than passing anyway.
+			portal.setChargeForTest(TileEntityCrystalPortal.MINCHARGE);
+			helper.assertTrue(portal.canPlayerUse(player) == BlockChromaPortal.isDimensionLoadable(level),
+					"once charged, eligibility must depend only on whether Proxima is loadable");
+
+			// Tuning: V33a (tier2 ? 150 : 1) * count^(tier2 ? 0.85 : 0.5), then 60% spent per trip.
+			portal.addTuningEnergy(new ItemStack(
+					ChromaItems.TIERED.get(ChromaTieredItems.PROXIMAL_ESSENCE).get(), 16));
+			helper.assertTrue(portal.getTuning() == 4,
+					"sixteen Proximal Essence must add exactly four tuning (16^0.5)");
+			portal.addTuningEnergy(new ItemStack(
+					ChromaItems.TIERED.get(ChromaTieredItems.PURE_PROXIMAL_ESSENCE).get(), 1));
+			helper.assertTrue(portal.getTuning() == 154,
+					"one Pure Proximal Essence must be worth 150 tuning");
+			portal.setPlacer(player);
+			helper.assertTrue(portal.consumeTuningForTrip() == 154 && portal.getTuning() == 61,
+					"a trip must carry the full tuning and leave 40% of it behind");
+
+			int savedCharge = portal.getCharge();
+			CompoundTag saved = portal.saveWithFullMetadata(level.registryAccess());
+			BlockEntity reloaded = BlockEntity.loadStatic(pad, level.getBlockState(pad), saved,
+					level.registryAccess());
+			helper.assertTrue(reloaded instanceof TileEntityCrystalPortal restored
+							&& restored.isComplete() && restored.getTuning() == 61
+							&& restored.getCharge() == savedCharge
+							&& player.getUUID().equals(restored.getPlacerID()),
+					"structure state, charge, tuning and ownership must survive a save/load");
+
+			// Breaking any required cell invalidates the whole rift and zeroes its charge.
+			BlockPos required = pad.offset(-3, 5, -3);
+			BlockState was = level.getBlockState(required);
+			helper.assertTrue(was.is(ChromaBlocks.crystallineStone(StoneTypes.FOCUS).get()),
+					"the charging-particle probe cell must be the authored Pylon Focus");
+			level.setBlock(required, Blocks.AIR.defaultBlockState(), 3);
+			portal.validateStructure();
+			helper.assertTrue(!portal.isComplete(), "removing a required cell must invalidate the portal");
+			level.setBlock(required, was, 3);
+			portal.validateStructure();
+			helper.assertTrue(portal.isComplete(),
+					"restoring the removed cell must let the portal validate and charge again");
+			helper.succeed();
+		});
+	}
+
+	/**
+	 * V33a's contact rules: an unqualified player is thrown upward with a lethal fall distance, an
+	 * ordinary item is thrown the same way, Proximal Essence is absorbed as tuning, and the Elemental
+	 * Manipulator tears the whole pad down into nine dropped rifts.
+	 */
+	private static void portalEntryRules(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		BlockPos pad = helper.absolutePos(new BlockPos(6, 4, 6));
+		for (int i = -1; i <= 1; i++)
+			for (int k = -1; k <= 1; k++)
+				level.setBlock(pad.offset(i, 0, k), ChromaBlocks.PORTAL.get().defaultBlockState(), 3);
+		BlockState state = level.getBlockState(pad);
+		helper.assertTrue(level.getBlockEntity(pad) instanceof TileEntityCrystalPortal centre
+						&& centre.isPadCentre(),
+				"every pad block carries an entity and the middle one reports position 5");
+		helper.assertTrue(state.getCollisionShape(level, pad).isEmpty(),
+				"the rift must have no collision box: entities fall straight in");
+
+		// Contact on an edge block forwards inward to the centre, exactly as V33a's walk does.
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		player.fallDistance = 0;
+		BlockPos edge = pad.offset(1, 0, 1);
+		level.getBlockState(edge).entityInside(level, edge, player,
+				net.minecraft.world.entity.InsideBlockEffectApplier.NOOP, true);
+		helper.assertTrue(player.fallDistance >= 500 && player.getDeltaMovement().y == 1.5,
+				"an unqualified player must be thrown up with V33a's lethal 500 fall distance");
+
+		TileEntityCrystalPortal centre = (TileEntityCrystalPortal)level.getBlockEntity(pad);
+		ItemEntity junk = new ItemEntity(level, pad.getX() + 0.5, pad.getY() + 0.5, pad.getZ() + 0.5,
+				new ItemStack(Items.STONE));
+		level.addFreshEntity(junk);
+		state.entityInside(level, pad, junk, net.minecraft.world.entity.InsideBlockEffectApplier.NOOP, true);
+		helper.assertTrue(junk.isAlive() && junk.getDeltaMovement().y == 1.5,
+				"an item that is not Proximal Essence must be rejected, not consumed");
+
+		ItemEntity essence = new ItemEntity(level, pad.getX() + 0.5, pad.getY() + 0.5, pad.getZ() + 0.5,
+				new ItemStack(ChromaItems.TIERED.get(ChromaTieredItems.PROXIMAL_ESSENCE).get(), 9));
+		level.addFreshEntity(essence);
+		state.entityInside(level, pad, essence, net.minecraft.world.entity.InsideBlockEffectApplier.NOOP, true);
+		helper.assertTrue(!essence.isAlive() && centre.getTuning() == 3,
+				"Proximal Essence must be absorbed and add exactly sqrt(count) tuning");
+
+		player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND,
+				new ItemStack(ChromaItems.MANIPULATOR.get()));
+		state.useWithoutItem(level, player,
+				new BlockHitResult(Vec3.atCenterOf(pad), Direction.UP, pad, false));
+		int remaining = 0;
+		for (int i = -1; i <= 1; i++)
+			for (int k = -1; k <= 1; k++)
+				if (level.getBlockState(pad.offset(i, 0, k)).getBlock() instanceof BlockChromaPortal)
+					remaining++;
+		helper.assertTrue(remaining == 0, "the Manipulator must dismantle the whole connected pad");
+		int dropped = level.getEntitiesOfClass(ItemEntity.class, new AABB(pad).inflate(4)).stream()
+				.filter(e -> e.getItem().is(ChromaBlocks.PORTAL.get().asItem()))
+				.mapToInt(e -> e.getItem().getCount()).sum();
+		helper.assertTrue(dropped == 9, "dismantling must drop one rift per removed block, found " + dropped);
+		helper.succeed();
 	}
 
 	private static void biomeFragmentLightPanelSwitch(GameTestHelper helper) {
@@ -609,6 +797,26 @@ public final class ChromaGameTests {
 					"Burrow cache slot " + slot + " violated V33a's block/item chest-half split");
 		}
 		helper.assertTrue(stacks > 0, "the Burrow cache's 13-20 weighted rolls must produce loot");
+		helper.succeed();
+	}
+
+	/** Plain-Block loot chests must explicitly deliver vanilla opener-count events to their BE. */
+	private static void lootChestLidEvent(GameTestHelper helper) {
+		BlockPos pos = helper.absolutePos(new BlockPos(8, 4, 8));
+		BlockState state = ChromaBlocks.LOOT_CHEST.get().defaultBlockState();
+		helper.getLevel().setBlock(pos, state, 3);
+		TileEntityLootChest chest = (TileEntityLootChest)helper.getLevel().getBlockEntity(pos);
+		helper.assertTrue(state.triggerEvent(helper.getLevel(), pos, 1, 1),
+				"loot-chest block event 1 must delegate to TileEntityLootChest");
+		for (int i = 0; i < 4; i++)
+			TileEntityLootChest.lidAnimateTick(helper.getLevel(), pos, state, chest);
+		helper.assertTrue(chest.getOpenNess(1) > 0,
+				"delegated opener event must advance the animated chest-lid controller");
+		state.triggerEvent(helper.getLevel(), pos, 1, 0);
+		for (int i = 0; i < 8; i++)
+			TileEntityLootChest.lidAnimateTick(helper.getLevel(), pos, state, chest);
+		helper.assertTrue(chest.getOpenNess(1) == 0,
+				"closing opener event must return the lid controller to zero");
 		helper.succeed();
 	}
 
@@ -1545,6 +1753,34 @@ public final class ChromaGameTests {
 		helper.succeed();
 	}
 
+	/**
+	 * V33a treats focus crystals and lumen relays as alternative discoveries which formulate the
+	 * ENERGYIDEA once USEENERGY is known.  The focus-crystal route is retroactive, so either event
+	 * order must converge on the same stage without turning FOCUSCRYSTAL into a hard prerequisite.
+	 */
+	private static void chainedEnergyIdea(GameTestHelper helper) {
+		ServerPlayer focusAfterEnergy = helper.makeMockServerPlayerInLevel();
+		ProgressionManager.instance.setPlayerStage(
+				focusAfterEnergy, ProgressStage.USEENERGY, true, false, false);
+		helper.assertTrue(ProgressStage.FOCUSCRYSTAL.stepPlayerTo(focusAfterEnergy),
+				"FOCUSCRYSTAL should be reachable after CRYSTALS is inherited through USEENERGY");
+		helper.assertTrue(ProgressStage.ENERGYIDEA.isPlayerAtStage(focusAfterEnergy),
+				"discovering a focus crystal after using energy must formulate ENERGYIDEA");
+
+		ServerPlayer energyAfterFocus = helper.makeMockServerPlayerInLevel();
+		ProgressionManager.instance.setPlayerStage(
+				energyAfterFocus, ProgressStage.FOCUSCRYSTAL, true, false, false);
+		helper.assertTrue(!ProgressStage.ENERGYIDEA.isPlayerAtStage(energyAfterFocus),
+				"FOCUSCRYSTAL alone must wait for the USEENERGY prerequisite");
+		ProgressionManager.instance.setPlayerStage(
+				energyAfterFocus, ProgressStage.RUNEUSE, true, false, false);
+		helper.assertTrue(ProgressStage.USEENERGY.stepPlayerTo(energyAfterFocus),
+				"USEENERGY should be reachable after the RUNEUSE parent chain is installed");
+		helper.assertTrue(ProgressStage.ENERGYIDEA.isPlayerAtStage(energyAfterFocus),
+				"the retroactive focus-crystal chain must formulate ENERGYIDEA when USEENERGY lands later");
+		helper.succeed();
+	}
+
 	/** Exercises source discovery, flow creation, server ticking, delivery, and source drain. */
 	private static void pylonToReceiver(GameTestHelper helper) {
 		BlockPos receiverPos = helper.absolutePos(new BlockPos(2, 12, 2));
@@ -2007,8 +2243,13 @@ public final class ChromaGameTests {
 		List<TileEntityChromaCrystal> crystals = placePowerCrystals(helper, pylon, owner);
 		helper.assertTrue(crystals.size() == 8 && pylon.getBoosterCrystals(true).size() == 8,
 				"all eight legal same-owner sockets must be discovered");
+		helper.assertTrue(crystals.stream().allMatch(crystal -> crystal.isOwnedByPlayer(owner)),
+				"normal block placement must apply the V33a ItemChromaPlacer owner contract");
 		helper.assertTrue(crystals.stream().allMatch(TileEntityChromaCrystal::isConnected),
 				"each power crystal must persist a live connection to its pylon");
+		for (ProgressStage stage : List.of(ProgressStage.LINK, ProgressStage.STORAGE,
+				ProgressStage.CHARGE, ProgressStage.INFUSE))
+			ProgressionManager.instance.setPlayerStage(owner, stage, true, false, false);
 
 		helper.runAfterDelay(3, () -> {
 			helper.assertTrue(pylon.drain(CrystalElement.CYAN, 10000), "test setup should drain the pylon");
@@ -2017,6 +2258,8 @@ public final class ChromaGameTests {
 				int gained = pylon.getEnergy(CrystalElement.CYAN) - before;
 				helper.assertTrue(gained == 768,
 						"eight V33a boosters must add 768 lumens per normal tick including base regen; actual=" + gained);
+				helper.assertTrue(ProgressStage.POWERCRYSTAL.isPlayerAtStage(owner),
+						"an owner with LINK, STORAGE, CHARGE and INFUSE must gain POWERCRYSTAL from eight live boosters");
 				helper.succeed();
 			});
 		});
@@ -2436,9 +2679,11 @@ public final class ChromaGameTests {
 		List<TileEntityChromaCrystal> crystals = new java.util.ArrayList<>();
 		for (BlockPos offset : TileEntityCrystalPylon.getPowerCrystalLocations()) {
 			BlockPos pos = pylon.getBlockPos().offset(offset);
-			helper.getLevel().setBlock(pos, ChromaBlocks.POWER_CRYSTAL.get().defaultBlockState(), 3);
+			BlockState state = ChromaBlocks.POWER_CRYSTAL.get().defaultBlockState();
+			helper.getLevel().setBlock(pos, state, 3);
+			ChromaBlocks.POWER_CRYSTAL.get().setPlacedBy(helper.getLevel(), pos, state, owner,
+					new ItemStack(ChromaBlocks.POWER_CRYSTAL.get()));
 			TileEntityChromaCrystal crystal = (TileEntityChromaCrystal)helper.getLevel().getBlockEntity(pos);
-			crystal.setPlacer(owner);
 			crystal.refreshConnection();
 			crystals.add(crystal);
 		}
@@ -3627,6 +3872,354 @@ public final class ChromaGameTests {
 		helper.assertTrue(helper.getLevel().getBlockEntity(firstPos) instanceof TileEntityItemStand,
 				"the locked stand must survive the attempt");
 		first.lock(false);
+		helper.succeed();
+	}
+
+	/** The mechanically imported V33a village house must hydrate its doors, loot and progress NBT. */
+	private static void villageCastingNbtContract(GameTestHelper helper) {
+		BlockPos origin = helper.absolutePos(new BlockPos(4, 3, 4));
+		NBTStructureLoader.place(helper.getLevel(),
+				ChromaStructureTemplateProvider.villageTemplate("plains", true), origin,
+				BlockPos.ZERO, state -> state, 3);
+
+		BlockPos chestPos = origin.offset(7, 0, 7);
+		helper.assertTrue(helper.getLevel().getBlockEntity(chestPos) instanceof TileEntityLootChest,
+				"the wooden failed-casting house must hydrate its authored ChromatiCraft loot chest");
+		TileEntityLootChest chest = (TileEntityLootChest)helper.getLevel().getBlockEntity(chestPos);
+		helper.assertTrue(chest.getLootTable() != null
+				&& chest.getLootTable().identifier().toString().equals("chromaticraft:chests/village_casting"),
+				"the village chest must retain its data-driven village_casting loot table");
+		ServerPlayer opener = helper.makeMockServerPlayerInLevel();
+		chest.grantProgress(opener);
+		helper.assertTrue(ProgressStage.VILLAGECASTING.isPlayerAtStage(opener),
+				"opening the imported structure chest must grant the V33a VILLAGECASTING stage");
+
+		for (int[] door : new int[][] {{1,1,5},{1,1,9},{5,1,1},{5,1,13},
+				{9,1,1},{9,1,13},{13,1,5},{13,1,9}}) {
+			BlockState lower = helper.getLevel().getBlockState(origin.offset(door[0], door[1], door[2]));
+			BlockState upper = helper.getLevel().getBlockState(origin.offset(door[0], door[1] + 1, door[2]));
+			helper.assertTrue(lower.getBlock() instanceof net.minecraft.world.level.block.DoorBlock
+					&& upper.getBlock() == lower.getBlock()
+					&& lower.getValue(net.minecraft.world.level.block.DoorBlock.HALF)
+							== net.minecraft.world.level.block.state.properties.DoubleBlockHalf.LOWER
+					&& upper.getValue(net.minecraft.world.level.block.DoorBlock.HALF)
+							== net.minecraft.world.level.block.state.properties.DoubleBlockHalf.UPPER
+					&& lower.getValue(net.minecraft.world.level.block.DoorBlock.FACING)
+							== upper.getValue(net.minecraft.world.level.block.DoorBlock.FACING),
+					"legacy door halves must be translated into a matching modern state pair at "
+							+ java.util.Arrays.toString(door));
+		}
+		helper.succeed();
+	}
+
+	/** Registry decoding must produce the exact one-emerald, flawed, effectively infinite V33a offer. */
+	private static void focusCrystalTradeDefinition(GameTestHelper helper) {
+		VillagerTrade definition = helper.getLevel().registryAccess()
+				.lookupOrThrow(Registries.VILLAGER_TRADE)
+				.getOptional(ChromaWorldGenProvider.FOCUS_CRYSTAL_TRADE)
+				.orElseThrow(() -> new AssertionError("missing data-driven Focus Crystal villager trade"));
+		BlockPos pos = helper.absolutePos(new BlockPos(4, 3, 4));
+		var villager = EntityTypes.VILLAGER.create(helper.getLevel(), null, pos,
+				EntitySpawnReason.COMMAND, false, false);
+		helper.assertTrue(villager != null, "test villager should instantiate");
+		LootContext context = new LootContext.Builder(new LootParams.Builder(helper.getLevel())
+				.withParameter(LootContextParams.ORIGIN, Vec3.atCenterOf(pos))
+				.withParameter(LootContextParams.THIS_ENTITY, villager)
+				.withParameter(LootContextParams.ADDITIONAL_COST_COMPONENT_ALLOWED,
+						net.minecraft.util.Unit.INSTANCE)
+				.create(LootContextParamSets.VILLAGER_TRADE)).create(Optional.empty());
+		MerchantOffer offer = definition.getOffer(context);
+		helper.assertTrue(offer != null, "the Focus Crystal registry definition must create an offer");
+		helper.assertTrue(offer.getBaseCostA().is(Items.EMERALD)
+				&& offer.getBaseCostA().getCount() == 1 && offer.getCostB().isEmpty(),
+				"the source trade must cost exactly one emerald and no second item");
+		helper.assertTrue(offer.getResult().is(ChromaBlocks.FOCUS_CRYSTAL.get().asItem())
+				&& offer.getResult().getCount() == 1,
+				"the source trade must return one Focus Crystal");
+		var custom = offer.getResult().get(net.minecraft.core.component.DataComponents.CUSTOM_DATA);
+		helper.assertTrue(custom != null && custom.copyTag().getIntOr("tier", -1) == 0,
+				"the traded Focus Crystal must carry the FLAWED tier component");
+		helper.assertTrue(offer.getMaxUses() == Integer.MAX_VALUE,
+				"the V33a Focus Crystal offer must not expire");
+		helper.succeed();
+	}
+
+	/** Seven registered identities, component persistence and all seven source recipes form one seam. */
+	private static void storageCrystalItemAndRecipe(GameTestHelper helper) {
+		java.util.Set<net.minecraft.world.item.Item> identities = new java.util.HashSet<>();
+		for (StorageCrystalTier tier : StorageCrystalTier.list) {
+			ItemStack stack = ChromaItems.storageCrystalStack(tier);
+			identities.add(stack.getItem());
+			helper.assertTrue(ItemStorageCrystal.getTier(stack) == tier
+					&& ItemStorageCrystal.getCapacity(stack) == tier.capacity(),
+					"storage tier " + tier + " must retain its registered identity and V33a capacity");
+		}
+		helper.assertTrue(identities.size() == 7,
+				"V33a storage tiers must be seven registry items, never one metadata/component variant");
+
+		ItemStack persistent = ChromaItems.storageCrystalStack(StorageCrystalTier.DIVI);
+		CompoundTag foreign = new CompoundTag();
+		foreign.putString("foreign", "preserved");
+		ReikaItemHelper.setStackTag(persistent, foreign);
+		ItemStorageCrystal.addEnergy(persistent, CrystalElement.BLUE, 9_000);
+		helper.assertTrue(ItemStorageCrystal.getStoredEnergy(persistent, CrystalElement.BLUE) == 8_000,
+				"energy addition must clamp to the per-element Divi capacity");
+		ItemStorageCrystal.removeEnergy(persistent, CrystalElement.BLUE, 125);
+		helper.assertTrue(ItemStorageCrystal.getStoredEnergy(persistent, CrystalElement.BLUE) == 7_875,
+				"energy removal must retain the remainder");
+		var custom = persistent.get(net.minecraft.core.component.DataComponents.CUSTOM_DATA);
+		helper.assertTrue(custom != null && custom.copyTag().getStringOr("foreign", "").equals("preserved"),
+				"writing lumen energy must preserve unrelated item custom data");
+		helper.assertTrue(!ItemStorageCrystal.isFull(persistent)
+				&& ItemStorageCrystal.isFull(ItemStorageCrystal.fullStack(StorageCrystalTier.DIVI)),
+				"fullness requires all sixteen channels at capacity");
+
+		for (StorageCrystalTier tier : StorageCrystalTier.list) {
+			List<CastingTableRecipe> recipes = reika.chromaticraft.network.ChromaNetwork.guideCastingRecipes(
+					helper.getLevel().getServer().getRecipeManager(),
+					ChromaItems.STORAGE_CRYSTALS.get(tier).get());
+			helper.assertTrue(recipes.size() == 1,
+					"storage tier " + tier + " must have exactly one registered casting recipe");
+			CastingTableRecipe recipe = recipes.getFirst();
+			helper.assertTrue(recipe.tier() == CastingTableRecipe.Tier.MULTIBLOCK
+					&& recipe.duration() == (50 << tier.legacyMetadata())
+					&& recipe.experience() == 200 && recipe.penaltyThreshold() == 3,
+					"storage tier " + tier + " must retain its source tier, duration, XP and typical-4 penalty");
+			helper.assertTrue(recipe.stands().size() == 24 && recipe.runes().size() == 12,
+					"storage tier " + tier + " must require all 24 stands and 12 authored runes");
+			helper.assertTrue(recipe.completion().copyCenterCustomData()
+					&& recipe.completion().grantedProgress().equals(List.of(ProgressStage.STORAGE))
+					&& recipe.completion().harmonics().equals(List.of(0.5F, 2F)),
+					"storage recipes must copy centre NBT, grant STORAGE and expose the V33a harmonics");
+
+			Ingredient outer = recipe.stands().stream()
+					.filter(stand -> stand.offset().equals(new BlockPos(-4, 1, -4)))
+					.findFirst().orElseThrow().ingredient();
+			Ingredient inner = recipe.stands().stream()
+					.filter(stand -> stand.offset().equals(new BlockPos(-2, 0, -2)))
+					.findFirst().orElseThrow().ingredient();
+			ItemStack expectedOuter = tier == StorageCrystalTier.NULA
+					? ChromaItems.boostedShardStack(CrystalElement.BLACK)
+					: ChromaItems.tieredStack(ChromaTieredItems.CHROMA_DUST);
+			ItemStack expectedInner = ChromaItems.tieredStack(tier == StorageCrystalTier.NULA
+					? ChromaTieredItems.ELEMENT_DUST : ChromaTieredItems.RESONANCE_DUST);
+			helper.assertTrue(outer.test(expectedOuter) && inner.test(expectedInner),
+					"base storage must use boosted shards/Infused Dust; upgrades Chromic/Resonant Dust");
+
+			NonNullList<ItemStack> grid = NonNullList.withSize(9, ItemStack.EMPTY);
+			ItemStack center = tier.previous() == null
+					? ChromaItems.craftingStack(ChromaCraftingItems.ELEMENT_UNIT)
+					: ChromaItems.storageCrystalStack(tier.previous());
+			CompoundTag centerData = new CompoundTag();
+			centerData.putString("upgrade_marker", tier.name());
+			ReikaItemHelper.setStackTag(center, centerData);
+			if (tier.previous() != null)
+				ItemStorageCrystal.addEnergy(center, CrystalElement.RED,
+						Math.min(100, tier.previous().capacity()));
+			grid.set(4, center);
+			ItemStack output = recipe.assemble(new CastingRecipeInput(grid, Map.of(), Map.of(), Map.of()));
+			var outputData = output.get(net.minecraft.core.component.DataComponents.CUSTOM_DATA);
+			helper.assertTrue(output.is(ChromaItems.STORAGE_CRYSTALS.get(tier).get())
+					&& outputData != null
+					&& outputData.copyTag().getStringOr("upgrade_marker", "").equals(tier.name())
+					&& (tier.previous() == null
+							|| ItemStorageCrystal.getStoredEnergy(output, CrystalElement.RED)
+									== Math.min(100, tier.previous().capacity())),
+					"storage upgrade output must retain the central crystal's complete custom payload");
+		}
+		helper.succeed();
+	}
+
+	/** Charger registration, transfer math, toggles, extraction, upgrade multiplier, and recipe. */
+	private static void crystalChargerItemLoop(GameTestHelper helper) {
+		BlockPos relative = new BlockPos(2, 2, 2);
+		BlockPos absolute = helper.absolutePos(relative);
+		helper.getLevel().setBlock(absolute, ChromaBlocks.CRYSTAL_CHARGER.get().defaultBlockState(), 3);
+		BlockEntity blockEntity = helper.getLevel().getBlockEntity(absolute);
+		helper.assertTrue(blockEntity instanceof TileEntityCrystalCharger,
+				"crystal_charger must instantiate its registered block entity");
+		TileEntityCrystalCharger charger = (TileEntityCrystalCharger)blockEntity;
+		helper.assertTrue(charger.getMaxStorage(CrystalElement.RED) == 120_000
+				&& charger.getReceiveRange() == 20 && charger.maxThroughput() == 4_000,
+				"charger must retain V33a capacity, receiver range and throughput");
+
+		ItemStack crystal = ChromaItems.storageCrystalStack(StorageCrystalTier.DAYA);
+		charger.setItem(0, crystal);
+		charger.setEnergy(CrystalElement.RED, 900);
+		charger.runTransferCycleForTest();
+		helper.assertTrue(ItemStorageCrystal.getStoredEnergy(crystal, CrystalElement.RED) == 40
+				&& charger.getEnergy(CrystalElement.RED) == 860,
+				"normal transfer must use 10+floor(sqrt(internal energy))");
+
+		charger.toggle(CrystalElement.RED);
+		charger.runTransferCycleForTest();
+		helper.assertTrue(ItemStorageCrystal.getStoredEnergy(crystal, CrystalElement.RED) == 40,
+				"a disabled colour must not transfer");
+		charger.toggle(CrystalElement.RED);
+
+		charger.setItem(1, new ItemStack(ChromaItems.SPEED_UPGRADE.get()));
+		charger.setEnergy(CrystalElement.GREEN, 900);
+		charger.runTransferCycleForTest();
+		helper.assertTrue(ItemStorageCrystal.getStoredEnergy(crystal, CrystalElement.GREEN) == 320
+				&& charger.getEnergy(CrystalElement.GREEN) == 580,
+				"the hidden V33a speed-upgrade slot must multiply transfer by eight");
+		helper.assertTrue(!charger.canTakeItemThroughFace(0, crystal, Direction.UP)
+				&& charger.canTakeItemThroughFace(0,
+						ItemStorageCrystal.fullStack(StorageCrystalTier.DAYA), Direction.UP),
+				"automation may extract slot zero only when all sixteen channels are full");
+
+		List<CastingTableRecipe> recipes = reika.chromaticraft.network.ChromaNetwork.guideCastingRecipes(
+				helper.getLevel().getServer().getRecipeManager(), ChromaBlocks.CRYSTAL_CHARGER.get().asItem());
+		helper.assertTrue(recipes.size() == 1, "crystal_charger must have one registered casting recipe");
+		CastingTableRecipe recipe = recipes.getFirst();
+		helper.assertTrue(recipe.tier() == CastingTableRecipe.Tier.MULTIBLOCK
+				&& recipe.duration() == 200 && recipe.experience() == 200
+				&& recipe.stands().size() == 8 && recipe.runes().isEmpty() && recipe.aura().isEmpty(),
+				"charger recipe must retain its V33a tier, doubled duration, XP and eight-stand shape");
+		Ingredient center = recipe.grid().stream().filter(entry -> entry.slot() == 4)
+				.findFirst().orElseThrow().ingredient();
+		Ingredient north = recipe.stands().stream()
+				.filter(entry -> entry.offset().equals(new BlockPos(0, 0, -2)))
+				.findFirst().orElseThrow().ingredient();
+		Ingredient south = recipe.stands().stream()
+				.filter(entry -> entry.offset().equals(new BlockPos(0, 0, 2)))
+				.findFirst().orElseThrow().ingredient();
+		helper.assertTrue(center.test(ChromaItems.clusterStack(ChromaClusterItems.CRYSTAL_CORE))
+				&& north.test(ChromaItems.shardStack(CrystalElement.WHITE))
+				&& south.test(new ItemStack(Items.SMOOTH_STONE_SLAB)),
+				"charger center and asymmetric white-shard/slab cardinal stands must match V33a");
+		helper.succeed();
+	}
+
+	/** NBT structure, focus speed, bucket refill, conversion/overflow, progression, and recipe parity. */
+	private static void itemAuraInfuserLoop(GameTestHelper helper) {
+		BlockPos relative = new BlockPos(8, 4, 8);
+		BlockPos absolute = helper.absolutePos(relative);
+		NBTStructureLoader.place(helper.getLevel(), ChromaStructureTemplateProvider.INFUSION,
+				absolute, new BlockPos(3, 2, 3), state -> state, 2);
+		helper.getLevel().setBlock(absolute, ChromaBlocks.ITEM_INFUSER.get().defaultBlockState(), 3);
+		BlockEntity blockEntity = helper.getLevel().getBlockEntity(absolute);
+		helper.assertTrue(blockEntity instanceof TileEntityItemInfuser,
+				"item_aura_infuser must instantiate its registered block entity");
+		TileEntityItemInfuser infuser = (TileEntityItemInfuser)blockEntity;
+		infuser.validateStructure();
+		helper.assertTrue(infuser.hasStructure() && !infuser.getChromaLocations().isEmpty(),
+				"the canonical NBT infusion rings must validate and expose their source-chroma cells");
+
+		BlockPos refill = infuser.getChromaLocations().iterator().next();
+		helper.getLevel().setBlock(refill, Blocks.AIR.defaultBlockState(), 3);
+		try (Transaction transaction = Transaction.openRoot()) {
+			int inserted = infuser.fluidHandler().insert(0, FluidResource.of(ChromaFluids.CHROMA.get()),
+					FluidType.BUCKET_VOLUME, transaction);
+			helper.assertTrue(inserted == FluidType.BUCKET_VOLUME,
+					"the virtual ring tank must accept exactly one whole bucket");
+			transaction.commit();
+		}
+		helper.assertTrue(helper.getLevel().getBlockState(refill).is(ChromaBlocks.CHROMA.get())
+				&& helper.getLevel().getFluidState(refill).isSource(),
+				"committing a refill transaction must restore a source Liquid Chroma cell");
+
+		List<BlockPos> focusLocations = List.copyOf(infuser.getRelativeFocusCrystalLocations());
+		helper.assertTrue(focusLocations.size() >= 4,
+				"the outer V33a brick ring must expose its focus-crystal sockets");
+		for (int i = 0; i < 4; i++) {
+			BlockPos focusPos = absolute.offset(focusLocations.get(i));
+			helper.getLevel().setBlock(focusPos, ChromaBlocks.FOCUS_CRYSTAL.get().defaultBlockState(), 3);
+			((TileEntityFocusCrystal)helper.getLevel().getBlockEntity(focusPos))
+					.setTier(TileEntityFocusCrystal.CrystalTier.EXQUISITE);
+		}
+		infuser.validateStructure();
+		helper.assertTrue(infuser.getAccelerationFactor() == 4,
+				"four Exquisite focus crystals must select V33a's maximum 4x craft speed");
+
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		infuser.setPlacer(player);
+		ProgressionManager.instance.setPlayerStage(player, ProgressStage.ALLOY, true, false, false);
+		ChromaAbilityData.setDoubleCraft(player, true);
+		ItemStack raw = ChromaItems.craftingStack(ChromaCraftingItems.RAW_CRYSTAL);
+		raw.setCount(40);
+		infuser.interact(raw, player);
+		helper.assertTrue(raw.isEmpty() && infuser.getCraftingTick() == 152
+				&& infuser.getState() == reika.chromaticraft.auxiliary.interfaces.OperationInterval.OperationState.RUNNING,
+				"insertion at ALLOY with four Exquisite focuses must start a 608/4-tick operation");
+		infuser.completeCraftForTest();
+		ItemStack result = infuser.getItem(0);
+		CompoundTag resultData = ReikaItemHelper.getStackTag(result);
+		helper.assertTrue(result.is(ChromaItems.CRAFTING.get(ChromaCraftingItems.IRIDESCENT_CRYSTAL).get())
+				&& result.getCount() == 64 && resultData != null
+				&& resultData.getIntOr("requiredExtra", 0) == 16,
+				"DOUBLECRAFT must turn forty Raw Crystals into 64+16 Iridescent Crystal Shards");
+		helper.assertTrue(ProgressStage.INFUSE.isPlayerAtStage(player),
+				"a completed conversion must grant INFUSE progression");
+		helper.assertTrue(infuser.getChromaLocations().stream()
+				.noneMatch(pos -> helper.getLevel().getBlockState(pos).is(ChromaBlocks.CHROMA.get())),
+				"completion must consume every source Liquid Chroma cell in the authored ring");
+
+		List<CastingTableRecipe> recipes = reika.chromaticraft.network.ChromaNetwork.guideCastingRecipes(
+				helper.getLevel().getServer().getRecipeManager(), ChromaBlocks.ITEM_INFUSER.get().asItem());
+		helper.assertTrue(recipes.size() == 1, "item_aura_infuser must have one registered casting recipe");
+		CastingTableRecipe recipe = recipes.getFirst();
+		Ingredient center = recipe.grid().stream().filter(entry -> entry.slot() == 4)
+				.findFirst().orElseThrow().ingredient();
+		helper.assertTrue(recipe.tier() == CastingTableRecipe.Tier.MULTIBLOCK
+				&& recipe.duration() == 100 && recipe.experience() == 200
+				&& recipe.stands().size() == 8 && center.test(new ItemStack(ChromaBlocks.ITEM_STAND.get()))
+				&& recipe.stands().stream().allMatch(stand -> stand.ingredient().test(
+						ChromaItems.craftingStack(ChromaCraftingItems.CHROMA_INGOT))),
+				"the infuser recipe must retain its Item Stand center and eight Chroma Alloy stands");
+		helper.succeed();
+	}
+
+	/** NBT fountain, ingredient-gated capacity grant, recipient capture, consumption, and recipe parity. */
+	private static void playerAuraInfuserLoop(GameTestHelper helper) {
+		BlockPos relative = new BlockPos(10, 6, 10);
+		BlockPos absolute = helper.absolutePos(relative);
+		NBTStructureLoader.place(helper.getLevel(), ChromaStructureTemplateProvider.PLAYER_INFUSION,
+				absolute, new BlockPos(4, 3, 4), state -> state, 2);
+		BlockEntity blockEntity = helper.getLevel().getBlockEntity(absolute);
+		helper.assertTrue(blockEntity instanceof TileEntityPlayerInfuser,
+				"player_aura_infuser NBT must instantiate its distinct registered block entity");
+		TileEntityPlayerInfuser infuser = (TileEntityPlayerInfuser)blockEntity;
+		infuser.validateStructure();
+		helper.assertTrue(infuser.hasStructure() && infuser.getChromaLocations().size() == 32,
+				"the exact 9x4x9 Player Infusion fountain must validate with 32 source-chroma cells");
+
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		infuser.setPlacer(player);
+		ProgressionManager.instance.setPlayerStage(player, ProgressStage.ALLCOLORS, true, false, false);
+		ProgressionManager.instance.setPlayerStage(player, ProgressStage.ABILITY, true, false, false);
+		ProgressionManager.instance.setPlayerStage(player, ProgressStage.ALLOY, true, false, false);
+		player.snapTo(absolute.getX() + 0.5, absolute.getY() + 0.4, absolute.getZ() + 0.5);
+		ItemStack berries = ChromaItems.craftingStack(ChromaCraftingItems.ETHER_BERRIES);
+		berries.setCount(8);
+		infuser.interact(berries, player);
+		helper.assertTrue(berries.isEmpty() && infuser.getSelectedEffect() == ElementBufferCapacityBoost.ALLOYS
+				&& infuser.getCraftingTick() == TileEntityAuraInfuser.DURATION,
+				"eight Ether Berries and a recipient in the target band must start the ALLOYS boost");
+		infuser.completeCraftForTest();
+		helper.assertTrue(ElementBufferCapacityBoost.ALLOYS.playerHas(player) && infuser.getItem(0).isEmpty(),
+				"completion must persist the ALLOYS buffer boost and consume all eight ingredients");
+		helper.assertTrue(infuser.getChromaLocations().stream()
+				.noneMatch(pos -> helper.getLevel().getBlockState(pos).is(ChromaBlocks.CHROMA.get())),
+				"Player Infusion completion must consume all 32 authored Liquid Chroma sources");
+
+		List<CastingTableRecipe> recipes = reika.chromaticraft.network.ChromaNetwork.guideCastingRecipes(
+				helper.getLevel().getServer().getRecipeManager(), ChromaBlocks.PLAYER_INFUSER.get().asItem());
+		helper.assertTrue(recipes.size() == 1, "player_aura_infuser must have one registered upgrade recipe");
+		CastingTableRecipe recipe = recipes.getFirst();
+		Ingredient center = recipe.grid().stream().filter(entry -> entry.slot() == 4)
+				.findFirst().orElseThrow().ingredient();
+		helper.assertTrue(recipe.tier() == CastingTableRecipe.Tier.MULTIBLOCK
+				&& recipe.duration() == 100 && recipe.experience() == 200
+				&& recipe.stands().size() == 12 && recipe.runes().isEmpty() && recipe.aura().isEmpty()
+				&& center.test(new ItemStack(ChromaBlocks.ITEM_INFUSER.get())),
+				"the Player Infuser recipe must retain its Item Infuser center and twelve exact stands");
+		helper.assertTrue(recipe.stands().stream().filter(stand -> stand.ingredient().test(
+				ChromaItems.craftingStack(ChromaCraftingItems.AURA_INGOT))).count() == 4
+				&& recipe.stands().stream().filter(stand -> stand.ingredient().test(new ItemStack(Items.DIAMOND))).count() == 4
+				&& recipe.stands().stream().filter(stand -> stand.ingredient().test(
+				ChromaItems.tieredStack(ChromaTieredItems.RESONANCE_DUST))).count() == 3,
+				"the twelve stands must contain four Aura Ingots, four diamonds, three Resonant Dusts, and Chromastone");
 		helper.succeed();
 	}
 
