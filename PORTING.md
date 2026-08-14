@@ -1586,10 +1586,10 @@ proof that the Item Stand is **not** castable from that bare table, then the tem
 StandRecipe rune ring, and the Manipulator-driven 20-tick cast for 80 XP. The temple-group test also
 now proves a 249-XP temple refuses runes while the same temple at 250 accepts them.
 
-Not defects, recorded so they are not re-derived: V33a's `addChainedProgression` (four chains, all
-past RUNEUSE) is deliberately deferred with the rest of the co-op/handbook layer, and
-`BlockCrystalRune`'s `triggerAddCheck` call — which re-validates a *hand-built pylon* when a rune
-completes it — is covered by the pylon's own ten-tick rematch.
+Follow-up status: V33a's four `addChainedProgression` rules were deferred at this checkpoint, but are
+now active in the Start-to-Proxima milestone documented below. `BlockCrystalRune`'s
+`triggerAddCheck` call — which re-validates a *hand-built pylon* when a rune completes it — remains
+covered by the pylon's own ten-tick rematch.
 
 Verification: `:ChromatiCraft:runServerData` regenerates the stand and all 32 rune recipes, and
 `:ChromatiCraft:runGameTest` reports **all 71 required tests passed**.
@@ -3309,6 +3309,73 @@ BUILD SUCCESSFUL (rainbow_tree.nbt written)
 All 1 required tests passed
 ```
 
+### V33a asset/parity sweep: loot lid, based crystals and resource items — 2026-08-13
+
+The loot-chest animation fault had a second, independent cause beyond the corrected model height.
+`ContainerOpenersCounter` broadcasts the open count with `Level.blockEvent`, but the modern loot
+chest deliberately extends `Block` (not `BaseEntityBlock`) and consequently did not forward that
+event into its block entity. `BlockLootChest.triggerEvent` now performs that delegation, allowing
+`TileEntityLootChest.triggerEvent` and its `ChestLidController` to receive both open and close
+counts. The submit renderer also applies the captured lid angle inside its deferred geometry
+callback; mutating the shared model before submission allowed another chest render to overwrite the
+angle. The top/bottom 14x14 lid regions in the original 64x64 entity sheet have been exchanged so
+the visible closed top is V33a's intended underside-of-lid artwork rather than its internal face.
+
+The two families of based crystals are no longer fed one invented base. V33a's
+`BlockSuperCrystal.getBaseBlock` returns obsidian on every face, so all sixteen potion/super-crystal
+blockstates and generated item models now use `minecraft:block/obsidian`. Crystal lamps retain the
+smooth-stone/double-slab appearance selected by the old lamp renderer. The shared item renderer now
+derives its colour from the same two-stage saturation/dye mix as `BlockCrystal.getTintColor`, then
+applies V33a's intentional 80% inventory brightness. It retains alpha 220 as the modern
+translucent-item requirement; the old inventory pass was alpha 255 while the old world mesh was
+alpha 220 and full-bright, so source-faithful items are intentionally somewhat darker than placed
+crystals, but no longer use the previous raw element colour that exaggerated the mismatch.
+
+The flat-item audit found **35 generated model definitions whose referenced ChromatiCraft sprite
+did not exist**. They were exactly the split identities of V33a's `ChromaItems.CRAFTING` sheet, not
+unknown substitutes. All 35 authoritative 16x16 cells have been extracted from
+`Textures/Items/items_resource.png` into their modern registry names. Chromastone
+(`complex_ingot`) additionally reconstructs the sixteen-frame strip from `miscanim.png` and keeps
+animation metadata; the other 34 are static in V33a. A repeated recursive audit now reports zero
+missing models or textures across all 317 generated item definitions and their 256 resolved
+ChromatiCraft models.
+
+The adjacent audit deliberately did not invent behavior:
+
+- the normal crystal repeater/skypeater block icon is static in V33a; its motion comes from TESR
+  halos and beams. `multirepeater.png` and `weakrepeater.png` are the source textures with animation
+  metadata, so a normal repeater receiving no animated face sheet is correct;
+- the Ethereal Barrier is V33a's connected four-pixel core with arms to neighbouring barriers or
+  sturdy blocks, rather than a full vanilla glass-pane plane. The modern multipart/collision shape
+  already reproduces those exact 6..10-pixel core bounds and directional arms;
+- `unknown_artefact` is the buried three-quarter-height animated block and already has both a model
+  and BlockItem. V33a separately registered the hazardous `ARTEFACT` inventory item with Artefact
+  and Fragment variants, placement conversion, inventory damage/armor damage, bombing behavior,
+  obfuscated tooltip and client effects. That separate subsystem is still absent and must be ported
+  together; aliasing the harmless buried block item to it would lose behavior;
+- Basic/Intermediate/Advanced/Ultimate Chassis are V33a crafting-sheet cells 12..15. V33a supplies
+  sprites and `ChromaStacks` constants but no recipes/usages and only untranslated
+  `chromacraft.chassis0..3` keys, so they appear to be dormant upstream scaffolding rather than four
+  functioning machine tiers. Their original sprites now exist, without fabricating recipes;
+- there is no core ChromatiCraft block or item named Waterstone. V33a's only `Waterstone` label is
+  the **Waterstone Wand Cap** in the disabled Thaumcraft integration. The distinct core crafting
+  item `water_ingot` is **Fluidic Essence Ingot**, and its missing source sprite is now restored.
+
+Focused verification only; no unrelated GameTests were run:
+
+```text
+.\gradlew.bat :ChromatiCraft:compileJava --console=plain
+BUILD SUCCESSFUL
+
+.\gradlew.bat :ChromatiCraft:runClientData --no-daemon --console=plain
+BUILD SUCCESSFUL (16 corrected super-crystal item definitions written)
+
+.\gradlew.bat :ChromatiCraft:runGameTest \
+  -PgameTestSelector=chromaticraft:loot_chest_lid_event \
+  --no-daemon --console=plain
+All 1 required tests passed
+```
+
 The remaining acceptance work is visual/in-world: held Manipulator charging, leaf layer ordering,
 animated item glows, and the Loot Chest's facing/lid/texture. The large-tree geometry itself is now
 source-count-checked by the focused GameTest.
@@ -3633,12 +3700,60 @@ spawners, and the explicit controller identity. No broad GameTest suite was reru
   repeater's phase-correct colour rune. The final destruction burst is a typed client payload;
   surge start restores the source non-attenuated `REPEATERSURGE` cue.
 - Verification boundary: the broadcast lifecycle test and preceding compile passed. The execution
-  service then rejected the compile for the repeater presentation patch because the Codex execution
-  allowance was exhausted until 2026-08-18. `git diff --check` reports no whitespace errors, and
-  the referenced 26.2 `SoundEvents.GLASS_BREAK`/`ClientLevel.playLocalSound` APIs were checked in
-  `Sources/minecraft`, but this final presentation patch must be treated as **not compile-verified**
-  until `:ChromatiCraft:compileJava` and the focused
-  `chromaticraft:repeater_overload_destroys_stalk` test are rerun.
+  service originally rejected the compile for the repeater presentation patch because its allowance
+  was exhausted. That stale boundary was cleared on 2026-08-13: `:ChromatiCraft:compileJava` now
+  passes with the complete presentation patch included. The focused
+  `chromaticraft:repeater_overload_destroys_stalk` test was not rerun during the unrelated Heat Lamp
+  repair, so its last recorded behavioral result remains the applicable one.
+
+### Heat Lamp menu/item repair and full crystal-family tint registration — 2026-08-13
+
+- The Heat Lamp menu's server `DataSlot` was already authoritative, but the screen copied the
+  client block entity's construction default into its edit box once during `init()` and never
+  observed the later menu update. `ScreenHeatLamp.containerTick()` now mirrors each newly delivered
+  server value into the editor under a responder guard. Reopening either lamp therefore displays
+  its persisted configured temperature instead of hot-lamp default `20`, while server clamping is
+  also reflected back into the field.
+- Hot and cold items retain V33a `BlockAttachableMini#setBlockBoundsForItemRender()` parity: the
+  east-facing attachment geometry is still the item model. Their twelve generated directional
+  models now inherit `minecraft:block/block`, restoring the standard block-item display/camera
+  transforms that the legacy inventory renderer supplied. This is deliberately scoped to Heat
+  Lamps; no Chroma Door models or other cuboids changed.
+- The shared dynamic crystal mesh already emits tint index zero, and all Cave Crystal, Crystal Lamp,
+  and Super/Potion Crystal colours remain separate block/item registry identities. The client tint
+  source had only been registered against the Cave Crystal list, leaving the other two families
+  white in-world. One `CrystalBlock` tint source now covers all three independently registered
+  sixteen-colour families and resolves the element from each block state/identity. Generated
+  special item definitions continue to serialize their explicit element (for example red remains
+  `"element": "red"`), with no metadata-style colour component introduced.
+
+Focused verification (no broad GameTest suite was run):
+
+```text
+.\gradlew.bat :ChromatiCraft:compileJava --no-daemon
+BUILD SUCCESSFUL
+.\gradlew.bat :ChromatiCraft:runClientData --no-daemon --console=plain
+BUILD SUCCESSFUL (only the twelve hot/cold directional models changed)
+.\gradlew.bat :ChromatiCraft:runGameTest -PgameTestSelector=chromaticraft:heat_lamp_temperature_furnace_loop --no-daemon --console=plain
+All 1 required tests passed
+```
+
+### Crystal item translucency and model-outline visibility — 2026-08-13
+
+The shared special renderer uses the 26.2 `itemTranslucent` target. The later V33a tint audit
+supersedes this checkpoint's attempted alpha-only diagnosis: all forty-eight independently
+registered CrystalBlock item forms retain alpha 220, matching the placed mesh and remaining more
+transparent than V33a's alpha-255 inventory pass. The largest source-intended visual difference is
+instead the old item's 80% colour brightness versus the placed model's full-bright pass. Crystal
+Lamp and Potion/Super Crystal plinths remain deliberately opaque and are submitted separately
+before the coloured mesh. See the 2026-08-13 asset/parity sweep for the corrected two-stage tint.
+
+The custom diagonal selection geometry continues to use Minecraft's window-selected default line
+width and its complete high-contrast two-pass behavior. Vanilla's normal colour is itself
+translucent black (`ARGB.black(102)`); across the crystal mesh that produced the reported transparent
+wire appearance. Normal custom-model outlines are therefore opaque black while retaining every
+other vanilla selection-line parameter. This applies consistently to cave, lamp and potion/super
+crystals and to the Item Stand geometry using the same reusable extractor.
 
 ### Structure controller: renderer and hardness — 2026-08-10
 
@@ -3662,3 +3777,763 @@ still cannot be opened with explosives — only found and mined.
 flare (the `monument_lines_big.png` pass and the `structcontrol` shader) and gates the whole renderer
 on `isVisible`/`isMonument`/`isInWorld`. None of those flags exist on the ported block entity, so the
 flare currently draws unconditionally. Both belong with the monument ritual.
+
+### Lexicon source-parity correction: frames, recipes, fragments and progress — 2026-08-13
+
+An in-client screenshot audit superseded several earlier “book screen complete” claims. The active
+screen had combined V33a's separate GUI classes without preserving their shared coordinate contract:
+frames were drawn at `k` even though `ChromaBookGui` draws them at `k-8`, while buttons correctly
+remained anchored to `k`. That made the X button, titles and every specialist aperture disagree.
+All frames now retain the source eight-pixel lift, with their widgets at the original unshifted
+coordinates. Navigation sheet layout again starts from `(left+11, top+11)` and its first section
+from `(left+15, top+12)`; a real scissor confines category frames, icons and search fog to the
+242x206 navigation aperture instead of allowing outlines past the right and bottom book edges.
+
+The combined-screen navigation leakage is also removed. Items/Recipes/Search and the three main
+right tabs exist only on the navigation screen, as in `GuiNavigation`; entry screens carry only X
+and `GuiBookSection`'s Save & Exit, while Progress, Recovery and Notes carry their own Return tab.
+Switching Items/Recipes synchronizes the page content mode, eliminating stale recipe displays in
+item view. The invented Description/Crafting Recipe/Casting Recipe toggle and invented casting
+duration/experience labels are gone. Casting and vanilla grid pages restore the exact source title,
+grid/output and alphabetical ingredient-tally origins. Recipe selection uses the small source top
+arrows. More importantly, `GuiBookSection`'s right-side `>`/`<` subpage controls are restored for
+Temple/Multiblock/Pylon recipes, making the Item Casting Stand's four authored runes reachable on
+the real `handbook_runes` page.
+
+Recovery, Notebook and Progress no longer fall through to `navigation2.png`: they use V33a's
+`fragments.png`, `notes.png` and `progress.png` frames, with the scrolling stone field behind the
+transparent Recovery/Progress apertures. Recovery's invented text-button list has been replaced by
+the original 7x5, two-times-scale decoded-fragment grid and direct icon hit testing.
+
+The decoded information-fragment item model now applies the old `(16,-16)` callback position in the
+correct modern item-atlas coordinate space. Its half-sized icon is translated to the upper-right
+instead of below the slot, and Shift is part of the model identity so the paper/inset and full-icon
+states invalidate the GUI item atlas correctly.
+
+Progress nodes once again render per-stage icons. The modern resolver binds every stage to its
+landed split-registry equivalent (and to the original's nearest vanilla visual noun only where the
+old custom tile/entity is not registered yet). The graph now caches its prerequisite edges and
+depths. Each diagonal edge is submitted as one rotated one-pixel rectangle rather than hundreds of
+individual 1x1 GUI render states per frame; the latter was the direct cause of the reported ~13 FPS
+screen. Progress content is clipped to the upper aperture, node selection restores the authored
+title/hint/reveal panel below it, and locked nodes display a question mark rather than an empty slot.
+
+Focused verification only; no GameTests were relevant or rerun:
+
+```text
+.\gradlew.bat :ChromatiCraft:compileJava
+BUILD SUCCESSFUL
+```
+
+### Start-to-Proxima milestone 1: guide structures and progression spine — 2026-08-13
+
+The new milestone is a naturally playable route from a fresh world into Proxima, with Proxima's
+non-puzzle terrain/content first and its puzzle structures deliberately following later. This is a
+large cluster rather than a single portal patch: the V33a portal is gated by eleven exploration and
+energy prerequisites, and the 26.2 tree still contained several missing grant sites and a stripped
+conditional-progression layer. This checkpoint repairs the earliest shared seams without falsely
+claiming that the dimension itself has landed.
+
+**Guide structure parity.** The Crystal Stone page already resolved all sixteen independently
+registered `StoneTypes` blocks, but recipe lookup asked the server only about the first (smooth)
+icon. Crafting and casting lookup now aggregate every displayed registry identity, de-duplicate the
+results, and therefore expose the recipes for beams, columns, stabilizers, pylon focus blocks,
+grooves, bricks, the multichromic rune, aura stabilizer and resonance ring as well as smooth stone.
+
+The Crystal Burrow and the other natural dungeons were not absent from worldgen: canonical NBTs for
+`cavern`, `burrow` plus its annexes, `ocean`, `desert` and `snow` were already generated and placed by
+`OverworldStructureFeature`. Their guide rows use a Shielding block as the icon, so the viewer tried
+to load a nonexistent `structshield` template. The viewer now separates icon identity from structure
+identity and loads each canonical NBT. Their titles are restored from V33a's `chromastruct.*` keys —
+Crystal Shrine, Crystal Burrow, Ocean Temple, Sandy Burrow and Frozen Outpost — instead of the stale
+generic `Shielding`, and their exact old Shielding variants (cloak/stone/moss/cobble/light) are shown.
+
+There is no separately registered V33a overworld structure named `RAVINE`. The requested ravine-like
+dungeon is `ChromaStructures.CAVERN`, displayed upstream as **Crystal Shrine**; its full modern NBT
+and natural placement already existed and are now reachable in the structure viewer. Proxima also
+contains deprecated/experimental canyon terrain code, but that is dimension terrain and must not be
+invented as a second overworld dungeon.
+
+**Natural progression restored.** The excluded monolithic 1.7.10 event manager had left basic
+server progression disconnected. `ProgressionEventBridge` restores only its source-faithful
+progression hooks with modern NeoForge events: breaking an ore grants MINE, harvesting a crop grants
+HARVEST, entering the Nether/End grants NETHER/END, receiving a potion effect grants POTION,
+player-caused hostile/dragon/wither deaths grant their corresponding combat stages inside V33a's
+384-block/same-dimension bound, and dying while carrying at least 90,000 total player-buffer lumens
+grants DIE. Breaking a previously discovered spawner grants BREAKSPAWNER. The authoritative
+TradeWithVillagerEvent hook for buying a Focus Crystal also grants FOCUSCRYSTAL now; the actual
+data-driven offer still belongs to the next village/trade slice. Fake players remain excluded.
+
+V33a's four conditional chains are active again: BYPASSWEAK can trigger BLOWREPEATER, TUNECAST can
+trigger BYPASSWEAK unless BLOWREPEATER was already learned, and either FOCUSCRYSTAL or RELAYS can
+formulate ENERGYIDEA once USEENERGY is known. The focus-crystal path retains its retroactive
+behavior, so discovery order does not dead-end the repeater branch. These are conditional dashed
+links, not solid DAG parents; representing both focus crystals and relays as mandatory parents would
+have changed the game.
+
+**Selection outline.** Cave, potion and lamp crystal model outlines now use half of Minecraft's
+window-selected line width (including half of the high-contrast secondary width). The shared Item
+Casting Stand outline remains at full vanilla width.
+
+**Focused verification:**
+
+```text
+.\gradlew.bat :ChromatiCraft:compileJava --console=plain
+BUILD SUCCESSFUL
+
+.\gradlew.bat :ChromatiCraft:runClientData --no-daemon --console=plain
+BUILD SUCCESSFUL (one corrected language file written)
+
+.\gradlew.bat :ChromatiCraft:runGameTest \
+  -PgameTestSelector=chromaticraft:progression_chained_energy_idea \
+  --no-daemon --console=plain
+All 1 required tests passed
+```
+
+**Remaining Start → Proxima critical path (in dependency order):**
+
+The failed-casting village pieces, Focus Crystal trade, Storage Crystal chain/Charger, both Aura
+Infusers and the player-placed eight-crystal `POWERCRYSTAL` pylon loop are complete as of
+2026-08-14; see their ledger entries below.
+
+1. Port the portal block/entity/charge behavior and the authored 15x10x15 PortalStructure to a
+   canonical NBT. Do not emit an NBT containing unregistered legacy block ids simply to make the
+   command exist.
+2. Register Proxima's dimension type, biomes and chunk generator, then port its non-puzzle terrain
+   features (including the dimension's canyon/ravine terrain where the V33a generator actually uses
+   it), decorations, entities, audio/sky/weather and return/travel safety. Puzzle generators remain
+   the explicitly deferred follow-up.
+
+### V33a visual/guide feedback audit: crystal items, runes, loot chest and repeaters — 2026-08-13
+
+An item-side source comparison found that the crystal mesh itself was faithful but its inventory
+selection was not. V33a's normal `CrystalRenderer.renderInventoryBlock` draws the central spike plus
+only the positive-X and positive-Z branches; all four branches are a temporary handbook-only mode.
+The special renderer had made that temporary mode permanent, producing an overly dense, symmetric
+icon. Cave, potion and lamp crystal items now use the ordinary two-branch mask and V33a's 80%-bright
+element tint. Their modern alpha remains 220 (the source world alpha) to retain the separately
+requested translucent item presentation instead of reverting to the old opaque item pass.
+
+The casting rune subpage had ported only `getBlockRune()` — the nearly black engraved underlay.
+V33a's `RuneShapeRenderer` immediately overlays `getFaceRune()`, which is the coloured/glowing rune
+image. Both layers are now drawn in source order. `ChromaBookData.drawCastingRecipe` also renders the
+result stack before selecting Grid/Runes/Stands/Aura; the output icon therefore remains in the left
+result slot on every subpage instead of going blank away from Grid.
+
+`CRYSTALSTONE` is present under Resources with its source title **Crystal Stone** and its
+`pylonstruct` binding resolves all sixteen independently registered `StoneTypes`; recipe requests
+continue to aggregate every identity. A non-creative lexicon still needs that fragment, exactly as
+V33a did. Empty navigation cells were previously indistinguishable from missing catalog data. Any
+catalog entry whose icon binding is genuinely unported now gets a runtime magenta/black checker and
+`!`; this is deliberately drawn in Java rather than installed as a reusable asset, so it cannot be
+mistaken for finished content or leak into block/item models.
+
+Progress notifications use ChromatiCraft's own top-right GUI layer, not Minecraft's toast manager.
+It is a direct render-state port of V33a's `ProgressOverlayRenderer`: independently sorted/stacked
+charcoal cards, the two inset frames, vertically revealed entry/exit, authored title and short
+description, stage icon, the configured 800-tick default lifetime, and the original 0.5-volume,
+24-tick-cooled `GAINPROGRESS` sound. Research-tier upgrades use their fragment icon and original
+generic world-reveal caption. The payload distinguishes stage ordinals from research-level ordinals.
+
+The loot chest's old cuboid coordinates had been combined with the modern renderer without the
+legacy model transform: its lid occupied the lower ten-pixel box and the result looked both too short
+and static. The layer now uses the equivalent 26.2 single-chest convention (14 pixels total, a real
+9-pixel hinge, linked knob rotation). The already-live client lid ticker and openers block event now
+move a visible lid through the source cubic easing.
+
+Finally, the repeater BER advertises an AABB expanded by its full send/receive range. Connection
+beams, the manipulator dashed target line and range sphere are no longer scoped to the repeater's
+one-block render box, so looking away from the controller cannot frustum-cut a long line near its far
+end. V33a's 4.5-block player target ray and dashed cadence remain unchanged.
+
+**Focused verification only:**
+
+```text
+.\gradlew.bat :ChromatiCraft:compileJava --console=plain
+BUILD SUCCESSFUL
+
+.\gradlew.bat :ChromatiCraft:runGameTest \
+  -PgameTestSelector=chromaticraft:lexicon_casting_recipe_snapshot \
+  --no-daemon --console=plain
+All 1 required tests passed
+```
+
+### V33a fragment/lexicon interaction and render fault repair — 2026-08-14
+
+The invalid-texture-dimensions crash on the pylon introduction page was not a corrupt PNG.
+`roundflare.png` is the exact V33a 180-frame block animation: 256 pixels wide and 46,080 pixels
+tall. It is legal when stitched as 180 256x256 atlas frames, but illegal when the GUI texture
+manager tries to allocate the whole strip as one OpenGL texture. The lexicon now samples the
+already-stitched animated block-atlas sprite, retaining animation and eliminating the oversized
+standalone upload.
+
+DragonAPI's modern `syncCustomData` had accidentally serialized and client-loaded the complete
+player record. Pylon charging changes the element buffer every tick, so that path also reapplied
+saved position and rotation every tick and fought live mouse input. The packet once again means
+what the 1.7.10 API meant: only the player's persistent mod-data compound. The client replaces that
+compound authoritatively without ever invoking `Player.load`, so manipulator charging can no longer
+snap or oscillate the camera.
+
+The fragment workflows are containers again. Shift-using a non-creative Lexicon opens V33a's
+scrollable 9x3 page inventory with the player's inventory below it. Decoded fragments can be
+inserted, extracted and shift-moved; the book's component-backed page set is updated as rows scroll
+and when the container closes. Clicking blank fragments onto the Lexicon in any inventory now uses
+the 26.2 stacked-item override hook: primary click stores the carried stack, secondary click stores
+one, and secondary-clicking with an empty cursor extracts one of the book's stored blanks.
+
+Right-using an undeciphered fragment now opens the original one-slot, three-choice decoder rather
+than an invented vertical list of every available page. The full V33a category table is mechanically
+derived into `lexicon/fragment_categories.tsv`; it retains all explicit page/category weights plus
+the source's generic Info/Block/Tool/Resource/Ability/Structure bindings. The server runs the
+original choose-category, then weighted-page algorithm and synchronizes the resulting three valid
+next-research identities and category-atlas ordinals. The client uses the exact
+V33a `fragselect`, `fragmentcategories` and `squarefog` assets and the original slot/inventory
+coordinates; a choice retains the source 1.5-second confirmation. Taking or closing an undecoded
+fragment invokes the original random-selection fallback and returns the programmed fragment to the
+player, while a completed choice grants the corresponding player research before closing.
+
+Ordinary guide prose now wraps at V33a's 242-pixel width and uses all thirteen lines that fit between
+the source description origin and lower page edge. The invented 52x18 bottom `Page` buttons and
+bottom page counter are gone; truly longer authored prose uses the small source-position up/down
+controls. The modern picture-in-picture projection's pitched Z extent is compensated in the machine
+preview anchor, keeping block models inside the page instead of projecting through its top border.
+
+Crystal item geometry now uses full-bright light coordinates for the coloured translucent mesh
+while leaving lamp/potion support bases under ordinary item lighting. This reproduces the visual
+emissive strength of the old renderer under the 26.2 item compositor without making the opaque base
+glow. The alpha, exact V33a colour calculation and ordinary two-branch inventory silhouette remain
+unchanged.
+
+The loot-chest texture is restored byte-for-byte from `ChromatiCraft 1.7.10 V33a.jar` (SHA-256
+`E180AA6B064FC416F2C5A524BD46B9E71A8D1F07ABF967A965C6DA25F2301789`). The modern model already uses
+Minecraft's equivalent single-chest cube wrapping and linked lid/knob hinge, so retaining the source
+sheet—rather than swapping its up/down rectangles—gives both the closed top and opened lid interior
+their intended faces.
+
+**Focused verification:**
+
+```text
+.\gradlew.bat :DragonAPI:compileJava :ChromatiCraft:compileJava --console=plain
+BUILD SUCCESSFUL
+```
+
+No GameTests were rerun for this client-render/container slice. The existing information-fragment
+research-loop coverage remains compiled; the newly repaired failures require the in-world GUI,
+mouse, atlas-animation and chest-open render pipeline and therefore need the manual checks listed in
+the hand-off.
+
+### Start-to-Proxima milestone 2: failed-casting villages and Focus Crystal trade — 2026-08-14
+
+The canonical `VILLAGECASTING` route is live without replacing it with a generic village-entry
+trigger. Datagen mechanically reads the untouched V33a `WoodenChromaStructure.generate` and
+`BrokenChromaStructure.generate` placement calls and emits ten modern structure NBTs: both authored
+variants in plains, desert, savanna, snowy and taiga palettes. The wooden house retains its full
+15x8x15 clear-volume contract, eight paired doors, central casting ruin, source sign and
+ChromatiCraft loot chest; the 16x7x17 broken structure retains its damaged crystalline-stone form,
+water/gravel damage, signs, primary progression chest and secondary junk chest. Old block metadata
+is translated to explicit 26.2 identities/states during generation. Door upper halves inherit the
+lower half's facing after import, avoiding invalid modern two-block door pairs.
+
+Each template has the same west-facing `minecraft:building_entrance` connector contract used by
+vanilla 26.2 houses. The two entries are added to every ordinary village house pool at V33a's 4:1
+relative weights. NeoForge 26.2 has biome/structure modifiers but no template-pool append codec, so
+the data pack must overlay the five vanilla `minecraft:village/*/houses` pool ids. The provider does
+not carry a handwritten vanilla snapshot: it opens the archive/directory which supplied Minecraft's
+`StructureTemplatePool` class, copies Mojang's exact current pool JSON, removes any previous Chroma
+entries for idempotence and appends the two elements. This is source-faithful and update-safe within
+the target game version, but it is still a namespace override; compatibility with another mod which
+also replaces those exact pool files needs an explicit merged-pool solution if one is encountered.
+
+The ChromatiCraft village chest hydrates `chromaticraft:chests/village_casting` and a persistent
+`VILLAGECASTING` trigger. Its table includes the active 26.2 weaponsmith contents, V33a's weighted
+sixteen-colour shard/Lexicon/Info Fragment additions, and the independent 50% unowned-chest fragment
+roll. The broken ruin's vanilla chest uses the source weighted coal/iron/gold/redstone/blue-dye/
+diamond/emerald junk table for ten draws. Because the 26.2 loot-table datagen validator cannot
+resolve cross-pack nested references, the current vanilla weaponsmith pools are copied directly into
+the Chroma table rather than referenced by id; server datagen validates the resulting self-contained
+table.
+
+The Focus Crystal offer is a real `villager_trade` registry object. Eligible V33a professions map to
+modern librarians, clerics, armorers, toolsmiths and weaponsmiths. Each villager persists one
+independent 40% eligibility roll; reopening or reloading cannot reroll it. Immediately before a
+player opens an eligible villager, the bridge removes any stale shared offer and exposes the trade
+only when that player has `CRYSTALS`. It costs exactly one emerald, gives one component-backed
+FLAWED Focus Crystal, and uses `Integer.MAX_VALUE`; completed trades also have their uses reset so
+the original no-expiry behavior survives implementation details. Buying it continues through the
+authoritative trade event into `FOCUSCRYSTAL` and the conditional `ENERGYIDEA` chain.
+
+Generated-output audit covered all ten NBTs: wooden templates contain 1,800 explicit cells, broken
+templates 237 cells, every style has its expected palette, all eight wooden door pairs match, and
+every template contains the expected jigsaw and loot block-entity NBT. The connector was compared
+directly with Mojang's `plains_small_house_1` and matches its name, target, street pool, orientation
+and stair final-state contract.
+
+**Focused verification only:**
+
+```text
+.\gradlew.bat :ChromatiCraft:runServerData --console=plain
+BUILD SUCCESSFUL
+
+.\gradlew.bat :ChromatiCraft:compileJava --console=plain
+BUILD SUCCESSFUL
+
+.\gradlew.bat :ChromatiCraft:runGameTest \
+  -PgameTestSelector=chromaticraft:focus_crystal_trade_definition \
+  --console=plain
+All 1 required tests passed
+
+.\gradlew.bat :ChromatiCraft:runGameTest \
+  -PgameTestSelector=chromaticraft:village_casting_nbt_contract \
+  --console=plain
+All 1 required tests passed
+```
+
+### 2026-08-14 — V33a Storage Crystal item and casting chain restored
+
+The former `ChromaItems.STORAGE` metadata family is now seven stable 26.2 registry identities:
+`storage_crystal_nula`, `storage_crystal_daya`, `storage_crystal_divi`, `storage_crystal_sami`,
+`storage_crystal_vier`, `storage_crystal_lima`, and `storage_crystal_aru`. Their per-element
+capacities retain V33a's exact `1000 * 8^(metadata-1)` sequence: 125 through 32,768,000. Stored
+sixteen-colour energy is component-backed under `CUSTOM_DATA.energy`; the implementation preserves
+unrelated custom data and retains the original static API surface for the charger and later relay
+consumers. The creative tab emits both empty and fully charged examples, as V33a did.
+
+The complete multiblock casting upgrade chain is data-generated under
+`chromaticraft:storage_crystal/*`. It retains the source center-item sequence, boosted-shard base
+ring, Infused Dust base inner ring, Chromic/Resonant Dust upgrade stands, all twelve source runes,
+durations 50–3200, XP 200, penalty threshold 3, `STORAGE` completion grant, and center-component
+copying. Casting completion behavior is now recipe data instead of a hardcoded output special case;
+this also preserves the V33a harmonic-note metadata for later recipes.
+
+Focused validation:
+
+```text
+.\gradlew.bat :ChromatiCraft:compileJava --console=plain
+.\gradlew.bat :ChromatiCraft:runServerData --console=plain
+.\gradlew.bat :ChromatiCraft:runClientData --console=plain
+.\gradlew.bat :ChromatiCraft:runGameTest \
+  -PgameTestSelector=chromaticraft:storage_crystal_item_and_recipe \
+  --console=plain
+All 1 required tests passed
+```
+
+The next Start-to-Proxima work is the V33a Storage Crystal Charger (`CHARGER`) followed by the
+separate Item Aura Infuser (`INFUSER`). Neither may be represented by the generic storage block.
+
+### 2026-08-14 — Storage Crystal Charger operational loop restored
+
+`chromaticraft:crystal_charger` is now the registered `ChromaTiles.CHARGER` machine, backed by a
+real network-receiver block entity, menu/screen, submit-pipeline BER, special inventory renderer,
+and the exact V33a 64x32 Techne texture/model. The GUI uses the original 256x256 Charger sheet and
+retains the sixteen independently clickable colour bars. The displayed Storage Crystal
+counter-rotates inside the machine as in the source.
+
+Server behavior retains the source constants and rules: 120,000 internal lumens per colour,
+20-block receive range, 4,000 throughput, all colours enabled by default, persisted toggle
+bitflags, transfer rate `10 + floor(sqrt(stored))`, the hidden optional Speed Upgrade's x8
+multiplier, and sided extraction of slot zero only after every one of the crystal's sixteen
+channels is full. The former MISC metadata-1 Speed Upgrade is a distinct
+`chromaticraft:speed_upgrade` registry item with its exact V33a sprite; it is intentionally still
+the hidden second automation slot because the source Charger GUI exposes only the crystal slot.
+
+The data-generated `chromaticraft:crystal_charger` multiblock recipe uses the Crystal Core center,
+four obsidian corner stands, three plain white-shard cardinal stands, and the smooth-stone slab on
+the remaining cardinal stand. It retains MULTIBLOCK tier, 200 ticks, and 200 XP.
+
+Focused validation:
+
+```text
+.\gradlew.bat :ChromatiCraft:compileJava --console=plain
+.\gradlew.bat :ChromatiCraft:runServerData :ChromatiCraft:runClientData --console=plain
+.\gradlew.bat :ChromatiCraft:runGameTest \
+  -PgameTestSelector=chromaticraft:crystal_charger_item_loop \
+  --console=plain
+All 1 required tests passed
+```
+
+The next distinct Start-to-Proxima machine slice is the Item Aura Infuser (`INFUSER`), including
+its pedestal item collision/right-click loop, tank/fluid consumption, structure validation,
+recipe registry, rendering, and progression grant.
+
+### 2026-08-14 — Item Aura Infuser operational loop restored
+
+`chromaticraft:item_aura_infuser` is now the distinct registered `ChromaTiles.INFUSER` pedestal;
+it is not represented by the Storage Crystal Charger or by a generic inventory block. The modern
+block/entity pair preserves V33a ownership, one-item pedestal interaction, item-entity pickup,
+empty-hand ejection, the unusual one-item overflow transfer rule, inert automation inventory,
+break drops, and the 608-tick operation interval. Crafting converts every Raw Crystal in the input
+stack into Iridescent Crystals, grants `INFUSE`, and preserves `DOUBLECRAFT` output overflow through
+the stack's component-backed custom data until it is ejected or dropped.
+
+The complete Infusion Structure is generated as canonical
+`chromaticraft:multiblock/infusion.nbt`. Its smooth crystalline-stone floor, brick rings and exact
+24-point trigonometric outer ring match the V33a coordinates. The inner radius-two ring remains a
+real distributed Liquid Chroma reservoir: each authored cell is exposed through a transactional
+26.2 fluid handler, accepts only complete Chroma buckets, rolls back atomically, and is consumed on
+successful crafting. Structure validation, cache lookup and invalidation are live rather than
+being replaced with a boolean placeholder.
+
+Focus acceleration retains the original rules. Any flawed crystal cancels acceleration; refined,
+exquisite and turbo crystals contribute their source weights; eight total focus points produce 2x
+speed and sixteen all-exquisite points produce 4x. The persisted/synchronized operation state also
+drives the source cadence for `INFUSION`, `INFUSION_SHORT`, `INFUSE`, and `ERROR` audio. Client
+rendering uses the exact V33a 64x32 `infuser2.png` Techne body, eight arms, counter-rotating/bobbing
+pedestal item, cycling sixteen-colour three-layer rays, sixfold crafting spiral and completion
+burst. The inventory item uses the same authored special renderer.
+
+The data-generated MULTIBLOCK recipe retains the Item Stand center, all eight exact Chroma Alloy
+stand positions, 100-tick duration and 200 XP. The historical commented-out purple/black energy
+requirement was not invented as a live requirement.
+
+Focused validation:
+
+```text
+.\gradlew.bat :ChromatiCraft:compileJava --console=plain
+.\gradlew.bat :ChromatiCraft:runServerData :ChromatiCraft:runClientData --console=plain
+.\gradlew.bat :ChromatiCraft:runGameTest \
+  -PgameTestSelector=chromaticraft:item_aura_infuser_loop \
+  --console=plain
+All 1 required tests passed
+```
+
+The next Start-to-Proxima slice is the separate Player Aura Infuser (`PLAYERINFUSER`) and its
+`PLAYERINFUSION` upgrade structure/recipes. After that, the ledger returns to the remaining
+network/casting requirements for `POWERCRYSTAL`; the already-finished Item Infuser must not be
+silently reused for player ability upgrades.
+
+### 2026-08-14 — Player Aura Infuser and buffer-capacity upgrade contract restored
+
+`chromaticraft:player_aura_infuser` is now its own registered `ChromaTiles.PLAYERINFUSER` block and
+block entity rather than an alias of the Item Aura Infuser. It shares only V33a's actual pedestal
+base: ownership, the one-slot interaction/collision rules, Liquid Chroma handling, 608-tick
+operation interval and authored `infuser2.png` body renderer. The common block's shape has also been
+corrected to the source registry's half-block height for both infusers.
+
+The complete Player Infusion fountain is generated as canonical
+`chromaticraft:multiblock/player_infusion.nbt` with the controller anchored at `(4,3,4)`. It retains
+the exact 9x4x9 smooth-stone base, outer crystalline beam/corner square, inner brick/beam segments,
+central focus column, four stabilizers and 32 unobstructed source Liquid Chroma cells. The runtime
+structure loader and validator use that NBT; successful infusion consumes those exact 32 sources.
+Focus Crystal sockets are derived from the four stabilizer cells, preserving the shared acceleration
+rules instead of hardcoding another set of coordinates.
+
+Player infusion behavior now matches V33a: a valid capacity-upgrade ingredient stack is limited to
+eight, the owner must intersect the narrow target band above the pedestal, the selected upgrade must
+still be available, and every crafting tick pulls the recipient toward the center with the original
+squared-distance velocity formula. Completion grants the selected persistent capacity boost and
+consumes all eight items. The previously omitted common `onCraftingTick` hook was restored, so the
+capture behavior actually runs during the operation. Crafting and ambient fountain particles use
+the source Liquid Chroma cell selection, upward speed, inward velocity, scale and gravity ranges.
+
+The `ElementBufferCapacityBoost` table no longer grants all seven boosts automatically. Only
+`ALLCOLORS` and `ABILITY` are automatic, exactly as in V33a. The five gated boosts again have their
+source ingredients: Ether Berries (`ALLOYS`), Glow Cave Dust (`DIMENSION`), Boost Root
+(`TURBOCHARGE`), Echo Crystal (`CTM`) and Unknown Artefact Fragment (`TOWER`). The latter four now
+have stable 26.2 item identities and their exact atlas sprites; their later biome/dimension/structure
+acquisition routes remain work for the corresponding content slices and are not falsely marked
+complete here.
+
+The data-generated MULTIBLOCK recipe retains the Item Aura Infuser center, four Aura Ingots, four
+diamonds, three Resonant Dusts and one Chromastone in the exact twelve stand positions, with 100
+ticks, 200 XP, no runes and no aura requirement. Server/client datagen emits its recipe, NBT,
+language and the shared special item model.
+
+The focused test also exposed a foundational NeoForge packet seam: DragonAPI's pipeline and periodic
+block-entity sync broadcaster attempted to send custom payloads to connections which had not
+negotiated that payload type. Both paths now filter with `connection.hasChannel(payload)` before
+sending. Normal modded clients retain their packets, while optional/non-negotiated connections and
+headless GameTest players can no longer crash the server.
+
+Focused validation:
+
+```text
+.\gradlew.bat :ChromatiCraft:compileJava --console=plain
+BUILD SUCCESSFUL
+
+.\gradlew.bat :ChromatiCraft:runServerData :ChromatiCraft:runClientData --console=plain
+BUILD SUCCESSFUL
+
+.\gradlew.bat :ChromatiCraft:runGameTest \
+  -PgameTestSelector=chromaticraft:player_aura_infuser_loop \
+  --console=plain
+All 1 required tests passed
+```
+
+The next Start-to-Proxima slice is an exact reachability audit through `POWERCRYSTAL`: identify the
+first missing runtime grant/recipe/network link from the now-operational storage/infusion machinery,
+then port that dependency rather than jumping ahead to a command-only Portal shell.
+
+### 2026-08-14 — `POWERCRYSTAL` player-placement and progression path closed
+
+The reachability audit confirmed that the exact V33a PYLON recipe is already live and
+data-generated: diamond center; six Iridescent Chunks, five obsidian and two glowstone on the
+authored stands; 15,000 yellow, 25,000 black and 10,000 purple aura; 1,600 ticks; 500 XP; stacking
+factor `0.97489`; and a personal tuning-key requirement. Completing that PYLON-tier cast supplies
+`LINK`; the operational Storage Crystal chain, pylon charging and Item Aura Infuser supply the
+other original prerequisites `STORAGE`, `CHARGE` and `INFUSE`.
+
+The actual runtime break was placement ownership. V33a's common `ItemChromaPlacer` called
+`setPlacer` on every `TileEntityChromaticBase` before restoring item NBT. The modern common
+`BlockChromaticTile` restored only the NBT, while focused pylon tests manually injected owners.
+Consequently player-placed Power Crystals had empty owner sets: they could render and connect, but
+could not form the same-owner eight-crystal set which recharges the pylon and grants
+`POWERCRYSTAL`. The common block now restores the source placement ordering—player first, item NBT
+second—for every generic Chromatic tile. This fixes the Power Crystal without adding a one-off
+exception and restores the same contract for other still-generic owned machines.
+
+The existing `pylon_power_crystal_recharge` test now places all eight crystals through the real
+block-placement callback rather than calling `setPlacer` on their block entities. It proves all
+eight inherit the owner, connect to their legal rune sockets, contribute the exact 768-lumen normal
+tick, and grant `POWERCRYSTAL` once the owner has `LINK`, `STORAGE`, `CHARGE` and `INFUSE`.
+
+Focused validation only:
+
+```text
+.\gradlew.bat :ChromatiCraft:runGameTest \
+  -PgameTestSelector=chromaticraft:pylon_power_crystal_recharge \
+  --console=plain
+All 1 required tests passed
+```
+
+The next implementation boundary is now the portal itself. The audit found no modern Portal block,
+block entity or `ChromaStructures.PORTAL` registration and no portal structure NBT; the 500-line
+`BlockChromaPortal` and 616-line authored `PortalStructure` remain pristine V33a source. They must
+land together with modern collision/teleport safety and the later Proxima dimension target—adding a
+cosmetic or command-only portal block first would create another unreachable shell.
+
+### 2026-08-15 — Portal Rift cluster, Liquid Ender and Proximal Essence
+
+The complete V33a portal subsystem is now live. This is the whole coherent unit, not a shell: the
+canonical NBT, both block identities, the block entity, the casting recipe, the tuning economy, the
+contact rules and the 26.2 teleport pipeline all landed together.
+
+**Original files audited.** `Block/BlockChromaPortal.java` (500 lines, block plus its inner
+`TileEntityCrystalPortal`), `Auxiliary/Structure/PortalStructure.java` (616 lines, 581 explicit
+placement calls), `Auxiliary/RecipeManagers/CastingRecipes/Blocks/PortalRecipe.java`,
+`Auxiliary/ChromaTeleporter.java`, `World/Dimension/DimensionTuningManager.java`,
+`World/Dimension/CheatingPreventionSystem.java`, `World/Dimension/DimensionJoinHandler.java`,
+`World/Dimension/ChunkProviderChroma.areGeneratorsReady`, `World/Dimension/WorldProviderChroma.java`,
+`Block/BlockLiquidEnder.java`, `Items/ItemTieredResource.java`, and `Render/TESR/RenderCrystalPortal`
+plus `Render/Item/PortalItemRenderer` for the presentation layer.
+
+**Portal NBT template.** `chromaticraft:multiblock/portal`, **15 x 10 x 15**, controller anchor
+**(7, 0, 7)** — V33a builds from `i = x-7, j = y+0, k = z-7` and puts the 3x3 rift pad on the bottom
+layer at `i+6..i+8, j+0, k+6..k+8`. `ChromaStructureTemplateProvider.importPortal()` parses all 581
+source calls mechanically and asserts that exact count; nothing is retyped by hand. The pristine V33a
+class is retained verbatim at `auxiliary/structure/legacy/PortalStructure.java` as the single geometry
+authority, outside the compile allowlist, exactly as the village/cavern/burrow/ocean/desert/snow
+templates keep theirs.
+
+Decoded contents of the generated NBT: 148 plain Cloak Shielding, 100 Luma (64 flowing, 36 basin),
+60 smooth, 56 bricks, 48 column, 44 resonance ring, 24 Liquid Ender sources, 20 beams and 20 energized
+beams split 10/10 per axis, 9 rift pad cells, 8 each of crystalline energy stabilizer / multichromic
+rune / Pylon Focus / engraved, 6 of each groove, 4 aura stabilizer and 4 corner. The anchor is
+self-checking: the four Pylon Focus cells land at `(+-3, +5, +-3)` from the controller, which is
+precisely where V33a's `chargingParticles()` probes for them.
+
+`shield, 0` decodes to **non-reinforced** Cloak Shielding, not the unbreakable worldgen form: V33a's
+`BlockType.metadata = ordinal()+8`, so bit 3 is the reinforced flag and metadata 0 is the plain,
+player-placeable material. That is what makes the structure buildable at all.
+
+**Wildcard cell semantics preserved.** V33a used three different cell contracts on fluids and two of
+them on the same block. `NBTStructureLoader` gained an explicit per-position `CellRule` so they
+survive instead of collapsing into a literal state comparison:
+
+- `setFluid(er)` is a `FluidCheck` with `needsSourceBlock`, so the 24 Liquid Ender basins keep the
+  ordinary exact-state path against `liquid_ender[level=0]`.
+- `setBlock(ch)` is a metadata-wildcard `BlockKey`: any Luma level. These are the fountain basin
+  cells, which drain as they flow; requiring a source there would make a built portal invalidate
+  itself.
+- `setBlock(ch, 1)` required legacy quanta 1 on a fluid whose `BlockEtherealLuma` declared
+  `setQuantaPerBlock(16)`. 26.2's `LiquidBlock` has eight levels, so the legacy index has no
+  counterpart; what the call distinguishes is flowing Luma from a source, which is what the sleeve
+  around the fountain pillar physically is. Those cells accept any non-source level.
+
+**Ender Crystals are not in the template, deliberately.** V33a's `getEntities()` additionally requires
+exactly one vanilla Ender Crystal in each of eight cells at `(+-5,+5,-+9)` and `(+-9,+5,-+5)`. They are
+entities, they sit outside the 15x15 footprint, and the bedrock pads under them exist only in
+`isDisplay()` and are never a match requirement. `TileEntityCrystalPortal` checks those eight
+positions alongside the array, exactly as the source does.
+
+**Two registered rift identities.** `chromaticraft:portal_rift` targets Proxima and must match the
+whole multiblock; `chromaticraft:return_portal_rift` is V33a metadata 15 — it targets the Overworld
+and validates unconditionally. Per the standing metadata rule those are two blocks, not a property.
+Recorded honestly: **nothing in V33a places metadata 15.** A full `git grep` of the V33a tree finds no
+producer, so the return rift is reachable only through commands/creative upstream, and this port does
+not invent an acquisition path for it. V33a's real ways out of Proxima are dying there (you are moved
+to the Overworld at 1 health, losing 10-60% of each buffered element) and falling below y = -1024;
+both live in the excluded monolithic event manager and are **not** yet ported.
+
+**Charging is a timer, not an energy cost.** This is the single most important thing not to
+"improve": nothing in V33a supplies the portal's charge. While the structure matches, `charge`
+increments once per tick to `MINCHARGE = 300`, and keeps incrementing past that for as long as the
+dimension generators are not ready. No pylon, repeater, battery or focus crystal is involved. Losing
+any required cell zeroes it. Do not add an aura or network requirement here.
+
+`areGeneratorsReady()` is restored as a real gate, `ProximaGenerators`, mirroring V33a's five-bit
+`ThreadedGenerators` flag. Only generators that actually exist in the port are members (currently
+`BIOME` and `REGION`); `STRUCTURE` and `SKYRIVER` are documented as belonging in the same gate and
+must be added to its enum when their generators land, so the portal automatically resumes waiting on
+them. It is not a `return true`.
+
+**Behaviors restored.** All nine pad blocks carry the entity (`hasTileEntity` is an unconditional
+`true` upstream, its `meta == 1` restriction commented out) and only the centre works — `centre` being
+`getPortalPosition() == 5` with a full 3x3, which is what the misleadingly named `isFull9x9()` really
+tests; the modern method is called `isFullPad` so nobody "fixes" it into a 9x9 scan. Contact anywhere
+on the pad walks inward to the centre, with V33a's static visited set replaced by a per-call set.
+`denyEntity` throws the entity up at 1.5/tick with a random +-0.25 horizontal nudge and forces
+`fallDistance` to at least 500 — that lethal landing is the anti-abuse mechanism, and it applies to
+unqualified players, non-essence items and every other entity alike. Tuning follows the exact
+`(pure ? 150 : 1) * count^(pure ? 0.85 : 0.5)`, decays one per `rand(400)` ticks, and 60% is spent per
+trip. The Manipulator dismantle extinguishes fire in the 5x5, flood-fills every connected rift within
+16/8/16, drops one rift per removed block and plays RIFT plus POWERDOWN; `ownedBy` returns true for a
+portal with no recorded placer, so an unplaced rift can be dismantled by anyone. The rift has no
+collision box, `RenderShape.INVISIBLE`, `noOcclusion`, no loot table, and a render bounding box
+inflated by 8.
+
+**Teleport.** Ported onto the real 26.2 pipeline: the block implements
+`net.minecraft.world.level.block.Portal`, contact calls `setAsInsidePortal` (which supplies vanilla's
+portal cooldown and therefore the loop guard for free), and `getPortalDestination` returns a
+`TeleportTransition`. Transition time is 0 because V33a teleported on contact.
+`ChromaTeleporter.arrivalTransition` reproduces upstream's `placeInPortal` exactly — y = 1024 above
+the origin entering Proxima, y = 1024 above the player's bed or world spawn returning — and the
+post-transition hook carries `ProgressStage.DIMENSION.stepPlayerTo`, both arrival cues (a
+server-wide broadcast on the first ever arrival, a personal cue plus the `DIMSOUND` cue to everyone
+else afterwards) and `CheatingPreventionSystem.postJoin`.
+
+`CheatingPreventionSystem` is fully ported as a mechanism — ban registry, all six `BanReaction`s, the
+pre-join drop sweep with permanent-lifetime drops, the post-join delete sweep, the held-item tick, the
+right-click gate, the explosion/knockback punishment and the `STRUCTCHEAT` grant. Its ban *list* is
+legitimately empty: every V33a entry names a 1.7.10 mod (EnderIO, GraviSuite, Thaumic Tinkerer,
+Draconic Evolution, Botania, NotEnoughWands). The exact original name-to-severity table is retained as
+`LEGACY_BANS` data and re-resolved against the live registries, so any of those mods appearing for
+26.2 is banned again without re-deriving anything.
+
+**Casting recipe.** Exact `PortalRecipe`, verified in the generated JSON: pylon tier, Energized Void
+Core in the grid centre, 24 stands (Energetic Essence and Spatial Rifting Powder inner; glowstone,
+ender eyes, Chromastone, beacons, End Stone, emeralds outer), 32 runes (the full sixteen-rune ring
+plus the whole Crystal Repeater layout), 16 aura entries at 120,000 for each primary and 60,000 for
+the rest, 2,400 ticks, 25,000 experience (the pylon tier's 500 x 50), nine rifts produced, penalty
+threshold 1 with multiplier 0 so a repeat cast is worth nothing, and all eleven `DIMENSION`
+prerequisites read live from the progression DAG rather than restated.
+
+**Progression audit — all eleven prerequisites are genuinely reachable.**
+
+| Prerequisite | Grant site | Verified |
+|---|---|---|
+| `ALLCOLORS` | `ProgressionManager` auto-grant once all sixteen colours are discovered | yes |
+| `END` | `ProgressionEventBridge` on entering the End | yes |
+| `NETHERSTRUCT` | `NetherRoofStructureFeature` loot chests | yes |
+| `POWERCRYSTAL` | the player-placed eight-crystal pylon loop (2026-08-14) | yes |
+| `RAINBOWFOREST` | `ExplorationMonitor` | yes |
+| `GLOWCLIFFS` | `ExplorationMonitor` | yes |
+| `CAVERN` / `BURROW` / `OCEAN` / `DESERTSTRUCT` / `SNOWSTRUCT` | `TileEntityStructureController.triggerProximity` via `StructureType.progress`, plus the `OverworldStructureFeature` loot chests | yes |
+
+No prerequisite needed a new acquisition seam. `DIMENSION` itself is granted by arriving, exactly as
+upstream.
+
+**New content registered.** `chromaticraft:ender` fluid vertical (fluid, flowing fluid, FluidType at
+the source's viscosity 2000 / density 1500 / temperature 270 / luminosity 4, `liquid_ender` block with
+the exact ender-effect toss behind `ChromaOptions.ENDEREFFECT`, and the authoritative V33a
+`ender`/`flowingender` sprites). `PROXIMAL_ESSENCE` and `PURE_PROXIMAL_ESSENCE` — V33a's
+`bedrockloot`/`bedrockloot2`, the only tuning currency — with their sprites cropped from
+`items_resource.png` indices 154 and 155 and their V33a display names. **Their acquisition path is not
+implemented:** upstream they drop from Proxima's bedrock cracks, which is dimension content.
+
+**One genuine fix outside the cluster.** `ChromaParticle.FadeGlow.tick()` overrode `tick()` without
+the per-tick gravity step, which silently pinned every `setGravity()` caller to straight-line motion —
+the glow daisy and glow root motes were already written to rise and could not. The step is restored.
+
+**Focused validation:**
+
+```text
+.\gradlew.bat :ChromatiCraft:compileJava --console=plain
+BUILD SUCCESSFUL
+
+.\gradlew.bat :ChromatiCraft:runServerData :ChromatiCraft:runClientData --console=plain
+BUILD SUCCESSFUL
+
+.\gradlew.bat :ChromatiCraft:runGameTest \
+  -PgameTestSelector=chromaticraft:portal_structure_and_charge --console=plain
+All 1 required tests passed
+
+.\gradlew.bat :ChromatiCraft:runGameTest \
+  -PgameTestSelector=chromaticraft:portal_entry_rules --console=plain
+All 1 required tests passed
+```
+
+`portal_structure_and_charge` places the generated NBT, proves the anchor is the pad centre, proves a
+portal without its Ender Crystals does not validate and one with them does, measures the charge rate
+across real ticks as exactly one per tick, proves a fully qualified player is still refused below 300,
+checks both tuning formulas and the 40% carry-over, round-trips structure state / charge / tuning /
+ownership through `saveWithFullMetadata`, then breaks and restores the Pylon Focus cell to prove
+invalidation and revalidation. `portal_entry_rules` proves the empty collision shape, the inward walk
+from an edge cell, the lethal 500 fall distance, item rejection versus essence absorption, and that the
+Manipulator dismantles all nine blocks and drops exactly nine rifts.
+
+While fixing the charge test, one real port bug surfaced and was fixed: `getTicker` must call **both**
+`BlockEntityBase.updateEntity()` (lifecycle) and `updateEntity(level, pos)` (the tile body). Calling
+only the first leaves the rift permanently uncharged.
+
+**Cannot be verified headlessly — in-world checklist.**
+
+1. `RenderCrystalPortal` is **not ported**; the rift is currently invisible in world. Its BER is the
+   next presentation slice.
+2. `PortalItemRenderer` is **not ported**. Upstream draws the held/inventory rift as an unlit cube
+   textured with vanilla `textures/entity/end_portal.png`, which is not on the 26.2 block atlas and
+   therefore needs a special item renderer rather than a model. The item currently uses the
+   particle-only world definition and looks blank. No substitute sprite was invented.
+3. The three particle families (`spawnPortalIdle`, `spawnPortalCharging`, `spawnPortalActive`) are
+   ported but only visually confirmable in game.
+4. The 90-tick `ChromaSounds.PORTAL` loop, the RIFT/POWERDOWN dismantle cues and the two GOTODIM
+   arrival branches need an audible check.
+5. Liquid Ender's still/flow sprites and the ender-effect toss need an in-world check.
+
+**Deliberately deferred.** All Proxima puzzle structures and their generators, as instructed.
+
+### Proxima dimension: audit and the exact next slice
+
+The dimension itself did **not** land in this slice, and no placeholder was registered. Registering a
+dimension whose chunk generator substitutes Overworld terrain would be exactly the unreachable shell
+the previous checkpoint warned against, so the only Proxima code added here is what the portal genuinely
+needs: `ChromaDimensions` (the `proxima` dimension/stem/type resource keys), `ProximaGenerators` (the
+real `areGeneratorsReady` gate), `ChromaTeleporter`, `DimensionTuningManager` and
+`CheatingPreventionSystem`. `BlockChromaPortal.isDimensionLoadable` asks the server for
+`chromaticraft:proxima` and correctly answers false today, so the rift charges, validates, refuses
+travel and says so — nothing pretends to work.
+
+The audit needed to build it, so the next slice does not have to re-derive it:
+
+**Dimension type** (from `WorldProviderChroma`): name "Proxima"; height 256; `isSurfaceWorld` true, so
+sky light is on; `calculateCelestialAngle` pinned to 0.5 and `isDaytime()` false, i.e. a fixed sky;
+`canRespawnHere` false, so beds and respawn anchors do not work; `canBlockFreeze` and `canSnowAt` both
+false; `getMovementFactor` 1, so coordinate scale is 1.0; `getVoidFogYFactor` 0.0001; spawn point
+`(0, 1024, 0)`; average ground level is the vanilla value plus
+`ChunkProviderChroma.VERTICAL_OFFSET = 48`. Its sky, cloud and weather renderers are three separate
+classes under `world/dimension/rendering`.
+
+**Biome source.** Nine primary biomes with spawn weights and base height deltas — Crystal Plains
+(8, 0), Iridescent Archipelago (6, -5), Lumen Skylands (2, 0), Glowing Forest (10, +10), Sparkling
+Sands (4, 0), Radiant Fissures (3, 0), plus the three zero-weight technical biomes Structure Field,
+Luminescent Sanctuary and Monument Field — and four sub-biomes: Crystal Mountains (0.75, 0), Aura Ocean
+(0.4, -30), Crystal Forest (0.2, +15) and Voidland (0.1, +8). They are **not** a vanilla parameter-list
+source: `BiomeDistributor` is a threaded generator that paints a global 4096x4096 byte map by spreading
+blobs, with `LobulatedCurve` regions for the monument and each element's structure field. A faithful
+26.2 port needs a custom `BiomeSource` reading that map, plus `RegionMapper`, plus the per-biome
+`ChromaDimensionBiomeTerrainShaper` implementations in `world/dimension/terrain` (islands, crystal
+mountain, glowing cracks, skyland canyons, sparkling sands).
+
+**Chunk generator.** `ChunkProviderChroma` is a fully custom per-column generator: noise layers, then
+`shiftTerrainGen` lifting the whole column by `VERTICAL_OFFSET` and filling stone beneath, then a
+per-biome replacement pass with sand beaches, surface grass and a bedrock layer, then decorators. It
+cannot be expressed as vanilla noise settings.
+
+**Recommended next slice, in order.** (1) `RegionMapper` and `BiomeDistributor` as real ported
+generators registering into `ProximaGenerators`; (2) the nine plus four biomes as datagen-registered
+`Biome` entries with the source's colours and the custom `BiomeSource` over the distributor map;
+(3) the `ChunkGenerator` with the terrain shapers; (4) dimension type and level stem datagen, which
+flips `isDimensionLoadable` true and unblocks the remaining portal GameTests (progression transition,
+teleport cooldown, return/safe-arrival serialization); (5) `DimensionJoinHandler`'s arrival carve-out
+(the r=5 / rh=3.5 ellipsoid cleared to air with a Cloak Shielding shell) and the two real exit paths
+(death and the y < -1024 void fall); (6) non-puzzle decoration, entities and the sky/cloud/weather
+renderers.
