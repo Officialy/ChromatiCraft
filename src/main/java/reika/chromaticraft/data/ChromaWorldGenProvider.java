@@ -4,12 +4,20 @@ import java.util.List;
 
 import net.minecraft.core.HolderGetter;
 import net.minecraft.core.RegistrySetBuilder;
+import net.minecraft.core.component.DataComponentPatch;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.BootstrapContext;
 import net.minecraft.data.worldgen.placement.PlacementUtils;
 import net.minecraft.data.worldgen.placement.VegetationPlacements;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.item.ItemStackTemplate;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.item.trading.TradeCost;
+import net.minecraft.world.item.trading.VillagerTrade;
 import net.minecraft.util.random.WeightedList;
 import net.minecraft.util.valueproviders.ConstantInt;
 import net.minecraft.world.level.biome.Biome;
@@ -38,11 +46,15 @@ import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaTieredPlants;
 import reika.chromaticraft.registry.ChromaDecoFlowers;
 import reika.chromaticraft.registry.CrystalElement;
+import reika.chromaticraft.registry.ChromaTiles;
 import reika.chromaticraft.world.PylonGridPlacement;
 import reika.chromaticraft.world.biome.ChromaBiomes;
 
 /** Datapack registry objects for ChromatiCraft's active 26.2 worldgen features. */
 public final class ChromaWorldGenProvider {
+
+    public static final ResourceKey<VillagerTrade> FOCUS_CRYSTAL_TRADE = ResourceKey.create(
+            Registries.VILLAGER_TRADE, id("focus_crystal"));
 
     private static final Identifier CAVE_CRYSTAL = id("cave_crystal");
     private static final Identifier NATURAL_PYLON = id("natural_pylon");
@@ -109,7 +121,19 @@ public final class ChromaWorldGenProvider {
 
     public static RegistrySetBuilder buildRegistrySet() {
         RegistrySetBuilder builder = new RegistrySetBuilder();
-        builder.add(Registries.BIOME, ChromaBiomes::bootstrap);
+        builder.add(Registries.VILLAGER_TRADE, bootstrap -> bootstrap.register(FOCUS_CRYSTAL_TRADE,
+                new VillagerTrade(
+                        new TradeCost(Items.EMERALD, 1),
+						flawedFocusCrystal(),
+                        Integer.MAX_VALUE,
+                        1,
+                        0,
+                        java.util.Optional.empty(),
+                        java.util.List.of())));
+        builder.add(Registries.BIOME, bootstrap -> {
+            ChromaBiomes.bootstrap(bootstrap);
+            reika.chromaticraft.world.dimension.biome.ProximaBiomeDefinitions.bootstrap(bootstrap);
+        });
         builder.add(Registries.CONFIGURED_FEATURE, bootstrap -> {
             HolderGetter<Feature<?>> features = bootstrap.lookup(Registries.FEATURE);
             registerConfigured(bootstrap, features, CAVE_CRYSTAL);
@@ -266,6 +290,13 @@ public final class ChromaWorldGenProvider {
         });
         return builder;
     }
+
+	private static ItemStackTemplate flawedFocusCrystal() {
+		CompoundTag tag = new CompoundTag();
+		tag.putInt("tier", 0); // TileEntityFocusCrystal.CrystalTier.FLAWED
+		return new ItemStackTemplate(ChromaTiles.FOCUSCRYSTAL.getBlock().asItem(),
+				DataComponentPatch.builder().set(DataComponents.CUSTOM_DATA, CustomData.of(tag)).build());
+	}
 
     private static TreeConfiguration dyeTreeConfiguration(CrystalElement element, HolderGetter<Biome> biomes) {
         return new TreeConfiguration.TreeConfigurationBuilder(randomOverworldLog(),

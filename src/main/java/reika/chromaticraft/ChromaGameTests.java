@@ -157,6 +157,10 @@ import reika.chromaticraft.world.dimension.BiomeDistributor;
 import reika.chromaticraft.world.dimension.biome.ProximaBiomeType;
 import reika.chromaticraft.world.dimension.biome.ProximaBiomes;
 import reika.chromaticraft.world.dimension.biome.ProximaSubBiomes;
+import reika.chromaticraft.world.dimension.biome.ProximaBiomeSource;
+import net.minecraft.core.HolderGetter;
+import net.minecraft.core.QuartPos;
+import net.minecraft.world.level.biome.Biome;
 import reika.chromaticraft.world.dimension.StructureCalculator;
 import reika.chromaticraft.block.dimension.structure.lightpanel.BlockLightPanel;
 import reika.chromaticraft.block.dimension.structure.lightpanel.BlockLightSwitch;
@@ -302,6 +306,76 @@ public final class ChromaGameTests {
 		register(event, env, "proxima_central_region", ChromaGameTests::proximaCentralRegion);
 		register(event, env, "proxima_biome_distribution", 200, ChromaGameTests::proximaBiomeDistribution);
 		register(event, env, "proxima_generator_gate", 200, ChromaGameTests::proximaGeneratorGate);
+		register(event, env, "proxima_biome_source", 200, ChromaGameTests::proximaBiomeSource);
+	}
+
+	/**
+	 * All thirteen Proxima biomes must be registered with V33a's own settings, and the biome source
+	 * must resolve every one of them out of the painted map.
+	 */
+	private static void proximaBiomeSource(GameTestHelper helper) {
+		boolean previous = StructureCalculator.allowUnfinishedStructures;
+		RegionMapper.clear();
+		BiomeDistributor.clear();
+		try {
+			HolderGetter<Biome> lookup = helper.getLevel().registryAccess().lookupOrThrow(Registries.BIOME);
+			for (ProximaBiomes b : ProximaBiomes.biomeList)
+				helper.assertTrue(lookup.get(b.biomeKey()).isPresent(),
+						b + " must be a registered biome at " + b.biomeKey().identifier());
+			for (ProximaSubBiomes b : ProximaSubBiomes.biomeList)
+				helper.assertTrue(lookup.get(b.biomeKey()).isPresent(),
+						b + " must be a registered biome at " + b.biomeKey().identifier());
+
+			// V33a: rain is disabled by the shared base and only BiomeGenChromaOcean turns it back on.
+			for (ProximaBiomes b : ProximaBiomes.biomeList)
+				helper.assertTrue(!lookup.getOrThrow(b.biomeKey()).value().hasPrecipitation(),
+						b + " must not have precipitation");
+			for (ProximaSubBiomes b : ProximaSubBiomes.biomeList)
+				helper.assertTrue(lookup.getOrThrow(b.biomeKey()).value().hasPrecipitation()
+								== (b == ProximaSubBiomes.DEEPOCEAN),
+						"Aura Ocean is the only Proxima biome where it rains, " + b + " disagreed");
+
+			// V33a BiomeGenCentral is the only biome anywhere in Proxima with a spawn.
+			for (ProximaBiomes b : ProximaBiomes.biomeList) {
+				boolean anySpawns = b.biomeKey() != null && lookup.getOrThrow(b.biomeKey()).value()
+						.getMobSettings().getMobs(ChromaEntityTypes.TUNNEL_NUKER.get().getCategory())
+						.unwrap().size() > 0;
+				helper.assertTrue(anySpawns == (b == ProximaBiomes.CENTER),
+						"only the Luminescent Sanctuary may spawn anything, " + b + " disagreed");
+			}
+
+			StructureCalculator.allowUnfinishedStructures = true;
+			ProximaGenerators.Layout layout = ProximaGenerators.generateNow(1234L);
+			ProximaBiomeSource source = new ProximaBiomeSource(lookup);
+			helper.assertTrue(source.possibleBiomes().size()
+							== ProximaBiomes.biomeList.length + ProximaSubBiomes.biomeList.length,
+					"the source must advertise every Proxima biome, or chunk serialization will reject one");
+
+			// The source is a pure read of the painted map: quart coordinates back to blocks, and no
+			// climate sampling at all.
+			int mx = layout.structures().getMonumentPosition().getX();
+			int mz = layout.structures().getMonumentPosition().getZ();
+			helper.assertTrue(source.getNoiseBiome(QuartPos.fromBlock(mx), 0, QuartPos.fromBlock(mz), null)
+							.is(ProximaBiomes.MONUMENT.biomeKey()),
+					"the monument position must resolve to the Monument Field through the biome source");
+			helper.assertTrue(source.getNoiseBiome(0, 0, 0, null).is(ProximaBiomes.CENTER.biomeKey()),
+					"the world origin is inside the central region");
+			for (int qx = 0; qx < 64; qx++) {
+				Holder<Biome> got = source.getNoiseBiome(qx * 97, 0, qx * 53, null);
+				helper.assertTrue(got != null && got.unwrapKey().isPresent(),
+						"every query must resolve to a registered biome");
+			}
+
+			// The documented race answer: with no map painted, the source still answers rather than
+			// throwing during a chunk build.
+			BiomeDistributor.clear();
+			helper.assertTrue(source.getNoiseBiome(12345, 0, 6789, null).is(ProximaBiomes.CENTER.biomeKey()),
+					"before the map exists the source must fall back to the Luminescent Sanctuary");
+		}
+		finally {
+			StructureCalculator.allowUnfinishedStructures = previous;
+		}
+		helper.succeed();
 	}
 
 	/**

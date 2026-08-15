@@ -31,6 +31,19 @@ public final class ChromaFeatures {
     public static final DeferredRegister<Feature<?>> FEATURES =
             DeferredRegister.create(Registries.FEATURE, ChromatiCraft.MODID);
 
+    /**
+     * Proxima answers biome queries from its own painted map rather than from climate parameters, so
+     * its level stem names a mod biome source and that source's codec has to be registered like any
+     * other worldgen type.
+     */
+    public static final DeferredRegister<com.mojang.serialization.MapCodec<? extends net.minecraft.world.level.biome.BiomeSource>> BIOME_SOURCES =
+            DeferredRegister.create(Registries.BIOME_SOURCE, ChromatiCraft.MODID);
+
+    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends net.minecraft.world.level.biome.BiomeSource>,
+            com.mojang.serialization.MapCodec<reika.chromaticraft.world.dimension.biome.ProximaBiomeSource>> PROXIMA_BIOME_SOURCE =
+            BIOME_SOURCES.register("proxima",
+                    () -> reika.chromaticraft.world.dimension.biome.ProximaBiomeSource.CODEC);
+
     public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> CAVE_CRYSTAL =
             FEATURES.register("cave_crystal", CrystalFeature::new);
     /**

@@ -4819,3 +4819,81 @@ them again automatically.
 reading this map, then the `ChunkGenerator` with the `world/dimension/terrain` shapers and
 `ChunkProviderChroma`'s vertical-offset/surface/bedrock passes, then the dimension type and level stem
 datagen that finally flips `isDimensionLoadable` true and unblocks the remaining portal GameTests.
+
+### 2026-08-15 — Proxima biome definitions and biome source
+
+All thirteen Proxima biomes are now real registered biomes, and a `BiomeSource` resolves them out of
+the painted map.
+
+**The biome definitions.** V33a's biome classes are almost entirely shared: every one extends
+`ChromaDimensionBiome`, which disables rain, empties all four spawn lists, and takes both its water
+and grass colour from the overworld Rainbow Forest. Exactly four facts differ across the whole family,
+and all four are reproduced:
+
+| Fact | Source |
+|---|---|
+| Aura Ocean is the only biome where it rains | `BiomeGenChromaOcean` sets `enableRain = true` |
+| Luminescent Sanctuary is the only biome with a spawn — one Tunnel Nuker, weight 1, group 1-1 | `BiomeGenCentral.initSpawnRules` |
+| Structure Field brightens its grass and uses white water | `StructureBiome` |
+| Monument Field replaces the grass base with `0x77ccff` | `MonumentBiome.getBaseColor` |
+
+Verified in the emitted JSON: `aura_ocean` is the only `has_precipitation: true`; every biome carries
+water `#00ffff` and grass `#79c05a` from the Rainbow Forest except `structure_field` (`#ffffff` /
+`#79ff5a`) and `monument_field` (`#ffffff` / `#77ccff`); `luminescent_sanctuary` is the only one with
+a spawner entry. Temperature and downfall are 0.5, the `BiomeGenBase` defaults, because no Proxima
+biome ever sets them.
+
+**What is static here and dynamic upstream.** V33a computes grass colour per position: the base is
+modulated by a simplex field into the green channel between 1.0x and 1.5x, and Structure/Monument
+Fields additionally scan four blocks in each cardinal direction and switch to a highlight colour at
+their own edge, blending toward it by a second noise field. A 26.2 `BiomeSpecialEffects` grass
+override is a single constant, so the base colour lives in the biome and the per-position modulation
+belongs to a client colour resolver alongside the existing `ChromaBlockColors`. That is genuine
+remaining work, recorded as such — the constants are upstream's own bases, not approximations of the
+modulated result.
+
+**Deliberately empty.** Generation settings carry no features or carvers, because Proxima's decoration
+does not come from biome features at all: it comes from `DimensionGenerators`/`DecoratorChroma`, which
+run off the chunk generator and land with it. Attaching vanilla features would be inventing content.
+The sky is left at its default for the same reason — upstream draws it with a custom
+`ChromaSkyRenderer`, not a per-biome colour.
+
+**The biome source.** `ProximaBiomeSource` is a pure read of the painted map. Proxima uses no climate
+parameters whatsoever — V33a answers every query from `BiomeDistributor.getBiome(x, z)`, which
+consults the structure and monument regions, then the central region, then the tiling map — so the
+source ignores the `Climate.Sampler` entirely and converts quart coordinates back to blocks. Its codec
+is registered into `Registries.BIOME_SOURCE` so a level stem can name it.
+
+Before the map is painted the source answers with the Luminescent Sanctuary. That is a defined answer
+for a race rather than a stand-in: it is what the world origin resolves to anyway, and it is
+unreachable in practice because the Portal Rift refuses to carry anyone while the generator gate is
+closed.
+
+**Focused validation:**
+
+```text
+.\gradlew.bat :ChromatiCraft:compileJava --console=plain
+BUILD SUCCESSFUL
+
+.\gradlew.bat :ChromatiCraft:runServerData :ChromatiCraft:runClientData --console=plain
+BUILD SUCCESSFUL (thirteen new worldgen/biome entries)
+
+.\gradlew.bat :ChromatiCraft:runGameTest -PgameTestSelector=chromaticraft:proxima_biome_source
+All 1 required tests passed
+.\gradlew.bat :ChromatiCraft:runGameTest -PgameTestSelector=chromaticraft:proxima_biome_distribution
+All 1 required tests passed
+.\gradlew.bat :ChromatiCraft:runGameTest -PgameTestSelector=chromaticraft:proxima_generator_gate
+All 1 required tests passed
+```
+
+`proxima_biome_source` proves all thirteen keys resolve to registered biomes, that only Aura Ocean has
+precipitation, that only the Luminescent Sanctuary has a spawn, that the source advertises every
+biome (a chunk carrying an unadvertised biome fails serialization), that the monument position and the
+world origin resolve correctly through the source, that sixty-four scattered queries all land on
+registered biomes, and that the documented pre-generation fallback holds.
+
+**Next:** the `ChunkGenerator` — `ChunkProviderChroma`'s noise layers, the `VERTICAL_OFFSET = 48`
+column lift with stone fill beneath, the per-biome surface replacement with sand beaches and grass,
+and the bedrock layer — reading terrain shape from the `world/dimension/terrain` shapers. After that
+the dimension type and level stem datagen, which is what finally flips `isDimensionLoadable` true and
+unblocks the remaining portal GameTests.

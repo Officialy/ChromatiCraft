@@ -34,7 +34,8 @@ public final class ChromaBiomes {
     public static final ResourceKey<Biome> LUMINOUS_CLIFFS_SHORES = key("luminous_cliffs_shores");
     public static final ResourceKey<Biome> ENDER_FOREST = key("ender_forest");
 
-    private static final int WATER_COLOR = 0x00ffff;
+    /** Shared with the Proxima biomes, whose base derives from the Rainbow Forest's water. */
+    public static final int WATER_COLOR = 0x00ffff;
     private static final int SKY_COLOR = 0x648cff;
 
     /**
@@ -42,7 +43,7 @@ public final class ChromaBiomes {
      * derive their palette from {@code BiomeGenBase.forest}, so this is the shared base rather than
      * a per-biome choice.
      */
-    private static final int FOREST_GRASS = 0x79c05a;
+    public static final int FOREST_GRASS = 0x79c05a;
     private static final int FOREST_FOLIAGE = 0x59ae30;
 
     private ChromaBiomes() {}

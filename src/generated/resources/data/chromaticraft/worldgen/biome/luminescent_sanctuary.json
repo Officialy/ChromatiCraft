@@ -1,0 +1,30 @@
+{
+  "carvers": [],
+  "downfall": 0.5,
+  "effects": {
+    "foliage_color": "#79c05a",
+    "grass_color": "#79c05a",
+    "water_color": "#00ffff"
+  },
+  "features": [],
+  "has_precipitation": false,
+  "spawn_costs": {},
+  "spawners": {
+    "ambient": [],
+    "axolotls": [],
+    "creature": [
+      {
+        "type": "chromaticraft:tunnel_nuker",
+        "maxCount": 1,
+        "minCount": 1,
+        "weight": 1
+      }
+    ],
+    "misc": [],
+    "monster": [],
+    "underground_water_creature": [],
+    "water_ambient": [],
+    "water_creature": []
+  },
+  "temperature": 0.5
+}

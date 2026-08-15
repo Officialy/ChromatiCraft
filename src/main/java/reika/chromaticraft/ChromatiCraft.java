@@ -77,6 +77,7 @@ public class ChromatiCraft extends DragonAPIMod {
 		ChromaBlocks.ITEMS.register(modEventBus);
 		ChromaItems.ITEMS.register(modEventBus);
 		ChromaBlockEntities.BLOCK_ENTITIES.register(modEventBus);
+		modEventBus.addListener(ChromaBlockEntities::registerCapabilities);
 		ChromaMenus.REGISTRY.register(modEventBus);
 		ChromaEntityTypes.ENTITY_TYPES.register(modEventBus);
 		modEventBus.addListener(EntityGlowCloud::registerAttributes);
@@ -85,6 +86,7 @@ public class ChromatiCraft extends DragonAPIMod {
 				event.put(ChromaEntityTypes.TUNNEL_NUKER.get(), EntityTunnelNuker.createAttributes().build()));
 		ChromaTabs.CREATIVE_MODE_TABS.register(modEventBus);
 		ChromaFeatures.FEATURES.register(modEventBus);
+		ChromaFeatures.BIOME_SOURCES.register(modEventBus);
 		ChromaPlacementModifiers.TYPES.register(modEventBus);
 		MOB_EFFECTS.register(modEventBus);
 		reika.chromaticraft.registry.ChromaRecipeTypes.RECIPE_TYPES.register(modEventBus);
@@ -114,6 +116,9 @@ public class ChromatiCraft extends DragonAPIMod {
 		NeoForge.EVENT_BUS.addListener(reika.chromaticraft.magic.TunnelNukerSpawner::tick);
 		// The discovery scan that grants CRYSTALS (and BEDROCK/DEEPCAVE/biome stages) on sight.
 		reika.chromaticraft.auxiliary.ExplorationMonitor.register();
+		// V33a's mining, dimension-entry, potion, death and boss-kill progression hooks.
+		reika.chromaticraft.auxiliary.ProgressionEventBridge.register();
+		reika.chromaticraft.auxiliary.FocusCrystalTradeHandler.register();
 	}
 
 	private void commonSetup(FMLCommonSetupEvent event) {
@@ -139,6 +144,12 @@ public class ChromatiCraft extends DragonAPIMod {
 				reika.chromaticraft.client.gui.ScreenCastingTable::new);
 		event.register(ChromaMenus.HEAT_LAMP.get(),
 				reika.chromaticraft.client.gui.ScreenHeatLamp::new);
+		event.register(ChromaMenus.CRYSTAL_CHARGER.get(),
+				reika.chromaticraft.client.gui.ScreenCrystalCharger::new);
+		event.register(ChromaMenus.LEXICON_PAGES.get(),
+				reika.chromaticraft.client.gui.ScreenLexiconPages::new);
+		event.register(ChromaMenus.FRAGMENT_SELECTION.get(),
+				reika.chromaticraft.client.gui.ScreenFragmentSelectionMenu::new);
 	}
 
 	@Override
