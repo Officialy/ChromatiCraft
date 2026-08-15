@@ -214,10 +214,13 @@ public final class NBTStructureLoader {
      * template stored: fences, walls, panes, iron bars, stairs and vines all come out unconnected,
      * because a template necessarily serialises them in their default shape.
      *
-     * <p>Redstone specifically does <em>not</em> need this — {@code LevelChunk.setBlockState} calls
-     * {@code onPlace} regardless of the update flags, and {@code RedStoneWireBlock} resolves its own
-     * connections and power there. That was measured, not assumed, while investigating a reported
-     * Nether Temple fault; it is recorded here so the next reader does not re-derive it.
+     * <p>Redstone is the case worth spelling out, because it was measured while chasing a Nether Temple
+     * fault. {@code onPlace} runs regardless of the update flags but only recomputes <em>power</em>; the
+     * connection shape comes from {@code updateShape}, which is exactly what this pass drives. That
+     * still leaves a trap upstream of here: {@code RedStoneWireBlock.getConnectionState} short-circuits
+     * on a wire that is already a dot, so a template storing "none" on all four sides stays a dot
+     * through every update. The templates therefore author wires as crosses, and this pass resolves
+     * them down to whatever their neighbours actually justify.
      */
     private static void resolveConnectedShapes(WorldGenLevel world, List<BlockPos> placed, int flags) {
         for (BlockPos pos : placed) {

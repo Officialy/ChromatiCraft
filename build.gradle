@@ -469,4 +469,6 @@ sourceSets.main.java {
     include 'reika/chromaticraft/data/ChromaModelProvider.java'
     include 'reika/chromaticraft/data/ChromaSoundProvider.java'
     include 'reika/chromaticraft/data/ChromaLootProvider.java'
+    include 'reika/chromaticraft/data/ChromaChestLoot.java'
+    include 'reika/chromaticraft/data/ChromaLootModifierProvider.java'
 }

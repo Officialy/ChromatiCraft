@@ -1355,8 +1355,17 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
                     "east", "false", "north", "false", "south", "false", "up", "false", "west", "false"));
             case "Blocks.tnt" -> new StateDef("minecraft:tnt", Map.of("unstable", "false"));
             case "Blocks.stone_pressure_plate" -> new StateDef("minecraft:stone_pressure_plate", Map.of("powered", "false"));
-            case "Blocks.redstone_wire" -> new StateDef("minecraft:redstone_wire", Map.of("east", "none", "north", "none",
-                    "power", Integer.toString(metadata & 15), "south", "none", "west", "none"));
+            // Authored as a cross, not a dot, and that is load-bearing rather than cosmetic. 1.7.10 had
+            // no dot shape at all: a wire with no wire neighbours rendered as a cross and powered every
+            // block around it, which is what the temple's puzzle wiring relies on. 26.2 added the dot,
+            // and RedStoneWireBlock.getConnectionState preserves one that already exists —
+            // "if (wasDot && isDot(state)) return state;" short-circuits before the auto-connect logic.
+            // A template that stored "none" on all four sides is therefore a dot that no placement,
+            // neighbour update or shape-resolution pass will ever open up. Storing "side" makes wasDot
+            // false, so vanilla runs its normal resolution and each wire settles into the line or cross
+            // its neighbours call for.
+            case "Blocks.redstone_wire" -> new StateDef("minecraft:redstone_wire", Map.of("east", "side", "north", "side",
+                    "power", Integer.toString(metadata & 15), "south", "side", "west", "side"));
             case "Blocks.portal" -> new StateDef("minecraft:nether_portal", Map.of("axis", metadata == 2 ? "z" : "x"));
             case "Blocks.quartz_stairs" -> legacyStairs(metadata);
             case "Blocks.sticky_piston" -> legacyPiston(metadata, true, false);

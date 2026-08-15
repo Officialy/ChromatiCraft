@@ -43,7 +43,9 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
 import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
+import net.minecraft.world.level.storage.loot.BuiltInLootTables;
 import net.minecraft.world.level.storage.loot.LootContext;
+import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
@@ -64,6 +66,7 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 import reika.chromaticraft.block.BlockEncrustedCrystal;
 import reika.chromaticraft.block.crystal.BlockCaveCrystal;
 import reika.chromaticraft.block.BlockEncrustedCrystal.TileCrystalEncrusted;
+import reika.chromaticraft.data.ChromaChestLoot;
 import reika.chromaticraft.data.ChromaTestStructureProvider;
 import reika.chromaticraft.data.ChromaStructureTemplateProvider;
 import reika.chromaticraft.data.ChromaWorldGenProvider;
@@ -298,6 +301,7 @@ public final class ChromaGameTests {
 		register(event, env, "chroma_door_uuid_key_loop", 70, ChromaGameTests::chromaDoorUuidKeyLoop);
 		register(event, env, "heat_lamp_temperature_furnace_loop", ChromaGameTests::heatLampTemperatureFurnaceLoop);
 		register(event, env, "burrow_cache_loot_halves", ChromaGameTests::burrowCacheLootHalves);
+		register(event, env, "structure_chest_fragments", ChromaGameTests::structureChestFragments);
 		register(event, env, "loot_chest_lid_event", ChromaGameTests::lootChestLidEvent);
 		register(event, env, "loot_chest_trap_signal", ChromaGameTests::lootChestTrapSignal);
 		register(event, env, "structure_trap_and_wiring", ChromaGameTests::structureTrapAndWiring);
@@ -1356,6 +1360,82 @@ public final class ChromaGameTests {
 		helper.succeed();
 	}
 
+	/**
+	 * Information Fragments must reach ordinary worldgen chests, which is the only way a player finds
+	 * their first one.
+	 *
+	 * <p>V33a did this by pushing entries into {@code ChestGenHooks}; the port does it with loot
+	 * modifiers on the vanilla tables. The distinction that matters is that ChromatiCraft's own
+	 * structures hand their chests <em>vanilla</em> table ids — {@code NetherRoofStructureFeature} uses
+	 * {@code SIMPLE_DUNGEON}, {@code DESERT_PYRAMID} and {@code JUNGLE_TEMPLE} — so modifying the vanilla
+	 * tables is exactly what refills the Nether and Overworld structure chests. This fills through the
+	 * real {@code setLootTable}/{@code unpackLootTable} path rather than reading the JSON, because a
+	 * modifier that never runs and a modifier that was never written look identical on disk.
+	 *
+	 * <p>Seeds are swept rather than fixed: every entry is weighted against a filler, so no single seed
+	 * is guaranteed a Fragment and asserting on one would be asserting on the RNG.
+	 */
+	private static void structureChestFragments(GameTestHelper helper) {
+		BlockPos pos = helper.absolutePos(new BlockPos(8, 4, 8));
+		LootParams params = new LootParams.Builder(helper.getLevel())
+				.withParameter(LootContextParams.ORIGIN, net.minecraft.world.phys.Vec3.atCenterOf(pos))
+				.create(LootContextParamSets.CHEST);
+		var tables = helper.getLevel().getServer().reloadableRegistries().lookup()
+				.lookupOrThrow(net.minecraft.core.registries.Registries.LOOT_TABLE);
+
+		// Every location V33a seeded with a Fragment, and the fewest of two hundred rolls that may carry
+		// one. The floors are deliberately far below the rates the weights imply -- a dungeon Fragment is
+		// weight 10 against a filler of 100 over one to three rolls, which lands near twelve percent, and
+		// the observed count is twenty-three. A floor of five catches a modifier that stopped applying
+		// without turning ordinary variance into a failure.
+		record Expectation(ChromaChestLoot.Location location, int floor) {}
+		for (Expectation expectation : java.util.List.of(
+				new Expectation(ChromaChestLoot.Location.DUNGEON, 5),
+				new Expectation(ChromaChestLoot.Location.PYRAMID, 5),
+				new Expectation(ChromaChestLoot.Location.JUNGLE_PUZZLE, 5),
+				new Expectation(ChromaChestLoot.Location.STRONGHOLD_LIBRARY, 5),
+				new Expectation(ChromaChestLoot.Location.STRONGHOLD_CROSSING, 5),
+				new Expectation(ChromaChestLoot.Location.STRONGHOLD_HALLWAY, 5),
+				new Expectation(ChromaChestLoot.Location.MINESHAFT, 1),
+				new Expectation(ChromaChestLoot.Location.VILLAGE, 5))) {
+			LootTable vanilla = tables.getOrThrow(expectation.location().target).value();
+			int rollsWithFragment = 0;
+			for (long seed = 0; seed < 200; seed++)
+				for (ItemStack stack : vanilla.getRandomItems(params, seed))
+					if (stack.is(ChromaItems.INFO_FRAGMENT.get())) {
+						rollsWithFragment++;
+						break;
+					}
+			helper.assertTrue(rollsWithFragment >= expectation.floor(),
+					"only " + rollsWithFragment + " of 200 rolls of "
+							+ expectation.location().target.identifier() + " carried an Information Fragment; "
+							+ "the ChromaChests loot modifier is not reaching that table");
+		}
+
+		// The rates above prove the tables; this proves the path a structure actually uses. Both Nether
+		// and Overworld features hand a chest a vanilla table id and let it fill lazily on first open, so
+		// the chest has to be reset between fills -- refilling a chest that still holds its last contents
+		// silently drops the overflow, which is exactly how a working modifier can look broken.
+		int chestsWithFragment = 0;
+		for (long seed = 0; seed < 64; seed++) {
+			helper.getLevel().setBlock(pos, Blocks.AIR.defaultBlockState(), 3);
+			helper.getLevel().setBlock(pos, Blocks.CHEST.defaultBlockState(), 3);
+			var chest = (net.minecraft.world.level.block.entity.ChestBlockEntity)
+					helper.getLevel().getBlockEntity(pos);
+			chest.setLootTable(BuiltInLootTables.SIMPLE_DUNGEON, seed);
+			chest.unpackLootTable(null);
+			for (int slot = 0; slot < chest.getContainerSize(); slot++)
+				if (chest.getItem(slot).is(ChromaItems.INFO_FRAGMENT.get())) {
+					chestsWithFragment++;
+					break;
+				}
+		}
+		helper.assertTrue(chestsWithFragment > 0, "no placed chest filled from " + BuiltInLootTables
+				.SIMPLE_DUNGEON.identifier() + " across 64 seeds contained an Information Fragment");
+		helper.getLevel().setBlock(pos, Blocks.AIR.defaultBlockState(), 3);
+		helper.succeed();
+	}
+
 	/** Plain-Block loot chests must explicitly deliver vanilla opener-count events to their BE. */
 	private static void lootChestLidEvent(GameTestHelper helper) {
 		BlockPos pos = helper.absolutePos(new BlockPos(8, 4, 8));
@@ -1384,10 +1464,15 @@ public final class ChromaGameTests {
 	 * <li>Breaking Shielding must set off adjacent TNT — V33a's {@code breakBlock} primes it directly,
 	 *     which is the trap behind every Cracked Shielding a player is invited to mine through.</li>
 	 * <li>Blocks placed from a structure template must re-resolve against their neighbours, as
-	 *     {@code StructureTemplate.placeInWorld} does. This is a general correctness fix for stairs,
-	 *     fences, walls, panes and bars; it is <em>not</em> the cause of the reported Nether Temple
-	 *     redstone fault, which this test also covers and which does not reproduce here — every one of
-	 *     the temple's twenty-eight redstone cells maps to V33a's own placement and survives.</li>
+	 *     {@code StructureTemplate.placeInWorld} does — stairs, fences, walls, panes and bars all come
+	 *     out unconnected otherwise.</li>
+	 * <li>The Nether Temple's redstone must come out wired, not as isolated dots. 1.7.10 had no dot
+	 *     shape: a wire with no wire neighbours was a cross that powered everything around it, which is
+	 *     what the temple puzzle runs on. 26.2's {@code RedStoneWireBlock.getConnectionState} preserves
+	 *     an existing dot before it ever reaches its auto-connect logic, so a template authoring "none"
+	 *     on all four sides produced wires that no update could ever open up. The cells themselves were
+	 *     never wrong — all twenty-eight map to V33a's own placement — so this asserts the shape rather
+	 *     than the identity.</li>
 	 * </ol>
 	 */
 	private static void structureTrapAndWiring(GameTestHelper helper) {
@@ -1427,9 +1512,22 @@ public final class ChromaGameTests {
 		int[][] wires = {{1, 1, 4}, {8, 1, 4}, {12, 1, 4}, {20, 1, 4}, {24, 1, 4}};
 		for (int[] at : wires) {
 			BlockPos pos = temple.offset(at[0], at[1], at[2]);
-			helper.assertTrue(level.getBlockState(pos).is(Blocks.REDSTONE_WIRE),
+			BlockState wire = level.getBlockState(pos);
+			helper.assertTrue(wire.is(Blocks.REDSTONE_WIRE),
 					"the temple's redstone wire at " + at[0] + "," + at[1] + "," + at[2]
-							+ " must survive placement, found " + level.getBlockState(pos));
+							+ " must survive placement, found " + wire);
+			// A wire with all four sides "none" is a dot: it powers nothing horizontally, and 26.2 will
+			// never open it up again. That is what broke the puzzle, so it is what this guards.
+			boolean connected = false;
+			for (net.minecraft.world.level.block.state.properties.EnumProperty
+					<net.minecraft.world.level.block.state.properties.RedstoneSide> side
+					: java.util.List.of(net.minecraft.world.level.block.RedStoneWireBlock.NORTH,
+							net.minecraft.world.level.block.RedStoneWireBlock.EAST,
+							net.minecraft.world.level.block.RedStoneWireBlock.SOUTH,
+							net.minecraft.world.level.block.RedStoneWireBlock.WEST))
+				connected |= wire.getValue(side).isConnected();
+			helper.assertTrue(connected, "the temple's redstone wire at " + at[0] + "," + at[1] + ","
+					+ at[2] + " came out as an unconnected dot, which cannot carry the puzzle's signal");
 		}
 		int[][] repeaters = {{3, 1, 4}, {12, 1, 7}, {13, 1, 7}, {22, 1, 4}};
 		for (int[] at : repeaters) {

@@ -81,7 +81,10 @@ public final class ChromaLootProvider extends LootTableProvider {
 		super(output, Set.of(), List.of(
 				new SubProviderEntry(Blocks::new, LootContextParamSets.BLOCK),
 				new SubProviderEntry(BurrowCache::new, LootContextParamSets.CHEST),
-				new SubProviderEntry(VillageCasting::new, LootContextParamSets.CHEST)
+				new SubProviderEntry(VillageCasting::new, LootContextParamSets.CHEST),
+				// V33a ChromaChests' injections into the vanilla chest tables; attached by
+				// ChromaLootModifierProvider.
+				new SubProviderEntry(ChromaChestLoot::new, LootContextParamSets.CHEST)
 		), registries);
 	}
 

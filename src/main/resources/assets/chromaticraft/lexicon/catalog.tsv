@@ -292,11 +292,11 @@ TREE	structures	endgame	page	structure	tree	POWERCRYSTAL	Lumen Tree
 TREESEND	structures	endgame	page	structure	tree_sender	POWERTREE	Lumen Tree Transmission Focus
 REPEATERSTRUCT	structures	networking	page	structure	repeater	RUNEUSE,BLOWREPEATER	Repeater
 COMPOUNDSTRUCT	structures	networking	page	structure	compound	REPEATER	MultiAura Repeater
-CAVERN	structures	rawexplore	page	block	structshield	CAVERN	Shielding
-BURROW	structures	rawexplore	page	block	structshield	BURROW	Shielding
-OCEAN	structures	rawexplore	page	block	structshield	OCEAN	Shielding
-DESERT	structures	rawexplore	page	block	structshield	DESERTSTRUCT	Shielding
-SNOW	structures	rawexplore	page	block	structshield	SNOWSTRUCT	Shielding
+CAVERN	structures	rawexplore	page	block	structshield	CAVERN	Crystal Shrine
+BURROW	structures	rawexplore	page	block	structshield	BURROW	Crystal Burrow
+OCEAN	structures	rawexplore	page	block	structshield	OCEAN	Ocean Temple
+DESERT	structures	rawexplore	page	block	structshield	DESERTSTRUCT	Sandy Burrow
+SNOW	structures	rawexplore	page	block	structshield	SNOWSTRUCT	Frozen Outpost
 PORTALSTRUCT	structures	endgame	page	structure	portal	@DIMENSION	Portal Beacon
 MINIPYLON	structures	energy	page	structure	personal	CHARGE	Focus Frame
 BROADCASTER	structures	networking	page	structure	broadcast	MULTIBLOCK,REPEATER	Lumen Beacon
