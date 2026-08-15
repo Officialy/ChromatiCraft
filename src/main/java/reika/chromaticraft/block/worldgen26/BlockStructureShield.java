@@ -91,4 +91,32 @@ public class BlockStructureShield extends Block {
 	public BlockState plainState() {
 		return this.defaultBlockState().setValue(REINFORCED, false);
 	}
+
+	/**
+	 * V33a {@code breakBlock}: mining any Shielding block sets off every TNT touching it.
+	 *
+	 * <p>This is the structures' actual trap. The Cracked Shielding a player is invited to break
+	 * through has TNT buried against it, and upstream primes that TNT directly rather than through
+	 * redstone — {@code onBlockDestroyedByPlayer(world, x, y, z, 1)} followed by clearing the block,
+	 * which is 1.7.10's way of spawning a primed entity in its place. Only the mineable materials can
+	 * ever reach this in survival, since the rest are unbreakable, but upstream puts it on the block
+	 * rather than on one type and this follows.
+	 *
+	 * <p>26.2 runs post-removal neighbour effects through {@code affectNeighborsAfterRemoval}, which
+	 * is the hook piston moves and explosions share, so the trap fires however the block goes away.
+	 */
+	@Override
+	protected void affectNeighborsAfterRemoval(BlockState state, net.minecraft.server.level.ServerLevel level,
+			BlockPos pos, boolean movedByPiston) {
+		super.affectNeighborsAfterRemoval(state, level, pos, movedByPiston);
+		for (net.minecraft.core.Direction dir : net.minecraft.core.Direction.values()) {
+			BlockPos neighbour = pos.relative(dir);
+			if (!(level.getBlockState(neighbour).getBlock() instanceof net.minecraft.world.level.block.TntBlock))
+				continue;
+			// Prime first, then clear: the primed entity takes the block's place, exactly as upstream's
+			// destroy-then-air pair does.
+			net.minecraft.world.level.block.TntBlock.prime(level, neighbour);
+			level.removeBlock(neighbour, false);
+		}
+	}
 }

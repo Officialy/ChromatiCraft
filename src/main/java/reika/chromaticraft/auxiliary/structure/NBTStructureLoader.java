@@ -15,6 +15,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.WorldGenLevel;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -201,7 +202,32 @@ public final class NBTStructureLoader {
             placed.add(target.immutable());
         }
         }
+        resolveConnectedShapes(world, placed, flags);
         return placed;
+    }
+
+    /**
+     * Second pass, matching {@code StructureTemplate.placeInWorld}: every placed cell re-resolves its
+     * state against its neighbours, then fires a block update.
+     *
+     * <p>Without this, anything whose appearance depends on its neighbours keeps whatever state the
+     * template stored: fences, walls, panes, iron bars, stairs and vines all come out unconnected,
+     * because a template necessarily serialises them in their default shape.
+     *
+     * <p>Redstone specifically does <em>not</em> need this — {@code LevelChunk.setBlockState} calls
+     * {@code onPlace} regardless of the update flags, and {@code RedStoneWireBlock} resolves its own
+     * connections and power there. That was measured, not assumed, while investigating a reported
+     * Nether Temple fault; it is recorded here so the next reader does not re-derive it.
+     */
+    private static void resolveConnectedShapes(WorldGenLevel world, List<BlockPos> placed, int flags) {
+        for (BlockPos pos : placed) {
+            BlockState current = world.getBlockState(pos);
+            BlockState resolved = Block.updateFromNeighbourShapes(current, world, pos);
+            if (current != resolved)
+                world.setBlock(pos, resolved,
+                        flags & ~Block.UPDATE_NEIGHBORS | Block.UPDATE_KNOWN_SHAPE);
+            world.updateNeighborsAt(pos, resolved.getBlock());
+        }
     }
 
     /**

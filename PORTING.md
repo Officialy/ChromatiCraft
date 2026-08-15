@@ -5114,3 +5114,44 @@ ones. Do not read the passing test as proof the dimension boots.
 the dimension should exist; the origin should be a flat plain around y=63 with bedrock beneath; terrain
 should grow steadily more mountainous with distance; the sky should be fixed and lit; beds should
 refuse; and a charged Portal Rift should finally carry a qualified player across.
+
+### 2026-08-15 — Shielding TNT trap, and a Nether Temple investigation that did not reproduce
+
+**Shielding sets off adjacent TNT (fixed).** V33a `BlockStructureShield.breakBlock` walks all six
+neighbours and, for any TNT it finds, calls `onBlockDestroyedByPlayer(..., 1)` and clears the block —
+1.7.10's way of spawning a primed entity in its place. That is the trap behind every Cracked Shielding
+a player is invited to mine through, and it was missing. Restored on
+`affectNeighborsAfterRemoval`, which is the 26.2 hook explosions and piston moves share, so the trap
+fires however the block goes away. Upstream puts it on the block rather than on one material, and this
+follows; only the mineable types can reach it in survival anyway.
+
+**Template placement now re-resolves connected shapes.** `NBTStructureLoader.place` wrote each cell and
+stopped, where `StructureTemplate.placeInWorld` follows up with
+`Block.updateFromNeighbourShapes` plus a neighbour update per placed position. Fences, walls, panes,
+iron bars, stairs and vines were therefore placed in whatever shape the template serialised — which is
+necessarily the unconnected default — and never corrected. Fixed for all of them.
+
+**The reported Nether Temple redstone fault did not reproduce, and the obvious explanation is wrong.**
+Recorded in full so it is not re-investigated from scratch:
+
+- All twenty-eight redstone cells were extracted from `NetherTemple.java` and diffed against the
+  generated NBT. Every one is present, at the same coordinate, with a faithful state.
+- The metadata mappings were checked against the 1.7.10 sources rather than assumed. Torch metadata
+  1/2/3/4 means supported-from-west/east/north/south, i.e. modern `facing` east/west/south/north — the
+  importer's table. Repeater `meta & 3` indexes 1.7.10's `Direction.directions = {SOUTH, WEST, NORTH,
+  EAST}`, and both versions read their input at `pos + facing`, so `{south, west, north, east}` is
+  correct; delay is `((meta >> 2) & 3) + 1`.
+- Placing the real template in a GameTest leaves every torch, wire and repeater intact — nothing pops
+  for lack of support and nothing is replaced.
+- The first hypothesis — that wires stay disconnected because the template stores
+  `north/south/east/west = none` — is **false**, and was measured rather than argued: a wire written
+  with bare flag 2 still came out `west=side, east=side` with power propagating 15/14/13/12, because
+  `LevelChunk.setBlockState` calls `onPlace` regardless of update flags and `RedStoneWireBlock`
+  resolves its own connections there. The shape pass above is still correct for other blocks, but it
+  is not this fix.
+- Neither the feature nor the loader applies any rotation, so a mirrored circuit is also ruled out.
+
+`chromaticraft:structure_trap_and_wiring` covers the Shielding trap and pins the temple's redstone
+cells against placement, so if this turns out to be a state or ordering fault it will surface there.
+What is still needed to progress it is what specifically looks wrong in game — which block, and what it
+should be doing instead.

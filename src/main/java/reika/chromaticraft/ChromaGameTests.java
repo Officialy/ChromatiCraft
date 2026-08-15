@@ -300,6 +300,7 @@ public final class ChromaGameTests {
 		register(event, env, "burrow_cache_loot_halves", ChromaGameTests::burrowCacheLootHalves);
 		register(event, env, "loot_chest_lid_event", ChromaGameTests::lootChestLidEvent);
 		register(event, env, "loot_chest_trap_signal", ChromaGameTests::lootChestTrapSignal);
+		register(event, env, "structure_trap_and_wiring", ChromaGameTests::structureTrapAndWiring);
 		register(event, env, "village_casting_nbt_contract", ChromaGameTests::villageCastingNbtContract);
 		register(event, env, "focus_crystal_trade_definition", ChromaGameTests::focusCrystalTradeDefinition);
 		register(event, env, "storage_crystal_item_and_recipe", ChromaGameTests::storageCrystalItemAndRecipe);
@@ -1372,6 +1373,71 @@ public final class ChromaGameTests {
 			TileEntityLootChest.lidAnimateTick(helper.getLevel(), pos, state, chest);
 		helper.assertTrue(chest.getOpenNess(1) == 0,
 				"closing opener event must return the lid controller to zero");
+		helper.succeed();
+	}
+
+	/**
+	 * Two structure defects reported in-world, fixed together because both are about a structure's
+	 * wiring rather than its geometry.
+	 *
+	 * <ol>
+	 * <li>Breaking Shielding must set off adjacent TNT — V33a's {@code breakBlock} primes it directly,
+	 *     which is the trap behind every Cracked Shielding a player is invited to mine through.</li>
+	 * <li>Blocks placed from a structure template must re-resolve against their neighbours, as
+	 *     {@code StructureTemplate.placeInWorld} does. This is a general correctness fix for stairs,
+	 *     fences, walls, panes and bars; it is <em>not</em> the cause of the reported Nether Temple
+	 *     redstone fault, which this test also covers and which does not reproduce here — every one of
+	 *     the temple's twenty-eight redstone cells maps to V33a's own placement and survives.</li>
+	 * </ol>
+	 */
+	private static void structureTrapAndWiring(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+
+		// 1. The Shielding trap.
+		BlockPos shield = helper.absolutePos(new BlockPos(3, 4, 3));
+		BlockPos tnt = shield.east();
+		level.setBlock(shield, ChromaBlocks.shielding(reika.chromaticraft.registry.ChromaShieldTypes.CRACK).get().defaultBlockState(), 3);
+		level.setBlock(tnt, Blocks.TNT.defaultBlockState(), 3);
+		helper.assertTrue(level.getEntitiesOfClass(net.minecraft.world.entity.item.PrimedTnt.class,
+				new AABB(shield).inflate(6)).isEmpty(), "nothing should be primed before the break");
+		level.destroyBlock(shield, false);
+		helper.assertTrue(level.getBlockState(tnt).isAir(),
+				"V33a replaces the adjacent TNT block with a primed entity when Shielding breaks");
+		helper.assertTrue(!level.getEntitiesOfClass(net.minecraft.world.entity.item.PrimedTnt.class,
+						new AABB(shield).inflate(6)).isEmpty(),
+				"breaking Shielding must prime the TNT touching it; this is the structures' trap");
+		for (var primed : level.getEntitiesOfClass(net.minecraft.world.entity.item.PrimedTnt.class,
+				new AABB(shield).inflate(6)))
+			primed.discard();
+
+		// 2. The Nether Temple's redstone must survive being placed from its template. Every cell is
+		// checked against the V33a source rather than against expectations: a wall torch whose support
+		// arrives late, or a wire that never resolves, silently breaks the puzzle while the room still
+		// looks right.
+		BlockPos temple = helper.absolutePos(new BlockPos(40, 4, 40));
+		NBTStructureLoader.place(level, ChromaStructureTemplateProvider.NETHER_TEMPLE, temple,
+				BlockPos.ZERO, state -> state, 2);
+		int[][] torches = {{1, 2, 4}, {7, 1, 4}, {12, 1, 9}, {13, 1, 9}, {24, 2, 4}};
+		for (int[] at : torches) {
+			BlockPos pos = temple.offset(at[0], at[1], at[2]);
+			helper.assertTrue(level.getBlockState(pos).is(Blocks.REDSTONE_WALL_TORCH),
+					"the temple's redstone torch at " + at[0] + "," + at[1] + "," + at[2]
+							+ " must survive placement, found " + level.getBlockState(pos));
+		}
+		int[][] wires = {{1, 1, 4}, {8, 1, 4}, {12, 1, 4}, {20, 1, 4}, {24, 1, 4}};
+		for (int[] at : wires) {
+			BlockPos pos = temple.offset(at[0], at[1], at[2]);
+			helper.assertTrue(level.getBlockState(pos).is(Blocks.REDSTONE_WIRE),
+					"the temple's redstone wire at " + at[0] + "," + at[1] + "," + at[2]
+							+ " must survive placement, found " + level.getBlockState(pos));
+		}
+		int[][] repeaters = {{3, 1, 4}, {12, 1, 7}, {13, 1, 7}, {22, 1, 4}};
+		for (int[] at : repeaters) {
+			BlockPos pos = temple.offset(at[0], at[1], at[2]);
+			helper.assertTrue(level.getBlockState(pos).is(Blocks.REPEATER),
+					"the temple's repeater at " + at[0] + "," + at[1] + "," + at[2]
+							+ " must survive placement, found " + level.getBlockState(pos));
+		}
 		helper.succeed();
 	}
 
