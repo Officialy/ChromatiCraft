@@ -5027,3 +5027,31 @@ weighting field is `10 / sqrt(j*j + k*k + 0.2)` over a 5x5 window.
 `shiftTerrainGen`'s `VERTICAL_OFFSET = 48` column lift with stone fill beneath, the per-biome surface
 replacement with sand beaches and grass, the bedrock layer, and the `ChunkGenerator` subclass with its
 codec and level-stem registration.
+
+### 2026-08-15 — Loot Chest trap signal (bug fix)
+
+Reported in-world: opening a Loot Chest did not fire the TNT and redstone traps the structures bury
+around it.
+
+**Cause.** V33a's `BlockLootChest` is a trapped chest — `canProvidePower()` returns true,
+`isProvidingWeakPower` returns 15 whenever `numPlayersUsing > 0`, and `isProvidingStrongPower` returns
+that only for side 1, so a chest sitting on TNT sets it off. The port carried over the *comparator*
+output (`hasAnalogOutputSignal`/`getAnalogOutputSignal`) and dropped the power source entirely, so the
+chest was inert to redstone.
+
+**Fix, in two halves — both needed.**
+
+1. `BlockLootChest` now implements `isSignalSource`, `ownSignal` and `getDirectSignal`. The signal is
+   deliberately binary rather than vanilla's `clamp(openCount, 0, 15)`: upstream returns 15 for any
+   non-zero count, so one player arms the trap exactly as hard as five. `getDirectSignal` is UP-only,
+   which is the modern spelling of upstream's `side == 1`.
+2. `TileEntityLootChest.openerCountChanged` now notifies neighbours. V33a follows every
+   `openInventory`/`closeInventory` with `causeAdjacentUpdates`; without it the signal is computed
+   correctly but nothing ever re-reads it, so the trap still never fires. `pos.below()` is notified
+   too, matching the strong-power rule and vanilla's own `TrappedChestBlockEntity`.
+
+**Regression guard.** `chromaticraft:loot_chest_trap_signal` asserts the chest is a signal source, that
+a closed chest emits nothing, that an open one emits a flat 15 on every side, that strong power is
+side-1 only, and — the part that matters — that real redstone dust beside the chest powers on open and
+drops on close. That last assertion was verified to fail when the neighbour notification is removed, so
+it guards the subtle half rather than only the obvious one.

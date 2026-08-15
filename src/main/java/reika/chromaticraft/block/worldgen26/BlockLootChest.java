@@ -84,6 +84,19 @@ public class BlockLootChest extends Block implements EntityBlock {
 				tickLevel, pos, tickState, (TileEntityLootChest)entity);
 	}
 
+	/**
+	 * {@link net.minecraft.world.level.block.entity.ContainerOpenersCounter} broadcasts opener count
+	 * changes as block event {@code 1}. Vanilla's chest inherits this delegation from
+	 * {@code BaseEntityBlock}; this block deliberately extends plain {@link Block}, so it must retain
+	 * the same bridge explicitly or the client lid controller never learns that the menu opened.
+	 */
+	@Override
+	protected boolean triggerEvent(BlockState state, Level level, BlockPos pos, int id, int value) {
+		super.triggerEvent(state, level, pos, id, value);
+		BlockEntity entity = level.getBlockEntity(pos);
+		return entity != null && entity.triggerEvent(id, value);
+	}
+
 	@Override
 	protected void tick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
 		if (level.getBlockEntity(pos) instanceof TileEntityLootChest chest)
@@ -160,5 +173,35 @@ public class BlockLootChest extends Block implements EntityBlock {
 		return level.getBlockEntity(pos) instanceof TileEntityLootChest chest
 				? net.minecraft.world.inventory.AbstractContainerMenu.getRedstoneSignalFromContainer(chest)
 				: 0;
+	}
+
+	/**
+	 * V33a {@code canProvidePower}: the Loot Chest is a trapped chest. Opening one powers redstone,
+	 * which is how the structures' TNT and trap circuits fire.
+	 */
+	@Override
+	protected boolean isSignalSource(BlockState state) {
+		return true;
+	}
+
+	/**
+	 * V33a {@code isProvidingWeakPower}: full strength while anyone has it open, nothing otherwise.
+	 *
+	 * <p>Deliberately binary rather than vanilla's {@code clamp(openCount, 0, 15)} — upstream returns
+	 * 15 for any non-zero count, so a single player arms the trap exactly as hard as five do.
+	 */
+	@Override
+	protected int ownSignal(BlockState state, BlockGetter level, BlockPos pos) {
+		return level.getBlockEntity(pos) instanceof TileEntityLootChest chest && chest.isOpenedByAnyone()
+				? 15 : 0;
+	}
+
+	/**
+	 * V33a {@code isProvidingStrongPower}: strong only on side 1, which is the query from the block
+	 * below. That is what lets a chest sit directly on top of TNT and set it off.
+	 */
+	@Override
+	protected int getDirectSignal(BlockState state, BlockGetter level, BlockPos pos, Direction direction) {
+		return direction == Direction.UP ? state.getSignal(level, pos, direction) : 0;
 	}
 }

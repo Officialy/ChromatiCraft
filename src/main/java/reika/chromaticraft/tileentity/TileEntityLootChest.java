@@ -17,6 +17,7 @@ import net.minecraft.world.inventory.ChestMenu;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.ContainerOpenersCounter;
 import net.minecraft.world.level.block.entity.ChestLidController;
 import net.minecraft.world.level.block.entity.LidBlockEntity;
@@ -74,6 +75,16 @@ public class TileEntityLootChest extends RandomizableContainerBlockEntity implem
 		@Override
 		protected void openerCountChanged(Level level, BlockPos pos, BlockState state, int from, int to) {
 			level.blockEvent(pos, state.getBlock(), 1, to);
+			if (from == to)
+				return;
+			// V33a openInventory/closeInventory follow the count change with causeAdjacentUpdates, so
+			// the trap circuit re-reads the chest's power. Without this the signal from
+			// BlockLootChest.ownSignal is correct but nothing ever asks for it again, and the TNT
+			// beside or beneath the chest never fires. pos.below() is the strong-power case, matching
+			// getDirectSignal's UP-only rule.
+			Block block = state.getBlock();
+			level.updateNeighborsAt(pos, block, null);
+			level.updateNeighborsAt(pos.below(), block, null);
 		}
 
 		@Override
@@ -257,6 +268,11 @@ public class TileEntityLootChest extends RandomizableContainerBlockEntity implem
 	@Override
 	public java.util.List<net.minecraft.world.entity.ContainerUser> getEntitiesWithContainerOpen() {
 		return openersCounter.getEntitiesWithContainerOpen(this.getLevel(), this.getBlockPos());
+	}
+
+	/** V33a {@code numPlayersUsing > 0}: what arms the chest's redstone output. */
+	public boolean isOpenedByAnyone() {
+		return openersCounter.getOpenerCount() > 0;
 	}
 
 	@Override
