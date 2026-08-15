@@ -1,6 +1,7 @@
 package reika.chromaticraft.world.dimension;
 
 import java.util.EnumSet;
+import java.util.concurrent.CompletableFuture;
 import java.util.Set;
 
 /**
@@ -71,5 +72,61 @@ public final class ProximaGenerators {
 	/** V33a areGeneratorsReady(): true only once every registered generator has finished. */
 	public static synchronized boolean areGeneratorsReady() {
 		return pending.isEmpty();
+	}
+
+	/**
+	 * The finished layout, published as one object so a consumer either sees a complete Proxima or
+	 * none of it. Null until {@link #regenerate} completes.
+	 */
+	public record Layout(long seed, StructureCalculator structures, RegionMapper region,
+			BiomeDistributor biomes) {}
+
+	private static volatile Layout layout;
+	private static volatile CompletableFuture<Layout> running;
+
+	public static Layout getLayout() {
+		return layout;
+	}
+
+	/**
+	 * V33a {@code ChunkProviderChroma.regenerateGenerators}: sets every bit pending, then runs the
+	 * generators off the server thread in dependency order.
+	 *
+	 * <p>Running it off-thread is not an optimisation, it is the reason this gate exists. The biome
+	 * map alone is a 4096x4096 paint that measures at roughly <b>19 seconds</b> on the machine this was
+	 * ported on; doing that synchronously would stall the server outright. V33a runs all five of its
+	 * generators on threads for exactly this reason, and the Portal Rift's "generators ready" check —
+	 * which keeps a rift charging and refusing travel while any bit is set — is precisely the mechanism
+	 * that makes the wait invisible to a player.
+	 *
+	 * <p>The chain is strictly ordered because the dependencies are real: the region is sized from the
+	 * structure ring and the biome map paints its Structure and Monument Fields around the same
+	 * placements. Upstream expresses that with a sleep-poll inside each generator; expressing it as
+	 * call order is the same guarantee without the risk of a worldgen thread sleeping on a chunk build.
+	 *
+	 * @return a future that completes with the finished layout; already-running work is shared rather
+	 *         than duplicated
+	 */
+	public static synchronized CompletableFuture<Layout> regenerate(long seed) {
+		if (running != null && !running.isDone())
+			return running;
+		markAllPending();
+		layout = null;
+		running = CompletableFuture.supplyAsync(() -> generateNow(seed));
+		return running;
+	}
+
+	/**
+	 * The same chain on the calling thread, for datagen, tests and any caller that genuinely needs the
+	 * layout before it can continue. Ordinary gameplay should use {@link #regenerate}.
+	 */
+	public static Layout generateNow(long seed) {
+		StructureCalculator structures = new StructureCalculator(seed);
+		structures.generate();
+		RegionMapper region = RegionMapper.generate(structures, seed);
+		BiomeDistributor biomes = new BiomeDistributor(seed).generate(structures);
+		Layout result = new Layout(seed, structures, region, biomes);
+		layout = result;
+		return result;
 	}
 }

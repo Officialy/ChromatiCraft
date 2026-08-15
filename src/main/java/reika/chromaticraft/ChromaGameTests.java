@@ -153,6 +153,10 @@ import reika.chromaticraft.auxiliary.structure.PortalStructure;
 import reika.chromaticraft.world.dimension.DimensionStructureType;
 import reika.chromaticraft.world.dimension.ProximaGenerators;
 import reika.chromaticraft.world.dimension.RegionMapper;
+import reika.chromaticraft.world.dimension.BiomeDistributor;
+import reika.chromaticraft.world.dimension.biome.ProximaBiomeType;
+import reika.chromaticraft.world.dimension.biome.ProximaBiomes;
+import reika.chromaticraft.world.dimension.biome.ProximaSubBiomes;
 import reika.chromaticraft.world.dimension.StructureCalculator;
 import reika.chromaticraft.block.dimension.structure.lightpanel.BlockLightPanel;
 import reika.chromaticraft.block.dimension.structure.lightpanel.BlockLightSwitch;
@@ -296,6 +300,156 @@ public final class ChromaGameTests {
 		register(event, env, "portal_entry_rules", ChromaGameTests::portalEntryRules);
 		register(event, env, "proxima_structure_placement", ChromaGameTests::proximaStructurePlacement);
 		register(event, env, "proxima_central_region", ChromaGameTests::proximaCentralRegion);
+		register(event, env, "proxima_biome_distribution", 200, ChromaGameTests::proximaBiomeDistribution);
+		register(event, env, "proxima_generator_gate", 200, ChromaGameTests::proximaGeneratorGate);
+	}
+
+	/**
+	 * The generator gate itself: it must start closed, run the whole chain in dependency order off the
+	 * server thread, and only then open — which is what keeps the Portal Rift charging and refusing
+	 * travel while Proxima's layout is still being decided.
+	 */
+	private static void proximaGeneratorGate(GameTestHelper helper) {
+		boolean previous = StructureCalculator.allowUnfinishedStructures;
+		RegionMapper.clear();
+		BiomeDistributor.clear();
+		try {
+			StructureCalculator.allowUnfinishedStructures = true;
+			ProximaGenerators.markAllPending();
+			helper.assertTrue(!ProximaGenerators.areGeneratorsReady(),
+					"the gate must start closed, so a rift cannot carry anyone into an undecided Proxima");
+			for (ProximaGenerators.Generator g : ProximaGenerators.Generator.values())
+				helper.assertTrue(!ProximaGenerators.isReady(g), g + " must start pending");
+
+			// The synchronous entry point is what datagen and tests use; regenerate() wraps exactly this
+			// on a background thread, which matters because the production-size biome paint takes ~19s.
+			ProximaGenerators.Layout layout = ProximaGenerators.generateNow(4321L);
+			helper.assertTrue(ProximaGenerators.areGeneratorsReady(),
+					"running the whole chain must open the gate");
+			helper.assertTrue(ProximaGenerators.getLayout() == layout,
+					"the finished layout must be published as one object");
+			helper.assertTrue(layout.seed() == 4321L && layout.structures().arePositionsDetermined()
+							&& layout.region() != null && layout.biomes() != null,
+					"the layout must carry every finished generator");
+
+			// The ordering guarantee: each stage's output is consistent with the one before it.
+			helper.assertTrue(layout.region().contains(
+							layout.structures().getMonumentPosition().getX(),
+							layout.structures().getMonumentPosition().getZ()),
+					"the region must have been sized from this run's own structure ring");
+			helper.assertTrue(layout.biomes().biomeAt(
+							layout.structures().getMonumentPosition().getX(),
+							layout.structures().getMonumentPosition().getZ()) == ProximaBiomes.MONUMENT,
+					"the biome map must have been painted around this run's own monument");
+			helper.assertTrue(layout.biomes().getSize() == BiomeDistributor.DEFAULT_SIZE,
+					"the orchestrated run must use the production map size");
+		}
+		finally {
+			StructureCalculator.allowUnfinishedStructures = previous;
+		}
+		helper.succeed();
+	}
+
+	/**
+	 * The Proxima biome map: every cell painted, blob counts matching each biome's spawn weight,
+	 * sub-biomes only inside their parents, the structure/central-region query priority, the coarse
+	 * client packet, and reproducibility from the dimension seed.
+	 *
+	 * <p>Runs at a 512-cell map rather than the production 4096. V33a's own
+	 * {@code SIZE = 4096;//2048;//4096;} shows the size was varied, and {@code placeBlob} scales every
+	 * radius by {@code SIZE/4096}, so this exercises the identical algorithm at a testable cost.
+	 */
+	private static void proximaBiomeDistribution(GameTestHelper helper) {
+		boolean previous = StructureCalculator.allowUnfinishedStructures;
+		RegionMapper.clear();
+		BiomeDistributor.clear();
+		try {
+			StructureCalculator.allowUnfinishedStructures = true;
+			StructureCalculator structures = new StructureCalculator(1234L);
+			structures.generate();
+			RegionMapper.generate(structures, 1234L);
+
+			BiomeDistributor unplaced = new BiomeDistributor(1234L, 128);
+			boolean rejected = false;
+			try {
+				unplaced.generate(new StructureCalculator(7L));
+			}
+			catch (IllegalStateException expected) {
+				rejected = true;
+			}
+			helper.assertTrue(rejected,
+					"distributing biomes before the structure ring is placed must fail loudly");
+
+			int size = 512;
+			BiomeDistributor map = new BiomeDistributor(1234L, size).generate(structures);
+			helper.assertTrue(ProximaGenerators.isReady(ProximaGenerators.Generator.BIOME),
+					"finishing distribution must clear the BIOME bit of the generator gate");
+			helper.assertTrue(ProximaGenerators.areGeneratorsReady(),
+					"with structures, region and biomes all done the whole gate must be open");
+
+			// Stage 2 runs until nothing is empty, so no map cell may be left unpainted. Query through
+			// the raw map rather than biomeAt, which would mask emptiness with the central region.
+			byte[] coarse = map.getDataForPacket();
+			helper.assertTrue(coarse.length == (size / 8) * (size / 8),
+					"the client packet must be every eighth cell in both axes");
+			for (byte b : coarse)
+				helper.assertTrue(b != 0, "no cell may be left unpainted after the fill stage");
+
+			// Blob counts are literally the spawn weights.
+			for (ProximaBiomes b : ProximaBiomes.biomeList) {
+				int blobs = map.getBlobLocations(b).size();
+				helper.assertTrue(blobs == b.spawnWeight,
+						b + " must get exactly its spawn weight in blobs, expected " + b.spawnWeight
+								+ " found " + blobs);
+			}
+			helper.assertTrue(map.getBlobLocations(ProximaBiomes.CENTER).isEmpty()
+							&& map.getBlobLocations(ProximaBiomes.STRUCTURE).isEmpty()
+							&& map.getBlobLocations(ProximaBiomes.MONUMENT).isEmpty(),
+					"the three technical biomes are placed by other means and must never be scattered");
+
+			// Sub-biomes only ever appear where their parent was, and only for parents that have one.
+			for (ProximaSubBiomes s : ProximaSubBiomes.biomeList)
+				helper.assertTrue(s.getParent() != null && s.getParent().getSubBiome() == s,
+						s + " must be linked to exactly one parent biome");
+			helper.assertTrue(map.getBlobbedBiomes().stream()
+							.filter(b -> b instanceof ProximaSubBiomes)
+							.allMatch(b -> ((ProximaSubBiomes)b).getParent().getSubBiome() == b),
+					"every placed sub-biome blob must belong to its declared parent");
+
+			// Query priority: the monument's own position resolves to the Monument Field, a structure's
+			// entry to the Structure Field, and the static accessor must agree with the instance.
+			int mx = structures.getMonumentPosition().getX();
+			int mz = structures.getMonumentPosition().getZ();
+			helper.assertTrue(map.biomeAt(mx, mz) == ProximaBiomes.MONUMENT,
+					"the monument's own position must be inside the Monument Field");
+			helper.assertTrue(BiomeDistributor.getBiome(mx, mz) == ProximaBiomes.MONUMENT,
+					"the static accessor must answer for the active distributor");
+			StructureCalculator.StructurePlacement first = structures.getPlacements().getFirst();
+			helper.assertTrue(map.biomeAt(first.getEntryPosX(), first.getEntryPosZ()) == ProximaBiomes.STRUCTURE,
+					"a structure's own entry must be inside its Structure Field");
+			// The central region wins over the painted map but loses to a structure region.
+			helper.assertTrue(map.biomeAt(0, 0) == ProximaBiomes.CENTER,
+					"the world origin is inside the central region, so it is the Luminescent Sanctuary");
+
+			// Far outside every structure region and the central boundary, the painted map answers.
+			int far = (int)(StructureCalculator.getMaximumPossibleDistance() + RegionMapper.MAX_BUFFER + 5000);
+			ProximaBiomeType outer = map.biomeAt(far, far);
+			helper.assertTrue(outer != null && outer != ProximaBiomes.CENTER
+							&& outer != ProximaBiomes.STRUCTURE && outer != ProximaBiomes.MONUMENT,
+					"beyond every region the painted map must answer with a real biome, got " + outer);
+
+			// Reproducibility, the reason the shuffle had to be seeded.
+			BiomeDistributor again = new BiomeDistributor(1234L, size).generate(structures);
+			helper.assertTrue(java.util.Arrays.equals(again.getDataForPacket(), coarse),
+					"the biome map must be reproducible from the dimension seed");
+			BiomeDistributor different = new BiomeDistributor(4321L, size).generate(structures);
+			helper.assertTrue(!java.util.Arrays.equals(different.getDataForPacket(), coarse),
+					"a different dimension seed must repaint the map");
+		}
+		finally {
+			StructureCalculator.allowUnfinishedStructures = previous;
+		}
+		helper.succeed();
 	}
 
 	/**
@@ -540,10 +694,13 @@ public final class ChromaGameTests {
 			helper.assertTrue(!portal.canPlayerUse(player),
 					"a fully qualified player must still be refused below the 300-tick charge");
 			// Proxima is not registered in the GameTest server, so isPortalFunctional stays false and
-			// the eligibility gate must reflect that rather than passing anyway.
+			// the eligibility gate must reflect that rather than passing anyway. Both halves matter:
+			// the dimension has to exist AND its generators have to have decided the layout.
 			portal.setChargeForTest(TileEntityCrystalPortal.MINCHARGE);
-			helper.assertTrue(portal.canPlayerUse(player) == BlockChromaPortal.isDimensionLoadable(level),
-					"once charged, eligibility must depend only on whether Proxima is loadable");
+			helper.assertTrue(portal.canPlayerUse(player) == BlockChromaPortal.isPortalFunctional(level),
+					"once charged, eligibility must depend only on whether Proxima is reachable");
+			helper.assertTrue(!portal.canPlayerUse(player),
+					"Proxima is not registered here, so a charged rift must still refuse travel");
 
 			// Tuning: V33a (tier2 ? 150 : 1) * count^(tier2 ? 0.85 : 0.5), then 60% spent per trip.
 			portal.addTuningEnergy(new ItemStack(

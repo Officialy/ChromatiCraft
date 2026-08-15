@@ -4718,3 +4718,104 @@ and that the boundary is reproducible from the dimension seed while a different 
 the monument and each element's structure field. It consumes the placements and the central region,
 both of which are now live, and is the last generator in the gate before the biome and terrain layers
 can be datagen-registered.
+
+### 2026-08-15 — Proxima biome distribution and the generator gate
+
+`BiomeDistributor` is ported, which closes the last generator in the gate. Proxima's global layout —
+structure ring, central region, biome map — now computes end to end.
+
+**What the distributor is.** Not a noise field. The biomes are painted once into a square byte map
+that tiles over the world, in five stages: scatter `spawnWeight` blobs per primary biome onto empty
+cells; fill every remaining empty cell from a weighted count of its 13x13 neighbourhood, in shuffled
+order, repeating until nothing is empty; feather away any cell matching none of its four orthogonal
+neighbours; stamp a sub-biome blob inside a parent blob with the sub-biome's own probability, over
+parent cells only; and build one irregular 96-384 block region per element plus one for the monument.
+`getBiome` then answers in priority order — structure or monument region, then the central region's
+Luminescent Sanctuary, then the painted map.
+
+The two numbers on each biome are the whole distribution contract: `spawnWeight` is literally the blob
+count for a primary (so Glowing Forest's 10 outnumber Lumen Skylands' 2, and the three zero-weight
+technical biomes are never scattered) and a probability for a sub-biome (Crystal Mountains appear in
+three quarters of Crystal Plains blobs).
+
+**Biome identities.** `ProximaBiomeType`, `ProximaBiomes` (nine primaries) and `ProximaSubBiomes`
+(four sub-biomes) port V33a's `ChromaDimensionManager.Biomes`/`SubBiomes` with their exact display
+names, spawn weights, base height deltas, parent links, `isWaterBiome`, `isReasonablyFlat`,
+`isTechnical` and `isFarRegions`. Upstream returns a live 1.7.10 biome object with a numeric id;
+26.2 biomes are data, so the type carries a `ResourceKey<Biome>` and the `Biome` it names is
+registered by datagen later. That split is exactly what lets the distribution land before the biome
+definitions. They are named after the dimension rather than kept as V33a's bare `Biomes`, which would
+collide with `net.minecraft.world.level.biome.Biomes` at every use site.
+
+**Three departures, all deliberate.**
+
+1. *The spreader machinery is dropped as dead code.* V33a declares a `Spreader` inner class and a
+   `spreadDots()` stage, but the only code that would add a spreader is commented out in
+   `distributeDots`, so the collection is always empty and the stage is always a no-op.
+2. *Two nondeterminism sources removed.* `Collections.shuffle(li)` uses a shared unseeded Random, and
+   `CountMap.asWeightedRandom().getRandomEntry()` is worse — `WeightedRandom` rolls its own unseeded
+   `RandomSource` **and** walks a `HashMap` keyed by enums, whose iteration order follows identity
+   hash codes and so differs between JVM runs. Between them they decide the biome of every gap cell on
+   the map, so Proxima would have regenerated differently from the same seed. The shuffle is now
+   seeded and the weighted draw is done inline over the compact biome index in ascending order. Same
+   distribution, reproducible. The GameTest asserts it, and it caught the second one.
+3. *The wait loop is gone*, as in `RegionMapper`: mis-ordered calls fail loudly instead of sleeping.
+
+**The map size is a parameter.** V33a's own `SIZE = 4096;//2048;//4096;` shows it was varied, and
+`placeBlob` already scales every radius by `SIZE/4096`. Making it a constructor argument is what lets
+the focused test exercise the identical algorithm at 512 cells in about two seconds.
+
+**Measured, and then fixed: the production map costs ~19 seconds.** A 4096x4096 paint is 33 blobs of
+720 half-degree rays each, plus repeated full-map scans. Left synchronous that is a flat server stall,
+which is precisely why V33a runs all five of its generators on threads. `ProximaGenerators` therefore
+gained the orchestration it was always the gate for: `regenerate(seed)` marks every bit pending and
+runs the chain off-thread in dependency order, publishing a single `Layout` record so a consumer sees
+either a complete Proxima or none of it; `generateNow(seed)` is the same chain on the calling thread
+for datagen and tests. The Portal Rift's existing "generators ready" check — which keeps a rift
+charging and refusing travel while any bit is set — is the mechanism that makes the wait invisible to a
+player, exactly as upstream intended.
+
+The portal's own eligibility assertion was tightened while this landed: it compared against
+`isDimensionLoadable` alone, which ignored the generator half of `isPortalFunctional`. Both halves now
+have to hold.
+
+**Focused validation:**
+
+```text
+.\gradlew.bat :ChromatiCraft:compileJava --console=plain
+BUILD SUCCESSFUL
+
+.\gradlew.bat :ChromatiCraft:runGameTest -PgameTestSelector=chromaticraft:proxima_biome_distribution
+All 1 required tests passed
+.\gradlew.bat :ChromatiCraft:runGameTest -PgameTestSelector=chromaticraft:proxima_generator_gate
+All 1 required tests passed
+.\gradlew.bat :ChromatiCraft:runGameTest -PgameTestSelector=chromaticraft:proxima_central_region
+All 1 required tests passed
+.\gradlew.bat :ChromatiCraft:runGameTest -PgameTestSelector=chromaticraft:proxima_structure_placement
+All 1 required tests passed
+.\gradlew.bat :ChromatiCraft:runGameTest -PgameTestSelector=chromaticraft:portal_structure_and_charge
+All 1 required tests passed
+```
+
+`proxima_biome_distribution` proves distributing before the ring exists is rejected, the BIOME bit
+clears and the whole gate then opens, no cell is left unpainted, every biome gets exactly its spawn
+weight in blobs while the three technical biomes get none, every sub-biome blob belongs to its
+declared parent, the query priority resolves the monument position to Monument Field and a structure
+entry to Structure Field and the origin to the central region while a far-away point falls through to
+the painted map, the coarse client packet is every eighth cell, and the map is reproducible from the
+dimension seed while a different seed repaints it.
+
+`proxima_generator_gate` proves the gate starts closed with every member pending, that the full chain
+opens it, that the layout is published as one object, that each stage is consistent with the one
+before it (the region encloses this run's monument, the biome map is painted around this run's
+monument), and that the orchestrated run uses the production map size — so it exercises the real
+19-second path end to end rather than the test-sized one.
+
+**Where the gate stands.** `STRUCTURE`, `REGION` and `BIOME` all clear. `SKYRIVER` and
+`FISSUREPATTERNS` join `Generator` when their generators land, and the portal will start waiting on
+them again automatically.
+
+**Next:** the biomes themselves as datagen-registered `Biome` entries behind a custom `BiomeSource`
+reading this map, then the `ChunkGenerator` with the `world/dimension/terrain` shapers and
+`ChunkProviderChroma`'s vertical-offset/surface/bedrock passes, then the dimension type and level stem
+datagen that finally flips `isDimensionLoadable` true and unblocks the remaining portal GameTests.
