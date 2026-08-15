@@ -40,9 +40,13 @@ final class LexiconMachineRender {
 	/** V33a: {@code double sc = 48}. */
 	private static final float SCALE = 48;
 
-	/** V33a: {@code double x = posX+167, y = posY+44}, with {@code posY} the frame origin less eight. */
+	/**
+	 * V33a's matrix stack anchor was {@code posY+44}. The 26.2 picture-in-picture projection includes
+	 * the pitched block's Z extent above that pivot, unlike the old immediate-mode transform, so its
+	 * visual equivalent is sixteen pixels lower; otherwise blocks protrude through the page top.
+	 */
 	private static final int ANCHOR_X = 167;
-	private static final int ANCHOR_Y = 36;
+	private static final int ANCHOR_Y = 52;
 
 	/** V33a: {@code renderq} starts here and the drag clamps it to +/-45. */
 	private static final float DEFAULT_PITCH = 22.5F;

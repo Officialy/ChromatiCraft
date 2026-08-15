@@ -20,6 +20,8 @@ public final class ScreenHeatLamp extends AbstractContainerScreen<MenuHeatLamp> 
 			ChromatiCraft.MODID, "textures/gui/heatlamp.png");
 	private EditBox input;
 	private boolean settingInitialValue;
+	/** Last value delivered by the menu DataSlot, not the locally typed value. */
+	private int lastSyncedTemperature;
 
 	public ScreenHeatLamp(MenuHeatLamp menu, Inventory inventory, Component title) {
 		super(menu, inventory, title, 176, 48);
@@ -32,10 +34,26 @@ public final class ScreenHeatLamp extends AbstractContainerScreen<MenuHeatLamp> 
 		input = new EditBox(font, leftPos + 88, topPos + 21, 60, 16, Component.literal("Temperature"));
 		input.setMaxLength(4);
 		input.setFilter(value -> value.isEmpty() || value.equals("-") || value.matches("-?\\d+"));
-		input.setValue(Integer.toString(menu.temperature()));
+		lastSyncedTemperature = menu.temperature();
+		input.setValue(Integer.toString(lastSyncedTemperature));
 		input.setResponder(this::temperatureChanged);
 		addRenderableWidget(input);
 		settingInitialValue = false;
+	}
+
+	@Override
+	protected void containerTick() {
+		super.containerTick();
+		int synced = menu.temperature();
+		if (synced != lastSyncedTemperature) {
+			lastSyncedTemperature = synced;
+			// The client-side block entity still contains its construction default when the screen
+			// opens. The authoritative DataSlot arrives just afterwards, so mirror every newly
+			// delivered value into the editor without echoing it back as another request.
+			settingInitialValue = true;
+			input.setValue(Integer.toString(synced));
+			settingInitialValue = false;
+		}
 	}
 
 	private void temperatureChanged(String value) {

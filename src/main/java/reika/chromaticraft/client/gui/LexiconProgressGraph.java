@@ -10,6 +10,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 
 import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.magic.progression.ProgressionDescriptions;
@@ -50,11 +51,13 @@ final class LexiconProgressGraph {
 	}
 
 	private final EnumMap<ProgressStage, Node> nodes = new EnumMap<>(ProgressStage.class);
+	private final List<Edge> edges = new ArrayList<>();
 	private Mode built;
 	private int maxX;
 	private int maxY;
 
 	private record Node(int x, int y) {}
+	private record Edge(Node child, Node parent) {}
 
 	/**
 	 * V33a {@code initMap}: nodes stack by depth, and within a depth they are laid left to right in
@@ -65,13 +68,15 @@ final class LexiconProgressGraph {
 		if (built == mode)
 			return;
 		nodes.clear();
+		edges.clear();
 		maxX = 0;
 		maxY = 0;
 		Map<Integer, Integer> perDepth = new HashMap<>();
+		EnumMap<ProgressStage, Integer> depths = new EnumMap<>(ProgressStage.class);
 		for (ProgressStage p : ProgressStage.list) {
 			if (!p.active)
 				continue;
-			int depth = mode == Mode.TREE ? depth(p) : levelOf(p);
+			int depth = mode == Mode.TREE ? depth(p, depths) : levelOf(p);
 			int index = perDepth.merge(depth, 1, Integer::sum) - 1;
 			int x = index * (ELEMENT + SPACING_X);
 			int y = depth * (ELEMENT + SPACING_Y);
@@ -79,16 +84,18 @@ final class LexiconProgressGraph {
 			maxX = Math.max(maxX, x + ELEMENT);
 			maxY = Math.max(maxY, y + ELEMENT);
 		}
+		for (Map.Entry<ProgressStage, Node> entry : nodes.entrySet())
+			for (ProgressStage parent : ProgressionManager.instance.getPrereqs(entry.getKey())) {
+				Node parentNode = nodes.get(parent);
+				if (parentNode != null)
+					edges.add(new Edge(entry.getValue(), parentNode));
+			}
 		maxX = Math.max(0, maxX - (PANE_WIDTH - SPACING_X / 2));
 		maxY = Math.max(0, maxY - (PANE_HEIGHT - SPACING_Y - 30));
 		built = mode;
 	}
 
 	/** Longest path back to a stage with no prerequisites. */
-	private static int depth(ProgressStage p) {
-		return depth(p, new EnumMap<>(ProgressStage.class));
-	}
-
 	private static int depth(ProgressStage p, Map<ProgressStage, Integer> seen) {
 		Integer cached = seen.get(p);
 		if (cached != null)
@@ -128,21 +135,16 @@ final class LexiconProgressGraph {
 		this.build(mode);
 		int baseX = left + ORIGIN_X - offsetX;
 		int baseY = top + ORIGIN_Y - offsetY;
+		graphics.enableScissor(left + 5, top + 18, left + 251, top + 112);
 
 		// V33a renderLines: every node is joined to each of its prerequisites, drawn under the nodes.
-		for (Map.Entry<ProgressStage, Node> e : nodes.entrySet()) {
-			Node child = e.getValue();
-			for (ProgressStage parent : ProgressionManager.instance.getPrereqs(e.getKey())) {
-				Node pn = nodes.get(parent);
-				if (pn == null)
-					continue;
-				int x1 = baseX + child.x() + ELEMENT / 2;
-				int y1 = baseY + child.y();
-				int x2 = baseX + pn.x() + ELEMENT / 2;
-				int y2 = baseY + pn.y() + ELEMENT;
-				if (onScreen(left, top, x1, y1) || onScreen(left, top, x2, y2))
-					ReikaGuiLine.draw(graphics, x1, y1, x2, y2, 0xff707070);
-			}
+		for (Edge edge : edges) {
+			int x1 = baseX + edge.child.x() + ELEMENT / 2;
+			int y1 = baseY + edge.child.y();
+			int x2 = baseX + edge.parent.x() + ELEMENT / 2;
+			int y2 = baseY + edge.parent.y() + ELEMENT;
+			if (lineOnScreen(left, top, x1, y1, x2, y2))
+				ReikaGuiLine.draw(graphics, x1, y1, x2, y2, 0xff707070);
 		}
 
 		ProgressStage hovered = null;
@@ -162,10 +164,19 @@ final class LexiconProgressGraph {
 			border = ReikaColorAPI.mixColors(border, 0xffffff,
 					0.5F + 0.25F * (float)Math.sin(Math.toRadians(t)));
 			frame(graphics, x, y, ELEMENT, ELEMENT, 0xff000000 | border);
+			if (has || visible) {
+				ItemStack icon = ProgressStageIconResolver.icon(p);
+				if (!icon.isEmpty())
+					graphics.item(icon, x + 2, y + 2);
+			}
+			else {
+				graphics.centeredText(font, "?", x + ELEMENT / 2, y + 6, 0xffb0b0b0);
+			}
 
 			if (mouseX >= x && mouseX < x + ELEMENT && mouseY >= y && mouseY < y + ELEMENT)
 				hovered = p;
 		}
+		graphics.disableScissor();
 
 		if (hovered != null) {
 			List<Component> lines = new ArrayList<>();
@@ -180,10 +191,29 @@ final class LexiconProgressGraph {
 		return hovered;
 	}
 
+	ProgressStage hit(Mode mode, int left, int top, int offsetX, int offsetY, int mouseX, int mouseY) {
+		this.build(mode);
+		int baseX = left + ORIGIN_X - offsetX;
+		int baseY = top + ORIGIN_Y - offsetY;
+		for (Map.Entry<ProgressStage, Node> entry : nodes.entrySet()) {
+			int x = baseX + entry.getValue().x();
+			int y = baseY + entry.getValue().y();
+			if (onScreen(left, top, x, y) && mouseX >= x && mouseX < x + ELEMENT
+					&& mouseY >= y && mouseY < y + ELEMENT)
+				return entry.getKey();
+		}
+		return null;
+	}
+
 	/** V33a elementOnScreen, in terms of the pane rather than the whole frame. */
 	private static boolean onScreen(int left, int top, int x, int y) {
-		return x >= left + 8 && x <= left + PANE_WIDTH - ELEMENT + 8
-				&& y >= top + 24 && y <= top + 24 + PANE_HEIGHT;
+		return x >= left + 8 && x + ELEMENT <= left + 248
+				&& y >= top + 18 && y + ELEMENT <= top + 112;
+	}
+
+	private static boolean lineOnScreen(int left, int top, int x1, int y1, int x2, int y2) {
+		return Math.max(x1, x2) >= left + 5 && Math.min(x1, x2) <= left + 251
+				&& Math.max(y1, y2) >= top + 18 && Math.min(y1, y2) <= top + 112;
 	}
 
 	private static void frame(GuiGraphicsExtractor graphics, int x, int y, int w, int h, int color) {
@@ -193,19 +223,19 @@ final class LexiconProgressGraph {
 		graphics.fill(x + w - 1, y, x + w, y + h, color);
 	}
 
-	/** Straight-line drawing on top of {@code fill}, which is the only primitive GUI space offers. */
+	/** One transformed rectangle per edge, rather than one GUI render-state object per line pixel. */
 	private static final class ReikaGuiLine {
 		static void draw(GuiGraphicsExtractor graphics, int x1, int y1, int x2, int y2, int color) {
-			int dx = Math.abs(x2 - x1);
-			int dy = Math.abs(y2 - y1);
-			int steps = Math.max(dx, dy);
-			if (steps == 0)
+			float dx = x2 - x1;
+			float dy = y2 - y1;
+			float length = (float)Math.sqrt(dx * dx + dy * dy);
+			if (length < 0.5F)
 				return;
-			for (int i = 0; i <= steps; i++) {
-				int px = x1 + (x2 - x1) * i / steps;
-				int py = y1 + (y2 - y1) * i / steps;
-				graphics.fill(px, py, px + 1, py + 1, color);
-			}
+			graphics.pose().pushMatrix();
+			graphics.pose().translate(x1, y1);
+			graphics.pose().rotate((float)Math.atan2(dy, dx));
+			graphics.fill(0, 0, Math.round(length), 1, color);
+			graphics.pose().popMatrix();
 		}
 	}
 }

@@ -13,7 +13,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.RegisterColorHandlersEvent;
 import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.block.crystal.BlockCaveCrystal;
+import reika.chromaticraft.base.CrystalBlock;
 import reika.chromaticraft.block.dye26.BlockDyeLeaf;
 import reika.chromaticraft.block.dye26.BlockDyeSapling;
 import reika.chromaticraft.block.dye26.BlockRainbowLeaf;
@@ -25,12 +25,12 @@ import reika.chromaticraft.registry.ChromaBlocks;
 public final class ChromaBlockColors {
     private ChromaBlockColors() {}
 
-    private static final BlockTintSource CAVE_CRYSTAL = new BlockTintSource() {
+    private static final BlockTintSource CRYSTAL = new BlockTintSource() {
         @Override public int color(BlockState state) { return tint(state); }
         @Override public int colorInWorld(BlockState state, BlockAndTintGetter level, BlockPos pos) { return tint(state); }
         private int tint(BlockState state) {
-            BlockCaveCrystal crystal = (BlockCaveCrystal)state.getBlock();
-            return 0xFF000000 | crystal.getTintColor(crystal.getCrystalElement().ordinal());
+            CrystalBlock crystal = (CrystalBlock)state.getBlock();
+            return 0xFF000000 | crystal.getTintColor(crystal.getCrystalElement(state).ordinal());
         }
     };
 
@@ -80,6 +80,7 @@ public final class ChromaBlockColors {
     @SubscribeEvent
     public static void onClientLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
         LuminousCliffsColors.onLevelChanged(null);
+        ProximaBiomeColors.onLevelChanged(null);
     }
 
     /** Drains the progression-sound cooldown (V33a ProgressOverlayRenderer ticks it the same way). */
@@ -92,11 +93,17 @@ public final class ChromaBlockColors {
     @SubscribeEvent
     public static void registerColorResolvers(RegisterColorHandlersEvent.ColorResolvers event) {
         event.register(LuminousCliffsColors.CLIFF_PRESENCE);
+        event.register(ProximaBiomeColors.PROXIMA_PRESENCE);
     }
 
     @SubscribeEvent
     public static void registerBlockColors(RegisterColorHandlersEvent.BlockTintSources event) {
-        event.register(List.of(CAVE_CRYSTAL), ChromaBlocks.CAVE_CRYSTALS.stream().map(h -> h.get()).toArray(net.minecraft.world.level.block.Block[]::new));
+        net.minecraft.world.level.block.Block[] crystals = java.util.stream.Stream.of(
+                ChromaBlocks.CAVE_CRYSTALS, ChromaBlocks.CRYSTAL_LAMPS, ChromaBlocks.SUPER_CRYSTALS)
+                .flatMap(java.util.Collection::stream)
+                .map(h -> (net.minecraft.world.level.block.Block)h.get())
+                .toArray(net.minecraft.world.level.block.Block[]::new);
+        event.register(List.of(CRYSTAL), crystals);
         net.minecraft.world.level.block.Block[] dyeBlocks = java.util.stream.Stream.concat(
                 ChromaBlocks.DYE_LEAVES.stream(), ChromaBlocks.DYE_SAPLINGS.stream())
                 .map(h -> (net.minecraft.world.level.block.Block)h.get())
@@ -110,21 +117,26 @@ public final class ChromaBlockColors {
         // it renders white. It is a Luminous Cliffs block, so it takes the same position/altitude
         // shift as the vanilla grass around it.
         event.register(List.of(CLIFF_GRASS), ChromaBlocks.CLIFF_GRASS.get());
-        registerLuminousCliffsTints(event);
+        registerTerrainTintWrappers(event);
     }
 
     /**
-     * Re-registers the vanilla grass/foliage tint sources wrapped in the Luminous Cliffs shift.
-     * The wrapper delegates for every position outside the biome, so world-wide behaviour is
-     * unchanged; only the layer count and identity of the sources differ.
+     * Re-registers the vanilla grass/foliage tint sources wrapped in the Luminous Cliffs shift and
+     * then in the Proxima one. Both wrappers delegate unchanged for every position outside their own
+     * biomes, so world-wide behaviour is unaffected; only the layer count and identity of the sources
+     * differ. The two never overlap in practice — one is an overworld biome, the other a dimension —
+     * but nesting rather than choosing keeps that an observation instead of an assumption.
      */
-    private static void registerLuminousCliffsTints(RegisterColorHandlersEvent.BlockTintSources event) {
+    private static void registerTerrainTintWrappers(RegisterColorHandlersEvent.BlockTintSources event) {
         BlockColors colors = event.getBlockColors();
         for (net.minecraft.world.level.block.Block block : CLIFF_TINTED_VANILLA) {
             List<BlockTintSource> existing = colors.getTintSources(block.defaultBlockState());
             if (existing.isEmpty())
                 continue;
-            event.register(existing.stream().map(LuminousCliffsColors::wrapTerrain).toList(), block);
+            event.register(existing.stream()
+                    .map(LuminousCliffsColors::wrapTerrain)
+                    .map(ProximaBiomeColors::wrapTerrain)
+                    .toList(), block);
         }
     }
 }

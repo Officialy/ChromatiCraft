@@ -26,11 +26,9 @@ public final class ClientPayloadHandlers {
 
 	private ClientPayloadHandlers() {}
 
-	/** V33a ProgressOverlayRenderer: 0.5 volume, 24-tick cooldown so a burst does not stack. */
-	private static int progressSoundCooldown;
-
 	public static void tickProgressSoundCooldown() {
-		if (progressSoundCooldown > 0) progressSoundCooldown--;
+		// Compatibility entry point retained for the existing client tick hook. The
+		// original overlay now derives its cooldown from client level game time.
 	}
 
 	public static void attackBeam(BlockPos source, BlockPos target, CrystalElement colour) {
@@ -49,11 +47,19 @@ public final class ClientPayloadHandlers {
 							entity.getZ()), colour);
 	}
 
-	public static void progressionNote() {
+	public static void progressionNote(boolean researchLevel, int ordinal) {
 		Minecraft mc = Minecraft.getInstance();
-		if (mc.player == null || progressSoundCooldown > 0) return;
-		progressSoundCooldown = 24;
-		ChromaSounds.GAINPROGRESS.playSound(mc.player, 0.5F, 1);
+		if (mc.player == null) return;
+		if (researchLevel) {
+			var levels = reika.chromaticraft.magic.progression.ResearchLevel.levelList;
+			if (ordinal >= 0 && ordinal < levels.length)
+				reika.chromaticraft.client.gui.ProgressionOverlay.add(levels[ordinal]);
+		}
+		else {
+			var stages = reika.chromaticraft.magic.progression.ProgressStage.list;
+			if (ordinal >= 0 && ordinal < stages.length)
+				reika.chromaticraft.client.gui.ProgressionOverlay.add(stages[ordinal]);
+		}
 	}
 
 	public static void jarRejection(BlockPos source, CrystalElement colour) {

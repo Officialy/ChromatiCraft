@@ -33,31 +33,44 @@ import reika.chromaticraft.render.tesr.RenderItemStand;
 /** Exact hover/mining outlines extracted from ChromatiCraft's non-voxel rendered models. */
 public final class ChromaModelOutlineRenderer implements CustomBlockOutlineRenderer {
 
-    private static final int NORMAL_COLOR = 0x66000000;
+    /**
+     * Vanilla uses ARGB.black(102), but that translucency becomes distracting on this much denser
+     * diagonal mesh. Keep vanilla's selected line width and high-contrast pass, while giving the
+     * normal custom-model outline the opaque black appearance requested for these model edges.
+     */
+    private static final int NORMAL_COLOR = 0xFF000000;
     private static final int HIGH_CONTRAST_COLOR = -11010079;
     private static final ModelPart ITEM_STAND_MODEL = RenderItemStand.createStandLayer().bakeRoot();
 
     private final BlockPos pos;
     private final List<Line> lines;
+    private final float widthScale;
 
-    private ChromaModelOutlineRenderer(BlockPos pos, List<Line> lines) {
+    private ChromaModelOutlineRenderer(BlockPos pos, List<Line> lines, float widthScale) {
         this.pos = pos;
         this.lines = lines;
+        this.widthScale = widthScale;
     }
 
     public static void extract(ExtractBlockOutlineRenderStateEvent event) {
         List<Line> lines;
+        float widthScale;
         if (event.getBlockState().getBlock() instanceof CrystalBlock) {
             // Cave, potion/super and lamp crystals all use the same Java-authored spike mesh.
             // Extracting the baked model keeps the outline exact for each family's base/arm rules.
             lines = modelLines(event);
+            // The crystal mesh puts several diagonal edges into a small space. A full vanilla line
+            // width reads twice as heavy as the outline around an ordinary cube, so retain the
+            // vanilla-selected width as the baseline but halve it for all three crystal families.
+            widthScale = 0.5F;
         } else if (event.getBlockState().is(ChromaBlocks.ITEM_STAND.get())) {
             lines = itemStandLines();
+            widthScale = 1F;
         } else {
             return;
         }
         if (!lines.isEmpty())
-            event.addCustomRenderer(new ChromaModelOutlineRenderer(event.getBlockPos(), lines));
+            event.addCustomRenderer(new ChromaModelOutlineRenderer(event.getBlockPos(), lines, widthScale));
     }
 
     /** Reusable Java/baked-model-to-outline bridge for non-voxel ChromatiCraft models. */
@@ -106,10 +119,12 @@ public final class ChromaModelOutlineRenderer implements CustomBlockOutlineRende
                 .windowRenderState.appropriateLineWidth;
         if (renderState.highContrast())
             submit(collector, poseStack, levelRenderState, RenderTypes.secondaryBlockOutline(),
-                    0xFF000000, 7F);
-        // Match vanilla exactly: its translucent black and the window-selected normal line width.
+                    0xFF000000, 7F * widthScale);
+        // Use the vanilla-selected line width; only the normal colour is made opaque for the dense
+        // Java-model mesh. High-contrast mode retains vanilla's secondary and primary colours.
         int mainColor = renderState.highContrast() ? HIGH_CONTRAST_COLOR : NORMAL_COLOR;
-        submit(collector, poseStack, levelRenderState, RenderTypes.lines(), mainColor, normalWidth);
+        submit(collector, poseStack, levelRenderState, RenderTypes.lines(), mainColor,
+                normalWidth * widthScale);
         return true;
     }
 

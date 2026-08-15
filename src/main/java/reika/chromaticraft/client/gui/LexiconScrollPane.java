@@ -95,10 +95,16 @@ public final class LexiconScrollPane {
 
 	/** Draws the scrolling backdrop; the frame is blitted over this afterwards. */
 	public void render(GuiGraphicsExtractor graphics, Identifier texture, int leftX, int topY) {
+		this.render(graphics, texture, leftX, topY, PANE_WIDTH, PANE_HEIGHT);
+	}
+
+	/** Same V33a tiled pane, with the caller's screen-specific aperture dimensions. */
+	public void render(GuiGraphicsExtractor graphics, Identifier texture, int leftX, int topY,
+			int paneWidth, int paneHeight) {
 		graphics.blit(RenderPipelines.GUI_TEXTURED, texture,
 				leftX + INSET_X, topY + INSET_Y,
 				Math.floorMod(offsetX, TILE), Math.floorMod(offsetY, TILE),
-				PANE_WIDTH, PANE_HEIGHT, TILE, TILE);
+				paneWidth, paneHeight, TILE, TILE);
 	}
 
 	private static boolean down(com.mojang.blaze3d.platform.Window window, net.minecraft.client.KeyMapping mapping) {

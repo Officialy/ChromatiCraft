@@ -13,6 +13,7 @@ import reika.chromaticraft.registry.ChromaCraftingItems;
 import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.ChromaTieredItems;
 import reika.chromaticraft.registry.CrystalElement;
+import reika.chromaticraft.registry.ChromaShieldTypes;
 import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
 
 /** Binds V33a guide source identities to the modern registries as each content family lands. */
@@ -30,6 +31,9 @@ public final class LexiconIconResolver {
 		List<ItemStack> variants = variants(entry);
 		if (!variants.isEmpty())
 			return variants;
+		ItemLike naturalStructureIcon = naturalStructureIcon(entry);
+		if (naturalStructureIcon != null)
+			return List.of(new ItemStack(naturalStructureIcon));
 		ItemLike item = switch (entry.sourceType()) {
 			case "machine" -> machine(entry.sourceId());
 			case "block" -> block(entry.sourceId());
@@ -39,6 +43,19 @@ public final class LexiconIconResolver {
 			default -> null;
 		};
 		return item != null ? List.of(new ItemStack(item)) : List.of();
+	}
+
+	/** Exact V33a structure-page shielding metadata, now expressed as independent registry blocks. */
+	private static ItemLike naturalStructureIcon(LexiconCatalog.Entry entry) {
+		ChromaShieldTypes type = switch (entry.id()) {
+			case "CAVERN" -> ChromaShieldTypes.CLOAK;
+			case "BURROW" -> ChromaShieldTypes.STONE;
+			case "OCEAN" -> ChromaShieldTypes.MOSS;
+			case "DESERT" -> ChromaShieldTypes.COBBLE;
+			case "SNOW" -> ChromaShieldTypes.LIGHT;
+			default -> null;
+		};
+		return type != null ? ChromaBlocks.shielding(type).get() : null;
 	}
 
 	private static List<ItemStack> variants(LexiconCatalog.Entry entry) {
@@ -140,6 +157,8 @@ public final class LexiconIconResolver {
 			case "help" -> ChromaItems.LEXICON.get();
 			case "fragment" -> ChromaItems.INFO_FRAGMENT.get();
 			case "tool" -> ChromaItems.MANIPULATOR.get();
+			case "storage" -> ChromaItems.STORAGE_CRYSTALS.get(
+					reika.chromaticraft.registry.StorageCrystalTier.NULA).get();
 			case "elemental" -> ChromaItems.ELEMENTAL_STONES.get(CrystalElement.BLUE).get();
 			case "datacrystal" -> ChromaItems.DATA_CRYSTAL.get();
 			default -> null;

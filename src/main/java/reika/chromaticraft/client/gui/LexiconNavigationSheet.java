@@ -214,13 +214,19 @@ public final class LexiconNavigationSheet {
 	 * so a partly-scrolled box still reads as a box rather than spilling over the frame, and skips any
 	 * title or icon that would fall outside the window.
 	 */
-	public void render(GuiGraphicsExtractor graphics, Font font, int leftX, int topY,
+	public void render(GuiGraphicsExtractor graphics, Font font, int frameLeft, int frameTop,
 			int offsetX, int offsetY, int paneWidth, int paneHeight, int mouseX, int mouseY,
 			String search, long tick,
 			java.util.function.Function<LexiconCatalog.Entry, ItemStack> icons,
 			java.util.function.Predicate<LexiconCatalog.Entry> unlocked) {
-		int originX = leftX + MARGIN - offsetX;
-		int originY = topY + 1 - offsetY;
+		// GuiNavigation calls drawSections(frameLeft + 11, frameTop + 11), whose
+		// first section frame begins another (4, 1) pixels in. Keep the frame origin
+		// separate from that content origin; conflating them shifted everything right
+		// and made V33a's clipping bounds extend outside the book.
+		int originX = frameLeft + 15 - offsetX;
+		int originY = frameTop + 12 - offsetY;
+		graphics.enableScissor(frameLeft + 7, frameTop - 1,
+				frameLeft + 7 + paneWidth, frameTop - 1 + paneHeight);
 		for (Box box : boxes) {
 			int bx = originX + box.frame.x;
 			int by = originY + box.frame.y;
@@ -234,14 +240,14 @@ public final class LexiconNavigationSheet {
 				ramp(category, hover, tick);
 				anyHover |= hover;
 				outline(graphics, cxa, cya, cxa + category.width, cya + category.height,
-						leftX, topY, paneWidth, paneHeight, category.color());
+						frameLeft, frameTop, paneWidth, paneHeight, category.color());
 			}
 
 			ramp(box.frame, anyHover, tick);
 			outline(graphics, bx, by, bx + box.frame.width, by + box.frame.height,
-					leftX, topY, paneWidth, paneHeight, box.frame.color());
-			if (bx >= leftX && bx <= leftX + paneWidth - font.width(box.title)
-					&& by >= topY && by <= topY + paneHeight - font.lineHeight / 2)
+					frameLeft, frameTop, paneWidth, paneHeight, box.frame.color());
+			if (bx >= frameLeft && bx <= frameLeft + paneWidth - font.width(box.title)
+					&& by >= frameTop && by <= frameTop + paneHeight - font.lineHeight / 2)
 				graphics.text(font, Component.literal(box.title), bx + 2, by - font.lineHeight,
 						mix(box.frame.color(), 0xffffffff, 0.675F), false);
 
@@ -257,13 +263,15 @@ public final class LexiconNavigationSheet {
 					continue;
 				int cx = originX + cell.x;
 				int cy = originY + cell.y;
-				if (cx < leftX || cx > leftX + paneWidth - ELEMENT)
+				if (cx < frameLeft || cx > frameLeft + paneWidth - ELEMENT)
 					continue;
-				if (cy < topY || cy > topY + paneHeight - ELEMENT)
+				if (cy < frameTop || cy > frameTop + paneHeight - ELEMENT)
 					continue;
 				ItemStack icon = icons.apply(cell.entry);
 				if (!icon.isEmpty())
 					graphics.item(icon, cx + 4, cy + 4);
+				else
+					renderMissingIcon(graphics, font, cx + 4, cy + 4);
 				if (!unlocked.test(cell.entry))
 					graphics.text(font, Component.literal("?"), cx + 9, cy + 9, 0xffff6060, true);
 				if (cell.searchAlpha < 1) {
@@ -277,6 +285,22 @@ public final class LexiconNavigationSheet {
 				}
 			}
 		}
+		graphics.disableScissor();
+	}
+
+	/**
+	 * A loud development placeholder for catalog entries whose source binding has not landed yet.
+	 * Leaving the cell empty made an unported icon indistinguishable from missing navigation data;
+	 * this checker remains entirely runtime-drawn so it cannot accidentally ship as a block/item
+	 * texture or conceal which resolver case still needs implementing.
+	 */
+	private static void renderMissingIcon(GuiGraphicsExtractor graphics, Font font, int x, int y) {
+		final int cell = 4;
+		for (int dx = 0; dx < 16; dx += cell)
+			for (int dy = 0; dy < 16; dy += cell)
+				graphics.fill(x + dx, y + dy, x + dx + cell, y + dy + cell,
+						((dx + dy) / cell & 1) == 0 ? 0xffff00ff : 0xff101010);
+		graphics.text(font, Component.literal("!"), x + 6, y + 4, 0xffffffff, true);
 	}
 
 	/** V33a: hoverTime climbs one per frame to 20, and decays one every other frame. */
@@ -301,17 +325,17 @@ public final class LexiconNavigationSheet {
 	}
 
 	/** The entry under the cursor, or null. Uses the same clipping the renderer does. */
-	public LexiconCatalog.Entry hit(int mouseX, int mouseY, int leftX, int topY,
+	public LexiconCatalog.Entry hit(int mouseX, int mouseY, int frameLeft, int frameTop,
 			int offsetX, int offsetY, int paneWidth, int paneHeight) {
-		int originX = leftX + MARGIN - offsetX;
-		int originY = topY + 1 - offsetY;
+		int originX = frameLeft + 15 - offsetX;
+		int originY = frameTop + 12 - offsetY;
 		for (Box box : boxes) {
 			for (Cell cell : box.cells) {
 				int cx = originX + cell.x;
 				int cy = originY + cell.y;
-				if (cx < leftX || cx > leftX + paneWidth - ELEMENT)
+				if (cx < frameLeft + 7 || cx > frameLeft + 7 + paneWidth - ELEMENT)
 					continue;
-				if (cy < topY || cy > topY + paneHeight - ELEMENT)
+				if (cy < frameTop - 1 || cy > frameTop - 1 + paneHeight - ELEMENT)
 					continue;
 				if (mouseX >= cx && mouseX < cx + ELEMENT && mouseY >= cy && mouseY < cy + ELEMENT)
 					return cell.entry;
@@ -321,11 +345,11 @@ public final class LexiconNavigationSheet {
 	}
 
 	private static void outline(GuiGraphicsExtractor graphics, int x0, int y0, int x1, int y1,
-			int leftX, int topY, int paneWidth, int paneHeight, int color) {
-		int cx0 = Math.clamp(x0, leftX + 2, leftX + paneWidth + 10);
-		int cy0 = Math.clamp(y0, topY - 5, topY + paneHeight + 5);
-		int cx1 = Math.clamp(x1, leftX + 2, leftX + paneWidth + 10);
-		int cy1 = Math.clamp(y1, topY - 5, topY + paneHeight + 5);
+			int frameLeft, int frameTop, int paneWidth, int paneHeight, int color) {
+		int cx0 = Math.clamp(x0, frameLeft + 2, frameLeft + paneWidth + 10);
+		int cy0 = Math.clamp(y0, frameTop - 5, frameTop + paneHeight + 5);
+		int cx1 = Math.clamp(x1, frameLeft + 2, frameLeft + paneWidth + 10);
+		int cy1 = Math.clamp(y1, frameTop - 5, frameTop + paneHeight + 5);
 		if (cx1 <= cx0 || cy1 <= cy0)
 			return;
 		graphics.fill(cx0, cy0, cx1, cy0 + 1, color);

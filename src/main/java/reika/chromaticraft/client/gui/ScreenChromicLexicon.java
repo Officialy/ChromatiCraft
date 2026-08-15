@@ -9,6 +9,7 @@ import org.lwjgl.glfw.GLFW;
 import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.platform.Window;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
@@ -17,6 +18,8 @@ import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.data.AtlasIds;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;
@@ -80,6 +83,8 @@ public final class ScreenChromicLexicon extends Screen {
 	/** V33a {@code ChromaBookGui}: every book page lays its body out from these two. */
 	private static final int DESC_X = 8;
 	private static final int DESC_Y = 88;
+	/** Lines which fit from V33a's description origin to the lower inside edge of the page. */
+	private static final int DESCRIPTION_LINES_PER_PAGE = 13;
 
 	/** V33a {@code Textures/infoicons.png}: the power-supply badges, sixteen to a row. */
 	private static final Identifier INFO_ICONS = Identifier.fromNamespaceAndPath(
@@ -94,21 +99,17 @@ public final class ScreenChromicLexicon extends Screen {
 	/** V33a GuiNavigation.getScrollingTexture: the pannable backdrop beneath the frame. */
 	private static final Identifier NAV_SCROLL = Identifier.fromNamespaceAndPath(
 			ChromatiCraft.MODID, "textures/gui/lexicon/navbcg.png");
-	private static final Identifier HANDBOOK = Identifier.fromNamespaceAndPath(
-			ChromatiCraft.MODID, "textures/gui/lexicon/handbook.png");
+	private static final Identifier RECOVERY = Identifier.fromNamespaceAndPath(
+			ChromatiCraft.MODID, "textures/gui/lexicon/fragments.png");
+	private static final Identifier NOTES = Identifier.fromNamespaceAndPath(
+			ChromatiCraft.MODID, "textures/gui/lexicon/notes.png");
+	private static final Identifier PROGRESS = Identifier.fromNamespaceAndPath(
+			ChromatiCraft.MODID, "textures/gui/lexicon/progress.png");
 	private static final int WIDTH = 256;
 	private static final int HEIGHT = 220;
 	private static final int PAGE_SIZE = 8;
 	/** V33a navigation row pitch, still used by the stored-fragment list. */
 	private static final int ENTRY_HEIGHT = 23;
-	/** V33a GuiScrollingPage draws the pane at (left + 7, top - 1). */
-	/**
-	 * V33a draws the scrolling backdrop at {@code leftX+7, topY-1} but lays the sections out from
-	 * {@code leftX+11, topY+11} -- two different origins. The port used the backdrop's for both, which
-	 * put every section header eight pixels above the frame instead of inside it.
-	 */
-	private static final int PANE_X = 11;
-	private static final int PANE_Y = 11;
 	private static LexiconCatalog.Section rememberedSection = LexiconCatalog.Section.INFO;
 	private static int rememberedOffset;
 
@@ -147,6 +148,7 @@ public final class ScreenChromicLexicon extends Screen {
 	private LexiconProgressGraph.Mode progressView = LexiconProgressGraph.Mode.TREE;
 	private final LexiconProgressGraph progressGraph = new LexiconProgressGraph();
 	private final LexiconScrollPane progressPane = new LexiconScrollPane();
+	private ProgressStage selectedProgress;
 	private boolean castingRecipeView;
 	private int recipeIndex;
 	private int recipeSubpage;
@@ -204,32 +206,12 @@ public final class ScreenChromicLexicon extends Screen {
 				rebuildWidgets();
 			}).bounds(left + WIDTH - 27, top - 2, 20, 20).build());
 			List<CastingTableRecipe> recipes = castingRecipes();
-			if (recipes.isEmpty() && !craftingRecipes().isEmpty()) {
-				addRenderableWidget(Button.builder(
-						Component.literal(castingRecipeView ? "Description" : "Crafting Recipe"), button -> {
-					castingRecipeView = !castingRecipeView;
-					recipeIndex = 0;
-					rebuildWidgets();
-				}).bounds(left + 8, top + 194, 92, 18).build());
-				if (castingRecipeView && craftingRecipes().size() > 1) {
-					addRenderableWidget(Button.builder(Component.literal("‹"), button -> {
-						recipeIndex--;
-						rebuildWidgets();
-					}).bounds(left + 104, top + 194, 18, 18).build());
-					addRenderableWidget(Button.builder(Component.literal("›"), button -> {
-						recipeIndex++;
-						rebuildWidgets();
-					}).bounds(left + 124, top + 194, 18, 18).build());
-				}
-			}
 			if (!recipes.isEmpty()) {
-				addRenderableWidget(Button.builder(Component.literal(castingRecipeView ? "Description" : "Casting Recipe"), button -> {
-					castingRecipeView = !castingRecipeView;
-					recipeSubpage = 0;
-					rebuildWidgets();
-				}).bounds(left + 8, top + 194, 92, 18).build());
 				if (castingRecipeView)
 					addCastingRecipeButtons(left, top, recipes);
+			}
+			else if (castingRecipeView && craftingRecipes().size() > 1) {
+				addCraftingRecipeButtons(left, top, craftingRecipes().size());
 			}
 			if (view == View.STORED_PAGES && !LexiconData.read(book).creative())
 				addRenderableWidget(Button.builder(Component.literal("Eject Fragment"), button -> {
@@ -251,7 +233,7 @@ public final class ScreenChromicLexicon extends Screen {
 		else if (view == View.NOTES) {
 			addNotebookWidgets(left, top);
 		}
-		if (!fragmentInventory) {
+		if (!fragmentInventory && selected == null && view == View.NAVIGATION) {
 			// V33a GuiNavigation.initGui, verbatim geometry. The Items/Recipes tabs are 13x88 strips
 			// down the left edge whose v swaps to show which mode is active, and Search is a 13x35
 			// stub below them. Nothing here is a vanilla widget upstream.
@@ -261,10 +243,12 @@ public final class ScreenChromicLexicon extends Screen {
 			// every click in the shared band. v=4 is the raised active look, v=95 the recessed one.
 			Runnable toItems = () -> {
 				recipeMode = false;
+				castingRecipeView = false;
 				rebuildWidgets();
 			};
 			Runnable toRecipes = () -> {
 				recipeMode = true;
+				castingRecipeView = true;
 				rebuildWidgets();
 			};
 			// Items sits above Recipes, so its visible strip ends where Recipes begins.
@@ -298,12 +282,12 @@ public final class ScreenChromicLexicon extends Screen {
 					65, 168, Component.literal("Recovery"), () -> setView(View.RECOVERY)));
 			addRenderableWidget(new LexiconImageButton(left + WIDTH, top + 80, 22, 39,
 					88, 168, Component.literal("Notebook"), () -> setView(View.NOTES)));
-			// V33a GuiBookSection: Save & Exit. It goes BELOW the other three rather than five pixels
-			// down from the top -- the port's offset put it on top of Progress and Recovery, and since
-			// it was added last it could never be clicked at all.
-			if (view != View.NAVIGATION)
-				addRenderableWidget(new LexiconImageButton(left + WIDTH, top + 120, 22, 39,
-						42, 210, Component.literal("Save & Exit"), this::onClose));
+		}
+		else if (!fragmentInventory && selected != null) {
+			// GuiBookSection is a separate screen upstream. It has only Save & Exit at k+5;
+			// the navigation's Progress/Recovery/Notebook stack must not leak onto entry pages.
+			addRenderableWidget(new LexiconImageButton(left + WIDTH, top + 5, 22, 39,
+					42, 210, Component.literal("Save & Exit"), this::onClose));
 		}
 		if (selected == null && view == View.NAVIGATION)
 			addRenderableWidget(Button.builder(Component.literal("X"), button -> onClose())
@@ -318,17 +302,20 @@ public final class ScreenChromicLexicon extends Screen {
 			addRenderableWidget(Button.builder(Component.literal("<"), button ->
 					moveSpecialistSubpage(-1)).bounds(left + WIDTH - 27, top + 52, 20, 20).build());
 		}
+		// Ordinary V33a descriptions have no large invented bottom-row "Page" buttons.
+		// For authored text which genuinely exceeds the modern page, use the same small
+		// up/down controls and location as upstream's scrollable description screens.
 		int count = descriptionPageCount();
 		if (textPage > 0)
-			addRenderableWidget(Button.builder(Component.literal("‹ Page"), button -> {
+			addRenderableWidget(Button.builder(Component.literal("↑"), button -> {
 				textPage--;
 				rebuildWidgets();
-			}).bounds(left + 8, top + 194, 52, 18).build());
+			}).bounds(left + 205, top + 50, 12, 10).build());
 		if (textPage + 1 < count)
-			addRenderableWidget(Button.builder(Component.literal("Page ›"), button -> {
+			addRenderableWidget(Button.builder(Component.literal("↓"), button -> {
 				textPage++;
 				rebuildWidgets();
-			}).bounds(left + 196, top + 194, 52, 18).build());
+			}).bounds(left + 205, top + 60, 12, 10).build());
 	}
 
 	/**
@@ -444,26 +431,10 @@ public final class ScreenChromicLexicon extends Screen {
 	}
 
 	private void addRecoveryButtons(int left, int top) {
-		List<LexiconCatalog.Entry> pages = recoverablePages();
-		int end = Math.min(pageOffset + PAGE_SIZE, pages.size());
-		for (int index = pageOffset; index < end; index++) {
-			LexiconCatalog.Entry entry = pages.get(index);
-			int row = index - pageOffset;
-			addRenderableWidget(Button.builder(entry.title(), button -> {
-				ClientPacketDistributor.sendToServer(new ChromaNetwork.RecoverResearchPage(entry.id()));
-				rebuildWidgets();
-			}).bounds(left + 26, top + 56 + row * 18, 204, 16).build());
-		}
-		if (pageOffset > 0)
-			addRenderableWidget(Button.builder(Component.literal("↑"), button -> {
-				pageOffset = Math.max(0, pageOffset - PAGE_SIZE);
-				rebuildWidgets();
-			}).bounds(left + 26, top + 204, 28, 14).build());
-		if (end < pages.size())
-			addRenderableWidget(Button.builder(Component.literal("↓"), button -> {
-				pageOffset += PAGE_SIZE;
-				rebuildWidgets();
-			}).bounds(left + 202, top + 204, 28, 14).build());
+		// V33a recovery is a 7x5 field of decoded fragment icons, not a vertical list
+		// of vanilla text buttons. Selection is handled directly by recoveryHit().
+		addRenderableWidget(new LexiconImageButton(left + WIDTH, top, 22, 39,
+				42, 126, Component.literal("Return"), () -> setView(View.NAVIGATION)));
 	}
 
 	private void addStoredPageButtons(int left, int top) {
@@ -504,6 +475,8 @@ public final class ScreenChromicLexicon extends Screen {
 			saveNotes();
 		view = next;
 		selected = null;
+		if (next != View.PROGRESS)
+			selectedProgress = null;
 		pageOffset = 0;
 		rebuildWidgets();
 	}
@@ -618,15 +591,33 @@ public final class ScreenChromicLexicon extends Screen {
 				recipeIndex = Math.floorMod(recipeIndex - 1, recipes.size());
 				recipeSubpage = 0;
 				rebuildWidgets();
-			}).bounds(left + 202, top + 6, 18, 18).build());
+			}).bounds(left + 205, top - 3, 10, 12).build());
 			addRenderableWidget(Button.builder(Component.literal("›"), button -> {
 				recipeIndex = (recipeIndex + 1) % recipes.size();
 				recipeSubpage = 0;
 				rebuildWidgets();
-			}).bounds(left + 222, top + 6, 18, 18).build());
+			}).bounds(left + 215, top - 3, 10, 12).build());
 		}
-		// No subpage button row: V33a turns these pages with W/S like every other book page, and the
-		// frame art has no room for buttons across the bottom.
+		// GuiBookSection adds these whenever getMaxSubpage() is nonzero. Losing them made
+		// temple runes (including the Item Casting Stand layout) unreachable unless the
+		// player happened to know the W/S shortcut.
+		if (recipe.tier().ordinal() > 0) {
+			addRenderableWidget(Button.builder(Component.literal(">"), button -> moveRecipeSubpage(1))
+					.bounds(left + WIDTH - 27, top + 32, 20, 20).build());
+			addRenderableWidget(Button.builder(Component.literal("<"), button -> moveRecipeSubpage(-1))
+					.bounds(left + WIDTH - 27, top + 52, 20, 20).build());
+		}
+	}
+
+	private void addCraftingRecipeButtons(int left, int top, int count) {
+		addRenderableWidget(Button.builder(Component.literal("‹"), button -> {
+			recipeIndex = Math.floorMod(recipeIndex - 1, count);
+			rebuildWidgets();
+		}).bounds(left + 205, top - 3, 10, 12).build());
+		addRenderableWidget(Button.builder(Component.literal("›"), button -> {
+			recipeIndex = (recipeIndex + 1) % count;
+			rebuildWidgets();
+		}).bounds(left + 215, top - 3, 10, 12).build());
 	}
 
 	/**
@@ -638,16 +629,19 @@ public final class ScreenChromicLexicon extends Screen {
 	private List<net.minecraft.world.item.crafting.display.RecipeDisplayEntry> craftingRecipes() {
 		if (selected == null || minecraft == null || minecraft.player == null)
 			return List.of();
-		ItemStack icon = LexiconIconResolver.icon(selected);
-		if (icon.isEmpty())
-			return List.of();
-		String itemId = BuiltInRegistries.ITEM.getKey(icon.getItem()).toString();
-		List<net.minecraft.world.item.crafting.display.RecipeDisplayEntry> cached = craftingRecipeCache.get(itemId);
-		if (cached != null)
-			return cached;
-		if (requestedCraftingRecipes.add(itemId))
-			ClientPacketDistributor.sendToServer(new ChromaNetwork.RequestGuideCraftingRecipes(itemId));
-		return List.of();
+		ArrayList<net.minecraft.world.item.crafting.display.RecipeDisplayEntry> recipes = new ArrayList<>();
+		for (String itemId : selectedItemIds()) {
+			List<net.minecraft.world.item.crafting.display.RecipeDisplayEntry> cached =
+					craftingRecipeCache.get(itemId);
+			if (cached != null) {
+				for (var recipe : cached)
+					if (!recipes.contains(recipe)) recipes.add(recipe);
+			}
+			else if (requestedCraftingRecipes.add(itemId)) {
+				ClientPacketDistributor.sendToServer(new ChromaNetwork.RequestGuideCraftingRecipes(itemId));
+			}
+		}
+		return List.copyOf(recipes);
 	}
 
 	/** Server's answer to {@link ChromaNetwork.RequestGuideCraftingRecipes}. */
@@ -660,16 +654,26 @@ public final class ScreenChromicLexicon extends Screen {
 	private List<CastingTableRecipe> castingRecipes() {
 		if (selected == null || player.level() == null)
 			return List.of();
-		ItemStack icon = LexiconIconResolver.icon(selected);
-		if (icon.isEmpty())
+		ArrayList<CastingTableRecipe> recipes = new ArrayList<>();
+		for (String itemId : selectedItemIds()) {
+			List<CastingTableRecipe> cached = castingRecipeCache.get(itemId);
+			if (cached != null) {
+				for (CastingTableRecipe recipe : cached)
+					if (!recipes.contains(recipe)) recipes.add(recipe);
+			}
+			else if (requestedCastingRecipes.add(itemId)) {
+				ClientPacketDistributor.sendToServer(new ChromaNetwork.RequestGuideCastingRecipes(itemId));
+			}
+		}
+		return List.copyOf(recipes);
+	}
+
+	/** Every independent registry identity represented by a V33a multi-variant research page. */
+	private List<String> selectedItemIds() {
+		if (selected == null)
 			return List.of();
-		String itemId = BuiltInRegistries.ITEM.getKey(icon.getItem()).toString();
-		List<CastingTableRecipe> cached = castingRecipeCache.get(itemId);
-		if (cached != null)
-			return cached;
-		if (requestedCastingRecipes.add(itemId))
-			ClientPacketDistributor.sendToServer(new ChromaNetwork.RequestGuideCastingRecipes(itemId));
-		return List.of();
+		return LexiconIconResolver.icons(selected).stream().filter(stack -> !stack.isEmpty())
+				.map(stack -> BuiltInRegistries.ITEM.getKey(stack.getItem()).toString()).distinct().toList();
 	}
 
 	/** Called only by the client payload handler after the server filters its authoritative recipes. */
@@ -752,13 +756,33 @@ public final class ScreenChromicLexicon extends Screen {
 			scrollPane.pan();
 			scrollPane.render(graphics, NAV_SCROLL, left, top);
 		}
-		graphics.blit(RenderPipelines.GUI_TEXTURED, selected == null ? NAVIGATION : pageBackground(),
-				left, top, 0, 0, WIDTH, HEIGHT, 256, 256);
+		else if (selected == null && view == View.PROGRESS) {
+			progressPane.setBounds(progressGraph.maxScrollX(progressView), progressGraph.maxScrollY(progressView));
+			progressPane.pan();
+			progressPane.render(graphics, NAV_SCROLL, left, top,
+					LexiconProgressGraph.PANE_WIDTH, LexiconProgressGraph.PANE_HEIGHT);
+		}
+		else if (selected == null && view == View.RECOVERY) {
+			// GuiFragmentRecovery lays the same stone texture behind the transparent
+			// fragment frame, covering the entire aperture rather than leaving world pixels.
+			graphics.blit(RenderPipelines.GUI_TEXTURED, NAV_SCROLL,
+					left, top - 8, 0, 0, WIDTH, HEIGHT, 256, 256);
+		}
+		Identifier frame = selected != null ? pageBackground() : switch (view) {
+			case PROGRESS -> PROGRESS;
+			case RECOVERY -> RECOVERY;
+			case NOTES -> NOTES;
+			default -> NAVIGATION;
+		};
+		// ChromaBookGui draws every 256x220 frame eight pixels above k. Widgets still
+		// use k, which puts the X at frameTop+6 and matches GuiBookSection exactly.
+		graphics.blit(RenderPipelines.GUI_TEXTURED, frame,
+				left, top - 8, 0, 0, WIDTH, HEIGHT, 256, 256);
 		if (selected == null && (view == View.NAVIGATION || view == View.STORED_PAGES)) {
 			// V33a GuiNavigation draws NO title and NO section caption here: the frame art carries the
 			// book's identity and each section labels itself inside the sheet. The two captions that
 			// used to be here overlapped each other on screen.
-			sheet.render(graphics, font, left + PANE_X, top + PANE_Y,
+			sheet.render(graphics, font, left, top,
 					scrollPane.offsetX(), scrollPane.offsetY(),
 					LexiconScrollPane.PANE_WIDTH, LexiconScrollPane.PANE_HEIGHT,
 					mouseX, mouseY, search, guiTick,
@@ -780,7 +804,9 @@ public final class ScreenChromicLexicon extends Screen {
 			// V33a shows an entry's ordinary grid recipe on its own page. When an entry has no
 			// casting recipe but does have a crafting one, Recipes mode lands here instead.
 			if (castingRecipeView && !craftingRecipes().isEmpty()) {
-				graphics.centeredText(font, selected.title(), left + WIDTH / 2, top + 4, 0xffffffff);
+				ItemStack result = craftingRecipeResult();
+				graphics.text(font, result.isEmpty() ? selected.title() : result.getHoverName(),
+						left + 27, top - 2, 0xffffffff, false);
 				renderCraftingRecipe(graphics, left, top);
 				super.extractRenderState(graphics, mouseX, mouseY, partialTick);
 				return;
@@ -804,9 +830,7 @@ public final class ScreenChromicLexicon extends Screen {
 			renderProgress(graphics, left, top, mouseX, mouseY);
 		}
 		else if (view == View.RECOVERY) {
-			graphics.centeredText(font, "Fragment Recovery", left + WIDTH / 2, top + 16, 0xffffffff);
-			graphics.text(font, Component.literal("Recovered pages cost one paper and one black dye."),
-					left + 10, top + 38, 0xffc0c0c0, false);
+			renderRecovery(graphics, left, top, mouseX, mouseY);
 		}
 		// The notebook draws nothing but its own lines. V33a's GuiNotes.drawScreen has no title and no
 		// line counter -- the page art is a sheet of paper, and a caption printed on it reads as part
@@ -820,10 +844,38 @@ public final class ScreenChromicLexicon extends Screen {
 	 * held movement keys the navigation sheet uses.
 	 */
 	private void renderProgress(GuiGraphicsExtractor graphics, int left, int top, int mouseX, int mouseY) {
-		progressPane.setBounds(progressGraph.maxScrollX(progressView), progressGraph.maxScrollY(progressView));
-		progressPane.pan();
 		progressGraph.render(graphics, font, player, progressView, left, top,
 				progressPane.offsetX(), progressPane.offsetY(), mouseX, mouseY);
+		if (selectedProgress != null) {
+			int textX = left + DESC_X;
+			int y = top + 116;
+			graphics.textWithWordWrap(font, Component.literal(ProgressionDescriptions.title(selectedProgress)),
+					textX, y, 242, 0xffffffff, false);
+			y += 20;
+			String detail = selectedProgress.isPlayerAtStage(player)
+					? ProgressionDescriptions.reveal(selectedProgress)
+					: ProgressionDescriptions.hint(selectedProgress);
+			graphics.textWithWordWrap(font, Component.literal(detail), textX, y, 242, 0xffffffff, false);
+		}
+	}
+
+	/** V33a GuiFragmentRecovery: 35 decoded fragments, rendered at 2x in a 7x5 grid. */
+	private void renderRecovery(GuiGraphicsExtractor graphics, int left, int top, int mouseX, int mouseY) {
+		List<LexiconCatalog.Entry> pages = recoverablePages();
+		for (int i = 0; i < Math.min(35, pages.size()); i++) {
+			LexiconCatalog.Entry page = pages.get(i);
+			int x = left + 8 + (i % 7) * 34;
+			int y = top + 18 + (i / 7) * 32;
+			graphics.pose().pushMatrix();
+			graphics.pose().translate(x, y);
+			graphics.pose().scale(2, 2);
+			graphics.item(reika.chromaticraft.item.ItemInfoFragment.forPage(page), 0, 0);
+			graphics.pose().popMatrix();
+			if (mouseX >= x && mouseX < x + 32 && mouseY >= y && mouseY < y + 32) {
+				graphics.outline(x, y, 32, 32, 0xff80dfff);
+				graphics.text(font, page.title(), left + 8, top + 196, 0xffffffff, false);
+			}
+		}
 	}
 
 
@@ -873,7 +925,7 @@ public final class ScreenChromicLexicon extends Screen {
 
 	private void renderDescriptionPage(GuiGraphicsExtractor graphics, int left, int top) {
 		List<net.minecraft.util.FormattedCharSequence> lines = descriptionLines();
-		int linesPerPage = 10;
+		int linesPerPage = DESCRIPTION_LINES_PER_PAGE;
 		int first = Math.min(textPage * linesPerPage, Math.max(0, lines.size() - 1));
 		int end = Math.min(first + linesPerPage, lines.size());
 		// V33a: posY is the frame origin less eight and descY is 88, hence frame top + 80.
@@ -882,9 +934,6 @@ public final class ScreenChromicLexicon extends Screen {
 			graphics.text(font, lines.get(i), left + 8, y, 0xffffffff, false);
 			y += 10;
 		}
-		if (descriptionPageCount() > 1)
-			graphics.centeredText(font, Component.literal((textPage + 1) + " / " + descriptionPageCount()),
-					left + WIDTH / 2, top + 204, 0xff909090);
 	}
 
 	private List<net.minecraft.util.FormattedCharSequence> descriptionLines() {
@@ -903,7 +952,7 @@ public final class ScreenChromicLexicon extends Screen {
 				text = descriptionSubpage > 0 && selected.section() == LexiconCatalog.Section.TOOLS
 						? LexiconDescriptions.notes(selected) : LexiconDescriptions.description(selected);
 		}
-		return new ArrayList<>(font.split(Component.literal(text), 238));
+		return new ArrayList<>(font.split(Component.literal(text), 242));
 	}
 
 	private int descriptionSubpageCount() {
@@ -940,7 +989,8 @@ public final class ScreenChromicLexicon extends Screen {
 	}
 
 	private int descriptionPageCount() {
-		return selected == null ? 1 : Math.max(1, (descriptionLines().size() + 9) / 10);
+		return selected == null ? 1 : Math.max(1,
+				(descriptionLines().size() + DESCRIPTION_LINES_PER_PAGE - 1) / DESCRIPTION_LINES_PER_PAGE);
 	}
 
 	/** Restores the distinct specialist presentations used by V33a's four description screens. */
@@ -1045,11 +1095,15 @@ public final class ScreenChromicLexicon extends Screen {
 		float mix = (float)Math.min((phase - Math.floor(phase)) * 2, 1);
 		int color = mixColors(CrystalElement.elements[first].getColor(),
 				CrystalElement.elements[second].getColor(), mix);
-		Identifier flare = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
-				"textures/block/icons/roundflare.png");
+		TextureAtlasSprite flare = Minecraft.getInstance().getAtlasManager()
+				.getAtlasOrThrow(AtlasIds.BLOCKS).getSprite(Identifier.fromNamespaceAndPath(
+						ChromatiCraft.MODID, "block/icons/roundflare"));
 		// Upstream posY is top-8 and places the flare at y-4, hence top-12 here.
-		graphics.blit(ChromaRenderPipelines.ADDITIVE_SPRITE, flare, left + 115, top - 12,
-				0, 0, 96, 96, 16, 16, 0xff000000 | color);
+		// roundflare is a 180-frame, 256x256 block-atlas animation. Uploading its
+		// 256x46080 source file as a standalone GUI texture exceeds the GPU's maximum
+		// texture height; sampling the stitched sprite also preserves its animation.
+		graphics.blitSprite(ChromaRenderPipelines.ADDITIVE_SPRITE, flare,
+				left + 115, top - 12, 96, 96, 0xff000000 | color);
 	}
 
 	private static int mixColors(int first, int second, float amount) {
@@ -1376,6 +1430,23 @@ public final class ScreenChromicLexicon extends Screen {
 				return true;
 			}
 		}
+		if (event.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT && selected == null && view == View.RECOVERY) {
+			LexiconCatalog.Entry page = recoveryHit((int)event.x(), (int)event.y());
+			if (page != null) {
+				ClientPacketDistributor.sendToServer(new ChromaNetwork.RecoverResearchPage(page.id()));
+				return true;
+			}
+		}
+		if (event.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT && selected == null && view == View.PROGRESS) {
+			int left = (width - WIDTH) / 2;
+			int top = (height - HEIGHT) / 2;
+			ProgressStage stage = progressGraph.hit(progressView, left, top,
+					progressPane.offsetX(), progressPane.offsetY(), (int)event.x(), (int)event.y());
+			if (stage != null) {
+				selectedProgress = stage;
+				return true;
+			}
+		}
 		// V33a draw3d: the right button snaps the model back to its default orientation.
 		if (event.button() == GLFW.GLFW_MOUSE_BUTTON_RIGHT && structureMode == 0
 				&& isInsideStructurePreview(event.x(), event.y())) {
@@ -1388,11 +1459,24 @@ public final class ScreenChromicLexicon extends Screen {
 		return super.mouseClicked(event, doubleClick);
 	}
 
+	private LexiconCatalog.Entry recoveryHit(int mouseX, int mouseY) {
+		int left = (width - WIDTH) / 2;
+		int top = (height - HEIGHT) / 2;
+		List<LexiconCatalog.Entry> pages = recoverablePages();
+		for (int i = 0; i < Math.min(35, pages.size()); i++) {
+			int x = left + 8 + (i % 7) * 34;
+			int y = top + 18 + (i / 7) * 32;
+			if (mouseX >= x && mouseX < x + 32 && mouseY >= y && mouseY < y + 32)
+				return pages.get(i);
+		}
+		return null;
+	}
+
 	/** The sheet entry under the cursor, in the same coordinate space the sheet renders in. */
 	private LexiconCatalog.Entry sheetHit(int mouseX, int mouseY) {
 		int left = (width - WIDTH) / 2;
 		int top = (height - HEIGHT) / 2;
-		return sheet.hit(mouseX, mouseY, left + PANE_X, top + PANE_Y,
+		return sheet.hit(mouseX, mouseY, left, top,
 				scrollPane.offsetX(), scrollPane.offsetY(),
 				LexiconScrollPane.PANE_WIDTH, LexiconScrollPane.PANE_HEIGHT);
 	}
@@ -1516,8 +1600,8 @@ public final class ScreenChromicLexicon extends Screen {
 		net.minecraft.world.item.crafting.display.RecipeDisplayEntry entry = recipes.get(index);
 		net.minecraft.util.context.ContextMap context =
 				net.minecraft.world.item.crafting.display.SlotDisplayContext.fromLevel(minecraft.level);
-		int posX = left - 2;
-		int posY = top - 8;
+		int posX = left;
+		int posY = top;
 
 		ItemStack[] grid = new ItemStack[9];
 		java.util.Arrays.fill(grid, ItemStack.EMPTY);
@@ -1553,12 +1637,21 @@ public final class ScreenChromicLexicon extends Screen {
 			if (row > 9)
 				break;
 			graphics.text(font, Component.literal(e.getKey() + ": x" + e.getValue()),
-					left + 8, top + 80 + row * (font.lineHeight + 2), 0xffffffff, false);
+					left + 9, top + 80 + row * (font.lineHeight + 2), 0xffffffff, false);
 			row++;
 		}
 		if (recipes.size() > 1)
 			graphics.text(font, Component.literal((index + 1) + " / " + recipes.size()),
 					left + 200, top + 4, 0xffb0b0b0, false);
+	}
+
+	private ItemStack craftingRecipeResult() {
+		List<net.minecraft.world.item.crafting.display.RecipeDisplayEntry> recipes = craftingRecipes();
+		if (recipes.isEmpty() || minecraft == null || minecraft.level == null)
+			return ItemStack.EMPTY;
+		var entry = recipes.get(Math.floorMod(recipeIndex, recipes.size()));
+		var context = net.minecraft.world.item.crafting.display.SlotDisplayContext.fromLevel(minecraft.level);
+		return cycle(entry.display().result(), context);
 	}
 
 	/**
@@ -1582,9 +1675,11 @@ public final class ScreenChromicLexicon extends Screen {
 		recipeIndex = Math.min(recipeIndex, recipes.size() - 1);
 		CastingTableRecipe recipe = recipes.get(recipeIndex);
 		ItemStack output = recipe.output();
-		graphics.centeredText(font, output.getHoverName(), left + WIDTH / 2, top + 16, 0xffffffff);
-		graphics.centeredText(font, Component.literal(recipe.tier().name() + " Casting  " + (recipeIndex + 1)
-				+ "/" + recipes.size()), left + WIDTH / 2, top + 30, 0xff80dfff);
+		// GuiCastingRecipe.getTitleOffset() = 27; there is no tier banner upstream.
+		graphics.text(font, output.getHoverName(), left + 27, top - 2, 0xffffffff, false);
+		// ChromaBookData.drawCastingRecipe renders this before switching on the recipe subpage. The
+		// result therefore stays in its source slot on Runes, Stands and Aura as well as on Grid.
+		graphics.item(output, left + 7, top + 5);
 
 		switch (recipeSubpage) {
 			case 0 -> renderCastingGrid(graphics, recipe, left, top);
@@ -1593,10 +1688,32 @@ public final class ScreenChromicLexicon extends Screen {
 			case 3 -> renderAuraRequirements(graphics, recipe, left, top);
 			default -> recipeSubpage = 0;
 		}
-		graphics.text(font, Component.literal("Time: " + recipe.duration() + " ticks"), left + 12, top + 170,
-				0xffb0b0b0, false);
-		graphics.text(font, Component.literal("Experience: " + recipe.experience()), left + 12, top + 181,
-				0xffb0b0b0, false);
+		if (recipeSubpage == 0)
+			renderCastingItemCounts(graphics, recipe, left, top);
+	}
+
+	/** GuiCastingRecipe.drawAuxGraphics: alphabetic ingredient tally in the lower panel. */
+	private void renderCastingItemCounts(GuiGraphicsExtractor graphics, CastingTableRecipe recipe,
+			int left, int top) {
+		java.util.Map<String, Integer> counts = new java.util.TreeMap<>();
+		for (CastingTableRecipe.GridIngredient ingredient : recipe.grid()) {
+			ItemStack stack = ingredientStack(ingredient.ingredient());
+			if (!stack.isEmpty())
+				counts.merge(stack.getHoverName().getString(), stack.getCount(), Integer::sum);
+		}
+		for (CastingTableRecipe.StandIngredient ingredient : recipe.stands()) {
+			ItemStack stack = ingredientStack(ingredient.ingredient());
+			if (!stack.isEmpty())
+				counts.merge(stack.getHoverName().getString(), stack.getCount(), Integer::sum);
+		}
+		int row = 0;
+		for (java.util.Map.Entry<String, Integer> entry : counts.entrySet()) {
+			if (row > 9)
+				break;
+			graphics.text(font, Component.literal(entry.getKey() + ": x" + entry.getValue()),
+					left + 9, top + 80 + row * (font.lineHeight + 2), 0xffffffff, false);
+			row++;
+		}
 	}
 
 	/**
@@ -1612,7 +1729,6 @@ public final class ScreenChromicLexicon extends Screen {
 			if (!stack.isEmpty())
 				graphics.item(stack, left + 54 + slot % 3 * 18, top + 10 + slot / 3 * 18);
 		}
-		graphics.item(recipe.output(), left + 7, top + 5);
 	}
 
 	/**
@@ -1650,9 +1766,16 @@ public final class ScreenChromicLexicon extends Screen {
 		for (CastingTableRecipe.RuneRequirement rune : recipe.runes()) {
 			if (rune.offset().getY() != layer)
 				continue;
-			Identifier tex = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
+			Identifier engraved = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
 					"textures/block/runes/engraved/tile" + rune.element().ordinal() + "_0.png");
-			graphics.blit(RenderPipelines.GUI_TEXTURED, tex,
+			graphics.blit(RenderPipelines.GUI_TEXTURED, engraved,
+					dx + rune.offset().getX() * w, dy + rune.offset().getZ() * w, 0, 0, w, w, w, w);
+			// RuneShapeRenderer overlays getFaceRune() after getBlockRune(). The engraved layer is
+			// deliberately near-black; omitting this second pass is why every handbook rune lost its
+			// element colour even though the texture files themselves were correct.
+			Identifier glow = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
+					"textures/block/runes/glow/tile" + rune.element().ordinal() + "_0.png");
+			graphics.blit(RenderPipelines.GUI_TEXTURED, glow,
 					dx + rune.offset().getX() * w, dy + rune.offset().getZ() * w, 0, 0, w, w, w, w);
 		}
 

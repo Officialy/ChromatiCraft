@@ -39,7 +39,12 @@ final class LexiconStructurePreview {
 			Map.entry("repeater", "multiblock/repeater"),
 			Map.entry("compound", "multiblock/compound_repeater"),
 			Map.entry("pylonbroadcast", "multiblock/pylon_broadcast"),
-			Map.entry("datanode", "worldgen/data_node"));
+			Map.entry("datanode", "worldgen/data_node"),
+			Map.entry("cavern", "worldgen/overworld/cavern"),
+			Map.entry("burrow", "worldgen/overworld/burrow"),
+			Map.entry("ocean", "worldgen/overworld/ocean"),
+			Map.entry("desert", "worldgen/overworld/desert"),
+			Map.entry("snow", "worldgen/overworld/snow"));
 
 	/**
 	 * V33a {@code GuiStructure}'s alpha set: a structure that upgrades another one dims everything
@@ -75,10 +80,25 @@ final class LexiconStructurePreview {
 	}
 
 	static LexiconStructurePreview get(LexiconCatalog.Entry entry, Minecraft minecraft) {
-		String path = TEMPLATES.get(entry.sourceId());
+		String structureId = structureId(entry);
+		String path = TEMPLATES.get(structureId);
 		if (path == null)
-			return unavailable(entry.sourceId(), "NBT template not ported yet");
-		return CACHE.computeIfAbsent(entry.sourceId(), ignored -> load(entry.sourceId(), path, minecraft));
+			return unavailable(structureId, "NBT template not ported yet");
+		return CACHE.computeIfAbsent(structureId, ignored -> load(structureId, path, minecraft));
+	}
+
+	/**
+	 * V33a's natural-dungeon pages use their Shielding block as the page icon, so the mechanical
+	 * catalog quite correctly records {@code sourceId=structshield}. Their structure identity still
+	 * comes from the research constant itself. Keeping those two identities separate lets the icon
+	 * remain faithful while the viewer loads the corresponding canonical NBT.
+	 */
+	static String structureId(LexiconCatalog.Entry entry) {
+		return switch (entry.id()) {
+			case "CAVERN", "BURROW", "OCEAN", "DESERT", "SNOW" ->
+					entry.id().toLowerCase(java.util.Locale.ROOT);
+			default -> entry.sourceId();
+		};
 	}
 
 	static void clearCache() {

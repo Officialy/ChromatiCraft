@@ -4897,3 +4897,33 @@ column lift with stone fill beneath, the per-biome surface replacement with sand
 and the bedrock layer — reading terrain shape from the `world/dimension/terrain` shapers. After that
 the dimension type and level stem datagen, which is what finally flips `isDimensionLoadable` true and
 unblocks the remaining portal GameTests.
+
+### 2026-08-15 — Proxima per-position grass and foliage colour
+
+The piece the biome slice recorded as outstanding. `ProximaBiomeColors` restores V33a's positional
+modulation, using the same mechanism `LuminousCliffsColors` already uses for the overworld cliffs: the
+biome definitions keep the base colour, and a wrapped `BlockTintSource` applies the modulation with
+the real position during chunk mesh baking.
+
+- Ordinary Proxima biomes: the green channel of the biome's grass wanders between 1.0x and 1.5x on a
+  one-eighth-scale simplex field (`ChromaDimensionBiome.getBiomeGrassColor`).
+- Structure Field: base and highlight (`multiplyChannels(base, 1, 2.5, 1.5)`) blended by a
+  quarter-scale field, with the highlight taking over at the region's edge (`StructureBiome`).
+- Monument Field: the same, with `0x77ccff` and `0xff77cc` mixed over those two by a 1/32 field raised
+  to the 1.5 (`MonumentBiome`).
+
+Two decisions worth recording. **The edge rule is feathered, not stepped.** Upstream scans four blocks
+in each cardinal direction and switches to the highlight outright; that worked because the underlying
+grass colour was itself unblended, but in 26.2 the base arrives already feathered across the biome
+border by the client's blend radius, so a hard switch would leave a seam against it. A biome-presence
+`ColorResolver` — blended by that same radius — supplies a strength that is 0 outside, 1 well inside
+and feathered exactly across the region upstream was scanning, and the highlight is mixed in by it.
+Same two end states, no seam. Three families are packed one per colour channel so each feathers
+independently. **The structure colours are computed from `ChromaBiomes.FOREST_GRASS` directly**,
+because V33a's `getBaseColor` is explicitly the Rainbow Forest's grass rather than the biome's own;
+re-applying the brightening on top of the static override would double-count it.
+
+`:ChromatiCraft:compileJava` and `:ChromatiCraft:runClientData` are green. This is a rendering
+behaviour with no headless assertion available, so it joins the in-world checklist: grass and foliage
+in Proxima should wander in green, the Structure Field should read brighter with a cyan-ward edge, and
+the Monument Field should wash between blue and pink.
