@@ -12,6 +12,7 @@ import net.minecraft.client.renderer.special.NoDataSpecialModelRenderer;
 import net.minecraft.client.renderer.special.SpecialModelRenderer;
 import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.util.LightCoordsUtil;
 import net.minecraft.client.resources.model.sprite.SpriteGetter;
 import net.minecraft.client.resources.model.sprite.SpriteId;
 import net.minecraft.resources.Identifier;
@@ -23,6 +24,8 @@ import org.joml.Vector3fc;
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.render.model.CaveCrystalGeometry;
+import reika.dragonapi.libraries.rendering.ReikaColorAPI;
+import reika.dragonapi.libraries.registry.ReikaDyeHelper;
 
 /**
  * Inventory/held rendering for cave crystals, drawing the same V33a spike geometry the in-world
@@ -30,14 +33,25 @@ import reika.chromaticraft.render.model.CaveCrystalGeometry;
  *
  * <p>V33a's inventory render had no neighbours to consult, so the arm mask, ceiling flip and the
  * above/below joins are all fixed here rather than sampled from the world — a free-standing crystal
- * with all four side spikes, which is what {@code CrystalRenderer.renderInventoryBlock} drew.
+ * with V33a's ordinary positive-X and positive-Z inventory branches.
  */
 public final class CaveCrystalItemRenderer implements NoDataSpecialModelRenderer {
 
 	public static final Identifier ID = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "cave_crystal");
 
-	/** V33a's inventory crystal: all four side spikes, floor-mounted, no neighbour joins. */
-	private static final int ITEM_ARM_MASK = 0b1111;
+	/**
+	 * V33a's ordinary inventory crystal. {@code CrystalRenderer.renderInventoryBlock} always emitted
+	 * the positive X and positive Z spikes; the other two existed only while the handbook explicitly
+	 * toggled {@code renderAllArmsInInventory}. Treating every item render as that handbook-only case
+	 * made the icon much denser and almost rotationally symmetric, unlike the recognisable old item.
+	 */
+	private static final int ITEM_ARM_MASK = 0b1010;
+	/**
+	 * The old inventory renderer used alpha 255 even though the world pass used 220. Alpha 220 on
+	 * the modern item compositor preserves the requested translucent inventory presentation while
+	 * matching the alpha of the placed mesh for all three CrystalBlock families.
+	 */
+	private static final int ITEM_ALPHA = 220;
 
 	private final SpriteGetter sprites;
 	private final SpriteId sprite;
@@ -90,7 +104,7 @@ public final class CaveCrystalItemRenderer implements NoDataSpecialModelRenderer
 								.setColor(tint)
 								.setUv(crystalTexture.getU(point.u()), crystalTexture.getV(point.v()))
 								.setOverlay(overlayCoords)
-								.setLight(lightCoords)
+								.setLight(LightCoordsUtil.FULL_BRIGHT)
 								.setNormal(pose, normal.x, normal.y, normal.z);
 					}
 				}, ITEM_ARM_MASK, false, false, false));
@@ -131,9 +145,16 @@ public final class CaveCrystalItemRenderer implements NoDataSpecialModelRenderer
 		public CaveCrystalItemRenderer bake(SpecialModelRenderer.BakingContext context) {
 			SpriteId baked = new SpriteId(TextureAtlas.LOCATION_BLOCKS, texture);
 			SpriteId base = baseTexture.map(id -> new SpriteId(TextureAtlas.LOCATION_BLOCKS, id)).orElse(null);
-			// Alpha 220 is V33a's pass-1 crystal alpha, the same value the block model bakes in.
+			// V33a did not tint from CrystalElement directly: CrystalBlock#getTintColor first mixed
+			// the saturation-adjusted element colour with the corresponding vanilla dye, then the
+			// inventory renderer darkened that result to 80%. Omitting the first step made several
+			// inventory crystals (especially lime/green) far darker and harsher than their old icons.
+			int adjusted = ReikaColorAPI.getModifiedSat(element.getColor(), 0.65F);
+			int crystalTint = ReikaColorAPI.mixColors(adjusted,
+					ReikaDyeHelper.dyes[element.ordinal()].color, 0.65F);
+			int colour = ReikaColorAPI.getColorWithBrightnessMultiplier(crystalTint, 0.8F);
 			return new CaveCrystalItemRenderer(context.sprites(), baked,
-					ARGB.color(220, element.getColor()), base);
+					ARGB.color(ITEM_ALPHA, colour), base);
 		}
 	}
 }

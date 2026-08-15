@@ -130,6 +130,12 @@ public final class ChromaWorldGenProvider {
                         0,
                         java.util.Optional.empty(),
                         java.util.List.of())));
+        builder.add(Registries.NOISE_SETTINGS,
+                reika.chromaticraft.world.dimension.ProximaNoiseSettings::bootstrap);
+        builder.add(Registries.DIMENSION_TYPE,
+                reika.chromaticraft.world.dimension.ProximaDimension::bootstrapType);
+        builder.add(Registries.LEVEL_STEM,
+                reika.chromaticraft.world.dimension.ProximaDimension::bootstrapStem);
         builder.add(Registries.BIOME, bootstrap -> {
             ChromaBiomes.bootstrap(bootstrap);
             reika.chromaticraft.world.dimension.biome.ProximaBiomeDefinitions.bootstrap(bootstrap);

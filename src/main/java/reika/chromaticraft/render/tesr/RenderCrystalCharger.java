@@ -1,87 +1,92 @@
-/*******************************************************************************
- * @author Reika Kalseki
- * 
- * Copyright 2017
- * 
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
- ******************************************************************************/
 package reika.chromaticraft.render.tesr;
 
-import org.lwjgl.opengl.GL11;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
 
-import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.item.ItemStack;
-import net.minecraft.tileentity.TileEntity;
+import net.minecraft.client.model.geom.ModelLayerLocation;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
+import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
+import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
+import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
+import net.minecraft.client.renderer.item.ItemModelResolver;
+import net.minecraft.client.renderer.item.ItemStackRenderState;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.item.ItemDisplayContext;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.phys.Vec3;
 
-import reika.chromaticraft.base.ChromaRenderBase;
+import org.jspecify.annotations.Nullable;
+
+import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.models.ModelCrystalCharger;
 import reika.chromaticraft.tileentity.auxiliary.TileEntityCrystalCharger;
-import reika.dragonapi.interfaces.item.IndexedItemSprites;
-import reika.dragonapi.interfaces.tileentity.RenderFetcher;
-import reika.dragonapi.libraries.io.ReikaTextureHelper;
 
-public class RenderCrystalCharger extends ChromaRenderBase {
+/** Submit-pipeline port of V33a's rotating Charger body and counter-rotating stored crystal. */
+public final class RenderCrystalCharger
+		implements BlockEntityRenderer<TileEntityCrystalCharger, RenderCrystalCharger.State> {
 
-	private final ModelCrystalCharger model = new ModelCrystalCharger();
+	public static final ModelLayerLocation MODEL_LAYER = new ModelLayerLocation(
+			Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "crystal_charger"), "main");
+	public static final Identifier TEXTURE = Identifier.fromNamespaceAndPath(
+			ChromatiCraft.MODID, "textures/entity/crystal_charger.png");
+
+	private final ModelCrystalCharger model;
+	private final ItemModelResolver itemModelResolver;
+
+	public RenderCrystalCharger(BlockEntityRendererProvider.Context context) {
+		model = new ModelCrystalCharger(context.bakeLayer(MODEL_LAYER));
+		itemModelResolver = context.itemModelResolver();
+	}
+
+	@Override public State createRenderState() { return new State(); }
 
 	@Override
-	public String getImageFileName(RenderFetcher te) {
-		return "charger.png";
+	public void extractRenderState(TileEntityCrystalCharger charger, State state, float partialTick,
+			Vec3 cameraPosition, ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress) {
+		BlockEntityRenderer.super.extractRenderState(charger, state, partialTick, cameraPosition, breakProgress);
+		state.angle = charger.getAngle(partialTick);
+		state.item = null;
+		ItemStack stack = charger.getItem(0);
+		if (!stack.isEmpty()) {
+			state.item = new ItemStackRenderState();
+			itemModelResolver.updateForTopItem(state.item, stack, ItemDisplayContext.FIXED,
+					charger.getLevel(), null, Long.hashCode(charger.getBlockPos().asLong()));
+		}
 	}
 
 	@Override
-	public void renderTileEntityAt(TileEntity tile, double par2, double par4, double par6, float par8) {
-		TileEntityCrystalCharger te = (TileEntityCrystalCharger)tile;
+	public void submit(State state, PoseStack poseStack, SubmitNodeCollector collector, CameraRenderState camera) {
+		poseStack.pushPose();
+		poseStack.translate(0.5F, 1.5F, 0.5F);
+		poseStack.scale(1F, -1F, -1F);
+		PoseStack modelPose = new PoseStack();
+		modelPose.last().set(poseStack.last());
+		float angle = state.angle;
+		collector.submitCustomGeometry(poseStack, RenderTypes.entityCutout(TEXTURE), (unused, vertices) -> {
+			model.setRotorAngle(angle);
+			model.render(modelPose, vertices, state.lightCoords, OverlayTexture.NO_OVERLAY);
+		});
+		poseStack.popPose();
 
-		GL11.glPushMatrix();
-		GL11.glTranslated(par2, par4, par6);
-		this.renderModel(te, model, te.getAngle());
-
-		if (te.hasWorldObj() && te.hasItem()) {
-			this.renderItem(te, par8);
+		if (state.item != null) {
+			for (float offset : new float[] {-0.1F, 0.1F}) {
+				poseStack.pushPose();
+				poseStack.translate(0.5F, 0.65F, 0.5F);
+				poseStack.mulPose(Axis.YP.rotationDegrees(-state.angle));
+				poseStack.translate(0, 0, offset);
+				poseStack.scale(1.35F, 1.3F, 1.35F);
+				state.item.submit(poseStack, collector, state.lightCoords, OverlayTexture.NO_OVERLAY, 0);
+				poseStack.popPose();
+			}
 		}
-		GL11.glPopMatrix();
 	}
 
-	private void renderItem(TileEntityCrystalCharger te, float par8) {
-		Tessellator v5 = Tessellator.instance;
-
-		ItemStack is = te.getStackInSlot(0);
-		IndexedItemSprites iis = (IndexedItemSprites)is.getItem();
-		int index = iis.getItemSpriteIndex(is);
-		float u = index/16F;
-		float v = index%16F;
-		float du = u+0.0625F;
-		float dv = v+0.0625F;
-		ReikaTextureHelper.bindTexture(iis.getTextureReferenceClass(), iis.getTexture(is));
-		GL11.glPushMatrix();
-		double ax = 0.5;
-		GL11.glTranslated(ax, 0, ax);
-		float angle = -te.getAngle();
-		GL11.glRotated(angle, 0, 1, 0);
-		GL11.glTranslated(-ax, 0, -ax);
-		double s = 1.35;
-		double s2 = 1.3;
-		for (double d = 0.4; d <= 0.601; d += 0.2) {
-			GL11.glPushMatrix();
-			GL11.glTranslated(0, 0.01, d);
-			double dx = 0.5;
-			GL11.glTranslated(dx, 0, 0);
-			GL11.glScaled(s, s2, s);
-			GL11.glTranslated(-dx, 0, 0);
-			GL11.glDisable(GL11.GL_CULL_FACE);
-			v5.startDrawingQuads();
-			v5.addVertexWithUV(0, 0, 0, u, v);
-			v5.addVertexWithUV(1, 0, 0, du, v);
-			v5.addVertexWithUV(1, 1, 0, du, dv);
-			v5.addVertexWithUV(0, 1, 0, u, dv);
-			v5.draw();
-			GL11.glPopMatrix();
-		}
-		GL11.glEnable(GL11.GL_CULL_FACE);
-		GL11.glPopMatrix();
+	public static final class State extends BlockEntityRenderState {
+		private float angle;
+		private ItemStackRenderState item;
 	}
-
 }

@@ -43,10 +43,14 @@ public final class ChromaNetwork {
 		registrar.playToClient(ProgressionNote.TYPE, ProgressionNote.CODEC, ChromaNetwork::handleProgressionNote);
 		registrar.playToServer(SelectResearchFragment.TYPE, SelectResearchFragment.CODEC,
 				ChromaNetwork::handleSelectResearchFragment);
+		registrar.playToServer(SelectFragmentChoice.TYPE, SelectFragmentChoice.CODEC,
+				ChromaNetwork::handleSelectFragmentChoice);
 		registrar.playToServer(RecoverResearchPage.TYPE, RecoverResearchPage.CODEC,
 				ChromaNetwork::handleRecoverResearchPage);
 		registrar.playToServer(TransferLexiconPage.TYPE, TransferLexiconPage.CODEC,
 				ChromaNetwork::handleTransferLexiconPage);
+		registrar.playToServer(ScrollLexiconPages.TYPE, ScrollLexiconPages.CODEC,
+				ChromaNetwork::handleScrollLexiconPages);
 		registrar.playToServer(UpdateLexiconNotes.TYPE, UpdateLexiconNotes.CODEC,
 				ChromaNetwork::handleUpdateLexiconNotes);
 		registrar.playToServer(RequestGuideCastingRecipes.TYPE, RequestGuideCastingRecipes.CODEC,
@@ -65,6 +69,8 @@ public final class ChromaNetwork {
 		registrar.playToServer(LorePuzzleMove.TYPE, LorePuzzleMove.CODEC, ChromaNetwork::handleLorePuzzleMove);
 		registrar.playToServer(SetHeatLampTemperature.TYPE, SetHeatLampTemperature.CODEC,
 				ChromaNetwork::handleSetHeatLampTemperature);
+		registrar.playToServer(ToggleCrystalCharger.TYPE, ToggleCrystalCharger.CODEC,
+				ChromaNetwork::handleToggleCrystalCharger);
 	}
 
 	public static void sendAttack(ServerLevel level, BlockPos source, LivingEntity target, CrystalElement color, float size) {
@@ -125,10 +131,11 @@ public final class ChromaNetwork {
 	 * ChromaSounds.GAINPROGRESS. Without it a granted stage is completely silent, so there is no way
 	 * to tell a working trigger from a broken one.
 	 */
-	public record ProgressionNote(int stage) implements CustomPacketPayload {
+	public record ProgressionNote(boolean researchLevel, int ordinal) implements CustomPacketPayload {
 		public static final Type<ProgressionNote> TYPE = createType("progression_note");
-		public static final StreamCodec<ByteBuf, ProgressionNote> CODEC =
-				StreamCodec.composite(ByteBufCodecs.VAR_INT, ProgressionNote::stage, ProgressionNote::new);
+		public static final StreamCodec<ByteBuf, ProgressionNote> CODEC = StreamCodec.composite(
+				ByteBufCodecs.BOOL, ProgressionNote::researchLevel,
+				ByteBufCodecs.VAR_INT, ProgressionNote::ordinal, ProgressionNote::new);
 		@Override public Type<ProgressionNote> type() { return TYPE; }
 	}
 
@@ -343,6 +350,18 @@ public final class ChromaNetwork {
 				StreamCodec.composite(BlockPos.STREAM_CODEC, RepeaterConnections::source, RepeaterConnections::new);
 		@Override public Type<RepeaterConnections> type() { return TYPE; }
 	}
+	public record SelectFragmentChoice(int index) implements CustomPacketPayload {
+		public static final Type<SelectFragmentChoice> TYPE = createType("select_fragment_choice");
+		public static final StreamCodec<ByteBuf, SelectFragmentChoice> CODEC = StreamCodec.composite(
+				ByteBufCodecs.VAR_INT, SelectFragmentChoice::index, SelectFragmentChoice::new);
+		@Override public Type<SelectFragmentChoice> type() { return TYPE; }
+	}
+	public record ScrollLexiconPages(int direction) implements CustomPacketPayload {
+		public static final Type<ScrollLexiconPages> TYPE = createType("scroll_lexicon_pages");
+		public static final StreamCodec<ByteBuf, ScrollLexiconPages> CODEC = StreamCodec.composite(
+				ByteBufCodecs.VAR_INT, ScrollLexiconPages::direction, ScrollLexiconPages::new);
+		@Override public Type<ScrollLexiconPages> type() { return TYPE; }
+	}
 	public record RepeaterSurgeBurst(BlockPos source, int color) implements CustomPacketPayload {
 		public static final Type<RepeaterSurgeBurst> TYPE = createType("repeater_surge_burst");
 		public static final StreamCodec<ByteBuf, RepeaterSurgeBurst> CODEC = StreamCodec.composite(
@@ -356,6 +375,13 @@ public final class ChromaNetwork {
 				BlockPos.STREAM_CODEC, SetHeatLampTemperature::source, ByteBufCodecs.VAR_INT,
 				SetHeatLampTemperature::temperature, SetHeatLampTemperature::new);
 		@Override public Type<SetHeatLampTemperature> type() { return TYPE; }
+	}
+	public record ToggleCrystalCharger(BlockPos source, int color) implements CustomPacketPayload {
+		public static final Type<ToggleCrystalCharger> TYPE = createType("toggle_crystal_charger");
+		public static final StreamCodec<ByteBuf, ToggleCrystalCharger> CODEC = StreamCodec.composite(
+				BlockPos.STREAM_CODEC, ToggleCrystalCharger::source, ByteBufCodecs.VAR_INT,
+				ToggleCrystalCharger::color, ToggleCrystalCharger::new);
+		@Override public Type<ToggleCrystalCharger> type() { return TYPE; }
 	}
 	private static <T extends CustomPacketPayload> CustomPacketPayload.Type<T> createType(String path) {
 		return new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, path));
@@ -373,7 +399,8 @@ public final class ChromaNetwork {
 				payload.source, payload.targetId, element(payload.color)));
 	}
 	private static void handleProgressionNote(ProgressionNote payload, IPayloadContext context) {
-		context.enqueueWork(ClientPayloadHandlers::progressionNote);
+		context.enqueueWork(() -> ClientPayloadHandlers.progressionNote(
+				payload.researchLevel(), payload.ordinal()));
 	}
 	private static void handleSelectResearchFragment(SelectResearchFragment payload, IPayloadContext context) {
 		context.enqueueWork(() -> {
@@ -427,6 +454,20 @@ public final class ChromaNetwork {
 			}
 		});
 	}
+	private static void handleSelectFragmentChoice(SelectFragmentChoice payload, IPayloadContext context) {
+		context.enqueueWork(() -> {
+			if (context.player() instanceof ServerPlayer player
+					&& player.containerMenu instanceof reika.chromaticraft.container.MenuFragmentSelection menu)
+				menu.select(payload.index());
+		});
+	}
+	private static void handleScrollLexiconPages(ScrollLexiconPages payload, IPayloadContext context) {
+		context.enqueueWork(() -> {
+			if (context.player() instanceof ServerPlayer player
+					&& player.containerMenu instanceof reika.chromaticraft.container.MenuLexiconPages menu)
+				menu.scroll(payload.direction());
+		});
+	}
 	private static void handleSetHeatLampTemperature(SetHeatLampTemperature payload, IPayloadContext context) {
 		context.enqueueWork(() -> {
 			if (!(context.player() instanceof ServerPlayer player)
@@ -436,6 +477,18 @@ public final class ChromaNetwork {
 						payload.source().getZ() + 0.5) > 64)
 				return;
 			menu.lamp().setTemperature(payload.temperature());
+		});
+	}
+	private static void handleToggleCrystalCharger(ToggleCrystalCharger payload, IPayloadContext context) {
+		context.enqueueWork(() -> {
+			if (!(context.player() instanceof ServerPlayer player)
+					|| !(player.containerMenu instanceof reika.chromaticraft.container.MenuCrystalCharger menu)
+					|| !menu.charger().getBlockPos().equals(payload.source())
+					|| payload.color() < 0 || payload.color() >= CrystalElement.elements.length
+					|| player.distanceToSqr(payload.source().getX() + 0.5, payload.source().getY() + 0.5,
+							payload.source().getZ() + 0.5) > 64)
+				return;
+			menu.charger().toggle(CrystalElement.elements[payload.color()]);
 		});
 	}
 	private static void handleUpdateLexiconNotes(UpdateLexiconNotes payload, IPayloadContext context) {
@@ -632,7 +685,14 @@ public final class ChromaNetwork {
 		// so check before distributing rather than letting progression grants blow up.
 		if (player.connection == null || !player.connection.hasChannel(ProgressionNote.TYPE))
 			return;
-		PacketDistributor.sendToPlayer(player, new ProgressionNote(stageOrdinal));
+		PacketDistributor.sendToPlayer(player, new ProgressionNote(false, stageOrdinal));
+	}
+
+	/** The same V33a overlay channel also carried research-tier milestones. */
+	public static void sendResearchLevelNote(net.minecraft.server.level.ServerPlayer player, int levelOrdinal) {
+		if (player.connection == null || !player.connection.hasChannel(ProgressionNote.TYPE))
+			return;
+		PacketDistributor.sendToPlayer(player, new ProgressionNote(true, levelOrdinal));
 	}
 
 	private static void handleAttackReceive(AttackReceive payload, IPayloadContext context) {

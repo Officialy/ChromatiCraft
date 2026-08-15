@@ -12,7 +12,9 @@ package reika.chromaticraft.magic.progression;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.HashSet;
+import java.util.List;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
@@ -44,8 +46,8 @@ import reika.dragonapi.libraries.io.NBTCompat;
  * ({@code ChromaPackets}), co-op progression sharing ({@code ProgressionLinking}), handbook
  * handbook fragment/catalog management ({@code ChromaResearchManager}/{@code ChromaResearch}), the
  * {@code ProgressionEvent} bus post, automatic research-level upgrade checks, progress-backup
- * caching, and the chained-progression system
- * ({@code addChainedProgression}/{@code ProgressChain}). The {@code notify}/{@code syncToCoop}
+ * caching. V33a's chained progression rules are active in this slice, including their retroactive
+ * and exclusion behavior. The {@code notify}/{@code syncToCoop}
  * parameters are kept for call-site parity but are currently inert (no client sync yet), so progression
  * is authoritative server-side only until the packet system lands.
  */
@@ -57,6 +59,7 @@ public class ProgressionManager implements ProgressRegistry {
 	private static final String COLOR_NBT_TAG = "Chroma_Element_Discovery";
 
 	private final SequenceMap<ProgressLink> progressMap = new SequenceMap();
+	private final EnumMap<ProgressStage, List<ProgressChain>> chains = new EnumMap<>(ProgressStage.class);
 
 	private ProgressionManager() {
 		ProgressionAPI.instance.progressManager = this;
@@ -72,6 +75,7 @@ public class ProgressionManager implements ProgressRegistry {
 	}
 
 	private void load() {
+		chains.clear();
 		this.addProgressPrereq(ProgressStage.CASTING,	ProgressStage.CRYSTALS);
 
 		this.addProgressPrereq(ProgressStage.ALLCOLORS,	ProgressStage.PYLON);
@@ -204,6 +208,18 @@ public class ProgressionManager implements ProgressRegistry {
 
 		this.addProgressPrereq(ProgressStage.PYLONLINK,	ProgressStage.TOWER);
 
+		// Exact V33a chained progression. These are conditional consequences, not ordinary DAG
+		// prerequisites: FOCUSCRYSTAL and RELAYS are two alternative ways to formulate ENERGYIDEA,
+		// and adding both as solid parents would incorrectly require both routes.
+		this.addChainedProgression(ProgressStage.BYPASSWEAK, ProgressStage.BLOWREPEATER,
+				false, false);
+		this.addChainedProgression(ProgressStage.TUNECAST, ProgressStage.BYPASSWEAK,
+				true, false, ProgressStage.BLOWREPEATER);
+		this.addChainedProgression(ProgressStage.FOCUSCRYSTAL, ProgressStage.ENERGYIDEA,
+				true, true);
+		this.addChainedProgression(ProgressStage.RELAYS, ProgressStage.ENERGYIDEA,
+				true, false);
+
 		for (int i = 0; i < ProgressStage.list.length; i++) {
 			ProgressStage p = ProgressStage.list[i];
 			ProgressLink pl = new ProgressLink(p);
@@ -215,6 +231,21 @@ public class ProgressionManager implements ProgressRegistry {
 
 	private void addProgressPrereq(ProgressStage p, ProgressStage prereq) {
 		progressMap.addParent(new ProgressLink(p), new ProgressLink(prereq));
+	}
+
+	private void addChainedProgression(ProgressStage hook, ProgressStage progress,
+			boolean notify, boolean retroactive, ProgressStage... exclusions) {
+		addChain(hook, new ProgressChain(progress, hook, notify, exclusions));
+		if (retroactive) {
+			for (ProgressStage prerequisite : this.getPrereqs(progress))
+				addChain(prerequisite, new ProgressChain(progress, hook, notify, exclusions));
+		}
+	}
+
+	private void addChain(ProgressStage trigger, ProgressChain chain) {
+		ArrayList<ProgressChain> list = new ArrayList<>(chains.getOrDefault(trigger, List.of()));
+		if (!list.contains(chain)) list.add(chain);
+		chains.put(trigger, List.copyOf(list));
 	}
 
 	// ---- DAG queries ----
@@ -305,7 +336,18 @@ public class ProgressionManager implements ProgressRegistry {
 		if (!this.canStepPlayerTo(ep, s))
 			return false;
 		this.setPlayerStage(ep, s, true, notify, syncToCoop);
+		for (ProgressChain chain : chains.getOrDefault(s, List.of()))
+			this.chainProgressTo(ep, chain, notify, syncToCoop);
 		return true;
+	}
+
+	private boolean chainProgressTo(Player player, ProgressChain chain, boolean notify,
+			boolean syncToCoop) {
+		if (!chain.prerequisite().isPlayerAtStage(player))
+			return false;
+		for (ProgressStage excluded : chain.exclusions())
+			if (excluded.isPlayerAtStage(player)) return false;
+		return this.stepPlayerTo(player, chain.progress(), notify && chain.notifyOnTrigger(), syncToCoop);
 	}
 
 	public boolean canStepPlayerTo(Player ep, ProgressStage s) {
@@ -501,6 +543,23 @@ public class ProgressionManager implements ProgressRegistry {
 		@Override
 		public String toString() {
 			return parent.toString();
+		}
+	}
+
+	private record ProgressChain(ProgressStage progress, ProgressStage prerequisite,
+			boolean notifyOnTrigger, ProgressStage[] exclusions) {
+		private ProgressChain {
+			exclusions = exclusions.clone();
+		}
+
+		@Override
+		public boolean equals(Object other) {
+			return other instanceof ProgressChain chain && chain.progress == progress;
+		}
+
+		@Override
+		public int hashCode() {
+			return progress.hashCode();
 		}
 	}
 }

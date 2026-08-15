@@ -1,160 +1,110 @@
 package reika.chromaticraft.tileentity.recipe;
 
-import net.minecraft.client.Minecraft;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.AxisAlignedBB;
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 
-import reika.chromaticraft.block.blockpylonstructure.StoneTypes;
+import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
 import reika.chromaticraft.magic.ElementBufferCapacityBoost;
+import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaStructures;
 import reika.chromaticraft.registry.ChromaTiles;
-import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.render.particle.EntityChromaFluidFX;
+import reika.chromaticraft.render.particle.ChromaParticle;
 import reika.dragonapi.instantiable.data.blockstruct.FilledBlockArray;
-import reika.dragonapi.instantiable.data.immutable.Coordinate;
-import reika.dragonapi.libraries.java.ReikaJavaLibrary;
-import reika.dragonapi.libraries.java.ReikaRandomHelper;
-import reika.dragonapi.libraries.registry.ReikaItemHelper;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
+/** V33a's player-facing capacity-upgrade variant of the Liquid Chroma infusion pedestal. */
+public final class TileEntityPlayerInfuser extends TileEntityAuraInfuser {
 
-public class TileEntityPlayerInfuser extends TileEntityAuraInfuser {
+	public TileEntityPlayerInfuser(BlockPos pos, BlockState state) {
+		super(ChromaBlockEntities.PLAYER_INFUSER.get(), pos, state);
+	}
 
-	private AxisAlignedBB targetBox;
+	@Override public ChromaTiles getTile() { return ChromaTiles.PLAYERINFUSER; }
+	@Override protected ChromaStructures getStructure() { return ChromaStructures.PLAYERINFUSION; }
 
-	@Override
-	protected void onFirstTick(World world, int x, int y, int z) {
-		super.onFirstTick(world, x, y, z);
+	/** The narrow band through the body which V33a uses to hold the recipient during infusion. */
+	public AABB getTargetBox() {
 		double d = 0.0625;
-		targetBox = AxisAlignedBB.getBoundingBox(x-d, y+0.375-d, z-d, x+1+d, y+0.75+d, z+1+d);
+		BlockPos p = this.getBlockPos();
+		return new AABB(p.getX() - d, p.getY() + 0.375 - d, p.getZ() - d,
+				p.getX() + 1 + d, p.getY() + 0.75 + d, p.getZ() + 1 + d);
 	}
 
-	public AxisAlignedBB getTargetBox() {
-		return targetBox.copy();
-	}
-
-	@Override
-	public int getInventoryStackLimit() {
-		return 8;
-	}
+	@Override public int getMaxStackSize() { return 8; }
 
 	@Override
-	public ChromaTiles getTile() {
-		return ChromaTiles.PLAYERINFUSER;
-	}
-
-	@Override
-	protected ChromaStructures getStructure() {
-		return ChromaStructures.PLAYERINFUSION;
-	}
-
-	@Override
-	protected void collectFocusCrystalLocations(FilledBlockArray arr) {
-		for (Coordinate c : arr.keySet()) {
-			if (arr.getBlockAt(c.xCoord, c.yCoord, c.zCoord) == ChromaBlocks.PYLONSTRUCT.getBlockInstance()) {
-				if (arr.getMetaAt(c.xCoord, c.yCoord, c.zCoord) == StoneTypes.STABILIZER.ordinal()) {
-					Coordinate c2 = c.offset(0, 1, 0);
-					focusCrystalSpots.add(c2);
-				}
-			}
+	protected void collectFocusCrystalLocations(FilledBlockArray array) {
+		for (BlockPos cell : array.keySet()) {
+			if (array.getBlockAt(cell.getX(), cell.getY(), cell.getZ())
+					== ChromaBlocks.crystallineStone(StoneTypes.STABILIZER).get())
+				focusCrystalSpots.add(cell.above());
 		}
 	}
 
-	@Override
-	public boolean isItemValidForSlot(int slot, ItemStack is) {
-		return this.getEffect(is) != null;
+	@Override public boolean canPlaceItem(int slot, ItemStack stack) {
+		return slot == 0 && this.effectFor(stack) != null;
 	}
 
 	@Override
 	protected boolean isReady() {
-		if (inv[0] == null || inv[0].stackSize < 8)
-			return false;
-		if (targetBox == null || !targetBox.intersectsWith(this.getCraftingPlayer().boundingBox))
-			return false;
-		ElementBufferCapacityBoost e = this.getSelectedEffect();
-		return e != null && ElementBufferCapacityBoost.getAvailableBoosts(this.getCraftingPlayer()).contains(e);
+		Player player = this.getCraftingPlayer();
+		if (player == null || this.getItem(0).getCount() < 8
+				|| !this.getTargetBox().intersects(player.getBoundingBox())) return false;
+		ElementBufferCapacityBoost effect = this.getSelectedEffect();
+		return effect != null && ElementBufferCapacityBoost.getAvailableBoosts(player).contains(effect);
 	}
 
-	@Override
-	@SideOnly(Side.CLIENT)
-	protected void spawnParticles(World world, int x, int y, int z) {
-		int n = Math.max(1, rand.nextInt(4)-Minecraft.getMinecraft().gameSettings.particleSetting);
-		for (int i = 0; i < n; i++) {
-			Coordinate p = ReikaJavaLibrary.getRandomCollectionEntry(rand, this.getChromaLocations());
-			double r = 1.85;
-			double px = p.xCoord+rand.nextDouble();
-			double pz = p.zCoord+rand.nextDouble();
-			double vy = ReikaRandomHelper.getRandomBetween(0.125, 0.4);
-			float s = 1.5F;
-			float g = (float)(vy*1.2D);
-			double vx = -vy*(px-x-0.5)/6;
-			double vz = -vy*(pz-z-0.5)/6;
-			EntityChromaFluidFX fx = new EntityChromaFluidFX(CrystalElement.WHITE, world, px, p.yCoord+0.5, pz, vx, vy, vz).setScale(s).setGravity(g);
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-		}
-	}
-
-	@Override
-	@SideOnly(Side.CLIENT)
-	protected void doAmbientParticles(World world, int x, int y, int z) {
-		Coordinate p = ReikaJavaLibrary.getRandomCollectionEntry(rand, this.getChromaLocations());
-		double px = p.xCoord+rand.nextDouble();
-		double pz = p.zCoord+rand.nextDouble();
-		float s = 1.75F;
-		double vy = ReikaRandomHelper.getRandomBetween(0.0625, 0.375);
-		float g = (float)Math.max(ReikaRandomHelper.getRandomBetween(0.125, 0.25), vy);
-		EntityChromaFluidFX fx = new EntityChromaFluidFX(CrystalElement.WHITE, world, px, p.yCoord+0.5, pz, 0, vy, 0).setScale(s).setGravity(g);
-		Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-	}
-
-	private ElementBufferCapacityBoost getEffect(ItemStack is) {
-		for (ElementBufferCapacityBoost e : ElementBufferCapacityBoost.list) {
-			ItemStack is2 = e.getIngredient();
-			if (is2 != null) {
-				if (ReikaItemHelper.matchStacks(is, is2))
-					return e;
-			}
+	private ElementBufferCapacityBoost effectFor(ItemStack stack) {
+		if (stack.isEmpty()) return null;
+		for (ElementBufferCapacityBoost effect : ElementBufferCapacityBoost.list) {
+			ItemStack ingredient = effect.getIngredient();
+			if (!ingredient.isEmpty() && ItemStack.isSameItemSameComponents(stack, ingredient)) return effect;
 		}
 		return null;
 	}
 
+	public ElementBufferCapacityBoost getSelectedEffect() {
+		return this.effectFor(this.getItem(0));
+	}
+
 	@Override
 	protected void onCraft() {
-		this.getSelectedEffect().give(this.getCraftingPlayer());
-		inv[0] = null;
-	}
-
-	public ElementBufferCapacityBoost getSelectedEffect() {
-		return inv[0] != null ? this.getEffect(inv[0]) : null;
-	}
-
-	@Override
-	protected void onCraftingTick(World world, int x, int y, int z) {
-		EntityPlayer ep = this.getCraftingPlayer();
-		AxisAlignedBB box = ep.boundingBox;
-		double cx = (box.maxX+box.minX)/2;
-		double cy = box.minY;
-		double cz = (box.maxZ+box.minZ)/2;
-		double cx2 = (targetBox.maxX+targetBox.minX)/2;
-		double cy2 = (targetBox.maxY+targetBox.minY)/2;
-		double cz2 = (targetBox.maxZ+targetBox.minZ)/2;
-		double dx = cx2-cx;
-		double dy = cy2-cy;
-		double dz = cz2-cz;
-		double v = 0.25;
-		ep.motionX += dx*dx*v*Math.signum(dx);
-		ep.motionY += dy*dy*v*1.5*Math.signum(dy);
-		ep.motionZ += dz*dz*v*Math.signum(dz);
-		//ep.velocityChanged = true;
+		Player player = this.getCraftingPlayer();
+		ElementBufferCapacityBoost effect = this.getSelectedEffect();
+		if (player != null && effect != null) effect.give(player);
+		inv.set(0, ItemStack.EMPTY);
 	}
 
 	@Override
-	public boolean hasWork() {
-		return this.getState() == OperationState.RUNNING;
+	protected void onCraftingTick(Level world, BlockPos pos) {
+		Player player = this.getCraftingPlayer();
+		if (player == null) return;
+		AABB playerBox = player.getBoundingBox();
+		AABB target = this.getTargetBox();
+		double dx = (target.minX + target.maxX - playerBox.minX - playerBox.maxX) * 0.5;
+		double dy = target.minY - playerBox.minY;
+		double dz = (target.minZ + target.maxZ - playerBox.minZ - playerBox.maxZ) * 0.5;
+		Vec3 velocity = player.getDeltaMovement();
+		player.setDeltaMovement(velocity.add(dx * dx * 0.25 * Math.signum(dx),
+				dy * dy * 0.375 * Math.signum(dy), dz * dz * 0.25 * Math.signum(dz)));
+		player.hurtMarked = true;
 	}
 
+	@Override protected void spawnCraftingParticles(Level world, BlockPos pos) {
+		ChromaParticle.spawnPlayerInfuserCrafting(world, pos, this.getChromaLocations(), world.getRandom());
+	}
+	@Override protected void spawnCompletionParticles(Level world, BlockPos pos) {
+		ChromaParticle.spawnItemInfuserCompletion(world, pos, world.getRandom());
+	}
+	@Override protected void spawnAmbientParticles(Level world, BlockPos pos) {
+		ChromaParticle.spawnPlayerInfuserAmbient(world, this.getChromaLocations(), world.getRandom());
+	}
+
+	/** Focused-test seam which still executes the production completion path. */
+	public void completeCraftForTest() { this.craft(); }
 }

@@ -1,0 +1,10 @@
+{
+  "type": "chromaticraft:proxima",
+  "generator": {
+    "type": "minecraft:noise",
+    "biome_source": {
+      "type": "chromaticraft:proxima"
+    },
+    "settings": "chromaticraft:proxima"
+  }
+}

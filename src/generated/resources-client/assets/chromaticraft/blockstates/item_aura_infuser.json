@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "chromaticraft:block/item_aura_infuser"
+    }
+  }
+}

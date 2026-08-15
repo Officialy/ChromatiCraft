@@ -1,0 +1,318 @@
+{
+  "type": "chromaticraft:casting",
+  "completion": {
+    "copy_center_custom_data": true,
+    "granted_progress": [
+      "storage"
+    ],
+    "harmonics": [
+      0.5,
+      2.0
+    ]
+  },
+  "duration": 100,
+  "experience": 200,
+  "grid": [
+    {
+      "ingredient": "chromaticraft:storage_crystal_nula",
+      "slot": 4
+    }
+  ],
+  "penalty_threshold": 3,
+  "result": {
+    "id": "chromaticraft:storage_crystal_daya"
+  },
+  "runes": [
+    {
+      "element": "blue",
+      "offset": [
+        4,
+        0,
+        1
+      ]
+    },
+    {
+      "element": "blue",
+      "offset": [
+        4,
+        0,
+        -1
+      ]
+    },
+    {
+      "element": "green",
+      "offset": [
+        -4,
+        0,
+        1
+      ]
+    },
+    {
+      "element": "green",
+      "offset": [
+        -4,
+        0,
+        -1
+      ]
+    },
+    {
+      "element": "red",
+      "offset": [
+        1,
+        0,
+        -4
+      ]
+    },
+    {
+      "element": "red",
+      "offset": [
+        -1,
+        0,
+        -4
+      ]
+    },
+    {
+      "element": "yellow",
+      "offset": [
+        1,
+        0,
+        4
+      ]
+    },
+    {
+      "element": "yellow",
+      "offset": [
+        -1,
+        0,
+        4
+      ]
+    },
+    {
+      "element": "white",
+      "offset": [
+        4,
+        0,
+        -4
+      ]
+    },
+    {
+      "element": "white",
+      "offset": [
+        -4,
+        0,
+        4
+      ]
+    },
+    {
+      "element": "black",
+      "offset": [
+        -4,
+        0,
+        -4
+      ]
+    },
+    {
+      "element": "black",
+      "offset": [
+        4,
+        0,
+        4
+      ]
+    }
+  ],
+  "stands": [
+    {
+      "ingredient": "chromaticraft:chromic_dust",
+      "offset": [
+        -4,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:chromic_dust",
+      "offset": [
+        -2,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:chromic_dust",
+      "offset": [
+        0,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:chromic_dust",
+      "offset": [
+        2,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:chromic_dust",
+      "offset": [
+        4,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:chromic_dust",
+      "offset": [
+        4,
+        1,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:chromic_dust",
+      "offset": [
+        4,
+        1,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:chromic_dust",
+      "offset": [
+        4,
+        1,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:chromic_dust",
+      "offset": [
+        4,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:chromic_dust",
+      "offset": [
+        2,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:chromic_dust",
+      "offset": [
+        0,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:chromic_dust",
+      "offset": [
+        -2,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:chromic_dust",
+      "offset": [
+        -4,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:chromic_dust",
+      "offset": [
+        -4,
+        1,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:chromic_dust",
+      "offset": [
+        -4,
+        1,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:chromic_dust",
+      "offset": [
+        -4,
+        1,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:resonant_dust",
+      "offset": [
+        -2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:resonant_dust",
+      "offset": [
+        2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:resonant_dust",
+      "offset": [
+        -2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:resonant_dust",
+      "offset": [
+        2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:resonant_dust",
+      "offset": [
+        0,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:resonant_dust",
+      "offset": [
+        0,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:resonant_dust",
+      "offset": [
+        2,
+        0,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:resonant_dust",
+      "offset": [
+        -2,
+        0,
+        0
+      ]
+    }
+  ],
+  "tier": "multiblock"
+}

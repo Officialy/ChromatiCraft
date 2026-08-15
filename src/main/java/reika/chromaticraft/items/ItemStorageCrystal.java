@@ -9,118 +9,152 @@
  ******************************************************************************/
 package reika.chromaticraft.items;
 
-import java.util.List;
+import java.util.function.Consumer;
 
-import net.minecraft.creativetab.CreativeTabs;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.world.World;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.item.component.TooltipDisplay;
 
-import reika.chromaticraft.base.ItemChromaTool;
 import reika.chromaticraft.magic.ElementTagCompound;
 import reika.chromaticraft.magic.progression.ProgressStage;
-import reika.chromaticraft.magic.progression.ProgressionLinking;
 import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.CrystalElement;
+import reika.chromaticraft.registry.StorageCrystalTier;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
+/**
+ * V33a's portable sixteen-colour lumen battery.
+ *
+ * <p>The old item used metadata 0-6 for Nula through Aru. In 26.2 every tier is a distinct
+ * registered item and only the genuinely dynamic energy payload remains in custom data. The
+ * static methods intentionally retain the original call surface so the charger, relay source and
+ * charged-machine cluster can be ported without inventing an adapter API.</p>
+ */
+public final class ItemStorageCrystal extends Item {
 
-public class ItemStorageCrystal extends ItemChromaTool {
+	private static final String ENERGY_TAG = "energy";
 
-	public ItemStorageCrystal(int tex) {
-		super(tex);
-		hasSubtypes = true;
+	private final StorageCrystalTier tier;
+
+	public ItemStorageCrystal(StorageCrystalTier tier, Properties properties) {
+		super(properties.stacksTo(1));
+		this.tier = tier;
+	}
+
+	public StorageCrystalTier tier() {
+		return tier;
 	}
 
 	@Override
-	@SideOnly(Side.CLIENT)
-	public final void getSubItems(Item par1, CreativeTabs par2CreativeTabs, List par3List) {
-		for (int i = 0; i < ChromaItems.STORAGE.getNumberMetadatas(); i++) {
-			ItemStack item = new ItemStack(par1, 1, i);
-			par3List.add(item);
-			ItemStack item2 = item.copy();
-			for (int k = 0; k < CrystalElement.elements.length; k++)
-				this.addEnergy(item2, CrystalElement.elements[k], this.getCapacity(item2));
-			par3List.add(item2);
+	public void inventoryTick(ItemStack stack, ServerLevel level, Entity owner, EquipmentSlot slot) {
+		if (owner instanceof Player player)
+			ProgressStage.STORAGE.stepPlayerTo(player);
+	}
+
+	@Override
+	public void appendHoverText(ItemStack stack, TooltipContext context, TooltipDisplay display,
+			Consumer<Component> tooltip, TooltipFlag flag) {
+		ElementTagCompound stored = getStoredTags(stack);
+		for (CrystalElement element : CrystalElement.elements) {
+			int value = stored.getValue(element);
+			if (value > 0)
+				tooltip.accept(Component.literal(element.displayName + ": " + value));
 		}
 	}
 
-	@Override
-	public void onUpdate(ItemStack is, World world, Entity e, int slot, boolean held) {
-		if (e instanceof EntityPlayer)
-			ProgressionLinking.instance.attemptSyncTriggerProgressFor((EntityPlayer)e, ProgressStage.STORAGE);
+	public static boolean isStorageCrystal(ItemStack stack) {
+		return !stack.isEmpty() && stack.getItem() instanceof ItemStorageCrystal;
 	}
 
-	@Override
-	public void addInformation(ItemStack is, EntityPlayer ep, List li, boolean vb) {
-		ElementTagCompound tag = this.getTag(is);
-		for (CrystalElement e : tag.elementSet()) {
-			li.add(String.format("%s: %d", e.displayName, tag.getValue(e)));
+	public static StorageCrystalTier getTier(ItemStack stack) {
+		return stack.getItem() instanceof ItemStorageCrystal crystal ? crystal.tier : null;
+	}
+
+	public static int getCapacity(ItemStack stack) {
+		StorageCrystalTier tier = getTier(stack);
+		return tier != null ? tier.capacity() : 0;
+	}
+
+	public static void addEnergy(ItemStack stack, CrystalElement element, int value) {
+		if (!isStorageCrystal(stack) || element == null || value <= 0)
+			return;
+		int capacity = getCapacity(stack);
+		int current = getStoredEnergy(stack, element);
+		writeEnergy(stack, element, (int)Math.min(capacity, (long)current + value));
+	}
+
+	public static void removeEnergy(ItemStack stack, CrystalElement element, int value) {
+		if (!isStorageCrystal(stack) || element == null || value <= 0)
+			return;
+		writeEnergy(stack, element, Math.max(0, getStoredEnergy(stack, element) - value));
+	}
+
+	public static int getStoredEnergy(ItemStack stack, CrystalElement element) {
+		if (!isStorageCrystal(stack) || element == null)
+			return 0;
+		return energyTag(stack).getIntOr(element.name(), 0);
+	}
+
+	public static int getTotalEnergy(ItemStack stack) {
+		int total = 0;
+		for (CrystalElement element : CrystalElement.elements)
+			total += getStoredEnergy(stack, element);
+		return total;
+	}
+
+	public static ElementTagCompound getStoredTags(ItemStack stack) {
+		ElementTagCompound result = new ElementTagCompound();
+		for (CrystalElement element : CrystalElement.elements) {
+			int value = getStoredEnergy(stack, element);
+			if (value > 0)
+				result.setTag(element, value);
 		}
+		return result;
 	}
 
-	public static int getCapacity(ItemStack is) {
-		return (int)(1000*Math.pow(8, is.getItemDamage()-1));
+	public static int getSpace(CrystalElement element, ItemStack stack) {
+		return Math.max(0, getCapacity(stack) - getStoredEnergy(stack, element));
 	}
 
-	public static void addEnergy(ItemStack is, CrystalElement e, int value) {
-		ElementTagCompound etg = getTag(is);
-		int amt = getStoredEnergy(is, e);
-		int sum = Math.min(getCapacity(is), amt+value);
-		etg.setTag(e, sum);
-		writeTag(is, etg);
-	}
-
-	public static void removeEnergy(ItemStack is, CrystalElement e, int value) {
-		ElementTagCompound etg = getTag(is);
-		etg.subtract(e, value);
-		writeTag(is, etg);
-	}
-
-	private static ElementTagCompound getTag(ItemStack is) {
-		if (is.stackTagCompound == null)
-			is.stackTagCompound = new NBTTagCompound();
-		ElementTagCompound etg = new ElementTagCompound();
-		etg.readFromNBT("energy", is.stackTagCompound);
-		etg.clearEmptyKeys();
-		return etg;
-	}
-
-	private static void writeTag(ItemStack is, ElementTagCompound etg) {
-		if (is.stackTagCompound == null)
-			is.stackTagCompound = new NBTTagCompound();
-		etg.writeToNBT("energy", is.stackTagCompound);
-	}
-
-
-	public static int getStoredEnergy(ItemStack is, CrystalElement e) {
-		return getTag(is).getValue(e);
-	}
-
-	public static int getTotalEnergy(ItemStack is) {
-		return getTag(is).getTotalEnergy();
-	}
-
-	public static ElementTagCompound getStoredTags(ItemStack is) {
-		return getTag(is).copy();
-	}
-
-	public static int getSpace(CrystalElement e, ItemStack is) {
-		return getCapacity(is)-getStoredEnergy(is, e);
-	}
-
-	public static boolean isFull(ItemStack is) {
-		int max = getCapacity(is);
-		ElementTagCompound tag = getTag(is);
-		for (CrystalElement e : tag.elementSet()) {
-			if (getSpace(e, is) > 0)
+	/** A charger may extract the crystal only once every one of its sixteen channels is full. */
+	public static boolean isFull(ItemStack stack) {
+		if (!isStorageCrystal(stack))
+			return false;
+		for (CrystalElement element : CrystalElement.elements) {
+			if (getSpace(element, stack) > 0)
 				return false;
 		}
 		return true;
 	}
 
+	public static ItemStack fullStack(StorageCrystalTier tier) {
+		ItemStack stack = ChromaItems.storageCrystalStack(tier);
+		for (CrystalElement element : CrystalElement.elements)
+			addEnergy(stack, element, tier.capacity());
+		return stack;
+	}
+
+	private static CompoundTag energyTag(ItemStack stack) {
+		CustomData custom = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY);
+		return custom.copyTag().getCompoundOrEmpty(ENERGY_TAG);
+	}
+
+	private static void writeEnergy(ItemStack stack, CrystalElement element, int value) {
+		CompoundTag root = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+		CompoundTag energy = root.getCompoundOrEmpty(ENERGY_TAG).copy();
+		if (value > 0)
+			energy.putInt(element.name(), value);
+		else
+			energy.remove(element.name());
+		root.put(ENERGY_TAG, energy);
+		stack.set(DataComponents.CUSTOM_DATA, CustomData.of(root));
+	}
 }

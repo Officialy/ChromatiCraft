@@ -59,8 +59,11 @@ public final class ItemInfoFragment extends Item {
 	public InteractionResult use(Level level, Player player, InteractionHand hand) {
 		ItemStack stack = player.getItemInHand(hand);
 		ResearchFragmentData data = ResearchFragmentData.read(stack);
-		if (level.isClientSide() && data.blank() && !data.random() && !PlayerResearch.nextResearch(player).isEmpty())
-			reika.chromaticraft.client.ChromaClientScreens.openFragmentSelection(player, stack);
+		if (!level.isClientSide() && player instanceof net.minecraft.server.level.ServerPlayer server
+				&& data.blank() && !data.random() && !PlayerResearch.nextResearch(player).isEmpty())
+			server.openMenu(new net.minecraft.world.SimpleMenuProvider(
+					(id, inventory, ignored) -> new reika.chromaticraft.container.MenuFragmentSelection(id, inventory),
+					Component.literal("Decode Information Fragment")));
 		return InteractionResult.SUCCESS;
 	}
 

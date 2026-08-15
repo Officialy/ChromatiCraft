@@ -5055,3 +5055,62 @@ a closed chest emits nothing, that an open one emits a flat 15 on every side, th
 side-1 only, and — the part that matters — that real redstone dust beside the chest powers on open and
 drops on close. That last assertion was verified to fail when the neighbour notification is removed, so
 it guards the subtle half rather than only the obvious one.
+
+### 2026-08-15 — Proxima terrain the modern way, and the dimension registered
+
+Correction to the previous entry: transcribing 1.7.10's `NoiseGeneratorOctaves`/`NoiseGeneratorImproved`
+was the wrong approach and has been removed. Re-reading upstream with that lens,
+`ChunkProviderChroma` is 1.7.10's own `ChunkProviderGenerate` with **exactly two values substituted** —
+`f3` the base height and `f4` the height variation, which vanilla otherwise reads from the biome.
+Reproducing 1.7.10's Perlin to recover vanilla's own formula was copying the parts that were never
+modified. 26.2 expresses those same two concepts as the *offset* and *factor* inputs of the noise
+router, so the port supplies only those and vanilla owns the noise, the interpolation, the cell
+lattice, the surface pass and the bedrock.
+
+**`ProximaTerrainDensityFunction`** is a real `DensityFunction` with `OFFSET`/`FACTOR` modes, a codec,
+and registration in `Registries.DENSITY_FUNCTION_TYPE`. Two conversions matter:
+
+- `offset` is V33a's own `f1 = (f3*4 - 1)/8`, the term its column formula actually adds. Range
+  `[-0.25, -0.0625]`: highest at the centre, lowest far out.
+- `factor` is `1 / (0.9*f4 + 0.1)` — **a reciprocal**, because V33a *divides* its vertical slope by
+  that quantity where 26.2 *multiplies* depth by the factor. Getting this the wrong way round would
+  produce a mountainous centre and flat outskirts, i.e. exactly the inverse of the dimension. The
+  GameTest asserts the flat centre takes the larger factor for that reason.
+
+**Numbers that carry over exactly**, and are asserted or verified in the emitted JSON:
+
+| V33a | 26.2 |
+|---|---|
+| 5x33x5 noise per chunk = 4-block wide, 8-block tall cells | `NoiseSettings(0, 256, 1, 2)`, giving cell width 4 and height 8 |
+| main noise at 684.412, selector at 8.555150/4.277575 | `old_blended_noise` with `xz_scale 1, y_scale 1, xz_factor 80, y_factor 160` — because vanilla computes `684.412*xzScale` and `684.412*xzScale/xzFactor`, and `684.412/80 = 8.55515`, `684.412/160 = 4.277575` |
+| `generateColumnData` `byte b0 = 63` | `sea_level 63` |
+| `WorldProviderChroma.getHeight` 256 | `min_y 0, height 256` |
+| no aquifers, no ore veins | both disabled |
+
+One scale does not carry over and is recorded rather than worked around: V33a raises its selector
+generator to 96 octaves where vanilla's `BlendedNoise` is fixed at 8. That count is not exposed, and
+working around it would mean replacing vanilla's noise — which is the thing this correction is about.
+
+**Surface rules** replace `replaceBlocksForBiome`: bedrock floor, grass over dirt on the surface, sand
+where the surface meets sea level. **`ProximaDimension`** supplies the dimension type from
+`WorldProviderChroma` — 0-256 with sky light, a fixed sky from its pinned celestial angle, coordinate
+scale 1, ambient light 0, and `canRespawnHere false` expressed as 26.2 now expresses it, through the
+`BED_RULE` and `RESPAWN_ANCHOR_WORKS` environment attributes — plus the level stem naming
+`NoiseBasedChunkGenerator` over `ProximaBiomeSource`.
+
+**Emitted and hand-checked:** `dimension_type/proxima.json`, `dimension/proxima.json` and
+`worldgen/noise_settings/proxima.json`.
+
+**A harness limitation, stated plainly.** `chromaticraft:proxima_dimension_registered` asserts the
+noise settings and dimension type resolve out of the live registries with V33a's values, and that the
+terrain profile's two ends behave. It does **not** assert that the level itself loads: `LEVEL_STEM` is
+read during world creation, and a `GameTestServer` builds its world without consulting datapack
+dimension entries — the diagnostic confirmed its stem registry holds only the three vanilla entries
+while biomes, noise settings and dimension types all load normally. So `isDimensionLoadable` returning
+true, terrain actually generating, and a portal trip completing are **in-world checks**, not headless
+ones. Do not read the passing test as proof the dimension boots.
+
+**In-world checklist for this slice.** Create a world, `/execute in chromaticraft:proxima run tp ~ ~ ~`:
+the dimension should exist; the origin should be a flat plain around y=63 with bedrock beneath; terrain
+should grow steadily more mountainous with distance; the sky should be fixed and lit; beds should
+refuse; and a charged Portal Rift should finally carry a qualified player across.

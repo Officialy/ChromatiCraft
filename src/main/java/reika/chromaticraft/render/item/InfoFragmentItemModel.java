@@ -73,13 +73,19 @@ public final class InfoFragmentItemModel implements ItemModel {
 		ItemStackRenderState.LayerRenderState layer = output.newLayer();
 		Matrix4f transform = new Matrix4f(transformation);
 		if (!shift) {
-			// V33a used scale .0315 vs .063 and x offset 16: half-size at the right side.
-			transform.translate(0.25F, -0.25F, 0.25F).scale(0.5F);
+			// V33a scales the callback by (s, -s, s), then draws at (16, -16). Both
+			// coordinates therefore become positive half-item offsets in model space. The
+			// old negative Y translation pushed the icon below the slot, leaving only a
+			// clipped corner visible in inventories.
+			transform.translate(0.25F, 0.25F, 0.25F).scale(0.5F);
 		}
 		layer.setLocalTransform(transform);
 		layer.setExtents(() -> new Vector3fc[] {new Vector3f(-0.5F), new Vector3f(0.5F)});
 		layer.setupSpecialModel(NESTED, nested);
 		output.appendModelIdentityElement(page.id());
+		// Shift swaps the complete layer set (paper + inset versus full-sized page icon),
+		// so it is part of the render identity rather than an untracked keyboard side effect.
+		output.appendModelIdentityElement(shift);
 	}
 
 	private static boolean shiftDown() {

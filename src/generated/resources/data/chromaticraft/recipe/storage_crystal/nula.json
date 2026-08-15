@@ -1,0 +1,318 @@
+{
+  "type": "chromaticraft:casting",
+  "completion": {
+    "copy_center_custom_data": true,
+    "granted_progress": [
+      "storage"
+    ],
+    "harmonics": [
+      0.5,
+      2.0
+    ]
+  },
+  "duration": 50,
+  "experience": 200,
+  "grid": [
+    {
+      "ingredient": "chromaticraft:element_unit",
+      "slot": 4
+    }
+  ],
+  "penalty_threshold": 3,
+  "result": {
+    "id": "chromaticraft:storage_crystal_nula"
+  },
+  "runes": [
+    {
+      "element": "blue",
+      "offset": [
+        4,
+        0,
+        1
+      ]
+    },
+    {
+      "element": "blue",
+      "offset": [
+        4,
+        0,
+        -1
+      ]
+    },
+    {
+      "element": "green",
+      "offset": [
+        -4,
+        0,
+        1
+      ]
+    },
+    {
+      "element": "green",
+      "offset": [
+        -4,
+        0,
+        -1
+      ]
+    },
+    {
+      "element": "red",
+      "offset": [
+        1,
+        0,
+        -4
+      ]
+    },
+    {
+      "element": "red",
+      "offset": [
+        -1,
+        0,
+        -4
+      ]
+    },
+    {
+      "element": "yellow",
+      "offset": [
+        1,
+        0,
+        4
+      ]
+    },
+    {
+      "element": "yellow",
+      "offset": [
+        -1,
+        0,
+        4
+      ]
+    },
+    {
+      "element": "white",
+      "offset": [
+        4,
+        0,
+        -4
+      ]
+    },
+    {
+      "element": "white",
+      "offset": [
+        -4,
+        0,
+        4
+      ]
+    },
+    {
+      "element": "black",
+      "offset": [
+        -4,
+        0,
+        -4
+      ]
+    },
+    {
+      "element": "black",
+      "offset": [
+        4,
+        0,
+        4
+      ]
+    }
+  ],
+  "stands": [
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_black",
+      "offset": [
+        -4,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_red",
+      "offset": [
+        -2,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_green",
+      "offset": [
+        0,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_brown",
+      "offset": [
+        2,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_blue",
+      "offset": [
+        4,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_purple",
+      "offset": [
+        4,
+        1,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_cyan",
+      "offset": [
+        4,
+        1,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_light_gray",
+      "offset": [
+        4,
+        1,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_gray",
+      "offset": [
+        4,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_pink",
+      "offset": [
+        2,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_lime",
+      "offset": [
+        0,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_yellow",
+      "offset": [
+        -2,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_light_blue",
+      "offset": [
+        -4,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_magenta",
+      "offset": [
+        -4,
+        1,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_orange",
+      "offset": [
+        -4,
+        1,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_white",
+      "offset": [
+        -4,
+        1,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:infused_dust",
+      "offset": [
+        -2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:infused_dust",
+      "offset": [
+        2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:infused_dust",
+      "offset": [
+        -2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:infused_dust",
+      "offset": [
+        2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:infused_dust",
+      "offset": [
+        0,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:infused_dust",
+      "offset": [
+        0,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:infused_dust",
+      "offset": [
+        2,
+        0,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:infused_dust",
+      "offset": [
+        -2,
+        0,
+        0
+      ]
+    }
+  ],
+  "tier": "multiblock"
+}

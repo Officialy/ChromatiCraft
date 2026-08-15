@@ -1,0 +1,9 @@
+{
+  "model": {
+    "type": "minecraft:special",
+    "base": "chromaticraft:block/player_aura_infuser_inventory",
+    "model": {
+      "type": "chromaticraft:item_aura_infuser"
+    }
+  }
+}

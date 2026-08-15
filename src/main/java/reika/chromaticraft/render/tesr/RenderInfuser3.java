@@ -1,121 +1,121 @@
-/*******************************************************************************
- * @author Reika Kalseki
- *
- * Copyright 2017
- *
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
- ******************************************************************************/
 package reika.chromaticraft.render.tesr;
 
-import org.lwjgl.opengl.GL11;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.math.Axis;
 
-import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.client.renderer.entity.Render;
-import net.minecraft.client.renderer.entity.RenderManager;
-import net.minecraft.entity.item.EntityItem;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraftforge.client.MinecraftForgeClient;
+import net.minecraft.client.model.geom.ModelLayerLocation;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
+import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
+import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
+import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
+import net.minecraft.client.renderer.item.ItemModelResolver;
+import net.minecraft.client.renderer.item.ItemStackRenderState;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.item.ItemDisplayContext;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.phys.Vec3;
 
-import reika.chromaticraft.auxiliary.HoldingChecks;
-import reika.chromaticraft.base.ChromaRenderBase;
+import org.joml.Vector3f;
+import org.jspecify.annotations.Nullable;
+
+import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.models.ModelInfuser2;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.tileentity.recipe.TileEntityAuraInfuser;
-import reika.chromaticraft.tileentity.recipe.TileEntityPlayerInfuser;
-import reika.dragonapi.interfaces.tileentity.RenderFetcher;
-import reika.dragonapi.libraries.ReikaAABBHelper;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
-import reika.dragonapi.libraries.rendering.ReikaRenderHelper;
 
-public class RenderInfuser3 extends ChromaRenderBase {
+/** Submit-pipeline port of V33a's exact infuser body, floating item, and eight cycling rays. */
+public final class RenderInfuser3 implements BlockEntityRenderer<TileEntityAuraInfuser, RenderInfuser3.State> {
 
-	private final ModelInfuser2 model = new ModelInfuser2();
+	public static final ModelLayerLocation MODEL_LAYER = new ModelLayerLocation(
+			Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "item_aura_infuser"), "main");
+	public static final Identifier TEXTURE = Identifier.fromNamespaceAndPath(
+			ChromatiCraft.MODID, "textures/entity/item_aura_infuser.png");
 
-	@Override
-	public String getImageFileName(RenderFetcher te) {
-		return te instanceof TileEntityPlayerInfuser ? "infuser3.png" : "infuser2.png";
+	private final ModelInfuser2 model;
+	private final ItemModelResolver itemResolver;
+
+	public RenderInfuser3(BlockEntityRendererProvider.Context context) {
+		model = new ModelInfuser2(context.bakeLayer(MODEL_LAYER));
+		itemResolver = context.itemModelResolver();
 	}
 
+	@Override public State createRenderState() { return new State(); }
+
 	@Override
-	public void renderTileEntityAt(TileEntity tile, double par2, double par4, double par6, float par8) {
-		TileEntityAuraInfuser te = (TileEntityAuraInfuser)tile;
-
-		GL11.glPushMatrix();
-
-		if (te.hasWorldObj()) {
-			this.renderItem(te, par2, par4, par6, par8);
-			if (te instanceof TileEntityPlayerInfuser && MinecraftForgeClient.getRenderPass() == 1) {
-				int a = (int)(64*HoldingChecks.MANIPULATOR.getFade());
-				if (a > 0) {
-					TileEntityPlayerInfuser tp = (TileEntityPlayerInfuser)te;
-					ReikaAABBHelper.renderAABB(tp.getTargetBox(), par2, par4, par6, te.xCoord, te.yCoord, te.zCoord, a, 255, 255, 255, true);
-				}
-			}
-		}
-		GL11.glTranslated(par2, par4, par6);
-		this.renderModel(te, model);
-
-		GL11.glPopMatrix();
-	}
-
-	private void renderItem(TileEntityAuraInfuser te, double par2, double par4, double par6, float ptick) {
-		EntityItem ei = te.getItem();
-		if (ei != null) {
-			GL11.glPushMatrix();
-			GL11.glTranslated(par2, par4, par6);
-			GL11.glPushMatrix();
-			double a = ((te.getTicksExisted()+ptick)*3D)%360;
-			double dy = 0.0625*Math.sin(Math.toRadians(a*2));
-			GL11.glTranslated(0.5+ei.posX, 0.5+ei.posY, 0.5+ei.posZ);
-			GL11.glRotated(a, 0, 1, 0);
-			GL11.glTranslated(-par2, -par4, -par6);
-
-			Render r = RenderManager.instance.getEntityClassRenderObject(EntityItem.class);
-			r.doRender(ei, par2, par4, par6, 0, 0);
-
-			GL11.glPopMatrix();
-			GL11.glPushMatrix();
-			float mix = 1-(te.getTicksExisted()%4)/4F;
-			float w = GL11.glGetFloat(GL11.GL_LINE_WIDTH);
-			double rad = 0.5;
-			Tessellator v5 = Tessellator.instance;
-			GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
-			ReikaRenderHelper.prepareGeoDraw(true);
-			GL11.glEnable(GL11.GL_BLEND);
-			for (int i = 0; i < 360; i += 45) {
-				int idx = (te.getTicksExisted()/4+i/45)%16;
-				int idx2 = (idx+1)%16;
-				int color = ReikaColorAPI.mixColors(CrystalElement.elements[idx].getColor(), CrystalElement.elements[idx2].getColor(), mix);
-				double ang = Math.toRadians(i);
-				double dx = 0.5+rad*Math.cos(ang);
-				double dz = 0.5+rad*Math.sin(ang);
-				GL11.glLineWidth(w*6);
-				v5.startDrawing(GL11.GL_LINES);
-				v5.setColorRGBA_I(color, 70);
-				v5.addVertex(0.5, 0.6875, 0.5);
-				v5.addVertex(dx, 0.35, dz);
-				v5.draw();
-				GL11.glLineWidth(w*3);
-				v5.startDrawing(GL11.GL_LINES);
-				v5.setColorRGBA_I(color, 150);
-				v5.addVertex(0.5, 0.6875, 0.5);
-				v5.addVertex(dx, 0.35, dz);
-				v5.draw();
-				GL11.glLineWidth(w);
-				v5.startDrawing(GL11.GL_LINES);
-				v5.setColorOpaque_I(color);
-				v5.addVertex(0.5, 0.6875, 0.5);
-				v5.addVertex(dx, 0.35, dz);
-				v5.draw();
-			}
-			ReikaRenderHelper.exitGeoDraw();
-			GL11.glPopAttrib();
-			GL11.glLineWidth(w);
-			GL11.glPopMatrix();
-			GL11.glPopMatrix();
+	public void extractRenderState(TileEntityAuraInfuser infuser, State state, float partialTick,
+			Vec3 cameraPosition, ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress) {
+		BlockEntityRenderer.super.extractRenderState(infuser, state, partialTick, cameraPosition, breakProgress);
+		state.tick = infuser.getTicksExisted() + partialTick;
+		state.item = null;
+		ItemStack stack = infuser.getRenderItem();
+		if (!stack.isEmpty()) {
+			state.item = new ItemStackRenderState();
+			itemResolver.updateForTopItem(state.item, stack, ItemDisplayContext.GROUND,
+					infuser.getLevel(), null, Long.hashCode(infuser.getBlockPos().asLong()));
 		}
 	}
 
+	@Override
+	public void submit(State state, PoseStack poseStack, SubmitNodeCollector collector, CameraRenderState camera) {
+		poseStack.pushPose();
+		poseStack.translate(0.5F, 1.5F, 0.5F);
+		poseStack.scale(1F, -1F, -1F);
+		PoseStack bodyPose = copy(poseStack);
+		collector.submitCustomGeometry(poseStack, RenderTypes.entityCutout(TEXTURE),
+				(unused, vertices) -> model.render(bodyPose, vertices, state.lightCoords,
+						OverlayTexture.NO_OVERLAY));
+		poseStack.popPose();
+
+		if (state.item == null) return;
+		float angle = state.tick * 3F % 360F;
+		double bob = 0.0625 * Math.sin(Math.toRadians(angle * 2));
+		poseStack.pushPose();
+		poseStack.translate(0.5, 0.6875 + bob, 0.5);
+		poseStack.mulPose(Axis.YP.rotationDegrees(angle));
+		state.item.submit(poseStack, collector, state.lightCoords, OverlayTexture.NO_OVERLAY, 0);
+		poseStack.popPose();
+
+		float mix = 1F - ((int)state.tick & 3) / 4F;
+		PoseStack linesPose = copy(poseStack);
+		collector.submitCustomGeometry(poseStack, RenderTypes.linesTranslucent(), (unused, vertices) -> {
+			for (int degrees = 0; degrees < 360; degrees += 45) {
+				int index = (((int)state.tick / 4) + degrees / 45) & 15;
+				int next = (index + 1) & 15;
+				int rgb = ReikaColorAPI.mixColors(CrystalElement.elements[index].getColor(),
+						CrystalElement.elements[next].getColor(), mix);
+				double radians = Math.toRadians(degrees);
+				Vector3f normal = new Vector3f((float)(0.5 * Math.cos(radians)), -0.3375F,
+						(float)(0.5 * Math.sin(radians))).normalize();
+				line(vertices, linesPose.last(), radians, normal, 6, (70 << 24) | rgb);
+				line(vertices, linesPose.last(), radians, normal, 3, (150 << 24) | rgb);
+				line(vertices, linesPose.last(), radians, normal, 1, 0xff000000 | rgb);
+			}
+		});
+	}
+
+	private static void line(VertexConsumer out, PoseStack.Pose pose, double angle, Vector3f normal,
+			float width, int color) {
+		out.addVertex(pose, 0.5F, 0.6875F, 0.5F).setColor(color)
+				.setNormal(pose, normal.x, normal.y, normal.z).setLineWidth(width);
+		out.addVertex(pose, (float)(0.5 + 0.5 * Math.cos(angle)), 0.35F,
+				(float)(0.5 + 0.5 * Math.sin(angle))).setColor(color)
+				.setNormal(pose, normal.x, normal.y, normal.z).setLineWidth(width);
+	}
+
+	private static PoseStack copy(PoseStack source) {
+		PoseStack copy = new PoseStack();
+		copy.last().set(source.last());
+		return copy;
+	}
+
+	public static final class State extends BlockEntityRenderState {
+		private float tick;
+		private ItemStackRenderState item;
+	}
 }

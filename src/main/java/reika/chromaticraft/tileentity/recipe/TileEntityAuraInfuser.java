@@ -1,12 +1,3 @@
-/*******************************************************************************
- * @author Reika Kalseki
- *
- * Copyright 2017
- *
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
- ******************************************************************************/
 package reika.chromaticraft.tileentity.recipe;
 
 import java.util.ArrayList;
@@ -14,583 +5,457 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.function.Function;
+import java.util.Set;
+import java.util.UUID;
+import java.util.function.Predicate;
 
-import net.minecraft.client.Minecraft;
-import net.minecraft.entity.item.EntityItem;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.init.Blocks;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.world.World;
-import net.minecraftforge.common.util.ForgeDirection;
-import net.minecraftforge.fluids.Fluid;
-import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.FluidTankInfo;
-import net.minecraftforge.fluids.IFluidHandler;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.NonNullList;
+import net.minecraft.core.RegistryAccess;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtOps;
+import net.minecraft.world.ContainerHelper;
+import net.minecraft.world.WorldlyContainer;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 
-import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.auxiliary.ChromaFX;
-import reika.chromaticraft.auxiliary.MultiBlockCheck;
+import net.neoforged.neoforge.fluids.FluidType;
+import net.neoforged.neoforge.transfer.ResourceHandler;
+import net.neoforged.neoforge.transfer.TransferPreconditions;
+import net.neoforged.neoforge.transfer.fluid.FluidResource;
+import net.neoforged.neoforge.transfer.transaction.SnapshotJournal;
+import net.neoforged.neoforge.transfer.transaction.TransactionContext;
+
 import reika.chromaticraft.auxiliary.interfaces.FocusAcceleratable;
-import reika.chromaticraft.auxiliary.interfaces.ItemCollision;
-import reika.chromaticraft.auxiliary.interfaces.ItemOnRightClick;
-import reika.chromaticraft.auxiliary.interfaces.MultiBlockChromaTile;
+import reika.chromaticraft.auxiliary.interfaces.NBTTile;
 import reika.chromaticraft.auxiliary.interfaces.OperationInterval;
 import reika.chromaticraft.auxiliary.interfaces.OwnedTile;
-import reika.chromaticraft.base.tileentity.InventoriedChromaticBase;
-import reika.chromaticraft.magic.ElementTagCompound;
+import reika.chromaticraft.base.tileentity.TileEntityChromaticBase;
 import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaSounds;
+import reika.chromaticraft.registry.ChromaFluids;
 import reika.chromaticraft.registry.ChromaStructures;
-import reika.chromaticraft.registry.ChromaTiles;
-import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.render.particle.EntityFlareFX;
 import reika.chromaticraft.tileentity.auxiliary.TileEntityFocusCrystal;
-import reika.chromaticraft.tileentity.auxiliary.tileentityfocuscrystal.CrystalTier;
-import reika.dragonapi.DragonAPICore;
-import reika.dragonapi.ModList;
-import reika.dragonapi.asm.apistripper.Strippable;
-import reika.dragonapi.asm.dependentmethodstripper.ModDependent;
-import reika.dragonapi.instantiable.InertItem;
+import reika.chromaticraft.tileentity.auxiliary.TileEntityFocusCrystal.CrystalTier;
 import reika.dragonapi.instantiable.data.blockstruct.FilledBlockArray;
-import reika.dragonapi.instantiable.data.collections.ThreadSafeSet;
-import reika.dragonapi.instantiable.data.immutable.Coordinate;
 import reika.dragonapi.instantiable.data.immutable.WorldLocation;
-import reika.dragonapi.interfaces.tileentity.ConditionBreakDropsInventory;
-import reika.dragonapi.interfaces.tileentity.InertIInv;
-import reika.dragonapi.interfaces.tileentity.LocationCached;
-import reika.dragonapi.libraries.io.ReikaSoundHelper;
-import reika.dragonapi.libraries.java.ReikaRandomHelper;
-import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
+import reika.dragonapi.interfaces.blockentity.BreakAction;
+import reika.dragonapi.interfaces.blockentity.InertIInv;
 import reika.dragonapi.libraries.registry.ReikaItemHelper;
 
-import buildcraft.api.transport.IPipeConnection;
-import buildcraft.api.transport.IPipeTile.PipeType;
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
+/**
+ * Full 26.2 port of V33a's owned one-slot aura-infusion pedestal. Despite its historical name this
+ * machine does not consume crystal-network aura: the PURPLE/BLACK requirement was commented out in
+ * V33a. Its consumable is the source Liquid Chroma ring encoded by {@link ChromaStructures#INFUSION}.
+ */
+public abstract class TileEntityAuraInfuser extends TileEntityChromaticBase implements WorldlyContainer,
+		OwnedTile, OperationInterval, FocusAcceleratable, NBTTile, BreakAction, InertIInv {
 
-@Strippable(value={"buildcraft.api.transport.IPipeConnection"})
-public abstract class TileEntityAuraInfuser extends InventoriedChromaticBase implements ItemOnRightClick, ItemCollision, OwnedTile, InertIInv,
-IPipeConnection, OperationInterval, MultiBlockChromaTile, FocusAcceleratable, LocationCached, IFluidHandler, ConditionBreakDropsInventory {
+	public static final int DURATION = 608;
+	private static final Set<WorldLocation> CACHE = Collections.synchronizedSet(new HashSet<>());
 
-	private InertItem item;
+	protected final NonNullList<ItemStack> inv = NonNullList.withSize(1, ItemStack.EMPTY);
+	protected final Set<BlockPos> focusCrystalSpots = new HashSet<>();
+	private final List<BlockPos> chromaLocations = new ArrayList<>();
 
-	private int craftingTick = 0;
+	private int craftingTick;
 	private boolean hasStructure = true;
-
-	private static final ElementTagCompound required = new ElementTagCompound();
-
-	private EntityPlayer craftingPlayer;
-
-	private static final int DURATION = 608;
-
+	private UUID craftingPlayer;
 	private int focusCrystalTotal;
-	private boolean allExquisite = false;
+	private boolean allExquisite;
+	private int fluidCooldown;
+	private boolean clientWasCrafting;
+	private final ChromaRingFluidHandler fluidHandler = new ChromaRingFluidHandler();
 
-	private int fluidCooldown = 0;
-
-	protected final HashSet<Coordinate> focusCrystalSpots = new HashSet();
-	private final ArrayList<Coordinate> chromaLocations = new ArrayList();
-
-	private static final ThreadSafeSet<WorldLocation> cache = new ThreadSafeSet();
-
-	static {
-		required.addTag(CrystalElement.PURPLE, 500);
-		required.addTag(CrystalElement.BLACK, 2500);
+	protected TileEntityAuraInfuser(net.minecraft.world.level.block.entity.BlockEntityType<?> type,
+			BlockPos pos, BlockState state) {
+		super(type, pos, state);
 	}
 
 	@Override
-	public final void updateEntity(World world, int x, int y, int z, int meta) {
-		if (hasStructure/* && energy.containsAtLeast(required)*/) {
-			if (craftingTick > 0) {
-				this.tickCrafting(world, x, y, z);
+	public final void updateEntity(Level world, BlockPos pos) {
+		if (world.isClientSide()) {
+			if (hasStructure && craftingTick > 0) {
+				clientWasCrafting = true;
+				this.spawnCraftingParticles(world, pos);
+				craftingTick--;
 			}
+			else if (clientWasCrafting) {
+				clientWasCrafting = false;
+				this.spawnCompletionParticles(world, pos);
+			}
+			else if (hasStructure) {
+				this.spawnAmbientParticles(world, pos);
+			}
+			return;
 		}
-		else {
+		if (fluidCooldown > 0) fluidCooldown--;
+		if (this.getTicksExisted() == 1) {
+			this.validateStructure();
+			CACHE.add(new WorldLocation(this));
+		}
+		else if (this.getTicksExisted() % 40 == 0) {
+			this.validateStructure();
+		}
+		if (!hasStructure) {
+			if (craftingTick > 0) this.killCrafting();
 			craftingTick = 0;
+			return;
 		}
-
-		if (!world.isRemote) {
-			if (fluidCooldown > 0)
-				fluidCooldown--;
-		}
-
-		if (world.isRemote && hasStructure) {
-			ChromaFX.doFocusCrystalParticles(world, x, y, z, this);
-			if (craftingTick == 0)
-				this.doAmbientParticles(world, x, y, z);
-		}
-
-		if (DragonAPICore.debugtest)
-			this.getStructure().getArray(world, x, y, z).place();
+		if (craftingTick > 0) this.tickCrafting();
 	}
 
-	protected void doAmbientParticles(World world, int x, int y, int z) {
-
-	}
+	@Override protected final void animateWithTick(Level world, BlockPos pos) {}
 
 	protected abstract ChromaStructures getStructure();
-
-	@Override
-	protected void onFirstTick(World world, int x, int y, int z) {
-		this.validateStructure();
-		cache.add(new WorldLocation(this));
-	}
+	protected abstract void collectFocusCrystalLocations(FilledBlockArray array);
+	protected abstract boolean isReady();
+	protected abstract void onCraft();
+	protected abstract void spawnCraftingParticles(Level world, BlockPos pos);
+	protected abstract void spawnCompletionParticles(Level world, BlockPos pos);
+	protected void spawnAmbientParticles(Level world, BlockPos pos) {}
+	protected void onCraftingTick(Level world, BlockPos pos) {}
 
 	public final void validateStructure() {
+		if (this.getLevel() == null || this.getLevel().isClientSide()) return;
+		boolean previous = hasStructure;
 		focusCrystalTotal = 0;
 		allExquisite = true;
 		focusCrystalSpots.clear();
 		chromaLocations.clear();
-		ChromaStructures struct = this.getStructure();
-		struct.getStructure().resetToDefaults();
-		FilledBlockArray arr = struct.getArray(worldObj, xCoord, yCoord, zCoord);
-		hasStructure = arr.matchInWorld();
-		this.collectChromaLocations(arr);
-		if (hasStructure) {
-			this.collectFocusCrystalLocations(arr);
-			this.countFocusCrystals(arr);
+		FilledBlockArray array = this.getStructure().getArray(this.getLevel(),
+				this.getBlockPos().getX(), this.getBlockPos().getY(), this.getBlockPos().getZ());
+		hasStructure = array.matchInWorld();
+		for (BlockPos cell : array.keySet()) {
+			if (array.getBlockAt(cell.getX(), cell.getY(), cell.getZ()) == ChromaBlocks.CHROMA.get())
+				chromaLocations.add(cell.immutable());
 		}
-		else {
-			if (craftingTick > 0) {
-				this.killCrafting();
-			}
+		if (hasStructure) {
+			this.collectFocusCrystalLocations(array);
+			this.countFocusCrystals();
+		}
+		else if (craftingTick > 0) {
+			this.killCrafting();
 			craftingTick = 0;
 		}
-		this.markDirty();
-		this.syncAllData(false);
+		this.setChanged();
+		if (previous != hasStructure) this.syncAllData(false);
 	}
 
-	@Override
-	public final ChromaStructures getPrimaryStructure() {
-		return this.getStructure();
-	}
-
-	@Override
-	public final Coordinate getStructureOffset() {
-		return null;
-	}
-
-	public final boolean canStructureBeInspected() {
-		return true;
-	}
-
-	private void collectChromaLocations(FilledBlockArray arr) {
-		for (Coordinate c : arr.keySet()) {
-			if (arr.getBlockAt(c.xCoord, c.yCoord, c.zCoord) == ChromaBlocks.CHROMA.getBlockInstance()) {
-				chromaLocations.add(c);
+	private void countFocusCrystals() {
+		for (BlockPos location : focusCrystalSpots) {
+			if (!(this.getLevel().getBlockEntity(location) instanceof TileEntityFocusCrystal focus)) continue;
+			CrystalTier tier = focus.getTier();
+			if (tier == CrystalTier.FLAWED) {
+				focusCrystalTotal = 0;
+				allExquisite = false;
+				break;
 			}
+			focusCrystalTotal += 1 << Math.max(0, tier.effectiveOrdinal() - 1);
+			if (!tier.isMaximumPower()) allExquisite = false;
+			focus.addConnection(this, true);
 		}
 	}
 
-	protected final Collection<Coordinate> getChromaLocations() {
-		return Collections.unmodifiableCollection(chromaLocations);
+	private void tickCrafting() {
+		if (!this.canCraft()) {
+			craftingTick = 0;
+			this.killCrafting();
+			return;
+		}
+		int speed = this.getCraftSpeed();
+		if (speed == 4 && craftingTick % 152 == 0) ChromaSounds.INFUSION_SHORT.playSoundAtBlock(this);
+		else if (craftingTick % 304 == 0) ChromaSounds.INFUSION.playSoundAtBlock(this);
+		craftingTick--;
+		this.onCraftingTick(this.getLevel(), this.getBlockPos());
+		if (craftingTick == 0) this.craft();
 	}
 
-	protected abstract void collectFocusCrystalLocations(FilledBlockArray arr);
-
-	private void countFocusCrystals(FilledBlockArray arr) {
-		for (Coordinate c2 : focusCrystalSpots) {
-			if (ChromaTiles.getTile(worldObj, c2.xCoord, c2.yCoord, c2.zCoord) == ChromaTiles.FOCUSCRYSTAL) {
-				TileEntityFocusCrystal te = (TileEntityFocusCrystal)c2.getTileEntity(worldObj);
-				CrystalTier ct = te.getTier();
-				if (ct.ordinal() > 0) {
-					int power = ReikaMathLibrary.intpow2(2, ct.getEffectiveOrdinal()-1);
-					focusCrystalTotal += power;
-					if (!ct.isMaxPower())
-						allExquisite = false;
-					te.addConnection(this, true);
-				}
-				else {
-					focusCrystalTotal = 0;
-					allExquisite = false;
-					break;
-				}
-			}
+	protected final void craft() {
+		ChromaSounds.INFUSE.playSoundAtBlock(this);
+		this.onCraft();
+		for (BlockPos location : chromaLocations) {
+			BlockState state = this.getLevel().getBlockState(location);
+			if (state.is(ChromaBlocks.CHROMA.get()) && state.getFluidState().isSource())
+				this.getLevel().setBlock(location, Blocks.AIR.defaultBlockState(), 3);
 		}
+		craftingPlayer = null;
+		this.validateStructure();
+		this.setChanged();
+		this.syncAllData(true);
 	}
 
 	private void killCrafting() {
 		ChromaSounds.ERROR.playSoundAtBlock(this);
 	}
 
-	public final boolean hasStructure() {
-		return hasStructure;
+	protected final boolean canCraft() {
+		Player player = this.getCraftingPlayer();
+		return player != null && ProgressStage.ALLOY.isPlayerAtStage(player) && this.isReady();
 	}
 
-	@Override
-	protected void readSyncTag(NBTTagCompound NBT) {
-		super.readSyncTag(NBT);
-
-		hasStructure = NBT.getBoolean("struct");
-
-		craftingTick = NBT.getInteger("craft");
-
-		focusCrystalTotal = NBT.getInteger("focus");
-		allExquisite = NBT.getBoolean("exq");
-	}
-
-	@Override
-	protected void writeSyncTag(NBTTagCompound NBT) {
-		super.writeSyncTag(NBT);
-
-		NBT.setBoolean("struct", hasStructure);
-
-		NBT.setInteger("craft", craftingTick);
-
-		NBT.setBoolean("exq", allExquisite);
-		NBT.setInteger("focus", focusCrystalTotal);
-	}
-
-	private void tickCrafting(World world, int x, int y, int z) {
-		if (world.isRemote)
-			this.spawnParticles(world, x, y, z);
-
-		if (!this.canCraft()) {
-			craftingTick = 0;
-			this.killCrafting();
-			return;
-		}
-
-		int sp = this.getCraftSpeed();
-		if (sp == 4 && craftingTick%152 == 0)
-			ChromaSounds.INFUSION_SHORT.playSoundAtBlock(this);
-		else if (craftingTick%304 == 0)
-			ChromaSounds.INFUSION.playSoundAtBlock(this);
-
-		craftingTick -= 1;
-
-		this.onCraftingTick(world, x, y, z);
-
-		if (craftingTick == 0) {
-			;//this.drainEnergy(required);
-			this.craft();
-			if (world.isRemote) {
-				this.craftParticles(world, x, y, z);
-			}
-			craftingPlayer = null;
-		}
-	}
-
-	protected void onCraftingTick(World world, int x, int y, int z) {
-
+	protected final Player getCraftingPlayer() {
+		return craftingPlayer != null && this.getLevel() != null
+				? this.getLevel().getPlayerByUUID(craftingPlayer) : null;
 	}
 
 	private int getCraftSpeed() {
-		if (allExquisite && focusCrystalTotal >= 16)
-			return 4;
-		else if (focusCrystalTotal >= 8)
-			return 2;
-		return 1;
+		if (allExquisite && focusCrystalTotal >= 16) return 4;
+		return focusCrystalTotal >= 8 ? 2 : 1;
 	}
 
-	protected final EntityPlayer getCraftingPlayer() {
-		return craftingPlayer;
-	}
-
-	private void craft() {
-		ChromaSounds.INFUSE.playSoundAtBlock(this);
-		this.onCraft();
-		ChromaStructures struct = this.getStructure();
-		struct.getStructure().resetToDefaults();
-		FilledBlockArray arr = struct.getArray(worldObj, xCoord, yCoord, zCoord);
-		for (int i = 0; i < arr.getSize(); i++) {
-			Coordinate c = arr.getNthBlock(i);
-			int dx = c.xCoord;
-			int dy = c.yCoord;
-			int dz = c.zCoord;
-			if (arr.hasBlockAt(dx, dy, dz, ChromaBlocks.CHROMA.getBlockInstance(), 0))
-				worldObj.setBlock(dx, dy, dz, Blocks.air);
-		}
-		this.validateStructure();
-		this.scheduleCallback(new MultiBlockCheck(this), 20);
-		this.scheduleCallback(new MultiBlockCheck(this), 100);
-		this.scheduleCallback(new MultiBlockCheck(this), 200);
-		this.markDirty();
-	}
-
-	protected abstract void onCraft();
-
-	@SideOnly(Side.CLIENT)
-	private void craftParticles(World world, int x, int y, int z) {
-		for (int i = 0; i < 360; i += 15) {
-			double ang = Math.toRadians(ReikaRandomHelper.getRandomPlusMinus(i, 5));
-			double v = 0.075;
-			double vx = v*Math.sin(ang);
-			double vz = v*Math.cos(ang);
-			EntityFlareFX fx = new EntityFlareFX(CrystalElement.WHITE, world, x+0.5, y+0.5, z+0.5, vx, 0, vz);
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-		}
-	}
-
-	@Override
-	public final void markDirty() {
-		super.markDirty();
-
-		ItemStack is = inv[0];
-		boolean flag = false;
-		if (item == null)
-			flag = is != null;
-		else if (!ReikaItemHelper.matchStacks(inv[0], item.getEntityItem()))
-			flag = true;
-		if (flag) {
-			item = is != null ? new InertItem(worldObj, is) : null;
-		}
-
-		if (this.canCraft()) {
-			if (craftingTick == 0)
-				craftingTick = DURATION/this.getCraftSpeed();
-		}
-		else {
-			if (craftingTick > 0) {
-				this.killCrafting();
-			}
-			craftingTick = 0;
-		}
-	}
-
-	protected final boolean canCraft() {
-		return this.getCraftingPlayer() != null && ProgressStage.ALLOY.isPlayerAtStage(this.getCraftingPlayer()) && this.isReady();
-	}
-
-	protected abstract boolean isReady();
-
-	@SideOnly(Side.CLIENT)
-	protected abstract void spawnParticles(World world, int x, int y, int z);
-
-	@Override
-	public final boolean canExtractItem(int side, ItemStack is, int slot) {
-		return false;
-	}
-
-	@Override
-	public final int getSizeInventory() {
-		return 1;
-	}
-
-	@Override
-	protected final void animateWithTick(World world, int x, int y, int z) {
-
-	}
-
-	public final EntityItem getItem() {
-		return item;
-	}
-	/*
-	@Override
-	public boolean isAcceptingColor(CrystalElement e) {
-		return required.contains(e);
-	}
-
-	@Override
-	public int getMaxStorage() {
-		return 5000;
-	}
-	 */
-	@Override
-	public final ItemStack onRightClickWith(ItemStack item, EntityPlayer ep) {
-		if (!this.isOwnedByPlayer(ep))
-			return item;
+	public final ItemStack interact(ItemStack held, Player player) {
+		if (!this.isOwnedByPlayer(player)) return held;
 		this.validateStructure();
 		if (!hasStructure) {
-			if (inv[0] != null && item == null) {
-				this.dropItem();
-			}
-			return item;
+			if (inv.get(0).isEmpty() || !held.isEmpty()) return held;
+			this.dropItem();
+			return held;
 		}
-		if (item != null && !this.isItemValidForSlot(0, item))
-			return item;
-		if (item != null && ReikaItemHelper.matchStacks(item, inv[0]) && ItemStack.areItemStackTagsEqual(item, inv[0])) {
-			if (inv[0].stackSize+item.stackSize <= this.getInventoryStackLimit()) {
-				inv[0].stackSize += item.stackSize;
-				item = null;
+		if (!held.isEmpty() && !this.canPlaceItem(0, held)) return held;
+		ItemStack stored = inv.get(0);
+		if (!held.isEmpty() && ItemStack.isSameItemSameComponents(held, stored)) {
+			if (stored.getCount() + held.getCount() <= this.getMaxStackSize()) {
+				stored.grow(held.getCount());
+				held.setCount(0);
 			}
-			else if (inv[0].stackSize < this.getInventoryStackLimit()) {
-				inv[0].stackSize++;
-				item.stackSize--;
+			else if (stored.getCount() < this.getMaxStackSize()) {
+				// V33a intentionally moved one item per click when the combined stacks overflowed.
+				stored.grow(1);
+				held.shrink(1);
 			}
 		}
-		else if (inv[0] != null) {
+		else if (!stored.isEmpty()) {
 			this.dropItem();
 		}
-
-		if (item != null && inv[0] == null) {
-			if (item.stackSize <= this.getInventoryStackLimit()) {
-				inv[0] = item.copy();
-				item = null;
-			}
-			else {
-				inv[0] = ReikaItemHelper.getSizedItemStack(item, 1);
-				item.stackSize--;
-			}
+		if (!held.isEmpty() && inv.get(0).isEmpty()) {
+			int add = held.getCount() <= this.getMaxStackSize() ? held.getCount() : 1;
+			inv.set(0, held.copyWithCount(add));
+			held.shrink(add);
 		}
-
-		craftingPlayer = ep;
-		this.syncAllData(true);
-		return item;
+		craftingPlayer = player.getUUID();
+		this.inventoryChanged();
+		return held;
 	}
 
-	protected EntityItem dropItem() {
-		EntityItem ret = ReikaItemHelper.dropItem(worldObj, xCoord+0.5, yCoord+0.5, zCoord+0.5, inv[0]);
-		inv[0] = null;
-		return ret;
+	public final boolean onItemCollision(ItemEntity entity) {
+		if (this.getLevel() == null || this.getLevel().isClientSide() || entity.hasPickUpDelay()) return false;
+		ItemStack dropped = entity.getItem();
+		if (!this.canPlaceItem(0, dropped)) return false;
+		ItemStack stored = inv.get(0);
+		if (!stored.isEmpty() && !ItemStack.isSameItemSameComponents(stored, dropped)) return false;
+		int present = stored.getCount();
+		int add = Math.min(dropped.getCount(), dropped.getMaxStackSize() - present);
+		if (add <= 0) return false;
+		craftingTick = 0;
+		inv.set(0, dropped.copyWithCount(present + add));
+		dropped.shrink(add);
+		if (entity.getOwner() instanceof Player player) craftingPlayer = player.getUUID();
+		this.inventoryChanged();
+		if (dropped.isEmpty()) entity.discard();
+		return dropped.isEmpty();
 	}
 
-	public final boolean onItemCollision(EntityItem ei) {
-		if (!worldObj.isRemote) {
-			ItemStack is = ei.getEntityItem();
-			if (ei.delayBeforeCanPickup == 0 && this.isItemValidForSlot(0, is)) {
-				if (inv[0] == null || ReikaItemHelper.matchStacks(is, inv[0])) {
-					int has = inv[0] != null ? inv[0].stackSize : 0;
-					int max = is.stackSize;
-					int add = Math.min(max, is.getMaxStackSize()-has);
-					if (add > 0) {
-						craftingTick = 0;
-						inv[0] = ReikaItemHelper.getSizedItemStack(is, has+add);
-						is.stackSize -= add;
-						craftingPlayer = ReikaItemHelper.getDropper(ei);
-						this.syncAllData(true);
-						if (is.stackSize <= 0)
-							return true;
-					}
-				}
-			}
+	protected ItemEntity dropItem() {
+		if (this.getLevel() == null || this.getLevel().isClientSide() || inv.get(0).isEmpty()) return null;
+		ItemStack stack = inv.get(0);
+		inv.set(0, ItemStack.EMPTY);
+		ItemEntity entity = new ItemEntity(this.getLevel(), this.getBlockPos().getX() + 0.5,
+				this.getBlockPos().getY() + 0.5, this.getBlockPos().getZ() + 0.5, stack);
+		this.getLevel().addFreshEntity(entity);
+		this.inventoryChanged();
+		return entity;
+	}
+
+	private void inventoryChanged() {
+		if (this.canCraft()) {
+			if (craftingTick == 0) craftingTick = DURATION / this.getCraftSpeed();
 		}
-		return false;
+		else {
+			if (craftingTick > 0) this.killCrafting();
+			craftingTick = 0;
+		}
+		this.setChanged();
+		if (this.getLevel() != null && !this.getLevel().isClientSide()) this.syncAllData(true);
 	}
 
-	public final int getCraftingTick() {
-		return craftingTick;
+	public final boolean hasStructure() { return hasStructure; }
+	public final int getCraftingTick() { return craftingTick; }
+	public final Collection<BlockPos> getChromaLocations() { return Collections.unmodifiableList(chromaLocations); }
+	public final ItemStack getRenderItem() { return inv.get(0); }
+	public final boolean canAcceptFluid() { return fluidCooldown == 0 && this.getLevel() != null && !this.getLevel().isClientSide(); }
+	public final void onFluidInserted() { fluidCooldown = 2; this.validateStructure(); }
+	public final ResourceHandler<FluidResource> fluidHandler() { return fluidHandler; }
+
+	/** The V33a IFluidHandler's virtual tanks: one 1000 mB tank for each authored chroma-ring cell. */
+	private final class ChromaRingFluidHandler extends SnapshotJournal<List<BlockState>>
+			implements ResourceHandler<FluidResource> {
+		@Override public int size() { return chromaLocations.size(); }
+		@Override public FluidResource getResource(int index) {
+			if (!validIndex(index) || getLevel() == null) return FluidResource.EMPTY;
+			BlockState state = getLevel().getBlockState(chromaLocations.get(index));
+			return state.is(ChromaBlocks.CHROMA.get()) && state.getFluidState().isSource()
+					? FluidResource.of(ChromaFluids.CHROMA.get()) : FluidResource.EMPTY;
+		}
+		@Override public long getAmountAsLong(int index) {
+			return this.getResource(index).isEmpty() ? 0 : FluidType.BUCKET_VOLUME;
+		}
+		@Override public long getCapacityAsLong(int index, FluidResource resource) {
+			return validIndex(index) && (resource.isEmpty() || this.isValid(index, resource))
+					? FluidType.BUCKET_VOLUME : 0;
+		}
+		@Override public boolean isValid(int index, FluidResource resource) {
+			return validIndex(index) && resource.getFluid() == ChromaFluids.CHROMA.get();
+		}
+		@Override public int insert(int index, FluidResource resource, int amount, TransactionContext transaction) {
+			TransferPreconditions.checkNonEmptyNonNegative(resource, amount);
+			if (!this.isValid(index, resource) || amount < FluidType.BUCKET_VOLUME || !canAcceptFluid()) return 0;
+			BlockPos cell = chromaLocations.get(index);
+			BlockState current = getLevel().getBlockState(cell);
+			if (!current.isAir() && !(current.is(ChromaBlocks.CHROMA.get()) && !current.getFluidState().isSource())) return 0;
+			this.updateSnapshots(transaction);
+			getLevel().setBlock(cell, ChromaBlocks.CHROMA.get().defaultBlockState(), 3);
+			return FluidType.BUCKET_VOLUME;
+		}
+		@Override public int extract(int index, FluidResource resource, int amount, TransactionContext transaction) {
+			TransferPreconditions.checkNonEmptyNonNegative(resource, amount);
+			return 0;
+		}
+		private boolean validIndex(int index) { return index >= 0 && index < chromaLocations.size(); }
+		@Override protected List<BlockState> createSnapshot() {
+			return chromaLocations.stream().map(getLevel()::getBlockState).toList();
+		}
+		@Override protected void revertToSnapshot(List<BlockState> snapshot) {
+			for (int i = 0; i < Math.min(snapshot.size(), chromaLocations.size()); i++)
+				getLevel().setBlock(chromaLocations.get(i), snapshot.get(i), 3);
+		}
+		@Override protected void onRootCommit(List<BlockState> originalState) {
+			fluidCooldown = 2;
+			setChanged();
+			validateStructure();
+			getLevel().playSound(null, getBlockPos(), SoundEvents.GENERIC_SWIM, SoundSource.BLOCKS,
+					1F, 0.5F + rand.nextFloat());
+		}
 	}
 
-	@Override
-	@ModDependent(ModList.BCTRANSPORT)
-	public final ConnectOverride overridePipeConnection(PipeType type, ForgeDirection with) {
-		return ConnectOverride.DISCONNECT;
+	@Override public final float getOperationFraction() {
+		return 1F - craftingTick / (float)(DURATION / this.getCraftSpeed());
 	}
-
-	@Override
-	public final float getOperationFraction() {
-		return 1F-craftingTick/(float)(DURATION/this.getCraftSpeed());
-	}
-
-	@Override
-	public final OperationState getState() {
+	@Override public final OperationState getState() {
 		return this.canCraft() ? hasStructure ? OperationState.RUNNING : OperationState.PENDING : OperationState.INVALID;
 	}
-
-	@Override
-	public final float getAccelerationFactor() {
-		return this.getCraftSpeed() == 1 ? 0 : this.getCraftSpeed();
+	@Override public final float getAccelerationFactor() {
+		int speed = this.getCraftSpeed();
+		return speed == 1 ? 0 : speed;
+	}
+	@Override public final float getMaximumAcceleratability() { return 4; }
+	@Override public final float getProgressToNextStep() {
+		if (focusCrystalTotal < 8) return focusCrystalTotal / 8F;
+		if (focusCrystalTotal >= 16 || !allExquisite) return 0;
+		return (focusCrystalTotal - 8) / 8F;
+	}
+	@Override public final void recountFocusCrystals() { this.validateStructure(); }
+	@Override public final Collection<BlockPos> getRelativeFocusCrystalLocations() {
+		return focusCrystalSpots.stream().map(pos -> pos.subtract(this.getBlockPos())).toList();
 	}
 
-	@Override
-	public final float getMaximumAcceleratability() {
-		return 4;
+	@Override public final int getContainerSize() { return 1; }
+	@Override public final boolean isEmpty() { return inv.get(0).isEmpty(); }
+	@Override public final ItemStack getItem(int slot) { return slot == 0 ? inv.get(0) : ItemStack.EMPTY; }
+	@Override public final ItemStack removeItem(int slot, int amount) {
+		ItemStack removed = slot == 0 ? ContainerHelper.removeItem(inv, slot, amount) : ItemStack.EMPTY;
+		if (!removed.isEmpty()) this.inventoryChanged();
+		return removed;
+	}
+	@Override public final ItemStack removeItemNoUpdate(int slot) {
+		return slot == 0 ? ContainerHelper.takeItem(inv, 0) : ItemStack.EMPTY;
+	}
+	@Override public final void setItem(int slot, ItemStack stack) {
+		if (slot != 0) return;
+		inv.set(0, stack.copyWithCount(Math.min(stack.getCount(), this.getMaxStackSize())));
+		this.inventoryChanged();
+	}
+	@Override public final void clearContent() { inv.set(0, ItemStack.EMPTY); this.inventoryChanged(); }
+	@Override public final boolean stillValid(Player player) { return this.isPlayerAccessible(player); }
+	@Override public final int[] getSlotsForFace(Direction side) { return new int[0]; }
+	@Override public final boolean canPlaceItemThroughFace(int slot, ItemStack stack, Direction side) { return false; }
+	@Override public final boolean canTakeItemThroughFace(int slot, ItemStack stack, Direction side) { return false; }
+
+	@Override public final boolean onlyAllowOwnersToMine() { return true; }
+	@Override public final boolean onlyAllowOwnersToUse() { return true; }
+	@Override public final boolean isOwnedByPlayer(Player player) {
+		return placerUUID == null || placerUUID.equals(player.getUUID());
+	}
+	@Override public void getTagsToWriteToStack(CompoundTag tag) {
+		if (this.getPlacerName() != null && !this.getPlacerName().isEmpty()) tag.putString("place", this.getPlacerName());
+		if (placerUUID != null) tag.putString("placeUUID", placerUUID.toString());
+	}
+	@Override public void setDataFromItemStackTag(ItemStack stack) {
+		CompoundTag tag = ReikaItemHelper.getStackTag(stack);
+		if (tag == null) return;
+		placer = tag.getStringOr("place", "");
+		if (tag.contains("placeUUID")) placerUUID = UUID.fromString(tag.getStringOr("placeUUID", ""));
+	}
+	@Override public void addTooltipInfo(List list, boolean shift) {}
+
+	@Override public void breakBlock() {
+		this.dropItem();
+		if (this.getLevel() != null) CACHE.remove(new WorldLocation(this));
 	}
 
-	@Override
-	public final float getProgressToNextStep() {
-		if (focusCrystalTotal < 8) {
-			return focusCrystalTotal/8F;
-		}
-		if (focusCrystalTotal >= 16)
-			return 0;
-		if (!allExquisite)
-			return 0;
-		return (focusCrystalTotal-8)/8F;
+	public static void clearCache() { CACHE.clear(); }
+	public static WorldLocation searchForMatch(Predicate<WorldLocation> check) {
+		synchronized (CACHE) { return CACHE.stream().filter(check).findFirst().orElse(null); }
 	}
 
-	@Override
-	public final void recountFocusCrystals() {
-		this.validateStructure();
+	@Override protected void saveAdditional(ValueOutput output) {
+		super.saveAdditional(output);
+		ContainerHelper.saveAllItems(output, inv);
+		output.putBoolean("struct", hasStructure);
+		output.putInt("craft", craftingTick);
+		output.putInt("focus", focusCrystalTotal);
+		output.putBoolean("exq", allExquisite);
 	}
-
-	@Override
-	public final Collection<Coordinate> getRelativeFocusCrystalLocations() {
-		Collection<Coordinate> ret = new ArrayList();
-		for (Coordinate c : focusCrystalSpots) {
-			ret.add(c.offset(-xCoord, -yCoord, -zCoord));
-		}
-		return ret;
+	@Override protected void loadAdditional(ValueInput input) {
+		super.loadAdditional(input);
+		inv.clear();
+		ContainerHelper.loadAllItems(input, inv);
+		hasStructure = input.getBooleanOr("struct", true);
+		craftingTick = input.getIntOr("craft", 0);
+		focusCrystalTotal = input.getIntOr("focus", 0);
+		allExquisite = input.getBooleanOr("exq", false);
+		craftingPlayer = null;
 	}
-
-	@Override
-	public void getTagsToWriteToStack(NBTTagCompound NBT) {
-		this.writeOwnerData(NBT);
+	@Override protected void writeSyncTag(CompoundTag tag) {
+		super.writeSyncTag(tag);
+		tag.putBoolean("struct", hasStructure);
+		tag.putInt("craft", craftingTick);
+		tag.putInt("focus", focusCrystalTotal);
+		tag.putBoolean("exq", allExquisite);
+		RegistryAccess access = this.getLevel() == null ? RegistryAccess.EMPTY : this.getLevel().registryAccess();
+		ItemStack.OPTIONAL_CODEC.encodeStart(access.createSerializationContext(NbtOps.INSTANCE), inv.get(0))
+				.result().ifPresent(encoded -> tag.put("renderItem", encoded));
 	}
-
-	@Override
-	public void setDataFromItemStackTag(ItemStack is) {
-		this.readOwnerData(is);
+	@Override protected void readSyncTag(CompoundTag tag) {
+		super.readSyncTag(tag);
+		hasStructure = tag.getBooleanOr("struct", true);
+		craftingTick = tag.getIntOr("craft", 0);
+		focusCrystalTotal = tag.getIntOr("focus", 0);
+		allExquisite = tag.getBooleanOr("exq", false);
+		RegistryAccess access = this.getLevel() == null ? RegistryAccess.EMPTY : this.getLevel().registryAccess();
+		net.minecraft.nbt.Tag itemTag = tag.get("renderItem");
+		inv.set(0, itemTag == null ? ItemStack.EMPTY : ItemStack.OPTIONAL_CODEC
+				.parse(access.createSerializationContext(NbtOps.INSTANCE), itemTag)
+				.result().orElse(ItemStack.EMPTY));
 	}
-
-	public final void breakBlock() {
-		if (inv[0] != null)
-			this.dropItem();
-		cache.remove(new WorldLocation(this));
-	}
-
-	public final boolean dropsInventoryOnBroken() {
-		return false;
-	}
-
-	public static void clearCache() {
-		cache.clear();
-	}
-
-	public static WorldLocation searchForMatch(Function<WorldLocation, Boolean> check) {
-		return cache.iterateAsSearch(check);
-	}
-
-	@Override
-	public final int fill(ForgeDirection from, FluidStack resource, boolean doFill) {
-		return this.canFill(from, resource.getFluid()) && resource.amount >= 1000 && (!doFill || this.tryAddBucketToStructure()) ? 1000 : 0;
-	}
-
-	private boolean tryAddBucketToStructure() {
-		Collection<Coordinate> li = this.getChromaLocations();
-		for (Coordinate c : li) {
-			if (c.getBlock(worldObj).isAir(worldObj, c.xCoord, c.yCoord, c.zCoord) || (c.getBlock(worldObj) == ChromaBlocks.CHROMA.getBlockInstance() && c.getBlockMetadata(worldObj) != 0)) {
-				c.setBlock(worldObj, ChromaBlocks.CHROMA.getBlockInstance());
-				ReikaSoundHelper.playSoundFromServerAtBlock(worldObj, c.xCoord, c.yCoord, c.zCoord, "game.neutral.swim", 1, 0.5F+rand.nextFloat(), true);
-				fluidCooldown = 2;
-				return true;
-			}
-		}
-		return false;
-	}
-
-	@Override
-	public final FluidStack drain(ForgeDirection from, FluidStack resource, boolean doDrain) {
-		return null;
-	}
-
-	@Override
-	public final FluidStack drain(ForgeDirection from, int maxDrain, boolean doDrain) {
-		return null;
-	}
-
-	@Override
-	public final boolean canFill(ForgeDirection from, Fluid fluid) {
-		return fluidCooldown == 0 && fluid == ChromatiCraft.chroma && !worldObj.isRemote;
-	}
-
-	@Override
-	public final boolean canDrain(ForgeDirection from, Fluid fluid) {
-		return false;
-	}
-
-	@Override
-	public final FluidTankInfo[] getTankInfo(ForgeDirection from) {
-		return new FluidTankInfo[0];
-	}
-
-	@Override
-	public void addTooltipInfo(List li, boolean shift) {
-
-	}
-
 }

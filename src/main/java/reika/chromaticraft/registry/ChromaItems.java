@@ -18,6 +18,7 @@ import reika.chromaticraft.item.ItemChromaBerry;
 import reika.chromaticraft.item.ItemChromaEther;
 import reika.chromaticraft.item.ItemElementalStone;
 import reika.chromaticraft.item.ItemCrystalShard;
+import reika.chromaticraft.items.ItemStorageCrystal;
 
 /**
  * ChromatiCraft item registry. Port-in-progress rewrite of the 1.7.10 {@code ChromaItems} enum into
@@ -107,6 +108,31 @@ public final class ChromaItems {
 	/** V33a KEY: persistent UUID and auto-open binding mode use CUSTOM_DATA. */
 	public static final DeferredItem<reika.chromaticraft.item.ItemDoorKey> DOOR_KEY =
 			reg("door_key", () -> new reika.chromaticraft.item.ItemDoorKey(itemProperties()));
+	/** V33a MISC metadata 1, promoted to its own registry identity for the Charger upgrade slot. */
+	public static final DeferredItem<Item> SPEED_UPGRADE =
+			reg("speed_upgrade", () -> new Item(itemProperties().stacksTo(1)));
+	/** V33a DIMGEN metadata 9, consumed by the Player Aura Infuser's DIMENSION boost. */
+	public static final DeferredItem<Item> GLOW_CAVE_DUST =
+			reg("glow_cave_dust", () -> new Item(itemProperties()));
+	/** V33a ARTEFACT metadata 1. It has none of the harmful full-artefact behavior. */
+	public static final DeferredItem<Item> UNKNOWN_ARTEFACT_FRAGMENT =
+			reg("unknown_artefact_fragment", () -> new Item(itemProperties().stacksTo(1)));
+	/** V33a STORAGE metadata 0-6, promoted to seven stable item identities. */
+	public static final EnumMap<StorageCrystalTier, DeferredItem<ItemStorageCrystal>> STORAGE_CRYSTALS =
+			new EnumMap<>(StorageCrystalTier.class);
+	static {
+		for (StorageCrystalTier tier : StorageCrystalTier.list)
+			STORAGE_CRYSTALS.put(tier, reg(tier.registryName(),
+					() -> new ItemStorageCrystal(tier, itemProperties())));
+	}
+
+	public static ItemStack storageCrystalStack(StorageCrystalTier tier) {
+		return new ItemStack(STORAGE_CRYSTALS.get(tier).get());
+	}
+
+	public static boolean isStorageCrystal(ItemStack stack) {
+		return ItemStorageCrystal.isStorageCrystal(stack);
+	}
 	/** The former SHARD metadata item, split into one registered item per crystal element. */
 	public static final EnumMap<CrystalElement, DeferredItem<ItemCrystalShard>> SHARDS = new EnumMap<>(CrystalElement.class);
 	/** V33a {@code case SHARD: meta >= 16 ? "Boosted " : ""} — the port previously mis-called this "Charged". */

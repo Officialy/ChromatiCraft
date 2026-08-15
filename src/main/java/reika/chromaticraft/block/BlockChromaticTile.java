@@ -46,6 +46,12 @@ public class BlockChromaticTile extends BlockTEBase {
     public void setPlacedBy(Level world, BlockPos pos, BlockState state, LivingEntity placer, ItemStack stack) {
         super.setPlacedBy(world, pos, state, placer, stack);
         BlockEntity blockEntity = world.getBlockEntity(pos);
+        // V33a's ItemChromaPlacer assigned the player to every TileEntityChromaticBase before
+        // restoring the stack NBT. Modern one-block-per-tile BlockItems come through this common
+        // block instead; omitting the assignment left generic owned tiles (notably the eight Power
+        // Crystals) ownerless and made their normal player-placed progression loop unreachable.
+        if (placer instanceof Player player && blockEntity instanceof BlockEntityBase base)
+            base.setPlacer(player);
         if (blockEntity instanceof NBTTile nbtTile)
             nbtTile.setDataFromItemStackTag(stack);
     }

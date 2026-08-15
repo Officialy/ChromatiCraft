@@ -44,6 +44,19 @@ public final class ChromaFeatures {
             BIOME_SOURCES.register("proxima",
                     () -> reika.chromaticraft.world.dimension.biome.ProximaBiomeSource.CODEC);
 
+    /**
+     * V33a's radial terrain profile is the only part of its generator that was not stock vanilla, so
+     * it enters the modern pipeline as a density function and everything else - noise, interpolation,
+     * cell lattice, surface pass - stays vanilla's.
+     */
+    public static final DeferredRegister<com.mojang.serialization.MapCodec<? extends net.minecraft.world.level.levelgen.DensityFunction>> DENSITY_FUNCTION_TYPES =
+            DeferredRegister.create(Registries.DENSITY_FUNCTION_TYPE, ChromatiCraft.MODID);
+
+    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends net.minecraft.world.level.levelgen.DensityFunction>,
+            com.mojang.serialization.MapCodec<reika.chromaticraft.world.dimension.ProximaTerrainDensityFunction>> PROXIMA_TERRAIN =
+            DENSITY_FUNCTION_TYPES.register("proxima_terrain",
+                    () -> reika.chromaticraft.world.dimension.ProximaTerrainDensityFunction.CODEC);
+
     public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> CAVE_CRYSTAL =
             FEATURES.register("cave_crystal", CrystalFeature::new);
     /**

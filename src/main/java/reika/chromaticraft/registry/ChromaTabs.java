@@ -52,6 +52,10 @@ public final class ChromaTabs {
 			if (seen.add(item))
 				event.accept(item);
 		}
+		// V33a lists an empty and a fully charged example for every storage tier. The empty
+		// identities were accepted above; the component-bearing full forms must be supplied here.
+		for (StorageCrystalTier tier : StorageCrystalTier.list)
+			event.accept(reika.chromaticraft.items.ItemStorageCrystal.fullStack(tier));
 		// V33a exposed both the empty and fully populated lexicons, plus one programmed fragment for
 		// every obtainable research page. Distinct CUSTOM_DATA stacks must be supplied explicitly.
 		event.accept(reika.chromaticraft.item.ItemChromaBook.creativeStack());

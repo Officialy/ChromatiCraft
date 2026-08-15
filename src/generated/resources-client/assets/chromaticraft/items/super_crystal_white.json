@@ -4,7 +4,7 @@
     "base": "chromaticraft:block/super_crystal_item_white",
     "model": {
       "type": "chromaticraft:cave_crystal",
-      "base_texture": "minecraft:block/smooth_stone",
+      "base_texture": "minecraft:block/obsidian",
       "element": "white",
       "texture": "chromaticraft:block/crystal/crystal_outline"
     }

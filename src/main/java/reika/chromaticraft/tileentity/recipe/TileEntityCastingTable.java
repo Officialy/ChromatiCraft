@@ -477,6 +477,7 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver
 
     private void tickCraftingSound() {
         if (activeRecipe == null || activeRecipe.value().duration() <= 20) return;
+		CastingTableRecipe recipe = activeRecipe.value();
         craftSoundTimer++;
         int interval = switch (this.getTier()) {
             case CRAFTING, TEMPLE -> 1;
@@ -486,6 +487,16 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver
             craftSoundTimer = 0;
             ChromaSounds.CRAFTING.playSoundAtBlock(this);
         }
+		// V33a checks recipe-specific harmonics independently every crafting tick. Storage crystals
+		// supply 0.5 and 2, with the shared root note at pitch 1.
+		if (!recipe.completion().harmonics().isEmpty() && this.getLevel().getRandom().nextInt(12) == 0) {
+			for (float pitch : recipe.completion().harmonics()) {
+				if (pitch != 1 && this.getLevel().getRandom().nextInt(50) == 0)
+					ChromaSounds.CASTHARMONIC.playSoundAtBlock(this, 1, pitch);
+			}
+			if (this.getLevel().getRandom().nextInt(25) == 0)
+				ChromaSounds.CASTHARMONIC.playSoundAtBlock(this, 1, 1);
+		}
     }
     private void completeCraft() {
         if (!this.craftStateStillValid() || !this.hasRequiredAura()) { this.cancelCraft(); return; }
@@ -493,13 +504,15 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver
         int amount = recipe.stackable() ? craftingAmount : 1;
         ResourceKey<Recipe<?>> recipeKey = activeRecipeKey;
         UUID playerId = craftingPlayer;
+		// Capture output components before the centre input is consumed. V33a StorageCrystalRecipe's
+		// getOutputTag returns the central crystal's NBT so upgrades never erase stored lumens.
+		ItemStack output = recipe.output(this.snapshot());
+		output.setCount(output.getCount() * amount);
         mutatingInventory = true;
         for (GridIngredient required : recipe.grid()) this.consumeGridSlot(required.slot(), amount);
         Map<BlockPos, TileEntityItemStand> stands = this.getOtherStands();
         for (StandIngredient required : recipe.stands()) this.consumeStand(stands.get(required.offset()), amount);
         for (AuraRequirement aura : recipe.aura()) this.drainEnergy(aura.element(), aura.amount() * amount);
-        ItemStack output = recipe.output();
-        output.setCount(output.getCount() * amount);
         if (this.getItem(9).isEmpty()) this.setItem(9, output);
         else this.getItem(9).grow(output.getCount());
         this.pushOutputToAdjacentInventories();
@@ -521,6 +534,8 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver
             CastingProgression.markCrafted(player, recipe.tier());
             ProgressStage.CASTING.stepPlayerTo(player);
             if (recipe.tier() == CastingTableRecipe.Tier.PYLON) ProgressStage.LINK.stepPlayerTo(player);
+			for (ProgressStage stage : recipe.completion().grantedProgress())
+				stage.stepPlayerTo(player);
             player.giveExperiencePoints(recipe.experience() * amount / 4);
         }
         ChromaSounds.CRAFTDONE.playSoundAtBlock(this);
@@ -836,5 +851,4 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver
     // CHROMA-PORT: enhancement effects and optional Botania pool interaction remain forward references until those
     // registered subsystems land; none of their casting inputs or persistent data has been erased.
 }
-
 

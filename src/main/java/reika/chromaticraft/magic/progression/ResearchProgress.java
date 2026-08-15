@@ -57,7 +57,7 @@ public final class ResearchProgress {
 						serverPlayer.getName().getString(), e.toString());
 			}
 			if (notify)
-				ChromaNetwork.sendProgressionNote(serverPlayer, level.ordinal());
+				ChromaNetwork.sendResearchLevelNote(serverPlayer, level.ordinal());
 		}
 		return true;
 	}

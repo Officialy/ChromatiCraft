@@ -27,6 +27,7 @@ public final class ChromaDataProviders {
 		event.createProvider(ChromaLootProvider::new);
 		event.createProvider(ChromaTestStructureProvider::new);
 		event.createProvider(ChromaStructureTemplateProvider::new);
+		event.createProvider(ChromaVillagePoolProvider::new);
 		event.createProvider(ChromaCastingRecipeProvider::new);
 		event.createProvider(ChromaRecipeProvider::new);
 		event.createDatapackRegistryObjects(ChromaWorldGenProvider.buildRegistrySet());

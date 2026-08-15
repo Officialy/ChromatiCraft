@@ -3,17 +3,22 @@ package reika.chromaticraft.magic;
 import java.util.ArrayList;
 import java.util.TreeSet;
 import java.util.function.BiFunction;
+import java.util.function.Supplier;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 
 import reika.chromaticraft.magic.lore.LoreManager;
 import reika.chromaticraft.magic.progression.ProgressAccess;
 import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.registry.CrystalElement;
+import reika.chromaticraft.registry.ChromaCraftingItems;
+import reika.chromaticraft.registry.ChromaItems;
+import reika.chromaticraft.registry.ChromaTieredItems;
 import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
 
 /**
@@ -43,6 +48,7 @@ public enum ElementBufferCapacityBoost {
 
 	private final ProgressAccess requirement;
 	private ElementBufferCapacityBoost dependency;
+	private Supplier<ItemStack> ingredient;
 
 	/** V33a keeps the granted boosts as a string list inside the buffer's own tag. */
 	private static final String NBT_TAG = "BufferBoosts";
@@ -83,17 +89,12 @@ public enum ElementBufferCapacityBoost {
 		return this.isAvailableToPlayer(ep) && this.isTagPresent(ep);
 	}
 
-	/**
-	 * V33a hands over a boost the moment its stage is reached unless it has a crafting ingredient, in
-	 * which case it has to be bought through the buffer-upgrade interface.
-	 *
-	 * <p>CHROMA-PORT: that interface, and the five ingredients it consumes (ether berries, glow cave
-	 * dust, boost root, echo crystal, unknown fragments), are not ported. Every boost is automatic for
-	 * now, so the ceilings still follow progression — they simply cannot be withheld behind an item.
-	 * Restore the ingredient table with the upgrade interface.
-	 */
 	public boolean isGrantedAutomatically() {
-		return true;
+		return ingredient == null;
+	}
+
+	public ItemStack getIngredient() {
+		return ingredient != null ? ingredient.get() : ItemStack.EMPTY;
 	}
 
 	private static ListTag boostTag(Player ep) {
@@ -168,6 +169,12 @@ public enum ElementBufferCapacityBoost {
 		for (int i = 1; i <= CTM.ordinal(); i++)
 			list[i].dependency = list[i - 1];
 		LORECOMPLETE.dependency = TOWER;
+
+		ALLOYS.ingredient = () -> ChromaItems.craftingStack(ChromaCraftingItems.ETHER_BERRIES);
+		DIMENSION.ingredient = () -> new ItemStack(ChromaItems.GLOW_CAVE_DUST.get());
+		TURBOCHARGE.ingredient = () -> ChromaItems.tieredStack(ChromaTieredItems.BOOST_ROOT);
+		CTM.ingredient = () -> ChromaItems.tieredStack(ChromaTieredItems.ECHO_CRYSTAL);
+		TOWER.ingredient = () -> new ItemStack(ChromaItems.UNKNOWN_ARTEFACT_FRAGMENT.get());
 
 		for (int n : new int[] {1, 3, 6, 9, 12, 15, 18, 24, 27, 30, 36, 48, 60, 72, 90, 96})
 			NICE_NUMBERS.add(n);

@@ -70,6 +70,30 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 				Codec.intRange(1, Integer.MAX_VALUE).fieldOf("amount").forGetter(AuraRequirement::amount)
 		).apply(instance, AuraRequirement::new));
 	}
+	/**
+	 * Source recipe callbacks expressed as data instead of a runtime recipe-class hierarchy.
+	 * Storage crystals use all three parts: carry the central crystal's energy forward, award the
+	 * STORAGE stage on completion, and play the source 0.5/1/2 casting chord.
+	 */
+	public record CompletionBehavior(boolean copyCenterCustomData,
+			List<ProgressStage> grantedProgress, List<Float> harmonics) {
+		public static final CompletionBehavior DEFAULT = new CompletionBehavior(false, List.of(), List.of());
+		public static final Codec<CompletionBehavior> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+				Codec.BOOL.optionalFieldOf("copy_center_custom_data", false)
+						.forGetter(CompletionBehavior::copyCenterCustomData),
+				PROGRESS_CODEC.listOf().optionalFieldOf("granted_progress", List.of())
+						.forGetter(CompletionBehavior::grantedProgress),
+				Codec.FLOAT.listOf().optionalFieldOf("harmonics", List.of())
+						.forGetter(CompletionBehavior::harmonics)
+		).apply(instance, CompletionBehavior::new));
+
+		public CompletionBehavior {
+			grantedProgress = List.copyOf(grantedProgress);
+			harmonics = List.copyOf(harmonics);
+			if (harmonics.stream().anyMatch(pitch -> !Float.isFinite(pitch) || pitch <= 0))
+				throw new IllegalArgumentException("Casting harmonics must be finite positive pitches");
+		}
+	}
 
 	private final Tier tier;
 	private final List<GridIngredient> grid;
@@ -99,6 +123,7 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 	 * bare-table tier.
 	 */
 	private final List<ProgressStage> requiredProgress;
+	private final CompletionBehavior completion;
 
 	public CastingTableRecipe(Tier tier, List<GridIngredient> grid, List<StandIngredient> stands,
 			List<RuneRequirement> runes, List<AuraRequirement> aura, ItemStackTemplate output,
@@ -134,17 +159,19 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 			int duration, int experience, List<ProgressStage> requiredProgress,
 			float stackingFactor, boolean stackable, boolean requiresTuningKey) {
 		this(tier, grid, stands, runes, aura, output, duration, experience, requiredProgress,
-				stackingFactor, stackable, requiresTuningKey, Integer.MAX_VALUE, 0.75F);
+				stackingFactor, stackable, requiresTuningKey, Integer.MAX_VALUE, 0.75F,
+				CompletionBehavior.DEFAULT);
 	}
 
 	public CastingTableRecipe(Tier tier, List<GridIngredient> grid, List<StandIngredient> stands,
 			List<RuneRequirement> runes, List<AuraRequirement> aura, ItemStackTemplate output,
 			int duration, int experience, List<ProgressStage> requiredProgress,
 			float stackingFactor, boolean stackable, boolean requiresTuningKey,
-			int penaltyThreshold, float penaltyMultiplier) {
+			int penaltyThreshold, float penaltyMultiplier, CompletionBehavior completion) {
 		this.penaltyThreshold = penaltyThreshold;
 		this.penaltyMultiplier = penaltyMultiplier;
 		this.requiredProgress = List.copyOf(requiredProgress);
+		this.completion = completion;
 		this.tier = tier;
 		this.grid = List.copyOf(grid);
 		this.stands = List.copyOf(stands);
@@ -160,6 +187,7 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 	}
 
 	public List<ProgressStage> requiredProgress() { return requiredProgress; }
+	public CompletionBehavior completion() { return completion; }
 
 	private void validate() {
 		Set<Integer> slots = new HashSet<>();
@@ -211,13 +239,23 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 		return true;
 	}
 
-	@Override public ItemStack assemble(CastingRecipeInput input) { return output.create(); }
+	@Override public ItemStack assemble(CastingRecipeInput input) { return this.output(input); }
 	public Tier tier() { return tier; }
 	public List<GridIngredient> grid() { return grid; }
 	public List<StandIngredient> stands() { return stands; }
 	public List<RuneRequirement> runes() { return runes; }
 	public List<AuraRequirement> aura() { return aura; }
 	public ItemStack output() { return output.create(); }
+	/** Creates the committed output, including source-defined central-item NBT transfer. */
+	public ItemStack output(CastingRecipeInput input) {
+		ItemStack created = output.create();
+		if (completion.copyCenterCustomData()) {
+			var custom = input.getItem(4).get(net.minecraft.core.component.DataComponents.CUSTOM_DATA);
+			if (custom != null)
+				created.set(net.minecraft.core.component.DataComponents.CUSTOM_DATA, custom);
+		}
+		return created;
+	}
 	public int duration() { return duration; }
 	public int experience() { return experience; }
 	public float stackingFactor() { return stackingFactor; }
@@ -226,7 +264,14 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 	/** Datagen convenience: V33a threshold = max(1, typicalCraftedAmount*3/4) for non-core recipes. */
 	public CastingTableRecipe withPenaltyThreshold(int threshold) {
 		return new CastingTableRecipe(tier, grid, stands, runes, aura, output, duration, experience,
-				requiredProgress, stackingFactor, stackable, requiresTuningKey, threshold, penaltyMultiplier);
+				requiredProgress, stackingFactor, stackable, requiresTuningKey, threshold,
+				penaltyMultiplier, completion);
+	}
+	public CastingTableRecipe withCompletionBehavior(boolean copyCenterCustomData,
+			List<ProgressStage> grantedProgress, List<Float> harmonics) {
+		return new CastingTableRecipe(tier, grid, stands, runes, aura, output, duration, experience,
+				requiredProgress, stackingFactor, stackable, requiresTuningKey, penaltyThreshold,
+				penaltyMultiplier, new CompletionBehavior(copyCenterCustomData, grantedProgress, harmonics));
 	}
 	public int penaltyThreshold() { return penaltyThreshold; }
 	public float penaltyMultiplier() { return penaltyMultiplier; }
@@ -270,7 +315,8 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 			Codec.BOOL.optionalFieldOf("stackable", true).forGetter(recipe -> recipe.stackable),
 			Codec.BOOL.optionalFieldOf("requires_tuning_key", false).forGetter(recipe -> recipe.requiresTuningKey),
 			Codec.intRange(1, Integer.MAX_VALUE).optionalFieldOf("penalty_threshold", Integer.MAX_VALUE).forGetter(recipe -> recipe.penaltyThreshold),
-			Codec.floatRange(0F, 1F).optionalFieldOf("penalty_multiplier", 0.75F).forGetter(recipe -> recipe.penaltyMultiplier)
+			Codec.floatRange(0F, 1F).optionalFieldOf("penalty_multiplier", 0.75F).forGetter(recipe -> recipe.penaltyMultiplier),
+			CompletionBehavior.CODEC.optionalFieldOf("completion", CompletionBehavior.DEFAULT).forGetter(recipe -> recipe.completion)
 	).apply(instance, CastingTableRecipe::new));
 
 
@@ -295,6 +341,11 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 		buffer.writeBoolean(recipe.requiresTuningKey);
 		buffer.writeVarInt(recipe.penaltyThreshold);
 		buffer.writeFloat(recipe.penaltyMultiplier);
+		buffer.writeBoolean(recipe.completion.copyCenterCustomData());
+		buffer.writeVarInt(recipe.completion.grantedProgress().size());
+		for (ProgressStage stage : recipe.completion.grantedProgress()) buffer.writeVarInt(stage.ordinal());
+		buffer.writeVarInt(recipe.completion.harmonics().size());
+		for (float pitch : recipe.completion.harmonics()) buffer.writeFloat(pitch);
 	}
 	private static CastingTableRecipe decode(RegistryFriendlyByteBuf buffer) {
 		int tierOrdinal = buffer.readVarInt();
@@ -317,9 +368,15 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 		boolean requiresTuningKey = buffer.readBoolean();
 		int penaltyThreshold = buffer.readVarInt();
 		float penaltyMultiplier = buffer.readFloat();
+		boolean copyCenterCustomData = buffer.readBoolean();
+		List<ProgressStage> grantedProgress = new ArrayList<>();
+		for (int i = buffer.readVarInt(); i > 0; i--) grantedProgress.add(ProgressStage.list[buffer.readVarInt()]);
+		List<Float> harmonics = new ArrayList<>();
+		for (int i = buffer.readVarInt(); i > 0; i--) harmonics.add(buffer.readFloat());
 		return new CastingTableRecipe(Tier.values()[tierOrdinal], grid, stands, runes, aura,
 				result, duration, experience, progress, stackingFactor, stackable, requiresTuningKey,
-				penaltyThreshold, penaltyMultiplier);
+				penaltyThreshold, penaltyMultiplier,
+				new CompletionBehavior(copyCenterCustomData, grantedProgress, harmonics));
 	}
 	private static CrystalElement element(int ordinal) {
 		if (ordinal < 0 || ordinal >= CrystalElement.elements.length) throw new IllegalArgumentException("Invalid crystal element ordinal " + ordinal);

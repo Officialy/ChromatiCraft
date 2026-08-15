@@ -24,6 +24,7 @@ public final class ChromaAbilityData {
 
 	private static final String ABILITY_TAG = "chromabilities";
 	private static final String PYLON_ID = "pylon";
+	private static final String DOUBLECRAFT_ID = "doublecraft";
 
 	private ChromaAbilityData() {}
 
@@ -34,6 +35,17 @@ public final class ChromaAbilityData {
 	public static void setPylonImmunity(Player player, boolean enabled) {
 		CompoundTag abilities = getAbilities(player);
 		abilities.putBoolean(PYLON_ID, enabled);
+		player.getPersistentData().put(ABILITY_TAG, abilities);
+	}
+
+	/** V33a {@code Chromabilities.DOUBLECRAFT.enabledOn}: doubles Aura Infuser output. */
+	public static boolean hasDoubleCraft(Player player) {
+		return getAbilities(player).getBooleanOr(DOUBLECRAFT_ID, false);
+	}
+
+	public static void setDoubleCraft(Player player, boolean enabled) {
+		CompoundTag abilities = getAbilities(player);
+		abilities.putBoolean(DOUBLECRAFT_ID, enabled);
 		player.getPersistentData().put(ABILITY_TAG, abilities);
 	}
 

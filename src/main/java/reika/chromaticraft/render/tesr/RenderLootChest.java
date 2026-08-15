@@ -52,11 +52,16 @@ public final class RenderLootChest implements BlockEntityRenderer<TileEntityLoot
 		poseStack.translate(0.5F, 0, 0.5F);
 		poseStack.mulPose(Axis.YP.rotationDegrees(-state.facing.toYRot()));
 		poseStack.translate(-0.5F, 0, -0.5F);
-		model.setLidRotation(-state.open * ((float)Math.PI / 2F));
+		float lidRotation = -state.open * ((float)Math.PI / 2F);
 		PoseStack modelPose = new PoseStack();
 		modelPose.last().set(poseStack.last());
 		collector.submitCustomGeometry(poseStack, RenderTypes.entityCutout(TEXTURE),
-				(unused, vertices) -> model.render(modelPose, vertices, state.lightCoords, OverlayTexture.NO_OVERLAY));
+				(unused, vertices) -> {
+					// Custom geometry is consumed after submit(). Keep the animation value with this node;
+					// mutating the shared baked model before queuing let another chest/frame overwrite it.
+					model.setLidRotation(lidRotation);
+					model.render(modelPose, vertices, state.lightCoords, OverlayTexture.NO_OVERLAY);
+				});
 		poseStack.popPose();
 	}
 

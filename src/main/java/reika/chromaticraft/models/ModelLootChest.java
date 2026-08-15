@@ -38,12 +38,16 @@ public final class ModelLootChest {
 	public static LayerDefinition createBodyLayer() {
 		MeshDefinition mesh = new MeshDefinition();
 		PartDefinition root = mesh.getRoot();
+		// ModelPart uses the modern chest coordinate convention directly. The previous transliteration
+		// mixed V33a's old pivoted cuboids with a renderer that no longer performs its -0.5/+1 legacy
+		// transform, placing the lid inside a ten-pixel-tall lower box. These are the equivalent 14-pixel
+		// single-chest coordinates used by 26.2, with V33a's texture and linked knob retained.
 		root.addOrReplaceChild("below", CubeListBuilder.create().texOffs(0, 19)
 				.addBox(1, 0, 1, 14, 10, 14), PartPose.ZERO);
 		root.addOrReplaceChild("lid", CubeListBuilder.create().texOffs(0, 0)
-				.addBox(1, -5, -14, 14, 5, 14), PartPose.offset(0, 7, 15));
+				.addBox(1, 0, 0, 14, 5, 14), PartPose.offset(0, 9, 1));
 		root.addOrReplaceChild("knob", CubeListBuilder.create().texOffs(0, 0)
-				.addBox(7, -2, -15, 2, 4, 1), PartPose.offset(0, 7, 15));
+				.addBox(7, -2, 14, 2, 4, 1), PartPose.offset(0, 9, 1));
 		return LayerDefinition.create(mesh, 64, 64);
 	}
 }

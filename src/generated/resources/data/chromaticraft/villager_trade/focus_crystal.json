@@ -1,0 +1,14 @@
+{
+  "gives": {
+    "components": {
+      "minecraft:custom_data": {
+        "tier": 0
+      }
+    },
+    "id": "chromaticraft:focus_crystal"
+  },
+  "max_uses": 2.1474836E9,
+  "wants": {
+    "id": "minecraft:emerald"
+  }
+}

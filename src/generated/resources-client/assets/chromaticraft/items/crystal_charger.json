@@ -1,0 +1,9 @@
+{
+  "model": {
+    "type": "minecraft:special",
+    "base": "chromaticraft:block/crystal_charger_inventory",
+    "model": {
+      "type": "chromaticraft:crystal_charger"
+    }
+  }
+}

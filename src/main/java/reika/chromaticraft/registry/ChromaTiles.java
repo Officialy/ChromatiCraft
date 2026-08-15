@@ -27,6 +27,9 @@ import reika.chromaticraft.tileentity.networking.TileEntityCrystalRepeater;
 import reika.chromaticraft.tileentity.networking.TileEntitySkypeater;
 import reika.chromaticraft.tileentity.recipe.TileEntityCastingTable;
 import reika.chromaticraft.tileentity.auxiliary.TileEntityFocusCrystal;
+import reika.chromaticraft.tileentity.auxiliary.TileEntityCrystalCharger;
+import reika.chromaticraft.tileentity.recipe.TileEntityItemInfuser;
+import reika.chromaticraft.tileentity.recipe.TileEntityPlayerInfuser;
 import reika.chromaticraft.tileentity.recipe.TileEntityItemStand;
 import reika.dragonapi.interfaces.registry.TileEnum;
 
@@ -48,6 +51,9 @@ public enum ChromaTiles implements TileEnum {
 	CRYSTAL("chroma.chromacrystal", ChromaBlocks.POWER_CRYSTAL, TileEntityChromaCrystal.class),
 	STAND("chroma.itemstand", ChromaBlocks.ITEM_STAND, TileEntityItemStand.class),
 	TABLE("chroma.castingtable", ChromaBlocks.CASTING_TABLE, TileEntityCastingTable.class),
+	CHARGER("chroma.charger", ChromaBlocks.CRYSTAL_CHARGER, TileEntityCrystalCharger.class),
+	INFUSER("chroma.infuser", ChromaBlocks.ITEM_INFUSER, TileEntityItemInfuser.class),
+	PLAYERINFUSER("chroma.playerinfuser", ChromaBlocks.PLAYER_INFUSER, TileEntityPlayerInfuser.class),
 	FOCUSCRYSTAL("chroma.focuscrystal", ChromaBlocks.FOCUS_CRYSTAL, TileEntityFocusCrystal.class),
 	DATANODE("chroma.datanode", ChromaBlocks.DATA_NODE, TileEntityDataNode.class);
 

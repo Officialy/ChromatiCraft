@@ -1,0 +1,81 @@
+{
+  "type": "chromaticraft:casting",
+  "duration": 200,
+  "experience": 200,
+  "grid": [
+    {
+      "ingredient": "chromaticraft:crystal_core",
+      "slot": 4
+    }
+  ],
+  "result": {
+    "id": "chromaticraft:crystal_charger"
+  },
+  "stands": [
+    {
+      "ingredient": "minecraft:smooth_stone_slab",
+      "offset": [
+        0,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "minecraft:obsidian",
+      "offset": [
+        2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "minecraft:obsidian",
+      "offset": [
+        2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "minecraft:obsidian",
+      "offset": [
+        -2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "minecraft:obsidian",
+      "offset": [
+        -2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:crystal_shard_white",
+      "offset": [
+        2,
+        0,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:crystal_shard_white",
+      "offset": [
+        -2,
+        0,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:crystal_shard_white",
+      "offset": [
+        0,
+        0,
+        -2
+      ]
+    }
+  ],
+  "tier": "multiblock"
+}

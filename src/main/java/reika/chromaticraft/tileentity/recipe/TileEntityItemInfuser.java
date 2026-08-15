@@ -1,136 +1,98 @@
 package reika.chromaticraft.tileentity.recipe;
 
-import net.minecraft.client.Minecraft;
-import net.minecraft.entity.item.EntityItem;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
 
-import reika.chromaticraft.auxiliary.ChromaStacks;
+import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
+import reika.chromaticraft.magic.ChromaAbilityData;
 import reika.chromaticraft.magic.progression.ProgressStage;
+import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.ChromaBlocks;
+import reika.chromaticraft.registry.ChromaCraftingItems;
+import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.ChromaStructures;
 import reika.chromaticraft.registry.ChromaTiles;
-import reika.chromaticraft.registry.Chromabilities;
-import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.render.particle.EntityChromaFluidFX;
+import reika.chromaticraft.render.particle.ChromaParticle;
 import reika.dragonapi.instantiable.data.blockstruct.FilledBlockArray;
-import reika.dragonapi.instantiable.data.immutable.Coordinate;
-import reika.dragonapi.libraries.ReikaPlayerAPI;
-import reika.dragonapi.libraries.java.ReikaRandomHelper;
 import reika.dragonapi.libraries.registry.ReikaItemHelper;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
-
-public class TileEntityItemInfuser extends TileEntityAuraInfuser {
+/** V33a Raw Crystal -> Iridescent Crystal Shard machine, including overflow and DOUBLECRAFT. */
+public final class TileEntityItemInfuser extends TileEntityAuraInfuser {
 
 	private static final String EXTRA_DROP = "requiredExtra";
 
-	@Override
-	public ChromaTiles getTile() {
-		return ChromaTiles.INFUSER;
+	public TileEntityItemInfuser(BlockPos pos, BlockState state) {
+		super(ChromaBlockEntities.ITEM_INFUSER.get(), pos, state);
 	}
 
-	@Override
-	protected ChromaStructures getStructure() {
-		return ChromaStructures.INFUSION;
-	}
+	@Override public ChromaTiles getTile() { return ChromaTiles.INFUSER; }
+	@Override protected ChromaStructures getStructure() { return ChromaStructures.INFUSION; }
 
 	@Override
-	protected void collectFocusCrystalLocations(FilledBlockArray arr) {
-		for (Coordinate c : arr.keySet()) {
-			if (c.yCoord == yCoord-1 && c.getTaxicabDistanceTo(new Coordinate(this)) > 2) {
-				if (arr.getBlockAt(c.xCoord, c.yCoord, c.zCoord) == ChromaBlocks.PYLONSTRUCT.getBlockInstance()) {
-					Coordinate c2 = c.offset(0, 1, 0);
-					focusCrystalSpots.add(c2);
-				}
-			}
+	protected void collectFocusCrystalLocations(FilledBlockArray array) {
+		BlockPos origin = this.getBlockPos();
+		for (BlockPos cell : array.keySet()) {
+			if (cell.getY() == origin.getY() - 1 && cell.distManhattan(origin) > 2
+					&& array.getBlockAt(cell.getX(), cell.getY(), cell.getZ())
+							== ChromaBlocks.crystallineStone(StoneTypes.BRICKS).get())
+				focusCrystalSpots.add(cell.above());
 		}
 	}
 
-	@Override
-	public boolean isItemValidForSlot(int slot, ItemStack is) {
-		return ReikaItemHelper.matchStacks(is, ChromaStacks.rawCrystal);
+	@Override public boolean canPlaceItem(int slot, ItemStack stack) {
+		return slot == 0 && stack.is(ChromaItems.CRAFTING.get(ChromaCraftingItems.RAW_CRYSTAL).get());
 	}
-
-	@Override
-	protected boolean isReady() {
-		return ReikaItemHelper.matchStacks(inv[0], ChromaStacks.rawCrystal);
-	}
-
-	@Override
-	protected EntityItem dropItem() {
-		EntityItem ei = super.dropItem();
-		if (ei == null)
-			return ei;
-		ItemStack is = ei.getEntityItem();
-		if (ReikaItemHelper.matchStacks(is, ChromaStacks.iridCrystal)) {
-			if (is.stackTagCompound != null) {
-				int extra = is.stackTagCompound.getInteger(EXTRA_DROP);
-				if (extra > 0) {
-					is.stackTagCompound.removeTag(EXTRA_DROP);
-					if (is.stackTagCompound.hasNoTags())
-						is.stackTagCompound = null;
-					ReikaItemHelper.dropItem(ei, ReikaItemHelper.getSizedItemStack(is, extra));
-					ei.setEntityItemStack(is);
-				}
-			}
-		}
-		return ei;
-	}
+	@Override protected boolean isReady() { return this.canPlaceItem(0, inv.get(0)); }
 
 	@Override
 	protected void onCraft() {
-		int n = inv[0].stackSize;
-		EntityPlayer ep = this.getCraftingPlayer();
-		if (!ReikaPlayerAPI.isFake(ep) && Chromabilities.DOUBLECRAFT.enabledOn(ep))
-			n *= 2;
-		int left = 0;
-		if (n > ChromaStacks.iridCrystal.getMaxStackSize()) {
-			left = n-ChromaStacks.iridCrystal.getMaxStackSize();
-			n = ChromaStacks.iridCrystal.getMaxStackSize();
+		int count = inv.get(0).getCount();
+		Player player = this.getCraftingPlayer();
+		if (player != null && ChromaAbilityData.hasDoubleCraft(player)) count *= 2;
+		ItemStack result = ChromaItems.craftingStack(ChromaCraftingItems.IRIDESCENT_CRYSTAL);
+		int extra = Math.max(0, count - result.getMaxStackSize());
+		result.setCount(Math.min(count, result.getMaxStackSize()));
+		if (extra > 0) {
+			CompoundTag tag = new CompoundTag();
+			tag.putInt(EXTRA_DROP, extra);
+			result.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
 		}
-		inv[0] = ReikaItemHelper.getSizedItemStack(ChromaStacks.iridCrystal, n);
-		if (left > 0) {
-			inv[0].stackTagCompound = new NBTTagCompound();
-			inv[0].stackTagCompound.setInteger(EXTRA_DROP, left);
-		}
-		ProgressStage.INFUSE.stepPlayerTo(ep);
+		inv.set(0, result);
+		if (player != null) ProgressStage.INFUSE.stepPlayerTo(player);
 	}
 
 	@Override
-	public int getInventoryStackLimit() {
-		return 64;
+	protected ItemEntity dropItem() {
+		ItemEntity entity = super.dropItem();
+		if (entity == null) return null;
+		ItemStack stack = entity.getItem();
+		if (!stack.is(ChromaItems.CRAFTING.get(ChromaCraftingItems.IRIDESCENT_CRYSTAL).get())) return entity;
+		CompoundTag tag = ReikaItemHelper.getStackTag(stack);
+		if (tag == null) return entity;
+		int extra = tag.getIntOr(EXTRA_DROP, 0);
+		if (extra <= 0) return entity;
+		tag.remove(EXTRA_DROP);
+		ReikaItemHelper.setStackTag(stack, tag);
+		ItemStack second = stack.copyWithCount(extra);
+		ItemEntity overflow = new ItemEntity(entity.level(), entity.getX(), entity.getY(), entity.getZ(), second);
+		entity.level().addFreshEntity(overflow);
+		return entity;
 	}
 
-	@Override
-	@SideOnly(Side.CLIENT)
-	protected void spawnParticles(World world, int x, int y, int z) {
-		double ang = Math.toRadians(this.getTicksExisted()*2%360);
-		float fac = (float)Math.sin(Math.toRadians(this.getTicksExisted()*4));
-		float s = 1.25F+0.25F*fac;
-		for (int i = 0; i < 360; i += 60) {
-			boolean tall = i%120 == 0;
-			float g = tall ? 0.375F*(0.5F+0.5F*fac) : 0.375F;
-			double a = ang+Math.toRadians(i);
-			double r = 1.85;
-			double v = tall ? 0.0425*(1+fac) : ReikaRandomHelper.getRandomPlusMinus(0.0425, 0.005);
-			double px = x+0.5+r*Math.sin(a);
-			double py = y-0.75;
-			double pz = z+0.5+r*Math.cos(a);
-			double vx = -v*(px-x-0.5);
-			double vy = 0.3;
-			double vz = -v*(pz-z-0.5);
-			EntityChromaFluidFX fx = new EntityChromaFluidFX(CrystalElement.WHITE, world, px, py, pz, vx, vy, vz).setScale(s).setGravity(g);
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-		}
+	@Override protected void spawnCraftingParticles(Level world, BlockPos pos) {
+		ChromaParticle.spawnItemInfuserCrafting(world, pos, this.getTicksExisted(), world.getRandom());
+	}
+	@Override protected void spawnCompletionParticles(Level world, BlockPos pos) {
+		ChromaParticle.spawnItemInfuserCompletion(world, pos, world.getRandom());
 	}
 
-	@Override
-	public boolean hasWork() {
-		return this.getState() == OperationState.RUNNING;
-	}
-
+	/** Focused test seam: completes through the production craft/consume/progression path. */
+	public void completeCraftForTest() { this.craft(); }
 }

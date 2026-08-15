@@ -9,141 +9,39 @@
  ******************************************************************************/
 package reika.chromaticraft.tileentity.auxiliary;
 
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.MenuProvider;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
 
-import reika.chromaticraft.auxiliary.ChromaStacks;
 import reika.chromaticraft.base.tileentity.InventoriedCrystalReceiver;
+import reika.chromaticraft.container.MenuCrystalCharger;
 import reika.chromaticraft.items.ItemStorageCrystal;
-import reika.chromaticraft.magic.ElementTagCompound;
 import reika.chromaticraft.magic.network.CrystalNetworker;
 import reika.chromaticraft.magic.progression.ProgressStage;
+import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.ChromaTiles;
 import reika.chromaticraft.registry.CrystalElement;
-import reika.dragonapi.base.OneSlotMachine;
-import reika.dragonapi.libraries.java.ReikaArrayHelper;
-import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
-import reika.dragonapi.libraries.registry.ReikaItemHelper;
 
-public class TileEntityCrystalCharger extends InventoriedCrystalReceiver implements OneSlotMachine {
-
-	private float angle;
+/** Complete V33a two-slot network charger for the component-backed Storage Crystal family. */
+public final class TileEntityCrystalCharger extends InventoriedCrystalReceiver implements MenuProvider {
 
 	public static final int CAPACITY = 120000;
+	private static final int TOGGLE_MASK = (1 << CrystalElement.elements.length) - 1;
 
-	private boolean[] toggle = ReikaArrayHelper.getTrueArray(16);
+	private float angle;
+	private int toggles = TOGGLE_MASK;
 
-	@Override
-	public void updateEntity(World world, int x, int y, int z, int meta) {
-		super.updateEntity(world, x, y, z, meta);
-		if (!world.isRemote && this.getCooldown() == 0 && checkTimer.checkCap()) {
-			this.checkAndRequest();
-		}
-
-		if (this.hasItem()) {
-			for (CrystalElement e : energy.elementSet()) {
-				if (this.isToggled(e)) {
-					int max = this.getMaxTransfer(e);
-					int amt = this.getEnergy(e);
-					ItemStorageCrystal cry = this.item();
-					int put = Math.min(max, Math.min(amt, cry.getSpace(e, inv[0])));
-					if (put > 0) {
-						cry.addEnergy(inv[0], e, put);
-						this.drainEnergy(e, put);
-						ProgressStage.CHARGECRYSTAL.stepPlayerTo(this.getPlacer());
-					}
-				}
-			}
-		}
-	}
-
-	@Override
-	protected void onInventorySlotChanged(int slot) {
-		CrystalNetworker.instance.breakPaths(this);
-	}
-
-	public float getAngle() {
-		return angle;
-	}
-
-	private ItemStorageCrystal item() {
-		return ((ItemStorageCrystal)inv[0].getItem());
-	}
-
-	private int getMaxTransfer(CrystalElement e) {
-		int max = 10+(int)Math.sqrt(this.getEnergy(e));
-		return this.hasSpeedUpgrade() ? 8*max : max;
-	}
-
-	public boolean hasSpeedUpgrade() {
-		return ReikaItemHelper.matchStacks(inv[1], ChromaStacks.speedUpgrade);
-	}
-
-	private void checkAndRequest() {
-		for (int i = 0; i < CrystalElement.elements.length; i++) {
-			CrystalElement e = CrystalElement.elements[i];
-			if (this.isToggled(e)) {
-				int capacity = this.getMaxStorage(e);
-				int has = this.getEnergy(e);
-				if (this.hasItem()) {
-					capacity += ItemStorageCrystal.getCapacity(inv[0]);
-					has += ItemStorageCrystal.getStoredEnergy(inv[0], e);
-				}
-				int space = capacity-has;
-				if (space > 0) {
-					this.requestEnergy(e, space);
-				}
-			}
-		}
-	}
-
-	@Override
-	public int getReceiveRange() {
-		return 20;
-	}
-
-	@Override
-	public boolean isConductingElement(CrystalElement e) {
-		return e != null;
-	}
-
-	@Override
-	public int maxThroughput() {
-		return 4000;
-	}
-
-	@Override
-	public boolean canConduct() {
-		return true;
-	}
-
-	@Override
-	public boolean isItemValidForSlot(int slot, ItemStack is) {
-		switch(slot) {
-			case 0:
-				return ChromaItems.STORAGE.matchWith(is);
-			case 1:
-				return ReikaItemHelper.matchStacks(is, ChromaStacks.speedUpgrade);
-			default:
-				return false;
-		}
-	}
-
-	@Override
-	public boolean canExtractItem(int slot, ItemStack is, int side) {
-		return slot == 0 && ChromaItems.STORAGE.matchWith(is) && this.item().isFull(is);
-	}
-
-	@Override
-	public int getSizeInventory() {
-		return 2;
-	}
-
-	@Override
-	public int getInventoryStackLimit() {
-		return 1;
+	public TileEntityCrystalCharger(BlockPos pos, BlockState state) {
+		super(ChromaBlockEntities.CRYSTAL_CHARGER.get(), pos, state);
 	}
 
 	@Override
@@ -152,55 +50,151 @@ public class TileEntityCrystalCharger extends InventoriedCrystalReceiver impleme
 	}
 
 	@Override
-	protected void animateWithTick(World world, int x, int y, int z) {
+	public void updateEntity(Level world, BlockPos pos) {
+		super.updateEntity(world, pos);
+		if (world.isClientSide()) return;
+		if (this.getCooldown() == 0 && checkTimer.checkCap()) this.checkAndRequest();
+		this.transferToCrystal();
+	}
+
+	private void transferToCrystal() {
+		if (!this.hasItem()) return;
+		ItemStack crystal = inv.get(0);
+		for (CrystalElement element : CrystalElement.elements) {
+			if (!this.isToggled(element)) continue;
+			int stored = this.getEnergy(element);
+			int put = Math.min(this.getMaxTransfer(element),
+					Math.min(stored, ItemStorageCrystal.getSpace(element, crystal)));
+			if (put <= 0) continue;
+			ItemStorageCrystal.addEnergy(crystal, element, put);
+			this.drainEnergy(element, put);
+			Player placer = this.getPlacer();
+			if (placer != null) ProgressStage.CHARGECRYSTAL.stepPlayerTo(placer);
+			this.setChanged();
+		}
+	}
+
+	private int getMaxTransfer(CrystalElement element) {
+		int maximum = 10 + (int)Math.sqrt(this.getEnergy(element));
+		return this.hasSpeedUpgrade() ? 8 * maximum : maximum;
+	}
+
+	public boolean hasSpeedUpgrade() {
+		return inv.get(1).is(ChromaItems.SPEED_UPGRADE.get());
+	}
+
+	private void checkAndRequest() {
+		for (CrystalElement element : CrystalElement.elements) {
+			if (!this.isToggled(element)) continue;
+			int capacity = this.getMaxStorage(element);
+			int stored = this.getEnergy(element);
+			if (this.hasItem()) {
+				capacity += ItemStorageCrystal.getCapacity(inv.get(0));
+				stored += ItemStorageCrystal.getStoredEnergy(inv.get(0), element);
+			}
+			int space = capacity - stored;
+			if (space > 0) this.requestEnergy(element, space);
+		}
+	}
+
+	@Override
+	protected void onInventorySlotChanged(int slot) {
+		if (this.getLevel() != null && !this.getLevel().isClientSide())
+			CrystalNetworker.instance.breakPaths(this);
+	}
+
+	@Override
+	protected void animateWithTick(Level world, BlockPos pos) {
 		if (world == null) {
 			angle = 0;
 			return;
 		}
-		int energy = this.energy.getTotalEnergy();
-		if (this.hasItem()) {
-			ElementTagCompound tag = this.item().getStoredTags(inv[0]);
-			energy += tag.getTotalEnergy();
-		}
-		if (energy > 0) {
-			angle += ReikaMathLibrary.logbase(energy, 2);
-			if (angle >= 180) {
-				//ReikaSoundHelper.playSound(ChromaSounds., x+0.5, y+0.5, z+0.5, 1, 1);
-				angle -= 180;
-			}
-		}
+		int total = energy.getTotalEnergy();
+		if (this.hasItem()) total += ItemStorageCrystal.getTotalEnergy(inv.get(0));
+		if (total > 0) angle = (float)((angle + Math.log(total) / Math.log(2)) % 180D);
+	}
+
+	public float getAngle(float partialTick) {
+		return angle;
+	}
+
+	@Override public int getReceiveRange() { return 20; }
+	@Override public boolean isConductingElement(CrystalElement element) { return element != null; }
+	@Override public int maxThroughput() { return 4000; }
+	@Override public boolean canConduct() { return true; }
+	@Override public int getMaxStorage(CrystalElement element) { return CAPACITY; }
+
+	@Override
+	public int getSizeInventory() {
+		return 2;
 	}
 
 	@Override
-	public int getMaxStorage(CrystalElement e) {
-		return CAPACITY;
+	public int getMaxStackSize() {
+		return 1;
+	}
+
+	@Override
+	public boolean canPlaceItem(int slot, ItemStack stack) {
+		return switch (slot) {
+			case 0 -> ChromaItems.isStorageCrystal(stack);
+			case 1 -> stack.is(ChromaItems.SPEED_UPGRADE.get());
+			default -> false;
+		};
+	}
+
+	@Override
+	public boolean canTakeItemThroughFace(int slot, ItemStack stack, Direction side) {
+		return slot == 0 && ChromaItems.isStorageCrystal(stack) && ItemStorageCrystal.isFull(stack);
 	}
 
 	public boolean hasItem() {
-		return inv[0] != null && ChromaItems.STORAGE.matchWith(inv[0]);
+		return ChromaItems.isStorageCrystal(inv.get(0));
 	}
 
-	public boolean isToggled(CrystalElement e) {
-		return toggle[e.ordinal()];
+	public boolean isToggled(CrystalElement element) {
+		return (toggles & 1 << element.ordinal()) != 0;
 	}
 
-	public void toggle(CrystalElement e) {
-		toggle[e.ordinal()] = !toggle[e.ordinal()];
+	public int toggleFlags() {
+		return toggles;
+	}
+
+	public void toggle(CrystalElement element) {
+		toggles ^= 1 << element.ordinal();
+		this.setChanged();
+		this.syncAllData(false);
 	}
 
 	@Override
-	protected void readSyncTag(NBTTagCompound NBT) {
-		super.readSyncTag(NBT);
-
-		if (NBT.hasKey("toggle"))
-			toggle = ReikaArrayHelper.booleanFromBitflags(NBT.getInteger("toggle"), 16);
+	protected void readSyncTag(CompoundTag tag) {
+		super.readSyncTag(tag);
+		toggles = tag.contains("toggle") ? tag.getIntOr("toggle", TOGGLE_MASK) & TOGGLE_MASK : TOGGLE_MASK;
 	}
 
 	@Override
-	protected void writeSyncTag(NBTTagCompound NBT) {
-		super.writeSyncTag(NBT);
-
-		NBT.setInteger("toggle", ReikaArrayHelper.booleanToBitflags(toggle));
+	protected void writeSyncTag(CompoundTag tag) {
+		super.writeSyncTag(tag);
+		tag.putInt("toggle", toggles);
 	}
 
+	@Override
+	public Component getDisplayName() {
+		return Component.translatable("block.chromaticraft.crystal_charger");
+	}
+
+	@Override
+	public AbstractContainerMenu createMenu(int id, Inventory inventory, Player player) {
+		return new MenuCrystalCharger(id, inventory, this);
+	}
+
+	/** Focused test seam: production transfer remains the exact per-tick implementation above. */
+	public void runTransferCycleForTest() {
+		this.transferToCrystal();
+	}
+
+	/** Focused persistence/menu test seam without exposing the mutable backing array. */
+	public void setToggleFlagsForTest(int flags) {
+		toggles = flags & TOGGLE_MASK;
+	}
 }

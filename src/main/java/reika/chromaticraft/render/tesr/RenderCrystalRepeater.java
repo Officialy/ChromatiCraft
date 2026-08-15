@@ -356,6 +356,17 @@ public class RenderCrystalRepeater implements BlockEntityRenderer<TileEntityCrys
     }
 
     @Override
+    public net.minecraft.world.phys.AABB getRenderBoundingBox(TileEntityCrystalRepeater repeater) {
+        // The renderer owns connection beams, the manipulator's dashed target line and the range
+        // sphere, all of which extend far beyond the one-block BE box. NeoForge culls submitted
+        // geometry against this scope; using the default cube let a long line disappear from the far
+        // end as soon as the repeater itself left the camera frustum.
+        int range = Math.max(repeater.getSendRange(), repeater.getReceiveRange());
+        var pos = repeater.getBlockPos();
+        return new net.minecraft.world.phys.AABB(pos).inflate(range + 1);
+    }
+
+    @Override
     public boolean shouldRenderOffScreen() {
         return true;
     }

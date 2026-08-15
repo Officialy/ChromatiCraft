@@ -10,6 +10,9 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.ClickAction;
+import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.entity.SlotAccess;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -31,10 +34,49 @@ public final class ItemChromaBook extends Item {
 
 	@Override
 	public InteractionResult use(Level level, Player player, InteractionHand hand) {
-		if (level.isClientSide() && hand == InteractionHand.MAIN_HAND)
+		if (hand != InteractionHand.MAIN_HAND)
+			return InteractionResult.PASS;
+		if (player.isShiftKeyDown()) {
+			if (!level.isClientSide() && player instanceof ServerPlayer server
+					&& !LexiconData.read(player.getItemInHand(hand)).creative())
+				server.openMenu(new net.minecraft.world.SimpleMenuProvider(
+						(id, inventory, ignored) -> new reika.chromaticraft.container.MenuLexiconPages(id, inventory),
+						Component.literal("Chromic Lexicon")));
+		}
+		else if (level.isClientSide()) {
 			reika.chromaticraft.client.ChromaClientScreens.openLexicon(player,
-					player.getItemInHand(hand), player.isShiftKeyDown());
+					player.getItemInHand(hand), false);
+		}
 		return InteractionResult.SUCCESS;
+	}
+
+	/**
+	 * V33a {@code ClickItemInSlotEvent}: clicking a blank fragment on the lexicon stores it as a
+	 * recoverable blank; right-clicking the lexicon with an empty cursor extracts one again.
+	 */
+	@Override
+	public boolean overrideOtherStackedOnMe(ItemStack book, ItemStack carried, Slot slot,
+			ClickAction action, Player player, SlotAccess carriedAccess) {
+		if (!carried.isEmpty() && carried.is(reika.chromaticraft.registry.ChromaItems.INFO_FRAGMENT.get())) {
+			var fragment = reika.chromaticraft.magic.progression.ResearchFragmentData.read(carried);
+			if (!fragment.blank() || fragment.random())
+				return false;
+			if (!player.level().isClientSide()) {
+				int amount = action == ClickAction.PRIMARY ? carried.getCount() : 1;
+				LexiconData.read(book).withBlanksDelta(amount).writeTo(book);
+				carried.shrink(amount);
+				carriedAccess.set(carried.isEmpty() ? ItemStack.EMPTY : carried);
+			}
+			return true;
+		}
+		if (carried.isEmpty() && action == ClickAction.SECONDARY && LexiconData.read(book).blanks() > 0) {
+			if (!player.level().isClientSide()) {
+				LexiconData.read(book).withBlanksDelta(-1).writeTo(book);
+				carriedAccess.set(new ItemStack(reika.chromaticraft.registry.ChromaItems.INFO_FRAGMENT.get()));
+			}
+			return true;
+		}
+		return false;
 	}
 
 	@Override

@@ -155,6 +155,10 @@ import reika.chromaticraft.world.dimension.ProximaGenerators;
 import reika.chromaticraft.world.dimension.RegionMapper;
 import reika.chromaticraft.world.dimension.BiomeDistributor;
 import reika.chromaticraft.world.dimension.ProximaTerrainProfile;
+import reika.chromaticraft.registry.ChromaDimensions;
+import reika.chromaticraft.world.dimension.ProximaNoiseSettings;
+import reika.chromaticraft.world.dimension.ProximaTerrainDensityFunction;
+import net.minecraft.world.level.levelgen.DensityFunction;
 import reika.chromaticraft.world.dimension.biome.ProximaBiomeType;
 import reika.chromaticraft.world.dimension.biome.ProximaBiomes;
 import reika.chromaticraft.world.dimension.biome.ProximaSubBiomes;
@@ -310,6 +314,60 @@ public final class ChromaGameTests {
 		register(event, env, "proxima_generator_gate", 200, ChromaGameTests::proximaGeneratorGate);
 		register(event, env, "proxima_biome_source", 200, ChromaGameTests::proximaBiomeSource);
 		register(event, env, "proxima_terrain_profile", 200, ChromaGameTests::proximaTerrainProfile);
+		register(event, env, "proxima_dimension_registered", 200, ChromaGameTests::proximaDimensionGenerates);
+	}
+
+	/**
+	 * Proxima now exists as a real level, and it builds real terrain — which is what finally opens the
+	 * Portal Rift's destination half.
+	 */
+	private static void proximaDimensionGenerates(GameTestHelper helper) {
+		var registries = helper.getLevel().registryAccess();
+
+		// The noise settings and dimension type are ordinary datapack worldgen registries, so they load
+		// here and can be asserted directly.
+		var noise = registries.lookupOrThrow(net.minecraft.core.registries.Registries.NOISE_SETTINGS)
+				.getOrThrow(ProximaNoiseSettings.PROXIMA).value();
+		helper.assertTrue(noise.seaLevel() == 63, "V33a's sea level is 63");
+		helper.assertTrue(!noise.aquifersEnabled() && !noise.oreVeinsEnabled(),
+				"V33a has neither aquifers nor ore veins");
+		helper.assertTrue(noise.defaultBlock().is(Blocks.STONE) && noise.defaultFluid().is(Blocks.WATER),
+				"Proxima is stone and water");
+		var settings = noise.noiseSettings();
+		helper.assertTrue(settings.minY() == 0 && settings.height() == 256,
+				"V33a WorldProviderChroma.getHeight is 256 from y=0");
+		// V33a samples 5x33x5 per chunk: four horizontal cells of four blocks, thirty-two vertical of
+		// eight. Getting this wrong silently changes the shape of every hill in the dimension.
+		helper.assertTrue(settings.getCellWidth() == 4 && settings.getCellHeight() == 8,
+				"the noise lattice must match V33a's, found " + settings.getCellWidth() + "x"
+						+ settings.getCellHeight());
+
+		var type = registries.lookupOrThrow(net.minecraft.core.registries.Registries.DIMENSION_TYPE)
+				.getOrThrow(ChromaDimensions.PROXIMA_TYPE).value();
+		helper.assertTrue(type.minY() == 0 && type.height() == 256 && type.logicalHeight() == 256,
+				"Proxima must be 0-256, matching V33a getHeight");
+		helper.assertTrue(type.hasSkyLight() && type.hasFixedTime() && !type.hasCeiling(),
+				"isSurfaceWorld true, a pinned celestial angle, and no ceiling");
+		helper.assertTrue(type.coordinateScale() == 1.0,
+				"V33a getMovementFactor is 1, so Proxima shares the Overworld's coordinate scale");
+		helper.assertTrue(type.ambientLight() == 0,
+				"V33a leaves the light brightness table at the vanilla default");
+
+		// The terrain profile the router feeds on, checked at its two ends. This is what decides the
+		// shape of the dimension, and it is pure arithmetic, so it is assertable without a level.
+		var offset = new ProximaTerrainDensityFunction(ProximaTerrainDensityFunction.Mode.OFFSET);
+		var factor = new ProximaTerrainDensityFunction(ProximaTerrainDensityFunction.Mode.FACTOR);
+		DensityFunction.FunctionContext atOrigin = new DensityFunction.SinglePointContext(0, 64, 0);
+		DensityFunction.FunctionContext farOut = new DensityFunction.SinglePointContext(400000, 64, 400000);
+		helper.assertTrue(offset.compute(atOrigin) > offset.compute(farOut),
+				"the centre of Proxima must sit higher than its outskirts");
+		// The reciprocal is the easy thing to get backwards: a big factor means terrain hugs its base
+		// height, so the flat centre must have the LARGER factor.
+		helper.assertTrue(factor.compute(atOrigin) == 10,
+				"the flat centre must take the maximum factor, found " + factor.compute(atOrigin));
+		helper.assertTrue(factor.compute(farOut) < factor.compute(atOrigin),
+				"the mountainous outskirts must take a smaller factor, or the dimension is inside out");
+		helper.succeed();
 	}
 
 	/**
