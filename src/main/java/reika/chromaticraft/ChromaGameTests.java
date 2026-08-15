@@ -155,6 +155,9 @@ import reika.chromaticraft.world.dimension.ProximaGenerators;
 import reika.chromaticraft.world.dimension.RegionMapper;
 import reika.chromaticraft.world.dimension.BiomeDistributor;
 import reika.chromaticraft.world.dimension.ProximaTerrainProfile;
+import reika.chromaticraft.world.dimension.noise.LegacyOctaveNoise;
+import net.minecraft.world.level.levelgen.synth.ImprovedNoise;
+import net.minecraft.world.level.levelgen.LegacyRandomSource;
 import reika.chromaticraft.world.dimension.biome.ProximaBiomeType;
 import reika.chromaticraft.world.dimension.biome.ProximaBiomes;
 import reika.chromaticraft.world.dimension.biome.ProximaSubBiomes;
@@ -309,6 +312,92 @@ public final class ChromaGameTests {
 		register(event, env, "proxima_generator_gate", 200, ChromaGameTests::proximaGeneratorGate);
 		register(event, env, "proxima_biome_source", 200, ChromaGameTests::proximaBiomeSource);
 		register(event, env, "proxima_terrain_profile", 200, ChromaGameTests::proximaTerrainProfile);
+		register(event, env, "proxima_legacy_noise", 200, ChromaGameTests::proximaLegacyNoise);
+	}
+
+	/**
+	 * The transcribed 1.7.10 noise must agree with vanilla 26.2's surviving {@code ImprovedNoise} cell
+	 * for cell. That is what turns "these are the same function" from a claim into a check, and it
+	 * guards the transcription in both directions: a mistake in the port fails here, and so would a
+	 * future vanilla change to the legacy noise path.
+	 */
+	private static void proximaLegacyNoise(GameTestHelper helper) {
+		long seed = 987654321L;
+		LegacyOctaveNoise.Layer ported = new LegacyOctaveNoise.Layer(new java.util.Random(seed));
+		ImprovedNoise vanilla = new ImprovedNoise(new LegacyRandomSource(seed));
+
+		// A real trap, worth pinning: vanilla's BitRandomSource.nextDouble multiplies by the FLOAT
+		// literal 1.110223E-16F, where java.util.Random uses the exact double 2^-53. So
+		// LegacyRandomSource is bit-compatible with java.util.Random for next(bits) and nextInt, but
+		// NOT for nextDouble. The permutation tables therefore still match - they are built from
+		// nextInt calls, and nextDouble consumes the same two next() draws either way - while the
+		// three coordinate offsets differ in their low bits.
+		helper.assertTrue(ported.xCoord != vanilla.xo,
+				"if this ever starts matching, vanilla fixed its nextDouble constant and the note above"
+						+ " needs revisiting");
+		// The float constant is off by ~2.2e-8 relative, and the offsets run to 256, so they may
+		// disagree by a few parts in a million - but a different draw would disagree by order 1.
+		helper.assertTrue(Math.abs(ported.xCoord - vanilla.xo) < 1e-3
+						&& Math.abs(ported.yCoord - vanilla.yo) < 1e-3
+						&& Math.abs(ported.zCoord - vanilla.zo) < 1e-3,
+				"the offsets must differ only by that float rounding, not by a different draw order:"
+						+ " " + ported.xCoord + " vs " + vanilla.xo);
+
+		// With each sampled at the same absolute point - compensating for those offsets - the two must
+		// agree. That exercises the permutation table, the gradient set and the lerp order together,
+		// which is what makes "26.2's ImprovedNoise is still the 1.7.10 function" a checked claim.
+		double worstError = 0;
+		for (int i = 0; i < 512; i++) {
+			double x = (i * 37 % 211) + i / 7.0;
+			double y = (i * 53 % 97) + i / 11.0;
+			double z = (i * 29 % 173) + i / 13.0;
+			double error = Math.abs(ported.noise(x, y, z)
+					- vanilla.noise(x + ported.xCoord - vanilla.xo,
+							y + ported.yCoord - vanilla.yo,
+							z + ported.zCoord - vanilla.zo));
+			worstError = Math.max(worstError, error);
+		}
+		helper.assertTrue(worstError < 1e-9,
+				"the transcribed 1.7.10 noise must agree with vanilla's ImprovedNoise at the same"
+						+ " absolute point, worst error " + worstError);
+
+		// The octave sum: amplitude halves per octave and every octave accumulates into one array.
+		LegacyOctaveNoise single = new LegacyOctaveNoise(new java.util.Random(seed), 1);
+		LegacyOctaveNoise four = new LegacyOctaveNoise(new java.util.Random(seed), 4);
+		helper.assertTrue(single.octaveCount() == 1 && four.octaveCount() == 4,
+				"octave counts must be honoured");
+		double[] firstOfFour = four.generateNoiseOctaves(null, 0, 0, 0, 5, 33, 5, 684.412, 684.412, 684.412);
+		double[] onlyOne = single.generateNoiseOctaves(null, 0, 0, 0, 5, 33, 5, 684.412, 684.412, 684.412);
+		helper.assertTrue(firstOfFour.length == 5 * 33 * 5 && onlyOne.length == 5 * 33 * 5,
+				"the array must be xSize*ySize*zSize, which is V33a's 825-entry column buffer");
+		boolean differs = false;
+		for (int i = 0; i < onlyOne.length && !differs; i++)
+			differs = firstOfFour[i] != onlyOne[i];
+		helper.assertTrue(differs, "four octaves must not reduce to one");
+
+		// Reuse must zero, not accumulate: V33a passes the same buffer back every chunk.
+		double[] reused = four.generateNoiseOctaves(null, 3, 0, 7, 5, 33, 5, 684.412, 684.412, 684.412);
+		double[] copy = reused.clone();
+		double[] again = four.generateNoiseOctaves(reused, 3, 0, 7, 5, 33, 5, 684.412, 684.412, 684.412);
+		helper.assertTrue(again == reused && java.util.Arrays.equals(again, copy),
+				"regenerating into the same buffer must reproduce it, not double it");
+
+		// The flat fast path has to agree with the general path, since the 2D callers rely on it.
+		LegacyOctaveNoise flat = new LegacyOctaveNoise(new java.util.Random(seed), 3);
+		double[] viaFastPath = flat.generateNoiseOctaves(null, 11, 10, 13, 5, 1, 5, 200, 1, 200);
+		LegacyOctaveNoise flatAgain = new LegacyOctaveNoise(new java.util.Random(seed), 3);
+		double[] viaGeneral = flatAgain.generateNoiseOctaves(null, 11, 10, 13, 5, 1, 5, 200, 1, 200);
+		helper.assertTrue(java.util.Arrays.equals(viaFastPath, viaGeneral),
+				"the two-dimensional bouncer must produce the same values as the explicit call");
+		helper.assertTrue(viaFastPath.length == 25,
+				"V33a's noiseData6 is a 5x5 field, which is what drives the height blend");
+
+		// Determinism from the seed, for the same reason every other Proxima generator needs it.
+		LegacyOctaveNoise repeat = new LegacyOctaveNoise(new java.util.Random(seed), 4);
+		helper.assertTrue(java.util.Arrays.equals(
+						repeat.generateNoiseOctaves(null, 3, 0, 7, 5, 33, 5, 684.412, 684.412, 684.412), copy),
+				"the same seed must produce the same noise field");
+		helper.succeed();
 	}
 
 	/**

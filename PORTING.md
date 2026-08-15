@@ -4978,3 +4978,52 @@ To unblock it, either add the 1.7.10 vanilla sources for those two classes under
 empirically pin 26.2's `PerlinNoise.createLegacyForBlendedNoise` plus the deprecated `noise` overload
 against known 1.7.10 output. Everything else the generator needs is now in place: the terrain profile,
 the biome source, the painted map, the structure ring and the central region.
+
+### 2026-08-15 — the 1.7.10 noise layer, transcribed and cross-checked
+
+The chunk generator's blocker is gone. With the 1.7.10 sources for `NoiseGeneratorOctaves` and
+`NoiseGeneratorImproved` to hand, `LegacyOctaveNoise` is an exact transcription of both.
+
+**26.2 still ships the same function.** Inspection confirmed vanilla's `ImprovedNoise` is 1.7.10's
+`NoiseGeneratorImproved`: identical `xo/yo/zo = nextDouble()*256` offsets, an identical 256-entry
+permutation shuffled by `nextInt(256-i)`, the identical sixteen gradients in the identical order, and
+the same x-then-y-then-z lerp. What it no longer exposes is `populateNoiseArray` - the bulk lattice
+fill `generateNoiseOctaves` drives - and its permutation table is private, so the sampling half is
+transcribed rather than reached through vanilla. The GameTest asserts the two agree at the same
+absolute point, which makes that a checked claim rather than an assumption.
+
+**Three things that are easy to get wrong, all pinned by the test.**
+
+1. `populateNoiseArray` *accumulates*; it never writes. That is how the octaves sum, so
+   `generateNoiseOctaves` zeroes its buffer once up front and then adds each octave at a halving
+   amplitude. The test regenerates into the same buffer and asserts the result reproduces rather than
+   doubles, because V33a passes the same 825-entry buffer back every chunk.
+2. The index order is x-major, then z, then y - not the x/y/z the parameter names suggest.
+3. The `ySize == 1` branch is not an optimisation of the general path. It drops the y term entirely
+   and walks the array with no y stride, so a single-cell sample taken through it silently compares
+   the wrong function. That cost one debugging cycle here and is now called out in the code.
+
+**A trap worth recording for anyone else porting legacy worldgen.** Vanilla's
+`BitRandomSource.nextDouble()` multiplies by the *float* literal `1.110223E-16F`, where
+`java.util.Random` uses the exact double `2^-53`. So `LegacyRandomSource` is bit-compatible with
+`java.util.Random` for `next(bits)` and `nextInt`, but **not** for `nextDouble` - about 2.2e-8
+relative. The permutation tables still match, because they are built from `nextInt` and `nextDouble`
+consumes the same two `next()` draws either way; only the three coordinate offsets differ in their low
+bits. That is why the port seeds from `java.util.Random` directly rather than routing through
+`LegacyRandomSource`, and why the cross-check compensates the offsets instead of expecting bit
+equality. The test asserts the discrepancy still exists, so a future vanilla fix surfaces here rather
+than silently shifting terrain.
+
+V33a's own generator layout, for the slice that consumes this: `noiseGen1`, `noiseGen2` and
+`noiseGen6` at 16 octaves, `noiseGen3` at **96** (vanilla uses 8), `noiseGen5` at 10, the mob-spawner
+noise at 8, and `noiseGen4` as a 4-octave `NoiseGeneratorPerlin` for the surface stone noise - all
+drawn in that order from one `Random(dimensionSeed)`, so the order is part of the seed. The parabolic
+weighting field is `10 / sqrt(j*j + k*k + 0.2)` over a 5x5 window.
+
+`chromaticraft:proxima_legacy_noise` passes.
+
+**Still to do for the generator body:** `NoiseGeneratorPerlin` (the 4-octave surface noise, a separate
+1.7.10 class), the 5x33x5 to 16x256x16 trilinear interpolation in `generateColumnData`,
+`shiftTerrainGen`'s `VERTICAL_OFFSET = 48` column lift with stone fill beneath, the per-biome surface
+replacement with sand beaches and grass, the bedrock layer, and the `ChunkGenerator` subclass with its
+codec and level-stem registration.
