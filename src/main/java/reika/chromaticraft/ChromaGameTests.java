@@ -152,6 +152,7 @@ import reika.chromaticraft.tileentity.TileEntityCrystalPortal;
 import reika.chromaticraft.auxiliary.structure.PortalStructure;
 import reika.chromaticraft.world.dimension.DimensionStructureType;
 import reika.chromaticraft.world.dimension.ProximaGenerators;
+import reika.chromaticraft.world.dimension.RegionMapper;
 import reika.chromaticraft.world.dimension.StructureCalculator;
 import reika.chromaticraft.block.dimension.structure.lightpanel.BlockLightPanel;
 import reika.chromaticraft.block.dimension.structure.lightpanel.BlockLightSwitch;
@@ -294,6 +295,78 @@ public final class ChromaGameTests {
 		register(event, env, "portal_structure_and_charge", 80, ChromaGameTests::portalStructureAndCharge);
 		register(event, env, "portal_entry_rules", ChromaGameTests::portalEntryRules);
 		register(event, env, "proxima_structure_placement", ChromaGameTests::proximaStructurePlacement);
+		register(event, env, "proxima_central_region", ChromaGameTests::proximaCentralRegion);
+	}
+
+	/**
+	 * The Proxima central region: a twenty-lobe boundary sized from the structure ring, always
+	 * enclosing every structure with V33a's 200-to-1500 block buffer, reproducible from the dimension
+	 * seed, and refusing to be built before the ring exists.
+	 */
+	private static void proximaCentralRegion(GameTestHelper helper) {
+		boolean previous = StructureCalculator.allowUnfinishedStructures;
+		RegionMapper.clear();
+		try {
+			StructureCalculator unplaced = new StructureCalculator(99L);
+			boolean rejected = false;
+			try {
+				RegionMapper.generate(unplaced, 99L);
+			}
+			catch (IllegalStateException expected) {
+				rejected = true;
+			}
+			helper.assertTrue(rejected,
+					"sizing the central region before the structure ring is placed must fail loudly,"
+							+ " not silently size itself off an origin of zero");
+			helper.assertTrue(!RegionMapper.isPointInCentralRegion(0, 0),
+					"with no region generated, nothing may report as inside it");
+
+			StructureCalculator.allowUnfinishedStructures = true;
+			StructureCalculator structures = new StructureCalculator(1234L);
+			structures.generate();
+			RegionMapper region = RegionMapper.generate(structures, 1234L);
+			helper.assertTrue(ProximaGenerators.isReady(ProximaGenerators.Generator.REGION),
+					"generating the region must clear the REGION bit of the generator gate");
+
+			double maxStructure = structures.getMaximumDistanceFromOrigin();
+			// V33a fromMinMaxRadii(min, max, 20): minRadius is the midpoint and each of the twenty
+			// lobes contributes at most (max-min)/2/20, so the curve stays inside [min, max].
+			double min = maxStructure + RegionMapper.MIN_BUFFER;
+			double max = maxStructure + RegionMapper.MAX_BUFFER;
+			for (int degrees = 0; degrees < 360; degrees += 3) {
+				double radius = region.getRadius(degrees);
+				helper.assertTrue(radius >= min - 1 && radius <= max + 1,
+						"the boundary must stay within the 200-1500 block buffer at bearing " + degrees
+								+ ", found " + radius);
+			}
+
+			// The whole point of the buffer: every structure is comfortably inside.
+			for (StructureCalculator.StructurePlacement placement : structures.getPlacements())
+				helper.assertTrue(region.contains(placement.placement().getX(), placement.placement().getZ()),
+						"every placed structure must fall inside the central region, " + placement + " did not");
+			helper.assertTrue(region.contains(0, 0) && RegionMapper.isPointInCentralRegion(0, 0),
+					"the world origin is always inside, and the static accessor must agree");
+			helper.assertTrue(!region.contains(max + 1000, 0) && !region.contains(0, max + 1000),
+					"a point beyond the outer radius is in the outer regions, which is what"
+							+ " OuterRegionsEvents keys off");
+
+			// Reproducibility, for the same reason the structure ring needs it.
+			StructureCalculator sameRing = new StructureCalculator(1234L);
+			sameRing.generate();
+			RegionMapper again = RegionMapper.generate(sameRing, 1234L);
+			for (int degrees = 0; degrees < 360; degrees += 15)
+				helper.assertTrue(again.getRadius(degrees) == region.getRadius(degrees),
+						"the boundary must be reproducible from the dimension seed");
+			RegionMapper different = RegionMapper.generate(sameRing, 4321L);
+			boolean moved = false;
+			for (int degrees = 0; degrees < 360 && !moved; degrees += 15)
+				moved = different.getRadius(degrees) != region.getRadius(degrees);
+			helper.assertTrue(moved, "a different dimension seed must reshape the boundary");
+		}
+		finally {
+			StructureCalculator.allowUnfinishedStructures = previous;
+		}
+		helper.succeed();
 	}
 
 	/**

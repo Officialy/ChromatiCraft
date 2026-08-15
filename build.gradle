@@ -257,6 +257,7 @@ sourceSets.main.java {
     include 'reika/chromaticraft/world/dimension/ProximaGenerators.java'
     include 'reika/chromaticraft/world/dimension/DimensionStructureType.java'
     include 'reika/chromaticraft/world/dimension/StructureCalculator.java'
+    include 'reika/chromaticraft/world/dimension/RegionMapper.java'
     include 'reika/chromaticraft/world/dimension/ChromaTeleporter.java'
     include 'reika/chromaticraft/world/dimension/CheatingPreventionSystem.java'
     include 'reika/chromaticraft/world/dimension/DimensionTuningManager.java'

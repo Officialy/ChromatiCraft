@@ -4663,3 +4663,58 @@ else has to change when they land.
 thirteen biomes plus the custom `BiomeSource` over it, the `ChunkGenerator` with the
 `world/dimension/terrain` shapers, and finally the dimension type and level stem datagen that flips
 `isDimensionLoadable` true.
+
+### 2026-08-15 — Proxima central region
+
+`RegionMapper` is ported, closing the second link of the dimension's dependency chain.
+
+**What it is.** A single twenty-lobe closed curve around the world origin, sized so it always encloses
+every puzzle structure with V33a's buffer: inner radius `maxStructureDistance + 200`, outer
+`maxStructureDistance + 1500`. Everything inside is the dimension proper; stepping outside is what
+`OuterRegionsEvents` reacts to, and `BiomeDistributor` paints the whole interior as the Luminescent
+Sanctuary biome unless a structure blob claims that cell first. `SkyRiverGenerator` measures its
+rivers from `MAX_BUFFER`, so that constant stays public.
+
+It is the reason the placement slice had to land first: the boundary cannot know its own size until
+the structure ring's centre is chosen, and it reads that through
+`StructureCalculator.getMaximumDistanceFromOrigin()`. The lobe geometry, the twenty-lobe count, the
+buffer distances and the seeded generation are all upstream's.
+
+**The wait loop is deliberately gone.** V33a runs its generators on separate threads, so `run()` polls
+`calc.arePositionsDetermined()` in a `Thread.sleep(50)` loop until the structure calculator releases
+it. The port runs them in order instead — `ProximaGenerators.Generator` declares the dependency and
+`StructureCalculator` clears its bit as soon as positions are published — so the loop would be dead
+code, and a sleep loop on a worldgen path is exactly the kind of thing that deadlocks a chunk build.
+Handing an unfinished calculator to `generate` is an ordering mistake and now fails loudly rather than
+sizing the region off an origin of zero. The static accessor answers false before the region exists,
+so a query racing generation cannot crash a chunk build either.
+
+The curve lives on the instance rather than in a static field so it is testable; the static
+`isPointInCentralRegion` that every V33a consumer calls is retained and answers for whichever instance
+is active, which is the same single-level assumption upstream makes.
+
+**Focused validation:**
+
+```text
+.\gradlew.bat :ChromatiCraft:compileJava --console=plain
+BUILD SUCCESSFUL
+
+.\gradlew.bat :ChromatiCraft:runGameTest \
+  -PgameTestSelector=chromaticraft:proxima_central_region --console=plain
+All 1 required tests passed
+
+.\gradlew.bat :ChromatiCraft:runGameTest \
+  -PgameTestSelector=chromaticraft:proxima_structure_placement --console=plain
+All 1 required tests passed
+```
+
+`proxima_central_region` proves that generating before the ring exists is rejected, that nothing
+reports as inside an ungenerated region, that finishing clears the `REGION` gate bit, that the
+boundary stays within the 200-1500 block buffer at every bearing sampled around the full circle, that
+every placed structure and the world origin fall inside while a point past the outer radius does not,
+and that the boundary is reproducible from the dimension seed while a different seed reshapes it.
+
+**Next:** `BiomeDistributor` — the 4096x4096 blob-spread biome map, with `LobulatedCurve` regions for
+the monument and each element's structure field. It consumes the placements and the central region,
+both of which are now live, and is the last generator in the gate before the biome and terrain layers
+can be datagen-registered.
