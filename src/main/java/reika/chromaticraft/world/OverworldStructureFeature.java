@@ -94,6 +94,11 @@ public final class OverworldStructureFeature extends Feature<NoneFeatureConfigur
 		if (natural && !validNaturalSite(world, controllerPos))
 			return false;
 
+		// The Ocean structure is 31 blocks across and can reach past the chunks this step may write
+		// to, which leaves it half built. Resolve the controller position first: the annexes, the
+		// tunnel and the chests all hang off it, so they have to slide together with it.
+		controllerPos = NBTStructureLoader.fitToWriteWindow(world, type.template, controllerPos,
+				type.templateAnchor);
 		List<BlockPos> placed = NBTStructureLoader.place(world, type.template, controllerPos,
 				type.templateAnchor, state -> state, 2);
 		CrystalElement color = CrystalElement.WHITE;

@@ -302,6 +302,7 @@ public final class ChromaGameTests {
 		register(event, env, "heat_lamp_temperature_furnace_loop", ChromaGameTests::heatLampTemperatureFurnaceLoop);
 		register(event, env, "burrow_cache_loot_halves", ChromaGameTests::burrowCacheLootHalves);
 		register(event, env, "structure_chest_fragments", ChromaGameTests::structureChestFragments);
+		register(event, env, "structure_write_window_fit", ChromaGameTests::structureWriteWindowFit);
 		register(event, env, "loot_chest_lid_event", ChromaGameTests::lootChestLidEvent);
 		register(event, env, "loot_chest_trap_signal", ChromaGameTests::lootChestTrapSignal);
 		register(event, env, "structure_trap_and_wiring", ChromaGameTests::structureTrapAndWiring);
@@ -1433,6 +1434,54 @@ public final class ChromaGameTests {
 		helper.assertTrue(chestsWithFragment > 0, "no placed chest filled from " + BuiltInLootTables
 				.SIMPLE_DUNGEON.identifier() + " across 64 seeds contained an Information Fragment");
 		helper.getLevel().setBlock(pos, Blocks.AIR.defaultBlockState(), 3);
+		helper.succeed();
+	}
+
+	/**
+	 * Large structures must land inside the chunks their generation step may write to.
+	 *
+	 * <p>{@code ChunkStatus.FEATURES} allows a write radius of one chunk, so a feature may only touch
+	 * a 48 by 48 block window, and {@code InSquarePlacement} starts it anywhere in the centre chunk.
+	 * Anything wider than seventeen blocks can therefore reach past the far edge, where every
+	 * {@code setBlock} is silently dropped — that is what made the Nether Diorama and Temple come out
+	 * half built. This sweeps all sixteen offsets for each real template size and asserts the slid
+	 * result is fully contained, which is the property the fix has to hold rather than any particular
+	 * coordinate it happens to choose.
+	 */
+	private static void structureWriteWindowFit(GameTestHelper helper) {
+		int radius = net.minecraft.world.level.chunk.status.ChunkPyramid.GENERATION_PYRAMID
+				.getStepTo(net.minecraft.world.level.chunk.status.ChunkStatus.FEATURES)
+				.blockStateWriteRadius();
+		helper.assertTrue(radius == 1,
+				"the feature write radius changed to " + radius + "; the structure fit assumes one chunk");
+		// Every ChromatiCraft template that a feature places from a per-chunk random origin, widest
+		// first. The three above seventeen are exactly the ones reported as half-generating.
+		record Template(String name, int extent) {}
+		for (Template template : java.util.List.of(
+				new Template("nether/diorama", 32), new Template("overworld/ocean", 31),
+				new Template("nether/temple", 26), new Template("nether/spiral", 19),
+				new Template("overworld/snow", 17), new Template("nether/maze", 16),
+				new Template("nether/hut", 9)))
+			for (int centreChunk : new int[] {0, 1, -1, 37, -64}) {
+				int windowMin = (centreChunk - radius) * 16;
+				int windowMax = (centreChunk + radius) * 16 + 15;
+				for (int offset = 0; offset < 16; offset++) {
+					int requested = centreChunk * 16 + offset;
+					int start = NBTStructureLoader.slide(requested, template.extent(), centreChunk, radius);
+					helper.assertTrue(start >= windowMin && start + template.extent() - 1 <= windowMax,
+							template.name() + " at chunk " + centreChunk + " offset " + offset
+									+ " slid to " + start + ", which still leaves it outside the writable "
+									+ windowMin + ".." + windowMax + " window");
+					helper.assertTrue(start <= requested,
+							template.name() + " was pushed forward to " + start + " from " + requested
+									+ "; the fit may only pull a structure back inside the window");
+					// Anything that already fitted must not be moved at all, or every small structure
+					// in the mod would drift towards the chunk edge.
+					if (requested + template.extent() - 1 <= windowMax)
+						helper.assertTrue(start == requested, template.name() + " at offset " + offset
+								+ " already fitted but was moved from " + requested + " to " + start);
+				}
+			}
 		helper.succeed();
 	}
 

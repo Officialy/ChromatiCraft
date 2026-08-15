@@ -74,6 +74,10 @@ public final class NetherRoofStructureFeature extends Feature<NoneFeatureConfigu
             return false;
         Type type = forcedType != null ? forcedType : Type.random(context.random());
         BlockPos base = new BlockPos(context.origin().getX(), 128, context.origin().getZ());
+        // The Diorama is 32 wide and the Temple 26, either of which can reach past the chunks this
+        // step may write to and come out half built. Resolve the anchor before anything uses it, so
+        // the structure and the chest offsets below agree on where it ended up.
+        base = NBTStructureLoader.fitToWriteWindow(world, type.template, base, BlockPos.ZERO);
         List<BlockPos> placed = NBTStructureLoader.place(world, type.template, base, BlockPos.ZERO,
                 state -> state, 3);
         initializeContents(world, base, type, context.random());

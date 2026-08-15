@@ -207,6 +207,73 @@ public final class NBTStructureLoader {
     }
 
     /**
+     * Slides a structure so it lands entirely inside the chunks the current generation step is allowed
+     * to write to, which is why large structures were coming out half built.
+     *
+     * <p>1.7.10 worldgen wrote straight to the {@code World} and a structure could span as many chunks
+     * as it liked. 26.2 hands a feature a {@link net.minecraft.server.level.WorldGenRegion} that
+     * silently drops any {@code setBlock} outside a window of chunks around the one being generated —
+     * {@code ChunkStatus.FEATURES} allows a radius of one, so a 48 by 48 block window. A feature
+     * placed by {@code InSquarePlacement} starts anywhere in the centre chunk, so a structure wider
+     * than seventeen blocks can reach past the far edge and lose everything beyond it. That is exactly
+     * the reported fault and exactly which structures showed it: the Nether Diorama is 32 by 22 and
+     * fails from all but one of the sixteen possible offsets, the Nether Temple is 26 by 26 and fails
+     * from nine of them, while the 16-wide Maze and 9-wide Hut can never fail. The Overworld Ocean
+     * structure, at 31 by 31, is in the same position.
+     *
+     * <p>Sliding rather than rejecting keeps V33a's structures as common as it made them; the anchor
+     * moves by at most the overhang, so a structure still lands where the placement put it whenever it
+     * already fitted. The radius is read from the generation pyramid rather than assumed, and the
+     * clamp applies only to a real bounded worldgen view — a {@link ServerLevel} handed in by a test or
+     * by {@code /place} has no window and must not be second-guessed.
+     *
+     * <p>A structure wider than the window itself cannot be made to fit by moving it. None of
+     * ChromatiCraft's are, and if one ever is the honest outcome is the truncation this cannot prevent,
+     * so it is left to clamp as far as it can rather than pretending otherwise.
+     *
+     * <p>A feature must call this <em>once</em>, on the anchor it derives everything else from, before
+     * it places anything — not inside {@link #place}. Several structures place annexes and address
+     * chests at fixed offsets from that anchor, and clamping each template separately would slide the
+     * pieces by different amounts and take the structure apart.
+     */
+    public static BlockPos fitToWriteWindow(WorldGenLevel world, Identifier templateId,
+            BlockPos worldAnchor, BlockPos templateAnchor) {
+        StructureTemplate template = world.getLevel().getStructureManager().get(templateId).orElseThrow(() ->
+                new IllegalStateException("Missing ChromatiCraft structure template data/"
+                        + templateId.getNamespace() + "/structure/" + templateId.getPath() + ".nbt"));
+        return fitToWriteWindow(world, worldAnchor, templateAnchor, template.getSize());
+    }
+
+    private static BlockPos fitToWriteWindow(WorldGenLevel world, BlockPos worldAnchor,
+            BlockPos templateAnchor, net.minecraft.core.Vec3i size) {
+        if (!(world instanceof net.minecraft.server.level.WorldGenRegion region))
+            return worldAnchor;
+        int radius = net.minecraft.world.level.chunk.status.ChunkPyramid.GENERATION_PYRAMID
+                .getStepTo(net.minecraft.world.level.chunk.status.ChunkStatus.FEATURES)
+                .blockStateWriteRadius();
+        if (radius < 0)
+            return worldAnchor;
+        net.minecraft.world.level.ChunkPos centre = region.getCenter();
+        // The template's first cell in world space; every cell is this plus an offset within size.
+        BlockPos origin = worldAnchor.subtract(templateAnchor);
+        int x = slide(origin.getX(), size.getX(), centre.x(), radius);
+        int z = slide(origin.getZ(), size.getZ(), centre.z(), radius);
+        return worldAnchor.offset(x - origin.getX(), 0, z - origin.getZ());
+    }
+
+    /**
+     * One axis of {@link #fitToWriteWindow}: the lowest coordinate the template may start at. Public
+     * because it is the whole of the arithmetic and can be checked without a world.
+     */
+    public static int slide(int start, int extent, int centreChunk, int radius) {
+        int windowMin = (centreChunk - radius) * 16;
+        int windowMax = (centreChunk + radius) * 16 + 15;
+        // Math.max guards the unfittable case: never push the near edge outside the window trying to
+        // pull the far edge in, which would trade one truncated end for two.
+        return Math.max(windowMin, Math.min(start, windowMax - (extent - 1)));
+    }
+
+    /**
      * Second pass, matching {@code StructureTemplate.placeInWorld}: every placed cell re-resolves its
      * state against its neighbours, then fires a block update.
      *
