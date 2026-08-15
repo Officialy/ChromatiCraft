@@ -4560,3 +4560,106 @@ serialization); (7) `DimensionJoinHandler`'s arrival carve-out (the r=5 / rh=3.5
 air with a Cloak Shielding shell) and the two real exit paths (death and the y < -1024 void fall);
 (8) non-puzzle decoration, entities, bedrock cracks (which is where Proximal Essence actually comes
 from) and the sky/cloud/weather renderers.
+
+### 2026-08-15 — Proxima structure types and placement
+
+The first half of the dimension's dependency chain. `DimensionStructureType` and the placement half of
+`StructureCalculator` are ported; the puzzle generators they place remain deliberately deferred.
+
+**Why this is separable at all.** V33a's `DimensionStructureGenerator.startCalculate` sets
+`entryX`/`entryZ` to the placement coordinate up front and only lets the puzzle's own `calculate()`
+refine them afterwards. So a placement is a complete, usable answer before any puzzle exists — which
+is exactly what `RegionMapper` (blocks on `arePositionsDetermined()`, sizes the central region from
+`getMaximumDistanceFromOrigin()`) and `BiomeDistributor` (paints Structure Field and Monument Field
+around the placements) consume. Nothing downstream reads puzzle contents.
+
+**`DimensionStructureType`** is lifted out of the 631-line generator base into its own type: the
+eighteen identities in source order with their exact display names, `getIconIndex()` (8 + ordinal),
+per-player completion on the death-persistent research tag under V33a's own `structuresCompleted` /
+`struct_<ordinal>` keys, the UUID-keyed generator cache and `resetCachedGenerators`, and
+`StructureTypeData` with the verbatim password formula.
+
+`isComplete()` is the real V33a gate rather than a placeholder. Upstream decides it by constructing
+each generator once at class-init, running `startCalculate` at the origin and asking whether it
+produced a core; anything that fails is filtered out of `getUsableStructures()` and never assigned.
+That is precisely why `allowUnfinishedStructures` exists — Reika shipped with unfinished generators.
+This port is in the same position with all eighteen unported, so the same filter correctly yields
+nothing today. `registerGenerator` is the modern equivalent of that class-init test run: it exercises
+the factory once and only marks the type usable if the run produced a core, so a ported-but-broken
+generator is rejected exactly as upstream rejects an unfinished one. A type becomes usable the moment
+its generator lands; no other code changes.
+
+**`StructureCalculator` placement.** Type assignment draws without replacement from the usable set and
+bumps `generationIndex` when the set is exhausted and refilled, so two elements sharing a type still
+get distinct passwords. The ring centre wanders +-6000 from the world origin, each element sits on its
+own 22.5-degree spoke at 5000+-3000, and the monument sits at the ring centre. `StructurePair` becomes
+a `StructurePlacement` carrying the element, type, generation index and placement, plus the generator
+once one exists; `getEntryPosX/Z` returns the generator's entry when there is one and the placement
+otherwise, which is the same answer upstream gives before `calculate()` runs.
+`getMaximumDistanceFromOrigin`, `getMaximumPossibleDistance`, `getNearestStructureWithinRange` and the
+client-side `getStructureColorTypes` are all ported.
+
+**The two random sources are preserved separately.** `seededRand`, from a per-installation file seed,
+picks which structure type each element gets — that file seed is what `assignSeed` ships to clients so
+they can rebuild the same colour-to-type map without knowing the world. The dimension-seeded `rand`
+picks the ring geometry. Upstream's own comment says it wanted the world seed for the former and could
+not reach one from outside a world; 26.2 no longer prevents that, but changing it would change every
+existing assignment, so it is recorded as a future option rather than silently altered.
+
+**One deliberate, documented deviation.** V33a computes `structureOriginX/Z` and every structure's
+radius through the two-argument `ReikaRandomHelper.getRandomPlusMinus`, which draws from DragonAPI's
+**global unseeded** Random. The surrounding class carefully seeds two Randoms and then uses neither for
+those three values, so each recomputation of the layout would move the structures. This port passes the
+seeded `rand` to the three-argument overload. The distribution is unchanged; only determinism is, and
+worldgen that is not reproducible from its seed is not portable. The GameTest asserts the
+reproducibility directly.
+
+**Two latent bugs fixed in passing.**
+
+1. `ProximaGenerators` started with an *empty* pending set, so `areGeneratorsReady()` answered true
+   before anything had run. It was masked only by `isDimensionLoadable()` being false, and would have
+   surfaced the moment the dimension registered — letting the Portal Rift carry a player into a Proxima
+   whose layout had not been decided. The set now starts full; the gate can only open by generators
+   reporting in. `StructureCalculator` clears the `STRUCTURE` bit as soon as positions are published,
+   which is where upstream releases `RegionMapper`'s poll loop.
+2. DragonAPI's `ReikaFileReader.HashType.hashBytes` returned **null**: its hex step was
+   `javax.xml.bind.DatatypeConverter.printHexBinary`, which left the JDK in 11, and had been commented
+   out. Every caller got null, and `StructureTypeData.getPassword` would have thrown on
+   `null.hashCode()`. Restored with `HexFormat.of().withUpperCase()`, which is the exact replacement —
+   the case matters because the password takes `String.hashCode()` of the result.
+
+**Focused validation:**
+
+```text
+.\gradlew.bat :DragonAPI:compileJava :ChromatiCraft:compileJava --console=plain
+BUILD SUCCESSFUL
+
+.\gradlew.bat :ChromatiCraft:runGameTest \
+  -PgameTestSelector=chromaticraft:proxima_structure_placement --console=plain
+All 1 required tests passed
+
+.\gradlew.bat :ChromatiCraft:runGameTest \
+  -PgameTestSelector=chromaticraft:portal_structure_and_charge --console=plain
+All 1 required tests passed
+```
+
+`proxima_structure_placement` proves that no structure type is usable while the puzzles are unported,
+that the ring still resolves its origin in that state so the biome layer is not blocked, and that
+finishing placement clears the `STRUCTURE` gate bit. Under V33a's `allowUnfinishedStructures` dev
+override it then proves all sixteen elements are assigned exactly once from eighteen types without
+reuse, the centre stays inside +-6000, the monument sits at that centre, every structure lands on the
+5000+-3000 ring on its own 22.5-degree spoke, an unported generator leaves the entry at the placement,
+`getMaximumDistanceFromOrigin` bounds every placement, the whole ring is reproducible from the
+dimension seed while a different seed moves it, and `getNearestStructureWithinRange` answers correctly
+at zero and at 100 blocks. It finally exercises the structure password for stability, version
+dependence, per-structure difference and the Reika-UUID fallback — which is also the regression guard
+on the `HashType` fix.
+
+**Still deferred:** all eighteen puzzle generators. `registerGenerator` is the single seam; nothing
+else has to change when they land.
+
+**Next:** `RegionMapper` is now unblocked — it needs only `arePositionsDetermined()` and
+`getMaximumDistanceFromOrigin()`, both live — followed by `BiomeDistributor`'s 4096x4096 blob map, the
+thirteen biomes plus the custom `BiomeSource` over it, the `ChunkGenerator` with the
+`world/dimension/terrain` shapers, and finally the dimension type and level stem datagen that flips
+`isDimensionLoadable` true.

@@ -150,6 +150,9 @@ import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
 import reika.chromaticraft.block.BlockChromaPortal;
 import reika.chromaticraft.tileentity.TileEntityCrystalPortal;
 import reika.chromaticraft.auxiliary.structure.PortalStructure;
+import reika.chromaticraft.world.dimension.DimensionStructureType;
+import reika.chromaticraft.world.dimension.ProximaGenerators;
+import reika.chromaticraft.world.dimension.StructureCalculator;
 import reika.chromaticraft.block.dimension.structure.lightpanel.BlockLightPanel;
 import reika.chromaticraft.block.dimension.structure.lightpanel.BlockLightSwitch;
 import reika.chromaticraft.world.dimension.structure.lightpanel.LightType;
@@ -290,6 +293,128 @@ public final class ChromaGameTests {
 		register(event, env, "player_aura_infuser_loop", ChromaGameTests::playerAuraInfuserLoop);
 		register(event, env, "portal_structure_and_charge", 80, ChromaGameTests::portalStructureAndCharge);
 		register(event, env, "portal_entry_rules", ChromaGameTests::portalEntryRules);
+		register(event, env, "proxima_structure_placement", ChromaGameTests::proximaStructurePlacement);
+	}
+
+	/**
+	 * The Proxima structure ring: sixteen elements evenly spaced 22.5 degrees apart at 5000+-3000 from
+	 * a centre that itself wanders +-6000, reproducible from the dimension seed, with the monument at
+	 * that centre and the upper distance bound that {@code RegionMapper} sizes itself from.
+	 */
+	private static void proximaStructurePlacement(GameTestHelper helper) {
+		// V33a's dev override, which assigns every structure type regardless of whether its generator
+		// finished. It is the only way to exercise the assignment loop while all eighteen puzzle
+		// generators are deliberately unported.
+		boolean previous = StructureCalculator.allowUnfinishedStructures;
+		try {
+			helper.assertTrue(DimensionStructureType.usableStructures().isEmpty(),
+					"no Proxima puzzle generator is ported yet, so no structure type may be usable");
+
+			StructureCalculator unassigned = new StructureCalculator(1234L);
+			unassigned.generate();
+			helper.assertTrue(unassigned.getPlacements().isEmpty() && unassigned.arePositionsDetermined(),
+					"with nothing usable the ring must still resolve its origin, so the biome layer is"
+							+ " not blocked on the puzzles");
+			helper.assertTrue(ProximaGenerators.isReady(ProximaGenerators.Generator.STRUCTURE),
+					"finishing placement must clear the STRUCTURE bit of the generator gate");
+
+			StructureCalculator.allowUnfinishedStructures = true;
+			StructureCalculator calc = new StructureCalculator(1234L);
+			calc.generate();
+			List<StructureCalculator.StructurePlacement> placed = calc.getPlacements();
+			helper.assertTrue(placed.size() == CrystalElement.elements.length,
+					"every one of the sixteen elements must get a structure, found " + placed.size());
+			helper.assertTrue(placed.stream().map(p -> p.color).distinct().count() == 16,
+					"each element must appear exactly once");
+			// Eighteen usable types for sixteen elements, so the set is never exhausted and no element
+			// reaches generation index 1.
+			helper.assertTrue(placed.stream().allMatch(p -> p.generationIndex == 0),
+					"eighteen types cover sixteen elements without reusing the pool");
+			helper.assertTrue(placed.stream().map(p -> p.type).distinct().count() == 16,
+					"types are drawn without replacement, so no two elements share one");
+
+			int originX = calc.getStructureOriginX();
+			int originZ = calc.getStructureOriginZ();
+			helper.assertTrue(Math.abs(originX) <= StructureCalculator.STRUCTURE_CENTER_VARIATION
+							&& Math.abs(originZ) <= StructureCalculator.STRUCTURE_CENTER_VARIATION,
+					"the ring centre must stay inside V33a's +-6000 wander");
+			helper.assertTrue(calc.getMonumentPosition().getX() == originX
+							&& calc.getMonumentPosition().getZ() == originZ,
+					"the monument sits at the ring centre");
+
+			for (StructureCalculator.StructurePlacement placement : placed) {
+				double dx = placement.placement().getX() - originX;
+				double dz = placement.placement().getZ() - originZ;
+				double radius = Math.sqrt(dx * dx + dz * dz);
+				helper.assertTrue(radius >= StructureCalculator.BASE_RADIUS - StructureCalculator.RADIUS_VARIATION - 2
+								&& radius <= StructureCalculator.BASE_RADIUS + StructureCalculator.RADIUS_VARIATION + 2,
+						"every structure must sit on the 5000+-3000 ring, found " + radius);
+				double bearing = Math.toDegrees(Math.atan2(dz, dx));
+				double expected = calc.getStructureAngleOrigin() + placement.color.ordinal() * 22.5;
+				double delta = Math.abs(Math.IEEEremainder(bearing - expected, 360));
+				helper.assertTrue(delta < 0.5,
+						"element " + placement.color + " must sit on its own 22.5-degree spoke, off by " + delta);
+				// Until a generator is ported the entry is the placement, which is also what V33a
+				// reports before calculate() runs.
+				helper.assertTrue(placement.getEntryPosX() == placement.placement().getX()
+								&& placement.getEntryPosZ() == placement.placement().getZ(),
+						"an unported generator must leave the entry position at the placement");
+			}
+
+			// V33a's own upper bound: max ring radius from the wandered centre, not the actual radii.
+			double bound = calc.getMaximumDistanceFromOrigin();
+			helper.assertTrue(placed.stream().allMatch(p -> Math.sqrt(
+							(double)p.placement().getX() * p.placement().getX()
+									+ (double)p.placement().getZ() * p.placement().getZ()) <= bound),
+					"getMaximumDistanceFromOrigin must bound every placement, since RegionMapper sizes"
+							+ " the central region from it");
+			helper.assertTrue(bound <= StructureCalculator.getMaximumPossibleDistance() * Math.sqrt(2) + 1,
+					"the per-seed bound must not exceed the global bound's diagonal");
+
+			// The deviation that matters: V33a drew the origin and radii from an unseeded global
+			// Random. Re-running the same seed has to reproduce the same ring.
+			StructureCalculator again = new StructureCalculator(1234L);
+			again.generate();
+			helper.assertTrue(again.getStructureOriginX() == originX
+							&& again.getStructureOriginZ() == originZ
+							&& again.getStructureAngleOrigin() == calc.getStructureAngleOrigin(),
+					"the ring must be reproducible from the dimension seed");
+			for (int i = 0; i < placed.size(); i++)
+				helper.assertTrue(again.getPlacements().get(i).placement().equals(placed.get(i).placement()),
+						"every placement must be reproducible from the dimension seed");
+
+			StructureCalculator other = new StructureCalculator(4321L);
+			other.generate();
+			helper.assertTrue(other.getStructureOriginX() != originX
+							|| other.getStructureOriginZ() != originZ,
+					"a different dimension seed must move the ring");
+
+			StructureCalculator.StructurePlacement nearest = calc.getNearestStructureWithinRange(
+					placed.getFirst().placement().getX(), placed.getFirst().placement().getZ(), 64);
+			helper.assertTrue(nearest == placed.getFirst(),
+					"getNearestStructureWithinRange must find a structure standing on top of it");
+			helper.assertTrue(calc.getNearestStructureWithinRange(originX, originZ, 100) == null,
+					"the ring centre is 5000 blocks from every structure, so a 100-block query finds none");
+
+			// V33a's structure password. Its SHA-1 step returned null in the modern DragonAPI because
+			// the javax.xml.bind hex converter left the JDK, so this both covers the formula and
+			// guards the HexFormat replacement that restored it.
+			ServerPlayer player = helper.makeMockServerPlayerInLevel();
+			DimensionStructureType.StructureTypeData first = placed.getFirst().typeData();
+			int password = first.getPassword(player, "26.2");
+			helper.assertTrue(password == first.getPassword(player, "26.2"),
+					"a structure password must be stable for the same player, type and version");
+			helper.assertTrue(password != first.getPassword(player, "26.1"),
+					"the password must depend on the game version, as V33a's Loader.MC_VERSION term does");
+			helper.assertTrue(password != placed.get(1).typeData().getPassword(player, "26.2"),
+					"two different structures must not share a password");
+			helper.assertTrue(first.getPassword(null, "26.2") != password,
+					"the password must depend on the player, falling back to Reika's UUID when absent");
+		}
+		finally {
+			StructureCalculator.allowUnfinishedStructures = previous;
+		}
+		helper.succeed();
 	}
 
 	/**

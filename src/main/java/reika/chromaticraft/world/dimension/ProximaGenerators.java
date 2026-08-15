@@ -17,10 +17,9 @@ import java.util.Set;
  * that actually exist in the port are members — a permanently pending entry would be indistinguishable
  * from a broken gate — and each newly ported generator joins by adding its constant here.
  *
- * <p>Deferred: {@code STRUCTURE} (the puzzle-structure position calculator), {@code SKYRIVER} and
- * {@code FISSUREPATTERNS}. All three belong in this gate and must be added to {@link Generator} when
- * their generators land, so that the portal automatically starts waiting on them again rather than
- * needing the gate rewritten.
+ * <p>Deferred: {@code SKYRIVER} and {@code FISSUREPATTERNS}. Both belong in this gate and must be
+ * added to {@link Generator} when their generators land, so that the portal automatically starts
+ * waiting on them again rather than needing the gate rewritten.
  *
  * <p><b>Dependency order matters here and is not obvious.</b> V33a's
  * {@code ThreadedGenerators.isDependentOn} makes both {@code BIOME} and {@code REGION} depend on
@@ -35,13 +34,24 @@ import java.util.Set;
 public final class ProximaGenerators {
 
 	public enum Generator {
-		/** {@link BiomeDistributor}: which biome each Proxima region resolves to. */
+		/**
+		 * {@link StructureCalculator}: which puzzle structure each element gets and where it sits.
+		 * Everything else in this gate depends on it, so it must finish first.
+		 */
+		STRUCTURE,
+		/** {@code BiomeDistributor}: which biome each Proxima region resolves to. */
 		BIOME,
-		/** {@link RegionMapper}: the concentric region layout the biome distributor reads. */
+		/** {@code RegionMapper}: the concentric region layout the biome distributor reads. */
 		REGION,
 	}
 
-	private static final Set<Generator> pending = EnumSet.noneOf(Generator.class);
+	/**
+	 * Starts full, not empty. V33a sets every bit the moment the dimension seed is established, and
+	 * before that point nothing has run — so "nothing pending" would mean "ready" and would let the
+	 * Portal Rift carry a player into a Proxima whose layout had not been decided. The gate can only
+	 * open by generators actually reporting in.
+	 */
+	private static final Set<Generator> pending = EnumSet.allOf(Generator.class);
 
 	private ProximaGenerators() {}
 
