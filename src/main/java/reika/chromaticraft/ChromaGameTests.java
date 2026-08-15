@@ -303,6 +303,7 @@ public final class ChromaGameTests {
 		register(event, env, "burrow_cache_loot_halves", ChromaGameTests::burrowCacheLootHalves);
 		register(event, env, "structure_chest_fragments", ChromaGameTests::structureChestFragments);
 		register(event, env, "structure_write_window_fit", ChromaGameTests::structureWriteWindowFit);
+		register(event, env, "nether_lava_rivers", ChromaGameTests::netherLavaRivers);
 		register(event, env, "loot_chest_lid_event", ChromaGameTests::lootChestLidEvent);
 		register(event, env, "loot_chest_trap_signal", ChromaGameTests::lootChestTrapSignal);
 		register(event, env, "structure_trap_and_wiring", ChromaGameTests::structureTrapAndWiring);
@@ -1482,6 +1483,50 @@ public final class ChromaGameTests {
 								+ " already fitted but was moved from " + requested + " to " + start);
 				}
 			}
+		helper.succeed();
+	}
+
+	/**
+	 * V33a's Nether roof lava rivers must actually describe rivers.
+	 *
+	 * <p>The whole feature is three simplex fields and two thresholds, so the thing worth checking is
+	 * the shape they produce rather than any particular block: rivers should cover a modest fraction of
+	 * the roof, every channel should be flanked by bank, and no column may sit outside the 127 to 240
+	 * band V33a confines them to. A transcription slip in a scale or a threshold moves those numbers
+	 * immediately — dropping the divide by 32, for instance, turns the rivers into noise.
+	 */
+	private static void netherLavaRivers(GameTestHelper helper) {
+		var feature = new reika.chromaticraft.world.NetherLavaRiverFeature();
+		long seed = 0x9E3779B97F4A7C15L;
+		int channels = 0;
+		int banks = 0;
+		int columns = 0;
+		// Wide enough to cross several rivers at the 32-block placement scale.
+		for (int x = -128; x < 128; x++)
+			for (int z = -128; z < 128; z++) {
+				columns++;
+				var column = feature.classify(seed, x, z);
+				if (column == null)
+					continue;
+				helper.assertTrue(column.y() >= 127 && column.y() <= 240,
+						"a river column at " + x + "," + z + " sits at y " + column.y()
+								+ ", outside V33a's 127 to 240 roof band");
+				if (column.channel())
+					channels++;
+				else
+					banks++;
+			}
+		helper.assertTrue(channels > 0 && banks > 0,
+				"the roof produced " + channels + " channel and " + banks + " bank columns across "
+						+ columns + "; both thresholds must select something or there are no rivers");
+		// V33a's thresholds cover roughly a fifth of the roof. Wide bounds, because the point is to
+		// catch a lost scale divisor turning rivers into either a flood or a drizzle, not to pin noise.
+		double coverage = (channels + banks) / (double)columns;
+		helper.assertTrue(coverage > 0.02 && coverage < 0.5, "rivers cover " + coverage
+				+ " of the roof; V33a's thresholds put that near a fifth, so a scale has been lost");
+		// The channel is the inner band of the same field, so it can never be the larger of the two.
+		helper.assertTrue(channels < banks + channels,
+				"every river column came out as channel; the bank threshold is not being applied");
 		helper.succeed();
 	}
 

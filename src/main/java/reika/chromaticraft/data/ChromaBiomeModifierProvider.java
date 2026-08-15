@@ -23,6 +23,7 @@ public final class ChromaBiomeModifierProvider implements DataProvider {
     private static final String NATURAL_PYLON = id("natural_pylon").toString();
     private static final String DATA_TOWER = id("data_tower").toString();
     private static final String NETHER_ROOF_STRUCTURE = id("nether_roof_structure").toString();
+    private static final String NETHER_LAVA_RIVER = id("nether_lava_river").toString();
     private static final String NATURAL_CAVERN = id("natural_cavern").toString();
     private static final String NATURAL_BURROW = id("natural_burrow").toString();
     private static final String NATURAL_OCEAN = id("natural_ocean").toString();
@@ -105,6 +106,11 @@ public final class ChromaBiomeModifierProvider implements DataProvider {
                 id("firestone").toString(), GenerationStep.Decoration.UNDERGROUND_ORES));
         futures.add(save(cache, "nether_roof_structures", "#minecraft:is_nether",
                 NETHER_ROOF_STRUCTURE, GenerationStep.Decoration.SURFACE_STRUCTURES));
+        // V33a's chunk populator runs its air decorators after its ground decorators, so a river that
+        // crosses a roof structure cuts through it. That is upstream's behaviour and the reason this
+        // sits in a later step rather than beside the structures.
+        futures.add(save(cache, "nether_lava_rivers", "#minecraft:is_nether",
+                NETHER_LAVA_RIVER, GenerationStep.Decoration.TOP_LAYER_MODIFICATION));
         futures.add(save(cache, "cavern_overworld", "#minecraft:is_overworld",
                 NATURAL_CAVERN, GenerationStep.Decoration.UNDERGROUND_STRUCTURES));
         futures.add(save(cache, "burrow_overworld", "#minecraft:is_overworld",

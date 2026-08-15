@@ -68,6 +68,7 @@ public final class ChromaWorldGenProvider {
     private static final Identifier LUMINOUS_ISLAND = id("luminous_island");
     private static final Identifier LUMINOUS_FLORA = id("luminous_flora");
     private static final Identifier NETHER_ROOF_STRUCTURE = id("nether_roof_structure");
+    private static final Identifier NETHER_LAVA_RIVER = id("nether_lava_river");
     private static final List<Identifier> NETHER_ROOF_STRUCTURES =
             List.of(id("nether_hut"), id("nether_temple"), id("nether_maze"),
                     id("nether_spiral"), id("nether_diorama"));
@@ -166,6 +167,7 @@ public final class ChromaWorldGenProvider {
             registerConfigured(bootstrap, features, LUMINOUS_ISLAND);
             registerConfigured(bootstrap, features, LUMINOUS_FLORA);
             registerConfigured(bootstrap, features, NETHER_ROOF_STRUCTURE);
+            registerConfigured(bootstrap, features, NETHER_LAVA_RIVER);
             for (Identifier structure : NETHER_ROOF_STRUCTURES)
                 registerConfigured(bootstrap, features, structure);
             registerConfigured(bootstrap, features, NATURAL_CAVERN);
@@ -256,6 +258,10 @@ public final class ChromaWorldGenProvider {
             // V33a BASE_GEN_FACTOR = 1/64 per Nether chunk; the feature retains its weighted type roll.
             registerPlaced(bootstrap, configured, NETHER_ROOF_STRUCTURE, List.of(
                     RarityFilter.onAverageOnceEvery(64), InSquarePlacement.spread(), BiomeFilter.biome()));
+            // V33a runs the lava rivers for every Nether chunk, unconditionally: no rarity gate and no
+            // in-square spread, because the feature walks its own chunk's sixteen by sixteen columns
+            // itself and needs the origin to stay on the chunk corner.
+            registerPlaced(bootstrap, configured, NETHER_LAVA_RIVER, List.of(BiomeFilter.biome()));
             // Named command/debug seams do not carry a rarity gate.
             for (Identifier structure : NETHER_ROOF_STRUCTURES)
                 registerPlaced(bootstrap, configured, structure);

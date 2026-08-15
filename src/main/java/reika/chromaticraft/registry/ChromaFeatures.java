@@ -151,6 +151,10 @@ public final class ChromaFeatures {
 
     public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> NETHER_ROOF_STRUCTURE =
             FEATURES.register("nether_roof_structure", () -> new NetherRoofStructureFeature());
+
+    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> NETHER_LAVA_RIVER =
+            FEATURES.register("nether_lava_river",
+                    reika.chromaticraft.world.NetherLavaRiverFeature::new);
     /** Command/debug variants: /place feature chromaticraft:nether_hut, ... */
     public static final java.util.Map<NetherRoofStructureFeature.Type,
             DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>>> NETHER_ROOF_STRUCTURES =

@@ -1,5 +1,41 @@
 # ChromatiCraft 1.7.10 V33a → Minecraft 26.2 / NeoForge port
 
+## Working checkpoint — 2026-08-16 (reported worldgen faults, and Nether roof rivers)
+
+- The Nether Temple's redstone came out as isolated dots that carried no signal, so its puzzle could
+  not be solved. 1.7.10 had no dot shape: a wire with no wire neighbours was a cross that powered
+  everything around it. 26.2's `RedStoneWireBlock.getConnectionState` short-circuits on a wire that
+  is already a dot, before its auto-connect logic, so a template authoring `none` on all four sides
+  produced wires no placement or neighbour update could ever open up. Templates now author wires as
+  crosses and vanilla resolves each to the line or cross its neighbours justify.
+- V33a's `ChromaChests` injections are restored. Upstream pushed Information Fragments, Lexicons and
+  elemental shards into the vanilla `ChestGenHooks` pools; that seam is gone, so the same table is
+  now datagen loot modifiers over the vanilla chest tables. ChromatiCraft's own Nether and Overworld
+  structure features hand their chests vanilla table ids, which is why those chests were empty too.
+  Every weight and stack size is V33a's. The one value that could not carry over is the 1.7.10 pool
+  total those weights were written against; the stand-in is documented in `ChromaChestLoot`. The
+  Glowing Sapling entries wait on `BlockLightedSapling`, and are recorded where they belong.
+- Large structures no longer generate half built. `ChunkStatus.FEATURES` allows a write radius of one
+  chunk, so a feature may only touch a 48 by 48 window, and `InSquarePlacement` starts it anywhere in
+  the centre chunk - anything wider than seventeen blocks could reach past the far edge and lose
+  everything beyond it. The Nether Diorama (32 by 22) failed from all but one of sixteen offsets, the
+  Temple (26 by 26) from nine, and the Overworld Ocean structure (31 across) was in the same position
+  unreported. Features now resolve their anchor into the writable window before placing anything.
+  That resolution happens in the feature rather than the loader, because annexes, tunnels and chest
+  offsets all hang off the same anchor and must slide together with it.
+- The Loot Chest was drawing its lid's interior panel across the top. `lootchest.png` is painted for
+  1.7.10's chest renderer, which drew through a half turn about X, and Minecraft derives a cuboid's
+  six texture regions together from one offset - so the turn decides which region lands on top. V33a's
+  own box coordinates are restored and the half turn now lives in the model's render, inherited by
+  both the block and item renderers. Geometry is unchanged.
+- Ported V33a's `LavaRiverGenerator` as the `nether_lava_river` feature: three simplex fields seeded
+  from the world seed, its negation and its complement, thresholds at 0.1 and 0.2 off the placement
+  field's zero crossings, and heights mapped across y 127 to 240. Channels carry fluid on a single
+  course of Stone Shielding, banks are three courses. The weighted fluid table is written out in full
+  and resolved against whatever fluids are installed, exactly as upstream's name lookup did; two
+  entries whose modern ids are unknown are recorded rather than guessed. It runs after the roof
+  structures, as V33a's chunk populator does, so a river crossing a structure cuts through it.
+
 ## Working checkpoint — 2026-08-12 (Biome Fragment dependency vertical)
 
 - Fully ported the V33a Hover Field as the first Biome Fragment prerequisite: all four motion modes,

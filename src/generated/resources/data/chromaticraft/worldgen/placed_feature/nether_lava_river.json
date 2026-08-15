@@ -1,0 +1,8 @@
+{
+  "feature": "chromaticraft:nether_lava_river",
+  "placement": [
+    {
+      "type": "minecraft:biome"
+    }
+  ]
+}
