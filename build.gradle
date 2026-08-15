@@ -262,6 +262,7 @@ sourceSets.main.java {
     include 'reika/chromaticraft/world/dimension/biome/ProximaBiomes.java'
     include 'reika/chromaticraft/world/dimension/biome/ProximaSubBiomes.java'
     include 'reika/chromaticraft/world/dimension/BiomeDistributor.java'
+    include 'reika/chromaticraft/world/dimension/ProximaTerrainProfile.java'
     include 'reika/chromaticraft/world/dimension/biome/ProximaBiomeDefinitions.java'
     include 'reika/chromaticraft/world/dimension/biome/ProximaBiomeSource.java'
     include 'reika/chromaticraft/client/ProximaBiomeColors.java'

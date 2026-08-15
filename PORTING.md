@@ -4927,3 +4927,54 @@ re-applying the brightening on top of the static override would double-count it.
 behaviour with no headless assertion available, so it joins the in-world checklist: grass and foliage
 in Proxima should wander in green, the Structure Field should read brighter with a cyan-ward edge, and
 the Monument Field should wash between blue and pink.
+
+### 2026-08-15 — Proxima terrain profile, and the chunk generator's blocker
+
+`ProximaTerrainProfile` ports the one part of `ChunkProviderChroma.applyNoiseLayers` that is actually
+V33a's own. Everything else in that method is 1.7.10's `ChunkProviderGenerate` pipeline verbatim; what
+upstream replaces is the pair of values vanilla reads from the biome — `f3` the base height and `f4`
+the height variation — with a purely radial profile:
+
+```text
+f0 = sqrt((qx*qx + qz*qz) / (65536 * 32)) * 0.03125
+if (distanceToNearestStructureInChunks <= 8) f0 *= distance / 8
+f3 = max(-0.25, 0.125 - f0 * 0.125)
+f4 = 0.5 * f0
+```
+
+That is the shape of the entire dimension. At the origin `f0` is zero, so the base height sits at its
+maximum and the variation at nothing — the centre is a flat plain. Outward, the base height falls
+towards its `-0.25` floor while the variation climbs without limit, so the land drops away and grows
+progressively more mountainous, which is what makes the outer regions read as the edge of the world.
+Within eight chunks of any structure or the monument the term is damped linearly to zero, and that is
+what flattens the ground each puzzle stands on — which is why the profile has to consult the structure
+ring rather than being a pure function of position.
+
+Two details preserved rather than tidied: the noise layer works in **quart** coordinates (V33a calls
+`applyNoiseLayers(chunkX * 4, chunkZ * 4)` and then names the parameters `chunkX`/`chunkZ`) while the
+structure distance is measured in real chunks, so the two are named distinctly here; and the
+commented-out 7x7 biome-weighted-average variant beside it is deliberately not ported, because
+upstream does not run it. The per-biome `baseHeightDelta` values exist for the terrain shapers instead.
+
+`chromaticraft:proxima_terrain_profile` passes: the origin is flat at the maximum base height,
+roughness grows monotonically with radius outside the structure skirts, the base height bottoms out at
+exactly `-0.25` while variation keeps climbing, every sampled radius stays inside V33a's bounds, a
+structure's own chunk is perfectly flat and ramps back up across its eight-chunk skirt, and the
+monument competes with the structures for that damping.
+
+**The chunk generator itself is blocked on a source this workspace does not contain.** The remaining
+work in `applyNoiseLayers`/`generateColumnData` is 1.7.10's noise pipeline — `NoiseGeneratorOctaves`
+driving `NoiseGeneratorImproved.populateNoiseArray`, then the 5x33x5 to 16x256x16 trilinear
+interpolation. 26.2 still ships the same underlying function: `ImprovedNoise` has the identical
+permutation setup (`xo/yo/zo = nextDouble()*256`, a 256-byte table shuffled with `nextInt(256-i)`) and
+retains the deprecated `noise(x, y, z, yScale, yFudge)` overload precisely so legacy generators stay
+bit-identical. What it no longer has is `populateNoiseArray`, the bulk fill that
+`generateNoiseOctaves` calls, so reproducing upstream exactly needs the 1.7.10 sources for
+`NoiseGeneratorOctaves` and `NoiseGeneratorImproved` to transcribe the octave loop and the y-fudge
+argument mapping. Writing them from memory would be an unverifiable approximation of the one thing
+that decides every block of terrain, so it stops here rather than guessing.
+
+To unblock it, either add the 1.7.10 vanilla sources for those two classes under `Sources/`, or
+empirically pin 26.2's `PerlinNoise.createLegacyForBlendedNoise` plus the deprecated `noise` overload
+against known 1.7.10 output. Everything else the generator needs is now in place: the terrain profile,
+the biome source, the painted map, the structure ring and the central region.

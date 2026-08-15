@@ -154,6 +154,7 @@ import reika.chromaticraft.world.dimension.DimensionStructureType;
 import reika.chromaticraft.world.dimension.ProximaGenerators;
 import reika.chromaticraft.world.dimension.RegionMapper;
 import reika.chromaticraft.world.dimension.BiomeDistributor;
+import reika.chromaticraft.world.dimension.ProximaTerrainProfile;
 import reika.chromaticraft.world.dimension.biome.ProximaBiomeType;
 import reika.chromaticraft.world.dimension.biome.ProximaBiomes;
 import reika.chromaticraft.world.dimension.biome.ProximaSubBiomes;
@@ -307,6 +308,72 @@ public final class ChromaGameTests {
 		register(event, env, "proxima_biome_distribution", 200, ChromaGameTests::proximaBiomeDistribution);
 		register(event, env, "proxima_generator_gate", 200, ChromaGameTests::proximaGeneratorGate);
 		register(event, env, "proxima_biome_source", 200, ChromaGameTests::proximaBiomeSource);
+		register(event, env, "proxima_terrain_profile", 200, ChromaGameTests::proximaTerrainProfile);
+	}
+
+	/**
+	 * V33a's radial terrain profile: a flat plain at the centre that falls away and grows steadily
+	 * more mountainous with distance, flattened again within eight chunks of any structure.
+	 */
+	private static void proximaTerrainProfile(GameTestHelper helper) {
+		boolean previous = StructureCalculator.allowUnfinishedStructures;
+		try {
+			StructureCalculator.allowUnfinishedStructures = true;
+			StructureCalculator structures = new StructureCalculator(1234L);
+			structures.generate();
+			ProximaTerrainProfile profile = new ProximaTerrainProfile(structures);
+
+			// The centre is flat: no roughness, so base height sits at its maximum and variation at 0.
+			helper.assertTrue(profile.roughness(0, 0) == 0,
+					"the world origin must have no terrain roughness");
+			helper.assertTrue(profile.baseHeight(0, 0) == 0.125F && profile.heightVariation(0, 0) == 0,
+					"the centre of Proxima is a flat plain at V33a's maximum base height");
+
+			// Roughness grows monotonically with radius, once clear of the structure damping.
+			double previousRoughness = -1;
+			for (int r = 4000; r <= 200000; r += 4000) {
+				// Skip the eight-chunk skirt around a structure, which deliberately damps the ramp.
+				if (profile.distanceToNearestStructureInChunks(r / 4, 0)
+						<= ProximaTerrainProfile.STRUCTURE_FLATTEN_CHUNKS)
+					continue;
+				double rough = profile.roughness(r, 0);
+				helper.assertTrue(rough > previousRoughness,
+						"roughness must grow with distance from the origin, stalled at quart " + r);
+				previousRoughness = rough;
+			}
+
+			// Base height falls towards its floor while variation climbs, which is the whole shape.
+			helper.assertTrue(profile.baseHeight(200000, 0) == -0.25F,
+					"far out, the base height must sit on V33a's -0.25 floor");
+			helper.assertTrue(profile.heightVariation(200000, 0) > profile.heightVariation(20000, 0),
+					"height variation must keep climbing where the base height has already bottomed out");
+			for (int r = 0; r <= 200000; r += 5000)
+				helper.assertTrue(profile.baseHeight(r, 0) >= -0.25F && profile.baseHeight(r, 0) <= 0.125F,
+						"base height must stay inside V33a's bounds at quart " + r);
+
+			// Within eight chunks of a structure the profile is damped linearly to flat.
+			StructureCalculator.StructurePlacement site = structures.getPlacements().getFirst();
+			int siteChunkX = site.placement().getX() >> 4;
+			int siteChunkZ = site.placement().getZ() >> 4;
+			helper.assertTrue(profile.distanceToNearestStructureInChunks(siteChunkX, siteChunkZ) == 0,
+					"a structure's own chunk must be zero chunks from a structure");
+			helper.assertTrue(profile.roughness(siteChunkX * 4, siteChunkZ * 4) == 0,
+					"the ground a structure stands on must be perfectly flat");
+			double atFour = profile.roughness((siteChunkX + 4) * 4, siteChunkZ * 4);
+			double atTwelve = profile.roughness((siteChunkX + 12) * 4, siteChunkZ * 4);
+			helper.assertTrue(atFour > 0 && atFour < atTwelve,
+					"the flattening must ramp back up over the eight-chunk skirt");
+
+			// The monument competes with the structures for that damping.
+			int monumentChunkX = structures.getMonumentPosition().getX() >> 4;
+			int monumentChunkZ = structures.getMonumentPosition().getZ() >> 4;
+			helper.assertTrue(profile.distanceToNearestStructureInChunks(monumentChunkX, monumentChunkZ) == 0,
+					"the monument's own chunk must also read as zero chunks away");
+		}
+		finally {
+			StructureCalculator.allowUnfinishedStructures = previous;
+		}
+		helper.succeed();
 	}
 
 	/**
