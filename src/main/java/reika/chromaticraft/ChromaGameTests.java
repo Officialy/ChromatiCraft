@@ -1817,15 +1817,24 @@ public final class ChromaGameTests {
 		helper.assertTrue(controller.getStructureType()
 				== TileEntityStructureController.StructureType.CAVERN,
 				"the controller must persist the Cavern identity rather than infer it from geometry");
+		// The controller carries two independent sources of Fragments and the total cannot separate
+		// them: V33a's guaranteed reward is one stack of 1+rand(4)*(1+rand(2)), so 1, 2, 3, 4, 5 or 7,
+		// and the controller also rolls the vanilla stronghold library table, which ChromaChests
+		// injects Fragments into at its heaviest weight. Both were true upstream, so the assertion is
+		// that the reward stack is present rather than that it is all there is.
 		int fragments = 0;
+		boolean rewardStack = false;
 		for (int slot = 0; slot < controller.getContainerSize(); slot++) {
 			ItemStack stack = controller.getItem(slot);
-			if (stack.is(ChromaItems.INFO_FRAGMENT.get()))
-				fragments += stack.getCount();
+			if (!stack.is(ChromaItems.INFO_FRAGMENT.get()))
+				continue;
+			fragments += stack.getCount();
+			int count = stack.getCount();
+			rewardStack |= count == 1 || count == 2 || count == 3 || count == 4 || count == 5 || count == 7;
 		}
-		helper.assertTrue(fragments == 1 || fragments == 2 || fragments == 3 || fragments == 4
-				|| fragments == 5 || fragments == 7,
-				"controller must contain the source random guaranteed fragment reward; got " + fragments);
+		helper.assertTrue(fragments >= 1 && rewardStack,
+				"controller must contain the source random guaranteed fragment reward; got " + fragments
+						+ " across all stacks, none of them a legal reward size");
 		long chests = BlockPos.betweenClosedStream(origin.offset(-7, -2, -5), origin.offset(6, 3, 5))
 				.filter(pos -> helper.getLevel().getBlockEntity(pos) instanceof TileEntityLootChest).count();
 		helper.assertTrue(chests == 2, "the exact Cavern template must retain both loot chests; got " + chests);

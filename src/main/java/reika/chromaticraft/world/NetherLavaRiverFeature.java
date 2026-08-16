@@ -78,7 +78,15 @@ public final class NetherLavaRiverFeature extends Feature<NoneFeatureConfigurati
 	private record Fields(long seed, SimplexNoiseGenerator placement, SimplexNoiseGenerator height,
 			SimplexNoiseGenerator fluid, ThresholdMapping<Block> fluids) {}
 
-	private Fields fields;
+	/**
+	 * Volatile because worldgen runs {@link #place} on a worker pool, concurrently for different
+	 * chunks. Two threads racing to build the same fields is harmless, but publishing the reference
+	 * without a happens-before is not: a reader could see a non-null {@code fields} while the
+	 * threshold table's backing map was still only half visible to it. The table is complete before
+	 * the assignment, so safe publication is all this needs. V33a had no such hazard; 1.7.10 worldgen
+	 * was single-threaded.
+	 */
+	private volatile Fields fields;
 
 	public NetherLavaRiverFeature() {
 		super(NoneFeatureConfiguration.CODEC);

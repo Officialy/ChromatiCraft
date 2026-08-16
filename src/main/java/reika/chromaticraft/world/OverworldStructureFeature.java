@@ -89,16 +89,20 @@ public final class OverworldStructureFeature extends Feature<NoneFeatureConfigur
 	public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
 		WorldGenLevel world = context.level();
 		RandomSource random = context.random();
-		BlockPos controllerPos = natural ? naturalControllerPosition(world, context.origin(), random)
-				: context.origin();
+		// The Ocean structure is 31 blocks across and can reach past the chunks this step may write to,
+		// which leaves it half built. What slides is the origin, before anything is derived from it:
+		// naturalControllerPosition reads the heightmap at the origin's own column and validNaturalSite
+		// judges the site it returns, so moving the structure afterwards would place it at a depth
+		// taken from a different column, on ground that was never approved. Sliding first also keeps
+		// the random draw for the Cavern's depth to a single call.
+		net.minecraft.core.Vec3i controllerOffset = natural ? naturalControllerOffset(type)
+				: net.minecraft.core.Vec3i.ZERO;
+		BlockPos origin = NBTStructureLoader.fitToWriteWindow(world, type.template,
+				context.origin().offset(controllerOffset), type.templateAnchor).subtract(controllerOffset);
+		BlockPos controllerPos = natural ? naturalControllerPosition(world, origin, random) : origin;
 		if (natural && !validNaturalSite(world, controllerPos))
 			return false;
 
-		// The Ocean structure is 31 blocks across and can reach past the chunks this step may write
-		// to, which leaves it half built. Resolve the controller position first: the annexes, the
-		// tunnel and the chests all hang off it, so they have to slide together with it.
-		controllerPos = NBTStructureLoader.fitToWriteWindow(world, type.template, controllerPos,
-				type.templateAnchor);
 		List<BlockPos> placed = NBTStructureLoader.place(world, type.template, controllerPos,
 				type.templateAnchor, state -> state, 2);
 		CrystalElement color = CrystalElement.WHITE;
@@ -276,6 +280,21 @@ public final class OverworldStructureFeature extends Feature<NoneFeatureConfigur
 			}
 		}
 		return true;
+	}
+
+	/**
+	 * The horizontal shift {@link #naturalControllerPosition} applies for each type, which is fixed
+	 * per type and carries no randomness. It is needed on its own so the write-window fit can be
+	 * applied to the origin while still accounting for where the template will actually land.
+	 */
+	private static net.minecraft.core.Vec3i naturalControllerOffset(Type type) {
+		return switch (type) {
+			case DESERT -> new net.minecraft.core.Vec3i(7, 0, 7);
+			case SNOW -> new net.minecraft.core.Vec3i(8, 0, 6);
+			// V33a calls BurrowStructure with the grass surface coordinate; its controller is (-5,-8,-2).
+			case BURROW -> new net.minecraft.core.Vec3i(-5, 0, -2);
+			case CAVERN, OCEAN, BIOME_FRAGMENT -> net.minecraft.core.Vec3i.ZERO;
+		};
 	}
 
 	private BlockPos naturalControllerPosition(WorldGenLevel world, BlockPos origin, RandomSource random) {

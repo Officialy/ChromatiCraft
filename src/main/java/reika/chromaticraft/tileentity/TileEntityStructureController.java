@@ -488,7 +488,16 @@ public final class TileEntityStructureController extends RandomizableContainerBl
 		return result;
 	}
 
-	/** Adds V33a's guaranteed information fragments after the library loot has been rolled. */
+	/**
+	 * Adds V33a's information fragment reward after the library loot has been rolled.
+	 *
+	 * <p>Upstream adds these through {@code ReikaInventoryHelper.addToIInv}, which merges into a
+	 * matching stack or takes the first free slot and simply returns false when there is neither. A
+	 * full chest therefore dropped the reward in V33a too, and this matches that rather than treating
+	 * it as impossible — twenty-seven slots is not much once the vanilla stronghold library table has
+	 * rolled and ChromaChests' injections have been added on top, and a hard failure here would abort
+	 * chunk generation over loot.
+	 */
 	public void addReward(ItemStack reward) {
 		if (reward.isEmpty())
 			return;
@@ -507,7 +516,9 @@ public final class TileEntityStructureController extends RandomizableContainerBl
 				return;
 			}
 		}
-		throw new IllegalStateException("Structure controller reward inventory overflow at " + worldPosition);
+		reika.chromaticraft.ChromatiCraft.LOGGER.warn(
+				"Structure controller at {} had no room for its {} reward; the rolled loot filled all {} slots",
+				worldPosition, reward, items.size());
 	}
 
 	private AABB proximityBox() {
