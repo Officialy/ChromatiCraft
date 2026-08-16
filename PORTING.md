@@ -1,5 +1,47 @@
 # ChromatiCraft 1.7.10 V33a → Minecraft 26.2 / NeoForge port
 
+## Proxima decoration survey — 2026-08-16 (what the remaining worldgen is waiting on)
+
+The dimension itself is in: type, level stem, noise settings, biome source, biome map, region layout
+and structure placement all generate and have been walked in-world. What is still missing is the
+decoration pass — V33a's `DecoratorChroma` running twenty-two `ChromaWorldGenerator`s per chunk from
+`ChunkProviderChroma.runDecorators`, gated per biome by `DimensionGenerators.generateIn`.
+
+Mapping each generator to the blocks it places gives a clear order of work rather than an
+alphabetical one:
+
+| Blocked on | Generators |
+| --- | --- |
+| `DIMGEN` / `DIMGENTILE` (`DimDecoTypes`) | Floatstone, Miasma, Glass Cliffs, Moon Pool, Terrain Blob, Terrain Crystal, Fissure, Glow Cave, Crystal Shrub, Crystal Tree, Fire Jets, Glowing Cracks |
+| `GLOWLEAF` / `GLOWLOG` | Lighted Shrub, Lighted Tree, Tree Cluster |
+| `CHUNKLOADER`, `SPARKLE`, `VOIDRIFT`, `MOLTENLUMEN`, `BEDROCKCRACK`, `VOIDCAVE` | Chunkloader Blocks, Sparkle, and the remaining reach of Fissure and Glow Cave |
+| Nothing — every block already ported | Aurorae, Chroma Meteor, Island Arch, Crystal Pit, Mini Altar |
+
+`STRUCTSHIELD`, `LOOTCHEST`, `TIEREDORE`, `TIEREDPLANT`, `RUNE`, `LAMP` and `CRYSTAL` are all in, so
+`DimDecoTypes` is the single family that unblocks the most: twelve of the twenty-two.
+
+Reika's own `dimgen` art is already shipped under `textures/block/dimgen/`, so nothing here needs
+new artwork — with two exceptions that are upstream holes rather than porting gaps, recorded so they
+are not mistaken for something to fill in:
+
+- **`AQUA` has no texture anywhere in V33a.** `BlockDimensionDeco.registerBlockIcons` asks every
+  variant for `dimgen/<name>/layer_0` unconditionally, and there is no `aqua` directory in the source
+  tree or the shipped assets. It is not dead content — `WorldGenMoonPool` places it — so upstream
+  renders it as the missing-texture sprite. V33a's own `logError("...is missing icons!")` fallback
+  says Reika shipped this knowingly.
+- **`GEMSTONE` is missing `layer_0`** of the three its `numIcons` declares; `layer_1` and `layer_2`
+  are present. It is used by `TerrainGenCrystalMountain`.
+
+Porting `DimDecoTypes` is two efforts, not one, and they should not be attempted together:
+
+1. The eight variants with complete art become distinct registered blocks with block items, loot,
+   language and tags through datagen. That alone unblocks the generators that only need the block
+   identity, and is mechanical.
+2. Six variants — Floatstone, Gemstone, Crystalleaf, Oceanstone, Cliffglass and Glowcave — answer
+   `hasBlockRender()` and draw through a custom multi-layer ISBRH that picks a layer per position at
+   random and runs a second `b` pass; Glowcave alone is ten layers across two passes. That is the
+   `DynamicBlockStateModel` shape described in the render notes, and is its own focused effort.
+
 ## Working checkpoint — 2026-08-16 (reported worldgen faults, and Nether roof rivers)
 
 - The Nether Temple's redstone came out as isolated dots that carried no signal, so its puzzle could
