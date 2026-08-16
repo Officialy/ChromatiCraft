@@ -11,7 +11,8 @@
   beneficial potion effect to twenty minutes and leaves harmful ones alone; Cliff Glass is the only
   lit variant at 12; Floatstone is the beacon base, which 26.2 expresses as `BEACON_BASE_BLOCKS`
   rather than a block method; Glow Cave drops one to six; and the dimension-tuning drop multiplier is
-  applied at break time because it depends on who is breaking it.
+  applied through a `TuningScaledCount` loot provider, which wraps the base roll rather than
+  replacing it so the generated JSON still shows what a variant drops before tuning.
 - Harvesting is gated on `DECOHARVEST` tuning, and that gate short-circuits outside Proxima exactly as
   upstream's dimension-id test did, so decoration carried home stays breakable. The focused test
   asserts that direction; the in-Proxima refusal is an in-world check, because `GameTestServer` does

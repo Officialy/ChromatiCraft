@@ -14,6 +14,7 @@ import net.minecraft.world.level.storage.loot.predicates.LootItemCondition;
 import reika.chromaticraft.auxiliary.loot.ChromaBerryCount;
 import reika.chromaticraft.auxiliary.loot.CrystalShardCount;
 import reika.chromaticraft.auxiliary.loot.FortuneScaledChance;
+import reika.chromaticraft.auxiliary.loot.TuningScaledCount;
 
 /** Custom loot number providers for V33a drop formulas vanilla cannot express. */
 public final class ChromaLootProviders {
@@ -28,6 +29,10 @@ public final class ChromaLootProviders {
 	public static final DeferredHolder<MapCodec<? extends NumberProvider>, MapCodec<ChromaBerryCount>>
 			CHROMA_BERRY_COUNT = NUMBER_PROVIDERS.register("chroma_berry_count",
 					() -> ChromaBerryCount.MAP_CODEC);
+
+	public static final DeferredHolder<MapCodec<? extends NumberProvider>, MapCodec<TuningScaledCount>>
+			TUNING_SCALED_COUNT = NUMBER_PROVIDERS.register("tuning_scaled_count",
+					() -> TuningScaledCount.MAP_CODEC);
 
 	public static final DeferredRegister<MapCodec<? extends LootItemCondition>> CONDITIONS =
 			DeferredRegister.create(BuiltInRegistries.LOOT_CONDITION_TYPE, ChromatiCraft.MODID);

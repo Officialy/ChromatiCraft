@@ -2,14 +2,19 @@
   "type": "minecraft:block",
   "pools": [
     {
-      "conditions": [
-        {
-          "condition": "minecraft:survives_explosion"
-        }
-      ],
       "entries": [
         {
           "type": "minecraft:item",
+          "functions": [
+            {
+              "count": {
+                "type": "chromaticraft:tuning_scaled_count",
+                "base": 1.0,
+                "maximum": 1
+              },
+              "function": "minecraft:set_count"
+            }
+          ],
           "name": "chromaticraft:deco_lifewater"
         }
       ],

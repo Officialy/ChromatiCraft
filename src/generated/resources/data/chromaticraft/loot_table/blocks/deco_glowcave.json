@@ -8,9 +8,13 @@
           "functions": [
             {
               "count": {
-                "type": "minecraft:uniform",
-                "max": 6.0,
-                "min": 1.0
+                "type": "chromaticraft:tuning_scaled_count",
+                "base": {
+                  "type": "minecraft:uniform",
+                  "max": 6.0,
+                  "min": 1.0
+                },
+                "maximum": 18
               },
               "function": "minecraft:set_count"
             }

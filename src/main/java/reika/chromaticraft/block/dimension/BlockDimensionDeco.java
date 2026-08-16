@@ -138,17 +138,9 @@ public class BlockDimensionDeco extends Block {
 		}
 	}
 
-	/**
-	 * V33a {@code addDrops}: one item normally, one to six for Glow Cave, then scaled by how tuned the
-	 * breaking player is up to the variant's own ceiling. The base count and the ceiling live on the
-	 * loot table and this multiplier is applied on top, so a silk-touch or fortune rule still reads
-	 * from data rather than from here.
-	 */
-	public int tunedDropCount(Player player, int base) {
-		if (player == null)
-			return base;
-		return DimensionTuningManager.instance.getTunedDropCount(player, base, 1, type.maxDrops());
-	}
+	// V33a addDrops scales the count by the breaking player's dimension tuning. That lives on the loot
+	// table as TuningScaledCount rather than here, so the base roll stays visible in data and the
+	// scaling still sees who broke the block.
 
 	// V33a isOpaqueCube/renderAsNormalBlock are both false; that is carried by noOcclusion() on the
 	// block properties rather than an override.
