@@ -173,6 +173,8 @@ public class ChromaLang extends LanguageProvider {
 		for (reika.chromaticraft.registry.ProximaDecoTypes deco
 				: reika.chromaticraft.registry.ProximaDecoTypes.list)
 			add(ChromaBlocks.deco(deco).get(), deco.displayName());
+		add(ChromaBlocks.GLOW_LOG.get(), "Glowing Wood");
+		add(ChromaBlocks.GLOW_SAPLING.get(), "Glowing Sapling");
 		add(ChromaBlocks.WARP_NODE.get(), "Warp Node");
 		for (ChromaDecoFlowers flower : ChromaDecoFlowers.list) {
 			add(ChromaBlocks.decoFlower(flower).get(), flower.displayName());

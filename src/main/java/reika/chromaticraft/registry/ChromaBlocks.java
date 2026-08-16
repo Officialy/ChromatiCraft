@@ -384,6 +384,20 @@ public final class ChromaBlocks {
 		return DIMENSION_DECO.get(type);
 	}
 
+	// V33a's GLOWLEAF is already registered above as GLOWING_LEAVES: BiomeGlowingCliffs and the
+	// Proxima glow trees place the same block, so there is one identity, not two.
+
+	/** V33a Glowing Log: an ordinary log whose glow is an overlay, not emitted light. */
+	public static final DeferredBlock<reika.chromaticraft.block.dimension.BlockLightedLog> GLOW_LOG =
+			register("glow_log", () -> new reika.chromaticraft.block.dimension.BlockLightedLog(
+					blockProperties().mapColor(MapColor.WOOD).strength(2F).sound(SoundType.WOOD)));
+
+	/** V33a Glowing Sapling: light 9, three less than the canopy it grows into. */
+	public static final DeferredBlock<reika.chromaticraft.block.dimension.BlockLightedSapling> GLOW_SAPLING =
+			register("glow_sapling", () -> new reika.chromaticraft.block.dimension.BlockLightedSapling(
+					blockProperties().mapColor(MapColor.PLANT).noCollision().instabreak()
+							.sound(SoundType.GRASS).lightLevel(state -> 9)));
+
 	/** V33a Unknown Artefact: hardness 12, and resistance 300000 so it cannot be blasted out. */
 	public static final DeferredBlock<BlockUnknownArtefact> UNKNOWN_ARTEFACT = register("unknown_artefact",
 			() -> new BlockUnknownArtefact(blockProperties().mapColor(MapColor.STONE)

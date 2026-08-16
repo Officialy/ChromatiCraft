@@ -22,6 +22,30 @@
 - The multi-layer rendering for the six compositing variants is still outstanding; each currently
   draws its real `layer_0`.
 
+## Working checkpoint — 2026-08-16 (glow trees and the crystal shrub)
+
+- Registered the Glowing Log and Glowing Sapling, the two thirds of V33a's glow-tree family that were
+  genuinely missing. The canopy was not: `GLOWLEAF` is already registered as `glowing_leaves`, because
+  `BiomeGlowingCliffs` and the Proxima glow trees place the same block. A duplicate was written and
+  then removed on discovering that — worth recording, since the two names are close enough to invite
+  the same mistake again.
+- `glowing_leaves` now drops what V33a says it drops. Upstream's `getDrops` is an if/else-if — a
+  Glowing Sapling on a one-in-fifty roll that Fortune shortens, and only otherwise glowstone dust —
+  which an alternatives entry expresses exactly, since the first branch whose conditions pass wins.
+  Two Fortune curves were added to `FortuneScaledChance` for it: `RECIPROCAL` for
+  `nextInt(max(1, 50-5f)) == 0` and `RECIPROCAL_COMPLEMENT` for `nextInt(1+(1+f)/2) > 0`. The second
+  cannot fire without Fortune at all, which is upstream's arithmetic, not an omission.
+- With the sapling registered, the two `ChromaChests` Glow Sapling injections it was blocking are in:
+  the Dungeon entry at weight 1 and `JUNGLE_DISPENSER` at weight 2, the latter being that location's
+  only live entry.
+- Ported `WorldGenCrystalShrub` as the `crystal_shrub` feature. Both of upstream's size rolls are kept
+  — one in forty for the large form, then one in fifteen for the small — so most attempts grow nothing
+  and the Crystal Forest stays sparse; the focused test asserts that rarity rather than only that
+  something grows. Five blocks across, so it cannot leave the writable chunks.
+- The sapling does not grow yet. `WorldGenLightedTree` is unported, so it extends `VegetationBlock`
+  rather than a bonemealable base: inheriting `BonemealableBlock` would advertise a growth it cannot
+  perform. Placement, survival, light and drops are complete.
+
 ## Proxima decoration survey — 2026-08-16 (what the remaining worldgen is waiting on)
 
 The dimension itself is in: type, level stem, noise settings, biome source, biome map, region layout

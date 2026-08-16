@@ -152,6 +152,10 @@ public final class ChromaFeatures {
     public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> NETHER_ROOF_STRUCTURE =
             FEATURES.register("nether_roof_structure", () -> new NetherRoofStructureFeature());
 
+    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> CRYSTAL_SHRUB =
+            FEATURES.register("crystal_shrub",
+                    reika.chromaticraft.world.dimension.CrystalShrubFeature::new);
+
     public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> NETHER_LAVA_RIVER =
             FEATURES.register("nether_lava_river",
                     reika.chromaticraft.world.NetherLavaRiverFeature::new);

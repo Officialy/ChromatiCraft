@@ -320,6 +320,24 @@ public final class ChromaLootProvider extends LootTableProvider {
 					// same material, and the plain form drops itself.
 					this.dropSelf(block);
 				}
+				else if (block == ChromaBlocks.GLOWING_LEAVES.get()) {
+					// V33a getDrops is an if/else-if, not two independent rolls: a Glowing Sapling on a
+					// one-in-fifty roll that Fortune shortens, and only otherwise glowstone dust. An
+					// alternatives entry is exactly that -- the first branch whose conditions pass wins.
+					// The dust branch cannot fire at all without Fortune, which is upstream's own
+					// arithmetic rather than an omission here.
+					this.add(block, LootTable.lootTable().withPool(LootPool.lootPool()
+							.setRolls(ConstantValue.exactly(1))
+							.add(net.minecraft.world.level.storage.loot.entries.AlternativesEntry.alternatives(
+									LootItem.lootTableItem(ChromaBlocks.GLOW_SAPLING.get())
+											.when(() -> FortuneScaledChance.reciprocal(50, 5)),
+									LootItem.lootTableItem(net.minecraft.world.item.Items.GLOWSTONE_DUST)
+											.when(() -> FortuneScaledChance.reciprocalComplement(1, 0.5))
+											.apply(net.minecraft.world.level.storage.loot.functions.ApplyBonusCount
+													.addUniformBonusCount(registries.lookupOrThrow(
+															net.minecraft.core.registries.Registries.ENCHANTMENT)
+															.getOrThrow(net.minecraft.world.item.enchantment.Enchantments.FORTUNE), 1))))));
+				}
 				else if (block instanceof reika.chromaticraft.block.dimension.BlockDimensionDeco deco) {
 					// V33a addDrops: one item, except Glow Cave which yields one to six, then scaled by
 					// how tuned the breaking player is up to the variant's own ceiling. The scaling has

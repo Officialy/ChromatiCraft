@@ -65,11 +65,8 @@ public record ChromaChestLoot(HolderLookup.Provider registries) implements LootT
 	 * One entry per {@code LootController.Location} that V33a injected into, paired with the 26.2 table
 	 * that replaced it and that table's own roll count.
 	 *
-	 * <p>{@code Location.JUNGLE_DISPENSER} is absent: its only live V33a entry is the Glowing Sapling,
-	 * which has not been ported yet, and its shard line is commented out upstream. When
-	 * {@code BlockLightedSapling} lands, this needs a {@code JUNGLE_DISPENSER} constant with
-	 * {@code (4, GLOWSAPLING, 1, 1, 2)} and a {@code (4, GLOWSAPLING, 1, 1, 1)} entry added to
-	 * {@link #DUNGEON}.
+	 * <p>{@code Location.JUNGLE_DISPENSER} carries only the Glowing Sapling; upstream's shard line for
+	 * it is commented out and stays that way.
 	 */
 	public enum Location {
 		/** V33a {@code Location.BONUS} — {@code ChestGenHooks.BONUS_CHEST}. */
@@ -89,7 +86,9 @@ public record ChromaChestLoot(HolderLookup.Provider registries) implements LootT
 		/** V33a {@code Location.PYRAMID} — {@code ChestGenHooks.PYRAMID_DESERT_CHEST}. */
 		PYRAMID(BuiltInLootTables.DESERT_PYRAMID, UniformGenerator.between(2, 4)),
 		/** V33a {@code Location.JUNGLE_PUZZLE} — {@code ChestGenHooks.PYRAMID_JUNGLE_CHEST}. */
-		JUNGLE_PUZZLE(BuiltInLootTables.JUNGLE_TEMPLE, UniformGenerator.between(2, 6));
+		JUNGLE_PUZZLE(BuiltInLootTables.JUNGLE_TEMPLE, UniformGenerator.between(2, 6)),
+		/** V33a {@code Location.JUNGLE_DISPENSER} — {@code ChestGenHooks.PYRAMID_JUNGLE_DISPENSER}. */
+		JUNGLE_DISPENSER(BuiltInLootTables.JUNGLE_TEMPLE_DISPENSER, UniformGenerator.between(1, 2));
 
 		/** The vanilla table this location's loot is added to. */
 		public final ResourceKey<LootTable> target;
@@ -141,7 +140,7 @@ public record ChromaChestLoot(HolderLookup.Provider registries) implements LootT
 				shards(pool, 2, 8, 2);
 				add(pool, ChromaItems.LEXICON.get(), 1, 1, 2);
 				add(pool, ChromaItems.INFO_FRAGMENT.get(), 1, 1, 10);
-				// V33a also seeds a Glowing Sapling here at weight 1; see Location's documentation.
+				add(pool, reika.chromaticraft.registry.ChromaBlocks.GLOW_SAPLING.get(), 1, 1, 1);
 			}
 			case MINESHAFT -> add(pool, ChromaItems.INFO_FRAGMENT.get(), 1, 1, 2);
 			case STRONGHOLD_LIBRARY -> {
@@ -155,6 +154,9 @@ public record ChromaChestLoot(HolderLookup.Provider registries) implements LootT
 				add(pool, ChromaItems.INFO_FRAGMENT.get(), 1, 1, 20);
 			}
 			case JUNGLE_PUZZLE -> add(pool, ChromaItems.INFO_FRAGMENT.get(), 1, 2, 20);
+			// V33a's only live JUNGLE_DISPENSER entry; its shard line is commented out upstream.
+			case JUNGLE_DISPENSER ->
+					add(pool, reika.chromaticraft.registry.ChromaBlocks.GLOW_SAPLING.get(), 1, 1, 2);
 		}
 	}
 

@@ -305,6 +305,7 @@ public final class ChromaGameTests {
 		register(event, env, "structure_write_window_fit", ChromaGameTests::structureWriteWindowFit);
 		register(event, env, "nether_lava_rivers", ChromaGameTests::netherLavaRivers);
 		register(event, env, "proxima_deco_blocks", ChromaGameTests::proximaDecoBlocks);
+		register(event, env, "crystal_shrub_feature", ChromaGameTests::crystalShrubFeature);
 		register(event, env, "loot_chest_lid_event", ChromaGameTests::lootChestLidEvent);
 		register(event, env, "loot_chest_trap_signal", ChromaGameTests::lootChestTrapSignal);
 		register(event, env, "structure_trap_and_wiring", ChromaGameTests::structureTrapAndWiring);
@@ -1587,6 +1588,54 @@ public final class ChromaGameTests {
 							+ zombie.getHealth());
 			helper.succeed();
 		});
+	}
+
+	/**
+	 * V33a's crystal shrub grows only on grass, only sometimes, and only in Crystal Leaves.
+	 *
+	 * <p>The size roll is the part worth guarding: upstream tries one in forty for the large form and
+	 * then one in fifteen for the small, so most attempts produce nothing at all and the Crystal Forest
+	 * stays sparse. A port that dropped either roll would carpet the biome. Seeds are swept because no
+	 * single one is guaranteed to grow anything.
+	 */
+	private static void crystalShrubFeature(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		BlockPos origin = helper.absolutePos(new BlockPos(8, 4, 8));
+		var feature = new reika.chromaticraft.world.dimension.CrystalShrubFeature();
+		var leaves = ChromaBlocks.deco(reika.chromaticraft.registry.ProximaDecoTypes.CRYSTALLEAF).get();
+
+		// Without grass beneath, nothing grows however lucky the roll.
+		level.setBlock(origin.below(), Blocks.STONE.defaultBlockState(), 3);
+		for (long seed = 0; seed < 32; seed++)
+			helper.assertTrue(!feature.place(shrubContext(helper, origin, seed)),
+					"a crystal shrub must refuse to grow on stone");
+
+		level.setBlock(origin.below(), Blocks.GRASS_BLOCK.defaultBlockState(), 3);
+		int grown = 0;
+		int attempts = 0;
+		for (long seed = 0; seed < 400; seed++) {
+			attempts++;
+			for (BlockPos pos : BlockPos.betweenClosedStream(origin.offset(-3, 0, -3),
+					origin.offset(3, 6, 3)).map(BlockPos::immutable).toList())
+				level.setBlock(pos, Blocks.AIR.defaultBlockState(), 3);
+			if (!feature.place(shrubContext(helper, origin, seed)))
+				continue;
+			grown++;
+			// Whatever the size, the crown's top layer is a radius-1 diamond, so its corners stay open.
+			helper.assertTrue(!level.getBlockState(origin.offset(2, 0, 2)).is(leaves),
+					"the crystal shrub's crown must be a diamond, not a filled square");
+		}
+		helper.assertTrue(grown > 0, "no crystal shrub grew across " + attempts + " attempts on grass");
+		helper.assertTrue(grown < attempts / 2, "crystal shrubs grew on " + grown + " of " + attempts
+				+ " attempts; V33a's one-in-forty and one-in-fifteen size rolls make it far rarer");
+		helper.succeed();
+	}
+
+	private static FeaturePlaceContext<NoneFeatureConfiguration> shrubContext(GameTestHelper helper,
+			BlockPos origin, long seed) {
+		return new FeaturePlaceContext<>(Optional.empty(), helper.getLevel(),
+				helper.getLevel().getChunkSource().getGenerator(), RandomSource.create(seed), origin,
+				NoneFeatureConfiguration.INSTANCE);
 	}
 
 	/** Plain-Block loot chests must explicitly deliver vanilla opener-count events to their BE. */

@@ -69,6 +69,7 @@ public final class ChromaWorldGenProvider {
     private static final Identifier LUMINOUS_FLORA = id("luminous_flora");
     private static final Identifier NETHER_ROOF_STRUCTURE = id("nether_roof_structure");
     private static final Identifier NETHER_LAVA_RIVER = id("nether_lava_river");
+    private static final Identifier CRYSTAL_SHRUB = id("crystal_shrub");
     private static final List<Identifier> NETHER_ROOF_STRUCTURES =
             List.of(id("nether_hut"), id("nether_temple"), id("nether_maze"),
                     id("nether_spiral"), id("nether_diorama"));
@@ -168,6 +169,7 @@ public final class ChromaWorldGenProvider {
             registerConfigured(bootstrap, features, LUMINOUS_FLORA);
             registerConfigured(bootstrap, features, NETHER_ROOF_STRUCTURE);
             registerConfigured(bootstrap, features, NETHER_LAVA_RIVER);
+            registerConfigured(bootstrap, features, CRYSTAL_SHRUB);
             for (Identifier structure : NETHER_ROOF_STRUCTURES)
                 registerConfigured(bootstrap, features, structure);
             registerConfigured(bootstrap, features, NATURAL_CAVERN);
@@ -262,6 +264,14 @@ public final class ChromaWorldGenProvider {
             // in-square spread, because the feature walks its own chunk's sixteen by sixteen columns
             // itself and needs the origin to stay on the chunk corner.
             registerPlaced(bootstrap, configured, NETHER_LAVA_RIVER, List.of(BiomeFilter.biome()));
+            // V33a's decorator gives the crystal shrub a generation chance of 1 per chunk and rolls
+            // the size itself, refusing most attempts, so the placement is one attempt per chunk on
+            // the surface rather than a rarity gate here.
+            registerPlaced(bootstrap, configured, CRYSTAL_SHRUB, List.of(
+                    InSquarePlacement.spread(),
+                    net.minecraft.world.level.levelgen.placement.HeightmapPlacement.onHeightmap(
+                            net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES),
+                    BiomeFilter.biome()));
             // Named command/debug seams do not carry a rarity gate.
             for (Identifier structure : NETHER_ROOF_STRUCTURES)
                 registerPlaced(bootstrap, configured, structure);

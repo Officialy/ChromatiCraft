@@ -51,6 +51,8 @@ public final class ChromaBlockTagsProvider extends BlockTagsProvider {
 				: reika.chromaticraft.registry.ProximaDecoTypes.list)
 			if (type.requiresPickaxe())
 				pickaxe.add(ChromaBlocks.deco(type).getKey());
+		tag(BlockTags.LOGS).add(ChromaBlocks.GLOW_LOG.getKey());
+		tag(BlockTags.MINEABLE_WITH_AXE).add(ChromaBlocks.GLOW_LOG.getKey());
 		// V33a isBeaconBase: Floatstone alone, which 26.2 expresses as a tag rather than a method.
 		tag(BlockTags.BEACON_BASE_BLOCKS).add(
 				ChromaBlocks.deco(reika.chromaticraft.registry.ProximaDecoTypes.FLOATSTONE).getKey());

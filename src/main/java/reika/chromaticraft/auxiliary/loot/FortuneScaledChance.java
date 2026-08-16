@@ -31,7 +31,20 @@ public record FortuneScaledChance(double base, double perLevel, Mode mode) imple
 		/** {@code base * (1 + fortune)^2} */
 		QUADRATIC,
 		/** {@code base * 2^fortune} */
-		EXPONENTIAL;
+		EXPONENTIAL,
+		/**
+		 * {@code 1 / max(1, base - fortune*perLevel)} — a one-in-N roll whose N shrinks with Fortune,
+		 * which is how V33a writes {@code rand.nextInt(Math.max(1, 50-fortune*5)) == 0}. The clamp is
+		 * upstream's and matters: without it a high enough Fortune would invert the odds.
+		 */
+		RECIPROCAL,
+		/**
+		 * {@code 1 - 1/(base + floor((1+fortune)*perLevel))} — the odds that a one-in-N roll comes up
+		 * anything but zero, which is V33a's {@code rand.nextInt(1+(1+fortune)/2) > 0}. At Fortune 0
+		 * that is a certainty of failure, and upstream relies on it: an unenchanted axe gets no
+		 * glowstone from a Glowing Leaf at all.
+		 */
+		RECIPROCAL_COMPLEMENT;
 
 		public static final Codec<Mode> CODEC = Codec.STRING.xmap(
 				name -> valueOf(name.toUpperCase(java.util.Locale.ROOT)),
@@ -56,12 +69,24 @@ public record FortuneScaledChance(double base, double perLevel, Mode mode) imple
 		return new FortuneScaledChance(base, 1, Mode.EXPONENTIAL);
 	}
 
+	/** V33a's {@code rand.nextInt(Math.max(1, base - fortune*perLevel)) == 0}. */
+	public static FortuneScaledChance reciprocal(double base, double perLevel) {
+		return new FortuneScaledChance(base, perLevel, Mode.RECIPROCAL);
+	}
+
+	/** V33a's {@code rand.nextInt(base + (1+fortune)*perLevel) > 0}. */
+	public static FortuneScaledChance reciprocalComplement(double base, double perLevel) {
+		return new FortuneScaledChance(base, perLevel, Mode.RECIPROCAL_COMPLEMENT);
+	}
+
 	/** The V33a chance for a given Fortune level, shared with {@link ChromaBerryCount}. */
 	public double chanceAt(int fortune) {
 		return switch (mode) {
 			case LINEAR -> base * (1 + fortune * perLevel);
 			case QUADRATIC -> base * (1 + fortune) * (1 + fortune);
 			case EXPONENTIAL -> base * Math.pow(2, fortune);
+			case RECIPROCAL -> 1 / Math.max(1, base - fortune * perLevel);
+			case RECIPROCAL_COMPLEMENT -> 1 - 1 / (base + Math.floor((1 + fortune) * perLevel));
 		};
 	}
 

@@ -239,6 +239,7 @@ public class ChromaModelProvider extends ModelProvider {
 		dummyAuxModel(blockStateOut, modelOut);
 		shieldingBlocks(blockStateOut, itemModelOut, modelOut);
 		dimensionDecoBlocks(blockStateOut, itemModelOut, modelOut);
+		glowTreeBlocks(blockStateOut, itemModelOut, modelOut);
 		trapFloorModel(blockStateOut, itemModelOut, modelOut);
 		shiftLockModel(blockStateOut, itemModelOut, modelOut);
 		hoverModel(blockStateOut, itemModelOut, modelOut);
@@ -425,6 +426,47 @@ public class ChromaModelProvider extends ModelProvider {
 					new MultiVariant(WeightedList.of(new Variant(model)))));
 			itemModelOut.accept(block.asItem(), ItemModelUtils.plainModel(model));
 		}
+	}
+
+	/**
+	 * Proxima's glowing trees. The log draws upstream's own pass-0 base — vanilla oak log, which is
+	 * literally what {@code BlockLightedLog.getIcon} returns — because its glow is a second-pass
+	 * overlay and that pass is the deferred rendering effort. The sapling has no overlay and uses its
+	 * own real art. The canopy is not here: V33a's GLOWLEAF is already registered as
+	 * {@code glowing_leaves}, since the Glowing Cliffs biome places the same block.
+	 */
+	private static void glowTreeBlocks(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		Block log = ChromaBlocks.GLOW_LOG.get();
+		Identifier logModel = ModelTemplates.CUBE_COLUMN.create(log, new TextureMapping()
+				.put(TextureSlot.SIDE, new Material(Identifier.withDefaultNamespace("block/oak_log")))
+				.put(TextureSlot.END, new Material(Identifier.withDefaultNamespace("block/oak_log_top"))),
+				modelOut);
+		// Vanilla's own pillar dispatch: unrotated on Y, X-rotated on Z, and both on X.
+		blockStateOut.accept(MultiVariantGenerator.dispatch(log,
+				new MultiVariant(WeightedList.of(new Variant(logModel))))
+				.with(net.minecraft.client.data.models.blockstates.PropertyDispatch.modify(
+						net.minecraft.world.level.block.state.properties.BlockStateProperties.AXIS)
+						.select(net.minecraft.core.Direction.Axis.Y,
+								net.minecraft.client.data.models.BlockModelGenerators.NOP)
+						.select(net.minecraft.core.Direction.Axis.Z,
+								net.minecraft.client.data.models.BlockModelGenerators.X_ROT_90)
+						.select(net.minecraft.core.Direction.Axis.X,
+								net.minecraft.client.data.models.BlockModelGenerators.X_ROT_90.then(
+										net.minecraft.client.data.models.BlockModelGenerators.Y_ROT_90))));
+		itemModelOut.accept(log.asItem(), ItemModelUtils.plainModel(logModel));
+
+		Block sapling = ChromaBlocks.GLOW_SAPLING.get();
+		Identifier saplingModel = ModelTemplates.CROSS.create(sapling, TextureMapping.cross(
+				new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/dimgen/sapling"))),
+				modelOut);
+		blockStateOut.accept(MultiVariantGenerator.dispatch(sapling,
+				new MultiVariant(WeightedList.of(new Variant(saplingModel)))));
+		itemModelOut.accept(sapling.asItem(), ItemModelUtils.plainModel(
+				ModelTemplates.FLAT_ITEM.create(net.minecraft.client.data.models.model.ModelLocationUtils
+						.getModelLocation(sapling.asItem()), TextureMapping.layer0(
+						new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/dimgen/sapling"))),
+						modelOut)));
 	}
 
 	private static void warpNodeModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,

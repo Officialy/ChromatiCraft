@@ -254,6 +254,10 @@
           "weight": 10
         },
         {
+          "type": "minecraft:item",
+          "name": "chromaticraft:glow_sapling"
+        },
+        {
           "type": "minecraft:empty",
           "weight": 100
         }

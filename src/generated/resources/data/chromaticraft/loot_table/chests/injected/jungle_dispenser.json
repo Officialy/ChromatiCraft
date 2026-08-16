@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:chest",
+  "pools": [
+    {
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "chromaticraft:glow_sapling",
+          "weight": 2
+        },
+        {
+          "type": "minecraft:empty",
+          "weight": 100
+        }
+      ],
+      "rolls": {
+        "type": "minecraft:uniform",
+        "max": 2.0,
+        "min": 1.0
+      }
+    }
+  ],
+  "random_sequence": "chromaticraft:chests/injected/jungle_dispenser"
+}

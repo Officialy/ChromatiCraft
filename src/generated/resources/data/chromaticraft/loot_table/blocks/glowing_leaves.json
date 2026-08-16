@@ -2,15 +2,45 @@
   "type": "minecraft:block",
   "pools": [
     {
-      "conditions": [
-        {
-          "condition": "minecraft:survives_explosion"
-        }
-      ],
       "entries": [
         {
-          "type": "minecraft:item",
-          "name": "chromaticraft:glowing_leaves"
+          "type": "minecraft:alternatives",
+          "children": [
+            {
+              "type": "minecraft:item",
+              "conditions": [
+                {
+                  "base": 50.0,
+                  "condition": "chromaticraft:fortune_scaled_chance",
+                  "mode": "reciprocal",
+                  "per_level": 5.0
+                }
+              ],
+              "name": "chromaticraft:glow_sapling"
+            },
+            {
+              "type": "minecraft:item",
+              "conditions": [
+                {
+                  "base": 1.0,
+                  "condition": "chromaticraft:fortune_scaled_chance",
+                  "mode": "reciprocal_complement",
+                  "per_level": 0.5
+                }
+              ],
+              "functions": [
+                {
+                  "enchantment": "minecraft:fortune",
+                  "formula": "minecraft:uniform_bonus_count",
+                  "function": "minecraft:apply_bonus",
+                  "parameters": {
+                    "bonusMultiplier": 1
+                  }
+                }
+              ],
+              "name": "minecraft:glowstone_dust"
+            }
+          ]
         }
       ],
       "rolls": 1.0
