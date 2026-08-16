@@ -22,6 +22,24 @@
 - The multi-layer rendering for the six compositing variants is still outstanding; each currently
   draws its real `layer_0`.
 
+## Working checkpoint — 2026-08-16 (Floatstone drifts)
+
+- Ported `WorldGenFloatstone` as the `floatstone` feature: a cluster twelve to twenty-four blocks above
+  its anchor, two to eight veins scattered around it, and upstream's crowding rule shrinking each vein
+  once there are four or more.
+- Vanilla's `OreFeature` looked like the obvious host — it is `WorldGenMinable`'s descendant — but it
+  refuses this outright. Before placing anything it requires the vein to start at or below the
+  `OCEAN_FLOOR_WG` heightmap, which is right for buried ore and wrong for a drift hanging in open sky,
+  so every call returned false. The 1.7.10 blob algorithm is ported directly instead: a line between
+  two endpoints with an ellipsoid swept along it, widest at the middle, targeting air.
+- `WorldGenMinable`'s internal eight-block shift is reproduced rather than dropped. It dates from when
+  generators were handed chunk corners, and V33a passes block coordinates straight in, so every
+  cluster really is biased eight blocks in x and z.
+- An earlier note here read the vein size as a width; it is a block count, so forty is a drift about
+  nine across and a whole cluster spans roughly twenty-seven blocks. Floatstone therefore fits the
+  writable window and needed no slicing. Glass Cliffs (up to 48 long) and Miasma (radius up to 36, so
+  73 across) are the ones that genuinely still do.
+
 ## Working checkpoint — 2026-08-16 (glow trees and the crystal shrub)
 
 - Registered the Glowing Log and Glowing Sapling, the two thirds of V33a's glow-tree family that were

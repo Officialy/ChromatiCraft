@@ -306,6 +306,7 @@ public final class ChromaGameTests {
 		register(event, env, "nether_lava_rivers", ChromaGameTests::netherLavaRivers);
 		register(event, env, "proxima_deco_blocks", ChromaGameTests::proximaDecoBlocks);
 		register(event, env, "crystal_shrub_feature", ChromaGameTests::crystalShrubFeature);
+		register(event, env, "floatstone_feature", ChromaGameTests::floatstoneFeature);
 		register(event, env, "loot_chest_lid_event", ChromaGameTests::lootChestLidEvent);
 		register(event, env, "loot_chest_trap_signal", ChromaGameTests::lootChestTrapSignal);
 		register(event, env, "structure_trap_and_wiring", ChromaGameTests::structureTrapAndWiring);
@@ -1636,6 +1637,54 @@ public final class ChromaGameTests {
 		return new FeaturePlaceContext<>(Optional.empty(), helper.getLevel(),
 				helper.getLevel().getChunkSource().getGenerator(), RandomSource.create(seed), origin,
 				NoneFeatureConfiguration.INSTANCE);
+	}
+
+	/**
+	 * V33a's Floatstone drifts must hang in the air above their anchor, and stay small enough to land.
+	 *
+	 * <p>Two properties matter and neither is obvious from the code. The veins replace <em>air</em>
+	 * rather than stone, which is the whole reason a drift floats — a port that targeted stone would
+	 * produce nothing in open sky. And the cluster has to fit the 48-block window a feature may write
+	 * to: the size upstream passes is a vein block count, not a width, so forty blocks is a drift about
+	 * nine across and the eight-block scatter keeps the whole cluster near twenty-seven. This asserts
+	 * the extent directly rather than trusting that reading.
+	 */
+	private static void floatstoneFeature(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		BlockPos origin = helper.absolutePos(new BlockPos(8, 4, 8));
+		var feature = new reika.chromaticraft.world.dimension.FloatstoneFeature();
+		var floatstone = ChromaBlocks.deco(
+				reika.chromaticraft.registry.ProximaDecoTypes.FLOATSTONE).get();
+		int producedAny = 0;
+		int maxSpan = 0;
+		for (long seed = 0; seed < 24; seed++) {
+			for (BlockPos pos : BlockPos.betweenClosedStream(origin.offset(-30, 0, -30),
+					origin.offset(30, 40, 30)).map(BlockPos::immutable).toList())
+				if (level.getBlockState(pos).is(floatstone))
+					level.setBlock(pos, Blocks.AIR.defaultBlockState(), 3);
+			if (!feature.place(shrubContext(helper, origin, seed)))
+				continue;
+			producedAny++;
+			int minX = Integer.MAX_VALUE, maxX = Integer.MIN_VALUE, minY = Integer.MAX_VALUE;
+			for (BlockPos pos : BlockPos.betweenClosedStream(origin.offset(-30, 0, -30),
+					origin.offset(30, 40, 30)).map(BlockPos::immutable).toList()) {
+				if (!level.getBlockState(pos).is(floatstone)) continue;
+				minX = Math.min(minX, pos.getX());
+				maxX = Math.max(maxX, pos.getX());
+				minY = Math.min(minY, pos.getY());
+			}
+			maxSpan = Math.max(maxSpan, maxX - minX + 1);
+			// V33a floats the cluster twelve to twenty-four blocks up, then lets the scatter, the vein
+			// endpoints and the ellipsoid radius each pull it back down by a few — so the invariant
+			// worth holding is that a drift clears its anchor entirely, not any exact height.
+			helper.assertTrue(minY > origin.getY(),
+					"a Floatstone drift reached y " + minY + " from an anchor at " + origin.getY()
+							+ "; drifts must hang above their anchor, not sit on it");
+		}
+		helper.assertTrue(producedAny > 0, "no Floatstone drift formed across 24 seeds");
+		helper.assertTrue(maxSpan <= 48, "a Floatstone cluster spanned " + maxSpan
+				+ " blocks, which cannot fit the window a feature may write to");
+		helper.succeed();
 	}
 
 	/** Plain-Block loot chests must explicitly deliver vanilla opener-count events to their BE. */

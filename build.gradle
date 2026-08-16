@@ -471,6 +471,7 @@ sourceSets.main.java {
     include 'reika/chromaticraft/block/dimension/BlockLightedLog.java'
     include 'reika/chromaticraft/block/dimension/BlockLightedSapling.java'
     include 'reika/chromaticraft/world/dimension/CrystalShrubFeature.java'
+    include 'reika/chromaticraft/world/dimension/FloatstoneFeature.java'
     include 'reika/chromaticraft/auxiliary/loot/TuningScaledCount.java'
     include 'reika/chromaticraft/registry/ProximaDecoTypes.java'
     include 'reika/chromaticraft/block/dimension/BlockDimensionDeco.java'

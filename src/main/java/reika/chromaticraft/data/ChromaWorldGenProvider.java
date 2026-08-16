@@ -70,6 +70,7 @@ public final class ChromaWorldGenProvider {
     private static final Identifier NETHER_ROOF_STRUCTURE = id("nether_roof_structure");
     private static final Identifier NETHER_LAVA_RIVER = id("nether_lava_river");
     private static final Identifier CRYSTAL_SHRUB = id("crystal_shrub");
+    private static final Identifier FLOATSTONE = id("floatstone");
     private static final List<Identifier> NETHER_ROOF_STRUCTURES =
             List.of(id("nether_hut"), id("nether_temple"), id("nether_maze"),
                     id("nether_spiral"), id("nether_diorama"));
@@ -170,6 +171,7 @@ public final class ChromaWorldGenProvider {
             registerConfigured(bootstrap, features, NETHER_ROOF_STRUCTURE);
             registerConfigured(bootstrap, features, NETHER_LAVA_RIVER);
             registerConfigured(bootstrap, features, CRYSTAL_SHRUB);
+            registerConfigured(bootstrap, features, FLOATSTONE);
             for (Identifier structure : NETHER_ROOF_STRUCTURES)
                 registerConfigured(bootstrap, features, structure);
             registerConfigured(bootstrap, features, NATURAL_CAVERN);
@@ -267,6 +269,13 @@ public final class ChromaWorldGenProvider {
             // V33a's decorator gives the crystal shrub a generation chance of 1 per chunk and rolls
             // the size itself, refusing most attempts, so the placement is one attempt per chunk on
             // the surface rather than a rarity gate here.
+            // V33a getGenerationChance: 0.1 per chunk in Skylands and Voidlands, 0.02 elsewhere. The
+            // rarer case is the one expressed here; the dimension's own biome gating decides the rest.
+            registerPlaced(bootstrap, configured, FLOATSTONE, List.of(
+                    RarityFilter.onAverageOnceEvery(10), InSquarePlacement.spread(),
+                    net.minecraft.world.level.levelgen.placement.HeightmapPlacement.onHeightmap(
+                            net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES),
+                    BiomeFilter.biome()));
             registerPlaced(bootstrap, configured, CRYSTAL_SHRUB, List.of(
                     InSquarePlacement.spread(),
                     net.minecraft.world.level.levelgen.placement.HeightmapPlacement.onHeightmap(
