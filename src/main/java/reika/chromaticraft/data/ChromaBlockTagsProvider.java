@@ -45,6 +45,15 @@ public final class ChromaBlockTagsProvider extends BlockTagsProvider {
 				ChromaBlocks.MUSIC_TRIGGER.getKey());
 		pickaxe.add(ChromaBlocks.BIOME_REPLAY.getKey());
 		ChromaBlocks.SHIELDING.values().forEach(block -> pickaxe.add(block.getKey()));
+		// V33a requiresPickaxe is only true for some of the decoration; the rest breaks by hand, so
+		// only those go in the pickaxe tag.
+		for (reika.chromaticraft.registry.ProximaDecoTypes type
+				: reika.chromaticraft.registry.ProximaDecoTypes.list)
+			if (type.requiresPickaxe())
+				pickaxe.add(ChromaBlocks.deco(type).getKey());
+		// V33a isBeaconBase: Floatstone alone, which 26.2 expresses as a tag rather than a method.
+		tag(BlockTags.BEACON_BASE_BLOCKS).add(
+				ChromaBlocks.deco(reika.chromaticraft.registry.ProximaDecoTypes.FLOATSTONE).getKey());
 		ChromaBlocks.CAVE_CRYSTALS.forEach(block -> pickaxe.add(block.getKey()));
 		ChromaBlocks.CRYSTAL_LAMPS.forEach(block -> pickaxe.add(block.getKey()));
 		ChromaBlocks.SUPER_CRYSTALS.forEach(block -> pickaxe.add(block.getKey()));

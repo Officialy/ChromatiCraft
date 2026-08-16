@@ -304,6 +304,7 @@ public final class ChromaGameTests {
 		register(event, env, "structure_chest_fragments", ChromaGameTests::structureChestFragments);
 		register(event, env, "structure_write_window_fit", ChromaGameTests::structureWriteWindowFit);
 		register(event, env, "nether_lava_rivers", ChromaGameTests::netherLavaRivers);
+		register(event, env, "proxima_deco_blocks", ChromaGameTests::proximaDecoBlocks);
 		register(event, env, "loot_chest_lid_event", ChromaGameTests::lootChestLidEvent);
 		register(event, env, "loot_chest_trap_signal", ChromaGameTests::lootChestTrapSignal);
 		register(event, env, "structure_trap_and_wiring", ChromaGameTests::structureTrapAndWiring);
@@ -1528,6 +1529,64 @@ public final class ChromaGameTests {
 		helper.assertTrue(channels < banks + channels,
 				"every river column came out as channel; the bank threshold is not being applied");
 		helper.succeed();
+	}
+
+	/**
+	 * Proxima's decoration materials must carry V33a's behaviour, not just exist in the registry.
+	 *
+	 * <p>Three things here are invisible in the generated data and are what actually distinguish these
+	 * blocks: the walk-through variants must have no collision at all, harvesting anything must be
+	 * gated on the player's dimension tuning, and Lifewater must heal the living while burning the
+	 * undead. The first is what lets the other effects fire, since they run from inside the block.
+	 */
+	private static void proximaDecoBlocks(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		BlockPos pos = helper.absolutePos(new BlockPos(8, 4, 8));
+		for (reika.chromaticraft.registry.ProximaDecoTypes type
+				: reika.chromaticraft.registry.ProximaDecoTypes.list) {
+			var block = ChromaBlocks.deco(type).get();
+			level.setBlock(pos, block.defaultBlockState(), 3);
+			BlockState state = level.getBlockState(pos);
+			boolean solid = !state.getCollisionShape(level, pos).isEmpty();
+			helper.assertTrue(solid == type.isSolid(), type.registryName() + " collision is "
+					+ (solid ? "solid" : "empty") + ", but V33a hasBlockRender says it should be "
+					+ (type.isSolid() ? "solid" : "walked through"));
+			helper.assertTrue(state.getLightEmission() == type.lightValue(),
+					type.registryName() + " emits " + state.getLightEmission() + " light, expected "
+							+ type.lightValue());
+		}
+
+		// V33a getPlayerRelativeBlockHardness gates harvesting on DECOHARVEST tuning, but the gate
+		// short-circuits outside Proxima -- upstream tested the dimension id first, so a block carried
+		// home stays breakable. That short-circuit is the half this can check: a GameTest world is the
+		// overworld, and GameTestServer does not instantiate datapack dimensions, so the in-Proxima
+		// refusal is an in-world check. Asserting this direction still catches the gate being made
+		// unconditional, which would strand any decoration a player brought back.
+		level.setBlock(pos, ChromaBlocks.deco(
+				reika.chromaticraft.registry.ProximaDecoTypes.FLOATSTONE).get().defaultBlockState(), 3);
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		helper.assertTrue(!reika.chromaticraft.world.dimension.DimensionTuningManager.TuningThresholds
+						.DECOHARVEST.isSufficientlyTuned(player)
+				|| level.getBlockState(pos).getDestroyProgress(player, level, pos) > 0,
+				"outside Proxima the tuning gate must not apply, so decoration stays breakable");
+
+		// V33a onEntityCollidedWithBlock: Lifewater heals two a tick and burns the undead for four.
+		BlockPos water = helper.absolutePos(new BlockPos(4, 4, 4));
+		level.setBlock(water, ChromaBlocks.deco(
+				reika.chromaticraft.registry.ProximaDecoTypes.LIFEWATER).get().defaultBlockState(), 3);
+		var cow = helper.spawn(EntityTypes.COW, new BlockPos(4, 4, 4));
+		cow.setHealth(1);
+		var zombie = helper.spawn(EntityTypes.ZOMBIE, new BlockPos(4, 4, 4));
+		float zombieHealth = zombie.getHealth();
+		zombie.invulnerableTime = 0;
+		helper.runAfterDelay(10, () -> {
+			helper.assertTrue(cow.getHealth() > 1,
+					"Lifewater must heal a living entity standing in it; health stayed " + cow.getHealth());
+			helper.assertTrue(zombie.isDeadOrDying() || zombie.getHealth() < zombieHealth,
+					"Lifewater must burn an undead entity standing in it; health stayed "
+							+ zombie.getHealth());
+			helper.succeed();
+		});
 	}
 
 	/** Plain-Block loot chests must explicitly deliver vanilla opener-count events to their BE. */

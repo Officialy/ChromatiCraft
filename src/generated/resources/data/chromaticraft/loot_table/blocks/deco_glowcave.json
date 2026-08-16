@@ -1,0 +1,25 @@
+{
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "functions": [
+            {
+              "count": {
+                "type": "minecraft:uniform",
+                "max": 6.0,
+                "min": 1.0
+              },
+              "function": "minecraft:set_count"
+            }
+          ],
+          "name": "chromaticraft:deco_glowcave"
+        }
+      ],
+      "rolls": 1.0
+    }
+  ],
+  "random_sequence": "chromaticraft:blocks/deco_glowcave"
+}

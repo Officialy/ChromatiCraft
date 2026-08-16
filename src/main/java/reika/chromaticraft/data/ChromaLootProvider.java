@@ -320,6 +320,18 @@ public final class ChromaLootProvider extends LootTableProvider {
 					// same material, and the plain form drops itself.
 					this.dropSelf(block);
 				}
+				else if (block instanceof reika.chromaticraft.block.dimension.BlockDimensionDeco deco) {
+					// V33a addDrops: one item, except Glow Cave which yields one to six. The per-player
+					// dimension-tuning multiplier that scales this further is applied at break time
+					// rather than in data, because it depends on who is breaking it.
+					if (deco.getDecoType() == reika.chromaticraft.registry.ProximaDecoTypes.GLOWCAVE)
+						this.add(block, LootTable.lootTable().withPool(LootPool.lootPool()
+								.setRolls(ConstantValue.exactly(1))
+								.add(LootItem.lootTableItem(block).apply(SetItemCountFunction.setCount(
+										UniformGenerator.between(1, 6))))));
+					else
+						this.dropSelf(block);
+				}
 				else if (block instanceof reika.chromaticraft.block.BlockHoverBlock) {
 					this.add(block, noDrop());
 				}

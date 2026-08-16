@@ -1,5 +1,26 @@
 # ChromatiCraft 1.7.10 V33a → Minecraft 26.2 / NeoForge port
 
+## Working checkpoint — 2026-08-16 (Proxima decoration blocks)
+
+- Registered eight of V33a's ten `DimDecoTypes` as distinct blocks — Miasma, Floatstone, Lifewater,
+  Crystal Lattice, Crystal Leaves, Ocean Stone, Cliff Glass and Glowing Cave Rock — with models,
+  block items, loot, language and tags from datagen, all drawing Reika's own `dimgen` art.
+- Behaviour is complete rather than nominal: only the solid variants have a collision box, so Miasma,
+  Lifewater and Lattice are walked through, which is what lets their collision effects run at all;
+  Lifewater heals the living two a tick and burns the undead for four; Miasma stretches every
+  beneficial potion effect to twenty minutes and leaves harmful ones alone; Cliff Glass is the only
+  lit variant at 12; Floatstone is the beacon base, which 26.2 expresses as `BEACON_BASE_BLOCKS`
+  rather than a block method; Glow Cave drops one to six; and the dimension-tuning drop multiplier is
+  applied at break time because it depends on who is breaking it.
+- Harvesting is gated on `DECOHARVEST` tuning, and that gate short-circuits outside Proxima exactly as
+  upstream's dimension-id test did, so decoration carried home stays breakable. The focused test
+  asserts that direction; the in-Proxima refusal is an in-world check, because `GameTestServer` does
+  not instantiate datapack dimensions.
+- `AQUA` and `GEMSTONE` remain unregistered, blocked on art that does not exist in V33a either. See
+  the survey below; their behaviour is recorded in `ProximaDecoTypes` so neither is lost.
+- The multi-layer rendering for the six compositing variants is still outstanding; each currently
+  draws its real `layer_0`.
+
 ## Proxima decoration survey — 2026-08-16 (what the remaining worldgen is waiting on)
 
 The dimension itself is in: type, level stem, noise settings, biome source, biome map, region layout

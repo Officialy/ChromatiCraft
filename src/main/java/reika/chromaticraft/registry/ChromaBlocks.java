@@ -353,6 +353,37 @@ public final class ChromaBlocks {
 		return SHIELDING.get(type);
 	}
 
+	/**
+	 * V33a Proxima decoration, one registered identity per material. Two of upstream's ten are absent
+	 * because their textures do not exist in V33a either; see {@link ProximaDecoTypes}.
+	 */
+	public static final Map<ProximaDecoTypes, DeferredBlock<reika.chromaticraft.block.dimension.BlockDimensionDeco>>
+			DIMENSION_DECO = registerDimensionDeco();
+
+	private static Map<ProximaDecoTypes, DeferredBlock<reika.chromaticraft.block.dimension.BlockDimensionDeco>>
+			registerDimensionDeco() {
+		EnumMap<ProximaDecoTypes, DeferredBlock<reika.chromaticraft.block.dimension.BlockDimensionDeco>> map =
+				new EnumMap<>(ProximaDecoTypes.class);
+		for (ProximaDecoTypes type : ProximaDecoTypes.list)
+			map.put(type, register(type.registryName(), () -> {
+				// V33a hardness 0.75, resistance 5. isOpaqueCube and renderAsNormalBlock are both
+				// false upstream, which is noOcclusion here; the walk-through variants additionally
+				// have no collision, which lives on the block class.
+				BlockBehaviour.Properties props = blockProperties().mapColor(MapColor.STONE)
+						.strength(0.75F, 5F).noOcclusion()
+						.lightLevel(state -> type.lightValue());
+				if (type.requiresPickaxe())
+					props = props.requiresCorrectToolForDrops();
+				return new reika.chromaticraft.block.dimension.BlockDimensionDeco(props, type);
+			}));
+		return map;
+	}
+
+	public static DeferredBlock<reika.chromaticraft.block.dimension.BlockDimensionDeco> deco(
+			ProximaDecoTypes type) {
+		return DIMENSION_DECO.get(type);
+	}
+
 	/** V33a Unknown Artefact: hardness 12, and resistance 300000 so it cannot be blasted out. */
 	public static final DeferredBlock<BlockUnknownArtefact> UNKNOWN_ARTEFACT = register("unknown_artefact",
 			() -> new BlockUnknownArtefact(blockProperties().mapColor(MapColor.STONE)

@@ -238,6 +238,7 @@ public class ChromaModelProvider extends ModelProvider {
 		lootChestModel(blockStateOut, itemModelOut, modelOut);
 		dummyAuxModel(blockStateOut, modelOut);
 		shieldingBlocks(blockStateOut, itemModelOut, modelOut);
+		dimensionDecoBlocks(blockStateOut, itemModelOut, modelOut);
 		trapFloorModel(blockStateOut, itemModelOut, modelOut);
 		shiftLockModel(blockStateOut, itemModelOut, modelOut);
 		hoverModel(blockStateOut, itemModelOut, modelOut);
@@ -399,6 +400,26 @@ public class ChromaModelProvider extends ModelProvider {
 			Block block = ChromaBlocks.shielding(type).get();
 			Material texture = new Material(Identifier.fromNamespaceAndPath(
 					ChromatiCraft.MODID, type.texture()));
+			Identifier model = ModelTemplates.CUBE_ALL.create(block, TextureMapping.cube(texture), modelOut);
+			blockStateOut.accept(MultiVariantGenerator.dispatch(block,
+					new MultiVariant(WeightedList.of(new Variant(model)))));
+			itemModelOut.accept(block.asItem(), ItemModelUtils.plainModel(model));
+		}
+	}
+
+	/**
+	 * Proxima decoration. Each block draws its real {@code layer_0} as a plain cube for now: six of
+	 * these variants composite several layers with a random per-position choice and a second pass in
+	 * V33a, which is a dynamic-model effort of its own. The texture here is Reika's, not a stand-in —
+	 * what is missing is the compositing, not the art.
+	 */
+	private static void dimensionDecoBlocks(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		for (reika.chromaticraft.registry.ProximaDecoTypes type
+				: reika.chromaticraft.registry.ProximaDecoTypes.list) {
+			Block block = ChromaBlocks.deco(type).get();
+			Material texture = new Material(Identifier.fromNamespaceAndPath(
+					ChromatiCraft.MODID, type.texture(0)));
 			Identifier model = ModelTemplates.CUBE_ALL.create(block, TextureMapping.cube(texture), modelOut);
 			blockStateOut.accept(MultiVariantGenerator.dispatch(block,
 					new MultiVariant(WeightedList.of(new Variant(model)))));
