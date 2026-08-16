@@ -22,6 +22,41 @@
 - The multi-layer rendering for the six compositing variants is still outstanding; each currently
   draws its real `layer_0`.
 
+## Design note — 2026-08-16 (how the oversized Proxima generators must be built)
+
+Two of the remaining decoration generators cannot be Features anchored in a chunk, and the reason is
+not only their size. Reading their bodies settles the mechanism for the whole class:
+
+- **Glass Cliffs** sweeps a chain of cliffs across roughly a hundred blocks, and its `generate` calls
+  `getTopSolidOrLiquidBlock` for *every* cell of its height map. Those are cross-chunk terrain reads,
+  which during decoration can synchronously request a neighbouring chunk and deadlock the worldgen
+  worker — the same hazard `NBTStructureLoader.place` exists to avoid.
+- **Miasma** builds an ellipsoid of radius up to 36, so 73 blocks across against a 48-block window,
+  and derives its vertical extent by scanning the origin column for air between
+  `TerrainGenSkylandCanyons`' floor and ceiling bounds. That terrain scan has the same problem, and
+  the class supplying those bounds is not ported.
+
+A bespoke per-chunk slicing helper was considered and is the wrong answer. 26.2 already has the
+mechanism for a shape larger than a chunk: a **`Structure` with pieces**. Its starts are computed at
+`STRUCTURE_STARTS`, and each chunk's `postProcess` receives a bounding box clipped to that chunk, so
+every column a piece touches is one the caller may both read and write. That solves the write window
+and the cross-chunk terrain reads together, where slicing would only solve the first.
+
+So: the oversized generators become Structures, not Features. Floatstone, the Crystal Shrub and the
+Nether roof rivers are correctly Features and stay that way — they fit inside a chunk's writable
+window and read only their own columns.
+
+Remaining decoration work, in dependency order rather than alphabetically:
+
+| Wants | Generators |
+| --- | --- |
+| Nothing — portable now | Crystal Tree (526 lines, twelve procedural layouts), Aurorae, Chroma Meteor, Island Arch, Crystal Pit, Mini Altar |
+| The Structure mechanism above | Glass Cliffs, Miasma |
+| `DIMGENTILE` (`BlockDimensionDecoTile`) | Fire Jets, Glowing Cracks |
+| `BEDROCKCRACK`, `VOIDCAVE`, `VOIDRIFT`, `MOLTENLUMEN`, `CHUNKLOADER`, `SPARKLE` | Glow Cave, Fissure, Chunkloader Blocks, Sparkle |
+| `ChunkProviderChroma` + `ModOreList` | Terrain Blob |
+| Art that does not exist in V33a | Moon Pool (`AQUA`) |
+
 ## Working checkpoint — 2026-08-16 (Floatstone drifts)
 
 - Ported `WorldGenFloatstone` as the `floatstone` feature: a cluster twelve to twenty-four blocks above
