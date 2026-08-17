@@ -22,6 +22,25 @@
 - The multi-layer rendering for the six compositing variants is still outstanding; each currently
   draws its real `layer_0`.
 
+## Working checkpoint — 2026-08-16 (/locate biome in Proxima)
+
+- `/locate biome` could not find Proxima's biomes, and vanilla's search is why: the command asks for a
+  radius of 6400 sampled every 32 blocks, while the Sanctuary alone reaches close to fifteen thousand,
+  so every other biome begins outside the search before it starts.
+- `ProximaBiomeSource` now overrides `findClosestBiome3d`. The Monument and Structure Fields are not
+  searched for at all — they are painted around known placements, so the layout is asked directly and
+  answers exactly and instantly. Everything else still uses vanilla's spiral, but with the radius
+  widened past the central region; sampling here is an array lookup rather than a noise evaluation, so a
+  wide sweep costs little.
+- With no layout yet it defers to vanilla entirely rather than inventing an answer. The map genuinely is
+  not decided at that point, and a confident wrong coordinate is worse than none.
+- **`/locate biome chromaticraft:structure_field` still finds nothing, and that is correct.** A Structure
+  Field is painted around a puzzle-structure placement, and a placement exists only for a colour that
+  `assignTypes` gave a structure type to. No puzzle generator is ported, so it assigns none and there are
+  genuinely zero of them. The Monument Field is placed independently and locates now. The focused test is
+  written to keep holding either way: no placements means the search must find nothing, and once
+  placements exist it must return the nearest real entry.
+
 ## Working checkpoint — 2026-08-16 (Proxima was one biome everywhere)
 
 Reported in world: only `chromaticraft:luminescent_sanctuary` existed in Proxima. Two separate facts,

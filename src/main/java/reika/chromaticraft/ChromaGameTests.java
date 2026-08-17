@@ -314,6 +314,7 @@ public final class ChromaGameTests {
 		register(event, env, "aurorae_feature", ChromaGameTests::auroraeFeature);
 		register(event, env, "aurora_curtain_drift", ChromaGameTests::auroraCurtainDrift);
 		register(event, env, "proxima_layout_biomes", ChromaGameTests::proximaLayoutBiomes);
+		register(event, env, "proxima_locate_biome", ChromaGameTests::proximaLocateBiome);
 		register(event, env, "loot_chest_lid_event", ChromaGameTests::lootChestLidEvent);
 		register(event, env, "loot_chest_trap_signal", ChromaGameTests::lootChestTrapSignal);
 		register(event, env, "structure_trap_and_wiring", ChromaGameTests::structureTrapAndWiring);
@@ -2058,6 +2059,73 @@ public final class ChromaGameTests {
 		helper.assertTrue(reika.chromaticraft.world.dimension.ProximaGenerators
 						.awaitLayout(0x9F0A17L) == layout,
 				"awaitLayout rebuilt a layout it already had for the same seed");
+		helper.succeed();
+	}
+
+	/**
+	 * {@code /locate biome} must find Proxima's placed biomes, which vanilla's own search cannot.
+	 *
+	 * <p>The command asks for a radius of 6400 sampled every 32 blocks. Proxima's Sanctuary alone can
+	 * reach fifteen thousand, so every other biome starts outside that search — and the Monument and
+	 * Structure Fields are small islands around placements anywhere on a ring of radius 5000 +/- 3000
+	 * about an offset origin, so widening the spiral would still be luck. Neither needs searching: the
+	 * layout holds both positions outright.
+	 *
+	 * <p>What is asserted is that the answer is the real placement, not merely that something came back.
+	 * A search that returned some other biome's coordinate would still look like a working command.
+	 */
+	private static void proximaLocateBiome(GameTestHelper helper) {
+		var layout = reika.chromaticraft.world.dimension.ProximaGenerators.awaitLayout(0x10CA7EL);
+		var biomes = helper.getLevel().registryAccess()
+				.lookupOrThrow(net.minecraft.core.registries.Registries.BIOME);
+		var source = new reika.chromaticraft.world.dimension.biome.ProximaBiomeSource(biomes);
+		BlockPos origin = new BlockPos(0, 64, 0);
+
+		var monumentKey = reika.chromaticraft.world.dimension.biome.ProximaBiomes.MONUMENT.biomeKey();
+		var found = source.findClosestBiome3d(origin, 6400, 32, 64,
+				holder -> holder.is(monumentKey), null, helper.getLevel());
+		helper.assertTrue(found != null,
+				"/locate biome could not find the Monument Field; vanilla's 6400-block search never "
+						+ "leaves the Sanctuary, so this must be answered from the layout");
+		BlockPos monument = layout.structures().getMonumentPosition();
+		helper.assertTrue(found.getFirst().getX() == monument.getX()
+						&& found.getFirst().getZ() == monument.getZ(),
+				"/locate biome returned " + found.getFirst() + " for the Monument Field, but it is at "
+						+ monument + "; the answer must be the real placement");
+
+		// The Structure Fields are painted around puzzle-structure placements, and a placement only
+		// exists for a colour that was assigned a structure type. No puzzle generator is ported yet, so
+		// assignTypes assigns nothing and there are genuinely zero of them -- finding none is the right
+		// answer, not a broken search. The assertion is written so it keeps holding once they land.
+		var structureKey = reika.chromaticraft.world.dimension.biome.ProximaBiomes.STRUCTURE.biomeKey();
+		var structure = source.findClosestBiome3d(origin, 6400, 32, 64,
+				holder -> holder.is(structureKey), null, helper.getLevel());
+		var placements = layout.structures().getPlacements();
+		if (placements.isEmpty()) {
+			helper.assertTrue(structure == null, "no puzzle structure is placed, so there is no Structure "
+					+ "Field to find, yet /locate biome answered " + structure);
+		}
+		else {
+			helper.assertTrue(structure != null, "structures are placed but /locate biome found no "
+					+ "Structure Field");
+			long returned = Long.MAX_VALUE;
+			long nearest = Long.MAX_VALUE;
+			boolean isRealPlacement = false;
+			for (var placement : placements) {
+				long dx = placement.getEntryPosX() - (long)origin.getX();
+				long dz = placement.getEntryPosZ() - (long)origin.getZ();
+				nearest = Math.min(nearest, dx * dx + dz * dz);
+				if (placement.getEntryPosX() == structure.getFirst().getX()
+						&& placement.getEntryPosZ() == structure.getFirst().getZ()) {
+					isRealPlacement = true;
+					returned = dx * dx + dz * dz;
+				}
+			}
+			helper.assertTrue(isRealPlacement, "/locate biome returned " + structure.getFirst()
+					+ " for a Structure Field, which is not any structure's entry");
+			helper.assertTrue(returned == nearest,
+					"/locate biome returned a Structure Field that is not the nearest to the origin");
+		}
 		helper.succeed();
 	}
 
