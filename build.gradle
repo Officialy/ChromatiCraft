@@ -474,6 +474,7 @@ sourceSets.main.java {
     include 'reika/chromaticraft/world/dimension/FloatstoneFeature.java'
     include 'reika/chromaticraft/world/dimension/CrystalTreeShapes.java'
     include 'reika/chromaticraft/world/dimension/CrystalTreeFeature.java'
+    include 'reika/chromaticraft/world/dimension/CrystalPitFeature.java'
     include 'reika/chromaticraft/world/dimension/structure/ProximaStructurePieces.java'
     include 'reika/chromaticraft/world/dimension/structure/ProximaStructures.java'
     include 'reika/chromaticraft/world/dimension/structure/GlassCliffStructure.java'

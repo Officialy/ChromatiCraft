@@ -309,6 +309,7 @@ public final class ChromaGameTests {
 		register(event, env, "floatstone_feature", ChromaGameTests::floatstoneFeature);
 		register(event, env, "glass_cliff_piece", ChromaGameTests::glassCliffPiece);
 		register(event, env, "crystal_tree_feature", ChromaGameTests::crystalTreeFeature);
+		register(event, env, "crystal_pit_feature", ChromaGameTests::crystalPitFeature);
 		register(event, env, "loot_chest_lid_event", ChromaGameTests::lootChestLidEvent);
 		register(event, env, "loot_chest_trap_signal", ChromaGameTests::lootChestTrapSignal);
 		register(event, env, "structure_trap_and_wiring", ChromaGameTests::structureTrapAndWiring);
@@ -1799,6 +1800,52 @@ public final class ChromaGameTests {
 					"a grown crystal tree must stand on its Shielding trunk");
 		}
 		helper.assertTrue(grown > 0, "no crystal tree grew across 60 seeds");
+		helper.succeed();
+	}
+
+	/**
+	 * V33a's crystal geode must refuse bad ground before it carves anything, and keep to one palette.
+	 *
+	 * <p>The site check is the half worth guarding. A geode that formed over a cave or a cliff edge would
+	 * hang half out of the terrain, and one carved into water would simply flood, so upstream tests the
+	 * whole ellipsoid before writing a block. The palette is the other: upstream groups the sixteen
+	 * elements into four sets and draws every crystal in a pit from one of them, which is what makes a
+	 * geode read as a colour scheme rather than sixteen unrelated crystals.
+	 */
+	private static void crystalPitFeature(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		BlockPos origin = helper.absolutePos(new BlockPos(8, 6, 8));
+		var feature = new reika.chromaticraft.world.dimension.CrystalPitFeature();
+		var cloak = ChromaBlocks.shielding(
+				reika.chromaticraft.registry.ChromaShieldTypes.CLOAK).get();
+
+		// Nothing beneath: every lining cell fails its support check, so no geode may form.
+		helper.assertTrue(!feature.place(shrubContext(helper, origin, 1)),
+				"a geode must refuse to carve itself where its lining has nothing to rest on");
+
+		// A solid block of stone around the site is ground a geode can be cut into.
+		var area = BlockPos.betweenClosedStream(origin.offset(-10, -6, -10), origin.offset(10, 6, 10))
+				.map(BlockPos::immutable).toList();
+		for (BlockPos pos : area)
+			level.setBlock(pos, Blocks.STONE.defaultBlockState(), 3);
+		helper.assertTrue(feature.place(shrubContext(helper, origin, 1)),
+				"a geode must form in solid stone");
+
+		int lining = 0;
+		java.util.Set<net.minecraft.world.level.block.Block> crystals = new java.util.HashSet<>();
+		for (BlockPos pos : area) {
+			var state = level.getBlockState(pos);
+			if (state.is(cloak))
+				lining++;
+			for (var element : reika.chromaticraft.registry.CrystalElement.elements)
+				if (state.is(ChromaBlocks.caveCrystal(element).get()))
+					crystals.add(state.getBlock());
+		}
+		helper.assertTrue(lining > 0, "the geode carved no Cloak Shielding lining");
+		helper.assertTrue(!crystals.isEmpty(), "the geode grew no crystals on its floor");
+		// Four elements per palette, so a single geode can never show more than four kinds.
+		helper.assertTrue(crystals.size() <= 4, "the geode grew " + crystals.size()
+				+ " kinds of crystal; V33a draws all of a pit's crystals from one palette of four");
 		helper.succeed();
 	}
 

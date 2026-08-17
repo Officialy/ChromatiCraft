@@ -22,6 +22,30 @@
 - The multi-layer rendering for the six compositing variants is still outstanding; each currently
   draws its real `layer_0`.
 
+## Working checkpoint — 2026-08-16 (crystal geodes, and a corrected dependency list)
+
+- Ported `WorldGenCrystalPit` as the `crystal_pit` feature: a seventeen by nine ellipsoid carved out and
+  lined with Cloak Shielding, a third of the floor cells sprouting a cave crystal. Upstream groups the
+  sixteen elements into four palettes and draws every crystal in one pit from one of them, so a geode
+  reads as a colour scheme; the focused test asserts a pit never shows more than four kinds.
+- The site check is kept whole and tested from both sides: a geode refuses to form if any cell of it is
+  liquid, and every lining cell needs solid ground beneath, so a pit cannot hang out of a cliff or over
+  a cave.
+
+**Correction to the survey above.** The "portable now" row was derived from a scan of *block* references
+and so overstated what was ready. Checking non-block dependencies as well:
+
+| Generator | Actually waiting on |
+| --- | --- |
+| Crystal Pit | nothing — ported |
+| Aurorae | `EntityAurora`, an unported entity |
+| Island Arch | `ArchCalculator` — the file exists but is not in the allowlist, so it is still 1.7.10 |
+| Mini Altar | `ChromaStacks`, same situation |
+| Chroma Meteor | `ModList` cross-mod integration |
+
+Two `.java` files being present is not the same as being ported; the `build.gradle` allowlist is the
+only reliable tracker, and this row should have been checked against it the first time.
+
 ## Working checkpoint — 2026-08-16 (crystal trees)
 
 - Ported `WorldGenCrystalTree`: all twelve registered crown layouts transcribed cell for cell into
