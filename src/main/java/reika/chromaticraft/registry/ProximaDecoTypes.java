@@ -28,10 +28,12 @@ package reika.chromaticraft.registry;
  * <h2>What is deferred rather than missing</h2>
  *
  * <p>Six variants answer upstream's {@code hasBlockRender()} and draw through a custom multi-layer
- * renderer that picks a layer per position at random and runs a second pass — Glow Cave alone is nine
- * layers across two passes. Only {@link #layers} and {@link #hasSecondaryLayers} are recorded here;
- * the compositing itself is a separate dynamic-model effort, and until then each block draws its real
- * {@code layer_0}. Every other behaviour on these blocks is complete.
+ * renderer. Floatstone is now finished — see {@link #modelTexture()} — because its two layers are
+ * complementary and both drawn in the solid pass, so one composited texture is exactly what upstream
+ * draws. The remaining five are not, and for two different reasons: Cliff Glass and Crystal Leaves put
+ * their later layers in a genuine translucent second pass, and Glow Cave picks one of nine layer pairs
+ * per position at random. Those want the dynamic model, and until it lands they show their first layer
+ * only. Every other behaviour on all of these blocks is complete.
  */
 public enum ProximaDecoTypes {
 
@@ -79,6 +81,25 @@ public enum ProximaDecoTypes {
 	 */
 	public String texture(int layer) {
 		return this == LATTICE ? "block/icons/lattice" : "block/dimgen/" + registryName + "/layer_" + layer;
+	}
+
+	/**
+	 * The texture a static block model should use for this variant.
+	 *
+	 * <p>Most variants just take their first layer. Floatstone is the one that can be finished now: its
+	 * two layers are exactly complementary — every texel is opaque in one and transparent in the other —
+	 * and {@code renderIconInPass} puts both in pass 0 with no emissive treatment and no per-position
+	 * choice, so drawing them one over the other is pixel-for-pixel the same as one opaque texture.
+	 * {@code composite.png} is that texture, derived as {@code layer_1} alpha-composited over
+	 * {@code layer_0} and asserted fully opaque; both of Reika's source layers are kept beside it.
+	 *
+	 * <p>The other five compositing variants cannot be finished this way and are not: Cliff Glass and
+	 * Crystal Leaves put their later layers in pass 1, which is a genuine translucent pass over the
+	 * solid one, and Glow Cave picks one of nine layer pairs per position at random. Those still want the
+	 * dynamic model.
+	 */
+	public String modelTexture() {
+		return this == FLOATSTONE ? "block/dimgen/floatstone/composite" : texture(0);
 	}
 
 	/** V33a {@code numIcons}: how many layers the multi-layer renderer composites. */

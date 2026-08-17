@@ -22,6 +22,23 @@
 - The multi-layer rendering for the six compositing variants is still outstanding; each currently
   draws its real `layer_0`.
 
+## Working checkpoint — 2026-08-16 (Floatstone's overlay)
+
+- Floatstone was drawing only its first layer, so its glowing violet veins were missing and the block
+  read as plain dark stone with gaps. Its overlay is now shown.
+- It is done as one composited texture rather than a two-element model, and the reason it can be is
+  specific to this variant: its two layers are *exactly* complementary — no texel is opaque in both, none
+  transparent in both — and `renderIconInPass` puts both in pass 0 with no emissive treatment and no
+  per-position choice. So drawing one over the other is pixel-for-pixel identical to a single opaque
+  texture, with none of the z-fighting or render-type work a coincident overlay would need.
+- The texture is derived, not drawn: `composite.png` is Reika's `layer_1` alpha-composited over her
+  `layer_0`, asserted fully opaque at generation time, with both source layers kept beside it.
+- There is no animation to port. Both layers are single-frame 16x16 with no `.mcmeta` anywhere in the
+  shipped assets, so the glow is a static overlay rather than an animated one.
+- The other five compositing variants are still first-layer-only, and now for two clearly different
+  reasons: Cliff Glass and Crystal Leaves put their later layers in a real translucent second pass, and
+  Glow Cave picks one of nine layer pairs per position at random.
+
 ## Working checkpoint — 2026-08-16 (the aurora curtain, rendered)
 
 - The aurora is drawn. `Aurora` is the ported curtain: a chordal spline between the ribbon's endpoints

@@ -409,10 +409,11 @@ public class ChromaModelProvider extends ModelProvider {
 	}
 
 	/**
-	 * Proxima decoration. Each block draws its real {@code layer_0} as a plain cube for now: six of
-	 * these variants composite several layers with a random per-position choice and a second pass in
-	 * V33a, which is a dynamic-model effort of its own. The texture here is Reika's, not a stand-in —
-	 * what is missing is the compositing, not the art.
+	 * Proxima decoration, as plain cubes of {@link ProximaDecoTypes#modelTexture()}. Floatstone is
+	 * complete: its two layers are complementary and both drawn in the solid pass, so one composited
+	 * texture is exactly what upstream draws. The other five compositing variants still show only their
+	 * first layer, because theirs need either a real translucent second pass or a per-position random
+	 * layer, and that is the dynamic-model effort.
 	 */
 	private static void dimensionDecoBlocks(Consumer<BlockModelDefinitionGenerator> blockStateOut,
 			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
@@ -420,7 +421,7 @@ public class ChromaModelProvider extends ModelProvider {
 				: reika.chromaticraft.registry.ProximaDecoTypes.list) {
 			Block block = ChromaBlocks.deco(type).get();
 			Material texture = new Material(Identifier.fromNamespaceAndPath(
-					ChromatiCraft.MODID, type.texture(0)));
+					ChromatiCraft.MODID, type.modelTexture()));
 			Identifier model = ModelTemplates.CUBE_ALL.create(block, TextureMapping.cube(texture), modelOut);
 			blockStateOut.accept(MultiVariantGenerator.dispatch(block,
 					new MultiVariant(WeightedList.of(new Variant(model)))));
