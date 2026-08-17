@@ -1,0 +1,6 @@
+{
+  "type": "chromaticraft:glass_cliff",
+  "biomes": "chromaticraft:crystal_plains",
+  "spawn_overrides": {},
+  "step": "surface_structures"
+}

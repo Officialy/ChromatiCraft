@@ -22,6 +22,27 @@
 - The multi-layer rendering for the six compositing variants is still outstanding; each currently
   draws its real `layer_0`.
 
+## Working checkpoint — 2026-08-16 (the structure mechanism, and Glass Cliffs)
+
+- Proxima's first `Structure` is in, which is the mechanism the whole oversized class was waiting on:
+  `ProximaStructures` holds the structure types and datapack keys, `ProximaStructurePieces` the piece
+  types, and both deferred registers are on the mod bus. A modder has to implement
+  `StructurePieceType` directly rather than its `ContextlessType` shorthand, since that interface is
+  package-private in vanilla.
+- `WorldGenGlassCliffs` is ported onto it, arithmetic intact: a bearing, cliffs stepped `6+rand*6`
+  apart along the perpendicular, each scaled by `f = 1-0.8*|d|/32` with length falling as `f^0.75` and
+  height as `f^0.5`, a wander accumulating `(-len/2+rand*len)/4` per step, and each cliff sweeping its
+  length in quarter-block steps stamping discs of radius `0.0625+0.75*0.75^(|d|/length)` that keep the
+  tallest height where they overlap. Cliff Glass, three stone under the lip, one grass on top.
+- The chain is drawn from the piece's **own stored seed**, never the per-chunk random `postProcess` is
+  handed. That is what makes adjacent chunks agree on one cliff instead of each drawing its own, and
+  the focused test asserts it by painting the same box twice and comparing.
+- The other asserted property is that the piece writes nothing outside the box it is given. Without
+  that it would be no safer than the feature it replaced, and the cross-chunk terrain reads that made
+  a feature unusable here become legal precisely because every column it touches is inside that box.
+- The wander is advanced on every step of the chain whether or not that cliff touched the current
+  chunk, so the sequence stays in step across chunk boundaries.
+
 ## Design note — 2026-08-16 (how the oversized Proxima generators must be built)
 
 Two of the remaining decoration generators cannot be Features anchored in a chunk, and the reason is

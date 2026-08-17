@@ -307,6 +307,7 @@ public final class ChromaGameTests {
 		register(event, env, "proxima_deco_blocks", ChromaGameTests::proximaDecoBlocks);
 		register(event, env, "crystal_shrub_feature", ChromaGameTests::crystalShrubFeature);
 		register(event, env, "floatstone_feature", ChromaGameTests::floatstoneFeature);
+		register(event, env, "glass_cliff_piece", ChromaGameTests::glassCliffPiece);
 		register(event, env, "loot_chest_lid_event", ChromaGameTests::lootChestLidEvent);
 		register(event, env, "loot_chest_trap_signal", ChromaGameTests::lootChestTrapSignal);
 		register(event, env, "structure_trap_and_wiring", ChromaGameTests::structureTrapAndWiring);
@@ -1685,6 +1686,66 @@ public final class ChromaGameTests {
 		helper.assertTrue(maxSpan <= 48, "a Floatstone cluster spanned " + maxSpan
 				+ " blocks, which cannot fit the window a feature may write to");
 		helper.succeed();
+	}
+
+	/**
+	 * The Glass Cliff piece must respect the box it is handed, and paint the same cliff whichever chunk
+	 * asks for it.
+	 *
+	 * <p>Those two properties are the whole reason this is a structure piece rather than a feature. A
+	 * piece is asked once per chunk it overlaps, with a box clipped to that chunk; if it wrote outside
+	 * the box it would be no safer than the feature it replaced, and if it drew a different shape each
+	 * time the chunks would not join up into one cliff. The second is why the chain is drawn from the
+	 * piece's own stored seed instead of the per-chunk random handed to {@code postProcess}.
+	 */
+	private static void glassCliffPiece(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		BlockPos origin = helper.absolutePos(new BlockPos(8, 4, 8));
+		var cliffGlass = ChromaBlocks.deco(
+				reika.chromaticraft.registry.ProximaDecoTypes.CLIFFGLASS).get();
+
+		// A box a quarter of the structure's reach, so the piece has plenty it must decline to write.
+		net.minecraft.world.level.levelgen.structure.BoundingBox box =
+				new net.minecraft.world.level.levelgen.structure.BoundingBox(
+						origin.getX() - 8, origin.getY() - 4, origin.getZ() - 8,
+						origin.getX() + 7, origin.getY() + 40, origin.getZ() + 7);
+		var wide = BlockPos.betweenClosedStream(origin.offset(-40, -8, -40), origin.offset(40, 48, 40))
+				.map(BlockPos::immutable).toList();
+
+		java.util.Set<BlockPos> first = paintCliff(helper, origin, box, wide, cliffGlass);
+		helper.assertTrue(!first.isEmpty(),
+				"the Glass Cliff piece placed nothing at all inside the box it was given");
+		for (BlockPos pos : first)
+			helper.assertTrue(box.isInside(pos), "the Glass Cliff piece wrote to " + pos
+					+ ", outside the box it was handed; a piece that ignores its box is no safer than "
+					+ "the feature it replaced");
+
+		// Same piece, same box, second pass: the shape must be identical, which is what lets adjacent
+		// chunks agree on one cliff.
+		java.util.Set<BlockPos> second = paintCliff(helper, origin, box, wide, cliffGlass);
+		helper.assertTrue(first.equals(second), "the Glass Cliff piece painted " + first.size()
+				+ " blocks then " + second.size() + " at the same box; its shape must not depend on "
+				+ "which pass or chunk asks for it");
+		helper.succeed();
+	}
+
+	/** Clears the area, runs one postProcess pass, and returns the Cliff Glass it placed. */
+	private static java.util.Set<BlockPos> paintCliff(GameTestHelper helper, BlockPos origin,
+			net.minecraft.world.level.levelgen.structure.BoundingBox box, java.util.List<BlockPos> area,
+			net.minecraft.world.level.block.Block cliffGlass) {
+		ServerLevel level = helper.getLevel();
+		for (BlockPos pos : area)
+			if (level.getBlockState(pos).is(cliffGlass))
+				level.setBlock(pos, Blocks.AIR.defaultBlockState(), 3);
+		var piece = new reika.chromaticraft.world.dimension.structure.GlassCliffPiece(
+				RandomSource.create(0xC11FF), origin.getX(), origin.getY(), origin.getZ());
+		piece.postProcess(level, level.structureManager(), level.getChunkSource().getGenerator(),
+				RandomSource.create(1), box, net.minecraft.world.level.ChunkPos.containing(origin), origin);
+		java.util.Set<BlockPos> placed = new java.util.HashSet<>();
+		for (BlockPos pos : area)
+			if (level.getBlockState(pos).is(cliffGlass))
+				placed.add(pos.immutable());
+		return placed;
 	}
 
 	/** Plain-Block loot chests must explicitly deliver vanilla opener-count events to their BE. */

@@ -204,6 +204,35 @@ public final class ChromaWorldGenProvider {
             bootstrap.register(GLOWING_TREE, new ConfiguredFeature<>(Feature.TREE,
                     glowingTreeConfiguration(biomes)));
         });
+        // Proxima's oversized decoration generates as structures rather than features, so its pieces
+        // can be written chunk by chunk with a clipped box. See GlassCliffPiece.
+        builder.add(Registries.STRUCTURE, bootstrap -> {
+            var biomes = bootstrap.lookup(Registries.BIOME);
+            bootstrap.register(reika.chromaticraft.world.dimension.structure.ProximaStructures.GLASS_CLIFF,
+                    new reika.chromaticraft.world.dimension.structure.GlassCliffStructure(
+                            new net.minecraft.world.level.levelgen.structure.Structure.StructureSettings(
+                                    // V33a generateIn: Glass Cliffs are the Plains biome's alone.
+                                    net.minecraft.core.HolderSet.direct(biomes.getOrThrow(
+                                            reika.chromaticraft.world.dimension.biome.ProximaBiomes.PLAINS.biomeKey())),
+                                    java.util.Map.of(),
+                                    net.minecraft.world.level.levelgen.GenerationStep.Decoration.SURFACE_STRUCTURES,
+                                    // The cliff lays its own terrain; vanilla must not also beard it.
+                                    net.minecraft.world.level.levelgen.structure.TerrainAdjustment.NONE)));
+        });
+        builder.add(Registries.STRUCTURE_SET, bootstrap -> {
+            var structures = bootstrap.lookup(Registries.STRUCTURE);
+            bootstrap.register(reika.chromaticraft.world.dimension.structure.ProximaStructures.GLASS_CLIFF_SET,
+                    new net.minecraft.world.level.levelgen.structure.StructureSet(
+                            structures.getOrThrow(
+                                    reika.chromaticraft.world.dimension.structure.ProximaStructures.GLASS_CLIFF),
+                            // V33a getGenerationChance is 0.015 per chunk, so roughly one per eight
+                            // chunks squared; a spacing of 8 with separation 3 is that density with the
+                            // spread modern structure placement needs to keep them apart.
+                            new net.minecraft.world.level.levelgen.structure.placement.RandomSpreadStructurePlacement(
+                                    8, 3,
+                                    net.minecraft.world.level.levelgen.structure.placement.RandomSpreadType.LINEAR,
+                                    0x6C1FF)));
+        });
         builder.add(Registries.PLACED_FEATURE, bootstrap -> {
             HolderGetter<ConfiguredFeature<?, ?>> configured = bootstrap.lookup(Registries.CONFIGURED_FEATURE);
             registerPlaced(bootstrap, configured, CAVE_CRYSTAL);
