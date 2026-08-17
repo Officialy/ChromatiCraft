@@ -1,0 +1,15 @@
+{
+  "feature": "chromaticraft:aurorae",
+  "placement": [
+    {
+      "type": "minecraft:rarity_filter",
+      "chance": 128
+    },
+    {
+      "type": "minecraft:in_square"
+    },
+    {
+      "type": "minecraft:biome"
+    }
+  ]
+}

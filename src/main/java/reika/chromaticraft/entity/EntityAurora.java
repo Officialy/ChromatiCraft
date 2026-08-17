@@ -1,216 +1,90 @@
-/*******************************************************************************
- * @author Reika Kalseki
- * 
- * Copyright 2017
- * 
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
- ******************************************************************************/
 package reika.chromaticraft.entity;
 
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.world.World;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
+import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.entity.IEntityWithComplexSpawn;
 
-import reika.chromaticraft.world.dimension.rendering.Aurora;
 import reika.dragonapi.base.InertEntity;
 
-import cpw.mods.fml.common.registry.IEntityAdditionalSpawnData;
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
-import io.netty.buffer.ByteBuf;
+/**
+ * V33a {@code EntityAurora}: one ribbon of Proxima's aurorae, carried by an entity so it persists and
+ * follows the player's view rather than being redrawn from the sky renderer each frame.
+ *
+ * <p>The entity is inert — it has no collision, no AI and no frustum culling, since a ribbon a hundred
+ * blocks long is almost always partly off screen. What it carries is the {@link AuroraData} the
+ * generator gave it: two endpoints, two colours to gradient between, and a drift speed. It sits at the
+ * midpoint of its own endpoints, which is what upstream's constructor computes.
+ *
+ * <p>Both persistence paths are here because a ribbon has to survive two different things. It is
+ * written to and read from disk so an aurora is still overhead after a reload, and it is sent as custom
+ * spawn data so a client that has just come into range gets the endpoints and colours in the spawn
+ * packet — an aurora cannot be reconstructed from position alone.
+ *
+ * <p>Upstream's {@code variance} and {@code segmentSize} fields are not carried. They are declared and
+ * serialised there but every assignment to them is commented out, so they are always zero and the
+ * renderer's parameters for them are dead; reproducing them would only preserve two unused zeroes.
+ *
+ * <p>The ribbon itself is not yet drawn. V33a renders it through a client-only spline class using
+ * immediate-mode GL, which is the same rendering effort the Proxima decoration layers and the glow-tree
+ * overlays are waiting on. Everything that decides what an aurora <em>is</em> — where it hangs, how long
+ * it is, its two colours, its speed, how it persists and syncs — is complete here.
+ */
+public class EntityAurora extends InertEntity implements IEntityWithComplexSpawn {
 
+	private AuroraData data = AuroraData.EMPTY;
 
-public class EntityAurora extends InertEntity implements IEntityAdditionalSpawnData {
-
-	private AuroraData data = new AuroraData();
-
-	@SideOnly(Side.CLIENT)
-	private Aurora aurora;
-
-	public EntityAurora(World world, AuroraData dat) {
-		this(world);
-		data = dat;
-		if (worldObj.isRemote)
-			this.initAurora();
-		double x = (dat.pos2X+dat.pos1X)/2;
-		double y = (dat.pos2Y+dat.pos1Y)/2;
-		double z = (dat.pos2Z+dat.pos1Z)/2;
-		this.setLocationAndAngles(x, y, z, 0, 0);
-		this.setSize(0.5F, 0.5F);
+	public EntityAurora(EntityType<? extends EntityAurora> type, Level world) {
+		super(type, world);
+		this.noPhysics = true;
 	}
 
-	public EntityAurora(World world) {
-		super(world);
-
-		noClip = true;
-		ignoreFrustumCheck = true;
+	/** Places the ribbon at the midpoint of its own endpoints, as upstream's constructor does. */
+	public void setAuroraData(AuroraData data) {
+		this.data = data;
+		Vec3 centre = data.centre();
+		this.snapTo(centre.x, centre.y, centre.z, 0, 0);
 	}
 
+	public AuroraData getAuroraData() {
+		return data;
+	}
+
+	/** Nothing is tracked through synched data: the ribbon's shape arrives once, as spawn data. */
 	@Override
-	protected void entityInit() {
-
+	protected void defineSynchedData(net.minecraft.network.syncher.SynchedEntityData.Builder builder) {
 	}
 
-	@SideOnly(Side.CLIENT)
-	private void initAurora() {
-		aurora = data.createAurora();
-	}
-
-	@SideOnly(Side.CLIENT)
-	public Aurora getAurora() {
-		return aurora;
-	}
-
+	/**
+	 * V33a {@code ignoreFrustumCheck} plus an unbounded {@code isInRangeToRenderDist}: a ribbon is long
+	 * enough that its entity position is frequently outside the view even when the ribbon is not, so it
+	 * must never be culled on either test.
+	 */
 	@Override
-	public void onUpdate() {
-		super.onUpdate();
-
-		if (worldObj.isRemote) {
-			aurora.update();
-
-			//EntityFX fx = new EntityBlurFX(worldObj, posX, posY, posZ).setScale(4);
-			//Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-		}
-	}
-
-	@Override
-	protected void readEntityFromNBT(NBTTagCompound NBT) {
-		NBTTagCompound tag = NBT.getCompoundTag("data");
-		data.readFromNBT(tag);
-		if (worldObj.isRemote)
-			this.initAurora();
-	}
-
-	@Override
-	protected void writeEntityToNBT(NBTTagCompound NBT) {
-		NBTTagCompound tag = new NBTTagCompound();
-		data.writeToNBT(tag);
-		NBT.setTag("data", tag);
-	}
-
-	@Override
-	public void writeSpawnData(ByteBuf buf) {
-		data.writeData(buf);
-	}
-
-	@Override
-	public void readSpawnData(ByteBuf buf) {
-		data.readData(buf);
-		if (worldObj.isRemote)
-			this.initAurora();
-	}
-
-	@Override
-	public boolean shouldRenderInPass(int pass) {
-		return pass == 1;
-	}
-
-	@Override
-	public boolean isInRangeToRenderDist(double dist) {
+	public boolean shouldRenderAtSqrDistance(double distanceSquared) {
 		return true;
 	}
 
 	@Override
-	@SideOnly(Side.CLIENT)
-	public boolean isInRangeToRender3d(double par2, double par4, double par6) {
-		return true;
+	protected void readAdditionalSaveData(ValueInput input) {
+		data = input.read("aurora", AuroraData.CODEC).orElse(AuroraData.EMPTY);
 	}
 
-	public static class AuroraData {
-
-		private double pos1X;
-		private double pos1Y;
-		private double pos1Z;
-		private double pos2X;
-		private double pos2Y;
-		private double pos2Z;
-
-		private int color1;
-		private int color2;
-
-		private double variance;
-		private double speed;
-		private double segmentSize;
-
-		private AuroraData() {
-
-		}
-
-		public AuroraData(double x1, double y1, double z1, double x2, double y2, double z2, int c1, int c2/*, double v*/, double sp/*, double s*/) {
-			pos1X = x1;
-			pos1Y = y1;
-			pos1Z = z1;
-			pos2X = x2;
-			pos2Y = y2;
-			pos2Z = z2;
-			color1 = c1;
-			color2 = c2;
-			//variance = v;
-			//segmentSize = s;
-			speed = sp;
-		}
-
-		public void writeToNBT(NBTTagCompound tag) {
-			tag.setDouble("p1x", pos1X);
-			tag.setDouble("p1y", pos1Y);
-			tag.setDouble("p1z", pos1Z);
-			tag.setDouble("p2x", pos2X);
-			tag.setDouble("p2y", pos2Y);
-			tag.setDouble("p2z", pos2Z);
-			//tag.setDouble("var", variance);
-			tag.setDouble("speed", speed);
-			//tag.setDouble("seg", segmentSize);
-			tag.setInteger("c1", color1);
-			tag.setInteger("c2", color2);
-		}
-
-		public void readFromNBT(NBTTagCompound tag) {
-			pos1X = tag.getDouble("p1x");
-			pos1Y = tag.getDouble("p1y");
-			pos1Z = tag.getDouble("p1z");
-			pos2X = tag.getDouble("p2x");
-			pos2Y = tag.getDouble("p2y");
-			pos2Z = tag.getDouble("p2z");
-			//variance = tag.getDouble("var");
-			speed = tag.getDouble("speed");
-			//segmentSize = tag.getDouble("seg");
-			color1 = tag.getInteger("c1");
-			color2 = tag.getInteger("c2");
-		}
-
-		public void writeData(ByteBuf buf) {
-			buf.writeDouble(pos1X);
-			buf.writeDouble(pos1Y);
-			buf.writeDouble(pos1Z);
-			buf.writeDouble(pos2X);
-			buf.writeDouble(pos2Y);
-			buf.writeDouble(pos2Z);
-			//buf.writeDouble(variance);
-			buf.writeDouble(speed);
-			//buf.writeDouble(segmentSize);
-			buf.writeInt(color1);
-			buf.writeInt(color2);
-		}
-
-		public void readData(ByteBuf buf) {
-			pos1X = buf.readDouble();
-			pos1Y = buf.readDouble();
-			pos1Z = buf.readDouble();
-			pos2X = buf.readDouble();
-			pos2Y = buf.readDouble();
-			pos2Z = buf.readDouble();
-			//variance = buf.readDouble();
-			speed = buf.readDouble();
-			//segmentSize = buf.readDouble();
-			color1 = buf.readInt();
-			color2 = buf.readInt();
-		}
-
-		@SideOnly(Side.CLIENT)
-		public Aurora createAurora() {
-			return new Aurora(color1, color2, speed, /*variance, segmentSize, */pos1X, pos1Y, pos1Z, pos2X, pos2Y, pos2Z);
-		}
+	@Override
+	protected void addAdditionalSaveData(ValueOutput output) {
+		output.store("aurora", AuroraData.CODEC, data);
 	}
 
+	@Override
+	public void writeSpawnData(RegistryFriendlyByteBuf buffer) {
+		data.write(buffer);
+	}
+
+	@Override
+	public void readSpawnData(RegistryFriendlyByteBuf buffer) {
+		data = AuroraData.read(buffer);
+	}
 }

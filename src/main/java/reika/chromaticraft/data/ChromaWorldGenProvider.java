@@ -73,6 +73,7 @@ public final class ChromaWorldGenProvider {
     private static final Identifier FLOATSTONE = id("floatstone");
     private static final Identifier CRYSTAL_TREE = id("crystal_tree");
     private static final Identifier CRYSTAL_PIT = id("crystal_pit");
+    private static final Identifier AURORAE = id("aurorae");
     private static final List<Identifier> NETHER_ROOF_STRUCTURES =
             List.of(id("nether_hut"), id("nether_temple"), id("nether_maze"),
                     id("nether_spiral"), id("nether_diorama"));
@@ -176,6 +177,7 @@ public final class ChromaWorldGenProvider {
             registerConfigured(bootstrap, features, FLOATSTONE);
             registerConfigured(bootstrap, features, CRYSTAL_TREE);
             registerConfigured(bootstrap, features, CRYSTAL_PIT);
+            registerConfigured(bootstrap, features, AURORAE);
             for (Identifier structure : NETHER_ROOF_STRUCTURES)
                 registerConfigured(bootstrap, features, structure);
             registerConfigured(bootstrap, features, NATURAL_CAVERN);
@@ -302,6 +304,10 @@ public final class ChromaWorldGenProvider {
             // V33a's decorator gives the crystal shrub a generation chance of 1 per chunk and rolls
             // the size itself, refusing most attempts, so the placement is one attempt per chunk on
             // the surface rather than a rarity gate here.
+            // V33a getGenerationChance for the aurorae is 0.03125/4, so one chunk in a hundred and
+            // twenty-eight. One placement lays a whole display of up to twelve ribbons.
+            registerPlaced(bootstrap, configured, AURORAE, List.of(
+                    RarityFilter.onAverageOnceEvery(128), InSquarePlacement.spread(), BiomeFilter.biome()));
             // V33a getGenerationChance for the geode is 0.01875 per chunk outside the central region,
             // so about one in fifty-three; its own site check refuses many of those again.
             registerPlaced(bootstrap, configured, CRYSTAL_PIT, List.of(

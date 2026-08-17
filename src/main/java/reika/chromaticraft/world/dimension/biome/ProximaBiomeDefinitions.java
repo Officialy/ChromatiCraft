@@ -133,6 +133,9 @@ public final class ProximaBiomeDefinitions {
 		// Floatstone: a SKYFEATURE, so Skylands, plus the Central biome.
 		if (central || type == ProximaBiomes.SKYLANDS)
 			add(builder, features, "floatstone");
+		// The aurorae are a SKYFEATURE too, but also dedicated-biome-only, so Skylands and nowhere else.
+		if (type == ProximaBiomes.SKYLANDS)
+			add(builder, features, "aurorae");
 		// The geode: the Crystal Plains proper, plus the Central biome.
 		if (central || type == ProximaBiomes.PLAINS)
 			add(builder, features, "crystal_pit");

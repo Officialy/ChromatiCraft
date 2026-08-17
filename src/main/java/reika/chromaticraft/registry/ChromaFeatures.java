@@ -152,6 +152,10 @@ public final class ChromaFeatures {
     public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> NETHER_ROOF_STRUCTURE =
             FEATURES.register("nether_roof_structure", () -> new NetherRoofStructureFeature());
 
+    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> AURORAE =
+            FEATURES.register("aurorae",
+                    reika.chromaticraft.world.dimension.AuroraeFeature::new);
+
     public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> CRYSTAL_PIT =
             FEATURES.register("crystal_pit",
                     reika.chromaticraft.world.dimension.CrystalPitFeature::new);

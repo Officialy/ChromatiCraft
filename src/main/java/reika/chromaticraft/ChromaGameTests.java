@@ -311,6 +311,7 @@ public final class ChromaGameTests {
 		register(event, env, "crystal_tree_feature", ChromaGameTests::crystalTreeFeature);
 		register(event, env, "crystal_pit_feature", ChromaGameTests::crystalPitFeature);
 		register(event, env, "proxima_biome_features", ChromaGameTests::proximaBiomeFeatures);
+		register(event, env, "aurorae_feature", ChromaGameTests::auroraeFeature);
 		register(event, env, "loot_chest_lid_event", ChromaGameTests::lootChestLidEvent);
 		register(event, env, "loot_chest_trap_signal", ChromaGameTests::lootChestTrapSignal);
 		register(event, env, "structure_trap_and_wiring", ChromaGameTests::structureTrapAndWiring);
@@ -1893,6 +1894,65 @@ public final class ChromaGameTests {
 			for (var placed : step)
 				helper.assertTrue(!placed.unwrapKey().orElseThrow().identifier().getPath().equals("crystal_pit"),
 						"the geode belongs to the Crystal Plains, not the Skylands");
+		helper.succeed();
+	}
+
+	/**
+	 * V33a's aurorae must hang high, run parallel, share one colour pair, and never use a forbidden one.
+	 *
+	 * <p>Each of those is a property a transcription could lose silently. A display is up to twelve
+	 * ribbons laid along one bearing, all sharing two colours — if the colours were drawn per ribbon it
+	 * would look like a dozen unrelated streaks. Both ends of a ribbon are pulled to the higher of the
+	 * two before jitter, so a ribbon hangs level rather than sloped. And upstream forbids three colour
+	 * pairs whose gradients muddy together, redrawing only the second colour; dropping that rule would
+	 * be invisible in review and obvious in the sky.
+	 */
+	private static void auroraeFeature(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		BlockPos origin = helper.absolutePos(new BlockPos(8, 4, 8));
+		var feature = new reika.chromaticraft.world.dimension.AuroraeFeature();
+		int displays = 0;
+		for (long seed = 0; seed < 24; seed++) {
+			for (var existing : level.getEntitiesOfClass(reika.chromaticraft.entity.EntityAurora.class,
+					new AABB(origin).inflate(400)))
+				existing.discard();
+			if (!feature.place(shrubContext(helper, origin, seed)))
+				continue;
+			displays++;
+			var ribbons = level.getEntitiesOfClass(reika.chromaticraft.entity.EntityAurora.class,
+					new AABB(origin).inflate(400));
+			helper.assertTrue(!ribbons.isEmpty(), "a placed aurora display spawned no ribbons");
+			helper.assertTrue(ribbons.size() <= 12,
+					"a display spawned " + ribbons.size() + " ribbons; V33a lays at most twelve");
+			java.util.Set<Integer> palette = new java.util.HashSet<>();
+			for (var ribbon : ribbons) {
+				var data = ribbon.getAuroraData();
+				palette.add(data.colorFrom());
+				palette.add(data.colorTo());
+				// V33a floors every end at 120 and lifts it 40 above the terrain, so nothing hangs low.
+				helper.assertTrue(data.from().y >= 115 && data.to().y >= 115,
+						"an aurora hangs at y " + data.from().y + "/" + data.to().y
+								+ "; V33a floors both ends near 120 so a display clears the terrain");
+				// Both ends take the higher of the two before a five-block jitter either way.
+				helper.assertTrue(Math.abs(data.from().y - data.to().y) <= 10,
+						"an aurora slopes by " + Math.abs(data.from().y - data.to().y)
+								+ " blocks; both ends are levelled before jitter, so at most ten");
+				helper.assertTrue(data.speed() >= 0.125 && data.speed() <= 2.5,
+						"an aurora drifts at " + data.speed() + ", outside V33a's 0.125 to 2.5");
+			}
+			// One display, one colour pair -- so at most two distinct colours across every ribbon.
+			helper.assertTrue(palette.size() <= 2, "a display used " + palette.size()
+					+ " colours; every ribbon in one display shares the same pair");
+			// The three pairs V33a forbids, by their colour values.
+			helper.assertTrue(!(palette.contains(0x50BEFF) && palette.contains(0xFF97AE))
+							&& !(palette.contains(0x9BFF00) && palette.contains(0xFF97AE))
+							&& !(palette.contains(0x00FF00) && palette.contains(0xFF97AE)),
+					"a display used one of V33a's three forbidden colour pairs");
+		}
+		helper.assertTrue(displays > 0, "no aurora display formed across 24 seeds");
+		for (var existing : level.getEntitiesOfClass(reika.chromaticraft.entity.EntityAurora.class,
+				new AABB(origin).inflate(400)))
+			existing.discard();
 		helper.succeed();
 	}
 

@@ -58,6 +58,16 @@ public final class ChromaEntityTypes {
 					.<EntityTunnelNuker>of(EntityTunnelNuker::new, MobCategory.CREATURE)
 					.sized(1.25F, 0.75F).clientTrackingRange(128).updateInterval(1));
 
+	/**
+	 * V33a's aurora ribbon. Inert and never culled: a ribbon is long enough that its entity position is
+	 * often outside the view when the ribbon is not, and the tracking range has to cover its own length.
+	 */
+	public static final DeferredHolder<EntityType<?>, EntityType<reika.chromaticraft.entity.EntityAurora>>
+			AURORA = register("aurora", () -> EntityType.Builder
+					.<reika.chromaticraft.entity.EntityAurora>of(
+							reika.chromaticraft.entity.EntityAurora::new, MobCategory.MISC)
+					.sized(0.5F, 0.5F).clientTrackingRange(256).updateInterval(20).noSummon());
+
 	/** V33a's immortal, buoyant dropped Memory Crystal. */
 	public static final DeferredHolder<EntityType<?>, EntityType<EntityDataCrystal>> DATA_CRYSTAL =
 			register("data_crystal", () -> EntityType.Builder

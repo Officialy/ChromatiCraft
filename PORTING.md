@@ -22,6 +22,30 @@
 - The multi-layer rendering for the six compositing variants is still outstanding; each currently
   draws its real `layer_0`.
 
+## Working checkpoint — 2026-08-16 (aurorae)
+
+- Ported `WorldGenAurorae` and the `EntityAurora` it spawns. One placement is a whole display: one to
+  twelve ribbons laid parallel along a bearing, spaced eight to thirty-two apart and sixty to a hundred
+  and eighty long, all sharing one colour pair so a display reads as one thing.
+- Heights are upstream's and worth keeping exactly. Each end goes forty blocks above the terrain beneath
+  it or to 120-220, whichever is higher, then both ends take the higher of the two with five blocks of
+  jitter either way — so a display clears mountains, never sinks into a valley, and hangs level rather
+  than sloped. The terrain height is read through the heightmap, not by probing blocks: an end can be
+  ninety blocks out, far enough that a block read could ask for a chunk that is not there yet.
+- Colours come from the weighted table (the three primaries at 100 down to pink at 10) and the second is
+  redrawn while the pair is one of the three upstream forbids — Argon, Apple or Green with Pink. The test
+  asserts all of it: the shared pair, the forbidden pairs, the height floor, the level ends, the speed
+  range and the ribbon count. Each is a property a transcription could drop invisibly.
+- `AuroraData` is a record with a codec and a buffer form, since a ribbon has to survive two different
+  things: written to disk so it is still overhead after a reload, and sent as custom spawn data because
+  an aurora cannot be reconstructed from an entity position alone.
+- Upstream's `variance` and `segmentSize` are not carried. Both are declared and serialised there, but
+  every assignment to them is commented out, so they are always zero and the renderer parameters that
+  would read them are dead.
+- The ribbon is not drawn yet. V33a renders it with a client-only spline class in immediate-mode GL,
+  which is the same rendering effort the decoration layers and glow-tree overlays are waiting on.
+  Everything deciding what an aurora *is* — position, length, colours, speed, persistence, sync — is done.
+
 ## Working checkpoint — 2026-08-16 (attaching Proxima's features to its biomes)
 
 - The four ported decoration features were registered but attached to no biome, so none of them
