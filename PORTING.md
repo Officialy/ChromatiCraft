@@ -22,6 +22,23 @@
 - The multi-layer rendering for the six compositing variants is still outstanding; each currently
   draws its real `layer_0`.
 
+## Working checkpoint — 2026-08-16 (attaching Proxima's features to its biomes)
+
+- The four ported decoration features were registered but attached to no biome, so none of them
+  generated. Registering a feature and attaching it are separate steps, and the gap is silent: the code
+  compiles, the configured and placed JSON generate and validate, and the feature simply never appears.
+  They are now on the biomes V33a puts them in, and a focused test asserts that wiring so the same gap
+  cannot reopen unnoticed.
+- The gating is upstream's `generateIn` chain transcribed in its own order: the Central biome takes
+  everything not tied to one biome (`isDedicatedBiomeOnly`), a `SKYFEATURE` theme means Skylands, and the
+  rest name their biome outright. So Floatstone goes to Skylands and the Sanctuary, the geode to the
+  Crystal Plains and the Sanctuary, and the crystal tree and shrub to the Crystal Forest sub-biome alone.
+  Glass Cliffs is not in any of these lists because it is a structure, and declares its biomes itself.
+- One branch is deliberately not reproduced: upstream lets a Structure or Monument field run any
+  non-dedicated generator at a flat 25% chance per attempt. A biome's feature list is static data with no
+  such gate, so honouring it would mean a second copy of every placed feature at four times the rarity.
+  It is recorded rather than approximated, because a wrong rate is harder to notice than an absent one.
+
 ## Working checkpoint — 2026-08-16 (crystal geodes, and a corrected dependency list)
 
 - Ported `WorldGenCrystalPit` as the `crystal_pit` feature: a seventeen by nine ellipsoid carved out and

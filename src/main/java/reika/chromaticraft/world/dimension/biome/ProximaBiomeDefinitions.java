@@ -1,15 +1,19 @@
 package reika.chromaticraft.world.dimension.biome;
 
 import net.minecraft.core.HolderGetter;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.BootstrapContext;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeGenerationSettings;
 import net.minecraft.world.level.biome.BiomeSpecialEffects;
 import net.minecraft.world.level.biome.MobSpawnSettings;
+import net.minecraft.world.level.levelgen.GenerationStep;
 import net.minecraft.world.level.levelgen.carver.ConfiguredWorldCarver;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
 
+import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.registry.ChromaEntityTypes;
 import reika.chromaticraft.world.biome.ChromaBiomes;
 
@@ -95,8 +99,62 @@ public final class ProximaBiomeDefinitions {
 				.downfall(DOWNFALL)
 				.specialEffects(effects.build())
 				.mobSpawnSettings(mobs.build())
-				.generationSettings(new BiomeGenerationSettings.Builder(features, carvers).build())
+				.generationSettings(generation(type, features, carvers))
 				.build();
+	}
+
+	/**
+	 * V33a {@code DimensionGenerators.generateIn}, which decides per biome which decorators run. It is
+	 * a chain of tests rather than a table, so it is transcribed here in the same order:
+	 *
+	 * <ul>
+	 * <li>The Central biome takes everything that is not tied to one specific biome — upstream's
+	 *     {@code isDedicatedBiomeOnly}. Floatstone and the geode qualify; the crystal shrub, the crystal
+	 *     tree and the glass cliffs do not.</li>
+	 * <li>A {@code SKYFEATURE} theme means Skylands, which is where Floatstone belongs.</li>
+	 * <li>The rest name their biome outright: the geode is the Crystal Plains', and both crystal plants
+	 *     are the Crystal Forest sub-biome's alone.</li>
+	 * </ul>
+	 *
+	 * <p>One branch is deliberately not reproduced. Upstream lets a Structure or Monument field run any
+	 * non-dedicated generator at a flat 25% chance, decided per attempt. A biome's feature list is static
+	 * data with no such gate, so expressing it would mean a second copy of every placed feature at four
+	 * times the rarity. It is recorded rather than approximated, since a wrong rate would be harder to
+	 * notice than an absent one.
+	 *
+	 * <p>Glass Cliffs is absent from every list here because it is a structure, not a feature: its
+	 * biomes are declared on the structure itself.
+	 */
+	private static BiomeGenerationSettings generation(ProximaBiomeType type,
+			HolderGetter<PlacedFeature> features, HolderGetter<ConfiguredWorldCarver<?>> carvers) {
+		BiomeGenerationSettings.Builder builder = new BiomeGenerationSettings.Builder(features, carvers);
+		boolean central = type == ProximaBiomes.CENTER;
+
+		// Floatstone: a SKYFEATURE, so Skylands, plus the Central biome.
+		if (central || type == ProximaBiomes.SKYLANDS)
+			add(builder, features, "floatstone");
+		// The geode: the Crystal Plains proper, plus the Central biome.
+		if (central || type == ProximaBiomes.PLAINS)
+			add(builder, features, "crystal_pit");
+		// Both crystal plants belong to the Crystal Forest sub-biome and nowhere else.
+		if (type == ProximaSubBiomes.CRYSFOREST) {
+			add(builder, features, "crystal_tree");
+			add(builder, features, "crystal_shrub");
+		}
+		return builder.build();
+	}
+
+	/**
+	 * Proxima's decoration all runs in the vegetal step. V33a has no notion of steps — its decorator
+	 * walks one ordered list per chunk — so the choice is ours, and vegetal is the step whose ordering
+	 * against vanilla's own passes matches what upstream did: after the surface is laid, before the top
+	 * layer.
+	 */
+	private static void add(BiomeGenerationSettings.Builder builder,
+			HolderGetter<PlacedFeature> features, String name) {
+		builder.addFeature(GenerationStep.Decoration.VEGETAL_DECORATION,
+				features.getOrThrow(ResourceKey.create(Registries.PLACED_FEATURE,
+						Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, name))));
 	}
 
 	private static int grassColor(ProximaBiomeType type) {

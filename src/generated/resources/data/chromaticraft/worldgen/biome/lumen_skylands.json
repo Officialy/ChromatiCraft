@@ -6,7 +6,20 @@
     "grass_color": "#79c05a",
     "water_color": "#00ffff"
   },
-  "features": [],
+  "features": [
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [
+      "chromaticraft:floatstone"
+    ]
+  ],
   "has_precipitation": false,
   "spawn_costs": {},
   "spawners": {

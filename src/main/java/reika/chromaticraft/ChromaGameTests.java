@@ -310,6 +310,7 @@ public final class ChromaGameTests {
 		register(event, env, "glass_cliff_piece", ChromaGameTests::glassCliffPiece);
 		register(event, env, "crystal_tree_feature", ChromaGameTests::crystalTreeFeature);
 		register(event, env, "crystal_pit_feature", ChromaGameTests::crystalPitFeature);
+		register(event, env, "proxima_biome_features", ChromaGameTests::proximaBiomeFeatures);
 		register(event, env, "loot_chest_lid_event", ChromaGameTests::lootChestLidEvent);
 		register(event, env, "loot_chest_trap_signal", ChromaGameTests::lootChestTrapSignal);
 		register(event, env, "structure_trap_and_wiring", ChromaGameTests::structureTrapAndWiring);
@@ -1846,6 +1847,52 @@ public final class ChromaGameTests {
 		// Four elements per palette, so a single geode can never show more than four kinds.
 		helper.assertTrue(crystals.size() <= 4, "the geode grew " + crystals.size()
 				+ " kinds of crystal; V33a draws all of a pit's crystals from one palette of four");
+		helper.succeed();
+	}
+
+	/**
+	 * Every Proxima decoration feature must be attached to the biomes V33a puts it in.
+	 *
+	 * <p>This exists because registering a feature and attaching it are separate steps, and a feature
+	 * that is registered but attached to nothing fails completely silently: it compiles, its configured
+	 * and placed JSON generate and validate, and it simply never appears in the world. Four features sat
+	 * in exactly that state until it was noticed by eye.
+	 *
+	 * <p>The expectations are upstream's {@code generateIn} chain: the Central biome takes everything not
+	 * tied to one biome, Floatstone is a sky feature so it belongs to Skylands, the geode is the Crystal
+	 * Plains', and both crystal plants are the Crystal Forest sub-biome's alone.
+	 */
+	private static void proximaBiomeFeatures(GameTestHelper helper) {
+		var biomes = helper.getLevel().registryAccess()
+				.lookupOrThrow(net.minecraft.core.registries.Registries.BIOME);
+		record Expectation(reika.chromaticraft.world.dimension.biome.ProximaBiomeType biome,
+				java.util.List<String> features) {}
+		for (Expectation expectation : java.util.List.of(
+				new Expectation(reika.chromaticraft.world.dimension.biome.ProximaBiomes.CENTER,
+						java.util.List.of("floatstone", "crystal_pit")),
+				new Expectation(reika.chromaticraft.world.dimension.biome.ProximaBiomes.SKYLANDS,
+						java.util.List.of("floatstone")),
+				new Expectation(reika.chromaticraft.world.dimension.biome.ProximaBiomes.PLAINS,
+						java.util.List.of("crystal_pit")),
+				new Expectation(reika.chromaticraft.world.dimension.biome.ProximaSubBiomes.CRYSFOREST,
+						java.util.List.of("crystal_tree", "crystal_shrub")))) {
+			var biome = biomes.getOrThrow(expectation.biome().biomeKey()).value();
+			java.util.Set<String> present = new java.util.HashSet<>();
+			for (var step : biome.getGenerationSettings().features())
+				for (var placed : step)
+					present.add(placed.unwrapKey().orElseThrow().identifier().getPath());
+			for (String wanted : expectation.features())
+				helper.assertTrue(present.contains(wanted), expectation.biome().biomeKey().identifier()
+						+ " is missing the " + wanted + " feature; a feature registered but attached to "
+						+ "no biome never generates and nothing else catches it");
+		}
+		// The geode is not a sky feature and must not have leaked into Skylands.
+		var skylands = biomes.getOrThrow(
+				reika.chromaticraft.world.dimension.biome.ProximaBiomes.SKYLANDS.biomeKey()).value();
+		for (var step : skylands.getGenerationSettings().features())
+			for (var placed : step)
+				helper.assertTrue(!placed.unwrapKey().orElseThrow().identifier().getPath().equals("crystal_pit"),
+						"the geode belongs to the Crystal Plains, not the Skylands");
 		helper.succeed();
 	}
 
