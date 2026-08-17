@@ -53,6 +53,20 @@ public final class ChromaBlockColors {
             return BlockRainbowLeaf.getTintColor(pos);
         }
     };
+    /**
+     * V33a {@code BlockDimensionDeco.colorMultiplier}: Crystal Leaves take the same position-derived
+     * hue Gemstone does, {@code getModifiedHue(0xFF0000, (x + z*3/2) * 4)} — so a hillside of them runs
+     * through the spectrum instead of being uniformly red. Off-world (an item in a hand or a GUI) there
+     * is no position to shift by, so upstream's own {@code getRenderColor} answer of plain white is used.
+     */
+    private static final BlockTintSource CRYSTAL_LEAF = new BlockTintSource() {
+        @Override public int color(BlockState state) { return 0xFFFFFFFF; }
+        @Override public int colorInWorld(BlockState state, BlockAndTintGetter level, BlockPos pos) {
+            return 0xFF000000 | reika.dragonapi.libraries.rendering.ReikaColorAPI.getModifiedHue(
+                    0xFF0000, (int)((pos.getX() + pos.getZ() * 3 / 2D) * 4));
+        }
+    };
+
 	private static final BlockTintSource HOVER = new BlockTintSource() {
 		@Override public int color(BlockState state) { return BlockHoverBlock.tint(state); }
 		@Override public int colorInWorld(BlockState state, BlockAndTintGetter level, BlockPos pos) {
@@ -111,6 +125,8 @@ public final class ChromaBlockColors {
         event.register(List.of(DYE_TREE), dyeBlocks);
         event.register(List.of(RAINBOW_LEAF), ChromaBlocks.RAINBOW_LEAVES.get());
 		event.register(List.of(HOVER), ChromaBlocks.HOVER.get());
+        event.register(List.of(CRYSTAL_LEAF), ChromaBlocks.deco(
+                reika.chromaticraft.registry.ProximaDecoTypes.CRYSTALLEAF).get());
 		event.register(List.of(net.minecraft.client.color.block.BlockTintSources.foliage()),
 				ChromaBlocks.GLOWING_LEAVES.get());
         // Cliff grass' top texture is greyscale like vanilla's, so it needs the biome grass tint or

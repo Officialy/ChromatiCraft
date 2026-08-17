@@ -22,6 +22,19 @@
 - The multi-layer rendering for the six compositing variants is still outstanding; each currently
   draws its real `layer_0`.
 
+## Working checkpoint — 2026-08-16 (Crystal Leaves' hue shift)
+
+- `ProximaDecoTypes.isHueShifted()` was declared and never called — the same dead-code slip as the drop
+  multiplier earlier. V33a's `colorMultiplier` gives Crystal Leaves the position-derived hue Gemstone
+  uses, `getModifiedHue(0xFF0000, (x + z*3/2) * 4)`, so a hillside of them runs through the spectrum
+  rather than being uniformly red. That is now a registered tint source and actually applied.
+- Two halves are needed and only having one is silent. The tint source is one; the other is that a tint
+  reaches a face only if the face carries a `tintindex`, which `CUBE_ALL` does not emit. The Crystal
+  Leaves model therefore uses vanilla's leaves template, as the port's other tinted leaves already do.
+  With a plain cube the tint source would have been registered, correct, and invisible.
+- Off-world — an item in a hand or a GUI — there is no position to shift by, so the plain white of
+  upstream's own `getRenderColor` is used rather than an arbitrary frozen hue.
+
 ## Working checkpoint — 2026-08-16 (Floatstone's overlay)
 
 - Floatstone was drawing only its first layer, so its glowing violet veins were missing and the block

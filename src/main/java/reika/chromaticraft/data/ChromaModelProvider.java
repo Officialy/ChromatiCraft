@@ -422,7 +422,11 @@ public class ChromaModelProvider extends ModelProvider {
 			Block block = ChromaBlocks.deco(type).get();
 			Material texture = new Material(Identifier.fromNamespaceAndPath(
 					ChromatiCraft.MODID, type.modelTexture()));
-			Identifier model = ModelTemplates.CUBE_ALL.create(block, TextureMapping.cube(texture), modelOut);
+			// Crystal Leaves are tinted per position, and a tint only reaches a face that carries a
+			// tintindex. Vanilla's leaves template is the one that does; a plain cube would silently
+			// ignore the tint source and leave the foliage flat red.
+			Identifier model = (type.isHueShifted() ? ModelTemplates.LEAVES : ModelTemplates.CUBE_ALL)
+					.create(block, TextureMapping.cube(texture), modelOut);
 			blockStateOut.accept(MultiVariantGenerator.dispatch(block,
 					new MultiVariant(WeightedList.of(new Variant(model)))));
 			itemModelOut.accept(block.asItem(), ItemModelUtils.plainModel(model));
