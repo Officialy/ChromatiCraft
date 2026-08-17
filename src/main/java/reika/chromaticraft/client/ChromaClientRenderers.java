@@ -88,5 +88,7 @@ public final class ChromaClientRenderers {
 		event.registerEntityRenderer(ChromaEntityTypes.LUMA_BURST.get(), RenderLumaBurst::new);
 		event.registerEntityRenderer(ChromaEntityTypes.TUNNEL_NUKER.get(), RenderTunnelNuker::new);
 		event.registerEntityRenderer(ChromaEntityTypes.DATA_CRYSTAL.get(), RenderDataCrystal::new);
+		event.registerEntityRenderer(ChromaEntityTypes.AURORA.get(),
+				reika.chromaticraft.render.entity.RenderAurora::new);
 	}
 }

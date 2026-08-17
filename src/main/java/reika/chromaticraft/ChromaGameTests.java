@@ -312,6 +312,7 @@ public final class ChromaGameTests {
 		register(event, env, "crystal_pit_feature", ChromaGameTests::crystalPitFeature);
 		register(event, env, "proxima_biome_features", ChromaGameTests::proximaBiomeFeatures);
 		register(event, env, "aurorae_feature", ChromaGameTests::auroraeFeature);
+		register(event, env, "aurora_curtain_drift", ChromaGameTests::auroraCurtainDrift);
 		register(event, env, "loot_chest_lid_event", ChromaGameTests::lootChestLidEvent);
 		register(event, env, "loot_chest_trap_signal", ChromaGameTests::lootChestTrapSignal);
 		register(event, env, "structure_trap_and_wiring", ChromaGameTests::structureTrapAndWiring);
@@ -1954,6 +1955,65 @@ public final class ChromaGameTests {
 				new AABB(origin).inflate(400)))
 			existing.discard();
 		helper.succeed();
+	}
+
+	/**
+	 * The aurora curtain must wave in the middle while staying pinned at both ends, and never move
+	 * vertically.
+	 *
+	 * <p>Those three are the whole of V33a's animation and each is easy to lose. The end control points
+	 * are given zero variance and zero velocity precisely so the ribbon stays anchored where the
+	 * generator put it; if they drifted, a curtain would wander away from its own endpoints over time.
+	 * And the drift is applied only to x and z — {@code posY} is reassigned every tick from the straight
+	 * line between the endpoints — so a curtain ripples sideways rather than flapping up and down.
+	 *
+	 * <p>{@code Aurora} is client-side by package but uses no client-only type, so it can be exercised
+	 * here. What cannot be checked from a server is how it looks; that wants eyes.
+	 */
+	private static void auroraCurtainDrift(GameTestHelper helper) {
+		var data = new reika.chromaticraft.entity.AuroraData(
+				new net.minecraft.world.phys.Vec3(0, 160, 0),
+				new net.minecraft.world.phys.Vec3(128, 160, 0), 0xFF0000, 0x00FF00, 2);
+		var aurora = new reika.chromaticraft.client.render.Aurora(data);
+
+		var initial = aurora.curve();
+		helper.assertTrue(initial.size() > 2,
+				"the curtain sampled only " + initial.size() + " points; it should follow a spline");
+		var firstStart = initial.get(0);
+		var firstEnd = initial.get(initial.size() - 1);
+
+		for (int tick = 0; tick < 200; tick++)
+			aurora.update();
+		var drifted = aurora.curve();
+		helper.assertTrue(drifted.size() == initial.size(),
+				"the curtain changed point count while drifting");
+
+		// The ends are pinned: zero variance and zero velocity, so they must not have moved.
+		helper.assertTrue(near(drifted.get(0), firstStart) && near(drifted.get(drifted.size() - 1), firstEnd),
+				"an aurora's ends drifted; they carry zero variance and velocity so the ribbon stays "
+						+ "anchored where the generator put it");
+
+		// Nothing moves vertically, at either end or in between.
+		for (var point : drifted)
+			helper.assertTrue(Math.abs(point.yCoord - 160) < 1E-6, "a curtain point moved to y "
+					+ point.yCoord + "; the drift is sideways only, and y is reset from the baseline");
+
+		// Something in the middle must actually have moved, or the curtain is static.
+		boolean moved = false;
+		for (int i = 1; i < drifted.size() - 1; i++)
+			if (Math.abs(drifted.get(i).zCoord - initial.get(i).zCoord) > 1E-6
+					|| Math.abs(drifted.get(i).xCoord - initial.get(i).xCoord) > 1E-6) {
+				moved = true;
+				break;
+			}
+		helper.assertTrue(moved, "no interior point of the curtain drifted over two hundred ticks");
+		helper.succeed();
+	}
+
+	private static boolean near(reika.dragonapi.instantiable.data.immutable.DecimalPosition a,
+			reika.dragonapi.instantiable.data.immutable.DecimalPosition b) {
+		return Math.abs(a.xCoord - b.xCoord) < 1E-6 && Math.abs(a.yCoord - b.yCoord) < 1E-6
+				&& Math.abs(a.zCoord - b.zCoord) < 1E-6;
 	}
 
 	/** Plain-Block loot chests must explicitly deliver vanilla opener-count events to their BE. */

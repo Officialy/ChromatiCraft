@@ -22,6 +22,34 @@
 - The multi-layer rendering for the six compositing variants is still outstanding; each currently
   draws its real `layer_0`.
 
+## Working checkpoint — 2026-08-16 (the aurora curtain, rendered)
+
+- The aurora is drawn. `Aurora` is the ported curtain: a chordal spline between the ribbon's endpoints
+  with a control point every sixteen blocks, each interior point sliding along the ribbon's own
+  perpendicular and picking a new target on arrival. The ends carry zero variance and zero velocity, so
+  the curtain waves in the middle while staying anchored, and `posY` is reassigned from the straight
+  baseline every tick, so the drift is sideways only. The focused test asserts all three.
+- `RenderAurora` emits the curtain through the modern submit pipeline: a strip of quads twenty-four
+  blocks tall, gradiented from the first colour at the base to the second at the top, faded over the
+  first and last thirty-two steps so it dissolves rather than stopping square, drawn additively with no
+  depth write so it glows through cloud and occludes nothing.
+- One bug worth recording, because the port introduced it rather than inheriting it: V33a drives the
+  drift from the entity's `onUpdate`, which is once per tick, while `extractRenderState` runs once per
+  *frame*. Advancing it there unconditionally made the curtain wave at the frame rate — three times too
+  fast at sixty frames a second, and different on every machine. It is now gated on the entity's tick
+  count.
+- Reika's own texture is used: V33a fetches `aurora4.png` remotely through `RemoteSourcedAsset` and
+  ships `aurora4_fallback.png` (512x256) as the local copy. The fallback is what is shipped here; the
+  4096x2048 remote variant exists upstream if a higher resolution is ever wanted.
+- Upstream's frame indexing is reproduced including its oddity: the sheet is eight frames across and four
+  down, but V33a indexes with `u = (f%4)*0.125` and `v = (f/4)*0.25` over thirty-two frames, so the
+  column only walks the first four of eight while the row runs to 1.75 and wraps twice. It is kept as-is,
+  since "fixing" the indices would change how an aurora reads.
+- One deliberate difference: V33a's renderer returns early inside Proxima, deferring to the dimension's
+  own sky renderer for better ordering against the sky. That sky renderer is not ported, so this draws
+  everywhere — otherwise Proxima's aurorae, the only ones that currently generate, would be invisible.
+  The early return belongs back here when the sky renderer lands.
+
 ## Working checkpoint — 2026-08-16 (aurorae)
 
 - Ported `WorldGenAurorae` and the `EntityAurora` it spawns. One placement is a whole display: one to
