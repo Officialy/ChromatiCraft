@@ -472,6 +472,8 @@ sourceSets.main.java {
     include 'reika/chromaticraft/block/dimension/BlockLightedSapling.java'
     include 'reika/chromaticraft/world/dimension/CrystalShrubFeature.java'
     include 'reika/chromaticraft/world/dimension/FloatstoneFeature.java'
+    include 'reika/chromaticraft/world/dimension/CrystalTreeShapes.java'
+    include 'reika/chromaticraft/world/dimension/CrystalTreeFeature.java'
     include 'reika/chromaticraft/world/dimension/structure/ProximaStructurePieces.java'
     include 'reika/chromaticraft/world/dimension/structure/ProximaStructures.java'
     include 'reika/chromaticraft/world/dimension/structure/GlassCliffStructure.java'

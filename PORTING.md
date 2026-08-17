@@ -22,6 +22,23 @@
 - The multi-layer rendering for the six compositing variants is still outstanding; each currently
   draws its real `layer_0`.
 
+## Working checkpoint — 2026-08-16 (crystal trees)
+
+- Ported `WorldGenCrystalTree`: all twelve registered crown layouts transcribed cell for cell into
+  `CrystalTreeShapes`, the weighted size draw (10, 7, 4, 1 across four classes, so the tallest is about
+  one in twenty-two), the per-class trunk height ranges, and the Stone Shielding trunk.
+- `RevolvedPattern` was missing from DragonAPI and three layouts need it, so it is ported too: author
+  one quadrant, mirror it across both axes, and inset each mirror by `coreSize - 1` so the quadrants sit
+  either side of an even-width trunk rather than over it.
+- Upstream's `checkSpace` is kept as a whole-shape test before anything is written. That is not
+  tidiness: a tree that failed halfway would leave a trunk of Shielding standing with no canopy. The
+  check is asymmetric the way upstream makes it — a foliage cell may replace anything leaves can grow
+  through, every other cell demands air — so canopies knit together but trunks do not grow through them.
+- `XMAS` is kept as a constant and left unregistered, exactly as upstream leaves it: its radius table is
+  empty, so it would generate a bare nineteen-block trunk. The focused test asserts that every other
+  layout *is* registered, since a dropped layout would simply never appear and no single seed would
+  reveal it.
+
 ## Working checkpoint — 2026-08-16 (the structure mechanism, and Glass Cliffs)
 
 - Proxima's first `Structure` is in, which is the mechanism the whole oversized class was waiting on:

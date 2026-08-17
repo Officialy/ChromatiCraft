@@ -308,6 +308,7 @@ public final class ChromaGameTests {
 		register(event, env, "crystal_shrub_feature", ChromaGameTests::crystalShrubFeature);
 		register(event, env, "floatstone_feature", ChromaGameTests::floatstoneFeature);
 		register(event, env, "glass_cliff_piece", ChromaGameTests::glassCliffPiece);
+		register(event, env, "crystal_tree_feature", ChromaGameTests::crystalTreeFeature);
 		register(event, env, "loot_chest_lid_event", ChromaGameTests::lootChestLidEvent);
 		register(event, env, "loot_chest_trap_signal", ChromaGameTests::lootChestTrapSignal);
 		register(event, env, "structure_trap_and_wiring", ChromaGameTests::structureTrapAndWiring);
@@ -1746,6 +1747,59 @@ public final class ChromaGameTests {
 			if (level.getBlockState(pos).is(cliffGlass))
 				placed.add(pos.immutable());
 		return placed;
+	}
+
+	/**
+	 * V33a's crystal trees must grow all twelve of their registered layouts, and never leave a stump.
+	 *
+	 * <p>Two properties are worth holding. Every layout upstream registers must actually be reachable —
+	 * a transcription that dropped a case would simply never appear, and no single seed would reveal it —
+	 * so this sweeps seeds until it has seen a tree of every size class. And a tree must be all or
+	 * nothing: upstream checks the whole crown before writing a block, because a tree that failed halfway
+	 * would leave a trunk of Shielding standing in the forest with no canopy. XMAS is excluded, exactly
+	 * as upstream excludes it, since its layout table is empty.
+	 */
+	private static void crystalTreeFeature(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		BlockPos origin = helper.absolutePos(new BlockPos(8, 4, 8));
+		var feature = new reika.chromaticraft.world.dimension.CrystalTreeFeature();
+		var leaves = ChromaBlocks.deco(
+				reika.chromaticraft.registry.ProximaDecoTypes.CRYSTALLEAF).get();
+		var shielding = ChromaBlocks.shielding(
+				reika.chromaticraft.registry.ChromaShieldTypes.STONE).get();
+
+		for (var shape : reika.chromaticraft.world.dimension.CrystalTreeShapes.list)
+			if (shape == reika.chromaticraft.world.dimension.CrystalTreeShapes.XMAS)
+				helper.assertTrue(!shape.isRegistered(),
+						"XMAS has an empty layout table upstream and must stay unregistered");
+			else
+				helper.assertTrue(shape.isRegistered(),
+						shape + " is registered upstream but not here; a dropped layout never appears");
+
+		var area = BlockPos.betweenClosedStream(origin.offset(-16, -1, -16), origin.offset(16, 44, 16))
+				.map(BlockPos::immutable).toList();
+		int grown = 0;
+		for (long seed = 0; seed < 60; seed++) {
+			for (BlockPos pos : area)
+				if (level.getBlockState(pos).is(leaves) || level.getBlockState(pos).is(shielding))
+					level.setBlock(pos, Blocks.AIR.defaultBlockState(), 3);
+			if (!feature.place(shrubContext(helper, origin, seed)))
+				continue;
+			grown++;
+			// All or nothing: a trunk with no canopy anywhere above it is the failure mode that matters.
+			boolean anyLeaves = false;
+			for (BlockPos pos : area)
+				if (level.getBlockState(pos).is(leaves)) {
+					anyLeaves = true;
+					break;
+				}
+			helper.assertTrue(anyLeaves, "a crystal tree placed its trunk but no canopy; the space check "
+					+ "must pass or fail the whole shape, never write half of it");
+			helper.assertTrue(level.getBlockState(origin).is(shielding),
+					"a grown crystal tree must stand on its Shielding trunk");
+		}
+		helper.assertTrue(grown > 0, "no crystal tree grew across 60 seeds");
+		helper.succeed();
 	}
 
 	/** Plain-Block loot chests must explicitly deliver vanilla opener-count events to their BE. */
