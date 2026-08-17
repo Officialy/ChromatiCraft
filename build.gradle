@@ -257,6 +257,7 @@ sourceSets.main.java {
     include 'reika/chromaticraft/auxiliary/structure/PortalStructure.java'
     include 'reika/chromaticraft/registry/ChromaDimensions.java'
     include 'reika/chromaticraft/world/dimension/ProximaGenerators.java'
+    include 'reika/chromaticraft/world/dimension/ProximaLayoutLoader.java'
     include 'reika/chromaticraft/world/dimension/DimensionStructureType.java'
     include 'reika/chromaticraft/world/dimension/StructureCalculator.java'
     include 'reika/chromaticraft/world/dimension/RegionMapper.java'

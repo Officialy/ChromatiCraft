@@ -117,6 +117,39 @@ public final class ProximaGenerators {
 	}
 
 	/**
+	 * Blocks until a layout for this seed exists, and is what every Proxima chunk depends on.
+	 *
+	 * <p>The biome source has to answer during chunk generation, and if it answers before the layout
+	 * exists it falls back to the Central biome — which is then <em>baked into the saved chunk</em>. A
+	 * fallback that persists is worse than a wait, so the wait is taken once, when the level loads,
+	 * before any chunk of it is built.
+	 *
+	 * <p>In practice it does not wait: {@link #regenerate} is kicked when the server starts, so the paint
+	 * is normally finished long before anyone reaches a rift. This is the guarantee, not the mechanism.
+	 *
+	 * <p>The running future is captured under the lock and joined <em>outside</em> it. Joining while
+	 * holding it would deadlock: the worker calls {@link #finish} as each generator completes, and that
+	 * is synchronized on this same class.
+	 */
+	public static Layout awaitLayout(long seed) {
+		Layout current = layout;
+		if (current != null && current.seed() == seed)
+			return current;
+		CompletableFuture<Layout> inFlight;
+		synchronized (ProximaGenerators.class) {
+			inFlight = running != null && !running.isDone() ? running : null;
+		}
+		if (inFlight != null) {
+			Layout finished = inFlight.join();
+			if (finished.seed() == seed)
+				return finished;
+		}
+		// Nothing running, or what was running was for a different world: do it here and now.
+		markAllPending();
+		return generateNow(seed);
+	}
+
+	/**
 	 * The same chain on the calling thread, for datagen, tests and any caller that genuinely needs the
 	 * layout before it can continue. Ordinary gameplay should use {@link #regenerate}.
 	 */

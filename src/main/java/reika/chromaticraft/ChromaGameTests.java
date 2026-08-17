@@ -313,6 +313,7 @@ public final class ChromaGameTests {
 		register(event, env, "proxima_biome_features", ChromaGameTests::proximaBiomeFeatures);
 		register(event, env, "aurorae_feature", ChromaGameTests::auroraeFeature);
 		register(event, env, "aurora_curtain_drift", ChromaGameTests::auroraCurtainDrift);
+		register(event, env, "proxima_layout_biomes", ChromaGameTests::proximaLayoutBiomes);
 		register(event, env, "loot_chest_lid_event", ChromaGameTests::lootChestLidEvent);
 		register(event, env, "loot_chest_trap_signal", ChromaGameTests::lootChestTrapSignal);
 		register(event, env, "structure_trap_and_wiring", ChromaGameTests::structureTrapAndWiring);
@@ -2014,6 +2015,50 @@ public final class ChromaGameTests {
 			reika.dragonapi.instantiable.data.immutable.DecimalPosition b) {
 		return Math.abs(a.xCoord - b.xCoord) < 1E-6 && Math.abs(a.yCoord - b.yCoord) < 1E-6
 				&& Math.abs(a.zCoord - b.zCoord) < 1E-6;
+	}
+
+	/**
+	 * A generated layout must paint more than one biome, and be waited for rather than fallen back from.
+	 *
+	 * <p>This is the check that was missing when every chunk of Proxima came out as Luminescent
+	 * Sanctuary. Nothing ran the layout generators in game, so {@code BiomeDistributor.getBiome} answered
+	 * null everywhere, and the biome source's null fallback — the Central biome — was written into every
+	 * saved chunk. The dimension worked perfectly and was one biome wide.
+	 *
+	 * <p>So two things are asserted. That a layout for a seed really does distribute several biomes, and
+	 * that {@code awaitLayout} returns one for the seed asked for rather than whatever happened to be
+	 * cached, since answering with another world's layout would be the same silent wrongness again.
+	 */
+	private static void proximaLayoutBiomes(GameTestHelper helper) {
+		var layout = reika.chromaticraft.world.dimension.ProximaGenerators.awaitLayout(0x9F0A17L);
+		helper.assertTrue(layout != null && layout.seed() == 0x9F0A17L,
+				"awaitLayout returned no layout, or one belonging to another seed");
+		helper.assertTrue(reika.chromaticraft.world.dimension.ProximaGenerators.areGeneratorsReady(),
+				"every generator must report finished once the layout exists, or the rift stays shut");
+
+		java.util.Map<reika.chromaticraft.world.dimension.biome.ProximaBiomeType, Integer> seen =
+				new java.util.HashMap<>();
+		// The sweep has to reach past the central region, and that region is very large: its radius is
+		// the farthest structure plus a buffer, so with a ring of radius 5000 +/- 3000 around an origin
+		// itself offset by up to 6000, it can approach fifteen thousand blocks. Sampling inside it
+		// returns the Sanctuary for every point and proves nothing.
+		double centralRadius = layout.structures().getMaximumDistanceFromOrigin()
+				+ reika.chromaticraft.world.dimension.RegionMapper.MAX_BUFFER;
+		int reach = (int)(centralRadius * 2);
+		for (int x = -reach; x <= reach; x += reach / 12)
+			for (int z = -reach; z <= reach; z += reach / 12) {
+				var biome = reika.chromaticraft.world.dimension.BiomeDistributor.getBiome(x, z);
+				if (biome != null)
+					seen.merge(biome, 1, Integer::sum);
+			}
+		helper.assertTrue(seen.size() > 1, "the layout painted only " + seen.keySet() + " out to " + reach
+				+ " blocks; a single biome everywhere is the fallback, not a map");
+		// A second call must not rebuild: it is the same object, which is what keeps chunk generation
+		// from re-running a nineteen-second paint.
+		helper.assertTrue(reika.chromaticraft.world.dimension.ProximaGenerators
+						.awaitLayout(0x9F0A17L) == layout,
+				"awaitLayout rebuilt a layout it already had for the same seed");
+		helper.succeed();
 	}
 
 	/** Plain-Block loot chests must explicitly deliver vanilla opener-count events to their BE. */

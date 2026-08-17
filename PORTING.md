@@ -22,6 +22,33 @@
 - The multi-layer rendering for the six compositing variants is still outstanding; each currently
   draws its real `layer_0`.
 
+## Working checkpoint — 2026-08-16 (Proxima was one biome everywhere)
+
+Reported in world: only `chromaticraft:luminescent_sanctuary` existed in Proxima. Two separate facts,
+and only the first is a defect.
+
+- **Nothing ran the layout generators in game.** `ProximaGenerators.regenerate` and `generateNow` were
+  called only from GameTests, so `BiomeDistributor.getBiome` answered null for every coordinate, the
+  biome source's null fallback is the Central biome, and that was written into every generated chunk.
+  The dimension worked perfectly and was one biome wide. `ProximaLayoutLoader` now kicks the chain
+  off-thread on server start — the biome paint alone is roughly nineteen seconds, so it wants to run
+  while the player is still in the Overworld — and waits for it when the Proxima level loads, which is
+  the last moment a wait is free and the first at which a missing layout starts being saved into chunks.
+  `awaitLayout` captures the running future under the lock and joins it *outside*, because each
+  generator calls the synchronized `finish` as it completes and joining under the lock would deadlock.
+- **The Sanctuary really is enormous, and that is upstream's design.** `biomeAt` returns Central for
+  anything inside the central region, whose radius is the farthest structure plus a buffer: a ring of
+  radius 5000 +/- 3000 about an origin itself offset by up to 6000, plus 200 to 1500, so it approaches
+  fifteen thousand blocks. Every other biome is *outside* that. A player near the arrival point is
+  correctly surrounded by Sanctuary and has to travel a long way to leave it.
+
+The second fact is why the first was easy to miss, and why the focused test now sweeps to twice the
+computed central radius rather than a fixed distance — an earlier version of it swept three thousand
+blocks, sat entirely inside the Sanctuary, and would have "confirmed" the bug after it was fixed.
+
+**Existing worlds keep the wrong biomes.** A biome is baked into a chunk when it generates, so Proxima
+chunks already visited stay Sanctuary. Only newly generated chunks pick up the real map.
+
 ## Working checkpoint — 2026-08-16 (Crystal Leaves' hue shift)
 
 - `ProximaDecoTypes.isHueShifted()` was declared and never called — the same dead-code slip as the drop
