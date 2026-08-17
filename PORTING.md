@@ -22,6 +22,34 @@
 - The multi-layer rendering for the six compositing variants is still outstanding; each currently
   draws its real `layer_0`.
 
+## Working checkpoint — 2026-08-16 (sky rivers: the transport half)
+
+- Ported `SkyRiverGenerator` and `SkyRiverManager`: the rivers themselves and the part that catches a
+  player and carries them. Eight rays radiate from the origin every 45 degrees starting 64 to 256 blocks
+  out, a second layer fills the gaps every 11.25 degrees but only from 1024 to 3072 out, and both run
+  past the structure ring. They hang at y 384 to 512, wander within a variation that narrows from 10 to
+  5 degrees with distance, and step at `max(128, 2*sqrt(d))` so the far ring is not choked with points.
+- A rider is pulled at seven blocks a tick along a blend of sixty percent the river's own direction and
+  forty percent towards the next node — carried forward while being steered back to the centre line
+  rather than flung out of a bend. Upstream's forward-first segment test is kept: a player where both
+  segments apply is carried onward, not backwards.
+- The tuning gate is upstream's: untuned throws you out and cuts your flight, partially tuned carries you
+  a distance that grows as you tune, fully tuned carries you the whole way. The partial limit is jittered
+  from the player's id and the world clock so it is not a visible ring in the sky.
+- Points are indexed by chunk, which is what makes the per-tick lookup a few map hits rather than a scan
+  of every point in the world.
+
+**One deliberate correction to upstream.** `rebuildWithMaxDst` computes its piece count as
+`floor(distance / maxDistance)`, which is 1 for any gap shorter than *twice* the target — so the segment
+is re-added unchanged and gaps of up to 36 blocks survive a method whose entire purpose is to bound them
+at 18. That is not academic: a rider is found by searching within 16 blocks of a point, so at the midpoint
+of a 36-block gap they are 18 from each neighbour, out of reach of both, and fall out of the sky at seven
+blocks a tick. `ceil` honours the method's own contract. The focused test asserts no gap exceeds twice the
+tunnel radius, which is the real budget.
+
+**Still outstanding for sky rivers:** the client has no copy of them, so nothing is drawn yet — the
+renderer, the sky renderer and the aurora integration are the next unit.
+
 ## Working checkpoint — 2026-08-16 (/locate biome in Proxima)
 
 - `/locate biome` could not find Proxima's biomes, and vanilla's search is why: the command asks for a

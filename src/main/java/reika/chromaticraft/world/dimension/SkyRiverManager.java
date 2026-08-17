@@ -1,373 +1,174 @@
-/*******************************************************************************
- * @author Reika Kalseki
- *
- * Copyright 2017
- *
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
- ******************************************************************************/
 package reika.chromaticraft.world.dimension;
 
-import java.util.Collection;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.Vec3;
-import net.minecraft.world.World;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.Vec3;
 
-import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.registry.ChromaPackets;
-import reika.chromaticraft.registry.ChromaSounds;
-import reika.chromaticraft.registry.ExtraChromaIDs;
-import reika.dragonapi.DragonAPICore;
-import reika.dragonapi.auxiliary.trackers.PlayerChunkTracker;
-import reika.dragonapi.auxiliary.trackers.TickScheduler;
-import reika.dragonapi.instantiable.data.immutable.DecimalPosition;
-import reika.dragonapi.instantiable.data.maps.PlayerMap;
-import reika.dragonapi.instantiable.event.ScheduledTickEvent;
-import reika.dragonapi.instantiable.io.PacketTarget;
-import reika.dragonapi.libraries.ReikaPlayerAPI;
-import reika.dragonapi.libraries.io.ReikaPacketHelper;
-import reika.dragonapi.libraries.io.ReikaSoundHelper;
-import reika.dragonapi.libraries.java.ReikaObfuscationHelper;
+import reika.chromaticraft.world.dimension.SkyRiverGenerator.RiverPoint;
 import reika.dragonapi.libraries.mathsci.ReikaVectorHelper;
 
-import cpw.mods.fml.relauncher.Side;
+/**
+ * V33a {@code SkyRiverManager}: catches a player who drifts into a sky river and carries them along it.
+ *
+ * <h2>How a rider is moved</h2>
+ *
+ * <p>Each tick the nearest river point within sixteen blocks is found, and if the player is inside the
+ * tunnel of one of its two segments they are pulled. The pull is a blend, and the blend is the whole
+ * feel of it: sixty percent along the river's own direction and forty percent towards the next node, so
+ * a rider is carried forward while being steered back to the centre line rather than flung out of a
+ * bend. Speed is a flat seven blocks a tick, which is what makes crossing fifteen thousand blocks
+ * reasonable.
+ *
+ * <p>Upstream's forward-first ordering is kept and matters: the segment towards <em>next</em> is tested
+ * before the one from <em>previous</em>, so a player standing where both apply is carried onward rather
+ * than backwards.
+ *
+ * <h2>The tuning gate</h2>
+ *
+ * <p>Sky rivers are not free transport. {@code TuningThresholds.SKYRIVER} decides what a player gets:
+ * untuned, the river throws them out and cuts their flight; partially tuned, it carries them only so
+ * far from the origin before ejecting them, with the limit growing as they tune; fully tuned, it carries
+ * them the whole way. The partial limit is deliberately jittered from the player's own id and the world
+ * time so it is not a hard visible ring.
+ *
+ * <p>Flight is revoked on ejection because a rider is hundreds of blocks up; upstream does the same, and
+ * the fall is the point.
+ */
+public final class SkyRiverManager {
 
-/* This class was originally written by HellFirePvP, but has since been heavily modified by Reika. The core logic remains his. */
-public class SkyRiverManager {
+	/** V33a's flat river speed, in blocks per tick. */
+	private static final double SPEED = 7;
+	/** How far from a player a river point is looked for. */
+	private static final double SEARCH_RANGE = 16;
+	/** Ticks a player is locked out of a river after being ejected from one. */
+	private static final int EJECT_COOLDOWN = 60;
 
-	public static final PlayerChunkTracker.TrackingCondition skyRiverCondition = new TrackingConditionSkyRiver();
-	private static final List<DelayedSkyRiverPacketEvent> delayedPackets = new LinkedList();
-	private static final PlayerMap<RiverStatus> statusData = new PlayerMap(); // Allows the server to keep up after leaving the SkyRiver
-	private static final int SKYRIVER_ENTER_DELAY = 60; // ticks - allows the server to catch up after untrack.
-	private static final Random rand = new Random();
+	private static final Map<UUID, RiderState> riders = new HashMap<>();
+	private static final Random random = new Random();
 
-	public static void tickSkyRiverServer(World w) {
-		if (!w.isRemote) {
-			for (Object objPl : w.playerEntities) {
-				if (!(objPl instanceof EntityPlayer) || ((EntityPlayer)objPl).isDead)
-					continue;
-				EntityPlayer pl = (EntityPlayer)objPl;
-				RiverStatus rs = getOrCreateEntry(pl);
-				rs.tick();
-				boolean flag = false;
-				if (rs.isMovable()) {
-					SkyRiverGenerator.RiverPoint closest = SkyRiverGenerator.getClosestPoint(pl, 16, true);
-					if (closest != null) {
-						if (SkyRiverGenerator.isWithinSkyRiver(pl, closest)) {
-							if (!PlayerChunkTracker.shouldStopChunkloadingFor(pl)) {
-								PlayerChunkTracker.startTrackingPlayer(pl, skyRiverCondition);
-								sendSkyriverEnterStatePacket(pl, true);
-								debugMessage("Player " + pl.getCommandSenderName() + " has entered a SkyRiver.");
-							}
-							movePlayer(pl, rs, closest, false);
-							flag = true;
-						}
-					}
-				}
-				if (!flag)
-					rs.riverTime = 0;
+	private SkyRiverManager() {}
+
+	public static void clear() {
+		riders.clear();
+	}
+
+	/** Called once a tick for the Proxima level. */
+	public static void tick(ServerLevel level) {
+		SkyRiverGenerator rivers = SkyRiverGenerator.getActive();
+		if (rivers == null)
+			return;
+		for (Player player : level.players()) {
+			if (player.isRemoved())
+				continue;
+			RiderState state = riders.computeIfAbsent(player.getUUID(), id -> new RiderState());
+			state.tick();
+			boolean carried = false;
+			if (state.canRide()) {
+				RiverPoint closest = rivers.getClosestPoint(player, SEARCH_RANGE);
+				if (SkyRiverGenerator.isWithinRiver(player, closest))
+					carried = move(player, state, closest);
+			}
+			if (!carried) {
+				state.riverTicks = 0;
+				// Gravity is restored the moment the river lets go, however that happened.
+				if (player.isNoGravity())
+					player.setNoGravity(false);
 			}
 		}
+		riders.keySet().removeIf(id -> level.getPlayerByUUID(id) == null);
 	}
 
-	private static RiverStatus getOrCreateEntry(EntityPlayer ep) {
-		RiverStatus rs = statusData.get(ep);
-		if (rs == null) {
-			rs = new RiverStatus(ep);
-			statusData.put(ep, rs);
+	/** @return whether the player was actually carried this tick */
+	private static boolean move(Player player, RiderState state, RiverPoint point) {
+		Vec3 position = player.position();
+		Vec3 along;
+		Vec3 towardsNode;
+		// Forward first: a player where both segments apply is carried onward, not back.
+		if (distanceToSegment(point.position(), point.next(), position) < SkyRiverGenerator.RIVER_TUNNEL_RADIUS) {
+			along = toVec(point.next()).subtract(toVec(point.position()));
+			towardsNode = toVec(point.next()).subtract(position);
 		}
-		return rs;
-	}
-
-	static void movePlayer(EntityPlayer player, SkyRiverGenerator.RiverPoint rp, boolean doesMove) {
-		movePlayer(player, getOrCreateEntry(player), rp, doesMove);
-	}
-
-	// Can/Will be called from Server and Client
-	// Set motionX, motionY, motionZ according to the RiverPoints
-	// TODO redo.
-	private static void movePlayer(EntityPlayer player, RiverStatus rs, SkyRiverGenerator.RiverPoint rp, boolean doesMove) {
-		DecimalPosition plPos = new DecimalPosition(player);
-		double dst;
-		Vec3 pullVector, nodeVector, moveVector;
-
-		// It's important to check for pos->next before checking for prev->pos
-		// That way, pulling further is preferred over pulling backwards...
-
-		// checks if the player is between RiverPoint.position and RiverPoint.next
-		dst = ReikaVectorHelper.getDistFromPointToLine(rp.next.xCoord, rp.next.yCoord, rp.next.zCoord, rp.position.xCoord, rp.position.yCoord, rp.position.zCoord, player.posX, player.posY, player.posZ);
-		if (dst < SkyRiverGenerator.RIVER_TUNNEL_RADIUS) {
-			pullVector = Vec3.createVectorHelper(rp.next.xCoord - rp.position.xCoord, rp.next.yCoord - rp.position.yCoord, rp.next.zCoord - rp.position.zCoord);
-			nodeVector = Vec3.createVectorHelper(rp.next.xCoord - plPos.xCoord, rp.next.yCoord - plPos.yCoord, rp.next.zCoord - plPos.zCoord);
+		else if (distanceToSegment(point.previous(), point.position(), position)
+				< SkyRiverGenerator.RIVER_TUNNEL_RADIUS) {
+			along = toVec(point.position()).subtract(toVec(point.previous()));
+			towardsNode = toVec(point.position()).subtract(position);
 		}
 		else {
-			// checks if the player is between RiverPoint.prev and RiverPoint.position
-			dst = ReikaVectorHelper.getDistFromPointToLine(rp.position.xCoord, rp.position.yCoord, rp.position.zCoord, rp.prev.xCoord, rp.prev.yCoord, rp.prev.zCoord, player.posX, player.posY, player.posZ);
-			if (dst < SkyRiverGenerator.RIVER_TUNNEL_RADIUS) {
-				pullVector = Vec3.createVectorHelper(rp.position.xCoord - rp.prev.xCoord, rp.position.yCoord - rp.prev.yCoord, rp.position.zCoord - rp.prev.zCoord);
-				nodeVector = Vec3.createVectorHelper(rp.position.xCoord - plPos.xCoord, rp.position.yCoord - plPos.yCoord, rp.position.zCoord - plPos.zCoord);
-			}
-			else {
-				return; // Well. then we're not in a SkyRiver.
-			}
+			return false;
 		}
 
-		pullVector = pullVector.normalize(); // Normalized vector parallel in the direction of the SkyRiver
-		nodeVector = nodeVector.normalize(); // Normalized vector pointing from the player towards the next node.
-		moveVector = Vec3.createVectorHelper(pullVector.xCoord * 0.6 + nodeVector.xCoord * 0.4, pullVector.yCoord * 0.6 + nodeVector.yCoord * 0.4, pullVector.zCoord * 0.6 + nodeVector.zCoord * 0.4);
-		if (doesMove) {
-			Vec3 playerMove = Vec3.createVectorHelper(player.motionX, player.motionY, player.motionZ).normalize();
-			moveVector = Vec3.createVectorHelper(moveVector.xCoord * 0.1 + playerMove.xCoord * 0.9, moveVector.yCoord, moveVector.zCoord * 0.1 + playerMove.zCoord * 0.9);
+		Vec3 move = along.normalize().scale(0.6).add(towardsNode.normalize().scale(0.4));
+
+		float tuning = DimensionTuningManager.TuningThresholds.SKYRIVER.getTuningFraction(player);
+		if (tuning <= 0) {
+			// Untuned: thrown clear rather than carried.
+			eject(player, state);
+			return false;
 		}
-		double multiplier = 7D;
-		float f = DimensionTuningManager.TuningThresholds.SKYRIVER.getTuningFraction(player);
-		if (f <= 0) {
-			moveVector.xCoord = rp.next.xCoord-rp.position.xCoord;
-			moveVector.yCoord = rp.next.yCoord-rp.position.yCoord;
-			moveVector.zCoord = rp.next.zCoord-rp.position.zCoord;
-			moveVector = moveVector.normalize();
-			multiplier = -1;
-			ejectPlayer(player, rs);
-		}
-		else if (f < 1) {
-			rand.setSeed(player.getUniqueID().hashCode()^player.worldObj.getTotalWorldTime());
-			rand.nextBoolean();
-			rand.nextBoolean();
-			//int maxl = 50+(int)(f*200)+rand.nextInt(50)+(int)(f*rand.nextInt(100));
-			//if (rs.riverTime >= maxl) {
-			double d = player.getDistanceSq(0, player.posY, 0);
-			double maxd = 150+50*rand.nextDouble()+f*(200+rand.nextInt(100));
-			if (d > maxd*maxd) {
-				//double rx = rand.nextDouble()*360;
-				//double ry = rand.nextDouble()*360;
-				//double rz = rand.nextDouble()*360;
-				//moveVector = ReikaVectorHelper.rotateVector(moveVector, rx, ry, rz);
-				//multiplier = 1;
-				ejectPlayer(player, rs);
-				return;
+		if (tuning < 1) {
+			// Partially tuned: carried only so far out, with the limit jittered off the player's id and
+			// the world clock so the boundary is not a visible ring in the sky.
+			random.setSeed(player.getUUID().hashCode() ^ player.level().getGameTime());
+			random.nextBoolean();
+			random.nextBoolean();
+			double reach = 150 + 50 * random.nextDouble() + tuning * (200 + random.nextInt(100));
+			double dx = player.getX();
+			double dz = player.getZ();
+			if (dx * dx + dz * dz > reach * reach) {
+				eject(player, state);
+				return false;
 			}
 		}
 
-		rs.riverTime++;
-
-		player.motionX = moveVector.xCoord * multiplier;
-		player.motionY = moveVector.yCoord * multiplier;
-		player.motionZ = moveVector.zCoord * multiplier;
-
-		if (player instanceof EntityPlayerMP) {
-			((EntityPlayerMP)player).playerNetServerHandler.floatingTickCount = 0;
-		}
+		state.riverTicks++;
+		player.setDeltaMovement(move.scale(SPEED));
+		player.hurtMarked = true;
+		// A rider hangs hundreds of blocks up moving faster than the server's anti-flight check
+		// tolerates, and would be kicked for floating. V33a zeroes the private counter directly;
+		// 26.2 exempts an entity whose gravity is effectively zero, which is both reachable without
+		// touching private state and true of a rider in any case — their motion is overwritten every
+		// tick, so gravity has no effect on them while the river has hold.
+		player.setNoGravity(true);
+		return true;
 	}
 
-	private static void ejectPlayer(EntityPlayer player, RiverStatus rs) {
-		if (rs.isMovable() && player.worldObj.isRemote)
-			ReikaSoundHelper.playClientSound(ChromaSounds.ERROR, player, 1, 1, false);
-		player.capabilities.allowFlying = false;
-		player.capabilities.isFlying = false;
-		rs.ejectCooldown = SKYRIVER_ENTER_DELAY;
+	private static void eject(Player player, RiderState state) {
+		player.setNoGravity(false);
+		player.getAbilities().mayfly = false;
+		player.getAbilities().flying = false;
+		player.onUpdateAbilities();
+		state.ejectCooldown = EJECT_COOLDOWN;
+		state.riverTicks = 0;
 	}
 
-	protected static void debugMessage(String message) {
-		if ((DragonAPICore.isReikasComputer() && ReikaObfuscationHelper.isDeObfEnvironment()) || DragonAPICore.debugtest) {
-			ChromatiCraft.logger.log("SkyRiver> " + message);
-		}
+	private static double distanceToSegment(reika.dragonapi.instantiable.data.immutable.DecimalPosition from,
+			reika.dragonapi.instantiable.data.immutable.DecimalPosition to, Vec3 point) {
+		return ReikaVectorHelper.getDistFromPointToLine(from.xCoord, from.yCoord, from.zCoord,
+				to.xCoord, to.yCoord, to.zCoord, point.x, point.y, point.z);
 	}
 
-	private static void sendRiverPoints(EntityPlayer player, SkyRiverGenerator.Ray r) {
-		NBTTagCompound cmp = new NBTTagCompound();
-		r.writeToPktNBT(cmp);
-
-		ReikaPacketHelper.sendNBTPacket(ChromatiCraft.packetChannel, ChromaPackets.SKYRIVER_SYNC.ordinal(), cmp, new PacketTarget.PlayerTarget((net.minecraft.entity.player.EntityPlayerMP)player));
+	private static Vec3 toVec(reika.dragonapi.instantiable.data.immutable.DecimalPosition position) {
+		return new Vec3(position.xCoord, position.yCoord, position.zCoord);
 	}
 
-	protected static void sendRiverClearPacketsToAll() {
-		Collection<EntityPlayerMP> objPlayers;
-		try {
-			objPlayers = ReikaPlayerAPI.getAllPlayers();
-		}
-		catch (NullPointerException exc) {
-			// Well, then we're still in the server startup and sending is not necessary.
-			return;
-		}
-		for (EntityPlayer player : objPlayers) {
-			clearClientRiver(player);
-		}
-	}
+	/** Per-player river state: how long they have been riding, and any lockout after an ejection. */
+	private static final class RiderState {
 
-	public static void clearClientRiver(EntityPlayer player) {
-		synchronized (delayedPackets) { // Remove packets in queue. That way we don't send wrong data.
-			for (DelayedSkyRiverPacketEvent event : delayedPackets) {
-				if (event.recipient.equals(player))
-					event.aborted = true;
-			}
-		}
-		debugMessage("Sending SkyRiver clear to " + player.getCommandSenderName());
-		ReikaPacketHelper.sendDataPacket(ChromatiCraft.packetChannel, ChromaPackets.SKYRIVER_STATE.ordinal(), (net.minecraft.entity.player.EntityPlayerMP)player, 0);
-	}
-
-	private static void sendSkyriverEnterStatePacket(EntityPlayer player, boolean allowEntering) {
-		debugMessage("Sending SkyRiver State-Change to " + player.getCommandSenderName() + " - new State: " + (allowEntering ? "Allow" : "Deny"));
-		ReikaPacketHelper.sendDataPacket(ChromatiCraft.packetChannel, ChromaPackets.SKYRIVER_STATE.ordinal(), (net.minecraft.entity.player.EntityPlayerMP)player, allowEntering ? 1 : 2);
-	}
-
-	// Fired, once a player leaves a SkyRiver. If this happens, we can expect LAG from ChunkLoading.
-	// Don't allow new SkyRiver entries from anyone that isn't inside one atm.
-	// Players already inside don't matter, they don't cause ChunkLoading anyway since they're already tracked.
-	// New people do matter since if they'd move around, they accumulate non-tracked movement packets which cause >200 chunks to load.
-	// RIP server if we don't handle that. Thus, everyone gets a refresh-state DENY packet and set onto the enter-delay.
-	private static void handleUntrack() {
-		Collection<EntityPlayerMP> objPlayers;
-		try {
-			objPlayers = ReikaPlayerAPI.getAllPlayers();
-		}
-		catch (NullPointerException exc) {
-			return;
-		}
-
-		for (EntityPlayer pl : objPlayers) {
-			if (!PlayerChunkTracker.shouldStopChunkloadingFor(pl)) {
-				sendSkyriverEnterStatePacket(pl, false);
-				RiverStatus rs = getOrCreateEntry(pl);
-				rs.departCooldown = SKYRIVER_ENTER_DELAY;
-			}
-		}
-	}
-
-	// Split up river rays and send them individually with some delay.
-	// If there's a river close to the player in the chroma dim, send that one first!
-	// If the player is in the chroma dim, start sending them immediately rather than 10 sec after login. He might need the rays.
-	protected static void startSendingRiverPackets(EntityPlayer player) {
-		debugMessage("Scheduling SkyRiver Packets for " + player.getCommandSenderName());
-		int ticksDelay = 200; // 10 seconds after.
-
-		int startIndex = 0;
-		if (player.worldObj.provider.dimensionId == ExtraChromaIDs.DIMID.getValue()) {
-			ticksDelay = 0; // Nope. no delay.
-			SkyRiverGenerator.RiverPoint rp = SkyRiverGenerator.getClosestPoint(player, 128, true);
-			if (rp != null) {
-				DecimalPosition pos = rp.position;
-				for (int i = 0; i < SkyRiverGenerator.rays.size(); i++) { // Make
-					// this
-					// a
-					// bit
-					// prettier
-					// one
-					// day...
-					SkyRiverGenerator.Ray r = SkyRiverGenerator.rays.get(i);
-					if (r.getPoints().contains(pos)) {
-						startIndex = i;
-						break;
-					}
-				}
-			}
-		}
-		for (int i = 0; i < SkyRiverGenerator.rays.size(); i++) {
-			int index = (startIndex + i) % SkyRiverGenerator.rays.size();
-			SkyRiverGenerator.Ray toSend = SkyRiverGenerator.rays.get(index);
-			schedulePacketSending(player, toSend, ticksDelay + (i * 10)); // 10 Ticks as delay between packets to split the load.
-		}
-	}
-
-	protected static void startSendingRiverPacketsToAll() {
-		Collection<EntityPlayerMP> objPlayers;
-		try {
-			objPlayers = ReikaPlayerAPI.getAllPlayers();
-		}
-		catch (NullPointerException exc) {
-			// Well, then we're still in the server startup and sending is not necessary.
-			return;
-		}
-		for (EntityPlayer player : objPlayers) {
-			startSendingRiverPackets(player);
-		}
-	}
-
-	private static void schedulePacketSending(EntityPlayer player, SkyRiverGenerator.Ray toSend, int delay) {
-		DelayedSkyRiverPacketEvent pktEvent = new DelayedSkyRiverPacketEvent(player, toSend);
-		delayedPackets.add(pktEvent);
-		TickScheduler.instance.scheduleEvent(new ScheduledTickEvent(pktEvent), 1+delay);
-	}
-
-	private static class DelayedSkyRiverPacketEvent implements ScheduledTickEvent.ScheduledEvent {
-
-		private final EntityPlayer recipient;
-		private final SkyRiverGenerator.Ray toSend;
-		private boolean aborted = false;
-
-		public DelayedSkyRiverPacketEvent(EntityPlayer player, SkyRiverGenerator.Ray toSend) {
-			recipient = player;
-			this.toSend = toSend;
-		}
-
-		@Override
-		public void fire() {
-			synchronized (delayedPackets) {
-				delayedPackets.remove(this);
-			}
-			if (aborted)
-				return;
-			sendRiverPoints(recipient, toSend);
-		}
-
-		@Override
-		public boolean runOnSide(Side s) {
-			return s == Side.SERVER;
-		}
-
-	}
-
-	private static class RiverStatus {
-
-		private final UUID player;
-		private final String name;
-
-		private RiverStatus(EntityPlayer ep) {
-			player = ep.getPersistentID();
-			name = ep.getCommandSenderName();
-		}
-
+		private int riverTicks;
 		private int ejectCooldown;
-		private int departCooldown;
-		private int riverTime;
-
-		public boolean isMovable() {
-			return ejectCooldown == 0 && departCooldown == 0;
-		}
 
 		private void tick() {
-			boolean move = this.isMovable();
 			if (ejectCooldown > 0)
 				ejectCooldown--;
-			if (departCooldown > 0)
-				departCooldown--;
-			if (!move && this.isMovable())
-				debugMessage("Player " + name + " may enter the SkyRiver again.");
 		}
 
-
+		private boolean canRide() {
+			return ejectCooldown <= 0;
+		}
 	}
-
-	public static class TrackingConditionSkyRiver implements PlayerChunkTracker.TrackingCondition {
-
-		@Override
-		public boolean shouldBeTracked(EntityPlayer player) {
-			return SkyRiverGenerator.isWithinSkyRiver(player, true);
-		}
-
-		@Override
-		public void onUntrack(EntityPlayer player) {
-			debugMessage("Player " + player.getCommandSenderName() + " has left a SkyRiver");
-			handleUntrack();
-		}
-
-	}
-
 }

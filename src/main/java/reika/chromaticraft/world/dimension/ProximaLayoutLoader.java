@@ -41,6 +41,14 @@ public final class ProximaLayoutLoader {
 		ProximaGenerators.regenerate(event.getServer().overworld().getSeed());
 	}
 
+	/** Proxima's per-tick work: for now, carrying anyone who has drifted into a sky river. */
+	@SubscribeEvent
+	public static void onLevelTick(net.neoforged.neoforge.event.tick.LevelTickEvent.Post event) {
+		if (event.getLevel() instanceof ServerLevel level
+				&& level.dimension() == ChromaDimensions.PROXIMA)
+			SkyRiverManager.tick(level);
+	}
+
 	@SubscribeEvent
 	public static void onLevelLoad(LevelEvent.Load event) {
 		if (!(event.getLevel() instanceof ServerLevel level))

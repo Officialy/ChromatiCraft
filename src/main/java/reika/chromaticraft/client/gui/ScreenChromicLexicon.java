@@ -1,14 +1,7 @@
 package reika.chromaticraft.client.gui;
 
-import java.util.ArrayList;
-import java.util.Locale;
-import java.util.List;
-
-import org.lwjgl.glfw.GLFW;
-
 import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.platform.Window;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
@@ -19,33 +12,28 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.data.AtlasIds;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
-
+import org.lwjgl.glfw.GLFW;
 import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.item.ItemChromaBook;
-import reika.chromaticraft.magic.progression.LexiconCatalog;
-import reika.chromaticraft.magic.progression.LexiconDescriptions;
-import reika.chromaticraft.magic.progression.LexiconData;
-import reika.chromaticraft.magic.progression.PlayerResearch;
-import reika.chromaticraft.magic.progression.ResearchProgress;
-import reika.chromaticraft.magic.progression.ResearchLevel;
-import reika.chromaticraft.magic.progression.ProgressStage;
-import reika.chromaticraft.magic.progression.ProgressionDescriptions;
-import reika.chromaticraft.magic.progression.ProgressionManager;
-import reika.chromaticraft.network.ChromaNetwork;
 import reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe;
+import reika.chromaticraft.item.ItemChromaBook;
+import reika.chromaticraft.magic.progression.*;
+import reika.chromaticraft.network.ChromaNetwork;
 import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.registry.ChromaSounds;
+import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.render.ChromaRenderPipelines;
 import reika.dragonapi.instantiable.rendering.structure.StructureRenderer;
-import net.minecraft.core.registries.BuiltInRegistries;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
 
 /** First 26.2 rendering pass for V33a's navigation and basic-description guide screens. */
 public final class ScreenChromicLexicon extends Screen {
@@ -1098,10 +1086,6 @@ public final class ScreenChromicLexicon extends Screen {
 		TextureAtlasSprite flare = Minecraft.getInstance().getAtlasManager()
 				.getAtlasOrThrow(AtlasIds.BLOCKS).getSprite(Identifier.fromNamespaceAndPath(
 						ChromatiCraft.MODID, "block/icons/roundflare"));
-		// Upstream posY is top-8 and places the flare at y-4, hence top-12 here.
-		// roundflare is a 180-frame, 256x256 block-atlas animation. Uploading its
-		// 256x46080 source file as a standalone GUI texture exceeds the GPU's maximum
-		// texture height; sampling the stitched sprite also preserves its animation.
 		graphics.blitSprite(ChromaRenderPipelines.ADDITIVE_SPRITE, flare,
 				left + 115, top - 12, 96, 96, 0xff000000 | color);
 	}

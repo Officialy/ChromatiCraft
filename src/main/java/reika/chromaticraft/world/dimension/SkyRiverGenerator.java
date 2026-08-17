@@ -1,372 +1,272 @@
-/*******************************************************************************
- * @author Reika Kalseki
- *
- * Copyright 2017
- *
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
- ******************************************************************************/
 package reika.chromaticraft.world.dimension;
 
-import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.LinkedList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Random;
 
-import javax.imageio.ImageIO;
+import net.minecraft.util.Mth;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.ChunkPos;
 
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.nbt.NBTTagList;
-import net.minecraft.util.MathHelper;
-import net.minecraft.util.Vec3;
-import net.minecraft.world.ChunkCoordIntPair;
-
-import reika.chromaticraft.base.ThreadedGenerator;
-import reika.dragonapi.DragonAPICore;
 import reika.dragonapi.instantiable.data.immutable.DecimalPosition;
-import reika.dragonapi.instantiable.data.maps.MultiMap;
 import reika.dragonapi.instantiable.math.Spline;
-import reika.dragonapi.instantiable.math.spline.BasicSplinePoint;
-import reika.dragonapi.instantiable.math.spline.SplineType;
-import reika.dragonapi.libraries.java.ReikaObfuscationHelper;
+import reika.dragonapi.instantiable.math.Spline.BasicSplinePoint;
+import reika.dragonapi.instantiable.math.Spline.SplineType;
 import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
 import reika.dragonapi.libraries.mathsci.ReikaVectorHelper;
 
-public class SkyRiverGenerator extends ThreadedGenerator {
+/**
+ * V33a {@code SkyRiverGenerator}: the sky rivers, Proxima's long-distance transport.
+ *
+ * <p>They are rays radiating from the world origin at y 384 to 512, drawn as splines and then
+ * resampled so no two points are more than eighteen blocks apart. A player who comes within
+ * {@link #RIVER_TUNNEL_RADIUS} of one is caught and carried along it — which is what makes a dimension
+ * fifteen thousand blocks wide crossable at all.
+ *
+ * <h2>The two layers</h2>
+ *
+ * <p>Eight rays start close in, between 64 and 256 blocks from the origin, one every 45 degrees. A
+ * second set fills the gaps every 11.25 degrees but only begins at 1024 to 3072 blocks out, so the sky
+ * near the middle is not a thicket of rivers while the outer world still has a dense network. Both
+ * layers run out past the structure ring, to the maximum possible structure distance plus the region
+ * buffer plus 512, and up to 2048 further.
+ *
+ * <p>A ray wanders as it goes: its bearing is re-rolled at every node within a variation that widens
+ * from 10 degrees near the centre to 5 further out, and successive bearings may differ by at most
+ * {@link #MAX_ANGLE_STEP}, so a river curves rather than zigzagging. Node spacing grows with distance —
+ * {@code max(128, 2*sqrt(d))} — because a fixed spacing would put absurdly many points in the far ring.
+ *
+ * <p>Points are indexed by chunk, which is the whole reason the lookup is affordable: finding the river
+ * near a player is a handful of map lookups rather than a scan of every point in the world.
+ */
+public final class SkyRiverGenerator {
 
-	protected static final List<Ray> rays = new ArrayList();
-	protected static final MultiMap<ChunkCoordIntPair, RiverPoint> clientPoints = new MultiMap().setNullEmpty();
-	protected static final MultiMap<ChunkCoordIntPair, RiverPoint> serverPoints = new MultiMap().setNullEmpty();
-
-	public static final double RIVER_TUNNEL_RADIUS = 12.0D; // The tunnel radius of the actual SkyRiver
+	/** V33a RIVER_TUNNEL_RADIUS: how close a player must be to be caught by a river. */
+	public static final double RIVER_TUNNEL_RADIUS = 12;
 
 	private static final double INNER_RADIUS_MIN = 64;
 	private static final double INNER_RADIUS_MAX = 256;
-
 	private static final double LAYER2_RADIUS_MIN = 1024;
 	private static final double LAYER2_RADIUS_MAX = 3072;
-
-	private static final double OUTER_RADIUS_MIN = StructureCalculator.getMaximumPossibleDistance() + RegionMapper.MAX_BUFFER+512;
-	private static final double OUTER_RADIUS_MAX = OUTER_RADIUS_MIN + 2048;
 
 	private static final double FULL_RAY_ANGLE = 45;
 	private static final double LAYER2_RAY_ANGLE = 22.5 / 2;
 	private static final double NODE_LENGTH = 64 * 2;
 	private static final double INNER_ANGLE_VARIATION = 10;
-	private static final double ANGLE_VARIATION = 10 / 2;
+	private static final double ANGLE_VARIATION = 10 / 2D;
 	private static final double MAX_ANGLE_STEP = ANGLE_VARIATION / 2;
 	private static final double VERTICAL_POSITION_MIN = 384;
 	private static final double VERTICAL_POSITION_MAX = 512;
 	private static final double ANGLE_VARIATION_FADE_RANGE = 384;
+	/** V33a Ray.MAX_POINT_DST: the spline is resampled so no gap exceeds this. */
+	private static final double MAX_POINT_DISTANCE = 18;
 
-	public SkyRiverGenerator(long seed) {
-		super(seed);
+	private static volatile SkyRiverGenerator active;
+
+	private final List<Ray> rays = new ArrayList<>();
+	private final Map<Long, List<RiverPoint>> pointsByChunk = new HashMap<>();
+
+	private SkyRiverGenerator() {}
+
+	/** The rivers for the loaded world, or null before they have been generated. */
+	public static SkyRiverGenerator getActive() {
+		return active;
 	}
 
-	@Override
-	public void run() throws Throwable {
-		rays.clear();
-		serverPoints.clear();
-		SkyRiverManager.sendRiverClearPacketsToAll(); // Clear all outdated
-		// SkyRivers!
-		for (double d = 0; d < 360; d += FULL_RAY_ANGLE) {
-			double r1 = INNER_RADIUS_MIN + rand.nextDouble() * (INNER_RADIUS_MAX - INNER_RADIUS_MIN);
-			double r2 = OUTER_RADIUS_MIN + rand.nextDouble() * (OUTER_RADIUS_MAX - OUTER_RADIUS_MIN);
-			this.generateRay(d, r1, r2);
-		}
+	public static void clear() {
+		active = null;
+	}
 
-		for (double d = 0; d < 360; d += LAYER2_RAY_ANGLE) {
-			if (d % FULL_RAY_ANGLE != 0) {
-				double r1 = LAYER2_RADIUS_MIN + rand.nextDouble() * (LAYER2_RADIUS_MAX - LAYER2_RADIUS_MIN);
-				double r2 = OUTER_RADIUS_MIN + rand.nextDouble() * (OUTER_RADIUS_MAX - OUTER_RADIUS_MIN);
-				this.generateRay(d, r1, r2);
+	private static double outerRadiusMin() {
+		return StructureCalculator.getMaximumPossibleDistance() + RegionMapper.MAX_BUFFER + 512;
+	}
+
+	public static SkyRiverGenerator generate(long seed) {
+		SkyRiverGenerator generator = new SkyRiverGenerator();
+		Random random = new Random(seed);
+		double outerMin = outerRadiusMin();
+		double outerMax = outerMin + 2048;
+		for (double angle = 0; angle < 360; angle += FULL_RAY_ANGLE)
+			generator.generateRay(random, angle,
+					INNER_RADIUS_MIN + random.nextDouble() * (INNER_RADIUS_MAX - INNER_RADIUS_MIN),
+					outerMin + random.nextDouble() * (outerMax - outerMin));
+		for (double angle = 0; angle < 360; angle += LAYER2_RAY_ANGLE) {
+			if (angle % FULL_RAY_ANGLE == 0)
+				continue;
+			generator.generateRay(random, angle,
+					LAYER2_RADIUS_MIN + random.nextDouble() * (LAYER2_RADIUS_MAX - LAYER2_RADIUS_MIN),
+					outerMin + random.nextDouble() * (outerMax - outerMin));
+		}
+		generator.index();
+		active = generator;
+		ProximaGenerators.finish(ProximaGenerators.Generator.SKYRIVER);
+		return generator;
+	}
+
+	/**
+	 * V33a's per-ray walk. The bearing is re-rolled each node and rejected while it differs from the
+	 * last by more than {@link #MAX_ANGLE_STEP}, which is what keeps a river smooth.
+	 */
+	private void generateRay(Random random, double bearing, double from, double to) {
+		Ray ray = new Ray();
+		double lastAngle = bearing;
+		for (double d = from; d <= to; d += Math.max(NODE_LENGTH, 2 * Math.sqrt(d))) {
+			double variation = ANGLE_VARIATION;
+			if (d < LAYER2_RADIUS_MIN)
+				variation = d < LAYER2_RADIUS_MIN - ANGLE_VARIATION_FADE_RANGE ? INNER_ANGLE_VARIATION
+						: ReikaMathLibrary.linterpolate(d, LAYER2_RADIUS_MIN - ANGLE_VARIATION_FADE_RANGE,
+								LAYER2_RADIUS_MIN, INNER_ANGLE_VARIATION, ANGLE_VARIATION);
+			double angle = bearing + random.nextDouble() * variation * 2 - variation;
+			// Upstream rejects and re-rolls with no bound. The variation is always wider than the step,
+			// so it terminates with probability one, but a bounded retry avoids betting a worldgen
+			// thread on that; after the cap the nearest legal bearing is taken instead.
+			for (int attempt = 0; attempt < 64 && Math.abs(angle - lastAngle) > MAX_ANGLE_STEP; attempt++)
+				angle = bearing + random.nextDouble() * variation * 2 - variation;
+			if (Math.abs(angle - lastAngle) > MAX_ANGLE_STEP)
+				angle = lastAngle + Math.signum(angle - lastAngle) * MAX_ANGLE_STEP;
+			lastAngle = angle;
+			double radians = Math.toRadians(angle);
+			ray.points.add(new DecimalPosition(d * Math.cos(radians),
+					VERTICAL_POSITION_MIN + random.nextDouble()
+							* (VERTICAL_POSITION_MAX - VERTICAL_POSITION_MIN),
+					d * Math.sin(radians)));
+		}
+		if (ray.points.size() <= 2)
+			return;
+		ray.spline();
+		ray.resample();
+		rays.add(ray);
+	}
+
+	/**
+	 * V33a indexes every interior point by the chunk it falls in. The first and last point of a ray are
+	 * skipped because a river point needs both a previous and a next to define its segment.
+	 */
+	private void index() {
+		for (Ray ray : rays) {
+			int count = ray.points.size();
+			for (int i = 1; i < count - 1; i++) {
+				DecimalPosition position = ray.points.get(i);
+				ChunkPos chunk = new ChunkPos(Mth.floor(position.xCoord) >> 4, Mth.floor(position.zCoord) >> 4);
+				pointsByChunk.computeIfAbsent(ChunkPos.pack(chunk.x(), chunk.z()), key -> new ArrayList<>())
+						.add(new RiverPoint(i, count, position, ray.points.get(i - 1), ray.points.get(i + 1)));
 			}
 		}
+	}
 
-		for (Ray r : rays) {
-			RiverPoint prev = null;
-			int n = r.points.size();
-			for (int i = 1; i < n - 1; i++) {
-				DecimalPosition pos = r.points.get(i);
-				DecimalPosition nextPos = r.points.get(i + 1);
-				DecimalPosition prevPos = r.points.get(i - 1);
-				ChunkCoordIntPair ch = new ChunkCoordIntPair(MathHelper.floor_double(pos.xCoord) / 16, MathHelper.floor_double(pos.zCoord) / 16);
-				RiverPoint p = new RiverPoint(i, n, ch, pos, prevPos, nextPos);
-				if (prev != null) {
-					prev.nextRiverPoint = p;
-				}
-				prev = p;
-				serverPoints.addValue(ch, p);
+	public List<Ray> getRays() {
+		return Collections.unmodifiableList(rays);
+	}
+
+	public Collection<RiverPoint> getPointsForChunk(int chunkX, int chunkZ) {
+		List<RiverPoint> points = pointsByChunk.get(ChunkPos.pack(chunkX, chunkZ));
+		return points == null ? List.of() : Collections.unmodifiableList(points);
+	}
+
+	/** Every point within the given block range of an entity, gathered chunk by chunk. */
+	public Collection<RiverPoint> getPointsWithin(Entity entity, double range) {
+		int chunkX = Mth.floor(entity.getX()) >> 4;
+		int chunkZ = Mth.floor(entity.getZ()) >> 4;
+		int chunkRange = Mth.floor(range) >> 4;
+		List<RiverPoint> found = new ArrayList<>();
+		for (int dx = -chunkRange - 1; dx <= chunkRange; dx++)
+			for (int dz = -chunkRange - 1; dz <= chunkRange; dz++)
+				found.addAll(this.getPointsForChunk(chunkX + dx, chunkZ + dz));
+		return found;
+	}
+
+	public RiverPoint getClosestPoint(Entity entity, double range) {
+		RiverPoint closest = null;
+		double best = Double.POSITIVE_INFINITY;
+		for (RiverPoint point : this.getPointsWithin(entity, range)) {
+			double distance = entity.distanceToSqr(point.position().xCoord, point.position().yCoord,
+					point.position().zCoord);
+			if (distance < best && distance <= range * range) {
+				best = distance;
+				closest = point;
 			}
 		}
-		if ((DragonAPICore.isReikasComputer() && ReikaObfuscationHelper.isDeObfEnvironment()) || DragonAPICore.debugtest) {
-			// ChromatiCraft.logger.log("Generated rivers: "+serverPoints);
-			//this.exportAsImage();
-		}
-		SkyRiverManager.startSendingRiverPacketsToAll(); // Send new SkyRivers
-		// to all online
-		// players.
+		return closest;
 	}
 
-	private void exportAsImage() throws IOException {
-		File f = new File(DragonAPICore.getMinecraftDirectory(), "DimensionRiver/" + seed + "L/" + System.nanoTime() + ".png");
-		if (f.exists())
-			f.delete();
-		f.getParentFile().mkdirs();
-		f.createNewFile();
-		int n = 0;
-		for (RiverPoint p : serverPoints.allValues(false)) {
-			DecimalPosition c = p.position;
-			n = Math.max(n, Math.max(1 + (int)Math.abs(c.xCoord), 1 + (int)Math.abs(c.zCoord)));
-		}
-		n /= 5;
-		BufferedImage img = new BufferedImage(n * 2 + 1, n * 2 + 1, BufferedImage.TYPE_INT_ARGB);
-		for (RiverPoint p : serverPoints.allValues(false)) {
-			int x = (int)p.position.xCoord / 5 + n;
-			int z = (int)p.position.zCoord / 5 + n;
-			for (int i = -1; i <= 1; i++) {
-				for (int k = -1; k <= 1; k++) {
-					try {
-						img.setRGB(x + i, z + k, 0xff000000);
-					}
-					catch (Exception e) {
-
-					}
-				}
-			}
-		}
-		ImageIO.write(img, "png", f);
+	/** True if the entity is inside the tunnel of either segment meeting at this point. */
+	public static boolean isWithinRiver(Entity entity, RiverPoint point) {
+		return point != null && (isBetween(point.previous(), point.position(), entity)
+				|| isBetween(point.position(), point.next(), entity));
 	}
 
-	public static Collection<RiverPoint> getPointsForChunk(int x, int z, boolean isServerSide) {
-		ChunkCoordIntPair pos = new ChunkCoordIntPair(x, z);
-		MultiMap<ChunkCoordIntPair, RiverPoint> points = isServerSide ? serverPoints : clientPoints;
-		Collection<RiverPoint> c = points.get(pos);
-		return c != null ? Collections.unmodifiableCollection(c) : null;
+	public static boolean isBetween(DecimalPosition from, DecimalPosition to, Entity entity) {
+		return ReikaVectorHelper.getDistFromPointToLine(from.xCoord, from.yCoord, from.zCoord,
+				to.xCoord, to.yCoord, to.zCoord, entity.getX(), entity.getY(), entity.getZ())
+				< RIVER_TUNNEL_RADIUS;
 	}
 
-	public static Collection<RiverPoint> getPointsWithin(EntityPlayer ep, double range, boolean isServerSide) {
-		int x = MathHelper.floor_double(ep.posX) / 16;
-		int z = MathHelper.floor_double(ep.posZ) / 16;
-		int chRange = MathHelper.floor_double(range) / 16; // We're interested
-		// in the
-		// chunkRadius
-		// though... Even if
-		// it might not be
-		// 100% accurate.
-		Collection<RiverPoint> c2 = new LinkedList();
-		if (chRange == 0) {
-			Collection<RiverPoint> c = getPointsForChunk(x, z, isServerSide);
-			if (c != null)
-				c2.addAll(c);
-		}
-		else {
-			for (int xDiff = -chRange - 1; xDiff <= chRange; xDiff++) {
-				for (int zDiff = -chRange - 1; zDiff <= chRange; zDiff++) {
-					Collection<RiverPoint> c = getPointsForChunk(x + xDiff, z + zDiff, isServerSide);
-					if (c != null)
-						c2.addAll(c);
-				}
-			}
-		}
-		return c2;
-	}
+	/** One river: an ordered run of points from near the origin out past the structure ring. */
+	public static final class Ray {
 
-	public static boolean isWithinSkyRiver(EntityPlayer player, boolean isServerSide) {
-		RiverPoint closest = getClosestPoint(player, 32, isServerSide);
-		return isWithinSkyRiver(player, closest);
-	}
+		private List<DecimalPosition> points = new ArrayList<>();
 
-	public static boolean isWithinSkyRiver(EntityPlayer player, RiverPoint closestPoint) {
-		if (closestPoint == null)
-			return false; // No point in range? not even close to a river.
-		return isBetween(closestPoint.prev, closestPoint.position, player) || isBetween(closestPoint.position, closestPoint.next, player);
-	}
-
-	public static boolean isBetween(DecimalPosition pos1, DecimalPosition pos2, Entity toCheck) {
-		double dst = ReikaVectorHelper.getDistFromPointToLine(pos1.xCoord, pos1.yCoord, pos1.zCoord, pos2.xCoord, pos2.yCoord, pos2.zCoord, toCheck.posX, toCheck.posY, toCheck.posZ);
-		return dst < RIVER_TUNNEL_RADIUS;
-	}
-
-	public static RiverPoint getClosestPoint(EntityPlayer ep, double range, boolean isServerSide) {
-		Collection<RiverPoint> c = getPointsWithin(ep, range, isServerSide);
-		Double d = Double.POSITIVE_INFINITY;
-		RiverPoint cl = null;
-		for (RiverPoint p : c) {
-			double dist = ep.getDistanceSq(p.position.xCoord, p.position.yCoord, p.position.zCoord);
-			if (dist < d && dist <= range * range) {
-				d = dist;
-				cl = p;
-			}
-		}
-		return cl;
-	}
-
-	private void generateRay(double ang, double r1, double r2) {
-		Ray r = new Ray();
-		r.lastAngle = ang;
-		for (double d = r1; d <= r2; d += Math.max(NODE_LENGTH, 2 * Math.sqrt(d))) {
-			double var = ANGLE_VARIATION;
-			if (d < LAYER2_RADIUS_MIN) {
-				if (d < LAYER2_RADIUS_MIN - ANGLE_VARIATION_FADE_RANGE) {
-					var = INNER_ANGLE_VARIATION;
-				}
-				else {
-					var = ReikaMathLibrary.linterpolate(d, LAYER2_RADIUS_MIN - ANGLE_VARIATION_FADE_RANGE, LAYER2_RADIUS_MIN, INNER_ANGLE_VARIATION, ANGLE_VARIATION);
-					// ReikaJavaLibrary.pConsole("Interpolating @ "+d+" for "+ang);
-				}
-			}
-			double a = ang + rand.nextDouble() * var * 2 - var;
-			while (Math.abs(a - r.lastAngle) > MAX_ANGLE_STEP)
-				a = ang + rand.nextDouble() * var * 2 - var;
-			r.lastAngle = a;
-			a = Math.toRadians(a);
-			double x = d * Math.cos(a);
-			double z = d * Math.sin(a);
-			double y = VERTICAL_POSITION_MIN + rand.nextDouble() * (VERTICAL_POSITION_MAX - VERTICAL_POSITION_MIN);
-			r.addPoint(x, y, z);
-			// ReikaJavaLibrary.pConsole("For ray "+ang+" @ "+d+", a="+Math.toDegrees(a)+" out of "+var);
-		}
-		if (r.points.size() <= 2)
-			throw new RuntimeException(r1 + ">" + r2 + "@" + ang);
-
-		r.spline();
-		r.rebuildWithMaxDst(Ray.MAX_POINT_DST);
-		rays.add(r);
-	}
-
-	@Override
-	public String getStateMessage() {
-		return "Generated sky rivers, with " + rays.size() + " rays and " + serverPoints.totalSize() + " points.";
-	}
-
-	protected static class Ray {
-
-		private static final double MAX_POINT_DST = 18.0D;
-		private List<DecimalPosition> points = new ArrayList();
-		private double lastAngle;
-
-		private void addPoint(double x, double y, double z) {
-			points.add(new DecimalPosition(x, y, z));
-		}
-
-		private void spline() {
-			Spline s = new Spline(SplineType.CHORDAL);
-			for (DecimalPosition p : points) {
-				s.addPoint(new BasicSplinePoint(p));
-			}
-			points = s.get(/* 128 */8, false);
-		}
-
-		public void rebuildWithMaxDst(double maxDst) {
-			List<DecimalPosition> newPoints = new ArrayList<>();
-			for (int i = 0; i < points.size() - 1; i++) {
-				DecimalPosition pos = points.get(i);
-				DecimalPosition next = points.get(i + 1);
-				double dst = pos.getDistanceTo(next);
-				if (dst < maxDst) {
-					newPoints.add(pos);
-				}
-				else {
-					double pointsToAdd = Math.floor(dst / maxDst);
-					Vec3 vec = Vec3.createVectorHelper((next.xCoord - pos.xCoord) / pointsToAdd, (next.yCoord - pos.yCoord) / pointsToAdd, (next.zCoord - pos.zCoord) / pointsToAdd);
-					for (int j = 0; j < Math.round(pointsToAdd); j++) {
-						newPoints.add(new DecimalPosition(pos.xCoord + (vec.xCoord * j), pos.yCoord + (vec.yCoord * j), pos.zCoord + (vec.zCoord * j)));
-					}
-				}
-			}
-			newPoints.add(points.get(points.size() - 1)); // Last one.
-			points = newPoints;
-		}
-
-		@Override
-		public String toString() {
-			return points.toString();
-		}
-
-		protected List<DecimalPosition> getPoints() {
+		public List<DecimalPosition> getPoints() {
 			return Collections.unmodifiableList(points);
 		}
 
-		protected void writeToPktNBT(NBTTagCompound cmp) {
-			NBTTagList list = new NBTTagList();
-			for (DecimalPosition point : points) {
-				list.appendTag(point.writeToTag());
-			}
-			cmp.setTag("list", list);
+		private void spline() {
+			Spline spline = new Spline(SplineType.CHORDAL);
+			for (DecimalPosition point : points)
+				spline.addPoint(new BasicSplinePoint(point));
+			points = spline.get(8, false);
 		}
 
-		protected static Ray readFromPktNBT(NBTTagCompound cmp) {
-			Ray r = new Ray();
-			NBTTagList list = cmp.getTagList("list", 10);
-			for (int i = 0; i < list.tagCount(); i++) {
-				r.points.add(DecimalPosition.readTag(list.getCompoundTagAt(i)));
+		/**
+		 * V33a {@code rebuildWithMaxDst}: the spline's own sampling leaves long gaps where a ray runs
+		 * straight, and a gap wider than the tunnel lets a player fall between two points without ever
+		 * being near one. Long segments are subdivided so that cannot happen.
+		 *
+		 * <p>One deliberate correction. Upstream computes the number of pieces as
+		 * {@code floor(distance / maxDistance)}, which is 1 for any gap shorter than <em>twice</em> the
+		 * target — so the segment is re-added unchanged and gaps up to 36 blocks survive a method whose
+		 * whole purpose is to bound them at 18. That is not academic: a rider is found by searching
+		 * within 16 blocks of a point, so at the midpoint of a 36-block gap they are 18 from each
+		 * neighbour, out of reach of both, and drop out of the sky at seven blocks a tick. Using
+		 * {@code ceil} honours the method's own contract and is what stops that happening.
+		 */
+		private void resample() {
+			List<DecimalPosition> resampled = new ArrayList<>();
+			for (int i = 0; i < points.size() - 1; i++) {
+				DecimalPosition from = points.get(i);
+				DecimalPosition to = points.get(i + 1);
+				double distance = from.getDistanceTo(to);
+				if (distance < MAX_POINT_DISTANCE) {
+					resampled.add(from);
+					continue;
+				}
+				double steps = Math.ceil(distance / MAX_POINT_DISTANCE);
+				double stepX = (to.xCoord - from.xCoord) / steps;
+				double stepY = (to.yCoord - from.yCoord) / steps;
+				double stepZ = (to.zCoord - from.zCoord) / steps;
+				for (int step = 0; step < Math.round(steps); step++)
+					resampled.add(new DecimalPosition(from.xCoord + stepX * step,
+							from.yCoord + stepY * step, from.zCoord + stepZ * step));
 			}
-			return r;
+			resampled.add(points.get(points.size() - 1));
+			points = resampled;
 		}
 	}
 
-	public static class RiverPoint {
+	/**
+	 * One indexed point of a river, carrying the two neighbours that define its segments and where it
+	 * sits along the ray — {@link #fractionalPosition()} is what the renderer fades a river in and out
+	 * by, and what tells a rider how far along they are.
+	 */
+	public record RiverPoint(int index, int pathLength, DecimalPosition position,
+			DecimalPosition previous, DecimalPosition next) {
 
-		private final ChunkCoordIntPair chunk;
-		public final DecimalPosition position;
-		public final DecimalPosition next;
-		public final DecimalPosition prev;
-
-		public final int positionID;
-		public final int totalPathLength;
-
-		public RiverPoint nextRiverPoint; // Util nextNode.
-
-		public RiverPoint(int id, int len, ChunkCoordIntPair ch, DecimalPosition pos, DecimalPosition prev, DecimalPosition next) {
-			positionID = id;
-			totalPathLength = len;
-
-			chunk = ch;
-			position = pos;
-			this.next = next;
-			this.prev = prev;
+		public float fractionalPosition() {
+			return index / (float)pathLength;
 		}
-
-		@Override
-		public String toString() {
-			return prev + " > " + position + " > " + next;
-		}
-
-		public float getFractionalPosition() {
-			return positionID/(float)totalPathLength;
-		}
-
-		/* public static RiverPoint readFromNBT(NBTTagCompound tag) {
-		 * ChunkCoordIntPair ch = new ChunkCoordIntPair(tag.getInteger("cx"),
-		 * tag.getInteger("cz")); return new RiverPoint(ch,
-		 * DecimalPosition.readFromNBT("pos", tag),
-		 * DecimalPosition.readFromNBT("pre", tag),
-		 * DecimalPosition.readFromNBT("next", tag)); }
-		 *
-		 * public void writeToNBT(NBTTagCompound tag) { tag.setInteger("cx",
-		 * chunk.chunkXPos); tag.setInteger("cz", chunk.chunkZPos);
-		 * position.writeToNBT("pos", tag); next.writeToNBT("next", tag);
-		 * prev.writeToNBT("prev", tag); }
-		 *
-		 * public void writeToBuf(ByteBuf buf) { buf.writeInt(chunk.chunkXPos);
-		 * buf.writeInt(chunk.chunkZPos); position.writeToBuf(buf);
-		 * next.writeToBuf(buf); prev.writeToBuf(buf); }
-		 *
-		 * public static RiverPoint readFromBuf(ByteBuf buf) { int cx =
-		 * buf.readInt(); int cz = buf.readInt(); DecimalPosition pos =
-		 * DecimalPosition.readFromBuf(buf); DecimalPosition nex =
-		 * DecimalPosition.readFromBuf(buf); DecimalPosition pre =
-		 * DecimalPosition.readFromBuf(buf); return new RiverPoint(new
-		 * ChunkCoordIntPair(cx, cz), pos, pre, nex); } */
-
 	}
-
 }

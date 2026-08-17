@@ -315,6 +315,7 @@ public final class ChromaGameTests {
 		register(event, env, "aurora_curtain_drift", ChromaGameTests::auroraCurtainDrift);
 		register(event, env, "proxima_layout_biomes", ChromaGameTests::proximaLayoutBiomes);
 		register(event, env, "proxima_locate_biome", ChromaGameTests::proximaLocateBiome);
+		register(event, env, "sky_river_geometry", ChromaGameTests::skyRiverGeometry);
 		register(event, env, "loot_chest_lid_event", ChromaGameTests::lootChestLidEvent);
 		register(event, env, "loot_chest_trap_signal", ChromaGameTests::lootChestTrapSignal);
 		register(event, env, "structure_trap_and_wiring", ChromaGameTests::structureTrapAndWiring);
@@ -2126,6 +2127,68 @@ public final class ChromaGameTests {
 			helper.assertTrue(returned == nearest,
 					"/locate biome returned a Structure Field that is not the nearest to the origin");
 		}
+		helper.succeed();
+	}
+
+	/**
+	 * Sky rivers must actually reach across Proxima, and no gap in one may exceed its own tunnel.
+	 *
+	 * <p>The second is the property that would break the transport silently. A river catches a player
+	 * within twelve blocks of a <em>point</em>, so if the spline left a gap wider than that, a rider
+	 * travelling at seven blocks a tick would pass straight through the gap and fall out of the sky
+	 * mid-journey. Upstream resamples to eighteen blocks precisely to bound this, and the resample is
+	 * easy to drop without any other symptom.
+	 *
+	 * <p>The first is what makes them transport at all: both layers must run from near the origin out
+	 * past the structure ring, which is the whole point of a river.
+	 */
+	private static void skyRiverGeometry(GameTestHelper helper) {
+		var rivers = reika.chromaticraft.world.dimension.SkyRiverGenerator.generate(0x5217E12L);
+		var rays = rivers.getRays();
+		helper.assertTrue(rays.size() >= 8,
+				"only " + rays.size() + " sky rivers were generated; V33a lays eight full rays plus a "
+						+ "second layer filling the gaps");
+
+		double farthest = 0;
+		double nearest = Double.MAX_VALUE;
+		for (var ray : rays) {
+			var points = ray.getPoints();
+			helper.assertTrue(points.size() > 2, "a sky river has too few points to define a path");
+			for (int i = 0; i < points.size() - 1; i++) {
+				double gap = points.get(i).getDistanceTo(points.get(i + 1));
+				// The tunnel radius is the budget: a gap wider than it lets a rider slip between points.
+				helper.assertTrue(gap <= reika.chromaticraft.world.dimension.SkyRiverGenerator
+								.RIVER_TUNNEL_RADIUS * 2,
+						"a sky river left a " + gap + " block gap between points, wider than its own "
+								+ "tunnel; a rider would pass straight through it and fall");
+			}
+			for (var point : points) {
+				double d = Math.sqrt(point.xCoord * point.xCoord + point.zCoord * point.zCoord);
+				farthest = Math.max(farthest, d);
+				nearest = Math.min(nearest, d);
+				// V33a places its control points between 384 and 512, but the curve is a chordal spline
+				// and a chordal spline overshoots its control points slightly at a turn. The band is
+				// therefore checked with room for that: what would matter is a river down at terrain
+				// height or up against the build limit, not a few blocks of overshoot.
+				helper.assertTrue(point.yCoord >= 350 && point.yCoord <= 550,
+						"a sky river point sits at y " + point.yCoord + ", far outside V33a's 384 to 512 "
+								+ "band; rivers must hang high above the terrain");
+			}
+		}
+		helper.assertTrue(nearest < 300,
+				"no sky river starts near the origin; the innermost layer begins within 256 blocks");
+		double ringReach = reika.chromaticraft.world.dimension.StructureCalculator
+				.getMaximumPossibleDistance();
+		helper.assertTrue(farthest > ringReach, "the sky rivers reach only " + (int)farthest
+				+ " blocks but the structure ring can reach " + (int)ringReach
+				+ "; they must run past it or they cannot carry a player to one");
+
+		// A point lookup must find the river that owns it, which is what the whole chunk index is for.
+		var sample = rays.get(0).getPoints().get(5);
+		var inChunk = rivers.getPointsForChunk((int)Math.floor(sample.xCoord) >> 4,
+				(int)Math.floor(sample.zCoord) >> 4);
+		helper.assertTrue(!inChunk.isEmpty(),
+				"a river point's own chunk holds none of its points; the chunk index is not being built");
 		helper.succeed();
 	}
 

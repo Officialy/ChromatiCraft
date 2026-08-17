@@ -44,6 +44,8 @@ public final class ProximaGenerators {
 		BIOME,
 		/** {@code RegionMapper}: the concentric region layout the biome distributor reads. */
 		REGION,
+		/** {@code SkyRiverGenerator}: the sky rivers that carry a player across the dimension. */
+		SKYRIVER,
 	}
 
 	/**
@@ -79,7 +81,7 @@ public final class ProximaGenerators {
 	 * none of it. Null until {@link #regenerate} completes.
 	 */
 	public record Layout(long seed, StructureCalculator structures, RegionMapper region,
-			BiomeDistributor biomes) {}
+			BiomeDistributor biomes, SkyRiverGenerator rivers) {}
 
 	private static volatile Layout layout;
 	private static volatile CompletableFuture<Layout> running;
@@ -158,7 +160,10 @@ public final class ProximaGenerators {
 		structures.generate();
 		RegionMapper region = RegionMapper.generate(structures, seed);
 		BiomeDistributor biomes = new BiomeDistributor(seed).generate(structures);
-		Layout result = new Layout(seed, structures, region, biomes);
+		// The rivers depend on the structure ring only through its maximum possible extent, which is a
+		// constant, so they could run first; they land here so the whole layout is published at once.
+		SkyRiverGenerator rivers = SkyRiverGenerator.generate(seed);
+		Layout result = new Layout(seed, structures, region, biomes, rivers);
 		layout = result;
 		return result;
 	}
