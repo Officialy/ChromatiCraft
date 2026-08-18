@@ -72,6 +72,7 @@ public final class ChromaWorldGenProvider {
     private static final Identifier CRYSTAL_SHRUB = id("crystal_shrub");
     private static final Identifier FLOATSTONE = id("floatstone");
     private static final Identifier CRYSTAL_TREE = id("crystal_tree");
+    private static final Identifier GLOW_TREE = id("glow_tree");
     private static final Identifier CRYSTAL_PIT = id("crystal_pit");
     private static final Identifier AURORAE = id("aurorae");
     private static final List<Identifier> NETHER_ROOF_STRUCTURES =
@@ -176,6 +177,7 @@ public final class ChromaWorldGenProvider {
             registerConfigured(bootstrap, features, CRYSTAL_SHRUB);
             registerConfigured(bootstrap, features, FLOATSTONE);
             registerConfigured(bootstrap, features, CRYSTAL_TREE);
+            registerConfigured(bootstrap, features, GLOW_TREE);
             registerConfigured(bootstrap, features, CRYSTAL_PIT);
             registerConfigured(bootstrap, features, AURORAE);
             for (Identifier structure : NETHER_ROOF_STRUCTURES)
@@ -318,6 +320,18 @@ public final class ChromaWorldGenProvider {
             // V33a getGenerationChance for the crystal tree is 0.5 per chunk, and its own space check
             // refuses most attempts once a stand has grown in.
             registerPlaced(bootstrap, configured, CRYSTAL_TREE, List.of(
+                    RarityFilter.onAverageOnceEvery(2), InSquarePlacement.spread(),
+                    net.minecraft.world.level.levelgen.placement.HeightmapPlacement.onHeightmap(
+                            net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES),
+                    BiomeFilter.biome()));
+            // V33a getGenerationChance for the glowing tree is per biome: 0.8 in the Iridescent
+            // Archipelago, 0.5 in the Luminescent Sanctuary and by default, 0.1 in the Sparkling Sands
+            // and 0.05 on the Crystal Plains. A placed feature carries one rate, so the default is the
+            // one expressed -- it is the rate the Sanctuary itself wants, and it is what upstream falls
+            // back to for every biome that does not name its own. The site check refuses most attempts
+            // once a stand has grown in, which is what keeps a one-in-two chunk chance from producing a
+            // solid forest.
+            registerPlaced(bootstrap, configured, GLOW_TREE, List.of(
                     RarityFilter.onAverageOnceEvery(2), InSquarePlacement.spread(),
                     net.minecraft.world.level.levelgen.placement.HeightmapPlacement.onHeightmap(
                             net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES),

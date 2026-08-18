@@ -18,7 +18,8 @@
     [],
     [
       "chromaticraft:floatstone",
-      "chromaticraft:crystal_pit"
+      "chromaticraft:crystal_pit",
+      "chromaticraft:glow_tree"
     ]
   ],
   "has_precipitation": false,

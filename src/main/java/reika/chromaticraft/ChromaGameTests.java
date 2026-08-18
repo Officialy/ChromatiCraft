@@ -311,6 +311,7 @@ public final class ChromaGameTests {
 		register(event, env, "crystal_tree_feature", ChromaGameTests::crystalTreeFeature);
 		register(event, env, "crystal_pit_feature", ChromaGameTests::crystalPitFeature);
 		register(event, env, "proxima_biome_features", ChromaGameTests::proximaBiomeFeatures);
+		register(event, env, "proxima_glow_trees", ChromaGameTests::proximaGlowTrees);
 		register(event, env, "aurorae_feature", ChromaGameTests::auroraeFeature);
 		register(event, env, "aurora_curtain_drift", ChromaGameTests::auroraCurtainDrift);
 		register(event, env, "proxima_layout_biomes", ChromaGameTests::proximaLayoutBiomes);
@@ -2142,6 +2143,68 @@ public final class ChromaGameTests {
 	 * <p>The first is what makes them transport at all: both layers must run from near the origin out
 	 * past the structure ring, which is the whole point of a river.
 	 */
+	/**
+	 * The Luminescent Sanctuary is not a bare plain. V33a grants the central biome every generator that
+	 * is not dedicated to somewhere else — {@code if (b.biomeType == Biomes.CENTER) return
+	 * !this.isDedicatedBiomeOnly();} — and the glowing trees are the most visible of those. This pins
+	 * both halves: that the biome carries the feature, and that the feature builds a tree.
+	 */
+	private static void proximaGlowTrees(GameTestHelper helper) {
+		var registries = helper.getLevel().registryAccess();
+		var biomes = registries.lookupOrThrow(net.minecraft.core.registries.Registries.BIOME);
+		var placed = net.minecraft.resources.ResourceKey.create(
+				net.minecraft.core.registries.Registries.PLACED_FEATURE,
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "glow_tree"));
+
+		// Upstream's TREES rule plus the CENTER branch that precedes it.
+		var expected = java.util.List.of(
+				reika.chromaticraft.world.dimension.biome.ProximaBiomes.CENTER,
+				reika.chromaticraft.world.dimension.biome.ProximaBiomes.FOREST,
+				reika.chromaticraft.world.dimension.biome.ProximaBiomes.PLAINS,
+				reika.chromaticraft.world.dimension.biome.ProximaBiomes.ISLANDS,
+				reika.chromaticraft.world.dimension.biome.ProximaBiomes.SPARKLE,
+				reika.chromaticraft.world.dimension.biome.ProximaBiomes.GLOWCRACKS);
+		for (var type : expected) {
+			var biome = biomes.getOrThrow(type.biomeKey()).value();
+			boolean carries = biome.getGenerationSettings().features().stream()
+					.flatMap(set -> java.util.stream.StreamSupport.stream(set.spliterator(), false))
+					.anyMatch(h -> h.is(placed));
+			helper.assertTrue(carries, type.biomeName() + " must carry the glowing trees; V33a's TREES "
+					+ "runs there, and the Sanctuary gets it from the CENTER branch before that rule is "
+					+ "even reached");
+		}
+
+		// And the feature itself builds something. Grass under, air above, which is the site rule.
+		BlockPos base = helper.absolutePos(new BlockPos(8, 3, 8));
+		helper.getLevel().setBlock(base, Blocks.GRASS_BLOCK.defaultBlockState(), 3);
+		var feature = reika.chromaticraft.registry.ChromaFeatures.GLOW_TREE.get();
+		boolean placedTree = false;
+		for (int attempt = 0; attempt < 32 && !placedTree; attempt++)
+			placedTree = feature.place(new net.minecraft.world.level.levelgen.feature.FeaturePlaceContext<>(
+					java.util.Optional.empty(), helper.getLevel(),
+					helper.getLevel().getLevel().getChunkSource().getGenerator(),
+					helper.getLevel().getRandom(), base.above(),
+					net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration.INSTANCE));
+		helper.assertTrue(placedTree, "the glowing tree refused every one of thirty-two attempts on "
+				+ "grass with clear air above it");
+
+		int logs = 0;
+		int leaves = 0;
+		for (BlockPos pos : BlockPos.betweenClosed(base.offset(-6, 0, -6), base.offset(6, 12, 6))) {
+			BlockState state = helper.getLevel().getBlockState(pos);
+			if (state.is(ChromaBlocks.GLOW_LOG.get()))
+				logs++;
+			else if (state.is(ChromaBlocks.GLOWING_LEAVES.get()))
+				leaves++;
+		}
+		helper.assertTrue(logs > 0, "a glowing tree grew with no trunk at all");
+		// The smallest of the three shapes carries 105 leaf cells; a canopy far under that means the
+		// shape lists did not survive transcription.
+		helper.assertTrue(leaves >= 90, "a glowing tree grew only " + leaves + " leaves; the smallest of "
+				+ "V33a's three shapes places 105 cells");
+		helper.succeed();
+	}
+
 	private static void skyRiverGeometry(GameTestHelper helper) {
 		var rivers = reika.chromaticraft.world.dimension.SkyRiverGenerator.generate(0x5217E12L);
 		var rays = rivers.getRays();

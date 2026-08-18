@@ -128,17 +128,28 @@ public final class ProximaBiomeDefinitions {
 	private static BiomeGenerationSettings generation(ProximaBiomeType type,
 			HolderGetter<PlacedFeature> features, HolderGetter<ConfiguredWorldCarver<?>> carvers) {
 		BiomeGenerationSettings.Builder builder = new BiomeGenerationSettings.Builder(features, carvers);
+		// Upstream's shape, kept deliberately: the Luminescent Sanctuary is not a biome with a list of
+		// its own, it is "everything that is not dedicated to somewhere else". Reproducing that as a
+		// term in each rule rather than as a hand-kept list is what stops the Sanctuary quietly falling
+		// behind every time a generator is ported -- which is exactly how it ended up bare.
 		boolean central = type == ProximaBiomes.CENTER;
 
-		// Floatstone: a SKYFEATURE, so Skylands, plus the Central biome.
+		// Floatstone: a SKYFEATURE, so Skylands, plus the Sanctuary.
 		if (central || type == ProximaBiomes.SKYLANDS)
 			add(builder, features, "floatstone");
 		// The aurorae are a SKYFEATURE too, but also dedicated-biome-only, so Skylands and nowhere else.
 		if (type == ProximaBiomes.SKYLANDS)
 			add(builder, features, "aurorae");
-		// The geode: the Crystal Plains proper, plus the Central biome.
+		// The geode: the Crystal Plains proper, plus the Sanctuary.
 		if (central || type == ProximaBiomes.PLAINS)
 			add(builder, features, "crystal_pit");
+		// The glowing trees, V33a's TREES: the Glowing Forest, Crystal Plains, Iridescent Archipelago
+		// proper, Sparkling Sands and Radiant Fissures -- plus the Sanctuary, which is what upstream's
+		// CENTER branch grants before the TREES rule is ever reached.
+		if (central || type == ProximaBiomes.FOREST || type == ProximaBiomes.PLAINS
+				|| type == ProximaBiomes.ISLANDS || type == ProximaBiomes.SPARKLE
+				|| type == ProximaBiomes.GLOWCRACKS)
+			add(builder, features, "glow_tree");
 		// Both crystal plants belong to the Crystal Forest sub-biome and nowhere else.
 		if (type == ProximaSubBiomes.CRYSFOREST) {
 			add(builder, features, "crystal_tree");

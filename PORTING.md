@@ -5774,3 +5774,62 @@ back out of the mouth they drifted into. The port cut their flight and left them
 **A fuelled bedrock jetpack is now in RotaryCraft's creative tools tab**, alongside an empty one. The
 pack was only in the catch-all tab, and an empty one is useless until a filling station has been built
 and run.
+
+### 2026-08-18 — The Luminescent Sanctuary was empty because CENTER is a rule, not a list
+
+The Sanctuary having no trees and no floor decoration is not correct, and the reason is structural.
+V33a decides what generates where in `DimensionGenerators.generateIn`, and its central-biome branch is
+a single line that runs before every specific rule:
+
+```java
+if (b.biomeType == Biomes.CENTER)
+    return !this.isDedicatedBiomeOnly();
+```
+
+So the Sanctuary is not a biome with a list of its own — it is *everything not dedicated to somewhere
+else*. Against `isDedicatedBiomeOnly` (AURORA, CRYSBUSH, CRYSTALTREE, METEOR, MOONPOOL, TERRAINCRYSTAL,
+GLOWBUSH, ARCH, BLOBS, MIASMA, GLASSCLIFFS) and the CHUNKLOADER special case above it, nine generators
+should run there: **RIFT, GEODE, JETS, FLOATSTONE, TREES, FORESTS, ALTAR, CRACKS, GLOWCAVE**. Two were
+ported — Floatstone and the geode — so it had two.
+
+The port had been expressing the CENTER grant as `central ||` on each individual rule, which is the
+same shape but only as long as somebody remembers to write it. That is exactly how the biome fell
+behind. It is now written as upstream writes it, with the reason recorded beside it.
+
+**TREES is ported.** `GlowTreeFeature` plus `GlowTreeShapes`: three shapes rolled with equal weight —
+oak, tall and ball — on a stem of `nextInt(4)` logs, so a quarter of them start their canopy at ground
+level. The shapes are upstream's several hundred literal `placeLeaf`/`setBlock` calls, extracted
+mechanically with the per-shape origin shift (`i -= 5` for the ball, 3 for the oak, 2 for the tall)
+folded in, so every triple is relative to the top of the stem. Each shape carries its own logs as well
+as its leaves, because the trunk continues up through the crown. Both site rules are kept: plantable
+ground, and eight blocks of clear air — the second is what stops a stand growing through itself, and is
+why a one-in-two chunk chance does not produce fifty trees.
+
+Upstream's per-biome chances are 0.8 in the Iridescent Archipelago, 0.5 in the Sanctuary and by
+default, 0.1 in the Sparkling Sands and 0.05 on the Crystal Plains. A placed feature carries one rate,
+so the default is the one expressed — it is the Sanctuary's own rate and upstream's fallback for every
+biome that does not name another.
+
+One thing deliberately not carried: upstream places leaves with a metadata of `rand.nextInt(5)`, which
+selects one of sixteen glow overlay sprites drawn by the second render pass this port has not built.
+The block behaves identically across all sixteen, so the value would be written and never read. Same
+choice the glowing log already makes.
+
+Still missing from the Sanctuary, and the honest remaining list: **RIFT** (`WorldGenFissure`), **JETS**
+(`WorldGenFireJet`, gated on DIMGENTILE), **FORESTS** (`WorldGenTreeCluster`), **ALTAR**
+(`WorldGenMiniAltar`), **CRACKS** (`WorldGenGlowingCracks`, also DIMGENTILE) and **GLOWCAVE**
+(`WorldGenGlowCave`).
+
+**The GameTest caught the port's own bug immediately.** `canGenerate` was written against
+`BlockTags.DIRT`, and in 26.2 that no longer contains grass blocks: `SUBSTRATE_OVERWORLD` is defined
+as `DIRT + MUD + MOSS_BLOCKS + GRASS_BLOCKS`, so the three are disjoint. Planted on a grass block, the
+feature turned down all thirty-two attempts — which would have meant no glowing tree anywhere in
+Proxima, since its surface is grass. It now tests `SUPPORTS_VEGETATION`, that union plus farmland,
+which is what `VegetationBlock.mayPlaceOn` itself tests and therefore what
+`ReikaPlantHelper.SAPLING.canPlantAt` comes to.
+
+Seven other sites in the port still test `BlockTags.DIRT` as a "is this ground?" check
+(`BlockDecoFlower`, `BlockGlowDaisy`, `BlockGlowRoot`, `CrystalPitFeature`, `LumaPatchFeature`, and two
+in `PylonFeature`). They are not swept here, because some may legitimately mean bare dirt and each
+wants checking against its own V33a original rather than a blanket replace — but the same split
+applies to all of them, and any that mean "ground" are silently refusing grass today.
