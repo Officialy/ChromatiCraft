@@ -22,6 +22,25 @@
 - The multi-layer rendering for the six compositing variants is still outstanding; each currently
   draws its real `layer_0`.
 
+## Working checkpoint — 2026-08-16 (the world-geometry seam, and the sky rivers drawn)
+
+- `WorldGeometryPass` is the seam the port was missing: arbitrary textured geometry drawn into the world
+  from a level-render stage. 26.2 offers two routes and neither covered this. The submit pipeline is
+  reached through an entity or block-entity renderer and every `SubmitNodeCollector` in `LevelRenderer`
+  is private, so a `RenderLevelStageEvent` handler cannot obtain one; post-effect chains operate on the
+  finished frame, not on geometry. What remains is what vanilla does for weather — build a mesh, upload
+  it, issue one indexed draw against the main colour and depth targets — and that is what this wraps, so
+  a caller only emits vertices. The buffer is retained and only grown, since this runs every frame.
+- The sky rivers are drawn on it: thirty-six sided tubes whose radius breathes four blocks either side of
+  the tunnel radius, phase-shifted along the river so the pulse travels rather than throbbing in place,
+  with the hue cycling by position and time and the texture scrolling. Both ends fade to a hundredth
+  brightness so a ray tapers out instead of stopping dead in mid-air.
+- Drawn in `AfterTranslucentBlocks`, deliberately not the weather or particle stages: those target
+  separate buffers the post chain composites, and an additive glow belongs against the finished scene.
+- Not included: upstream also spawns particles at both mouths of every ray, pulled towards the opening by
+  a `CollectingPositionController`. That controller and its blur particle are DragonAPI and ChromatiCraft
+  particle machinery that is not ported, so the mouths are quieter than upstream's.
+
 ## Working checkpoint — 2026-08-16 (sky rivers reach the client; the renderer does not)
 
 - The client now has its own copy of the rivers. The server sends the layout seed on join and on every
