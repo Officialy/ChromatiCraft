@@ -150,6 +150,7 @@ sourceSets.main.java {
     include 'reika/chromaticraft/render/entity/RenderTunnelNuker.java'
     include 'reika/chromaticraft/render/entity/RenderDataCrystal.java'
     include 'reika/chromaticraft/client/render/Aurora.java'
+    include 'reika/chromaticraft/client/render/ClientSkyRivers.java'
     include 'reika/chromaticraft/render/entity/RenderAurora.java'
     include 'reika/chromaticraft/models/ModelTunnelNuker.java'
     include 'reika/chromaticraft/network/ChromaNetwork.java'

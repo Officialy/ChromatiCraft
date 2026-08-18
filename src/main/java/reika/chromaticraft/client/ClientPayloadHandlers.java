@@ -26,6 +26,22 @@ public final class ClientPayloadHandlers {
 
 	private ClientPayloadHandlers() {}
 
+	/**
+	 * Builds this client's own copy of Proxima's sky rivers from the seed the server sent.
+	 *
+	 * <p>The rivers are needed on the client only to draw them, and they are entirely derived from the
+	 * seed, so the client runs the same generator rather than being sent tens of thousands of points.
+	 * Rebuilding is skipped when the seed has not changed, since the walk is not free.
+	 */
+	public static void proximaLayoutSeed(long seed) {
+		if (clientRiverSeed != null && clientRiverSeed == seed)
+			return;
+		clientRiverSeed = seed;
+		reika.chromaticraft.client.render.ClientSkyRivers.rebuild(seed);
+	}
+
+	private static Long clientRiverSeed;
+
 	public static void tickProgressSoundCooldown() {
 		// Compatibility entry point retained for the existing client tick hook. The
 		// original overlay now derives its cooldown from client level game time.

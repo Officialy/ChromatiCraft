@@ -41,6 +41,32 @@ public final class ProximaLayoutLoader {
 		ProximaGenerators.regenerate(event.getServer().overworld().getSeed());
 	}
 
+	/**
+	 * A player entering Proxima is told the layout seed so their client can build its own copy of the
+	 * sky rivers and draw them. Sent on join and on every dimension change rather than only the first,
+	 * because a client that logged in elsewhere has never been told.
+	 */
+	@SubscribeEvent
+	public static void onPlayerChangedDimension(
+			net.neoforged.neoforge.event.entity.player.PlayerEvent.PlayerChangedDimensionEvent event) {
+		sendSeedIfProxima(event.getEntity());
+	}
+
+	@SubscribeEvent
+	public static void onPlayerJoin(
+			net.neoforged.neoforge.event.entity.player.PlayerEvent.PlayerLoggedInEvent event) {
+		sendSeedIfProxima(event.getEntity());
+	}
+
+	private static void sendSeedIfProxima(net.minecraft.world.entity.player.Player player) {
+		if (!(player instanceof net.minecraft.server.level.ServerPlayer serverPlayer))
+			return;
+		if (serverPlayer.level().dimension() != ChromaDimensions.PROXIMA)
+			return;
+		reika.chromaticraft.network.ChromaNetwork.sendProximaLayoutSeed(serverPlayer,
+				serverPlayer.level().getServer().overworld().getSeed());
+	}
+
 	/** Proxima's per-tick work: for now, carrying anyone who has drifted into a sky river. */
 	@SubscribeEvent
 	public static void onLevelTick(net.neoforged.neoforge.event.tick.LevelTickEvent.Post event) {

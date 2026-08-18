@@ -31,6 +31,8 @@ public final class ChromaNetwork {
 
 	public static void register(RegisterPayloadHandlersEvent event) {
 		PayloadRegistrar registrar = event.registrar(ChromatiCraft.MODID).versioned("1");
+		registrar.playToClient(ProximaLayoutSeed.TYPE, ProximaLayoutSeed.CODEC,
+				ChromaNetwork::handleProximaLayoutSeed);
 		registrar.playToClient(AttackBeam.TYPE, AttackBeam.CODEC, ChromaNetwork::handleAttackBeam);
 		registrar.playToClient(Discharge.TYPE, Discharge.CODEC, ChromaNetwork::handleDischarge);
 		registrar.playToClient(AttackReceive.TYPE, AttackReceive.CODEC, ChromaNetwork::handleAttackReceive);
@@ -101,6 +103,32 @@ public final class ChromaNetwork {
 	public static void sendJarRejection(ServerLevel level, BlockPos pylon, CrystalElement color) {
 		PacketDistributor.sendToPlayersNear(level, null, pylon.getX() + 0.5, pylon.getY() + 0.5,
 				pylon.getZ() + 0.5, 128, new JarRejection(pylon, color.ordinal()));
+	}
+
+	/**
+	 * The seed Proxima's layout was built from.
+	 *
+	 * <p>The sky rivers are wholly derived from it, and there are tens of thousands of points across the
+	 * dimension, so sending the seed and letting the client run the same generator is enormously cheaper
+	 * than streaming the geometry — which is what V33a does, in scheduled batches, precisely because a
+	 * 1.7.10 client had no way to recompute it. Upstream already ships a seed to clients for the same
+	 * reason elsewhere: {@code StructureCalculator.assignSeed} sends one so a client can recompute the
+	 * colour-to-structure map.
+	 */
+	public record ProximaLayoutSeed(long seed) implements CustomPacketPayload {
+		public static final Type<ProximaLayoutSeed> TYPE = createType("proxima_layout_seed");
+		public static final StreamCodec<ByteBuf, ProximaLayoutSeed> CODEC = StreamCodec.composite(
+				ByteBufCodecs.VAR_LONG, ProximaLayoutSeed::seed, ProximaLayoutSeed::new);
+		@Override public Type<ProximaLayoutSeed> type() { return TYPE; }
+	}
+
+	/** Tells the player's client which seed to build its own copy of the sky rivers from. */
+	public static void sendProximaLayoutSeed(ServerPlayer player, long seed) {
+		PacketDistributor.sendToPlayer(player, new ProximaLayoutSeed(seed));
+	}
+
+	private static void handleProximaLayoutSeed(ProximaLayoutSeed payload, IPayloadContext context) {
+		context.enqueueWork(() -> ClientPayloadHandlers.proximaLayoutSeed(payload.seed()));
 	}
 
 	public record AttackBeam(BlockPos source, BlockPos target, int color) implements CustomPacketPayload {

@@ -22,6 +22,27 @@
 - The multi-layer rendering for the six compositing variants is still outstanding; each currently
   draws its real `layer_0`.
 
+## Working checkpoint — 2026-08-16 (sky rivers reach the client; the renderer does not)
+
+- The client now has its own copy of the rivers. The server sends the layout seed on join and on every
+  dimension change into Proxima, and the client runs the same generator. That is deliberately not what
+  V33a does — upstream streams the geometry in scheduled packet batches, because a 1.7.10 client had no
+  way to recompute it — but the rivers are wholly seed-derived and there are tens of thousands of
+  points, so a single long is enormously cheaper. Upstream already ships a seed to clients for the same
+  reason elsewhere, in `StructureCalculator.assignSeed`.
+- The client copy is held separately from the server's `active` instance on purpose: on an integrated
+  server both live in one process, and drawing from the server's copy would work in single-player and
+  silently draw nothing in multiplayer.
+
+**The renderer is blocked on a 26.2 API question, and the attempt was removed rather than left broken.**
+Drawing the tubes needs textured geometry in world space from a level-render stage, and that is not what
+the submit pipeline is for: `RenderLevelStageEvent` exposes the pose stack, the model-view matrix and
+the render state, but every `SubmitNodeCollector` in `LevelRenderer` is private, so the path used for the
+aurora curtain — an entity renderer's `submitCustomGeometry` — is not reachable here. The remaining route
+is an explicit `RenderPipeline` with a manually built `VertexBuffer`, as `HeatRippleRenderer` does for its
+warp pass in RotaryCraft. That is a focused piece of work rather than a detail, and it is what the sky
+renderer will need too, so the two belong in one effort.
+
 ## Working checkpoint — 2026-08-16 (sky rivers: the transport half)
 
 - Ported `SkyRiverGenerator` and `SkyRiverManager`: the rivers themselves and the part that catches a

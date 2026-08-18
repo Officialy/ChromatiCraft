@@ -85,7 +85,18 @@ public final class SkyRiverGenerator {
 		return StructureCalculator.getMaximumPossibleDistance() + RegionMapper.MAX_BUFFER + 512;
 	}
 
-	public static SkyRiverGenerator generate(long seed) {
+	/**
+	 * The same rivers, built for a client without touching the server-side {@code active} instance or
+	 * the generator gate. On an integrated server both copies live in one process, so keeping them
+	 * separate is what stops single-player working by accident while multiplayer draws nothing.
+	 */
+	public static SkyRiverGenerator generateForClient(long seed) {
+		SkyRiverGenerator generator = build(seed);
+		generator.index();
+		return generator;
+	}
+
+	private static SkyRiverGenerator build(long seed) {
 		SkyRiverGenerator generator = new SkyRiverGenerator();
 		Random random = new Random(seed);
 		double outerMin = outerRadiusMin();
@@ -101,6 +112,11 @@ public final class SkyRiverGenerator {
 					LAYER2_RADIUS_MIN + random.nextDouble() * (LAYER2_RADIUS_MAX - LAYER2_RADIUS_MIN),
 					outerMin + random.nextDouble() * (outerMax - outerMin));
 		}
+		return generator;
+	}
+
+	public static SkyRiverGenerator generate(long seed) {
+		SkyRiverGenerator generator = build(seed);
 		generator.index();
 		active = generator;
 		ProximaGenerators.finish(ProximaGenerators.Generator.SKYRIVER);
