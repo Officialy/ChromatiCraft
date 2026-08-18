@@ -70,6 +70,13 @@ public final class ProximaSkyRenderer implements CustomSkyboxRenderer {
 	private static final int BASE_STARS = 5000;
 	private static final int STARS_VARIATION = 2500;
 
+	// Sheet sizes in pixels, needed only to inset each tile's UVs by half a texel. V33a's stars.png,
+	// stars2.png and planets2.png, carried over unchanged; the nebula sheet's last six tiles are blank,
+	// which upstream also draws and relies on the alpha test to throw away.
+	private static final int STARS_SHEET = 128;
+	private static final int NEBULA_SHEET = 512;
+	private static final int PLANET_SHEET = 140;
+
 	/** V33a's star palette. */
 	private static final int[] STAR_COLOURS = {
 			0xFFFFFF, 0xFFF4EA, 0xFFD2A1, 0xFFCC6F, 0xFFC46F, 0xAABFFF, 0xCAD7FF, 0xF8F7FF};
@@ -102,9 +109,9 @@ public final class ProximaSkyRenderer implements CustomSkyboxRenderer {
 					twinkleAmplitude, i, random);
 		}
 		for (int i = 0; i < NEBULA_FIELD.length; i++)
-			NEBULA_FIELD[i] = SkyQuad.randomized(i, 4, 175, random);
+			NEBULA_FIELD[i] = SkyQuad.randomized(i, 4, NEBULA_SHEET, 175, random);
 		for (int i = 0; i < PLANET_FIELD.length; i++)
-			PLANET_FIELD[i] = SkyQuad.randomized(i, 2, 30, random);
+			PLANET_FIELD[i] = SkyQuad.randomized(i, 2, PLANET_SHEET, 30, random);
 	}
 
 	/**
@@ -155,6 +162,11 @@ public final class ProximaSkyRenderer implements CustomSkyboxRenderer {
 		float depthFar = levelRenderState.cameraRenderState.depthFar;
 		if (depthFar > 0 && depthFar < SKY_RADIUS / SKY_DEPTH_HEADROOM)
 			matrix.scale(depthFar * SKY_DEPTH_HEADROOM / SKY_RADIUS);
+		// The planets do not turn with the viewer. Upstream calls renderPlanets from its own
+		// push/popMatrix in render(), outside the block that applies the position spin, and calls
+		// renderNebulae from inside renderStars after it -- so stars and nebulae wheel as you walk and
+		// the planets keep their own slow orbits regardless. Hence two matrices.
+		org.joml.Matrix4f planetMatrix = new org.joml.Matrix4f(matrix);
 		matrix.rotateX((float)Math.toRadians(camera.x * 0.125));
 		matrix.rotateY((float)Math.toRadians(camera.y * 0.125));
 		matrix.rotateZ((float)Math.toRadians(camera.z * 0.125));
@@ -163,14 +175,14 @@ public final class ProximaSkyRenderer implements CustomSkyboxRenderer {
 		final float alpha = fade;
 		int washColour = ReikaColorAPI.GStoHex((int)(255 * alpha));
 		NEBULA_PASS.draw(ChromaRenderPipelines.ADDITIVE_SPRITE, NEBULAE, matrix, buffer -> {
-			for (SkyQuad nebula : NEBULA_FIELD)
-				if (nebula != null)
-					nebula.emit(buffer, 380, washColour);
+			for (int i = 0; i < NEBULA_FIELD.length; i++)
+				if (NEBULA_FIELD[i] != null)
+					NEBULA_FIELD[i].emit(buffer, 380, washColour, nebulaOrientation(i));
 		});
-		PLANET_PASS.draw(ChromaRenderPipelines.ADDITIVE_SPRITE, PLANETS, matrix, buffer -> {
-			for (SkyQuad planet : PLANET_FIELD)
-				if (planet != null)
-					planet.emit(buffer, 380, washColour);
+		PLANET_PASS.draw(ChromaRenderPipelines.ADDITIVE_SPRITE, PLANETS, planetMatrix, buffer -> {
+			for (int i = 0; i < PLANET_FIELD.length; i++)
+				if (PLANET_FIELD[i] != null)
+					PLANET_FIELD[i].emit(buffer, 380, washColour, planetOrientation(i, time));
 		});
 		STAR_PASS.draw(ChromaRenderPipelines.ADDITIVE_SPRITE, STARS, matrix, buffer -> {
 			int count = starCount(time);
@@ -186,6 +198,34 @@ public final class ProximaSkyRenderer implements CustomSkyboxRenderer {
 		});
 		reportOnce("drawing", starCount(time) + " stars at y " + (int)y);
 		return true;
+	}
+
+	/**
+	 * V33a's per-nebula {@code glRotate} chain. It is fixed, so the nebulae hang where they are put;
+	 * without it the whole field sits wherever the shared construction seed happened to place it, which
+	 * is a much smaller patch of sky than upstream's.
+	 */
+	private static org.joml.Matrix4f nebulaOrientation(int index) {
+		return new org.joml.Matrix4f()
+				.rotateX((float)Math.toRadians(index * 8))
+				.rotateY((float)Math.toRadians(index % 4 * 32))
+				.rotateZ((float)Math.toRadians(-index * 15 + 90));
+	}
+
+	/**
+	 * V33a's per-planet chain, which unlike the nebulae's advances with time on all three axes at three
+	 * very different rates -- a quarter-minute, a sixteenth of that, and one so slow it is measured in
+	 * days. Planets drift across Proxima's sky; they do not hang in it.
+	 */
+	private static org.joml.Matrix4f planetOrientation(int index, double time) {
+		int sub = index % 4;
+		double x = index * 8 + time / 4000D % 360D + sub * 90D * Math.signum(index % 2 - 0.5);
+		double y = sub / 2 * 180 + time / 16000D % 360D - sub * 30D;
+		double z = index % 4 * 60 + time / 240000D % 360D * (1 + index % 2);
+		return new org.joml.Matrix4f()
+				.rotateX((float)Math.toRadians(x))
+				.rotateY((float)Math.toRadians(y))
+				.rotateZ((float)Math.toRadians(z));
 	}
 
 	/** V33a getStarCount: the field breathes between 2500 and 7500 over a day. */
@@ -213,7 +253,7 @@ public final class ProximaSkyRenderer implements CustomSkyboxRenderer {
 		protected final float[] u = new float[4];
 		protected final float[] v = new float[4];
 
-		protected SkyQuad(int textureIndex, int rowWidth, double size, double[] basis) {
+		protected SkyQuad(int textureIndex, int rowWidth, int sheetPixels, double size, double[] basis) {
 			this.size = size;
 			this.dirX = basis[0];
 			this.dirY = basis[1];
@@ -229,19 +269,28 @@ public final class ProximaSkyRenderer implements CustomSkyboxRenderer {
 			float du = (index % rowWidth) / (float)rowWidth;
 			float dv = (index / rowWidth) / (float)rowWidth;
 			float step = 1F / rowWidth;
-			u[0] = du;
-			u[1] = du;
-			u[2] = du + step;
-			u[3] = du + step;
-			v[0] = dv;
-			v[1] = dv + step;
-			v[2] = dv + step;
-			v[3] = dv;
+			// Half a texel in from every side. Upstream's coordinates are the tile's exact bounds, which
+			// is fine under 1.7.10's nearest sampling but not here: filtering at a shared edge blends
+			// the neighbouring tile in, and on the nebula sheet the neighbour is often the blank corner
+			// of the sheet -- opaque white with zero alpha. The blend produces a partly-transparent
+			// white fringe, which survives the shader's `discard` on exactly zero alpha and draws as a
+			// bright outline. That outline is the visible box; the tiles themselves fade to black at
+			// their own edges, so with the inset there is nothing to see.
+			float inset = 0.5F / sheetPixels;
+			u[0] = du + inset;
+			u[1] = du + inset;
+			u[2] = du + step - inset;
+			u[3] = du + step - inset;
+			v[0] = dv + inset;
+			v[1] = dv + step - inset;
+			v[2] = dv + step - inset;
+			v[3] = dv + inset;
 		}
 
-		static SkyQuad randomized(int textureIndex, int rowWidth, double size, Random random) {
+		static SkyQuad randomized(int textureIndex, int rowWidth, int sheetPixels, double size,
+				Random random) {
 			double[] basis = sphere(random);
-			return basis == null ? null : new SkyQuad(textureIndex, rowWidth, size, basis);
+			return basis == null ? null : new SkyQuad(textureIndex, rowWidth, sheetPixels, size, basis);
 		}
 
 		/**
@@ -269,9 +318,21 @@ public final class ProximaSkyRenderer implements CustomSkyboxRenderer {
 		}
 
 		void emit(BufferBuilder buffer, double distance, int colour) {
+			this.emit(buffer, distance, colour, null);
+		}
+
+		/**
+		 * @param orientation upstream's per-quad {@code glRotate} chain, or null for none. It is applied
+		 *                    on the CPU rather than as a matrix per draw: upstream issues one
+		 *                    Tessellator draw per quad, and forty-eight render passes a frame to say
+		 *                    the same thing is not worth it.
+		 */
+		void emit(BufferBuilder buffer, double distance, int colour,
+				org.joml.Matrix4f orientation) {
 			double cx = dirX * distance;
 			double cy = dirY * distance;
 			double cz = dirZ * distance;
+			org.joml.Vector3f vertex = new org.joml.Vector3f();
 			for (int corner = 0; corner < 4; corner++) {
 				double ox = ((corner & 2) - 1) * spread;
 				double oy = ((corner + 1 & 2) - 1) * spread;
@@ -279,8 +340,11 @@ public final class ProximaSkyRenderer implements CustomSkyboxRenderer {
 				double ry = oy * roll + ox * size;
 				double px = rx * sinPitch;
 				double pz = -rx * cosPitch;
-				buffer.addVertex((float)(cx + pz * sinYaw - ry * cosYaw), (float)(cy + px),
-								(float)(cz + ry * sinYaw + pz * cosYaw))
+				vertex.set((float)(cx + pz * sinYaw - ry * cosYaw), (float)(cy + px),
+						(float)(cz + ry * sinYaw + pz * cosYaw));
+				if (orientation != null)
+					orientation.transformPosition(vertex);
+				buffer.addVertex(vertex.x, vertex.y, vertex.z)
 						.setUv(u[corner], v[corner])
 						.setColor(0xFF000000 | colour);
 			}
@@ -297,7 +361,7 @@ public final class ProximaSkyRenderer implements CustomSkyboxRenderer {
 
 		private Star(int colour, int textureIndex, double size, double twinkleSpeed,
 				double twinkleAmplitude, double twinkleOffset, double[] basis) {
-			super(textureIndex, 4, size, basis);
+			super(textureIndex, 4, STARS_SHEET, size, basis);
 			this.colour = colour;
 			this.twinkleSpeed = twinkleSpeed;
 			this.twinkleAmplitude = twinkleAmplitude;

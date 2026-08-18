@@ -5700,3 +5700,36 @@ Rather than guess again, both renderers now report once per reason they show not
 no client copy, none in range with the player's position and the ray count, faded out underground, or
 drawing with a count. One client run separates every remaining branch, which is what this fault cost
 several sessions of static analysis for want of.
+
+### 2026-08-18 — Proxima's sky draws, and three fidelity faults it exposed
+
+With the sky visible, three things about it were wrong. All three were found by reading V33a's
+`ChromaSkyRenderer` and its three sheets rather than by eye, and the sheets are confirmed Reika's own —
+`proxima_stars.png`, `proxima_nebulae.png` and `proxima_planets.png` are byte-for-byte
+`Textures/stars.png`, `Textures/stars2.png` and `Textures/planets2.png` from `origin/master`.
+
+**The visible tile boxes were filtering, not art.** Every nebula tile fades to black at its own border
+— measured, mean luminance under 4 out of 255 on all ten — so a tile drawn additively should have no
+visible edge at all. The outline came from sampling past it. Upstream's UVs are the tile's exact
+bounds, which is safe under 1.7.10's nearest sampling; here the sampler filters, so a fragment at a
+shared edge blends in the neighbouring tile. On the nebula sheet the neighbour is frequently the blank
+corner of the sheet — the last six of its sixteen tiles are unused, and they are stored as opaque
+*white* with zero alpha. The blend of "black, alpha 1" and "white, alpha 0" is a partly transparent
+white, which survives `position_tex_color.fsh`'s `if (color.a == 0.0) discard` and draws as a bright
+fringe. Every tile UV is now inset by half a texel, so no sample crosses a tile boundary; the blank
+tiles are still emitted, as upstream emits them, and now discard cleanly.
+
+**The nebulae and planets had lost their per-quad rotations.** Upstream wraps each one in its own
+`glRotate` chain, and the two chains are quite different in character: the nebulae's is fixed
+(`i*8`, `(i%4)*32`, `-i*15+90` degrees) and simply distributes them, while the planets' advances with
+time on all three axes at three very different rates — `t/4000`, `t/16000` and `t/240000`. The port
+emitted every quad in one batch with no orientation, so the whole field sat wherever the shared
+construction seed left it and the planets did not move at all. Both chains are restored, applied on the
+CPU per quad rather than as a matrix per draw, since forty-eight render passes a frame to say the same
+thing is not worth it.
+
+**Planets were turning with the viewer, and should not.** Upstream calls `renderPlanets` from its own
+`push`/`popMatrix` in `render()`, outside the block carrying the position spin, and calls
+`renderNebulae` from *inside* `renderStars` after that spin is applied. So stars and nebulae wheel as
+the player walks and the planets keep their own orbits regardless. The port applied one matrix to all
+three. There are now two.
