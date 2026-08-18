@@ -125,6 +125,7 @@ sourceSets.main.java {
 	  include 'reika/chromaticraft/models/ModelInfuser2.java'
       include 'reika/chromaticraft/render/model/CliffDirtModel.java'
     include 'reika/chromaticraft/render/model/TieredOreModel.java'
+    include 'reika/chromaticraft/render/model/MiasmaModel.java'
     include 'reika/chromaticraft/render/model/EncrustedCrystalModel.java'
     include 'reika/chromaticraft/render/model/CrystalQuads.java'
     include 'reika/chromaticraft/render/model/CrystalPiece.java'

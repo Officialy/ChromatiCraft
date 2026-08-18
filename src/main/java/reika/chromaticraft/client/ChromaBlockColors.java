@@ -67,6 +67,24 @@ public final class ChromaBlockColors {
         }
     };
 
+    /**
+     * V33a's Miasma blue, from {@code DimensionDecoRenderer.renderEffect}:
+     * {@code getModifiedHue(0x0000ff, 220 + 80*sin((x*x*2 + y*y + z*z*8)/2000000))}. The period is
+     * enormous on purpose — the cloud drifts through blues across a landscape rather than block to
+     * block. Off-world there is no position, and upstream's {@code getRenderColor} answers plain white.
+     */
+    private static final BlockTintSource MIASMA = new BlockTintSource() {
+        @Override public int color(BlockState state) { return 0xFFFFFFFF; }
+        @Override public int colorInWorld(BlockState state, BlockAndTintGetter level, BlockPos pos) {
+            double x = pos.getX();
+            double y = pos.getY();
+            double z = pos.getZ();
+            int hue = 220 + (int)(80 * Math.sin((x * x * 2 + y * y + z * z * 8) / (100000D * 20)));
+            return 0xFF000000 | reika.dragonapi.libraries.rendering.ReikaColorAPI.getModifiedHue(
+                    0x0000FF, hue);
+        }
+    };
+
 	private static final BlockTintSource HOVER = new BlockTintSource() {
 		@Override public int color(BlockState state) { return BlockHoverBlock.tint(state); }
 		@Override public int colorInWorld(BlockState state, BlockAndTintGetter level, BlockPos pos) {
@@ -127,6 +145,8 @@ public final class ChromaBlockColors {
 		event.register(List.of(HOVER), ChromaBlocks.HOVER.get());
         event.register(List.of(CRYSTAL_LEAF), ChromaBlocks.deco(
                 reika.chromaticraft.registry.ProximaDecoTypes.CRYSTALLEAF).get());
+        event.register(List.of(MIASMA), ChromaBlocks.deco(
+                reika.chromaticraft.registry.ProximaDecoTypes.MIASMA).get());
 		event.register(List.of(net.minecraft.client.color.block.BlockTintSources.foliage()),
 				ChromaBlocks.GLOWING_LEAVES.get());
         // Cliff grass' top texture is greyscale like vanilla's, so it needs the biome grass tint or

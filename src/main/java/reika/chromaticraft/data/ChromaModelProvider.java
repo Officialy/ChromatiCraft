@@ -427,8 +427,13 @@ public class ChromaModelProvider extends ModelProvider {
 			// ignore the tint source and leave the foliage flat red.
 			Identifier model = (type.isHueShifted() ? ModelTemplates.LEAVES : ModelTemplates.CUBE_ALL)
 					.create(block, TextureMapping.cube(texture), modelOut);
-			blockStateOut.accept(MultiVariantGenerator.dispatch(block,
-					new MultiVariant(WeightedList.of(new Variant(model)))));
+			// Miasma is three oversized double-sided sheets rather than a cube, so its blockstate is
+			// hand-authored and names MiasmaModel. Emitting one here would win the resource merge and
+			// put the fog back in a box. Its flat model is still generated: that is what the item in a
+			// hand or an inventory draws, which is what upstream's item icon is too.
+			if (type != reika.chromaticraft.registry.ProximaDecoTypes.MIASMA)
+				blockStateOut.accept(MultiVariantGenerator.dispatch(block,
+						new MultiVariant(WeightedList.of(new Variant(model)))));
 			itemModelOut.accept(block.asItem(), ItemModelUtils.plainModel(model));
 		}
 	}
@@ -1183,7 +1188,12 @@ public class ChromaModelProvider extends ModelProvider {
 				// crystal reuses the cave-crystal mesh with every arm plus its inert texture swap;
 				// both ship hand-authored blockstates naming those custom model types.
 				.filter(h -> !(h.value() instanceof reika.chromaticraft.block.BlockEncrustedCrystal))
-				.filter(h -> h.value() != ChromaBlocks.POWER_CRYSTAL.get());
+				.filter(h -> h.value() != ChromaBlocks.POWER_CRYSTAL.get())
+				// Miasma is not a cube: it is three oversized double-sided sheets, so it ships a
+				// hand-authored blockstate naming MiasmaModel. A generated cube_all here would win the
+				// resource merge and put the fog back in a box.
+				.filter(h -> h.value() != ChromaBlocks.deco(
+						reika.chromaticraft.registry.ProximaDecoTypes.MIASMA).get());
 	}
 
 	private static void dyeTreeBlocks(Consumer<BlockModelDefinitionGenerator> blockStateOut,

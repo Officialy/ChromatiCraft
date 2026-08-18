@@ -24,5 +24,7 @@ public final class ChromaBlockStateModels {
 				reika.chromaticraft.render.model.EncrustedCrystalModel.Unbaked.CODEC);
 		event.registerModel(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "tiered_ore"),
 				reika.chromaticraft.render.model.TieredOreModel.Unbaked.CODEC);
+		event.registerModel(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "miasma"),
+				reika.chromaticraft.render.model.MiasmaModel.Unbaked.CODEC);
 	}
 }

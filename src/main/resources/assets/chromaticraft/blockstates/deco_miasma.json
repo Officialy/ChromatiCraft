@@ -1,0 +1,5 @@
+{
+  "variants": {
+    "": { "type": "chromaticraft:miasma", "texture": "chromaticraft:block/dimgen/miasma/layer_0" }
+  }
+}

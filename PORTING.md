@@ -5733,3 +5733,44 @@ thing is not worth it.
 `renderNebulae` from *inside* `renderStars` after that spin is applied. So stars and nebulae wheel as
 the player walks and the planets keep their own orbits regardless. The port applied one matrix to all
 three. There are now two.
+
+### 2026-08-18 — Miasma, the sky river tuning gate, and a filled jetpack
+
+**Miasma was drawn as a cube and it is not one.** V33a's `DimensionDecoRenderer.renderEffect` draws it
+as three sheets, each emitted twice in opposite winding so both faces show: one horizontal through the
+middle of the block, and two vertical crossed on the diagonals. All three are *larger than the block* —
+the horizontal one spans -0.5 to 1.5 on both axes, the crossed pair stand a full block above and below
+— which is what makes a field of Miasma read as continuous fog instead of a grid. What shipped was
+`cube_all` on `layer_0`, and that texture is white at alpha 22, so it was very nearly invisible.
+
+The blue is not in the texture either: upstream tints it per position with
+`getModifiedHue(0x0000ff, 220 + 80*sin((x*x*2 + y*y + z*z*8)/2000000))`. That period is enormous on
+purpose — the cloud drifts through blues across a landscape, not block to block.
+
+Ported as `MiasmaModel`, a `DynamicBlockStateModel` following the `CaveCrystalModel` pattern: one baked
+part of six quads, translucent (upstream's `renderIconInPass` puts Miasma in pass 1 alone), full-bright
+(`setBrightness(240)`), no ambient occlusion, tint index 0. The colour reaches it through a
+`BlockTintSource` in `ChromaBlockColors`, which is the hook that still sees a position. The texture's
+own forty-eight-frame animation comes from the sprite and needs nothing here.
+
+Two traps worth recording. The UVs a `QuadBakingVertexConsumer` wants are fractions, not texels —
+`TextureAtlasSprite.getU` interpolates `u0..u1` by its argument, so `16` means sixteen times across the
+sprite. And the datagen deco loop had to be stopped from emitting a `cube_all` blockstate for Miasma:
+generated blockstates win the resource merge, so the stub would have put the fog straight back in a
+box. Its flat model is still generated, because that is what the item in a hand draws.
+
+**Sky rivers refused everyone, and took creative flight with them.** `SKYRIVER`'s thresholds are
+(384, 256), so an untuned player scores zero, is ejected on contact and has flight revoked — which is
+both "the river does not transport me" and "I cannot fly in creative". Creative and spectator now
+bypass the gate and are never stripped of flight. That is a deliberate deviation: upstream's
+`ejectPlayer` clears `capabilities.allowFlying` for anyone, and abilities are only rebuilt when the
+game mode is next set, so a creative player who brushed a river could not fly again all session. A
+survival player is gated exactly as upstream gates them.
+
+The untuned path had also lost its actual behaviour. V33a does not return after ejecting: it overwrites
+the move vector with the segment direction and applies it at a multiplier of -1, spitting the player
+back out of the mouth they drifted into. The port cut their flight and left them standing.
+
+**A fuelled bedrock jetpack is now in RotaryCraft's creative tools tab**, alongside an empty one. The
+pack was only in the catch-all tab, and an empty one is useless until a filling station has been built
+and run.
