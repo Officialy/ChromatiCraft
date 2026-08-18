@@ -5833,3 +5833,41 @@ Seven other sites in the port still test `BlockTags.DIRT` as a "is this ground?"
 in `PylonFeature`). They are not swept here, because some may legitimately mean bare dirt and each
 wants checking against its own V33a original rather than a blanket replace — but the same split
 applies to all of them, and any that mean "ground" are silently refusing grass today.
+
+### 2026-08-18 — Proxima's monument, as an NBT template
+
+The monument is now a real structure template rather than nothing at all: nothing in its dependency
+chain was allowlisted before this, `ChromaDimensionalAudioHandler` and `MonumentCompletionRitual`
+included, so no part of it was building.
+
+`ChromaStructureTemplateProvider.importMonument` takes the geometry from V33a's `MonumentStructure` —
+3503 cells across 43x13x43 — plus the live half of `MonumentHighlighter`. The geometry is unusually
+simple for its size: exactly two blocks, which upstream names only through the metadata locals `ms`
+(Stone Shielding) and `mc` (Cloak Shielding). What makes the monument the monument is what the
+highlighter adds on top, and that is in the template rather than left to a runtime pass: the sixteen
+runes in their ring at y+11, laid clockwise from (3, 18) one per element — upstream's single block with
+metadata 0-15, here the sixteen distinct rune blocks they became — and the structure controller at the
+centre, (21, 5, 21).
+
+**The shared setBlock pattern does not match these calls, and would have failed silently.** It requires
+both a metadata *and* an update-flags argument; the monument's calls carry only metadata, so the regex
+matched none of the 3503 and a regex that matches nothing simply finds nothing. The parse is now a
+plain split, which is both simpler and loud about a call shape it does not recognise. The template is
+asserted non-empty for the same reason.
+
+One id error worth recording because datagen cannot catch it: the controller block is
+`structure_controller`, not `structure_control`. A wrong block id in a template passes datagen happily
+and fails at load, so template ids want checking against `ChromaBlocks` rather than against the V33a
+class name they came from.
+
+**Deferred, and deliberately: the ritual.** `MonumentCompletionRitual` is a thousand lines of timed
+cinematic — a fifty-note melody on wall-clock timings synchronised to six .ogg tracks, ray particles,
+a vortex, lightning, camera manipulation and two shader programs — and it depends on a chain that is
+itself unported: `TileEntityStructControl`, `TileEntityDimensionCore`, `TileEntityAuraPoint`, four
+particle types, `CrystalMusicManager`, and the monument sounds. It also cannot be ported as one class:
+it mixes `Minecraft`/`ISound`/`EntityFX` with its server timeline, which is exactly what
+`ClientPayloadHandlers` exists to avoid. It wants a common timeline plus a client-only effects half,
+and the placement — the monument sits at the ring's own centre, so `RandomSpreadStructurePlacement` is
+wrong and it needs a custom `StructurePlacement` like `PylonGridPlacement` — is still to do as well.
+The monument existing in the world comes first; a half-ported ritual would be worse than a monument you
+can stand in.

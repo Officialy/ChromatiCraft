@@ -28,6 +28,7 @@ import net.minecraft.resources.Identifier;
 
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.registry.ChromaShieldTypes;
+import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
 import reika.chromaticraft.block.BlockCrystallineStone;
 
@@ -60,6 +61,7 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
     public static final Identifier OVERWORLD_DESERT = id("worldgen/overworld/desert");
     public static final Identifier OVERWORLD_SNOW = id("worldgen/overworld/snow");
     public static final Identifier OVERWORLD_BIOME_FRAGMENT = id("worldgen/overworld/biome_fragment");
+    public static final Identifier PROXIMA_MONUMENT = id("worldgen/proxima/monument");
     public static final List<String> VILLAGE_STYLES = List.of("plains", "desert", "savanna", "snowy", "taiga");
 
     /** V33a {@code setEmpty(false, false)}: the cell must be air. */
@@ -105,6 +107,7 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
                 write(cache, OVERWORLD_DESERT, importDesert()),
                 write(cache, OVERWORLD_SNOW, importSnow()),
                 write(cache, OVERWORLD_BIOME_FRAGMENT, biomeFragment()),
+                write(cache, PROXIMA_MONUMENT, importMonument()),
                 write(cache, villageTemplate("plains", true), importVillageStructure("plains", true)),
                 write(cache, villageTemplate("desert", true), importVillageStructure("desert", true)),
                 write(cache, villageTemplate("savanna", true), importVillageStructure("savanna", true)),
@@ -1230,6 +1233,98 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
         data.set(13, 1, 1, lootChest("south"));
         data.set(17, 1, 13, lootChest("north"));
         return data;
+    }
+
+    /**
+     * V33a's Proxima monument, from {@code MonumentStructure} plus the live half of
+     * {@code MonumentHighlighter}.
+     *
+     * <p>The geometry is unusually simple for its size: three and a half thousand cells of exactly two
+     * blocks, Stone Shielding and Cloak Shielding, which upstream writes as the locals {@code ms} and
+     * {@code mc}. Nothing else is in it. What makes the monument the monument is the sixteen runes and
+     * the controller that the highlighter adds on top, and those are added here rather than left to a
+     * runtime pass so the template is the whole structure.
+     *
+     * <p>The rune ring is upstream's exactly: sixteen cells at y+11 laid clockwise from
+     * {@code (3, 18)}, one per element in element order. Upstream writes them as one block with
+     * metadata 0-15; here they are the sixteen distinct rune blocks they became.
+     *
+     * <p>The 43x13x43 size is measured from the calls rather than declared, so a cell added to the
+     * legacy source cannot silently fall outside the template.
+     */
+    private static TemplateData importMonument() {
+        Path source = legacyMonumentSource("MonumentStructure.java");
+        final String java;
+        try {
+            java = Files.readString(source);
+        }
+        catch (IOException e) {
+            throw new IllegalStateException("Could not read V33a monument source " + source, e);
+        }
+        // Parsed by hand rather than with the shared setBlock pattern, which requires a metadata
+        // *and* an update-flags argument. The monument's calls carry only metadata, so that pattern
+        // matches none of them -- and silently, since a regex that does not match simply finds
+        // nothing at all. These calls are perfectly uniform, so splitting them is both simpler and
+        // louder about a shape it does not recognise.
+        TemplateData data = new TemplateData(43, 13, 43);
+        int found = 0;
+        for (String line : java.split("\n")) {
+            int call = line.indexOf("world.setBlock(");
+            if (call < 0)
+                continue;
+            int close = line.lastIndexOf(')');
+            if (close < call)
+                continue;
+            String[] args = line.substring(call + "world.setBlock(".length(), close).split(",");
+            // Upstream's monument writes one block, distinguished only by which metadata local it
+            // names: `mc` is Cloak Shielding, `ms` is Stone.
+            if (args.length != 5 || !"sh".equals(args[3].trim()))
+                continue;
+            data.set(offset(args[0]), offset(args[1]), offset(args[2]),
+                    shielding("mc".equals(args[4].trim())
+                            ? ChromaShieldTypes.CLOAK : ChromaShieldTypes.STONE));
+            found++;
+        }
+        if (found == 0)
+            throw new IllegalStateException("No V33a monument cells parsed from " + source);
+
+        // MonumentHighlighter: the rune ring at y+11, clockwise from (3, 18), one per element.
+        int[] runeRing = {
+                3, 18, 7, 13, 13, 7, 18, 3, 24, 3, 29, 7, 35, 13, 39, 18,
+                39, 24, 35, 29, 29, 35, 24, 39, 18, 39, 13, 35, 7, 29, 3, 24};
+        for (int i = 0; i < runeRing.length; i += 2)
+            data.set(runeRing[i], 11, runeRing[i + 1], rune(CrystalElement.elements[i / 2]));
+        // MonumentHighlighter: the structure controller at the monument's own centre.
+        data.set(21, 5, 21, new StateDef(
+                ChromatiCraft.MODID + ":structure_controller", Map.of()));
+        return data;
+    }
+
+    /** Parses one {@code i + 16} style argument of a legacy setBlock call. */
+    private static int offset(String argument) {
+        return Integer.parseInt(argument.substring(argument.indexOf('+') + 1).trim());
+    }
+
+    private static StateDef shielding(ChromaShieldTypes type) {
+        return new StateDef(ChromatiCraft.MODID + ":" + type.registryName(), Map.of());
+    }
+
+    private static StateDef rune(CrystalElement element) {
+        return new StateDef(ChromatiCraft.MODID + ":crystal_rune_" + element.getEnglishName().toLowerCase(java.util.Locale.ROOT), Map.of());
+    }
+
+    private static Path legacyMonumentSource(String fileName) {
+        Path relative = Path.of("src/main/java/reika/chromaticraft/world/dimension/structure/monument", fileName);
+        Path cursor = Path.of("").toAbsolutePath();
+        for (int depth = 0; depth < 4 && cursor != null; depth++, cursor = cursor.getParent()) {
+            Path direct = cursor.resolve(relative);
+            if (Files.isRegularFile(direct))
+                return direct;
+            Path module = cursor.resolve("ChromatiCraft").resolve(relative);
+            if (Files.isRegularFile(module))
+                return module;
+        }
+        return Path.of("").toAbsolutePath().resolve(relative);
     }
 
     private static Path legacySource(String fileName) {
