@@ -38,6 +38,14 @@ import reika.dragonapi.libraries.mathsci.ReikaVectorHelper;
  *
  * <p>Flight is revoked on ejection because a rider is hundreds of blocks up; upstream does the same, and
  * the fall is the point.
+ *
+ * <h2>One deliberate deviation from V33a: creative</h2>
+ *
+ * <p>A creative or spectator player is exempt from the tuning gate and is never stripped of flight.
+ * Upstream is not — {@code ejectPlayer} clears {@code capabilities.allowFlying} for anyone, which in
+ * 1.7.10 and here alike leaves a creative player unable to fly until their game mode is set again. That
+ * is a bug rather than a design, and the gate itself is a progression gate, which creative bypasses
+ * everywhere else in the mod. A survival player is gated exactly as upstream gates them.
  */
 public final class SkyRiverManager {
 
@@ -51,7 +59,24 @@ public final class SkyRiverManager {
 	private static final Map<UUID, RiderState> riders = new HashMap<>();
 	private static final Random random = new Random();
 
+	/**
+	 * Which of the ways a rider can fail to be carried has already been reported. Being ejected for
+	 * want of tuning and never being caught at all feel identical from inside the game, so each says so
+	 * once.
+	 */
+	private static final java.util.Set<String> reported = new java.util.HashSet<>();
+
 	private SkyRiverManager() {}
+
+	private static void reportOnce(String cause, String detail) {
+		if (reported.add(cause))
+			reika.chromaticraft.ChromatiCraft.LOGGER.info("Sky river transport: {} ({})", cause, detail);
+	}
+
+	/** Creative and spectator bypass the tuning gate, as they bypass every other gate in the mod. */
+	private static boolean bypassesTuning(Player player) {
+		return player.getAbilities().instabuild || player.isSpectator();
+	}
 
 	public static void clear() {
 		riders.clear();
@@ -60,8 +85,11 @@ public final class SkyRiverManager {
 	/** Called once a tick for the Proxima level. */
 	public static void tick(ServerLevel level) {
 		SkyRiverGenerator rivers = SkyRiverGenerator.getActive();
-		if (rivers == null)
+		if (rivers == null) {
+			reportOnce("no rivers", "the server-side generator has not run");
 			return;
+		}
+		reportOnce("ticking", "the Proxima level tick reaches the sky river manager");
 		for (Player player : level.players()) {
 			if (player.isRemoved())
 				continue;
@@ -104,10 +132,21 @@ public final class SkyRiverManager {
 
 		Vec3 move = along.normalize().scale(0.6).add(towardsNode.normalize().scale(0.4));
 
-		float tuning = DimensionTuningManager.TuningThresholds.SKYRIVER.getTuningFraction(player);
+		float tuning = bypassesTuning(player) ? 1
+				: DimensionTuningManager.TuningThresholds.SKYRIVER.getTuningFraction(player);
 		if (tuning <= 0) {
-			// Untuned: thrown clear rather than carried.
+			// Untuned: thrown back the way the river came rather than carried along it. Upstream does
+			// not simply drop the player -- it overwrites the move vector with the segment direction and
+			// applies it at a multiplier of -1, so an untuned player is spat back out of the mouth they
+			// drifted into. The port previously just cut their flight and left them, which read as the
+			// river doing nothing at all.
+			reportOnce("untuned", "SKYRIVER needs " + DimensionTuningManager.TuningThresholds.SKYRIVER
+					.minimumEffect + " tuning before it carries anyone; "
+					+ DimensionTuningManager.instance.getPlayerTuning(player) + " held");
 			eject(player, state);
+			Vec3 back = toVec(point.next()).subtract(toVec(point.position())).normalize().scale(-1);
+			player.setDeltaMovement(back);
+			player.hurtMarked = true;
 			return false;
 		}
 		if (tuning < 1) {
@@ -126,6 +165,7 @@ public final class SkyRiverManager {
 		}
 
 		state.riverTicks++;
+		reportOnce("carrying", "a player is being moved along a river");
 		player.setDeltaMovement(move.scale(SPEED));
 		player.hurtMarked = true;
 		// A rider hangs hundreds of blocks up moving faster than the server's anti-flight check
@@ -139,9 +179,14 @@ public final class SkyRiverManager {
 
 	private static void eject(Player player, RiderState state) {
 		player.setNoGravity(false);
-		player.getAbilities().mayfly = false;
-		player.getAbilities().flying = false;
-		player.onUpdateAbilities();
+		// A creative or spectator player keeps their flight. Upstream clears it for everyone, and the
+		// abilities are only rebuilt when the game mode is next set, so a creative player who brushed a
+		// river was left unable to fly for the rest of the session.
+		if (!bypassesTuning(player)) {
+			player.getAbilities().mayfly = false;
+			player.getAbilities().flying = false;
+			player.onUpdateAbilities();
+		}
 		state.ejectCooldown = EJECT_COOLDOWN;
 		state.riverTicks = 0;
 	}
