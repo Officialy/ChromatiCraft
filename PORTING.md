@@ -5632,3 +5632,60 @@ Recorded in full so it is not re-investigated from scratch:
 cells against placement, so if this turns out to be a state or ordering fault it will surface there.
 What is still needed to progress it is what specifically looks wrong in game — which block, and what it
 should be doing instead.
+
+### 2026-08-18 — Proxima's sky was black because the dimension declared it had none
+
+The custom sky and the sky rivers were both invisible, with nothing in the log and no exception. They
+turned out to be two separate faults that presented identically.
+
+**The sky: `Skybox.NONE` removes the hook, not just the drawing.** `ProximaDimension` declared
+`DimensionType.Skybox.NONE`, reading it as "vanilla draws no sky here, ChromatiCraft draws its own".
+It means something stronger. `LevelRenderer.addSkyPass` wraps its entire body in
+`if (state.skybox != Skybox.NONE)`, so with NONE the `sky` frame pass is never added at all — and both
+of the places a mod can draw a sky live *inside* that pass:
+
+- NeoForge's patch posts `RenderLevelStageEvent.AfterSky` at the end of the pass's `executes` lambda.
+- The `customSkyboxRenderer.renderSky(...)` call that suppresses vanilla's sun, moon and stars is the
+  first statement in that same lambda.
+
+So `AfterSky` never fired, `ProximaSkyRenderer` never ran, and there was nothing to log. The fix is
+necessarily three-part: the dimension type declares `Skybox.OVERWORLD` (not `END`, which would also
+switch on end flashes) so the pass exists; it carries the `neoforge:custom_skybox` environment
+attribute naming `chromaticraft:proxima`; and `ProximaSkyRenderer` is now a `CustomSkyboxRenderer`
+registered under that name from `RegisterCustomEnvironmentEffectRendererEvent`, returning true from
+`renderSky` so vanilla's disc, sunrise, sun, moon, stars and dark disc are all skipped. It returns
+true on every path, including the ones that draw nothing, because falling through underground would
+put a sun in Proxima's sky. The attribute survives serialisation — `runServerData` emits
+`"neoforge:custom_skybox": "chromaticraft:proxima"` into the dimension type, and `skybox` no longer
+appears because OVERWORLD is the codec's default.
+
+`@EventBusSubscriber`'s bus was investigated and cleared: since 1.21.1 the `bus()` value is ignored
+outright and the bus is chosen per listener from whether the event implements `IModBusEvent`. The
+annotations were never the problem, and this does not need re-checking.
+
+**Two draw-path bugs found alongside it.** Both would have bitten the moment either renderer ran:
+
+- `WorldGeometryPass` built its scratch with `ByteBufferBuilder.exactlySized`, which sets the maximum
+  capacity equal to the initial one. That buffer cannot grow; overflowing it throws. The sky field
+  alone is tens of thousands of vertices against a 4096-vertex allocation. Now a plain
+  `new ByteBufferBuilder(...)`, which is an initial size on a growable buffer.
+- The sky is built at a fixed radius of roughly 400 blocks, but the far plane is
+  `max(renderDistance * 4, cloudRange * 16)` — at a short render distance the whole field sits behind
+  it. The sky is now scaled uniformly to fit inside the far plane when it has to be, which preserves
+  its appearance exactly since every offset scales with it. Vanilla sidesteps this by drawing its own
+  stars at radius 100.
+
+**The sky rivers were a separate fault, and the buffer is the likely whole of it.**
+`AfterTranslucentBlocks` is posted from `addMainPass` with no skybox guard, so that handler always
+fired — the skybox fault cannot explain the rivers. `chromaticraft:sky_river_geometry` now asserts what
+the renderer actually asks for at the one place a player is guaranteed to stand, and it passes: the
+chunk index does hold points within 512 blocks of the origin. So the draw was being reached with real
+geometry, and a river view is thousands of vertices against that 4096-vertex fixed buffer — one tube
+segment alone is 36 quads, so twenty-eight segments exhaust it. Every frame in view of a river was
+throwing out of `ensureCapacity`.
+
+The instrumentation is kept rather than removed: `SkyRiverRenderer` reports once per cause — hook
+reached, no client copy of the rivers, none in range with the player's position and the ray count, or
+drawing with a point count. If rivers are still not visible it separates "the seed packet never
+arrived" from "there is no river near you" from "the draw itself is wrong" in one client run, which is
+what this fault cost several sessions for want of.

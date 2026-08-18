@@ -5,14 +5,14 @@ import java.util.Random;
 import com.mojang.blaze3d.vertex.BufferBuilder;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.state.level.LevelRenderState;
+import net.minecraft.client.renderer.state.level.SkyRenderState;
 import net.minecraft.resources.Identifier;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+import net.neoforged.neoforge.client.CustomSkyboxRenderer;
+
+import org.joml.Matrix4fc;
 
 import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.registry.ChromaDimensions;
 import reika.chromaticraft.render.ChromaRenderPipelines;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
 
@@ -45,9 +45,19 @@ import reika.dragonapi.libraries.rendering.ReikaColorAPI;
  * <p>Upstream also keeps up to thirty supernovae alive at once, each an animated sprite advancing
  * through frames and holding at its midpoint before expiring. That animation is driven from a sheet
  * with its own per-frame timing and is a piece of work in itself, so the field is drawn without them.
+ *
+ * <h2>How this is reached</h2>
+ *
+ * <p>Through NeoForge's {@link CustomSkyboxRenderer} hook, named by the {@code neoforge:custom_skybox}
+ * environment attribute on Proxima's dimension type, and <em>not</em> through
+ * {@code RenderLevelStageEvent.AfterSky}. Both of those live inside the sky frame pass, and that pass
+ * is only added when the dimension's skybox is not {@code NONE}. Proxima declaring {@code NONE} — the
+ * obvious reading of "vanilla draws no sky here" — meant neither ever ran. Returning true from
+ * {@link #renderSky} is what actually suppresses vanilla's sun, moon, stars and horizon.
  */
-@EventBusSubscriber(modid = ChromatiCraft.MODID, value = Dist.CLIENT)
-public final class ProximaSkyRenderer {
+public final class ProximaSkyRenderer implements CustomSkyboxRenderer {
+
+	public static final ProximaSkyRenderer INSTANCE = new ProximaSkyRenderer();
 
 	private static final Identifier STARS = Identifier.fromNamespaceAndPath(
 			ChromatiCraft.MODID, "textures/environment/proxima_stars.png");
@@ -68,7 +78,17 @@ public final class ProximaSkyRenderer {
 	private static final SkyQuad[] NEBULA_FIELD = new SkyQuad[16];
 	private static final SkyQuad[] PLANET_FIELD = new SkyQuad[32];
 
-	private static final WorldGeometryPass PASS = new WorldGeometryPass("ChromatiCraft Proxima sky");
+	/** The furthest anything in the field reaches: the nebula and planet shells, plus their spread. */
+	private static final float SKY_RADIUS = 420;
+	/** How much of the far plane the sky is allowed to occupy once it has to be pulled in. */
+	private static final float SKY_DEPTH_HEADROOM = 0.9F;
+
+	// One pass per field rather than one shared between them. Each holds its own vertex buffer, so the
+	// three batches of a frame never write over each other's geometry between draws, and each shows up
+	// under its own name in a GPU capture.
+	private static final WorldGeometryPass NEBULA_PASS = new WorldGeometryPass("ChromatiCraft Proxima nebulae");
+	private static final WorldGeometryPass PLANET_PASS = new WorldGeometryPass("ChromatiCraft Proxima planets");
+	private static final WorldGeometryPass STAR_PASS = new WorldGeometryPass("ChromatiCraft Proxima stars");
 
 	static {
 		// Built once from a fixed sequence, so Proxima's sky is the same every session rather than
@@ -89,25 +109,37 @@ public final class ProximaSkyRenderer {
 
 	private ProximaSkyRenderer() {}
 
-	@SubscribeEvent
-	public static void onRenderSky(RenderLevelStageEvent.AfterSky event) {
+	@Override
+	public boolean renderSky(LevelRenderState levelRenderState, SkyRenderState skyRenderState,
+			Matrix4fc modelViewMatrix, Runnable setupFog) {
+		setupFog.run();
+		// True is returned on every path below, including the ones that draw nothing: this renderer is
+		// selected for Proxima and Proxima has no sun or moon, so falling through to vanilla when the
+		// viewer is underground would put a sun in the sky through the stone.
 		Minecraft minecraft = Minecraft.getInstance();
-		if (minecraft.level == null || minecraft.player == null
-				|| minecraft.level.dimension() != ChromaDimensions.PROXIMA)
-			return;
+		if (minecraft.level == null || minecraft.player == null)
+			return true;
 
 		double y = minecraft.player.getY();
 		float fade = y <= 18 ? 0 : y >= 30 ? 1 : (float)((y - 18) / 12F);
 		if (minecraft.level.canSeeSky(minecraft.player.blockPosition()))
 			fade = 1;
 		if (fade <= 0)
-			return;
+			return true;
 
 		double time = System.currentTimeMillis();
-		var camera = event.getLevelRenderState().cameraRenderState.pos;
+		var camera = levelRenderState.cameraRenderState.pos;
 		// V33a turns the sky by an eighth of a degree per block travelled on each axis, then adds a
 		// slow spin with time. The sky is drawn around the viewer, so no camera translation is applied.
-		org.joml.Matrix4f matrix = new org.joml.Matrix4f(event.getModelViewMatrix());
+		org.joml.Matrix4f matrix = new org.joml.Matrix4f(modelViewMatrix);
+		// The sky is built at a fixed radius, and the far plane is not fixed: it is four times the
+		// render distance, so at a short render distance the whole field would sit behind it and be
+		// clipped away. Scaling the sky uniformly pulls it inside without changing how it looks --
+		// every vertex, centre offset and corner alike, scales by the same factor, so the angular size
+		// of each star is untouched. Vanilla sidesteps this by drawing its own stars at radius 100.
+		float depthFar = levelRenderState.cameraRenderState.depthFar;
+		if (depthFar > 0 && depthFar < SKY_RADIUS / SKY_DEPTH_HEADROOM)
+			matrix.scale(depthFar * SKY_DEPTH_HEADROOM / SKY_RADIUS);
 		matrix.rotateX((float)Math.toRadians(camera.x * 0.125));
 		matrix.rotateY((float)Math.toRadians(camera.y * 0.125));
 		matrix.rotateZ((float)Math.toRadians(camera.z * 0.125));
@@ -115,17 +147,17 @@ public final class ProximaSkyRenderer {
 
 		final float alpha = fade;
 		int washColour = ReikaColorAPI.GStoHex((int)(255 * alpha));
-		PASS.draw(ChromaRenderPipelines.ADDITIVE_SPRITE, NEBULAE, matrix, buffer -> {
+		NEBULA_PASS.draw(ChromaRenderPipelines.ADDITIVE_SPRITE, NEBULAE, matrix, buffer -> {
 			for (SkyQuad nebula : NEBULA_FIELD)
 				if (nebula != null)
 					nebula.emit(buffer, 380, washColour);
 		});
-		PASS.draw(ChromaRenderPipelines.ADDITIVE_SPRITE, PLANETS, matrix, buffer -> {
+		PLANET_PASS.draw(ChromaRenderPipelines.ADDITIVE_SPRITE, PLANETS, matrix, buffer -> {
 			for (SkyQuad planet : PLANET_FIELD)
 				if (planet != null)
 					planet.emit(buffer, 380, washColour);
 		});
-		PASS.draw(ChromaRenderPipelines.ADDITIVE_SPRITE, STARS, matrix, buffer -> {
+		STAR_PASS.draw(ChromaRenderPipelines.ADDITIVE_SPRITE, STARS, matrix, buffer -> {
 			int count = starCount(time);
 			for (int i = 0; i < count; i++) {
 				Star star = STAR_FIELD[i];
@@ -137,6 +169,7 @@ public final class ProximaSkyRenderer {
 				star.emitStar(buffer, 320 - i / 10D / count, brightness, time);
 			}
 		});
+		return true;
 	}
 
 	/** V33a getStarCount: the field breathes between 2500 and 7500 over a day. */

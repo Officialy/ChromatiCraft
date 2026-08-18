@@ -67,9 +67,11 @@ public final class WorldGeometryPass {
 		GpuBuffer indices;
 		IndexType indexType;
 		int indexCount;
-		// Sized generously rather than exactly: the caller does not know its vertex count up front, and
-		// ByteBufferBuilder grows itself if this is short.
-		try (ByteBufferBuilder scratch = ByteBufferBuilder.exactlySized(
+		// Deliberately not ByteBufferBuilder.exactlySized: that sets the maximum capacity equal to the
+		// initial one, so the buffer cannot grow and overflowing it throws rather than reallocating.
+		// A caller here does not know its vertex count up front -- the sky field alone runs to tens of
+		// thousands of vertices -- so this is an initial size on a buffer that is free to grow.
+		try (ByteBufferBuilder scratch = new ByteBufferBuilder(
 				4096 * DefaultVertexFormat.POSITION_TEX_COLOR.getVertexSize())) {
 			BufferBuilder buffer = new BufferBuilder(scratch, PrimitiveTopology.QUADS,
 					DefaultVertexFormat.POSITION_TEX_COLOR);

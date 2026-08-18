@@ -54,7 +54,19 @@ public final class SkyRiverRenderer {
 
 	private static final WorldGeometryPass PASS = new WorldGeometryPass("ChromatiCraft sky rivers");
 
+	/**
+	 * Which of the three ways this can draw nothing has already been reported. Rivers failing silently
+	 * is indistinguishable in-game from rivers being nowhere near you, so each cause says so once
+	 * rather than every frame.
+	 */
+	private static final java.util.Set<String> reported = new java.util.HashSet<>();
+
 	private SkyRiverRenderer() {}
+
+	private static void reportOnce(String cause, String detail) {
+		if (reported.add(cause))
+			ChromatiCraft.LOGGER.info("Sky rivers: {} ({})", cause, detail);
+	}
 
 	/**
 	 * Drawn after translucent blocks so a river composites over the world. It is not drawn in the
@@ -67,12 +79,20 @@ public final class SkyRiverRenderer {
 		if (minecraft.level == null || minecraft.player == null
 				|| minecraft.level.dimension() != ChromaDimensions.PROXIMA)
 			return;
+		reportOnce("reached", "the render hook fires in Proxima");
 		SkyRiverGenerator rivers = ClientSkyRivers.get();
-		if (rivers == null)
+		if (rivers == null) {
+			reportOnce("no client copy", "the layout seed packet has not arrived");
 			return;
+		}
 		var points = rivers.getPointsWithin(minecraft.player, RENDER_RANGE);
-		if (points.isEmpty())
+		if (points.isEmpty()) {
+			reportOnce("none in range", "nothing within " + (int)RENDER_RANGE + " of "
+					+ minecraft.player.blockPosition() + "; " + rivers.getRays().size()
+					+ " rays were generated");
 			return;
+		}
+		reportOnce("drawing", points.size() + " points at " + minecraft.player.blockPosition());
 
 		Vec3 camera = event.getLevelRenderState().cameraRenderState.pos;
 		double time = System.currentTimeMillis() / 1250D;

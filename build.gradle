@@ -275,6 +275,7 @@ sourceSets.main.java {
     include 'reika/chromaticraft/world/dimension/ProximaTerrainDensityFunction.java'
     include 'reika/chromaticraft/world/dimension/ProximaNoiseSettings.java'
     include 'reika/chromaticraft/world/dimension/ProximaDimension.java'
+    include 'reika/chromaticraft/world/dimension/ProximaSkyboxId.java'
     include 'reika/chromaticraft/world/dimension/biome/ProximaBiomeDefinitions.java'
     include 'reika/chromaticraft/world/dimension/biome/ProximaBiomeSource.java'
     include 'reika/chromaticraft/client/ProximaBiomeColors.java'

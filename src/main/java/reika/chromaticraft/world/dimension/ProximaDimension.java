@@ -56,6 +56,12 @@ public final class ProximaDimension {
 						.set(net.minecraft.world.attribute.EnvironmentAttributes.RESPAWN_ANCHOR_WORKS, false)
 						.set(net.minecraft.world.attribute.EnvironmentAttributes.NETHER_PORTAL_SPAWNS_PIGLINS,
 								false)
+						// Proxima draws its own sky. In 26.2 that is a two-part declaration: the skybox
+						// below must not be NONE, or vanilla never adds the sky frame pass at all and
+						// there is nothing for a custom renderer to be consulted from; and this
+						// attribute names the renderer that then replaces the whole vanilla body.
+						.set(net.neoforged.neoforge.common.world.NeoForgeEnvironmentAttributes.CUSTOM_SKYBOX,
+								ProximaSkyboxId.ID)
 						.build();
 		context.register(ChromaDimensions.PROXIMA_TYPE, new DimensionType(
 				// V33a calculateCelestialAngle returns a constant and isDaytime is false: the sky is fixed.
@@ -75,9 +81,13 @@ public final class ProximaDimension {
 				0.0F,
 				new DimensionType.MonsterSettings(
 						net.minecraft.util.valueproviders.UniformInt.of(0, 7), 0),
-				// V33a draws Proxima's sky itself -- stars, nebulae and planets, and no sun or moon --
-				// so vanilla must draw none of it. See ProximaSkyRenderer.
-				DimensionType.Skybox.NONE,
+				// Not NONE, despite Proxima having no sun and no moon. NONE means "add no sky pass",
+				// and the custom-skybox hook lives inside that pass -- declaring NONE here is what
+				// left Proxima's sky black with no error to show for it. OVERWORLD adds the pass;
+				// ProximaSkyRenderer then returns true from renderSky and vanilla's disc, sunrise,
+				// sun, moon, stars and dark disc are all skipped. END is not used because it would
+				// also turn on end flashes.
+				DimensionType.Skybox.OVERWORLD,
 				net.minecraft.world.level.CardinalLighting.Type.DEFAULT,
 				attributes,
 				// A fixed sky has no timeline to advance and no clock to read.

@@ -41,6 +41,19 @@ public final class ChromaClientRenderers {
 		bus.addListener(LoreDiscoveryOverlay::register);
 		bus.addListener(reika.chromaticraft.client.gui.ProgressionOverlay::register);
 		bus.addListener(MouseoverStatusOverlay::register);
+		bus.addListener(ChromaClientRenderers::registerEnvironmentEffects);
+	}
+
+	/**
+	 * Proxima's sky. It is reached by name from the dimension type's {@code neoforge:custom_skybox}
+	 * attribute rather than by a level-render event, because the event that looks like the right hook
+	 * only fires for dimensions whose skybox is not NONE.
+	 */
+	private static void registerEnvironmentEffects(
+			net.neoforged.neoforge.client.event.RegisterCustomEnvironmentEffectRendererEvent event) {
+		event.registerSkyboxRenderer(
+				reika.chromaticraft.world.dimension.ProximaSkyboxId.ID,
+				reika.chromaticraft.client.render.ProximaSkyRenderer.INSTANCE);
 	}
 
 	private static void registerItemModels(RegisterItemModelsEvent event) {

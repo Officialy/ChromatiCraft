@@ -2189,6 +2189,21 @@ public final class ChromaGameTests {
 				(int)Math.floor(sample.zCoord) >> 4);
 		helper.assertTrue(!inChunk.isEmpty(),
 				"a river point's own chunk holds none of its points; the chunk index is not being built");
+
+		// What the renderer actually asks for, at the one place a player is guaranteed to stand: the
+		// spawn column. SkyRiverRenderer sweeps the chunks within its render range of the player and
+		// draws what it finds, so if this comes back empty the rivers are invisible at spawn no matter
+		// how healthy the draw is. The inner layer starts within 256 blocks of the origin, so it must
+		// not be.
+		int renderRange = 512;
+		int chunkRange = renderRange >> 4;
+		int nearSpawn = 0;
+		for (int dx = -chunkRange - 1; dx <= chunkRange; dx++)
+			for (int dz = -chunkRange - 1; dz <= chunkRange; dz++)
+				nearSpawn += rivers.getPointsForChunk(dx, dz).size();
+		helper.assertTrue(nearSpawn > 0,
+				"no sky river point lies within " + renderRange + " blocks of the origin, so nothing is "
+						+ "drawn at the spawn column; the inner layer is supposed to begin within 256");
 		helper.succeed();
 	}
 
