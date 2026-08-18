@@ -107,12 +107,25 @@ public final class ProximaSkyRenderer implements CustomSkyboxRenderer {
 			PLANET_FIELD[i] = SkyQuad.randomized(i, 2, 30, random);
 	}
 
+	/**
+	 * Which of the ways this can show nothing has already been reported. A sky that fails silently is
+	 * indistinguishable from a sky that is simply not drawn, which is exactly what cost this fault
+	 * several sessions of static analysis; each cause says so once rather than every frame.
+	 */
+	private static final java.util.Set<String> reported = new java.util.HashSet<>();
+
 	private ProximaSkyRenderer() {}
+
+	private static void reportOnce(String cause, String detail) {
+		if (reported.add(cause))
+			ChromatiCraft.LOGGER.info("Proxima sky: {} ({})", cause, detail);
+	}
 
 	@Override
 	public boolean renderSky(LevelRenderState levelRenderState, SkyRenderState skyRenderState,
 			Matrix4fc modelViewMatrix, Runnable setupFog) {
 		setupFog.run();
+		reportOnce("reached", "the custom skybox hook is selected and firing");
 		// True is returned on every path below, including the ones that draw nothing: this renderer is
 		// selected for Proxima and Proxima has no sun or moon, so falling through to vanilla when the
 		// viewer is underground would put a sun in the sky through the stone.
@@ -124,8 +137,10 @@ public final class ProximaSkyRenderer implements CustomSkyboxRenderer {
 		float fade = y <= 18 ? 0 : y >= 30 ? 1 : (float)((y - 18) / 12F);
 		if (minecraft.level.canSeeSky(minecraft.player.blockPosition()))
 			fade = 1;
-		if (fade <= 0)
+		if (fade <= 0) {
+			reportOnce("faded out", "at y " + (int)y + " with no view of the sky, so nothing is drawn");
 			return true;
+		}
 
 		double time = System.currentTimeMillis();
 		var camera = levelRenderState.cameraRenderState.pos;
@@ -169,6 +184,7 @@ public final class ProximaSkyRenderer implements CustomSkyboxRenderer {
 				star.emitStar(buffer, 320 - i / 10D / count, brightness, time);
 			}
 		});
+		reportOnce("drawing", starCount(time) + " stars at y " + (int)y);
 		return true;
 	}
 

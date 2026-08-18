@@ -5675,17 +5675,28 @@ annotations were never the problem, and this does not need re-checking.
   its appearance exactly since every offset scales with it. Vanilla sidesteps this by drawing its own
   stars at radius 100.
 
-**The sky rivers were a separate fault, and the buffer is the likely whole of it.**
-`AfterTranslucentBlocks` is posted from `addMainPass` with no skybox guard, so that handler always
-fired — the skybox fault cannot explain the rivers. `chromaticraft:sky_river_geometry` now asserts what
-the renderer actually asks for at the one place a player is guaranteed to stand, and it passes: the
-chunk index does hold points within 512 blocks of the origin. So the draw was being reached with real
-geometry, and a river view is thousands of vertices against that 4096-vertex fixed buffer — one tube
-segment alone is 36 quads, so twenty-eight segments exhaust it. Every frame in view of a river was
-throwing out of `ensureCapacity`.
+**The sky rivers are a separate fault and are still not explained.** The archived client log of the
+reported session (`run/logs/debug-3.log.gz`) answers more than the visible log did, and it rules the
+easy answers out rather than in:
 
-The instrumentation is kept rather than removed: `SkyRiverRenderer` reports once per cause — hook
-reached, no client copy of the rivers, none in range with the player's position and the ray count, or
-drawing with a point count. If rivers are still not visible it separates "the seed packet never
-arrived" from "there is no river near you" from "the draw itself is wrong" in one client run, which is
-what this fault cost several sessions for want of.
+- `AutomaticEventSubscriber` logged both handlers being subscribed — `ProximaSkyRenderer.onRenderSky`
+  and `SkyRiverRenderer.onRenderLevel`, both "to the game event bus". The annotation was never the
+  problem, and `AfterTranslucentBlocks` is posted from `addMainPass` with no skybox guard, so the
+  river handler genuinely ran.
+- There is no `Maximum capacity of ByteBufferBuilder` anywhere in that session. The fixed-size scratch
+  buffer is a real bug and a river view would certainly have overflowed it — one tube segment is 36
+  quads, so twenty-eight segments exhaust 4096 vertices — but it was never hit. **The draw was
+  therefore never reached with real geometry, and the buffer is not the explanation.**
+- `chromaticraft:sky_river_geometry` now asserts what the renderer actually asks for at the one place
+  a player is guaranteed to stand, and it passes: the chunk index does hold points within 512 blocks
+  of the origin. So "there is no river near spawn" is not the explanation either.
+
+What is left is the client's copy of the rivers being absent — `ClientSkyRivers.get()` returning null
+because the layout-seed packet never arrived — or the player never having been in Proxima on the
+client when they looked. The log cannot separate those: the only player login it records is into the
+Overworld at (20340, 143, 4338), and dimension changes are not logged.
+
+Rather than guess again, both renderers now report once per reason they show nothing — hook reached,
+no client copy, none in range with the player's position and the ray count, faded out underground, or
+drawing with a count. One client run separates every remaining branch, which is what this fault cost
+several sessions of static analysis for want of.
