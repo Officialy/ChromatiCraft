@@ -75,7 +75,9 @@ public final class ProximaDimension {
 				0.0F,
 				new DimensionType.MonsterSettings(
 						net.minecraft.util.valueproviders.UniformInt.of(0, 7), 0),
-				DimensionType.Skybox.OVERWORLD,
+				// V33a draws Proxima's sky itself -- stars, nebulae and planets, and no sun or moon --
+				// so vanilla must draw none of it. See ProximaSkyRenderer.
+				DimensionType.Skybox.NONE,
 				net.minecraft.world.level.CardinalLighting.Type.DEFAULT,
 				attributes,
 				// A fixed sky has no timeline to advance and no clock to read.

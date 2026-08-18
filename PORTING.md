@@ -22,6 +22,31 @@
 - The multi-layer rendering for the six compositing variants is still outstanding; each currently
   draws its real `layer_0`.
 
+## Working checkpoint — 2026-08-16 (Proxima's sky)
+
+- Ported `ChromaSkyRenderer` onto the same seam. Proxima's dimension type now declares
+  `Skybox.NONE` — it has no sun, no moon and no horizon glow, so vanilla draws nothing and this draws
+  everything: five to seven and a half thousand stars, sixteen nebulae and thirty-two planets,
+  billboarded onto a sphere around the viewer with Reika's own `stars`, `stars2` and `planets2` art.
+- The details that carry the feel are upstream's: the star count breathes on `5000 + 2500*sin(t/24000)`;
+  each star twinkles on its own clock between 0.125 and 4 speed and 0.0625 and 0.375 amplitude, offset
+  by its index so they never pulse together; the whole sky turns an eighth of a degree per block
+  travelled on each axis plus a slow spin with time; and it fades in between y 18 and y 30, or
+  immediately if the viewer can see the sky, so nobody underground is looking at stars through stone.
+- The field is built once from a fixed seed, so Proxima's sky is the same every session rather than
+  reshuffling on each world load. Placement is vanilla's own star-billboard maths, which is what
+  upstream built on — including its rejection of draws outside the unit sphere, which is why a field of
+  7500 legitimately contains gaps.
+- **Upstream's Proxima early-return in the aurora renderer is deliberately not reinstated.** V33a skips
+  its entity renderer inside Proxima and lets the sky renderer draw aurorae, because 1.7.10's fixed
+  function pipeline needed them composited with the sky to sort against it. 26.2 does not: the curtain
+  draws through the entity submit pipeline, which already orders against the world, and the sky is drawn
+  far behind everything. Reinstating the skip would simply lose the aurorae, since the sky pass has no
+  entity list to draw from.
+- Not included: upstream keeps up to thirty supernovae alive at once, each an animated sprite advancing
+  through frames and holding at its midpoint. That animation has its own per-frame timing and is a piece
+  of work in itself.
+
 ## Working checkpoint — 2026-08-16 (the world-geometry seam, and the sky rivers drawn)
 
 - `WorldGeometryPass` is the seam the port was missing: arbitrary textured geometry drawn into the world

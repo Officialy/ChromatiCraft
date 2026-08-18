@@ -36,10 +36,12 @@ import reika.dragonapi.libraries.rendering.ReikaColorAPI;
  *
  * <h2>What differs from upstream, and why</h2>
  *
- * <p>V33a's renderer returns early inside Proxima, deferring to the dimension's own sky renderer, which
- * draws aurorae with better ordering against the sky. That sky renderer is not ported, so this draws
- * everywhere instead — otherwise Proxima's aurorae, the only ones that currently generate, would be
- * invisible. When the sky renderer lands, the early return belongs back here.
+ * <p>Upstream's Proxima early-return is deliberately <em>not</em> reinstated. V33a skips this renderer
+ * inside Proxima and lets the dimension's sky renderer draw aurorae instead, because 1.7.10's fixed
+ * function pipeline needed them composited with the sky to sort correctly against it. 26.2 does not:
+ * this draws through the entity submit pipeline, which already orders against the world, and the sky is
+ * drawn far behind everything at a fixed distance. Skipping it here would simply lose the aurorae,
+ * since the sky pass has no entity list to draw from.
  */
 public final class RenderAurora extends EntityRenderer<EntityAurora, RenderAurora.State> {
 

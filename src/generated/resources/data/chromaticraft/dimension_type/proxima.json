@@ -23,5 +23,6 @@
     "type": "minecraft:uniform",
     "max_inclusive": 7,
     "min_inclusive": 0
-  }
+  },
+  "skybox": "none"
 }
