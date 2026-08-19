@@ -226,6 +226,19 @@ public final class ChromaWorldGenProvider {
                                     net.minecraft.world.level.levelgen.GenerationStep.Decoration.SURFACE_STRUCTURES,
                                     // The cliff lays its own terrain; vanilla must not also beard it.
                                     net.minecraft.world.level.levelgen.structure.TerrainAdjustment.NONE)));
+            // The monument. Its biome is the Monument Field, which BiomeDistributor paints around the
+            // ring's centre for exactly this reason -- so the one place the monument may stand is the
+            // one place that biome exists.
+            bootstrap.register(reika.chromaticraft.world.dimension.structure.ProximaStructures.MONUMENT,
+                    new reika.chromaticraft.world.dimension.structure.ProximaMonumentStructure(
+                            new net.minecraft.world.level.levelgen.structure.Structure.StructureSettings(
+                                    net.minecraft.core.HolderSet.direct(biomes.getOrThrow(
+                                            reika.chromaticraft.world.dimension.biome.ProximaBiomes.MONUMENT.biomeKey())),
+                                    java.util.Map.of(),
+                                    net.minecraft.world.level.levelgen.GenerationStep.Decoration.SURFACE_STRUCTURES,
+                                    // The piece hollows its own clearing and lays its own floor, so
+                                    // vanilla must not also raise terrain to meet it.
+                                    net.minecraft.world.level.levelgen.structure.TerrainAdjustment.NONE)));
         });
         builder.add(Registries.STRUCTURE_SET, bootstrap -> {
             var structures = bootstrap.lookup(Registries.STRUCTURE);
@@ -240,6 +253,13 @@ public final class ChromaWorldGenProvider {
                                     8, 3,
                                     net.minecraft.world.level.levelgen.structure.placement.RandomSpreadType.LINEAR,
                                     0x6C1FF)));
+            // One monument, at the position the layout chose. MonumentPlacement names that single
+            // chunk; there is nothing to space or scatter.
+            bootstrap.register(reika.chromaticraft.world.dimension.structure.ProximaStructures.MONUMENT_SET,
+                    new net.minecraft.world.level.levelgen.structure.StructureSet(
+                            structures.getOrThrow(
+                                    reika.chromaticraft.world.dimension.structure.ProximaStructures.MONUMENT),
+                            new reika.chromaticraft.world.dimension.structure.MonumentPlacement()));
         });
         builder.add(Registries.PLACED_FEATURE, bootstrap -> {
             HolderGetter<ConfiguredFeature<?, ?>> configured = bootstrap.lookup(Registries.CONFIGURED_FEATURE);

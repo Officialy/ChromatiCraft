@@ -5871,3 +5871,49 @@ and the placement — the monument sits at the ring's own centre, so `RandomSpre
 wrong and it needs a custom `StructurePlacement` like `PylonGridPlacement` — is still to do as well.
 The monument existing in the world comes first; a half-ported ritual would be worse than a monument you
 can stand in.
+
+### 2026-08-18 — The monument is placed
+
+The template now has somewhere to go. Three pieces, and the placement was the one that needed
+inventing.
+
+**`MonumentPlacement`.** Neither vanilla placement fits: `RandomSpreadStructurePlacement` scatters on a
+grid and `ConcentricRingsStructurePlacement` lays a ring about the origin, while the monument is a
+single structure at a position the dimension's own layout chose —
+`StructureCalculator.getMonumentPosition()`, the centre of the ring the puzzle structures are laid
+around. So it is its own `StructurePlacementType` whose `isPlacementChunk` answers true for exactly one
+chunk. Its codec is a unit: there is nothing to configure, the position is not data, and the datapack
+entry is just `{"type": "chromaticraft:monument"}`.
+
+`ProximaGenerators.monumentPosition()` returns **null** before the layout exists rather than a
+fallback, and the placement answers no when it does. A monument placed at a guessed position would be
+written into a saved chunk and stay wrong for the life of that world — the same failure mode that once
+made every Proxima chunk save as Luminescent Sanctuary. In practice the layout is finished long before
+any chunk is built.
+
+**`MonumentPiece`.** Upstream's `startCalculate` does three things in sequence and the order is
+load-bearing: hollow an ellipsoid of r=32/r2=24 to air, lay grass across the whole square at
+`posY - 1` — the whole square, not only the ellipse, so the monument sits on a floor rather than in a
+bowl — and only then generate over the top. `posY` is 103, a fixed altitude rather than anything read
+from terrain, and the template is anchored at `(x-21, z-21)`, which is what centres a 43-wide template
+on the chosen position. Sixty-five blocks of clearing and forty-three of monument are both far wider
+than a feature's write window, which is why this is a piece: it is laid out once and painted chunk by
+chunk with a clipped box.
+
+The template is placed with vanilla's `StructureTemplate.placeInWorld` rather than
+`NBTStructureLoader.place`. The loader exists for the feature case, where the write window is the
+constraint and the caller never gets a box; here the box is exactly what is wanted and `placeInWorld`
+honours it natively.
+
+Its biome is the Monument Field, which `BiomeDistributor` already paints around the ring's centre — so
+the one place the monument may stand is the one place that biome exists, and the structure's biome
+filter and its placement agree by construction rather than by coincidence. `TerrainAdjustment.NONE`,
+since the piece lays its own floor.
+
+`chromaticraft:proxima_monument_template` pins the part that can fail silently: the template's size and
+its exact cell counts — 3503 shielding, sixteen distinct runes, one controller — plus that the
+registered structure and set are the monument types rather than a spread. An import whose parse matched
+nothing would produce an empty structure that datagen accepts without complaint.
+
+**Still deferred: the ritual.** Unchanged from the previous entry — it needs its dependency chain
+inventoried and a common/client split before any of it is written.

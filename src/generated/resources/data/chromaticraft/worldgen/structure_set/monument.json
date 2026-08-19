@@ -1,0 +1,11 @@
+{
+  "placement": {
+    "type": "chromaticraft:monument"
+  },
+  "structures": [
+    {
+      "structure": "chromaticraft:monument",
+      "weight": 1
+    }
+  ]
+}

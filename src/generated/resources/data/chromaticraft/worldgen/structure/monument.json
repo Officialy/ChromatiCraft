@@ -1,0 +1,6 @@
+{
+  "type": "chromaticraft:monument",
+  "biomes": "chromaticraft:monument_field",
+  "spawn_overrides": {},
+  "step": "surface_structures"
+}

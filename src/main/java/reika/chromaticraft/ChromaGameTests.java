@@ -312,6 +312,7 @@ public final class ChromaGameTests {
 		register(event, env, "crystal_pit_feature", ChromaGameTests::crystalPitFeature);
 		register(event, env, "proxima_biome_features", ChromaGameTests::proximaBiomeFeatures);
 		register(event, env, "proxima_glow_trees", ChromaGameTests::proximaGlowTrees);
+		register(event, env, "proxima_monument_template", ChromaGameTests::proximaMonumentTemplate);
 		register(event, env, "aurorae_feature", ChromaGameTests::auroraeFeature);
 		register(event, env, "aurora_curtain_drift", ChromaGameTests::auroraCurtainDrift);
 		register(event, env, "proxima_layout_biomes", ChromaGameTests::proximaLayoutBiomes);
@@ -2202,6 +2203,59 @@ public final class ChromaGameTests {
 		// shape lists did not survive transcription.
 		helper.assertTrue(leaves >= 90, "a glowing tree grew only " + leaves + " leaves; the smallest of "
 				+ "V33a's three shapes places 105 cells");
+		helper.succeed();
+	}
+
+	/**
+	 * The monument's template and the wiring that puts it in the world. The template is the part that
+	 * can break silently — it is imported from three and a half thousand generated lines, and a parse
+	 * that matched nothing would produce an empty structure that datagen accepts without complaint.
+	 */
+	private static void proximaMonumentTemplate(GameTestHelper helper) {
+		var level = helper.getLevel();
+		var template = level.getStructureManager()
+				.get(reika.chromaticraft.data.ChromaStructureTemplateProvider.PROXIMA_MONUMENT)
+				.orElse(null);
+		helper.assertTrue(template != null, "the monument template is missing entirely");
+		var size = template.getSize();
+		helper.assertTrue(size.getX() == 43 && size.getY() == 13 && size.getZ() == 43,
+				"the monument must be 43x13x43, found " + size);
+
+		// V33a's MonumentStructure is 3503 cells; the highlighter adds sixteen runes and a controller.
+		int shielding = 0;
+		int runes = 0;
+		int controllers = 0;
+		for (var info : template.filterBlocks(BlockPos.ZERO,
+				new net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings(),
+				net.minecraft.world.level.block.Blocks.AIR, false)) {
+			var block = info.state().getBlock();
+			String path = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(block).getPath();
+			if (path.startsWith("shielding_"))
+				shielding++;
+			else if (path.startsWith("crystal_rune_"))
+				runes++;
+			else if (path.equals("structure_controller"))
+				controllers++;
+		}
+		helper.assertTrue(shielding == 3503, "the monument must carry V33a's 3503 shielding cells; the "
+				+ "import found " + shielding);
+		helper.assertTrue(runes == 16, "the monument's rune ring must be sixteen distinct runes, one per "
+				+ "element; found " + runes);
+		helper.assertTrue(controllers == 1,
+				"the monument must carry exactly one structure controller; found " + controllers);
+
+		// And the wiring: a structure, a set, and the single-chunk placement that names where it goes.
+		var registries = level.registryAccess();
+		var structure = registries.lookupOrThrow(net.minecraft.core.registries.Registries.STRUCTURE)
+				.getOrThrow(reika.chromaticraft.world.dimension.structure.ProximaStructures.MONUMENT).value();
+		helper.assertTrue(structure instanceof
+						reika.chromaticraft.world.dimension.structure.ProximaMonumentStructure,
+				"chromaticraft:monument must be the monument structure type");
+		var set = registries.lookupOrThrow(net.minecraft.core.registries.Registries.STRUCTURE_SET)
+				.getOrThrow(reika.chromaticraft.world.dimension.structure.ProximaStructures.MONUMENT_SET).value();
+		helper.assertTrue(set.placement()
+						instanceof reika.chromaticraft.world.dimension.structure.MonumentPlacement,
+				"the monument set must use the single-chunk placement, not a random spread");
 		helper.succeed();
 	}
 

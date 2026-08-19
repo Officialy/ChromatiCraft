@@ -34,5 +34,27 @@ public final class ProximaStructures {
 			GLASS_CLIFF_SET = ResourceKey.create(Registries.STRUCTURE_SET,
 					Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "glass_cliff"));
 
+	public static final DeferredHolder<StructureType<?>, StructureType<ProximaMonumentStructure>>
+			MONUMENT_TYPE = TYPES.register("monument", () -> () -> ProximaMonumentStructure.CODEC);
+
+	/**
+	 * The monument's placement is its own type because it names one chunk rather than a spread; see
+	 * {@link MonumentPlacement}.
+	 */
+	public static final DeferredRegister<net.minecraft.world.level.levelgen.structure.placement.StructurePlacementType<?>>
+			PLACEMENTS = DeferredRegister.create(
+					net.minecraft.core.registries.BuiltInRegistries.STRUCTURE_PLACEMENT, ChromatiCraft.MODID);
+
+	public static final DeferredHolder<net.minecraft.world.level.levelgen.structure.placement.StructurePlacementType<?>,
+			net.minecraft.world.level.levelgen.structure.placement.StructurePlacementType<MonumentPlacement>>
+			MONUMENT_PLACEMENT = PLACEMENTS.register("monument", () -> () -> MonumentPlacement.CODEC);
+
+	public static final ResourceKey<Structure> MONUMENT = ResourceKey.create(Registries.STRUCTURE,
+			Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "monument"));
+
+	public static final ResourceKey<net.minecraft.world.level.levelgen.structure.StructureSet>
+			MONUMENT_SET = ResourceKey.create(Registries.STRUCTURE_SET,
+					Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "monument"));
+
 	private ProximaStructures() {}
 }

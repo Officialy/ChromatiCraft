@@ -22,5 +22,9 @@ public final class ProximaStructurePieces {
 			PIECES.register("glass_cliff",
 					() -> (StructurePieceType)(context, tag) -> new GlassCliffPiece(tag));
 
+	public static final DeferredHolder<StructurePieceType, StructurePieceType> MONUMENT =
+			PIECES.register("monument",
+					() -> (StructurePieceType)(context, tag) -> new MonumentPiece(tag));
+
 	private ProximaStructurePieces() {}
 }

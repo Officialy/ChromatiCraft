@@ -91,6 +91,21 @@ public final class ProximaGenerators {
 	}
 
 	/**
+	 * Where the monument stands, or null before the layout exists.
+	 *
+	 * <p>Null is answered rather than a fallback deliberately. The structure placement asks this while
+	 * deciding whether a chunk holds the monument, and a monument placed at a guessed position would be
+	 * written into a saved chunk and stay wrong for the life of that world — the same failure mode that
+	 * made every Proxima chunk save as Luminescent Sanctuary. In practice the layout is finished long
+	 * before any chunk is built: it is kicked when the server starts and waited for when the level
+	 * loads.
+	 */
+	public static net.minecraft.core.BlockPos monumentPosition() {
+		Layout current = layout;
+		return current == null ? null : current.structures().getMonumentPosition();
+	}
+
+	/**
 	 * V33a {@code ChunkProviderChroma.regenerateGenerators}: sets every bit pending, then runs the
 	 * generators off the server thread in dependency order.
 	 *
