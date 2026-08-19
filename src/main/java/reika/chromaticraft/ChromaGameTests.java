@@ -2222,21 +2222,20 @@ public final class ChromaGameTests {
 				"the monument must be 43x13x43, found " + size);
 
 		// V33a's MonumentStructure is 3503 cells; the highlighter adds sixteen runes and a controller.
-		int shielding = 0;
+		// filterBlocks selects the cells that MATCH the block handed to it -- it is not an exclusion --
+		// so each block of interest is asked for by name. Passing a block the template does not contain
+		// returns an empty list, which is what a wrong argument here looks like.
+		var settings = new net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings();
+		int shielding = template.filterBlocks(BlockPos.ZERO, settings,
+						ChromaBlocks.shielding(reika.chromaticraft.registry.ChromaShieldTypes.STONE).get(), false).size()
+				+ template.filterBlocks(BlockPos.ZERO, settings,
+						ChromaBlocks.shielding(reika.chromaticraft.registry.ChromaShieldTypes.CLOAK).get(), false).size();
 		int runes = 0;
-		int controllers = 0;
-		for (var info : template.filterBlocks(BlockPos.ZERO,
-				new net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings(),
-				net.minecraft.world.level.block.Blocks.AIR, false)) {
-			var block = info.state().getBlock();
-			String path = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(block).getPath();
-			if (path.startsWith("shielding_"))
-				shielding++;
-			else if (path.startsWith("crystal_rune_"))
-				runes++;
-			else if (path.equals("structure_controller"))
-				controllers++;
-		}
+		for (CrystalElement element : CrystalElement.elements)
+			runes += template.filterBlocks(BlockPos.ZERO, settings,
+					ChromaBlocks.rune(element).get(), false).size();
+		int controllers = template.filterBlocks(BlockPos.ZERO, settings,
+				ChromaBlocks.STRUCTURE_CONTROLLER.get(), false).size();
 		helper.assertTrue(shielding == 3503, "the monument must carry V33a's 3503 shielding cells; the "
 				+ "import found " + shielding);
 		helper.assertTrue(runes == 16, "the monument's rune ring must be sixteen distinct runes, one per "
