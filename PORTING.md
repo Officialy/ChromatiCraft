@@ -5917,3 +5917,37 @@ nothing would produce an empty structure that datagen accepts without complaint.
 
 **Still deferred: the ritual.** Unchanged from the previous entry — it needs its dependency chain
 inventoried and a common/client split before any of it is written.
+
+### 2026-08-19 — The puzzle deferral is lifted, and what that actually costs
+
+The brief's standing "do not implement Proxima puzzles yet" was **lifted by the user on 2026-08-19**.
+It came up because the monument ritual is blocked behind `TileEntityDimensionCore`, and about half that
+class is puzzle-structure machinery — `setStructure(StructurePair)`, `getStructure`, `hasStructure`,
+`doScanForEntry`, `getStructureEntryBox`, `doStructureCalculation`, `openStructure`, and the
+`structureControlFX` client branch. Porting it fully under the no-stubs rule required the puzzle
+generator, so the two rules collided and the user resolved it in favour of the puzzles.
+
+**The number worth knowing before anyone starts.** The full cluster under `World/Dimension/Structure/`
+is **133 files and roughly 82,000 lines** — Altar, AntFarm, Bridge, Game of Life, Locks, Music,
+Shooter, TileGrid, Water, Wormhole and the rest. That is the largest single subsystem in the mod and
+is not a session's work.
+
+**But almost none of it is needed to unblock the monument.** `TileEntityDimensionCore` needs the
+*base* only: `Base/DimensionStructureGenerator.java`, 631 lines, which also contains `StructurePair`
+as an inner class — so the minimal unblock is one file. `getStructure()` returning null is a legitimate
+state; a core with no structure attached still works, which is exactly the case every monument core is
+in. The individual puzzle types can then be ported one at a time, when something actually needs each.
+
+Revised order for the monument, therefore:
+
+1. `Base/DimensionStructureGenerator.java` (631) — the base and `StructurePair`.
+2. `TileEntityDimensionCore` (712) — now portable in full rather than in halves.
+3. `TileEntityStructControl` (1186) — the controller the template already places at (21, 5, 21).
+4. `TileEntityAuraPoint` (570) — what the monument becomes on completion.
+5. `MonumentCompletionRitual` (1002), split into a common timeline and a client-only effects half.
+
+A cross-check found while scoping, worth keeping: the core ring and the rune ring are **different
+rings**. Core BLACK is at (5, 11, 18), rune BLACK at (3, 11, 18) — same height, same angular start,
+same direction, cores inset from the runes. The element ordering agrees between them (V33a's `addColor`
+runs BLACK to WHITE and the port's `CrystalElement` declares BLACK first), which independently confirms
+the rune ring already in the monument template is right in identity and not only in count.
