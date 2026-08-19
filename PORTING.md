@@ -5951,3 +5951,56 @@ rings**. Core BLACK is at (5, 11, 18), rune BLACK at (3, 11, 18) — same height
 same direction, cores inset from the runes. The element ordering agrees between them (V33a's `addColor`
 runs BLACK to WHITE and the port's `CrystalElement` declares BLACK first), which independently confirms
 the rune ring already in the monument template is right in identity and not only in count.
+
+### 2026-08-19 — The monument's blockers: structure base, locus point, Dimension Core
+
+Three layers, ported bottom-up, because each was the reason the next could not be built.
+
+**`StructureGeneratorBase`** — V33a's `DimensionStructureGenerator`, and `StructurePair` with it as an
+inner class, which is why one file unblocked the chain. Its worldgen-writer half deliberately does not
+come across: upstream owns a `ChunkSplicedGenerationCache` that subclasses `setBlock` into and
+`generateChunk` flushes per chunk, whereas 26.2 says the same thing as a `Structure` and its pieces
+with the engine doing the bookkeeping. So a generator here *plans* — it fills a map of the cells it
+wants — and a piece paints them, which is the shape `MonumentPiece` already takes. `isComplete()` being
+"did you place a core" is upstream's real contract: Reika test-ran each generator at class-init and
+marked the type usable only if it produced one, which is how he filtered out his own unfinished ones.
+
+**`ThreadSafeTileCache`** (DragonAPI) and **`TileEntityLocusPoint`** — the cache is why the locus point
+exists. A locus point is looked up by *who placed it*, not by where it is, and usually from a thread
+with no world in hand. So each instance registers into a per-class, per-owner cache on first tick and
+removes itself when broken, and the cache holds `WorldLocation`s rather than tiles because a location
+outlives its tile, survives chunk unload and resolves across dimensions.
+
+Two things there are worth keeping. The cache's three traversals share one private walk, and *skipping*
+is decided inside it rather than signalled back: a null tile is legitimately skipped on the client and
+legitimately a match when `tileClass` is null, so no sentinel of type `BlockEntity` can separate those
+from a genuine null match. For the same reason `lookForMatch` is not `returnMatch(...) != null` — that
+would call a null-tile match no match at all. And upstream dereferences the tile before null-checking
+it when a tile class is set, which throws on a location whose block has gone; guarding that is a fix
+rather than a change, since the entry was always meant to be dropped there.
+
+**`TileEntityDimensionCore`** — the sixteen elemental cores, plus their block, block entity, tile enum
+entry, models and display name. A core is two things wearing one block: out in the ring it is the prize
+at the end of a puzzle structure, sealed until that puzzle is solved; around the monument it is one of
+sixteen a player plants, and the ritual will not start until all sixteen are present, the right colour,
+and placed by the same person.
+
+The seal is real, not deferred: `getDestroyProgress` returns zero for a core whose structure is
+unsolved, which is how vanilla expresses "cannot be mined" without a special case at every break site —
+and unlike a break event it also covers explosions and other mods' miners.
+
+Recorded because it is the easiest thing here to get wrong, and the new
+`chromaticraft:dimension_core_ring` test pins it: **the core ring is not the rune ring.** Cores sit
+inset — BLACK at (5, 11, 18) against the runes' (3, 11, 18) — while sharing a height, a start and a
+direction with them.
+
+Two calls on the mining path are forward references, each named at the line it belongs on:
+`ChromaDimensionManager`'s per-player structure registry and
+`ProgressionManager.markPlayerCompletedStructureColor`. Neither is ported. Everything around them is,
+including the unsealing itself, so a solved structure still opens while the progression record is
+missing.
+
+**Remaining for the ritual:** `TileEntityStructControl` (1186 lines — the controller the monument
+template already places at (21, 5, 21); `endRitual` calls its `endMonumentRitual`), `TileEntityAuraPoint`
+(570 — what the monument becomes on completion), then `MonumentCompletionRitual` itself (1002), which
+must be split into a common timeline and a client-only effects half.

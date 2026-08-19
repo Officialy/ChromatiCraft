@@ -41,6 +41,7 @@ public class ChromaLang extends LanguageProvider {
 		// these two, so the text below is retained pre-existing invented text, not a port. See report.
 		add("block.chromaticraft.storage", "Storage Block");
 		add("block.chromaticraft.display_point", "Display Point");
+		add("block.chromaticraft.dimension_core", "Dimension Core");
 		// V33a chroma.stand = "Item Casting Stand" (not "Casting Stand").
 		add("block.chromaticraft.casting_item_stand", "Item Casting Stand");
 		// V33a chroma.table = "Casting Table" — matches.

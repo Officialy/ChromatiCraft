@@ -313,6 +313,7 @@ public final class ChromaGameTests {
 		register(event, env, "proxima_biome_features", ChromaGameTests::proximaBiomeFeatures);
 		register(event, env, "proxima_glow_trees", ChromaGameTests::proximaGlowTrees);
 		register(event, env, "proxima_monument_template", ChromaGameTests::proximaMonumentTemplate);
+		register(event, env, "dimension_core_ring", ChromaGameTests::dimensionCoreRing);
 		register(event, env, "aurorae_feature", ChromaGameTests::auroraeFeature);
 		register(event, env, "aurora_curtain_drift", ChromaGameTests::auroraCurtainDrift);
 		register(event, env, "proxima_layout_biomes", ChromaGameTests::proximaLayoutBiomes);
@@ -2255,6 +2256,44 @@ public final class ChromaGameTests {
 		helper.assertTrue(set.placement()
 						instanceof reika.chromaticraft.world.dimension.structure.MonumentPlacement,
 				"the monument set must use the single-chunk placement, not a random spread");
+		helper.succeed();
+	}
+
+	/**
+	 * The Dimension Core's ring, which the monument ritual walks to find all sixteen cores. The ring is
+	 * the easiest thing here to get subtly wrong: it is <em>not</em> the rune ring in the monument
+	 * template, it is inset from it, and the two share a height, a start and a direction.
+	 */
+	private static void dimensionCoreRing(GameTestHelper helper) {
+		var seen = new java.util.HashSet<net.minecraft.core.Vec3i>();
+		for (CrystalElement element : CrystalElement.elements) {
+			var offset = reika.chromaticraft.tileentity.technical.TileEntityDimensionCore.getLocation(element);
+			helper.assertTrue(offset != null, "no core position for " + element);
+			helper.assertTrue(seen.add(offset), element + " shares a core position with another element");
+			helper.assertTrue(offset.getY() == 6,
+					element + " core sits at y " + offset.getY() + "; the whole ring is at y+11 relative "
+							+ "to a controller at y+5");
+		}
+		helper.assertTrue(seen.size() == 16, "the core ring must have sixteen distinct positions");
+
+		// V33a addColor(BLACK, 5, 11, 18) against the controller at (21, 5, 21).
+		var black = reika.chromaticraft.tileentity.technical.TileEntityDimensionCore.getLocation(CrystalElement.BLACK);
+		helper.assertTrue(black.equals(new net.minecraft.core.Vec3i(-16, 6, -3)),
+				"BLACK core must be at (-16, 6, -3) from the controller, found " + black);
+		// And it must NOT be the rune position, which is two blocks further out.
+		helper.assertTrue(!black.equals(new net.minecraft.core.Vec3i(-18, 6, -3)),
+				"the core ring has been confused with the rune ring; the cores are inset from the runes");
+
+		// The block and its tile exist and round-trip a colour, which is what the ritual reads.
+		BlockPos pos = helper.absolutePos(new BlockPos(3, 3, 3));
+		helper.getLevel().setBlock(pos, ChromaBlocks.DIMENSION_CORE.get().defaultBlockState(), 3);
+		helper.assertTrue(helper.getLevel().getBlockEntity(pos) instanceof reika.chromaticraft.tileentity.technical.TileEntityDimensionCore,
+				"the Dimension Core block must carry a TileEntityDimensionCore");
+		var core = (reika.chromaticraft.tileentity.technical.TileEntityDimensionCore)helper.getLevel().getBlockEntity(pos);
+		core.setColor(CrystalElement.LIME);
+		helper.assertTrue(core.getColor() == CrystalElement.LIME, "a core must keep the colour it is set");
+		helper.assertTrue(!core.hasStructure(),
+				"a core placed by hand belongs to no structure until one claims it");
 		helper.succeed();
 	}
 

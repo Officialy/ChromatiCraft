@@ -55,7 +55,9 @@ public enum ChromaTiles implements TileEnum {
 	INFUSER("chroma.infuser", ChromaBlocks.ITEM_INFUSER, TileEntityItemInfuser.class),
 	PLAYERINFUSER("chroma.playerinfuser", ChromaBlocks.PLAYER_INFUSER, TileEntityPlayerInfuser.class),
 	FOCUSCRYSTAL("chroma.focuscrystal", ChromaBlocks.FOCUS_CRYSTAL, TileEntityFocusCrystal.class),
-	DATANODE("chroma.datanode", ChromaBlocks.DATA_NODE, TileEntityDataNode.class);
+	DATANODE("chroma.datanode", ChromaBlocks.DATA_NODE, TileEntityDataNode.class),
+	DIMENSIONCORE("chroma.dimensioncore", ChromaBlocks.DIMENSION_CORE,
+			reika.chromaticraft.tileentity.technical.TileEntityDimensionCore.class);
 
 	private final String nameKey;
 	private final DeferredBlock<Block> block;

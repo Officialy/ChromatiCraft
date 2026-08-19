@@ -138,6 +138,7 @@ public class ChromaModelProvider extends ModelProvider {
 		networkTileModel(ChromaBlocks.FOCUS_CRYSTAL.get(), "focus_crystal", "block/crystal/chroma", blockStateOut, itemModelOut, modelOut);
 		dataNodeModel(blockStateOut, itemModelOut, modelOut);
 		structureControllerModel(blockStateOut, modelOut);
+		dimensionCoreModel(blockStateOut, itemModelOut, modelOut);
 		chromaDoorModel(blockStateOut, itemModelOut, modelOut);
 		heatLampModels(blockStateOut, itemModelOut, modelOut);
 		metaAlloyModel(blockStateOut, itemModelOut, modelOut);
@@ -1305,6 +1306,28 @@ public class ChromaModelProvider extends ModelProvider {
 					new MultiVariant(WeightedList.of(new Variant(model)))));
 			itemModelOut.accept(portal.asItem(), ItemModelUtils.plainModel(model));
 		}
+	}
+
+	/**
+	 * The Dimension Core is drawn entirely by its block entity renderer, like the controller, so the
+	 * world model exists only to name a particle sprite. It does carry an item model, because a core is
+	 * an item a player carries out to the monument and plants.
+	 */
+	private static void dimensionCoreModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		Block block = ChromaBlocks.DIMENSION_CORE.get();
+		Material particle = new Material(Identifier.fromNamespaceAndPath(
+				ChromatiCraft.MODID, "block/icons/roundflare"));
+		Identifier worldModel = ModelTemplates.PARTICLE_ONLY.create(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/dimension_core"),
+				new TextureMapping().put(TextureSlot.PARTICLE, particle), modelOut);
+		blockStateOut.accept(MultiVariantGenerator.dispatch(block,
+				new MultiVariant(WeightedList.of(new Variant(worldModel)))));
+		Identifier itemModel = ModelTemplates.FLAT_ITEM.create(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "item/dimension_core"),
+				TextureMapping.layer0(new Material(Identifier.fromNamespaceAndPath(
+						ChromatiCraft.MODID, "block/icons/roundflare"))), modelOut);
+		itemModelOut.accept(block.asItem(), ItemModelUtils.plainModel(itemModel));
 	}
 
 	/** V33a renders the controller entirely through its dynamic structure-script renderer. */

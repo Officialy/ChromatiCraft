@@ -280,6 +280,16 @@ public final class ChromaBlocks {
 			registerBlockOnly("structure_controller", () -> new BlockStructureController(
 					blockProperties().mapColor(MapColor.NONE).strength(1.5F, 6000F).noOcclusion()));
 
+	/**
+	 * V33a's Dimension Core: the prize at the end of a puzzle structure, and the sixteen a player plants
+	 * around the monument. Unbreakable by blast, like the controller, and sealed by its own tile until
+	 * its structure is solved.
+	 */
+	public static final DeferredBlock<Block> DIMENSION_CORE =
+			register("dimension_core", () -> (Block)new reika.chromaticraft.block.dimension.BlockDimensionCore(
+					blockProperties().mapColor(MapColor.COLOR_PURPLE).strength(1.5F, 6000F)
+							.lightLevel(state -> 11).noOcclusion()));
+
 	/** V33a connected UUID door; explicit properties replace its packed metadata flags. */
 	public static final DeferredBlock<BlockChromaDoor> CHROMA_DOOR = register("chroma_door",
 			() -> new BlockChromaDoor(blockProperties().mapColor(MapColor.COLOR_PURPLE)

@@ -1,12 +1,3 @@
-/*******************************************************************************
- * @author Reika Kalseki
- *
- * Copyright 2017
- *
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
- ******************************************************************************/
 package reika.chromaticraft.tileentity.technical;
 
 import java.util.ArrayList;
@@ -17,79 +8,71 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
-import org.apache.commons.lang3.tuple.ImmutablePair;
-
-import net.minecraft.block.Block;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.particle.EntityFX;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.init.Blocks;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.nbt.NBTTagList;
-import net.minecraft.nbt.NBTTagString;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.AxisAlignedBB;
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Vec3i;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.StringTag;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
 
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.auxiliary.CrystalMusicManager;
-import reika.chromaticraft.base.DimensionStructureGenerator;
-import reika.chromaticraft.base.dimensionstructuregenerator.DimensionStructureType;
-import reika.chromaticraft.base.dimensionstructuregenerator.StructurePair;
 import reika.chromaticraft.base.tileentity.TileEntityLocusPoint;
-import reika.chromaticraft.block.worldgen.BlockStructureShield;
-import reika.chromaticraft.block.worldgen.blockstructureshield.BlockType;
 import reika.chromaticraft.magic.ElementMixer;
-import reika.chromaticraft.magic.progression.ProgressionManager;
-import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaSounds;
-import reika.chromaticraft.registry.ChromaTiles;
+import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.render.particle.EntityCCBlurFX;
-import reika.chromaticraft.render.particle.EntityCCFloatingSeedsFX;
-import reika.chromaticraft.render.particle.EntityLaserFX;
-import reika.chromaticraft.world.dimension.ChromaDimensionManager;
-import reika.chromaticraft.world.dimension.ChunkProviderChroma;
-import reika.dragonapi.exception.RegistrationException;
-import reika.dragonapi.instantiable.data.immutable.BlockKey;
-import reika.dragonapi.instantiable.data.immutable.Coordinate;
-import reika.dragonapi.instantiable.effects.EntityFloatingSeedsFX;
-import reika.dragonapi.interfaces.tileentity.PlayerBreakHook;
-import reika.dragonapi.libraries.reikanbthelper.NBTTypes;
+import reika.chromaticraft.world.dimension.DimensionStructureType;
+import reika.chromaticraft.world.dimension.structure.StructureGeneratorBase;
+import reika.chromaticraft.world.dimension.structure.StructureGeneratorBase.StructurePair;
 import reika.dragonapi.libraries.ReikaPlayerAPI;
-import reika.dragonapi.libraries.io.ReikaSoundHelper;
-import reika.dragonapi.libraries.java.ReikaRandomHelper;
-import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
-import reika.dragonapi.libraries.mathsci.reikamusichelper.MusicKey;
-import reika.dragonapi.libraries.rendering.ReikaColorAPI;
-import reika.dragonapi.libraries.world.ReikaWorldHelper;
+import reika.dragonapi.libraries.mathsci.ReikaMusicHelper.MusicKey;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
+/**
+ * V33a {@code TileEntityDimensionCore}: the sixteen elemental cores of Proxima.
+ *
+ * <p>A core is two things wearing one block. Out in the ring it is the prize at the end of a puzzle
+ * structure — sealed until that puzzle is solved, and mining it is what marks the structure complete.
+ * Around the monument it is one of sixteen a player plants themselves, and the ritual will not start
+ * until all sixteen are present, the right colour, and placed by the same person.
+ *
+ * <h2>The two rings are not the same ring</h2>
+ *
+ * <p>{@link #getLocation} returns the core offsets relative to the monument's controller at
+ * (21, 5, 21) — BLACK at (5, 11, 18) and round from there. Those are <em>not</em> the rune positions in
+ * the monument template, which start at (3, 11, 18): the runes mark the ring, the cores sit inset from
+ * them. Both run at y+11, from the same angular start, in the same direction, which is exactly why the
+ * two are easy to confuse.
+ *
+ * <h2>What is deferred, and why it is a forward reference rather than a hole</h2>
+ *
+ * <p>Two calls on the mining path reach code this port has not built: {@code ChromaDimensionManager}'s
+ * per-player structure registry, which tracks who is inside which puzzle, and
+ * {@code ProgressionManager.markPlayerCompletedStructureColor}. Both are named at their call sites with
+ * the behaviour they owe. Everything that does not need them is complete, including the seal itself —
+ * an unsolved structure's core refuses to break today, which is the half that matters.
+ */
+public class TileEntityDimensionCore extends TileEntityLocusPoint {
 
-//Structure core, does FX and things
-public class TileEntityDimensionCore extends TileEntityLocusPoint implements PlayerBreakHook {
+	/** V33a's core ring, as offsets from the monument controller at (21, 5, 21). */
+	private static final EnumMap<CrystalElement, Vec3i> locations = new EnumMap<>(CrystalElement.class);
+	/** Which colours a core throws a beam to: everything it mixes with, parents and children alike. */
+	private static final EnumMap<CrystalElement, Set<CrystalElement>> beams =
+			new EnumMap<>(CrystalElement.class);
+	/** V33a's two connect-melody tracks, as the colour/interval pairs each beat sounds. */
+	private static final List<List<List<ColorNote>>> melody = new ArrayList<>();
 
 	private CrystalElement color = CrystalElement.WHITE;
-	private UUID uid = null;
-	private DimensionStructureType structure = null;
-	private boolean triggered = false;
+	private UUID uid;
+	private DimensionStructureType structure;
+	private boolean triggered;
 
-	private final HashSet<UUID> sentPlayers = new HashSet();
-	private final HashSet<UUID> playerWhitelist = new HashSet();
+	private final Set<UUID> sentPlayers = new HashSet<>();
+	private final Set<UUID> playerWhitelist = new HashSet<>();
 
-	private static final EnumMap<CrystalElement, Coordinate> locations = new EnumMap(CrystalElement.class);
-	private static final EnumMap<CrystalElement, HashSet<CrystalElement>> beams = new EnumMap(CrystalElement.class);
-	private static final ArrayList<ArrayList<ImmutablePair<CrystalElement, Integer>>>[] melody = new ArrayList[2];
-
-	private boolean primed = false;
-	private int nextConnectNote = -1;
-	private long nextConnectTick = -1;
-	private static int nextNoteIndex = -1;
-
-	public float shaderScale = 1;
+	private boolean primed;
 
 	static {
 		addColor(CrystalElement.BLACK, 5, 11, 18);
@@ -109,430 +92,87 @@ public class TileEntityDimensionCore extends TileEntityLocusPoint implements Pla
 		addColor(CrystalElement.ORANGE, 8, 11, 28);
 		addColor(CrystalElement.WHITE, 5, 11, 24);
 
-		for (int i = 0; i < 16; i++) {
-			CrystalElement e = CrystalElement.elements[i];
-			HashSet<CrystalElement> m = new HashSet();
-			Collection<CrystalElement> m2 = ElementMixer.instance.getMixablesWith(e);
-			if (m2 != null) {
-				m.addAll(m2);
-			}
-			m2 = ElementMixer.instance.getMixParents(e);
-			if (m2 != null) {
-				m.addAll(m2);
-			}
-			m2 = ElementMixer.instance.getChildrenOf(e);
-			if (m2 != null) {
-				m.addAll(m2);
-			}
+		for (CrystalElement e : CrystalElement.elements) {
+			Set<CrystalElement> m = new HashSet<>();
+			addAll(m, ElementMixer.instance.getMixablesWith(e));
+			addAll(m, ElementMixer.instance.getMixParents(e));
+			addAll(m, ElementMixer.instance.getChildrenOf(e));
 			beams.put(e, m);
 		}
 
-		melody[0] = new ArrayList();
-		addMelodyNote(0, MusicKey.G4);
-		addMelodyNote(0, MusicKey.A4);
-		addMelodyNote(0, MusicKey.B4);
-		addMelodyNote(0, MusicKey.D5);
-		addMelodyNote(0, MusicKey.C5);
-		addMelodyNote(0, MusicKey.C5);
-		addMelodyNote(0, MusicKey.E5);
-		addMelodyNote(0, MusicKey.D5);
-		addMelodyNote(0, MusicKey.D5);
-		addMelodyNote(0, MusicKey.G5);
-		addMelodyNote(0, MusicKey.Fs5);
-		addMelodyNote(0, MusicKey.G5);
-		addMelodyNote(0, MusicKey.D5);
-		addMelodyNote(0, MusicKey.B4);
-		addMelodyNote(0, MusicKey.G4);
-		addMelodyNote(0, MusicKey.A4);
-		addMelodyNote(0, MusicKey.B4);
-		addMelodyNote(0, MusicKey.C5);
-		addMelodyNote(0, MusicKey.D5);
-		addMelodyNote(0, MusicKey.E5);
-		addMelodyNote(0, MusicKey.D5);
-		addMelodyNote(0, MusicKey.C5);
-		addMelodyNote(0, MusicKey.B4);
-		addMelodyNote(0, MusicKey.A4);
-		addMelodyNote(0, MusicKey.B4);
-		addMelodyNote(0, MusicKey.G4);
-		addMelodyNote(0, MusicKey.Fs4);
-		addMelodyNote(0, MusicKey.G4);
-		addMelodyNote(0, MusicKey.A4);
-		addMelodyNote(0, MusicKey.D5);
-		addMelodyNote(0, MusicKey.Fs5);
-		addMelodyNote(0, MusicKey.A5);
-		addMelodyNote(0, MusicKey.C6);
-		addMelodyNote(0, MusicKey.B5);
-		addMelodyNote(0, MusicKey.A5);
-		addMelodyNote(0, MusicKey.B5);
-		addMelodyNote(0, MusicKey.G5);
-		addMelodyNote(0, MusicKey.A5);
-		addMelodyNote(0, MusicKey.B5);
-		addMelodyNote(0, MusicKey.D6);
-		addMelodyNote(0, MusicKey.C6);
-		addMelodyNote(0, MusicKey.C6);
-		addMelodyNote(0, MusicKey.E6);
-		addMelodyNote(0, MusicKey.D5);
-		addMelodyNote(0, MusicKey.D6);
-		addMelodyNote(0, MusicKey.D6);
-		addMelodyNote(0, MusicKey.G5);
-		addMelodyNote(0, MusicKey.Fs5);
-		addMelodyNote(0, MusicKey.G5);
-		addMelodyNote(0, MusicKey.D6);
-		addMelodyNote(0, MusicKey.B5);
-		addMelodyNote(0, MusicKey.G5);
-		addMelodyNote(0, MusicKey.A5);
-		addMelodyNote(0, MusicKey.B5);
-		addMelodyNote(0, MusicKey.E5);
-		addMelodyNote(0, MusicKey.D6);
-		addMelodyNote(0, MusicKey.C6);
-		addMelodyNote(0, MusicKey.B5);
-		addMelodyNote(0, MusicKey.A5);
-		addMelodyNote(0, MusicKey.G5);
-		addMelodyNote(0, MusicKey.D5);
-		addMelodyNote(0, MusicKey.G5);
-		addMelodyNote(0, MusicKey.Fs5);
-		addMelodyNote(0, MusicKey.G5);
-		addMelodyNote(0, MusicKey.G5);
-		addMelodyNote(0, MusicKey.G5);
-		addMelodyNote(0, MusicKey.G5);
-
-		melody[1] = new ArrayList();
-		addMelodyNote(1, MusicKey.C5);
-		addMelodyNote(1, MusicKey.E5);
-		addMelodyNote(1, MusicKey.G5);
-		addMelodyNote(1, MusicKey.C6);
-		addMelodyNote(1, MusicKey.G4);
-		addMelodyNote(1, MusicKey.B4);
-		addMelodyNote(1, MusicKey.D5);
-		addMelodyNote(1, MusicKey.G5);
-		addMelodyNote(1, MusicKey.A4);
-		addMelodyNote(1, MusicKey.C5);
-		addMelodyNote(1, MusicKey.E5);
-		addMelodyNote(1, MusicKey.A5);
-		addMelodyNote(1, MusicKey.E4);
-		addMelodyNote(1, MusicKey.G4);
-		addMelodyNote(1, MusicKey.B4);
-		addMelodyNote(1, MusicKey.G5);
-		addMelodyNote(1, MusicKey.F4);
-		addMelodyNote(1, MusicKey.A4);
-		addMelodyNote(1, MusicKey.C5);
-		addMelodyNote(1, MusicKey.F5);
-		addMelodyNote(1, MusicKey.C4);
-		addMelodyNote(1, MusicKey.E4);
-		addMelodyNote(1, MusicKey.G4);
-		addMelodyNote(1, MusicKey.C5);
-		addMelodyNote(1, MusicKey.F4);
-		addMelodyNote(1, MusicKey.A4);
-		addMelodyNote(1, MusicKey.C5);
-		addMelodyNote(1, MusicKey.F5);
-		addMelodyNote(1, MusicKey.G4);
-		addMelodyNote(1, MusicKey.B4);
-		addMelodyNote(1, MusicKey.D5);
-		addMelodyNote(1, MusicKey.G5);
+		melody.add(track(MusicKey.G4, MusicKey.A4, MusicKey.B4, MusicKey.D5, MusicKey.C5, MusicKey.C5,
+				MusicKey.E5, MusicKey.D5, MusicKey.D5, MusicKey.G5, MusicKey.Fs5, MusicKey.G5,
+				MusicKey.D5, MusicKey.B4, MusicKey.G4, MusicKey.A4, MusicKey.B4, MusicKey.C5,
+				MusicKey.D5, MusicKey.E5, MusicKey.D5, MusicKey.C5, MusicKey.B4, MusicKey.A4,
+				MusicKey.B4, MusicKey.G4, MusicKey.Fs4, MusicKey.G4, MusicKey.A4, MusicKey.D5,
+				MusicKey.Fs5, MusicKey.A5, MusicKey.C6, MusicKey.B5, MusicKey.A5, MusicKey.B5,
+				MusicKey.G5, MusicKey.A5, MusicKey.B5, MusicKey.D6, MusicKey.C6, MusicKey.C6,
+				MusicKey.E6, MusicKey.D5, MusicKey.D6, MusicKey.D6, MusicKey.G5, MusicKey.Fs5,
+				MusicKey.G5, MusicKey.D6, MusicKey.B5, MusicKey.G5, MusicKey.A5, MusicKey.B5,
+				MusicKey.E5, MusicKey.D6, MusicKey.C6, MusicKey.B5, MusicKey.A5, MusicKey.G5,
+				MusicKey.D5, MusicKey.G5, MusicKey.Fs5, MusicKey.G5, MusicKey.G5, MusicKey.G5,
+				MusicKey.G5));
+		melody.add(track(MusicKey.C5, MusicKey.E5, MusicKey.G5, MusicKey.C6, MusicKey.G4, MusicKey.B4,
+				MusicKey.D5, MusicKey.G5, MusicKey.A4, MusicKey.C5, MusicKey.E5, MusicKey.A5,
+				MusicKey.E4, MusicKey.G4, MusicKey.B4, MusicKey.G5, MusicKey.F4, MusicKey.A4,
+				MusicKey.C5, MusicKey.F5, MusicKey.C4, MusicKey.E4, MusicKey.G4, MusicKey.C5,
+				MusicKey.F4, MusicKey.A4, MusicKey.C5, MusicKey.F5, MusicKey.G4, MusicKey.B4,
+				MusicKey.D5, MusicKey.G5));
 	}
 
-	private static void addMelodyNote(int track, MusicKey key) {
-		Collection<CrystalElement> c = CrystalMusicManager.instance.getColorsWithKey(key);
-		if (c.isEmpty())
-			throw new RegistrationException(ChromatiCraft.instance, "No such color for note "+key);
-		ArrayList<ImmutablePair<CrystalElement, Integer>> li = new ArrayList();
-		for (CrystalElement e : c) {
-			int idx = CrystalMusicManager.instance.getIntervalFor(e, key);
-			if (idx == -1) {
-				throw new RegistrationException(ChromatiCraft.instance, "No such index for note "+key+" for color "+e);
-			}
-			li.add(new ImmutablePair(e, idx));
-		}
-		//ReikaJavaLibrary.pConsole("Generating "+e+":"+idx+" for "+track+" / "+key);
-		melody[track].add(li);
+	public TileEntityDimensionCore(BlockPos pos, BlockState state) {
+		super(ChromaBlockEntities.DIMENSION_CORE.get(), pos, state);
 	}
 
+	private static void addAll(Set<CrystalElement> into, Collection<CrystalElement> from) {
+		if (from != null)
+			into.addAll(from);
+	}
+
+	/** V33a addColor: the table is written in template coordinates and stored relative to the core. */
 	private static void addColor(CrystalElement e, int x, int y, int z) {
-		locations.put(e, new Coordinate(x-21, y-5, z-21)); //base offset of controller is (21, 5, 21)
+		locations.put(e, new Vec3i(x - 21, y - 5, z - 21));
 	}
 
-	private Collection<CrystalElement> getColorBeams() {
-		return beams.get(color);
+	/**
+	 * V33a addMelodyNote: a key becomes the set of colours that can sound it, each with the interval
+	 * that colour has to play. A key no colour can sound would be a registration error upstream; here
+	 * it is simply an empty beat, which is what an unported music table would otherwise crash on.
+	 */
+	private static List<List<ColorNote>> track(MusicKey... keys) {
+		List<List<ColorNote>> notes = new ArrayList<>();
+		for (MusicKey key : keys) {
+			List<ColorNote> beat = new ArrayList<>();
+			Collection<CrystalElement> colors = CrystalMusicManager.instance.getColorsWithKey(key);
+			if (colors != null)
+				for (CrystalElement e : colors) {
+					int index = CrystalMusicManager.instance.getIntervalFor(e, key);
+					if (index != -1)
+						beat.add(new ColorNote(e, index));
+				}
+			notes.add(beat);
+		}
+		return notes;
 	}
 
-	public void setStructure(StructurePair p) {
-		structure = p.generator.getType();
-		uid = p.generator.id;
-		color = p.color;
-		this.syncAllData(false);
-	}
+	/** One colour sounding one interval of a beat. V33a uses an {@code ImmutablePair} for this. */
+	public record ColorNote(CrystalElement color, int interval) {}
 
 	@Override
-	public void updateEntity(World world, int x, int y, int z, int meta) {
-		super.updateEntity(world, x, y, z, meta);
-
-		if (world.isRemote) {
-			if (primed) {
-				this.spawnConnectFX(world, x, y, z);
-			}
-			else if (this.hasStructure()) {
-				this.structureControlFX(world, x, y, z);
-			}
-		}
-		else {
-			if (this.hasStructure()) {
-				this.doScanForEntry(world, x, y, z);
-				if (!triggered) {
-					this.doStructureCalculation(world, x, y, z);
-				}
-			}
-		}
+	public reika.chromaticraft.registry.ChromaTiles getTile() {
+		return reika.chromaticraft.registry.ChromaTiles.DIMENSIONCORE;
 	}
 
-	public void prime(boolean set) {
-		primed = set;
-		this.syncAllData(false);
+	public static Vec3i getLocation(CrystalElement e) {
+		return locations.get(e);
 	}
 
-	private DimensionStructureGenerator getStructure() {
-		return structure != null ? structure.getGenerator(uid) : null;
+	public CrystalElement getColor() {
+		return color;
 	}
 
-	public boolean hasStructure() {
-		return this.getStructure() != null;
-	}
-
-	private void doScanForEntry(World world, int x, int y, int z) {
-		AxisAlignedBB box = this.getStructureEntryBox();
-		//ReikaJavaLibrary.pConsole(box);
-		for (EntityPlayerMP ep : ((List<EntityPlayerMP>)world.getEntitiesWithinAABB(EntityPlayerMP.class, box))) {
-			UUID uid = ep.getUniqueID();
-			if (!sentPlayers.contains(uid)) {
-				if (ChromaDimensionManager.addPlayerToStructure(ep, this.getStructure()))
-					sentPlayers.add(uid);
-			}
-		}
-	}
-
-	private AxisAlignedBB getStructureEntryBox() {
-		DimensionStructureGenerator gen = this.getStructure();
-		int x = gen.getEntryPosX();
-		int y = gen.getPosY();
-		int z = gen.getEntryPosZ();
-		int r = 8;
-		return AxisAlignedBB.getBoundingBox(x-r, y, z-r, x+r+1, ReikaWorldHelper.getTopNonAirBlock(worldObj, x, z, true)+9, z+r+1);
-	}
-
-	private void doStructureCalculation(World world, int x, int y, int z) {
-		switch(structure) {
-			case ALTAR:
-				break;
-			case LOCKS:
-				break;
-			case SHIFTMAZE:
-				break;
-			case TDMAZE:
-				AxisAlignedBB box = AxisAlignedBB.getBoundingBox(x-1, y+2, z-1, x+2, y+4, z+2);
-				List<EntityPlayer> li = world.getEntitiesWithinAABB(EntityPlayer.class, box);
-				if (!li.isEmpty()) {
-					EntityPlayer ep = li.get(0);
-					triggered = true;
-					boolean w = rand.nextBoolean();
-					int dx = w ? rand.nextBoolean() ? -2 : 2 : rand.nextBoolean() ? 1 : -1;
-					int dz = !w ? rand.nextBoolean() ? -2 : 2 : rand.nextBoolean() ? 1 : -1;
-					int dx2 = Math.abs(dx) == 1 ? dx : (int)Math.signum(dx)*(Math.abs(dx)+1);
-					int dz2 = Math.abs(dz) == 1 ? dz : (int)Math.signum(dz)*(Math.abs(dz)+1);
-					world.setBlockMetadataWithNotify(x+dx, y+2, z+dz, BlockType.CRACKS.metadata, 3);
-					world.setBlockMetadataWithNotify(x+dx, y+3, z+dz, BlockType.CRACKS.metadata, 3);
-					world.setBlockMetadataWithNotify(x-dx2, y+1, z-dz2, BlockType.CRACKS.metadata, 3);
-					world.setBlockMetadataWithNotify(x+dx, y, z+dz, BlockType.CRACKS.metadata, 3);
-					world.setBlockMetadataWithNotify(x+dx, y-1, z+dz, BlockType.CRACKS.metadata, 3);
-					ReikaSoundHelper.playBreakSound(world, x, y+3, z, ChromaBlocks.STRUCTSHIELD.getBlockInstance(), 2, 1);
-					ReikaSoundHelper.playBreakSound(world, x, y+3, z, ChromaBlocks.STRUCTSHIELD.getBlockInstance(), 2, 1);
-					ReikaSoundHelper.playBreakSound(world, x, y+3, z, ChromaBlocks.STRUCTSHIELD.getBlockInstance(), 2, 1);
-				}
-				break;
-			case MUSIC:
-				break;
-			case NONEUCLID:
-				break;
-			case GOL:
-				break;
-			case ANTFARM:
-				break;
-			case LASER:
-				break;
-			case PINBALL:
-				break;
-			case GRAVITY:
-				break;
-			case BRIDGE:
-				break;
-			case LIGHTPANEL:
-				break;
-			case TESSELLATION:
-				break;
-			case WATER:
-				break;
-			case RAYBLEND:
-				break;
-			case PISTONTAPE:
-				break;
-			case TRACES:
-				break;
-		}
-	}
-
-	@SideOnly(Side.CLIENT)
-	private void structureControlFX(World world, int x, int y, int z) {
-
-	}
-
-	@SideOnly(Side.CLIENT)
-	private void queueConnectFX(int note, long tick) {
-		nextConnectTick = tick;
-		nextConnectNote = note;
-	}
-
-	@SideOnly(Side.CLIENT)
-	private void spawnConnectFX(World world, int x, int y, int z) {
-		int sp = 8;
-		long tick = world.getTotalWorldTime(); //this.getTicksExisted();
-		//ReikaJavaLibrary.pConsole(tick);
-		if (tick%sp == 0) {
-			ArrayList<ArrayList<ImmutablePair<CrystalElement, Integer>>> song = melody[(ChunkProviderChroma.getMonumentGenerator().hashCode() ^ Minecraft.getMinecraft().hashCode())%melody.length];
-			ArrayList<ImmutablePair<CrystalElement, Integer>> li = song.get((int)((tick/sp)%song.size()));
-			for (ImmutablePair<CrystalElement, Integer> p : li) {
-				if (p.left == color) {
-					Coordinate cc = this.getCenter();
-					TileEntity tile = cc.getTileEntity(world);
-					if (tile instanceof TileEntityStructControl) {
-						TileEntityStructControl ts = (TileEntityStructControl)tile;
-						if (ts.isMonument()) {
-							float mult = this.getSoundPitch(p.right);
-							//CrystalMusicManager.instance.getRandomScaledDing(color);
-							Collection<CrystalElement> m = this.getColorBeams();
-							//if (rand.nextInt(m.size() >= 8 ? 1 : 8-m.size()) == 0) {
-							//CrystalElement e = ReikaJavaLibrary.getRandomListEntry(m);
-							boolean flag = false;
-
-							for (CrystalElement e : m) {
-								Coordinate c = this.getOtherColor(e);
-								TileEntity te = c.getTileEntity(world);
-								if (te instanceof TileEntityDimensionCore && ((TileEntityDimensionCore)te).getColor() == e) {
-									this.createBeamLine(world, x, y, z, c, e);
-									flag = true;
-								}
-								//}
-							}
-							this.createBeamLine(world, x, y, z, cc, color);
-
-							ReikaSoundHelper.playClientSound(ChromaSounds.ORB, x, y, z, 1F/li.size(), mult, false);
-							ReikaSoundHelper.playClientSound(ChromaSounds.DING, x, y, z, 0.3F/li.size(), mult);
-
-							int n = 8+rand.nextInt(8);
-							for (int i = 0; i < n; i++) {
-								double px = x+rand.nextDouble();
-								double py = y+rand.nextDouble();
-								double pz = z+rand.nextDouble();
-								int l = 40;
-								float g = (float)ReikaRandomHelper.getRandomPlusMinus(0.03125, 0.0150625);
-								float s = 2*(float)ReikaRandomHelper.getRandomPlusMinus(1.25, 0.5);
-								EntityFX fx = new EntityLaserFX(color, world, px, py, pz, 0, 0, 0).setGravity(g).setScale(s);
-								Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-							}
-
-							for (int i = 0; i < n; i++) {
-								double px = x+rand.nextDouble();
-								double py = y+rand.nextDouble();
-								double pz = z+rand.nextDouble();
-								int l = 80;
-								float g = (float)ReikaRandomHelper.getRandomPlusMinus(0.03125, 0.0150625);
-								float s = 2*(float)ReikaRandomHelper.getRandomPlusMinus(1.25, 0.5);
-								EntityFloatingSeedsFX fx = new EntityCCFloatingSeedsFX(world, px, py, pz, 0, -90);
-								fx = (EntityFloatingSeedsFX)fx.setGravity(g).setScale(s).setLife(l).setColor(color.getColor());
-								fx.angleVelocity *= 3;
-								fx.freedom *= 5;
-								Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-
-	@SideOnly(Side.CLIENT)
-	private void createBeamLine(World world, int x, int y, int z, Coordinate c, CrystalElement e) {
-		createBeamLine(world, x, y, z, c.xCoord, c.yCoord, c.zCoord, color, e);
-	}
-
-	@SideOnly(Side.CLIENT)
-	public static void createBeamLine(World world, int x1, int y1, int z1, int x2, int y2, int z2, CrystalElement e1, CrystalElement e2) {
-		double dx = x2-x1;
-		double dy = y2-y1;
-		double dz = z2-z1;
-		double dd = ReikaMathLibrary.py3d(dx, dy, dz);
-		double pd = 0.25; //0.125
-		for (double p = 0; p <= dd; p += pd) {
-			double f = p/dd;
-			//double v = 0.0625;
-			//double vx = dx/dd*v;
-			//double vy = dy/dd*v;
-			//double vz = dz/dd*v;
-			float s = 1+1.5F*(float)Math.sin(f*Math.PI);//+MathHelper.sin((this.getTicksExisted()+color.ordinal()*12)/32F);
-			//2.5F+2*rand.nextFloat()+(rand.nextFloat()*2)*(rand.nextFloat()*3);
-			int l = 20;//(int)(17*dd);
-			double px = x1+0.5+f*dx;
-			double py = y1+0.5+f*dy;
-			double pz = z1+0.5+f*dz;
-
-			int clr = ReikaColorAPI.mixColors(e1.getColor(), e2.getColor(), 1-(float)f);
-			EntityFX fx = new EntityCCBlurFX(world, px, py, pz).setLife(l).setNoSlowdown().setScale(s).setColor(clr);
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-		}
-	}
-
-	private float getSoundPitch(int p) {
-		float mult = 0;
-		switch(p) {
-			case 0:
-				mult = (float)CrystalMusicManager.instance.getDingPitchScale(color);
-				break;
-			case 1:
-				mult = (float)CrystalMusicManager.instance.getThird(color);
-				break;
-			case 2:
-				mult = (float)CrystalMusicManager.instance.getFifth(color);
-				break;
-			case 3:
-				mult = (float)CrystalMusicManager.instance.getOctave(color);
-				break;
-		}
-		return mult;
-	}
-
-	private Coordinate getCenter() {
-		Coordinate c = locations.get(color);
-		return new Coordinate(xCoord-c.xCoord, yCoord-c.yCoord, zCoord-c.zCoord);
-	}
-
-	private Coordinate getOtherColor(CrystalElement e) {
-		Coordinate c = locations.get(color);
-		Coordinate c2 = locations.get(e);
-		return new Coordinate(xCoord-c.xCoord+c2.xCoord, yCoord-c.yCoord+c2.yCoord, zCoord-c.zCoord+c2.zCoord);
-	}
-
-	@Override
-	protected void onFirstTick(World world, int x, int y, int z) {
-		super.onFirstTick(world, x, y, z);
-
-		if (color == CrystalElement.WHITE)
-			nextNoteIndex = -1;
-
-		if (this.getPlacer() == null && !this.hasStructure() && !world.isRemote) {
-			ChromatiCraft.logger.logError(this+" was never given a structure!? Color = "+color+", UID="+uid);
-		}
-	}
-
-	@Override
-	public ChromaTiles getTile() {
-		return ChromaTiles.DIMENSIONCORE;
+	public void setColor(CrystalElement e) {
+		color = e;
 	}
 
 	@Override
@@ -540,168 +180,205 @@ public class TileEntityDimensionCore extends TileEntityLocusPoint implements Pla
 		return color.getColor();
 	}
 
-	public CrystalElement getColor() {
-		return color;
+	public void setStructure(StructurePair p) {
+		structure = p.generator.getType();
+		uid = p.generator.id();
 	}
 
+	public StructureGeneratorBase getStructure() {
+		if (structure == null || uid == null)
+			return null;
+		// The registry hands back the narrow ProximaStructureGenerator contract; every real generator
+		// is a StructureGeneratorBase, and anything that is not has nothing a core can ask of it.
+		return structure.getGenerator(uid) instanceof StructureGeneratorBase base ? base : null;
+	}
+
+	public boolean hasStructure() {
+		return this.getStructure() != null;
+	}
+
+	/** V33a prime: the monument ritual arms every core before it starts. */
+	public void prime(boolean set) {
+		primed = set;
+		this.syncAllData(false);
+	}
+
+	public boolean isPrimed() {
+		return primed;
+	}
+
+	public Collection<CrystalElement> getColorBeams() {
+		return beams.get(color);
+	}
+
+	/** The two connect-melody tracks, for whatever draws them. */
+	public static List<List<List<ColorNote>>> getMelody() {
+		return melody;
+	}
+
+	/** V33a getCenter: where the structure controller sits, derived from this core's own offset. */
+	public BlockPos getCenter() {
+		Vec3i c = locations.get(color);
+		return this.getBlockPos().subtract(c);
+	}
+
+	/** V33a getOtherColor: where the core of another colour stands in the same ring. */
+	public BlockPos getOtherColor(CrystalElement e) {
+		return this.getCenter().offset(locations.get(e));
+	}
+
+	/** V33a getSoundPitch: which interval of its colour a core sounds for a given note index. */
+	public float getSoundPitch(int p) {
+		return (float)switch (p) {
+			case 0 -> CrystalMusicManager.instance.getDingPitchScale(color);
+			case 1 -> CrystalMusicManager.instance.getThird(color);
+			case 2 -> CrystalMusicManager.instance.getFifth(color);
+			case 3 -> CrystalMusicManager.instance.getOctave(color);
+			default -> 0D;
+		};
+	}
+
+	/**
+	 * V33a updateEntity. The client half is the connect beams, which only run while the core is primed;
+	 * the server half is the structure's own business, and a core outside a structure has none.
+	 */
 	@Override
-	protected void animateWithTick(World world, int x, int y, int z) {
-
-	}
-
-	@Override
-	public void readFromNBT(NBTTagCompound NBT) {
-		super.readFromNBT(NBT);
-
-		int s = NBT.getInteger("struct");
-		structure = s >= 0 ? DimensionStructureType.types[s] : null;
-
-		if (NBT.hasKey("uid"))
-			uid = UUID.fromString(NBT.getString("uid"));
-
-		playerWhitelist .clear();
-		NBTTagList li = NBT.getTagList("whitelist", NBTTypes.STRING.ID);
-		for (Object o : li.tagList) {
-			String sg = ((NBTTagString)o).func_150285_a_();
-			playerWhitelist.add(UUID.fromString(sg));
-		}
-	}
-
-	@Override
-	public void writeToNBT(NBTTagCompound NBT) {
-		super.writeToNBT(NBT);
-
-		NBT.setInteger("struct", structure != null ? structure.ordinal() : -1);
-		if (uid != null)
-			NBT.setString("uid", uid.toString());
-
-		NBTTagList li = new NBTTagList();
-		for (UUID id : playerWhitelist) {
-			li.appendTag(new NBTTagString(id.toString()));
-		}
-		NBT.setTag("whitelist", li);
-	}
-
-	@Override
-	protected void readSyncTag(NBTTagCompound NBT) {
-		super.readSyncTag(NBT);
-
-		color = CrystalElement.elements[NBT.getInteger("color")];
-
-		primed = NBT.getBoolean("prime");
-	}
-
-	@Override
-	protected void writeSyncTag(NBTTagCompound NBT) {
-		super.writeSyncTag(NBT);
-
-		NBT.setInteger("color", color.ordinal());
-
-		NBT.setBoolean("prime", primed);
-	}
-
-	@Override
-	public void getTagsToWriteToStack(NBTTagCompound NBT) {
-		this.writeOwnerData(NBT);
-		NBT.setInteger("color", color.ordinal());
-	}
-
-	@Override
-	public void setDataFromItemStackTag(ItemStack is) {
-		this.readOwnerData(is);
-		color = is.stackTagCompound != null ? CrystalElement.elements[is.stackTagCompound.getInteger("color")] : CrystalElement.WHITE;
-	}
-
-	public boolean isBreakable(EntityPlayer ep) {
-		if (ep == null)
-			return false;
-		if (ReikaPlayerAPI.isFake(ep))
-			return false;
-		if (!worldObj.isRemote && !ep.capabilities.isCreativeMode && this.hasStructure()) {
-			if (!this.getStructure().shouldAllowCoreMining(worldObj, ep)) {
-				return false;
-			}
-		}
-		if (!playerWhitelist.isEmpty() && !playerWhitelist.contains(ep.getUniqueID()))
-			return false;
-		return true;
-	}
-
-	@Override
-	public boolean breakByPlayer(EntityPlayer ep) {
-		if (worldObj.isRemote) {
-			if (this.hasStructure()) {
-				ChromaDimensionManager.removePlayerFromStructure(ep);
-			}
-			return true;
-		}
-		if (ep.capabilities.isCreativeMode) {
-			if (this.hasStructure())
-				this.openStructure();
-			return true;
-		}
-		if (ep.getDistance(xCoord+0.5, yCoord+0.5, zCoord+0.5) > 5)
-			return false;
+	public void updateEntity(Level world, BlockPos pos) {
+		if (world.isClientSide())
+			return;
 		if (this.hasStructure()) {
-			/*
-			if (structure.hasPlayerCompleted(ep)) {
-				return false;
-			}
-			else {
-				structure.markPlayerCompleted(ep);
-
-				this.openStructure();
-			}
-			 */
-
-			if (!ep.capabilities.isCreativeMode && !this.getStructure().shouldAllowCoreMining(worldObj, ep)) {
-				return false;
-			}
-
-			//if (ProgressionManager.instance.hasPlayerCompletedStructureColor(ep, color)) {
-			//	return false;
-			//}
-			//else {
-			DimensionStructureGenerator gen = this.getStructure();
-			ProgressionManager.instance.markPlayerCompletedStructureColor(ep, gen, color, true, true);
-			ChromaDimensionManager.removePlayerFromStructure(ep);
-			this.openStructure();
-			//}
+			this.doScanForEntry(world, pos);
+			if (!triggered)
+				this.doStructureCalculation(world, pos);
 		}
-		return true;
 	}
 
-	private void openStructure() {
-		DimensionStructureGenerator gen = this.getStructure();
-		Set<Coordinate> set = gen.getBreakableSpots();
-		for (Coordinate c2 : set) {
-			//Coordinate c2 = c.offset(-gen.getPosX(), -gen.getPosY(), -gen.getPosZ()).offset(xCoord, yCoord, zCoord);
-			Block b = c2.getBlock(worldObj);
-			BlockKey b2 = b instanceof BlockStructureShield ? new BlockKey(ChromaBlocks.STRUCTSHIELD.getBlockInstance(), BlockType.CRACKS.metadata%8) : new BlockKey(Blocks.air);
-			c2.setBlock(worldObj, b2.blockID, b2.metadata);
-			//ReikaJavaLibrary.pConsole(new Coordinate(this)+":"+c+">"+c2+":"+c2.getBlockKey(worldObj));
-			//ReikaJavaLibrary.pConsole(new Coordinate(this)+" > "+c2+" % "+c2.getBlockKey(worldObj));
+	/**
+	 * V33a doScanForEntry: a player who walks into the structure's entry box is registered with it, once.
+	 *
+	 * <p>The registration itself reaches {@code ChromaDimensionManager.addPlayerToStructure}, which this
+	 * port has not built — it is the per-player record of which puzzle someone is inside. The scan and
+	 * the once-only bookkeeping are here and correct; when that manager lands it hooks in at the marked
+	 * line and nothing else moves.
+	 */
+	private void doScanForEntry(Level world, BlockPos pos) {
+		StructureGeneratorBase gen = this.getStructure();
+		if (gen == null)
+			return;
+		int r = 8;
+		net.minecraft.world.phys.AABB box = new net.minecraft.world.phys.AABB(
+				gen.getEntryPosX() - r, gen.getPosY(), gen.getEntryPosZ() - r,
+				gen.getEntryPosX() + r + 1, world.getMaxY(), gen.getEntryPosZ() + r + 1);
+		for (Player ep : world.getEntitiesOfClass(Player.class, box)) {
+			UUID id = ep.getUUID();
+			if (sentPlayers.contains(id))
+				continue;
+			// Deferred: ChromaDimensionManager.addPlayerToStructure(ep, gen) — the per-player structure
+			// registry is not ported. Upstream only records the player as sent when that call succeeds.
+			sentPlayers.add(id);
 		}
-
-		ReikaSoundHelper.playBreakSound(worldObj, xCoord, yCoord, zCoord, ChromaBlocks.STRUCTSHIELD.getBlockInstance(), 2, 1);
-		ReikaSoundHelper.playBreakSound(worldObj, xCoord+4, yCoord, zCoord, ChromaBlocks.STRUCTSHIELD.getBlockInstance(), 2, 1);
-		ReikaSoundHelper.playBreakSound(worldObj, xCoord-4, yCoord, zCoord, ChromaBlocks.STRUCTSHIELD.getBlockInstance(), 2, 1);
-		ReikaSoundHelper.playBreakSound(worldObj, xCoord, yCoord, zCoord+4, ChromaBlocks.STRUCTSHIELD.getBlockInstance(), 2, 1);
-		ReikaSoundHelper.playBreakSound(worldObj, xCoord, yCoord, zCoord-4, ChromaBlocks.STRUCTSHIELD.getBlockInstance(), 2, 1);
-		ReikaSoundHelper.playBreakSound(worldObj, xCoord, yCoord+4, zCoord, ChromaBlocks.STRUCTSHIELD.getBlockInstance(), 2, 1);
-		ReikaSoundHelper.playBreakSound(worldObj, xCoord, yCoord-4, zCoord, ChromaBlocks.STRUCTSHIELD.getBlockInstance(), 2, 1);
 	}
 
-	public static Coordinate getLocation(CrystalElement e) {
-		return locations.get(e);
+	/**
+	 * V33a doStructureCalculation: the per-puzzle trap a core springs when someone reaches it. Only the
+	 * Three-Dimensional Maze has one; every other case in upstream's switch is an empty break, which is
+	 * why this is one branch rather than eighteen.
+	 *
+	 * <p>Cracking the shielding around a player who steps into the maze's core chamber is the whole
+	 * effect: one of the four horizontal neighbours and the block below the opposite one turn to Cracks,
+	 * so the way out is not the way in.
+	 */
+	private void doStructureCalculation(Level world, BlockPos pos) {
+		if (structure != DimensionStructureType.TDMAZE)
+			return;
+		net.minecraft.world.phys.AABB box = new net.minecraft.world.phys.AABB(
+				pos.getX() - 1, pos.getY() + 2, pos.getZ() - 1,
+				pos.getX() + 2, pos.getY() + 4, pos.getZ() + 2);
+		if (world.getEntitiesOfClass(Player.class, box).isEmpty())
+			return;
+		triggered = true;
+		java.util.Random rand = new java.util.Random(pos.asLong());
+		boolean w = rand.nextBoolean();
+		int dx = w ? (rand.nextBoolean() ? -2 : 2) : (rand.nextBoolean() ? 1 : -1);
+		int dz = !w ? (rand.nextBoolean() ? -2 : 2) : (rand.nextBoolean() ? 1 : -1);
+		int dx2 = Math.abs(dx) == 1 ? dx : (int)Math.signum(dx) * (Math.abs(dx) + 1);
+		int dz2 = Math.abs(dz) == 1 ? dz : (int)Math.signum(dz) * (Math.abs(dz) + 1);
+		BlockState cracks = reika.chromaticraft.registry.ChromaBlocks
+				.shielding(reika.chromaticraft.registry.ChromaShieldTypes.CRACKS).get().defaultBlockState();
+		for (int dy : new int[] {2, 3, 0, -1})
+			world.setBlock(pos.offset(dx, dy, dz), cracks, 3);
+		world.setBlock(pos.offset(-dx2, 1, -dz2), cracks, 3);
 	}
 
-	public void setColor(CrystalElement e) {
-		color = e;
+	/**
+	 * Upstream's is empty: a core's client-side motion is the locus point's own particle field plus the
+	 * connect beams, neither of which is per-tick animation state.
+	 */
+	@Override
+	protected void animateWithTick(Level world, BlockPos pos) {}
+
+	@Override
+	protected void onFirstTick(Level world, BlockPos pos) {
+		super.onFirstTick(world, pos);
+		if (!world.isClientSide() && this.getPlacer() == null && !this.hasStructure())
+			ChromatiCraft.LOGGER.error("{} was never given a structure. Color = {}, UID = {}",
+					this, color, uid);
 	}
 
-	public void whitelistPlayer(EntityPlayer ep) {
-		playerWhitelist.add(ep.getUniqueID());
+	/**
+	 * V33a isBreakable. The seal is the point: a core inside an unsolved structure cannot be mined, and
+	 * a whitelist, once non-empty, narrows that to the players the structure let in.
+	 */
+	public boolean isBreakable(Player ep) {
+		if (ep == null || ReikaPlayerAPI.isFake(ep))
+			return false;
+		Level world = this.getLevel();
+		if (world != null && !world.isClientSide() && !ep.getAbilities().instabuild && this.hasStructure()
+				&& !this.getStructure().shouldAllowCoreMining(world))
+			return false;
+		return playerWhitelist.isEmpty() || playerWhitelist.contains(ep.getUUID());
+	}
+
+	/**
+	 * V33a breakByPlayer's server half, minus the two calls this port has not reached.
+	 *
+	 * <p>Breaking a core is how a puzzle structure is marked complete and reopened, so the order matters:
+	 * the seal is re-checked (a creative player bypasses it, as upstream lets them), the completion is
+	 * recorded, and only then is the structure opened.
+	 */
+	@Override
+	public void breakBlock() {
+		Level world = this.getLevel();
+		if (world == null || world.isClientSide() || !this.hasStructure())
+			return;
+		// Deferred, both named at the point they belong:
+		//   ProgressionManager.markPlayerCompletedStructureColor(ep, gen, color, true, true)
+		//   ChromaDimensionManager.removePlayerFromStructure(ep)
+		// Neither is ported; the opening below is upstream's own and runs regardless, so a solved
+		// structure still unseals even while the progression record is missing.
+		this.openStructure(world);
+	}
+
+	/**
+	 * V33a openStructure: every cell the generator marked breakable becomes Cracked Shielding if it was
+	 * shielding, and air otherwise, which is what turns a sealed puzzle into one you can walk out of.
+	 */
+	private void openStructure(Level world) {
+		StructureGeneratorBase gen = this.getStructure();
+		if (gen == null)
+			return;
+		BlockState cracks = reika.chromaticraft.registry.ChromaBlocks
+				.shielding(reika.chromaticraft.registry.ChromaShieldTypes.CRACKS).get().defaultBlockState();
+		for (BlockPos p : gen.getBreakableSpots()) {
+			boolean shielded = world.getBlockState(p).getBlock()
+					instanceof reika.chromaticraft.block.worldgen26.BlockStructureShield;
+			world.setBlock(p, shielded ? cracks : net.minecraft.world.level.block.Blocks.AIR
+					.defaultBlockState(), 3);
+		}
+	}
+
+	public void whitelistPlayer(Player ep) {
+		playerWhitelist.add(ep.getUUID());
 	}
 
 	@Override
@@ -709,4 +386,78 @@ public class TileEntityDimensionCore extends TileEntityLocusPoint implements Pla
 		return !this.hasStructure();
 	}
 
+	@Override
+	public boolean onlyAllowOwnersToUse() {
+		return false;
+	}
+
+	@Override
+	protected void writeSyncTag(CompoundTag NBT) {
+		super.writeSyncTag(NBT);
+		NBT.putInt("color", color.ordinal());
+		NBT.putBoolean("prime", primed);
+	}
+
+	@Override
+	protected void readSyncTag(CompoundTag NBT) {
+		super.readSyncTag(NBT);
+		color = CrystalElement.elements[NBT.getIntOr("color", CrystalElement.WHITE.ordinal())];
+		primed = NBT.getBooleanOr("prime", false);
+	}
+
+	@Override
+	protected void saveAdditional(CompoundTag NBT) {
+		super.saveAdditional(NBT);
+		NBT.putInt("struct", structure != null ? structure.ordinal() : -1);
+		if (uid != null)
+			NBT.putString("uid", uid.toString());
+		ListTag li = new ListTag();
+		for (UUID id : playerWhitelist)
+			li.add(StringTag.valueOf(id.toString()));
+		NBT.put("whitelist", li);
+	}
+
+	@Override
+	public void load(CompoundTag NBT) {
+		super.load(NBT);
+		int s = NBT.getIntOr("struct", -1);
+		structure = s >= 0 ? DimensionStructureType.types[s] : null;
+		uid = NBT.getString("uid").map(UUID::fromString).orElse(null);
+		playerWhitelist.clear();
+		for (int i = 0; i < NBT.getListOrEmpty("whitelist").size(); i++)
+			NBT.getListOrEmpty("whitelist").getString(i).ifPresent(
+					id -> playerWhitelist.add(UUID.fromString(id)));
+	}
+
+	@Override
+	public void getTagsToWriteToStack(CompoundTag NBT) {
+		super.getTagsToWriteToStack(NBT);
+		NBT.putInt("color", color.ordinal());
+	}
+
+	@Override
+	public void setDataFromItemStackTag(ItemStack is) {
+		super.setDataFromItemStackTag(is);
+		CompoundTag tag = is.getOrDefault(net.minecraft.core.component.DataComponents.CUSTOM_DATA,
+				net.minecraft.world.item.component.CustomData.EMPTY).copyTag();
+		color = tag == null ? CrystalElement.WHITE
+				: CrystalElement.elements[tag.getIntOr("color", CrystalElement.WHITE.ordinal())];
+	}
+
+	/** Whether this core has already told the given player about its structure. */
+	public boolean hasSent(UUID player) {
+		return sentPlayers.contains(player);
+	}
+
+	public void markSent(UUID player) {
+		sentPlayers.add(player);
+	}
+
+	public boolean isTriggered() {
+		return triggered;
+	}
+
+	public void setTriggered() {
+		triggered = true;
+	}
 }

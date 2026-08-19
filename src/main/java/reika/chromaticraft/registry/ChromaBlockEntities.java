@@ -92,6 +92,12 @@ public final class ChromaBlockEntities {
 					() -> new BlockEntityType<>(TileCrystalEncrusted::new, ChromaBlocks.ENCRUSTED_CRYSTALS.stream()
 						.map(holder -> (net.minecraft.world.level.block.Block)holder.get())
 						.toArray(net.minecraft.world.level.block.Block[]::new)));
+	public static final DeferredHolder<BlockEntityType<?>,
+			BlockEntityType<reika.chromaticraft.tileentity.technical.TileEntityDimensionCore>> DIMENSION_CORE =
+			BLOCK_ENTITIES.register("dimension_core",
+					() -> new BlockEntityType<>(
+							reika.chromaticraft.tileentity.technical.TileEntityDimensionCore::new,
+							ChromaBlocks.DIMENSION_CORE.get()));
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityChroma>> CHROMA_POOL =
 			BLOCK_ENTITIES.register("liquid_chroma",
 					() -> new BlockEntityType<>(TileEntityChroma::new, ChromaBlocks.CHROMA.get()));
