@@ -184,6 +184,7 @@ sourceSets.main.java {
     include 'reika/chromaticraft/world/PylonFeature.java'
     include 'reika/chromaticraft/world/DataTowerFeature.java'
     include 'reika/chromaticraft/command/DataTowerLocateCommand.java'
+    include 'reika/chromaticraft/command/ProgressModifyCommand.java'
     include 'reika/chromaticraft/world/luminous/LuminousCliffsTerrainFeature.java'
     include 'reika/chromaticraft/world/luminous/LumaPatchFeature.java'
     include 'reika/chromaticraft/world/luminous/LuminousIslandFeature.java'

@@ -6278,3 +6278,59 @@ in every biome, the Sanctuary included; its site check is what actually decides 
 
 Sanctuary generators still missing: **RIFT** (`WorldGenFissure`), **ALTAR** (`WorldGenMiniAltar`),
 **GLOWCAVE** (`WorldGenGlowCave`), and **CRACKS** (`WorldGenGlowingCracks`) behind the art above.
+
+## The monument ritual, made reachable (2026-08-19)
+
+Every piece of the ceremony had been ported — the template, the placement, the sixteen cores, the aura
+point, both gates, the timeline, the camera, the shaders, the score — and none of it could be reached
+from inside the game. Three separate links were missing, each of which alone made the ritual
+impossible.
+
+**The cores could not be obtained or told apart.** V33a's Dimension Core is one registered block
+wearing its colour in a stack tag, so the creative menu offered exactly one, blank; and placing it
+neither read the tag nor recorded who placed it, both of which `doChecks` requires. All sixteen are now
+offered explicitly — the tab's set keys on type *and* components, so they sit alongside the plain
+identity the block loop already accepts — each named for its element, with pick-block returning a
+core's own colour so a ring can be built by copying rather than by hunting through sixteen entries.
+
+**The cores could not be seen.** `getRenderShape` returned `INVISIBLE`, faithfully: upstream draws a
+core entirely through `RenderDimensionCore`'s glow-knot geometry and its `getImageFileName` returns
+null, so there is no block icon in V33a to port. Neither `RenderLocusPoint` nor DragonAPI's `GlowKnot`
+exists yet, which left the ring as sixteen invisible blocks. They are cubes of `blurflare` — one of
+Reika's own glow sprites, and the nearest thing she ships to what that renderer draws — tinted per
+element. The tint is a registered `ItemTintSource`/`BlockTintSource` pair rather than a datagen
+constant, because the colour lives on the stack. This is a documented stand-in and should be replaced
+by the real renderer when the knot geometry lands.
+
+**The ritual could not be started at all.** `setMonument()` had no caller anywhere in the port:
+`MonumentPiece` places the controller but never marked it, and an unmarked controller refuses forever.
+It is marked now, in the one `postProcess` pass whose clipped box actually contains it — the template
+is placed once per overlapping chunk, and the other fifteen passes would find no block entity there.
+And the manipulator had no `STRUCTCONTROL` branch, which is the only way upstream ever starts the
+ritual, so the whole chain behind it was unreachable. It is ported with its gates intact: CTM's
+*prerequisites* (not the stage itself, which the ritual is what grants), the monument mark, the Proxima
+tuning threshold, and the single refusal sound that deliberately tells the player nothing about which
+requirement they failed. Upstream's creative debug branch came with it, since sneak-clicking a
+controller is the only way to mark a monument that generated before this landed.
+
+**`/chromaprog`**, upstream's admin progression command, is ported for the branches whose backing
+exists: `progress`, `color`, `dimtuning`, `maximize`, `reset`. Two of those are load-bearing here —
+inside Proxima the ritual wants a dimension tuning of at least 224, a value otherwise set only by the
+Portal Rift from absorbed Proximal Essence, so anyone who reached the dimension by command has zero and
+no way to raise it. The remaining branches are each blocked on an unported system and are listed at the
+class: `fragment`/`level` on `ChromaResearchManager`, `ability` on `Chromabilities`, `buffer` on
+`ElementBufferCapacityBoost`, `lore` on the tower fragment store, `dimstruct` on
+`markPlayerCompletedStructureColor`.
+
+**The second gate is meant to bite.** `doMineralChecks` demands every one of the 376 inlay cells, while
+generation lays each only on its material's chance — gold at 25%, glowstone at 35% — and registers the
+centre chroma without ever laying it. This was checked against V33a rather than assumed: upstream's
+`setBlock` is `if (doWithChance(blockChance.get(b))) world.setBlock(...); parent.registerMineralBlock(...)`
+unconditionally. A freshly generated monument therefore always fails, and completing the inlay by hand
+is the work the ritual is named for.
+
+The ring sits six blocks above the controller, at template y 11. Relative to the controller:
+BLACK (-16,+6,-3), RED (-13,+6,-7), GREEN (-7,+6,-13), BROWN (-3,+6,-16), BLUE (+3,+6,-16),
+PURPLE (+7,+6,-13), CYAN (+13,+6,-7), LIGHTGRAY (+16,+6,-3), GRAY (+16,+6,+3), PINK (+13,+6,+7),
+LIME (+7,+6,+13), YELLOW (+3,+6,+16), LIGHTBLUE (-3,+6,+16), MAGENTA (-7,+6,+13), ORANGE (-13,+6,+7),
+WHITE (-16,+6,+3).
