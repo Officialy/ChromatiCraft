@@ -316,6 +316,7 @@ public final class ChromaGameTests {
 		register(event, env, "proxima_monument_template", ChromaGameTests::proximaMonumentTemplate);
 		register(event, env, "dimension_core_ring", ChromaGameTests::dimensionCoreRing);
 		register(event, env, "monument_ritual_checks", ChromaGameTests::monumentRitualChecks);
+		register(event, env, "monument_core_placement", ChromaGameTests::monumentCorePlacement);
 		register(event, env, "monument_ritual_score", ChromaGameTests::monumentRitualScore);
 		register(event, env, "monument_mineral_inlay", ChromaGameTests::monumentMineralInlay);
 		register(event, env, "aurorae_feature", ChromaGameTests::auroraeFeature);
@@ -2411,6 +2412,54 @@ public final class ChromaGameTests {
 		helper.assertTrue(!new reika.chromaticraft.magic.MonumentCompletionRitual(level, centre, player)
 						.doChecks(),
 				"a core of the wrong colour for its position must refuse the ritual");
+		helper.succeed();
+	}
+
+	/**
+	 * The player-facing half of the ring: the sixteen creative-menu stacks, and what a core remembers
+	 * when one of them is placed.
+	 *
+	 * <p>{@code monument_ritual_checks} sets colour and placer on the tile directly, which proves the
+	 * gate but not the path a player takes to it. Everything the gate reads has to survive the trip
+	 * through an ItemStack and {@code setPlacedBy}, and for most of this port's life it did not: the
+	 * stacks did not exist, the tag was never read on placement, and the placer was never recorded, so
+	 * a hand-built ring was sixteen white ownerless cores that could never satisfy anything.
+	 */
+	private static void monumentCorePlacement(GameTestHelper helper) {
+		var level = helper.getLevel();
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		var block = (reika.chromaticraft.block.dimension.BlockDimensionCore)
+				ChromaBlocks.DIMENSION_CORE.get();
+
+		int i = 0;
+		for (CrystalElement element : CrystalElement.elements) {
+			// Two rows, so no two cores are ever neighbours and a mis-set colour cannot be read off
+			// the block placed before it.
+			BlockPos at = helper.absolutePos(new BlockPos(1 + i % 8, 2, 1 + i / 8 * 2));
+			i++;
+			var stack = reika.chromaticraft.block.dimension.BlockDimensionCore.of(element);
+			helper.assertTrue(stack.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME),
+					"the creative stack for " + element + " must name its element, or sixteen entries "
+							+ "are indistinguishable in the menu");
+
+			level.setBlock(at, block.defaultBlockState(), 3);
+			block.setPlacedBy(level, at, block.defaultBlockState(), player, stack);
+
+			var core = (reika.chromaticraft.tileentity.technical.TileEntityDimensionCore)
+					level.getBlockEntity(at);
+			helper.assertTrue(core.getColor() == element,
+					"a core placed from the " + element + " stack must be that colour, not "
+							+ core.getColor());
+			helper.assertTrue(core.getPlacer() == player,
+					"a placed core must record its placer; doChecks refuses a ring that has none");
+			// Pick-block has to hand the colour back, or a ring cannot be built by copying.
+			helper.assertTrue(reika.chromaticraft.block.dimension.BlockDimensionCore.of(element)
+							.getOrDefault(net.minecraft.core.component.DataComponents.CUSTOM_DATA,
+									net.minecraft.world.item.component.CustomData.EMPTY).copyTag()
+							.getIntOr("color", -1) == element.ordinal(),
+					"the " + element + " stack must carry its colour in the tag setDataFromItemStackTag "
+							+ "reads");
+		}
 		helper.succeed();
 	}
 
