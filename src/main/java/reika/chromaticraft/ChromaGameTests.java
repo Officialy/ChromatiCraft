@@ -314,6 +314,8 @@ public final class ChromaGameTests {
 		register(event, env, "proxima_glow_trees", ChromaGameTests::proximaGlowTrees);
 		register(event, env, "proxima_monument_template", ChromaGameTests::proximaMonumentTemplate);
 		register(event, env, "dimension_core_ring", ChromaGameTests::dimensionCoreRing);
+		register(event, env, "monument_ritual_checks", ChromaGameTests::monumentRitualChecks);
+		register(event, env, "monument_ritual_score", ChromaGameTests::monumentRitualScore);
 		register(event, env, "aurorae_feature", ChromaGameTests::auroraeFeature);
 		register(event, env, "aurora_curtain_drift", ChromaGameTests::auroraCurtainDrift);
 		register(event, env, "proxima_layout_biomes", ChromaGameTests::proximaLayoutBiomes);
@@ -2294,6 +2296,85 @@ public final class ChromaGameTests {
 		helper.assertTrue(core.getColor() == CrystalElement.LIME, "a core must keep the colour it is set");
 		helper.assertTrue(!core.hasStructure(),
 				"a core placed by hand belongs to no structure until one claims it");
+		helper.succeed();
+	}
+
+	/**
+	 * The ritual's gate. Sixteen cores of the right colours in the right places, all from one player, or
+	 * it does not start — which is what makes the monument a ritual rather than a button.
+	 */
+	private static void monumentRitualChecks(GameTestHelper helper) {
+		var level = helper.getLevel();
+		BlockPos centre = helper.absolutePos(new BlockPos(24, 8, 24));
+		var player = helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
+
+		var ritual = new reika.chromaticraft.magic.MonumentCompletionRitual(level, centre, player);
+		helper.assertTrue(!ritual.doChecks(), "a monument with no cores at all must refuse to start");
+
+		// Lay the full ring, each core the colour its own position calls for.
+		for (CrystalElement element : CrystalElement.elements) {
+			var offset = reika.chromaticraft.tileentity.technical.TileEntityDimensionCore
+					.getLocation(element);
+			BlockPos at = centre.offset(offset);
+			level.setBlock(at, ChromaBlocks.DIMENSION_CORE.get().defaultBlockState(), 3);
+			var core = (reika.chromaticraft.tileentity.technical.TileEntityDimensionCore)
+					level.getBlockEntity(at);
+			core.setColor(element);
+			core.setPlacer(player);
+		}
+		helper.assertTrue(new reika.chromaticraft.magic.MonumentCompletionRitual(level, centre, player)
+						.doChecks(),
+				"sixteen correctly coloured cores from one player must satisfy the ritual");
+
+		// One core of the wrong colour is enough to refuse.
+		var blackAt = centre.offset(reika.chromaticraft.tileentity.technical.TileEntityDimensionCore
+				.getLocation(CrystalElement.BLACK));
+		((reika.chromaticraft.tileentity.technical.TileEntityDimensionCore)level.getBlockEntity(blackAt))
+				.setColor(CrystalElement.WHITE);
+		helper.assertTrue(!new reika.chromaticraft.magic.MonumentCompletionRitual(level, centre, player)
+						.doChecks(),
+				"a core of the wrong colour for its position must refuse the ritual");
+		helper.succeed();
+	}
+
+	/**
+	 * The ritual's score. These are wall-clock milliseconds cued to six audio tracks, so an off-by-one
+	 * in the schedule is inaudible in code and glaring in game.
+	 */
+	private static void monumentRitualScore(GameTestHelper helper) {
+		var melody = reika.chromaticraft.magic.MonumentRitualScore.melody();
+		helper.assertTrue(melody.size() == 22,
+				"V33a's ray melody is twenty-two notes; found " + melody.size());
+		// V33a derives each note's start from the running total of the ones before it.
+		int beat = 0;
+		for (var note : melody) {
+			helper.assertTrue(note.startBeat() == beat,
+					"note " + note.key() + " starts at beat " + note.startBeat() + ", expected " + beat);
+			beat += note.length();
+		}
+
+		var schedule = reika.chromaticraft.magic.MonumentRitualScore.buildSchedule(false);
+		helper.assertTrue(!schedule.isEmpty(), "the ritual schedule is empty");
+		long previous = Long.MIN_VALUE;
+		for (var e : schedule) {
+			helper.assertTrue(e.millis() >= previous, "the schedule is not in time order");
+			previous = e.millis();
+		}
+		long rays = schedule.stream().filter(
+				reika.chromaticraft.magic.MonumentRitualScore.TimedEvent::isRay).count();
+		helper.assertTrue(rays == melody.size(),
+				"every note must produce exactly one ray; " + rays + " for " + melody.size() + " notes");
+		long vortex = schedule.stream().filter(e -> e.type()
+				== reika.chromaticraft.magic.MonumentRitualScore.EventType.VORTEXGROW).count();
+		helper.assertTrue(vortex == 5, "V33a grows the vortex five times; found " + vortex);
+
+		// Inside Proxima every event is pulled earlier, and the ceremony finishes sooner.
+		var inside = reika.chromaticraft.magic.MonumentRitualScore.buildSchedule(true);
+		helper.assertTrue(inside.size() == schedule.size(),
+				"Proxima must shift the schedule, not change its contents");
+		helper.assertTrue(reika.chromaticraft.magic.MonumentRitualScore.completionTime(true)
+						< reika.chromaticraft.magic.MonumentRitualScore.completionTime(false),
+				"Proxima's own audio is longer, so its completion comes sooner after the last track");
 		helper.succeed();
 	}
 

@@ -99,6 +99,14 @@ public final class TileEntityStructureController extends RandomizableContainerBl
 	private boolean lootRoom;
 	private boolean generationErrored;
 	private @Nullable UUID lastTriggerPlayer;
+
+	/**
+	 * The monument half. A monument controller has no {@code structure} — it is not a fragment structure
+	 * — so its state is separate and its tick runs before the fragment path's early return.
+	 */
+	private boolean isMonument;
+	private boolean triggeredMonument;
+	private transient reika.chromaticraft.magic.@Nullable MonumentCompletionRitual monument;
 	private boolean biomePuzzleReady;
 	private int biomeKeyChannel;
 	private final int[] biomeDoorMasks = new int[4];
@@ -120,6 +128,13 @@ public final class TileEntityStructureController extends RandomizableContainerBl
 
 	public static void serverTick(Level level, BlockPos pos, BlockState state,
 			TileEntityStructureController controller) {
+		// The monument runs before the fragment-structure gate below: a monument controller has no
+		// structure type, so that early return would otherwise never let its ritual tick.
+		if (controller.isMonument && controller.triggeredMonument && controller.monument != null) {
+			controller.monument.tick();
+			if (!controller.monument.isRunning())
+				controller.endMonumentRitual();
+		}
 		if (controller.structure == null)
 			return;
 		if (controller.trapTick > 0) {
@@ -727,6 +742,47 @@ public final class TileEntityStructureController extends RandomizableContainerBl
 		return structure != StructureType.BURROW || (!furnaceRoom && !lootRoom);
 	}
 
+	/** V33a setMonument: marks this controller as the monument's, and syncs that to clients. */
+	public void setMonument() {
+		isMonument = true;
+		this.setChanged();
+	}
+
+	public boolean isMonument() {
+		return isMonument;
+	}
+
+	/**
+	 * V33a triggerMonument. The checks run before anything is announced, so a monument that is not ready
+	 * makes no sound and leaves no state behind.
+	 */
+	public boolean triggerMonument(Player ep) {
+		Level world = this.getLevel();
+		if (world == null || world.isClientSide())
+			return false;
+		triggeredMonument = true;
+		monument = new reika.chromaticraft.magic.MonumentCompletionRitual(world, this.getBlockPos(), ep);
+		if (monument.doChecks()) {
+			monument.start();
+			this.setChanged();
+			return true;
+		}
+		// doChecks has already ended it; drop the object so a failed attempt can be retried cleanly.
+		triggeredMonument = false;
+		monument = null;
+		return false;
+	}
+
+	public void endMonumentRitual() {
+		if (!triggeredMonument)
+			return;
+		triggeredMonument = false;
+		if (monument != null && monument.isRunning())
+			monument.endRitual();
+		monument = null;
+		this.setChanged();
+	}
+
 	public boolean isTriggerPlayer(Player player) {
 		return player != null && player.getUUID().equals(lastTriggerPlayer);
 	}
@@ -793,6 +849,8 @@ public final class TileEntityStructureController extends RandomizableContainerBl
 		output.putBoolean("generationErrored", generationErrored);
 		if (lastTriggerPlayer != null)
 			output.putString("lastTriggerPlayer", lastTriggerPlayer.toString());
+		output.putBoolean("monument", isMonument);
+		output.putBoolean("monument_t", triggeredMonument);
 		output.putBoolean("biomePuzzleReady", biomePuzzleReady);
 		output.putInt("biomeKeyChannel", biomeKeyChannel);
 		ValueOutput.TypedOutputList<Integer> masks = output.list("biomeDoorMasks", com.mojang.serialization.Codec.INT);
@@ -839,6 +897,10 @@ public final class TileEntityStructureController extends RandomizableContainerBl
 			try { return java.util.Optional.of(UUID.fromString(name)); }
 			catch (IllegalArgumentException ignored) { return java.util.Optional.empty(); }
 		}).orElse(null);
+		isMonument = input.getBooleanOr("monument", false);
+		// The ritual object itself is not persisted: a ritual interrupted by a save or a restart is over,
+		// and upstream reconstructs one from scratch on the next trigger.
+		triggeredMonument = input.getBooleanOr("monument_t", false);
 		biomePuzzleReady = input.getBooleanOr("biomePuzzleReady", false);
 		biomeKeyChannel = Math.clamp(input.getIntOr("biomeKeyChannel", 0), 0, 7);
 		int i = 0;

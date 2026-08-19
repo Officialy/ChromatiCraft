@@ -6004,3 +6004,55 @@ missing.
 template already places at (21, 5, 21); `endRitual` calls its `endMonumentRitual`), `TileEntityAuraPoint`
 (570 — what the monument becomes on completion), then `MonumentCompletionRitual` itself (1002), which
 must be split into a common timeline and a client-only effects half.
+
+### 2026-08-19 — The monument ritual, server half
+
+The ceremony now exists. Four pieces landed after the Dimension Core, in dependency order.
+
+**`TileEntityAuraPoint`** — what the monument becomes on completion, and thereafter a standing area
+effect keyed to its owner. The age formulas are the character of the thing and are carried exactly:
+attack radius `min(8 + age/16, 96)`, heal radius `min(4 + age/64, 32)`, looting `min(6, age/288000)`,
+one level per four hours capped at six after a day. Both sweeps use a full-height column rather than a
+sphere, which is upstream's shape and means a point defends the sky as readily as the ground. Deferred:
+upstream's strike routes through `ChromaAux.doPylonAttack`, which is not ported — the damage it computes
+is carried exactly and applied the way the ported pylon applies its own, but that helper's taper and
+progress flags, and routing the looting level into the drop roll, wait for it.
+
+**`MonumentRitualScore`** — the melody and the schedule derived from it, separated out because it is
+pure data and pure arithmetic with no world, no side and no player, and because getting it wrong is
+silent. Twenty-two notes; each produces a ray a quarter-second before its own beat, an effect chosen by
+its length, and a burst of six particle rings if it opens a phrase; five vortex growths sit on fixed
+beats. The nudges are what make it read as musical rather than mechanical and are upstream's exactly: a
+running offset that shifts phrase openings by -250 then +150, a one-shot after the long note at index
+10, hard resets at 16 and 18, and three cumulative drifts as the elapsed time crosses 85, 101 and 115
+seconds. Inside Proxima every event is pulled earlier — half a second for a phrase opening, nine tenths
+otherwise — to stay aligned with that dimension's longer audio.
+
+**`MonumentCompletionRitual`** — the server-side timeline, and *only* that. Upstream is one class
+holding the timeline and its effects together, which in 26.2 would put `Minecraft`/`ISound`/`EntityFX`
+descriptors on a class the dedicated server loads and verifies during mod construction. That is exactly
+what made `ClientPayloadHandlers` necessary, so the effects belong in a client-only counterpart joined
+by packets, and this half carries no client type at all.
+
+Two things worth keeping. The clock is `System.currentTimeMillis`, deliberately and not world time,
+because the score is cued to recorded audio that plays at real speed whatever the tick rate — but any
+step longer than a tick has its excess banked into a pause total and subtracted back out, so a server
+hitch *delays* the ceremony rather than desynchronising it from its own music. And `doChecks` is what
+makes this a ritual rather than a button: all sixteen cores present, each the colour its position calls
+for, and every core that records a placer recording the same one, so a monument cannot be finished by a
+group each contributing a core.
+
+`doMineralChecks` answers true pending `MonumentMineralBlocks`. That is upstream's own answer when there
+is nothing to compare against — its client-side branch returns true unconditionally — so an unbuilt
+mineral check permits the ritual rather than blocking it, and the sixteen-core gate still holds.
+
+**The controller's monument half** is wired: `setMonument`, `isMonument`, `triggerMonument`,
+`endMonumentRitual`, persistence, and a tick that runs *before* the fragment-structure early return —
+a monument controller has no structure type, so that return would otherwise never let its ritual tick.
+The ritual object itself is deliberately not persisted: one interrupted by a save or a restart is over,
+and upstream rebuilds from scratch on the next trigger.
+
+**Still to do:** the client-only effects half (rays, vortex, ring particles, camera, the two shader
+programs and the six audio tracks), the packets joining it to this, and `MonumentMineralBlocks`. The
+`resetSettings`/GUI-and-view-bob restore belongs with the camera work and must be unconditional — on
+logout, death and server stop, not only on completion.
