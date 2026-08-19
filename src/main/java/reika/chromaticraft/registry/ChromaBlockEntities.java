@@ -98,6 +98,12 @@ public final class ChromaBlockEntities {
 					() -> new BlockEntityType<>(
 							reika.chromaticraft.tileentity.technical.TileEntityDimensionCore::new,
 							ChromaBlocks.DIMENSION_CORE.get()));
+	public static final DeferredHolder<BlockEntityType<?>,
+			BlockEntityType<reika.chromaticraft.tileentity.aoe.TileEntityAuraPoint>> AURA_POINT =
+			BLOCK_ENTITIES.register("aura_point",
+					() -> new BlockEntityType<>(
+							reika.chromaticraft.tileentity.aoe.TileEntityAuraPoint::new,
+							ChromaBlocks.AURA_POINT.get()));
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityChroma>> CHROMA_POOL =
 			BLOCK_ENTITIES.register("liquid_chroma",
 					() -> new BlockEntityType<>(TileEntityChroma::new, ChromaBlocks.CHROMA.get()));

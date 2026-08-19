@@ -139,6 +139,7 @@ public class ChromaModelProvider extends ModelProvider {
 		dataNodeModel(blockStateOut, itemModelOut, modelOut);
 		structureControllerModel(blockStateOut, modelOut);
 		dimensionCoreModel(blockStateOut, itemModelOut, modelOut);
+		auraPointModel(blockStateOut, itemModelOut, modelOut);
 		chromaDoorModel(blockStateOut, itemModelOut, modelOut);
 		heatLampModels(blockStateOut, itemModelOut, modelOut);
 		metaAlloyModel(blockStateOut, itemModelOut, modelOut);
@@ -1327,6 +1328,23 @@ public class ChromaModelProvider extends ModelProvider {
 				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "item/dimension_core"),
 				TextureMapping.layer0(new Material(Identifier.fromNamespaceAndPath(
 						ChromatiCraft.MODID, "block/icons/roundflare"))), modelOut);
+		itemModelOut.accept(block.asItem(), ItemModelUtils.plainModel(itemModel));
+	}
+
+	/** The Aura Point is drawn by its block entity, so its world model only names a particle sprite. */
+	private static void auraPointModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		Block block = ChromaBlocks.AURA_POINT.get();
+		Material particle = new Material(Identifier.fromNamespaceAndPath(
+				ChromatiCraft.MODID, "block/icons/roundflare"));
+		Identifier worldModel = ModelTemplates.PARTICLE_ONLY.create(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/aura_point"),
+				new TextureMapping().put(TextureSlot.PARTICLE, particle), modelOut);
+		blockStateOut.accept(MultiVariantGenerator.dispatch(block,
+				new MultiVariant(WeightedList.of(new Variant(worldModel)))));
+		Identifier itemModel = ModelTemplates.FLAT_ITEM.create(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "item/aura_point"),
+				TextureMapping.layer0(particle), modelOut);
 		itemModelOut.accept(block.asItem(), ItemModelUtils.plainModel(itemModel));
 	}
 

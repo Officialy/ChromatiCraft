@@ -290,6 +290,12 @@ public final class ChromaBlocks {
 					blockProperties().mapColor(MapColor.COLOR_PURPLE).strength(1.5F, 6000F)
 							.lightLevel(state -> 11).noOcclusion()));
 
+	/** V33a's Aura Point: the monument's completed form, and a standing area effect thereafter. */
+	public static final DeferredBlock<Block> AURA_POINT =
+			register("aura_point", () -> (Block)new reika.chromaticraft.block.dimension.BlockAuraPoint(
+					blockProperties().mapColor(MapColor.COLOR_LIGHT_BLUE).strength(-1F, 6000000F)
+							.lightLevel(state -> 15).noOcclusion()));
+
 	/** V33a connected UUID door; explicit properties replace its packed metadata flags. */
 	public static final DeferredBlock<BlockChromaDoor> CHROMA_DOOR = register("chroma_door",
 			() -> new BlockChromaDoor(blockProperties().mapColor(MapColor.COLOR_PURPLE)

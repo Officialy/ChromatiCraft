@@ -502,6 +502,8 @@ sourceSets.main.java {
     include 'reika/chromaticraft/base/tileentity/TileEntityLocusPoint.java'
     include 'reika/chromaticraft/tileentity/technical/TileEntityDimensionCore.java'
     include 'reika/chromaticraft/block/dimension/BlockDimensionCore.java'
+    include 'reika/chromaticraft/tileentity/aoe/TileEntityAuraPoint.java'
+    include 'reika/chromaticraft/block/dimension/BlockAuraPoint.java'
     include 'reika/chromaticraft/auxiliary/loot/TuningScaledCount.java'
     include 'reika/chromaticraft/registry/ProximaDecoTypes.java'
     include 'reika/chromaticraft/block/dimension/BlockDimensionDeco.java'

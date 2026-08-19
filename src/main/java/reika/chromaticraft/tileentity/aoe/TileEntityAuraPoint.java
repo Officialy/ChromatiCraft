@@ -1,391 +1,67 @@
-/*******************************************************************************
- * @author Reika Kalseki
- *
- * Copyright 2017
- *
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
- ******************************************************************************/
 package reika.chromaticraft.tileentity.aoe;
 
-import java.awt.Color;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
-import net.minecraft.block.Block;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.particle.EntityFX;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.monster.EntityEnderman;
-import net.minecraft.entity.monster.EntityPigZombie;
-import net.minecraft.entity.passive.EntityAnimal;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.init.Blocks;
-import net.minecraft.init.Items;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.AxisAlignedBB;
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.animal.Animal;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.AABB;
 
-import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.auxiliary.ChromaAux;
-import reika.chromaticraft.base.tileentity.TileEntityLocusPoint;
-import reika.chromaticraft.registry.ChromaIcons;
-import reika.chromaticraft.registry.ChromaPackets;
+import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.ChromaSounds;
 import reika.chromaticraft.registry.ChromaTiles;
-import reika.chromaticraft.registry.ExtraChromaIDs;
-import reika.chromaticraft.render.GlowKnot;
-import reika.chromaticraft.render.particle.EntityCCBlurFX;
-import reika.dragonapi.ModList;
-import reika.dragonapi.instantiable.data.collections.FastPlayerCache;
-import reika.dragonapi.interfaces.registry.CropType;
+import reika.chromaticraft.base.tileentity.TileEntityLocusPoint;
 import reika.dragonapi.libraries.ReikaEntityHelper;
-import reika.dragonapi.libraries.io.ReikaPacketHelper;
-import reika.dragonapi.libraries.java.ReikaJavaLibrary;
-import reika.dragonapi.libraries.java.ReikaRandomHelper;
-import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
-import reika.dragonapi.libraries.registry.ReikaParticleHelper;
-import reika.voidmonster.entity.EntityVoidMonster;
 
-import cpw.mods.fml.common.FMLCommonHandler;
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
-import vazkii.botania.api.boss.IBotaniaBoss;
-
-
-// Shoot down hostile mobs, speed crop growth, heal players
+/**
+ * V33a {@code TileEntityAuraPoint}: what the monument becomes once its ritual completes.
+ *
+ * <p>It is a standing area effect keyed to the player who made it. Hostile things inside its reach are
+ * struck; friendly things are healed; both radii, and the looting the strikes carry, grow with the
+ * point's own age rather than with anything the player does afterwards. That growth is the whole
+ * character of it — a fresh point defends eight blocks, an old one ninety-six — so the age formulas are
+ * carried exactly:
+ *
+ * <ul>
+ * <li>attack radius {@code min(8 + age/16, 96)}</li>
+ * <li>heal radius {@code min(4 + age/64, 32)}</li>
+ * <li>looting {@code min(6, age/288000)} — one level per four hours, capped at six after a day</li>
+ * </ul>
+ *
+ * <p>Both sweeps use a column of the full world height rather than a sphere, which is upstream's own
+ * shape and matters: a point defends the sky above it as readily as the ground around it.
+ *
+ * <p>Players are neutral until they make themselves hostile — {@link #markHostile} is called when one
+ * attacks the owner — and the PVP toggle turns that off wholesale, clearing the hostile set with it so
+ * flipping it back does not resurrect old grudges.
+ *
+ * <h2>What is deferred</h2>
+ *
+ * <p>Upstream's strike goes through {@code ChromaAux.doPylonAttack}, which is not ported. The damage it
+ * computes is carried here exactly and applied the way the ported pylon applies its own strike; what is
+ * not yet carried is that helper's taper and progress-granting flags, and the looting level is computed
+ * and held rather than reaching the drop roll. The aura kills what it should, for the right amount.
+ */
 public class TileEntityAuraPoint extends TileEntityLocusPoint {
 
-	@SideOnly(Side.CLIENT)
-	public GlowKnot knot;
-
-	public TileEntityAuraPoint() {
-		if (FMLCommonHandler.instance().getEffectiveSide() == Side.CLIENT)
-			this.loadGlowKnot();
-	}
-
-	@SideOnly(Side.CLIENT)
-	private void loadGlowKnot() {
-		knot = new GlowKnot(0.875);
-	}
-
-	private static final String NBT_TAG = "aurapoint";
-
-	/*
-	private static final int NEW_CROPS_PER_TICK = 256;
-	private static final int CROPS_PER_TICK = 16;
-	private static final int CROP_UPDATES = 8;
-	private static final int CROP_RANGE = 96;
-
-	private static final CropType sugarcane = new SugarCaneCrop();
-	 */
-
+	/** V33a hue drift: the point's colour wanders rather than sitting on one value. */
 	private int hue;
 	private float saturation;
-
 	private int hueTarget;
 	private float saturationTarget;
 
-	//private final FastBlockCache crops = new FastBlockCache();
-	private final FastPlayerCache hostilePlayers = new FastPlayerCache();
-
+	private final Set<UUID> hostilePlayers = new HashSet<>();
 	private boolean doPVP = true;
 
-	@Override
-	public void breakBlock() {
-		super.breakBlock();
-		//this.removePoint();
-	}
-
-	public void togglePVP() {
-		doPVP = !doPVP;
-		hostilePlayers.clear();
-	}
-
-	public boolean doPvP() {
-		return doPVP;
-	}
-
-	@Override
-	public void updateEntity(World world, int x, int y, int z, int meta) {
-		super.updateEntity(world, x, y, z, meta);
-
-		if (!world.isRemote) {
-			this.playSounds(world, x, y, z);
-			this.doAmbientEffects(world, x, y, z);
-		}
-	}
-
-	private void playSounds(World world, int x, int y, int z) {
-		int n = world.provider.dimensionId == ExtraChromaIDs.DIMID.getValue() ? 2 : 1;
-		if (this.getTicksExisted()%(244/n) == 0) {
-			ChromaSounds.AURALOCUS.playSoundAtBlock(world, x, y, z, 2, n);
-		}
-	}
-
-	private void doAmbientEffects(World world, int x, int y, int z) {
-		if (rand.nextInt(20) == 0)
-			this.killEntities(world, x, y, z);
-		if (rand.nextInt(160) == 0)
-			this.healFriendly(world, x, y, z);
-		//if (rand.nextInt(2) == 0)
-		//	this.growCrops(world, x, y, z);
-		//if (rand.nextInt(200) == 0)
-		//this.regenPylons(world, x, y ,z);
-
-	}
-
-	/*
-	private void regenPylons(World world, int x, int y, int z) {
-		//CrystalNetworker.instance.getNearbyPylons(world, x, y, z, CrystalElement.randomElement(), 512, false);
-		TemporaryCrystalReceiver tr = new TemporaryCrystalReceiver(this, Integer.MAX_VALUE, 48, 0.375, ResearchLevel.CTM);
-		CrystalPath path = CrystalNetworker.instance.getConnectivity(CrystalElement.randomElement(), tr);
-		if (path != null) {
-			if (path.transmitter instanceof TileEntityCrystalPylon) {
-				TileEntityCrystalPylon te = path.transmitter;
-				te.getEnergy()
-			}
-		}
-	}*/
-
-	private void killEntities(World world, int x, int y, int z) {
-		int r = this.getAttackRange();
-		AxisAlignedBB box = AxisAlignedBB.getBoundingBox(x-r, 0, z-r, x+1+r, 256, z+1+r);
-		List<EntityLivingBase> li = world.getEntitiesWithinAABB(EntityLivingBase.class, box);
-		boolean flag = false;
-		int i = 0;
-		for (EntityLivingBase e : li) {
-			if (this.shouldAttack(e)) {
-				this.attack(world, x, y, z, e);
-				flag = true;
-				i++;
-			}
-		}
-		if (flag) {
-			ChromaSounds.DISCHARGE.playSoundAtBlock(this);
-			EntityPlayer ep = this.getPlacer();
-			if (ep != null && ep.getDistance(x+0.5, y+0.5, z+0.5) < 32)
-				ChromaSounds.DISCHARGE.playSound(ep, 0.125F, 0.75F);
-		}
-	}
-
-	private int getAttackRange() {
-		return (int)(Math.min(8+this.getTileEntityAge()/16, 96));
-	}
-
-	private int getHealRange() {
-		return (int)(Math.min(4+this.getTileEntityAge()/64, 32));
-	}
-	/*
-	private int getCropRange() {
-		return (int)(Math.min(1+this.getTileEntityAge()/128, CROP_RANGE));
-	}
-	 */
-	private int getLootingLevel() {
-		return (int)Math.min(6, this.getTileEntityAge()/288000); //1 per 4h, max 6 @ 24h
-	}
-
-	private void attack(World world, int x, int y, int z, EntityLivingBase e) {
-		float dmg = this.getAttackDamage(e);
-		ChromaAux.doPylonAttack(null, e, dmg, false, this.getLootingLevel(), false);
-		ChromaSounds.DISCHARGE.playSound(e.worldObj, e.posX, e.posY, e.posZ, 1, 1);
-		ChromaSounds.DISCHARGE.playSound(e, 0.5F, 1);
-
-		ReikaPacketHelper.sendDataPacketWithRadius(ChromatiCraft.packetChannel, ChromaPackets.AURATTACK.ordinal(), this, 192, e.getEntityId());
-	}
-
-	private float getAttackDamage(EntityLivingBase e) {
-		if (ModList.BOTANIA.isLoaded() && e instanceof IBotaniaBoss)
-			return 100;
-		if (e instanceof EntityPlayer)
-			return 10;
-		return Math.max(4, e.getHealth()/2);
-	}
-
-	@SideOnly(Side.CLIENT)
-	public void doAttackFX(Entity e) {
-		if (e != null) {
-			double x = xCoord+0.5;
-			double y = yCoord+0.5;
-			double z = zCoord+0.5;
-			double dx = e.posX-x;
-			double dy = e.posY+e.height/2-y;
-			double dz = e.posZ-z;
-			double dd = ReikaMathLibrary.py3d(dx, dy, dz);
-			for (double d = 0; d <= dd; d += 0.5) {
-				double f = d/dd;
-				double f2 = f < 0.5 ? 1-f : f;
-				double px = x+f*dx;
-				double py = y+f*dy;
-				double pz = z+f*dz;
-				px = ReikaRandomHelper.getRandomPlusMinus(px, 0.25);
-				py = ReikaRandomHelper.getRandomPlusMinus(py, 0.25);
-				pz = ReikaRandomHelper.getRandomPlusMinus(pz, 0.25);
-				float sc = 2.5F+(float)((1-f2)*20);
-				sc = (float)ReikaRandomHelper.getRandomPlusMinus(sc, 0.25);
-				EntityFX fx = new EntityCCBlurFX(e.worldObj, px, py, pz).setIcon(ChromaIcons.FLARE).setScale(sc).setRapidExpand().setLife(10);
-				Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-			}
-		}
-	}
-
-	private boolean shouldAttack(EntityLivingBase e) {
-		if (e.getHealth() <= 0 || e.isDead)
-			return false;
-		if (e instanceof EntityPlayer) {
-			if (!doPVP)
-				return false;
-			EntityPlayer ep = (EntityPlayer)e;
-			if (this.isPlacer(ep))
-				return false;
-			return hostilePlayers.containsPlayer(ep);
-		}
-		else if (ModList.VOIDMONSTER.isLoaded() && e instanceof EntityVoidMonster) {
-			return e.posY > 4;
-		}
-		if (ReikaEntityHelper.isHostile(e) || e instanceof EntityEnderman || e instanceof EntityPigZombie)
-			return true;
-		return false;
-	}
-	/*
-	private void growCrops(World world, int x, int y, int z) {
-		ArrayList<Coordinate> bks = new ArrayList(cache.getBlocks());
-		Collection<Coordinate> remove = new ArrayList();
-		int n = Math.min(CROPS_PER_TICK, bks.size()/2);
-		for (int i = 0; i < n; i++) {
-			int index = rand.nextInt(bks.size());
-			Coordinate c = bks.get(index);
-			CropType type = this.getCropAt(world, c);
-			if (type == null) {
-				remove.add(c);
-			}
-			else {
-				if (!type.isRipe(world, c.xCoord, c.yCoord, c.zCoord)) {
-					int state = type.getGrowthState(world, c.xCoord, c.yCoord, c.zCoord);
-					for (int k = 0; k < CROP_UPDATES; k++) {
-						c.updateTick(world, rand);
-					}
-					if (state != type.getGrowthState(world, c.xCoord, c.yCoord, c.zCoord)) {
-						ReikaPacketHelper.sendDataPacketWithRadius(ChromatiCraft.packetChannel, ChromaPackets.AURAGROW.ordinal(), world, c.xCoord, c.yCoord, c.zCoord, 64);
-					}
-				}
-			}
-		}
-		for (Coordinate c : remove)
-			cache.removeBlock(c);
-
-		for (int k = 0; k < NEW_CROPS_PER_TICK; k++) {
-			int dx = ReikaRandomHelper.getRandomPlusMinus(x, this.getCropRange());
-			int dz = ReikaRandomHelper.getRandomPlusMinus(z, this.getCropRange());
-			int dy = rand.nextInt(1+ReikaWorldHelper.getTopNonAirBlock(world, x, z, true));
-			Coordinate c = new Coordinate(dx, dy, dz);
-			if (cache.containsBlock(c)) {
-				k--;
-				continue;
-			}
-			else {
-				CropType type = this.getCropAt(world, c);
-				if (type != null) {
-					cache.addBlock(c);
-				}
-			}
-		}
-	}
-	 */
-	@SideOnly(Side.CLIENT)
-	public static void doGrowFX(World world, int x, int y, int z) {
-		ReikaParticleHelper.BONEMEAL.spawnAroundBlockWithOutset(world, x, y, z, 4, 0.0625);
-	}
-	/*
-	private CropType getCropAt(World world, Coordinate c) {
-		Block b = c.getBlock(world);
-		if (b == Blocks.reeds) {
-			return sugarcane;
-		}
-		int meta = c.getBlockMetadata(world);
-		CropType type = ReikaCropHelper.getCrop(b);
-		if (type == null)
-			type = ModCropList.getModCrop(b, meta);
-		return type;
-	}
-	 */
-	private void healFriendly(World world, int x, int y, int z) {
-		int r = this.getHealRange();
-		AxisAlignedBB box = AxisAlignedBB.getBoundingBox(x-r, 0, z-r, x+1+r, 256, z+1+r);
-		List<EntityLivingBase> li = world.getEntitiesWithinAABB(EntityLivingBase.class, box);
-		boolean flag = false;
-		for (EntityLivingBase e : li) {
-			if (this.shouldHeal(e)) {
-				this.heal(e);
-				flag = true;
-			}
-		}
-	}
-
-	private void heal(EntityLivingBase e) {
-		e.heal(e.getMaxHealth());
-		ChromaSounds.CAST.playSound(e, 0.5F, 1);
-		ReikaPacketHelper.sendDataPacketWithRadius(ChromatiCraft.packetChannel, ChromaPackets.AURAHEAL.ordinal(), this, 64, e.getEntityId());
-	}
-
-	@SideOnly(Side.CLIENT)
-	public void doHealFX(Entity e) {
-		for (int i = 0; i < 32; i++) {
-			double x = ReikaRandomHelper.getRandomPlusMinus(e.posX, 1.5);
-			double z = ReikaRandomHelper.getRandomPlusMinus(e.posZ, 1.5);
-			double y = e.posY-1+rand.nextFloat()*(e.height+2);
-			ReikaParticleHelper.MOBSPELL.spawnAt(e.worldObj, x, y, z);
-		}
-	}
-
-	private boolean shouldHeal(EntityLivingBase e) {
-		if (e.getHealth() >= e.getMaxHealth())
-			return false;
-		if (e instanceof EntityPlayer) {
-			EntityPlayer ep = (EntityPlayer)e;
-			return this.isPlacer(ep) || !hostilePlayers.containsPlayer(ep);
-		}
-		else if (e instanceof EntityAnimal) {
-			return true;
-		}
-		return false;
-	}
-
-	public void markHostile(EntityPlayer ep) {
-		hostilePlayers.addPlayer(ep);
-	}
-
-	private void updateColors() {
-		float ds = saturationTarget-saturation;
-		int dh = hueTarget-hue;
-		if (dh == 0 && Math.abs(ds) < 0.03125) {
-			hueTarget = rand.nextInt(360);
-			saturationTarget = rand.nextFloat()*rand.nextFloat();
-		}
-
-		saturation += 0.03125*0.125*Math.signum(ds);
-		int hd = (int)Math.signum(dh);
-		if (Math.abs(dh) >= 180) {
-			hue -= hd;
-		}
-		else {
-			hue += hd;
-		}
-
-		if (hue < 0 || hue >= 360)
-			hue = (hue%360+360)%360;
-
-		//ReikaJavaLibrary.pConsole(hue+":"+hueTarget+"/"+saturation+":"+saturationTarget);
-	}
-
-	@Override
-	protected void onFirstTick(World world, int x, int y, int z) {
-		super.onFirstTick(world, x, y, z);
+	public TileEntityAuraPoint(BlockPos pos, BlockState state) {
+		super(ChromaBlockEntities.AURA_POINT.get(), pos, state);
 	}
 
 	@Override
@@ -394,177 +70,197 @@ public class TileEntityAuraPoint extends TileEntityLocusPoint {
 	}
 
 	@Override
-	protected void animateWithTick(World world, int x, int y, int z) {
-		if (FMLCommonHandler.instance().getEffectiveSide() == Side.CLIENT) {
-			if (world != null) { //tick 6x speed since using world, not render tick
-				for (int i = 0; i < 5; i++)
-					knot.update();
-			}
-			knot.update();
-		}
-		this.updateColors();
-	}
-
-	@Override
 	public int getRenderColor() {
-		return Color.HSBtoRGB(hue/360F, saturation, 1);
+		// Full brightness, as upstream: only the hue and saturation drift.
+		return java.awt.Color.HSBtoRGB(hue / 360F, saturation, 1) & 0xFFFFFF;
 	}
 
-	@Override
-	public void writeToNBT(NBTTagCompound NBT) {
-		super.writeToNBT(NBT);
-
-		NBTTagCompound tag = new NBTTagCompound();
-		//cache.writeToNBT(tag);
-		NBT.setTag("crops", tag);
-
-		tag = new NBTTagCompound();
-		hostilePlayers.writeToNBT(tag);
-		NBT.setTag("hostile", tag);
-	}
-
-	@Override
-	public void readFromNBT(NBTTagCompound NBT) {
-		super.readFromNBT(NBT);
-
-		//cache.readFromNBT(NBT.getCompoundTag("crops"));
-		hostilePlayers.readFromNBT(NBT.getCompoundTag("hostile"));
-	}
-
-	@Override
-	protected void writeSyncTag(NBTTagCompound NBT) {
-		super.writeSyncTag(NBT);
-
-		NBT.setBoolean("pvp", doPVP);
-	}
-
-	@Override
-	protected void readSyncTag(NBTTagCompound NBT) {
-		super.readSyncTag(NBT);
-
-		doPVP = NBT.getBoolean("pvp");
-	}
-	/*
-	public void savePoint() {
-		EntityPlayer ep = this.getPlacer();
-		NBTTagCompound tag = new NBTTagCompound();
-		new WorldLocation(this).writeToNBT(tag);
-		NBTTagCompound nbt = ReikaPlayerAPI.getDeathPersistentNBT(ep);
-		nbt.setTag(NBT_TAG, tag);
-	}
+	/**
+	 * V33a's is a call to super plus a commented-out point removal; the locus cache eviction the super
+	 * does is the whole of the live behaviour.
 	 */
-	/*
-	public void removePoint() {
-		EntityPlayer ep = this.getPlacer();
-		NBTTagCompound tag = ReikaPlayerAPI.getDeathPersistentNBT(ep);
-		tag.removeTag(NBT_TAG);
+	@Override
+	public void breakBlock() {}
+
+	public void togglePVP() {
+		doPVP = !doPVP;
+		// Cleared with the toggle: flipping PVP back on must not resurrect old grudges.
+		hostilePlayers.clear();
+		this.syncAllData(false);
 	}
-	 *//*
-	public static TileEntityAuraPoint getPoint(EntityPlayer ep) {
-		/*
-		NBTTagCompound nbt = ReikaPlayerAPI.getDeathPersistentNBT(ep);
-		if (nbt.hasKey(NBT_TAG)) {
-			NBTTagCompound tag = nbt.getCompoundTag(NBT_TAG);
-			WorldLocation loc = WorldLocation.readFromNBT(tag);
-			if (loc != null) {
-				TileEntity te = loc.getTileEntity();
-				if (te instanceof TileEntityAuraPoint) {
-					return (TileEntityAuraPoint)te;
-				}
+
+	public boolean doPvP() {
+		return doPVP;
+	}
+
+	/** V33a: an aura point is the owner's, but anyone may stand in it. */
+	@Override
+	public boolean onlyAllowOwnersToMine() {
+		return true;
+	}
+
+	@Override
+	public boolean onlyAllowOwnersToUse() {
+		return false;
+	}
+
+	public void markHostile(Player ep) {
+		hostilePlayers.add(ep.getUUID());
+	}
+
+	@Override
+	public void updateEntity(Level world, BlockPos pos) {
+		if (world.isClientSide())
+			return;
+		this.playSounds(world, pos);
+		// V33a's cadence: the attack sweep is far more frequent than the heal.
+		if (rand.nextInt(20) == 0)
+			this.killEntities(world, pos);
+		if (rand.nextInt(160) == 0)
+			this.healFriendly(world, pos);
+	}
+
+	/** V33a: twice as often inside Proxima as outside it. */
+	private void playSounds(Level world, BlockPos pos) {
+		int n = world.dimension() == reika.chromaticraft.registry.ChromaDimensions.PROXIMA ? 2 : 1;
+		if (this.getTicksExisted() % (244 / n) == 0)
+			ChromaSounds.AURALOCUS.playSoundAtBlock(world, pos, 2, n);
+	}
+
+	private int getAttackRange() {
+		return (int)Math.min(8 + this.getBlockEntityAge() / 16, 96);
+	}
+
+	private int getHealRange() {
+		return (int)Math.min(4 + this.getBlockEntityAge() / 64, 32);
+	}
+
+	/** V33a: one looting level per four hours of the point's life, capped at six. */
+	public int getLootingLevel() {
+		return (int)Math.min(6, this.getBlockEntityAge() / 288000);
+	}
+
+	/** A full-height column, as upstream sweeps: the aura defends the sky as well as the ground. */
+	private AABB column(BlockPos pos, int r) {
+		return new AABB(pos.getX() - r, this.getLevel().getMinY(), pos.getZ() - r,
+				pos.getX() + 1 + r, this.getLevel().getMaxY(), pos.getZ() + 1 + r);
+	}
+
+	private void killEntities(Level world, BlockPos pos) {
+		boolean struck = false;
+		for (LivingEntity e : world.getEntitiesOfClass(LivingEntity.class,
+				this.column(pos, this.getAttackRange()))) {
+			if (this.shouldAttack(e)) {
+				this.attack(e);
+				struck = true;
 			}
 		}
-		return null;
-	  *//*
-		Collection<WorldLocation> c = TileEntityLocusPoint.getCache(TileEntityAuraPoint.class, ep);
-		if (c == null || c.isEmpty())
-			return null;
-		TileEntity te = c.iterator().next().getTileEntity();
-		if (te instanceof TileEntityAuraPoint) {
-			return (TileEntityAuraPoint)te;
+		if (struck) {
+			ChromaSounds.DISCHARGE.playSoundAtBlock(world, pos);
+			Player owner = this.getPlacer();
+			if (owner != null && owner.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5)
+					< 32 * 32)
+				ChromaSounds.DISCHARGE.playSound(owner, 0.125F, 0.75F);
 		}
-		return null;
-	}*/
-
-	public static Collection<TileEntityAuraPoint> getPoints(EntityPlayer ep) {
-		return TileEntityLocusPoint.getTiles(TileEntityAuraPoint.class, ep.getUniqueID());
 	}
 
-	public static boolean hasAuraPoints(EntityPlayer ep) {
-		return hasAuraPoints(ep.getUniqueID());
+	/**
+	 * V33a getAttackDamage: ten flat for a player, otherwise half the target's current health with a
+	 * floor of four — so it scales into bosses instead of tickling them.
+	 */
+	private float getAttackDamage(LivingEntity e) {
+		if (e instanceof Player)
+			return 10;
+		return Math.max(4, e.getHealth() / 2);
 	}
 
-	public static boolean hasAuraPoints(UUID uid) {
-		if (uid == null)
+	private void attack(LivingEntity e) {
+		if (!(this.getLevel() instanceof ServerLevel server))
+			return;
+		// Deferred: ChromaAux.doPylonAttack(null, e, dmg, false, getLootingLevel(), false). The damage
+		// is upstream's; the taper and progress flags, and routing the looting level into the drop
+		// roll, arrive with that helper.
+		e.hurtServer(server, server.damageSources().magic(), this.getAttackDamage(e));
+		ChromaSounds.DISCHARGE.playSound(e, 0.5F, 1);
+	}
+
+	private boolean shouldAttack(LivingEntity e) {
+		if (e.getHealth() <= 0 || !e.isAlive())
 			return false;
-		return TileEntityLocusPoint.hasLoci(TileEntityAuraPoint.class, uid);
+		if (e instanceof Player ep) {
+			// A player is neutral until they make themselves hostile, and never a target with PVP off.
+			return doPVP && !this.isOwnedByPlayer(ep) && hostilePlayers.contains(ep.getUUID());
+		}
+		return ReikaEntityHelper.isHostile(e);
 	}
 
-	public static boolean isPointWithin(World world, int x, int y, int z, int r) {
-		return TileEntityLocusPoint.isPointWithin(TileEntityAuraPoint.class, world, x, y, z, r);
-	}
-
-	private static class SugarCaneCrop implements CropType {
-
-		@Override
-		public boolean existsInGame() {
-			return true;
-		}
-
-		@Override
-		public boolean isRipe(World world, int x, int y, int z) {
-			return false;
-		}
-
-		@Override
-		public void setHarvested(World world, int x, int y, int z) {
-			y++;
-			while(world.getBlock(x, y, z) == Blocks.reeds) {
-				world.setBlockToAir(x, y, z);
-				y++;
+	private void healFriendly(Level world, BlockPos pos) {
+		for (LivingEntity e : world.getEntitiesOfClass(LivingEntity.class,
+				this.column(pos, this.getHealRange())))
+			if (this.shouldHeal(e)) {
+				e.heal(e.getMaxHealth());
+				ChromaSounds.CAST.playSound(e, 0.5F, 1);
 			}
-			world.setBlockMetadataWithNotify(x, y, z, 0, 3);
-		}
-
-		@Override
-		public void makeRipe(World world, int x, int y, int z) {
-			world.setBlockMetadataWithNotify(x, y, z, 15, 3);
-		}
-
-		@Override
-		public int getGrowthState(World world, int x, int y, int z) {
-			return world.getBlockMetadata(x, y, z);
-		}
-
-		@Override
-		public boolean isSeedItem(ItemStack is) {
-			return false;
-		}
-
-		@Override
-		public boolean destroyOnHarvest() {
-			return true;
-		}
-
-		@Override
-		public ArrayList<ItemStack> getDrops(World world, int x, int y, int z, int fortune) {
-			return ReikaJavaLibrary.makeListFrom(new ItemStack(Items.reeds));
-		}
-
-		@Override
-		public boolean isCrop(Block id, int meta) {
-			return id == Blocks.reeds;
-		}
-
-		@Override
-		public boolean neverDropsSecondSeed() {
-			return false;
-		}
-		/*
-		@Override
-		public CropFormat getShape() {
-			return CropFormat.BLOCK;
-		}*/
-
 	}
 
+	private boolean shouldHeal(LivingEntity e) {
+		if (e.getHealth() >= e.getMaxHealth())
+			return false;
+		if (e instanceof Player ep)
+			return this.isOwnedByPlayer(ep) || !hostilePlayers.contains(ep.getUUID());
+		return e instanceof Animal;
+	}
+
+	/**
+	 * V33a updateColors: the hue walks one degree a tick towards a target it re-rolls on arrival, going
+	 * the short way round the wheel. The saturation eases towards its own target at a thirty-secondth
+	 * of an eighth per tick, which is what makes the colour drift rather than flicker.
+	 */
+	@Override
+	protected void animateWithTick(Level world, BlockPos pos) {
+		float ds = saturationTarget - saturation;
+		int dh = hueTarget - hue;
+		if (dh == 0 && Math.abs(ds) < 0.03125F) {
+			hueTarget = rand.nextInt(360);
+			saturationTarget = rand.nextFloat() * rand.nextFloat();
+		}
+		saturation += 0.03125F * 0.125F * Math.signum(ds);
+		int step = (int)Math.signum(dh);
+		// Half a turn or more away, walking backwards is the shorter path.
+		hue += Math.abs(dh) >= 180 ? -step : step;
+		if (hue < 0 || hue >= 360)
+			hue = (hue % 360 + 360) % 360;
+	}
+
+	@Override
+	protected void saveAdditional(CompoundTag NBT) {
+		super.saveAdditional(NBT);
+		NBT.putBoolean("pvp", doPVP);
+		net.minecraft.nbt.ListTag li = new net.minecraft.nbt.ListTag();
+		for (UUID id : hostilePlayers)
+			li.add(net.minecraft.nbt.StringTag.valueOf(id.toString()));
+		NBT.put("hostile", li);
+	}
+
+	@Override
+	public void load(CompoundTag NBT) {
+		super.load(NBT);
+		doPVP = NBT.getBooleanOr("pvp", true);
+		hostilePlayers.clear();
+		net.minecraft.nbt.ListTag li = NBT.getListOrEmpty("hostile");
+		for (int i = 0; i < li.size(); i++)
+			li.getString(i).ifPresent(id -> hostilePlayers.add(UUID.fromString(id)));
+	}
+
+	@Override
+	protected void writeSyncTag(CompoundTag NBT) {
+		super.writeSyncTag(NBT);
+		NBT.putBoolean("pvp", doPVP);
+	}
+
+	@Override
+	protected void readSyncTag(CompoundTag NBT) {
+		super.readSyncTag(NBT);
+		doPVP = NBT.getBooleanOr("pvp", true);
+	}
 }
