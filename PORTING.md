@@ -6140,7 +6140,30 @@ mid-ritual is left with no GUI. Nothing in the current effects touches those set
 them can strand a player that way. The two shader programs are also absent; per this port's shader
 notes their sixteen per-frame core positions and colours must arrive as a texture, not as uniforms.
 
-**The camera hook, researched.** `ViewportEvent.ComputeCameraAngles` exposes yaw, pitch and roll and
+**The camera, ported.** The research below stood up and the route it named is what was built.
+
+`ViewportEvent.ComputeCameraAngles` exposes only yaw, pitch and roll; `Camera.setPosition` stays
+protected and NeoForge's camera patch adds `getRoll`, `getBlockAtCamera` and a three-argument
+`setRotation` but no position hook. So the orbit needs both halves: the angles go through the event,
+which is what the rest of the render pipeline reads them from, and the position through a new
+`CameraAccessor` mixin in DragonAPI. An accessor rather than an access transformer deliberately — this
+mod's AT still carries SRG field names from an older mappings setup, so whether it currently applies is
+not something to build a feature on, while the two mixins beside the new one demonstrably load.
+
+The orbit is applied per *frame*, not per tick: a camera moved once a tick judders, and the event
+carries the partial tick that smooths it.
+
+Two 26.2 API differences worth recording. `gameSettings.hideGUI` is gone — the flag now lives on
+`Hud` as a private field with a `toggle()` and an `isHidden()` and no setter, so the state is reached by
+comparing and toggling rather than by assignment. And view bob is an `OptionInstance<Boolean>` behind
+`options.bobView()`.
+
+**Everything borrowed is given back in `stop()`, and every way a ritual can end routes through it**: the
+server saying so, the ceremony completing, and — the path that actually matters —
+`ClientPlayerNetworkEvent.LoggingOut`. A player who logs out mid-ceremony would otherwise come back with
+no HUD and no view bob, with nothing in the world left to restore them.
+
+**The camera hook, researched.****The camera hook, researched.** `ViewportEvent.ComputeCameraAngles` exposes yaw, pitch and roll and
 nothing else; `Camera.setPosition` is `protected` and NeoForge's camera patch does not widen it — it
 adds `getRoll`, `getBlockAtCamera` and a three-argument `setRotation`, but no position hook. So the
 epitrochoid *orbit*, which moves the camera off the player entirely, is not reachable from a public

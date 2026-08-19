@@ -113,6 +113,10 @@ public final class ChromaBlockColors {
     public static void onClientLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
         LuminousCliffsColors.onLevelChanged(null);
         ProximaBiomeColors.onLevelChanged(null);
+        // Leaving the level ends any ceremony, and with it gives back the HUD and view bob. This is one
+        // of the paths that must not be forgotten: a player who logs out mid-ritual would otherwise
+        // come back with no GUI.
+        reika.chromaticraft.client.render.MonumentRitualEffects.stop();
     }
 
     /** Drains the progression-sound cooldown (V33a ProgressOverlayRenderer ticks it the same way). */
@@ -121,6 +125,17 @@ public final class ChromaBlockColors {
         reika.chromaticraft.network.ChromaNetwork.tickProgressSoundCooldown();
         // The monument ritual's effects run on their own copy of the score, driven from here.
         reika.chromaticraft.client.render.MonumentRitualEffects.tickClient();
+    }
+
+    /**
+     * Drives the ritual's camera orbit. Per frame rather than per tick, because a camera moved once a
+     * tick judders; the event carries the partial tick that smooths it.
+     */
+    @SubscribeEvent
+    public static void onComputeCameraAngles(
+            net.neoforged.neoforge.client.event.ViewportEvent.ComputeCameraAngles event) {
+        reika.chromaticraft.client.render.MonumentRitualEffects.applyCamera(
+                event.getCamera(), (float)event.getPartialTick(), event);
     }
 
     /** Builds the cached, blend-radius-aware tint cache the cliff tint wrappers probe. */
