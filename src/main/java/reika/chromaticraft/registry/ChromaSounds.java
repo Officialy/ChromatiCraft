@@ -83,6 +83,18 @@ public enum ChromaSounds implements ChromaSound {
 	FIRE("fire"),
 	LASER("laser"),
 	MONUMENT("monument/s"),
+	/**
+	 * The six tracks the monument ritual plays in sequence. V33a reaches these through its pitch-variant
+	 * sub-sound system as {@code MONUMENT.getVariant("1")} and so on; that system is deferred here, and
+	 * these are the same six files registered as their own events, which is what the port's sound
+	 * provider can emit. {@link #monumentTrack} is the accessor the ritual uses.
+	 */
+	MONUMENT_1("monument/s_1"),
+	MONUMENT_2("monument/s_2"),
+	MONUMENT_3("monument/s_3"),
+	MONUMENT_4("monument/s_4"),
+	MONUMENT_5("monument/s_5"),
+	MONUMENT_6("monument/s_6"),
 	MONUMENTRAY("monumentray"),
 	BUFFERWARNING("buffer_warning"),
 	BUFFERWARNING_LOW("buffer_warning2"),
@@ -320,6 +332,8 @@ public enum ChromaSounds implements ChromaSound {
 
 	@Override
 	public boolean attenuate() {
+		if (this.isMonumentTrack())
+			return false;
 		return this != GOTODIM && this != PYLONTURBO && this != PYLONFLASH && this != PYLONBOOSTRITUAL && this != PYLONBOOSTSTART && this != REPEATERSURGE && this != MONUMENT && this != MONUMENTRAY && this != GAINPROGRESS && this != LORECOMPLETE;
 	}
 
@@ -340,6 +354,8 @@ public enum ChromaSounds implements ChromaSound {
 
 	@Override
 	public boolean preload() {
+		if (this.isMonumentTrack())
+			return true;
 		switch (this) {
 			case MONUMENT:
 			case POWER:
@@ -387,7 +403,22 @@ public enum ChromaSounds implements ChromaSound {
 
 	@Override
 	public boolean isStreamed() {
-		return this == MONUMENT;
+		return this == MONUMENT || this.isMonumentTrack();
+	}
+
+	/** The six ritual tracks, which share every one of MONUMENT's own playback flags. */
+	public boolean isMonumentTrack() {
+		return this.ordinal() >= MONUMENT_1.ordinal() && this.ordinal() <= MONUMENT_6.ordinal();
+	}
+
+	/**
+	 * The track for a given step of the ritual's score, zero-based. V33a's own indexing: its
+	 * {@code currentSound} starts at zero and asks for variant {@code idx + 1}, so step 0 is
+	 * {@code monument/s_1}.
+	 */
+	public static ChromaSounds monumentTrack(int step) {
+		ChromaSounds[] tracks = {MONUMENT_1, MONUMENT_2, MONUMENT_3, MONUMENT_4, MONUMENT_5, MONUMENT_6};
+		return step < 0 || step >= tracks.length ? null : tracks[step];
 	}
 }
 

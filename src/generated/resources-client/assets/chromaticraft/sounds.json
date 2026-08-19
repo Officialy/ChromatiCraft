@@ -431,6 +431,66 @@
       }
     ]
   },
+  "monument/s_1": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:monument/s_1",
+        "preload": true,
+        "stream": true
+      }
+    ]
+  },
+  "monument/s_2": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:monument/s_2",
+        "preload": true,
+        "stream": true
+      }
+    ]
+  },
+  "monument/s_3": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:monument/s_3",
+        "preload": true,
+        "stream": true
+      }
+    ]
+  },
+  "monument/s_4": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:monument/s_4",
+        "preload": true,
+        "stream": true
+      }
+    ]
+  },
+  "monument/s_5": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:monument/s_5",
+        "preload": true,
+        "stream": true
+      }
+    ]
+  },
+  "monument/s_6": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:monument/s_6",
+        "preload": true,
+        "stream": true
+      }
+    ]
+  },
   "monumentray": {
     "sounds": [
       {
