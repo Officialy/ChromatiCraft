@@ -26,7 +26,7 @@ import reika.chromaticraft.registry.ChromaBlocks;
  * <p>Upstream's table is ten entries, seven of which are other mods' woods reached through
  * {@code ModWoodList} — Thaumcraft's silverwood, Twilight Forest's sakura, silverbell and maple, and
  * so on — and it filters them with {@code gen.type.exists()} at class-init. With none of those mods
- * present the table Reika actually rolls is oak, birch and his own lighted wood, at their upstream
+ * present the table Reika actually rolls is oak, birch and her own lighted wood, at their upstream
  * weights of 10, 8 and 3. That is what is here. The absent seven are not dropped behaviour; they are
  * a filter upstream applies for itself, and they will return with those mods if they are ever ported.
  *

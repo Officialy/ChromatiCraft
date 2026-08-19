@@ -39,7 +39,7 @@ import reika.chromaticraft.world.dimension.DimensionStructureType.ProximaStructu
  * <h2>Why {@code isComplete} is "did you place a core"</h2>
  *
  * <p>It reads like a placeholder and is not. Upstream test-runs every generator once at class-init and
- * marks the type usable only if that run produced a core, which is how Reika filtered out his own
+ * marks the type usable only if that run produced a core, which is how Reika filtered out her own
  * unfinished generators; {@link DimensionStructureType#registerGenerator} already reproduces that
  * exactly. A generator that lays out no core is an unfinished generator, and saying so is the contract.
  */

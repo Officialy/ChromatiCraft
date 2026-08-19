@@ -5963,7 +5963,7 @@ come across: upstream owns a `ChunkSplicedGenerationCache` that subclasses `setB
 with the engine doing the bookkeeping. So a generator here *plans* — it fills a map of the cells it
 wants — and a piece paints them, which is the shape `MonumentPiece` already takes. `isComplete()` being
 "did you place a core" is upstream's real contract: Reika test-ran each generator at class-init and
-marked the type usable only if it produced one, which is how he filtered out his own unfinished ones.
+marked the type usable only if it produced one, which is how she filtered out her own unfinished ones.
 
 **`ThreadSafeTileCache`** (DragonAPI) and **`TileEntityLocusPoint`** — the cache is why the locus point
 exists. A locus point is looked up by *who placed it*, not by where it is, and usually from a thread
@@ -6220,7 +6220,7 @@ shapes are rare per tree rather than per cluster.
 **The wood table is ten entries and seven of them are other mods'.** Silverwood is Thaumcraft's;
 sakura, silverbell and maple are Twilight Forest's; and upstream filters the lot with
 `gen.type.exists()` at class-init. With none of those mods present the table Reika actually rolls is
-oak, birch and his own lighted wood at weights 10, 8 and 3 — which is what is here. Those seven are not
+oak, birch and her own lighted wood at weights 10, 8 and 3 — which is what is here. Those seven are not
 dropped behaviour: the filter is upstream's own, and they return with the mods if those are ever
 ported.
 
