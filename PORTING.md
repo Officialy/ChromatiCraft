@@ -6097,3 +6097,45 @@ That second test also caught a mistake of mine worth recording: it first used
 resolve the stored UUID and fell back to a `FakePlayer` — which `doChecks` then correctly refused,
 since a core placed by a fake player grants no ownership. The ritual was right and the test was wrong.
 `makeMockServerPlayerInLevel` is what the rest of the suite already uses.
+
+### 2026-08-19 — The ritual's client half, and the audio it was written for
+
+**The six tracks existed and only one was registered.** All seven monument `.ogg` files have shipped
+since the assets came across, but `sounds.json` carried only `monument/s` — V33a reaches the rest
+through its pitch-variant sub-sound system, which this port defers. So the whole score, whose every
+timing exists to cue those tracks, had nothing to cue. The six are now their own sound events sharing
+`MONUMENT`'s flags: streamed (they are two-minute pieces of music), preloaded (so the ceremony does not
+stall on first play) and unattenuated (it is meant to be heard from wherever the player stands).
+`monumentTrack(step)` keeps V33a's indexing, whose `currentSound` starts at zero and asks for variant
+`idx + 1`, so step 0 is `monument/s_1`.
+
+**`MonumentRitualEffects`** is the client half. The two halves never share an object: the server runs
+its own copy of the score and owns when the ceremony ends, while this runs a second copy purely to know
+what to draw and when. That means the visuals cannot hold the ceremony up and a stalled client cannot
+desynchronise it — the price being that both sides read the same clock, which is precisely why the
+score is wall-clock. The pause correction is on both sides for the same reason: a client dropping
+frames should have the ceremony wait for it rather than skip through its own music.
+
+The effects went into `ChromaParticle` beside the rest, built on the `Blur` particle that is this
+port's `EntityCCBlurFX`: the vortex (twelve blurs a tick on a ring that turns with the wall clock, each
+drawn inward and lifted, so it reads as a funnel rather than a halo — every third particle lives half
+as long again, which is what gives its edge the flicker), the ring (180 points at the monument's
+shoulder, three lit at a time and travelling, with the radius pulsing by *position* rather than time so
+it reads as a woven figure), and the rays.
+
+**One packet, not V33a's four.** Upstream sends start, end, complete and reset because its single class
+held both halves and had to be told about every transition. Here the client runs the same score, so all
+the server says is where the monument is and whether the ceremony is on.
+
+Checked rather than assumed, since it is the reason for the whole split:
+`MonumentCompletionRitual`, `MonumentRitualScore`, `MonumentMineralBlocks` and
+`TileEntityStructureController` contain **zero** references to `net.minecraft.client`,
+`Minecraft.getInstance`, `ClientLevel` or `ParticleEngine`.
+
+**Still not carried: the camera.** V33a walks it around an epitrochoid (`R = 40, r = 32.5, d = 12.19`)
+through `ReikaRenderHelper.setCameraPosition`, hiding the GUI and disabling view bob for the duration.
+That needs a 26.2 camera-override hook, and with it must come an *unconditional* restore of both
+settings — on logout, on death and on server stop, not only on completion, or a player who leaves
+mid-ritual is left with no GUI. Nothing in the current effects touches those settings, so nothing in
+them can strand a player that way. The two shader programs are also absent; per this port's shader
+notes their sixteen per-frame core positions and colours must arrive as a texture, not as uniforms.

@@ -33,6 +33,8 @@ public final class ChromaNetwork {
 		PayloadRegistrar registrar = event.registrar(ChromatiCraft.MODID).versioned("1");
 		registrar.playToClient(ProximaLayoutSeed.TYPE, ProximaLayoutSeed.CODEC,
 				ChromaNetwork::handleProximaLayoutSeed);
+		registrar.playToClient(MonumentRitualState.TYPE, MonumentRitualState.CODEC,
+				ChromaNetwork::handleMonumentRitualState);
 		registrar.playToClient(AttackBeam.TYPE, AttackBeam.CODEC, ChromaNetwork::handleAttackBeam);
 		registrar.playToClient(Discharge.TYPE, Discharge.CODEC, ChromaNetwork::handleDischarge);
 		registrar.playToClient(AttackReceive.TYPE, AttackReceive.CODEC, ChromaNetwork::handleAttackReceive);
@@ -115,6 +117,37 @@ public final class ChromaNetwork {
 	 * reason elsewhere: {@code StructureCalculator.assignSeed} sends one so a client can recompute the
 	 * colour-to-structure map.
 	 */
+	/**
+	 * Starts or stops the client's copy of the monument ritual's effects.
+	 *
+	 * <p>One packet rather than V33a's separate start, end, complete and reset messages: the client half
+	 * runs its own copy of the same score, so all the server has to say is where the monument is and
+	 * whether the ceremony is on. Its four messages exist because upstream's single class held both
+	 * halves and had to be told about each transition; here there is nothing to transition.
+	 */
+	public record MonumentRitualState(BlockPos pos, boolean running, boolean inProxima)
+			implements CustomPacketPayload {
+		public static final Type<MonumentRitualState> TYPE = createType("monument_ritual_state");
+		public static final StreamCodec<ByteBuf, MonumentRitualState> CODEC = StreamCodec.composite(
+				BlockPos.STREAM_CODEC, MonumentRitualState::pos,
+				ByteBufCodecs.BOOL, MonumentRitualState::running,
+				ByteBufCodecs.BOOL, MonumentRitualState::inProxima, MonumentRitualState::new);
+		@Override public Type<MonumentRitualState> type() { return TYPE; }
+	}
+
+	public static void sendMonumentRitualState(ServerLevel level, BlockPos pos, boolean running,
+			boolean inProxima) {
+		// Everyone near enough to hear it: the tracks are unattenuated, so the audible radius is the
+		// ceremony's real reach rather than the particles'.
+		PacketDistributor.sendToPlayersNear(level, null, pos.getX(), pos.getY(), pos.getZ(), 256,
+				new MonumentRitualState(pos, running, inProxima));
+	}
+
+	private static void handleMonumentRitualState(MonumentRitualState payload, IPayloadContext context) {
+		context.enqueueWork(() -> ClientPayloadHandlers.monumentRitualState(
+				payload.pos(), payload.running(), payload.inProxima()));
+	}
+
 	public record ProximaLayoutSeed(long seed) implements CustomPacketPayload {
 		public static final Type<ProximaLayoutSeed> TYPE = createType("proxima_layout_seed");
 		public static final StreamCodec<ByteBuf, ProximaLayoutSeed> CODEC = StreamCodec.composite(

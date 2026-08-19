@@ -245,6 +245,104 @@ public abstract class ChromaParticle extends SingleQuadParticle {
         }
     }
 
+    /**
+     * V33a {@code MonumentCompletionRitual.doVortexFX}: a turning ring of blurs below the monument, each
+     * drifting inward and upward.
+     *
+     * <p>The ring turns on the wall clock rather than on the tick, because the ritual it belongs to is
+     * cued to recorded audio and everything in it shares that clock. Every third particle lives half as
+     * long again, which is what gives the vortex its uneven, flickering edge instead of a clean band.
+     *
+     * @param size the vortex's current breath, which scales both its radius and its particles' lifetime
+     */
+    public static void spawnMonumentVortex(Level world, BlockPos pos, double size) {
+        if (!(world instanceof ClientLevel level) || size <= 0) return;
+        double y0 = pos.getY() + 0.5 - 4.5;
+        double radius = 2.25 + 0.5 * size;
+        for (double a = 0; a < 360; a += 30) {
+            double angle = a + (System.currentTimeMillis() / 20D) % 360D;
+            double x = pos.getX() + 0.5 + radius * Math.cos(Math.toRadians(angle));
+            double z = pos.getZ() + 0.5 + radius * Math.sin(Math.toRadians(angle));
+            int life = (int)((a % 60 == 0 ? 60 : 40) * size);
+            Blur blur = new Blur(level, x, y0, z, 0xFFFFFF, 4F, life);
+            // Drawn inward and lifted: the ring is a funnel, not a halo.
+            blur.xd = (pos.getX() + 0.5 - x) * 0.01875 / size;
+            blur.yd = 0.25;
+            blur.zd = (pos.getZ() + 0.5 - z) * 0.01875 / size;
+            Minecraft.getInstance().particleEngine.add(blur);
+        }
+    }
+
+    /**
+     * V33a {@code doRingFX}: a ring of a hundred and eighty points at the monument's shoulder height,
+     * of which three are lit at a time and travel round it, so light appears to run the circumference.
+     *
+     * <p>The radius pulses with position rather than with time — {@code 32.5 - 2.5*|sin(2i)|} — which is
+     * what makes the ring read as a woven figure rather than a circle.
+     */
+    public static void spawnMonumentRing(Level world, BlockPos pos, int tick) {
+        if (!(world instanceof ClientLevel level)) return;
+        final int points = 180;
+        final int lit = 3;
+        for (int i = 0; i < lit; i++) {
+            int index = (tick + points / lit * i) % points;
+            double a = Math.toRadians(index * 360D / points);
+            double r = 32.5 - 2.5 * Math.abs(Math.sin(Math.toRadians(index * 2)));
+            double x = pos.getX() + 0.5 + r * Math.cos(a);
+            double z = pos.getZ() + 0.5 + r * Math.sin(a);
+            int color = CrystalElement.elements[index % CrystalElement.elements.length].getColor();
+            float scale = (1 + level.getRandom().nextFloat()) * 4;
+            int life = 60 + level.getRandom().nextInt(40);
+            Minecraft.getInstance().particleEngine.add(
+                    new Blur(level, x, pos.getY() + 6.5, z, color, scale, life));
+        }
+    }
+
+    /** V33a doRays: a burst thrown from the monument in one element's colour as its note sounds. */
+    public static void spawnMonumentRay(Level world, BlockPos pos, CrystalElement color) {
+        if (!(world instanceof ClientLevel level)) return;
+        for (int i = 0; i < 24; i++) {
+            double x = pos.getX() + 0.5;
+            double y = pos.getY() + 0.5;
+            double z = pos.getZ() + 0.5;
+            double theta = level.getRandom().nextDouble() * Math.PI * 2;
+            double phi = Math.acos(2 * level.getRandom().nextDouble() - 1);
+            double v = 0.25 + level.getRandom().nextDouble() * 0.25;
+            Blur blur = new Blur(level, x, y, z, color.getColor(), 3F + level.getRandom().nextFloat() * 2,
+                    30 + level.getRandom().nextInt(20));
+            blur.xd = v * Math.sin(phi) * Math.cos(theta);
+            blur.yd = v * Math.cos(phi);
+            blur.zd = v * Math.sin(phi) * Math.sin(theta);
+            Minecraft.getInstance().particleEngine.add(blur);
+        }
+    }
+
+    /**
+     * The score's non-ray events, which upstream distinguishes only by how many particles they throw and
+     * how fast: flares are the plain beat, clouds hang, twirls and pinwheels turn.
+     */
+    public static void spawnMonumentEvent(Level world, BlockPos pos, int ordinal) {
+        if (!(world instanceof ClientLevel level)) return;
+        int count = switch (ordinal) {
+            case 1 -> 64;
+            case 2 -> 24;
+            default -> 32 + level.getRandom().nextInt(48);
+        };
+        for (int i = 0; i < count; i++) {
+            double a = level.getRandom().nextDouble() * Math.PI * 2;
+            double r = level.getRandom().nextDouble() * 6;
+            double x = pos.getX() + 0.5 + r * Math.cos(a);
+            double z = pos.getZ() + 0.5 + r * Math.sin(a);
+            double y = pos.getY() + 0.5 + level.getRandom().nextDouble() * 6 - 3;
+            int color = CrystalElement.elements[level.getRandom().nextInt(
+                    CrystalElement.elements.length)].getColor();
+            Blur blur = new Blur(level, x, y, z, color, 2F + level.getRandom().nextFloat() * 3,
+                    40 + level.getRandom().nextInt(40));
+            blur.yd = 0.05 + level.getRandom().nextDouble() * 0.1;
+            Minecraft.getInstance().particleEngine.add(blur);
+        }
+    }
+
     /** V33a booster trail: one no-slowdown color blur per connected crystal per client tick. */
     public static void spawnPylonBoosterRecharge(Level world, BlockPos pylonPos, CrystalElement color,
             Collection<TileEntityChromaCrystal> boosters, int ticksExisted) {

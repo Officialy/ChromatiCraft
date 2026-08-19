@@ -764,6 +764,10 @@ public final class TileEntityStructureController extends RandomizableContainerBl
 		monument = new reika.chromaticraft.magic.MonumentCompletionRitual(world, this.getBlockPos(), ep);
 		if (monument.doChecks()) {
 			monument.start();
+			if (world instanceof net.minecraft.server.level.ServerLevel server)
+				reika.chromaticraft.network.ChromaNetwork.sendMonumentRitualState(server,
+						this.getBlockPos(), true,
+						world.dimension() == reika.chromaticraft.registry.ChromaDimensions.PROXIMA);
 			this.setChanged();
 			return true;
 		}
@@ -780,6 +784,9 @@ public final class TileEntityStructureController extends RandomizableContainerBl
 		if (monument != null && monument.isRunning())
 			monument.endRitual();
 		monument = null;
+		if (this.getLevel() instanceof net.minecraft.server.level.ServerLevel server)
+			reika.chromaticraft.network.ChromaNetwork.sendMonumentRitualState(server,
+					this.getBlockPos(), false, false);
 		this.setChanged();
 	}
 

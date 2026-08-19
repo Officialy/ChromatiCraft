@@ -119,6 +119,8 @@ public final class ChromaBlockColors {
     @SubscribeEvent
     public static void onClientTick(net.neoforged.neoforge.client.event.ClientTickEvent.Post event) {
         reika.chromaticraft.network.ChromaNetwork.tickProgressSoundCooldown();
+        // The monument ritual's effects run on their own copy of the score, driven from here.
+        reika.chromaticraft.client.render.MonumentRitualEffects.tickClient();
     }
 
     /** Builds the cached, blend-radius-aware tint cache the cliff tint wrappers probe. */

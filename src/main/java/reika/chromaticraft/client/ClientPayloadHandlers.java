@@ -42,6 +42,17 @@ public final class ClientPayloadHandlers {
 
 	private static Long clientRiverSeed;
 
+	/**
+	 * Starts or stops the monument ritual's client-side effects. The client runs its own copy of the
+	 * score, so this only has to say where and whether.
+	 */
+	public static void monumentRitualState(BlockPos pos, boolean running, boolean inProxima) {
+		if (running)
+			reika.chromaticraft.client.render.MonumentRitualEffects.start(pos, inProxima);
+		else
+			reika.chromaticraft.client.render.MonumentRitualEffects.stop();
+	}
+
 	public static void tickProgressSoundCooldown() {
 		// Compatibility entry point retained for the existing client tick hook. The
 		// original overlay now derives its cooldown from client level game time.
