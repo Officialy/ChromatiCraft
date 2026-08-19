@@ -145,6 +145,7 @@ public class ChromaLang extends LanguageProvider {
 			String suffix = element.getEnglishName();
 			// V33a crystal.lamp = "Crystal Lamp" — matches.
 			add("block.chromaticraft.crystal_lamp_" + suffix, element.displayName + " Crystal Lamp");
+			add("block.chromaticraft.dimension_core_" + suffix, element.displayName + " Dimension Core");
 			// V33a SUPER's basicName key is "crystal.super" = "Potion Crystal", NOT "Super Crystal"
 			// (BlockSuperCrystal is a fixed-colour potion-effect crystal — see getPotionLevel/
 			// shouldGiveEffects/performEffect). This corrects the ISSUES.md A3 table, which assumed

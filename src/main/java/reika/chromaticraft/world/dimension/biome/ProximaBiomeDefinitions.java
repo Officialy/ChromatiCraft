@@ -157,6 +157,11 @@ public final class ProximaBiomeDefinitions {
 		// takes it from the CENTER branch as it takes everything not dedicated elsewhere.
 		if (central || type == ProximaBiomes.FOREST)
 			add(builder, features, "tree_cluster");
+		// V33a ALTAR: `b.getExactType().isReasonablyFlat()` -- and the Sanctuary, which takes it from
+		// the CENTER branch since the altar is not isDedicatedBiomeOnly. Its own site check wants seven
+		// by seven of flat open grass, so the biome test only decides where it may try.
+		if (central || type.isReasonablyFlat())
+			add(builder, features, "mini_altar");
 		// Both crystal plants belong to the Crystal Forest sub-biome and nowhere else.
 		if (type == ProximaSubBiomes.CRYSFOREST) {
 			add(builder, features, "crystal_tree");

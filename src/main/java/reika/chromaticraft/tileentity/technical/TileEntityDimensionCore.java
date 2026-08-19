@@ -24,6 +24,9 @@ import reika.chromaticraft.base.tileentity.TileEntityLocusPoint;
 import reika.chromaticraft.magic.ElementMixer;
 import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.CrystalElement;
+import reika.chromaticraft.registry.ChromaSounds;
+import reika.dragonapi.libraries.io.ReikaSoundHelper;
+import reika.chromaticraft.render.particle.ChromaParticle;
 import reika.chromaticraft.world.dimension.DimensionStructureType;
 import reika.chromaticraft.world.dimension.structure.StructureGeneratorBase;
 import reika.chromaticraft.world.dimension.structure.StructureGeneratorBase.StructurePair;
@@ -64,7 +67,6 @@ public class TileEntityDimensionCore extends TileEntityLocusPoint {
 	/** V33a's two connect-melody tracks, as the colour/interval pairs each beat sounds. */
 	private static final List<List<List<ColorNote>>> melody = new ArrayList<>();
 
-	private CrystalElement color = CrystalElement.WHITE;
 	private UUID uid;
 	private DimensionStructureType structure;
 	private boolean triggered;
@@ -167,17 +169,38 @@ public class TileEntityDimensionCore extends TileEntityLocusPoint {
 		return locations.get(e);
 	}
 
+	/**
+	 * The colour is the block's own registry identity, not tile state: each element is a separately
+	 * registered Dimension Core. Reading it from the block rather than from NBT is what stops a core
+	 * ever disagreeing with the item it was placed from.
+	 */
 	public CrystalElement getColor() {
-		return color;
+		return this.getBlockState().getBlock()
+				instanceof reika.chromaticraft.block.dimension.BlockDimensionCore core
+				? core.getElement() : CrystalElement.WHITE;
 	}
 
+	/**
+	 * V33a setColor. With one identity per colour this is a block swap, so the tile's own state — the
+	 * placer, the priming, the structure it belongs to — has to be carried across by hand or a recolour
+	 * would silently reset the core.
+	 */
 	public void setColor(CrystalElement e) {
-		color = e;
+		Level world = this.getLevel();
+		if (world == null || this.getColor() == e)
+			return;
+		CompoundTag carried = new CompoundTag();
+		this.saveAdditional(carried);
+		BlockPos pos = this.getBlockPos();
+		world.setBlock(pos, reika.chromaticraft.registry.ChromaBlocks.dimensionCore(e).get()
+				.defaultBlockState(), 3);
+		if (world.getBlockEntity(pos) instanceof TileEntityDimensionCore replacement)
+			replacement.load(carried);
 	}
 
 	@Override
 	public int getRenderColor() {
-		return color.getColor();
+		return this.getColor().getColor();
 	}
 
 	public void setStructure(StructurePair p) {
@@ -208,7 +231,7 @@ public class TileEntityDimensionCore extends TileEntityLocusPoint {
 	}
 
 	public Collection<CrystalElement> getColorBeams() {
-		return beams.get(color);
+		return beams.get(this.getColor());
 	}
 
 	/** The two connect-melody tracks, for whatever draws them. */
@@ -218,7 +241,7 @@ public class TileEntityDimensionCore extends TileEntityLocusPoint {
 
 	/** V33a getCenter: where the structure controller sits, derived from this core's own offset. */
 	public BlockPos getCenter() {
-		Vec3i c = locations.get(color);
+		Vec3i c = locations.get(this.getColor());
 		return this.getBlockPos().subtract(c);
 	}
 
@@ -230,10 +253,10 @@ public class TileEntityDimensionCore extends TileEntityLocusPoint {
 	/** V33a getSoundPitch: which interval of its colour a core sounds for a given note index. */
 	public float getSoundPitch(int p) {
 		return (float)switch (p) {
-			case 0 -> CrystalMusicManager.instance.getDingPitchScale(color);
-			case 1 -> CrystalMusicManager.instance.getThird(color);
-			case 2 -> CrystalMusicManager.instance.getFifth(color);
-			case 3 -> CrystalMusicManager.instance.getOctave(color);
+			case 0 -> CrystalMusicManager.instance.getDingPitchScale(this.getColor());
+			case 1 -> CrystalMusicManager.instance.getThird(this.getColor());
+			case 2 -> CrystalMusicManager.instance.getFifth(this.getColor());
+			case 3 -> CrystalMusicManager.instance.getOctave(this.getColor());
 			default -> 0D;
 		};
 	}
@@ -315,14 +338,76 @@ public class TileEntityDimensionCore extends TileEntityLocusPoint {
 	 * connect beams, neither of which is per-tick animation state.
 	 */
 	@Override
-	protected void animateWithTick(Level world, BlockPos pos) {}
+	protected void animateWithTick(Level world, BlockPos pos) {
+		// V33a's client half. `structureControlFX` is the other branch and is empty upstream, so the
+		// connect beams are the whole of it -- and they run only while primed, which is why a hand-built
+		// ring is silent until the ritual or the debug builder arms it.
+		// animateWithTick runs on both sides here; upstream's whole client branch is guarded by
+		// `world.isRemote`, and this reaches particle and sound code that has no business executing on
+		// a dedicated server.
+		if (world.isClientSide() && primed)
+			this.spawnConnectFX(world, pos);
+	}
+
+	/**
+	 * V33a spawnConnectFX: every eighth tick the ring plays one beat of its melody, and each core whose
+	 * colour that beat calls for answers — beaming to every correctly-coloured sibling it is paired
+	 * with, beaming to the controller, and sounding its own interval of the note.
+	 *
+	 * <p>Upstream picks the track from {@code monumentGenerator.hashCode() ^ Minecraft.hashCode()}. The
+	 * port has no monument generator object to hash, so the seed is the controller's own position, which
+	 * is stable for a given monument and differs between them exactly as upstream's did.
+	 *
+	 * <p>The centre must be a marked monument controller. That is upstream's own guard and it is what
+	 * keeps a core placed at random in the world from beaming at nothing.
+	 */
+	private void spawnConnectFX(Level world, BlockPos pos) {
+		int spacing = 8;
+		long tick = world.getGameTime();
+		if (tick % spacing != 0)
+			return;
+		BlockPos centre = this.getCenter();
+		if (!(world.getBlockEntity(centre)
+				instanceof reika.chromaticraft.tileentity.TileEntityStructureController control)
+				|| !control.isMonument())
+			return;
+
+		List<List<ColorNote>> song = melody.get(Math.floorMod(Long.hashCode(centre.asLong()),
+				melody.size()));
+		List<ColorNote> beat = song.get((int)(tick / spacing % song.size()));
+		if (beat.isEmpty())
+			return;
+		CrystalElement color = this.getColor();
+		for (ColorNote note : beat) {
+			if (note.color() != color)
+				continue;
+			float pitch = this.getSoundPitch(note.interval());
+			for (CrystalElement e : this.getColorBeams()) {
+				BlockPos other = this.getOtherColor(e);
+				if (world.getBlockEntity(other) instanceof TileEntityDimensionCore sibling
+						&& sibling.getColor() == e)
+					ChromaParticle.spawnCoreBeam(world, pos, other, color, e);
+			}
+			ChromaParticle.spawnCoreBeam(world, pos, centre, color, color);
+			// ChromaSounds.playSound is the server-side broadcast and returns early on a client, which
+			// is exactly where this runs; upstream uses the client-local play here for the same reason.
+			double px = pos.getX() + 0.5;
+			double py = pos.getY() + 0.5;
+			double pz = pos.getZ() + 0.5;
+			ReikaSoundHelper.playClientSound(ChromaSounds.ORB, px, py, pz,
+					1F / beat.size(), pitch, false);
+			ReikaSoundHelper.playClientSound(ChromaSounds.DING, px, py, pz,
+					0.3F / beat.size(), pitch);
+			ChromaParticle.spawnCoreNote(world, pos, color, 8 + world.getRandom().nextInt(8));
+		}
+	}
 
 	@Override
 	protected void onFirstTick(Level world, BlockPos pos) {
 		super.onFirstTick(world, pos);
 		if (!world.isClientSide() && this.getPlacer() == null && !this.hasStructure())
 			ChromatiCraft.LOGGER.error("{} was never given a structure. Color = {}, UID = {}",
-					this, color, uid);
+					this, this.getColor(), uid);
 	}
 
 	/**
@@ -394,14 +479,12 @@ public class TileEntityDimensionCore extends TileEntityLocusPoint {
 	@Override
 	protected void writeSyncTag(CompoundTag NBT) {
 		super.writeSyncTag(NBT);
-		NBT.putInt("color", color.ordinal());
 		NBT.putBoolean("prime", primed);
 	}
 
 	@Override
 	protected void readSyncTag(CompoundTag NBT) {
 		super.readSyncTag(NBT);
-		color = CrystalElement.elements[NBT.getIntOr("color", CrystalElement.WHITE.ordinal())];
 		primed = NBT.getBooleanOr("prime", false);
 	}
 
@@ -432,17 +515,8 @@ public class TileEntityDimensionCore extends TileEntityLocusPoint {
 	@Override
 	public void getTagsToWriteToStack(CompoundTag NBT) {
 		super.getTagsToWriteToStack(NBT);
-		NBT.putInt("color", color.ordinal());
 	}
 
-	@Override
-	public void setDataFromItemStackTag(ItemStack is) {
-		super.setDataFromItemStackTag(is);
-		CompoundTag tag = is.getOrDefault(net.minecraft.core.component.DataComponents.CUSTOM_DATA,
-				net.minecraft.world.item.component.CustomData.EMPTY).copyTag();
-		color = tag == null ? CrystalElement.WHITE
-				: CrystalElement.elements[tag.getIntOr("color", CrystalElement.WHITE.ordinal())];
-	}
 
 	/** Whether this core has already told the given player about its structure. */
 	public boolean hasSent(UUID player) {

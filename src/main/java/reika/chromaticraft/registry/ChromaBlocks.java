@@ -285,10 +285,32 @@ public final class ChromaBlocks {
 	 * around the monument. Unbreakable by blast, like the controller, and sealed by its own tile until
 	 * its structure is solved.
 	 */
-	public static final DeferredBlock<Block> DIMENSION_CORE =
-			register("dimension_core", () -> (Block)new reika.chromaticraft.block.dimension.BlockDimensionCore(
-					blockProperties().mapColor(MapColor.COLOR_PURPLE).strength(1.5F, 6000F)
-							.lightLevel(state -> 11).noOcclusion()));
+	public static final EnumMap<CrystalElement,
+			DeferredBlock<reika.chromaticraft.block.dimension.BlockDimensionCore>> DIMENSION_CORES =
+			registerDimensionCores();
+
+	private static EnumMap<CrystalElement,
+			DeferredBlock<reika.chromaticraft.block.dimension.BlockDimensionCore>> registerDimensionCores() {
+		EnumMap<CrystalElement, DeferredBlock<reika.chromaticraft.block.dimension.BlockDimensionCore>> map =
+				new EnumMap<>(CrystalElement.class);
+		for (CrystalElement element : CrystalElement.elements)
+			map.put(element, register(coloredName("dimension_core", element),
+					() -> new reika.chromaticraft.block.dimension.BlockDimensionCore(
+							blockProperties().mapColor(MapColor.COLOR_PURPLE).strength(1.5F, 6000F)
+									.lightLevel(state -> 11).noOcclusion(), element)));
+		return map;
+	}
+
+	public static DeferredBlock<reika.chromaticraft.block.dimension.BlockDimensionCore> dimensionCore(
+			CrystalElement element) {
+		return DIMENSION_CORES.get(element);
+	}
+
+	/** The same identity where a plain {@code DeferredBlock<Block>} is what the caller holds. */
+	@SuppressWarnings("unchecked")
+	public static DeferredBlock<Block> dimensionCoreBlock(CrystalElement element) {
+		return (DeferredBlock<Block>)(DeferredBlock<?>)DIMENSION_CORES.get(element);
+	}
 
 	/** V33a's Aura Point: the monument's completed form, and a standing area effect thereafter. */
 	public static final DeferredBlock<Block> AURA_POINT =

@@ -767,15 +767,14 @@ public final class TileEntityStructureController extends RandomizableContainerBl
 				: reika.chromaticraft.registry.CrystalElement.elements) {
 			BlockPos at = worldPosition.offset(
 					reika.chromaticraft.tileentity.technical.TileEntityDimensionCore.getLocation(element));
-			if (!level.getBlockState(at).is(
-					reika.chromaticraft.registry.ChromaBlocks.DIMENSION_CORE.get()))
-				level.setBlock(at, reika.chromaticraft.registry.ChromaBlocks.DIMENSION_CORE.get()
-						.defaultBlockState(), 3);
+			// One registry identity per colour, so placing the right block is what sets the colour.
+			var wanted = reika.chromaticraft.registry.ChromaBlocks.dimensionCore(element).get();
+			if (!level.getBlockState(at).is(wanted))
+				level.setBlock(at, wanted.defaultBlockState(), 3);
 			if (level.getBlockEntity(at)
 					instanceof reika.chromaticraft.tileentity.technical.TileEntityDimensionCore core) {
 				core.setPlacer(nearest);
 				core.prime(true);
-				core.setColor(element);
 			}
 		}
 		// The inlay is written relative to the template origin, which is a controller-offset away.

@@ -298,6 +298,70 @@ public abstract class ChromaParticle extends SingleQuadParticle {
         }
     }
 
+    /**
+     * V33a {@code TileEntityDimensionCore.createBeamLine}: a line of blurs between two cores, mixing
+     * from one element's colour to the other along its length.
+     */
+    public static void spawnCoreBeam(Level world, BlockPos from, BlockPos to,
+            CrystalElement e1, CrystalElement e2) {
+        if (!(world instanceof ClientLevel level)) return;
+        double dx = to.getX() - from.getX();
+        double dy = to.getY() - from.getY();
+        double dz = to.getZ() - from.getZ();
+        double dd = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if (dd <= 0) return;
+        for (double p = 0; p <= dd; p += 0.25) {
+            double f = p / dd;
+            // Upstream's sine envelope: the beam is thin at both cores and fattest at its midpoint.
+            float scale = 1 + 1.5F * (float)Math.sin(f * Math.PI);
+            int color = mixColors(e1.getColor(), e2.getColor(), 1 - (float)f);
+            Minecraft.getInstance().particleEngine.add(new Blur(level,
+                    from.getX() + 0.5 + f * dx, from.getY() + 0.5 + f * dy, from.getZ() + 0.5 + f * dz,
+                    color, scale, 20));
+        }
+    }
+
+    /**
+     * V33a {@code spawnConnectFX}'s particle half: the burst a core throws as its own note sounds.
+     * Upstream spawns two runs of eight to fifteen — lasers and floating seeds — from random points
+     * inside the block, with the same gravity and scale spreads.
+     */
+    public static void spawnCoreNote(Level world, BlockPos pos, CrystalElement color, int count) {
+        if (!(world instanceof ClientLevel level)) return;
+        RandomSource rand = level.getRandom();
+        for (int i = 0; i < count; i++) {
+            double x = pos.getX() + rand.nextDouble();
+            double y = pos.getY() + rand.nextDouble();
+            double z = pos.getZ() + rand.nextDouble();
+            float g = (float)plusMinus(rand, 0.03125, 0.0150625);
+            float scale = 2 * (float)plusMinus(rand, 1.25, 0.5);
+            Minecraft.getInstance().particleEngine.add(new Flare(level, x, y, z, color, g, scale));
+        }
+        for (int i = 0; i < count; i++) {
+            double x = pos.getX() + rand.nextDouble();
+            double y = pos.getY() + rand.nextDouble();
+            double z = pos.getZ() + rand.nextDouble();
+            float scale = 2 * (float)plusMinus(rand, 1.25, 0.5);
+            // Upstream's seeds blow straight up (-90 climb) with three times the angular velocity and
+            // five times the freedom of the default, which is what makes them spiral rather than drift.
+            Minecraft.getInstance().particleEngine.add(new FloatingSeed(level, x, y, z,
+                    rand.nextDouble() * 360, -90, scale, 80, color.getColor(), color.getColor()));
+        }
+    }
+
+    /** {@code ReikaRandomHelper.getRandomPlusMinus}. */
+    private static double plusMinus(RandomSource rand, double base, double spread) {
+        return base - spread + rand.nextDouble() * spread * 2;
+    }
+
+    /** {@code ReikaColorAPI.mixColors}: {@code f} of the first colour, the rest of the second. */
+    private static int mixColors(int c1, int c2, float f) {
+        int r = (int)((c1 >> 16 & 255) * f + (c2 >> 16 & 255) * (1 - f));
+        int g = (int)((c1 >> 8 & 255) * f + (c2 >> 8 & 255) * (1 - f));
+        int b = (int)((c1 & 255) * f + (c2 & 255) * (1 - f));
+        return r << 16 | g << 8 | b;
+    }
+
     /** V33a doRays: a burst thrown from the monument in one element's colour as its note sounds. */
     public static void spawnMonumentRay(Level world, BlockPos pos, CrystalElement color) {
         if (!(world instanceof ClientLevel level)) return;

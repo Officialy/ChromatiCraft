@@ -19,7 +19,8 @@
     [
       "chromaticraft:glow_tree",
       "chromaticraft:fire_jet",
-      "chromaticraft:tree_cluster"
+      "chromaticraft:tree_cluster",
+      "chromaticraft:mini_altar"
     ]
   ],
   "has_precipitation": false,

@@ -72,6 +72,12 @@ public enum CrystalElement implements OverlayColor, ProgressAccess, CrystalEleme
 		hsb = Color.RGBtoHSB(this.getRed(), this.getGreen(), this.getBlue(), null);
 	}
 
+	/** For blocks and items that carry an element in their own codec. */
+	public static final com.mojang.serialization.Codec<CrystalElement> CODEC =
+			com.mojang.serialization.Codec.STRING.xmap(
+					name -> valueOf(name.toUpperCase(java.util.Locale.ENGLISH)),
+					element -> element.name().toLowerCase(java.util.Locale.ENGLISH));
+
 	public String getEnglishName() {
 		return color.dye.getName();
 	}

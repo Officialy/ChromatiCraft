@@ -75,6 +75,7 @@ public final class ChromaWorldGenProvider {
     private static final Identifier GLOW_TREE = id("glow_tree");
     private static final Identifier TREE_CLUSTER = id("tree_cluster");
     private static final Identifier FIRE_JET = id("fire_jet");
+    private static final Identifier MINI_ALTAR = id("mini_altar");
     private static final Identifier CRYSTAL_PIT = id("crystal_pit");
     private static final Identifier AURORAE = id("aurorae");
     private static final List<Identifier> NETHER_ROOF_STRUCTURES =
@@ -182,6 +183,7 @@ public final class ChromaWorldGenProvider {
             registerConfigured(bootstrap, features, GLOW_TREE);
             registerConfigured(bootstrap, features, TREE_CLUSTER);
             registerConfigured(bootstrap, features, FIRE_JET);
+            registerConfigured(bootstrap, features, MINI_ALTAR);
             registerConfigured(bootstrap, features, CRYSTAL_PIT);
             registerConfigured(bootstrap, features, AURORAE);
             for (Identifier structure : NETHER_ROOF_STRUCTURES)
@@ -377,6 +379,16 @@ public final class ChromaWorldGenProvider {
             registerPlaced(bootstrap, configured, TREE_CLUSTER, List.of(
                     RarityFilter.onAverageOnceEvery(3),
                     net.minecraft.world.level.levelgen.placement.CountPlacement.of(2),
+                    net.minecraft.world.level.levelgen.placement.HeightmapPlacement.onHeightmap(
+                            net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES),
+                    BiomeFilter.biome()));
+            // V33a getGenerationChance for the altar is a flat 0.025 per chunk -- once every forty --
+            // and its own site check refuses anything that is not seven by seven of open grass, so the
+            // altars end up rare and always on level ground. InSquarePlacement is safe here: the whole
+            // build is a seven-by-seven platform with a five-by-five burrow under it, so even anchored
+            // at the far corner of a chunk it stays well inside the write window.
+            registerPlaced(bootstrap, configured, MINI_ALTAR, List.of(
+                    RarityFilter.onAverageOnceEvery(40), InSquarePlacement.spread(),
                     net.minecraft.world.level.levelgen.placement.HeightmapPlacement.onHeightmap(
                             net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES),
                     BiomeFilter.biome()));

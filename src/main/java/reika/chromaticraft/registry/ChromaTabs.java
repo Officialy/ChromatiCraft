@@ -59,11 +59,6 @@ public final class ChromaTabs {
 			event.accept(reika.chromaticraft.items.ItemStorageCrystal.fullStack(tier));
 		// V33a exposed both the empty and fully populated lexicons, plus one programmed fragment for
 		// every obtainable research page. Distinct CUSTOM_DATA stacks must be supplied explicitly.
-		// V33a's Dimension Core is one item wearing a colour in its stack tag, not sixteen registered
-		// blocks. The plain identity accepted above places a white core; the monument's ring needs one
-		// of every element, each nameable and distinguishable, so all sixteen are offered explicitly.
-		for (CrystalElement element : CrystalElement.elements)
-			event.accept(reika.chromaticraft.block.dimension.BlockDimensionCore.of(element));
 		event.accept(reika.chromaticraft.item.ItemChromaBook.creativeStack());
 		for (var page : reika.chromaticraft.magic.progression.LexiconCatalog.obtainablePages())
 			event.accept(reika.chromaticraft.item.ItemInfoFragment.forPage(page));

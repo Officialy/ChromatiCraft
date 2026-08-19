@@ -10,11 +10,11 @@
       "entries": [
         {
           "type": "minecraft:item",
-          "name": "chromaticraft:dimension_core"
+          "name": "chromaticraft:dimension_core_yellow"
         }
       ],
       "rolls": 1.0
     }
   ],
-  "random_sequence": "chromaticraft:blocks/dimension_core"
+  "random_sequence": "chromaticraft:blocks/dimension_core_yellow"
 }

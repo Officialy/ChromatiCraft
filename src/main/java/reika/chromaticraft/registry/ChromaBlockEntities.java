@@ -97,7 +97,10 @@ public final class ChromaBlockEntities {
 			BLOCK_ENTITIES.register("dimension_core",
 					() -> new BlockEntityType<>(
 							reika.chromaticraft.tileentity.technical.TileEntityDimensionCore::new,
-							ChromaBlocks.DIMENSION_CORE.get()));
+							// One registry identity per element, so the type has to accept all sixteen.
+							ChromaBlocks.DIMENSION_CORES.values().stream()
+									.map(net.neoforged.neoforge.registries.DeferredHolder::get)
+									.toArray(net.minecraft.world.level.block.Block[]::new)));
 	public static final DeferredHolder<BlockEntityType<?>,
 			BlockEntityType<reika.chromaticraft.tileentity.aoe.TileEntityAuraPoint>> AURA_POINT =
 			BLOCK_ENTITIES.register("aura_point",

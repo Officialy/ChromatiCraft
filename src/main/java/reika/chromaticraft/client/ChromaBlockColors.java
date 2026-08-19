@@ -86,16 +86,19 @@ public final class ChromaBlockColors {
     };
 
     /**
-     * The Dimension Core's colour. Upstream draws a core with glow-knot geometry and the DIMCORE
-     * shader, neither of which is ported; until they are, the core is a tinted cube and this is what
-     * makes a ring of sixteen readable as sixteen different things.
+     * The Dimension Core's colour, taken from the block's own identity. Upstream draws a core with
+     * glow-knot geometry and the DIMCORE shader, neither of which is ported; until they are, a core is
+     * a tinted cube and this is what makes a ring of sixteen readable as sixteen different things.
      */
     private static final BlockTintSource DIMENSION_CORE = new BlockTintSource() {
-        @Override public int color(BlockState state) { return 0xFFFFFFFF; }
+        @Override public int color(BlockState state) { return tint(state); }
         @Override public int colorInWorld(BlockState state, BlockAndTintGetter level, BlockPos pos) {
-            return level.getBlockEntity(pos)
-                    instanceof reika.chromaticraft.tileentity.technical.TileEntityDimensionCore core
-                    ? 0xFF000000 | core.getColor().getColor() : 0xFFFFFFFF;
+            return tint(state);
+        }
+        private int tint(BlockState state) {
+            return state.getBlock()
+                    instanceof reika.chromaticraft.block.dimension.BlockDimensionCore core
+                    ? 0xFF000000 | core.getElement().getColor() : 0xFFFFFFFF;
         }
     };
 
@@ -172,16 +175,6 @@ public final class ChromaBlockColors {
         event.register(ProximaBiomeColors.PROXIMA_PRESENCE);
     }
 
-    /**
-     * The Dimension Core's tint varies per stack (its colour lives in the stack tag), so unlike every
-     * other ChromatiCraft item colour it cannot be baked into the model at datagen time.
-     */
-    @SubscribeEvent
-    public static void registerItemColors(RegisterColorHandlersEvent.ItemTintSources event) {
-        event.register(net.minecraft.resources.Identifier.fromNamespaceAndPath(
-                ChromatiCraft.MODID, "dimension_core"), ChromaItemTints.DimensionCoreTint.CODEC);
-    }
-
     @SubscribeEvent
     public static void registerBlockColors(RegisterColorHandlersEvent.BlockTintSources event) {
         net.minecraft.world.level.block.Block[] crystals = java.util.stream.Stream.of(
@@ -199,7 +192,9 @@ public final class ChromaBlockColors {
 		event.register(List.of(HOVER), ChromaBlocks.HOVER.get());
         event.register(List.of(CRYSTAL_LEAF), ChromaBlocks.deco(
                 reika.chromaticraft.registry.ProximaDecoTypes.CRYSTALLEAF).get());
-        event.register(List.of(DIMENSION_CORE), ChromaBlocks.DIMENSION_CORE.get());
+        event.register(List.of(DIMENSION_CORE), ChromaBlocks.DIMENSION_CORES.values().stream()
+                .map(net.neoforged.neoforge.registries.DeferredHolder::get)
+                .toArray(net.minecraft.world.level.block.Block[]::new));
         event.register(List.of(MIASMA), ChromaBlocks.deco(
                 reika.chromaticraft.registry.ProximaDecoTypes.MIASMA).get());
 		event.register(List.of(net.minecraft.client.color.block.BlockTintSources.foliage()),

@@ -1,6 +1,7 @@
 package reika.chromaticraft.block.dimension;
 
 import com.mojang.serialization.MapCodec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Player;
@@ -19,11 +20,15 @@ import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.tileentity.technical.TileEntityDimensionCore;
 
 /**
- * V33a's Dimension Core block.
+ * V33a's Dimension Core block, registered once per crystal element.
  *
- * <p>The block itself is deliberately thin: everything that makes a core a core — its colour, which
- * structure it belongs to, whether it is sealed — lives on the block entity, because upstream's single
- * block carried all sixteen colours through its tile rather than through metadata.
+ * <p>Upstream has one block whose sixteen colours live on its tile entity. Here each colour is its own
+ * registry identity, which is the port's rule for every one of V33a's colour-carrying blocks and what
+ * makes the sixteen distinguishable as items at all — a core is a thing you place from an inventory,
+ * so a colour held only on the tile would leave sixteen identical stacks and one nameless block.
+ *
+ * <p>Everything else that makes a core a core — which structure it belongs to, who placed it, whether
+ * it is sealed or primed — still lives on the block entity, as upstream has it.
  *
  * <p>{@link #getDestroyProgress} is the seal. A core inside an unsolved puzzle structure returns zero,
  * which is how vanilla expresses "this cannot be mined at all" without a special case at every break
@@ -31,10 +36,22 @@ import reika.chromaticraft.tileentity.technical.TileEntityDimensionCore;
  */
 public class BlockDimensionCore extends BaseEntityBlock {
 
-	public static final MapCodec<BlockDimensionCore> CODEC = simpleCodec(BlockDimensionCore::new);
+	public static final MapCodec<BlockDimensionCore> CODEC = RecordCodecBuilder.mapCodec(
+			instance -> instance.group(
+					propertiesCodec(),
+					CrystalElement.CODEC.fieldOf("element").forGetter(BlockDimensionCore::getElement)
+			).apply(instance, BlockDimensionCore::new));
 
-	public BlockDimensionCore(BlockBehaviour.Properties properties) {
+	private final CrystalElement element;
+
+	public BlockDimensionCore(BlockBehaviour.Properties properties, CrystalElement element) {
 		super(properties);
+		this.element = element;
+	}
+
+	/** The colour this registry identity is. The block entity reads its colour from here. */
+	public CrystalElement getElement() {
+		return element;
 	}
 
 	@Override
@@ -73,22 +90,10 @@ public class BlockDimensionCore extends BaseEntityBlock {
 		super.setPlacedBy(level, pos, state, placer, stack);
 		if (!(level.getBlockEntity(pos) instanceof TileEntityDimensionCore core))
 			return;
-		core.setDataFromItemStackTag(stack);
+		// The colour is the block's identity now, so only the placer has to be taken from the placement.
+		// doChecks refuses a ring whose cores do not all record the same one.
 		if (placer instanceof Player player)
 			core.setPlacer(player);
-	}
-
-	/**
-	 * Pick-block returns the core's own colour rather than a blank one, so a ring can be built by
-	 * copying a placed core instead of hunting the right entry out of sixteen in the creative menu.
-	 */
-	@Override
-	public net.minecraft.world.item.ItemStack getCloneItemStack(
-			net.minecraft.world.level.LevelReader level, BlockPos pos, BlockState state,
-			boolean includeData, Player player) {
-		return level.getBlockEntity(pos) instanceof TileEntityDimensionCore core
-				? of(core.getColor())
-				: super.getCloneItemStack(level, pos, state, includeData, player);
 	}
 
 	@Override
@@ -111,14 +116,7 @@ public class BlockDimensionCore extends BaseEntityBlock {
 	 * unplaceable in a ring that cares which is which.
 	 */
 	public static net.minecraft.world.item.ItemStack of(CrystalElement element) {
-		net.minecraft.world.item.ItemStack stack =
-				new net.minecraft.world.item.ItemStack(ChromaBlocks.DIMENSION_CORE.get());
-		reika.dragonapi.libraries.registry.ReikaItemHelper.updateStackTag(stack,
-				tag -> tag.putInt("color", element.ordinal()));
-		stack.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
-				net.minecraft.network.chat.Component.translatable("block.chromaticraft.dimension_core")
-						.append(" (" + element.displayName() + ")"));
-		return stack;
+		return new net.minecraft.world.item.ItemStack(ChromaBlocks.dimensionCore(element).get());
 	}
 
 	@Override

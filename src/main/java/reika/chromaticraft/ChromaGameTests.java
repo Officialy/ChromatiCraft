@@ -317,6 +317,7 @@ public final class ChromaGameTests {
 		register(event, env, "dimension_core_ring", ChromaGameTests::dimensionCoreRing);
 		register(event, env, "monument_ritual_checks", ChromaGameTests::monumentRitualChecks);
 		register(event, env, "monument_core_placement", ChromaGameTests::monumentCorePlacement);
+		register(event, env, "progression_maximize", ChromaGameTests::progressionMaximize);
 		register(event, env, "monument_ritual_score", ChromaGameTests::monumentRitualScore);
 		register(event, env, "monument_mineral_inlay", ChromaGameTests::monumentMineralInlay);
 		register(event, env, "aurorae_feature", ChromaGameTests::auroraeFeature);
@@ -2341,7 +2342,8 @@ public final class ChromaGameTests {
 
 		// The block and its tile exist and round-trip a colour, which is what the ritual reads.
 		BlockPos pos = helper.absolutePos(new BlockPos(3, 3, 3));
-		helper.getLevel().setBlock(pos, ChromaBlocks.DIMENSION_CORE.get().defaultBlockState(), 3);
+		helper.getLevel().setBlock(pos, ChromaBlocks.dimensionCore(CrystalElement.BLUE).get()
+				.defaultBlockState(), 3);
 		helper.assertTrue(helper.getLevel().getBlockEntity(pos) instanceof reika.chromaticraft.tileentity.technical.TileEntityDimensionCore,
 				"the Dimension Core block must carry a TileEntityDimensionCore");
 		var core = (reika.chromaticraft.tileentity.technical.TileEntityDimensionCore)helper.getLevel().getBlockEntity(pos);
@@ -2372,10 +2374,9 @@ public final class ChromaGameTests {
 			var offset = reika.chromaticraft.tileentity.technical.TileEntityDimensionCore
 					.getLocation(element);
 			BlockPos at = centre.offset(offset);
-			level.setBlock(at, ChromaBlocks.DIMENSION_CORE.get().defaultBlockState(), 3);
+			level.setBlock(at, ChromaBlocks.dimensionCore(element).get().defaultBlockState(), 3);
 			var core = (reika.chromaticraft.tileentity.technical.TileEntityDimensionCore)
 					level.getBlockEntity(at);
-			core.setColor(element);
 			core.setPlacer(player);
 		}
 		// Sixteen correct cores are NOT enough on their own: the mineral inlay is the second gate, and
@@ -2416,6 +2417,40 @@ public final class ChromaGameTests {
 	}
 
 	/**
+	 * What {@code /chromaprog maximize} actually does, which is the gate the monument ritual reads.
+	 *
+	 * <p>Worth its own test because the command's effect is invisible in-game unless a screen happens to
+	 * redraw from it: everything that consumes progression — the ritual's CTM prerequisite among them —
+	 * asks the server, while the handbook asks the client's synced copy. A pass here means the ritual
+	 * gate opens even if a book page has not refreshed.
+	 */
+	private static void progressionMaximize(GameTestHelper helper) {
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		var manager = reika.chromaticraft.magic.progression.ProgressionManager.instance;
+
+		helper.assertTrue(!ProgressStage.CTM.isPlayerAtStage(player),
+				"a fresh player must not already hold CTM");
+		manager.maxPlayerProgression(player, false);
+
+		for (ProgressStage stage : ProgressStage.list) {
+			if (!stage.active)
+				continue;
+			helper.assertTrue(stage.isPlayerAtStage(player),
+					"maximize must grant every active stage; " + stage + " was missed");
+		}
+		helper.assertTrue(ProgressStage.CTM.playerHasPrerequisites(player),
+				"maximize must satisfy CTM's prerequisites, which is what the monument ritual asks for");
+		for (CrystalElement element : CrystalElement.elements)
+			helper.assertTrue(manager.hasPlayerDiscoveredColor(player, element),
+					"maximize must discover every colour; " + element + " was missed");
+
+		manager.resetPlayerProgression(player, false);
+		helper.assertTrue(!ProgressStage.CTM.isPlayerAtStage(player),
+				"reset must take the stages back off again");
+		helper.succeed();
+	}
+
+	/**
 	 * The player-facing half of the ring: the sixteen creative-menu stacks, and what a core remembers
 	 * when one of them is placed.
 	 *
@@ -2428,9 +2463,6 @@ public final class ChromaGameTests {
 	private static void monumentCorePlacement(GameTestHelper helper) {
 		var level = helper.getLevel();
 		ServerPlayer player = helper.makeMockServerPlayerInLevel();
-		var block = (reika.chromaticraft.block.dimension.BlockDimensionCore)
-				ChromaBlocks.DIMENSION_CORE.get();
-
 		int i = 0;
 		for (CrystalElement element : CrystalElement.elements) {
 			// Two rows, so no two cores are ever neighbours and a mis-set colour cannot be read off
@@ -2438,9 +2470,10 @@ public final class ChromaGameTests {
 			BlockPos at = helper.absolutePos(new BlockPos(1 + i % 8, 2, 1 + i / 8 * 2));
 			i++;
 			var stack = reika.chromaticraft.block.dimension.BlockDimensionCore.of(element);
-			helper.assertTrue(stack.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME),
-					"the creative stack for " + element + " must name its element, or sixteen entries "
-							+ "are indistinguishable in the menu");
+			var block = (reika.chromaticraft.block.dimension.BlockDimensionCore)
+					ChromaBlocks.dimensionCore(element).get();
+			helper.assertTrue(stack.getItem() == block.asItem(),
+					"the creative stack for " + element + " must be that element's own registered core");
 
 			level.setBlock(at, block.defaultBlockState(), 3);
 			block.setPlacedBy(level, at, block.defaultBlockState(), player, stack);
@@ -2453,12 +2486,8 @@ public final class ChromaGameTests {
 			helper.assertTrue(core.getPlacer() == player,
 					"a placed core must record its placer; doChecks refuses a ring that has none");
 			// Pick-block has to hand the colour back, or a ring cannot be built by copying.
-			helper.assertTrue(reika.chromaticraft.block.dimension.BlockDimensionCore.of(element)
-							.getOrDefault(net.minecraft.core.component.DataComponents.CUSTOM_DATA,
-									net.minecraft.world.item.component.CustomData.EMPTY).copyTag()
-							.getIntOr("color", -1) == element.ordinal(),
-					"the " + element + " stack must carry its colour in the tag setDataFromItemStackTag "
-							+ "reads");
+			helper.assertTrue(level.getBlockState(at).getBlock().asItem() == stack.getItem(),
+					"pick-block on a " + element + " core must return that element's core");
 		}
 		helper.succeed();
 	}

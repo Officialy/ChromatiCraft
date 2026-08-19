@@ -1,0 +1,12 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "chromaticraft:block/dimension_core_pink",
+    "tints": [
+      {
+        "type": "minecraft:constant",
+        "value": -17703
+      }
+    ]
+  }
+}

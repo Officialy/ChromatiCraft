@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "conditions": [
+        {
+          "condition": "minecraft:survives_explosion"
+        }
+      ],
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "chromaticraft:dimension_core_green"
+        }
+      ],
+      "rolls": 1.0
+    }
+  ],
+  "random_sequence": "chromaticraft:blocks/dimension_core_green"
+}

@@ -56,7 +56,9 @@ public enum ChromaTiles implements TileEnum {
 	PLAYERINFUSER("chroma.playerinfuser", ChromaBlocks.PLAYER_INFUSER, TileEntityPlayerInfuser.class),
 	FOCUSCRYSTAL("chroma.focuscrystal", ChromaBlocks.FOCUS_CRYSTAL, TileEntityFocusCrystal.class),
 	DATANODE("chroma.datanode", ChromaBlocks.DATA_NODE, TileEntityDataNode.class),
-	DIMENSIONCORE("chroma.dimensioncore", ChromaBlocks.DIMENSION_CORE,
+	// One identity per colour; WHITE stands for the family here, as ChromaTiles is a block->tile lookup
+	// and every core shares the one tile class.
+	DIMENSIONCORE("chroma.dimensioncore", ChromaBlocks.dimensionCoreBlock(CrystalElement.WHITE),
 			reika.chromaticraft.tileentity.technical.TileEntityDimensionCore.class),
 	AURAPOINT("chroma.aurapoint", ChromaBlocks.AURA_POINT,
 			reika.chromaticraft.tileentity.aoe.TileEntityAuraPoint.class),

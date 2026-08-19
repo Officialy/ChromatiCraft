@@ -1317,22 +1317,24 @@ public class ChromaModelProvider extends ModelProvider {
 	 */
 	private static void dimensionCoreModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
 			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
-		Block block = ChromaBlocks.DIMENSION_CORE.get();
 		// blurflare is one of Reika's own glow sprites and the closest thing she ships to what
 		// RenderDimensionCore draws: a soft round light with no shape of its own, which is exactly what
-		// takes the element's colour well. roundflare, the obvious-looking name, is a 256x46080 sprite
+		// takes an element's colour well. roundflare, the obvious-looking name, is a 256x46080 sprite
 		// strip that has no business in the block atlas.
 		Material texture = new Material(Identifier.fromNamespaceAndPath(
 				ChromatiCraft.MODID, "block/icons/blurflare"));
-		// Vanilla's leaves template is used for the same reason Crystal Leaves use it: it is the cube
-		// that carries a tintindex, and without one the core's colour never reaches the model.
-		Identifier worldModel = ModelTemplates.LEAVES.create(block, TextureMapping.cube(texture), modelOut);
-		blockStateOut.accept(MultiVariantGenerator.dispatch(block,
-				new MultiVariant(WeightedList.of(new Variant(worldModel)))));
-		// The item's colour comes from its stack tag, so the tint must be a registered source rather
-		// than a Constant like every other coloured item here.
-		itemModelOut.accept(block.asItem(), ItemModelUtils.tintedModel(worldModel,
-				new reika.chromaticraft.client.ChromaItemTints.DimensionCoreTint()));
+		for (CrystalElement element : CrystalElement.elements) {
+			Block block = ChromaBlocks.dimensionCore(element).get();
+			// Vanilla's leaves template for the same reason Crystal Leaves use it: it is the cube that
+			// carries a tintindex, and without one the core's colour never reaches the model.
+			Identifier model = ModelTemplates.LEAVES.create(block, TextureMapping.cube(texture), modelOut);
+			blockStateOut.accept(MultiVariantGenerator.dispatch(block,
+					new MultiVariant(WeightedList.of(new Variant(model)))));
+			// Each identity is one fixed colour now, so the item tint is a plain Constant rather than
+			// anything that has to read the stack.
+			itemModelOut.accept(block.asItem(), ItemModelUtils.tintedModel(model,
+					new net.minecraft.client.color.item.Constant(0xFF000000 | element.getColor())));
+		}
 	}
 
 	/** The Aura Point is drawn by its block entity, so its world model only names a particle sprite. */
