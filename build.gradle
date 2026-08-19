@@ -498,6 +498,7 @@ sourceSets.main.java {
     include 'reika/chromaticraft/world/dimension/structure/ProximaMonumentStructure.java'
     include 'reika/chromaticraft/world/dimension/structure/MonumentPiece.java'
     include 'reika/chromaticraft/world/dimension/structure/MonumentPlacement.java'
+    include 'reika/chromaticraft/world/dimension/structure/StructureGeneratorBase.java'
     include 'reika/chromaticraft/auxiliary/loot/TuningScaledCount.java'
     include 'reika/chromaticraft/registry/ProximaDecoTypes.java'
     include 'reika/chromaticraft/block/dimension/BlockDimensionDeco.java'
