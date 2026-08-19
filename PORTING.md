@@ -6139,3 +6139,14 @@ settings — on logout, on death and on server stop, not only on completion, or 
 mid-ritual is left with no GUI. Nothing in the current effects touches those settings, so nothing in
 them can strand a player that way. The two shader programs are also absent; per this port's shader
 notes their sixteen per-frame core positions and colours must arrive as a texture, not as uniforms.
+
+**The camera hook, researched.** `ViewportEvent.ComputeCameraAngles` exposes yaw, pitch and roll and
+nothing else; `Camera.setPosition` is `protected` and NeoForge's camera patch does not widen it — it
+adds `getRoll`, `getBlockAtCamera` and a three-argument `setRotation`, but no position hook. So the
+epitrochoid *orbit*, which moves the camera off the player entirely, is not reachable from a public
+API. Turning the player instead is not equivalent: it would move a real entity and take its collision
+and reach with it.
+
+The route that exists is a mixin accessor onto `Camera.setPosition`, and DragonAPI already carries the
+infrastructure for it (`mixins.dragonapi.json` with `reika/dragonapi/mixin/`). That is the shape the
+camera work should take, together with the unconditional GUI and view-bob restore.
