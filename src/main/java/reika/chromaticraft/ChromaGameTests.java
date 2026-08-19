@@ -312,6 +312,7 @@ public final class ChromaGameTests {
 		register(event, env, "crystal_pit_feature", ChromaGameTests::crystalPitFeature);
 		register(event, env, "proxima_biome_features", ChromaGameTests::proximaBiomeFeatures);
 		register(event, env, "proxima_glow_trees", ChromaGameTests::proximaGlowTrees);
+		register(event, env, "proxima_tree_cluster", ChromaGameTests::proximaTreeCluster);
 		register(event, env, "proxima_monument_template", ChromaGameTests::proximaMonumentTemplate);
 		register(event, env, "dimension_core_ring", ChromaGameTests::dimensionCoreRing);
 		register(event, env, "monument_ritual_checks", ChromaGameTests::monumentRitualChecks);
@@ -2215,6 +2216,56 @@ public final class ChromaGameTests {
 	 * can break silently — it is imported from three and a half thousand generated lines, and a parse
 	 * that matched nothing would produce an empty structure that datagen accepts without complaint.
 	 */
+	/**
+	 * V33a's ordinary forests. The thing worth pinning is the reach: a cluster scatters sixteen blocks
+	 * about its anchor and a giant adds five more, and a decoration feature may only write within a
+	 * forty-eight block window — so if this ever grows, it grows into writes that vanish in silence.
+	 */
+	private static void proximaTreeCluster(GameTestHelper helper) {
+		var level = helper.getLevel();
+		BlockPos centre = helper.absolutePos(new BlockPos(24, 3, 24));
+		// A generous grass floor: the cluster picks its own sites and refuses anything unplantable.
+		for (int i = -22; i <= 22; i++)
+			for (int k = -22; k <= 22; k++)
+				level.setBlock(centre.offset(i, 0, k), Blocks.GRASS_BLOCK.defaultBlockState(), 3);
+
+		var feature = reika.chromaticraft.registry.ChromaFeatures.TREE_CLUSTER.get();
+		boolean placed = false;
+		for (int attempt = 0; attempt < 16 && !placed; attempt++)
+			placed = feature.place(new net.minecraft.world.level.levelgen.feature.FeaturePlaceContext<>(
+					java.util.Optional.empty(), level,
+					level.getChunkSource().getGenerator(), level.getRandom(), centre.above(),
+					net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration.INSTANCE));
+		helper.assertTrue(placed, "the tree cluster refused sixteen attempts on open grass");
+
+		int logs = 0;
+		int leaves = 0;
+		int maxReach = 0;
+		for (BlockPos pos : BlockPos.betweenClosed(centre.offset(-24, 0, -24), centre.offset(24, 30, 24))) {
+			BlockState state = level.getBlockState(pos);
+			boolean isLog = state.is(net.minecraft.tags.BlockTags.LOGS)
+					|| state.is(ChromaBlocks.GLOW_LOG.get());
+			boolean isLeaf = state.is(net.minecraft.tags.BlockTags.LEAVES)
+					|| state.is(ChromaBlocks.GLOWING_LEAVES.get());
+			if (!isLog && !isLeaf)
+				continue;
+			if (isLog)
+				logs++;
+			else
+				leaves++;
+			maxReach = Math.max(maxReach, Math.max(Math.abs(pos.getX() - centre.getX()),
+					Math.abs(pos.getZ() - centre.getZ())));
+		}
+		helper.assertTrue(logs > 0 && leaves > 0,
+				"a cluster must produce both trunks and canopy; got " + logs + " logs, " + leaves + " leaves");
+		// Sixteen of scatter plus five for a giant's bulge. More than this and the placement's lack of
+		// an InSquare offset stops being enough to keep it inside the write window.
+		helper.assertTrue(maxReach <= 21,
+				"a cluster reached " + maxReach + " blocks from its anchor; upstream's scatter is 16 and "
+						+ "a giant adds 5, and past 21 the far side falls outside the feature write window");
+		helper.succeed();
+	}
+
 	private static void proximaMonumentTemplate(GameTestHelper helper) {
 		var level = helper.getLevel();
 		var template = level.getStructureManager()

@@ -487,6 +487,7 @@ sourceSets.main.java {
     include 'reika/chromaticraft/world/dimension/CrystalTreeFeature.java'
     include 'reika/chromaticraft/world/dimension/GlowTreeFeature.java'
     include 'reika/chromaticraft/world/dimension/GlowTreeShapes.java'
+    include 'reika/chromaticraft/world/dimension/TreeClusterFeature.java'
     include 'reika/chromaticraft/entity/AuroraData.java'
     include 'reika/chromaticraft/entity/EntityAurora.java'
     include 'reika/chromaticraft/world/dimension/CrystalPitFeature.java'

@@ -150,6 +150,10 @@ public final class ProximaBiomeDefinitions {
 				|| type == ProximaBiomes.ISLANDS || type == ProximaBiomes.SPARKLE
 				|| type == ProximaBiomes.GLOWCRACKS)
 			add(builder, features, "glow_tree");
+		// V33a's FORESTS: the Glowing Forest alone among the named biomes, plus the Sanctuary, which
+		// takes it from the CENTER branch as it takes everything not dedicated elsewhere.
+		if (central || type == ProximaBiomes.FOREST)
+			add(builder, features, "tree_cluster");
 		// Both crystal plants belong to the Crystal Forest sub-biome and nowhere else.
 		if (type == ProximaSubBiomes.CRYSFOREST) {
 			add(builder, features, "crystal_tree");

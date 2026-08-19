@@ -73,6 +73,7 @@ public final class ChromaWorldGenProvider {
     private static final Identifier FLOATSTONE = id("floatstone");
     private static final Identifier CRYSTAL_TREE = id("crystal_tree");
     private static final Identifier GLOW_TREE = id("glow_tree");
+    private static final Identifier TREE_CLUSTER = id("tree_cluster");
     private static final Identifier CRYSTAL_PIT = id("crystal_pit");
     private static final Identifier AURORAE = id("aurorae");
     private static final List<Identifier> NETHER_ROOF_STRUCTURES =
@@ -178,6 +179,7 @@ public final class ChromaWorldGenProvider {
             registerConfigured(bootstrap, features, FLOATSTONE);
             registerConfigured(bootstrap, features, CRYSTAL_TREE);
             registerConfigured(bootstrap, features, GLOW_TREE);
+            registerConfigured(bootstrap, features, TREE_CLUSTER);
             registerConfigured(bootstrap, features, CRYSTAL_PIT);
             registerConfigured(bootstrap, features, AURORAE);
             for (Identifier structure : NETHER_ROOF_STRUCTURES)
@@ -353,6 +355,18 @@ public final class ChromaWorldGenProvider {
             // solid forest.
             registerPlaced(bootstrap, configured, GLOW_TREE, List.of(
                     RarityFilter.onAverageOnceEvery(2), InSquarePlacement.spread(),
+                    net.minecraft.world.level.levelgen.placement.HeightmapPlacement.onHeightmap(
+                            net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES),
+                    BiomeFilter.biome()));
+            // V33a getGenerationChance for the tree cluster is a flat 0.67 per chunk, so two chunks in
+            // three. Deliberately no InSquarePlacement: the cluster scatters its own trees sixteen
+            // blocks about the anchor and a giant reaches five more, so randomising the anchor inside
+            // the chunk as well would push the far side outside the feature write window, where the
+            // writes are dropped in silence. Anchored at the chunk's corner the whole spread stays
+            // inside it, and upstream's own scatter is untouched.
+            registerPlaced(bootstrap, configured, TREE_CLUSTER, List.of(
+                    RarityFilter.onAverageOnceEvery(3),
+                    net.minecraft.world.level.levelgen.placement.CountPlacement.of(2),
                     net.minecraft.world.level.levelgen.placement.HeightmapPlacement.onHeightmap(
                             net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES),
                     BiomeFilter.biome()));

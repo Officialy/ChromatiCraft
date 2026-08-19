@@ -6209,3 +6209,35 @@ Import traps worth recording, since three of these cost a compile each: `RenderT
 `BindGroupLayouts` is `net.minecraft.client.renderer`. And there is no `gameRenderer.getMainCamera()`
 or `RenderSystem.getProjectionMatrix()` — the matrices come off the render event's
 `cameraRenderState`.
+
+### 2026-08-19 — The Sanctuary's second forest: WorldGenTreeCluster
+
+Proxima's *ordinary* forests, as against the glowing trees. A cluster is three to ten trees scattered
+about a point, each rolling its own wood and its own shape from two separate weighted tables — that
+double roll is the character of it, since a stand comes out mixed rather than uniform and the rare
+shapes are rare per tree rather than per cluster.
+
+**The wood table is ten entries and seven of them are other mods'.** Silverwood is Thaumcraft's;
+sakura, silverbell and maple are Twilight Forest's; and upstream filters the lot with
+`gen.type.exists()` at class-init. With none of those mods present the table Reika actually rolls is
+oak, birch and his own lighted wood at weights 10, 8 and 3 — which is what is here. Those seven are not
+dropped behaviour: the filter is upstream's own, and they return with the mods if those are ever
+ported.
+
+**The placement deliberately has no `InSquarePlacement`.** A cluster scatters each tree up to sixteen
+blocks from its anchor and a giant's bulge reaches five more; a decoration feature may only write
+within a forty-eight block window. Randomising the anchor inside the chunk *as well* would push the far
+side of a cluster outside that window, where writes are dropped in silence — the failure that once left
+structures half generated. Anchored at the chunk's own corner the whole spread stays inside, and
+upstream's sixteen-block scatter is untouched. `chromaticraft:proxima_tree_cluster` asserts the reach
+stays within 21 for exactly this reason, so a future change that widens the scatter fails loudly rather
+than quietly losing its far side.
+
+All six shapes are upstream's: the oak crown, the hanging curtains, the wide taper, the needle column,
+the tall needle wrapped in rings with two of them carrying log spokes, and the giant whose radius grows
+and shrinks with height and twice at random. Leaves never replace standing blocks, so overlapping
+canopies do not eat each other.
+
+Remaining for the Sanctuary, unchanged: **RIFT** (`WorldGenFissure`), **JETS** (`WorldGenFireJet`),
+**ALTAR** (`WorldGenMiniAltar`), **CRACKS** (`WorldGenGlowingCracks`) and **GLOWCAVE**
+(`WorldGenGlowCave`).

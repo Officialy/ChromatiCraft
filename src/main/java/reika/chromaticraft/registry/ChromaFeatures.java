@@ -172,6 +172,10 @@ public final class ChromaFeatures {
             FEATURES.register("glow_tree",
                     reika.chromaticraft.world.dimension.GlowTreeFeature::new);
 
+    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> TREE_CLUSTER =
+            FEATURES.register("tree_cluster",
+                    reika.chromaticraft.world.dimension.TreeClusterFeature::new);
+
     public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> CRYSTAL_SHRUB =
             FEATURES.register("crystal_shrub",
                     reika.chromaticraft.world.dimension.CrystalShrubFeature::new);
