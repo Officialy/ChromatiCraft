@@ -316,6 +316,7 @@ public final class ChromaGameTests {
 		register(event, env, "dimension_core_ring", ChromaGameTests::dimensionCoreRing);
 		register(event, env, "monument_ritual_checks", ChromaGameTests::monumentRitualChecks);
 		register(event, env, "monument_ritual_score", ChromaGameTests::monumentRitualScore);
+		register(event, env, "monument_mineral_inlay", ChromaGameTests::monumentMineralInlay);
 		register(event, env, "aurorae_feature", ChromaGameTests::auroraeFeature);
 		register(event, env, "aurora_curtain_drift", ChromaGameTests::auroraCurtainDrift);
 		register(event, env, "proxima_layout_biomes", ChromaGameTests::proximaLayoutBiomes);
@@ -2306,7 +2307,10 @@ public final class ChromaGameTests {
 	private static void monumentRitualChecks(GameTestHelper helper) {
 		var level = helper.getLevel();
 		BlockPos centre = helper.absolutePos(new BlockPos(24, 8, 24));
-		var player = helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
+		// Must be a player actually in the level: BlockEntityBase.getPlacer resolves the stored UUID
+		// through the world, and falls back to a FakePlayer when it cannot find one -- which doChecks
+		// then correctly refuses, since a core placed by a fake player grants no ownership.
+		var player = helper.makeMockServerPlayerInLevel();
 
 		var ritual = new reika.chromaticraft.magic.MonumentCompletionRitual(level, centre, player);
 		helper.assertTrue(!ritual.doChecks(), "a monument with no cores at all must refuse to start");
@@ -2322,11 +2326,33 @@ public final class ChromaGameTests {
 			core.setColor(element);
 			core.setPlacer(player);
 		}
+		// Sixteen correct cores are NOT enough on their own: the mineral inlay is the second gate, and
+		// a freshly generated monument always fails it because generation lays only a random subset.
+		helper.assertTrue(!new reika.chromaticraft.magic.MonumentCompletionRitual(level, centre, player)
+						.doChecks(),
+				"sixteen cores with no mineral inlay must still refuse; completing the inlay is the work "
+						+ "the ritual is named for");
+
+		// Lay the whole inlay by hand, which is exactly what a player has to do.
+		BlockPos origin = centre.subtract(
+				reika.chromaticraft.world.dimension.structure.MonumentPiece.CONTROLLER_OFFSET);
+		for (var cell : reika.chromaticraft.world.dimension.structure.MonumentMineralBlocks.expected())
+			level.setBlock(origin.offset(cell.offset()), cell.mineral().block().defaultBlockState(), 3);
 		helper.assertTrue(new reika.chromaticraft.magic.MonumentCompletionRitual(level, centre, player)
 						.doChecks(),
-				"sixteen correctly coloured cores from one player must satisfy the ritual");
+				"sixteen correct cores and a complete mineral inlay must satisfy the ritual");
 
-		// One core of the wrong colour is enough to refuse.
+		// A single missing inlay cell is enough to refuse again.
+		var firstCell = reika.chromaticraft.world.dimension.structure.MonumentMineralBlocks.expected()
+				.get(0);
+		level.setBlock(origin.offset(firstCell.offset()), Blocks.AIR.defaultBlockState(), 3);
+		helper.assertTrue(!new reika.chromaticraft.magic.MonumentCompletionRitual(level, centre, player)
+						.doChecks(),
+				"one missing cell of the inlay must refuse the ritual");
+		level.setBlock(origin.offset(firstCell.offset()),
+				firstCell.mineral().block().defaultBlockState(), 3);
+
+		// And one core of the wrong colour, with the inlay complete.
 		var blackAt = centre.offset(reika.chromaticraft.tileentity.technical.TileEntityDimensionCore
 				.getLocation(CrystalElement.BLACK));
 		((reika.chromaticraft.tileentity.technical.TileEntityDimensionCore)level.getBlockEntity(blackAt))
@@ -2375,6 +2401,42 @@ public final class ChromaGameTests {
 		helper.assertTrue(reika.chromaticraft.magic.MonumentRitualScore.completionTime(true)
 						< reika.chromaticraft.magic.MonumentRitualScore.completionTime(false),
 				"Proxima's own audio is longer, so its completion comes sooner after the last track");
+		helper.succeed();
+	}
+
+	/**
+	 * The inlay table itself, which is data and therefore silently wrong if mis-transcribed. The counts
+	 * come straight from V33a's own calls; the chances are what decide how much of it a player is left
+	 * to supply.
+	 */
+	private static void monumentMineralInlay(GameTestHelper helper) {
+		var cells = reika.chromaticraft.world.dimension.structure.MonumentMineralBlocks.expected();
+		helper.assertTrue(cells.size() == 377, "V33a's inlay is 376 placed cells plus the registered-only "
+				+ "centre chroma; found " + cells.size());
+
+		var counts = new java.util.EnumMap<reika.chromaticraft.world.dimension.structure
+				.MonumentMineralBlocks.Mineral, Integer>(reika.chromaticraft.world.dimension.structure
+				.MonumentMineralBlocks.Mineral.class);
+		for (var cell : cells)
+			counts.merge(cell.mineral(), 1, Integer::sum);
+		var M = reika.chromaticraft.world.dimension.structure.MonumentMineralBlocks.Mineral.class;
+		record Expect(String name, int count) {}
+		for (var e : new Expect[] {new Expect("GLOWSTONE", 88), new Expect("REDSTONE", 76),
+				new Expect("GOLD", 72), new Expect("EMERALD", 52), new Expect("DIAMOND", 32),
+				new Expect("QUARTZ", 24), new Expect("LAPIS", 24), new Expect("CHROMA", 9)}) {
+			var mineral = Enum.valueOf(M, e.name());
+			int got = counts.getOrDefault(mineral, 0);
+			helper.assertTrue(got == e.count(),
+					e.name() + " should appear " + e.count() + " times in the inlay; found " + got);
+		}
+
+		// The centre chroma is the one cell generation never lays, so the roll is one short of the table.
+		var rolled = reika.chromaticraft.world.dimension.structure.MonumentMineralBlocks.roll(
+				BlockPos.ZERO, net.minecraft.util.RandomSource.create(1234));
+		helper.assertTrue(rolled.size() < cells.size(),
+				"generation must lay only a subset of the inlay; that shortfall is the player's work");
+		helper.assertTrue(!rolled.containsKey(new BlockPos(21, 3, 21)),
+				"the centre chroma is registered and never laid, so it is always the player's to supply");
 		helper.succeed();
 	}
 

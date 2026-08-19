@@ -49,6 +49,12 @@ public class MonumentPiece extends StructurePiece {
 	/** The template's own size, and the half-width that centres it. */
 	private static final int TEMPLATE_SIZE = 43;
 	private static final int TEMPLATE_OFFSET = 21;
+	/**
+	 * Where the structure controller sits inside the template. Anything working in monument coordinates
+	 * from the controller outwards — the mineral inlay, the core ring — measures from here.
+	 */
+	public static final net.minecraft.core.Vec3i CONTROLLER_OFFSET =
+			new net.minecraft.core.Vec3i(21, 5, 21);
 
 	private final int centreX;
 	private final int centreZ;
@@ -112,6 +118,16 @@ public class MonumentPiece extends StructurePiece {
 						new StructurePlaceSettings().setRotation(Rotation.NONE)
 								.setIgnoreEntities(true).setBoundingBox(chunkBB),
 						RandomSource.create(centreX * 31L + centreZ), 2);
+
+		// The mineral inlay, rolled per cell against its own material's chance. Deliberately a subset:
+		// the ritual expects the whole of it, so whatever generation withholds is what the player has to
+		// supply before the monument will complete. Seeded off the position so every chunk that paints
+		// part of the monument rolls the same subset.
+		RandomSource minerals = RandomSource.create(centreX * 8191L ^ centreZ);
+		MonumentMineralBlocks.roll(anchor, minerals).forEach((at, mineral) -> {
+			if (chunkBB.isInside(at))
+				level.setBlock(at, mineral.block().defaultBlockState(), 2);
+		});
 	}
 
 	/** V33a {@code ReikaMathLibrary.isPointInsideEllipse(i, j, k, r, r2, r)}. */

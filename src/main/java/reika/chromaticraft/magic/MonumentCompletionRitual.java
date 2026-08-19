@@ -11,6 +11,8 @@ import net.minecraft.world.level.Level;
 
 import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.magic.MonumentRitualScore.TimedEvent;
+import reika.chromaticraft.world.dimension.structure.MonumentMineralBlocks;
+import reika.chromaticraft.world.dimension.structure.MonumentPiece;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaDimensions;
 import reika.chromaticraft.registry.ChromaSounds;
@@ -217,14 +219,29 @@ public class MonumentCompletionRitual {
 	}
 
 	/**
-	 * V33a doMineralChecks: the monument's mineral blocks must be intact and of the right kinds.
+	 * V33a doMineralChecks: every cell of the monument's mineral inlay must be present and of the right
+	 * material.
 	 *
-	 * <p>Deferred with {@code MonumentMineralBlocks}, which is not ported — upstream compares the world
-	 * against the map that generator produced. Answering true is what upstream answers when there is
-	 * nothing to compare against (its own client-side branch does exactly that), so an unbuilt mineral
-	 * check permits the ritual rather than blocking it, and the sixteen-core check above still gates it.
+	 * <p>This is the ritual's second gate and it bites. Generation lays each cell only on a per-material
+	 * chance — gold at twenty-five percent, glowstone at thirty-five — while registering every one of
+	 * them as expected, and the centre chroma is registered without ever being laid. So a freshly
+	 * generated monument always fails this, and finishing the inlay by hand is the work the ritual is
+	 * named for. See {@link MonumentMineralBlocks}.
+	 *
+	 * <p>Client-side it answers true unconditionally, as upstream does: the check is the server's to
+	 * make, and a client that disagreed would only desynchronise the ceremony.
 	 */
 	private boolean doMineralChecks() {
+		if (world.isClientSide())
+			return true;
+		// The inlay's coordinates are relative to the monument template's origin, which sits a
+		// controller-offset away from this ritual's position.
+		BlockPos origin = pos.subtract(MonumentPiece.CONTROLLER_OFFSET);
+		for (MonumentMineralBlocks.Cell cell : MonumentMineralBlocks.expected()) {
+			BlockPos at = origin.offset(cell.offset());
+			if (!world.getBlockState(at).is(cell.mineral().block()))
+				return false;
+		}
 		return true;
 	}
 

@@ -506,6 +506,7 @@ sourceSets.main.java {
     include 'reika/chromaticraft/block/dimension/BlockAuraPoint.java'
     include 'reika/chromaticraft/magic/MonumentRitualScore.java'
     include 'reika/chromaticraft/magic/MonumentCompletionRitual.java'
+    include 'reika/chromaticraft/world/dimension/structure/MonumentMineralBlocks.java'
     include 'reika/chromaticraft/auxiliary/loot/TuningScaledCount.java'
     include 'reika/chromaticraft/registry/ProximaDecoTypes.java'
     include 'reika/chromaticraft/block/dimension/BlockDimensionDeco.java'

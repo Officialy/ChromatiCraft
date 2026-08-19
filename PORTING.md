@@ -6056,3 +6056,44 @@ and upstream rebuilds from scratch on the next trigger.
 programs and the six audio tracks), the packets joining it to this, and `MonumentMineralBlocks`. The
 `resetSettings`/GUI-and-view-bob restore belongs with the camera work and must be unconditional — on
 logout, death and server stop, not only on completion.
+
+### 2026-08-19 — The mineral inlay is the ritual's second gate
+
+`MonumentMineralBlocks` is not decoration, and reading it changed what `doMineralChecks` had to be.
+The whole mechanic is an asymmetry in one helper:
+
+```java
+private void setBlock(..., Block b) {
+    if (ReikaRandomHelper.doWithChance(blockChance.get(b)))
+        world.setBlock(x, y, z, b);
+    parent.registerMineralBlock(x, y, z, b);   // unconditional
+}
+```
+
+The block is laid only on a per-material chance — quartz 80, diamond 75, emerald 67, lapis 50, chroma
+50, redstone 40, glowstone 35, **gold 25** — but registered every time. So the expected map holds all
+377 cells while a generated monument receives a random subset of them, and upstream's
+`doMineralChecks` compares the world against the *full* map. **The player has to complete the inlay by
+hand before the ritual will run.** That is what makes it a *completion* ritual, and it is why gold, at
+one in four, is the material they end up carrying the most of. The centre chroma at (21, 3, 21) is
+registered and never laid at all, so it is always theirs to supply.
+
+The port had this as `return true` with a note calling it deferred. That was wrong — it was not
+deferring a check, it was removing a gate. Now: the table is data (376 chance-laid cells plus the
+register-only centre, all 376 `setBlock` calls parsed with none unmatched), `MonumentPiece` rolls the
+subset per cell seeded off the monument position so every chunk painting part of it rolls the same one,
+and `doMineralChecks` walks the full table. Client-side it still answers true unconditionally, as
+upstream does: the check is the server's, and a disagreeing client would only desynchronise the
+ceremony.
+
+Two tests came out of it. `chromaticraft:monument_mineral_inlay` pins the table against V33a's own
+counts — 88 glowstone, 76 redstone, 72 gold, 52 emerald, 32 diamond, 24 quartz, 24 lapis, 9 chroma —
+and that the roll never lays the centre. `chromaticraft:monument_ritual_checks` now walks the whole
+sequence: no cores refuses, sixteen correct cores *still* refuses, the complete inlay satisfies, one
+missing cell refuses again, and one miscoloured core refuses.
+
+That second test also caught a mistake of mine worth recording: it first used
+`helper.makeMockPlayer`, whose player is not in the level, so `BlockEntityBase.getPlacer` could not
+resolve the stored UUID and fell back to a `FakePlayer` — which `doChecks` then correctly refused,
+since a core placed by a fake player grants no ownership. The ritual was right and the test was wrong.
+`makeMockServerPlayerInLevel` is what the rest of the suite already uses.
