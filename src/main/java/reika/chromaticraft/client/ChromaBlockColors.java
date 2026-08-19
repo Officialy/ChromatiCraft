@@ -128,6 +128,19 @@ public final class ChromaBlockColors {
     }
 
     /**
+     * Runs the ritual's screen grade once the level is fully drawn, so it grades the finished scene.
+     */
+    @SubscribeEvent
+    public static void onRenderLevelStage(
+            net.neoforged.neoforge.client.event.RenderLevelStageEvent.AfterLevel event) {
+        if (!reika.chromaticraft.client.render.MonumentRitualEffects.isRunning())
+            return;
+        var camera = event.getLevelRenderState().cameraRenderState;
+        reika.chromaticraft.client.render.MonumentRitualEffects.renderScreenEffect(
+                event.getModelViewMatrix(), camera.projectionMatrix, camera.pos);
+    }
+
+    /**
      * Drives the ritual's camera orbit. Per frame rather than per tick, because a camera moved once a
      * tick judders; the event carries the partial tick that smooths it.
      */

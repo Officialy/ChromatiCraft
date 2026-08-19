@@ -72,6 +72,11 @@ public final class MonumentRitualEffects {
 	private float vortexSize;
 	private boolean vortexGrowing;
 
+	/** V33a colorFade: how lit each element's core currently is, one per element. */
+	private final float[] colorFade = new float[16];
+	/** The key currently sounding, which decides which colours swell. */
+	private reika.dragonapi.libraries.mathsci.ReikaMusicHelper.MusicKey activeKey;
+
 	/**
 	 * The options the ceremony borrows, captured when it starts. These are the reason
 	 * {@link #stop()} must be reachable from every way a ritual can end and not only from completion:
@@ -140,6 +145,7 @@ public final class MonumentRitualEffects {
 		tick++;
 
 		this.manipulateCamera(mc);
+		this.updateColorFade();
 		this.stepTrack(mc.level);
 		this.drawVortex(mc.level);
 		this.drawRing(mc.level);
@@ -222,6 +228,167 @@ public final class MonumentRitualEffects {
 	}
 
 	/**
+	 * The ritual's screen effect: V33a's {@code general.frag} grade plus {@code chords.frag}'s core
+	 * glow, resolved in one pass.
+	 *
+	 * <p>The sixteen cores are projected to screen space here rather than in the shader, because a
+	 * PostChain bakes declared uniforms when the chain compiles and these change every frame — the same
+	 * constraint, and the same answer, as RotaryCraft's heat ripple.
+	 *
+	 * <p>Each core's alpha is its own fade: a colour swells while its note is sounding and decays
+	 * afterwards, which is what makes the ring answer the music rather than pulse with it.
+	 */
+	public static void renderScreenEffect(org.joml.Matrix4fc modelView,
+			org.joml.Matrix4fc projection, net.minecraft.world.phys.Vec3 eye) {
+		if (active != null)
+			active.grade(modelView, projection, eye);
+	}
+
+	/** V33a's intensity ramp: the grade fades in over the opening and holds for the ceremony. */
+	private float gradeIntensity() {
+		return (float)Math.min(1, runTime / 8000D);
+	}
+
+	/**
+	 * The per-core fade V33a keeps in {@code colorFade}: a colour rises while its key is sounding and
+	 * falls away at a third of that rate, so the ring answers each note and then lets it go.
+	 */
+	private void updateColorFade() {
+		var sounding = activeKey == null ? null
+				: reika.chromaticraft.auxiliary.CrystalMusicManager.instance
+						.getColorsWithKeyAnyOctave(activeKey);
+		for (int i = 0; i < colorFade.length; i++) {
+			CrystalElement e = CrystalElement.elements[i];
+			boolean lit = sounding != null && sounding.contains(e);
+			colorFade[i] = lit ? Math.min(1, colorFade[i] + 0.04F) : Math.max(0, colorFade[i] - 0.015F);
+		}
+	}
+
+	private static final int MAX_CORES = 16;
+	/** std140: ivec4 CoreCount, vec4 Intensity, then vec4 Focus[16] and vec4 CoreColor[16]. */
+	private static final int UBO_SIZE = 16 + 16 + MAX_CORES * 16 * 2;
+	private static final int UBO_USAGE = com.mojang.blaze3d.buffers.GpuBuffer.USAGE_MAP_WRITE
+			| com.mojang.blaze3d.buffers.GpuBuffer.USAGE_UNIFORM;
+	private static final net.minecraft.resources.Identifier EFFECT_ID =
+			net.minecraft.resources.Identifier.fromNamespaceAndPath(
+					reika.chromaticraft.ChromatiCraft.MODID, "monument");
+	private static final net.minecraft.resources.Identifier GRADED_TARGET_ID =
+			net.minecraft.resources.Identifier.fromNamespaceAndPath(
+					reika.chromaticraft.ChromatiCraft.MODID, "monument_graded");
+	private static final java.util.Set<net.minecraft.resources.Identifier> ALLOWED_TARGETS =
+			java.util.Set.of(net.minecraft.client.renderer.PostChain.MAIN_TARGET_ID, GRADED_TARGET_ID);
+
+	private static net.minecraft.client.renderer.MappableRingBuffer coreUbo;
+
+	private void grade(org.joml.Matrix4fc modelView, org.joml.Matrix4fc projection,
+			net.minecraft.world.phys.Vec3 eye) {
+		Minecraft mc = Minecraft.getInstance();
+		var chain = mc.getShaderManager().getPostChain(EFFECT_ID, ALLOWED_TARGETS);
+		if (chain == null || mc.player == null)
+			return;
+		com.mojang.blaze3d.pipeline.RenderTarget main = mc.gameRenderer.mainRenderTarget();
+		int width = main.width;
+		int height = main.height;
+
+		this.uploadCores(modelView, projection, eye);
+
+		// The pass cannot read and write the main target at once, so the grade goes into an offscreen
+		// target and the chain blits it back -- the shape RotaryCraft's heat ripple established.
+		var frame = new com.mojang.blaze3d.framegraph.FrameGraphBuilder();
+		var mainHandle = frame.importExternal("main", main);
+		var gradedHandle = frame.createInternal("chromaticraft_monument_graded",
+				new com.mojang.blaze3d.resource.RenderTargetDescriptor(width, height, false,
+						new org.joml.Vector4f(0, 0, 0, 0), com.mojang.blaze3d.GpuFormat.RGBA8_UNORM));
+		var pass = frame.addPass("chromaticraft_monument_grade");
+		pass.reads(mainHandle);
+		var gradedOut = pass.readsAndWrites(gradedHandle);
+		pass.executes(() -> drawGrade(mainHandle.get(), gradedOut.get()));
+		chain.addToFrame(frame, width, height, new GradeTargetBundle(mainHandle, gradedOut));
+		frame.execute(com.mojang.blaze3d.resource.GraphicsResourceAllocator.UNPOOLED);
+		coreUbo.rotate();
+	}
+
+	/**
+	 * Projects each core to screen space and uploads the set. A core behind the near plane is dropped
+	 * rather than clamped: a glow anchored to a point behind the camera would smear across the frame.
+	 */
+	private void uploadCores(org.joml.Matrix4fc modelView, org.joml.Matrix4fc projection,
+			net.minecraft.world.phys.Vec3 eye) {
+		if (coreUbo == null)
+			coreUbo = new net.minecraft.client.renderer.MappableRingBuffer(
+					() -> "ChromatiCraft MonumentCores", UBO_USAGE, UBO_SIZE);
+
+		java.util.List<float[]> focus = new ArrayList<>();
+		java.util.List<float[]> colors = new ArrayList<>();
+		for (int i = 0; i < CrystalElement.elements.length; i++) {
+			CrystalElement e = CrystalElement.elements[i];
+			if (colorFade[i] <= 0)
+				continue;
+			var offset = reika.chromaticraft.tileentity.technical.TileEntityDimensionCore.getLocation(e);
+			double cx = pos.getX() + offset.getX() + 0.5;
+			double cy = pos.getY() + offset.getY() + 0.5;
+			double cz = pos.getZ() + offset.getZ() + 0.5;
+			org.joml.Vector4f v = new org.joml.Vector4f((float)(cx - eye.x), (float)(cy - eye.y),
+					(float)(cz - eye.z), 1);
+			v.mul(modelView);
+			v.mul(projection);
+			if (v.w <= 1.0E-4F)
+				continue;
+			focus.add(new float[] {v.x / v.w * 0.5F + 0.5F, v.y / v.w * 0.5F + 0.5F,
+					(float)Math.max(0.01, eye.distanceToSqr(cx, cy, cz)), colorFade[i] * 0.7F});
+			int rgb = e.getColor();
+			colors.add(new float[] {((rgb >> 16) & 0xFF) / 255F, ((rgb >> 8) & 0xFF) / 255F,
+					(rgb & 0xFF) / 255F});
+		}
+
+		try (var view = coreUbo.currentBuffer().map(false, true)) {
+			var builder = com.mojang.blaze3d.buffers.Std140Builder.intoBuffer(view.data());
+			builder.putIVec4(focus.size(), 0, 0, 0);
+			builder.putVec4(this.gradeIntensity(), 0, 0, 0);
+			for (float[] f : focus)
+				builder.putVec4(f[0], f[1], f[2], f[3]);
+			// Padded: CoreColor starts at a fixed offset regardless of how many cores are lit.
+			for (int i = focus.size(); i < MAX_CORES; i++)
+				builder.putVec4(0, 0, 0, 0);
+			for (float[] c : colors)
+				builder.putVec4(c[0], c[1], c[2], 0);
+		}
+	}
+
+	private static void drawGrade(com.mojang.blaze3d.pipeline.RenderTarget source,
+			com.mojang.blaze3d.pipeline.RenderTarget target) {
+		var encoder = com.mojang.blaze3d.systems.RenderSystem.getDevice().createCommandEncoder();
+		try (var pass = encoder.createRenderPass(() -> "ChromatiCraft monument grade",
+				target.getColorTextureView(), java.util.Optional.empty())) {
+			pass.setPipeline(reika.chromaticraft.render.ChromaRenderPipelines.MONUMENT_GRADE);
+			com.mojang.blaze3d.systems.RenderSystem.bindDefaultUniforms(pass);
+			pass.setUniform("MonumentCores", coreUbo.currentBuffer());
+			pass.bindTexture("InSampler", source.getColorTextureView(),
+					com.mojang.blaze3d.systems.RenderSystem.getSamplerCache()
+							.getClampToEdge(com.mojang.blaze3d.textures.FilterMode.LINEAR));
+			pass.draw(3, 1, 0, 0);
+		}
+	}
+
+	/** Supplies the chain with the main target plus our graded scene. */
+	private record GradeTargetBundle(
+			com.mojang.blaze3d.resource.ResourceHandle<com.mojang.blaze3d.pipeline.RenderTarget> main,
+			com.mojang.blaze3d.resource.ResourceHandle<com.mojang.blaze3d.pipeline.RenderTarget> graded)
+			implements net.minecraft.client.renderer.PostChain.TargetBundle {
+
+		@Override
+		public void replace(net.minecraft.resources.Identifier id,
+				com.mojang.blaze3d.resource.ResourceHandle<com.mojang.blaze3d.pipeline.RenderTarget> handle) {
+		}
+
+		@Override
+		public com.mojang.blaze3d.resource.ResourceHandle<com.mojang.blaze3d.pipeline.RenderTarget> get(
+				net.minecraft.resources.Identifier id) {
+			return id.equals(net.minecraft.client.renderer.PostChain.MAIN_TARGET_ID) ? main : graded;
+		}
+	}
+
+	/**
 	 * V33a stepSound: the six tracks are started in turn, each at its own offset from the ritual's
 	 * start, so they play as one continuous piece rather than being cued off each other's length.
 	 */
@@ -276,6 +443,7 @@ public final class MonumentRitualEffects {
 	 * music in the colours that music is written in.
 	 */
 	private void fireRay(ClientLevel level, TimedEvent e) {
+		activeKey = e.ray().key();
 		var colors = reika.chromaticraft.auxiliary.CrystalMusicManager.instance
 				.getColorsWithKeyAnyOctave(e.ray().key());
 		if (colors == null)

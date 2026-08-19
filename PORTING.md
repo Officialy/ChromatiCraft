@@ -6173,3 +6173,39 @@ and reach with it.
 The route that exists is a mixin accessor onto `Camera.setPosition`, and DragonAPI already carries the
 infrastructure for it (`mixins.dragonapi.json` with `reika/dragonapi/mixin/`). That is the shape the
 camera work should take, together with the unconditional GUI and view-bob restore.
+
+### 2026-08-19 — The monument's shaders, as one post pass
+
+V33a ships two: `general.frag`, a post effect that pushes saturation and lifts brightness by a scalar
+`intensity`; and `chords.frag`, which is **not** a post effect — it is a terrain shader, run over chunk
+geometry with the sixteen core positions and colours as uniform arrays, adding a glow around each in
+world space.
+
+There is no seat for the second in 26.2 short of replacing the chunk pipeline, which is a far larger
+change than the effect is worth. So both are one pass: the grade is carried unchanged, and the glow is
+applied in screen space with the CPU projecting each core exactly as RotaryCraft's heat ripple projects
+its emitters. **The falloff is therefore measured on screen scaled by distance rather than in world
+XZ** — the one real difference, and not a visible one in practice, because the cores stand in a ring
+around a viewer who is always outside it, so their screen separation tracks their world separation.
+
+The per-frame data goes through a live UBO, not declared uniforms: a `PostChain` bakes those when the
+chain compiles, which is the same constraint the heat ripple hit and the same answer. Sixteen cores of
+`{screen uv, distance², alpha}` and `{rgb}`, padded so the colour array starts at a fixed offset
+regardless of how many are lit. Each core's alpha is V33a's own `colorFade` — a colour swells while its
+key is sounding and decays at a third of that rate — which is what makes the ring *answer* the music
+rather than pulse with it.
+
+A core behind the near plane is dropped rather than clamped: a glow anchored behind the camera would
+smear across the frame.
+
+The pass reads the scene into an offscreen target and the chain blits it back, because a pass cannot
+read and write the main target at once. Run from `RenderLevelStageEvent.AfterLevel`, so it grades a
+finished scene.
+
+Import traps worth recording, since three of these cost a compile each: `RenderTarget`,
+`FrameGraphBuilder`, `ResourceHandle`, `RenderTargetDescriptor`, `GraphicsResourceAllocator`,
+`Std140Builder` and `GpuFormat` are all `com.mojang.blaze3d.*`, but `MappableRingBuffer` is
+`net.minecraft.client.renderer`. `BindGroupLayout` is `com.mojang.blaze3d.pipeline` while
+`BindGroupLayouts` is `net.minecraft.client.renderer`. And there is no `gameRenderer.getMainCamera()`
+or `RenderSystem.getProjectionMatrix()` — the matrices come off the render event's
+`cameraRenderState`.

@@ -77,6 +77,25 @@ public final class ChromaRenderPipelines {
             .withCull(false)
             .build();
 
+    /**
+     * The monument ritual's screen grade and core glow, in one pass. Its sixteen cores arrive as a live
+     * UBO rather than as declared uniforms, because a PostChain bakes those when the chain compiles and
+     * these change every frame; see {@code MonumentRitualEffects}.
+     */
+    public static final RenderPipeline MONUMENT_GRADE = RenderPipeline.builder(
+                    net.minecraft.client.renderer.RenderPipelines.POST_PROCESSING_SNIPPET)
+            .withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "pipeline/monument"))
+            // The String overloads assume the minecraft namespace, so ours must be an explicit
+            // Identifier or it resolves as "minecraft:chromaticraft:post/monument".
+            .withVertexShader("core/screenquad")
+            .withFragmentShader(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "post/monument"))
+            .withBindGroupLayout(com.mojang.blaze3d.pipeline.BindGroupLayout.builder()
+                    .withSampler("InSampler")
+                    .withUniform("MonumentCores",
+                            com.mojang.blaze3d.shaders.UniformType.UNIFORM_BUFFER)
+                    .build())
+            .build();
+
     private static final Function<Identifier, RenderType> ADDITIVE_TYPES = Util.memoize(texture ->
             RenderType.create("chromaticraft_additive_sprite", RenderSetup.builder(ADDITIVE_SPRITE)
                     .withTexture("Sampler0", texture)
@@ -95,6 +114,7 @@ public final class ChromaRenderPipelines {
     private static void registerPipelines(RegisterRenderPipelinesEvent event) {
         event.registerPipeline(ADDITIVE_SPRITE);
         event.registerPipeline(ADDITIVE_PARTICLE);
+        event.registerPipeline(MONUMENT_GRADE);
     }
 }
 
