@@ -135,6 +135,13 @@ public final class TileEntityStructureController extends RandomizableContainerBl
 			if (!controller.monument.isRunning())
 				controller.endMonumentRitual();
 		}
+		// V33a's monument debug branch, run every tick while /debugtest is on. It is Reika's own answer
+		// to the ritual's second gate: generation lays only a random subset of the 376-cell mineral
+		// inlay while demanding all of it, so without this the only way to reach the ceremony is to
+		// place roughly a hundred and fifty blocks by hand under the monument floor.
+		if (controller.isMonument && reika.dragonapi.DragonAPI.debugtest)
+			controller.buildMonumentForDebug(level);
+
 		if (controller.structure == null)
 			return;
 		if (controller.trapTick > 0) {
@@ -740,6 +747,47 @@ public final class TileEntityStructureController extends RandomizableContainerBl
 					worldPosition.getY() + 0.5, worldPosition.getZ() + 0.5) <= 2.5 * 2.5;
 		// Door-state checks remain attached to the optional Burrow room blocks when that template lands.
 		return structure != StructureType.BURROW || (!furnaceRoom && !lootRoom);
+	}
+
+	/**
+	 * V33a's {@code isMonument && debugtest} branch: lays the complete ring and the complete mineral
+	 * inlay, and hands both to the nearest player.
+	 *
+	 * <p>Upstream primes the cores here as well as colouring them, which is what starts their connect
+	 * beams and their half of the melody — so a correctly built ring is audible and visible before the
+	 * ritual is ever triggered. The placer is set to the nearest player because {@code doChecks} refuses
+	 * a ring whose cores do not all record the same one.
+	 */
+	private void buildMonumentForDebug(Level level) {
+		Player nearest = level.getNearestPlayer(worldPosition.getX() + 0.5, worldPosition.getY() + 0.5,
+				worldPosition.getZ() + 0.5, -1, false);
+		if (nearest == null)
+			return;
+		for (reika.chromaticraft.registry.CrystalElement element
+				: reika.chromaticraft.registry.CrystalElement.elements) {
+			BlockPos at = worldPosition.offset(
+					reika.chromaticraft.tileentity.technical.TileEntityDimensionCore.getLocation(element));
+			if (!level.getBlockState(at).is(
+					reika.chromaticraft.registry.ChromaBlocks.DIMENSION_CORE.get()))
+				level.setBlock(at, reika.chromaticraft.registry.ChromaBlocks.DIMENSION_CORE.get()
+						.defaultBlockState(), 3);
+			if (level.getBlockEntity(at)
+					instanceof reika.chromaticraft.tileentity.technical.TileEntityDimensionCore core) {
+				core.setPlacer(nearest);
+				core.prime(true);
+				core.setColor(element);
+			}
+		}
+		// The inlay is written relative to the template origin, which is a controller-offset away.
+		BlockPos origin = worldPosition.subtract(
+				reika.chromaticraft.world.dimension.structure.MonumentPiece.CONTROLLER_OFFSET);
+		for (reika.chromaticraft.world.dimension.structure.MonumentMineralBlocks.Cell cell
+				: reika.chromaticraft.world.dimension.structure.MonumentMineralBlocks.expected()) {
+			BlockPos at = origin.offset(cell.offset());
+			BlockState wanted = cell.mineral().block().defaultBlockState();
+			if (!level.getBlockState(at).is(cell.mineral().block()))
+				level.setBlock(at, wanted, 3);
+		}
 	}
 
 	/** V33a setMonument: marks this controller as the monument's, and syncs that to clients. */
