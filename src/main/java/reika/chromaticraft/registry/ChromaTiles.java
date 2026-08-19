@@ -59,7 +59,9 @@ public enum ChromaTiles implements TileEnum {
 	DIMENSIONCORE("chroma.dimensioncore", ChromaBlocks.DIMENSION_CORE,
 			reika.chromaticraft.tileentity.technical.TileEntityDimensionCore.class),
 	AURAPOINT("chroma.aurapoint", ChromaBlocks.AURA_POINT,
-			reika.chromaticraft.tileentity.aoe.TileEntityAuraPoint.class);
+			reika.chromaticraft.tileentity.aoe.TileEntityAuraPoint.class),
+	FIREJET("chroma.firejet", ChromaBlocks.FIRE_JET,
+			reika.chromaticraft.tileentity.dimension.TileEntityFireJet.class);
 
 	private final String nameKey;
 	private final DeferredBlock<Block> block;

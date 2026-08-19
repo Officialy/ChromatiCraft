@@ -6241,3 +6241,40 @@ canopies do not eat each other.
 Remaining for the Sanctuary, unchanged: **RIFT** (`WorldGenFissure`), **JETS** (`WorldGenFireJet`),
 **ALTAR** (`WorldGenMiniAltar`), **CRACKS** (`WorldGenGlowingCracks`) and **GLOWCAVE**
 (`WorldGenGlowCave`).
+
+### 2026-08-19 — Fire Jets, and the art that decides what can be ported
+
+**`BlockDimensionDecoTile` carries two types and only one of them can be built.** Upstream packs FIREJET
+and GLOWCRACKS into one block, so under the metadata rule they become two. The Fire Jet is here; the
+Glowing Cracks are not, and the reason is art rather than effort.
+
+`registerBlockIcons` asks for `dimgen2/underlay_<n>` and `dimgen2/overlay_<n>` for both types, and
+**there is no `dimgen2` directory anywhere in V33a's repository** — the same situation as AQUA and
+GEMSTONE among the deco blocks, where Reika ships a `logError("...is missing icons!")` fallback because
+she knows it. What does exist is each type's item icon. The Fire Jet's is `dimgen/aurajet`, a real 16x16
+that is this block's own art, and that is what it wears. The Glowing Cracks' is
+`Textures/glowcracks.png` — 1024x1024, a sheet for the custom renderer that draws the cracks across a
+nine-by-nine area, not a block icon. It was extracted, examined and removed again rather than pressed
+into service as one: that would be inventing art, not porting it.
+
+**The Fire Jet itself.** It sits at the bottom of Proxima's pools and lights every four hundred ticks
+or so, burning for one to four minutes — the countdown is `100 + rand(1200)`, a deliberately wide
+spread so a field of jets never falls into step, and it is persisted so a jet burning at save time is
+still burning at load. Two of upstream's rules are easy to lose and both are kept: it is mineable
+**only past `ProgressStage.CTM`** (upstream's `-1` hardness, which 26.2 expresses as a destroy progress
+of zero, so it also covers explosions and other mods' miners), and it is **solid**, unlike the other
+deco tiles, so a player can stand on one mid-pool.
+
+The flame's colour is the detail worth keeping: it hue-cycles with the jet's own position and the clock
+so no two jets in a pool pulse together — *unless* a crystal rune sits directly underneath, in which
+case the jet burns that element's colour. That is how the pools come to read as coloured rather than
+orange.
+
+**The generator** places nothing unless the column's top solid block is water with at least two blocks
+of it above the bed, then rings the jet with four Cloak Shielding so the pool cannot be drained around
+it. `MOTION_BLOCKING` is the heightmap that counts water — `WORLD_SURFACE` would land on the pool's
+surface and `OCEAN_FLOOR` would skip past the water to the bed. V33a's `case JETS: return true` puts it
+in every biome, the Sanctuary included; its site check is what actually decides where one appears.
+
+Sanctuary generators still missing: **RIFT** (`WorldGenFissure`), **ALTAR** (`WorldGenMiniAltar`),
+**GLOWCAVE** (`WorldGenGlowCave`), and **CRACKS** (`WorldGenGlowingCracks`) behind the art above.

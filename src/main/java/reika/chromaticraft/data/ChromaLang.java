@@ -43,6 +43,7 @@ public class ChromaLang extends LanguageProvider {
 		add("block.chromaticraft.display_point", "Display Point");
 		add("block.chromaticraft.dimension_core", "Dimension Core");
 		add("block.chromaticraft.aura_point", "Aura Locus");
+		add("block.chromaticraft.fire_jet", "Aura Jet");
 		// V33a chroma.stand = "Item Casting Stand" (not "Casting Stand").
 		add("block.chromaticraft.casting_item_stand", "Item Casting Stand");
 		// V33a chroma.table = "Casting Table" — matches.

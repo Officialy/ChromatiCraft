@@ -6,7 +6,20 @@
     "grass_color": "#79c05a",
     "water_color": "#00ffff"
   },
-  "features": [],
+  "features": [
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [
+      "chromaticraft:fire_jet"
+    ]
+  ],
   "has_precipitation": true,
   "spawn_costs": {},
   "spawners": {

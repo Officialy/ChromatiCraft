@@ -343,6 +343,24 @@ public abstract class ChromaParticle extends SingleQuadParticle {
         }
     }
 
+    /**
+     * V33a's Fire Jet flame: one rising blur every other tick, hue-cycling with the jet's own position
+     * and the clock so no two jets in a pool pulse together — unless a crystal block sits directly
+     * underneath, in which case the jet burns that element's colour instead. A jet over a crystal is
+     * how Proxima's pools come to read as coloured rather than orange.
+     */
+    public static void spawnFireJet(Level world, BlockPos pos) {
+        if (!(world instanceof ClientLevel level) || !level.getRandom().nextBoolean()) return;
+        int color = reika.dragonapi.libraries.rendering.ReikaColorAPI.getModifiedHue(0xFF0000,
+                (int)((System.currentTimeMillis() / 40 + (pos.getX() + pos.getY() + pos.getZ()) * 8L) % 360L));
+        var below = level.getBlockState(pos.below()).getBlock();
+        if (below instanceof reika.chromaticraft.block.BlockCrystalRune rune)
+            color = rune.getColor().getColor();
+        Blur blur = new Blur(level, pos.getX() + 0.5, pos.getY() + 0.9, pos.getZ() + 0.5, color, 4F, 40);
+        blur.yd = 0.0625 + level.getRandom().nextDouble() * 0.02 - 0.01;
+        Minecraft.getInstance().particleEngine.add(blur);
+    }
+
     /** V33a booster trail: one no-slowdown color blur per connected crystal per client tick. */
     public static void spawnPylonBoosterRecharge(Level world, BlockPos pylonPos, CrystalElement color,
             Collection<TileEntityChromaCrystal> boosters, int ticksExisted) {

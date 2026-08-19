@@ -176,6 +176,10 @@ public final class ChromaFeatures {
             FEATURES.register("tree_cluster",
                     reika.chromaticraft.world.dimension.TreeClusterFeature::new);
 
+    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> FIRE_JET =
+            FEATURES.register("fire_jet",
+                    reika.chromaticraft.world.dimension.FireJetFeature::new);
+
     public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> CRYSTAL_SHRUB =
             FEATURES.register("crystal_shrub",
                     reika.chromaticraft.world.dimension.CrystalShrubFeature::new);

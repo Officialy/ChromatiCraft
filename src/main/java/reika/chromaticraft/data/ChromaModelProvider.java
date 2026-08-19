@@ -140,6 +140,7 @@ public class ChromaModelProvider extends ModelProvider {
 		structureControllerModel(blockStateOut, modelOut);
 		dimensionCoreModel(blockStateOut, itemModelOut, modelOut);
 		auraPointModel(blockStateOut, itemModelOut, modelOut);
+		fireJetModel(blockStateOut, itemModelOut, modelOut);
 		chromaDoorModel(blockStateOut, itemModelOut, modelOut);
 		heatLampModels(blockStateOut, itemModelOut, modelOut);
 		metaAlloyModel(blockStateOut, itemModelOut, modelOut);
@@ -1346,6 +1347,22 @@ public class ChromaModelProvider extends ModelProvider {
 				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "item/aura_point"),
 				TextureMapping.layer0(particle), modelOut);
 		itemModelOut.accept(block.asItem(), ItemModelUtils.plainModel(itemModel));
+	}
+
+	/**
+	 * The Fire Jet. V33a composites an underlay and an overlay from a {@code dimgen2} sheet that does
+	 * not exist in its repository; what does exist is the item icon {@code dimgen/aurajet}, which is
+	 * this block's own art and is what it wears here. The absent pair is recorded in PORTING.md.
+	 */
+	private static void fireJetModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		Block block = ChromaBlocks.FIRE_JET.get();
+		Material texture = new Material(Identifier.fromNamespaceAndPath(
+				ChromatiCraft.MODID, "block/dimgen/aurajet"));
+		Identifier model = ModelTemplates.CUBE_ALL.create(block, TextureMapping.cube(texture), modelOut);
+		blockStateOut.accept(MultiVariantGenerator.dispatch(block,
+				new MultiVariant(WeightedList.of(new Variant(model)))));
+		itemModelOut.accept(block.asItem(), ItemModelUtils.plainModel(model));
 	}
 
 	/** V33a renders the controller entirely through its dynamic structure-script renderer. */

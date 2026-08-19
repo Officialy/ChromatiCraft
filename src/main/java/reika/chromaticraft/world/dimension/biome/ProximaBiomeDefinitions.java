@@ -150,6 +150,9 @@ public final class ProximaBiomeDefinitions {
 				|| type == ProximaBiomes.ISLANDS || type == ProximaBiomes.SPARKLE
 				|| type == ProximaBiomes.GLOWCRACKS)
 			add(builder, features, "glow_tree");
+		// V33a JETS: `case JETS: return true` -- every biome, the Sanctuary among them. Its own site
+		// check is what actually decides where a jet appears.
+		add(builder, features, "fire_jet");
 		// V33a's FORESTS: the Glowing Forest alone among the named biomes, plus the Sanctuary, which
 		// takes it from the CENTER branch as it takes everything not dedicated elsewhere.
 		if (central || type == ProximaBiomes.FOREST)

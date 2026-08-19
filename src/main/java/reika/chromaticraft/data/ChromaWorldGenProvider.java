@@ -74,6 +74,7 @@ public final class ChromaWorldGenProvider {
     private static final Identifier CRYSTAL_TREE = id("crystal_tree");
     private static final Identifier GLOW_TREE = id("glow_tree");
     private static final Identifier TREE_CLUSTER = id("tree_cluster");
+    private static final Identifier FIRE_JET = id("fire_jet");
     private static final Identifier CRYSTAL_PIT = id("crystal_pit");
     private static final Identifier AURORAE = id("aurorae");
     private static final List<Identifier> NETHER_ROOF_STRUCTURES =
@@ -180,6 +181,7 @@ public final class ChromaWorldGenProvider {
             registerConfigured(bootstrap, features, CRYSTAL_TREE);
             registerConfigured(bootstrap, features, GLOW_TREE);
             registerConfigured(bootstrap, features, TREE_CLUSTER);
+            registerConfigured(bootstrap, features, FIRE_JET);
             registerConfigured(bootstrap, features, CRYSTAL_PIT);
             registerConfigured(bootstrap, features, AURORAE);
             for (Identifier structure : NETHER_ROOF_STRUCTURES)
@@ -357,6 +359,14 @@ public final class ChromaWorldGenProvider {
                     RarityFilter.onAverageOnceEvery(2), InSquarePlacement.spread(),
                     net.minecraft.world.level.levelgen.placement.HeightmapPlacement.onHeightmap(
                             net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES),
+                    BiomeFilter.biome()));
+            // V33a getGenerationChance for the fire jet is 0.1 per chunk, and its own site check --
+            // two blocks of water above the bed -- refuses most of those again, so the jets end up
+            // only in real pools.
+            registerPlaced(bootstrap, configured, FIRE_JET, List.of(
+                    RarityFilter.onAverageOnceEvery(10), InSquarePlacement.spread(),
+                    net.minecraft.world.level.levelgen.placement.HeightmapPlacement.onHeightmap(
+                            net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING),
                     BiomeFilter.biome()));
             // V33a getGenerationChance for the tree cluster is a flat 0.67 per chunk, so two chunks in
             // three. Deliberately no InSquarePlacement: the cluster scatters its own trees sixteen
