@@ -314,6 +314,7 @@ public final class ChromaGameTests {
 		register(event, env, "proxima_glow_trees", ChromaGameTests::proximaGlowTrees);
 		register(event, env, "proxima_tree_cluster", ChromaGameTests::proximaTreeCluster);
 		register(event, env, "proxima_monument_template", ChromaGameTests::proximaMonumentTemplate);
+		register(event, env, "mini_altar", ChromaGameTests::miniAltar);
 		register(event, env, "dimension_core_ring", ChromaGameTests::dimensionCoreRing);
 		register(event, env, "monument_ritual_checks", ChromaGameTests::monumentRitualChecks);
 		register(event, env, "monument_core_placement", ChromaGameTests::monumentCorePlacement);
@@ -2320,6 +2321,76 @@ public final class ChromaGameTests {
 	 * the easiest thing here to get subtly wrong: it is <em>not</em> the rune ring in the monument
 	 * template, it is inset from it, and the two share a height, a start and a direction.
 	 */
+	/**
+	 * V33a's Precursor altar: a fixed shrine over a buried chest.
+	 *
+	 * <p>The geometry is entirely fixed, so it can be asserted exactly rather than statistically — which
+	 * is the point of testing it: a transposed loop or an off-by-one in the burrow would still produce
+	 * something altar-shaped in a screenshot.
+	 */
+	private static void miniAltar(GameTestHelper helper) {
+		var level = helper.getLevel();
+		// The site rule is seven by seven of grass with air above; anything less must be refused.
+		BlockPos base = helper.absolutePos(new BlockPos(10, 3, 10));
+		for (BlockPos pos : BlockPos.betweenClosed(base.offset(-4, 0, -4), base.offset(4, 0, 4)))
+			level.setBlock(pos, Blocks.GRASS_BLOCK.defaultBlockState(), 3);
+		var feature = reika.chromaticraft.registry.ChromaFeatures.MINI_ALTAR.get();
+
+		// One non-grass cell inside the footprint has to be enough to refuse it.
+		level.setBlock(base.offset(2, 0, 2), Blocks.STONE.defaultBlockState(), 3);
+		helper.assertTrue(!place(helper, feature, base.above()),
+				"the altar must refuse a footprint that is not all grass");
+		level.setBlock(base.offset(2, 0, 2), Blocks.GRASS_BLOCK.defaultBlockState(), 3);
+		helper.assertTrue(place(helper, feature, base.above()),
+				"the altar must build on seven by seven of clear grass");
+
+		var stone = ChromaBlocks.shielding(reika.chromaticraft.registry.ChromaShieldTypes.STONE).get();
+		var cobble = ChromaBlocks.shielding(reika.chromaticraft.registry.ChromaShieldTypes.COBBLE).get();
+		var glass = ChromaBlocks.shielding(reika.chromaticraft.registry.ChromaShieldTypes.GLASS).get();
+		var light = ChromaBlocks.shielding(reika.chromaticraft.registry.ChromaShieldTypes.LIGHT).get();
+
+		helper.assertTrue(level.getBlockState(base).is(light),
+				"the platform's centre is Light Shielding, which is what makes the altar visible at night");
+		helper.assertTrue(level.getBlockState(base.offset(3, 0, 3)).is(stone),
+				"the platform's corner is Stone Shielding");
+		// The rim overwrites the platform between the pillars, so the edge midpoints are cobble.
+		helper.assertTrue(level.getBlockState(base.offset(2, 0, 0)).is(cobble),
+				"the platform's rim runs in Cobble Shielding between the pillars");
+
+		for (int h = 1; h <= 4; h++)
+			helper.assertTrue(level.getBlockState(base.offset(2, h, 2)).is(cobble),
+					"a corner pillar is missing at height " + h);
+		helper.assertTrue(level.getBlockState(base.offset(1, 4, 1)).is(glass),
+				"the canopy is a three-by-three of Glass Shielding");
+		helper.assertTrue(level.getBlockState(base.offset(0, 4, 0)).is(light),
+				"the canopy's centre is Light Shielding");
+		helper.assertTrue(level.getBlockState(base.offset(0, 5, 0)).getBlock()
+						instanceof reika.chromaticraft.block.crystal.BlockCrystalLamp,
+				"a crystal lamp of some element tops the altar");
+
+		// The burrow: hollow inside, walled on its sides, floored one below the chest.
+		helper.assertTrue(level.getBlockState(base.below(1)).isAir(),
+				"the burrow under the platform must be hollow");
+		helper.assertTrue(level.getBlockState(base.offset(2, -1, 0)).is(stone),
+				"the burrow's wall must be Stone Shielding");
+		helper.assertTrue(level.getBlockState(base.offset(0, -4, 0)).is(stone),
+				"the burrow's floor sits one below the chest");
+		helper.assertTrue(level.getBlockState(base.below(3)).is(ChromaBlocks.LOOT_CHEST.get()),
+				"the chest sits three below the platform, on the burrow's floor");
+		helper.succeed();
+	}
+
+	private static boolean place(GameTestHelper helper,
+			net.minecraft.world.level.levelgen.feature.Feature<
+					net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration> feature,
+			BlockPos at) {
+		return feature.place(new net.minecraft.world.level.levelgen.feature.FeaturePlaceContext<>(
+				java.util.Optional.empty(), helper.getLevel(),
+				helper.getLevel().getLevel().getChunkSource().getGenerator(),
+				helper.getLevel().getRandom(), at,
+				net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration.INSTANCE));
+	}
+
 	private static void dimensionCoreRing(GameTestHelper helper) {
 		var seen = new java.util.HashSet<net.minecraft.core.Vec3i>();
 		for (CrystalElement element : CrystalElement.elements) {
