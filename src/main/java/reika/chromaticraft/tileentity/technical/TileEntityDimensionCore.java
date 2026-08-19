@@ -184,18 +184,24 @@ public class TileEntityDimensionCore extends TileEntityLocusPoint {
 	 * V33a setColor. With one identity per colour this is a block swap, so the tile's own state — the
 	 * placer, the priming, the structure it belongs to — has to be carried across by hand or a recolour
 	 * would silently reset the core.
+	 *
+	 * <p>It therefore <b>invalidates this tile</b> and returns the live one. A caller that keeps its old
+	 * reference is reading a removed block entity, which still answers with the colour it used to be —
+	 * so the return value is the only safe thing to go on afterwards.
 	 */
-	public void setColor(CrystalElement e) {
+	public TileEntityDimensionCore setColor(CrystalElement e) {
 		Level world = this.getLevel();
 		if (world == null || this.getColor() == e)
-			return;
+			return this;
 		CompoundTag carried = new CompoundTag();
 		this.saveAdditional(carried);
 		BlockPos pos = this.getBlockPos();
 		world.setBlock(pos, reika.chromaticraft.registry.ChromaBlocks.dimensionCore(e).get()
 				.defaultBlockState(), 3);
-		if (world.getBlockEntity(pos) instanceof TileEntityDimensionCore replacement)
-			replacement.load(carried);
+		if (!(world.getBlockEntity(pos) instanceof TileEntityDimensionCore replacement))
+			return this;
+		replacement.load(carried);
+		return replacement;
 	}
 
 	@Override

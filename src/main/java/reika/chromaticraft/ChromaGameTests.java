@@ -2347,8 +2347,13 @@ public final class ChromaGameTests {
 		helper.assertTrue(helper.getLevel().getBlockEntity(pos) instanceof reika.chromaticraft.tileentity.technical.TileEntityDimensionCore,
 				"the Dimension Core block must carry a TileEntityDimensionCore");
 		var core = (reika.chromaticraft.tileentity.technical.TileEntityDimensionCore)helper.getLevel().getBlockEntity(pos);
-		core.setColor(CrystalElement.LIME);
+		// One registry identity per colour, so a recolour is a block swap: it replaces the tile, and the
+		// live one is what it hands back. Reading the old reference would see the colour it used to be.
+		core = core.setColor(CrystalElement.LIME);
 		helper.assertTrue(core.getColor() == CrystalElement.LIME, "a core must keep the colour it is set");
+		helper.assertTrue(helper.getLevel().getBlockState(pos)
+						.is(ChromaBlocks.dimensionCore(CrystalElement.LIME).get()),
+				"a recoloured core must become that colour's registered block");
 		helper.assertTrue(!core.hasStructure(),
 				"a core placed by hand belongs to no structure until one claims it");
 		helper.succeed();
