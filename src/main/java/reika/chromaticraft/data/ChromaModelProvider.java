@@ -1318,18 +1318,21 @@ public class ChromaModelProvider extends ModelProvider {
 	private static void dimensionCoreModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
 			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
 		Block block = ChromaBlocks.DIMENSION_CORE.get();
-		Material particle = new Material(Identifier.fromNamespaceAndPath(
-				ChromatiCraft.MODID, "block/icons/roundflare"));
-		Identifier worldModel = ModelTemplates.PARTICLE_ONLY.create(
-				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/dimension_core"),
-				new TextureMapping().put(TextureSlot.PARTICLE, particle), modelOut);
+		// blurflare is one of Reika's own glow sprites and the closest thing she ships to what
+		// RenderDimensionCore draws: a soft round light with no shape of its own, which is exactly what
+		// takes the element's colour well. roundflare, the obvious-looking name, is a 256x46080 sprite
+		// strip that has no business in the block atlas.
+		Material texture = new Material(Identifier.fromNamespaceAndPath(
+				ChromatiCraft.MODID, "block/icons/blurflare"));
+		// Vanilla's leaves template is used for the same reason Crystal Leaves use it: it is the cube
+		// that carries a tintindex, and without one the core's colour never reaches the model.
+		Identifier worldModel = ModelTemplates.LEAVES.create(block, TextureMapping.cube(texture), modelOut);
 		blockStateOut.accept(MultiVariantGenerator.dispatch(block,
 				new MultiVariant(WeightedList.of(new Variant(worldModel)))));
-		Identifier itemModel = ModelTemplates.FLAT_ITEM.create(
-				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "item/dimension_core"),
-				TextureMapping.layer0(new Material(Identifier.fromNamespaceAndPath(
-						ChromatiCraft.MODID, "block/icons/roundflare"))), modelOut);
-		itemModelOut.accept(block.asItem(), ItemModelUtils.plainModel(itemModel));
+		// The item's colour comes from its stack tag, so the tint must be a registered source rather
+		// than a Constant like every other coloured item here.
+		itemModelOut.accept(block.asItem(), ItemModelUtils.tintedModel(worldModel,
+				new reika.chromaticraft.client.ChromaItemTints.DimensionCoreTint()));
 	}
 
 	/** The Aura Point is drawn by its block entity, so its world model only names a particle sprite. */

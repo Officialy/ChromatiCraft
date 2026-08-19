@@ -24,6 +24,8 @@ import reika.chromaticraft.magic.interfaces.ChargingPoint;
 import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.registry.ChromaSounds;
+import reika.chromaticraft.world.dimension.DimensionTuningManager;
+import reika.chromaticraft.registry.ChromaDimensions;
 import reika.chromaticraft.tileentity.networking.TileEntityCrystalRepeater;
 import reika.chromaticraft.tileentity.TileEntityDataNode;
 import reika.chromaticraft.tileentity.TileEntityDummyAux;
@@ -176,6 +178,32 @@ public class ItemManipulator extends Item {
 			else {
 				ChromaSounds.ERROR.playSoundAtBlock(repeater);
 			}
+			return InteractionResult.SUCCESS;
+		}
+
+		// V33a's STRUCTCONTROL branch, which is the only way the monument ritual is ever started.
+		if (tile instanceof reika.chromaticraft.tileentity.TileEntityStructureController structure) {
+			// Upstream's creative debug branch: sneak-click marks a controller as the monument's by hand.
+			// Kept because it is the only recovery if a monument generates without being marked.
+			if (player.hasInfiniteMaterials() && reika.dragonapi.DragonAPI.debugtest) {
+				if (!level.isClientSide() && player.isShiftKeyDown())
+					structure.setMonument();
+				return InteractionResult.SUCCESS;
+			}
+			if (level.isClientSide())
+				return InteractionResult.SUCCESS;
+			// Upstream gates on prerequisites, not on holding the stage itself: the ritual is what
+			// grants CTM, so requiring it first would make the monument unreachable.
+			if (ProgressStage.CTM.playerHasPrerequisites(player) && structure.isMonument()
+					&& (level.dimension() != ChromaDimensions.PROXIMA
+							|| DimensionTuningManager.TuningThresholds.MONUMENT.isSufficientlyTuned(player))
+					&& structure.triggerMonument(player)) {
+				ChromaSounds.USE.playSoundAtBlockNoAttenuation(structure, 1, 1, 128);
+				return InteractionResult.SUCCESS;
+			}
+			// One refusal sound for every way this can fail, exactly as upstream: the monument does not
+			// tell the player which requirement they are short of.
+			ChromaSounds.ERROR.playSoundAtBlock(structure);
 			return InteractionResult.SUCCESS;
 		}
 

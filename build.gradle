@@ -131,6 +131,7 @@ sourceSets.main.java {
     include 'reika/chromaticraft/render/model/CrystalPiece.java'
       include 'reika/chromaticraft/client/ChromaBlockStateModels.java'
       include 'reika/chromaticraft/client/ChromaBlockColors.java'
+      include 'reika/chromaticraft/client/ChromaItemTints.java'
       include 'reika/chromaticraft/client/LuminousCliffsColors.java'
       include 'reika/chromaticraft/client/ChromaModelOutlineRenderer.java'
       include 'reika/chromaticraft/client/PylonAttackOverlay.java'

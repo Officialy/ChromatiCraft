@@ -119,6 +119,16 @@ public class MonumentPiece extends StructurePiece {
 								.setIgnoreEntities(true).setBoundingBox(chunkBB),
 						RandomSource.create(centreX * 31L + centreZ), 2);
 
+		// V33a MonumentPlace.onTilePlaced: the controller the template just laid is the monument's, and
+		// nothing else ever tells it so — an unmarked controller refuses the ritual forever. The template
+		// is placed once per overlapping chunk with a different clip, so only the pass whose box actually
+		// contains the controller finds a block entity there; the others would mark nothing at all.
+		BlockPos controller = anchor.offset(CONTROLLER_OFFSET);
+		if (chunkBB.isInside(controller)
+				&& level.getBlockEntity(controller)
+						instanceof reika.chromaticraft.tileentity.TileEntityStructureController structure)
+			structure.setMonument();
+
 		// The mineral inlay, rolled per cell against its own material's chance. Deliberately a subset:
 		// the ritual expects the whole of it, so whatever generation withholds is what the player has to
 		// supply before the monument will complete. Seeded off the position so every chunk that paints

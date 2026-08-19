@@ -1,5 +1,6 @@
 {
+  "parent": "minecraft:block/leaves",
   "textures": {
-    "particle": "chromaticraft:block/icons/roundflare"
+    "all": "chromaticraft:block/icons/blurflare"
   }
 }
