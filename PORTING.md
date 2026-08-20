@@ -6276,8 +6276,52 @@ it. `MOTION_BLOCKING` is the heightmap that counts water — `WORLD_SURFACE` wou
 surface and `OCEAN_FLOOR` would skip past the water to the bed. V33a's `case JETS: return true` puts it
 in every biome, the Sanctuary included; its site check is what actually decides where one appears.
 
-Sanctuary generators still missing: **RIFT** (`WorldGenFissure`), **ALTAR** (`WorldGenMiniAltar`),
-**GLOWCAVE** (`WorldGenGlowCave`), and **CRACKS** (`WorldGenGlowingCracks`) behind the art above.
+## The last four Sanctuary generators (2026-08-20)
+
+All four are in. What each needed, and what is honestly short:
+
+**ALTAR** (`WorldGenMiniAltar`) — a fixed seven-by-seven shrine over a five-by-five burrow with a Loot
+Chest. Every block it wanted already existed. Its chest is the one incomplete part: upstream fills it at
+generation time from `ItemMagicRegistry`, four to twenty-seven items weighted inversely to their
+elemental value, and that registry is 548 lines of Reika's own item-to-element table which is not
+ported. The biome item — a Multi Crystal in the Glowing Forest, an Iridescent Crystal Shard on the
+Crystal Plains — is reproduced and is placed by the feature, which is upstream's own mechanism; this
+chest never went through `ChestGenHooks`, and a loot table could not carry the biome choice anyway,
+since Proxima's biomes are created by the same datagen run that would have to name them.
+
+**RIFT** (`WorldGenFissure`) — needed the Void Rift, sixteen registered blocks gated on both CTM and
+`DECOHARVEST` tuning, and the pattern table, which is built lazily from the world seed rather than on a
+background thread. The rift renders as a plain cube and that is faithful: `VoidRiftRenderer`'s aura pass
+is commented out in V33a. `RenderVoidRift`'s coloured aura walls are **not** ported and cannot be —
+their texture is fetched at runtime from Reika's own server rather than shipped, and is in neither the
+repository nor this port's resources. `TileEntityVoidRift` carries the neighbour lookup that pass wants.
+
+The pattern stores a footprint rather than a block map, because `FissurePattern.generate` has no callers:
+`WorldGenFissure` reads only `getDepthMap()` and then runs its own cut against the real world.
+
+**GLOWCAVE** (`WorldGenGlowCave`) — the largest. Three new blocks (cracked bedrock, the Void Cave, the
+Ethereal Light) and a structure rather than a feature, unavoidably: the walk moves up to thirty-two
+blocks a segment with no bound on segment count. Split three ways like the monument — `GlowCaveShape`
+grows the cells, `GlowCavePiece` decides what each becomes, `GlowCaveStructure` says where a mouth is.
+
+Cracked bedrock is the one that matters beyond this generator: it is the only source of Proximal
+Essence, and so the only way to tune a Portal Rift.
+
+**CRACKS** (`WorldGenGlowingCracks`) — **the standing note that this was blocked on missing `dimgen2`
+art was wrong**, and it was checked rather than inherited. `getImageFileName` returns null, the block is
+`BlockBounds.block().cut(UP, 0.999)`, and the whole appearance is `RenderGlowingCracks` painting
+`Textures/glowcracks.png` — which is in Reika's repository and is now in this port's resources. The
+`dimgen2` icons are absent for *every* `DimDecoTileTypes`, the Fire Jet included, and that shipped on
+exactly this reasoning. Two named gaps: `DoublePolygon` is not in DragonAPI so the layer fill is an
+even-odd ray cast written out (a four-point polygon; the same test), and the ore table's modded half is
+`ModOreList` mod integration, so what is here is Reika's vanilla weighting against the same even split
+with the tiered ores.
+
+**A fissure's geometry is anchored to the world floor, not to its own origin** — it cuts from y 8-23 up
+to twelve above the surface and floors itself at y 2-17. That is faithful: Proxima has a min y of 0
+exactly as V33a's world did, so upstream's absolute numbers mean the same thing here. The first version
+of its gametest built around the arena, which sits at y -59, and was therefore sixty blocks under
+everything it checked.
 
 ## The monument ritual, made reachable (2026-08-19)
 
