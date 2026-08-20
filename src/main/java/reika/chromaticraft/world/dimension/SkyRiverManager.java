@@ -6,6 +6,11 @@ import java.util.Random;
 import java.util.UUID;
 
 import net.minecraft.server.level.ServerLevel;
+import net.neoforged.neoforge.registries.DeferredRegister;
+import net.neoforged.neoforge.registries.DeferredHolder;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.util.Mth;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
 
@@ -49,12 +54,51 @@ import reika.dragonapi.libraries.mathsci.ReikaVectorHelper;
  */
 public final class SkyRiverManager {
 
+	/**
+	 * How long the river keeps hold of a rider who has slipped outside it. Two seconds is chosen to
+	 * cover a terrain-generation hitch, which is what actually knocks people out of a river.
+	 */
+	private static final int RECAPTURE_GRACE = 40;
+
 	/** V33a's flat river speed, in blocks per tick. */
 	private static final double SPEED = 7;
 	/** How far from a player a river point is looked for. */
 	private static final double SEARCH_RANGE = 16;
 	/** Ticks a player is locked out of a river after being ejected from one. */
 	private static final int EJECT_COOLDOWN = 60;
+
+	/**
+	 * Chunks generated ahead of a rider, so the server never has to generate them under one.
+	 *
+	 * <p>A server profile of a river crossing showed the tick thread parked inside
+	 * {@code ServerChunkCache.getChunk} -> {@code managedBlock} -> {@code waitForTasks}, reached from the
+	 * player's own movement packets — {@code Entity.setPosRaw} and {@code checkFallDamage} both ask for
+	 * the chunk the player is entering, and if it does not exist yet the main thread <b>blocks</b> while
+	 * it is generated. At seven blocks a tick a rider outruns generation continuously, so the server
+	 * stalls, no tick applies any motion, the client drifts out of the tube on its own, and the first
+	 * tick that does run drops them.
+	 *
+	 * <p>A loading ticket placed some way down the path asks for that generation <em>asynchronously and
+	 * early</em>, which is the difference between the work happening off-thread before the rider arrives
+	 * and on-thread once they have. The ticket expires by itself, so nothing has to be cleaned up when a
+	 * ride ends however it ends.
+	 */
+	/** Long enough to cover the approach, short enough that the trail behind a rider lets go quickly. */
+	private static final long PRELOAD_TIMEOUT = 200L;
+	/** How far down the path to ask for terrain, in blocks. Roughly one, four and nine seconds ahead. */
+	private static final int[] PRELOAD_DISTANCES = {128, 512, 1280};
+	/** Chunk radius per probe; the rider is a point, so this only has to cover the tube. */
+	private static final int PRELOAD_RADIUS = 2;
+
+	public static final DeferredRegister<net.minecraft.server.level.TicketType> TICKET_TYPES =
+			DeferredRegister.create(net.minecraft.core.registries.BuiltInRegistries.TICKET_TYPE,
+					reika.chromaticraft.ChromatiCraft.MODID);
+
+	public static final DeferredHolder<net.minecraft.server.level.TicketType,
+			net.minecraft.server.level.TicketType> SKY_RIVER_TICKET =
+			TICKET_TYPES.register("sky_river",
+					() -> new net.minecraft.server.level.TicketType(PRELOAD_TIMEOUT,
+							net.minecraft.server.level.TicketType.FLAG_LOADING));
 
 	private static final Map<UUID, RiderState> riders = new HashMap<>();
 	private static final Random random = new Random();
@@ -101,7 +145,34 @@ public final class SkyRiverManager {
 				if (SkyRiverGenerator.isWithinRiver(player, closest))
 					carried = move(player, state, closest);
 			}
-			if (!carried) {
+			if (carried) {
+				state.graceTicks = RECAPTURE_GRACE;
+			}
+			else if (state.graceTicks > 0 && state.canRide()) {
+				// A rider crosses about a hundred and forty blocks a second, which makes the server
+				// generate terrain hard enough to hitch. While it is hitching no tick runs, so no motion
+				// is applied, and the client drifts down out of the tube on its own; the next tick that
+				// does run then sees a player outside the river and drops them hundreds of blocks up.
+				//
+				// So leaving the tube does not end the ride immediately. For a short window the river
+				// still has hold: gravity stays off, the fall counter stays at zero, and the player is
+				// drawn back toward the nearest point instead of released. Only when that window closes
+				// without a recapture is the ride really over.
+				state.graceTicks--;
+				RiverPoint closest = rivers.getClosestPoint(player, SEARCH_RANGE);
+				if (closest != null) {
+					player.setNoGravity(true);
+					player.fallDistance = 0;
+					Vec3 back = toVec(closest.position()).subtract(player.position());
+					if (back.lengthSqr() > 1.0E-4) {
+						player.setDeltaMovement(back.normalize().scale(Math.min(SPEED, back.length())));
+						player.hurtMarked = true;
+					}
+					continue;
+				}
+				state.graceTicks = 0;
+			}
+			if (!carried && state.graceTicks <= 0) {
 				state.riverTicks = 0;
 				// Gravity is restored the moment the river lets go, however that happened.
 				if (player.isNoGravity())
@@ -166,6 +237,10 @@ public final class SkyRiverManager {
 
 		state.riverTicks++;
 		reportOnce("carrying", "a player is being moved along a river");
+		preload(player, along);
+		// Nothing about being carried should ever accumulate a fall: a rider is hundreds of blocks up
+		// and any hitch that briefly interrupts the ride would otherwise land as damage.
+		player.fallDistance = 0;
 		player.setDeltaMovement(move.scale(SPEED));
 		player.hurtMarked = true;
 		// A rider hangs hundreds of blocks up moving faster than the server's anti-flight check
@@ -175,6 +250,25 @@ public final class SkyRiverManager {
 		// tick, so gravity has no effect on them while the river has hold.
 		player.setNoGravity(true);
 		return true;
+	}
+
+	/**
+	 * Asks for the terrain a rider is about to cross, before they cross it. See {@link #SKY_RIVER_TICKET}
+	 * for why this is the fix rather than a nicety.
+	 */
+	private static void preload(Player player, Vec3 direction) {
+		if (!(player.level() instanceof ServerLevel server) || direction.lengthSqr() < 1.0E-6)
+			return;
+		Vec3 heading = direction.normalize();
+		Vec3 position = player.position();
+		for (int blocks : PRELOAD_DISTANCES) {
+			Vec3 ahead = position.add(heading.scale(blocks));
+			ChunkPos chunk = new ChunkPos(Mth.floor(ahead.x) >> 4, Mth.floor(ahead.z) >> 4);
+			// addTicketWithRadius rather than addTicketAndLoadWithRadius: the latter refuses a ticket
+			// type that can expire, and returns a future nothing here would wait on anyway. This queues
+			// the work and moves on, which is the whole point.
+			server.getChunkSource().addTicketWithRadius(SKY_RIVER_TICKET.get(), chunk, PRELOAD_RADIUS);
+		}
 	}
 
 	private static void eject(Player player, RiderState state) {
@@ -189,6 +283,9 @@ public final class SkyRiverManager {
 		}
 		state.ejectCooldown = EJECT_COOLDOWN;
 		state.riverTicks = 0;
+		// A deliberate ejection is not a hitch: clear the slack, or the recapture window would simply
+		// pull the player straight back into the river they were just refused by.
+		state.graceTicks = 0;
 	}
 
 	private static double distanceToSegment(reika.dragonapi.instantiable.data.immutable.DecimalPosition from,
@@ -206,6 +303,8 @@ public final class SkyRiverManager {
 
 		private int riverTicks;
 		private int ejectCooldown;
+		/** Ticks of slack left before a rider who has slipped out of the tube is actually dropped. */
+		private int graceTicks;
 
 		private void tick() {
 			if (ejectCooldown > 0)

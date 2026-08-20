@@ -87,6 +87,7 @@ public class ChromatiCraft extends DragonAPIMod {
 				event.put(ChromaEntityTypes.TUNNEL_NUKER.get(), EntityTunnelNuker.createAttributes().build()));
 		ChromaTabs.CREATIVE_MODE_TABS.register(modEventBus);
 		ChromaFeatures.FEATURES.register(modEventBus);
+		reika.chromaticraft.world.dimension.SkyRiverManager.TICKET_TYPES.register(modEventBus);
 		reika.chromaticraft.world.dimension.structure.ProximaStructures.TYPES.register(modEventBus);
 		reika.chromaticraft.world.dimension.structure.ProximaStructures.PLACEMENTS.register(modEventBus);
 		reika.chromaticraft.world.dimension.structure.ProximaStructurePieces.PIECES.register(modEventBus);
