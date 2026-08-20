@@ -1,0 +1,10 @@
+{
+  "type": "chromaticraft:glow_cave",
+  "biomes": [
+    "chromaticraft:luminescent_sanctuary",
+    "chromaticraft:glowing_forest",
+    "chromaticraft:crystal_plains"
+  ],
+  "spawn_overrides": {},
+  "step": "underground_structures"
+}

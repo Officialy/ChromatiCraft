@@ -234,6 +234,23 @@ public final class ChromaWorldGenProvider {
                                     net.minecraft.world.level.levelgen.GenerationStep.Decoration.SURFACE_STRUCTURES,
                                     // The cliff lays its own terrain; vanilla must not also beard it.
                                     net.minecraft.world.level.levelgen.structure.TerrainAdjustment.NONE)));
+            // The glowing caves. V33a generateIn: the Sanctuary, the Glowing Forest and the Crystal
+            // Plains. A cave wanders far past a feature's write window, which is why it is here at all.
+            bootstrap.register(reika.chromaticraft.world.dimension.structure.ProximaStructures.GLOW_CAVE,
+                    new reika.chromaticraft.world.dimension.structure.GlowCaveStructure(
+                            new net.minecraft.world.level.levelgen.structure.Structure.StructureSettings(
+                                    net.minecraft.core.HolderSet.direct(
+                                            biomes.getOrThrow(reika.chromaticraft.world.dimension.biome
+                                                    .ProximaBiomes.CENTER.biomeKey()),
+                                            biomes.getOrThrow(reika.chromaticraft.world.dimension.biome
+                                                    .ProximaBiomes.FOREST.biomeKey()),
+                                            biomes.getOrThrow(reika.chromaticraft.world.dimension.biome
+                                                    .ProximaBiomes.PLAINS.biomeKey())),
+                                    java.util.Map.of(),
+                                    net.minecraft.world.level.levelgen.GenerationStep.Decoration.UNDERGROUND_STRUCTURES,
+                                    // The cave hollows itself out of terrain that is already there;
+                                    // bearding it would fill the mouth back in.
+                                    net.minecraft.world.level.levelgen.structure.TerrainAdjustment.NONE)));
             // The monument. Its biome is the Monument Field, which BiomeDistributor paints around the
             // ring's centre for exactly this reason -- so the one place the monument may stand is the
             // one place that biome exists.
@@ -261,6 +278,17 @@ public final class ChromaWorldGenProvider {
                                     8, 3,
                                     net.minecraft.world.level.levelgen.structure.placement.RandomSpreadType.LINEAR,
                                     0x6C1FF)));
+            bootstrap.register(reika.chromaticraft.world.dimension.structure.ProximaStructures.GLOW_CAVE_SET,
+                    new net.minecraft.world.level.levelgen.structure.StructureSet(
+                            structures.getOrThrow(
+                                    reika.chromaticraft.world.dimension.structure.ProximaStructures.GLOW_CAVE),
+                            // V33a getGenerationChance is 0.0025 in the Sanctuary and 0.00125 elsewhere
+                            // -- one cave per four hundred chunks at best, which is what makes finding
+                            // one an event. A spacing of 24 with separation 12 is that density.
+                            new net.minecraft.world.level.levelgen.structure.placement.RandomSpreadStructurePlacement(
+                                    24, 12,
+                                    net.minecraft.world.level.levelgen.structure.placement.RandomSpreadType.LINEAR,
+                                    0x91C4E)));
             // One monument, at the position the layout chose. MonumentPlacement names that single
             // chunk; there is nothing to space or scatter.
             bootstrap.register(reika.chromaticraft.world.dimension.structure.ProximaStructures.MONUMENT_SET,

@@ -34,6 +34,16 @@ public final class ProximaStructures {
 			GLASS_CLIFF_SET = ResourceKey.create(Registries.STRUCTURE_SET,
 					Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "glass_cliff"));
 
+	public static final DeferredHolder<StructureType<?>, StructureType<GlowCaveStructure>>
+			GLOW_CAVE_TYPE = TYPES.register("glow_cave", () -> () -> GlowCaveStructure.CODEC);
+
+	public static final ResourceKey<Structure> GLOW_CAVE = ResourceKey.create(Registries.STRUCTURE,
+			Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "glow_cave"));
+
+	public static final ResourceKey<net.minecraft.world.level.levelgen.structure.StructureSet>
+			GLOW_CAVE_SET = ResourceKey.create(Registries.STRUCTURE_SET,
+					Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "glow_cave"));
+
 	public static final DeferredHolder<StructureType<?>, StructureType<ProximaMonumentStructure>>
 			MONUMENT_TYPE = TYPES.register("monument", () -> () -> ProximaMonumentStructure.CODEC);
 

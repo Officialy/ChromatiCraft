@@ -1,0 +1,14 @@
+{
+  "placement": {
+    "type": "minecraft:random_spread",
+    "salt": 597070,
+    "separation": 12,
+    "spacing": 24
+  },
+  "structures": [
+    {
+      "structure": "chromaticraft:glow_cave",
+      "weight": 1
+    }
+  ]
+}

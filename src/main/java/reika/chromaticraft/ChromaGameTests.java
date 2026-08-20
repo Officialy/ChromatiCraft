@@ -316,6 +316,7 @@ public final class ChromaGameTests {
 		register(event, env, "proxima_monument_template", ChromaGameTests::proximaMonumentTemplate);
 		register(event, env, "mini_altar", ChromaGameTests::miniAltar);
 		register(event, env, "fissure", ChromaGameTests::fissure);
+		register(event, env, "glow_cave_shape", ChromaGameTests::glowCaveShape);
 		register(event, env, "dimension_core_ring", ChromaGameTests::dimensionCoreRing);
 		register(event, env, "monument_ritual_checks", ChromaGameTests::monumentRitualChecks);
 		register(event, env, "monument_core_placement", ChromaGameTests::monumentCorePlacement);
@@ -2322,6 +2323,58 @@ public final class ChromaGameTests {
 	 * the easiest thing here to get subtly wrong: it is <em>not</em> the rune ring in the monument
 	 * template, it is inset from it, and the two share a height, a start and a direction.
 	 */
+	/**
+	 * V33a's glowing cave, as a shape. The carving is a structure piece and cannot be driven from a
+	 * gametest arena, but the shape it writes is pure and is where every mistake would live.
+	 *
+	 * <p>What is asserted is what the cave has to be to work at all: it must reach the floor from the
+	 * surface (the growth loop runs until it does), it must be connected rather than a scatter of
+	 * disjoint bubbles, and it must actually wander — a cave that dropped straight down would satisfy a
+	 * naive size check and be nothing like upstream's.
+	 */
+	private static void glowCaveShape(GameTestHelper helper) {
+		var cells = reika.chromaticraft.world.dimension.structure.GlowCaveShape.grow(
+				net.minecraft.util.RandomSource.create(0xCA7EL), 0, 64, 0);
+		helper.assertTrue(!cells.isEmpty(), "the cave grew no cells at all");
+
+		int minY = Integer.MAX_VALUE;
+		int maxY = Integer.MIN_VALUE;
+		int minX = Integer.MAX_VALUE;
+		int maxX = Integer.MIN_VALUE;
+		for (BlockPos pos : cells) {
+			minY = Math.min(minY, pos.getY());
+			maxY = Math.max(maxY, pos.getY());
+			minX = Math.min(minX, pos.getX());
+			maxX = Math.max(maxX, pos.getX());
+		}
+		helper.assertTrue(maxY >= 60, "the cave never reached its own mouth; its top is y " + maxY);
+		helper.assertTrue(minY <= 4, "the cave stopped at y " + minY + "; growFrom runs until it hits "
+				+ "the floor");
+		// A cave that only fell straight down would pass a size check and look nothing like upstream's.
+		helper.assertTrue(maxX - minX >= 16, "the cave spans only " + (maxX - minX) + " blocks across; "
+				+ "the walk moves up to thirty-two a segment and should wander");
+
+		// Connectivity: flood fill from any cell must reach nearly all of them. Forks are joined to the
+		// trunk by construction, so a large disconnected remainder means the sweep dropped segments.
+		var seen = new java.util.HashSet<BlockPos>();
+		var queue = new java.util.ArrayDeque<BlockPos>();
+		BlockPos start = cells.iterator().next();
+		queue.add(start);
+		seen.add(start);
+		while (!queue.isEmpty()) {
+			BlockPos at = queue.poll();
+			for (net.minecraft.core.Direction dir : net.minecraft.core.Direction.values()) {
+				BlockPos side = at.relative(dir);
+				if (cells.contains(side) && seen.add(side))
+					queue.add(side);
+			}
+		}
+		helper.assertTrue(seen.size() * 100L / cells.size() >= 95,
+				"only " + (seen.size() * 100L / cells.size()) + "% of the cave is reachable from one "
+						+ "cell; the sweep has left gaps");
+		helper.succeed();
+	}
+
 	/**
 	 * V33a's Radiant Fissure: a seam cut down through stone, sealed in Cloak Shielding, floored with
 	 * Lifewater and capped with Void Rifts.
