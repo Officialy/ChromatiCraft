@@ -32,6 +32,32 @@ public final class EntityTunnelNuker extends Mob implements DestroyOnUnload {
 		return Mob.createMobAttributes().add(Attributes.MAX_HEALTH, 20).add(Attributes.FLYING_SPEED, 0.075);
 	}
 
+	/**
+	 * V33a getCanSpawnHere: the block above must see the sky, and no other nuker may be within
+	 * thirty-two blocks.
+	 *
+	 * <p>Without this the entity has a spawn entry and no placement rules at all, which NeoForge warns
+	 * about at server start and which means it may appear anywhere — including underground, which the
+	 * sky check exists precisely to prevent. The Sanctuary is the only biome that lists it, and it lists
+	 * a weight of one with a pack size of one, so upstream's "only ever one at a time" only holds if the
+	 * proximity rule is here too.
+	 */
+	public static void registerSpawnPlacements(
+			net.neoforged.neoforge.event.entity.RegisterSpawnPlacementsEvent event) {
+		event.register(ChromaEntityTypes.TUNNEL_NUKER.get(),
+				net.minecraft.world.entity.SpawnPlacementTypes.NO_RESTRICTIONS,
+				Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, EntityTunnelNuker::checkSpawnRules,
+				net.neoforged.neoforge.event.entity.RegisterSpawnPlacementsEvent.Operation.OR);
+	}
+
+	private static boolean checkSpawnRules(EntityType<EntityTunnelNuker> type,
+			net.minecraft.world.level.LevelAccessor level,
+			net.minecraft.world.entity.EntitySpawnReason reason, BlockPos pos,
+			net.minecraft.util.RandomSource random) {
+		return level.canSeeSky(pos.above())
+				&& level.getEntitiesOfClass(EntityTunnelNuker.class, new AABB(pos).inflate(32)).isEmpty();
+	}
+
 	@Override
 	protected void registerGoals() {
 		// Motion is source-driven; V33a had no pathfinder tasks.

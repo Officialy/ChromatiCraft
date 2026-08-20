@@ -30,11 +30,21 @@ public class TileEntityGlowingCracks extends TileEntityChromaticBase {
 		return ChromaTiles.GLOWCRACKS;
 	}
 
+	/**
+	 * Deliberately far wider than the sheet itself.
+	 *
+	 * <p>A box drawn to the exact extent of the geometry is the wrong box: the renderer is culled as
+	 * soon as that box leaves the frustum, so a player standing on the cracks and looking along the
+	 * ground loses them entirely — the anchor block is behind the camera while most of the sheet is not.
+	 * Widening it costs nothing (the box is only a visibility test) and is what keeps the effect from
+	 * blinking out at exactly the angles it is most visible from.
+	 */
 	@Override
 	public net.minecraft.world.phys.AABB getRenderBoundingBox() {
-		return new net.minecraft.world.phys.AABB(worldPosition.getX() - RADIUS, worldPosition.getY(),
-				worldPosition.getZ() - RADIUS, worldPosition.getX() + RADIUS + 1,
-				worldPosition.getY() + 1, worldPosition.getZ() + RADIUS + 1);
+		final int r = RADIUS * 4;
+		return new net.minecraft.world.phys.AABB(worldPosition.getX() - r, worldPosition.getY() - 4,
+				worldPosition.getZ() - r, worldPosition.getX() + r + 1,
+				worldPosition.getY() + 8, worldPosition.getZ() + r + 1);
 	}
 
 	@Override

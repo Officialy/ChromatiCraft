@@ -94,20 +94,25 @@ public final class RenderGlowingCracks
 		for (int i = 0; i < 4; i++)
 			white[i] = 0xFF000000 | scaleBrightness(0xFFFFFF, state.whiteMix[i]);
 
-		// Additive so the sheet reads as light through the ground; upstream's ADDITIVEDARK with the
-		// depth mask off is what `translucent` plus a full-bright light gives here.
-		collector.submitCustomGeometry(poseStack, RenderTypes.entityTranslucentEmissive(TEXTURE),
+		// Additive, which is the whole point: the sheet is white cracks on black, and under
+		// BlendFunction.ADDITIVE black contributes nothing, so only the cracks show. Translucent
+		// blending — which this used at first — draws the black as black and turns the effect into an
+		// opaque square painted on the ground. `eyes` is 26.2's world-space additive pipeline and is the
+		// nearest thing to upstream's BlendMode.ADDITIVEDARK.
+		collector.submitCustomGeometry(poseStack, RenderTypes.eyes(TEXTURE),
 				(pose, vertices) -> {
-					quad(vertices, pose, r, tint);
-					quad(vertices, pose, r, white);
+					// The two sheets are coplanar in V33a, which is safe there only because it renders
+					// them with the depth mask off. The modern pipeline writes depth, so the second is
+					// lifted a hair to keep them from z-fighting.
+					quad(vertices, pose, r, tint, 0.005F);
+					quad(vertices, pose, r, white, 0.0075F);
 				});
 		poseStack.popPose();
 	}
 
 	/** One flat sheet from {@code -r} to {@code r+1}, a hair above the ground, corner-coloured. */
 	private static void quad(com.mojang.blaze3d.vertex.VertexConsumer vertices,
-			PoseStack.Pose pose, int r, int[] colors) {
-		final float y = 0.005F;
+			PoseStack.Pose pose, int r, int[] colors, float y) {
 		vertex(vertices, pose, -r, y, r + 1, 0, 1, colors[0]);
 		vertex(vertices, pose, r + 1, y, r + 1, 1, 1, colors[1]);
 		vertex(vertices, pose, r + 1, y, -r, 1, 0, colors[2]);

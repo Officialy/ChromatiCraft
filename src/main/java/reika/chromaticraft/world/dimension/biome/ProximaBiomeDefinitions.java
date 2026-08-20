@@ -153,6 +153,14 @@ public final class ProximaBiomeDefinitions {
 		// V33a JETS: `case JETS: return true` -- every biome, the Sanctuary among them. Its own site
 		// check is what actually decides where a jet appears.
 		add(builder, features, "fire_jet");
+		// V33a GLOWBUSH shares the TREES rule exactly -- the Glowing Forest, Crystal Plains, Iridescent
+		// Archipelago, Sparkling Sands and Radiant Fissures, plus the Sanctuary from the CENTER branch.
+		// This is the dimension's ground cover and it is dense; without it the ground reads as bare
+		// between the trees.
+		if (central || type == ProximaBiomes.FOREST || type == ProximaBiomes.PLAINS
+				|| type == ProximaBiomes.ISLANDS || type == ProximaBiomes.SPARKLE
+				|| type == ProximaBiomes.GLOWCRACKS)
+			add(builder, features, "lighted_shrub");
 		// V33a's FORESTS: the Glowing Forest alone among the named biomes, plus the Sanctuary, which
 		// takes it from the CENTER branch as it takes everything not dedicated elsewhere.
 		if (central || type == ProximaBiomes.FOREST)

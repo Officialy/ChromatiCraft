@@ -78,6 +78,7 @@ public final class ChromaWorldGenProvider {
     private static final Identifier MINI_ALTAR = id("mini_altar");
     private static final Identifier FISSURE = id("fissure");
     private static final Identifier GLOWING_CRACKS = id("glowing_cracks");
+    private static final Identifier LIGHTED_SHRUB = id("lighted_shrub");
     private static final Identifier CRYSTAL_PIT = id("crystal_pit");
     private static final Identifier AURORAE = id("aurorae");
     private static final List<Identifier> NETHER_ROOF_STRUCTURES =
@@ -188,6 +189,7 @@ public final class ChromaWorldGenProvider {
             registerConfigured(bootstrap, features, MINI_ALTAR);
             registerConfigured(bootstrap, features, FISSURE);
             registerConfigured(bootstrap, features, GLOWING_CRACKS);
+            registerConfigured(bootstrap, features, LIGHTED_SHRUB);
             registerConfigured(bootstrap, features, CRYSTAL_PIT);
             registerConfigured(bootstrap, features, AURORAE);
             for (Identifier structure : NETHER_ROOF_STRUCTURES)
@@ -411,6 +413,17 @@ public final class ChromaWorldGenProvider {
             registerPlaced(bootstrap, configured, TREE_CLUSTER, List.of(
                     RarityFilter.onAverageOnceEvery(3),
                     net.minecraft.world.level.levelgen.placement.CountPlacement.of(2),
+                    net.minecraft.world.level.levelgen.placement.HeightmapPlacement.onHeightmap(
+                            net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES),
+                    BiomeFilter.biome()));
+            // V33a getGenerationChance for the glowing bush is 4 per chunk in the Glowing Forest, 2 in
+            // most biomes and 0.25 in the Sparkling Sands. This is ground cover, not a rarity: two per
+            // chunk is the figure expressed, since it is what all but two biomes get, and CountPlacement
+            // is what a chance above one means. Its own site check -- grass directly beneath -- is what
+            // thins it on broken ground.
+            registerPlaced(bootstrap, configured, LIGHTED_SHRUB, List.of(
+                    net.minecraft.world.level.levelgen.placement.CountPlacement.of(2),
+                    InSquarePlacement.spread(),
                     net.minecraft.world.level.levelgen.placement.HeightmapPlacement.onHeightmap(
                             net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES),
                     BiomeFilter.biome()));

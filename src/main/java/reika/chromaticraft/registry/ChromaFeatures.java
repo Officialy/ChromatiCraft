@@ -192,6 +192,10 @@ public final class ChromaFeatures {
             FEATURES.register("mini_altar",
                     reika.chromaticraft.world.dimension.MiniAltarFeature::new);
 
+    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> LIGHTED_SHRUB =
+            FEATURES.register("lighted_shrub",
+                    reika.chromaticraft.world.dimension.LightedShrubFeature::new);
+
     public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> CRYSTAL_SHRUB =
             FEATURES.register("crystal_shrub",
                     reika.chromaticraft.world.dimension.CrystalShrubFeature::new);

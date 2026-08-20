@@ -18,7 +18,8 @@
     [],
     [
       "chromaticraft:glow_tree",
-      "chromaticraft:fire_jet"
+      "chromaticraft:fire_jet",
+      "chromaticraft:lighted_shrub"
     ]
   ],
   "has_precipitation": false,
