@@ -1,0 +1,34 @@
+{
+  "variants": {
+    "depth=0": {
+      "model": "chromaticraft:block/bedrock_crack_0"
+    },
+    "depth=1": {
+      "model": "chromaticraft:block/bedrock_crack_1"
+    },
+    "depth=2": {
+      "model": "chromaticraft:block/bedrock_crack_2"
+    },
+    "depth=3": {
+      "model": "chromaticraft:block/bedrock_crack_3"
+    },
+    "depth=4": {
+      "model": "chromaticraft:block/bedrock_crack_4"
+    },
+    "depth=5": {
+      "model": "chromaticraft:block/bedrock_crack_5"
+    },
+    "depth=6": {
+      "model": "chromaticraft:block/bedrock_crack_6"
+    },
+    "depth=7": {
+      "model": "chromaticraft:block/bedrock_crack_7"
+    },
+    "depth=8": {
+      "model": "chromaticraft:block/bedrock_crack_8"
+    },
+    "depth=9": {
+      "model": "chromaticraft:block/bedrock_crack_9"
+    }
+  }
+}

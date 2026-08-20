@@ -140,6 +140,7 @@ public class ChromaModelProvider extends ModelProvider {
 		structureControllerModel(blockStateOut, modelOut);
 		dimensionCoreModel(blockStateOut, itemModelOut, modelOut);
 		voidRiftModels(blockStateOut, itemModelOut, modelOut);
+		glowCaveBlockModels(blockStateOut, itemModelOut, modelOut);
 		auraPointModel(blockStateOut, itemModelOut, modelOut);
 		fireJetModel(blockStateOut, itemModelOut, modelOut);
 		chromaDoorModel(blockStateOut, itemModelOut, modelOut);
@@ -1316,6 +1317,50 @@ public class ChromaModelProvider extends ModelProvider {
 	 * world model exists only to name a particle sprite. It does carry an item model, because a core is
 	 * an item a player carries out to the monument and plants.
 	 */
+	/**
+	 * The three blocks a glowing cave is built from.
+	 *
+	 * <p>The Void Cave is a plain cube of its own texture — its four edge flags drive particles, not
+	 * geometry, so every state wears the same model. Cracked bedrock is vanilla bedrock with a crack
+	 * overlay chosen by depth; upstream draws the overlay as a second render pass over the bedrock icon,
+	 * which is expressed here as ten models, one per depth, since a blockstate can dispatch on the
+	 * property directly. The Ethereal Light has no geometry at all — upstream registers the {@code trans}
+	 * icon for it and never draws a face — so it takes an empty model, not an invisible cube.
+	 */
+	private static void glowCaveBlockModels(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		Block voidCave = ChromaBlocks.VOID_CAVE.get();
+		Identifier voidCaveModel = ModelTemplates.CUBE_ALL.create(voidCave,
+				TextureMapping.cube(new Material(Identifier.fromNamespaceAndPath(
+						ChromatiCraft.MODID, "block/dimgen/voidcave"))), modelOut);
+		blockStateOut.accept(MultiVariantGenerator.dispatch(voidCave,
+				new MultiVariant(WeightedList.of(new Variant(voidCaveModel)))));
+		itemModelOut.accept(voidCave.asItem(), ItemModelUtils.plainModel(voidCaveModel));
+
+		Block crack = ChromaBlocks.BEDROCK_CRACK.get();
+		Identifier[] crackModels = new Identifier[10];
+		for (int depth = 0; depth < crackModels.length; depth++)
+			crackModels[depth] = ModelTemplates.CUBE_ALL.create(
+					Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/bedrock_crack_" + depth),
+					TextureMapping.cube(new Material(Identifier.fromNamespaceAndPath(
+							ChromatiCraft.MODID, "block/dimgen/bedrockloot/" + depth))), modelOut);
+		blockStateOut.accept(MultiVariantGenerator.dispatch(crack).with(
+				PropertyDispatch.initial(
+						reika.chromaticraft.block.dimension.BlockBedrockCrack.DEPTH).generate(depth ->
+						new MultiVariant(WeightedList.of(new Variant(crackModels[depth]))))));
+		itemModelOut.accept(crack.asItem(), ItemModelUtils.plainModel(crackModels[0]));
+
+		// An empty model: no elements, only a particle texture, so breaking it still puffs.
+		Block light = ChromaBlocks.ETHEREAL_LIGHT.get();
+		Identifier lightModel = ModelTemplates.PARTICLE_ONLY.create(light,
+				new TextureMapping().put(TextureSlot.PARTICLE, new Material(
+						Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/icons/blurflare"))),
+				modelOut);
+		blockStateOut.accept(MultiVariantGenerator.dispatch(light,
+				new MultiVariant(WeightedList.of(new Variant(lightModel)))));
+		itemModelOut.accept(light.asItem(), ItemModelUtils.plainModel(lightModel));
+	}
+
 	/**
 	 * V33a {@code BlockVoidRift.getIcon}: {@code dimgen/voidrift} on the top face and Stone Shielding's
 	 * own icon on every other, which is what makes a rift read as a seam in the fissure floor rather

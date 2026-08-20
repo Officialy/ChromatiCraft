@@ -299,6 +299,76 @@ public abstract class ChromaParticle extends SingleQuadParticle {
     }
 
     /**
+     * V33a {@code BlockEtherealLight.randomDisplayTick}: one slow mote, in the colour that height gives
+     * the light, drifting a little either way and either rising or falling at random.
+     */
+    public static void spawnEtherealLight(Level world, BlockPos pos) {
+        if (!(world instanceof ClientLevel level)) return;
+        RandomSource rand = level.getRandom();
+        double x = plusMinus(rand, pos.getX() + 0.5, 0.0625);
+        double y = plusMinus(rand, pos.getY() + 0.5, 0.0625);
+        double z = plusMinus(rand, pos.getZ() + 0.5, 0.0625);
+        int color = reika.chromaticraft.block.decoration.BlockEtherealLight.particleColor(
+                level, pos.getY());
+        FadeGlow fx = new FadeGlow(level, x, y, z, plusMinus(rand, 0, 0.03125), 0,
+                plusMinus(rand, 0, 0.03125), color, 10 + rand.nextInt(50), 1.5F, true);
+        // Upstream's gravity is plus-or-minus zero, so half of these rise and half fall.
+        fx.gravity = (float)plusMinus(rand, 0, 0.0625);
+        Minecraft.getInstance().particleEngine.add(fx);
+    }
+
+    /**
+     * V33a {@code BlockVoidCave.randomDisplayTick}: sixteen motes per set side per tick, drifting out
+     * over the lip and falling.
+     *
+     * <p>The colour is the detail that makes it read as light: a white-to-blue mix taken at a random
+     * point, its hue then shifted up to thirty degrees either way and its brightness dropped by up to
+     * half, so no two motes are the same shade and the fall shimmers rather than banding.
+     */
+    public static void spawnVoidCaveFall(Level world, BlockPos pos, Direction dir) {
+        if (!(world instanceof ClientLevel level)) return;
+        RandomSource rand = level.getRandom();
+        for (int i = 0; i < 16; i++) {
+            // On the axis the edge faces, the mote starts at the block's face; on the other it is spread
+            // across the whole width, so the fall is a sheet rather than a line.
+            double x = dir.getStepX() == 0 ? pos.getX() + rand.nextDouble()
+                    : pos.getX() + 0.5 + dir.getStepX() * 0.5;
+            double z = dir.getStepZ() == 0 ? pos.getZ() + rand.nextDouble()
+                    : pos.getZ() + 0.5 + dir.getStepZ() * 0.5;
+            double y = plusMinus(rand, pos.getY() + 0.5, 0.0625);
+            double v = between(rand, 0.04, 0.05);
+            int base = mixColors(0xFFFFFF, 0x22AAFF, rand.nextFloat() * 0.5F);
+            base = shiftHue(base, plusMinus(rand, 0, 30));
+            int color = scaleBrightness(base, (float)between(rand, 0.5, 1));
+            int life = (int)between(rand, 60, 180);
+            float scale = (float)between(rand, 1.5, 3);
+            FadeGlow fx = new FadeGlow(level, x, y, z, dir.getStepX() * v, 0, dir.getStepZ() * v,
+                    color, life, scale, true);
+            fx.gravity = (float)between(rand, 0.04, 0.07);
+            Minecraft.getInstance().particleEngine.add(fx);
+        }
+    }
+
+    /** {@code ReikaRandomHelper.getRandomBetween}. */
+    private static double between(RandomSource rand, double min, double max) {
+        return min + rand.nextDouble() * (max - min);
+    }
+
+    /** {@code ReikaColorAPI.getModifiedHue}, by a signed degree offset. */
+    private static int shiftHue(int color, double degrees) {
+        float[] hsb = java.awt.Color.RGBtoHSB(color >> 16 & 255, color >> 8 & 255, color & 255, null);
+        return java.awt.Color.HSBtoRGB((float)(hsb[0] + degrees / 360D), hsb[1], hsb[2]) & 0xFFFFFF;
+    }
+
+    /** {@code ReikaColorAPI.getColorWithBrightnessMultiplier}. */
+    private static int scaleBrightness(int color, float factor) {
+        int r = Math.min(255, (int)((color >> 16 & 255) * factor));
+        int g = Math.min(255, (int)((color >> 8 & 255) * factor));
+        int b = Math.min(255, (int)((color & 255) * factor));
+        return r << 16 | g << 8 | b;
+    }
+
+    /**
      * V33a {@code TileEntityDimensionCore.createBeamLine}: a line of blurs between two cores, mixing
      * from one element's colour to the other along its length.
      */

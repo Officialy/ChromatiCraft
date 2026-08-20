@@ -344,6 +344,29 @@ public final class ChromaBlocks {
 		return (DeferredBlock<Block>)(DeferredBlock<?>)VOID_RIFTS.get(element);
 	}
 
+	/** V33a's Void Cave: the unbreakable lip a glowing cave's floor falls away at. */
+	public static final DeferredBlock<reika.chromaticraft.block.dimension.BlockVoidCave> VOID_CAVE =
+			register("void_cave", () -> new reika.chromaticraft.block.dimension.BlockVoidCave(
+					blockProperties().mapColor(MapColor.COLOR_BLACK).strength(-1F, 3600000F)
+							.noLootTable()));
+
+	/** V33a's cracked bedrock: nine depths of it, and the only source of Proximal Essence. */
+	public static final DeferredBlock<reika.chromaticraft.block.dimension.BlockBedrockCrack> BEDROCK_CRACK =
+			register("bedrock_crack",
+					() -> new reika.chromaticraft.block.dimension.BlockBedrockCrack(
+							blockProperties().mapColor(MapColor.COLOR_BLACK).strength(12F, 3600000F)));
+
+	/**
+	 * V33a's Ethereal Light: light with nothing there. Air in every way that matters, and full bright.
+	 */
+	public static final DeferredBlock<reika.chromaticraft.block.decoration.BlockEtherealLight> ETHEREAL_LIGHT =
+			register("ethereal_light",
+					() -> new reika.chromaticraft.block.decoration.BlockEtherealLight(
+							blockProperties().mapColor(MapColor.NONE).strength(0F, 3600000F)
+									.noCollision().noOcclusion().replaceable().noLootTable()
+									.lightLevel(state -> 15).randomTicks()
+									.pushReaction(net.minecraft.world.level.material.PushReaction.DESTROY)));
+
 	/** V33a's Aura Point: the monument's completed form, and a standing area effect thereafter. */
 	public static final DeferredBlock<Block> AURA_POINT =
 			register("aura_point", () -> (Block)new reika.chromaticraft.block.dimension.BlockAuraPoint(

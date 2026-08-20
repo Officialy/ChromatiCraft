@@ -1,71 +1,85 @@
 package reika.chromaticraft.block.dimension;
 
-import java.util.Random;
+import com.mojang.serialization.MapCodec;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.material.Material;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.texture.IIconRegister;
-import net.minecraft.world.World;
-import net.minecraftforge.common.util.ForgeDirection;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.block.state.properties.BooleanProperty;
 
-import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.registry.ChromaIcons;
-import reika.chromaticraft.render.particle.EntityCCBlurFX;
-import reika.dragonapi.libraries.java.ReikaRandomHelper;
-import reika.dragonapi.libraries.rendering.ReikaColorAPI;
+import reika.chromaticraft.render.particle.ChromaParticle;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
-
-
+/**
+ * V33a's Void Cave: the bedrock lip a glowing cave's floor falls away at, and the light that pours
+ * over it.
+ *
+ * <p>Unbreakable and blast-proof — this is the floor of the world in a cave that has none, and there is
+ * nothing under it to fall into. The generator sets one wherever a bedrock wall at y 2 has open air
+ * beside it and below that, so a void cave block only ever appears at an actual edge.
+ *
+ * <p>Its four horizontal flags are upstream's metadata bitfield, one bit per direction, saying which
+ * sides the drop is on. Each set side pours a slow fall of blue-white light outward and downward — the
+ * cave's one moving thing. As a bitfield it is genuinely blockstate data rather than a variant: the same
+ * block wearing a different connectivity, exactly as a fence does.
+ */
 public class BlockVoidCave extends Block {
 
-	public BlockVoidCave(Material mat) {
-		super(mat);
-		this.setResistance(900000);
-		this.setBlockUnbreakable();
-		this.setCreativeTab(ChromatiCraft.tabChromaGen);
+	public static final MapCodec<BlockVoidCave> CODEC = simpleCodec(BlockVoidCave::new);
+
+	public static final BooleanProperty NORTH = BooleanProperty.create("north");
+	public static final BooleanProperty SOUTH = BooleanProperty.create("south");
+	public static final BooleanProperty WEST = BooleanProperty.create("west");
+	public static final BooleanProperty EAST = BooleanProperty.create("east");
+
+	public BlockVoidCave(BlockBehaviour.Properties properties) {
+		super(properties);
+		this.registerDefaultState(this.stateDefinition.any().setValue(NORTH, false)
+				.setValue(SOUTH, false).setValue(WEST, false).setValue(EAST, false));
 	}
 
 	@Override
-	public void registerBlockIcons(IIconRegister ico) {
-		blockIcon = ico.registerIcon("chromaticraft:dimgen/voidcave");
+	protected MapCodec<? extends Block> codec() {
+		return CODEC;
 	}
 
 	@Override
-	@SideOnly(Side.CLIENT)
-	public void randomDisplayTick(World world, int x, int y, int z, Random rand) {
-		int meta = world.getBlockMetadata(x, y, z);
-		for (int i = 2; i < 6; i++) {
-			if ((meta & (1 << (i-2))) != 0) {
-				ForgeDirection dir = ForgeDirection.VALID_DIRECTIONS[i];
-				for (int n = 0; n < 16; n++) {
-					double dx = x+0.5+dir.offsetX*0.5;
-					double dy = ReikaRandomHelper.getRandomPlusMinus(y+0.5, 0.0625);
-					double dz = z+0.5+dir.offsetZ*0.5;
-					if (dir.offsetX == 0) {
-						dx = ReikaRandomHelper.getRandomBetween(x, x+1D);
-					}
-					if (dir.offsetZ == 0) {
-						dz = ReikaRandomHelper.getRandomBetween(z, z+1D);
-					}
-					double v = ReikaRandomHelper.getRandomBetween(0.04, 0.05);
-					double vx = dir.offsetX*v;
-					double vz = dir.offsetZ*v;
-					float g = (float)ReikaRandomHelper.getRandomBetween(0.04, 0.07);
-					int l = ReikaRandomHelper.getRandomBetween(60, 180);
-					float s = (float)ReikaRandomHelper.getRandomBetween(1.5, 3);
-					int base = ReikaColorAPI.mixColors(0xffffff, 0x22aaff, rand.nextFloat()*0.5F);
-					base = ReikaColorAPI.getModifiedHue(base, ReikaRandomHelper.getRandomPlusMinus(ReikaColorAPI.getHue(base), 30));
-					int c = ReikaColorAPI.getColorWithBrightnessMultiplier(base, (float)ReikaRandomHelper.getRandomBetween(0.5, 1));
-					EntityCCBlurFX fx = new EntityCCBlurFX(world, dx, dy, dz, vx, 0, vz);
-					fx.setGravity(g).setLife(l).setScale(s).setColor(c).setColliding().setRapidExpand().setAlphaFading().forceIgnoreLimits();
-					fx.setIcon(ChromaIcons.FADE_LIQUID);
-					Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-				}
-			}
-		}
+	protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+		builder.add(NORTH, SOUTH, WEST, EAST);
 	}
 
+	/** The property for one horizontal side, matching V33a's bit {@code 1 << (side-2)}. */
+	public static BooleanProperty property(Direction dir) {
+		return switch (dir) {
+			case NORTH -> NORTH;
+			case SOUTH -> SOUTH;
+			case WEST -> WEST;
+			case EAST -> EAST;
+			default -> throw new IllegalArgumentException("Void cave edges are horizontal: " + dir);
+		};
+	}
+
+	/** Whether this state has any edge at all; a void cave with none emits nothing. */
+	public static boolean hasAnyEdge(BlockState state) {
+		for (Direction dir : Direction.Plane.HORIZONTAL)
+			if (state.getValue(property(dir)))
+				return true;
+		return false;
+	}
+
+	/**
+	 * V33a randomDisplayTick: sixteen particles per set side per tick, drifting outward and falling.
+	 * The colour is a white-to-blue mix, hue-shifted up to thirty degrees either way and dimmed by up to
+	 * half, so the fall reads as light rather than as a texture.
+	 */
+	@Override
+	public void animateTick(BlockState state, Level level, BlockPos pos, RandomSource random) {
+		for (Direction dir : Direction.Plane.HORIZONTAL)
+			if (state.getValue(property(dir)))
+				ChromaParticle.spawnVoidCaveFall(level, pos, dir);
+	}
 }
