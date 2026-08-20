@@ -164,6 +164,10 @@ public final class ProximaBiomeDefinitions {
 		// relative order, since upstream's decorator ran its whole ordered list after terrain too.
 		if (central || type == ProximaBiomes.PLAINS || type == ProximaBiomes.GLOWCRACKS)
 			add(builder, features, "fissure");
+		// V33a CRACKS: `isReasonablyFlat() && !isWaterBiome()` -- plus the Sanctuary, which takes it
+		// from the CENTER branch since the cracks are not isDedicatedBiomeOnly.
+		if (central || (type.isReasonablyFlat() && !type.isWaterBiome()))
+			add(builder, features, "glowing_cracks");
 		// V33a ALTAR: `b.getExactType().isReasonablyFlat()` -- and the Sanctuary, which takes it from
 		// the CENTER branch since the altar is not isDedicatedBiomeOnly. Its own site check wants seven
 		// by seven of flat open grass, so the biome test only decides where it may try.

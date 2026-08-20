@@ -317,6 +317,7 @@ public final class ChromaGameTests {
 		register(event, env, "mini_altar", ChromaGameTests::miniAltar);
 		register(event, env, "fissure", ChromaGameTests::fissure);
 		register(event, env, "glow_cave_shape", ChromaGameTests::glowCaveShape);
+		register(event, env, "glowing_cracks", ChromaGameTests::glowingCracks);
 		register(event, env, "dimension_core_ring", ChromaGameTests::dimensionCoreRing);
 		register(event, env, "monument_ritual_checks", ChromaGameTests::monumentRitualChecks);
 		register(event, env, "monument_core_placement", ChromaGameTests::monumentCorePlacement);
@@ -2323,6 +2324,69 @@ public final class ChromaGameTests {
 	 * the easiest thing here to get subtly wrong: it is <em>not</em> the rune ring in the monument
 	 * template, it is inset from it, and the two share a height, a start and a direction.
 	 */
+	/**
+	 * V33a's Glowing Cracks: the seam of light, the ground reinforced under it, and the ore crystal
+	 * buried below.
+	 *
+	 * <p>The crystal is where a mistake would hide — a bipyramid built from rotated vectors and filled
+	 * per layer by a polygon test — so what is checked is that it is actually a solid volume with a
+	 * waist wider than its ends, which no off-by-one in the taper survives.
+	 */
+	private static void glowingCracks(GameTestHelper helper) {
+		var level = helper.getLevel();
+		BlockPos origin = helper.absolutePos(new BlockPos(24, 34, 24));
+		for (BlockPos pos : BlockPos.betweenClosed(origin.offset(-8, -30, -8), origin.offset(8, -1, 8)))
+			level.setBlock(pos, Blocks.STONE.defaultBlockState(), 2);
+		var feature = reika.chromaticraft.registry.ChromaFeatures.GLOWING_CRACKS.get();
+
+		// The site rule is nine by nine of grass one below; stone alone must be refused.
+		helper.assertTrue(!place(helper, feature, origin),
+				"the cracks must refuse ground that is not grass");
+		for (BlockPos pos : BlockPos.betweenClosed(origin.offset(-4, -1, -4), origin.offset(4, -1, 4)))
+			level.setBlock(pos, Blocks.GRASS_BLOCK.defaultBlockState(), 2);
+		helper.assertTrue(place(helper, feature, origin),
+				"the cracks must lay on nine by nine of grass");
+
+		helper.assertTrue(level.getBlockState(origin).is(ChromaBlocks.GLOWING_CRACKS.get()),
+				"the cracks block itself was not placed");
+		helper.assertTrue(level.getBlockEntity(origin)
+						instanceof reika.chromaticraft.tileentity.dimension.TileEntityGlowingCracks,
+				"the cracks need their block entity; the renderer is the whole of what they look like");
+
+		// The ground under the whole square is reinforced, which is what stops the light being undermined.
+		var shield = ChromaBlocks.shielding(
+				reika.chromaticraft.registry.ChromaShieldTypes.STONE).get();
+		for (int i = -4; i <= 4; i++)
+			for (int k = -4; k <= 4; k++) {
+				BlockState under = level.getBlockState(origin.offset(i, -1, k));
+				helper.assertTrue(under.is(shield) && under.getValue(
+								reika.chromaticraft.block.worldgen26.BlockStructureShield.REINFORCED),
+						"the ground at " + i + "," + k + " must be reinforced under the cracks");
+			}
+
+		// The crystal: a solid volume, all one ore, wider at its waist than at either end.
+		var byLayer = new java.util.TreeMap<Integer, Integer>();
+		net.minecraft.world.level.block.Block ore = null;
+		for (BlockPos pos : BlockPos.betweenClosed(origin.offset(-8, -30, -8), origin.offset(8, -3, 8))) {
+			BlockState state = level.getBlockState(pos);
+			if (state.is(Blocks.STONE) || state.isAir() || state.is(shield))
+				continue;
+			if (ore == null)
+				ore = state.getBlock();
+			helper.assertTrue(state.is(ore), "the crystal must be one ore throughout; found "
+					+ state.getBlock() + " beside " + ore);
+			byLayer.merge(pos.getY(), 1, Integer::sum);
+		}
+		helper.assertTrue(ore != null, "the cracks grew no ore crystal at all");
+		helper.assertTrue(byLayer.size() >= 8,
+				"the crystal spans only " + byLayer.size() + " layers; it is eight to sixteen tall");
+		int widest = byLayer.values().stream().mapToInt(Integer::intValue).max().orElse(0);
+		helper.assertTrue(widest > byLayer.get(byLayer.firstKey())
+						&& widest > byLayer.get(byLayer.lastKey()),
+				"the crystal must be widest at its waist and taper to both ends; it is a bipyramid");
+		helper.succeed();
+	}
+
 	/**
 	 * V33a's glowing cave, as a shape. The carving is a structure piece and cannot be driven from a
 	 * gametest arena, but the shape it writes is pure and is where every mistake would live.

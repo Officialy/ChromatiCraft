@@ -86,6 +86,8 @@ public final class ChromaClientRenderers {
 
 	private static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
 		event.registerBlockEntityRenderer(ChromaBlockEntities.ITEM_STAND.get(), RenderItemStand::new);
+		event.registerBlockEntityRenderer(ChromaBlockEntities.GLOWING_CRACKS.get(),
+				reika.chromaticraft.render.tesr.dimension.RenderGlowingCracks::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.CASTING_TABLE.get(), RenderCastingTable::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.PYLON.get(), RenderCrystalPylon::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.REPEATER.get(), RenderCrystalRepeater::new);

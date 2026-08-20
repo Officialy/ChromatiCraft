@@ -67,7 +67,9 @@ public enum ChromaTiles implements TileEnum {
 	// One identity per colour; WHITE stands for the family, as this is a block->tile lookup and every
 	// rift shares the one tile class.
 	VOIDRIFT("chroma.voidrift", ChromaBlocks.voidRiftBlock(CrystalElement.WHITE),
-			reika.chromaticraft.tileentity.dimension.TileEntityVoidRift.class);
+			reika.chromaticraft.tileentity.dimension.TileEntityVoidRift.class),
+	GLOWCRACKS("chroma.glowcracks", ChromaBlocks.GLOWING_CRACKS,
+			reika.chromaticraft.tileentity.dimension.TileEntityGlowingCracks.class);
 
 	private final String nameKey;
 	private final DeferredBlock<Block> block;

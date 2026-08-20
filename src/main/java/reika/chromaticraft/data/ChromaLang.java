@@ -45,6 +45,7 @@ public class ChromaLang extends LanguageProvider {
 		add("block.chromaticraft.aura_point", "Aura Locus");
 		add("block.chromaticraft.fire_jet", "Aura Jet");
 		add("block.chromaticraft.void_cave", "Void Cave");
+		add("block.chromaticraft.glowing_cracks", "Glowing Cracks");
 		add("block.chromaticraft.bedrock_crack", "Cracked Bedrock");
 		add("block.chromaticraft.ethereal_light", "Ethereal Light");
 		// V33a chroma.stand = "Item Casting Stand" (not "Casting Stand").

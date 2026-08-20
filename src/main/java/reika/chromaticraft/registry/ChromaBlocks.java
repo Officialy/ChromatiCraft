@@ -344,6 +344,16 @@ public final class ChromaBlocks {
 		return (DeferredBlock<Block>)(DeferredBlock<?>)VOID_RIFTS.get(element);
 	}
 
+	/**
+	 * V33a's Glowing Cracks. A sliver of a block: everything you see is its renderer, painting Reika's
+	 * own 1024x1024 sheet across the nine-by-nine of ground around it.
+	 */
+	public static final DeferredBlock<Block> GLOWING_CRACKS =
+			register("glowing_cracks",
+					() -> (Block)new reika.chromaticraft.block.dimension.BlockGlowingCracks(
+							blockProperties().mapColor(MapColor.COLOR_MAGENTA).strength(1F, 6000F)
+									.noOcclusion().lightLevel(state -> 7)));
+
 	/** V33a's Void Cave: the unbreakable lip a glowing cave's floor falls away at. */
 	public static final DeferredBlock<reika.chromaticraft.block.dimension.BlockVoidCave> VOID_CAVE =
 			register("void_cave", () -> new reika.chromaticraft.block.dimension.BlockVoidCave(

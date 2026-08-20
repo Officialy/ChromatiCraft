@@ -114,6 +114,13 @@ public final class ChromaBlockEntities {
 							reika.chromaticraft.tileentity.dimension.TileEntityFireJet::new,
 							ChromaBlocks.FIRE_JET.get()));
 	public static final DeferredHolder<BlockEntityType<?>,
+			BlockEntityType<reika.chromaticraft.tileentity.dimension.TileEntityGlowingCracks>> GLOWING_CRACKS =
+			BLOCK_ENTITIES.register("glowing_cracks",
+					() -> new BlockEntityType<>(
+							reika.chromaticraft.tileentity.dimension.TileEntityGlowingCracks::new,
+							ChromaBlocks.GLOWING_CRACKS.get()));
+
+	public static final DeferredHolder<BlockEntityType<?>,
 			BlockEntityType<reika.chromaticraft.tileentity.dimension.TileEntityVoidRift>> VOID_RIFT =
 			BLOCK_ENTITIES.register("void_rift",
 					() -> new BlockEntityType<>(

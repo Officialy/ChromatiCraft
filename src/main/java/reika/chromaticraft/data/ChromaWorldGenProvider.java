@@ -77,6 +77,7 @@ public final class ChromaWorldGenProvider {
     private static final Identifier FIRE_JET = id("fire_jet");
     private static final Identifier MINI_ALTAR = id("mini_altar");
     private static final Identifier FISSURE = id("fissure");
+    private static final Identifier GLOWING_CRACKS = id("glowing_cracks");
     private static final Identifier CRYSTAL_PIT = id("crystal_pit");
     private static final Identifier AURORAE = id("aurorae");
     private static final List<Identifier> NETHER_ROOF_STRUCTURES =
@@ -186,6 +187,7 @@ public final class ChromaWorldGenProvider {
             registerConfigured(bootstrap, features, FIRE_JET);
             registerConfigured(bootstrap, features, MINI_ALTAR);
             registerConfigured(bootstrap, features, FISSURE);
+            registerConfigured(bootstrap, features, GLOWING_CRACKS);
             registerConfigured(bootstrap, features, CRYSTAL_PIT);
             registerConfigured(bootstrap, features, AURORAE);
             for (Identifier structure : NETHER_ROOF_STRUCTURES)
@@ -409,6 +411,14 @@ public final class ChromaWorldGenProvider {
             registerPlaced(bootstrap, configured, TREE_CLUSTER, List.of(
                     RarityFilter.onAverageOnceEvery(3),
                     net.minecraft.world.level.levelgen.placement.CountPlacement.of(2),
+                    net.minecraft.world.level.levelgen.placement.HeightmapPlacement.onHeightmap(
+                            net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES),
+                    BiomeFilter.biome()));
+            // V33a getGenerationChance for the cracks is a flat 0.125 per chunk -- one in eight, the
+            // most common thing in this list -- and its own site check wants nine by nine of unbroken
+            // grass, which is what actually makes them rare outside flat open country.
+            registerPlaced(bootstrap, configured, GLOWING_CRACKS, List.of(
+                    RarityFilter.onAverageOnceEvery(8), InSquarePlacement.spread(),
                     net.minecraft.world.level.levelgen.placement.HeightmapPlacement.onHeightmap(
                             net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES),
                     BiomeFilter.biome()));

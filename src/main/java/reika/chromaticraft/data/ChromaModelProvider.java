@@ -141,6 +141,17 @@ public class ChromaModelProvider extends ModelProvider {
 		dimensionCoreModel(blockStateOut, itemModelOut, modelOut);
 		voidRiftModels(blockStateOut, itemModelOut, modelOut);
 		glowCaveBlockModels(blockStateOut, itemModelOut, modelOut);
+		// The Glowing Cracks draw nothing from a model -- the renderer is the block -- but a blockstate
+		// definition is still required or the game refuses to load. A particle-only model is the honest
+		// form of that: no faces, and a texture for the break puff.
+		Block cracks = ChromaBlocks.GLOWING_CRACKS.get();
+		Identifier cracksModel = ModelTemplates.PARTICLE_ONLY.create(cracks,
+				new TextureMapping().put(TextureSlot.PARTICLE, new Material(
+						Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/dimgen/glowcracks"))),
+				modelOut);
+		blockStateOut.accept(MultiVariantGenerator.dispatch(cracks,
+				new MultiVariant(WeightedList.of(new Variant(cracksModel)))));
+		itemModelOut.accept(cracks.asItem(), ItemModelUtils.plainModel(cracksModel));
 		auraPointModel(blockStateOut, itemModelOut, modelOut);
 		fireJetModel(blockStateOut, itemModelOut, modelOut);
 		chromaDoorModel(blockStateOut, itemModelOut, modelOut);
