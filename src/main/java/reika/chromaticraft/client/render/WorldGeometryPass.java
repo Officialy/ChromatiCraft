@@ -47,6 +47,18 @@ public final class WorldGeometryPass {
 
 	private @Nullable GpuBuffer vertexBuffer;
 	private final String label;
+	/**
+	 * Retained across frames, and the reason matters: a fresh {@link ByteBufferBuilder} per frame means
+	 * a malloc per frame and then a chain of reallocs as it fills, which showed up in a profile as
+	 * {@code ByteBufferBuilder.resize} -> {@code JEmallocAllocator.realloc} on both the sky and the sky
+	 * rivers. Keeping one lets it settle at the size this pass actually needs and never grow again.
+	 * Vanilla does the same thing with the builders in {@code RenderBuffers}.
+	 */
+	private final ByteBufferBuilder scratch = new ByteBufferBuilder(
+			INITIAL_VERTICES * DefaultVertexFormat.POSITION_TEX_COLOR.getVertexSize());
+
+	/** Enough for the sky field, which is the largest thing drawn through this. */
+	private static final int INITIAL_VERTICES = 64 * 1024;
 
 	public WorldGeometryPass(String label) {
 		this.label = label;
@@ -70,9 +82,9 @@ public final class WorldGeometryPass {
 		// Deliberately not ByteBufferBuilder.exactlySized: that sets the maximum capacity equal to the
 		// initial one, so the buffer cannot grow and overflowing it throws rather than reallocating.
 		// A caller here does not know its vertex count up front -- the sky field alone runs to tens of
-		// thousands of vertices -- so this is an initial size on a buffer that is free to grow.
-		try (ByteBufferBuilder scratch = new ByteBufferBuilder(
-				4096 * DefaultVertexFormat.POSITION_TEX_COLOR.getVertexSize())) {
+		// thousands of vertices -- so this is a starting size on a buffer that is free to grow, and it
+		// is the same buffer every frame so that growth happens once rather than continually.
+		{
 			BufferBuilder buffer = new BufferBuilder(scratch, PrimitiveTopology.QUADS,
 					DefaultVertexFormat.POSITION_TEX_COLOR);
 			builder.accept(buffer);

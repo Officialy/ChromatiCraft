@@ -111,7 +111,7 @@ public final class SkyRiverRenderer {
 				else if (point.index() + 2 >= point.pathLength() - 1)
 					colourTo = ReikaColorAPI.getColorWithBrightnessMultiplier(colourTo, 0.01F);
 				tube(buffer, point.position(), point.next(), camera, radiusFrom, radiusTo,
-						colourFrom, colourTo);
+						colourFrom, colourTo, point.index());
 			}
 		});
 	}
@@ -128,7 +128,7 @@ public final class SkyRiverRenderer {
 	 * degenerating into a line.
 	 */
 	private static void tube(BufferBuilder buffer, DecimalPosition from, DecimalPosition to,
-			Vec3 camera, double radiusFrom, double radiusTo, int colourFrom, int colourTo) {
+			Vec3 camera, double radiusFrom, double radiusTo, int colourFrom, int colourTo, int index) {
 		Vec3 start = new Vec3(from.xCoord, from.yCoord, from.zCoord).subtract(camera);
 		Vec3 end = new Vec3(to.xCoord, to.yCoord, to.zCoord).subtract(camera);
 		Vec3 axis = end.subtract(start);
@@ -140,7 +140,16 @@ public final class SkyRiverRenderer {
 		Vec3 up = axis.cross(right).normalize();
 
 		// The texture scrolls along the tube with time; most of the sense of flow comes from this.
+		//
+		// The u coordinate has to be continuous *along the river*, not per segment. Running it from 0 to
+		// 1 on every segment -- which is what this did at first -- restarts the texture at every node,
+		// and since node spacing grows with distance from the centre the restarts are visibly uneven:
+		// the texture appears to snap back and change density as the river recedes. Keying u to the
+		// point's index instead means each segment picks up exactly where the last one left off, so the
+		// seam matches and the pattern runs unbroken down the whole ray.
 		float scroll = (float)(-(System.currentTimeMillis() % 4000L) / 4000D);
+		float u0 = scroll + index;
+		float u1 = scroll + index + 1;
 		for (int side = 0; side < SIDES; side++) {
 			double a1 = side * 2 * Math.PI / SIDES;
 			double a2 = (side + 1) * 2 * Math.PI / SIDES;
@@ -148,10 +157,10 @@ public final class SkyRiverRenderer {
 			float v2 = (float)(side + 1) / SIDES;
 			Vec3 o1 = right.scale(Math.cos(a1)).add(up.scale(Math.sin(a1)));
 			Vec3 o2 = right.scale(Math.cos(a2)).add(up.scale(Math.sin(a2)));
-			vertex(buffer, start.add(o1.scale(radiusFrom)), scroll, v1, colourFrom);
-			vertex(buffer, start.add(o2.scale(radiusFrom)), scroll, v2, colourFrom);
-			vertex(buffer, end.add(o2.scale(radiusTo)), scroll + 1, v2, colourTo);
-			vertex(buffer, end.add(o1.scale(radiusTo)), scroll + 1, v1, colourTo);
+			vertex(buffer, start.add(o1.scale(radiusFrom)), u0, v1, colourFrom);
+			vertex(buffer, start.add(o2.scale(radiusFrom)), u0, v2, colourFrom);
+			vertex(buffer, end.add(o2.scale(radiusTo)), u1, v2, colourTo);
+			vertex(buffer, end.add(o1.scale(radiusTo)), u1, v1, colourTo);
 		}
 	}
 

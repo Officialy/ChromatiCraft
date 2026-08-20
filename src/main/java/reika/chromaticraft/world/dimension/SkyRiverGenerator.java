@@ -68,7 +68,17 @@ public final class SkyRiverGenerator {
 	private static volatile SkyRiverGenerator active;
 
 	private final List<Ray> rays = new ArrayList<>();
-	private final Map<Long, List<RiverPoint>> pointsByChunk = new HashMap<>();
+	/**
+	 * A long-keyed map, not {@code HashMap<Long, ...>}.
+	 *
+	 * <p>{@code ChunkPos.pack} puts x in the low word and z in the high one, and {@code Long.hashCode}
+	 * folds those together as {@code x ^ z} — which for a grid of chunk coordinates collides constantly.
+	 * A profile showed a single {@code get} costing over seven milliseconds inside
+	 * {@code HashMap$TreeNode.find}: the bins had degenerated into red-black trees. This hashes the whole
+	 * long properly and boxes nothing.
+	 */
+	private final it.unimi.dsi.fastutil.longs.Long2ObjectMap<List<RiverPoint>> pointsByChunk =
+			new it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap<>();
 
 	private SkyRiverGenerator() {}
 
@@ -183,16 +193,34 @@ public final class SkyRiverGenerator {
 		return points == null ? List.of() : Collections.unmodifiableList(points);
 	}
 
-	/** Every point within the given block range of an entity, gathered chunk by chunk. */
+	private long cachedChunk = Long.MIN_VALUE;
+	private double cachedRange = -1;
+	private List<RiverPoint> cachedPoints = List.of();
+
+	/**
+	 * Every point within the given block range of an entity, gathered chunk by chunk.
+	 *
+	 * <p>Cached on the entity's chunk, because the renderer asks for this <em>every frame</em> at a range
+	 * of 512 — sixty-six chunks square, more than four thousand lookups — and the answer only changes
+	 * when the viewer crosses a chunk boundary. Uncached this was the single most expensive thing in the
+	 * level-render profile.
+	 */
 	public Collection<RiverPoint> getPointsWithin(Entity entity, double range) {
 		int chunkX = Mth.floor(entity.getX()) >> 4;
 		int chunkZ = Mth.floor(entity.getZ()) >> 4;
+		long key = ChunkPos.pack(chunkX, chunkZ);
+		if (key == cachedChunk && range == cachedRange)
+			return cachedPoints;
+
 		int chunkRange = Mth.floor(range) >> 4;
 		List<RiverPoint> found = new ArrayList<>();
 		for (int dx = -chunkRange - 1; dx <= chunkRange; dx++)
 			for (int dz = -chunkRange - 1; dz <= chunkRange; dz++)
 				found.addAll(this.getPointsForChunk(chunkX + dx, chunkZ + dz));
-		return found;
+		cachedChunk = key;
+		cachedRange = range;
+		cachedPoints = Collections.unmodifiableList(found);
+		return cachedPoints;
 	}
 
 	public RiverPoint getClosestPoint(Entity entity, double range) {
