@@ -2450,9 +2450,15 @@ public final class ChromaGameTests {
 	 */
 	private static void fissure(GameTestHelper helper) {
 		var level = helper.getLevel();
-		BlockPos origin = helper.absolutePos(new BlockPos(24, 30, 24));
+		// Deliberately absolute heights, not arena-relative. A fissure's geometry is anchored to the
+		// world floor, not to its own origin -- it cuts from y 8-23 up to twelve above the surface and
+		// floors itself at y 2-17 -- which is faithful, since Proxima has a min y of 0 exactly as V33a's
+		// world did. The gametest arena sits far below that, so a test built around it would be sixty
+		// blocks under everything the fissure touches, which is what the first version of this was.
+		BlockPos arena = helper.absolutePos(BlockPos.ZERO);
+		BlockPos origin = new BlockPos(arena.getX() + 24, 30, arena.getZ() + 24);
 		// A block of stone for it to cut into: the fissure only shields faces it actually exposes.
-		for (BlockPos pos : BlockPos.betweenClosed(origin.offset(-20, -28, -20), origin.offset(20, 2, 20)))
+		for (BlockPos pos : BlockPos.betweenClosed(origin.offset(-20, -30, -20), origin.offset(20, 2, 20)))
 			level.setBlock(pos, Blocks.STONE.defaultBlockState(), 2);
 
 		// A core and a reinforced shield inside the cut's reach: neither may be touched.
@@ -2477,7 +2483,7 @@ public final class ChromaGameTests {
 				reika.chromaticraft.registry.ChromaShieldTypes.CLOAK).get();
 		var water = ChromaBlocks.deco(
 				reika.chromaticraft.registry.ProximaDecoTypes.LIFEWATER).get();
-		for (BlockPos pos : BlockPos.betweenClosed(origin.offset(-20, -28, -20), origin.offset(20, 14, 20))) {
+		for (BlockPos pos : BlockPos.betweenClosed(origin.offset(-20, -30, -20), origin.offset(20, 14, 20))) {
 			BlockState state = level.getBlockState(pos);
 			if (state.getBlock() instanceof reika.chromaticraft.block.dimension.BlockVoidRift rift) {
 				rifts++;
