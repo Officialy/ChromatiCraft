@@ -113,6 +113,14 @@ public final class ChromaBlockEntities {
 					() -> new BlockEntityType<>(
 							reika.chromaticraft.tileentity.dimension.TileEntityFireJet::new,
 							ChromaBlocks.FIRE_JET.get()));
+	public static final DeferredHolder<BlockEntityType<?>,
+			BlockEntityType<reika.chromaticraft.tileentity.dimension.TileEntityVoidRift>> VOID_RIFT =
+			BLOCK_ENTITIES.register("void_rift",
+					() -> new BlockEntityType<>(
+							reika.chromaticraft.tileentity.dimension.TileEntityVoidRift::new,
+							ChromaBlocks.VOID_RIFTS.values().stream()
+									.map(net.neoforged.neoforge.registries.DeferredHolder::get)
+									.toArray(net.minecraft.world.level.block.Block[]::new)));
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityChroma>> CHROMA_POOL =
 			BLOCK_ENTITIES.register("liquid_chroma",
 					() -> new BlockEntityType<>(TileEntityChroma::new, ChromaBlocks.CHROMA.get()));

@@ -315,6 +315,7 @@ public final class ChromaGameTests {
 		register(event, env, "proxima_tree_cluster", ChromaGameTests::proximaTreeCluster);
 		register(event, env, "proxima_monument_template", ChromaGameTests::proximaMonumentTemplate);
 		register(event, env, "mini_altar", ChromaGameTests::miniAltar);
+		register(event, env, "fissure", ChromaGameTests::fissure);
 		register(event, env, "dimension_core_ring", ChromaGameTests::dimensionCoreRing);
 		register(event, env, "monument_ritual_checks", ChromaGameTests::monumentRitualChecks);
 		register(event, env, "monument_core_placement", ChromaGameTests::monumentCorePlacement);
@@ -2321,6 +2322,73 @@ public final class ChromaGameTests {
 	 * the easiest thing here to get subtly wrong: it is <em>not</em> the rune ring in the monument
 	 * template, it is inset from it, and the two share a height, a start and a direction.
 	 */
+	/**
+	 * V33a's Radiant Fissure: a seam cut down through stone, sealed in Cloak Shielding, floored with
+	 * Lifewater and capped with Void Rifts.
+	 *
+	 * <p>The shape is random, so this asserts the invariants rather than the cells: that it cuts at all,
+	 * that every rift it places is the same colour (upstream picks one per fissure), that the seam is
+	 * shielded, and — the one that would be silently wrong — that {@code canCutInto} leaves protected
+	 * blocks standing when the cut runs straight through them.
+	 */
+	private static void fissure(GameTestHelper helper) {
+		var level = helper.getLevel();
+		BlockPos origin = helper.absolutePos(new BlockPos(24, 30, 24));
+		// A block of stone for it to cut into: the fissure only shields faces it actually exposes.
+		for (BlockPos pos : BlockPos.betweenClosed(origin.offset(-20, -28, -20), origin.offset(20, 2, 20)))
+			level.setBlock(pos, Blocks.STONE.defaultBlockState(), 2);
+
+		// A core and a reinforced shield inside the cut's reach: neither may be touched.
+		BlockPos core = origin.offset(1, -6, 1);
+		level.setBlock(core, ChromaBlocks.dimensionCore(CrystalElement.CYAN).get().defaultBlockState(), 2);
+		BlockPos reinforced = origin.offset(-1, -6, -1);
+		level.setBlock(reinforced, ChromaBlocks.shielding(
+						reika.chromaticraft.registry.ChromaShieldTypes.STONE).get().defaultBlockState()
+				.setValue(reika.chromaticraft.block.worldgen26.BlockStructureShield.REINFORCED, true), 2);
+
+		var feature = reika.chromaticraft.registry.ChromaFeatures.FISSURE.get();
+		boolean cut = false;
+		for (int attempt = 0; attempt < 16 && !cut; attempt++)
+			cut = place(helper, feature, origin);
+		helper.assertTrue(cut, "the fissure refused sixteen attempts on solid stone");
+
+		int rifts = 0;
+		int cloak = 0;
+		int lifewater = 0;
+		CrystalElement riftColor = null;
+		var cloakBlock = ChromaBlocks.shielding(
+				reika.chromaticraft.registry.ChromaShieldTypes.CLOAK).get();
+		var water = ChromaBlocks.deco(
+				reika.chromaticraft.registry.ProximaDecoTypes.LIFEWATER).get();
+		for (BlockPos pos : BlockPos.betweenClosed(origin.offset(-20, -28, -20), origin.offset(20, 14, 20))) {
+			BlockState state = level.getBlockState(pos);
+			if (state.getBlock() instanceof reika.chromaticraft.block.dimension.BlockVoidRift rift) {
+				rifts++;
+				if (riftColor == null)
+					riftColor = rift.getElement();
+				helper.assertTrue(rift.getElement() == riftColor,
+						"a fissure's rifts must all be one colour; found " + rift.getElement()
+								+ " beside " + riftColor);
+			}
+			else if (state.is(cloakBlock))
+				cloak++;
+			else if (state.is(water))
+				lifewater++;
+		}
+		helper.assertTrue(cloak > 0, "the fissure sealed none of the stone it cut through");
+		helper.assertTrue(lifewater > 0, "the fissure laid no Lifewater floor");
+		helper.assertTrue(rifts > 0, "the fissure capped no column with a Void Rift");
+
+		// canCutInto is the whole reason a fissure can wander into a structure without ruining it.
+		helper.assertTrue(level.getBlockState(core).getBlock()
+						instanceof reika.chromaticraft.block.dimension.BlockDimensionCore,
+				"the fissure cut through a Dimension Core; canCutInto must refuse it");
+		helper.assertTrue(level.getBlockState(reinforced).getBlock()
+						instanceof reika.chromaticraft.block.worldgen26.BlockStructureShield,
+				"the fissure cut through reinforced shielding; canCutInto must refuse it");
+		helper.succeed();
+	}
+
 	/**
 	 * V33a's Precursor altar: a fixed shrine over a buried chest.
 	 *

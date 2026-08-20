@@ -312,6 +312,38 @@ public final class ChromaBlocks {
 		return (DeferredBlock<Block>)(DeferredBlock<?>)DIMENSION_CORES.get(element);
 	}
 
+	/**
+	 * V33a's Void Rift, one identity per element. Blast resistance 900,000 and a hardness of 10 --
+	 * upstream's {@code setBlockUnbreakable()} is commented out, so the block is nominally breakable and
+	 * the two progression gates on it are what actually stop you.
+	 */
+	public static final EnumMap<CrystalElement,
+			DeferredBlock<reika.chromaticraft.block.dimension.BlockVoidRift>> VOID_RIFTS =
+			registerVoidRifts();
+
+	private static EnumMap<CrystalElement,
+			DeferredBlock<reika.chromaticraft.block.dimension.BlockVoidRift>> registerVoidRifts() {
+		EnumMap<CrystalElement, DeferredBlock<reika.chromaticraft.block.dimension.BlockVoidRift>> map =
+				new EnumMap<>(CrystalElement.class);
+		for (CrystalElement element : CrystalElement.elements)
+			map.put(element, register(coloredName("void_rift", element),
+					() -> new reika.chromaticraft.block.dimension.BlockVoidRift(
+							blockProperties().mapColor(MapColor.COLOR_BLACK).strength(10F, 900000F),
+							element)));
+		return map;
+	}
+
+	public static DeferredBlock<reika.chromaticraft.block.dimension.BlockVoidRift> voidRift(
+			CrystalElement element) {
+		return VOID_RIFTS.get(element);
+	}
+
+	/** The same identity where a plain {@code DeferredBlock<Block>} is what the caller holds. */
+	@SuppressWarnings("unchecked")
+	public static DeferredBlock<Block> voidRiftBlock(CrystalElement element) {
+		return (DeferredBlock<Block>)(DeferredBlock<?>)VOID_RIFTS.get(element);
+	}
+
 	/** V33a's Aura Point: the monument's completed form, and a standing area effect thereafter. */
 	public static final DeferredBlock<Block> AURA_POINT =
 			register("aura_point", () -> (Block)new reika.chromaticraft.block.dimension.BlockAuraPoint(

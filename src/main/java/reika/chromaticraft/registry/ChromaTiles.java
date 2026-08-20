@@ -63,7 +63,11 @@ public enum ChromaTiles implements TileEnum {
 	AURAPOINT("chroma.aurapoint", ChromaBlocks.AURA_POINT,
 			reika.chromaticraft.tileentity.aoe.TileEntityAuraPoint.class),
 	FIREJET("chroma.firejet", ChromaBlocks.FIRE_JET,
-			reika.chromaticraft.tileentity.dimension.TileEntityFireJet.class);
+			reika.chromaticraft.tileentity.dimension.TileEntityFireJet.class),
+	// One identity per colour; WHITE stands for the family, as this is a block->tile lookup and every
+	// rift shares the one tile class.
+	VOIDRIFT("chroma.voidrift", ChromaBlocks.voidRiftBlock(CrystalElement.WHITE),
+			reika.chromaticraft.tileentity.dimension.TileEntityVoidRift.class);
 
 	private final String nameKey;
 	private final DeferredBlock<Block> block;

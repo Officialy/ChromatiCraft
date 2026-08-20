@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/cube_bottom_top",
+  "textures": {
+    "bottom": "chromaticraft:block/shield/stone",
+    "side": "chromaticraft:block/shield/stone",
+    "top": "chromaticraft:block/dimgen/voidrift"
+  }
+}

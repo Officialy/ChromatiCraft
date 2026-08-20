@@ -139,6 +139,7 @@ public class ChromaModelProvider extends ModelProvider {
 		dataNodeModel(blockStateOut, itemModelOut, modelOut);
 		structureControllerModel(blockStateOut, modelOut);
 		dimensionCoreModel(blockStateOut, itemModelOut, modelOut);
+		voidRiftModels(blockStateOut, itemModelOut, modelOut);
 		auraPointModel(blockStateOut, itemModelOut, modelOut);
 		fireJetModel(blockStateOut, itemModelOut, modelOut);
 		chromaDoorModel(blockStateOut, itemModelOut, modelOut);
@@ -1315,6 +1316,30 @@ public class ChromaModelProvider extends ModelProvider {
 	 * world model exists only to name a particle sprite. It does carry an item model, because a core is
 	 * an item a player carries out to the monument and plants.
 	 */
+	/**
+	 * V33a {@code BlockVoidRift.getIcon}: {@code dimgen/voidrift} on the top face and Stone Shielding's
+	 * own icon on every other, which is what makes a rift read as a seam in the fissure floor rather
+	 * than as a block sitting on it. The colour never reaches the model — upstream's live renderer is a
+	 * plain cube and its coloured aura pass is commented out.
+	 */
+	private static void voidRiftModels(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		Material top = new Material(Identifier.fromNamespaceAndPath(
+				ChromatiCraft.MODID, "block/dimgen/voidrift"));
+		Material side = new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
+				reika.chromaticraft.registry.ChromaShieldTypes.STONE.texture()));
+		for (CrystalElement element : CrystalElement.elements) {
+			Block block = ChromaBlocks.voidRift(element).get();
+			Identifier model = ModelTemplates.CUBE_BOTTOM_TOP.create(block,
+					new TextureMapping().put(TextureSlot.TOP, top).put(TextureSlot.BOTTOM, side)
+							.put(TextureSlot.SIDE, side),
+					modelOut);
+			blockStateOut.accept(MultiVariantGenerator.dispatch(block,
+					new MultiVariant(WeightedList.of(new Variant(model)))));
+			itemModelOut.accept(block.asItem(), ItemModelUtils.plainModel(model));
+		}
+	}
+
 	private static void dimensionCoreModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
 			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
 		// blurflare is one of Reika's own glow sprites and the closest thing she ships to what

@@ -180,6 +180,10 @@ public final class ChromaFeatures {
             FEATURES.register("fire_jet",
                     reika.chromaticraft.world.dimension.FireJetFeature::new);
 
+    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> FISSURE =
+            FEATURES.register("fissure",
+                    reika.chromaticraft.world.dimension.FissureFeature::new);
+
     public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> MINI_ALTAR =
             FEATURES.register("mini_altar",
                     reika.chromaticraft.world.dimension.MiniAltarFeature::new);

@@ -76,6 +76,7 @@ public final class ChromaWorldGenProvider {
     private static final Identifier TREE_CLUSTER = id("tree_cluster");
     private static final Identifier FIRE_JET = id("fire_jet");
     private static final Identifier MINI_ALTAR = id("mini_altar");
+    private static final Identifier FISSURE = id("fissure");
     private static final Identifier CRYSTAL_PIT = id("crystal_pit");
     private static final Identifier AURORAE = id("aurorae");
     private static final List<Identifier> NETHER_ROOF_STRUCTURES =
@@ -184,6 +185,7 @@ public final class ChromaWorldGenProvider {
             registerConfigured(bootstrap, features, TREE_CLUSTER);
             registerConfigured(bootstrap, features, FIRE_JET);
             registerConfigured(bootstrap, features, MINI_ALTAR);
+            registerConfigured(bootstrap, features, FISSURE);
             registerConfigured(bootstrap, features, CRYSTAL_PIT);
             registerConfigured(bootstrap, features, AURORAE);
             for (Identifier structure : NETHER_ROOF_STRUCTURES)
@@ -379,6 +381,16 @@ public final class ChromaWorldGenProvider {
             registerPlaced(bootstrap, configured, TREE_CLUSTER, List.of(
                     RarityFilter.onAverageOnceEvery(3),
                     net.minecraft.world.level.levelgen.placement.CountPlacement.of(2),
+                    net.minecraft.world.level.levelgen.placement.HeightmapPlacement.onHeightmap(
+                            net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES),
+                    BiomeFilter.biome()));
+            // V33a getGenerationChance for the fissure is 0.05 on the Crystal Plains and 0.01 elsewhere.
+            // The rarer rate is the one expressed, as with the other per-biome splits here. No
+            // InSquarePlacement: the footprint wanders up to a dozen blocks from its anchor in each of
+            // up to four directions, and randomising the anchor within the chunk as well would push the
+            // far side past the feature write window, where the writes are dropped in silence.
+            registerPlaced(bootstrap, configured, FISSURE, List.of(
+                    RarityFilter.onAverageOnceEvery(100),
                     net.minecraft.world.level.levelgen.placement.HeightmapPlacement.onHeightmap(
                             net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES),
                     BiomeFilter.biome()));

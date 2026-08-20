@@ -157,6 +157,13 @@ public final class ProximaBiomeDefinitions {
 		// takes it from the CENTER branch as it takes everything not dedicated elsewhere.
 		if (central || type == ProximaBiomes.FOREST)
 			add(builder, features, "tree_cluster");
+		// V33a RIFT: `b == Biomes.PLAINS.getBiome() || b.biomeType == Biomes.GLOWCRACKS` -- plus the
+		// Sanctuary, which takes it from the CENTER branch as it takes everything not dedicated
+		// elsewhere. The fissure is a TERRAIN generator upstream, run before the features; here it is a
+		// vegetal-step feature like the rest, which puts it after the surface is laid -- the same
+		// relative order, since upstream's decorator ran its whole ordered list after terrain too.
+		if (central || type == ProximaBiomes.PLAINS || type == ProximaBiomes.GLOWCRACKS)
+			add(builder, features, "fissure");
 		// V33a ALTAR: `b.getExactType().isReasonablyFlat()` -- and the Sanctuary, which takes it from
 		// the CENTER branch since the altar is not isDedicatedBiomeOnly. Its own site check wants seven
 		// by seven of flat open grass, so the biome test only decides where it may try.
