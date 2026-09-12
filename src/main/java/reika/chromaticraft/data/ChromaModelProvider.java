@@ -125,6 +125,7 @@ public class ChromaModelProvider extends ModelProvider {
 		itemModelOut.accept(ChromaBlocks.POWER_CRYSTAL.get().asItem(), ItemModelUtils.plainModel(powerCrystalModel));
 		pylonModel(blockStateOut, itemModelOut, modelOut);
 		networkTileModel(ChromaBlocks.REPEATER.get(), "crystal_repeater", "block/icons/repeater", blockStateOut, itemModelOut, modelOut);
+		functionRelayModel(blockStateOut, itemModelOut, modelOut);
 		networkTileModel(ChromaBlocks.SKYPEATER.get(), "skypeater", "block/icons/repeater", blockStateOut, itemModelOut, modelOut);
 		networkTileModel(ChromaBlocks.CREATIVEPYLON.get(), "creative_pylon", "block/crystal/chroma", blockStateOut, itemModelOut, modelOut);
 		networkTileModel(ChromaBlocks.COMPOUND.get(), "compound_repeater", "block/icons/multirepeater", blockStateOut, itemModelOut, modelOut);
@@ -1122,6 +1123,18 @@ public class ChromaModelProvider extends ModelProvider {
 		MultiVariant variant = new MultiVariant(WeightedList.of(new Variant(model)));
 		blockStateOut.accept(MultiVariantGenerator.dispatch(block, variant));
 		itemModelOut.accept(block.asItem(), ItemModelUtils.plainModel(model));
+	}
+
+	private static void functionRelayModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		Identifier model = ModelTemplates.PARTICLE_ONLY.create(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/function_relay"),
+				new TextureMapping().put(TextureSlot.PARTICLE,
+						new Material(reika.chromaticraft.render.tesr.RenderFunctionRelay.SPRITE)), modelOut);
+		blockStateOut.accept(MultiVariantGenerator.dispatch(ChromaBlocks.FUNCTION_RELAY.get(),
+				new MultiVariant(WeightedList.of(new Variant(model)))));
+		itemModelOut.accept(ChromaBlocks.FUNCTION_RELAY.get().asItem(),
+				ItemModelUtils.specialModel(model, new reika.chromaticraft.render.item.FunctionRelayItemRenderer.Unbaked()));
 	}
 
 	private static void caveCrystalItems(ItemModelOutput itemModelOut,

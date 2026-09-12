@@ -111,6 +111,7 @@ public class ChromaLang extends LanguageProvider {
 		add(ChromaBlocks.CRYSTAL_CHARGER.get(), "Storage Crystal Charger"); // V33a chroma.charger
 		add(ChromaBlocks.ITEM_INFUSER.get(), "Item Aura Infuser"); // V33a chroma.infuser
 		add(ChromaBlocks.PLAYER_INFUSER.get(), "Personal Infusion Stand"); // V33a chroma.playerinfuser
+		add(ChromaBlocks.FUNCTION_RELAY.get(), "Area Delegation Point");
 		add(ChromaItems.GLOW_CAVE_DUST.get(), "Glow Cave Dust"); // V33a chromaitem.dimgen.glowcave
 		add(ChromaItems.UNKNOWN_ARTEFACT_FRAGMENT.get(), "Unknown Artefact Fragment");
 		add(ChromaBlocks.PORTAL.get(), "Portal Rift"); // V33a chroma.portal

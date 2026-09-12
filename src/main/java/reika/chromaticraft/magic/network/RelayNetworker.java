@@ -58,10 +58,8 @@ import reika.dragonapi.auxiliary.ModularLogger;
  * another dimension entirely, gated on the target world being one pylons may generate in), and the
  * <b>Router Node</b> in the passability test. Each is marked at its site.
  *
- * <p>The path's client notification is also absent. Upstream sends a {@code RELAYCONNECT} packet listing
- * every coordinate of the completed path so {@code ChromaFX.spawnRelayParticle} can draw the beam along
- * it; neither that packet nor {@code ChromaFX} is ported. <b>Routing is unaffected</b> — the power moves
- * either way — but until it lands a working beam is invisible.
+ * <p>Completed paths send a typed client payload to nearby players. Each segment emits the V33a
+ * relay particle; the requesting consumer owns the actual energy transfer.
  */
 public final class RelayNetworker {
 
@@ -91,7 +89,7 @@ public final class RelayNetworker {
 	 * <p>{@code dist} is the caller's own reach, which is clamped to the network's configured range —
 	 * a machine cannot see further than relays can carry.
 	 *
-	 * @return the source found, having already drained it, or null if the beam did not reach one
+	 * @return the source found, without draining it, or null if the beam did not reach one
 	 */
 	public TileEntityRelaySource findRelaySource(Level world, BlockPos pos, Direction dir,
 			CrystalElement e, int amt, int dist) {
@@ -129,14 +127,8 @@ public final class RelayNetworker {
 		}
 
 		private void transmit(CrystalElement e) {
-			if (source.getLevel() == null || source.getLevel().isClientSide())
-				return;
-			// CHROMA-PORT: upstream sends ChromaPackets.RELAYCONNECT here -- every coordinate of `path`
-			// followed by the element ordinal -- to every player within 64 blocks of any point on it, and
-			// the client draws the beam with ChromaFX.spawnRelayParticle. Neither the packet nor ChromaFX
-			// is ported. Only the visual is missing; the routing above is what moves the power.
-			ModularLogger.instance.log(LOGGER_ID,
-					"Relay beam of " + e + " along " + path.size() + " points (visual not yet ported)");
+			if (source.getLevel() instanceof net.minecraft.server.level.ServerLevel level)
+				reika.chromaticraft.network.ChromaNetwork.sendRelayConnection(level, path, e);
 		}
 	}
 

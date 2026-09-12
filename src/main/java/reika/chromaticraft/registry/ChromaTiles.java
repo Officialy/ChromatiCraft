@@ -44,6 +44,8 @@ public enum ChromaTiles implements TileEnum {
 	DISPLAY("chroma.display", ChromaBlocks.DISPLAY_POINT, TileEntityDisplayPoint.class),
 	PYLON("chroma.pylon", ChromaBlocks.PYLON, TileEntityCrystalPylon.class),
 	REPEATER("chroma.repeater", ChromaBlocks.REPEATER, TileEntityCrystalRepeater.class),
+	FUNCTIONRELAY("chroma.funcrelay", ChromaBlocks.FUNCTION_RELAY,
+			reika.chromaticraft.tileentity.auxiliary.TileEntityFunctionRelay.class),
 	SKYPEATER("chroma.skypeater", ChromaBlocks.SKYPEATER, TileEntitySkypeater.class),
 	CREATIVEPYLON("chroma.creativepylon", ChromaBlocks.CREATIVEPYLON, TileEntityCreativeSource.class),
 	COMPOUND("chroma.compound", ChromaBlocks.COMPOUND, TileEntityCompoundRepeater.class),

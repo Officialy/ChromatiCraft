@@ -9,163 +9,66 @@
  ******************************************************************************/
 package reika.chromaticraft.render.particle;
 
-import java.util.ArrayList;
+import java.util.List;
 
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.particle.EntityFX;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.phys.Vec3;
 
-import reika.chromaticraft.registry.ChromaIcons;
 import reika.chromaticraft.registry.CrystalElement;
-import reika.dragonapi.instantiable.data.immutable.Coordinate;
-import reika.dragonapi.instantiable.rendering.ParticleEngine;
-import reika.dragonapi.instantiable.rendering.particleengine.RenderMode;
-import reika.dragonapi.instantiable.rendering.particleengine.RenderModeFlags;
-import reika.dragonapi.instantiable.rendering.particleengine.TextureMode;
-import reika.dragonapi.interfaces.entity.CustomRenderFX;
-import reika.dragonapi.libraries.java.ReikaRandomHelper;
-import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
 
-/** Traverses the relay path */
-public class EntityRelayPathFX extends EntityFX implements CustomRenderFX {
+public final class EntityRelayPathFX extends ChromaParticle {
 
-	private static final RenderMode renderMode = new RenderMode().setFlag(RenderModeFlags.FOG, false).setFlag(RenderModeFlags.ADDITIVE, true).setFlag(RenderModeFlags.DEPTH, true).setFlag(RenderModeFlags.LIGHT, false).setFlag(RenderModeFlags.ALPHACLIP, false);
+    private static final String[] ICONS = {"bigflare", "rotating_flare_pulse", "blurflare2", "flare7"};
+    private final List<BlockPos> targets;
+    private final boolean steer;
+    private int targetIndex;
 
-	private ArrayList<Coordinate> targets;
-	private int index = 0;
-	private boolean velTick = true;
+    public EntityRelayPathFX(ClientLevel level, CrystalElement color, BlockPos source, BlockPos target) {
+        this(level, color, List.of(source, target), false);
+        this.xd = (target.getX() - source.getX()) * 0.1;
+        this.yd = (target.getY() - source.getY()) * 0.1;
+        this.zd = (target.getZ() - source.getZ()) * 0.1;
+    }
 
-	public EntityRelayPathFX(CrystalElement e, Coordinate c1, Coordinate c2) {
-		this(e, c1.xCoord+0.5, c1.yCoord+0.5, c1.zCoord+0.5);
+    public EntityRelayPathFX(ClientLevel level, CrystalElement color, List<BlockPos> path) {
+        this(level, color, path, true);
+    }
 
-		double dx = c2.xCoord-posX+0.5;
-		double dy = c2.yCoord-posY+0.5;
-		double dz = c2.zCoord-posZ+0.5;
-		//double d = ReikaMathLibrary.py3d(dx, dy, dz);
-		double v = 0.1;
-		motionX = v*dx;
-		motionY = v*dy;
-		motionZ = v*dz;
+    private EntityRelayPathFX(ClientLevel level, CrystalElement color, List<BlockPos> path, boolean steer) {
+        super(level, path.getFirst().getX() + 0.5, path.getFirst().getY() + 0.5,
+                path.getFirst().getZ() + 0.5, ICONS[level.getRandom().nextInt(ICONS.length)], true);
+        if (path.size() < 2) throw new IllegalArgumentException("A relay particle needs two endpoints");
+        this.targets = path.subList(1, path.size()).stream().map(BlockPos::immutable).toList();
+        this.steer = steer;
+        this.lifetime = Integer.MAX_VALUE;
+        this.quadSize = 0.1F * (2.5F + this.random.nextFloat() * 1.5F);
+        this.gravity = 0;
+        this.friction = 0.98F;
+        this.xd = this.yd = this.zd = 0;
+        this.setRgb(color.getColor());
+    }
 
-		targets = new ArrayList();
-		targets.add(c2);
-		velTick = false;
-	}
+    @Override
+    public void tick() {
+        super.tick();
+        this.updateTarget();
+        if (this.xd * this.xd + this.yd * this.yd + this.zd * this.zd < 0.125 * 0.125)
+            this.remove();
+    }
 
-	public EntityRelayPathFX(CrystalElement e, ArrayList<Coordinate> li) {
-		this(e, li.get(0).xCoord+0.5, li.get(0).yCoord+0.5, li.get(0).zCoord+0.5);
-		targets = li;
-		targets.remove(0);
-	}
-
-	private EntityRelayPathFX(CrystalElement e, double x, double y, double z) {
-		super(Minecraft.getMinecraft().theWorld, x, y, z);
-		particleMaxAge = Integer.MAX_VALUE;
-		particleScale = (float)ReikaRandomHelper.getRandomBetween(2.5, 4);
-		particleGravity = 0;
-		noClip = true;
-
-		particleRed = e.getRed()/255F;
-		particleGreen = e.getGreen()/255F;
-		particleBlue = e.getBlue()/255F;
-
-		switch(rand.nextInt(4)) {
-			case 0:
-				particleIcon = ChromaIcons.BIGFLARE.getIcon();
-				break;
-			case 1:
-				particleIcon = ChromaIcons.SPINFLARE.getIcon();
-				break;
-			case 2:
-				particleIcon = ChromaIcons.BLURFLARE.getIcon();
-				break;
-			case 3:
-				particleIcon = ChromaIcons.FLARE7.getIcon();
-				break;
-		}
-	}
-
-	@Override
-	public void onUpdate() {
-		super.onUpdate();
-
-		this.testAndUpdate();
-
-		if (motionX*motionX+motionY*motionY+motionZ*motionZ < 0.125*0.125)
-			this.die();
-	}
-
-	private void testAndUpdate() {
-		Coordinate c = targets.get(index);
-		double dx = c.xCoord-posX+0.5;
-		double dy = c.yCoord-posY+0.5;
-		double dz = c.zCoord-posZ+0.5;
-		double d = ReikaMathLibrary.py3d(dx, dy, dz);
-		double v = 0.5+0.125*Math.sin(this.hashCode());//1;
-		if (d < 0.125) {
-			if (index == targets.size()-1) {
-				this.die();
-			}
-			else {
-				index++;
-				this.testAndUpdate();
-			}
-		}
-		else if (velTick) {
-			motionX = v*dx/d;
-			motionY = v*dy/d;
-			motionZ = v*dz/d;
-		}
-	}
-
-	private void die() {
-		this.setDead();
-	}
-	/*
-	@Override
-	public void renderParticle(Tessellator v5, float par2, float par3, float par4, float par5, float par6, float par7)
-	{
-		v5.draw();
-		ReikaTextureHelper.bindTerrainTexture();
-		BlendMode.ADDITIVEDARK.apply();
-		GL11.glColor4f(1, 1, 1, 1);
-		v5.startDrawingQuads();
-		v5.setBrightness(this.getBrightnessForRender(0));
-		super.renderParticle(v5, par2, par3, par4, par5, par6, par7);
-		v5.draw();
-		BlendMode.DEFAULT.apply();
-		v5.startDrawingQuads();
-	}
-	 */
-	@Override
-	public int getBrightnessForRender(float par1)
-	{
-		return 240;
-	}
-
-	@Override
-	public int getFXLayer()
-	{
-		return 2;
-	}
-
-	@Override
-	public final RenderMode getRenderMode() {
-		return renderMode;
-	}
-
-	@Override
-	public final TextureMode getTexture() {
-		return ParticleEngine.blockTex;
-	}
-
-	@Override
-	public boolean rendersOverLimit() {
-		return true;
-	}
-	/*
-	@Override
-	public double getRenderRange() {
-		return 120;
-	}
-	 */
+    private void updateTarget() {
+        Vec3 delta = Vec3.atCenterOf(this.targets.get(this.targetIndex)).subtract(this.x, this.y, this.z);
+        double distance = delta.length();
+        if (distance < 0.125) {
+            if (++this.targetIndex == this.targets.size()) this.remove();
+            else this.updateTarget();
+        }
+        else if (this.steer) {
+            double speed = 0.5 + 0.125 * Math.sin(this.hashCode());
+            this.xd = speed * delta.x / distance;
+            this.yd = speed * delta.y / distance;
+            this.zd = speed * delta.z / distance;
+        }
+    }
 }

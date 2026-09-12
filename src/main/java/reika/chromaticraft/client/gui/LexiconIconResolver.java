@@ -131,6 +131,7 @@ public final class LexiconIconResolver {
 			case "stand" -> ChromaBlocks.ITEM_STAND.get();
 			case "table" -> ChromaBlocks.CASTING_TABLE.get();
 			case "focuscrystal" -> ChromaBlocks.FOCUS_CRYSTAL.get();
+			case "funcrelay", "functionrelay" -> ChromaBlocks.FUNCTION_RELAY.get();
 			default -> null;
 		};
 	}

@@ -6378,3 +6378,54 @@ BLACK (-16,+6,-3), RED (-13,+6,-7), GREEN (-7,+6,-13), BROWN (-3,+6,-16), BLUE (
 PURPLE (+7,+6,-13), CYAN (+13,+6,-7), LIGHTGRAY (+16,+6,-3), GRAY (+16,+6,+3), PINK (+13,+6,+7),
 LIME (+7,+6,+13), YELLOW (+3,+6,+16), LIGHTBLUE (-3,+6,+16), MAGENTA (-7,+6,+13), ORANGE (-13,+6,+7),
 WHITE (-16,+6,+3).
+
+## Relay transport visuals and consumer dependencies (2026-09-12)
+
+- RelayNetworker now sends the discovered source-to-consumer path instead of only logging it.
+  A bounded, immutable typed payload carries the element and up to 64 endpoints. Each nearby
+  player receives it once even when within range of several endpoints. The client creates the
+  V33a segment particles using the real bigflare, rotating-flare-pulse, blurflare2 and flare7
+  sprites, original scale range, velocity, drag and termination conditions. Finding a source
+  does not consume its lumen: the requesting consumer owns that transfer.
+- The Area Delegation Point (Function Relay) is registered as `chromaticraft:function_relay`.
+  Its first-tick/fifty-tick cache scans x/z +/-6, y -6 through +2, clipped to horizontal
+  Manhattan distance nine. Random delegation samples non-air cached coordinates. Queries do
+  not force-load missing chunks. Its bookshelf integration sums the separate 11x3x11 range,
+  excludes other Function Relays to prevent recursion, and is wired into NeoForge's actual
+  enchanting-power hook. It retains a full-block selection box and no physical collision.
+- Function Relay world and special-item renderers use Reika's real animated cellflare sprite,
+  the four original colours at a 25-tick cadence, camera-facing 0.875 world scale and authored
+  inventory tilt/scale. The submit pipeline disables culling and depth writes; its expanded
+  render bounds include the full flare. Negative identity-hash offsets are wrapped safely.
+  The original spherical particle experiment was disabled in V33a and is not enabled here.
+- Server/client datagen emitted its real temple casting recipe (Transmissive Dust above/below,
+  Aura Dust left/right, Glowstone centre; gray/yellow/lime runes at the exact source offsets),
+  twenty-tick duration, forty XP, loot, mining tag, item/block models and language entry.
+  The existing creative block-item population includes it, and the lexicon resolves its icon.
+- Function Relay effect descriptions retain all six original associations. Descriptions of
+  not-yet-registered consumers retain explicit deferred item keys, without supplying fake
+  stacks. Farmer/Harvest Plant, Crop Speed/Reverter and Cobble Generator must connect their
+  operational calls and final item IDs as those consumers land; only the bookshelf caller
+  is live in this accepted slice.
+- DragonAPI's modern CropType/ReikaCropHelper cover the original five vanilla crop families:
+  wheat, carrots, potatoes, nether wart and cocoa. They use native age properties and actual
+  server-side vanilla loot with Fortune, preserve cocoa's attachment direction when resetting
+  age, and implement the original one-seed reservation. No replacement recipes or loot tables
+  are invented.
+- Validation: the active source slice compiles; both data providers complete successfully.
+  `chromaticraft:relay_path_routing` passes 1/1 in 4.096 s, covering bends, colour rejection,
+  solid obstruction, empty sources, loops and payload round-trip ordering.
+  `chromaticraft:relay_consumer_dependencies` passes 1/1 in 3.860 s, covering scan boundaries,
+  exact refresh cadence, random selection, non-recursive enchanting power, collision, all five
+  crops, real crop loot and seed reservation. These were separate, serial focused runs, never
+  the full suite. Gradle/compiler/runtime worker counts and memory were bounded using the local
+  validation init script. Client visuals still need in-world acceptance.
+- **Not claimed complete:** RelayPowered and Farmer remain authored dependency-cluster WIP,
+  not registered playable consumers. Their unresolved references include the adjacency/wireless
+  efficiency framework and ModCropList. Farmer also still needs its harvest payload, item
+  renderer and registration/datagen integration. Its eleven-part Techne model and overlays are
+  written, and `textures/entity/farmer.png` was recovered unchanged from the V33a jar
+  (SHA-256 `3FCEA42330B269AA12258DCA957FD9AE0153C2DF274383A650C234E24D01DBB8`).
+  These excluded WIP sources were not covered by the successful active-slice compile/tests.
+  The source audit also corrected their mistaken weight normalization (maximum weight, not
+  total weight), submerged-neighbour check and modern DragonAPI debug flag reference.

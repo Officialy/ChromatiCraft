@@ -31,6 +31,7 @@ public final class ChromaBlockTagsProvider extends BlockTagsProvider {
 				ChromaBlocks.UNKNOWN_ARTEFACT.getKey(), ChromaBlocks.CAVE_INDICATOR.getKey(),
 				ChromaBlocks.STORAGE.getKey(), ChromaBlocks.DISPLAY_POINT.getKey(),
 				ChromaBlocks.PYLON.getKey(), ChromaBlocks.REPEATER.getKey(),
+				ChromaBlocks.FUNCTION_RELAY.getKey(),
 				ChromaBlocks.SKYPEATER.getKey(), ChromaBlocks.CREATIVEPYLON.getKey(),
 				ChromaBlocks.COMPOUND.getKey(), ChromaBlocks.ITEM_STAND.getKey(),
 				ChromaBlocks.CASTING_TABLE.getKey(), ChromaBlocks.DATA_NODE.getKey(),

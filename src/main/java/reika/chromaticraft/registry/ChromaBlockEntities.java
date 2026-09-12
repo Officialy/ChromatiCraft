@@ -58,6 +58,8 @@ public final class ChromaBlockEntities {
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityCrystalRepeater>> REPEATER =
 			register("crystal_repeater", ChromaTiles.REPEATER);
 
+	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<reika.chromaticraft.tileentity.auxiliary.TileEntityFunctionRelay>> FUNCTION_RELAY =
+			register("function_relay", ChromaTiles.FUNCTIONRELAY);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntitySkypeater>> SKYPEATER =
 			register("skypeater", ChromaTiles.SKYPEATER);
 

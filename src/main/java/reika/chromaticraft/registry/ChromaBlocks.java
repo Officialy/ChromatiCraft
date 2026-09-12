@@ -637,6 +637,9 @@ public final class ChromaBlocks {
 			register("crystal_repeater", () -> new BlockChromaticTile(
 					blockProperties().strength(3F, 12F).noOcclusion(), reika.chromaticraft.registry.ChromaTiles.REPEATER));
 
+	public static final DeferredBlock<Block> FUNCTION_RELAY =
+			register("function_relay", () -> new reika.chromaticraft.block.BlockFunctionRelay(
+					blockProperties().strength(5F, 8F).noOcclusion().noCollision()));
 	public static final DeferredBlock<Block> SKYPEATER =
 			register("skypeater", () -> new BlockChromaticTile(
 					blockProperties().strength(3F, 12F).noOcclusion(), reika.chromaticraft.registry.ChromaTiles.SKYPEATER));

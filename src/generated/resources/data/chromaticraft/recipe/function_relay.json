@@ -1,0 +1,58 @@
+{
+  "type": "chromaticraft:casting",
+  "duration": 20,
+  "experience": 40,
+  "grid": [
+    {
+      "ingredient": "chromaticraft:transmissive_dust",
+      "slot": 1
+    },
+    {
+      "ingredient": "chromaticraft:aura_dust",
+      "slot": 3
+    },
+    {
+      "ingredient": "minecraft:glowstone",
+      "slot": 4
+    },
+    {
+      "ingredient": "chromaticraft:aura_dust",
+      "slot": 5
+    },
+    {
+      "ingredient": "chromaticraft:transmissive_dust",
+      "slot": 7
+    }
+  ],
+  "penalty_threshold": 1,
+  "result": {
+    "id": "chromaticraft:function_relay"
+  },
+  "runes": [
+    {
+      "element": "gray",
+      "offset": [
+        -3,
+        0,
+        3
+      ]
+    },
+    {
+      "element": "yellow",
+      "offset": [
+        0,
+        0,
+        -4
+      ]
+    },
+    {
+      "element": "lime",
+      "offset": [
+        3,
+        0,
+        3
+      ]
+    }
+  ],
+  "tier": "temple"
+}

@@ -1,0 +1,9 @@
+{
+  "model": {
+    "type": "minecraft:special",
+    "base": "chromaticraft:block/function_relay",
+    "model": {
+      "type": "chromaticraft:function_relay"
+    }
+  }
+}

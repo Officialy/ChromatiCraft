@@ -192,7 +192,122 @@ public final class ChromaGameTests {
 
 	private ChromaGameTests() {}
 
+	private static void relayPathRouting(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		BlockPos consumer = helper.absolutePos(new BlockPos(3, 3, 3));
+		BlockPos bend = consumer.east(4);
+		BlockPos sourcePos = bend.south(4);
+		for (int distance = 0; distance <= 4; distance++) {
+			level.setBlock(consumer.east(distance), Blocks.AIR.defaultBlockState(), 3);
+			level.setBlock(bend.south(distance), Blocks.AIR.defaultBlockState(), 3);
+		}
+		level.setBlock(bend.below(), Blocks.STONE.defaultBlockState(), 3);
+		level.setBlock(consumer.below(), Blocks.STONE.defaultBlockState(), 3);
+		level.setBlock(bend, ChromaBlocks.lumenRelay(CrystalElement.GREEN).get().defaultBlockState(), 3);
+		var relay = (reika.chromaticraft.block.relay.BlockRelayBase.TileRelayBase)level.getBlockEntity(bend);
+		relay.setInput(Direction.SOUTH);
+		level.setBlock(sourcePos, ChromaBlocks.RELAY_SOURCE.get().defaultBlockState(), 3);
+		var source = (reika.chromaticraft.tileentity.networking.TileEntityRelaySource)level.getBlockEntity(sourcePos);
+		source.setEnergy(CrystalElement.GREEN, 500);
+		var network = reika.chromaticraft.magic.network.RelayNetworker.instance;
+		helper.assertTrue(network.findRelaySource(level, consumer, Direction.EAST, CrystalElement.GREEN, 100, 24) == source,
+				"a matching relay must turn a request toward its input side");
+		helper.assertTrue(source.getEnergy(CrystalElement.GREEN) == 500,
+				"route discovery must leave draining to the requesting consumer");
+		helper.assertTrue(network.findRelaySource(level, consumer, Direction.EAST, CrystalElement.PURPLE, 100, 24) == null,
+				"a relay must reject a different colour");
+		level.setBlock(consumer.east(2), Blocks.STONE.defaultBlockState(), 3);
+		helper.assertTrue(network.findRelaySource(level, consumer, Direction.EAST, CrystalElement.GREEN, 100, 24) == null,
+				"solid blocks must obstruct a relay path");
+		level.setBlock(consumer.east(2), Blocks.AIR.defaultBlockState(), 3);
+		source.setEnergy(CrystalElement.GREEN, 0);
+		helper.assertTrue(network.findRelaySource(level, consumer, Direction.EAST, CrystalElement.GREEN, 100, 24) == source,
+				"an empty source must still be discoverable");
+		relay.setInput(Direction.WEST);
+		level.setBlock(consumer, ChromaBlocks.MULTICHROMIC_RELAY.get().defaultBlockState(), 3);
+		((reika.chromaticraft.block.relay.BlockRelayBase.TileRelayBase)level.getBlockEntity(consumer)).setInput(Direction.EAST);
+		helper.assertTrue(network.findRelaySource(level, consumer, Direction.EAST, CrystalElement.GREEN, 100, 24) == null,
+				"a cycle of mirrors must terminate at the hop limit");
+		var payload = new reika.chromaticraft.network.ChromaNetwork.RelayConnection(
+				List.of(sourcePos, bend, consumer), CrystalElement.GREEN.ordinal());
+		var buffer = io.netty.buffer.Unpooled.buffer();
+		try {
+			reika.chromaticraft.network.ChromaNetwork.RelayConnection.CODEC.encode(buffer, payload);
+			helper.assertTrue(payload.equals(reika.chromaticraft.network.ChromaNetwork.RelayConnection.CODEC.decode(buffer)),
+					"relay packets must preserve source-to-consumer point order and colour");
+		}
+		finally { buffer.release(); }
+		helper.succeed();
+	}
+
 	private static final Map<WorldLocation, TestReceiver> testReceivers = new HashMap<>();
+
+	private static void relayConsumerDependencies(GameTestHelper helper) {
+		ServerLevel world = helper.getLevel();
+		BlockPos center = helper.absolutePos(new BlockPos(8, 10, 8));
+		for (BlockPos target : BlockPos.betweenClosed(center.offset(-6, -7, -6), center.offset(6, 3, 6)))
+			world.setBlock(target, Blocks.AIR.defaultBlockState(), 2);
+		world.setBlock(center, ChromaBlocks.FUNCTION_RELAY.get().defaultBlockState(), 3);
+		var relay = (reika.chromaticraft.tileentity.auxiliary.TileEntityFunctionRelay)world.getBlockEntity(center);
+		BlockPos lower = center.offset(6, -6, 3);
+		BlockPos upper = center.offset(-6, 2, -3);
+		BlockPos outside = center.offset(6, 0, 4);
+		for (BlockPos target : List.of(lower, upper, outside, center.above(3), center.below(7)))
+			world.setBlock(target, Blocks.STONE.defaultBlockState(), 2);
+		for (int tick = 0; tick < 50; tick++) relay.updateEntity(world, center);
+		helper.assertTrue(relay.getCoordinates().size() == 3,
+				"Function Relay must scan the exact clipped 13x9x13 volume, including itself");
+		var lowerCoordinate = new reika.dragonapi.instantiable.data.immutable.Coordinate(lower);
+		var upperCoordinate = new reika.dragonapi.instantiable.data.immutable.Coordinate(upper);
+		helper.assertTrue(relay.getCoordinates().contains(lowerCoordinate) && relay.getCoordinates().contains(upperCoordinate),
+				"both inclusive height and taxi-distance boundaries must be scanned");
+		world.setBlock(lower, Blocks.AIR.defaultBlockState(), 2);
+		for (int tick = 0; tick < 49; tick++) relay.updateEntity(world, center);
+		helper.assertTrue(relay.getCoordinates().contains(lowerCoordinate), "scan cache lasts fifty ticks");
+		relay.updateEntity(world, center);
+		helper.assertTrue(!relay.getCoordinates().contains(lowerCoordinate), "fiftieth tick refreshes the cache");
+		for (int choice = 0; choice < 32; choice++)
+			helper.assertTrue(relay.getCoordinates().contains(relay.getRandomCoordinate()),
+					"delegation chooses only cached coordinates");
+		world.setBlock(center.offset(-5, -1, 0), Blocks.BOOKSHELF.defaultBlockState(), 2);
+		world.setBlock(center.offset(5, 1, 0), Blocks.BOOKSHELF.defaultBlockState(), 2);
+		world.setBlock(center.offset(6, 0, 0), Blocks.BOOKSHELF.defaultBlockState(), 2);
+		world.setBlock(center.offset(0, 2, 0), Blocks.BOOKSHELF.defaultBlockState(), 2);
+		world.setBlock(center.east(), ChromaBlocks.FUNCTION_RELAY.get().defaultBlockState(), 3);
+		helper.assertTrue(world.getBlockState(center).getEnchantPowerBonus(world, center) == 2,
+				"bookshelf relay sums only the 11x3x11 range and must never recurse into another relay");
+		helper.assertTrue(world.getBlockState(center).getCollisionShape(world, center).isEmpty(),
+				"the luminous delegation point has no physical collision");
+
+		BlockPos cropPos = center.above(5);
+		for (var crop : reika.dragonapi.libraries.registry.ReikaCropHelper.cropList) {
+			world.setBlock(cropPos.below(),
+					(crop == reika.dragonapi.libraries.registry.ReikaCropHelper.NETHERWART
+							? Blocks.SOUL_SAND : Blocks.FARMLAND).defaultBlockState(), 2);
+			world.setBlock(cropPos.south(), Blocks.JUNGLE_LOG.defaultBlockState(), 2);
+			BlockState state = crop.blockID.defaultBlockState();
+			if (crop == reika.dragonapi.libraries.registry.ReikaCropHelper.COCOA)
+				state = state.setValue(net.minecraft.world.level.block.CocoaBlock.FACING, Direction.SOUTH);
+			world.setBlock(cropPos, state, 2);
+			helper.assertTrue(!crop.isRipe(world, cropPos), "fresh crop must not be ripe: " + crop);
+			crop.makeRipe(world, cropPos);
+			helper.assertTrue(crop.isRipe(world, cropPos), "maturation must use the crop's own age range: " + crop);
+			helper.assertTrue(!crop.getDrops(world, cropPos, 3).isEmpty(), "mature crop uses real vanilla loot: " + crop);
+			crop.setHarvested(world, cropPos);
+			helper.assertTrue(crop.getGrowthState(world, cropPos) == 0, "harvest resets growth: " + crop);
+			if (crop == reika.dragonapi.libraries.registry.ReikaCropHelper.COCOA)
+				helper.assertTrue(world.getBlockState(cropPos).getValue(net.minecraft.world.level.block.CocoaBlock.FACING) == Direction.SOUTH,
+						"cocoa must remain attached to its original support when harvested");
+		}
+		var drops = new java.util.ArrayList<>(List.of(new ItemStack(Items.WHEAT), new ItemStack(Items.WHEAT_SEEDS, 2)));
+		reika.dragonapi.interfaces.registry.CropType.CropMethods.removeOneSeed(
+				reika.dragonapi.libraries.registry.ReikaCropHelper.WHEAT, drops);
+		helper.assertTrue(drops.size() == 2 && drops.get(1).getCount() == 1, "replanting consumes exactly one seed");
+		reika.dragonapi.interfaces.registry.CropType.CropMethods.removeOneSeed(
+				reika.dragonapi.libraries.registry.ReikaCropHelper.WHEAT, drops);
+		helper.assertTrue(drops.size() == 1 && drops.getFirst().is(Items.WHEAT), "empty seed stacks must be removed");
+		helper.succeed();
+	}
 
 	/** Codec types for our in-code {@link GameTestInstance}s; this registry is network-synced. */
 	public static final DeferredRegister<MapCodec<? extends GameTestInstance>> TEST_INSTANCE_TYPES =
@@ -215,6 +330,8 @@ public final class ChromaGameTests {
 		register(event, env, "progression_color_discovery", ChromaGameTests::colorDiscovery);
 		register(event, env, "progression_chained_energy_idea", ChromaGameTests::chainedEnergyIdea);
 		register(event, env, "network_pylon_to_receiver", ChromaGameTests::pylonToReceiver);
+		register(event, env, "relay_path_routing", ChromaGameTests::relayPathRouting);
+		register(event, env, "relay_consumer_dependencies", ChromaGameTests::relayConsumerDependencies);
 		register(event, env, "network_pylon_repeater_receiver", ChromaGameTests::pylonRepeaterReceiver);
 		register(event, env, "pylon_structure_lifecycle", 35, ChromaGameTests::pylonStructureLifecycle);
 		register(event, env, "pylon_broadcast_template_contract", ChromaGameTests::pylonBroadcastTemplateContract);

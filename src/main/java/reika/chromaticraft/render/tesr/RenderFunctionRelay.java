@@ -9,113 +9,82 @@
  ******************************************************************************/
 package reika.chromaticraft.render.tesr;
 
-import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL12;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
+import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
+import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
+import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.client.renderer.texture.TextureAtlas;
+import net.minecraft.data.AtlasIds;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
-import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.client.renderer.entity.RenderManager;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.IIcon;
-
-import reika.chromaticraft.base.ChromaRenderBase;
-import reika.chromaticraft.registry.ChromaIcons;
+import reika.chromaticraft.render.ChromaRenderPipelines;
 import reika.chromaticraft.tileentity.auxiliary.TileEntityFunctionRelay;
 import reika.dragonapi.instantiable.rendering.ColorBlendList;
-import reika.dragonapi.interfaces.tileentity.RenderFetcher;
-import reika.dragonapi.libraries.io.ReikaTextureHelper;
-import reika.dragonapi.libraries.java.reikaglhelper.BlendMode;
-import reika.dragonapi.libraries.rendering.ReikaRenderHelper;
 
+public final class RenderFunctionRelay implements BlockEntityRenderer<TileEntityFunctionRelay, RenderFunctionRelay.State> {
+    public static final Identifier SPRITE = Identifier.fromNamespaceAndPath("chromaticraft", "block/icons/cellflare");
+    private static final ColorBlendList COLORS = new ColorBlendList(25, 0x22aaff, 0x20a020, 0xffffff, 0xf0c020);
 
-public class RenderFunctionRelay extends ChromaRenderBase {
+    public RenderFunctionRelay(BlockEntityRendererProvider.Context context) {}
+    @Override public State createRenderState() { return new State(); }
 
-	private final ColorBlendList colorList = new ColorBlendList(25).addColor(0x22aaff).addColor(0x20a020).addColor(0xffffff).addColor(0xf0c020);
+    @Override public void extractRenderState(TileEntityFunctionRelay tile, State state, float partialTick,
+            Vec3 cameraPosition, ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress) {
+        BlockEntityRenderer.super.extractRenderState(tile, state, partialTick, cameraPosition, breakProgress);
+        state.color = colorAt((long)tile.getTicksExisted() + tile.hashCode());
+    }
 
-	private final ChromaIcons[] icons = new ChromaIcons[]{
-			ChromaIcons.CELLFLARE,
-	};
+    @Override public AABB getRenderBoundingBox(TileEntityFunctionRelay tile) {
+        return new AABB(tile.getBlockPos()).inflate(1);
+    }
 
-	@Override
-	public String getImageFileName(RenderFetcher te) {
-		return null;
-	}
+    @Override public void submit(State state, PoseStack poseStack, SubmitNodeCollector collector, CameraRenderState camera) {
+        poseStack.pushPose();
+        poseStack.translate(0.5, 0.5, 0.5);
+        poseStack.mulPose(camera.orientation);
+        poseStack.scale(0.875F, -0.875F, 0.875F);
+        submitSprite(poseStack, collector, state.color);
+        poseStack.popPose();
+    }
 
-	@Override
-	public void renderTileEntityAt(TileEntity tile, double par2, double par4, double par6, float par8) {
-		TileEntityFunctionRelay te = (TileEntityFunctionRelay)tile;
+    public static void submitItem(PoseStack poseStack, SubmitNodeCollector collector) {
+        poseStack.pushPose();
+        poseStack.translate(0.5, 0.5, 0.5);
+        poseStack.scale(1, -1, -1);
+        poseStack.mulPose(Axis.YP.rotationDegrees(-45));
+        poseStack.mulPose(Axis.XP.rotationDegrees(-30));
+        poseStack.scale(1.125F, 1.125F, 1.125F);
+        submitSprite(poseStack, collector, colorAt(System.currentTimeMillis() / 50));
+        poseStack.popPose();
+    }
 
-		GL11.glPushMatrix();
-		GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
-		GL11.glEnable(GL12.GL_RESCALE_NORMAL);
-		GL11.glEnable(GL11.GL_BLEND);
-		GL11.glDisable(GL11.GL_LIGHTING);
-		BlendMode.ADDITIVEDARK.apply();
-		GL11.glDepthMask(false);
-		ReikaRenderHelper.disableEntityLighting();
-		GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
-		GL11.glTranslatef((float)par2, (float)par4 + 1.0F, (float)par6 + 1.0F);
-		GL11.glScalef(1.0F, -1.0F, -1.0F);
+    public static int colorAt(long time) {
+        return 0xff000000 | COLORS.getColor(Math.floorMod(time, 100));
+    }
 
-		this.drawInner(te);
+    private static void submitSprite(PoseStack source, SubmitNodeCollector collector, int color) {
+        var sprite = Minecraft.getInstance().getAtlasManager().getAtlasOrThrow(AtlasIds.BLOCKS).getSprite(SPRITE);
+        PoseStack pose = new PoseStack();
+        pose.last().pose().set(source.last().pose());
+        pose.last().normal().set(source.last().normal());
+        collector.submitCustomGeometry(pose, ChromaRenderPipelines.legacyAdditiveSprite(TextureAtlas.LOCATION_BLOCKS),
+                (unused, out) -> {
+                    out.addVertex(pose.last(), -1, -1, 0).setUv(sprite.getU0(), sprite.getV0()).setColor(color);
+                    out.addVertex(pose.last(), 1, -1, 0).setUv(sprite.getU1(), sprite.getV0()).setColor(color);
+                    out.addVertex(pose.last(), 1, 1, 0).setUv(sprite.getU1(), sprite.getV1()).setColor(color);
+                    out.addVertex(pose.last(), -1, 1, 0).setUv(sprite.getU0(), sprite.getV1()).setColor(color);
+                });
+    }
 
-		if (te.hasWorldObj())
-			GL11.glDisable(GL12.GL_RESCALE_NORMAL);
-		GL11.glPopMatrix();
-		GL11.glPopAttrib();
-		GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
-	}
-
-	private void drawInner(TileEntityFunctionRelay te) {
-		ReikaTextureHelper.bindTerrainTexture();
-
-		Tessellator v5 = Tessellator.instance;
-		GL11.glPushMatrix();
-		GL11.glDisable(GL11.GL_CULL_FACE);
-
-		double s = te.isInWorld() ? 0.875 : 0.75;
-		if (te.hasWorldObj()) {
-			GL11.glTranslated(0.5, 0.5, 0.5);
-			GL11.glScaled(s, s, s);
-			RenderManager rm = RenderManager.instance;
-			GL11.glRotatef(rm.playerViewY, 0.0F, 1.0F, 0.0F);
-			GL11.glRotatef(rm.playerViewX, 1.0F, 0.0F, 0.0F);
-		}
-		else {
-			GL11.glTranslated(0.5, 0.5, 0.5);
-			GL11.glRotated(-45, 0, 1, 0);
-			GL11.glRotated(-30, 1, 0, 0);
-			GL11.glScaled(s, s, s);
-		}
-
-		//double ang = (System.currentTimeMillis()/20D)%360;
-		//GL11.glRotated(ang, 0, 0, 1);
-		GL11.glPushMatrix();
-		double s2 = te.isInWorld() ? 1 : 1.5;
-		GL11.glScaled(s2, s2, s2);
-		int t = te.isInWorld() ? te.getTicksExisted()+te.hashCode() : Math.abs((int)(System.currentTimeMillis()/50));
-		int c = colorList.getColor(t);
-
-		for (int i = 0; i < icons.length; i++) {
-			IIcon ico = icons[i].getIcon();
-			float u = ico.getMinU();
-			float v = ico.getMinV();
-			float du = ico.getMaxU();
-			float dv = ico.getMaxV();
-
-			v5.startDrawingQuads();
-			v5.setColorOpaque_I(c);
-			v5.addVertexWithUV(-1, -1, 0, u, v);
-			v5.addVertexWithUV(1, -1, 0, du, v);
-			v5.addVertexWithUV(1, 1, 0, du, dv);
-			v5.addVertexWithUV(-1, 1, 0, u, dv);
-			v5.draw();
-		}
-		GL11.glPopMatrix();
-
-		GL11.glEnable(GL11.GL_CULL_FACE);
-		BlendMode.DEFAULT.apply();
-
-		GL11.glPopMatrix();
-	}
-
+    public static final class State extends BlockEntityRenderState {
+        private int color;
+    }
 }

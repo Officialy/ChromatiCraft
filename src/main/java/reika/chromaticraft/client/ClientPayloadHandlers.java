@@ -26,6 +26,14 @@ public final class ClientPayloadHandlers {
 
 	private ClientPayloadHandlers() {}
 
+	public static void relayConnection(java.util.List<BlockPos> path, CrystalElement color) {
+		Minecraft minecraft = Minecraft.getInstance();
+		if (minecraft.level == null) return;
+		for (int index = 1; index < path.size(); index++)
+			minecraft.particleEngine.add(new reika.chromaticraft.render.particle.EntityRelayPathFX(
+					minecraft.level, color, path.get(index - 1), path.get(index)));
+	}
+
 	/**
 	 * Builds this client's own copy of Proxima's sky rivers from the seed the server sent.
 	 *

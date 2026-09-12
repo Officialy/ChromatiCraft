@@ -129,6 +129,17 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 							'L', Ingredient.of(net.minecraft.world.item.Items.LAPIS_LAZULI)),
 					"I I", "SLS", "CCC");
 
+			saveRecipe("function_relay", new CastingTableRecipe(CastingTableRecipe.Tier.TEMPLE,
+					shapedGrid(Map.of('D', tiered(ChromaTieredItems.BEACON_DUST),
+							'A', tiered(ChromaTieredItems.AURA_DUST), 'C', Ingredient.of(Items.GLOWSTONE)),
+							" D ", "ACA", " D "),
+					List.of(),
+					List.of(new RuneRequirement(new net.minecraft.core.BlockPos(-3, 0, 3), CrystalElement.GRAY),
+							new RuneRequirement(new net.minecraft.core.BlockPos(0, 0, -4), CrystalElement.YELLOW),
+							new RuneRequirement(new net.minecraft.core.BlockPos(3, 0, 3), CrystalElement.LIME)),
+					List.of(), new ItemStackTemplate(ChromaBlocks.FUNCTION_RELAY.get().asItem()), 20, 40)
+					.withPenaltyThreshold(1));
+
 			// Complete V33a CrystalGroupRecipe family: ordinary and boosted inputs.
 			saveGroup("red", ChromaClusterItems.RED_GROUP, Ingredient.of(ChromaItems.TIERED.get(ChromaTieredItems.AURA_DUST).get()), new CrystalElement[] {CrystalElement.RED, CrystalElement.BLUE, CrystalElement.PURPLE, CrystalElement.MAGENTA}, false);
 			saveGroup("green", ChromaClusterItems.GREEN_GROUP, Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.LIVING_ESSENCE).get()), new CrystalElement[] {CrystalElement.YELLOW, CrystalElement.CYAN, CrystalElement.LIME, CrystalElement.GREEN}, false);

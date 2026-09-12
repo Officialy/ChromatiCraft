@@ -31,6 +31,9 @@ public final class ChromaNetwork {
 
 	public static void register(RegisterPayloadHandlersEvent event) {
 		PayloadRegistrar registrar = event.registrar(ChromatiCraft.MODID).versioned("1");
+		registrar.playToClient(RelayConnection.TYPE, RelayConnection.CODEC,
+				(payload, context) -> context.enqueueWork(() -> ClientPayloadHandlers.relayConnection(
+						payload.path(), element(payload.color()))));
 		registrar.playToClient(ProximaLayoutSeed.TYPE, ProximaLayoutSeed.CODEC,
 				ChromaNetwork::handleProximaLayoutSeed);
 		registrar.playToClient(MonumentRitualState.TYPE, MonumentRitualState.CODEC,
@@ -444,6 +447,34 @@ public final class ChromaNetwork {
 				ToggleCrystalCharger::color, ToggleCrystalCharger::new);
 		@Override public Type<ToggleCrystalCharger> type() { return TYPE; }
 	}
+	public record RelayConnection(java.util.List<BlockPos> path, int color) implements CustomPacketPayload {
+		public static final Type<RelayConnection> TYPE = createType("relay_connection");
+		public static final StreamCodec<ByteBuf, RelayConnection> CODEC = StreamCodec.composite(
+				BlockPos.STREAM_CODEC.apply(ByteBufCodecs.list(64)), RelayConnection::path,
+				ByteBufCodecs.VAR_INT, RelayConnection::color, RelayConnection::new);
+
+		public RelayConnection {
+			path = path.stream().map(BlockPos::immutable).toList();
+			if (path.size() < 2 || path.size() > 64 || color < 0 || color >= CrystalElement.elements.length)
+				throw new IllegalArgumentException("Invalid lumen relay path");
+		}
+
+		@Override public Type<RelayConnection> type() { return TYPE; }
+	}
+
+	public static void sendRelayConnection(ServerLevel level, java.util.List<BlockPos> path,
+			CrystalElement color) {
+		RelayConnection payload = new RelayConnection(path, color.ordinal());
+		for (ServerPlayer player : level.players()) {
+			for (BlockPos point : payload.path()) {
+				if (player.distanceToSqr(point.getX() + 0.5, point.getY() + 0.5, point.getZ() + 0.5) < 4096) {
+					PacketDistributor.sendToPlayer(player, payload);
+					break;
+				}
+			}
+		}
+	}
+
 	private static <T extends CustomPacketPayload> CustomPacketPayload.Type<T> createType(String path) {
 		return new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, path));
 	}
