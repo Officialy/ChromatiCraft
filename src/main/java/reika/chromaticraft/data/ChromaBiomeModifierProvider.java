@@ -43,6 +43,12 @@ public final class ChromaBiomeModifierProvider implements DataProvider {
                 CAVE_CRYSTAL, GenerationStep.Decoration.UNDERGROUND_DECORATION));
         futures.add(save(cache, "cave_crystal_nether", "#minecraft:is_nether",
                 CAVE_CRYSTAL, GenerationStep.Decoration.UNDERGROUND_DECORATION));
+		// V33a's GlowingCliffsColumnShaper inspected every overworld column, including biome
+		// boundaries. Attaching this once to every overworld biome prevents chunk-origin gaps and
+		// lets the feature blend each actual Luminous Cliffs column into its neighbour terrain.
+		futures.add(save(cache, "luminous_cliffs_terrain_overworld", "#minecraft:is_overworld",
+				id("luminous_cliffs_terrain").toString(),
+				GenerationStep.Decoration.LOCAL_MODIFICATIONS));
         // V33a's PylonGenerator was a RetroactiveGenerator, so it ran after the chunk was fully
         // populated -- which is why its site test is built around trees (log/leaf replaceability,
         // getTreeDodgeAttempt, sinking the array through wood and leaves). SURFACE_STRUCTURES is

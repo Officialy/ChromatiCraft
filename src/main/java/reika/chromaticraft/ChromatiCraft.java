@@ -132,6 +132,7 @@ public class ChromatiCraft extends DragonAPIMod {
 			PylonFinder.registerTransparentBlock(RotaryBlocks.BLASTGLASS.get());
 			PylonFinder.registerTransparentBlock(RotaryBlocks.BLASTPANE.get());
 			terrablender.api.Regions.register(new reika.chromaticraft.world.biome.ChromaRegion());
+			terrablender.api.Regions.register(new reika.chromaticraft.world.biome.LuminousCliffsRegion());
 		});
 	}
 

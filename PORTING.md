@@ -6429,3 +6429,32 @@ WHITE (-16,+6,+3).
   These excluded WIP sources were not covered by the successful active-slice compile/tests.
   The source audit also corrected their mistaken weight normalization (maximum weight, not
   total weight), submerged-neighbour check and modern DragonAPI debug flag reference.
+
+## Tiered-plant visibility, Ethereal Luma and Luminous Cliffs boundaries (2026-09-12)
+
+- Tiered plants still make their V33a per-viewer progression decision in the dynamic chunk model,
+  but the client now tracks the local player's seven relevant stages and creative state. It asks
+  the 26.2 `LevelExtractor` to invalidate compiled geometry only when that visibility signature
+  changes. Progress grants and creative/survival switches therefore hide or reveal Glowing Roots
+  and the six related plants immediately, without waiting for a neighbouring block update and
+  without continuously rebuilding chunk meshes.
+- Ethereal Luma now uses the same water-material entity travel that V33a's `BlockFluidClassic`
+  inherited. Its viscosity 50 continues to control fluid spreading, while breathable Luma keeps
+  `canDrown(false)`; the removed nearly-air movement path applied full gravity after each custom-
+  fluid jump and cancelled the upward impulse, trapping players in the fluid.
+- Luminous Cliffs now owns a dedicated TerraBlender region weighted by the existing
+  `CLIFFWEIGHT` option. V33a inserted it as a complete warm/cool biome; the previous port instead
+  replaced only rare Windswept climate cells inside the Rainbow Forest region, producing tiny,
+  repeatedly fragmented patches. Ordinary surface land targets in the dedicated region now map
+  to the main biome, with beaches, shores and rivers mapped to its shore child.
+- The cliff terrain feature is attached globally to overworld generation, matching V33a's global
+  column shaper. It still writes only actual Luminous Cliffs columns, but no longer depends on one
+  chunk-origin biome sample. A cached quart-biome mask and linear-time 3/4 chamfer distance field
+  provide the original 24-block inward transition: the middle shelf interpolates from existing
+  terrain and the floating upper shelf gains thickness inward, removing chunk-square walls and
+  clipped slabs without a radial per-column performance cost. Existing generated chunks are not
+  rewritten; visual acceptance requires fresh terrain.
+- Validation: the active source slice compiles. Serial, memory-capped server datagen completed all
+  providers in 1.060 s, emitted `luminous_cliffs_terrain_overworld.json`, and removed the duplicate
+  direct feature reference from both cliff biome JSON files. No full GameTest suite was started,
+  and process checks confirmed no Java process remained after either validation command.

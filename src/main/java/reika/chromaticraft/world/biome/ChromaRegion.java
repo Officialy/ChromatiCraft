@@ -16,7 +16,7 @@ import terrablender.api.RegionType;
 
 import reika.chromaticraft.ChromatiCraft;
 
-/** Low-weight overworld climate region that restores natural Rainbow Forest generation. */
+/** Low-weight overworld climate region that restores Rainbow and Ender Forest generation. */
 public final class ChromaRegion extends Region {
 
     public static final int WEIGHT = 2;
@@ -32,9 +32,6 @@ public final class ChromaRegion extends Region {
         this.addModifiedVanillaOverworldBiomes(mapper, builder -> {
             builder.replaceBiome(Biomes.FOREST, ChromaBiomes.RAINBOW_FOREST);
             builder.replaceBiome(Biomes.RIVER, ChromaBiomes.RAINBOW_STREAM);
-            builder.replaceBiome(Biomes.WINDSWEPT_HILLS, ChromaBiomes.LUMINOUS_CLIFFS);
-            builder.replaceBiome(Biomes.WINDSWEPT_FOREST, ChromaBiomes.LUMINOUS_CLIFFS);
-            builder.replaceBiome(Biomes.STONY_SHORE, ChromaBiomes.LUMINOUS_CLIFFS_SHORES);
             // V33a's Ender Forest replaced ordinary forest; dark forest is the closest slot that
             // does not collide with the Rainbow Forest already taking FOREST.
             builder.replaceBiome(Biomes.DARK_FOREST, ChromaBiomes.ENDER_FOREST);

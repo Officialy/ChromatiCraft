@@ -180,8 +180,6 @@ public final class ChromaBiomes {
 
         BiomeGenerationSettings.Builder generation = new BiomeGenerationSettings.Builder(features, carvers);
         addGlobalOverworldGeneration(generation);
-        generation.addFeature(GenerationStep.Decoration.LOCAL_MODIFICATIONS,
-                features.getOrThrow(ChromaWorldGenProvider.LUMINOUS_CLIFFS_TERRAIN_PLACED));
         generation.addFeature(GenerationStep.Decoration.SURFACE_STRUCTURES,
                 features.getOrThrow(ChromaWorldGenProvider.LUMINOUS_ISLAND_PLACED));
         BiomeDefaultFeatures.addDefaultOres(generation);

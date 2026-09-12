@@ -1,8 +1,11 @@
 package reika.chromaticraft.registry;
 
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.FlowingFluid;
+import net.minecraft.world.phys.Vec3;
 
 import net.neoforged.neoforge.fluids.BaseFlowingFluid;
 import net.neoforged.neoforge.fluids.FluidType;
@@ -14,6 +17,33 @@ import reika.chromaticraft.ChromatiCraft;
 
 /** Complete 26.2 registry vertical for the V33a Liquid Chroma world fluid. */
 public final class ChromaFluids {
+
+	/**
+	 * 26.2 does not automatically give an untagged custom fluid water movement. The default
+	 * {@link FluidType#move} returns false and LivingEntity then deliberately performs no movement
+	 * for a non-water/non-lava type, which was why Luma held players immobile. V33a's
+	 * BlockFluidClassic fluids used the normal swimmable-fluid travel path, so reproduce that path
+	 * here while keeping each fluid's own flow viscosity in its BaseFlowingFluid properties.
+	 */
+	private static final class SwimmableFluidType extends FluidType {
+
+		private SwimmableFluidType(Properties properties) {
+			super(properties);
+		}
+
+		@Override
+		public boolean move(LivingEntity entity, Vec3 input, double gravity) {
+			boolean falling = entity.getDeltaMovement().y <= 0;
+			entity.moveRelative(0.02F, input);
+			entity.move(MoverType.SELF, entity.getDeltaMovement());
+			Vec3 movement = entity.getDeltaMovement();
+			if (entity.horizontalCollision && entity.onClimbable())
+				movement = new Vec3(movement.x, 0.2, movement.z);
+			movement = movement.multiply(0.8, 0.8, 0.8);
+			entity.setDeltaMovement(entity.getFluidFallingAdjustedMovement(gravity, falling, movement));
+			return true;
+		}
+	}
 
 	public static final DeferredRegister<Fluid> FLUIDS =
 			DeferredRegister.create(BuiltInRegistries.FLUID, ChromatiCraft.MODID);
@@ -40,7 +70,10 @@ public final class ChromaFluids {
 	public static final DeferredHolder<Fluid, FlowingFluid> FLOWING_LUMA = FLUIDS.register("flowing_luma",
 			() -> new BaseFlowingFluid.Flowing(ChromaFluids.LUMA_PROPERTIES));
 	public static final DeferredHolder<FluidType, FluidType> LUMA_TYPE = FLUID_TYPES.register("luma",
-			() -> new FluidType(FluidType.Properties.create().density(1).viscosity(50).temperature(250)));
+			// V33a's low viscosity controls how readily the BlockFluidClassic spreads; its material is
+			// still Material.water, so entities use water-style travel and can swim/jump back out.
+			() -> new SwimmableFluidType(FluidType.Properties.create().density(1).viscosity(50)
+					.temperature(250).canDrown(false).fallDistanceModifier(0.5F)));
 	public static final BaseFlowingFluid.Properties LUMA_PROPERTIES =
 			new BaseFlowingFluid.Properties(LUMA_TYPE, LUMA, FLOWING_LUMA)
 					.block(() -> ChromaBlocks.LUMA.get())
