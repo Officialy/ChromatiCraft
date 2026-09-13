@@ -11,117 +11,120 @@ package reika.chromaticraft.tileentity.plants;
 
 import java.util.Collection;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockCactus;
-import net.minecraft.block.BlockReed;
-import net.minecraft.block.BlockSapling;
-import net.minecraft.init.Blocks;
-import net.minecraft.world.World;
-import net.minecraftforge.common.util.ForgeDirection;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.CactusBlock;
+import net.minecraft.world.level.block.FarmlandBlock;
+import net.minecraft.world.level.block.SaplingBlock;
+import net.minecraft.world.level.block.SugarCaneBlock;
+import net.minecraft.world.level.block.VineBlock;
+import net.minecraft.world.level.block.state.BlockState;
 
 import reika.chromaticraft.auxiliary.interfaces.ComplexAOE;
 import reika.chromaticraft.base.tileentity.TileEntityMagicPlant;
-import reika.chromaticraft.block.worldgen.blockcliffstone.Variants;
+import reika.chromaticraft.block.worldgen26.BlockDecoFlower;
+import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaTiles;
 import reika.chromaticraft.tileentity.auxiliary.TileEntityFunctionRelay;
 import reika.dragonapi.instantiable.data.WeightedRandom;
 import reika.dragonapi.instantiable.data.immutable.Coordinate;
-import reika.dragonapi.libraries.java.ReikaRandomHelper;
 import reika.dragonapi.libraries.registry.ReikaCropHelper;
-import reika.dragonapi.libraries.world.ReikaWorldHelper;
 import reika.dragonapi.modregistry.ModCropList;
 
+/** V33a Crop Speed Plant: hydrates farmland and forces nearby crop growth ticks. */
+public final class TileEntityCropSpeedPlant extends TileEntityMagicPlant implements ComplexAOE {
 
-public class TileEntityCropSpeedPlant extends TileEntityMagicPlant implements ComplexAOE {
-
-	private static double[][] growthDistrib = {
+	private static final double[][] GROWTH_DISTRIBUTION = {
 			{0, 0, 4, 0, 0},
 			{0, 1, 8, 1, 0},
 			{4, 8, 0, 8, 4},
 			{0, 1, 8, 1, 0},
-			{0, 0, 4, 0, 0},
+			{0, 0, 4, 0, 0}
 	};
-
-	private static double[][] hydrateDistrib = {
+	private static final double[][] HYDRATE_DISTRIBUTION = {
 			{0, 1, 4, 1, 0},
 			{1, 2, 6, 2, 1},
 			{4, 6, 4, 6, 4},
 			{1, 2, 6, 2, 1},
-			{0, 1, 4, 1, 0},
+			{0, 1, 4, 1, 0}
 	};
+	private static final WeightedRandom<BlockPos> GROWTH_RANDOM =
+			WeightedRandom.fromArray(GROWTH_DISTRIBUTION);
+	private static final WeightedRandom<BlockPos> HYDRATE_RANDOM =
+			WeightedRandom.fromArray(HYDRATE_DISTRIBUTION);
 
-	private static final WeightedRandom<Coordinate> growthRand = WeightedRandom.fromArray(growthDistrib);
-	private static final WeightedRandom<Coordinate> hydrateRand = WeightedRandom.fromArray(hydrateDistrib);
-
-	@Override
-	public ForgeDirection getGrowthDirection() {
-		return ForgeDirection.UP;
+	public TileEntityCropSpeedPlant(BlockPos pos, BlockState state) {
+		super(ChromaBlockEntities.CROP_SPEED_PLANT.get(), pos, state);
 	}
 
-	@Override
-	public ChromaTiles getTile() {
-		return ChromaTiles.CROPSPEED;
-	}
+	@Override public Direction getGrowthDirection() { return Direction.UP; }
+
+	@Override public ChromaTiles getTile() { return ChromaTiles.CROPSPEED; }
 
 	@Override
-	public void updateEntity(World world, int x, int y, int z, int meta) {
-		if (world.isRemote)
-			return;
-		if (rand.nextInt(4) == 0)
-			this.hydrateFarmland(world, x, y, z);
-		double n = 0.5+this.getAccelerationPlants()/2D;
-		while (n >= 1) {
-			this.growCrop(world, x, y, z);
-			n -= 1;
+	public void updateEntity(Level world, BlockPos pos) {
+		if (!(world instanceof ServerLevel server)) return;
+		if (world.getRandom().nextInt(4) == 0) this.hydrateFarmland(server, pos);
+		double operations = 0.5D + this.getAccelerationPlants() / 2D;
+		while (operations >= 1) {
+			this.growCrop(server, pos);
+			operations--;
 		}
-		if (ReikaRandomHelper.doWithChance(n))
-			this.growCrop(world, x, y, z);
+		if (world.getRandom().nextDouble() < operations) this.growCrop(server, pos);
 	}
 
-	private void hydrateFarmland(World world, int x, int y, int z) {
-		Coordinate c = hydrateRand.getRandomEntry().offset(x, y-1, z);
-		Block b = c.getBlock(world);
-		if (b == Blocks.farmland) {
-			ReikaWorldHelper.hydrateFarmland(world, c.xCoord, c.yCoord, c.zCoord, false);
-		}
+	private void hydrateFarmland(ServerLevel world, BlockPos pos) {
+		BlockPos relative = HYDRATE_RANDOM.getRandomEntry();
+		if (relative == null) return;
+		BlockPos target = pos.offset(relative.getX(), -1, relative.getZ());
+		if (!world.hasChunkAt(target)) return;
+		BlockState state = world.getBlockState(target);
+		if (state.is(Blocks.FARMLAND) && state.getValue(FarmlandBlock.MOISTURE) < FarmlandBlock.MAX_MOISTURE)
+			world.setBlock(target, state.setValue(FarmlandBlock.MOISTURE, FarmlandBlock.MAX_MOISTURE), 2);
 	}
 
-	private void growCrop(World world, int x, int y, int z) {
-		Coordinate c = growthRand.getRandomEntry().offset(x, y, z);
-		Block b = c.getBlock(world);
-		int meta = c.getBlockMetadata(world);
-		if (ChromaTiles.getTileFromIDandMetadata(b, meta) == ChromaTiles.FUNCTIONRELAY) {
-			c = ((TileEntityFunctionRelay)c.getTileEntity(world)).getRandomCoordinate();
-			b = c.getBlock(world);
-			meta = c.getBlockMetadata(world);
+	private void growCrop(ServerLevel world, BlockPos pos) {
+		BlockPos relative = GROWTH_RANDOM.getRandomEntry();
+		if (relative == null) return;
+		BlockPos target = pos.offset(relative);
+		if (!world.hasChunkAt(target)) return;
+		if (world.getBlockEntity(target) instanceof TileEntityFunctionRelay relay) {
+			Coordinate relayed = relay.getRandomCoordinate();
+			if (relayed == null) return;
+			target = relayed.asBlockPos();
+			if (!world.hasChunkAt(target)) return;
 		}
-		boolean flag = b instanceof BlockSapling || b == ChromaBlocks.DECOFLOWER.getBlockInstance() || b instanceof BlockReed || b instanceof BlockCactus || b == Blocks.vine;
-		flag |= ReikaCropHelper.getCrop(b) != null;
-		flag |= ModCropList.getModCrop(b, meta) != null;
-		if (flag) {
-			c.updateTick(world);
-		}
+		BlockState state = world.getBlockState(target);
+		Block block = state.getBlock();
+		boolean growable = block instanceof SaplingBlock || block instanceof BlockDecoFlower
+				|| block instanceof SugarCaneBlock || block instanceof CactusBlock
+				|| block instanceof VineBlock || ReikaCropHelper.getCrop(block) != null
+				|| ModCropList.getModCrop(world, target, state) != null;
+		if (growable) state.randomTick(world, target, world.getRandom());
+	}
+
+	@Override protected void animateWithTick(Level world, BlockPos pos) {
 	}
 
 	@Override
-	protected void animateWithTick(World world, int x, int y, int z) {
-
-	}
-
-	@Override
-	public boolean isPlantable(World world, int x, int y, int z) {
-		return world.getBlock(x, y-1, z) == Blocks.farmland || ChromaTiles.getTile(world, x, y-1, z) == ChromaTiles.PLANTACCEL || (world.getBlock(x, y-1, z) == ChromaBlocks.CLIFFSTONE.getBlockInstance() && Variants.getVariant(world.getBlockMetadata(x, y-1, z)) == Variants.FARMLAND);
+	public boolean isPlantable(Level world, BlockPos pos) {
+		BlockState below = world.getBlockState(pos.below());
+		return below.is(Blocks.FARMLAND) || below.is(ChromaBlocks.PLANT_ACCELERATOR.get())
+				|| below.is(ChromaBlocks.CLIFF_FARMLAND.get());
 	}
 
 	@Override
 	public Collection<Coordinate> getPossibleRelativePositions() {
-		return growthRand.getValues();
+		return GROWTH_RANDOM.getValues().stream().map(Coordinate::new).toList();
 	}
 
 	@Override
-	public double getNormalizedWeight(Coordinate c) {
-		return growthRand.getNormalizedWeight(c);
+	public double getNormalizedWeight(Coordinate coordinate) {
+		return GROWTH_RANDOM.getWeight(coordinate.asBlockPos()) / GROWTH_RANDOM.getMaxWeight();
 	}
-
 }

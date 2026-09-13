@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "crop_form=false": {
+      "model": "chromaticraft:block/biome_reverter"
+    },
+    "crop_form=true": {
+      "model": "chromaticraft:block/biome_reverter_crop"
+    }
+  }
+}

@@ -6516,3 +6516,28 @@ WHITE (-16,+6,+3).
   two-gigabyte-capped client and server datagen runs completed successfully and emitted the two
   blockstates, ordinary/crop block models, two-layer item models, loot tables and casting recipes.
   No GameTest server or concurrent Gradle process was started.
+
+## Reversion Lotus and Fertility Bloom (2026-09-13)
+
+- V33a's DECOPLANT metadata 1 and 4 are now independent registered blocks and items:
+  `chromaticraft:biome_reverter` (Reversion Lotus) and `chromaticraft:crop_speed_plant`
+  (Fertility Bloom). Both use the modern magic-plant base, preserve their original upward
+  Enrichment Vine chaining, and redirect selected work once through a Function Relay.
+- Reversion Lotus preserves the source 9-by-9 weighted field, forty-tick timer, acceleration-vine
+  multiplier and occasional doubled reach. It compares the live biome to the chunk generator's
+  natural noise-biome result, then restores the complete modern quart column and resends biome
+  data through the public fill-biome path. Modern biome storage cannot represent V33a's single
+  block columns more finely than a 4-by-4 quart cell. Its source enchant particles, light level,
+  regeneration-on-contact effect and flower-compatible planting rules are retained.
+- Fertility Bloom preserves both source 5-by-5 weighted fields. It hydrates farmland on the
+  original one-in-four cadence and spends `0.5 + vines/2` weighted growth operations per tick on
+  saplings, decorative flowers, reeds, cactus, vines, vanilla crops and registered mod crops by
+  invoking their real server random tick. Its light-blue/red particle colours, light level,
+  farmland/Enrichment Vine/Cliff Farmland planting rules and ComplexAOE weights are retained.
+- Client datagen uses Reika's original `decoplant_1_*` and `decoplant_4_*` backing/overlay sprites
+  in ordinary and crop forms, with ordinary world lighting exactly as V33a's DecoPlant renderer.
+  Server datagen emits the exact Temple recipes, rune positions, output counts, durations and XP.
+- Validation: the active source slice compiled successfully. Separate serial, single-worker,
+  two-gigabyte-capped client and server datagen runs completed successfully and emitted both
+  blockstates, ordinary/crop block models, layered item models, loot tables and casting recipes.
+  No GameTest server or concurrent Gradle process was started.

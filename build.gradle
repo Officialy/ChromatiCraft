@@ -222,6 +222,8 @@ sourceSets.main.java {
 	include 'reika/chromaticraft/auxiliary/interfaces/EffectPlant.java'
 	include 'reika/chromaticraft/base/tileentity/TileEntityMagicPlant.java'
 	include 'reika/chromaticraft/tileentity/plants/TileEntityAccelerationPlant.java'
+	include 'reika/chromaticraft/tileentity/plants/TileEntityBiomeReverter.java'
+	include 'reika/chromaticraft/tileentity/plants/TileEntityCropSpeedPlant.java'
 	include 'reika/chromaticraft/tileentity/plants/TileEntityHarvesterPlant.java'
 	include 'reika/chromaticraft/magic/interfaces/AdjacencyUpgradeProvider.java'
 	include 'reika/chromaticraft/base/tileentity/TileEntityRelayPowered.java'

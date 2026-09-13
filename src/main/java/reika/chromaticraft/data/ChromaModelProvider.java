@@ -665,7 +665,11 @@ public class ChromaModelProvider extends ModelProvider {
 	/** V33a DecoPlantRenderer: crossed backing/overlay plus four extra planes in crop form. */
 	private static void magicPlantModels(Consumer<BlockModelDefinitionGenerator> blockStateOut,
 			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		magicPlantModel(ChromaBlocks.BIOME_REVERTER.get(), 1, false,
+				blockStateOut, itemModelOut, modelOut);
 		magicPlantModel(ChromaBlocks.PLANT_ACCELERATOR.get(), 3, true,
+				blockStateOut, itemModelOut, modelOut);
+		magicPlantModel(ChromaBlocks.CROP_SPEED_PLANT.get(), 4, false,
 				blockStateOut, itemModelOut, modelOut);
 		magicPlantModel(ChromaBlocks.HARVEST_PLANT.get(), 5, false,
 				blockStateOut, itemModelOut, modelOut);

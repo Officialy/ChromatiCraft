@@ -1,0 +1,349 @@
+{
+  "parent": "minecraft:block/block",
+  "ambientocclusion": false,
+  "elements": [
+    {
+      "faces": {
+        "north": {
+          "texture": "#back",
+          "uv": [
+            0.0,
+            0.0,
+            16.0,
+            16.0
+          ]
+        },
+        "south": {
+          "texture": "#back",
+          "uv": [
+            0.0,
+            0.0,
+            16.0,
+            16.0
+          ]
+        }
+      },
+      "from": [
+        0.0,
+        0.0,
+        8.0
+      ],
+      "rotation": {
+        "angle": 45.0,
+        "axis": "y",
+        "origin": [
+          8.0,
+          8.0,
+          8.0
+        ],
+        "rescale": true
+      },
+      "to": [
+        16.0,
+        16.0,
+        8.0
+      ]
+    },
+    {
+      "faces": {
+        "north": {
+          "texture": "#back",
+          "uv": [
+            0.0,
+            0.0,
+            16.0,
+            16.0
+          ]
+        },
+        "south": {
+          "texture": "#back",
+          "uv": [
+            0.0,
+            0.0,
+            16.0,
+            16.0
+          ]
+        }
+      },
+      "from": [
+        0.0,
+        0.0,
+        8.0
+      ],
+      "rotation": {
+        "angle": -45.0,
+        "axis": "y",
+        "origin": [
+          8.0,
+          8.0,
+          8.0
+        ],
+        "rescale": true
+      },
+      "to": [
+        16.0,
+        16.0,
+        8.0
+      ]
+    },
+    {
+      "faces": {
+        "north": {
+          "texture": "#front",
+          "uv": [
+            0.0,
+            0.0,
+            16.0,
+            16.0
+          ]
+        },
+        "south": {
+          "texture": "#front",
+          "uv": [
+            0.0,
+            0.0,
+            16.0,
+            16.0
+          ]
+        }
+      },
+      "from": [
+        0.0,
+        0.0,
+        8.01
+      ],
+      "rotation": {
+        "angle": 45.0,
+        "axis": "y",
+        "origin": [
+          8.0,
+          8.0,
+          8.0
+        ],
+        "rescale": true
+      },
+      "to": [
+        16.0,
+        16.0,
+        8.01
+      ]
+    },
+    {
+      "faces": {
+        "north": {
+          "texture": "#front",
+          "uv": [
+            0.0,
+            0.0,
+            16.0,
+            16.0
+          ]
+        },
+        "south": {
+          "texture": "#front",
+          "uv": [
+            0.0,
+            0.0,
+            16.0,
+            16.0
+          ]
+        }
+      },
+      "from": [
+        0.0,
+        0.0,
+        8.01
+      ],
+      "rotation": {
+        "angle": -45.0,
+        "axis": "y",
+        "origin": [
+          8.0,
+          8.0,
+          8.0
+        ],
+        "rescale": true
+      },
+      "to": [
+        16.0,
+        16.0,
+        8.01
+      ]
+    },
+    {
+      "faces": {
+        "east": {
+          "texture": "#crop_back"
+        },
+        "west": {
+          "texture": "#crop_back"
+        }
+      },
+      "from": [
+        1.5,
+        0.0,
+        0.0
+      ],
+      "shade": false,
+      "to": [
+        1.5,
+        16.0,
+        16.0
+      ]
+    },
+    {
+      "faces": {
+        "east": {
+          "texture": "#crop_back"
+        },
+        "west": {
+          "texture": "#crop_back"
+        }
+      },
+      "from": [
+        14.5,
+        0.0,
+        0.0
+      ],
+      "shade": false,
+      "to": [
+        14.5,
+        16.0,
+        16.0
+      ]
+    },
+    {
+      "faces": {
+        "north": {
+          "texture": "#crop_back"
+        },
+        "south": {
+          "texture": "#crop_back"
+        }
+      },
+      "from": [
+        0.0,
+        0.0,
+        1.5
+      ],
+      "shade": false,
+      "to": [
+        16.0,
+        16.0,
+        1.5
+      ]
+    },
+    {
+      "faces": {
+        "north": {
+          "texture": "#crop_back"
+        },
+        "south": {
+          "texture": "#crop_back"
+        }
+      },
+      "from": [
+        0.0,
+        0.0,
+        14.5
+      ],
+      "shade": false,
+      "to": [
+        16.0,
+        16.0,
+        14.5
+      ]
+    },
+    {
+      "faces": {
+        "east": {
+          "texture": "#crop_front"
+        },
+        "west": {
+          "texture": "#crop_front"
+        }
+      },
+      "from": [
+        1.51,
+        0.0,
+        0.0
+      ],
+      "shade": false,
+      "to": [
+        1.51,
+        16.0,
+        16.0
+      ]
+    },
+    {
+      "faces": {
+        "east": {
+          "texture": "#crop_front"
+        },
+        "west": {
+          "texture": "#crop_front"
+        }
+      },
+      "from": [
+        14.49,
+        0.0,
+        0.0
+      ],
+      "shade": false,
+      "to": [
+        14.49,
+        16.0,
+        16.0
+      ]
+    },
+    {
+      "faces": {
+        "north": {
+          "texture": "#crop_front"
+        },
+        "south": {
+          "texture": "#crop_front"
+        }
+      },
+      "from": [
+        0.0,
+        0.0,
+        1.51
+      ],
+      "shade": false,
+      "to": [
+        16.0,
+        16.0,
+        1.51
+      ]
+    },
+    {
+      "faces": {
+        "north": {
+          "texture": "#crop_front"
+        },
+        "south": {
+          "texture": "#crop_front"
+        }
+      },
+      "from": [
+        0.0,
+        0.0,
+        14.49
+      ],
+      "shade": false,
+      "to": [
+        16.0,
+        16.0,
+        14.49
+      ]
+    }
+  ],
+  "textures": {
+    "back": "chromaticraft:block/plant/decoplant_1_back",
+    "crop_back": "chromaticraft:block/plant/decoplant_1_back",
+    "crop_front": "chromaticraft:block/plant/decoplant_1_front",
+    "front": "chromaticraft:block/plant/decoplant_1_front",
+    "particle": "chromaticraft:block/plant/decoplant_1_front"
+  }
+}

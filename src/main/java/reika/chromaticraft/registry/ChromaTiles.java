@@ -20,7 +20,9 @@ import reika.chromaticraft.tileentity.auxiliary.TileEntityChromaCrystal;
 import reika.chromaticraft.tileentity.TileEntityDisplayPoint;
 import reika.chromaticraft.tileentity.TileEntityDataNode;
 import reika.chromaticraft.tileentity.TileEntityFarmer;
+import reika.chromaticraft.tileentity.plants.TileEntityBiomeReverter;
 import reika.chromaticraft.tileentity.plants.TileEntityAccelerationPlant;
+import reika.chromaticraft.tileentity.plants.TileEntityCropSpeedPlant;
 import reika.chromaticraft.tileentity.plants.TileEntityHarvesterPlant;
 import reika.chromaticraft.tileentity.networking.TileEntityCompoundRepeater;
 import reika.chromaticraft.tileentity.networking.TileEntityPylonLink;
@@ -58,7 +60,9 @@ public enum ChromaTiles implements TileEnum {
 	TABLE("chroma.castingtable", ChromaBlocks.CASTING_TABLE, TileEntityCastingTable.class),
 	CHARGER("chroma.charger", ChromaBlocks.CRYSTAL_CHARGER, TileEntityCrystalCharger.class),
 	FARMER("chroma.farmer", ChromaBlocks.FARMER, TileEntityFarmer.class),
+	REVERTER("chroma.reverter", ChromaBlocks.BIOME_REVERTER, TileEntityBiomeReverter.class),
 	PLANTACCEL("chroma.plantaccel", ChromaBlocks.PLANT_ACCELERATOR, TileEntityAccelerationPlant.class),
+	CROPSPEED("chroma.cropspeed", ChromaBlocks.CROP_SPEED_PLANT, TileEntityCropSpeedPlant.class),
 	HARVESTPLANT("chroma.harvestplant", ChromaBlocks.HARVEST_PLANT, TileEntityHarvesterPlant.class),
 	INFUSER("chroma.infuser", ChromaBlocks.ITEM_INFUSER, TileEntityItemInfuser.class),
 	PLAYERINFUSER("chroma.playerinfuser", ChromaBlocks.PLAYER_INFUSER, TileEntityPlayerInfuser.class),

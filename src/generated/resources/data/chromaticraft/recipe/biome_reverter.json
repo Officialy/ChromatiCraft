@@ -1,0 +1,58 @@
+{
+  "type": "chromaticraft:casting",
+  "duration": 20,
+  "experience": 40,
+  "grid": [
+    {
+      "ingredient": "#c:flowers",
+      "slot": 1
+    },
+    {
+      "ingredient": "#c:flowers",
+      "slot": 3
+    },
+    {
+      "ingredient": "minecraft:redstone",
+      "slot": 4
+    },
+    {
+      "ingredient": "#c:flowers",
+      "slot": 5
+    },
+    {
+      "ingredient": "minecraft:fern",
+      "slot": 6
+    },
+    {
+      "ingredient": "chromaticraft:crystal_shard_green",
+      "slot": 7
+    },
+    {
+      "ingredient": "minecraft:fern",
+      "slot": 8
+    }
+  ],
+  "result": {
+    "count": 6,
+    "id": "chromaticraft:biome_reverter"
+  },
+  "runes": [
+    {
+      "element": "green",
+      "offset": [
+        2,
+        -1,
+        -5
+      ]
+    },
+    {
+      "element": "magenta",
+      "offset": [
+        -2,
+        -1,
+        5
+      ]
+    }
+  ],
+  "tier": "temple"
+}

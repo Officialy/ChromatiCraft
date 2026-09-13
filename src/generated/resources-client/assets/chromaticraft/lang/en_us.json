@@ -753,5 +753,9 @@
   "item.chromaticraft.tinted_crystal_lens_light_blue": "Galazio Tinted Crystal Lens",
   "item.chromaticraft.tinted_crystal_lens_magenta": "Kurauri Tinted Crystal Lens",
   "item.chromaticraft.tinted_crystal_lens_orange": "Portokali Tinted Crystal Lens",
-  "item.chromaticraft.tinted_crystal_lens_white": "Tahara Tinted Crystal Lens"
+  "item.chromaticraft.tinted_crystal_lens_white": "Tahara Tinted Crystal Lens",
+  "block.chromaticraft.biome_reverter": "Reversion Lotus",
+  "block.chromaticraft.crop_speed_plant": "Fertility Bloom",
+  "block.chromaticraft.harvest_plant": "Scissorweed",
+  "block.chromaticraft.plant_accelerator": "Enrichment Vine"
 }

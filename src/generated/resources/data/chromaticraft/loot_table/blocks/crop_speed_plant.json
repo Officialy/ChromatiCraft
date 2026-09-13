@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "conditions": [
+        {
+          "condition": "minecraft:survives_explosion"
+        }
+      ],
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "chromaticraft:crop_speed_plant"
+        }
+      ],
+      "rolls": 1.0
+    }
+  ],
+  "random_sequence": "chromaticraft:blocks/crop_speed_plant"
+}

@@ -12,6 +12,7 @@ package reika.chromaticraft.block;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.DustParticleOptions;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
@@ -79,6 +80,16 @@ public final class BlockDecoPlant extends BlockChromaticTile {
 	protected boolean canSurvive(BlockState state, LevelReader world, BlockPos pos) {
 		return switch (kind) {
 			case ACCELERATOR -> canAccelerationPlantSurvive(world, pos);
+			case REVERTER -> {
+				BlockState below = world.getBlockState(pos.below());
+				yield below.is(BlockTags.SUPPORTS_VEGETATION)
+						|| below.is(ChromaBlocks.PLANT_ACCELERATOR.get());
+			}
+			case CROP_SPEED -> {
+				BlockState below = world.getBlockState(pos.below());
+				yield below.is(Blocks.FARMLAND) || below.is(ChromaBlocks.CLIFF_FARMLAND.get())
+						|| below.is(ChromaBlocks.PLANT_ACCELERATOR.get());
+			}
 			case HARVEST -> {
 				BlockState below = world.getBlockState(pos.below());
 				yield below.is(BlockTags.SUPPORTS_VEGETATION) || below.is(BlockTags.LEAVES)
@@ -129,10 +140,23 @@ public final class BlockDecoPlant extends BlockChromaticTile {
 
 	@Override
 	public void animateTick(BlockState state, Level world, BlockPos pos, RandomSource random) {
-		if (kind != Kind.HARVEST) return;
-		world.addParticle(new DustParticleOptions(0xFFFF00, 1F),
-				pos.getX() + random.nextDouble(), pos.getY() + random.nextDouble(),
-				pos.getZ() + random.nextDouble(), 0, 0, 0);
+		double centerX = pos.getX() + 0.5;
+		double centerZ = pos.getZ() + 0.5;
+		switch (kind) {
+			case REVERTER -> world.addParticle(ParticleTypes.ENCHANT,
+					centerX + (random.nextDouble() * 2 - 1) * 0.375,
+					pos.getY() + 0.75 + random.nextDouble() * 0.75,
+					centerZ + (random.nextDouble() * 2 - 1) * 0.375, 0, 0, 0);
+			case CROP_SPEED -> world.addParticle(new DustParticleOptions(0xFF0000, 1F),
+					centerX + (random.nextDouble() * 2 - 1) * 0.375,
+					pos.getY() + 0.25 + random.nextDouble() * 0.75,
+					centerZ + (random.nextDouble() * 2 - 1) * 0.375, 0, 0, 0);
+			case HARVEST -> world.addParticle(new DustParticleOptions(0xFFFF00, 1F),
+					pos.getX() + random.nextDouble(), pos.getY() + random.nextDouble(),
+					pos.getZ() + random.nextDouble(), 0, 0, 0);
+			default -> {
+			}
+		}
 	}
 
 	@Override
@@ -142,10 +166,15 @@ public final class BlockDecoPlant extends BlockChromaticTile {
 			entity.hurt(entity.damageSources().cactus(), 1);
 			living.addEffect(new MobEffectInstance(MobEffects.HUNGER, 20, 1));
 		}
+		else if (kind == Kind.REVERTER && entity instanceof LivingEntity living) {
+			living.addEffect(new MobEffectInstance(reika.chromaticraft.ChromatiCraft.betterRegen, 20, 0));
+		}
 	}
 
 	public enum Kind {
+		REVERTER(ChromaTiles.REVERTER, 1),
 		ACCELERATOR(ChromaTiles.PLANTACCEL, 3),
+		CROP_SPEED(ChromaTiles.CROPSPEED, 4),
 		HARVEST(ChromaTiles.HARVESTPLANT, 5);
 
 		private final ChromaTiles tile;

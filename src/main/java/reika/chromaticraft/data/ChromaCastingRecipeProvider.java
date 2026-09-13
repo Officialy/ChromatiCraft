@@ -12,6 +12,7 @@ import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
+import net.minecraft.world.level.block.Blocks;
 import net.neoforged.neoforge.common.Tags;
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe;
@@ -448,8 +449,21 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 					new ItemStackTemplate(ChromaBlocks.FARMER.get().asItem(), 3),
 					400, 500).withPenaltyThreshold(6));
 		}
-		/** Exact no-Botania V33a recipes for the Enrichment Vine and Scissorweed. */
+		/** Exact no-Botania V33a recipes for the four currently ported magic plants. */
 		private void saveMagicPlants() {
+			saveShapedTemple("biome_reverter",
+					new ItemStackTemplate(ChromaBlocks.BIOME_REVERTER.get().asItem(), 6), 20, 40,
+					List.of(),
+					List.of(new RuneRequirement(new net.minecraft.core.BlockPos(2, -1, -5),
+								CrystalElement.GREEN),
+							new RuneRequirement(new net.minecraft.core.BlockPos(-2, -1, 5),
+								CrystalElement.MAGENTA)),
+					Map.of('L', Ingredient.of(Blocks.FERN),
+							'F', tag(Tags.Items.FLOWERS),
+							'S', Ingredient.of(ChromaItems.SHARDS.get(CrystalElement.GREEN).get()),
+							'B', Ingredient.of(Items.REDSTONE)),
+					" F ", "FBF", "LSL");
+
 			saveShapedTemple("plant_accelerator",
 					new ItemStackTemplate(ChromaBlocks.PLANT_ACCELERATOR.get().asItem(), 2), 20, 40,
 					List.of(),
@@ -462,6 +476,19 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 							'F', tag(Tags.Items.FLOWERS),
 							'S', Ingredient.of(ChromaItems.SHARDS.get(CrystalElement.LIGHTBLUE).get())),
 					"LSL", "FRF", "LSL");
+
+			saveShapedTemple("crop_speed_plant",
+					new ItemStackTemplate(ChromaBlocks.CROP_SPEED_PLANT.get().asItem()), 20, 40,
+					List.of(),
+					List.of(new RuneRequirement(new net.minecraft.core.BlockPos(2, -1, -4),
+								CrystalElement.LIGHTBLUE),
+							new RuneRequirement(new net.minecraft.core.BlockPos(2, -1, -5),
+								CrystalElement.GREEN)),
+					Map.of('L', tag(net.minecraft.tags.ItemTags.LEAVES),
+							'R', Ingredient.of(Items.REDSTONE),
+							'F', tag(Tags.Items.FLOWERS),
+							'S', Ingredient.of(ChromaItems.SHARDS.get(CrystalElement.LIGHTBLUE).get())),
+					" R ", "FRF", "LSL");
 
 			// V33a substitutes Aura Dust and vanilla redstone when Botania is absent. The optional
 			// Munchdew/mana-resource branch remains deferred until Botania's 26.2 component form exists;
