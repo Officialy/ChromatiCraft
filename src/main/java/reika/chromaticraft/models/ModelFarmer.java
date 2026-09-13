@@ -15,127 +15,49 @@
 
 package reika.chromaticraft.models;
 
-import java.util.ArrayList;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 
-import net.minecraft.tileentity.TileEntity;
+import net.minecraft.client.model.geom.ModelPart;
+import net.minecraft.client.model.geom.PartPose;
+import net.minecraft.client.model.geom.builders.CubeListBuilder;
+import net.minecraft.client.model.geom.builders.LayerDefinition;
+import net.minecraft.client.model.geom.builders.MeshDefinition;
 
-import reika.chromaticraft.base.ChromaModelBase;
-import reika.dragonapi.instantiable.rendering.LODModelPart;
+public final class ModelFarmer {
+    private final ModelPart root;
 
-public class ModelFarmer extends ChromaModelBase
-{
-	//fields
-	LODModelPart Shape1;
-	LODModelPart Shape2;
-	LODModelPart Shape1b;
-	LODModelPart Shape2b;
-	LODModelPart Shape2c;
-	LODModelPart Shape2d;
-	LODModelPart Shape3;
-	LODModelPart Shape3b;
-	LODModelPart Shape3c;
-	LODModelPart Shape4;
-	LODModelPart Shape4d;
+    public ModelFarmer(ModelPart root) { this.root = root; }
 
-	public ModelFarmer()
-	{
-		textureWidth = 128;
-		textureHeight = 128;
+    public void render(PoseStack pose, VertexConsumer output, int light, int overlay) {
+        root.render(pose, output, light, overlay);
+    }
 
-		Shape1 = new LODModelPart(this, 0, 0);
-		Shape1.addBox(0F, 0F, 0F, 16, 3, 16);
-		Shape1.setRotationPoint(-8F, 8F, -8F);
-		Shape1.setTextureSize(128, 128);
-		Shape1.mirror = true;
-		this.setRotation(Shape1, 0F, 0F, 0F);
-		Shape2 = new LODModelPart(this, 92, 0);
-		Shape2.addBox(0F, 0F, 0F, 2, 10, 2);
-		Shape2.setRotationPoint(6F, 11F, 6F);
-		Shape2.setTextureSize(128, 128);
-		Shape2.mirror = true;
-		this.setRotation(Shape2, 0F, 0F, 0F);
-		Shape1b = new LODModelPart(this, 0, 71);
-		Shape1b.addBox(0F, 0F, 0F, 16, 3, 16);
-		Shape1b.setRotationPoint(-8F, 21F, -8F);
-		Shape1b.setTextureSize(128, 128);
-		Shape1b.mirror = true;
-		this.setRotation(Shape1b, 0F, 0F, 0F);
-		Shape2b = new LODModelPart(this, 74, 0);
-		Shape2b.addBox(0F, 0F, 0F, 2, 10, 2);
-		Shape2b.setRotationPoint(-8F, 11F, 6F);
-		Shape2b.setTextureSize(128, 128);
-		Shape2b.mirror = true;
-		this.setRotation(Shape2b, 0F, 0F, 0F);
-		Shape2c = new LODModelPart(this, 83, 0);
-		Shape2c.addBox(0F, 0F, 0F, 2, 10, 2);
-		Shape2c.setRotationPoint(6F, 11F, -8F);
-		Shape2c.setTextureSize(128, 128);
-		Shape2c.mirror = true;
-		this.setRotation(Shape2c, 0F, 0F, 0F);
-		Shape2d = new LODModelPart(this, 65, 0);
-		Shape2d.addBox(0F, 0F, 0F, 2, 10, 2);
-		Shape2d.setRotationPoint(-8F, 11F, -8F);
-		Shape2d.setTextureSize(128, 128);
-		Shape2d.mirror = true;
-		this.setRotation(Shape2d, 0F, 0F, 0F);
-		Shape3 = new LODModelPart(this, 0, 33);
-		Shape3.addBox(-1F, 0F, 0F, 1, 10, 12);
-		Shape3.setRotationPoint(8F, 11F, -6F);
-		Shape3.setTextureSize(128, 128);
-		Shape3.mirror = true;
-		this.setRotation(Shape3, 0F, -0.2617994F, 0F);
-		Shape3b = new LODModelPart(this, 0, 20);
-		Shape3b.addBox(0F, 0F, 0F, 12, 10, 1);
-		Shape3b.setRotationPoint(-6F, 11F, -7F);
-		Shape3b.setTextureSize(128, 128);
-		Shape3b.mirror = true;
-		this.setRotation(Shape3b, 0F, 0F, 0F);
-		Shape3c = new LODModelPart(this, 0, 33);
-		Shape3c.addBox(0F, 0F, 0F, 1, 10, 12);
-		Shape3c.setRotationPoint(-8F, 11F, -6F);
-		Shape3c.setTextureSize(128, 128);
-		Shape3c.mirror = true;
-		this.setRotation(Shape3c, 0F, 0.2617994F, 0F);
-		Shape4 = new LODModelPart(this, 27, 54);
-		Shape4.addBox(0F, 0F, 0F, 2, 10, 6);
-		Shape4.setRotationPoint(-1F, 11F, 1F);
-		Shape4.setTextureSize(128, 128);
-		Shape4.mirror = true;
-		this.setRotation(Shape4, 0F, 0F, 0F);
-		Shape4d = new LODModelPart(this, 0, 56);
-		Shape4d.addBox(0F, 0F, 0F, 12, 10, 1);
-		Shape4d.setRotationPoint(-6F, 11F, 7F);
-		Shape4d.setTextureSize(128, 128);
-		Shape4d.mirror = true;
-		this.setRotation(Shape4d, 0F, 0F, 0F);
-	}
-
-	@Override
-	public void renderAll(TileEntity te, ArrayList li)  {
-		Shape1.render(te, f5);
-		Shape2.render(te, f5);
-		Shape1b.render(te, f5);
-		Shape2b.render(te, f5);
-		Shape2c.render(te, f5);
-		Shape2d.render(te, f5);
-		Shape3.render(te, f5);
-		Shape3b.render(te, f5);
-		Shape3c.render(te, f5);
-		Shape4.render(te, f5);
-		Shape4d.render(te, f5);
-	}
-
-	private void setRotation(LODModelPart model, float x, float y, float z)
-	{
-		model.rotateAngleX = x;
-		model.rotateAngleY = y;
-		model.rotateAngleZ = z;
-	}
-
-	@Override
-	public void setRotationAngles(float f, float f1, float f2, float f3, float f4, float f5)
-	{
-		super.setRotationAngles(f, f1, f2, f3, f4, f5);
-	}
-
+    public static LayerDefinition createBodyLayer() {
+        MeshDefinition mesh = new MeshDefinition();
+        var root = mesh.getRoot();
+        root.addOrReplaceChild("Shape1", CubeListBuilder.create().texOffs(0, 0).mirror()
+                .addBox(0F, 0F, 0F, 16, 3, 16), PartPose.offsetAndRotation(-8F, 8F, -8F, 0F, 0F, 0F));
+        root.addOrReplaceChild("Shape2", CubeListBuilder.create().texOffs(92, 0).mirror()
+                .addBox(0F, 0F, 0F, 2, 10, 2), PartPose.offsetAndRotation(6F, 11F, 6F, 0F, 0F, 0F));
+        root.addOrReplaceChild("Shape1b", CubeListBuilder.create().texOffs(0, 71).mirror()
+                .addBox(0F, 0F, 0F, 16, 3, 16), PartPose.offsetAndRotation(-8F, 21F, -8F, 0F, 0F, 0F));
+        root.addOrReplaceChild("Shape2b", CubeListBuilder.create().texOffs(74, 0).mirror()
+                .addBox(0F, 0F, 0F, 2, 10, 2), PartPose.offsetAndRotation(-8F, 11F, 6F, 0F, 0F, 0F));
+        root.addOrReplaceChild("Shape2c", CubeListBuilder.create().texOffs(83, 0).mirror()
+                .addBox(0F, 0F, 0F, 2, 10, 2), PartPose.offsetAndRotation(6F, 11F, -8F, 0F, 0F, 0F));
+        root.addOrReplaceChild("Shape2d", CubeListBuilder.create().texOffs(65, 0).mirror()
+                .addBox(0F, 0F, 0F, 2, 10, 2), PartPose.offsetAndRotation(-8F, 11F, -8F, 0F, 0F, 0F));
+        root.addOrReplaceChild("Shape3", CubeListBuilder.create().texOffs(0, 33).mirror()
+                .addBox(-1F, 0F, 0F, 1, 10, 12), PartPose.offsetAndRotation(8F, 11F, -6F, 0F, -0.2617994F, 0F));
+        root.addOrReplaceChild("Shape3b", CubeListBuilder.create().texOffs(0, 20).mirror()
+                .addBox(0F, 0F, 0F, 12, 10, 1), PartPose.offsetAndRotation(-6F, 11F, -7F, 0F, 0F, 0F));
+        root.addOrReplaceChild("Shape3c", CubeListBuilder.create().texOffs(0, 33).mirror()
+                .addBox(0F, 0F, 0F, 1, 10, 12), PartPose.offsetAndRotation(-8F, 11F, -6F, 0F, 0.2617994F, 0F));
+        root.addOrReplaceChild("Shape4", CubeListBuilder.create().texOffs(27, 54).mirror()
+                .addBox(0F, 0F, 0F, 2, 10, 6), PartPose.offsetAndRotation(-1F, 11F, 1F, 0F, 0F, 0F));
+        root.addOrReplaceChild("Shape4d", CubeListBuilder.create().texOffs(0, 56).mirror()
+                .addBox(0F, 0F, 0F, 12, 10, 1), PartPose.offsetAndRotation(-6F, 11F, 7F, 0F, 0F, 0F));
+        return LayerDefinition.create(mesh, 128, 128);
+    }
 }

@@ -89,6 +89,18 @@ public final class ChromaItems {
 		return new ItemStack(TIERED.get(item).get());
 	}
 
+	/** V33a LENS metadata 0-15, promoted to one stable item identity per element. */
+	public static final EnumMap<CrystalElement, DeferredItem<Item>> TINTED_LENSES =
+			new EnumMap<>(CrystalElement.class);
+	static {
+		for (CrystalElement element : CrystalElement.elements)
+			TINTED_LENSES.put(element, reg("tinted_crystal_lens_" + element.getEnglishName(),
+					() -> new Item(itemProperties())));
+	}
+
+	public static ItemStack tintedLensStack(CrystalElement element) {
+		return new ItemStack(TINTED_LENSES.get(element).get());
+	}
 	public static final DeferredItem<Item> CRYSTAL_POWDER = CRAFTING.get(ChromaCraftingItems.CRYSTAL_POWDER);
 
 	/** V33a ChromaItems.TOOL: the Manipulator, the universal ChromatiCraft interaction tool. */

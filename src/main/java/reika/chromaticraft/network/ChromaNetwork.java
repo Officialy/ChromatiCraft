@@ -34,6 +34,9 @@ public final class ChromaNetwork {
 		registrar.playToClient(RelayConnection.TYPE, RelayConnection.CODEC,
 				(payload, context) -> context.enqueueWork(() -> ClientPayloadHandlers.relayConnection(
 						payload.path(), element(payload.color()))));
+		registrar.playToClient(FarmerHarvest.TYPE, FarmerHarvest.CODEC,
+				(payload, context) -> context.enqueueWork(() ->
+						ClientPayloadHandlers.farmerHarvest(payload.source(), payload.target())));
 		registrar.playToClient(ProximaLayoutSeed.TYPE, ProximaLayoutSeed.CODEC,
 				ChromaNetwork::handleProximaLayoutSeed);
 		registrar.playToClient(MonumentRitualState.TYPE, MonumentRitualState.CODEC,
@@ -151,6 +154,18 @@ public final class ChromaNetwork {
 				payload.pos(), payload.running(), payload.inProxima()));
 	}
 
+	public record FarmerHarvest(BlockPos source, BlockPos target) implements CustomPacketPayload {
+		public static final Type<FarmerHarvest> TYPE = createType("farmer_harvest");
+		public static final StreamCodec<ByteBuf, FarmerHarvest> CODEC = StreamCodec.composite(
+				BlockPos.STREAM_CODEC, FarmerHarvest::source,
+				BlockPos.STREAM_CODEC, FarmerHarvest::target, FarmerHarvest::new);
+		@Override public Type<FarmerHarvest> type() { return TYPE; }
+	}
+
+	public static void sendFarmerHarvest(ServerLevel level, BlockPos source, BlockPos target) {
+		PacketDistributor.sendToPlayersNear(level, null, source.getX() + 0.5, source.getY() + 0.5,
+				source.getZ() + 0.5, 48, new FarmerHarvest(source, target));
+	}
 	public record ProximaLayoutSeed(long seed) implements CustomPacketPayload {
 		public static final Type<ProximaLayoutSeed> TYPE = createType("proxima_layout_seed");
 		public static final StreamCodec<ByteBuf, ProximaLayoutSeed> CODEC = StreamCodec.composite(

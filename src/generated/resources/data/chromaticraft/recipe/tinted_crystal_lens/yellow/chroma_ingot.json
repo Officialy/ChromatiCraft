@@ -1,0 +1,83 @@
+{
+  "type": "chromaticraft:casting",
+  "duration": 100,
+  "experience": 200,
+  "grid": [
+    {
+      "ingredient": "chromaticraft:crystal_lens",
+      "slot": 4
+    }
+  ],
+  "penalty_threshold": 48,
+  "result": {
+    "count": 4,
+    "id": "chromaticraft:tinted_crystal_lens_yellow"
+  },
+  "stands": [
+    {
+      "ingredient": "chromaticraft:chroma_ingot",
+      "offset": [
+        -2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:chroma_ingot",
+      "offset": [
+        -2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:chroma_ingot",
+      "offset": [
+        2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:chroma_ingot",
+      "offset": [
+        2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:focal_powder",
+      "offset": [
+        -2,
+        0,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:focal_powder",
+      "offset": [
+        2,
+        0,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:crystal_shard_yellow",
+      "offset": [
+        0,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:crystal_shard_yellow",
+      "offset": [
+        0,
+        0,
+        2
+      ]
+    }
+  ],
+  "tier": "multiblock"
+}

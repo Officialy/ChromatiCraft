@@ -75,6 +75,8 @@ public final class ChromaClientRenderers {
 		event.register(ItemAuraInfuserRenderer.ID, ItemAuraInfuserRenderer.Unbaked.MAP_CODEC);
 		event.register(reika.chromaticraft.render.item.FunctionRelayItemRenderer.ID,
 				reika.chromaticraft.render.item.FunctionRelayItemRenderer.Unbaked.MAP_CODEC);
+		event.register(reika.chromaticraft.render.item.FarmerItemRenderer.ID,
+				reika.chromaticraft.render.item.FarmerItemRenderer.Unbaked.MAP_CODEC);
 	}
 
 	private static void registerLayers(EntityRenderersEvent.RegisterLayerDefinitions event) {
@@ -84,6 +86,8 @@ public final class ChromaClientRenderers {
 		event.registerLayerDefinition(RenderCrystalCharger.MODEL_LAYER,
 				reika.chromaticraft.models.ModelCrystalCharger::createBodyLayer);
 		event.registerLayerDefinition(RenderInfuser3.MODEL_LAYER, reika.chromaticraft.models.ModelInfuser2::createBodyLayer);
+		event.registerLayerDefinition(reika.chromaticraft.render.tesr.RenderFarmer.MODEL_LAYER,
+				reika.chromaticraft.models.ModelFarmer::createBodyLayer);
 	}
 
 	private static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
@@ -102,6 +106,8 @@ public final class ChromaClientRenderers {
 		event.registerBlockEntityRenderer(ChromaBlockEntities.CRYSTAL_CHARGER.get(), RenderCrystalCharger::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.ITEM_INFUSER.get(), RenderInfuser3::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.PLAYER_INFUSER.get(), RenderInfuser3::new);
+		event.registerBlockEntityRenderer(ChromaBlockEntities.FARMER.get(),
+				reika.chromaticraft.render.tesr.RenderFarmer::new);
 		event.registerEntityRenderer(ChromaEntityTypes.PYLON_OVERLOAD.get(), RenderPylonOverloadShock::new);
 		event.registerEntityRenderer(ChromaEntityTypes.GLOW_CLOUD.get(), RenderGlowCloud::new);
 		event.registerEntityRenderer(ChromaEntityTypes.LUMA_BURST.get(), RenderLumaBurst::new);

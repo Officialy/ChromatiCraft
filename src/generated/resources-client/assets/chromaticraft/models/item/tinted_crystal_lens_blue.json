@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "chromaticraft:item/tinted_crystal_lens_blue"
+  }
+}

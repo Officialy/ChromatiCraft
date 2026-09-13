@@ -9,283 +9,194 @@
  ******************************************************************************/
 package reika.chromaticraft.tileentity;
 
-import java.util.ArrayList;
 import java.util.Collection;
+import java.util.EnumMap;
 
-import net.minecraft.block.Block;
-import net.minecraft.client.Minecraft;
-import net.minecraft.init.Blocks;
-import net.minecraft.item.ItemStack;
-import net.minecraft.world.World;
-import net.minecraftforge.common.util.ForgeDirection;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 
-import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.auxiliary.interfaces.ComplexAOE;
 import reika.chromaticraft.base.tileentity.TileEntityRelayPowered;
 import reika.chromaticraft.magic.ElementTagCompound;
-import reika.chromaticraft.registry.ChromaPackets;
+import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.ChromaTiles;
 import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.render.particle.EntityCCBlurFX;
 import reika.chromaticraft.tileentity.auxiliary.TileEntityFunctionRelay;
-import reika.dragonapi.instantiable.data.WeightedRandom;
 import reika.dragonapi.instantiable.data.immutable.Coordinate;
-import reika.dragonapi.instantiable.effects.EntityBlurFX;
 import reika.dragonapi.interfaces.registry.CropType;
-import reika.dragonapi.interfaces.registry.croptype.CropMethods;
-import reika.dragonapi.libraries.ReikaDirectionHelper;
-import reika.dragonapi.libraries.io.ReikaPacketHelper;
-import reika.dragonapi.libraries.io.ReikaSoundHelper;
 import reika.dragonapi.libraries.registry.ReikaCropHelper;
-import reika.dragonapi.libraries.registry.ReikaItemHelper;
-import reika.dragonapi.libraries.world.ReikaWorldHelper;
 import reika.dragonapi.modregistry.ModCropList;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
+public final class TileEntityFarmer extends TileEntityRelayPowered implements ComplexAOE {
 
-public class TileEntityFarmer extends TileEntityRelayPowered implements ComplexAOE {
+    private static final EnumMap<Direction, java.util.List<WeightedPosition>> POSITIONS = createPositions();
 
-	private static final WeightedRandom<Coordinate>[] coordinateRand = new WeightedRandom[4];
+    public TileEntityFarmer(BlockPos pos, BlockState state) {
+        super(ChromaBlockEntities.FARMER.get(), pos, state);
+    }
 
-	static {
-		for (int i = 0; i < 4; i++) {
-			WeightedRandom<Coordinate> wr = new WeightedRandom();
-			ForgeDirection dir = ForgeDirection.VALID_DIRECTIONS[i+2];
-			ForgeDirection left = ReikaDirectionHelper.getLeftBy90(dir);
-			for (int r = 0; r < 16; r++) {
-				for (int a = -r; a <= r; a++) {
-					int dx = r*dir.offsetX+a*left.offsetX;
-					int dz = r*dir.offsetZ+a*left.offsetZ;
-					double wt = 100;
-					if (Math.abs(a) > 2 && Math.abs(a) >= r/2)
-						wt -= (Math.abs(a)/3D)*10;
-					if (r > 8)
-						wt *= 1-((r-8)/8D);
-					if (wt > 0)
-						wr.addEntry(new Coordinate(dx, 0, dz), wt);
-				}
-			}
-			coordinateRand[i] = wr;
-		}
-	}
+    private static EnumMap<Direction, java.util.List<WeightedPosition>> createPositions() {
+        var positions = new EnumMap<Direction, java.util.List<WeightedPosition>>(Direction.class);
+        for (Direction direction : Direction.Plane.HORIZONTAL) {
+            var entries = new java.util.ArrayList<WeightedPosition>();
+            Direction left = direction.getCounterClockWise();
+            for (int distance = 0; distance < 16; distance++) {
+                for (int spread = -distance; spread <= distance; spread++) {
+                    double weight = 100;
+                    if (Math.abs(spread) > 2 && Math.abs(spread) >= distance / 2)
+                        weight -= Math.abs(spread) / 3D * 10;
+                    if (distance > 8) weight *= 1 - (distance - 8) / 8D;
+                    if (weight > 0)
+                        entries.add(new WeightedPosition(new Coordinate(
+                                distance * direction.getStepX() + spread * left.getStepX(), 0,
+                                distance * direction.getStepZ() + spread * left.getStepZ()), weight));
+                }
+            }
+            positions.put(direction, java.util.List.copyOf(entries));
+        }
+        return positions;
+    }
 
-	@Override
-	public void updateEntity(World world, int x, int y, int z, int meta) {
-		super.updateEntity(world, x, y, z, meta);
+    @Override
+    public void updateEntity(Level world, BlockPos pos) {
+        super.updateEntity(world, pos);
+        if (!(world instanceof ServerLevel server) || this.hasRedstoneSignal()
+                || this.getEnergy(CrystalElement.GREEN) < 200) return;
+        int attempts = Math.max(1, this.getEnergy(CrystalElement.GREEN) / 2500);
+        for (int attempt = 0; attempt < attempts; attempt++) {
+            BlockPos target = this.getRandomPosition(server);
+            if (target != null && this.operateAt(server, target, true)) {
+                reika.chromaticraft.network.ChromaNetwork.sendFarmerHarvest(server, pos, target);
+                break;
+            }
+        }
+    }
 
-		if (!world.isRemote && !this.hasRedstoneSignal() && this.getEnergy(CrystalElement.GREEN) >= 200) {
-			int n = this.getNumberAttempts();
-			for (int i = 0; i < n; i++) {
-				Coordinate c = this.getRandomPosition(world, x, y, z);
-				if (c != null && this.operateAt(world, c, true)) {
-					this.sendParticles(c);
-					break;
-				}
-			}
-		}
-	}
+    private boolean operateAt(ServerLevel world, BlockPos target, boolean allowRelays) {
+        if (!world.hasChunkAt(target)) return false;
+        if (allowRelays && world.getBlockEntity(target) instanceof TileEntityFunctionRelay relay) {
+            Coordinate next = relay.getRandomCoordinate();
+            return next != null && this.operateAt(world,
+                    new BlockPos(next.xCoord, next.yCoord, next.zCoord), false);
+        }
+        BlockState state = world.getBlockState(target);
+        Block block = state.getBlock();
+        int fortune = this.getEnergy(CrystalElement.PURPLE) / 1000;
+        java.util.List<ItemStack> drops;
+        if ((block == Blocks.CACTUS || block == Blocks.SUGAR_CANE)
+                && world.getBlockState(target.below()).is(block)) {
+            drops = this.blockDrops(world, target, state, fortune);
+            world.removeBlock(target, false);
+        }
+        else {
+            CropType crop = ReikaCropHelper.getCrop(block);
+            if (crop == null) crop = ModCropList.getModCrop(world, target, state);
+            if (crop == null || !crop.isRipe(world, target)) return false;
+            drops = crop.getDrops(world, target, fortune);
+            if (fortune < 3)
+                reika.dragonapi.interfaces.registry.CropType.CropMethods.removeOneSeed(crop, drops);
+            crop.setHarvested(world, target);
+        }
+        for (ItemStack drop : drops) Block.popResource(world, target, drop);
+        reika.dragonapi.libraries.io.ReikaSoundHelper.playBreakSound(world, target, block);
+        this.drainEnergy(CrystalElement.GREEN, 200);
+        this.drainEnergy(CrystalElement.PURPLE, 50);
+        return true;
+    }
 
-	private boolean operateAt(World world, Coordinate c, boolean allowRelays) {
-		if (c == null)
-			return false;
-		Object o = this.getCropOrRelayAt(world, c);
-		if (allowRelays && o instanceof TileEntityFunctionRelay) {
-			return this.operateAt(world, ((TileEntityFunctionRelay)o).getRandomCoordinate(), false);
-		}
-		else if (o instanceof CropType) {
-			CropType crop = (CropType)o;
-			if (crop.isRipe(world, c.xCoord, c.yCoord, c.zCoord)) {
-				int fortune = this.getFortune();
-				ArrayList<ItemStack> li = crop.getDrops(world, c.xCoord, c.yCoord, c.zCoord, fortune);
-				if (fortune < 3) {
-					CropMethods.removeOneSeed(crop, li);
-				}
-				ReikaItemHelper.dropItems(world, c.xCoord+0.5, c.yCoord+0.5, c.zCoord+0.5, li);
-				crop.setHarvested(world, c.xCoord, c.yCoord, c.zCoord);
-				ReikaSoundHelper.playBreakSound(world, c.xCoord, c.yCoord, c.zCoord, c.getBlock(world));
-				this.drainEnergy(CrystalElement.GREEN, 200);
-				this.drainEnergy(CrystalElement.PURPLE, 50);
-				return true;
-			}
-		}
-		else if (o instanceof Block) {
-			Block b = (Block)o;
-			int meta = c.getBlockMetadata(world);
-			int fortune = this.getFortune();
-			ArrayList<ItemStack> li = b.getDrops(world, c.xCoord, c.yCoord, c.zCoord, fortune, meta);
-			ReikaItemHelper.dropItems(world, c.xCoord+0.5, c.yCoord+0.5, c.zCoord+0.5, li);
-			c.setBlock(world, Blocks.air);
-			ReikaSoundHelper.playBreakSound(world, c.xCoord, c.yCoord, c.zCoord, b);
-			this.drainEnergy(CrystalElement.GREEN, 200);
-			this.drainEnergy(CrystalElement.PURPLE, 50);
-			return true;
-		}
-		return false;
-	}
+    private java.util.List<ItemStack> blockDrops(ServerLevel world, BlockPos target, BlockState state, int fortune) {
+        ItemStack tool = new ItemStack(net.minecraft.world.item.Items.IRON_HOE);
+        if (fortune > 0)
+            tool.enchant(world.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.ENCHANTMENT)
+                    .getOrThrow(net.minecraft.world.item.enchantment.Enchantments.FORTUNE), fortune);
+        return Block.getDrops(state, world, target, world.getBlockEntity(target), this.getPlacer(), tool);
+    }
 
-	private int getNumberAttempts() {
-		return Math.max(1, this.getEnergy(CrystalElement.GREEN)/2500);
-	}
+    private BlockPos getRandomPosition(ServerLevel world) {
+        var positions = POSITIONS.get(this.getFacing());
+        double total = positions.stream().mapToDouble(WeightedPosition::weight).sum();
+        double choice = rand.nextDouble() * total;
+        Coordinate selected = positions.getLast().position();
+        for (WeightedPosition entry : positions) {
+            choice -= entry.weight();
+            if (choice < 0) {
+                selected = entry.position();
+                break;
+            }
+        }
+        BlockPos target = worldPosition.offset(selected.xCoord, 0, selected.zCoord);
+        if (!world.hasChunkAt(target)) return null;
+        while (target.getY() > world.getMinY() && world.isEmptyBlock(target))
+            target = target.below();
+        if (this.isSubmerged(world)
+                && target.distManhattan(worldPosition) >= 5) return null;
+        return target;
+    }
 
-	private void sendParticles(Coordinate c) {
-		ReikaPacketHelper.sendDataPacketWithRadius(ChromatiCraft.packetChannel, ChromaPackets.FARMERHARVEST.ordinal(), this, 48, c.xCoord, c.yCoord, c.zCoord);
-	}
+    private boolean isSubmerged(Level world) {
+        for (Direction direction : Direction.values()) {
+            BlockPos adjacent = worldPosition.relative(direction);
+            BlockState state = world.getBlockState(adjacent);
+            if (state.getFluidState().is(net.minecraft.tags.FluidTags.WATER)) continue;
+            if (!state.isSolidRender() && !state.isCollisionShapeFullBlock(world, adjacent))
+                return false;
+        }
+        return true;
+    }
 
-	@SideOnly(Side.CLIENT)
-	public void doParticles(int tx, int ty, int tz) {
-		double v = 0.15;
-		double vx = v*(tx-xCoord);
-		double vy = v*(ty-yCoord);
-		double vz = v*(tz-zCoord);
-		EntityBlurFX fx = new EntityCCBlurFX(worldObj, xCoord+0.5, yCoord+0.5, zCoord+0.5, vx, vy, vz).setColor(0, 192, 0);
-		fx.setScale(4).setLife(10).forceIgnoreLimits();
-		Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-	}
+    @Override public int getMaxStorage(CrystalElement element) {
+        return switch (element) {
+            case GREEN -> 10000;
+            case PURPLE -> 5000;
+            default -> 0;
+        };
+    }
 
-	private int getFortune() {
-		return this.getEnergy(CrystalElement.PURPLE)/1000;
-	}
+    @Override public ChromaTiles getTile() { return ChromaTiles.FARMER; }
 
-	private Object getCropOrRelayAt(World world, Coordinate c) {
-		Block b = c.getBlock(world);
-		if ((b == Blocks.cactus || b == Blocks.reeds) && c.offset(0, -1, 0).getBlock(world) == b)
-			return b;
-		int meta = c.getBlockMetadata(world);
-		if (ChromaTiles.getTileFromIDandMetadata(b, meta) == ChromaTiles.FUNCTIONRELAY) {
-			return c.getTileEntity(world);
-		}
-		CropType type = ReikaCropHelper.getCrop(b);
-		if (type == null)
-			type = ModCropList.getModCrop(b, meta);
-		return type;
-	}
+    @Override
+    protected void animateWithTick(Level world, BlockPos pos) {
+    }
 
-	private Coordinate getRandomPosition(World world, int x, int y, int z) {/*
-		ForgeDirection dir = this.getFacing();
-		ForgeDirection left = ReikaDirectionHelper.getLeftBy90(dir);
-		int r = rand.nextInt(16);
-		int sp = ReikaRandomHelper.getRandomPlusMinus(0, r);//r/2
-		int dx = x+r*dir.offsetX+sp*left.offsetX;//ReikaRandomHelper.getRandomPlusMinus(x, r);
-		int dz = z+r*dir.offsetZ+sp*left.offsetZ;//ReikaRandomHelper.getRandomPlusMinus(z, r);
-		int dy = ReikaWorldHelper.findTopBlockBelowY(world, dx, y, dz);//Math.min(y, world.getTopSolidOrLiquidBlock(x, z));
-		return new Coordinate(dx, dy, dz);*/
-		Coordinate pos = coordinateRand[this.getFacing().ordinal()-2].getRandomEntry().offset(x, y, z);
-		int dy = ReikaWorldHelper.findTopBlockBelowY(world, pos.xCoord, y, pos.zCoord);//Math.min(y, world.getTopSolidOrLiquidBlock(x, z));
-		Coordinate ret = pos.setY(dy);
-		if (ReikaWorldHelper.isSubmerged(world, x, y, z) && ret.getTaxicabDistanceTo(x, y, z) >= 5)
-			ret = null;
-		return ret;
-	}
-	/*
-	@Override
-	public void onPathBroken(CrystalElement e) {
+    @Override
+    protected boolean canReceiveFrom(CrystalElement element, Direction direction) {
+        return this.isAcceptingColor(element);
+    }
 
-	}
+    @Override
+    public ElementTagCompound getRequiredEnergy() {
+        ElementTagCompound required = new ElementTagCompound();
+        required.addTag(CrystalElement.GREEN, this.getRemainingSpace(CrystalElement.GREEN));
+        required.addTag(CrystalElement.PURPLE, this.getRemainingSpace(CrystalElement.PURPLE));
+        return required;
+    }
 
-	@Override
-	public int getReceiveRange() {
-		return 24;
-	}
+    @Override public boolean isAcceptingColor(CrystalElement element) {
+        return element == CrystalElement.GREEN || element == CrystalElement.PURPLE;
+    }
 
-	@Override
-	public boolean isConductingElement(CrystalElement e) {
-		return e == CrystalElement.GREEN || e == CrystalElement.PURPLE;
-	}
+    public Direction getFacing() {
+        return getBlockState().getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.HORIZONTAL_FACING);
+    }
 
-	@Override
-	public int maxThroughput() {
-		return 500;
-	}
+    @Override
+    public Collection<Coordinate> getPossibleRelativePositions() {
+        return POSITIONS.get(Direction.SOUTH).stream().map(WeightedPosition::position).toList();
+    }
 
-	@Override
-	public boolean canConduct() {
-		return true;
-	}
-	 */
-	@Override
-	public int getMaxStorage(CrystalElement e) {
-		switch(e) {
-			case GREEN:
-				return 10000;
-			case PURPLE:
-				return 5000;
-			default:
-				return 0;
-		}
-	}
+    @Override
+    public double getNormalizedWeight(Coordinate position) {
+        var positions = POSITIONS.get(Direction.SOUTH);
+        double maximum = positions.stream().mapToDouble(WeightedPosition::weight).max().orElseThrow();
+        return positions.stream().filter(entry -> entry.position().equals(position))
+                .mapToDouble(WeightedPosition::weight).sum() / maximum;
+    }
 
-	@Override
-	public ChromaTiles getTile() {
-		return ChromaTiles.FARMER;
-	}
-
-	@Override
-	protected void animateWithTick(World world, int x, int y, int z) {
-
-	}
-	/*
-	@Override
-	public boolean canExtractItem(int slot, ItemStack is, int side) {
-		return true;
-	}
-
-	@Override
-	public int getSizeInventory() {
-		return 2;
-	}
-
-	@Override
-	public int getInventoryStackLimit() {
-		return 1;
-	}
-
-	@Override
-	public boolean isItemValidForSlot(int slot, ItemStack is) {
-		return true;
-	}*/
-
-	@Override
-	protected boolean canReceiveFrom(CrystalElement e, ForgeDirection dir) {
-		return this.isAcceptingColor(e);
-	}
-
-	@Override
-	public ElementTagCompound getRequiredEnergy() {
-		ElementTagCompound tag = new ElementTagCompound();
-		tag.addTag(CrystalElement.GREEN, this.getMaxStorage(CrystalElement.GREEN)-energy.getValue(CrystalElement.GREEN));
-		tag.addTag(CrystalElement.PURPLE, this.getMaxStorage(CrystalElement.PURPLE)-energy.getValue(CrystalElement.PURPLE));
-		return tag;
-	}
-
-	@Override
-	public boolean isAcceptingColor(CrystalElement e) {
-		return e == CrystalElement.GREEN || e == CrystalElement.PURPLE;
-	}
-
-	public ForgeDirection getFacing() {
-		switch(this.getBlockMetadata()) {
-			case 0:
-				return ForgeDirection.WEST;
-			case 1:
-				return ForgeDirection.EAST;
-			case 2:
-				return ForgeDirection.NORTH;
-			case 3:
-				return ForgeDirection.SOUTH;
-			default:
-				return ForgeDirection.UNKNOWN;
-		}
-	}
-
-	@Override
-	public Collection<Coordinate> getPossibleRelativePositions() {
-		return coordinateRand[3].getValues();
-	}
-
-	@Override
-	public double getNormalizedWeight(Coordinate c) {
-		return coordinateRand[3].getNormalizedWeight(c);
-	}
-
+    private record WeightedPosition(Coordinate position, double weight) {}
 }

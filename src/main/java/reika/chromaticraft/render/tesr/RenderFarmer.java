@@ -9,137 +9,136 @@
  ******************************************************************************/
 package reika.chromaticraft.render.tesr;
 
-import org.lwjgl.opengl.GL11;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.math.Axis;
 
-import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.tileentity.TileEntity;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.model.geom.ModelLayerLocation;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
+import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
+import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
+import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.client.renderer.texture.TextureAtlas;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.data.AtlasIds;
+import net.minecraft.resources.Identifier;
+import net.minecraft.core.Direction;
+import net.minecraft.world.phys.Vec3;
 
-import reika.chromaticraft.base.ChromaRenderBase;
+import org.jspecify.annotations.Nullable;
+
+import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.models.ModelFarmer;
-import reika.chromaticraft.registry.ChromaIcons;
 import reika.chromaticraft.registry.CrystalElement;
+import reika.chromaticraft.render.ChromaRenderPipelines;
 import reika.chromaticraft.tileentity.TileEntityFarmer;
-import reika.dragonapi.interfaces.tileentity.RenderFetcher;
-import reika.dragonapi.libraries.io.ReikaTextureHelper;
-import reika.dragonapi.libraries.java.reikaglhelper.BlendMode;
 
-public class RenderFarmer extends ChromaRenderBase {
+public final class RenderFarmer implements BlockEntityRenderer<TileEntityFarmer, RenderFarmer.State> {
 
-	private final ModelFarmer model = new ModelFarmer();
+    public static final ModelLayerLocation MODEL_LAYER = new ModelLayerLocation(id("farmer"), "main");
+    public static final Identifier TEXTURE = id("textures/entity/farmer.png");
+    private final ModelFarmer model;
 
-	@Override
-	public String getImageFileName(RenderFetcher te) {
-		return "farmer.png";
-	}
+    public RenderFarmer(BlockEntityRendererProvider.Context context) {
+        model = new ModelFarmer(context.bakeLayer(MODEL_LAYER));
+    }
 
-	@Override
-	public void renderTileEntityAt(TileEntity tile, double par2, double par4, double par6, float par8) {
-		TileEntityFarmer te = (TileEntityFarmer)tile;
-		GL11.glPushMatrix();
-		GL11.glTranslated(par2, par4, par6);
-		if (te.isInWorld()) {
-			int a = 0;
-			switch (te.getFacing()) {
-			case EAST:
-				a = 90;
-				GL11.glTranslated(0, 0, 1);
-				break;
-			case NORTH:
-				a = 180;
-				GL11.glTranslated(1, 0, 1);
-				break;
-			case SOUTH:
-				break;
-			case WEST:
-				a = -90;
-				GL11.glTranslated(1, 0, 0);
-				break;
-			default:
-				break;
-			}
-			GL11.glRotated(a, 0, 1, 0);
-		}
-		this.renderModel(te, model);
-		Tessellator v5 = Tessellator.instance;
-		ReikaTextureHelper.bindTerrainTexture();
-		GL11.glDisable(GL11.GL_LIGHTING);
-		GL11.glEnable(GL11.GL_BLEND);
-		BlendMode.ADDITIVEDARK.apply();
-		//double a = (System.currentTimeMillis()%1000/1000D);
-		double u = ChromaIcons.BLUEFIRE.getIcon().getMinU();//Math.sin(a);
-		double v = ChromaIcons.BLUEFIRE.getIcon().getMinV();//Math.cos(a);
-		//double s = 0.125+0.0625*Math.sin(System.currentTimeMillis()/200D);
-		double du = ChromaIcons.BLUEFIRE.getIcon().getMaxU();//u+s;
-		double dv = ChromaIcons.BLUEFIRE.getIcon().getMaxV();//v+s;
-		double d = 0.95;
-		v5.startDrawingQuads();
-		v5.setBrightness(240);
-		v5.setColorOpaque_I(CrystalElement.GREEN.getColor());
-		v5.addVertexWithUV(0, 0, d, u, v);
-		v5.addVertexWithUV(1, 0, d, du, v);
-		v5.addVertexWithUV(1, 1, d, du, dv);
-		v5.addVertexWithUV(0, 1, d, u, dv);
+    @Override public State createRenderState() { return new State(); }
 
-		v5.addVertexWithUV(0, 0, d, du, dv);
-		v5.addVertexWithUV(1, 0, d, u, dv);
-		v5.addVertexWithUV(1, 1, d, u, v);
-		v5.addVertexWithUV(0, 1, d, du, v);
+    @Override
+    public void extractRenderState(TileEntityFarmer farmer, State state, float partialTick,
+            Vec3 cameraPosition, ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress) {
+        BlockEntityRenderer.super.extractRenderState(farmer, state, partialTick, cameraPosition, breakProgress);
+        state.facing = farmer.getFacing();
+    }
 
-		v5.addVertexWithUV(0, 0, d, u, dv);
-		v5.addVertexWithUV(1, 0, d, u, v);
-		v5.addVertexWithUV(1, 1, d, du, v);
-		v5.addVertexWithUV(0, 1, d, du, dv);
+    @Override
+    public void submit(State state, PoseStack pose, SubmitNodeCollector collector, CameraRenderState camera) {
+        pose.pushPose();
+        pose.translate(0.5, 0, 0.5);
+        float angle = switch (state.facing) {
+            case EAST -> 90;
+            case NORTH -> 180;
+            case WEST -> -90;
+            default -> 0;
+        };
+        pose.mulPose(Axis.YP.rotationDegrees(angle));
+        pose.translate(-0.5, 0, -0.5);
+        submitMachine(pose, collector, model, state.lightCoords);
+        pose.popPose();
+    }
 
-		v5.addVertexWithUV(0, 0, d, du, v);
-		v5.addVertexWithUV(1, 0, d, du, dv);
-		v5.addVertexWithUV(1, 1, d, u, dv);
-		v5.addVertexWithUV(0, 1, d, u, v);
+    public static void submitMachine(PoseStack pose, SubmitNodeCollector collector, ModelFarmer model, int light) {
+        PoseStack body = copy(pose);
+        body.translate(0.5, 1.5, 0.5);
+        body.scale(1, -1, -1);
+        collector.submitCustomGeometry(body, RenderTypes.entityCutout(TEXTURE),
+                (unused, output) -> model.render(body, output, light, OverlayTexture.NO_OVERLAY));
+        PoseStack effects = copy(pose);
+        collector.submitCustomGeometry(effects,
+                ChromaRenderPipelines.legacyAdditiveSprite(TextureAtlas.LOCATION_BLOCKS),
+                (unused, output) -> renderEffects(effects.last(), output));
+    }
 
-		u = ChromaIcons.RIFTHALO.getIcon().getMinU();//Math.sin(a);
-		v = ChromaIcons.RIFTHALO.getIcon().getMinV();//Math.cos(a);
-		du = ChromaIcons.RIFTHALO.getIcon().getMaxU();//u+s;
-		dv = ChromaIcons.RIFTHALO.getIcon().getMaxV();//v+s;
+    private static void renderEffects(PoseStack.Pose pose, VertexConsumer output) {
+        TextureAtlasSprite fire = sprite("bluefire");
+        front(pose, output, fire, 0.95F, 0, 0, 1, 0, 1, 1, 0, 1);
+        front(pose, output, fire, 0.95F, 1, 1, 0, 1, 0, 0, 1, 0);
+        front(pose, output, fire, 0.95F, 0, 1, 0, 0, 1, 0, 1, 1);
+        front(pose, output, fire, 0.95F, 1, 0, 1, 1, 0, 1, 0, 0);
+        sides(pose, output, sprite("rift_halo"), 0.995F);
+        TextureAtlasSprite sparkle = sprite("sparkle2");
+        sides(pose, output, sparkle, 0.9975F);
+        front(pose, output, sparkle, 0.9975F, 0, 0, 1, 0, 1, 1, 0, 1);
+    }
 
-		d = 0.995;
+    private static void front(PoseStack.Pose pose, VertexConsumer output, TextureAtlasSprite sprite,
+            float depth, float u0, float v0, float u1, float v1, float u2, float v2, float u3, float v3) {
+        vertex(pose, output, sprite, 0, 0, depth, u0, v0);
+        vertex(pose, output, sprite, 1, 0, depth, u1, v1);
+        vertex(pose, output, sprite, 1, 1, depth, u2, v2);
+        vertex(pose, output, sprite, 0, 1, depth, u3, v3);
+    }
 
-		v5.addVertexWithUV(1-d, 0.1875, 0.125, u, v);
-		v5.addVertexWithUV(1-d, 0.1875, 0.875, du, v);
-		v5.addVertexWithUV(1-d, 0.8125, 0.875, du, dv);
-		v5.addVertexWithUV(1-d, 0.8125, 0.125, u, dv);
+    private static void sides(PoseStack.Pose pose, VertexConsumer output, TextureAtlasSprite sprite, float depth) {
+        vertex(pose, output, sprite, 1 - depth, 0.1875F, 0.125F, 0, 0);
+        vertex(pose, output, sprite, 1 - depth, 0.1875F, 0.875F, 1, 0);
+        vertex(pose, output, sprite, 1 - depth, 0.8125F, 0.875F, 1, 1);
+        vertex(pose, output, sprite, 1 - depth, 0.8125F, 0.125F, 0, 1);
+        vertex(pose, output, sprite, depth, 0.8125F, 0.125F, 0, 1);
+        vertex(pose, output, sprite, depth, 0.8125F, 0.875F, 1, 1);
+        vertex(pose, output, sprite, depth, 0.1875F, 0.875F, 1, 0);
+        vertex(pose, output, sprite, depth, 0.1875F, 0.125F, 0, 0);
+    }
 
-		v5.addVertexWithUV(d, 0.8125, 0.125, u, dv);
-		v5.addVertexWithUV(d, 0.8125, 0.875, du, dv);
-		v5.addVertexWithUV(d, 0.1875, 0.875, du, v);
-		v5.addVertexWithUV(d, 0.1875, 0.125, u, v);
+    private static void vertex(PoseStack.Pose pose, VertexConsumer output, TextureAtlasSprite sprite,
+            float x, float y, float z, float u, float v) {
+        output.addVertex(pose, x, y, z).setColor(0xff000000 | CrystalElement.GREEN.getColor())
+                .setUv(sprite.getU0() + u * (sprite.getU1() - sprite.getU0()),
+                        sprite.getV0() + v * (sprite.getV1() - sprite.getV0()))
+                .setOverlay(OverlayTexture.NO_OVERLAY).setLight(0xF000F0).setNormal(pose, 0, 1, 0);
+    }
 
+    private static TextureAtlasSprite sprite(String name) {
+        return Minecraft.getInstance().getAtlasManager().getAtlasOrThrow(AtlasIds.BLOCKS)
+                .getSprite(id("block/icons/" + name));
+    }
 
-		u = ChromaIcons.SPARKLE.getIcon().getMinU();//Math.sin(a);
-		v = ChromaIcons.SPARKLE.getIcon().getMinV();//Math.cos(a);
-		du = ChromaIcons.SPARKLE.getIcon().getMaxU();//u+s;
-		dv = ChromaIcons.SPARKLE.getIcon().getMaxV();//v+s;
+    private static PoseStack copy(PoseStack source) {
+        PoseStack copy = new PoseStack();
+        copy.last().pose().set(source.last().pose());
+        copy.last().normal().set(source.last().normal());
+        return copy;
+    }
 
-		d = 0.9975;
+    private static Identifier id(String path) { return Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, path); }
 
-		v5.addVertexWithUV(1-d, 0.1875, 0.125, u, v);
-		v5.addVertexWithUV(1-d, 0.1875, 0.875, du, v);
-		v5.addVertexWithUV(1-d, 0.8125, 0.875, du, dv);
-		v5.addVertexWithUV(1-d, 0.8125, 0.125, u, dv);
-
-		v5.addVertexWithUV(d, 0.8125, 0.125, u, dv);
-		v5.addVertexWithUV(d, 0.8125, 0.875, du, dv);
-		v5.addVertexWithUV(d, 0.1875, 0.875, du, v);
-		v5.addVertexWithUV(d, 0.1875, 0.125, u, v);
-
-		v5.addVertexWithUV(0, 0, d, u, v);
-		v5.addVertexWithUV(1, 0, d, du, v);
-		v5.addVertexWithUV(1, 1, d, du, dv);
-		v5.addVertexWithUV(0, 1, d, u, dv);
-
-		v5.draw();
-		BlendMode.DEFAULT.apply();
-		GL11.glDisable(GL11.GL_BLEND);
-		GL11.glEnable(GL11.GL_LIGHTING);
-		GL11.glPopMatrix();
-	}
-
+    public static final class State extends BlockEntityRenderState {
+        Direction facing = Direction.SOUTH;
+    }
 }

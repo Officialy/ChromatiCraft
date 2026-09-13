@@ -26,6 +26,7 @@ import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.block.BlockCastingItemStand;
 import reika.chromaticraft.block.BlockCastingTable;
 import reika.chromaticraft.block.BlockCrystalCharger;
+import reika.chromaticraft.block.BlockFarmer;
 import reika.chromaticraft.block.BlockItemAuraInfuser;
 import reika.chromaticraft.block.BlockChromaFluid;
 import reika.chromaticraft.block.BlockChromaMud;
@@ -658,6 +659,9 @@ public final class ChromaBlocks {
 			register("casting_table", () -> new BlockCastingTable(blockProperties().strength(4F, 16F).noOcclusion()));
 	public static final DeferredBlock<Block> CRYSTAL_CHARGER =
 			register("crystal_charger", () -> new BlockCrystalCharger(
+					blockProperties().strength(3F, 12F).noOcclusion()));
+	public static final DeferredBlock<Block> FARMER =
+			register("farmer", () -> new BlockFarmer(
 					blockProperties().strength(3F, 12F).noOcclusion()));
 	public static final DeferredBlock<Block> ITEM_INFUSER =
 			register("item_aura_infuser", () -> new BlockItemAuraInfuser(

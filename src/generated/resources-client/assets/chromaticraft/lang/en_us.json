@@ -736,5 +736,22 @@
   "lexicon.chromaticraft.section.resources": "Resources",
   "lexicon.chromaticraft.section.structures": "Structures",
   "lexicon.chromaticraft.section.tools": "Tools",
-  "tab.chromaticraft": "ChromatiCraft"
+  "tab.chromaticraft": "ChromatiCraft",
+  "block.chromaticraft.farmer": "Elemental Harvester",
+  "item.chromaticraft.tinted_crystal_lens_black": "Kuro Tinted Crystal Lens",
+  "item.chromaticraft.tinted_crystal_lens_red": "Karmir Tinted Crystal Lens",
+  "item.chromaticraft.tinted_crystal_lens_green": "Kijani Tinted Crystal Lens",
+  "item.chromaticraft.tinted_crystal_lens_brown": "Ruskea Tinted Crystal Lens",
+  "item.chromaticraft.tinted_crystal_lens_blue": "Nila Tinted Crystal Lens",
+  "item.chromaticraft.tinted_crystal_lens_purple": "Zambarau Tinted Crystal Lens",
+  "item.chromaticraft.tinted_crystal_lens_cyan": "Vadali Tinted Crystal Lens",
+  "item.chromaticraft.tinted_crystal_lens_light_gray": "Argia Tinted Crystal Lens",
+  "item.chromaticraft.tinted_crystal_lens_gray": "Ykri Tinted Crystal Lens",
+  "item.chromaticraft.tinted_crystal_lens_pink": "Ruzova Tinted Crystal Lens",
+  "item.chromaticraft.tinted_crystal_lens_lime": "Asveste Tinted Crystal Lens",
+  "item.chromaticraft.tinted_crystal_lens_yellow": "Kitrino Tinted Crystal Lens",
+  "item.chromaticraft.tinted_crystal_lens_light_blue": "Galazio Tinted Crystal Lens",
+  "item.chromaticraft.tinted_crystal_lens_magenta": "Kurauri Tinted Crystal Lens",
+  "item.chromaticraft.tinted_crystal_lens_orange": "Portokali Tinted Crystal Lens",
+  "item.chromaticraft.tinted_crystal_lens_white": "Tahara Tinted Crystal Lens"
 }

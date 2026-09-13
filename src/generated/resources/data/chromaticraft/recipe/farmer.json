@@ -1,0 +1,158 @@
+{
+  "type": "chromaticraft:casting",
+  "aura": [
+    {
+      "amount": 12000,
+      "element": "green"
+    },
+    {
+      "amount": 6000,
+      "element": "yellow"
+    }
+  ],
+  "duration": 400,
+  "experience": 500,
+  "grid": [
+    {
+      "ingredient": "chromaticraft:energy_core",
+      "slot": 4
+    }
+  ],
+  "penalty_threshold": 6,
+  "result": {
+    "count": 3,
+    "id": "chromaticraft:farmer"
+  },
+  "stackable": false,
+  "stands": [
+    {
+      "ingredient": "chromaticraft:aura_dust",
+      "offset": [
+        -4,
+        1,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:aura_dust",
+      "offset": [
+        -4,
+        1,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:aura_dust",
+      "offset": [
+        4,
+        1,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:aura_dust",
+      "offset": [
+        4,
+        1,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:aura_dust",
+      "offset": [
+        -2,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:aura_dust",
+      "offset": [
+        -2,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:aura_dust",
+      "offset": [
+        2,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:aura_dust",
+      "offset": [
+        2,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:tinted_crystal_lens_green",
+      "offset": [
+        -4,
+        1,
+        0
+      ]
+    },
+    {
+      "ingredient": "minecraft:iron_hoe",
+      "offset": [
+        4,
+        1,
+        0
+      ]
+    },
+    {
+      "ingredient": "minecraft:iron_ingot",
+      "offset": [
+        -4,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "minecraft:iron_ingot",
+      "offset": [
+        0,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "minecraft:iron_ingot",
+      "offset": [
+        4,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "minecraft:iron_ingot",
+      "offset": [
+        -4,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "minecraft:iron_ingot",
+      "offset": [
+        0,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "minecraft:iron_ingot",
+      "offset": [
+        4,
+        1,
+        4
+      ]
+    }
+  ],
+  "tier": "pylon"
+}

@@ -10,210 +10,210 @@
 package reika.chromaticraft.base.tileentity;
 
 import java.util.List;
+import java.util.UUID;
 
-import net.minecraft.block.Block;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.world.World;
-import net.minecraftforge.common.util.ForgeDirection;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.state.BlockState;
 
-import reika.chromaticraft.base.tileentity.tileentityadjacencyupgrade.AdjacencyCheckHandlerImpl;
 import reika.chromaticraft.magic.ElementTagCompound;
+import reika.chromaticraft.magic.interfaces.AdjacencyUpgradeProvider;
 import reika.chromaticraft.magic.interfaces.LumenConsumer;
 import reika.chromaticraft.magic.network.RelayNetworker;
 import reika.chromaticraft.magic.progression.ProgressStage;
-import reika.chromaticraft.magic.progression.ProgressionCatchupHandling;
 import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.tileentity.aoe.effect.TileEntityEfficiencyUpgrade;
 import reika.chromaticraft.tileentity.networking.TileEntityRelaySource;
-import reika.dragonapi.DragonAPICore;
-
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
+import reika.dragonapi.DragonAPI;
+import reika.dragonapi.libraries.registry.ReikaItemHelper;
 
 public abstract class TileEntityRelayPowered extends TileEntityChromaticBase implements LumenConsumer {
 
-	private static final AdjacencyCheckHandlerImpl adjacency = TileEntityAdjacencyUpgrade.getOrCreateAdjacencyCheckHandler(CrystalElement.BLACK, null);
+    private static final float[] EFFICIENCY_FACTORS = {
+            0.9375F, 0.875F, 0.75F, 0.625F, 0.5F, 0.25F, 0.125F, 0.0625F
+    };
 
-	protected final ElementTagCompound energy = new ElementTagCompound();
+    protected final ElementTagCompound energy = new ElementTagCompound();
+    private int requestTimer = rand.nextInt(200);
+    private long lastRequestDecrTime = -1;
+    private int efficiencyBoost;
 
-	private int requestTimer = rand.nextInt(200);
+    protected TileEntityRelayPowered(BlockEntityType<?> type, BlockPos pos, BlockState state) {
+        super(type, pos, state);
+    }
 
-	private long lastRequestDecrTime = -1;
+    @Override
+    public final void onAdjacentUpdate(Level world, BlockPos pos, Block block) {
+        if (!world.isClientSide()) {
+            this.calcEfficiency();
+            this.syncAllData(false);
+        }
+    }
 
-	private int efficiencyBoost;
+    @Override
+    protected void onFirstTick(Level world, BlockPos pos) {
+        super.onFirstTick(world, pos);
+        if (!world.isClientSide()) this.calcEfficiency();
+    }
 
-	public final void onAdjacentUpdate(World world, int x, int y, int z, Block b) {
-		this.calcEfficiency();
-		this.syncAllData(false);
-	}
+    @Override public final int getEfficiencyBoost() { return efficiencyBoost; }
 
-	public final int getEfficiencyBoost() {
-		return efficiencyBoost;
-	}
+    protected final float getEnergyCostScale() {
+        return efficiencyBoost > 0 ? EFFICIENCY_FACTORS[Math.min(efficiencyBoost - 1,
+                EFFICIENCY_FACTORS.length - 1)] : 1;
+    }
 
-	protected final float getEnergyCostScale() {
-		float f = 1;
-		int e = this.getEfficiencyBoost();
-		if (e > 0)
-			f *= TileEntityEfficiencyUpgrade.getCostFactor(e-1);
-		return f;
-	}
+    private void calcEfficiency() {
+        efficiencyBoost = 0;
+        if (level == null) return;
+        for (Direction direction : Direction.values()) {
+            BlockEntity adjacent = level.getBlockEntity(worldPosition.relative(direction));
+            if (adjacent instanceof AdjacencyUpgradeProvider upgrade
+                    && upgrade.getAdjacencyColor() == CrystalElement.BLACK
+                    && upgrade.isAdjacencyUpgradeActive())
+                efficiencyBoost = Math.max(efficiencyBoost, 1 + upgrade.getAdjacencyTier());
+        }
+    }
 
-	private void calcEfficiency() {
-		efficiencyBoost = adjacency.getAdjacentUpgrade(this);
-	}
+    @Override
+    public void updateEntity(Level world, BlockPos pos) {
+        if (world.isClientSide()) return;
+        if (DragonAPI.debugtest) {
+            CrystalElement element = CrystalElement.randomElement();
+            if (this.isAcceptingColor(element)) energy.addValueToColor(element, 500);
+        }
+        if (!this.makeRequests()) return;
+        if (requestTimer == 0) {
+            for (CrystalElement element : this.getRequiredEnergy().elementSet()) {
+                for (Direction direction : Direction.values()) {
+                    if (this.canReceiveFrom(element, direction)
+                            && this.requestEnergy(element, this.getRemainingSpace(element), direction))
+                        break;
+                }
+            }
+            requestTimer = 200;
+            this.setChanged();
+        }
+        else {
+            long time = world.getGameTime();
+            if (lastRequestDecrTime != time) {
+                requestTimer--;
+                this.setChanged();
+            }
+            lastRequestDecrTime = time;
+        }
+    }
 
-	@Override
-	public void updateEntity(World world, int x, int y, int z, int meta) {
-		if (DragonAPICore.debugtest && !world.isRemote) {
-			CrystalElement e = CrystalElement.randomElement();
-			if (this.isAcceptingColor(e))
-				energy.addValueToColor(e, 500);
-		}
+    protected boolean makeRequests() { return true; }
+    protected abstract boolean canReceiveFrom(CrystalElement element, Direction direction);
+    public abstract ElementTagCompound getRequiredEnergy();
 
-		if (!world.isRemote && this.makeRequests()) {
-			if (requestTimer == 0) {
-				ElementTagCompound tag = this.getRequiredEnergy();
-				for (CrystalElement e : tag.elementSet()) {
-					for (int i = 0; i < 6; i++) {
-						if (this.canReceiveFrom(e, dirs[i])) {
-							if (this.requestEnergy(e, this.getRemainingSpace(e), dirs[i]))
-								break;
-						}
-					}
-				}
-				requestTimer = 200;
-			}
-			else {
-				long time = world.getTotalWorldTime();
-				if (lastRequestDecrTime != time) {
-					requestTimer--;
-				}
-				lastRequestDecrTime = time;
-			}
-		}
-	}
+    private boolean requestEnergy(CrystalElement element, int amount, Direction direction) {
+        if (amount <= 0) return true;
+        TileEntityRelaySource source = RelayNetworker.instance.findRelaySource(
+                level, worldPosition, direction, element, amount, 128);
+        if (source == null) return false;
+        int available = source.getEnergy(element);
+        int transfer = Math.max(0, Math.min(Math.min(amount, available), this.getRemainingSpace(element)));
+        if (transfer > 0) {
+            source.drainEnergy(element, transfer);
+            source.onDrain(element, transfer);
+            source.setChanged();
+            energy.addValueToColor(element, transfer);
+            this.setChanged();
+            var owner = this.getPlacer();
+            if (owner != null) ProgressStage.RELAYS.stepPlayerTo(owner);
+        }
+        return available >= amount;
+    }
 
-	protected boolean makeRequests() {
-		return true;
-	}
+    public abstract boolean isAcceptingColor(CrystalElement element);
+    @Override public abstract int getMaxStorage(CrystalElement element);
+    @Override public final int getEnergy(CrystalElement element) { return energy.getValue(element); }
+    @Override public final ElementTagCompound getEnergy() { return energy.copy(); }
 
-	protected abstract boolean canReceiveFrom(CrystalElement e, ForgeDirection dir);
+    public final int getEnergyScaled(CrystalElement element, int scale) {
+        int capacity = this.getMaxStorage(element);
+        return capacity > 0 ? (int)((long)scale * this.getEnergy(element) / capacity) : 0;
+    }
 
-	public abstract ElementTagCompound getRequiredEnergy();
+    public final int getRemainingSpace(CrystalElement element) {
+        return Math.max(0, this.getMaxStorage(element) - this.getEnergy(element));
+    }
 
-	private final boolean requestEnergy(CrystalElement e, int amt, ForgeDirection dir) {
-		TileEntityRelaySource te = RelayNetworker.instance.findRelaySource(worldObj, xCoord, yCoord, zCoord, dir, e, amt, 128);
-		if (te != null) {
-			int has = te.getEnergy(e);
-			int trans = Math.min(Math.min(amt, has), this.getMaxStorage(e)-energy.getValue(e));
-			te.drainEnergy(e, trans);
-			te.onDrain(e, trans);
-			energy.addValueToColor(e, trans);
-			ProgressStage.RELAYS.stepPlayerTo(this.getPlacer());
-			if (worldObj.isRemote) {
-				ProgressionCatchupHandling.instance.attemptSync(this, 8, ProgressStage.RELAYS, true);
-			}
-			return has >= amt;
-		}
-		return false;
-	}
-	/*
-	private final boolean requestEnergy(ElementTagCompound tag, ForgeDirection dir) {
-		boolean flag = true;
-		for (CrystalElement e : tag.elementSet()) {
-			flag = this.requestEnergy(e, tag.getValue(e), dir) && flag;
-		}
-		return flag;
-	}
-	 */
-	private final int addEnergy(CrystalElement e, int amt) {
-		if (e == null || !this.isAcceptingColor(e))
-			return 0;
-		int diff = Math.min(amt, this.getRemainingSpace(e));
-		energy.addValueToColor(e, diff);
-		return diff;
-	}
+    @Override
+    protected void readSyncTag(CompoundTag tag) {
+        super.readSyncTag(tag);
+        energy.readFromNBT("energy", tag);
+        efficiencyBoost = tag.getIntOr("eff", 0);
+        requestTimer = Math.clamp(tag.getIntOr("relayRequestTimer", requestTimer), 0, 200);
+    }
 
-	public abstract boolean isAcceptingColor(CrystalElement e);
+    @Override
+    protected void writeSyncTag(CompoundTag tag) {
+        super.writeSyncTag(tag);
+        energy.writeToNBT("energy", tag);
+        tag.putInt("eff", efficiencyBoost);
+        tag.putInt("relayRequestTimer", requestTimer);
+    }
 
-	public final int getEnergyScaled(CrystalElement e, int a) {
-		return a * this.getEnergy(e) / this.getMaxStorage(e);
-	}
+    protected final void drainEnergy(CrystalElement element, int amount) {
+        if (this.allowsEfficiencyBoost())
+            amount = (int)Math.max(1, amount * this.getEnergyCostScale());
+        energy.subtract(element, amount);
+        this.setChanged();
+    }
 
-	public final int getEnergy(CrystalElement e) {
-		return energy.getValue(e);
-	}
+    protected final void drainEnergy(ElementTagCompound cost) {
+        if (this.allowsEfficiencyBoost()) {
+            cost = cost.copy();
+            cost.scale(this.getEnergyCostScale());
+        }
+        energy.subtract(cost);
+        this.setChanged();
+    }
 
-	public final int getRemainingSpace(CrystalElement e) {
-		return this.getMaxStorage(e)-this.getEnergy(e);
-	}
+    @Override public boolean allowsEfficiencyBoost() { return true; }
 
-	public abstract int getMaxStorage(CrystalElement e);
+    public final void setEnergyClient(CrystalElement element, int amount) {
+        energy.setTag(element, amount);
+    }
 
-	@Override
-	protected void readSyncTag(NBTTagCompound NBT) {
-		super.readSyncTag(NBT);
+    @Override
+    public void getTagsToWriteToStack(CompoundTag tag) {
+        energy.writeToNBT("energy", tag);
+        if (placer != null && !placer.isEmpty()) tag.putString("place", placer);
+        if (placerUUID != null) tag.putString("placeUUID", placerUUID.toString());
+    }
 
-		energy.readFromNBT("energy", NBT);
+    @Override
+    public void setDataFromItemStackTag(ItemStack stack) {
+        CompoundTag tag = ReikaItemHelper.getStackTag(stack);
+        if (tag == null) {
+            energy.clear();
+            return;
+        }
+        energy.readFromNBT("energy", tag);
+        placer = tag.getStringOr("place", placer != null ? placer : "");
+        String owner = tag.getStringOr("placeUUID", "");
+        if (!owner.isEmpty()) {
+            try { placerUUID = UUID.fromString(owner); }
+            catch (IllegalArgumentException ignored) { placerUUID = this.getPlacerID(); }
+        }
+        this.setChanged();
+    }
 
-		efficiencyBoost = NBT.getInteger("eff");
-	}
-
-	@Override
-	protected void writeSyncTag(NBTTagCompound NBT) {
-		super.writeSyncTag(NBT);
-
-		energy.writeToNBT("energy", NBT);
-
-		NBT.setInteger("eff", efficiencyBoost);
-	}
-
-	protected final void drainEnergy(CrystalElement e, int amt) {
-		if (this.allowsEfficiencyBoost())
-			amt = (int)Math.max(1, amt*this.getEnergyCostScale());
-		energy.subtract(e, amt);
-	}
-
-	protected final void drainEnergy(ElementTagCompound tag) {
-		if (this.allowsEfficiencyBoost()) {
-			tag = tag.copy();
-			tag.scale(this.getEnergyCostScale());
-		}
-		energy.subtract(tag);
-	}
-
-	public boolean allowsEfficiencyBoost() {
-		return true;
-	}
-
-	@SideOnly(Side.CLIENT)
-	public final void setEnergyClient(CrystalElement e, int lvl) {
-		energy.setTag(e, lvl);
-	}
-
-	public final ElementTagCompound getEnergy() {
-		return energy.copy();
-	}
-
-	@Override
-	public void getTagsToWriteToStack(NBTTagCompound NBT) {
-		this.writeOwnerData(NBT);
-		energy.writeToNBT("energy", NBT);
-	}
-
-	@Override
-	public void setDataFromItemStackTag(ItemStack is) {
-		this.readOwnerData(is);
-		if (is.stackTagCompound == null)
-			return;
-		energy.readFromNBT("energy", is.stackTagCompound);
-	}
-
-	@Override
-	public void addTooltipInfo(List li, boolean shift) {
-
-	}
-
+    @Override
+    public void addTooltipInfo(List lines, boolean shift) {
+        if (shift) {
+            for (CrystalElement element : energy.elementSet())
+                lines.add(net.minecraft.network.chat.Component.literal(
+                        element.displayName() + ": " + energy.getValue(element)));
+        }
+    }
 }

@@ -109,6 +109,7 @@ public class ChromaLang extends LanguageProvider {
 					tier.displayPrefix() + " Energy Storage Crystal");
 		add(ChromaItems.SPEED_UPGRADE.get(), "Speed Upgrade"); // V33a chromamisc.speed
 		add(ChromaBlocks.CRYSTAL_CHARGER.get(), "Storage Crystal Charger"); // V33a chroma.charger
+		add(ChromaBlocks.FARMER.get(), "Elemental Harvester"); // V33a chroma.farmer
 		add(ChromaBlocks.ITEM_INFUSER.get(), "Item Aura Infuser"); // V33a chroma.infuser
 		add(ChromaBlocks.PLAYER_INFUSER.get(), "Personal Infusion Stand"); // V33a chroma.playerinfuser
 		add(ChromaBlocks.FUNCTION_RELAY.get(), "Area Delegation Point");
@@ -207,6 +208,8 @@ public class ChromaLang extends LanguageProvider {
 					element.displayName + " Lumen-Encrusted Crystals");
 			add(ChromaItems.BERRIES.get(element).get(), element.displayName + " Chroma Berries");
 			add(ChromaItems.ELEMENTAL_STONES.get(element).get(), element.displayName + " Elemental Stone");
+			add(ChromaItems.TINTED_LENSES.get(element).get(),
+					element.displayName + " Tinted Crystal Lens");
 		}
 
 		// Crystalline stone — each variant is its own block now, so the names key off the real block

@@ -14,6 +14,7 @@ import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.tileentity.TileEntityDisplayPoint;
 import reika.chromaticraft.tileentity.TileEntityDataNode;
+import reika.chromaticraft.tileentity.TileEntityFarmer;
 import reika.chromaticraft.tileentity.auxiliary.TileEntityChromaCrystal;
 import reika.chromaticraft.block.BlockEncrustedCrystal.TileCrystalEncrusted;
 import reika.chromaticraft.block.BlockChromaFluid.TileEntityChroma;
@@ -76,6 +77,8 @@ public final class ChromaBlockEntities {
 			register("casting_table", ChromaTiles.TABLE);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityCrystalCharger>> CRYSTAL_CHARGER =
 			register("crystal_charger", ChromaTiles.CHARGER);
+	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityFarmer>> FARMER =
+			register("farmer", ChromaTiles.FARMER);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityItemInfuser>> ITEM_INFUSER =
 			register("item_aura_infuser", ChromaTiles.INFUSER);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityPlayerInfuser>> PLAYER_INFUSER =

@@ -34,6 +34,12 @@ public final class ClientPayloadHandlers {
 					minecraft.level, color, path.get(index - 1), path.get(index)));
 	}
 
+	public static void farmerHarvest(BlockPos source, BlockPos target) {
+		Minecraft minecraft = Minecraft.getInstance();
+		if (minecraft.level != null)
+			ChromaParticle.spawnFarmerHarvest(minecraft.level, source, target);
+	}
+
 	/**
 	 * Builds this client's own copy of Proxima's sky rivers from the seed the server sent.
 	 *

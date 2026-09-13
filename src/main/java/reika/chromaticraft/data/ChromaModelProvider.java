@@ -133,6 +133,7 @@ public class ChromaModelProvider extends ModelProvider {
 		itemStandModel(blockStateOut, itemModelOut, modelOut);
 		castingTableModel(blockStateOut, itemModelOut, modelOut);
 		crystalChargerModel(blockStateOut, itemModelOut, modelOut);
+		farmerModel(blockStateOut, itemModelOut, modelOut);
 		itemAuraInfuserModel(blockStateOut, itemModelOut, modelOut);
 		playerAuraInfuserModel(blockStateOut, itemModelOut, modelOut);
 		portalRiftModels(blockStateOut, itemModelOut, modelOut);
@@ -245,6 +246,10 @@ public class ChromaModelProvider extends ModelProvider {
 			Item stone = ChromaItems.ELEMENTAL_STONES.get(element).get();
 			Identifier stoneModel = ModelTemplates.FLAT_ITEM.create(ModelLocationUtils.getModelLocation(stone), TextureMapping.layer0(stone), modelOut);
 			itemModelOut.accept(stone, ItemModelUtils.plainModel(stoneModel));
+			Item lens = ChromaItems.TINTED_LENSES.get(element).get();
+			Identifier lensModel = ModelTemplates.FLAT_ITEM.create(ModelLocationUtils.getModelLocation(lens),
+					TextureMapping.layer0(lens), modelOut);
+			itemModelOut.accept(lens, ItemModelUtils.plainModel(lensModel));
 		}
 		Item bucket = ChromaItems.CHROMA_BUCKET.get();
 		Identifier bucketModel = ModelTemplates.FLAT_ITEM.create(ModelLocationUtils.getModelLocation(bucket), TextureMapping.layer0(bucket), modelOut);
@@ -1431,6 +1436,20 @@ public class ChromaModelProvider extends ModelProvider {
 		}
 	}
 
+	/** V33a draws the Farmer exclusively through its Techne renderer in world and inventory. */
+	private static void farmerModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		Block block = ChromaBlocks.FARMER.get();
+		Identifier model = ModelTemplates.PARTICLE_ONLY.create(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/farmer"),
+				new TextureMapping().put(TextureSlot.PARTICLE, new Material(
+						Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/crystal/chroma"))),
+				modelOut);
+		blockStateOut.accept(MultiVariantGenerator.dispatch(block,
+				new MultiVariant(WeightedList.of(new Variant(model)))));
+		itemModelOut.accept(block.asItem(), ItemModelUtils.specialModel(model,
+				new reika.chromaticraft.render.item.FarmerItemRenderer.Unbaked()));
+	}
 	/** The Aura Point is drawn by its block entity, so its world model only names a particle sprite. */
 	private static void auraPointModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
 			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {

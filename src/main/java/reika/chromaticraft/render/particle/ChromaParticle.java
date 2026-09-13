@@ -1460,6 +1460,17 @@ public abstract class ChromaParticle extends SingleQuadParticle {
         }
     }
 
+	/** V33a FARMERHARVEST packet: one large green blur travelling from machine to harvested crop. */
+	public static void spawnFarmerHarvest(Level world, BlockPos source, BlockPos target) {
+		if (!(world instanceof ClientLevel level)) return;
+		double speed = 0.15;
+		Minecraft.getInstance().particleEngine.add(new FadeGlow(level,
+				source.getX() + 0.5, source.getY() + 0.5, source.getZ() + 0.5,
+				speed * (target.getX() - source.getX()),
+				speed * (target.getY() - source.getY()),
+				speed * (target.getZ() - source.getZ()),
+				0x00c000, 10, 4F, false));
+	}
     /** V33a EntityCCBlurFX: a general-purpose fullbright additive "fade" blur, used by Glow Cloud's
      *  ambient/attack/death effects and Luma Burst's trail. Reuses the exact rapid-expand/plain-sine
      *  size envelope already established by {@link FloatingSeed}/{@link Blur} (V33a's "alpha fading"

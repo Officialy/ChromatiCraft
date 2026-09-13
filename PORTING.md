@@ -6404,9 +6404,8 @@ WHITE (-16,+6,+3).
   The existing creative block-item population includes it, and the lexicon resolves its icon.
 - Function Relay effect descriptions retain all six original associations. Descriptions of
   not-yet-registered consumers retain explicit deferred item keys, without supplying fake
-  stacks. Farmer/Harvest Plant, Crop Speed/Reverter and Cobble Generator must connect their
-  operational calls and final item IDs as those consumers land; only the bookshelf caller
-  is live in this accepted slice.
+  stacks. Harvest Plant, Crop Speed/Reverter and Cobble Generator must connect their operational
+  calls and final item IDs as those consumers land; the bookshelf and Farmer callers are live.
 - DragonAPI's modern CropType/ReikaCropHelper cover the original five vanilla crop families:
   wheat, carrots, potatoes, nether wart and cocoa. They use native age properties and actual
   server-side vanilla loot with Fortune, preserve cocoa's attachment direction when resetting
@@ -6458,3 +6457,33 @@ WHITE (-16,+6,+3).
   providers in 1.060 s, emitted `luminous_cliffs_terrain_overworld.json`, and removed the duplicate
   direct feature reference from both cliff biome JSON files. No full GameTest suite was started,
   and process checks confirmed no Java process remained after either validation command.
+
+## Elemental Harvester and tinted lenses (2026-09-12)
+
+- The V33a Farmer is registered as `chromaticraft:farmer` with its block entity, horizontal
+  placement, eleven-part Techne model, original `textures/entity/farmer.png`, world renderer and
+  special item renderer. Its server tick keeps the weighted sixteen-block forward wedge, submerged
+  five-block restriction, redstone disable, Function Relay delegation, green-energy work rate,
+  purple-energy Fortune, cactus/reed top harvesting, crop reset, one-seed reservation below
+  Fortune III, break sound, item drops and travelling green harvest particle.
+- DragonAPI's crop discovery now accepts explicit modern crop registrations and automatically
+  adapts non-vanilla `CropBlock` and `SweetBerryBushBlock` instances. It preserves each crop's real
+  age property, non-age state properties, clone-stack seed, native loot table and Fortune context;
+  RotaryCraft Canola therefore works without a hard dependency or fabricated crop table.
+- V33a's metadata-based tinted Crystal Lens family is represented by sixteen distinct registered
+  items. Their sprites are exact 16-by-16 crops from V33a `items_color.png` starting at index 144.
+  Each colour has the original three Multiblock Casting variants: an ordinary Crystal Lens in the
+  centre, two Focal Powder and two matching shards, with four iron/gold/Chroma Alloy stands yielding
+  one/two/four lenses respectively and the original 48-craft repeat penalty threshold.
+- The Farmer's Pylon Casting recipe is datagen-backed and preserves all sixteen auxiliary stands:
+  eight Aura Dust, one green tinted lens, one iron hoe and six iron ingots around an Energy Core.
+  It yields three Farmers, requires 12,000 green and 6,000 yellow aura, runs for 400 ticks, grants
+  500 XP and applies the original six-craft repeat penalty threshold.
+- Relay-powered consumers retain V33a's eight black-adjacency efficiency factors through the modern
+  `AdjacencyUpgradeProvider` contract. The future adjacency-upgrade tiles can provide colour, tier
+  and active state directly; the Farmer does not pretend the still-unported adjacency items exist.
+- Validation: the active source slice compiles. Separate serial, memory-capped client and server
+  datagen runs completed successfully, emitting the Farmer model/item/lang/loot data, sixteen lens
+  item definitions and models, and all forty-eight lens recipes. Structural validation confirmed
+  the Farmer's output, aura totals and sixteen stand entries. No GameTest server or second Java
+  process was started.

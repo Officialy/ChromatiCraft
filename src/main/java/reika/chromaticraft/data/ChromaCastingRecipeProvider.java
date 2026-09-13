@@ -110,7 +110,14 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 						List.of(ProgressStage.ALLCOLORS), List.of(runeRingRune(element)),
 						Map.of('S', runeStone, 'C', Ingredient.of(ChromaItems.BOOSTED_SHARDS.get(element).get())),
 						"SSS", "SCS", "SSS");
+				saveTintedLens(element, Items.IRON_INGOT, 1, "iron");
+				saveTintedLens(element, Items.GOLD_INGOT, 2, "gold");
+				saveTintedLens(element,
+						ChromaItems.CRAFTING.get(ChromaCraftingItems.CHROMA_INGOT).get(), 4,
+						"chroma_ingot");
 			}
+
+			saveFarmer();
 
 			// V33a StandRecipe extends TempleCastingRecipe: the Item Stand is a TEMPLE-tier, 20-tick
 			// recipe worth twice the temple experience, and it wants two purple and two black runes
@@ -399,6 +406,47 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 			}
 		}
 
+		private void saveTintedLens(CrystalElement element, net.minecraft.world.level.ItemLike material,
+				int amount, String materialName) {
+			Ingredient input = Ingredient.of(material);
+			List<CastingTableRecipe.StandIngredient> stands = List.of(
+					auxStand(-2, -2, input), auxStand(-2, 2, input),
+					auxStand(2, -2, input), auxStand(2, 2, input),
+					auxStand(-2, 0, tiered(ChromaTieredItems.FOCUS_DUST)),
+					auxStand(2, 0, tiered(ChromaTieredItems.FOCUS_DUST)),
+					auxStand(0, -2, Ingredient.of(ChromaItems.SHARDS.get(element).get())),
+					auxStand(0, 2, Ingredient.of(ChromaItems.SHARDS.get(element).get())));
+			saveRecipe("tinted_crystal_lens/" + element.getEnglishName() + "/" + materialName,
+					new CastingTableRecipe(CastingTableRecipe.Tier.MULTIBLOCK,
+							List.of(new GridIngredient(4, Ingredient.of(ChromaItems.CRAFTING.get(
+									ChromaCraftingItems.CRYSTAL_LENS).get()))),
+							stands, List.of(), List.of(),
+							new ItemStackTemplate(ChromaItems.TINTED_LENSES.get(element).get(), amount),
+							100, 200).withPenaltyThreshold(48));
+		}
+
+		/** Exact V33a FarmerRecipe, including all sixteen stands and both aura channels. */
+		private void saveFarmer() {
+			List<CastingTableRecipe.StandIngredient> stands = new ArrayList<>();
+			for (int[] point : new int[][] {
+					{-4, -2}, {-4, 2}, {4, -2}, {4, 2},
+					{-2, -4}, {-2, 4}, {2, -4}, {2, 4}})
+				stands.add(auxStand(point[0], point[1], tiered(ChromaTieredItems.AURA_DUST)));
+			stands.add(auxStand(-4, 0,
+					Ingredient.of(ChromaItems.TINTED_LENSES.get(CrystalElement.GREEN).get())));
+			stands.add(auxStand(4, 0, Ingredient.of(Items.IRON_HOE)));
+			for (int[] point : new int[][] {
+					{-4, -4}, {0, -4}, {4, -4}, {-4, 4}, {0, 4}, {4, 4}})
+				stands.add(auxStand(point[0], point[1], Ingredient.of(Items.IRON_INGOT)));
+			saveRecipe("farmer", new CastingTableRecipe(CastingTableRecipe.Tier.PYLON,
+					List.of(new GridIngredient(4, Ingredient.of(ChromaItems.CRAFTING.get(
+							ChromaCraftingItems.ENERGY_CORE).get()))),
+					List.copyOf(stands), List.of(),
+					List.of(new AuraRequirement(CrystalElement.GREEN, 12000),
+							new AuraRequirement(CrystalElement.YELLOW, 6000)),
+					new ItemStackTemplate(ChromaBlocks.FARMER.get().asItem(), 3),
+					400, 500).withPenaltyThreshold(6));
+		}
 		/** Exact V33a CrystalChargerRecipe: crystal core center and its asymmetric eight-stand ring. */
 		private void saveCrystalCharger() {
 			List<CastingTableRecipe.StandIngredient> stands = List.of(
