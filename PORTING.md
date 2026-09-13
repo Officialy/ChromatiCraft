@@ -6487,3 +6487,32 @@ WHITE (-16,+6,+3).
   item definitions and models, and all forty-eight lens recipes. Structural validation confirmed
   the Farmer's output, aura totals and sixteen stand entries. No GameTest server or second Java
   process was started.
+
+## Enrichment Vine and Scissorweed (2026-09-13)
+
+- V33a's DECOPLANT metadata 3 and 5 are now independent registered blocks and items:
+  `chromaticraft:plant_accelerator` (Enrichment Vine) and `chromaticraft:harvest_plant`
+  (Scissorweed). Their block entities share the modern `TileEntityMagicPlant` base, and functional
+  plants count a consecutive column of active Enrichment Vines opposite their growth direction.
+- Enrichment Vine preserves its source anchoring rules: a connected vertical vine column survives
+  when either end reaches leaves or a solid/collidable block. A vine surrounded on all four sides
+  gains its full collision and V33a encased appearance; plants above that form inherit the extra
+  crop-style planes.
+- Scissorweed preserves the exact 11-by-11 horizontal and four-level vertical weighted selections,
+  first-tick/twenty-tick foliage cache, bright daytime and sky/redstone gates, one attempt plus one
+  per Enrichment Vine, Function Relay redirection, Manhattan exclusion, same-state neighbour test,
+  adjacent-Scissorweed veto and shears-context native loot. Successful cuts retain source drops,
+  grass break sound and block-break particles. Contact inflicts one cactus damage and twenty ticks
+  of Hunger II, and the client emits its yellow dust.
+- Models use Reika's original `decoplant_3_*`, `decoplant_5_*` and `vine_encased_back` textures.
+  The ordinary and crop forms preserve both backing and overlay at world light; unlike the tiered
+  plant renderer, V33a's `DecoPlantRenderer` did not make the overlay fullbright. Item models retain
+  both authored layers rather than flattening or substituting either sprite.
+- Server datagen emits the exact non-Botania V33a Temple recipes, rune offsets, durations, XP and
+  output counts. The optional Botania recipe branch remains deferred until its modern concrete
+  special-flower and mana-resource item forms are available; no replacement ingredient is
+  invented.
+- Validation: the active source slice compiled successfully. Separate serial, single-worker,
+  two-gigabyte-capped client and server datagen runs completed successfully and emitted the two
+  blockstates, ordinary/crop block models, two-layer item models, loot tables and casting recipes.
+  No GameTest server or concurrent Gradle process was started.

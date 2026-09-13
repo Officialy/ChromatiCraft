@@ -41,6 +41,7 @@ import net.minecraft.world.item.Item;
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.base.CrystalTypeBlock;
 import reika.chromaticraft.block.BlockCrystalRune;
+import reika.chromaticraft.block.BlockDecoPlant;
 import reika.chromaticraft.block.BlockChromaDoor;
 import reika.chromaticraft.block.BlockTrapFloor;
 import reika.chromaticraft.block.dimension.structure.shiftmaze.BlockShiftLock;
@@ -134,6 +135,7 @@ public class ChromaModelProvider extends ModelProvider {
 		castingTableModel(blockStateOut, itemModelOut, modelOut);
 		crystalChargerModel(blockStateOut, itemModelOut, modelOut);
 		farmerModel(blockStateOut, itemModelOut, modelOut);
+		magicPlantModels(blockStateOut, itemModelOut, modelOut);
 		itemAuraInfuserModel(blockStateOut, itemModelOut, modelOut);
 		playerAuraInfuserModel(blockStateOut, itemModelOut, modelOut);
 		portalRiftModels(blockStateOut, itemModelOut, modelOut);
@@ -658,6 +660,121 @@ public class ChromaModelProvider extends ModelProvider {
 		elements.add(crossPlane("#front", -45, 8.01F, true));
 		root.add("elements", elements);
 		return root;
+	}
+
+	/** V33a DecoPlantRenderer: crossed backing/overlay plus four extra planes in crop form. */
+	private static void magicPlantModels(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		magicPlantModel(ChromaBlocks.PLANT_ACCELERATOR.get(), 3, true,
+				blockStateOut, itemModelOut, modelOut);
+		magicPlantModel(ChromaBlocks.HARVEST_PLANT.get(), 5, false,
+				blockStateOut, itemModelOut, modelOut);
+	}
+
+	private static void magicPlantModel(Block block, int textureIndex, boolean accelerator,
+			Consumer<BlockModelDefinitionGenerator> blockStateOut, ItemModelOutput itemModelOut,
+			BiConsumer<Identifier, ModelInstance> modelOut) {
+		String basePath = "block/plant/decoplant_" + textureIndex;
+		String back = ChromatiCraft.MODID + ':' + basePath + "_back";
+		String front = ChromatiCraft.MODID + ':' + basePath + "_front";
+		Identifier ordinary = ModelLocationUtils.getModelLocation(block);
+		Identifier crop = ordinary.withSuffix("_crop");
+		modelOut.accept(ordinary, () -> layeredDecoCross(back, front));
+		String cropBack = accelerator
+				? ChromatiCraft.MODID + ":block/plant/vine_encased_back"
+				: back;
+		modelOut.accept(crop, () -> layeredCropPlant(cropBack, front));
+		blockStateOut.accept(MultiVariantGenerator.dispatch(block).with(
+				PropertyDispatch.initial(BlockDecoPlant.CROP_FORM)
+						.select(false, new MultiVariant(WeightedList.of(new Variant(ordinary))))
+						.select(true, new MultiVariant(WeightedList.of(new Variant(crop))))));
+		Identifier itemModel = ModelTemplates.TWO_LAYERED_ITEM.create(
+				ModelLocationUtils.getModelLocation(block.asItem()),
+				new TextureMapping()
+						.put(TextureSlot.LAYER0, new Material(Identifier.parse(back), true))
+						.put(TextureSlot.LAYER1, new Material(Identifier.parse(front), true)),
+				modelOut);
+		itemModelOut.accept(block.asItem(), ItemModelUtils.plainModel(itemModel));
+	}
+
+	private static JsonObject layeredCropPlant(String back, String front) {
+		JsonObject root = layeredDecoCross(back, front);
+		JsonObject textures = root.getAsJsonObject("textures");
+		textures.addProperty("crop_back", back);
+		textures.addProperty("crop_front", front);
+		JsonArray elements = root.getAsJsonArray("elements");
+		float inset = 1.5F;
+		elements.add(layeredPlantPlane(inset, 0, inset, 16, true, "#crop_back", false));
+		elements.add(layeredPlantPlane(16 - inset, 0, 16 - inset, 16, true, "#crop_back", false));
+		elements.add(layeredPlantPlane(0, inset, 16, inset, false, "#crop_back", false));
+		elements.add(layeredPlantPlane(0, 16 - inset, 16, 16 - inset, false, "#crop_back", false));
+		float overlayOffset = 0.01F;
+		elements.add(layeredPlantPlane(inset + overlayOffset, 0, inset + overlayOffset, 16,
+				true, "#crop_front", false));
+		elements.add(layeredPlantPlane(16 - inset - overlayOffset, 0, 16 - inset - overlayOffset, 16,
+				true, "#crop_front", false));
+		elements.add(layeredPlantPlane(0, inset + overlayOffset, 16, inset + overlayOffset,
+				false, "#crop_front", false));
+		elements.add(layeredPlantPlane(0, 16 - inset - overlayOffset, 16, 16 - inset - overlayOffset,
+				false, "#crop_front", false));
+		return root;
+	}
+
+	private static JsonObject layeredDecoCross(String back, String front) {
+		JsonObject root = new JsonObject();
+		root.addProperty("parent", "minecraft:block/block");
+		root.addProperty("ambientocclusion", false);
+		JsonObject textures = new JsonObject();
+		textures.addProperty("back", back);
+		textures.addProperty("front", front);
+		textures.addProperty("particle", front);
+		root.add("textures", textures);
+		JsonArray elements = new JsonArray();
+		elements.add(decoCrossPlane("#back", 45, 8F));
+		elements.add(decoCrossPlane("#back", -45, 8F));
+		elements.add(decoCrossPlane("#front", 45, 8.01F));
+		elements.add(decoCrossPlane("#front", -45, 8.01F));
+		root.add("elements", elements);
+		return root;
+	}
+
+	private static JsonObject decoCrossPlane(String texture, float angle, float depth) {
+		JsonObject element = new JsonObject();
+		JsonArray from = new JsonArray();
+		from.add(0F); from.add(0F); from.add(depth);
+		JsonArray to = new JsonArray();
+		to.add(16F); to.add(16F); to.add(depth);
+		element.add("from", from);
+		element.add("to", to);
+		JsonObject rotation = new JsonObject();
+		JsonArray origin = new JsonArray();
+		origin.add(8F); origin.add(8F); origin.add(8F);
+		rotation.add("origin", origin);
+		rotation.addProperty("axis", "y");
+		rotation.addProperty("angle", angle);
+		rotation.addProperty("rescale", true);
+		element.add("rotation", rotation);
+		JsonObject faces = new JsonObject();
+		for (String name : new String[] {"north", "south"}) {
+			JsonObject face = new JsonObject();
+			face.addProperty("texture", texture);
+			face.add("uv", uvFull());
+			faces.add(name, face);
+		}
+		element.add("faces", faces);
+		return element;
+	}
+
+	private static JsonObject layeredPlantPlane(float x1, float z1, float x2, float z2,
+			boolean xConstant, String texture, boolean emissive) {
+		JsonObject element = plantPlane(x1, z1, x2, z2, xConstant);
+		for (var face : element.getAsJsonObject("faces").entrySet())
+			face.getValue().getAsJsonObject().addProperty("texture", texture);
+		if (emissive) {
+			element.addProperty("shade", false);
+			element.addProperty("light_emission", 15);
+		}
+		return element;
 	}
 
 	private static JsonObject crossPlane(String texture, float angle, float depth, boolean emissive) {

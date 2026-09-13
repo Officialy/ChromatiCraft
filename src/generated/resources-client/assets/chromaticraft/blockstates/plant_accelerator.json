@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "crop_form=false": {
+      "model": "chromaticraft:block/plant_accelerator"
+    },
+    "crop_form=true": {
+      "model": "chromaticraft:block/plant_accelerator_crop"
+    }
+  }
+}

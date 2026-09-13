@@ -9,292 +9,154 @@
  ******************************************************************************/
 package reika.chromaticraft.block;
 
-import java.util.ArrayList;
-import java.util.Random;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.particles.DustParticleOptions;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.InsideBlockEffectApplier;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.level.ScheduledTickAccess;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.item.context.BlockPlaceContext;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.BooleanProperty;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.Shapes;
+import net.minecraft.world.phys.shapes.VoxelShape;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.material.Material;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.texture.IIconRegister;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.init.Blocks;
-import net.minecraft.item.ItemStack;
-import net.minecraft.potion.Potion;
-import net.minecraft.potion.PotionEffect;
-import net.minecraft.util.AxisAlignedBB;
-import net.minecraft.util.DamageSource;
-import net.minecraft.util.IIcon;
-import net.minecraft.world.IBlockAccess;
-import net.minecraft.world.World;
-import net.minecraftforge.common.EnumPlantType;
-import net.minecraftforge.common.IPlantable;
-import net.minecraftforge.common.util.ForgeDirection;
-
-import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.base.BlockChromaTile;
-import reika.chromaticraft.base.tileentity.TileEntityMagicPlant;
-import reika.chromaticraft.registry.ChromaISBRH;
+import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaTiles;
-import reika.dragonapi.libraries.ReikaAABBHelper;
-import reika.dragonapi.libraries.java.ReikaJavaLibrary;
-import reika.dragonapi.libraries.java.ReikaRandomHelper;
-import reika.dragonapi.libraries.registry.ReikaParticleHelper;
-import reika.dragonapi.libraries.world.ReikaBlockHelper;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
+/**
+ * Modern distinct-block form of V33a {@code DECOPLANT} metadata. The authored backing/overlay
+ * layers are data-generated; {@link #CROP_FORM} preserves the encased-vine render recursion.
+ */
+public final class BlockDecoPlant extends BlockChromaticTile {
 
-public class BlockDecoPlant extends BlockChromaTile implements IPlantable {
+	public static final BooleanProperty CROP_FORM = BooleanProperty.create("crop_form");
+	private static final VoxelShape FULL_SHAPE = Shapes.block();
+	private static final VoxelShape NO_COLLISION = Shapes.empty();
 
-	private final IIcon[] front_icons = new IIcon[16];
-	private final IIcon[] back_icons = new IIcon[16];
-	private IIcon encasedVineIcon;
+	private final Kind kind;
 
-	public BlockDecoPlant(Material xMaterial) {
-		super(xMaterial);
-		stepSound = soundTypeGrass;
-		blockHardness = 0;
-		blockResistance = 0.5F;
+	public BlockDecoPlant(Properties properties, Kind kind) {
+		super(properties, kind.tile());
+		this.kind = kind;
+		this.registerDefaultState(stateDefinition.any().setValue(CROP_FORM, false));
+	}
+
+	public Kind kind() { return kind; }
+
+	@Override protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+		builder.add(CROP_FORM);
+	}
+
+	@Override public BlockState getStateForPlacement(BlockPlaceContext context) {
+		return this.defaultBlockState().setValue(CROP_FORM,
+				this.shouldUseCropForm(context.getLevel(), context.getClickedPos()));
+	}
+
+	@Override protected VoxelShape getShape(BlockState state, BlockGetter world, BlockPos pos,
+			CollisionContext context) {
+		return FULL_SHAPE;
+	}
+
+	@Override protected VoxelShape getCollisionShape(BlockState state, BlockGetter world, BlockPos pos,
+			CollisionContext context) {
+		return kind == Kind.ACCELERATOR && state.getValue(CROP_FORM) ? FULL_SHAPE : NO_COLLISION;
 	}
 
 	@Override
-	public int getLightValue(IBlockAccess world, int x, int y, int z) {
-		switch(world.getBlockMetadata(x, y, z)) {
-			case 0:
-				return 15;
-			case 1:
-				return 6;
-			case 4:
-				return 12;
-			default:
-				return 0;
-		}
+	protected boolean canSurvive(BlockState state, LevelReader world, BlockPos pos) {
+		return switch (kind) {
+			case ACCELERATOR -> canAccelerationPlantSurvive(world, pos);
+			case HARVEST -> {
+				BlockState below = world.getBlockState(pos.below());
+				yield below.is(BlockTags.SUPPORTS_VEGETATION) || below.is(BlockTags.LEAVES)
+						|| below.is(ChromaBlocks.PLANT_ACCELERATOR.get());
+			}
+		};
 	}
 
 	@Override
-	public AxisAlignedBB getCollisionBoundingBoxFromPool(World world, int x, int y, int z) {
-		ChromaTiles te = ChromaTiles.getTile(world, x, y, z);
-		if (te == ChromaTiles.PLANTACCEL && isEncased(world, x, y, z))
-			return ReikaAABBHelper.getBlockAABB(x, y, z);
-		return null;
+	protected BlockState updateShape(BlockState state, LevelReader world, ScheduledTickAccess ticks,
+			BlockPos pos, Direction directionToNeighbour, BlockPos neighbourPos, BlockState neighbourState,
+			RandomSource random) {
+		if (!this.canSurvive(state, world, pos)) return Blocks.AIR.defaultBlockState();
+		return state.setValue(CROP_FORM, this.shouldUseCropForm(world, pos));
 	}
 
-	public static boolean isEncased(World world, int x, int y, int z) {
-		for (int i = 2; i < 6; i++) {
-			ForgeDirection dir = ForgeDirection.VALID_DIRECTIONS[i];
-			int dx = x+dir.offsetX;
-			int dy = y+dir.offsetY;
-			int dz = z+dir.offsetZ;
-			if (world.getBlock(dx, dy, dz) != ChromaTiles.PLANTACCEL.getBlock() && !ReikaBlockHelper.isCollideable(world, dx, dy, dz))
-				return false;
+	private boolean shouldUseCropForm(BlockGetter world, BlockPos pos) {
+		if (kind == Kind.ACCELERATOR) return isEncased(world, pos);
+		BlockState support = world.getBlockState(pos.below());
+		return support.getBlock() instanceof BlockDecoPlant && support.getValue(CROP_FORM);
+	}
+
+	public static boolean isEncased(BlockGetter world, BlockPos pos) {
+		for (Direction direction : Direction.Plane.HORIZONTAL) {
+			BlockPos adjacent = pos.relative(direction);
+			BlockState state = world.getBlockState(adjacent);
+			if (!state.is(ChromaBlocks.PLANT_ACCELERATOR.get())
+					&& state.getCollisionShape(world, adjacent).isEmpty()) return false;
 		}
 		return true;
 	}
 
-	@Override
-	public AxisAlignedBB getSelectedBoundingBoxFromPool(World world, int x, int y, int z) {
-		return ReikaAABBHelper.getBlockAABB(x, y, z);
+	public static boolean canAccelerationPlantSurvive(LevelReader world, BlockPos pos) {
+		if (isViableAnchor(world, pos.above()) || isViableAnchor(world, pos.below())) return true;
+		BlockPos top = pos;
+		while (world.getBlockState(top.above()).is(ChromaBlocks.PLANT_ACCELERATOR.get())) top = top.above();
+		BlockPos bottom = pos;
+		while (world.getBlockState(bottom.below()).is(ChromaBlocks.PLANT_ACCELERATOR.get())) bottom = bottom.below();
+		return (top.getY() != pos.getY() || bottom.getY() != pos.getY())
+				&& (isViableAnchor(world, top.above()) || isViableAnchor(world, bottom.below()));
+	}
+
+	private static boolean isViableAnchor(BlockGetter world, BlockPos pos) {
+		BlockState state = world.getBlockState(pos);
+		return state.is(BlockTags.LEAVES) || state.isSolidRender()
+				|| state.isCollisionShapeFullBlock(world, pos);
 	}
 
 	@Override
-	public final boolean canPlaceBlockAt(World world, int x, int y, int z) {
-		return super.canPlaceBlockAt(world, x, y, z) && this.canBlockStay(world, x, y, z);
+	public void animateTick(BlockState state, Level world, BlockPos pos, RandomSource random) {
+		if (kind != Kind.HARVEST) return;
+		world.addParticle(new DustParticleOptions(0xFFFF00, 1F),
+				pos.getX() + random.nextDouble(), pos.getY() + random.nextDouble(),
+				pos.getZ() + random.nextDouble(), 0, 0, 0);
 	}
 
 	@Override
-	public void onNeighborBlockChange(World world, int x, int y, int z, Block par5)
-	{
-		super.onNeighborBlockChange(world, x, y, z, par5);
-		this.checkFlowerChange(world, x, y, z);
-	}
-
-	@Override
-	public void updateTick(World world, int x, int y, int z, Random r) {
-		this.checkFlowerChange(world, x, y, z);
-	}
-
-	private final void checkFlowerChange(World world, int x, int y, int z) {
-		if (!this.canBlockStay(world, x, y, z)) {
-			this.dropBlockAsItem(world, x, y, z, world.getBlockMetadata(x, y, z), 0);
-			world.setBlock(x, y, z, Blocks.air, 0, 3);
+	protected void entityInside(BlockState state, Level level, BlockPos pos, Entity entity,
+			InsideBlockEffectApplier effects, boolean precise) {
+		if (kind == Kind.HARVEST && entity instanceof LivingEntity living) {
+			entity.hurt(entity.damageSources().cactus(), 1);
+			living.addEffect(new MobEffectInstance(MobEffects.HUNGER, 20, 1));
 		}
 	}
 
-	@Override
-	public boolean canBlockStay(World world, int x, int y, int z) {
-		return ((TileEntityMagicPlant)world.getTileEntity(x, y, z)).isPlantable(world, x, y, z);
-	}
+	public enum Kind {
+		ACCELERATOR(ChromaTiles.PLANTACCEL, 3),
+		HARVEST(ChromaTiles.HARVESTPLANT, 5);
 
-	@Override
-	@SideOnly(Side.CLIENT)
-	public void randomDisplayTick(World world, int x, int y, int z, Random r) {
-		switch(world.getBlockMetadata(x, y, z)) {
-			case 0: {
-				double rx = ReikaRandomHelper.getRandomPlusMinus(x+0.5, 0.1875);
-				double rz = ReikaRandomHelper.getRandomPlusMinus(z+0.5, 0.1875);
-				double ry = y+0.25+r.nextDouble()*0.75;
-				ReikaParticleHelper.FLAME.spawnAt(world, rx, ry, rz);
-				break;
-			}
-			case 1: {
-				double rx = ReikaRandomHelper.getRandomPlusMinus(x+0.5, 0.1875*2);
-				double rz = ReikaRandomHelper.getRandomPlusMinus(z+0.5, 0.1875*2);
-				double ry = y+0.25+r.nextDouble()*0.75+0.5;
-				ReikaParticleHelper.ENCHANTMENT.spawnAt(world, rx, ry, rz);
-				break;
-			}
-			case 4: {
-				double rx = ReikaRandomHelper.getRandomPlusMinus(x+0.5, 0.1875*2);
-				double rz = ReikaRandomHelper.getRandomPlusMinus(z+0.5, 0.1875*2);
-				double ry = y+0.25+r.nextDouble()*0.75;
-				ReikaParticleHelper.spawnColoredParticleAt(world, rx, ry, rz, 1, 0, 0);
-				break;
-			}
-			case 5: {
-				double rx = ReikaRandomHelper.getRandomPlusMinus(x+0.5, 0.5);
-				double rz = ReikaRandomHelper.getRandomPlusMinus(z+0.5, 0.5);
-				double ry = y+r.nextDouble();
-				ReikaParticleHelper.spawnColoredParticleAt(world, rx, ry, rz, 1, 1, 0);
-				break;
-			}
+		private final ChromaTiles tile;
+		private final int textureIndex;
+
+		Kind(ChromaTiles tile, int textureIndex) {
+			this.tile = tile;
+			this.textureIndex = textureIndex;
 		}
-	}
 
-	@Override
-	public ArrayList<ItemStack> getDrops(World world, int x, int y, int z, int meta, int fortune) {
-		ItemStack is = ChromaTiles.getTileFromIDandMetadata(this, meta).getCraftedProduct();
-		return is != null ? ReikaJavaLibrary.makeListFrom(is) : new ArrayList();
+		public ChromaTiles tile() { return tile; }
+		public int textureIndex() { return textureIndex; }
 	}
-
-	@Override
-	public int getRenderType() {
-		return ChromaISBRH.plant2.getRenderID();
-	}
-
-	@Override
-	public boolean canRenderInPass(int pass) {
-		ChromaISBRH.plant2.setRenderPass(pass);
-		return pass <= 0;
-	}
-
-	@Override
-	public boolean renderAsNormalBlock() {
-		return false;
-	}
-
-	@Override
-	public boolean isOpaqueCube() {
-		return false;
-	}
-
-	public IIcon getOverlay(IBlockAccess world, int x, int y, int z) {
-		int meta = world.getBlockMetadata(x, y, z);
-		return front_icons[meta];
-	}
-
-	@SideOnly(Side.CLIENT)
-	public IIcon getBacking(IBlockAccess world, int x, int y, int z) {
-		int meta = world.getBlockMetadata(x, y, z);
-		if (ChromaTiles.getTile(world, x, y, z) == ChromaTiles.PLANTACCEL && this.isEncased(Minecraft.getMinecraft().theWorld, x, y, z)) {
-			return encasedVineIcon;
-		}
-		return back_icons[meta];
-	}
-
-	public IIcon getOverlay(int meta) {
-		return front_icons[meta];
-	}
-
-	public IIcon getBacking(int meta) {
-		return back_icons[meta];
-	}
-
-	@Override
-	public IIcon getIcon(int s, int meta) {
-		return back_icons[meta];
-	}
-
-	@Override
-	public IIcon getIcon(IBlockAccess world, int x, int y, int z, int s) {
-		return this.getBacking(world, x, y, z);
-	}
-
-	@Override
-	public void registerBlockIcons(IIconRegister ico) {
-		for (int i = 0; i < 16; i++) {
-			if (ChromaTiles.getTileFromIDandMetadata(this, i) != null) {
-				front_icons[i] = ico.registerIcon("chromaticraft:plant/decoplant_"+i+"_front");
-				back_icons[i] = ico.registerIcon("chromaticraft:plant/decoplant_"+i+"_back");
-			}
-		}
-		encasedVineIcon = ico.registerIcon("chromaticraft:plant/vine_encased_back");
-	}
-
-	@SideOnly(Side.CLIENT)
-	public boolean renderAsCrops(IBlockAccess world, int x, int y, int z) {
-		ChromaTiles c = ChromaTiles.getTile(world, x, y, z);
-		if (c == ChromaTiles.PLANTACCEL)
-			return this.isEncased(Minecraft.getMinecraft().theWorld, x, y, z);
-		TileEntityMagicPlant te = (TileEntityMagicPlant)world.getTileEntity(x, y, z);
-		if (te != null) {
-			ForgeDirection dir = te.getGrowthDirection().getOpposite();
-			int dx = x+dir.offsetX;
-			int dy = y+dir.offsetY;
-			int dz = z+dir.offsetZ;
-			Block b = world.getBlock(dx, dy, dz);
-			if (b == this && this.renderAsCrops(world, dx, dy, dz)) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	@Override
-	public EnumPlantType getPlantType(IBlockAccess world, int x, int y, int z) {
-		int meta = world.getBlockMetadata(x, y, z);
-		switch(meta) {
-			case 0:
-				return EnumPlantType.Water;
-			case 2:
-				return EnumPlantType.Cave;
-			case 4:
-				return EnumPlantType.Crop;
-			default:
-				return EnumPlantType.Plains;
-		}
-	}
-
-	@Override
-	public Block getPlant(IBlockAccess world, int x, int y, int z) {
-		return this;
-	}
-
-	@Override
-	public int getPlantMetadata(IBlockAccess world, int x, int y, int z) {
-		return world.getBlockMetadata(x, y, z);
-	}
-
-	@Override
-	public void onEntityCollidedWithBlock(World world, int x, int y, int z, Entity e) {
-		int meta = world.getBlockMetadata(x, y, z);
-		switch(meta) {
-			case 0:
-				if (e instanceof EntityLivingBase)
-					e.setFire(2);
-				break;
-			case 1:
-				if (e instanceof EntityLivingBase)
-					((EntityLivingBase)e).addPotionEffect(new PotionEffect(ChromatiCraft.betterRegen.id, 20, 0));
-				break;
-			case 5:
-				e.attackEntityFrom(DamageSource.cactus, 1);
-				if (e instanceof EntityLivingBase)
-					((EntityLivingBase)e).addPotionEffect(new PotionEffect(Potion.hunger.id, 20, 1));
-				break;
-			default:
-				break;
-		}
-	}
-
 }

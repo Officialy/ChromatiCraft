@@ -15,6 +15,8 @@ import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.tileentity.TileEntityDisplayPoint;
 import reika.chromaticraft.tileentity.TileEntityDataNode;
 import reika.chromaticraft.tileentity.TileEntityFarmer;
+import reika.chromaticraft.tileentity.plants.TileEntityAccelerationPlant;
+import reika.chromaticraft.tileentity.plants.TileEntityHarvesterPlant;
 import reika.chromaticraft.tileentity.auxiliary.TileEntityChromaCrystal;
 import reika.chromaticraft.block.BlockEncrustedCrystal.TileCrystalEncrusted;
 import reika.chromaticraft.block.BlockChromaFluid.TileEntityChroma;
@@ -79,6 +81,10 @@ public final class ChromaBlockEntities {
 			register("crystal_charger", ChromaTiles.CHARGER);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityFarmer>> FARMER =
 			register("farmer", ChromaTiles.FARMER);
+	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityAccelerationPlant>> PLANT_ACCELERATOR =
+			register("plant_accelerator", ChromaTiles.PLANTACCEL);
+	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityHarvesterPlant>> HARVEST_PLANT =
+			register("harvest_plant", ChromaTiles.HARVESTPLANT);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityItemInfuser>> ITEM_INFUSER =
 			register("item_aura_infuser", ChromaTiles.INFUSER);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityPlayerInfuser>> PLAYER_INFUSER =

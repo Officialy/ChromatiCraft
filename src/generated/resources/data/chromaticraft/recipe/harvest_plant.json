@@ -1,0 +1,65 @@
+{
+  "type": "chromaticraft:casting",
+  "duration": 20,
+  "experience": 40,
+  "grid": [
+    {
+      "ingredient": "chromaticraft:living_essence",
+      "slot": 0
+    },
+    {
+      "ingredient": "chromaticraft:aura_dust",
+      "slot": 1
+    },
+    {
+      "ingredient": "chromaticraft:living_essence",
+      "slot": 2
+    },
+    {
+      "ingredient": "#c:flowers",
+      "slot": 3
+    },
+    {
+      "ingredient": "chromaticraft:aura_dust",
+      "slot": 4
+    },
+    {
+      "ingredient": "#c:flowers",
+      "slot": 5
+    },
+    {
+      "ingredient": "#minecraft:leaves",
+      "slot": 6
+    },
+    {
+      "ingredient": "minecraft:redstone",
+      "slot": 7
+    },
+    {
+      "ingredient": "#minecraft:leaves",
+      "slot": 8
+    }
+  ],
+  "result": {
+    "id": "chromaticraft:harvest_plant"
+  },
+  "runes": [
+    {
+      "element": "yellow",
+      "offset": [
+        -5,
+        0,
+        -2
+      ]
+    },
+    {
+      "element": "green",
+      "offset": [
+        -5,
+        0,
+        2
+      ]
+    }
+  ],
+  "tier": "temple"
+}

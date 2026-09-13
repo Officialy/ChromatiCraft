@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "crop_form=false": {
+      "model": "chromaticraft:block/harvest_plant"
+    },
+    "crop_form=true": {
+      "model": "chromaticraft:block/harvest_plant_crop"
+    }
+  }
+}

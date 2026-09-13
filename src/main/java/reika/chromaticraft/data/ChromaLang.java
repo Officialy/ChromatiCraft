@@ -110,6 +110,8 @@ public class ChromaLang extends LanguageProvider {
 		add(ChromaItems.SPEED_UPGRADE.get(), "Speed Upgrade"); // V33a chromamisc.speed
 		add(ChromaBlocks.CRYSTAL_CHARGER.get(), "Storage Crystal Charger"); // V33a chroma.charger
 		add(ChromaBlocks.FARMER.get(), "Elemental Harvester"); // V33a chroma.farmer
+		add(ChromaBlocks.PLANT_ACCELERATOR.get(), "Enrichment Vine"); // V33a chroma.plantaccel
+		add(ChromaBlocks.HARVEST_PLANT.get(), "Scissorweed"); // V33a chroma.harvestplant
 		add(ChromaBlocks.ITEM_INFUSER.get(), "Item Aura Infuser"); // V33a chroma.infuser
 		add(ChromaBlocks.PLAYER_INFUSER.get(), "Personal Infusion Stand"); // V33a chroma.playerinfuser
 		add(ChromaBlocks.FUNCTION_RELAY.get(), "Area Delegation Point");

@@ -118,6 +118,7 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 			}
 
 			saveFarmer();
+			saveMagicPlants();
 
 			// V33a StandRecipe extends TempleCastingRecipe: the Item Stand is a TEMPLE-tier, 20-tick
 			// recipe worth twice the temple experience, and it wants two purple and two black runes
@@ -447,6 +448,41 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 					new ItemStackTemplate(ChromaBlocks.FARMER.get().asItem(), 3),
 					400, 500).withPenaltyThreshold(6));
 		}
+		/** Exact no-Botania V33a recipes for the Enrichment Vine and Scissorweed. */
+		private void saveMagicPlants() {
+			saveShapedTemple("plant_accelerator",
+					new ItemStackTemplate(ChromaBlocks.PLANT_ACCELERATOR.get().asItem(), 2), 20, 40,
+					List.of(),
+					List.of(new RuneRequirement(new net.minecraft.core.BlockPos(2, -1, -4),
+								CrystalElement.LIGHTBLUE),
+							new RuneRequirement(new net.minecraft.core.BlockPos(-2, -1, 4),
+								CrystalElement.GREEN)),
+					Map.of('L', tag(net.minecraft.tags.ItemTags.LEAVES),
+							'R', Ingredient.of(Items.REDSTONE),
+							'F', tag(Tags.Items.FLOWERS),
+							'S', Ingredient.of(ChromaItems.SHARDS.get(CrystalElement.LIGHTBLUE).get())),
+					"LSL", "FRF", "LSL");
+
+			// V33a substitutes Aura Dust and vanilla redstone when Botania is absent. The optional
+			// Munchdew/mana-resource branch remains deferred until Botania's 26.2 component form exists;
+			// this is the exact recipe active in the present mod set.
+			saveShapedTemple("harvest_plant",
+					new ItemStackTemplate(ChromaBlocks.HARVEST_PLANT.get().asItem()), 20, 40,
+					List.of(),
+					List.of(new RuneRequirement(new net.minecraft.core.BlockPos(-5, 0, -2),
+								CrystalElement.YELLOW),
+							new RuneRequirement(new net.minecraft.core.BlockPos(-5, 0, 2),
+								CrystalElement.GREEN)),
+					Map.of('F', Ingredient.of(ChromaItems.CRAFTING.get(
+								ChromaCraftingItems.LIVING_ESSENCE).get()),
+							'A', tiered(ChromaTieredItems.AURA_DUST),
+							'f', tag(Tags.Items.FLOWERS),
+							'E', tiered(ChromaTieredItems.AURA_DUST),
+							'L', tag(net.minecraft.tags.ItemTags.LEAVES),
+							'R', Ingredient.of(Items.REDSTONE)),
+					"FAF", "fEf", "LRL");
+		}
+
 		/** Exact V33a CrystalChargerRecipe: crystal core center and its asymmetric eight-stand ring. */
 		private void saveCrystalCharger() {
 			List<CastingTableRecipe.StandIngredient> stands = List.of(

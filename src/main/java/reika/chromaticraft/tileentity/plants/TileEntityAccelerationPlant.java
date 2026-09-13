@@ -9,75 +9,36 @@
  ******************************************************************************/
 package reika.chromaticraft.tileentity.plants;
 
-import net.minecraft.block.Block;
-import net.minecraft.init.Blocks;
-import net.minecraft.world.World;
-import net.minecraftforge.common.util.ForgeDirection;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
 
 import reika.chromaticraft.base.tileentity.TileEntityMagicPlant;
+import reika.chromaticraft.block.BlockDecoPlant;
+import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.ChromaTiles;
-import reika.dragonapi.instantiable.data.blockstruct.BlockArray;
-import reika.dragonapi.modregistry.ModWoodList;
 
+/** V33a Enrichment Vine. Every consecutive active vine adds one operation per tick to its plant. */
+public final class TileEntityAccelerationPlant extends TileEntityMagicPlant {
 
-public class TileEntityAccelerationPlant extends TileEntityMagicPlant {
-
-	@Override
-	public ForgeDirection getGrowthDirection() {
-		return null;
+	public TileEntityAccelerationPlant(BlockPos pos, BlockState state) {
+		super(ChromaBlockEntities.PLANT_ACCELERATOR.get(), pos, state);
 	}
 
-	@Override
-	public ChromaTiles getTile() {
-		return ChromaTiles.PLANTACCEL;
+	@Override public Direction getGrowthDirection() { return null; }
+
+	@Override public ChromaTiles getTile() { return ChromaTiles.PLANTACCEL; }
+
+	public boolean isActive() { return true; }
+
+	@Override public void updateEntity(Level world, BlockPos pos) {
 	}
 
-	public boolean isActive() {
-		return true;
-	}
-	/* d onot use, as breaks adjacency caching
-	@Override
-	public boolean isTickingTE() {
-		return false;
-	}
-	 */
-	@Override
-	public void updateEntity(World world, int x, int y, int z, int meta) {
-
+	@Override protected void animateWithTick(Level world, BlockPos pos) {
 	}
 
-	@Override
-	protected void animateWithTick(World world, int x, int y, int z) {
-
+	@Override public boolean isPlantable(Level world, BlockPos pos) {
+		return BlockDecoPlant.canAccelerationPlantSurvive(world, pos);
 	}
-
-	@Override
-	public boolean isPlantable(World world, int x, int y, int z) {
-		if (this.isBlockViable(world, x, y+1, z))
-			return true;
-		if (this.isBlockViable(world, x, y-1, z))
-			return true;
-		BlockArray b = new BlockArray();
-		b.recursiveAddWithBoundsMetadata(world, x, y, z, this.getTile().getBlock(), this.getTile().getBlockMetadata(), x, y-256, z, x, y+256, z);
-		b.recursiveAddWithBoundsMetadata(world, x, y+1, z, this.getTile().getBlock(), this.getTile().getBlockMetadata(), x, y-256, z, x, y+256, z);
-		b.recursiveAddWithBoundsMetadata(world, x, y-1, z, this.getTile().getBlock(), this.getTile().getBlockMetadata(), x, y-256, z, x, y+256, z);
-		if (!(this.isBlockViable(world, x, b.getMaxY()+1, z)))
-			if (!(this.isBlockViable(world, x, b.getMinY()-1, z)))
-				return false;
-		if (ChromaTiles.getTile(world, x, y+1, z) == ChromaTiles.PLANTACCEL)
-			return true;
-		if (ChromaTiles.getTile(world, x, y-1, z) == ChromaTiles.PLANTACCEL)
-			return true;
-		return false;
-	}
-
-	private boolean isBlockViable(World world, int x, int y, int z) {
-		Block b = world.getBlock(x, y, z);
-		if (b == Blocks.leaves || b == Blocks.leaves2 || ModWoodList.isModLeaf(b, world.getBlockMetadata(x, y, z)))
-			return true;
-		if (b.isOpaqueCube() && b.getMaterial().isSolid())
-			return true;
-		return false;
-	}
-
 }

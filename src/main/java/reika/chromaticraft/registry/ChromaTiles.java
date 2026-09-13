@@ -20,6 +20,8 @@ import reika.chromaticraft.tileentity.auxiliary.TileEntityChromaCrystal;
 import reika.chromaticraft.tileentity.TileEntityDisplayPoint;
 import reika.chromaticraft.tileentity.TileEntityDataNode;
 import reika.chromaticraft.tileentity.TileEntityFarmer;
+import reika.chromaticraft.tileentity.plants.TileEntityAccelerationPlant;
+import reika.chromaticraft.tileentity.plants.TileEntityHarvesterPlant;
 import reika.chromaticraft.tileentity.networking.TileEntityCompoundRepeater;
 import reika.chromaticraft.tileentity.networking.TileEntityPylonLink;
 import reika.chromaticraft.tileentity.networking.TileEntityCreativeSource;
@@ -56,6 +58,8 @@ public enum ChromaTiles implements TileEnum {
 	TABLE("chroma.castingtable", ChromaBlocks.CASTING_TABLE, TileEntityCastingTable.class),
 	CHARGER("chroma.charger", ChromaBlocks.CRYSTAL_CHARGER, TileEntityCrystalCharger.class),
 	FARMER("chroma.farmer", ChromaBlocks.FARMER, TileEntityFarmer.class),
+	PLANTACCEL("chroma.plantaccel", ChromaBlocks.PLANT_ACCELERATOR, TileEntityAccelerationPlant.class),
+	HARVESTPLANT("chroma.harvestplant", ChromaBlocks.HARVEST_PLANT, TileEntityHarvesterPlant.class),
 	INFUSER("chroma.infuser", ChromaBlocks.ITEM_INFUSER, TileEntityItemInfuser.class),
 	PLAYERINFUSER("chroma.playerinfuser", ChromaBlocks.PLAYER_INFUSER, TileEntityPlayerInfuser.class),
 	FOCUSCRYSTAL("chroma.focuscrystal", ChromaBlocks.FOCUS_CRYSTAL, TileEntityFocusCrystal.class),

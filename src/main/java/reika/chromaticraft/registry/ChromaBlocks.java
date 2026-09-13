@@ -27,6 +27,7 @@ import reika.chromaticraft.block.BlockCastingItemStand;
 import reika.chromaticraft.block.BlockCastingTable;
 import reika.chromaticraft.block.BlockCrystalCharger;
 import reika.chromaticraft.block.BlockFarmer;
+import reika.chromaticraft.block.BlockDecoPlant;
 import reika.chromaticraft.block.BlockItemAuraInfuser;
 import reika.chromaticraft.block.BlockChromaFluid;
 import reika.chromaticraft.block.BlockChromaMud;
@@ -663,6 +664,16 @@ public final class ChromaBlocks {
 	public static final DeferredBlock<Block> FARMER =
 			register("farmer", () -> new BlockFarmer(
 					blockProperties().strength(3F, 12F).noOcclusion()));
+	/** V33a DECOPLANT metadata 3, now its own block and item registry identity. */
+	public static final DeferredBlock<Block> PLANT_ACCELERATOR =
+			register("plant_accelerator", () -> new BlockDecoPlant(
+					blockProperties().strength(0F, 0.5F).noOcclusion().sound(SoundType.GRASS),
+					BlockDecoPlant.Kind.ACCELERATOR));
+	/** V33a DECOPLANT metadata 5, now its own block and item registry identity. */
+	public static final DeferredBlock<Block> HARVEST_PLANT =
+			register("harvest_plant", () -> new BlockDecoPlant(
+					blockProperties().strength(0F, 0.5F).noOcclusion().sound(SoundType.GRASS),
+					BlockDecoPlant.Kind.HARVEST));
 	public static final DeferredBlock<Block> ITEM_INFUSER =
 			register("item_aura_infuser", () -> new BlockItemAuraInfuser(
 					blockProperties().strength(3F, 12F).noOcclusion().lightLevel(state -> 8)));

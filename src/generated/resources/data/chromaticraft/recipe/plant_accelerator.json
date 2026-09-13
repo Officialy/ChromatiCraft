@@ -1,0 +1,66 @@
+{
+  "type": "chromaticraft:casting",
+  "duration": 20,
+  "experience": 40,
+  "grid": [
+    {
+      "ingredient": "#minecraft:leaves",
+      "slot": 0
+    },
+    {
+      "ingredient": "chromaticraft:crystal_shard_light_blue",
+      "slot": 1
+    },
+    {
+      "ingredient": "#minecraft:leaves",
+      "slot": 2
+    },
+    {
+      "ingredient": "#c:flowers",
+      "slot": 3
+    },
+    {
+      "ingredient": "minecraft:redstone",
+      "slot": 4
+    },
+    {
+      "ingredient": "#c:flowers",
+      "slot": 5
+    },
+    {
+      "ingredient": "#minecraft:leaves",
+      "slot": 6
+    },
+    {
+      "ingredient": "chromaticraft:crystal_shard_light_blue",
+      "slot": 7
+    },
+    {
+      "ingredient": "#minecraft:leaves",
+      "slot": 8
+    }
+  ],
+  "result": {
+    "count": 2,
+    "id": "chromaticraft:plant_accelerator"
+  },
+  "runes": [
+    {
+      "element": "lightblue",
+      "offset": [
+        2,
+        -1,
+        -4
+      ]
+    },
+    {
+      "element": "green",
+      "offset": [
+        -2,
+        -1,
+        4
+      ]
+    }
+  ],
+  "tier": "temple"
+}

@@ -9,42 +9,41 @@
  ******************************************************************************/
 package reika.chromaticraft.tileentity.plants;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.material.Material;
-import net.minecraft.init.Blocks;
-import net.minecraft.init.Items;
-import net.minecraft.item.ItemStack;
-import net.minecraft.world.World;
-import net.minecraftforge.common.IShearable;
-import net.minecraftforge.common.util.ForgeDirection;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.VegetationBlock;
+import net.minecraft.world.level.block.state.BlockState;
 
 import reika.chromaticraft.auxiliary.interfaces.ComplexAOE;
 import reika.chromaticraft.base.tileentity.TileEntityMagicPlant;
+import reika.chromaticraft.registry.ChromaBlockEntities;
+import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaTiles;
 import reika.chromaticraft.tileentity.auxiliary.TileEntityFunctionRelay;
-import reika.dragonapi.apipackethandler.PacketIDs;
-import reika.dragonapi.DragonAPIInit;
-import reika.dragonapi.ModList;
 import reika.dragonapi.instantiable.StepTimer;
 import reika.dragonapi.instantiable.data.WeightedRandom;
 import reika.dragonapi.instantiable.data.immutable.BlockKey;
 import reika.dragonapi.instantiable.data.immutable.Coordinate;
-import reika.dragonapi.libraries.io.ReikaPacketHelper;
 import reika.dragonapi.libraries.io.ReikaSoundHelper;
-import reika.dragonapi.libraries.registry.ReikaItemHelper;
-import reika.dragonapi.libraries.registry.ReikaPlantHelper;
-import reika.dragonapi.libraries.world.ReikaBlockHelper;
-import reika.dragonapi.libraries.world.ReikaWorldHelper;
-import reika.dragonapi.modinteract.itemhandlers.BotaniaHandler;
 
+/** V33a Scissorweed: shears nearby matching foliage and can redirect attempts through relays. */
+public final class TileEntityHarvesterPlant extends TileEntityMagicPlant implements ComplexAOE {
 
-public class TileEntityHarvesterPlant extends TileEntityMagicPlant implements ComplexAOE {
-
-	private static double[][] randomDistrib = {
+	private static final double[][] RANDOM_DISTRIBUTION = {
 			{3, 2, 1, 1, 2, 3, 2, 1, 1, 2, 3},
 			{1, 6, 4, 3, 4, 5, 4, 3, 4, 6, 2},
 			{1, 4, 7, 5, 4, 6, 4, 5, 7, 4, 1},
@@ -55,117 +54,115 @@ public class TileEntityHarvesterPlant extends TileEntityMagicPlant implements Co
 			{1, 3, 5, 8, 6, 7, 6, 8, 5, 3, 1},
 			{1, 4, 7, 5, 4, 6, 4, 5, 7, 4, 1},
 			{2, 6, 4, 3, 3, 5, 3, 3, 4, 6, 2},
-			{3, 2, 1, 1, 2, 3, 2, 1, 1, 2, 3},
+			{3, 2, 1, 1, 2, 3, 2, 1, 1, 2, 3}
 	};
+	private static final double[] HEIGHT_DISTRIBUTION = {10, 8, 5, 2};
+	private static final WeightedRandom<BlockPos> COORDINATE_RANDOM = WeightedRandom.fromArray(RANDOM_DISTRIBUTION);
+	private static final WeightedRandom<Integer> VERTICAL_RANDOM = new WeightedRandom<>();
+	private static final Identifier BOTANIA_SPECIAL_FLOWER =
+			Identifier.fromNamespaceAndPath("botania", "special_flower");
 
-	private static double[] heightDistrib = {
-			10, 8, 5, 2
-	};
-
-	private static final WeightedRandom<Coordinate> coordinateRand = WeightedRandom.fromArray(randomDistrib);
-	private static final WeightedRandom<Integer> verticalRand = new WeightedRandom();
-
-	private final HashSet<BlockKey> flowerCache = new HashSet();
+	private final Set<BlockKey> flowerCache = new HashSet<>();
 	private final StepTimer cacheTimer = new StepTimer(20);
 
 	static {
-		for (int i = 0; i < heightDistrib.length; i++) {
-			verticalRand.addEntry(-i, heightDistrib[i]);
-		}
+		for (int offset = 0; offset < HEIGHT_DISTRIBUTION.length; offset++)
+			VERTICAL_RANDOM.addEntry(-offset, HEIGHT_DISTRIBUTION[offset]);
 	}
 
-	@Override
-	public ForgeDirection getGrowthDirection() {
-		return ForgeDirection.UP;
+	public TileEntityHarvesterPlant(BlockPos pos, BlockState state) {
+		super(ChromaBlockEntities.HARVEST_PLANT.get(), pos, state);
 	}
 
-	@Override
-	public ChromaTiles getTile() {
-		return ChromaTiles.HARVESTPLANT;
-	}
+	@Override public Direction getGrowthDirection() { return Direction.UP; }
+
+	@Override public ChromaTiles getTile() { return ChromaTiles.HARVESTPLANT; }
 
 	@Override
-	public void updateEntity(World world, int x, int y, int z, int meta) {
-		if (!world.isRemote) {
-			cacheTimer.update();
-			if (cacheTimer.checkCap())
-				this.loadCache(world, x, y, z);
-			if (this.isActive(world, x, y, z)) {
-				int n = 1+this.getAccelerationPlants();
-				for (int i = 0; i < n; i++) {
-					int dy = verticalRand.getRandomEntry();
-					Coordinate c = coordinateRand.getRandomEntry().offset(x, y+dy, z);
-					Block b = c.getBlock(world);
-					int bmeta = c.getBlockMetadata(world);
-					if (ChromaTiles.getTileFromIDandMetadata(b, bmeta) == ChromaTiles.FUNCTIONRELAY) {
-						c = ((TileEntityFunctionRelay)c.getTileEntity(world)).getRandomCoordinate();
-						b = c.getBlock(world);
-						bmeta = c.getBlockMetadata(world);
-					}
-					if (c.getTaxicabDistanceTo(new Coordinate(this)) > 1 && this.canHarvest(b, bmeta, world, c.xCoord, c.yCoord, c.zCoord)) {
-						this.harvest(world, c.xCoord, c.yCoord, c.zCoord, b, bmeta);
-					}
-				}
+	public void updateEntity(Level world, BlockPos pos) {
+		if (!(world instanceof ServerLevel server)) return;
+		cacheTimer.update();
+		if (cacheTimer.checkCap()) this.loadCache(world, pos);
+		if (!this.isActive(world, pos)) return;
+		for (int attempt = 0; attempt < 1 + this.getAccelerationPlants(); attempt++) {
+			BlockPos relative = COORDINATE_RANDOM.getRandomEntry();
+			Integer vertical = VERTICAL_RANDOM.getRandomEntry();
+			if (relative == null || vertical == null) continue;
+			BlockPos target = pos.offset(relative.getX(), vertical, relative.getZ());
+			if (!world.hasChunkAt(target)) continue;
+			if (world.getBlockEntity(target) instanceof TileEntityFunctionRelay relay) {
+				Coordinate relayed = relay.getRandomCoordinate();
+				if (relayed == null) continue;
+				target = relayed.asBlockPos();
+				if (!world.hasChunkAt(target)) continue;
 			}
+			if (target.distManhattan(pos) > 1 && this.canHarvest(world, target))
+				this.harvest(server, target);
 		}
 	}
 
-	private boolean isActive(World world, int x, int y, int z) {
-		return world.canBlockSeeTheSky(x, y+1, z) && world.isDaytime() && !world.isBlockIndirectlyGettingPowered(x, y-1, z);
+	private boolean isActive(Level world, BlockPos pos) {
+		return world.canSeeSky(pos.above()) && world.isBrightOutside()
+				&& !world.hasNeighborSignal(pos.below());
 	}
 
-	private void harvest(World world, int x, int y, int z, Block b, int meta) {
-		ItemStack in = new ItemStack(Items.shears);
-		ArrayList<ItemStack> li = b.getDrops(world, x, y, z, meta, 0);
-		if (b instanceof IShearable && ((IShearable)b).isShearable(in, world, x, y, z)) {
-			li = ((IShearable)b).onSheared(in, world, x, y, z, 0);
-		}
-		ReikaItemHelper.dropItems(world, x+0.5, y+0.5, z+0.5, li);
-		ReikaSoundHelper.playBreakSound(world, x, y, z, Blocks.grass);
-		ReikaPacketHelper.sendDataPacketWithRadius(DragonAPIInit.packetChannel, PacketIDs.BREAKPARTICLES.ordinal(), world, x, y, z, 48, Block.getIdFromBlock(b), meta);
-		world.setBlock(x, y, z, Blocks.air);
+	private void harvest(ServerLevel world, BlockPos target) {
+		BlockState state = world.getBlockState(target);
+		List<ItemStack> drops = Block.getDrops(state, world, target, world.getBlockEntity(target),
+				this.getPlacer(), new ItemStack(Items.SHEARS));
+		for (ItemStack drop : drops) Block.popResource(world, target, drop);
+		ReikaSoundHelper.playBreakSound(world, target, Blocks.GRASS_BLOCK);
+		world.levelEvent(2001, target, Block.getId(state));
+		world.removeBlock(target, false);
 	}
 
 	@Override
-	protected void onFirstTick(World world, int x, int y, int z) {
-		this.loadCache(world, x, y, z);
+	protected void onFirstTick(Level world, BlockPos pos) {
+		super.onFirstTick(world, pos);
+		this.loadCache(world, pos);
 	}
 
-	private void loadCache(World world, int x, int y, int z) {
+	private void loadCache(Level world, BlockPos pos) {
 		flowerCache.clear();
-		for (int i = 2; i < 6; i++) {
-			ForgeDirection dir = dirs[i];
-			BlockKey bk = BlockKey.getAt(world, x+dir.offsetX, y+dir.offsetY, z+dir.offsetZ);
-			if (bk.blockID.getMaterial() == Material.plants || bk.blockID.getMaterial() == Material.leaves) {
-				flowerCache.add(bk);
-			}
+		for (Direction direction : Direction.Plane.HORIZONTAL) {
+			BlockPos adjacent = pos.relative(direction);
+			BlockState state = world.getBlockState(adjacent);
+			if (isFoliage(state)) flowerCache.add(new BlockKey(state));
 		}
 	}
 
-	private boolean canHarvest(Block b, int meta, World world, int x, int y, int z) {
-		if (ModList.BOTANIA.isLoaded() && BotaniaHandler.getInstance().flowerID == b)
-			return true;
-		return flowerCache.contains(new BlockKey(b, meta)) && ReikaWorldHelper.checkForAdjBlock(world, x, y, z, b, meta) != null && ReikaWorldHelper.checkForAdjBlock(world, x, y, z, this.getTile().getBlock(), this.getTile().getBlockMetadata()) == null;
+	private static boolean isFoliage(BlockState state) {
+		return state.is(BlockTags.LEAVES) || state.is(BlockTags.FLOWERS)
+				|| state.getBlock() instanceof VegetationBlock;
 	}
 
-	@Override
-	protected void animateWithTick(World world, int x, int y, int z) {
-
+	private boolean canHarvest(Level world, BlockPos pos) {
+		BlockState state = world.getBlockState(pos);
+		if (BOTANIA_SPECIAL_FLOWER.equals(BuiltInRegistries.BLOCK.getKey(state.getBlock()))) return true;
+		if (!flowerCache.contains(new BlockKey(state))) return false;
+		boolean hasMatchingNeighbour = false;
+		for (Direction direction : Direction.values()) {
+			BlockState adjacent = world.getBlockState(pos.relative(direction));
+			if (adjacent == state) hasMatchingNeighbour = true;
+			if (adjacent.is(ChromaBlocks.HARVEST_PLANT.get())) return false;
+		}
+		return hasMatchingNeighbour;
 	}
 
-	@Override
-	public boolean isPlantable(World world, int x, int y, int z) {
-		return ReikaPlantHelper.FLOWER.canPlantAt(world, x, y, z) || ReikaBlockHelper.isLeaf(world, x, y-1, z) || ChromaTiles.getTile(world, x, y-1, z) == ChromaTiles.PLANTACCEL;
+	@Override protected void animateWithTick(Level world, BlockPos pos) {
 	}
 
-	@Override
-	public Collection<Coordinate> getPossibleRelativePositions() {
-		return coordinateRand.getValues();
+	@Override public boolean isPlantable(Level world, BlockPos pos) {
+		BlockState below = world.getBlockState(pos.below());
+		return below.is(BlockTags.SUPPORTS_VEGETATION) || below.is(BlockTags.LEAVES)
+				|| below.is(ChromaBlocks.PLANT_ACCELERATOR.get());
 	}
 
-	@Override
-	public double getNormalizedWeight(Coordinate c) {
-		return coordinateRand.getNormalizedWeight(c);
+	@Override public Collection<Coordinate> getPossibleRelativePositions() {
+		return COORDINATE_RANDOM.getValues().stream().map(Coordinate::new).toList();
 	}
 
+	@Override public double getNormalizedWeight(Coordinate coordinate) {
+		return COORDINATE_RANDOM.getWeight(coordinate.asBlockPos()) / COORDINATE_RANDOM.getMaxWeight();
+	}
 }
