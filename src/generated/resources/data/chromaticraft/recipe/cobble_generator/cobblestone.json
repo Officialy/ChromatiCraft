@@ -1,0 +1,11 @@
+{
+  "type": "chromaticraft:cobble_generator",
+  "duration": 10,
+  "primary": "minecraft:water",
+  "primary_consumption_chance": 20.0,
+  "result": {
+    "id": "minecraft:cobblestone"
+  },
+  "secondary": "minecraft:lava",
+  "secondary_consumption_chance": 0.0
+}

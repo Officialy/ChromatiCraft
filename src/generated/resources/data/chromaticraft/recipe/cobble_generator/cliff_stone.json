@@ -1,0 +1,12 @@
+{
+  "type": "chromaticraft:cobble_generator",
+  "duration": 120,
+  "order": 2,
+  "primary": "chromaticraft:luma",
+  "primary_consumption_chance": 0.0,
+  "result": {
+    "id": "chromaticraft:cliff_stone"
+  },
+  "secondary": "minecraft:lava",
+  "secondary_consumption_chance": 10.0
+}

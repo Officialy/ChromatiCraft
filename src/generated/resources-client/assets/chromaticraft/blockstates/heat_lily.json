@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "crop_form=false": {
+      "model": "chromaticraft:block/heat_lily"
+    },
+    "crop_form=true": {
+      "model": "chromaticraft:block/heat_lily_crop"
+    }
+  }
+}

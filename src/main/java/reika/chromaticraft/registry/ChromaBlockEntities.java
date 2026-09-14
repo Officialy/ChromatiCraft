@@ -16,6 +16,8 @@ import reika.chromaticraft.tileentity.TileEntityDisplayPoint;
 import reika.chromaticraft.tileentity.TileEntityDataNode;
 import reika.chromaticraft.tileentity.TileEntityFarmer;
 import reika.chromaticraft.tileentity.plants.TileEntityBiomeReverter;
+import reika.chromaticraft.tileentity.plants.TileEntityCobbleGen;
+import reika.chromaticraft.tileentity.plants.TileEntityHeatLily;
 import reika.chromaticraft.tileentity.plants.TileEntityAccelerationPlant;
 import reika.chromaticraft.tileentity.plants.TileEntityCropSpeedPlant;
 import reika.chromaticraft.tileentity.plants.TileEntityHarvesterPlant;
@@ -83,8 +85,12 @@ public final class ChromaBlockEntities {
 			register("crystal_charger", ChromaTiles.CHARGER);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityFarmer>> FARMER =
 			register("farmer", ChromaTiles.FARMER);
+	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityHeatLily>> HEAT_LILY =
+			register("heat_lily", ChromaTiles.HEATLILY);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityBiomeReverter>> BIOME_REVERTER =
 			register("biome_reverter", ChromaTiles.REVERTER);
+	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityCobbleGen>> COBBLE_GENERATOR =
+			register("cobble_generator", ChromaTiles.COBBLEGEN);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityAccelerationPlant>> PLANT_ACCELERATOR =
 			register("plant_accelerator", ChromaTiles.PLANTACCEL);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityCropSpeedPlant>> CROP_SPEED_PLANT =

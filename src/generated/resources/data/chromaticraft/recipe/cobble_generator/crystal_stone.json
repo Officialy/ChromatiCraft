@@ -1,0 +1,12 @@
+{
+  "type": "chromaticraft:cobble_generator",
+  "duration": 50,
+  "order": 1,
+  "primary": "chromaticraft:chroma",
+  "primary_consumption_chance": 25.0,
+  "result": {
+    "id": "chromaticraft:crystalline_stone"
+  },
+  "secondary": "minecraft:lava",
+  "secondary_consumption_chance": 50.0
+}

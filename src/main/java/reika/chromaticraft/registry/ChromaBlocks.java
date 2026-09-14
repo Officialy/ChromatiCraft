@@ -664,11 +664,21 @@ public final class ChromaBlocks {
 	public static final DeferredBlock<Block> FARMER =
 			register("farmer", () -> new BlockFarmer(
 					blockProperties().strength(3F, 12F).noOcclusion()));
+	/** V33a DECOPLANT metadata 0, now its own block and item registry identity. */
+	public static final DeferredBlock<Block> HEAT_LILY =
+			register("heat_lily", () -> new BlockDecoPlant(
+					blockProperties().strength(0F, 0.5F).noOcclusion().sound(SoundType.GRASS)
+							.lightLevel(state -> 15), BlockDecoPlant.Kind.HEAT_LILY));
 	/** V33a DECOPLANT metadata 1, now its own block and item registry identity. */
 	public static final DeferredBlock<Block> BIOME_REVERTER =
 			register("biome_reverter", () -> new BlockDecoPlant(
 					blockProperties().strength(0F, 0.5F).noOcclusion().sound(SoundType.GRASS)
 							.lightLevel(state -> 6), BlockDecoPlant.Kind.REVERTER));
+	/** V33a DECOPLANT metadata 2, now its own block and item registry identity. */
+	public static final DeferredBlock<Block> COBBLE_GENERATOR =
+			register("cobble_generator", () -> new BlockDecoPlant(
+					blockProperties().strength(0F, 0.5F).noOcclusion().sound(SoundType.GRASS),
+					BlockDecoPlant.Kind.COBBLE_GENERATOR));
 	/** V33a DECOPLANT metadata 3, now its own block and item registry identity. */
 	public static final DeferredBlock<Block> PLANT_ACCELERATOR =
 			register("plant_accelerator", () -> new BlockDecoPlant(

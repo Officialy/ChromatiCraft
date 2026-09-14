@@ -110,7 +110,9 @@ public class ChromaLang extends LanguageProvider {
 		add(ChromaItems.SPEED_UPGRADE.get(), "Speed Upgrade"); // V33a chromamisc.speed
 		add(ChromaBlocks.CRYSTAL_CHARGER.get(), "Storage Crystal Charger"); // V33a chroma.charger
 		add(ChromaBlocks.FARMER.get(), "Elemental Harvester"); // V33a chroma.farmer
+		add(ChromaBlocks.HEAT_LILY.get(), "Heat Lily"); // V33a chroma.heatlily
 		add(ChromaBlocks.BIOME_REVERTER.get(), "Reversion Lotus"); // V33a chroma.reverter
+		add(ChromaBlocks.COBBLE_GENERATOR.get(), "Coalescence Orchid"); // V33a chroma.cobblegen
 		add(ChromaBlocks.PLANT_ACCELERATOR.get(), "Enrichment Vine"); // V33a chroma.plantaccel
 		add(ChromaBlocks.CROP_SPEED_PLANT.get(), "Fertility Bloom"); // V33a chroma.cropspeed
 		add(ChromaBlocks.HARVEST_PLANT.get(), "Scissorweed"); // V33a chroma.harvestplant

@@ -6541,3 +6541,36 @@ WHITE (-16,+6,+3).
   two-gigabyte-capped client and server datagen runs completed successfully and emitted both
   blockstates, ordinary/crop block models, layered item models, loot tables and casting recipes.
   No GameTest server or concurrent Gradle process was started.
+
+## Heat Lily and Coalescence Orchid (2026-09-14)
+
+- V33a's remaining DECOPLANT metadata 0 and 2 are now independent registered blocks and items:
+  `chromaticraft:heat_lily` and `chromaticraft:cobble_generator` (Coalescence Orchid). Heat Lily
+  retains its upward growth direction, lily-pad support rules, level-15 light, flame particles,
+  two-second contact ignition and forty-tick random melt attempt over the source seven-by-seven
+  area one block below. Its live-location cache suppresses natural freezing within the original
+  Manhattan distance seven.
+- DragonAPI's `IceFreezeEvent` is connected to the 26.2 biome freeze decision through a guarded
+  mixin rather than remaining a dead compatibility shell. The modern handler preserves V33a's
+  Heat Lily, Luminous Cliffs/Shores and Proxima no-freeze rules without recursively reposting the
+  event or forcing unloaded chunks.
+- Coalescence Orchid retains its downward growth, ceiling/Enrichment Vine support, nine-by-nine
+  horizontal and five-block downward search, full hundred-tick rescan plus two random columns per
+  tick, and Function Relay endpoint delegation. It selects recipes in datapack order, validates
+  both source fluids and required amounts throughout the operation, begins at one-third progress,
+  probabilistically drains the authored quantities, and emits up to 64 output items according to
+  the consecutive Enrichment Vine count.
+- The four built-in V33a fluid pairs are data-generated as a real custom recipe type: water/lava
+  to cobblestone, Chroma/lava to smooth crystalline stone, Luma/lava to cliff stone, and Ender/lava
+  to end stone, with their exact durations and independent consumption chances. A Heat Lily one
+  through four blocks below applies the original cobblestone-to-stone modifier. Produced entities
+  retain the source 300-tick lifetime.
+- Client effects preserve the Orchid's fluid-attractor animation using the actual source-fluid
+  model sprite, the Heat Lily modifier's three orange tri-dot columns, and the 72-ray coloured
+  success/failure burst delivered by a synced block event. Client and server datagen emit the
+  original two-layer plant models, names, loot tables, exact Temple recipes, rune positions,
+  output counts, durations and XP; no substitute assets or recipes were introduced.
+- Validation: the complete active source slice compiles successfully. Separate serial,
+  single-worker, two-gigabyte-capped client and server datagen runs completed successfully and
+  emitted both plant resource families, both casting recipes and all four fluid-mixing recipes.
+  No GameTest server or concurrent Gradle process was started.

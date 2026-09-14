@@ -1,0 +1,65 @@
+{
+  "type": "chromaticraft:casting",
+  "duration": 20,
+  "experience": 40,
+  "grid": [
+    {
+      "ingredient": "#minecraft:leaves",
+      "slot": 0
+    },
+    {
+      "ingredient": "chromaticraft:crystal_shard_cyan",
+      "slot": 1
+    },
+    {
+      "ingredient": "#minecraft:leaves",
+      "slot": 2
+    },
+    {
+      "ingredient": "#c:flowers",
+      "slot": 3
+    },
+    {
+      "ingredient": "minecraft:glass",
+      "slot": 4
+    },
+    {
+      "ingredient": "#c:flowers",
+      "slot": 5
+    },
+    {
+      "ingredient": "minecraft:glowstone_dust",
+      "slot": 7
+    }
+  ],
+  "result": {
+    "id": "chromaticraft:cobble_generator"
+  },
+  "runes": [
+    {
+      "element": "orange",
+      "offset": [
+        4,
+        -1,
+        -3
+      ]
+    },
+    {
+      "element": "cyan",
+      "offset": [
+        4,
+        -1,
+        3
+      ]
+    },
+    {
+      "element": "brown",
+      "offset": [
+        -4,
+        -1,
+        -1
+      ]
+    }
+  ],
+  "tier": "temple"
+}

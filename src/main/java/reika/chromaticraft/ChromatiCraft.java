@@ -125,6 +125,8 @@ public class ChromatiCraft extends DragonAPIMod {
 		// V33a's mining, dimension-entry, potion, death and boss-kill progression hooks.
 		reika.chromaticraft.auxiliary.ProgressionEventBridge.register();
 		reika.chromaticraft.auxiliary.FocusCrystalTradeHandler.register();
+		reika.chromaticraft.auxiliary.CobbleGeneratorItemExpiry.register();
+		reika.chromaticraft.auxiliary.ChromaFreezeHandler.register();
 	}
 
 	private void commonSetup(FMLCommonSetupEvent event) {

@@ -9,597 +9,409 @@
  ******************************************************************************/
 package reika.chromaticraft.tileentity.plants;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
-import java.util.Locale;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
-import net.minecraft.block.Block;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.particle.EntityFX;
-import net.minecraft.entity.item.EntityItem;
-import net.minecraft.init.Blocks;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.world.World;
-import net.minecraftforge.common.util.EnumHelper;
-import net.minecraftforge.common.util.ForgeDirection;
-import net.minecraftforge.fluids.Fluid;
-import net.minecraftforge.fluids.FluidRegistry;
-import net.minecraftforge.fluids.FluidStack;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.Recipe;
+import net.minecraft.world.item.crafting.RecipeHolder;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.material.Fluid;
+import net.minecraft.world.level.material.FluidState;
+import net.neoforged.neoforge.fluids.FluidType;
 
-import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.auxiliary.ChromaAux;
+import reika.chromaticraft.auxiliary.CobbleGeneratorItemExpiry;
 import reika.chromaticraft.auxiliary.interfaces.OperationInterval;
+import reika.chromaticraft.auxiliary.recipemanagers.CobbleGeneratorRecipe;
 import reika.chromaticraft.base.tileentity.TileEntityMagicPlant;
-import reika.chromaticraft.block.blockpylonstructure.StoneTypes;
-import reika.chromaticraft.block.worldgen.blockcliffstone.Variants;
-import reika.chromaticraft.magic.ElementTagCompound;
-import reika.chromaticraft.magic.ItemElementCalculator;
+import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaIcons;
-import reika.chromaticraft.registry.ChromaPackets;
+import reika.chromaticraft.registry.ChromaRecipeTypes;
 import reika.chromaticraft.registry.ChromaTiles;
 import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.render.particle.EntityCCBlurFX;
-import reika.chromaticraft.render.particle.EntityRuneFX;
+import reika.chromaticraft.render.particle.CobbleGeneratorParticles;
 import reika.chromaticraft.tileentity.auxiliary.TileEntityFunctionRelay;
 import reika.dragonapi.instantiable.StepTimer;
-import reika.dragonapi.instantiable.data.immutable.BlockKey;
 import reika.dragonapi.instantiable.data.immutable.Coordinate;
-import reika.dragonapi.instantiable.data.maps.BlockMap;
-import reika.dragonapi.instantiable.data.maps.MultiMap;
-import reika.dragonapi.instantiable.data.maps.multimap.CollectionType;
-import reika.dragonapi.instantiable.effects.EntityBlurFX;
-import reika.dragonapi.instantiable.effects.EntityFluidFX;
-import reika.dragonapi.instantiable.io.CustomRecipeList;
-import reika.dragonapi.instantiable.io.LuaBlock;
-import reika.dragonapi.instantiable.particlecontroller.AttractiveMotionController;
 import reika.dragonapi.interfaces.block.FluidBlockSurrogate;
-import reika.dragonapi.libraries.ReikaFluidHelper;
-import reika.dragonapi.libraries.io.ReikaPacketHelper;
-import reika.dragonapi.libraries.io.ReikaSoundHelper;
-import reika.dragonapi.libraries.java.ReikaJavaLibrary;
-import reika.dragonapi.libraries.java.ReikaRandomHelper;
-import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
-import reika.dragonapi.libraries.mathsci.ReikaPhysicsHelper;
-import reika.dragonapi.libraries.registry.ReikaItemHelper;
-import reika.dragonapi.libraries.world.ReikaWorldHelper;
+import reika.dragonapi.libraries.io.NBTCompat;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
-
-
-public class TileEntityCobbleGen extends TileEntityMagicPlant implements OperationInterval {
-
-	private final MultiMap<String, Coordinate> fluidLocations = new MultiMap(CollectionType.HASHSET);
-
-	private final StepTimer areaScan = new StepTimer(100);
-	//private final StepTimer growthTimer = new StepTimer(7200);
-
+/** V33a Coalescence Orchid: combines two nearby source fluids into a short-lived block stack. */
+public final class TileEntityCobbleGen extends TileEntityMagicPlant implements OperationInterval {
 	public static final int XZ_RANGE = 4;
 	public static final int Y_RANGE = 5;
 	public static final int RANDOM_SCANS = 2;
 
-	private FluidMix activeRecipe = null;
-	private int recipeTick = 0;
-	private Coordinate primaryLocation = null;
-	private Coordinate secondaryLocation = null;
+	private final Map<Fluid, Set<BlockPos>> fluidLocations = new HashMap<>();
+	private final StepTimer areaScan = new StepTimer(100);
 
+	private CobbleGeneratorRecipe activeRecipe;
+	private ResourceKey<Recipe<?>> activeRecipeKey;
+	private int recipeTick;
+	private int recipeDuration;
+	private BlockPos primaryLocation;
+	private BlockPos secondaryLocation;
+	private Fluid syncedPrimaryFluid;
+	private Fluid syncedSecondaryFluid;
+	private int effectMask;
 	private OutputModifier modifier;
 
-	@Override
-	public ChromaTiles getTile() {
-		return ChromaTiles.COBBLEGEN;
+	public TileEntityCobbleGen(BlockPos pos, BlockState state) {
+		super(ChromaBlockEntities.COBBLE_GENERATOR.get(), pos, state);
 	}
 
-	@Override
-	public ForgeDirection getGrowthDirection() {
-		return ForgeDirection.DOWN;
-	}
+	@Override public ChromaTiles getTile() { return ChromaTiles.COBBLEGEN; }
+	@Override public Direction getGrowthDirection() { return Direction.DOWN; }
 
 	@Override
-	protected void onFirstTick(World world, int x, int y, int z) {
-		areaScan.setTick(areaScan.getCap()-1);
-		this.doScan(world, x, y, z);
-	}
-
-	@Override
-	protected void writeSyncTag(NBTTagCompound NBT) {
-		super.writeSyncTag(NBT);
-
-		NBT.setInteger("recipeTick", recipeTick);
-		NBT.setInteger("recipe", activeRecipe != null ? activeRecipe.ordinal() : -1);
-
-		NBT.setInteger("modifier", modifier != null ? modifier.ordinal() : -1);
-
-		if (primaryLocation != null)
-			primaryLocation.writeToNBT("loc1", NBT);
-		if (secondaryLocation != null)
-			secondaryLocation.writeToNBT("loc2", NBT);
+	protected void onFirstTick(Level world, BlockPos pos) {
+		super.onFirstTick(world, pos);
+		if (!world.isClientSide()) {
+			areaScan.setTick(areaScan.getCap() - 1);
+			this.doScan(world, pos);
+		}
 	}
 
 	@Override
-	protected void readSyncTag(NBTTagCompound NBT) {
-		super.readSyncTag(NBT);
-
-		recipeTick = NBT.getInteger("recipeTick");
-		int r = NBT.getInteger("recipe");
-		activeRecipe = r >= 0 ? FluidMix.list[r] : null;
-
-		int m = NBT.getInteger("modifier");
-		modifier = m >= 0 ? OutputModifier.list[m] : null;
-
-		if (NBT.hasKey("loc2"))
-			primaryLocation = Coordinate.readFromNBT("loc1", NBT);
-		if (NBT.hasKey("loc1"))
-			secondaryLocation = Coordinate.readFromNBT("loc2", NBT);
+	protected void writeSyncTag(CompoundTag tag) {
+		super.writeSyncTag(tag);
+		tag.putInt("recipeTick", recipeTick);
+		tag.putInt("recipeDuration", recipeDuration);
+		tag.putInt("effectMask", effectMask);
+		tag.putInt("modifier", modifier != null ? modifier.ordinal() : -1);
+		if (activeRecipeKey != null) tag.putString("recipe", activeRecipeKey.identifier().toString());
+		if (syncedPrimaryFluid != null)
+			tag.putString("primaryFluid", BuiltInRegistries.FLUID.getKey(syncedPrimaryFluid).toString());
+		if (syncedSecondaryFluid != null)
+			tag.putString("secondaryFluid", BuiltInRegistries.FLUID.getKey(syncedSecondaryFluid).toString());
+		if (primaryLocation != null) tag.putLong("primaryLocation", primaryLocation.asLong());
+		if (secondaryLocation != null) tag.putLong("secondaryLocation", secondaryLocation.asLong());
 	}
 
 	@Override
-	public void updateEntity(World world, int x, int y, int z, int meta) {
-		if (!world.isRemote) {
-			this.doScan(world, x, y, z);
-		}
-		else {
-			this.doParticles(world, x, y, z);
-		}
-
-		if (recipeTick > 0) {
-			this.doRecipeTick(world, x, y, z);
-		}
-		else {
-			if (!world.isRemote) {
-				for (int i = 0; i < FluidMix.list.length; i++) {
-					FluidMix f = FluidMix.list[i];
-					Coordinate primary = this.getFluid(world, x, y, z, f.primaryFluid);
-					Coordinate secondary = this.getFluid(world, x, y, z, f.secondaryFluid);
-					if (primary != null && secondary != null) {
-						recipeTick = f.duration/3;
-						activeRecipe = f;
-						primaryLocation = primary;
-						secondaryLocation = secondary;
-						break;
-					}
-				}
-			}
-		}
-	}
-
-	@SideOnly(Side.CLIENT)
-	private void doParticles(World world, int x, int y, int z) {
-		if (modifier != null) {
-			modifier.doParticles(world, x, y, z, this);
-		}
-	}
-
-	private void doRecipeTick(World world, int x, int y, int z) {
-		if (!world.isRemote) {
-			recipeTick--;
-		}
-		if (recipeTick == 0) {
-			this.craft(world, x, y, z);
-		}
-		else {
-			if (world.isRemote) {
-				this.doRecipeParticles(world, x, y, z);
-			}
-			else {
-				FluidStack f1 = this.getFluidAtBlock(world, primaryLocation.xCoord, primaryLocation.yCoord, primaryLocation.zCoord);
-				FluidStack f2 = this.getFluidAtBlock(world, secondaryLocation.xCoord, secondaryLocation.yCoord, secondaryLocation.zCoord);
-				if (f1 != null && f1.getFluid().getName().equals(activeRecipe.primaryFluid) && f1.amount >= activeRecipe.requiredPrimaryAmount && f2 != null && f2.getFluid().getName().equals(activeRecipe.secondaryFluid) && f2.amount >= activeRecipe.requiredSecondaryAmount) {
-
-				}
-				else {
-					this.terminateCrafting(world, x, y, z, false);
-				}
-			}
-		}
-	}
-
-	private void craft(World world, int x, int y, int z) {
-		int num = Math.min(64, ReikaMathLibrary.intpow2(2, this.getAccelerationPlants()));
-		ItemStack is = ReikaItemHelper.getSizedItemStack(activeRecipe.output, num);
-		if (modifier != null)
-			is = modifier.getOutput(is);
-		EntityItem ei = ReikaItemHelper.dropItem(world, x+0.5, y+0.125, z+0.5, is);
-		ei.lifespan = 300;
-		ei.motionX = ei.motionZ = ei.motionY = 0;
-
-		if (activeRecipe.consumePrimaryFluid > 0) {
-			Block b1 = primaryLocation.getBlock(world);
-			if (b1 instanceof FluidBlockSurrogate) {
-				FluidBlockSurrogate fb = (FluidBlockSurrogate)b1;
-				Fluid f = FluidRegistry.getFluid(activeRecipe.primaryFluid);
-				if (fb.supportsQuantization(world, primaryLocation.xCoord, primaryLocation.yCoord, primaryLocation.zCoord)) {
-					fb.drain(world, primaryLocation.xCoord, primaryLocation.yCoord, primaryLocation.zCoord, f, activeRecipe.requiredPrimaryAmount, true);
-				}
-				else if (ReikaRandomHelper.doWithChance(activeRecipe.consumePrimaryFluid)) {
-					fb.drain(world, primaryLocation.xCoord, primaryLocation.yCoord, primaryLocation.zCoord, f, 1000, true);
-				}
-			}
-			else if (ReikaRandomHelper.doWithChance(activeRecipe.consumePrimaryFluid)) {
-				primaryLocation.setBlock(world, Blocks.air);
-			}
-		}
-
-		if (activeRecipe.consumeSecondaryFluid > 0) {
-			Block b2 = secondaryLocation.getBlock(world);
-			if (b2 instanceof FluidBlockSurrogate) {
-				FluidBlockSurrogate fb = (FluidBlockSurrogate)b2;
-				Fluid f = FluidRegistry.getFluid(activeRecipe.secondaryFluid);
-				if (fb.supportsQuantization(world, secondaryLocation.xCoord, secondaryLocation.yCoord, secondaryLocation.zCoord)) {
-					fb.drain(world, secondaryLocation.xCoord, secondaryLocation.yCoord, secondaryLocation.zCoord, f, activeRecipe.requiredSecondaryAmount, true);
-				}
-				else if (ReikaRandomHelper.doWithChance(activeRecipe.consumeSecondaryFluid)) {
-					fb.drain(world, secondaryLocation.xCoord, secondaryLocation.yCoord, secondaryLocation.zCoord, f, 1000, true);
-				}
-			}
-			else if (ReikaRandomHelper.doWithChance(activeRecipe.consumeSecondaryFluid)) {
-				secondaryLocation.setBlock(world, Blocks.air);
-			}
-		}
-
-		ReikaSoundHelper.playSoundAtBlock(world, x, y, z, "random.fizz", 0.75F, 2F);
-		this.terminateCrafting(world, x, y, z, true);
-	}
-
-	private void terminateCrafting(World world, int x, int y, int z, boolean success) {
-		ReikaPacketHelper.sendDataPacketWithRadius(ChromatiCraft.packetChannel, ChromaPackets.COBBLEGENEND.ordinal(), this, 64, activeRecipe.ordinal(), success ? 1 : 0);
+	protected void readSyncTag(CompoundTag tag) {
+		super.readSyncTag(tag);
+		recipeTick = NBTCompat.getInt(tag, "recipeTick", 0);
+		recipeDuration = NBTCompat.getInt(tag, "recipeDuration", 0);
+		effectMask = NBTCompat.getInt(tag, "effectMask", 0);
+		int modifierIndex = NBTCompat.getInt(tag, "modifier", -1);
+		modifier = modifierIndex >= 0 && modifierIndex < OutputModifier.values().length
+				? OutputModifier.values()[modifierIndex] : null;
+		Identifier recipeId = Identifier.tryParse(NBTCompat.getString(tag, "recipe", ""));
+		activeRecipeKey = recipeId != null ? ResourceKey.create(Registries.RECIPE, recipeId) : null;
+		syncedPrimaryFluid = fluid(tag, "primaryFluid");
+		syncedSecondaryFluid = fluid(tag, "secondaryFluid");
+		primaryLocation = tag.contains("primaryLocation")
+				? BlockPos.of(NBTCompat.getLong(tag, "primaryLocation", 0)) : null;
+		secondaryLocation = tag.contains("secondaryLocation")
+				? BlockPos.of(NBTCompat.getLong(tag, "secondaryLocation", 0)) : null;
 		activeRecipe = null;
+	}
+
+	private static Fluid fluid(CompoundTag tag, String key) {
+		Identifier id = Identifier.tryParse(NBTCompat.getString(tag, key, ""));
+		return id != null ? BuiltInRegistries.FLUID.getOptional(id).orElse(null) : null;
+	}
+
+	@Override
+	public void updateEntity(Level world, BlockPos pos) {
+		if (world.isClientSide()) {
+			this.doParticles(world, pos);
+			return;
+		}
+		if (!(world instanceof ServerLevel server)) return;
+		this.resolveActiveRecipe(server);
+		this.doScan(world, pos);
+		if (activeRecipe != null && recipeTick > 0) this.doRecipeTick(server, pos);
+		else if (recipeTick <= 0) this.tryStartRecipe(server);
+	}
+
+	private void resolveActiveRecipe(ServerLevel world) {
+		if (activeRecipe != null || activeRecipeKey == null) return;
+		for (RecipeHolder<CobbleGeneratorRecipe> holder : recipes(world)) {
+			if (holder.id().equals(activeRecipeKey)) {
+				activeRecipe = holder.value();
+				return;
+			}
+		}
+		this.clearRecipe();
+	}
+
+	private void tryStartRecipe(ServerLevel world) {
+		for (RecipeHolder<CobbleGeneratorRecipe> holder : recipes(world)) {
+			CobbleGeneratorRecipe recipe = holder.value();
+			BlockPos primary = this.getFluid(world, recipe.primaryFluid());
+			BlockPos secondary = this.getFluid(world, recipe.secondaryFluid());
+			if (primary == null || secondary == null) continue;
+			activeRecipe = recipe;
+			activeRecipeKey = holder.id();
+			recipeTick = recipe.duration() / 3;
+			recipeDuration = recipe.duration();
+			primaryLocation = primary;
+			secondaryLocation = secondary;
+			syncedPrimaryFluid = recipe.primaryFluid();
+			syncedSecondaryFluid = recipe.secondaryFluid();
+			effectMask = recipe.effectElements().stream().mapToInt(element -> 1 << element.ordinal())
+					.reduce(0, (left, right) -> left | right);
+			this.setChanged();
+			this.syncAllData(false);
+			return;
+		}
+	}
+
+	private static List<RecipeHolder<CobbleGeneratorRecipe>> recipes(ServerLevel world) {
+		ArrayList<RecipeHolder<CobbleGeneratorRecipe>> recipes = new ArrayList<>(world.getServer()
+				.getRecipeManager().recipeMap().byType(ChromaRecipeTypes.COBBLE_GENERATOR.get()));
+		recipes.sort(Comparator.comparingInt((RecipeHolder<CobbleGeneratorRecipe> holder) -> holder.value().order())
+				.thenComparing(holder -> holder.id().identifier().toString()));
+		return recipes;
+	}
+
+	private void doRecipeTick(ServerLevel world, BlockPos pos) {
+		recipeTick--;
+		if (recipeTick == 0) {
+			this.craft(world, pos);
+			return;
+		}
+		FluidProbe primary = this.getFluidAtBlock(world, primaryLocation);
+		FluidProbe secondary = this.getFluidAtBlock(world, secondaryLocation);
+		if (primary == null || primary.fluid() != activeRecipe.primaryFluid()
+				|| primary.amount() < activeRecipe.requiredPrimaryAmount()
+				|| secondary == null || secondary.fluid() != activeRecipe.secondaryFluid()
+				|| secondary.amount() < activeRecipe.requiredSecondaryAmount())
+			this.terminateCrafting(world, pos, false);
+	}
+
+	private void craft(ServerLevel world, BlockPos pos) {
+		int count = Math.min(64, 1 << Math.min(6, this.getAccelerationPlants()));
+		ItemStack output = activeRecipe.result();
+		output.setCount(count);
+		if (modifier != null) output = modifier.getOutput(output);
+		ItemEntity item = new ItemEntity(world, pos.getX() + 0.5, pos.getY() + 0.125,
+				pos.getZ() + 0.5, output, 0, 0, 0);
+		CobbleGeneratorItemExpiry.mark(item);
+		world.addFreshEntity(item);
+
+		this.consume(world, primaryLocation, activeRecipe.primaryFluid(),
+				activeRecipe.primaryConsumptionChance(), activeRecipe.requiredPrimaryAmount());
+		this.consume(world, secondaryLocation, activeRecipe.secondaryFluid(),
+				activeRecipe.secondaryConsumptionChance(), activeRecipe.requiredSecondaryAmount());
+		world.playSound(null, pos, SoundEvents.FIRE_EXTINGUISH, SoundSource.BLOCKS, 0.75F, 2F);
+		this.terminateCrafting(world, pos, true);
+	}
+
+	private void consume(ServerLevel world, BlockPos pos, Fluid expected, float chance,
+			int requiredAmount) {
+		if (chance <= 0 || pos == null || !world.hasChunkAt(pos)) return;
+		BlockState state = world.getBlockState(pos);
+		if (state.getBlock() instanceof FluidBlockSurrogate surrogate) {
+			if (surrogate.supportsQuantization(world, pos))
+				surrogate.drain(world, pos, expected, requiredAmount, true);
+			else if (roll(world, chance)) surrogate.drain(world, pos, expected, FluidType.BUCKET_VOLUME, true);
+		}
+		else if (roll(world, chance)) world.setBlock(pos, Blocks.AIR.defaultBlockState(), 3);
+	}
+
+	private static boolean roll(Level world, float chance) {
+		return world.getRandom().nextFloat() * 100 < chance;
+	}
+
+	private void terminateCrafting(ServerLevel world, BlockPos pos, boolean success) {
+		int element = this.randomEffectElement(world);
+		world.blockEvent(pos, this.getBlockState().getBlock(), 1,
+				((element + 1) << 1) | (success ? 1 : 0));
+		this.clearRecipe();
+		this.setChanged();
+		this.syncAllData(false);
+	}
+
+	private int randomEffectElement(Level world) {
+		if (effectMask == 0) return -1;
+		List<Integer> elements = new ArrayList<>();
+		for (int i = 0; i < CrystalElement.elements.length; i++)
+			if ((effectMask & 1 << i) != 0) elements.add(i);
+		return elements.get(world.getRandom().nextInt(elements.size()));
+	}
+
+	private void clearRecipe() {
+		activeRecipe = null;
+		activeRecipeKey = null;
 		recipeTick = 0;
+		recipeDuration = 0;
 		primaryLocation = null;
 		secondaryLocation = null;
+		syncedPrimaryFluid = null;
+		syncedSecondaryFluid = null;
+		effectMask = 0;
 	}
 
-	@SideOnly(Side.CLIENT)
-	public void endCraftingFX(World world, int x, int y, int z, int recipe, boolean success) {
-		FluidMix f = FluidMix.list[recipe];
-		double v = success ? 0.0625 : 0.375;
-		ElementTagCompound tag = ItemElementCalculator.instance.getValueForItem(f.output);
-		int n = 5;
-		int a = rand.nextInt(n);
-		for (int i = a; i < 360; i += n) {
-			EntityBlurFX fx;
-			double[] vel = ReikaPhysicsHelper.polarToCartesian(v, 0, i);
-			if (success) {
-				fx = new EntityCCBlurFX(world, x+0.5, y+0.125, z+0.5, vel[0], -0.125, vel[2]).setGravity(-0.125F);
-			}
-			else {
-				fx = new EntityCCBlurFX(world, x+0.5, y+0.125, z+0.5, vel[0], 0, vel[2]).setIcon(ChromaIcons.SPARKLE).setNoSlowdown();
-			}
-			int c = tag == null || tag.isEmpty() ? 0x22aaff : ReikaJavaLibrary.getRandomCollectionEntry(rand, tag.elementSet()).getColor();
-			fx.setColor(c).setRapidExpand();
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx);
+	@Override
+	public boolean triggerEvent(int id, int value) {
+		if (id == 1 && level != null && level.isClientSide()) {
+			int elementIndex = (value >> 1) - 1;
+			CrystalElement element = elementIndex >= 0 && elementIndex < CrystalElement.elements.length
+					? CrystalElement.elements[elementIndex] : null;
+			CobbleGeneratorParticles.spawnEnd(level, worldPosition, element, (value & 1) != 0);
+			return true;
 		}
+		return super.triggerEvent(id, value);
 	}
 
-	@SideOnly(Side.CLIENT)
-	private void doRecipeParticles(World world, int x, int y, int z) {
-		if (activeRecipe == null || primaryLocation == null || secondaryLocation == null)
-			return;
-		double px = ReikaRandomHelper.getRandomPlusMinus(primaryLocation.xCoord+0.5, 0.35);
-		double pz = ReikaRandomHelper.getRandomPlusMinus(primaryLocation.zCoord+0.5, 0.35);
-		EntityFluidFX fx1 = new EntityFluidFX(world, px, primaryLocation.yCoord+0.85, pz, FluidRegistry.getFluid(activeRecipe.primaryFluid));
-
-		px = ReikaRandomHelper.getRandomPlusMinus(secondaryLocation.xCoord+0.5, 0.35);
-		pz = ReikaRandomHelper.getRandomPlusMinus(secondaryLocation.zCoord+0.5, 0.35);
-		EntityFluidFX fx2 = new EntityFluidFX(world, px, secondaryLocation.yCoord+0.85, pz, FluidRegistry.getFluid(activeRecipe.secondaryFluid));
-
-		fx1.setMotionController(new AttractiveMotionController(xCoord+0.5, yCoord-0.375, zCoord+0.5, 0.0625/24D, ReikaRandomHelper.getRandomPlusMinus(0.155, 0.005), ReikaRandomHelper.getRandomPlusMinus(0.98, 0.005)));
-		fx2.setMotionController(new AttractiveMotionController(xCoord+0.5, yCoord-0.375, zCoord+0.5, 0.0625/24D, ReikaRandomHelper.getRandomPlusMinus(0.155, 0.005), ReikaRandomHelper.getRandomPlusMinus(0.98, 0.005)));
-
-		fx1.setLife(70);
-		fx2.setLife(70);
-
-		Minecraft.getMinecraft().effectRenderer.addEffect(fx1);
-		Minecraft.getMinecraft().effectRenderer.addEffect(fx2);
-
-		EntityRuneFX fx = null;
-		float g = (float)ReikaRandomHelper.getRandomPlusMinus(0.0625, 0.03125);
-		float s = (float)ReikaRandomHelper.getRandomPlusMinus(1.25, 0.25);
-		if (rand.nextBoolean()) {
-			CrystalElement e = ChromaAux.getRune(FluidRegistry.getFluid(rand.nextBoolean() ? activeRecipe.primaryFluid : activeRecipe.secondaryFluid));
-			fx = new EntityRuneFX(world, x+rand.nextDouble(), y+rand.nextDouble(), z+rand.nextDouble(), e).setGravity(g).setScale(s);
-		}
-		else {
-			g = -g;
-			int dy = y-1;
-			while (dy > 0 && world.getBlock(x, dy, z).isAir(world, x, dy, z))
-				dy--;
-			ElementTagCompound tag = ItemElementCalculator.instance.getValueForItem(activeRecipe.output);
-			CrystalElement e = tag != null && !tag.isEmpty() ? ReikaJavaLibrary.getRandomCollectionEntry(rand, tag.elementSet()) : null;
-			if (e != null)
-				fx = new EntityRuneFX(world, x+rand.nextDouble(), dy+1, z+rand.nextDouble(), e).setGravity(g).setScale(s);
-		}
-		if (fx != null)
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx);
+	private void doParticles(Level world, BlockPos pos) {
+		if (modifier != null) CobbleGeneratorParticles.spawnModifier(world, pos, this.getTicksExisted());
+		if (recipeTick > 0 && syncedPrimaryFluid != null && syncedSecondaryFluid != null
+				&& primaryLocation != null && secondaryLocation != null)
+			CobbleGeneratorParticles.spawnWorking(world, pos, primaryLocation, secondaryLocation,
+					syncedPrimaryFluid, syncedSecondaryFluid, effectMask, world.getRandom());
 	}
 
-	private Coordinate getFluid(World world, int x, int y, int z, String f) {
-		Collection<Coordinate> li = fluidLocations.get(f);
-		boolean flag = !li.isEmpty();
-		Iterator<Coordinate> it = li.iterator();
-		while (it.hasNext()) {
-			Coordinate c = it.next();
-			FluidStack at = this.getFluidAtBlock(world, c.xCoord, c.yCoord, c.zCoord);
-			if (at != null && at.getFluid().getName().equals(f)) {
-				return c;
-			}
-			else {
-				it.remove();
-			}
+	private BlockPos getFluid(Level world, Fluid fluid) {
+		Collection<BlockPos> locations = fluidLocations.getOrDefault(fluid, Set.of());
+		Iterator<BlockPos> iterator = locations.iterator();
+		while (iterator.hasNext()) {
+			BlockPos pos = iterator.next();
+			FluidProbe probe = this.getFluidAtBlock(world, pos);
+			if (probe != null && probe.fluid() == fluid) return pos;
+			iterator.remove();
 		}
-		if (li.isEmpty())
-			areaScan.setTick(areaScan.getCap()-1);
+		if (locations.isEmpty()) areaScan.setTick(areaScan.getCap() - 1);
 		return null;
 	}
 
-	private void doScan(World world, int x, int y, int z) {
+	private void doScan(Level world, BlockPos pos) {
 		areaScan.update();
 		if (areaScan.checkCap()) {
 			fluidLocations.clear();
-			for (int i = -XZ_RANGE; i <= XZ_RANGE; i++) {
-				for (int k = -XZ_RANGE; k <= XZ_RANGE; k++) {
-					int dx = x+i;
-					int dz = z+k;
-					this.scanPosition(world, dx, y, dz, true);
-				}
-			}
+			for (int offsetX = -XZ_RANGE; offsetX <= XZ_RANGE; offsetX++)
+				for (int offsetZ = -XZ_RANGE; offsetZ <= XZ_RANGE; offsetZ++)
+					this.scanPosition(world, pos.offset(offsetX, 0, offsetZ), true);
 		}
 		else {
 			for (int i = 0; i < RANDOM_SCANS; i++) {
-				int dx = ReikaRandomHelper.getRandomPlusMinus(x, XZ_RANGE);
-				int dz = ReikaRandomHelper.getRandomPlusMinus(z, XZ_RANGE);
-				this.scanPosition(world, dx, y, dz, false);
+				BlockPos column = pos.offset(world.getRandom().nextInt(XZ_RANGE * 2 + 1) - XZ_RANGE,
+						0, world.getRandom().nextInt(XZ_RANGE * 2 + 1) - XZ_RANGE);
+				this.scanPosition(world, column, false);
 			}
 		}
-
-		modifier = this.getModifier(world, x, y, z);
+		OutputModifier found = this.getModifier(world, pos);
+		if (found != modifier) {
+			modifier = found;
+			this.setChanged();
+			this.syncAllData(false);
+		}
 	}
 
-	private OutputModifier getModifier(World world, int x, int y, int z) {
-		for (int i = 1; i < Y_RANGE; i++) {
-			BlockKey bk = BlockKey.getAt(world, x, y-i, z);
-			OutputModifier mod = OutputModifier.getByBlock(bk);
-			if (mod != null) {
-				return mod;
-			}
-			else if (bk.blockID.isOpaqueCube())
-				return null;
+	private OutputModifier getModifier(Level world, BlockPos pos) {
+		for (int distance = 1; distance < Y_RANGE; distance++) {
+			BlockPos target = pos.below(distance);
+			if (!world.hasChunkAt(target)) return null;
+			BlockState state = world.getBlockState(target);
+			if (state.is(ChromaBlocks.HEAT_LILY.get())) return OutputModifier.COBBLE_SMELT;
+			if (state.isSolidRender()) return null;
 		}
 		return null;
 	}
 
-	private void scanPosition(World world, int dx, int y, int dz, boolean all) {
-		int dy = this.getYPosition(world, dx, y, dz);
-		if (dy != -1) {
-			if (ChromaTiles.getTileFromIDandMetadata(world.getBlock(dx, dy, dz), world.getBlockMetadata(dx, dy, dz)) == ChromaTiles.FUNCTIONRELAY) {
-				TileEntityFunctionRelay te = (TileEntityFunctionRelay)world.getTileEntity(dx, dy, dz);
-				if (all) {
-					for (Coordinate c : te.getCoordinates()) {
-						FluidStack f = this.getFluidAtBlock(world, c.xCoord, c.yCoord, c.zCoord);
-						if (f != null) {
-							fluidLocations.addValue(f.getFluid().getName(), c);
-						}
-					}
-					return;
-				}
-				else {
-					Coordinate c = te.getRandomCoordinate();
-					dx = c.xCoord;
-					dy = c.yCoord;
-					dz = c.zCoord;
-				}
+	private void scanPosition(Level world, BlockPos column, boolean all) {
+		BlockPos endpoint = this.getYPosition(world, column);
+		if (endpoint == null) return;
+		if (world.getBlockEntity(endpoint) instanceof TileEntityFunctionRelay relay) {
+			if (all) {
+				for (Coordinate coordinate : relay.getCoordinates()) this.addFluid(world, coordinate.asBlockPos());
+				return;
 			}
-			FluidStack f = this.getFluidAtBlock(world, dx, dy, dz);
-			if (f != null) {
-				fluidLocations.addValue(f.getFluid().getName(), new Coordinate(dx, dy, dz));
-			}
+			Coordinate coordinate = relay.getRandomCoordinate();
+			if (coordinate == null) return;
+			endpoint = coordinate.asBlockPos();
 		}
+		this.addFluid(world, endpoint);
 	}
 
-	private FluidStack getFluidAtBlock(World world, int dx, int dy, int dz) {
-		Block b = world.getBlock(dx, dy, dz);
-		if (ReikaWorldHelper.isLiquidSourceBlock(world, dx, dy, dz)) {
-			Fluid f = ReikaFluidHelper.lookupFluidForBlock(b);
-			return f != null ? new FluidStack(f, 1000) : null;
-		}
-		else if (b instanceof FluidBlockSurrogate) {
-			FluidBlockSurrogate fb = (FluidBlockSurrogate)b;
-			Fluid f = fb.getFluid(world, dx, dy, dz);
-			return f != null ? new FluidStack(f, fb.drain(world, dx, dy, dz, f, 1000, false)) : null;
+	private void addFluid(Level world, BlockPos pos) {
+		FluidProbe probe = this.getFluidAtBlock(world, pos);
+		if (probe != null) fluidLocations.computeIfAbsent(probe.fluid(), fluid -> new HashSet<>())
+				.add(pos.immutable());
+	}
+
+	private FluidProbe getFluidAtBlock(Level world, BlockPos pos) {
+		if (pos == null || !world.hasChunkAt(pos)) return null;
+		BlockState state = world.getBlockState(pos);
+		FluidState fluidState = state.getFluidState();
+		if (!fluidState.isEmpty() && fluidState.isSource())
+			return new FluidProbe(fluidState.getType(), FluidType.BUCKET_VOLUME);
+		if (state.getBlock() instanceof FluidBlockSurrogate surrogate) {
+			Fluid fluid = surrogate.getFluid(world, pos);
+			if (fluid != null) return new FluidProbe(fluid,
+					surrogate.drain(world, pos, fluid, FluidType.BUCKET_VOLUME, false));
 		}
 		return null;
 	}
 
-	private int getYPosition(World world, int x, int y, int z) {
-		Block b = world.getBlock(x, y, z);
-		if (!b.isAir(world, x, y, z) && ChromaTiles.getTileFromIDandMetadata(b, world.getBlockMetadata(x, y, z)) != this.getTile())
-			return -1;
-		int d = 0;
-		while (y > 0 && (b.isAir(world, x, y, z) || ChromaTiles.getTileFromIDandMetadata(b, world.getBlockMetadata(x, y, z)) == this.getTile())) {
-			y--;
-			d++;
-			b = world.getBlock(x, y, z);
+	private BlockPos getYPosition(Level world, BlockPos column) {
+		if (!world.hasChunkAt(column)) return null;
+		BlockPos.MutableBlockPos cursor = column.mutable();
+		BlockState state = world.getBlockState(cursor);
+		if (!state.isAir() && !state.is(ChromaBlocks.COBBLE_GENERATOR.get())) return null;
+		int distance = 0;
+		while (cursor.getY() > world.getMinY()
+				&& (state.isAir() || state.is(ChromaBlocks.COBBLE_GENERATOR.get()))) {
+			cursor.move(Direction.DOWN);
+			distance++;
+			state = world.getBlockState(cursor);
 		}
-		return d <= Y_RANGE ? y : -1;
+		return distance <= Y_RANGE ? cursor.immutable() : null;
 	}
 
-	@Override
-	protected void animateWithTick(World world, int x, int y, int z) {
-
-	}
-
-	public static void loadCustomFluidMixRecipes() {
-		CustomRecipeList crl = new CustomRecipeList(ChromatiCraft.instance, "fluidmix");
-		if (crl.load()) {
-			for (LuaBlock lb : crl.getEntries()) {
-				Exception e = null;
-				boolean flag = false;
-				try {
-					flag = addCustomRecipe(lb, crl);
-				}
-				catch (Exception ex) {
-					e = ex;
-					flag = false;
-				}
-				if (flag) {
-					ChromatiCraft.logger.log("Loaded custom fluidmix recipe '"+lb.getString("type")+"'");
-				}
-				else {
-					ChromatiCraft.logger.logError("Could not load custom fluidmix recipe '"+lb.getString("type")+"'");
-					if (e != null)
-						e.printStackTrace();
-				}
-			}
-		}
-		else {/*
-			crl.createFolders();
-			crl.addToExample(createLuaBlock(recipes.values().iterator().next()));
-			crl.createExampleFile();*/
-		}
-	}
-
-	private static boolean addCustomRecipe(LuaBlock lb, CustomRecipeList crl) throws Exception {
-		ItemStack out = crl.parseItemString(lb.getString("output"), null, false);
-		ChromaAux.verifyCustomRecipeOutputItem(out, true);
-		int time = lb.getInt("duration");
-		Fluid f1 = FluidRegistry.getFluid(lb.getString("primary"));
-		if (f1 == null)
-			throw new IllegalArgumentException("No such primary fluid!");
-		Fluid f2 = FluidRegistry.getFluid(lb.getString("secondary"));
-		if (f2 == null)
-			throw new IllegalArgumentException("No such secondary fluid!");
-		double c1 = lb.getDouble("chanceConsumePrimary");
-		double c2 = lb.getDouble("chanceConsumeSecondary");
-		addRecipe(lb.getString("type").toUpperCase(Locale.ENGLISH), f1, f2, out, time, (float)c1, (float)c2);
-		return true;
-	}
-
-	public static void addRecipe(String name, Fluid primary, Fluid secondary, ItemStack out, int time, float chanceConsumePrimary, float chanceConsumeSecondary) {
-		Class[] types = new Class[]{Fluid.class, Fluid.class, ItemStack.class, int.class, float.class, float.class};
-		Object[] args = new Object[]{primary, secondary, out, time, chanceConsumePrimary, chanceConsumeSecondary};
-		FluidMix c = EnumHelper.addEnum(FluidMix.class, name.toUpperCase(), types, args);
-	}
-
-	private static enum FluidMix {
-		COBBLESTONE(FluidRegistry.WATER, FluidRegistry.LAVA, new ItemStack(Blocks.cobblestone), 10, 20, 0),
-		CRYSTALSTONE("chroma", "lava", ChromaBlocks.PYLONSTRUCT.getStackOfMetadata(StoneTypes.SMOOTH.ordinal()), 50, 25F, 50F),
-		//ALLOY1("iron.molten", "lava", ChromaBlocks.PYLONSTRUCT.getStackOfMetadata(StoneTypes.SMOOTH.ordinal()), 10, 10F, 20F),
-		CLIFFSTONE("luma", "lava", ChromaBlocks.CLIFFSTONE.getStackOfMetadata(Variants.STONE.getMeta(false, false)), 120, 0F, 10F),
-		ENDSTONE("ender", "lava", new ItemStack(Blocks.end_stone), 80, 1F, 20F),
-		;
-
-		private final ItemStack output;
-		private final String primaryFluid;
-		private final String secondaryFluid;
-		private final int duration;
-		private final float consumePrimaryFluid;
-		private final float consumeSecondaryFluid;
-
-		private final int requiredPrimaryAmount;
-		private final int requiredSecondaryAmount;
-
-		private static final FluidMix[] list = values();
-
-		private FluidMix(Fluid f1, Fluid f2, ItemStack is, int t, float c1, float c2) {
-			this(f1.getName(), f2.getName(), is, t, c1, c2);
-		}
-
-		private FluidMix(String f1, String f2, ItemStack is, int t, float c1, float c2) {
-			primaryFluid = f1;
-			secondaryFluid = f2;
-			output = is;
-			duration = t;
-			consumePrimaryFluid = c1;
-			consumeSecondaryFluid = c2;
-
-			requiredPrimaryAmount = Math.max(1, (int)(1000*consumePrimaryFluid/100D));
-			requiredSecondaryAmount = Math.max(1, (int)(1000*consumeSecondaryFluid/100D));
-		}
-	}
-
-	private static enum OutputModifier {
-		COBBLESMELT(ChromaTiles.HEATLILY),
-		;
-
-		private final BlockKey block;
-
-		private static final OutputModifier[] list = values();
-		private static final BlockMap<OutputModifier> map = new BlockMap();
-
-		private OutputModifier(ChromaTiles c) {
-			this(new BlockKey(c.getBlock(), c.getBlockMetadata()));
-		}
-
-		public static OutputModifier getByBlock(BlockKey bk) {
-			return map.get(bk);
-		}
-
-		private OutputModifier(BlockKey b) {
-			block = b;
-		}
-
-		private ItemStack getOutput(ItemStack in) {
-			switch(this) {
-				case COBBLESMELT:
-					if (ReikaItemHelper.matchStackWithBlock(in, Blocks.cobblestone))
-						return new ItemStack(Blocks.stone, in.stackSize, 0);
-					break;
-				default:
-					break;
-			}
-			return in;
-		}
-
-		@SideOnly(Side.CLIENT)
-		private void doParticles(World world, int x, int y, int z, TileEntityCobbleGen te) {
-			switch(this) {
-				case COBBLESMELT:
-					double a = 0;//Math.toRadians((this.getTicksExisted()*2)%360);
-					int n = 3;
-					int sp = 360/n;
-					double r = 0.75+0.25*Math.sin(te.getTicksExisted()/10D);
-					for (int i = 0; i < 360; i += sp) {
-						double ri = Math.toRadians(i);
-						double dx = x+0.5+r*Math.sin(a+ri);
-						double dy = y-4;
-						double dz = z+0.5+r*Math.cos(a+ri);
-						EntityFX fx = new EntityCCBlurFX(CrystalElement.ORANGE, world, dx, dy, dz, 0, 0.1875, 0).setIcon(ChromaIcons.TRIDOT).setScale(2.5F).setNoSlowdown().setLife(25);
-						Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-					}
-					break;
-				default:
-					break;
-			}
-		}
-
-		static {
-			for (int i = 0; i < list.length; i++) {
-				BlockKey b = list[i].block;
-				map.put(b, list[i]);
-			}
-		}
+	@Override protected void animateWithTick(Level world, BlockPos pos) {
 	}
 
 	@Override
 	public float getOperationFraction() {
-		return activeRecipe == null ? 0 : recipeTick/(float)activeRecipe.duration;
+		return activeRecipeKey == null || recipeDuration <= 0 ? 0 : recipeTick / (float)recipeDuration;
+	}
+
+	@Override public OperationState getState() {
+		return activeRecipeKey != null ? OperationState.RUNNING : OperationState.INVALID;
 	}
 
 	@Override
-	public OperationState getState() {
-		return activeRecipe != null ? OperationState.RUNNING : OperationState.INVALID;
+	public boolean isPlantable(Level world, BlockPos pos) {
+		BlockPos above = pos.above();
+		BlockState state = world.getBlockState(above);
+		return state.is(ChromaBlocks.PLANT_ACCELERATOR.get())
+				|| state.isCollisionShapeFullBlock(world, above) && state.isSolidRender();
 	}
 
-	@Override
-	public boolean isPlantable(World world, int x, int y, int z) {
-		return (world.getBlock(x, y+1, z).isSideSolid(world, x, y+1, z, ForgeDirection.DOWN) && world.getBlock(x, y+1, z).getMaterial().isSolid()) || ChromaTiles.getTile(world, x, y+1, z) == ChromaTiles.PLANTACCEL;
-	}
+	public boolean hasWork() { return this.getState() == OperationState.RUNNING; }
 
-	@Override
-	public boolean hasWork() {
-		return this.getState() == OperationState.RUNNING;
-	}
+	private record FluidProbe(Fluid fluid, int amount) {}
 
+	private enum OutputModifier {
+		COBBLE_SMELT;
+
+		private ItemStack getOutput(ItemStack input) {
+			return input.is(Blocks.COBBLESTONE.asItem())
+					? new ItemStack(Blocks.STONE, input.getCount()) : input;
+		}
+	}
 }

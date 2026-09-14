@@ -1,0 +1,13 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": {
+      "force_translucent": true,
+      "sprite": "chromaticraft:block/plant/decoplant_2_back"
+    },
+    "layer1": {
+      "force_translucent": true,
+      "sprite": "chromaticraft:block/plant/decoplant_2_front"
+    }
+  }
+}

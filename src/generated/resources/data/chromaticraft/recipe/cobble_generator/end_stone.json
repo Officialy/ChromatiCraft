@@ -1,0 +1,16 @@
+{
+  "type": "chromaticraft:cobble_generator",
+  "duration": 80,
+  "effect_elements": [
+    "black",
+    "brown"
+  ],
+  "order": 3,
+  "primary": "chromaticraft:ender",
+  "primary_consumption_chance": 1.0,
+  "result": {
+    "id": "minecraft:end_stone"
+  },
+  "secondary": "minecraft:lava",
+  "secondary_consumption_chance": 20.0
+}

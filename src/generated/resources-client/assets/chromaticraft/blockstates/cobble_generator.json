@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "crop_form=false": {
+      "model": "chromaticraft:block/cobble_generator"
+    },
+    "crop_form=true": {
+      "model": "chromaticraft:block/cobble_generator_crop"
+    }
+  }
+}

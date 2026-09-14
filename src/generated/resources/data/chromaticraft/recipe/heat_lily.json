@@ -1,0 +1,58 @@
+{
+  "type": "chromaticraft:casting",
+  "duration": 20,
+  "experience": 40,
+  "grid": [
+    {
+      "ingredient": "#c:flowers",
+      "slot": 1
+    },
+    {
+      "ingredient": "#c:flowers",
+      "slot": 3
+    },
+    {
+      "ingredient": "minecraft:blaze_powder",
+      "slot": 4
+    },
+    {
+      "ingredient": "#c:flowers",
+      "slot": 5
+    },
+    {
+      "ingredient": "minecraft:lily_pad",
+      "slot": 6
+    },
+    {
+      "ingredient": "chromaticraft:crystal_shard_orange",
+      "slot": 7
+    },
+    {
+      "ingredient": "minecraft:lily_pad",
+      "slot": 8
+    }
+  ],
+  "result": {
+    "count": 3,
+    "id": "chromaticraft:heat_lily"
+  },
+  "runes": [
+    {
+      "element": "orange",
+      "offset": [
+        -3,
+        -1,
+        0
+      ]
+    },
+    {
+      "element": "orange",
+      "offset": [
+        3,
+        -1,
+        0
+      ]
+    }
+  ],
+  "tier": "temple"
+}

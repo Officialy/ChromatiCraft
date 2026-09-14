@@ -449,8 +449,21 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 					new ItemStackTemplate(ChromaBlocks.FARMER.get().asItem(), 3),
 					400, 500).withPenaltyThreshold(6));
 		}
-		/** Exact no-Botania V33a recipes for the four currently ported magic plants. */
+		/** Exact no-Botania V33a recipes for the six currently ported magic plants. */
 		private void saveMagicPlants() {
+			saveShapedTemple("heat_lily",
+					new ItemStackTemplate(ChromaBlocks.HEAT_LILY.get().asItem(), 3), 20, 40,
+					List.of(),
+					List.of(new RuneRequirement(new net.minecraft.core.BlockPos(-3, -1, 0),
+								CrystalElement.ORANGE),
+							new RuneRequirement(new net.minecraft.core.BlockPos(3, -1, 0),
+								CrystalElement.ORANGE)),
+					Map.of('L', Ingredient.of(Items.LILY_PAD),
+							'F', tag(Tags.Items.FLOWERS),
+							'S', Ingredient.of(ChromaItems.SHARDS.get(CrystalElement.ORANGE).get()),
+							'B', Ingredient.of(Items.BLAZE_POWDER)),
+					" F ", "FBF", "LSL");
+
 			saveShapedTemple("biome_reverter",
 					new ItemStackTemplate(ChromaBlocks.BIOME_REVERTER.get().asItem(), 6), 20, 40,
 					List.of(),
@@ -508,6 +521,22 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 							'L', tag(net.minecraft.tags.ItemTags.LEAVES),
 							'R', Ingredient.of(Items.REDSTONE)),
 					"FAF", "fEf", "LRL");
+
+			saveShapedTemple("cobble_generator",
+					new ItemStackTemplate(ChromaBlocks.COBBLE_GENERATOR.get().asItem()), 20, 40,
+					List.of(),
+					List.of(new RuneRequirement(new net.minecraft.core.BlockPos(4, -1, -3),
+								CrystalElement.ORANGE),
+							new RuneRequirement(new net.minecraft.core.BlockPos(4, -1, 3),
+								CrystalElement.CYAN),
+							new RuneRequirement(new net.minecraft.core.BlockPos(-4, -1, -1),
+								CrystalElement.BROWN)),
+					Map.of('L', tag(net.minecraft.tags.ItemTags.LEAVES),
+							'S', Ingredient.of(ChromaItems.SHARDS.get(CrystalElement.CYAN).get()),
+							'F', tag(Tags.Items.FLOWERS),
+							'B', Ingredient.of(Blocks.GLASS),
+							'D', Ingredient.of(Items.GLOWSTONE_DUST)),
+					"LSL", "FBF", " D ");
 		}
 
 		/** Exact V33a CrystalChargerRecipe: crystal core center and its asymmetric eight-stand ring. */

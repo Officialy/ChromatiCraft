@@ -14,6 +14,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.tags.FluidTags;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.InsideBlockEffectApplier;
@@ -26,10 +27,12 @@ import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.ScheduledTickAccess;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
+import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
@@ -79,6 +82,13 @@ public final class BlockDecoPlant extends BlockChromaticTile {
 	@Override
 	protected boolean canSurvive(BlockState state, LevelReader world, BlockPos pos) {
 		return switch (kind) {
+			case HEAT_LILY -> {
+				BlockPos belowPos = pos.below();
+				BlockState below = world.getBlockState(belowPos);
+				yield (world.getFluidState(belowPos).is(FluidTags.SUPPORTS_LILY_PAD)
+						|| below.is(BlockTags.SUPPORTS_LILY_PAD))
+						&& world.getFluidState(pos).is(Fluids.EMPTY);
+			}
 			case ACCELERATOR -> canAccelerationPlantSurvive(world, pos);
 			case REVERTER -> {
 				BlockState below = world.getBlockState(pos.below());
@@ -95,6 +105,13 @@ public final class BlockDecoPlant extends BlockChromaticTile {
 				yield below.is(BlockTags.SUPPORTS_VEGETATION) || below.is(BlockTags.LEAVES)
 						|| below.is(ChromaBlocks.PLANT_ACCELERATOR.get());
 			}
+			case COBBLE_GENERATOR -> {
+				BlockPos abovePos = pos.above();
+				BlockState above = world.getBlockState(abovePos);
+				yield above.is(ChromaBlocks.PLANT_ACCELERATOR.get())
+						|| above.isSolidRender()
+						&& above.isCollisionShapeFullBlock(world, abovePos);
+			}
 		};
 	}
 
@@ -108,7 +125,7 @@ public final class BlockDecoPlant extends BlockChromaticTile {
 
 	private boolean shouldUseCropForm(BlockGetter world, BlockPos pos) {
 		if (kind == Kind.ACCELERATOR) return isEncased(world, pos);
-		BlockState support = world.getBlockState(pos.below());
+		BlockState support = world.getBlockState(pos.relative(kind.growthDirection().getOpposite()));
 		return support.getBlock() instanceof BlockDecoPlant && support.getValue(CROP_FORM);
 	}
 
@@ -143,6 +160,10 @@ public final class BlockDecoPlant extends BlockChromaticTile {
 		double centerX = pos.getX() + 0.5;
 		double centerZ = pos.getZ() + 0.5;
 		switch (kind) {
+			case HEAT_LILY -> world.addParticle(ParticleTypes.FLAME,
+					centerX + (random.nextDouble() * 2 - 1) * 0.1875,
+					pos.getY() + 0.25 + random.nextDouble() * 0.75,
+					centerZ + (random.nextDouble() * 2 - 1) * 0.1875, 0, 0, 0);
 			case REVERTER -> world.addParticle(ParticleTypes.ENCHANT,
 					centerX + (random.nextDouble() * 2 - 1) * 0.375,
 					pos.getY() + 0.75 + random.nextDouble() * 0.75,
@@ -169,23 +190,42 @@ public final class BlockDecoPlant extends BlockChromaticTile {
 		else if (kind == Kind.REVERTER && entity instanceof LivingEntity living) {
 			living.addEffect(new MobEffectInstance(reika.chromaticraft.ChromatiCraft.betterRegen, 20, 0));
 		}
+		else if (kind == Kind.HEAT_LILY && entity instanceof LivingEntity living) {
+			living.igniteForSeconds(2);
+		}
+	}
+
+	@Override
+	protected boolean triggerEvent(BlockState state, Level level, BlockPos pos, int id, int value) {
+		super.triggerEvent(state, level, pos, id, value);
+		BlockEntity entity = level.getBlockEntity(pos);
+		return entity != null && entity.triggerEvent(id, value);
 	}
 
 	public enum Kind {
+		HEAT_LILY(ChromaTiles.HEATLILY, 0, Direction.UP),
 		REVERTER(ChromaTiles.REVERTER, 1),
 		ACCELERATOR(ChromaTiles.PLANTACCEL, 3),
 		CROP_SPEED(ChromaTiles.CROPSPEED, 4),
-		HARVEST(ChromaTiles.HARVESTPLANT, 5);
+		HARVEST(ChromaTiles.HARVESTPLANT, 5),
+		COBBLE_GENERATOR(ChromaTiles.COBBLEGEN, 2, Direction.DOWN);
 
 		private final ChromaTiles tile;
 		private final int textureIndex;
+		private final Direction growthDirection;
 
 		Kind(ChromaTiles tile, int textureIndex) {
+			this(tile, textureIndex, Direction.UP);
+		}
+
+		Kind(ChromaTiles tile, int textureIndex, Direction growthDirection) {
 			this.tile = tile;
 			this.textureIndex = textureIndex;
+			this.growthDirection = growthDirection;
 		}
 
 		public ChromaTiles tile() { return tile; }
 		public int textureIndex() { return textureIndex; }
+		public Direction growthDirection() { return growthDirection; }
 	}
 }
