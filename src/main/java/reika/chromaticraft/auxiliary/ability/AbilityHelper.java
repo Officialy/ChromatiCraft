@@ -9,6 +9,8 @@ import java.util.Set;
 import net.minecraft.world.entity.player.Player;
 
 import reika.chromaticraft.api.abilityapi.Ability;
+import reika.chromaticraft.api.AbilityAPI;
+import reika.chromaticraft.magic.ChromaAbilityData;
 import reika.chromaticraft.auxiliary.recipemanagers.AbilityRituals;
 import reika.chromaticraft.magic.ElementTagCompound;
 import reika.chromaticraft.magic.progression.ProgressStage;
@@ -27,7 +29,7 @@ import reika.chromaticraft.registry.Chromabilities;
  * <p>CHROMA-PORT: the effects themselves, and the tick and event handlers that drive them, are their
  * own slice. Until they land an ability can be shown, gated and priced, but not used.
  */
-public final class AbilityHelper {
+public final class AbilityHelper implements AbilityAPI {
 
 	public static final AbilityHelper instance = new AbilityHelper();
 
@@ -41,6 +43,16 @@ public final class AbilityHelper {
 
 	private AbilityHelper() {
 		this.addProgress();
+	}
+
+	@Override
+	public void addAbility(Ability ability) {
+		Chromabilities.addAbility(ability);
+	}
+
+	@Override
+	public boolean playerHasAbility(Player player, Ability ability) {
+		return ChromaAbilityData.hasAbility(player, ability);
 	}
 
 	private void addProgress() {

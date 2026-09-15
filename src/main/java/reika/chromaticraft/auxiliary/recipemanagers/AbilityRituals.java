@@ -3,10 +3,19 @@ package reika.chromaticraft.auxiliary.recipemanagers;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
+
+import reika.chromaticraft.api.RitualAPI;
+import reika.chromaticraft.api.CrystalElementAccessor.CrystalElementProxy;
 import reika.chromaticraft.api.abilityapi.Ability;
 import reika.chromaticraft.magic.ElementTagCompound;
 import reika.chromaticraft.registry.CrystalElement;
+import reika.chromaticraft.tileentity.recipe.TileEntityRitualTable;
+import reika.dragonapi.instantiable.data.immutable.WorldLocation;
 
 /**
  * V33a {@code AbilityRituals}: what each Chromability costs to ritual into existence, in elemental
@@ -22,11 +31,11 @@ import reika.chromaticraft.registry.CrystalElement;
  * keyed by the upstream constant name, which is what {@code Ability.getID} is derived from, so it
  * binds to the enum the moment that lands and is usable by the book before then.
  *
- * <p>The table-tracking half of upstream's class -- the {@code WorldLocation} set of active ritual
- * tables and its {@code RitualAPI} surface -- is runtime state for performing a ritual, not for
- * describing one, and is deferred with the engine.
+ * <p>The V33a table-location set and {@link RitualAPI} query are restored. The query only examines
+ * already-loaded chunks, avoiding a synchronous distant-chunk request while testing whether a
+ * player is inside an ongoing ritual.
  */
-public final class AbilityRituals {
+public final class AbilityRituals implements RitualAPI {
 
 	public static final AbilityRituals instance = new AbilityRituals();
 
@@ -34,6 +43,7 @@ public final class AbilityRituals {
 	public static final int DURATION = 980;
 
 	private final Map<String, ElementTagCompound> auras = new LinkedHashMap<>();
+	private static final Set<WorldLocation> tables = java.util.concurrent.ConcurrentHashMap.newKeySet();
 	private int maxCost;
 	private int maxTotalCost;
 
@@ -126,18 +136,45 @@ public final class AbilityRituals {
 	}
 
 	/** V33a addRitual(Ability, Map): the extension point other mods register their own costs through. */
-	public void addRitual(Ability a, Map<CrystalElement, Integer> elements) {
+	@Override
+	public void addRitual(Ability a, Map<? extends CrystalElementProxy, Integer> elements) {
 		ElementTagCompound tag = new ElementTagCompound();
 		int max = 0;
 		int total = 0;
-		for (Map.Entry<CrystalElement, Integer> cost : elements.entrySet()) {
-			tag.addTag(cost.getKey(), cost.getValue());
+		for (Map.Entry<? extends CrystalElementProxy, Integer> cost : elements.entrySet()) {
+			if (!(cost.getKey() instanceof CrystalElement element))
+				throw new IllegalArgumentException("Unknown ritual element " + cost.getKey());
+			tag.addTag(element, cost.getValue());
 			max = Math.max(max, cost.getValue());
 			total += cost.getValue();
 		}
 		auras.put(key(a.getID()), tag);
 		maxCost = Math.max(maxCost, max);
 		maxTotalCost = Math.max(maxTotalCost, total);
+	}
+
+	public static void addTable(TileEntityRitualTable table) {
+		if (table.getLevel() != null) tables.add(new WorldLocation(table));
+	}
+
+	public static void removeTable(TileEntityRitualTable table) {
+		if (table.getLevel() != null) tables.remove(new WorldLocation(table));
+	}
+
+	@Override
+	public boolean isPlayerUndergoingRitual(Player player) {
+		Level level = player.level();
+		for (WorldLocation location : tables) {
+			if (!location.getDimension().equals(level.dimension())) continue;
+			boolean loaded = level instanceof ServerLevel server
+					? server.getChunkSource().getChunkNow(location.pos.getX() >> 4,
+							location.pos.getZ() >> 4) != null
+					: level.hasChunkAt(location.pos);
+			if (!loaded) continue;
+			if (level.getBlockEntity(location.pos) instanceof TileEntityRitualTable table
+					&& table.isActive() && table.isPlayerUsing(player)) return true;
+		}
+		return false;
 	}
 
 	/** The largest single-element cost of any ability. */

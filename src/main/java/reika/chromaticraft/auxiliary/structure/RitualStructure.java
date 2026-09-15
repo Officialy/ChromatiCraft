@@ -1,143 +1,86 @@
 package reika.chromaticraft.auxiliary.structure;
 
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
 
 import reika.chromaticraft.base.ChromaStructureBase;
-import reika.chromaticraft.block.blockpylonstructure.StoneTypes;
+import reika.chromaticraft.block.BlockCrystallineStone;
+import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
+import reika.chromaticraft.data.ChromaStructureTemplateProvider;
 import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaTiles;
 import reika.dragonapi.instantiable.data.blockstruct.FilledBlockArray;
-
+import reika.dragonapi.instantiable.data.immutable.BlockKey;
+import reika.dragonapi.interfaces.BlockCheck;
 
 public class RitualStructure extends ChromaStructureBase {
 
-	public final boolean isEnhanced;
+	private static final BlockPos TABLE_ANCHOR = new BlockPos(5, 2, 5);
 
+	public final boolean isEnhanced;
 	private boolean allowEnhance;
 	private boolean requireEnhance;
 
-	public RitualStructure(boolean enhance) {
-		isEnhanced = enhance;
-		this.initializeEnhance(enhance, enhance);
+	public RitualStructure() {
+		this(false);
+	}
+
+	protected RitualStructure(boolean enhanced) {
+		isEnhanced = enhanced;
+		initializeEnhance(enhanced, enhanced);
 	}
 
 	public void initializeEnhance(boolean allow, boolean require) {
-		requireEnhance = require;
 		allowEnhance = allow;
+		requireEnhance = require;
 	}
 
 	@Override
 	public void resetToDefaults() {
 		super.resetToDefaults();
-		this.initializeEnhance(isEnhanced, isEnhanced);
+		initializeEnhance(isEnhanced, isEnhanced);
 	}
 
 	@Override
-	public FilledBlockArray getArray(World world, int x, int y, int z) {
-		FilledBlockArray array = new FilledBlockArray(world);
-
-		for (int i = -2; i <= 2; i++) {
-			for (int k = -2; k <= 2; k++) {
-				for (int j = 1; j <= 4; j++)
-					array.setEmpty(x+i, y+j, z+k, true, true);
-			}
-		}
-
-		for (int i = -5; i <= 5; i++) {
-			for (int k = -5; k <= 5; k++) {
-				array.setBlock(x+i, y, z+k, crystalstone, 0);
-			}
-		}
-
-		for (int i = -4; i <= 4; i++) {
-			for (int k = -4; k <= 4; k++) {
-				array.setBlock(x+i, y+1, z+k, crystalstone, 0);
-			}
-		}
-
-		for (int i = -4; i <= 4; i++) {
-			if (requireEnhance) {
-				array.setBlock(x-4, y+1, z+i, crystalstone, StoneTypes.GLOWBEAM.ordinal());
-				array.setBlock(x+4, y+1, z+i, crystalstone, StoneTypes.GLOWBEAM.ordinal());
-				array.setBlock(x+i, y+1, z-4, crystalstone, StoneTypes.GLOWBEAM.ordinal());
-				array.setBlock(x+i, y+1, z+4, crystalstone, StoneTypes.GLOWBEAM.ordinal());
-			}
-			else {
-				array.setBlock(x-4, y+1, z+i, crystalstone, 1);
-				array.setBlock(x+4, y+1, z+i, crystalstone, 1);
-				array.setBlock(x+i, y+1, z-4, crystalstone, 1);
-				array.setBlock(x+i, y+1, z+4, crystalstone, 1);
-				if (allowEnhance) {
-					array.addBlock(x-4, y+1, z+i, crystalstone, StoneTypes.GLOWBEAM.ordinal());
-					array.addBlock(x+4, y+1, z+i, crystalstone, StoneTypes.GLOWBEAM.ordinal());
-					array.addBlock(x+i, y+1, z-4, crystalstone, StoneTypes.GLOWBEAM.ordinal());
-					array.addBlock(x+i, y+1, z+4, crystalstone, StoneTypes.GLOWBEAM.ordinal());
-				}
-			}
-		}
-
-		for (int i = -3; i <= 3; i++) {
-			array.setBlock(x-3, y+2, z+i, crystalstone, 1);
-			array.setBlock(x+3, y+2, z+i, crystalstone, 1);
-			array.setBlock(x+i, y+2, z-3, crystalstone, 1);
-			array.setBlock(x+i, y+2, z+3, crystalstone, 1);
-		}
-
-		if (requireEnhance) {
-			array.setBlock(x+2, y+2, z+2, crystalstone, StoneTypes.GLOWCOL.ordinal());
-			array.setBlock(x-2, y+2, z+2, crystalstone, StoneTypes.GLOWCOL.ordinal());
-			array.setBlock(x+2, y+2, z-2, crystalstone, StoneTypes.GLOWCOL.ordinal());
-			array.setBlock(x-2, y+2, z-2, crystalstone, StoneTypes.GLOWCOL.ordinal());
-		}
-		else {
-			array.setBlock(x+2, y+2, z+2, crystalstone, 2);
-			array.setBlock(x-2, y+2, z+2, crystalstone, 2);
-			array.setBlock(x+2, y+2, z-2, crystalstone, 2);
-			array.setBlock(x-2, y+2, z-2, crystalstone, 2);
-			if (allowEnhance) {
-				array.addBlock(x+2, y+2, z+2, crystalstone, StoneTypes.GLOWCOL.ordinal());
-				array.addBlock(x-2, y+2, z+2, crystalstone, StoneTypes.GLOWCOL.ordinal());
-				array.addBlock(x+2, y+2, z-2, crystalstone, StoneTypes.GLOWCOL.ordinal());
-				array.addBlock(x-2, y+2, z-2, crystalstone, StoneTypes.GLOWCOL.ordinal());
-			}
-		}
-
-		array.setBlock(x+2, y+3, z+2, crystalstone, 7);
-		array.setBlock(x-2, y+3, z+2, crystalstone, 7);
-		array.setBlock(x+2, y+3, z-2, crystalstone, 7);
-		array.setBlock(x-2, y+3, z-2, crystalstone, 7);
-
-		array.setBlock(x+3, y+2, z+3, crystalstone, 8);
-		array.setBlock(x-3, y+2, z+3, crystalstone, 8);
-		array.setBlock(x+3, y+2, z-3, crystalstone, 8);
-		array.setBlock(x-3, y+2, z-3, crystalstone, 8);
-
-		array.setBlock(x+4, y+1, z+4, crystalstone, 8);
-		array.setBlock(x-4, y+1, z+4, crystalstone, 8);
-		array.setBlock(x+4, y+1, z-4, crystalstone, 8);
-		array.setBlock(x-4, y+1, z-4, crystalstone, 8);
-
-		array.setBlock(x-1, y+1, z-1, ChromaBlocks.CHROMA.getBlockInstance(), 0);
-		array.setBlock(x, y+1, z-1, ChromaBlocks.CHROMA.getBlockInstance(), 0);
-		array.setBlock(x+1, y+1, z-1, ChromaBlocks.CHROMA.getBlockInstance(), 0);
-		array.setBlock(x+1, y+1, z, ChromaBlocks.CHROMA.getBlockInstance(), 0);
-		array.setBlock(x+1, y+1, z+1, ChromaBlocks.CHROMA.getBlockInstance(), 0);
-		array.setBlock(x, y+1, z+1, ChromaBlocks.CHROMA.getBlockInstance(), 0);
-		array.setBlock(x-1, y+1, z+1, ChromaBlocks.CHROMA.getBlockInstance(), 0);
-		array.setBlock(x-1, y+1, z, ChromaBlocks.CHROMA.getBlockInstance(), 0);
-
-		array.setBlock(x, y+2, z, ChromaTiles.RITUAL.getBlock(), ChromaTiles.RITUAL.getBlockMetadata());
-
-		array.remove(x, y, z);
-
-		for (int i = -4; i <= 4; i++) {
-			array.addBlock(x+5, y, z+i, ChromaBlocks.RUNE.getBlockInstance());
-			array.addBlock(x-5, y, z+i, ChromaBlocks.RUNE.getBlockInstance());
-			array.addBlock(x+i, y, z-5, ChromaBlocks.RUNE.getBlockInstance());
-			array.addBlock(x+i, y, z+5, ChromaBlocks.RUNE.getBlockInstance());
-		}
-
+	public FilledBlockArray getArray(Level world, int x, int y, int z) {
+		Identifier template = requireEnhance ? ChromaStructureTemplateProvider.RITUAL_ENHANCED
+				: ChromaStructureTemplateProvider.RITUAL_BASE;
+		FilledBlockArray array = NBTStructureLoader.load(world, template,
+				new BlockPos(x, y + 2, z), TABLE_ANCHOR, state -> state, false,
+				(relative, state) -> cellRule(relative, state));
+		array.setBlock(x, y + 2, z, ChromaBlocks.RITUAL_TABLE.get());
 		return array;
 	}
 
+	private BlockCheck cellRule(BlockPos relative, BlockState state) {
+		int x = relative.getX();
+		int y = relative.getY();
+		int z = relative.getZ();
+		if (y == 0 && ((x == 0 || x == 10) && z >= 1 && z <= 9
+				|| (z == 0 || z == 10) && x >= 1 && x <= 9)) {
+			FilledBlockArray.MultiKey alternatives = new FilledBlockArray.MultiKey();
+			alternatives.add(new BlockKey(state));
+			for (var rune : ChromaBlocks.RUNES)
+				alternatives.add(new BlockKey(rune.get().defaultBlockState()));
+			return alternatives;
+		}
+		if (!requireEnhance && allowEnhance && state.getBlock() instanceof BlockCrystallineStone stone) {
+			StoneTypes glow = stone.getStoneType().getGlowingVariant();
+			if (glow != null && (y == 1 && stone.getStoneType() == StoneTypes.BEAM
+					|| y == 2 && stone.getStoneType() == StoneTypes.COLUMN)) {
+				FilledBlockArray.MultiKey alternatives = new FilledBlockArray.MultiKey();
+				alternatives.add(new BlockKey(state));
+				alternatives.add(new BlockKey(ChromaBlocks.crystallineStone(glow).get().defaultBlockState()));
+				return alternatives;
+			}
+		}
+		return null;
+	}
+
+	public static final class Enhanced extends RitualStructure {
+		public Enhanced() {
+			super(true);
+		}
+	}
 }

@@ -11,9 +11,9 @@ package reika.chromaticraft.api;
 
 import java.util.Locale;
 
-public class CrystalElementAccessor {
+import reika.chromaticraft.registry.CrystalElement;
 
-	private static Class elementClass;
+public class CrystalElementAccessor {
 
 	/** An interface for the internal CrystalElement enum, to which (or just {@link Enum}) you can cast it; consult that enum for thematic meanings. */
 	public static interface CrystalElementProxy {
@@ -24,21 +24,12 @@ public class CrystalElementAccessor {
 
 	}
 
-	static {
-		try {
-			elementClass = Class.forName("Reika.ChromatiCraft.Registry.CrystalElement");
-		}
-		catch (ClassNotFoundException e) {
-			e.printStackTrace();
-		}
-	}
-
 	public static CrystalElementProxy getByEnum(String name) {
-		return (CrystalElementProxy)Enum.valueOf(elementClass, name.toUpperCase(Locale.ENGLISH));
+		return CrystalElement.valueOf(name.toUpperCase(Locale.ROOT));
 	}
 
 	public static CrystalElementProxy getByIndex(int idx) {
-		return (CrystalElementProxy)elementClass.getEnumConstants()[idx];
+		return CrystalElement.elements[idx];
 	}
 
 }

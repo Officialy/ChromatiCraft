@@ -3,6 +3,8 @@ package reika.chromaticraft.registry;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -78,6 +80,7 @@ public enum Chromabilities implements Ability {
 	public static final int MAX_REACH = 128;
 
 	public static final Chromabilities[] abilities = values();
+	private static final Map<String, Ability> externalAbilities = new LinkedHashMap<>();
 
 	Chromabilities(Phase tick, boolean client) {
 		this(tick, client, null);
@@ -216,10 +219,20 @@ public enum Chromabilities implements Ability {
 
 	public static Ability getAbility(String id) {
 		for (Chromabilities a : abilities) {
-			if (a.getID().equals(id))
+			if (!a.isDummiedOut() && a.getID().equals(id))
 				return a;
 		}
-		return null;
+		return externalAbilities.get(id);
+	}
+
+	public static synchronized void addAbility(Ability ability) {
+		String id = ability.getID();
+		if (id == null || id.isEmpty() || id.equals("null") || id.equals(" ")
+				|| id.equals("all") || id.equals("none"))
+			throw new IllegalArgumentException("Invalid ability ID " + id);
+		if (getAbility(id) != null)
+			throw new IllegalArgumentException("Ability ID " + id + " already registered");
+		externalAbilities.put(id, ability);
 	}
 
 	/** Every ability the current mod set actually offers. */
@@ -229,6 +242,7 @@ public enum Chromabilities implements Ability {
 			if (!a.isDummiedOut())
 				li.add(a);
 		}
+		li.addAll(externalAbilities.values());
 		return li;
 	}
 
