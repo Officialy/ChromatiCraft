@@ -12,6 +12,7 @@ import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.api.abilityapi.Ability;
 import reika.chromaticraft.auxiliary.recipemanagers.AbilityRituals;
 import reika.chromaticraft.magic.ElementTagCompound;
+import reika.chromaticraft.magic.ChromaAbilityData;
 
 /**
  * V33a {@code Chromabilities}: the thirty-nine powers a player can ritual into existence.
@@ -229,6 +230,26 @@ public enum Chromabilities implements Ability {
 				li.add(a);
 		}
 		return li;
+	}
+
+	public boolean enabledOn(Player player) {
+		return ChromaAbilityData.enabledOn(player, this);
+	}
+
+	public boolean playerHasAbility(Player player) {
+		return ChromaAbilityData.hasAbility(player, this);
+	}
+
+	public void setToPlayer(Player player, boolean enabled) {
+		ChromaAbilityData.setToPlayer(player, enabled, this);
+	}
+
+	public void give(Player player) {
+		ChromaAbilityData.give(player, this);
+	}
+
+	public void removeFromPlayer(Player player) {
+		ChromaAbilityData.removeFromPlayer(player, this);
 	}
 
 	@Override
