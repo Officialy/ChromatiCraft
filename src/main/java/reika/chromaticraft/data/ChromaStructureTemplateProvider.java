@@ -44,6 +44,8 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
     public static final Identifier PYLON_BROADCAST = id("multiblock/pylon_broadcast");
     public static final Identifier INFUSION = id("multiblock/infusion");
     public static final Identifier PLAYER_INFUSION = id("multiblock/player_infusion");
+    public static final Identifier RITUAL_BASE = id("multiblock/ritual_base");
+    public static final Identifier RITUAL_ENHANCED = id("multiblock/ritual_enhanced");
     public static final Identifier PORTAL = id("multiblock/portal");
     public static final Identifier DATANODE = id("worldgen/data_node");
     public static final Identifier RAINBOW_TREE = id("worldgen/rainbow_tree");
@@ -90,6 +92,8 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
                 write(cache, PYLON_BROADCAST, pylonBroadcast()),
                 write(cache, INFUSION, infusion()),
                 write(cache, PLAYER_INFUSION, playerInfusion()),
+                write(cache, RITUAL_BASE, ritualAltar(false)),
+                write(cache, RITUAL_ENHANCED, ritualAltar(true)),
                 write(cache, PORTAL, importPortal()),
                 write(cache, DATANODE, dataNode()),
                 write(cache, RAINBOW_TREE, rainbowTree()),
@@ -1872,6 +1876,43 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
 		return data;
 	}
 
+	private static TemplateData ritualAltar(boolean enhanced) {
+		TemplateData data = new TemplateData(11, 5, 11);
+		int c = 5;
+		for (int x = -2; x <= 2; x++) for (int z = -2; z <= 2; z++)
+			for (int y = 1; y <= 4; y++) data.set(c + x, y, c + z, SOFT_AIR);
+		for (int x = -5; x <= 5; x++) for (int z = -5; z <= 5; z++)
+			data.set(c + x, 0, c + z, SMOOTH);
+		for (int x = -4; x <= 4; x++) for (int z = -4; z <= 4; z++)
+			data.set(c + x, 1, c + z, SMOOTH);
+		StoneTypes outer = enhanced ? StoneTypes.GLOWBEAM : StoneTypes.BEAM;
+		for (int i = -4; i <= 4; i++) {
+			data.set(c - 4, 1, c + i, stone(outer));
+			data.set(c + 4, 1, c + i, stone(outer));
+			data.set(c + i, 1, c - 4, stone(outer));
+			data.set(c + i, 1, c + 4, stone(outer));
+		}
+		for (int i = -3; i <= 3; i++) {
+			data.set(c - 3, 2, c + i, stone(StoneTypes.BEAM));
+			data.set(c + 3, 2, c + i, stone(StoneTypes.BEAM));
+			data.set(c + i, 2, c - 3, stone(StoneTypes.BEAM));
+			data.set(c + i, 2, c + 3, stone(StoneTypes.BEAM));
+		}
+		for (int x : new int[] {-2, 2}) for (int z : new int[] {-2, 2}) {
+			data.set(c + x, 2, c + z, stone(enhanced ? StoneTypes.GLOWCOL : StoneTypes.COLUMN));
+			data.set(c + x, 3, c + z, stone(StoneTypes.ENGRAVED));
+		}
+		for (int x : new int[] {-3, 3}) for (int z : new int[] {-3, 3})
+			data.set(c + x, 2, c + z, stone(StoneTypes.EMBOSSED));
+		for (int x : new int[] {-4, 4}) for (int z : new int[] {-4, 4})
+			data.set(c + x, 1, c + z, stone(StoneTypes.EMBOSSED));
+		StateDef chroma = new StateDef("chromaticraft:liquid_chroma", Map.of("level", "0"));
+		for (int x = -1; x <= 1; x++) for (int z = -1; z <= 1; z++)
+			if (x != 0 || z != 0) data.set(c + x, 1, c + z, chroma);
+		data.set(c, 0, c, STRUCTURE_VOID);
+		data.set(c, 2, c, STRUCTURE_VOID);
+		return data;
+	}
     private static void setInfusionCircle(TemplateData data, int center, int y, double radius,
             StateDef state) {
         for (int angle = 0; angle < 360; angle += 15) {
