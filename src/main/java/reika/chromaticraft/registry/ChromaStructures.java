@@ -18,6 +18,7 @@ import reika.chromaticraft.auxiliary.structure.InfusionStructure;
 import reika.chromaticraft.auxiliary.structure.PortalStructure;
 import reika.chromaticraft.auxiliary.structure.PylonStructure;
 import reika.chromaticraft.auxiliary.structure.PlayerInfusionStructure;
+import reika.chromaticraft.auxiliary.structure.RitualStructure;
 import reika.chromaticraft.auxiliary.structure.RepeaterStructure;
 import reika.chromaticraft.base.ChromaStructureBase;
 import reika.chromaticraft.base.ColoredStructureBase;
@@ -39,6 +40,8 @@ public enum ChromaStructures implements StructureEnum<ChromaStructureBase> {
 	PYLONBROADCAST(PylonBroadcastStructure.class),
 	INFUSION(InfusionStructure.class),
 	PLAYERINFUSION(PlayerInfusionStructure.class),
+	RITUAL(RitualStructure.class),
+	RITUAL2(RitualStructure.Enhanced.class),
 	PORTAL(PortalStructure.class),
 	DATANODE(DataTowerStructure.class);
 

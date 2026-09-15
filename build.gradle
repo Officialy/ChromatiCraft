@@ -33,6 +33,8 @@ sourceSets.main.java {
     // api/ implementable interfaces (leaf contracts). Deferred: OrePings (dead IIcon system),
     // EnchantableItem (DragonAPI CustomEnchantingCategory not yet ported).
     include 'reika/chromaticraft/api/CrystalElementAccessor.java'
+    include 'reika/chromaticraft/api/RitualAPI.java'
+    include 'reika/chromaticraft/api/AbilityAPI.java'
     include 'reika/chromaticraft/api/AdjacencyUpgradeAPI.java'
     include 'reika/chromaticraft/api/interfaces/AdjacencyCheckHandler.java'
     include 'reika/chromaticraft/api/interfaces/CrystalEffectBoostArmor.java'
@@ -411,6 +413,7 @@ sourceSets.main.java {
     include 'reika/chromaticraft/registry/ChromaStructures.java'
     include 'reika/chromaticraft/auxiliary/structure/InfusionStructure.java'
 	include 'reika/chromaticraft/auxiliary/structure/PlayerInfusionStructure.java'
+    include 'reika/chromaticraft/auxiliary/structure/RitualStructure.java'
     include 'reika/chromaticraft/magic/CrystalTarget.java'
     include 'reika/chromaticraft/auxiliary/CrystalNetworkLogger.java'
     include 'reika/chromaticraft/auxiliary/event/PylonEvents.java'
