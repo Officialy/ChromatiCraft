@@ -1,306 +1,137 @@
-/*******************************************************************************
- * @author Reika Kalseki
- * 
- * Copyright 2017
- * 
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
- ******************************************************************************/
 package reika.chromaticraft.block.relay;
 
-import java.util.List;
-import java.util.Random;
+import com.mojang.serialization.MapCodec;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.material.Material;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.particle.EntityFX;
-import net.minecraft.client.renderer.texture.IIconRegister;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.init.Blocks;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.IIcon;
-import net.minecraft.world.IBlockAccess;
-import net.minecraft.world.World;
-import net.minecraftforge.common.util.ForgeDirection;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.context.BlockPlaceContext;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.level.ScheduledTickAccess;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.VoxelShape;
 
-import reika.chromaticraft.registry.ChromaBlocks;
+import org.jspecify.annotations.Nullable;
+
+import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.render.particle.EntityCenterBlurFX;
-import reika.dragonapi.asm.apistripper.Strippable;
-import reika.dragonapi.libraries.io.ReikaSoundHelper;
-import reika.dragonapi.libraries.registry.ReikaItemHelper;
+import reika.chromaticraft.render.particle.ChromaParticle;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
-import mcp.mobius.waila.api.IWailaConfigHandler;
-import mcp.mobius.waila.api.IWailaDataAccessor;
-import mcp.mobius.waila.api.IWailaDataProvider;
+/**
+ * V33a Lumen Relay. The sixteen elemental forms and the multichromic form are independent 26.2
+ * registry identities; {@link #FACING} is only the support/visual orientation.
+ */
+public final class BlockLumenRelay extends BlockRelayBase {
 
-@Strippable(value="mcp.mobius.waila.api.IWailaDataProvider")
-public class BlockLumenRelay extends BlockRelayBase implements IWailaDataProvider {
+	public static final EnumProperty<Direction> FACING = BlockStateProperties.FACING;
+	private static final VoxelShape WEST = box(2, 6, 6, 16, 10, 10);
+	private static final VoxelShape EAST = box(0, 6, 6, 14, 10, 10);
+	private static final VoxelShape NORTH = box(6, 6, 2, 10, 10, 16);
+	private static final VoxelShape SOUTH = box(6, 6, 0, 10, 10, 14);
+	private static final VoxelShape UP = box(6, 0, 6, 10, 14, 10);
+	private static final VoxelShape DOWN = box(6, 2, 6, 10, 16, 10);
 
-	private final IIcon[][] icons = new IIcon[6][6];
+	private final @Nullable CrystalElement element;
+	private final MapCodec<BlockLumenRelay> codec = MapCodec.unit(this);
 
-	public BlockLumenRelay(Material mat) {
-		super(mat);
+	/** A null element is V33a metadata 16: the multichromic relay. */
+	public BlockLumenRelay(BlockBehaviour.Properties properties, @Nullable CrystalElement element) {
+		super(properties);
+		this.element = element;
+		registerDefaultState(stateDefinition.any().setValue(FACING, Direction.UP));
 	}
 
-	public boolean canPlaceOn(World world, int x, int y, int z, int side) {
-		return world.getBlock(x, y, z).isSideSolid(world, x, y, z, ForgeDirection.VALID_DIRECTIONS[side]);
-	}
+	@Override public MapCodec<? extends BlockLumenRelay> codec() { return codec; }
+	public boolean isMultichromic() { return element == null; }
+	public @Nullable CrystalElement getElement() { return element; }
 
-	public void setSide(World world, int x, int y, int z, int side) {
-		world.setBlockMetadataWithNotify(x, y, z, side, 3);
+	@Override
+	protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+		builder.add(FACING);
 	}
 
 	@Override
-	public final void registerBlockIcons(IIconRegister ico) {
-		blockIcon = ico.registerIcon("chromaticraft:basic/relay");
+	public BlockState getStateForPlacement(BlockPlaceContext context) {
+		BlockState state = defaultBlockState().setValue(FACING, context.getClickedFace());
+		return state.canSurvive(context.getLevel(), context.getClickedPos()) ? state : null;
 	}
 
 	@Override
-	public void onNeighborBlockChange(World world, int x, int y, int z, Block b) {
-		int meta = world.getBlockMetadata(x, y, z);
-		ForgeDirection dir = ForgeDirection.VALID_DIRECTIONS[meta];
-		if (!this.canPlaceOn(world, x-dir.offsetX, y-dir.offsetY, z-dir.offsetZ, meta)) {
-			ReikaSoundHelper.playBreakSound(world, x, y, z, this);
-			TileEntityLumenRelay te = (TileEntityLumenRelay)world.getTileEntity(x, y, z);
-			ItemStack is = ChromaBlocks.RELAY.getStackOfMetadata(te.isMulti ? 16 : te.color.ordinal());
-			ReikaItemHelper.dropItem(world, x+0.5, y+0.5, z+0.5, is);
-			world.setBlock(x, y, z, Blocks.air);
+	protected boolean canSurvive(BlockState state, LevelReader level, BlockPos pos) {
+		Direction facing = state.getValue(FACING);
+		BlockPos support = pos.relative(facing.getOpposite());
+		return level.getBlockState(support).isFaceSturdy(level, support, facing);
+	}
+
+	@Override
+	protected BlockState updateShape(BlockState state, LevelReader level, ScheduledTickAccess ticks,
+			BlockPos pos, Direction direction, BlockPos neighbourPos, BlockState neighbourState,
+			RandomSource random) {
+		return state.canSurvive(level, pos) ? state : Blocks.AIR.defaultBlockState();
+	}
+
+	@Override
+	public void setPlacedBy(Level level, BlockPos pos, BlockState state, LivingEntity placer,
+			ItemStack stack) {
+		super.setPlacedBy(level, pos, state, placer, stack);
+		if (level.getBlockEntity(pos) instanceof TileEntityLumenRelay relay)
+			relay.setInput(state.getValue(FACING).getOpposite());
+	}
+
+	@Override
+	protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos,
+			CollisionContext context) {
+		return switch (state.getValue(FACING)) {
+			case WEST -> WEST;
+			case EAST -> EAST;
+			case NORTH -> NORTH;
+			case SOUTH -> SOUTH;
+			case UP -> UP;
+			case DOWN -> DOWN;
+		};
+	}
+
+	@Override
+	public void animateTick(BlockState state, Level level, BlockPos pos, RandomSource random) {
+		if (level.isClientSide())
+			ChromaParticle.spawnLumenRelay(level, pos, state.getValue(FACING), element, random);
+	}
+
+	@Override public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
+		return new TileEntityLumenRelay(pos, state);
+	}
+
+	public static final class TileEntityLumenRelay extends TileRelayBase {
+		public TileEntityLumenRelay(BlockPos pos, BlockState state) {
+			super(ChromaBlockEntities.LUMEN_RELAY.get(), pos, state);
 		}
-	}
-
-	@Override
-	public void setBlockBoundsBasedOnState(IBlockAccess iba, int x, int y, int z) {
-		float xmin = 0;
-		float ymin = 0;
-		float zmin = 0;
-		float xmax = 1;
-		float ymax = 1;
-		float zmax = 1;
-		float h = 0.875F;
-		float w = 0.125F;
-		switch(ForgeDirection.VALID_DIRECTIONS[iba.getBlockMetadata(x, y, z)]) {
-			case WEST:
-				zmin = 0.5F-w;
-				zmax = 0.5F+w;
-				ymin = 0.5F-w;
-				ymax = 0.5F+w;
-				xmin = 1-h;
-				break;
-			case EAST:
-				zmin = 0.5F-w;
-				zmax = 0.5F+w;
-				ymin = 0.5F-w;
-				ymax = 0.5F+w;
-				xmax = h;
-				break;
-			case NORTH:
-				xmin = 0.5F-w;
-				xmax = 0.5F+w;
-				ymin = 0.5F-w;
-				ymax = 0.5F+w;
-				zmin = 1-h;
-				break;
-			case SOUTH:
-				xmin = 0.5F-w;
-				xmax = 0.5F+w;
-				ymin = 0.5F-w;
-				ymax = 0.5F+w;
-				zmax = h;
-				break;
-			case UP:
-				xmin = 0.5F-w;
-				xmax = 0.5F+w;
-				zmin = 0.5F-w;
-				zmax = 0.5F+w;
-				ymax = h;
-				break;
-			case DOWN:
-				xmin = 0.5F-w;
-				xmax = 0.5F+w;
-				zmin = 0.5F-w;
-				zmax = 0.5F+w;
-				ymin = 1-h;
-				break;
-			default:
-				break;
-		}
-		this.setBlockBounds(xmin, ymin, zmin, xmax, ymax, zmax);
-	}
-	/*
-	@Override
-	public IIcon getIcon(int s, int meta) {
-		return icons[meta][s];
-	}
-
-	@Override
-	public void registerBlockIcons(IIconRegister ico) {
-		for (int i = 0; i < 6; i++) { //metas (dirs)
-			for (int k = 0; k < 6; k++) { //sides
-				if (i == k) { //top face
-					icons[i][k] = ico.registerIcon("chromaticraft:crystal/crystal_32");
-				}
-				else if (i%2 == 0 ? k == i+1 : k == i-1) { //bottom face
-					icons[i][k] = ico.registerIcon("chromaticraft:pylon/block_0");
-				}
-				else {
-					icons[i][k] = ico.registerIcon("chromaticraft:basic/relay_side_"+i);
-				}
-			}
-		}
-	}
-	 */
-
-	/*
-	@Override
-	public IIcon getIcon(int s, int meta) {
-		return icons[meta][s];
-	}
-
-	@Override
-	public void registerBlockIcons(IIconRegister ico) {
-		for (int i = 0; i < 6; i++) { //metas (dirs)
-			for (int k = 0; k < 6; k++) { //sides
-				if (i == k) { //top face
-					icons[i][k] = ico.registerIcon("chromaticraft:crystal/crystal_32");
-				}
-				else if (i%2 == 0 ? k == i+1 : k == i-1) { //bottom face
-					icons[i][k] = ico.registerIcon("chromaticraft:pylon/block_0");
-				}
-				else {
-					icons[i][k] = ico.registerIcon("chromaticraft:basic/relay_side_"+i);
-				}
-			}
-		}
-	}
-	 */
-
-	@Override
-	public void onBlockPlacedBy(World world, int x, int y, int z, EntityLivingBase e, ItemStack is) {
-		TileEntityLumenRelay te = (TileEntityLumenRelay)world.getTileEntity(x, y, z);
-		te.isMulti = is.getItemDamage() == 16;
-		te.color = te.isMulti ? CrystalElement.WHITE : CrystalElement.elements[is.getItemDamage()];
-		te.setInput(ForgeDirection.VALID_DIRECTIONS[world.getBlockMetadata(x, y, z)].getOpposite());
-	}
-
-	@Override
-	@SideOnly(Side.CLIENT)
-	public void randomDisplayTick(World world, int x, int y, int z, Random r) {
-		int meta = world.getBlockMetadata(x, y, z);
-		ForgeDirection dir = ForgeDirection.VALID_DIRECTIONS[meta];
-		TileEntityLumenRelay te = (TileEntityLumenRelay)world.getTileEntity(x, y, z);
-		CrystalElement e = te.isMulti() ? CrystalElement.randomElement() : te.getColor();
-		double h = 0.25;
-		if (dir.offsetX+dir.offsetY+dir.offsetZ < 0)
-			h = h-0.125;
-		double dx = x+0.5+dir.offsetX*h;
-		double dy = y+0.5+dir.offsetY*h;
-		double dz = z+0.5+dir.offsetZ*h;
-		EntityFX fx = new EntityCenterBlurFX(e, world, dx, dy, dz, 0, 0, 0).setScale(2+r.nextFloat()*2);
-		Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-	}
-
-	@Override
-	public TileEntity createTileEntity(World world, int meta) {
-		return new TileEntityLumenRelay();
-	}
-
-	@Override
-	public boolean removedByPlayer(World world, EntityPlayer player, int x, int y, int z, boolean harvest) {
-		if (this.canHarvest(world, player, x, y, z))
-			this.harvestBlock(world, player, x, y, z, 0);
-		return world.setBlockToAir(x, y, z);
-	}
-
-	private boolean canHarvest(World world, EntityPlayer ep, int x, int y, int z) {
-		if (ep.capabilities.isCreativeMode)
-			return false;
-		return true;
-	}
-
-	@Override
-	public void harvestBlock(World world, EntityPlayer ep, int x, int y, int z, int meta) {
-		if (!this.canHarvest(world, ep, x, y, z))
-			return;
-		TileEntityLumenRelay te = (TileEntityLumenRelay)world.getTileEntity(x, y, z);
-		if (te != null) {
-			ItemStack is = ChromaBlocks.RELAY.getStackOfMetadata(te.isMulti ? 16 : te.color.ordinal());
-			ReikaItemHelper.dropItem(world, x+0.5, y+0.5, z+0.5, is);
-		}
-	}
-
-	public static class TileEntityLumenRelay extends TileRelayBase {
-
-		private CrystalElement color = CrystalElement.WHITE;
-		private boolean isMulti = false;
-		//private int energy = 0;
 
 		@Override
-		public boolean canTransmit(CrystalElement e) {
-			return isMulti || e == color;
+		public boolean canTransmit(CrystalElement requested) {
+			return getBlockState().getBlock() instanceof BlockLumenRelay relay
+					&& (relay.isMultichromic() || relay.element == requested);
 		}
 
-		public boolean isMulti() {
-			return isMulti;
+		public boolean isMultichromic() {
+			return getBlockState().getBlock() instanceof BlockLumenRelay relay
+					&& relay.isMultichromic();
 		}
 
 		public CrystalElement getColor() {
-			return color;
+			return getBlockState().getBlock() instanceof BlockLumenRelay relay && relay.element != null
+					? relay.element : CrystalElement.WHITE;
 		}
-
-		@Override
-		public void writeToNBT(NBTTagCompound NBT) {
-			super.writeToNBT(NBT);
-
-			NBT.setBoolean("multi", isMulti);
-			NBT.setInteger("color", color.ordinal());
-			//NBT.setInteger("energy", energy);
-		}
-
-		@Override
-		public void readFromNBT(NBTTagCompound NBT) {
-			super.readFromNBT(NBT);
-
-			isMulti = NBT.getBoolean("multi");
-			color = CrystalElement.elements[NBT.getInteger("color")];
-			//energy = NBT.getInteger("energy");
-		}
-
 	}
-
-	@Override
-	public ItemStack getWailaStack(IWailaDataAccessor acc, IWailaConfigHandler cfg) {
-		TileEntityLumenRelay te = (TileEntityLumenRelay)acc.getTileEntity();
-		int meta = te.isMulti ? 16 : te.color.ordinal();
-		return ChromaBlocks.RELAY.getStackOfMetadata(meta);
-	}
-
-	@Override
-	public List<String> getWailaHead(ItemStack is, List<String> tip, IWailaDataAccessor acc, IWailaConfigHandler cfg) {
-		return tip;
-	}
-
-	@Override
-	public List<String> getWailaBody(ItemStack is, List<String> tip, IWailaDataAccessor acc, IWailaConfigHandler cfg) {
-		return tip;
-	}
-
-	@Override
-	public List<String> getWailaTail(ItemStack is, List<String> tip, IWailaDataAccessor acc, IWailaConfigHandler cfg) {
-		return tip;
-	}
-
-	@Override
-	public NBTTagCompound getNBTData(EntityPlayerMP ep, TileEntity te, NBTTagCompound tag, World world, int x, int y, int z) {
-		return tag;
-	}
-
 }

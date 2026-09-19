@@ -1,26 +1,15 @@
-/*******************************************************************************
- * @author Reika Kalseki
- * 
- * Copyright 2018
- * 
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
- ******************************************************************************/
 package reika.chromaticraft.api.event;
 
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraftforge.event.entity.player.PlayerEvent;
+import net.minecraft.world.entity.player.Player;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 
-
-public class RitualCompletionEvent extends PlayerEvent {
+/** Fired after an altar grants its chosen ability to the ritual player. */
+public final class RitualCompletionEvent extends PlayerEvent {
 
 	public final String abilityID;
 
-	public RitualCompletionEvent(EntityPlayer ep, String id) {
-		super(ep);
-
+	public RitualCompletionEvent(Player player, String id) {
+		super(player);
 		abilityID = id;
 	}
-
 }

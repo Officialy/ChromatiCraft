@@ -226,6 +226,10 @@ public abstract class StructureGeneratorBase implements ProximaStructureGenerato
 
 	protected abstract void openStructure(Level world);
 
+	/** Per-player puzzle hook. Empty in V33a's base; Bridge is the only original override. */
+	public void tickPlayer(Player player) {
+	}
+
 	/** V33a getPassword, through the type identity that already carries the hash. */
 	public final int getPassword(Player player, String gameVersion) {
 		return new DimensionStructureType.StructureTypeData(generationColor, this.getType(),

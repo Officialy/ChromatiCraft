@@ -27,6 +27,7 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.InsideBlockEffectApplier;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -76,6 +77,7 @@ import reika.chromaticraft.world.dimension.ProximaGenerators;
  * item interaction other than the Elemental Manipulator's dismantle.
  */
 public class BlockChromaPortal extends Block implements EntityBlock, Portal {
+	private static final String DENIAL_MESSAGE_TIME = "chromaticraft_portal_denial_time";
 
 	private final MapCodec<BlockChromaPortal> codec = MapCodec.unit(this);
 
@@ -101,6 +103,52 @@ public class BlockChromaPortal extends Block implements EntityBlock, Portal {
 		// V33a hasTileEntity(int meta) returns an unconditional true — its "meta == 1" restriction is
 		// commented out — so all nine pad blocks carry an entity and only the centre one works.
 		return new TileEntityCrystalPortal(pos, state);
+	}
+
+	/**
+	 * V33a's portal block is placed through the chromatic placer, which assigns its placer to the tile
+	 * immediately after the block enters the world. The modern BlockItem path has to do that here.
+	 * Without it every player-placed rift was ownerless, and {@code ownedBy} deliberately treats an
+	 * ownerless rift as public — so anybody holding a Manipulator could dismantle it.
+	 */
+	@Override
+	public void setPlacedBy(Level level, BlockPos pos, BlockState state, @Nullable LivingEntity placer,
+			ItemStack stack) {
+		super.setPlacedBy(level, pos, state, placer, stack);
+		if (placer instanceof Player player
+				&& level.getBlockEntity(pos) instanceof TileEntityCrystalPortal portal)
+			portal.setPlacer(player);
+		revalidateNearbyCentres(level, pos);
+	}
+
+	@Override
+	protected void onPlace(BlockState state, Level level, BlockPos pos, BlockState oldState,
+			boolean movedByPiston) {
+		super.onPlace(state, level, pos, oldState, movedByPiston);
+		if (!oldState.is(state.getBlock()))
+			revalidateNearbyCentres(level, pos);
+	}
+
+	@Override
+	protected void neighborChanged(BlockState state, Level level, BlockPos pos, Block neighbor,
+			@Nullable net.minecraft.world.level.redstone.Orientation orientation,
+			boolean movedByPiston) {
+		revalidateNearbyCentres(level, pos);
+	}
+
+	/** Re-form a pad immediately after a missing cell is replaced, including after chunk reload. */
+	private static void revalidateNearbyCentres(Level level, BlockPos changed) {
+		if (level.isClientSide())
+			return;
+		for (int dx = -1; dx <= 1; dx++) {
+			for (int dz = -1; dz <= 1; dz++) {
+				BlockPos check = changed.offset(dx, 0, dz);
+				if (level.hasChunkAt(check)
+						&& level.getBlockEntity(check) instanceof TileEntityCrystalPortal portal
+						&& portal.isPadCentre())
+					portal.validateStructure();
+			}
+		}
 	}
 
 	@Nullable
@@ -215,8 +263,10 @@ public class BlockChromaPortal extends Block implements EntityBlock, Portal {
 		if (entity instanceof Player player) {
 			if (te.isComplete() && te.canPlayerUse(player))
 				entity.setAsInsidePortal(this, centre);
-			else
+			else {
+				showDenialReason(level, player, te);
 				denyEntity(level, entity);
+			}
 		}
 		else if (entity instanceof ItemEntity item) {
 			ItemStack is = item.getItem();
@@ -232,6 +282,38 @@ public class BlockChromaPortal extends Block implements EntityBlock, Portal {
 		else {
 			denyEntity(level, entity);
 		}
+	}
+
+	/** Throttled, read-only explanation of the formation/charge/progression gate that rejected a player. */
+	private static void showDenialReason(Level level, Player player, TileEntityCrystalPortal portal) {
+		long now = level.getGameTime();
+		long last = player.getPersistentData().getLongOr(DENIAL_MESSAGE_TIME, Long.MIN_VALUE / 2);
+		if (now - last < 40)
+			return;
+		player.getPersistentData().putLong(DENIAL_MESSAGE_TIME, now);
+		net.minecraft.network.chat.Component message;
+		int missingCrystals = portal.getMissingEnderCrystalCount();
+		if (missingCrystals > 0)
+			message = net.minecraft.network.chat.Component.translatable(
+					"message.chromaticraft.portal.missing_crystals", missingCrystals);
+		else if (!portal.isComplete())
+			message = net.minecraft.network.chat.Component.translatable(
+					"message.chromaticraft.portal.incomplete");
+		else if (!isDimensionLoadable(level))
+			message = net.minecraft.network.chat.Component.translatable(
+					"message.chromaticraft.portal.dimension_missing");
+		else if (!areGeneratorsReady(level))
+			message = net.minecraft.network.chat.Component.translatable(
+					"message.chromaticraft.portal.generating");
+		else if (portal.getCharge() < TileEntityCrystalPortal.MINCHARGE)
+			message = net.minecraft.network.chat.Component.translatable(
+					"message.chromaticraft.portal.charging", portal.getCharge(),
+					TileEntityCrystalPortal.MINCHARGE);
+		else
+			message = net.minecraft.network.chat.Component.translatable(
+					"message.chromaticraft.portal.progression");
+		if (player instanceof ServerPlayer serverPlayer)
+			serverPlayer.sendSystemMessage(message, true);
 	}
 
 	private static BlockPos walkInward(Level level, BlockPos pos, Set<BlockPos> visited) {

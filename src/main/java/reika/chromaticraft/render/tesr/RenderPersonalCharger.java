@@ -1,172 +1,127 @@
-/*******************************************************************************
- * @author Reika Kalseki
- * 
- * Copyright 2017
- * 
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
- ******************************************************************************/
 package reika.chromaticraft.render.tesr;
 
-import org.lwjgl.opengl.GL11;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 
-import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.client.renderer.entity.RenderManager;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.IIcon;
-import net.minecraftforge.client.MinecraftForgeClient;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
+import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
+import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
+import net.minecraft.client.renderer.feature.CustomFeatureRenderer;
+import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.client.renderer.texture.TextureAtlas;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.data.AtlasIds;
+import net.minecraft.resources.Identifier;
+import net.minecraft.util.LightCoordsUtil;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 
-import reika.chromaticraft.base.ChromaRenderBase;
-import reika.chromaticraft.registry.ChromaIcons;
-import reika.chromaticraft.registry.CrystalElement;
+import net.neoforged.neoforge.client.extensions.OrderedSubmitNodeCollectorExtension;
+import net.neoforged.neoforge.client.submit.RenderPhaseKeys;
+import org.jspecify.annotations.Nullable;
+
+import reika.chromaticraft.ChromatiCraft;
+import reika.chromaticraft.render.ChromaRenderPipelines;
 import reika.chromaticraft.tileentity.TileEntityPersonalCharger;
-import reika.dragonapi.instantiable.rendering.StructureRenderer;
-import reika.dragonapi.interfaces.tileentity.RenderFetcher;
-import reika.dragonapi.libraries.io.ReikaTextureHelper;
-import reika.dragonapi.libraries.java.reikaglhelper.BlendMode;
-import reika.dragonapi.libraries.rendering.ReikaRenderHelper;
 
-public class RenderPersonalCharger extends ChromaRenderBase {
+/** Submit-pipeline port of V33a's layered, camera-facing Personal Charger glow. */
+public final class RenderPersonalCharger implements
+		BlockEntityRenderer<TileEntityPersonalCharger, RenderPersonalCharger.State> {
 
-	private final ChromaIcons[] ACTIVE_ICONS = {
-			ChromaIcons.CENTER,
-			ChromaIcons.ROSES_WHITE,
-			ChromaIcons.BIGFLARE,
-	};
+	private static final Identifier CENTER = sprite("centerblur3");
+	private static final Identifier ROSES_WHITE = sprite("roses_w");
+	private static final Identifier BIG_FLARE = sprite("bigflare");
+	private static final Identifier ROSES = sprite("roses");
 
-	private final ChromaIcons[] INACTIVE_ICONS = {
-			ChromaIcons.CENTER,
-	};
+	public RenderPersonalCharger(BlockEntityRendererProvider.Context context) {}
 
-	private final ChromaIcons[] ITEM_ICONS = {
-			ChromaIcons.ROSES,
-			//ChromaIcons.RIFTHALO,
-	};
+	@Override public State createRenderState() { return new State(); }
 
 	@Override
-	public void renderTileEntityAt(TileEntity tile, double par2, double par4, double par6, float par8) {
-		TileEntityPersonalCharger te = (TileEntityPersonalCharger)tile;
-
-		if (tile.hasWorldObj() && (MinecraftForgeClient.getRenderPass() == 1 || StructureRenderer.isRenderingTiles())) {
-			ReikaTextureHelper.bindTerrainTexture();
-			GL11.glDisable(GL11.GL_LIGHTING);
-			//GL11.glDisable(GL11.GL_ALPHA_TEST);
-			ReikaRenderHelper.disableEntityLighting();
-			GL11.glEnable(GL11.GL_BLEND);
-			GL11.glDisable(GL11.GL_CULL_FACE);
-			GL11.glDepthMask(false);
-			BlendMode.ADDITIVEDARK.apply();
-			GL11.glPushMatrix();
-			GL11.glTranslated(par2, par4, par6);
-
-			Tessellator v5 = Tessellator.instance;
-			GL11.glTranslated(0.5, 0.5, 0.5);
-
-			double t = (te.hashCode()+System.currentTimeMillis()/5000D)%360;
-			double s = 0.875+0.25*Math.sin(t)+0.125*Math.sin(t*4)+0.0625*Math.sin(t*16);
-
-			ChromaIcons[] icons = ACTIVE_ICONS;
-
-			if (!te.canConduct() && !StructureRenderer.isRenderingTiles()) {
-				s = 0.5;
-				icons = INACTIVE_ICONS;
-			}
-
-			for (int i = 0; i < icons.length; i++) {
-				double z = -0.005*i;
-				IIcon ico = icons[i].getIcon();
-				float u = ico.getMinU();
-				float v = ico.getMinV();
-				float du = ico.getMaxU();
-				float dv = ico.getMaxV();
-				GL11.glPushMatrix();
-				boolean last = i == icons.length-1;
-				double s1 = last ? s*0.75 : s;
-				GL11.glScaled(s1, s1, s1);
-				if (StructureRenderer.isRenderingTiles()) {
-					GL11.glRotated(-StructureRenderer.getRenderRY(), 0, 1, 0);
-					GL11.glRotated(-StructureRenderer.getRenderRX(), 1, 0, 0);
-				}
-				else {
-					RenderManager rm = RenderManager.instance;
-					GL11.glRotatef(-rm.playerViewY, 0.0F, 1.0F, 0.0F);
-					GL11.glRotatef(rm.playerViewX, 1.0F, 0.0F, 0.0F);
-				}
-
-				int alpha = 255;//te.getEnergy()*255/te.MAX_ENERGY;
-				//ReikaJavaLibrary.pConsole(te.getEnergy());
-
-				int color = last ? 0xffffff : te.getRenderColor();
-
-				if (!last && StructureRenderer.isRenderingTiles() && !StructureRenderer.isRenderingRealTiles()) {
-					color = CrystalElement.elements[(int)((System.currentTimeMillis()/4000)%16)].getColor();
-				}
-
-				v5.startDrawingQuads();
-				v5.setColorRGBA_I(color, alpha);
-				v5.addVertexWithUV(-1, -1, z, u, v);
-				v5.addVertexWithUV(1, -1, z, du, v);
-				v5.addVertexWithUV(1, 1, z, du, dv);
-				v5.addVertexWithUV(-1, 1, z, u, dv);
-				v5.draw();
-
-				GL11.glPopMatrix();
-			}
-
-			GL11.glPopMatrix();
-			BlendMode.DEFAULT.apply();
-			//GL11.glEnable(GL11.GL_ALPHA_TEST);
-			GL11.glEnable(GL11.GL_CULL_FACE);
-			GL11.glDisable(GL11.GL_BLEND);
-			GL11.glDepthMask(true);
-			ReikaRenderHelper.enableEntityLighting();
-			GL11.glEnable(GL11.GL_LIGHTING);
-		}
-		else if (!tile.hasWorldObj()) {
-			ReikaTextureHelper.bindTerrainTexture();
-			GL11.glDisable(GL11.GL_LIGHTING);
-			//ReikaRenderHelper.disableEntityLighting();
-			GL11.glEnable(GL11.GL_BLEND);
-			GL11.glDisable(GL11.GL_CULL_FACE);
-			BlendMode.ADDITIVEDARK.apply();
-			GL11.glPushMatrix();
-			GL11.glRotated(45, 0, 1, 0);
-			GL11.glRotated(-45, 1, 0, 0);
-			Tessellator v5 = Tessellator.instance;
-
-			for (int i = 0; i < ITEM_ICONS.length; i++) {
-				IIcon ico = ITEM_ICONS[i].getIcon();
-				boolean last = i == ITEM_ICONS.length-1;
-				float u = ico.getMinU();
-				float v = ico.getMinV();
-				float du = ico.getMaxU();
-				float dv = ico.getMaxV();
-
-				double s = last ? 0.875 : 1;
-
-				v5.startDrawingQuads();
-				v5.setColorOpaque_I(0xffffff);
-				v5.addVertexWithUV(-s, -s, 0, u, v);
-				v5.addVertexWithUV(s, -s, 0, du, v);
-				v5.addVertexWithUV(s, s, 0, du, dv);
-				v5.addVertexWithUV(-s, s, 0, u, dv);
-				v5.draw();
-
-			}
-
-			GL11.glPopMatrix();
-			BlendMode.DEFAULT.apply();
-			GL11.glEnable(GL11.GL_CULL_FACE);
-			GL11.glDisable(GL11.GL_BLEND);
-			//RenderHelper.enableStandardItemLighting();
-			GL11.glEnable(GL11.GL_LIGHTING);
-		}
+	public void extractRenderState(TileEntityPersonalCharger charger, State state, float partialTick,
+			Vec3 cameraPosition, ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress) {
+		BlockEntityRenderer.super.extractRenderState(charger, state, partialTick, cameraPosition,
+				breakProgress);
+		state.active = charger.canConduct();
+		state.color = charger.getRenderColor();
+		state.phase = charger.getBlockPos().hashCode() + System.currentTimeMillis() / 5000D;
 	}
 
 	@Override
-	public String getImageFileName(RenderFetcher te) {
-		return null;
+	public void submit(State state, PoseStack poseStack, SubmitNodeCollector collector,
+			CameraRenderState camera) {
+		poseStack.pushPose();
+		poseStack.translate(0.5, 0.5, 0.5);
+		poseStack.mulPose(camera.orientation);
+		if (!state.active) {
+			submitLayer(poseStack, collector, CENTER, 0.5F, 0xffffffff, 0, true);
+		}
+		else {
+			float pulse = (float)(0.875 + 0.25 * Math.sin(state.phase)
+					+ 0.125 * Math.sin(state.phase * 4) + 0.0625 * Math.sin(state.phase * 16));
+			submitLayer(poseStack, collector, CENTER, pulse, 0xff000000 | state.color, 0, true);
+			submitLayer(poseStack, collector, ROSES_WHITE, pulse, 0xff000000 | state.color, -0.005F, true);
+			submitLayer(poseStack, collector, BIG_FLARE, pulse * 0.75F, 0xffffffff, -0.01F, true);
+		}
+		poseStack.popPose();
 	}
 
+	/** V33a's one-layer inventory presentation, shared with the special item model. */
+	public static void submitItem(PoseStack poseStack, SubmitNodeCollector collector) {
+		submitLayer(poseStack, collector, ROSES, 0.875F, 0xffffffff, 0, false);
+	}
+
+	private static void submitLayer(PoseStack poseStack, SubmitNodeCollector collector,
+			Identifier spriteId, float scale, int color, float z, boolean afterTerrain) {
+		TextureAtlasSprite sprite = Minecraft.getInstance().getAtlasManager()
+				.getAtlasOrThrow(AtlasIds.BLOCKS).getSprite(spriteId);
+		PoseStack drawPose = copy(poseStack);
+		SubmitNodeCollector.CustomGeometryRenderer geometry = (ignored, vertices) ->
+				quad(drawPose.last(), vertices, sprite, scale, z, color);
+		var type = ChromaRenderPipelines.legacyAdditiveSprite(TextureAtlas.LOCATION_BLOCKS);
+		if (afterTerrain) {
+			CustomFeatureRenderer.Submit submit = new CustomFeatureRenderer.Submit(
+					drawPose.last().copy(), type, geometry);
+			((OrderedSubmitNodeCollectorExtension)collector.order(0))
+					.submitSpecial(RenderPhaseKeys.AFTER_TERRAIN, submit);
+		}
+		else collector.submitCustomGeometry(drawPose, type, geometry);
+	}
+
+	private static void quad(PoseStack.Pose pose, VertexConsumer out, TextureAtlasSprite sprite,
+			float scale, float z, int color) {
+		out.addVertex(pose, -scale, -scale, z).setUv(sprite.getU0(), sprite.getV1())
+				.setColor(color).setLight(LightCoordsUtil.FULL_BRIGHT);
+		out.addVertex(pose, scale, -scale, z).setUv(sprite.getU1(), sprite.getV1())
+				.setColor(color).setLight(LightCoordsUtil.FULL_BRIGHT);
+		out.addVertex(pose, scale, scale, z).setUv(sprite.getU1(), sprite.getV0())
+				.setColor(color).setLight(LightCoordsUtil.FULL_BRIGHT);
+		out.addVertex(pose, -scale, scale, z).setUv(sprite.getU0(), sprite.getV0())
+				.setColor(color).setLight(LightCoordsUtil.FULL_BRIGHT);
+	}
+
+	private static PoseStack copy(PoseStack source) {
+		PoseStack copy = new PoseStack();
+		copy.last().set(source.last());
+		return copy;
+	}
+
+	private static Identifier sprite(String name) {
+		return Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/icons/" + name);
+	}
+
+	@Override public AABB getRenderBoundingBox(TileEntityPersonalCharger charger) {
+		return new AABB(charger.getBlockPos()).inflate(2);
+	}
+	@Override public boolean shouldRenderOffScreen() { return true; }
+	@Override public int getViewDistance() { return 96; }
+
+	public static final class State extends BlockEntityRenderState {
+		private boolean active;
+		private int color;
+		private double phase;
+	}
 }

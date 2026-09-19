@@ -486,14 +486,21 @@ public class TileEntityCrystalRepeater extends CrystalTransmitterBase
 	public final void drop() {
 		if (this.getLevel() == null || this.getLevel().isClientSide())
 			return;
+		for (ItemStack stack : this.getSneakPopDrops())
+			ReikaItemHelper.dropItem(this.getLevel(), this.getX() + 0.5, this.getY() + 0.5,
+					this.getZ() + 0.5, stack);
+		this.removeFromCache();
+		CrystalNetworker.instance.breakPaths(this);
+		this.delete();
+	}
+
+	/** V33a hook used by the wooden repeater to return components after its frame has failed. */
+	protected List<ItemStack> getSneakPopDrops() {
 		ItemStack stack = new ItemStack(this.getTile().getBlock());
 		CompoundTag tag = new CompoundTag();
 		this.getTagsToWriteToStack(tag);
 		ReikaItemHelper.setStackTag(stack, tag);
-		ReikaItemHelper.dropItem(this.getLevel(), this.getX() + 0.5, this.getY() + 0.5, this.getZ() + 0.5, stack);
-		this.removeFromCache();
-		CrystalNetworker.instance.breakPaths(this);
-		this.delete();
+		return List.of(stack);
 	}
 
 	@Override

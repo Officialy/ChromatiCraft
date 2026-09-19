@@ -1,8 +1,11 @@
 package reika.chromaticraft.world;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Supplier;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
@@ -61,7 +64,111 @@ public final class TieredPlantFeature extends Feature<NoneFeatureConfiguration> 
 			case CAVE -> this.scanCave(world, x, z);
 			case LEAVES -> this.scanLeaves(world, x, z);
 			case WATER -> this.scanWater(world, x, z);
+			case TREE_POD -> this.scanTreePod(world, x, z, random);
+			case TREE_ROOT -> this.scanTreeRoot(world, x, z, random);
 		};
+	}
+
+	/**
+	 * V33a POD: choose any log height from the discovered trunk, then attach to the first soft
+	 * neighbour in a shuffled six-direction traversal.
+	 */
+	private BlockPos scanTreePod(WorldGenLevel world, int x, int z, RandomSource random) {
+		x = bitRound(x, 4) + 7 + random.nextInt(2);
+		z = bitRound(z, 4) + 7 + random.nextInt(2);
+		int surface = world.getHeight(Heightmap.Types.WORLD_SURFACE_WG, x, z);
+		BlockPos tree = this.findTreeNear(world, x, surface, z, 7);
+		if (tree == null)
+			return null;
+
+		BlockPos low = tree;
+		while (this.inWorld(world, low) && this.isLog(world, low))
+			low = low.below();
+		low = low.above();
+		BlockPos high = tree;
+		while (this.inWorld(world, high) && this.isLog(world, high))
+			high = high.above();
+		high = high.below();
+		if (high.getY() < low.getY())
+			return null;
+		int y = low.getY() + random.nextInt(high.getY() - low.getY() + 1);
+		BlockPos trunk = new BlockPos(tree.getX(), y, tree.getZ());
+		for (Direction direction : shuffledDirections(random)) {
+			BlockPos target = trunk.relative(direction);
+			if (this.inWorld(world, target) && this.isSoft(world, target))
+				return target;
+		}
+		return null;
+	}
+
+	/**
+	 * V33a ROOT: snap the random column to the centre of its 16x16 lattice cell, reproduce
+	 * {@code ReikaWorldHelper.findTreeNear}, walk down to the lowest log, then try all six adjacent
+	 * blocks in random order. Centreing the search also keeps its radius-seven reads inside the
+	 * currently generating chunk, avoiding modern far-chunk worldgen access.
+	 */
+	private BlockPos scanTreeRoot(WorldGenLevel world, int x, int z, RandomSource random) {
+		x = bitRound(x, 4) + 7 + random.nextInt(2);
+		z = bitRound(z, 4) + 7 + random.nextInt(2);
+		int surface = world.getHeight(Heightmap.Types.WORLD_SURFACE_WG, x, z);
+		BlockPos tree = this.findTreeNear(world, x, surface, z, 7);
+		if (tree == null)
+			return null;
+
+		BlockPos base = tree;
+		while (this.inWorld(world, base) && this.isLog(world, base))
+			base = base.below();
+		base = base.above();
+		for (Direction direction : shuffledDirections(random)) {
+			BlockPos target = base.relative(direction);
+			if (this.inWorld(world, target) && this.isSoft(world, target))
+				return target;
+		}
+		return null;
+	}
+
+	/** Exact V33a sample order and three-log-column test from {@code findTreeNear}. */
+	private BlockPos findTreeNear(WorldGenLevel world, int x, int y, int z, int radius) {
+		int[] samples = radius > 2
+				? new int[] {y - radius, y - radius / 2, y - 1, y, y + 1,
+						y + radius / 2, y + radius}
+				: new int[] {y - 2, y - 1, y, y + 1, y + 2};
+		for (int sampleY : samples) {
+			for (int dx = -radius; dx <= radius; dx++) {
+				for (int dz = -radius; dz <= radius; dz++) {
+					BlockPos pos = new BlockPos(x + dx, sampleY, z + dz);
+					if (this.inWorld(world, pos.above()) && this.inWorld(world, pos.below())
+							&& this.isLog(world, pos) && this.isLog(world, pos.above())
+							&& this.isLog(world, pos.below()))
+						return pos;
+				}
+			}
+		}
+		return null;
+	}
+
+	private boolean isLog(WorldGenLevel world, BlockPos pos) {
+		return world.getBlockState(pos).is(BlockTags.LOGS);
+	}
+
+	/** V33a {@code Coordinate.softBlock}: air, fluid and other replaceable blocks are valid. */
+	private boolean isSoft(WorldGenLevel world, BlockPos pos) {
+		BlockState state = world.getBlockState(pos);
+		return state.isAir() || state.canBeReplaced();
+	}
+
+	private static int bitRound(int value, int bits) {
+		return value >> bits << bits;
+	}
+
+	private static List<Direction> shuffledDirections(RandomSource random) {
+		List<Direction> directions = new ArrayList<>(List.of(Direction.values()));
+		for (int i = directions.size() - 1; i > 0; i--) {
+			int swap = random.nextInt(i + 1);
+			Direction old = directions.set(i, directions.get(swap));
+			directions.set(swap, old);
+		}
+		return directions;
 	}
 
 	/**

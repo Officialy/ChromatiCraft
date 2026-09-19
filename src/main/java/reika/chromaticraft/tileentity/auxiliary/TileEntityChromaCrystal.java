@@ -79,7 +79,12 @@ public class TileEntityChromaCrystal extends TileEntityPylonEnhancer {
 
     @Override
     public void updateEntity(Level world, BlockPos pos) {
-        if (this.getTicksExisted() < 5 && !world.isClientSide())
+        // A pylon and its sockets do not necessarily finish loading in the same tick. V33a's
+        // neighbour notifications happened to re-run this lookup frequently; on 26.2 that left a
+        // loaded crystal permanently showing its inert texture until an unrelated block update.
+        // Revalidate once a second so chunk loading, a rebuilt pylon, and a changed rune all converge
+        // without asking the player to poke the structure.
+        if (!world.isClientSide() && (this.getTicksExisted() < 5 || this.getTicksExisted() % 20 == 0))
             this.refreshConnection();
     }
 
@@ -109,6 +114,18 @@ public class TileEntityChromaCrystal extends TileEntityPylonEnhancer {
         if (world == null || !ChromaBlocks.isRune(world.getBlockState(pos.below())))
             return null;
         CrystalElement color = BlockCrystalRune.getColor(world.getBlockState(pos.below()));
+		// The networker's source cache is rebuilt by block notifications; relying on it alone made a
+		// loaded or newly restored crystal remain inert until any unrelated nearby block changed.
+		// There are exactly eight legal sockets, so resolve those centres directly first. This is both
+		// cheaper and authoritative, and the broader network lookup remains as a compatibility fallback.
+		for (BlockPos socket : TileEntityCrystalPylon.getPowerCrystalLocations()) {
+			BlockPos centre = pos.subtract(socket);
+			if (!world.hasChunkAt(centre))
+				continue;
+			if (world.getBlockEntity(centre) instanceof TileEntityCrystalPylon pylon
+					&& pylon.getColor() == color && pylon.isValidPowerCrystal(this))
+				return pylon;
+		}
         Collection<TileEntityCrystalPylon> pylons = CrystalNetworker.instance.getNearbyPylons(
                 world, pos.getX(), pos.getY(), pos.getZ(), color, 8, false);
         for (TileEntityCrystalPylon pylon : pylons) {

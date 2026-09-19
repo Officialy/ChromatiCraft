@@ -1,6 +1,8 @@
 package reika.chromaticraft.render.entity;
 
 import java.util.List;
+import java.util.Map;
+import java.util.WeakHashMap;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
@@ -54,6 +56,13 @@ public final class RenderAurora extends EntityRenderer<EntityAurora, RenderAuror
 	/** How many steps at each end the curtain fades over. */
 	private static final float FADE_STEPS = 32;
 
+	/**
+	 * Render states are extraction scratch objects in 26.2; they are not guaranteed to stay paired
+	 * with one entity. The animated spline, however, is entity state in V33a and must survive from one
+	 * frame to the next. Weak keys give it that lifetime without retaining unloaded aurora entities.
+	 */
+	private final Map<EntityAurora, AuroraFrame> aurorae = new WeakHashMap<>();
+
 	public RenderAurora(EntityRendererProvider.Context context) {
 		super(context);
 	}
@@ -64,23 +73,31 @@ public final class RenderAurora extends EntityRenderer<EntityAurora, RenderAuror
 	}
 
 	@Override
+	protected boolean affectedByCulling(EntityAurora entity) {
+		// The entity is only an anchor. Its spline can span hundreds of blocks, so testing the tiny
+		// entity AABB makes the curtain vanish at camera angles where the anchor leaves the frustum.
+		return false;
+	}
+
+	@Override
 	public void extractRenderState(EntityAurora entity, State state, float partialTick) {
 		super.extractRenderState(entity, state, partialTick);
-		// The curtain is built and wobbled per client; the entity only carries the endpoints and colours.
-		// Identity, not equality, is the right test: it asks whether the entity has been handed a new
-		// data object, which is the only thing that invalidates an existing curtain.
-		if (state.aurora == null || state.aurora.data() != entity.getAuroraData()) {
-			state.aurora = new Aurora(entity.getAuroraData());
-			state.lastTick = -1;
+		AuroraFrame frame = aurorae.get(entity);
+		// The curtain is built and wobbled per client; the entity only carries endpoints and colours.
+		// Identity is intentional: a newly synchronized data object invalidates the old spline.
+		if (frame == null || frame.aurora.data() != entity.getAuroraData()) {
+			frame = new AuroraFrame(new Aurora(entity.getAuroraData()));
+			aurorae.put(entity, frame);
 		}
 		// V33a drives the drift from the entity's onUpdate, so once per tick. This method runs once per
 		// frame, so advancing it here unconditionally would make the curtain wave at the frame rate --
 		// three times too fast at sixty frames a second, and different on every machine.
-		if (entity.tickCount != state.lastTick) {
-			state.lastTick = entity.tickCount;
-			state.aurora.update();
+		if (entity.tickCount != frame.lastTick) {
+			frame.lastTick = entity.tickCount;
+			frame.aurora.update();
 		}
-		state.curve = state.aurora.curve();
+		state.aurora = frame.aurora;
+		state.curve = frame.aurora.curve();
 		state.entityPosition = entity.position();
 	}
 
@@ -167,6 +184,14 @@ public final class RenderAurora extends EntityRenderer<EntityAurora, RenderAuror
 		private Aurora aurora;
 		private List<DecimalPosition> curve;
 		private Vec3 entityPosition = Vec3.ZERO;
+	}
+
+	private static final class AuroraFrame {
+		private final Aurora aurora;
 		private int lastTick = -1;
+
+		private AuroraFrame(Aurora aurora) {
+			this.aurora = aurora;
+		}
 	}
 }

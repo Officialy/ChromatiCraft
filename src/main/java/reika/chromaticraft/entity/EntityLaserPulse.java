@@ -1,287 +1,196 @@
-/*******************************************************************************
- * @author Reika Kalseki
- *
- * Copyright 2017
- *
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
- ******************************************************************************/
 package reika.chromaticraft.entity;
 
-import net.minecraft.block.Block;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.particle.EntityFX;
-import net.minecraft.entity.Entity;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializers;
+import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 
-import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.auxiliary.HoldingChecks;
 import reika.chromaticraft.auxiliary.interfaces.LaserPulseEffect;
-import reika.chromaticraft.block.dimension.structure.laser.blocklasereffector.LaserEffectType;
-import reika.chromaticraft.block.worldgen.blockstructureshield.BlockType;
 import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaIcons;
+import reika.chromaticraft.registry.ChromaEntityTypes;
+import reika.chromaticraft.registry.ChromaShieldTypes;
 import reika.chromaticraft.registry.ChromaSounds;
-import reika.chromaticraft.render.particle.EntityCCBlurFX;
+import reika.chromaticraft.render.particle.ChromaParticle;
+import reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.BeamColor;
+import reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.Pulse;
+import reika.chromaticraft.world.dimension.structure.laser.LaserPulseReceiver;
 import reika.dragonapi.base.ParticleEntity;
-import reika.dragonapi.instantiable.RGBColorData;
-import reika.dragonapi.interfaces.registry.SoundEnum;
-import reika.dragonapi.libraries.reikadirectionhelper.CubeDirections;
-import reika.dragonapi.libraries.java.ReikaRandomHelper;
+import reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections;
 
-import cpw.mods.fml.common.registry.IEntityAdditionalSpawnData;
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
-import io.netty.buffer.ByteBuf;
+/** V33a's persistent travelling Chromatic Beams pulse on the 26.2 entity pipeline. */
+public final class EntityLaserPulse extends ParticleEntity {
 
+	private static final EntityDataAccessor<Byte> COLOR = SynchedEntityData.defineId(
+			EntityLaserPulse.class, EntityDataSerializers.BYTE);
 
-public class EntityLaserPulse extends ParticleEntity implements IEntityAdditionalSpawnData {
-
-	public RGBColorData color;
-	public CubeDirections direction;
-	//private String level = "";
-
-	public boolean silentImpact = false;
+	private BeamColor color = BeamColor.WHITE;
+	private CubeDirections direction = CubeDirections.NORTH;
+	private boolean silentImpact;
 	private double moveSpeed = 0.1875;
+	private boolean impactDeath;
 
-	public EntityLaserPulse(World world) {
-		super(world);
+	public EntityLaserPulse(EntityType<? extends EntityLaserPulse> type, Level world) {
+		super(type, world);
+		this.noPhysics = true;
 	}
 
-	public EntityLaserPulse(World world, int x, int y, int z, CubeDirections dir, RGBColorData c, String l) {
-		super(world, x, y, z, dir);
-		direction = dir;
-		color = c.copy();
-		//level = l;
-	}
-
-	public void setSpeedFactor(double f) {
-		moveSpeed *= f;
-		moveSpeed = Math.min(moveSpeed, 0.2); //any faster and it might clip
+	public EntityLaserPulse(Level world, BlockPos pos, CubeDirections direction, BeamColor color,
+			boolean silentImpact, double speedFactor) {
+		super(ChromaEntityTypes.LASER_PULSE.get(), world, pos);
+		this.noPhysics = true;
+		this.direction = direction;
+		this.color = color;
+		this.silentImpact = silentImpact;
+		this.moveSpeed = Math.min(0.2, 0.1875 * speedFactor);
+		this.entityData.set(COLOR, packColor(color));
 		this.setDirection(direction, true);
 	}
 
 	@Override
-	protected void entityInit() {
-		super.entityInit();
-
-		dataWatcher.addObject(24, 0);
-		dataWatcher.addObject(25, 0);
-		dataWatcher.addObject(26, 0);
+	protected void defineSynchedData(SynchedEntityData.Builder builder) {
+		builder.define(COLOR, packColor(BeamColor.WHITE));
 	}
 
-	@Override
-	protected double getBlockThreshold() {
-		return 0.125;
-	}
-
-	@Override
-	protected double getDespawnDistance() {
-		return 40;
-	}
+	@Override protected double getBlockThreshold() { return 0.125; }
+	@Override protected double getDespawnDistance() { return 40; }
 
 	@Override
 	protected void onTick() {
-		if (!worldObj.isRemote) {
-			dataWatcher.updateObject(24, color.red ? 1 : 0);
-			dataWatcher.updateObject(25, color.green ? 1 : 0);
-			dataWatcher.updateObject(26, color.blue ? 1 : 0);
-		}
-		else {
-			color.red = dataWatcher.getWatchableObjectInt(24) > 0;
-			color.green = dataWatcher.getWatchableObjectInt(25) > 0;
-			color.blue = dataWatcher.getWatchableObjectInt(26) > 0;
-			this.spawnParticle();
+		if (this.level().isClientSide()) {
+			color = unpackColor(this.entityData.get(COLOR));
+			ChromaParticle.spawnLaserPulseTrail(this.level(), this.getX(), this.getY(), this.getZ(),
+					color.renderColor(), this.random);
 		}
 	}
 
 	@Override
-	public boolean shouldRenderInPass(int pass) {
-		return pass == 1;
-	}
+	protected boolean onEnterBlock(Level world, BlockPos pos) {
+		BlockState state = world.getBlockState(pos);
+		if (state.isAir() || state.is(ChromaBlocks.shielding(ChromaShieldTypes.GLASS).get()))
+			return false;
 
-	@SideOnly(Side.CLIENT)
-	private void spawnParticle() {
-		Minecraft mc = Minecraft.getMinecraft();
-		int l = 10+rand.nextInt(15);
-		if (rand.nextInt(HoldingChecks.MANIPULATOR.isClientHolding() ? 3 : 12) == 0)
-			l *= 16;
-		double[] r = {0.1875, 0.125, 0.0625};
-		for (int i = 0; i < r.length; i++) {
-			float s = (1+rand.nextFloat())/(i+1);
-			double px = ReikaRandomHelper.getRandomPlusMinus(posX, r[i]);
-			double py = ReikaRandomHelper.getRandomPlusMinus(posY, r[i]);
-			double pz = ReikaRandomHelper.getRandomPlusMinus(posZ, r[i]);
-			EntityFX fx = new EntityCCBlurFX(worldObj, px, py, pz).setIcon(ChromaIcons.FADE_GENTLE).setColor(color.getRenderColor()).setLife(l).setScale(s);
-			mc.effectRenderer.addEffect(fx);
+		BlockEntity blockEntity = world.getBlockEntity(pos);
+		if (blockEntity instanceof LaserPulseReceiver receiver) {
+			playTonalSound(ChromaSounds.USE, 0.5F, 2);
+			boolean absorbed = receiver.receiveLaserPulse(this);
+			impactDeath = absorbed;
+			return absorbed;
 		}
+		if (state.getBlock() instanceof LaserPulseEffect effect) {
+			boolean absorbed = effect.onImpact(world, pos, this);
+			impactDeath = absorbed;
+			return absorbed;
+		}
+
+		impactDeath = true;
+		if (!silentImpact) playTonalSound(ChromaSounds.POWERDOWN, 0.5F, 2);
+		return true;
 	}
 
 	@Override
 	protected void onDeath() {
-		if (!worldObj.isRemote) {
-
-		}
+		if (impactDeath && this.level().isClientSide() && !silentImpact)
+			ChromaParticle.spawnLaserPulseImpact(this.level(), this.getX(), this.getY(), this.getZ(),
+					color.renderColor(), this.random);
 	}
 
-	private void playTonalSound(SoundEnum s, float vol, float p) {
-		if (color.red) {
-			s.playSound(worldObj, posX, posY, posZ, vol, p*0.5F);
-		}
-		if (color.green) {
-			s.playSound(worldObj, posX, posY, posZ, vol, p*0.75F);
-		}
-		if (color.blue) {
-			s.playSound(worldObj, posX, posY, posZ, vol, p*1F);
-		}
+	private void playTonalSound(ChromaSounds sound, float volume, float basePitch) {
+		if (color.red()) sound.playSound(this.level(), this.getX(), this.getY(), this.getZ(),
+				volume, basePitch * 0.5F);
+		if (color.green()) sound.playSound(this.level(), this.getX(), this.getY(), this.getZ(),
+				volume, basePitch * 0.75F);
+		if (color.blue()) sound.playSound(this.level(), this.getX(), this.getY(), this.getZ(),
+				volume, basePitch);
 	}
 
-	@SideOnly(Side.CLIENT)
-	private void spawnDeathParticle() {
-		if (silentImpact)
-			return;
-		int l = 10+rand.nextInt(15);
-		int n = 8+rand.nextInt(24);
-		for (int i = 0; i < n; i++) {
-			float s = 1+rand.nextFloat();
-			double px = ReikaRandomHelper.getRandomPlusMinus(posX, 0.75);
-			double py = ReikaRandomHelper.getRandomPlusMinus(posY, 0.75);
-			double pz = ReikaRandomHelper.getRandomPlusMinus(posZ, 0.75);
-			EntityFX fx = new EntityCCBlurFX(worldObj, px, py, pz).setIcon(ChromaIcons.FADE_RAY).setColor(color.getRenderColor()).setLife(l).setScale(s);
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-		}
+	public void setPulse(Pulse pulse) {
+		this.setColor(pulse.color());
+		this.setDirection(pulse.direction(), true);
 	}
+
+	public void setColor(BeamColor color) {
+		this.color = color;
+		this.entityData.set(COLOR, packColor(color));
+	}
+
+	public void setDirection(CubeDirections direction, boolean setPosition) {
+		this.direction = direction;
+		if (setPosition)
+			this.snapTo(this.getBlockX() + 0.5, this.getBlockY() + 0.5,
+					this.getBlockZ() + 0.5, 0, 0);
+		this.setDeltaMovement(direction.directionX * moveSpeed, 0, direction.directionZ * moveSpeed);
+		this.hurtMarked = true;
+	}
+
+	public Pulse pulse() { return new Pulse(direction, color); }
+	public BeamColor color() { return color; }
+	public CubeDirections direction() { return direction; }
+	public boolean silentImpact() { return silentImpact; }
+	public double speedFactor() { return moveSpeed / 0.1875; }
+
+	@Override public void applyEntityCollision(Entity entity) {}
+	@Override public boolean despawnOverTime() { return false; }
+	@Override public boolean despawnOverDistance() { return true; }
+	@Override public boolean canInteractWithSpawnLocation() { return false; }
+	@Override public double getSpeed() { return moveSpeed; }
+	@Override public double getHitboxSize() { return 0.05; }
+	@Override public double getRenderRangeSquared() { return Double.POSITIVE_INFINITY; }
 
 	@Override
-	protected boolean onEnterBlock(World world, int x, int y, int z) {
-		Block b = world.getBlock(x, y, z);
-		if (b.isAir(world, x, y, z))
-			return false;
-		if (b == ChromaBlocks.SPECIALSHIELD.getBlockInstance() && world.getBlockMetadata(x, y, z)%8 == BlockType.GLASS.metadata%8)
-			return false;
-
-		if (b == ChromaBlocks.LASEREFFECT.getBlockInstance()) {
-			int meta = world.getBlockMetadata(x, y, z);
-			LaserEffectType e = LaserEffectType.list[meta];
-			this.playTonalSound(ChromaSounds.USE, 0.5F, 2);
-			return e.affectPulse(world, x, y, z, this);
-		}
-		if (b instanceof LaserPulseEffect) {
-			return ((LaserPulseEffect)b).onImpact(world, x, y, z, this);
-		}
-
-		if (worldObj.isRemote) {
-			this.spawnDeathParticle();
-		}
-		if (!silentImpact)
-			this.playTonalSound(ChromaSounds.POWERDOWN, 0.5F, 2);
-
-		return true;
-	}
-
-	public void reflect(CubeDirections d) {
-		int n = d.isCardinal() || d == direction.getOpposite() ? 2 : 1;
-		int dx = direction.directionX+n*d.directionX;
-		int dz = direction.directionZ+n*d.directionZ;
-		CubeDirections dir = CubeDirections.getFromVectors(dx, dz);
-		if (dir == null) {
-			ChromatiCraft.logger.logError("Tried to reflect from "+direction+" off of "+d+", vec="+dx+","+dz);
-			this.setDead();
-			return;
-		}
-		this.setDirection(dir, true);
-	}
-
-	public void refract(boolean clockwise) {
-		CubeDirections dir = direction.getRotation(clockwise);
-		this.setDirection(dir, true);
-	}
-
-	@Override
-	public void setDirection(CubeDirections dir, boolean setPos) {
-		super.setDirection(dir, setPos);
-		direction = dir;
-	}
-
-	@Override
-	public void applyEntityCollision(Entity e) {
-
-	}
-
-	@Override
-	protected void readEntityFromNBT(NBTTagCompound tag) {
-		super.readEntityFromNBT(tag);
-		color = RGBColorData.white();
-		color.readFromNBT(tag);
-		direction = CubeDirections.list[tag.getInteger("dir")];
-		silentImpact = tag.getBoolean("silent");
-		moveSpeed = tag.getDouble("speed");
-	}
-
-	@Override
-	protected void writeEntityToNBT(NBTTagCompound tag) {
-		super.writeEntityToNBT(tag);
-		color.writeToNBT(tag);
-		tag.setInteger("dir", direction.ordinal());
-		tag.setBoolean("silent", silentImpact);
-		tag.setDouble("speed", moveSpeed);
-	}
-
-	@Override
-	public void writeSpawnData(ByteBuf data) {
+	public void writeSpawnData(RegistryFriendlyByteBuf data) {
 		super.writeSpawnData(data);
-		color.writeBuf(data);
-		data.writeInt(direction.ordinal());
+		data.writeByte(packColor(color));
+		data.writeVarInt(direction.ordinal());
 		data.writeBoolean(silentImpact);
 		data.writeDouble(moveSpeed);
-		//ReikaPacketHelper.writeString(data, level);
 	}
 
 	@Override
-	public void readSpawnData(ByteBuf data) {
+	public void readSpawnData(RegistryFriendlyByteBuf data) {
 		super.readSpawnData(data);
-		color = RGBColorData.white();
-		color.readBuf(data);
-		direction = CubeDirections.list[data.readInt()];
+		this.setColor(unpackColor(data.readByte()));
+		direction = CubeDirections.list[Math.floorMod(data.readVarInt(), CubeDirections.list.length)];
 		silentImpact = data.readBoolean();
 		moveSpeed = data.readDouble();
-		//level = ReikaPacketHelper.readString(data);
+		this.setDirection(direction, false);
 	}
 
 	@Override
-	public boolean despawnOverTime() {
-		return false;
+	protected void readAdditionalSaveData(ValueInput input) {
+		super.readAdditionalSaveData(input);
+		this.setColor(new BeamColor(input.getBooleanOr("red", true),
+				input.getBooleanOr("green", true), input.getBooleanOr("blue", true)));
+		direction = CubeDirections.list[Math.floorMod(input.getIntOr("direction", 0),
+				CubeDirections.list.length)];
+		silentImpact = input.getBooleanOr("silent", false);
+		moveSpeed = input.getDoubleOr("speed", 0.1875);
+		this.setDirection(direction, false);
 	}
 
 	@Override
-	public double getSpeed() {
-		return moveSpeed;
+	protected void addAdditionalSaveData(ValueOutput output) {
+		super.addAdditionalSaveData(output);
+		output.putBoolean("red", color.red());
+		output.putBoolean("green", color.green());
+		output.putBoolean("blue", color.blue());
+		output.putInt("direction", direction.ordinal());
+		output.putBoolean("silent", silentImpact);
+		output.putDouble("speed", moveSpeed);
 	}
 
-	@Override
-	public double getHitboxSize() {
-		return 0.05;
+	private static byte packColor(BeamColor color) {
+		return (byte)((color.red() ? 1 : 0) | (color.green() ? 2 : 0) | (color.blue() ? 4 : 0));
 	}
 
-	@Override
-	public boolean canInteractWithSpawnLocation() {
-		return false;
+	private static BeamColor unpackColor(byte packed) {
+		return new BeamColor((packed & 1) != 0, (packed & 2) != 0, (packed & 4) != 0);
 	}
-
-	@Override
-	public boolean despawnOverDistance() {
-		return true;
-	}
-
-	public String getLevel() {
-		return "";//level;
-	}
-
-	@Override
-	public double getRenderRangeSquared() {
-		return Double.POSITIVE_INFINITY;
-	}
-
 }

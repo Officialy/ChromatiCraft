@@ -1,132 +1,173 @@
-/*******************************************************************************
- * @author Reika Kalseki
- *
- * Copyright 2017
- *
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
- ******************************************************************************/
 package reika.chromaticraft.render.tesr;
 
-import org.lwjgl.opengl.GL11;
+import java.util.Map;
+import java.util.WeakHashMap;
+
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.client.renderer.entity.RenderManager;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.util.IIcon;
-import net.minecraftforge.client.MinecraftForgeClient;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
+import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
+import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
+import net.minecraft.client.renderer.feature.CustomFeatureRenderer;
+import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.client.renderer.texture.TextureAtlas;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.data.AtlasIds;
+import net.minecraft.resources.Identifier;
+import net.minecraft.util.LightCoordsUtil;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.client.extensions.OrderedSubmitNodeCollectorExtension;
+import net.neoforged.neoforge.client.submit.RenderPhaseKeys;
 
-import reika.chromaticraft.base.RenderLocusPoint;
-import reika.chromaticraft.base.tileentity.TileEntityLocusPoint;
-import reika.chromaticraft.gui.book.GuiMachineDescription;
-import reika.chromaticraft.registry.ChromaIcons;
-import reika.chromaticraft.registry.ChromaShaders;
+import org.jspecify.annotations.Nullable;
+
+import reika.chromaticraft.ChromatiCraft;
+import reika.chromaticraft.render.ChromaRenderPipelines;
+import reika.chromaticraft.render.GlowKnot;
 import reika.chromaticraft.tileentity.aoe.TileEntityAuraPoint;
-import reika.dragonapi.interfaces.tileentity.RenderFetcher;
-import reika.dragonapi.libraries.io.ReikaTextureHelper;
-import reika.dragonapi.libraries.java.reikaglhelper.BlendMode;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
 
-public class RenderAuraPoint extends RenderLocusPoint {
+/** Full 26.2 submit port of V33a's Aura Locus renderer. */
+public final class RenderAuraPoint implements
+		BlockEntityRenderer<TileEntityAuraPoint, RenderAuraPoint.State> {
+
+	private static final Identifier STAR_FLARE = sprite("starflare");
+	private static final Identifier FADE = sprite("fade");
+	private final Map<TileEntityAuraPoint, KnotState> knots = new WeakHashMap<>();
+
+	public RenderAuraPoint(BlockEntityRendererProvider.Context context) {}
 
 	@Override
-	public String getImageFileName(RenderFetcher te) {
-		return null;
+	public State createRenderState() {
+		return new State();
 	}
 
 	@Override
-	protected void doOtherRendering(TileEntityLocusPoint tile, float par8) {
-		if (!tile.isInWorld() || MinecraftForgeClient.getRenderPass() == 1) {
-			TileEntityAuraPoint te = (TileEntityAuraPoint)tile;
-			double d = 1.25+0.25*(Math.sin(System.currentTimeMillis()/1000D));
-			GL11.glPushMatrix();
-			//GL11.glTranslated(0.5, 0.5, 0.5);
-			//GL11.glScaled(d, d, d);
-			//GL11.glTranslated(-0.5, -0.5, -0.5);
-			double dx = tile.xCoord+0.5;
-			double dy = tile.yCoord+0.5;
-			double dz = tile.zCoord+0.5;
-			int color = 0xff000000 | ReikaColorAPI.getModifiedSat(tile.getRenderColor(), 0.875F);
-			GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
-			GL11.glDepthMask(false);
+	public void extractRenderState(TileEntityAuraPoint point, State state, float partialTick,
+			Vec3 cameraPosition, ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress) {
+		BlockEntityRenderer.super.extractRenderState(point, state, partialTick, cameraPosition,
+				breakProgress);
+		state.color = 0xff000000 | ReikaColorAPI.getModifiedSat(point.getRenderColor(), 0.875F);
+		state.pvp = point.doPvP();
+		state.age = point.getTicksExisted() + partialTick;
+		state.frame = (int)(System.currentTimeMillis() / 250 % 80);
+		reika.chromaticraft.client.render.LocusPointScreenEffects.addAuraPoint(point);
+		KnotState knot = knots.computeIfAbsent(point, ignored -> new KnotState());
+		knot.advance(point.getTicksExisted());
+		state.knot = knot.knot;
+	}
 
-			if (te.isInWorld()) {
-				EntityPlayer ep = Minecraft.getMinecraft().thePlayer;
-				//LOS.update(te);
-				LOS.setOrigins(te.xCoord+0.5, te.yCoord+0.5, te.zCoord+0.5, ep.posX, ep.posY, ep.posZ);
-				if (LOS.isClearLineOfSight(te)) {
-					double dist = ep.getDistance(te.xCoord+0.5, te.yCoord+0.5, te.zCoord+0.5);
-					float f = 0;
-					if (dist <= 8) {
-						f = 1;
-					}
-					else if (dist <= 40) {
-						f = 1-(float)((dist-8D)/32D);
-					}
-					if (te.getTileEntityAge() < 50)
-						f *= te.getTileEntityAge()/50F;
-					ChromaShaders.AURALOC.clearOnRender = true;
-					ChromaShaders.AURALOC.setIntensity(f);
-					ChromaShaders.AURALOC.getShader().setFocus(te);
-					ChromaShaders.AURALOC.getShader().setMatricesToCurrent();
-				}
-			}
+	@Override
+	public void submit(State state, PoseStack poseStack, SubmitNodeCollector collector,
+			CameraRenderState camera) {
+		// RenderLocusPoint's inherited three animated ADDITIVE2 layers.
+		poseStack.pushPose();
+		poseStack.translate(0.5, 0.5, 0.5);
+		poseStack.mulPose(camera.orientation);
+		RenderDimensionCore.submitLayers(poseStack, collector, state.color & 0xffffff,
+				state.frame, true);
+		poseStack.popPose();
 
-			if (te.doPvP() && te.isInWorld()) {
-				ReikaTextureHelper.bindTerrainTexture();
-				GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
-				Tessellator v5 = Tessellator.instance;
-				GL11.glDisable(GL11.GL_LIGHTING);
-				GL11.glDisable(GL11.GL_ALPHA_TEST);
-				BlendMode.ADDITIVEDARK.apply();
-				GL11.glPushMatrix();
-				GL11.glTranslated(0.5, 0.5, 0.5);
-				RenderManager rm = RenderManager.instance;
-				GL11.glRotatef(-rm.playerViewY, 0.0F, 1.0F, 0.0F);
-				GL11.glRotatef(rm.playerViewX, 1.0F, 0.0F, 0.0F);
+		if (state.pvp) {
+			float scale = (float)(3.5 + Math.sin(state.age / 32D));
+			this.submitBillboard(poseStack, collector, camera, STAR_FLARE, scale, state.color, 0);
+		}
 
-				double t = Math.sin((te.getTicksExisted()+par8)/32D);
-
-				v5.startDrawingQuads();
-				v5.setBrightness(240);
-				IIcon ico = ChromaIcons.STARFLARE.getIcon();
-				double s = 3.5+1*t;
-				float u = ico.getMinU();
-				float v = ico.getMinV();
-				float du = ico.getMaxU();
-				float dv = ico.getMaxV();
-				v5.setColorOpaque_I(color);
-				v5.addVertexWithUV(-s, -s, 0, u, v);
-				v5.addVertexWithUV(s, -s, 0, du, v);
-				v5.addVertexWithUV(s, s, 0, du, dv);
-				v5.addVertexWithUV(-s, s, 0, u, dv);
-				v5.draw();
-
-				GL11.glPopAttrib();
-				GL11.glPopMatrix();
-			}
-
-			float w = GL11.glGetFloat(GL11.GL_LINE_WIDTH);
-			if (!tile.isInWorld()) {
-				dx = dy = dz = 0;
-				GL11.glDisable(GL11.GL_DEPTH_TEST);
-				float f = 0.5F;
-				GL11.glColor4f(f, f, f, f);
-				int hue = (int)((System.currentTimeMillis()/100)%360);
-				//color = ((int)(f*255) << 24) | ReikaColorAPI.getModifiedHue(0xff9090, hue);
-				GL11.glLineWidth(1.5F);
-			}
-			if (GuiMachineDescription.runningRender) {
-				GL11.glLineWidth(2.5F);
-				GL11.glTranslated(0, 0.1875, 0);
-			}
-			te.knot.render(dx, dy, dz, color, tile.isInWorld());
-			GL11.glLineWidth(w);
-			GL11.glPopAttrib();
-			GL11.glPopMatrix();
+		if (state.knot != null) {
+			state.knot.submit(collector, poseStack, state.color, true);
+			int alpha = 160;
+			int faded = alpha << 24 | ReikaColorAPI.getColorWithBrightnessMultiplier(
+					state.color & 0xffffff, alpha / 255F);
+			this.submitBillboard(poseStack, collector, camera, FADE, 1.25F, faded, 0.05F);
 		}
 	}
 
+	private void submitBillboard(PoseStack poseStack, SubmitNodeCollector collector,
+			CameraRenderState camera, Identifier spriteId, float scale, int color, float z) {
+		TextureAtlasSprite sprite = Minecraft.getInstance().getAtlasManager()
+				.getAtlasOrThrow(AtlasIds.BLOCKS).getSprite(spriteId);
+		poseStack.pushPose();
+		poseStack.translate(0.5, 0.5, 0.5);
+		poseStack.mulPose(camera.orientation);
+		PoseStack renderPose = copy(poseStack);
+		submitAfterTerrain(poseStack, collector,
+				ChromaRenderPipelines.legacyAdditiveSprite(TextureAtlas.LOCATION_BLOCKS),
+				(ignored, vertices) -> quad(renderPose.last(), vertices, sprite, scale, z, color));
+		poseStack.popPose();
+	}
+
+	private static void quad(PoseStack.Pose pose, VertexConsumer vertices,
+			TextureAtlasSprite sprite, float scale, float z, int color) {
+		vertices.addVertex(pose, -scale, -scale, z).setUv(sprite.getU0(), sprite.getV1())
+				.setColor(color).setLight(LightCoordsUtil.FULL_BRIGHT);
+		vertices.addVertex(pose, scale, -scale, z).setUv(sprite.getU1(), sprite.getV1())
+				.setColor(color).setLight(LightCoordsUtil.FULL_BRIGHT);
+		vertices.addVertex(pose, scale, scale, z).setUv(sprite.getU1(), sprite.getV0())
+				.setColor(color).setLight(LightCoordsUtil.FULL_BRIGHT);
+		vertices.addVertex(pose, -scale, scale, z).setUv(sprite.getU0(), sprite.getV0())
+				.setColor(color).setLight(LightCoordsUtil.FULL_BRIGHT);
+	}
+
+	private static void submitAfterTerrain(PoseStack poseStack, SubmitNodeCollector collector,
+			net.minecraft.client.renderer.rendertype.RenderType renderType,
+			SubmitNodeCollector.CustomGeometryRenderer renderer) {
+		CustomFeatureRenderer.Submit submit = new CustomFeatureRenderer.Submit(
+				poseStack.last().copy(), renderType, renderer);
+		((OrderedSubmitNodeCollectorExtension)collector.order(0))
+				.submitSpecial(RenderPhaseKeys.AFTER_TERRAIN, submit);
+	}
+
+	private static PoseStack copy(PoseStack source) {
+		PoseStack copy = new PoseStack();
+		copy.last().set(source.last());
+		return copy;
+	}
+
+	private static Identifier sprite(String name) {
+		return Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/icons/" + name);
+	}
+
+	@Override
+	public AABB getRenderBoundingBox(TileEntityAuraPoint point) {
+		return new AABB(point.getBlockPos()).inflate(5);
+	}
+
+	@Override
+	public boolean shouldRenderOffScreen() {
+		return true;
+	}
+
+	@Override
+	public int getViewDistance() {
+		return 128;
+	}
+
+	public static final class State extends BlockEntityRenderState {
+		private int color = 0xffffffff;
+		private int frame;
+		private float age;
+		private boolean pvp;
+		private @Nullable GlowKnot knot;
+	}
+
+	private static final class KnotState {
+		private final GlowKnot knot = new GlowKnot(0.875);
+		private int lastTick = Integer.MIN_VALUE;
+
+		private void advance(int tick) {
+			if (lastTick == Integer.MIN_VALUE) {
+				lastTick = tick;
+				return;
+			}
+			int elapsed = Math.clamp(tick - lastTick, 0, 20);
+			for (int i = 0; i < elapsed * 6; i++)
+				knot.update();
+			lastTick = tick;
+		}
+	}
 }

@@ -101,10 +101,11 @@ public final class LexiconIconResolver {
 					ChromaCraftingItems.WATER_INGOT, ChromaCraftingItems.CONDUCTIVE_INGOT,
 					ChromaCraftingItems.AURA_INGOT, ChromaCraftingItems.COMPLEX_INGOT,
 					ChromaCraftingItems.SPACE_INGOT);
-			case "pylonstruct" -> {
+		case "pylonstruct" -> {
 				for (StoneTypes type : StoneTypes.list)
 					items.add(new ItemStack(ChromaBlocks.crystallineStone(type).get()));
 			}
+			case "relay" -> items.add(new ItemStack(ChromaBlocks.RELAY_SOURCE.get()));
 			default -> { }
 		}
 		return List.copyOf(items);
@@ -125,12 +126,16 @@ public final class LexiconIconResolver {
 		return switch (id) {
 			case "pylon" -> ChromaBlocks.PYLON.get();
 			case "repeater" -> ChromaBlocks.REPEATER.get();
+			case "weakrepeater" -> ChromaBlocks.WEAK_REPEATER.get();
 			case "skypeater" -> ChromaBlocks.SKYPEATER.get();
 			case "compound" -> ChromaBlocks.COMPOUND.get();
 			case "pylonlink" -> ChromaBlocks.PYLON_LINK.get();
 			case "stand" -> ChromaBlocks.ITEM_STAND.get();
 			case "table" -> ChromaBlocks.CASTING_TABLE.get();
+			case "collector" -> ChromaBlocks.COLLECTOR.get();
 			case "focuscrystal" -> ChromaBlocks.FOCUS_CRYSTAL.get();
+			case "personal" -> ChromaBlocks.PERSONAL_CHARGER.get();
+			case "relaysource" -> ChromaBlocks.RELAY_SOURCE.get();
 			case "funcrelay", "functionrelay" -> ChromaBlocks.FUNCTION_RELAY.get();
 			default -> null;
 		};
@@ -184,7 +189,10 @@ public final class LexiconIconResolver {
 			case "pylon", "pylonbroadcast" -> ChromaBlocks.PYLON.get();
 			case "casting1", "casting2", "casting3" -> ChromaBlocks.CASTING_TABLE.get();
 			case "repeater" -> ChromaBlocks.REPEATER.get();
+			case "weakrepeater" -> ChromaBlocks.WEAK_REPEATER.get();
 			case "compound" -> ChromaBlocks.COMPOUND.get();
+			case "personal" -> ChromaBlocks.PERSONAL_CHARGER.get();
+			case "relay" -> ChromaBlocks.RELAY_SOURCE.get();
 			default -> ChromaBlocks.crystallineStone(
 					reika.chromaticraft.block.BlockCrystallineStone.StoneTypes.SMOOTH).get();
 		};

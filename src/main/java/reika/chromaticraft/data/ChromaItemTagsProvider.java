@@ -4,11 +4,14 @@ import java.util.concurrent.CompletableFuture;
 
 import net.minecraft.core.HolderLookup;
 import net.minecraft.data.PackOutput;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
 import net.neoforged.neoforge.common.data.ItemTagsProvider;
 
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.registry.ChromaItemTags;
 import reika.chromaticraft.registry.ChromaItems;
+import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.CrystalElement;
 
 /**
@@ -30,6 +33,7 @@ public final class ChromaItemTagsProvider extends ItemTagsProvider {
 		var allShards = tag(ChromaItemTags.CRYSTAL_SHARDS);
 		var allBoosted = tag(ChromaItemTags.BOOSTED_CRYSTAL_SHARDS);
 		var allPlain = tag(ChromaItemTags.PLAIN_CRYSTAL_SHARDS);
+		var relays = tag(ChromaItemTags.LUMEN_RELAYS);
 
 		for (CrystalElement element : CrystalElement.elements) {
 			var boostedColour = tag(ChromaItemTags.boostedCrystalShards(element));
@@ -43,5 +47,8 @@ public final class ChromaItemTagsProvider extends ItemTagsProvider {
 			allBoosted.addTag(ChromaItemTags.boostedCrystalShards(element));
 			allPlain.addTag(ChromaItemTags.crystalShards(element));
 		}
+		ChromaBlocks.LUMEN_RELAYS.values().forEach(block ->
+				relays.add(ResourceKey.create(Registries.ITEM, block.getId())));
+		relays.add(ResourceKey.create(Registries.ITEM, ChromaBlocks.MULTICHROMIC_RELAY.getId()));
 	}
 }

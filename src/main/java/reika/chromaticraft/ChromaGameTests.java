@@ -16,8 +16,10 @@ import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.item.Items;
@@ -30,6 +32,7 @@ import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.nbt.Tag;
 import net.minecraft.util.RandomSource;
+import net.minecraft.util.ProblemReporter;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.boss.enderdragon.EndCrystal;
@@ -38,6 +41,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.CrossCollisionBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.Rotation;
@@ -49,6 +53,7 @@ import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
+import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
@@ -57,6 +62,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 
 import net.neoforged.neoforge.event.RegisterGameTestsEvent;
 import reika.chromaticraft.auxiliary.ExplorationMonitor;
+import reika.chromaticraft.auxiliary.PoolAlloyingHandler;
 import reika.chromaticraft.auxiliary.recipemanagers.CastingRecipeInput;
 import reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe;
 import reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe.AuraRequirement;
@@ -112,6 +118,8 @@ import reika.chromaticraft.magic.progression.ProgressionManager;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.tileentity.auxiliary.TileEntityFocusCrystal;
 import reika.chromaticraft.tileentity.auxiliary.TileEntityCrystalCharger;
+import reika.chromaticraft.tileentity.TileEntityPersonalCharger;
+import reika.chromaticraft.tileentity.acquisition.TileEntityCollector;
 import reika.chromaticraft.registry.ChromaStructures;
 import reika.chromaticraft.registry.ChromaFluids;
 import reika.chromaticraft.registry.CrystalElement;
@@ -125,6 +133,8 @@ import reika.chromaticraft.tileentity.networking.TileEntityCompoundRepeater;
 import reika.chromaticraft.tileentity.auxiliary.TileEntityChromaCrystal;
 import reika.chromaticraft.tileentity.networking.TileEntityCrystalPylon;
 import reika.chromaticraft.tileentity.networking.TileEntityCrystalRepeater;
+import reika.chromaticraft.tileentity.networking.TileEntityWeakRepeater;
+import reika.chromaticraft.tileentity.networking.TileEntityRelaySource;
 import reika.dragonapi.instantiable.data.blockstruct.FilledBlockArray;
 import reika.chromaticraft.registry.ChromaDecoFlowers;
 import reika.chromaticraft.world.CrystalFeature;
@@ -367,6 +377,9 @@ public final class ChromaGameTests {
 		register(event, env, "crystal_shard_charging_identity", ChromaGameTests::crystalShardChargingIdentity);
 		register(event, env, "liquid_chroma_bucket_mud", ChromaGameTests::liquidChromaBucketMud);
 		register(event, env, "liquid_chroma_elemental_loop", ChromaGameTests::liquidChromaElementalLoop);
+		register(event, env, "pool_alloying_survival_loop", ChromaGameTests::poolAlloyingSurvivalLoop);
+		register(event, env, "pool_alloying_early_recipe_family", ChromaGameTests::poolAlloyingEarlyRecipeFamily);
+		register(event, env, "raw_crystal_survival_recipe", ChromaGameTests::rawCrystalSurvivalRecipe);
 		register(event, env, "casting_table_boosted_group_reload", ChromaGameTests::castingTableBoostedGroupReload);
 		register(event, env, "casting_table_primary_cluster", ChromaGameTests::castingTablePrimaryCluster);
 		register(event, env, "casting_table_crystal_core", ChromaGameTests::castingTableCrystalCore);
@@ -404,7 +417,10 @@ public final class ChromaGameTests {
 		register(event, env, "memory_crystal_inscription_loop", ChromaGameTests::memoryCrystalInscriptionLoop);
 		register(event, env, "lore_key_puzzle_contract", ChromaGameTests::loreKeyPuzzleContract);
 		register(event, env, "tiered_ore_progression_gate", ChromaGameTests::tieredOreProgressionGate);
+		register(event, env, "fluid_stone_survival_path", ChromaGameTests::fluidStoneSurvivalPath);
+		register(event, env, "geode_ore_survival_path", ChromaGameTests::geodeOreSurvivalPath);
 		register(event, env, "tiered_ore_worldgen", ChromaGameTests::tieredOreWorldgen);
+		register(event, env, "tiered_plant_survival_sources", ChromaGameTests::tieredPlantSurvivalSources);
 		register(event, env, "creative_tiered_resource_access", ChromaGameTests::creativeTieredResourceAccess);
 		register(event, env, "rainbow_tree_shape_and_log", ChromaGameTests::rainbowTreeShapeAndLog);
 		register(event, env, "structure_cavern_nbt_controller", ChromaGameTests::structureCavernNbtController);
@@ -437,13 +453,24 @@ public final class ChromaGameTests {
 		register(event, env, "glowing_cracks", ChromaGameTests::glowingCracks);
 		register(event, env, "dimension_core_ring", ChromaGameTests::dimensionCoreRing);
 		register(event, env, "monument_ritual_checks", ChromaGameTests::monumentRitualChecks);
+		register(event, env, "monument_ritual_player_hold", ChromaGameTests::monumentRitualPlayerHold);
 		register(event, env, "monument_core_placement", ChromaGameTests::monumentCorePlacement);
+		register(event, env, "monument_client_sync_contract", ChromaGameTests::monumentClientSyncContract);
 		register(event, env, "progression_maximize", ChromaGameTests::progressionMaximize);
 		register(event, env, "monument_ritual_score", ChromaGameTests::monumentRitualScore);
 		register(event, env, "monument_mineral_inlay", ChromaGameTests::monumentMineralInlay);
+		register(event, env, "light_panel_pattern_library", ChromaGameTests::lightPanelPatternLibrary);
+		register(event, env, "three_d_maze_layout", ChromaGameTests::threeDMazeLayout);
+		register(event, env, "music_puzzle_layout", ChromaGameTests::musicPuzzleLayout);
+		register(event, env, "cellular_automata_rules", ChromaGameTests::cellularAutomataRules);
+		register(event, env, "laser_puzzle_blueprints", ChromaGameTests::laserPuzzleBlueprints);
+		register(event, env, "laser_pulse_interactions", ChromaGameTests::laserPulseInteractions);
+		register(event, env, "proxima_structure_completion_loop", ChromaGameTests::proximaStructureCompletionLoop);
 		register(event, env, "aurorae_feature", ChromaGameTests::auroraeFeature);
 		register(event, env, "aurora_curtain_drift", ChromaGameTests::auroraCurtainDrift);
 		register(event, env, "proxima_layout_biomes", ChromaGameTests::proximaLayoutBiomes);
+		register(event, env, "proxima_arrival_fall_protection", ChromaGameTests::proximaArrivalFallProtection);
+		register(event, env, "proxima_structure_safety_guard", ChromaGameTests::proximaStructureSafetyGuard);
 		register(event, env, "proxima_locate_biome", ChromaGameTests::proximaLocateBiome);
 		register(event, env, "sky_river_geometry", ChromaGameTests::skyRiverGeometry);
 		register(event, env, "loot_chest_lid_event", ChromaGameTests::lootChestLidEvent);
@@ -453,6 +480,10 @@ public final class ChromaGameTests {
 		register(event, env, "focus_crystal_trade_definition", ChromaGameTests::focusCrystalTradeDefinition);
 		register(event, env, "storage_crystal_item_and_recipe", ChromaGameTests::storageCrystalItemAndRecipe);
 		register(event, env, "crystal_charger_item_loop", ChromaGameTests::crystalChargerItemLoop);
+		register(event, env, "personal_charger_receiver_loop", ChromaGameTests::personalChargerReceiverLoop);
+		register(event, env, "weak_repeater_survival_loop", ChromaGameTests::weakRepeaterSurvivalLoop);
+		register(event, env, "relay_source_survival_loop", ChromaGameTests::relaySourceSurvivalLoop);
+		register(event, env, "collector_survival_loop", ChromaGameTests::collectorSurvivalLoop);
 		register(event, env, "item_aura_infuser_loop", ChromaGameTests::itemAuraInfuserLoop);
 		register(event, env, "player_aura_infuser_loop", ChromaGameTests::playerAuraInfuserLoop);
 		register(event, env, "portal_structure_and_charge", 80, ChromaGameTests::portalStructureAndCharge);
@@ -1060,7 +1091,14 @@ public final class ChromaGameTests {
 					ChromaItems.TIERED.get(ChromaTieredItems.PURE_PROXIMAL_ESSENCE).get(), 1));
 			helper.assertTrue(portal.getTuning() == 154,
 					"one Pure Proximal Essence must be worth 150 tuning");
-			portal.setPlacer(player);
+			// Exercise the real modern BlockItem placement callback. V33a's chromatic placer assigned
+			// the owner here; manually setting it in the test hid the missing 26.2 seam and left every
+			// player-placed rift publicly dismantleable.
+			BlockChromaPortal portalBlock = (BlockChromaPortal)level.getBlockState(pad).getBlock();
+			portalBlock.setPlacedBy(level, pad, level.getBlockState(pad), player,
+					new ItemStack(portalBlock));
+			helper.assertTrue(player.getUUID().equals(portal.getPlacerID()) && portal.ownedBy(player),
+					"placing a Portal Rift must record its owner on the block entity");
 			helper.assertTrue(portal.consumeTuningForTrip() == 154 && portal.getTuning() == 61,
 					"a trip must carry the full tuning and leave 40% of it behind");
 
@@ -2149,6 +2187,45 @@ public final class ChromaGameTests {
 				&& Math.abs(a.zCoord - b.zCoord) < 1E-6;
 	}
 
+	/** The Y=1024 Proxima arrival is survivable, but the protection is not permanent immunity. */
+	private static void proximaArrivalFallProtection(GameTestHelper helper) {
+		double arrival = reika.chromaticraft.world.dimension.ProximaPlayerSafety
+				.protectedFallDistance(0, 900);
+		helper.assertTrue(arrival == 0,
+				"a fresh Proxima arrival must take no damage from the intentional Y=1024 drop");
+		double boundary = reika.chromaticraft.world.dimension.ProximaPlayerSafety
+				.protectedFallDistance(1200, 900);
+		helper.assertTrue(boundary == 8,
+				"after the one-minute grace, a very long fall must be capped at eight blocks, got "
+						+ boundary);
+		double ordinary = reika.chromaticraft.world.dimension.ProximaPlayerSafety
+				.protectedFallDistance(1200, 4);
+		helper.assertTrue(ordinary == 1,
+				"the post-grace square-root curve must preserve V33a's one-block floor, got " + ordinary);
+		helper.assertTrue(!reika.chromaticraft.world.dimension.ProximaPlayerSafety.shouldExitVoid(-1024),
+				"V33a exits only below Y=-1024, not at the boundary");
+		helper.assertTrue(reika.chromaticraft.world.dimension.ProximaPlayerSafety.shouldExitVoid(-1024.01),
+				"a Proxima player below Y=-1024 must be returned to the Overworld");
+		helper.succeed();
+	}
+
+	/** Login/respawn safety may carve terrain, but never a monument or controller-backed puzzle. */
+	private static void proximaStructureSafetyGuard(GameTestHelper helper) {
+		var level = helper.getLevel();
+		BlockPos controllerPos = helper.absolutePos(new BlockPos(3, 3, 3));
+		level.setBlock(controllerPos, ChromaBlocks.STRUCTURE_CONTROLLER.get().defaultBlockState(), 3);
+		var controller = (reika.chromaticraft.tileentity.TileEntityStructureController)
+				level.getBlockEntity(controllerPos);
+		controller.setMonument();
+		var box = new net.minecraft.world.level.levelgen.structure.BoundingBox(
+				controllerPos.getX() - 5, controllerPos.getY() - 4, controllerPos.getZ() - 5,
+				controllerPos.getX() + 5, controllerPos.getY() + 4, controllerPos.getZ() + 5);
+		helper.assertTrue(reika.chromaticraft.world.dimension.ProximaPlayerSafety
+				.overlapsProtectedStructure(level, box),
+				"a login safety capsule overlapping a monument controller must be refused");
+		helper.succeed();
+	}
+
 	/**
 	 * A generated layout must paint more than one biome, and be waited for rather than fallen back from.
 	 *
@@ -2735,6 +2812,21 @@ public final class ChromaGameTests {
 				"a recoloured core must become that colour's registered block");
 		helper.assertTrue(!core.hasStructure(),
 				"a core placed by hand belongs to no structure until one claims it");
+
+		// Locus-point ownership is also carried by the dropped/placed item. The monument ritual uses
+		// this identity, so losing it here would silently turn a recovered core into an unowned one.
+		var owner = helper.makeMockServerPlayerInLevel();
+		core.setPlacer(owner);
+		CompoundTag itemTag = new CompoundTag();
+		core.getTagsToWriteToStack(itemTag);
+		ItemStack carried = new ItemStack(ChromaBlocks.dimensionCore(CrystalElement.LIME).get());
+		ReikaItemHelper.setStackTag(carried, itemTag);
+		var restored = new reika.chromaticraft.tileentity.technical.TileEntityDimensionCore(pos,
+				ChromaBlocks.dimensionCore(CrystalElement.LIME).get().defaultBlockState());
+		restored.setDataFromItemStackTag(carried);
+		helper.assertTrue(owner.getUUID().equals(restored.getPlacerID())
+						&& owner.getName().getString().equals(restored.getPlacerName()),
+				"a Dimension Core item must round-trip the locus owner used by the monument ritual");
 		helper.succeed();
 	}
 
@@ -2778,6 +2870,23 @@ public final class ChromaGameTests {
 		helper.assertTrue(new reika.chromaticraft.magic.MonumentCompletionRitual(level, centre, player)
 						.doChecks(),
 				"sixteen correct cores and a complete mineral inlay must satisfy the ritual");
+
+		// A flowing state uses the same Liquid Chroma block identity, but V33a's monument demands a
+		// filled basin. Modern fluid levels must not turn a shallow/flowing cell into a valid one.
+		var chromaCell = reika.chromaticraft.world.dimension.structure.MonumentMineralBlocks.expected()
+				.stream().filter(cell -> cell.mineral()
+						== reika.chromaticraft.world.dimension.structure.MonumentMineralBlocks.Mineral.CHROMA)
+				.findFirst().orElseThrow();
+		BlockPos chromaAt = origin.offset(chromaCell.offset());
+		level.setBlock(chromaAt, reika.chromaticraft.registry.ChromaFluids.FLOWING_CHROMA.get()
+				.defaultFluidState().createLegacyBlock(), 2);
+		helper.assertTrue(!new reika.chromaticraft.magic.MonumentCompletionRitual(level, centre, player)
+						.doChecks(),
+				"flowing Liquid Chroma must not count as a source-filled monument basin");
+		level.setBlock(chromaAt, reika.chromaticraft.registry.ChromaBlocks.CHROMA.get()
+				.defaultBlockState(), 2);
+		helper.assertTrue(level.getFluidState(chromaAt).isSource(),
+				"the restored Liquid Chroma test cell must be a source");
 
 		// A single missing inlay cell is enough to refuse again.
 		var firstCell = reika.chromaticraft.world.dimension.structure.MonumentMineralBlocks.expected()
@@ -2869,10 +2978,726 @@ public final class ChromaGameTests {
 							+ core.getColor());
 			helper.assertTrue(core.getPlacer() == player,
 					"a placed core must record its placer; doChecks refuses a ring that has none");
+			helper.assertTrue(core.isPrimed(),
+					"a placed core must immediately join the V33a monument note sequence");
 			// Pick-block has to hand the colour back, or a ring cannot be built by copying.
 			helper.assertTrue(level.getBlockState(at).getBlock().asItem() == stack.getItem(),
 					"pick-block on a " + element + " core must return that element's core");
 		}
+		helper.succeed();
+	}
+
+	/**
+	 * The cinematic owns its activating player for the duration. The client detaches onto a private
+	 * camera anchor, but the server must remain authoritative as well: queued movement packets and
+	 * pre-existing creative-flight momentum may not walk the player out from under the ceremony.
+	 */
+	private static void monumentRitualPlayerHold(GameTestHelper helper) {
+		var level = helper.getLevel();
+		BlockPos centre = helper.absolutePos(new BlockPos(24, 8, 24));
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		player.snapTo(centre.getX() + 0.5, centre.getY() + 3, centre.getZ() - 8.5);
+		Vec3 anchor = player.position();
+
+		for (CrystalElement element : CrystalElement.elements) {
+			BlockPos at = centre.offset(reika.chromaticraft.tileentity.technical.TileEntityDimensionCore
+					.getLocation(element));
+			level.setBlock(at, ChromaBlocks.dimensionCore(element).get().defaultBlockState(), 3);
+			((reika.chromaticraft.tileentity.technical.TileEntityDimensionCore)level.getBlockEntity(at))
+					.setPlacer(player);
+		}
+		BlockPos origin = centre.subtract(
+				reika.chromaticraft.world.dimension.structure.MonumentPiece.CONTROLLER_OFFSET);
+		for (var cell : reika.chromaticraft.world.dimension.structure.MonumentMineralBlocks.expected())
+			level.setBlock(origin.offset(cell.offset()), cell.mineral().block().defaultBlockState(), 3);
+
+		var ritual = new reika.chromaticraft.magic.MonumentCompletionRitual(level, centre, player);
+		helper.assertTrue(ritual.doChecks(), "the hold contract needs a valid monument ritual");
+		ritual.start();
+		for (CrystalElement element : CrystalElement.elements) {
+			BlockPos at = centre.offset(reika.chromaticraft.tileentity.technical.TileEntityDimensionCore
+					.getLocation(element));
+			var core = (reika.chromaticraft.tileentity.technical.TileEntityDimensionCore)
+					level.getBlockEntity(at);
+			helper.assertTrue(!core.isPrimed(),
+					"the monument ritual must silence the ambient Dimension Core ensemble; "
+							+ element + " remained primed");
+		}
+		player.snapTo(anchor.x + 4, anchor.y + 2, anchor.z - 3);
+		player.setDeltaMovement(0.6, 0.3, -0.4);
+		player.setSprinting(true);
+		ritual.tick();
+
+		helper.assertTrue(player.position().distanceToSqr(anchor) < 1.0E-8,
+				"the ritual let its player leave the activation point: " + player.position());
+		helper.assertTrue(player.getDeltaMovement().lengthSqr() == 0,
+				"the ritual left movement queued on its player: " + player.getDeltaMovement());
+		helper.assertTrue(!player.isSprinting(), "the ritual left its player sprinting");
+		helper.succeed();
+	}
+
+	/** The seven retained PNGs are the source-authored, pre-vetted Glowing Logic puzzle data. */
+	private static void lightPanelPatternLibrary(GameTestHelper helper) {
+		for (int tier = 0; tier < reika.chromaticraft.world.dimension.structure.lightpanel
+				.LightPanelPatternLibrary.tierCount(); tier++) {
+			var patterns = reika.chromaticraft.world.dimension.structure.lightpanel
+					.LightPanelPatternLibrary.patterns(tier);
+			helper.assertTrue(!patterns.isEmpty(),
+					"Glowing Logic tier " + tier + " decoded no authored patterns");
+			for (var pattern : patterns) {
+				helper.assertTrue(pattern.rowCount == reika.chromaticraft.world.dimension.structure
+							.lightpanel.LightPanelPatternLibrary.rowCount(tier),
+						"Glowing Logic tier " + tier + " decoded the wrong row count");
+				helper.assertTrue(pattern.switchCount == reika.chromaticraft.world.dimension.structure
+							.lightpanel.LightPanelPatternLibrary.switchCount(tier),
+						"Glowing Logic tier " + tier + " decoded the wrong switch count");
+				int solution = -1;
+				for (int mask = 0; mask < 1 << pattern.switchCount; mask++) {
+					if (reika.chromaticraft.world.dimension.structure.lightpanel
+							.LightPanelPatternLibrary.isSolved(pattern, mask)) {
+						solution = mask;
+						break;
+					}
+				}
+				helper.assertTrue(solution >= 0,
+						"Glowing Logic tier " + tier + " contains an unsolvable pattern");
+				var state = new reika.chromaticraft.world.dimension.structure.lightpanel
+						.LightPanelPuzzleState(pattern);
+				for (int sw = 0; sw < pattern.switchCount; sw++)
+					state.setSwitch(sw, (solution & 1 << sw) != 0);
+				helper.assertTrue(state.isComplete(),
+						"the persistent Glowing Logic state disagrees with the source pattern solver");
+			}
+		}
+
+		// The vanilla Structure/Piece layer consumes this planner rather than recoding V33a's offsets.
+		long layoutSeed = 0x11A7E1L;
+		java.util.Random expectedRandom = new java.util.Random(layoutSeed);
+		int expectedY = 20 + expectedRandom.nextInt(80);
+		var planner = new reika.chromaticraft.world.dimension.structure.LightPanelStructureGenerator();
+		planner.setType(reika.chromaticraft.world.dimension.DimensionStructureType.LIGHTPANEL, 2);
+		planner.startCalculate(reika.chromaticraft.registry.CrystalElement.CYAN, 100, 200,
+				new java.util.Random(layoutSeed));
+		int expectedRooms = reika.chromaticraft.world.dimension.structure.LightPanelStructureGenerator
+				.roomCount(reika.chromaticraft.registry.ChromaOptions.getStructureDifficulty());
+		helper.assertTrue(planner.getPosY() == expectedY,
+				"Glowing Logic planner drifted from V33a's 20+rand(80) depth");
+		helper.assertTrue(planner.roomOrigins().size() == expectedRooms
+				&& planner.roomOrigins().getFirst().equals(new BlockPos(111, expectedY, 200)),
+				"Glowing Logic planner drifted from V33a's entrance/room offsets");
+		BlockPos expectedLoot = new BlockPos(111 + expectedRooms * 19 + 10, expectedY, 200);
+		helper.assertTrue(planner.lootCenter().equals(expectedLoot)
+				&& planner.getCoreLocation().equals(expectedLoot.offset(0, 6, 0))
+				&& planner.controllerPosition().equals(expectedLoot.offset(0, 21, 0)),
+				"Glowing Logic reward chamber/core/controller layout is not source-faithful");
+
+		// The template-independent controller seam must preserve V33a's difficulty ladder and survive
+		// the same ValueOutput/ValueInput round trip used by a real structure chunk.
+		var level = helper.getLevel();
+		BlockPos controllerPos = helper.absolutePos(new BlockPos(2, 2, 2));
+		BlockState controllerState = ChromaBlocks.STRUCTURE_CONTROLLER.get().defaultBlockState();
+		level.setBlock(controllerPos, controllerState, 3);
+		var controller = (reika.chromaticraft.tileentity.TileEntityStructureController)
+				level.getBlockEntity(controllerPos);
+		java.util.ArrayList<BlockPos> origins = new java.util.ArrayList<>();
+		for (int room = 0; room < 5; room++)
+			origins.add(controllerPos.offset(11 + room * 19, 0, 0));
+		controller.initializeGlowingLogic(origins, 1, new java.util.Random(0xC470A));
+		int[] expectedTiers = {0, 0, 1, 1, 2};
+		helper.assertTrue(controller.getGlowingLogicRooms().size() == expectedTiers.length,
+				"easy Glowing Logic must contain V33a's five rooms");
+		for (int room = 0; room < expectedTiers.length; room++) {
+			var state = controller.getGlowingLogicRooms().get(room);
+			helper.assertTrue(state.puzzle().tier() == expectedTiers[room],
+					"Glowing Logic difficulty ladder selected the wrong tier for room " + room);
+			helper.assertTrue(state.panelPosition(0,
+					reika.chromaticraft.world.dimension.structure.lightpanel.LightType.TARGET)
+					.equals(origins.get(room).offset(12, 6, -2)),
+					"Glowing Logic panel coordinates drifted from V33a");
+		}
+		var first = controller.getGlowingLogicRooms().getFirst().puzzle();
+		int solution = -1;
+		for (int mask = 0; mask < 1 << first.switchCount(); mask++) {
+			for (int sw = 0; sw < first.switchCount(); sw++)
+				first.setSwitch(sw, (mask & 1 << sw) != 0);
+			if (first.isComplete()) { solution = mask; break; }
+		}
+		helper.assertTrue(solution >= 0, "runtime switch permutation made an authored room unsolvable");
+		CompoundTag update = controller.getUpdateTag(level.registryAccess());
+		var loaded = new reika.chromaticraft.tileentity.TileEntityStructureController(
+				controllerPos, controllerState);
+		loaded.handleUpdateTag(TagValueInput.create(ProblemReporter.DISCARDING,
+				level.registryAccess(), update));
+		helper.assertTrue(loaded.getGlowingLogicRooms().size() == 5
+				&& loaded.getGlowingLogicRooms().getFirst().puzzle().activeSwitches() == solution,
+				"Glowing Logic room wiring/state did not survive NBT persistence");
+		helper.succeed();
+	}
+
+	/** V33a maze dimensions, seeded topology, reachability, exits, rooms, and planner/core offsets. */
+	private static void threeDMazeLayout(GameTestHelper helper) {
+		long seed = 0x3D_AA_2EL;
+		for (int difficulty = 1; difficulty <= 3; difficulty++) {
+			var first = reika.chromaticraft.world.dimension.structure.ThreeDMazeLayout.create(difficulty, seed);
+			var second = reika.chromaticraft.world.dimension.structure.ThreeDMazeLayout.create(difficulty, seed);
+			int expectedWidth = switch (difficulty) { case 1 -> 8; case 2 -> 16; default -> 24; };
+			int expectedHeight = switch (difficulty) { case 1 -> 6; case 2 -> 8; default -> 12; };
+			helper.assertTrue(first.width() == expectedWidth && first.height() == expectedHeight,
+					"Three-Dimensional Maze difficulty dimensions drifted from V33a");
+			for (int x = 0; x < first.width(); x++) for (int y = 0; y < first.height(); y++)
+				for (int z = 0; z < first.width(); z++)
+					helper.assertTrue(first.connections(x, y, z) == second.connections(x, y, z)
+							&& first.windows(x, y, z) == second.windows(x, y, z)
+							&& first.lighted(x, y, z) == second.lighted(x, y, z),
+							"serialized maze seed did not reproduce cell " + x + "," + y + "," + z);
+
+			boolean[] visited = new boolean[first.width() * first.height() * first.width()];
+			java.util.ArrayDeque<int[]> queue = new java.util.ArrayDeque<>();
+			queue.add(new int[] {first.width() / 2, first.height() - 1, first.width() / 2});
+			int reached = 0;
+			while (!queue.isEmpty()) {
+				int[] at = queue.removeFirst();
+				int index = (at[0] * first.height() + at[1]) * first.width() + at[2];
+				if (visited[index]) continue;
+				visited[index] = true;
+				reached++;
+				int connections = first.connections(at[0], at[1], at[2]);
+				for (Direction direction : Direction.values()) {
+					if ((connections & 1 << direction.ordinal()) == 0) continue;
+					int x = at[0] + direction.getStepX();
+					int y = at[1] + direction.getStepY();
+					int z = at[2] + direction.getStepZ();
+					if (x >= 0 && x < first.width() && y >= 0 && y < first.height()
+							&& z >= 0 && z < first.width()) queue.add(new int[] {x, y, z});
+				}
+			}
+			helper.assertTrue(reached == first.width() * first.height() * first.width(),
+					"Three-Dimensional Maze contains unreachable cells at difficulty " + difficulty);
+			helper.assertTrue((first.connections(first.width() / 2, first.height() - 1, first.width() / 2)
+					& 1 << Direction.UP.ordinal()) != 0
+					&& (first.connections(first.width() / 2, 0, first.width() / 2)
+					& 1 << Direction.DOWN.ordinal()) != 0,
+					"Three-Dimensional Maze lost its surface or reward-room exit");
+			for (var room : first.rooms())
+				helper.assertTrue(room.x() - room.radius() >= 0 && room.x() + room.radius() < first.width()
+						&& room.y() - room.radius() >= 0 && room.y() + room.radius() < first.height()
+						&& room.z() - room.radius() >= 0 && room.z() + room.radius() < first.width(),
+						"Three-Dimensional Maze generated an out-of-bounds room");
+		}
+
+		var planner = new reika.chromaticraft.world.dimension.structure.ThreeDMazeStructureGenerator();
+		planner.setType(DimensionStructureType.TDMAZE, 1);
+		planner.startCalculate(CrystalElement.MAGENTA, 100, 200, new java.util.Random(seed));
+		int width = planner.width();
+		int height = planner.height();
+		int entryX = 100 + width * 2 + 2;
+		int entryZ = 200 + width * 2 + 2;
+		int rewardCenterY = 75 - 4 * (height + 1) + 2;
+		helper.assertTrue(planner.getEntryPosX() == entryX && planner.getEntryPosZ() == entryZ
+				&& planner.getCoreLocation().equals(new BlockPos(entryX, rewardCenterY - 3, entryZ)),
+				"Three-Dimensional Maze entrance/core arithmetic drifted from V33a");
+
+		// The maze places room windows with update flag 2. Exercise that exact path: all nine panes
+		// must connect internally even though vanilla neighbour callbacks never run for the placement.
+		BlockPos bars = helper.absolutePos(new BlockPos(1, 1, 1));
+		for (int x = 0; x < 3; x++) for (int z = 0; z < 3; z++)
+			reika.chromaticraft.world.dimension.structure.ThreeDMazePiece.placeConnectedIronBars(
+					helper.getLevel(), bars.offset(x, 0, z));
+		BlockState middle = helper.getLevel().getBlockState(bars.offset(1, 0, 1));
+		helper.assertTrue(middle.getValue(CrossCollisionBlock.NORTH)
+				&& middle.getValue(CrossCollisionBlock.SOUTH)
+				&& middle.getValue(CrossCollisionBlock.WEST)
+				&& middle.getValue(CrossCollisionBlock.EAST),
+				"Three-Dimensional Maze 3x3 iron-bar window did not connect its centre pane");
+		BlockState corner = helper.getLevel().getBlockState(bars);
+		helper.assertTrue(corner.getValue(CrossCollisionBlock.SOUTH)
+				&& corner.getValue(CrossCollisionBlock.EAST),
+				"Three-Dimensional Maze 3x3 iron-bar window did not connect its corner pane");
+		helper.succeed();
+	}
+
+	/** V33a melody sizing/generation plus the persistent memory -> trigger sequence -> door loop. */
+	private static void musicPuzzleLayout(GameTestHelper helper) {
+		long seed = 0xC2_57A1L;
+		var restingMelody = new reika.chromaticraft.world.dimension.structure.MusicPuzzleLayout.Room(
+				java.util.Arrays.asList(MusicKey.C5, null, MusicKey.G5), 8);
+		helper.assertTrue(restingMelody.melody().size() == 3
+				&& restingMelody.melody().get(1) == null,
+				"Crystal Music must preserve V33a's null rest entries when freezing a prefab melody");
+		for (int difficulty = 1; difficulty <= 3; difficulty++) {
+			var first = reika.chromaticraft.world.dimension.structure.MusicPuzzleLayout.create(difficulty, seed);
+			var second = reika.chromaticraft.world.dimension.structure.MusicPuzzleLayout.create(difficulty, seed);
+			int expectedRooms = 4 + difficulty * 2;
+			helper.assertTrue(first.rooms().size() == expectedRooms,
+					"Crystal Music difficulty " + difficulty + " did not produce V33a's room count");
+			helper.assertTrue(first.rooms().equals(second.rooms()),
+					"Crystal Music's serialized puzzle seed did not reproduce its melodies");
+			for (int roomIndex = 0; roomIndex < first.rooms().size(); roomIndex++) {
+				var room = first.rooms().get(roomIndex);
+				int requested = Math.max(6, 3 * difficulty + roomIndex - 9);
+				helper.assertTrue(!room.melody().isEmpty() && room.melody().size() <= requested * 5 / 2,
+						"Crystal Music room " + roomIndex + " violated V33a's generated/prefab length bound");
+				helper.assertTrue(room.playbackDelay() > 0,
+						"Crystal Music room " + roomIndex + " has no playback cadence");
+				for (var key : room.melody()) if (key != null)
+					helper.assertTrue(reika.chromaticraft.auxiliary.CrystalMusicManager.instance.canPlayKey(key),
+							"Crystal Music generated an unplayable note " + key);
+			}
+		}
+
+		var level = helper.getLevel();
+		BlockPos memoryPos = helper.absolutePos(new BlockPos(3, 2, 3));
+		BlockPos doorCenter = memoryPos.offset(0, 0, 4);
+		level.setBlock(memoryPos, ChromaBlocks.MUSIC_MEMORY.get().defaultBlockState(), 3);
+		for (int dx = -1; dx <= 1; dx++) for (int dy = -1; dy <= 1; dy++)
+			level.setBlock(doorCenter.offset(dx, dy, 0),
+					ChromaBlocks.CHROMA_DOOR.get().defaultBlockState(), 3);
+		var memory = (reika.chromaticraft.tileentity.TileEntityMusicMemory)level.getBlockEntity(memoryPos);
+		var keys = reika.chromaticraft.auxiliary.CrystalMusicManager.instance.getKeys(CrystalElement.RED);
+		var melody = java.util.Arrays.asList(keys.get(0), null, keys.get(1), keys.get(2));
+		memory.program(melody, 10, 2, doorCenter);
+		memory.onMusicTrigger(memoryPos, CrystalElement.RED, keys.get(1), null);
+		helper.assertTrue(!memory.isSolved(), "Crystal Music accepted a sequence that began on the second note");
+		for (var key : melody) if (key != null)
+			memory.onMusicTrigger(memoryPos, CrystalElement.RED, key, null);
+		helper.assertTrue(memory.isSolved()
+				&& level.getBlockState(doorCenter).getValue(reika.chromaticraft.block.BlockChromaDoor.OPEN),
+				"the complete Crystal Music melody did not persistently open its room door");
+
+		CompoundTag saved = memory.saveWithoutMetadata(level.registryAccess());
+		var loaded = new reika.chromaticraft.tileentity.TileEntityMusicMemory(
+				memoryPos, level.getBlockState(memoryPos));
+		loaded.loadWithComponents(TagValueInput.create(ProblemReporter.DISCARDING,
+				level.registryAccess(), saved));
+		helper.assertTrue(loaded.isSolved() && loaded.roomIndex() == 2
+				&& loaded.playbackDelay() == 10 && loaded.melody().equals(melody),
+				"Crystal Music room solution/program did not survive NBT persistence: tag=" + saved
+						+ ", solved=" + loaded.isSolved() + ", room=" + loaded.roomIndex()
+						+ ", delay=" + loaded.playbackDelay() + ", melody=" + loaded.melody());
+
+		var planner = new reika.chromaticraft.world.dimension.structure.MusicStructureGenerator();
+		planner.setType(DimensionStructureType.MUSIC, 4);
+		planner.startCalculate(CrystalElement.BLUE, 100, 200, new java.util.Random(seed));
+		helper.assertTrue(planner.memoryPositions().size() == planner.roomCount()
+				&& planner.memoryPositions().getFirst().equals(
+						new BlockPos(105, planner.getPosY() + 1, 208)),
+				"Crystal Music planner drifted from V33a's room stride/controller offset");
+		int lootZ = 200 + reika.chromaticraft.world.dimension.structure.MusicStructureGenerator.FIRST_ROOM_Z
+				+ planner.roomCount() * reika.chromaticraft.world.dimension.structure.MusicStructureGenerator.ROOM_STRIDE;
+		helper.assertTrue(planner.getCoreLocation().equals(new BlockPos(105, planner.getPosY() + 2, lootZ + 5)),
+				"Crystal Music reward core drifted from V33a's final chamber");
+		helper.succeed();
+	}
+
+	/**
+	 * V33a difficulty/planner contract, simultaneous B3/S23 transition semantics, and the persistent
+	 * floor-cell -> controller -> ceiling trail -> exit-door play loop.
+	 */
+	private static void cellularAutomataRules(GameTestHelper helper) {
+		int[] radii = {12, 16, 24};
+		int[] thresholds = {500, 952, 2220};
+		for (int difficulty = 1; difficulty <= 3; difficulty++) {
+			var layout = reika.chromaticraft.world.dimension.structure.GOLPuzzleLayout
+					.forDifficulty(difficulty);
+			helper.assertTrue(layout.radius() == radii[difficulty - 1]
+					&& layout.width() == radii[difficulty - 1] * 2 + 1
+					&& layout.maxSelected() == radii[difficulty - 1] * 4
+					&& layout.requiredTrail() == thresholds[difficulty - 1],
+					"Cellular Automata difficulty contract drifted from V33a at " + difficulty);
+		}
+
+		var layout = reika.chromaticraft.world.dimension.structure.GOLPuzzleLayout.forDifficulty(1);
+		boolean[] blinker = new boolean[layout.width() * layout.width()];
+		int center = layout.radius();
+		blinker[layout.index(center - 1, center)] = true;
+		blinker[layout.index(center, center)] = true;
+		blinker[layout.index(center + 1, center)] = true;
+		boolean[] vertical = layout.step(blinker);
+		helper.assertTrue(vertical[layout.index(center, center - 1)]
+				&& vertical[layout.index(center, center)]
+				&& vertical[layout.index(center, center + 1)]
+				&& !vertical[layout.index(center - 1, center)]
+				&& !vertical[layout.index(center + 1, center)],
+				"Cellular Automata does not perform a simultaneous B3/S23 blinker step");
+		boolean[] horizontal = layout.step(vertical);
+		for (int i = 0; i < blinker.length; i++)
+			helper.assertTrue(horizontal[i] == blinker[i],
+					"Cellular Automata blinker did not return after two generations at cell " + i);
+
+		long seed = 0x60_1A11L;
+		var planner = new reika.chromaticraft.world.dimension.structure.GOLStructureGenerator();
+		planner.setType(DimensionStructureType.GOL, 2);
+		planner.startCalculate(CrystalElement.GREEN, 100, 200, new java.util.Random(seed));
+		int radius = planner.radius();
+		helper.assertTrue(planner.floorY() >= 31 && planner.floorY() <= 70
+				&& planner.controllerPos().equals(new BlockPos(100 - radius - 3,
+						planner.floorY() + 1, 200))
+				&& planner.getCoreLocation().equals(new BlockPos(100 + radius + 8,
+						planner.floorY() + 2, 200))
+				&& planner.getEntryPosX() == 90 && planner.getEntryPosZ() == 200,
+				"Cellular Automata entrance/controller/core arithmetic drifted from V33a");
+
+		var level = helper.getLevel();
+		BlockPos boardCenter = helper.absolutePos(new BlockPos(5, 2, 5));
+		BlockPos controllerPos = boardCenter.offset(-3, 1, 0);
+		BlockPos doorCenter = boardCenter.offset(3, 1, 0);
+		level.setBlock(controllerPos, ChromaBlocks.GOL_CONTROLLER.get().defaultBlockState(), 3);
+		for (int x = -1; x <= 1; x++) for (int z = -1; z <= 1; z++) {
+			BlockPos floor = boardCenter.offset(x, 0, z);
+			BlockPos memory = floor.above(reika.chromaticraft.tileentity.TileEntityGOLController.ROOM_HEIGHT);
+			level.setBlock(floor, ChromaBlocks.GOL_TILE.get().defaultBlockState(), 3);
+			level.setBlock(memory, ChromaBlocks.GOL_TILE.get().defaultBlockState()
+					.setValue(reika.chromaticraft.block.dimension.structure.gol.BlockGOLTile.MEMORY, true), 3);
+			((reika.chromaticraft.tileentity.TileEntityGOLTile)level.getBlockEntity(floor))
+					.bind(controllerPos);
+		}
+		for (int y = 0; y <= 3; y++) for (int z = -2; z <= 2; z++)
+			level.setBlock(doorCenter.offset(0, y, z),
+					ChromaBlocks.CHROMA_DOOR.get().defaultBlockState(), 3);
+		var controller = (reika.chromaticraft.tileentity.TileEntityGOLController)
+				level.getBlockEntity(controllerPos);
+		controller.configure(boardCenter.getX() - 1, boardCenter.getX() + 1,
+				boardCenter.getZ() - 1, boardCenter.getZ() + 1, boardCenter.getY(),
+				4, 1, doorCenter);
+
+		var centerCell = (reika.chromaticraft.tileentity.TileEntityGOLTile)
+				level.getBlockEntity(boardCenter);
+		centerCell.requestToggle();
+		helper.assertTrue(level.getBlockState(boardCenter)
+				.getValue(reika.chromaticraft.block.dimension.structure.gol.BlockGOLTile.ACTIVE),
+				"a bound Cellular Automata floor tile did not toggle through its controller");
+		BlockPos oneMemory = boardCenter.above(
+				reika.chromaticraft.tileentity.TileEntityGOLController.ROOM_HEIGHT);
+		level.setBlock(oneMemory, level.getBlockState(oneMemory)
+				.setValue(reika.chromaticraft.block.dimension.structure.gol.BlockGOLTile.ACTIVE, true), 3);
+		controller.toggleSimulation();
+		controller.toggleSimulation();
+		helper.assertTrue(controller.isSolved()
+				&& level.getBlockState(doorCenter).getValue(reika.chromaticraft.block.BlockChromaDoor.OPEN),
+				"the required Cellular Automata ceiling trail did not solve the room and open its exit");
+
+		CompoundTag saved = controller.saveWithoutMetadata(level.registryAccess());
+		var loaded = new reika.chromaticraft.tileentity.TileEntityGOLController(
+				controllerPos, level.getBlockState(controllerPos));
+		loaded.loadWithComponents(TagValueInput.create(ProblemReporter.DISCARDING,
+				level.registryAccess(), saved));
+		helper.assertTrue(loaded.isSolved() && loaded.maxSelected() == 4
+				&& loaded.requiredTrail() == 1,
+				"Cellular Automata solution/configuration did not survive NBT persistence: " + saved);
+		helper.succeed();
+	}
+
+	/** Exact V33a room order plus lossless decoding of all twelve reversed-NBT laser assets. */
+	private static void laserPuzzleBlueprints(GameTestHelper helper) {
+		int[] expectedRooms = {6, 10, 12};
+		int[] expectedEffectors = {121, 203, 286};
+		for (int difficulty = 1; difficulty <= 3; difficulty++) {
+			long seed = 0x1A53_0000L + difficulty;
+			var first = reika.chromaticraft.world.dimension.structure.LaserPuzzleLayout
+					.create(difficulty, seed);
+			var second = reika.chromaticraft.world.dimension.structure.LaserPuzzleLayout
+					.create(difficulty, seed);
+			helper.assertTrue(first.rooms().size() == expectedRooms[difficulty - 1]
+					&& first.totalEffectorCount() == expectedEffectors[difficulty - 1],
+					"Chromatic Beams room/effect count drifted from V33a at difficulty " + difficulty);
+			helper.assertTrue(first.rooms().equals(second.rooms()),
+					"Chromatic Beams randomized directions are not stable for a structure seed");
+			for (int i = 1; i < first.rooms().size(); i++) {
+				var previous = first.rooms().get(i - 1);
+				var current = first.rooms().get(i);
+				helper.assertTrue(current.x() == previous.x()
+						+ previous.blueprint().sizeX()
+						+ reika.chromaticraft.world.dimension.structure.LaserPuzzleLayout.ROOM_GAP,
+						"Chromatic Beams room stride drifted before " + current.blueprint().name());
+			}
+		}
+
+		var tutorial = reika.chromaticraft.world.dimension.structure.LaserPuzzleLayout
+				.load("mirrortut");
+		helper.assertTrue(tutorial.sizeX() == 6 && tutorial.sizeZ() == 6
+				&& tutorial.effectors().size() == 6 && tutorial.emitterCount() == 2
+				&& tutorial.targetCount() == 2,
+				"mirror tutorial blueprint did not decode to its exact V33a bounds/types");
+		var complex = reika.chromaticraft.world.dimension.structure.LaserPuzzleLayout.load("complex");
+		helper.assertTrue(complex.sizeX() == 14 && complex.sizeZ() == 16
+				&& complex.effectors().size() == 52 && complex.emitterCount() == 2
+				&& complex.targetCount() == 6,
+				"complex laser blueprint did not decode to its exact V33a bounds/types");
+		helper.succeed();
+	}
+
+	/** Every V33a laser-effector branch, including absorbed/replacement/continuing distinctions. */
+	private static void laserPulseInteractions(GameTestHelper helper) {
+		var white = reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.BeamColor.WHITE;
+		var red = reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.BeamColor.RED;
+		var green = reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.BeamColor.GREEN;
+		var blue = reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.BeamColor.BLUE;
+		var magenta = new reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.BeamColor(
+				true, false, true);
+		var northWhite = new reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.Pulse(
+				reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.NORTH, white);
+		var filtered = reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.interact(
+				reika.chromaticraft.world.dimension.structure.LaserPuzzleLayout.EffectType.COLORIZER,
+				reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.NORTH, magenta, northWhite);
+		helper.assertTrue(!filtered.absorbed() && filtered.continuingPulse().color().equals(magenta),
+				"the RGB filter did not intersect and continue the incoming pulse");
+		var filteredOut = reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.interact(
+				reika.chromaticraft.world.dimension.structure.LaserPuzzleLayout.EffectType.COLORIZER,
+				reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.NORTH, red,
+				new reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.Pulse(
+						reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.NORTH, blue));
+		helper.assertTrue(filteredOut.absorbed(), "a black RGB-filter result was not absorbed");
+
+		var mirror = reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.interact(
+				reika.chromaticraft.world.dimension.structure.LaserPuzzleLayout.EffectType.MIRROR,
+				reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.NORTH,
+				white, new reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.Pulse(
+						reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.SOUTH, white));
+		helper.assertTrue(mirror.absorbed() && mirror.emittedPulses().size() == 1
+				&& mirror.emittedPulses().getFirst().direction()
+						== reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.NORTH,
+				"the mirror did not replace a southbound pulse with the source-exact north reflection");
+		var doubleBlocked = reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.interact(
+				reika.chromaticraft.world.dimension.structure.LaserPuzzleLayout.EffectType.DOUBLEMIRROR,
+				reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.NORTH,
+				white, new reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.Pulse(
+						reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.EAST, white));
+		helper.assertTrue(doubleBlocked.absorbed() && doubleBlocked.emittedPulses().isEmpty(),
+				"the double mirror accepted a pulse parallel to its surface");
+		var slitPass = reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.interact(
+				reika.chromaticraft.world.dimension.structure.LaserPuzzleLayout.EffectType.SLITMIRROR,
+				reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.NORTH,
+				white, new reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.Pulse(
+						reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.WEST, white));
+		helper.assertTrue(!slitPass.absorbed()
+				&& slitPass.continuingPulse().direction()
+						== reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.WEST,
+				"the slit mirror did not pass a surface-aligned pulse unchanged");
+
+		var oneWayPass = reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.interact(
+				reika.chromaticraft.world.dimension.structure.LaserPuzzleLayout.EffectType.ONEWAY,
+				reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.EAST, white,
+				new reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.Pulse(
+						reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.EAST, white));
+		var oneWayBlock = reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.interact(
+				reika.chromaticraft.world.dimension.structure.LaserPuzzleLayout.EffectType.ONEWAY,
+				reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.EAST, white,
+				new reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.Pulse(
+						reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.WEST, white));
+		helper.assertTrue(!oneWayPass.absorbed() && oneWayBlock.absorbed(),
+				"the one-way effector did not retain its directional gate");
+		var polarizedBack = reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.interact(
+				reika.chromaticraft.world.dimension.structure.LaserPuzzleLayout.EffectType.POLARIZER,
+				reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.EAST, white,
+				new reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.Pulse(
+						reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.WEST, white));
+		var polarizedDiagonal = reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.interact(
+				reika.chromaticraft.world.dimension.structure.LaserPuzzleLayout.EffectType.POLARIZER,
+				reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.EAST, white,
+				new reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.Pulse(
+						reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.NORTHEAST, white));
+		helper.assertTrue(!polarizedBack.absorbed() && polarizedDiagonal.absorbed(),
+				"the polarizer did not pass both axial directions and reject diagonals");
+
+		var refracted90 = reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.interact(
+				reika.chromaticraft.world.dimension.structure.LaserPuzzleLayout.EffectType.REFRACTOR,
+				reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.NORTH, white,
+				new reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.Pulse(
+						reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.WEST, white));
+		var refracted45 = reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.interact(
+				reika.chromaticraft.world.dimension.structure.LaserPuzzleLayout.EffectType.REFRACTOR,
+				reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.NORTH, white,
+				new reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.Pulse(
+						reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.NORTHEAST, white));
+		helper.assertTrue(refracted90.continuingPulse().direction()
+				== reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.SOUTHWEST
+				&& refracted45.continuingPulse().direction()
+						== reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.EAST,
+				"the refractor's +90/-45 source branches changed direction");
+
+		var split = reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.interact(
+				reika.chromaticraft.world.dimension.structure.LaserPuzzleLayout.EffectType.SPLITTER,
+				reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.NORTH, white, northWhite);
+		helper.assertTrue(split.absorbed() && split.emittedPulses().size() == 2
+				&& split.emittedPulses().get(0).direction()
+						== reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.NORTHEAST
+				&& split.emittedPulses().get(1).direction()
+						== reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.NORTHWEST,
+				"the splitter did not replace its direct input with both 45-degree outputs");
+		var splitSide = reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.interact(
+				reika.chromaticraft.world.dimension.structure.LaserPuzzleLayout.EffectType.SPLITTER,
+				reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.NORTH, white,
+				new reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.Pulse(
+						reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.SOUTHWEST, white));
+		helper.assertTrue(splitSide.continuingPulse().direction()
+				== reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.SOUTH,
+				"the splitter's oblique reverse path did not straighten southward");
+
+		var prismRed = reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.interact(
+				reika.chromaticraft.world.dimension.structure.LaserPuzzleLayout.EffectType.PRISM,
+				reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.NORTH, white,
+				new reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.Pulse(
+						reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.EAST, white));
+		var prismGreen = reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.interact(
+				reika.chromaticraft.world.dimension.structure.LaserPuzzleLayout.EffectType.PRISM,
+				reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.NORTH, white, northWhite);
+		var prismBlue = reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.interact(
+				reika.chromaticraft.world.dimension.structure.LaserPuzzleLayout.EffectType.PRISM,
+				reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.NORTH, white,
+				new reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.Pulse(
+						reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.WEST, white));
+		var accumulator = new reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic
+				.PrismAccumulator(2);
+		accumulator.add(prismRed.prismContribution());
+		accumulator.add(prismGreen.prismContribution());
+		accumulator.add(prismBlue.prismContribution());
+		helper.assertTrue(accumulator.tick(
+				reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.NORTH) == null,
+				"the prism recombined before its V33a timer elapsed");
+		var recombined = accumulator.tick(
+				reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.NORTH);
+		helper.assertTrue(recombined != null && recombined.color().equals(white)
+				&& recombined.direction()
+						== reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.NORTH,
+				"the prism did not recombine synchronized RGB contributions into white");
+		var prismSplit = reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.interact(
+				reika.chromaticraft.world.dimension.structure.LaserPuzzleLayout.EffectType.PRISM,
+				reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.NORTH, white,
+				new reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.Pulse(
+						reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.SOUTH, white));
+		helper.assertTrue(prismSplit.emittedPulses().equals(List.of(
+				new reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.Pulse(
+						reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.EAST, red),
+				new reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.Pulse(
+						reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.NORTH, green),
+				new reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.Pulse(
+						reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.WEST, blue))),
+				"the prism did not split reverse white input into the exact RGB directions");
+
+		var target = reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.interact(
+				reika.chromaticraft.world.dimension.structure.LaserPuzzleLayout.EffectType.TARGET,
+				reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.NORTH, white, northWhite);
+		var throughTarget = reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.interact(
+				reika.chromaticraft.world.dimension.structure.LaserPuzzleLayout.EffectType.TARGET_THRU,
+				reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.SOUTH, white, northWhite);
+		helper.assertTrue(target.targetMatched() && target.absorbed()
+				&& throughTarget.targetMatched() && !throughTarget.absorbed(),
+				"terminal/pass-through target matching or absorption drifted from V33a");
+		helper.assertTrue(reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.interact(
+				reika.chromaticraft.world.dimension.structure.LaserPuzzleLayout.EffectType.EMITTER,
+				reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.NORTH, white, northWhite)
+				.absorbed(), "an emitter did not absorb a returning pulse");
+
+		BlockPos pulsePos = helper.absolutePos(new BlockPos(2, 2, 2));
+		var entity = new reika.chromaticraft.entity.EntityLaserPulse(helper.getLevel(), pulsePos,
+				reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.NORTHWEST,
+				magenta, true, 0.5);
+		helper.assertTrue(entity.color().equals(magenta)
+				&& entity.direction()
+						== reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.NORTHWEST
+				&& entity.silentImpact() && Math.abs(entity.speedFactor() - 0.5) < 0.000001,
+				"the registered travelling pulse lost its color/direction/silence/speed state");
+		entity.setPulse(new reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.Pulse(
+				reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.EAST, red));
+		helper.assertTrue(entity.pulse().equals(
+				new reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.Pulse(
+						reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.EAST, red))
+				&& entity.getDeltaMovement().x > 0 && entity.getDeltaMovement().z == 0,
+				"the travelling pulse did not apply a replacement pulse to its motion/state");
+		helper.succeed();
+	}
+
+	/** Entry session, player-attributed core recovery, per-colour persistence, and ALLCORES parity. */
+	private static void proximaStructureCompletionLoop(GameTestHelper helper) {
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		player.setGameMode(GameType.SURVIVAL);
+		ProgressionManager.instance.resetPlayerProgression(player, false);
+		ProgressionManager.instance.setPlayerStage(player, ProgressStage.ABILITY, true, false, false);
+		ProgressionManager.instance.setPlayerStage(player, ProgressStage.DIMENSION, true, false, false);
+
+		var raw = DimensionStructureType.LIGHTPANEL.createGenerator();
+		helper.assertTrue(raw instanceof reika.chromaticraft.world.dimension.structure.StructureGeneratorBase,
+				"the registered Glowing Logic structure must provide a live generator");
+		var generator = (reika.chromaticraft.world.dimension.structure.StructureGeneratorBase)raw;
+		generator.setType(DimensionStructureType.LIGHTPANEL, 3);
+		generator.startCalculate(CrystalElement.CYAN, 32, 32, new java.util.Random(0xC0AEL));
+
+		reika.chromaticraft.world.dimension.ProximaStructureSessions.clear();
+		helper.assertTrue(reika.chromaticraft.world.dimension.ProximaStructureSessions
+				.addPlayerToStructure(player, generator),
+				"a tuned/outside-Proxima test player must be admitted to a structure session");
+		helper.assertTrue(reika.chromaticraft.world.dimension.ProximaStructureSessions
+				.isPlayerInStructure(player, generator),
+				"the active structure session did not retain its exact generator");
+
+		BlockPos corePos = helper.absolutePos(new BlockPos(4, 3, 4));
+		helper.getLevel().setBlock(corePos,
+				ChromaBlocks.dimensionCore(CrystalElement.CYAN).get().defaultBlockState(), 3);
+		var core = (reika.chromaticraft.tileentity.technical.TileEntityDimensionCore)
+				helper.getLevel().getBlockEntity(corePos);
+		core.setStructure(new reika.chromaticraft.world.dimension.structure.StructureGeneratorBase
+				.StructurePair(generator, CrystalElement.CYAN));
+		generator.forceOpen(helper.getLevel());
+		player.snapTo(corePos.getX() + 0.5, corePos.getY() + 0.5, corePos.getZ() + 1.5);
+		helper.assertTrue(core.breakByPlayer(player),
+				"a solved Dimension Core must accept a nearby survival player's break");
+		helper.assertTrue(ProgressionManager.instance
+				.hasPlayerCompletedStructureColor(player, CrystalElement.CYAN),
+				"breaking the solved core did not persist its colour");
+		helper.assertTrue(ProgressStage.STRUCTCOMPLETE.isPlayerAtStage(player),
+				"the first recovered core did not grant STRUCTCOMPLETE");
+		helper.assertTrue(reika.chromaticraft.world.dimension.ProximaStructureSessions
+				.getStructurePlayerIsIn(player) == null,
+				"recovering the core did not close the active structure session");
+
+		for (CrystalElement element : CrystalElement.elements)
+			ProgressionManager.instance.markPlayerCompletedStructureColor(
+					player, null, element, true, false);
+		helper.assertTrue(ProgressionManager.instance.getStructuresFor(player).size() == 16
+				&& ProgressStage.ALLCORES.isPlayerAtStage(player),
+				"all sixteen recovered colours must grant ALLCORES");
+
+		ProgressionManager.instance.markPlayerCompletedStructureColor(
+				player, null, CrystalElement.BLUE, false, false);
+		helper.assertTrue(!ProgressStage.ALLCORES.isPlayerAtStage(player)
+				&& !ProgressionManager.instance.hasPlayerCompletedStructureColor(player, CrystalElement.BLUE),
+				"removing one recovered colour must clear ALLCORES and that colour only");
+
+		ProgressionManager.instance.resetPlayerProgression(player, false);
+		helper.assertTrue(ProgressionManager.instance.getStructuresFor(player).isEmpty(),
+				"/chromaprog reset must clear the independent recovered-core ledger");
+		ProgressionManager.instance.maxPlayerProgression(player, false);
+		helper.assertTrue(ProgressionManager.instance.getStructuresFor(player).size() == 16,
+				"/chromaprog maximize must include all sixteen Proxima structure colours");
+		reika.chromaticraft.world.dimension.ProximaStructureSessions.clear();
+		helper.succeed();
+	}
+
+	/**
+	 * The Dimension Core's ambient ensemble is client-side, but its authority is the monument marker
+	 * on the centre controller. This catches a particularly quiet failure mode: the controller saved
+	 * {@code monument=true} to disk while DragonAPI's legacy update-tag adapter omitted that modern
+	 * {@link net.minecraft.world.level.storage.ValueOutput} field on the wire. The monument was valid
+	 * server-side, yet every client core suppressed its note, beam, and particles.
+	 */
+	private static void monumentClientSyncContract(GameTestHelper helper) {
+		var level = helper.getLevel();
+		BlockPos at = helper.absolutePos(new BlockPos(3, 3, 3));
+		BlockState state = ChromaBlocks.STRUCTURE_CONTROLLER.get().defaultBlockState();
+		level.setBlock(at, state, 3);
+		var server = (reika.chromaticraft.tileentity.TileEntityStructureController)
+				level.getBlockEntity(at);
+		server.setMonument();
+
+		CompoundTag update = server.getUpdateTag(level.registryAccess());
+		helper.assertTrue(update.getBooleanOr("monument", false),
+				"the controller's chunk/update tag must carry monument=true to the client");
+
+		var clientCopy = new reika.chromaticraft.tileentity.TileEntityStructureController(at, state);
+		clientCopy.handleUpdateTag(TagValueInput.create(ProblemReporter.DISCARDING,
+				level.registryAccess(), update));
+		helper.assertTrue(clientCopy.isMonument(),
+				"a client-side controller copy must recover monument=true from its update tag");
 		helper.succeed();
 	}
 
@@ -2924,7 +3749,7 @@ public final class ChromaGameTests {
 	 */
 	private static void monumentMineralInlay(GameTestHelper helper) {
 		var cells = reika.chromaticraft.world.dimension.structure.MonumentMineralBlocks.expected();
-		helper.assertTrue(cells.size() == 377, "V33a's inlay is 376 placed cells plus the registered-only "
+		helper.assertTrue(cells.size() == 305, "V33a's live inlay is 304 placed cells plus the registered-only "
 				+ "centre chroma; found " + cells.size());
 
 		var counts = new java.util.EnumMap<reika.chromaticraft.world.dimension.structure
@@ -2935,13 +3760,17 @@ public final class ChromaGameTests {
 		var M = reika.chromaticraft.world.dimension.structure.MonumentMineralBlocks.Mineral.class;
 		record Expect(String name, int count) {}
 		for (var e : new Expect[] {new Expect("GLOWSTONE", 88), new Expect("REDSTONE", 76),
-				new Expect("GOLD", 72), new Expect("EMERALD", 52), new Expect("DIAMOND", 32),
+				new Expect("GOLD", 0), new Expect("EMERALD", 52), new Expect("DIAMOND", 32),
 				new Expect("QUARTZ", 24), new Expect("LAPIS", 24), new Expect("CHROMA", 9)}) {
 			var mineral = Enum.valueOf(M, e.name());
 			int got = counts.getOrDefault(mineral, 0);
 			helper.assertTrue(got == e.count(),
 					e.name() + " should appear " + e.count() + " times in the inlay; found " + got);
 		}
+		var gold = reika.chromaticraft.world.dimension.structure.MonumentMineralBlocks.fixedGold();
+		helper.assertTrue(gold.size() == 76 && new java.util.HashSet<>(gold).size() == 76,
+				"V33a's active, unconditional gold ring must contain 76 unique cells; found "
+						+ gold.size());
 
 		// The centre chroma is the one cell generation never lays, so the roll is one short of the table.
 		var rolled = reika.chromaticraft.world.dimension.structure.MonumentMineralBlocks.roll(
@@ -3252,26 +4081,76 @@ public final class ChromaGameTests {
 		});
 	}
 
-	/** Exact Burrow base NBT, colour identity, six chests and proximity crack form one runtime loop. */
+	/** Exact Burrow NBT, forced inspection annexes, keyed cache and proximity crack form one loop. */
 	private static void structureBurrowNbtController(GameTestHelper helper) {
 		BlockPos origin = helper.absolutePos(new BlockPos(10, 8, 10));
-		FeaturePlaceContext<NoneFeatureConfiguration> context = new FeaturePlaceContext<>(Optional.empty(),
-				helper.getLevel(), helper.getLevel().getChunkSource().getGenerator(),
-				RandomSource.create(0xB0770A11L), origin, NoneFeatureConfiguration.INSTANCE);
-		helper.assertTrue(new OverworldStructureFeature(OverworldStructureFeature.Type.BURROW, false).place(context),
-				"command Burrow feature must place its canonical NBT at the requested controller coordinate");
+		var bounds = new net.minecraft.world.level.levelgen.structure.BoundingBox(
+				origin.getX() - 3, origin.getY() - 3, origin.getZ() - 4,
+				origin.getX() + 7, origin.getY() + 8, origin.getZ() + 6);
+		new reika.chromaticraft.world.dimension.structure.BurrowCommandPiece(origin).postProcess(
+				helper.getLevel(), helper.getLevel().structureManager(),
+				helper.getLevel().getChunkSource().getGenerator(), RandomSource.create(0xB0770A11L),
+				bounds, new net.minecraft.world.level.ChunkPos(origin.getX() >> 4, origin.getZ() >> 4), origin);
 		helper.assertTrue(helper.getLevel().getBlockEntity(origin) instanceof TileEntityStructureController,
-				"the Burrow template anchor must become a structure controller");
+				"the native Burrow structure piece must place its canonical NBT controller anchor");
 		TileEntityStructureController controller =
 				(TileEntityStructureController)helper.getLevel().getBlockEntity(origin);
 		helper.assertTrue(controller.getStructureType() == TileEntityStructureController.StructureType.BURROW,
 				"the controller must persist the Burrow identity");
+		helper.assertTrue(controller.hasBurrowFurnaceRoom() && controller.hasBurrowLootRoom(),
+				"the command Burrow must expose both optional V33a annexes for inspection");
 		BlockState lamp = helper.getLevel().getBlockState(origin.offset(0, -2, 0));
 		helper.assertTrue(lamp.is(ChromaBlocks.crystalLamp(controller.getColor()).get()),
 				"the source-selected Burrow colour must match its independently registered lamp block");
 		long chests = BlockPos.betweenClosedStream(origin.offset(-3, -3, -3), origin.offset(6, 8, 3))
 				.filter(pos -> helper.getLevel().getBlockEntity(pos) instanceof TileEntityLootChest).count();
-		helper.assertTrue(chests == 6, "the exact Burrow base must retain all six loot chests; got " + chests);
+		helper.assertTrue(chests == 8,
+				"the full command Burrow must retain six base and two cache Loot Chests; got " + chests);
+		for (int x : new int[] {4, 5}) {
+			BlockPos furnacePos = origin.offset(x, 0, 2);
+			BlockPos heatLampPos = furnacePos.above();
+			helper.assertTrue(helper.getLevel().getBlockEntity(furnacePos)
+					instanceof net.minecraft.world.level.block.entity.AbstractFurnaceBlockEntity furnace
+					&& !furnace.getItem(0).isEmpty(),
+					"Burrow furnace " + x + " must contain its V33a weighted ore input");
+			helper.assertTrue(helper.getLevel().getBlockEntity(heatLampPos)
+					instanceof reika.chromaticraft.tileentity.TileEntityHeatLamp heatLamp
+					&& heatLamp.getTemperature() >= 50 && heatLamp.getTemperature() <= 160,
+					"Burrow Heat Lamp " + x + " must use the authored 50..160 C range");
+		}
+		BlockPos firstDoor = origin.offset(5, -2, -2);
+		helper.assertTrue(helper.getLevel().getBlockEntity(firstDoor) instanceof TileEntityChromaDoor,
+				"the Burrow cache must retain its connected two-by-two Chroma Door");
+		java.util.UUID doorId = ((TileEntityChromaDoor)helper.getLevel().getBlockEntity(firstDoor)).getDoorID();
+		helper.assertTrue(doorId != null, "the Burrow cache door must receive a generated UUID");
+		BlockPos keyChestPos = origin.offset(3, 1, 1);
+		helper.assertTrue(helper.getLevel().getBlockEntity(keyChestPos)
+				instanceof net.minecraft.world.level.block.entity.ChestBlockEntity,
+				"the Burrow must retain the hidden vanilla key chest");
+		var keyChest = (net.minecraft.world.level.block.entity.ChestBlockEntity)
+				helper.getLevel().getBlockEntity(keyChestPos);
+		ItemStack matchingKey = ItemStack.EMPTY;
+		for (int slot = 0; slot < keyChest.getContainerSize(); slot++)
+			if (keyChest.getItem(slot).is(ChromaItems.DOOR_KEY.get())) {
+				matchingKey = keyChest.getItem(slot);
+				break;
+			}
+		helper.assertTrue(!matchingKey.isEmpty()
+				&& doorId.equals(((reika.chromaticraft.item.ItemDoorKey)matchingKey.getItem())
+						.getUID(matchingKey)),
+				"the hidden Ethereal Key must carry the cache door's exact UUID");
+		for (BlockPos offset : java.util.List.of(new BlockPos(5, -2, 0), new BlockPos(6, -2, 0))) {
+			TileEntityLootChest cache = (TileEntityLootChest)helper.getLevel().getBlockEntity(origin.offset(offset));
+			helper.assertTrue(cache != null && cache.hasProgress(ProgressStage.BURROW)
+					&& !cache.hasProgress(ProgressStage.CAVERN),
+					"Burrow cache chests must grant BURROW rather than CAVERN progression");
+		}
+		for (BlockPos pos : BlockPos.betweenClosed(origin.offset(-3, -3, -3), origin.offset(6, 8, 3))) {
+			if (helper.getLevel().getBlockEntity(pos) instanceof TileEntityLootChest chest)
+				helper.assertTrue(chest.hasProgress(ProgressStage.BURROW)
+						&& !chest.hasProgress(ProgressStage.CAVERN),
+						"every Burrow Loot Chest must carry the BURROW progression trigger");
+		}
 		BlockPos triggerBlock = origin.offset(2, 1, 0);
 		helper.assertTrue(helper.getLevel().getBlockState(triggerBlock).is(ChromaBlocks.shielding(
 				reika.chromaticraft.registry.ChromaShieldTypes.STONE).get()),
@@ -5549,19 +6428,34 @@ public final class ChromaGameTests {
 				(reika.chromaticraft.block.BlockChromaFluid.TileEntityChroma)helper.getLevel().getBlockEntity(pos);
 		var owner = helper.makeMockPlayer(GameType.SURVIVAL);
 
+		ItemStack earlyBerries = new ItemStack(ChromaItems.BERRIES.get(CrystalElement.BLUE).get());
+		ItemEntity earlyBerryEntity = new ItemEntity(helper.getLevel(), pos.getX()+0.5,
+				pos.getY()+0.5, pos.getZ()+0.5, earlyBerries);
+		earlyBerryEntity.setThrower(owner);
+		earlyBerries.getItem().onEntityItemUpdate(earlyBerries, earlyBerryEntity);
+		helper.assertTrue(earlyBerries.getCount() == 1 && pool.getElement() == null
+				&& pool.getBerryCount() == 0,
+				"Chroma Berries must not activate a pool before the SHARDCHARGE prerequisites");
+
+		ItemStack earlyStone = ChromaItems.elementalStoneStack(CrystalElement.BLUE);
+		ItemEntity earlyStoneEntity = new ItemEntity(helper.getLevel(), pos.getX()+0.5,
+				pos.getY()+0.5, pos.getZ()+0.5, earlyStone);
+		earlyStoneEntity.setThrower(owner);
+		ChromaItems.ELEMENTAL_STONES.get(CrystalElement.BLUE).get()
+				.onEntityItemUpdate(earlyStone, earlyStoneEntity);
+		helper.assertTrue(earlyStone.getCount() == 1 && !pool.hasElementalBoost(),
+				"an Elemental Stone must not deposit before the SHARDCHARGE prerequisites");
+
+		ProgressionManager.instance.setPlayerStage(owner, ProgressStage.MAKECHROMA, true, false, false);
+		ProgressionManager.instance.setPlayerStage(owner, ProgressStage.RUNEUSE, true, false, false);
+		ProgressionManager.instance.setPlayerStage(owner, ProgressStage.DYETREE, true, false, false);
+
 		ItemStack berries = new ItemStack(ChromaItems.BERRIES.get(CrystalElement.BLUE).get(), 30);
 		ItemEntity berryEntity = new ItemEntity(helper.getLevel(), pos.getX()+0.5, pos.getY()+0.5, pos.getZ()+0.5, berries);
+		berryEntity.setThrower(owner);
 		ChromaItems.BERRIES.get(CrystalElement.BLUE).get().onEntityItemUpdate(berries, berryEntity);
 		helper.assertTrue(pool.getElement() == CrystalElement.BLUE && pool.getBerryCount() == 24 && berries.getCount() == 6,
 				"matching berries must saturate at 24 and preserve the six-item remainder");
-
-		ItemStack earlyStone = ChromaItems.elementalStoneStack(CrystalElement.BLUE);
-		ItemEntity earlyStoneEntity = new ItemEntity(helper.getLevel(), pos.getX()+0.5, pos.getY()+0.5, pos.getZ()+0.5, earlyStone);
-		earlyStoneEntity.setThrower(owner);
-		ChromaItems.ELEMENTAL_STONES.get(CrystalElement.BLUE).get().onEntityItemUpdate(earlyStone, earlyStoneEntity);
-		helper.assertTrue(earlyStone.getCount() == 1 && !pool.hasElementalBoost(),
-				"an Elemental Stone must not deposit before the SHARDCHARGE prerequisites");
-		ProgressionManager.instance.setPlayerStage(owner, ProgressStage.SHARDCHARGE, true, false, false);
 
 		ItemStack ether = new ItemStack(ChromaItems.CRAFTING.get(ChromaCraftingItems.ETHER_BERRIES).get(), 20);
 		ItemEntity etherEntity = new ItemEntity(helper.getLevel(), pos.getX()+0.5, pos.getY()+0.5, pos.getZ()+0.5, ether);
@@ -5598,6 +6492,7 @@ public final class ChromaGameTests {
 
 		ItemStack shards = new ItemStack(ChromaItems.SHARDS.get(CrystalElement.BLUE).get(), 2);
 		ItemEntity shardEntity = new ItemEntity(helper.getLevel(), pos.getX()+0.5, pos.getY()+0.5, pos.getZ()+0.5, shards);
+		shardEntity.setThrower(owner);
 		helper.getLevel().addFreshEntity(shardEntity);
 		for (int i = 0; i < 1200; i++) shards.getItem().onEntityItemUpdate(shards, shardEntity);
 		int charged = helper.getLevel().getEntitiesOfClass(ItemEntity.class, new AABB(pos).inflate(2)).stream()
@@ -5605,6 +6500,238 @@ public final class ChromaGameTests {
 				.mapToInt(drop -> drop.getItem().getCount()).sum();
 		helper.assertTrue(!shardEntity.isAlive() && charged == 2,
 				"a fully etherized matching pool must automatically convert both shards after 1200 x5 ticks");
+		helper.assertTrue(restored.getElement() == null && restored.getBerryCount() == 0
+				&& restored.getEtherCount() == 0 && !restored.hasElementalBoost(),
+				"a successful shard charge must consume and fully clear the activated pool");
+		helper.assertTrue(ProgressStage.SHARDCHARGE.isPlayerAtStage(owner),
+				"the credited dropper must gain SHARDCHARGE when conversion completes");
+		helper.succeed();
+	}
+
+	/** Late tiered-plant survival sources retain their exact gates, supports and V33a drop math. */
+	private static void tieredPlantSurvivalSources(GameTestHelper helper) {
+		var player = helper.makeMockPlayer(GameType.SURVIVAL);
+		var bulbs = reika.chromaticraft.registry.ChromaTieredPlants.ELEMENT_BULBS;
+		var bush = reika.chromaticraft.registry.ChromaTieredPlants.RADIANCE_BUSH;
+		var pod = reika.chromaticraft.registry.ChromaTieredPlants.VIBRANT_POD;
+		var roots = reika.chromaticraft.registry.ChromaTieredPlants.GLOWING_ROOTS;
+		helper.assertTrue(bulbs.generationChance() == 5 && bulbs.generationCount() == 2
+				&& bush.generationChance() == 5 && bush.generationCount() == 2
+				&& pod.generationChance() == 4 && pod.generationCount() == 6
+				&& roots.generationChance() == 4 && roots.generationCount() == 3,
+				"late tiered plants must retain their distinct V33a worldgen chance/count contracts");
+
+		BlockPos bulbPos = helper.absolutePos(new BlockPos(3, 4, 3));
+		helper.getLevel().setBlock(bulbPos.above(), Blocks.OAK_LEAVES.defaultBlockState(), 3);
+		BlockState bulbState = ChromaBlocks.tieredPlant(bulbs).get().defaultBlockState();
+		helper.getLevel().setBlock(bulbPos, bulbState, 3);
+		helper.assertTrue(bulbState.getShape(helper.getLevel(), bulbPos, CollisionContext.of(player)).isEmpty(),
+				"Element Bulbs must be untargetable before MULTIBLOCK progression");
+		ProgressionManager.instance.setPlayerStage(player, ProgressStage.MULTIBLOCK, true, false, false);
+		helper.assertTrue(!bulbState.getShape(helper.getLevel(), bulbPos, CollisionContext.of(player)).isEmpty(),
+				"Element Bulbs must become targetable at MULTIBLOCK progression");
+		bulbState.getBlock().onDestroyedByPlayer(bulbState, helper.getLevel(), bulbPos, player,
+				ItemStack.EMPTY, true, bulbState.getFluidState());
+		int resonant = countDrops(helper, bulbPos,
+				ChromaItems.TIERED.get(ChromaTieredItems.RESONANCE_DUST).get());
+		helper.assertTrue(resonant >= 1 && resonant <= 17 && (resonant & 1) == 1,
+				"fortune-zero Element Bulbs must use V33a's 1 + 2*rand(9) Resonant Dust count; got "
+						+ resonant);
+
+		BlockPos bushPos = helper.absolutePos(new BlockPos(8, 4, 3));
+		helper.getLevel().setBlock(bushPos.below(), Blocks.SAND.defaultBlockState(), 3);
+		BlockState bushState = ChromaBlocks.tieredPlant(bush).get().defaultBlockState();
+		helper.getLevel().setBlock(bushPos, bushState, 3);
+		helper.assertTrue(bushState.getShape(helper.getLevel(), bushPos, CollisionContext.of(player)).isEmpty(),
+				"Radiance Bush must be untargetable before PYLON progression");
+		ProgressionManager.instance.setPlayerStage(player, ProgressStage.PYLON, true, false, false);
+		helper.assertTrue(!bushState.getShape(helper.getLevel(), bushPos, CollisionContext.of(player)).isEmpty(),
+				"Radiance Bush must become targetable at PYLON progression");
+		bushState.getBlock().onDestroyedByPlayer(bushState, helper.getLevel(), bushPos, player,
+				ItemStack.EMPTY, true, bushState.getFluidState());
+		int transmissive = countDrops(helper, bushPos,
+				ChromaItems.TIERED.get(ChromaTieredItems.BEACON_DUST).get());
+		helper.assertTrue(transmissive >= 1 && transmissive <= 9 && (transmissive & 1) == 1,
+				"fortune-zero Radiance Bush must use V33a's 1 + 2*rand(5) Transmissive Dust count; got "
+						+ transmissive);
+
+		BlockPos podPos = helper.absolutePos(new BlockPos(8, 4, 8));
+		helper.getLevel().setBlock(podPos.above(), Blocks.OAK_LOG.defaultBlockState(), 3);
+		BlockState podState = ChromaBlocks.tieredPlant(pod).get().defaultBlockState();
+		helper.assertTrue(podState.canSurvive(helper.getLevel(), podPos),
+				"Vibrant Pods must attach to a neighbouring tree log");
+		helper.getLevel().setBlock(podPos, podState, 3);
+		helper.assertTrue(podState.getShape(helper.getLevel(), podPos, CollisionContext.of(player)).isEmpty(),
+				"Vibrant Pods must be untargetable before ALLOY progression");
+		ProgressionManager.instance.setPlayerStage(player, ProgressStage.ALLOY, true, false, false);
+		helper.assertTrue(!podState.getShape(helper.getLevel(), podPos, CollisionContext.of(player)).isEmpty(),
+				"Vibrant Pods must become targetable at ALLOY progression");
+		podState.getBlock().onDestroyedByPlayer(podState, helper.getLevel(), podPos, player,
+				ItemStack.EMPTY, true, podState.getFluidState());
+		int beans = countDrops(helper, podPos,
+				ChromaItems.TIERED.get(ChromaTieredItems.LUMA_BEANS).get());
+		helper.assertTrue(beans == 2,
+				"fortune-zero Vibrant Pods must emit exactly two Luma Beans; got " + beans);
+
+		BlockPos rootPos = helper.absolutePos(new BlockPos(13, 4, 8));
+		helper.getLevel().setBlock(rootPos.below(), Blocks.DIRT.defaultBlockState(), 3);
+		BlockState rootState = ChromaBlocks.tieredPlant(roots).get().defaultBlockState();
+		helper.assertTrue(rootState.canSurvive(helper.getLevel(), rootPos),
+				"Glowing Roots must accept V33a's dirt support at the base of a tree");
+		helper.getLevel().setBlock(rootPos, rootState, 3);
+		helper.assertTrue(rootState.getShape(helper.getLevel(), rootPos, CollisionContext.of(player)).isEmpty(),
+				"Glowing Roots must be untargetable before TURBOCHARGE progression");
+		ProgressionManager.instance.setPlayerStage(player, ProgressStage.TURBOCHARGE, true, false, false);
+		helper.assertTrue(!rootState.getShape(helper.getLevel(), rootPos, CollisionContext.of(player)).isEmpty(),
+				"Glowing Roots must become targetable at TURBOCHARGE progression");
+		rootState.getBlock().onDestroyedByPlayer(rootState, helper.getLevel(), rootPos, player,
+				ItemStack.EMPTY, true, rootState.getFluidState());
+		int enrichmentRoots = countDrops(helper, rootPos,
+				ChromaItems.TIERED.get(ChromaTieredItems.BOOST_ROOT).get());
+		helper.assertTrue(enrichmentRoots == 1,
+				"fortune-zero Glowing Roots must emit exactly one Enrichment Root; got "
+						+ enrichmentRoots);
+		helper.succeed();
+	}
+
+	/** V33a WATERY is an ordinary-overlay OCEAN-stage ore and the survival source of Fluid Essence. */
+	private static void fluidStoneSurvivalPath(GameTestHelper helper) {
+		net.minecraft.world.entity.player.Player player = helper.makeMockPlayer(GameType.SURVIVAL);
+		BlockPos hiddenPos = helper.absolutePos(new BlockPos(3, 3, 3));
+		var ore = ChromaBlocks.FLUID_STONE.get();
+		var essence = ChromaItems.TIERED.get(ChromaTieredItems.WATER_DUST).get();
+		helper.assertTrue(!ProgressStage.OCEAN.isPlayerAtStage(player),
+				"the Fluid Stone test must begin before OCEAN progression");
+		helper.assertTrue(breakTieredOre(helper, hiddenPos, ore, player, essence) == 0
+				&& countDrops(helper, hiddenPos, Items.COBBLESTONE) > 0,
+				"Fluid Stone must be indistinguishable from stone before OCEAN progression");
+
+		ProgressionManager.instance.setPlayerStage(player, ProgressStage.OCEAN, true, false, false);
+		BlockPos revealedPos = hiddenPos.offset(0, 0, 4);
+		int drops = breakTieredOre(helper, revealedPos, ore, player, essence);
+		helper.assertTrue(drops >= 1 && drops <= 6,
+				"fortune-zero Fluid Stone must use V33a's 1 + rand(6) drop count; got " + drops);
+		helper.assertTrue(countDrops(helper, revealedPos, Items.COBBLESTONE) == 0,
+				"a sufficient Fluid Stone harvest must not also emit disguise drops");
+		helper.succeed();
+	}
+
+	/** Admitted tiered ores retain their distinct stages, host disguises and exact source drop math. */
+	private static void geodeOreSurvivalPath(GameTestHelper helper) {
+		var player = helper.makeMockPlayer(GameType.SURVIVAL);
+		BlockPos enderPos = helper.absolutePos(new BlockPos(3, 3, 3));
+		var binding = ChromaItems.TIERED.get(ChromaTieredItems.BINDING_CRYSTAL).get();
+		BlockPos bindingPos = enderPos.offset(0, 0, 20);
+		helper.assertTrue(breakTieredOre(helper, bindingPos, ChromaBlocks.FUSED_CRYSTALS.get(),
+				player, binding) == 0 && countDrops(helper, bindingPos, Items.COBBLESTONE) > 0,
+				"Fused Crystals must remain disguised until CHARGE progression");
+		ProgressionManager.instance.setPlayerStage(player, ProgressStage.CHARGE, true, false, false);
+		int bindingDrops = breakTieredOre(helper, bindingPos.offset(0, 0, 4),
+				ChromaBlocks.FUSED_CRYSTALS.get(), player, binding);
+		helper.assertTrue(bindingDrops >= 1 && bindingDrops <= 3,
+				"fortune-zero Fused Crystals must use V33a's 1 + rand(3) count; got " + bindingDrops);
+
+		var focal = ChromaItems.TIERED.get(ChromaTieredItems.FOCUS_DUST).get();
+		BlockPos focalPos = enderPos.offset(0, 0, 28);
+		helper.assertTrue(breakTieredOre(helper, focalPos, ChromaBlocks.RADIANT_STONE.get(),
+				player, focal) == 0 && countDrops(helper, focalPos, Items.COBBLESTONE) > 0,
+				"Radiant Stone must remain disguised until MULTIBLOCK progression");
+		ProgressionManager.instance.setPlayerStage(player, ProgressStage.MULTIBLOCK, true, false, false);
+		int focalDrops = breakTieredOre(helper, focalPos.offset(0, 0, 4),
+				ChromaBlocks.RADIANT_STONE.get(), player, focal);
+		helper.assertTrue(focalDrops >= 1 && focalDrops <= 6,
+				"fortune-zero Radiant Stone must use V33a's 1 + rand(6) count; got " + focalDrops);
+
+		var lumenite = ChromaItems.TIERED.get(ChromaTieredItems.LUMEN_GEM).get();
+		BlockPos hiddenLumenite = enderPos.offset(16, 0, 0);
+		helper.assertTrue(breakTieredOre(helper, hiddenLumenite, ChromaBlocks.LUMENITE_ORE.get(),
+				player, lumenite) == 0 && countDrops(helper, hiddenLumenite, Items.COBBLESTONE) > 0,
+				"Lumenite must remain disguised until USEENERGY progression");
+		ProgressionManager.instance.setPlayerStage(player, ProgressStage.USEENERGY, true, false, false);
+		helper.assertTrue(breakTieredOre(helper, hiddenLumenite.offset(0, 0, 4),
+				ChromaBlocks.LUMENITE_ORE.get(), player, lumenite) == 1,
+				"fortune-zero Lumenite must emit exactly one Lumenite item");
+
+		var enderDust = ChromaItems.TIERED.get(ChromaTieredItems.ENDER_DUST).get();
+		var thermitic = ChromaItems.TIERED.get(ChromaTieredItems.THERMITIC_CRYSTAL).get();
+		BlockPos hiddenThermitic = enderPos.offset(8, 0, 8);
+		helper.assertTrue(breakTieredOre(helper, hiddenThermitic, ChromaBlocks.THERMITIC_ROCK.get(),
+				player, thermitic) == 0
+				&& countDrops(helper, hiddenThermitic, Blocks.NETHERRACK.asItem()) > 0,
+				"Thermitic Rock must remain indistinguishable from Netherrack before END progression");
+		helper.assertTrue(breakTieredOre(helper, enderPos, ChromaBlocks.ENDER_STONE.get(),
+				player, enderDust) == 0 && countDrops(helper, enderPos, Items.COBBLESTONE) > 0,
+				"Ender Stone must remain disguised until END progression");
+		ProgressionManager.instance.setPlayerStage(player, ProgressStage.END, true, false, false);
+		BlockPos revealedEnder = enderPos.offset(0, 0, 4);
+		helper.assertTrue(breakTieredOre(helper, revealedEnder, ChromaBlocks.ENDER_STONE.get(),
+				player, enderDust) == 1,
+				"fortune-zero Ender Stone must emit exactly one Enderstone Powder");
+		helper.assertTrue(breakTieredOre(helper, hiddenThermitic.offset(0, 0, 4),
+				ChromaBlocks.THERMITIC_ROCK.get(), player, thermitic) == 1,
+				"fortune-zero Thermitic Rock must emit exactly one Thermitic Crystal");
+
+		var firaxite = ChromaItems.TIERED.get(ChromaTieredItems.FIRAXITE).get();
+		ProgressionManager.instance.setPlayerStage(player, ProgressStage.NETHER, true, false, false);
+		BlockPos firaxitePos = enderPos.offset(0, 0, 8);
+		int drops = breakTieredOre(helper, firaxitePos, ChromaBlocks.FIRAXITE.get(), player, firaxite);
+		helper.assertTrue(drops >= 1 && drops <= 8,
+				"fortune-zero Firaxite must use V33a's 1 + rand(8) count; got " + drops);
+
+		var resonanceDust = ChromaItems.TIERED.get(ChromaTieredItems.RESONANCE_DUST).get();
+		BlockPos hiddenVibrant = enderPos.offset(0, 0, 36);
+		helper.assertTrue(breakTieredOre(helper, hiddenVibrant, ChromaBlocks.VIBRANT_CRYSTALS.get(),
+				player, resonanceDust) == 0
+				&& countDrops(helper, hiddenVibrant, Blocks.END_STONE.asItem()) > 0,
+				"Vibrant Crystals must remain indistinguishable from End Stone before ABILITY");
+		ProgressionManager.instance.setPlayerStage(player, ProgressStage.ABILITY, true, false, false);
+		BlockPos revealedVibrant = hiddenVibrant.offset(0, 0, 4);
+		helper.assertTrue(breakTieredOre(helper, revealedVibrant, ChromaBlocks.VIBRANT_CRYSTALS.get(),
+				player, resonanceDust) == 1,
+				"fortune-zero Vibrant Crystals must emit exactly one Resonant Dust");
+
+		var spaceDust = ChromaItems.TIERED.get(ChromaTieredItems.SPACE_DUST).get();
+		BlockPos hiddenRift = enderPos.offset(0, 0, 12);
+		helper.assertTrue(breakTieredOre(helper, hiddenRift, ChromaBlocks.SPACERIFT_STONE.get(),
+				player, spaceDust) == 0 && countDrops(helper, hiddenRift, Blocks.END_STONE.asItem()) > 0,
+				"Spacerift Stone must remain indistinguishable from End Stone before KILLDRAGON");
+		ProgressionManager.instance.setPlayerStage(player, ProgressStage.KILLDRAGON, true, false, false);
+		BlockPos revealedRift = enderPos.offset(0, 0, 16);
+		helper.assertTrue(breakTieredOre(helper, revealedRift, ChromaBlocks.SPACERIFT_STONE.get(),
+				player, spaceDust) == 1,
+				"fortune-zero Spacerift Stone must emit exactly one Spatial Rifting Powder");
+
+		var lumaDust = ChromaItems.TIERED.get(ChromaTieredItems.LUMA_DUST).get();
+		BlockPos hiddenLuma = enderPos.offset(24, 0, 0);
+		helper.assertTrue(breakTieredOre(helper, hiddenLuma, ChromaBlocks.GLOWING_ROCK.get(),
+				player, lumaDust) == 0 && countDrops(helper, hiddenLuma, Items.COBBLESTONE) > 0,
+				"Glowing Rock must remain disguised until STRUCTCOMPLETE progression");
+		ProgressionManager.instance.setPlayerStage(player, ProgressStage.STRUCTCOMPLETE, true, false, false);
+		int lumaDrops = breakTieredOre(helper, hiddenLuma.offset(0, 0, 4),
+				ChromaBlocks.GLOWING_ROCK.get(), player, lumaDust);
+		helper.assertTrue(lumaDrops >= 1 && lumaDrops <= 17 && (lumaDrops - 1) % 4 == 0,
+				"fortune-zero Glowing Rock must use V33a's 1 + 4*rand(5) count; got " + lumaDrops);
+
+		var echoCrystal = ChromaItems.TIERED.get(ChromaTieredItems.ECHO_CRYSTAL).get();
+		BlockPos hiddenEcho = enderPos.offset(32, 0, 0);
+		helper.assertTrue(breakTieredOre(helper, hiddenEcho, ChromaBlocks.ECHOSTONE.get(),
+				player, echoCrystal) == 0 && countDrops(helper, hiddenEcho, Items.COBBLESTONE) > 0,
+				"Echostone must remain disguised until CTM progression");
+		ProgressionManager.instance.setPlayerStage(player, ProgressStage.CTM, true, false, false);
+		int echoDrops = breakTieredOre(helper, hiddenEcho.offset(0, 0, 4),
+				ChromaBlocks.ECHOSTONE.get(), player, echoCrystal);
+		helper.assertTrue(echoDrops >= 1 && echoDrops <= 15,
+				"fortune-zero Echostone must use V33a's 1 + rand(8) + rand(8) count; got " + echoDrops);
+
+		var avolite = ChromaItems.TIERED.get(ChromaTieredItems.AVOLITE).get();
+		BlockPos hiddenAvolite = enderPos.offset(40, 0, 0);
+		helper.assertTrue(breakTieredOre(helper, hiddenAvolite, ChromaBlocks.AVOLITE_ORE.get(),
+				player, avolite) == 0 && countDrops(helper, hiddenAvolite, Items.COBBLESTONE) > 0,
+				"Avolite must remain disguised until POWERCRYSTAL progression");
+		ProgressionManager.instance.setPlayerStage(player, ProgressStage.POWERCRYSTAL, true, false, false);
+		helper.assertTrue(breakTieredOre(helper, hiddenAvolite.offset(0, 0, 4),
+				ChromaBlocks.AVOLITE_ORE.get(), player, avolite) == 1,
+				"fortune-zero Avolite must emit exactly one Avolite item");
 		helper.succeed();
 	}
 
@@ -6395,6 +7522,227 @@ public final class ChromaGameTests {
 		helper.succeed();
 	}
 
+	/** Collector registration, bottle conversion, player bucket handoff, transactional output, and exact recipe. */
+	private static void collectorSurvivalLoop(GameTestHelper helper) {
+		BlockPos absolute = helper.absolutePos(new BlockPos(2, 2, 2));
+		helper.getLevel().setBlock(absolute, ChromaBlocks.COLLECTOR.get().defaultBlockState(), 3);
+		BlockEntity blockEntity = helper.getLevel().getBlockEntity(absolute);
+		helper.assertTrue(blockEntity instanceof TileEntityCollector,
+				"collector must instantiate its registered block entity");
+		TileEntityCollector collector = (TileEntityCollector)blockEntity;
+		collector.setItem(0, new ItemStack(Items.EXPERIENCE_BOTTLE, 4));
+		for (int i = 0; i < 4; i++) collector.updateEntity(helper.getLevel(), absolute);
+		helper.assertTrue(collector.getOutputLevel() == 1200
+				&& collector.getItem(0).isEmpty() && collector.getItem(1).is(Items.GLASS_BOTTLE)
+				&& collector.getItem(1).getCount() == 4,
+				"four XP bottles must become 1200 mB Liquid Chroma and four returned bottles");
+
+		FluidResource chroma = FluidResource.of(ChromaFluids.CHROMA.get());
+		try (Transaction transaction = Transaction.openRoot()) {
+			int extracted = collector.fluidHandler().extract(1, chroma, 125, transaction);
+			helper.assertTrue(extracted == 125 && collector.getOutputLevel() == 1075,
+					"the output tank must expose Liquid Chroma from every capability view");
+		}
+		helper.assertTrue(collector.getOutputLevel() == 1200,
+				"an aborted transfer transaction must restore the Collector output tank");
+		try (Transaction transaction = Transaction.openRoot()) {
+			collector.fluidHandler().extract(1, chroma, 125, transaction);
+			transaction.commit();
+		}
+		helper.assertTrue(collector.getOutputLevel() == 1075,
+				"a committed transfer transaction must drain the Collector output tank");
+
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		player.setGameMode(GameType.SURVIVAL);
+		player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, new ItemStack(Items.BUCKET));
+		BlockHitResult hit = new BlockHitResult(Vec3.atCenterOf(absolute), Direction.UP, absolute, false);
+		InteractionResult bucketResult = helper.getLevel().getBlockState(absolute).useItemOn(
+				player.getMainHandItem(), helper.getLevel(), player,
+				net.minecraft.world.InteractionHand.MAIN_HAND, hit);
+		helper.assertTrue(bucketResult.consumesAction()
+				&& player.getMainHandItem().is(ChromaItems.CHROMA_BUCKET.get())
+				&& collector.getOutputLevel() == 75,
+				"right-clicking with a bucket must expose the survival Liquid Chroma handoff before opening the GUI");
+		ProgressionManager.instance.setPlayerStage(player, ProgressStage.CASTING, true, false, false);
+		player.giveExperiencePoints(4);
+		collector.tryIntakeXPFromPlayer(player, false);
+		helper.assertTrue(collector.getOutputLevel() == 75 && player.totalExperience == 4,
+				"direct intake must wait for V33a's complete five-XP conversion pulse");
+		player.giveExperiencePoints(1);
+		collector.tryIntakeXPFromPlayer(player, false);
+		helper.assertTrue(collector.getOutputLevel() == 80 && player.totalExperience == 0
+				&& ProgressStage.MAKECHROMA.isPlayerAtStage(player),
+				"a complete direct-intake pulse must make five mB, consume five XP, and grant MAKECHROMA");
+
+		List<CastingTableRecipe> recipes = reika.chromaticraft.network.ChromaNetwork.guideCastingRecipes(
+				helper.getLevel().getServer().getRecipeManager(), ChromaBlocks.COLLECTOR.get().asItem());
+		helper.assertTrue(recipes.size() == 1, "collector must have one registered casting recipe");
+		CastingTableRecipe recipe = recipes.getFirst();
+		Map<Integer, Ingredient> grid = new HashMap<>();
+		for (var entry : recipe.grid()) grid.put(entry.slot(), entry.ingredient());
+		helper.assertTrue(recipe.tier() == CastingTableRecipe.Tier.CRAFTING
+				&& recipe.grid().size() == 9 && recipe.penaltyThreshold() == 1
+				&& recipe.penaltyMultiplier() == 0F
+				&& grid.get(1).test(new ItemStack(Items.ENDER_EYE))
+				&& grid.get(4).test(new ItemStack(Items.GLOWSTONE))
+				&& grid.get(6).test(new ItemStack(Items.STONE))
+				&& grid.get(0).test(ChromaItems.shardStack(CrystalElement.RED))
+				&& grid.get(0).test(ChromaItems.boostedShardStack(CrystalElement.RED)),
+				"Collector recipe must retain the exact V33a SES/ScS/CCC any-shard pattern and XP penalty");
+		helper.succeed();
+	}
+
+	/** Exact first Pool Recipe: owned iron + sixteen Chromic Dust consumes Chroma and grants ALLOY. */
+	private static void poolAlloyingSurvivalLoop(GameTestHelper helper) {
+		BlockPos pos = helper.absolutePos(new BlockPos(4, 4, 4));
+		helper.getLevel().setBlockAndUpdate(pos.below(), Blocks.STONE.defaultBlockState());
+		helper.getLevel().setBlockAndUpdate(pos, ChromaBlocks.CHROMA.get().defaultBlockState());
+		var pool = (reika.chromaticraft.block.BlockChromaFluid.TileEntityChroma)
+				helper.getLevel().getBlockEntity(pos);
+		pool.etherize(16);
+		var owner = helper.makeMockPlayer(GameType.SURVIVAL);
+
+		ItemStack iron = new ItemStack(Items.IRON_INGOT);
+		ItemEntity catalyst = new ItemEntity(helper.getLevel(), pos.getX() + 0.5,
+				pos.getY() + 0.25, pos.getZ() + 0.5, iron);
+		catalyst.setThrower(owner);
+		helper.getLevel().addFreshEntity(catalyst);
+		ItemStack dust = new ItemStack(ChromaItems.TIERED.get(ChromaTieredItems.CHROMA_DUST).get(), 20);
+		ItemEntity ingredients = new ItemEntity(helper.getLevel(), pos.getX() + 0.55,
+				pos.getY() + 0.25, pos.getZ() + 0.55, dust);
+		helper.getLevel().addFreshEntity(ingredients);
+
+		helper.assertTrue(PoolAlloyingHandler.findRecipe(catalyst) == null,
+				"pool alloying must reject an owner who has not reached every ALLOY prerequisite");
+		ProgressionManager.instance.setPlayerStage(owner, ProgressStage.SHARDCHARGE, true, false, false);
+		ProgressionManager.instance.setPlayerStage(owner, ProgressStage.MULTIBLOCK, true, false, false);
+		ProgressionManager.instance.setPlayerStage(owner, ProgressStage.CHROMA, true, false, false);
+		RecipeHolder<reika.chromaticraft.auxiliary.recipemanagers.PoolAlloyingRecipe> holder =
+				PoolAlloyingHandler.findRecipe(catalyst);
+		helper.assertTrue(holder != null,
+				"iron and sixteen Chromic Dust in source Liquid Chroma must match the datapack Pool Recipe");
+		helper.assertTrue(PoolAlloyingHandler.complete(catalyst, holder.value(), pool),
+				"a valid owned Pool Recipe must complete atomically");
+
+		int alloy = helper.getLevel().getEntitiesOfClass(ItemEntity.class, new AABB(pos).inflate(2)).stream()
+				.filter(drop -> drop.getItem().is(ChromaItems.CRAFTING.get(ChromaCraftingItems.CHROMA_INGOT).get()))
+				.mapToInt(drop -> drop.getItem().getCount()).sum();
+		helper.assertTrue(alloy == 2,
+				"a fully etherized pool must double the one-ingot V33a output");
+		helper.assertTrue(!catalyst.isAlive() && ingredients.isAlive() && ingredients.getItem().getCount() == 4,
+				"completion must consume one iron catalyst and exactly sixteen Chromic Dust");
+		helper.assertTrue(helper.getLevel().getBlockState(pos).isAir(),
+				"pool alloying must consume the Liquid Chroma source block");
+		helper.assertTrue(ProgressStage.ALLOY.isPlayerAtStage(owner),
+				"the credited catalyst owner must gain ALLOY progression");
+		helper.succeed();
+	}
+
+	/** Exact V33a ingredient/count contracts for the remaining early, survival-obtainable alloys. */
+	private static void poolAlloyingEarlyRecipeFamily(GameTestHelper helper) {
+		var recipes = helper.getLevel().getServer().getRecipeManager().recipeMap()
+				.byType(reika.chromaticraft.registry.ChromaRecipeTypes.POOL_ALLOYING.get());
+		assertPoolRecipe(helper, recipes, "fiery_ingot", Items.GOLD_INGOT,
+				ChromaCraftingItems.FIERY_INGOT,
+				List.of(new ItemStack(ChromaItems.TIERED.get(ChromaTieredItems.FIRAXITE).get(), 16),
+						new ItemStack(Items.BLAZE_POWDER, 8), new ItemStack(Items.COAL, 2)));
+		assertPoolRecipe(helper, recipes, "ender_ingot", Items.IRON_INGOT,
+				ChromaCraftingItems.ENDER_INGOT,
+				List.of(new ItemStack(ChromaItems.TIERED.get(ChromaTieredItems.ENDER_DUST).get(), 16),
+						new ItemStack(Items.ENDER_PEARL, 4)));
+		assertPoolRecipe(helper, recipes, "water_ingot", Items.IRON_INGOT,
+				ChromaCraftingItems.WATER_INGOT,
+				List.of(new ItemStack(ChromaItems.TIERED.get(ChromaTieredItems.WATER_DUST).get(), 16),
+						new ItemStack(Items.GOLD_INGOT, 2)));
+		assertPoolRecipe(helper, recipes, "conductive_ingot", Items.GOLD_INGOT,
+				ChromaCraftingItems.CONDUCTIVE_INGOT,
+				List.of(new ItemStack(Items.REDSTONE, 8),
+						new ItemStack(ChromaItems.TIERED.get(ChromaTieredItems.BEACON_DUST).get(), 16)));
+		assertPoolRecipe(helper, recipes, "aura_ingot", Items.IRON_INGOT,
+				ChromaCraftingItems.AURA_INGOT,
+				List.of(new ItemStack(ChromaItems.TIERED.get(ChromaTieredItems.AURA_DUST).get(), 8),
+						new ItemStack(Items.GLOWSTONE_DUST, 8), new ItemStack(Items.REDSTONE, 16),
+						new ItemStack(Items.QUARTZ, 4)));
+		assertPoolRecipe(helper, recipes, "space_ingot", Items.IRON_INGOT,
+				ChromaCraftingItems.SPACE_INGOT,
+				List.of(new ItemStack(ChromaItems.TIERED.get(ChromaTieredItems.SPACE_DUST).get(), 16),
+						new ItemStack(Items.GLOWSTONE_DUST, 32), new ItemStack(Items.REDSTONE, 64),
+						new ItemStack(Items.QUARTZ, 16), new ItemStack(Items.DIAMOND, 4)));
+		assertPoolRecipe(helper, recipes, "experience_gem",
+				ChromaItems.CRAFTING.get(ChromaCraftingItems.IRIDESCENT_CHUNK).get(),
+				ChromaCraftingItems.EXPERIENCE_GEM,
+				List.of(new ItemStack(Blocks.OBSIDIAN, 4), new ItemStack(Items.EMERALD, 8)));
+		assertPoolRecipe(helper, recipes, "complex_ingot",
+				ChromaItems.CRAFTING.get(ChromaCraftingItems.EXPERIENCE_GEM).get(),
+				ChromaCraftingItems.COMPLEX_INGOT,
+				List.of(ChromaItems.craftingStack(ChromaCraftingItems.CHROMA_INGOT),
+						ChromaItems.craftingStack(ChromaCraftingItems.ENDER_INGOT),
+						ChromaItems.craftingStack(ChromaCraftingItems.WATER_INGOT),
+						ChromaItems.craftingStack(ChromaCraftingItems.SPACE_INGOT),
+						ChromaItems.craftingStack(ChromaCraftingItems.FIERY_INGOT),
+						ChromaItems.craftingStack(ChromaCraftingItems.AURA_INGOT),
+						ChromaItems.craftingStack(ChromaCraftingItems.CONDUCTIVE_INGOT)));
+		assertPoolRecipe(helper, recipes, "data_crystal", ChromaItems.DATA_CRYSTAL.get(), null,
+				List.of(new ItemStack(ChromaItems.CRAFTING.get(ChromaCraftingItems.CRYSTAL_POWDER).get(), 18)));
+		var dataRecipe = recipes.stream().filter(entry -> entry.id().identifier().getPath()
+				.equals("pool_alloying/data_crystal")).findFirst().orElseThrow().value();
+		helper.assertTrue(dataRecipe.result().is(ChromaItems.DATA_CRYSTAL.get())
+				&& dataRecipe.requiredProgress().equals(List.of(ProgressStage.TOWER)),
+				"Data Crystal duplication must output one Data Crystal and retain its sole TOWER gate");
+		helper.succeed();
+	}
+
+	private static void assertPoolRecipe(GameTestHelper helper,
+			java.util.Collection<RecipeHolder<reika.chromaticraft.auxiliary.recipemanagers.PoolAlloyingRecipe>> recipes,
+			String name, net.minecraft.world.level.ItemLike catalyst, ChromaCraftingItems result,
+			List<ItemStack> ingredients) {
+		var holder = recipes.stream().filter(entry -> entry.id().identifier().getPath()
+				.equals("pool_alloying/" + name)).findFirst().orElse(null);
+		helper.assertTrue(holder != null, "missing datapack Pool Recipe " + name);
+		var input = new reika.chromaticraft.auxiliary.recipemanagers.PoolAlloyingInput(
+				new ItemStack(catalyst), ingredients);
+		net.minecraft.world.item.Item expected = result != null
+				? ChromaItems.CRAFTING.get(result).get() : ChromaItems.DATA_CRYSTAL.get();
+		helper.assertTrue(holder.value().matches(input, helper.getLevel())
+				&& holder.value().result().is(expected)
+				&& holder.value().allowDoubling(),
+				name + " must retain its exact catalyst, counted ingredients, output and doubling rule");
+		List<ItemStack> shortIngredients = new java.util.ArrayList<>();
+		for (ItemStack stack : ingredients) shortIngredients.add(stack.copy());
+		shortIngredients.getFirst().shrink(1);
+		helper.assertTrue(!holder.value().matches(
+				new reika.chromaticraft.auxiliary.recipemanagers.PoolAlloyingInput(
+						new ItemStack(catalyst), shortIngredients), helper.getLevel()),
+				name + " must reject a one-item-short ingredient set");
+	}
+
+	/** Rock Flower powder plus any plain shard produces the Item Aura Infuser's survival input. */
+	private static void rawCrystalSurvivalRecipe(GameTestHelper helper) {
+		BlockPos pos = helper.absolutePos(new BlockPos(4, 3, 4));
+		helper.getLevel().setBlock(pos, ChromaBlocks.CASTING_TABLE.get().defaultBlockState(), 3);
+		TileEntityCastingTable table = (TileEntityCastingTable)helper.getLevel().getBlockEntity(pos);
+		var owner = helper.makeMockPlayer(GameType.SURVIVAL);
+		table.setPlacer(owner);
+		ProgressionManager.instance.setPlayerStage(owner, ProgressStage.CRYSTALS, true, false, false);
+		ItemStack powder = ChromaItems.tieredStack(ChromaTieredItems.PURITY_DUST);
+		for (int slot : new int[] {1, 3, 5, 7}) table.setItem(slot, powder.copy());
+
+		table.setItem(4, ChromaItems.boostedShardStack(CrystalElement.BLUE));
+		helper.assertTrue(!table.triggerCrafting(owner),
+				"V33a RawCrystalRecipe must reject boosted shards; metadata 16-31 were not inputs");
+		table.setItem(4, ChromaItems.shardStack(CrystalElement.BLUE));
+		helper.assertTrue(table.triggerCrafting(owner) && table.getCraftingTick() == 5,
+				"four Purification Powder around one plain shard must start the five-tick base cast");
+		for (int i = 0; i < 5; i++) table.updateEntity(helper.getLevel(), pos);
+		helper.assertTrue(table.getItem(9).is(
+				ChromaItems.CRAFTING.get(ChromaCraftingItems.RAW_CRYSTAL).get())
+				&& table.getItem(9).getCount() == 2,
+				"RawCrystalRecipe must retain its CoreRecipe two-item output");
+		helper.assertTrue(table.getTableXP() == 5,
+				"the source base-tier Raw Crystal cast must award five table XP");
+		helper.succeed();
+	}
+
 	/** Charger registration, transfer math, toggles, extraction, upgrade multiplier, and recipe. */
 	private static void crystalChargerItemLoop(GameTestHelper helper) {
 		BlockPos relative = new BlockPos(2, 2, 2);
@@ -6453,6 +7801,198 @@ public final class ChromaGameTests {
 				&& north.test(ChromaItems.shardStack(CrystalElement.WHITE))
 				&& south.test(new ItemStack(Items.SMOOTH_STONE_SLAB)),
 				"charger center and asymmetric white-shard/slab cardinal stands must match V33a");
+		helper.succeed();
+	}
+
+	/** NBT multiblock keying, receiver limits, deactivation clearing, and exact casting recipe. */
+	private static void personalChargerReceiverLoop(GameTestHelper helper) {
+		BlockPos absolute = helper.absolutePos(new BlockPos(6, 8, 6));
+		CrystalElement key = CrystalElement.CYAN;
+		NBTStructureLoader.place(helper.getLevel(), ChromaStructureTemplateProvider.PERSONAL_CHARGER,
+				absolute, new BlockPos(2, 6, 2), state -> ChromaBlocks.isRune(state)
+						? ChromaBlocks.rune(key).get().defaultBlockState() : state, 2);
+		BlockEntity blockEntity = helper.getLevel().getBlockEntity(absolute);
+		helper.assertTrue(blockEntity instanceof TileEntityPersonalCharger,
+				"personal_charger NBT must instantiate its registered receiver");
+		TileEntityPersonalCharger charger = (TileEntityPersonalCharger)blockEntity;
+		charger.validateStructure();
+		var owner = helper.makeMockPlayer(GameType.SURVIVAL);
+		charger.setPlacer(owner);
+		helper.assertTrue(charger.hasStructure() && charger.canConduct() && charger.getColor() == key,
+				"four equal rune sockets and the complete authored structure must activate that colour");
+		helper.assertTrue(charger.getMaxStorage(key) == 60_000
+				&& charger.getMaxStorage(CrystalElement.RED) == 0
+				&& charger.getReceiveRange() == 32 && charger.maxThroughput() == 200
+				&& charger.getChargeRateMultiplier(owner, key) == 0.4F,
+				"Personal Charger must retain V33a capacity, range, throughput and 40% charge rate");
+
+		charger.setEnergy(key, 1_000);
+		helper.assertTrue(charger.drain(key, 125) && charger.getEnergy(key) == 875,
+				"charging-point drain must remove the paid colour amount");
+		CompoundTag carriedData = new CompoundTag();
+		charger.getTagsToWriteToStack(carriedData);
+		ItemStack carried = new ItemStack(ChromaBlocks.PERSONAL_CHARGER.get());
+		ReikaItemHelper.setStackTag(carried, carriedData);
+		TileEntityPersonalCharger restored = new TileEntityPersonalCharger(absolute.above(2),
+				ChromaBlocks.PERSONAL_CHARGER.get().defaultBlockState());
+		restored.setDataFromItemStackTag(carried);
+		helper.assertTrue(restored.getEnergy(key) == 875 && restored.isOwnedByPlayer(owner),
+				"receiver energy and placer ownership must survive the block item custom-data round trip");
+		BlockPos wrongRune = absolute.offset(2, -4, 2);
+		helper.getLevel().setBlock(wrongRune, ChromaBlocks.rune(CrystalElement.RED).get().defaultBlockState(), 3);
+		charger.validateStructure();
+		helper.assertTrue(!charger.hasStructure() && !charger.canConduct() && charger.getEnergy(key) == 0,
+				"one mismatched rune must deactivate the charger and clear stored energy");
+
+		List<CastingTableRecipe> recipes = reika.chromaticraft.network.ChromaNetwork.guideCastingRecipes(
+				helper.getLevel().getServer().getRecipeManager(), ChromaBlocks.PERSONAL_CHARGER.get().asItem());
+		helper.assertTrue(recipes.size() == 1,
+				"personal_charger must have one registered casting recipe");
+		CastingTableRecipe recipe = recipes.getFirst();
+		Ingredient center = recipe.grid().stream().filter(entry -> entry.slot() == 4)
+				.findFirst().orElseThrow().ingredient();
+		helper.assertTrue(recipe.tier() == CastingTableRecipe.Tier.MULTIBLOCK
+				&& recipe.duration() == 2_400 && recipe.experience() == 800
+				&& recipe.stands().size() == 24 && recipe.runes().size() == 16
+				&& recipe.aura().isEmpty() && recipe.penaltyThreshold() == 16
+				&& recipe.penaltyMultiplier() == 0F
+				&& center.test(ChromaItems.clusterStack(ChromaClusterItems.CRYSTAL_CORE)),
+				"Personal Charger recipe must retain its core, full rune ring, 24 stands, duration and XP penalty");
+		helper.assertTrue(recipe.stands().stream().filter(stand -> stand.ingredient().test(
+				ChromaItems.tieredStack(ChromaTieredItems.SPACE_DUST))).count() == 4
+				&& recipe.stands().stream().filter(stand -> stand.ingredient().test(
+				ChromaItems.tieredStack(ChromaTieredItems.BEACON_DUST))).count() == 4
+				&& recipe.stands().stream().filter(stand -> stand.ingredient().test(
+				new ItemStack(Items.GLOWSTONE_DUST))).count() == 12
+				&& recipe.stands().stream().filter(stand -> stand.ingredient().test(
+				new ItemStack(Items.DIAMOND))).count() == 4,
+				"the 24 stands must be 4 Spatial Powder, 4 Transmissive Dust, 12 glowstone and 4 diamonds");
+		helper.succeed();
+	}
+
+	/** Obtainable Lumen Repeater support lifecycle, receiver safety gate, and exact Temple recipe. */
+	private static void weakRepeaterSurvivalLoop(GameTestHelper helper) {
+		BlockPos repeaterPos = helper.absolutePos(new BlockPos(8, 12, 8));
+		BlockPos supportPos = repeaterPos.below();
+		helper.getLevel().setBlock(supportPos, Blocks.OAK_LOG.defaultBlockState(), 3);
+		helper.getLevel().setBlock(repeaterPos, ChromaBlocks.WEAK_REPEATER.get().defaultBlockState(), 3);
+		BlockEntity blockEntity = helper.getLevel().getBlockEntity(repeaterPos);
+		helper.assertTrue(blockEntity instanceof TileEntityWeakRepeater,
+				"weak_repeater must instantiate its registered block entity");
+		TileEntityWeakRepeater repeater = (TileEntityWeakRepeater)blockEntity;
+		helper.assertTrue(repeater.findFirstValidSide() && repeater.hasStructure() && repeater.canConduct(),
+				"a Lumen Repeater must select and conduct through its adjacent log support");
+		helper.assertTrue(repeater.getSendRange() == 16 && repeater.getReceiveRange() == 24
+				&& repeater.maxThroughput() == 120 && repeater.getSignalDegradation(false) == 250
+				&& repeater.getIncomingBeamRadius() == 0.125
+				&& repeater.getOutgoingBeamRadius() == 0.125,
+				"Lumen Repeater must retain V33a range, throughput, degradation and beam radii");
+
+		TileEntityPersonalCharger safe = new TileEntityPersonalCharger(repeaterPos.above(3),
+				ChromaBlocks.PERSONAL_CHARGER.get().defaultBlockState());
+		TestReceiver unsafe = new TestReceiver(helper.getLevel(), repeaterPos.offset(5, 0, 0));
+		helper.assertTrue(repeater.canSafelySupply(safe)
+				&& repeater.getModifiedThoughput(120, null, safe) == 120
+				&& !repeater.canSafelySupply(unsafe)
+				&& repeater.getModifiedThoughput(120, null, unsafe) == 0,
+				"wooden transmission must be lossless only for the source-authored safe receiver family");
+
+		helper.getLevel().destroyBlock(supportPos, false);
+		repeater.onAdjacentBlockUpdate();
+		helper.assertTrue(!repeater.hasStructure() && !repeater.canConduct(),
+				"removing the supporting log must immediately deactivate the repeater");
+		helper.getLevel().setBlock(supportPos, Blocks.OAK_LOG.defaultBlockState(), 3);
+		repeater.onAdjacentBlockUpdate();
+		helper.assertTrue(repeater.hasStructure() && repeater.canConduct(),
+				"replacing the supporting log must reactivate the repeater without replacement");
+
+		List<CastingTableRecipe> recipes = reika.chromaticraft.network.ChromaNetwork.guideCastingRecipes(
+				helper.getLevel().getServer().getRecipeManager(), ChromaBlocks.WEAK_REPEATER.get().asItem());
+		helper.assertTrue(recipes.size() == 1, "weak_repeater must have one registered casting recipe");
+		CastingTableRecipe recipe = recipes.getFirst();
+		java.util.Map<Integer, Ingredient> grid = new java.util.HashMap<>();
+		for (CastingTableRecipe.GridIngredient entry : recipe.grid())
+			grid.put(entry.slot(), entry.ingredient());
+		helper.assertTrue(recipe.tier() == CastingTableRecipe.Tier.TEMPLE
+				&& recipe.output().is(ChromaBlocks.WEAK_REPEATER.get().asItem())
+				&& recipe.output().getCount() == 8 && recipe.duration() == 80
+				&& recipe.experience() == 80 && recipe.runes().size() == 6
+				&& recipe.stands().isEmpty() && recipe.aura().isEmpty()
+				&& recipe.requiredProgress().containsAll(List.of(
+						ProgressStage.CHARGE, ProgressStage.PYLON, ProgressStage.MAKECHROMA)),
+				"Lumen Repeater recipe must retain its Temple tier, eight output, timing, XP, runes and gates");
+		helper.assertTrue(grid.get(0).test(new ItemStack(Blocks.OAK_PLANKS))
+				&& grid.get(1).test(ChromaItems.tieredStack(ChromaTieredItems.BEACON_DUST))
+				&& grid.get(3).test(new ItemStack(Items.STICK))
+				&& grid.get(4).test(new ItemStack(ChromaItems.CHROMA_BUCKET.get()))
+				&& grid.get(7).test(new ItemStack(Items.GLOWSTONE_DUST)),
+				"the 3x3 recipe must retain its plank, Transmissive Dust, stick, Liquid Chroma and glowstone layout");
+		helper.succeed();
+	}
+
+	/** Direct crystal loading, source buffers, adaptive cadence, receiver safety, and exact recipe. */
+	private static void relaySourceSurvivalLoop(GameTestHelper helper) {
+		BlockPos sourcePos = helper.absolutePos(new BlockPos(8, 8, 8));
+		helper.getLevel().setBlock(sourcePos, ChromaBlocks.RELAY_SOURCE.get().defaultBlockState(), 3);
+		BlockEntity blockEntity = helper.getLevel().getBlockEntity(sourcePos);
+		helper.assertTrue(blockEntity instanceof TileEntityRelaySource,
+				"relay_source must instantiate its registered block entity");
+		TileEntityRelaySource source = (TileEntityRelaySource)blockEntity;
+		helper.assertTrue(source.getMaxStorage(CrystalElement.CYAN) == 720_000
+				&& source.getReceiveRange() == 32 && source.maxThroughput() == 6_000
+				&& source.requestCooldown() == 200 && source.canConduct(),
+				"Relay Source must retain V33a's base capacity, range, throughput and cadence");
+		helper.assertTrue(source instanceof reika.chromaticraft.magic.interfaces.WeakRepeaterSafeReceiver,
+				"the Relay Source must remain a source-authored safe receiver for wooden repeaters");
+
+		ItemStack crystal = ChromaItems.storageCrystalStack(StorageCrystalTier.SAMI);
+		ItemStorageCrystal.addEnergy(crystal, CrystalElement.CYAN, 50_000);
+		Player player = helper.makeMockPlayer(GameType.SURVIVAL);
+		player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, crystal);
+		BlockHitResult hit = new BlockHitResult(Vec3.atCenterOf(sourcePos), Direction.UP, sourcePos, false);
+		InteractionResult insertion = helper.getLevel().getBlockState(sourcePos).useItemOn(
+				player.getMainHandItem(), helper.getLevel(), player,
+				net.minecraft.world.InteractionHand.MAIN_HAND, hit);
+		helper.assertTrue(insertion.consumesAction() && player.getMainHandItem().isEmpty()
+				&& ItemStorageCrystal.getStoredEnergy(source.getItem(0), CrystalElement.CYAN) == 50_000,
+				"survival right-click must insert exactly one charged Storage Crystal without a menu");
+
+		source.runTransferCycleForTest();
+		helper.assertTrue(source.getEnergy(CrystalElement.CYAN) == 24_000
+				&& ItemStorageCrystal.getStoredEnergy(source.getItem(0), CrystalElement.CYAN) == 26_000,
+				"one base transfer must move the V33a throughput-times-four amount into the colour buffer");
+		source.noteDrainForTest(CrystalElement.CYAN, 100_000);
+		source.runAdaptiveCycleForTest();
+		helper.assertTrue(source.requestCooldown() == 199,
+				"sustained relay draw must shorten V33a's adaptive request cadence by one tick per cycle");
+
+		List<CastingTableRecipe> recipes = reika.chromaticraft.network.ChromaNetwork.guideCastingRecipes(
+				helper.getLevel().getServer().getRecipeManager(), ChromaBlocks.RELAY_SOURCE.get().asItem());
+		helper.assertTrue(recipes.size() == 1, "relay_source must have one registered casting recipe");
+		CastingTableRecipe recipe = recipes.getFirst();
+		Ingredient center = recipe.grid().stream().filter(entry -> entry.slot() == 4)
+				.findFirst().orElseThrow().ingredient();
+		helper.assertTrue(recipe.tier() == CastingTableRecipe.Tier.MULTIBLOCK
+				&& recipe.duration() == 100 && recipe.experience() == 200
+				&& recipe.stands().size() == 24 && recipe.runes().size() == 4
+				&& recipe.aura().isEmpty()
+				&& center.test(ChromaItems.craftingStack(ChromaCraftingItems.CRYSTAL_FOCUS)),
+				"Relay Source recipe must retain its focus, 24 stands, four runes, duration and XP");
+		helper.assertTrue(recipe.stands().stream().filter(stand -> stand.ingredient().test(
+				new ItemStack(Items.IRON_INGOT))).count() == 7
+				&& recipe.stands().stream().filter(stand -> stand.ingredient().test(
+				ChromaItems.tieredStack(ChromaTieredItems.ELEMENT_DUST))).count() == 2
+				&& recipe.stands().stream().filter(stand -> stand.ingredient().test(
+				ChromaItems.tieredStack(ChromaTieredItems.FOCUS_DUST))).count() == 3
+				&& recipe.stands().stream().filter(stand -> stand.ingredient().test(
+				new ItemStack(Items.OBSIDIAN))).count() == 8,
+				"the 24 stands must retain V33a's iron, Infused Dust, Focal Powder and obsidian counts");
+		helper.assertTrue(recipe.runes().containsAll(List.of(
+				new CastingTableRecipe.RuneRequirement(new BlockPos(-4, 0, -5), CrystalElement.BLACK),
+				new CastingTableRecipe.RuneRequirement(new BlockPos(5, 0, -4), CrystalElement.BLUE),
+				new CastingTableRecipe.RuneRequirement(new BlockPos(4, 0, 5), CrystalElement.WHITE),
+				new CastingTableRecipe.RuneRequirement(new BlockPos(-5, 0, 4), CrystalElement.YELLOW))),
+				"Relay Source runes must retain all four authored colours and asymmetric offsets");
 		helper.succeed();
 	}
 

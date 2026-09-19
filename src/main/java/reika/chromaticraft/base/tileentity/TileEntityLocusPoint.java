@@ -21,6 +21,7 @@ import reika.dragonapi.instantiable.data.blockstruct.ThreadSafeTileCache;
 import reika.dragonapi.instantiable.data.immutable.WorldLocation;
 import reika.dragonapi.instantiable.data.maps.NestedMap;
 import reika.dragonapi.interfaces.blockentity.LocationCached;
+import reika.dragonapi.libraries.registry.ReikaItemHelper;
 
 /**
  * V33a {@code TileEntityLocusPoint}: the base for tiles a player plants and later wants to find again —
@@ -37,14 +38,9 @@ import reika.dragonapi.interfaces.blockentity.LocationCached;
  * survives chunk unload, and can be resolved across dimensions, which a held reference could not. The
  * cache drops entries whose tile has gone as it walks them.
  *
- * <h2>What is deferred</h2>
- *
- * <p>{@code getTagsToWriteToStack} and {@code setDataFromItemStackTag} are upstream's owner-data
- * round-trip, so that a picked-up locus point remembers whose it was. The owner serialisation they
- * call is part of a system this port has not reached yet — {@code CrystalReceiverBase} defers the same
- * pair with the same note — so they are left as the no-ops the rest of the port already assumes, and
- * will be filled in with it. Ownership <em>in the world</em> works: that comes from the placer the base
- * records, which {@link #isOwnedByPlayer} reads.
+	 * <p>The owner also round-trips through the dropped item. This is not optional for an Aura Locus:
+	 * placing a picked-up locus as the current player would otherwise silently steal it because the
+	 * ordinary block placement callback runs before the item's saved owner data is restored.
  */
 public abstract class TileEntityLocusPoint extends TileEntityChromaticBase
 		implements LocationCached, OwnedTile {
@@ -147,15 +143,30 @@ public abstract class TileEntityLocusPoint extends TileEntityChromaticBase
 		return placer != null && placer.equals(ep.getUUID());
 	}
 
-	/**
-	 * Deferred with the rest of the owner-data system; see the class note. Left as a no-op rather than
-	 * writing a partial tag, so a picked-up point carries nothing rather than something wrong.
-	 */
 	@Override
-	public void getTagsToWriteToStack(CompoundTag NBT) {}
+	public void getTagsToWriteToStack(CompoundTag NBT) {
+		if (placer != null && !placer.isEmpty())
+			NBT.putString("place", placer);
+		if (placerUUID != null)
+			NBT.putString("placeUUID", placerUUID.toString());
+	}
 
 	@Override
-	public void setDataFromItemStackTag(ItemStack is) {}
+	public void setDataFromItemStackTag(ItemStack is) {
+		CompoundTag tag = ReikaItemHelper.getStackTag(is);
+		if (tag == null)
+			return;
+		placer = tag.getStringOr("place", placer != null ? placer : "");
+		String id = tag.getStringOr("placeUUID", "");
+		if (!id.isEmpty()) {
+			try {
+				placerUUID = UUID.fromString(id);
+			}
+			catch (IllegalArgumentException ignored) {
+				// A malformed item must not erase the valid placer just assigned by placement.
+			}
+		}
+	}
 
 	@Override
 	public void addTooltipInfo(List li, boolean shift) {}

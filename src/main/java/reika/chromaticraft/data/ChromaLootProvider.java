@@ -21,6 +21,7 @@ import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.storage.loot.LootPool;
 import net.minecraft.world.level.storage.loot.functions.SetItemCountFunction;
+import net.minecraft.world.level.storage.loot.functions.EnchantWithLevelsFunction;
 import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.entries.EmptyLootItem;
 import net.minecraft.world.level.storage.loot.entries.LootItem;
@@ -54,6 +55,7 @@ import reika.chromaticraft.block.worldgen26.BlockDecoFlower;
 import reika.chromaticraft.block.worldgen26.BlockStructureShield;
 import reika.chromaticraft.block.worldgen26.BlockLootChest;
 import reika.chromaticraft.registry.ChromaBlocks;
+import reika.chromaticraft.registry.ChromaCraftingItems;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.registry.ChromaTieredItems;
 import reika.chromaticraft.world.OverworldStructureFeature;
@@ -76,16 +78,83 @@ public final class ChromaLootProvider extends LootTableProvider {
 	public static final ResourceKey<LootTable> VILLAGE_CASTING_JUNK = ResourceKey.create(
 			net.minecraft.core.registries.Registries.LOOT_TABLE,
 			net.minecraft.resources.Identifier.fromNamespaceAndPath("chromaticraft", "chests/village_casting_junk"));
+	/** V33a Glowing Logic room chest: stronghold-corridor contents plus four independent extras. */
+	public static final ResourceKey<LootTable> LIGHT_PANEL_ROOM_LOOT = ResourceKey.create(
+			net.minecraft.core.registries.Registries.LOOT_TABLE,
+			net.minecraft.resources.Identifier.fromNamespaceAndPath("chromaticraft", "chests/light_panel_room"));
 
 	public ChromaLootProvider(PackOutput output, CompletableFuture<HolderLookup.Provider> registries) {
 		super(output, Set.of(), List.of(
 				new SubProviderEntry(Blocks::new, LootContextParamSets.BLOCK),
 				new SubProviderEntry(BurrowCache::new, LootContextParamSets.CHEST),
 				new SubProviderEntry(VillageCasting::new, LootContextParamSets.CHEST),
+				new SubProviderEntry(LightPanelRoomLoot::new, LootContextParamSets.CHEST),
 				// V33a ChromaChests' injections into the vanilla chest tables; attached by
 				// ChromaLootModifierProvider.
 				new SubProviderEntry(ChromaChestLoot::new, LootContextParamSets.CHEST)
 		), registries);
+	}
+
+	/**
+	 * Exact modern expression of {@code LightPanelRoom.generateLootChest}. V33a first populated the
+	 * chest from {@code STRONGHOLD_CORRIDOR}, then independently attempted Luma Dust (70%), a boosted
+	 * blue shard (90%), Lumenite (50%), and a Radiant Gem (10%). Separate one-roll pools retain those
+	 * independent chances; the stronghold pools are copied from the active 26.2 vanilla provider so
+	 * the table remains data-driven and validates without a cross-pack nested-table reference.
+	 */
+	private record LightPanelRoomLoot(HolderLookup.Provider registries) implements LootTableSubProvider {
+		@Override
+		public void generate(BiConsumer<ResourceKey<LootTable>, LootTable.Builder> output) {
+			LootPool.Builder corridor = LootPool.lootPool().setRolls(UniformGenerator.between(2, 3));
+			add(corridor, Items.ENDER_PEARL, 1, 1, 10);
+			add(corridor, Items.DIAMOND, 1, 3, 3);
+			add(corridor, Items.IRON_INGOT, 1, 5, 10);
+			add(corridor, Items.GOLD_INGOT, 1, 3, 5);
+			add(corridor, Items.REDSTONE, 4, 9, 5);
+			add(corridor, Items.BREAD, 1, 3, 15);
+			add(corridor, Items.APPLE, 1, 3, 15);
+			add(corridor, Items.IRON_PICKAXE, 1, 1, 5);
+			add(corridor, Items.IRON_SWORD, 1, 1, 5);
+			add(corridor, Items.IRON_CHESTPLATE, 1, 1, 5);
+			add(corridor, Items.IRON_HELMET, 1, 1, 5);
+			add(corridor, Items.IRON_LEGGINGS, 1, 1, 5);
+			add(corridor, Items.IRON_BOOTS, 1, 1, 5);
+			add(corridor, Items.GOLDEN_APPLE, 1, 1, 1);
+			add(corridor, Items.LEATHER, 1, 5, 1);
+			add(corridor, Items.COPPER_HORSE_ARMOR, 1, 1, 1);
+			add(corridor, Items.IRON_HORSE_ARMOR, 1, 1, 1);
+			add(corridor, Items.GOLDEN_HORSE_ARMOR, 1, 1, 1);
+			add(corridor, Items.DIAMOND_HORSE_ARMOR, 1, 1, 1);
+			add(corridor, Items.MUSIC_DISC_OTHERSIDE, 1, 1, 1);
+			corridor.add(LootItem.lootTableItem(Items.BOOK)
+					.apply(EnchantWithLevelsFunction.enchantWithLevels(registries,
+							ConstantValue.exactly(30))));
+
+			LootPool.Builder trim = LootPool.lootPool().setRolls(ConstantValue.exactly(1))
+					.add(EmptyLootItem.emptyItem().setWeight(9))
+					.add(LootItem.lootTableItem(Items.EYE_ARMOR_TRIM_SMITHING_TEMPLATE));
+			LootTable.Builder table = LootTable.lootTable().withPool(corridor).withPool(trim)
+					.withPool(chance(ChromaItems.TIERED.get(ChromaTieredItems.LUMA_DUST).get(), 0.70F))
+					.withPool(chance(ChromaItems.BOOSTED_SHARDS.get(CrystalElement.BLUE).get(), 0.90F))
+					.withPool(chance(ChromaItems.TIERED.get(ChromaTieredItems.LUMEN_GEM).get(), 0.50F))
+					.withPool(chance(ChromaItems.CRAFTING.get(
+							ChromaCraftingItems.GLOW_CHUNK).get(), 0.10F));
+			output.accept(LIGHT_PANEL_ROOM_LOOT, table);
+		}
+
+		private static LootPool.Builder chance(Item item, float chance) {
+			return LootPool.lootPool().setRolls(ConstantValue.exactly(1))
+					.when(LootItemRandomChanceCondition.randomChance(chance))
+					.add(LootItem.lootTableItem(item));
+		}
+
+		private static void add(LootPool.Builder pool, net.minecraft.world.level.ItemLike item,
+				int minimum, int maximum, int weight) {
+			LootItem.Builder<?> entry = LootItem.lootTableItem(item).setWeight(weight);
+			if (minimum != 1 || maximum != 1)
+				entry.apply(SetItemCountFunction.setCount(UniformGenerator.between(minimum, maximum)));
+			pool.add(entry);
+		}
 	}
 
 	/** V33a village-blacksmith loot plus ChromaChests' VILLAGE additions and the bonus roll. */

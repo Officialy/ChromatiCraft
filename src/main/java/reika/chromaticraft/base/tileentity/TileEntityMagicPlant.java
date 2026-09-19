@@ -19,7 +19,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import reika.chromaticraft.auxiliary.interfaces.EffectPlant;
 import reika.chromaticraft.tileentity.plants.TileEntityAccelerationPlant;
 
-/** Shared V33a behavior for the five functional decorative plants. */
+/** Shared V33a behavior for the functional decorative plants. */
 public abstract class TileEntityMagicPlant extends TileEntityChromaticBase implements EffectPlant {
 
 	protected TileEntityMagicPlant(BlockEntityType<?> type, BlockPos pos, BlockState state) {

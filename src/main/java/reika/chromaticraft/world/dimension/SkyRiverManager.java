@@ -85,10 +85,16 @@ public final class SkyRiverManager {
 	 */
 	/** Long enough to cover the approach, short enough that the trail behind a rider lets go quickly. */
 	private static final long PRELOAD_TIMEOUT = 200L;
-	/** How far down the path to ask for terrain, in blocks. Roughly one, four and nine seconds ahead. */
-	private static final int[] PRELOAD_DISTANCES = {128, 512, 1280};
-	/** Chunk radius per probe; the rider is a point, so this only has to cover the tube. */
-	private static final int PRELOAD_RADIUS = 2;
+	/**
+	 * A narrow corridor, not broad radius tickets. At V33a speed the rider crosses almost nine chunks
+	 * a second; requesting 25 chunks at three distances every tick overwhelmed generation rather than
+	 * staying ahead of it. These probes cover the actual line of travel and are issued once per rider
+	 * chunk.
+	 */
+	private static final int PRELOAD_STEP = 32;
+	private static final int PRELOAD_DISTANCE = 384;
+	/** Never enter terrain unless this much of the immediate route is already a full LevelChunk. */
+	private static final int READY_DISTANCE = 64;
 
 	public static final DeferredRegister<net.minecraft.server.level.TicketType> TICKET_TYPES =
 			DeferredRegister.create(net.minecraft.core.registries.BuiltInRegistries.TICKET_TYPE,
@@ -237,10 +243,19 @@ public final class SkyRiverManager {
 
 		state.riverTicks++;
 		reportOnce("carrying", "a player is being moved along a river");
-		preload(player, along);
+		preload(player, state, along);
 		// Nothing about being carried should ever accumulate a fall: a rider is hundreds of blocks up
 		// and any hitch that briefly interrupts the ride would otherwise land as damage.
 		player.fallDistance = 0;
+		if (!isRouteReady(player, move)) {
+			// Do not let either the authoritative entity or its client prediction cross into an unloaded
+			// chunk. Keeping the rider caught, weightless and stationary lets queued generation finish
+			// without Entity#setPosRaw forcing the server thread to wait for it synchronously.
+			player.setDeltaMovement(Vec3.ZERO);
+			player.hurtMarked = true;
+			player.setNoGravity(true);
+			return true;
+		}
 		player.setDeltaMovement(move.scale(SPEED));
 		player.hurtMarked = true;
 		// A rider hangs hundreds of blocks up moving faster than the server's anti-flight check
@@ -256,19 +271,37 @@ public final class SkyRiverManager {
 	 * Asks for the terrain a rider is about to cross, before they cross it. See {@link #SKY_RIVER_TICKET}
 	 * for why this is the fix rather than a nicety.
 	 */
-	private static void preload(Player player, Vec3 direction) {
+	private static void preload(Player player, RiderState state, Vec3 direction) {
 		if (!(player.level() instanceof ServerLevel server) || direction.lengthSqr() < 1.0E-6)
 			return;
+		ChunkPos current = ChunkPos.containing(player.blockPosition());
+		long currentKey = current.pack();
+		if (state.lastPreloadChunk == currentKey)
+			return;
+		state.lastPreloadChunk = currentKey;
 		Vec3 heading = direction.normalize();
 		Vec3 position = player.position();
-		for (int blocks : PRELOAD_DISTANCES) {
+		long previous = Long.MIN_VALUE;
+		for (int blocks = PRELOAD_STEP; blocks <= PRELOAD_DISTANCE; blocks += PRELOAD_STEP) {
 			Vec3 ahead = position.add(heading.scale(blocks));
 			ChunkPos chunk = new ChunkPos(Mth.floor(ahead.x) >> 4, Mth.floor(ahead.z) >> 4);
+			if (chunk.pack() == previous)
+				continue;
+			previous = chunk.pack();
 			// addTicketWithRadius rather than addTicketAndLoadWithRadius: the latter refuses a ticket
 			// type that can expire, and returns a future nothing here would wait on anyway. This queues
 			// the work and moves on, which is the whole point.
-			server.getChunkSource().addTicketWithRadius(SKY_RIVER_TICKET.get(), chunk, PRELOAD_RADIUS);
+			server.getChunkSource().addTicketWithRadius(SKY_RIVER_TICKET.get(), chunk, 0);
 		}
+	}
+
+	/** Read-only readiness check: {@code getChunkNow} never generates or waits. */
+	private static boolean isRouteReady(Player player, Vec3 direction) {
+		if (!(player.level() instanceof ServerLevel server) || direction.lengthSqr() < 1.0E-6)
+			return true;
+		Vec3 ahead = player.position().add(direction.normalize().scale(READY_DISTANCE));
+		return server.getChunkSource().getChunkNow(Mth.floor(ahead.x) >> 4,
+				Mth.floor(ahead.z) >> 4) != null;
 	}
 
 	private static void eject(Player player, RiderState state) {
@@ -305,6 +338,8 @@ public final class SkyRiverManager {
 		private int ejectCooldown;
 		/** Ticks of slack left before a rider who has slipped out of the tube is actually dropped. */
 		private int graceTicks;
+		/** Chunk in which the current forward corridor was last requested. */
+		private long lastPreloadChunk = Long.MIN_VALUE;
 
 		private void tick() {
 			if (ejectCooldown > 0)

@@ -267,6 +267,12 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 				requiredProgress, stackingFactor, stackable, requiresTuningKey, threshold,
 				penaltyMultiplier, completion);
 	}
+	/** Datagen convenience for the few V33a recipes that override both penalty values. */
+	public CastingTableRecipe withPenalty(int threshold, float multiplier) {
+		return new CastingTableRecipe(tier, grid, stands, runes, aura, output, duration, experience,
+				requiredProgress, stackingFactor, stackable, requiresTuningKey, threshold,
+				multiplier, completion);
+	}
 	public CastingTableRecipe withCompletionBehavior(boolean copyCenterCustomData,
 			List<ProgressStage> grantedProgress, List<Float> harmonics) {
 		return new CastingTableRecipe(tier, grid, stands, runes, aura, output, duration, experience,

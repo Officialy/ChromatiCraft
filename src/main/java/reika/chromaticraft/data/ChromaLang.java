@@ -36,6 +36,11 @@ public class ChromaLang extends LanguageProvider {
 		add("commands.chromaticraft.locate_data_tower.all",
 				"All thirteen Data Tower positions (click coordinates to prepare a teleport):");
 		add("tab.chromaticraft", "ChromatiCraft");
+		add("tab.chromaticraft.decoration", "ChromatiCraft Decoration");
+		add("tab.chromaticraft.worldgen", "ChromatiCraft Worldgen");
+		add("tab.chromaticraft.tools", "ChromatiCraft Tools");
+		add("tab.chromaticraft.items", "ChromatiCraft Items");
+		add("tab.chromaticraft.fragments", "CC Info Fragments");
 		// V33a Registry/ChromaBlocks basicName keys "chroma.storageblock" and "chroma.display" have
 		// no entry at all in the V33a en_US.lang (never publicly named); no ground truth exists for
 		// these two, so the text below is retained pre-existing invented text, not a port. See report.
@@ -52,6 +57,7 @@ public class ChromaLang extends LanguageProvider {
 		add("block.chromaticraft.casting_item_stand", "Item Casting Stand");
 		// V33a chroma.table = "Casting Table" — matches.
 		add("block.chromaticraft.casting_table", "Casting Table");
+		add("block.chromaticraft.ritual_table", "Ritual Table");
 		// V33a chroma.focuscrystal = "Focus Crystals" (plural, not "Focus Crystal").
 		add("block.chromaticraft.focus_crystal", "Focus Crystals");
 		// V33a chroma.mud (BlockChromaMud's own basicName key) = "Muddy Residue", not "Chroma-Infused Mud".
@@ -75,12 +81,15 @@ public class ChromaLang extends LanguageProvider {
 		add("block.chromaticraft.liquid_chroma", "Liquid Chroma");
 		add("fluid_type.chromaticraft.chroma", "Liquid Chroma");
 		add(ChromaItems.CHROMA_BUCKET.get(), "Liquid Chroma Bucket");
+		add(ChromaItems.LUMA_BUCKET.get(), "Ethereal Luma Bucket");
+		add(ChromaItems.ENDER_BUCKET.get(), "Liquid Ender Bucket");
 		// V33a RAINBOWLEAF/RAINBOWSAPLING -> rainbow.leaf = "Rainbow Leaf" (singular), rainbow.sapling = "Rainbow Sapling".
 		add("block.chromaticraft.rainbow_leaves", "Rainbow Leaf");
 		add("block.chromaticraft.rainbow_sapling", "Rainbow Sapling");
 		// The former TE-registry blocks (ChromaTiles), previously missing lang entries entirely.
 		add("block.chromaticraft.pylon", "Crystal Pylon");
 		add("block.chromaticraft.crystal_repeater", "Crystal Repeater");
+		add("block.chromaticraft.weak_repeater", "Lumen Repeater");
 		add("block.chromaticraft.skypeater", "Lumen Node");
 		add("block.chromaticraft.compound_repeater", "Multi-Aura Repeater");
 		add("block.chromaticraft.pylon_link", "Pylon Network Node");
@@ -109,6 +118,7 @@ public class ChromaLang extends LanguageProvider {
 					tier.displayPrefix() + " Energy Storage Crystal");
 		add(ChromaItems.SPEED_UPGRADE.get(), "Speed Upgrade"); // V33a chromamisc.speed
 		add(ChromaBlocks.CRYSTAL_CHARGER.get(), "Storage Crystal Charger"); // V33a chroma.charger
+		add(ChromaBlocks.COLLECTOR.get(), "Chroma Collector"); // V33a chroma.collector
 		add(ChromaBlocks.FARMER.get(), "Elemental Harvester"); // V33a chroma.farmer
 		add(ChromaBlocks.HEAT_LILY.get(), "Heat Lily"); // V33a chroma.heatlily
 		add(ChromaBlocks.BIOME_REVERTER.get(), "Reversion Lotus"); // V33a chroma.reverter
@@ -118,9 +128,23 @@ public class ChromaLang extends LanguageProvider {
 		add(ChromaBlocks.HARVEST_PLANT.get(), "Scissorweed"); // V33a chroma.harvestplant
 		add(ChromaBlocks.ITEM_INFUSER.get(), "Item Aura Infuser"); // V33a chroma.infuser
 		add(ChromaBlocks.PLAYER_INFUSER.get(), "Personal Infusion Stand"); // V33a chroma.playerinfuser
+		add(ChromaBlocks.PERSONAL_CHARGER.get(), "Personal Charger"); // V33a chroma.personal
+		add(ChromaBlocks.RELAY_SOURCE.get(), "Lumen Relay Source"); // V33a chroma.relaysource
 		add(ChromaBlocks.FUNCTION_RELAY.get(), "Area Delegation Point");
+		for (CrystalElement element : CrystalElement.elements)
+			add(ChromaBlocks.lumenRelay(element).get(), element.displayName + " Lumen Relay");
+		add(ChromaBlocks.MULTICHROMIC_RELAY.get(), "Multichromic Lumen Relay");
 		add(ChromaItems.GLOW_CAVE_DUST.get(), "Glow Cave Dust"); // V33a chromaitem.dimgen.glowcave
 		add(ChromaItems.UNKNOWN_ARTEFACT_FRAGMENT.get(), "Unknown Artefact Fragment");
+		add(ChromaItems.ENDER_CRYSTAL_MOVER.get(), "End Crystal Mover");
+		add("item.chromaticraft.ender_crystal_mover.empty", "Can pick up an End Crystal");
+		add("item.chromaticraft.ender_crystal_mover.filled", "Contains %s End Crystals");
+		add("message.chromaticraft.portal.missing_crystals", "Portal incomplete: %s End Crystals are missing");
+		add("message.chromaticraft.portal.incomplete", "Portal incomplete: the multiblock does not match");
+		add("message.chromaticraft.portal.dimension_missing", "Portal unavailable: Proxima is not loaded");
+		add("message.chromaticraft.portal.generating", "Portal waiting for Proxima's layout generator");
+		add("message.chromaticraft.portal.charging", "Portal charging: %s / %s");
+		add("message.chromaticraft.portal.progression", "Portal rejected you: DIMENSION prerequisites are missing");
 		add(ChromaBlocks.PORTAL.get(), "Portal Rift"); // V33a chroma.portal
 		// V33a metadata 15 shared the same display name; the distinct registry identity keeps the
 		// name distinguishable in creative and JEI without inventing new lore.
@@ -183,6 +207,9 @@ public class ChromaLang extends LanguageProvider {
 		add(ChromaBlocks.COLOR_LOCK.get(), "Color Lock");
 		add(ChromaBlocks.LOCK_KEY.get(), "Lock Key");
 		add(ChromaBlocks.MUSIC_TRIGGER.get(), "Crystal Music Trigger");
+		add(ChromaBlocks.MUSIC_MEMORY.get(), "Melody Memory");
+		add(ChromaBlocks.GOL_TILE.get(), "Cellular Automata Cell");
+		add(ChromaBlocks.GOL_CONTROLLER.get(), "Cellular Automata Controller");
 		add(ChromaBlocks.BIOME_REPLAY.get(), "Melody Replay Pedestal");
 		for (ChromaShieldTypes type : ChromaShieldTypes.list) {
 			add(ChromaBlocks.shielding(type).get(), type.displayName());
@@ -234,7 +261,19 @@ public class ChromaLang extends LanguageProvider {
 		// Authoritative V33a chroma.tieredore.N display names.
 		add(ChromaBlocks.ENERGIZED_ROCK.get(), "Energized Rock");
 		add(ChromaBlocks.ELEMENTAL_STONES.get(), "Elemental Stones");
+		add(ChromaBlocks.FUSED_CRYSTALS.get(), "Fused Crystals");
+		add(ChromaBlocks.RADIANT_STONE.get(), "Radiant Stone");
+		add(ChromaBlocks.ENDER_STONE.get(), "Ender Stone");
+		add(ChromaBlocks.FLUID_STONE.get(), "Fluid Stone");
+		add(ChromaBlocks.FIRAXITE.get(), "Firaxite");
+		add(ChromaBlocks.GLOWING_ROCK.get(), "Glowing Rock");
+		add(ChromaBlocks.ECHOSTONE.get(), "Echostone");
+		add(ChromaBlocks.VIBRANT_CRYSTALS.get(), "Vibrant Crystals");
+		add(ChromaBlocks.SPACERIFT_STONE.get(), "Spacerift Stone");
+		add(ChromaBlocks.LUMENITE_ORE.get(), "Lumenite");
 		add(ChromaBlocks.FIRESTONE.get(), "Firestone");
+		add(ChromaBlocks.THERMITIC_ROCK.get(), "Thermitic Rock");
+		add(ChromaBlocks.AVOLITE_ORE.get(), "Avolite");
 
 		// Crystal runes — one per CrystalElement colour ("<Colour> Crystal Rune"), keyed by the actual
 		// registered block id (ChromaBlocks.coloredName("crystal_rune", element); the key was

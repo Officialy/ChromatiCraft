@@ -4,7 +4,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.level.LevelEvent;
-import net.neoforged.neoforge.event.server.ServerStartedEvent;
+import net.neoforged.neoforge.event.server.ServerAboutToStartEvent;
 
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.registry.ChromaDimensions;
@@ -21,15 +21,17 @@ import reika.chromaticraft.registry.ChromaDimensions;
  * <p>Two hooks, for two different jobs:
  *
  * <ul>
- * <li>On server start the chain is kicked off-thread. The biome paint alone is a 4096x4096 job measured
- *     at roughly nineteen seconds, so it wants to run while the player is still in the Overworld
- *     nowhere near a rift.</li>
+	 * <li>Immediately before levels are loaded the chain is kicked off-thread. The biome paint alone is
+	 *     a 4096x4096 job measured at roughly nineteen seconds, so it must already be running when the
+	 *     Proxima level's load event supplies the correctness barrier below.</li>
  * <li>When the Proxima level loads, the layout is waited for. Level load happens on the server thread
  *     before any chunk of that level is generated, so this is the last point at which a wait costs
  *     nothing but the first at which a missing layout would start being written into saved chunks.</li>
  * </ul>
  *
- * <p>The seed is the world's, taken from the overworld, which is what upstream keys its generators on.
+	 * <p>The seed is the world's world-generation seed, which is what upstream keys its generators on.
+	 * It is read from {@code MinecraftServer.getWorldGenSettings()} because this hook intentionally runs
+	 * before the overworld {@code ServerLevel} exists.
  */
 @EventBusSubscriber(modid = ChromatiCraft.MODID)
 public final class ProximaLayoutLoader {
@@ -37,8 +39,8 @@ public final class ProximaLayoutLoader {
 	private ProximaLayoutLoader() {}
 
 	@SubscribeEvent
-	public static void onServerStarted(ServerStartedEvent event) {
-		ProximaGenerators.regenerate(event.getServer().overworld().getSeed());
+	public static void onServerAboutToStart(ServerAboutToStartEvent event) {
+		ProximaGenerators.regenerate(event.getServer().getWorldGenSettings().options().seed());
 	}
 
 	/**
@@ -81,8 +83,8 @@ public final class ProximaLayoutLoader {
 			return;
 		if (level.dimension() != ChromaDimensions.PROXIMA)
 			return;
-		// The overworld's seed, not this level's: they are the same value, but the overworld is what
-		// the server-start kick used and the two must agree or the layout is rebuilt for nothing.
-		ProximaGenerators.awaitLayout(level.getServer().overworld().getSeed());
+		// Use the same seed source as the pre-level-load kick. Reading it from the settings also keeps
+		// this valid if vanilla ever changes when the overworld level is inserted into the level map.
+		ProximaGenerators.awaitLayout(level.getServer().getWorldGenSettings().options().seed());
 	}
 }

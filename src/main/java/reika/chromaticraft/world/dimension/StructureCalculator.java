@@ -33,12 +33,11 @@ import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
  * V33a {@code StructureCalculator}: decides which puzzle structure each crystal element gets and
  * where in Proxima it sits.
  *
- * <p>This is the <b>placement</b> half only. The other half — handing each placement to its
- * generator's {@code calculate()} so the puzzle lays itself out — is deliberately deferred with the
- * puzzles, and the seam for it is {@link DimensionStructureType#registerGenerator}. Placement is
- * separable because V33a's {@code startCalculate} sets {@code entryX/entryZ} to the placement
- * coordinate up front and only lets {@code calculate()} refine them afterwards, so an unported
- * generator still yields a usable structure position.
+ * <p>Placement is separable from puzzle contents because V33a's {@code startCalculate} sets
+ * {@code entryX/entryZ} to the placement coordinate up front and only lets {@code calculate()} refine
+ * them afterwards. Ported puzzle generators register through
+ * {@link DimensionStructureType#registerGenerator}; types without one remain excluded by V33a's own
+ * completeness gate.
  *
  * <p>Everything downstream in the dimension needs exactly this and nothing more:
  * {@code RegionMapper} blocks on {@link #arePositionsDetermined()} and sizes the central region from
@@ -79,6 +78,8 @@ public class StructureCalculator {
 
 	private static final String SEED_FILE = "ChromatiCraft_Data/DimensionGen.dat";
 	private static final String SEED_PREFIX = "Seed:";
+	/** V33a {@code maxAttempts}; attempt zero plus ten retries. */
+	private static final int MAX_RETRIES = 10;
 
 	private static boolean seedNeedsRecalc = false;
 	private static long clientDimensionSeed;
@@ -132,8 +133,8 @@ public class StructureCalculator {
 
 		/**
 		 * V33a {@code generator.getEntryPosX()/getEntryPosZ()}, which {@code startCalculate} seeds from
-		 * the placement and only {@code calculate()} moves. With the generator deferred, the entry is
-		 * the placement — which is the same answer upstream gives before {@code calculate()} runs.
+		 * the placement and only {@code calculate()} moves. Before a generator runs, the entry is the
+		 * placement — which is the same answer upstream gives at that point.
 		 */
 		public int getEntryPosX() {
 			return generator != null ? generator.getEntryPosX() : placement.getX();
@@ -219,25 +220,37 @@ public class StructureCalculator {
 	}
 
 	/**
-	 * V33a tryGenerate/doGenerate: hand the placement to its generator. Deferred with the puzzles, so
-	 * this is a no-op for every type whose generator has not been registered; the placement itself is
-	 * already recorded and usable.
+	 * V33a tryGenerate/doGenerate: hand the placement to its generator, retrying ten times after the
+	 * initial failure. A type without a registered generator is not assigned in the first place; the
+	 * null guard remains for development layouts assembled while registration changes.
 	 */
 	private void layOutStructure(StructurePlacement placement) {
 		ProximaStructureGenerator generator = placement.type.createGenerator();
 		if (generator == null)
 			return;
-		try {
-			generator.startCalculate(placement.color, placement.placement().getX(),
-					placement.placement().getZ(), rand);
-			placement.generator = generator;
-		}
-		catch (Throwable e) {
-			// V33a retries up to ten times and drops the structure if it keeps failing. The retry is
-			// meaningless without a generator to retry, so it lands with the generators.
-			ChromatiCraft.LOGGER.error("Error calculating structure " + placement + ": " + e);
-			generator.clear();
-			placements.remove(placement);
+		if (generator instanceof reika.chromaticraft.world.dimension.structure.StructureGeneratorBase base)
+			base.setType(placement.type, placement.generationIndex);
+		for (int attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+			try {
+				generator.startCalculate(placement.color, placement.placement().getX(),
+						placement.placement().getZ(), rand);
+				placement.generator = generator;
+				return;
+			}
+			catch (OutOfMemoryError e) {
+				throw e;
+			}
+			catch (Throwable e) {
+				generator.clear();
+				boolean retry = attempt < MAX_RETRIES;
+				ChromatiCraft.LOGGER.error("Error calculating structure {} on attempt {}/{}; {}",
+						placement, attempt + 1, MAX_RETRIES + 1,
+						retry ? "retrying" : "giving up", e);
+				if (!retry) {
+					placements.remove(placement);
+					placement.type.discardGenerator(generator.id());
+				}
+			}
 		}
 	}
 
@@ -295,6 +308,15 @@ public class StructureCalculator {
 
 	public List<StructurePlacement> getPlacements() {
 		return Collections.unmodifiableList(placements);
+	}
+
+	/** Exact layout-owned structure at a placement chunk, used by custom vanilla placements. */
+	public StructurePlacement getPlacementInChunk(DimensionStructureType type, int chunkX, int chunkZ) {
+		for (StructurePlacement placement : placements)
+			if (placement.type == type && (placement.placement().getX() >> 4) == chunkX
+					&& (placement.placement().getZ() >> 4) == chunkZ)
+				return placement;
+		return null;
 	}
 
 	/** V33a getNearestStructureWithinRange, used by the biome distributor's structure blobs. */

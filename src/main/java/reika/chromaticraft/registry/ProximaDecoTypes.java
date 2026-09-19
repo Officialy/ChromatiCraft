@@ -99,6 +99,11 @@ public enum ProximaDecoTypes {
 	 * dynamic model.
 	 */
 	public String modelTexture() {
+		// Cliff Glass's layer 0 is intentionally a completely transparent underlay; V33a's visible
+		// surface is layer 1 in the translucent pass. Selecting layer 0 for the temporary cube model
+		// therefore made every cliff disappear outright rather than merely losing an overlay.
+		if (this == CLIFFGLASS)
+			return texture(1);
 		return this == FLOATSTONE ? "block/dimgen/floatstone/composite" : texture(0);
 	}
 

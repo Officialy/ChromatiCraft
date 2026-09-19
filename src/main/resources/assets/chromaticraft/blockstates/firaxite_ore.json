@@ -1,0 +1,12 @@
+{
+  "variants": {
+    "": {
+      "type": "chromaticraft:tiered_ore",
+      "underlay": "minecraft:block/stone",
+      "overlay": "chromaticraft:block/ore/tier_6_geode",
+      "host_texture": "minecraft:block/stone",
+      "stage": "NETHER",
+      "geode": true
+    }
+  }
+}

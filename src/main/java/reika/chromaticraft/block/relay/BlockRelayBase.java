@@ -1,176 +1,108 @@
-/*******************************************************************************
- * @author Reika Kalseki
- *
- * Copyright 2017
- *
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
- ******************************************************************************/
 package reika.chromaticraft.block.relay;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.material.Material;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.network.NetworkManager;
-import net.minecraft.network.Packet;
-import net.minecraft.network.play.server.S35PacketUpdateTileEntity;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.AxisAlignedBB;
-import net.minecraft.world.IBlockAccess;
-import net.minecraft.world.World;
-import net.minecraftforge.common.util.ForgeDirection;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.game.ClientGamePacketListener;
+import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.BaseEntityBlock;
+import net.minecraft.world.level.block.RenderShape;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.Shapes;
+import net.minecraft.world.phys.shapes.VoxelShape;
 
-import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.auxiliary.HoldingChecks;
-import reika.chromaticraft.registry.ChromaISBRH;
+import org.jspecify.annotations.Nullable;
+
+import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.CrystalElement;
-import reika.dragonapi.libraries.ReikaAABBHelper;
 import reika.dragonapi.libraries.io.ReikaSoundHelper;
 
+/**
+ * Common V33a contract for the non-colliding relay conduits. The item identity owns the element;
+ * only the player-selected incoming direction is dynamic and therefore belongs in block-entity NBT.
+ */
+public abstract class BlockRelayBase extends BaseEntityBlock {
 
-public abstract class BlockRelayBase extends Block {
-
-	protected BlockRelayBase(Material mat) {
-		super(mat);
-		this.setHardness(0);
-		this.setResistance(6000);
-		this.setCreativeTab(ChromatiCraft.tabChroma);
-		stepSound = new SoundType("stone", 1.0F, 0.5F);
+	protected BlockRelayBase(BlockBehaviour.Properties properties) {
+		super(properties);
 	}
 
 	@Override
-	public final int getLightValue(IBlockAccess iba, int x, int y, int z) {
-		TileEntity te = iba.getTileEntity(x, y, z);
-		return te instanceof TileRelayBase && ((TileRelayBase)te).isTransmitting() ? 15 : 12;
+	protected InteractionResult useItemOn(ItemStack stack, BlockState state, Level level,
+			BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
+		if (!stack.is(ChromaItems.MANIPULATOR.get())) return InteractionResult.PASS;
+		if (!level.isClientSide() && level.getBlockEntity(pos) instanceof TileRelayBase relay)
+			relay.setInput(hit.getDirection());
+		return InteractionResult.SUCCESS;
 	}
 
 	@Override
-	public final AxisAlignedBB getCollisionBoundingBoxFromPool(World world, int x, int y, int z) {
-		return null;
+	protected VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos pos,
+			CollisionContext context) {
+		return Shapes.empty();
 	}
 
-	@Override
-	public final boolean isOpaqueCube() {
-		return false;
-	}
+	@Override protected RenderShape getRenderShape(BlockState state) { return RenderShape.INVISIBLE; }
 
-	@Override
-	public final boolean renderAsNormalBlock() {
-		return false;
-	}
+	public abstract static class TileRelayBase extends BlockEntity {
 
-	@Override
-	public abstract TileEntity createTileEntity(World world, int meta);
+		private Direction input;
 
-	@Override
-	public final boolean hasTileEntity(int meta) {
-		return true;
-	}
-
-	@Override
-	public final boolean onBlockActivated(World world, int x, int y, int z, EntityPlayer ep, int s, float a, float b, float c) {
-		if (HoldingChecks.MANIPULATOR.isHolding(ep)) {
-			TileRelayBase te = (TileRelayBase)world.getTileEntity(x, y, z);
-			ForgeDirection dir = ForgeDirection.VALID_DIRECTIONS[s];
-			//if (dir.getOpposite().ordinal() != world.getBlockMetadata(x, y, z)) {
-			te.setInput(dir);
-			return true;
-			//}
+		protected TileRelayBase(BlockEntityType<?> type, BlockPos pos, BlockState state) {
+			super(type, pos, state);
+			input = state.hasProperty(BlockLumenRelay.FACING)
+					? state.getValue(BlockLumenRelay.FACING).getOpposite() : Direction.DOWN;
 		}
-		return false;
-	}
 
-	@Override
-	public final void onBlockAdded(World world, int x, int y, int z) {
-		//RelayNetworker.instance.addBlock(x, y, z, ForgeDirection.VALID_DIRECTIONS[world.getBlockMetadata(x, y, z)]);
-	}
+		public abstract boolean canTransmit(CrystalElement element);
 
-	@Override
-	public final void breakBlock(World world, int x, int y, int z, Block b, int meta) {
-		//RelayNetworker.instance.removeBlock(x, y, z, ForgeDirection.VALID_DIRECTIONS[meta]);
-		super.breakBlock(world, x, y, z, b, meta);
-	}
+		/** Reserved for the source's old light-value branch; V33a relays never set it true. */
+		public final boolean isTransmitting() { return false; }
+		public final Direction getInput() { return input; }
 
-	@Override
-	public final int getRenderType() {
-		return ChromaISBRH.relay.getRenderID();
-	}
-
-	@Override
-	public final int getRenderBlockPass() {
-		return 1;
-	}
-
-	@Override
-	public final boolean canRenderInPass(int pass) {
-		ChromaISBRH.relay.setRenderPass(pass);
-		return true;
-	}
-
-	public abstract static class TileRelayBase extends TileEntity {
-
-		private ForgeDirection in = ForgeDirection.UNKNOWN;
-
-		public abstract boolean canTransmit(CrystalElement e);
-
-		public final boolean isTransmitting() {
-			return false;
+		public final void setInput(Direction direction) {
+			if (direction == null || direction == input) return;
+			input = direction;
+			setChanged();
+			if (level != null) {
+				ReikaSoundHelper.playBreakSound(level, worldPosition, getBlockState().getBlock());
+				level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
+			}
 		}
 
 		@Override
-		public final Packet getDescriptionPacket() {
-			NBTTagCompound NBT = new NBTTagCompound();
-			this.writeToNBT(NBT);
-			S35PacketUpdateTileEntity pack = new S35PacketUpdateTileEntity(xCoord, yCoord, zCoord, 0, NBT);
-			return pack;
+		protected void saveAdditional(ValueOutput output) {
+			super.saveAdditional(output);
+			output.putInt("dir", input.ordinal());
 		}
 
 		@Override
-		public final void onDataPacket(NetworkManager net, S35PacketUpdateTileEntity p)  {
-			this.readFromNBT(p.field_148860_e);
-			worldObj.markBlockForUpdate(xCoord, yCoord, zCoord);
+		protected void loadAdditional(ValueInput valueInput) {
+			super.loadAdditional(valueInput);
+			int ordinal = valueInput.getIntOr("dir", Direction.DOWN.ordinal());
+			input = Direction.from3DDataValue(Math.floorMod(ordinal, Direction.values().length));
 		}
 
-		@Override
-		public final AxisAlignedBB getRenderBoundingBox() {
-			return ReikaAABBHelper.getBlockAABB(xCoord, yCoord, zCoord);
+		@Override public CompoundTag getUpdateTag(HolderLookup.Provider provider) {
+			return saveCustomOnly(provider);
 		}
-
-		public final ForgeDirection getInput() {
-			return in;
+		@Override public @Nullable Packet<ClientGamePacketListener> getUpdatePacket() {
+			return ClientboundBlockEntityDataPacket.create(this);
 		}
-
-		@Override
-		public void writeToNBT(NBTTagCompound NBT) {
-			super.writeToNBT(NBT);
-
-			NBT.setInteger("dir", in.ordinal());
-			//NBT.setInteger("energy", energy);
-		}
-
-		@Override
-		public void readFromNBT(NBTTagCompound NBT) {
-			super.readFromNBT(NBT);
-
-			int dir = NBT.getInteger("dir");
-			if (dir < 6)
-				in = ForgeDirection.VALID_DIRECTIONS[dir];
-			//energy = NBT.getInteger("energy");
-		}
-
-		public final void setInput(ForgeDirection dir) {
-			in = dir;
-			ReikaSoundHelper.playBreakSound(worldObj, xCoord, yCoord, zCoord, this.getBlockType());
-			worldObj.markBlockForUpdate(xCoord, yCoord, zCoord);
-		}
-
-		@Override
-		public boolean canUpdate() {
-			return false;
-		}
-
 	}
-
 }

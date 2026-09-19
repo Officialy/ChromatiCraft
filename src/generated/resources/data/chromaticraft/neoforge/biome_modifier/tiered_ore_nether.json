@@ -1,6 +1,9 @@
 {
   "type": "neoforge:add_features",
   "biomes": "#minecraft:is_nether",
-  "features": "chromaticraft:firestone",
+  "features": [
+    "chromaticraft:firestone",
+    "chromaticraft:thermitic_rock"
+  ],
   "step": "underground_ores"
 }

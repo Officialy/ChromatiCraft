@@ -37,8 +37,12 @@ final class LexiconStructurePreview {
 			Map.entry("casting2", "multiblock/casting_l2"),
 			Map.entry("casting3", "multiblock/casting_l3"),
 			Map.entry("repeater", "multiblock/repeater"),
+			Map.entry("weakrepeater", "multiblock/weak_repeater"),
+			Map.entry("relay", "multiblock/relay_source"),
 			Map.entry("compound", "multiblock/compound_repeater"),
+			Map.entry("personal", "multiblock/personal_charger"),
 			Map.entry("pylonbroadcast", "multiblock/pylon_broadcast"),
+			Map.entry("portal", "multiblock/portal"),
 			Map.entry("datanode", "worldgen/data_node"),
 			Map.entry("cavern", "worldgen/overworld/cavern"),
 			Map.entry("burrow", "worldgen/overworld/burrow"),
@@ -150,6 +154,8 @@ final class LexiconStructurePreview {
 					blocks.add(new PreviewBlock(new BlockPos(pos[0], pos[1], pos[2]), state, icon,
 							dataNodeRelay, false));
 			}
+			if (sourceId.equals("portal"))
+				expandPortalDisplay(size, blocks);
 			addDisplayControllers(sourceId, size, blocks);
 			markShared(sourceId, blocks, minecraft);
 			blocks.sort(Comparator.comparingInt(block -> block.pos().getY()));
@@ -184,6 +190,29 @@ final class LexiconStructurePreview {
 		}
 		else if (sourceId.equals("pylon") || sourceId.equals("pylonbroadcast")) {
 			add(blocks, new BlockPos(cx, size[1] - 1, cz), ChromaBlocks.PYLON.get().defaultBlockState());
+		}
+	}
+
+	/**
+	 * V33a enlarged this page past the 15x15 template and rendered the required End Crystals on their
+	 * display-only bedrock cells. The modern renderer has no entity channel yet, so the supports are
+	 * the 3D representatives and their tally icons are the actual End Crystal item.
+	 */
+	private static void expandPortalDisplay(int[] size, List<PreviewBlock> blocks) {
+		for (int index = 0; index < blocks.size(); index++) {
+			PreviewBlock block = blocks.get(index);
+			blocks.set(index, new PreviewBlock(block.pos().offset(2, 0, 2), block.state(),
+					block.icon(), block.displayOverride(), block.shared()));
+		}
+		size[0] += 4;
+		size[2] += 4;
+		int cx = size[0] / 2;
+		int cz = size[2] / 2;
+		for (BlockPos relative : reika.chromaticraft.auxiliary.structure.PortalStructure.ENDER_CRYSTALS) {
+			BlockPos support = new BlockPos(cx + relative.getX(), relative.getY() - 1,
+					cz + relative.getZ());
+			blocks.add(new PreviewBlock(support, Blocks.BEDROCK.defaultBlockState(),
+					new ItemStack(Items.END_CRYSTAL), true, false));
 		}
 	}
 

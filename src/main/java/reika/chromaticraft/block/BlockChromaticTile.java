@@ -54,6 +54,10 @@ public class BlockChromaticTile extends BlockTEBase {
             base.setPlacer(player);
         if (blockEntity instanceof NBTTile nbtTile)
             nbtTile.setDataFromItemStackTag(stack);
+		// V33a ItemChromaPlacer selected the first support face after restoring item NBT. Without
+		// this, a wall/ceiling repeater remains hard-coded DOWN until manually redirected.
+		if (blockEntity instanceof reika.chromaticraft.tileentity.networking.TileEntityCrystalRepeater repeater)
+			repeater.findFirstValidSide();
     }
 
     @Override

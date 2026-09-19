@@ -1,0 +1,12 @@
+{
+  "variants": {
+    "": {
+      "type": "chromaticraft:tiered_ore",
+      "underlay": "minecraft:block/end_stone",
+      "overlay": "chromaticraft:block/ore/tier_12_geode",
+      "host_texture": "minecraft:block/end_stone",
+      "geode": true,
+      "stage": "KILLDRAGON"
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "variants": {
+    "": {
+      "type": "chromaticraft:tiered_ore",
+      "underlay": "minecraft:block/netherrack",
+      "overlay": "chromaticraft:block/ore/tier_10_geode",
+      "host_texture": "minecraft:block/netherrack",
+      "stage": "END",
+      "geode": true
+    }
+  }
+}

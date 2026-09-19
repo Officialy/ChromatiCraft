@@ -69,6 +69,8 @@ public class TileEntityDimensionCore extends TileEntityLocusPoint {
 
 	private UUID uid;
 	private DimensionStructureType structure;
+	/** Stable modern identity; generator UUIDs are process-local and change when a save is reopened. */
+	private int structureGenerationIndex = -1;
 	private boolean triggered;
 
 	private final Set<UUID> sentPlayers = new HashSet<>();
@@ -212,14 +214,29 @@ public class TileEntityDimensionCore extends TileEntityLocusPoint {
 	public void setStructure(StructurePair p) {
 		structure = p.generator.getType();
 		uid = p.generator.id();
+		structureGenerationIndex = p.generator.getGenerationIndex();
 	}
 
 	public StructureGeneratorBase getStructure() {
-		if (structure == null || uid == null)
+		if (structure == null)
 			return null;
-		// The registry hands back the narrow ProximaStructureGenerator contract; every real generator
-		// is a StructureGeneratorBase, and anything that is not has nothing a core can ask of it.
-		return structure.getGenerator(uid) instanceof StructureGeneratorBase base ? base : null;
+		if (uid != null && structure.getGenerator(uid) instanceof StructureGeneratorBase base)
+			return base;
+		// A UUID identifies an in-memory generator, not a saved structure. Rebind from the stable
+		// colour/type/generation-index tuple after a server restart and immediately adopt the new UUID.
+		reika.chromaticraft.world.dimension.ProximaGenerators.Layout layout =
+				reika.chromaticraft.world.dimension.ProximaGenerators.getLayout();
+		if (layout != null) for (reika.chromaticraft.world.dimension.StructureCalculator.StructurePlacement p
+				: layout.structures().getPlacements()) {
+			if (p.color == this.getColor() && p.type == structure
+					&& p.generationIndex == structureGenerationIndex
+					&& p.getGenerator() instanceof StructureGeneratorBase live) {
+				uid = live.id();
+				setChanged();
+				return live;
+			}
+		}
+		return null;
 	}
 
 	public boolean hasStructure() {
@@ -234,6 +251,21 @@ public class TileEntityDimensionCore extends TileEntityLocusPoint {
 
 	public boolean isPrimed() {
 		return primed;
+	}
+
+	@Override
+	public void onLoad() {
+		super.onLoad();
+		if (level == null || level.isClientSide() || primed)
+			return;
+		// The controller and the outer ring span several chunks and can load in either order. Repair
+		// this side as well as the controller side so an interrupted, non-persisted ritual cannot leave
+		// a late-loading core permanently silent.
+		BlockPos controller = worldPosition.subtract(this.getLocation(this.getColor()));
+		if (level.getBlockEntity(controller)
+				instanceof reika.chromaticraft.tileentity.TileEntityStructureController monument
+				&& monument.isMonument() && !monument.isMonumentRitualActive())
+			this.prime(true);
 	}
 
 	public Collection<CrystalElement> getColorBeams() {
@@ -285,10 +317,8 @@ public class TileEntityDimensionCore extends TileEntityLocusPoint {
 	/**
 	 * V33a doScanForEntry: a player who walks into the structure's entry box is registered with it, once.
 	 *
-	 * <p>The registration itself reaches {@code ChromaDimensionManager.addPlayerToStructure}, which this
-	 * port has not built — it is the per-player record of which puzzle someone is inside. The scan and
-	 * the once-only bookkeeping are here and correct; when that manager lands it hooks in at the marked
-	 * line and nothing else moves.
+	 * <p>The transient session deliberately is not saved: after a relog this scan notices that the old
+	 * sent marker has no matching live session and registers the player again.
 	 */
 	private void doScanForEntry(Level world, BlockPos pos) {
 		StructureGeneratorBase gen = this.getStructure();
@@ -300,11 +330,14 @@ public class TileEntityDimensionCore extends TileEntityLocusPoint {
 				gen.getEntryPosX() + r + 1, world.getMaxY(), gen.getEntryPosZ() + r + 1);
 		for (Player ep : world.getEntitiesOfClass(Player.class, box)) {
 			UUID id = ep.getUUID();
-			if (sentPlayers.contains(id))
+			if (sentPlayers.contains(id)
+					&& reika.chromaticraft.world.dimension.ProximaStructureSessions
+							.isPlayerInStructure(ep, gen))
 				continue;
-			// Deferred: ChromaDimensionManager.addPlayerToStructure(ep, gen) — the per-player structure
-			// registry is not ported. Upstream only records the player as sent when that call succeeds.
-			sentPlayers.add(id);
+			if (ep instanceof net.minecraft.server.level.ServerPlayer player
+					&& reika.chromaticraft.world.dimension.ProximaStructureSessions
+							.addPlayerToStructure(player, gen))
+				sentPlayers.add(id);
 		}
 	}
 
@@ -345,9 +378,13 @@ public class TileEntityDimensionCore extends TileEntityLocusPoint {
 	 */
 	@Override
 	protected void animateWithTick(Level world, BlockPos pos) {
+		if (world.isClientSide())
+			reika.chromaticraft.render.particle.ChromaParticle.spawnLocusPoint(
+					world, pos, this.getRenderColor(), false, this.getTicksExisted(), this.hashCode(), rand);
 		// V33a's client half. `structureControlFX` is the other branch and is empty upstream, so the
-		// connect beams are the whole of it -- and they run only while primed, which is why a hand-built
-		// ring is silent until the ritual or the debug builder arms it.
+		// connect beams are the whole of it -- and they run only while primed. V33a's ItemChromaPlacer
+		// primes each player-placed core immediately; the debug builder does the same for its generated
+		// ring. The completion ritual consumes this already-running ensemble rather than starting it.
 		// animateWithTick runs on both sides here; upstream's whole client branch is guarded by
 		// `world.isRemote`, and this reaches particle and sound code that has no business executing on
 		// a dedicated server.
@@ -368,6 +405,12 @@ public class TileEntityDimensionCore extends TileEntityLocusPoint {
 	 * keeps a core placed at random in the world from beaming at nothing.
 	 */
 	private void spawnConnectFX(Level world, BlockPos pos) {
+		// V33a unprimes the ring as the monument ritual starts. Retain that server authority, but
+		// also guard the client loop against packet ordering: the MONUMENTSTART payload can arrive
+		// before one or more of the sixteen prime=false BE sync packets. No ambient ORB/DING notes or
+		// connection beams may overlap the authored ritual score during that window.
+		if (reika.chromaticraft.client.render.MonumentRitualEffects.isRunning())
+			return;
 		int spacing = 8;
 		long tick = world.getGameTime();
 		if (tick % spacing != 0)
@@ -431,23 +474,40 @@ public class TileEntityDimensionCore extends TileEntityLocusPoint {
 	}
 
 	/**
-	 * V33a breakByPlayer's server half, minus the two calls this port has not reached.
+	 * V33a breakByPlayer. The player-aware block hook calls this before vanilla removes the BE.
 	 *
 	 * <p>Breaking a core is how a puzzle structure is marked complete and reopened, so the order matters:
 	 * the seal is re-checked (a creative player bypasses it, as upstream lets them), the completion is
 	 * recorded, and only then is the structure opened.
 	 */
+	public boolean breakByPlayer(Player player) {
+		Level world = this.getLevel();
+		if (world == null)
+			return false;
+		if (world.isClientSide())
+			return true;
+		if (player.getAbilities().instabuild) {
+			if (this.hasStructure()) this.openStructure(world);
+			return true;
+		}
+		if (player.distanceToSqr(worldPosition.getX() + 0.5, worldPosition.getY() + 0.5,
+				worldPosition.getZ() + 0.5) > 25 || !this.isBreakable(player))
+			return false;
+		if (this.hasStructure()) {
+			StructureGeneratorBase gen = this.getStructure();
+			reika.chromaticraft.magic.progression.ProgressionManager.instance
+					.markPlayerCompletedStructureColor(player, gen, this.getColor(), true, true);
+			reika.chromaticraft.world.dimension.ProximaStructureSessions
+					.removePlayerFromStructure(player);
+			this.openStructure(world);
+		}
+		return true;
+	}
+
 	@Override
 	public void breakBlock() {
-		Level world = this.getLevel();
-		if (world == null || world.isClientSide() || !this.hasStructure())
-			return;
-		// Deferred, both named at the point they belong:
-		//   ProgressionManager.markPlayerCompletedStructureColor(ep, gen, color, true, true)
-		//   ChromaDimensionManager.removePlayerFromStructure(ep)
-		// Neither is ported; the opening below is upstream's own and runs regardless, so a solved
-		// structure still unseals even while the progression record is missing.
-		this.openStructure(world);
+		// Player removal goes through breakByPlayer so the completing player is never lost. Non-player
+		// removal must not silently award a colour or open a sealed puzzle.
 	}
 
 	/**
@@ -498,6 +558,7 @@ public class TileEntityDimensionCore extends TileEntityLocusPoint {
 	protected void saveAdditional(CompoundTag NBT) {
 		super.saveAdditional(NBT);
 		NBT.putInt("struct", structure != null ? structure.ordinal() : -1);
+		NBT.putInt("structIndex", structureGenerationIndex);
 		if (uid != null)
 			NBT.putString("uid", uid.toString());
 		ListTag li = new ListTag();
@@ -511,6 +572,7 @@ public class TileEntityDimensionCore extends TileEntityLocusPoint {
 		super.load(NBT);
 		int s = NBT.getIntOr("struct", -1);
 		structure = s >= 0 ? DimensionStructureType.types[s] : null;
+		structureGenerationIndex = NBT.getIntOr("structIndex", -1);
 		uid = NBT.getString("uid").map(UUID::fromString).orElse(null);
 		playerWhitelist.clear();
 		for (int i = 0; i < NBT.getListOrEmpty("whitelist").size(); i++)

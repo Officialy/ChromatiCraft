@@ -84,6 +84,12 @@ public class CrystalPotionController implements CrystalPotionAPI {
 	}
 
 	private static boolean isBadEffect(Holder<MobEffect> pot) {
+		// CrystalMusicManager is initialized while registries are still being assembled. These two
+		// DeferredHolders therefore exist but are not bound yet, and Holder#value would abort startup.
+		// Their constructors declare them BENEFICIAL unconditionally, so classify them without
+		// dereferencing the registry; every vanilla holder is already bound and follows the normal path.
+		if (pot == ChromatiCraft.betterRegen || pot == ChromatiCraft.betterSat)
+			return false;
 		return pot.value().getCategory() == MobEffectCategory.HARMFUL;
 	}
 

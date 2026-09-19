@@ -102,14 +102,39 @@ public final class ChromaBiomeModifierProvider implements DataProvider {
                 java.util.Arrays.stream(ChromaTieredPlants.list)
                         .map(p -> id(p.registryName()).toString()).toList(),
                 GenerationStep.Decoration.TOP_LAYER_MODIFICATION));
+		// V33a runs the generator in all three vanilla dimensions. Its hostile-world guard excludes
+		// Rock Flower and Essence Lily from the Nether; the remaining support rules decide whether
+		// an individual attempt can actually site there.
+		futures.add(saveMany(cache, "tiered_plant_nether", "#minecraft:is_nether",
+				java.util.Arrays.stream(ChromaTieredPlants.list)
+						.filter(p -> p != ChromaTieredPlants.ROCK_FLOWER
+								&& p != ChromaTieredPlants.ESSENCE_LILY)
+						.map(p -> id(p.registryName()).toString()).toList(),
+				GenerationStep.Decoration.TOP_LAYER_MODIFICATION));
+		futures.add(saveMany(cache, "tiered_plant_end", "#minecraft:is_end",
+				java.util.stream.Stream.concat(
+						java.util.Arrays.stream(ChromaTieredPlants.list)
+								.filter(p -> p != ChromaTieredPlants.ROCK_FLOWER)
+								.map(p -> id(p.registryName()).toString()),
+						java.util.stream.Stream.of(id("rock_flower_end").toString())).toList(),
+				GenerationStep.Decoration.TOP_LAYER_MODIFICATION));
         // V33a TieredWorldGenerator runs in every ordinary dimension; each ore's own host block and
-        // y band are what confine it, so the overworld pair goes everywhere overworld and the
-        // netherrack-hosted one everywhere nether.
+        // y band are what confine them, so stone-hosted ores go everywhere overworld and the two
+        // netherrack-hosted ores go everywhere nether.
         futures.add(saveMany(cache, "tiered_ore_overworld", "#minecraft:is_overworld",
-                List.of(id("energized_rock").toString(), id("elemental_stones").toString()),
+				List.of(id("energized_rock").toString(), id("elemental_stones").toString(),
+						id("fused_crystals").toString(), id("radiant_stone").toString(),
+						id("ender_stone").toString(), id("fluid_stone").toString(),
+						id("firaxite_ore").toString(), id("glowing_rock").toString(),
+						id("echostone").toString(), id("lumenite_ore").toString(),
+						id("avolite_ore").toString()),
                 GenerationStep.Decoration.UNDERGROUND_ORES));
-        futures.add(save(cache, "tiered_ore_nether", "#minecraft:is_nether",
-                id("firestone").toString(), GenerationStep.Decoration.UNDERGROUND_ORES));
+		futures.add(saveMany(cache, "tiered_ore_nether", "#minecraft:is_nether",
+				List.of(id("firestone").toString(), id("thermitic_rock").toString()),
+				GenerationStep.Decoration.UNDERGROUND_ORES));
+		futures.add(saveMany(cache, "tiered_ore_end", "#minecraft:is_end",
+				List.of(id("vibrant_crystals").toString(), id("spacerift_stone").toString()),
+				GenerationStep.Decoration.UNDERGROUND_ORES));
         futures.add(save(cache, "nether_roof_structures", "#minecraft:is_nether",
                 NETHER_ROOF_STRUCTURE, GenerationStep.Decoration.SURFACE_STRUCTURES));
         // V33a's chunk populator runs its air decorators after its ground decorators, so a river that

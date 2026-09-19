@@ -30,11 +30,11 @@ import reika.chromaticraft.registry.ChromaBlocks;
  * </pre>
  *
  * <p>The block is laid only on a per-material chance, but it is <em>registered</em> every time. So the
- * expected map holds all three hundred and seventy-seven cells while the generated world receives a
+ * expected map holds all three hundred and five cells while the generated world receives a
  * random subset of them, and {@code MonumentCompletionRitual.doMineralChecks} compares the world against
  * the full map. The player has to finish the inlay by hand before the ritual will run — which is what
- * makes it a <em>completion</em> ritual, and why gold, at a twenty-five percent chance, is the material
- * they will be carrying the most of.
+ * makes it a <em>completion</em> ritual. The later, active gold ring bypasses this helper entirely: all
+ * seventy-six gold blocks are always placed and are not registered as player completion cells.
  *
  * <p>The centre chroma at (21, 3, 21) is registered and never placed at all, so it is always supplied by
  * the player.
@@ -47,6 +47,7 @@ public final class MonumentMineralBlocks {
 	private static final Map<Mineral, Integer> CHANCE = new EnumMap<>(Mineral.class);
 
 	private static final List<Cell> CELLS = new ArrayList<>();
+	private static final List<Vec3i> FIXED_GOLD = new ArrayList<>();
 
 	/** The materials of the inlay. Kept as an enum so the table below reads as data, not as blocks. */
 	public enum Mineral {
@@ -87,24 +88,17 @@ public final class MonumentMineralBlocks {
 			c(16,0,24,Mineral.DIAMOND); c(26,0,18,Mineral.DIAMOND); c(26,0,19,Mineral.DIAMOND); c(26,0,20,Mineral.DIAMOND);
 			c(26,0,21,Mineral.DIAMOND); c(26,0,22,Mineral.DIAMOND); c(26,0,23,Mineral.DIAMOND); c(26,0,24,Mineral.DIAMOND);
 			c(25,0,17,Mineral.DIAMOND); c(25,0,25,Mineral.DIAMOND); c(24,0,16,Mineral.DIAMOND); c(24,0,26,Mineral.DIAMOND);
-			c(22,0,8,Mineral.GOLD); c(34,0,16,Mineral.GOLD); c(34,0,17,Mineral.GOLD); c(34,0,18,Mineral.GOLD);
-			c(34,0,19,Mineral.GOLD); c(34,0,20,Mineral.GOLD); c(34,0,21,Mineral.GOLD); c(34,0,22,Mineral.GOLD);
-			c(34,0,23,Mineral.GOLD); c(34,0,24,Mineral.GOLD); c(34,0,25,Mineral.GOLD); c(34,0,26,Mineral.GOLD);
-			c(33,0,15,Mineral.GOLD); c(33,0,27,Mineral.GOLD); c(32,0,14,Mineral.GOLD); c(32,0,28,Mineral.GOLD);
-			c(31,0,13,Mineral.GOLD); c(31,0,29,Mineral.GOLD); c(30,0,12,Mineral.GOLD); c(30,0,30,Mineral.GOLD);
-			c(29,0,31,Mineral.GOLD); c(29,0,11,Mineral.GOLD); c(28,0,32,Mineral.GOLD); c(28,0,10,Mineral.GOLD);
-			c(27,0,33,Mineral.GOLD); c(27,0,9,Mineral.GOLD); c(26,0,34,Mineral.GOLD); c(26,0,8,Mineral.GOLD);
-			c(25,0,34,Mineral.GOLD); c(25,0,8,Mineral.GOLD); c(24,0,34,Mineral.GOLD); c(24,0,8,Mineral.GOLD);
-			c(23,0,34,Mineral.GOLD); c(23,0,8,Mineral.GOLD); c(22,0,34,Mineral.GOLD); c(21,0,34,Mineral.GOLD);
-			c(21,0,8,Mineral.GOLD); c(20,0,34,Mineral.GOLD); c(20,0,8,Mineral.GOLD); c(19,0,34,Mineral.GOLD);
-			c(19,0,8,Mineral.GOLD); c(18,0,34,Mineral.GOLD); c(18,0,8,Mineral.GOLD); c(17,0,34,Mineral.GOLD);
-			c(17,0,8,Mineral.GOLD); c(16,0,34,Mineral.GOLD); c(16,0,8,Mineral.GOLD); c(15,0,33,Mineral.GOLD);
-			c(15,0,9,Mineral.GOLD); c(13,0,31,Mineral.GOLD); c(13,0,11,Mineral.GOLD); c(11,0,29,Mineral.GOLD);
-			c(9,0,15,Mineral.GOLD); c(8,0,16,Mineral.GOLD); c(8,0,17,Mineral.GOLD); c(8,0,18,Mineral.GOLD);
-			c(8,0,19,Mineral.GOLD); c(8,0,20,Mineral.GOLD); c(8,0,21,Mineral.GOLD); c(8,0,22,Mineral.GOLD);
-			c(8,0,23,Mineral.GOLD); c(8,0,24,Mineral.GOLD); c(8,0,25,Mineral.GOLD); c(8,0,26,Mineral.GOLD);
-			c(9,0,27,Mineral.GOLD); c(10,0,14,Mineral.GOLD); c(10,0,28,Mineral.GOLD); c(11,0,13,Mineral.GOLD);
-			c(12,0,12,Mineral.GOLD); c(12,0,30,Mineral.GOLD); c(14,0,10,Mineral.GOLD); c(14,0,32,Mineral.GOLD);
+		// V33a leaves the obsolete gold-ring table above the live one inside a block comment. Gold is
+		// therefore not part of the probabilistic completion map at all; the active ring below is laid
+		// directly and unconditionally after the monument geometry.
+		g(8,16); g(8,17); g(8,18); g(8,19); g(8,20); g(8,21); g(8,22); g(8,23); g(8,24); g(8,25); g(8,26);
+		g(9,14); g(9,15); g(9,27); g(9,28); g(10,13); g(10,29); g(16,8); g(11,12); g(11,30);
+		g(12,11); g(12,31); g(13,10); g(13,32); g(14,9); g(14,33); g(15,9); g(15,33); g(16,34);
+		g(17,8); g(17,34); g(18,8); g(18,34); g(19,8); g(19,34); g(20,8); g(20,34); g(21,8); g(21,34);
+		g(22,8); g(22,34); g(23,8); g(23,34); g(24,8); g(24,34); g(25,8); g(25,34); g(26,8); g(26,34);
+		g(27,9); g(27,33); g(28,9); g(28,33); g(29,10); g(29,32); g(30,11); g(30,31); g(31,12); g(31,30);
+		g(32,13); g(32,29); g(33,14); g(33,15); g(33,27); g(33,28);
+		g(34,16); g(34,17); g(34,18); g(34,19); g(34,20); g(34,21); g(34,22); g(34,23); g(34,24); g(34,25); g(34,26);
 			c(11,12,5,Mineral.QUARTZ); c(6,12,12,Mineral.QUARTZ); c(5,12,11,Mineral.QUARTZ); c(5,12,31,Mineral.QUARTZ);
 			c(3,12,18,Mineral.QUARTZ); c(39,12,18,Mineral.QUARTZ); c(39,12,24,Mineral.QUARTZ); c(37,12,11,Mineral.QUARTZ);
 			c(36,12,12,Mineral.QUARTZ); c(36,12,30,Mineral.QUARTZ); c(31,12,5,Mineral.QUARTZ); c(31,12,37,Mineral.QUARTZ);
@@ -184,9 +178,18 @@ public final class MonumentMineralBlocks {
 		CELLS.add(new Cell(new Vec3i(x, y, z), m));
 	}
 
+	private static void g(int x, int z) {
+		FIXED_GOLD.add(new Vec3i(x, 0, z));
+	}
+
 	/** Every cell the ritual expects to find, whether or not generation laid it. */
 	public static List<Cell> expected() {
 		return Collections.unmodifiableList(CELLS);
+	}
+
+	/** The active V33a gold ring: always generated and never part of the completion check. */
+	public static List<Vec3i> fixedGold() {
+		return Collections.unmodifiableList(FIXED_GOLD);
 	}
 
 	public static int chance(Mineral m) {

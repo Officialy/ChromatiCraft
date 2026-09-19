@@ -25,7 +25,11 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.block.BlockCastingItemStand;
 import reika.chromaticraft.block.BlockCastingTable;
+import reika.chromaticraft.block.BlockRitualTable;
 import reika.chromaticraft.block.BlockCrystalCharger;
+import reika.chromaticraft.block.BlockRelaySource;
+import reika.chromaticraft.block.relay.BlockLumenRelay;
+import reika.chromaticraft.block.BlockCollector;
 import reika.chromaticraft.block.BlockFarmer;
 import reika.chromaticraft.block.BlockDecoPlant;
 import reika.chromaticraft.block.BlockItemAuraInfuser;
@@ -40,9 +44,13 @@ import reika.chromaticraft.block.dimension.structure.lightpanel.BlockLightPanel;
 import reika.chromaticraft.block.dimension.structure.lightpanel.BlockLightSwitch;
 import reika.chromaticraft.block.dimension.structure.locks.BlockColoredLock;
 import reika.chromaticraft.block.dimension.structure.locks.BlockLockKey;
+import reika.chromaticraft.block.dimension.structure.music.BlockMusicMemory;
+import reika.chromaticraft.block.dimension.structure.gol.BlockGOLController;
+import reika.chromaticraft.block.dimension.structure.gol.BlockGOLTile;
 import reika.chromaticraft.block.decoration.BlockMusicTrigger;
 import reika.chromaticraft.block.dimension.structure.shiftmaze.BlockShiftLock;
 import reika.chromaticraft.block.dimension.structure.BlockBiomeReplay;
+import reika.chromaticraft.block.dimension.structure.BlockStructurePassword;
 import reika.chromaticraft.block.BlockChromaticTile;
 import reika.chromaticraft.block.BlockCrystallineStone;
 import reika.chromaticraft.block.BlockCrystallineStoneBeam;
@@ -76,6 +84,7 @@ import reika.chromaticraft.block.worldgen26.BlockStructureController;
 import reika.chromaticraft.block.worldgen26.BlockWarpNode;
 import reika.chromaticraft.block.worldgen26.BlockDecoFlower;
 import reika.chromaticraft.magic.progression.ProgressStage;
+import reika.chromaticraft.items.itemblock.ItemBlockLumenRelay;
 
 /**
  * ChromatiCraft block registry. Port-in-progress rewrite of the 1.7.10 {@code ChromaBlocks} enum
@@ -137,6 +146,17 @@ public final class ChromaBlocks {
 		});
 	}
 
+	/** Registers one former relay metadata value as its own block and BlockItem identity. */
+	private static DeferredBlock<BlockLumenRelay> registerLumenRelay(String name,
+			CrystalElement element) {
+		DeferredBlock<BlockLumenRelay> block = registerBlockOnly(name,
+				() -> new BlockLumenRelay(blockProperties().mapColor(MapColor.NONE)
+						.instabreak().strength(0F, 6000F).sound(SoundType.STONE)
+						.lightLevel(state -> 12).noOcclusion().noCollision(), element));
+		registerItemOnly(name, () -> new ItemBlockLumenRelay(block.get(), itemProperties()));
+		return block;
+	}
+
 	/** Dye trees were metadata families in V33a; 26.2 gives every colour its own leaf and sapling id. */
 	public static final List<DeferredBlock<BlockDyeLeaf>> DYE_LEAVES = registerDyeLeaves();
 	public static final List<DeferredBlock<BlockDyeSapling>> DYE_SAPLINGS = registerDyeSaplings();
@@ -195,11 +215,10 @@ public final class ChromaBlocks {
 	public static final DeferredBlock<BlockCliffStone> CLIFF_FARMLAND = register("cliff_farmland",
 			() -> new BlockCliffStone(blockProperties().mapColor(MapColor.DIRT).strength(0.6F).randomTicks().lightLevel(state -> 6), BlockCliffStone.Type.FARMLAND));
 	/**
-	 * V33a tiered ores: disguised as their host stone until the miner reaches the stage. Only the
-	 * ores whose drop item is registered and which V33a renders as an ordinary overlay ore are here.
-	 * The six geode-rendered ones (BINDING, FOCAL, TELEPORT, FIRAXITE, THERMITE, SPACERIFT) need the
-	 * source's custom geode mesh, and the rest (WATERY, LUMA, ECHO, THERMITE, RESO, RAINBOW, AVOLITE)
-	 * drop tiered resources that are not registered yet; none are stubbed in with stand-in visuals.
+	 * V33a tiered ores: disguised as their host stone until the miner reaches the stage.
+	 * BINDING, FOCAL, TELEPORT, FIRAXITE and SPACERIFT use the now-ported source geode mesh. The
+	 * six source geodes use the shared ported mesh; ordinary-overlay ores retain their authored
+	 * underlay/animation pair. Every V33a tiered ore now has its own registry identity.
 	 */
 	public static final DeferredBlock<BlockTieredOre> ENERGIZED_ROCK = register("energized_rock",
 			() -> new BlockTieredOre(oreProperties(), ProgressStage.CRYSTALS, Blocks.STONE,
@@ -212,6 +231,89 @@ public final class ChromaBlocks {
 	public static final DeferredBlock<BlockTieredOre> ELEMENTAL_STONES = register("elemental_stones",
 			() -> new BlockTieredOre(oreProperties(), ProgressStage.RUNEUSE, Blocks.STONE,
 					BlockTieredOre.ELEMENTAL_STONE_DROPS));
+	public static final DeferredBlock<BlockTieredOre> FUSED_CRYSTALS = register("fused_crystals",
+			() -> new BlockTieredOre(oreProperties(), ProgressStage.CHARGE, Blocks.STONE,
+					(into, fortune, random, miner) -> {
+						// V33a BINDING: min(8, 1 + rand(3)*(1 + rand(1 + fortune/2))).
+						int n = Math.min(8, 1 + random.nextInt(3)
+								* (1 + random.nextInt(1 + fortune / 2)));
+						for (int i = 0; i < n; i++)
+							into.add(new ItemStack(ChromaItems.TIERED.get(ChromaTieredItems.BINDING_CRYSTAL).get()));
+					}));
+	public static final DeferredBlock<BlockTieredOre> RADIANT_STONE = register("radiant_stone",
+			() -> new BlockTieredOre(oreProperties(), ProgressStage.MULTIBLOCK, Blocks.STONE,
+					(into, fortune, random, miner) -> {
+						// V33a FOCAL: min(32, 1 + rand(6)*(1 + rand(1 + fortune*3/2))).
+						int n = Math.min(32, 1 + random.nextInt(6)
+								* (1 + random.nextInt(1 + fortune * 3 / 2)));
+						for (int i = 0; i < n; i++)
+							into.add(new ItemStack(ChromaItems.TIERED.get(ChromaTieredItems.FOCUS_DUST).get()));
+					}));
+	public static final DeferredBlock<BlockTieredOre> ENDER_STONE = register("ender_stone",
+			() -> new BlockTieredOre(oreProperties(), ProgressStage.END, Blocks.STONE,
+					(into, fortune, random, miner) -> {
+						// V33a TELEPORT: min(32, 1 + rand(1+fortune) + fortune^2/2).
+						int n = Math.min(32, 1 + random.nextInt(1 + fortune) + fortune * fortune / 2);
+						for (int i = 0; i < n; i++)
+							into.add(new ItemStack(ChromaItems.TIERED.get(ChromaTieredItems.ENDER_DUST).get()));
+					}));
+	public static final DeferredBlock<BlockTieredOre> FLUID_STONE = register("fluid_stone",
+			() -> new BlockTieredOre(oreProperties(), ProgressStage.OCEAN, Blocks.STONE,
+					(into, fortune, random, miner) -> {
+						// V33a WATERY: min(32, 1 + rand(6) + rand(1 + 3*fortune)).
+						int n = Math.min(32, 1 + random.nextInt(6) + random.nextInt(1 + 3 * fortune));
+						for (int i = 0; i < n; i++)
+							into.add(new ItemStack(ChromaItems.TIERED.get(ChromaTieredItems.WATER_DUST).get()));
+					}));
+	public static final DeferredBlock<BlockTieredOre> FIRAXITE = register("firaxite_ore",
+			() -> new BlockTieredOre(oreProperties(), ProgressStage.NETHER, Blocks.STONE,
+					(into, fortune, random, miner) -> {
+						// V33a FIRAXITE: min(32, 1 + rand(8) + rand(1+fortune)*4).
+						int n = Math.min(32, 1 + random.nextInt(8) + random.nextInt(1 + fortune) * 4);
+						for (int i = 0; i < n; i++)
+							into.add(new ItemStack(ChromaItems.TIERED.get(ChromaTieredItems.FIRAXITE).get()));
+					}));
+	public static final DeferredBlock<BlockTieredOre> GLOWING_ROCK = register("glowing_rock",
+			() -> new BlockTieredOre(oreProperties(), ProgressStage.STRUCTCOMPLETE, Blocks.STONE,
+					(into, fortune, random, miner) -> {
+						// V33a LUMA: min(32, (1+fortune)*(1+4*rand(5))).
+						int n = Math.min(32, (1 + fortune) * (1 + 4 * random.nextInt(5)));
+						for (int i = 0; i < n; i++)
+							into.add(new ItemStack(ChromaItems.TIERED.get(ChromaTieredItems.LUMA_DUST).get()));
+					}));
+	public static final DeferredBlock<BlockTieredOre> ECHOSTONE = register("echostone",
+			() -> new BlockTieredOre(oreProperties(), ProgressStage.CTM, Blocks.STONE,
+					(into, fortune, random, miner) -> {
+						// V33a ECHO: min(32, (1+fortune^2/2)*(1+rand(8)+rand(8))).
+						int n = Math.min(32, (1 + fortune * fortune / 2)
+								* (1 + random.nextInt(8) + random.nextInt(8)));
+						for (int i = 0; i < n; i++)
+							into.add(new ItemStack(ChromaItems.TIERED.get(ChromaTieredItems.ECHO_CRYSTAL).get()));
+					}));
+	public static final DeferredBlock<BlockTieredOre> VIBRANT_CRYSTALS = register("vibrant_crystals",
+			() -> new BlockTieredOre(oreProperties(), ProgressStage.ABILITY, Blocks.END_STONE,
+					(into, fortune, random, miner) -> {
+						// V33a RESO: one Resonant Dust plus four more for each Fortune level.
+						int n = 1 + fortune * 4;
+						for (int i = 0; i < n; i++)
+							into.add(new ItemStack(ChromaItems.TIERED.get(ChromaTieredItems.RESONANCE_DUST).get()));
+					}));
+	public static final DeferredBlock<BlockTieredOre> SPACERIFT_STONE = register("spacerift_stone",
+			() -> new BlockTieredOre(oreProperties(), ProgressStage.KILLDRAGON, Blocks.END_STONE,
+					(into, fortune, random, miner) -> {
+						// V33a SPACERIFT: 1 + fortune + rand(1+fortune)*3/2.
+						int n = 1 + fortune + random.nextInt(1 + fortune) * 3 / 2;
+						for (int i = 0; i < n; i++)
+							into.add(new ItemStack(ChromaItems.TIERED.get(ChromaTieredItems.SPACE_DUST).get()));
+					}));
+	public static final DeferredBlock<BlockTieredOre> LUMENITE_ORE = register("lumenite_ore",
+			() -> new BlockTieredOre(oreProperties(), ProgressStage.USEENERGY, Blocks.STONE,
+					(into, fortune, random, miner) -> {
+						// V33a RAINBOW: 1 + fortune + rand(1+fortune)/2.
+						int n = 1 + fortune + random.nextInt(1 + fortune) / 2;
+						for (int i = 0; i < n; i++)
+							into.add(new ItemStack(ChromaItems.TIERED.get(ChromaTieredItems.LUMEN_GEM).get()));
+					}));
 	public static final DeferredBlock<BlockTieredOre> FIRESTONE = register("firestone",
 			() -> new BlockTieredOre(oreProperties(), ProgressStage.LINK, Blocks.NETHERRACK,
 					(into, fortune, random, miner) -> {
@@ -220,10 +322,25 @@ public final class ChromaBlocks {
 						for (int i = 0; i < n; i++)
 							into.add(new ItemStack(ChromaItems.TIERED.get(ChromaTieredItems.FIRE_ESSENCE).get()));
 					}));
+	public static final DeferredBlock<BlockTieredOre> THERMITIC_ROCK = register("thermitic_rock",
+			() -> new BlockTieredOre(oreProperties(), ProgressStage.END, Blocks.NETHERRACK,
+					(into, fortune, random, miner) -> {
+						// V33a THERMITE: 1 + rand(1 + Fortune^2) Thermitic Crystals.
+						int n = 1 + random.nextInt(1 + fortune * fortune);
+						for (int i = 0; i < n; i++)
+							into.add(new ItemStack(ChromaItems.TIERED.get(ChromaTieredItems.THERMITIC_CRYSTAL).get()));
+					}));
+	public static final DeferredBlock<BlockTieredOre> AVOLITE_ORE = register("avolite_ore",
+			() -> new BlockTieredOre(oreProperties(), ProgressStage.POWERCRYSTAL, Blocks.STONE,
+					(into, fortune, random, miner) -> {
+						// V33a AVOLITE: 1 + rand(1 + Fortune/2)/2 Avolite.
+						int n = 1 + random.nextInt(1 + fortune / 2) / 2;
+						for (int i = 0; i < n; i++)
+							into.add(new ItemStack(ChromaItems.TIERED.get(ChromaTieredItems.AVOLITE).get()));
+					}));
 
 	/**
-	 * V33a tiered plants, one registered identity each; see {@link ChromaTieredPlants}. Vibrant Pod
-	 * and Glowing Roots are absent because their drops have no registered identity yet.
+	 * All seven V33a tiered plants, one registered identity each; see {@link ChromaTieredPlants}.
 	 *
 	 * <p>V33a sets hardness 0, resistance 2, the grass step sound, and a constant light of 4.
 	 */
@@ -415,6 +532,11 @@ public final class ChromaBlocks {
 	public static final DeferredBlock<BlockLightSwitch> PANEL_SWITCH = register("panel_switch",
 			() -> new BlockLightSwitch(blockProperties().mapColor(MapColor.STONE).strength(-1F, 600000F)
 					.sound(SoundType.STONE)));
+	/** V33a DIMDATA metadata 1: the eight-colour structure-password bypass terminal. */
+	public static final DeferredBlock<BlockStructurePassword> STRUCTURE_PASSWORD =
+			registerBlockOnly("structure_password", () -> new BlockStructurePassword(
+					blockProperties().mapColor(MapColor.STONE).strength(-1F, 600000F)
+							.sound(SoundType.STONE)));
 	public static final DeferredBlock<BlockColoredLock> COLOR_LOCK = register("color_lock",
 			() -> new BlockColoredLock(blockProperties().mapColor(MapColor.STONE).strength(-1F, 600000F)
 					.sound(SoundType.STONE).noOcclusion()));
@@ -424,6 +546,18 @@ public final class ChromaBlocks {
 	public static final DeferredBlock<BlockMusicTrigger> MUSIC_TRIGGER = register("music_trigger",
 			() -> new BlockMusicTrigger(blockProperties().mapColor(MapColor.STONE).strength(6F, 60000F)
 					.sound(SoundType.STONE)));
+	/** Structure-owned V33a melody controller; it is never an obtainable inventory block. */
+	public static final DeferredBlock<BlockMusicMemory> MUSIC_MEMORY = registerBlockOnly("music_memory",
+			() -> new BlockMusicMemory(blockProperties().mapColor(MapColor.STONE).strength(-1F, 600000F)
+					.sound(SoundType.STONE).lightLevel(state -> 4)));
+	/** Structure-owned Cellular Automata floor/history cell and play/stop controller. */
+	public static final DeferredBlock<BlockGOLTile> GOL_TILE = registerBlockOnly("gol_tile",
+			() -> new BlockGOLTile(blockProperties().mapColor(MapColor.COLOR_CYAN)
+					.strength(-1F, 600000F).sound(SoundType.STONE)
+					.lightLevel(state -> state.getValue(BlockGOLTile.ACTIVE) ? 15 : 6)));
+	public static final DeferredBlock<BlockGOLController> GOL_CONTROLLER = registerBlockOnly("gol_controller",
+			() -> new BlockGOLController(blockProperties().mapColor(MapColor.STONE)
+					.strength(-1F, 600000F).sound(SoundType.STONE).lightLevel(state -> 8)));
 	/** V33a DIMDATA callback cell used by the natural Biome Fragment's melody replay pedestal. */
 	public static final DeferredBlock<BlockBiomeReplay> BIOME_REPLAY = registerBlockOnly("biome_replay",
 			() -> new BlockBiomeReplay(blockProperties().mapColor(MapColor.STONE)
@@ -639,9 +773,34 @@ public final class ChromaBlocks {
 			register("crystal_repeater", () -> new BlockChromaticTile(
 					blockProperties().strength(3F, 12F).noOcclusion(), reika.chromaticraft.registry.ChromaTiles.REPEATER));
 
+	public static final DeferredBlock<Block> WEAK_REPEATER =
+			register("weak_repeater", () -> new reika.chromaticraft.block.BlockWeakRepeater(
+					blockProperties().strength(1.5F, 4F).noOcclusion().ignitedByLava()));
+	/** V33a RELAY metadata 0-15, now one stable registry identity per element. */
+	public static final EnumMap<CrystalElement, DeferredBlock<BlockLumenRelay>> LUMEN_RELAYS =
+			registerLumenRelays();
+	/** V33a RELAY metadata 16, deliberately not encoded into a component or blockstate. */
+	public static final DeferredBlock<BlockLumenRelay> MULTICHROMIC_RELAY =
+			registerLumenRelay("lumen_relay_multichromic", null);
 	public static final DeferredBlock<Block> FUNCTION_RELAY =
 			register("function_relay", () -> new reika.chromaticraft.block.BlockFunctionRelay(
 					blockProperties().strength(5F, 8F).noOcclusion().noCollision()));
+	public static final DeferredBlock<Block> RELAY_SOURCE =
+			register("relay_source", () -> new BlockRelaySource(
+					blockProperties().strength(3F, 12F).noOcclusion().lightLevel(state -> 8)));
+
+	private static EnumMap<CrystalElement, DeferredBlock<BlockLumenRelay>> registerLumenRelays() {
+		EnumMap<CrystalElement, DeferredBlock<BlockLumenRelay>> map =
+				new EnumMap<>(CrystalElement.class);
+		for (CrystalElement element : CrystalElement.elements)
+			map.put(element, registerLumenRelay(coloredName("lumen_relay", element), element));
+		return map;
+	}
+
+	public static DeferredBlock<BlockLumenRelay> lumenRelay(CrystalElement element) {
+		return LUMEN_RELAYS.get(element);
+	}
+
 	public static final DeferredBlock<Block> SKYPEATER =
 			register("skypeater", () -> new BlockChromaticTile(
 					blockProperties().strength(3F, 12F).noOcclusion(), reika.chromaticraft.registry.ChromaTiles.SKYPEATER));
@@ -658,9 +817,14 @@ public final class ChromaBlocks {
 					blockProperties().strength(2F, 8F).noOcclusion()));
 	public static final DeferredBlock<Block> CASTING_TABLE =
 			register("casting_table", () -> new BlockCastingTable(blockProperties().strength(4F, 16F).noOcclusion()));
+	public static final DeferredBlock<Block> RITUAL_TABLE =
+			register("ritual_table", () -> new BlockRitualTable(blockProperties().strength(4F, 16F).noOcclusion()));
 	public static final DeferredBlock<Block> CRYSTAL_CHARGER =
 			register("crystal_charger", () -> new BlockCrystalCharger(
 					blockProperties().strength(3F, 12F).noOcclusion()));
+	public static final DeferredBlock<Block> COLLECTOR =
+			register("collector", () -> new BlockCollector(
+					blockProperties().strength(3F, 12F).noOcclusion().lightLevel(state -> 8)));
 	public static final DeferredBlock<Block> FARMER =
 			register("farmer", () -> new BlockFarmer(
 					blockProperties().strength(3F, 12F).noOcclusion()));
@@ -701,6 +865,10 @@ public final class ChromaBlocks {
 			register("player_aura_infuser", () -> new BlockItemAuraInfuser(
 					blockProperties().strength(3F, 12F).noOcclusion().lightLevel(state -> 8),
 					reika.chromaticraft.registry.ChromaTiles.PLAYERINFUSER));
+	public static final DeferredBlock<Block> PERSONAL_CHARGER =
+			register("personal_charger", () -> new BlockChromaticTile(
+					blockProperties().strength(3F, 12F).noOcclusion().noCollision().lightLevel(state -> 15),
+					reika.chromaticraft.registry.ChromaTiles.PERSONAL));
 	public static final DeferredBlock<Block> DATA_NODE =
 			register("data_node", () -> new BlockChromaticTile(
 					blockProperties().strength(-1F, 3600000F).noOcclusion().lightLevel(s -> 12),

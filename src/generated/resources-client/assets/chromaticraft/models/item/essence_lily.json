@@ -3,6 +3,10 @@
   "textures": {
     "layer0": {
       "force_translucent": true,
+      "sprite": "chromaticraft:block/plant/essence_lily_back"
+    },
+    "layer1": {
+      "force_translucent": true,
       "sprite": "chromaticraft:block/plant/essence_lily_front"
     }
   }

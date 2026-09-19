@@ -10,6 +10,7 @@
 package reika.chromaticraft.base.tileentity;
 
 import java.util.List;
+import java.util.UUID;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
@@ -19,6 +20,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 
+import reika.chromaticraft.auxiliary.interfaces.MultiBlockChromaTile;
 import reika.chromaticraft.magic.ElementTagCompound;
 import reika.chromaticraft.magic.interfaces.CrystalReceiver;
 import reika.chromaticraft.magic.interfaces.CrystalSource;
@@ -30,15 +32,16 @@ import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.dragonapi.instantiable.StepTimer;
 import reika.dragonapi.instantiable.data.immutable.DecimalPosition;
+import reika.dragonapi.libraries.registry.ReikaItemHelper;
 
 /**
  * Base for network tiles that receive + store crystal energy (per-colour, capped by
  * {@link #getMaxStorage}). Handles the receive-cooldown, energy request/drain, and sync.
  *
- * <p>Deferred (re-add with their subsystems): the adjacency efficiency-upgrade boost
- * ({@code TileEntityAdjacencyUpgrade}/{@code TileEntityEfficiencyUpgrade} — efficiencyBoost stays 0),
- * the owner-data + item-stack energy transfer ({@code setDataFromItemStackTag} reads via the old
- * {@code stackTagCompound}; 26.2 needs a DataComponent rework), and the debug energy-fill block.
+ * <p>Deferred with its still-unported subsystem: the adjacency efficiency-upgrade boost
+ * ({@code TileEntityAdjacencyUpgrade}/{@code TileEntityEfficiencyUpgrade} — efficiencyBoost stays 0)
+ * and the debug energy-fill block. Energy and placer ownership use 26.2 item custom data and survive
+ * the ordinary break/place loop.
  */
 public abstract class CrystalReceiverBase extends TileEntityCrystalBase implements CrystalReceiver, LumenConsumer, LumenRequestingTile {
 
@@ -56,6 +59,12 @@ public abstract class CrystalReceiverBase extends TileEntityCrystalBase implemen
 
 	@Override
 	public final void onAdjacentUpdate(Level world, BlockPos pos, net.minecraft.world.level.block.Block b) {
+		// V33a BlockChromaTile revalidated every multiblock tile as soon as one of its authored
+		// neighbours changed. Keeping that callback here gives all receiver-backed multiblocks the
+		// same immediate deactivate/reactivate behaviour, while their periodic checks remain a safety
+		// net for edits made while the receiver's chunk was unloaded.
+		if (!world.isClientSide() && this instanceof MultiBlockChromaTile multi)
+			multi.validateStructure();
 		//Deferred: adjacency efficiency recalculation.
 		this.syncAllData(false);
 	}
@@ -101,7 +110,8 @@ public abstract class CrystalReceiverBase extends TileEntityCrystalBase implemen
 	public abstract int getMaxStorage(CrystalElement e);
 
 	public final int getEnergyScaled(CrystalElement e, int a) {
-		return a * this.getEnergy(e) / this.getMaxStorage(e);
+		int capacity = this.getMaxStorage(e);
+		return capacity > 0 ? a * this.getEnergy(e) / capacity : 0;
 	}
 
 	protected final boolean requestEnergy(CrystalElement e, int amount) {
@@ -155,7 +165,8 @@ public abstract class CrystalReceiverBase extends TileEntityCrystalBase implemen
 	}
 
 	public final float getFillFraction(CrystalElement e) {
-		return (float)energy.getValue(e) / this.getMaxStorage(e);
+		int capacity = this.getMaxStorage(e);
+		return capacity > 0 ? (float)energy.getValue(e) / capacity : 0;
 	}
 
 	@Override
@@ -255,13 +266,30 @@ public abstract class CrystalReceiverBase extends TileEntityCrystalBase implemen
 	@Override
 	public void getTagsToWriteToStack(CompoundTag NBT) {
 		energy.writeToNBT("energy", NBT);
-		//Deferred: owner data (writeOwnerData) — owner system not yet ported.
+		if (placer != null && !placer.isEmpty())
+			NBT.putString("place", placer);
+		if (placerUUID != null)
+			NBT.putString("placeUUID", placerUUID.toString());
 	}
 
 	@Override
 	public void setDataFromItemStackTag(ItemStack is) {
-		//Deferred: item-stack energy/owner transfer — 26.2 item NBT is DataComponent-based
-		//(the 1.7.10 is.stackTagCompound is gone). Re-add with the item-component rework.
+		CompoundTag tag = is != null ? ReikaItemHelper.getStackTag(is) : null;
+		if (tag == null) {
+			energy.clear();
+			return;
+		}
+		energy.readFromNBT("energy", tag);
+		placer = tag.getStringOr("place", placer != null ? placer : "");
+		String id = tag.getStringOr("placeUUID", "");
+		if (!id.isEmpty()) {
+			try {
+				placerUUID = UUID.fromString(id);
+			}
+			catch (IllegalArgumentException ignored) {
+				// A malformed carried item must not erase the valid placer assigned by placement.
+			}
+		}
 	}
 
 	@Override

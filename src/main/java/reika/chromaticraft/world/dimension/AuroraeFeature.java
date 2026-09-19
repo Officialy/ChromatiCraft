@@ -132,13 +132,16 @@ public final class AuroraeFeature extends Feature<NoneFeatureConfiguration> {
 	}
 
 	/**
-	 * The terrain height under one end. Read through the heightmap rather than by probing blocks: an end
-	 * can be ninety blocks from the origin, and a block read that far out could ask for a chunk that is
-	 * not there yet.
+	 * The terrain height under one end. An end can be hundreds of blocks from the feature origin once
+	 * twelve separated ribbons are laid out, so even a WorldGenLevel heightmap lookup can escape the
+	 * active generation region and synchronously request terrain. Querying the chunk generator's base
+	 * height evaluates the same terrain source without touching or loading a chunk.
 	 */
 	private static int surfaceAt(WorldGenLevel world, double x, double z) {
-		return world.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
-				net.minecraft.util.Mth.floor(x), net.minecraft.util.Mth.floor(z));
+		var chunks = world.getLevel().getChunkSource();
+		return chunks.getGenerator().getBaseHeight(net.minecraft.util.Mth.floor(x),
+				net.minecraft.util.Mth.floor(z), Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
+				world, chunks.randomState());
 	}
 
 	private static AuroraColour drawColour(RandomSource random) {

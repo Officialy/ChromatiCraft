@@ -5,12 +5,16 @@ import java.util.List;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
 
+import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.magic.MonumentRitualScore.TimedEvent;
+import reika.chromaticraft.network.ChromaNetwork;
 import reika.chromaticraft.world.dimension.structure.MonumentMineralBlocks;
 import reika.chromaticraft.world.dimension.structure.MonumentPiece;
 import reika.chromaticraft.registry.ChromaBlocks;
@@ -60,6 +64,7 @@ public class MonumentCompletionRitual {
 	private long pauseTotal;
 	private long runTime = -1;
 	private long completionTime = -1;
+	private Vec3 playerAnchor;
 
 	private boolean running;
 	private boolean complete;
@@ -97,6 +102,7 @@ public class MonumentCompletionRitual {
 
 	public void start() {
 		this.disableCores();
+		playerAnchor = player.position();
 		running = true;
 		runningRituals = true;
 		completionTime = -1;
@@ -134,6 +140,7 @@ public class MonumentCompletionRitual {
 			pauseTotal += step - 50;
 		runTime = time - (startTime + pauseTotal);
 		lastTickTime = time;
+		this.holdPlayerAtActivationPoint();
 
 		if (this.isReadyToComplete())
 			this.completeRitual();
@@ -141,6 +148,36 @@ public class MonumentCompletionRitual {
 
 	public long getRunTime() {
 		return runTime;
+	}
+
+	/**
+	 * A ceremony is deliberately not serialised. If it is interrupted (logout, server stop, failed
+	 * check, or an explicit reset), the ring must therefore return to its pre-ritual primed state.
+	 * Otherwise the persisted {@code prime=false} written by {@link #disableCores()} silences the
+	 * dimension-core ensemble until one core happens to receive a neighbour update or is replaced.
+	 */
+	public void enableCores() {
+		for (CrystalElement e : CrystalElement.elements) {
+			TileEntityDimensionCore core = this.getCore(e);
+			if (core != null)
+				core.prime(true);
+		}
+	}
+
+	/**
+	 * V33a rewrote the client view entity to the scripted camera every tick, which prevented ordinary
+	 * movement from carrying the activating player away. The modern camera is deliberately detached
+	 * from the real player, so preserve that effective behavior authoritatively on the server. This
+	 * also prevents queued movement packets or pre-existing flight momentum from escaping the ritual.
+	 */
+	private void holdPlayerAtActivationPoint() {
+		if (playerAnchor == null)
+			return;
+		player.setDeltaMovement(Vec3.ZERO);
+		player.setSprinting(false);
+		player.fallDistance = 0;
+		if (player.position().distanceToSqr(playerAnchor) > 1.0E-6)
+			player.snapTo(playerAnchor.x, playerAnchor.y, playerAnchor.z);
 	}
 
 	private boolean isReadyToComplete() {
@@ -153,8 +190,13 @@ public class MonumentCompletionRitual {
 	 * front of it, and the progression step is granted.
 	 */
 	private void completeRitual() {
-		if (completionTime < 0)
+		if (completionTime < 0) {
 			completionTime = runTime;
+			// V33a MONUMENTCOMPLETE is separate from RESETMONUMENT: it begins the final
+			// three-second shot and fires the completion seeds/core beams exactly once.
+			if (world instanceof ServerLevel server)
+				ChromaNetwork.sendMonumentRitualCompletion(server, pos);
+		}
 		if (runTime - completionTime < MonumentRitualScore.COMPLETION_EXTRA) {
 			complete = true;
 			this.facePlayerAtMonument();
@@ -197,6 +239,9 @@ public class MonumentCompletionRitual {
 		for (CrystalElement e : CrystalElement.elements) {
 			TileEntityDimensionCore core = this.getCore(e);
 			if (core == null || core.getColor() != e) {
+				BlockPos at = pos.offset(TileEntityDimensionCore.getLocation(e));
+				ChromatiCraft.LOGGER.warn("Monument at {} cannot start: expected {} dimension core at {}, found {}",
+						pos, e, at, core == null ? world.getBlockState(at) : core.getColor());
 				this.endRitual();
 				return false;
 			}
@@ -207,15 +252,22 @@ public class MonumentCompletionRitual {
 				owner = placer;
 			else if (owner != placer) {
 				// Two different players contributed cores; upstream refuses rather than picking one.
+				ChromatiCraft.LOGGER.warn("Monument at {} cannot start: dimension cores belong to both {} and {}",
+						pos, owner.getGameProfile().name(), placer.getGameProfile().name());
 				this.endRitual();
 				return false;
 			}
 		}
 		if (owner == null) {
+			ChromatiCraft.LOGGER.warn("Monument at {} cannot start: none of its dimension cores has a real player owner", pos);
 			this.endRitual();
 			return false;
 		}
-		return this.doMineralChecks();
+		if (!this.doMineralChecks()) {
+			this.endRitual();
+			return false;
+		}
+		return true;
 	}
 
 	/**
@@ -223,8 +275,9 @@ public class MonumentCompletionRitual {
 	 * material.
 	 *
 	 * <p>This is the ritual's second gate and it bites. Generation lays each cell only on a per-material
-	 * chance — gold at twenty-five percent, glowstone at thirty-five — while registering every one of
-	 * them as expected, and the centre chroma is registered without ever being laid. So a freshly
+	 * chance — glowstone at thirty-five percent, redstone at forty — while registering every one of
+	 * them as expected, and the centre chroma is registered without ever being laid. The active gold
+	 * ring is a separate always-generated structural ring. So a freshly
 	 * generated monument always fails this, and finishing the inlay by hand is the work the ritual is
 	 * named for. See {@link MonumentMineralBlocks}.
 	 *
@@ -239,13 +292,20 @@ public class MonumentCompletionRitual {
 		BlockPos origin = pos.subtract(MonumentPiece.CONTROLLER_OFFSET);
 		for (MonumentMineralBlocks.Cell cell : MonumentMineralBlocks.expected()) {
 			BlockPos at = origin.offset(cell.offset());
-			if (!world.getBlockState(at).is(cell.mineral().block()))
+			boolean wrongBlock = !world.getBlockState(at).is(cell.mineral().block());
+			boolean flowingChroma = cell.mineral() == MonumentMineralBlocks.Mineral.CHROMA
+					&& !world.getFluidState(at).isSource();
+			if (wrongBlock || flowingChroma) {
+				ChromatiCraft.LOGGER.warn("Monument at {} cannot start: expected {} at inlay position {}, found {}",
+						pos, cell.mineral(), at, world.getBlockState(at));
 				return false;
+			}
 		}
 		return true;
 	}
 
 	public void endRitual() {
+		this.enableCores();
 		running = false;
 		runTime = -1;
 		runningRituals = false;

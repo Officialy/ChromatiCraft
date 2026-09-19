@@ -1,9 +1,7 @@
 package reika.chromaticraft.world;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.WorldGenRegion;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.levelgen.Heightmap;
@@ -11,13 +9,15 @@ import net.minecraft.world.level.levelgen.feature.Feature;
 import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
 import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 import net.minecraft.world.level.material.Fluids;
-
 import reika.chromaticraft.data.ChromaBiomeTagProvider;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.tileentity.networking.TileEntitySkypeater;
 import reika.chromaticraft.tileentity.networking.TileEntitySkypeater.NodeClass;
 import reika.chromaticraft.world.luminous.LuminousCliffsTerrainFeature;
 import reika.chromaticraft.world.luminous.LuminousCliffsTerrainFeature.GlowCliffRegion;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * V33a {@code SkypeaterGenerator}: Lumen Nodes hanging in the air over the Luminous Cliffs' water.
@@ -110,8 +110,8 @@ public final class SkypeaterFeature extends Feature<NoneFeatureConfiguration> {
 			for (int dz = -SEPARATION; dz <= SEPARATION; dz += 4) {
 				for (int dy = -SEPARATION; dy <= SEPARATION; dy += 4) {
 					cursor.set(pos.getX() + dx, pos.getY() + dy, pos.getZ() + dz);
-					// FEATURES has a one-chunk write/read radius in 26.2. Asking WorldGenRegion for
-					// terrain two chunks away is explicitly unsafe and can terminate generation.
+					if (world instanceof WorldGenRegion region && !region.isWithinWriteZone(cursor))
+            continue;
 					if (!world.ensureCanWrite(cursor))
 						continue;
 					if (world.getBlockState(cursor).is(ChromaBlocks.SKYPEATER.get()))

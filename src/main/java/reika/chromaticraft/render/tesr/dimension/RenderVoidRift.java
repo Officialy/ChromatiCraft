@@ -1,224 +1,214 @@
-/*******************************************************************************
- * @author Reika Kalseki
- *
- * Copyright 2017
- *
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
- ******************************************************************************/
 package reika.chromaticraft.render.tesr.dimension;
 
-import org.lwjgl.opengl.GL11;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 
-import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraftforge.client.MinecraftForgeClient;
-import net.minecraftforge.common.util.ForgeDirection;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
+import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
+import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
+import net.minecraft.client.renderer.feature.CustomFeatureRenderer;
+import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.core.Direction;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 
-import reika.chromaticraft.ChromaClient;
-import reika.chromaticraft.base.ChromaRenderBase;
-import reika.chromaticraft.block.dimension.blockvoidrift.TileEntityVoidRift;
+import org.jspecify.annotations.Nullable;
+
+import net.neoforged.neoforge.client.extensions.OrderedSubmitNodeCollectorExtension;
+import net.neoforged.neoforge.client.submit.RenderPhaseKeys;
+
+import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.registry.CrystalElement;
-import reika.dragonapi.instantiable.data.immutable.BlockKey;
-import reika.dragonapi.instantiable.io.RemoteSourcedAsset;
-import reika.dragonapi.interfaces.tileentity.RenderFetcher;
-import reika.dragonapi.libraries.io.ReikaTextureHelper;
-import reika.dragonapi.libraries.java.reikaglhelper.BlendMode;
+import reika.chromaticraft.render.ChromaRenderPipelines;
+import reika.chromaticraft.tileentity.dimension.TileEntityVoidRift;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
 
-public class RenderVoidRift extends ChromaRenderBase {
+/** V33a's animated sixteen-block Void Rift aura, using the shipped fallback copy of its atlas. */
+public final class RenderVoidRift implements
+		BlockEntityRenderer<TileEntityVoidRift, RenderVoidRift.State> {
 
-	private final double[] wave = new double[2];
-	private final RemoteSourcedAsset texture = ChromaClient.dynamicAssets.createAsset("Textures/voidaura-strip_page.png");
+	private static final Identifier AURA = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
+			"textures/effect/voidaura-strip_page_fallback.png");
+
+	public RenderVoidRift(BlockEntityRendererProvider.Context context) {}
 
 	@Override
-	public String getImageFileName(RenderFetcher te) {
-		return null;
+	public State createRenderState() {
+		return new State();
 	}
 
 	@Override
-	public void renderTileEntityAt(TileEntity tile, double par2, double par4, double par6, float par8) {
-		TileEntityVoidRift te = (TileEntityVoidRift)tile;
-		if (MinecraftForgeClient.getRenderPass() != 1)
-			return;
-		GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
-		GL11.glPushMatrix();
-		GL11.glTranslated(par2, par4, par6);
-		GL11.glEnable(GL11.GL_BLEND);
-		GL11.glDisable(GL11.GL_LIGHTING);
-		//GL11.glDisable(GL11.GL_CULL_FACE);
-		GL11.glDepthMask(false);
-		BlendMode.ADDITIVEDARK.apply();
-		GL11.glDisable(GL11.GL_ALPHA_TEST);
-		this.renderAura(te);
-		GL11.glPopMatrix();
-		GL11.glPopAttrib();
-	}
-
-	private void renderAura(TileEntityVoidRift te) {
-		CrystalElement e = te.getColor();
-		Integer[] colors = new Integer[4];
-		for (int i = 2; i < 6; i++) {
-			ForgeDirection dir = ForgeDirection.VALID_DIRECTIONS[i];
-			BlockKey b = te.getAt(dir.offsetX, dir.offsetZ);
-			if (b.blockID != te.getBlockType()) {
-				colors[i-2] = e.getColor();
-			}
-			else if (b.metadata != e.ordinal()) {
-				//blend colors
-				CrystalElement e2 = CrystalElement.elements[b.metadata];
-				colors[i-2] = ReikaColorAPI.mixColors(e.getColor(), e2.getColor(), 0.5F);
+	public void extractRenderState(TileEntityVoidRift rift, State state, float partialTick,
+			Vec3 cameraPosition, ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress) {
+		BlockEntityRenderer.super.extractRenderState(rift, state, partialTick, cameraPosition,
+				breakProgress);
+		CrystalElement own = rift.getColor();
+		state.worldX = rift.getBlockPos().getX();
+		state.worldY = rift.getBlockPos().getY();
+		state.worldZ = rift.getBlockPos().getZ();
+		for (Direction direction : Direction.Plane.HORIZONTAL) {
+			CrystalElement adjacent = rift.colorAt(direction);
+			state.colors[index(direction)] = adjacent == own ? 0 : adjacent == null ? own.getColor()
+					: ReikaColorAPI.mixColors(own.getColor(), adjacent.getColor(), 0.5F);
+			for (int height = 1; height < TileEntityVoidRift.HEIGHT; height++) {
+				// Do not lay the aura exactly across an opaque terrain face. The animated seam moves
+				// through the block boundary, so a depth bias alone only changes which surface flickers;
+				// suppressing the covered strip makes solid blocks correctly occlude the beam.
+				state.occluded[index(direction)][height] = rift.getLevel().getBlockState(
+						rift.getBlockPos().relative(direction).above(height)).canOcclude();
 			}
 		}
-		for (int i = 0; i < 4; i++) {
-			Integer color = colors[i];
-			//ReikaJavaLibrary.pConsole(color);
-			if (color != null) {
-				float ang = (float)(0.875F+0.125F*Math.sin(System.currentTimeMillis()/800D));
-				color = ReikaColorAPI.getColorWithBrightnessMultiplier(color, ang);
-				ReikaTextureHelper.bindTexture(texture);
-				Tessellator v5 = Tessellator.instance;
-				int h = te.HEIGHT;
-				long tick = System.currentTimeMillis();
+		for (int dx = -1; dx <= 1; dx++) {
+			for (int dz = -1; dz <= 1; dz++)
+				state.neighbours[dx + 1][dz + 1] = (dx != 0 || dz != 0) && rift.hasAt(dx, dz);
+		}
+	}
 
-				int hx = (16+((te.xCoord+te.zCoord)%16))%16;
+	@Override
+	public void submit(State state, PoseStack poseStack, SubmitNodeCollector collector,
+			CameraRenderState camera) {
+		PoseStack auraPose = copy(poseStack);
+		submitAfterTerrain(auraPose, collector, ChromaRenderPipelines.additiveSprite(AURA),
+				(ignored, out) -> renderAura(auraPose.last(), out, state));
+	}
 
-				v5.startDrawingQuads();
-				v5.setBrightness(240);
+	private static void renderAura(PoseStack.Pose pose, VertexConsumer out, State state) {
+		long tick = System.currentTimeMillis();
+		double time = tick / 200D;
+		float pulse = (float)(0.875 + 0.125 * Math.sin(tick / 800D));
+		int hx = Math.floorMod(16 + Math.floorMod(state.worldX + state.worldZ, 16), 16);
+		int frame = (int)(tick / 32 % 128);
+		float u = hx / 256F + (frame % 16) / 16F;
+		float du = u + 1F / 256F;
 
-				int f = (int)((tick/32)%128);
-
-				for (int k = 1; k < h; k++) {
-					double u = hx/256D+(f%16)/16D;
-					double du = u+1/256D;
-
-					double dv = (f/16+1)/8D + (1-(double)k/h)/8D;
-					double v = dv-1/128D;
-
-					v5.setColorOpaque_I(color);
-
-					double t = tick/200D;
-					double r = 0.03125;
-
-					int y = te.yCoord+k;
-					switch(ForgeDirection.VALID_DIRECTIONS[i+2]) {
-						case NORTH:
-							this.calcWave(te, t, r, te.xCoord, y+1, te.zCoord);
-							v5.addVertexWithUV(colors[ForgeDirection.WEST.ordinal()-2] == null ? 0 : wave[0], k+1, te.hasAt(-1, -1) ? 0 : wave[1], u, v);
-							this.calcWave(te, t, r, te.xCoord+1, y+1, te.zCoord);
-							v5.addVertexWithUV(colors[ForgeDirection.EAST.ordinal()-2] == null ? 1 : 1-wave[0], k+1, te.hasAt(1, -1) ? 0 : wave[1], du, v);
-							if (k > 1)
-								this.calcWave(te, t, r, te.xCoord+1, y, te.zCoord);
-							else this.resetWave();
-							v5.addVertexWithUV(colors[ForgeDirection.EAST.ordinal()-2] == null ? 1 : 1-wave[0], k,  te.hasAt(1, -1) ? 0 : wave[1], du, dv);
-							if (k > 1)
-								this.calcWave(te, t, r, te.xCoord, y, te.zCoord);
-							else this.resetWave();
-							v5.addVertexWithUV(colors[ForgeDirection.WEST.ordinal()-2] == null ? 0 : wave[0], k,  te.hasAt(-1, -1) ? 0 : wave[1], u, dv);
-							break;
-						case SOUTH:
-							if (k > 1)
-								this.calcWave(te, t, r, te.xCoord, y, te.zCoord+1);
-							else this.resetWave();
-							v5.addVertexWithUV(colors[ForgeDirection.WEST.ordinal()-2] == null ? 0 : wave[0], k,  te.hasAt(-1, 1) ? 1 : 1-wave[1], u, dv);
-							if (k > 1)
-								this.calcWave(te, t, r, te.xCoord+1, y, te.zCoord+1);
-							else this.resetWave();
-							v5.addVertexWithUV(colors[ForgeDirection.EAST.ordinal()-2] == null ? 1 : 1-wave[0], k, te.hasAt(1, 1) ? 1 : 1-wave[1], du, dv);
-							this.calcWave(te, t, r, te.xCoord+1, y+1, te.zCoord+1);
-							v5.addVertexWithUV(colors[ForgeDirection.EAST.ordinal()-2] == null ? 1 : 1-wave[0], k+1, te.hasAt(1, 1) ? 1 : 1-wave[1], du, v);
-							this.calcWave(te, t, r, te.xCoord, y+1, te.zCoord+1);
-							v5.addVertexWithUV(colors[ForgeDirection.WEST.ordinal()-2] == null ? 0 : wave[0], k+1, te.hasAt(-1, 1) ? 1 : 1-wave[1], u, v);
-							break;
-						case EAST:
-							this.calcWave(te, t, r, te.xCoord+1, y+1, te.zCoord);
-							v5.addVertexWithUV(te.hasAt(1, -1) ? 1 : 1-wave[0], k+1, colors[ForgeDirection.NORTH.ordinal()-2] == null ? 0 : wave[1], u, v);
-							this.calcWave(te, t, r, te.xCoord+1, y+1, te.zCoord+1);
-							v5.addVertexWithUV(te.hasAt(1, 1) ? 1 : 1-wave[0], k+1, colors[ForgeDirection.SOUTH.ordinal()-2] == null ? 1 : 1-wave[1], du, v);
-							if (k > 1)
-								this.calcWave(te, t, r, te.xCoord+1, y, te.zCoord+1);
-							else this.resetWave();
-							v5.addVertexWithUV(te.hasAt(1, 1) ? 1 : 1-wave[0], k,  colors[ForgeDirection.SOUTH.ordinal()-2] == null ? 1 : 1-wave[1], du, dv);
-							if (k > 1)
-								this.calcWave(te, t, r, te.xCoord+1, y, te.zCoord);
-							else this.resetWave();
-							v5.addVertexWithUV(te.hasAt(1, -1) ? 1 : 1-wave[0], k,  colors[ForgeDirection.NORTH.ordinal()-2] == null ? 0 : wave[1], u, dv);
-							break;
-						case WEST:
-							if (k > 1)
-								this.calcWave(te, t, r, te.xCoord, y, te.zCoord);
-							else this.resetWave();
-							v5.addVertexWithUV(te.hasAt(-1, -1) ? 0 : wave[0], k,  colors[ForgeDirection.NORTH.ordinal()-2] == null ? 0 : wave[1], u, dv);
-							if (k > 1)
-								this.calcWave(te, t, r, te.xCoord, y, te.zCoord+1);
-							else this.resetWave();
-							v5.addVertexWithUV(te.hasAt(-1, 1) ? 0 : wave[0], k,  colors[ForgeDirection.SOUTH.ordinal()-2] == null ? 1 : 1-wave[1], du, dv);
-							this.calcWave(te, t, r, te.xCoord, y+1, te.zCoord+1);
-							v5.addVertexWithUV(te.hasAt(-1, 1) ? 0 : wave[0], k+1, colors[ForgeDirection.SOUTH.ordinal()-2] == null ? 1 : 1-wave[1], du, v);
-							this.calcWave(te, t, r, te.xCoord, y+1, te.zCoord);
-							v5.addVertexWithUV(te.hasAt(-1, -1) ? 0 : wave[0], k+1, colors[ForgeDirection.NORTH.ordinal()-2] == null ? 0 : wave[1], u, v);
-							break;
-						default:
-							break;
-					}
-
-					/*
-					switch(ForgeDirection.VALID_DIRECTIONS[i+2]) {
-						case NORTH:
-							v5.addVertexWithUV(colors[ForgeDirection.WEST.ordinal()-2] == null ? 0 : o[0][1][0], dk, o[0][1][1], u, v);
-							v5.addVertexWithUV(colors[ForgeDirection.EAST.ordinal()-2] == null ? 1 : o[1][3][0], dk, o[1][3][1], du, v);
-							v5.addVertexWithUV(colors[ForgeDirection.EAST.ordinal()-2] == null ? 1 : o[1][2][0], k,  o[1][2][1], du, dv);
-							v5.addVertexWithUV(colors[ForgeDirection.WEST.ordinal()-2] == null ? 0 : o[0][0][0], k,  o[0][0][1], u, dv);
-							break;
-						case SOUTH:
-							v5.addVertexWithUV(colors[ForgeDirection.WEST.ordinal()-2] == null ? 0 : o[2][0][0], k,  o[2][0][1], u, dv);
-							v5.addVertexWithUV(colors[ForgeDirection.EAST.ordinal()-2] == null ? 1 : o[3][2][0], k,  o[3][2][1], du, dv);
-							v5.addVertexWithUV(colors[ForgeDirection.EAST.ordinal()-2] == null ? 1 : o[3][3][0], dk, o[3][3][1], du, v);
-							v5.addVertexWithUV(colors[ForgeDirection.WEST.ordinal()-2] == null ? 0 : o[2][1][0], dk, o[2][1][1], u, v);
-							break;
-						case EAST:
-							v5.addVertexWithUV(o[1][3][0], dk, colors[ForgeDirection.NORTH.ordinal()-2] == null ? 0 : o[1][3][1], u, v);
-							v5.addVertexWithUV(o[3][3][0], dk, colors[ForgeDirection.SOUTH.ordinal()-2] == null ? 1 : o[3][3][1], du, v);
-							v5.addVertexWithUV(o[3][2][0], k,  colors[ForgeDirection.SOUTH.ordinal()-2] == null ? 1 : o[3][2][1], du, dv);
-							v5.addVertexWithUV(o[1][2][0], k,  colors[ForgeDirection.NORTH.ordinal()-2] == null ? 0 : o[1][2][1], u, dv);
-							break;
-						case WEST:
-							v5.addVertexWithUV(o[0][0][0], k,  colors[ForgeDirection.NORTH.ordinal()-2] == null ? 0 : o[0][0][1], u, dv);
-							v5.addVertexWithUV(o[2][0][0], k,  colors[ForgeDirection.SOUTH.ordinal()-2] == null ? 1 : o[2][0][1], du, dv);
-							v5.addVertexWithUV(o[2][1][0], dk, colors[ForgeDirection.SOUTH.ordinal()-2] == null ? 1 : o[2][2][1], du, v);
-							v5.addVertexWithUV(o[0][1][0], dk, colors[ForgeDirection.NORTH.ordinal()-2] == null ? 0 : o[0][1][1], u, v);
-							break;
-						default:
-							break;
-					}
-					 */
-
-				}
-
-				v5.draw();
+		for (Direction direction : Direction.Plane.HORIZONTAL) {
+			int base = state.colors[index(direction)];
+			if (base == 0)
+				continue;
+			int color = 0xff000000 | ReikaColorAPI.getColorWithBrightnessMultiplier(base, pulse);
+			for (int k = 1; k < TileEntityVoidRift.HEIGHT; k++) {
+				if (state.occluded[index(direction)][k])
+					continue;
+				float dv = (frame / 16 + 1) / 8F
+						+ (1 - k / (float)TileEntityVoidRift.HEIGHT) / 8F;
+				float v = dv - 1F / 128F;
+				double bottom = k > 1 ? wave(state.worldY + k, time) : 0;
+				double top = wave(state.worldY + k + 1, time);
+				emitWall(pose, out, state, direction, k, bottom, top, color, u, v, du, dv);
 			}
 		}
 	}
 
-	private void calcWave(TileEntityVoidRift te, double t, double r, int x, int y, int z) {
-		wave[0] = r*approxSin(y+t)+r*approxCos(y+t/3D);
-		wave[1] = r*approxSin(y+t)+r*approxCos(y+t/3D);
+	/** The original seam geometry, including diagonal joins and the flat first segment. */
+	private static void emitWall(PoseStack.Pose pose, VertexConsumer out, State state,
+			Direction direction, int k, double bottom, double top, int color,
+			float u, float v, float du, float dv) {
+		boolean northOpen = state.colors[index(Direction.NORTH)] != 0;
+		boolean southOpen = state.colors[index(Direction.SOUTH)] != 0;
+		boolean westOpen = state.colors[index(Direction.WEST)] != 0;
+		boolean eastOpen = state.colors[index(Direction.EAST)] != 0;
+		switch (direction) {
+			case NORTH -> {
+				vertex(pose,out,westOpen ? top : 0,k+1,has(state,-1,-1)?0:top,color,u,v);
+				vertex(pose,out,eastOpen ? 1-top : 1,k+1,has(state,1,-1)?0:top,color,du,v);
+				vertex(pose,out,eastOpen ? 1-bottom : 1,k,has(state,1,-1)?0:bottom,color,du,dv);
+				vertex(pose,out,westOpen ? bottom : 0,k,has(state,-1,-1)?0:bottom,color,u,dv);
+			}
+			case SOUTH -> {
+				vertex(pose,out,westOpen ? bottom : 0,k,has(state,-1,1)?1:1-bottom,color,u,dv);
+				vertex(pose,out,eastOpen ? 1-bottom : 1,k,has(state,1,1)?1:1-bottom,color,du,dv);
+				vertex(pose,out,eastOpen ? 1-top : 1,k+1,has(state,1,1)?1:1-top,color,du,v);
+				vertex(pose,out,westOpen ? top : 0,k+1,has(state,-1,1)?1:1-top,color,u,v);
+			}
+			case EAST -> {
+				vertex(pose,out,has(state,1,-1)?1:1-top,k+1,northOpen?top:0,color,u,v);
+				vertex(pose,out,has(state,1,1)?1:1-top,k+1,southOpen?1-top:1,color,du,v);
+				vertex(pose,out,has(state,1,1)?1:1-bottom,k,southOpen?1-bottom:1,color,du,dv);
+				vertex(pose,out,has(state,1,-1)?1:1-bottom,k,northOpen?bottom:0,color,u,dv);
+			}
+			case WEST -> {
+				vertex(pose,out,has(state,-1,-1)?0:bottom,k,northOpen?bottom:0,color,u,dv);
+				vertex(pose,out,has(state,-1,1)?0:bottom,k,southOpen?1-bottom:1,color,du,dv);
+				vertex(pose,out,has(state,-1,1)?0:top,k+1,southOpen?1-top:1,color,du,v);
+				vertex(pose,out,has(state,-1,-1)?0:top,k+1,northOpen?top:0,color,u,v);
+			}
+			default -> { }
+		}
 	}
 
-	private static double approxSin(double ang) {
-		ang = (ang%(2*Math.PI))-Math.PI;
-		if (ang < 0)
-			return -(1.27323954*ang+0.405284735*ang*ang);
-		else
-			return -(1.27323954*ang-0.405284735*ang*ang);
+	private static boolean has(State state, int dx, int dz) {
+		return state.neighbours[dx + 1][dz + 1];
 	}
 
-	private static double approxCos(double ang) {
-		return approxSin(ang+Math.PI/2);
+	/** V33a's fast sine approximation, retained because it gives the aura its angular shimmer. */
+	private static double wave(double y, double time) {
+		return 0.03125 * approxSin(y + time) + 0.03125 * approxCos(y + time / 3D);
 	}
 
-	private void resetWave() {
-		wave[0] = wave[1] = 0;
+	private static double approxSin(double angle) {
+		angle = angle % (Math.PI * 2) - Math.PI;
+		return angle < 0 ? -(1.27323954 * angle + 0.405284735 * angle * angle)
+				: -(1.27323954 * angle - 0.405284735 * angle * angle);
+	}
+
+	private static double approxCos(double angle) {
+		return approxSin(angle + Math.PI / 2);
+	}
+
+	private static int index(Direction direction) {
+		return switch (direction) {
+			case NORTH -> 0;
+			case SOUTH -> 1;
+			case WEST -> 2;
+			case EAST -> 3;
+			default -> throw new IllegalArgumentException("Not horizontal: " + direction);
+		};
+	}
+
+	private static void vertex(PoseStack.Pose pose, VertexConsumer out, double x,double y,double z,
+			int color,float u,float v) {
+		out.addVertex(pose, (float)x, (float)y, (float)z).setUv(u, v).setColor(color);
+	}
+
+	private static void submitAfterTerrain(PoseStack poseStack, SubmitNodeCollector collector,
+			RenderType renderType, SubmitNodeCollector.CustomGeometryRenderer renderer) {
+		CustomFeatureRenderer.Submit submit = new CustomFeatureRenderer.Submit(
+				poseStack.last().copy(), renderType, renderer);
+		((OrderedSubmitNodeCollectorExtension)collector.order(0))
+				.submitSpecial(RenderPhaseKeys.AFTER_TERRAIN, submit);
+	}
+
+	private static PoseStack copy(PoseStack source) {
+		PoseStack copy = new PoseStack();
+		copy.last().set(source.last());
+		return copy;
+	}
+
+	@Override
+	public AABB getRenderBoundingBox(TileEntityVoidRift rift) {
+		return rift.getRenderBoundingBox();
+	}
+
+	@Override
+	public boolean shouldRenderOffScreen() {
+		return true;
+	}
+
+	@Override
+	public int getViewDistance() {
+		return 192;
+	}
+
+	public static final class State extends BlockEntityRenderState {
+		private final int[] colors = new int[4];
+		private final boolean[][] occluded = new boolean[4][TileEntityVoidRift.HEIGHT];
+		private final boolean[][] neighbours = new boolean[3][3];
+		private int worldX;
+		private int worldY;
+		private int worldZ;
 	}
 }

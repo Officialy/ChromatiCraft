@@ -19,22 +19,27 @@ import reika.chromaticraft.tileentity.auxiliary.TileEntityChromaCrystal;
 
 import reika.chromaticraft.tileentity.TileEntityDisplayPoint;
 import reika.chromaticraft.tileentity.TileEntityDataNode;
+import reika.chromaticraft.tileentity.TileEntityPersonalCharger;
 import reika.chromaticraft.tileentity.TileEntityFarmer;
 import reika.chromaticraft.tileentity.plants.TileEntityBiomeReverter;
-import reika.chromaticraft.tileentity.plants.TileEntityCobbleGen;
-import reika.chromaticraft.tileentity.plants.TileEntityHeatLily;
 import reika.chromaticraft.tileentity.plants.TileEntityAccelerationPlant;
+import reika.chromaticraft.tileentity.plants.TileEntityCobbleGen;
 import reika.chromaticraft.tileentity.plants.TileEntityCropSpeedPlant;
 import reika.chromaticraft.tileentity.plants.TileEntityHarvesterPlant;
+import reika.chromaticraft.tileentity.plants.TileEntityHeatLily;
 import reika.chromaticraft.tileentity.networking.TileEntityCompoundRepeater;
 import reika.chromaticraft.tileentity.networking.TileEntityPylonLink;
 import reika.chromaticraft.tileentity.networking.TileEntityCreativeSource;
 import reika.chromaticraft.tileentity.networking.TileEntityCrystalPylon;
 import reika.chromaticraft.tileentity.networking.TileEntityCrystalRepeater;
+import reika.chromaticraft.tileentity.networking.TileEntityWeakRepeater;
+import reika.chromaticraft.tileentity.networking.TileEntityRelaySource;
 import reika.chromaticraft.tileentity.networking.TileEntitySkypeater;
 import reika.chromaticraft.tileentity.recipe.TileEntityCastingTable;
+import reika.chromaticraft.tileentity.recipe.TileEntityRitualTable;
 import reika.chromaticraft.tileentity.auxiliary.TileEntityFocusCrystal;
 import reika.chromaticraft.tileentity.auxiliary.TileEntityCrystalCharger;
+import reika.chromaticraft.tileentity.acquisition.TileEntityCollector;
 import reika.chromaticraft.tileentity.recipe.TileEntityItemInfuser;
 import reika.chromaticraft.tileentity.recipe.TileEntityPlayerInfuser;
 import reika.chromaticraft.tileentity.recipe.TileEntityItemStand;
@@ -51,6 +56,8 @@ public enum ChromaTiles implements TileEnum {
 	DISPLAY("chroma.display", ChromaBlocks.DISPLAY_POINT, TileEntityDisplayPoint.class),
 	PYLON("chroma.pylon", ChromaBlocks.PYLON, TileEntityCrystalPylon.class),
 	REPEATER("chroma.repeater", ChromaBlocks.REPEATER, TileEntityCrystalRepeater.class),
+	WEAKREPEATER("chroma.weakrepeater", ChromaBlocks.WEAK_REPEATER, TileEntityWeakRepeater.class),
+	RELAYSOURCE("chroma.relaysource", ChromaBlocks.RELAY_SOURCE, TileEntityRelaySource.class),
 	FUNCTIONRELAY("chroma.funcrelay", ChromaBlocks.FUNCTION_RELAY,
 			reika.chromaticraft.tileentity.auxiliary.TileEntityFunctionRelay.class),
 	SKYPEATER("chroma.skypeater", ChromaBlocks.SKYPEATER, TileEntitySkypeater.class),
@@ -60,7 +67,9 @@ public enum ChromaTiles implements TileEnum {
 	CRYSTAL("chroma.chromacrystal", ChromaBlocks.POWER_CRYSTAL, TileEntityChromaCrystal.class),
 	STAND("chroma.itemstand", ChromaBlocks.ITEM_STAND, TileEntityItemStand.class),
 	TABLE("chroma.castingtable", ChromaBlocks.CASTING_TABLE, TileEntityCastingTable.class),
+	RITUAL("chroma.ritual", ChromaBlocks.RITUAL_TABLE, TileEntityRitualTable.class),
 	CHARGER("chroma.charger", ChromaBlocks.CRYSTAL_CHARGER, TileEntityCrystalCharger.class),
+	COLLECTOR("chroma.collector", ChromaBlocks.COLLECTOR, TileEntityCollector.class),
 	FARMER("chroma.farmer", ChromaBlocks.FARMER, TileEntityFarmer.class),
 	HEATLILY("chroma.heatlily", ChromaBlocks.HEAT_LILY, TileEntityHeatLily.class),
 	REVERTER("chroma.reverter", ChromaBlocks.BIOME_REVERTER, TileEntityBiomeReverter.class),
@@ -70,6 +79,7 @@ public enum ChromaTiles implements TileEnum {
 	HARVESTPLANT("chroma.harvestplant", ChromaBlocks.HARVEST_PLANT, TileEntityHarvesterPlant.class),
 	INFUSER("chroma.infuser", ChromaBlocks.ITEM_INFUSER, TileEntityItemInfuser.class),
 	PLAYERINFUSER("chroma.playerinfuser", ChromaBlocks.PLAYER_INFUSER, TileEntityPlayerInfuser.class),
+	PERSONAL("chroma.personal", ChromaBlocks.PERSONAL_CHARGER, TileEntityPersonalCharger.class),
 	FOCUSCRYSTAL("chroma.focuscrystal", ChromaBlocks.FOCUS_CRYSTAL, TileEntityFocusCrystal.class),
 	DATANODE("chroma.datanode", ChromaBlocks.DATA_NODE, TileEntityDataNode.class),
 	// One identity per colour; WHITE stands for the family here, as ChromaTiles is a block->tile lookup

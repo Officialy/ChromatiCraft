@@ -19,7 +19,10 @@ import reika.chromaticraft.auxiliary.structure.PortalStructure;
 import reika.chromaticraft.auxiliary.structure.PylonStructure;
 import reika.chromaticraft.auxiliary.structure.PlayerInfusionStructure;
 import reika.chromaticraft.auxiliary.structure.RitualStructure;
+import reika.chromaticraft.auxiliary.structure.PersonalChargerStructure;
 import reika.chromaticraft.auxiliary.structure.RepeaterStructure;
+import reika.chromaticraft.auxiliary.structure.RelaySourceStructure;
+import reika.chromaticraft.auxiliary.structure.WeakRepeaterStructure;
 import reika.chromaticraft.base.ChromaStructureBase;
 import reika.chromaticraft.base.ColoredStructureBase;
 import reika.dragonapi.instantiable.data.blockstruct.FilledBlockArray;
@@ -36,12 +39,15 @@ public enum ChromaStructures implements StructureEnum<ChromaStructureBase> {
 	CASTING2(CastingStructure.Tier2.class),
 	CASTING3(CastingStructure.Tier3.class),
 	REPEATER(RepeaterStructure.class),
+	WEAKREPEATER(WeakRepeaterStructure.class),
+	RELAY(RelaySourceStructure.class),
 	COMPOUND(CompoundRepeaterStructure.class),
 	PYLONBROADCAST(PylonBroadcastStructure.class),
 	INFUSION(InfusionStructure.class),
 	PLAYERINFUSION(PlayerInfusionStructure.class),
 	RITUAL(RitualStructure.class),
 	RITUAL2(RitualStructure.Enhanced.class),
+	PERSONAL(PersonalChargerStructure.class),
 	PORTAL(PortalStructure.class),
 	DATANODE(DataTowerStructure.class);
 

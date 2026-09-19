@@ -1,7 +1,11 @@
 {
   "variants": {
     "": {
-      "model": "chromaticraft:block/aura_bloom"
+      "type": "chromaticraft:tiered_plant",
+      "appearance": {
+        "model": "chromaticraft:block/aura_bloom"
+      },
+      "stage": "CRYSTALS"
     }
   }
 }

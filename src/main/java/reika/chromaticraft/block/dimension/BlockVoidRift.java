@@ -4,14 +4,19 @@ import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseEntityBlock;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.redstone.Orientation;
+
+import org.jspecify.annotations.Nullable;
 
 import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.registry.CrystalElement;
@@ -37,12 +42,8 @@ import reika.chromaticraft.world.dimension.DimensionTuningManager;
  * {@code dimgen/voidrift} on its top and Stone Shielding on every other face, exactly as
  * {@code getIcon} says.
  *
- * <p>The coloured aura walls that {@code RenderVoidRift} draws on top of that are <b>not</b> ported, and
- * they cannot be: their texture is {@code Textures/voidaura-strip_page.png}, which V33a fetches at
- * runtime through {@code ChromaClient.dynamicAssets} from Reika's own server rather than shipping in the
- * mod. Nothing in the repository or in this port's resources contains it. {@link TileEntityVoidRift}
- * carries the neighbour-colour lookup that pass needs, so when the asset is available the renderer is
- * the only piece left to write.
+	 * <p>The coloured aura walls use V33a's shipped fallback copy of its remotely sourced full-size
+	 * atlas. The exact frame UVs, neighbour seams and mixed-colour joins are preserved by the BER.
  */
 public class BlockVoidRift extends BaseEntityBlock {
 
@@ -76,6 +77,17 @@ public class BlockVoidRift extends BaseEntityBlock {
 	@Override
 	protected RenderShape getRenderShape(BlockState state) {
 		return RenderShape.MODEL;
+	}
+
+	@Override
+	protected void neighborChanged(BlockState state, Level level, BlockPos pos, Block neighbor,
+			@Nullable Orientation orientation, boolean movedByPiston) {
+		if (level.getBlockEntity(pos) instanceof TileEntityVoidRift rift)
+			rift.clearNeighbourCache();
+		for (Direction direction : Direction.Plane.HORIZONTAL) {
+			if (level.getBlockEntity(pos.relative(direction)) instanceof TileEntityVoidRift adjacent)
+				adjacent.clearNeighbourCache();
+		}
 	}
 
 	/**

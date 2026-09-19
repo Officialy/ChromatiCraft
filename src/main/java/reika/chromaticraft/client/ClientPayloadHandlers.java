@@ -67,6 +67,11 @@ public final class ClientPayloadHandlers {
 			reika.chromaticraft.client.render.MonumentRitualEffects.stop();
 	}
 
+	/** Fires V33a's one-shot completion burst without ending the final three-second camera shot. */
+	public static void monumentRitualCompletion(BlockPos pos) {
+		reika.chromaticraft.client.render.MonumentRitualEffects.complete(pos);
+	}
+
 	public static void tickProgressSoundCooldown() {
 		// Compatibility entry point retained for the existing client tick hook. The
 		// original overlay now derives its cooldown from client level game time.
@@ -125,6 +130,49 @@ public final class ClientPayloadHandlers {
 		Minecraft mc = Minecraft.getInstance();
 		if (mc.level != null)
 			ChromaParticle.spawnRepeaterSurgeBurst(mc.level, source, colour, new Random());
+	}
+
+	public static void weakRepeaterFailureBurst(BlockPos source, CrystalElement colour) {
+		Minecraft mc = Minecraft.getInstance();
+		if (mc.level != null)
+			ChromaParticle.spawnWeakRepeaterFailureBurst(mc.level, source, colour, new Random());
+	}
+
+	public static void structureEntry(int ordinal) {
+		reika.chromaticraft.client.gui.StructureNotificationOverlay.enter(ordinal);
+	}
+
+	public static void structurePassword(int password) {
+		reika.chromaticraft.client.gui.StructureNotificationOverlay.showPassword(password);
+		Minecraft mc = Minecraft.getInstance();
+		if (mc.level != null && mc.player != null)
+			mc.level.playLocalSound(mc.player, ChromaSounds.LOREHEX.getSoundEvent(),
+					ChromaSounds.LOREHEX.getCategory(), 1, 1);
+	}
+
+	/** Replays V33a's two-ended room note and its colour/interval ring projections. */
+	public static void musicMemoryNote(BlockPos memory, int keyOrdinal) {
+		Minecraft mc = Minecraft.getInstance();
+		var key = reika.dragonapi.libraries.mathsci.ReikaMusicHelper.MusicKey.getByIndex(keyOrdinal);
+		if (mc.level == null || key == null) return;
+		float pitch = (float)reika.chromaticraft.auxiliary.CrystalMusicManager.instance.getPitchFactor(key);
+		mc.level.playLocalSound(memory.getX() + 0.5, memory.getY() + 0.5, memory.getZ() - 0.5,
+				ChromaSounds.DING.getSoundEvent(), ChromaSounds.DING.getCategory(), 1, pitch, false);
+		mc.level.playLocalSound(memory.getX() + 0.5, memory.getY() + 0.5, memory.getZ() + 9.5,
+				ChromaSounds.DING.getSoundEvent(), ChromaSounds.DING.getCategory(), 1, pitch, false);
+		ChromaParticle.spawnMusicMemoryNote(mc.level, memory, key);
+	}
+
+	public static void shardBoost(BlockPos source, CrystalElement colour) {
+		Minecraft mc = Minecraft.getInstance();
+		if (mc.level != null)
+			ChromaParticle.spawnShardBoostCompletion(mc.level, source, colour, mc.level.getRandom());
+	}
+
+	public static void poolAlloyingFx(int entityId) {
+		Minecraft mc = Minecraft.getInstance();
+		if (mc.level != null && mc.level.getEntity(entityId) instanceof net.minecraft.world.entity.item.ItemEntity item)
+			ChromaParticle.spawnPoolAlloying(item, mc.level.getRandom());
 	}
 
 	public static void pylonCrystalBreak(BlockPos source, CrystalElement colour) {

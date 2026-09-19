@@ -112,6 +112,12 @@ public final class SkyRiverRenderer {
 					colourTo = ReikaColorAPI.getColorWithBrightnessMultiplier(colourTo, 0.01F);
 				tube(buffer, point.position(), point.next(), camera, radiusFrom, radiusTo,
 						colourFrom, colourTo, point.index());
+				// Interior points are what the spatial index stores. Without this one explicit mouth
+				// segment, every ray began at point 1 and left point 0 visibly disconnected even though
+				// transport correctly tested the missing segment.
+				if (point.index() == 1)
+					tube(buffer, point.previous(), point.position(), camera, radiusFrom, radiusFrom,
+							colourFrom, colourFrom, 0);
 			}
 		});
 	}
@@ -135,6 +141,11 @@ public final class SkyRiverRenderer {
 		if (axis.lengthSqr() < 1.0E-6)
 			return;
 		axis = axis.normalize();
+		// Consecutive segments use slightly different sweep bases at a bend. Extending each by half a
+		// block makes their end rings overlap, closing the hairline wedges that otherwise opened between
+		// those differently oriented rings without changing the river centreline or capture geometry.
+		start = start.subtract(axis.scale(0.5));
+		end = end.add(axis.scale(0.5));
 		Vec3 reference = Math.abs(axis.y) > 0.99 ? new Vec3(1, 0, 0) : new Vec3(0, 1, 0);
 		Vec3 right = axis.cross(reference).normalize();
 		Vec3 up = axis.cross(right).normalize();

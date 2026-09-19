@@ -23,7 +23,7 @@ public final class CastingTuningRegistry {
 
 	public static final CastingTuningRegistry instance = new CastingTuningRegistry();
 	private final Map<FanDirections, BlockPos> tuningPositions = new EnumMap<>(FanDirections.class);
-	private final Map<UUID, CastingTuningKey> keys = new ConcurrentHashMap<>();
+	private final Map<CacheKey, CastingTuningKey> keys = new ConcurrentHashMap<>();
 
 	private CastingTuningRegistry() {
 		for (FanDirections direction : FanDirections.list) {
@@ -34,10 +34,25 @@ public final class CastingTuningRegistry {
 	}
 
 	public CastingTuningKey getTuningKey(Level level, UUID playerId) {
-		return keys.computeIfAbsent(playerId, id -> this.calculate(level, id));
+		int gameType = level instanceof ServerLevel serverLevel
+				? serverLevel.getServer().getDefaultGameType().getId() : 0;
+		return this.getTuningKey(level, playerId, gameType);
 	}
 
-	private CastingTuningKey calculate(Level level, UUID playerId) {
+	/**
+	 * Client presentation overload. V33a includes the server's default game type in the player's
+	 * tuning seed; a client level cannot expose that value directly, so the lexicon supplies the
+	 * synchronized current game type. Keeping it in the cache key prevents a client-side survival
+	 * lookup from poisoning an integrated server's creative-world key (or vice versa).
+	 */
+	public CastingTuningKey getTuningKey(Level level, UUID playerId, int clientGameType) {
+		int gameType = level instanceof ServerLevel serverLevel
+				? serverLevel.getServer().getDefaultGameType().getId() : clientGameType;
+		CacheKey cacheKey = new CacheKey(playerId, gameType);
+		return keys.computeIfAbsent(cacheKey, ignored -> this.calculate(playerId, gameType));
+	}
+
+	private CastingTuningKey calculate(UUID playerId, int gameType) {
 		CastingTuningKey key = new CastingTuningKey(playerId);
 		if (playerId.equals(DragonAPI.Reika_UUID)) {
 			put(key, FanDirections.WNW, CrystalElement.RED); put(key, FanDirections.NW, CrystalElement.BLACK);
@@ -51,8 +66,7 @@ public final class CastingTuningRegistry {
 
 		// Preserve V33a's effective seed calculation, including its LSB xor with itself.
 		long seed = playerId.getLeastSignificantBits() ^ playerId.getLeastSignificantBits();
-		if (level instanceof ServerLevel serverLevel)
-			seed += serverLevel.getServer().getDefaultGameType().getId() * 237617L;
+		seed += gameType * 237617L;
 		Random random = new Random(seed);
 		random.nextBoolean(); random.nextBoolean();
 		List<BlockPos> positions = new ArrayList<>(tuningPositions.values());
@@ -75,4 +89,6 @@ public final class CastingTuningRegistry {
 	public Map<FanDirections, BlockPos> compassLocations() {
 		return Collections.unmodifiableMap(new LinkedHashMap<>(tuningPositions));
 	}
+
+	private record CacheKey(UUID playerId, int gameType) {}
 }

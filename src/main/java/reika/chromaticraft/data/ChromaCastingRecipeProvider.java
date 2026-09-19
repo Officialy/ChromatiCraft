@@ -118,8 +118,13 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 						"chroma_ingot");
 			}
 
-			saveFarmer();
-			saveMagicPlants();
+			saveShaped("ritual_table", new ItemStackTemplate(ChromaBlocks.RITUAL_TABLE.get().asItem()),
+					5, 5,
+					Map.of('C', tag(Tags.Items.COBBLESTONES_NORMAL),
+							'S', tag(ChromaItemTags.CRYSTAL_SHARDS),
+							'E', Ingredient.of(ChromaItems.CRAFTING.get(
+								ChromaCraftingItems.ENERGY_POWDER).get())),
+					"SES", "CSC", "CCC");
 
 			// V33a StandRecipe extends TempleCastingRecipe: the Item Stand is a TEMPLE-tier, 20-tick
 			// recipe worth twice the temple experience, and it wants two purple and two black runes
@@ -138,6 +143,61 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 							'L', Ingredient.of(net.minecraft.world.item.Items.LAPIS_LAZULI)),
 					"I I", "SLS", "CCC");
 
+			// V33a WeakRepeaterRecipe: eight Wooden Repeaters from a single Liquid Chroma bucket,
+			// wooden planks/stick, Transmissive Dust and glowstone dust. It is a four-times-duration
+			// Temple cast (80 ticks), twice the normal temple XP (80), with two ring runes and the
+			// four authored outer runes. The bucket's normal crafting remainder returns the empty pail.
+			saveShapedTemple("weak_repeater",
+					new ItemStackTemplate(ChromaBlocks.WEAK_REPEATER.get().asItem(), 8), 80, 80,
+					List.of(ProgressStage.CHARGE, ProgressStage.PYLON, ProgressStage.MAKECHROMA),
+					List.of(runeRingRune(CrystalElement.YELLOW), runeRingRune(CrystalElement.BLUE),
+							new RuneRequirement(new net.minecraft.core.BlockPos(5, -1, 5), CrystalElement.WHITE),
+							new RuneRequirement(new net.minecraft.core.BlockPos(-5, -1, -5), CrystalElement.WHITE),
+							new RuneRequirement(new net.minecraft.core.BlockPos(5, -1, 0), CrystalElement.BLACK),
+							new RuneRequirement(new net.minecraft.core.BlockPos(-5, -1, 0), CrystalElement.BLACK)),
+					Map.of('w', tag(net.minecraft.tags.ItemTags.PLANKS),
+							'g', tiered(ChromaTieredItems.BEACON_DUST),
+							's', tag(Tags.Items.RODS_WOODEN),
+							'c', Ingredient.of(ChromaItems.CHROMA_BUCKET.get()),
+							'r', Ingredient.of(Items.GLOWSTONE_DUST)),
+					"wgw", "scs", "wrw");
+
+			// V33a RelayRecipe: the smooth Crystalline Stone centre is retained as an auxiliary
+			// ingredient too, alongside three glowstone dusts and the matching boosted shard.
+			// Each colour is now a registry identity; the authored output remains eight relays.
+			for (CrystalElement element : CrystalElement.elements) {
+				List<CastingTableRecipe.StandIngredient> stands = List.of(
+						auxStand(0, -4, Ingredient.of(Items.GLOWSTONE_DUST)),
+						auxStand(-2, -2, Ingredient.of(Items.GLOWSTONE_DUST)),
+						auxStand(2, -2, Ingredient.of(Items.GLOWSTONE_DUST)),
+						auxStand(0, -2, Ingredient.of(ChromaItems.BOOSTED_SHARDS.get(element).get())),
+						auxStand(0, 2, Ingredient.of(
+								ChromaBlocks.crystallineStone(StoneTypes.SMOOTH).get().asItem())));
+				saveRecipe("lumen_relay/" + element.getEnglishName(), new CastingTableRecipe(
+						CastingTableRecipe.Tier.MULTIBLOCK,
+						List.of(new GridIngredient(4, Ingredient.of(
+								ChromaBlocks.crystallineStone(StoneTypes.SMOOTH).get().asItem()))),
+						stands, List.of(runeRingRune(element)), List.of(),
+						new ItemStackTemplate(ChromaBlocks.lumenRelay(element).get().asItem(), 8),
+						100, 200));
+			}
+
+			// V33a CompoundRelayRecipe: diamond centre, four Infused Dust, three Transmissive Dust,
+			// and any relay (the wildcard metadata also accepted an existing multichromic one).
+			saveRecipe("lumen_relay/multichromic", new CastingTableRecipe(
+					CastingTableRecipe.Tier.MULTIBLOCK,
+					List.of(new GridIngredient(4, Ingredient.of(Items.DIAMOND))),
+					List.of(auxStand(-2, -2, tiered(ChromaTieredItems.ELEMENT_DUST)),
+							auxStand(2, -2, tiered(ChromaTieredItems.ELEMENT_DUST)),
+							auxStand(-2, 2, tiered(ChromaTieredItems.ELEMENT_DUST)),
+							auxStand(2, 2, tiered(ChromaTieredItems.ELEMENT_DUST)),
+							auxStand(-2, 0, tiered(ChromaTieredItems.BEACON_DUST)),
+							auxStand(2, 0, tiered(ChromaTieredItems.BEACON_DUST)),
+							auxStand(0, -2, tiered(ChromaTieredItems.BEACON_DUST)),
+							auxStand(0, 2, tag(ChromaItemTags.LUMEN_RELAYS))),
+					List.of(), List.of(),
+					new ItemStackTemplate(ChromaBlocks.MULTICHROMIC_RELAY.get().asItem()), 100, 200));
+
 			saveRecipe("function_relay", new CastingTableRecipe(CastingTableRecipe.Tier.TEMPLE,
 					shapedGrid(Map.of('D', tiered(ChromaTieredItems.BEACON_DUST),
 							'A', tiered(ChromaTieredItems.AURA_DUST), 'C', Ingredient.of(Items.GLOWSTONE)),
@@ -148,6 +208,69 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 							new RuneRequirement(new net.minecraft.core.BlockPos(3, 0, 3), CrystalElement.LIME)),
 					List.of(), new ItemStackTemplate(ChromaBlocks.FUNCTION_RELAY.get().asItem()), 20, 40)
 					.withPenaltyThreshold(1));
+
+			// Complete V33a RelaySourceRecipe. The repeated (0,-4) Focal Powder assignment in the
+			// source intentionally resolves to one stand, leaving the authored full set of 24.
+			List<CastingTableRecipe.StandIngredient> relayStands = List.of(
+					auxStand(-4, -4, Ingredient.of(Items.IRON_INGOT)),
+					auxStand(-2, -4, tiered(ChromaTieredItems.ELEMENT_DUST)),
+					auxStand(0, -4, tiered(ChromaTieredItems.FOCUS_DUST)),
+					auxStand(2, -4, tiered(ChromaTieredItems.ELEMENT_DUST)),
+					auxStand(4, -4, Ingredient.of(Items.IRON_INGOT)),
+					auxStand(0, -2, tiered(ChromaTieredItems.FOCUS_DUST)),
+					auxStand(0, 2, tiered(ChromaTieredItems.FOCUS_DUST)),
+					auxStand(-4, 0, Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.CRYSTAL_LENS).get())),
+					auxStand(4, 0, Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.CRYSTAL_LENS).get())),
+					auxStand(-2, 0, Ingredient.of(Items.GLOWSTONE)),
+					auxStand(2, 0, Ingredient.of(Items.GLOWSTONE)),
+					auxStand(-4, -2, Ingredient.of(Items.OBSIDIAN)),
+					auxStand(-2, -2, Ingredient.of(Items.OBSIDIAN)),
+					auxStand(2, -2, Ingredient.of(Items.OBSIDIAN)),
+					auxStand(4, -2, Ingredient.of(Items.OBSIDIAN)),
+					auxStand(-4, 2, Ingredient.of(Items.OBSIDIAN)),
+					auxStand(-2, 2, Ingredient.of(Items.OBSIDIAN)),
+					auxStand(2, 2, Ingredient.of(Items.OBSIDIAN)),
+					auxStand(4, 2, Ingredient.of(Items.OBSIDIAN)),
+					auxStand(-4, 4, Ingredient.of(Items.IRON_INGOT)),
+					auxStand(-2, 4, Ingredient.of(Items.IRON_INGOT)),
+					auxStand(0, 4, Ingredient.of(Items.IRON_INGOT)),
+					auxStand(2, 4, Ingredient.of(Items.IRON_INGOT)),
+					auxStand(4, 4, Ingredient.of(Items.IRON_INGOT)));
+			saveRecipe("relay_source", new CastingTableRecipe(CastingTableRecipe.Tier.MULTIBLOCK,
+					List.of(new GridIngredient(4, Ingredient.of(
+							ChromaItems.CRAFTING.get(ChromaCraftingItems.CRYSTAL_FOCUS).get()))),
+					relayStands,
+					List.of(new RuneRequirement(new net.minecraft.core.BlockPos(-4, 0, -5), CrystalElement.BLACK),
+							new RuneRequirement(new net.minecraft.core.BlockPos(5, 0, -4), CrystalElement.BLUE),
+							new RuneRequirement(new net.minecraft.core.BlockPos(4, 0, 5), CrystalElement.WHITE),
+							new RuneRequirement(new net.minecraft.core.BlockPos(-5, 0, 4), CrystalElement.YELLOW)),
+					List.of(), new ItemStackTemplate(ChromaBlocks.RELAY_SOURCE.get().asItem()), 100, 200));
+
+			// V33a ChromaCollectorRecipe: any shard, an Ender Eye, glowstone, and a stone base.
+			// Its one-craft threshold with a zero multiplier makes repeated casts grant no XP.
+			saveRecipe("collector", new CastingTableRecipe(CastingTableRecipe.Tier.CRAFTING,
+					shapedGrid(Map.of('S', tag(ChromaItemTags.CRYSTAL_SHARDS),
+							'E', Ingredient.of(Items.ENDER_EYE), 'c', Ingredient.of(Items.GLOWSTONE),
+							'C', tag(Tags.Items.STONES)), "SES", "ScS", "CCC"),
+					List.of(), List.of(), List.of(),
+					new ItemStackTemplate(ChromaBlocks.COLLECTOR.get().asItem()), 5, 5,
+					List.of(), 0.75F, true, false, 1, 0F,
+					CastingTableRecipe.CompletionBehavior.DEFAULT));
+
+			saveFarmer();
+			saveMagicPlants();
+
+			// V33a RawCrystalRecipe: four Purification Powder around one exact plain shard. The
+			// source registers the same recipe once for each of the sixteen shard metadata values;
+			// the metadata-free port expresses that family as the disjoint plain-shard tag. It is a
+			// CoreRecipe, so the ordinary five-tick/five-XP cast produces two and never incurs the
+			// repeated-recipe XP penalty.
+			saveShaped("raw_crystal",
+					new ItemStackTemplate(ChromaItems.CRAFTING.get(ChromaCraftingItems.RAW_CRYSTAL).get(), 2),
+					5, 5,
+					Map.of('F', tiered(ChromaTieredItems.PURITY_DUST),
+							'S', tag(ChromaItemTags.PLAIN_CRYSTAL_SHARDS)),
+					" F ", "FSF", " F ");
 
 			// Complete V33a CrystalGroupRecipe family: ordinary and boosted inputs.
 			saveGroup("red", ChromaClusterItems.RED_GROUP, Ingredient.of(ChromaItems.TIERED.get(ChromaTieredItems.AURA_DUST).get()), new CrystalElement[] {CrystalElement.RED, CrystalElement.BLUE, CrystalElement.PURPLE, CrystalElement.MAGENTA}, false);
@@ -181,6 +304,7 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 			saveElementUnit();
 			saveStorageCrystals();
 			saveCrystalCharger();
+			savePersonalCharger();
 			saveItemAuraInfuser();
 			savePlayerAuraInfuser();
 			saveHighCore("transformation", ChromaCraftingItems.HIGH_TRANSFORMATION_CORE, CrystalElement.GRAY, CrystalElement.BLACK, new net.minecraft.core.BlockPos(3,0,-2), new net.minecraft.core.BlockPos(-3,0,2), ChromaCraftingItems.TELEPORTATION_DUST);
@@ -408,6 +532,24 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 			}
 		}
 
+		/** Exact V33a CrystalChargerRecipe: crystal core center and its asymmetric eight-stand ring. */
+		private void saveCrystalCharger() {
+			List<CastingTableRecipe.StandIngredient> stands = List.of(
+					stand(0, 0, 2, Ingredient.of(Items.SMOOTH_STONE_SLAB)),
+					stand(2, 0, -2, Ingredient.of(Items.OBSIDIAN)),
+					stand(2, 0, 2, Ingredient.of(Items.OBSIDIAN)),
+					stand(-2, 0, -2, Ingredient.of(Items.OBSIDIAN)),
+					stand(-2, 0, 2, Ingredient.of(Items.OBSIDIAN)),
+					stand(2, 0, 0, shard(CrystalElement.WHITE, false)),
+					stand(-2, 0, 0, shard(CrystalElement.WHITE, false)),
+					stand(0, 0, -2, shard(CrystalElement.WHITE, false)));
+			saveRecipe("crystal_charger", new CastingTableRecipe(CastingTableRecipe.Tier.MULTIBLOCK,
+					List.of(new GridIngredient(4, Ingredient.of(
+							ChromaItems.CLUSTERS.get(ChromaClusterItems.CRYSTAL_CORE).get()))),
+					stands, List.of(), List.of(),
+					new ItemStackTemplate(ChromaBlocks.CRYSTAL_CHARGER.get().asItem()), 200, 200));
+		}
+
 		private void saveTintedLens(CrystalElement element, net.minecraft.world.level.ItemLike material,
 				int amount, String materialName) {
 			Ingredient input = Ingredient.of(material);
@@ -449,6 +591,7 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 					new ItemStackTemplate(ChromaBlocks.FARMER.get().asItem(), 3),
 					400, 500).withPenaltyThreshold(6));
 		}
+
 		/** Exact no-Botania V33a recipes for the six currently ported magic plants. */
 		private void saveMagicPlants() {
 			saveShapedTemple("heat_lily",
@@ -539,22 +682,31 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 					"LSL", "FBF", " D ");
 		}
 
-		/** Exact V33a CrystalChargerRecipe: crystal core center and its asymmetric eight-stand ring. */
-		private void saveCrystalCharger() {
-			List<CastingTableRecipe.StandIngredient> stands = List.of(
-					stand(0, 0, 2, Ingredient.of(Items.SMOOTH_STONE_SLAB)),
-					stand(2, 0, -2, Ingredient.of(Items.OBSIDIAN)),
-					stand(2, 0, 2, Ingredient.of(Items.OBSIDIAN)),
-					stand(-2, 0, -2, Ingredient.of(Items.OBSIDIAN)),
-					stand(-2, 0, 2, Ingredient.of(Items.OBSIDIAN)),
-					stand(2, 0, 0, shard(CrystalElement.WHITE, false)),
-					stand(-2, 0, 0, shard(CrystalElement.WHITE, false)),
-					stand(0, 0, -2, shard(CrystalElement.WHITE, false)));
-			saveRecipe("crystal_charger", new CastingTableRecipe(CastingTableRecipe.Tier.MULTIBLOCK,
+		/** Exact V33a RecipePersonalCharger, including its full rune ring and zero repeat-XP tail. */
+		private void savePersonalCharger() {
+			List<CastingTableRecipe.StandIngredient> stands = new ArrayList<>();
+			for (int[] point : new int[][] {{2,0},{-2,0},{0,2},{0,-2}})
+				stands.add(stand(point[0], 0, point[1], tiered(ChromaTieredItems.SPACE_DUST)));
+			for (int sx : new int[] {-2, 2}) for (int sz : new int[] {-2, 2})
+				stands.add(stand(sx, 0, sz, tiered(ChromaTieredItems.BEACON_DUST)));
+			for (int i = -2; i <= 2; i += 2) {
+				stands.add(stand(-4, 1, i, Ingredient.of(Items.GLOWSTONE_DUST)));
+				stands.add(stand(4, 1, i, Ingredient.of(Items.GLOWSTONE_DUST)));
+				stands.add(stand(i, 1, 4, Ingredient.of(Items.GLOWSTONE_DUST)));
+				stands.add(stand(i, 1, -4, Ingredient.of(Items.GLOWSTONE_DUST)));
+			}
+			for (int sx : new int[] {-4, 4}) for (int sz : new int[] {-4, 4})
+				stands.add(stand(sx, 1, sz, Ingredient.of(Items.DIAMOND)));
+
+			List<RuneRequirement> runes = new ArrayList<>();
+			for (CrystalElement element : CrystalElement.elements)
+				runes.add(runeRingRune(element));
+			saveRecipe("personal_charger", new CastingTableRecipe(CastingTableRecipe.Tier.MULTIBLOCK,
 					List.of(new GridIngredient(4, Ingredient.of(
 							ChromaItems.CLUSTERS.get(ChromaClusterItems.CRYSTAL_CORE).get()))),
-					stands, List.of(), List.of(),
-					new ItemStackTemplate(ChromaBlocks.CRYSTAL_CHARGER.get().asItem()), 200, 200));
+					stands, runes, List.of(),
+					new ItemStackTemplate(ChromaBlocks.PERSONAL_CHARGER.get().asItem()),
+					2400, 800).withPenalty(16, 0F));
 		}
 
 		/** Exact V33a InfuserRecipe: Item Stand center and eight Chroma Alloy Ingots. */

@@ -1,11 +1,11 @@
 package reika.chromaticraft.auxiliary.interfaces;
 
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.Level;
 
 import reika.chromaticraft.entity.EntityLaserPulse;
 
+/** Blocks outside the Chromatic Beams effector family that consume or redirect a laser pulse. */
 public interface LaserPulseEffect {
-
-	public boolean onImpact(World world, int x, int y, int z, EntityLaserPulse e);
-
+	boolean onImpact(Level world, BlockPos pos, EntityLaserPulse pulse);
 }

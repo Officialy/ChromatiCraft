@@ -18,9 +18,9 @@ import java.util.Set;
  * that actually exist in the port are members — a permanently pending entry would be indistinguishable
  * from a broken gate — and each newly ported generator joins by adding its constant here.
  *
- * <p>Deferred: {@code SKYRIVER} and {@code FISSUREPATTERNS}. Both belong in this gate and must be
- * added to {@link Generator} when their generators land, so that the portal automatically starts
- * waiting on them again rather than needing the gate rewritten.
+	 * <p>{@code SKYRIVER} is live. {@code FISSUREPATTERNS} remains deferred and belongs in this gate
+	 * when its global generator lands, so that the portal automatically starts waiting on it again
+	 * rather than needing the gate rewritten.
  *
  * <p><b>Dependency order matters here and is not obvious.</b> V33a's
  * {@code ThreadedGenerators.isDependentOn} makes both {@code BIOME} and {@code REGION} depend on
@@ -28,9 +28,9 @@ import java.util.Set;
  * {@code StructureCalculator.arePositionsDetermined()} and sizes the central region from
  * {@code getMaximumDistanceFromOrigin()}, while {@code BiomeDistributor} paints its Structure Field
  * and Monument Field biomes around those same positions. Proxima's biome layout therefore cannot be
- * ported before the puzzle-structure <em>position</em> calculator, even though the puzzle mechanics
- * themselves are deliberately deferred. Only the structure identities, sizes and placement rules are
- * needed for this — not their contents.
+ * ported before the puzzle-structure <em>position</em> calculator. Only the structure identities,
+ * sizes and placement rules are needed for those two layers; complete puzzle contents join through
+ * the calculator's generator-registration seam as each vertical slice lands.
  */
 public final class ProximaGenerators {
 
@@ -85,6 +85,7 @@ public final class ProximaGenerators {
 
 	private static volatile Layout layout;
 	private static volatile CompletableFuture<Layout> running;
+	private static volatile long runningSeed = Long.MIN_VALUE;
 
 	public static Layout getLayout() {
 		return layout;
@@ -125,11 +126,29 @@ public final class ProximaGenerators {
 	 *         than duplicated
 	 */
 	public static synchronized CompletableFuture<Layout> regenerate(long seed) {
-		if (running != null && !running.isDone())
+		Layout current = layout;
+		if (current != null && current.seed() == seed)
+			return CompletableFuture.completedFuture(current);
+		if (running != null && !running.isDone() && runningSeed == seed)
 			return running;
+
+		// A static layout outlives a ServerLevel and an integrated server can open another save in the
+		// same JVM. Never run two layouts concurrently: RegionMapper, BiomeDistributor and the river
+		// generator intentionally publish static active instances, exactly as V33a did for its one
+		// dimension, and concurrent generations could cross-publish pieces from different seeds.
+		CompletableFuture<Layout> previous = running != null && !running.isDone() ? running : null;
 		markAllPending();
 		layout = null;
-		running = CompletableFuture.supplyAsync(() -> generateNow(seed));
+		runningSeed = seed;
+		running = previous == null
+				? CompletableFuture.supplyAsync(() -> buildAndPublish(seed))
+				: previous.handle((ignored, failure) -> null)
+						.thenApplyAsync(ignored -> buildAndPublish(seed));
+		running.whenComplete((finished, failure) -> {
+			if (failure != null)
+				reika.chromaticraft.ChromatiCraft.LOGGER.error(
+						"Proxima layout generation failed for seed {}", seed, failure);
+		});
 		return running;
 	}
 
@@ -152,18 +171,9 @@ public final class ProximaGenerators {
 		Layout current = layout;
 		if (current != null && current.seed() == seed)
 			return current;
-		CompletableFuture<Layout> inFlight;
-		synchronized (ProximaGenerators.class) {
-			inFlight = running != null && !running.isDone() ? running : null;
-		}
-		if (inFlight != null) {
-			Layout finished = inFlight.join();
-			if (finished.seed() == seed)
-				return finished;
-		}
-		// Nothing running, or what was running was for a different world: do it here and now.
-		markAllPending();
-		return generateNow(seed);
+		// regenerate shares work for this seed and safely chains behind any old-world job. Capturing the
+		// future there also closes the race where two callers both observe no matching in-flight job.
+		return regenerate(seed).join();
 	}
 
 	/**
@@ -171,6 +181,12 @@ public final class ProximaGenerators {
 	 * layout before it can continue. Ordinary gameplay should use {@link #regenerate}.
 	 */
 	public static Layout generateNow(long seed) {
+		markAllPending();
+		layout = null;
+		return buildAndPublish(seed);
+	}
+
+	private static Layout buildAndPublish(long seed) {
 		StructureCalculator structures = new StructureCalculator(seed);
 		structures.generate();
 		RegionMapper region = RegionMapper.generate(structures, seed);

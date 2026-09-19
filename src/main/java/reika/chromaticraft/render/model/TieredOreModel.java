@@ -2,6 +2,7 @@ package reika.chromaticraft.render.model;
 
 import java.util.List;
 
+import com.mojang.blaze3d.platform.Transparency;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
@@ -12,6 +13,7 @@ import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
 import net.minecraft.client.resources.model.ModelBaker;
 import net.minecraft.client.resources.model.SimpleModelWrapper;
 import net.minecraft.client.resources.model.geometry.QuadCollection;
+import net.minecraft.client.resources.model.geometry.BakedQuad;
 import net.minecraft.client.resources.model.sprite.Material;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -21,6 +23,7 @@ import net.minecraft.world.level.block.state.BlockState;
 
 import net.neoforged.neoforge.client.model.DynamicBlockStateModel;
 import net.neoforged.neoforge.client.model.block.CustomUnbakedBlockStateModel;
+import net.neoforged.neoforge.client.model.pipeline.QuadBakingVertexConsumer;
 
 import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.dragonapi.instantiable.rendering.connected.ConnectedQuads;
@@ -38,21 +41,24 @@ import reika.dragonapi.instantiable.rendering.connected.ConnectedQuads;
  *
  * <p>The sufficient-tier appearance is the source's two passes: the {@code _underlay} sprite plus
  * the animated {@code _overlay} drawn fractionally proud of the face and full-bright, the same
- * layering the crystalline-stone glow columns use. The four geode-rendered ores need V33a's bespoke
- * geode mesh and are deliberately not registered yet rather than being shown as plain overlay ores.
+ * layering the crystalline-stone glow columns use. Geode ores use the source's perturbed 8x8
+ * host shell with a smaller, full-bright ore surface on all six exposed faces.
  */
 public final class TieredOreModel implements DynamicBlockStateModel {
 
 	private static final Direction[] FACES = Direction.values();
 
 	private final BlockStateModelPart[] real;
+	private final BlockStateModelPart[] geodeVariants;
 	private final BlockStateModelPart[] disguise;
 	private final Material.Baked particle;
 	private final ProgressStage stage;
 
-	private TieredOreModel(BlockStateModelPart[] real, BlockStateModelPart[] disguise,
+	private TieredOreModel(BlockStateModelPart[] real, BlockStateModelPart[] geodeVariants,
+			BlockStateModelPart[] disguise,
 			Material.Baked particle, ProgressStage stage) {
 		this.real = real;
+		this.geodeVariants = geodeVariants;
 		this.disguise = disguise;
 		this.particle = particle;
 		this.stage = stage;
@@ -65,8 +71,15 @@ public final class TieredOreModel implements DynamicBlockStateModel {
 		// the real ore there, as V33a does for its inventory icon.
 		var player = Minecraft.getInstance().player;
 		boolean sufficient = player == null || player.isCreative() || stage.isPlayerAtStage(player);
-		for (BlockStateModelPart part : sufficient ? real : disguise)
-			parts.add(part);
+		if (!sufficient) {
+			for (BlockStateModelPart part : disguise) parts.add(part);
+		}
+		else if (geodeVariants != null) {
+			parts.add(geodeVariants[TieredOreGeodeGeometry.patternAt(pos)]);
+		}
+		else {
+			for (BlockStateModelPart part : real) parts.add(part);
+		}
 	}
 
 	@Override public Material.Baked particleMaterial() { return particle; }
@@ -75,18 +88,22 @@ public final class TieredOreModel implements DynamicBlockStateModel {
 	public int materialFlags() {
 		int flags = 0;
 		for (BlockStateModelPart part : real) flags |= part.materialFlags();
+		if (geodeVariants != null)
+			for (BlockStateModelPart part : geodeVariants) flags |= part.materialFlags();
 		for (BlockStateModelPart part : disguise) flags |= part.materialFlags();
 		return flags;
 	}
 
-	public record Unbaked(Identifier underlay, Identifier overlay, Identifier hostTexture, String stage)
+	public record Unbaked(Identifier underlay, Identifier overlay, Identifier hostTexture, String stage,
+			boolean geode)
 			implements CustomUnbakedBlockStateModel {
 
 		public static final MapCodec<Unbaked> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
 				Identifier.CODEC.fieldOf("underlay").forGetter(Unbaked::underlay),
 				Identifier.CODEC.fieldOf("overlay").forGetter(Unbaked::overlay),
 				Identifier.CODEC.fieldOf("host_texture").forGetter(Unbaked::hostTexture),
-				com.mojang.serialization.Codec.STRING.fieldOf("stage").forGetter(Unbaked::stage)
+				com.mojang.serialization.Codec.STRING.fieldOf("stage").forGetter(Unbaked::stage),
+				com.mojang.serialization.Codec.BOOL.optionalFieldOf("geode", false).forGetter(Unbaked::geode)
 		).apply(i, Unbaked::new));
 
 		@Override
@@ -98,19 +115,57 @@ public final class TieredOreModel implements DynamicBlockStateModel {
 			Material.Baked hostMat = baker.materials().get(new Material(hostTexture),
 					() -> "chromaticraft:tiered_ore/" + hostTexture);
 
-			BlockStateModelPart[] realParts = new BlockStateModelPart[FACES.length];
+			BlockStateModelPart[] realParts = geode ? new BlockStateModelPart[0]
+					: new BlockStateModelPart[FACES.length];
 			BlockStateModelPart[] disguiseParts = new BlockStateModelPart[FACES.length];
 			for (Direction face : FACES) {
-				QuadCollection.Builder realQuads = new QuadCollection.Builder();
-				realQuads.addCulledFace(face, ConnectedQuads.bakeFaceQuad(baker, face, underlayMat, 0));
-				realQuads.addUnculledFace(ConnectedQuads.bakeFaceQuad(baker, face, overlayMat, 0.002F));
-				realParts[face.ordinal()] = new SimpleModelWrapper(realQuads.build(), true, underlayMat);
+				if (!geode) {
+					QuadCollection.Builder realQuads = new QuadCollection.Builder();
+					realQuads.addCulledFace(face, ConnectedQuads.bakeFaceQuad(baker, face, underlayMat, 0));
+					realQuads.addUnculledFace(ConnectedQuads.bakeFaceQuad(baker, face, overlayMat, 0.002F));
+					realParts[face.ordinal()] = new SimpleModelWrapper(realQuads.build(), true, underlayMat);
+				}
 
 				QuadCollection.Builder hostQuads = new QuadCollection.Builder();
 				hostQuads.addCulledFace(face, ConnectedQuads.bakeFaceQuad(baker, face, hostMat, 0));
 				disguiseParts[face.ordinal()] = new SimpleModelWrapper(hostQuads.build(), true, hostMat);
 			}
-			return new TieredOreModel(realParts, disguiseParts, hostMat, ProgressStage.valueOf(stage));
+			BlockStateModelPart[] geodeParts = geode
+					? bakeGeodeVariants(baker, hostMat, overlayMat) : null;
+			return new TieredOreModel(realParts, geodeParts, disguiseParts, hostMat,
+					ProgressStage.valueOf(stage));
+		}
+
+		private static BlockStateModelPart[] bakeGeodeVariants(ModelBaker baker,
+				Material.Baked stone, Material.Baked ore) {
+			BlockStateModelPart[] variants = new BlockStateModelPart[16];
+			for (int pattern = 0; pattern < variants.length; pattern++) {
+				QuadCollection.Builder quads = new QuadCollection.Builder();
+				var geometry = TieredOreGeodeGeometry.pattern(pattern);
+				for (TieredOreGeodeGeometry.Quad quad : geometry.stone())
+					quads.addCulledFace(quad.face(), bakeGeodeQuad(baker, quad, stone, false));
+				for (TieredOreGeodeGeometry.Quad quad : geometry.ore())
+					quads.addCulledFace(quad.face(), bakeGeodeQuad(baker, quad, ore, true));
+				variants[pattern] = new SimpleModelWrapper(quads.build(), false, stone);
+			}
+			return variants;
+		}
+
+		private static BakedQuad bakeGeodeQuad(ModelBaker baker,
+				TieredOreGeodeGeometry.Quad quad, Material.Baked material, boolean emissive) {
+			QuadBakingVertexConsumer vertex = new QuadBakingVertexConsumer();
+			vertex.setSprite(material, Transparency.NONE);
+			vertex.setTintIndex(-1);
+			vertex.setShade(!emissive);
+			vertex.setAmbientOcclusion(!emissive);
+			vertex.setLightEmission(emissive ? 15 : 0);
+			vertex.setDirection(quad.face());
+			for (TieredOreGeodeGeometry.Vertex point : quad.vertices()) {
+				vertex.addVertex(point.x(), point.y(), point.z()).setColor(0xFFFFFFFF)
+						.setUv(material.sprite().getU(point.u()), material.sprite().getV(point.v()))
+						.setNormal(quad.face().getStepX(), quad.face().getStepY(), quad.face().getStepZ());
+			}
+			return vertex.bakeQuad(baker.interner());
 		}
 
 		@Override public void resolveDependencies(Resolver resolver) {}

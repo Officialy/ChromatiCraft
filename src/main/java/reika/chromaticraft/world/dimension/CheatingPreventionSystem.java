@@ -1,10 +1,5 @@
 package reika.chromaticraft.world.dimension;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
@@ -12,14 +7,18 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.phys.Vec3;
-
 import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.registry.ChromaDimensions;
 import reika.chromaticraft.registry.ChromaSounds;
+
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * V33a {@code CheatingPreventionSystem}: Proxima's puzzles assume you walk them, so the dimension
@@ -39,23 +38,26 @@ import reika.chromaticraft.registry.ChromaSounds;
  */
 public final class CheatingPreventionSystem {
 
-	public static final CheatingPreventionSystem instance = new CheatingPreventionSystem();
-
 	/**
 	 * The exact V33a ban table, as {@code modid:name -> reaction}. Kept as data so a future 26.2 port
 	 * of any of these mods can be wired up without re-deriving the original severities.
 	 */
-	public static final Map<String, BanReaction> LEGACY_BANS = Map.ofEntries(
-			Map.entry("enderio:blockTravelAnchor", BanReaction.DELETEONUSE),
-			Map.entry("enderio:blockTelePad", BanReaction.DELETEONUSE),
-			Map.entry("enderio:itemTravelStaff", BanReaction.DELETEONUSE),
-			Map.entry("GraviSuite:vajra", BanReaction.PREVENTUSE),
-			Map.entry("ThaumicTinkerer:warpGate", BanReaction.DELETEONUSE),
-			Map.entry("DraconicEvolution:teleporterMKI", BanReaction.DROPONUSE),
-			Map.entry("DraconicEvolution:teleporterMKII", BanReaction.DELETEONUSE),
-			Map.entry("Botania:flugelEye", BanReaction.PREVENTUSE),
-			Map.entry("NotEnoughWands:MovingWand", BanReaction.PREVENTUSE),
-			Map.entry("NotEnoughWands:DisplacementWand", BanReaction.PREVENTUSE));
+	public static final Map<String, BanReaction> LEGACY_BANS = Map.ofEntries();/*
+			Map.entry("enderio:blocktravelanchor", BanReaction.DELETEONUSE),
+			Map.entry("enderio:blocktelepad", BanReaction.DELETEONUSE),
+			Map.entry("enderio:itemtravelstaff", BanReaction.DELETEONUSE),
+			Map.entry("gravisuite:vajra", banreaction.PREVENTUSE),
+			Map.entry("thaumictinkerer:warpgate", BanReaction.DELETEONUSE),
+			Map.entry("draconicevolution:teleportermki", BanReaction.DROPONUSE),
+			Map.entry("draconicevolution:teleportermkii", BanReaction.DELETEONUSE),
+			Map.entry("botania:flugeleye", BanReaction.PREVENTUSE),
+			Map.entry("notenoughwands:movingwand", BanReaction.PREVENTUSE),
+			Map.entry("notenoughwands:displacementwand", BanReaction.PREVENTUSE));
+*/
+	// This must be initialized after LEGACY_BANS: the constructor resolves that table immediately.
+	// Declaring the singleton first left the map null during class initialization and crashed the
+	// first player tick after entering Proxima.
+	public static final CheatingPreventionSystem instance = new CheatingPreventionSystem();
 
 	private final Set<Block> bannedBlocks = new HashSet<>();
 	private final Map<Item, BanReaction> bannedItems = new HashMap<>();

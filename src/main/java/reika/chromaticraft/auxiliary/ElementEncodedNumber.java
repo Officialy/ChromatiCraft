@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 
-import net.minecraft.util.MathHelper;
+import net.minecraft.util.Mth;
 
 import reika.chromaticraft.registry.CrystalElement;
 import reika.dragonapi.libraries.java.ReikaJavaLibrary;
@@ -84,8 +84,8 @@ public final class ElementEncodedNumber {
 		public EncodedPosition(int o, int xVal, int zVal) {
 			o = (o%16+16)%16;
 			offset = o;
-			x = new ElementEncodedNumber(MathHelper.floor_double(xVal), offset, 1);
-			z = new ElementEncodedNumber(MathHelper.floor_double(zVal), offset, 1);
+			x = new ElementEncodedNumber(Mth.floor(xVal), offset, 1);
+			z = new ElementEncodedNumber(Mth.floor(zVal), offset, 1);
 		}
 
 		public void writeData(ByteBuf buf) {

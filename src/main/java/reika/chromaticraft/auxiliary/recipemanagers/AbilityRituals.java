@@ -1,6 +1,5 @@
 package reika.chromaticraft.auxiliary.recipemanagers;
 
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
@@ -14,6 +13,7 @@ import reika.chromaticraft.api.CrystalElementAccessor.CrystalElementProxy;
 import reika.chromaticraft.api.abilityapi.Ability;
 import reika.chromaticraft.magic.ElementTagCompound;
 import reika.chromaticraft.registry.CrystalElement;
+import reika.chromaticraft.registry.Chromabilities;
 import reika.chromaticraft.tileentity.recipe.TileEntityRitualTable;
 import reika.dragonapi.instantiable.data.immutable.WorldLocation;
 
@@ -23,13 +23,8 @@ import reika.dragonapi.instantiable.data.immutable.WorldLocation;
  *
  * <p>These numbers are the guide book's ritual page: the wheel is the proportions between an
  * ability's elements, and the energy bar scales against {@link #getMaxAbilityTotalCost}. They are
- * also what the ritual itself consumes once the ability engine lands.
- *
- * <p><b>Keyed by ability ID, not by the enum.</b> Upstream registers against
- * {@code Chromabilities.REACH} and friends, but that enum is 744 lines entangled with the 1,847-line
- * behaviour engine and is not ported yet. The costs are pure data and do not need it: the table is
- * keyed by the upstream constant name, which is what {@code Ability.getID} is derived from, so it
- * binds to the enum the moment that lands and is usable by the book before then.
+ * also the aura the altar consumes on completion. The native keys are validated against the
+ * Chromabilities enum; externally registered abilities retain their API-provided IDs.
  *
  * <p>The V33a table-location set and {@link RitualAPI} query are restored. The query only examines
  * already-loaded chunks, avoiding a synchronous distant-chunk request while testing whether a
@@ -59,7 +54,8 @@ public final class AbilityRituals implements RitualAPI {
 		ritual("HEAL", e(CrystalElement.MAGENTA, 50000), e(CrystalElement.LIGHTBLUE, 10000));
 		ritual("SHIELD", e(CrystalElement.RED, 20000));
 		ritual("FIREBALL", e(CrystalElement.ORANGE, 10000), e(CrystalElement.PINK, 4000));
-		ritual("COMMUNICATE", e(CrystalElement.BLACK, 40000), e(CrystalElement.RED, 10000), e(CrystalElement.LIGHTGRAY, 8000));
+		ritual("COMMUNICATE", e(CrystalElement.BLACK, 40000), e(CrystalElement.RED, 10000),
+				e(CrystalElement.PINK, 12000), e(CrystalElement.LIGHTGRAY, 8000));
 		ritual("HEALTH", e(CrystalElement.MAGENTA, 50000), e(CrystalElement.PURPLE, 25000));
 		ritual("PYLON", e(CrystalElement.BLACK, 2000), e(CrystalElement.YELLOW, 5000), e(CrystalElement.RED, 25000));
 		ritual("LIGHTNING", e(CrystalElement.BLACK, 5000), e(CrystalElement.YELLOW, 40000), e(CrystalElement.PINK, 10000), e(CrystalElement.ORANGE, 2000));
@@ -100,6 +96,7 @@ public final class AbilityRituals implements RitualAPI {
 
 	@SafeVarargs
 	private void ritual(String abilityId, Map.Entry<CrystalElement, Integer>... costs) {
+		Chromabilities.valueOf(abilityId);
 		ElementTagCompound tag = new ElementTagCompound();
 		int max = 0;
 		int total = 0;
@@ -108,7 +105,8 @@ public final class AbilityRituals implements RitualAPI {
 			max = Math.max(max, cost.getValue());
 			total += cost.getValue();
 		}
-		auras.put(abilityId, tag);
+		if (auras.putIfAbsent(abilityId, tag) != null)
+			throw new IllegalArgumentException("Ritual already registered for " + abilityId);
 		maxCost = Math.max(maxCost, max);
 		maxTotalCost = Math.max(maxTotalCost, total);
 	}
@@ -138,6 +136,9 @@ public final class AbilityRituals implements RitualAPI {
 	/** V33a addRitual(Ability, Map): the extension point other mods register their own costs through. */
 	@Override
 	public void addRitual(Ability a, Map<? extends CrystalElementProxy, Integer> elements) {
+		String id = key(a.getID());
+		if (auras.containsKey(id))
+			throw new IllegalArgumentException("Ritual already registered for " + id);
 		ElementTagCompound tag = new ElementTagCompound();
 		int max = 0;
 		int total = 0;
@@ -148,7 +149,7 @@ public final class AbilityRituals implements RitualAPI {
 			max = Math.max(max, cost.getValue());
 			total += cost.getValue();
 		}
-		auras.put(key(a.getID()), tag);
+		auras.put(id, tag);
 		maxCost = Math.max(maxCost, max);
 		maxTotalCost = Math.max(maxTotalCost, total);
 	}
@@ -188,7 +189,9 @@ public final class AbilityRituals implements RitualAPI {
 	}
 
 	public Map<String, ElementTagCompound> allRituals() {
-		return new HashMap<>(auras);
+		Map<String, ElementTagCompound> result = new LinkedHashMap<>();
+		auras.forEach((id, tag) -> result.put(id, tag.copy()));
+		return result;
 	}
 
 	/**

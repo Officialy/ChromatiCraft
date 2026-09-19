@@ -139,8 +139,10 @@ public final class TreeClusterFeature extends Feature<NoneFeatureConfiguration> 
 	public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
 		WorldGenLevel world = context.level();
 		RandomSource random = context.random();
-		// See the class note: the anchor is the chunk's centre so the scatter stays inside the window.
-		BlockPos centre = context.origin();
+		// A placed feature receives the chunk's minimum corner, not its centre. Omitting this offset
+		// let the +/-16 scatter plus a giant canopy enter a chunk two steps away; 26.2 correctly
+		// rejected those far-chunk writes and produced the perfectly flat half-trees seen in-world.
+		BlockPos centre = context.origin().offset(8, 0, 8);
 		int count = 3 + random.nextInt(8);
 		boolean any = false;
 		for (int i = 0; i < count; i++) {

@@ -8,9 +8,12 @@ import net.minecraft.world.entity.InsideBlockEffectApplier;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.block.LiquidBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.FlowingFluid;
+import net.minecraft.world.phys.shapes.Shapes;
+import net.minecraft.world.phys.shapes.VoxelShape;
 import reika.chromaticraft.magic.progression.ProgressStage;
 
 /** V33a ethereal Luma: luminous, breathable fluid found throughout Luminous Cliffs. */
@@ -18,6 +21,14 @@ public final class BlockLumaFluid extends LiquidBlock {
     public BlockLumaFluid(FlowingFluid fluid, Properties properties) {
         super(fluid, properties);
     }
+
+	@Override
+	protected VoxelShape getEntityInsideCollisionShape(BlockState state, BlockGetter level,
+			BlockPos pos, Entity entity) {
+		// LiquidBlock's empty interaction shape bypasses entityInside; Luma needs that callback for
+		// its breathable-fluid behavior and progression trigger, while remaining non-colliding.
+		return Shapes.block();
+	}
 
     @Override
     protected void entityInside(BlockState state, Level level, BlockPos pos, Entity entity,

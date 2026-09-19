@@ -19,6 +19,7 @@ import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.level.ScheduledTickAccess;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -34,7 +35,9 @@ import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 import reika.chromaticraft.registry.ChromaItems;
+import reika.chromaticraft.registry.ChromaDimensions;
 import reika.chromaticraft.registry.ChromaTieredPlants;
+import reika.chromaticraft.render.particle.ChromaParticle;
 
 /**
  * V33a {@code BlockTieredPlant}: a plant that does not exist for a player who has not reached its
@@ -48,12 +51,13 @@ import reika.chromaticraft.registry.ChromaTieredPlants;
  *
  * <p>Each plant is its own registered identity; see {@link ChromaTieredPlants}. Support rules come
  * from V33a {@code canPlaceBlockOn}/{@code isValidLocation}: the surface, water and sand plants
- * stand on the block below, while the cave and leaf plants hang from the block above.
+ * stand on the block below, while the cave and leaf plants hang from the block above. Glowing
+ * Roots use their own dirt-or-grass support rule beside the base of a tree.
  */
 public class BlockTieredPlant extends Block {
 
-	/** V33a drawCrossedSquares: a vanilla-style cross, so the selection box is the plant's own bounds. */
-	private static final VoxelShape SHAPE = box(2, 0, 2, 14, 16, 14);
+	/** V33a resets every non-pod plant's selected bounds to the complete block. Collision stays empty. */
+	private static final VoxelShape SHAPE = Shapes.block();
 
 	private final ChromaTieredPlants plant;
 	private final MapCodec<BlockTieredPlant> codec = MapCodec.unit(this);
@@ -92,7 +96,24 @@ public class BlockTieredPlant extends Block {
 				&& entity.getEntity() instanceof Player player
 				&& !this.isPlayerSufficientTier(player))
 			return Shapes.empty();
+		if (plant.siting() == ChromaTieredPlants.Siting.TREE_POD)
+			return podShape(level, pos);
 		return SHAPE;
+	}
+
+	/** V33a's neighbour-sensitive Vibrant Pod selection bounds. */
+	private static VoxelShape podShape(BlockGetter level, BlockPos pos) {
+		double minX = isLog(level, pos.west()) ? 0 : 4;
+		double maxX = isLog(level, pos.east()) ? 16 : 12;
+		double minY = isLog(level, pos.below()) ? 0 : 4;
+		double maxY = isLog(level, pos.above()) ? 16 : 12;
+		double minZ = isLog(level, pos.north()) ? 0 : 4;
+		double maxZ = isLog(level, pos.south()) ? 16 : 12;
+		return box(minX, minY, minZ, maxX, maxY, maxZ);
+	}
+
+	private static boolean isLog(BlockGetter level, BlockPos pos) {
+		return level.getBlockState(pos).is(BlockTags.LOGS);
 	}
 
 	/** V33a getCollisionBoundingBoxFromPool returns null: these never obstruct movement. */
@@ -107,6 +128,9 @@ public class BlockTieredPlant extends Block {
 	protected boolean canSurvive(BlockState state, LevelReader level, BlockPos pos) {
 		return switch (plant.siting()) {
 			case CAVE, LEAVES -> this.canPlaceOn(level, pos.above());
+			case TREE_POD -> this.canPlaceOn(level, pos.above())
+					|| this.canPlaceOn(level, pos.north()) || this.canPlaceOn(level, pos.south())
+					|| this.canPlaceOn(level, pos.west()) || this.canPlaceOn(level, pos.east());
 			default -> this.canPlaceOn(level, pos.below());
 		};
 	}
@@ -118,15 +142,31 @@ public class BlockTieredPlant extends Block {
 			case SURFACE -> state.is(Blocks.GRASS_BLOCK) || state.is(Blocks.DIRT)
 					|| state.is(Blocks.FARMLAND);
 			case LEAVES -> state.is(BlockTags.LEAVES);
-			// CHROMA-PORT: V33a also accepts ChromaBlocks.STRUCTSHIELD inside the ChromatiCraft
-			// pocket dimension. Both the block and the dimension are still pristine 1.7.10, so that
-			// branch cannot be expressed yet; it is not a normal-world case.
 			case CAVE -> state.is(Blocks.STONE) || state.is(Blocks.BEDROCK)
-					|| state.is(Tags.Blocks.ORES);
+					|| state.is(Tags.Blocks.ORES)
+					|| state.getBlock() instanceof BlockStructureShield && isProxima(level);
 			case WATER -> state.getFluidState().is(Fluids.WATER)
 					|| state.getFluidState().is(Fluids.FLOWING_WATER);
 			case SAND -> state.is(Blocks.SAND);
+			case TREE_POD -> state.is(BlockTags.LOGS);
+			case TREE_ROOT -> state.is(Blocks.GRASS_BLOCK) || state.is(Blocks.DIRT);
 		};
+	}
+
+	/** V33a's structure-shield exception applies only inside the ChromatiCraft dimension. */
+	private static boolean isProxima(LevelReader level) {
+		if (level instanceof Level concrete)
+			return concrete.dimension() == ChromaDimensions.PROXIMA;
+		if (level instanceof ServerLevelAccessor accessor)
+			return accessor.getLevel().dimension() == ChromaDimensions.PROXIMA;
+		return false;
+	}
+
+	/** V33a randomDisplayTick: the five particle-bearing plants emit every other client tick. */
+	@Override
+	public void animateTick(BlockState state, Level level, BlockPos pos, RandomSource random) {
+		if ((level.getGameTime() & 1) == 0)
+			ChromaParticle.spawnTieredPlant(level, pos, plant, random);
 	}
 
 	/** Vanilla plant idiom, and V33a's checkAndDropBlock: an unsupported plant is removed. */

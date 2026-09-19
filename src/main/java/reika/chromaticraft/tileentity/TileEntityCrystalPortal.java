@@ -25,7 +25,6 @@ import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaItems;
-import reika.chromaticraft.registry.ChromaSounds;
 import reika.chromaticraft.registry.ChromaStructures;
 import reika.chromaticraft.registry.ChromaTieredItems;
 import reika.chromaticraft.render.particle.ChromaParticle;
@@ -99,8 +98,6 @@ public class TileEntityCrystalPortal extends BlockEntityBase {
 		if (ticks % 20 == 0)
 			this.validateStructure();
 		if (complete) {
-			if (ticks % 90 == 0)
-				ChromaSounds.PORTAL.playSoundAtBlock(this);
 			if (tuning > 0 && rand.nextInt(400) == 0) {
 				tuning--;
 				this.syncAllData(false);
@@ -112,6 +109,11 @@ public class TileEntityCrystalPortal extends BlockEntityBase {
 	protected void animateWithTick(Level world, BlockPos pos) {
 		if (!world.isClientSide())
 			return;
+		// Start the positional loop as soon as the formed centre exists, even while the listener is
+		// outside its audible radius. The instance applies the same per-tick distance curve as pylons,
+		// eliminating both the old 90-tick approach delay and the hard full-volume boundary.
+		if (complete && this.isPadCentre())
+			reika.chromaticraft.client.sound.PortalSoundManager.tick(this);
 		int ticks = this.getTicksExisted();
 		if (complete && (charge < MINCHARGE || !BlockChromaPortal.areGeneratorsReady(world)))
 			ChromaParticle.spawnPortalCharging(world, pos, this.getFocusPositions(), ticks, world.getRandom());
@@ -170,13 +172,20 @@ public class TileEntityCrystalPortal extends BlockEntityBase {
 
 	/** V33a getEntities(): exactly one vanilla Ender Crystal in each of the eight ring cells. */
 	private boolean hasEnderCrystals() {
+		return this.getMissingEnderCrystalCount() == 0;
+	}
+
+	/** Player-facing formation diagnostic; the matching rule remains exactly one crystal per cell. */
+	public int getMissingEnderCrystalCount() {
+		if (level == null)
+			return PortalStructure.ENDER_CRYSTALS.length;
+		int missing = 0;
 		for (BlockPos relative : PortalStructure.ENDER_CRYSTALS) {
 			BlockPos check = worldPosition.offset(relative);
-			AABB box = new AABB(check);
-			if (level.getEntitiesOfClass(EndCrystal.class, box).size() != 1)
-				return false;
+			if (level.getEntitiesOfClass(EndCrystal.class, new AABB(check)).size() != 1)
+				missing++;
 		}
-		return true;
+		return missing;
 	}
 
 	public boolean isReturnPortal() {

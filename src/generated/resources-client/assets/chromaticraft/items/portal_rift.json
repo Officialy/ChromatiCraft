@@ -1,6 +1,9 @@
 {
   "model": {
-    "type": "minecraft:model",
-    "model": "chromaticraft:block/portal_rift"
+    "type": "minecraft:special",
+    "base": "chromaticraft:block/portal_rift",
+    "model": {
+      "type": "chromaticraft:portal_rift"
+    }
   }
 }

@@ -1,7 +1,11 @@
 {
   "variants": {
     "": {
-      "model": "chromaticraft:block/rock_flower"
+      "type": "chromaticraft:tiered_plant",
+      "appearance": {
+        "model": "chromaticraft:block/rock_flower"
+      },
+      "stage": "RUNEUSE"
     }
   }
 }

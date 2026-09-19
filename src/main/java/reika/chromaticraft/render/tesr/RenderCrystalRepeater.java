@@ -1,7 +1,9 @@
 package reika.chromaticraft.render.tesr;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
@@ -43,7 +45,8 @@ import reika.chromaticraft.tileentity.networking.TileEntityCrystalRepeater;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
 
 /** Full V33a crystal-repeater presentation on Minecraft 26.2's submit pipeline. */
-public class RenderCrystalRepeater implements BlockEntityRenderer<TileEntityCrystalRepeater, RenderCrystalRepeater.State> {
+public class RenderCrystalRepeater<T extends TileEntityCrystalRepeater>
+		implements BlockEntityRenderer<T, RenderCrystalRepeater.State> {
 
     private static final Identifier SPARKLE = sprite("sparkle");
     private static final Identifier RAIN_FLARE = sprite("rainflare");
@@ -66,7 +69,7 @@ public class RenderCrystalRepeater implements BlockEntityRenderer<TileEntityCrys
     }
 
     @Override
-    public void extractRenderState(TileEntityCrystalRepeater repeater, State state, float partialTick,
+    public void extractRenderState(T repeater, State state, float partialTick,
             Vec3 cameraPosition, ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress) {
         BlockEntityRenderer.super.extractRenderState(repeater, state, partialTick, cameraPosition, breakProgress);
         state.conducting = repeater.canConduct();
@@ -90,13 +93,24 @@ public class RenderCrystalRepeater implements BlockEntityRenderer<TileEntityCrys
 
         state.beams.clear();
         double startWidth = repeater.getOutgoingBeamRadius();
+        Map<Vec3, BeamGroup> groups = new LinkedHashMap<>();
         for (CrystalTarget target : repeater.getTargets()) {
-            state.beams.add(new Beam(
-                    target.location.pos.getX() - repeater.getBlockPos().getX() + target.offsetX - 0.5,
-                    target.location.pos.getY() - repeater.getBlockPos().getY() + target.offsetY - 0.5,
-                    target.location.pos.getZ() - repeater.getBlockPos().getZ() + target.offsetZ - 0.5,
-                    Math.min(startWidth, target.widthLimit),
-                    Math.min(target.endWidth, target.widthLimit), target.color.getColor()));
+            Vec3 end = new Vec3(
+                    target.location.pos.getX() - repeater.getBlockPos().getX() + target.offsetX,
+                    target.location.pos.getY() - repeater.getBlockPos().getY() + target.offsetY,
+                    target.location.pos.getZ() - repeater.getBlockPos().getZ() + target.offsetZ);
+            groups.computeIfAbsent(end, ignored -> new BeamGroup(end, target.endWidth,
+                    target.widthLimit)).colors.add(target.color);
+        }
+        double radius = startWidth;
+        double cycle = (state.time / 600D % 360) / 30D;
+        for (BeamGroup group : groups.values()) {
+            // Deliberately cumulative: this is exactly ChromaFX.drawEnergyTransferBeams' V33a
+            // maximum-width clamp across its ordered TargetData map.
+            radius = Math.min(radius, group.widthLimit);
+            state.beams.add(new Beam(group.end.x, group.end.y, group.end.z, radius,
+                    Math.min(group.endWidth, group.widthLimit),
+                    blendedBeamColor(group.colors, cycle, 0.125)));
         }
     }
 
@@ -257,7 +271,7 @@ public class RenderCrystalRepeater implements BlockEntityRenderer<TileEntityCrys
         poseStack.translate(0.5, 0.5, 0.5);
         for (Beam beam : state.beams) {
             PoseStack renderPose = copy(poseStack);
-            submitAfterTerrain(poseStack, collector, ChromaRenderPipelines.additiveSprite(BEAM),
+            submitAfterTerrain(poseStack, collector, ChromaRenderPipelines.energyBeam(BEAM),
                     (pose, vertices) -> beamTube(renderPose.last(), vertices, beam, scroll));
         }
         poseStack.popPose();
@@ -289,6 +303,17 @@ public class RenderCrystalRepeater implements BlockEntityRenderer<TileEntityCrys
     private static Vector3f ring(Vector3f side, Vector3f up, double angle, double radius) {
         return new Vector3f(side).mul((float)(Math.sin(angle) * radius))
                 .add(new Vector3f(up).mul((float)(Math.cos(angle) * radius)));
+    }
+
+    /** Exact V33a ChromaFX colour-cycle arithmetic for merged same-endpoint beams. */
+    private static int blendedBeamColor(List<CrystalElement> colors, double tick, double modulus) {
+        if (colors.isEmpty()) return 0;
+        int first = (int)(tick / modulus);
+        first = (first + colors.size()) % colors.size();
+        int c1 = colors.get(first).getColor();
+        int c2 = colors.get((first + 1) % colors.size()).getColor();
+        float fraction = (float)(tick % modulus / modulus);
+        return ReikaColorAPI.mixColors(c1, c2, 1 - fraction);
     }
 
     private static void submitAtlasBillboard(PoseStack poseStack, SubmitNodeCollector collector,
@@ -339,15 +364,10 @@ public class RenderCrystalRepeater implements BlockEntityRenderer<TileEntityCrys
         CustomFeatureRenderer.Submit submit = new CustomFeatureRenderer.Submit(
                 poseStack.last().copy(), renderType, renderer);
         ((OrderedSubmitNodeCollectorExtension)collector.order(0))
-        // TRANSLUCENT_CUSTOM_GEOMETRY, not AFTER_TERRAIN. AFTER_TERRAIN runs before the translucent
-        // chunk layer, so the glow was drawn into main *before* water: writing depth there made water
-        // fail its own depth test and punched square holes in the surface, while not writing it left
-        // the cloud target -- which the post-chain composites over main -- with nothing to sort
-        // against, so clouds covered pylons in front of them. Submitting after translucent terrain
-        // resolves both: water is already down so it cannot be rejected, depth testing still hides
-        // the glow behind water and terrain, and the depth this pipeline now writes lets the cloud
-        // compositor order it correctly.
-                .submitSpecial(RenderPhaseKeys.TRANSLUCENT_CUSTOM_GEOMETRY, submit);
+        // In 26.2 TRANSLUCENT_CUSTOM_GEOMETRY is drained before the translucent chunk layer;
+        // AFTER_TERRAIN is the actual post-water hook. Water is therefore already down and can
+        // correctly occlude the glow, while the pipeline's depth still orders later compositing.
+                .submitSpecial(RenderPhaseKeys.AFTER_TERRAIN, submit);
     }
 
     @Override
@@ -356,7 +376,7 @@ public class RenderCrystalRepeater implements BlockEntityRenderer<TileEntityCrys
     }
 
     @Override
-    public net.minecraft.world.phys.AABB getRenderBoundingBox(TileEntityCrystalRepeater repeater) {
+    public net.minecraft.world.phys.AABB getRenderBoundingBox(T repeater) {
         // The renderer owns connection beams, the manipulator's dashed target line and the range
         // sphere, all of which extend far beyond the one-block BE box. NeoForge culls submitted
         // geometry against this scope; using the default cube let a long line disappear from the far
@@ -398,4 +418,17 @@ public class RenderCrystalRepeater implements BlockEntityRenderer<TileEntityCrys
     }
 
     private record Beam(double x, double y, double z, double startRadius, double endRadius, int color) {}
+
+    private static final class BeamGroup {
+        private final Vec3 end;
+        private final double endWidth;
+        private final double widthLimit;
+        private final List<CrystalElement> colors = new ArrayList<>();
+
+        private BeamGroup(Vec3 end, double endWidth, double widthLimit) {
+            this.end = end;
+            this.endWidth = endWidth;
+            this.widthLimit = widthLimit;
+        }
+    }
 }

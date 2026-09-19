@@ -45,11 +45,10 @@ import reika.dragonapi.libraries.io.NBTCompat;
  * <p><b>Port slice (deferred — re-add as those systems port):</b> client packet sync
  * ({@code ChromaPackets}), co-op progression sharing ({@code ProgressionLinking}), handbook
  * handbook fragment/catalog management ({@code ChromaResearchManager}/{@code ChromaResearch}), the
- * {@code ProgressionEvent} bus post, automatic research-level upgrade checks, progress-backup
- * caching. V33a's chained progression rules are active in this slice, including their retroactive
- * and exclusion behavior. The {@code notify}/{@code syncToCoop}
- * parameters are kept for call-site parity but are currently inert (no client sync yet), so progression
- * is authoritative server-side only until the packet system lands.
+	 * {@code ProgressionEvent} bus post, automatic research-level upgrade checks, progress-backup
+	 * caching. V33a's chained progression rules, client sync, progression notes and Proxima structure
+	 * colour/password path are active, including their retroactive and exclusion behavior. Co-op sharing
+	 * remains the only inert call-site parameter in this slice.
  */
 public class ProgressionManager implements ProgressRegistry {
 
@@ -57,6 +56,8 @@ public class ProgressionManager implements ProgressRegistry {
 
 	public static final String MAIN_NBT_TAG = "Chroma_Progression";
 	private static final String COLOR_NBT_TAG = "Chroma_Element_Discovery";
+	/** V33a's independent record of which coloured Proxima cores the player has recovered. */
+	private static final String STRUCTURE_NBT_TAG = "Structure_Color_Completion";
 
 	private final SequenceMap<ProgressLink> progressMap = new SequenceMap();
 	private final EnumMap<ProgressStage, List<ProgressChain>> chains = new EnumMap<>(ProgressStage.class);
@@ -314,6 +315,13 @@ public class ProgressionManager implements ProgressRegistry {
 		return tag;
 	}
 
+	private CompoundTag getStructureColorTag(Player ep) {
+		CompoundTag root = ReikaPlayerAPI.getDeathPersistentNBT(ep);
+		CompoundTag tag = NBTCompat.getCompound(root, STRUCTURE_NBT_TAG);
+		root.put(STRUCTURE_NBT_TAG, tag);
+		return tag;
+	}
+
 	boolean isPlayerAtStage(Player ep, ProgressStage s) {
 		return NBTCompat.getBoolean(this.getStageTag(ep), s.name(), false);
 	}
@@ -420,6 +428,8 @@ public class ProgressionManager implements ProgressRegistry {
 		ReikaPlayerAPI.getDeathPersistentNBT(ep).put(MAIN_NBT_TAG, new CompoundTag());
 		for (CrystalElement e : CrystalElement.elements)
 			this.setPlayerDiscoveredColor(ep, e, false, notify);
+		for (CrystalElement e : CrystalElement.elements)
+			this.markPlayerCompletedStructureColor(ep, null, e, false, false);
 		this.syncToClient(ep); //the stage-tag clear above is a direct write, so sync it explicitly
 	}
 
@@ -430,6 +440,58 @@ public class ProgressionManager implements ProgressRegistry {
 		}
 		for (CrystalElement e : CrystalElement.elements)
 			this.setPlayerDiscoveredColor(ep, e, true, notify);
+		for (CrystalElement e : CrystalElement.elements)
+			this.markPlayerCompletedStructureColor(ep, null, e, true, false);
+	}
+
+	// ---- Proxima structure completion ----
+
+	/** V33a's per-colour structure completion query. This is separate from colour discovery. */
+	public boolean hasPlayerCompletedStructureColor(Player ep, CrystalElement element) {
+		return NBTCompat.getBoolean(this.getStructureColorTag(ep), element.name(), false);
+	}
+
+	/** Returns the recovered core colours in source element order. */
+	public Collection<CrystalElement> getStructuresFor(Player ep) {
+		Collection<CrystalElement> colors = new ArrayList<>();
+		for (CrystalElement element : CrystalElement.elements)
+			if (this.hasPlayerCompletedStructureColor(ep, element)) colors.add(element);
+		return Collections.unmodifiableCollection(colors);
+	}
+
+	/**
+	 * V33a {@code markPlayerCompletedStructureColor}. Recovering a core records its colour, advances
+	 * STRUCTCOMPLETE (and ALLCORES after all sixteen), and reveals the structure's personal password.
+	 */
+	public boolean markPlayerCompletedStructureColor(Player ep,
+			reika.chromaticraft.world.dimension.structure.StructureGeneratorBase generator,
+			CrystalElement element, boolean set, boolean notify) {
+		if (ep == null || ReikaPlayerAPI.isFake(ep) || ep.level().isClientSide())
+			return false;
+		CompoundTag tag = this.getStructureColorTag(ep);
+		boolean had = NBTCompat.getBoolean(tag, element.name(), false);
+		tag.putBoolean(element.name(), set);
+		if (had == set)
+			return false;
+
+		if (set) {
+			if (generator != null && !generator.forcedOpen() && notify && ep instanceof ServerPlayer player) {
+				int password = generator.getPassword(player,
+						net.minecraft.SharedConstants.getCurrentVersion().name());
+				reika.chromaticraft.network.ChromaNetwork.sendStructurePassword(player, password);
+			}
+			ProgressStage.STRUCTCOMPLETE.stepPlayerTo(ep);
+			boolean all = true;
+			for (CrystalElement color : CrystalElement.elements)
+				all &= this.hasPlayerCompletedStructureColor(ep, color);
+			if (all)
+				ProgressStage.ALLCORES.stepPlayerTo(ep);
+		}
+		else {
+			this.setPlayerStage(ep, ProgressStage.ALLCORES, false, notify, true);
+		}
+		this.syncToClient(ep);
+		return true;
 	}
 
 	// ---- Colour discovery ----

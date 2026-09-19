@@ -7,10 +7,13 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe;
 import reika.chromaticraft.auxiliary.recipemanagers.CobbleGeneratorRecipe;
+import reika.chromaticraft.auxiliary.recipemanagers.PoolAlloyingRecipe;
 
 public final class ChromaRecipeTypes {
 	public static final DeferredRegister<RecipeType<?>> RECIPE_TYPES = DeferredRegister.create(BuiltInRegistries.RECIPE_TYPE, ChromatiCraft.MODID);
 	public static final DeferredHolder<RecipeType<?>, RecipeType<CastingTableRecipe>> CASTING = RECIPE_TYPES.register("casting", () -> new RecipeType<CastingTableRecipe>() {});
+	public static final DeferredHolder<RecipeType<?>, RecipeType<PoolAlloyingRecipe>> POOL_ALLOYING =
+			RECIPE_TYPES.register("pool_alloying", () -> new RecipeType<PoolAlloyingRecipe>() {});
 	public static final DeferredHolder<RecipeType<?>, RecipeType<CobbleGeneratorRecipe>> COBBLE_GENERATOR =
 			RECIPE_TYPES.register("cobble_generator", () -> new RecipeType<CobbleGeneratorRecipe>() {});
 	private ChromaRecipeTypes() {}

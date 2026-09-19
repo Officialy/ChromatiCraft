@@ -21,8 +21,8 @@ import reika.chromaticraft.registry.CrystalElement;
  * a hard edge at every block. That lookup is cached, because it is asked every frame and the answer
  * cannot change without the block changing.
  *
- * <p>The renderer that consumes it is not ported: its texture is fetched at runtime from Reika's server
- * rather than shipped. See {@link BlockVoidRift}.
+	 * <p>The renderer consumes the fallback copy of V33a's authored aura atlas that shipped alongside
+	 * the remotely sourced full-resolution sheet.
  */
 public class TileEntityVoidRift extends TileEntityChromaticBase {
 
@@ -67,6 +67,12 @@ public class TileEntityVoidRift extends TileEntityChromaticBase {
 	public CrystalElement colorAt(Direction dir) {
 		BlockState at = this.getAt(dir.getStepX(), dir.getStepZ());
 		return at != null && at.getBlock() instanceof BlockVoidRift rift ? rift.getElement() : null;
+	}
+
+	/** A neighbour notification invalidates all eight cached seam samples. */
+	public void clearNeighbourCache() {
+		for (int x = 0; x < blockCache.length; x++)
+			java.util.Arrays.fill(blockCache[x], null);
 	}
 
 	/**

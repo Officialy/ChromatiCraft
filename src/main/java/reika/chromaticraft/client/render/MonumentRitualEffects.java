@@ -1,11 +1,19 @@
 package reika.chromaticraft.client.render;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
+import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.resources.sounds.SimpleSoundInstance;
+import net.minecraft.client.resources.sounds.SoundInstance;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.Marker;
+import net.minecraft.world.phys.Vec3;
 
 import reika.chromaticraft.magic.MonumentRitualScore;
 import reika.chromaticraft.magic.MonumentRitualScore.EventType;
@@ -42,15 +50,17 @@ import reika.chromaticraft.render.particle.ChromaParticle;
  *
  * <p>V33a walks the camera around an epitrochoid about the monument, hiding the GUI and disabling view
  * bob for the duration. The orbit needs both halves of a camera override: the angles go through
- * {@code ViewportEvent.ComputeCameraAngles}, but the <em>position</em> is not exposed by any public API,
- * so it goes through {@code CameraAccessor}.
+ * {@code ViewportEvent.ComputeCameraAngles}; position comes from a private client-only Marker used as
+ * the camera entity. Moving Camera directly in that event does not work in 26.2 because
+ * {@code Camera.alignWithEntity} assigns the entity position immediately after posting the event.
  *
  * <p>Everything borrowed is given back in {@link #stop()}, and every way a ritual can end routes through
  * it — the server saying so, the ceremony completing, and the client leaving the level. That last path
  * is the one that matters: a player who logs out mid-ritual would otherwise come back with no HUD.
  *
- * <p>Still absent: the two shader programs. Per this port's shader notes their sixteen per-frame core
- * positions and colours have to arrive as a texture rather than as uniforms.
+ * <p>The V33a general/chord screen shaders are combined into one 26.2 post pass. Its sixteen changing
+ * core positions, colours and fades travel through a ring-buffered std140 uniform block; the post
+ * chain itself remains declarative and only names the scene targets.
  */
 public final class MonumentRitualEffects {
 
@@ -68,6 +78,8 @@ public final class MonumentRitualEffects {
 
 	private int currentTrack = -1;
 	private long nextTrackTime;
+	private final List<SoundInstance> playingTracks = new ArrayList<>();
+	private final List<ScheduledRay> scheduledRays = new ArrayList<>();
 
 	private float vortexSize;
 	private boolean vortexGrowing;
@@ -84,6 +96,9 @@ public final class MonumentRitualEffects {
 	 */
 	private Boolean restoreHideGui;
 	private Boolean restoreBobbing;
+	private CameraType restoreCameraType;
+	private Entity restoreCameraEntity;
+	private Marker cameraAnchor;
 
 	private MonumentRitualEffects(BlockPos pos, boolean inProxima) {
 		this.pos = pos;
@@ -93,6 +108,8 @@ public final class MonumentRitualEffects {
 
 	/** Started by the server's MONUMENTSTART. */
 	public static void start(BlockPos pos, boolean inProxima) {
+		// A repeated start packet must first return anything borrowed by the previous ceremony.
+		stop();
 		active = new MonumentRitualEffects(pos, inProxima);
 		active.begin();
 	}
@@ -111,6 +128,26 @@ public final class MonumentRitualEffects {
 		return active != null;
 	}
 
+	/** V33a writes {@code core.shaderScale = 1 + colorFade * 5} during the score. */
+	public static float getDimensionCoreShaderScale(CrystalElement element) {
+		return active == null ? 1F : 1F + active.colorFade[element.ordinal()] * 5F;
+	}
+
+	/**
+	 * V33a MONUMENTCOMPLETE. This is deliberately not {@link #stop()}: the server retains the final
+	 * shot for three more seconds before replacing the controller and sending the stopped state.
+	 */
+	public static void complete(BlockPos pos) {
+		Minecraft mc = Minecraft.getInstance();
+		if (mc.level == null)
+			return;
+		ChromaParticle.spawnMonumentCompletion(mc.level, pos);
+		if (active != null && active.pos.equals(pos)) {
+			active.activeKey = null;
+			active.scheduledRays.clear();
+		}
+	}
+
 	/** Called once a client tick. */
 	public static void tickClient() {
 		if (active != null)
@@ -127,6 +164,21 @@ public final class MonumentRitualEffects {
 		nextTrackTime = 0;
 		vortexSize = 0;
 		vortexGrowing = false;
+
+		Minecraft mc = Minecraft.getInstance();
+		if (mc.level != null && mc.player != null) {
+			restoreCameraEntity = mc.getCameraEntity();
+			cameraAnchor = new Marker(EntityTypes.MARKER, mc.level);
+			CameraPose pose = this.cameraPose(0);
+			cameraAnchor.absSnapTo(pose.position.x, pose.position.y, pose.position.z,
+					pose.yaw, pose.pitch);
+			mc.setCameraEntity(cameraAnchor);
+			// V33a explicitly stops the dimension music before beginning its first score segment.
+			mc.getMusicManager().stopPlaying();
+			// startClient() calls stepSound() immediately; do not make the first recording wait for the
+			// next client tick (which is noticeable if activation lands on a stalled frame).
+			this.stepTrack(mc.level);
+		}
 	}
 
 	private void tickEffects() {
@@ -136,6 +188,16 @@ public final class MonumentRitualEffects {
 			return;
 		}
 		long time = System.currentTimeMillis();
+		// Client ticks continue while an integrated game is sitting in a pausing screen. Vanilla
+		// pauses sounds which already exist, but any sound started from one of those later client ticks
+		// begins after SoundManager's pause pass and can therefore be heard over the menu. Freeze the
+		// complete ceremony clock here: no camera/event/particle work and, crucially, no newly scheduled
+		// lightning or score sounds. Account for the whole pause so resuming cannot catch the timeline up.
+		if (mc.isPaused()) {
+			pauseTotal += Math.max(0, time - lastTickTime);
+			lastTickTime = time;
+			return;
+		}
 		long step = time - lastTickTime;
 		// Same correction the server makes: a dropped frame delays the ceremony rather than skipping it.
 		if (step > 50)
@@ -145,11 +207,19 @@ public final class MonumentRitualEffects {
 		tick++;
 
 		this.manipulateCamera(mc);
+		// Detaching the camera already prevents LocalPlayer from applying keyboard movement. Clear any
+		// momentum which existed before the packet as well; the server independently holds the ritual
+		// owner at the activation point, so neither side can drift.
+		mc.player.setDeltaMovement(Vec3.ZERO);
+		mc.player.setSprinting(false);
+		// Do not let vanilla/dimension music restart under the six-part monument recording.
+		mc.getMusicManager().stopPlaying();
 		this.updateColorFade();
 		this.stepTrack(mc.level);
 		this.drawVortex(mc.level);
 		this.drawRing(mc.level);
 		this.fireDueEvents(mc.level);
+		this.fireScheduledRays(mc.level);
 	}
 
 	/**
@@ -163,22 +233,40 @@ public final class MonumentRitualEffects {
 		if (restoreHideGui == null) {
 			restoreHideGui = mc.gui.hud.isHidden();
 			restoreBobbing = mc.options.bobView().get();
+			restoreCameraType = mc.options.getCameraType();
 		}
 		if (!mc.gui.hud.isHidden())
 			mc.gui.hud.toggle();
 		mc.options.bobView().set(false);
+		mc.options.setCameraType(CameraType.FIRST_PERSON);
 	}
 
 	/** Unconditional, and called from {@link #stop()} so every ending path goes through it. */
 	private void restoreSettings() {
-		if (restoreHideGui == null)
-			return;
 		Minecraft mc = Minecraft.getInstance();
-		if (mc.gui.hud.isHidden() != restoreHideGui)
-			mc.gui.hud.toggle();
-		mc.options.bobView().set(restoreBobbing);
+		for (SoundInstance sound : playingTracks)
+			mc.getSoundManager().stop(sound);
+		playingTracks.clear();
+		scheduledRays.clear();
+
+		if (cameraAnchor != null && mc.getCameraEntity() == cameraAnchor) {
+			Entity camera = restoreCameraEntity;
+			if (camera == null || camera.level() != mc.level || camera.isRemoved())
+				camera = mc.player;
+			mc.setCameraEntity(camera);
+		}
+		cameraAnchor = null;
+		restoreCameraEntity = null;
+
+		if (restoreHideGui != null) {
+			if (mc.gui.hud.isHidden() != restoreHideGui)
+				mc.gui.hud.toggle();
+			mc.options.bobView().set(restoreBobbing);
+			mc.options.setCameraType(restoreCameraType);
+		}
 		restoreHideGui = null;
 		restoreBobbing = null;
+		restoreCameraType = null;
 	}
 
 	/**
@@ -198,9 +286,28 @@ public final class MonumentRitualEffects {
 	private void orbit(net.minecraft.client.Camera camera, float partialTick,
 			net.neoforged.neoforge.client.event.ViewportEvent.ComputeCameraAngles event) {
 		Minecraft mc = Minecraft.getInstance();
-		if (mc.player == null)
+		if (mc.player == null || cameraAnchor == null)
 			return;
-		double angle = (runTime / 100D + partialTick / 2D);
+		if (mc.getCameraEntity() != cameraAnchor)
+			mc.setCameraEntity(cameraAnchor);
+		CameraPose pose = this.cameraPose(partialTick);
+
+		/*
+		 * ComputeCameraAngles is posted inside Camera.alignWithEntity immediately before vanilla assigns
+		 * the camera entity's interpolated position. Moving Camera itself here is therefore overwritten
+		 * later in the same method. Move the private client-only view entity instead: the assignment which
+		 * follows this event then installs the orbit position, while the real player remains untouched.
+		 */
+		cameraAnchor.absSnapTo(pose.position.x, pose.position.y, pose.position.z,
+				pose.yaw, pose.pitch);
+		event.setYaw(pose.yaw);
+		event.setPitch(pose.pitch);
+	}
+
+	private CameraPose cameraPose(float partialTick) {
+		Minecraft mc = Minecraft.getInstance();
+		// Exact V33a phase: half the world tick plus the activating player's UUID-derived offset.
+		double angle = (mc.level.getGameTime() + mc.player.getUUID().hashCode() % 8000 + partialTick) / 2D;
 		double r = 26 * 1.25;
 		double R = 32 * 1.25;
 		double d = 13 * 1.25 * 0.75;
@@ -219,13 +326,10 @@ public final class MonumentRitualEffects {
 		float yaw = (float)Math.toDegrees(Math.atan2(-dx, dz));
 		float pitch = (float)-Math.toDegrees(Math.atan2(dy, flat));
 
-		// The position needs the accessor; the angles go through the event, which is what the rest of
-		// the render pipeline reads them from.
-		((reika.dragonapi.mixin.CameraAccessor)camera)
-				.dragonapi$setPosition(new net.minecraft.world.phys.Vec3(cx, cy, cz));
-		event.setYaw(yaw);
-		event.setPitch(pitch);
+		return new CameraPose(new Vec3(cx, cy, cz), yaw, pitch);
 	}
+
+	private record CameraPose(Vec3 position, float yaw, float pitch) {}
 
 	/**
 	 * The ritual's screen effect: V33a's {@code general.frag} grade plus {@code chords.frag}'s core
@@ -401,7 +505,8 @@ public final class MonumentRitualEffects {
 			nextTrackTime = Long.MAX_VALUE;
 			return;
 		}
-		track.playSound(level, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, 1, 1);
+		SoundInstance sound = this.playClientSound(track, 1, 1);
+		playingTracks.add(sound);
 		currentTrack = next;
 		nextTrackTime = next + 1 >= MonumentRitualScore.SOUND_TIMINGS.length ? Long.MAX_VALUE
 				: MonumentRitualScore.SOUND_TIMINGS[next + 1];
@@ -448,11 +553,39 @@ public final class MonumentRitualEffects {
 				.getColorsWithKeyAnyOctave(e.ray().key());
 		if (colors == null)
 			return;
-		for (CrystalElement color : colors)
-			ChromaParticle.spawnMonumentRay(level, pos, color);
-		ChromaSounds.MONUMENTRAY.playSound(level, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5,
-				1, 1);
+		float pitch = (float)reika.chromaticraft.auxiliary.CrystalMusicManager.instance
+				.getPitchFactor(e.ray().key());
+		int lastTick = Math.max(10,
+				MonumentRitualScore.BEAT_LENGTH * e.ray().length() / 50 - 15);
+		for (CrystalElement color : colors) {
+			int delay = 10 + level.getRandom().nextInt(lastTick - 10 + 1);
+			scheduledRays.add(new ScheduledRay(runTime + delay * 50L, color, pitch));
+		}
 	}
+
+	/** V33a ScheduledRayEvent: each compatible core answers at a random point during the note. */
+	private void fireScheduledRays(ClientLevel level) {
+		for (Iterator<ScheduledRay> it = scheduledRays.iterator(); it.hasNext();) {
+			ScheduledRay ray = it.next();
+			if (ray.millis > runTime)
+				continue;
+			ChromaParticle.spawnMonumentRay(level, pos, ray.color);
+			float volume = 0.4F + level.getRandom().nextFloat() * 0.4F;
+			this.playClientSound(ChromaSounds.MONUMENTRAY, volume, ray.pitch);
+			it.remove();
+		}
+	}
+
+	private SoundInstance playClientSound(ChromaSounds sound, float volume, float pitch) {
+		SoundInstance instance = new SimpleSoundInstance(
+				sound.getSoundEvent().location(), sound.getCategory(), volume, pitch,
+				SoundInstance.createUnseededRandom(), false, 0, SoundInstance.Attenuation.NONE,
+				pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, false);
+		Minecraft.getInstance().getSoundManager().play(instance);
+		return instance;
+	}
+
+	private record ScheduledRay(long millis, CrystalElement color, float pitch) {}
 
 	private void fireEvent(ClientLevel level, EventType type) {
 		switch (type) {

@@ -72,6 +72,15 @@ public class ChromatiCraft extends DragonAPIMod {
 		config = new ChromaConfig(instance, ChromaOptions.optionList, null);
 		config.loadSubfolderedConfigFile();
 		config.initProps();
+		// A Proxima puzzle enters the assignment pool only after its complete planner is present.
+		reika.chromaticraft.world.dimension.DimensionStructureType.LIGHTPANEL.registerGenerator(
+				reika.chromaticraft.world.dimension.structure.LightPanelStructureGenerator::new);
+		reika.chromaticraft.world.dimension.DimensionStructureType.TDMAZE.registerGenerator(
+				reika.chromaticraft.world.dimension.structure.ThreeDMazeStructureGenerator::new);
+		reika.chromaticraft.world.dimension.DimensionStructureType.MUSIC.registerGenerator(
+				reika.chromaticraft.world.dimension.structure.MusicStructureGenerator::new);
+		reika.chromaticraft.world.dimension.DimensionStructureType.GOL.registerGenerator(
+				reika.chromaticraft.world.dimension.structure.GOLStructureGenerator::new);
 
 		ChromaBlocks.BLOCKS.register(modEventBus);
 		ChromaBlocks.ITEMS.register(modEventBus);
@@ -124,7 +133,11 @@ public class ChromatiCraft extends DragonAPIMod {
 		reika.chromaticraft.auxiliary.ExplorationMonitor.register();
 		// V33a's mining, dimension-entry, potion, death and boss-kill progression hooks.
 		reika.chromaticraft.auxiliary.ProgressionEventBridge.register();
+		// Proxima arrivals fall from Y=1024, and death there returns the player home with a buffer cost.
+		reika.chromaticraft.world.dimension.ProximaPlayerSafety.register();
+		reika.chromaticraft.world.dimension.ProximaStructureSessions.register();
 		reika.chromaticraft.auxiliary.FocusCrystalTradeHandler.register();
+		reika.chromaticraft.auxiliary.PoolAlloyingHandler.register();
 		reika.chromaticraft.auxiliary.CobbleGeneratorItemExpiry.register();
 		reika.chromaticraft.auxiliary.ChromaFreezeHandler.register();
 	}
@@ -150,16 +163,22 @@ public class ChromatiCraft extends DragonAPIMod {
 	}
 
 	private static void registerScreens(RegisterMenuScreensEvent event) {
+		event.register(ChromaMenus.RITUAL_TABLE.get(),
+				reika.chromaticraft.client.gui.ScreenRitualTable::new);
 		event.register(ChromaMenus.CASTING_TABLE.get(),
 				reika.chromaticraft.client.gui.ScreenCastingTable::new);
 		event.register(ChromaMenus.HEAT_LAMP.get(),
 				reika.chromaticraft.client.gui.ScreenHeatLamp::new);
 		event.register(ChromaMenus.CRYSTAL_CHARGER.get(),
 				reika.chromaticraft.client.gui.ScreenCrystalCharger::new);
+		event.register(ChromaMenus.COLLECTOR.get(),
+				reika.chromaticraft.client.gui.ScreenCollector::new);
 		event.register(ChromaMenus.LEXICON_PAGES.get(),
 				reika.chromaticraft.client.gui.ScreenLexiconPages::new);
 		event.register(ChromaMenus.FRAGMENT_SELECTION.get(),
 				reika.chromaticraft.client.gui.ScreenFragmentSelectionMenu::new);
+		event.register(ChromaMenus.STRUCTURE_PASSWORD.get(),
+				reika.chromaticraft.client.gui.ScreenStructurePassword::new);
 	}
 
 	@Override

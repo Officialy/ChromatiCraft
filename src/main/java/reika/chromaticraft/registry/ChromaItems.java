@@ -101,6 +101,7 @@ public final class ChromaItems {
 	public static ItemStack tintedLensStack(CrystalElement element) {
 		return new ItemStack(TINTED_LENSES.get(element).get());
 	}
+
 	public static final DeferredItem<Item> CRYSTAL_POWDER = CRAFTING.get(ChromaCraftingItems.CRYSTAL_POWDER);
 
 	/** V33a ChromaItems.TOOL: the Manipulator, the universal ChromatiCraft interaction tool. */
@@ -126,6 +127,10 @@ public final class ChromaItems {
 	/** V33a DIMGEN metadata 9, consumed by the Player Aura Infuser's DIMENSION boost. */
 	public static final DeferredItem<Item> GLOW_CAVE_DUST =
 			reg("glow_cave_dust", () -> new Item(itemProperties()));
+	/** V33a ENDERCRYSTAL: captures and replaces vanilla End Crystals; count is component-backed. */
+	public static final DeferredItem<reika.chromaticraft.items.tools.ItemEnderCrystal> ENDER_CRYSTAL_MOVER =
+			reg("ender_crystal_mover", () -> new reika.chromaticraft.items.tools.ItemEnderCrystal(
+					itemProperties()));
 	/** V33a ARTEFACT metadata 1. It has none of the harmful full-artefact behavior. */
 	public static final DeferredItem<Item> UNKNOWN_ARTEFACT_FRAGMENT =
 			reg("unknown_artefact_fragment", () -> new Item(itemProperties().stacksTo(1)));
@@ -199,4 +204,10 @@ public final class ChromaItems {
 	/** Modern world-fluid container for source placement and pickup. */
 	public static final DeferredItem<Item> CHROMA_BUCKET = reg("chroma_bucket",
 			() -> new BucketItem(ChromaFluids.CHROMA.get(), itemProperties().craftRemainder(Items.BUCKET).stacksTo(1)));
+	/** V33a's Ethereal Luma container, promoted from the legacy fluid-container integration. */
+	public static final DeferredItem<Item> LUMA_BUCKET = reg("ethereal_luma_bucket",
+			() -> new BucketItem(ChromaFluids.LUMA.get(), itemProperties().craftRemainder(Items.BUCKET).stacksTo(1)));
+	/** V33a Liquid Ender container, now a normal source-fluid bucket. */
+	public static final DeferredItem<Item> ENDER_BUCKET = reg("liquid_ender_bucket",
+			() -> new BucketItem(ChromaFluids.ENDER.get(), itemProperties().craftRemainder(Items.BUCKET).stacksTo(1)));
 }

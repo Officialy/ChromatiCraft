@@ -14,13 +14,14 @@ import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.tileentity.TileEntityDisplayPoint;
 import reika.chromaticraft.tileentity.TileEntityDataNode;
+import reika.chromaticraft.tileentity.TileEntityPersonalCharger;
 import reika.chromaticraft.tileentity.TileEntityFarmer;
 import reika.chromaticraft.tileentity.plants.TileEntityBiomeReverter;
-import reika.chromaticraft.tileentity.plants.TileEntityCobbleGen;
-import reika.chromaticraft.tileentity.plants.TileEntityHeatLily;
 import reika.chromaticraft.tileentity.plants.TileEntityAccelerationPlant;
+import reika.chromaticraft.tileentity.plants.TileEntityCobbleGen;
 import reika.chromaticraft.tileentity.plants.TileEntityCropSpeedPlant;
 import reika.chromaticraft.tileentity.plants.TileEntityHarvesterPlant;
+import reika.chromaticraft.tileentity.plants.TileEntityHeatLily;
 import reika.chromaticraft.tileentity.auxiliary.TileEntityChromaCrystal;
 import reika.chromaticraft.block.BlockEncrustedCrystal.TileCrystalEncrusted;
 import reika.chromaticraft.block.BlockChromaFluid.TileEntityChroma;
@@ -29,12 +30,17 @@ import reika.chromaticraft.tileentity.networking.TileEntityPylonLink;
 import reika.chromaticraft.tileentity.networking.TileEntityCreativeSource;
 import reika.chromaticraft.tileentity.networking.TileEntityCrystalPylon;
 import reika.chromaticraft.tileentity.networking.TileEntityCrystalRepeater;
+import reika.chromaticraft.tileentity.networking.TileEntityWeakRepeater;
+import reika.chromaticraft.tileentity.networking.TileEntityRelaySource;
+import reika.chromaticraft.block.relay.BlockLumenRelay.TileEntityLumenRelay;
 import reika.chromaticraft.tileentity.networking.TileEntitySkypeater;
 import reika.chromaticraft.tileentity.recipe.TileEntityCastingTable;
+import reika.chromaticraft.tileentity.recipe.TileEntityRitualTable;
 import reika.chromaticraft.tileentity.recipe.TileEntityItemInfuser;
 import reika.chromaticraft.tileentity.recipe.TileEntityPlayerInfuser;
 import reika.chromaticraft.tileentity.auxiliary.TileEntityFocusCrystal;
 import reika.chromaticraft.tileentity.auxiliary.TileEntityCrystalCharger;
+import reika.chromaticraft.tileentity.acquisition.TileEntityCollector;
 import reika.chromaticraft.tileentity.recipe.TileEntityItemStand;
 import reika.chromaticraft.tileentity.aoe.TileEntityWarpNode;
 import reika.chromaticraft.tileentity.TileEntityDummyAux;
@@ -44,8 +50,12 @@ import reika.chromaticraft.tileentity.TileEntityStructureController;
 import reika.chromaticraft.tileentity.TileEntityChromaDoor;
 import reika.chromaticraft.tileentity.TileEntityHeatLamp;
 import reika.chromaticraft.tileentity.TileEntityLightSwitch;
+import reika.chromaticraft.tileentity.TileEntityStructurePassword;
 import reika.chromaticraft.tileentity.TileEntityLockKey;
 import reika.chromaticraft.tileentity.TileEntityColorLock;
+import reika.chromaticraft.tileentity.TileEntityMusicMemory;
+import reika.chromaticraft.tileentity.TileEntityGOLController;
+import reika.chromaticraft.tileentity.TileEntityGOLTile;
 
 /**
  * ChromatiCraft {@link BlockEntityType} registry (mirrors ReactorBlockEntities). One entry per
@@ -65,8 +75,20 @@ public final class ChromaBlockEntities {
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityCrystalRepeater>> REPEATER =
 			register("crystal_repeater", ChromaTiles.REPEATER);
 
+	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityWeakRepeater>> WEAK_REPEATER =
+			register("weak_repeater", ChromaTiles.WEAKREPEATER);
+	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityRelaySource>> RELAY_SOURCE =
+			register("relay_source", ChromaTiles.RELAYSOURCE);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<reika.chromaticraft.tileentity.auxiliary.TileEntityFunctionRelay>> FUNCTION_RELAY =
 			register("function_relay", ChromaTiles.FUNCTIONRELAY);
+	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityLumenRelay>> LUMEN_RELAY =
+			BLOCK_ENTITIES.register("lumen_relay", () -> new BlockEntityType<>(
+					TileEntityLumenRelay::new,
+					java.util.stream.Stream.concat(ChromaBlocks.LUMEN_RELAYS.values().stream(),
+							java.util.stream.Stream.of(ChromaBlocks.MULTICHROMIC_RELAY))
+							.map(net.neoforged.neoforge.registries.DeferredHolder::get)
+							.toArray(net.minecraft.world.level.block.Block[]::new)));
+
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntitySkypeater>> SKYPEATER =
 			register("skypeater", ChromaTiles.SKYPEATER);
 
@@ -81,8 +103,12 @@ public final class ChromaBlockEntities {
 			register("casting_item_stand", ChromaTiles.STAND);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityCastingTable>> CASTING_TABLE =
 			register("casting_table", ChromaTiles.TABLE);
+	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityRitualTable>> RITUAL_TABLE =
+			register("ritual_table", ChromaTiles.RITUAL);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityCrystalCharger>> CRYSTAL_CHARGER =
 			register("crystal_charger", ChromaTiles.CHARGER);
+	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityCollector>> COLLECTOR =
+			register("collector", ChromaTiles.COLLECTOR);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityFarmer>> FARMER =
 			register("farmer", ChromaTiles.FARMER);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityHeatLily>> HEAT_LILY =
@@ -101,6 +127,8 @@ public final class ChromaBlockEntities {
 			register("item_aura_infuser", ChromaTiles.INFUSER);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityPlayerInfuser>> PLAYER_INFUSER =
 			register("player_aura_infuser", ChromaTiles.PLAYERINFUSER);
+	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityPersonalCharger>> PERSONAL_CHARGER =
+			register("personal_charger", ChromaTiles.PERSONAL);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityFocusCrystal>> FOCUS_CRYSTAL =
 			register("focus_crystal", ChromaTiles.FOCUSCRYSTAL);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityDataNode>> DATA_NODE =
@@ -180,6 +208,18 @@ public final class ChromaBlockEntities {
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityLightSwitch>> LIGHT_SWITCH =
 			BLOCK_ENTITIES.register("panel_switch", () -> new BlockEntityType<>(
 					TileEntityLightSwitch::new, ChromaBlocks.PANEL_SWITCH.get()));
+	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityMusicMemory>> MUSIC_MEMORY =
+			BLOCK_ENTITIES.register("music_memory", () -> new BlockEntityType<>(
+					TileEntityMusicMemory::new, ChromaBlocks.MUSIC_MEMORY.get()));
+	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityGOLTile>> GOL_TILE =
+			BLOCK_ENTITIES.register("gol_tile", () -> new BlockEntityType<>(
+					TileEntityGOLTile::new, ChromaBlocks.GOL_TILE.get()));
+	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityGOLController>> GOL_CONTROLLER =
+			BLOCK_ENTITIES.register("gol_controller", () -> new BlockEntityType<>(
+					TileEntityGOLController::new, ChromaBlocks.GOL_CONTROLLER.get()));
+	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityStructurePassword>> STRUCTURE_PASSWORD =
+			BLOCK_ENTITIES.register("structure_password", () -> new BlockEntityType<>(
+					TileEntityStructurePassword::new, ChromaBlocks.STRUCTURE_PASSWORD.get()));
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityColorLock>> COLOR_LOCK =
 			BLOCK_ENTITIES.register("color_lock", () -> new BlockEntityType<>(
 					TileEntityColorLock::new, ChromaBlocks.COLOR_LOCK.get()));
@@ -212,6 +252,8 @@ public final class ChromaBlockEntities {
 				(infuser, context) -> infuser.fluidHandler());
 		event.registerBlockEntity(Capabilities.Fluid.BLOCK, PLAYER_INFUSER.get(),
 				(infuser, context) -> infuser.fluidHandler());
+		event.registerBlockEntity(Capabilities.Fluid.BLOCK, COLLECTOR.get(),
+				(collector, context) -> collector.fluidHandler());
 	}
 
 	private ChromaBlockEntities() {}

@@ -13,6 +13,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.feature.Feature;
 import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
 import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
+import net.minecraft.server.level.WorldGenRegion;
 
 import reika.chromaticraft.block.dimension.BlockDimensionCore;
 import reika.chromaticraft.block.dimension.BlockVoidRift;
@@ -59,6 +60,13 @@ public final class FissureFeature extends Feature<NoneFeatureConfiguration> {
 		// The height each column's shielding reached, so the rifts can be set on top of them after.
 		Map<Long, Integer> columns = new HashMap<>();
 		FissurePatterns.Pattern pattern = FissurePatterns.random(world.getSeed(), rand);
+		// A Feature may only write the chunks in its WorldGenRegion. The fissure footprint is wider
+		// than a vanilla decoration and the old direct stamp silently failed at the far boundary after
+		// already carving the near half, leaving the perfectly flat stone wall seen in broken pits.
+		// Reject that placement before touching any block; command placement uses a ServerLevel-backed
+		// accessor and is unrestricted, while natural generation retries elsewhere at its normal rate.
+		if (!fitsWriteRegion(world, origin, pattern, w, my))
+			return false;
 		for (Vec3i cell : pattern.columns())
 			cut(world, origin.getX() + cell.getX(), origin.getY(), origin.getZ() + cell.getZ(), w, my,
 					columns);
@@ -78,6 +86,23 @@ public final class FissureFeature extends Feature<NoneFeatureConfiguration> {
 			placedRift = true;
 		}
 		return placedRift;
+	}
+
+	private static boolean fitsWriteRegion(WorldGenLevel world, BlockPos origin,
+			FissurePatterns.Pattern pattern, double width, int floor) {
+		if (!(world instanceof WorldGenRegion region))
+			return true;
+		int radius = (int)(width * Math.sqrt(1 + (origin.getY() + 12 - floor) / 4D)) + 1;
+		for (Vec3i cell : pattern.columns()) {
+			int x = origin.getX() + cell.getX();
+			int z = origin.getZ() + cell.getZ();
+			if (!region.isWithinWriteZone(new BlockPos(x - radius, origin.getY(), z - radius))
+					|| !region.isWithinWriteZone(new BlockPos(x + radius, origin.getY(), z - radius))
+					|| !region.isWithinWriteZone(new BlockPos(x - radius, origin.getY(), z + radius))
+					|| !region.isWithinWriteZone(new BlockPos(x + radius, origin.getY(), z + radius)))
+				return false;
+		}
+		return true;
 	}
 
 	/**

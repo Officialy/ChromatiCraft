@@ -10,8 +10,10 @@ import net.minecraft.server.level.ParticleStatus;
 import java.util.Random;
 import java.util.Collection;
 import java.util.List;
+import java.util.Locale;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.data.AtlasIds;
 import net.minecraft.resources.Identifier;
@@ -19,11 +21,15 @@ import net.minecraft.resources.Identifier;
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.registry.ChromaBlocks;
+import reika.chromaticraft.registry.ChromaFluids;
 import reika.chromaticraft.registry.ChromaSounds;
+import reika.chromaticraft.registry.ChromaTieredPlants;
 import reika.chromaticraft.magic.lore.Towers;
 import reika.chromaticraft.tileentity.auxiliary.TileEntityChromaCrystal;
 import reika.chromaticraft.render.ChromaRenderPipelines;
 import reika.dragonapi.instantiable.particlecontroller.CollectingPositionController;
+import reika.dragonapi.instantiable.data.immutable.DecimalPosition;
+import reika.dragonapi.instantiable.effects.LightningBolt;
 import reika.dragonapi.interfaces.PositionController;
 import reika.dragonapi.libraries.mathsci.ReikaPhysicsHelper;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
@@ -31,21 +37,262 @@ import reika.dragonapi.libraries.rendering.ReikaColorAPI;
 /** Reusable V33a ChromatiCraft particle families on the 26.2 particle pipeline. */
 public abstract class ChromaParticle extends SingleQuadParticle {
 
-    // False intentionally routes ADDITIVEDARK particles to the main framebuffer. The 26.2 particle
-    // target is an empty premultiplied-alpha layer; applying screen blending there and compositing it
-    // again destroys the original color equation. Main-target depth writes still let water/clouds
-    // sort correctly around the glow in the transparency post-pass.
+    // Translucent=true routes these through 26.2's particle target, so rune/pylon glows participate
+    // in the water/cloud transparency composition rather than being painted into main too early.
+    // Their pipelines depth-test against the scene but, like V33a's particle renderer, do not write
+    // depth; overlapping glow quads therefore accumulate instead of masking one another.
     private static final Layer ADDITIVE_TERRAIN = new Layer(
-            false, net.minecraft.client.renderer.texture.TextureAtlas.LOCATION_BLOCKS,
-            ChromaRenderPipelines.ADDITIVE_PARTICLE);
-    private static final Layer ADDITIVE_LASER_SHEET = new Layer(false,
+            true, net.minecraft.client.renderer.texture.TextureAtlas.LOCATION_BLOCKS,
+            ChromaRenderPipelines.LEGACY_ADDITIVE_PARTICLE);
+    private static final Layer ADDITIVE_LASER_SHEET = new Layer(true,
             Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "textures/particle/64x.png"),
             ChromaRenderPipelines.ADDITIVE_PARTICLE);
-    private static final Layer ADDITIVE_GLOBE_SHEET = new Layer(false,
+    private static final Layer ADDITIVE_GLOBE_SHEET = new Layer(true,
             Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "textures/particle/16x.png"),
             ChromaRenderPipelines.ADDITIVE_PARTICLE);
 
     private final boolean additive;
+
+	/**
+	 * Exact V33a {@code BlockTieredPlant.randomDisplayTick} particle branches. Vibrant Pods and
+	 * Glowing Roots intentionally have no branch in V33a; the first five plants use the original
+	 * positions, colour rolls, scales and signed gravity on the ported EntityCCBlurFX equivalent.
+	 */
+	public static void spawnTieredPlant(Level world, BlockPos pos, ChromaTieredPlants plant,
+			RandomSource random) {
+		if (!(world instanceof ClientLevel level)) return;
+		var player = Minecraft.getInstance().player;
+		if (player == null || !player.isCreative() && !plant.stage().isPlayerAtStage(player)) return;
+
+		double x = pos.getX();
+		double y = pos.getY();
+		double z = pos.getZ();
+		FadeGlow glow;
+		switch (plant) {
+			case AURA_BLOOM -> {
+				double vx = random.nextDouble() * 0.01 - 0.005;
+				double vz = random.nextDouble() * 0.01 - 0.005;
+				int green = random.nextInt(255);
+				glow = new FadeGlow(level, x + 0.5, y + 0.95, z + 0.5,
+						vx, 0, vz, green << 8 | 0xff, 60, 2, false);
+				glow.gravity = 0.015F;
+			}
+			case ROCK_FLOWER -> {
+				float gravity = 0.02F + 0.005F * random.nextFloat();
+				glow = new FadeGlow(level, x + 0.5, y + 0.65, z + 0.5,
+						0, 0, 0, 0xffffff, 60, 2, false);
+				glow.gravity = gravity;
+			}
+			case ESSENCE_LILY -> {
+				float gravity = 0.04F + 0.01F * random.nextFloat();
+				int red = random.nextInt(255);
+				glow = new FadeGlow(level, x + 0.5, y + 0.375, z + 0.5,
+						0, 0, 0, red << 16 | 0xff, 60, 4, false);
+				glow.gravity = -gravity;
+			}
+			case ELEMENT_BULBS -> {
+				float gravity = 0.02F + 0.005F * random.nextFloat();
+				int blue = random.nextInt(255);
+				glow = new FadeGlow(level, x + random.nextDouble(), y + 0.75,
+						z + random.nextDouble(), 0, 0, 0, 0xff00 | blue, 60, 2, false);
+				glow.gravity = gravity;
+			}
+			case RADIANCE_BUSH -> {
+				float gravity = 0.02F + 0.005F * random.nextFloat();
+				int green = random.nextInt(255);
+				double px = x + 0.25 + random.nextDouble() * 0.5;
+				double pz = z + 0.25 + random.nextDouble() * 0.5;
+				glow = new FadeGlow(level, px, y + 0.75, pz,
+						0, 0, 0, 0xff0000 | green << 8, 60, 2, false);
+				glow.gravity = -gravity;
+			}
+			case VIBRANT_POD, GLOWING_ROOTS -> { return; }
+			default -> { return; }
+		}
+		Minecraft.getInstance().particleEngine.add(glow);
+	}
+
+	/**
+	 * Exact V33a Personal Charger ambience: paired colour/white falling blurs around the floating
+	 * charger plus one rising rune selected from the four outer multiblock edges every client tick.
+	 */
+	public static void spawnPersonalCharger(Level world, BlockPos pos, CrystalElement color,
+			Random random) {
+		if (!(world instanceof ClientLevel level)) return;
+		double px = pos.getX() + 0.5 + (random.nextDouble() * 2 - 1);
+		double pz = pos.getZ() + 0.5 + (random.nextDouble() * 2 - 1);
+		double py = pos.getY() + (random.nextDouble() * 0.75 - 0.375);
+		float gravity = random.nextFloat() * 0.25F;
+		Blur outer = new Blur(level, px, py, pz, color.getColor(), 2F, 100);
+		Blur inner = new Blur(level, px, py, pz, 0xffffff, 1F, 100);
+		outer.gravity = inner.gravity = gravity;
+		Minecraft.getInstance().particleEngine.add(outer);
+		Minecraft.getInstance().particleEngine.add(inner);
+
+		double along = random.nextDouble() * 3;
+		py = pos.getY() - 5;
+		switch (random.nextInt(4)) {
+			case 0 -> { px = pos.getX() - 1.5 + along; pz = pos.getZ() - 1.5; }
+			case 1 -> { px = pos.getX() - 1.5 + along; pz = pos.getZ() + 2.5; }
+			case 2 -> { px = pos.getX() - 1.5; pz = pos.getZ() - 1.5 + along; }
+			default -> { px = pos.getX() + 2.5; pz = pos.getZ() - 1.5 + along; }
+		}
+		Rune rune = new Rune(level, px, py, pz, 0, 0, 0, color,
+				20 + random.nextInt(20), 2F);
+		rune.gravity = -0.0625F;
+		Minecraft.getInstance().particleEngine.add(rune);
+	}
+
+	/** Exact V33a enhanced Relay Source ambience: inward chroma droplets plus falling blended blurs. */
+	public static void spawnRelaySource(Level world, BlockPos pos, int ticksExisted, Random random) {
+		if (!(world instanceof ClientLevel level)) return;
+		if (random.nextInt(3) == 0) {
+			int dx = random.nextBoolean() ? 1 : -1;
+			int dz = random.nextBoolean() ? 1 : -1;
+			double x = pos.getX() + dx + random.nextDouble();
+			double y = pos.getY() - 2 + random.nextDouble();
+			double z = pos.getZ() + dz + random.nextDouble();
+			double speed = 0.03125;
+			double vy = 0.125 + random.nextDouble() * 0.0625;
+			Minecraft.getInstance().particleEngine.add(new Fluid(level, x, y, z,
+					(pos.getX() + 0.5 - x) * speed, vy,
+					(pos.getZ() + 0.5 - z) * speed, 1F, 60, (float)vy * 0.75F));
+		}
+		if (random.nextInt(2) == 0) {
+			double x = pos.getX() + 0.5 + (random.nextDouble() * 2 - 1) * 2.25;
+			double z = pos.getZ() + 0.5 + (random.nextDouble() * 2 - 1) * 2.25;
+			double y = pos.getY() + 0.75 + (random.nextDouble() * 2 - 1) * 0.5;
+			int life = Math.max(1, 40 + random.nextInt(201) - 100);
+			FadeGlow glow = new FadeGlow(level, x, y, z, 0, 0, 0,
+					CrystalElement.getBlendedColor(ticksExisted, 50), life, 1.25F, true);
+			glow.gravity = 0.03125F + random.nextFloat() * 0.06875F;
+			Minecraft.getInstance().particleEngine.add(glow);
+		}
+	}
+
+	/** Exact V33a relay idle mote: one coloured CenterBlur at the outward crystal tip. */
+	public static void spawnLumenRelay(Level world, BlockPos pos, Direction facing,
+			CrystalElement fixedColor, RandomSource random) {
+		if (!(world instanceof ClientLevel level)) return;
+		CrystalElement color = fixedColor != null ? fixedColor
+				: CrystalElement.elements[random.nextInt(CrystalElement.elements.length)];
+		double offset = facing.getStepX() + facing.getStepY() + facing.getStepZ() < 0
+				? 0.125 : 0.25;
+		double x = pos.getX() + 0.5 + facing.getStepX() * offset;
+		double y = pos.getY() + 0.5 + facing.getStepY() * offset;
+		double z = pos.getZ() + 0.5 + facing.getStepZ() * offset;
+		Minecraft.getInstance().particleEngine.add(new Blur(level, x, y, z, color.getColor(),
+				2 + random.nextFloat() * 2, 20));
+	}
+
+	/** Exact V33a Collector idle effect: a random elemental rune just outside the machine body. */
+	public static void spawnCollectorRune(Level world, BlockPos pos, RandomSource random) {
+		if (!(world instanceof ClientLevel level)) return;
+		double dx;
+		double dz;
+		do {
+			dx = (random.nextDouble() * 2 - 1) * 0.75;
+			dz = (random.nextDouble() * 2 - 1) * 0.75;
+		}
+		while (Math.sqrt(dx * dx + dz * dz) < 0.65);
+		CrystalElement color = CrystalElement.elements[random.nextInt(CrystalElement.elements.length)];
+		Minecraft.getInstance().particleEngine.add(new Rune(level,
+				pos.getX() + dx + 0.5, pos.getY() + random.nextDouble() + 0.5,
+				pos.getZ() + dz + 0.5, 0, 0, 0, color, 20, 1F));
+	}
+
+	/** V33a FARMERHARVEST packet: one large green blur travelling from machine to harvested crop. */
+	public static void spawnFarmerHarvest(Level world, BlockPos source, BlockPos target) {
+		if (!(world instanceof ClientLevel level)) return;
+		double speed = 0.15;
+		Minecraft.getInstance().particleEngine.add(new FadeGlow(level,
+				source.getX() + 0.5, source.getY() + 0.5, source.getZ() + 0.5,
+				speed * (target.getX() - source.getX()),
+				speed * (target.getY() - source.getY()),
+				speed * (target.getZ() - source.getZ()),
+				0x00c000, 10, 4F, false));
+	}
+
+	/** V33a dropped-shard charging mote: one matching rune rising from a randomized item edge. */
+	public static void spawnShardCharging(Level world, ItemEntity item, CrystalElement color,
+			RandomSource random) {
+		if (!(world instanceof ClientLevel level)) return;
+		double x = item.getX() + (random.nextDouble() * 2 - 1) * 0.5;
+		double z = item.getZ() + (random.nextDouble() * 2 - 1) * 0.5;
+		double vy = 0.03125 + random.nextDouble() * 0.0625;
+		Minecraft.getInstance().particleEngine.add(new Rune(level, x, item.getY(), z,
+				0, vy, 0, color, 20, 1F));
+	}
+
+	/** V33a SHARDBOOST packet: sixteen matching flares burst upward from the completed stack. */
+	public static void spawnShardBoostCompletion(Level world, BlockPos pos, CrystalElement color,
+			RandomSource random) {
+		if (!(world instanceof ClientLevel level)) return;
+		for (int i = 0; i < 16; i++) {
+			double vx = (random.nextDouble() * 2 - 1) * 0.125;
+			double vy = 0.0625 + random.nextDouble() * 0.125;
+			double vz = (random.nextDouble() * 2 - 1) * 0.125;
+			Minecraft.getInstance().particleEngine.add(new FadeGlow(level,
+					pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5,
+					vx, vy, vz, color.getColor(), 20, 1F, true));
+		}
+	}
+
+	/**
+	 * V33a {@code TileEntityLocusPoint.spawnParticles}: paired coloured/white collision-aware blurs
+	 * radiating from an Aura Locus or Dimension Core. Density follows the particle option, distance,
+	 * the locus' eight-tick pulse and the Aura Locus' one-to-four-particle multiplier exactly.
+	 */
+	public static void spawnLocusPoint(Level world, BlockPos pos, int color, boolean auraPoint,
+			int ticksExisted, int identityHash, Random random) {
+		if (!(world instanceof ClientLevel level) || Minecraft.getInstance().player == null)
+			return;
+		double count = auraPoint ? 1 + random.nextInt(4) : 1;
+		count *= 1 + 0.75 * Math.sin((ticksExisted + identityHash) / 8D);
+		ParticleStatus status = Minecraft.getInstance().options.particles().get();
+		if (status == ParticleStatus.DECREASED)
+			count *= 0.5;
+		else if (status == ParticleStatus.MINIMAL)
+			count *= 0.25;
+		double distanceFactor = Math.max(1,
+				Minecraft.getInstance().player.distanceToSqr(
+						pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5) / 1024D);
+		count /= distanceFactor;
+		int particles = count <= 1 ? random.nextDouble() < count ? 1 : 0 : (int)count;
+		for (int i = 0; i < particles; i++) {
+			double speed = 0.0625 + random.nextDouble() * 0.125;
+			if (random.nextInt(4) == 0)
+				speed *= 1.5 + random.nextDouble();
+			double[] velocity = ReikaPhysicsHelper.polarToCartesian(speed,
+					random.nextDouble() * 360, random.nextDouble() * 360);
+			int life = 10 + random.nextInt(21);
+			Blur outer = new Blur(level, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5,
+					color, 2, life);
+			Blur inner = new Blur(level, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5,
+					0xffffff, 1.1F, life);
+			outer.xd = inner.xd = velocity[0];
+			outer.yd = inner.yd = velocity[1];
+			outer.zd = inner.zd = velocity[2];
+			outer.hasPhysics = inner.hasPhysics = true;
+			Minecraft.getInstance().particleEngine.add(outer);
+			Minecraft.getInstance().particleEngine.add(inner);
+		}
+	}
+
+	/** Exact V33a {@code ChromaFX.poolRecipeParticles}: one rising chroma-fluid droplet per tick. */
+	public static void spawnPoolAlloying(net.minecraft.world.entity.item.ItemEntity item,
+			RandomSource random) {
+		if (!(item.level() instanceof ClientLevel level)) return;
+		double vx = random.nextDouble() * 0.0625 - 0.03125;
+		double vz = random.nextDouble() * 0.0625 - 0.03125;
+		double vy = 0.0625 + random.nextDouble() * 0.125;
+		float scale = 0.5F + random.nextFloat();
+		Fluid fluid = new Fluid(level, item.getX(), item.getY(), item.getZ(),
+				vx, vy, vz, scale, 60, 0.125F);
+		// V33a EntityChromaFluidFX sets noClip=true for the pool recipe's rising droplets.
+		fluid.hasPhysics = false;
+		Minecraft.getInstance().particleEngine.add(fluid);
+	}
 
 	/** Exact V33a Item Infuser six-fold inward Liquid Chroma spiral. */
 	public static void spawnItemInfuserCrafting(Level world, BlockPos pos, long tick, RandomSource random) {
@@ -432,48 +679,176 @@ public abstract class ChromaParticle extends SingleQuadParticle {
         return r << 16 | g << 8 | b;
     }
 
-    /** V33a doRays: a burst thrown from the monument in one element's colour as its note sounds. */
+    /**
+     * V33a {@code doRay}: a maximally-jagged eight-segment bolt from the monument centre to the
+     * answering Dimension Core. Every 1/32-segment point carries an outer element-coloured blur and
+     * a smaller white core; this is deliberately dense, as the no-depth-write particle pipeline lets
+     * those points merge into a luminous line instead of depth-masking one another.
+     */
     public static void spawnMonumentRay(Level world, BlockPos pos, CrystalElement color) {
         if (!(world instanceof ClientLevel level)) return;
-        for (int i = 0; i < 24; i++) {
-            double x = pos.getX() + 0.5;
-            double y = pos.getY() + 0.5;
-            double z = pos.getZ() + 0.5;
-            double theta = level.getRandom().nextDouble() * Math.PI * 2;
-            double phi = Math.acos(2 * level.getRandom().nextDouble() - 1);
-            double v = 0.25 + level.getRandom().nextDouble() * 0.25;
-            Blur blur = new Blur(level, x, y, z, color.getColor(), 3F + level.getRandom().nextFloat() * 2,
-                    30 + level.getRandom().nextInt(20));
-            blur.xd = v * Math.sin(phi) * Math.cos(theta);
-            blur.yd = v * Math.cos(phi);
-            blur.zd = v * Math.sin(phi) * Math.sin(theta);
-            Minecraft.getInstance().particleEngine.add(blur);
+        net.minecraft.core.Vec3i offset = reika.chromaticraft.tileentity.technical.TileEntityDimensionCore
+                .getLocation(color);
+        reika.dragonapi.instantiable.data.immutable.DecimalPosition start =
+                new reika.dragonapi.instantiable.data.immutable.DecimalPosition(
+                        pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
+        reika.dragonapi.instantiable.data.immutable.DecimalPosition end =
+                new reika.dragonapi.instantiable.data.immutable.DecimalPosition(
+                        pos.getX() + offset.getX() + 0.5,
+                        pos.getY() + offset.getY() + 0.5,
+                        pos.getZ() + offset.getZ() + 0.5);
+        reika.dragonapi.instantiable.effects.LightningBolt bolt =
+                new reika.dragonapi.instantiable.effects.LightningBolt(start, end, 8);
+        bolt.scaleVariance(1.25);
+        bolt.maximize();
+        int life = 20 + level.getRandom().nextInt(40);
+        for (int segment = 0; segment < bolt.nsteps; segment++) {
+            var from = bolt.getPosition(segment);
+            var to = bolt.getPosition(segment + 1);
+            for (double fraction = 0; fraction <= 1; fraction += 0.03125) {
+                var point = reika.dragonapi.instantiable.data.immutable.DecimalPosition
+                        .interpolate(from, to, fraction);
+                Minecraft.getInstance().particleEngine.add(new Blur(level,
+                        point.xCoord, point.yCoord, point.zCoord, color.getColor(), 5F, life));
+                Minecraft.getInstance().particleEngine.add(new Blur(level,
+                        point.xCoord, point.yCoord, point.zCoord, 0xFFFFFF, 2F, life));
+            }
         }
     }
 
     /**
-     * The score's non-ray events, which upstream distinguishes only by how many particles they throw and
-     * how fast: flares are the plain beat, clouds hang, twirls and pinwheels turn.
+     * Exact visible half of V33a {@code completeMonumentClient}: 32–95 six-scale wandering seeds at
+     * the controller, followed by a white-to-element beam from the centre to every Dimension Core.
+     * The old method calculates an unused Cartesian velocity before multiplying each seed's own
+     * wandering speed by three; {@link FloatingSeed#setMotion} expresses that surviving behaviour.
      */
+    public static void spawnMonumentCompletion(Level world, BlockPos pos) {
+        if (!(world instanceof ClientLevel level)) return;
+        RandomSource rand = level.getRandom();
+        int count = 32 + rand.nextInt(64);
+        for (int i = 0; i < count; i++) {
+            double phi = rand.nextDouble() * 360;
+            double theta = plusMinus(rand, 0, 90);
+            int color = CrystalElement.elements[rand.nextInt(CrystalElement.elements.length)].getColor();
+            int life = 30 + rand.nextInt(40);
+            FloatingSeed seed = new FloatingSeed(level,
+                    pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5,
+                    phi, theta, 6, life, color, color);
+            seed.setMotion(0.0625 * 3, 60, 2.25);
+            Minecraft.getInstance().particleEngine.add(seed);
+        }
+        for (CrystalElement element : CrystalElement.elements) {
+            BlockPos core = pos.offset(
+                    reika.chromaticraft.tileentity.technical.TileEntityDimensionCore.getLocation(element));
+            spawnCoreBeam(level, pos, core, CrystalElement.WHITE, element);
+        }
+    }
+
+    /** V33a {@code EventType.doEventClient}; ordinals follow MonumentRitualScore.EventType. */
     public static void spawnMonumentEvent(Level world, BlockPos pos, int ordinal) {
         if (!(world instanceof ClientLevel level)) return;
-        int count = switch (ordinal) {
-            case 1 -> 64;
-            case 2 -> 24;
-            default -> 32 + level.getRandom().nextInt(48);
-        };
+        switch (ordinal) {
+            case 0 -> spawnMonumentFlares(level, pos);
+            case 1 -> spawnMonumentCloud(level, pos);
+            case 2 -> spawnMonumentParticleRing(level, pos);
+            case 3 -> spawnMonumentTwirl(level, pos);
+            case 4 -> spawnMonumentPinwheel(level, pos);
+            default -> {
+                // VORTEXGROW is state owned by MonumentRitualEffects and has no one-shot particles.
+            }
+        }
+    }
+
+    private static void spawnMonumentFlares(ClientLevel level, BlockPos pos) {
+        RandomSource rand = level.getRandom();
+        int count = 32 + rand.nextInt(48);
         for (int i = 0; i < count; i++) {
-            double a = level.getRandom().nextDouble() * Math.PI * 2;
-            double r = level.getRandom().nextDouble() * 6;
-            double x = pos.getX() + 0.5 + r * Math.cos(a);
-            double z = pos.getZ() + 0.5 + r * Math.sin(a);
-            double y = pos.getY() + 0.5 + level.getRandom().nextDouble() * 6 - 3;
-            int color = CrystalElement.elements[level.getRandom().nextInt(
-                    CrystalElement.elements.length)].getColor();
-            Blur blur = new Blur(level, x, y, z, color, 2F + level.getRandom().nextFloat() * 3,
-                    40 + level.getRandom().nextInt(40));
-            blur.yd = 0.05 + level.getRandom().nextDouble() * 0.1;
-            Minecraft.getInstance().particleEngine.add(blur);
+            double[] velocity = ReikaPhysicsHelper.polarToCartesian(
+                    0.125 + rand.nextDouble() * 0.375,
+                    rand.nextDouble() * 360, rand.nextDouble() * 360);
+            Flare flare = new Flare(level, pos.getX() + 0.5, pos.getY() + 0.5,
+                    pos.getZ() + 0.5, CrystalElement.WHITE, 0, 6);
+            flare.xd = velocity[0];
+            flare.yd = velocity[1];
+            flare.zd = velocity[2];
+            Minecraft.getInstance().particleEngine.add(flare);
+        }
+    }
+
+    private static void spawnMonumentCloud(ClientLevel level, BlockPos pos) {
+        RandomSource rand = level.getRandom();
+        int count = 256 + rand.nextInt(129);
+        for (int i = 0; i < count; i++) {
+            double angleDegrees = rand.nextDouble() * 360;
+            double angle = Math.toRadians(angleDegrees);
+            double radialFraction = rand.nextDouble();
+            double radius = radialFraction * 25;
+            double x = pos.getX() + 0.5 + radius * Math.cos(angle);
+            double z = pos.getZ() + 0.5 + radius * Math.sin(angle);
+            int height = rand.nextInt(rand.nextBoolean() ? 6 : 12);
+            double y = 1 + level.getHeight(
+                    net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING,
+                    net.minecraft.util.Mth.floor(x), net.minecraft.util.Mth.floor(z)) + height;
+            int life = 120 + rand.nextInt(121);
+            float scale = 4 + rand.nextFloat() * 8;
+            int color = ReikaColorAPI.getModifiedHue(0xFF0000, (int)angleDegrees);
+            color = mixColors(color, 0xFFFFFF,
+                    Math.min(1, (float)(radialFraction * radialFraction * 4)));
+            FloatingSeed seed = new FloatingSeed(level, x, y, z, 0, 90, scale, life,
+                    color, color, "bigflare", true, 0.03125, 90)
+                    .setMotion(0.03125, 90, 2.25 * 7, 1.5 * 0.33);
+            Minecraft.getInstance().particleEngine.add(seed);
+        }
+    }
+
+    private static void spawnMonumentParticleRing(ClientLevel level, BlockPos pos) {
+        RandomSource rand = level.getRandom();
+        double radius = 33 / 2D;
+        double y = pos.getY() + 6.5;
+        for (int angle = 0; angle < 360; angle++) {
+            double radians = Math.toRadians(angle);
+            float scale = (1 + rand.nextFloat()) * 4;
+            int color = CrystalElement.getBlendedColor((int)((angle + 180 - 12.25) * 2), 45);
+            int life = 60 + rand.nextInt(40);
+            float gravity = (float)plusMinus(rand, 0, 0.125);
+            Minecraft.getInstance().particleEngine.add(new RitualBlur(level,
+                    pos.getX() + 0.5 + radius * Math.cos(radians), y,
+                    pos.getZ() + 0.5 + radius * Math.sin(radians),
+                    color, scale, life, gravity, "centerblur3", true, false));
+        }
+    }
+
+    private static void spawnMonumentTwirl(ClientLevel level, BlockPos pos) {
+        RandomSource rand = level.getRandom();
+        double y = pos.getY() - 3.5;
+        for (int layer = 0; layer <= 8; layer += 4) {
+            double step = 30D / (1 + layer / 4D);
+            for (double angle = 0; angle < 360; angle += step) {
+                double radius = 2 + layer;
+                double initialAngle = angle + layer * 22.5;
+                float scale = (float)(4 - radius / 8);
+                int life = 120 + rand.nextInt(120);
+                Minecraft.getInstance().particleEngine.add(new RitualSpiral(level,
+                        pos.getX() + 0.5, y, pos.getZ() + 0.5,
+                        radius, initialAngle, 4 - layer / 4D,
+                        0.0625 * 2 * (1 + layer / 4D), 0,
+                        scale, life, true, false,
+                        initialAngle, 5 - layer / 4D));
+            }
+        }
+    }
+
+    private static void spawnMonumentPinwheel(ClientLevel level, BlockPos pos) {
+        double y = pos.getY() - 3.5;
+        for (double arm = 0; arm < 360; arm += 24) {
+            for (double radius = 3; radius <= 15; radius += 0.25) {
+                double angle = arm - radius * 6;
+                float scale = (float)(7.5 - radius / 2.5);
+                Minecraft.getInstance().particleEngine.add(new RitualSpiral(level,
+                        pos.getX() + 0.5, y, pos.getZ() + 0.5,
+                        radius, angle, radius / 3, 0, 0,
+                        scale, 60, false, true, 0, 0));
+            }
         }
     }
 
@@ -869,6 +1244,124 @@ public abstract class ChromaParticle extends SingleQuadParticle {
 
     /** V33a EntityLumaBurst.doParticles(): a single short-lived fade-glow along the burst's recent
      *  trail, darkened to half brightness. */
+    /** Exact V33a three-layer moving laser trail, including the manipulator's long-lived reveal. */
+    public static void spawnLaserPulseTrail(Level level, double x, double y, double z, int color,
+            RandomSource random) {
+        if (!(level instanceof ClientLevel clientLevel)) return;
+        int life = 10 + random.nextInt(15);
+        var player = Minecraft.getInstance().player;
+        boolean manipulator = player != null && player.getMainHandItem().is(
+                reika.chromaticraft.registry.ChromaItems.MANIPULATOR.get());
+        if (random.nextInt(manipulator ? 3 : 12) == 0) life *= 16;
+        double[] radii = {0.1875, 0.125, 0.0625};
+        for (int i = 0; i < radii.length; i++) {
+            float scale = (1 + random.nextFloat()) / (i + 1F);
+            double radius = radii[i];
+            double px = x + (random.nextDouble() * 2 - 1) * radius;
+            double py = y + (random.nextDouble() * 2 - 1) * radius;
+            double pz = z + (random.nextDouble() * 2 - 1) * radius;
+            Minecraft.getInstance().particleEngine.add(new FadeGlow(clientLevel,
+                    px, py, pz, 0, 0, 0, color, life, scale, false));
+        }
+    }
+
+	/**
+	 * V33a weak-repeater burn-down: increasingly frequent three-layer warning flares, followed during
+	 * the first half of the fuse by occasional four-segment elemental lightning discharges.
+	 */
+	public static void spawnWeakRepeaterBreakdown(Level world, BlockPos pos, CrystalElement overload,
+			int failureTicks, Random random) {
+		if (!(world instanceof ClientLevel level) || failureTicks <= 0) return;
+		double fraction = Math.min(1, failureTicks / 320D);
+		double frequency = 0.8 * (1 - Math.pow(fraction, 1D / 6D));
+		CrystalElement element = CrystalElement.elements[(failureTicks / 16) % CrystalElement.elements.length];
+		if (random.nextDouble() * 100 < Math.sqrt(fraction) * 100) {
+			double x = pos.getX() + 0.5 + (random.nextDouble() * 2 - 1);
+			double y = pos.getY() + 0.5 + (random.nextDouble() * 2 - 1);
+			double z = pos.getZ() + 0.5 + (random.nextDouble() * 2 - 1);
+			float scale = 2 + random.nextFloat() * 5;
+			int life = 10 + random.nextInt(10);
+			Minecraft.getInstance().particleEngine.add(new RapidGlow(level, x, y, z,
+					0, 0, 0, element.getColor(), life, scale, "turbo", true));
+			Minecraft.getInstance().particleEngine.add(new RapidGlow(level, x, y, z,
+					0, 0, 0, 0xffffff, life, scale / 1.125F, "turbo", true));
+			Minecraft.getInstance().particleEngine.add(new RapidGlow(level, x, y, z,
+					0, 0, 0, 0x000000, life, scale / 2.5F, "transfade", false));
+		}
+		if (fraction >= 0.5 || random.nextDouble() >= 0.125 * frequency * frequency) return;
+
+		double radius = 6 + random.nextDouble() * 4;
+		double endX = pos.getX() + 0.5 + (random.nextDouble() * 2 - 1) * radius;
+		double endY = pos.getY() + 0.05 + random.nextDouble() * 5.95;
+		double endZ = pos.getZ() + 0.5 + (random.nextDouble() * 2 - 1) * radius;
+		LightningBolt bolt = new LightningBolt(new DecimalPosition(pos.getX() + 0.5,
+				pos.getY() + 0.5, pos.getZ() + 0.5), new DecimalPosition(endX, endY, endZ), 4)
+				.setRandom(random).setVariance(0.375);
+		bolt.maximize();
+		int life = 20 + random.nextInt(20);
+		for (int step = 0; step < bolt.nsteps; step++) {
+			DecimalPosition from = bolt.getPosition(step);
+			DecimalPosition to = bolt.getPosition(step + 1);
+			for (double interpolation = 0; interpolation <= 1; interpolation += 0.03125) {
+				double x = from.xCoord + interpolation * (to.xCoord - from.xCoord);
+				double y = from.yCoord + interpolation * (to.yCoord - from.yCoord);
+				double z = from.zCoord + interpolation * (to.zCoord - from.zCoord);
+				Minecraft.getInstance().particleEngine.add(new RapidGlow(level, x, y, z,
+						0, 0, 0, element.getColor(), life, 2, "fade", true));
+				Minecraft.getInstance().particleEngine.add(new RapidGlow(level, x, y, z,
+						0, 0, 0, 0xffffff, life, 1, "fade", true));
+			}
+		}
+		float pitch = reika.chromaticraft.auxiliary.CrystalMusicManager.instance
+				.getRandomScaledDing(overload != null ? overload : element);
+		level.playLocalSound(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5,
+				ChromaSounds.DISCHARGE.getSoundEvent(), ChromaSounds.DISCHARGE.getCategory(),
+				0.125F, pitch, false);
+	}
+
+	/** Exact V33a terminal weak-repeater burst: 32-95 radial, three-layer expanding blurs. */
+	public static void spawnWeakRepeaterFailureBurst(Level world, BlockPos pos, CrystalElement color,
+			Random random) {
+		if (!(world instanceof ClientLevel level) || color == null) return;
+		int count = 32 + random.nextInt(64);
+		int bright = ReikaColorAPI.mixColors(color.getColor(), 0xffffff, 0.25F);
+		int dark = ReikaColorAPI.mixColors(color.getColor(), 0x000000, 0.25F);
+		for (int i = 0; i < count; i++) {
+			double[] velocity = ReikaPhysicsHelper.polarToCartesian(
+					0.125 + random.nextDouble() * 0.25,
+					random.nextDouble() * 360, random.nextDouble() * 360);
+			double x = pos.getX() + random.nextDouble();
+			double y = pos.getY() + random.nextDouble();
+			double z = pos.getZ() + random.nextDouble();
+			float scale = 5 + 2.5F * random.nextFloat();
+			Minecraft.getInstance().particleEngine.add(new RapidGlow(level, x, y, z,
+					velocity[0], velocity[1], velocity[2], color.getColor(), 20, scale, "fade", true));
+			Minecraft.getInstance().particleEngine.add(new RapidGlow(level, x, y, z,
+					velocity[0], velocity[1], velocity[2], bright, 20, scale * 0.5F, "fade", true));
+			Minecraft.getInstance().particleEngine.add(new RapidGlow(level, x, y, z,
+					velocity[0], velocity[1], velocity[2], dark, 20, scale * 0.25F,
+					"transfade", false));
+		}
+		level.playLocalSound(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5,
+				ChromaSounds.POWERDOWN.getSoundEvent(), ChromaSounds.POWERDOWN.getCategory(), 1, 1, false);
+	}
+
+    /** V33a laser collision burst; silent effectors suppress this at the entity. */
+    public static void spawnLaserPulseImpact(Level level, double x, double y, double z, int color,
+            RandomSource random) {
+        if (!(level instanceof ClientLevel clientLevel)) return;
+        int life = 10 + random.nextInt(15);
+        int count = 8 + random.nextInt(24);
+        for (int i = 0; i < count; i++) {
+            float scale = 1 + random.nextFloat();
+            double px = x + (random.nextDouble() * 2 - 1) * 0.75;
+            double py = y + (random.nextDouble() * 2 - 1) * 0.75;
+            double pz = z + (random.nextDouble() * 2 - 1) * 0.75;
+            Minecraft.getInstance().particleEngine.add(new FadeGlow(clientLevel,
+                    px, py, pz, 0, 0, 0, color, life, scale, true));
+        }
+    }
+
     public static void spawnLumaBurstTrail(Level level, double x, double y, double z, int color,
             int age) {
         if (!(level instanceof ClientLevel clientLevel)) return;
@@ -905,7 +1398,8 @@ public abstract class ChromaParticle extends SingleQuadParticle {
         double x = pos.getX() + 0.5 + (random.nextDouble() * 2 - 1) * 0.375;
         double z = pos.getZ() + 0.5 + (random.nextDouble() * 2 - 1) * 0.375;
         Minecraft.getInstance().particleEngine.add(new AnimatedSheetParticle(level,
-                x, pos.getY(), z, 0, 0.1, 0, CrystalElement.WHITE, 1F, ADDITIVE_LASER_SHEET));
+                x, pos.getY(), z, 0, 0.1, 0, CrystalElement.WHITE, 1F,
+                ADDITIVE_LASER_SHEET, 4));
     }
 
     /**
@@ -979,7 +1473,7 @@ public abstract class ChromaParticle extends SingleQuadParticle {
         double vz = z < pos.getZ() ? v : -v;
         if (random.nextBoolean()) vx = 0; else vz = 0;
         AnimatedSheetParticle blur = new AnimatedSheetParticle(level, x, y, z, vx, 0, vz,
-                color, 2F, ADDITIVE_LASER_SHEET);
+                color, 2F, ADDITIVE_LASER_SHEET, 4);
         blur.hasPhysics = false;
         Minecraft.getInstance().particleEngine.add(blur);
 
@@ -1014,7 +1508,7 @@ public abstract class ChromaParticle extends SingleQuadParticle {
                 double y = pos.getY() + 1 + fraction * offset[1];
                 double z = pos.getZ() + 0.5 + fraction * offset[2];
                 Minecraft.getInstance().particleEngine.add(new AnimatedSheetParticle(level,
-                        x, y, z, 0, 0, 0, color, 2F, ADDITIVE_LASER_SHEET));
+                        x, y, z, 0, 0, 0, color, 2F, ADDITIVE_LASER_SHEET, 0));
             }
         }
         if (tier.ordinal() >= reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe.Tier.MULTIBLOCK.ordinal()
@@ -1030,7 +1524,7 @@ public abstract class ChromaParticle extends SingleQuadParticle {
                         x, y, z, speed * (pos.getX() + 0.5 - x),
                         0.0125 + speed * (pos.getY() + 0.5 - y),
                         speed * (pos.getZ() + 0.5 - z), CrystalElement.WHITE, 1F,
-                        ADDITIVE_GLOBE_SHEET));
+                        ADDITIVE_GLOBE_SHEET, 0));
             }
         }
         if (tier != reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe.Tier.PYLON
@@ -1071,12 +1565,128 @@ public abstract class ChromaParticle extends SingleQuadParticle {
                     (random.nextDouble() - 0.5) * 0.25, 1.5F));
         }
     }
+
+	/** V33a Coalescence Orchid: both source-fluid sprites curve into the hanging flower each tick. */
+	public static void spawnCobbleGeneratorWorking(Level world, BlockPos orchid, BlockPos primary,
+			BlockPos secondary, net.minecraft.world.level.material.Fluid primaryFluid,
+			net.minecraft.world.level.material.Fluid secondaryFluid, int effectMask,
+			RandomSource random) {
+		if (!(world instanceof ClientLevel level)) return;
+		Minecraft.getInstance().particleEngine.add(fluidAttractor(level, primary, primaryFluid,
+				orchid, random));
+		Minecraft.getInstance().particleEngine.add(fluidAttractor(level, secondary, secondaryFluid,
+				orchid, random));
+
+		float gravity = 0.03125F + random.nextFloat() * 0.0625F;
+		float scale = 1F + random.nextFloat() * 0.5F;
+		CrystalElement color;
+		double y;
+		if (random.nextBoolean()) {
+			color = fluidRune(random.nextBoolean() ? primaryFluid : secondaryFluid, random);
+			y = orchid.getY() + random.nextDouble();
+		}
+		else {
+			gravity = -gravity;
+			color = randomElement(effectMask, random);
+			BlockPos.MutableBlockPos floor = orchid.below().mutable();
+			while (floor.getY() > level.getMinY() && level.getBlockState(floor).isAir())
+				floor.move(Direction.DOWN);
+			y = floor.getY() + 1;
+		}
+		if (color != null) {
+			Rune rune = new Rune(level, orchid.getX() + random.nextDouble(), y,
+					orchid.getZ() + random.nextDouble(), 0, 0, 0, color, 20, scale);
+			rune.gravity = gravity;
+			Minecraft.getInstance().particleEngine.add(rune);
+		}
+	}
+
+	private static FluidAttractorParticle fluidAttractor(ClientLevel level, BlockPos source,
+			net.minecraft.world.level.material.Fluid fluid, BlockPos orchid, RandomSource random) {
+		double x = source.getX() + 0.15 + random.nextDouble() * 0.7;
+		double z = source.getZ() + 0.15 + random.nextDouble() * 0.7;
+		TextureAtlasSprite fluidSprite = Minecraft.getInstance().getModelManager()
+				.getBlockStateModelSet().getParticleMaterial(
+						fluid.defaultFluidState().createLegacyBlock()).sprite();
+		return new FluidAttractorParticle(level, x, source.getY() + 0.85, z, fluidSprite,
+				orchid.getX() + 0.5, orchid.getY() - 0.375, orchid.getZ() + 0.5,
+				0.0625 / 24D, 0.15 + random.nextDouble() * 0.01,
+				0.975 + random.nextDouble() * 0.01);
+	}
+
+	/** V33a Heat Lily output modifier: three orange tri-dot columns rise below the orchid. */
+	public static void spawnCobbleGeneratorModifier(Level world, BlockPos pos, int ticksExisted) {
+		if (!(world instanceof ClientLevel level)) return;
+		double radius = 0.75 + 0.25 * Math.sin(ticksExisted / 10D);
+		for (int angle = 0; angle < 360; angle += 120) {
+			double radians = Math.toRadians(angle);
+			Minecraft.getInstance().particleEngine.add(new CobbleModifierParticle(level,
+					pos.getX() + 0.5 + radius * Math.sin(radians), pos.getY() - 4,
+					pos.getZ() + 0.5 + radius * Math.cos(radians)));
+		}
+	}
+
+	/** V33a COBBLEGENEND packet: a complete 72-ray success/failure ring. */
+	public static void spawnCobbleGeneratorEnd(Level world, BlockPos pos,
+			CrystalElement element, boolean success) {
+		if (!(world instanceof ClientLevel level)) return;
+		RandomSource random = level.getRandom();
+		int offset = random.nextInt(5);
+		int color = element != null ? element.getColor() : 0x22aaff;
+		double speed = success ? 0.0625 : 0.375;
+		for (int angle = offset; angle < 360; angle += 5) {
+			double radians = Math.toRadians(angle);
+			Minecraft.getInstance().particleEngine.add(new CobbleBurstParticle(level,
+					pos.getX() + 0.5, pos.getY() + 0.125, pos.getZ() + 0.5,
+					Math.cos(radians) * speed, success ? -0.125 : 0,
+					Math.sin(radians) * speed, color, success));
+		}
+	}
+
+	private static CrystalElement randomElement(int mask, RandomSource random) {
+		if (mask == 0) return null;
+		int count = Integer.bitCount(mask);
+		int target = random.nextInt(count);
+		for (CrystalElement element : CrystalElement.elements) {
+			if ((mask & 1 << element.ordinal()) != 0 && target-- == 0) return element;
+		}
+		return null;
+	}
+
+	private static CrystalElement fluidRune(net.minecraft.world.level.material.Fluid fluid,
+			RandomSource random) {
+		List<CrystalElement> choices = new java.util.ArrayList<>();
+		choices.add(CrystalElement.CYAN);
+		var type = fluid.getFluidType();
+		if (type.getTemperature() > 900) choices.add(CrystalElement.ORANGE);
+		if (type.getTemperature() < 270) choices.add(CrystalElement.WHITE);
+		if (type.isLighterThanAir()) choices.add(CrystalElement.LIME);
+		if (type.getLightLevel() > 0) choices.add(CrystalElement.BLUE);
+		if (type.getDensity() > 4000) choices.add(CrystalElement.RED);
+		String name = net.minecraft.core.registries.BuiltInRegistries.FLUID.getKey(fluid)
+				.getPath().toLowerCase(Locale.ROOT);
+		if (name.contains("oil")) choices.add(CrystalElement.BROWN);
+		if (name.contains("fuel")) choices.add(CrystalElement.YELLOW);
+		if (name.contains("xp") || fluid == ChromaFluids.CHROMA.get())
+			choices.add(CrystalElement.PURPLE);
+		if (name.contains("bio") || name.contains("honey") || name.contains("seed"))
+			choices.add(CrystalElement.GREEN);
+		return choices.get(random.nextInt(choices.size()));
+	}
+
     protected ChromaParticle(ClientLevel level, double x, double y, double z,
             String icon, boolean additive) {
         super(level, x, y, z, sprite(icon));
         this.additive = additive;
         this.hasPhysics = false;
     }
+
+	protected ChromaParticle(ClientLevel level, double x, double y, double z,
+			TextureAtlasSprite sprite, boolean additive) {
+		super(level, x, y, z, sprite);
+		this.additive = additive;
+		this.hasPhysics = false;
+	}
 
     @Override
     protected Layer getLayer() {
@@ -1094,10 +1704,110 @@ public abstract class ChromaParticle extends SingleQuadParticle {
     }
 
     private static TextureAtlasSprite sprite(String icon) {
+        String path = icon.startsWith("block/") ? icon : "block/icons/" + icon;
         return Minecraft.getInstance().getAtlasManager().getAtlasOrThrow(AtlasIds.BLOCKS)
                 .getSprite(Identifier.fromNamespaceAndPath(
-                        ChromatiCraft.MODID, "block/icons/" + icon));
+                        ChromatiCraft.MODID, path));
     }
+
+	private static final class FluidAttractorParticle extends ChromaParticle {
+		private final double targetX;
+		private final double targetY;
+		private final double targetZ;
+		private final double acceleration;
+		private final double damping;
+		private double horizontalVelocity;
+		private double maximumVerticalVelocity;
+		private double verticalVelocity;
+
+		FluidAttractorParticle(ClientLevel level, double x, double y, double z,
+				TextureAtlasSprite sprite, double targetX, double targetY, double targetZ,
+				double acceleration, double verticalVelocity, double damping) {
+			super(level, x, y, z, sprite, false);
+			this.targetX = targetX;
+			this.targetY = targetY;
+			this.targetZ = targetZ;
+			this.acceleration = acceleration;
+			this.verticalVelocity = verticalVelocity;
+			this.maximumVerticalVelocity = verticalVelocity;
+			this.damping = damping;
+			this.lifetime = 70;
+			this.quadSize = 0.1F;
+		}
+
+		@Override protected Layer getLayer() { return Layer.bySprite(sprite); }
+
+		@Override public void tick() {
+			this.xo = this.x;
+			this.yo = this.y;
+			this.zo = this.z;
+			if (this.age++ >= this.lifetime) {
+				this.remove();
+				return;
+			}
+			double verticalAcceleration = -0.125 * (this.y - targetY - 0.5);
+			verticalVelocity = net.minecraft.util.Mth.clamp(verticalVelocity + verticalAcceleration,
+					-maximumVerticalVelocity, maximumVerticalVelocity);
+			maximumVerticalVelocity *= damping;
+			horizontalVelocity += acceleration;
+			double dx = this.x - targetX;
+			double dy = this.y - targetY;
+			double dz = this.z - targetZ;
+			double distanceSquared = Math.max(1.0e-6, dx * dx + dy * dy + dz * dz);
+			this.move(-dx * horizontalVelocity / distanceSquared, verticalVelocity,
+					-dz * horizontalVelocity / distanceSquared);
+		}
+	}
+
+	private static final class CobbleModifierParticle extends ChromaParticle {
+		CobbleModifierParticle(ClientLevel level, double x, double y, double z) {
+			super(level, x, y, z, "tridot-strip", true);
+			this.yd = 0.1875;
+			this.quadSize = 0.25F;
+			this.lifetime = 25;
+			this.setRgb(CrystalElement.ORANGE.getColor());
+		}
+
+		@Override public void tick() {
+			this.xo = this.x;
+			this.yo = this.y;
+			this.zo = this.z;
+			if (this.age++ >= this.lifetime) this.remove();
+			else this.move(0, this.yd, 0);
+		}
+	}
+
+	private static final class CobbleBurstParticle extends ChromaParticle {
+		private final float fullScale = 1F;
+
+		CobbleBurstParticle(ClientLevel level, double x, double y, double z,
+				double vx, double vy, double vz, int color, boolean success) {
+			super(level, x, y, z, success ? "centerblur3" : "sparkle", true);
+			this.xd = vx;
+			this.yd = vy;
+			this.zd = vz;
+			this.gravity = success ? -0.125F : 0;
+			this.lifetime = 20;
+			this.setRgb(color);
+		}
+
+		@Override public void tick() {
+			this.xo = this.x;
+			this.yo = this.y;
+			this.zo = this.z;
+			if (this.age++ >= this.lifetime) {
+				this.remove();
+				return;
+			}
+			this.yd -= 0.04D * this.gravity;
+			this.move(this.xd, this.yd, this.zd);
+			int particleAge = Math.max(this.age, 1);
+			float phase = this.lifetime / (float)particleAge >= 12
+					? particleAge * 12F / this.lifetime
+					: 1F - particleAge / (float)this.lifetime;
+			this.quadSize = 0.1F * fullScale * Math.max(0, phase);
+		}
+	}
 
     /** V33a EntityFlareFX: 30-59 ticks, random signed gravity, flare icon, additive color. */
     public static final class Flare extends ChromaParticle {
@@ -1144,6 +1854,7 @@ public abstract class ChromaParticle extends SingleQuadParticle {
         private double particleVelocity = 0.0625;
         private double freedom = 60;
         private double angularSpeed = 2.25;
+        private double tolerance = 1.5;
 
         private FloatingSeed(ClientLevel level, double x, double y, double z,
                 double windAngle, double climbAngle, float scale, int lifetime,
@@ -1174,9 +1885,15 @@ public abstract class ChromaParticle extends SingleQuadParticle {
         }
 
         public FloatingSeed setMotion(double velocity, double freedom, double angularSpeed) {
+			return this.setMotion(velocity, freedom, angularSpeed, 1.5);
+		}
+
+		private FloatingSeed setMotion(double velocity, double freedom, double angularSpeed,
+				double tolerance) {
             this.particleVelocity = velocity;
             this.freedom = freedom;
             this.angularSpeed = angularSpeed;
+			this.tolerance = tolerance;
             this.randomizeXZ();
             this.randomizeY();
             this.updateVelocity();
@@ -1192,8 +1909,8 @@ public abstract class ChromaParticle extends SingleQuadParticle {
                 return;
             }
             this.move(this.xd, this.yd, this.zd);
-            if (Math.abs(this.targetXZ - this.angleXZ) <= 1.5) this.randomizeXZ();
-            if (Math.abs(this.targetY - this.angleY) <= 1.5) this.randomizeY();
+			if (Math.abs(this.targetXZ - this.angleXZ) <= this.tolerance) this.randomizeXZ();
+			if (Math.abs(this.targetY - this.angleY) <= this.tolerance) this.randomizeY();
             this.angleXZ += this.angleXZVelocity;
             this.angleY += this.angleYVelocity;
             this.updateVelocity();
@@ -1316,13 +2033,16 @@ public abstract class ChromaParticle extends SingleQuadParticle {
         }
     }
 
-    /** The original 64-frame ping-pong particles backed by the retained 16x2 legacy sheets. */
+    /** The original 64-frame ping-pong particles backed by rows in the retained 16x16 sheets. */
     private static final class AnimatedSheetParticle extends ChromaParticle {
         private final Layer sheet;
+        private final int firstRow;
         AnimatedSheetParticle(ClientLevel level, double x, double y, double z,
-                double vx, double vy, double vz, CrystalElement color, float scale, Layer sheet) {
+                double vx, double vy, double vz, CrystalElement color, float scale, Layer sheet,
+                int firstRow) {
             super(level, x, y, z, "flare", true);
             this.sheet = sheet;
+            this.firstRow = firstRow;
             this.xd = vx;
             this.yd = vy;
             this.zd = vz;
@@ -1337,11 +2057,11 @@ public abstract class ChromaParticle extends SingleQuadParticle {
             if (age < 32) return age - 16;
             return 15 - age % 16;
         }
-        private int frameY() { return age >= 16 && age < 48 ? 1 : 0; }
+        private int frameY() { return firstRow + (age >= 16 && age < 48 ? 1 : 0); }
         @Override protected float getU0() { return frameX() / 16F; }
         @Override protected float getU1() { return (frameX() + 1) / 16F; }
-        @Override protected float getV0() { return frameY() / 2F; }
-        @Override protected float getV1() { return (frameY() + 1) / 2F; }
+        @Override protected float getV0() { return frameY() / 16F; }
+        @Override protected float getV1() { return (frameY() + 1) / 16F; }
     }
 
     /** V33a EntityRuneFX with constant no-gravity motion and the real per-element rune sprite. */
@@ -1354,7 +2074,7 @@ public abstract class ChromaParticle extends SingleQuadParticle {
         }
         Rune(ClientLevel level, double x, double y, double z, double vx, double vy, double vz,
                 CrystalElement color, int life, float scale, boolean fading) {
-            super(level, x, y, z, "runes/real/tile" + color.ordinal() + "_0", true);
+            super(level, x, y, z, "block/runes/real/tile" + color.ordinal() + "_0", true);
             this.xd = vx;
             this.yd = vy;
             this.zd = vz;
@@ -1397,6 +2117,145 @@ public abstract class ChromaParticle extends SingleQuadParticle {
                 this.alpha = Math.max(0, 1F - this.age / (float)this.lifetime);
         }
     }
+
+	/** Stationary/gravity ritual blur with V33a's selectable icon and rapid/alpha envelopes. */
+	private static final class RitualBlur extends ChromaParticle {
+		private final float fullScale;
+		private final boolean rapidExpand;
+		private final boolean fadeAlpha;
+
+		RitualBlur(ClientLevel level, double x, double y, double z, int color, float scale,
+				int life, float gravity, String icon, boolean rapidExpand, boolean fadeAlpha) {
+			super(level, x, y, z, icon, true);
+			this.fullScale = scale;
+			this.lifetime = life;
+			this.gravity = gravity;
+			this.rapidExpand = rapidExpand;
+			this.fadeAlpha = fadeAlpha;
+			this.setRgb(color);
+			this.updateAppearance();
+		}
+
+		@Override public void tick() {
+			super.tick();
+			this.updateAppearance();
+		}
+
+		private void updateAppearance() {
+			int particleAge = Math.max(this.age, 1);
+			float factor = rapidExpand
+					? (this.lifetime / (float)particleAge >= 12
+							? particleAge * 12F / this.lifetime
+							: 1F - particleAge / (float)this.lifetime)
+					: 1;
+			this.quadSize = 0.1F * this.fullScale * Math.max(0, factor);
+			if (fadeAlpha)
+				this.alpha = Math.max(0, 1F - this.age / (float)this.lifetime);
+		}
+	}
+
+	/**
+	 * V33a {@code TileMusicMemory.playKeyClient}: illuminate every trigger colour able to produce the
+	 * replayed key, then project that colour's interval-specific ring just inside the room wall.
+	 */
+	public static void spawnMusicMemoryNote(Level world, BlockPos memory,
+			reika.dragonapi.libraries.mathsci.ReikaMusicHelper.MusicKey key) {
+		if (!(world instanceof ClientLevel level)) return;
+		for (CrystalElement element : reika.chromaticraft.auxiliary.CrystalMusicManager.instance
+				.getColorsWithKey(key)) {
+			int triggerX = memory.getX() + (element.ordinal() >= 8 ? -4 : 4);
+			int triggerZ = memory.getZ() + 1 + element.ordinal() % 8;
+			for (int i = 0; i < 8; i++) {
+				double angle = Math.PI * 2 * i / 8D;
+				Minecraft.getInstance().particleEngine.add(new FadeGlow(level,
+						triggerX + 0.5, memory.getY() + 1.5, triggerZ + 0.5,
+						Math.cos(angle) * 0.08, 0.04, Math.sin(angle) * 0.08,
+						element.getColor(), 20, 1.25F, true));
+			}
+			int interval = reika.chromaticraft.auxiliary.CrystalMusicManager.instance
+					.getIntervalFor(element, key);
+			if (interval < 0) continue;
+			double x = triggerX + 0.5 + (element.ordinal() >= 8 ? 0.75 : -0.75);
+			Minecraft.getInstance().particleEngine.add(new RitualBlur(level,
+					x, memory.getY() + 0.5, triggerZ + 0.5, element.getColor(), 3F, 30, 0,
+					"ring" + interval, true, true));
+		}
+	}
+
+	/**
+	 * Particle-local form of V33a's SpiralMotionController + optional AngleColorController. Keeping
+	 * the state on the particle avoids passing a null legacy Entity into those controllers on 26.2.
+	 */
+	private static final class RitualSpiral extends ChromaParticle {
+		private final double centerX;
+		private final double centerZ;
+		private final double angleVelocity;
+		private final double verticalVelocity;
+		private final double radiusVelocity;
+		private final float fullScale;
+		private final boolean rapidExpand;
+		private final boolean fadeAlpha;
+		private final double colorVelocity;
+		private double radius;
+		private double angle;
+		private double colorAngle;
+
+		RitualSpiral(ClientLevel level, double centerX, double y, double centerZ,
+				double radius, double angle, double angleVelocity, double verticalVelocity,
+				double radiusVelocity, float scale, int life, boolean rapidExpand,
+				boolean fadeAlpha, double colorAngle, double colorVelocity) {
+			super(level, centerX + radius * Math.cos(Math.toRadians(angle)), y,
+					centerZ + radius * Math.sin(Math.toRadians(angle)), "centerblur3", true);
+			this.centerX = centerX;
+			this.centerZ = centerZ;
+			this.radius = radius;
+			this.angle = angle;
+			this.angleVelocity = angleVelocity;
+			this.verticalVelocity = verticalVelocity;
+			this.radiusVelocity = radiusVelocity;
+			this.fullScale = scale;
+			this.lifetime = life;
+			this.rapidExpand = rapidExpand;
+			this.fadeAlpha = fadeAlpha;
+			this.colorAngle = colorAngle;
+			this.colorVelocity = colorVelocity;
+			this.setRgb(colorVelocity != 0
+					? ReikaColorAPI.getModifiedHue(0xFF0000, (int)colorAngle) : 0xFFFFFF);
+			this.updateAppearance();
+		}
+
+		@Override public void tick() {
+			this.xo = this.x;
+			this.yo = this.y;
+			this.zo = this.z;
+			if (this.age++ >= this.lifetime) {
+				this.remove();
+				return;
+			}
+			this.angle += this.angleVelocity;
+			this.radius += this.radiusVelocity;
+			this.y += this.verticalVelocity;
+			this.x = this.centerX + this.radius * Math.cos(Math.toRadians(this.angle));
+			this.z = this.centerZ + this.radius * Math.sin(Math.toRadians(this.angle));
+			if (this.colorVelocity != 0) {
+				this.colorAngle += this.colorVelocity;
+				this.setRgb(ReikaColorAPI.getModifiedHue(0xFF0000, (int)this.colorAngle));
+			}
+			this.updateAppearance();
+		}
+
+		private void updateAppearance() {
+			int particleAge = Math.max(this.age, 1);
+			float factor = rapidExpand
+					? (this.lifetime / (float)particleAge >= 12
+							? particleAge * 12F / this.lifetime
+							: 1F - particleAge / (float)this.lifetime)
+					: 1;
+			this.quadSize = 0.1F * this.fullScale * Math.max(0, factor);
+			if (fadeAlpha)
+				this.alpha = Math.max(0, 1F - this.age / (float)this.lifetime);
+		}
+	}
 
     /** V33a no-slowdown EntityCCBlurFX with its rapid-expand envelope and centre-blur sprite. */
     private static final class MovingBlur extends ChromaParticle {
@@ -1460,17 +2319,40 @@ public abstract class ChromaParticle extends SingleQuadParticle {
         }
     }
 
-	/** V33a FARMERHARVEST packet: one large green blur travelling from machine to harvested crop. */
-	public static void spawnFarmerHarvest(Level world, BlockPos source, BlockPos target) {
-		if (!(world instanceof ClientLevel level)) return;
-		double speed = 0.15;
-		Minecraft.getInstance().particleEngine.add(new FadeGlow(level,
-				source.getX() + 0.5, source.getY() + 0.5, source.getZ() + 0.5,
-				speed * (target.getX() - source.getX()),
-				speed * (target.getY() - source.getY()),
-				speed * (target.getZ() - source.getZ()),
-				0x00c000, 10, 4F, false));
+	/** Small configurable EntityCCBlurFX equivalent used by the weak-repeater's authored layers. */
+	private static final class RapidGlow extends ChromaParticle {
+		private final float fullScale;
+
+		RapidGlow(ClientLevel level, double x, double y, double z,
+				double vx, double vy, double vz, int color, int life, float scale,
+				String icon, boolean additive) {
+			super(level, x, y, z, icon, additive);
+			this.xd = vx;
+			this.yd = vy;
+			this.zd = vz;
+			this.lifetime = life;
+			this.fullScale = scale;
+			this.setRgb(color);
+		}
+
+		@Override
+		public void tick() {
+			this.xo = this.x;
+			this.yo = this.y;
+			this.zo = this.z;
+			if (this.age++ >= this.lifetime) {
+				this.remove();
+				return;
+			}
+			this.move(this.xd, this.yd, this.zd);
+			int particleAge = Math.max(this.age, 1);
+			float phase = this.lifetime / (float)particleAge >= 12
+					? particleAge * 12F / this.lifetime
+					: 1F - particleAge / (float)this.lifetime;
+			this.quadSize = 0.1F * this.fullScale * Math.max(0, phase);
+		}
 	}
+
     /** V33a EntityCCBlurFX: a general-purpose fullbright additive "fade" blur, used by Glow Cloud's
      *  ambient/attack/death effects and Luma Burst's trail. Reuses the exact rapid-expand/plain-sine
      *  size envelope already established by {@link FloatingSeed}/{@link Blur} (V33a's "alpha fading"

@@ -7,20 +7,18 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 
 import reika.chromaticraft.magic.progression.ProgressStage;
+import reika.chromaticraft.world.dimension.DimensionTuningManager;
 
 /**
  * V33a {@code BlockTieredPlant.TieredPlants}, as concrete per-plant identities.
  *
- * <p>Each plant is its own registered block with a stable registry name, and every asset it owns is
- * named after that identity. The legacy metadata ordinal is deliberately absent: it is not a field,
- * not a blockstate property, and not part of any texture, model, or language path. Its only jobs
- * upstream were selecting a sprite and indexing {@code chroma.tieredplant.N}, and both are owned by
- * datagen against the concrete identity now, so nothing is lost by dropping it.
+ * <p>Each plant is its own registered block with a stable registry name. The legacy metadata ordinal
+ * is deliberately absent from Java state and blockstate data. Five sprites were renamed onto their
+ * identities; the two retained {@code tierplant_5/6} filenames are only immutable source-asset
+ * locators selected by the concrete enum entries, never variant state or a saved colour/type value.
  *
- * <p>Five of the seven V33a plants are accepted. Vibrant Pod and Glowing Roots drop {@code glowbeans}
- * and {@code boostroot}, which have no registered identity yet — the same boundary the tiered ores
- * draw — so their siting (a {@code bitRound} lattice, then {@code findTreeNear} and a walk along the
- * trunk) is deliberately not ported yet rather than given an invented drop.
+ * <p>All seven V33a plants are concrete registrations. The two tree-bound plants retain the shared
+ * source lattice/tree search while keeping their distinct trunk-height and root-base siting rules.
  */
 public enum ChromaTieredPlants {
 
@@ -38,10 +36,16 @@ public enum ChromaTieredPlants {
 			ChromaTieredItems.RESONANCE_DUST, Siting.LEAVES, 5, 2),
 	/** Radiance Bush — surface bush on sand. */
 	RADIANCE_BUSH("radiance_bush", "Radiance Bush", ProgressStage.PYLON, 0xffcc33,
-			ChromaTieredItems.BEACON_DUST, Siting.SAND, 5, 2);
+			ChromaTieredItems.BEACON_DUST, Siting.SAND, 5, 2),
+	/** Vibrant Pod — attaches to a random height on a nearby tree trunk. */
+	VIBRANT_POD("vibrant_pod", "Vibrant Pod", ProgressStage.ALLOY, 0x827c1f,
+			ChromaTieredItems.LUMA_BEANS, Siting.TREE_POD, 4, 6),
+	/** Glowing Roots — grows beside the lowest log of a nearby tree. */
+	GLOWING_ROOTS("glowing_roots", "Glowing Roots", ProgressStage.TURBOCHARGE, 0x871d00,
+			ChromaTieredItems.BOOST_ROOT, Siting.TREE_ROOT, 4, 3);
 
 	/** Which V33a {@code TieredPlants.generate} branch sites this plant. */
-	public enum Siting { SURFACE, CAVE, WATER, LEAVES, SAND }
+	public enum Siting { SURFACE, CAVE, WATER, LEAVES, SAND, TREE_POD, TREE_ROOT }
 
 	public static final ChromaTieredPlants[] list = values();
 
@@ -82,9 +86,22 @@ public enum ChromaTieredPlants {
 	/** V33a {@code getGenerationCount}: attempts made once that roll succeeds. */
 	public int generationCount() { return generationCount; }
 
-	/** The authoritative V33a sprite pair, renamed onto this identity. */
-	public String frontTexture() { return "block/plant/" + registryName + "_front"; }
-	public String backTexture() { return "block/plant/" + registryName + "_back"; }
+	/** The authoritative V33a sprite pair. */
+	public String frontTexture() {
+		return switch (this) {
+			case VIBRANT_POD -> "block/plant/tierplant_5_front";
+			case GLOWING_ROOTS -> "block/plant/tierplant_6_front";
+			default -> "block/plant/" + registryName + "_front";
+		};
+	}
+
+	public String backTexture() {
+		return switch (this) {
+			case VIBRANT_POD -> "block/plant/tierplant_5_back";
+			case GLOWING_ROOTS -> "block/plant/tierplant_6_back";
+			default -> "block/plant/" + registryName + "_back";
+		};
+	}
 
 	/**
 	 * V33a {@code getHarvestResources}. Each plant has its own count formula; fortune arrives already
@@ -98,12 +115,12 @@ public enum ChromaTieredPlants {
 			case ESSENCE_LILY -> 4 * (1 + fortune * fortune / 2);
 			case ELEMENT_BULBS -> 1 + fortune * 4 + 2 * random.nextInt(9);
 			case RADIANCE_BUSH -> (1 + fortune * fortune) + 2 * random.nextInt(5);
+			case VIBRANT_POD -> 2 + random.nextInt(1 + fortune * 3 / 2);
+			case GLOWING_ROOTS -> 1 + random.nextInt(1 + fortune) / 2;
 		};
-		// CHROMA-PORT: V33a passes this through DimensionTuningManager.getTunedDropCount(player, n,
-		// 0, 384), which only rescales inside the unported ChromatiCraft pocket dimension and is the
-		// identity everywhere else. The source's own 0..384 bounds are retained here so the clamp is
-		// not silently lost when that manager lands.
-		n = Math.max(0, Math.min(384, n));
+		// V33a applies the player's Proxima tuning after the plant-specific roll. The manager is an
+		// identity outside Proxima, so ordinary overworld harvests retain their exact source counts.
+		n = DimensionTuningManager.instance.getTunedDropCount(player, n, 0, 384);
 		for (int i = 0; i < n; i++)
 			into.add(prototype.copy());
 	}

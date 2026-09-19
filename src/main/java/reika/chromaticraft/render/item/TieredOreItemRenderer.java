@@ -23,6 +23,7 @@ import org.joml.Vector3f;
 import org.joml.Vector3fc;
 
 import reika.chromaticraft.ChromatiCraft;
+import reika.chromaticraft.render.model.TieredOreGeodeGeometry;
 
 /** Inventory equivalent of V33a's two-pass TieredOreRenderer. */
 public final class TieredOreItemRenderer implements NoDataSpecialModelRenderer {
@@ -31,11 +32,14 @@ public final class TieredOreItemRenderer implements NoDataSpecialModelRenderer {
 	private final SpriteGetter sprites;
 	private final SpriteId underlay;
 	private final SpriteId overlay;
+	private final boolean geode;
 
-	private TieredOreItemRenderer(SpriteGetter sprites, SpriteId underlay, SpriteId overlay) {
+	private TieredOreItemRenderer(SpriteGetter sprites, SpriteId underlay, SpriteId overlay,
+			boolean geode) {
 		this.sprites = sprites;
 		this.underlay = underlay;
 		this.overlay = overlay;
+		this.geode = geode;
 	}
 
 	@Override
@@ -43,12 +47,37 @@ public final class TieredOreItemRenderer implements NoDataSpecialModelRenderer {
 			int overlayCoords, boolean hasFoil, int outlineColor) {
 		TextureAtlasSprite baseSprite = sprites.get(underlay);
 		TextureAtlasSprite glowSprite = sprites.get(overlay);
-		collector.submitCustomGeometry(poseStack, RenderTypes.itemTranslucent(TextureAtlas.LOCATION_BLOCKS),
-				(unused, vertices) -> emitCube(poseStack.last(), vertices, baseSprite,
-						0, 1, lightCoords, overlayCoords));
-		collector.submitCustomGeometry(poseStack, RenderTypes.itemTranslucent(TextureAtlas.LOCATION_BLOCKS),
-				(unused, vertices) -> emitCube(poseStack.last(), vertices, glowSprite,
-						-0.002F, 1.002F, LightCoordsUtil.FULL_BRIGHT, overlayCoords));
+		if (geode) {
+			var pattern = TieredOreGeodeGeometry.pattern(0);
+			collector.submitCustomGeometry(poseStack, RenderTypes.itemTranslucent(TextureAtlas.LOCATION_BLOCKS),
+					(unused, vertices) -> emitGeode(poseStack.last(), vertices, baseSprite,
+							pattern.stone(), lightCoords, overlayCoords));
+			collector.submitCustomGeometry(poseStack, RenderTypes.itemTranslucent(TextureAtlas.LOCATION_BLOCKS),
+					(unused, vertices) -> emitGeode(poseStack.last(), vertices, glowSprite,
+							pattern.ore(), LightCoordsUtil.FULL_BRIGHT, overlayCoords));
+		}
+		else {
+			collector.submitCustomGeometry(poseStack, RenderTypes.itemTranslucent(TextureAtlas.LOCATION_BLOCKS),
+					(unused, vertices) -> emitCube(poseStack.last(), vertices, baseSprite,
+							0, 1, lightCoords, overlayCoords));
+			collector.submitCustomGeometry(poseStack, RenderTypes.itemTranslucent(TextureAtlas.LOCATION_BLOCKS),
+					(unused, vertices) -> emitCube(poseStack.last(), vertices, glowSprite,
+							-0.002F, 1.002F, LightCoordsUtil.FULL_BRIGHT, overlayCoords));
+		}
+	}
+
+	private static void emitGeode(PoseStack.Pose pose, VertexConsumer out,
+			TextureAtlasSprite sprite, java.util.List<TieredOreGeodeGeometry.Quad> quads,
+			int light, int overlay) {
+		for (TieredOreGeodeGeometry.Quad quad : quads) {
+			Direction normal = quad.face();
+			for (TieredOreGeodeGeometry.Vertex point : quad.vertices()) {
+				out.addVertex(pose, point.x(), point.y(), point.z()).setColor(0xFFFFFFFF)
+						.setUv(sprite.getU(point.u()), sprite.getV(point.v()))
+						.setOverlay(overlay).setLight(light)
+						.setNormal(pose, normal.getStepX(), normal.getStepY(), normal.getStepZ());
+			}
+		}
 	}
 
 	private static void emitCube(PoseStack.Pose pose, VertexConsumer out, TextureAtlasSprite sprite,
@@ -78,17 +107,18 @@ public final class TieredOreItemRenderer implements NoDataSpecialModelRenderer {
 		output.accept(new Vector3f(1));
 	}
 
-	public record Unbaked(Identifier underlay, Identifier overlay)
+	public record Unbaked(Identifier underlay, Identifier overlay, boolean geode)
 			implements NoDataSpecialModelRenderer.Unbaked {
 		public static final MapCodec<Unbaked> MAP_CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
 				Identifier.CODEC.fieldOf("underlay").forGetter(Unbaked::underlay),
-				Identifier.CODEC.fieldOf("overlay").forGetter(Unbaked::overlay)
+				Identifier.CODEC.fieldOf("overlay").forGetter(Unbaked::overlay),
+				com.mojang.serialization.Codec.BOOL.optionalFieldOf("geode", false).forGetter(Unbaked::geode)
 		).apply(instance, Unbaked::new));
 		@Override public MapCodec<? extends NoDataSpecialModelRenderer.Unbaked> type() { return MAP_CODEC; }
 		@Override public TieredOreItemRenderer bake(SpecialModelRenderer.BakingContext context) {
 			return new TieredOreItemRenderer(context.sprites(),
 					new SpriteId(TextureAtlas.LOCATION_BLOCKS, underlay),
-					new SpriteId(TextureAtlas.LOCATION_BLOCKS, overlay));
+					new SpriteId(TextureAtlas.LOCATION_BLOCKS, overlay), geode);
 		}
 	}
 }

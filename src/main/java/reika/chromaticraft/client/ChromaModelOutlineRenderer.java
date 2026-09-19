@@ -25,6 +25,7 @@ import net.neoforged.neoforge.client.event.ExtractBlockOutlineRenderStateEvent;
 
 import org.joml.Vector3f;
 import org.joml.Vector3fc;
+import org.joml.Matrix4f;
 
 import reika.chromaticraft.base.CrystalBlock;
 import reika.chromaticraft.registry.ChromaBlocks;
@@ -95,18 +96,54 @@ public final class ChromaModelOutlineRenderer implements CustomBlockOutlineRende
         PoseStack modelPose = new PoseStack();
         modelPose.translate(0.5F, 1.5F, 0.5F);
         modelPose.scale(1F, -1F, -1F);
+		List<ModelCube> cubes = new ArrayList<>();
+		ITEM_STAND_MODEL.visit(modelPose, (pose, path, cubeIndex, cube) ->
+				cubes.add(new ModelCube(new Matrix4f(pose.pose()), cube)));
         LineCollector collector = new LineCollector();
+		int[] source = {0};
         ITEM_STAND_MODEL.visit(modelPose, (pose, path, cubeIndex, cube) -> {
+			int sourceCube = source[0]++;
             for (ModelPart.Polygon polygon : cube.polygons) {
                 ModelPart.Vertex[] vertices = polygon.vertices();
                 for (int vertex = 0; vertex < vertices.length; vertex++) {
-                    collector.add(transform(pose, vertices[vertex]),
-                            transform(pose, vertices[(vertex + 1) % vertices.length]));
+					addVisibleUnionEdge(collector, transform(pose, vertices[vertex]),
+							transform(pose, vertices[(vertex + 1) % vertices.length]),
+							sourceCube, cubes);
                 }
             }
         });
         return collector.finish();
     }
+
+	/**
+	 * A Techne model is a collection of independently rendered cuboids, but its selection outline is
+	 * the boundary of their union. Sample and merge the source edge outside every other oriented cube;
+	 * this removes the buried crossings and the tiny protruding tails at the stand's diagonal joins.
+	 * Sixty-four samples are sub-pixel at normal selection distance and, unlike a hand-authored list,
+	 * this remains reusable when another Java model needs a union-aware outline.
+	 */
+	private static void addVisibleUnionEdge(LineCollector collector, Vector3f from, Vector3f to,
+			int sourceCube, List<ModelCube> cubes) {
+		final int steps = 64;
+		int runStart = -1;
+		for (int sample = 0; sample < steps; sample++) {
+			float midpoint = (sample + 0.5F) / steps;
+			Vector3f point = new Vector3f(from).lerp(to, midpoint);
+			boolean buried = false;
+			for (int cube = 0; cube < cubes.size() && !buried; cube++) {
+				if (cube != sourceCube)
+					buried = cubes.get(cube).contains(point);
+			}
+			if (!buried && runStart < 0)
+				runStart = sample;
+			if ((buried || sample == steps - 1) && runStart >= 0) {
+				int runEnd = buried ? sample : sample + 1;
+				collector.add(new Vector3f(from).lerp(to, runStart / (float)steps),
+						new Vector3f(from).lerp(to, runEnd / (float)steps));
+				runStart = -1;
+			}
+		}
+	}
 
     private static Vector3f transform(PoseStack.Pose pose, ModelPart.Vertex vertex) {
         return pose.pose().transformPosition(vertex.worldX(), vertex.worldY(), vertex.worldZ(), new Vector3f());
@@ -162,6 +199,29 @@ public final class ChromaModelOutlineRenderer implements CustomBlockOutlineRende
     }
 
     private record Line(Vector3f from, Vector3f to) {}
+
+	private static final class ModelCube {
+		private static final float EPSILON = 1.0E-4F;
+		private final Matrix4f inverse;
+		private final float minX, minY, minZ, maxX, maxY, maxZ;
+
+		private ModelCube(Matrix4f pose, ModelPart.Cube cube) {
+			inverse = pose.invert();
+			minX = Math.min(cube.minX, cube.maxX) / 16F;
+			minY = Math.min(cube.minY, cube.maxY) / 16F;
+			minZ = Math.min(cube.minZ, cube.maxZ) / 16F;
+			maxX = Math.max(cube.minX, cube.maxX) / 16F;
+			maxY = Math.max(cube.minY, cube.maxY) / 16F;
+			maxZ = Math.max(cube.minZ, cube.maxZ) / 16F;
+		}
+
+		private boolean contains(Vector3fc worldPoint) {
+			Vector3f local = inverse.transformPosition(worldPoint, new Vector3f());
+			return local.x >= minX - EPSILON && local.x <= maxX + EPSILON
+					&& local.y >= minY - EPSILON && local.y <= maxY + EPSILON
+					&& local.z >= minZ - EPSILON && local.z <= maxZ + EPSILON;
+		}
+	}
 
     private record PointKey(int x, int y, int z) implements Comparable<PointKey> {
         static PointKey of(Vector3fc point) {

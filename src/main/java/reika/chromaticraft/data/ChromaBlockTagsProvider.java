@@ -27,24 +27,38 @@ public final class ChromaBlockTagsProvider extends BlockTagsProvider {
 		var pickaxe = tag(BlockTags.MINEABLE_WITH_PICKAXE);
 		pickaxe.add(ChromaBlocks.CLIFF_STONE.getKey(),
 				ChromaBlocks.ENERGIZED_ROCK.getKey(), ChromaBlocks.ELEMENTAL_STONES.getKey(),
-				ChromaBlocks.FIRESTONE.getKey(), ChromaBlocks.WARP_NODE.getKey(),
+				ChromaBlocks.FUSED_CRYSTALS.getKey(), ChromaBlocks.RADIANT_STONE.getKey(),
+				ChromaBlocks.ENDER_STONE.getKey(), ChromaBlocks.FLUID_STONE.getKey(),
+				ChromaBlocks.FIRAXITE.getKey(), ChromaBlocks.VIBRANT_CRYSTALS.getKey(),
+				ChromaBlocks.SPACERIFT_STONE.getKey(), ChromaBlocks.GLOWING_ROCK.getKey(),
+				ChromaBlocks.ECHOSTONE.getKey(), ChromaBlocks.LUMENITE_ORE.getKey(),
+				ChromaBlocks.FIRESTONE.getKey(), ChromaBlocks.THERMITIC_ROCK.getKey(),
+				ChromaBlocks.AVOLITE_ORE.getKey(),
+				ChromaBlocks.WARP_NODE.getKey(),
 				ChromaBlocks.UNKNOWN_ARTEFACT.getKey(), ChromaBlocks.CAVE_INDICATOR.getKey(),
 				ChromaBlocks.STORAGE.getKey(), ChromaBlocks.DISPLAY_POINT.getKey(),
-				ChromaBlocks.PYLON.getKey(), ChromaBlocks.REPEATER.getKey(),
+				ChromaBlocks.PYLON.getKey(), ChromaBlocks.REPEATER.getKey(), ChromaBlocks.WEAK_REPEATER.getKey(),
+				ChromaBlocks.RELAY_SOURCE.getKey(),
 				ChromaBlocks.FUNCTION_RELAY.getKey(),
 				ChromaBlocks.SKYPEATER.getKey(), ChromaBlocks.CREATIVEPYLON.getKey(),
 				ChromaBlocks.COMPOUND.getKey(), ChromaBlocks.ITEM_STAND.getKey(),
-				ChromaBlocks.CASTING_TABLE.getKey(), ChromaBlocks.DATA_NODE.getKey(),
+				ChromaBlocks.CASTING_TABLE.getKey(), ChromaBlocks.RITUAL_TABLE.getKey(), ChromaBlocks.DATA_NODE.getKey(),
 				ChromaBlocks.FOCUS_CRYSTAL.getKey(), ChromaBlocks.PYLON_LINK.getKey(),
 				ChromaBlocks.POWER_CRYSTAL.getKey());
 		pickaxe.add(ChromaBlocks.CRYSTAL_CHARGER.getKey());
+		pickaxe.add(ChromaBlocks.COLLECTOR.getKey());
 		pickaxe.add(ChromaBlocks.ITEM_INFUSER.getKey());
 		pickaxe.add(ChromaBlocks.PLAYER_INFUSER.getKey());
+		pickaxe.add(ChromaBlocks.PERSONAL_CHARGER.getKey());
+		ChromaBlocks.LUMEN_RELAYS.values().forEach(block -> pickaxe.add(block.getKey()));
+		pickaxe.add(ChromaBlocks.MULTICHROMIC_RELAY.getKey());
 		pickaxe.add(ChromaBlocks.TRAP_FLOOR.getKey(), ChromaBlocks.SHIFT_LOCK.getKey(),
 				ChromaBlocks.LOCK_KEY.getKey(), ChromaBlocks.COLOR_LOCK.getKey(),
 				ChromaBlocks.LIGHT_PANEL.getKey(), ChromaBlocks.PANEL_SWITCH.getKey(),
 				ChromaBlocks.MUSIC_TRIGGER.getKey());
 		pickaxe.add(ChromaBlocks.BIOME_REPLAY.getKey());
+		pickaxe.add(ChromaBlocks.MUSIC_MEMORY.getKey());
+		pickaxe.add(ChromaBlocks.GOL_TILE.getKey(), ChromaBlocks.GOL_CONTROLLER.getKey());
 		ChromaBlocks.SHIELDING.values().forEach(block -> pickaxe.add(block.getKey()));
 		// V33a requiresPickaxe is only true for some of the decoration; the rest breaks by hand, so
 		// only those go in the pickaxe tag.

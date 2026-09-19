@@ -16,10 +16,17 @@ public enum ChromaTieredItems {
 	CHROMA_DUST(0, "chromic_dust", "Chromic Dust"),
 	AURA_DUST(1, "aura_dust", "Aura Dust"),
 	ENDER_DUST(8, "enderstone_powder", "Enderstone Powder"),
+	WATER_DUST(9, "fluid_essence", "Fluid Essence"),
+	FIRAXITE(10, "firaxite", "Firaxite"),
+	LUMA_DUST(11, "luma_dust", "Luma Dust"),
 	ECHO_CRYSTAL(12, "echo_crystal", "Echo Crystal"),
 	FIRE_ESSENCE(16, "fire_essence", "Fire Essence"),
+	THERMITIC_CRYSTAL(17, "thermitic_crystal", "Thermitic Crystal"),
 	SPACE_DUST(19, "spatial_rifting_powder", "Spatial Rifting Powder"),
-	BOOST_ROOT(22, "boost_root", "Boost Root"),
+	LUMA_BEANS(21, "luma_beans", "Luma Beans"),
+	BOOST_ROOT(22, "boost_root", "Enrichment Root"),
+	LUMEN_GEM(23, "lumenite", "Lumenite"),
+	AVOLITE(24, "avolite", "Avolite"),
 	// V33a ChromaStacks.bedrockloot / bedrockloot2. Proxima's bedrock-crack loot, and the only thing
 	// the Portal Rift accepts as tuning energy. Names from the V33a en_US.lang chromacraft.bedrockloot
 	// keys; sprites are authoritative crops of items_resource.png indices 154 and 155.

@@ -61,13 +61,24 @@ public class GlowCavePiece extends StructurePiece {
 	private Set<BlockPos> cells;
 
 	public GlowCavePiece(RandomSource rand, int x, int y, int z) {
+		this(rand.nextLong(), x, y, z);
+	}
+
+	/** Constructor used after the structure start has validated the exact seeded shape. */
+	GlowCavePiece(long seed, int x, int y, int z) {
+		this(seed, x, y, z, null);
+	}
+
+	/** Start-time constructor reuses the shape the atomic water preflight already grew. */
+	GlowCavePiece(long seed, int x, int y, int z, Set<BlockPos> precomputed) {
 		// A placeholder box for the super constructor: the real one cannot be known until the shape has
 		// been grown, and the shape needs the seed this stores.
 		super(ProximaStructurePieces.GLOW_CAVE.get(), 0, new BoundingBox(x, y, z, x, y, z));
-		this.seed = rand.nextLong();
+		this.seed = seed;
 		this.originX = x;
 		this.originY = y;
 		this.originZ = z;
+		this.cells = precomputed;
 		this.boundingBox = boundsOf(shape());
 	}
 

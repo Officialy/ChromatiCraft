@@ -221,6 +221,11 @@ public class TileEntityLootChest extends RandomizableContainerBlockEntity implem
 			this.setChanged();
 	}
 
+	/** Read-only inspection seam for structure validation and focused GameTests. */
+	public boolean hasProgress(ProgressStage stage) {
+		return progressTriggers.contains(stage);
+	}
+
 	/**
 	 * V33a grants every attached trigger whenever a player legitimately accesses the chest. The
 	 * progression manager is idempotent, so retaining the triggers also preserves cooperative and

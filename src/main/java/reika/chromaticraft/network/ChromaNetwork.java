@@ -41,6 +41,8 @@ public final class ChromaNetwork {
 				ChromaNetwork::handleProximaLayoutSeed);
 		registrar.playToClient(MonumentRitualState.TYPE, MonumentRitualState.CODEC,
 				ChromaNetwork::handleMonumentRitualState);
+		registrar.playToClient(MonumentRitualCompletion.TYPE, MonumentRitualCompletion.CODEC,
+				ChromaNetwork::handleMonumentRitualCompletion);
 		registrar.playToClient(AttackBeam.TYPE, AttackBeam.CODEC, ChromaNetwork::handleAttackBeam);
 		registrar.playToClient(Discharge.TYPE, Discharge.CODEC, ChromaNetwork::handleDischarge);
 		registrar.playToClient(AttackReceive.TYPE, AttackReceive.CODEC, ChromaNetwork::handleAttackReceive);
@@ -50,7 +52,17 @@ public final class ChromaNetwork {
 		registrar.playToClient(RepeaterConnections.TYPE, RepeaterConnections.CODEC, ChromaNetwork::handleRepeaterConnections);
 		registrar.playToClient(RepeaterSurgeBurst.TYPE, RepeaterSurgeBurst.CODEC,
 				ChromaNetwork::handleRepeaterSurgeBurst);
+		registrar.playToClient(WeakRepeaterFailureBurst.TYPE, WeakRepeaterFailureBurst.CODEC,
+				ChromaNetwork::handleWeakRepeaterFailureBurst);
+		registrar.playToClient(ShardBoost.TYPE, ShardBoost.CODEC, ChromaNetwork::handleShardBoost);
+		registrar.playToClient(PoolAlloyingFx.TYPE, PoolAlloyingFx.CODEC,
+				ChromaNetwork::handlePoolAlloyingFx);
 		registrar.playToClient(ProgressionNote.TYPE, ProgressionNote.CODEC, ChromaNetwork::handleProgressionNote);
+		registrar.playToClient(StructureEntry.TYPE, StructureEntry.CODEC, ChromaNetwork::handleStructureEntry);
+		registrar.playToClient(StructurePassword.TYPE, StructurePassword.CODEC,
+				ChromaNetwork::handleStructurePassword);
+		registrar.playToClient(MusicMemoryNote.TYPE, MusicMemoryNote.CODEC,
+				ChromaNetwork::handleMusicMemoryNote);
 		registrar.playToServer(SelectResearchFragment.TYPE, SelectResearchFragment.CODEC,
 				ChromaNetwork::handleSelectResearchFragment);
 		registrar.playToServer(SelectFragmentChoice.TYPE, SelectFragmentChoice.CODEC,
@@ -126,10 +138,9 @@ public final class ChromaNetwork {
 	/**
 	 * Starts or stops the client's copy of the monument ritual's effects.
 	 *
-	 * <p>One packet rather than V33a's separate start, end, complete and reset messages: the client half
-	 * runs its own copy of the same score, so all the server has to say is where the monument is and
-	 * whether the ceremony is on. Its four messages exist because upstream's single class held both
-	 * halves and had to be told about each transition; here there is nothing to transition.
+	 * <p>Start/end/reset collapse naturally into this state packet because the client half runs its own
+	 * copy of the score. Completion remains a distinct transition: V33a uses it to fire the one-shot
+	 * seed burst and sixteen core beams three seconds before the controller is replaced.
 	 */
 	public record MonumentRitualState(BlockPos pos, boolean running, boolean inProxima)
 			implements CustomPacketPayload {
@@ -166,6 +177,48 @@ public final class ChromaNetwork {
 		PacketDistributor.sendToPlayersNear(level, null, source.getX() + 0.5, source.getY() + 0.5,
 				source.getZ() + 0.5, 48, new FarmerHarvest(source, target));
 	}
+	public static void sendWeakRepeaterFailureBurst(ServerLevel level, BlockPos repeater, CrystalElement color) {
+		PacketDistributor.sendToPlayersNear(level, null, repeater.getX() + 0.5, repeater.getY() + 0.5,
+				repeater.getZ() + 0.5, 64, new WeakRepeaterFailureBurst(repeater, color.ordinal()));
+	}
+	public static void sendShardBoost(ServerLevel level, BlockPos source, CrystalElement color) {
+		for (ServerPlayer player : level.players()) {
+			if (player.connection != null && player.connection.hasChannel(ShardBoost.TYPE)
+					&& player.distanceToSqr(source.getX() + 0.5, source.getY() + 0.5,
+							source.getZ() + 0.5) <= 64D * 64D)
+				PacketDistributor.sendToPlayer(player, new ShardBoost(source, color.ordinal()));
+		}
+	}
+
+	/** One authoritative V33a pool-alloying droplet for every client tracking the active catalyst. */
+	public static void sendPoolAlloyingFx(ServerLevel level, Entity catalyst) {
+		for (ServerPlayer player : level.players()) {
+			if (player.connection != null && player.connection.hasChannel(PoolAlloyingFx.TYPE)
+					&& player.distanceToSqr(catalyst) <= 64D * 64D)
+				PacketDistributor.sendToPlayer(player, new PoolAlloyingFx(catalyst.getId()));
+		}
+	}
+
+	/** V33a MONUMENTCOMPLETE: the one-shot visual transition before the Aura Locus conversion. */
+	public record MonumentRitualCompletion(BlockPos pos) implements CustomPacketPayload {
+		public static final Type<MonumentRitualCompletion> TYPE =
+				createType("monument_ritual_completion");
+		public static final StreamCodec<ByteBuf, MonumentRitualCompletion> CODEC =
+				StreamCodec.composite(BlockPos.STREAM_CODEC, MonumentRitualCompletion::pos,
+						MonumentRitualCompletion::new);
+		@Override public Type<MonumentRitualCompletion> type() { return TYPE; }
+	}
+
+	public static void sendMonumentRitualCompletion(ServerLevel level, BlockPos pos) {
+		PacketDistributor.sendToPlayersNear(level, null, pos.getX(), pos.getY(), pos.getZ(), 256,
+				new MonumentRitualCompletion(pos));
+	}
+
+	private static void handleMonumentRitualCompletion(MonumentRitualCompletion payload,
+			IPayloadContext context) {
+		context.enqueueWork(() -> ClientPayloadHandlers.monumentRitualCompletion(payload.pos()));
+	}
+
 	public record ProximaLayoutSeed(long seed) implements CustomPacketPayload {
 		public static final Type<ProximaLayoutSeed> TYPE = createType("proxima_layout_seed");
 		public static final StreamCodec<ByteBuf, ProximaLayoutSeed> CODEC = StreamCodec.composite(
@@ -216,6 +269,37 @@ public final class ChromaNetwork {
 				ByteBufCodecs.BOOL, ProgressionNote::researchLevel,
 				ByteBufCodecs.VAR_INT, ProgressionNote::ordinal, ProgressionNote::new);
 		@Override public Type<ProgressionNote> type() { return TYPE; }
+	}
+
+	/** V33a STRUCTUREENTRY: starts the structure-name scroll at the puzzle entrance. */
+	public record StructureEntry(int structureType) implements CustomPacketPayload {
+		public static final Type<StructureEntry> TYPE = createType("structure_entry");
+		public static final StreamCodec<ByteBuf, StructureEntry> CODEC = StreamCodec.composite(
+				ByteBufCodecs.VAR_INT, StructureEntry::structureType, StructureEntry::new);
+		@Override public Type<StructureEntry> type() { return TYPE; }
+	}
+
+	/** V33a STRUCTPASS: the recovered core's player-specific rune password. */
+	public record StructurePassword(int password) implements CustomPacketPayload {
+		public static final Type<StructurePassword> TYPE = createType("structure_password");
+		public static final StreamCodec<ByteBuf, StructurePassword> CODEC = StreamCodec.composite(
+				ByteBufCodecs.INT, StructurePassword::password, StructurePassword::new);
+		@Override public Type<StructurePassword> type() { return TYPE; }
+	}
+
+	/** V33a MUSICPLAY: one replay note, rendered and sounded from both ends of its authored room. */
+	public record MusicMemoryNote(BlockPos memory, int key) implements CustomPacketPayload {
+		public static final Type<MusicMemoryNote> TYPE = createType("music_memory_note");
+		public static final StreamCodec<ByteBuf, MusicMemoryNote> CODEC = StreamCodec.composite(
+				BlockPos.STREAM_CODEC, MusicMemoryNote::memory,
+				ByteBufCodecs.VAR_INT, MusicMemoryNote::key, MusicMemoryNote::new);
+		@Override public Type<MusicMemoryNote> type() { return TYPE; }
+	}
+
+	public static void sendMusicMemoryNote(ServerLevel level, BlockPos memory,
+			reika.dragonapi.libraries.mathsci.ReikaMusicHelper.MusicKey key) {
+		PacketDistributor.sendToPlayersNear(level, null, memory.getX() + 0.5, memory.getY() + 0.5,
+				memory.getZ() + 4.5, 24, new MusicMemoryNote(memory, key.ordinal()));
 	}
 
 	public record SelectResearchFragment(String pageId) implements CustomPacketPayload {
@@ -448,6 +532,26 @@ public final class ChromaNetwork {
 				ByteBufCodecs.VAR_INT, RepeaterSurgeBurst::color, RepeaterSurgeBurst::new);
 		@Override public Type<RepeaterSurgeBurst> type() { return TYPE; }
 	}
+	public record WeakRepeaterFailureBurst(BlockPos source, int color) implements CustomPacketPayload {
+		public static final Type<WeakRepeaterFailureBurst> TYPE = createType("weak_repeater_failure_burst");
+		public static final StreamCodec<ByteBuf, WeakRepeaterFailureBurst> CODEC = StreamCodec.composite(
+				BlockPos.STREAM_CODEC, WeakRepeaterFailureBurst::source,
+				ByteBufCodecs.VAR_INT, WeakRepeaterFailureBurst::color, WeakRepeaterFailureBurst::new);
+		@Override public Type<WeakRepeaterFailureBurst> type() { return TYPE; }
+	}
+	public record ShardBoost(BlockPos source, int color) implements CustomPacketPayload {
+		public static final Type<ShardBoost> TYPE = createType("shard_boost");
+		public static final StreamCodec<ByteBuf, ShardBoost> CODEC = StreamCodec.composite(
+				BlockPos.STREAM_CODEC, ShardBoost::source,
+				ByteBufCodecs.VAR_INT, ShardBoost::color, ShardBoost::new);
+		@Override public Type<ShardBoost> type() { return TYPE; }
+	}
+	public record PoolAlloyingFx(int entityId) implements CustomPacketPayload {
+		public static final Type<PoolAlloyingFx> TYPE = createType("pool_alloying_fx");
+		public static final StreamCodec<ByteBuf, PoolAlloyingFx> CODEC = StreamCodec.composite(
+				ByteBufCodecs.VAR_INT, PoolAlloyingFx::entityId, PoolAlloyingFx::new);
+		@Override public Type<PoolAlloyingFx> type() { return TYPE; }
+	}
 	public record SetHeatLampTemperature(BlockPos source, int temperature) implements CustomPacketPayload {
 		public static final Type<SetHeatLampTemperature> TYPE = createType("set_heat_lamp_temperature");
 		public static final StreamCodec<ByteBuf, SetHeatLampTemperature> CODEC = StreamCodec.composite(
@@ -508,6 +612,15 @@ public final class ChromaNetwork {
 	private static void handleProgressionNote(ProgressionNote payload, IPayloadContext context) {
 		context.enqueueWork(() -> ClientPayloadHandlers.progressionNote(
 				payload.researchLevel(), payload.ordinal()));
+	}
+	private static void handleStructureEntry(StructureEntry payload, IPayloadContext context) {
+		context.enqueueWork(() -> ClientPayloadHandlers.structureEntry(payload.structureType()));
+	}
+	private static void handleStructurePassword(StructurePassword payload, IPayloadContext context) {
+		context.enqueueWork(() -> ClientPayloadHandlers.structurePassword(payload.password()));
+	}
+	private static void handleMusicMemoryNote(MusicMemoryNote payload, IPayloadContext context) {
+		context.enqueueWork(() -> ClientPayloadHandlers.musicMemoryNote(payload.memory(), payload.key()));
 	}
 	private static void handleSelectResearchFragment(SelectResearchFragment payload, IPayloadContext context) {
 		context.enqueueWork(() -> {
@@ -802,6 +915,16 @@ public final class ChromaNetwork {
 		PacketDistributor.sendToPlayer(player, new ProgressionNote(true, levelOrdinal));
 	}
 
+	public static void sendStructureEntry(ServerPlayer player, int structureType) {
+		if (player.connection != null && player.connection.hasChannel(StructureEntry.TYPE))
+			PacketDistributor.sendToPlayer(player, new StructureEntry(structureType));
+	}
+
+	public static void sendStructurePassword(ServerPlayer player, int password) {
+		if (player.connection != null && player.connection.hasChannel(StructurePassword.TYPE))
+			PacketDistributor.sendToPlayer(player, new StructurePassword(password));
+	}
+
 	private static void handleAttackReceive(AttackReceive payload, IPayloadContext context) {
 		context.enqueueWork(() -> PylonAttackOverlay.trigger(element(payload.color)));
 	}
@@ -817,6 +940,17 @@ public final class ChromaNetwork {
 	private static void handleRepeaterSurgeBurst(RepeaterSurgeBurst payload, IPayloadContext context) {
 		context.enqueueWork(() -> ClientPayloadHandlers.repeaterSurgeBurst(
 				payload.source, element(payload.color)));
+	}
+	private static void handleWeakRepeaterFailureBurst(WeakRepeaterFailureBurst payload, IPayloadContext context) {
+		context.enqueueWork(() -> ClientPayloadHandlers.weakRepeaterFailureBurst(
+				payload.source, element(payload.color)));
+	}
+	private static void handleShardBoost(ShardBoost payload, IPayloadContext context) {
+		context.enqueueWork(() -> ClientPayloadHandlers.shardBoost(
+				payload.source, element(payload.color)));
+	}
+	private static void handlePoolAlloyingFx(PoolAlloyingFx payload, IPayloadContext context) {
+		context.enqueueWork(() -> ClientPayloadHandlers.poolAlloyingFx(payload.entityId));
 	}
 	private static void handlePylonCrystalBreak(PylonCrystalBreak payload, IPayloadContext context) {
 		context.enqueueWork(() -> ClientPayloadHandlers.pylonCrystalBreak(payload.source, element(payload.color)));

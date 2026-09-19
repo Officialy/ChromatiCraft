@@ -24,6 +24,7 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.entity.EntityGlowCloud;
 import reika.chromaticraft.entity.EntityLumaBurst;
+import reika.chromaticraft.entity.EntityLaserPulse;
 import reika.chromaticraft.entity.EntityPylonOverloadShock;
 import reika.chromaticraft.entity.EntityTunnelNuker;
 import reika.chromaticraft.entity.EntityDataCrystal;
@@ -52,6 +53,12 @@ public final class ChromaEntityTypes {
 			register("luma_burst", () -> EntityType.Builder
 					.<EntityLumaBurst>of(EntityLumaBurst::new, MobCategory.MISC)
 					.sized(0.25F, 0.25F).clientTrackingRange(64).updateInterval(1));
+
+	/** V33a Chromatic Beams travelling pulse; effectors create replacement pulses server-side. */
+	public static final DeferredHolder<EntityType<?>, EntityType<EntityLaserPulse>> LASER_PULSE =
+			register("laser_pulse", () -> EntityType.Builder
+					.<EntityLaserPulse>of(EntityLaserPulse::new, MobCategory.MISC)
+					.sized(0.1F, 0.1F).clientTrackingRange(128).updateInterval(1).noSummon());
 
 	public static final DeferredHolder<EntityType<?>, EntityType<EntityTunnelNuker>> TUNNEL_NUKER =
 			register("tunnel_nuker", () -> EntityType.Builder

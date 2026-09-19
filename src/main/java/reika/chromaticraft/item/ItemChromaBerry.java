@@ -1,10 +1,12 @@
 package reika.chromaticraft.item;
 
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
 import reika.chromaticraft.block.BlockChromaFluid.TileEntityChroma;
+import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.registry.CrystalElement;
 
 /** Metadata-free V33a Chroma Berry identity and dropped-pool activation behavior. */
@@ -21,7 +23,9 @@ public final class ItemChromaBerry extends Item {
 	@Override
 	public boolean onEntityItemUpdate(ItemStack stack, ItemEntity entity) {
 		if (entity.level().isClientSide()) return false;
-		if (entity.level().getBlockEntity(entity.blockPosition()) instanceof TileEntityChroma pool) {
+		if (entity.getOwner() instanceof Player owner
+				&& ProgressStage.SHARDCHARGE.playerHasPrerequisites(owner)
+				&& entity.level().getBlockEntity(entity.blockPosition()) instanceof TileEntityChroma pool) {
 			int accepted = pool.activate(element, stack.getCount());
 			if (accepted > 0) {
 				stack.shrink(accepted);

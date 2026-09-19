@@ -1,0 +1,11 @@
+{
+  "variants": {
+    "": {
+      "type": "chromaticraft:tiered_ore",
+      "underlay": "chromaticraft:block/ore/tier_11_underlay",
+      "overlay": "chromaticraft:block/ore/tier_11_overlay",
+      "host_texture": "minecraft:block/end_stone",
+      "stage": "ABILITY"
+    }
+  }
+}

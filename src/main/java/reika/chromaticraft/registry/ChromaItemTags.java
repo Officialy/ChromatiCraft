@@ -13,10 +13,9 @@ import reika.chromaticraft.ChromatiCraft;
 /**
  * Item tags for the crystal shard family.
  *
- * <p>A boosted shard is strictly an upgraded plain shard, so it belongs to both the boosted tag and
- * the general one. That means a recipe wanting "any shard of this colour" can name a single
- * per-colour tag, and one wanting "any shard at all" can name {@link #CRYSTAL_SHARDS} -- replacing
- * the 32-entry item lists these recipes used to spell out.
+ * <p>Plain and boosted per-colour tags are deliberately disjoint, matching V33a's exact metadata
+ * ingredients. A recipe which genuinely accepts either form uses {@link #CRYSTAL_SHARDS}; recipes
+ * such as Raw Crystal which named metadata 0-15 use {@link #PLAIN_CRYSTAL_SHARDS}.
  */
 public final class ChromaItemTags {
 
@@ -32,12 +31,14 @@ public final class ChromaItemTags {
 
 	/** Only the boosted shards, for recipes that genuinely require the upgraded form. */
 	public static final TagKey<Item> BOOSTED_CRYSTAL_SHARDS = create("boosted_crystal_shards");
+	/** All seventeen former RELAY metadata values, including the multichromic relay itself. */
+	public static final TagKey<Item> LUMEN_RELAYS = create("lumen_relays");
 
 	private static final Map<CrystalElement, TagKey<Item>> BY_COLOUR = byColour("crystal_shards/");
 	private static final Map<CrystalElement, TagKey<Item>> BOOSTED_BY_COLOUR =
 			byColour("boosted_crystal_shards/");
 
-	/** Plain or boosted shard of one specific colour. */
+	/** Plain shard of one specific colour. */
 	public static TagKey<Item> crystalShards(CrystalElement element) {
 		return BY_COLOUR.get(element);
 	}

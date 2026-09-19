@@ -662,6 +662,24 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver
     public TableTier getTier() { return TableTier.forXP(tableXP); }
 
     /**
+     * Gives a command-placed temple the table tier that its NBT structure represents. Ordinary
+     * player-placed tables never call this and still earn every tier through casting XP.
+     */
+    public void initializeCommandPlacedTier(int structureTier) {
+        TableTier tier = switch (structureTier) {
+            case 1 -> TableTier.TEMPLE;
+            case 2 -> TableTier.MULTIBLOCK;
+            case 3 -> TableTier.PYLON;
+            default -> throw new IllegalArgumentException("Invalid casting temple tier " + structureTier);
+        };
+        tableXP = Math.max(tableXP, tier.minimumXP());
+        recipeDirty = true;
+        this.setChanged();
+        if (this.getLevel() != null && !this.getLevel().isClientSide())
+            this.syncAllData(true);
+    }
+
+    /**
      * The blocks the renderer may engrave a rune onto.
      *
      * <p>V33a pulled random coordinates out of the tier's structure array and then rejected any whose
@@ -851,4 +869,3 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver
     // CHROMA-PORT: enhancement effects and optional Botania pool interaction remain forward references until those
     // registered subsystems land; none of their casting inputs or persistent data has been erased.
 }
-

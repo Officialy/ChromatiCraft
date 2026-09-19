@@ -2,6 +2,7 @@ package reika.chromaticraft.client.gui;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.platform.Window;
+import net.minecraft.SharedConstants;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
@@ -12,28 +13,42 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.data.AtlasIds;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.ResolvableProfile;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import org.lwjgl.glfw.GLFW;
 import reika.chromaticraft.ChromatiCraft;
+import reika.chromaticraft.auxiliary.ElementEncodedNumber;
 import reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe;
+import reika.chromaticraft.client.CrystalRuneTextures;
 import reika.chromaticraft.item.ItemChromaBook;
+import reika.chromaticraft.magic.castingtuning.CastingTuningKey;
+import reika.chromaticraft.magic.castingtuning.CastingTuningRegistry;
 import reika.chromaticraft.magic.progression.*;
 import reika.chromaticraft.network.ChromaNetwork;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaSounds;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.render.ChromaRenderPipelines;
+import reika.chromaticraft.world.dimension.DimensionStructureType.StructureTypeData;
+import reika.chromaticraft.world.dimension.StructureCalculator;
 import reika.dragonapi.instantiable.rendering.structure.StructureRenderer;
+import reika.dragonapi.libraries.ReikaDirectionHelper.FanDirections;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Random;
 
 /** First 26.2 rendering pass for V33a's navigation and basic-description guide screens. */
 public final class ScreenChromicLexicon extends Screen {
@@ -56,6 +71,12 @@ public final class ScreenChromicLexicon extends Screen {
 	private static final Identifier PAGE_PYLONCAST = page("pyloncast2");
 	private static final Identifier PAGE_STRUCTURE = page("structure");
 	private static final Identifier PAGE_ELEMENT = page("element");
+	private static final Identifier PAGE_CAST_TUNE = page("casttune");
+	private static final Identifier PAGE_PASSWORD = page("password");
+	private static final Identifier CAST_TUNING_ICONS = Identifier.fromNamespaceAndPath(
+			ChromatiCraft.MODID, "textures/effect/cast_tuning_icons.png");
+	private static final Identifier STRUCTURE_ICONS = Identifier.fromNamespaceAndPath(
+			ChromatiCraft.MODID, "textures/gui/dimensionstructures.png");
 
 	/** V33a GuiRitual overlays the wheel and caps its gauge from this sheet. */
 	private static final Identifier MISC = Identifier.fromNamespaceAndPath(
@@ -293,7 +314,7 @@ public final class ScreenChromicLexicon extends Screen {
 		// Ordinary V33a descriptions have no large invented bottom-row "Page" buttons.
 		// For authored text which genuinely exceeds the modern page, use the same small
 		// up/down controls and location as upstream's scrollable description screens.
-		int count = descriptionPageCount();
+		int count = isFullPageInfoSpecial() ? 1 : descriptionPageCount();
 		if (textPage > 0)
 			addRenderableWidget(Button.builder(Component.literal("↑"), button -> {
 				textPage--;
@@ -329,6 +350,10 @@ public final class ScreenChromicLexicon extends Screen {
 			return PAGE_STRUCTURE;
 		if (selected.id().equals("ELEMENTS") && descriptionSubpage > 0)
 			return PAGE_ELEMENT;
+		if (selected.id().equals("CASTTUNING") && descriptionSubpage > 0)
+			return PAGE_CAST_TUNE;
+		if (selected.id().equals("STRUCTUREPASSWORDS") && descriptionSubpage > 0)
+			return PAGE_PASSWORD;
 		return PAGE_PLAIN;
 	}
 
@@ -811,8 +836,9 @@ public final class ScreenChromicLexicon extends Screen {
 				super.extractRenderState(graphics, mouseX, mouseY, partialTick);
 				return;
 			}
-			renderSpecialistHeader(graphics, selected, left, top, partialTick);
-			renderDescriptionPage(graphics, left, top);
+			renderSpecialistHeader(graphics, selected, left, top, mouseX, mouseY, partialTick);
+			if (!isFullPageInfoSpecial())
+				renderDescriptionPage(graphics, left, top);
 		}
 		else if (view == View.PROGRESS) {
 			renderProgress(graphics, left, top, mouseX, mouseY);
@@ -948,6 +974,8 @@ public final class ScreenChromicLexicon extends Screen {
 			return 1;
 		if (selected.id().equals("ELEMENTS"))
 			return CrystalElement.elements.length + 1;
+		if (selected.id().equals("CASTTUNING") || selected.id().equals("STRUCTUREPASSWORDS"))
+			return 2;
 		return selected.section() == LexiconCatalog.Section.TOOLS
 				&& !LexiconDescriptions.notes(selected).isBlank() ? 2 : 1;
 	}
@@ -982,15 +1010,24 @@ public final class ScreenChromicLexicon extends Screen {
 	}
 
 	/** Restores the distinct specialist presentations used by V33a's four description screens. */
+	private boolean isFullPageInfoSpecial() {
+		return selected != null && descriptionSubpage > 0
+				&& (selected.id().equals("CASTTUNING") || selected.id().equals("STRUCTUREPASSWORDS"));
+	}
+
 	private void renderSpecialistHeader(GuiGraphicsExtractor graphics, LexiconCatalog.Entry entry,
-			int left, int top, float partialTick) {
+			int left, int top, int mouseX, int mouseY, float partialTick) {
 		List<ItemStack> icons = LexiconIconResolver.icons(entry);
 		int cycleMillis = entry.section() == LexiconCatalog.Section.TOOLS
 				|| entry.section() == LexiconCatalog.Section.BLOCKS ? 2000 : 1000;
 		ItemStack icon = cyclingIcon(icons, cycleMillis);
 		switch (entry.section()) {
 			case INFO -> {
-				if (entry.id().equals("ELEMENTS") && descriptionSubpage > 0) {
+				if (entry.id().equals("CASTTUNING") && descriptionSubpage > 0)
+					renderPlayerCastingTuning(graphics, left, top);
+				else if (entry.id().equals("STRUCTUREPASSWORDS") && descriptionSubpage > 0)
+					renderStructureKeys(graphics, left, top, mouseX, mouseY);
+				else if (entry.id().equals("ELEMENTS") && descriptionSubpage > 0) {
 					CrystalElement element = CrystalElement.elements[descriptionSubpage - 1];
 					Identifier rune = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
 							"textures/block/runes/glow/tile" + element.ordinal() + "_0.png");
@@ -1057,6 +1094,124 @@ public final class ScreenChromicLexicon extends Screen {
 		}
 	}
 
+	/** V33a {@code GuiBasicInfo.renderPlayerCastingTuning}, including its player-specific key. */
+	private void renderPlayerCastingTuning(GuiGraphicsExtractor graphics, int left, int top) {
+		int centreX = left + WIDTH / 2;
+		// GuiBasicInfo's posY is this screen's top-8 frame origin.
+		int frameTop = top - 8;
+		int centreY = frameTop + HEIGHT / 2 + 39;
+		float outerRadius = 63;
+		float innerRadius = 47;
+
+		Minecraft client = Minecraft.getInstance();
+		int gameType = client.gameMode != null ? client.gameMode.getPlayerMode().getId() : 0;
+		CastingTuningKey key = CastingTuningRegistry.instance.getTuningKey(
+				player.level(), player.getUUID(), gameType);
+		Map<BlockPos, CrystalElement> runes = key.runes();
+		ArrayList<CastingTuningCompass.Sector> sectors = new ArrayList<>();
+		for (Map.Entry<FanDirections, BlockPos> entry
+				: CastingTuningRegistry.instance.compassLocations().entrySet()) {
+			CrystalElement element = runes.get(entry.getValue());
+			if (element != null)
+				sectors.add(new CastingTuningCompass.Sector(-entry.getKey().angle, element.getColor()));
+		}
+		graphics.submitPictureInPictureRenderState(new CastingTuningCompass.State(
+				sectors, outerRadius, innerRadius,
+				centreX - 64, centreY - 64, centreX + 64, centreY + 64,
+				graphics.peekScissorStack()));
+
+		// The twelve outline runes sit ninety percent of the way to the square's edge.
+		for (Map.Entry<FanDirections, BlockPos> entry
+				: CastingTuningRegistry.instance.compassLocations().entrySet()) {
+			CrystalElement element = runes.get(entry.getValue());
+			if (element == null)
+				continue;
+			double angle = Math.toRadians(-entry.getKey().angle);
+			double radius = squareRadius(outerRadius, angle) * 0.9;
+			int x = (int)Math.round(centreX + radius * Math.cos(angle));
+			int y = (int)Math.round(centreY + radius * Math.sin(angle));
+			renderTextureScaled(graphics, CrystalRuneTextures.outline(element),
+					0, 0, 16, 16, x - 4, y - 4, 8, 8, 16, 16);
+		}
+
+		// V33a uses the table's top face, not a perspective item model, at the compass centre.
+		graphics.blit(RenderPipelines.GUI_TEXTURED, TABLE_TILE,
+				centreX - 8, centreY - 8, 0, 0, 16, 16, 16, 16);
+
+		ElementEncodedNumber playerCode = new ElementEncodedNumber(player.getUUID().hashCode(), 8);
+		for (int i = 0; i < playerCode.getLength(); i++) {
+			int size = 16;
+			int x = centreX + (i - playerCode.getLength() / 2) * (size + size / 2 - 1)
+					+ size * 3 / 4 - 1;
+			int y = frameTop + 69;
+			renderTextureScaled(graphics, CrystalRuneTextures.glow(playerCode.getSlot(i)),
+					0, 0, 16, 16, x - size / 2, y - size / 2,
+					size, size, 16, 16);
+		}
+
+		// The personalized 4x4 icon sheet is 128px, hence 32px per source cell. Upstream draws the
+		// selected cell at 36px, then lays the player's own head over it as the page icon.
+		int iconIndex = key.iconIndex();
+		int iconCentreY = centreY - 114;
+		renderTextureScaled(graphics, CAST_TUNING_ICONS,
+				(iconIndex % 4) * 32, (iconIndex / 4) * 32, 32, 32,
+				centreX - 18, iconCentreY - 18, 36, 36, 128, 128);
+		ItemStack head = new ItemStack(Items.PLAYER_HEAD);
+		head.set(DataComponents.PROFILE, ResolvableProfile.createResolved(player.getGameProfile()));
+		graphics.pose().pushMatrix();
+		graphics.pose().translate(centreX - 13, frameTop + 23);
+		graphics.pose().scale(1.5F, 1.5F);
+		graphics.item(head, 0, 0);
+		graphics.pose().popMatrix();
+	}
+
+	/** V33a's post-Proxima Structure Keys page and its hover-revealed eight-rune passwords. */
+	private void renderStructureKeys(GuiGraphicsExtractor graphics, int left, int top,
+			int mouseX, int mouseY) {
+		int frameTop = top - 8;
+		ArrayList<StructureTypeData> assignments = new ArrayList<>(StructureCalculator
+				.getStructureColorTypes(StructureCalculator.getClientDimensionSeed()).values());
+		Collections.shuffle(assignments, new Random(player.hashCode()));
+		for (int index = 0; index < assignments.size(); index++) {
+			StructureTypeData data = assignments.get(index);
+			boolean complete = ProgressionManager.instance
+					.hasPlayerCompletedStructureColor(player, data.color());
+			int iconIndex = complete ? data.type().getIconIndex() : 1;
+			int x = left + index % 4 * 60 + 10;
+			int y = frameTop + index / 4 * 36 + 29;
+			graphics.blit(RenderPipelines.GUI_TEXTURED, STRUCTURE_ICONS, x, y,
+					(iconIndex % 8) * 32, (iconIndex / 8) * 32,
+					32, 32, 256, 256);
+			if (!complete)
+				continue;
+			graphics.outline(x - 1, y - 1, 34, 34, 0xff000000 | data.color().getColor());
+			if (mouseX < x || mouseX > x + 33 || mouseY < y || mouseY > y + 33)
+				continue;
+			int password = data.getPassword(player, SharedConstants.getCurrentVersion().name());
+			ElementEncodedNumber encoded = new ElementEncodedNumber(password, 8);
+			for (int rune = 0; rune < encoded.getLength(); rune++)
+				renderTextureScaled(graphics, CrystalRuneTextures.glow(encoded.getSlot(rune)),
+						0, 0, 16, 16, left + 35 + rune * 24, frameTop + 189,
+						16, 16, 16, 16);
+		}
+	}
+
+	private static double squareRadius(double radius, double angle) {
+		return radius * Math.min(Math.abs(1D / Math.cos(angle)), Math.abs(1D / Math.sin(angle)));
+	}
+
+	/** Draws an entire source cell at a different GUI size; ordinary blit dimensions crop instead. */
+	private static void renderTextureScaled(GuiGraphicsExtractor graphics, Identifier texture,
+			int sourceX, int sourceY, int sourceWidth, int sourceHeight,
+			float x, float y, float width, float height, int textureWidth, int textureHeight) {
+		graphics.pose().pushMatrix();
+		graphics.pose().translate(x, y);
+		graphics.pose().scale(width / sourceWidth, height / sourceHeight);
+		graphics.blit(RenderPipelines.GUI_TEXTURED, texture, 0, 0,
+				sourceX, sourceY, sourceWidth, sourceHeight, textureWidth, textureHeight);
+		graphics.pose().popMatrix();
+	}
+
 	private static ItemStack cyclingIcon(List<ItemStack> icons, int intervalMillis) {
 		if (icons.isEmpty())
 			return ItemStack.EMPTY;
@@ -1116,8 +1271,10 @@ public final class ScreenChromicLexicon extends Screen {
 		float radius = 57.5F;
 		int dx = left + DESC_X + 184;
 		int dy = top + DESC_Y + 52;
+		var proportions = tag.getProportionality();
+		double startAngle = System.identityHashCode(entry);
 		graphics.submitPictureInPictureRenderState(new LexiconEnergyPie.State(
-				tag.getProportionality(), radius, System.identityHashCode(entry),
+				proportions, radius, (float)startAngle,
 				dx - (int)Math.ceil(radius), dy - (int)Math.ceil(radius),
 				dx + (int)Math.ceil(radius), dy + (int)Math.ceil(radius),
 				graphics.peekScissorStack()));
@@ -1125,8 +1282,20 @@ public final class ScreenChromicLexicon extends Screen {
 		graphics.blit(RenderPipelines.GUI_TEXTURED, MISC,
 				dx - (int)Math.ceil(radius), dy - (int)Math.ceil(radius), 0, 0,
 				(int)(radius * 2), (int)(radius * 2), 256, 256);
-		// CHROMA-PORT: upstream rings the wheel with the sixteen outline runes at 0.625*r, from
-		// CrystalElement.getOutlineRune. Same stripped glyphs the manipulator HUD wheel is missing.
+		// GuiRitual: centre an eight-pixel outline rune within every proportional segment.
+		double angle = startAngle;
+		double runeRadius = radius * 0.625;
+		int runeSize = 8;
+		for (CrystalElement element : proportions.getElements()) {
+			double segment = 360D * proportions.getFraction(element);
+			double centre = angle + segment / 2;
+			int runeX = (int)Math.round(dx + runeRadius * Math.cos(Math.toRadians(centre)));
+			int runeY = (int)Math.round(dy + runeRadius * Math.sin(Math.toRadians(centre)));
+			graphics.blit(RenderPipelines.GUI_TEXTURED, CrystalRuneTextures.outline(element),
+					runeX - runeSize / 2, runeY - runeSize / 2,
+					0, 0, runeSize, runeSize, 16, 16);
+			angle += segment;
+		}
 
 		int total = tag.getTotalEnergy();
 		int lineHeight = font.lineHeight * 3 / 2;

@@ -110,21 +110,15 @@ public class TileEntityAuraPoint extends TileEntityLocusPoint {
 
 	@Override
 	public void updateEntity(Level world, BlockPos pos) {
-		if (world.isClientSide())
+		if (world.isClientSide()) {
+			reika.chromaticraft.client.sound.AuraLocusSoundManager.tick(this);
 			return;
-		this.playSounds(world, pos);
+		}
 		// V33a's cadence: the attack sweep is far more frequent than the heal.
 		if (rand.nextInt(20) == 0)
 			this.killEntities(world, pos);
 		if (rand.nextInt(160) == 0)
 			this.healFriendly(world, pos);
-	}
-
-	/** V33a: twice as often inside Proxima as outside it. */
-	private void playSounds(Level world, BlockPos pos) {
-		int n = world.dimension() == reika.chromaticraft.registry.ChromaDimensions.PROXIMA ? 2 : 1;
-		if (this.getTicksExisted() % (244 / n) == 0)
-			ChromaSounds.AURALOCUS.playSoundAtBlock(world, pos, 2, n);
 	}
 
 	private int getAttackRange() {
@@ -230,6 +224,8 @@ public class TileEntityAuraPoint extends TileEntityLocusPoint {
 		hue += Math.abs(dh) >= 180 ? -step : step;
 		if (hue < 0 || hue >= 360)
 			hue = (hue % 360 + 360) % 360;
+		reika.chromaticraft.render.particle.ChromaParticle.spawnLocusPoint(
+				world, pos, this.getRenderColor(), true, this.getTicksExisted(), this.hashCode(), rand);
 	}
 
 	@Override

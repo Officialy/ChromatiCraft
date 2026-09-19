@@ -40,12 +40,15 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
     public static final Identifier CASTING_L2 = id("multiblock/casting_l2");
     public static final Identifier CASTING_L3 = id("multiblock/casting_l3");
     public static final Identifier REPEATER = id("multiblock/repeater");
+    public static final Identifier WEAK_REPEATER = id("multiblock/weak_repeater");
+    public static final Identifier RELAY_SOURCE = id("multiblock/relay_source");
     public static final Identifier COMPOUND_REPEATER = id("multiblock/compound_repeater");
     public static final Identifier PYLON_BROADCAST = id("multiblock/pylon_broadcast");
     public static final Identifier INFUSION = id("multiblock/infusion");
     public static final Identifier PLAYER_INFUSION = id("multiblock/player_infusion");
     public static final Identifier RITUAL_BASE = id("multiblock/ritual_base");
     public static final Identifier RITUAL_ENHANCED = id("multiblock/ritual_enhanced");
+    public static final Identifier PERSONAL_CHARGER = id("multiblock/personal_charger");
     public static final Identifier PORTAL = id("multiblock/portal");
     public static final Identifier DATANODE = id("worldgen/data_node");
     public static final Identifier RAINBOW_TREE = id("worldgen/rainbow_tree");
@@ -64,6 +67,22 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
     public static final Identifier OVERWORLD_SNOW = id("worldgen/overworld/snow");
     public static final Identifier OVERWORLD_BIOME_FRAGMENT = id("worldgen/overworld/biome_fragment");
     public static final Identifier PROXIMA_MONUMENT = id("worldgen/proxima/monument");
+    public static final Identifier PROXIMA_LIGHT_PANEL_STAIR_BOTTOM = id("worldgen/proxima/light_panel/stair_bottom");
+    public static final Identifier PROXIMA_LIGHT_PANEL_STAIR_SECTION = id("worldgen/proxima/light_panel/stair_section");
+    public static final Identifier PROXIMA_LIGHT_PANEL_STAIR_TOP = id("worldgen/proxima/light_panel/stair_top");
+    public static final Identifier PROXIMA_LIGHT_PANEL_LOOT = id("worldgen/proxima/light_panel/loot");
+    public static final Identifier PROXIMA_TD_MAZE_CELL = id("worldgen/proxima/three_d_maze/cell");
+    public static final Identifier PROXIMA_TD_MAZE_SHAFT = id("worldgen/proxima/three_d_maze/shaft_slice");
+    public static final Identifier PROXIMA_TD_MAZE_ENTRANCE = id("worldgen/proxima/three_d_maze/entrance");
+    public static final Identifier PROXIMA_TD_MAZE_LOOT = id("worldgen/proxima/three_d_maze/loot");
+    public static final Identifier PROXIMA_MUSIC_FUNNEL = id("worldgen/proxima/music/funnel");
+    public static final Identifier PROXIMA_MUSIC_ROOM = id("worldgen/proxima/music/room");
+    public static final Identifier PROXIMA_MUSIC_LOOT = id("worldgen/proxima/music/loot");
+    public static final Identifier PROXIMA_GOL_ENTRANCE_PREFAB = id("worldgen/proxima/gol/entrance_prefab");
+    public static final Identifier PROXIMA_GOL_SURFACE = id("worldgen/proxima/gol/surface");
+    public static final Identifier PROXIMA_GOL_ENTRANCE_DOOR = id("worldgen/proxima/gol/entrance_door");
+    public static final Identifier PROXIMA_GOL_EXIT_DOOR = id("worldgen/proxima/gol/exit_door");
+    public static final Identifier PROXIMA_GOL_LOOT = id("worldgen/proxima/gol/loot");
     public static final List<String> VILLAGE_STYLES = List.of("plains", "desert", "savanna", "snowy", "taiga");
 
     /** V33a {@code setEmpty(false, false)}: the cell must be air. */
@@ -88,12 +107,15 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
                 write(cache, CASTING_L2, castingL2()),
                 write(cache, CASTING_L3, castingL3()),
                 write(cache, REPEATER, repeater()),
+                write(cache, WEAK_REPEATER, weakRepeater()),
+                write(cache, RELAY_SOURCE, relaySource()),
                 write(cache, COMPOUND_REPEATER, compoundRepeater()),
                 write(cache, PYLON_BROADCAST, pylonBroadcast()),
                 write(cache, INFUSION, infusion()),
                 write(cache, PLAYER_INFUSION, playerInfusion()),
                 write(cache, RITUAL_BASE, ritualAltar(false)),
                 write(cache, RITUAL_ENHANCED, ritualAltar(true)),
+                write(cache, PERSONAL_CHARGER, personalCharger()),
                 write(cache, PORTAL, importPortal()),
                 write(cache, DATANODE, dataNode()),
                 write(cache, RAINBOW_TREE, rainbowTree()),
@@ -112,6 +134,38 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
                 write(cache, OVERWORLD_SNOW, importSnow()),
                 write(cache, OVERWORLD_BIOME_FRAGMENT, biomeFragment()),
                 write(cache, PROXIMA_MONUMENT, importMonument()),
+                write(cache, PROXIMA_LIGHT_PANEL_STAIR_BOTTOM,
+                        importLightPanelStair("LightPanelStairBottom.java", 20, 19, 17, true)),
+                write(cache, PROXIMA_LIGHT_PANEL_STAIR_SECTION,
+                        importLightPanelStair("LightPanelStairSection.java", 17, 16, 17, false)),
+                write(cache, PROXIMA_LIGHT_PANEL_STAIR_TOP,
+                        importLightPanelStair("LightPanelStairTop.java", 17, 28, 17, false)),
+                write(cache, PROXIMA_LIGHT_PANEL_LOOT, lightPanelLoot()),
+                write(cache, lightPanelRoom(0), lightPanelRoomTemplate(0)),
+                write(cache, lightPanelRoom(1), lightPanelRoomTemplate(1)),
+                write(cache, lightPanelRoom(2), lightPanelRoomTemplate(2)),
+                write(cache, lightPanelRoom(3), lightPanelRoomTemplate(3)),
+                write(cache, lightPanelRoom(4), lightPanelRoomTemplate(4)),
+                write(cache, lightPanelRoom(5), lightPanelRoomTemplate(5)),
+                write(cache, lightPanelRoom(6), lightPanelRoomTemplate(6)),
+                write(cache, PROXIMA_TD_MAZE_CELL, threeDMazeCell()),
+                write(cache, PROXIMA_TD_MAZE_SHAFT, threeDMazeShaftSlice()),
+                write(cache, PROXIMA_TD_MAZE_ENTRANCE, importThreeDMazeEntrance()),
+                write(cache, PROXIMA_TD_MAZE_LOOT, importThreeDMazeLoot()),
+                write(cache, PROXIMA_MUSIC_FUNNEL, importMusicFunnel()),
+                write(cache, PROXIMA_MUSIC_ROOM, importMusicRoom()),
+                write(cache, PROXIMA_MUSIC_LOOT, importMusicLoot()),
+                write(cache, golChamber(1), golChamberTemplate(1)),
+                write(cache, golChamber(2), golChamberTemplate(2)),
+                write(cache, golChamber(3), golChamberTemplate(3)),
+                write(cache, PROXIMA_GOL_ENTRANCE_PREFAB, importGOLPlacementMethod(
+                        "GOLEntrance.java", "generatePrefab", 8, 8, 17, GOLTemplateKind.STONE, 595)),
+                write(cache, PROXIMA_GOL_SURFACE, golSurface()),
+                write(cache, PROXIMA_GOL_ENTRANCE_DOOR, importGOLPlacementMethod(
+                        "GOLDoors.java", "generateEntrance", 1, 8, 17, GOLTemplateKind.CLOAK, 136)),
+                write(cache, PROXIMA_GOL_EXIT_DOOR, importGOLPlacementMethod(
+                        "GOLDoors.java", "generateExit", 1, 5, 9, GOLTemplateKind.EXIT, 45)),
+                write(cache, PROXIMA_GOL_LOOT, importGOLLoot()),
                 write(cache, villageTemplate("plains", true), importVillageStructure("plains", true)),
                 write(cache, villageTemplate("desert", true), importVillageStructure("desert", true)),
                 write(cache, villageTemplate("savanna", true), importVillageStructure("savanna", true)),
@@ -126,6 +180,19 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
 
     public static Identifier villageTemplate(String style, boolean wooden) {
         return id("worldgen/village/" + style + "/" + (wooden ? "wooden_chroma" : "broken_chroma"));
+    }
+
+    public static Identifier lightPanelRoom(int tier) {
+        if (tier < 0 || tier >= reika.chromaticraft.world.dimension.structure.lightpanel
+                .LightPanelPatternLibrary.tierCount())
+            throw new IllegalArgumentException("Glowing Logic tier " + tier);
+        return id("worldgen/proxima/light_panel/room_tier_" + tier);
+    }
+
+    public static Identifier golChamber(int difficulty) {
+        if (difficulty < 1 || difficulty > 3)
+            throw new IllegalArgumentException("Cellular Automata difficulty " + difficulty);
+        return id("worldgen/proxima/gol/chamber_" + difficulty);
     }
 
     /**
@@ -1310,8 +1377,564 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
     }
 
     private static StateDef shielding(ChromaShieldTypes type) {
-        return new StateDef(ChromatiCraft.MODID + ":" + type.registryName(), Map.of());
+        // All dimension-structure source calls use BlockType metadata with bit 3 set by the splice
+        // cache. The modern state must retain that protection bit explicitly.
+        return new StateDef(ChromatiCraft.MODID + ":" + type.registryName(),
+                Map.of("reinforced", "true"));
     }
+
+    /** V33a {@code addBreakable}: the same shielding material without the structure-protection bit. */
+    private static StateDef breakableShielding(ChromaShieldTypes type) {
+        return new StateDef(ChromatiCraft.MODID + ":" + type.registryName(),
+                Map.of("reinforced", "false"));
+    }
+
+    /**
+     * Converts the source-authored V33a Glowing Logic entrance components directly to NBT. The old
+     * files are deliberately retained as the geometry authority: their very large generated
+     * {@code setBlock} lists are split across generate2/3/etc, but each continuation is called by the
+     * preceding method and parsing the file in order reproduces the final palette exactly.
+     */
+    private static TemplateData importLightPanelStair(String fileName, int sizeX, int sizeY,
+            int sizeZ, boolean bottom) {
+        Path source = legacyLightPanelSource(fileName);
+        final String java;
+        try { java = Files.readString(source); }
+        catch (IOException e) {
+            throw new IllegalStateException("Could not read V33a Glowing Logic entrance " + source, e);
+        }
+        TemplateData data = new TemplateData(sizeX, sizeY, sizeZ);
+        Pattern placement = Pattern.compile("world\\.setBlock\\(x \\+ (\\d+), y \\+ (\\d+), z \\+ (\\d+), "
+                + "(Blocks\\.(?:air|water)|b)(?:, (m[csml]), 3)?\\);");
+        Matcher matcher = placement.matcher(java);
+        int found = 0;
+        while (matcher.find()) {
+            int x = Integer.parseInt(matcher.group(1));
+            int y = Integer.parseInt(matcher.group(2));
+            int z = Integer.parseInt(matcher.group(3));
+            String block = matcher.group(4);
+            String metadata = matcher.group(5);
+            StateDef state = switch (block) {
+                case "Blocks.air" -> AIR;
+                case "Blocks.water" -> new StateDef("minecraft:water", Map.of("level", "0"));
+                default -> shielding(switch (metadata) {
+                    case "mc" -> ChromaShieldTypes.CLOAK;
+                    case "ml" -> ChromaShieldTypes.LIGHT;
+                    case "mm" -> ChromaShieldTypes.MOSS;
+                    default -> ChromaShieldTypes.STONE;
+                });
+            };
+            data.set(x, y, z, state);
+            found++;
+        }
+        if (found < 1000)
+            throw new IllegalStateException("Parsed only " + found + " Glowing Logic stair cells from " + source);
+        // The only non-constant placement in the authored components is the bottom's 5x5 water pad.
+        if (bottom)
+            for (int x = 6; x <= 10; x++) for (int z = 6; z <= 10; z++)
+                data.set(x, 1, z, new StateDef("minecraft:water", Map.of("level", "0")));
+        return data;
+    }
+
+    /** Exact V33a LightPanelRoom shell, internal wall, lamps, switches, door, taper and chests. */
+    private static TemplateData lightPanelRoomTemplate(int tier) {
+        int switches = reika.chromaticraft.world.dimension.structure.lightpanel.LightPanelPatternLibrary
+                .switchCount(tier);
+        int rows = reika.chromaticraft.world.dimension.structure.lightpanel.LightPanelPatternLibrary
+                .rowCount(tier);
+        int radius = switches + 2;
+        int height = rows + 7;
+        TemplateData data = new TemplateData(19, height + 1, radius * 2 + 1);
+        StateDef stone = shielding(ChromaShieldTypes.STONE);
+        StateDef cloak = shielding(ChromaShieldTypes.CLOAK);
+        StateDef glass = shielding(ChromaShieldTypes.GLASS);
+        StateDef light = shielding(ChromaShieldTypes.LIGHT);
+        int centerZ = radius;
+
+        for (int x = 0; x <= 18; x++) for (int z = 0; z <= radius * 2; z++)
+            for (int y = 0; y <= height; y++)
+                data.set(x, y, z, x == 0 || x == 18 || z == 0 || z == radius * 2
+                        || y == 0 || y == height ? stone : AIR);
+
+        int panelX = 12;
+        for (int z = 0; z <= radius * 2; z++) for (int y = 1; y < height; y++)
+            data.set(panelX, y, z, stone);
+        String[] types = {"target", "block", "cancel"};
+        for (int row = 0; row < rows; row++) {
+            int y = 6 + row;
+            for (int type = 0; type < types.length; type++) {
+                int z = centerZ - 2 + type * 2;
+                data.set(panelX, y, z, new StateDef("chromaticraft:light_panel",
+                        Map.of("type", types[type], "active", "false")));
+                data.set(panelX, y, z + 1, cloak);
+            }
+        }
+        for (int row = -1; row <= rows; row++) {
+            int y = 6 + row;
+            for (int dz : new int[] {-3, -1, 1, 3}) data.set(panelX, y, centerZ + dz, cloak);
+            data.set(panelX, y, centerZ - 4, stone);
+            data.set(panelX, y, centerZ + 4, stone);
+        }
+        for (int z = 0; z <= radius * 2; z++) {
+            for (int y = 1; y <= 4; y++) data.set(panelX, y, z, stone);
+            int dz = z - centerZ;
+            if (Math.abs(dz) < 5) {
+                StateDef cap = Math.abs(dz) == 4 ? stone : cloak;
+                data.set(panelX, 5, z, cap);
+                data.set(panelX, rows + 6, z, cap);
+            }
+        }
+        StateDef door = new StateDef("chromaticraft:chroma_door",
+                Map.of("open", "false", "damage", "false", "consume_key", "false",
+                        "stay_open", "true", "up", "false", "down", "false",
+                        "north", "false", "south", "false", "east", "false", "west", "false"));
+        for (int dz = -2; dz <= 2; dz++) for (int y = 1; y <= 3; y++)
+            data.set(panelX, y, centerZ + dz, door);
+
+        int switchX = 6;
+        for (int channel = 0; channel < switches; channel++) {
+            int z = centerZ - switches + channel * 2 + 1;
+            data.set(switchX, 1, z, stone);
+            data.set(switchX, 2, z, new StateDef("chromaticraft:panel_switch", Map.of("up", "false")));
+            if (channel != switches - 1) {
+                data.set(switchX, 1, z + 1, stone);
+                data.set(switchX, 2, z + 1, glass);
+            }
+        }
+		if (tier == 0)
+			data.set(1, 1, centerZ, new StateDef("chromaticraft:structure_password", Map.of()));
+        for (int dz = -2; dz <= 2; dz++) for (int y = 1; y <= 3; y++) {
+            data.set(0, y, centerZ + dz, AIR);
+            data.set(18, y, centerZ + dz, AIR);
+        }
+        data.set(0, 4, centerZ - 1, light); data.set(0, 4, centerZ + 1, light);
+        data.set(0, 2, centerZ - 3, light); data.set(0, 2, centerZ + 3, light);
+        for (int z = 0; z <= radius * 2; z++) for (int x = 13; x <= 18; x++) {
+            int edge = Math.abs(z - centerZ);
+            int roof = edge >= radius - 1 ? 3 : edge >= radius - 3 ? 4 : 5;
+            data.set(x, roof + 1, z, stone);
+        }
+        data.set(15, 1, 1, lootChest("south"), vanillaLootTableNBT("chromaticraft:chests/light_panel_room"));
+        data.set(15, 1, radius * 2 - 1, lootChest("north"),
+                vanillaLootTableNBT("chromaticraft:chests/light_panel_room"));
+        data.set(15, 0, 1, light); data.set(15, 0, radius * 2 - 1, light);
+        return data;
+    }
+
+    /** Exact V33a LightPanelLoot, with the modern persistent controller hidden in its ceiling. */
+    private static TemplateData lightPanelLoot() {
+        int radius = 10;
+        int maxHeight = 21;
+        TemplateData data = new TemplateData(21, 22, 21);
+        StateDef stone = shielding(ChromaShieldTypes.STONE);
+        StateDef cloak = shielding(ChromaShieldTypes.CLOAK);
+		StateDef breakableStone = breakableShielding(ChromaShieldTypes.STONE);
+		StateDef breakableLight = breakableShielding(ChromaShieldTypes.LIGHT);
+        for (int x = -radius; x <= radius; x++) for (int z = -radius; z <= radius; z++) {
+            boolean wall = Math.abs(x) == radius || Math.abs(z) == radius;
+            int h = Math.max(0, radius - (Math.abs(x) + Math.abs(z)) / 2
+                    - (Math.abs(x) <= 1 || Math.abs(z) <= 1 ? 6 : 5));
+            for (int y = 0; y <= maxHeight; y++) {
+                StateDef state = !wall && y > h && y < h + 6 ? AIR
+                        : y > h && y < maxHeight && !wall ? cloak : stone;
+				// LightPanelLoot calls addBreakable for every y=0 cell after placing it. In 26.2
+				// that is the plain state of the same material, not a process-local generator set.
+				if (y == 0) state = breakableStone;
+                data.set(x + radius, y, z + radius, state);
+            }
+        }
+        StateDef light = shielding(ChromaShieldTypes.LIGHT);
+		data.set(18, 0, 18, breakableLight); data.set(18, 0, 2, breakableLight);
+        data.set(10, 6, 10, new StateDef("chromaticraft:dimension_core_white", Map.of()));
+        // Structure state must survive generator-object recreation; the ceiling keeps the controller
+        // protected without changing the traversable authored room.
+        data.set(10, 21, 10, new StateDef("chromaticraft:structure_controller", Map.of()));
+        for (int dz = -2; dz <= 2; dz++) for (int y = 1; y <= 3; y++)
+            data.set(0, y, 10 + dz, AIR);
+        data.set(0, 4, 9, light); data.set(0, 4, 11, light);
+        data.set(0, 2, 7, light); data.set(0, 2, 13, light);
+        return data;
+    }
+
+    /** Canonical sealed 4-block maze cell. Its six seeded openings are carved after NBT placement. */
+    private static TemplateData threeDMazeCell() {
+        TemplateData data = new TemplateData(5, 5, 5);
+        StateDef stone = shielding(ChromaShieldTypes.STONE);
+        for (int x = 0; x <= 4; x++) for (int y = 0; y <= 4; y++) for (int z = 0; z <= 4; z++)
+            data.set(x, y, z, x == 0 || x == 4 || y == 0 || y == 4 || z == 0 || z == 4 ? stone : AIR);
+        return data;
+    }
+
+    /** One repeatable layer of V33a's 5x5 entrance shaft. */
+    private static TemplateData threeDMazeShaftSlice() {
+        TemplateData data = new TemplateData(5, 1, 5);
+        StateDef stone = shielding(ChromaShieldTypes.STONE);
+        for (int x = 0; x <= 4; x++) for (int z = 0; z <= 4; z++)
+            data.set(x, 0, z, x == 0 || x == 4 || z == 0 || z == 4 ? stone : AIR);
+        return data;
+    }
+
+    /**
+     * Mechanical import of V33a {@code TDMazeEntrance}'s authored 13x6 pavilion. The terrain-height
+     * shaft and pad remain repetition/composition concerns in the structure piece.
+     */
+    private static TemplateData importThreeDMazeEntrance() {
+        String java = readLegacyThreeDMaze("TDMazeEntrance.java");
+        TemplateData data = new TemplateData(13, 6, 13);
+        for (int x = 0; x <= 12; x++) for (int y = 0; y <= 5; y++) for (int z = 0; z <= 12; z++)
+            data.set(x, y, z, AIR);
+        Pattern placement = Pattern.compile("world\\.setBlock\\(x\\+(\\d+), y\\+(\\d+), z\\+(\\d+), "
+                + "(sh|ps)(?:, (m[ls]|\\d+), 3)?\\);");
+        Matcher matcher = placement.matcher(java);
+        int found = 0;
+        while (matcher.find()) {
+            int metadata = parseThreeDMazeMetadata(matcher.group(5));
+            StateDef state = "sh".equals(matcher.group(4))
+                    ? shielding(metadata == 6 ? ChromaShieldTypes.LIGHT : ChromaShieldTypes.STONE)
+                    : crystallineStone(metadata);
+            data.set(Integer.parseInt(matcher.group(1)), Integer.parseInt(matcher.group(2)),
+                    Integer.parseInt(matcher.group(3)), state);
+            found++;
+        }
+        if (found < 150)
+            throw new IllegalStateException("Parsed only " + found + " Three-Dimensional Maze entrance cells");
+        return data;
+    }
+
+    /** Exact authored V33a reward chamber, shifted three cells upward so an NBT origin stays positive. */
+    private static TemplateData importThreeDMazeLoot() {
+        String java = readLegacyThreeDMaze("LootRoom.java");
+        TemplateData data = new TemplateData(11, 9, 11);
+        StateDef stone = shielding(ChromaShieldTypes.STONE);
+        for (int x = 0; x <= 10; x++) for (int z = 0; z <= 10; z++) for (int y = 0; y <= 2; y++)
+            data.set(x, y, z, stone);
+        Pattern placement = Pattern.compile("world\\.setBlock\\(x\\+(\\d+), y\\+(\\d+), z\\+(\\d+), "
+                + "(sh|Blocks\\.air)(?:, (m[slg]))?[^;]*\\);");
+        Matcher matcher = placement.matcher(java);
+        int found = 0;
+        while (matcher.find()) {
+            StateDef state = switch (matcher.group(4)) {
+                case "Blocks.air" -> AIR;
+                default -> shielding(switch (matcher.group(5)) {
+                    case "ml" -> ChromaShieldTypes.LIGHT;
+                    case "mg" -> ChromaShieldTypes.GLASS;
+                    default -> ChromaShieldTypes.STONE;
+                });
+            };
+            data.set(Integer.parseInt(matcher.group(1)), Integer.parseInt(matcher.group(2)) + 3,
+                    Integer.parseInt(matcher.group(3)), state);
+            found++;
+        }
+        if (found < 700)
+            throw new IllegalStateException("Parsed only " + found + " Three-Dimensional Maze reward cells");
+        data.set(5, 6, 5, shielding(ChromaShieldTypes.GLASS));
+        // V33a explicitly marks these two perimeter layers as breakable unless the upper cell is light.
+        for (int x = 0; x <= 10; x++) for (int z = 0; z <= 10; z++) {
+            if (x != 0 && x != 10 && z != 0 && z != 10) continue;
+            if (!data.is( x, 5, z, shielding(ChromaShieldTypes.LIGHT))) {
+                data.makePlainShield(x, 4, z);
+                data.makePlainShield(x, 5, z);
+            }
+        }
+        return data;
+    }
+
+    private static String readLegacyThreeDMaze(String fileName) {
+        Path source = legacyThreeDMazeSource(fileName);
+        try { return Files.readString(source); }
+        catch (IOException e) {
+            throw new IllegalStateException("Could not read V33a Three-Dimensional Maze source " + source, e);
+        }
+    }
+
+    private static int parseThreeDMazeMetadata(String value) {
+        if (value == null || value.equals("ms")) return 1;
+        if (value.equals("ml")) return 6;
+        try { return Integer.parseInt(value); }
+        catch (NumberFormatException e) { throw new IllegalArgumentException("Unknown maze metadata " + value, e); }
+    }
+
+    private static StateDef crystallineStone(int metadata) {
+        BlockCrystallineStone.StoneTypes[] types = BlockCrystallineStone.StoneTypes.list;
+        int index = Math.floorMod(metadata, types.length);
+        return new StateDef(ChromatiCraft.MODID + ":" +
+                reika.chromaticraft.registry.ChromaBlocks.crystallineStoneName(types[index]), Map.of());
+    }
+
+    private static CompoundTag vanillaLootTableNBT(String table) {
+        CompoundTag nbt = new CompoundTag();
+        nbt.putString("id", "chromaticraft:loot_chest");
+        nbt.putString("LootTable", table);
+        return nbt;
+    }
+
+    private static Path legacyLightPanelSource(String fileName) {
+        Path relative = Path.of("src/main/java/reika/chromaticraft/world/dimension/structure/lightpanel", fileName);
+        Path cursor = Path.of("").toAbsolutePath();
+        for (int depth = 0; depth < 4 && cursor != null; depth++, cursor = cursor.getParent()) {
+            Path direct = cursor.resolve(relative);
+            if (Files.isRegularFile(direct)) return direct;
+            Path module = cursor.resolve("ChromatiCraft").resolve(relative);
+            if (Files.isRegularFile(module)) return module;
+        }
+        return Path.of("").toAbsolutePath().resolve(relative);
+    }
+
+    private static Path legacyThreeDMazeSource(String fileName) {
+        Path relative = Path.of("src/main/java/reika/chromaticraft/world/dimension/structure/tdmaze", fileName);
+        Path cursor = Path.of("").toAbsolutePath();
+        for (int depth = 0; depth < 4 && cursor != null; depth++, cursor = cursor.getParent()) {
+            Path direct = cursor.resolve(relative);
+            if (Files.isRegularFile(direct)) return direct;
+            Path module = cursor.resolve("ChromatiCraft").resolve(relative);
+            if (Files.isRegularFile(module)) return module;
+        }
+        return Path.of("").toAbsolutePath().resolve(relative);
+    }
+
+    /**
+     * Complete fixed underground chamber for one V33a Cellular Automata difficulty. The board is
+     * deliberately a full NBT component rather than thousands of runtime-authored cell columns:
+     * structure placement can clip one canonical 27/35/51-wide template to each generating chunk.
+     */
+    private static TemplateData golChamberTemplate(int difficulty) {
+        reika.chromaticraft.world.dimension.structure.GOLPuzzleLayout layout =
+                reika.chromaticraft.world.dimension.structure.GOLPuzzleLayout.forDifficulty(difficulty);
+        int radius = layout.radius();
+        int boardWidth = layout.width();
+        int size = boardWidth + 2;
+        TemplateData data = new TemplateData(size, 15, size);
+        StateDef floor = new StateDef("chromaticraft:gol_tile",
+                Map.of("active", "false", "memory", "false"));
+        StateDef memory = new StateDef("chromaticraft:gol_tile",
+                Map.of("active", "false", "memory", "true"));
+        StateDef cloak = shielding(ChromaShieldTypes.CLOAK);
+        StateDef light = shielding(ChromaShieldTypes.LIGHT);
+
+        for (int x = 1; x <= boardWidth; x++) for (int z = 1; z <= boardWidth; z++) {
+            data.set(x, 0, z, cloak);
+            data.set(x, 1, z, floor);
+            for (int y = 2; y <= 12; y++) data.set(x, y, z, AIR);
+            data.set(x, 13, z, memory);
+            data.set(x, 14, z, cloak);
+        }
+        for (int y = 0; y < 15; y++) {
+            int relativeY = y - 1; // V33a k=-1..ROOM_HEIGHT+1
+            for (int relative = -radius - 1; relative <= radius + 1; relative++) {
+                int along = relative + radius + 1;
+                StateDef wall = Math.abs(relativeY % 8) == Math.abs(relative % 8) ? light : cloak;
+                data.set(along, y, 0, wall);
+                data.set(along, y, size - 1, wall);
+                data.set(0, y, along, wall);
+                data.set(size - 1, y, along, wall);
+            }
+        }
+        return data;
+    }
+
+    /** Exact fixed surface pavilion from the loop-authored half of V33a {@code GOLEntrance}. */
+    private static TemplateData golSurface() {
+        TemplateData data = new TemplateData(13, 7, 13);
+        StateDef stone = shielding(ChromaShieldTypes.STONE);
+        StateDef moss = shielding(ChromaShieldTypes.MOSS);
+        StateDef light = shielding(ChromaShieldTypes.LIGHT);
+        for (int x = 0; x < 13; x++) for (int z = 0; z < 13; z++) {
+            int dx = x - 6;
+            int dz = z - 6;
+            if (Math.abs(dx) > 2 || Math.abs(dz) > 2)
+                data.set(x, 0, z, Math.abs(dx) == 6 || Math.abs(dz) == 6 ? moss : stone);
+            for (int y = 1; y <= 6; y++) data.set(x, y, z, AIR);
+        }
+        for (int offset = 3; offset < 6; offset++) {
+            data.set(6 - offset, 0, 6, moss); data.set(6 + offset, 0, 6, moss);
+            data.set(6, 0, 6 - offset, moss); data.set(6, 0, 6 + offset, moss);
+        }
+        for (int[] point : new int[][] {{0,6},{12,6},{6,0},{6,12},{0,0},{12,0},{0,12},{12,12}})
+            for (int y = 1; y <= 6; y++) data.set(point[0], y, point[1], y == 6 ? light : stone);
+        return data;
+    }
+
+    /** Mechanical import of one explicit V33a GOL component method. */
+    private static TemplateData importGOLPlacementMethod(String fileName, String methodName,
+            int sizeX, int sizeY, int sizeZ, GOLTemplateKind kind, int expectedPlacements) {
+        Path source = legacyGOLSource(fileName);
+        final String java;
+        try { java = Files.readString(source); }
+        catch (IOException e) {
+            throw new IllegalStateException("Could not read V33a Cellular Automata source " + source, e);
+        }
+        int method = java.indexOf("void " + methodName);
+        if (method < 0) throw new IllegalStateException("Missing " + methodName + " in " + source);
+        String body = extractJavaBlock(java, java.indexOf('{', method));
+        TemplateData data = new TemplateData(sizeX, sizeY, sizeZ);
+        Pattern placement = Pattern.compile("world\\.setBlock\\(x\\+(\\d+),\\s*y\\+(\\d+),\\s*z\\+(\\d+),\\s*([^;]+)\\);");
+        Matcher matcher = placement.matcher(body);
+        int found = 0;
+        while (matcher.find()) {
+            int x = Integer.parseInt(matcher.group(1));
+            int y = Integer.parseInt(matcher.group(2));
+            int z = Integer.parseInt(matcher.group(3));
+            String value = matcher.group(4).trim();
+            StateDef state = value.startsWith("Blocks.air") ? AIR
+                    : value.contains("ml") ? shielding(ChromaShieldTypes.LIGHT)
+                    : shielding(kind == GOLTemplateKind.STONE
+                            ? ChromaShieldTypes.STONE : ChromaShieldTypes.CLOAK);
+            data.set(x, y, z, state);
+            found++;
+        }
+        if (kind == GOLTemplateKind.EXIT) {
+            matcher = Pattern.compile("this\\.placeGate\\(world,\\s*x\\+(\\d+),\\s*y\\+(\\d+),\\s*z\\+(\\d+)\\)")
+                    .matcher(body);
+            while (matcher.find()) {
+                data.set(Integer.parseInt(matcher.group(1)), Integer.parseInt(matcher.group(2)),
+                        Integer.parseInt(matcher.group(3)),
+                        new StateDef("chromaticraft:chroma_door", Map.of()));
+                found++;
+            }
+        }
+        if (found != expectedPlacements)
+            throw new IllegalStateException("Expected " + expectedPlacements + " " + methodName
+                    + " placements, parsed " + found + " from " + source);
+        return data;
+    }
+
+    /** Exact V33a reward shell; breakable shielding is retained as non-reinforced NBT state. */
+    private static TemplateData importGOLLoot() {
+        Path source = legacyGOLSource("GOLLoot.java");
+        final String java;
+        try { java = Files.readString(source); }
+        catch (IOException e) {
+            throw new IllegalStateException("Could not read V33a Cellular Automata loot source " + source, e);
+        }
+        int method = java.indexOf("void generate");
+        String body = extractJavaBlock(java, java.indexOf('{', method));
+        TemplateData data = new TemplateData(10, 7, 7);
+        Pattern placement = Pattern.compile("world\\.setBlock\\(x\\+(\\d+),\\s*y\\+(\\d+),\\s*z\\+(\\d+),\\s*([^;]+)\\);");
+        Matcher matcher = placement.matcher(body);
+        int found = 0;
+        while (matcher.find()) {
+            String value = matcher.group(4).trim();
+            StateDef state = value.startsWith("Blocks.air") ? AIR
+                    : value.contains("mg") ? shielding(ChromaShieldTypes.GLASS)
+                    : value.contains("ml") ? shielding(ChromaShieldTypes.LIGHT)
+                    : shielding(ChromaShieldTypes.STONE);
+            data.set(Integer.parseInt(matcher.group(1)), Integer.parseInt(matcher.group(2)),
+                    Integer.parseInt(matcher.group(3)), state);
+            found++;
+        }
+        if (found != 358)
+            throw new IllegalStateException("Expected 358 GOLLoot placements, parsed " + found);
+        matcher = Pattern.compile("this\\.addBreakable\\(world,\\s*x\\+(\\d+),\\s*y\\+(\\d+),\\s*z\\+(\\d+)\\)")
+                .matcher(body);
+        int breakable = 0;
+        while (matcher.find()) {
+            data.makePlainShield(Integer.parseInt(matcher.group(1)), Integer.parseInt(matcher.group(2)),
+                    Integer.parseInt(matcher.group(3)));
+            breakable++;
+        }
+		if (breakable != 51)
+			throw new IllegalStateException("Expected 51 GOLLoot breakable cells, parsed " + breakable);
+        data.set(6, 3, 3, STRUCTURE_VOID);
+        return data;
+    }
+
+    private static Path legacyGOLSource(String fileName) {
+        Path relative = Path.of("src/main/java/reika/chromaticraft/world/dimension/structure/gol", fileName);
+        Path cursor = Path.of("").toAbsolutePath();
+        for (int depth = 0; depth < 4 && cursor != null; depth++, cursor = cursor.getParent()) {
+            Path direct = cursor.resolve(relative);
+            if (Files.isRegularFile(direct)) return direct;
+            Path module = cursor.resolve("ChromatiCraft").resolve(relative);
+            if (Files.isRegularFile(module)) return module;
+        }
+        return Path.of("").toAbsolutePath().resolve(relative);
+    }
+
+    private enum GOLTemplateKind { STONE, CLOAK, EXIT }
+
+    /** Exact V33a surface pavilion for Crystal Music; the terrain shaft remains piece composition. */
+    private static TemplateData importMusicFunnel() {
+        return importMusicTemplate("MusicFunnel.java", 15, 6, 15, MusicTemplateKind.FUNNEL, 850);
+    }
+
+    /** Exact V33a room shell and its sixteen independently registered coloured lamp blocks. */
+    private static TemplateData importMusicRoom() {
+        return importMusicTemplate("MusicPuzzleBlocks.java", 11, 7, 20, MusicTemplateKind.ROOM, 950);
+    }
+
+    /** Exact V33a Crystal Music reward room; the core is bound at runtime by the structure piece. */
+    private static TemplateData importMusicLoot() {
+        TemplateData data = importMusicTemplate("MusicLoot.java", 7, 6, 8, MusicTemplateKind.LOOT, 300);
+        for (int x : new int[] {0, 6}) for (int y : new int[] {1, 2})
+            for (int z : new int[] {4, 5}) data.makePlainShield(x, y, z);
+        return data;
+    }
+
+    private static TemplateData importMusicTemplate(String fileName, int sizeX, int sizeY, int sizeZ,
+            MusicTemplateKind kind, int minimumPlacements) {
+        Path source = legacyMusicSource(fileName);
+        final String java;
+        try { java = Files.readString(source); }
+        catch (IOException e) {
+            throw new IllegalStateException("Could not read V33a Crystal Music source " + source, e);
+        }
+        TemplateData data = new TemplateData(sizeX, sizeY, sizeZ);
+        for (int x = 0; x < sizeX; x++) for (int y = 0; y < sizeY; y++)
+            for (int z = 0; z < sizeZ; z++) data.set(x, y, z, AIR);
+        Pattern placement = Pattern.compile("world\\.setBlock\\(x\\+(\\d+),\\s*y\\+(\\d+),\\s*z\\+(\\d+),\\s*"
+                + "(Blocks\\.air|sh|cry|b)(?:,\\s*([^,\\)]+))?[^;]*\\);");
+        Matcher matcher = placement.matcher(java);
+        int found = 0;
+        while (matcher.find()) {
+            int x = Integer.parseInt(matcher.group(1));
+            int y = Integer.parseInt(matcher.group(2));
+            int z = Integer.parseInt(matcher.group(3));
+            if (x >= sizeX || y >= sizeY || z >= sizeZ)
+                throw new IllegalStateException(fileName + " wrote outside declared template at "
+                        + x + "," + y + "," + z);
+            data.set(x, y, z, musicState(kind, matcher.group(4), matcher.group(5)));
+            found++;
+        }
+        if (found < minimumPlacements)
+            throw new IllegalStateException("Parsed only " + found + " Crystal Music cells from " + fileName);
+        return data;
+    }
+
+    private static StateDef musicState(MusicTemplateKind kind, String block, String metadata) {
+        if (block.equals("Blocks.air")) return AIR;
+        String value = metadata == null ? "" : metadata.trim();
+        if (block.equals("cry")) {
+            int ordinal;
+            try { ordinal = Integer.parseInt(value); }
+            catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Unknown Crystal Music lamp metadata " + value, e);
+            }
+            CrystalElement element = CrystalElement.elements[Math.floorMod(ordinal, CrystalElement.elements.length)];
+            return new StateDef(ChromatiCraft.MODID + ":crystal_lamp_" + element.getEnglishName(), Map.of());
+        }
+        ChromaShieldTypes type = switch (value) {
+            case "BlockType.LIGHT.metadata" -> ChromaShieldTypes.LIGHT;
+            case "BlockType.GLASS.metadata" -> ChromaShieldTypes.GLASS;
+            case "m1" -> ChromaShieldTypes.CLOAK;
+            case "m2", "m", "meta", "" -> ChromaShieldTypes.STONE;
+            default -> throw new IllegalArgumentException("Unknown " + kind + " shield metadata " + value);
+        };
+        return shielding(type);
+    }
+
+    private static Path legacyMusicSource(String fileName) {
+        Path relative = Path.of("src/main/java/reika/chromaticraft/world/dimension/structure/music", fileName);
+        Path cursor = Path.of("").toAbsolutePath();
+        for (int depth = 0; depth < 4 && cursor != null; depth++, cursor = cursor.getParent()) {
+            Path direct = cursor.resolve(relative);
+            if (Files.isRegularFile(direct)) return direct;
+            Path module = cursor.resolve("ChromatiCraft").resolve(relative);
+            if (Files.isRegularFile(module)) return module;
+        }
+        return Path.of("").toAbsolutePath().resolve(relative);
+    }
+
+    private enum MusicTemplateKind { FUNNEL, ROOM, LOOT }
 
     private static StateDef rune(CrystalElement element) {
         return new StateDef(ChromatiCraft.MODID + ":crystal_rune_" + element.getEnglishName().toLowerCase(java.util.Locale.ROOT), Map.of());
@@ -1913,6 +2536,41 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
 		data.set(c, 2, c, STRUCTURE_VOID);
 		return data;
 	}
+
+	/**
+	 * Exact V33a {@code PersonalChargerStructure}. The old origin is template {@code (2,0,2)} and
+	 * the charger itself is six blocks above it at {@code (2,6,2)}. The black runes are palette
+	 * placeholders; {@code PersonalChargerStructure} replaces all four with the charger's colour.
+	 */
+	private static TemplateData personalCharger() {
+		TemplateData data = new TemplateData(5, 7, 5);
+		int c = 2;
+		for (int x = -1; x <= 1; x++) for (int z = -1; z <= 1; z++)
+			data.set(c + x, 0, c + z, stone(StoneTypes.SMOOTH));
+		data.set(c, 0, c, stone(StoneTypes.STABILIZER));
+
+		for (int y = 1; y <= 4; y++) {
+			StateDef state = stone(y == 4 ? StoneTypes.ENGRAVED : StoneTypes.COLUMN);
+			for (int sx : new int[] {-1, 1}) for (int sz : new int[] {-1, 1})
+				data.set(c + sx, y, c + sz, state);
+		}
+
+		for (int sx : new int[] {-1, 1}) for (int sz : new int[] {-1, 1}) {
+			data.set(c + sx * 2, 0, c + sz * 2, stone(StoneTypes.BRICKS));
+			data.set(c + sx * 2, 1, c + sz * 2, stone(StoneTypes.COLUMN));
+			data.set(c + sx * 2, 2, c + sz * 2, RUNE_PLACEHOLDER);
+		}
+
+		for (int i = -1; i <= 1; i++) {
+			data.set(c - 2, 0, c + i, stone(StoneTypes.GROOVE2));
+			data.set(c + 2, 0, c + i, stone(StoneTypes.GROOVE2));
+			data.set(c + i, 0, c - 2, stone(StoneTypes.GROOVE1));
+			data.set(c + i, 0, c + 2, stone(StoneTypes.GROOVE1));
+		}
+		data.set(c, 6, c, new StateDef("chromaticraft:personal_charger", Map.of()));
+		return data;
+	}
+
     private static void setInfusionCircle(TemplateData data, int center, int y, double radius,
             StateDef state) {
         for (int angle = 0; angle < 360; angle += 15) {
@@ -1929,6 +2587,40 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
         data.set(0, 0, 0, SMOOTH);
         return data;
     }
+
+	private static TemplateData weakRepeater() {
+		TemplateData data = new TemplateData(1, 2, 1);
+		data.set(0, 0, 0, new StateDef("minecraft:oak_log", Map.of("axis", "y")));
+		data.set(0, 1, 0, new StateDef("chromaticraft:weak_repeater", Map.of()));
+		return data;
+	}
+
+	/** Exact 5x4x5 V33a BoostedRelayStructure; anchor (2,3,2) is the Relay Source. */
+	private static TemplateData relaySource() {
+		TemplateData data = new TemplateData(5, 4, 5);
+		int c = 2;
+		for (int x = 0; x < 5; x++) for (int z = 0; z < 5; z++) {
+			data.set(x, 1, z, stone(StoneTypes.SMOOTH));
+			data.set(x, 2, z, AIR);
+		}
+		for (int sx : new int[] {-1, 1}) for (int sz : new int[] {-1, 1}) {
+			data.set(c + sx, 0, c + sz, stone(StoneTypes.SMOOTH));
+			data.set(c + sx, 1, c + sz, new StateDef("chromaticraft:liquid_chroma", Map.of("level", "0")));
+		}
+		data.set(c - 1, 1, c, stone(StoneTypes.GROOVE1));
+		data.set(c + 1, 1, c, stone(StoneTypes.GROOVE1));
+		data.set(c, 1, c - 1, stone(StoneTypes.GROOVE2));
+		data.set(c, 1, c + 1, stone(StoneTypes.GROOVE2));
+		data.set(c, 2, c, stone(StoneTypes.FOCUSFRAME));
+		data.set(c - 2, 2, c, stone(StoneTypes.BRICKS));
+		data.set(c + 2, 2, c, stone(StoneTypes.BRICKS));
+		data.set(c, 2, c - 2, stone(StoneTypes.BRICKS));
+		data.set(c, 2, c + 2, stone(StoneTypes.BRICKS));
+		for (int sx : new int[] {-2, 2}) for (int sz : new int[] {-2, 2})
+			data.set(c + sx, 2, c + sz, stone(StoneTypes.EMBOSSED));
+		data.set(c, 3, c, new StateDef("chromaticraft:relay_source", Map.of()));
+		return data;
+	}
 
     private static TemplateData compoundRepeater() {
         TemplateData data = new TemplateData(1, 6, 1);
@@ -2058,6 +2750,20 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
         }
         void remove(int x, int y, int z) {
             blocks.remove(new BlockPos(x, y, z));
+        }
+
+        boolean is(int x, int y, int z, StateDef state) {
+            Cell cell = blocks.get(new BlockPos(x, y, z));
+            return cell != null && cell.state().equals(state);
+        }
+
+        void makePlainShield(int x, int y, int z) {
+            BlockPos pos = new BlockPos(x, y, z);
+            Cell cell = blocks.get(pos);
+            if (cell == null || !cell.state().name().startsWith(ChromatiCraft.MODID + ":shielding_")) return;
+            Map<String, String> properties = new LinkedHashMap<>(cell.state().properties());
+            properties.put("reinforced", "false");
+            blocks.put(pos, new Cell(new StateDef(cell.state().name(), Map.copyOf(properties)), cell.nbt()));
         }
 
 		void inheritDoorFacings() {

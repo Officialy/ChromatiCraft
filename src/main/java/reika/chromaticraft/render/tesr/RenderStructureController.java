@@ -6,8 +6,9 @@ import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
+import net.minecraft.client.renderer.feature.CustomFeatureRenderer;
 import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
-import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.LightCoordsUtil;
@@ -15,8 +16,12 @@ import net.minecraft.world.phys.Vec3;
 
 import org.jspecify.annotations.Nullable;
 
+import net.neoforged.neoforge.client.extensions.OrderedSubmitNodeCollectorExtension;
+import net.neoforged.neoforge.client.submit.RenderPhaseKeys;
+
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.registry.CrystalElement;
+import reika.chromaticraft.render.ChromaRenderPipelines;
 import reika.chromaticraft.tileentity.TileEntityStructureController;
 
 /**
@@ -80,7 +85,7 @@ public final class RenderStructureController
 		int colour = 0xffffffff & (0xff000000 | state.colour);
 		// Emissive translucent: additive-looking against the world without needing a pipeline modifier,
 		// and one render type for the whole element.
-		collector.submitCustomGeometry(poseStack, RenderTypes.entityTranslucentEmissive(FLARE),
+		submitAfterTerrain(poseStack, collector, ChromaRenderPipelines.additiveSprite(FLARE),
 				(matrix, buffer) -> {
 					buffer.addVertex(pose, -RADIUS, -RADIUS, 0).setColor(colour).setUv(0, v1)
 							.setOverlay(net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY)
@@ -96,6 +101,19 @@ public final class RenderStructureController
 							.setLight(LightCoordsUtil.FULL_BRIGHT).setNormal(pose, 0, 0, 1);
 				});
 		poseStack.popPose();
+	}
+
+	private static void submitAfterTerrain(PoseStack poseStack, SubmitNodeCollector collector,
+			RenderType renderType, SubmitNodeCollector.CustomGeometryRenderer renderer) {
+		CustomFeatureRenderer.Submit submit = new CustomFeatureRenderer.Submit(
+				poseStack.last().copy(), renderType, renderer);
+		((OrderedSubmitNodeCollectorExtension)collector.order(0))
+				.submitSpecial(RenderPhaseKeys.AFTER_TERRAIN, submit);
+	}
+
+	@Override
+	public boolean shouldRenderOffScreen() {
+		return true;
 	}
 
 	public static final class State extends BlockEntityRenderState {

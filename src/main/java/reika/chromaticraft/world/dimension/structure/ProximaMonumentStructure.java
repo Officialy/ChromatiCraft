@@ -7,6 +7,7 @@ import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureType;
+import net.minecraft.world.level.levelgen.Heightmap;
 
 import reika.chromaticraft.world.dimension.ProximaGenerators;
 
@@ -34,8 +35,20 @@ public class ProximaMonumentStructure extends Structure {
 		BlockPos monument = ProximaGenerators.monumentPosition();
 		if (monument == null)
 			return Optional.empty();
-		return Optional.of(new Structure.GenerationStub(monument, builder ->
-				builder.addPiece(new MonumentPiece(monument.getX(), monument.getZ()))));
+		// V33a's fixed y=103 assumed its old terrain generator never rose through the monument. Modern
+		// Proxima can exceed that, so retain 103 as the floor but lift the clearing above the highest
+		// terrain cell in its authored 65x65 footprint.
+		int y = MonumentPiece.MONUMENT_Y;
+		for (int dx = -32; dx <= 32; dx++) {
+			for (int dz = -32; dz <= 32; dz++) {
+				y = Math.max(y, context.chunkGenerator().getFirstFreeHeight(
+						monument.getX() + dx, monument.getZ() + dz,
+						Heightmap.Types.WORLD_SURFACE_WG, context.heightAccessor(), context.randomState()));
+			}
+		}
+		BlockPos raised = new BlockPos(monument.getX(), y, monument.getZ());
+		return Optional.of(new Structure.GenerationStub(raised, builder ->
+				builder.addPiece(new MonumentPiece(raised.getX(), raised.getY(), raised.getZ()))));
 	}
 
 	@Override

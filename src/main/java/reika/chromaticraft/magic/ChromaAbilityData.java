@@ -23,10 +23,9 @@ import reika.dragonapi.libraries.ReikaPlayerAPI;
 import reika.dragonapi.libraries.io.NBTCompat;
 
 /**
- * Modern persistence seam for the original {@code Chromabilities} boolean map. It intentionally
- * retains the V33a {@code chromabilities/<ability id>} layout so the complete ability controller can
- * adopt the data without migration. Only gameplay systems whose ability semantics are already known
- * should use this leaf while the much larger ability cluster remains outside the compile allowlist.
+ * V33a ability ownership and enabled-state persistence. An absent key means unowned; a present false
+ * key means owned but inactive. This retains the original {@code chromabilities/<ability id>} layout
+ * so the behavior controller can use the same data without migration.
  */
 @EventBusSubscriber(modid = ChromatiCraft.MODID)
 public final class ChromaAbilityData {

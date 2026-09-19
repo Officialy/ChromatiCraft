@@ -21,7 +21,7 @@ public final class ChromaFluids {
 	/**
 	 * 26.2 does not automatically give an untagged custom fluid water movement. The default
 	 * {@link FluidType#move} returns false and LivingEntity then deliberately performs no movement
-	 * for a non-water/non-lava type, which was why Luma held players immobile. V33a's
+	 * for a non-water/non-lava type, which was why Luma and Ender held players immobile. V33a's
 	 * BlockFluidClassic fluids used the normal swimmable-fluid travel path, so reproduce that path
 	 * here while keeping each fluid's own flow viscosity in its BaseFlowingFluid properties.
 	 */
@@ -76,6 +76,7 @@ public final class ChromaFluids {
 					.temperature(250).canDrown(false).fallDistanceModifier(0.5F)));
 	public static final BaseFlowingFluid.Properties LUMA_PROPERTIES =
 			new BaseFlowingFluid.Properties(LUMA_TYPE, LUMA, FLOWING_LUMA)
+					.bucket(() -> ChromaItems.LUMA_BUCKET.get())
 					.block(() -> ChromaBlocks.LUMA.get())
 					.explosionResistance(500F).tickRate(1);
 public static final DeferredHolder<Fluid, FlowingFluid> CHROMA = FLUIDS.register("chroma",
@@ -83,7 +84,7 @@ public static final DeferredHolder<Fluid, FlowingFluid> CHROMA = FLUIDS.register
 	public static final DeferredHolder<Fluid, FlowingFluid> FLOWING_CHROMA = FLUIDS.register("flowing_chroma",
 			() -> new BaseFlowingFluid.Flowing(ChromaFluids.CHROMA_PROPERTIES));
 	public static final DeferredHolder<FluidType, FluidType> CHROMA_TYPE = FLUID_TYPES.register("chroma",
-			() -> new FluidType(FluidType.Properties.create().density(300).viscosity(300).temperature(288).lightLevel(15)));
+			() -> new SwimmableFluidType(FluidType.Properties.create().density(300).viscosity(300).temperature(288).lightLevel(15)));
 
 	public static final BaseFlowingFluid.Properties CHROMA_PROPERTIES =
 			new BaseFlowingFluid.Properties(CHROMA_TYPE, CHROMA, FLOWING_CHROMA)
@@ -104,10 +105,14 @@ public static final DeferredHolder<Fluid, FlowingFluid> CHROMA = FLUIDS.register
 	public static final DeferredHolder<Fluid, FlowingFluid> FLOWING_ENDER = FLUIDS.register("flowing_ender",
 			() -> new BaseFlowingFluid.Flowing(ChromaFluids.ENDER_PROPERTIES));
 	public static final DeferredHolder<FluidType, FluidType> ENDER_TYPE = FLUID_TYPES.register("ender",
-			() -> new FluidType(FluidType.Properties.create()
-					.density(1500).viscosity(2000).temperature(270).lightLevel(4)));
+			() -> new SwimmableFluidType(FluidType.Properties.create()
+					.density(1500).viscosity(2000).temperature(270).lightLevel(4)
+					// V33a velocityToAddToEntity multiplies the normalized flow by
+					// quantaPerBlock*4 = 8*4. NeoForge's ordinary water scale is 0.014.
+					.motionScale(0.014D * 32)));
 	public static final BaseFlowingFluid.Properties ENDER_PROPERTIES =
 			new BaseFlowingFluid.Properties(ENDER_TYPE, ENDER, FLOWING_ENDER)
+					.bucket(() -> ChromaItems.ENDER_BUCKET.get())
 					.block(() -> ChromaBlocks.ENDER.get())
 					.explosionResistance(500F)
 					.tickRate(10);

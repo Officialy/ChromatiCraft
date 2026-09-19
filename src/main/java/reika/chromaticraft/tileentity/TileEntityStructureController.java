@@ -14,8 +14,13 @@ import org.jspecify.annotations.Nullable;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.particles.DustParticleOptions;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.game.ClientGamePacketListener;
+import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.ContainerHelper;
@@ -46,6 +51,10 @@ import reika.chromaticraft.block.worldgen26.BlockStructureShield;
 import reika.chromaticraft.block.dimension.structure.shiftmaze.BlockShiftLock;
 import reika.chromaticraft.block.dimension.structure.lightpanel.BlockLightPanel;
 import reika.chromaticraft.block.dimension.structure.lightpanel.BlockLightSwitch;
+import reika.chromaticraft.world.dimension.structure.lightpanel.FixedLightPattern;
+import reika.chromaticraft.world.dimension.structure.lightpanel.LightPanelPatternLibrary;
+import reika.chromaticraft.world.dimension.structure.lightpanel.LightPanelRoomState;
+import reika.chromaticraft.world.dimension.structure.lightpanel.LightType;
 import reika.dragonapi.libraries.mathsci.ReikaMusicHelper.MusicKey;
 
 /**
@@ -106,6 +115,7 @@ public final class TileEntityStructureController extends RandomizableContainerBl
 	 */
 	private boolean isMonument;
 	private boolean triggeredMonument;
+	private int monumentLayoutVersion;
 	private transient reika.chromaticraft.magic.@Nullable MonumentCompletionRitual monument;
 	private boolean biomePuzzleReady;
 	private int biomeKeyChannel;
@@ -121,6 +131,7 @@ public final class TileEntityStructureController extends RandomizableContainerBl
 	private int biomeMelodyIndex = -1;
 	private int biomeMusicCooldown;
 	private boolean biomeComplete;
+	private final ArrayList<LightPanelRoomState> glowingLogicRooms = new ArrayList<>();
 
 	public TileEntityStructureController(BlockPos pos, BlockState state) {
 		super(ChromaBlockEntities.STRUCTURE_CONTROLLER.get(), pos, state);
@@ -128,6 +139,15 @@ public final class TileEntityStructureController extends RandomizableContainerBl
 
 	public static void serverTick(Level level, BlockPos pos, BlockState state,
 			TileEntityStructureController controller) {
+		if (controller.isMonument && level instanceof net.minecraft.server.level.ServerLevel server
+				&& controller.monumentLayoutVersion < reika.chromaticraft.world.dimension.structure
+						.MonumentIntegrity.CURRENT_LAYOUT_VERSION
+				&& reika.chromaticraft.world.dimension.structure.MonumentIntegrity
+						.repairLegacyLayout(server, pos)) {
+			controller.monumentLayoutVersion = reika.chromaticraft.world.dimension.structure
+					.MonumentIntegrity.CURRENT_LAYOUT_VERSION;
+			controller.setChanged();
+		}
 		// The monument runs before the fragment-structure gate below: a monument controller has no
 		// structure type, so that early return would otherwise never let its ritual tick.
 		if (controller.isMonument && controller.triggeredMonument && controller.monument != null) {
@@ -136,11 +156,13 @@ public final class TileEntityStructureController extends RandomizableContainerBl
 				controller.endMonumentRitual();
 		}
 		// V33a's monument debug branch, run every tick while /debugtest is on. It is Reika's own answer
-		// to the ritual's second gate: generation lays only a random subset of the 376-cell mineral
+		// to the ritual's second gate: generation lays only a random subset of the 304 generated mineral
 		// inlay while demanding all of it, so without this the only way to reach the ceremony is to
 		// place roughly a hundred and fifty blocks by hand under the monument floor.
 		if (controller.isMonument && reika.dragonapi.DragonAPI.debugtest)
 			controller.buildMonumentForDebug(level);
+		if (!controller.glowingLogicRooms.isEmpty() && level.getGameTime() % 20 == 0)
+			controller.bindGlowingLogicBlocks();
 
 		if (controller.structure == null)
 			return;
@@ -199,6 +221,60 @@ public final class TileEntityStructureController extends RandomizableContainerBl
 		biomePuzzleReady = true;
 		bindBiomePuzzleBlocks();
 		setChanged();
+	}
+
+	/**
+	 * Binds the mutable half of V33a's Glowing Logic structure to rooms placed from NBT templates.
+	 * The caller supplies each room's authored origin; this method owns only wiring and puzzle state.
+	 */
+	public void initializeGlowingLogic(List<BlockPos> roomOrigins, int difficulty, Random random) {
+		int roomCount = switch (difficulty) {
+			case 1 -> 5;
+			case 2 -> 8;
+			case 3 -> 12;
+			default -> throw new IllegalArgumentException("Glowing Logic difficulty " + difficulty);
+		};
+		if (roomOrigins.size() != roomCount)
+			throw new IllegalArgumentException("Glowing Logic difficulty " + difficulty + " needs "
+					+ roomCount + " room origins, got " + roomOrigins.size());
+		int[] tiers = {0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 6};
+		@SuppressWarnings("unchecked")
+		ArrayList<FixedLightPattern>[] pools = new ArrayList[LightPanelPatternLibrary.tierCount()];
+		for (int tier = 0; tier < pools.length; tier++)
+			pools[tier] = new ArrayList<>(LightPanelPatternLibrary.patterns(tier));
+		glowingLogicRooms.clear();
+		for (int room = 0; room < roomCount; room++) {
+			int tier = tiers[room];
+			FixedLightPattern pattern = LightPanelPatternLibrary.takeRandom(pools[tier], random);
+			glowingLogicRooms.add(new LightPanelRoomState(room, roomOrigins.get(room), pattern, random));
+		}
+		setChanged();
+	}
+
+	/** Reattaches switch delegates after placement/load and projects persisted state into blocks. */
+	public void bindGlowingLogicBlocks() {
+		if (level == null) return;
+		for (LightPanelRoomState room : glowingLogicRooms) {
+			for (int channel = 0; channel < room.puzzle().switchCount(); channel++) {
+				BlockPos pos = room.switchPosition(channel);
+				if (!canProjectGlowingLogic(pos)) continue;
+				BlockState state = level.getBlockState(pos);
+				boolean active = room.puzzle().isSwitchActive(channel);
+				if (state.getBlock() instanceof BlockLightSwitch) {
+					if (state.getValue(BlockLightSwitch.UP) != active)
+						level.setBlock(pos, state.setValue(BlockLightSwitch.UP, active), 3);
+					if (level.getBlockEntity(pos) instanceof TileEntityLightSwitch panel) {
+						panel.setData(room.levelIndex(), channel);
+						panel.setDelegate(worldPosition);
+					}
+				}
+			}
+			updateGlowingLogicRoom(room);
+		}
+	}
+
+	public List<LightPanelRoomState> getGlowingLogicRooms() {
+		return Collections.unmodifiableList(glowingLogicRooms);
 	}
 
 	/** Attaches every generated interaction tile to this persistent controller. */
@@ -422,6 +498,23 @@ public final class TileEntityStructureController extends RandomizableContainerBl
 	@Override
 	public void onLightSwitch(BlockPos switchPos, int panelLevel, int channel, boolean up,
 			@Nullable Player player) {
+		if (!glowingLogicRooms.isEmpty()) {
+			if (level == null || panelLevel < 0 || panelLevel >= glowingLogicRooms.size()) return;
+			LightPanelRoomState room = glowingLogicRooms.get(panelLevel);
+			if (channel < 0 || channel >= room.puzzle().switchCount()
+					|| !room.switchPosition(channel).equals(switchPos)) return;
+			if (room.puzzle().setSwitch(channel, up)) {
+				updateGlowingLogicRoom(room);
+				if (up) {
+					MusicKey pitch = room.pitch(channel);
+					if (pitch != null)
+						ChromaSounds.DING.playSoundAtBlock(level, switchPos, 2,
+								(float)CrystalMusicManager.instance.getPitchFactor(pitch));
+				}
+				setChanged();
+			}
+			return;
+		}
 		if (structure != StructureType.BIOME_FRAGMENT || level == null)
 			return;
 		if (player == null || !ProgressStage.BIOMESTRUCT.playerHasPrerequisites(player)) {
@@ -432,6 +525,33 @@ public final class TileEntityStructureController extends RandomizableContainerBl
 			return;
 		}
 		updateBiomeSwitchDoors(ProgressStage.CTM.isPlayerAtStage(player));
+	}
+
+	private void updateGlowingLogicRoom(LightPanelRoomState room) {
+		if (level == null) return;
+		for (int row = 0; row < room.puzzle().rowCount(); row++)
+			for (LightType type : LightType.list) {
+				BlockPos panelPos = room.panelPosition(row, type);
+				if (canProjectGlowingLogic(panelPos))
+					BlockLightPanel.activate(level, panelPos,
+							room.puzzle().isLightActive(row, type));
+			}
+		BlockPos doorPos = room.doorPosition();
+		if (!canProjectGlowingLogic(doorPos)) return;
+		BlockState doorState = level.getBlockState(doorPos);
+		if (doorState.getBlock() instanceof BlockChromaDoor
+				&& level.getBlockEntity(doorPos) instanceof TileEntityChromaDoor door) {
+			boolean shouldOpen = room.puzzle().isComplete();
+			if (doorState.getValue(BlockChromaDoor.OPEN) != shouldOpen) {
+				if (shouldOpen) door.open(0);
+				else door.close();
+			}
+		}
+	}
+
+	private boolean canProjectGlowingLogic(BlockPos pos) {
+		return level instanceof net.minecraft.server.level.ServerLevel server
+				&& server.getChunkSource().getChunkNow(pos.getX() >> 4, pos.getZ() >> 4) != null;
 	}
 
 	private void updateBiomeColorDoors() {
@@ -749,6 +869,15 @@ public final class TileEntityStructureController extends RandomizableContainerBl
 		return structure != StructureType.BURROW || (!furnaceRoom && !lootRoom);
 	}
 
+	/** V33a Burrow addon flags, persisted with the controller and exposed for structure inspection. */
+	public boolean hasBurrowFurnaceRoom() {
+		return structure == StructureType.BURROW && furnaceRoom;
+	}
+
+	public boolean hasBurrowLootRoom() {
+		return structure == StructureType.BURROW && lootRoom;
+	}
+
 	/**
 	 * V33a's {@code isMonument && debugtest} branch: lays the complete ring and the complete mineral
 	 * inlay, and hands both to the nearest player.
@@ -780,6 +909,9 @@ public final class TileEntityStructureController extends RandomizableContainerBl
 		// The inlay is written relative to the template origin, which is a controller-offset away.
 		BlockPos origin = worldPosition.subtract(
 				reika.chromaticraft.world.dimension.structure.MonumentPiece.CONTROLLER_OFFSET);
+		for (net.minecraft.core.Vec3i offset
+				: reika.chromaticraft.world.dimension.structure.MonumentMineralBlocks.fixedGold())
+			level.setBlock(origin.offset(offset), Blocks.GOLD_BLOCK.defaultBlockState(), 3);
 		for (reika.chromaticraft.world.dimension.structure.MonumentMineralBlocks.Cell cell
 				: reika.chromaticraft.world.dimension.structure.MonumentMineralBlocks.expected()) {
 			BlockPos at = origin.offset(cell.offset());
@@ -791,12 +923,42 @@ public final class TileEntityStructureController extends RandomizableContainerBl
 
 	/** V33a setMonument: marks this controller as the monument's, and syncs that to clients. */
 	public void setMonument() {
-		isMonument = true;
-		this.setChanged();
+		if (!isMonument) {
+			isMonument = true;
+			this.setChanged();
+		}
+		// Deliberately send even when already marked: the creative/debug repair gesture is also an
+		// explicit way to refresh a client that joined while this flag was absent from update tags.
+		if (level != null && !level.isClientSide())
+			level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
 	}
 
 	public boolean isMonument() {
 		return isMonument;
+	}
+
+	public void setMonumentLayoutVersion(int version) {
+		monumentLayoutVersion = version;
+		this.setChanged();
+	}
+
+	public int getMonumentLayoutVersion() {
+		return monumentLayoutVersion;
+	}
+
+	@Override
+	public CompoundTag getUpdateTag(HolderLookup.Provider provider) {
+		return this.saveWithoutMetadata(provider);
+	}
+
+	@Override
+	public void handleUpdateTag(ValueInput input) {
+		this.loadAdditional(input);
+	}
+
+	@Override
+	public Packet<ClientGamePacketListener> getUpdatePacket() {
+		return ClientboundBlockEntityDataPacket.create(this);
 	}
 
 	/**
@@ -837,6 +999,28 @@ public final class TileEntityStructureController extends RandomizableContainerBl
 		this.setChanged();
 	}
 
+	/** True only while this live controller owns a live ritual timeline. */
+	public boolean isMonumentRitualActive() {
+		return triggeredMonument && monument != null && monument.isRunning();
+	}
+
+	private void recoverInterruptedMonumentRitual() {
+		if (!isMonument || !triggeredMonument || monument != null)
+			return;
+		// The timeline and its activating player are intentionally transient. A persisted trigger bit
+		// therefore means the save occurred mid-ceremony; reset it and restore the ring's ambient song.
+		triggeredMonument = false;
+		for (reika.chromaticraft.registry.CrystalElement element
+				: reika.chromaticraft.registry.CrystalElement.elements) {
+			BlockPos at = worldPosition.offset(
+					reika.chromaticraft.tileentity.technical.TileEntityDimensionCore.getLocation(element));
+			if (level.getBlockEntity(at)
+					instanceof reika.chromaticraft.tileentity.technical.TileEntityDimensionCore core)
+				core.prime(true);
+		}
+		this.setChanged();
+	}
+
 	public boolean isTriggerPlayer(Player player) {
 		return player != null && player.getUUID().equals(lastTriggerPlayer);
 	}
@@ -874,6 +1058,10 @@ public final class TileEntityStructureController extends RandomizableContainerBl
 	@Override
 	public void onLoad() {
 		super.onLoad();
+		if (level != null && !level.isClientSide()) {
+			this.recoverInterruptedMonumentRitual();
+			if (!glowingLogicRooms.isEmpty()) bindGlowingLogicBlocks();
+		}
 		if (level == null || level.isClientSide() || structure != StructureType.BIOME_FRAGMENT) return;
 		boolean incompleteState = !biomePuzzleReady || biomeMelody.isEmpty()
 				|| java.util.Arrays.stream(biomeDoorColors).anyMatch(Objects::isNull)
@@ -905,6 +1093,7 @@ public final class TileEntityStructureController extends RandomizableContainerBl
 			output.putString("lastTriggerPlayer", lastTriggerPlayer.toString());
 		output.putBoolean("monument", isMonument);
 		output.putBoolean("monument_t", triggeredMonument);
+		output.putInt("monumentLayoutVersion", monumentLayoutVersion);
 		output.putBoolean("biomePuzzleReady", biomePuzzleReady);
 		output.putInt("biomeKeyChannel", biomeKeyChannel);
 		ValueOutput.TypedOutputList<Integer> masks = output.list("biomeDoorMasks", com.mojang.serialization.Codec.INT);
@@ -924,6 +1113,9 @@ public final class TileEntityStructureController extends RandomizableContainerBl
 		output.putInt("biomeMelodyIndex", biomeMelodyIndex);
 		output.putInt("biomeMusicCooldown", biomeMusicCooldown);
 		output.putBoolean("biomeComplete", biomeComplete);
+		ValueOutput.ValueOutputList rooms = output.childrenList("glowingLogicRooms");
+		for (LightPanelRoomState room : glowingLogicRooms)
+			room.save(rooms.addChild());
 	}
 
 	@Override
@@ -955,6 +1147,7 @@ public final class TileEntityStructureController extends RandomizableContainerBl
 		// The ritual object itself is not persisted: a ritual interrupted by a save or a restart is over,
 		// and upstream reconstructs one from scratch on the next trigger.
 		triggeredMonument = input.getBooleanOr("monument_t", false);
+		monumentLayoutVersion = input.getIntOr("monumentLayoutVersion", 0);
 		biomePuzzleReady = input.getBooleanOr("biomePuzzleReady", false);
 		biomeKeyChannel = Math.clamp(input.getIntOr("biomeKeyChannel", 0), 0, 7);
 		int i = 0;
@@ -980,6 +1173,14 @@ public final class TileEntityStructureController extends RandomizableContainerBl
 		biomeMusicCooldown = Math.max(0, input.getIntOr("biomeMusicCooldown", 0));
 		biomeComplete = input.getBooleanOr("biomeComplete", false);
 		advanceBiomeGuessPastRests();
+		glowingLogicRooms.clear();
+		for (ValueInput room : input.childrenListOrEmpty("glowingLogicRooms")) {
+			try { glowingLogicRooms.add(LightPanelRoomState.load(room)); }
+			catch (IllegalArgumentException e) {
+				reika.chromaticraft.ChromatiCraft.LOGGER.error(
+						"Discarding invalid Glowing Logic room state at {}", worldPosition, e);
+			}
+		}
 	}
 
 	private static void loadElements(ValueInput input, String key, CrystalElement[] target) {

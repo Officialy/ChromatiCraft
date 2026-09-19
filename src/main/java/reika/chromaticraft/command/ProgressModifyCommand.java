@@ -37,8 +37,8 @@ import reika.chromaticraft.world.dimension.DimensionTuningManager;
  * <p>Upstream's other branches are each blocked on a system that is not ported yet, and each would be a
  * command that silently did nothing: {@code fragment} and {@code level} need {@code ChromaResearchManager},
  * {@code ability} needs {@code Chromabilities}, {@code buffer} needs {@code ElementBufferCapacityBoost},
- * {@code lore} needs the tower fragment store, and {@code dimstruct} needs
- * {@code markPlayerCompletedStructureColor}. They belong here when those land.
+	 * {@code lore} needs the tower fragment store. Those branches belong here when their systems land;
+	 * {@code dimstruct} is live because recovered-core persistence is now part of the Proxima loop.
  */
 public final class ProgressModifyCommand {
 
@@ -64,6 +64,10 @@ public final class ProgressModifyCommand {
 								.then(Commands.argument("color", StringArgumentType.word()).suggests(COLORS)
 										.then(Commands.argument("set", BoolArgumentType.bool())
 												.executes(ProgressModifyCommand::setColor))))
+						.then(Commands.literal("dimstruct")
+								.then(Commands.argument("color", StringArgumentType.word()).suggests(COLORS)
+										.then(Commands.argument("set", BoolArgumentType.bool())
+												.executes(ProgressModifyCommand::setStructureColor))))
 						.then(Commands.literal("dimtuning")
 								.then(Commands.argument("amount", IntegerArgumentType.integer(0))
 										.executes(ProgressModifyCommand::setTuning)))
@@ -112,10 +116,34 @@ public final class ProgressModifyCommand {
 		return ok(context, "Player " + player.getName().getString() + " tuned to " + amount + ".");
 	}
 
+	private static int setStructureColor(CommandContext<CommandSourceStack> context) {
+		ServerPlayer player = player(context);
+		String name = StringArgumentType.getString(context, "color");
+		CrystalElement element;
+		try {
+			element = CrystalElement.valueOf(name.toUpperCase(Locale.ENGLISH));
+		}
+		catch (IllegalArgumentException e) {
+			return fail(context, "Invalid structure color '" + name + "'.");
+		}
+		boolean set = BoolArgumentType.getBool(context, "set");
+		ProgressionManager.instance.markPlayerCompletedStructureColor(
+				player, null, element, set, false);
+		return ok(context, "Proxima core completion " + element.displayName() + " set to " + set
+				+ " for " + player.getName().getString() + ".");
+	}
+
 	private static int maximize(CommandContext<CommandSourceStack> context) {
 		ServerPlayer player = player(context);
 		ProgressionManager.instance.maxPlayerProgression(player, false);
-		return ok(context, "Maximized progression for " + player.getName().getString() + ".");
+		// Dimension tuning is a second progression axis in V33a. A maximized testing player must be
+		// able to exercise the content gated by it too (most visibly Sky Rivers); leaving it at zero
+		// made the command claim success while Proxima still rejected the player.
+		int maximumTuning = Arrays.stream(DimensionTuningManager.TuningThresholds.list)
+				.mapToInt(threshold -> threshold.minimumTuning).max().orElse(0);
+		DimensionTuningManager.instance.tunePlayer(player, maximumTuning);
+		return ok(context, "Maximized progression and dimension tuning for "
+				+ player.getName().getString() + ".");
 	}
 
 	private static int reset(CommandContext<CommandSourceStack> context) {

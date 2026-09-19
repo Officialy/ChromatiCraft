@@ -1,330 +1,190 @@
-/*******************************************************************************
- * @author Reika Kalseki
- * 
- * Copyright 2017
- * 
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
- ******************************************************************************/
 package reika.chromaticraft.render.tesr;
 
-import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL12;
+import java.util.ArrayList;
+import java.util.List;
 
-import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.item.ItemStack;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.IIcon;
-import net.minecraftforge.client.MinecraftForgeClient;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.math.Axis;
 
-import reika.chromaticraft.base.ChromaRenderBase;
-import reika.chromaticraft.items.ItemStorageCrystal;
-import reika.chromaticraft.magic.ElementTagCompound;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.model.geom.ModelLayerLocation;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
+import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
+import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
+import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.client.renderer.texture.TextureAtlas;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.data.AtlasIds;
+import net.minecraft.resources.Identifier;
+import net.minecraft.util.LightCoordsUtil;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
+
+import org.jspecify.annotations.Nullable;
+
+import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.models.ModelRelaySource;
-import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaIcons;
 import reika.chromaticraft.registry.CrystalElement;
+import reika.chromaticraft.render.ChromaRenderPipelines;
 import reika.chromaticraft.tileentity.networking.TileEntityRelaySource;
-import reika.dragonapi.instantiable.rendering.StructureRenderer;
-import reika.dragonapi.interfaces.tileentity.RenderFetcher;
-import reika.dragonapi.libraries.io.ReikaTextureHelper;
-import reika.dragonapi.libraries.java.reikaglhelper.BlendMode;
-import reika.dragonapi.libraries.rendering.ReikaColorAPI;
-import reika.dragonapi.libraries.rendering.ReikaRenderHelper;
 
-public class RenderRelaySource extends ChromaRenderBase {
+/** Submit-pipeline port of V33a's Relay Source body, stored-energy crystals and enhanced caustics. */
+public final class RenderRelaySource
+		implements BlockEntityRenderer<TileEntityRelaySource, RenderRelaySource.State> {
 
-	private final ModelRelaySource model = new ModelRelaySource();
+	public static final ModelLayerLocation MODEL_LAYER = new ModelLayerLocation(
+			Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "relay_source"), "main");
+	public static final Identifier TEXTURE = Identifier.fromNamespaceAndPath(
+			ChromatiCraft.MODID, "textures/entity/relay_source.png");
+	private static final Identifier CRYSTAL = Identifier.fromNamespaceAndPath(
+			ChromatiCraft.MODID, "block/crystal/crystal");
+	private static final Identifier CAUSTICS = Identifier.fromNamespaceAndPath(
+			ChromatiCraft.MODID, "block/icons/caustics-g");
+
+	private final ModelRelaySource model;
+
+	public RenderRelaySource(BlockEntityRendererProvider.Context context) {
+		model = new ModelRelaySource(context.bakeLayer(MODEL_LAYER));
+	}
+
+	@Override public State createRenderState() { return new State(); }
 
 	@Override
-	public String getImageFileName(RenderFetcher te) {
-		return "receiver.png";
+	public void extractRenderState(TileEntityRelaySource source, State state, float partialTick,
+			Vec3 cameraPosition, ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress) {
+		BlockEntityRenderer.super.extractRenderState(source, state, partialTick, cameraPosition, breakProgress);
+		state.enhanced = source.isEnhanced();
+		state.time = source.getTicksExisted() + partialTick;
+		state.edgeColor = 0xff000000 | CrystalElement.getBlendedColor(source.getTicksExisted(), 50);
+		state.crystals.clear();
+		int capacity = source.getRenderedCrystalCapacity();
+		if (capacity > 0) for (CrystalElement element : CrystalElement.elements) {
+			float fraction = source.getRenderedCrystalEnergy(element) / (float)capacity;
+			if (fraction > 0) state.crystals.add(new Crystal(element.getColor(), fraction));
+		}
 	}
 
 	@Override
-	public void renderTileEntityAt(TileEntity tile, double par2, double par4, double par6, float par8) {
-		TileEntityRelaySource te = (TileEntityRelaySource)tile;
-
-		GL11.glPushMatrix();
-		GL11.glTranslated(par2, par4, par6);
-
-		GL11.glPushMatrix();
-		this.renderModel(te, model);
-
-		GL11.glPushMatrix();
-		GL11.glScalef(1.0F, -1.0F, -1.0F);
-		GL11.glTranslatef(0.5F, -1.5F, -0.5F);
-		GL11.glEnable(GL12.GL_RESCALE_NORMAL);
-		GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
-		ReikaRenderHelper.prepareGeoDraw(false);
-		int color = CrystalElement.getBlendedColor(te.getTicksExisted(), 50);
-		GL11.glColor4f(ReikaColorAPI.getRed(color)/255F, ReikaColorAPI.getGreen(color)/255F, ReikaColorAPI.getBlue(color)/255F, 1);
-		model.renderEdges(te);
-		GL11.glPopAttrib();
-		GL11.glPopMatrix();
-
-		GL11.glPopMatrix();
-
-		GL11.glPushMatrix();
-		if (MinecraftForgeClient.getRenderPass() == 1 || StructureRenderer.isRenderingTiles()) {
-			GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
-			this.renderCrystal(te, par2, par4, par6, par8);
-			GL11.glPopAttrib();
-			;//this.renderPaths(te);
-
-			if (te.isEnhanced()) {
-				GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
-				this.renderEnhancedArea(te, par8);
-				GL11.glPopAttrib();
-			}
-		}
-		GL11.glPopMatrix();
-
-		GL11.glPopMatrix();
+	public void submit(State state, PoseStack poseStack, SubmitNodeCollector collector,
+			CameraRenderState camera) {
+		submitModel(state, poseStack, collector, model, state.lightCoords);
+		if (!state.crystals.isEmpty()) submitCrystals(state, poseStack, collector);
+		if (state.enhanced) submitEnhancedArea(poseStack, collector);
 	}
 
-	private void renderEnhancedArea(TileEntityRelaySource te, float ptick) {
-		GL11.glEnable(GL11.GL_BLEND);
-		GL11.glDisable(GL11.GL_LIGHTING);
-		GL11.glDisable(GL11.GL_ALPHA_TEST);
-		GL11.glDepthMask(false);
-		ReikaRenderHelper.disableEntityLighting();
-		BlendMode.ADDITIVEDARK.apply();
-		Tessellator v5 = Tessellator.instance;
-		ReikaTextureHelper.bindTerrainTexture();
-		IIcon ico = ChromaIcons.CAUSTICS_GENTLE.getIcon();
-		float u = ico.getMinU();
-		float v = ico.getMinV();
-		float du = ico.getMaxU();
-		float dv = ico.getMaxV();
-
-		v5.startDrawingQuads();
-
-		double h = 1.25;
-		double o = 2;
-
-		v5.addVertexWithUV(0.5-o, 0, o+0.5, u, v);
-		v5.addVertexWithUV(0.5+o, 0, o+0.5, du, v);
-		v5.addVertexWithUV(1, h, 1, du, dv);
-		v5.addVertexWithUV(0, h, 1, u, dv);
-
-		v5.addVertexWithUV(0, h, 0, u, dv);
-		v5.addVertexWithUV(1, h, 0, du, dv);
-		v5.addVertexWithUV(0.5+o, 0, -o+0.5, du, v);
-		v5.addVertexWithUV(0.5-o, 0, -o+0.5, u, v);
-
-		v5.addVertexWithUV(1, h, 0, u, dv);
-		v5.addVertexWithUV(1, h, 1, du, dv);
-		v5.addVertexWithUV(o+0.5, 0, 0.5+o, du, v);
-		v5.addVertexWithUV(o+0.5, 0, 0.5-o, u, v);
-
-		v5.addVertexWithUV(-o+0.5, 0, 0.5-o, u, v);
-		v5.addVertexWithUV(-o+0.5, 0, 0.5+o, du, v);
-		v5.addVertexWithUV(0, h, 1, du, dv);
-		v5.addVertexWithUV(0, h, 0, u, dv);
-
-		v5.addVertexWithUV(0, h, 1, u, dv);
-		v5.addVertexWithUV(1, h, 1, du, dv);
-		v5.addVertexWithUV(1, h, 0, du, v);
-		v5.addVertexWithUV(0, h, 0, u, v);
-
-		v5.addVertexWithUV(0.5-o-0.5, -1, o+0.5, u, dv);
-		v5.addVertexWithUV(0.5+o+0.5, -1, o+0.5, du, dv);
-		v5.addVertexWithUV(0.5+o+0.5, 0, o+0.5, du, v);
-		v5.addVertexWithUV(0.5-o-0.5, 0, o+0.5, u, v);
-
-		v5.addVertexWithUV(0.5-o-0.5, 0, -o+0.5, u, v);
-		v5.addVertexWithUV(0.5+o+0.5, 0, -o+0.5, du, v);
-		v5.addVertexWithUV(0.5+o+0.5, -1, -o+0.5, du, dv);
-		v5.addVertexWithUV(0.5-o-0.5, -1, -o+0.5, u, dv);
-
-		v5.addVertexWithUV(-o+0.5, -1, 0.5-o-0.5, u, dv);
-		v5.addVertexWithUV(-o+0.5, -1, 0.5+o+0.5, du, dv);
-		v5.addVertexWithUV(-o+0.5, 0, 0.5+o+0.5, du, v);
-		v5.addVertexWithUV(-o+0.5, 0, 0.5-o-0.5, u, v);
-
-		v5.addVertexWithUV(o+0.5, 0, 0.5-o-0.5, u, v);
-		v5.addVertexWithUV(o+0.5, 0, 0.5+o+0.5, du, v);
-		v5.addVertexWithUV(o+0.5, -1, 0.5+o+0.5, du, dv);
-		v5.addVertexWithUV(o+0.5, -1, 0.5-o-0.5, u, dv);
-
-		v5.draw();
-
-		/*
-		float uu = du-u;
-		float vv = dv-v;
-		v5.startDrawingQuads();
-
-		double[] sec = {0, 1/3D, 2/3D, 1};
-
-		for (int i = 0; i < sec.length-1; i++) {
-			double s1a = sec[i];
-			double s2a = sec[i+1];
-			for (int k = 0; k < sec.length-1; k++) {
-				double s1b = sec[k];
-				double s2b = sec[k+1];
-				double u1 = u+uu*s1a;
-				double u2 = u+uu*s2a;
-				double v1 = v+vv*s1b;
-				double v2 = v+vv*s2b;
-				double x1 = s1a*5-2;
-				double x2 = s2a*5-2;
-				double z1 = s1b*5-2;
-				double z2 = s2b*5-2;
-				v5.addVertexWithUV(x1, hs[i], z2, u1, v1);
-				v5.addVertexWithUV(x2, hs[i], z2, u2, v1);
-				v5.addVertexWithUV(x2, hs[i], z1, u2, v2);
-				v5.addVertexWithUV(x1, hs[i], z1, u1, v2);
-			}
-		}
-
-		/*
-		v5.addVertexWithUV(0, h, 0, u, dv);
-		v5.addVertexWithUV(1, h, 0, du, dv);
-		v5.addVertexWithUV(1, 0, -1, du, v);
-		v5.addVertexWithUV(0, 0, -1, u, v);
-
-		v5.addVertexWithUV(0, 0, 2, u, v);
-		v5.addVertexWithUV(1, 0, 2, du, v);
-		v5.addVertexWithUV(1, h, 1, du, dv);
-		v5.addVertexWithUV(0, h, 1, u, dv);
-
-		v5.addVertexWithUV(1, h, 0, u, dv);
-		v5.addVertexWithUV(1, h, 1, du, dv);
-		v5.addVertexWithUV(2, 0, 1, du, v);
-		v5.addVertexWithUV(2, 0, 0, u, v);
-
-		v5.addVertexWithUV(-1, 0, 0, u, v);
-		v5.addVertexWithUV(-1, 0, 1, du, v);
-		v5.addVertexWithUV(0, h, 1, du, dv);
-		v5.addVertexWithUV(0, h, 0, u, dv);
-
-		v5.addVertexWithUV(0, 0, 2, u, dv);
-		v5.addVertexWithUV(0, h, 1, du, dv);
-		v5.addVertexWithUV(-1, 0, 1, du, v);
-		v5.addVertexWithUV(-1, 0, 2, u, v);
-
-		v5.addVertexWithUV(2, 0, -1, u, v);
-		v5.addVertexWithUV(1, 0, -1, du, v);
-		v5.addVertexWithUV(1, h, 0, du, dv);
-		v5.addVertexWithUV(2, 0, 0, u, dv);
-		 */
-		//v5.draw();
+	public static void submitModel(State state, PoseStack poseStack, SubmitNodeCollector collector,
+			ModelRelaySource model, int light) {
+		poseStack.pushPose();
+		poseStack.translate(0.5F, 1.5F, 0.5F);
+		poseStack.scale(1F, -1F, -1F);
+		submitItemModel(poseStack, collector, model, light, state.edgeColor);
+		poseStack.popPose();
 	}
 
-	private void renderCrystal(TileEntityRelaySource te, double par2, double par4, double par6, float par8) {
-		ItemStack is = te.getStackInSlot(0);
-		if (is != null) {
-			ElementTagCompound tag = ItemStorageCrystal.getStoredTags(is);
+	/** Renders just the source model around the caller's already-established item/model origin. */
+	public static void submitItemModel(PoseStack poseStack, SubmitNodeCollector collector,
+			ModelRelaySource model, int light, int edgeColor) {
+		PoseStack bodyPose = copy(poseStack);
+		collector.submitCustomGeometry(bodyPose, RenderTypes.entityCutout(TEXTURE),
+				(unused, out) -> model.renderBody(bodyPose, out, light, OverlayTexture.NO_OVERLAY));
+		PoseStack edgePose = copy(poseStack);
+		collector.submitCustomGeometry(edgePose, ChromaRenderPipelines.legacyAdditiveSprite(TEXTURE),
+				(unused, out) -> model.renderEdges(edgePose, out, LightCoordsUtil.FULL_BRIGHT,
+						OverlayTexture.NO_OVERLAY, edgeColor));
+	}
 
-			if (!tag.isEmpty()) {
-
-				Tessellator v5 = Tessellator.instance;
-				ReikaTextureHelper.bindTerrainTexture();
-
-				GL11.glDisable(GL11.GL_LIGHTING);
-				GL11.glEnable(GL11.GL_BLEND);
-				ReikaRenderHelper.disableEntityLighting();
-
-				BlendMode.ADDITIVEDARK.apply();
-
-				GL11.glPushMatrix();
-
-				double d = 0.5;
-
-				GL11.glTranslated(d, d, d);
-
-				double t = (te.getTicksExisted()+par8);
-
-				double w = 0.175/4;
-				double th = 0.2875/2;
-				double h2 = 0.1875/2;
-
-				float max = ItemStorageCrystal.getCapacity(is);
-
-				IIcon ico = ChromaBlocks.CRYSTAL.getBlockInstance().getIcon(0, 0);
-				float u = ico.getMinU();
-				float du = ico.getMaxU();
-				float v = ico.getMinV();
-				float dv = ico.getMaxV();
-
-				int i = 0;
-				double div = 360/tag.elementSet().size();
-
-				for (CrystalElement e : tag.elementSet()) {
-					float frac = ItemStorageCrystal.getStoredEnergy(is, e)/max;
-
-					double h = th*frac;
-
-					GL11.glPushMatrix();
-
-					//i = e.ordinal();
-					//div = 22.5;
-
-					int c = e.getColor();//ReikaColorAPI.mixColors(e.getColor(), 0xb0b0b0, frac);
-					int a = 255;//127;
-
-					double y = 0.1*Math.sin(t/8D+i);
-					double ang = (t)%360;
-					GL11.glRotated(ang+i*div, 0, 1, 0);
-					GL11.glTranslated(0, y, 0);
-					GL11.glTranslated(d, d, d);
-					GL11.glRotated(ang*4, 0, 1, 0);
-					GL11.glTranslated(-d, -d, -d);
-
-					v5.startDrawingQuads();
-					v5.setColorRGBA_I(c, a);
-					v5.addVertexWithUV(0.5-w, 0.5-h, 0.5-w, u, v);
-					v5.addVertexWithUV(0.5-w, 0.5+h, 0.5-w, du, v);
-					v5.addVertexWithUV(0.5+w, 0.5+h, 0.5-w, du, dv);
-					v5.addVertexWithUV(0.5+w, 0.5-h, 0.5-w, u, dv);
-
-					v5.addVertexWithUV(0.5+w, 0.5-h, 0.5+w, u, dv);
-					v5.addVertexWithUV(0.5+w, 0.5+h, 0.5+w, du, dv);
-					v5.addVertexWithUV(0.5-w, 0.5+h, 0.5+w, du, v);
-					v5.addVertexWithUV(0.5-w, 0.5-h, 0.5+w, u, v);
-
-					v5.addVertexWithUV(0.5+w, 0.5-h, 0.5-w, u, v);
-					v5.addVertexWithUV(0.5+w, 0.5+h, 0.5-w, du, v);
-					v5.addVertexWithUV(0.5+w, 0.5+h, 0.5+w, du, dv);
-					v5.addVertexWithUV(0.5+w, 0.5-h, 0.5+w, u, dv);
-
-					v5.addVertexWithUV(0.5-w, 0.5-h, 0.5+w, u, dv);
-					v5.addVertexWithUV(0.5-w, 0.5+h, 0.5+w, du, dv);
-					v5.addVertexWithUV(0.5-w, 0.5+h, 0.5-w, du, v);
-					v5.addVertexWithUV(0.5-w, 0.5-h, 0.5-w, u, v);
-					v5.draw();
-
-					v5.startDrawing(GL11.GL_TRIANGLE_FAN);
-					v5.setColorRGBA_I(c, a);
-					v5.addVertexWithUV(0.5, 0.5+h+h2, 0.5, u, dv);
-					v5.addVertexWithUV(0.5+w, 0.5+h, 0.5+w, du, dv);
-					v5.addVertexWithUV(0.5+w, 0.5+h, 0.5-w, du, dv);
-					v5.addVertexWithUV(0.5-w, 0.5+h, 0.5-w, du, dv);
-					v5.addVertexWithUV(0.5-w, 0.5+h, 0.5+w, du, dv);
-					v5.addVertexWithUV(0.5+w, 0.5+h, 0.5+w, du, dv);
-					v5.draw();
-
-					v5.startDrawing(GL11.GL_TRIANGLE_FAN);
-					v5.setColorRGBA_I(c, a);
-					v5.addVertexWithUV(0.5, 0.5-h-h2, 0.5, u, dv);
-					v5.addVertexWithUV(0.5-w, 0.5-h, 0.5+w, du, dv);
-					v5.addVertexWithUV(0.5-w, 0.5-h, 0.5-w, du, dv);
-					v5.addVertexWithUV(0.5+w, 0.5-h, 0.5-w, du, dv);
-					v5.addVertexWithUV(0.5+w, 0.5-h, 0.5+w, du, dv);
-					v5.addVertexWithUV(0.5-w, 0.5-h, 0.5+w, du, dv);
-					v5.draw();
-
-					GL11.glPopMatrix();
-					i++;
-				}
-
-				GL11.glPopMatrix();
-
-			}
+	private static void submitCrystals(State state, PoseStack poseStack, SubmitNodeCollector collector) {
+		TextureAtlasSprite sprite = Minecraft.getInstance().getAtlasManager()
+				.getAtlasOrThrow(AtlasIds.BLOCKS).getSprite(CRYSTAL);
+		int count = state.crystals.size();
+		for (int i = 0; i < count; i++) {
+			Crystal crystal = state.crystals.get(i);
+			PoseStack draw = copy(poseStack);
+			draw.translate(0.5, 0.5, 0.5);
+			draw.mulPose(Axis.YP.rotationDegrees((float)(state.time + i * 360D / count)));
+			draw.translate(0, 0.1 * Math.sin(state.time / 8D + i), 0);
+			draw.translate(0.5, 0.5, 0.5);
+			draw.mulPose(Axis.YP.rotationDegrees(state.time * 4));
+			collector.submitCustomGeometry(draw,
+					ChromaRenderPipelines.legacyAdditiveSprite(TextureAtlas.LOCATION_BLOCKS),
+					(unused, out) -> crystal(out, draw.last(), sprite, crystal));
 		}
 	}
 
+	private static void crystal(VertexConsumer out, PoseStack.Pose pose, TextureAtlasSprite sprite,
+			Crystal crystal) {
+		float w = 0.175F / 4;
+		float h = 0.2875F / 2 * crystal.fraction;
+		float tip = 0.1875F / 2;
+		int color = 0xff000000 | crystal.color;
+		float u0 = sprite.getU0(), u1 = sprite.getU1(), v0 = sprite.getV0(), v1 = sprite.getV1();
+		quad(out, pose, -w,-h,-w, -w,h,-w, w,h,-w, w,-h,-w, u0,u1,v0,v1,color);
+		quad(out, pose, w,-h,w, w,h,w, -w,h,w, -w,-h,w, u0,u1,v0,v1,color);
+		quad(out, pose, w,-h,-w, w,h,-w, w,h,w, w,-h,w, u0,u1,v0,v1,color);
+		quad(out, pose, -w,-h,w, -w,h,w, -w,h,-w, -w,-h,-w, u0,u1,v0,v1,color);
+		triangleQuad(out, pose, 0,h+tip,0, w,h,w, w,h,-w, color, u0,u1,v0,v1);
+		triangleQuad(out, pose, 0,h+tip,0, -w,h,-w, -w,h,w, color, u0,u1,v0,v1);
+		triangleQuad(out, pose, 0,-h-tip,0, w,-h,-w, w,-h,w, color, u0,u1,v0,v1);
+		triangleQuad(out, pose, 0,-h-tip,0, -w,-h,w, -w,-h,-w, color, u0,u1,v0,v1);
+	}
 
+	private static void submitEnhancedArea(PoseStack poseStack, SubmitNodeCollector collector) {
+		TextureAtlasSprite sprite = Minecraft.getInstance().getAtlasManager()
+				.getAtlasOrThrow(AtlasIds.BLOCKS).getSprite(CAUSTICS);
+		PoseStack draw = copy(poseStack);
+		collector.submitCustomGeometry(draw,
+				ChromaRenderPipelines.legacyAdditiveSprite(TextureAtlas.LOCATION_BLOCKS),
+				(unused, out) -> enhancedArea(out, draw.last(), sprite));
+	}
+
+	private static void enhancedArea(VertexConsumer out, PoseStack.Pose pose, TextureAtlasSprite s) {
+		float u0=s.getU0(), u1=s.getU1(), v0=s.getV0(), v1=s.getV1(); int c=0xffffffff;
+		quad(out,pose,-1.5F,0,2.5F,2.5F,0,2.5F,1,1.25F,1,0,1.25F,1,u0,u1,v0,v1,c);
+		quad(out,pose,0,1.25F,0,1,1.25F,0,2.5F,0,-1.5F,-1.5F,0,-1.5F,u0,u1,v0,v1,c);
+		quad(out,pose,1,1.25F,0,1,1.25F,1,2.5F,0,2.5F,2.5F,0,-1.5F,u0,u1,v0,v1,c);
+		quad(out,pose,-1.5F,0,-1.5F,-1.5F,0,2.5F,0,1.25F,1,0,1.25F,0,u0,u1,v0,v1,c);
+		quad(out,pose,0,1.25F,1,1,1.25F,1,1,1.25F,0,0,1.25F,0,u0,u1,v0,v1,c);
+		quad(out,pose,-2,-1,2.5F,3,-1,2.5F,3,0,2.5F,-2,0,2.5F,u0,u1,v0,v1,c);
+		quad(out,pose,-2,0,-1.5F,3,0,-1.5F,3,-1,-1.5F,-2,-1,-1.5F,u0,u1,v0,v1,c);
+		quad(out,pose,-1.5F,-1,-2,-1.5F,-1,3,-1.5F,0,3,-1.5F,0,-2,u0,u1,v0,v1,c);
+		quad(out,pose,2.5F,0,-2,2.5F,0,3,2.5F,-1,3,2.5F,-1,-2,u0,u1,v0,v1,c);
+	}
+
+	private static void triangleQuad(VertexConsumer out, PoseStack.Pose pose,
+			float ax,float ay,float az,float bx,float by,float bz,float cx,float cy,float cz,
+			int color,float u0,float u1,float v0,float v1) {
+		quad(out,pose,ax,ay,az,bx,by,bz,cx,cy,cz,ax,ay,az,u0,u1,v0,v1,color);
+	}
+
+	private static void quad(VertexConsumer out, PoseStack.Pose pose,
+			float x1,float y1,float z1,float x2,float y2,float z2,float x3,float y3,float z3,
+			float x4,float y4,float z4,float u0,float u1,float v0,float v1,int color) {
+		out.addVertex(pose,x1,y1,z1).setUv(u0,v1).setColor(color).setLight(LightCoordsUtil.FULL_BRIGHT);
+		out.addVertex(pose,x2,y2,z2).setUv(u0,v0).setColor(color).setLight(LightCoordsUtil.FULL_BRIGHT);
+		out.addVertex(pose,x3,y3,z3).setUv(u1,v0).setColor(color).setLight(LightCoordsUtil.FULL_BRIGHT);
+		out.addVertex(pose,x4,y4,z4).setUv(u1,v1).setColor(color).setLight(LightCoordsUtil.FULL_BRIGHT);
+	}
+
+	private static PoseStack copy(PoseStack source) {
+		PoseStack copy = new PoseStack(); copy.last().set(source.last()); return copy;
+	}
+
+	@Override public AABB getRenderBoundingBox(TileEntityRelaySource source) {
+		return new AABB(source.getBlockPos()).inflate(source.isEnhanced() ? 3 : 1);
+	}
+	@Override public boolean shouldRenderOffScreen() { return true; }
+	@Override public int getViewDistance() { return 128; }
+
+	private record Crystal(int color, float fraction) {}
+	public static final class State extends BlockEntityRenderState {
+		private boolean enhanced;
+		private float time;
+		private int edgeColor = 0xffffffff;
+		private final List<Crystal> crystals = new ArrayList<>();
+	}
 }

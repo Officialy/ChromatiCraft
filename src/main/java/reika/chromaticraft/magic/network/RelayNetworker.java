@@ -9,27 +9,22 @@
  ******************************************************************************/
 package reika.chromaticraft.magic.network;
 
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.block.relay.BlockRelayBase;
 import reika.chromaticraft.block.worldgen26.BlockStructureShield;
-import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaDecoFlowers;
-import reika.chromaticraft.registry.ChromaOptions;
-import reika.chromaticraft.registry.ChromaShieldTypes;
-import reika.chromaticraft.registry.CrystalElement;
+import reika.chromaticraft.registry.*;
 import reika.chromaticraft.tileentity.networking.TileEntityRelaySource;
 import reika.dragonapi.auxiliary.ModularLogger;
+
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
 
 /**
  * V33a {@code RelayNetworker}: how a Lumen Relay beam finds its way back to a Relay Source.

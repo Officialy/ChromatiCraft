@@ -2,40 +2,38 @@ package reika.chromaticraft.item;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.world.InteractionResult;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemUseAnimation;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.ItemUseAnimation;
 import net.minecraft.world.item.context.UseOnContext;
-import net.minecraft.world.phys.BlockHitResult;
-import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
-
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
 import reika.chromaticraft.api.interfaces.ManipulatorInteraction;
 import reika.chromaticraft.auxiliary.interfaces.SneakPop;
 import reika.chromaticraft.block.worldgen26.BlockCliffStone;
 import reika.chromaticraft.magic.PylonCharging;
 import reika.chromaticraft.magic.interfaces.ChargingPoint;
 import reika.chromaticraft.magic.progression.ProgressStage;
-import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.registry.ChromaSounds;
-import reika.chromaticraft.world.dimension.DimensionTuningManager;
 import reika.chromaticraft.registry.ChromaDimensions;
-import reika.chromaticraft.tileentity.networking.TileEntityCrystalRepeater;
+import reika.chromaticraft.registry.ChromaSounds;
+import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.tileentity.TileEntityDataNode;
 import reika.chromaticraft.tileentity.TileEntityDummyAux;
+import reika.chromaticraft.tileentity.networking.TileEntityCrystalRepeater;
 import reika.chromaticraft.tileentity.recipe.TileEntityCastingTable;
+import reika.chromaticraft.tileentity.recipe.TileEntityRitualTable;
+import reika.chromaticraft.world.dimension.DimensionTuningManager;
 import reika.dragonapi.APIPacketHandler;
 import reika.dragonapi.DragonAPI;
 import reika.dragonapi.libraries.ReikaPlayerAPI;
 import reika.dragonapi.libraries.io.ReikaPacketHelper;
-
-import org.jspecify.annotations.Nullable;
 
 /**
  * V33a {@code ItemManipulator} — the mod's universal "interact with a ChromatiCraft block" tool.
@@ -139,6 +137,11 @@ public class ItemManipulator extends Item {
 				return InteractionResult.SUCCESS;
 			return table.triggerCrafting(player) ? InteractionResult.SUCCESS : InteractionResult.FAIL;
 		}
+		if (tile instanceof TileEntityRitualTable table) {
+			if (level.isClientSide())
+				return InteractionResult.SUCCESS;
+			return table.triggerRitual(player) ? InteractionResult.SUCCESS : InteractionResult.FAIL;
+		}
 
 		// Holding use against a deployed lore tower advances its original 120-tick scan.
 		if (tile instanceof TileEntityDataNode node) {
@@ -186,9 +189,10 @@ public class ItemManipulator extends Item {
 			// Upstream's creative debug branch: sneak-click marks a controller as the monument's by hand.
 			// Kept because it is the only recovery if a monument generates without being marked.
 			if (player.hasInfiniteMaterials() && reika.dragonapi.DragonAPI.debugtest) {
-				if (!level.isClientSide() && player.isShiftKeyDown())
+				if (!level.isClientSide() && player.isShiftKeyDown()) {
 					structure.setMonument();
-				return InteractionResult.SUCCESS;
+					return InteractionResult.SUCCESS;
+				}
 			}
 			if (level.isClientSide())
 				return InteractionResult.SUCCESS;

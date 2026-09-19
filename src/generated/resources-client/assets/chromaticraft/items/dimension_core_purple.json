@@ -1,12 +1,10 @@
 {
   "model": {
-    "type": "minecraft:model",
-    "model": "chromaticraft:block/dimension_core_purple",
-    "tints": [
-      {
-        "type": "minecraft:constant",
-        "value": -7601942
-      }
-    ]
+    "type": "minecraft:special",
+    "base": "chromaticraft:block/dimension_core_purple",
+    "model": {
+      "type": "chromaticraft:dimension_core",
+      "element": "purple"
+    }
   }
 }

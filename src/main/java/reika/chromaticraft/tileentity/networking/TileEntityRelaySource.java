@@ -9,286 +9,222 @@
  ******************************************************************************/
 package reika.chromaticraft.tileentity.networking;
 
-import net.minecraft.client.Minecraft;
+import java.util.List;
+
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.Vec3;
 
-import reika.chromaticraft.auxiliary.interfaces.ItemOnRightClick;
 import reika.chromaticraft.auxiliary.interfaces.MultiBlockChromaTile;
 import reika.chromaticraft.base.tileentity.InventoriedCrystalReceiver;
 import reika.chromaticraft.items.ItemStorageCrystal;
-import reika.chromaticraft.magic.progression.ChromaResearchManager;
+import reika.chromaticraft.magic.interfaces.WeakRepeaterSafeReceiver;
+import reika.chromaticraft.magic.progression.LexiconCatalog;
+import reika.chromaticraft.magic.progression.PlayerResearch;
 import reika.chromaticraft.magic.progression.ProgressStage;
-import reika.chromaticraft.magic.progression.ProgressionCatchupHandling;
-import reika.chromaticraft.registry.ChromaIcons;
+import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.ChromaItems;
-import reika.chromaticraft.registry.ChromaResearch;
 import reika.chromaticraft.registry.ChromaStructures;
 import reika.chromaticraft.registry.ChromaTiles;
 import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.render.particle.EntityCCBlurFX;
-import reika.chromaticraft.render.particle.EntityChromaFluidFX;
+import reika.chromaticraft.render.particle.ChromaParticle;
 import reika.dragonapi.instantiable.data.immutable.Coordinate;
-import reika.dragonapi.instantiable.effects.EntityBlurFX;
-import reika.dragonapi.interfaces.tileentity.InertIInv;
-import reika.dragonapi.libraries.ReikaAABBHelper;
-import reika.dragonapi.libraries.ReikaPlayerAPI;
-import reika.dragonapi.libraries.java.ReikaRandomHelper;
-import reika.dragonapi.libraries.registry.ReikaItemHelper;
+import reika.dragonapi.interfaces.blockentity.InertIInv;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
+/**
+ * V33a's all-colour Lumen Relay source. A charged Storage Crystal can be inserted directly into
+ * the machine and is unloaded into sixteen independently capped network buffers. The researched
+ * 5x5 focus below it raises capacity, range and throughput and halves the adaptive request delay.
+ */
+public final class TileEntityRelaySource extends InventoriedCrystalReceiver
+		implements InertIInv, MultiBlockChromaTile, WeakRepeaterSafeReceiver {
 
-public class TileEntityRelaySource extends InventoriedCrystalReceiver implements InertIInv, ItemOnRightClick, MultiBlockChromaTile {
+	public static final int CAPACITY = 720_000;
+	public static final int ENHANCED_CAPACITY = 3_600_000;
+	private static final int MIN_COOLDOWN = 100;
+	private static final int MAX_COOLDOWN = 200;
 
-	private static final int CAPACITY = 720000;
-	private static final int CAPACITY_BOOSTED = 3600000;
-
-	private int cooldown = 200;
-
-	private int[] drainValue = new int[16];
-
+	private int cooldown = MAX_COOLDOWN;
+	private final int[] drainValue = new int[CrystalElement.elements.length];
+	private int visualCrystalCapacity;
+	private final int[] visualCrystalEnergy = new int[CrystalElement.elements.length];
 	private boolean enhanced;
 	private boolean hasEnhancedStructure;
 
+	public TileEntityRelaySource(BlockPos pos, BlockState state) {
+		super(ChromaBlockEntities.RELAY_SOURCE.get(), pos, state);
+	}
+
+	@Override protected int getCooldownLength() { return cooldown; }
+	@Override public boolean allowsEfficiencyBoost() { return false; }
+
 	@Override
-	protected int getCooldownLength() {
-		return cooldown;
+	public void updateEntity(Level world, BlockPos pos) {
+		super.updateEntity(world, pos);
+		if (!world.isClientSide()) {
+			if (checkTimer.checkCap()) this.checkAndRequest();
+			this.updateAdaptiveCooldown();
+			this.transferFromCrystal();
+			if (this.getTicksExisted() % 20 == 0) this.validateStructure();
+		}
+		else if (enhanced) {
+			ChromaParticle.spawnRelaySource(world, pos, this.getTicksExisted(), this.rand);
+		}
 	}
 
 	@Override
-	public boolean allowsEfficiencyBoost() {
-		return false;
+	protected void onFirstTick(Level world, BlockPos pos) {
+		super.onFirstTick(world, pos);
+		if (!world.isClientSide()) this.validateStructure();
 	}
 
-	/*
-	@Override
-	public ResearchLevel getResearchTier() {
-		return ResearchLevel.ENERGYEXPLORE;
-	}
-	 */
-
-	@Override
-	public void updateEntity(Level world, int x, int y, int z, int meta) {
-		super.updateEntity(world, x, y, z, meta);
-
-		if (!world.isClientSide() && /*this.getCooldown() == 0 && */checkTimer.checkCap()) {
-			this.checkAndRequest();
+	private void updateAdaptiveCooldown() {
+		int averageDrain = 0;
+		for (int i = 0; i < drainValue.length; i++) {
+			drainValue[i] = (int)(drainValue[i] * 0.95F);
+			averageDrain += drainValue[i];
 		}
-
-		if (world.isClientSide() && enhanced) {
-			this.spawnParticles(world, x, y, z);
-		}
-
-		int maxDrain = 0;
-		for (int i = 0; i < 16; i++) {
-			drainValue[i] *= 0.95;
-			maxDrain += drainValue[i];
-		}
-		maxDrain /= 16;
-		if (cooldown > 100 && maxDrain >= CAPACITY/cooldown)
+		averageDrain /= drainValue.length;
+		if (cooldown > MIN_COOLDOWN && averageDrain >= CAPACITY / cooldown)
 			cooldown--;
-		else if (cooldown < 200)
+		else if (cooldown < MAX_COOLDOWN)
 			cooldown++;
-
-		checkTimer.setCap(this.isEnhanced() ? cooldown/2 : cooldown);
-
-		if (inv[0] != null && ChromaItems.STORAGE.matchWith(inv[0])) {
-			for (CrystalElement e : ItemStorageCrystal.getStoredTags(inv[0]).elementSet()) {
-				int amt = ItemStorageCrystal.getStoredEnergy(inv[0], e);
-				int add = Math.min(amt, Math.min(this.getMaxStorage(e)-energy.getValue(e), this.maxThroughput()*4));
-				if (add > 0) {
-					ItemStorageCrystal.removeEnergy(inv[0], e, add);
-					energy.addValueToColor(e, add);
-				}
-			}
-		}
+		checkTimer.setCap(Math.max(1, enhanced ? cooldown / 2 : cooldown));
 	}
 
-	@SideOnly(Side.CLIENT)
-	private void spawnParticles(Level world, int x, int y, int z) {
-		if (rand.nextInt(3) == 0) {
-			int dx = rand.nextBoolean() ? x+1 : x-1;
-			int dz = rand.nextBoolean() ? z+1 : z-1;
-			int dy = y-2;
-			double px = dx+rand.nextDouble();
-			double py = dy+rand.nextDouble();
-			double pz = dz+rand.nextDouble();
-			double v = 0.03125;
-			double vx = (x+0.5-px)*v;
-			double vz = (z+0.5-pz)*v;
-			double vy = ReikaRandomHelper.getRandomBetween(0.125, 0.1875);
-			EntityChromaFluidFX fx = new EntityChromaFluidFX(world, px, py, pz, vx, vy, vz).setGravity((float)vy*0.75F);
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx);
+	private void transferFromCrystal() {
+		ItemStack crystal = inv.getFirst();
+		if (!ItemStorageCrystal.isStorageCrystal(crystal)) return;
+		boolean changed = false;
+		for (CrystalElement element : ItemStorageCrystal.getStoredTags(crystal).elementSet()) {
+			int amount = ItemStorageCrystal.getStoredEnergy(crystal, element);
+			int add = Math.min(amount,
+					Math.min(this.getRemainingSpace(element), this.maxThroughput() * 4));
+			if (add <= 0) continue;
+			ItemStorageCrystal.removeEnergy(crystal, element, add);
+			energy.addValueToColor(element, add);
+			changed = true;
 		}
-
-		if (rand.nextInt(2) == 0) {
-			int color = CrystalElement.getBlendedColor(this.getTicksExisted(), 50);
-			double px = ReikaRandomHelper.getRandomPlusMinus(x+0.5, 2.25);
-			double pz = ReikaRandomHelper.getRandomPlusMinus(z+0.5, 2.25);
-			double py = ReikaRandomHelper.getRandomPlusMinus(y+0.25, 0.5)+0.5;
-			float g = (float)ReikaRandomHelper.getRandomBetween(0.03125, 0.1);
-			int l = ReikaRandomHelper.getRandomPlusMinus(40, 100);
-			EntityBlurFX fx = new EntityCCBlurFX(world, px, py, pz).setIcon(ChromaIcons.FADE_GENTLE).setColor(color).setGravity(g).setLife(l).setScale(1.25F).setRapidExpand();
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx);
+		if (changed) {
+			this.setChanged();
+			this.syncAllData(false);
 		}
-	}
-
-	@Override
-	protected void onFirstTick(Level world, int x, int y, int z) {
-		super.onFirstTick(world, x, y, z);
-		Player ep = this.getPlacer();
-		if (ep != null && !ReikaPlayerAPI.isFake(ep) && !world.isClientSide()) {
-			this.validateStructure();
-			enhanced = ChromaResearchManager.instance.playerHasFragment(ep, ChromaResearch.RELAYSTRUCT) && hasEnhancedStructure;
-		}
-		else {
-			//enhanced = false;
-		}
-	}
-
-	public void validateStructure() {
-		ChromaStructures.RELAY.getStructure().resetToDefaults();
-		hasEnhancedStructure = ChromaStructures.RELAY.getArray(worldObj, xCoord, yCoord, zCoord).matchInWorld();
 	}
 
 	private void checkAndRequest() {
-		for (int i = 0; i < CrystalElement.elements.length; i++) {
-			CrystalElement e = CrystalElement.elements[i];
-			float f = this.getEnergy(e)/(float)this.getMaxStorage(e);
-			float f2 = this.isEnhanced() ? 0.8F : 0.5F;
-			if (f < f2) {
-				this.requestEnergy(e, this.getRemainingSpace(e));
+		float threshold = enhanced ? 0.8F : 0.5F;
+		for (CrystalElement element : CrystalElement.elements) {
+			if (this.getFillFraction(element) < threshold)
+				this.requestEnergy(element, this.getRemainingSpace(element));
+		}
+	}
+
+	@Override
+	public void validateStructure() {
+		Level world = this.getLevel();
+		if (world == null || world.isClientSide()) return;
+		boolean structure = ChromaStructures.RELAY.getArray(world, this.getX(), this.getY(), this.getZ())
+				.matchInWorld();
+		Player owner = this.getPlacer();
+		var page = LexiconCatalog.byId("RELAYSTRUCT");
+		boolean active = structure && owner != null && page != null
+				&& PlayerResearch.hasFragment(owner, page);
+		if (structure != hasEnhancedStructure || active != enhanced) {
+			hasEnhancedStructure = structure;
+			enhanced = active;
+			for (CrystalElement element : CrystalElement.elements) this.clamp(element);
+			checkTimer.setCap(Math.max(1, enhanced ? cooldown / 2 : cooldown));
+			this.setChanged();
+			this.syncAllData(true);
+		}
+	}
+
+	/** Records actual relay-network draw so V33a's request cadence can adapt to sustained demand. */
+	public void onDrain(CrystalElement element, int amount) {
+		if (element == null || amount <= 0) return;
+		drainValue[element.ordinal()] += amount;
+		if (this.getLevel() instanceof ServerLevel server) {
+			for (Player player : server.players()) {
+				if (player.distanceToSqr(Vec3.atCenterOf(this.getBlockPos())) <= 64)
+					ProgressStage.RELAYS.stepPlayerTo(player);
 			}
 		}
 	}
 
-	@Override
-	public int getReceiveRange() {
-		return enhanced ? 48 : 32;
+	@Override public int getReceiveRange() { return enhanced ? 48 : 32; }
+	@Override public boolean isConductingElement(CrystalElement element) { return element != null; }
+	@Override public int maxThroughput() { return enhanced ? 30_000 : 6_000; }
+	@Override public boolean canConduct() { return true; }
+	@Override public int getMaxStorage(CrystalElement element) {
+		return enhanced ? ENHANCED_CAPACITY : CAPACITY;
+	}
+	@Override public ChromaTiles getTile() { return ChromaTiles.RELAYSOURCE; }
+	@Override protected void animateWithTick(Level world, BlockPos pos) {}
+
+	@Override public int getSizeInventory() { return 1; }
+	@Override public int getMaxStackSize() { return 1; }
+	@Override public boolean canPlaceItem(int slot, ItemStack stack) {
+		return slot == 0 && ChromaItems.isStorageCrystal(stack)
+				&& ItemStorageCrystal.getTotalEnergy(stack) > 0;
+	}
+	@Override public boolean canTakeItemThroughFace(int slot, ItemStack stack, Direction side) {
+		return side == Direction.DOWN;
 	}
 
-	@Override
-	public boolean isConductingElement(CrystalElement e) {
-		return e != null;
+	public boolean isEnhanced() { return enhanced; }
+	public boolean hasEnhancedStructure() { return hasEnhancedStructure; }
+	public int requestCooldown() { return cooldown; }
+	public int getRenderedCrystalCapacity() {
+		return this.getLevel() != null && this.getLevel().isClientSide()
+				? visualCrystalCapacity : ItemStorageCrystal.getCapacity(inv.getFirst());
 	}
-
-	@Override
-	public int maxThroughput() {
-		return enhanced ? 30000 : 6000;
+	public int getRenderedCrystalEnergy(CrystalElement element) {
+		return this.getLevel() != null && this.getLevel().isClientSide()
+				? visualCrystalEnergy[element.ordinal()]
+				: ItemStorageCrystal.getStoredEnergy(inv.getFirst(), element);
 	}
+	public void noteDrainForTest(CrystalElement element, int amount) { this.onDrain(element, amount); }
+	public void runAdaptiveCycleForTest() { this.updateAdaptiveCooldown(); }
+	public void runTransferCycleForTest() { this.transferFromCrystal(); }
+
+	@Override public ChromaStructures getPrimaryStructure() { return ChromaStructures.RELAY; }
+	@Override public Coordinate getStructureOffset() { return null; }
+	@Override public boolean canStructureBeInspected() { return true; }
+	@Override public boolean hasStructure() { return hasEnhancedStructure; }
 
 	@Override
-	public boolean canConduct() {
-		return true;
-	}
-
-	@Override
-	public int getMaxStorage(CrystalElement e) {
-		return enhanced ? CAPACITY_BOOSTED : CAPACITY;
-	}
-
-	@Override
-	public ChromaTiles getTile() {
-		return ChromaTiles.RELAYSOURCE;
-	}
-
-	@Override
-	protected void animateWithTick(Level world, int x, int y, int z) {
-
-	}
-
-	@Override
-	public void readSyncTag(CompoundTag NBT) {
-		super.readSyncTag(NBT);
-
-		enhanced = NBT.getBooleanOr("enhance", false);
-		hasEnhancedStructure = NBT.getBooleanOr("enstruct", false);
-	}
-
-	@Override
-	public void writeSyncTag(CompoundTag NBT) {
-		super.writeSyncTag(NBT);
-
-		NBT.putBoolean("enhance", enhanced);
-		NBT.putBoolean("enstruct", hasEnhancedStructure);
-	}
-
-	@Override
-	public boolean canExtractItem(int slot, ItemStack is, int side) {
-		return side == 0;
-	}
-
-	@Override
-	public int getSizeInventory() {
-		return 1;
+	protected void readSyncTag(CompoundTag tag) {
+		super.readSyncTag(tag);
+		enhanced = tag.getBooleanOr("enhance", false);
+		hasEnhancedStructure = tag.getBooleanOr("enstruct", false);
+		cooldown = Math.clamp(tag.getIntOr("relayCooldown", MAX_COOLDOWN),
+				MIN_COOLDOWN, MAX_COOLDOWN);
+		for (int i = 0; i < drainValue.length; i++)
+			drainValue[i] = Math.max(0, tag.getIntOr("relayDrain" + i, 0));
+		visualCrystalCapacity = Math.max(0, tag.getIntOr("relayCrystalCapacity", 0));
+		for (int i = 0; i < visualCrystalEnergy.length; i++)
+			visualCrystalEnergy[i] = Math.max(0, tag.getIntOr("relayCrystal" + i, 0));
 	}
 
 	@Override
-	public int getInventoryStackLimit() {
-		return 1;
+	protected void writeSyncTag(CompoundTag tag) {
+		super.writeSyncTag(tag);
+		tag.putBoolean("enhance", enhanced);
+		tag.putBoolean("enstruct", hasEnhancedStructure);
+		tag.putInt("relayCooldown", cooldown);
+		for (int i = 0; i < drainValue.length; i++) tag.putInt("relayDrain" + i, drainValue[i]);
+		ItemStack crystal = inv.getFirst();
+		tag.putInt("relayCrystalCapacity", ItemStorageCrystal.getCapacity(crystal));
+		for (CrystalElement element : CrystalElement.elements)
+			tag.putInt("relayCrystal" + element.ordinal(),
+					ItemStorageCrystal.getStoredEnergy(crystal, element));
 	}
 
-	@Override
-	public boolean isItemValidForSlot(int slot, ItemStack is) {
-		return ChromaItems.STORAGE.matchWith(is) && ItemStorageCrystal.getTotalEnergy(is) > 0;
-	}
-
-	@Override
-	public ItemStack onRightClickWith(ItemStack item, Player ep) {
-		this.dropItem(inv[0]);
-		inv[0] = null;
-		if (this.isItemValidForSlot(0, item)) {
-			inv[0] = item.copy();
-			item = null;
-		}
-		return item;
-	}
-
-	private void dropItem(ItemStack is) {
-		ReikaItemHelper.dropItem(worldObj, xCoord+0.5, yCoord+0.75, zCoord+0.5, is);
-	}
-
-	public void onDrain(CrystalElement e, int amt) {
-		drainValue[e.ordinal()] += amt;
-		if (worldObj.isClientSide()) {
-			ProgressionCatchupHandling.instance.attemptSync(this, 8, ProgressStage.RELAYS, true);
-		}
-	}
-
-	public boolean isEnhanced() {
-		return enhanced;
-	}
-
-	@SideOnly(Side.CLIENT)
-	public void setEnhanced(boolean en) {
-		enhanced = en;
-	}
-
-	@Override
-	public AxisAlignedBB getRenderBoundingBox() {
-		return enhanced ? ReikaAABBHelper.getBlockAABB(this).expand(3, 2, 3) : ReikaAABBHelper.getBlockAABB(this);
-	}
-
-	@Override
-	public ChromaStructures getPrimaryStructure() {
-		return ChromaStructures.RELAY;
-	}
-
-	@Override
-	public Coordinate getStructureOffset() {
-		return null;
-	}
-
-	public boolean canStructureBeInspected() {
-		return true;
-	}
-
-	public final boolean hasStructure() {
-		return hasEnhancedStructure;
-	}
-
+	@Override public void addTooltipInfo(List list, boolean shift) {}
 }

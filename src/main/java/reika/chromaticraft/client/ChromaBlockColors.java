@@ -85,11 +85,7 @@ public final class ChromaBlockColors {
         }
     };
 
-    /**
-     * The Dimension Core's colour, taken from the block's own identity. Upstream draws a core with
-     * glow-knot geometry and the DIMCORE shader, neither of which is ported; until they are, a core is
-     * a tinted cube and this is what makes a ring of sixteen readable as sixteen different things.
-     */
+    /** The Dimension Core's registry-per-colour fallback tint beneath its special renderer. */
     private static final BlockTintSource DIMENSION_CORE = new BlockTintSource() {
         @Override public int color(BlockState state) { return tint(state); }
         @Override public int colorInWorld(BlockState state, BlockAndTintGetter level, BlockPos pos) {
@@ -134,6 +130,7 @@ public final class ChromaBlockColors {
         // of the paths that must not be forgotten: a player who logs out mid-ritual would otherwise
         // come back with no GUI.
         reika.chromaticraft.client.render.MonumentRitualEffects.stop();
+		reika.chromaticraft.client.render.LocusPointScreenEffects.clear();
     }
 
     /** Drains the progression-sound cooldown (V33a ProgressOverlayRenderer ticks it the same way). */
@@ -145,14 +142,32 @@ public final class ChromaBlockColors {
     }
 
     /**
+     * V33a's scripted camera remained first-person while its render position orbited the monument,
+     * so the activating player's body was never drawn beside the structure. The 26.2 implementation
+     * uses a private Marker as the camera entity instead; suppress the local avatar explicitly while
+     * that marker owns the view, without changing the player's synchronized invisibility state.
+     */
+    @SubscribeEvent
+    public static void onRenderPlayer(
+            net.neoforged.neoforge.client.event.RenderPlayerEvent.Pre<?> event) {
+        var player = net.minecraft.client.Minecraft.getInstance().player;
+        if (player != null
+                && reika.chromaticraft.client.render.MonumentRitualEffects.isRunning()
+                && event.getRenderState().id == player.getId())
+            event.setCanceled(true);
+    }
+
+    /**
      * Runs the ritual's screen grade once the level is fully drawn, so it grades the finished scene.
      */
     @SubscribeEvent
     public static void onRenderLevelStage(
             net.neoforged.neoforge.client.event.RenderLevelStageEvent.AfterLevel event) {
-        if (!reika.chromaticraft.client.render.MonumentRitualEffects.isRunning())
-            return;
         var camera = event.getLevelRenderState().cameraRenderState;
+		reika.chromaticraft.client.render.LocusPointScreenEffects.renderAndClear(
+				event.getModelViewMatrix(), camera.projectionMatrix, camera.pos);
+		if (!reika.chromaticraft.client.render.MonumentRitualEffects.isRunning())
+			return;
         reika.chromaticraft.client.render.MonumentRitualEffects.renderScreenEffect(
                 event.getModelViewMatrix(), camera.projectionMatrix, camera.pos);
     }

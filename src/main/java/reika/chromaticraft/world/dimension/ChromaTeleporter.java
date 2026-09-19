@@ -18,11 +18,12 @@ import net.minecraft.world.phys.Vec3;
  * nothing clever: it drops the traveller at {@code y = 1024} and lets them fall. Entering Proxima
  * puts them above the origin; returning to the Overworld puts them above their bed, or above world
  * spawn if they have none. {@code placeInExistingPortal} returns true without moving anything and
- * {@code makePortal} returns false, so no portal is ever built at the far end — the arrival platform
- * is instead carved out from under the player by {@link DimensionJoinHandler}.
+ * {@code makePortal} returns false, so no portal is ever built at the far end.
  *
  * <p>The 1024-block drop is the mechanism, not an accident: it clears whatever terrain generated
- * beneath, and the carve-out plus Proxima's own fall protection catch the landing.
+ * beneath, and Proxima's own fall protection catches the landing. V33a's
+ * {@code DimensionJoinHandler} carve-out is a separate login/respawn safeguard for a persistent
+ * player who loads embedded in terrain; {@link ProximaPlayerSafety} carries that behavior in 26.2.
  */
 public final class ChromaTeleporter {
 

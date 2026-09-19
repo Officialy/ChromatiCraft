@@ -3,6 +3,10 @@
   "textures": {
     "layer0": {
       "force_translucent": true,
+      "sprite": "chromaticraft:block/plant/element_bulbs_back"
+    },
+    "layer1": {
+      "force_translucent": true,
       "sprite": "chromaticraft:block/plant/element_bulbs_front"
     }
   }

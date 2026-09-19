@@ -1,6 +1,9 @@
 {
   "model": {
-    "type": "minecraft:model",
-    "model": "chromaticraft:block/power_crystal"
+    "type": "minecraft:special",
+    "base": "chromaticraft:block/power_crystal",
+    "model": {
+      "type": "chromaticraft:power_crystal"
+    }
   }
 }

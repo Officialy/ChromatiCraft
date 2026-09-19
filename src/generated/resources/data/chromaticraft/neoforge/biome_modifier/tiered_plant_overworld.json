@@ -6,7 +6,9 @@
     "chromaticraft:rock_flower",
     "chromaticraft:essence_lily",
     "chromaticraft:element_bulbs",
-    "chromaticraft:radiance_bush"
+    "chromaticraft:radiance_bush",
+    "chromaticraft:vibrant_pod",
+    "chromaticraft:glowing_roots"
   ],
   "step": "top_layer_modification"
 }

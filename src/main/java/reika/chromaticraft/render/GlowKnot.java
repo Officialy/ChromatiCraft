@@ -1,162 +1,149 @@
 /*******************************************************************************
  * @author Reika Kalseki
- * 
+ *
  * Copyright 2017
- * 
+ *
  * All rights reserved.
  * Distribution of the software in any form is only allowed with
  * explicit, prior permission from the owner.
  ******************************************************************************/
 package reika.chromaticraft.render;
 
-import java.util.Random;
-
-import org.lwjgl.opengl.GL11;
-
-import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.client.renderer.entity.RenderManager;
-import net.minecraft.util.IIcon;
-
-import reika.chromaticraft.registry.ChromaIcons;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.feature.CustomFeatureRenderer;
+import net.neoforged.neoforge.client.extensions.OrderedSubmitNodeCollectorExtension;
+import net.neoforged.neoforge.client.submit.RenderPhaseKeys;
+import org.joml.Vector3f;
 import reika.dragonapi.instantiable.data.immutable.DecimalPosition;
 import reika.dragonapi.instantiable.math.Spline;
-import reika.dragonapi.instantiable.math.spline.SplineAnchor;
-import reika.dragonapi.instantiable.math.spline.SplineType;
-import reika.dragonapi.libraries.io.ReikaTextureHelper;
-import reika.dragonapi.libraries.java.reikaglhelper.BlendMode;
+import reika.dragonapi.instantiable.math.Spline.SplineAnchor;
+import reika.dragonapi.instantiable.math.Spline.SplineType;
 import reika.dragonapi.libraries.java.ReikaRandomHelper;
 import reika.dragonapi.libraries.mathsci.ReikaPhysicsHelper;
-import reika.dragonapi.libraries.rendering.ReikaColorAPI;
 
-public class GlowKnot {
+import java.util.List;
+import java.util.Random;
 
-	private static final Random rand = new Random();
+/**
+ * The living forty-eight-anchor centripetal spline at the heart of V33a's Aura Locus.
+ */
+public final class GlowKnot {
 
-	private final Spline spline;
+    private static final Random RAND = new Random();
+    public final int density = 48;
+    public final double size;
+    private final Spline spline = new Spline(SplineType.CENTRIPETAL);
 
-	public final int density;
-	public final double size;
+    public GlowKnot(double size) {
+        this.size = size;
+        for (int i = 0; i < density; i++)
+            spline.addPoint(new KnotPoint(size, RAND.nextDouble() * 360,
+                    RAND.nextDouble() * 360, size));
+    }
 
-	public GlowKnot(double size) {
-		density = 48;
-		this.size = size;
-		spline = new Spline(SplineType.CENTRIPETAL);
+    private static void renderPoints(PoseStack.Pose pose, VertexConsumer vertices,
+                                     List<DecimalPosition> points, int color, int alpha) {
+        int red = color >> 16 & 255;
+        int green = color >> 8 & 255;
+        int blue = color & 255;
+        Vector3f normal = new Vector3f();
+        if (points.size() < 2)
+            return;
+        // RenderTypes.lines() consumes independent vertex pairs, unlike V33a's GL_LINE_STRIP.
+        // Pair every adjacent sample, then close the final sample back to the first. The previous
+        // port emitted (sample, first) for every sample, which turned the locus into a radial web.
+        for (int i = 1; i < points.size(); i++)
+            addSegment(pose, vertices, points.get(i - 1), points.get(i), red, green, blue, alpha,
+                    normal);
+        addSegment(pose, vertices, points.getLast(), points.getFirst(), red, green, blue, alpha,
+                normal);
+    }
 
-		for (int i = 0; i < density; i++) {
-			double phi = rand.nextDouble()*360;
-			double theta = rand.nextDouble()*360;
-			spline.addPoint(new KnotPoint(size, phi, theta, size));
-		}
-	}
+    private static void addSegment(PoseStack.Pose pose, VertexConsumer vertices,
+                                   DecimalPosition first, DecimalPosition second,
+                                   int red, int green, int blue, int alpha, Vector3f normal) {
+        vertices.addVertex(pose, (float) (0.5 + first.xCoord), (float) (0.5 + first.yCoord),
+                (float) (0.5 + first.zCoord)).setNormal(pose, normal)
+                .setColor(red, green, blue, alpha).setLineWidth(2F);
+        vertices.addVertex(pose, (float) (0.5 + second.xCoord), (float) (0.5 + second.yCoord),
+                (float) (0.5 + second.zCoord)).setNormal(pose, normal)
+                .setColor(red, green, blue, alpha).setLineWidth(2F);
+    }
 
-	public void render(double x, double y, double z, int color, boolean inworld) {
-		GL11.glDisable(GL11.GL_LIGHTING);
-		GL11.glEnable(GL11.GL_BLEND);
-		Tessellator v5 = Tessellator.instance;
-		spline.render(v5, 0.5, 0.5, 0.5, color, inworld, true, 32, 1, BlendMode.DEFAULT);
+    public void submit(SubmitNodeCollector collector, PoseStack stack, int color,
+                       boolean inWorld) {
+        List<DecimalPosition> points = spline.get(32, true);
+        int alpha = color >>> 24;
+        this.submitLine(collector, stack, points, color, alpha);
+        if (inWorld) {
+            this.submitLine(collector, stack, points, color, alpha / 4);
+            this.submitLine(collector, stack, points, color, alpha / 4);
+        }
+    }
 
-		IIcon ico = ChromaIcons.FADE.getIcon();
-		float u = ico.getMinU();
-		float v = ico.getMinV();
-		float du = ico.getMaxU();
-		float dv = ico.getMaxV();
-		BlendMode.ADDITIVEDARK.apply();
-		ReikaTextureHelper.bindTerrainTexture();
-		GL11.glPushMatrix();
-		GL11.glTranslated(0.5, 0.5, 0.5);
+    private void submitLine(SubmitNodeCollector collector, PoseStack stack,
+                            List<DecimalPosition> points, int color, int alpha) {
+        PoseStack renderPose = new PoseStack();
+        renderPose.last().set(stack.last());
+        SubmitNodeCollector.CustomGeometryRenderer geometry = (ignored, vertices) ->
+                renderPoints(renderPose.last(), vertices, points, color, alpha);
+        CustomFeatureRenderer.Submit submit = new CustomFeatureRenderer.Submit(
+                stack.last().copy(), ChromaRenderPipelines.auraLocusLines(), geometry);
+        ((OrderedSubmitNodeCollectorExtension) collector.order(0))
+                .submitSpecial(RenderPhaseKeys.AFTER_TERRAIN, submit);
+    }
 
-		if (inworld) {
-			RenderManager rm = RenderManager.instance;
-			double dx = x-RenderManager.renderPosX;
-			double dy = y-RenderManager.renderPosY;
-			double dz = z-RenderManager.renderPosZ;
-			double[] angs = ReikaPhysicsHelper.cartesianToPolar(dx, dy, dz);
-			GL11.glRotated(angs[2], 0, 1, 0);
-			GL11.glRotated(90-angs[1], 1, 0, 0);
-		}
+    public void update() {
+        spline.update();
+    }
 
-		double d = 1.25;
+    private static final class KnotPoint implements SplineAnchor {
 
-		double pz = 0.05;
+        private final double maxSize;
+        private double radius;
+        private double theta;
+        private double phi;
+        private double targetRadius;
+        private double targetTheta;
+        private double targetPhi;
 
-		v5.startDrawingQuads();
-		int a = 160;
-		v5.setColorRGBA_I(ReikaColorAPI.getColorWithBrightnessMultiplier(color, a/255F), a);
-		v5.addVertexWithUV(-d, -d, pz, u, v);
-		v5.addVertexWithUV(d, -d, pz, du, v);
-		v5.addVertexWithUV(d, d, pz, du, dv);
-		v5.addVertexWithUV(-d, d, pz, u, dv);
-		v5.draw();
+        private KnotPoint(double radius, double theta, double phi, double size) {
+            this.radius = radius;
+            this.theta = theta;
+            this.phi = phi;
+            maxSize = size;
+            this.pickNewTarget();
+        }
 
-		BlendMode.DEFAULT.apply();
-		GL11.glPopMatrix();
+        @Override
+        public DecimalPosition asPosition() {
+            double[] point = ReikaPhysicsHelper.polarToCartesian(radius, theta, phi);
+            return new DecimalPosition(point[0], point[1], point[2]);
+        }
 
-		GL11.glEnable(GL11.GL_LIGHTING);
-	}
+        @Override
+        public void update() {
+            double dr = targetRadius - radius;
+            double dt = targetTheta - theta;
+            double dp = targetPhi - phi;
+            if (Math.abs(dr) < 0.05 && Math.abs(dt) < 1 && Math.abs(dp) < 1) {
+                this.pickNewTarget();
+                return;
+            }
+            if (Math.abs(dr) >= 0.05)
+                radius += 0.025 * Math.signum(dr);
+            if (Math.abs(dt) >= 1)
+                theta += 0.25 * Math.signum(dt);
+            if (Math.abs(dp) >= 1)
+                phi += 0.25 * Math.signum(dp);
+        }
 
-	private static class KnotPoint implements SplineAnchor {
-
-		private double radius;
-		private double theta;
-		private double phi;
-
-		public final double maxSize;
-
-		private double targetRadius;
-		private double targetTheta;
-		private double targetPhi;
-
-		private KnotPoint(double r, double t, double p, double size) {
-			radius = r;
-			theta = t;
-			phi = p;
-			maxSize = size;
-
-			this.pickNewTarget();
-		}
-
-		@Override
-		public DecimalPosition asPosition() {
-			double[] dat = ReikaPhysicsHelper.polarToCartesian(radius, theta, phi);
-			return new DecimalPosition(dat[0], dat[1], dat[2]);
-		}
-
-		@Override
-		public void update() {
-			double dr = targetRadius-radius;
-			double dt = targetTheta-theta;
-			double dp = targetPhi-phi;
-
-			if (this.atTarget(dr, dt, dp)) {
-				this.pickNewTarget();
-			}
-
-			this.move(dr, dt, dp);
-		}
-
-		private void move(double dr, double dt, double dp) {
-			//ReikaJavaLibrary.pConsole(this+":"+dr+":"+this.atTarget(dr, dt, dp));
-			if (Math.abs(dr) >= 0.05)
-				radius += 0.025*Math.signum(dr);//Math.max(0.0125, Math.abs(dr)*0.03125*0.03125*0.03125)*Math.signum(dr);
-			if (Math.abs(dt) >= 1)
-				theta += 0.25*Math.signum(dt);//Math.max(0.125, Math.abs(dt)*0.03125*0.03125*0.03125)*Math.signum(dt);
-			if (Math.abs(dp) >= 1)
-				phi += 0.25*Math.signum(dp);//Math.max(0.125, Math.abs(dp)*0.03125*0.03125*0.03125)*Math.signum(dp);
-		}
-
-		private boolean atTarget(double dr, double dt, double dp) {
-			return Math.abs(dr) < 0.05 && Math.abs(dt) < 1 && Math.abs(dp) < 1;
-		}
-
-		private void pickNewTarget() {
-			targetRadius = ReikaRandomHelper.getRandomPlusMinus(maxSize, maxSize/16D);//rand.nextDouble()*maxSize;
-			targetTheta = rand.nextDouble()*360;
-			targetPhi = rand.nextDouble()*360;
-		}
-	}
-
-	public void update() {
-		spline.update();
-	}
-
+        private void pickNewTarget() {
+            targetRadius = ReikaRandomHelper.getRandomPlusMinus(maxSize, maxSize / 16D, RAND);
+            targetTheta = RAND.nextDouble() * 360;
+            targetPhi = RAND.nextDouble() * 360;
+        }
+    }
 }

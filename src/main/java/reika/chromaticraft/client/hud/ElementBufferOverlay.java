@@ -20,6 +20,7 @@ import net.neoforged.neoforge.client.gui.GuiLayer;
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
 
 import reika.chromaticraft.ChromatiCraft;
+import reika.chromaticraft.client.CrystalRuneTextures;
 import reika.chromaticraft.item.ItemManipulator;
 import reika.chromaticraft.magic.PlayerElementBuffer;
 import reika.chromaticraft.registry.ChromaOptions;
@@ -88,14 +89,26 @@ public final class ElementBufferOverlay implements GuiLayer {
 		graphics.submitPictureInPictureRenderState(new ElementPieRenderState(radii, colours, r,
 				ox - r, oy - r, ox + r, oy + r, graphics.peekScissorStack()));
 
+		// V33a places each eight-pixel outline rune at the centre of its fixed 22.5-degree wedge.
+		// Keep these below wheelfront2, whose rim and spokes deliberately finish the composition.
+		int runeSize = 8;
+		double runeRadius = 0.8125 * r;
+		for (int i = 0; i < CrystalElement.elements.length; i++) {
+			double angle = 11.125 + i * 22.5;
+			int x = (int)Math.round(ox - runeSize / 2D
+					+ runeRadius * Math.cos(Math.toRadians(angle)));
+			int y = (int)Math.round(oy - runeSize / 2D
+					+ runeRadius * Math.sin(Math.toRadians(angle)));
+			graphics.blit(RenderPipelines.GUI_TEXTURED,
+					CrystalRuneTextures.outline(CrystalElement.elements[i]), x, y,
+					0, 0, runeSize, runeSize, 16, 16);
+		}
+
 		graphics.blit(RenderPipelines.GUI_TEXTURED, FRONT, ox - r * 2, oy - r * 2,
 				0, 0, r * 4, r * 4, r * 4, r * 4);
 
 		graphics.centeredText(mc.font, Component.literal("Cap: " + cap),
 				ox, oy + r + mc.font.lineHeight - 4, 0xffffffff);
-		// CHROMA-PORT: V33a rings the wheel with each element's outline rune, at 0.8125*r. The runes
-		// came from CrystalElement.getOutlineRune, part of the 1.7.10 icon system that was stripped
-		// when CrystalElement was ported; they return with the rune sprite redesign.
 	}
 
 	/** V33a brightens the whole wheel while a capacity upgrade flourish is running. */

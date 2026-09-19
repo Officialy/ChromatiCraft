@@ -1,6 +1,14 @@
 {
   "model": {
-    "type": "minecraft:model",
-    "model": "chromaticraft:item/chroma_bucket"
+    "type": "neoforge:fluid_container",
+    "fluid": "chromaticraft:chroma",
+    "force_opaque_fluid": false,
+    "textures": {
+      "base": "minecraft:item/bucket",
+      "fluid": {
+        "force_translucent": true,
+        "sprite": "neoforge:item/mask/bucket_fluid"
+      }
+    }
   }
 }

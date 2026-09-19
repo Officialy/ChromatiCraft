@@ -60,8 +60,6 @@ public final class ChromaWorldGenProvider {
     private static final Identifier NATURAL_PYLON = id("natural_pylon");
     private static final Identifier DATA_TOWER = id("data_tower");
     private static final Identifier TURBOCHARGED_PYLON = id("turbocharged_pylon");
-    private static final List<Identifier> CASTING_TEMPLES =
-            List.of(id("casting_temple_l1"), id("casting_temple_l2"), id("casting_temple_l3"));
     private static final Identifier POWER_CRYSTAL_BOOSTED_PYLON = id("power_crystal_boosted_pylon");
     private static final Identifier LUMINOUS_CLIFFS_TERRAIN = id("luminous_cliffs_terrain");
     private static final Identifier LUMA_PATCH = id("luma_patch");
@@ -105,8 +103,32 @@ public final class ChromaWorldGenProvider {
                     net.minecraft.world.level.block.Blocks.STONE, 1, 4, 12, false),
             new TieredOre("elemental_stones", () -> ChromaBlocks.ELEMENTAL_STONES.get(),
                     net.minecraft.world.level.block.Blocks.STONE, 1, 4, 8, false),
-            new TieredOre("firestone", () -> ChromaBlocks.FIRESTONE.get(),
-                    net.minecraft.world.level.block.Blocks.NETHERRACK, 3, 2, 16, true));
+			new TieredOre("fused_crystals", () -> ChromaBlocks.FUSED_CRYSTALS.get(),
+					net.minecraft.world.level.block.Blocks.STONE, 1, 4, 8, false),
+			new TieredOre("radiant_stone", () -> ChromaBlocks.RADIANT_STONE.get(),
+					net.minecraft.world.level.block.Blocks.STONE, 1, 4, 8, false),
+			new TieredOre("ender_stone", () -> ChromaBlocks.ENDER_STONE.get(),
+					net.minecraft.world.level.block.Blocks.STONE, 1, 2, 8, false),
+			new TieredOre("fluid_stone", () -> ChromaBlocks.FLUID_STONE.get(),
+					net.minecraft.world.level.block.Blocks.STONE, 2, 2, 8, false),
+			new TieredOre("firaxite_ore", () -> ChromaBlocks.FIRAXITE.get(),
+					net.minecraft.world.level.block.Blocks.STONE, 1, 2, 8, false),
+			new TieredOre("glowing_rock", () -> ChromaBlocks.GLOWING_ROCK.get(),
+					net.minecraft.world.level.block.Blocks.STONE, 1, 1, 8, false),
+			new TieredOre("echostone", () -> ChromaBlocks.ECHOSTONE.get(),
+					net.minecraft.world.level.block.Blocks.STONE, 2, 1, 8, false),
+			new TieredOre("vibrant_crystals", () -> ChromaBlocks.VIBRANT_CRYSTALS.get(),
+					net.minecraft.world.level.block.Blocks.END_STONE, 1, 8, 8, true),
+			new TieredOre("spacerift_stone", () -> ChromaBlocks.SPACERIFT_STONE.get(),
+					net.minecraft.world.level.block.Blocks.END_STONE, 2, 9, 8, true),
+			new TieredOre("lumenite_ore", () -> ChromaBlocks.LUMENITE_ORE.get(),
+					net.minecraft.world.level.block.Blocks.STONE, 1, 2, 8, true),
+			new TieredOre("firestone", () -> ChromaBlocks.FIRESTONE.get(),
+					net.minecraft.world.level.block.Blocks.NETHERRACK, 3, 2, 16, true),
+			new TieredOre("thermitic_rock", () -> ChromaBlocks.THERMITIC_ROCK.get(),
+					net.minecraft.world.level.block.Blocks.NETHERRACK, 3, 2, 16, true),
+			new TieredOre("avolite_ore", () -> ChromaBlocks.AVOLITE_ORE.get(),
+					net.minecraft.world.level.block.Blocks.STONE, 2, 1, 18, true));
 
     public static final ResourceKey<PlacedFeature> LUMINOUS_CLIFFS_TERRAIN_PLACED = placedKey("luminous_cliffs_terrain");
     public static final ResourceKey<PlacedFeature> LUMA_PATCH_PLACED = placedKey("luma_patch");
@@ -171,8 +193,6 @@ public final class ChromaWorldGenProvider {
                 registerConfigured(bootstrap, features, coloredPylon(element));
             registerConfigured(bootstrap, features, DATA_TOWER);
             registerConfigured(bootstrap, features, TURBOCHARGED_PYLON);
-            for (Identifier temple : CASTING_TEMPLES)
-                registerConfigured(bootstrap, features, temple);
             registerConfigured(bootstrap, features, POWER_CRYSTAL_BOOSTED_PYLON);
             registerConfigured(bootstrap, features, LUMINOUS_CLIFFS_TERRAIN);
             registerConfigured(bootstrap, features, LUMA_PATCH);
@@ -248,6 +268,10 @@ public final class ChromaWorldGenProvider {
                                                     .ProximaBiomes.CENTER.biomeKey()),
                                             biomes.getOrThrow(reika.chromaticraft.world.dimension.biome
                                                     .ProximaBiomes.FOREST.biomeKey()),
+                                            // V33a tests b.biomeType == FOREST, which includes the
+                                            // Crystal Forest sub-biome rather than only its parent.
+                                            biomes.getOrThrow(reika.chromaticraft.world.dimension.biome
+                                                    .ProximaSubBiomes.CRYSFOREST.biomeKey()),
                                             biomes.getOrThrow(reika.chromaticraft.world.dimension.biome
                                                     .ProximaBiomes.PLAINS.biomeKey())),
                                     java.util.Map.of(),
@@ -268,6 +292,61 @@ public final class ChromaWorldGenProvider {
                                     // The piece hollows its own clearing and lays its own floor, so
                                     // vanilla must not also raise terrain to meet it.
                                     net.minecraft.world.level.levelgen.structure.TerrainAdjustment.NONE)));
+			bootstrap.register(reika.chromaticraft.world.dimension.structure.ProximaStructures.LIGHT_PANEL,
+					new reika.chromaticraft.world.dimension.structure.ProximaLightPanelStructure(
+							new net.minecraft.world.level.levelgen.structure.Structure.StructureSettings(
+									net.minecraft.core.HolderSet.direct(biomes.getOrThrow(
+											reika.chromaticraft.world.dimension.biome.ProximaBiomes.STRUCTURE.biomeKey())),
+									java.util.Map.of(),
+									net.minecraft.world.level.levelgen.GenerationStep.Decoration.UNDERGROUND_STRUCTURES,
+									net.minecraft.world.level.levelgen.structure.TerrainAdjustment.NONE)));
+			bootstrap.register(reika.chromaticraft.world.dimension.structure.ProximaStructures.THREE_D_MAZE,
+					new reika.chromaticraft.world.dimension.structure.ProximaThreeDMazeStructure(
+							new net.minecraft.world.level.levelgen.structure.Structure.StructureSettings(
+									net.minecraft.core.HolderSet.direct(biomes.getOrThrow(
+											reika.chromaticraft.world.dimension.biome.ProximaBiomes.STRUCTURE.biomeKey())),
+									java.util.Map.of(),
+									net.minecraft.world.level.levelgen.GenerationStep.Decoration.UNDERGROUND_STRUCTURES,
+									net.minecraft.world.level.levelgen.structure.TerrainAdjustment.NONE)));
+			bootstrap.register(reika.chromaticraft.world.dimension.structure.ProximaStructures.MUSIC,
+					new reika.chromaticraft.world.dimension.structure.ProximaMusicStructure(
+							new net.minecraft.world.level.levelgen.structure.Structure.StructureSettings(
+									net.minecraft.core.HolderSet.direct(biomes.getOrThrow(
+											reika.chromaticraft.world.dimension.biome.ProximaBiomes.STRUCTURE.biomeKey())),
+									java.util.Map.of(),
+									net.minecraft.world.level.levelgen.GenerationStep.Decoration.UNDERGROUND_STRUCTURES,
+									net.minecraft.world.level.levelgen.structure.TerrainAdjustment.NONE)));
+			bootstrap.register(reika.chromaticraft.world.dimension.structure.ProximaStructures.GOL,
+					new reika.chromaticraft.world.dimension.structure.ProximaGOLStructure(
+							new net.minecraft.world.level.levelgen.structure.Structure.StructureSettings(
+									net.minecraft.core.HolderSet.direct(biomes.getOrThrow(
+											reika.chromaticraft.world.dimension.biome.ProximaBiomes.STRUCTURE.biomeKey())),
+									java.util.Map.of(),
+									net.minecraft.world.level.levelgen.GenerationStep.Decoration.UNDERGROUND_STRUCTURES,
+									net.minecraft.world.level.levelgen.structure.TerrainAdjustment.NONE)));
+            // Player-built and command-only: no structure set points here, but registering the
+            // assembly as a Structure gives it vanilla's /place structure semantics and lets its NBT
+            // template span chunks without unsafe feature writes.
+            bootstrap.register(reika.chromaticraft.world.dimension.structure.ProximaStructures.PORTAL,
+                    new reika.chromaticraft.world.dimension.structure.PortalStructureCommand(
+                            new net.minecraft.world.level.levelgen.structure.Structure.StructureSettings(
+                                    net.minecraft.core.HolderSet.empty(), java.util.Map.of(),
+                                    net.minecraft.world.level.levelgen.GenerationStep.Decoration.SURFACE_STRUCTURES,
+                                    net.minecraft.world.level.levelgen.structure.TerrainAdjustment.NONE)));
+			registerCastingTemple(bootstrap,
+					reika.chromaticraft.world.dimension.structure.ProximaStructures.CASTING_TEMPLE_L1, 1);
+			registerCastingTemple(bootstrap,
+					reika.chromaticraft.world.dimension.structure.ProximaStructures.CASTING_TEMPLE_L2, 2);
+			registerCastingTemple(bootstrap,
+					reika.chromaticraft.world.dimension.structure.ProximaStructures.CASTING_TEMPLE_L3, 3);
+			// Full command inspection form of the NBT-backed Burrow. Natural placement remains the
+			// configured feature because V33a rolls its annexes and validates its host terrain there.
+			bootstrap.register(reika.chromaticraft.world.dimension.structure.ProximaStructures.BURROW,
+					new reika.chromaticraft.world.dimension.structure.BurrowCommandStructure(
+							new net.minecraft.world.level.levelgen.structure.Structure.StructureSettings(
+									net.minecraft.core.HolderSet.empty(), java.util.Map.of(),
+									net.minecraft.world.level.levelgen.GenerationStep.Decoration.UNDERGROUND_STRUCTURES,
+									net.minecraft.world.level.levelgen.structure.TerrainAdjustment.NONE)));
         });
         builder.add(Registries.STRUCTURE_SET, bootstrap -> {
             var structures = bootstrap.lookup(Registries.STRUCTURE);
@@ -300,6 +379,26 @@ public final class ChromaWorldGenProvider {
                             structures.getOrThrow(
                                     reika.chromaticraft.world.dimension.structure.ProximaStructures.MONUMENT),
                             new reika.chromaticraft.world.dimension.structure.MonumentPlacement()));
+			bootstrap.register(reika.chromaticraft.world.dimension.structure.ProximaStructures.LIGHT_PANEL_SET,
+					new net.minecraft.world.level.levelgen.structure.StructureSet(
+							structures.getOrThrow(
+									reika.chromaticraft.world.dimension.structure.ProximaStructures.LIGHT_PANEL),
+							new reika.chromaticraft.world.dimension.structure.LightPanelPlacement()));
+			bootstrap.register(reika.chromaticraft.world.dimension.structure.ProximaStructures.THREE_D_MAZE_SET,
+					new net.minecraft.world.level.levelgen.structure.StructureSet(
+							structures.getOrThrow(
+									reika.chromaticraft.world.dimension.structure.ProximaStructures.THREE_D_MAZE),
+							new reika.chromaticraft.world.dimension.structure.ThreeDMazePlacement()));
+			bootstrap.register(reika.chromaticraft.world.dimension.structure.ProximaStructures.MUSIC_SET,
+					new net.minecraft.world.level.levelgen.structure.StructureSet(
+							structures.getOrThrow(
+									reika.chromaticraft.world.dimension.structure.ProximaStructures.MUSIC),
+							new reika.chromaticraft.world.dimension.structure.MusicPlacement()));
+			bootstrap.register(reika.chromaticraft.world.dimension.structure.ProximaStructures.GOL_SET,
+					new net.minecraft.world.level.levelgen.structure.StructureSet(
+							structures.getOrThrow(
+									reika.chromaticraft.world.dimension.structure.ProximaStructures.GOL),
+							new reika.chromaticraft.world.dimension.structure.GOLPlacement()));
         });
         builder.add(Registries.PLACED_FEATURE, bootstrap -> {
             HolderGetter<ConfiguredFeature<?, ?>> configured = bootstrap.lookup(Registries.CONFIGURED_FEATURE);
@@ -329,6 +428,11 @@ public final class ChromaWorldGenProvider {
                         CountPlacement.of(plant.generationCount()),
                         InSquarePlacement.spread(),
                         BiomeFilter.biome()));
+			// V33a Rock Flower changes from one-in-two chunks to every chunk in dimension 1.
+			bootstrap.register(placedKey("rock_flower_end"), new PlacedFeature(
+					configured.getOrThrow(configuredKey(ChromaTieredPlants.ROCK_FLOWER.registryName())),
+					List.of(CountPlacement.of(ChromaTieredPlants.ROCK_FLOWER.generationCount()),
+							InSquarePlacement.spread(), BiomeFilter.biome())));
             for (TieredOre ore : TIERED_ORES) {
                 // V33a: `if (rand.nextInt(genChance) == 0) for (k < veinCount)` at a random column in
                 // the chunk, each attempt rolling its own y. A genChance of one is every chunk.
@@ -347,8 +451,6 @@ public final class ChromaWorldGenProvider {
             registerPlaced(bootstrap, configured, DATA_TOWER);
             registerPlaced(bootstrap, configured, TURBOCHARGED_PYLON);
             // Command-only, like the pylon variants: no biome modifier names these.
-            for (Identifier temple : CASTING_TEMPLES)
-                registerPlaced(bootstrap, configured, temple);
             registerPlaced(bootstrap, configured, POWER_CRYSTAL_BOOSTED_PYLON);
             registerPlaced(bootstrap, configured, LUMINOUS_CLIFFS_TERRAIN, List.of(BiomeFilter.biome()));
             registerPlaced(bootstrap, configured, LUMA_PATCH,
@@ -408,8 +510,8 @@ public final class ChromaWorldGenProvider {
             // three. Deliberately no InSquarePlacement: the cluster scatters its own trees sixteen
             // blocks about the anchor and a giant reaches five more, so randomising the anchor inside
             // the chunk as well would push the far side outside the feature write window, where the
-            // writes are dropped in silence. Anchored at the chunk's corner the whole spread stays
-            // inside it, and upstream's own scatter is untouched.
+            // writes are dropped in silence. The feature moves this unsquared chunk-minimum origin
+            // to the chunk centre before applying upstream's own scatter.
             registerPlaced(bootstrap, configured, TREE_CLUSTER, List.of(
                     RarityFilter.onAverageOnceEvery(3),
                     net.minecraft.world.level.levelgen.placement.CountPlacement.of(2),
@@ -549,6 +651,17 @@ public final class ChromaWorldGenProvider {
     private static BlockStateProvider randomOverworldLog() {
         return new RandomTagSingleStateProvider(BlockTags.OVERWORLD_NATURAL_LOGS);
     }
+
+	private static void registerCastingTemple(
+			BootstrapContext<net.minecraft.world.level.levelgen.structure.Structure> bootstrap,
+			ResourceKey<net.minecraft.world.level.levelgen.structure.Structure> key, int tier) {
+		var settings = new net.minecraft.world.level.levelgen.structure.Structure.StructureSettings(
+				net.minecraft.core.HolderSet.empty(), java.util.Map.of(),
+				net.minecraft.world.level.levelgen.GenerationStep.Decoration.SURFACE_STRUCTURES,
+				net.minecraft.world.level.levelgen.structure.TerrainAdjustment.NONE);
+		bootstrap.register(key,
+				new reika.chromaticraft.world.dimension.structure.CastingTempleStructure(settings, tier));
+	}
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private static void registerConfigured(BootstrapContext<ConfiguredFeature<?, ?>> bootstrap,

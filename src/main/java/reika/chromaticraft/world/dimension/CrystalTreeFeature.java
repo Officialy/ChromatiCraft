@@ -72,7 +72,11 @@ public final class CrystalTreeFeature extends Feature<NoneFeatureConfiguration> 
 				for (int b = 0; b < shape.trunkWidth; b++)
 					// V33a grows the trunk towards -x/-z from the origin column.
 					world.setBlock(origin.offset(-a, i, -b), shielding, 3);
-		crown.place();
+		// FilledBlockArray is still Level-backed for the shared V33a shape builders, but a placed
+		// feature must write through its WorldGenLevel. Writing through crown.place() would escape
+		// the active WorldGenRegion and can trigger unsafe terrain access during parallel generation.
+		for (BlockPos pos : crown.keySet())
+			world.setBlock(pos, crown.getBlockKeyAt(pos.getX(), pos.getY(), pos.getZ()).blockID, 3);
 		return true;
 	}
 

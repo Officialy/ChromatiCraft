@@ -1,7 +1,11 @@
 {
   "variants": {
     "": {
-      "model": "chromaticraft:block/radiance_bush"
+      "type": "chromaticraft:tiered_plant",
+      "appearance": {
+        "model": "chromaticraft:block/radiance_bush"
+      },
+      "stage": "PYLON"
     }
   }
 }

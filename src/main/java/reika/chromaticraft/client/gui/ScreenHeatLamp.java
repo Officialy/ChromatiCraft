@@ -20,8 +20,15 @@ public final class ScreenHeatLamp extends AbstractContainerScreen<MenuHeatLamp> 
 			ChromatiCraft.MODID, "textures/gui/heatlamp.png");
 	private EditBox input;
 	private boolean settingInitialValue;
+	/** Last syntactically valid editor value; 26.2 removed EditBox#setFilter. */
+	private String lastValidInput = "";
 	/** Last value delivered by the menu DataSlot, not the locally typed value. */
 	private int lastSyncedTemperature;
+	/** Completed numeric edit waiting for the short typing debounce to expire. */
+	private Integer pendingTemperature;
+	private int sendDelay;
+	private boolean locallyEditing;
+	private static final int EDIT_DEBOUNCE_TICKS = 6;
 
 	public ScreenHeatLamp(MenuHeatLamp menu, Inventory inventory, Component title) {
 		super(menu, inventory, title, 176, 48);
@@ -33,9 +40,9 @@ public final class ScreenHeatLamp extends AbstractContainerScreen<MenuHeatLamp> 
 		settingInitialValue = true;
 		input = new EditBox(font, leftPos + 88, topPos + 21, 60, 16, Component.literal("Temperature"));
 		input.setMaxLength(4);
-		input.setFilter(value -> value.isEmpty() || value.equals("-") || value.matches("-?\\d+"));
 		lastSyncedTemperature = menu.temperature();
-		input.setValue(Integer.toString(lastSyncedTemperature));
+		lastValidInput = Integer.toString(lastSyncedTemperature);
+		input.setValue(lastValidInput);
 		input.setResponder(this::temperatureChanged);
 		addRenderableWidget(input);
 		settingInitialValue = false;
@@ -44,25 +51,56 @@ public final class ScreenHeatLamp extends AbstractContainerScreen<MenuHeatLamp> 
 	@Override
 	protected void containerTick() {
 		super.containerTick();
+		if (sendDelay > 0 && --sendDelay == 0)
+			flushTemperature();
 		int synced = menu.temperature();
-		if (synced != lastSyncedTemperature) {
+		if (synced != lastSyncedTemperature && !locallyEditing) {
 			lastSyncedTemperature = synced;
 			// The client-side block entity still contains its construction default when the screen
 			// opens. The authoritative DataSlot arrives just afterwards, so mirror every newly
 			// delivered value into the editor without echoing it back as another request.
 			settingInitialValue = true;
-			input.setValue(Integer.toString(synced));
+			lastValidInput = Integer.toString(synced);
+			input.setValue(lastValidInput);
 			settingInitialValue = false;
 		}
 	}
 
 	private void temperatureChanged(String value) {
-		if (settingInitialValue || value.isEmpty() || value.equals("-")) return;
+		if (settingInitialValue) return;
+		if (!(value.isEmpty() || value.equals("-") || value.matches("-?\\d+"))) {
+			// EditBox#setFilter was removed in 26.2. Restore the last accepted value from the
+			// responder instead, covering typed and pasted text through the one mutation path.
+			settingInitialValue = true;
+			input.setValue(lastValidInput);
+			settingInitialValue = false;
+			return;
+		}
+		lastValidInput = value;
+		locallyEditing = true;
+		pendingTemperature = null;
+		sendDelay = 0;
+		if (value.isEmpty() || value.equals("-")) return;
 		try {
-			ClientPacketDistributor.sendToServer(new ChromaNetwork.SetHeatLampTemperature(
-					menu.lamp().getBlockPos(), Integer.parseInt(value)));
+			pendingTemperature = Integer.parseInt(value);
+			sendDelay = EDIT_DEBOUNCE_TICKS;
 		}
 		catch (NumberFormatException ignored) { }
+	}
+
+	private void flushTemperature() {
+		if (pendingTemperature == null)
+			return;
+		ClientPacketDistributor.sendToServer(new ChromaNetwork.SetHeatLampTemperature(
+				menu.lamp().getBlockPos(), pendingTemperature));
+		pendingTemperature = null;
+		locallyEditing = false;
+	}
+
+	@Override
+	public void onClose() {
+		flushTemperature();
+		super.onClose();
 	}
 
 	@Override

@@ -3,7 +3,16 @@
   "biomes": "#minecraft:is_overworld",
   "features": [
     "chromaticraft:energized_rock",
-    "chromaticraft:elemental_stones"
+    "chromaticraft:elemental_stones",
+    "chromaticraft:fused_crystals",
+    "chromaticraft:radiant_stone",
+    "chromaticraft:ender_stone",
+    "chromaticraft:fluid_stone",
+    "chromaticraft:firaxite_ore",
+    "chromaticraft:glowing_rock",
+    "chromaticraft:echostone",
+    "chromaticraft:lumenite_ore",
+    "chromaticraft:avolite_ore"
   ],
   "step": "underground_ores"
 }

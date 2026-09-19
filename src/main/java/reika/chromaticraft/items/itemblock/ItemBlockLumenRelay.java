@@ -1,78 +1,40 @@
-/*******************************************************************************
- * @author Reika Kalseki
- * 
- * Copyright 2017
- * 
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
- ******************************************************************************/
 package reika.chromaticraft.items.itemblock;
 
-import java.util.List;
+import java.util.function.Consumer;
 
-import net.minecraft.block.Block;
-import net.minecraft.creativetab.CreativeTabs;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemBlock;
-import net.minecraft.item.ItemStack;
-import net.minecraft.world.World;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.TooltipDisplay;
+import net.minecraft.world.item.context.UseOnContext;
 
 import reika.chromaticraft.block.relay.BlockLumenRelay;
-import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.CrystalElement;
 import reika.dragonapi.libraries.ReikaPlayerAPI;
 
-public class ItemBlockLumenRelay extends ItemBlock {
+/** Separate-id replacement for V33a's metadata-valued relay BlockItem. */
+public final class ItemBlockLumenRelay extends BlockItem {
 
-	public ItemBlockLumenRelay(Block b) {
-		super(b);
-		hasSubtypes = true;
+	private final BlockLumenRelay relay;
+
+	public ItemBlockLumenRelay(BlockLumenRelay block, Item.Properties properties) {
+		super(block, properties);
+		relay = block;
 	}
 
 	@Override
-	public void getSubItems(Item item, CreativeTabs c, List li) {
-		for (int i = 0; i <= 16; i++) {
-			li.add(new ItemStack(this, 1, i));
-		}
+	public void appendHoverText(ItemStack stack, TooltipContext context, TooltipDisplay display,
+			Consumer<Component> tooltip, TooltipFlag flag) {
+		tooltip.accept(Component.literal(relay.isMultichromic()
+				? "Conducts all elements."
+				: "Conducts " + relay.getElement().displayName + '.'));
 	}
 
 	@Override
-	public void addInformation(ItemStack is, EntityPlayer ep, List li, boolean vb) {
-		if (is.getItemDamage() == 16) {
-			li.add("Conducts all elements.");
-		}
-		else {
-			CrystalElement e = CrystalElement.elements[is.getItemDamage()];
-			li.add("Conducts "+e.displayName+".");
-		}
+	public InteractionResult useOn(UseOnContext context) {
+		return context.getPlayer() != null && ReikaPlayerAPI.isFake(context.getPlayer())
+				? InteractionResult.FAIL : super.useOn(context);
 	}
-
-	@Override
-	public boolean onItemUse(ItemStack stack, EntityPlayer ep, World world, int x, int y, int z, int side, float hitX, float hitY, float hitZ) {
-		if (ReikaPlayerAPI.isFake(ep))
-			return false;
-		return ((BlockLumenRelay)field_150939_a).canPlaceOn(world, x, y, z, side) && super.onItemUse(stack, ep, world, x, y, z, side, hitX, hitY, hitZ);
-	}
-
-	@Override
-	public String getItemStackDisplayName(ItemStack is) {
-		return ChromaBlocks.getEntryByID(field_150939_a).getMultiValuedName(is.getItemDamage());
-	}
-
-	@Override
-	public boolean placeBlockAt(ItemStack stack, EntityPlayer ep, World world, int x, int y, int z, int side, float a, float b, float c, int metadata) {
-		if (!world.setBlock(x, y, z, field_150939_a, metadata, 3))
-			return false;
-
-		if (world.getBlock(x, y, z) == field_150939_a) {
-			((BlockLumenRelay)field_150939_a).setSide(world, x, y, z, side);
-			field_150939_a.onBlockPlacedBy(world, x, y, z, ep, stack);
-			field_150939_a.onPostBlockPlaced(world, x, y, z, metadata);
-		}
-
-		return true;
-	}
-
 }

@@ -1,13 +1,20 @@
 package reika.chromaticraft.item;
 
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
+import reika.chromaticraft.block.BlockChromaFluid;
+import reika.chromaticraft.block.BlockChromaFluid.TileEntityChroma;
 import reika.chromaticraft.magic.progression.ProgressStage;
+import reika.chromaticraft.network.ChromaNetwork;
 import reika.chromaticraft.registry.ChromaItems;
+import reika.chromaticraft.registry.ChromaSounds;
 import reika.chromaticraft.registry.CrystalElement;
+import reika.chromaticraft.render.particle.ChromaParticle;
 
 /** Metadata-free V33a shard identity and dropped-entity charging state machine. */
 public final class ItemCrystalShard extends Item {
@@ -26,13 +33,27 @@ public final class ItemCrystalShard extends Item {
 	public CrystalElement element() { return element; }
 	@Override
 	public boolean onEntityItemUpdate(ItemStack stack, ItemEntity entity) {
-		if (!boosted && entity.level().getBlockEntity(entity.blockPosition())
-				instanceof reika.chromaticraft.block.BlockChromaFluid.TileEntityChroma pool
-				&& pool.isFullyActive() && pool.getElement() == element) {
-			this.tickCharging(stack, entity,
-					reika.chromaticraft.block.BlockChromaFluid.getSpeedMultiplier(pool.getEtherCount()));
+		if (entity.level().getBlockEntity(entity.blockPosition()) instanceof TileEntityChroma pool) {
+			entity.setUnlimitedLifetime();
+			if (!boosted && pool.isFullyActive() && pool.getElement() == element) {
+				if (entity.level().isClientSide()) {
+					if (entity.getAge() % 16 == 0)
+						ChromaParticle.spawnShardCharging(entity.level(), entity, element,
+								entity.level().getRandom());
+				}
+				else if (this.canCharge(entity) && this.tickCharging(stack, entity,
+						BlockChromaFluid.getSpeedMultiplier(pool.getEtherCount()))) {
+					pool.clear();
+				}
+			}
 		}
 		return false;
+	}
+
+	/** V33a requires a credited dropper who has reached every parent of SHARDCHARGE. */
+	public boolean canCharge(ItemEntity entity) {
+		return entity.getOwner() instanceof Player owner
+				&& ProgressStage.SHARDCHARGE.playerHasPrerequisites(owner);
 	}
 
 	public boolean boosted() { return boosted; }
@@ -54,10 +75,14 @@ public final class ItemCrystalShard extends Item {
 		ItemEntity replacement = new ItemEntity(entity.level(), entity.getX(), entity.getY(), entity.getZ(), output);
 		replacement.setUnlimitedLifetime();
 		replacement.setDeltaMovement(entity.getDeltaMovement());
+		if (entity.getOwner() instanceof Player owner) replacement.setThrower(owner);
 		entity.level().addFreshEntity(replacement);
 		entity.discard();
 		if (entity.getOwner() instanceof net.minecraft.server.level.ServerPlayer player)
 			ProgressStage.SHARDCHARGE.stepPlayerTo(player);
+		ChromaSounds.INFUSE.playSoundAtBlock(entity.level(), entity.blockPosition());
+		if (entity.level() instanceof ServerLevel server)
+			ChromaNetwork.sendShardBoost(server, entity.blockPosition(), element);
 		return true;
 	}
 }

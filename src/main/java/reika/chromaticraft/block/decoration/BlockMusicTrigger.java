@@ -77,7 +77,8 @@ public final class BlockMusicTrigger extends Block {
 
 	/** V33a searches its authored controller offsets; a bounded BE scan is rotation-safe in NBT. */
 	private static @Nullable Handler findHandler(Level level, BlockPos pos) {
-		for (BlockPos check : BlockPos.betweenClosed(pos.offset(-7, -3, -7), pos.offset(7, 1, 7)))
+		// A Crystal Music room's farthest authored trigger is eight blocks from its memory.
+		for (BlockPos check : BlockPos.betweenClosed(pos.offset(-9, -3, -9), pos.offset(9, 1, 9)))
 			if (level.getBlockEntity(check) instanceof Handler handler) return handler;
 		return null;
 	}

@@ -23,17 +23,17 @@ import reika.dragonapi.libraries.io.NBTCompat;
  * <p>Upstream this is a nested enum of the 631-line generator base. It is lifted to its own type here
  * because the placement layer — {@link StructureCalculator}, and through it {@code RegionMapper} and
  * {@code BiomeDistributor} — depends only on the structure <em>identities and positions</em>, never on
- * any puzzle mechanic. Keeping the enum separate is what lets Proxima's terrain and biome layout be
- * ported while the puzzles themselves stay deliberately deferred.
+ * any puzzle mechanic. Keeping the enum separate let Proxima's terrain and biome layout land first;
+ * puzzle implementations can now be admitted one complete generator at a time.
  *
  * <p><b>{@link #isComplete()} is the real V33a gate, not a placeholder.</b> Upstream determines it by
  * constructing each generator once at class-init, running {@code startCalculate} at the origin, and
  * asking whether it produced a core; anything that failed is filtered out of
  * {@code getUsableStructures()} and never assigned to an element. That is exactly why
  * {@code allowUnfinishedStructures} exists — Reika shipped with unfinished generators. This port is in
- * the same position with all eighteen unported, so the same filter correctly yields nothing today. A
- * generator becomes usable the moment it is ported and handed to {@link #registerGenerator}; no other
- * code has to change.
+ * types without a complete registered generator are filtered out. A generator becomes usable the
+ * moment its full vertical slice is ported and handed to {@link #registerGenerator}; no placement code
+ * has to change.
  */
 public enum DimensionStructureType {
 
@@ -65,7 +65,8 @@ public enum DimensionStructureType {
 	private final String description;
 
 	/**
-	 * The ported generator factory for this type, or null while the puzzle is deferred.
+	 * The ported generator factory for this type, or null until that puzzle's complete vertical slice
+	 * is available.
 	 *
 	 * <p>Deliberately a registry rather than a constructor argument: V33a resolves its generator class
 	 * reflectively at class-init and immediately test-runs it, which cannot happen here for a class
@@ -114,6 +115,8 @@ public enum DimensionStructureType {
 	public synchronized void registerGenerator(Supplier<? extends ProximaStructureGenerator> factory) {
 		generatorFactory = factory;
 		ProximaStructureGenerator test = factory.get();
+		if (test instanceof reika.chromaticraft.world.dimension.structure.StructureGeneratorBase base)
+			base.setType(this, 0);
 		test.startCalculate(reika.chromaticraft.registry.CrystalElement.WHITE, 0, 0, new java.util.Random());
 		if (!test.isComplete())
 			generatorFactory = null;
@@ -173,6 +176,12 @@ public enum DimensionStructureType {
 
 	public synchronized ProximaStructureGenerator getGenerator(UUID id) {
 		return generators.get(id);
+	}
+
+	/** Drop a generator whose V33a calculation exhausted all retries. */
+	synchronized void discardGenerator(UUID id) {
+		generators.remove(id);
+		generatorTypes.remove(id);
 	}
 
 	public static ProximaStructureGenerator getGeneratorByID(UUID id) {

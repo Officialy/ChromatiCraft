@@ -11,10 +11,13 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.container.MenuCastingTable;
+import reika.chromaticraft.container.MenuRitualTable;
 import reika.chromaticraft.container.MenuHeatLamp;
 import reika.chromaticraft.container.MenuLexiconPages;
 import reika.chromaticraft.container.MenuFragmentSelection;
 import reika.chromaticraft.container.MenuCrystalCharger;
+import reika.chromaticraft.container.MenuCollector;
+import reika.chromaticraft.container.MenuStructurePassword;
 
 /** Modern menu registrations for ChromatiCraft's accepted GUI slice. */
 public interface ChromaMenus {
@@ -26,8 +29,12 @@ public interface ChromaMenus {
     }
 
     Supplier<MenuType<MenuCastingTable>> CASTING_TABLE = register("casting_table", MenuCastingTable::new);
+    Supplier<MenuType<MenuRitualTable>> RITUAL_TABLE = register("ritual_table", MenuRitualTable::new);
     Supplier<MenuType<MenuHeatLamp>> HEAT_LAMP = register("heat_lamp", MenuHeatLamp::new);
 	Supplier<MenuType<MenuCrystalCharger>> CRYSTAL_CHARGER = register("crystal_charger", MenuCrystalCharger::new);
+	Supplier<MenuType<MenuCollector>> COLLECTOR = register("collector", MenuCollector::new);
+	Supplier<MenuType<MenuStructurePassword>> STRUCTURE_PASSWORD = register(
+			"structure_password", MenuStructurePassword::new);
     Supplier<MenuType<MenuLexiconPages>> LEXICON_PAGES = register("lexicon_pages", MenuLexiconPages::new);
     Supplier<MenuType<MenuFragmentSelection>> FRAGMENT_SELECTION = register("fragment_selection", MenuFragmentSelection::new);
 }

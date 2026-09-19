@@ -115,10 +115,14 @@ public final class OverworldStructureFeature extends Feature<NoneFeatureConfigur
 			world.setBlock(controllerPos.offset(0, -2, 0),
 					ChromaBlocks.crystalLamp(color)
 							.get().defaultBlockState(), 2);
-			if (natural && random.nextInt(2) == 0) {
-				furnaceRoom = placeBurrowFurnaceRoom(world, controllerPos, random);
-				if (furnaceRoom && random.nextInt(2) == 0)
-					lootRoom = placeBurrowLootRoom(world, controllerPos, random);
+			// Natural Burrows retain V33a's one-half furnace roll followed by its one-half cache roll.
+			// The command feature is the inspection form: it deliberately includes both optional rooms
+			// and does not require the surrounding host terrain, so `/place feature chromaticraft:burrow`
+			// exposes the Heat Lamps, furnaces, hidden key and UUID-locked cache in one placement.
+			if (!natural || random.nextInt(2) == 0) {
+				furnaceRoom = placeBurrowFurnaceRoom(world, controllerPos, random, natural);
+				if (furnaceRoom && (!natural || random.nextInt(2) == 0))
+					lootRoom = placeBurrowLootRoom(world, controllerPos, random, natural);
 			}
 		}
 		else if (type == Type.OCEAN)
@@ -147,7 +151,8 @@ public final class OverworldStructureFeature extends Feature<NoneFeatureConfigur
 						: type == Type.SNOW ? BuiltInLootTables.STRONGHOLD_CORRIDOR
 						: type == Type.BIOME_FRAGMENT ? BuiltInLootTables.VILLAGE_WEAPONSMITH
 						: BuiltInLootTables.SIMPLE_DUNGEON, random.nextLong());
-				chest.addProgress(type == Type.OCEAN ? ProgressStage.OCEAN
+				chest.addProgress(type == Type.BURROW ? ProgressStage.BURROW
+						: type == Type.OCEAN ? ProgressStage.OCEAN
 						: type == Type.DESERT ? ProgressStage.DESERTSTRUCT
 						: type == Type.SNOW ? ProgressStage.SNOWSTRUCT
 						: type == Type.BIOME_FRAGMENT ? ProgressStage.BIOMESTRUCT : ProgressStage.CAVERN);
@@ -198,8 +203,8 @@ public final class OverworldStructureFeature extends Feature<NoneFeatureConfigur
 
 	/** V33a's first optional Burrow roll and its two furnace callbacks. */
 	private static boolean placeBurrowFurnaceRoom(WorldGenLevel world, BlockPos controllerPos,
-			RandomSource random) {
-		boolean valid = NBTStructureLoader.canPlace(world, BURROW_FURNACE, controllerPos,
+			RandomSource random, boolean validateHost) {
+		boolean valid = !validateHost || NBTStructureLoader.canPlace(world, BURROW_FURNACE, controllerPos,
 				BURROW_ANNEX_ANCHOR, state -> state,
 				(pos, authored) -> authored.is(Blocks.STRUCTURE_VOID) || !world.getBlockState(pos).isAir());
 		if (!valid) return false;
@@ -243,8 +248,8 @@ public final class OverworldStructureFeature extends Feature<NoneFeatureConfigur
 
 	/** V33a's second optional Burrow roll: UUID doors, hidden key chest, and paired cache chests. */
 	private static boolean placeBurrowLootRoom(WorldGenLevel world, BlockPos controllerPos,
-			RandomSource random) {
-		boolean valid = NBTStructureLoader.canPlace(world, BURROW_LOOT, controllerPos,
+			RandomSource random, boolean validateHost) {
+		boolean valid = !validateHost || NBTStructureLoader.canPlace(world, BURROW_LOOT, controllerPos,
 				BURROW_ANNEX_ANCHOR, state -> state,
 				(pos, authored) -> authored.is(Blocks.STRUCTURE_VOID) || !world.getBlockState(pos).isAir());
 		if (!valid) return false;
@@ -276,7 +281,7 @@ public final class OverworldStructureFeature extends Feature<NoneFeatureConfigur
 		for (BlockPos relative : List.of(new BlockPos(6, -2, 0), new BlockPos(5, -2, 0))) {
 			if (world.getBlockEntity(controllerPos.offset(relative)) instanceof TileEntityLootChest chest) {
 				chest.setLootTable(BURROW_CACHE_LOOT, random.nextLong());
-				chest.addProgress(ProgressStage.CAVERN);
+				chest.addProgress(ProgressStage.BURROW);
 			}
 		}
 		return true;

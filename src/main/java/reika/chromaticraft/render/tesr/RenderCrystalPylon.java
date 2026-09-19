@@ -1,7 +1,9 @@
 package reika.chromaticraft.render.tesr;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -29,6 +31,7 @@ import org.jspecify.annotations.Nullable;
 
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.magic.CrystalTarget;
+import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.render.ChromaRenderPipelines;
 import reika.chromaticraft.tileentity.networking.TileEntityCrystalPylon;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
@@ -56,21 +59,29 @@ public final class RenderCrystalPylon implements BlockEntityRenderer<TileEntityC
         state.enhanced = pylon.isEnhanced();
         state.unstable = pylon.isUnstable();
         state.conducting = pylon.canConduct();
+        state.time = System.currentTimeMillis();
         state.beams.clear();
         double startWidth = pylon.getOutgoingBeamRadius();
+        Map<Vec3, BeamGroup> groups = new LinkedHashMap<>();
         for (CrystalTarget target : pylon.getTargets()) {
-            state.beams.add(new Beam(
-                    target.location.pos.getX() - pylon.getBlockPos().getX() + target.offsetX - 0.5,
-                    target.location.pos.getY() - pylon.getBlockPos().getY() + target.offsetY - 0.5,
-                    target.location.pos.getZ() - pylon.getBlockPos().getZ() + target.offsetZ - 0.5,
-                    Math.min(startWidth, target.widthLimit),
-                    Math.min(target.endWidth, target.widthLimit),
-                    target.color.getColor()));
+            Vec3 end = new Vec3(
+                    target.location.pos.getX() - pylon.getBlockPos().getX() + target.offsetX,
+                    target.location.pos.getY() - pylon.getBlockPos().getY() + target.offsetY,
+                    target.location.pos.getZ() - pylon.getBlockPos().getZ() + target.offsetZ);
+            groups.computeIfAbsent(end, ignored -> new BeamGroup(end, target.endWidth,
+                    target.widthLimit)).colors.add(target.color);
+        }
+        double radius = startWidth;
+        double cycle = (state.time / 600D % 360) / 30D;
+        for (BeamGroup group : groups.values()) {
+            radius = Math.min(radius, group.widthLimit);
+            state.beams.add(new Beam(group.end.x, group.end.y, group.end.z, radius,
+                    Math.min(group.endWidth, group.widthLimit),
+                    blendedBeamColor(group.colors, cycle, 0.125)));
         }
         state.hasTargets = !state.beams.isEmpty();
         state.color = 0xff000000 | pylon.getRenderColor();
         state.randomOffset = pylon.randomOffset;
-        state.time = System.currentTimeMillis();
     }
 
     @Override
@@ -125,7 +136,7 @@ public final class RenderCrystalPylon implements BlockEntityRenderer<TileEntityC
         for (Beam beam : state.beams) {
             PoseStack renderPose = new PoseStack();
             renderPose.last().set(poseStack.last());
-            submitAfterTerrain(poseStack, collector, ChromaRenderPipelines.additiveSprite(BEAM),
+            submitAfterTerrain(poseStack, collector, ChromaRenderPipelines.energyBeam(BEAM),
                     (pose, vertices) -> beamTube(renderPose.last(), vertices, beam, scroll));
         }
         poseStack.popPose();
@@ -162,6 +173,16 @@ public final class RenderCrystalPylon implements BlockEntityRenderer<TileEntityC
                 .add(new Vector3f(up).mul((float)(Math.cos(angle) * radius)));
     }
 
+    private static int blendedBeamColor(List<CrystalElement> colors, double tick, double modulus) {
+        if (colors.isEmpty()) return 0;
+        int first = (int)(tick / modulus);
+        first = (first + colors.size()) % colors.size();
+        int c1 = colors.get(first).getColor();
+        int c2 = colors.get((first + 1) % colors.size()).getColor();
+        float fraction = (float)(tick % modulus / modulus);
+        return ReikaColorAPI.mixColors(c1, c2, 1 - fraction);
+    }
+
     private void submitBillboard(PoseStack poseStack, SubmitNodeCollector collector,
             CameraRenderState camera, Identifier spriteId, float scale, int color, float roll) {
         TextureAtlasSprite sprite = Minecraft.getInstance().getAtlasManager()
@@ -187,15 +208,10 @@ public final class RenderCrystalPylon implements BlockEntityRenderer<TileEntityC
         CustomFeatureRenderer.Submit submit = new CustomFeatureRenderer.Submit(
                 poseStack.last().copy(), renderType, renderer);
         ((OrderedSubmitNodeCollectorExtension)collector.order(0))
-        // TRANSLUCENT_CUSTOM_GEOMETRY, not AFTER_TERRAIN. AFTER_TERRAIN runs before the translucent
-        // chunk layer, so the glow was drawn into main *before* water: writing depth there made water
-        // fail its own depth test and punched square holes in the surface, while not writing it left
-        // the cloud target -- which the post-chain composites over main -- with nothing to sort
-        // against, so clouds covered pylons in front of them. Submitting after translucent terrain
-        // resolves both: water is already down so it cannot be rejected, depth testing still hides
-        // the glow behind water and terrain, and the depth this pipeline now writes lets the cloud
-        // compositor order it correctly.
-                .submitSpecial(RenderPhaseKeys.TRANSLUCENT_CUSTOM_GEOMETRY, submit);
+        // In 26.2 TRANSLUCENT_CUSTOM_GEOMETRY is drained before the translucent chunk layer;
+        // AFTER_TERRAIN is the actual post-water hook. Water is therefore already down and can
+        // correctly occlude the glow, while the pipeline's depth still orders later compositing.
+                .submitSpecial(RenderPhaseKeys.AFTER_TERRAIN, submit);
     }
 
     private static void quad(PoseStack.Pose pose, VertexConsumer vertices,
@@ -234,4 +250,17 @@ public final class RenderCrystalPylon implements BlockEntityRenderer<TileEntityC
 
     private record Beam(double x, double y, double z, double startRadius,
             double endRadius, int color) {}
+
+    private static final class BeamGroup {
+        private final Vec3 end;
+        private final double endWidth;
+        private final double widthLimit;
+        private final List<CrystalElement> colors = new ArrayList<>();
+
+        private BeamGroup(Vec3 end, double endWidth, double widthLimit) {
+            this.end = end;
+            this.endWidth = endWidth;
+            this.widthLimit = widthLimit;
+        }
+    }
 }

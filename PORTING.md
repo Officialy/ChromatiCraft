@@ -2169,6 +2169,10 @@ timing-sensitive rather than broken; if it recurs, the transfer's tick budget is
 
 ### Tiered ores: the progression-gated resource layer — 2026-08-02
 
+> **Historical checkpoint.** This section records the original three-ore landing and is superseded
+> by the 2026-08-23 survival-backbone section: all 15 tiered ores and all seven tiered plants are now
+> concrete registrations with their source geometry, drops and worldgen represented.
+
 V33a's tiered ores were entirely pristine: `BlockChromaTiered`, `BlockTieredOre`, `ItemTieredResource`,
 `TieredWorldGenerator` and both ISBRH renderers were all outside the compile slice. The mechanic is
 that an ore is **disguised as the stone it generated in** until the miner reaches its `ProgressStage`
@@ -2700,17 +2704,28 @@ already-explored world stays empty regardless.
 
 ### Tiered plants: the missing half of TieredWorldGenerator — 2026-08-04
 
-`ChromaTieredPlants` registers V33a's `TieredPlants` as concrete per-plant identities — Aura Bloom,
-Rock Flower, Essence Lily, Element Bulbs, Radiance Bush — carrying each plant's `ProgressStage`,
+`ChromaTieredPlants` registers all seven V33a `TieredPlants` as concrete per-plant identities — Aura
+Bloom, Rock Flower, Essence Lily, Element Bulbs, Radiance Bush, Vibrant Pod, and Glowing Roots — carrying each plant's `ProgressStage`,
 tint, drop identity, V33a `getGenerationChance`/`getGenerationCount`, siting branch, and exact
 `getHarvestResources` count formula. Display names are the authoritative `chroma.tieredplant.N`
 strings and the V33a front/back sprite pairs were extracted from the release jar and **renamed onto
 the concrete identities**; the legacy ordinal appears nowhere — not as a field, blockstate property,
 texture, model, or language path.
 
-Vibrant Pod and Glowing Roots are deferred: they drop `glowbeans` and `boostroot`, which have no
-registered identity, so their `bitRound`/`findTreeNear` trunk siting is not ported rather than given
-an invented drop. This is the same boundary the tiered ores draw.
+Glowing Roots joined the accepted slice once its legacy metadata-22 drop was confirmed already
+registered as the concrete `boost_root` item. Its display name was corrected from the provisional
+"Boost Root" to V33a's authoritative **Enrichment Root**, and its exact TURBOCHARGE gate,
+one-in-four/three-attempt frequency, dirt-or-grass support, `1 + rand(1+fortune)/2` drop count, and
+tree-root siting are retained. The siting snaps each attempt to the V33a `bitRound(..., 4)+7/8`
+lattice, reproduces `ReikaWorldHelper.findTreeNear`'s seven vertical samples and three-log test,
+walks to the lowest log, and probes all six neighbours in random order. That centred radius-seven
+search stays inside the active chunk, which also avoids unsafe far-chunk reads in modern worldgen.
+
+Vibrant Pod closes the family with a separate `luma_beans` item and the exact atlas-index-149 sprite.
+It retains the ALLOY gate, one-in-four/six-attempt frequency, `2 + rand(1+fortune*3/2)` drops and the
+source's random-height trunk attachment. Its neighbour-sensitive selection box expands only toward
+the adjacent supporting logs, just as V33a's dynamic block bounds did. Both tree plants share the
+same exact lattice and `findTreeNear` implementation; only their post-search traversal differs.
 
 `BlockTieredPlant` reproduces the source behaviour: no collision, light 4, V33a's per-plant support
 rules (surface/sand stand on the block below, cave and leaf plants hang from the block above, the
@@ -2748,10 +2763,11 @@ probes — both are water- and sand-bound and did not fall in the final sample. 
 is generated with a fresh random seed, so figures are not directly comparable run to run; the
 zero-to-nonzero transitions are the load-bearing evidence, not the exact percentages.
 
-**Still open on this slice:** a focused GameTest asserting each siting branch against built terrain
-(which is how Essence Lily and Radiance Bush should be pinned down rather than by seed lottery), the
-client-side tier check so an insufficient player sees nothing rather than relying on the shape gate
-alone, and Vibrant Pod and Glowing Roots once `glowbeans` and `boostroot` have identities.
+The focused `tiered_plant_survival_sources` GameTest now pins Element Bulbs, Radiance Bush, Vibrant
+Pod and Glowing Roots to their source chance/count, support, progression visibility and fortune-zero
+drop contracts against built terrain. **Still open on this slice:** direct feature-placement
+coverage of all siting searches and the client-side tier check so an insufficient player sees
+nothing rather than relying on the shape gate alone.
 
 ### Cave Indicator (Piezo Crystals) — 2026-08-04
 
@@ -6163,7 +6179,7 @@ server saying so, the ceremony completing, and — the path that actually matter
 `ClientPlayerNetworkEvent.LoggingOut`. A player who logs out mid-ceremony would otherwise come back with
 no HUD and no view bob, with nothing in the world left to restore them.
 
-**The camera hook, researched.****The camera hook, researched.** `ViewportEvent.ComputeCameraAngles` exposes yaw, pitch and roll and
+**The camera hook, researched.** `ViewportEvent.ComputeCameraAngles` exposes yaw, pitch and roll and
 nothing else; `Camera.setPosition` is `protected` and NeoForge's camera patch does not widen it — it
 adds `getRoll`, `getBlockAtCamera` and a three-argument `setRotation`, but no position hook. So the
 epitrochoid *orbit*, which moves the camera off the player entirely, is not reachable from a public
@@ -6379,6 +6395,1308 @@ PURPLE (+7,+6,-13), CYAN (+13,+6,-7), LIGHTGRAY (+16,+6,-3), GRAY (+16,+6,+3), P
 LIME (+7,+6,+13), YELLOW (+3,+6,+16), LIGHTBLUE (-3,+6,+16), MAGENTA (-7,+6,+13), ORANGE (-13,+6,+7),
 WHITE (-16,+6,+3).
 
+## 2026-08-20 — post-Claude audit: Proxima and monument foundations
+
+This audit covers the **55 commits after `4461b387d` through `85b81322e`**: 306 files,
+14,700 insertions and 3,647 deletions. The result is not throwaway scaffolding. Claude landed a
+substantial Proxima slice: its generated layout, region and biome maps, chunk generator and dimension
+registration, sky and sky rivers, NBT monument, structure-controlled monument ritual, much of the
+ritual's client presentation, and the Sanctuary decoration family. The right response was to preserve
+that work and repair the lifecycle, persistence and worldgen seams around it.
+
+### Corrections made by this audit
+
+- **The global layout now exists before levels and chunks ask for it.** Generation starts at
+  `ServerAboutToStartEvent` from the server's authoritative worldgen seed, not at
+  `ServerStartedEvent` after level construction. Same-seed callers share one future; a second world
+  seed is serialized behind the first because the active V33a maps are process-global static state.
+  Completed same-seed layouts are reused, failures are logged, and a stale layout from another save is
+  never returned to a chunk asking for the current seed.
+- **The missing V33a Proxima survival contract is live.** Fall damage is cancelled for entity age
+  below 1200 ticks and thereafter follows the exact `min(8, min(d, max(1, .5*sqrt(d))))` curve.
+  Death is cancelled at one health, returns the player to the Overworld through `ChromaTeleporter`,
+  and removes 40–90% of every held element. Out-of-world damage is cancelled throughout Proxima and
+  returns the player only below Y=-1024, so 26.2's much earlier vanilla void damage cannot kill them
+  before the source threshold. Login and respawn also carry `DimensionJoinHandler`'s 5 x 3.5 x 5
+  safety ellipsoid: air inside, ordinary Cloak Shielding on the shell, while fluids, vegetation,
+  unbreakable blocks and block entities are preserved.
+- **Portal placement now records its owner.** `BlockChromaPortal.setPlacedBy` gives the portal block
+  entity the real placer, preserving the ownership contract used by its return path and progression.
+- **Locus ownership survives item form.** Placer name and UUID now round-trip through the locus
+  point's item tag. A malformed UUID does not erase an already-valid placement owner.
+- **The monument abort path is complete.** Losing a required mineral inlay cell during the ritual now
+  runs `endRitual()` before reporting failure, so server and client state, audio and camera restoration
+  do not remain latched.
+- **Aura Point and Dimension Core ambient particles are restored.** Both emit V33a's paired tinted and
+  white centre-blur locus particles rather than remaining visually inert outside their specialist
+  effects.
+- **Two unsafe generation paths no longer reach through a feature's world window.** Crystal-tree
+  crowns paint their plan through the provided `WorldGenLevel`; Aurorae use the chunk generator's
+  noise-backed `getBaseHeight` for distant ribbon points instead of asking the feature view to read
+  hundreds of blocks into neighbouring terrain.
+- **Glow caves regained their missing atomic site preflight.** Before a piece exists, the exact seeded
+  shape is built and checked against generator noise columns: the mouth must top out on grass or sand,
+  and every cave cell plus its six neighbours must be free of water. This avoids partial caves and
+  avoids loading neighbouring chunks during structure-start selection. Crystal Forest is included in
+  the biome set because V33a's forest-biome test includes that sub-biome. Modern structure-set spacing
+  remains the conflict-prevention mechanism; the old partially-generated-neighbour shielding scan is
+  not safe from a modern structure-start context.
+- **Puzzle calculation no longer gives up after one exception.** `StructureCalculator` now restores
+  V33a's attempt zero plus ten retries, clearing the generator between attempts, preserving
+  `OutOfMemoryError`, and discarding both placement and cached generator only after the final failure.
+  The stale source comments saying puzzles were deliberately deferred were corrected: the deferral is
+  lifted, and generators now enter one complete vertical slice at a time.
+- **A dormant Dimension Core bookkeeping fault was defused.** The incomplete entry scan had marked a
+  player as “sent” even though no structure-session registration occurred. That would permanently
+  skip the player after the real manager landed. It now leaves the once-only set untouched until the
+  forthcoming successful registration can own that transition.
+- **A committed 26.2 compile regression in the Heat Lamp GUI was fixed.** `EditBox.setFilter` no
+  longer exists. The responder now validates typed and pasted content through the actual 26.2 mutation
+  path, restores the last valid string, and retains the authoritative menu temperature synchronization.
+
+### Status of the previous eight-step Start → Proxima plan
+
+1. **Structure identities/sizes and placement calculator — implemented.** The identity and placement
+   foundation exists; calculation retries are now source-faithful. No puzzle generator is registered
+   yet, so normal layouts intentionally assign none.
+2. **RegionMapper — implemented.** It consumes the completed structure-layout stage.
+3. **BiomeDistributor — implemented.** Structure and Monument fields derive from authoritative layout
+   positions rather than guessed fallbacks.
+4. **Nine primary plus four sub-biomes and custom biome source — implemented.** Generated data and the
+   biome source are present.
+5. **Chunk generator and terrain — implemented, active audit required.** The generator is operational;
+   the unsafe cross-window reads found in decorations were repaired. Long exploration in a fresh save
+   is still the meaningful stress test.
+6. **Dimension type/stem — implemented.** Proxima is registered and reachable through its modern
+   portal transition.
+7. **Join/exit behavior — now implemented for the source paths that exist independently of puzzles.**
+   The Y=1024 transition, fall curve, login/respawn carve-out, death return with element loss, and
+   below-Y=-1024 void return are live. Puzzle-session entry/exit is the next puzzle-foundation slice,
+   not dimension travel.
+8. **Decoration/entities/bedrock cracks/sky/weather — broad implementation, not a blanket “done.”**
+   Sky rivers, tree clusters, fire jets, fissures, mini-altars, glow caves, glowing cracks, bedrock
+   cracks and several visual/environment systems exist. Remaining fidelity work includes incomplete
+   mini-altar magic loot, the unavailable externally-hosted Void Rift aura texture, and normal
+   in-world visual/performance verification across all Proxima biomes.
+
+### Puzzle reality and the next complete vertical slice
+
+The puzzle deferral is lifted, but **no `DimensionStructureType` currently calls
+`registerGenerator`**. `usableStructures()` is therefore empty and `StructureCalculator` creates no
+puzzle placements in an ordinary world. The 133-file/~82k-line source cluster has not secretly become
+active merely because its base and several shared blocks compile.
+
+Before registering the first puzzle, these foundations must land together:
+
+1. A generic modern Structure/piece painter for a generator's planned cells, with deterministic or
+   SavedData-persisted generator identity. The current random UUID cache is process-local; a saved
+   Dimension Core must not lose its generator association after a server restart.
+2. The modern per-player structure-session manager: tuning gate, authoritative entry packet/overlay,
+   per-player tick, leaving/removal paths, logout cleanup, and reload behavior. Only a successful
+   registration may add `TileEntityDimensionCore.sentPlayers`.
+3. Structure-colour completion persistence in `ProgressionManager`, followed by the Dimension Core
+   mining sequence: record completion, remove the session, then open the structure.
+4. One source-complete puzzle generator plus every block, block entity, renderer, packet and puzzle
+   rule it needs. Register only after its `isComplete()` test-run genuinely creates a core.
+5. Focused tests for deterministic layout and reload, painter clipping, entry/tuning, solve state,
+   sealed/unsealed core mining, completion persistence and server restart. Only then should a second
+   puzzle type begin.
+
+That is the next honest milestone: **one fully playable and reload-safe puzzle**, not eighteen visible
+shells with missing mechanics.
+
+### Verification at this checkpoint
+
+- `:ChromatiCraft:compileJava -x :RotaryCraft:compileJava` — **passes** on Java 25 / NeoForge 26.2
+  (deprecation warnings only). The exclusion isolates unrelated in-progress RotaryCraft renderer
+  edits already present in the shared worktree.
+- `:ChromatiCraft:runServerData -x :RotaryCraft:compileJava` — **passes**, and the intended generated
+  change is the Glow Cave structure biome list. Unrelated compressed-NBT/datagen timestamp churn was
+  restored rather than included.
+- A focused `-PgameTestSelector=chromaticraft:dimension_core_ring` launch was attempted, but **the
+  GameTest server never reached test discovery**: the NeoForge dev-run harness rejected
+  `ChromatiCraft/build/classes/java/main` as “not a valid mod file”. This is a run-configuration/harness
+  blocker, not a failed assertion. Do not rerun the full suite until that startup path is repaired.
+- Focused coverage was extended for portal ownership, locus owner item round-trip, and Proxima's fall
+  and void thresholds. They compile, but remain queued behind the same harness startup issue.
+
+### GameTest runtime repair (2026-08-20)
+
+The previously reported harness/startup blocker is resolved under the current 26.2.0.64 toolchain.
+More importantly, `:ChromatiCraft:runGameTest` now supplies `--tests chromaticraft:*` by default;
+the namespace registration property alone had allowed all 156 tests from loaded family mods to run.
+Focused `-PgameTestSelector=...` selection remains available.
+
+Shared DragonAPI hardening splits vanilla's 50-test batches into groups of 12, clears completed
+structures and forced chunks, and removes synthetic server players between batches without writing
+their random UUIDs to playerdata. Headless runs omit Spark/Jade/JEI, cap heap at 4 GiB, and show an
+out-of-thread ten-second heartbeat with progress, active test IDs, effective fast-forward tick rate,
+wall MSPT, heap and true server-thread stall time. A 30-second stall prints the server stack and a
+180-second stall fails/terminates the test JVM rather than retaining the machine's RAM indefinitely.
+The watchdog disarms before final world saving, and GameTests use an isolated `run-gametest`
+directory rather than contending with an open development client's logs or save data.
+See root `GAMETESTS.md` for exact commands and tuning properties.
+
+Verification was deliberately focused: `chromaticraft:pylon_player_placed_restriction` passed and
+its synthetic player was released before shutdown; no full ChromatiCraft suite was rerun in this
+slice. The separate ElectriCraft `wire_and_machine_shapes` test also passes after its far-coordinate
+double-precision AABB repair.
+
+## Proxima traversal, portal and presentation pass (2026-08-20)
+
+- Aurora splines now persist per entity and advance once per entity tick. The temporary render-state
+  implementation rebuilt and advanced the path every rendered frame, making motion depend on FPS and
+  producing the reported high-speed spasms.
+- Liquid Ender exposes an entity-inside interaction shape while retaining its non-solid physical
+  shape, so V33a's launch/bounce callback runs instead of leaving entities trapped in an inert fluid.
+- The Portal Rift and Void Rift now have modern 26.2 block-entity renderers. The portal restores its
+  animated pad skin, focus, charging rings and tall crossed beams; Void Rift restores exposed-side
+  animated aura walls and suppresses internal walls between matching rifts.
+- `/place structure chromaticraft:portal` is a real command-only Structure. It chunk-clips the
+  canonical NBT template and restores all eight V33a End Crystals on bedrock supports. The three
+  casting temples likewise moved from configured features to
+  `/place structure chromaticraft:casting_temple_l1`, `_l2`, and `_l3`; their stale configured and
+  placed-feature data was removed. Natural decorators remain features.
+- Portal denial now reports the exact unsatisfied gate in the action bar (End Crystals, multiblock,
+  Proxima registration, layout readiness, charging, or progression). `chromaprog maximize` now also
+  grants maximum dimension tuning, which had remained an independent hidden Sky River/portal gate.
+- The End Crystal mover is active and component-backed. It captures vanilla End Crystals, removes
+  their bedrock support, replaces captured crystals with the original 3x3x3 clearance rule, exposes
+  both empty and filled creative variants, and has the V33a bedrock/animated-crystal special item
+  renderer.
+- The Lexicon portal preview now resolves the canonical portal template, expands for the eight outer
+  crystal locations, and displays bedrock supports plus End Crystal tally icons.
+- Sky River rendering now includes the omitted first segment and overlaps adjacent swept tubes at
+  bends. Rider management replaces radius-two synchronous chunk probes with a narrow forward ticket
+  corridor; if the next corridor chunk is not ready, motion is held without forcing generation on
+  the server thread. This targets both disconnected-looking ends and the server stalls that threw
+  riders out of rivers.
+- Cliff Glass no longer selects its intentionally transparent V33a underlay as its only cube texture.
+  Ethereal Luma uses the sixteen-cell purple V33a still mosaic (and the rotated Proxima mosaic)
+  through a custom fluid UV mapper instead of the unused blue water-like strip.
+- Fissure/Void Rift carving now preflights the entire decoration against the active worldgen write
+  window before changing any block. It will reject a placement rather than leave the chunk-aligned
+  stone slab visible in a partially carved pit. Existing generated pits are not retroactively edited.
+- The Heat Lamp edit box now debounces network writes and flushes on close. Intermediate strings such
+  as the `2` in `200` are no longer server-clamped to 20 and echoed back over the text being typed.
+- The original six creative inventories are registered as separate modern tabs: main blocks,
+  decoration, worldgen, tools, items, and decoded information fragments.
+
+Verification for this slice: `:ChromatiCraft:compileJava`, `:ChromatiCraft:runClientData`, and
+`:ChromatiCraft:runServerData` all pass under Java 25 / NeoForge 26.2. No broad GameTest suite was run;
+the visual, rider-motion, fluid and command-placement changes require the focused in-world checks
+listed in the handoff.
+
+## Portal/casting presentation corrections (2026-08-21)
+
+- The Portal Rift renderer now selects one frame from each directly-bound vertical animation strip
+  (`rift`, `ringrow_fade`, and `rift_halo`). Sampling the whole PNG as UV 0..1 produced the reported
+  stack of horizontal lines on both the pad and tall beam.
+- The retained `64x.png` and `16x.png` particle resources are 16-by-16 sprite atlases, not 16-by-2.
+  The modern ping-pong particle restores V33a's exact row pairs: Laser/Globe use rows 0/1 and
+  Center Blur uses rows 4/5. Portal-focus, casting-focus, and item-stand particles no longer sample
+  sixteen rows at once or show unrelated/empty atlas cells.
+- Outer portal rune particles now resolve `block/runes/real/tileN_0` directly. The generic particle
+  helper had prepended `block/icons/`, a directory which does not contain the rune sheets.
+- Ethereal Luma flowing faces use `aether_flow2`, matching V33a's actual `luma.setIcons` call. The
+  blue `aether_flow` strip was not the registered flowing sprite in the original release.
+- The first 26.2 pass emitted V33a's registered `portal2` event every 90 ticks. That reproduced the
+  source call site but also reproduced an unacceptable approach delay: entering the radius just after
+  a broadcast could remain silent for 4.5 seconds. The later acceptance fix replaces it with the same
+  client-owned, position-bound tickable lifecycle used by pylons, with continuous distance fade and
+  immediate silent-start support. See the 2026-08-22 correction below.
+- The Proxima cheating-prevention singleton is initialized after its immutable legacy ban table.
+  The inverse declaration order passed compilation but dereferenced a null map in the constructor
+  on the first player tick in Proxima.
+- Command-placed casting temples now find the highest free surface across their complete footprint,
+  clear the authored air volume above the foundation with chunk clipping, and create their table at
+  the represented XP tier: L1 Temple, L2 Multiblock, L3 Pylon. Player-placed tables remain unchanged
+  and must earn those tiers normally.
+
+Verification was deliberately narrow: `:ChromatiCraft:compileJava` passes on Java 25 / NeoForge
+26.2 (deprecation warnings only). No full GameTest suite was rerun for this render/audio/in-world
+placement slice.
+
+## Network, portal, fluids and Proxima parity pass (2026-08-21)
+
+V33a's portal block entity emitted its registered positional sound every 90 ticks. Although that is
+the literal source call site, the resulting 26.2 one-shot playback had a 0-4.5-second approach delay
+and hard arrival boundary. The 2026-08-22 acceptance correction supersedes this paragraph with the
+pylon-style tickable loop requested for the modern port; its lifetime remains bound to the formed
+portal and its gain is computed continuously from listener distance.
+
+- Repeater and pylon transfer beams now follow `CrystalTransmitterRender` and
+  `ChromaFX.drawEnergyTransferBeams`: targets sharing one endpoint are grouped, their element colours
+  cycle with V33a's arithmetic, widths retain the cumulative maximum clamp, and the textured tube uses
+  the original solid/depth-writing pass. Removing the extra half-block target subtraction also makes
+  the tube end at the receiver's actual centre/declared offset.
+- Power Crystals have a dedicated translucent/fullbright item renderer. Their block entity refreshes
+  its pylon connection on initial load and every twenty server ticks, synchronizing only when the
+  connection changes; their colour/active visual no longer depends on an unrelated neighbour update.
+- The Portal Rift renderer now uses V33a's actual `end_portal`, `beam2`, `arches2`, rift-strip and
+  ring-strip assets. The transport arches are charge-gated, all extended geometry is submitted after
+  translucent terrain, and its render bounds/view distance cover the complete effect. Replacing any
+  pad cell revalidates the nearby 3x3 centre, including after a chunk reload.
+- Additive ChromatiCraft particles now participate in the translucent particle target, with colour
+  addition separated from alpha accumulation. This keeps multichromic-rune and focus particles in
+  front of water when appropriate instead of forcing every particle into the pre-water main target.
+- Ethereal Luma, Liquid Chroma and Liquid Ender use modern fluid-type movement implementations.
+  Their entity-interaction shapes remain non-solid; Ender applies V33a's normalized 32x current plus
+  its launch callback. The 2026-08-22 correction gives Luma its own thin, non-buoyant travel rule and
+  disables Minecraft's swimming pose. Ethereal Luma, Liquid Chroma and Liquid Ender all have buckets
+  backed by translucent dynamic-fluid-container item models.
+- Void Rifts use the exact 128-frame V33a aura strip, source pulse/colour mixing, cardinal/diagonal
+  seam rules, translucent ordering, expanded bounds and offscreen rendering. Neighbour changes clear
+  both sides' seam caches. The Structure Controller effect likewise uses an additive transparent
+  submission after water rather than rendering its transparent pixels as a black rectangle.
+- Dimension Cores now restore V33a's three-layer animated aura in-world and in item form, with every
+  concrete colour registry item routed through the special model. The monument generation point scans
+  its complete 65x65 footprint and raises the base to the highest surface (never below the original
+  Y=103 floor), preventing modern terrain from burying it.
+- Command-placed L2/L3 casting temples add the original twenty-four Item Casting Stands around the
+  table and retain the represented table tier. Proxima tree clusters are centered in the owning chunk
+  before applying their +/-16-block scatter, preventing the reported chunk-border half-trees and
+  far-chunk feature writes. Aurora render culling no longer uses its tiny anchor entity box.
+- Glow Cave locate work now deduplicates terrain/water probes and carries the already-generated cave
+  cell set into the structure piece instead of immediately rebuilding it. This removes the largest
+  avoidable allocation/query multiplier from `/locate structure chromaticraft:glow_cave`; real-world
+  timing still needs measuring because vanilla locate can legitimately search many candidate chunks.
+
+The monument ritual remains deliberately source-strict. It requires all sixteen coloured Dimension
+Cores, in their exact ring locations, owned by the same real player, plus the complete mineral inlay.
+Five cores cannot start it. The owner must then use the Elemental Manipulator on the controller; the
+port must not weaken this gate merely to make an incomplete monument appear active. Proxima sky
+rotation based on player position is also intentional V33a behaviour, so fast travel produces faster
+apparent sky motion.
+
+Verification was kept focused:
+
+- `:ChromatiCraft:compileJava` — passes (Java 25 / NeoForge 26.2; deprecation warnings only).
+- `:ChromatiCraft:runClientData` — passes and generated the new special item/fluid-container models.
+- `chromaticraft:portal_structure_and_charge` — passes, including break, replace, revalidate,
+  recharge and block-entity persistence.
+- `chromaticraft:casting_nbt_structure_contract` — passes for all three casting tiers.
+- `chromaticraft:monument_ritual_checks` — passes the exact sixteen-core ownership/colour gate.
+
+No broad GameTest suite was run. Beam composition, translucency ordering, fluid feel, positional
+audio, structure elevation and locate latency are render/client/worldgen concerns and remain the
+focused in-world acceptance scope for this slice.
+
+## Monument ensemble, render ordering, fluids and portal-audio correction (2026-08-22)
+
+This pass resolves the follow-up defects against V33a commit `63c0c29a`, while retaining the modern
+26.2 render and fluid APIs:
+
+- Player-placed Dimension Cores are primed in `BlockDimensionCore.setPlacedBy`, matching V33a's
+  `ItemChromaPlacer`. Each colour therefore joins the marked monument controller's eight-tick note
+  sequence as it is installed; all sixteen cores collectively play the selected track, indexed modulo
+  its length for the original continuous ensemble. Colour registry identity and placer ownership are
+  preserved. The focused `monument_core_placement` GameTest now asserts priming as well as those two
+  ritual inputs.
+- Dimension Cores, Void Rifts, pylons, repeaters, portal effects and Structure Controllers submit
+  extended additive geometry through the real `AFTER_TERRAIN` phase. The previous phase named
+  `TRANSLUCENT_CUSTOM_GEOMETRY` executes before translucent terrain in 26.2, which is why these effects
+  appeared behind water. Dimension Core items use an alpha-weighted additive pass (removing their black
+  inventory quad) and the modern item transform flips the legacy X rotation. Void Rift wall strips
+  covered by opaque terrain are suppressed, removing the beam/terrain z-fighting without moving the
+  visible seam away from its V33a coordinates.
+- Item Casting Stand model cuboids and `item_stand.png` were byte/coordinate checked against V33a and
+  are unchanged. Its custom hover geometry now computes the visible boundary of the cuboid union:
+  edge portions buried inside another stand part are clipped, so interior intersections and the small
+  corner tails are omitted while every exposed outer edge remains.
+- Ethereal Luma has a dedicated low-viscosity, non-buoyant movement implementation, does not enable
+  Minecraft swimming, and supplies an underwater overlay/fog instead of exposing the x-ray-like empty
+  camera state. Liquid Ender now has the registered `liquid_ender_bucket`, fluid-container model and
+  language entry.
+- Power Crystals now exact-scan the pylon's eight authored socket offsets before falling back to the
+  network cache, so an active socket no longer waits for an unrelated block notification. Their item
+  renderer adds the fullbright animated active layer. The focused `pylon_power_crystal_recharge` test
+  passes all eight connections, V33a recharge rate and progression grant.
+- Portal audio is a position-bound tickable instance, starts silently so entering its radius never
+  waits for a broadcast, smoothly fades over 24 blocks, and stops as soon as the centre is removed or
+  the pad becomes incomplete. The old server-side 90-tick one-shot is removed, preventing overlapping
+  copies and hard volume boundaries. Portal skin depth writes and the corrected post-terrain animated
+  focus keep the Rift visible without rendering it behind water.
+- Pylon flare sprites use source alpha in their additive blend, preventing transparent RGB in the
+  texture border from becoming visible square quads. The two custom enhanced regeneration/saturation
+  effects reuse the vanilla regeneration and saturation HUD/inventory sprites through client
+  extensions rather than duplicating Mojang textures.
+
+Verification remained intentionally narrow: `:ChromatiCraft:compileJava` and
+`:ChromatiCraft:runClientData` pass; `chromaticraft:monument_core_placement` and
+`chromaticraft:pylon_power_crystal_recharge` each pass alone. No broad GameTest suite was run. The
+remaining acceptance work is visual/audio/physics and must be checked in the client: the assembled
+core ensemble, water ordering and item rotation, casting-stand outline, Void Rift terrain occlusion,
+Luma camera/movement, Liquid Ender bucket, portal animation/fade, pylon flare edges and active Power
+Crystal inventory animation.
+
+## Monument client ensemble and Portal Rift texture correction (2026-08-22)
+
+The five-core monument report exposed a client-authority break rather than a progression gate. V33a's
+ambient Dimension Core ensemble starts as each correctly positioned, primed core is installed; it does
+not wait for all sixteen cores, completed mineral inlay, progression, dimension tuning, or a ritual
+trigger. The ritual itself remains correctly gated on all sixteen cores and the full inlay.
+
+- The Structure Controller now implements the complete 26.2 block-entity update contract: its chunk
+  update tag is generated through `ValueOutput`, its client copy loads through `ValueInput`, it emits a
+  normal block-entity data packet, and `setMonument()` sends an immediate block update. Previously its
+  server save contained `monument=true`, but joining clients received vanilla's empty default update
+  tag. `TileEntityDimensionCore.spawnConnectFX` consequently saw an unmarked controller and suppressed
+  every eight-tick note, centre beam, sibling beam, and note particle.
+- DragonAPI's equivalent compatibility seam is corrected at the shared base: `getUpdateTag` now uses
+  `saveWithoutMetadata(provider)` and `handleUpdateTag` dispatches `loadAdditional(ValueInput)`. This
+  preserves legacy base fields through its existing adapter while no longer discarding fields owned by
+  modern `ValueOutput`/`ValueInput` subclasses.
+- `chromaticraft:monument_client_sync_contract` constructs a marked server controller, serializes its
+  real update tag, applies that tag to a fresh client-like controller, and asserts that both ends retain
+  the monument marker. The focused test passes alone.
+- Minecraft 26.2 moved the vanilla End-portal image to
+  `textures/entity/end_portal/end_portal.png`; the placed Portal Rift renderer still referenced the
+  V33a-era path and therefore displayed the missing-texture image. The world pass now targets the real
+  26.2 asset. The original Portal item presentation is also fully ported as a special renderer: an
+  unlit End-portal cube with the fifteen-second hue-cycling additive `bigflare` layer. Both Portal Rift
+  identities use generated special item models.
+
+Focused verification: `:ChromatiCraft:compileJava` passes, `:ChromatiCraft:runClientData` passes and
+writes only the two changed Portal Rift item definitions, and
+`chromaticraft:monument_client_sync_contract` passes alone. No broad GameTest suite was run. In-world,
+reload the world/client so an already-generated controller receives a fresh chunk update tag, then
+observe the installed cores for several eight-tick beats. A core belongs two blocks inward from its
+matching outer rune; a core placed on the rune cannot derive the monument controller and is
+intentionally silent.
+
+## Monument legacy-glow composition correction (2026-08-22)
+
+The now-operational Dimension Core ensemble exposed a 1.7.10 texture-format mismatch in its beam
+particles. `centerblur3`, `flare`, `fade` and the related atlas glows are opaque RGB images: V33a used
+black as transparency because `GL_ONE, GL_ONE_MINUS_SRC_COLOR` erased black directly in the main
+framebuffer. Sending those images through 26.2's alpha-composited particle target gave every particle
+full rectangular coverage, exposing the dark quad around each beam point and making overlapping
+points look like they were z-fighting.
+
+- Block-atlas additive particles now use a dedicated legacy additive pipeline and fragment shader.
+  It derives target coverage from the source sprite's RGB brightness, retains any real source alpha,
+  and keeps V33a's ADDITIVEDARK colour equation. Fully black texels are discarded.
+- The legacy shader deliberately omits fog colour injection. V33a's particle render modes disabled
+  fog, and adding fog RGB to a nominally black keyed texel would recreate a visible quad at distance.
+- Alpha-backed 16x/64x animated particle sheets retain the normal modern additive-particle pipeline;
+  their existing alpha is not reinterpreted.
+
+This is a client-render-only correction, so no server GameTest was added or rerun. Focused build
+verification is `:ChromatiCraft:compileJava`; in-world acceptance is the active monument ensemble:
+beam points should blend into continuous coloured paths with no square cells or hard overlap seams.
+
+## Monument structure-safety and V33a gold-ring migration (2026-08-22)
+
+A reload inside the monument exposed a destructive interaction between two individually valid systems:
+V33a's Proxima login/respawn escape capsule cleared ordinary solid blocks around a returning player,
+but the modern monument is a vanilla `StructureStart` containing ordinary minerals and authored air.
+The capsule consequently replaced part of the monument with air and nonreinforced Cloak Shielding.
+
+- Proxima arrival clearing now refuses the whole operation whenever its ellipsoid box intersects a
+  ChromatiCraft structure piece. Controller-backed layouts are also protected as a compatibility
+  fallback, so the same rule covers NBT puzzle structures while they transition to native structure
+  registration. The escape capsule remains unchanged for ordinary terrain.
+- The mineral audit found a second source-parity error. V33a keeps its old probabilistic gold-ring
+  table inside a block comment, then places a different 76-block ring unconditionally with direct
+  `setBlock` calls. The port had activated the 72 obsolete coordinates, counted them as ritual cells,
+  and omitted the live ring. Generation now places the exact 76 active coordinates and the ritual's
+  expected inlay is the correct 305 cells: 304 probabilistic cells plus the registered-only centre
+  chroma.
+- Existing monuments carry a persisted `monumentLayoutVersion`. A pre-version monument performs one
+  repair pass when its controller loads: authored template blocks destroyed by the capsule are
+  restored, non-authored capsule Cloak is removed, the obsolete gold layout is removed, the active
+  ring is installed, and any completion-inlay cell actually carved to air/Cloak is restored to its
+  required mineral. New monuments are stamped current during structure placement and never migrate.
+- A rejected activation now logs the first wrong core (including expected colour and coordinates),
+  conflicting core owner, missing real owner, or wrong inlay block. This preserves V33a's in-world
+  error cue while making a false `monument_t` diagnosable from the server console.
+
+Focused verification only: `:ChromatiCraft:compileJava` passes;
+`chromaticraft:monument_mineral_inlay`, `chromaticraft:proxima_structure_safety_guard`, and
+`chromaticraft:monument_ritual_checks` each pass alone. No broad GameTest suite was run. Existing-world
+acceptance is to load the old monument once, confirm `monumentLayoutVersion: 1`, inspect the repaired
+fixed gold ring and capsule cut, then trigger the controller. The completion inlay still legitimately
+requires glowstone, redstone, emerald, diamond, quartz, lapis and chroma cells; fixed gold is structure,
+not a completion material.
+
+## V33a particle depth-mask parity (2026-08-22)
+
+The remaining square/self-intersection artifacts in the active Dimension Core ensemble came from a
+render-state mismatch, independent of its legacy black-key texture conversion. V33a's shared
+`ThrottleableEffectRenderer.doRenderParticles` called `glDepthMask(false)` before drawing every
+particle layer and restored it afterwards. The particles remained depth-tested against the world but
+never wrote their overlapping quads into the depth buffer. This is especially visible in
+`TileEntityDimensionCore.spawnConnectFX`, whose beam is a dense sequence of blur particles spaced at
+quarter-block intervals.
+
+- Both 26.2 additive particle pipelines now use a `DepthStencilState` with the existing reversed-depth
+  comparison and `depthWrite=false`. This is the direct modern pipeline equivalent of
+  `glDepthMask(false)`; it does not disable terrain occlusion or make the effect render through walls.
+- The particle-target routing and alpha/legacy-black coverage shaders remain unchanged. Only depth
+  writes were corrected, allowing successive beam points, note flares and floating seeds to blend
+  instead of depth-rejecting one another.
+
+This is client-render-only and has no meaningful headless GameTest. Focused verification is
+`:ChromatiCraft:compileJava`; in-world, partial and full monument ensembles should show continuous
+blended connection beams without rectangular depth cutouts, while solid blocks must still occlude
+the particles.
+
+## Monument cinematic, score audio and event-family parity (2026-08-23)
+
+The first successful ritual exposed three independent client/server splits that the initial modern
+implementation did not reproduce. The score ran but was silent because the general
+`ChromaSounds.playSound(ClientLevel, ...)` compatibility overload intentionally rejects client-side
+world calls; the camera angles changed but its position did not because `Camera.alignWithEntity`
+overwrote a direct Camera position immediately after `ComputeCameraAngles`; and detaching the view
+from the real player removed V33a's incidental movement lock and avatar concealment.
+
+- The six authored monument recordings now play as direct client `SimpleSoundInstance`s at their exact
+  0, 28,000, 66,500, 86,000, 104,800 and 123,500 ms score offsets. They use no attenuation, are kept as
+  concrete instances so every ritual end path can stop them, and suppress vanilla/dimension music for
+  the duration. The per-core ray cue uses the same direct path with V33a's pitch factor and random
+  0.4–0.8 volume.
+- The cinematic owns a private, unspawned Marker camera entity. Each render frame writes the exact
+  V33a epitrochoid pose to that entity before vanilla samples it, forces first-person, hides the local
+  avatar, and restores the previous camera entity, camera mode, HUD and bob setting on stop, restart or
+  level exit. The server independently anchors the activating player, zeroing velocity and sprint so
+  movement packets and pre-existing flight momentum cannot carry the real player away.
+- Rays are no longer immediate generic spheres. Each compatible colour receives its original random
+  note-relative delay, an eight-segment maximized DragonAPI lightning path, coloured five-scale outer
+  blurs, white two-scale cores, 1/32-segment sampling and 20–59 tick lifetime.
+- The score's five one-shot families are no longer collapsed into a generic particle cloud. FLARES,
+  PARTICLECLOUD, PARTICLERING, TWIRL and PINWHEEL retain V33a's counts, terrain-relative placement,
+  radii, hue equations, spiral rates, size/lifetime envelopes and alpha behaviour. In particular the
+  two large events intentionally create 256–384 terrain motes and 735 pinwheel particles.
+- V33a's separate `MONUMENTCOMPLETE` transition is restored as a client payload rather than being lost
+  inside the running boolean. At the start of the final three-second shot it fires 32–95 six-scale
+  wandering seeds and all sixteen white-to-element centre/core beams exactly once; the later stopped
+  state still owns teardown and Aura Locus conversion.
+
+Focused verification only: `:ChromatiCraft:compileJava` passes and
+`chromaticraft:monument_ritual_player_hold` passes alone (one test, 3.429 s). No broad GameTest suite
+was run. Audio, camera motion, avatar concealment, post-processing and the authored particle choreography
+remain client-visible acceptance checks.
+
+## Monument recovery, source-fluid validation and locus rendering (2026-08-23)
+
+The next ritual acceptance pass found four source-parity gaps: the recurring ring burst selected a
+sprite name which does not exist in the retained atlas; an interrupted ritual persisted its controller
+trigger but lost the transient ritual/song object; flowing Liquid Chroma satisfied the mineral audit;
+and Aura Locus plus the Dimension Core screen shaders were still represented only by their base block
+entity state.
+
+- Ritual ring bursts now use the retained V33a `centerblur3` sprite. This removes the missing-texture
+  quads from the initial burst and its later repeated score events without substituting a newly drawn
+  effect.
+- An interrupted monument ritual now has a two-sided load recovery seam. The controller clears the
+  stale persisted trigger and re-primes every loaded Dimension Core when its transient ritual object is
+  absent; each core also checks the controller from its own `onLoad`, covering cross-chunk load order.
+  Natural successful completion remains distinct because the controller has already been replaced by
+  the Aura Locus. The same core-enabling path is used by normal ritual teardown.
+- Every `Mineral.CHROMA` inlay cell must now contain both the Liquid Chroma block and a source
+  `FluidState`. A flowing level no longer completes the monument. The focused
+  `chromaticraft:monument_ritual_checks` test covers a complete source layout, one deliberately flowing
+  cell, and the restored source state; it passes alone.
+- `RenderAuraPoint` and `GlowKnot` are fully modern submit renderers rather than excluded V33a code.
+  Aura Locus retains the three animated Aura Point layers, PvP star, fade halo, 48-anchor centripetal
+  closed spline, six legacy knot updates per tile tick, and layered fullbright line glow. Its render
+  bounds and offscreen policy include the entire effect and its post-terrain submission keeps the glow
+  ordered correctly around translucent world geometry.
+- Dimension Cores and Aura Loci now feed one modern combined post pass. Dimension Cores retain V33a's
+  32-block full-strength/128-block fade, hollow-centre attenuation, elemental tint, camera pinch and
+  ritual `1 + colorFade*5` swell. Aura Loci retain line-of-sight gating, 8-block full strength,
+  40-block falloff, first-50-tick age ramp, saturation and local pinch. A bounded live emitter UBO
+  composes up to 64 visible loci in one pass and is cleared on every frame and logout.
+- `aurapoint2-grid.png` is an opaque black-keyed V33a sprite, not an alpha-backed modern texture. The
+  Dimension Core/Aura Locus layers and Dimension Core special item renderer now use a dedicated legacy
+  additive sprite fragment which derives coverage from RGB luminance. This removes the inventory's
+  black rectangle while preserving the original luminous colour animation in-world and in-hand.
+
+Focused verification only: `:ChromatiCraft:compileJava` passes and
+`chromaticraft:monument_ritual_checks` passes alone (one test, 4.306 s). No broad GameTest suite was
+run. The combined post shader, black-key item composition, Aura Locus knot, repeated ring burst and
+interrupted-session ensemble recovery are client-visible acceptance checks.
+
+## Survival backbone: Chroma Collector and MAKECHROMA closure (2026-08-23)
+
+The first post-audit survival blocker is closed. `CASTING -> MAKECHROMA` no longer ends at a registered
+name or creative-only fluid: the V33a Chroma Collector is a complete 26.2 machine unit.
+
+- The Collector is registered as a block, item, block entity, menu and client screen, with mining tag,
+  loot table, language, guide identity, exact V33a animated top/side/bottom model and the retained
+  original `collector.png` GUI. Its generated casting recipe is the exact base-tier `SES/ScS/CCC`
+  pattern: any normal or boosted shard, Ender Eye, Glowstone and stone, with five experience, penalty
+  threshold one and zero multiplier.
+- Its two-slot inventory consumes Experience Bottles one per tick and returns Glass Bottles; each bottle
+  produces 300 mB. Hoppers may insert only bottles and extract only returned glass. Owner contact above
+  the machine consumes V33a's complete five-XP pulse, creates five mB and grants `MAKECHROMA` only once
+  the existing `CASTING` prerequisite is satisfied. Fake, spectator and non-owner players are excluded.
+- The 3000 mB input/output tanks use NeoForge's transactional `ResourceHandler<FluidResource>` API.
+  Recognized XP fluids enter the input tank, redstone pauses only that fluid conversion, and Liquid
+  Chroma leaves through every side. Inventory, fluid identity/amount, output amount and owner survive
+  world and picked-item persistence. Aborted transfer transactions restore all tank state.
+- Player fluid containers are offered the machine capability before its GUI opens. An empty bucket can
+  therefore extract a real registered Liquid Chroma bucket in survival, closing the handoff into the
+  already-ported Item Aura Infuser and world-fluid paths. The GUI synchronizes the third-party XP fluid
+  identity as well as both levels and renders each fluid's baked 26.2 still sprite and tint at the exact
+  V33a tank coordinates rather than substituting flat bars.
+- Client ambience retains V33a's quarter-rate, annular random elemental rune particles around the
+  machine. The source asset and all new model, item, loot, tag, language and recipe data are retained in
+  their normal generated/resource locations; datagen was run without discarding unrelated concurrent
+  Proxima work.
+
+Focused verification: `:ChromatiCraft:compileJava`, `:ChromatiCraft:runClientData` and
+`:ChromatiCraft:runServerData` pass. `chromaticraft:collector_survival_loop` was the only GameTest run;
+it passes in 3.493 s and covers registration, four-bottle conversion, returned containers,
+transaction rollback/commit, actual survival bucket filling, the exact five-XP direct pulse,
+`MAKECHROMA`, and the exact recipe contract.
+
+**Next survival slice:** follow the produced Liquid Chroma through the Item Aura Infuser and remaining
+early charged-shard/resource recipes as one dependency closure. The acceptance target is a fresh
+survival player progressing from the first Casting Table through Collector-made Chroma to the first
+usable infused/charged components without commands, creative inventory or hand-edited progression.
+
+## Aura Locus/Dimension Core ritual parity and Glowing Logic runtime (2026-08-23)
+
+The post-monument visual audit found that the underlying Aura Locus data was correct but its modern
+line submission was not. Every sampled spline point was paired with the first point, producing a
+radial web instead of V33a's closed animated knot. The Dimension Core effect also differed in three
+ways: its ambient ensemble could briefly survive the ritual-start packet race, its render layer did
+not adopt the ritual's through-terrain visibility, and the combined post shader measured screen-space
+distance without V33a's aspect correction.
+
+- `GlowKnot` now submits consecutive independent segments and explicitly closes the final segment to
+  the first sample. Its three original widths/alpha passes and spline motion are unchanged; only the
+  erroneous starburst topology was removed.
+- A running monument ritual now suppresses `spawnConnectFX` client-side in addition to the server's
+  authoritative sixteen-core unprime. This closes the packet-order window which let ambient ORB/DING
+  notes and connection beams overlap the authored monument score.
+- Dimension Core sprites select a no-depth-test legacy-additive pipeline while the monument ritual is
+  running. The post shader already bypasses line of sight in that state, so both the core and its swell
+  remain visible through the monument exactly as V33a's ritual renderer does. Ordinary non-ritual
+  cores remain terrain-occluded.
+- The combined locus post shader now scales vertical screen delta by `ScreenSize.y/ScreenSize.x`, the
+  exact operation in V33a's shared `distsq` shader helper. This restores the Dimension Core swell's
+  circular footprint and apparent strength on widescreen displays without inventing a stronger
+  coefficient than the original `1 + colorFade*5` ritual intensity.
+
+Proxima's first admitted puzzle is now **Glowing Logic**. Its former runtime-only boundary is closed:
+the puzzle is registered as a native 26.2 Structure, its source geometry is emitted as canonical NBT
+templates, and the Java piece is limited to deterministic composition, chunk clipping, terrain
+blending and block-entity binding. It is available to `/locate structure chromaticraft:light_panel`
+inside Proxima and participates in the normal sixteen-colour assignment pool.
+
+- All seven retained `tier0.png` through `tier6.png` sheets are decoded server-side as authored puzzle
+  data. Their exact switch/row dimensions, RGB connection masks, no-replacement selection and
+  green-required/red-unless-blue-cancelled solution rule are preserved and validated.
+- The runtime restores V33a's 5/8/12-room difficulty ladder and tier sequence
+  `0,0,1,1,2,2,3,3,4,4,5,6`, per-structure switch permutation, unique notes from a randomly selected
+  key signature, and exact room-relative switch, panel and connected-door coordinates.
+- Every room's wiring, active switch mask, origin and pitches persist through 26.2
+  `ValueOutput`/`ValueInput`. `TileEntityStructureController` rebinds template-placed switches, projects
+  state into the three Light Panel columns, opens/closes the room's Chroma Door on the original
+  completion rule and plays the original pitched DING on upward toggles.
+- The controller no longer scans distant room chunks during its world-generation initialization.
+  Projection on load and every twenty server ticks touches only already-full, loaded chunks, so
+  switches, panels and doors that load later can recover their persisted state without forcing
+  remote chunk generation. The planner again reports the entrance chunk as V33a's centre, and
+  the solved check requires all rooms rather than treating the password terminal as a bypass.
+  This correction compiles in a serial, two-gigabyte-capped build; no GameTest server was launched.
+- Eleven generated NBT templates reproduce V33a's bottom/section/top entrance staircase, the seven
+  tier-sized puzzle rooms and the terminal loot chamber. The custom Structure piece composes those
+  templates on the exact original offsets, writes only inside the active chunk box, restores the
+  surface mountain and water pad, and binds every controller, switch, core and password terminal to a
+  stable `(type, generation index, colour)` identity. A Dimension Core therefore reconnects to its
+  generator after a server restart instead of depending on the old process-local UUID cache.
+- The easy/normal/hard planner retains V33a's 5/8/12 rooms, `20+rand(80)` base height, nineteen-block
+  room stride, reward/core/controller offsets and generated puzzle seed. The reward floor is the one
+  breakable shielding surface; the rest remains reinforced. This expresses V33a's transient
+  `addBreakable` cache as persistent block state rather than silently losing it after reload.
+- The two room chests use a dedicated data-generated table: the active 26.2 stronghold-corridor pool
+  plus V33a's four independent 70% Luma Dust, 90% boosted blue shard, 50% Lumenite and 10% Radiant Gem
+  rolls. Luma Dust and Lumenite are separate modern registry items, with their exact source atlas
+  sprites; no metadata identity was reintroduced.
+- The first-room Structure Password is a real eight-slot persisted block entity/menu/screen. It accepts
+  the source colour-bearing item families, evaluates V33a's `ElementEncodedNumber` password against
+  the player and game version, returns all eight inputs on success, force-opens the structure and
+  survives reload through the same stable structure tuple. Its source GUI texture and password block
+  texture are retained rather than redrawn.
+
+Focused verification only: `:ChromatiCraft:compileJava`, `:ChromatiCraft:runClientData` and
+`:ChromatiCraft:runServerData` pass. Client datagen retained 1,014 files and wrote the seven affected
+outputs; server datagen retained 710 files and wrote nine. `chromaticraft:monument_ritual_player_hold`
+was previously run alone and asserts all sixteen cores are silenced at ritual start.
+`chromaticraft:light_panel_pattern_library` was rerun alone after the structure/password work and
+passes 1/1 in 3.943 s; it covers every authored pattern, solvability, runtime permutation, difficulty
+ladder, exact planner offsets, V33a coordinate mapping and state persistence. No broad GameTest suite
+was run. Large natural structure composition, the password GUI and all client-only Aura/Dimension Core
+visuals remain explicit in-world acceptance checks.
+
+The remaining shared player foundation is now closed as well. `ProximaStructureSessions` restores
+V33a's 192-tuning entry gate, exact 16x16 core-entry scan, active generator identity, per-player puzzle
+tick, cheating-prevention tick and Y=114 exit boundary, with logout/dimension cleanup. Sessions are
+transient by design; a loaded core repairs them after a relog instead of trusting a process-local UUID
+or a stale “already sent” marker. Entry sends the structure identity to a dedicated non-toast GUI
+layer, which shows the source structure name.
+
+Dimension Core removal is player-attributed again. A survival break rechecks range, whitelist and the
+generator's solved state before recording the recovered colour, removing the active session and opening
+the authored breakable exits; creative retains V33a's force-open-without-reward behavior. The independent
+`Structure_Color_Completion` death-persistent tag is live in `ProgressionManager`, advances
+`STRUCTCOMPLETE`, advances `ALLCORES` after all sixteen and clears `ALLCORES` if any colour is removed.
+`/chromaprog ... dimstruct <colour> <bool>`, `maximize` and `reset` all cover this axis now.
+
+Recovering a non-forced core sends the source player/version/difficulty/type/generation-index password.
+The client plays `LOREHEX` and uses a seven-hundred-tick GUI layer rather than a Minecraft toast: the
+eight rune cells reveal one per five ticks over V33a's full-screen dark wash and retain the original
+first-eighth fade-in/latter-half fade-out and coloured triple frames.
+
+Focused verification only: `:ChromatiCraft:compileJava` passes with the existing deprecation warnings,
+and `chromaticraft:proxima_structure_completion_loop` passes 1/1 in 4.414 s. It exercises active-session
+identity/removal, a real player-attributed Dimension Core recovery, the first-core stage, all-sixteen
+stage, single-colour rollback, reset and maximize. The unrelated ReactorCraft UF6 component parse
+warnings still appear during resource reload and do not affect the selected test.
+
+## Survival backbone: Liquid Chroma charging, Pool Recipes and Raw Crystal (2026-08-23)
+
+The Collector handoff now continues through the first real alloy and into the Item Aura Infuser's
+input instead of stopping at a bucket of decorative fluid.
+
+- Chroma Berries and Elemental Stones dropped into Liquid Chroma now require a credited player with
+  every `SHARDCHARGE` prerequisite, matching V33a's `getDropper` gate. A valid matching plain shard
+  retains its per-entity charge counter, converts the whole stack at 6000 accumulated charge, keeps
+  the output alive indefinitely, preserves the credited owner, plays `INFUSE`, emits the original
+  rising rune/completion burst, grants `SHARDCHARGE`, and fully clears the activated pool. Berry,
+  ether, element and one-use Elemental Stone state remain persisted by the pool block entity.
+- Pool alloying is now a registered datapack recipe type and serializer rather than a hardcoded
+  runtime map. A recipe owns its catalyst, counted unordered ingredients, result, extra progression,
+  doubling permission and minimum duration. Matching reserves stack counts across ingredients so
+  overlapping tags cannot double-count one entity; completion consumes the inputs and catalyst
+  atomically, applies V33a's ether doubling and `DOUBLECRAFT`, emits one-count unlimited-lifetime
+  outputs credited to the catalyst owner, consumes the Liquid Chroma source and grants `ALLOY`.
+- The runtime retains V33a's one-in-five scan, persistent active state, ether speed curve and
+  probability ramp. Active recipes send the original one-per-tick `EntityChromaFluidFX`-style rising
+  chroma droplet to nearby clients; the modern particle explicitly disables collision as V33a's
+  `noClip=true` did.
+- The first exact source recipe is data-generated as
+  `chromaticraft:pool_alloying/chroma_ingot`: one iron catalyst plus sixteen Chromic Dust makes one
+  Chroma Alloy Ingot. Full ether doubles it. This is the missing producer for the eight ingots in the
+  already-ported Item Aura Infuser casting recipe; Chromic Dust itself is obtained from the existing
+  progression-gated Energized Rock worldgen.
+- `RawCrystalRecipe` is restored as a five-tick/five-XP base casting recipe: four Purification Powder
+  around any **plain** shard produce two Raw Crystals. The metadata-free plain-shard tag is deliberately
+  disjoint from boosted shards, preserving V33a's metadata 0-15 input. Purification Powder already
+  comes from the registered Rock Flower and its worldgen/drop contract, so the Item Aura Infuser now
+  has a survival-obtainable input as well as a survival-obtainable machine recipe.
+
+Focused verification: the final source snapshot compiles, server datagen writes both
+`pool_alloying/chroma_ingot.json` and `raw_crystal.json`, and
+`chromaticraft:pool_alloying_survival_loop` passes alone in 3.890 s. The focused
+`chromaticraft:liquid_chroma_elemental_loop` and `chromaticraft:raw_crystal_survival_recipe` contracts
+are registered for the next isolated runner window; no broad GameTest suite was run.
+
+**Deliberate boundary:** the generic Pool Recipe engine is complete, but the other V33a recipes are
+not claimed until their exact metadata-free resource identities exist. Fiery, Ender, Water,
+Conductive, Aura, Space, Experience and Complex alloy families still need their missing Firaxite,
+Water Dust and related tiered resources registered as independent items/blocks before their datapack
+recipes are admitted. The next survival slice should add those identities in original dependency
+order, then exercise Collector -> activated pool -> boosted shard -> Chroma Alloy -> Item Aura
+Infuser -> Raw Crystal -> Iridescent Crystal as one command-free acceptance path.
+
+## Survival backbone: tiered ores, geode geometry and the alloy family (2026-08-23)
+
+The first Pool Recipe boundary above is now superseded. The ordinary early-alloy inputs and the
+post-dragon spatial input have real, independently registered resource and ore identities; none use
+legacy metadata or a colour/component discriminator.
+
+- Fluid Essence and Firaxite are separate item registrations using exact 16x16 crops from V33a's
+  `items_resource.png` indices 137 and 138. Existing Enderstone Powder and Spatial Rifting Powder
+  remain their own registrations as well. This follows the standing rule that each old metadata
+  identity becomes its own modern registry name.
+- Fused Crystals, Radiant Stone, Fluid Stone, Ender Stone, Firaxite and Spacerift Stone are real
+  `BlockTieredOre` identities with
+  their original host blocks, progression gates, generation chance/count/size and drop arithmetic.
+  Fused Crystals close the `CHARGE`-gated source of Binding Crystals; Radiant Stone closes the
+  `MULTIBLOCK`-gated source of Focal Powder. Both use four size-eight stone-hosted attempts per chunk
+  and their exact Fortune-zero 1..3/1..6 drop ranges.
+  Fluid/Ender/Firaxite retain V33a's stone host—even where the names suggest a dimension—and therefore
+  generate with the other stone-hosted ores in the Overworld. Spacerift Stone targets End Stone, is
+  restricted to End biomes, uses the source flat y=0..127 band, makes nine size-eight vein attempts in
+  one of every two chunks, and remains disguised until `KILLDRAGON`.
+- Vibrant Crystals restore V33a's ordinary-overlay `RESO` End ore as its own modern registry
+  identity. It targets End Stone, remains disguised until `ABILITY`, uses eight size-eight attempts
+  in every chunk across the original flat y=0..127 band, and drops exactly `1 + 4*Fortune`
+  Resonant Dust. Its name is the authoritative `chroma.tieredore.11` text rather than a new inferred
+  name, and its animated tier-11 underlay/overlay remains a cube model because `RESO` was not one of
+  V33a's geode-rendered ore types.
+- The earlier tiered-plant slice already supplies the same Resonant Dust through `MULTIBLOCK`-gated
+  Element Bulbs and supplies Transmissive Dust through `PYLON`-gated Radiance Bushes. Both retain
+  one-in-five/two-attempt late worldgen, their leaf/sand support rules, total pre-stage concealment
+  and the exact Fortune-zero odd-valued drop formulae. Thus all four non-shard ingredients of the
+  Iridescent Crystal Chunk now have concrete survival sources; Vibrant Crystals are the later End
+  alternative, not an artificial prerequisite for the early multiblock recipe.
+- Glowing Rock (`LUMA`), Echostone (`ECHO`) and Lumenite (`RAINBOW`) are admitted now that Luma Dust,
+  Echo Crystal and Lumenite are independent registered items. They preserve the source display names,
+  ordinary animated overlay models and exact gates/drop arithmetic. Glowing Rock is a
+  `STRUCTCOMPLETE` stone-hosted one-by-eight vein per chunk; Echostone is a `CTM` stone-hosted
+  one-by-eight vein in one of every two chunks. Lumenite is a `USEENERGY` stone-hosted pair of
+  size-eight veins per chunk, but deliberately uses V33a's flat y=0..127 late-ore band because its
+  original ordinal follows Firestone.
+- Thermitic Rock and Avolite close the complete fifteen-ore V33a family. Thermitic Rock is an
+  END-gated Netherrack-hosted geode with the source one-in-three/two-by-sixteen generation and
+  `1 + rand(1+fortune^2)` Thermitic Crystal drop. Avolite is a POWERCRYSTAL-gated ordinary-overlay
+  stone ore with one size-eighteen vein in one of every two chunks and exact
+  `1 + rand(1+fortune/2)/2` drop arithmetic. Their independently registered drop items use exact
+  atlas crops (legacy indices 145 and 152), and Avolite's block id is `avolite_ore` so it cannot
+  collide with the item registry id.
+- V33a's geode renderer is no longer represented by a flat cube overlay. One shared deterministic
+  geometry helper ports the exact 8x8 perturbed surface arrays, shared-row indexing, 0.2..0.8 inset,
+  UV orientation and six face transforms. Block and special item models use the same geometry;
+  exposed host shells remain shaded while the inset ore surfaces are fullbright. Sixteen
+  coordinate-selected shapes preserve the source's nonuniform world appearance without making the
+  baked model nondeterministic between reloads.
+- Seven alloy recipes are now exact data-generated Pool Recipes: Chroma Alloy, Firaxite Alloy,
+  Resonating, Fluidic Essence, Radiative, Aura Conducting and Spatially Warping Ingots. (There are
+  seven outputs total.) Catalysts and every counted input are copied from V33a `PoolRecipes`,
+  including the Spatial recipe's iron + 16 Spatial Rifting Powder +
+  32 Glowstone Dust + 64 Redstone + 16 Quartz + 4 Diamonds. All retain ether doubling.
+- Focused contracts `fluid_stone_survival_path`, `geode_ore_survival_path` and
+  `pool_alloying_early_recipe_family` cover disguise drops, progression reveals, source Fortune-zero
+  bounds, registry identity, exact counted inputs, one-item-short rejection and the doubling flag.
+  `tiered_plant_survival_sources` additionally pins both plant supports, gates, worldgen rates and
+  exact drop ranges.
+  They are registered but intentionally have not launched a GameTest JVM while four older Java
+  processes retain roughly 11 GB of working set; `pool_alloying_survival_loop` is the already-passed
+  runtime anchor for the shared engine.
+
+Validation at this boundary: `:ChromatiCraft:compileJava` passes. Final server datagen passes with 744
+files and client datagen passes with 1,030 files. The generated set includes all six new ore loot/tag,
+configured/placed worldgen and geode item-model contracts, the End biome modifier, all ten admitted
+Pool Recipes and the two exact source display names. One intermediate client-datagen attempt collided
+with a concurrent RotaryCraft class-directory rewrite; it was retried successfully after that writer
+released the directory, without deleting or weakening either task's output.
+
+Experience Gem and Chromastone are also admitted as the next two exact Pool Recipes. The former uses
+one Iridescent Crystal Chunk catalyst, four Obsidian and eight Emeralds; the latter uses the Experience
+Gem catalyst and one of each of the other seven ingots. V33a's would-be `allowDoubling = false` lines
+are commented out, so both retain the ordinary doubling rule and have no invented effect or gate.
+
+Data Crystal duplication is admitted independently with its exact Data Crystal catalyst, eighteen
+Crystal Dust, Data Crystal output, normal doubling and sole `TOWER` gate.
+
+The remaining tiered-resource boundary is now closed as a continuation of this survival slice:
+
+- All **15/15 V33a tiered ores** and **7/7 tiered plants** have concrete block identities. No old
+  metadata selector or colour/type component was reintroduced.
+- Vibrant Pod and Glowing Roots retain their distinct tree-trunk/root siting, ALLOY/TURBOCHARGE gates
+  and exact drops. Luma Beans and Enrichment Root are independent items.
+- The plant renderer audit also removed the temporary crossed-plane appearance from Vibrant Pod.
+  Its dynamic chunk model now starts at V33a's 0.25..0.75 body, extends each of its six bounds toward
+  neighbouring logs, emits the shaded backing cube and a full-bright six-face overlay expanded over
+  the source's 0..1/16 interval. Glowing Roots use the source crop inset, the other five retain
+  crossed squares, and every inventory form contains both the backing and front sprite layers.
+- All seven chunk models now enforce the same local-player progression test as V33a's ISBRH. Before
+  the required stage they contribute no model parts at all; together with the existing empty hover
+  shape this restores genuine concealment rather than merely making a visible plant untargetable.
+  Their custom blockstates are emitted by `ChromaModelProvider`; the five stale ungated generated
+  snapshots were removed and must be regenerated in the next safe client-datagen window.
+- The five particle-bearing plants now also retain V33a's every-other-tick `EntityCCBlurFX` branches:
+  original positions, random colour channels, scales, velocities and signed gravity. Vibrant Pod and
+  Glowing Roots intentionally remain particle-free because their V33a switch branches are empty.
+- Plant drops run through the now-ported `DimensionTuningManager` with the original 0..384 clamp, and
+  Rock Flower once again accepts structure shielding as a ceiling specifically inside Proxima. These
+  replace two obsolete forward-reference comments; outside Proxima both paths remain unchanged.
+- Vanilla-dimension routing now matches `TieredWorldGenerator`: all seven plants run in the Overworld
+  and End, while hostile Nether generation excludes only Rock Flower and Essence Lily. A dedicated
+  `rock_flower_end` placed feature removes its ordinary one-in-two rarity filter because V33a makes
+  that plant an every-chunk attempt in dimension 1; its two attempts and site scan remain unchanged.
+- Thermitic Rock and Avolite retain their exact hosts, gates, worldgen rates, source geometry and
+  drop arithmetic. Thermitic Crystal and Avolite are independent items.
+- `luma_beans.png`, `thermitic_crystal.png`, and `avolite.png` are exact 16x16 crops from V33a
+  `items_resource.png` indices 149, 145, and 152. A pixel comparison against the source atlas reports
+  zero differing pixels for all three.
+- `tiered_plant_survival_sources` and the existing tiered-ore family contract now include the new
+  support/gate/drop cases. They are registered but were not launched in this continuation: several
+  existing Java processes still retain roughly 12 GB, and the sandbox could not acquire the shared
+  Gradle wrapper lock. Compile and client/server datagen therefore remain required at the next safe
+  runner window; generated-resource snapshots have not been hand-edited around that boundary.
+
+**Remaining Pool Recipe boundary:** Structure Map creation requires the full artefact/data-crystal
+effect contract, disables doubling and enforces a two-minute minimum duration. It is not represented
+by a plain stand-in recipe. The Item Aura Infuser already has its NBT multiblock, source-fluid tank,
+focus acceleration, full conversion/overflow path, particles/rendering, recipe and focused
+`item_aura_infuser_loop`; the next isolated GameTest window should run that contract together with the
+new ore/alloy family before expanding into the Structure Map effect.
+
+## Proxima structure: Three-Dimensional Maze (2026-08-23)
+
+The second admitted Proxima puzzle is now **Three-Dimensional Maze** (`TDMAZE`). Like Glowing Logic,
+it is a native 26.2 `Structure` with an exact custom placement tied to Proxima's persistent colour
+ring. It participates in the normal without-replacement sixteen-colour assignment pool and can be
+found with `/locate structure chromaticraft:three_d_maze` inside Proxima.
+
+- `ThreeDMazeLayout` separates the source's seeded topology from world writes. Easy, normal and hard
+  retain the exact 8x6x8, 16x8x16 and 24x12x24 cell dimensions, four-block cell stride, randomized
+  depth-first perfect-maze backbone, top and bottom exits, braided extra cuts, room count/radii,
+  distance/overlap retries, lights and glass windows. Compact direction masks make the same maze
+  reproducible from the serialized piece seed after restart.
+- Room formation retains V33a's cracked replacement floors, permanent damper ceilings, iron-bar
+  perimeter, ordinary and five-cell-square chambers, conditional Chroma/glowstone centre decoration,
+  and dungeon/desert loot-chest selection. The guaranteed bonus remains a boosted coloured shard,
+  Raw Crystal or rare Complex Ingot with source radius-based counts. The Chroma centre ring is
+  explicitly prohibited when the centre cell has a downward connection, preserving the navigable
+  opening in the original `MazeRoom` logic.
+- Four generated NBT components are authoritative: a sealed cell, the repeating entrance shaft, the
+  surface pavilion and the reward chamber. The latter two are mechanically imported from V33a's
+  coordinate builders with old metadata resolved to concrete 26.2 Shielding and Crystalline Stone
+  registry identities. Java owns only topology cuts, room alternatives, terrain support, loot and
+  stable block-entity binding; it does not recreate the canonical structure shell block by block.
+- The piece composes all components through the active chunk bounding box, builds the original 17x17
+  supported surface pad, and binds the terminal coloured Dimension Core to the stable
+  `(TDMAZE, generation index, colour)` identity. The exact V33a entry and reward/core arithmetic is
+  retained. As upstream has no stateful puzzle controller for this navigation challenge, reaching the
+  core is the solve condition and no invented door state is introduced.
+- Registry/datagen coverage includes the structure type, piece type, placement type, structure JSON,
+  structure set and all four NBT templates. `chromaticraft:three_d_maze_layout` verifies all three
+  dimensions, deterministic same-seed topology/decor, full cell reachability, both exits, room bounds
+  and planner entry/core coordinates.
+
+Focused verification only: `:ChromatiCraft:compileJava`, `:ChromatiCraft:runClientData` and
+`:ChromatiCraft:runServerData` pass. `chromaticraft:three_d_maze_layout` was the only GameTest run and
+passes 1/1 in 3.649 s. The first runner attempt exposed incomplete Gradle module task ordering when a
+cache-free rebuild removed dependency outputs concurrently; rebuilding DragonAPI -> RotaryCraft ->
+ElectriCraft -> ChromatiCraft serially restored the classpath. This was a build-orchestration failure,
+not a maze source failure, and no broad suite was launched.
+
+**In-world acceptance boundary:** locate a naturally assigned maze in a newly generated Proxima
+layout, verify that its pavilion sits on supported terrain, traverse from the surface shaft through
+the maze to its reward chamber, inspect both small and large room variants/chests, recover its
+colour-bound core, relog, and verify the recovered-colour progression and opened breakable reward
+boundary remain correct. Natural multi-chunk composition and the complete traversal are intentionally
+left to this visual/player acceptance pass rather than a RAM-heavy generated-world GameTest.
+
+## Proxima structure: Crystal Music (2026-08-23)
+
+The third admitted Proxima puzzle is **Crystal Music** (`MUSIC`). Its complete vertical slice is now
+implemented as a native 26.2 structure and registered in the persistent colour-ring assignment pool.
+The datapack identity is `chromaticraft:music`; once server datagen has emitted the new structure and
+structure-set entries it is discoverable with `/locate structure chromaticraft:music` inside Proxima.
+
+- `MusicPuzzleLayout` restores V33a's 6/8/10-room difficulty ladder, twenty-block room stride and
+  `max(6, 3*difficulty + room - 9)` generated-melody length. The exact fifteen source prefab melodies,
+  rests and playback rates are shared with the already-ported Biome Fragment music puzzle. The
+  original one-in-five prefab roll, no-repeat rule, 2.5x length ceiling, playable-key selection,
+  octave limit, seventh rejection and tritone rejection are retained. Hash-set note candidates are
+  sorted before seeded selection so a serialized structure seed reproduces the same room after a JVM
+  restart instead of depending on process-specific hash iteration.
+- `TileEntityMusicMemory` is the persistent room authority. It stores the melody (including rests),
+  playback cadence, room index, connected-door centre, current input, replay position and solved
+  state through 26.2 `ValueOutput`/`ValueInput`. Clicking its authored front face replays the melody;
+  the sixteen existing four-quadrant Music Triggers send their actual playable note to the nearby
+  memory. A wrong note resets the attempt with the source error cue, while a complete sequence opens
+  the exact 3x3 Chroma Door. Password bypass force-completes without multiplying completion sounds.
+- Replay notes now use a dedicated radius-scoped payload, matching V33a's client-only `MUSICPLAY`
+  path instead of broadcasting server particles or a single positional sound. Each note is heard at
+  both authored ends of the room (`memory z-1` and `memory z+9`) at the exact key ratio; every trigger
+  colour capable of that note emits its local burst and projects the corresponding retained
+  `ring0`-`ring3` interval icon against the inside wall.
+- The trigger handler radius is nine blocks because the far edge of V33a's authored room is eight
+  blocks from its memory. The old seven-block provisional scan silently excluded those triggers.
+- Three canonical NBT components are generated by mechanically parsing the 918-cell `MusicFunnel`,
+  1,032-cell `MusicPuzzleBlocks` and 318-cell `MusicLoot` V33a coordinate builders. Java owns only
+  chunk-clipped terrain/shaft composition, room sequencing and mutable block-entity binding. Every
+  former lamp metadata value is resolved to its own `crystal_lamp_<colour>` registry identity; colour
+  metadata has not been reintroduced. The reward room's eight source `addBreakable` cells are emitted
+  as persistent non-reinforced shielding.
+- The entrance preserves the source's unusual `x+5` shaft alignment, permanent damper platforms and
+  surface funnel. Rooms retain the exact memory/password, trigger/lamp and 3x3-door coordinates. The
+  terminal Dimension Core is bound to the stable `(MUSIC, generation index, colour)` tuple, and the
+  generator considers the structure solved only when every persisted room memory is solved.
+- Registry coverage includes the memory block/entity/model/lang/mining tag, structure type, piece
+  type, custom exact-layout placement type, structure key/set and generator admission. The memory is
+  intentionally block-only and unobtainable, as it is structure-owned content in V33a.
+- Focused `chromaticraft:music_puzzle_layout` coverage pins all three room counts, same-seed melody
+  reproduction, prefab/generated length bounds, playable notes, playback cadence, wrong-sequence
+  rejection, the memory-to-door completion loop, NBT persistence and planner/core coordinates.
+
+**Validation:** `:ChromatiCraft:compileJava`, client datagen and server datagen pass. Focused
+`chromaticraft:music_puzzle_layout` passes 1/1 in 3.941 s, and the separately scoped
+`chromaticraft:three_d_maze_layout` parity test passes 1/1 in 3.896 s. The music run exposed a Java-collection parity
+trap: V33a melodies deliberately contain `null` rests, but `List.copyOf` rejects null elements. Room
+and block-entity snapshots now use null-tolerant immutable copies, and the focused persistence case
+uses the real 26.2 disk-NBT path (`saveWithoutMetadata`/`loadWithComponents`) rather than the network
+update tag. No broad GameTest suite was launched.
+
+**In-world acceptance boundary:** use a newly calculated Proxima layout, locate
+`chromaticraft:music`, verify the entrance/shaft and every room are complete across chunk boundaries,
+click each memory's front face to hear its melody, test a wrong note/reset and correct trigger sequence,
+verify each door and the final reward/core, then relog mid-puzzle and confirm solved rooms, playback and
+password bypass all retain their state.
+
+## Proxima structure: Cellular Automata (2026-08-24)
+
+The fourth admitted Proxima puzzle is V33a's **Cellular Automata** (`GOL`). Its full
+play-to-reward vertical slice is implemented as a native 26.2 structure, admitted to the persistent
+colour-ring assignment pool and registered as `chromaticraft:gol` for `/locate structure` inside
+Proxima. The variable board is composed in Java, while every fixed authored component is an
+authoritative generated structure NBT.
+
+- `GOLPuzzleLayout` pins the exact 12/16/24 radii, 25/33/49 board widths, `radius*4` initial-cell
+  limits and integer completion thresholds of 500/952/2220 remembered cells. Its transition is the
+  source's simultaneous Conway B3/S23 rule with off-board cells dead.
+- `gol_tile` replaces V33a's four behavior metadata values with `memory` and `active` blockstate
+  properties. These are mutable modes, not colour/content identities. Floor cells retain a small
+  controller-binding block entity; passive ceiling-memory cells do not allocate one. Both left/right
+  interaction and a player fall greater than one block retain the original toggle paths.
+- `gol_controller` owns simulation cadence and persistence. It samples every fifth world tick and
+  applies one tick later, matching the old count-then-update phases while using one ticker instead of
+  up to 2,401 independent tickers. A prepared-generation guard prevents a reload between those phases
+  from applying an empty buffer and erasing the board.
+- Source behavior that is easy to miss is preserved: activating a floor cell lights its ceiling cell;
+  cells that later die during simulation leave that ceiling cell lit. The accumulated ceiling trail,
+  not the final live population, is what the stop button evaluates. Manual deselection and stop/reset
+  clear both layers. Success persistently opens the authored five-wide exit and retains solved state.
+- The retained `gol_off/on`, `gol_mem_off/on` and `gol_control_play/stop/end` textures now have
+  four-state cell and two-state controller datagen models. Both blocks are structure-owned/block-only,
+  registered with their block entities, language entries and mining tags; no bogus obtainable item
+  or old packed metadata has been introduced.
+- Eight generated NBT templates retain the exact V33a fixed geometry:
+  `chamber_1`/`chamber_2`/`chamber_3`, `entrance_door`, `entrance_prefab`, `exit_door`, `loot` and
+  `surface`. The mechanical import is pinned to 595 entrance-prefab placements, 136 entrance-door
+  placements, 45 exit-door placements, 358 loot placements and the source's 51 actual breakable
+  reward cells. The original pavilion has no invented dirt foundation; terrain-dependent work is
+  limited to its clearing, authored floor and vertical shaft.
+- `GOLStructureGenerator`, `GOLStructurePiece`, `ProximaGOLStructure` and `GOLPlacement` restore the
+  exact underground planning contract: floor Y in 31..70, 12/16/24 radius, controller and entrance
+  offsets, stable terminal Dimension Core binding, chunk-clipped composition and natural layout
+  assignment. Registration covers the structure type, piece type, exact-layout placement type,
+  structure key/set and generator pool.
+- Focused `chromaticraft:cellular_automata_rules` coverage pins all difficulty constants and a
+  two-generation blinker, planner coordinates, a real 3x3 board, cell binding/toggling, accumulated
+  trail completion, five-wide exit opening and disk-NBT persistence. `:ChromatiCraft:compileJava`,
+  client datagen and server datagen pass; the focused test passes 1/1 in 3.997 s. No broad GameTest
+  suite was launched.
+
+**Startup registry-order correction:** `CrystalMusicManager` is initialized while ChromatiCraft's
+deferred mob-effect holders are not yet registry-bound. `CrystalPotionController.isBadEffect` no
+longer dereferences the known custom beneficial Saturation/Regeneration holders during that window;
+it classifies those two by holder identity and preserves normal category lookup for every bound
+vanilla/other effect. This removes the startup NPE without weakening potion classification.
+
+## Proxima Chromatic Beams foundation (2026-08-24)
+
+The next source-complete puzzle selected for admission is V33a's **Chromatic Beams** (`LASER`). The
+selection audit rejected Ant Farm, Altar, Dynamic Bridges, Pinball, Gravity, Tessellation and Traces
+as immediate candidates because their shipped V33a generators explicitly say cancelled/incomplete,
+return no core/solve state, or both. They remain preserved source, but registering one would bypass
+the original `isComplete()` filter and turn an unfinished upstream shell into fake port progress.
+
+- `LaserPuzzleLayout` decodes all twelve retained V33a `.struct` assets. These files are exact
+  uncompressed NBT streams with their full byte order reversed by `StructureExport`'s old encryption;
+  the decoder reverses that stream and validates every entry against the original laser-effector
+  registry identity and metadata enum.
+- All authored effector state is retained: relative coordinate, twelve-way type, eight-way direction,
+  RGB channels, rotation/fixed flags and difficulty, prism timer, full-block rendering, silent impact
+  and pulse speed. Missing optional tags receive the live V33a field defaults instead of Java/NBT zero
+  defaults that would freeze a pulse.
+- The exact difficulty sequences are restored: 6 rooms/easy, 10/medium and 12/hard, with 121, 203 and
+  286 authored effectors respectively. The source's X layout (`start + 13`, then room width + 23) and
+  terminal loot-room anchor are exposed to the upcoming structure piece. Randomized movable-effector
+  directions now derive from the serialized structure seed so chunk-order/reload cannot alter a room.
+- Focused `chromaticraft:laser_puzzle_blueprints` coverage pins all room/effect counts, deterministic
+  randomization, room stride, and the exact mirror-tutorial and complex-room bounds/type counts.
+  `:ChromatiCraft:compileJava` passes, and the focused test passes 1/1 in 8.818 s. No broad GameTest
+  suite was launched.
+- `LaserPulseLogic` is the source-exact, world-independent interaction authority for all twelve
+  effectors. It preserves RGB intersection, mirror/double-mirror/slit reflection rules, one-way and
+  polarizer gates, the refractor's distinct +90/-45 branches, splitter replacement pulses, prism
+  split/recombination timing, pass-through versus terminal targets and returning-pulse absorption at
+  emitters. Its result explicitly distinguishes a pulse that continues in place from an absorbed
+  pulse which produces replacement entities; collapsing those two paths would duplicate or lose
+  beams in several authored rooms.
+- `EntityLaserPulse` is now a registered 26.2 travelling entity rather than dormant 1.7.10 source.
+  It retains eight horizontal directions, capped source speed, RGB synchronization, silent impacts,
+  transparent-Shielding pass-through, forty-block distance culling, tonal RGB impact sounds and
+  persistent/spawn state. Its client presentation is a fullbright camera-facing `fade_star` layer
+  with the V33a trail, collision burst and Elemental Manipulator long-life reveal behavior. The
+  modern `LaserPulseReceiver` and `LaserPulseEffect` contracts are ready for block-entity and external
+  block effectors without coupling the pure interaction engine to a loaded world.
+- Focused `chromaticraft:laser_pulse_interactions` coverage exercises every effector branch plus a
+  real registered pulse entity's colour, direction, silence, speed and replacement-pulse motion.
+  `:ChromatiCraft:compileJava` passes and that test alone passes 1/1 in 3.633 s. The run used the
+  no-daemon, one-worker, selector-scoped harness; no broad GameTest suite was launched.
+
+`LASER` is intentionally not yet registered in the Proxima assignment pool. The next slice is the
+twelve modern laser-effector blocks/block entities backed by this interaction engine, followed by NBT
+room-shell, entrance and loot composition and the persistent emitter -> target -> room door -> core
+solve loop. The entity and rules foundation is accepted, but Chromatic Beams is not yet playable or
+eligible for world assignment until that complete loop exists.
+
+## Survival backbone: Personal Charger vertical slice (2026-08-24)
+
+The V33a **Personal Charger / Energy Focus** is now accepted as the next playable crystal-network
+receiver. This slice deliberately stays outside Proxima, which is being developed in a separate task.
+
+- `personal_charger` is a real block, block entity and special-rendered item. It retains the source's
+  no-collision/full-selection presentation, full light, owner-protected mining, 60,000-lumen one-colour
+  capacity, 32-block receive range, 200-lumen throughput, 800-tick request cooldown and 40% held-tool
+  charge rate.
+- The four rune sockets select the conducted colour only when all four agree. The complete V33a
+  5x7x5 frame is an authoritative generated NBT template; `PersonalChargerStructure` only anchors it
+  six blocks below the floating charger and substitutes the four rune placeholders with the selected
+  concrete colour identity. No packed colour metadata has been reintroduced.
+- Multiblock edits now revalidate receiver-backed structures through the shared adjacency callback,
+  restoring immediate deactivate/reactivate behavior after a broken cell is replaced. A twenty-tick
+  safety check also catches changes made while the receiver chunk was unloaded. Deactivation clears
+  stored energy and resets the request timer.
+- The exact multiblock casting recipe is in datagen: Crystal Core centre, all sixteen rune-ring colours,
+  four Space Dust, four Beacon Dust, twelve Glowstone Dust and four diamonds across 24 stands; 2,400
+  ticks, 800 XP, threshold 16 and zero repeated-craft XP multiplier.
+- The submit-pipeline renderer retains V33a's inactive centre blur and active coloured centre/white
+  roses/flare stack, additive-dark blending, no depth writes, source pulse curve and colour-tuned power
+  cadence. Client ambience retains the paired coloured/white falling blur and rising rune particles.
+  The item renderer uses the source's one `roses` layer at its original 0.875 half-size and rotations.
+- Both guide identities are connected: `PERSONAL` resolves to the charger item, while `MINIPYLON`
+  resolves to the same block and loads `multiblock/personal_charger` in the NBT structure viewer.
+- `CrystalReceiverBase` no longer drops receiver item state at the modern data-component boundary.
+  Stored energy plus placer name/UUID are written to and restored from item custom data, preserving
+  owner protection and lumen contents across the ordinary break/place loop for all receiver subclasses.
+- Focused `chromaticraft:personal_charger_receiver_loop` coverage checks NBT activation and colour
+  selection, receiver constants, drain, energy/owner item persistence, mismatched-rune deactivation,
+  and the full recipe contract.
+
+**Validation boundary:** source/static parity and `git diff --check` pass. The Personal Charger NBT,
+models, item model, language, mining tag and recipe snapshots still require the next safe client/server
+datagen run. No Gradle or GameTest process was started in this slice because the concurrent development
+session already owns the build/runtime resources and the known broad runner can exhaust workstation RAM.
+Run only `chromaticraft:personal_charger_receiver_loop` after those snapshots are emitted.
+
+**Next survival slice:** port the Weak Repeater's obtainable recipe/identity and then the Relay Source,
+closing the early-game weak-network path into this charger before expanding to the next production or
+storage machine.
+
+## Survival backbone: Lumen Repeater vertical slice (2026-08-24)
+
+The V33a **Weak Repeater**, displayed to players as the **Lumen Repeater**, is now the obtainable
+transmitter that connects the early casting tier to the Personal Charger. This is a full behavior
+port, not a short-range alias of the crystalline repeater.
+
+- `weak_repeater` has its own block, block entity, block item, model/lang/loot snapshots and canonical
+  `multiblock/weak_repeater` NBT definition. The guide's `WEAKREPEATER` machine page and
+  `MINIREPEATER` structure page both resolve the same registry identity, and the structure viewer now
+  routes the latter to that NBT template.
+- Placement restores `ItemChromaPlacer.findFirstValidSide`: the repeater searches every face for a
+  valid adjacent log support rather than remaining incorrectly fixed downward. Breaking and replacing
+  that support revalidates immediately through the shared adjacency seam.
+- Source constants are retained exactly: 16-block send range, 24-block receive range, 120-lumen
+  throughput, 250 point degradation, one-eighth-block incoming/outgoing beams, any elemental colour,
+  and no rain loss. `BlockTags.LOGS` is the metadata-free modern expression of the supported vanilla
+  and ordinary mod-wood families.
+- The source's intentionally restricted transmission is explicit through
+  `WeakRepeaterSafeReceiver`. Personal Charger implements it now; Relay Source and Ritual Table will
+  implement it when those pristine clusters are fully ported. Other receivers get zero modified
+  throughput and retain the one-in-eight transfer-triggered failure risk.
+- The complete 320-tick failure sequence is restored: surge cue, fire, escalating three-layer warning
+  flares, elemental lightning and discharge cues, the weighted 50/20/40 explosion/burn/rupture
+  outcomes, terminal particle/power-down payload, neighbouring fire, BLOWREPEATER progression and
+  released ownership. As in V33a, the burning repeater continues to conduct during the visible fuse;
+  only rupture permanently disables it.
+- Damaged sneak-pop and ruptured mining no longer yield a healthy machine. The rupture is mirrored to
+  a real boolean blockstate so reloads and chunk updates retain V33a's burned-side/open-top frame
+  instead of continuing to draw the active texture. Wreckage returns the original
+  3-8 sticks, 1-3 Crystal Dust stacks and fifty-percent Glowstone Dust salvage. The wooden block also
+  retains V33a's upward fire-source behavior.
+- The exact Core/Temple casting recipe is data-driven: four planks, two wooden rods, one Transmissive
+  Dust, one Glowstone Dust and one Liquid Chroma bucket produce eight; the bucket returns empty. It
+  takes 80 ticks, awards 80 XP, has Yellow and Blue ring runes plus the four authored White/Black
+  outer runes, and is gated at the modern equivalent of the ENERGY research boundary. Core-recipe
+  no-penalty semantics remain the default infinite threshold.
+- Focused `chromaticraft:weak_repeater_survival_loop` coverage pins support removal/restoration,
+  receiver safety, all network constants and the full recipe contract. It is registered but has not
+  been launched while another development session owns the Gradle/runtime processes.
+
+**Resource-loader correction:** the legacy mixed-case `textures/block/isbrhModels` directory is now
+the valid lowercase `isbrhmodels` resource path. `fused_crystals`, `radiant_stone` and
+`spacerift_stone` also expose `chromaticraft:tiered_ore` directly in their empty-state variant, with
+`underlay`, `overlay`, `host_texture`, `geode` and `stage` beside it. Nesting that discriminator under
+`model` made 26.2 parse it as an ordinary model reference and reject the entire blockstate. All active
+tiered-ore blockstates and all touched generated JSON pass static parsing.
+
+**Validation boundary:** resource JSON parsing and `git diff --check` are the available checks for this
+slice. The Weak Repeater's binary NBT snapshot and the preceding Personal Charger snapshots still need
+the next safe client/server datagen run. Do not launch the broad GameTest suite; after datagen, run only
+`chromaticraft:weak_repeater_survival_loop` and the previously pending
+`chromaticraft:personal_charger_receiver_loop`.
+
+**Next survival slice:** fully port Relay Source—registry identity, inventory/persistence, enhanced
+multiblock, storage-crystal exchange, request/drain behavior, renderer/GUI, exact recipe and focused
+test—then mark it as a safe Lumen Repeater receiver to close the first practical
+pylon -> Lumen Repeater -> Relay Source/Personal Charger loop.
+
+## Proxima fidelity follow-up: paused ritual, loci, and maze bars (2026-08-24)
+
+- `MonumentRitualEffects` now explicitly freezes its complete wall-clock timeline while Minecraft is
+  paused. Client ticks can continue behind an integrated-server pause screen, and vanilla only pauses
+  sounds which already exist; without this gate, later ritual events could create new Aura Locus
+  lightning/impact sounds over the menu. Paused time is accumulated so resuming does not skip or
+  catch up any camera, particle, ray, or score event.
+- The Aura Locus knot retains V33a's bytecode-verified `GlowKnot(0.875)` radius and six spline updates
+  per tick. Its perceived undersizing was the render pass: 26.2 vanilla lines write depth, causing the
+  main strand to reject the two quarter-alpha overdraw strands which V33a drew under
+  `glDepthMask(false)`. A dedicated alpha line pipeline now tests scene depth without writing it, and
+  the world knot uses a two-pixel modern line width. The actual spline envelope has not been inflated.
+- Aura Locus ambience is now an immediately started, silent-capable client loop keyed to each loaded
+  locus. It retains the original volume-two/32-block linear range and pitch two in Proxima, but
+  recalculates volume every sound tick so approaching and leaving the locus fade continuously instead
+  of inheriting a one-shot's start-time volume.
+- Dimension Core sprite layers use their through-wall pipeline outside the monument ritual too, and
+  the DIMCORE post-effect emitter no longer has a terrain line-of-sight rejection. The separate Aura
+  Locus screen effect deliberately retains V33a's LOS gate.
+- Three-Dimensional Maze room windows no longer place nine disconnected default iron-bar states under
+  worldgen update flag 2. Each placed bar and its existing horizontal neighbours are refreshed from
+  the real vanilla connection rules, making the result independent of within-chunk placement order
+  and joining all internal edges of the authored 3x3 panes.
+- `:ChromatiCraft:compileJava` passes. Only the relevant
+  `chromaticraft:three_d_maze_layout` GameTest was run; its added centre/corner bar-connection
+  assertions pass 1/1 in 4.125 seconds. No broad GameTest suite was launched.
+
+## Survival backbone: Relay Source vertical slice (2026-08-24)
+
+V33a's **Lumen Relay Source** is now admitted as a complete registered machine rather than the
+previous excluded 1.7.10 block entity. This work deliberately stays outside Proxima, which is owned
+by a separate development task.
+
+- `relay_source` has a dedicated block, block entity, block item, exact Techne model, block renderer
+  and special item renderer. The missing `receiver.png` was recovered byte-for-byte from repository
+  history and lives under the valid lowercase modern entity-texture path; no substitute texture was
+  invented.
+- The one-slot direct interaction is source-faithful: there is no invented container/menu. A
+  right-click ejects the previous item and inserts one charged Storage Crystal when valid. Breaking
+  the machine preserves that crystal, and an immediate full sync keeps insertion/ejection visible to
+  clients.
+- Storage behavior retains the exact source constants: 720,000 lumen per element, 32-block receive
+  range, 6,000 throughput and a 200-tick request cadence normally; the researched enhanced structure
+  raises those to 3,600,000, 48 and 30,000 and halves the live cadence. Each tick unloads at most four
+  times throughput per stored colour and never exceeds either the crystal's remaining energy or the
+  machine's free capacity.
+- V33a's demand adaptation is restored: all sixteen drain counters decay to 95%, their average moves
+  the cooldown one step between 100 and 200, and actual relay-network draw records RELAYS catch-up for
+  nearby players. Cooldown, accumulated demand, enhancement state and energy survive disk NBT. The
+  lightweight update payload also carries the inserted crystal's capacity and sixteen energy values,
+  so its rendered prisms visibly shrink while unloading without shipping a full inventory packet
+  every tick.
+- `WeakRepeaterSafeReceiver` explicitly admits the source to the obtainable Lumen Repeater path.
+  Enhanced activation requires both the exact structure and the owner's decoded `RELAYSTRUCT`
+  fragment, and revalidates every twenty ticks as well as through receiver adjacency updates.
+- `multiblock/relay_source` is generated from the exact 5x4x5 `BoostedRelayStructure`: the full smooth
+  floor, four groove cells, four source Liquid Chroma cells and supports, empty upper footprint,
+  Focus Frame centre, cardinal bricks and corner embossed stones. The source remains NBT-backed; the
+  Java wrapper only supplies the `(2,3,2)` anchor.
+- Rendering retains the exact 128x128 cuboids/UVs/pivots, separately blended fullbright edge bands,
+  source-radius orbiting per-element storage prisms, and enhanced funnel/skirt. The latter uses
+  `CAUSTICS_GENTLE` (`caustics-g`) under an additive-dark, depth-test/no-depth-write pipeline—the
+  modern equivalent of V33a's `glDepthMask(false)` pass. Enhanced ambience restores both inward
+  chroma droplets and the blended falling rapid-expand glow field.
+- The exact MultiBlock casting recipe is data-driven: Crystal Focus centre; 24 surviving stand
+  coordinates containing seven iron ingots, two Infused Dust, three Focal Powder, two Crystal Lenses,
+  two glowstone and eight obsidian; Black/Blue/White/Yellow asymmetric runes; 100 ticks and 200 XP.
+  The duplicated source assignment at `(0,-4)` correctly resolves to one stand rather than becoming
+  a fictitious twenty-fifth ingredient.
+- Guide resolution connects `RELAYSOURCE` and `RELAY` to the machine and its NBT preview. Generated
+  blockstate/model/item, loot, language, mining-tag and recipe snapshots are present, and focused
+  `chromaticraft:relay_source_survival_loop` coverage pins direct survival insertion, transfer math,
+  adaptive cadence, wooden-repeater safety and the exact recipe contract.
+
+**Validation boundary:** all touched generated JSON parses, the historical renderer texture's Git
+blob hash is `2c453bacba83b84752730934cad902507f254b67`, and `git diff --check` reports no content errors.
+The new Relay Source, Weak Repeater and Personal Charger binary structure snapshots still require the
+next safe server datagen run. `:ChromatiCraft:compileJava` passes through the no-daemon, one-worker,
+1-GiB-capped compile gate. No GameTest or datagen server was started because the concurrent Java
+sessions still own the runtime resources; launching another server would repeat the workstation-RAM
+failure mode. After datagen, run only `chromaticraft:relay_source_survival_loop`,
+`chromaticraft:weak_repeater_survival_loop` and `chromaticraft:personal_charger_receiver_loop`.
+
+**Next survival slice:** port the sixteen distinct Lumen Relay block identities, their orientation and
+connection textures, `RelayNetworker`'s source-exact straight-line search, and the first practical
+`TileEntityRelayPowered` consumer. That closes Relay Source -> relay conduit -> machine delivery; the
+Relay Source is already a normal crystal-network receiver, but relay-block delivery must not be
+claimed complete until that downstream loop is live.
+
+## Proxima structure-password and outline-rune recovery (2026-08-24)
+
+- The display shown when a puzzle Dimension Core is claimed is V33a's personal eight-rune structure
+  password, not a Dimension Core inventory renderer. The initial 26.2 overlay incorrectly treated
+  `runes/template/<colour>.png` as a 16x16 GUI icon. Those files are 16x1024 animated block-template
+  strips, which is why each coloured password frame contained repeated dark scanlines.
+- `StructureNotificationOverlay` now resolves the exact sprites V33a registered as
+  `CrystalElement.getOutlineRune`: `runes/outline/tile<element ordinal>_0.png`. It also restores the
+  source's two-times scale, 48-pixel cadence, progressive five-tick reveal, per-glyph luminance pulse,
+  three colour-matched frames, final frame fade, seven-second lifetime and C0101010-to-D0101010
+  backdrop gradient.
+- `CrystalRuneTextures` centralizes that static-glyph mapping so an animated block strip cannot be
+  substituted accidentally again. The same mapping restores the omitted eight-pixel outline runes
+  around V33a's Elemental Manipulator buffer wheel, at `0.8125*r` and the source's fixed wedge-centre
+  angles, below the authored front plate.
+- The lexicon ability-ritual page now centres the same outline glyphs in the actual proportional
+  energy segments at `0.625*r`, using V33a's segment angle accumulation rather than assuming the
+  wheel always contains all sixteen colours.
+- `:ChromatiCraft:compileJava` passes. No GameTest was run because this slice changes only submitted
+  client GUI/HUD render state; it requires visual verification when another structure core is
+  claimed and when the manipulator/ritual-energy wheels are opened.
+
+## Burrow annex/key audit and missing personal-key guide pages (2026-08-24)
+
+- The Overworld Burrow was already NBT-backed by the exact base, furnace and cache templates. Its
+  optional source sequence is now explicit: natural generation retains V33a's one-half furnace-room
+  roll followed by the conditional one-half cache-room roll, while the command inspection form
+  (`/place feature chromaticraft:burrow`) deliberately includes both annexes and waives surrounding
+  host-terrain validation. This makes the complete implementation inspectable without altering the
+  natural rarity.
+- The furnace annex retains two south-facing furnaces with weighted ore inputs and two Heat Lamps
+  independently configured from 50 through 160 C inclusive. The cache annex retains the connected
+  2x2 Chroma Door, a freshly generated UUID, the hidden ordinary chest, the Ethereal Key carrying
+  that exact UUID, and both separated block/item cache chests. All six base Burrow loot chests and
+  both cache chests now award `BURROW`, correcting a port fallback which incorrectly awarded
+  `CAVERN`.
+- The complete inspection form is also a native command-only Minecraft Structure now:
+  `/place structure chromaticraft:burrow`. Its single piece is bounded to the union of the three
+  canonical templates and deliberately centred so all 11x12x11 cells remain in one chunk. It reuses
+  the same feature callback authority for lamp temperatures, furnace inputs, loot, door UUID and key
+  rather than maintaining a second implementation. No structure set points at this entry; natural
+  frequency, host checks and optional-annex rolls remain on `natural_burrow`. The older
+  `/place feature chromaticraft:burrow` inspection alias remains available.
+- Focused `chromaticraft:structure_burrow_nbt_controller` coverage now proves both annex flags, all
+  eight Loot Chests, both furnace/Heat Lamp configurations, the connected door, and the exact hidden
+  key-to-door UUID round trip. It passes 1/1 in 3.615 s. The vanilla library roll can still fill the
+  controller before its post-roll fragment merge; V33a's `addToIInv` also returned false in this
+  situation, so the port logs it but does not invent a reserved slot.
+- V33a's Personalized Casting second guide subpage is restored on its original
+  `handbook_casttune` frame. It renders the source's square 63/47-radius annular compass, the twelve
+  non-cardinal player-specific coloured sectors and outline runes, casting-table top, eight-rune UUID
+  encoding, 4x4 personalized tuning emblem, and the player's profile head overlay. Client lookups now
+  supply game type to the tuning seed and cache by `(UUID, game type)`, preventing a client survival
+  preview from poisoning an integrated creative server's authoritative key.
+- V33a's Structure Keys second guide subpage is restored on `handbook_password`. The exact
+  `dimensionstructures.png` sheet was recovered byte-for-byte from the V33a jar. Assignments are
+  recomputed from the synchronized client dimension seed, retain the player-hash shuffle and unknown
+  icon for incomplete colours, draw completed colour frames, and reveal the personal eight-glow-rune
+  password only while its completed icon is hovered.
+- `:ChromatiCraft:compileJava` passes with only the existing deprecated mock-player warnings. The
+  selector-scoped `chromaticraft:casting_table_tuning_key` authority check also passes 1/1 in
+  4.514 s. The guide additions themselves are submitted client render state and therefore require
+  in-world visual acceptance; no broad GameTest suite was launched.
+
+**Native Burrow validation:** the new structure type compiled successfully before server datagen;
+server datagen then emitted `worldgen/structure/burrow.json` and completed all providers. The
+pre-wrapper Burrow behavior test passes 1/1 in 3.615 s. That focused test has since been upgraded to
+enter through `BurrowCommandPiece`; its only 26.2 compile issue (`ChunkPos(BlockPos)` no longer
+exists) was corrected to explicit chunk coordinates. The rerun is now blocked by the concurrently
+admitted, still-pristine V33a `RelayNetworker` and its 37 expected legacy-API errors. This is
+unrelated to the Burrow change and was neither gutted nor re-excluded merely to recover a green
+build. Static JSON/template validation and focused `git diff --check` pass; rerun only
+`chromaticraft:structure_burrow_nbt_controller` once the relay-network slice compiles again.
+
 ## Relay transport visuals and consumer dependencies (2026-09-12)
 
 - RelayNetworker now sends the discovered source-to-consumer path instead of only logging it.
@@ -6419,15 +7737,8 @@ WHITE (-16,+6,+3).
   crops, real crop loot and seed reservation. These were separate, serial focused runs, never
   the full suite. Gradle/compiler/runtime worker counts and memory were bounded using the local
   validation init script. Client visuals still need in-world acceptance.
-- **Not claimed complete:** RelayPowered and Farmer remain authored dependency-cluster WIP,
-  not registered playable consumers. Their unresolved references include the adjacency/wireless
-  efficiency framework and ModCropList. Farmer also still needs its harvest payload, item
-  renderer and registration/datagen integration. Its eleven-part Techne model and overlays are
-  written, and `textures/entity/farmer.png` was recovered unchanged from the V33a jar
-  (SHA-256 `3FCEA42330B269AA12258DCA957FD9AE0153C2DF274383A650C234E24D01DBB8`).
-  These excluded WIP sources were not covered by the successful active-slice compile/tests.
-  The source audit also corrected their mistaken weight normalization (maximum weight, not
-  total weight), submerged-neighbour check and modern DragonAPI debug flag reference.
+- RelayPowered and Farmer were completed in the follow-up slice documented below. The full
+  adjacency-upgrade block family remains pristine 1.7.10 and is not claimed playable.
 
 ## Tiered-plant visibility, Ethereal Luma and Luminous Cliffs boundaries (2026-09-12)
 
@@ -6488,6 +7799,20 @@ WHITE (-16,+6,+3).
   the Farmer's output, aura totals and sixteen stand entries. No GameTest server or second Java
   process was started.
 
+## Vibrant Pod texture sampling (2026-09-13)
+
+- Fixed `TieredPlantPodModel` passing legacy 0..16 texture offsets to 26.2's normalized
+  `TextureAtlasSprite.getU/getV` API. Both the backing and glow now sample the intended pod sprite;
+  expanded glow vertices clamp their UVs to 0..1 without changing their geometry.
+- Quad baking now derives transparency from the material instead of forcing `Transparency.NONE`.
+  The original 16x512 animated front texture contains transparent and partially transparent pixels,
+  so its sparkle overlay requires the translucent layer; the 16x16 backing remains opaque.
+- The existing datagen provider and generated blockstate/item models already select V33a's
+  `tierplant_5_back/front` assets. No asset substitution or generated-resource edit was required.
+- Validation: `:ChromatiCraft:compileJava` passed with all dependency compile tasks included, one
+  worker and parallel execution disabled. Source/API and PNG alpha checks confirm the cause and
+  material selection. In-world appearance still needs a client restart with the updated classes.
+
 ## Enrichment Vine and Scissorweed (2026-09-13)
 
 - V33a's DECOPLANT metadata 3 and 5 are now independent registered blocks and items:
@@ -6516,6 +7841,34 @@ WHITE (-16,+6,+3).
   two-gigabyte-capped client and server datagen runs completed successfully and emitted the two
   blockstates, ordinary/crop block models, two-layer item models, loot tables and casting recipes.
   No GameTest server or concurrent Gradle process was started.
+
+## Ability ownership and ritual altar geometry (2026-09-15)
+
+- V33a stores each ability's ownership and enabled status in one `chromabilities/<id>` boolean:
+  the key's presence grants ownership, while its value controls whether the effect is on. The
+  modern persistence layer now implements this distinction for all registered native abilities,
+  including grant-off, toggle, remove, available-list, state-map, server-player synchronization and
+  non-death player-clone copying. These are real data operations, not claims that the thirty-nine
+  active effects or the ritual table have landed.
+- The eleven-by-five-by-eleven V33a ritual altar has base and enhanced canonical NBT templates.
+  Both preserve the soft-clearance volume, two stone floors, beam and column tiers, engraved and
+  embossed corners, eight-block Chroma ring and the removed foundation centre. The enhanced
+  template substitutes the original glowing perimeter beams and four glowing columns. The table
+  socket is `structure_void` because the machine block is placed by the player, as in the other
+  machine multiblock templates; outer-floor rune alternatives still belong to the runtime matcher.
+- Serial two-gigabyte-capped compilation and server datagen passed and emitted both templates.
+  The altar matcher, ritual table block entity, energy transfer, 980-tick ceremony and the ability
+  behavior engine remain unported; no full or concurrent GameTest suite was launched.
+
+The next altar dependency slice admits the NBT-backed `RitualStructure` matcher and both base and
+enhanced registry identities. It restores the thirty-six outer-floor cells that may be either smooth
+stone or any of the sixteen distinct rune blocks, plus V33a's optional glowing beams and columns
+when the table permits enhancement. The table socket forward-references the actual ritual-table
+block identity; no unrelated machine is substituted. `RitualAPI` now carries both external cost
+registration and a loaded-chunk-safe query of active tables, and `AbilityAPI` registers custom
+ability IDs with V33a's invalid/reserved/duplicate checks. The current serial compilation is red at
+the intentionally unported `TileEntityRitualTable` and `ChromaBlocks.RITUAL_TABLE` dependencies;
+the table machine and its thirty-nine effects are not claimed complete.
 
 ## Reversion Lotus and Fertility Bloom (2026-09-13)
 

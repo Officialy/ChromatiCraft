@@ -221,5 +221,7 @@ pip-log.txt
 #Mr Developer
 .mr.developer.cfg
 
-# NeoForge runClient/runData working dir
+# NeoForge client/datagen and isolated headless GameTest working dirs
 run/
+run-gametest/
+/src/generated

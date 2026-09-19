@@ -3,6 +3,7 @@
   "biomes": [
     "chromaticraft:luminescent_sanctuary",
     "chromaticraft:glowing_forest",
+    "chromaticraft:crystal_forest",
     "chromaticraft:crystal_plains"
   ],
   "spawn_overrides": {},

@@ -14,6 +14,8 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityTicker;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.RenderShape;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.material.FluidState;
 
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.CrystalElement;
@@ -65,18 +67,12 @@ public class BlockDimensionCore extends BaseEntityBlock {
 	}
 
 	/**
-	 * Upstream draws a core entirely through {@code RenderDimensionCore}, which is glow-knot geometry
-	 * and the DIMCORE shader with no texture at all — {@code getImageFileName} returns null. Neither
-	 * that renderer nor DragonAPI's {@code GlowKnot} is ported, and returning INVISIBLE without one
-	 * makes the block impossible to see, which makes the sixteen-core ring impossible to build.
-	 *
-	 * <p>So it draws as a cube of Reika's own {@code roundflare} sprite, tinted with the core's colour
-	 * by {@code ChromaBlockColors}. That is a stand-in for the renderer and is marked as one; it invents
-	 * no art, and it makes each core readable at a glance, which is the whole point of a coloured ring.
+	 * Upstream draws a core entirely through {@code RenderDimensionCore}; the block model is therefore
+	 * intentionally invisible and exists only to supply a particle sprite.
 	 */
 	@Override
 	protected RenderShape getRenderShape(BlockState state) {
-		return RenderShape.MODEL;
+		return RenderShape.INVISIBLE;
 	}
 
 	/**
@@ -94,6 +90,11 @@ public class BlockDimensionCore extends BaseEntityBlock {
 		// doChecks refuses a ring whose cores do not all record the same one.
 		if (placer instanceof Player player)
 			core.setPlacer(player);
+		// V33a ItemChromaPlacer primed every Dimension Core immediately after placing it. The
+		// modern BlockItem path comes through setPlacedBy instead, so this is the equivalent hook:
+		// each newly inserted core joins the monument's staged note sequence, and removing/ritual
+		// shutdown still calls prime(false) through the controller lifecycle.
+		core.prime(true);
 	}
 
 	@Override
@@ -124,5 +125,14 @@ public class BlockDimensionCore extends BaseEntityBlock {
 		if (level.getBlockEntity(pos) instanceof TileEntityDimensionCore core && !core.isBreakable(player))
 			return 0;
 		return super.getDestroyProgress(state, player, level, pos);
+	}
+
+	@Override
+	public boolean onDestroyedByPlayer(BlockState state, Level level, BlockPos pos, Player player,
+			ItemStack toolStack, boolean willHarvest, FluidState fluid) {
+		if (level.getBlockEntity(pos) instanceof TileEntityDimensionCore core
+				&& !core.breakByPlayer(player))
+			return false;
+		return super.onDestroyedByPlayer(state, level, pos, player, toolStack, willHarvest, fluid);
 	}
 }

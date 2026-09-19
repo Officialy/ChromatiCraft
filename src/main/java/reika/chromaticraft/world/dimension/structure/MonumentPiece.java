@@ -57,17 +57,20 @@ public class MonumentPiece extends StructurePiece {
 			new net.minecraft.core.Vec3i(21, 5, 21);
 
 	private final int centreX;
+	private final int baseY;
 	private final int centreZ;
 
-	public MonumentPiece(int centreX, int centreZ) {
-		super(ProximaStructurePieces.MONUMENT.get(), 0, boundsFor(centreX, centreZ));
+	public MonumentPiece(int centreX, int baseY, int centreZ) {
+		super(ProximaStructurePieces.MONUMENT.get(), 0, boundsFor(centreX, baseY, centreZ));
 		this.centreX = centreX;
+		this.baseY = baseY;
 		this.centreZ = centreZ;
 	}
 
 	public MonumentPiece(CompoundTag tag) {
 		super(ProximaStructurePieces.MONUMENT.get(), tag);
 		this.centreX = tag.getIntOr("CX", 0);
+		this.baseY = tag.getIntOr("BaseY", MONUMENT_Y);
 		this.centreZ = tag.getIntOr("CZ", 0);
 	}
 
@@ -76,14 +79,15 @@ public class MonumentPiece extends StructurePiece {
 	 * floor reaches a block below where it starts, so the box has to include that or the floor is
 	 * clipped away at the edges.
 	 */
-	private static BoundingBox boundsFor(int centreX, int centreZ) {
-		return new BoundingBox(centreX - CLEAR_RADIUS, MONUMENT_Y - 1, centreZ - CLEAR_RADIUS,
-				centreX + CLEAR_RADIUS, MONUMENT_Y + CLEAR_HEIGHT, centreZ + CLEAR_RADIUS);
+	private static BoundingBox boundsFor(int centreX, int baseY, int centreZ) {
+		return new BoundingBox(centreX - CLEAR_RADIUS, baseY - 1, centreZ - CLEAR_RADIUS,
+				centreX + CLEAR_RADIUS, baseY + CLEAR_HEIGHT, centreZ + CLEAR_RADIUS);
 	}
 
 	@Override
 	protected void addAdditionalSaveData(StructurePieceSerializationContext context, CompoundTag tag) {
 		tag.putInt("CX", centreX);
+		tag.putInt("BaseY", baseY);
 		tag.putInt("CZ", centreZ);
 	}
 
@@ -97,16 +101,16 @@ public class MonumentPiece extends StructurePiece {
 				int x = centreX + i;
 				int z = centreZ + k;
 				// V33a lays the floor unconditionally across the square, inside the same loop.
-				place(level, chunkBB, x, MONUMENT_Y - 1, z, grass);
+				place(level, chunkBB, x, baseY - 1, z, grass);
 				for (int j = 0; j <= CLEAR_HEIGHT; j++)
 					if (insideEllipsoid(i, j, k))
-						place(level, chunkBB, x, MONUMENT_Y + j, z, air);
+						place(level, chunkBB, x, baseY + j, z, air);
 			}
 		}
 
 		// The monument itself, over the cleared ground. Only the part of it inside this chunk's box is
 		// written; the template is placed again, clipped differently, for every chunk it overlaps.
-		BlockPos anchor = new BlockPos(centreX - TEMPLATE_OFFSET, MONUMENT_Y, centreZ - TEMPLATE_OFFSET);
+		BlockPos anchor = new BlockPos(centreX - TEMPLATE_OFFSET, baseY, centreZ - TEMPLATE_OFFSET);
 		// Vanilla's own template placement rather than NBTStructureLoader: the loader is written for
 		// the feature case, where the write window is the constraint and the caller does not get a box.
 		// Here the box is exactly what is wanted, and placeInWorld honours it natively.
@@ -126,8 +130,18 @@ public class MonumentPiece extends StructurePiece {
 		BlockPos controller = anchor.offset(CONTROLLER_OFFSET);
 		if (chunkBB.isInside(controller)
 				&& level.getBlockEntity(controller)
-						instanceof reika.chromaticraft.tileentity.TileEntityStructureController structure)
+						instanceof reika.chromaticraft.tileentity.TileEntityStructureController structure) {
 			structure.setMonument();
+			structure.setMonumentLayoutVersion(MonumentIntegrity.CURRENT_LAYOUT_VERSION);
+		}
+
+		// V33a's active gold ring uses direct setBlock calls after its obsolete ring was commented out.
+		// It is therefore always present and never belongs to the probabilistic completion inlay.
+		for (net.minecraft.core.Vec3i offset : MonumentMineralBlocks.fixedGold()) {
+			BlockPos at = anchor.offset(offset);
+			if (chunkBB.isInside(at))
+				level.setBlock(at, Blocks.GOLD_BLOCK.defaultBlockState(), 2);
+		}
 
 		// The mineral inlay, rolled per cell against its own material's chance. Deliberately a subset:
 		// the ritual expects the whole of it, so whatever generation withholds is what the player has to
