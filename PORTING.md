@@ -7944,7 +7944,7 @@ the table machine and its thirty-nine effects are not claimed complete.
   lumen-cost scaling, ABILITY progression, ambient pre/post tick dispatch, probabilistic running
   costs, automatic shutoff on insufficient energy and removal when prerequisites are lost.
 - The first concrete effect set is live: magnet attraction (including phasing mode), arrow shield,
-  mob communication/de-aggro, healing, maximum-health adjustment, fireballs, lightning, shockwave
+  mob communication/de-aggro, water-running Float, healing, maximum-health adjustment, fireballs, lightning, shockwave
   and jump. Deathproof restores its escalating-chance subset of abilities, elemental buffer and
   capacity boosts after death, and Leech heals ten percent of the attack amount. Their cleanup and
   power descriptions are connected. Remaining abilities are still

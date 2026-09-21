@@ -374,6 +374,7 @@ public enum Chromabilities implements Ability {
 					AbilityHelper.instance.isMagnetNoClip(player));
 			case SHIELD -> AbilityEffects.stopArrows(player);
 			case COMMUNICATE -> AbilityEffects.deAggroMobs(player);
+			case FLOAT -> AbilityEffects.waterRun(player);
 			default -> {
 				// Remaining ambient powers are admitted with their dependency clusters rather than
 				// replaced by approximate effects here.

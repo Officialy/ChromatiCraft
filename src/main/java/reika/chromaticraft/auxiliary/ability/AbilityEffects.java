@@ -3,6 +3,8 @@ package reika.chromaticraft.auxiliary.ability;
 import java.util.List;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.tags.FluidTags;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -186,6 +188,32 @@ public final class AbilityEffects {
 			if (mob instanceof Creeper creeper && creeper.getTarget() != player)
 				creeper.setSwellDir(-1);
 		}
+	}
+
+	public static void waterRun(Player player) {
+		BlockPos feet = BlockPos.containing(player.getX(), player.getY(), player.getZ());
+		boolean lowerWater = player.level().getFluidState(feet.below(2)).is(FluidTags.WATER);
+		boolean upperFluid = !player.level().getFluidState(feet.below()).isEmpty();
+		Vec3 motion = player.getDeltaMovement();
+		if (!lowerWater || upperFluid || motion.horizontalDistance() < 0.15)
+			return;
+		player.resetFallDistance();
+		if (player.level().isClientSide()) {
+			for (int i = 0; i < 8; i++) {
+				player.level().addParticle(ParticleTypes.RAIN,
+						player.getX() + (player.getRandom().nextDouble() - 0.5) * 0.5,
+						player.getY() - 1,
+						player.getZ() + (player.getRandom().nextDouble() - 0.5) * 0.5,
+						0, 0, 0);
+			}
+		}
+		if (player.tickCount % 2 == 0)
+			player.playSound(net.minecraft.sounds.SoundEvents.PLAYER_SPLASH,
+					0.0625F + player.getRandom().nextFloat() * 0.25F,
+					0.25F + player.getRandom().nextFloat());
+		player.setDeltaMovement(motion.x * 1.05, Math.max(0, motion.y), motion.z * 1.05);
+		player.setPos(player.getX(), Mth.floor(player.getY()) + 0.7, player.getZ());
+		player.hurtMarked = true;
 	}
 
 	public static void shockwave(Player player) {
