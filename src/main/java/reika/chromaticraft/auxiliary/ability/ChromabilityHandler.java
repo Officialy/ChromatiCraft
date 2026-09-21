@@ -9,85 +9,80 @@
  ******************************************************************************/
 package reika.chromaticraft.auxiliary.ability;
 
-import java.util.Collection;
-import java.util.EnumSet;
+import net.minecraft.world.entity.player.Player;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 
-import net.minecraft.entity.player.EntityPlayer;
-
+import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.api.abilityapi.Ability;
+import reika.chromaticraft.api.abilityapi.Ability.Phase;
+import reika.chromaticraft.magic.ChromaAbilityData;
 import reika.chromaticraft.magic.ElementTagCompound;
 import reika.chromaticraft.magic.PlayerElementBuffer;
-import reika.chromaticraft.modinterface.MystPages;
 import reika.chromaticraft.registry.Chromabilities;
-import reika.chromaticraft.registry.CrystalElement;
-import reika.dragonapi.ModList;
-import reika.dragonapi.auxiliary.trackers.tickregistry.TickHandler;
-import reika.dragonapi.auxiliary.trackers.tickregistry.TickType;
-import reika.dragonapi.libraries.java.ReikaRandomHelper;
 
-import cpw.mods.fml.common.gameevent.TickEvent.Phase;
+/** Drives V33a ambient Chromabilities on the matching half of every player tick. */
+@EventBusSubscriber(modid = ChromatiCraft.MODID)
+public final class ChromabilityHandler {
 
-public class ChromabilityHandler implements TickHandler {
+	private static final double ENERGY_USE_CHANCE = 0.002;
 
-	public static final ChromabilityHandler instance = new ChromabilityHandler();
+	private ChromabilityHandler() {}
 
-	private ChromabilityHandler() {
-
+	@SubscribeEvent
+	public static void playerTickPre(PlayerTickEvent.Pre event) {
+		tick(event.getEntity(), Phase.START);
 	}
 
-	@Override
-	public void tick(TickType type, Object... tickData) {
-		EntityPlayer ep = (EntityPlayer) tickData[0];
-		Collection<Ability> li = Chromabilities.getAbilitiesForTick((Phase)tickData[1]);
-		for (Ability c : li) {
-			if ((!ep.worldObj.isRemote || c.actOnClient()) && Chromabilities.playerHasAbility(ep, c) && Chromabilities.enabledOn(ep, c)) {
-				if (!c.isFunctioningOn(ep))
-					continue;
-				if (Chromabilities.canPlayerExecuteAt(ep, c))
-					c.apply(ep);
-				if (ReikaRandomHelper.doWithChance(0.002)) { //was 0.0002
-					ElementTagCompound tag = Chromabilities.getTickCost(c, ep);
-					if (tag != null) {
-						if (PlayerElementBuffer.instance.playerHas(ep, tag))
-							PlayerElementBuffer.instance.removeFromPlayer(ep, tag);
-						else {
-							Chromabilities.setToPlayer(ep, false, c);
-						}
-					}
-				}
-			}
+	@SubscribeEvent
+	public static void playerTickPost(PlayerTickEvent.Post event) {
+		tick(event.getEntity(), Phase.END);
+	}
+
+	private static void tick(Player player, Phase phase) {
+		for (Ability ability : Chromabilities.getAbilities()) {
+			if (!ability.isTickBased() || ability.getTickPhase() != phase)
+				continue;
+			if (!ChromaAbilityData.hasAbility(player, ability) || !ChromaAbilityData.enabledOn(player, ability))
+				continue;
+			if (player.level().isClientSide() && !ability.actOnClient())
+				continue;
+			if (!ability.isFunctioningOn(player))
+				continue;
+			if (ability.canPlayerExecuteAt(player))
+				ability.apply(player);
+
+			if (!player.level().isClientSide() && player.getRandom().nextDouble() < ENERGY_USE_CHANCE)
+				chargeTickCost(player, ability);
 		}
-		if (ep.ticksExisted%40 == 0) {
-			for (Ability a : Chromabilities.getAbilities()) {
-				if (Chromabilities.playerHasAbility(ep, a)) {
-					if (a.isAvailableToPlayer(ep)) {
 
-					}
-					else {
-						Chromabilities.removeFromPlayer(ep, a);
-					}
-				}
-			}
+		if (!player.level().isClientSide() && phase == Phase.END && player.tickCount % 40 == 0)
+			removeAbilitiesWhoseRequirementsWereLost(player);
+
+		// V33a additionally drains one random element in Mystcraft worlds carrying the BUFFERDRAIN
+		// page. Mystcraft has no 26.2 port, so the integration remains intentionally dormant.
+	}
+
+	private static void chargeTickCost(Player player, Ability ability) {
+		ElementTagCompound cost = ability instanceof Chromabilities nativeAbility
+				? nativeAbility.getTickCost(player)
+				: AbilityHelper.instance.getTickCost(ability, player);
+		if (cost == null || cost.isEmpty())
+			return;
+		if (PlayerElementBuffer.instance.playerHas(player, cost)) {
+			PlayerElementBuffer.instance.removeFromPlayer(player, cost);
 		}
-		if (ep.worldObj != null && ModList.MYSTCRAFT.isLoaded() && MystPages.Pages.BUFFERDRAIN.existsInWorld(ep.worldObj)) {
-			PlayerElementBuffer.instance.removeFromPlayer(ep, CrystalElement.randomElement(), 1);
+		else {
+			ChromaAbilityData.setToPlayer(player, false, ability);
+			ability.onRemoveFromPlayer(player);
 		}
-		//ep.noClip = Chromabilities.ORECLIP.enabledOn(ep);
 	}
 
-	@Override
-	public EnumSet<TickType> getType() {
-		return EnumSet.of(TickType.PLAYER);
+	private static void removeAbilitiesWhoseRequirementsWereLost(Player player) {
+		for (Ability ability : Chromabilities.getAbilities()) {
+			if (ChromaAbilityData.hasAbility(player, ability) && !ability.isAvailableToPlayer(player))
+				ChromaAbilityData.removeFromPlayer(player, ability);
+		}
 	}
-
-	@Override
-	public boolean canFire(Phase p) {
-		return true;
-	}
-
-	@Override
-	public String getLabel() {
-		return "Chromabilities";
-	}
-
 }

@@ -481,6 +481,8 @@
   "item.chromaticraft.void_dust": "Void Essence",
   "item.chromaticraft.water_ingot": "Fluidic Essence Ingot",
   "item.chromaticraft.white_crystal_group": "White Crystal Group",
+  "key.category.chromaticraft.general": "ChromatiCraft",
+  "key.chromaticraft.ability": "Use Ability",
   "lexicon.chromaticraft.page.abilities": "Abilities",
   "lexicon.chromaticraft.page.abilitydesc": "Abilities",
   "lexicon.chromaticraft.page.accel": "Tile Accelerator",

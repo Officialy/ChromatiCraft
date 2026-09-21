@@ -3,8 +3,10 @@ package reika.chromaticraft.auxiliary.ability;
 import java.util.Collection;
 import java.util.EnumMap;
 import java.util.LinkedHashSet;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 import net.minecraft.world.entity.player.Player;
 
@@ -14,7 +16,9 @@ import reika.chromaticraft.magic.ChromaAbilityData;
 import reika.chromaticraft.auxiliary.recipemanagers.AbilityRituals;
 import reika.chromaticraft.magic.ElementTagCompound;
 import reika.chromaticraft.magic.progression.ProgressStage;
+import reika.chromaticraft.magic.progression.ProgressionManager;
 import reika.chromaticraft.registry.Chromabilities;
+import reika.chromaticraft.registry.CrystalElement;
 
 /**
  * V33a {@code AbilityHelper}, data half: what an ability costs to run and what a player must have
@@ -32,17 +36,30 @@ import reika.chromaticraft.registry.Chromabilities;
 public final class AbilityHelper implements AbilityAPI {
 
 	public static final AbilityHelper instance = new AbilityHelper();
+	public static final int[] REACH_SCALE = {8, 12, 16, 32, 64, 128, 192};
 
 	/**
 	 * V33a scales an ability's ritual aura down by this to get its running cost. The ritual is what
 	 * you pay once; this is what it draws from your buffer while it works.
 	 */
 	private static final float TICK_COST_SCALE = 0.0008F;
+	private static final String LYING_TAG = "lastCommunicateLie";
+	private static final int LYING_DURATION = 1200;
 
 	private final Map<Chromabilities, Set<ProgressStage>> progressMap = new EnumMap<>(Chromabilities.class);
+	private final Map<Chromabilities, Set<CrystalElement>> structureMap = new EnumMap<>(Chromabilities.class);
+	private final Set<UUID> noClippingMagnet = new HashSet<>();
+	private final Map<UUID, Integer> growAura = new java.util.HashMap<>();
 
 	private AbilityHelper() {
 		this.addProgress();
+		for (Map.Entry<Chromabilities, Set<ProgressStage>> entry : progressMap.entrySet()) {
+			if (entry.getValue().contains(ProgressStage.STRUCTCOMPLETE)) {
+				Set<CrystalElement> colors = new LinkedHashSet<>();
+				colors.addAll(AbilityRituals.instance.getAura(entry.getKey()).elementSet());
+				structureMap.put(entry.getKey(), colors);
+			}
+		}
 	}
 
 	@Override
@@ -94,6 +111,13 @@ public final class AbilityHelper implements AbilityAPI {
 		return set == null ? Set.of() : Set.copyOf(set);
 	}
 
+	/** V33a requires every pylon colour used by a structure-gated ritual to have been recovered. */
+	public Collection<CrystalElement> getRequiredStructuresFor(Ability ability) {
+		Set<CrystalElement> set = ability instanceof Chromabilities nativeAbility
+				? structureMap.get(nativeAbility) : null;
+		return set == null ? Set.of() : Set.copyOf(set);
+	}
+
 	/**
 	 * V33a playerCanGetAbility: an ability with no listed stages is open from the start; otherwise
 	 * every one of its stages must be met.
@@ -103,7 +127,38 @@ public final class AbilityHelper implements AbilityAPI {
 			if (!stage.isPlayerAtStage(player))
 				return false;
 		}
+		for (CrystalElement element : this.getRequiredStructuresFor(a)) {
+			if (!ProgressionManager.instance.hasPlayerCompletedStructureColor(player, element))
+				return false;
+		}
 		return true;
+	}
+
+	public boolean isMagnetNoClip(Player player) {
+		return noClippingMagnet.contains(player.getUUID());
+	}
+
+	public void setNoClippingMagnet(Player player, boolean enabled) {
+		if (enabled)
+			noClippingMagnet.add(player.getUUID());
+		else
+			noClippingMagnet.remove(player.getUUID());
+	}
+
+	public int getGrowAuraState(Player player) {
+		return growAura.getOrDefault(player.getUUID(), 0);
+	}
+
+	public void setGrowAuraState(Player player, int level) {
+		if (level > 0)
+			growAura.put(player.getUUID(), level);
+		else
+			growAura.remove(player.getUUID());
+	}
+
+	public boolean isPeaceActive(Player player) {
+		return player.level().getGameTime()
+				- player.getPersistentData().getLongOr(LYING_TAG, 0) > LYING_DURATION;
 	}
 
 	/**
@@ -127,6 +182,10 @@ public final class AbilityHelper implements AbilityAPI {
 		// CHROMA-PORT: upstream then applies power(0.75) if the player holds an active Efficiency
 		// Crystal. ItemEfficiencyCrystal is not ported, so no discount applies yet.
 		return tag;
+	}
+
+	public ElementTagCompound getElementsFor(Ability ability) {
+		return AbilityRituals.instance.getAura(ability);
 	}
 
 	/** V33a getTickCost: only the abilities that pay continuously have a per-tick draw. */

@@ -22,6 +22,8 @@ import reika.chromaticraft.client.ClientPayloadHandlers;
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.client.PylonAttackOverlay;
 import reika.chromaticraft.registry.CrystalElement;
+import reika.chromaticraft.registry.Chromabilities;
+import reika.chromaticraft.api.abilityapi.Ability;
 import reika.chromaticraft.render.particle.ChromaParticle;
 import reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe;
 
@@ -93,6 +95,27 @@ public final class ChromaNetwork {
 				ChromaNetwork::handleSetHeatLampTemperature);
 		registrar.playToServer(ToggleCrystalCharger.TYPE, ToggleCrystalCharger.CODEC,
 				ChromaNetwork::handleToggleCrystalCharger);
+		registrar.playToServer(ActivateAbility.TYPE, ActivateAbility.CODEC,
+				ChromaNetwork::handleActivateAbility);
+	}
+
+	/** V33a ABILITY packet, keyed by the stable ability id rather than a load-order integer. */
+	public record ActivateAbility(String abilityId, int level) implements CustomPacketPayload {
+		public static final Type<ActivateAbility> TYPE = createType("activate_ability");
+		public static final StreamCodec<ByteBuf, ActivateAbility> CODEC = StreamCodec.composite(
+				ByteBufCodecs.STRING_UTF8, ActivateAbility::abilityId,
+				ByteBufCodecs.VAR_INT, ActivateAbility::level, ActivateAbility::new);
+		@Override public Type<ActivateAbility> type() { return TYPE; }
+	}
+
+	private static void handleActivateAbility(ActivateAbility payload, IPayloadContext context) {
+		context.enqueueWork(() -> {
+			if (!(context.player() instanceof ServerPlayer player))
+				return;
+			Ability ability = Chromabilities.getAbility(payload.abilityId());
+			if (ability != null)
+				Chromabilities.triggerAbility(player, ability, payload.level());
+		});
 	}
 
 	public static void sendAttack(ServerLevel level, BlockPos source, LivingEntity target, CrystalElement color, float size) {

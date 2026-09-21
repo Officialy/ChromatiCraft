@@ -13,8 +13,12 @@ import net.minecraft.world.entity.player.Player;
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.api.abilityapi.Ability;
 import reika.chromaticraft.auxiliary.recipemanagers.AbilityRituals;
+import reika.chromaticraft.auxiliary.ability.AbilityHelper;
+import reika.chromaticraft.auxiliary.ability.AbilityEffects;
 import reika.chromaticraft.magic.ElementTagCompound;
 import reika.chromaticraft.magic.ChromaAbilityData;
+import reika.chromaticraft.magic.PlayerElementBuffer;
+import reika.chromaticraft.magic.progression.ProgressStage;
 
 /**
  * V33a {@code Chromabilities}: the thirty-nine powers a player can ritual into existence.
@@ -182,7 +186,7 @@ public enum Chromabilities implements Ability {
 			case JUMP -> 8;
 			case LIGHTNING -> 2;
 			case MAGNET -> 1;
-			case REACH -> 8;
+			case REACH -> AbilityHelper.REACH_SCALE.length - 1;
 			case SHIFT -> 24;
 			case SONIC -> 12;
 			default -> 0;
@@ -246,6 +250,19 @@ public enum Chromabilities implements Ability {
 		return li;
 	}
 
+	/** Maximum selectable V33a power after constraining it to the player's current lumen buffer. */
+	public static int maxPower(Player player, Ability ability) {
+		int base = ability.getMaxPower();
+		if (player.getAbilities().instabuild || base <= 0)
+			return base;
+		int level = base;
+		ElementTagCompound perLevel = AbilityHelper.instance.getElementsFor(ability).scale(0.01F);
+		for (reika.chromaticraft.registry.CrystalElement element : perLevel.elementSet())
+			level = Math.min(level, PlayerElementBuffer.instance.getPlayerContent(player, element)
+					/ perLevel.getValue(element));
+		return Math.max(1, level);
+	}
+
 	public boolean enabledOn(Player player) {
 		return ChromaAbilityData.enabledOn(player, this);
 	}
@@ -264,6 +281,64 @@ public enum Chromabilities implements Ability {
 
 	public void removeFromPlayer(Player player) {
 		ChromaAbilityData.removeFromPlayer(player, this);
+	}
+
+	/**
+	 * Server-authoritative V33a ability activation: pay the correctly scaled lumen cost, toggle the
+	 * persisted state, apply the two parameterized ambient settings, and fire event-driven powers.
+	 */
+	public static boolean triggerAbility(Player player, Ability ability, int level) {
+		return triggerAbility(player, ability, level, 1);
+	}
+
+	public static boolean triggerAbility(Player player, Ability ability, int level, float costScale) {
+		if (player.level().isClientSide() || ability == null || !ChromaAbilityData.hasAbility(player, ability))
+			return false;
+		if (!ability.isAvailableToPlayer(player) || !ability.canPlayerExecuteAt(player))
+			return false;
+		if (level < 0 || level > ability.getMaxPower() || !Float.isFinite(costScale) || costScale < 0)
+			return false;
+
+		ElementTagCompound use = AbilityHelper.instance.getUsageElementsFor(ability, player).scale(costScale);
+		if (ability == HEALTH)
+			use.scale(10 * (1 + level));
+		else if (ability == SHIFT)
+			use.scale(10);
+		else if (ability == LIGHTNING)
+			use.scale(10 * (1 + level * level));
+		else if (ability == BREADCRUMB)
+			use.scale(5 * (1 + level * 4));
+		else if (ability == LIFEPOINT)
+			use.scale(5);
+		else if (ability == DIMPING)
+			use.scale(125);
+		else if (ability == LASER)
+			use.scale(800);
+		else if (ability == LIGHTCAST)
+			use.scale(20);
+		else if (ability == JUMP)
+			use.scale(1 + level);
+
+		if (!PlayerElementBuffer.instance.playerHas(player, use))
+			return false;
+
+		ProgressStage.ABILITY.stepPlayerTo(player);
+		boolean wasEnabled = ChromaAbilityData.enabledOn(player, ability) || ability.isPureEventDriven();
+		ChromaAbilityData.setToPlayer(player, !wasEnabled, ability);
+		if (wasEnabled)
+			ability.onRemoveFromPlayer(player);
+
+		if (ability == MAGNET)
+			AbilityHelper.instance.setNoClippingMagnet(player, !wasEnabled && level > 0);
+		if (ability == GROWAURA)
+			AbilityHelper.instance.setGrowAuraState(player, !wasEnabled ? level : 0);
+
+		if (ability.isTickBased())
+			return true;
+		if (!ability.trigger(player, level))
+			return false;
+		PlayerElementBuffer.instance.removeFromPlayer(player, use);
+		return true;
 	}
 
 	@Override
@@ -292,24 +367,56 @@ public enum Chromabilities implements Ability {
 		return reika.chromaticraft.auxiliary.ability.AbilityHelper.instance.getTickCost(this, player);
 	}
 
-	/** CHROMA-PORT: the ambient half, driven by AbilityHelper's tick handlers. */
 	@Override
-	public void apply(Player player) {}
-
-	/** CHROMA-PORT: the trigger half. Returns false, which upstream reads as "did not fire". */
-	@Override
-	public boolean trigger(Player player, int level) {
-		return false;
+	public void apply(Player player) {
+		switch (this) {
+			case MAGNET -> AbilityEffects.attractItemsAndExperience(player, 24,
+					AbilityHelper.instance.isMagnetNoClip(player));
+			case SHIELD -> AbilityEffects.stopArrows(player);
+			case COMMUNICATE -> AbilityEffects.deAggroMobs(player);
+			default -> {
+				// Remaining ambient powers are admitted with their dependency clusters rather than
+				// replaced by approximate effects here.
+			}
+		}
 	}
 
-	/** CHROMA-PORT: cleanup when an ability leaves a player. */
 	@Override
-	public void onRemoveFromPlayer(Player player) {}
+	public boolean trigger(Player player, int level) {
+		return switch (this) {
+			case HEAL -> {
+				AbilityEffects.heal(player, level);
+				yield true;
+			}
+			case FIREBALL -> AbilityEffects.launchFireball(player, level);
+			case HEALTH -> {
+				AbilityEffects.setPlayerMaxHealth(player, this.enabledOn(player) ? level : 0);
+				yield true;
+			}
+			case LIGHTNING -> AbilityEffects.spawnLightning(player, level);
+			case SHOCKWAVE -> {
+				AbilityEffects.shockwave(player);
+				yield true;
+			}
+			case JUMP -> AbilityEffects.jump(player, level);
+			default -> false;
+		};
+	}
 
-	/** CHROMA-PORT: whether the ability is doing anything right now, which gates its energy drain. */
+	@Override
+	public void onRemoveFromPlayer(Player player) {
+		switch (this) {
+			case HEALTH -> AbilityEffects.setPlayerMaxHealth(player, 0);
+			case MAGNET -> AbilityHelper.instance.setNoClippingMagnet(player, false);
+			case GROWAURA -> AbilityHelper.instance.setGrowAuraState(player, 0);
+			default -> {
+			}
+		}
+	}
+
 	@Override
 	public boolean isFunctioningOn(Player player) {
-		return false;
+		return this != COMMUNICATE || AbilityHelper.instance.isPeaceActive(player);
 	}
 
 	/**
@@ -318,6 +425,16 @@ public enum Chromabilities implements Ability {
 	 */
 	@Override
 	public String getPowerDesc(int level) {
-		return String.valueOf(level);
+		return switch (this) {
+			case SONIC -> level + "m radius\nMax explosion resist "
+					+ String.format(Locale.ROOT, "%.0f", 12F * level);
+			case SHIFT -> level + "m shift";
+			case HEAL -> String.format(Locale.ROOT, "%.1f hearts", level / 2F);
+			case MAGNET -> level > 0 ? "Phasing" : "Solid";
+			case REACH -> AbilityHelper.REACH_SCALE[Math.clamp(level, 0,
+					AbilityHelper.REACH_SCALE.length - 1)] + "m";
+			case JUMP, FIREBALL, HEALTH, LIGHTNING, BREADCRUMB -> "Level " + level;
+			default -> null;
+		};
 	}
 }

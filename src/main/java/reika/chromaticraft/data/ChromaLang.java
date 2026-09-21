@@ -41,6 +41,8 @@ public class ChromaLang extends LanguageProvider {
 		add("tab.chromaticraft.tools", "ChromatiCraft Tools");
 		add("tab.chromaticraft.items", "ChromatiCraft Items");
 		add("tab.chromaticraft.fragments", "CC Info Fragments");
+		add("key.chromaticraft.ability", "Use Ability");
+		add("key.category.chromaticraft.general", "ChromatiCraft");
 		// V33a Registry/ChromaBlocks basicName keys "chroma.storageblock" and "chroma.display" have
 		// no entry at all in the V33a en_US.lang (never publicly named); no ground truth exists for
 		// these two, so the text below is retained pre-existing invented text, not a port. See report.

@@ -7927,3 +7927,26 @@ the table machine and its thirty-nine effects are not claimed complete.
   single-worker, two-gigabyte-capped client and server datagen runs completed successfully and
   emitted both plant resource families, both casting recipes and all four fluid-mixing recipes.
   No GameTest server or concurrent Gradle process was started.
+
+## Ability Altar and Runtime Foundation (2026-09-21)
+
+- The Ritual Table is now a distinct registered block, block entity and menu. Its base and enhanced
+  appearances use Reika's original six altar sprites, while its recipe, models, blockstate, loot,
+  language and mining tag are data-generated. The exact V33a base and enhanced structure templates
+  are validated in-world, including the rune alternatives and enhanced glowing frame.
+- The full 980-tick ceremony now requests and consumes the authored elemental aura, owns and pulls
+  its initiating player, aborts safely when the player or structure is lost, grants the selected
+  ability, posts the completion event and synchronizes the original globe/burst presentation. The
+  selection screen uses Reika's original ability GUI art and filters by progression, fragment,
+  enhancement and existing ownership exactly at the authoritative menu boundary.
+- Ability ownership, enable state and external registrations persist in player data. The original
+  middle-mouse selector is restored with a server-authoritative activation payload, V33a power and
+  lumen-cost scaling, ABILITY progression, ambient pre/post tick dispatch, probabilistic running
+  costs, automatic shutoff on insufficient energy and removal when prerequisites are lost.
+- The first concrete effect set is live: magnet attraction (including phasing mode), arrow shield,
+  mob communication/de-aggro, healing, maximum-health adjustment, fireballs, lightning, shockwave
+  and jump. Their cleanup and power descriptions are connected. Remaining abilities are still
+  explicitly pending their dependency clusters; this entry does not claim the full thirty-nine-
+  ability behavior engine complete.
+- Validation: serial single-worker compilation with a two-gigabyte heap passes. Client and server
+  datagen emitted the altar resources and recipe. No GameTest server was launched.
