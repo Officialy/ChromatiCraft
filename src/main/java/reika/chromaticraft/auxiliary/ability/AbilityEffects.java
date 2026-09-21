@@ -30,17 +30,30 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
 
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.registry.ChromaSounds;
+import reika.chromaticraft.registry.Chromabilities;
 
 /** Direct 26.2 implementations of V33a Chromability effects with no intermediary legacy API. */
+@EventBusSubscriber(modid = ChromatiCraft.MODID)
 public final class AbilityEffects {
 
 	private static final Identifier HEALTH_MODIFIER = Identifier.fromNamespaceAndPath(
 			ChromatiCraft.MODID, "ability_health");
 
 	private AbilityEffects() {}
+
+	/** V33a Leech heals ten percent of the incoming attack amount dealt by its owning player. */
+	@SubscribeEvent
+	public static void leechDamage(LivingDamageEvent.Post event) {
+		if (event.getSource().getEntity() instanceof Player player
+				&& Chromabilities.LEECH.enabledOn(player))
+			player.heal(event.getOriginalDamage() * 0.1F);
+	}
 
 	public static void heal(Player player, int health) {
 		player.heal(health);
