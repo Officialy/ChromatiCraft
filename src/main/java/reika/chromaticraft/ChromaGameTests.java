@@ -403,6 +403,7 @@ public final class ChromaGameTests {
 		register(event, env, "manipulator_repeater_dispatch", ChromaGameTests::manipulatorRepeaterDispatch);
 		register(event, env, "manipulator_cliff_transparify", ChromaGameTests::manipulatorCliffTransparify);
 		register(event, env, "pylon_worldgen_grid_density", ChromaGameTests::pylonWorldgenGridDensity);
+		register(event, env, "pylon_worldgen_grass_site", ChromaGameTests::pylonWorldgenGrassSite);
 		register(event, env, "casting_table_menu_grid", ChromaGameTests::castingTableMenuGrid);
 		register(event, env, "early_game_casting_stand_chain", ChromaGameTests::earlyGameCastingStandChain);
 		register(event, env, "casting_manipulator_fake_player_guard", ChromaGameTests::castingManipulatorFakePlayerGuard);
@@ -4930,6 +4931,27 @@ public final class ChromaGameTests {
         }
         helper.assertTrue(selected == 625,
                 "V33a's 256-chunk shuffled grid must retain all 625 pylon candidates; got " + selected);
+        helper.succeed();
+    }
+
+    /** V33a explicitly accepts grass as both floor and slope material at a natural pylon site. */
+    private static void pylonWorldgenGrassSite(GameTestHelper helper) {
+        BlockPos base = helper.absolutePos(new BlockPos(8, 3, 8));
+        for (int direction = 0; direction < 4; direction++) {
+            int stepX = direction == 0 ? 1 : direction == 1 ? -1 : 0;
+            int stepZ = direction == 2 ? 1 : direction == 3 ? -1 : 0;
+            for (int distance = 0; distance <= 3; distance++) {
+                for (int lateral = -1; lateral <= 1; lateral++) {
+                    int dx = stepX * distance + stepZ * lateral;
+                    int dz = stepZ * distance + stepX * lateral;
+                    helper.getLevel().setBlock(base.offset(dx, 0, dz), Blocks.GRASS_BLOCK.defaultBlockState(), 3);
+                    for (int y = 1; y <= 9; y++)
+                        helper.getLevel().setBlock(base.offset(dx, y, dz), Blocks.AIR.defaultBlockState(), 3);
+                }
+            }
+        }
+        helper.assertTrue(PylonFeature.canGenerateAt(helper.getLevel(), base),
+                "a clear grass site must pass the V33a pylon placement predicate");
         helper.succeed();
     }
 

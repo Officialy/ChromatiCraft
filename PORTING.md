@@ -2691,13 +2691,14 @@ crystals across all sixteen colours. `luminous_cliffs` absent from a 10k sample 
 defect — it replaces `WINDSWEPT_HILLS`/`STONY_SHORE` inside a weight-2 TerraBlender region and
 `/locate biome` resolves it.
 
-**Pylon acceptance rate is still the open question.** Roughly 4 pylon chunks against ~98 grid
-candidates in that same fresh world (~4%), and the grid itself is faithful (625 candidate cells per
-256x256 against `ShuffledGrid`'s 676). The site predicate was audited against source and is faithful
-— `ReikaWorldHelper.softBlocks` resolves to air/liquids/`isReplaceable`/vine/tallgrass/deadbush/fire/
-snow_layer, all covered by modern `canBeReplaced()`, and the cross-shaped footprint and both
-replaceable sets match. So the remaining sparsity is terrain roughness, not a coverage gap, and the
-step move above did not change it. Note that `RUNEUSE <- ALLCOLORS <- PYLON` puts sixteen
+**Pylon acceptance had one modern tag mismatch.** Roughly 4 pylon chunks against ~98 grid
+candidates in that same fresh world (~4%), while the grid itself is faithful (625 candidate cells per
+256x256 against `ShuffledGrid`'s 676). V33a explicitly accepts `Blocks.grass` in both its floor and
+above-floor slope replacement sets, but 26.2's `minecraft:dirt` tag does not include
+`minecraft:grass_blocks`; ordinary grassy candidates were therefore rejected. Both predicates now
+include `BlockTags.GRASS_BLOCKS`, with a focused site-contract test. The rest of
+`ReikaWorldHelper.softBlocks` is covered by modern `canBeReplaced()`, and the cross-shaped footprint
+still matches. Note that `RUNEUSE <- ALLCOLORS <- PYLON` puts sixteen
 distinct-colour pylon sightings on the critical path, so this rate is load-bearing for the beta arc.
 There is also no retrogen: V33a back-filled existing chunks and a placed feature cannot, so any
 already-explored world stays empty regardless.

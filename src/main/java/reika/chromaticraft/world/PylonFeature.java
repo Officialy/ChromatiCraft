@@ -207,13 +207,14 @@ public final class PylonFeature extends Feature<NoneFeatureConfiguration> {
 
     private static boolean isFloorReplaceable(BlockState state) {
         return state.canBeReplaced() || state.is(BlockTags.BASE_STONE_OVERWORLD)
-                || state.is(BlockTags.DIRT) || state.is(BlockTags.SAND)
+                || state.is(BlockTags.DIRT) || state.is(BlockTags.GRASS_BLOCKS) || state.is(BlockTags.SAND)
                 || state.is(Blocks.GRAVEL) || state.is(Blocks.TERRACOTTA)
                 || state.is(BlockTags.LOGS) || state.is(BlockTags.LEAVES);
     }
 
     private static boolean isAirReplaceable(BlockState state) {
         return state.isAir() || state.canBeReplaced() || state.is(BlockTags.DIRT)
+                || state.is(BlockTags.GRASS_BLOCKS)
                 || state.is(Blocks.GRAVEL) || state.is(BlockTags.LOGS) || state.is(BlockTags.LEAVES);
     }
 
