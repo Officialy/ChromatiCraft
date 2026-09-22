@@ -1,84 +1,58 @@
-/*******************************************************************************
- * @author Reika Kalseki
- *
- * Copyright 2017
- *
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
- ******************************************************************************/
 package reika.chromaticraft.tileentity.auxiliary;
 
-import java.util.HashSet;
-import java.util.List;
+import java.util.UUID;
 
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.particle.EntityFX;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.effect.EntityLightningBolt;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.potion.PotionEffect;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.AxisAlignedBB;
-import net.minecraft.util.DamageSource;
-import net.minecraft.util.IIcon;
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Mth;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.LightningBolt;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.AABB;
 
-import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.auxiliary.ChromaAux;
-import reika.chromaticraft.auxiliary.render.ChromaOverlays;
 import reika.chromaticraft.base.tileentity.TileEntityPylonEnhancer;
+import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
 import reika.chromaticraft.magic.CrystalPotionController;
 import reika.chromaticraft.magic.network.CrystalNetworker;
-import reika.chromaticraft.magic.network.PylonFinder;
 import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.magic.progression.ProgressionManager;
+import reika.chromaticraft.network.ChromaNetwork;
+import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaIcons;
-import reika.chromaticraft.registry.ChromaPackets;
 import reika.chromaticraft.registry.ChromaSounds;
 import reika.chromaticraft.registry.ChromaTiles;
 import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.render.particle.EntityCCBlurFX;
-import reika.chromaticraft.render.particle.EntityCCFloatingSeedsFX;
-import reika.chromaticraft.render.particle.EntityCenterBlurFX;
-import reika.chromaticraft.render.particle.EntityLaserFX;
-import reika.chromaticraft.render.particle.EntityRuneFX;
-import reika.chromaticraft.render.particle.EntitySparkleFX;
+import reika.chromaticraft.render.particle.ChromaParticle;
 import reika.chromaticraft.tileentity.networking.TileEntityCrystalPylon;
-import reika.dragonapi.instantiable.data.immutable.Coordinate;
-import reika.dragonapi.instantiable.effects.EntityFloatingSeedsFX;
-import reika.dragonapi.libraries.ReikaAABBHelper;
-import reika.dragonapi.libraries.io.ReikaPacketHelper;
-import reika.dragonapi.libraries.io.ReikaSoundHelper;
 import reika.dragonapi.libraries.java.ReikaRandomHelper;
-import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
-import reika.dragonapi.libraries.mathsci.ReikaPhysicsHelper;
-import reika.dragonapi.libraries.rendering.ReikaRenderHelper;
-import reika.dragonapi.libraries.world.ReikaWorldHelper;
+import reika.dragonapi.libraries.level.ReikaWorldHelper;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
-
-
-public class TileEntityPylonTurboCharger extends TileEntityPylonEnhancer {
+/** V33a's complete nine-focus pylon turbocharging ritual. */
+public final class TileEntityPylonTurboCharger extends TileEntityPylonEnhancer {
 
 	public static final int EFFECT_RANGE = 256;
-
 	public static final int RITUAL_LENGTH = 2400;
 
-	private int revTick = 0;
-	private int ritualTick = 0;
-	private Location location;
-
-	private int jetTick = 0;
+	private int revTick;
+	private int ritualTick;
+	private int jetTick;
 	private int groundTick;
-	private int skyTick = 0;
+	private int skyTick;
+	private Location location;
+	private boolean complete;
+	private UUID turboPlayer;
 
-	private boolean isComplete;
-
-	private EntityPlayer turboPlayer;
+	public TileEntityPylonTurboCharger(BlockPos pos, BlockState state) {
+		super(ChromaBlockEntities.PYLON_TURBOCHARGER.get(), pos, state);
+	}
 
 	@Override
 	public ChromaTiles getTile() {
@@ -91,806 +65,415 @@ public class TileEntityPylonTurboCharger extends TileEntityPylonEnhancer {
 	}
 
 	@Override
-	public void updateEntity(World world, int x, int y, int z, int meta) {
-		if (!world.isRemote) {
-			if (location == null && ritualTick > 0) {
-				if (revTick > 0) {
-					EntityPlayer ep = world.getClosestPlayer(x, y, z, 6);
-					if (ep == null) //no players inside
-						revTick--;
-					if (revTick < 16) {
-						Location loc = Location.list[revTick/2];
-						Coordinate c = loc.position.offset(x, y, z);
-						ChromaTiles t = ChromaTiles.getTileFromIDandMetadata(c.getBlock(world), c.getBlockMetadata(world));
-						if (t != ChromaTiles.PYLONTURBO) {
-							this.failRitual(world, x, y, z);
-							return;
-						}
-						TileEntityPylonTurboCharger te = (TileEntityPylonTurboCharger)c.getTileEntity(world);
-						te.ritualTick = ritualTick;
-					}
-					if (revTick == 0) {
-						this.triggerStartFX(world, x, y, z);
-					}
-					ChromaSounds.ERROR.playSoundAtBlock(this, 1, 0.5F); //low buzz
-				}
-				else {
-					this.doRitualTick(world, x, y, z);
-					ritualTick--;
-					if (ritualTick == 0) {
-						this.completeRitual(world, x, y, z);
-					}
-				}
-			}
-		}
-		else {
-			this.doParticles(world, x, y, z);
-		}
-
-		if (world.isRemote && revTick > 0) {
-			this.doRevEffects(world, x, y, z);
-		}
-	}
-
-	@SideOnly(Side.CLIENT)
-	private void doRevEffects(World world, int x, int y, int z) {
-		TileEntityCrystalPylon te = this.getPylon(world, x, y, z);
-		for (int i = 0; i < Location.list.length; i++) {
-			Location loc = Location.list[i];
-			Coordinate c = loc.position.offset(x, y, z);
-			double px = c.xCoord+0.5;
-			double py = c.yCoord+0.5;
-			double pz = c.zCoord+0.5;
-
-			double dx = px-xCoord-0.5;
-			double dy = py-yCoord-0.5;
-			double dz = pz-zCoord-0.5;
-
-			double dd = ReikaMathLibrary.py3d(dx, dy, dz);
-
-			double v = -ReikaRandomHelper.getRandomPlusMinus(0.0625, 0.03125);
-
-			double vx = dx/dd*v;
-			double vy = dy/dd*v;
-			double vz = dz/dd*v;
-
-			float s = ReikaRandomHelper.getRandomBetween(6, 9);
-
-			EntityFX fx = new EntityCenterBlurFX(te.getColor(), world, px, py, pz, vx, vy, vz).setScale(s);
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-		}
-	}
-
-	@SideOnly(Side.CLIENT)
-	private void doParticles(World world, int x, int y, int z) {
-		double px = x+0.5;
-		double py = y+0.4375;
-		double pz = z+0.5;
-
-		px = ReikaRandomHelper.getRandomPlusMinus(px, 0.03125);
-		py = ReikaRandomHelper.getRandomPlusMinus(py, 0.03125);
-		pz = ReikaRandomHelper.getRandomPlusMinus(pz, 0.03125);
-
-		int l = 5+rand.nextInt(35);
-		float s = (float)ReikaRandomHelper.getRandomPlusMinus(1, 0.5);
-
-		int r = 192+rand.nextInt(64);
-		int g = 192+rand.nextInt(64);
-		int b = 192+rand.nextInt(64);
-
-		EntityFX fx = new EntityCCBlurFX(world, px, py, pz).setColor(r, g, b).setScale(s).setGravity(0).setLife(l);
-		Minecraft.getMinecraft().effectRenderer.addEffect(fx);
+	protected void onFirstTick(Level world, BlockPos pos) {
+		findLocation(world, pos);
 	}
 
 	@Override
-	protected void onFirstTick(World world, int x, int y, int z) {
-		ritualTick = 0;
-		skyTick = 0;
-		groundTick = 0;
-		jetTick = 0;
-		this.findLocation(world, x, y, z);
-	}
+	public void updateEntity(Level world, BlockPos pos) {
+		if (world.isClientSide()) {
+			if (skyTick > 0)
+				skyTick--;
+			return;
+		}
+		if (location != null || ritualTick <= 0)
+			return;
 
-	private void findLocation(World world, int x, int y, int z) {
-		for (int i = 0; i < Location.list.length; i++) {
-			Location loc = Location.list[i];
-			Coordinate c = loc.getRelativePylonLocation().offset(x, y, z);//loc.position.negate().offset(x, y, z);
-			TileEntity te = c.getTileEntity(world);
-			if (te instanceof TileEntityCrystalPylon && ((TileEntityCrystalPylon)te).canConduct()) {
-				/*
-			if (te instanceof TileEntityPylonTurboCharger) {
-				if (((TileEntityPylonTurboCharger)te).getPylon(world, te.xCoord, te.yCoord, te.zCoord) != null) {*/
-				location = loc;
-				return;
-				//}
-			}
-		}
-		if (location == null && this.getPylon(world, x, y, z) != null) {
-			for (int i = 0; i < Location.list.length; i++) {
-				Location loc = Location.list[i];
-				Coordinate c = loc.position.offset(x, y, z);
-				TileEntity te = c.getTileEntity(world);
-				if (te instanceof TileEntityPylonTurboCharger) {
-					((TileEntityPylonTurboCharger)te).location = loc;
-				}
-			}
-		}
-	}
-
-	private void doRitualTick(World world, int x, int y, int z) {
-		TileEntityCrystalPylon te = this.getPylon(world, x, y, z);
-		if (te == null) {
-			this.failRitual(world, x, y, z);
-		}
-		else {
-			for (int i = 0; i < Location.list.length; i++) {
-				Coordinate c = Location.list[i].position.offset(x, y, z);
-				ChromaTiles t = ChromaTiles.getTileFromIDandMetadata(c.getBlock(world), c.getBlockMetadata(world));
-				if (t != ChromaTiles.PYLONTURBO) {
-					this.failRitual(world, x, y, z);
+		if (revTick > 0) {
+			Player nearby = world.getNearestPlayer(pos.getX() + 0.5, pos.getY() + 0.5,
+					pos.getZ() + 0.5, 6, false);
+			if (nearby == null)
+				revTick--;
+			if (revTick < 16) {
+				Location slot = Location.VALUES[revTick / 2];
+				TileEntityPylonTurboCharger focus = chargerAt(world, pos.offset(slot.offset));
+				if (focus == null) {
+					failRitual((ServerLevel)world);
 					return;
 				}
-				TileEntityPylonTurboCharger tile = (TileEntityPylonTurboCharger)c.getTileEntity(world);
-				tile.ritualTick = ritualTick;
+				focus.ritualTick = ritualTick;
 			}
-
-			if ((RITUAL_LENGTH-ritualTick)%200 == 0) {
-				ChromaSounds.PYLONBOOSTRITUAL.playSoundAtBlockNoAttenuation(this, 0.75F, 1, EFFECT_RANGE);
-			}
-
-			if (rand.nextInt(20) == 0) {
-				int rx = ReikaRandomHelper.getRandomPlusMinus(te.xCoord, 12);
-				int rz = ReikaRandomHelper.getRandomPlusMinus(te.zCoord, 12);
-				int ry = ReikaRandomHelper.getRandomPlusMinus(te.yCoord, 6);
-				ReikaWorldHelper.ignite(world, rx, ry, rz);
-			}
-
-			if (skyTick > 0) {
-				this.doEvent(world, x, y, z, EventType.SKY);
-				skyTick--;
-			}
-			if (groundTick > 0) {
-				this.doEvent(world, x, y, z, EventType.PARTICLEBURST);
-				groundTick--;
-			}
-			if (jetTick > 0) {
-				this.doEvent(world, x, y, z, EventType.JETS);
-				jetTick--;
-			}
-
-			if (this.triggerEffect(120, 1.5, 0)) {
-				this.doEvent(world, x, y, z, EventType.FLASH);
-			}
-			if (this.triggerEffect(20, 0.25, RITUAL_LENGTH/4)) {
-				this.doEvent(world, x, y, z, EventType.BEAM);
-			}
-			if (groundTick == 0 && this.triggerEffect(200, 0.75, RITUAL_LENGTH/2)) {
-				groundTick = 5+rand.nextInt(10);
-				this.doEvent(world, x, y, z, EventType.PARTICLEBURST);
-			}
-			if (skyTick == 0 && this.triggerEffect(100, 1.5, 0)) {
-				skyTick = 20+rand.nextInt(80);
-				this.doEvent(world, x, y, z, EventType.SKY);
-			}
-			if (jetTick == 0 && this.triggerEffect(80, 1, RITUAL_LENGTH/2)) {
-				jetTick = 40+rand.nextInt(120);
-				this.doEvent(world, x, y, z, EventType.JETS);
-			}
-			if (this.triggerEffect(240, 4, RITUAL_LENGTH/4)) {
-				this.doEvent(world, x, y, z, EventType.LIGHTNING);
-			}
-			if (this.triggerEffect(160, 2, 0)) {
-				this.doEvent(world, x, y, z, EventType.POTIONS);
-			}
+			if (revTick == 0)
+				triggerStartFx((ServerLevel)world);
+			ChromaSounds.ERROR.playSoundAtBlock(this, 1, 0.5F);
+			return;
 		}
+
+		if (!doRitualTick((ServerLevel)world))
+			return;
+		ritualTick--;
+		if (ritualTick == 0)
+			completeRitual((ServerLevel)world);
 	}
 
-	private boolean triggerEffect(int min, double factor, int sub) {
-		if (ritualTick < min || (RITUAL_LENGTH-ritualTick) < min)
-			return false;
-		return ritualTick%((int)(2*Math.max(min, min*factor))) == 0 || rand.nextInt(Math.max(min, (int)(ritualTick*factor)-sub)) == 0;
+	@Override
+	protected void animateWithTick(Level world, BlockPos pos) {
+		TileEntityCrystalPylon pylon = getAssociatedPylon();
+		CrystalElement color = pylon != null ? pylon.getColor() : CrystalElement.WHITE;
+		ChromaParticle.spawnPylonTurboIdle(world, pos, color, revTick, ritualTick, rand);
 	}
 
-	private void completeRitual(World world, int x, int y, int z) {
-		this.doCompleteParticles();
-		ritualTick = 0;
-		skyTick = 0;
-		jetTick = 0;
-		ChromaSounds.PYLONTURBO.playSoundAtBlockNoAttenuation(this, 2, 1, EFFECT_RANGE);
-		ChromaSounds.PYLONTURBO.playSoundAtBlockNoAttenuation(this, 2, 1, EFFECT_RANGE);
-		TileEntityCrystalPylon te = this.getPylon(world, x, y, z);
-		te.enhance();
-
-		for (int i = 0; i < Location.list.length; i++) {
-			Coordinate c = Location.list[i].position.offset(x, y, z);
-			ChromaTiles t = ChromaTiles.getTileFromIDandMetadata(c.getBlock(world), c.getBlockMetadata(world));
-			if (t != ChromaTiles.PYLONTURBO) {
-				this.failRitual(world, x, y, z);
+	private void findLocation(Level world, BlockPos pos) {
+		location = null;
+		for (Location slot : Location.VALUES) {
+			BlockEntity tile = world.getBlockEntity(pos.offset(slot.relativePylonOffset()));
+			if (tile instanceof TileEntityCrystalPylon pylon && pylon.canConduct()) {
+				location = slot;
 				return;
 			}
-			TileEntityPylonTurboCharger tile = (TileEntityPylonTurboCharger)c.getTileEntity(world);
-			tile.ritualTick = 0;
-			tile.isComplete = true;
-			tile.syncAllData(true);
 		}
-		isComplete = true;
+		if (getPylon() != null) {
+			for (Location slot : Location.VALUES) {
+				TileEntityPylonTurboCharger focus = chargerAt(world, pos.offset(slot.offset()));
+				if (focus != null)
+					focus.location = slot;
+			}
+		}
+	}
 
-		ProgressStage.TURBOCHARGE.stepPlayerTo(turboPlayer);
+	public boolean trigger(Player player) {
+		if (!(level instanceof ServerLevel server))
+			return false;
+		if (ritualTick > 0 || !checkPylon() || !canPlayerTurbocharge(player) || !checkForArrangement()) {
+			ChromaSounds.ERROR.playSoundAtBlock(this);
+			return false;
+		}
+		startRitual(server, player);
+		ChromaSounds.PYLONBOOSTSTART.playSoundAtBlockNoAttenuation(this, 1, 1, EFFECT_RANGE);
+		return true;
+	}
 
+	private boolean canPlayerTurbocharge(Player player) {
+		TileEntityCrystalPylon pylon = getPylon();
+		return pylon != null
+				&& ProgressionManager.instance.hasPlayerCompletedStructureColor(player, pylon.getColor());
+	}
+
+	private boolean checkPylon() {
+		TileEntityCrystalPylon pylon = getPylon();
+		return pylon != null && !pylon.isEnhanced()
+				&& pylon.getEnergy(pylon.getColor()) >= TileEntityCrystalPylon.MAX_ENERGY * 3 / 4
+				&& pylon.canConduct() && pylon.getBoosterCrystals(true).size() == 8
+				&& level.canSeeSky(pylon.getBlockPos().above());
+	}
+
+	public boolean checkForArrangement() {
+		if (level == null)
+			return false;
+		for (Location slot : Location.VALUES) {
+			TileEntityPylonTurboCharger focus = chargerAt(level, worldPosition.offset(slot.offset()));
+			if (focus == null)
+				return false;
+			focus.location = slot;
+			if (!focus.canFunction())
+				return false;
+		}
+		return true;
+	}
+
+	private boolean canFunction() {
+		if (level == null || location == null)
+			return false;
+		if (!level.getBlockState(worldPosition.below()).is(ChromaBlocks.crystallineStone(StoneTypes.FOCUS).get())
+				|| !level.getBlockState(worldPosition.below(2)).is(ChromaBlocks.crystallineStone(StoneTypes.COLUMN).get())
+				|| !level.canSeeSky(worldPosition.above()))
+			return false;
+		for (int dx = -1; dx <= 1; dx++) {
+			for (int dz = -1; dz <= 1; dz++) {
+				if (!level.getBlockState(worldPosition.offset(dx, 1, dz)).isAir())
+					return false;
+			}
+		}
+		BlockPos next = worldPosition.offset(location.nextOffset());
+		return chargerAt(level, next) != null && hasLineOfSight(worldPosition, next);
+	}
+
+	private boolean hasLineOfSight(BlockPos start, BlockPos end) {
+		double dx = end.getX() - start.getX();
+		double dy = end.getY() - start.getY();
+		double dz = end.getZ() - start.getZ();
+		int steps = Math.max(1, Mth.ceil(Math.sqrt(dx * dx + dy * dy + dz * dz) * 8));
+		BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+		for (int i = 1; i < steps; i++) {
+			double f = i / (double)steps;
+			cursor.set(Mth.floor(start.getX() + 0.5 + dx * f), Mth.floor(start.getY() + 0.5 + dy * f),
+					Mth.floor(start.getZ() + 0.5 + dz * f));
+			if (cursor.equals(start) || cursor.equals(end))
+				continue;
+			BlockState state = level.getBlockState(cursor);
+			if (!state.isAir() && !state.canBeReplaced()
+					&& ChromaBlocks.ENCRUSTED_CRYSTALS.stream().noneMatch(block -> state.is(block.get())))
+				return false;
+		}
+		return true;
+	}
+
+	private void startRitual(ServerLevel world, Player player) {
+		ritualTick = RITUAL_LENGTH;
+		revTick = 40;
+		turboPlayer = player.getUUID();
+		TileEntityCrystalPylon pylon = getPylon();
+		pylon.enhancing = true;
+		for (Location slot : Location.VALUES) {
+			TileEntityPylonTurboCharger focus = chargerAt(world, worldPosition.offset(slot.offset()));
+			if (focus == null) {
+				failRitual(world);
+				return;
+			}
+			focus.location = slot;
+			focus.ritualTick = RITUAL_LENGTH;
+			focus.complete = false;
+			focus.syncAllData(true);
+		}
+		world.resetWeatherCycle();
 		this.syncAllData(true);
 	}
 
-	private void failRitual(World world, int x, int y, int z) {
-		TileEntityCrystalPylon te = this.getPylon(world, x, y, z);
-		if (te != null) {
-			te.disenhance();
-			te.drain(te.getColor(), te.getEnergy(te.getColor())*4/5);
-			te.enhancing = false;
-			te.destroyPowerCrystals(1+ReikaRandomHelper.getInverseLinearRandom(4));
+	private boolean doRitualTick(ServerLevel world) {
+		TileEntityCrystalPylon pylon = getPylon();
+		if (pylon == null || !checkForArrangement()) {
+			failRitual(world);
+			return false;
 		}
-		this.doFailParticles(te != null);
-		for (int i = 0; i < Location.list.length; i++) {
-			Coordinate c = Location.list[i].position.offset(x, y, z);
-			ChromaTiles t = ChromaTiles.getTileFromIDandMetadata(c.getBlock(world), c.getBlockMetadata(world));
-			if (t != ChromaTiles.PYLONTURBO) {
-				continue;
+		if ((RITUAL_LENGTH - ritualTick) % 200 == 0)
+			ChromaSounds.PYLONBOOSTRITUAL.playSoundAtBlockNoAttenuation(this, 0.75F, 1, EFFECT_RANGE);
+		if (rand.nextInt(20) == 0)
+			ReikaWorldHelper.ignite(world, pylon.getBlockPos().offset(rand.nextInt(25) - 12,
+					rand.nextInt(13) - 6, rand.nextInt(25) - 12));
+
+		if (skyTick > 0) sendFx(world, FxType.SKY, skyTick--);
+		if (groundTick > 0) { sendFx(world, FxType.PARTICLEBURST, pylon.getColor().ordinal()); groundTick--; }
+		if (jetTick > 0) {
+			sendFx(world, FxType.JETS, pylon.getColor().ordinal());
+			if (jetTick % 4 == 0)
+				ChromaSounds.INFUSE.playSoundAtBlockNoAttenuation(pylon, 0.5F, 0.5F, EFFECT_RANGE);
+			jetTick--;
+		}
+		if (triggerEffect(120, 1.5, 0)) {
+			if (rand.nextBoolean())
+				CrystalNetworker.instance.overloadColorConnectedTo(pylon, pylon.getColor(), 1, true);
+			else
+				pylon.sendRandomShock(false, 1);
+			sendFx(world, FxType.FLASH, pylon.getColor().ordinal());
+		}
+		if (triggerEffect(20, 0.25, RITUAL_LENGTH / 4)) sendFx(world, FxType.BEAM, pylon.getColor().ordinal());
+		if (groundTick == 0 && triggerEffect(200, 0.75, RITUAL_LENGTH / 2)) {
+			groundTick = 5 + rand.nextInt(10);
+			sendFx(world, FxType.PARTICLEBURST, pylon.getColor().ordinal());
+		}
+		if (skyTick == 0 && triggerEffect(100, 1.5, 0)) {
+			skyTick = 20 + rand.nextInt(80);
+			sendFx(world, FxType.SKY, skyTick);
+		}
+		if (jetTick == 0 && triggerEffect(80, 1, RITUAL_LENGTH / 2)) {
+			jetTick = 40 + rand.nextInt(120);
+			sendFx(world, FxType.JETS, pylon.getColor().ordinal());
+		}
+		if (triggerEffect(240, 4, RITUAL_LENGTH / 4)) {
+			spawnLightning(world, worldPosition.offset(rand.nextInt(17) - 8, 0, rand.nextInt(17) - 8), true);
+			sendFx(world, FxType.LIGHTNING, pylon.getColor().ordinal());
+		}
+		if (triggerEffect(160, 2, 0)) {
+			MobEffectInstance effect = CrystalPotionController.instance.getEffectFromColor(pylon.getColor(), 200, 4, false);
+			if (effect != null) {
+				for (LivingEntity entity : world.getEntitiesOfClass(LivingEntity.class,
+						new AABB(worldPosition).inflate(12, 12, 12).expandTowards(0, 12, 0)))
+					entity.addEffect(new MobEffectInstance(effect));
 			}
-			TileEntityPylonTurboCharger tile = (TileEntityPylonTurboCharger)c.getTileEntity(world);
-			tile.ritualTick = 0;
+			sendFx(world, FxType.POTIONS, pylon.getColor().ordinal());
+		}
+		return true;
+	}
+
+	private boolean triggerEffect(int minimum, double factor, int subtract) {
+		if (ritualTick < minimum || RITUAL_LENGTH - ritualTick < minimum)
+			return false;
+		int periodic = (int)(2 * Math.max(minimum, minimum * factor));
+		int randomBound = Math.max(minimum, (int)(ritualTick * factor) - subtract);
+		return ritualTick % periodic == 0 || rand.nextInt(randomBound) == 0;
+	}
+
+	private void completeRitual(ServerLevel world) {
+		TileEntityCrystalPylon pylon = getPylon();
+		if (pylon == null) {
+			failRitual(world);
+			return;
+		}
+		ChromaSounds.PYLONTURBO.playSoundAtBlockNoAttenuation(this, 2, 1, EFFECT_RANGE);
+		ChromaSounds.PYLONTURBO.playSoundAtBlockNoAttenuation(this, 2, 1, EFFECT_RANGE);
+		pylon.enhance();
+		for (Location slot : Location.VALUES) {
+			TileEntityPylonTurboCharger focus = chargerAt(world, worldPosition.offset(slot.offset()));
+			if (focus == null) {
+				failRitual(world);
+				return;
+			}
+			focus.ritualTick = 0;
+			focus.complete = true;
+			focus.syncAllData(true);
+		}
+		ServerPlayer player = turboPlayer != null ? world.getServer().getPlayerList().getPlayer(turboPlayer) : null;
+		if (player != null)
+			ProgressStage.TURBOCHARGE.stepPlayerTo(player);
+		sendFx(world, FxType.COMPLETE, pylon.getColor().ordinal());
+		resetTransientState();
+		complete = true;
+		this.syncAllData(true);
+	}
+
+	private void failRitual(ServerLevel world) {
+		TileEntityCrystalPylon pylon = getPylon();
+		CrystalElement color = pylon != null ? pylon.getColor() : CrystalElement.WHITE;
+		if (pylon != null) {
+			pylon.disenhance();
+			pylon.drain(color, pylon.getEnergy(color) * 4 / 5);
+			pylon.enhancing = false;
+			pylon.destroyPowerCrystals(1 + ReikaRandomHelper.getInverseLinearRandom(4));
+		}
+		for (Location slot : Location.VALUES) {
+			TileEntityPylonTurboCharger focus = chargerAt(world, worldPosition.offset(slot.offset()));
+			if (focus != null) {
+				focus.ritualTick = 0;
+				focus.complete = false;
+				focus.syncAllData(true);
+			}
 		}
 		ChromaSounds.DISCHARGE.playSoundAtBlockNoAttenuation(this, 1, 1, EFFECT_RANGE);
-		isComplete = false;
+		sendFx(world, FxType.FAIL, pylon != null ? color.ordinal() : -1);
+		spawnLightning(world, worldPosition.above(8), false);
+		AABB area = new AABB(worldPosition.above(8)).inflate(24, 16, 24);
+		for (LivingEntity entity : world.getEntitiesOfClass(LivingEntity.class, area)) {
+			if (entity instanceof Player player && player.isCreative())
+				entity.hurtServer(world, world.damageSources().fellOutOfWorld(), 0.001F);
+			else if (entity instanceof Player) {
+				float amount = Math.max(5, Math.min(entity.getHealth() - 4, entity.getMaxHealth() * 0.75F));
+				if (amount > 0) entity.hurtServer(world, world.damageSources().magic(), amount);
+				ChromaSounds.DISCHARGE.playSound(entity, 1, 1);
+			}
+			else entity.hurtServer(world, world.damageSources().magic(), 0.001F);
+		}
+		complete = false;
+		resetTransientState();
+		this.syncAllData(true);
+	}
+
+	private void resetTransientState() {
 		ritualTick = 0;
 		revTick = 0;
 		skyTick = 0;
 		jetTick = 0;
 		groundTick = 0;
 		turboPlayer = null;
-		worldObj.addWeatherEffect(new EntityLightningBolt(world, x+0.5, y+8.5, z+0.5));
-		AxisAlignedBB box = ReikaAABBHelper.getBlockAABB(x, y+8, z).expand(24, 16, 24);
-		List<EntityLivingBase> li = world.getEntitiesWithinAABB(EntityLivingBase.class, box);
-		for (EntityLivingBase e : li) {
-			if (e instanceof EntityPlayer) {
-				if (((EntityPlayer)e).capabilities.isCreativeMode) {
-					//screen rock is enough
-				}
-				else {
-					float amt = Math.max(5, Math.min(e.getHealth()-4, e.getMaxHealth()*0.75F));
-					ChromaAux.doPylonAttack(te.getColor(), e, amt);
-					ChromaSounds.DISCHARGE.playSound(e.worldObj, e.posX, e.posY, e.posZ, 1, 1);
-				}
-			}
-			else {
-				e.attackEntityFrom(DamageSource.magic, 0); //only appear to hurt
-			}
-		}
-		this.syncAllData(true);
 	}
 
-	private void doCompleteParticles() {
-		ReikaPacketHelper.sendDataPacketWithRadius(ChromatiCraft.packetChannel, ChromaPackets.PYLONTURBOCOMPLETE.ordinal(), this, EFFECT_RANGE);
+	private void triggerStartFx(ServerLevel world) {
+		TileEntityCrystalPylon pylon = getPylon();
+		int color = pylon != null ? pylon.getColor().ordinal() : CrystalElement.WHITE.ordinal();
+		for (Location slot : Location.VALUES)
+			spawnLightning(world, worldPosition.offset(slot.offset()), true);
+		sendFx(world, FxType.START, color);
 	}
 
-	private void doEvent(World world, int x, int y, int z, EventType type) {
-		TileEntityCrystalPylon te = this.getPylon(world, x, y, z);
-		int dat = 0;
-		switch(type) {
-			case FLASH:
-				//this.rockScreen(40);
-				dat = te.getColor().ordinal();
-				//ChromaSounds.PYLONFLASH.playSoundAtBlock(this);
-				if (rand.nextBoolean())
-					CrystalNetworker.instance.overloadColorConnectedTo(te, te.getColor(), 1+rand.nextInt(1), true);
-				else
-					te.sendRandomShock(world, false, 1);
-				break;
-			case BEAM:
-				break;
-			case JETS:
-				if (jetTick%4 == 0)
-					ChromaSounds.INFUSE.playSoundAtBlockNoAttenuation(this.getPylon(world, x, y, z), 0.5F, 0.5F, EFFECT_RANGE);
-				break;
-			case PARTICLEBURST:
-				//this.rockScreen(6);
-				//ChromaSounds.CAST.playSoundAtBlockNoAttenuation(this.getPylon(world, x, y, z), 1, 1);
-				break;
-			case SKY:
-				dat = skyTick;
-				break;
-			case LIGHTNING:
-				//this.rockScreen(20);
-				//ChromaSounds.DISCHARGE.playSoundAtBlockNoAttenuation(this, 1, 1);
-				double dx = ReikaRandomHelper.getRandomPlusMinus(x+0.5, 8);
-				double dz = ReikaRandomHelper.getRandomPlusMinus(z+0.5, 8);
-				worldObj.addWeatherEffect(new EntityLightningBolt(world, dx, y, dz));
-				break;
-			case POTIONS:
-				//this.rockScreen(16);
-				//ChromaSounds.POWERDOWN.playSoundAtBlockNoAttenuation(this, 1, 1);
-				AxisAlignedBB box = AxisAlignedBB.getBoundingBox(x-12, y-2, z-12, x+1+12, y+1+24, z+1+12);
-				List<EntityLivingBase> li = world.getEntitiesWithinAABB(EntityLivingBase.class, box);
-				for (EntityLivingBase e : li) {
-					PotionEffect eff = CrystalPotionController.instance.getEffectFromColor(te.getColor(), 200, 4, false);
-					if (eff != null) {
-						e.addPotionEffect(eff);
-					}
-				}
-				break;
-		}
-
-		ReikaPacketHelper.sendDataPacketWithRadius(ChromatiCraft.packetChannel, ChromaPackets.PYLONTURBOEVENT.ordinal(), this, EFFECT_RANGE, type.ordinal(), dat);
-	}
-
-	private void doFailParticles(boolean hasPylon) {
-		ReikaPacketHelper.sendDataPacketWithRadius(ChromatiCraft.packetChannel, ChromaPackets.PYLONTURBOFAIL.ordinal(), this, EFFECT_RANGE, hasPylon ? 1 : 0);
-	}
-
-	@SideOnly(Side.CLIENT)
-	public void doFailParticlesClient(World world, int x, int y, int z, boolean hasPylon) {
-		ReikaRenderHelper.rockScreen(15);
-		int n = 12;
-		int da = 360/n;
-		double r = 16;
-		double dd = 0.125;
-		for (int a = 0; a < 360; a += da) {
-			for (double d = 0.5; d <= r; d += dd) {
-				double dx = x+0.5+d*Math.cos(Math.toRadians(a));
-				double dz = z+0.5+d*Math.sin(Math.toRadians(a));
-				double dy = y+0.5+8;
-				float s = 5*(float)(1-(d/r));
-				EntityFX fx = new EntitySparkleFX(world, dx, dy, dz, 0, 0, 0).setScale(s);
-				Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-			}
-		}
-		if (hasPylon) {
-			TileEntityCrystalPylon te = this.getPylon(world, x, y, z);
-			n = 32+rand.nextInt(96);
-			for (int i = 0; i < n; i++) {
-				double px = ReikaRandomHelper.getRandomPlusMinus(x+0.5, 4);
-				double pz = ReikaRandomHelper.getRandomPlusMinus(z+0.5, 4);
-				double py = ReikaRandomHelper.getRandomPlusMinus(y+0.5+8, 2);
-
-				double dx = px-x-0.5;
-				double dz = pz-z-0.5;
-				double dy = py-y-0.5-8;
-
-				dd = ReikaMathLibrary.py3d(dx, dy, dz);
-
-				double v = -ReikaRandomHelper.getRandomPlusMinus(1, 0.25);
-				double vx = v*dx/dd;
-				double vy = v*dy/dd;
-				double vz = v*dz/dd;
-
-				int l = 10+rand.nextInt(10);
-				float s = (float)ReikaRandomHelper.getRandomBetween(2, 7.5);
-				EntityFX fx = new EntityCCBlurFX(world, px, py, pz, vx, vy, vz).fadeColors(0xffffff, te.getColor().getColor()).setScale(s).setLife(l).setRapidExpand();
-				Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-			}
+	private static void spawnLightning(ServerLevel world, BlockPos pos, boolean visualOnly) {
+		LightningBolt bolt = EntityTypes.LIGHTNING_BOLT.create(world, null, pos,
+				EntitySpawnReason.TRIGGERED, false, false);
+		if (bolt != null) {
+			bolt.setVisualOnly(visualOnly);
+			world.addFreshEntity(bolt);
 		}
 	}
 
-	@SideOnly(Side.CLIENT)
-	public void doCompleteParticlesClient(World world, int x, int y, int z) {
-		double da = 5;
-		for (double a1 = 0; a1 < 360; a1 += da) {
-			for (double a2 = -90+da; a2 < 90-da; a2 += da) {
-				double v = ReikaRandomHelper.getRandomPlusMinus(0.125, 0.0625);
-				double[] xyz = ReikaPhysicsHelper.polarToCartesian(v, a2, a1);
-				float s = (float)ReikaRandomHelper.getRandomBetween(2D, 3D);
-				int c1 = this.getPylon(world, x, y, z).getColor().getColor();
-				int l = 30+rand.nextInt(20);
-				EntityCCBlurFX fx = new EntityCCBlurFX(world, x+0.5, y+0.5+8, z+0.5, xyz[0], xyz[1], xyz[2]);
-				fx.setRapidExpand().setScale(s).setLife(l).setGravity(0).fadeColors(0xffffff, c1);
-				IIcon ico = null;
-				switch(rand.nextInt(4)) {
-					case 0:
-						ico = ChromaIcons.FADE.getIcon();
-						break;
-					case 1:
-						ico = ChromaIcons.BIGFLARE.getIcon();
-						break;
-					case 2:
-						ico = ChromaIcons.SPARKLEPARTICLE.getIcon();
-						fx.setBasicBlend();
-						break;
-					case 3:
-						ico = ChromaIcons.CENTER.getIcon();
-						break;
-				}
-				fx.setParticleIcon(ico);
-				Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-			}
-		}
-
-		float s = (float)ReikaRandomHelper.getRandomBetween(2D, 3D);
-		double v = ReikaRandomHelper.getRandomPlusMinus(0.125, 0.0625);
-		int c1 = this.getPylon(world, x, y, z).getColor().getColor();
-		int l = 30+rand.nextInt(20);
-		EntityFX fx = new EntityCCBlurFX(world, x+0.5, y+0.5+8, z+0.5, 0, v, 0).setRapidExpand().setScale(s).setLife(l).setGravity(0).fadeColors(0xffffff, c1);
-		Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-
-		s = (float)ReikaRandomHelper.getRandomBetween(2D, 3D);
-		l = 30+rand.nextInt(20);
-		v = ReikaRandomHelper.getRandomPlusMinus(0.125, 0.0625);
-		fx = new EntityCCBlurFX(world, x+0.5, y+0.5+8, z+0.5, 0, -v, 0).setRapidExpand().setScale(s).setLife(l).setGravity(0).fadeColors(0xffffff, c1);
-		Minecraft.getMinecraft().effectRenderer.addEffect(fx);
+	private void sendFx(ServerLevel world, FxType type, int data) {
+		ChromaNetwork.sendPylonTurboFx(world, worldPosition, type.ordinal(), data);
 	}
 
-	@SideOnly(Side.CLIENT)
-	public void doEventClient(World world, int x, int y, int z, int type, int data) {
-		EventType evt = EventType.list[type];
-		TileEntityCrystalPylon te = this.getPylon(world, x, y, z);
-		switch(evt) {
-			case FLASH: {
-				ReikaRenderHelper.rockScreen(40);
-				ReikaSoundHelper.playClientSound(ChromaSounds.PYLONFLASH, x+0.5, y+0.5, z+0.5, 1, 1, false); //play sound here to ensure sync
-				ChromaOverlays.instance.triggerWashout(CrystalElement.elements[data]);
-				for (int i = 0; i < 6; i++) {
-					double v = ReikaRandomHelper.getRandomBetween(0.05, 0.1);
-					int n = 16+rand.nextInt(32);
-					double theta = rand.nextInt(360);
-					double phi = rand.nextInt(360);
-					for (int k = 0; k < n; k++) {
-						double rtheta = ReikaRandomHelper.getRandomPlusMinus(theta, 15);
-						double rphi = ReikaRandomHelper.getRandomPlusMinus(phi, 15);
-						double[] xyz = ReikaPhysicsHelper.polarToCartesian(v, rtheta, rphi);
-						float s = (float)ReikaRandomHelper.getRandomBetween(2D, 4D);
-						int l = 40+rand.nextInt(120);
-						int c1 = te.getColor().getColor();
-						EntityFX fx = new EntityCCBlurFX(world, x+0.5, y+0.5+8, z+0.5, xyz[0], xyz[1], xyz[2]).setRapidExpand().setScale(s).setLife(l).setGravity(0).fadeColors(0xffffff, c1);
-						Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-					}
-				}
-				break;
-			}
-			case PARTICLEBURST: {
-				ReikaRenderHelper.rockScreen(6);
-				ReikaSoundHelper.playClientSound(ChromaSounds.CAST, x+0.5, y+0.5, z+0.5, 1, 1, false); //play sound here to ensure sync
-				for (int a = 0; a < 360; a += 2) {
-					int n = 1;//1+rand.nextInt(3);
-					for (int i = 0; i < n; i++) {
-						double r = 7;
-
-						double dx = x+0.5+r*Math.cos(Math.toRadians(a));
-						double dz = z+0.5+r*Math.sin(Math.toRadians(a));
-
-						dx = ReikaRandomHelper.getRandomPlusMinus(dx, 0.125);
-						dz = ReikaRandomHelper.getRandomPlusMinus(dz, 0.125);
-
-						double dy = y;
-
-						int c = te.getColor().getColor();
-						float s = (float)ReikaRandomHelper.getRandomPlusMinus(3D, 1D);
-						int l = 40+rand.nextInt(120);
-						float g = -(float)ReikaRandomHelper.getRandomPlusMinus(0.0625, 0.03125);
-						EntityFX fx = new EntityCCFloatingSeedsFX(world, dx, dy, dz, 0, 90).setLife(l).setScale(s).setColor(c).setGravity(g);
-						((EntityFloatingSeedsFX)fx).freedom = 40;
-						((EntityFloatingSeedsFX)fx).angleVelocity = 1.25;
-						Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-					}
-				}
-				break;
-			}
-			case BEAM: {
-				Location loc = Location.list[rand.nextInt(Location.list.length)];
-				Coordinate c = loc.position.offset(x, y, z);
-				int n = 6+rand.nextInt(6);
-
-				double px = c.xCoord+0.5;
-				double py = c.yCoord+0.5;
-				double pz = c.zCoord+0.5;
-
-				double dx = px-xCoord-0.5;
-				double dy = py-yCoord-0.5;
-				double dz = pz-zCoord-0.5;
-
-				double dd = ReikaMathLibrary.py3d(dx, dy, dz);
-
-				for (int i = 0; i < n; i++) {
-					double v = ReikaRandomHelper.getRandomPlusMinus(0.0625, 0.03125);
-
-					double vx = dx/dd*v;
-					double vy = dy/dd*v;
-					double vz = dz/dd*v;
-
-					float s = ReikaRandomHelper.getRandomBetween(3, 6);
-
-					EntityFX fx = new EntityLaserFX(te.getColor(), world, px, py, pz, vx, vy, vz).setScale(s);
-					Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-
-					fx = new EntityLaserFX(te.getColor(), world, px, py, pz, -vx, -vy, -vz).setScale(s);
-					Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-				}
-				break;
-			}
-			case JETS: {	//solid streams of sparkly particles from the pylon
-				int n = 6;
-				int da = 360/n;
-				double a = Math.toRadians(this.getTicksExisted()%360);
-				double v = ReikaRandomHelper.getRandomBetween(0.125, 0.25);
-				if (rand.nextInt(4) == 0)
-					v *= 2;
-				for (int i = 0; i < n; i++) {
-					double a1 = a+i*da;
-					float s = (float)ReikaRandomHelper.getRandomBetween(1.5, 3);
-					double th = 60*Math.sin(a+i*Math.PI/6D);
-					int l = 40;
-					EntityFX fx = new EntityCCFloatingSeedsFX(world, x+0.5, y+8.5, z+0.5, a1, th).setRapidExpand().setLife(l).setScale(s).fadeColors(0xffffff, te.getColor().getColor());
-					Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-				}
-				break;
-			}
-			case SKY: {
-				skyTick = data;
-				//do in renderer
-				break;
-			}
-			case LIGHTNING:
-				ReikaRenderHelper.rockScreen(20);
-				ReikaSoundHelper.playClientSound(ChromaSounds.DISCHARGE, x+0.5, y+0.5, z+0.5, 1, 1, false); //play sound here to ensure sync
-				break;
-			case POTIONS:
-				ReikaRenderHelper.rockScreen(16);
-				ReikaSoundHelper.playClientSound(ChromaSounds.POWERDOWN, x+0.5, y+0.5, z+0.5, 1, 1, false); //play sound here to ensure sync
-				int r = 16;
-				int n = 16+rand.nextInt(32);
-				HashSet<Coordinate> coords = new HashSet();
-				for (int i = 0; i < n; i++) {
-					double dx = ReikaRandomHelper.getRandomPlusMinus(x+0.5, r);
-					double dz = ReikaRandomHelper.getRandomPlusMinus(z+0.5, r);
-					Coordinate c = new Coordinate(dx, y, dz);
-					while(coords.contains(c)) {
-						dx = ReikaRandomHelper.getRandomPlusMinus(x+0.5, r);
-						dz = ReikaRandomHelper.getRandomPlusMinus(z+0.5, r);
-						c = new Coordinate(dx, y, dz);
-					}
-					coords.add(c);
-
-					int l = 10+rand.nextInt(50);
-					float s = ReikaRandomHelper.getRandomBetween(2, 6);
-					float g = -(float)ReikaRandomHelper.getRandomPlusMinus(0.125, 0.0625);
-					EntityFX fx = new EntityRuneFX(world, dx, y-1-s/4F, dz, 0, 0.125, 0, te.getColor()).setGravity(g).setLife(l).setScale(s);
-					Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-				}
-				break;
-		}
-	}
-	//For some reason screen rock only works if the player was recently damaged; that is the real reason for triggering this effect
-	private void triggerStartFX(World world, int x, int y, int z) {
-		for (int i = 0; i < Location.list.length; i++) {
-			Location loc = Location.list[i];
-			Coordinate c = loc.position.offset(x, y, z);
-			world.addWeatherEffect(new EntityLightningBolt(world, c.xCoord, c.yCoord, c.zCoord));
-		}
-
-		AxisAlignedBB box = AxisAlignedBB.getBoundingBox(x-64, y-64, z-64, x+1+64, y+1+64, z+1+64);
-		List<EntityPlayer> li = world.getEntitiesWithinAABB(EntityPlayer.class, box);
-		for (EntityPlayer ep : li) {
-			ep.attackEntityFrom(new DamageSource("fx").setDamageBypassesArmor().setDamageIsAbsolute().setDamageAllowedInCreativeMode(), 0.00001F);
-		}
-
-		ReikaPacketHelper.sendDataPacketWithRadius(ChromatiCraft.packetChannel, ChromaPackets.PYLONTURBOSTART.ordinal(), this, EFFECT_RANGE);
-	}
-
-	@SideOnly(Side.CLIENT)
-	public void doStartFXClient(World world, int x, int y, int z) {
-		ReikaSoundHelper.playClientSound(ChromaSounds.PYLONBOOSTSTART, x+0.5, y+0.5, z+0.5, 2, 1, false); //play sound here to ensure sync
-		ReikaSoundHelper.playClientSound(ChromaSounds.PYLONBOOSTSTART, x+0.5, y+0.5, z+0.5, 2, 1, false); //play sound here to ensure sync
-	}
-
-	public int getSkyTick() {
-		return skyTick;
-	}
-
-	public int getTick() {
-		return ritualTick;
-	}
-
-	public Location getLocation() {
-		return location;
-	}
-
-	public TileEntityCrystalPylon getPylon(World world, int x, int y, int z) {
-		int d = 8;
-		for (int i = 1; i < d; i++) {
-			int dy = y+i;
-			if (!world.getBlock(x, dy, z).isAir(world, x, dy, z))
+	public TileEntityCrystalPylon getPylon() {
+		if (level == null) return null;
+		for (int dy = 1; dy < 8; dy++) {
+			if (!level.getBlockState(worldPosition.above(dy)).isAir())
 				return null;
 		}
-		TileEntity tile = world.getTileEntity(x, y+d, z);
-		return tile instanceof TileEntityCrystalPylon ? (TileEntityCrystalPylon)tile : null;
+		BlockEntity tile = level.getBlockEntity(worldPosition.above(8));
+		return tile instanceof TileEntityCrystalPylon pylon ? pylon : null;
 	}
 
-	@Override
-	protected void animateWithTick(World world, int x, int y, int z) {
-
+	public TileEntityCrystalPylon getAssociatedPylon() {
+		if (level == null) return null;
+		if (location == null) return getPylon();
+		BlockEntity tile = level.getBlockEntity(worldPosition.offset(location.relativePylonOffset()));
+		return tile instanceof TileEntityCrystalPylon pylon ? pylon : null;
 	}
 
-	public boolean trigger(EntityPlayer ep) {
-		World world = worldObj;
-		int x = xCoord;
-		int y = yCoord;
-		int z = zCoord;
-		if (this.checkPylon(world, x, y, z)) {
-			if (this.canPlayerTurbocharge(world, x, y, z, ep)) {
-				boolean hasAuxiliaries = this.checkForArrangement(world, x, y, z);
-				if (hasAuxiliaries) {
-					this.startRitual(world, x, y, z, ep);
-					ChromaSounds.PYLONBOOSTSTART.playSoundAtBlockNoAttenuation(this, 1, 1, EFFECT_RANGE);
-					return true;
-				}
-			}
-		}
-		ChromaSounds.ERROR.playSoundAtBlock(this);
-		return false;
-	}
-
-	private boolean canPlayerTurbocharge(World world, int x, int y, int z, EntityPlayer ep) {
-		TileEntityCrystalPylon te = this.getPylon(world, x, y, z);
-		return ProgressionManager.instance.hasPlayerCompletedStructureColor(ep, te.getColor());//ProgressStage.CTM.isPlayerAtStage(ep);
-	}
-
-	private boolean checkPylon(World world, int x, int y, int z) {
-		TileEntityCrystalPylon te = this.getPylon(world, x, y, z);
-		if (te != null) {
-			return !te.isEnhanced() && te.getEnergy(te.getColor()) >= (TileEntityCrystalPylon.MAX_ENERGY*3/4) && te.canConduct() && te.getBoosterCrystals(world, x, y+8, z, true).size() == 8 && te.worldObj.canBlockSeeTheSky(te.xCoord, te.yCoord+1, te.zCoord);
-		}
-		return false;
-	}
-
-	private boolean checkForArrangement(World world, int x, int y, int z) {
-		for (int i = 0; i < Location.list.length; i++) {
-			Location loc = Location.list[i];
-			Coordinate c = loc.position.offset(x, y, z);
-			ChromaTiles t = ChromaTiles.getTileFromIDandMetadata(c.getBlock(world), c.getBlockMetadata(world));
-			if (t != ChromaTiles.PYLONTURBO)
-				return false;
-			TileEntityPylonTurboCharger te = (TileEntityPylonTurboCharger)c.getTileEntity(world);
-			if (!te.canFunction(world, c.xCoord, c.yCoord, c.zCoord))
-				return false;
-		}
-		return true;
-	}
-
-	private boolean canFunction(World world, int x, int y, int z) {
-		if (world.getBlock(x, y-1, z) == ChromaBlocks.PYLONSTRUCT.getBlockInstance() && world.getBlockMetadata(x, y-1, z) == 5) {
-			if (world.getBlock(x, y-2, z) == ChromaBlocks.PYLONSTRUCT.getBlockInstance() && world.getBlockMetadata(x, y-2, z) == 2) {
-				if (world.canBlockSeeTheSky(x, y+1, z)) {
-					for (int i = -1; i <= 1; i++) {
-						for (int k = -1; k <= 1; k++) {
-							int dx = x+i;
-							int dz = z+k;
-							int dy = y+1;
-							if (!world.getBlock(dx, dy, dz).isAir(world, dx, dy, dz))
-								return false;
-						}
-					}
-					if (location == null)
-						return false;
-					Location l = location.getNext();
-					Coordinate end = l.position.offset(location.position.negate()).offset(x, y, z);
-					return end.getTileEntity(world) instanceof TileEntityPylonTurboCharger && PylonFinder.lineOfSight(world, x, y, z, end.xCoord, end.yCoord, end.zCoord, ChromaBlocks.ENCRUSTED.getBlockInstance()).hasLineOfSight;
-				}
-			}
-		}
-		return false;
-	}
-
-	private void startRitual(World world, int x, int y, int z, EntityPlayer ep) {
-		ritualTick = RITUAL_LENGTH;
-		revTick = 40;
-		turboPlayer = ep;
-
-		this.getPylon(world, x, y, z).enhancing = true;
-
-		for (int i = 0; i < Location.list.length; i++) {
-			Location loc = Location.list[i];
-			Coordinate c = loc.position.offset(x, y, z);
-			ChromaTiles t = ChromaTiles.getTileFromIDandMetadata(c.getBlock(world), c.getBlockMetadata(world));
-			if (t != ChromaTiles.PYLONTURBO) {
-				this.failRitual(world, x, y, z);
-				return;
-			}
-			TileEntityPylonTurboCharger tile = (TileEntityPylonTurboCharger)c.getTileEntity(world);
-			tile.location = loc;
-		}
-
-		world.getWorldInfo().setRaining(false);
-
-		this.syncAllData(true);
-	}
-
-	@Override
-	protected void writeSyncTag(NBTTagCompound NBT) {
-		super.writeSyncTag(NBT);
-
-		NBT.setInteger("rtick", ritualTick);
-		NBT.setInteger("rvtick", revTick);
-
-		NBT.setInteger("sky", skyTick);
-
-		NBT.setBoolean("complete", isComplete);
-	}
-
-	@Override
-	protected void readSyncTag(NBTTagCompound NBT) {
-		super.readSyncTag(NBT);
-
-		ritualTick = NBT.getInteger("rtick");
-		revTick = NBT.getInteger("rvtick");
-
-		skyTick = NBT.getInteger("sky");
-
-		isComplete = NBT.getBoolean("complete");
+	private static TileEntityPylonTurboCharger chargerAt(Level world, BlockPos pos) {
+		BlockEntity tile = world.getBlockEntity(pos);
+		return tile instanceof TileEntityPylonTurboCharger charger ? charger : null;
 	}
 
 	@Override
 	public void breakBlock() {
-		if (isComplete || ritualTick > 0) {
-			if (location != null) {
-				Coordinate c = location.position.negate().offset(xCoord, yCoord, zCoord);
-				TileEntity te = c.getTileEntity(worldObj);
-				if (te instanceof TileEntityPylonTurboCharger) {
-					TileEntityPylonTurboCharger tc = ((TileEntityPylonTurboCharger)te);
-					TileEntityCrystalPylon tp = tc.getPylon(tc.worldObj, tc.xCoord, tc.yCoord, tc.zCoord);
-					if (tp == null || tp.isEnhanced())
-						tc.failRitual(worldObj, te.xCoord, te.yCoord, te.zCoord);
-				}
-			}
-			else {
-				this.failRitual(worldObj, xCoord, yCoord, zCoord);
-			}
+		if (!(level instanceof ServerLevel server) || !complete && ritualTick <= 0)
+			return;
+		if (location == null) {
+			failRitual(server);
+			return;
 		}
+		TileEntityPylonTurboCharger central = chargerAt(level, worldPosition.subtract(location.offset()));
+		if (central != null)
+			central.failRitual(server);
 	}
 
 	@Override
-	public AxisAlignedBB getRenderBoundingBox() {
-		return ReikaAABBHelper.getBlockAABB(xCoord, yCoord, zCoord).expand(12, 12, 12);
+	protected void writeSyncTag(CompoundTag tag) {
+		super.writeSyncTag(tag);
+		tag.putInt("rtick", ritualTick);
+		tag.putInt("rvtick", revTick);
+		tag.putInt("sky", skyTick);
+		tag.putInt("jet", jetTick);
+		tag.putInt("ground", groundTick);
+		tag.putInt("location", location != null ? location.ordinal() : -1);
+		tag.putBoolean("complete", complete);
+		if (turboPlayer != null) tag.putString("turboPlayer", turboPlayer.toString());
 	}
 
 	@Override
-	public double getMaxRenderDistanceSquared() {
-		return 16384D;
+	protected void readSyncTag(CompoundTag tag) {
+		super.readSyncTag(tag);
+		ritualTick = tag.getIntOr("rtick", 0);
+		revTick = tag.getIntOr("rvtick", 0);
+		skyTick = tag.getIntOr("sky", 0);
+		jetTick = tag.getIntOr("jet", 0);
+		groundTick = tag.getIntOr("ground", 0);
+		int slot = tag.getIntOr("location", -1);
+		location = slot >= 0 && slot < Location.VALUES.length ? Location.VALUES[slot] : null;
+		complete = tag.getBooleanOr("complete", false);
+		String player = tag.getStringOr("turboPlayer", "");
+		try { turboPlayer = player.isEmpty() ? null : UUID.fromString(player); }
+		catch (IllegalArgumentException ignored) { turboPlayer = null; }
 	}
 
-	public static enum EventType {
-		FLASH(),
-		BEAM(),
-		SKY(),
-		JETS(),
-		PARTICLEBURST(),
-		LIGHTNING(),
-		POTIONS();
-
-		private static final EventType[] list = values();
+	public int getSkyTick() { return skyTick; }
+	public void setSkyTickClient(int duration) {
+		if (level != null && level.isClientSide())
+			skyTick = Math.max(0, duration);
 	}
+	public int getTick() { return ritualTick; }
+	public int getRevTick() { return revTick; }
+	public Location getLocation() { return location; }
+	public boolean isComplete() { return complete; }
+	public boolean isRitualActive() { return ritualTick > 0; }
 
-	public static enum Location {
+	public enum FxType { START, COMPLETE, FAIL, FLASH, BEAM, SKY, JETS, PARTICLEBURST, LIGHTNING, POTIONS }
 
-		N(0, -7),
-		NE(5, -5),
-		E(7, 0),
-		SE(5, 5),
-		S(0, 7),
-		SW(-5, 5),
-		W(-7, 0),
-		NW(-5, -5);
+	public enum Location {
+		N(0, -7), NE(5, -5), E(7, 0), SE(5, 5), S(0, 7), SW(-5, 5), W(-7, 0), NW(-5, -5);
 
-		public final Coordinate position;
+		public static final Location[] VALUES = values();
+		private final BlockPos offset;
 
-		public static final Location[] list = values();
-
-		private Location(int x, int z) {
-			position = new Coordinate(x, 2, z);
-		}
-
-		public Location getNext() {
-			return this.ordinal() == list.length-1 ? list[0] : list[this.ordinal()+1];
-		}
-
-		public Coordinate getRelativePylonLocation() {
-			return position.negate().offset(0, 8, 0);
-		}
+		Location(int x, int z) { offset = new BlockPos(x, 2, z); }
+		public BlockPos offset() { return offset; }
+		public Location next() { return VALUES[(ordinal() + 1) % VALUES.length]; }
+		public BlockPos nextOffset() { return next().offset.subtract(offset); }
+		public BlockPos relativePylonOffset() { return new BlockPos(-offset.getX(), 8 - offset.getY(), -offset.getZ()); }
 	}
-
 }

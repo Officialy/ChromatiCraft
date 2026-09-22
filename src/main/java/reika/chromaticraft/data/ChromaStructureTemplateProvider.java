@@ -36,6 +36,7 @@ import reika.chromaticraft.block.BlockCrystallineStone;
 public final class ChromaStructureTemplateProvider implements DataProvider {
 
     public static final Identifier PYLON = id("multiblock/pylon");
+    public static final Identifier PYLON_TURBO = id("multiblock/pylon_turbo");
     public static final Identifier CASTING_L1 = id("multiblock/casting_l1");
     public static final Identifier CASTING_L2 = id("multiblock/casting_l2");
     public static final Identifier CASTING_L3 = id("multiblock/casting_l3");
@@ -103,6 +104,7 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
     public CompletableFuture<?> run(CachedOutput cache) {
         return CompletableFuture.allOf(
                 write(cache, PYLON, pylon()),
+                write(cache, PYLON_TURBO, pylonTurbo()),
                 write(cache, CASTING_L1, castingL1()),
                 write(cache, CASTING_L2, castingL2()),
                 write(cache, CASTING_L3, castingL3()),
@@ -2393,6 +2395,27 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
         }
         return data;
     }
+
+	/** V33a PylonTurboStructure: the base pylon, eight boosters, and all nine focal points. */
+	private static TemplateData pylonTurbo() {
+		TemplateData data = new TemplateData(15, 10, 15);
+		data.copyFrom(pylon(), 4, 0, 4);
+		StateDef pylon = new StateDef("chromaticraft:pylon", Map.of());
+		StateDef crystal = new StateDef("chromaticraft:power_crystal", Map.of());
+		StateDef charger = new StateDef("chromaticraft:pylon_turbocharger", Map.of());
+		data.set(7, 9, 7, pylon);
+		for (int[] point : POWER_CRYSTAL_POINTS)
+			data.set(point[0] + 4, 6, point[1] + 4, crystal);
+		data.set(7, 1, 7, charger);
+		for (int[] point : new int[][] {{0,-7},{5,-5},{7,0},{5,5},{0,7},{-5,5},{-7,0},{-5,-5}}) {
+			int x = 7 + point[0];
+			int z = 7 + point[1];
+			data.set(x, 1, z, stone(StoneTypes.COLUMN));
+			data.set(x, 2, z, stone(StoneTypes.FOCUS));
+			data.set(x, 3, z, charger);
+		}
+		return data;
+	}
 
     private static TemplateData pylonBroadcast() {
         TemplateData data = new TemplateData(11, 11, 11);

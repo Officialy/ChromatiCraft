@@ -120,6 +120,7 @@ public class ChromaLang extends LanguageProvider {
 					tier.displayPrefix() + " Energy Storage Crystal");
 		add(ChromaItems.SPEED_UPGRADE.get(), "Speed Upgrade"); // V33a chromamisc.speed
 		add(ChromaBlocks.CRYSTAL_CHARGER.get(), "Storage Crystal Charger"); // V33a chroma.charger
+		add(ChromaBlocks.PYLON_TURBOCHARGER.get(), "Energy Focal Point"); // V33a chroma.pylonturbo
 		add(ChromaBlocks.COLLECTOR.get(), "Chroma Collector"); // V33a chroma.collector
 		add(ChromaBlocks.FARMER.get(), "Elemental Harvester"); // V33a chroma.farmer
 		add(ChromaBlocks.HEAT_LILY.get(), "Heat Lily"); // V33a chroma.heatlily

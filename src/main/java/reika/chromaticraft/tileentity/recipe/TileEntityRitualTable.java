@@ -255,7 +255,7 @@ public final class TileEntityRitualTable extends InventoriedCrystalReceiver impl
         hasEnhancedStructure = isEnhanced && hasStructure
                 && new RitualStructure.Enhanced()
                         .getArray(level, anchor.getX(), anchor.getY(), anchor.getZ()).matchInWorld();
-        BlockRitualTable.setEnhanced(level, worldPosition, isEnhanced);
+        BlockRitualTable.setEnhanced(level, worldPosition, hasEnhancedStructure);
         if (!hasStructure && abilityTick > 0)
             killRitual();
         this.syncAllData(true);
@@ -399,7 +399,7 @@ public final class TileEntityRitualTable extends InventoriedCrystalReceiver impl
         if (abilityTick > 0)
             terminateRitual();
     }
-    @Override public int getIconState(int side) { return isEnhanced ? 1 : 0; }
+    @Override public int getIconState(int side) { return hasEnhancedStructure ? 1 : 0; }
     @Override public float getOperationFraction() {
         return ability == null ? 0 : 1 - abilityTick / (float) AbilityRituals.instance.getDuration(ability);
     }

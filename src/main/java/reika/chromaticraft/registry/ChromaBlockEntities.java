@@ -138,6 +138,9 @@ public final class ChromaBlockEntities {
 
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityChromaCrystal>> POWER_CRYSTAL =
 			register("power_crystal", ChromaTiles.CRYSTAL);
+	public static final DeferredHolder<BlockEntityType<?>,
+			BlockEntityType<reika.chromaticraft.tileentity.auxiliary.TileEntityPylonTurboCharger>> PYLON_TURBOCHARGER =
+			register("pylon_turbocharger", ChromaTiles.PYLONTURBO);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileCrystalEncrusted>> ENCRUSTED =
 			BLOCK_ENTITIES.register("encrusted_crystal",
 					() -> new BlockEntityType<>(TileCrystalEncrusted::new, ChromaBlocks.ENCRUSTED_CRYSTALS.stream()

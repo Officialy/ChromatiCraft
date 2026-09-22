@@ -26,6 +26,7 @@ import reika.chromaticraft.registry.ChromaSounds;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.tileentity.TileEntityDataNode;
 import reika.chromaticraft.tileentity.TileEntityDummyAux;
+import reika.chromaticraft.tileentity.auxiliary.TileEntityPylonTurboCharger;
 import reika.chromaticraft.tileentity.networking.TileEntityCrystalRepeater;
 import reika.chromaticraft.tileentity.recipe.TileEntityCastingTable;
 import reika.chromaticraft.tileentity.recipe.TileEntityRitualTable;
@@ -141,6 +142,11 @@ public class ItemManipulator extends Item {
 			if (level.isClientSide())
 				return InteractionResult.SUCCESS;
 			return table.triggerRitual(player) ? InteractionResult.SUCCESS : InteractionResult.FAIL;
+		}
+		if (tile instanceof TileEntityPylonTurboCharger turbo) {
+			if (level.isClientSide())
+				return InteractionResult.SUCCESS;
+			return turbo.trigger(player) ? InteractionResult.SUCCESS : InteractionResult.FAIL;
 		}
 
 		// Holding use against a deployed lore tower advances its original 120-tick scan.

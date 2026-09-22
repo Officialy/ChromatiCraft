@@ -71,6 +71,7 @@ import reika.chromaticraft.render.item.ItemStandItemRenderer;
 import reika.chromaticraft.render.item.CrystalChargerItemRenderer;
 import reika.chromaticraft.render.item.ItemAuraInfuserRenderer;
 import reika.chromaticraft.render.item.PersonalChargerItemRenderer;
+import reika.chromaticraft.render.item.PylonTurboItemRenderer;
 import reika.chromaticraft.render.item.RelaySourceItemRenderer;
 
 /**
@@ -146,6 +147,7 @@ public class ChromaModelProvider extends ModelProvider {
 		castingTableModel(blockStateOut, itemModelOut, modelOut);
 		ritualTableModel(blockStateOut, itemModelOut, modelOut);
 		crystalChargerModel(blockStateOut, itemModelOut, modelOut);
+		pylonTurboModel(blockStateOut, itemModelOut, modelOut);
 		personalChargerModel(blockStateOut, itemModelOut, modelOut);
 		collectorModel(blockStateOut, itemModelOut, modelOut);
 		farmerModel(blockStateOut, itemModelOut, modelOut);
@@ -1772,6 +1774,22 @@ public class ChromaModelProvider extends ModelProvider {
 			itemModelOut.accept(block.asItem(), ItemModelUtils.specialModel(model,
 					new reika.chromaticraft.render.item.DimensionCoreItemRenderer.Unbaked(element)));
 		}
+	}
+
+	private static void pylonTurboModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		Material particle = new Material(Identifier.fromNamespaceAndPath(
+				ChromatiCraft.MODID, "block/icons/turbo"));
+		Identifier worldModel = ModelTemplates.PARTICLE_ONLY.create(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/pylon_turbocharger"),
+				new TextureMapping().put(TextureSlot.PARTICLE, particle), modelOut);
+		blockStateOut.accept(MultiVariantGenerator.dispatch(ChromaBlocks.PYLON_TURBOCHARGER.get(),
+				new MultiVariant(WeightedList.of(new Variant(worldModel)))));
+		Identifier itemBase = ModelTemplates.CUBE_ALL.create(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/pylon_turbocharger_inventory"),
+				TextureMapping.cube(particle), modelOut);
+		itemModelOut.accept(ChromaBlocks.PYLON_TURBOCHARGER.get().asItem(),
+				ItemModelUtils.specialModel(itemBase, new PylonTurboItemRenderer.Unbaked()));
 	}
 
 	private static void personalChargerModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,

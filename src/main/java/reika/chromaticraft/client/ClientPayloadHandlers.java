@@ -181,6 +181,16 @@ public final class ClientPayloadHandlers {
 			ChromaParticle.spawnPylonCrystalBreak(mc.level, source, colour, new Random());
 	}
 
+	public static void pylonTurboFx(BlockPos source, int effect, int data) {
+		Minecraft mc = Minecraft.getInstance();
+		if (mc.level != null) {
+			if (effect == reika.chromaticraft.tileentity.auxiliary.TileEntityPylonTurboCharger.FxType.SKY.ordinal()
+					&& mc.level.getBlockEntity(source) instanceof reika.chromaticraft.tileentity.auxiliary.TileEntityPylonTurboCharger charger)
+				charger.setSkyTickClient(data);
+			ChromaParticle.spawnPylonTurboFx(mc.level, source, effect, data, mc.level.getRandom());
+		}
+	}
+
 	public static void guideCraftingRecipes(String itemId,
 			java.util.List<net.minecraft.world.item.crafting.display.RecipeDisplayEntry> recipes) {
 		if (Minecraft.getInstance().gui.screen() instanceof ScreenChromicLexicon lexicon)

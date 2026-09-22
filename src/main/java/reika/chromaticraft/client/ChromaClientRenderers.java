@@ -18,6 +18,7 @@ import reika.chromaticraft.render.entity.RenderDataCrystal;
 import reika.chromaticraft.render.item.ItemStandItemRenderer;
 import reika.chromaticraft.render.item.CrystalChargerItemRenderer;
 import reika.chromaticraft.render.item.ItemAuraInfuserRenderer;
+import reika.chromaticraft.render.item.PylonTurboItemRenderer;
 import reika.chromaticraft.render.tesr.RenderCrystalPylon;
 import reika.chromaticraft.render.tesr.RenderCastingTable;
 import reika.chromaticraft.render.tesr.RenderCrystalRepeater;
@@ -29,6 +30,7 @@ import reika.chromaticraft.render.tesr.RenderInfuser3;
 import reika.chromaticraft.render.tesr.RenderCrystalPortal;
 import reika.chromaticraft.render.tesr.RenderRelaySource;
 import reika.chromaticraft.render.tesr.RenderLumenRelay;
+import reika.chromaticraft.render.tesr.RenderPylonTurboCharger;
 
 public final class ChromaClientRenderers {
 
@@ -84,6 +86,7 @@ public final class ChromaClientRenderers {
 		event.register(reika.chromaticraft.render.item.LootChestItemRenderer.ID,
 				reika.chromaticraft.render.item.LootChestItemRenderer.Unbaked.MAP_CODEC);
 		event.register(CrystalChargerItemRenderer.ID, CrystalChargerItemRenderer.Unbaked.MAP_CODEC);
+		event.register(PylonTurboItemRenderer.ID, PylonTurboItemRenderer.Unbaked.MAP_CODEC);
 		event.register(ItemAuraInfuserRenderer.ID, ItemAuraInfuserRenderer.Unbaked.MAP_CODEC);
 		event.register(reika.chromaticraft.render.item.PersonalChargerItemRenderer.ID,
 				reika.chromaticraft.render.item.PersonalChargerItemRenderer.Unbaked.MAP_CODEC);
@@ -170,6 +173,8 @@ public final class ChromaClientRenderers {
 		event.registerLayerDefinition(RenderLootChest.MODEL_LAYER, reika.chromaticraft.models.ModelLootChest::createBodyLayer);
 		event.registerLayerDefinition(RenderCrystalCharger.MODEL_LAYER,
 				reika.chromaticraft.models.ModelCrystalCharger::createBodyLayer);
+		event.registerLayerDefinition(RenderPylonTurboCharger.MODEL_LAYER,
+				reika.chromaticraft.models.ModelTurbo::createBodyLayer);
 		event.registerLayerDefinition(RenderInfuser3.MODEL_LAYER, reika.chromaticraft.models.ModelInfuser2::createBodyLayer);
 		event.registerLayerDefinition(RenderRelaySource.MODEL_LAYER,
 				reika.chromaticraft.models.ModelRelaySource::createBodyLayer);
@@ -194,6 +199,8 @@ public final class ChromaClientRenderers {
 				reika.chromaticraft.render.tesr.RenderStructureController::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.LOOT_CHEST.get(), RenderLootChest::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.CRYSTAL_CHARGER.get(), RenderCrystalCharger::new);
+		event.registerBlockEntityRenderer(ChromaBlockEntities.PYLON_TURBOCHARGER.get(),
+				RenderPylonTurboCharger::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.ITEM_INFUSER.get(), RenderInfuser3::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.PLAYER_INFUSER.get(), RenderInfuser3::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.PERSONAL_CHARGER.get(),

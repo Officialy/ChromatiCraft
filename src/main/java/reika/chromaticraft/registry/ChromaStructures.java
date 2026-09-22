@@ -17,6 +17,7 @@ import reika.chromaticraft.auxiliary.structure.DataTowerStructure;
 import reika.chromaticraft.auxiliary.structure.InfusionStructure;
 import reika.chromaticraft.auxiliary.structure.PortalStructure;
 import reika.chromaticraft.auxiliary.structure.PylonStructure;
+import reika.chromaticraft.auxiliary.structure.PylonTurboStructure;
 import reika.chromaticraft.auxiliary.structure.PlayerInfusionStructure;
 import reika.chromaticraft.auxiliary.structure.RitualStructure;
 import reika.chromaticraft.auxiliary.structure.PersonalChargerStructure;
@@ -35,6 +36,7 @@ import reika.dragonapi.interfaces.registry.StructureEnum;
 public enum ChromaStructures implements StructureEnum<ChromaStructureBase> {
 
 	PYLON(PylonStructure.class),
+	PYLONTURBO(PylonTurboStructure.class),
 	CASTING1(CastingStructure.Tier1.class),
 	CASTING2(CastingStructure.Tier2.class),
 	CASTING3(CastingStructure.Tier3.class),

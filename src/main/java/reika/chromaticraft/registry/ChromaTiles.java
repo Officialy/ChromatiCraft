@@ -65,6 +65,8 @@ public enum ChromaTiles implements TileEnum {
 	COMPOUND("chroma.compound", ChromaBlocks.COMPOUND, TileEntityCompoundRepeater.class),
 	PYLONLINK("chroma.pylonlink", ChromaBlocks.PYLON_LINK, TileEntityPylonLink.class),
 	CRYSTAL("chroma.chromacrystal", ChromaBlocks.POWER_CRYSTAL, TileEntityChromaCrystal.class),
+	PYLONTURBO("chroma.pylonturbo", ChromaBlocks.PYLON_TURBOCHARGER,
+			reika.chromaticraft.tileentity.auxiliary.TileEntityPylonTurboCharger.class),
 	STAND("chroma.itemstand", ChromaBlocks.ITEM_STAND, TileEntityItemStand.class),
 	TABLE("chroma.castingtable", ChromaBlocks.CASTING_TABLE, TileEntityCastingTable.class),
 	RITUAL("chroma.ritual", ChromaBlocks.RITUAL_TABLE, TileEntityRitualTable.class),

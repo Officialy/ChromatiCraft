@@ -51,6 +51,7 @@ public final class ChromaNetwork {
 		registrar.playToClient(JarRejection.TYPE, JarRejection.CODEC, ChromaNetwork::handleJarRejection);
 		registrar.playToClient(PowerCrystalDestroy.TYPE, PowerCrystalDestroy.CODEC, ChromaNetwork::handlePowerCrystalDestroy);
 		registrar.playToClient(PylonCrystalBreak.TYPE, PylonCrystalBreak.CODEC, ChromaNetwork::handlePylonCrystalBreak);
+		registrar.playToClient(PylonTurboFx.TYPE, PylonTurboFx.CODEC, ChromaNetwork::handlePylonTurboFx);
 		registrar.playToClient(RepeaterConnections.TYPE, RepeaterConnections.CODEC, ChromaNetwork::handleRepeaterConnections);
 		registrar.playToClient(RepeaterSurgeBurst.TYPE, RepeaterSurgeBurst.CODEC,
 				ChromaNetwork::handleRepeaterSurgeBurst);
@@ -186,6 +187,11 @@ public final class ChromaNetwork {
 	private static void handleMonumentRitualState(MonumentRitualState payload, IPayloadContext context) {
 		context.enqueueWork(() -> ClientPayloadHandlers.monumentRitualState(
 				payload.pos(), payload.running(), payload.inProxima()));
+	}
+
+	public static void sendPylonTurboFx(ServerLevel level, BlockPos source, int effect, int data) {
+		PacketDistributor.sendToPlayersNear(level, null, source.getX() + 0.5, source.getY() + 0.5,
+				source.getZ() + 0.5, 256, new PylonTurboFx(source, effect, data));
 	}
 
 	public record FarmerHarvest(BlockPos source, BlockPos target) implements CustomPacketPayload {
@@ -554,6 +560,15 @@ public final class ChromaNetwork {
 				BlockPos.STREAM_CODEC, RepeaterSurgeBurst::source,
 				ByteBufCodecs.VAR_INT, RepeaterSurgeBurst::color, RepeaterSurgeBurst::new);
 		@Override public Type<RepeaterSurgeBurst> type() { return TYPE; }
+	}
+
+	public record PylonTurboFx(BlockPos source, int effect, int data) implements CustomPacketPayload {
+		public static final Type<PylonTurboFx> TYPE = createType("pylon_turbo_fx");
+		public static final StreamCodec<ByteBuf, PylonTurboFx> CODEC = StreamCodec.composite(
+				BlockPos.STREAM_CODEC, PylonTurboFx::source,
+				ByteBufCodecs.VAR_INT, PylonTurboFx::effect,
+				ByteBufCodecs.VAR_INT, PylonTurboFx::data, PylonTurboFx::new);
+		@Override public Type<PylonTurboFx> type() { return TYPE; }
 	}
 	public record WeakRepeaterFailureBurst(BlockPos source, int color) implements CustomPacketPayload {
 		public static final Type<WeakRepeaterFailureBurst> TYPE = createType("weak_repeater_failure_burst");
@@ -977,6 +992,10 @@ public final class ChromaNetwork {
 	}
 	private static void handlePylonCrystalBreak(PylonCrystalBreak payload, IPayloadContext context) {
 		context.enqueueWork(() -> ClientPayloadHandlers.pylonCrystalBreak(payload.source, element(payload.color)));
+	}
+	private static void handlePylonTurboFx(PylonTurboFx payload, IPayloadContext context) {
+		context.enqueueWork(() -> ClientPayloadHandlers.pylonTurboFx(
+				payload.source, payload.effect, payload.data));
 	}
 	private static CrystalElement element(int ordinal) {
 		CrystalElement[] elements = CrystalElement.elements;

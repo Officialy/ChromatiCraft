@@ -1265,6 +1265,145 @@ public abstract class ChromaParticle extends SingleQuadParticle {
         }
     }
 
+    /** Per-tick focal-point glow and the inward rev stream from V33a's turbo ritual. */
+    public static void spawnPylonTurboIdle(Level world, BlockPos pos, CrystalElement color,
+            int revTick, int ritualTick, Random random) {
+        if (!(world instanceof ClientLevel level)) return;
+        double x = pos.getX() + 0.5 + (random.nextDouble() * 2 - 1) * 0.03125;
+        double y = pos.getY() + 0.4375 + (random.nextDouble() * 2 - 1) * 0.03125;
+        double z = pos.getZ() + 0.5 + (random.nextDouble() * 2 - 1) * 0.03125;
+        int gray = 192 + random.nextInt(64);
+        Minecraft.getInstance().particleEngine.add(new FadeGlow(level, x, y, z, 0, 0, 0,
+                gray << 16 | gray << 8 | gray, 5 + random.nextInt(35),
+                0.5F + random.nextFloat(), false));
+        if (revTick > 0) {
+            for (reika.chromaticraft.tileentity.auxiliary.TileEntityPylonTurboCharger.Location slot
+                    : reika.chromaticraft.tileentity.auxiliary.TileEntityPylonTurboCharger.Location.VALUES) {
+                double px = pos.getX() + slot.offset().getX() + 0.5;
+                double py = pos.getY() + slot.offset().getY() + 0.5;
+                double pz = pos.getZ() + slot.offset().getZ() + 0.5;
+                Vec3 direction = new Vec3(pos.getX() + 0.5 - px, pos.getY() + 0.5 - py,
+                        pos.getZ() + 0.5 - pz).normalize().scale(0.03125 + random.nextDouble() * 0.0625);
+                Minecraft.getInstance().particleEngine.add(new FadeGlow(level, px, py, pz,
+                        direction.x, direction.y, direction.z, color.getColor(),
+                        20 + random.nextInt(20), 3F + random.nextFloat() * 3F, true));
+            }
+        }
+    }
+
+    /** Client half of all authored turbo ritual events. */
+    public static void spawnPylonTurboFx(ClientLevel level, BlockPos pos, int effect, int data,
+            RandomSource random) {
+        var values = reika.chromaticraft.tileentity.auxiliary.TileEntityPylonTurboCharger.FxType.values();
+        if (effect < 0 || effect >= values.length) return;
+        var type = values[effect];
+        CrystalElement color = data >= 0 && data < CrystalElement.elements.length
+                ? CrystalElement.elements[data] : CrystalElement.WHITE;
+        double cx = pos.getX() + 0.5;
+        double cy = pos.getY() + 8.5;
+        double cz = pos.getZ() + 0.5;
+        if (type == reika.chromaticraft.tileentity.auxiliary.TileEntityPylonTurboCharger.FxType.START) {
+            level.playLocalSound(cx, cy, cz, ChromaSounds.PYLONBOOSTSTART.getSoundEvent(),
+                    ChromaSounds.PYLONBOOSTSTART.getCategory(), 2, 1, false);
+            level.playLocalSound(cx, cy, cz, ChromaSounds.PYLONBOOSTSTART.getSoundEvent(),
+                    ChromaSounds.PYLONBOOSTSTART.getCategory(), 2, 1, false);
+            return;
+        }
+        if (type == reika.chromaticraft.tileentity.auxiliary.TileEntityPylonTurboCharger.FxType.SKY)
+            return;
+        ChromaSounds eventSound = switch (type) {
+            case PARTICLEBURST -> ChromaSounds.CAST;
+            case LIGHTNING -> ChromaSounds.DISCHARGE;
+            case POTIONS -> ChromaSounds.POWERDOWN;
+            default -> null;
+        };
+        if (eventSound != null)
+            level.playLocalSound(cx, cy, cz, eventSound.getSoundEvent(), eventSound.getCategory(), 1, 1, false);
+        int count = switch (type) {
+            case COMPLETE -> 720;
+            case FAIL -> 256;
+            case FLASH -> 160;
+            case BEAM -> 96;
+            case JETS -> 16;
+            case PARTICLEBURST -> 96;
+            case POTIONS -> 48;
+            default -> 0;
+        };
+        if (type == reika.chromaticraft.tileentity.auxiliary.TileEntityPylonTurboCharger.FxType.FLASH)
+            level.playLocalSound(cx, cy, cz, ChromaSounds.PYLONFLASH.getSoundEvent(),
+                    ChromaSounds.PYLONFLASH.getCategory(), 1, 1, false);
+        for (int i = 0; i < count; i++) {
+            double px = cx;
+            double py = cy;
+            double pz = cz;
+            double vx = 0;
+            double vy = 0;
+            double vz = 0;
+            float scale = 1.5F + random.nextFloat() * 3F;
+            int life = 20 + random.nextInt(40);
+            int particleColor = color.getColor();
+            switch (type) {
+                case COMPLETE, FLASH -> {
+                    Vec3 vector = randomUnit(random).scale(type.name().equals("COMPLETE") ? 0.125 : 0.08);
+                    vx = vector.x; vy = vector.y; vz = vector.z;
+                    particleColor = random.nextBoolean() ? 0xffffff : color.getColor();
+                }
+                case FAIL -> {
+                    double angle = random.nextDouble() * Math.PI * 2;
+                    double radius = random.nextDouble() * 16;
+                    px += Math.cos(angle) * radius;
+                    pz += Math.sin(angle) * radius;
+                    scale = (float)(5 * (1 - radius / 16));
+                    particleColor = 0xffffff;
+                }
+                case BEAM -> {
+                    double f = random.nextDouble();
+                    py = pos.getY() + 0.5 + f * 8;
+                    particleColor = random.nextBoolean() ? 0xffffff : color.getColor();
+                    life = 8 + random.nextInt(12);
+                }
+                case JETS -> {
+                    double angle = random.nextDouble() * Math.PI * 2;
+                    double radius = 4 + random.nextDouble() * 8;
+                    px += Math.cos(angle) * radius;
+                    pz += Math.sin(angle) * radius;
+                    py = pos.getY() + random.nextDouble();
+                    vy = 0.25 + random.nextDouble() * 0.5;
+                }
+                case PARTICLEBURST -> {
+                    double angle = random.nextDouble() * Math.PI * 2;
+                    double radius = random.nextDouble() * 12;
+                    px += Math.cos(angle) * radius;
+                    pz += Math.sin(angle) * radius;
+                    py = pos.getY() + random.nextDouble();
+                    vy = 0.08 + random.nextDouble() * 0.2;
+                }
+                case POTIONS -> {
+                    double angle = random.nextDouble() * Math.PI * 2;
+                    double radius = 4 + random.nextDouble() * 8;
+                    px += Math.cos(angle) * radius;
+                    pz += Math.sin(angle) * radius;
+                    py = pos.getY() + random.nextDouble() * 6;
+                    Rune rune = new Rune(level, px, py, pz, 0, 0.125, 0, color,
+                            20 + random.nextInt(50), 2 + random.nextFloat() * 4);
+                    rune.gravity = -(float)(0.0625 + random.nextDouble() * 0.125);
+                    Minecraft.getInstance().particleEngine.add(rune);
+                    continue;
+                }
+                default -> { continue; }
+            }
+            Minecraft.getInstance().particleEngine.add(new FadeGlow(level, px, py, pz, vx, vy, vz,
+                    particleColor, life, scale, true));
+        }
+    }
+
+    private static Vec3 randomUnit(RandomSource random) {
+        double theta = random.nextDouble() * Math.PI * 2;
+        double y = random.nextDouble() * 2 - 1;
+        double horizontal = Math.sqrt(1 - y * y);
+        return new Vec3(horizontal * Math.cos(theta), y, horizontal * Math.sin(theta));
+    }
+
 	/**
 	 * V33a weak-repeater burn-down: increasingly frequent three-layer warning flares, followed during
 	 * the first half of the fuse by occasional four-segment elemental lightning discharges.

@@ -300,6 +300,7 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 			saveIridescentChunk();
 			saveLumenCore();
 			savePowerCrystal();
+			savePylonTurbo();
 			savePortal();
 			saveElementUnit();
 			saveStorageCrystals();
@@ -782,6 +783,55 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 					List.of(new GridIngredient(4, Ingredient.of(Items.DIAMOND))), stands, List.of(), aura,
 					new ItemStackTemplate(ChromaBlocks.POWER_CRYSTAL.get().asItem()), 1600, 500,
 					List.of(), 0.97489F, true, true).withPenaltyThreshold(96));
+		}
+
+		/** V33a PylonTurboRecipe: nine Energy Focal Points for the complete ritual ring. */
+		private void savePylonTurbo() {
+			List<CastingTableRecipe.StandIngredient> stands = List.of(
+					auxStand(0, -4, Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.IRIDESCENT_CHUNK).get())),
+					auxStand(0, -2, Ingredient.of(Items.OBSIDIAN)),
+					auxStand(2, 0, tiered(ChromaTieredItems.PURITY_DUST)),
+					auxStand(-2, 0, tiered(ChromaTieredItems.PURITY_DUST)),
+					auxStand(4, 0, tiered(ChromaTieredItems.LUMA_BEANS)),
+					auxStand(-4, 0, tiered(ChromaTieredItems.LUMA_BEANS)),
+					auxStand(4, 2, Ingredient.of(Items.GLOWSTONE_DUST)),
+					auxStand(-4, 2, Ingredient.of(Items.GLOWSTONE_DUST)),
+					auxStand(2, -2, Ingredient.of(ChromaItems.BOOSTED_SHARDS.get(CrystalElement.WHITE).get())),
+					auxStand(-2, -2, Ingredient.of(ChromaItems.BOOSTED_SHARDS.get(CrystalElement.WHITE).get())),
+					auxStand(2, -4, tiered(ChromaTieredItems.LUMEN_GEM)),
+					auxStand(-2, -4, tiered(ChromaTieredItems.LUMEN_GEM)),
+					auxStand(-2, 2, Ingredient.of(ChromaBlocks.crystallineStone(StoneTypes.SMOOTH).get().asItem())),
+					auxStand(0, 2, Ingredient.of(ChromaBlocks.crystallineStone(StoneTypes.SMOOTH).get().asItem())),
+					auxStand(2, 2, Ingredient.of(ChromaBlocks.crystallineStone(StoneTypes.SMOOTH).get().asItem())),
+					auxStand(0, 4, Ingredient.of(ChromaBlocks.crystallineStone(StoneTypes.SMOOTH).get().asItem())),
+					auxStand(-4, 4, Ingredient.of(Items.IRON_INGOT)),
+					auxStand(4, 4, Ingredient.of(Items.IRON_INGOT)),
+					auxStand(-2, 4, Ingredient.of(Items.GOLD_INGOT)),
+					auxStand(2, 4, Ingredient.of(Items.GOLD_INGOT)));
+
+			List<RuneRequirement> runes = new ArrayList<>();
+			List<AuraRequirement> aura = new ArrayList<>();
+			for (CrystalElement element : CrystalElement.elements) {
+				runes.add(runeRingRune(element));
+				int amount = switch (element) {
+					case PURPLE -> 300000;
+					case BLACK -> 200000;
+					case BLUE -> 150000;
+					case YELLOW -> 250000;
+					case WHITE -> 125000;
+					default -> 50000;
+				};
+				aura.add(new AuraRequirement(element, amount));
+			}
+			runes.addAll(REPEATER_RUNES);
+
+			saveRecipe("pylon_turbocharger", new CastingTableRecipe(CastingTableRecipe.Tier.PYLON,
+					List.of(new GridIngredient(4, Ingredient.of(
+							ChromaItems.CRAFTING.get(ChromaCraftingItems.ELEMENT_UNIT).get()))),
+					stands, runes, aura,
+					new ItemStackTemplate(ChromaBlocks.PYLON_TURBOCHARGER.get().asItem(), 9),
+					9600, 500, List.of(), 0.75F, true, false, 16, 0F,
+					CastingTableRecipe.CompletionBehavior.DEFAULT));
 		}
 		/**
 		 * V33a {@code PortalRecipe}: the Portal Rift cast, and the most expensive recipe in the mod.

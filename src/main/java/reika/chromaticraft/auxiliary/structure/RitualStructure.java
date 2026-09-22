@@ -8,6 +8,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import reika.chromaticraft.base.ChromaStructureBase;
 import reika.chromaticraft.block.BlockCrystallineStone;
 import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
+import reika.chromaticraft.block.BlockRitualTable;
 import reika.chromaticraft.data.ChromaStructureTemplateProvider;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.dragonapi.instantiable.data.blockstruct.FilledBlockArray;
@@ -49,7 +50,11 @@ public class RitualStructure extends ChromaStructureBase {
 		FilledBlockArray array = NBTStructureLoader.load(world, template,
 				new BlockPos(x, y + 2, z), TABLE_ANCHOR, state -> state, false,
 				(relative, state) -> cellRule(relative, state));
-		array.setBlock(x, y + 2, z, ChromaBlocks.RITUAL_TABLE.get());
+		FilledBlockArray.MultiKey tableStates = new FilledBlockArray.MultiKey();
+		BlockState baseTable = ChromaBlocks.RITUAL_TABLE.get().defaultBlockState();
+		tableStates.add(new BlockKey(baseTable));
+		tableStates.add(new BlockKey(baseTable.setValue(BlockRitualTable.ENHANCED, true)));
+		array.setBlock(x, y + 2, z, tableStates);
 		return array;
 	}
 

@@ -1,166 +1,215 @@
-/*******************************************************************************
- * @author Reika Kalseki
- *
- * Copyright 2017
- *
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
- ******************************************************************************/
 package reika.chromaticraft.render.tesr;
 
-import org.lwjgl.opengl.GL11;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 
-import net.minecraft.tileentity.TileEntity;
-import net.minecraftforge.client.MinecraftForgeClient;
+import net.minecraft.client.model.geom.ModelLayerLocation;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
+import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
+import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
+import net.minecraft.client.renderer.feature.CustomFeatureRenderer;
+import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
+
+import org.joml.Vector3f;
+import org.jspecify.annotations.Nullable;
+
+import net.neoforged.neoforge.client.extensions.OrderedSubmitNodeCollectorExtension;
+import net.neoforged.neoforge.client.submit.RenderPhaseKeys;
 
 import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.auxiliary.ChromaFX;
-import reika.chromaticraft.base.ChromaRenderBase;
 import reika.chromaticraft.models.ModelTurbo;
-import reika.chromaticraft.registry.ChromaTiles;
+import reika.chromaticraft.registry.CrystalElement;
+import reika.chromaticraft.render.ChromaRenderPipelines;
 import reika.chromaticraft.tileentity.auxiliary.TileEntityPylonTurboCharger;
-import reika.chromaticraft.tileentity.auxiliary.tileentitypylonturbocharger.Location;
+import reika.chromaticraft.tileentity.auxiliary.TileEntityPylonTurboCharger.Location;
 import reika.chromaticraft.tileentity.networking.TileEntityCrystalPylon;
-import reika.dragonapi.instantiable.data.immutable.Coordinate;
-import reika.dragonapi.instantiable.data.immutable.DecimalPosition;
-import reika.dragonapi.instantiable.effects.LightningBolt;
-import reika.dragonapi.instantiable.rendering.StructureRenderer;
-import reika.dragonapi.interfaces.tileentity.RenderFetcher;
-import reika.dragonapi.libraries.io.ReikaTextureHelper;
-import reika.dragonapi.libraries.java.reikaglhelper.BlendMode;
-import reika.dragonapi.libraries.rendering.ReikaRenderHelper;
 
+/** V33a Energy Focal Point body, ritual ring, lightning, and sky-column rendering. */
+public final class RenderPylonTurboCharger
+		implements BlockEntityRenderer<TileEntityPylonTurboCharger, RenderPylonTurboCharger.State> {
 
-public class RenderPylonTurboCharger extends ChromaRenderBase {
+	public static final ModelLayerLocation MODEL_LAYER = new ModelLayerLocation(
+			Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "pylon_turbo_charger"), "main");
+	public static final Identifier TEXTURE = Identifier.fromNamespaceAndPath(
+			ChromatiCraft.MODID, "textures/block/icons/turbo.png");
+	private static final Identifier BEAM = Identifier.fromNamespaceAndPath(
+			ChromatiCraft.MODID, "textures/effect/beam.png");
 
-	private final ModelTurbo model = new ModelTurbo();
+	private final ModelTurbo model;
 
-	private static final LightningBolt[][] bolts = new LightningBolt[3][Location.list.length+1];
-
-	static {
-		for (int i = 0; i < bolts.length; i++) {
-			for (int k = 0; k < bolts[i].length; k++) {
-				double px = 0;
-				double py = 8;
-				double pz = 0;
-
-				Location loc = k == 0 ? null : Location.list[k-1];
-				if (loc != null) {
-					Coordinate rel = loc.getRelativePylonLocation();
-					px = rel.xCoord;
-					py = rel.yCoord;
-					pz = rel.zCoord;
-				}
-
-				DecimalPosition end = new DecimalPosition(px+0.5, py+0.5, pz+0.5);
-				LightningBolt b = new LightningBolt(new DecimalPosition(0.5, 0.5, 0.5), end, 4+i*4);
-				b.setVariance(0.375);
-				b.setVelocity(0.0625);
-				bolts[i][k] = b;
-			}
-		}
+	public RenderPylonTurboCharger(BlockEntityRendererProvider.Context context) {
+		model = new ModelTurbo(context.bakeLayer(MODEL_LAYER));
 	}
 
 	@Override
-	public String getImageFileName(RenderFetcher te) {
-		return "turbo.png";
+	public State createRenderState() {
+		return new State();
 	}
 
 	@Override
-	public void renderTileEntityAt(TileEntity tile, double par2, double par4, double par6, float par8) {
-		TileEntityPylonTurboCharger te = (TileEntityPylonTurboCharger)tile;
-		GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
-		GL11.glPushMatrix();
-		GL11.glTranslated(par2, par4, par6);
-		int pass = MinecraftForgeClient.getRenderPass();
-		GL11.glEnable(GL11.GL_BLEND);
-		ReikaRenderHelper.disableLighting();
-		GL11.glDisable(GL11.GL_ALPHA_TEST);
-		GL11.glDisable(GL11.GL_CULL_FACE);
-
-		BlendMode.DEFAULT.apply();
-
-		GL11.glPushMatrix();
-		if (te.isInWorld()) {
-
+	public void extractRenderState(TileEntityPylonTurboCharger charger, State state, float partialTick,
+			Vec3 cameraPosition, ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress) {
+		BlockEntityRenderer.super.extractRenderState(charger, state, partialTick, cameraPosition, breakProgress);
+		state.ritualActive = charger.isRitualActive();
+		state.skyTick = charger.getSkyTick();
+		state.time = charger.getLevel() != null ? charger.getLevel().getGameTime() + partialTick : partialTick;
+		state.connection = null;
+		Location location = charger.getLocation();
+		if (location != null && charger.getLevel() != null
+				&& charger.getLevel().getBlockEntity(charger.getBlockPos().offset(location.nextOffset()))
+						instanceof TileEntityPylonTurboCharger) {
+			state.connection = Vec3.atLowerCornerOf(location.nextOffset());
 		}
-		else {
-			double s = 1.75;
-			GL11.glScaled(s, s, s);
-			GL11.glTranslated(0, 0.25, 0);
-		}
-		if (MinecraftForgeClient.getRenderPass() == 0 || !te.isInWorld() || StructureRenderer.isRenderingTiles())
-			this.renderModel(te, model);
-		GL11.glPopMatrix();
+		state.lightningEnd = location == null
+				? new Vec3(0, 8, 0)
+				: Vec3.atLowerCornerOf(location.relativePylonOffset());
+		TileEntityCrystalPylon pylon = charger.getAssociatedPylon();
+		state.color = pylon != null ? pylon.getColor().getColor() : CrystalElement.WHITE.getColor();
+	}
 
-		BlendMode.ADDITIVEDARK.apply();
-		if (te.isInWorld()) {
-			if (pass == 1) {
-				int tick = te.getTick();
+	@Override
+	public void submit(State state, PoseStack poseStack, SubmitNodeCollector collector, CameraRenderState camera) {
+		submitModel(state, poseStack, collector);
 
-				this.renderConnection(te, par2, par4, par6, par8);
-				if (tick > 0) {
-					this.renderLightning(te, par2, par4, par6, par8);
-				}
-				if (te.getSkyTick() > 0) {
-					GL11.glPushMatrix();
-					GL11.glTranslated(0.5, 8.5, 0.5);
-					GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
-					GL11.glEnable(GL11.GL_CULL_FACE);
-					double t = ((System.currentTimeMillis()/600D)%360)/30D;
-					BlendMode.DEFAULT.apply();
-					GL11.glShadeModel(GL11.GL_SMOOTH);
-					ReikaTextureHelper.bindTexture(ChromatiCraft.class, "/Reika/ChromatiCraft/Textures/beam.png");
-					int h = 16;
+		poseStack.pushPose();
+		poseStack.translate(0.5, 0.4375, 0.5);
+		if (state.connection != null)
+			submitLine(poseStack, collector, state.connection, 0xc0ffffff, 3F);
+		if (state.ritualActive)
+			submitLightning(state, poseStack, collector);
+		poseStack.popPose();
 
-					for (int i = 0; i < 512; i += h) {
-						GL11.glPushMatrix();
-						GL11.glTranslated(0, i, 0);
-						DecimalPosition p1 = new DecimalPosition(te);
-						DecimalPosition p2 = new DecimalPosition(te).offset(0, h, 0);
-						TileEntityCrystalPylon tp = te.getPylon(te.worldObj, te.xCoord, te.yCoord, te.zCoord);
-						if (tp != null) {
-							ChromaFX.drawEnergyTransferBeam(p1, p2, tp.getColor().getColor(), 0.35, 0.35, 6, t, true);
-						}
-						GL11.glPopMatrix();
+		if (state.skyTick > 0)
+			submitSkyBeam(state, poseStack, collector);
+	}
+
+	private void submitModel(State state, PoseStack poseStack, SubmitNodeCollector collector) {
+		poseStack.pushPose();
+		poseStack.translate(0.5F, 1.5F, 0.5F);
+		poseStack.scale(1F, -1F, -1F);
+		PoseStack modelPose = copy(poseStack);
+		collector.submitCustomGeometry(poseStack, RenderTypes.entityCutout(TEXTURE), (unused, vertices) ->
+				model.render(modelPose, vertices, state.lightCoords, OverlayTexture.NO_OVERLAY));
+		poseStack.popPose();
+	}
+
+	private static void submitLightning(State state, PoseStack poseStack, SubmitNodeCollector collector) {
+		PoseStack renderPose = copy(poseStack);
+		submitAfterTerrain(poseStack, collector, RenderTypes.linesTranslucent(), (unused, vertices) -> {
+			Vector3f normal = new Vector3f((float)state.lightningEnd.x,
+					(float)state.lightningEnd.y, (float)state.lightningEnd.z).normalize();
+			for (int bolt = 0; bolt < 3; bolt++) {
+				int segments = 4 + bolt * 4;
+				Vec3 previous = Vec3.ZERO;
+				for (int segment = 1; segment <= segments; segment++) {
+					double fraction = segment / (double)segments;
+					Vec3 point = state.lightningEnd.scale(fraction);
+					if (segment < segments) {
+						double envelope = Math.sin(Math.PI * fraction) * 0.375;
+						double phase = state.time * (0.0625 + bolt * 0.0175) + segment * 2.399 + bolt * 17.31;
+						point = point.add(Math.sin(phase) * envelope,
+								Math.sin(phase * 1.37 + 2.1) * envelope,
+								Math.cos(phase * 0.83 - 1.7) * envelope);
 					}
-
-					GL11.glPopAttrib();
-					GL11.glPopMatrix();
+					lineVertex(vertices, renderPose.last(), previous, normal, 0xc0ffffff, 4F);
+					lineVertex(vertices, renderPose.last(), point, normal, 0xc0ffffff, 4F);
+					previous = point;
 				}
 			}
-		}
-		else {
-			this.doNonWorldRender(te, par8);
-		}
-		GL11.glPopMatrix();
-		GL11.glPopAttrib();
+		});
 	}
 
-	private void renderConnection(TileEntityPylonTurboCharger te, double par2, double par4, double par6, float par8) {
-		Location loc = te.getLocation();
-		if (loc != null) {
-			Location nx = loc.getNext();
-			Coordinate end = nx.position.offset(loc.position.negate());
-			Coordinate test = end.offset(te.xCoord, te.yCoord, te.zCoord);
-			if (ChromaTiles.getTileFromIDandMetadata(test.getBlock(te.worldObj), test.getBlockMetadata(te.worldObj)) == ChromaTiles.PYLONTURBO)
-				ChromaFX.renderBeam(0.5, 0.4375, 0.5, end.xCoord+0.5, end.yCoord+0.4375, end.zCoord+0.5, par8, 192, 0.5);
+	private static void submitSkyBeam(State state, PoseStack poseStack, SubmitNodeCollector collector) {
+		poseStack.pushPose();
+		poseStack.translate(0.5, 8.5, 0.5);
+		PoseStack renderPose = copy(poseStack);
+		float scroll = (float)((state.time / 30D) % 12D);
+		int color = 0xff000000 | state.color;
+		submitAfterTerrain(poseStack, collector, ChromaRenderPipelines.energyBeam(BEAM),
+				(unused, vertices) -> beamTube(renderPose.last(), vertices, 512, 0.35F, scroll, color));
+		poseStack.popPose();
+	}
+
+	private static void beamTube(PoseStack.Pose pose, VertexConsumer vertices, double height,
+			float radius, float scroll, int color) {
+		for (int side = 0; side < 6; side++) {
+			double a0 = side * Math.PI * 2 / 6D;
+			double a1 = (side + 1) * Math.PI * 2 / 6D;
+			float x0 = (float)(Math.sin(a0) * radius);
+			float z0 = (float)(Math.cos(a0) * radius);
+			float x1 = (float)(Math.sin(a1) * radius);
+			float z1 = (float)(Math.cos(a1) * radius);
+			vertex(vertices, pose, x0, 0, z0, scroll, scroll + 1, color);
+			vertex(vertices, pose, x1, 0, z1, scroll, scroll + 1, color);
+			vertex(vertices, pose, x1, height, z1, scroll + 32, scroll, color);
+			vertex(vertices, pose, x0, height, z0, scroll + 32, scroll, color);
 		}
 	}
 
-	private void renderLightning(TileEntityPylonTurboCharger te, double par2, double par4, double par6, float par8) {
-		for (int f = 0; f < bolts.length; f++) {
-			Location loc = te.getLocation();
-			int idx = loc != null ? loc.ordinal()+1 : 0;
-			LightningBolt b = bolts[f][idx];
-			b.update();
-			ChromaFX.renderBolt(b, par8, 192, 0.25, 0);
-		}
+	private static void submitLine(PoseStack poseStack, SubmitNodeCollector collector,
+			Vec3 end, int color, float width) {
+		PoseStack renderPose = copy(poseStack);
+		submitAfterTerrain(poseStack, collector, RenderTypes.linesTranslucent(), (unused, vertices) -> {
+			Vector3f normal = new Vector3f((float)end.x, (float)end.y, (float)end.z).normalize();
+			lineVertex(vertices, renderPose.last(), Vec3.ZERO, normal, color, width);
+			lineVertex(vertices, renderPose.last(), end, normal, color, width);
+		});
 	}
 
-	private void doNonWorldRender(TileEntityPylonTurboCharger te, float par8) {
-
+	private static void lineVertex(VertexConsumer vertices, PoseStack.Pose pose, Vec3 point,
+			Vector3f normal, int color, float width) {
+		vertices.addVertex(pose, (float)point.x, (float)point.y, (float)point.z).setColor(color)
+				.setNormal(pose, normal.x, normal.y, normal.z).setLineWidth(width);
 	}
 
+	private static void vertex(VertexConsumer vertices, PoseStack.Pose pose,
+			float x, double y, float z, float u, float v, int color) {
+		vertices.addVertex(pose, x, (float)y, z).setUv(u, v).setColor(color);
+	}
+
+	private static PoseStack copy(PoseStack source) {
+		PoseStack copy = new PoseStack();
+		copy.last().set(source.last());
+		return copy;
+	}
+
+	private static void submitAfterTerrain(PoseStack poseStack, SubmitNodeCollector collector,
+			RenderType renderType, SubmitNodeCollector.CustomGeometryRenderer renderer) {
+		CustomFeatureRenderer.Submit submit = new CustomFeatureRenderer.Submit(
+				poseStack.last().copy(), renderType, renderer);
+		((OrderedSubmitNodeCollectorExtension)collector.order(0))
+				.submitSpecial(RenderPhaseKeys.AFTER_TERRAIN, submit);
+	}
+
+	@Override
+	public AABB getRenderBoundingBox(TileEntityPylonTurboCharger charger) {
+		return new AABB(charger.getBlockPos()).inflate(12, 0, 12).expandTowards(0, 520, 0);
+	}
+
+	@Override
+	public boolean shouldRenderOffScreen() {
+		return true;
+	}
+
+	@Override
+	public int getViewDistance() {
+		return 128;
+	}
+
+	public static final class State extends BlockEntityRenderState {
+		private boolean ritualActive;
+		private int skyTick;
+		private int color;
+		private double time;
+		private @Nullable Vec3 connection;
+		private Vec3 lightningEnd = Vec3.ZERO;
+	}
 }

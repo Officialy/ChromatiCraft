@@ -121,6 +121,8 @@ public final class ChromaFeatures {
     }
     public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> DATA_TOWER =
             FEATURES.register("data_tower", DataTowerFeature::new);
+    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> RUNIC_ALTAR =
+            FEATURES.register("runic_altar", reika.chromaticraft.world.RunicAltarFeature::new);
     public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> TURBOCHARGED_PYLON =
             FEATURES.register("turbocharged_pylon",
                     () -> new PylonFeature(PylonFeature.Variant.TURBOCHARGED));

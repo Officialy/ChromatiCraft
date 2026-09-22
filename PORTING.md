@@ -7953,3 +7953,55 @@ the table machine and its thirty-nine effects are not claimed complete.
   ability behavior engine complete.
 - Validation: serial single-worker compilation with a two-gigabyte heap passes. Client and server
   datagen emitted the altar resources and recipe. No GameTest server was launched.
+
+## Pylon Turbocharging (2026-09-21)
+
+- Energy Focal Points are active registered blocks/items with their original 64-by-32 Techne model,
+  block entity, Elemental Manipulator dispatch, mining tag, language entry and special inventory
+  renderer. The world renderer restores the closed white ring, three animated lightning filaments
+  per focus, and the central pylon-to-sky energy column using Reika's original `turbo.png` and
+  `beam.png` assets.
+- The complete nine-focus ritual is server authoritative. It enforces the eight exact ring offsets,
+  focus/column supports, clear three-by-three sky apertures, unobstructed links (with encrusted
+  crystals remaining transparent), a conducting unenhanced pylon at at least 75 percent energy,
+  all eight owned booster crystals, sky visibility and the matching structure-colour progression.
+  The forty-tick player-clear rev and 2,400-tick event sequence preserve the original sounds,
+  shocks, fire, jets, sky effects, potion field and lightning cadence.
+- Completion enhances the pylon, records all focal points complete and grants `TURBOCHARGE` to the
+  initiating player. Structural loss or breaking an active/completed focus performs the source
+  failure path: disenhancement, 80-percent drain, inverse-linear destruction of one through four
+  booster crystals, lightning and the original nearby-entity backlash. A failed
+  integrity tick now exits immediately and cannot fall through into completion.
+- The exact V33a Pylon-tier recipe outputs all nine focal points. It retains the Element Unit centre,
+  twenty authored auxiliary ingredients, all sixteen rune-ring runes plus the Crystal Repeater rune
+  layout, per-colour aura totals up to 300,000, 9,600-tick duration, 500 XP, stackability and the
+  sixteen-craft zero-XP repeat penalty.
+- `multiblock/pylon_turbo` is generated as a canonical modern structure NBT containing the pylon,
+  eight power crystals, central focus and all ring supports/foci. Runtime matching and the Lexicon
+  preview both consume that template; no Java block-placement loop represents the structure.
+- Natural pylon frequency itself was already faithful, but candidate acceptance was not: the 26.2
+  `BlockTags.DIRT` tag excludes ordinary grass blocks. Both floor and slope predicates now also
+  accept `BlockTags.GRASS_BLOCKS`, restoring V33a's dirt-or-grass siting without inflating its grid
+  attempt rate.
+- The `SKY` ritual packet now updates the client's beam timer, which decays between events, rather
+  than generating unrelated upward particles while the beam renderer remained dormant. The
+  PARTICLEBURST, LIGHTNING and POTIONS cues also play their V33a client sounds.
+- Validation: the complete ritual/network/particle layer, recipe, NBT template and renderer compile
+  serially with one worker. Server and client datagen pass. The focused
+  `pylon_turbo_ring_contract` GameTest passes after correcting a line-of-sight check that counted
+  each focus block as its own obstruction. No full GameTest suite was launched.
+
+## Runic Altar Command and Appearance (2026-09-22)
+
+- `/place feature chromaticraft:runic_altar` places the complete **base** 11×5×11 ritual
+  structure from the generated `multiblock/ritual_base` NBT template, with the command position
+  at the floor centre and the Ritual Table two blocks above it. This feature is command-only;
+  it is not attached to a biome and does not make player-built altars generate naturally.
+- The Ritual Table's enhanced model now tracks a successfully matched enhanced structure, not
+  merely the owner's DIMENSION progression. The structure matcher accepts either table model
+  state so that switching to the enhanced texture does not invalidate the altar on its next
+  validation tick. Progression remains a separate prerequisite for its enhanced functions.
+- A focused `runic_altar_feature` GameTest covers complete base placement, progression without
+  a cosmetic upgrade, and a stable upgraded appearance after building the advanced structure.
+  Compilation, server datagen, client datagen and that focused GameTest pass. The new generated
+  configured/placed feature data is included; no full GameTest suite was launched.

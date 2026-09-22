@@ -33,6 +33,7 @@ final class LexiconStructurePreview {
 	private static final Map<String, LexiconStructurePreview> CACHE = new ConcurrentHashMap<>();
 	private static final Map<String, String> TEMPLATES = Map.ofEntries(
 			Map.entry("pylon", "multiblock/pylon"),
+			Map.entry("pylonturbo", "multiblock/pylon_turbo"),
 			Map.entry("casting1", "multiblock/casting_l1"),
 			Map.entry("casting2", "multiblock/casting_l2"),
 			Map.entry("casting3", "multiblock/casting_l3"),

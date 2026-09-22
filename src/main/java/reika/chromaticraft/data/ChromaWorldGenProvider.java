@@ -59,6 +59,7 @@ public final class ChromaWorldGenProvider {
     private static final Identifier CAVE_CRYSTAL = id("cave_crystal");
     private static final Identifier NATURAL_PYLON = id("natural_pylon");
     private static final Identifier DATA_TOWER = id("data_tower");
+    private static final Identifier RUNIC_ALTAR = id("runic_altar");
     private static final Identifier TURBOCHARGED_PYLON = id("turbocharged_pylon");
     private static final Identifier POWER_CRYSTAL_BOOSTED_PYLON = id("power_crystal_boosted_pylon");
     private static final Identifier LUMINOUS_CLIFFS_TERRAIN = id("luminous_cliffs_terrain");
@@ -192,6 +193,7 @@ public final class ChromaWorldGenProvider {
             for (CrystalElement element : CrystalElement.elements)
                 registerConfigured(bootstrap, features, coloredPylon(element));
             registerConfigured(bootstrap, features, DATA_TOWER);
+            registerConfigured(bootstrap, features, RUNIC_ALTAR);
             registerConfigured(bootstrap, features, TURBOCHARGED_PYLON);
             registerConfigured(bootstrap, features, POWER_CRYSTAL_BOOSTED_PYLON);
             registerConfigured(bootstrap, features, LUMINOUS_CLIFFS_TERRAIN);
@@ -449,6 +451,7 @@ public final class ChromaWorldGenProvider {
             for (CrystalElement element : CrystalElement.elements)
                 registerPlaced(bootstrap, configured, coloredPylon(element));
             registerPlaced(bootstrap, configured, DATA_TOWER);
+            registerPlaced(bootstrap, configured, RUNIC_ALTAR);
             registerPlaced(bootstrap, configured, TURBOCHARGED_PYLON);
             // Command-only, like the pylon variants: no biome modifier names these.
             registerPlaced(bootstrap, configured, POWER_CRYSTAL_BOOSTED_PYLON);

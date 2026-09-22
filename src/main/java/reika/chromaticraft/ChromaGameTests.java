@@ -118,6 +118,7 @@ import reika.chromaticraft.magic.progression.ProgressionManager;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.tileentity.auxiliary.TileEntityFocusCrystal;
 import reika.chromaticraft.tileentity.auxiliary.TileEntityCrystalCharger;
+import reika.chromaticraft.tileentity.auxiliary.TileEntityPylonTurboCharger;
 import reika.chromaticraft.tileentity.TileEntityPersonalCharger;
 import reika.chromaticraft.tileentity.acquisition.TileEntityCollector;
 import reika.chromaticraft.registry.ChromaStructures;
@@ -404,6 +405,8 @@ public final class ChromaGameTests {
 		register(event, env, "manipulator_cliff_transparify", ChromaGameTests::manipulatorCliffTransparify);
 		register(event, env, "pylon_worldgen_grid_density", ChromaGameTests::pylonWorldgenGridDensity);
 		register(event, env, "pylon_worldgen_grass_site", ChromaGameTests::pylonWorldgenGrassSite);
+		register(event, env, "pylon_turbo_ring_contract", ChromaGameTests::pylonTurboRingContract);
+		register(event, env, "runic_altar_feature", ChromaGameTests::runicAltarFeature);
 		register(event, env, "casting_table_menu_grid", ChromaGameTests::castingTableMenuGrid);
 		register(event, env, "early_game_casting_stand_chain", ChromaGameTests::earlyGameCastingStandChain);
 		register(event, env, "casting_manipulator_fake_player_guard", ChromaGameTests::castingManipulatorFakePlayerGuard);
@@ -5327,6 +5330,42 @@ public final class ChromaGameTests {
 		helper.succeed();
 	}
 
+	private static void runicAltarFeature(GameTestHelper helper) {
+		BlockPos origin = helper.absolutePos(new BlockPos(8, 4, 8));
+		BlockPos tablePos = origin.above(2);
+		var registry = helper.getLevel().registryAccess().lookupOrThrow(Registries.CONFIGURED_FEATURE);
+		var configured = registry.getOrThrow(net.minecraft.resources.ResourceKey.create(
+				Registries.CONFIGURED_FEATURE,
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "runic_altar"))).value();
+		helper.assertTrue(configured.place(helper.getLevel(), helper.getLevel().getChunkSource().getGenerator(),
+				RandomSource.create(0xA17AAL), origin),
+				"the command feature must place the NBT-backed base runic altar");
+		helper.assertTrue(helper.getLevel().getBlockEntity(tablePos)
+				instanceof reika.chromaticraft.tileentity.recipe.TileEntityRitualTable,
+				"the command feature must include the ritual table and its live block entity");
+		var table = (reika.chromaticraft.tileentity.recipe.TileEntityRitualTable)
+				helper.getLevel().getBlockEntity(tablePos);
+		helper.assertTrue(new reika.chromaticraft.auxiliary.structure.RitualStructure()
+				.getArray(helper.getLevel(), origin.getX(), origin.getY(), origin.getZ()).matchInWorld(),
+				"the command feature must assemble the complete base altar, not only its table");
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		ProgressionManager.instance.setPlayerStage(player, ProgressStage.DIMENSION, true, false, false);
+		table.initEnhancementCheck(player);
+		helper.assertTrue(!helper.getLevel().getBlockState(tablePos)
+				.getValue(reika.chromaticraft.block.BlockRitualTable.ENHANCED),
+				"progression alone must not display the enhanced altar texture");
+		NBTStructureLoader.place(helper.getLevel(), ChromaStructureTemplateProvider.RITUAL_ENHANCED,
+				tablePos, new BlockPos(5, 2, 5), state -> state, 2);
+		table.validateStructure();
+		helper.assertTrue(helper.getLevel().getBlockState(tablePos)
+				.getValue(reika.chromaticraft.block.BlockRitualTable.ENHANCED),
+				"the upgraded structure must switch the altar to its enhanced texture");
+		table.validateStructure();
+		helper.assertTrue(table.isFullyEnhanced(),
+				"the upgraded block state must remain a valid part of the enhanced multiblock");
+		helper.succeed();
+	}
+
 	private static void castingNbtStructureContract(GameTestHelper helper) {
 		BlockPos table = helper.absolutePos(new BlockPos(30, 12, 30));
 		FilledBlockArray tier1 = ChromaStructures.CASTING1.getArray(helper.getLevel(),
@@ -6527,6 +6566,29 @@ public final class ChromaGameTests {
 				"a successful shard charge must consume and fully clear the activated pool");
 		helper.assertTrue(ProgressStage.SHARDCHARGE.isPlayerAtStage(owner),
 				"the credited dropper must gain SHARDCHARGE when conversion completes");
+		helper.succeed();
+	}
+
+	/** The exact eight-point ring and its focus/column supports must form one closed ritual circuit. */
+	private static void pylonTurboRingContract(GameTestHelper helper) {
+		BlockPos center = helper.absolutePos(new BlockPos(16, 8, 16));
+		helper.getLevel().setBlock(center, ChromaBlocks.PYLON_TURBOCHARGER.get().defaultBlockState(), 3);
+		TileEntityPylonTurboCharger central = (TileEntityPylonTurboCharger)helper.getLevel().getBlockEntity(center);
+		for (TileEntityPylonTurboCharger.Location location : TileEntityPylonTurboCharger.Location.VALUES) {
+			BlockPos focus = center.offset(location.offset());
+			helper.getLevel().setBlock(focus.below(2),
+					ChromaBlocks.crystallineStone(StoneTypes.COLUMN).get().defaultBlockState(), 3);
+			helper.getLevel().setBlock(focus.below(),
+					ChromaBlocks.crystallineStone(StoneTypes.FOCUS).get().defaultBlockState(), 3);
+			helper.getLevel().setBlock(focus,
+					ChromaBlocks.PYLON_TURBOCHARGER.get().defaultBlockState(), 3);
+		}
+		helper.assertTrue(central.checkForArrangement(),
+				"all eight focal points, supports, sky apertures, and ring links must satisfy the ritual");
+		BlockPos broken = center.offset(TileEntityPylonTurboCharger.Location.N.offset());
+		helper.getLevel().destroyBlock(broken, false);
+		helper.assertTrue(!central.checkForArrangement(),
+				"removing one focal point must open the circuit and invalidate the ritual");
 		helper.succeed();
 	}
 
