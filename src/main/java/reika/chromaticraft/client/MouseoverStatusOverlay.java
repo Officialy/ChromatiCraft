@@ -4,6 +4,7 @@ import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.player.LocalPlayer;
+import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -18,6 +19,8 @@ import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.auxiliary.interfaces.OperationInterval;
 import reika.chromaticraft.auxiliary.interfaces.OperationInterval.OperationState;
 import reika.chromaticraft.registry.ChromaItems;
+import reika.chromaticraft.client.hud.LumenStorageRenderState;
+import reika.chromaticraft.magic.interfaces.LumenTile;
 import reika.chromaticraft.tileentity.TileEntityDummyAux;
 import reika.dragonapi.libraries.ReikaPlayerAPI;
 
@@ -30,8 +33,8 @@ import reika.dragonapi.libraries.ReikaPlayerAPI;
  * <p>The source used a four-block non-liquid ray, drew from row 1 of {@code infoicons.png} indexed by
  * the {@link OperationState} ordinal, and underlaid the icon at index 4 as a backing plate.
  *
- * <p>Only the {@code OperationInterval} branch of the original renderer is ported here; its other
- * branches (lumen storage, focus acceleration, chroma-crafter contents, lumen wire, Forestry bee
+ * <p>The {@code OperationInterval} and {@code LumenTile} branches are active. The other branches
+ * (focus acceleration, chroma-crafter contents, lumen wire, Forestry bee
  * housings and Thaumcraft nodes) belong to tiles that are not in the compile slice yet, and are not
  * stubbed in.
  */
@@ -78,6 +81,8 @@ public final class MouseoverStatusOverlay implements GuiLayer {
 		// itself made the activation status disappear whenever the player aimed at the actual model.
 		if (tile instanceof TileEntityDummyAux dummy)
 			tile = dummy.getLinkedTile();
+		if (tile instanceof LumenTile lumen)
+			renderStorage(gui, lumen, mc);
 		if (!(tile instanceof OperationInterval operation))
 			return;
 
@@ -89,6 +94,30 @@ public final class MouseoverStatusOverlay implements GuiLayer {
 		blit(gui, x, y, SIZE, state.ordinal());
 		if (state == OperationState.RUNNING)
 			this.renderProgress(gui, x, y, operation.getOperationFraction());
+	}
+
+	private static void renderStorage(GuiGraphicsExtractor gui, LumenTile tile, Minecraft mc) {
+		var energy = tile.getEnergy();
+		if (energy == null || energy.tagCount() == 0)
+			return;
+		int count = energy.tagCount();
+		int[] colors = new int[count];
+		float[] fractions = new float[count];
+		int index = 0;
+		for (var element : energy.elementSet()) {
+			colors[index] = element.getColor();
+			int capacity = tile.getMaxStorage(element);
+			fractions[index] = capacity <= 0 ? 0 : Math.clamp(tile.getEnergy(element) / (float)capacity, 0, 1);
+			index++;
+		}
+		int radius = InputConstants.isKeyDown(mc.getWindow(), InputConstants.KEY_LSHIFT) ? 24 : 12;
+		int centerX = gui.guiWidth() / 2 - 20;
+		int centerY = gui.guiHeight() / 2 - 20;
+		int hash = System.identityHashCode(tile);
+		float rotation = (float)Math.toRadians(hash + 2L * tile.getTicksExisted() * (hash % 2 == 0 ? 1 : -1));
+		gui.submitPictureInPictureRenderState(new LumenStorageRenderState(colors, fractions,
+				radius, rotation, centerX - radius, centerY - radius,
+				centerX + radius, centerY + radius, gui.peekScissorStack()));
 	}
 
 	/**

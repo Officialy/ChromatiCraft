@@ -76,6 +76,8 @@ public final class TileEntityPylonTurboCharger extends TileEntityPylonEnhancer {
 				skyTick--;
 			return;
 		}
+		if (location == null && world.getGameTime() % 20 == 0)
+			findLocation(world, pos);
 		if (location != null || ritualTick <= 0)
 			return;
 
@@ -118,7 +120,7 @@ public final class TileEntityPylonTurboCharger extends TileEntityPylonEnhancer {
 		for (Location slot : Location.VALUES) {
 			BlockEntity tile = world.getBlockEntity(pos.offset(slot.relativePylonOffset()));
 			if (tile instanceof TileEntityCrystalPylon pylon && pylon.canConduct()) {
-				location = slot;
+				setLocation(slot);
 				return;
 			}
 		}
@@ -126,7 +128,7 @@ public final class TileEntityPylonTurboCharger extends TileEntityPylonEnhancer {
 			for (Location slot : Location.VALUES) {
 				TileEntityPylonTurboCharger focus = chargerAt(world, pos.offset(slot.offset()));
 				if (focus != null)
-					focus.location = slot;
+					focus.setLocation(slot);
 			}
 		}
 	}
@@ -164,11 +166,19 @@ public final class TileEntityPylonTurboCharger extends TileEntityPylonEnhancer {
 			TileEntityPylonTurboCharger focus = chargerAt(level, worldPosition.offset(slot.offset()));
 			if (focus == null)
 				return false;
-			focus.location = slot;
+			focus.setLocation(slot);
 			if (!focus.canFunction())
 				return false;
 		}
 		return true;
+	}
+
+	private void setLocation(Location slot) {
+		if (location == slot)
+			return;
+		location = slot;
+		if (level != null && !level.isClientSide())
+			this.syncAllData(true);
 	}
 
 	private boolean canFunction() {

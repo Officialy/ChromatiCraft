@@ -184,6 +184,14 @@ public final class ClientPayloadHandlers {
 	public static void pylonTurboFx(BlockPos source, int effect, int data) {
 		Minecraft mc = Minecraft.getInstance();
 		if (mc.level != null) {
+			if (effect == reika.chromaticraft.tileentity.auxiliary.TileEntityPylonTurboCharger.FxType.FLASH.ordinal()
+					|| effect == reika.chromaticraft.tileentity.auxiliary.TileEntityPylonTurboCharger.FxType.COMPLETE.ordinal()) {
+				int color = data >= 0 && data < reika.chromaticraft.registry.CrystalElement.elements.length
+						? reika.chromaticraft.registry.CrystalElement.elements[data].getColor() : 0xffffff;
+				reika.chromaticraft.client.render.LocusPointScreenEffects.flashTurbo(color,
+						effect == reika.chromaticraft.tileentity.auxiliary.TileEntityPylonTurboCharger.FxType.COMPLETE.ordinal()
+								? 1200 : 350);
+			}
 			if (effect == reika.chromaticraft.tileentity.auxiliary.TileEntityPylonTurboCharger.FxType.SKY.ordinal()
 					&& mc.level.getBlockEntity(source) instanceof reika.chromaticraft.tileentity.auxiliary.TileEntityPylonTurboCharger charger)
 				charger.setSkyTickClient(data);

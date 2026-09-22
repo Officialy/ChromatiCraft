@@ -78,6 +78,21 @@ public final class ChromaRenderPipelines {
             .withCull(false)
             .build();
 
+	/** Dense centre of the original pylon flare, alpha derived from its RGB rather than the atlas tile. */
+	public static final RenderPipeline PYLON_CORE = RenderPipeline.builder()
+			.withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "pipeline/pylon_core"))
+			.withBindGroupLayout(BindGroupLayouts.GLOBALS)
+			.withBindGroupLayout(BindGroupLayouts.MATRICES_PROJECTION)
+			.withVertexShader("core/position_tex_color")
+			.withFragmentShader(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "core/pylon_core"))
+			.withBindGroupLayout(BindGroupLayouts.SAMPLER0)
+			.withColorTargetState(new ColorTargetState(BlendFunction.TRANSLUCENT))
+			.withVertexBinding(0, DefaultVertexFormat.POSITION_TEX_COLOR)
+			.withPrimitiveTopology(PrimitiveTopology.QUADS)
+			.withDepthStencilState(new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL, false))
+			.withCull(false)
+			.build();
+
 	public static final RenderPipeline ADDITIVE_ALPHA_SPRITE = RenderPipeline.builder()
 			.withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "pipeline/additive_alpha_sprite"))
 			.withBindGroupLayout(BindGroupLayouts.GLOBALS)
@@ -244,6 +259,9 @@ public final class ChromaRenderPipelines {
             RenderType.create("chromaticraft_additive_sprite", RenderSetup.builder(ADDITIVE_SPRITE)
                     .withTexture("Sampler0", texture)
                     .sortOnUpload().createRenderSetup()));
+	private static final Function<Identifier, RenderType> PYLON_CORE_TYPES = Util.memoize(texture ->
+			RenderType.create("chromaticraft_pylon_core", RenderSetup.builder(PYLON_CORE)
+					.withTexture("Sampler0", texture).sortOnUpload().createRenderSetup()));
     private static final Function<Identifier, RenderType> ENERGY_BEAM_TYPES = Util.memoize(texture ->
             RenderType.create("chromaticraft_energy_beam", RenderSetup.builder(ENERGY_BEAM)
                     .withTexture("Sampler0", texture).createRenderSetup()));
@@ -266,6 +284,10 @@ public final class ChromaRenderPipelines {
     public static RenderType additiveSprite(Identifier texture) {
         return ADDITIVE_TYPES.apply(texture);
     }
+
+	public static RenderType pylonCore(Identifier texture) {
+		return PYLON_CORE_TYPES.apply(texture);
+	}
 
     public static RenderType energyBeam(Identifier texture) {
         return ENERGY_BEAM_TYPES.apply(texture);
@@ -293,6 +315,7 @@ public final class ChromaRenderPipelines {
 
     private static void registerPipelines(RegisterRenderPipelinesEvent event) {
         event.registerPipeline(ADDITIVE_SPRITE);
+		event.registerPipeline(PYLON_CORE);
 		event.registerPipeline(ADDITIVE_ALPHA_SPRITE);
 		event.registerPipeline(LEGACY_ADDITIVE_SPRITE);
 		event.registerPipeline(LEGACY_ADDITIVE_SPRITE_THROUGH_WALL);

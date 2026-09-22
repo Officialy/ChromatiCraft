@@ -7993,7 +7993,7 @@ the table machine and its thirty-nine effects are not claimed complete.
 
 ## Runic Altar Command and Appearance (2026-09-22)
 
-- `/place feature chromaticraft:runic_altar` places the complete **base** 11×5×11 ritual
+- `/chromagen feature chromaticraft:runic_altar` places the complete **base** 11×5×11 ritual
   structure from the generated `multiblock/ritual_base` NBT template, with the command position
   at the floor centre and the Ritual Table two blocks above it. This feature is command-only;
   it is not attached to a biome and does not make player-built altars generate naturally.
@@ -8005,3 +8005,40 @@ the table machine and its thirty-nine effects are not claimed complete.
   a cosmetic upgrade, and a stable upgraded appearance after building the advanced structure.
   Compilation, server datagen, client datagen and that focused GameTest pass. The new generated
   configured/placed feature data is included; no full GameTest suite was launched.
+
+## Pylon interaction and Chromagen command (2026-09-23)
+
+- `/chromagen build chromaticraft:<template> [x y z]` places any loaded ChromatiCraft NBT
+  template at its raw template origin. The separate `/chromagen feature chromaticraft:<id> [x y z]`
+  and `/chromagen structure chromaticraft:<id> [x y z]` paths invoke the configured feature or
+  structure directly, bypassing biome frequency/placement modifiers while retaining each
+  generator's authored site checks. For a complete functional base altar, use
+  `/chromagen feature chromaticraft:runic_altar ~ ~-1 ~` at its floor centre; the raw
+  `ritual_base` template is a multiblock matcher and deliberately omits the controller tile.
+- The pylon block has no entity collision, matching V33a `BlockCrystalPylon` metadata PYLON.
+  Focal-point ring locations now synchronize when discovered or validated and retry after late
+  pylon assembly, rather than waiting for an unrelated block update before clients see links.
+- Energy Focal Points now bind the exact 64×32 `Textures/TileEntity/turbo.png` extracted from
+  the V33a jar. The former path incorrectly bound a 256-pixel-wide animated halo icon strip to
+  a 64×32 Techne model. The inventory renderer shares the corrected texture.
+- Focal lightning now uses V33a's 4/8/12-step target-chasing offsets and 0.0625-per-render
+  velocity rather than three slow sine waves. Connections and bolts draw the original LASER
+  sprite on three crossed planes over a narrow core line. This replaces the thin line-only
+  port without changing the ring's server-side line-of-sight gate.
+- A fullscreen pylon pass applies the V33a PYLON hue/saturation grade within its 36-block
+  proximity envelope, plus an animated, pixel-quantized PYLONAURA edge haze. The latter uses
+  smooth value noise in place of V33a's simplex noise, so its motion is not pixel-identical.
+  Turbo FLASH and COMPLETE packets add a
+  short colour wash through the same post-chain. The Elemental Manipulator's missing LumenTile
+  mouseover branch again shows the rotating coloured energy/capacity wheel, including pylons.
+  The existing custom-model outline extractor now covers the focal Techne model and the baked
+  Power Crystal mesh as well as its earlier crystal/item-stand cases.
+- The pylon core keeps the V33a additive roundflare halo, but adds a dense alpha pass using that
+  same original sprite before the glow. Its coverage comes from RGB brightness, not the atlas
+  tile's rectangular alpha, so foreground terrain still depth-occludes it while bright centre
+  pixels hide the block silhouettes visible through the previously all-additive rendition.
+- Serial `:ChromatiCraft:compileJava` succeeds and `locus_points.fsh` passes offline GLSL syntax
+  validation. No GameTest or client instance was launched because a running Java process and the
+  earlier machine-exhaustion report made concurrent game instances unsafe. The new core shader
+  also passes offline GLSL syntax validation; its opacity/occlusion and the other visual effects
+  still require an in-game check. Raw template placement has not been runtime-tested here.

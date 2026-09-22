@@ -155,6 +155,7 @@ public class ChromatiCraft extends DragonAPIMod {
 		reika.chromaticraft.auxiliary.CrystalNetworkLogger.registerCommand(event.getDispatcher());
 		reika.chromaticraft.command.DataTowerLocateCommand.register(event.getDispatcher());
 		reika.chromaticraft.command.ProgressModifyCommand.register(event.getDispatcher());
+		reika.chromaticraft.command.ChromaGenerateCommand.register(event.getDispatcher());
 	}
 
 	private static void playerLoggedIn(net.neoforged.neoforge.event.entity.player.PlayerEvent.PlayerLoggedInEvent event) {

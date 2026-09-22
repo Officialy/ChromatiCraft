@@ -30,6 +30,7 @@ import org.joml.Matrix4f;
 import reika.chromaticraft.base.CrystalBlock;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.render.tesr.RenderItemStand;
+import reika.chromaticraft.models.ModelTurbo;
 
 /** Exact hover/mining outlines extracted from ChromatiCraft's non-voxel rendered models. */
 public final class ChromaModelOutlineRenderer implements CustomBlockOutlineRenderer {
@@ -42,6 +43,7 @@ public final class ChromaModelOutlineRenderer implements CustomBlockOutlineRende
     private static final int NORMAL_COLOR = 0xFF000000;
     private static final int HIGH_CONTRAST_COLOR = -11010079;
     private static final ModelPart ITEM_STAND_MODEL = RenderItemStand.createStandLayer().bakeRoot();
+    private static final ModelPart FOCAL_MODEL = ModelTurbo.createBodyLayer().bakeRoot();
 
     private final BlockPos pos;
     private final List<Line> lines;
@@ -65,7 +67,13 @@ public final class ChromaModelOutlineRenderer implements CustomBlockOutlineRende
             // vanilla-selected width as the baseline but halve it for all three crystal families.
             widthScale = 0.5F;
         } else if (event.getBlockState().is(ChromaBlocks.ITEM_STAND.get())) {
-            lines = itemStandLines();
+            lines = modelPartLines(ITEM_STAND_MODEL);
+            widthScale = 1F;
+        } else if (event.getBlockState().is(ChromaBlocks.POWER_CRYSTAL.get())) {
+            lines = modelLines(event);
+            widthScale = 0.5F;
+        } else if (event.getBlockState().is(ChromaBlocks.PYLON_TURBOCHARGER.get())) {
+            lines = modelPartLines(FOCAL_MODEL);
             widthScale = 1F;
         } else {
             return;
@@ -92,16 +100,16 @@ public final class ChromaModelOutlineRenderer implements CustomBlockOutlineRende
         return collector.finish();
     }
 
-    private static List<Line> itemStandLines() {
+    private static List<Line> modelPartLines(ModelPart model) {
         PoseStack modelPose = new PoseStack();
         modelPose.translate(0.5F, 1.5F, 0.5F);
         modelPose.scale(1F, -1F, -1F);
 		List<ModelCube> cubes = new ArrayList<>();
-		ITEM_STAND_MODEL.visit(modelPose, (pose, path, cubeIndex, cube) ->
+		model.visit(modelPose, (pose, path, cubeIndex, cube) ->
 				cubes.add(new ModelCube(new Matrix4f(pose.pose()), cube)));
         LineCollector collector = new LineCollector();
 		int[] source = {0};
-        ITEM_STAND_MODEL.visit(modelPose, (pose, path, cubeIndex, cube) -> {
+        model.visit(modelPose, (pose, path, cubeIndex, cube) -> {
 			int sourceCube = source[0]++;
             for (ModelPart.Polygon polygon : cube.polygons) {
                 ModelPart.Vertex[] vertices = polygon.vertices();

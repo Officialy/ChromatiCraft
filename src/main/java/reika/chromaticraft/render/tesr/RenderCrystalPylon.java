@@ -56,6 +56,7 @@ public final class RenderCrystalPylon implements BlockEntityRenderer<TileEntityC
     public void extractRenderState(TileEntityCrystalPylon pylon, State state, float partialTick,
             Vec3 cameraPosition, ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress) {
         BlockEntityRenderer.super.extractRenderState(pylon, state, partialTick, cameraPosition, breakProgress);
+        reika.chromaticraft.client.render.LocusPointScreenEffects.addPylon(pylon);
         state.enhanced = pylon.isEnhanced();
         state.unstable = pylon.isUnstable();
         state.conducting = pylon.canConduct();
@@ -113,7 +114,7 @@ public final class RenderCrystalPylon implements BlockEntityRenderer<TileEntityC
             if (state.hasTargets) scale++;
             if (!state.conducting) scale = 0.75;
             this.submitBillboard(poseStack, collector, camera, sun ? SUN_FLARE : ROUND_FLARE,
-                    (float)scale, state.color, 0);
+                    (float)scale, state.color, 0, layer == 0 && !sun);
         }
 
         if (state.conducting && state.enhanced) {
@@ -123,7 +124,7 @@ public final class RenderCrystalPylon implements BlockEntityRenderer<TileEntityC
                     state.color & 0xffffff, 0, mix / 255F);
             float scale = (float)(3 + Math.sin(Math.toRadians(angle)));
             this.submitBillboard(poseStack, collector, camera, TURBO, scale,
-                    haloColor, (float)-angle);
+                    haloColor, (float)-angle, false);
         }
         poseStack.popPose();
     }
@@ -184,7 +185,8 @@ public final class RenderCrystalPylon implements BlockEntityRenderer<TileEntityC
     }
 
     private void submitBillboard(PoseStack poseStack, SubmitNodeCollector collector,
-            CameraRenderState camera, Identifier spriteId, float scale, int color, float roll) {
+            CameraRenderState camera, Identifier spriteId, float scale, int color, float roll,
+            boolean core) {
         TextureAtlasSprite sprite = Minecraft.getInstance().getAtlasManager()
                 .getAtlasOrThrow(AtlasIds.BLOCKS).getSprite(spriteId);
         poseStack.pushPose();
@@ -192,6 +194,14 @@ public final class RenderCrystalPylon implements BlockEntityRenderer<TileEntityC
         if (roll != 0) poseStack.mulPose(Axis.ZP.rotationDegrees(roll));
         PoseStack renderPose = new PoseStack();
         renderPose.last().set(poseStack.last());
+        if (core) {
+            CustomFeatureRenderer.Submit base = new CustomFeatureRenderer.Submit(
+                    poseStack.last().copy(),
+                    ChromaRenderPipelines.pylonCore(TextureAtlas.LOCATION_BLOCKS),
+                    (pose, vertices) -> quad(renderPose.last(), vertices, sprite, scale, color));
+            ((OrderedSubmitNodeCollectorExtension)collector.order(-1))
+                    .submitSpecial(RenderPhaseKeys.AFTER_TERRAIN, base);
+        }
         submitAfterTerrain(poseStack, collector,
                 ChromaRenderPipelines.additiveSprite(TextureAtlas.LOCATION_BLOCKS),
                 (pose, vertices) -> quad(renderPose.last(), vertices, sprite, scale, color));

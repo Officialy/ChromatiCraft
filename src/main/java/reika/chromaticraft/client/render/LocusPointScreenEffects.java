@@ -35,7 +35,7 @@ import reika.chromaticraft.tileentity.aoe.TileEntityAuraPoint;
 import reika.chromaticraft.tileentity.technical.TileEntityDimensionCore;
 import reika.dragonapi.instantiable.RayTracer;
 
-/** Modern live-focus host for V33a's DIMCORE and AURALOC fullscreen shaders. */
+/** Modern live-focus host for V33a's DIMCORE, AURALOC, PYLON and PYLONAURA screen effects. */
 public final class LocusPointScreenEffects {
 
 	private static final int MAX_POINTS = 64;
@@ -53,6 +53,9 @@ public final class LocusPointScreenEffects {
 			RayTracer.getVisualLOSForRenderCulling();
 	private static final List<Point> POINTS = new ArrayList<>();
 	private static @Nullable MappableRingBuffer pointUbo;
+	private static long turboFlashStart;
+	private static long turboFlashDuration;
+	private static int turboFlashColor;
 
 	private LocusPointScreenEffects() {}
 
@@ -94,6 +97,32 @@ public final class LocusPointScreenEffects {
 					intensity, 1, point.getRenderColor(), true));
 	}
 
+	/** V33a PYLON/PYLONAURA: the nearest conducting core grades the entire scene within 36 blocks. */
+	public static void addPylon(reika.chromaticraft.tileentity.networking.TileEntityCrystalPylon pylon) {
+		Player player = Minecraft.getInstance().player;
+		if (player == null || !pylon.canConduct() || POINTS.size() >= MAX_POINTS)
+			return;
+		Vec3 center = Vec3.atCenterOf(pylon.getBlockPos());
+		double dx = player.getX() - center.x;
+		double dz = player.getZ() - center.z;
+		double dy = (player.getY() - center.y) * 0.5;
+		double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+		if (distance >= 36)
+			return;
+		float aura = (float)Math.max(0, Math.min(1, 1.75 - distance / 24));
+		float factor = (float)Math.min(1, 1.5 - distance / 20);
+		float grade = Math.max(0, (factor * factor - 0.75F) * 2);
+		if (distance < 6)
+			grade = Math.min(1, grade + (float)(6 - distance) / 12F);
+		POINTS.add(new Point(center, aura, grade, -2, pylon.getColor().getColor(), false));
+	}
+
+	public static void flashTurbo(int color, int durationMillis) {
+		turboFlashColor = color;
+		turboFlashStart = System.currentTimeMillis();
+		turboFlashDuration = durationMillis;
+	}
+
 	private static boolean hasLineOfSight(BlockEntity tile, Player player,
 			double x, double y, double z) {
 		LOS.setOrigins(x, y, z, player.getX(), player.getY(), player.getZ());
@@ -103,6 +132,10 @@ public final class LocusPointScreenEffects {
 	/** Called after the level is fully rendered; posted emitters always belong to this one frame. */
 	public static void renderAndClear(Matrix4fc modelView, Matrix4fc projection, Vec3 eye) {
 		try {
+			long elapsed = System.currentTimeMillis() - turboFlashStart;
+			if (elapsed >= 0 && elapsed < turboFlashDuration && POINTS.size() < MAX_POINTS)
+				POINTS.add(new Point(Vec3.ZERO, 0, 1F - elapsed / (float)turboFlashDuration,
+						-3, turboFlashColor, false));
 			if (!POINTS.isEmpty())
 				render(modelView, projection, eye);
 		}
@@ -144,6 +177,13 @@ public final class LocusPointScreenEffects {
 	private static List<ProjectedPoint> project(Matrix4fc modelView, Matrix4fc projection, Vec3 eye) {
 		List<ProjectedPoint> projected = new ArrayList<>(POINTS.size());
 		for (Point point : POINTS) {
+			if (point.scale <= -2) {
+				int rgb = point.color;
+				projected.add(new ProjectedPoint(0.5F, 0.5F, (float)point.distSq,
+						point.intensity, ((rgb >> 16) & 255) / 255F,
+						((rgb >> 8) & 255) / 255F, (rgb & 255) / 255F, point.scale));
+				continue;
+			}
 			Vector4f vector = new Vector4f((float)(point.position.x - eye.x),
 					(float)(point.position.y - eye.y), (float)(point.position.z - eye.z), 1);
 			vector.mul(modelView);
@@ -166,7 +206,7 @@ public final class LocusPointScreenEffects {
 					UBO_USAGE, UBO_SIZE);
 		try (var view = pointUbo.currentBuffer().map(false, true)) {
 			Std140Builder builder = Std140Builder.intoBuffer(view.data());
-			builder.putIVec4(points.size(), 0, 0, 0);
+			builder.putIVec4(points.size(), (int)(System.currentTimeMillis() & 0x00ffffff), 0, 0);
 			for (ProjectedPoint point : points)
 				builder.putVec4(point.u, point.v, point.distSq, point.intensity);
 			for (int i = points.size(); i < MAX_POINTS; i++)

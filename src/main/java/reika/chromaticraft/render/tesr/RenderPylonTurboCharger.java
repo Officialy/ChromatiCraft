@@ -2,7 +2,9 @@ package reika.chromaticraft.render.tesr;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import java.util.concurrent.ThreadLocalRandom;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.geom.ModelLayerLocation;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
@@ -13,7 +15,10 @@ import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
 import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.client.renderer.texture.TextureAtlas;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.data.AtlasIds;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -39,9 +44,12 @@ public final class RenderPylonTurboCharger
 	public static final ModelLayerLocation MODEL_LAYER = new ModelLayerLocation(
 			Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "pylon_turbo_charger"), "main");
 	public static final Identifier TEXTURE = Identifier.fromNamespaceAndPath(
-			ChromatiCraft.MODID, "textures/block/icons/turbo.png");
+			ChromatiCraft.MODID, "textures/block/tileentity/turbo.png");
 	private static final Identifier BEAM = Identifier.fromNamespaceAndPath(
 			ChromatiCraft.MODID, "textures/effect/beam.png");
+	private static final Identifier LASER = Identifier.fromNamespaceAndPath(
+			ChromatiCraft.MODID, "block/icons/laser_2");
+	private static final float[][] BEAM_AXES = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
 
 	private final ModelTurbo model;
 
@@ -103,27 +111,26 @@ public final class RenderPylonTurboCharger
 
 	private static void submitLightning(State state, PoseStack poseStack, SubmitNodeCollector collector) {
 		PoseStack renderPose = copy(poseStack);
+		TextureAtlasSprite laser = laserSprite();
+		Vec3[][] paths = new Vec3[state.lightning.length][];
+		for (int bolt = 0; bolt < paths.length; bolt++)
+			paths[bolt] = state.lightning[bolt].update(state.lightningEnd);
 		submitAfterTerrain(poseStack, collector, RenderTypes.linesTranslucent(), (unused, vertices) -> {
 			Vector3f normal = new Vector3f((float)state.lightningEnd.x,
 					(float)state.lightningEnd.y, (float)state.lightningEnd.z).normalize();
-			for (int bolt = 0; bolt < 3; bolt++) {
-				int segments = 4 + bolt * 4;
-				Vec3 previous = Vec3.ZERO;
-				for (int segment = 1; segment <= segments; segment++) {
-					double fraction = segment / (double)segments;
-					Vec3 point = state.lightningEnd.scale(fraction);
-					if (segment < segments) {
-						double envelope = Math.sin(Math.PI * fraction) * 0.375;
-						double phase = state.time * (0.0625 + bolt * 0.0175) + segment * 2.399 + bolt * 17.31;
-						point = point.add(Math.sin(phase) * envelope,
-								Math.sin(phase * 1.37 + 2.1) * envelope,
-								Math.cos(phase * 0.83 - 1.7) * envelope);
-					}
-					lineVertex(vertices, renderPose.last(), previous, normal, 0xc0ffffff, 4F);
-					lineVertex(vertices, renderPose.last(), point, normal, 0xc0ffffff, 4F);
-					previous = point;
+			for (Vec3[] path : paths) {
+				for (int segment = 1; segment < path.length; segment++) {
+					lineVertex(vertices, renderPose.last(), path[segment - 1], normal, 0xc0ffffff, 2F);
+					lineVertex(vertices, renderPose.last(), path[segment], normal, 0xc0ffffff, 2F);
 				}
 			}
+		});
+		submitAfterTerrain(poseStack, collector,
+				ChromaRenderPipelines.additiveSprite(TextureAtlas.LOCATION_BLOCKS), (unused, vertices) -> {
+			for (Vec3[] path : paths)
+				for (int segment = 1; segment < path.length; segment++)
+					beamSegment(renderPose.last(), vertices, laser,
+							path[segment - 1], path[segment], 0.25F, 0xc0ffffff);
 		});
 	}
 
@@ -157,11 +164,38 @@ public final class RenderPylonTurboCharger
 	private static void submitLine(PoseStack poseStack, SubmitNodeCollector collector,
 			Vec3 end, int color, float width) {
 		PoseStack renderPose = copy(poseStack);
+		TextureAtlasSprite laser = laserSprite();
 		submitAfterTerrain(poseStack, collector, RenderTypes.linesTranslucent(), (unused, vertices) -> {
 			Vector3f normal = new Vector3f((float)end.x, (float)end.y, (float)end.z).normalize();
-			lineVertex(vertices, renderPose.last(), Vec3.ZERO, normal, color, width);
-			lineVertex(vertices, renderPose.last(), end, normal, color, width);
+			lineVertex(vertices, renderPose.last(), Vec3.ZERO, normal, color, 2F);
+			lineVertex(vertices, renderPose.last(), end, normal, color, 2F);
 		});
+		submitAfterTerrain(poseStack, collector,
+				ChromaRenderPipelines.additiveSprite(TextureAtlas.LOCATION_BLOCKS),
+				(unused, vertices) -> beamSegment(renderPose.last(), vertices, laser,
+						Vec3.ZERO, end, width / 6F, color));
+	}
+
+	private static TextureAtlasSprite laserSprite() {
+		return Minecraft.getInstance().getAtlasManager().getAtlasOrThrow(AtlasIds.BLOCKS).getSprite(LASER);
+	}
+
+	/** V33a ChromaFX.renderBeam: an untextured core plus three crossed LASER sprite planes. */
+	private static void beamSegment(PoseStack.Pose pose, VertexConsumer vertices,
+			TextureAtlasSprite sprite, Vec3 start, Vec3 end, float radius, int color) {
+		for (float[] axis : BEAM_AXES) {
+			float offsetX = axis[0] * radius;
+			float offsetY = axis[1] * radius;
+			float offsetZ = axis[2] * radius;
+			vertices.addVertex(pose, (float)start.x - offsetX, (float)start.y - offsetY,
+					(float)start.z - offsetZ).setUv(sprite.getU0(), sprite.getV0()).setColor(color);
+			vertices.addVertex(pose, (float)start.x + offsetX, (float)start.y + offsetY,
+					(float)start.z + offsetZ).setUv(sprite.getU0(), sprite.getV1()).setColor(color);
+			vertices.addVertex(pose, (float)end.x + offsetX, (float)end.y + offsetY,
+					(float)end.z + offsetZ).setUv(sprite.getU1(), sprite.getV1()).setColor(color);
+			vertices.addVertex(pose, (float)end.x - offsetX, (float)end.y - offsetY,
+					(float)end.z - offsetZ).setUv(sprite.getU1(), sprite.getV0()).setColor(color);
+		}
 	}
 
 	private static void lineVertex(VertexConsumer vertices, PoseStack.Pose pose, Vec3 point,
@@ -211,5 +245,38 @@ public final class RenderPylonTurboCharger
 		private double time;
 		private @Nullable Vec3 connection;
 		private Vec3 lightningEnd = Vec3.ZERO;
+		private final LightningPath[] lightning = {
+				new LightningPath(4), new LightningPath(8), new LightningPath(12)};
+	}
+
+	/** The V33a DragonAPI bolt target-chasing rule, advanced once per rendered frame. */
+	private static final class LightningPath {
+		private final double[][] offsets;
+		private final double[][] targets;
+
+		private LightningPath(int segments) {
+			offsets = new double[segments + 1][3];
+			targets = new double[segments + 1][3];
+		}
+
+		private Vec3[] update(Vec3 end) {
+			Vec3[] path = new Vec3[offsets.length];
+			path[0] = Vec3.ZERO;
+			for (int segment = 1; segment < offsets.length - 1; segment++) {
+				for (int axis = 0; axis < 3; axis++) {
+					if (Math.abs(offsets[segment][axis] - targets[segment][axis]) <= 0.375 / 8)
+						targets[segment][axis] = ThreadLocalRandom.current().nextDouble(-0.375, 0.375);
+					if (targets[segment][axis] > offsets[segment][axis])
+						offsets[segment][axis] += 0.0625;
+					else if (targets[segment][axis] < offsets[segment][axis])
+						offsets[segment][axis] -= 0.0625;
+				}
+				double fraction = segment / (double)(offsets.length - 1);
+				path[segment] = end.scale(fraction).add(offsets[segment][0],
+						offsets[segment][1], offsets[segment][2]);
+			}
+			path[path.length - 1] = end;
+			return path;
+		}
 	}
 }
