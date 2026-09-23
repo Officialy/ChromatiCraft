@@ -8075,7 +8075,7 @@ the table machine and its thirty-nine effects are not claimed complete.
   and forced crystal destruction replaces the block with AIR using client-notifying flags instead
   of DragonAPI's neighbor-only `delete`. The Elemental Manipulator uses an outline raycast so the
   noncolliding pylon can be targeted, including when its lumen storage is empty.
-- Nearby conducting pylons are found in already-loaded client chunks during the final level stage,
+- Nearby pylons are found in already-loaded client chunks during the final level stage,
   so the screen wash no longer depends on the pylon BER entering the view frustum. The near-pylon
   colour grade is stronger. Turbo lightning paths now live on the renderer across frames, matching
   V33a's cached 4/8/12-step paths; render-state-local paths had restarted from a straight line on

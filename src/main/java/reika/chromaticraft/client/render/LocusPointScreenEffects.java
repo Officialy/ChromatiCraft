@@ -98,10 +98,10 @@ public final class LocusPointScreenEffects {
 					intensity, 1, point.getRenderColor(), true));
 	}
 
-	/** V33a PYLON/PYLONAURA: the nearest conducting core grades the entire scene within 36 blocks. */
+	/** V33a PYLON/PYLONAURA: a nearby pylon grades the entire scene within 36 blocks. */
 	public static void addPylon(reika.chromaticraft.tileentity.networking.TileEntityCrystalPylon pylon) {
 		Player player = Minecraft.getInstance().player;
-		if (player == null || !pylon.canConduct() || POINTS.size() >= MAX_POINTS)
+		if (player == null || POINTS.size() >= MAX_POINTS)
 			return;
 		Vec3 center = Vec3.atCenterOf(pylon.getBlockPos());
 		double dx = player.getX() - center.x;
