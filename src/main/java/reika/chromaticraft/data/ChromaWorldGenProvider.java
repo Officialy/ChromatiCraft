@@ -139,6 +139,13 @@ public final class ChromaWorldGenProvider {
     public static final ResourceKey<PlacedFeature> RAINBOW_TREE_PLACED = placedKey("rainbow_tree");
     public static final ResourceKey<ConfiguredFeature<?, ?>> GLOWING_TREE = configuredKey("glowing_tree");
     public static final ResourceKey<PlacedFeature> ENDER_FOREST_TREE_PLACED = placedKey("ender_forest_tree");
+    public static final ResourceKey<PlacedFeature> ENDER_POOL_PLACED = placedKey("ender_pool");
+    public static final ResourceKey<PlacedFeature> ENDER_FOREST_FLOWER_PLACED = placedKey("ender_forest_flower");
+    public static final ResourceKey<PlacedFeature> ENDER_FOREST_DEFAULT_FLOWERS_PLACED =
+            placedKey("ender_forest_default_flowers");
+    /** The bone-meal feature; see {@code EnderForestFlowerFeature} and {@code ChromaConfiguredFeatureTagProvider}. */
+    public static final ResourceKey<ConfiguredFeature<?, ?>> ENDER_FOREST_FLOWER =
+            configuredKey("ender_forest_flower");
     public static final ResourceKey<PlacedFeature> GLOWING_TREE_PLACED = placedKey("glowing_tree");
 
     private ChromaWorldGenProvider() {}
@@ -184,6 +191,19 @@ public final class ChromaWorldGenProvider {
             registerConfigured(bootstrap, features, id("warp_node"));
             registerConfigured(bootstrap, features, id("skypeater"));
             registerConfigured(bootstrap, features, id("ender_forest_tree"));
+            registerConfigured(bootstrap, features, id("ender_pool"));
+            registerConfigured(bootstrap, features, id("ender_forest_flower"));
+            // Vanilla's flower_default, reproduced under ChromatiCraft's name so that it is *not* in
+            // minecraft:can_spawn_from_bone_meal. The Ender Forest's world-generation flowers stay exactly
+            // vanilla's, while bone meal in that biome sees only ender_forest_flower -- the V33a
+            // plantFlower override -- instead of choosing between the two.
+            bootstrap.register(configuredKey("ender_forest_default_flowers"),
+                    new ConfiguredFeature<>(Feature.SIMPLE_BLOCK,
+                            new net.minecraft.world.level.levelgen.feature.configurations.SimpleBlockConfiguration(
+                                    new net.minecraft.world.level.levelgen.feature.stateproviders.WeightedStateProvider(
+                                            net.minecraft.util.random.WeightedList.<net.minecraft.world.level.block.state.BlockState>builder()
+                                                    .add(net.minecraft.world.level.block.Blocks.POPPY.defaultBlockState(), 2)
+                                                    .add(net.minecraft.world.level.block.Blocks.DANDELION.defaultBlockState(), 1)))));
             registerConfigured(bootstrap, features, id("rainbow_tree"));
             for (ChromaDecoFlowers flower : ChromaDecoFlowers.list)
                 registerConfigured(bootstrap, features, id(flower.registryName()));
@@ -420,6 +440,28 @@ public final class ChromaWorldGenProvider {
                     net.minecraft.world.level.levelgen.placement.HeightmapPlacement
                             .onHeightmap(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING),
                     BiomeFilter.biome()));
+            // V33a DecoratorEnderForest runs after the biome's own decoration, one attempt per chunk at
+            // the surface; the ENDERPOOLS chance is rolled inside the feature from the live option.
+            registerPlaced(bootstrap, configured, id("ender_pool"), List.of(
+                    InSquarePlacement.spread(),
+                    net.minecraft.world.level.levelgen.placement.HeightmapPlacement
+                            .onHeightmap(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES),
+                    BiomeFilter.biome()));
+            // Bone meal only: bone meal finds the configured feature through the biome's list, but this
+            // must never run during world generation, where upstream did not use plantFlower at all.
+            registerPlaced(bootstrap, configured, id("ender_forest_flower"),
+                    List.of(CountPlacement.of(0), BiomeFilter.biome()));
+            // vanilla VegetationPlacements.FLOWER_DEFAULT's modifiers, unchanged.
+            registerPlaced(bootstrap, configured, id("ender_forest_default_flowers"), List.of(
+                    RarityFilter.onAverageOnceEvery(32),
+                    InSquarePlacement.spread(),
+                    net.minecraft.world.level.levelgen.placement.HeightmapPlacement
+                            .onHeightmap(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING),
+                    BiomeFilter.biome(),
+                    CountPlacement.of(64),
+                    net.minecraft.world.level.levelgen.placement.RandomOffsetPlacement.ofTriangle(7, 3),
+                    net.minecraft.world.level.levelgen.placement.BlockPredicateFilter.forPredicate(
+                            net.minecraft.world.level.levelgen.blockpredicates.BlockPredicate.ONLY_IN_AIR_PREDICATE)));
             for (ChromaDecoFlowers flower : ChromaDecoFlowers.list)
                 registerPlaced(bootstrap, configured, id(flower.registryName()), List.of(
                         RarityFilter.onAverageOnceEvery(flower.generationChance()),

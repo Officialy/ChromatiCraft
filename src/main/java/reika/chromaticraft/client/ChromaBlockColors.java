@@ -126,6 +126,7 @@ public final class ChromaBlockColors {
     public static void onClientLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
         LuminousCliffsColors.onLevelChanged(null);
         ProximaBiomeColors.onLevelChanged(null);
+        OverworldBiomePresence.onLevelChanged();
         // Leaving the level ends any ceremony, and with it gives back the HUD and view bob. This is one
         // of the paths that must not be forgotten: a player who logs out mid-ritual would otherwise
         // come back with no GUI.
@@ -188,6 +189,8 @@ public final class ChromaBlockColors {
     public static void registerColorResolvers(RegisterColorHandlersEvent.ColorResolvers event) {
         event.register(LuminousCliffsColors.CLIFF_PRESENCE);
         event.register(ProximaBiomeColors.PROXIMA_PRESENCE);
+        event.register(OverworldBiomePresence.ENDER_FOREST);
+        event.register(OverworldBiomePresence.RAINBOW_STREAM);
     }
 
     @SubscribeEvent
@@ -237,6 +240,7 @@ public final class ChromaBlockColors {
             event.register(existing.stream()
                     .map(LuminousCliffsColors::wrapTerrain)
                     .map(ProximaBiomeColors::wrapTerrain)
+                    .map(source -> EnderForestColors.wrap(source, block))
                     .toList(), block);
         }
     }

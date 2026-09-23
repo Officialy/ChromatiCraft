@@ -36,6 +36,8 @@ public final class ChromaBiomes {
 
     /** Shared with the Proxima biomes, whose base derives from the Rainbow Forest's water. */
     public static final int WATER_COLOR = 0x00ffff;
+    /** Vanilla's untinted water, which is what a 1.7.10 biome with no water multiplier rendered. */
+    public static final int DEFAULT_WATER_COLOR = 0x3f76e4;
     private static final int SKY_COLOR = 0x648cff;
 
     /**
@@ -123,7 +125,17 @@ public final class ChromaBiomes {
      */
     private static Biome createEnderForest(HolderGetter<PlacedFeature> features,
             HolderGetter<ConfiguredWorldCarver<?>> carvers) {
+        // V33a BiomeEnderForest extends BiomeGenForest(id, 0) and clears only the *monster* list. Every
+        // other list is the 1.7.10 forest's: BiomeGenBase's farm animals, squid and bats, plus the wolf a
+        // type-0 forest adds. Emitting only the monsters left the biome with no animals at all.
         MobSpawnSettings.Builder mobs = new MobSpawnSettings.Builder()
+                .addSpawn(MobCategory.CREATURE, 12, new MobSpawnSettings.SpawnerData(EntityTypes.SHEEP, 4, 4))
+                .addSpawn(MobCategory.CREATURE, 10, new MobSpawnSettings.SpawnerData(EntityTypes.PIG, 4, 4))
+                .addSpawn(MobCategory.CREATURE, 10, new MobSpawnSettings.SpawnerData(EntityTypes.CHICKEN, 4, 4))
+                .addSpawn(MobCategory.CREATURE, 8, new MobSpawnSettings.SpawnerData(EntityTypes.COW, 4, 4))
+                .addSpawn(MobCategory.CREATURE, 5, new MobSpawnSettings.SpawnerData(EntityTypes.WOLF, 4, 4))
+                .addSpawn(MobCategory.WATER_CREATURE, 10, new MobSpawnSettings.SpawnerData(EntityTypes.SQUID, 4, 4))
+                .addSpawn(MobCategory.AMBIENT, 10, new MobSpawnSettings.SpawnerData(EntityTypes.BAT, 8, 8))
                 .addSpawn(MobCategory.MONSTER, 10, new MobSpawnSettings.SpawnerData(EntityTypes.ENDERMAN, 1, 4))
                 .addSpawn(MobCategory.MONSTER, 1, new MobSpawnSettings.SpawnerData(EntityTypes.CREEPER, 1, 4))
                 .addSpawn(MobCategory.MONSTER, 1, new MobSpawnSettings.SpawnerData(EntityTypes.SPIDER, 1, 4))
@@ -137,21 +149,37 @@ public final class ChromaBiomes {
         generation.addFeature(GenerationStep.Decoration.VEGETAL_DECORATION,
                 features.getOrThrow(ChromaWorldGenProvider.ENDER_FOREST_TREE_PLACED));
         BiomeDefaultFeatures.addBushes(generation);
-        BiomeDefaultFeatures.addDefaultFlowers(generation);
+        // Vanilla's flower_default under an untagged ChromatiCraft key, so that bone meal here sees only
+        // the biome's own plantFlower (ender_forest_flower, listed with a count of zero just below).
+        generation.addFeature(GenerationStep.Decoration.VEGETAL_DECORATION,
+                features.getOrThrow(ChromaWorldGenProvider.ENDER_FOREST_DEFAULT_FLOWERS_PLACED));
+        generation.addFeature(GenerationStep.Decoration.VEGETAL_DECORATION,
+                features.getOrThrow(ChromaWorldGenProvider.ENDER_FOREST_FLOWER_PLACED));
         BiomeDefaultFeatures.addForestGrass(generation);
         BiomeDefaultFeatures.addDefaultMushrooms(generation);
         BiomeDefaultFeatures.addDefaultExtraVegetation(generation, true);
+        // V33a DecoratorEnderForest calls super.genDecorations first and only then its pool, so the pool
+        // is the last thing the biome decorates.
+        generation.addFeature(GenerationStep.Decoration.VEGETAL_DECORATION,
+                features.getOrThrow(ChromaWorldGenProvider.ENDER_POOL_PLACED));
 
         return new Biome.BiomeBuilder()
                 // V33a setDisableRain().
                 .hasPrecipitation(false)
                 .temperature(0.7F)
                 .downfall(0.8F)
-                .setAttribute(EnvironmentAttributes.SKY_COLOR, SKY_COLOR)
+                // BiomeEnderForest overrides neither sky nor base water, so both are the 1.7.10 forest's:
+                // the temperature-derived sky (the same formula 26.2 uses) and untinted water, which is
+                // vanilla's default water colour. The Rainbow Forest's cyan and its 100,140,255 sky had
+                // been copied here by mistake. ENDERCOLORING's pink water is applied at render time.
+                .setAttribute(EnvironmentAttributes.SKY_COLOR,
+                        net.minecraft.data.worldgen.biome.OverworldBiomes.calculateSkyColor(0.7F))
                 .setAttribute(EnvironmentAttributes.BACKGROUND_MUSIC,
                         new BackgroundMusic(SoundEvents.MUSIC_BIOME_FOREST))
                 .specialEffects(new BiomeSpecialEffects.Builder()
-                        .waterColor(WATER_COLOR)
+                        .waterColor(DEFAULT_WATER_COLOR)
+                        // The forest end of V33a's per-block forest/ice-plains blend; EnderForestColors
+                        // applies the blend over this at render time.
                         .grassColorOverride(FOREST_GRASS)
                         .foliageColorOverride(FOREST_FOLIAGE)
                         .build())

@@ -89,6 +89,14 @@ public final class ChromaFeatures {
     public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> ENDER_FOREST_TREE =
             FEATURES.register("ender_forest_tree", EnderForestTreeFeature::new);
 
+    /** V33a EnderPoolGenerator; the chunk chance is rolled from the live ENDERPOOLS option. */
+    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> ENDER_POOL =
+            FEATURES.register("ender_pool", reika.chromaticraft.world.EnderPoolFeature::new);
+
+    /** V33a BiomeEnderForest.plantFlower; bone meal's only choice in the Ender Forest. */
+    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> ENDER_FOREST_FLOWER =
+            FEATURES.register("ender_forest_flower", reika.chromaticraft.world.EnderForestFlowerFeature::new);
+
     public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> RAINBOW_TREE =
             FEATURES.register("rainbow_tree", reika.chromaticraft.world.RainbowTreeFeature::new);
 
