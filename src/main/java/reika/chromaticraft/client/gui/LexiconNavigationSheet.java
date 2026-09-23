@@ -7,7 +7,9 @@ import java.util.Map;
 
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.data.AtlasIds;
 import net.minecraft.resources.Identifier;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
@@ -216,7 +218,7 @@ public final class LexiconNavigationSheet {
 	 */
 	public void render(GuiGraphicsExtractor graphics, Font font, int frameLeft, int frameTop,
 			int offsetX, int offsetY, int paneWidth, int paneHeight, int mouseX, int mouseY,
-			String search, long tick,
+			String search, long tick, boolean recipeMode,
 			java.util.function.Function<LexiconCatalog.Entry, ItemStack> icons,
 			java.util.function.Predicate<LexiconCatalog.Entry> unlocked) {
 		// GuiNavigation calls drawSections(frameLeft + 11, frameTop + 11), whose
@@ -272,6 +274,14 @@ public final class LexiconNavigationSheet {
 					graphics.item(icon, cx + 4, cy + 4);
 				else
 					renderMissingIcon(graphics, font, cx + 4, cy + 4);
+				if (recipeMode && unlocked.test(cell.entry)
+						&& (cell.entry.id().equals("CASTTABLE") || cell.entry.id().equals("WAND"))) {
+					var craftingTop = Minecraft.getInstance().getAtlasManager()
+							.getAtlasOrThrow(AtlasIds.BLOCKS)
+							.getSprite(Identifier.withDefaultNamespace("block/crafting_table_top"));
+					graphics.blitSprite(RenderPipelines.GUI_TEXTURED, craftingTop,
+							cx + 8, cy + 8, 9, 9, 0xffffffff);
+				}
 				if (!unlocked.test(cell.entry))
 					graphics.text(font, Component.literal("?"), cx + 9, cy + 9, 0xffff6060, true);
 				if (cell.searchAlpha < 1) {

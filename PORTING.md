@@ -8113,3 +8113,8 @@ the table machine and its thirty-nine effects are not claimed complete.
   from 0.625 to 0.875, omitting the hidden faces at their shared plane. This removes the known
   z-fighting geometry; the visual result is not yet checked in game. The relay names were already
   present in generated `en_us.json`, so no new language names were invented.
+- The Lexicon description pane now shows twelve rather than thirteen lines per page: at the
+  screenshot's GUI scale, the thirteenth touched the lower frame. Recipes mode restores V33a's
+  crafting-table-top badge on the Casting Table and Elemental Manipulator navigation entries, the
+  only two entries V33a classifies as vanilla recipes. Other casting/ability recipe badges still
+  need their own parity pass. A serial `:ChromatiCraft:compileJava` passes these GUI changes.

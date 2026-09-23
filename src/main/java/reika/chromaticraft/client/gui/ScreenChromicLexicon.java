@@ -93,7 +93,7 @@ public final class ScreenChromicLexicon extends Screen {
 	private static final int DESC_X = 8;
 	private static final int DESC_Y = 88;
 	/** Lines which fit from V33a's description origin to the lower inside edge of the page. */
-	private static final int DESCRIPTION_LINES_PER_PAGE = 13;
+	private static final int DESCRIPTION_LINES_PER_PAGE = 12;
 
 	/** V33a {@code Textures/infoicons.png}: the power-supply badges, sixteen to a row. */
 	private static final Identifier INFO_ICONS = Identifier.fromNamespaceAndPath(
@@ -798,7 +798,7 @@ public final class ScreenChromicLexicon extends Screen {
 			sheet.render(graphics, font, left, top,
 					scrollPane.offsetX(), scrollPane.offsetY(),
 					LexiconScrollPane.PANE_WIDTH, LexiconScrollPane.PANE_HEIGHT,
-					mouseX, mouseY, search, guiTick,
+					mouseX, mouseY, search, guiTick, recipeMode,
 					LexiconIconResolver::icon, this::isEntryActive);
 			LexiconCatalog.Entry hovered = sheetHit(mouseX, mouseY);
 			if (hovered != null)
