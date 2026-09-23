@@ -2929,6 +2929,7 @@ public final class ChromaGameTests {
 		helper.assertTrue(!ProgressStage.CTM.isPlayerAtStage(player),
 				"a fresh player must not already hold CTM");
 		manager.maxPlayerProgression(player, false);
+		reika.chromaticraft.magic.progression.PlayerResearch.maxPlayerResearch(player);
 
 		for (ProgressStage stage : ProgressStage.list) {
 			if (!stage.active)
@@ -2941,6 +2942,12 @@ public final class ChromaGameTests {
 		for (CrystalElement element : CrystalElement.elements)
 			helper.assertTrue(manager.hasPlayerDiscoveredColor(player, element),
 					"maximize must discover every colour; " + element + " was missed");
+		helper.assertTrue(reika.chromaticraft.magic.progression.ResearchProgress.getLevel(player)
+				== reika.chromaticraft.magic.progression.ResearchLevel.CTM,
+				"maximize must grant the final research tier");
+		for (var page : reika.chromaticraft.magic.progression.LexiconCatalog.obtainablePages())
+			helper.assertTrue(reika.chromaticraft.magic.progression.PlayerResearch.hasFragment(player, page),
+					"maximize must grant ability and other lexicon fragments; " + page.id() + " was missed");
 
 		manager.resetPlayerProgression(player, false);
 		helper.assertTrue(!ProgressStage.CTM.isPlayerAtStage(player),

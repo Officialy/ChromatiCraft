@@ -56,7 +56,6 @@ public final class RenderCrystalPylon implements BlockEntityRenderer<TileEntityC
     public void extractRenderState(TileEntityCrystalPylon pylon, State state, float partialTick,
             Vec3 cameraPosition, ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress) {
         BlockEntityRenderer.super.extractRenderState(pylon, state, partialTick, cameraPosition, breakProgress);
-        reika.chromaticraft.client.render.LocusPointScreenEffects.addPylon(pylon);
         state.enhanced = pylon.isEnhanced();
         state.unstable = pylon.isUnstable();
         state.conducting = pylon.canConduct();

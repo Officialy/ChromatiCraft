@@ -65,6 +65,18 @@ public final class PlayerResearch {
 		return true;
 	}
 
+	/** V33a's admin research maximum: the final tier and every obtainable fragment. */
+	public static void maxPlayerResearch(Player player) {
+		if (player.level().isClientSide())
+			return;
+		ResearchProgress.setLevel(player, ResearchLevel.CTM, false);
+		LinkedHashSet<String> pages = new LinkedHashSet<>(fragments(player));
+		for (LexiconCatalog.Entry page : LexiconCatalog.obtainablePages())
+			pages.add(page.id());
+		writeFragments(researchTag(player), pages);
+		sync(player);
+	}
+
 	public static boolean removeFragment(Player player, LexiconCatalog.Entry page) {
 		if (player.level().isClientSide() || page == null || page.alwaysPresent())
 			return false;

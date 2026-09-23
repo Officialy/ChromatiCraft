@@ -104,6 +104,8 @@ public class TileEntityChromaCrystal extends TileEntityPylonEnhancer {
             this.setChanged();
             this.syncAllData(true);
             this.triggerBlockUpdate();
+			if (this.getLevel() instanceof net.minecraft.server.level.ServerLevel server)
+				server.sendBlockUpdated(this.getBlockPos(), this.getBlockState(), this.getBlockState(), 2);
         }
         return found;
     }
@@ -154,7 +156,7 @@ public class TileEntityChromaCrystal extends TileEntityPylonEnhancer {
             ChromaNetwork.sendPowerCrystalDestroy(server, this.getBlockPos());
             world.levelEvent(2001, this.getBlockPos(), net.minecraft.world.level.block.Block.getId(this.getBlockState()));
         }
-        this.delete();
+		world.setBlock(this.getBlockPos(), net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 3);
     }
 
     public static void doDestroyParticles(Level world, int x, int y, int z) {

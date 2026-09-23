@@ -8062,3 +8062,26 @@ the table machine and its thirty-nine effects are not claimed complete.
   the modern fake-player guard is used for drops. The `ball_lightning_entity_contract` GameTest
   covers type, initial colour, ethereal motion flags and the density gate, but was not run here
   because the user's machine previously exhausted memory during GameTest startup.
+
+## Pylon and ritual follow-up (2026-09-23)
+
+- Middle-click opens the ability selector only on a ray miss, leaving block-target middle-click to
+  Minecraft. The Ritual Altar now explains an empty ability list; as in V33a, an ability requires its
+  fragment and progression gates. `/chromaprog <player> maximize` now grants the final research tier
+  and all obtainable fragments alongside stages and tuning, but deliberately does not grant the
+  abilities themselves, so the altar can still be used to learn them. A focused progression
+  contract checks the research grants; it has not been run due the user's GameTest memory warning.
+- Power Crystal connection changes now send a client block update to rebuild its animated model,
+  and forced crystal destruction replaces the block with AIR using client-notifying flags instead
+  of DragonAPI's neighbor-only `delete`. The Elemental Manipulator uses an outline raycast so the
+  noncolliding pylon can be targeted, including when its lumen storage is empty.
+- Nearby conducting pylons are found in already-loaded client chunks during the final level stage,
+  so the screen wash no longer depends on the pylon BER entering the view frustum. The near-pylon
+  colour grade is stronger. Turbo lightning paths now live on the renderer across frames, matching
+  V33a's cached 4/8/12-step paths; render-state-local paths had restarted from a straight line on
+  every frame. Laser UVs repeat approximately once per block rather than stretching across a whole
+  bolt segment.
+- One serial `:ChromatiCraft:compileJava` passes. These client visuals still need an in-game check,
+  especially with Distant Horizons enabled; no client or GameTest server was launched here. The
+  exact Distant Horizons depth/compositing interaction is not yet verified, so compatibility is
+  not claimed solved.

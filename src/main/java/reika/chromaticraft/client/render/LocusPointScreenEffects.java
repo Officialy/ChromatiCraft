@@ -17,6 +17,7 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.textures.FilterMode;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.MappableRingBuffer;
 import net.minecraft.client.renderer.PostChain;
 import net.minecraft.resources.Identifier;
@@ -111,10 +112,27 @@ public final class LocusPointScreenEffects {
 			return;
 		float aura = (float)Math.max(0, Math.min(1, 1.75 - distance / 24));
 		float factor = (float)Math.min(1, 1.5 - distance / 20);
-		float grade = Math.max(0, (factor * factor - 0.75F) * 2);
+		float grade = Math.max(0, (factor * factor - 0.75F) * 3);
 		if (distance < 6)
 			grade = Math.min(1, grade + (float)(6 - distance) / 12F);
 		POINTS.add(new Point(center, aura, grade, -2, pylon.getColor().getColor(), false));
+	}
+
+	private static void addNearbyPylons(ClientLevel level, Vec3 eye) {
+		int minChunkX = (int)Math.floor(eye.x - 36) >> 4;
+		int maxChunkX = (int)Math.floor(eye.x + 36) >> 4;
+		int minChunkZ = (int)Math.floor(eye.z - 36) >> 4;
+		int maxChunkZ = (int)Math.floor(eye.z + 36) >> 4;
+		for (int chunkX = minChunkX; chunkX <= maxChunkX; chunkX++) {
+			for (int chunkZ = minChunkZ; chunkZ <= maxChunkZ; chunkZ++) {
+				var chunk = level.getChunkSource().getChunkNow(chunkX, chunkZ);
+				if (chunk == null) continue;
+				for (BlockEntity tile : chunk.getBlockEntities().values()) {
+					if (tile instanceof reika.chromaticraft.tileentity.networking.TileEntityCrystalPylon pylon)
+						addPylon(pylon);
+				}
+			}
+		}
 	}
 
 	public static void flashTurbo(int color, int durationMillis) {
@@ -132,6 +150,8 @@ public final class LocusPointScreenEffects {
 	/** Called after the level is fully rendered; posted emitters always belong to this one frame. */
 	public static void renderAndClear(Matrix4fc modelView, Matrix4fc projection, Vec3 eye) {
 		try {
+			if (Minecraft.getInstance().level instanceof ClientLevel level)
+				addNearbyPylons(level, eye);
 			long elapsed = System.currentTimeMillis() - turboFlashStart;
 			if (elapsed >= 0 && elapsed < turboFlashDuration && POINTS.size() < MAX_POINTS)
 				POINTS.add(new Point(Vec3.ZERO, 0, 1F - elapsed / (float)turboFlashDuration,

@@ -35,7 +35,9 @@ public final class ClientAbilityController {
 	public static void clientTick(ClientTickEvent.Post event) {
 		Minecraft minecraft = Minecraft.getInstance();
 		while (SELECT_ABILITY.consumeClick()) {
-			if (minecraft.player != null && minecraft.gui.screen() == null)
+			if (minecraft.player != null && minecraft.gui.screen() == null
+					&& minecraft.hitResult != null
+					&& minecraft.hitResult.getType() == net.minecraft.world.phys.HitResult.Type.MISS)
 				minecraft.gui.setScreen(new ScreenAbilitySelect(minecraft.player));
 		}
 	}

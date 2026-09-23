@@ -20,6 +20,7 @@ import net.minecraft.server.level.ServerPlayer;
 
 import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.magic.progression.ProgressionManager;
+import reika.chromaticraft.magic.progression.PlayerResearch;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.world.dimension.DimensionTuningManager;
 
@@ -136,13 +137,14 @@ public final class ProgressModifyCommand {
 	private static int maximize(CommandContext<CommandSourceStack> context) {
 		ServerPlayer player = player(context);
 		ProgressionManager.instance.maxPlayerProgression(player, false);
+		PlayerResearch.maxPlayerResearch(player);
 		// Dimension tuning is a second progression axis in V33a. A maximized testing player must be
 		// able to exercise the content gated by it too (most visibly Sky Rivers); leaving it at zero
 		// made the command claim success while Proxima still rejected the player.
 		int maximumTuning = Arrays.stream(DimensionTuningManager.TuningThresholds.list)
 				.mapToInt(threshold -> threshold.minimumTuning).max().orElse(0);
 		DimensionTuningManager.instance.tunePlayer(player, maximumTuning);
-		return ok(context, "Maximized progression and dimension tuning for "
+		return ok(context, "Maximized progression, research and dimension tuning for "
 				+ player.getName().getString() + ".");
 	}
 

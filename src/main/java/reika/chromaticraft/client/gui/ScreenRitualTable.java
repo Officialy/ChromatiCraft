@@ -71,6 +71,15 @@ public final class ScreenRitualTable extends AbstractContainerScreen<MenuRitualT
                     WIDTH, HEIGHT, 256, 256);
             graphics.blit(RenderPipelines.GUI_TEXTURED, texture("ability/unknown.png"),
                     leftPos + 8, topPos + 8, 0, 0, 50, 50, 50, 50);
+            graphics.text(font, Component.translatableWithFallback("gui.chromaticraft.ritual_table.empty",
+                            "No available abilities"),
+                    leftPos + 62, topPos + 10, 0xffffffff, false);
+            graphics.text(font, Component.translatableWithFallback("gui.chromaticraft.ritual_table.fragments",
+                            "Discover ability fragments"),
+                    leftPos + 12, topPos + 68, 0xffffffff, false);
+            graphics.text(font, Component.translatableWithFallback("gui.chromaticraft.ritual_table.progress",
+                            "and meet their progression gates."),
+                    leftPos + 12, topPos + 80, 0xffffffff, false);
             return;
         }
         drawCard(graphics, index, leftPos + slide);

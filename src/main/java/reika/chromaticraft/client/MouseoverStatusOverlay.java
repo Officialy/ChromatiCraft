@@ -22,7 +22,6 @@ import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.client.hud.LumenStorageRenderState;
 import reika.chromaticraft.magic.interfaces.LumenTile;
 import reika.chromaticraft.tileentity.TileEntityDummyAux;
-import reika.dragonapi.libraries.ReikaPlayerAPI;
 
 /**
  * V33a {@code MouseoverOverlayRenderer.renderStatusOverlay}, reached from {@code ChromaOverlays} only
@@ -72,7 +71,7 @@ public final class MouseoverStatusOverlay implements GuiLayer {
 		if (!player.getItemInHand(InteractionHand.MAIN_HAND).is(ChromaItems.MANIPULATOR.get()))
 			return;
 
-		HitResult hit = ReikaPlayerAPI.getLookedAtBlock(player, 4, false);
+		HitResult hit = player.pick(4, delta.getGameTimeDeltaPartialTick(false), false);
 		if (!(hit instanceof BlockHitResult block) || hit.getType() != HitResult.Type.BLOCK)
 			return;
 		BlockEntity tile = mc.level.getBlockEntity(block.getBlockPos());
@@ -98,13 +97,20 @@ public final class MouseoverStatusOverlay implements GuiLayer {
 
 	private static void renderStorage(GuiGraphicsExtractor gui, LumenTile tile, Minecraft mc) {
 		var energy = tile.getEnergy();
-		if (energy == null || energy.tagCount() == 0)
+		if (energy == null)
 			return;
-		int count = energy.tagCount();
+		java.util.List<reika.chromaticraft.registry.CrystalElement> elements =
+				new java.util.ArrayList<>(energy.elementSet());
+		if (tile instanceof reika.chromaticraft.tileentity.networking.TileEntityCrystalPylon pylon
+				&& !elements.contains(pylon.getColor()))
+			elements.add(pylon.getColor());
+		int count = elements.size();
+		if (count == 0)
+			return;
 		int[] colors = new int[count];
 		float[] fractions = new float[count];
 		int index = 0;
-		for (var element : energy.elementSet()) {
+		for (var element : elements) {
 			colors[index] = element.getColor();
 			int capacity = tile.getMaxStorage(element);
 			fractions[index] = capacity <= 0 ? 0 : Math.clamp(tile.getEnergy(element) / (float)capacity, 0, 1);

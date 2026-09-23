@@ -52,9 +52,13 @@ public final class RenderPylonTurboCharger
 	private static final float[][] BEAM_AXES = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
 
 	private final ModelTurbo model;
+	private final LightningPath[][] lightning = new LightningPath[3][Location.VALUES.length + 1];
 
 	public RenderPylonTurboCharger(BlockEntityRendererProvider.Context context) {
 		model = new ModelTurbo(context.bakeLayer(MODEL_LAYER));
+		for (int bolt = 0; bolt < lightning.length; bolt++)
+			for (int location = 0; location < lightning[bolt].length; location++)
+				lightning[bolt][location] = new LightningPath(4 + bolt * 4);
 	}
 
 	@Override
@@ -71,6 +75,7 @@ public final class RenderPylonTurboCharger
 		state.time = charger.getLevel() != null ? charger.getLevel().getGameTime() + partialTick : partialTick;
 		state.connection = null;
 		Location location = charger.getLocation();
+		state.locationIndex = location == null ? 0 : location.ordinal() + 1;
 		if (location != null && charger.getLevel() != null
 				&& charger.getLevel().getBlockEntity(charger.getBlockPos().offset(location.nextOffset()))
 						instanceof TileEntityPylonTurboCharger) {
@@ -109,12 +114,12 @@ public final class RenderPylonTurboCharger
 		poseStack.popPose();
 	}
 
-	private static void submitLightning(State state, PoseStack poseStack, SubmitNodeCollector collector) {
+	private void submitLightning(State state, PoseStack poseStack, SubmitNodeCollector collector) {
 		PoseStack renderPose = copy(poseStack);
 		TextureAtlasSprite laser = laserSprite();
-		Vec3[][] paths = new Vec3[state.lightning.length][];
+		Vec3[][] paths = new Vec3[lightning.length][];
 		for (int bolt = 0; bolt < paths.length; bolt++)
-			paths[bolt] = state.lightning[bolt].update(state.lightningEnd);
+			paths[bolt] = lightning[bolt][state.locationIndex].update(state.lightningEnd);
 		submitAfterTerrain(poseStack, collector, RenderTypes.linesTranslucent(), (unused, vertices) -> {
 			Vector3f normal = new Vector3f((float)state.lightningEnd.x,
 					(float)state.lightningEnd.y, (float)state.lightningEnd.z).normalize();
@@ -183,6 +188,14 @@ public final class RenderPylonTurboCharger
 	/** V33a ChromaFX.renderBeam: an untextured core plus three crossed LASER sprite planes. */
 	private static void beamSegment(PoseStack.Pose pose, VertexConsumer vertices,
 			TextureAtlasSprite sprite, Vec3 start, Vec3 end, float radius, int color) {
+		int sections = Math.max(1, (int)Math.ceil(start.distanceTo(end)));
+		for (int section = 0; section < sections; section++)
+			beamSection(pose, vertices, sprite, start.lerp(end, section / (double)sections),
+					start.lerp(end, (section + 1) / (double)sections), radius, color);
+	}
+
+	private static void beamSection(PoseStack.Pose pose, VertexConsumer vertices,
+			TextureAtlasSprite sprite, Vec3 start, Vec3 end, float radius, int color) {
 		for (float[] axis : BEAM_AXES) {
 			float offsetX = axis[0] * radius;
 			float offsetY = axis[1] * radius;
@@ -240,13 +253,12 @@ public final class RenderPylonTurboCharger
 
 	public static final class State extends BlockEntityRenderState {
 		private boolean ritualActive;
+		private int locationIndex;
 		private int skyTick;
 		private int color;
 		private double time;
 		private @Nullable Vec3 connection;
 		private Vec3 lightningEnd = Vec3.ZERO;
-		private final LightningPath[] lightning = {
-				new LightningPath(4), new LightningPath(8), new LightningPath(12)};
 	}
 
 	/** The V33a DragonAPI bolt target-chasing rule, advanced once per rendered frame. */

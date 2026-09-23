@@ -42,6 +42,9 @@ public class ChromaLang extends LanguageProvider {
 		add("tab.chromaticraft.items", "ChromatiCraft Items");
 		add("tab.chromaticraft.fragments", "CC Info Fragments");
 		add("key.chromaticraft.ability", "Use Ability");
+		add("gui.chromaticraft.ritual_table.empty", "No available abilities");
+		add("gui.chromaticraft.ritual_table.fragments", "Discover ability fragments");
+		add("gui.chromaticraft.ritual_table.progress", "and meet their progression gates.");
 		add("key.category.chromaticraft.general", "ChromatiCraft");
 		// V33a Registry/ChromaBlocks basicName keys "chroma.storageblock" and "chroma.display" have
 		// no entry at all in the V33a en_US.lang (never publicly named); no ground truth exists for
