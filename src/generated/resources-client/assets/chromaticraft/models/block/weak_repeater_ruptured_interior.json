@@ -1,0 +1,93 @@
+{
+  "parent": "minecraft:block/block",
+  "elements": [
+    {
+      "faces": {
+        "east": {
+          "texture": "#plant"
+        },
+        "west": {
+          "texture": "#plant"
+        }
+      },
+      "from": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "shade": false,
+      "to": [
+        1.0,
+        16.0,
+        16.0
+      ]
+    },
+    {
+      "faces": {
+        "east": {
+          "texture": "#plant"
+        },
+        "west": {
+          "texture": "#plant"
+        }
+      },
+      "from": [
+        15.0,
+        0.0,
+        0.0
+      ],
+      "shade": false,
+      "to": [
+        15.0,
+        16.0,
+        16.0
+      ]
+    },
+    {
+      "faces": {
+        "north": {
+          "texture": "#plant"
+        },
+        "south": {
+          "texture": "#plant"
+        }
+      },
+      "from": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "shade": false,
+      "to": [
+        16.0,
+        16.0,
+        1.0
+      ]
+    },
+    {
+      "faces": {
+        "north": {
+          "texture": "#plant"
+        },
+        "south": {
+          "texture": "#plant"
+        }
+      },
+      "from": [
+        0.0,
+        0.0,
+        15.0
+      ],
+      "shade": false,
+      "to": [
+        16.0,
+        16.0,
+        15.0
+      ]
+    }
+  ],
+  "textures": {
+    "particle": "chromaticraft:block/basic/weakrepeater_frame_burned",
+    "plant": "chromaticraft:block/basic/weakrepeater_frame_burned"
+  }
+}

@@ -1364,11 +1364,27 @@ public class ChromaModelProvider extends ModelProvider {
 						.put(TextureSlot.SIDE, new Material(Identifier.fromNamespaceAndPath(
 								ChromatiCraft.MODID, "block/basic/weakrepeater_frame_burned"))),
 				modelOut);
-		PropertyDispatch.C1<MultiVariant, Boolean> variants =
-				PropertyDispatch.initial(reika.chromaticraft.block.BlockWeakRepeater.RUPTURED);
-		variants.select(false, variant(active));
-		variants.select(true, variant(ruptured));
-		blockStateOut.accept(MultiVariantGenerator.dispatch(block).with(variants));
+		Identifier interior = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
+				"block/weak_repeater_ruptured_interior");
+		modelOut.accept(interior, () -> {
+			JsonObject root = new JsonObject();
+			root.addProperty("parent", "minecraft:block/block");
+			JsonObject textures = new JsonObject();
+			textures.addProperty("plant", "chromaticraft:block/basic/weakrepeater_frame_burned");
+			textures.addProperty("particle", "chromaticraft:block/basic/weakrepeater_frame_burned");
+			root.add("textures", textures);
+			JsonArray elements = new JsonArray();
+			elements.add(plantPlane(1, 0, 1, 16, true));
+			elements.add(plantPlane(15, 0, 15, 16, true));
+			elements.add(plantPlane(0, 1, 16, 1, false));
+			elements.add(plantPlane(0, 15, 16, 15, false));
+			root.add("elements", elements);
+			return root;
+		});
+		blockStateOut.accept(MultiPartGenerator.multiPart(block)
+				.with(new ConditionBuilder().term(reika.chromaticraft.block.BlockWeakRepeater.RUPTURED, false), variant(active))
+				.with(new ConditionBuilder().term(reika.chromaticraft.block.BlockWeakRepeater.RUPTURED, true), variant(ruptured))
+				.with(new ConditionBuilder().term(reika.chromaticraft.block.BlockWeakRepeater.RUPTURED, true), variant(interior)));
 		itemModelOut.accept(block.asItem(), ItemModelUtils.plainModel(active));
 	}
 

@@ -145,7 +145,7 @@ public final class TileEntityWeakRepeater extends TileEntityCrystalRepeater
 				this.removeFromCache();
 				CrystalNetworker.instance.breakPaths(this);
 				this.igniteNeighbours(world);
-				this.delete();
+				world.setBlock(this.getBlockPos(), Blocks.AIR.defaultBlockState(), 3);
 				world.explode(null, this.getX() + 0.5, this.getY() + 0.5, this.getZ() + 0.5,
 						2, true, Level.ExplosionInteraction.BLOCK);
 			}

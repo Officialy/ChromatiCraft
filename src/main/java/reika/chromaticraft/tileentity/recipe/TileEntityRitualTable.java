@@ -118,6 +118,10 @@ public final class TileEntityRitualTable extends InventoriedCrystalReceiver impl
                     ritualPlayer, this.getTicksExisted());
         else
             RitualTableVisuals.stop(pos, completionVisualPending);
+        if (abilityTick > 0 && ability != null
+                && energy.containsAtLeast(AbilityRituals.instance.getAura(ability))
+                && viewer != null && playerBox().intersects(viewer.getBoundingBox()))
+            abilityTick--;
     }
 
     @Override
@@ -195,6 +199,9 @@ public final class TileEntityRitualTable extends InventoriedCrystalReceiver impl
             abilitySoundTick = 2000;
             ability = null;
             this.syncAllData(true);
+        }
+        else if (abilityTick % 20 == 0) {
+            this.syncAllData(false);
         }
     }
 

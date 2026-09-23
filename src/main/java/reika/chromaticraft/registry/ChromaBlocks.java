@@ -891,9 +891,8 @@ public final class ChromaBlocks {
 					blockProperties().strength(3F, 12F).noOcclusion().lightLevel(s -> 10),
 					reika.chromaticraft.registry.ChromaTiles.CRYSTAL));
 	public static final DeferredBlock<Block> PYLON_TURBOCHARGER =
-			register("pylon_turbocharger", () -> new BlockChromaticTile(
-					blockProperties().strength(4F, 20F).noOcclusion().lightLevel(s -> 12),
-					reika.chromaticraft.registry.ChromaTiles.PYLONTURBO));
+			register("pylon_turbocharger", () -> new reika.chromaticraft.block.BlockPylonTurboCharger(
+					blockProperties().strength(4F, 20F).noOcclusion().lightLevel(s -> 12)));
 
 	/** One real block and BlockItem registry identity per encrusted-crystal colour. */
 	public static final List<DeferredBlock<BlockEncrustedCrystal>> ENCRUSTED_CRYSTALS = registerEncrustedCrystals();

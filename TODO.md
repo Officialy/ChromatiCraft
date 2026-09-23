@@ -1,5 +1,39 @@
 # ChromatiCraft — next steps
 
+## Live in-game regressions and verification (2026-09-23)
+
+This is the current player-facing queue; older sections below are historical and may describe
+systems that have since landed. Do not mark a visual or interactive issue done on compile alone.
+
+- [x] Energy Focal Point: match collision/selection to the Techne body and arms; verify in-game.
+- [x] Weak Repeater explosion: replace the air block with client-update flags so no ghost remains.
+      In-game verification remains outstanding.
+- [ ] Weak Repeater: investigate surge-sound timing relative to visible burn-down and explosion.
+- [x] Ruptured Weak Repeater: add double-sided inside walls visible through the open top;
+      verify in-game.
+- [x] Data Tower: replace its four full-cube dummy hitboxes with telescoping sections;
+      verify collision and selection while extended in-game.
+- [ ] Crystal Mirror: its 16×16 texture has only ten opaque corner pixels, exactly matching
+      V33a `items_resource.png` index 3. Investigate original item rendering for the missing
+      centre; do not invent replacement art.
+- [x] Coalescence Orchid: apply the source biome's water colour to attracted water particles.
+      In-game verification remains outstanding.
+- [x] Ritual Table: add the original V33a ability-name translations to generated language data.
+      Regenerate client data and verify in-game.
+- [x] Ritual Table: draw the selection frame behind, not over, the stationary ability icon.
+      In-game verification remains outstanding.
+- [x] Elemental Manipulator: advance and resync the Ritual Table timer so its existing
+      mouseover progress arc can animate; verify in-game.
+- [ ] Multi-Aura Repeater: verify actual transfer end to end in-game.
+- [ ] Ritual Table: verify lift, third-person camera, completion, and ability grant in-game.
+- [ ] Maximized progression: verify persistence after relog in-game.
+- [ ] Liquid Chroma: verify berry tint, revert after boost, swimming, and stable night vision.
+- [ ] Lexicon: recipe badges for non-vanilla casting and ability pages; verify text pagination.
+- [ ] Portal Rift: verify animated UVs in-game.
+- [ ] Pylon/Distant Horizons: verify screen effects and geometry compatibility in-game.
+- [x] Lexicon: use bundled ability art and Ritual Table icons in the navigation grid.
+      In-game verification remains outstanding.
+
 Goal: **game start → working casting stands**. The mechanical chain is unbroken as of 2026-07-31
 (see `PORTING.md` → "The tier-2 casting dependency chain"). What's left, roughly in order of value.
 

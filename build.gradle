@@ -401,6 +401,7 @@ sourceSets.main.java {
     include 'reika/chromaticraft/block/BlockCrystallineStone.java'
     include 'reika/chromaticraft/block/BlockCrystallineStoneBeam.java'
 	include 'reika/chromaticraft/block/BlockWeakRepeater.java'
+	include 'reika/chromaticraft/block/BlockPylonTurboCharger.java'
 
     // Crystal runes (16 distinct colour blocks, structure components for casting/network multiblocks).
     include 'reika/chromaticraft/block/BlockCrystalRune.java'

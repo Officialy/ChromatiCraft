@@ -1,0 +1,28 @@
+{
+  "multipart": [
+    {
+      "apply": {
+        "model": "chromaticraft:block/weak_repeater"
+      },
+      "when": {
+        "ruptured": "false"
+      }
+    },
+    {
+      "apply": {
+        "model": "chromaticraft:block/weak_repeater_ruptured"
+      },
+      "when": {
+        "ruptured": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "chromaticraft:block/weak_repeater_ruptured_interior"
+      },
+      "when": {
+        "ruptured": "true"
+      }
+    }
+  ]
+}

@@ -8121,3 +8121,30 @@ the table machine and its thirty-nine effects are not claimed complete.
 - The Portal Rift's 80-frame rift and 180-frame ring spritesheets retain their original 2/1-tick
   frame rates but now inset frame UVs by half a source pixel, avoiding linear-filter bleed across
   adjacent frames. A serial compile passes; the visual animation has not been checked in game.
+- The Lexicon catalog already contained the ritual-machine, altar-structure and ability pages, but
+  the navigation rendered no ability icons and used generic stone for altar structure pages. It now
+  uses the bundled 50×50 ability art for all 38 active ability pages and the Ritual Table item for
+  the machine and both altar-structure entries. A normal Lexicon still needs acquired pages; the
+  creative Lexicon contains all of them. Compilation passes; in-game visibility is unverified.
+
+## Ritual GUI, hitboxes and weak repeater follow-up (2026-09-23)
+
+- The Weak Repeater's explosion path used DragonAPI's neighbor-only `delete`, leaving the client
+  ghost block until another update. It now replaces itself with AIR using client-update flags. Its
+  ruptured model gains double-sided inner burned walls so the open top does not expose culled faces.
+  Both need an in-game check; the reported surge-sound ordering is still under investigation.
+- The Ritual Table's stationary selection button had been drawn over the complete ability image.
+  The frame is now drawn first and the art placed inside it. Generated `en_us` contains all 39
+  original V33a ability display names; descriptions already come from `abilities.xml`. While
+  charging, the server resyncs remaining ritual time every twenty ticks and the client advances
+  locally between packets so the Manipulator's existing mouseover progress arc can animate.
+- The Energy Focal Point's collision now follows the base, neck, cap and four Techne arms rather
+  than a full cube. The Data Tower's four linked hitbox blocks now expose intersecting lower
+  and upper telescoping sections instead of four full invisible cubes. Coalescence Orchid water
+  attractor particles take the source biome's water tint.
+- The Crystal Mirror texture pixel-matches V33a's `items_resource.png` index 3, which contains
+  only ten opaque corner pixels. The missing-looking centre needs a source-rendering investigation;
+  no replacement texture has been invented.
+- Two serial, 3 GB-capped compiles and two serial client-data runs passed, including the later
+  hitbox and multipart-model edits. No GameTests or client instances were launched because
+  concurrent suites previously exhausted the user's RAM; visual behavior remains unverified.

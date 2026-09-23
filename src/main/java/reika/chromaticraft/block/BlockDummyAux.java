@@ -61,17 +61,38 @@ public class BlockDummyAux extends Block implements EntityBlock {
 	@Override
 	protected VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos pos,
 			CollisionContext context) {
-		return level.getBlockEntity(pos) instanceof TileEntityDummyAux dummy
-				&& dummy.getFlag(Flags.HITBOX) ? Shapes.block() : Shapes.empty();
+		if (!(level.getBlockEntity(pos) instanceof TileEntityDummyAux dummy)
+				|| !dummy.getFlag(Flags.HITBOX)) return Shapes.empty();
+		return linkedShape(dummy, pos);
 	}
 
 	/** V33a: the block is only mouse-targetable when it asked to be. */
 	@Override
 	protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos,
 			CollisionContext context) {
-		return level.getBlockEntity(pos) instanceof TileEntityDummyAux dummy
-				&& (dummy.getFlag(Flags.HITBOX) || dummy.getFlag(Flags.MOUSEOVER))
-				? Shapes.block() : Shapes.empty();
+		if (!(level.getBlockEntity(pos) instanceof TileEntityDummyAux dummy)
+				|| !(dummy.getFlag(Flags.HITBOX) || dummy.getFlag(Flags.MOUSEOVER)))
+			return Shapes.empty();
+		return linkedShape(dummy, pos);
+	}
+
+	private static VoxelShape linkedShape(TileEntityDummyAux dummy, BlockPos pos) {
+		if (!(dummy.getLinkedTile() instanceof reika.chromaticraft.tileentity.TileEntityDataNode tower))
+			return Shapes.block();
+		int offset = pos.getY() - tower.getBlockPos().getY();
+		double lowerStart = tower.getExtension1();
+		double upperStart = 1 + tower.getExtension1() + tower.getExtension2();
+		return Shapes.or(
+				towerSection(offset, lowerStart, lowerStart + 2.5, 4 / 16D),
+				towerSection(offset, upperStart, upperStart + 1.5, 5 / 16D));
+	}
+
+	private static VoxelShape towerSection(int offset, double bottom, double top, double inset) {
+		double localBottom = Math.max(0, bottom - offset);
+		double localTop = Math.min(1, top - offset);
+		return localTop > localBottom
+				? Shapes.box(inset, localBottom, inset, 1 - inset, localTop, 1 - inset)
+				: Shapes.empty();
 	}
 
 	/** V33a onBlockActivated: forward the click to the linked tile. */

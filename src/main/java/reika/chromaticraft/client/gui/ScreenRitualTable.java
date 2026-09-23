@@ -95,8 +95,6 @@ public final class ScreenRitualTable extends AbstractContainerScreen<MenuRitualT
             if (index < options.size() - 1)
                 graphics.blit(RenderPipelines.GUI_TEXTURED, BUTTONS, leftPos + WIDTH,
                         buttonY, 232, 0, 12, HEIGHT - 14, 256, 256);
-            graphics.blit(RenderPipelines.GUI_TEXTURED, BUTTONS, leftPos + 8,
-                    topPos + 8, 0, 193, 50, 50, 256, 256);
         }
     }
 
@@ -105,8 +103,13 @@ public final class ScreenRitualTable extends AbstractContainerScreen<MenuRitualT
         Ability ability = options.get(cardIndex);
         graphics.blit(RenderPipelines.GUI_TEXTURED, UNOWNED, x, topPos, 0, 0,
                 WIDTH, HEIGHT, 256, 256);
-        graphics.blit(RenderPipelines.GUI_TEXTURED, ability.getTexture(true), x + 8,
-                topPos + 8, 0, 0, 50, 50, 50, 50);
+        if (slideDirection == 0)
+            graphics.blit(RenderPipelines.GUI_TEXTURED, BUTTONS, x + 8,
+                    topPos + 8, 0, 193, 50, 50, 256, 256);
+        int iconInset = slideDirection == 0 ? 4 : 0;
+        graphics.blit(RenderPipelines.GUI_TEXTURED, ability.getTexture(true), x + 8 + iconInset,
+                topPos + 8 + iconInset, 0, 0, 50 - iconInset * 2, 50 - iconInset * 2,
+                50, 50, 50, 50);
         graphics.text(font, ability.getDisplayName(), x + 63, topPos + 9,
                 0xffffffff, false);
         int textY = topPos + 64;

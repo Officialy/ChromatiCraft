@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/cube_bottom_top",
+  "textures": {
+    "bottom": "chromaticraft:block/basic/weakrepeater_frame",
+    "side": "chromaticraft:block/basic/weakrepeater_frame_burned",
+    "top": "chromaticraft:block/icons/transparent"
+  }
+}

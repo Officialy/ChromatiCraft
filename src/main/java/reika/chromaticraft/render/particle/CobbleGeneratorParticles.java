@@ -7,6 +7,7 @@ import java.util.Locale;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.particle.SingleQuadParticle;
+import net.minecraft.client.renderer.BiomeColors;
 import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.core.BlockPos;
@@ -18,6 +19,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.material.Fluid;
+import net.minecraft.world.level.material.Fluids;
 
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.registry.ChromaFluids;
@@ -71,10 +73,13 @@ public final class CobbleGeneratorParticles {
         TextureAtlasSprite fluidSprite = Minecraft.getInstance().getModelManager()
                 .getBlockStateModelSet().getParticleMaterial(
                         fluid.defaultFluidState().createLegacyBlock()).sprite();
-        return new FluidAttractorParticle(level, x, source.getY() + 0.85, z, fluidSprite,
+        FluidAttractorParticle particle = new FluidAttractorParticle(level, x, source.getY() + 0.85, z, fluidSprite,
                 orchid.getX() + 0.5, orchid.getY() - 0.375, orchid.getZ() + 0.5,
                 0.0625 / 24D, 0.15 + random.nextDouble() * 0.01,
                 0.975 + random.nextDouble() * 0.01);
+        if (fluid.isSame(Fluids.WATER))
+            particle.setRgb(BiomeColors.getAverageWaterColor(level, source));
+        return particle;
     }
 
     /** A Heat Lily below the Orchid produces the original three orange tri-dot columns. */
