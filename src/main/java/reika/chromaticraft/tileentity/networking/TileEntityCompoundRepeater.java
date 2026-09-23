@@ -49,6 +49,18 @@ public class TileEntityCompoundRepeater extends TileEntityCrystalRepeater implem
 	@Override
 	public void updateEntity(Level world, BlockPos pos) {
 		super.updateEntity(world, pos);
+		if (!world.isClientSide() && !this.hasStructure() && this.getTicksExisted() % 40 == 0) {
+			Direction original = facing;
+			for (Direction direction : Direction.values()) {
+				facing = direction;
+				if (this.checkForStructure()) {
+					this.onAdjacentBlockUpdate();
+					break;
+				}
+			}
+			if (!this.hasStructure())
+				facing = original;
+		}
 		if (world.isClientSide() && this.canConduct() && this.getColorCycleTick() % 32 == 5)
 			ChromaParticle.spawnCompoundRepeaterRune(world, pos, this.getRenderColorWithOffset(64));
 	}

@@ -6,6 +6,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.particles.DustParticleOptions;
+import net.minecraft.world.effect.MobEffects;
 /* 26.2 ValueInput networking supersedes the legacy packet callback import.
 import net.minecraft.network.Connection;
 */
@@ -86,7 +87,9 @@ public final class BlockChromaFluid extends LiquidBlock implements EntityBlock {
 			InsideBlockEffectApplier effectApplier, boolean isPrecise) {
 		if (entity instanceof Player player && !level.isClientSide()) {
 			ProgressStage.CHROMA.stepPlayerTo(player);
-			CrystalPotionController.instance.applyEffectFromColor(201, 0, player, CrystalElement.BLUE, true);
+			if (player.getEffect(MobEffects.NIGHT_VISION) == null
+					|| player.getEffect(MobEffects.NIGHT_VISION).getDuration() <= 400)
+				CrystalPotionController.instance.applyEffectFromColor(600, 0, player, CrystalElement.BLUE, true);
 			CrystalPotionController.instance.applyEffectFromColor(10, 0, player, CrystalElement.BROWN, true);
 			CrystalPotionController.instance.applyEffectFromColor(10, 0, player, CrystalElement.MAGENTA, true);
 			CrystalPotionController.instance.applyEffectFromColor(10, 0, player, CrystalElement.WHITE, true);
@@ -201,6 +204,17 @@ public final class BlockChromaFluid extends LiquidBlock implements EntityBlock {
 			int ordinal = input.getIntOr("elem", -1);
 			element = ordinal >= 0 && ordinal < CrystalElement.elements.length ? CrystalElement.elements[ordinal] : null;
 			elementalBoost = input.getBooleanOr("elemental_boost", false);
+			if (level != null && level.isClientSide()) {
+				for (int xOffset = -16; xOffset <= 16; xOffset += 16) {
+					for (int zOffset = -16; zOffset <= 16; zOffset += 16) {
+						BlockPos dirty = worldPosition.offset(xOffset, 0, zOffset);
+						if (level.hasChunkAt(dirty)) {
+							BlockState state = level.getBlockState(dirty);
+							level.sendBlockUpdated(dirty, state, state, 3);
+						}
+					}
+				}
+			}
 		}
 
 		@Override public net.minecraft.nbt.CompoundTag getUpdateTag(HolderLookup.Provider provider) { return this.saveCustomOnly(provider); }

@@ -174,9 +174,11 @@ public final class CrystalFlow extends CrystalPath {
 	}
 
 	void resetTiles() {
-		((CrystalSource)nodes.get(nodes.size()-1).getTile(true)).removeTarget(nodes.get(nodes.size()-2).location, element);
+		CrystalNetworkTile source = nodes.get(nodes.size()-1).getTile(false);
+		if (source instanceof CrystalSource crystalSource)
+			crystalSource.removeTarget(nodes.get(nodes.size()-2).location, element);
 		for (int i = 1; i < nodes.size()-1; i++) {
-			CrystalNetworkTile te = nodes.get(i).getTile(true);
+			CrystalNetworkTile te = nodes.get(i).getTile(false);
 			if (te instanceof CrystalTransmitter) {
 				WorldLocation tg = nodes.get(i-1).location;
 				((CrystalTransmitter)te).removeTarget(tg, element);
@@ -185,6 +187,18 @@ public final class CrystalFlow extends CrystalPath {
 				te.clearSource();
 			}*/
 		}
+	}
+
+	boolean hasLiveReactiveRepeaters() {
+		if (!this.hasReactiveRepeaters())
+			return true;
+		for (int i = 1; i < nodes.size() - 1; i++) {
+			PathNode node = nodes.get(i);
+			if (ReactiveRepeater.class.isAssignableFrom(node.tileClass)
+					&& !(node.getTile(false) instanceof ReactiveRepeater))
+				return false;
+		}
+		return true;
 	}
 
 	public boolean isComplete() {

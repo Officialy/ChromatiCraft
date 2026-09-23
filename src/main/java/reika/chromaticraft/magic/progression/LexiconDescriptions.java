@@ -41,6 +41,13 @@ public final class LexiconDescriptions {
 		return text == null ? "" : text.notes();
 	}
 
+	public static String ability(String id) {
+		Text text = DOCUMENTS.get("abilities").get(id.toLowerCase(Locale.ROOT));
+		if (text == null || text.description().isBlank())
+			throw new IllegalStateException("Missing V33a ability description for " + id);
+		return text.description();
+	}
+
 	/** Original V33a {@code elements.xml}, including its authored element-name substitutions. */
 	public static String element(CrystalElement element) {
 		return ELEMENTS.getOrDefault(element, "");

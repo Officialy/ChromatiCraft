@@ -351,8 +351,10 @@ public class CrystalNetworker implements TickHandler {
 			while (it.hasNext()) {
 				CrystalFlow p = it.next();
 
-				if (toBreak.contains(p)) {
-					p.receiver.onPathBroken(p, FlowFail.SIGHT); //sight
+				if (toBreak.contains(p) || !p.hasLiveReactiveRepeaters()) {
+					FlowFail reason = toBreak.contains(p) ? FlowFail.SIGHT : FlowFail.TILE;
+					CrystalNetworkLogger.logFlowBreak(p, reason);
+					p.receiver.onPathBroken(p, reason);
 					p.resetTiles();
 					it.remove();
 				}

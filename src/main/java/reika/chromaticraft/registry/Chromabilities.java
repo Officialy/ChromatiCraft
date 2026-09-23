@@ -19,6 +19,7 @@ import reika.chromaticraft.magic.ElementTagCompound;
 import reika.chromaticraft.magic.ChromaAbilityData;
 import reika.chromaticraft.magic.PlayerElementBuffer;
 import reika.chromaticraft.magic.progression.ProgressStage;
+import reika.chromaticraft.magic.progression.LexiconDescriptions;
 
 /**
  * V33a {@code Chromabilities}: the thirty-nine powers a player can ritual into existence.
@@ -112,7 +113,7 @@ public enum Chromabilities implements Ability {
 
 	@Override
 	public String getDescription() {
-		return Component.translatable("chromability." + this.getID() + ".desc").getString();
+		return LexiconDescriptions.ability(this.getID());
 	}
 
 	@Override

@@ -37,6 +37,7 @@ public final class ChromaDataProviders {
 		event.createProvider(ChromaBiomeModifierProvider::new);
 		event.createProvider(output -> new ChromaBiomeTagProvider(output, event.getLookupProvider()));
 		event.createProvider(output -> new ChromaBlockTagsProvider(output, event.getLookupProvider()));
+		event.createProvider(output -> new ChromaFluidTagsProvider(output, event.getLookupProvider()));
 		event.createProvider(output -> new ChromaItemTagsProvider(output, event.getLookupProvider()));
 	}
 }

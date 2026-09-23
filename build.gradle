@@ -595,6 +595,7 @@ sourceSets.main.java {
     include 'reika/chromaticraft/data/ChromaBiomeModifierProvider.java'
     include 'reika/chromaticraft/data/ChromaBiomeTagProvider.java'
     include 'reika/chromaticraft/data/ChromaBlockTagsProvider.java'
+    include 'reika/chromaticraft/data/ChromaFluidTagsProvider.java'
     include 'reika/chromaticraft/data/ChromaItemTagsProvider.java'
     include 'reika/chromaticraft/data/ChromaStructureTemplateProvider.java'
     include 'reika/chromaticraft/data/ChromaVillagePoolProvider.java'

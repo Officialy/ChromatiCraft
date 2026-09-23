@@ -161,8 +161,10 @@ public class ChromatiCraft extends DragonAPIMod {
 	}
 
 	private static void playerLoggedIn(net.neoforged.neoforge.event.entity.player.PlayerEvent.PlayerLoggedInEvent event) {
-		if (event.getEntity() instanceof net.minecraft.server.level.ServerPlayer player)
+		if (event.getEntity() instanceof net.minecraft.server.level.ServerPlayer player) {
+			reika.dragonapi.libraries.ReikaPlayerAPI.syncCustomData(player);
 			ChromaNetwork.sendTowerLocations(player);
+		}
 	}
 
 	private static void registerScreens(RegisterMenuScreensEvent event) {

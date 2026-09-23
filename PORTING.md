@@ -8085,3 +8085,26 @@ the table machine and its thirty-nine effects are not claimed complete.
   especially with Distant Horizons enabled; no client or GameTest server was launched here. The
   exact Distant Horizons depth/compositing interaction is not yet verified, so compatibility is
   not claimed solved.
+
+## Network, ritual and Liquid Chroma follow-up (2026-09-23)
+
+- A flow is now broken when an intermediate reactive repeater has disappeared, before its
+  `onTransfer` callback can dereference the removed block entity; flow target cleanup also tolerates
+  a missing source or transmitter. This addresses the reported crash after breaking a transmitting
+  weak repeater. A compound repeater rechecks its six possible column directions every 40 ticks
+  while structurally incomplete, so finishing its column after placing the repeater can activate it.
+- V33a explicitly classifies the Ritual Table as a safe target for weak repeaters. The port had
+  omitted that marker, silently reducing weak-repeater throughput to zero and leaving a selected
+  ability's ritual waiting for energy forever. The marker is restored. Ritual suspension and the
+  third-person camera remain energy- and player-position-gated, as in V33a; they need an in-game
+  check with a charged altar. Player custom progression data is synced at login so the client does
+  not keep a stale pre-relog view of a maximized player.
+- Ability descriptions now read the authored V33a `abilities.xml` instead of nonexistent
+  `chromability.*.desc` language keys. Liquid Chroma's source block entity now rebuilds affected
+  client fluid sections when berry/ether state packets arrive or clear. Its night-vision renewal is
+  600 ticks and only refreshes below 400 ticks, avoiding the near-expiry flashing threshold. Both
+  Chroma fluid states are generated into the vanilla water fluid tag so Minecraft recognises them
+  for sprint-swimming, matching V33a's water material.
+- `:ChromatiCraft:compileJava` and one memory-capped, serial `:ChromatiCraft:runServerData` pass.
+  No GameTest suite or game client was launched; the user-reported rendering, recipe-icon, portal
+  UV and other in-game behaviors not covered here remain unverified/unfixed.

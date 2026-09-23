@@ -35,6 +35,7 @@ import reika.chromaticraft.client.render.RitualTableVisuals;
 import reika.chromaticraft.container.MenuRitualTable;
 import reika.chromaticraft.magic.ElementTagCompound;
 import reika.chromaticraft.magic.ChromaAbilityData;
+import reika.chromaticraft.magic.interfaces.WeakRepeaterSafeReceiver;
 import reika.chromaticraft.magic.progression.LexiconCatalog;
 import reika.chromaticraft.magic.progression.PlayerResearch;
 import reika.chromaticraft.magic.progression.ProgressStage;
@@ -50,7 +51,8 @@ import reika.dragonapi.interfaces.blockentity.TriggerableAction;
 import reika.dragonapi.libraries.ReikaPlayerAPI;
 
 public final class TileEntityRitualTable extends InventoriedCrystalReceiver implements BreakAction,
-        TriggerableAction, OwnedTile, OperationInterval, MultiBlockChromaTile, VariableTexture, MenuProvider {
+        TriggerableAction, OwnedTile, OperationInterval, MultiBlockChromaTile, VariableTexture,
+        WeakRepeaterSafeReceiver, MenuProvider {
 
     private boolean hasStructure;
     private boolean hasEnhancedStructure;
