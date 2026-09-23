@@ -63,12 +63,10 @@ public final class RenderLumenRelay
 		collector.submitCustomGeometry(basePose, RenderTypes.entityCutout(TextureAtlas.LOCATION_BLOCKS),
 				(unused, out) -> {
 					box(out, basePose.last(), stone, 0.375F, 0, 0.375F,
-							0.625F, 0.625F, 0.625F, 0xffffffff, state.lightCoords, null, null);
-					box(out, basePose.last(), stone, 0.375F, 0.3125F, 0.375F,
-							0.625F, 0.9375F, 0.625F, 0xffffffff, state.lightCoords, null, null);
+							0.625F, 0.625F, 0.625F, 0xffffffff, state.lightCoords, null, null, Direction.UP);
 					box(out, basePose.last(), crystal, 0.375F, 0.625F, 0.375F,
 							0.625F, 0.875F, 0.625F, 0xffffffff,
-							LightCoordsUtil.FULL_BRIGHT, null, null);
+							LightCoordsUtil.FULL_BRIGHT, null, null, Direction.DOWN);
 				});
 
 		PoseStack glowPose = copy(rotated);
@@ -76,7 +74,7 @@ public final class RenderLumenRelay
 				ChromaRenderPipelines.legacyAdditiveSprite(TextureAtlas.LOCATION_BLOCKS),
 				(unused, out) -> box(out, glowPose.last(), frame,
 						0.3125F, 0.5625F, 0.3125F, 0.6875F, 0.9375F, 0.6875F,
-						0xffffffff, LightCoordsUtil.FULL_BRIGHT, localInput, dot));
+						0xffffffff, LightCoordsUtil.FULL_BRIGHT, localInput, dot, null));
 	}
 
 	private static PoseStack oriented(PoseStack source, Direction facing) {
@@ -133,10 +131,11 @@ public final class RenderLumenRelay
 
 	private static void box(VertexConsumer out, PoseStack.Pose pose, TextureAtlasSprite defaultSprite,
 			float x0, float y0, float z0, float x1, float y1, float z1, int color, int light,
-			@Nullable Direction alternateFace, @Nullable TextureAtlasSprite alternateSprite) {
-		face(out,pose, sprite(Direction.DOWN,defaultSprite,alternateFace,alternateSprite),
+			@Nullable Direction alternateFace, @Nullable TextureAtlasSprite alternateSprite,
+			@Nullable Direction omittedFace) {
+		if (omittedFace != Direction.DOWN) face(out,pose, sprite(Direction.DOWN,defaultSprite,alternateFace,alternateSprite),
 				x0,y0,z1, x1,y0,z1, x1,y0,z0, x0,y0,z0, color,light,0,-1,0);
-		face(out,pose, sprite(Direction.UP,defaultSprite,alternateFace,alternateSprite),
+		if (omittedFace != Direction.UP) face(out,pose, sprite(Direction.UP,defaultSprite,alternateFace,alternateSprite),
 				x0,y1,z0, x1,y1,z0, x1,y1,z1, x0,y1,z1, color,light,0,1,0);
 		face(out,pose, sprite(Direction.NORTH,defaultSprite,alternateFace,alternateSprite),
 				x1,y0,z0, x1,y1,z0, x0,y1,z0, x0,y0,z0, color,light,0,0,-1);

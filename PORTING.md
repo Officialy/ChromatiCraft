@@ -8108,3 +8108,8 @@ the table machine and its thirty-nine effects are not claimed complete.
 - `:ChromatiCraft:compileJava` and one memory-capped, serial `:ChromatiCraft:runServerData` pass.
   No GameTest suite or game client was launched; the user-reported rendering, recipe-icon, portal
   UV and other in-game behaviors not covered here remain unverified/unfixed.
+- The Lumen Relay BER had drawn two full, overlapping stone boxes, then a crystal box with a
+  coplanar bottom face. It now draws the V33a stone shaft only through 0.625 and the crystal cap
+  from 0.625 to 0.875, omitting the hidden faces at their shared plane. This removes the known
+  z-fighting geometry; the visual result is not yet checked in game. The relay names were already
+  present in generated `en_us.json`, so no new language names were invented.
