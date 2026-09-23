@@ -40,8 +40,8 @@ public final class RenderCrystalPortal implements
 	private static final Identifier RINGS = texture("block/icons/ringrow_fade.png");
 	private static final Identifier FLOOR_BEAM = texture("effect/beam2.png");
 	private static final Identifier ARCHES = texture("effect/arches2.png");
-	private static final Sheet RIFT_SHEET = new Sheet(80, 2);
-	private static final Sheet RING_SHEET = new Sheet(180, 1);
+	private static final Sheet RIFT_SHEET = new Sheet(80, 2, 32);
+	private static final Sheet RING_SHEET = new Sheet(180, 1, 64);
 
 	public RenderCrystalPortal(BlockEntityRendererProvider.Context context) {}
 
@@ -254,10 +254,12 @@ public final class RenderCrystalPortal implements
 		return 192;
 	}
 
-	private record Sheet(int frames, int frameTime) {
+	private record Sheet(int frames, int frameTime, int framePixels) {
 		private Frame frame(float tick) {
 			int index = Math.floorMod((int)Math.floor(tick / frameTime), frames);
-			return new Frame(index / (float)frames, (index + 1) / (float)frames);
+			float inset = 0.5F / (frames * framePixels);
+			return new Frame(index / (float)frames + inset,
+					(index + 1) / (float)frames - inset);
 		}
 	}
 

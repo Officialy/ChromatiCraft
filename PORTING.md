@@ -8118,3 +8118,6 @@ the table machine and its thirty-nine effects are not claimed complete.
   crafting-table-top badge on the Casting Table and Elemental Manipulator navigation entries, the
   only two entries V33a classifies as vanilla recipes. Other casting/ability recipe badges still
   need their own parity pass. A serial `:ChromatiCraft:compileJava` passes these GUI changes.
+- The Portal Rift's 80-frame rift and 180-frame ring spritesheets retain their original 2/1-tick
+  frame rates but now inset frame UVs by half a source pixel, avoiding linear-filter bleed across
+  adjacent frames. A serial compile passes; the visual animation has not been checked in game.
