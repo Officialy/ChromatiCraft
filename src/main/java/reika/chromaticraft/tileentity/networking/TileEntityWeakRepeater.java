@@ -129,9 +129,6 @@ public final class TileEntityWeakRepeater extends TileEntityCrystalRepeater
 		// V33a releases ownership at the terminal failure so anyone can clear the wreckage.
 		placerUUID = null;
 		FailureMode mode = FailureMode.choose(rand.nextInt(FailureMode.TOTAL_WEIGHT));
-		if (overloadColor != null)
-			reika.chromaticraft.network.ChromaNetwork.sendWeakRepeaterFailureBurst(
-					world, this.getBlockPos(), overloadColor);
 		switch (mode) {
 			case BURN -> {
 				this.removeFromCache();
@@ -166,6 +163,9 @@ public final class TileEntityWeakRepeater extends TileEntityCrystalRepeater
 				this.syncAllData(false);
 			}
 		}
+		if (overloadColor != null)
+			reika.chromaticraft.network.ChromaNetwork.sendWeakRepeaterFailureBurst(
+					world, this.getBlockPos(), overloadColor);
 	}
 
 	private void igniteNeighbours(Level world) {

@@ -8133,6 +8133,9 @@ the table machine and its thirty-nine effects are not claimed complete.
   ghost block until another update. It now replaces itself with AIR using client-update flags. Its
   ruptured model gains double-sided inner burned walls so the open top does not expose culled faces.
   Both need an in-game check; the reported surge-sound ordering is still under investigation.
+  Source inspection found the surge sample lasts 28.79 seconds while the source-authored failure
+  lasts 14–16 seconds. The terminal POWERDOWN burst packet had been sent before the block or
+  explosion effect; it now follows the selected effect, as V33a's terminal client FX does.
 - The Ritual Table's stationary selection button had been drawn over the complete ability image.
   The frame is now drawn first and the art placed inside it. Generated `en_us` contains all 39
   original V33a ability display names; descriptions already come from `abilities.xml`. While

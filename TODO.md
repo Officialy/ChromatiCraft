@@ -8,7 +8,10 @@ systems that have since landed. Do not mark a visual or interactive issue done o
 - [x] Energy Focal Point: match collision/selection to the Techne body and arms; verify in-game.
 - [x] Weak Repeater explosion: replace the air block with client-update flags so no ghost remains.
       In-game verification remains outstanding.
-- [ ] Weak Repeater: investigate surge-sound timing relative to visible burn-down and explosion.
+- [ ] Weak Repeater: V33a starts its 28.79-second surge at failure onset but destroys the
+      repeater 14–16 seconds later. The terminal POWERDOWN burst is now sent after the mode's
+      block/explosion effect; verify perceived order in-game and whether the long surge tail
+      still sounds out of place without changing the source-authored 320-tick timer.
 - [x] Ruptured Weak Repeater: add double-sided inside walls visible through the open top;
       verify in-game.
 - [x] Data Tower: replace its four full-cube dummy hitboxes with telescoping sections;
