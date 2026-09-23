@@ -91,6 +91,8 @@ public class ChromatiCraft extends DragonAPIMod {
 		ChromaEntityTypes.ENTITY_TYPES.register(modEventBus);
 		modEventBus.addListener(EntityGlowCloud::registerAttributes);
 		modEventBus.addListener(EntityGlowCloud::registerSpawnPlacements);
+		modEventBus.addListener(reika.chromaticraft.entity.EntityBallLightning::registerAttributes);
+		modEventBus.addListener(reika.chromaticraft.entity.EntityBallLightning::registerSpawnPlacements);
 		modEventBus.addListener(reika.chromaticraft.entity.EntityTunnelNuker::registerSpawnPlacements);
 		modEventBus.addListener((net.neoforged.neoforge.event.entity.EntityAttributeCreationEvent event) ->
 				event.put(ChromaEntityTypes.TUNNEL_NUKER.get(), EntityTunnelNuker.createAttributes().build()));

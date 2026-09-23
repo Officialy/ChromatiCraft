@@ -1,575 +1,336 @@
-/*******************************************************************************
- * @author Reika Kalseki
- *
- * Copyright 2017
- *
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
- ******************************************************************************/
 package reika.chromaticraft.entity;
 
 import java.util.List;
 
-import net.minecraft.block.Block;
-import net.minecraft.client.Minecraft;
-import net.minecraft.enchantment.EnchantmentHelper;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityLiving;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.potion.PotionEffect;
-import net.minecraft.util.AxisAlignedBB;
-import net.minecraft.util.DamageSource;
-import net.minecraft.util.MathHelper;
-import net.minecraft.util.Vec3;
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializers;
+import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.SpawnPlacementTypes;
+import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.item.enchantment.EnchantmentHelper;
+import net.minecraft.world.item.enchantment.Enchantments;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelAccessor;
+import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.event.entity.EntityAttributeCreationEvent;
+import net.neoforged.neoforge.event.entity.RegisterSpawnPlacementsEvent;
 
-import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.auxiliary.ChromaStacks;
 import reika.chromaticraft.auxiliary.CrystalMusicManager;
-import reika.chromaticraft.block.worldgen.blocktieredplant.TieredPlants;
 import reika.chromaticraft.magic.network.CrystalNetworker;
 import reika.chromaticraft.magic.progression.ProgressStage;
+import reika.chromaticraft.registry.ChromaEntityTypes;
+import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.ChromaOptions;
-import reika.chromaticraft.registry.ChromaPackets;
 import reika.chromaticraft.registry.ChromaSounds;
+import reika.chromaticraft.registry.ChromaTieredItems;
+import reika.chromaticraft.registry.ChromaTieredPlants;
 import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.render.particle.EntityCCBlurFX;
-import reika.chromaticraft.render.particle.EntityCenterBlurFX;
-import reika.chromaticraft.render.particle.EntityLaserFX;
+import reika.chromaticraft.render.particle.ChromaParticle;
 import reika.dragonapi.instantiable.data.SphericalVector;
-import reika.dragonapi.instantiable.effects.EntityBlurFX;
-import reika.dragonapi.instantiable.io.PacketTarget;
-import reika.dragonapi.instantiable.io.packettarget.DimensionTarget;
 import reika.dragonapi.interfaces.entity.DestroyOnUnload;
-import reika.dragonapi.interfaces.entity.EtherealEntity;
-import reika.dragonapi.libraries.ReikaEntityHelper;
 import reika.dragonapi.libraries.ReikaPlayerAPI;
-import reika.dragonapi.libraries.io.ReikaPacketHelper;
 import reika.dragonapi.libraries.java.ReikaRandomHelper;
 import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
-import reika.dragonapi.libraries.mathsci.ReikaVectorHelper;
-import reika.dragonapi.libraries.registry.ReikaItemHelper;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
 
-import cpw.mods.fml.common.registry.IEntityAdditionalSpawnData;
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
-import io.netty.buffer.ByteBuf;
+public final class EntityBallLightning extends Mob implements DestroyOnUnload {
 
-public class EntityBallLightning extends EntityLiving implements IEntityAdditionalSpawnData, DestroyOnUnload, EtherealEntity {
+	private static final EntityDataAccessor<Integer> COLOR = SynchedEntityData.defineId(
+			EntityBallLightning.class, EntityDataSerializers.INT);
+	private static final EntityDataAccessor<Integer> RENDER_COLOR = SynchedEntityData.defineId(
+			EntityBallLightning.class, EntityDataSerializers.INT);
+	private static final EntityDataAccessor<Integer> BOLT_TARGET = SynchedEntityData.defineId(
+			EntityBallLightning.class, EntityDataSerializers.INT);
+	private static final EntityDataAccessor<Integer> BOLT_SEQUENCE = SynchedEntityData.defineId(
+			EntityBallLightning.class, EntityDataSerializers.INT);
 
-	private SphericalVector velocity;
-	private double targetTheta = rand.nextInt(360);
-	private double targetPhi = rand.nextInt(360);
-	private double targetVelocity = ReikaRandomHelper.getRandomPlusMinus(0.1, 0.1);
-
+	private final SphericalVector velocity;
+	private double targetTheta;
+	private double targetPhi;
+	private double targetVelocity;
 	private CrystalElement color;
+	private CrystalElement targetColor;
+	private float colorTransitionFraction;
+	private boolean pylonSpawn;
+	private boolean drops = true;
+	private int lastBoltSequence;
 
-	private CrystalElement targetColor = null;
-	private float colorTransitionFraction = 0;
-
-	private boolean isPylonSpawn = false;
-	private boolean doDrops = true;
-
-	//private static int spawnedEntities;
-
-	public EntityBallLightning(World world, CrystalElement color, double x, double y, double z) {
-		super(world);
-		this.color = color;
-		this.setPosition(x, y, z);
-		height = 0.25F;
-		width = 0.25F;
+	public EntityBallLightning(EntityType<? extends EntityBallLightning> type, Level level) {
+		super(type, level);
+		this.setNoGravity(true);
+		color = CrystalElement.elements[this.random.nextInt(CrystalElement.elements.length)];
+		velocity = new SphericalVector(0.15, this.random.nextInt(360), this.random.nextInt(360));
+		targetTheta = this.random.nextInt(360);
+		targetPhi = this.random.nextInt(360);
+		targetVelocity = ReikaRandomHelper.getRandomPlusMinus(0.1, 0.1);
+		this.entityData.set(COLOR, color.ordinal());
+		this.entityData.set(RENDER_COLOR, color.getColor());
 	}
 
-	public EntityBallLightning(World world) {
-		super(world);
+	public EntityBallLightning(Level level, CrystalElement color, double x, double y, double z) {
+		this(ChromaEntityTypes.BALL_LIGHTNING.get(), level);
+		this.setColor(color);
+		this.snapTo(x, y, z);
 	}
 
-	public EntityBallLightning setNoDrops() {
-		doDrops = false;
-		return this;
+	public EntityBallLightning setNoDrops() { drops = false; return this; }
+	public EntityBallLightning setPylon() { pylonSpawn = true; return this; }
+	public CrystalElement getElement() { return CrystalElement.elements[this.entityData.get(COLOR)]; }
+	public int getRenderColor() { return this.entityData.get(RENDER_COLOR); }
+	@Override public Component getName() {
+		return this.hasCustomName() ? super.getName()
+				: Component.literal(this.getElement().displayName() + " Ball Lightning");
 	}
 
-	public EntityBallLightning setPylon() {
-		isPylonSpawn = true;
-		return this;
-	}
-
-	@Override
-	protected boolean canTriggerWalking()
-	{
-		return false;
-	}
-
-	@Override
-	public boolean canRenderOnFire() {
-		return false;
+	private void setColor(CrystalElement element) {
+		color = element;
+		this.entityData.set(COLOR, element.ordinal());
+		this.entityData.set(RENDER_COLOR, element.getColor());
 	}
 
 	@Override
-	public boolean isPotionApplicable(PotionEffect e)
-	{
-		return false;
+	protected void defineSynchedData(SynchedEntityData.Builder builder) {
+		builder.define(COLOR, CrystalElement.WHITE.ordinal());
+		builder.define(RENDER_COLOR, CrystalElement.WHITE.getColor());
+		builder.define(BOLT_TARGET, 0);
+		builder.define(BOLT_SEQUENCE, 0);
 	}
 
-	@Override
-	protected String func_146067_o(int p_146067_1_)
-	{
-		return "";
+	public static AttributeSupplier.Builder createAttributes() {
+		return Mob.createMobAttributes().add(Attributes.MAX_HEALTH, 20);
 	}
 
-	@Override
-	protected void fall(float p_70069_1_)
-	{
-
+	public static void registerAttributes(EntityAttributeCreationEvent event) {
+		event.put(ChromaEntityTypes.BALL_LIGHTNING.get(), createAttributes().build());
 	}
 
-	@Override
-	public boolean handleWaterMovement()
-	{
-		return false;
+	public static void registerSpawnPlacements(RegisterSpawnPlacementsEvent event) {
+		event.register(ChromaEntityTypes.BALL_LIGHTNING.get(), SpawnPlacementTypes.NO_RESTRICTIONS,
+				Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, EntityBallLightning::checkSpawnRules,
+				RegisterSpawnPlacementsEvent.Operation.OR);
 	}
 
-	@Override
-	public String getCommandSenderName()
-	{
-		return color.displayName+" Ball Lightning";
+	private static boolean checkSpawnRules(EntityType<EntityBallLightning> type,
+			LevelAccessor level, EntitySpawnReason reason, BlockPos pos, RandomSource random) {
+		return ChromaOptions.BALLLIGHTNING.getState() && random.nextInt(5) == 0
+				&& level.canSeeSky(pos.above()) && canSpawnHere(level, pos);
 	}
 
-	@Override
-	protected void entityInit() {
-		super.entityInit();
-		velocity = new SphericalVector(0.15, rand.nextInt(360), rand.nextInt(360));
-
-		if (color == null)
-			color = CrystalElement.randomElement();
-
-		dataWatcher.addObject(30, 0);
-
-		if (worldObj != null)
-			;//spawnedEntities++;
+	public static boolean canSpawnHere(LevelAccessor level, BlockPos pos) {
+		int nearby = level.getEntitiesOfClass(EntityBallLightning.class,
+				new AABB(pos).inflate(24, 1024, 24)).size();
+		return level.getRandom().nextInt(1 + nearby / 16) == 0;
 	}
 
-	@Override
-	public void onUpdate() {
-		super.onUpdate();
+	@Override protected void registerGoals() {}
+	@Override public int getMaxSpawnClusterSize() { return 4; }
+	@Override public boolean isPushable() { return false; }
+	@Override public boolean removeWhenFarAway(double distanceSquared) { return distanceSquared >= 65536; }
+	@Override public boolean isPushedByFluid() { return false; }
+	@Override public boolean canBeAffected(MobEffectInstance effect) { return false; }
+	@Override public boolean displayFireAnimation() { return false; }
+	@Override public boolean causeFallDamage(double distance, float modifier, DamageSource source) { return false; }
+	@Override protected Entity.MovementEmission getMovementEmission() { return Entity.MovementEmission.NONE; }
+	@Override protected SoundEvent getAmbientSound() { return ChromaSounds.BALLLIGHTNING.getSoundEvent(); }
+	@Override public int getAmbientSoundInterval() { return 20; }
+	@Override public float getVoicePitch() { return CrystalMusicManager.instance.getRandomScaledDing(this.getElement()); }
+	@Override protected SoundEvent getHurtSound(DamageSource source) { return null; }
+	@Override protected SoundEvent getDeathSound() { return null; }
+	@Override protected void dropExperience(ServerLevel level, Entity killer) {}
 
-		if (!worldObj.isRemote) {
-			if (ReikaMathLibrary.approxr(velocity.inclination, targetTheta, 2)) {
-				targetTheta = rand.nextInt(360);
+	@Override
+	public void aiStep() {
+		super.aiStep();
+		this.fallDistance = 0;
+		if (this.level().isClientSide()) {
+			ChromaParticle.spawnBallLightningAmbient(this.level(), this.getX(), this.getY(), this.getZ(),
+					this.getRenderColor(), this.random);
+			int targetId = this.entityData.get(BOLT_TARGET);
+			int sequence = this.entityData.get(BOLT_SEQUENCE);
+			if (targetId > 0 && sequence != lastBoltSequence) {
+				Entity target = this.level().getEntity(targetId);
+				if (target instanceof EntityBallLightning other)
+					ChromaParticle.spawnBallLightningBolt(this.level(), this.position(), other.position(),
+							this.getRenderColor(), other.getRenderColor(), this.random);
 			}
-			else {
-				if (targetTheta > velocity.inclination)
-					velocity.inclination++;
-				else
-					velocity.inclination--;
-			}
-
-			if (ReikaMathLibrary.approxr(velocity.rotation, targetPhi, 2)) {
-				targetPhi = rand.nextInt(360);
-			}
-			else {
-				if (targetPhi > velocity.rotation)
-					velocity.rotation++;
-				else
-					velocity.rotation--;
-			}
-
-			if (ReikaMathLibrary.approxr(velocity.magnitude, targetVelocity, 0.05)) {
-				targetVelocity = ReikaRandomHelper.getRandomPlusMinus(0.1, 0.1);
-			}
-			else {
-				if (targetVelocity > velocity.magnitude)
-					velocity.magnitude += 0.01D;
-				else
-					velocity.magnitude -= 0.01D;
-			}
-
-			velocityChanged = true;
-			//ReikaJavaLibrary.pConsole(velocity.inclination+"/"+targetTheta+"; "+velocity.rotation+"/"+targetPhi, Side.SERVER);
-
-			double[] v = velocity.getCartesian();
-
-			motionX = v[0];
-			motionY = v[1];
-			motionZ = v[2];
+			lastBoltSequence = sequence;
+			return;
 		}
+		if (!ChromaOptions.BALLLIGHTNING.getState()) { this.discard(); return; }
+		this.tickMovement();
+		this.tickColor();
+		this.touchEntities();
+		if (this.isRemoved()) return;
+		this.tryBolt();
+		this.tickServerBehavior();
+	}
 
+	private void tickMovement() {
+		if (ReikaMathLibrary.approxr(velocity.inclination, targetTheta, 2))
+			targetTheta = this.random.nextInt(360);
+		else
+			velocity.inclination += targetTheta > velocity.inclination ? 1 : -1;
+		if (ReikaMathLibrary.approxr(velocity.rotation, targetPhi, 2))
+			targetPhi = this.random.nextInt(360);
+		else
+			velocity.rotation += targetPhi > velocity.rotation ? 1 : -1;
+		if (ReikaMathLibrary.approxr(velocity.magnitude, targetVelocity, 0.05))
+			targetVelocity = ReikaRandomHelper.getRandomPlusMinus(0.1, 0.1);
+		else
+			velocity.magnitude += targetVelocity > velocity.magnitude ? 0.01 : -0.01;
+		double[] movement = velocity.getCartesian();
+		this.setDeltaMovement(movement[0], movement[1], movement[2]);
+	}
+
+	private void tickColor() {
 		if (targetColor != null) {
 			colorTransitionFraction += 0.1F;
 			if (colorTransitionFraction >= 1) {
-				color = targetColor;
+				this.setColor(targetColor);
 				targetColor = null;
 				colorTransitionFraction = 0;
 			}
 		}
-		dataWatcher.updateObject(30, this.calcRenderColor());
-
-		if (worldObj.isRemote) {
-			this.lifeParticles();
-			if (!isDead && ticksExisted%128 == 0) {
-				ReikaEntityHelper.verifyClientEntity(this);
-			}
-		}
-
-		fallDistance = 0;
+		this.entityData.set(RENDER_COLOR, targetColor == null ? color.getColor()
+				: ReikaColorAPI.mixColors(targetColor.getColor(), color.getColor(), colorTransitionFraction));
 	}
 
-	@SideOnly(Side.CLIENT)
-	private void lifeParticles() {
-		int p = Minecraft.getMinecraft().gameSettings.particleSetting;
-		if (rand.nextInt(1+p*2) == 0) {
-			double d = 0.25;
-			double px = ReikaRandomHelper.getRandomPlusMinus(posX, d);
-			double py = ReikaRandomHelper.getRandomPlusMinus(posY, d);
-			double pz = ReikaRandomHelper.getRandomPlusMinus(posZ, d);
-			float g = (float)ReikaRandomHelper.getRandomPlusMinus(0.05, 0.025);
-			if (rand.nextInt(4) == 0)
-				g = -g;
-			EntityLaserFX fx = new EntityLaserFX(color, worldObj, px, py, pz).setColor(this.getRenderColor()).setGravity(g);
-			EntityLaserFX fx2 = new EntityLaserFX(color, worldObj, px, py, pz).setColor(0xffffff).setScale(0.42F).setGravity(g);
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx2);
+	private void touchEntities() {
+		List<LivingEntity> touching = this.level().getEntitiesOfClass(LivingEntity.class,
+				this.getBoundingBox(), other -> other != this && !(other instanceof EntityBallLightning));
+		for (LivingEntity other : touching) {
+			if (other instanceof Player player && player.isCreative()) continue;
+			if (ChromaOptions.HOSTILEFOREST.getState()) other.hurt(this.damageSources().generic(), 5);
+			if (other instanceof Player player) ProgressStage.BALLLIGHTNING.stepPlayerTo(player);
+			this.die();
+			return;
 		}
 	}
 
-	@Override
-	public void readEntityFromNBT(NBTTagCompound nbt) {
-		super.readEntityFromNBT(nbt);
-
-		int c = nbt.getInteger("color");
-		color = c >= 0 ? CrystalElement.elements[c] : CrystalElement.randomElement();
-
-		isPylonSpawn = nbt.getBoolean("pylon");
-		doDrops = nbt.getBoolean("dodrops");
-
-		if (nbt.getBoolean("isdead"))
-			this.setDead();
-	}
-
-	@Override
-	public void writeEntityToNBT(NBTTagCompound nbt) {
-		super.writeEntityToNBT(nbt);
-
-		if (color != null)
-			nbt.setInteger("color", color.ordinal());
-
-		nbt.setBoolean("dodrops", doDrops);
-		nbt.setBoolean("pylon", isPylonSpawn);
-
-		nbt.setBoolean("isdead", isDead);
-	}
-
-	private void die() {
-		//particle effect
-		if (worldObj.isRemote) {
-			this.doDeathParticles(worldObj, posX, posY, posZ, this.getRenderColor());
-		}
-		else {
-			ReikaPacketHelper.sendDataPacket(ChromatiCraft.packetChannel, ChromaPackets.LIGHTNINGDIE.ordinal(), new PacketTarget.RadiusTarget(this, 32), this.calcRenderColor());
-		}
-		this.setDead();
-	}
-
-	@Override
-	public void setDead()
-	{
-		super.setDead();
-		if (worldObj != null)
-			;//spawnedEntities--;
-	}
-
-	private void doBolt(EntityBallLightning other) {
-		Vec3 vec = ReikaVectorHelper.getVec2Pt(posX, posY, posZ, other.posX, other.posY, other.posZ);
-		//EntityGluon g = new EntityGluon(this, other);
-		//worldObj.spawnEntityInWorld(g);
+	private void tryBolt() {
+		if (colorTransitionFraction != 0 || this.random.nextInt(400) != 0) return;
+		List<EntityBallLightning> nearby = this.level().getEntitiesOfClass(EntityBallLightning.class,
+				this.getBoundingBox().inflate(24), other -> other != this && other.colorTransitionFraction == 0);
+		if (nearby.isEmpty()) return;
+		EntityBallLightning other = nearby.stream().min((first, second) ->
+				Double.compare(this.distanceToSqr(first), this.distanceToSqr(second))).orElseThrow();
 		targetColor = other.color;
-
-		ReikaPacketHelper.sendDataPacket(ChromatiCraft.packetChannel, ChromaPackets.GLUON.ordinal(), new DimensionTarget(worldObj), this.getEntityId(), other.getEntityId());
-
-		double len = vec.lengthVector();
-		for (double i = 0; i < len; i += 0.0625) {
-			double dx = posX+i*vec.xCoord/len;
-			double dy = posY+i*vec.yCoord/len;
-			double dz = posZ+i*vec.zCoord/len;
-			if (worldObj.isRemote)
-				this.gluonParticles(other, dx, dy, dz, (float)(i/len));
-
-			if (ChromaOptions.HOSTILEFOREST.getState()) {
-				AxisAlignedBB box = AxisAlignedBB.getBoundingBox(dx, dy, dz, dx, dy, dz).expand(0.5, 0.5, 0.5);
-				List<EntityLivingBase> elb = worldObj.getEntitiesWithinAABB(EntityLivingBase.class, box);
-				for (EntityLivingBase e : elb) {
-					e.attackEntityFrom(DamageSource.generic, isPylonSpawn ? 4 : 1);
-				}
+		other.targetColor = color;
+		this.entityData.set(BOLT_TARGET, other.getId());
+		this.entityData.set(BOLT_SEQUENCE, this.entityData.get(BOLT_SEQUENCE) + 1);
+		if (ChromaOptions.HOSTILEFOREST.getState()) {
+			Vec3 direction = other.position().subtract(this.position());
+			double length = direction.length();
+			for (double step = 0; step < length; step += 0.0625) {
+				Vec3 point = this.position().add(direction.scale(step / length));
+				for (LivingEntity victim : this.level().getEntitiesOfClass(LivingEntity.class,
+						new AABB(point, point).inflate(0.5)))
+					victim.hurt(this.damageSources().generic(), pylonSpawn ? 4 : 1);
 			}
 		}
 	}
 
-	@SideOnly(Side.CLIENT)
-	public void doBoltClient(EntityBallLightning other) {
-		targetColor = other.color;
-	}
-
-	@SideOnly(Side.CLIENT)
-	private void gluonParticles(EntityBallLightning other, double dx, double dy, double dz, float frac) {
-		int c = ReikaColorAPI.mixColors(other.getRenderColor(), this.getRenderColor(), frac);
-		EntityBlurFX fx = new EntityCCBlurFX(worldObj, dx, dy, dz);
-		fx.setLife(5).setColor(c);
-		Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-	}
-
-	private void onReceiveBolt(EntityBallLightning src) {
-		targetColor = src.color;
-	}
-
-	@Override
-	public AxisAlignedBB getCollisionBox(Entity entity) {
-		if (entity instanceof EntityLivingBase && !(entity instanceof EntityBallLightning) && !worldObj.isRemote) {
-			boolean flag = (entity instanceof EntityPlayer && ((EntityPlayer) entity).capabilities.isCreativeMode);
-			if (!flag) {
-				if (ChromaOptions.HOSTILEFOREST.getState()) {
-					entity.attackEntityFrom(DamageSource.generic, 5);
-				}
-				if (entity instanceof EntityPlayer)
-					ProgressStage.BALLLIGHTNING.stepPlayerTo((EntityPlayer)entity);
-				this.die();
-			}
+	private void tickServerBehavior() {
+		if (this.random.nextInt(1600) == 0
+				&& !CrystalNetworker.instance.getNearbyPylons(this.level(), this.getX(), this.getY(),
+						this.getZ(), color, 24, false).isEmpty())
+			this.heal(this.getMaxHealth());
+		Player player = this.level().getNearestPlayer(this, -1);
+		if (this.getY() >= 128 || player == null || this.tickCount >= 12000
+				|| this.random.nextInt(12000 - this.tickCount) == 0
+				|| this.isInWater() || this.distanceToSqr(player) >= 65536
+				|| this.distanceToSqr(player) >= 1024 && this.random.nextInt(200) == 0
+				|| this.level().isRaining() && this.random.nextInt(80) == 0) {
+			this.die();
+			return;
 		}
-		return null;//AxisAlignedBB.getBoundingBox(posX, posY, posZ, posX, posY, posZ).expand(3, 3, 3);
-	}
-
-	@Override
-	public void onLivingUpdate() {
-		super.onLivingUpdate();
-
-		if (!worldObj.isRemote && colorTransitionFraction == 0 && rand.nextInt(400) == 0) {
-			EntityBallLightning e = ReikaEntityHelper.getNearestEntityOfSameType(this, 24);
-			if (e != null && e.colorTransitionFraction == 0) {
-				this.doBolt(e);
-				e.onReceiveBolt(this);
-			}
-		}
-
-		//if (ticksExisted%36 == 0) {
-		//	ChromaSounds.POWER.playSound(this, 0.1F, 2F);
-		//}
-
-		if (!worldObj.isRemote && rand.nextInt(1600) == 0) {
-			if (!CrystalNetworker.instance.getNearbyPylons(worldObj, posX, posY, posZ, color, 24, false).isEmpty()) {
-				this.heal(this.getMaxHealth());
-			}
-		}
-
-		if (!worldObj.isRemote) {
-
-			EntityPlayer ep = worldObj.getClosestPlayerToEntity(this, -1);
-			if (posY >= 128) {
-				this.die();
-			}
-			else if (ep == null || worldObj.playerEntities.isEmpty()) {
-				this.die();
-			}
-			else if (ticksExisted >= 12000 || rand.nextInt(12000-ticksExisted) == 0) {
-				this.die();
-			}
-			else if (worldObj.isRaining() && rand.nextInt(80) == 0) {
-				this.die();
-			}
-			else if (this.isInWater()) {
-				this.die();
-			}
-			else if (this.getDistanceSqToEntity(ep) >= 65536) {
-				this.die();
-			}
-			else if (this.getDistanceSqToEntity(ep) >= 1024 && rand.nextInt(200) == 0) {
-				this.die();
-			}
-			//else if (spawnedEntities > 200 && rand.nextInt(spawnedEntities-200) > 0) {
-			//	this.die();
-			//}
-			else if (rand.nextInt(20) == 0) {
-				AxisAlignedBB box = AxisAlignedBB.getBoundingBox(posX, 0, posZ, posX, 1024, posZ).expand(24, 0, 24);
-				List<EntityBallLightning> li = worldObj.getEntitiesWithinAABB(this.getClass(), box);
-				if (rand.nextInt(1+li.size()/16) > 0)
-					this.die();
-			}
+		if (this.random.nextInt(20) == 0) {
+			int count = this.level().getEntitiesOfClass(EntityBallLightning.class,
+					this.getBoundingBox().inflate(24, 1024, 24)).size();
+			if (this.random.nextInt(1 + count / 16) > 0) this.die();
 		}
 	}
 
-	public static boolean canSpawnHere(World world, double x, double y, double z) {
-		AxisAlignedBB box = AxisAlignedBB.getBoundingBox(x-24, 0, z-24, x+24, 1024, z+24);
-		List<EntityBallLightning> li = world.getEntitiesWithinAABB(EntityBallLightning.class, box);
-		if (world.rand.nextInt(1+li.size()/16) > 0)
-			return false;
-		return true;
+	private void die() { this.discard(); }
+
+	@Override
+	public void onClientRemoval() {
+		ChromaParticle.spawnBallLightningDeath(this.level(), this.getX(), this.getY(), this.getZ(),
+				this.getRenderColor(), this.random);
 	}
 
 	@Override
-	public boolean getCanSpawnHere() {
-		return rand.nextInt(5) == 0 && worldObj.canBlockSeeTheSky(MathHelper.floor_double(posX), MathHelper.floor_double(posY)+1, MathHelper.floor_double(posZ));
-	}
-
-	@Override
-	public int getMaxSpawnedInChunk() {
-		return 4;
-	}
-
-	@Override
-	public void playLivingSound() {
-		;//ChromaSounds.POWER.playSound(this, 1F, 2F);
-
-		float p = CrystalMusicManager.instance.getRandomScaledDing(color);
-		ChromaSounds.BALLLIGHTNING.playSound(this, 1, p);
-	}
-
-	@Override
-	public final int getTalkInterval()
-	{
-		return 20;
-	}
-
-	@Override
-	protected final void func_145780_a(int par1, int par2, int par3, Block par4) //play step sound
-	{
-
-	}
-
-	@Override
-	protected String getHurtSound() {
-		return "";
-	}
-
-	@Override
-	protected String getDeathSound() {
-		return "";
-	}
-
-	@Override
-	public void onDeath(DamageSource src) {
-		ChromaSounds.DISCHARGE.playSound(this, 1F, 2F);
-		if (!worldObj.isRemote) {
-			Entity e = src.getEntity();
-			if (e instanceof EntityPlayer) {
-				EntityPlayer ep = (EntityPlayer)e;
-				if (doDrops && !ReikaPlayerAPI.isFakeOrNotInteractable(ep, posX, posY, posZ, 8)) {
-					int looting = EnchantmentHelper.getLootingModifier((EntityPlayer)src.getEntity());
-					if (TieredPlants.DESERT.level.isPlayerAtStage(ep))
-						ReikaItemHelper.dropItem(this, ReikaItemHelper.getSizedItemStack(ChromaStacks.beaconDust, rand.nextInt(1+looting*2)));
-					if (looting > 1) {
-						if (color.isPrimary())
-							if (TieredPlants.CAVE.level.isPlayerAtStage(ep))
-								ReikaItemHelper.dropItem(this, ChromaStacks.purityDust);
-							else
-								if (TieredPlants.FLOWER.level.isPlayerAtStage(ep))
-									ReikaItemHelper.dropItem(this, ChromaStacks.auraDust);
-					}
-				}
-				ProgressStage.BALLLIGHTNING.stepPlayerTo(ep);
-			}
-
-			this.sendDeathParticles();
+	public boolean hurtServer(ServerLevel level, DamageSource source, float amount) {
+		if (!(source.getEntity() instanceof Player player) || ReikaPlayerAPI.isFake(player)) return false;
+		boolean damaged = super.hurtServer(level, source, amount);
+		if (damaged && this.getHealth() <= 0) {
+			ChromaSounds.DISCHARGE.playSound(this, 1, 2);
+			if (drops) this.dropLoot(player);
+			ProgressStage.BALLLIGHTNING.stepPlayerTo(player);
+			this.die();
 		}
+		return damaged;
 	}
 
-	private void sendDeathParticles() {
-		ReikaPacketHelper.sendPositionPacket(ChromatiCraft.packetChannel, ChromaPackets.LIGHTNINGDIE.ordinal(), this, new DimensionTarget(worldObj), this.calcRenderColor());
-	}
-
-	@SideOnly(Side.CLIENT)
-	public static void receiveDeathParticles(World world, double dx, double dy, double dz, int color) {
-		doDeathParticles(world, dx, dy, dz, color);
-	}
-
-	@SideOnly(Side.CLIENT)
-	private static void doDeathParticles(World world, double dx, double dy, double dz, int color) {
-		int n = 32;
-		for (int i = 0; i < n; i++) {
-			EntityCenterBlurFX fx = new EntityCenterBlurFX(world, dx, dy, dz).setColor(color).setScale(1.5F);
-			fx.motionX = ReikaRandomHelper.getRandomPlusMinus(0, 0.2);
-			fx.motionY = ReikaRandomHelper.getRandomPlusMinus(0, 0.2);
-			fx.motionZ = ReikaRandomHelper.getRandomPlusMinus(0, 0.2);
-			EntityCenterBlurFX fx2 = new EntityCenterBlurFX(world, dx, dy, dz).setColor(0xffffff).setScale(0.5F);
-			fx2.motionX = fx.motionX;
-			fx2.motionY = fx.motionY;
-			fx2.motionZ = fx.motionZ;
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx2);
+	private void dropLoot(Player player) {
+		int looting = EnchantmentHelper.getItemEnchantmentLevel(
+				this.level().registryAccess().lookupOrThrow(Registries.ENCHANTMENT)
+						.getOrThrow(Enchantments.LOOTING), player.getMainHandItem());
+		if (ChromaTieredPlants.RADIANCE_BUSH.stage().isPlayerAtStage(player)) {
+			int count = this.random.nextInt(1 + looting * 2);
+			if (count > 0) this.spawnAtLocation((ServerLevel)this.level(),
+					new ItemStack(ChromaItems.TIERED.get(ChromaTieredItems.BEACON_DUST).get(), count));
+		}
+		if (looting > 1 && color.isPrimary()) {
+			ChromaTieredItems dust = ChromaTieredPlants.ROCK_FLOWER.stage().isPlayerAtStage(player)
+					? ChromaTieredItems.PURITY_DUST
+					: ChromaTieredPlants.AURA_BLOOM.stage().isPlayerAtStage(player)
+							? ChromaTieredItems.AURA_DUST : null;
+			if (dust != null) this.spawnAtLocation((ServerLevel)this.level(),
+					new ItemStack(ChromaItems.TIERED.get(dust).get()));
 		}
 	}
 
 	@Override
-	public void writeSpawnData(ByteBuf buf) {
-		buf.writeInt(color != null ? color.ordinal() : -1);
+	protected void readAdditionalSaveData(ValueInput input) {
+		super.readAdditionalSaveData(input);
+		int index = input.getIntOr("color", -1);
+		this.setColor(index >= 0 && index < CrystalElement.elements.length
+				? CrystalElement.elements[index] : color);
+		pylonSpawn = input.getBooleanOr("pylon", false);
+		drops = input.getBooleanOr("dodrops", true);
+		if (input.getBooleanOr("isdead", false)) this.discard();
 	}
 
 	@Override
-	public void readSpawnData(ByteBuf buf) {
-		int c = buf.readInt();
-		color = c >= 0 && c < 16 ? CrystalElement.elements[c] : CrystalElement.randomElement();
+	protected void addAdditionalSaveData(ValueOutput output) {
+		super.addAdditionalSaveData(output);
+		output.putInt("color", color.ordinal());
+		output.putBoolean("pylon", pylonSpawn);
+		output.putBoolean("dodrops", drops);
+		Entity.RemovalReason removal = this.getRemovalReason();
+		output.putBoolean("isdead", removal != null && removal.shouldDestroy());
 	}
 
-	/*
-	public int getRenderColor() {
-		return targetColor != null ? ReikaColorAPI.mixColors(targetColor.getColor(), color.getColor(), colorTransitionFraction) : color.getColor();
-	}
-	 */
-
-	private int calcRenderColor() {
-		return targetColor != null ? ReikaColorAPI.mixColors(targetColor.getColor(), color.getColor(), colorTransitionFraction) : color.getColor();
-	}
-
-	@SideOnly(Side.CLIENT)
-	public int getRenderColor() {
-		return dataWatcher.getWatchableObjectInt(30);
-	}
-
-	/*
-	public int getRenderColor() {
-		float frac = dataWatcher.getWatchableObjectFloat(31);
-		int tgi = dataWatcher.getWatchableObjectInt(30);
-		CrystalElement tg = tgi >= 0 ? CrystalElement.elements[tgi] : null;
-		CrystalElement c = CrystalElement.elements[dataWatcher.getWatchableObjectInt(29)];
-		return tg != null ? ReikaColorAPI.mixColors(tg.getColor(), c.getColor(), frac) : c.getColor();
-	}
-	 */
-
-	@Override
-	public boolean attackEntityFrom(DamageSource src, float dmg) {
-		Entity e = src.getEntity();
-		if (e instanceof EntityPlayer) {
-			if (!ReikaPlayerAPI.isFake((EntityPlayer)e)) {
-				boolean flag = super.attackEntityFrom(src, dmg);
-				if (flag && this.getHealth() <= 0) {
-					this.die();
-				}
-				return flag;
-			}
-		}
-		return false;
-	}
-
-	public CrystalElement getElement() {
-		return color;
-	}
-
-	@Override
-	public boolean shouldRenderInPass(int pass) {
-		return pass == 1;
-	}
-
-	@Override
-	protected void dropFewItems(boolean recentHit, int looting) {
-		if (recentHit) {
-
-		}
-	}
-
-	@Override
-	public void destroy() {
-		this.setDead();
-	}
-
+	@Override public void destroy() { this.discard(); }
 }

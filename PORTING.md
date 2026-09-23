@@ -8042,3 +8042,23 @@ the table machine and its thirty-nine effects are not claimed complete.
   earlier machine-exhaustion report made concurrent game instances unsafe. The new core shader
   also passes offline GLSL syntax validation; its opacity/occlusion and the other visual effects
   still require an in-game check. Raw template placement has not been runtime-tested here.
+
+## Ball Lightning (2026-09-23)
+
+- V33a's coloured Ball Lightning is an active 26.2 mob, registered with the Rainbow Forest's
+  original monster-list weight 5 and one-entity group size. Its natural-spawn gate retains the
+  one-in-five sky-visible test and density roll. Rainbow Leaves retain their one-in-ten,
+  no-drops Ball Lightning spawn when removed. The entity has no fluid push, fall damage, step
+  events, fire overlay, potion effects, or ordinary mob push collision.
+- Server motion follows V33a's spherical heading/rotation/speed targets. The original 12,000-tick,
+  rain, water, altitude, player-distance and density expiry rules, nearby same-colour pylon heal,
+  same-kind colour exchange, hostile-forest bolt/contact damage, music-key ambient pitch, and
+  player-contact progression are wired. Element, interpolation colour and bolt sequence sync to
+  clients; the three roundflare layers and ambient/bolt/death particles render from Reika's
+  existing sprites. Legitimate player kills award progression and the source-gated tiered dusts.
+- The old `ChromaAux.spawnInteractionBallLightning` and `BlockChromaTile` interaction hook remain
+  pristine and excluded, so they cannot call the new entity yet. Forestry bee integration remains
+  unavailable on 26.2. The source's `isFakeOrNotInteractable` helper has no modern counterpart;
+  the modern fake-player guard is used for drops. The `ball_lightning_entity_contract` GameTest
+  covers type, initial colour, ethereal motion flags and the density gate, but was not run here
+  because the user's machine previously exhausted memory during GameTest startup.

@@ -28,6 +28,7 @@ import reika.chromaticraft.entity.EntityLaserPulse;
 import reika.chromaticraft.entity.EntityPylonOverloadShock;
 import reika.chromaticraft.entity.EntityTunnelNuker;
 import reika.chromaticraft.entity.EntityDataCrystal;
+import reika.chromaticraft.entity.EntityBallLightning;
 
 /** Entity registrations accepted into the active 26.2 port slice. */
 public final class ChromaEntityTypes {
@@ -45,6 +46,11 @@ public final class ChromaEntityTypes {
 	public static final DeferredHolder<EntityType<?>, EntityType<EntityGlowCloud>> GLOW_CLOUD =
 			register("glow_cloud", () -> EntityType.Builder
 					.<EntityGlowCloud>of(EntityGlowCloud::new, MobCategory.CREATURE)
+					.sized(0.25F, 0.25F).clientTrackingRange(80).updateInterval(1));
+
+	public static final DeferredHolder<EntityType<?>, EntityType<EntityBallLightning>> BALL_LIGHTNING =
+			register("ball_lightning", () -> EntityType.Builder
+					.<EntityBallLightning>of(EntityBallLightning::new, MobCategory.MONSTER)
 					.sized(0.25F, 0.25F).clientTrackingRange(80).updateInterval(1));
 
 	/** V33a "Luma Burst" (gravity-puzzle/burst-emitter projectile); registration only for now — its

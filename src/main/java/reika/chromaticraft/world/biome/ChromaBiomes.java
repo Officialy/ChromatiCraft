@@ -226,6 +226,8 @@ public final class ChromaBiomes {
     private static MobSpawnSettings.Builder sourceSpawns() {
         return new MobSpawnSettings.Builder()
                 .creatureGenerationProbability(0.1F)
+				.addSpawn(MobCategory.MONSTER, 5,
+						new MobSpawnSettings.SpawnerData(ChromaEntityTypes.BALL_LIGHTNING.get(), 1, 1))
                 .addSpawn(MobCategory.MONSTER, 8,
                         new MobSpawnSettings.SpawnerData(EntityTypes.SLIME, 4, 4))
                 .addSpawn(MobCategory.CREATURE, 3,

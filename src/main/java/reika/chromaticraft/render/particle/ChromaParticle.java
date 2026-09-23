@@ -1265,6 +1265,55 @@ public abstract class ChromaParticle extends SingleQuadParticle {
         }
     }
 
+    public static void spawnBallLightningAmbient(Level world, double x, double y, double z,
+            int color, RandomSource random) {
+        if (!(world instanceof ClientLevel level)) return;
+        int particleSetting = Minecraft.getInstance().options.particles().get().ordinal();
+        if (random.nextInt(1 + particleSetting * 2) != 0) return;
+        double px = x + (random.nextDouble() - 0.5) * 0.5;
+        double py = y + (random.nextDouble() - 0.5) * 0.5;
+        double pz = z + (random.nextDouble() - 0.5) * 0.5;
+        float gravity = (float)(0.025 + random.nextDouble() * 0.05);
+        if (random.nextInt(4) == 0) gravity = -gravity;
+        RitualBlur outer = new RitualBlur(level, px, py, pz, color, 1F,
+                20, gravity, "laser", false, false);
+        RitualBlur inner = new RitualBlur(level, px, py, pz, 0xffffff, 0.42F,
+                20, gravity, "laser", false, false);
+        Minecraft.getInstance().particleEngine.add(outer);
+        Minecraft.getInstance().particleEngine.add(inner);
+    }
+
+    public static void spawnBallLightningBolt(Level world, Vec3 from, Vec3 to,
+            int sourceColor, int targetColor, RandomSource random) {
+        if (!(world instanceof ClientLevel level)) return;
+        Vec3 delta = to.subtract(from);
+        double length = delta.length();
+        for (double distance = 0; distance < length; distance += 0.0625) {
+            float fraction = (float)(distance / length);
+            Vec3 point = from.add(delta.scale(fraction));
+            int color = ReikaColorAPI.mixColors(targetColor, sourceColor, fraction);
+            Minecraft.getInstance().particleEngine.add(new Blur(level,
+                    point.x, point.y, point.z, color, 1F, 5));
+        }
+    }
+
+    public static void spawnBallLightningDeath(Level world, double x, double y, double z,
+            int color, RandomSource random) {
+        if (!(world instanceof ClientLevel level)) return;
+        for (int index = 0; index < 32; index++) {
+            double vx = (random.nextDouble() - 0.5) * 0.4;
+            double vy = (random.nextDouble() - 0.5) * 0.4;
+            double vz = (random.nextDouble() - 0.5) * 0.4;
+            Blur outer = new Blur(level, x, y, z, color, 1.5F, 20);
+            Blur inner = new Blur(level, x, y, z, 0xffffff, 0.5F, 20);
+            outer.xd = inner.xd = vx;
+            outer.yd = inner.yd = vy;
+            outer.zd = inner.zd = vz;
+            Minecraft.getInstance().particleEngine.add(outer);
+            Minecraft.getInstance().particleEngine.add(inner);
+        }
+    }
+
     /** Per-tick focal-point glow and the inward rev stream from V33a's turbo ritual. */
     public static void spawnPylonTurboIdle(Level world, BlockPos pos, CrystalElement color,
             int revTick, int ritualTick, Random random) {

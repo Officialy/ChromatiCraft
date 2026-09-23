@@ -1,93 +1,73 @@
-/*******************************************************************************
- * @author Reika Kalseki
- * 
- * Copyright 2017
- * 
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
- ******************************************************************************/
 package reika.chromaticraft.render.entity;
 
-import org.lwjgl.opengl.GL11;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 
-import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.client.renderer.entity.Render;
-import net.minecraft.client.renderer.entity.RenderManager;
-import net.minecraft.entity.Entity;
-import net.minecraft.util.IIcon;
-import net.minecraft.util.ResourceLocation;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.entity.EntityRenderer;
+import net.minecraft.client.renderer.entity.EntityRendererProvider;
+import net.minecraft.client.renderer.entity.state.EntityRenderState;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.client.renderer.texture.TextureAtlas;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.data.AtlasIds;
+import net.minecraft.resources.Identifier;
 
+import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.entity.EntityBallLightning;
-import reika.chromaticraft.registry.ChromaIcons;
-import reika.dragonapi.libraries.io.ReikaTextureHelper;
-import reika.dragonapi.libraries.java.reikaglhelper.BlendMode;
-import reika.dragonapi.libraries.mathsci.ReikaPhysicsHelper;
+import reika.chromaticraft.render.ChromaRenderPipelines;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
 
-public class RenderBallLightning extends Render {
+public final class RenderBallLightning extends EntityRenderer<EntityBallLightning, RenderBallLightning.State> {
+
+	private static final Identifier ROUND_FLARE = Identifier.fromNamespaceAndPath(
+			ChromatiCraft.MODID, "block/icons/roundflare");
+
+	public RenderBallLightning(EntityRendererProvider.Context context) {
+		super(context);
+		this.shadowRadius = 0;
+	}
+
+	@Override public State createRenderState() { return new State(); }
 
 	@Override
-	public void doRender(Entity e, double par2, double par4, double par6, float par8, float ptick) {
-		ReikaTextureHelper.bindTerrainTexture();
-		EntityBallLightning eb = (EntityBallLightning)e;
-		Tessellator v5 = Tessellator.instance;
-		IIcon icon = ChromaIcons.ROUNDFLARE.getIcon();
-		float u = icon.getMinU();
-		float v = icon.getMinV();
-		float du = icon.getMaxU();
-		float dv = icon.getMaxV();
-		GL11.glPushMatrix();
-		GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
-		GL11.glEnable(GL11.GL_BLEND);
-		GL11.glDisable(GL11.GL_LIGHTING);
-		BlendMode.ADDITIVEDARK.apply();
-		GL11.glDepthMask(false);
-		GL11.glTranslated(par2, par4, par6);
-		if (!e.isDead) {
-			RenderManager rm = RenderManager.instance;
-			double dx = e.posX-RenderManager.renderPosX;
-			double dy = e.posY-RenderManager.renderPosY;
-			double dz = e.posZ-RenderManager.renderPosZ;
-			double[] angs = ReikaPhysicsHelper.cartesianToPolar(dx, dy, dz);
-			GL11.glRotated(angs[2], 0, 1, 0);
-			GL11.glRotated(90-angs[1], 1, 0, 0);
-		}
-		//GL11.glRotatef(rm.playerViewX, 1.0F, 0.0F, 0.0F);
-		v5.startDrawingQuads();
-		v5.setBrightness(240);
-		double s1 = 1;
-		double s2 = 0.67;
-		double s3 = 0.33;
-		double d = 0.001;
-		int c1 = eb.getRenderColor();
-		v5.setColorOpaque_I(c1);
-		v5.addVertexWithUV(-s1, -s1, 0, u, v);
-		v5.addVertexWithUV(s1, -s1, 0, du, v);
-		v5.addVertexWithUV(s1, s1, 0, du, dv);
-		v5.addVertexWithUV(-s1, s1, 0, u, dv);
-
-		c1 = c1 | 0x4C | (0x4C << 8) | (0x4C << 16);
-		int c2 = ReikaColorAPI.getColorWithBrightnessMultiplier(c1, 1.5F);
-		v5.setColorOpaque_I(c2);
-		v5.addVertexWithUV(-s2, -s2, d, u, v);
-		v5.addVertexWithUV(s2, -s2, d, du, v);
-		v5.addVertexWithUV(s2, s2, d, du, dv);
-		v5.addVertexWithUV(-s2, s2, d, u, dv);
-
-		v5.setColorOpaque_I(0xffffff);
-		v5.addVertexWithUV(-s3, -s3, d*2, u, v);
-		v5.addVertexWithUV(s3, -s3, d*2, du, v);
-		v5.addVertexWithUV(s3, s3, d*2, du, dv);
-		v5.addVertexWithUV(-s3, s3, d*2, u, dv);
-		v5.draw();
-		GL11.glPopAttrib();
-		GL11.glPopMatrix();
+	public void extractRenderState(EntityBallLightning entity, State state, float partialTick) {
+		super.extractRenderState(entity, state, partialTick);
+		state.color = entity.getRenderColor();
 	}
 
 	@Override
-	protected ResourceLocation getEntityTexture(Entity e) {
-		return null;
+	public void submit(State state, PoseStack poseStack, SubmitNodeCollector collector,
+			CameraRenderState camera) {
+		TextureAtlasSprite sprite = Minecraft.getInstance().getAtlasManager()
+				.getAtlasOrThrow(AtlasIds.BLOCKS).getSprite(ROUND_FLARE);
+		poseStack.pushPose();
+		poseStack.mulPose(camera.orientation);
+		PoseStack renderPose = new PoseStack();
+		renderPose.last().set(poseStack.last());
+		int color = state.color;
+		collector.submitCustomGeometry(poseStack,
+				ChromaRenderPipelines.additiveSprite(TextureAtlas.LOCATION_BLOCKS),
+				(ignored, vertices) -> {
+					quad(renderPose.last(), vertices, sprite, 1F, color, 0);
+					int bright = ReikaColorAPI.getColorWithBrightnessMultiplier(
+							color | 0x4c4c4c, 1.5F);
+					quad(renderPose.last(), vertices, sprite, 0.67F, bright, 0.001F);
+					quad(renderPose.last(), vertices, sprite, 0.33F, 0xffffff, 0.002F);
+				});
+		poseStack.popPose();
 	}
 
+	private static void quad(PoseStack.Pose pose, VertexConsumer vertices, TextureAtlasSprite sprite,
+			float radius, int color, float depth) {
+		vertices.addVertex(pose, -radius, -radius, depth).setUv(sprite.getU0(), sprite.getV0()).setColor(0xff000000 | color);
+		vertices.addVertex(pose, radius, -radius, depth).setUv(sprite.getU1(), sprite.getV0()).setColor(0xff000000 | color);
+		vertices.addVertex(pose, radius, radius, depth).setUv(sprite.getU1(), sprite.getV1()).setColor(0xff000000 | color);
+		vertices.addVertex(pose, -radius, radius, depth).setUv(sprite.getU0(), sprite.getV1()).setColor(0xff000000 | color);
+	}
+
+	public static final class State extends EntityRenderState {
+		private int color;
+	}
 }

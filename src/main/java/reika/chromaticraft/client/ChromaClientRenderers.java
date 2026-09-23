@@ -15,6 +15,7 @@ import reika.chromaticraft.render.entity.RenderLaserPulse;
 import reika.chromaticraft.render.entity.RenderPylonOverloadShock;
 import reika.chromaticraft.render.entity.RenderTunnelNuker;
 import reika.chromaticraft.render.entity.RenderDataCrystal;
+import reika.chromaticraft.render.entity.RenderBallLightning;
 import reika.chromaticraft.render.item.ItemStandItemRenderer;
 import reika.chromaticraft.render.item.CrystalChargerItemRenderer;
 import reika.chromaticraft.render.item.ItemAuraInfuserRenderer;
@@ -216,6 +217,7 @@ public final class ChromaClientRenderers {
 				reika.chromaticraft.render.tesr.RenderFarmer::new);
 		event.registerEntityRenderer(ChromaEntityTypes.PYLON_OVERLOAD.get(), RenderPylonOverloadShock::new);
 		event.registerEntityRenderer(ChromaEntityTypes.GLOW_CLOUD.get(), RenderGlowCloud::new);
+		event.registerEntityRenderer(ChromaEntityTypes.BALL_LIGHTNING.get(), RenderBallLightning::new);
 		event.registerEntityRenderer(ChromaEntityTypes.LUMA_BURST.get(), RenderLumaBurst::new);
 		event.registerEntityRenderer(ChromaEntityTypes.LASER_PULSE.get(), RenderLaserPulse::new);
 		event.registerEntityRenderer(ChromaEntityTypes.TUNNEL_NUKER.get(), RenderTunnelNuker::new);

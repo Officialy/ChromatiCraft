@@ -401,6 +401,7 @@ public final class ChromaGameTests {
 		register(event, env, "pylon_worldgen_nbt_contract", ChromaGameTests::pylonWorldgenNbtContract);
         register(event, env, "pylon_feature_variants", 40, ChromaGameTests::pylonFeatureVariants);
 		register(event, env, "glow_cloud_spherical_movement", ChromaGameTests::glowCloudSphericalMovement);
+		register(event, env, "ball_lightning_entity_contract", ChromaGameTests::ballLightningEntityContract);
 		register(event, env, "manipulator_repeater_dispatch", ChromaGameTests::manipulatorRepeaterDispatch);
 		register(event, env, "manipulator_cliff_transparify", ChromaGameTests::manipulatorCliffTransparify);
 		register(event, env, "pylon_worldgen_grid_density", ChromaGameTests::pylonWorldgenGridDensity);
@@ -5363,6 +5364,26 @@ public final class ChromaGameTests {
 		table.validateStructure();
 		helper.assertTrue(table.isFullyEnhanced(),
 				"the upgraded block state must remain a valid part of the enhanced multiblock");
+		helper.succeed();
+	}
+
+	private static void ballLightningEntityContract(GameTestHelper helper) {
+		var level = helper.getLevel();
+		var position = helper.absolutePos(new BlockPos(2, 2, 2));
+		var lightning = new reika.chromaticraft.entity.EntityBallLightning(level,
+				CrystalElement.BLUE, position.getX() + 0.5, position.getY() + 0.5,
+				position.getZ() + 0.5).setNoDrops();
+		helper.assertTrue(lightning.getType() == ChromaEntityTypes.BALL_LIGHTNING.get(),
+				"ball lightning must use its own registered entity type");
+		helper.assertTrue(lightning.getElement() == CrystalElement.BLUE
+					&& lightning.getRenderColor() == CrystalElement.BLUE.getColor(),
+				"the chosen element and initial render colour must synchronize");
+		helper.assertTrue(!lightning.isPushable() && !lightning.isPushedByFluid(),
+				"ball lightning must remain ethereal and ignore water current");
+		helper.assertTrue(level.addFreshEntity(lightning), "ball lightning must spawn in the level");
+		helper.assertTrue(reika.chromaticraft.entity.EntityBallLightning.canSpawnHere(level, position),
+				"one ball lightning must not suppress later spawns below V33a's sixteen-entity density gate");
+		lightning.discard();
 		helper.succeed();
 	}
 
