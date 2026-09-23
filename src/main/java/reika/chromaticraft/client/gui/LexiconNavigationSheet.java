@@ -270,7 +270,14 @@ public final class LexiconNavigationSheet {
 				if (cy < frameTop || cy > frameTop + paneHeight - ELEMENT)
 					continue;
 				ItemStack icon = icons.apply(cell.entry);
-				if (!icon.isEmpty())
+				if (cell.entry.section() == LexiconCatalog.Section.ABILITIES) {
+					Identifier ability = Identifier.fromNamespaceAndPath(
+							reika.chromaticraft.ChromatiCraft.MODID,
+							"textures/ability/" + cell.entry.sourceId() + ".png");
+					graphics.blit(RenderPipelines.GUI_TEXTURED, ability,
+							cx + 4, cy + 4, 0, 0, 16, 16, 50, 50, 50, 50);
+				}
+				else if (!icon.isEmpty())
 					graphics.item(icon, cx + 4, cy + 4);
 				else
 					renderMissingIcon(graphics, font, cx + 4, cy + 4);

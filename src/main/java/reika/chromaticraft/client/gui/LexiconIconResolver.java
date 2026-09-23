@@ -132,6 +132,7 @@ public final class LexiconIconResolver {
 			case "pylonlink" -> ChromaBlocks.PYLON_LINK.get();
 			case "stand" -> ChromaBlocks.ITEM_STAND.get();
 			case "table" -> ChromaBlocks.CASTING_TABLE.get();
+			case "ritual" -> ChromaBlocks.RITUAL_TABLE.get();
 			case "collector" -> ChromaBlocks.COLLECTOR.get();
 			case "focuscrystal" -> ChromaBlocks.FOCUS_CRYSTAL.get();
 			case "personal" -> ChromaBlocks.PERSONAL_CHARGER.get();
@@ -193,6 +194,7 @@ public final class LexiconIconResolver {
 			case "compound" -> ChromaBlocks.COMPOUND.get();
 			case "personal" -> ChromaBlocks.PERSONAL_CHARGER.get();
 			case "relay" -> ChromaBlocks.RELAY_SOURCE.get();
+			case "ritual", "ritual2" -> ChromaBlocks.RITUAL_TABLE.get();
 			default -> ChromaBlocks.crystallineStone(
 					reika.chromaticraft.block.BlockCrystallineStone.StoneTypes.SMOOTH).get();
 		};
