@@ -117,6 +117,10 @@ public final class ChromaFeatures {
     public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> RAINBOW_FOREST_FLOWER =
             FEATURES.register("rainbow_forest_flower", reika.chromaticraft.world.RainbowForestFlowerFeature::new);
 
+    /** V33a GlowingCliffsDecorator.NoFloatingGravelVein. */
+    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> NO_FLOATING_GRAVEL =
+            FEATURES.register("no_floating_gravel", reika.chromaticraft.world.luminous.NoFloatingGravelFeature::new);
+
     public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> RAINBOW_TREE =
             FEATURES.register("rainbow_tree", reika.chromaticraft.world.RainbowTreeFeature::new);
 

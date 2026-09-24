@@ -198,13 +198,20 @@ public final class ChromaBiomes {
 
     private static Biome createLuminousCliffs(HolderGetter<PlacedFeature> features,
             HolderGetter<ConfiguredWorldCarver<?>> carvers, boolean shore) {
+        // V33a BiomeGlowingCliffs clears and rebuilds only the monster and cave lists; the creature and
+        // water lists are BiomeGenBase's farm animals and squid. Its monsters come in groups of four.
         MobSpawnSettings.Builder mobs = new MobSpawnSettings.Builder()
-                .addSpawn(MobCategory.MONSTER, 10, new MobSpawnSettings.SpawnerData(EntityTypes.SPIDER, 1, 4))
-                .addSpawn(MobCategory.MONSTER, 10, new MobSpawnSettings.SpawnerData(EntityTypes.ZOMBIE, 1, 4))
-                .addSpawn(MobCategory.MONSTER, 5, new MobSpawnSettings.SpawnerData(EntityTypes.SKELETON, 1, 4))
-                .addSpawn(MobCategory.MONSTER, 10, new MobSpawnSettings.SpawnerData(EntityTypes.SLIME, 1, 4))
+                .addSpawn(MobCategory.CREATURE, 12, new MobSpawnSettings.SpawnerData(EntityTypes.SHEEP, 4, 4))
+                .addSpawn(MobCategory.CREATURE, 10, new MobSpawnSettings.SpawnerData(EntityTypes.PIG, 4, 4))
+                .addSpawn(MobCategory.CREATURE, 10, new MobSpawnSettings.SpawnerData(EntityTypes.CHICKEN, 4, 4))
+                .addSpawn(MobCategory.CREATURE, 8, new MobSpawnSettings.SpawnerData(EntityTypes.COW, 4, 4))
+                .addSpawn(MobCategory.WATER_CREATURE, 10, new MobSpawnSettings.SpawnerData(EntityTypes.SQUID, 4, 4))
+                .addSpawn(MobCategory.MONSTER, 10, new MobSpawnSettings.SpawnerData(EntityTypes.SPIDER, 4, 4))
+                .addSpawn(MobCategory.MONSTER, 10, new MobSpawnSettings.SpawnerData(EntityTypes.ZOMBIE, 4, 4))
+                .addSpawn(MobCategory.MONSTER, 5, new MobSpawnSettings.SpawnerData(EntityTypes.SKELETON, 4, 4))
+                .addSpawn(MobCategory.MONSTER, 10, new MobSpawnSettings.SpawnerData(EntityTypes.SLIME, 4, 4))
                 .addSpawn(MobCategory.MONSTER, 2, new MobSpawnSettings.SpawnerData(EntityTypes.ENDERMAN, 1, 4))
-                .addSpawn(MobCategory.AMBIENT, 10, new MobSpawnSettings.SpawnerData(EntityTypes.BAT, 1, 4))
+                .addSpawn(MobCategory.AMBIENT, 10, new MobSpawnSettings.SpawnerData(EntityTypes.BAT, 8, 8))
                 // V33a BiomeGlowingCliffs.glowCloudList: SpawnListEntry(EntityGlowCloud, weight 30,
                 // min 1, max 1), returned from a custom EnumCreatureType ("glowcloud", cap 24) rather
                 // than a vanilla category. CREATURE is the closest existing MobCategory (V33a
@@ -214,23 +221,47 @@ public final class ChromaBiomes {
                 .addSpawn(MobCategory.CREATURE, 30,
                         new MobSpawnSettings.SpawnerData(ChromaEntityTypes.GLOW_CLOUD.get(), 1, 1));
 
+        // V33a GlowingCliffsDecorator replaced the whole 1.7.10 decorator; see
+        // ChromaWorldGenProvider.registerLuminousPlacements for its passes. The shared terrain passes are
+        // vanilla's, except that the ordinary gravel ore gives way to the cliffs' own non-floating veins
+        // and the springs are the decorator's doubled ones.
         BiomeGenerationSettings.Builder generation = new BiomeGenerationSettings.Builder(features, carvers);
-        addGlobalOverworldGeneration(generation);
+        BiomeDefaultFeatures.addDefaultCarversAndLakes(generation);
+        BiomeDefaultFeatures.addDefaultCrystalFormations(generation);
+        BiomeDefaultFeatures.addDefaultMonsterRoom(generation);
+        generation.addFeature(GenerationStep.Decoration.UNDERGROUND_ORES, net.minecraft.data.worldgen.placement.OrePlacements.ORE_DIRT);
+        generation.addFeature(GenerationStep.Decoration.UNDERGROUND_ORES,
+                features.getOrThrow(ChromaWorldGenProvider.LUMINOUS_GRAVEL_ORE_PLACED));
+        generation.addFeature(GenerationStep.Decoration.UNDERGROUND_ORES, net.minecraft.data.worldgen.placement.OrePlacements.ORE_GRANITE_UPPER);
+        generation.addFeature(GenerationStep.Decoration.UNDERGROUND_ORES, net.minecraft.data.worldgen.placement.OrePlacements.ORE_GRANITE_LOWER);
+        generation.addFeature(GenerationStep.Decoration.UNDERGROUND_ORES, net.minecraft.data.worldgen.placement.OrePlacements.ORE_DIORITE_UPPER);
+        generation.addFeature(GenerationStep.Decoration.UNDERGROUND_ORES, net.minecraft.data.worldgen.placement.OrePlacements.ORE_DIORITE_LOWER);
+        generation.addFeature(GenerationStep.Decoration.UNDERGROUND_ORES, net.minecraft.data.worldgen.placement.OrePlacements.ORE_ANDESITE_UPPER);
+        generation.addFeature(GenerationStep.Decoration.UNDERGROUND_ORES, net.minecraft.data.worldgen.placement.OrePlacements.ORE_ANDESITE_LOWER);
+        generation.addFeature(GenerationStep.Decoration.UNDERGROUND_ORES, net.minecraft.data.worldgen.placement.OrePlacements.ORE_TUFF);
+        generation.addFeature(GenerationStep.Decoration.VEGETAL_DECORATION, net.minecraft.data.worldgen.placement.CavePlacements.GLOW_LICHEN);
+        generation.addFeature(GenerationStep.Decoration.FLUID_SPRINGS,
+                features.getOrThrow(ChromaWorldGenProvider.LUMINOUS_SPRING_WATER_PLACED));
+        generation.addFeature(GenerationStep.Decoration.FLUID_SPRINGS,
+                features.getOrThrow(ChromaWorldGenProvider.LUMINOUS_SPRING_LAVA_PLACED));
+        BiomeDefaultFeatures.addSurfaceFreezing(generation);
         generation.addFeature(GenerationStep.Decoration.SURFACE_STRUCTURES,
                 features.getOrThrow(ChromaWorldGenProvider.LUMINOUS_ISLAND_PLACED));
         BiomeDefaultFeatures.addDefaultOres(generation);
-        BiomeDefaultFeatures.addDefaultSoftDisks(generation);
+        generation.addFeature(GenerationStep.Decoration.UNDERGROUND_ORES,
+                features.getOrThrow(ChromaWorldGenProvider.LUMINOUS_DISK_SAND_PLACED));
+        generation.addFeature(GenerationStep.Decoration.UNDERGROUND_ORES,
+                features.getOrThrow(ChromaWorldGenProvider.LUMINOUS_DISK_CLAY_PLACED));
+        generation.addFeature(GenerationStep.Decoration.UNDERGROUND_ORES,
+                features.getOrThrow(ChromaWorldGenProvider.LUMINOUS_GRAVEL_PATCH_PLACED));
         generation.addFeature(GenerationStep.Decoration.UNDERGROUND_DECORATION,
                 features.getOrThrow(ChromaWorldGenProvider.LUMA_PATCH_PLACED));
-        BiomeDefaultFeatures.addMountainForestTrees(generation);
-        generation.addFeature(GenerationStep.Decoration.VEGETAL_DECORATION,
-                features.getOrThrow(ChromaWorldGenProvider.GLOWING_TREE_PLACED));
-        BiomeDefaultFeatures.addForestFlowers(generation);
-        BiomeDefaultFeatures.addDefaultFlowers(generation);
-        BiomeDefaultFeatures.addForestGrass(generation);
-        BiomeDefaultFeatures.addDefaultExtraVegetation(generation, true);
-        generation.addFeature(GenerationStep.Decoration.VEGETAL_DECORATION,
-                features.getOrThrow(ChromaWorldGenProvider.LUMINOUS_FLORA_PLACED));
+        for (var key : java.util.List.of(ChromaWorldGenProvider.LUMINOUS_TREES_PLACED,
+                ChromaWorldGenProvider.LUMINOUS_FLOWERS_PLACED, ChromaWorldGenProvider.LUMINOUS_GRASS_PLACED,
+                ChromaWorldGenProvider.LUMINOUS_LILY_PAD_PLACED, ChromaWorldGenProvider.LUMINOUS_BROWN_MUSHROOM_PLACED,
+                ChromaWorldGenProvider.LUMINOUS_RED_MUSHROOM_PLACED, ChromaWorldGenProvider.LUMINOUS_REEDS_PLACED,
+                ChromaWorldGenProvider.LUMINOUS_FLORA_PLACED, ChromaWorldGenProvider.LUMINOUS_CLIFFS_FLOWER_PLACED))
+            generation.addFeature(GenerationStep.Decoration.VEGETAL_DECORATION, features.getOrThrow(key));
 
         return new Biome.BiomeBuilder()
                 .hasPrecipitation(false)
@@ -240,9 +271,9 @@ public final class ChromaBiomes {
                 .setAttribute(EnvironmentAttributes.BACKGROUND_MUSIC,
                         new BackgroundMusic(SoundEvents.MUSIC_BIOME_LUSH_CAVES))
                 .specialEffects(new BiomeSpecialEffects.Builder()
-                        // V33a getWaterColorMultiplier(). The per-position teal/pink/clear variation
-                        // in getWaterColor() cannot be hooked in 26.2 (FluidRenderer picks the
-                        // FluidModel per FluidState, never per position) -- see ISSUES_2026-07-30 E2.
+                        // V33a getWaterColorMultiplier(). The per-position teal/pink/clear variation of
+                        // getWaterColor() is applied at render time by ChromaWaterColors, through
+                        // DragonAPI's WaterColorEvent.
                         .waterColor(0x22ffbb)
                         // V33a resolves grass/foliage as forest's colour *then* shifts hue by
                         // position and brightness by altitude (BiomeGlowingCliffs#getBiomeGrassColor

@@ -74,8 +74,23 @@ V33a's second-pass overlay: one of the five animated `dye/tree_overlay` sprites 
 `woodGlowNoise` field) on each exposed side, full-bright, in the leaf's dye colour. CHROMA-PORT: the
 LOS-ability suppression. Needs an in-game look.
 
-Rainbow Forest is complete apart from the gaps listed above. Next: Luminous Cliffs parity. Then Luminous Cliffs parity. ColorTreeGenerator (overworld-wide dye trees) is a
-separate follow-up.
+Rainbow Forest is complete apart from the gaps listed above. Next: Luminous Cliffs parity.
+ColorTreeGenerator (overworld-wide dye trees) is a separate follow-up.
+
+**Luminous Cliffs, unit 1 — decorator parity**: the biome carried vanilla mountain-forest trees and
+forest/default flowers; it now carries V33a `GlowingCliffsDecorator` exactly: ten non-floating gravel
+veins y 0-255 (`NoFloatingGravelFeature`, replacing vanilla ore_gravel), six sand + one clay disk, two
+surface gravel veins, 4 (+1 in 10) trees chosen 1/20 big glowing tree / 1/10 big oak / oak, eight
+dandelion-or-poppy flower attempts at `rand(height+32)`, grass, lily pads, sugar cane and the rare
+mushroom patches at `rand(height*2)` (`LegacyHeightmapScaledPlacement`), and doubled springs at 1.7.10's
+exact heights. The glowing tree is now a big oak with 1/16 glowing leaves in oak wood, as DragonAPI's
+`ModifiableBigTree` was (it had been a small blob tree in random wood). Spawns fixed to V33a: farm
+animals and squid restored, monsters in groups of four, bats 8. Bone meal draws V33a's Forge flower list
+(all small vanilla flowers, weighted). Ender Forest's world-gen flowers were poppy-heavy (26.2's
+flower_default); V33a's are two dandelions to one poppy, now fixed.
+
+Next: V33a's floating islands (the current `LuminousIslandFeature` is an approximation, not a port) as
+a Structure, then the aux pass and the client effects (sky hue, fog, ambience).
 
 ## Working checkpoint — 2026-08-16 (Proxima decoration blocks)
 

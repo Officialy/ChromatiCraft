@@ -250,6 +250,8 @@ sourceSets.main.java {
     include 'reika/chromaticraft/world/luminous/LumaPatchFeature.java'
     include 'reika/chromaticraft/world/luminous/LuminousIslandFeature.java'
     include 'reika/chromaticraft/world/luminous/LuminousFloraFeature.java'
+    include 'reika/chromaticraft/world/luminous/NoFloatingGravelFeature.java'
+    include 'reika/chromaticraft/world/LegacyHeightmapScaledPlacement.java'
     include 'reika/chromaticraft/world/PylonGridPlacement.java'
     include 'reika/chromaticraft/world/TieredOreHeightPlacement.java'
     include 'reika/chromaticraft/world/TieredPlantFeature.java'

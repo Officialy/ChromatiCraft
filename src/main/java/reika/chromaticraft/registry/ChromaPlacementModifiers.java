@@ -22,6 +22,8 @@ public final class ChromaPlacementModifiers {
             TYPES.register("tiered_ore_height", () -> () -> reika.chromaticraft.world.TieredOreHeightPlacement.CODEC);
     public static final DeferredHolder<PlacementModifierType<?>, PlacementModifierType<reika.chromaticraft.world.SinkThroughAirPlacement>> SINK_THROUGH_AIR =
             TYPES.register("sink_through_air", () -> () -> reika.chromaticraft.world.SinkThroughAirPlacement.CODEC);
+    public static final DeferredHolder<PlacementModifierType<?>, PlacementModifierType<reika.chromaticraft.world.LegacyHeightmapScaledPlacement>> LEGACY_HEIGHTMAP_SCALED =
+            TYPES.register("legacy_heightmap_scaled", () -> () -> reika.chromaticraft.world.LegacyHeightmapScaledPlacement.CODEC);
 
     private ChromaPlacementModifiers() {}
 }

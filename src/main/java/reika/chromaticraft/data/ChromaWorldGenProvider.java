@@ -145,10 +145,27 @@ public final class ChromaWorldGenProvider {
     /** The bone-meal feature; see {@code EnderForestFlowerFeature} and {@code ChromaConfiguredFeatureTagProvider}. */
     public static final ResourceKey<ConfiguredFeature<?, ?>> ENDER_FOREST_FLOWER =
             configuredKey("ender_forest_flower");
-    public static final ResourceKey<PlacedFeature> GLOWING_TREE_PLACED = placedKey("glowing_tree");
 
     // V33a RainbowForestDecorator / DecoratorRainbowRiver. Every Rainbow placed feature is ChromatiCraft's
     // own key, so no vanilla feature's relative order is shared with another biome (FeatureSorter).
+    // V33a GlowingCliffsDecorator, one key each so no vanilla feature order is shared (FeatureSorter).
+    public static final ResourceKey<PlacedFeature> LUMINOUS_GRAVEL_ORE_PLACED = placedKey("luminous_gravel_ore");
+    public static final ResourceKey<PlacedFeature> LUMINOUS_DISK_SAND_PLACED = placedKey("luminous_disk_sand");
+    public static final ResourceKey<PlacedFeature> LUMINOUS_DISK_CLAY_PLACED = placedKey("luminous_disk_clay");
+    public static final ResourceKey<PlacedFeature> LUMINOUS_GRAVEL_PATCH_PLACED = placedKey("luminous_gravel_patch");
+    public static final ResourceKey<PlacedFeature> LUMINOUS_TREES_PLACED = placedKey("luminous_trees");
+    public static final ResourceKey<PlacedFeature> LUMINOUS_FLOWERS_PLACED = placedKey("luminous_flowers");
+    public static final ResourceKey<PlacedFeature> LUMINOUS_GRASS_PLACED = placedKey("luminous_grass");
+    public static final ResourceKey<PlacedFeature> LUMINOUS_LILY_PAD_PLACED = placedKey("luminous_lily_pad");
+    public static final ResourceKey<PlacedFeature> LUMINOUS_BROWN_MUSHROOM_PLACED = placedKey("luminous_brown_mushroom");
+    public static final ResourceKey<PlacedFeature> LUMINOUS_RED_MUSHROOM_PLACED = placedKey("luminous_red_mushroom");
+    public static final ResourceKey<PlacedFeature> LUMINOUS_REEDS_PLACED = placedKey("luminous_reeds");
+    public static final ResourceKey<PlacedFeature> LUMINOUS_SPRING_WATER_PLACED = placedKey("luminous_spring_water");
+    public static final ResourceKey<PlacedFeature> LUMINOUS_SPRING_LAVA_PLACED = placedKey("luminous_spring_lava");
+    public static final ResourceKey<PlacedFeature> LUMINOUS_CLIFFS_FLOWER_PLACED = placedKey("luminous_cliffs_flower");
+    /** Bone meal's flower list; see {@code ChromaConfiguredFeatureTagProvider}. */
+    public static final ResourceKey<ConfiguredFeature<?, ?>> LUMINOUS_CLIFFS_FLOWER = configuredKey("luminous_cliffs_flower");
+
     public static final ResourceKey<PlacedFeature> RAINBOW_FOREST_TREE_PLACED = placedKey("rainbow_forest_tree");
     public static final ResourceKey<PlacedFeature> DYE_FLOWER_PATCH_PLACED = placedKey("dye_flower_patch");
     public static final ResourceKey<PlacedFeature> RAINBOW_FOREST_UNDERGROUND_PLACED = placedKey("rainbow_forest_underground");
@@ -222,8 +239,8 @@ public final class ChromaWorldGenProvider {
             registerConfigured(bootstrap, features, id("ender_forest_tree"));
             registerConfigured(bootstrap, features, id("ender_pool"));
             registerConfigured(bootstrap, features, id("ender_forest_flower"));
-            // Vanilla's flower_default, reproduced under ChromatiCraft's name so that it is *not* in
-            // minecraft:can_spawn_from_bone_meal. The Ender Forest's world-generation flowers stay exactly
+            // Vanilla's flower_default placement under ChromatiCraft's name, so that it is *not* in
+            // minecraft:can_spawn_from_bone_meal, with the flower mix corrected to V33a's. The Ender Forest's world-generation flowers stay exactly
             // vanilla's, while bone meal in that biome sees only ender_forest_flower -- the V33a
             // plantFlower override -- instead of choosing between the two.
             bootstrap.register(configuredKey("ender_forest_default_flowers"),
@@ -231,9 +248,45 @@ public final class ChromaWorldGenProvider {
                             new net.minecraft.world.level.levelgen.feature.configurations.SimpleBlockConfiguration(
                                     new net.minecraft.world.level.levelgen.feature.stateproviders.WeightedStateProvider(
                                             net.minecraft.util.random.WeightedList.<net.minecraft.world.level.block.state.BlockState>builder()
-                                                    .add(net.minecraft.world.level.block.Blocks.POPPY.defaultBlockState(), 2)
-                                                    .add(net.minecraft.world.level.block.Blocks.DANDELION.defaultBlockState(), 1)))));
+                                                    // V33a BiomeGenForest (type 0) leaves func_150572_a to
+                                                    // BiomeGenBase: a dandelion two times in three. 26.2's
+                                                    // flower_default flipped that to mostly poppies.
+                                                    .add(net.minecraft.world.level.block.Blocks.DANDELION.defaultBlockState(), 2)
+                                                    .add(net.minecraft.world.level.block.Blocks.POPPY.defaultBlockState(), 1)))));
             registerConfigured(bootstrap, features, id("rainbow_tree"));
+            registerConfigured(bootstrap, features, id("no_floating_gravel"));
+            // V33a BiomeGenBase.func_150572_a, which the Luminous Cliffs do not override: a dandelion
+            // two times in three, otherwise a poppy.
+            bootstrap.register(configuredKey("luminous_flowers"), new ConfiguredFeature<>(Feature.SIMPLE_BLOCK,
+                    new net.minecraft.world.level.levelgen.feature.configurations.SimpleBlockConfiguration(
+                            new WeightedStateProvider(WeightedList.<BlockState>builder()
+                                    .add(Blocks.DANDELION.defaultBlockState(), 2)
+                                    .add(Blocks.POPPY.defaultBlockState(), 1)))));
+            // V33a BiomeGlowingCliffs' Forge flower list, which is what bone meal's plantFlower draws
+            // from: BiomeGenBase's defaults (dandelion 20, poppy 10) plus every red-flower metadata and
+            // the dandelion again at 20 each.
+            bootstrap.register(LUMINOUS_CLIFFS_FLOWER, new ConfiguredFeature<>(Feature.SIMPLE_BLOCK,
+                    new net.minecraft.world.level.levelgen.feature.configurations.SimpleBlockConfiguration(
+                            new WeightedStateProvider(WeightedList.<BlockState>builder()
+                                    .add(Blocks.DANDELION.defaultBlockState(), 40)
+                                    .add(Blocks.POPPY.defaultBlockState(), 30)
+                                    .add(Blocks.BLUE_ORCHID.defaultBlockState(), 20)
+                                    .add(Blocks.ALLIUM.defaultBlockState(), 20)
+                                    .add(Blocks.AZURE_BLUET.defaultBlockState(), 20)
+                                    .add(Blocks.RED_TULIP.defaultBlockState(), 20)
+                                    .add(Blocks.ORANGE_TULIP.defaultBlockState(), 20)
+                                    .add(Blocks.WHITE_TULIP.defaultBlockState(), 20)
+                                    .add(Blocks.PINK_TULIP.defaultBlockState(), 20)
+                                    .add(Blocks.OXEYE_DAISY.defaultBlockState(), 20)))));
+            bootstrap.register(configuredKey("luminous_lily_pad"), new ConfiguredFeature<>(Feature.SIMPLE_BLOCK,
+                    new net.minecraft.world.level.levelgen.feature.configurations.SimpleBlockConfiguration(
+                            BlockStateProvider.simple(Blocks.LILY_PAD))));
+            bootstrap.register(configuredKey("luminous_brown_mushroom"), new ConfiguredFeature<>(Feature.SIMPLE_BLOCK,
+                    new net.minecraft.world.level.levelgen.feature.configurations.SimpleBlockConfiguration(
+                            BlockStateProvider.simple(Blocks.BROWN_MUSHROOM))));
+            bootstrap.register(configuredKey("luminous_red_mushroom"), new ConfiguredFeature<>(Feature.SIMPLE_BLOCK,
+                    new net.minecraft.world.level.levelgen.feature.configurations.SimpleBlockConfiguration(
+                            BlockStateProvider.simple(Blocks.RED_MUSHROOM))));
             registerConfigured(bootstrap, features, id("rainbow_forest_tree"));
             registerConfigured(bootstrap, features, id("dye_flower_patch"));
             registerConfigured(bootstrap, features, id("rainbow_forest_underground"));
@@ -688,8 +741,7 @@ public final class ChromaWorldGenProvider {
 					RarityFilter.onAverageOnceEvery(1600), InSquarePlacement.spread(), BiomeFilter.biome()));
 			registerPlaced(bootstrap, configured, BIOME_FRAGMENT);
             registerRainbowPlacements(bootstrap, configured);
-            bootstrap.register(GLOWING_TREE_PLACED, new PlacedFeature(configured.getOrThrow(GLOWING_TREE),
-                    VegetationPlacements.treePlacement(RarityFilter.onAverageOnceEvery(5), Blocks.OAK_SAPLING)));
+            registerLuminousPlacements(bootstrap, configured);
         });
         return builder;
     }
@@ -767,6 +819,104 @@ public final class ChromaWorldGenProvider {
                         net.minecraft.data.worldgen.features.VegetationFeatures.nearWaterPredicate(Blocks.SUGAR_CANE))));
     }
 
+    /**
+     * V33a {@code GlowingCliffsDecorator.genDecorations}, with 1.7.10's generators reproduced in
+     * placement modifiers as for the Rainbow Forest (see {@link #registerRainbowDecoration}):
+     * <ul>
+     * <li>ten gravel veins anywhere from y 0 to 255, which refuse cliff stone and unsupported cells;</li>
+     * <li>six sand disks and one clay disk under water, then two gravel veins on the top solid block;</li>
+     * <li>four trees, five one chunk in ten: a big glowing tree one time in twenty, else a big oak one
+     * time in ten, else an oak;</li>
+     * <li>eight flower attempts at {@code rand(height+32)}, three grass, two lily pads and twenty sugar
+     * cane at {@code rand(height*2)}, and a brown mushroom patch one chunk in four and a red one in
+     * eight;</li>
+     * <li>twice the ordinary springs: 100 water at {@code rand(rand(248)+8)} and 40 lava at
+     * {@code rand(rand(rand(240)+8)+8)}, heights vanilla's biased providers reproduce exactly.</li>
+     * </ul>
+     */
+    private static void registerLuminousPlacements(BootstrapContext<PlacedFeature> bootstrap,
+            HolderGetter<ConfiguredFeature<?, ?>> configured) {
+        var gravel = configured.getOrThrow(configuredKey("no_floating_gravel"));
+        bootstrap.register(LUMINOUS_GRAVEL_ORE_PLACED, new PlacedFeature(gravel, List.of(
+                CountPlacement.of(10), InSquarePlacement.spread(),
+                net.minecraft.world.level.levelgen.placement.HeightRangePlacement.uniform(
+                        net.minecraft.world.level.levelgen.VerticalAnchor.absolute(0),
+                        net.minecraft.world.level.levelgen.VerticalAnchor.absolute(255)),
+                BiomeFilter.biome())));
+        var sand = configured.getOrThrow(net.minecraft.data.worldgen.features.MiscOverworldFeatures.DISK_SAND);
+        var clay = configured.getOrThrow(net.minecraft.data.worldgen.features.MiscOverworldFeatures.DISK_CLAY);
+        bootstrap.register(LUMINOUS_DISK_SAND_PLACED, new PlacedFeature(sand, disk(6)));
+        bootstrap.register(LUMINOUS_DISK_CLAY_PLACED, new PlacedFeature(clay, disk(1)));
+        bootstrap.register(LUMINOUS_GRAVEL_PATCH_PLACED, new PlacedFeature(gravel, List.of(
+                CountPlacement.of(2), InSquarePlacement.spread(), PlacementUtils.HEIGHTMAP_TOP_SOLID, BiomeFilter.biome())));
+
+        var trees = new ConfiguredFeature<>(Feature.RANDOM_SELECTOR,
+                new net.minecraft.world.level.levelgen.feature.configurations.RandomFeatureConfiguration(List.of(
+                        new net.minecraft.world.level.levelgen.feature.WeightedPlacedFeature(
+                                PlacementUtils.inlinePlaced(configured.getOrThrow(GLOWING_TREE)), 0.05F),
+                        new net.minecraft.world.level.levelgen.feature.WeightedPlacedFeature(
+                                bootstrap.lookup(net.minecraft.core.registries.Registries.PLACED_FEATURE)
+                                        .getOrThrow(net.minecraft.data.worldgen.placement.TreePlacements.FANCY_OAK_CHECKED), 0.1F)),
+                        bootstrap.lookup(net.minecraft.core.registries.Registries.PLACED_FEATURE)
+                                .getOrThrow(net.minecraft.data.worldgen.placement.TreePlacements.OAK_CHECKED)));
+        bootstrap.register(LUMINOUS_TREES_PLACED, new PlacedFeature(net.minecraft.core.Holder.direct(trees),
+                VegetationPlacements.treePlacement(PlacementUtils.countExtra(4, 0.1F, 1))));
+
+        PlacementModifier intoAir = net.minecraft.world.level.levelgen.placement.BlockPredicateFilter.forPredicate(
+                net.minecraft.world.level.levelgen.blockpredicates.BlockPredicate.ONLY_IN_AIR_PREDICATE);
+        PlacementModifier spread = net.minecraft.world.level.levelgen.placement.RandomOffsetPlacement.ofTriangle(7, 3);
+        bootstrap.register(LUMINOUS_FLOWERS_PLACED, new PlacedFeature(configured.getOrThrow(configuredKey("luminous_flowers")),
+                List.of(CountPlacement.of(8), InSquarePlacement.spread(),
+                        new reika.chromaticraft.world.LegacyHeightmapScaledPlacement(1, 32), BiomeFilter.biome(),
+                        CountPlacement.of(64), spread, intoAir)));
+        bootstrap.register(LUMINOUS_GRASS_PLACED, new PlacedFeature(configured.getOrThrow(configuredKey("rainbow_grass")),
+                List.of(CountPlacement.of(3), InSquarePlacement.spread(),
+                        new reika.chromaticraft.world.LegacyHeightmapScaledPlacement(2, 0),
+                        reika.chromaticraft.world.SinkThroughAirPlacement.INSTANCE, BiomeFilter.biome(),
+                        CountPlacement.of(128), spread, intoAir)));
+        // WorldGenWaterlily: ten tries spread rand(8)-rand(8) across and rand(4)-rand(4) up.
+        bootstrap.register(LUMINOUS_LILY_PAD_PLACED, new PlacedFeature(configured.getOrThrow(configuredKey("luminous_lily_pad")),
+                List.of(CountPlacement.of(2), InSquarePlacement.spread(),
+                        new reika.chromaticraft.world.LegacyHeightmapScaledPlacement(2, 0),
+                        reika.chromaticraft.world.SinkThroughAirPlacement.ABOVE_GROUND, BiomeFilter.biome(),
+                        CountPlacement.of(10), spread, intoAir)));
+        bootstrap.register(LUMINOUS_BROWN_MUSHROOM_PLACED, new PlacedFeature(configured.getOrThrow(configuredKey("luminous_brown_mushroom")),
+                List.of(RarityFilter.onAverageOnceEvery(4), InSquarePlacement.spread(),
+                        new reika.chromaticraft.world.LegacyHeightmapScaledPlacement(2, 0), BiomeFilter.biome(),
+                        CountPlacement.of(64), spread, intoAir)));
+        bootstrap.register(LUMINOUS_RED_MUSHROOM_PLACED, new PlacedFeature(configured.getOrThrow(configuredKey("luminous_red_mushroom")),
+                List.of(RarityFilter.onAverageOnceEvery(8), InSquarePlacement.spread(),
+                        new reika.chromaticraft.world.LegacyHeightmapScaledPlacement(2, 0), BiomeFilter.biome(),
+                        CountPlacement.of(64), spread, intoAir)));
+        bootstrap.register(LUMINOUS_REEDS_PLACED, new PlacedFeature(
+                configured.getOrThrow(net.minecraft.data.worldgen.features.VegetationFeatures.SUGAR_CANE),
+                List.of(CountPlacement.of(10 + 10), InSquarePlacement.spread(),
+                        new reika.chromaticraft.world.LegacyHeightmapScaledPlacement(2, 0), BiomeFilter.biome(),
+                        CountPlacement.of(20),
+                        net.minecraft.world.level.levelgen.placement.RandomOffsetPlacement.ofTriangle(3, 0),
+                        net.minecraft.data.worldgen.features.VegetationFeatures.nearWaterPredicate(Blocks.SUGAR_CANE))));
+
+        bootstrap.register(LUMINOUS_SPRING_WATER_PLACED, new PlacedFeature(
+                configured.getOrThrow(net.minecraft.data.worldgen.features.MiscOverworldFeatures.SPRING_WATER),
+                List.of(CountPlacement.of(2 * 50), InSquarePlacement.spread(),
+                        net.minecraft.world.level.levelgen.placement.HeightRangePlacement.of(
+                                net.minecraft.world.level.levelgen.heightproviders.BiasedToBottomHeight.of(
+                                        net.minecraft.world.level.levelgen.VerticalAnchor.absolute(0),
+                                        net.minecraft.world.level.levelgen.VerticalAnchor.absolute(255), 8)),
+                        BiomeFilter.biome())));
+        bootstrap.register(LUMINOUS_SPRING_LAVA_PLACED, new PlacedFeature(
+                configured.getOrThrow(net.minecraft.data.worldgen.features.MiscOverworldFeatures.SPRING_LAVA_OVERWORLD),
+                List.of(CountPlacement.of(2 * 20), InSquarePlacement.spread(),
+                        net.minecraft.world.level.levelgen.placement.HeightRangePlacement.of(
+                                net.minecraft.world.level.levelgen.heightproviders.VeryBiasedToBottomHeight.of(
+                                        net.minecraft.world.level.levelgen.VerticalAnchor.absolute(0),
+                                        net.minecraft.world.level.levelgen.VerticalAnchor.absolute(247), 8)),
+                        BiomeFilter.biome())));
+        // Bone meal only.
+        bootstrap.register(LUMINOUS_CLIFFS_FLOWER_PLACED, new PlacedFeature(configured.getOrThrow(LUMINOUS_CLIFFS_FLOWER),
+                List.of(CountPlacement.of(0), BiomeFilter.biome())));
+    }
+
     /** Vanilla's disk placement (MiscOverworldPlacements) with V33a's count. */
     private static List<PlacementModifier> disk(int count) {
         return List.of(CountPlacement.of(count), InSquarePlacement.spread(), PlacementUtils.HEIGHTMAP_TOP_SOLID,
@@ -783,15 +933,22 @@ public final class ChromaWorldGenProvider {
 				DataComponentPatch.builder().set(DataComponents.CUSTOM_DATA, CustomData.of(tag)).build());
 	}
 
+    /**
+     * V33a {@code BiomeGlowingCliffs.GlowingTreeGenerator}: DragonAPI's {@code ModifiableBigTree}, which is
+     * 1.7.10's big oak, with one leaf in sixteen swapped for a Glowing Leaf. Vanilla's fancy oak is the
+     * big oak's 26.2 form, so this is fancy oak with the leaf mix changed. The wood is oak, as the
+     * DragonAPI generator's default log is.
+     */
     private static TreeConfiguration glowingTreeConfiguration(HolderGetter<Biome> biomes) {
         WeightedStateProvider foliage = new WeightedStateProvider(WeightedList.<BlockState>builder()
                 .add(Blocks.OAK_LEAVES.defaultBlockState(), 15)
                 .add(ChromaBlocks.GLOWING_LEAVES.get().defaultBlockState(), 1));
-        return new TreeConfiguration.TreeConfigurationBuilder(randomOverworldLog(),
-                new StraightTrunkPlacer(6, 3, 2),
+        return new TreeConfiguration.TreeConfigurationBuilder(BlockStateProvider.simple(Blocks.OAK_LOG),
+                new net.minecraft.world.level.levelgen.feature.trunkplacers.FancyTrunkPlacer(3, 11, 0),
                 foliage,
-                new BlobFoliagePlacer(ConstantInt.of(3), ConstantInt.of(1), 4),
-                new TwoLayersFeatureSize(1, 0, 2),
+                new net.minecraft.world.level.levelgen.feature.foliageplacers.FancyFoliagePlacer(
+                        ConstantInt.of(2), ConstantInt.of(4), 4),
+                new TwoLayersFeatureSize(0, 0, 0, java.util.OptionalInt.of(4)),
                 TreeConfiguration.defaultPlaceBelowTreeTrunkProvider(biomes)).ignoreVines().build();
     }
 
