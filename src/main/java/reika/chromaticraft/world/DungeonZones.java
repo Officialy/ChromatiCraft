@@ -53,9 +53,9 @@ import reika.dragonapi.instantiable.math.noise.VoronoiNoiseGenerator;
  * {@link Status#SUCCESS} or {@link Status#FAILURE}. Statuses persist with the level, as V33a's
  * {@code StructureStatus.dat} did, and feed the Artifact Distribution Map.
  *
- * <p>V33a seeded each field from the world seed, the world's creation time and the save folder's path
- * hash. 26.2 has neither of the last two in a stable form, so the world seed and the type alone seed it:
- * the layout is still unique per world, just identical across copies of the same seed.
+ * <p>V33a seeded each field from the world seed, DragonAPI's world creation time and the save folder's
+ * absolute path hash. The first two are kept; the path term is dropped, because it made the layout depend
+ * on where the save sat on disk (moving or copying a world moved every unbuilt structure).
  */
 public final class DungeonZones {
 
@@ -136,7 +136,8 @@ public final class DungeonZones {
 
 	private static VoronoiNoiseGenerator noise(ServerLevel level, Type s) {
 		return NOISE.computeIfAbsent(level, l -> new EnumMap<>(Type.class)).computeIfAbsent(s, t -> {
-			long sd = level.getSeed() ^ (t.ordinal() * 41381L);
+			long sd = level.getSeed() ^ (t.ordinal() * 41381L)
+					^ ~reika.dragonapi.libraries.level.ReikaWorldHelper.getCurrentWorldID(level).worldCreationTime;
 			VoronoiNoiseGenerator v = (VoronoiNoiseGenerator)new VoronoiNoiseGenerator(sd ^ t.ordinal())
 					.setFrequency(0.75D / noiseScale(t));
 			v.randomFactor = 0.55;
@@ -347,6 +348,19 @@ public final class DungeonZones {
 	@net.neoforged.fml.common.EventBusSubscriber(modid = ChromatiCraft.MODID)
 	public static final class Lifecycle {
 		private Lifecycle() {}
+
+		/**
+		 * Build the fields and load the status data on the server thread. The world-ID lookup behind the
+		 * seed is file-backed and not thread-safe, and worldgen workers would otherwise race to it.
+		 */
+		@net.neoforged.bus.api.SubscribeEvent
+		public static void onLoad(net.neoforged.neoforge.event.level.LevelEvent.Load event) {
+			if (event.getLevel() instanceof ServerLevel level && canGenerateIn(level)) {
+				for (Type t : Type.values())
+					noise(level, t);
+				Data.get(level);
+			}
+		}
 
 		@net.neoforged.bus.api.SubscribeEvent
 		public static void onUnload(net.neoforged.neoforge.event.level.LevelEvent.Unload event) {

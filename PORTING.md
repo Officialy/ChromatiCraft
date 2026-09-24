@@ -175,8 +175,9 @@ attempts, then tries the eight chunks around it, recording SUCCESS/FAILURE. Stat
 (`chromaticraft:structure_status`, V33a `StructureStatus.dat`) and are what the Artifact Distribution Map
 reads.
 - Deviations: V33a widened the retry ring to 48-96 blocks; 26.2 features can only write beside their own
-  chunk, so only the first ring is tried. The field seed drops V33a's world-creation-time and save-path
-  terms (neither exists stably in 26.2); it is world seed + type.
+  chunk, so only the first ring is tried. The field seed keeps V33a's world seed, type and DragonAPI
+  world-creation-time terms but drops the save folder's absolute-path hash (it moved every unbuilt
+  structure when a world was copied or moved).
 - 1.7.10 biome checks read `topBlock`/decorators; `DungeonZones.isValidBiome` asks the same questions
   through biome tags (`grassTopped` etc.). V33a's `isValidBiomeNear` loop tested only its centre point;
   kept.
