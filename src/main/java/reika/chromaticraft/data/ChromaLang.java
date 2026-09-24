@@ -175,6 +175,8 @@ public class ChromaLang extends LanguageProvider {
 			add(ChromaItems.STORAGE_CRYSTALS.get(tier).get(),
 					tier.displayPrefix() + " Energy Storage Crystal");
 		add(ChromaItems.SPEED_UPGRADE.get(), "Speed Upgrade"); // V33a chromamisc.speed
+		add(ChromaItems.ENDER_EYE.get(), "Enhanced Ender Eye"); // V33a chroma.endereye
+		add(reika.chromaticraft.registry.ChromaEntityTypes.ENDER_EYE.get(), "Enhanced Ender Eye");
 		// V33a chroma.fertileseed: every potency shares the one name.
 		for (var seed : ChromaItems.FERTILITY_SEEDS)
 			add(seed.get(), "Fertility Seeds");

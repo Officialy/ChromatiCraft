@@ -1,0 +1,86 @@
+{
+  "type": "chromaticraft:casting",
+  "completion": {
+    "caster_tag": "owner"
+  },
+  "duration": 100,
+  "experience": 200,
+  "grid": [
+    {
+      "ingredient": "minecraft:emerald",
+      "slot": 4
+    }
+  ],
+  "penalty_threshold": 1,
+  "result": {
+    "count": 3,
+    "id": "chromaticraft:enhanced_ender_eye"
+  },
+  "stands": [
+    {
+      "ingredient": "minecraft:ender_eye",
+      "offset": [
+        -2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "minecraft:ender_eye",
+      "offset": [
+        2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "minecraft:ender_eye",
+      "offset": [
+        0,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:infused_dust",
+      "offset": [
+        0,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:transmissive_dust",
+      "offset": [
+        -2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:transmissive_dust",
+      "offset": [
+        2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:aura_dust",
+      "offset": [
+        -2,
+        0,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:aura_dust",
+      "offset": [
+        2,
+        0,
+        0
+      ]
+    }
+  ],
+  "tier": "multiblock"
+}

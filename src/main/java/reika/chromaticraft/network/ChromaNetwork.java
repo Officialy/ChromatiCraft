@@ -37,6 +37,7 @@ public final class ChromaNetwork {
 				(payload, context) -> context.enqueueWork(() -> ClientPayloadHandlers.relayConnection(
 						payload.path(), element(payload.color()))));
 		registrar.playToClient(FertilitySeed.TYPE, FertilitySeed.CODEC, ChromaNetwork::handleFertilitySeed);
+		registrar.playToClient(EnderEyeSync.TYPE, EnderEyeSync.CODEC, ChromaNetwork::handleEnderEyeSync);
 		registrar.playToClient(FarmerHarvest.TYPE, FarmerHarvest.CODEC,
 				(payload, context) -> context.enqueueWork(() ->
 						ClientPayloadHandlers.farmerHarvest(payload.source(), payload.target())));
@@ -193,6 +194,24 @@ public final class ChromaNetwork {
 	public static void sendPylonTurboFx(ServerLevel level, BlockPos source, int effect, int data) {
 		PacketDistributor.sendToPlayersNear(level, null, source.getX() + 0.5, source.getY() + 0.5,
 				source.getZ() + 0.5, 256, new PylonTurboFx(source, effect, data));
+	}
+
+	/** V33a ENDEREYESYNC: the thrown eye's age, every eight ticks, to players within 200 blocks. */
+	public record EnderEyeSync(int entityId, int ticks) implements CustomPacketPayload {
+		public static final Type<EnderEyeSync> TYPE = createType("ender_eye_sync");
+		public static final StreamCodec<ByteBuf, EnderEyeSync> CODEC = StreamCodec.composite(
+				net.minecraft.network.codec.ByteBufCodecs.VAR_INT, EnderEyeSync::entityId,
+				net.minecraft.network.codec.ByteBufCodecs.VAR_INT, EnderEyeSync::ticks, EnderEyeSync::new);
+		@Override public Type<EnderEyeSync> type() { return TYPE; }
+	}
+
+	public static void sendEnderEyeSync(ServerLevel level, reika.chromaticraft.entity.EntityEnderEyeT2 eye) {
+		PacketDistributor.sendToPlayersNear(level, null, eye.getX(), eye.getY(), eye.getZ(), 200,
+				new EnderEyeSync(eye.getId(), eye.tickCount));
+	}
+
+	private static void handleEnderEyeSync(EnderEyeSync payload, IPayloadContext context) {
+		context.enqueueWork(() -> ClientPayloadHandlers.enderEyeSync(payload.entityId(), payload.ticks()));
 	}
 
 	/** V33a FERTILITYSEED packet: one fertilised block, sparkled for players within 96 blocks. */

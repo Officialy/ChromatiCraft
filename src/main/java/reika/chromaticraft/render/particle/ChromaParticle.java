@@ -213,6 +213,14 @@ public abstract class ChromaParticle extends SingleQuadParticle {
 				0x00c000, 10, 4F, false));
 	}
 
+	/** A rapid-expanding stationary or drifting fade blur with a chosen V33a icon and blend. */
+	public static void spawnIconFade(Level world, double x, double y, double z, double vx, double vy, double vz,
+			int color, int life, float scale, String icon, boolean additive) {
+		if (!(world instanceof ClientLevel level)) return;
+		Minecraft.getInstance().particleEngine.add(new FadeGlow(level, x, y, z, vx, vy, vz, color, life, scale,
+				true, null, 0, icon, additive));
+	}
+
 	/**
 	 * V33a {@code ItemFertilitySeed.doFertilizeFX}: green-hued stationary blurs scattered through the
 	 * fertilised block's bounds, fewer and shorter-lived the further the viewer is.
@@ -2584,7 +2592,14 @@ public abstract class ChromaParticle extends SingleQuadParticle {
         public FadeGlow(ClientLevel level, double x, double y, double z, double vx, double vy, double vz,
                 int color, int life, float scale, boolean rapidExpand, PositionController controller,
                 int startAge) {
-            super(level, x, y, z, "fade", true);
+            this(level, x, y, z, vx, vy, vz, color, life, scale, rapidExpand, controller, startAge, "fade", true);
+        }
+
+        /** V33a {@code setIcon(...)}/{@code setBasicBlend()}: another fade sprite, additive or alpha-blended. */
+        public FadeGlow(ClientLevel level, double x, double y, double z, double vx, double vy, double vz,
+                int color, int life, float scale, boolean rapidExpand, PositionController controller,
+                int startAge, String icon, boolean additive) {
+            super(level, x, y, z, icon, additive);
             this.xd = vx;
             this.yd = vy;
             this.zd = vz;

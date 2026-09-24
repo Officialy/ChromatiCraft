@@ -141,6 +141,9 @@ public final class ChromaItems {
 					() -> new reika.chromaticraft.items.ItemFertilitySeed(potency, itemProperties())));
 		}
 	}
+	/** V33a ENDEREYE, the Enhanced Ender Eye; its owner is stored in CUSTOM_DATA. */
+	public static final DeferredItem<reika.chromaticraft.items.ItemT2EnderEye> ENDER_EYE =
+			reg("enhanced_ender_eye", () -> new reika.chromaticraft.items.ItemT2EnderEye(itemProperties()));
 	/** V33a ARTEFACT metadata 1. It has none of the harmful full-artefact behavior. */
 	public static final DeferredItem<Item> UNKNOWN_ARTEFACT_FRAGMENT =
 			reg("unknown_artefact_fragment", () -> new Item(itemProperties().stacksTo(1)));

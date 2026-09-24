@@ -1,14 +1,14 @@
 {
   "type": "chromaticraft:casting",
   "completion": {
+    "caster_tag": "caster",
     "granted_progress": [
       "repeater"
     ],
     "harmonics": [
       1.4991482,
       1.2606474
-    ],
-    "stamp_caster": true
+    ]
   },
   "duration": 960,
   "experience": 400,

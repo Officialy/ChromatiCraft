@@ -8073,7 +8073,7 @@ public final class ChromaGameTests {
 				&& cr.requiredProgress().containsAll(List.of(ProgressStage.BLOWREPEATER,
 						ProgressStage.ENERGYIDEA, ProgressStage.TUNECAST))
 				&& cr.completion().grantedProgress().contains(ProgressStage.REPEATER)
-				&& cr.completion().stampCaster(),
+				&& cr.completion().casterTag().equals("caster"),
 				"Crystal Repeater recipe must keep V33a's tier, yield, timing, stands, runes, key, gates and REPEATER grant");
 		helper.assertTrue(cr.grid().size() == 1 && cr.grid().getFirst().slot() == 4
 				&& cr.grid().getFirst().ingredient().test(new ItemStack(

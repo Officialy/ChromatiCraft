@@ -509,11 +509,12 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver
 		// getOutputTag returns the central crystal's NBT so upgrades never erase stored lumens.
 		ItemStack output = recipe.output(this.snapshot());
 		output.setCount(output.getCount() * amount);
-		// V33a RepeaterRecipe.handleNBTResult: networking-tier repeaters remember who cast them.
-		if (recipe.completion().stampCaster() && playerId != null)
+		// V33a handleNBTResult/getOutputTag: repeaters remember who cast them, eyes who owns them.
+		String casterTag = recipe.completion().casterTag();
+		if (!casterTag.isEmpty() && playerId != null)
 			net.minecraft.world.item.component.CustomData.update(
 					net.minecraft.core.component.DataComponents.CUSTOM_DATA, output,
-					tag -> tag.putString("caster", playerId.toString()));
+					tag -> tag.putString(casterTag, playerId.toString()));
         mutatingInventory = true;
         for (GridIngredient required : recipe.grid()) this.consumeGridSlot(required.slot(), amount);
         Map<BlockPos, TileEntityItemStand> stands = this.getOtherStands();

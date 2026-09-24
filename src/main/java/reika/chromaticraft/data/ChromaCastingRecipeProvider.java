@@ -164,6 +164,7 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 							'r', Ingredient.of(Items.GLOWSTONE_DUST)),
 					"wgw", "scs", "wrw");
 			saveCrystalRepeater();
+			saveEnderEye();
 
 			// V33a RelayRecipe: the smooth Crystalline Stone centre is retained as an auxiliary
 			// ingredient too, alongside three glowstone dusts and the matching boosted shard.
@@ -1041,6 +1042,27 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 		 * which is what opens the PYLONCRAFT research tier. The result carries {@code boosted:false}
 		 * (turbochargeable repeaters always do) and the caster's UUID (networking-tier tiles).
 		 */
+		/**
+		 * V33a {@code EnderEyeRecipe}: three Enhanced Ender Eyes on an emerald, with three ender eyes, one
+		 * Element Dust, two Transmissive Dust and two Aura Dust on the inner stands. Multiblock tier at its
+		 * base 100 ticks and 200 XP; {@code getOutputTag} binds the eyes to the caster as {@code owner}.
+		 */
+		private void saveEnderEye() {
+			List<CastingTableRecipe.StandIngredient> stands = List.of(
+					auxStand(-2, -2, Ingredient.of(Items.ENDER_EYE)),
+					auxStand(2, -2, Ingredient.of(Items.ENDER_EYE)),
+					auxStand(0, 2, Ingredient.of(Items.ENDER_EYE)),
+					auxStand(0, -2, tiered(ChromaTieredItems.ELEMENT_DUST)),
+					auxStand(-2, 2, tiered(ChromaTieredItems.BEACON_DUST)),
+					auxStand(2, 2, tiered(ChromaTieredItems.BEACON_DUST)),
+					auxStand(-2, 0, tiered(ChromaTieredItems.AURA_DUST)),
+					auxStand(2, 0, tiered(ChromaTieredItems.AURA_DUST)));
+			saveRecipe("enhanced_ender_eye", new CastingTableRecipe(CastingTableRecipe.Tier.MULTIBLOCK,
+					List.of(new GridIngredient(4, Ingredient.of(Items.EMERALD))), stands, List.of(), List.of(),
+					new ItemStackTemplate(ChromaItems.ENDER_EYE.get(), 3), 100, 200)
+					.withPenaltyThreshold(1).withCasterStamp("owner"));
+		}
+
 		private void saveCrystalRepeater() {
 			Ingredient dust = tiered(ChromaTieredItems.BEACON_DUST);
 			Ingredient white = Ingredient.of(ChromaItems.BOOSTED_SHARDS.get(CrystalElement.WHITE).get());
@@ -1079,7 +1101,7 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 					stands, REPEATER_RUNES, List.of(), result, 960, 400, List.copyOf(progress),
 					0.75F, true, true, 1, 0.75F, CastingTableRecipe.CompletionBehavior.DEFAULT)
 					.withCompletionBehavior(false, List.of(ProgressStage.REPEATER), chord)
-					.withCasterStamp()
+					.withCasterStamp("caster")
 					.withMinimumResearch(ResearchLevel.NETWORKING));
 		}
 

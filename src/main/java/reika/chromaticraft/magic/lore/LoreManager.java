@@ -75,6 +75,37 @@ public final class LoreManager implements ProgressAccess {
 		tag(player).putBoolean("complete", complete);
 	}
 
+	/** V33a {@code initTowers}: lay out the tower positions the first time a level asks. */
+	public void initTowers(net.minecraft.server.level.ServerLevel world) {
+		if (!Towers.initialized(world))
+			Towers.loadPositions(world, 64 * 16 * 2);
+	}
+
+	/**
+	 * V33a {@code getNearestActiveTower}: the closest tower, by its root or generated position, whose data
+	 * node this player has not yet scanned. Block coordinates.
+	 */
+	public Towers getNearestActiveTower(net.minecraft.server.level.ServerLevel world, double x, double z, Player ep) {
+		this.initTowers(world);
+		Towers ret = null;
+		double mind = Double.POSITIVE_INFINITY;
+		for (Towers t : Towers.towerList) {
+			net.minecraft.world.level.ChunkPos p = t.getRootPosition();
+			net.minecraft.core.BlockPos p2 = t.getGeneratedLocation();
+			if (p2 != null && ep != null && world.getBlockEntity(p2)
+					instanceof reika.chromaticraft.tileentity.TileEntityDataNode te && te.hasBeenScanned(ep))
+				continue;
+			double d1 = Math.hypot(x - p.x(), z - p.z());
+			double d2 = p2 != null ? Math.hypot(x - p2.getX(), z - p2.getZ()) : Double.POSITIVE_INFINITY;
+			double d = Math.min(d1, d2);
+			if (ret == null || d < mind) {
+				ret = t;
+				mind = d;
+			}
+		}
+		return ret;
+	}
+
 	public void resetBoard(Player player) {
 		tag(player).remove(MOVES);
 		tag(player).putBoolean("complete", false);

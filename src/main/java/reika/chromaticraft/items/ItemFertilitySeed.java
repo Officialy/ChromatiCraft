@@ -48,7 +48,7 @@ import reika.dragonapi.modregistry.ModCropList;
  * vanishing. Used on dirt, it spreads grass over up to three connected blocks of dirt under light-passing
  * cover; used on anything else, it works as bone meal.
  *
- * <p>Seeds fall through leaves (see {@code ChromaFertilitySeedEvents}) so roots under a canopy still
+ * <p>Seeds fall through leaves (see {@code ChromaItemEntityEvents}) so roots under a canopy still
  * drop them to the ground, and a seed that has woken up cannot be picked back up.
  */
 public class ItemFertilitySeed extends Item implements BreakerCallback {

@@ -11,170 +11,155 @@ package reika.chromaticraft.items;
 
 import java.util.UUID;
 
-import net.minecraft.entity.item.EntityItem;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.init.Blocks;
-import net.minecraft.init.Items;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.MathHelper;
-import net.minecraft.util.MovingObjectPosition;
-import net.minecraft.util.MovingObjectPosition.MovingObjectType;
-import net.minecraft.world.ChunkPosition;
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.tags.StructureTags;
+import net.minecraft.util.Mth;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.item.context.UseOnContext;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 
-import reika.chromaticraft.base.ItemChromaBasic;
 import reika.chromaticraft.entity.EntityEnderEyeT2;
 import reika.chromaticraft.registry.ChromaSounds;
-import reika.dragonapi.instantiable.data.immutable.Coordinate;
-import reika.dragonapi.interfaces.item.AnimatedSpritesheet;
-import reika.dragonapi.libraries.ReikaEntityHelper;
-import reika.dragonapi.libraries.io.ReikaSoundHelper;
-import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
-import reika.dragonapi.libraries.world.ReikaWorldHelper;
 
+/**
+ * V33a {@code ItemT2EnderEye}, the Enhanced Ender Eye, cast three at a time and bound to its caster.
+ *
+ * <p>Thrown, it becomes an {@link EntityEnderEyeT2} toward the nearest stronghold and always returns.
+ * Used on an End Portal frame it fills it like a vanilla eye; and if that completes the portal, the stack
+ * comes back as twelve. Dropped, it never despawns, cannot be destroyed, floats up out of water, homes in
+ * on its owner within 128 blocks, and only its owner can pick it up.
+ */
+public class ItemT2EnderEye extends Item implements OwnableItem {
 
-public class ItemT2EnderEye extends ItemChromaBasic implements AnimatedSpritesheet, OwnableItem {
+	public ItemT2EnderEye(Properties properties) {
+		super(properties);
+	}
 
-	public ItemT2EnderEye(int tex) {
-		super(tex);
+	static UUID owner(ItemStack is) {
+		CustomData data = is.get(DataComponents.CUSTOM_DATA);
+		if (data == null)
+			return null;
+		String s = data.copyTag().getStringOr("owner", "");
+		if (s.isEmpty())
+			return null;
+		try {
+			return UUID.fromString(s);
+		}
+		catch (IllegalArgumentException e) {
+			return null;
+		}
 	}
 
 	@Override
-	public boolean onItemUse(ItemStack is, EntityPlayer ep, World world, int x, int y, int z, int s, float a, float b, float c) {
-		boolean ret = Items.ender_eye.onItemUse(is, ep, world, x, y, z, s, a, b, c);
-		if (ret) {
-			if (ReikaWorldHelper.checkForAdjBlock(world, x, y, z, Blocks.end_portal) != null) {
-				is.stackSize = 12;
-				is.animationsToGo = 5;
-				ReikaSoundHelper.playSoundAtEntity(ep.worldObj, ep, "random.pop", 1, 1.35F);
-				if (world.isRemote)
-					ReikaSoundHelper.playClientSound("random.pop", ep.posX, ep.posY, ep.posZ, 1, 1.35F, true);
+	public InteractionResult useOn(UseOnContext context) {
+		InteractionResult ret = Items.ENDER_EYE.useOn(context);
+		if (ret.consumesAction()) {
+			Level world = context.getLevel();
+			BlockPos pos = context.getClickedPos();
+			boolean portal = false;
+			for (Direction d : Direction.values())
+				portal |= world.getBlockState(pos.relative(d)).is(Blocks.END_PORTAL);
+			if (portal) {
+				ItemStack is = context.getItemInHand();
+				is.setCount(12);
+				Player ep = context.getPlayer();
+				if (ep != null)
+					world.playSound(null, ep.getX(), ep.getY(), ep.getZ(), SoundEvents.ITEM_PICKUP, SoundSource.PLAYERS, 1, 1.35F);
 			}
 		}
 		return ret;
 	}
 
 	@Override
-	public boolean useAnimatedRender(ItemStack is) {
-		return true;
-	}
-
-	@Override
-	public int getFrameCount(ItemStack is) {
-		return 16;
-	}
-
-	@Override
-	public int getBaseRow(ItemStack is) {
-		return 8;
-	}
-
-	@Override
-	public int getColumn(ItemStack is) {
-		return 0;
-	}
-
-	@Override
-	public int getFrameOffset(ItemStack is) {
-		return 0;
-	}
-
-	@Override
-	public int getFrameSpeed(ItemStack is) {
-		return 2;
-	}
-
-	@Override
-	public String getTexture(ItemStack is) {
-		return this.useAnimatedRender(is) ? "/Reika/ChromatiCraft/Textures/Items/miscanim.png" : super.getTexture(is);
-	}
-
-	@Override
-	public boolean verticalFrames() {
-		return false;
-	}
-
-	@Override
-	public ItemStack onItemRightClick(ItemStack is, World world, EntityPlayer ep) {
-		MovingObjectPosition mov = this.getMovingObjectPositionFromPlayer(world, ep, false);
-
-		if (mov != null && mov.typeOfHit == MovingObjectType.BLOCK && world.getBlock(mov.blockX, mov.blockY, mov.blockZ) == Blocks.end_portal_frame) {
-			return is;
-		}
-		else {
-			if (!world.isRemote) {
-				ChunkPosition pos = world.findClosestStructure("Stronghold", (int)ep.posX, (int)ep.posY, (int)ep.posZ);
-
-				if (pos != null) {
-					if (is.stackTagCompound == null || !is.stackTagCompound.hasKey("owner")) {
-						is.stackTagCompound = new NBTTagCompound();
-						is.stackTagCompound.setString("owner", ep.getUniqueID().toString());
-					}
-					EntityEnderEyeT2 eye = EntityEnderEyeT2.create(world, ep.posX, ep.posY + 1.62D - ep.yOffset, ep.posZ, is.stackTagCompound);
-					eye.moveTowards(pos.chunkPosX, pos.chunkPosY, pos.chunkPosZ);
-					world.spawnEntityInWorld(eye);
-					world.playSoundAtEntity(ep, "random.bow", 0.5F, 0.4F / (itemRand.nextFloat() * 0.4F + 0.8F));
-					world.playAuxSFXAtEntity((EntityPlayer)null, 1002, (int)ep.posX, (int)ep.posY, (int)ep.posZ, 0);
-
-					if (!ep.capabilities.isCreativeMode) {
-						--is.stackSize;
-					}
+	public InteractionResult use(Level world, Player ep, InteractionHand hand) {
+		ItemStack is = ep.getItemInHand(hand);
+		BlockHitResult mov = getPlayerPOVHitResult(world, ep, ClipContext.Fluid.NONE);
+		if (mov.getType() == HitResult.Type.BLOCK && world.getBlockState(mov.getBlockPos()).is(Blocks.END_PORTAL_FRAME))
+			return InteractionResult.PASS;
+		if (world instanceof ServerLevel server) {
+			BlockPos pos = server.findNearestMapStructure(StructureTags.EYE_OF_ENDER_LOCATED, ep.blockPosition(), 100, false);
+			if (pos != null) {
+				UUID owner = owner(is);
+				if (owner == null) {
+					CompoundTag tag = new CompoundTag();
+					tag.putString("owner", ep.getUUID().toString());
+					is.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
+					owner = ep.getUUID();
 				}
-				else {
-					ChromaSounds.ERROR.playSound(ep);
-				}
+				EntityEnderEyeT2 eye = EntityEnderEyeT2.create(world, ep.getX(), ep.getEyeY(), ep.getZ(), owner);
+				eye.moveTowards(pos.getX(), pos.getY(), pos.getZ());
+				world.addFreshEntity(eye);
+				// V33a: "random.bow" plus aux event 1002, as 1.7.10's vanilla eye did.
+				world.playSound(null, ep.getX(), ep.getY(), ep.getZ(), SoundEvents.ARROW_SHOOT, SoundSource.NEUTRAL,
+						0.5F, 0.4F / (world.getRandom().nextFloat() * 0.4F + 0.8F));
+				world.levelEvent(null, 1002, ep.blockPosition(), 0);
+				is.consume(1, ep);
 			}
-
-			return is;
+			else {
+				ChromaSounds.ERROR.playSound(ep);
+			}
 		}
+		return InteractionResult.SUCCESS;
 	}
 
 	@Override
-	public int getEntityLifespan(ItemStack is, World world) {
+	public int getEntityLifespan(ItemStack is, Level world) {
 		return Integer.MAX_VALUE;
 	}
 
 	@Override
-	public boolean onEntityItemUpdate(EntityItem ei) {
-		ReikaEntityHelper.setInvulnerable(ei, true);
-		if (new Coordinate(ei).getBlock(ei.worldObj) == Blocks.water) {
-			ei.motionY += 0.07;
-			ei.motionX *= 0.85;
-			ei.motionZ *= 0.85;
-			ei.velocityChanged = true;
+	public boolean onEntityItemUpdate(ItemStack stack, ItemEntity ei) {
+		ei.setInvulnerable(true);
+		if (ei.level().getBlockState(ei.blockPosition()).is(Blocks.WATER)) {
+			Vec3 v = ei.getDeltaMovement();
+			ei.setDeltaMovement(v.x * 0.85, v.y + 0.07, v.z * 0.85);
+			ei.hurtMarked = true;
 		}
-		NBTTagCompound tag = ei.getEntityItem().stackTagCompound;
-		if (tag != null && tag.hasKey("owner")) {
-			UUID uid = UUID.fromString(tag.getString("owner"));
-			EntityPlayer ep = ei.worldObj.func_152378_a(uid);
-			if (ep != null) {
-				if (ei.delayBeforeCanPickup == 0) {
-					double x = ep.posX;
-					double y = ep.posY+1.5;
-					double z = ep.posZ;
-					double dx = (x+0.5 - ei.posX);
-					double dy = (y+0.5 - ei.posY);
-					double dz = (z+0.5 - ei.posZ);
-					double ddt = ReikaMathLibrary.py3d(dx, dy, dz);
-					if (ddt < 128) {
-						if (ReikaMathLibrary.py3d(dx, 0, dz) < 1) {
-							ei.onCollideWithPlayer(ep);
-						}
-						else {
-							ei.motionX += dx/ddt/ddt/1;
-							ei.motionY += dy/ddt/ddt/2;
-							ei.motionZ += dz/ddt/ddt/1;
-							ei.motionX = MathHelper.clamp_double(ei.motionX, -0.75, 0.75);
-							ei.motionY = MathHelper.clamp_double(ei.motionY, -0.75, 0.75);
-							ei.motionZ = MathHelper.clamp_double(ei.motionZ, -0.75, 0.75);
-							if (ei.posY < y)
-								ei.motionY += 0.125;
-							if (ei.posY < 0)
-								ei.motionY = Math.max(1, ei.motionY);
-							if (!ei.worldObj.isRemote)
-								ei.velocityChanged = true;
-						}
+		UUID uid = owner(stack);
+		if (uid != null) {
+			Player ep = ei.level().getPlayerByUUID(uid);
+			if (ep != null && !ei.hasPickUpDelay()) {
+				double x = ep.getX();
+				double y = ep.getY() + 1.5;
+				double z = ep.getZ();
+				double dx = x + 0.5 - ei.getX();
+				double dy = y + 0.5 - ei.getY();
+				double dz = z + 0.5 - ei.getZ();
+				double ddt = Math.sqrt(dx * dx + dy * dy + dz * dz);
+				if (ddt < 128) {
+					if (Math.hypot(dx, dz) < 1) {
+						ei.playerTouch(ep);
+					}
+					else {
+						Vec3 v = ei.getDeltaMovement();
+						double mx = Mth.clamp(v.x + dx / ddt / ddt, -0.75, 0.75);
+						double my = Mth.clamp(v.y + dy / ddt / ddt / 2, -0.75, 0.75);
+						double mz = Mth.clamp(v.z + dz / ddt / ddt, -0.75, 0.75);
+						if (ei.getY() < y)
+							my += 0.125;
+						if (ei.getY() < 0)
+							my = Math.max(1, my);
+						ei.setDeltaMovement(mx, my, mz);
+						if (!ei.level().isClientSide())
+							ei.hurtMarked = true;
 					}
 				}
 			}
@@ -183,13 +168,13 @@ public class ItemT2EnderEye extends ItemChromaBasic implements AnimatedSpriteshe
 	}
 
 	@Override
-	public boolean isUsableBy(ItemStack is, EntityPlayer ep) {
-		return is.stackTagCompound == null || ep.getUniqueID().toString().equals(is.stackTagCompound.getString("owner"));
+	public boolean isUsableBy(ItemStack is, Player ep) {
+		UUID owner = owner(is);
+		return owner == null || owner.equals(ep.getUUID());
 	}
 
 	@Override
-	public boolean isCollectableBy(EntityItem ei, EntityPlayer ep) {
-		return this.isUsableBy(ei.getEntityItem(), ep);
+	public boolean isCollectableBy(ItemEntity ei, Player ep) {
+		return this.isUsableBy(ei.getItem(), ep);
 	}
-
 }

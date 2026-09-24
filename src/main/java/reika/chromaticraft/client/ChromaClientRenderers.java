@@ -216,6 +216,9 @@ public final class ChromaClientRenderers {
 		event.registerBlockEntityRenderer(ChromaBlockEntities.FARMER.get(),
 				reika.chromaticraft.render.tesr.RenderFarmer::new);
 		event.registerEntityRenderer(ChromaEntityTypes.PYLON_OVERLOAD.get(), RenderPylonOverloadShock::new);
+		// V33a drew the thrown Enhanced Ender Eye as its item sprite, as vanilla draws its eye.
+		event.registerEntityRenderer(ChromaEntityTypes.ENDER_EYE.get(),
+				net.minecraft.client.renderer.entity.ThrownItemRenderer::new);
 		event.registerEntityRenderer(ChromaEntityTypes.GLOW_CLOUD.get(), RenderGlowCloud::new);
 		event.registerEntityRenderer(ChromaEntityTypes.BALL_LIGHTNING.get(), RenderBallLightning::new);
 		event.registerEntityRenderer(ChromaEntityTypes.LUMA_BURST.get(), RenderLumaBurst::new);

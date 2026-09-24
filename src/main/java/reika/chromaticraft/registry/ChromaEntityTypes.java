@@ -87,6 +87,12 @@ public final class ChromaEntityTypes {
 					.<EntityDataCrystal>of(EntityDataCrystal::new, MobCategory.MISC)
 					.sized(0.25F, 0.25F).clientTrackingRange(128).updateInterval(1));
 
+	/** V33a "Ender Eye T2", the thrown Enhanced Ender Eye; V33a tracked it to 512 blocks. */
+	public static final DeferredHolder<EntityType<?>, EntityType<reika.chromaticraft.entity.EntityEnderEyeT2>> ENDER_EYE =
+			register("enhanced_ender_eye", () -> EntityType.Builder
+					.<reika.chromaticraft.entity.EntityEnderEyeT2>of(reika.chromaticraft.entity.EntityEnderEyeT2::new, MobCategory.MISC)
+					.sized(0.25F, 0.25F).clientTrackingRange(32).updateInterval(1).noSummon());
+
 	private ChromaEntityTypes() {}
 
 	private static <T extends Entity> DeferredHolder<EntityType<?>, EntityType<T>> register(

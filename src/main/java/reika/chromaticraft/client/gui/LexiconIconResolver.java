@@ -169,6 +169,7 @@ public final class LexiconIconResolver {
 			case "elemental" -> ChromaItems.ELEMENTAL_STONES.get(CrystalElement.BLUE).get();
 			case "datacrystal" -> ChromaItems.DATA_CRYSTAL.get();
 			case "fertilityseed" -> ChromaItems.FERTILITY_SEEDS.getFirst().get();
+			case "endereye" -> ChromaItems.ENDER_EYE.get();
 			default -> null;
 		};
 	}

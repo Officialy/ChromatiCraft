@@ -163,6 +163,12 @@ public final class ClientPayloadHandlers {
 		ChromaParticle.spawnMusicMemoryNote(mc.level, memory, key);
 	}
 
+	public static void enderEyeSync(int entityId, int ticks) {
+		Minecraft mc = Minecraft.getInstance();
+		if (mc.level != null && mc.level.getEntity(entityId) instanceof reika.chromaticraft.entity.EntityEnderEyeT2 eye)
+			eye.doSync(ticks);
+	}
+
 	public static void fertilitySeed(BlockPos pos) {
 		Minecraft mc = Minecraft.getInstance();
 		if (mc.level != null && mc.player != null)

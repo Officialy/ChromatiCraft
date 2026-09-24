@@ -1,13 +1,14 @@
 package reika.chromaticraft.items;
 
-import net.minecraft.entity.item.EntityItem;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 
+/** V33a {@code OwnableItem}: an item bound to one player, which item collectors must respect. */
 public interface OwnableItem {
 
-	public boolean isUsableBy(ItemStack is, EntityPlayer ep);
+	public boolean isUsableBy(ItemStack is, Player ep);
 
-	public boolean isCollectableBy(EntityItem ei, EntityPlayer ep);
+	public boolean isCollectableBy(ItemEntity ei, Player ep);
 
 }
