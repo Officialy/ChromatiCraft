@@ -119,7 +119,21 @@ WorldGenMinable into vanilla stone and so, as upstream, rarely do anything in cl
 Gaps: an island cannot see trees (V33a refused islands that touched them) or islands started from other
 chunks, so two islands can overlap.
 
-Next: the client effects (sky hue, fog, ambience).
+**Luminous Cliffs, unit 4 — rules and atmosphere**: `LuminousCliffsEvents` (server) ports V33a's cliff
+rules: no fire ticking and no lava ignition (DragonAPI `FireSpreadEvent`/`LavaSpawnFireEvent` at the
+26.2 fire-spread gates), grass sustains and fertilises crops (`GrassSustainCropEvent` via a grass-block
+mixin), hoeing makes cliff farmland, V33a's monster light curve (no creepers; zombies/skeletons/spiders
+only in near-darkness) and creeper removal on the despawn check, and glowstone dust growing oak saplings
+into cavern glowing trees. `LuminousCliffsClientEffects` ports `renderFactor`, the weather-darkening
+removal (`WeatherSkyStrengthEvent`, now actually fired through the client weather layers), the violet
+daylight fog, the position-wandering sky hue (`SkyColorEvent`, now fired from a client sky layer),
+thunder silence, cave-ambience swap to the four cliff tracks, and the clear-shallows water texture
+(`FluidModelEvent` per-position fluid model). Mixin targets were checked against NeoForge's patches but
+have not run in a client yet. Not ported: Winter-mod sky/fog colours (no 26.2 mod); V33a's oak
+leaf-decay exemption (26.2 leaf decay reaches 6 blocks, which covers big oaks).
+
+Next: `CliffFogRenderer`, the drifting fog clouds (its texture is Reika's `biomefog_alpha.png` from the
+source repo; it was a remote-sourced asset in V33a).
 
 ## Working checkpoint — 2026-08-16 (Proxima decoration blocks)
 
