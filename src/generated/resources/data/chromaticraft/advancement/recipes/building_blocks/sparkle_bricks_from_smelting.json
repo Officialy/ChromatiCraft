@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_sparkle_clay": {
+      "conditions": {
+        "items": [
+          {
+            "items": "chromaticraft:sparkle_clay"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "chromaticraft:sparkle_bricks_from_smelting"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_sparkle_clay"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "chromaticraft:sparkle_bricks_from_smelting"
+    ]
+  }
+}

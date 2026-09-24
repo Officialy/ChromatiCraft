@@ -176,6 +176,10 @@
     "chromaticraft:crystal_rune_light_blue",
     "chromaticraft:crystal_rune_magenta",
     "chromaticraft:crystal_rune_orange",
-    "chromaticraft:crystal_rune_white"
+    "chromaticraft:crystal_rune_white",
+    "chromaticraft:sparkle_cobble",
+    "chromaticraft:sparkle_stone",
+    "chromaticraft:sparkle_bricks",
+    "chromaticraft:sparkle_obsidian"
   ]
 }

@@ -3,6 +3,10 @@
     "chromaticraft:chroma_mud",
     "chromaticraft:cliff_dirt",
     "chromaticraft:cliff_grass_block",
-    "chromaticraft:cliff_farmland"
+    "chromaticraft:cliff_farmland",
+    "chromaticraft:sparkle_dirt",
+    "chromaticraft:sparkle_sand",
+    "chromaticraft:sparkle_gravel",
+    "chromaticraft:sparkle_clay"
   ]
 }

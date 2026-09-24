@@ -1,0 +1,12 @@
+{
+  "feature": "chromaticraft:dye_flower_patch",
+  "placement": [
+    {
+      "type": "minecraft:heightmap",
+      "heightmap": "MOTION_BLOCKING_NO_LEAVES"
+    },
+    {
+      "type": "minecraft:biome"
+    }
+  ]
+}

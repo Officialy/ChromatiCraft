@@ -33,13 +33,11 @@
       "minecraft:monster_room",
       "minecraft:monster_room_deep"
     ],
-    [
-      "chromaticraft:luminous_island"
-    ],
+    [],
     [],
     [
       "minecraft:ore_dirt",
-      "minecraft:ore_gravel",
+      "chromaticraft:luminous_gravel_ore",
       "minecraft:ore_granite_upper",
       "minecraft:ore_granite_lower",
       "minecraft:ore_diorite_upper",
@@ -64,28 +62,27 @@
       "minecraft:ore_lapis_buried",
       "minecraft:ore_copper",
       "minecraft:underwater_magma",
-      "minecraft:disk_sand",
-      "minecraft:disk_clay",
-      "minecraft:disk_gravel"
+      "chromaticraft:luminous_disk_sand",
+      "chromaticraft:luminous_disk_clay",
+      "chromaticraft:luminous_gravel_patch"
     ],
     [
       "chromaticraft:luma_patch"
     ],
     [
-      "minecraft:spring_water",
-      "minecraft:spring_lava"
+      "chromaticraft:luminous_spring_water",
+      "chromaticraft:luminous_spring_lava"
     ],
     [
       "minecraft:glow_lichen",
-      "minecraft:trees_windswept_forest",
-      "chromaticraft:glowing_tree",
-      "minecraft:forest_flowers",
-      "minecraft:flower_default",
-      "minecraft:patch_grass_forest",
-      "minecraft:patch_pumpkin",
-      "minecraft:patch_sugar_cane",
-      "minecraft:patch_firefly_bush_near_water",
-      "chromaticraft:luminous_flora"
+      "chromaticraft:luminous_trees",
+      "chromaticraft:luminous_flowers",
+      "chromaticraft:luminous_grass",
+      "chromaticraft:luminous_lily_pad",
+      "chromaticraft:luminous_brown_mushroom",
+      "chromaticraft:luminous_red_mushroom",
+      "chromaticraft:luminous_reeds",
+      "chromaticraft:luminous_cliffs_flower"
     ],
     [
       "minecraft:freeze_top_layer"
@@ -97,13 +94,37 @@
     "ambient": [
       {
         "type": "minecraft:bat",
-        "maxCount": 4,
-        "minCount": 1,
+        "maxCount": 8,
+        "minCount": 8,
         "weight": 10
       }
     ],
     "axolotls": [],
     "creature": [
+      {
+        "type": "minecraft:sheep",
+        "maxCount": 4,
+        "minCount": 4,
+        "weight": 12
+      },
+      {
+        "type": "minecraft:pig",
+        "maxCount": 4,
+        "minCount": 4,
+        "weight": 10
+      },
+      {
+        "type": "minecraft:chicken",
+        "maxCount": 4,
+        "minCount": 4,
+        "weight": 10
+      },
+      {
+        "type": "minecraft:cow",
+        "maxCount": 4,
+        "minCount": 4,
+        "weight": 8
+      },
       {
         "type": "chromaticraft:glow_cloud",
         "maxCount": 1,
@@ -116,25 +137,25 @@
       {
         "type": "minecraft:spider",
         "maxCount": 4,
-        "minCount": 1,
+        "minCount": 4,
         "weight": 10
       },
       {
         "type": "minecraft:zombie",
         "maxCount": 4,
-        "minCount": 1,
+        "minCount": 4,
         "weight": 10
       },
       {
         "type": "minecraft:skeleton",
         "maxCount": 4,
-        "minCount": 1,
+        "minCount": 4,
         "weight": 5
       },
       {
         "type": "minecraft:slime",
         "maxCount": 4,
-        "minCount": 1,
+        "minCount": 4,
         "weight": 10
       },
       {
@@ -146,7 +167,14 @@
     ],
     "underground_water_creature": [],
     "water_ambient": [],
-    "water_creature": []
+    "water_creature": [
+      {
+        "type": "minecraft:squid",
+        "maxCount": 4,
+        "minCount": 4,
+        "weight": 10
+      }
+    ]
   },
   "temperature": 0.75
 }

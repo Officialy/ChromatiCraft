@@ -1,0 +1,9 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    "chromaticraft:dye_flower_white"
+  ],
+  "result": {
+    "id": "minecraft:white_dye"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    "chromaticraft:dye_flower_pink"
+  ],
+  "result": {
+    "id": "minecraft:pink_dye"
+  }
+}

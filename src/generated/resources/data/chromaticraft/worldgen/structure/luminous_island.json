@@ -1,0 +1,9 @@
+{
+  "type": "chromaticraft:luminous_island",
+  "biomes": [
+    "chromaticraft:luminous_cliffs",
+    "chromaticraft:luminous_cliffs_shores"
+  ],
+  "spawn_overrides": {},
+  "step": "surface_structures"
+}

@@ -1,0 +1,8 @@
+{
+  "type": "minecraft:smelting",
+  "category": "blocks",
+  "ingredient": "chromaticraft:sparkle_cobble",
+  "result": {
+    "id": "chromaticraft:sparkle_stone"
+  }
+}

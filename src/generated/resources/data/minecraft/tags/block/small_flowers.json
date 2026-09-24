@@ -1,5 +1,21 @@
 {
   "values": [
-    "chromaticraft:glow_daisy"
+    "chromaticraft:glow_daisy",
+    "chromaticraft:dye_flower_black",
+    "chromaticraft:dye_flower_red",
+    "chromaticraft:dye_flower_green",
+    "chromaticraft:dye_flower_brown",
+    "chromaticraft:dye_flower_blue",
+    "chromaticraft:dye_flower_purple",
+    "chromaticraft:dye_flower_cyan",
+    "chromaticraft:dye_flower_light_gray",
+    "chromaticraft:dye_flower_gray",
+    "chromaticraft:dye_flower_pink",
+    "chromaticraft:dye_flower_lime",
+    "chromaticraft:dye_flower_yellow",
+    "chromaticraft:dye_flower_light_blue",
+    "chromaticraft:dye_flower_magenta",
+    "chromaticraft:dye_flower_orange",
+    "chromaticraft:dye_flower_white"
   ]
 }

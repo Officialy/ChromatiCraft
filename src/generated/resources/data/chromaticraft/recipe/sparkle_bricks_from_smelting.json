@@ -1,0 +1,9 @@
+{
+  "type": "minecraft:smelting",
+  "category": "blocks",
+  "experience": 0.2,
+  "ingredient": "chromaticraft:sparkle_clay",
+  "result": {
+    "id": "chromaticraft:sparkle_bricks"
+  }
+}

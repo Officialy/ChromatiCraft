@@ -1,0 +1,9 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    "chromaticraft:dye_flower_brown"
+  ],
+  "result": {
+    "id": "minecraft:brown_dye"
+  }
+}

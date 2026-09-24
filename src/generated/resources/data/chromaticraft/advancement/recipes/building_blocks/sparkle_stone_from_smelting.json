@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_sparkle_cobble": {
+      "conditions": {
+        "items": [
+          {
+            "items": "chromaticraft:sparkle_cobble"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "chromaticraft:sparkle_stone_from_smelting"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_sparkle_cobble"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "chromaticraft:sparkle_stone_from_smelting"
+    ]
+  }
+}

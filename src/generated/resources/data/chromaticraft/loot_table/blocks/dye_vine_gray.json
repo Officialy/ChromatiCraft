@@ -1,0 +1,54 @@
+{
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "conditions": [
+        {
+          "base": 10.0,
+          "condition": "chromaticraft:fortune_scaled_chance",
+          "mode": "reciprocal",
+          "per_level": 2.0
+        },
+        {
+          "condition": "minecraft:survives_explosion"
+        }
+      ],
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "chromaticraft:dye_sapling_gray"
+        }
+      ],
+      "rolls": 1.0
+    },
+    {
+      "conditions": [
+        {
+          "base": 3.0,
+          "condition": "chromaticraft:fortune_scaled_chance",
+          "mode": "reciprocal"
+        },
+        {
+          "condition": "minecraft:survives_explosion"
+        }
+      ],
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "functions": [
+            {
+              "count": {
+                "type": "chromaticraft:fortune_bonus_count",
+                "base": 1
+              },
+              "function": "minecraft:set_count"
+            }
+          ],
+          "name": "chromaticraft:chroma_berries_gray"
+        }
+      ],
+      "rolls": 1.0
+    }
+  ],
+  "random_sequence": "chromaticraft:blocks/dye_vine_gray"
+}

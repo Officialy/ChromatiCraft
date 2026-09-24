@@ -1,0 +1,13 @@
+{
+  "variants": {
+    "": {
+      "type": "chromaticraft:sparkle",
+      "fade": "chromaticraft:block/icons/basicfade",
+      "fade_fast": "chromaticraft:block/icons/basicfade_f",
+      "proxy": {
+        "model": "minecraft:block/gravel"
+      },
+      "surround": "chromaticraft:block/dye/block"
+    }
+  }
+}

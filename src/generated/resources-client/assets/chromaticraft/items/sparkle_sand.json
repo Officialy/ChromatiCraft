@@ -1,0 +1,12 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "chromaticraft:item/sparkle_sand",
+    "tints": [
+      {
+        "type": "minecraft:constant",
+        "value": -7303024
+      }
+    ]
+  }
+}

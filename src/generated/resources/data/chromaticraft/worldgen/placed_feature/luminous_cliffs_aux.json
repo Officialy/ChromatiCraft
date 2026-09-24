@@ -1,0 +1,8 @@
+{
+  "feature": "chromaticraft:luminous_cliffs_aux",
+  "placement": [
+    {
+      "type": "minecraft:biome"
+    }
+  ]
+}

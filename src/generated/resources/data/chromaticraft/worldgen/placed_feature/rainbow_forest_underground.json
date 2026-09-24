@@ -1,0 +1,12 @@
+{
+  "feature": "chromaticraft:rainbow_forest_underground",
+  "placement": [
+    {
+      "type": "minecraft:heightmap",
+      "heightmap": "MOTION_BLOCKING_NO_LEAVES"
+    },
+    {
+      "type": "minecraft:biome"
+    }
+  ]
+}

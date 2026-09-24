@@ -1,0 +1,14 @@
+{
+  "variants": {
+    "": {
+      "type": "chromaticraft:dye_vine",
+      "glow": "chromaticraft:block/dye/vine/glow",
+      "strands": [
+        "chromaticraft:block/dye/vine/0",
+        "chromaticraft:block/dye/vine/1",
+        "chromaticraft:block/dye/vine/2",
+        "chromaticraft:block/dye/vine/3"
+      ]
+    }
+  }
+}

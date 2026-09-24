@@ -23,10 +23,10 @@
     },
     "decorators": [],
     "foliage_placer": {
-      "type": "minecraft:blob_foliage_placer",
+      "type": "minecraft:fancy_foliage_placer",
       "height": 4,
-      "offset": 1,
-      "radius": 3
+      "offset": 4,
+      "radius": 2
     },
     "foliage_provider": {
       "type": "minecraft:weighted_state_provider",
@@ -40,14 +40,14 @@
               "waterlogged": "false"
             }
           },
-          "weight": 15
+          "weight": 14
         },
         {
           "data": {
             "Name": "chromaticraft:glowing_leaves",
             "Properties": {
-              "distance": "7",
-              "persistent": "false",
+              "distance": "1",
+              "persistent": "true",
               "waterlogged": "false"
             }
           },
@@ -58,17 +58,24 @@
     "ignore_vines": true,
     "minimum_size": {
       "type": "minecraft:two_layers_feature_size",
-      "upper_size": 2
+      "limit": 0,
+      "min_clipped_height": 4,
+      "upper_size": 0
     },
     "trunk_placer": {
-      "type": "minecraft:straight_trunk_placer",
-      "base_height": 6,
-      "height_rand_a": 3,
-      "height_rand_b": 2
+      "type": "minecraft:fancy_trunk_placer",
+      "base_height": 3,
+      "height_rand_a": 11,
+      "height_rand_b": 0
     },
     "trunk_provider": {
-      "type": "dragonapi:random_tag_single_state",
-      "tag": "minecraft:overworld_natural_logs"
+      "type": "minecraft:simple_state_provider",
+      "state": {
+        "Name": "minecraft:oak_log",
+        "Properties": {
+          "axis": "y"
+        }
+      }
     }
   }
 }

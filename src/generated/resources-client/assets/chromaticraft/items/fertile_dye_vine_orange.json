@@ -1,0 +1,12 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "chromaticraft:item/fertile_dye_vine_orange",
+    "tints": [
+      {
+        "type": "minecraft:constant",
+        "value": -38400
+      }
+    ]
+  }
+}
