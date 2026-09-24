@@ -160,6 +160,11 @@ public final class ChromaBiomeModifierProvider implements DataProvider {
 				List.of(id("rainbow_forest").toString(), id("ender_forest").toString(),
 						id("luminous_cliffs").toString(), id("luminous_cliffs_shores").toString()),
 				List.of(NATURAL_BIOME_FRAGMENT), GenerationStep.Decoration.SURFACE_STRUCTURES));
+		// V33a BiomeRainbowForest.getSpawningChance follows the live ANIMALSPAWN option.
+		JsonObject density = new JsonObject();
+		density.addProperty("type", id("rainbow_forest_spawn_density").toString());
+		density.addProperty("biomes", "#" + id("rainbow_forest"));
+		futures.add(DataProvider.saveStable(cache, density, pathProvider.json(id("rainbow_forest_spawn_density"))));
         return CompletableFuture.allOf(futures.build().toArray(CompletableFuture[]::new));
     }
 

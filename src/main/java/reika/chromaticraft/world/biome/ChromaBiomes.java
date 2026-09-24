@@ -261,7 +261,9 @@ public final class ChromaBiomes {
     /** V33a explicitly cleared every vanilla list before adding these entries. */
     private static MobSpawnSettings.Builder sourceSpawns() {
         return new MobSpawnSettings.Builder()
-                .creatureGenerationProbability(0.1F)
+                // V33a getSpawningChance at the default ANIMALSPAWN of 6; RainbowForestSpawnDensity
+                // replaces it with the configured value when the server loads.
+                .creatureGenerationProbability(RainbowForestSpawnDensity.spawningChance(6))
 				.addSpawn(MobCategory.MONSTER, 5,
 						new MobSpawnSettings.SpawnerData(ChromaEntityTypes.BALL_LIGHTNING.get(), 1, 1))
                 .addSpawn(MobCategory.MONSTER, 8,

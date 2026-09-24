@@ -105,6 +105,7 @@ public class ChromatiCraft extends DragonAPIMod {
 		ChromaFeatures.BIOME_SOURCES.register(modEventBus);
 		ChromaFeatures.DENSITY_FUNCTION_TYPES.register(modEventBus);
 		ChromaPlacementModifiers.TYPES.register(modEventBus);
+		reika.chromaticraft.registry.ChromaBiomeModifiers.SERIALIZERS.register(modEventBus);
 		MOB_EFFECTS.register(modEventBus);
 		reika.chromaticraft.registry.ChromaRecipeTypes.RECIPE_TYPES.register(modEventBus);
 		reika.chromaticraft.registry.ChromaRecipeSerializers.RECIPE_SERIALIZERS.register(modEventBus);

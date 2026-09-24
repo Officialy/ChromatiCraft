@@ -58,7 +58,17 @@ no 26.2 biome hook and is not reproduced.
   biome hook; the 0.095% grass-colour bias is not reproduced (below one colour step).
 - Needs an in-world check on a fresh world: datagen cannot detect FeatureSorter cycles.
 
-Next units: spawn rules/drops/density, then the Rainbow Forest log glow overlay. Then Luminous Cliffs parity. ColorTreeGenerator (overworld-wide dye trees) is a
+**Rainbow Forest, unit 3 — spawning**: `RainbowForestEvents` ports V33a's no-monster rule
+(`isMobAllowed`: Ball Lightning, size-1 slimes, non-hostiles) at the spawn position check, small slimes
+below y 40 ignoring slime-chunk rules, the every-32-ticks removal of disallowed non-persistent mobs that
+upstream got by subscribing to the base `LivingSpawnEvent`, slime dye drops (1.7.10 dye by entity id)
+and the below-default `ANIMALSPAWN` drop multiplier. Biome membership is the column's surface biome,
+as a 1.7.10 biome was a column. `getSpawningChance` (0.6 at default) is the biome's creature
+probability, retuned to the live option by the `rainbow_forest_spawn_density` biome modifier.
+`colorSheep` is not ported: it only ran for the bare `LivingSpawnEvent` class, which Forge 1.7.10
+never posts, so it was dead upstream.
+
+Next: the Rainbow Forest log glow overlay. Then Luminous Cliffs parity. ColorTreeGenerator (overworld-wide dye trees) is a
 separate follow-up.
 
 ## Working checkpoint — 2026-08-16 (Proxima decoration blocks)
