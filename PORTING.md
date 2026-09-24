@@ -102,7 +102,8 @@ and aquifers below the pre-shaping ground are kept; raised ground has no carver 
 `LuminousFloraFeature` (an approximation of the cavern plants) is removed. `LuminousCliffsAuxFeature`
 ports the aux generator's sapling growth (1/40 big, else small oak, 1/10 glowing leaves) and
 `cleanupBlocks`; Mystcraft crystal veins are CHROMA-PORT. Skypeater siting now uses the real regions and
-upstream's constant height. Glow Daisy / Glow Root survival accepted dirt but not grass (26.2's dirt tag
+upstream's constant height. **Skypeaters no longer generate at all (2026-09-24, owner's call: an old WIP
+feature).** The `skypeater_cliffs` biome modifier is removed; `SkypeaterFeature` stays registered, unattached. Glow Daisy / Glow Root survival accepted dirt but not grass (26.2's dirt tag
 excludes grass); fixed to V33a's dirt-or-grass. Existing worlds will show seams at old cliff chunks.
 
 **Luminous Cliffs, unit 3 — floating islands**: `LuminousIslandFeature` (a round tapered disc, not

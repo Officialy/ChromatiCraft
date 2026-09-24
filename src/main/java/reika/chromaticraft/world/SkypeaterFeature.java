@@ -29,6 +29,9 @@ import java.util.List;
  *
  * <p>A node needs open sky, air at its own position, and water directly above the terrain beneath it;
  * and V33a refuses to place one within 32 blocks of another, which is what stops them clustering.
+ *
+ * <p>Not attached to any biome: the Skypeater was an unfinished WIP feature and must not generate
+ * (see {@code ChromaBiomeModifierProvider}). Kept registered and fully ported for anyone re-enabling it.
  */
 public final class SkypeaterFeature extends Feature<NoneFeatureConfiguration> {
 

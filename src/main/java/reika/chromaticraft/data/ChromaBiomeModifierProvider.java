@@ -74,11 +74,11 @@ public final class ChromaBiomeModifierProvider implements DataProvider {
                 GenerationStep.Decoration.VEGETAL_DECORATION));
         futures.add(saveMany(cache, "aura_ivy_hills", "#minecraft:is_mountain",
                 List.of(id("aura_ivy").toString()), GenerationStep.Decoration.VEGETAL_DECORATION));
-        // V33a SkypeaterGenerator only ever does anything inside the Glowing Cliffs.
-        futures.add(saveManyBiomes(cache, "skypeater_cliffs",
-                List.of(id("luminous_cliffs").toString(), id("luminous_cliffs_shores").toString()),
-                List.of(id("skypeater").toString()),
-                GenerationStep.Decoration.TOP_LAYER_MODIFICATION));
+        // V33a SkypeaterGenerator is deliberately not attached: the Skypeater was an unfinished WIP
+        // feature (project owner's call), so it must not generate even though V33a's source still
+        // registered the generator. The feature stays registered as `chromaticraft:skypeater` for
+        // anyone who wants it; attaching it again is a modifier over luminous_cliffs(_shores) at
+        // TOP_LAYER_MODIFICATION.
         // V33a WarpNodeGenerator is overworld-only; its grid and per-biome chance do the confining.
         futures.add(save(cache, "warp_node_overworld", "#minecraft:is_overworld",
                 id("warp_node").toString(), GenerationStep.Decoration.TOP_LAYER_MODIFICATION));
