@@ -749,29 +749,20 @@ public final class ChromaWorldGenProvider {
             // Named command/debug seams do not carry a rarity gate.
             for (Identifier structure : NETHER_ROOF_STRUCTURES)
                 registerPlaced(bootstrap, configured, structure);
-            // A 144-block source noise scale is approximately one candidate per 9x9 chunk area.
-            // The feature then performs V33a's exact y roll and enclosed-cavern/tunnel tests.
-            registerPlaced(bootstrap, configured, NATURAL_CAVERN, List.of(
-                    RarityFilter.onAverageOnceEvery(81), InSquarePlacement.spread(), BiomeFilter.biome()));
+            // V33a DungeonGenerator zones: once per chunk, and the feature asks DungeonZones whether this
+            // chunk is the planned one for its Voronoi zone (noise scale 144/240/640/440/480/640 blocks,
+            // exclusion 64/64/512/256/256/440) before making its V33a tries.
+            registerPlaced(bootstrap, configured, NATURAL_CAVERN, List.of());
             registerPlaced(bootstrap, configured, CAVERN);
-            // V33a Burrows use a 240-block noise scale, approximately one candidate per 15x15 chunks.
-            registerPlaced(bootstrap, configured, NATURAL_BURROW, List.of(
-                    RarityFilter.onAverageOnceEvery(225), InSquarePlacement.spread(), BiomeFilter.biome()));
+            registerPlaced(bootstrap, configured, NATURAL_BURROW, List.of());
             registerPlaced(bootstrap, configured, BURROW);
-            // V33a Ocean cells use a 640-block noise scale: one candidate per 40x40 chunks.
-            registerPlaced(bootstrap, configured, NATURAL_OCEAN, List.of(
-                    RarityFilter.onAverageOnceEvery(1600), InSquarePlacement.spread(), BiomeFilter.biome()));
+            registerPlaced(bootstrap, configured, NATURAL_OCEAN, List.of());
             registerPlaced(bootstrap, configured, OCEAN);
-            registerPlaced(bootstrap, configured, NATURAL_DESERT, List.of(
-                    RarityFilter.onAverageOnceEvery(756), InSquarePlacement.spread(), BiomeFilter.biome()));
+            registerPlaced(bootstrap, configured, NATURAL_DESERT, List.of());
             registerPlaced(bootstrap, configured, DESERT);
-			// V33a Snow cells use a 480-block source noise scale: one candidate per 30x30 chunks.
-			registerPlaced(bootstrap, configured, NATURAL_SNOW, List.of(
-					RarityFilter.onAverageOnceEvery(900), InSquarePlacement.spread(), BiomeFilter.biome()));
+			registerPlaced(bootstrap, configured, NATURAL_SNOW, List.of());
 			registerPlaced(bootstrap, configured, SNOW);
-			// V33a Biome Fragment cells use a 640-block scale: one candidate per 40x40 chunks.
-			registerPlaced(bootstrap, configured, NATURAL_BIOME_FRAGMENT, List.of(
-					RarityFilter.onAverageOnceEvery(1600), InSquarePlacement.spread(), BiomeFilter.biome()));
+			registerPlaced(bootstrap, configured, NATURAL_BIOME_FRAGMENT, List.of());
 			registerPlaced(bootstrap, configured, BIOME_FRAGMENT);
             registerRainbowPlacements(bootstrap, configured);
             registerLuminousPlacements(bootstrap, configured);

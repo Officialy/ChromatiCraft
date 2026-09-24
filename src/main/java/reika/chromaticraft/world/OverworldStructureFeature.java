@@ -89,6 +89,64 @@ public final class OverworldStructureFeature extends Feature<NoneFeatureConfigur
 	public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
 		WorldGenLevel world = context.level();
 		RandomSource random = context.random();
+		if (!natural)
+			return this.placeAt(world, random, context.origin()) != null;
+		return this.placeNatural(world, random, context.origin());
+	}
+
+	/**
+	 * V33a {@code DungeonGenerator.checkChunk}: only a chunk the zone planner marked PLANNED generates.
+	 * It makes {@code getStructureTriesPerChunk} attempts at random columns of its own chunk
+	 * ({@code tryGenerateInChunk}), then the same in each surrounding chunk ({@code tryGenerateInChunksAround}),
+	 * and records SUCCESS on the chunk that took it or FAILURE on its own.
+	 *
+	 * <p>V33a kept widening that ring to {@link DungeonZones#keepTryingRange} (48-96 blocks). A 26.2 feature
+	 * may only write into the chunks beside its own, so only the first ring is tried here.
+	 */
+	private boolean placeNatural(WorldGenLevel world, RandomSource random, BlockPos origin) {
+		net.minecraft.server.level.ServerLevel level = world.getLevel();
+		if (!DungeonZones.canGenerateIn(level))
+			return false;
+		int cx = origin.getX() >> 4;
+		int cz = origin.getZ() >> 4;
+		if (DungeonZones.isGennableChunk(level, cx << 4, cz << 4, type) != DungeonZones.Status.PLANNED)
+			return false;
+		int tries = reika.chromaticraft.registry.ChromaOptions.getStructureTriesPerChunk();
+		net.minecraft.world.level.ChunkPos placed = this.tryGenerateInChunk(world, level, cx, cz, random, tries);
+		for (int i = -1; placed == null && i <= 1; i++) {
+			for (int k = -1; placed == null && k <= 1; k++) {
+				if (i != 0 || k != 0)
+					placed = this.tryGenerateInChunk(world, level, cx + i, cz + k, random, tries);
+			}
+		}
+		if (placed != null) {
+			DungeonZones.markChunkStatus(level, cx, cz, type, DungeonZones.Status.INERT_GEN);
+			DungeonZones.markChunkStatus(level, placed.x(), placed.z(), type, DungeonZones.Status.SUCCESS);
+			return true;
+		}
+		DungeonZones.markChunkStatus(level, cx, cz, type, DungeonZones.Status.FAILURE);
+		return false;
+	}
+
+	/** V33a {@code tryGenerateInChunk}: up to {@code tries} random columns, each checked for biome first. */
+	private net.minecraft.world.level.ChunkPos tryGenerateInChunk(WorldGenLevel world,
+			net.minecraft.server.level.ServerLevel level, int cx, int cz, RandomSource random, int tries) {
+		DungeonZones.markChunkStatus(level, cx, cz, type, DungeonZones.Status.GENERATING);
+		for (int n = 0; n < tries; n++) {
+			int x = (cx << 4) + random.nextInt(16);
+			int z = (cz << 4) + random.nextInt(16);
+			int y = world.getHeight(Heightmap.Types.WORLD_SURFACE_WG, x, z);
+			if (!DungeonZones.isValidBiome(type, world.getBiome(new BlockPos(x, y, z))))
+				continue;
+			BlockPos controller = this.placeAt(world, random, new BlockPos(x, world.getMinY(), z));
+			if (controller != null)
+				return net.minecraft.world.level.ChunkPos.containing(controller);
+		}
+		return null;
+	}
+
+	/** One placement attempt with {@code origin}'s column; returns the controller position, or null. */
+	private BlockPos placeAt(WorldGenLevel world, RandomSource random, BlockPos originIn) {
 		// The Ocean structure is 31 blocks across and can reach past the chunks this step may write to,
 		// which leaves it half built. What slides is the origin, before anything is derived from it:
 		// naturalControllerPosition reads the heightmap at the origin's own column and validNaturalSite
@@ -98,10 +156,10 @@ public final class OverworldStructureFeature extends Feature<NoneFeatureConfigur
 		net.minecraft.core.Vec3i controllerOffset = natural ? naturalControllerOffset(type)
 				: net.minecraft.core.Vec3i.ZERO;
 		BlockPos origin = NBTStructureLoader.fitToWriteWindow(world, type.template,
-				context.origin().offset(controllerOffset), type.templateAnchor).subtract(controllerOffset);
+				originIn.offset(controllerOffset), type.templateAnchor).subtract(controllerOffset);
 		BlockPos controllerPos = natural ? naturalControllerPosition(world, origin, random) : origin;
 		if (natural && !validNaturalSite(world, controllerPos))
-			return false;
+			return null;
 
 		List<BlockPos> placed = NBTStructureLoader.place(world, type.template, controllerPos,
 				type.templateAnchor, state -> state, 2);
@@ -132,7 +190,7 @@ public final class OverworldStructureFeature extends Feature<NoneFeatureConfigur
 
 		world.setBlock(controllerPos, ChromaBlocks.STRUCTURE_CONTROLLER.get().defaultBlockState(), 3);
 		if (!(world.getBlockEntity(controllerPos) instanceof TileEntityStructureController controller))
-			return false;
+			return null;
 		controller.initialize(type.controllerType, color, type == Type.DESERT ? 1 : 0, furnaceRoom, lootRoom);
 		if (type == Type.BIOME_FRAGMENT)
 			finishBiomeFragment(world, controllerPos, controller, random);
@@ -166,7 +224,7 @@ public final class OverworldStructureFeature extends Feature<NoneFeatureConfigur
 				if (world.getBlockEntity(controllerPos.offset(relative)) instanceof TileEntityLootChest chest)
 					chest.setMaxReach(2.5);
 		}
-		return true;
+		return controllerPos;
 	}
 
 	private static void placeOceanPit(WorldGenLevel world, BlockPos controllerPos) {

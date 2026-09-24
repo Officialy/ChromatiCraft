@@ -1,15 +1,4 @@
 {
   "feature": "chromaticraft:natural_cavern",
-  "placement": [
-    {
-      "type": "minecraft:rarity_filter",
-      "chance": 81
-    },
-    {
-      "type": "minecraft:in_square"
-    },
-    {
-      "type": "minecraft:biome"
-    }
-  ]
+  "placement": []
 }

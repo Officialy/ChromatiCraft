@@ -317,6 +317,7 @@ sourceSets.main.java {
     include 'reika/chromaticraft/world/RainbowTreeFeature.java'
     include 'reika/chromaticraft/world/NetherRoofStructureFeature.java'
     include 'reika/chromaticraft/world/OverworldStructureFeature.java'
+    include 'reika/chromaticraft/world/DungeonZones.java'
     include 'reika/chromaticraft/world/biome/ChromaBiomes.java'
     include 'reika/chromaticraft/world/biome/ChromaRegion.java'
     include 'reika/chromaticraft/world/biome/LuminousCliffsRegion.java'

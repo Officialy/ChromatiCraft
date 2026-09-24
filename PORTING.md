@@ -164,6 +164,23 @@ Forest generator's.
 - Not ported: retrogen and the `dyetree` rerun command (no decorator-rerun framework in the port).
 - Unverified in-game: FeatureSorter ordering with the new all-overworld VEGETAL feature.
 
+## Natural structure zones (V33a DungeonGenerator planning) — 2026-09-24
+
+The six natural overworld structures were placed by vanilla rarity filters approximating V33a's density.
+They now use V33a's real planner, `world/DungeonZones`: one 2D Voronoi field per structure type (cells
+~144/240/640/440/480/640 blocks apart, roots jittered 55%); zones within the type's exclusion radius
+(64/64/512/256/256/440) compete, biome-invalid ones drop out (BIOMEFAIL), the rest of a cluster is
+CLUSTERED, and only the chosen root's chunk is PLANNED. That chunk makes STRUCTTRIES (5-100, default 20)
+attempts, then tries the eight chunks around it, recording SUCCESS/FAILURE. Statuses persist per level
+(`chromaticraft:structure_status`, V33a `StructureStatus.dat`) and are what the Artifact Distribution Map
+reads.
+- Deviations: V33a widened the retry ring to 48-96 blocks; 26.2 features can only write beside their own
+  chunk, so only the first ring is tried. The field seed drops V33a's world-creation-time and save-path
+  terms (neither exists stably in 26.2); it is world seed + type.
+- 1.7.10 biome checks read `topBlock`/decorators; `DungeonZones.isValidBiome` asks the same questions
+  through biome tags (`grassTopped` etc.). V33a's `isValidBiomeNear` loop tested only its centre point;
+  kept.
+
 ## Progression audit: game start → pylon crafting — 2026-09-24
 
 Pylon crafting = casting a PYLON-tier recipe. The table enforces PYLON + REPEATER for that tier, and
