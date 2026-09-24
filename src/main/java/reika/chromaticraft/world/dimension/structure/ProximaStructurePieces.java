@@ -22,6 +22,10 @@ public final class ProximaStructurePieces {
 			PIECES.register("glass_cliff",
 					() -> (StructurePieceType)(context, tag) -> new GlassCliffPiece(tag));
 
+	public static final DeferredHolder<StructurePieceType, StructurePieceType> LUMINOUS_ISLAND =
+			PIECES.register("luminous_island",
+					() -> (StructurePieceType)(context, tag) -> new reika.chromaticraft.world.luminous.LuminousIslandPiece(tag));
+
 	public static final DeferredHolder<StructurePieceType, StructurePieceType> GLOW_CAVE =
 			PIECES.register("glow_cave",
 					() -> (StructurePieceType)(context, tag) -> new GlowCavePiece(tag));

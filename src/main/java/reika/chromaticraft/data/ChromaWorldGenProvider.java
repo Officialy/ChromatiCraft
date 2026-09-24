@@ -64,7 +64,6 @@ public final class ChromaWorldGenProvider {
     private static final Identifier POWER_CRYSTAL_BOOSTED_PYLON = id("power_crystal_boosted_pylon");
     private static final Identifier LUMINOUS_CLIFFS_TERRAIN = id("luminous_cliffs_terrain");
     private static final Identifier LUMA_PATCH = id("luma_patch");
-    private static final Identifier LUMINOUS_ISLAND = id("luminous_island");
     private static final Identifier NETHER_ROOF_STRUCTURE = id("nether_roof_structure");
     private static final Identifier NETHER_LAVA_RIVER = id("nether_lava_river");
     private static final Identifier CRYSTAL_SHRUB = id("crystal_shrub");
@@ -132,7 +131,6 @@ public final class ChromaWorldGenProvider {
 
     public static final ResourceKey<PlacedFeature> LUMINOUS_CLIFFS_TERRAIN_PLACED = placedKey("luminous_cliffs_terrain");
     public static final ResourceKey<PlacedFeature> LUMA_PATCH_PLACED = placedKey("luma_patch");
-    public static final ResourceKey<PlacedFeature> LUMINOUS_ISLAND_PLACED = placedKey("luminous_island");
     public static final ResourceKey<ConfiguredFeature<?, ?>> RAINBOW_TREE = configuredKey("rainbow_tree");
     public static final ResourceKey<ConfiguredFeature<?, ?>> GLOWING_TREE = configuredKey("glowing_tree");
     public static final ResourceKey<PlacedFeature> ENDER_FOREST_TREE_PLACED = placedKey("ender_forest_tree");
@@ -319,7 +317,6 @@ public final class ChromaWorldGenProvider {
             registerConfigured(bootstrap, features, POWER_CRYSTAL_BOOSTED_PYLON);
             registerConfigured(bootstrap, features, LUMINOUS_CLIFFS_TERRAIN);
             registerConfigured(bootstrap, features, LUMA_PATCH);
-            registerConfigured(bootstrap, features, LUMINOUS_ISLAND);
             registerConfigured(bootstrap, features, NETHER_ROOF_STRUCTURE);
             registerConfigured(bootstrap, features, NETHER_LAVA_RIVER);
             registerConfigured(bootstrap, features, CRYSTAL_SHRUB);
@@ -391,6 +388,16 @@ public final class ChromaWorldGenProvider {
                                     java.util.Map.of(),
                                     net.minecraft.world.level.levelgen.GenerationStep.Decoration.SURFACE_STRUCTURES,
                                     // The cliff lays its own terrain; vanilla must not also beard it.
+                                    net.minecraft.world.level.levelgen.structure.TerrainAdjustment.NONE)));
+            // V33a GlowingCliffsAuxGenerator's islands: every Luminous Cliffs chunk rolls for one.
+            bootstrap.register(reika.chromaticraft.world.dimension.structure.ProximaStructures.LUMINOUS_ISLAND,
+                    new reika.chromaticraft.world.luminous.LuminousIslandStructure(
+                            new net.minecraft.world.level.levelgen.structure.Structure.StructureSettings(
+                                    net.minecraft.core.HolderSet.direct(
+                                            biomes.getOrThrow(ChromaBiomes.LUMINOUS_CLIFFS),
+                                            biomes.getOrThrow(ChromaBiomes.LUMINOUS_CLIFFS_SHORES)),
+                                    java.util.Map.of(),
+                                    net.minecraft.world.level.levelgen.GenerationStep.Decoration.SURFACE_STRUCTURES,
                                     net.minecraft.world.level.levelgen.structure.TerrainAdjustment.NONE)));
             // The glowing caves. V33a generateIn: the Sanctuary, the Glowing Forest and the Crystal
             // Plains. A cave wanders far past a feature's write window, which is why it is here at all.
@@ -484,6 +491,16 @@ public final class ChromaWorldGenProvider {
         });
         builder.add(Registries.STRUCTURE_SET, bootstrap -> {
             var structures = bootstrap.lookup(Registries.STRUCTURE);
+            // V33a rolls every chunk (generateIslands runs per chunk), so every chunk is a candidate
+            // and the structure's own roll does the thinning.
+            bootstrap.register(reika.chromaticraft.world.dimension.structure.ProximaStructures.LUMINOUS_ISLAND_SET,
+                    new net.minecraft.world.level.levelgen.structure.StructureSet(
+                            structures.getOrThrow(
+                                    reika.chromaticraft.world.dimension.structure.ProximaStructures.LUMINOUS_ISLAND),
+                            new net.minecraft.world.level.levelgen.structure.placement.RandomSpreadStructurePlacement(
+                                    1, 0,
+                                    net.minecraft.world.level.levelgen.structure.placement.RandomSpreadType.LINEAR,
+                                    0x1A1A4D)));
             bootstrap.register(reika.chromaticraft.world.dimension.structure.ProximaStructures.GLASS_CLIFF_SET,
                     new net.minecraft.world.level.levelgen.structure.StructureSet(
                             structures.getOrThrow(
@@ -612,8 +629,6 @@ public final class ChromaWorldGenProvider {
             registerPlaced(bootstrap, configured, LUMINOUS_CLIFFS_TERRAIN, List.of(BiomeFilter.biome()));
             registerPlaced(bootstrap, configured, LUMA_PATCH,
                     List.of(CountPlacement.of(1), BiomeFilter.biome()));
-            registerPlaced(bootstrap, configured, LUMINOUS_ISLAND,
-                    List.of(RarityFilter.onAverageOnceEvery(4), BiomeFilter.biome()));
             // V33a BASE_GEN_FACTOR = 1/64 per Nether chunk; the feature retains its weighted type roll.
             registerPlaced(bootstrap, configured, NETHER_ROOF_STRUCTURE, List.of(
                     RarityFilter.onAverageOnceEvery(64), InSquarePlacement.spread(), BiomeFilter.biome()));

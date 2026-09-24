@@ -22,7 +22,6 @@ import reika.chromaticraft.world.NetherRoofStructureFeature;
 import reika.chromaticraft.world.OverworldStructureFeature;
 import reika.chromaticraft.world.luminous.LumaPatchFeature;
 import reika.chromaticraft.world.luminous.LuminousCliffsTerrainFeature;
-import reika.chromaticraft.world.luminous.LuminousIslandFeature;
 
 /** Runtime feature registry for ChromatiCraft's data-driven 26.2 world generation. */
 public final class ChromaFeatures {
@@ -169,8 +168,6 @@ public final class ChromaFeatures {
             FEATURES.register("luminous_cliffs_terrain", LuminousCliffsTerrainFeature::new);
     public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> LUMA_PATCH =
             FEATURES.register("luma_patch", LumaPatchFeature::new);
-    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> LUMINOUS_ISLAND =
-            FEATURES.register("luminous_island", LuminousIslandFeature::new);
 
     public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> NETHER_ROOF_STRUCTURE =
             FEATURES.register("nether_roof_structure", () -> new NetherRoofStructureFeature());

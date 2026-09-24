@@ -105,8 +105,21 @@ ports the aux generator's sapling growth (1/40 big, else small oak, 1/10 glowing
 upstream's constant height. Glow Daisy / Glow Root survival accepted dirt but not grass (26.2's dirt tag
 excludes grass); fixed to V33a's dirt-or-grass. Existing worlds will show seams at old cliff chunks.
 
-Next: V33a's floating islands (the current `LuminousIslandFeature` is an approximation, not a port) as
-a Structure on top of the shaper, then the client effects (sky hue, fog, ambience).
+**Luminous Cliffs, unit 3 — floating islands**: `LuminousIslandFeature` (a round tapered disc, not
+V33a's island) is replaced by `LuminousIslandStructure` + `LuminousIslandPiece` + `LuminousIsland`, a
+port of `GlowingCliffsAuxGenerator.generateIslands/Island`: per-chunk roll (`33/scale`% on a slow
+size-scale noise, 1/3 over sea, 1/6 over land), lobulated outline, contour-noise top, taper, lakes,
+rivers with V33a's rim-water rule (waterfalls; fluid ticks scheduled), Luma lakes on high sea islands,
+child islands from rivers at the rim, transparent cliff stone under vanilla dirt and grass. Collision is
+checked against terrain predicted by the column shaper (cliffs) and the chunk generator's height with the
+outward blend (elsewhere). Island decoration runs V33a's attempts from its world-seeded random (the same
+for every island, as upstream), anchors drawn in order, each executed by the chunk it lands in; the
+`getTopY(j, k)` argument bug is reproduced by its effective value (base height + 1). Ore veins are
+WorldGenMinable into vanilla stone and so, as upstream, rarely do anything in cliff stone.
+Gaps: an island cannot see trees (V33a refused islands that touched them) or islands started from other
+chunks, so two islands can overlap.
+
+Next: the client effects (sky hue, fog, ambience).
 
 ## Working checkpoint — 2026-08-16 (Proxima decoration blocks)
 

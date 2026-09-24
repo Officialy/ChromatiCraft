@@ -34,6 +34,18 @@ public final class ProximaStructures {
 			GLASS_CLIFF_SET = ResourceKey.create(Registries.STRUCTURE_SET,
 					Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "glass_cliff"));
 
+	/** V33a GlowingCliffsAuxGenerator's floating islands; see LuminousIslandStructure. */
+	public static final DeferredHolder<StructureType<?>, StructureType<reika.chromaticraft.world.luminous.LuminousIslandStructure>>
+			LUMINOUS_ISLAND_TYPE = TYPES.register("luminous_island",
+					() -> () -> reika.chromaticraft.world.luminous.LuminousIslandStructure.CODEC);
+
+	public static final ResourceKey<Structure> LUMINOUS_ISLAND = ResourceKey.create(Registries.STRUCTURE,
+			Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "luminous_island"));
+
+	public static final ResourceKey<net.minecraft.world.level.levelgen.structure.StructureSet>
+			LUMINOUS_ISLAND_SET = ResourceKey.create(Registries.STRUCTURE_SET,
+					Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "luminous_island"));
+
 	public static final DeferredHolder<StructureType<?>, StructureType<GlowCaveStructure>>
 			GLOW_CAVE_TYPE = TYPES.register("glow_cave", () -> () -> GlowCaveStructure.CODEC);
 

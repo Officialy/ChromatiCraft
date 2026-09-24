@@ -245,8 +245,7 @@ public final class ChromaBiomes {
         generation.addFeature(GenerationStep.Decoration.FLUID_SPRINGS,
                 features.getOrThrow(ChromaWorldGenProvider.LUMINOUS_SPRING_LAVA_PLACED));
         BiomeDefaultFeatures.addSurfaceFreezing(generation);
-        generation.addFeature(GenerationStep.Decoration.SURFACE_STRUCTURES,
-                features.getOrThrow(ChromaWorldGenProvider.LUMINOUS_ISLAND_PLACED));
+        // The floating islands are a structure (LuminousIslandStructure), too large for a feature.
         BiomeDefaultFeatures.addDefaultOres(generation);
         generation.addFeature(GenerationStep.Decoration.UNDERGROUND_ORES,
                 features.getOrThrow(ChromaWorldGenProvider.LUMINOUS_DISK_SAND_PLACED));
