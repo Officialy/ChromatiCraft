@@ -99,6 +99,10 @@ public final class ChromaFeatures {
     public static final DeferredHolder<Feature<?>, Feature<reika.chromaticraft.world.DyeTreeFeature.Config>> DYE_TREE =
             FEATURES.register("dye_tree", reika.chromaticraft.world.DyeTreeFeature::new);
 
+    /** V33a ColorTreeGenerator: the odd dye or rainbow tree across the ordinary overworld. */
+    public static final DeferredHolder<Feature<?>, Feature<reika.chromaticraft.world.ColorTreeFeature.Config>> COLOR_TREE =
+            FEATURES.register("color_tree", reika.chromaticraft.world.ColorTreeFeature::new);
+
     /** V33a RainbowForestGenerator: one Rainbow Forest tree attempt. */
     public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> RAINBOW_FOREST_TREE =
             FEATURES.register("rainbow_forest_tree", reika.chromaticraft.world.RainbowForestTreeFeature::new);

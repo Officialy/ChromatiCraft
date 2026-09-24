@@ -79,6 +79,10 @@ public final class ChromaBiomeModifierProvider implements DataProvider {
         // registered the generator. The feature stays registered as `chromaticraft:skypeater` for
         // anyone who wants it; attaching it again is a modifier over luminous_cliffs(_shores) at
         // TOP_LAYER_MODIFICATION.
+        // V33a ColorTreeGenerator ran after the biome's own decoration in every ordinary dimension;
+        // its tree count and canGenerateTree do the confining. Attached to the overworld's biomes.
+        futures.add(save(cache, "color_tree_overworld", "#minecraft:is_overworld",
+                id("color_tree").toString(), GenerationStep.Decoration.VEGETAL_DECORATION));
         // V33a WarpNodeGenerator is overworld-only; its grid and per-biome chance do the confining.
         futures.add(save(cache, "warp_node_overworld", "#minecraft:is_overworld",
                 id("warp_node").toString(), GenerationStep.Decoration.TOP_LAYER_MODIFICATION));

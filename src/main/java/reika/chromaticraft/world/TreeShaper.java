@@ -17,6 +17,7 @@ import net.minecraft.world.level.levelgen.FlatLevelSource;
 import net.neoforged.neoforge.common.Tags;
 
 import reika.chromaticraft.block.dye26.BlockDyeSapling;
+import reika.chromaticraft.data.ChromaBiomeTagProvider;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaOptions;
 import reika.chromaticraft.registry.CrystalElement;
@@ -286,8 +287,21 @@ public final class TreeShaper {
 
 	/**
 	 * V33a {@code ColorTreeGenerator.canGenerateTree}, which every unforced dye tree consults: never in
-	 * the Nether or the End, not in a superflat world unless {@code FLATGEN} allows it, not in ocean,
-	 * desert, dry or mushroom biomes, and only where a dye sapling could grow at the column's top.
+	 * the Nether or the End, not in a superflat world unless {@code FLATGEN} allows it, not in a biome
+	 * that blocks dye trees, not in ocean, desert, dry or mushroom biomes, and only where a dye sapling
+	 * could grow at the column's top.
+	 *
+	 * <p>{@code DyeTreeBlocker} was an interface a 1.7.10 biome class implemented; 26.2 biomes are data,
+	 * so its successor is the {@code chromaticraft:dye_trees/blocked} biome tag.
+	 *
+	 * <p>"Dry" was Forge 1.7.10's {@code BiomeDictionary.Type.DRY}, whose successor is {@code c:is_dry}.
+	 * NeoForge puts savannas and the badlands in it, which 1.7.10 did not (it registered them HOT/SAVANNA
+	 * and MESA/SANDY), so those are listed in {@code chromaticraft:dye_trees/not_dry} and keep V33a's
+	 * trees. Windswept Savanna and Eroded Badlands stay dry: their 1.7.10 forms (Savanna M, Mesa Bryce)
+	 * were unregistered and Forge's best guess called them DRY from their zero rainfall.
+	 *
+	 * <p>CHROMA-PORT: a Mystcraft age without the Tree page grew no dye trees outside the Rainbow Forest.
+	 * V33a also refused the Twilight Forest dimension; dye trees are only attached to overworld biomes.
 	 */
 	public static boolean canGenerateTree(WorldGenLevel world, int x, int z) {
 		var dimension = world.getLevel().dimension();
@@ -298,9 +312,11 @@ public final class TreeShaper {
 		int y = ReikaWorldHelper.getTopSolidOrLiquidBlock(world, x, z);
 		BlockPos top = new BlockPos(x, y, z);
 		Holder<Biome> biome = world.getBiome(top);
+		if (biome.is(ChromaBiomeTagProvider.DYE_TREES_BLOCKED))
+			return false;
 		if (biome.is(BiomeTags.IS_OCEAN))
 			return false;
-		if (biome.is(Biomes.DESERT) || biome.is(Tags.Biomes.IS_DRY))
+		if (biome.is(Biomes.DESERT) || biome.is(Tags.Biomes.IS_DRY) && !biome.is(ChromaBiomeTagProvider.DYE_TREES_NOT_DRY))
 			return false;
 		if (biome.is(Biomes.MUSHROOM_FIELDS) || biome.is(Tags.Biomes.IS_MUSHROOM))
 			return false;

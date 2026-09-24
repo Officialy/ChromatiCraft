@@ -301,6 +301,7 @@ sourceSets.main.java {
     include 'reika/chromaticraft/world/EnderForestFlowerFeature.java'
     include 'reika/chromaticraft/world/LeafDistances.java'
     include 'reika/chromaticraft/world/TreeShaper.java'
+    include 'reika/chromaticraft/world/ColorTreeFeature.java'
     include 'reika/chromaticraft/world/DyeTreeFeature.java'
     include 'reika/chromaticraft/world/RainbowForestTreeFeature.java'
     include 'reika/chromaticraft/world/DyeFlowerPatchFeature.java'

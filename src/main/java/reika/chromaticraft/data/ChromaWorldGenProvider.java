@@ -255,6 +255,8 @@ public final class ChromaWorldGenProvider {
                                                     .add(net.minecraft.world.level.block.Blocks.DANDELION.defaultBlockState(), 2)
                                                     .add(net.minecraft.world.level.block.Blocks.POPPY.defaultBlockState(), 1)))));
             registerConfigured(bootstrap, features, id("rainbow_tree"));
+            bootstrap.register(configuredKey("color_tree"), new ConfiguredFeature<>(
+                    reika.chromaticraft.registry.ChromaFeatures.COLOR_TREE.get(), colorTreeConfig()));
             registerConfigured(bootstrap, features, id("no_floating_gravel"));
             registerConfigured(bootstrap, features, id("luminous_cliffs_aux"));
             // V33a BiomeGenBase.func_150572_a, which the Luminous Cliffs do not override: a dandelion
@@ -561,6 +563,10 @@ public final class ChromaWorldGenProvider {
             registerPlaced(bootstrap, configured, id("warp_node"), List.of(BiomeFilter.biome()));
             // The feature owns its own 4x4 shuffled lattice; no count modifiers.
             registerPlaced(bootstrap, configured, id("skypeater"), List.of(BiomeFilter.biome()));
+            // V33a ColorTreeGenerator: once per chunk at the chunk corner, which is where it read the
+            // biome. No biome filter: the feature reads the surface biome itself, where a filter would
+            // test the origin's (bottom-of-world) biome.
+            registerPlaced(bootstrap, configured, id("color_tree"), List.of());
             // V33a thins the biome's trees to 0.7x; vanilla forest is 10 per chunk, so 7 attempts,
             // and the selector's own "no tree" entry does the rest of the thinning per position.
             registerPlaced(bootstrap, configured, id("ender_forest_tree"), List.of(
@@ -1015,6 +1021,28 @@ public final class ChromaWorldGenProvider {
 	}
 
     @SuppressWarnings({"rawtypes", "unchecked"})
+    /**
+     * V33a {@code ColorTreeGenerator}'s constants and tree-count table. The known-biome counts are the
+     * {@code chromaticraft:dye_trees/count_<n>} tags (see {@link ChromaBiomeTagProvider#addDyeTreeTags});
+     * the fallback is V33a's {@code BiomeDictionary} type table, each type's count being
+     * {@code getTreeCount} of the vanilla biome it pointed at.
+     */
+    private static reika.chromaticraft.world.ColorTreeFeature.Config colorTreeConfig() {
+        List<reika.chromaticraft.world.ColorTreeFeature.Count> counts = java.util.stream.IntStream
+                .of(0, 1, 2, 3, 4, 5, 6, 7, 10, 16, 53)
+                .mapToObj(n -> new reika.chromaticraft.world.ColorTreeFeature.Count(ChromaBiomeTagProvider.dyeTreeCount(n), n))
+                .toList();
+        List<reika.chromaticraft.world.ColorTreeFeature.Count> fallback = List.of(
+                new reika.chromaticraft.world.ColorTreeFeature.Count(net.neoforged.neoforge.common.Tags.Biomes.IS_FOREST, 16),
+                new reika.chromaticraft.world.ColorTreeFeature.Count(net.neoforged.neoforge.common.Tags.Biomes.IS_MOUNTAIN, 3),
+                new reika.chromaticraft.world.ColorTreeFeature.Count(net.neoforged.neoforge.common.Tags.Biomes.IS_JUNGLE, 53),
+                new reika.chromaticraft.world.ColorTreeFeature.Count(net.neoforged.neoforge.common.Tags.Biomes.IS_HILL, 16),
+                new reika.chromaticraft.world.ColorTreeFeature.Count(net.neoforged.neoforge.common.Tags.Biomes.IS_SNOWY, 3),
+                new reika.chromaticraft.world.ColorTreeFeature.Count(net.neoforged.neoforge.common.Tags.Biomes.IS_PLAINS, 2),
+                new reika.chromaticraft.world.ColorTreeFeature.Count(net.neoforged.neoforge.common.Tags.Biomes.IS_SWAMP, 5));
+        return new reika.chromaticraft.world.ColorTreeFeature.Config(counts, fallback, 128, 32);
+    }
+
     private static void registerConfigured(BootstrapContext<ConfiguredFeature<?, ?>> bootstrap,
             HolderGetter<Feature<?>> features, Identifier id) {
         ResourceKey<Feature<?>> featureKey = ResourceKey.create(Registries.FEATURE, id);

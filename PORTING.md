@@ -75,7 +75,7 @@ V33a's second-pass overlay: one of the five animated `dye/tree_overlay` sprites 
 LOS-ability suppression. Needs an in-game look.
 
 Rainbow Forest is complete apart from the gaps listed above. Next: Luminous Cliffs parity.
-ColorTreeGenerator (overworld-wide dye trees) is a separate follow-up.
+ColorTreeGenerator (overworld-wide dye trees) is a separate follow-up (done below).
 
 **Luminous Cliffs, unit 1 — decorator parity**: the biome carried vanilla mountain-forest trees and
 forest/default flowers; it now carries V33a `GlowingCliffsDecorator` exactly: ten non-floating gravel
@@ -139,8 +139,30 @@ scrolling/stretching UVs (repeat-sampled) onto Reika's `biomefog_alpha.png` (shi
 copied from the source repo), all drifting on the day-cycle wind. Stepped at a fixed 60 Hz where upstream
 stepped per frame. Drawn after translucent blocks with a new plain-alpha `TRANSLUCENT_SPRITE` pipeline.
 
-Luminous Cliffs is now ported apart from the gaps recorded in these units. Remaining overworld follow-up:
-ColorTreeGenerator (dye trees scattered through ordinary overworld biomes).
+Luminous Cliffs is now ported apart from the gaps recorded in these units.
+
+**ColorTreeGenerator** (dye trees across the ordinary overworld) → `ColorTreeFeature`, configured
+`chromaticraft:color_tree`, attached to `#minecraft:is_overworld` at VEGETAL_DECORATION (after the biome's
+own trees, as V33a's decorator ran after vanilla population). Per chunk: one column, `trees` independent
+1/128 attempts there; each 1/32 a large rainbow tree if it fits, else an unforced random-colour
+`TreeShaper` tree with vine chance and fertility 1. No small rainbow tree, no mud: those are the Rainbow
+Forest generator's.
+- Tree counts are data. V33a read `treesPerChunk` + fixed bonuses and fell back through `BiomeDictionary`
+  types. The per-biome table was **verified against the 1.7.10 decompiled biome classes and Forge
+  10.13.4's `BiomeDictionary`** (both in the ForgeGradle cache, `forge-1.7.10-...-decomp.jar` and
+  `forgeSrc-...-sources.jar`), not recalled. It lives in the `chromaticraft:dye_trees/count_<n>` biome
+  tags; biomes 1.7.10 did not have fall back to the type table through c: tags, as modded biomes did.
+  Unregistered 1.7.10 mutations were typed by Forge's `makeBestGuess`: Birch Forest M, Extreme Hills M
+  and Ice Plains Spikes came out HILLS, so 16 (surprising, but that is what the code does).
+- `canGenerateTree` fix (also affects the Rainbow Forest): NeoForge's `c:is_dry` includes savanna,
+  savanna plateau, badlands and wooded badlands, which Forge 1.7.10 did not call DRY, so the port had been
+  refusing dye trees there. `chromaticraft:dye_trees/not_dry` restores them. Windswept Savanna and Eroded
+  Badlands stay dry (Forge guessed DRY for Savanna M / Mesa Bryce from their zero rainfall).
+- `DyeTreeBlocker` (a biome-class interface) → the empty `chromaticraft:dye_trees/blocked` tag.
+- CHROMA-PORT: Thaumcraft taint (0 trees), Mystcraft Dense Forest (×2) and Tree-page gate. Twilight's
+  rainbow chance of 1/16 was unreachable upstream (the dimension was refused).
+- Not ported: retrogen and the `dyetree` rerun command (no decorator-rerun framework in the port).
+- Unverified in-game: FeatureSorter ordering with the new all-overworld VEGETAL feature.
 
 ## Working checkpoint — 2026-08-16 (Proxima decoration blocks)
 

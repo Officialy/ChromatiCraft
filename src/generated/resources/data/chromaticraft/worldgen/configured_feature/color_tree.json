@@ -1,0 +1,83 @@
+{
+  "type": "chromaticraft:color_tree",
+  "config": {
+    "chance": 128,
+    "counts": [
+      {
+        "biomes": "#chromaticraft:dye_trees/count_0",
+        "trees": 0
+      },
+      {
+        "biomes": "#chromaticraft:dye_trees/count_1",
+        "trees": 1
+      },
+      {
+        "biomes": "#chromaticraft:dye_trees/count_2",
+        "trees": 2
+      },
+      {
+        "biomes": "#chromaticraft:dye_trees/count_3",
+        "trees": 3
+      },
+      {
+        "biomes": "#chromaticraft:dye_trees/count_4",
+        "trees": 4
+      },
+      {
+        "biomes": "#chromaticraft:dye_trees/count_5",
+        "trees": 5
+      },
+      {
+        "biomes": "#chromaticraft:dye_trees/count_6",
+        "trees": 6
+      },
+      {
+        "biomes": "#chromaticraft:dye_trees/count_7",
+        "trees": 7
+      },
+      {
+        "biomes": "#chromaticraft:dye_trees/count_10",
+        "trees": 10
+      },
+      {
+        "biomes": "#chromaticraft:dye_trees/count_16",
+        "trees": 16
+      },
+      {
+        "biomes": "#chromaticraft:dye_trees/count_53",
+        "trees": 53
+      }
+    ],
+    "fallback": [
+      {
+        "biomes": "#c:is_forest",
+        "trees": 16
+      },
+      {
+        "biomes": "#c:is_mountain",
+        "trees": 3
+      },
+      {
+        "biomes": "#c:is_jungle",
+        "trees": 53
+      },
+      {
+        "biomes": "#c:is_hill",
+        "trees": 16
+      },
+      {
+        "biomes": "#c:is_snowy",
+        "trees": 3
+      },
+      {
+        "biomes": "#c:is_plains",
+        "trees": 2
+      },
+      {
+        "biomes": "#c:is_swamp",
+        "trees": 5
+      }
+    ],
+    "rainbow_chance": 32
+  }
+}
