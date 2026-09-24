@@ -74,6 +74,15 @@ public final class WorldGeometryPass {
 	 */
 	public void draw(RenderPipeline pipeline, Identifier texture, org.joml.Matrix4f modelView,
 			Consumer<BufferBuilder> builder) {
+		this.draw(pipeline, texture, modelView, false, builder);
+	}
+
+	/**
+	 * As {@link #draw(RenderPipeline, Identifier, org.joml.Matrix4f, Consumer)}, sampling with repeat
+	 * wrapping when {@code repeat} is set, for geometry whose texture coordinates run past one tile.
+	 */
+	public void draw(RenderPipeline pipeline, Identifier texture, org.joml.Matrix4f modelView, boolean repeat,
+			Consumer<BufferBuilder> builder) {
 		Minecraft minecraft = Minecraft.getInstance();
 		GpuBuffer vertices;
 		GpuBuffer indices;
@@ -111,8 +120,9 @@ public final class WorldGeometryPass {
 			pass.setPipeline(pipeline);
 			RenderSystem.bindDefaultUniforms(pass);
 			pass.setUniform("DynamicTransforms", transforms);
-			pass.bindTexture("Sampler0", bound.getTextureView(),
-					RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR));
+			pass.bindTexture("Sampler0", bound.getTextureView(), repeat
+					? RenderSystem.getSamplerCache().getRepeat(FilterMode.LINEAR)
+					: RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR));
 			pass.setIndexBuffer(indices, indexType);
 			pass.setVertexBuffer(0, vertices.slice());
 			pass.drawIndexed(indexCount, 1, 0, 0, 0);

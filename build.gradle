@@ -185,6 +185,7 @@ sourceSets.main.java {
       include 'reika/chromaticraft/client/ChromaWaterColors.java'
     include 'reika/chromaticraft/client/RainbowForestLogGlow.java'
     include 'reika/chromaticraft/client/LuminousCliffsClientEffects.java'
+    include 'reika/chromaticraft/client/render/LuminousCliffsFogRenderer.java'
       include 'reika/chromaticraft/client/CrystalRuneTextures.java'
       include 'reika/chromaticraft/client/LuminousCliffsColors.java'
       include 'reika/chromaticraft/client/ChromaModelOutlineRenderer.java'

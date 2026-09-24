@@ -132,8 +132,14 @@ thunder silence, cave-ambience swap to the four cliff tracks, and the clear-shal
 have not run in a client yet. Not ported: Winter-mod sky/fog colours (no 26.2 mod); V33a's oak
 leaf-decay exemption (26.2 leaf decay reaches 6 blocks, which covers big oaks).
 
-Next: `CliffFogRenderer`, the drifting fog clouds (its texture is Reika's `biomefog_alpha.png` from the
-source repo; it was a remote-sourced asset in V33a).
+**Luminous Cliffs, unit 5 — fog**: `LuminousCliffsFogRenderer` ports `CliffFogRenderer`: up to 48
+camera-facing 8x8-grid fog sheets within 96 blocks, 60-256 up, tent-faded edges, life-faded alpha,
+scrolling/stretching UVs (repeat-sampled) onto Reika's `biomefog_alpha.png` (shipped in the V33a jar;
+copied from the source repo), all drifting on the day-cycle wind. Stepped at a fixed 60 Hz where upstream
+stepped per frame. Drawn after translucent blocks with a new plain-alpha `TRANSLUCENT_SPRITE` pipeline.
+
+Luminous Cliffs is now ported apart from the gaps recorded in these units. Remaining overworld follow-up:
+ColorTreeGenerator (dye trees scattered through ordinary overworld biomes).
 
 ## Working checkpoint — 2026-08-16 (Proxima decoration blocks)
 

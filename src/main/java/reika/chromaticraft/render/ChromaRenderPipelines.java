@@ -93,6 +93,21 @@ public final class ChromaRenderPipelines {
 			.withCull(false)
 			.build();
 
+	/** Plain alpha-blended world sprites with no depth write: V33a's BlendMode.DEFAULT billboards. */
+	public static final RenderPipeline TRANSLUCENT_SPRITE = RenderPipeline.builder()
+			.withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "pipeline/translucent_sprite"))
+			.withBindGroupLayout(BindGroupLayouts.GLOBALS)
+			.withBindGroupLayout(BindGroupLayouts.MATRICES_PROJECTION)
+			.withVertexShader("core/position_tex_color")
+			.withFragmentShader("core/position_tex_color")
+			.withBindGroupLayout(BindGroupLayouts.SAMPLER0)
+			.withColorTargetState(new ColorTargetState(BlendFunction.TRANSLUCENT))
+			.withVertexBinding(0, DefaultVertexFormat.POSITION_TEX_COLOR)
+			.withPrimitiveTopology(PrimitiveTopology.QUADS)
+			.withDepthStencilState(new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL, false))
+			.withCull(false)
+			.build();
+
 	public static final RenderPipeline ADDITIVE_ALPHA_SPRITE = RenderPipeline.builder()
 			.withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "pipeline/additive_alpha_sprite"))
 			.withBindGroupLayout(BindGroupLayouts.GLOBALS)
@@ -315,6 +330,7 @@ public final class ChromaRenderPipelines {
 
     private static void registerPipelines(RegisterRenderPipelinesEvent event) {
         event.registerPipeline(ADDITIVE_SPRITE);
+        event.registerPipeline(TRANSLUCENT_SPRITE);
 		event.registerPipeline(PYLON_CORE);
 		event.registerPipeline(ADDITIVE_ALPHA_SPRITE);
 		event.registerPipeline(LEGACY_ADDITIVE_SPRITE);
