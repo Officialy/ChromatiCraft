@@ -222,6 +222,31 @@ casting GUI note), so casting never checks it. Not ported and not needed on this
 `RepeaterUpcraftRecipe`, `RepeaterTurboRecipe`, `CompoundRepeaterRecipe`, and `filterMatchTags`
 (stripping boosted/caster when a repeater is itself an ingredient).
 
+## Start → pylon crafting: feature inventory — 2026-09-24
+
+Every Lexicon page from ENTRY to PYLONCRAFT that is a machine, block, tool or ability (catalog tier =
+V33a research tier; pages dummied out without their mod are omitted). "Ported" = its V33a class, or its
+renamed 26.2 successor, is in the build allowlist; an ability counts only if its effect runs. Machines
+that are ported but have no recipe: Focus Crystal (V33a's five FocusCrystalRecipes; for now the flawed
+one comes only from villager trade), Multi-Aura Repeater (CompoundRepeaterRecipe, pylon tier),
+Pylon Link and Lumen Node (V33a had no casting recipe for either).
+
+- **ENTRY** — 7/7 ported.
+- **RAWEXPLORE** — 18/20 ported.
+  Missing: Fertility Seeds; Artifact Distribution Map.
+- **BASICCRAFT** — 8/27 ported.
+  Missing: Crystal Glass; Glow; Defensive Glass; Enchantments; Crystal Brewery; Chromatic Flower; Vertical Propulsion Panel; Lumen Wire; Crystal Orchestra; Particle Spawner; Knowledge Entanglement Pedestal; Tool Compression Crate; Lumen Turret; Subterranean Route Finder; Pylon Compass; Illumination Gun; Ownership Expansion Key; Examination Crystals; Corrosion Resistant Cell.
+- **RUNECRAFT** — 11/36 ported.
+  Missing: Artificial Sky; Physics Suspension Lamp; Lumen Lamp; Travel Path; Redstone Pod; Flux Pod; Subterranean Illuminator; Chromatic Enchanter; Fluid Radiator; Fluid Link Anchor; Suspension Field Controller; Item Inserter; Lumen Lamp Controller; Crystal Seeds; Item Mover; Voidlinked Bucket; Linker; Creature Sounding Star; Multitool; Nether Layer Crystal; Ore-Finding Pickaxe; Ore Harvester; Bezier Crystals; Aura Tracker; Recall Tablet.
+- **ENERGY** — 14/30 ported.
+  Missing: Collective Aura; Lumen Flood; Pursuit Diversion; Pylon Surge Protection; Linear Construction; Crystal Altar; Enchantment Decomposer; Transmutation Flame; Item Rift; Elemental Lamp; Enhanced Ender Eye; Excavation Star; Inventory Warp; Pendant; Spawner Interference Crystal; Transition Star.
+- **MULTICRAFT** — 4/26 ported.
+  Missing: Lumen Fence Relay; Casting Stand Insertion Relay; Crystal Tank Block; Area Breaker; Cloaking Beacon; Lumen Fence Emitter; Casting Stand Insertion Focus; Construction Mirror; Item Distribution Node; Inventory Simulator; Warp Glass; Ambient Lumen Distributor; Aura Pouch; Construction Star; Capture Star; Chain Gun; Luma Capsule; Growth Star; Recipe Tablet; Splash Gun; Mobility Star; Absorption Ring.
+- **NETWORKING** — 3/6 ported.
+  Missing: Repeater Lamp; Lumen Beacon Transmitter; Aura Visualization Crystals.
+- **PYLONCRAFT** — 11/35 ported.
+  Missing: Genetic Insight; Breadcrumb; Lumen Dash; Luminescent Sacrifice; Enhanced Transferrence; Reach Boost; World Shift; Sonic Blast; Ender TNT; Alloying Tank; Explosion Shield; Item Fabricator; Crystal Furnace; Guardian Stone; Item Collector; Crystal Laser; Meteor Tower Core; Inventory Network Relay; Spawner Reprogrammer; World Rift; Crystal Tank Controller; Teleportation Pump; Replication Star; Hover Star.
+
 ## Working checkpoint — 2026-08-16 (Proxima decoration blocks)
 
 - Registered eight of V33a's ten `DimDecoTypes` as distinct blocks — Miasma, Floatstone, Lifewater,
