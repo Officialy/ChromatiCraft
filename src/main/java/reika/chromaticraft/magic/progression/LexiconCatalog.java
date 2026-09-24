@@ -89,6 +89,48 @@ public final class LexiconCatalog {
 		return ENTRIES.stream().filter(entry -> !entry.parent()).toList();
 	}
 
+	/**
+	 * V33a {@code isDummiedOut} hard retirements: AUGMENT, VILLAGEREPAIR and AISHUTDOWN (the last also
+	 * an incomplete machine: a modelled block with no renderer). APIRECIPES was dummied whenever no
+	 * external mod had registered casting recipes; the port has no such API yet, so it is always empty.
+	 */
+	private static final java.util.Set<String> RETIRED = java.util.Set.of(
+			"AUGMENT", "VILLAGEREPAIR", "AISHUTDOWN", "APIRECIPES");
+
+	/**
+	 * V33a dependencies by page: {@code ChromaResearch.getDependency} plus the {@code ModList}/{@code
+	 * PowerTypes} prerequisite of each page's machine ({@code ChromaTiles}) or item ({@code ChromaItems}).
+	 */
+	private static final Map<String, reika.dragonapi.interfaces.registry.Dependency> DEPENDENCIES = Map.ofEntries(
+			Map.entry("BEES", reika.dragonapi.ModList.FORESTRY),
+			Map.entry("BEESTORAGE", reika.dragonapi.ModList.FORESTRY),
+			Map.entry("BEEFRAME", reika.dragonapi.ModList.FORESTRY),
+			Map.entry("ALVEARY", reika.dragonapi.ModList.FORESTRY),
+			Map.entry("TINKERTOOLS", reika.dragonapi.ModList.TINKERER),
+			Map.entry("SMELTERY", reika.dragonapi.ModList.TINKERER),
+			Map.entry("RFDISTRIB", reika.dragonapi.modregistry.PowerTypes.RF),
+			Map.entry("BALLLIGHTNING", reika.chromaticraft.registry.ChromaOptions.BALLLIGHTNING),
+			Map.entry("NODENET", reika.dragonapi.ModList.THAUMCRAFT),
+			Map.entry("ASPECT", reika.dragonapi.ModList.THAUMCRAFT),
+			Map.entry("ASPECTJAR", reika.dragonapi.ModList.THAUMCRAFT),
+			Map.entry("FLUXMAKER", reika.dragonapi.ModList.THAUMCRAFT),
+			Map.entry("WARP", reika.dragonapi.ModList.THAUMCRAFT),
+			Map.entry("MANIPFOCUS", reika.dragonapi.ModList.THAUMCRAFT),
+			Map.entry("ABILITYFOCUS", reika.dragonapi.ModList.THAUMCRAFT),
+			Map.entry("MYSTPAGE", reika.dragonapi.ModList.MYSTCRAFT),
+			Map.entry("BOOKDECOMP", reika.dragonapi.ModList.MYSTCRAFT),
+			Map.entry("DEATHFOG", reika.dragonapi.ModList.VOIDMONSTER),
+			Map.entry("VOIDTRAP", reika.dragonapi.ModList.VOIDMONSTER),
+			Map.entry("VOIDTRAPSTRUCT", reika.dragonapi.ModList.VOIDMONSTER),
+			Map.entry("VOIDESSENCE", reika.dragonapi.ModList.VOIDMONSTER),
+			Map.entry("MEDISTRIB", reika.dragonapi.ModList.APPENG),
+			Map.entry("PATTERNS", reika.dragonapi.ModList.APPENG),
+			Map.entry("CRYSTALCELL", reika.dragonapi.ModList.APPENG),
+			Map.entry("VOIDCELL", reika.dragonapi.ModList.APPENG),
+			Map.entry("MULTIPATTERN", reika.dragonapi.ModList.APPENG),
+			Map.entry("MANABOOSTER", reika.dragonapi.ModList.BOTANIA),
+			Map.entry("LANDMARK", reika.dragonapi.ModList.BUILDCRAFT));
+
 	public static List<Entry> obtainablePages() {
 		return ENTRIES.stream().filter(Entry::obtainable).toList();
 	}
@@ -144,7 +186,30 @@ public final class LexiconCatalog {
 		}
 
 		public boolean obtainable() {
-			return !parent && !alwaysPresent();
+			return !parent && !alwaysPresent() && !isDummiedOut();
+		}
+
+		/**
+		 * V33a {@code ChromaResearch.isDummiedOut}: pages for content that cannot exist in this game.
+		 * They are neither obtainable (V33a {@code getAllObtainableFragments}) nor tier-gating
+		 * ({@code isGating}). Without this, DEATHFOG (a RUNECRAFT page whose VOIDMONSTER stage is inactive
+		 * without the Void Monster mod) could never be obtained and froze research at RUNECRAFT.
+		 *
+		 * <p>The source consults the page's machine/item/ability dependency, a per-page dependency, a few
+		 * hard-coded retirements, and whether every required stage is active. PACKCHANGES (dummied when no
+		 * pack modification exists) keeps its existing readable-without-fragment handling.
+		 */
+		public boolean isDummiedOut() {
+			if (RETIRED.contains(id))
+				return true;
+			reika.dragonapi.interfaces.registry.Dependency dependency = DEPENDENCIES.get(id);
+			if (dependency != null && !dependency.isLoaded())
+				return true;
+			for (ProgressStage stage : requiredProgress()) {
+				if (!stage.active)
+					return true;
+			}
+			return false;
 		}
 
 		public List<ProgressStage> requiredProgress() {

@@ -89,10 +89,13 @@ public final class PlayerResearch {
 	}
 
 	public static List<LexiconCatalog.Entry> nextResearch(Player player) {
-		ResearchLevel level = ResearchProgress.getLevel(player);
-		List<LexiconCatalog.Entry> priority = priorityCandidates(player, level);
+		List<LexiconCatalog.Entry> priority = priorityCandidates(player, ResearchProgress.getLevel(player));
 		if (!priority.isEmpty())
 			return priority;
+		// V33a getNextResearchesFor: with no priority page left, try the tier upgrade first, so the
+		// candidates are drawn from the tier the player has actually reached.
+		checkForUpgrade(player);
+		ResearchLevel level = ResearchProgress.getLevel(player);
 		ArrayList<LexiconCatalog.Entry> candidates = new ArrayList<>();
 		for (LexiconCatalog.Entry page : LexiconCatalog.obtainablePages()) {
 			if (hasFragment(player, page) || page.level() == null || !level.isAtLeast(page.level()))
@@ -143,7 +146,13 @@ public final class PlayerResearch {
 		return dependency == null || hasFragment(player, LexiconCatalog.byId(dependency));
 	}
 
-	private static void checkForUpgrade(Player player) {
+	/**
+	 * V33a {@code ChromaResearchManager.checkForUpgrade}: step one research tier when the player owns
+	 * every tier-gating fragment of the current tier and meets the next tier's condition. V33a asks this
+	 * on every fragment gained, on every casting-tier completion ({@code setPlayerHasCrafted}) and when
+	 * picking the next research; see {@link CastingProgression#markCrafted} and {@link #nextResearch}.
+	 */
+	public static void checkForUpgrade(Player player) {
 		ResearchLevel level = ResearchProgress.getLevel(player);
 		if (level == ResearchLevel.CTM)
 			return;
@@ -157,14 +166,19 @@ public final class PlayerResearch {
 	}
 
 	private static boolean isTierGate(LexiconCatalog.Entry page, ResearchLevel level) {
+		if (page.isDummiedOut())
+			return false;
 		if (Set.of("TINKERTOOLS", "TRAPFLOOR", "VOIDESSENCE").contains(page.id()))
 			return false;
 		for (ProgressStage stage : page.requiredProgress()) {
 			if (!stage.isGating(level))
 				return false;
 		}
+		// V33a ChromaStructures.isNatural: PYLON, CAVERN, BURROW, OCEAN, DESERT, SNOWSTRUCT, BIOMEFRAG and
+		// DATANODE. BIOMEFRAG's page (BIOMESTRUCT) was missing, which made the never-granted BIOMESTRUCT
+		// stage gate MULTICRAFT.
 		return page.section() != LexiconCatalog.Section.STRUCTURES
-				|| !Set.of("PYLON", "CAVERN", "BURROW", "OCEAN", "DESERT", "SNOW", "DATATOWER")
+				|| !Set.of("PYLON", "CAVERN", "BURROW", "OCEAN", "DESERT", "SNOW", "DATATOWER", "BIOMESTRUCT")
 						.contains(page.id());
 	}
 

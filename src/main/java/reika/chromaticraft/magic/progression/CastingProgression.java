@@ -30,8 +30,11 @@ public final class CastingProgression {
 			return false;
 		CompoundTag tag = getTag(player);
 		String key = key(tier);
-		if (NBTCompat.getBoolean(tag, key, false))
+		if (NBTCompat.getBoolean(tag, key, false)) {
+			// V33a setPlayerHasCrafted re-checks the research tier on every completion.
+			PlayerResearch.checkForUpgrade(player);
 			return false;
+		}
 		tag.putBoolean(key, true);
 		if (player instanceof ServerPlayer serverPlayer) {
 			try {
@@ -42,6 +45,8 @@ public final class CastingProgression {
 						serverPlayer.getName().getString(), e.toString());
 			}
 		}
+		// V33a setPlayerHasCrafted: a first completion at a tier is what opens the next research tier.
+		PlayerResearch.checkForUpgrade(player);
 		return true;
 	}
 

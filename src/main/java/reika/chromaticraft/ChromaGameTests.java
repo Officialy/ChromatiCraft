@@ -4359,8 +4359,13 @@ public final class ChromaGameTests {
 	private static void lexiconV33aCatalog(GameTestHelper helper) {
 		helper.assertTrue(LexiconCatalog.entries().size() == 322,
 				"The complete V33a catalog contains exactly 322 entries");
-		helper.assertTrue(LexiconCatalog.obtainablePages().size() == 313,
-				"Seven section headers and the two always-present pages are not obtainable fragments");
+		helper.assertTrue(LexiconCatalog.obtainablePages().size() == 284,
+				"Seven section headers, the two always-present pages and the 29 pages V33a dummies out "
+						+ "without Thaumcraft/Forestry/Mystcraft/Void Monster/AE2/Botania/BuildCraft/TiC/RF "
+						+ "(plus its four retirements) are not obtainable fragments");
+		helper.assertTrue(LexiconCatalog.byId("DEATHFOG").isDummiedOut()
+				&& !LexiconCatalog.byId("DEATHFOG").obtainable(),
+				"DEATHFOG's VOIDMONSTER stage never fires without Void Monster; it must not gate RUNECRAFT");
 		var dataTower = LexiconCatalog.byId("DATATOWER");
 		helper.assertTrue(dataTower != null
 				&& dataTower.section() == LexiconCatalog.Section.STRUCTURES

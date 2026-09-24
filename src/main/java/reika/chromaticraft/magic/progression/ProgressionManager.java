@@ -398,8 +398,32 @@ public class ProgressionManager implements ProgressRegistry {
 		// ChromaSounds.GAINPROGRESS. Without this a granted stage gives the player no feedback at all.
 		if (changed && set && notify && ep instanceof net.minecraft.server.level.ServerPlayer player)
 			reika.chromaticraft.network.ChromaNetwork.sendProgressionNote(player, s.ordinal());
+		if (changed && set)
+			this.giveAuxiliaryResearch(ep, s);
 		//Deferred: co-op sharing, the handbook overlay note (needs the progression.xml titles),
 		//ProgressionEvent, backup cache.
+	}
+
+	/** V33a {@code auxiliaryReference}: the Lexicon page a stage hands out under {@code EASYFRAG}. */
+	private static final java.util.Map<ProgressStage, String> AUXILIARY_REFERENCE = java.util.Map.of(
+			ProgressStage.CRYSTALS, "CRYSTALS", ProgressStage.PYLON, "PYLONS",
+			ProgressStage.BURROW, "BURROW", ProgressStage.CAVERN, "CAVERN", ProgressStage.OCEAN, "OCEAN",
+			ProgressStage.RAINBOWLEAF, "RAINBOWLEAVES", ProgressStage.DYETREE, "DYELEAVES",
+			ProgressStage.BALLLIGHTNING, "BALLLIGHTNING", ProgressStage.ALLCOLORS, "RUNES");
+
+	/**
+	 * V33a {@code giveAuxiliaryResearch}: with the "Auxiliary Fragment Acquisition" option on, reaching
+	 * one of these stages also grants its Lexicon page and hands over the matching Info Fragment.
+	 */
+	public void giveAuxiliaryResearch(Player ep, ProgressStage p) {
+		if (!reika.chromaticraft.registry.ChromaOptions.EASYFRAG.getState())
+			return;
+		String id = AUXILIARY_REFERENCE.get(p);
+		LexiconCatalog.Entry page = id == null ? null : LexiconCatalog.byId(id);
+		if (page != null && !PlayerResearch.hasFragment(ep, page)) {
+			PlayerResearch.giveFragment(ep, page, true);
+			ep.getInventory().placeItemBackInInventory(reika.chromaticraft.item.ItemInfoFragment.forPage(page));
+		}
 	}
 
 	/**

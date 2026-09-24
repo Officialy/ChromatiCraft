@@ -199,6 +199,23 @@ centre, 16 Transmissive Dust (outer ring), 6 charged white shards and 2 Lumenite
 - GameTest `weak_repeater_survival_loop` now also asserts the Crystal Repeater recipe and both gates
   (written, **not yet run**).
 
+**Research tiers could stall — three more breaks on the same path (fixed):**
+1. `checkForUpgrade` only ran on fragment gain. V33a also runs it from `setPlayerHasCrafted` (every casting
+   completion) and `getNextResearchesFor`. So a player holding every fragment who then cast their first
+   CRAFTING/TEMPLE/MULTIBLOCK recipe stayed on the old tier until another fragment happened to arrive.
+   Hooked into `CastingProgression.markCrafted` and `PlayerResearch.nextResearch`.
+2. Nothing implemented V33a `ChromaResearch.isDummiedOut`. Pages for absent mods (and inactive stages)
+   stayed obtainable and tier-gating. DEATHFOG (RUNECRAFT, needs VOIDMONSTER, inactive without Void
+   Monster) could never be obtained, so research froze at RUNECRAFT. Now on `LexiconCatalog.Entry`: the
+   four retirements (AUGMENT, VILLAGEREPAIR, AISHUTDOWN — also V33a's one incomplete paged machine —
+   and APIRECIPES, empty without an external casting API), the per-page and machine/item mod
+   dependencies, and inactive stages. These 29 pages are neither obtainable nor gating (284 obtainable).
+3. `isTierGate`'s natural-structure exemption lacked BIOMEFRAG's page, BIOMESTRUCT. Its stage has no
+   grant, so it gated MULTICRAFT → NETWORKING.
+- Also ported V33a `giveAuxiliaryResearch` (the `EASYFRAG` option, off by default, which had no effect).
+- Ingredient check: Transmissive Dust (Radiance Bush, PYLON), Lumenite (lumenite ore, USEENERGY),
+  charged shards (SHARDCHARGE), Crystal Core (multiblock cast): all gated before REPEATER, so no cycle.
+
 **Still looser than V33a (not a blocker):** `CastingRecipe.canRunRecipe` also required owning the
 recipe's own Lexicon fragment. The data-driven schema has no recipe↔fragment relation yet (see the
 casting GUI note), so casting never checks it. Not ported and not needed on this path:
