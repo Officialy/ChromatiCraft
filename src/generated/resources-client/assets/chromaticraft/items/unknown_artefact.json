@@ -1,6 +1,6 @@
 {
   "model": {
     "type": "minecraft:model",
-    "model": "chromaticraft:block/unknown_artefact"
+    "model": "chromaticraft:item/unknown_artefact"
   }
 }

@@ -199,7 +199,7 @@ public class ChromaLang extends LanguageProvider {
 			add(ChromaBlocks.lumenRelay(element).get(), element.displayName + " Lumen Relay");
 		add(ChromaBlocks.MULTICHROMIC_RELAY.get(), "Multichromic Lumen Relay");
 		add(ChromaItems.GLOW_CAVE_DUST.get(), "Glow Cave Dust"); // V33a chromaitem.dimgen.glowcave
-		add(ChromaItems.UNKNOWN_ARTEFACT_FRAGMENT.get(), "Unknown Artefact Fragment");
+		add(ChromaItems.UNKNOWN_ARTEFACT_FRAGMENT.get(), "Unknown Fragments"); // V33a chromaunknownartefact.fragment
 		add(ChromaItems.ENDER_CRYSTAL_MOVER.get(), "End Crystal Mover");
 		add("item.chromaticraft.ender_crystal_mover.empty", "Can pick up an End Crystal");
 		add("item.chromaticraft.ender_crystal_mover.filled", "Contains %s End Crystals");

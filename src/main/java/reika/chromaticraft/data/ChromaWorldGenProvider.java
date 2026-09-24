@@ -55,6 +55,12 @@ public final class ChromaWorldGenProvider {
 
     public static final ResourceKey<VillagerTrade> FOCUS_CRYSTAL_TRADE = ResourceKey.create(
             Registries.VILLAGER_TRADE, id("focus_crystal"));
+    /** V33a {@code UATrades.UATrade}: a villager buys an Unknown Artefact. */
+    public static final ResourceKey<VillagerTrade> UA_TRADE = ResourceKey.create(
+            Registries.VILLAGER_TRADE, id("unknown_artefact"));
+    /** V33a {@code UATrades.MetaAlloyTrade}: a villager buys a Lumen Pod. */
+    public static final ResourceKey<VillagerTrade> META_ALLOY_TRADE = ResourceKey.create(
+            Registries.VILLAGER_TRADE, id("meta_alloy"));
 
     private static final Identifier CAVE_CRYSTAL = id("cave_crystal");
     private static final Identifier NATURAL_PYLON = id("natural_pylon");
@@ -211,7 +217,8 @@ public final class ChromaWorldGenProvider {
 
     public static RegistrySetBuilder buildRegistrySet() {
         RegistrySetBuilder builder = new RegistrySetBuilder();
-        builder.add(Registries.VILLAGER_TRADE, bootstrap -> bootstrap.register(FOCUS_CRYSTAL_TRADE,
+        builder.add(Registries.VILLAGER_TRADE, bootstrap -> {
+            bootstrap.register(FOCUS_CRYSTAL_TRADE,
                 new VillagerTrade(
                         new TradeCost(Items.EMERALD, 1),
 						flawedFocusCrystal(),
@@ -219,7 +226,19 @@ public final class ChromaWorldGenProvider {
                         1,
                         0,
                         java.util.Optional.empty(),
-                        java.util.List.of())));
+                        java.util.List.of()));
+            // V33a UATypeTrade: the villager pays calcValue(commodity) emeralds, and never tires of it.
+            bootstrap.register(UA_TRADE, new VillagerTrade(
+                    new TradeCost(ChromaBlocks.UNKNOWN_ARTEFACT_ITEM.get(), 1),
+                    new net.minecraft.world.item.ItemStackTemplate(Items.EMERALD,
+                            reika.chromaticraft.magic.artefact.UATrades.calcValue("Thargoid Sensor")),
+                    Integer.MAX_VALUE, 1, 0, java.util.Optional.empty(), java.util.List.of()));
+            bootstrap.register(META_ALLOY_TRADE, new VillagerTrade(
+                    new TradeCost(ChromaBlocks.META_ALLOY_LAMP.get().asItem(), 1),
+                    new net.minecraft.world.item.ItemStackTemplate(Items.EMERALD,
+                            reika.chromaticraft.magic.artefact.UATrades.calcValue("Meta-Alloys")),
+                    Integer.MAX_VALUE, 1, 0, java.util.Optional.empty(), java.util.List.of()));
+        });
         builder.add(Registries.NOISE_SETTINGS,
                 reika.chromaticraft.world.dimension.ProximaNoiseSettings::bootstrap);
         builder.add(Registries.DIMENSION_TYPE,

@@ -195,6 +195,25 @@ public final class ChromaRenderPipelines {
             .withCull(false)
             .build();
 
+    /** V33a {@code EntityFX.setNoDepthTest()}: the same additive particle, drawn through terrain. */
+    public static final RenderPipeline LEGACY_ADDITIVE_PARTICLE_NO_DEPTH = RenderPipeline.builder()
+            .withLocation(Identifier.fromNamespaceAndPath(
+                    ChromatiCraft.MODID, "pipeline/legacy_additive_particle_no_depth"))
+            .withBindGroupLayout(BindGroupLayouts.GLOBALS)
+            .withBindGroupLayout(BindGroupLayouts.MATRICES_PROJECTION)
+            .withBindGroupLayout(BindGroupLayouts.FOG)
+            .withVertexShader("core/particle")
+            .withFragmentShader(Identifier.fromNamespaceAndPath(
+                    ChromatiCraft.MODID, "core/legacy_additive_particle"))
+            .withBindGroupLayout(BindGroupLayouts.SAMPLER0_SAMPLER2)
+            .withColorTargetState(new ColorTargetState(
+                    LEGACY_ADDITIVE_DARK_PARTICLE_TARGET))
+            .withVertexBinding(0, DefaultVertexFormat.PARTICLE)
+            .withPrimitiveTopology(PrimitiveTopology.QUADS)
+            .withDepthStencilState(new DepthStencilState(CompareOp.ALWAYS_PASS, false))
+            .withCull(false)
+            .build();
+
     public static final RenderPipeline LEGACY_ADDITIVE_PARTICLE = RenderPipeline.builder()
             .withLocation(Identifier.fromNamespaceAndPath(
                     ChromatiCraft.MODID, "pipeline/legacy_additive_particle"))
@@ -233,6 +252,18 @@ public final class ChromaRenderPipelines {
             .build();
 
 	/** V33a DIMCORE and AURALOC global-no-GUI shaders, resolved from live locus-point emitters. */
+	/** V33a UAZONE: the artefact-ring screen shader; its per-frame values arrive as a UBO. */
+	public static final RenderPipeline UA_ZONE = RenderPipeline.builder(
+				net.minecraft.client.renderer.RenderPipelines.POST_PROCESSING_SNIPPET)
+			.withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "pipeline/ua_zone"))
+			.withVertexShader("core/screenquad")
+			.withFragmentShader(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "post/ua_zone"))
+			.withBindGroupLayout(com.mojang.blaze3d.pipeline.BindGroupLayout.builder()
+					.withSampler("InSampler")
+					.withUniform("UaZone", com.mojang.blaze3d.shaders.UniformType.UNIFORM_BUFFER)
+					.build())
+			.build();
+
 	public static final RenderPipeline LOCUS_POINTS = RenderPipeline.builder(
 				net.minecraft.client.renderer.RenderPipelines.POST_PROCESSING_SNIPPET)
 			.withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "pipeline/locus_points"))
@@ -338,8 +369,10 @@ public final class ChromaRenderPipelines {
         event.registerPipeline(ENERGY_BEAM);
         event.registerPipeline(ADDITIVE_PARTICLE);
         event.registerPipeline(LEGACY_ADDITIVE_PARTICLE);
+        event.registerPipeline(LEGACY_ADDITIVE_PARTICLE_NO_DEPTH);
         event.registerPipeline(MONUMENT_GRADE);
 		event.registerPipeline(LOCUS_POINTS);
+		event.registerPipeline(UA_ZONE);
 		event.registerPipeline(AURA_LOCUS_LINES);
     }
 }

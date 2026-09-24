@@ -73,15 +73,37 @@ public class BlockUnknownArtefact extends Block {
 		double x = pos.getX() + 0.5;
 		double y = pos.getY() + 0.5;
 		double z = pos.getZ() + 0.5;
-		// CHROMA-PORT: V33a also plays ChromaSounds.MONUMENTRAY here at volume 1, pitch 0.625, with
-		// attenuation disabled out to 64 blocks, and broadcasts ChromaPackets.ARTEFACTCLICK so every
-		// client within 64 blocks runs doInteractFX -- 64 white EntityCCBlurFX with +/-0.75 velocity,
-		// 8-12 tick life and 0.5-1 scale. Both wait on the artefact's sound and payload registration.
+		reika.chromaticraft.registry.ChromaSounds.MONUMENTRAY.playSoundNoAttenuation(level, pos, 1, 0.625F, 64);
 		double[] angles = ReikaPhysicsHelper.cartesianToPolar(
 				player.getX() - x, player.getY() - y, player.getZ() - z);
 		double[] v = ReikaPhysicsHelper.polarToCartesian(6, angles[1] - 90, -angles[2] - 90);
 		Vec3 motion = player.getDeltaMovement();
 		player.setDeltaMovement(motion.x + v[0], Mth.clamp(v[1], 1.25, 1.75), motion.z + v[2]);
 		player.hurtMarked = true;
+		if (level instanceof net.minecraft.server.level.ServerLevel server)
+			reika.chromaticraft.network.ChromaNetwork.sendArtefactClick(server, pos);
+	}
+
+	/** V33a {@code randomDisplayTick}: the artefact field, while the viewer is within 24 blocks. */
+	@Override
+	public void animateTick(BlockState state, Level level, BlockPos pos, net.minecraft.util.RandomSource random) {
+		var viewer = net.minecraft.client.Minecraft.getInstance().player;
+		if (viewer != null && viewer.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5) < 576)
+			reika.chromaticraft.render.particle.ChromaParticle.spawnUnknownArtefactField(level, pos.getX() + 0.5,
+					pos.getY() + 0.5 + 1.5 * random.nextDouble(), pos.getZ() + 0.5, false);
+	}
+
+	/**
+	 * V33a {@code removedByPlayer}: breaking it with Silk Touch is what counts as finding an artefact
+	 * (ARTEFACT). The drops themselves are the loot table's.
+	 */
+	@Override
+	public void playerDestroy(Level level, Player player, BlockPos pos, BlockState state,
+			net.minecraft.world.level.block.entity.BlockEntity blockEntity, net.minecraft.world.item.ItemStack tool) {
+		super.playerDestroy(level, player, pos, state, blockEntity, tool);
+		var silk = level.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.ENCHANTMENT)
+				.getOrThrow(net.minecraft.world.item.enchantment.Enchantments.SILK_TOUCH);
+		if (net.minecraft.world.item.enchantment.EnchantmentHelper.getItemEnchantmentLevel(silk, tool) > 0)
+			reika.chromaticraft.magic.progression.ProgressStage.ARTEFACT.stepPlayerTo(player);
 	}
 }

@@ -719,9 +719,12 @@ public final class ChromaBlocks {
 							.sound(SoundType.GRASS).lightLevel(state -> 9)));
 
 	/** V33a Unknown Artefact: hardness 12, and resistance 300000 so it cannot be blasted out. */
-	public static final DeferredBlock<BlockUnknownArtefact> UNKNOWN_ARTEFACT = register("unknown_artefact",
+	public static final DeferredBlock<BlockUnknownArtefact> UNKNOWN_ARTEFACT = registerBlockOnly("unknown_artefact",
 			() -> new BlockUnknownArtefact(blockProperties().mapColor(MapColor.STONE)
 					.strength(12F, 300000F).requiresCorrectToolForDrops().noOcclusion()));
+	/** V33a ARTEFACT metadata ARTIFACT: the whole relic, which buries itself back as the block. */
+	public static final DeferredItem<Item> UNKNOWN_ARTEFACT_ITEM = registerItemOnly("unknown_artefact",
+			() -> new reika.chromaticraft.items.ItemUnknownArtefact(UNKNOWN_ARTEFACT.get(), itemProperties()));
 
 	/**
 	 * V33a Piezo Crystal: stone's hardness, a third of its resistance, and light 10 while active.

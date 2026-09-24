@@ -367,7 +367,18 @@ public final class ChromaLootProvider extends LootTableProvider {
 				// items directly, so asking for a table here would fail outright.
 				if (block.getLootTable().isEmpty())
 					continue;
-				if (block instanceof reika.chromaticraft.block.crystal.BlockCaveCrystal crystal) {
+				if (block == ChromaBlocks.UNKNOWN_ARTEFACT.get()) {
+					// V33a harvestBlock: Silk Touch lifts the whole artefact; anything else shatters it into
+					// one to four fragments. (Creative breaks drop nothing, as loot tables already do.)
+					this.add(block, LootTable.lootTable().withPool(LootPool.lootPool()
+							.setRolls(ConstantValue.exactly(1))
+							.add(net.minecraft.world.level.storage.loot.entries.AlternativesEntry.alternatives(
+									LootItem.lootTableItem(ChromaBlocks.UNKNOWN_ARTEFACT_ITEM.get()).when(this.hasSilkTouch()),
+									LootItem.lootTableItem(reika.chromaticraft.registry.ChromaItems.UNKNOWN_ARTEFACT_FRAGMENT.get())
+											.apply(SetItemCountFunction.setCount(
+													net.minecraft.world.level.storage.loot.providers.number.UniformGenerator.between(1, 4)))))));
+				}
+				else if (block instanceof reika.chromaticraft.block.crystal.BlockCaveCrystal crystal) {
 					// V33a BlockCaveCrystal.getDrops: never itself, always N shards of its own colour.
 					this.add(block, this.caveCrystalTable(block, crystal.getCrystalElement()));
 				}

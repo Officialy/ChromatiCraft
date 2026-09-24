@@ -38,9 +38,9 @@ public final class UnknownArtefactFeature extends Feature<NoneFeatureConfigurati
 	private static final int INNER_RADIUS = 384;
 	private static final int OUTER_RADIUS = 512;
 
-	private final Set<ChunkPos> artefactChunks = new HashSet<>();
-	private long cachedSeed;
-	private boolean cached;
+	private static final Set<ChunkPos> artefactChunks = new HashSet<>();
+	private static long cachedSeed;
+	private static boolean cached;
 
 	public UnknownArtefactFeature() {
 		super(NoneFeatureConfiguration.CODEC);
@@ -53,9 +53,8 @@ public final class UnknownArtefactFeature extends Feature<NoneFeatureConfigurati
 		BlockPos origin = context.origin();
 		if (!(world.getLevel() instanceof ServerLevel server))
 			return false;
-		this.calculate(server);
 		// V33a keys the set on the chunk's block-aligned corner, not its chunk index.
-		if (!artefactChunks.contains(new ChunkPos(origin.getX() & ~15, origin.getZ() & ~15)))
+		if (!isUAChunk(server, origin.getX() & ~15, origin.getZ() & ~15))
 			return false;
 		if (random.nextInt(40) > 0)
 			return false;
@@ -71,7 +70,28 @@ public final class UnknownArtefactFeature extends Feature<NoneFeatureConfigurati
 		return true;
 	}
 
-	private void calculate(ServerLevel world) {
+	/**
+	 * V33a {@code isUAChunk}: whether the chunk whose block-aligned corner is ({@code x}, {@code z}) lies in
+	 * a tower's artefact ring. The Artefact Spawner asks this about the player's chunk every tick.
+	 */
+	public static boolean isUAChunk(ServerLevel world, int x, int z) {
+		synchronized (artefactChunks) {
+			calculate(world);
+			return canGenerateIn(world) && artefactChunks.contains(new ChunkPos(x, z));
+		}
+	}
+
+	/** V33a {@code canGenerateIn}: the overworld; superflat only above 15 layers when FLATGEN is off. */
+	public static boolean canGenerateIn(ServerLevel world) {
+		if (world.dimension() != net.minecraft.world.level.Level.OVERWORLD)
+			return false;
+		if (world.getChunkSource().getGenerator() instanceof net.minecraft.world.level.levelgen.FlatLevelSource flat
+				&& !reika.chromaticraft.registry.ChromaOptions.FLATGEN.getState())
+			return flat.settings().getLayers().size() > 15;
+		return true;
+	}
+
+	private static void calculate(ServerLevel world) {
 		if (cached && cachedSeed == world.getSeed())
 			return;
 		if (!Towers.initialized(world))

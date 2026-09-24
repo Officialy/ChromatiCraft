@@ -1,0 +1,10 @@
+{
+  "gives": {
+    "count": 48,
+    "id": "minecraft:emerald"
+  },
+  "max_uses": 2.1474836E9,
+  "wants": {
+    "id": "chromaticraft:unknown_artefact"
+  }
+}

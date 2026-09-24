@@ -605,7 +605,10 @@ public class ChromaModelProvider extends ModelProvider {
 		});
 		blockStateOut.accept(MultiVariantGenerator.dispatch(block,
 				new MultiVariant(WeightedList.of(new Variant(id)))));
-		itemModelOut.accept(block.asItem(), ItemModelUtils.plainModel(id));
+		// V33a drew the carried artefact as its own animated sprite, not as the block.
+		Item item = ChromaBlocks.UNKNOWN_ARTEFACT_ITEM.get();
+		itemModelOut.accept(item, ItemModelUtils.plainModel(ModelTemplates.FLAT_ITEM.create(
+				ModelLocationUtils.getModelLocation(item), TextureMapping.layer0(item), modelOut)));
 	}
 
 	private static void decoFlowerBlocks(Consumer<BlockModelDefinitionGenerator> blockStateOut,

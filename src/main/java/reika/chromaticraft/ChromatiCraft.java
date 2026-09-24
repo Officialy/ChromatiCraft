@@ -140,6 +140,7 @@ public class ChromatiCraft extends DragonAPIMod {
 		reika.chromaticraft.world.dimension.ProximaPlayerSafety.register();
 		reika.chromaticraft.world.dimension.ProximaStructureSessions.register();
 		reika.chromaticraft.auxiliary.FocusCrystalTradeHandler.register();
+		reika.chromaticraft.magic.artefact.UATrades.register();
 		reika.chromaticraft.auxiliary.PoolAlloyingHandler.register();
 		reika.chromaticraft.auxiliary.CobbleGeneratorItemExpiry.register();
 		reika.chromaticraft.auxiliary.ChromaFreezeHandler.register();

@@ -51,7 +51,18 @@ public abstract class ChromaParticle extends SingleQuadParticle {
             Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "textures/particle/16x.png"),
             ChromaRenderPipelines.ADDITIVE_PARTICLE);
 
+    private static final Layer ADDITIVE_TERRAIN_NO_DEPTH = new Layer(
+            true, net.minecraft.client.renderer.texture.TextureAtlas.LOCATION_BLOCKS,
+            ChromaRenderPipelines.LEGACY_ADDITIVE_PARTICLE_NO_DEPTH);
+
     private final boolean additive;
+    /** V33a {@code setNoDepthTest()}. */
+    private boolean noDepth;
+
+    protected final ChromaParticle setNoDepthTest() {
+        this.noDepth = true;
+        return this;
+    }
 
 	/**
 	 * Exact V33a {@code BlockTieredPlant.randomDisplayTick} particle branches. Vibrant Pods and
@@ -211,6 +222,58 @@ public abstract class ChromaParticle extends SingleQuadParticle {
 				speed * (target.getY() - source.getY()),
 				speed * (target.getZ() - source.getZ()),
 				0x00c000, 10, 4F, false));
+	}
+
+	/**
+	 * V33a {@code ItemUnknownArtefact.doUA_FX}: half the time a large dark green-to-navy cloud, and one or
+	 * two quick white glints, around an artefact. Spawned artefacts are marked through the ground.
+	 */
+	public static void spawnUnknownArtefactField(Level world, double posX, double posY, double posZ,
+			boolean renderThroughGround) {
+		if (!(world instanceof ClientLevel level)) return;
+		RandomSource rand = level.getRandom();
+		if (rand.nextBoolean()) {
+			double px = posX + (rand.nextDouble() * 2 - 1);
+			double py = posY + 0.25 + (rand.nextDouble() * 2 - 1);
+			double pz = posZ + (rand.nextDouble() * 2 - 1);
+			int l = 10 + rand.nextInt(31);
+			double sc = 6 + rand.nextDouble() * 9;
+			int c = reika.dragonapi.libraries.rendering.ReikaColorAPI.mixColors(0x003010, 0x000030, rand.nextFloat());
+			FadeGlow fx = new FadeGlow(level, px, py, pz, 0, 0, 0, c, l, (float)sc, false, null, 0, "fade_cloud", true);
+			if (renderThroughGround)
+				fx.setNoDepthTest();
+			Minecraft.getInstance().particleEngine.add(fx);
+		}
+		int n = 1 + rand.nextInt(2);
+		for (int i = 0; i < n; i++) {
+			double px = posX + (rand.nextDouble() * 2 - 1) * 2;
+			double py = posY + (rand.nextDouble() * 2 - 1) * 2;
+			double pz = posZ + (rand.nextDouble() * 2 - 1) * 2;
+			int l = 3 + rand.nextInt(6);
+			double maxv = 0.125 / l;
+			FadeGlow fx = new FadeGlow(level, px, py, pz, (rand.nextDouble() * 2 - 1) * maxv,
+					(rand.nextDouble() * 2 - 1) * maxv, (rand.nextDouble() * 2 - 1) * maxv, 0xffffff, l, 1F,
+					true, null, 0, "fade_star", true);
+			if (renderThroughGround)
+				fx.setNoDepthTest();
+			Minecraft.getInstance().particleEngine.add(fx);
+		}
+	}
+
+	/** V33a {@code BlockUnknownArtefact.doInteractFX}: 64 white blurs bursting out of a touched artefact. */
+	public static void spawnArtefactClick(Level world, BlockPos pos) {
+		if (!(world instanceof ClientLevel level)) return;
+		RandomSource rand = level.getRandom();
+		for (int i = 0; i < 64; i++) {
+			double px = pos.getX() + rand.nextDouble();
+			double py = pos.getY() + rand.nextDouble();
+			double pz = pos.getZ() + rand.nextDouble();
+			int l = 8 + rand.nextInt(5);
+			float f = (float)(0.5 + rand.nextDouble() * 0.5);
+			Minecraft.getInstance().particleEngine.add(new FadeGlow(level, px, py, pz,
+					(rand.nextDouble() * 2 - 1) * 0.75, (rand.nextDouble() * 2 - 1) * 0.75, (rand.nextDouble() * 2 - 1) * 0.75,
+					0xffffff, l, f, false));
+		}
 	}
 
 	/** A rapid-expanding stationary or drifting fade blur with a chosen V33a icon and blend. */
@@ -1910,6 +1973,8 @@ public abstract class ChromaParticle extends SingleQuadParticle {
 
     @Override
     protected Layer getLayer() {
+        if (additive && noDepth)
+            return ADDITIVE_TERRAIN_NO_DEPTH;
         return additive ? ADDITIVE_TERRAIN : Layer.TRANSLUCENT_TERRAIN;
     }
 

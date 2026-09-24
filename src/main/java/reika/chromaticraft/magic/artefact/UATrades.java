@@ -9,142 +9,74 @@
  ******************************************************************************/
 package reika.chromaticraft.magic.artefact;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.Collection;
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map.Entry;
+import java.util.List;
+import java.util.Optional;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.npc.villager.Villager;
+import net.minecraft.world.entity.npc.villager.VillagerProfession;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.trading.MerchantOffer;
+import net.minecraft.world.item.trading.MerchantOffers;
+import net.minecraft.world.item.trading.VillagerTrade;
+import net.minecraft.world.level.storage.loot.LootContext;
+import net.minecraft.world.level.storage.loot.LootParams;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 
-import net.minecraft.entity.passive.EntityVillager;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.init.Items;
-import net.minecraft.item.ItemStack;
-import net.minecraft.village.MerchantRecipe;
-import net.minecraft.village.MerchantRecipeList;
-
-import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.items.itemunknownartefact.ArtefactTypes;
+import reika.chromaticraft.data.ChromaWorldGenProvider;
 import reika.chromaticraft.magic.progression.ProgressStage;
-import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaItems;
-import reika.dragonapi.DragonAPICore;
-import reika.dragonapi.asm.ASMCalls;
-import reika.dragonapi.auxiliary.VillageTradeHandler;
-import reika.dragonapi.io.ReikaFileReader;
-import reika.dragonapi.io.reikafilereader.ConnectionErrorHandler;
-import reika.dragonapi.instantiable.data.maps.MultiMap;
-import reika.dragonapi.interfaces.PlayerSpecificTrade;
-import reika.dragonapi.libraries.java.ReikaJVMParser;
+import reika.dragonapi.libraries.ReikaPlayerAPI;
 
-
-public class UATrades implements ConnectionErrorHandler {
+/**
+ * V33a {@code UATrades}: villagers who will buy an Unknown Artefact (as a Thargoid Sensor) or a Lumen Pod
+ * (as Meta-Alloys) for emeralds, priced from those commodities' Elite: Dangerous market values scaled so
+ * the dearest fetches {@link #BASE_TRADE_YIELD} emeralds. The offers never run out.
+ *
+ * <p>Each villager independently rolls, once, whether it carries each offer (20% for the artefact, 10% for
+ * the Lumen Pod, and only farmers, librarians and clerics - 1.7.10 professions 0-2 - buy Lumen Pods). The
+ * artefact offer is only shown to players who have found an artefact. As with the Focus Crystal offer,
+ * 26.2's villager-trade registry holds the offers and this bridge applies the per-villager roll and the
+ * per-player gate, which the trade codec cannot express.
+ *
+ * <p>V33a refreshed its prices from eddb.io at startup, falling back to the defaults below; eddb.io shut
+ * down in 2021, so the defaults it shipped are the prices. External commodity hooks remain registrable.
+ */
+public class UATrades {
 
 	public static final int BASE_TRADE_YIELD = 48;
 
 	public static final UATrades instance = new UATrades();
 
-	private final HashMap<String, Integer> prices = new HashMap();
-	private int MAX_PRICE = -1;
+	private static final String ROLL_PREFIX = "chromaticraft_ua_trade_";
 
-	private final HashMap<Class<? extends UATypeTrade>, Double> tradeList = new HashMap();
-	private final MultiMap<String, EDCommodityHook> externalHooks = new MultiMap().setNullEmpty();
+	private final HashMap<String, Integer> prices = new HashMap<>();
+	private int MAX_PRICE = -1;
+	private final List<EDCommodityHook> externalHooks = new ArrayList<>();
 
 	private UATrades() {
-
-	}
-
-	public void loadData() {
 		this.loadDefaults();
-
-		tradeList.put(UATrade.class, 0.2);
-		tradeList.put(MetaAlloyTrade.class, 0.1);
-
-		boolean jvm = ReikaJVMParser.isArgumentPresent("useCachedEDDBForCC");
-		if (jvm) {
-			File f = new File(DragonAPICore.getMinecraftDirectory(), "ChromatiCraft_Data/eddbcache.json");
-			if (f.exists() && System.currentTimeMillis()-f.lastModified() < 24*3600*1000) { //1d
-				this.loadJSONData(ReikaFileReader.readJSON(f));
-				return;
-			}
-			else {
-				//f.delete();
-			}
-		}
-
-		try {
-			URL url = new URL("https://eddb.io/archive/v6/commodities.json"); //dynamically load the prices from eddb, so that the ones in CC can match the ones in E:D in real time, because :D
-			try (BufferedReader r = ReikaFileReader.getReader(url, 2000, this, null)) {
-				if (r == null) {
-					throw new IOException("Could not read URL!");
-				}
-				else {
-					this.loadJSONData(new JsonParser().parse(r));
-					if (jvm) {
-						File f = new File(DragonAPICore.getMinecraftDirectory(), "ChromatiCraft_Data/eddbcache.json");
-						f.getParentFile().mkdirs();
-						f.delete();
-						ReikaFileReader.copyFile(url.openStream(), new FileOutputStream(f), 4096, null);
-						ChromatiCraft.logger.log("Downloaded eddb.io commodity data for caching.");
-					}
-				}
-			}
-		}
-		catch (MalformedURLException e) {
-			e.printStackTrace();
-		}
-		catch (IOException e) {
-			e.printStackTrace();
-		}
 	}
 
-	public void registerCommodityHook(EDCommodityHook ech) {
-		externalHooks.addValue(ech.getCommodityID(), ech);
-	}
-
-	private void loadJSONData(JsonElement e) {
-		if (e instanceof JsonArray) {
-			JsonArray j = (JsonArray)e;
-			Iterator<JsonElement> it = j.iterator();
-			while (it.hasNext()) {
-				JsonElement elem = it.next();
-				if (elem instanceof JsonObject) {
-					JsonObject obj = (JsonObject)elem;
-					JsonElement n = obj.get("name");
-					String data = n.getAsString();
-					if (prices.containsKey(data)) {
-						int price = obj.get("average_price").getAsInt();
-						prices.put(data, price);
-						ChromatiCraft.logger.log("Loading price data for "+data+" from eddb.io database: "+price+" CR");
-						Collection<EDCommodityHook> c = externalHooks.get(data);
-						if (c != null) {
-							for (EDCommodityHook eh : c) {
-								JsonElement max = obj.get("max_sell_price");
-								JsonElement upper = obj.get("sell_price_upper_average");
-								eh.onPriceReceived(price, upper != null ? upper.getAsInt() : price, max != null ? max.getAsInt() : price);
-							}
-						}
-					}
-				}
-			}
-		}
+	public static void register() {
+		NeoForge.EVENT_BUS.addListener(UATrades::onVillagerInteract);
 	}
 
 	private void loadDefaults() {
-		this.addPrice("Thargoid Sensor", 288000); //sells for ~288kCr anywhere, though a bit more outside the pleiades
-		this.addPrice("Meta-Alloys", 114000);  //sells for ~114kCr in the bubble
-		for (EDCommodityHook eh : externalHooks.allValues(false)) {
-			this.addPrice(eh.getCommodityID(), 0);
-		}
+		this.addPrice("Thargoid Sensor", 288000);
+		this.addPrice("Meta-Alloys", 114000);
+	}
+
+	public void registerCommodityHook(EDCommodityHook ech) {
+		externalHooks.add(ech);
+		this.addPrice(ech.getCommodityID(), 0);
 	}
 
 	private void addPrice(String id, int val) {
@@ -152,159 +84,94 @@ public class UATrades implements ConnectionErrorHandler {
 		MAX_PRICE = Math.max(MAX_PRICE, val);
 	}
 
-	public void addTradesToVillager(EntityVillager ev, MerchantRecipeList li, VillageTradeHandler h) {
-		for (Entry<Class<? extends UATypeTrade>, Double> e : tradeList.entrySet()) {
-			Class<? extends UATypeTrade> trade = e.getKey();
-			if (h.withRandomChance(ev, e.getValue(), trade.getSimpleName()) && !this.hasTrade(ev.buyingList, trade)) {
-				try {
-					UATypeTrade u = trade.newInstance();
-					if (u.isValidForVillager(ev))
-						ev.buyingList.add(u); //add an unlocked trade
-				}
-				catch (Exception ex) {
-					ChromatiCraft.logger.logError("Could not add trade type "+trade+" to villager!");
-					ex.printStackTrace();
-				}
-			}
-		}
-		for (EDCommodityHook eh : externalHooks.allValues(false)) {
-			if (h.withRandomChance(ev, eh.getChancePerVillager(), eh.getCommodityID())) {
-				MerchantRecipe trade = eh.createTrade();
-				if (!this.hasTrade(ev.buyingList, trade)) {
-					try {
-						ev.buyingList.add(trade);
-					}
-					catch (Exception e) {
-						ChromatiCraft.logger.logError("Could not add delegated trade "+trade+" to villager!");
-						e.printStackTrace();
-					}
-				}
-			}
-		}
-	}
-
-	private boolean hasTrade(MerchantRecipeList li, MerchantRecipe tr) {
-		for (Object r : li) {
-			if (r.getClass() == tr.getClass()) {
-				if (ASMCalls.matchTrades((MerchantRecipe)r, tr))
-					return true;
-			}
-		}
-		return false;
-	}
-
-	private boolean hasTrade(MerchantRecipeList li, Class<? extends UATypeTrade> tr) {
-		for (Object r : li) {
-			if (r.getClass() == tr)
-				return true;
-		}
-		return false;
-	}
-
-	private static int calcValue(String id) {
+	/** V33a {@code calcValue}: emeralds paid for one unit of the commodity. */
+	public static int calcValue(String id) {
 		int price = instance.prices.get(id);
-		return price*BASE_TRADE_YIELD/instance.MAX_PRICE;
+		return price * BASE_TRADE_YIELD / instance.MAX_PRICE;
 	}
 
-	public static abstract class UATypeTrade extends MerchantRecipe implements PlayerSpecificTrade {
+	/** One of V33a's {@code UATypeTrade}s. */
+	public enum TradeType {
+		ARTEFACT(ChromaWorldGenProvider.UA_TRADE, "Thargoid Sensor", 0.2F),
+		META_ALLOY(ChromaWorldGenProvider.META_ALLOY_TRADE, "Meta-Alloys", 0.1F);
 
-		public final int emeraldValue;
+		public final ResourceKey<VillagerTrade> offer;
+		public final String priceID;
+		public final float chance;
 
-		protected UATypeTrade(ItemStack in, String priceID) {
-			super(in, new ItemStack(Items.emerald, calcValue(priceID), 0));
-			emeraldValue = calcValue(priceID);
+		TradeType(ResourceKey<VillagerTrade> offer, String priceID, float chance) {
+			this.offer = offer;
+			this.priceID = priceID;
+			this.chance = chance;
 		}
 
-		public abstract boolean isValidForVillager(EntityVillager ev);
-
-		@Override
-		public final void incrementToolUses() {
-			//No-op to prevent expiry
+		/** V33a {@code isValid(EntityPlayer)}. */
+		public boolean isValidFor(Player ep) {
+			return this != ARTEFACT || ProgressStage.ARTEFACT.isPlayerAtStage(ep);
 		}
 
+		/** V33a {@code isValidForVillager}. */
+		public boolean isValidForVillager(Villager ev) {
+			if (this == ARTEFACT)
+				return true;
+			var p = ev.getVillagerData().profession();
+			// 1.7.10 professions 0-2 were farmer, librarian and priest; the later careers split off them.
+			return p.is(VillagerProfession.FARMER) || p.is(VillagerProfession.FISHERMAN) || p.is(VillagerProfession.SHEPHERD)
+					|| p.is(VillagerProfession.FLETCHER) || p.is(VillagerProfession.LIBRARIAN)
+					|| p.is(VillagerProfession.CARTOGRAPHER) || p.is(VillagerProfession.CLERIC);
+		}
 	}
 
-	public static class UATrade extends UATypeTrade {
-
-		UATrade() {
-			super(ChromaItems.ARTEFACT.getStackOfMetadata(ArtefactTypes.ARTIFACT.ordinal()), "Thargoid Sensor");
+	private static void onVillagerInteract(PlayerInteractEvent.EntityInteract event) {
+		if (!(event.getTarget() instanceof Villager villager) || !(villager.level() instanceof ServerLevel level)
+				|| event.getHand() != net.minecraft.world.InteractionHand.MAIN_HAND)
+			return;
+		Player player = event.getEntity();
+		if (ReikaPlayerAPI.isFake(player))
+			return;
+		CompoundTag data = villager.getPersistentData();
+		MerchantOffers offers = villager.getOffers();
+		for (TradeType t : TradeType.values()) {
+			String rolled = ROLL_PREFIX + t.name().toLowerCase() + "_rolled";
+			String enabled = ROLL_PREFIX + t.name().toLowerCase();
+			if (!data.getBooleanOr(rolled, false)) {
+				data.putBoolean(rolled, true);
+				data.putBoolean(enabled, villager.getRandom().nextFloat() < t.chance && t.isValidForVillager(villager));
+			}
+			offers.removeIf(o -> isOffer(o, t));
+			if (data.getBooleanOr(enabled, false) && t.isValidFor(player))
+				createOffer(level, villager, t).ifPresent(offers::add);
 		}
-
-		@Override
-		public boolean isValid(EntityPlayer ep) {
-			return ProgressStage.ARTEFACT.isPlayerAtStage(ep);
-		}
-
-		@Override
-		public boolean isValidForVillager(EntityVillager ev) {
-			return true;
-		}
-
 	}
 
-	public static class MetaAlloyTrade extends UATypeTrade {
-
-		MetaAlloyTrade() {
-			super(ChromaBlocks.METAALLOYLAMP.getStackOf(), "Meta-Alloys");
-		}
-
-		@Override
-		public boolean isValid(EntityPlayer ep) {
-			return true;
-		}
-
-		@Override
-		public boolean isValidForVillager(EntityVillager ev) {
-			return ev.getProfession() < 3;
-		}
-
-	}
-	/*
-	public static class VoidOpalTrade extends UATypeTrade {
-
-		VoidOpalTrade() {
-			super(ChromaStacks.voidOpal, "Void Opals");
-		}
-
-		@Override
-		public boolean isValid(EntityPlayer ep) {
-			return true;
-		}
-
-	}*/
-
-	@Override
-	public void onServerRedirected() {
-		ChromatiCraft.logger.logError("Could not load commodity price data - server redirected!");
+	private static boolean isOffer(MerchantOffer o, TradeType t) {
+		return switch (t) {
+			case ARTEFACT -> o.getBaseCostA().is(reika.chromaticraft.registry.ChromaBlocks.UNKNOWN_ARTEFACT_ITEM.get());
+			case META_ALLOY -> o.getBaseCostA().is(reika.chromaticraft.registry.ChromaBlocks.META_ALLOY_LAMP.get().asItem());
+		};
 	}
 
-	@Override
-	public void onTimedOut() {
-		ChromatiCraft.logger.logError("Could not load commodity price data - timed out!");
+	private static Optional<MerchantOffer> createOffer(ServerLevel level, Villager villager, TradeType t) {
+		Optional<VillagerTrade> definition = level.registryAccess().lookupOrThrow(Registries.VILLAGER_TRADE)
+				.getOptional(t.offer);
+		if (definition.isEmpty())
+			return Optional.empty();
+		LootContext context = new LootContext.Builder(new LootParams.Builder(level)
+				.withParameter(LootContextParams.ORIGIN, villager.position())
+				.withParameter(LootContextParams.THIS_ENTITY, villager)
+				.withParameter(LootContextParams.ADDITIONAL_COST_COMPONENT_ALLOWED, net.minecraft.util.Unit.INSTANCE)
+				.create(LootContextParamSets.VILLAGER_TRADE)).create(Optional.empty());
+		return Optional.ofNullable(definition.get().getOffer(context));
 	}
 
-	@Override
-	public void onNoInternet() {
-		ChromatiCraft.logger.logError("Could not load commodity price data - no internet connection!");
-	}
-
-	@Override
-	public void onServerNotFound() {
-		ChromatiCraft.logger.logError("Could not load commodity price data - server not found!");
-	}
-
-	@Override
-	public final void onCertificateFailed() {
-		ChromatiCraft.logger.logError("Could not load commodity price data - your HTTP certificate is invalid!");
-	}
-
+	/** V33a {@code EDCommodityHook}: another mod's commodity, priced alongside these. */
 	public static interface EDCommodityHook {
 
 		/** EDDB id */
 		String getCommodityID();
 		/** Out of 1 */
 		double getChancePerVillager();
-		MerchantRecipe createTrade();
+		MerchantOffer createTrade();
 		void onPriceReceived(int average, int upper, int max);
 
 	}

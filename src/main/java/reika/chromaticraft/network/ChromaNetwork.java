@@ -37,6 +37,9 @@ public final class ChromaNetwork {
 				(payload, context) -> context.enqueueWork(() -> ClientPayloadHandlers.relayConnection(
 						payload.path(), element(payload.color()))));
 		registrar.playToClient(FertilitySeed.TYPE, FertilitySeed.CODEC, ChromaNetwork::handleFertilitySeed);
+		registrar.playToClient(ArtefactClick.TYPE, ArtefactClick.CODEC, ChromaNetwork::handleArtefactClick);
+		registrar.playToClient(ArtefactFx.TYPE, ArtefactFx.CODEC, ChromaNetwork::handleArtefactFx);
+		registrar.playToClient(ArtefactZone.TYPE, ArtefactZone.CODEC, ChromaNetwork::handleArtefactZone);
 		registrar.playToClient(EnderEyeSync.TYPE, EnderEyeSync.CODEC, ChromaNetwork::handleEnderEyeSync);
 		registrar.playToClient(FarmerHarvest.TYPE, FarmerHarvest.CODEC,
 				(payload, context) -> context.enqueueWork(() ->
@@ -212,6 +215,56 @@ public final class ChromaNetwork {
 
 	private static void handleEnderEyeSync(EnderEyeSync payload, IPayloadContext context) {
 		context.enqueueWork(() -> ClientPayloadHandlers.enderEyeSync(payload.entityId(), payload.ticks()));
+	}
+
+	/** V33a ARTEFACTCLICK: a touched artefact's burst, for players within 64 blocks. */
+	public record ArtefactClick(BlockPos pos) implements CustomPacketPayload {
+		public static final Type<ArtefactClick> TYPE = createType("artefact_click");
+		public static final StreamCodec<ByteBuf, ArtefactClick> CODEC = StreamCodec.composite(
+				BlockPos.STREAM_CODEC, ArtefactClick::pos, ArtefactClick::new);
+		@Override public Type<ArtefactClick> type() { return TYPE; }
+	}
+
+	public static void sendArtefactClick(ServerLevel level, BlockPos pos) {
+		PacketDistributor.sendToPlayersNear(level, null, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, 64,
+				new ArtefactClick(pos));
+	}
+
+	private static void handleArtefactClick(ArtefactClick payload, IPayloadContext context) {
+		context.enqueueWork(() -> ClientPayloadHandlers.artefactClick(payload.pos()));
+	}
+
+	/** V33a UAFX: the field around a buried, not-yet-real artefact, shown to the one player it spawned for. */
+	public record ArtefactFx(double x, double y, double z) implements CustomPacketPayload {
+		public static final Type<ArtefactFx> TYPE = createType("artefact_fx");
+		public static final StreamCodec<ByteBuf, ArtefactFx> CODEC = StreamCodec.composite(
+				net.minecraft.network.codec.ByteBufCodecs.DOUBLE, ArtefactFx::x,
+				net.minecraft.network.codec.ByteBufCodecs.DOUBLE, ArtefactFx::y,
+				net.minecraft.network.codec.ByteBufCodecs.DOUBLE, ArtefactFx::z, ArtefactFx::new);
+		@Override public Type<ArtefactFx> type() { return TYPE; }
+	}
+
+	public static void sendArtefactFx(ServerPlayer player, double x, double y, double z) {
+		PacketDistributor.sendToPlayer(player, new ArtefactFx(x, y, z));
+	}
+
+	private static void handleArtefactFx(ArtefactFx payload, IPayloadContext context) {
+		context.enqueueWork(() -> ClientPayloadHandlers.artefactFx(payload.x(), payload.y(), payload.z()));
+	}
+
+	/** V33a ARTEZONEPARTICLES: the player stands in an artefact zone; keep the UAZONE shader alive. */
+	public record ArtefactZone() implements CustomPacketPayload {
+		public static final Type<ArtefactZone> TYPE = createType("artefact_zone");
+		public static final StreamCodec<ByteBuf, ArtefactZone> CODEC = StreamCodec.unit(new ArtefactZone());
+		@Override public Type<ArtefactZone> type() { return TYPE; }
+	}
+
+	public static void sendArtefactZone(ServerPlayer player) {
+		PacketDistributor.sendToPlayer(player, new ArtefactZone());
+	}
+
+	private static void handleArtefactZone(ArtefactZone payload, IPayloadContext context) {
+		context.enqueueWork(ClientPayloadHandlers::artefactZone);
 	}
 
 	/** V33a FERTILITYSEED packet: one fertilised block, sparkled for players within 96 blocks. */

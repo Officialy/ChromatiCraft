@@ -163,6 +163,23 @@ public final class ClientPayloadHandlers {
 		ChromaParticle.spawnMusicMemoryNote(mc.level, memory, key);
 	}
 
+	public static void artefactClick(BlockPos pos) {
+		Minecraft mc = Minecraft.getInstance();
+		if (mc.level != null)
+			ChromaParticle.spawnArtefactClick(mc.level, pos);
+	}
+
+	public static void artefactFx(double x, double y, double z) {
+		Minecraft mc = Minecraft.getInstance();
+		if (mc.level != null)
+			ChromaParticle.spawnUnknownArtefactField(mc.level, x, y, z, true);
+	}
+
+	public static void artefactZone() {
+		if (Minecraft.getInstance().level != null)
+			reika.chromaticraft.client.render.ArtefactZoneScreenEffect.refresh(Minecraft.getInstance().level);
+	}
+
 	public static void enderEyeSync(int entityId, int ticks) {
 		Minecraft mc = Minecraft.getInstance();
 		if (mc.level != null && mc.level.getEntity(entityId) instanceof reika.chromaticraft.entity.EntityEnderEyeT2 eye)
