@@ -50,6 +50,7 @@ public final class LuminousCliffsFogRenderer {
 	private static final List<Cloud> clouds = new ArrayList<>();
 	private static final Random rand = new Random();
 	private static long lastStep = -1;
+	private static Object lastLevel;
 
 	private LuminousCliffsFogRenderer() {}
 
@@ -64,17 +65,23 @@ public final class LuminousCliffsFogRenderer {
 	@SubscribeEvent
 	public static void onRenderLevel(RenderLevelStageEvent.AfterTranslucentBlocks event) {
 		Minecraft mc = Minecraft.getInstance();
-		if (mc.level == null || mc.player == null) {
+		if (mc.level == null || mc.player == null || mc.level != lastLevel) {
 			clouds.clear();
-			return;
+			lastStep = -1;
+			lastLevel = mc.level;
+			if (mc.level == null || mc.player == null)
+				return;
 		}
 		Vec3 camera = event.getLevelRenderState().cameraRenderState.pos;
 		Vec3 player = mc.player.position();
 
 		long now = System.nanoTime();
-		int steps = lastStep < 0 ? 1 : (int)Math.min(20, (now - lastStep) / STEP_NANOS);
-		if (steps > 0)
-			lastStep = lastStep < 0 ? now : lastStep + (long)(steps * STEP_NANOS);
+		long owed = lastStep < 0 ? 1 : (long)((now - lastStep) / STEP_NANOS);
+		int steps = (int)Math.min(20, owed);
+		if (lastStep < 0 || owed > steps)
+			lastStep = now; // after a stall, drop the backlog rather than fast-forward through it
+		else if (steps > 0)
+			lastStep += (long)(steps * STEP_NANOS);
 
 		double v = 0.125;
 		double a = ((4 * mc.level.getGameTime()) % 24000) / 24000D * (Math.PI * 2);
