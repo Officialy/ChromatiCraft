@@ -175,6 +175,9 @@ public class ChromaLang extends LanguageProvider {
 			add(ChromaItems.STORAGE_CRYSTALS.get(tier).get(),
 					tier.displayPrefix() + " Energy Storage Crystal");
 		add(ChromaItems.SPEED_UPGRADE.get(), "Speed Upgrade"); // V33a chromamisc.speed
+		// V33a chroma.fertileseed: every potency shares the one name.
+		for (var seed : ChromaItems.FERTILITY_SEEDS)
+			add(seed.get(), "Fertility Seeds");
 		add(ChromaBlocks.CRYSTAL_CHARGER.get(), "Storage Crystal Charger"); // V33a chroma.charger
 		add(ChromaBlocks.PYLON_TURBOCHARGER.get(), "Energy Focal Point"); // V33a chroma.pylonturbo
 		add(ChromaBlocks.COLLECTOR.get(), "Chroma Collector"); // V33a chroma.collector

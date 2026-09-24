@@ -163,6 +163,12 @@ public final class ClientPayloadHandlers {
 		ChromaParticle.spawnMusicMemoryNote(mc.level, memory, key);
 	}
 
+	public static void fertilitySeed(BlockPos pos) {
+		Minecraft mc = Minecraft.getInstance();
+		if (mc.level != null && mc.player != null)
+			ChromaParticle.spawnFertilitySeed(mc.level, pos, mc.player);
+	}
+
 	public static void shardBoost(BlockPos source, CrystalElement colour) {
 		Minecraft mc = Minecraft.getInstance();
 		if (mc.level != null)

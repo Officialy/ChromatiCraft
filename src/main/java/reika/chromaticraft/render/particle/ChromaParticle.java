@@ -213,6 +213,30 @@ public abstract class ChromaParticle extends SingleQuadParticle {
 				0x00c000, 10, 4F, false));
 	}
 
+	/**
+	 * V33a {@code ItemFertilitySeed.doFertilizeFX}: green-hued stationary blurs scattered through the
+	 * fertilised block's bounds, fewer and shorter-lived the further the viewer is.
+	 */
+	public static void spawnFertilitySeed(Level world, BlockPos pos, net.minecraft.world.entity.player.Player viewer) {
+		if (!(world instanceof ClientLevel level)) return;
+		double d = viewer.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
+		int n = d >= 4096 ? 4 : d >= 1024 ? 6 : 8;
+		int maxl = d >= 4096 ? 20 : d >= 576 ? 30 : 40;
+		net.minecraft.world.phys.AABB box = level.getBlockState(pos).getShape(level, pos).isEmpty()
+				? new net.minecraft.world.phys.AABB(0, 0, 0, 1, 1, 1)
+				: level.getBlockState(pos).getShape(level, pos).bounds();
+		RandomSource rand = level.getRandom();
+		for (int i = 0; i < n; i++) {
+			double px = pos.getX() + box.minX + (box.maxX - box.minX) * rand.nextDouble();
+			double py = pos.getY() + box.minY + (box.maxY - box.minY) * rand.nextDouble();
+			double pz = pos.getZ() + box.minZ + (box.maxZ - box.minZ) * rand.nextDouble();
+			int c = reika.dragonapi.libraries.rendering.ReikaColorAPI.getModifiedHue(0x00ff00, 80 + rand.nextInt(71));
+			float f = 0.5F + rand.nextFloat();
+			int l = 10 + rand.nextInt(maxl - 10 + 1);
+			Minecraft.getInstance().particleEngine.add(new FadeGlow(level, px, py, pz, 0, 0, 0, c, l, f, false));
+		}
+	}
+
 	/** V33a dropped-shard charging mote: one matching rune rising from a randomized item edge. */
 	public static void spawnShardCharging(Level world, ItemEntity item, CrystalElement color,
 			RandomSource random) {

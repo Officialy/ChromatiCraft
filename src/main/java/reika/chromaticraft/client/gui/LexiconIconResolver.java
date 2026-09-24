@@ -168,6 +168,7 @@ public final class LexiconIconResolver {
 					reika.chromaticraft.registry.StorageCrystalTier.NULA).get();
 			case "elemental" -> ChromaItems.ELEMENTAL_STONES.get(CrystalElement.BLUE).get();
 			case "datacrystal" -> ChromaItems.DATA_CRYSTAL.get();
+			case "fertilityseed" -> ChromaItems.FERTILITY_SEEDS.getFirst().get();
 			default -> null;
 		};
 	}

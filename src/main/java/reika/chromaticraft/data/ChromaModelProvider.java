@@ -217,6 +217,13 @@ public class ChromaModelProvider extends ModelProvider {
 		Item speedUpgrade = ChromaItems.SPEED_UPGRADE.get();
 		itemModelOut.accept(speedUpgrade, ItemModelUtils.plainModel(ModelTemplates.FLAT_ITEM.create(
 				ModelLocationUtils.getModelLocation(speedUpgrade), TextureMapping.layer0(speedUpgrade), modelOut)));
+		Identifier seedTexture = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "item/fertility_seeds");
+		for (var seed : ChromaItems.FERTILITY_SEEDS) {
+			Item item = seed.get();
+			itemModelOut.accept(item, ItemModelUtils.plainModel(ModelTemplates.FLAT_ITEM.create(
+					ModelLocationUtils.getModelLocation(item),
+					new TextureMapping().put(TextureSlot.LAYER0, new Material(seedTexture)), modelOut)));
+		}
 		for (Item item : List.of(ChromaItems.GLOW_CAVE_DUST.get(), ChromaItems.UNKNOWN_ARTEFACT_FRAGMENT.get())) {
 			itemModelOut.accept(item, ItemModelUtils.plainModel(ModelTemplates.FLAT_ITEM.create(
 					ModelLocationUtils.getModelLocation(item), TextureMapping.layer0(item), modelOut)));

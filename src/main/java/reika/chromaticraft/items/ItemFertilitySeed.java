@@ -11,148 +11,155 @@ package reika.chromaticraft.items;
 
 import java.util.Random;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockSapling;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.particle.EntityFX;
-import net.minecraft.entity.item.EntityItem;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.init.Blocks;
-import net.minecraft.item.ItemDye;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.MathHelper;
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.util.Mth;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.BoneMealItem;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.context.UseOnContext;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.SaplingBlock;
+import net.minecraft.world.level.block.state.BlockState;
 
-import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.base.ItemChromaBasic;
-import reika.chromaticraft.registry.ChromaPackets;
-import reika.chromaticraft.render.particle.EntityCCBlurFX;
+import reika.chromaticraft.network.ChromaNetwork;
 import reika.dragonapi.auxiliary.ProgressiveRecursiveBreaker;
-import reika.dragonapi.auxiliary.progressiverecursivebreaker.BreakerCallback;
-import reika.dragonapi.auxiliary.progressiverecursivebreaker.ProgressiveBreaker;
-import reika.dragonapi.instantiable.data.WeightedRandom;
+import reika.dragonapi.auxiliary.ProgressiveRecursiveBreaker.BreakerCallback;
+import reika.dragonapi.auxiliary.ProgressiveRecursiveBreaker.ProgressiveBreaker;
 import reika.dragonapi.instantiable.event.BlockTickEvent;
-import reika.dragonapi.instantiable.event.blocktickevent.UpdateFlags;
-import reika.dragonapi.libraries.io.ReikaPacketHelper;
+import reika.dragonapi.instantiable.event.BlockTickEvent.UpdateFlags;
 import reika.dragonapi.libraries.java.ReikaRandomHelper;
 import reika.dragonapi.libraries.registry.ReikaCropHelper;
-import reika.dragonapi.libraries.rendering.ReikaColorAPI;
 import reika.dragonapi.modregistry.ModCropList;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
-
-
-public class ItemFertilitySeed extends ItemChromaBasic implements BreakerCallback {
+/**
+ * V33a Fertility Seeds, shaken loose from Glow Roots.
+ *
+ * <p>Seven potencies, V33a's metadata 0-6, each now its own registered item. Dropped on the ground, a seed
+ * waits {@link #INITIAL_DELAY} ticks and then, for ten ticks, force-ticks {@code (2 + 2*potency) * count}
+ * random grass, mycelium, sapling or crop blocks within two blocks sideways and one up or down, before
+ * vanishing. Used on dirt, it spreads grass over up to three connected blocks of dirt under light-passing
+ * cover; used on anything else, it works as bone meal.
+ *
+ * <p>Seeds fall through leaves (see {@code ChromaFertilitySeedEvents}) so roots under a canopy still
+ * drop them to the ground, and a seed that has woken up cannot be picked back up.
+ */
+public class ItemFertilitySeed extends Item implements BreakerCallback {
 
 	public static final int INITIAL_DELAY = 40;
+	public static final int POTENCIES = 7;
 
-	private static final Random fxRand = new Random();
-	private final WeightedRandom<Integer> dropChances = new WeightedRandom();
+	private final int potency;
 
-	public int getRandomAmbientDropMeta(Random rand) {
-		dropChances.setRNG(rand);
-		return dropChances.getRandomEntry();
+	public ItemFertilitySeed(int potency, Properties properties) {
+		super(properties.stacksTo(8));
+		this.potency = potency;
 	}
 
-	public ItemFertilitySeed(int tex) {
-		super(tex);
-		this.setMaxStackSize(8);
-		hasSubtypes = true;
-		this.setMaxDamage(0);
+	public int getPotency() {
+		return potency;
+	}
 
-		for (int i = 0; i <= 6; i++)
-			dropChances.addEntry(i, 125-i*20);
+	/** V33a {@code getRandomAmbientDropMeta}: potency {@code i} weighted {@code 125 - 20i}. */
+	public static int getRandomAmbientDropPotency(RandomSource rand) {
+		int total = 0;
+		for (int i = 0; i < POTENCIES; i++)
+			total += 125 - i * 20;
+		int pick = rand.nextInt(total);
+		for (int i = 0; i < POTENCIES; i++) {
+			pick -= 125 - i * 20;
+			if (pick < 0)
+				return i;
+		}
+		return POTENCIES - 1;
 	}
 
 	@Override
-	public boolean onItemUse(ItemStack is, EntityPlayer ep, World world, int x, int y, int z, int s, float a, float b, float c) {
-		if (world.getBlock(x, y, z) == Blocks.dirt && !world.isRemote) {
-			ProgressiveBreaker br = ProgressiveRecursiveBreaker.instance.addCoordinateWithReturn(world, x, y, z, 3);
-			br.drops = false;
-			br.tickRate = 2;
-			br.player = ep;
-			br.hungerFactor = 0;
-			br.causeUpdates = false;
-			br.call = this;
-			if (!ep.capabilities.isCreativeMode)
-				is.stackSize--;
-			return true;
+	public InteractionResult useOn(UseOnContext context) {
+		Level world = context.getLevel();
+		BlockPos pos = context.getClickedPos();
+		ItemStack is = context.getItemInHand();
+		Player ep = context.getPlayer();
+		if (world.getBlockState(pos).is(Blocks.DIRT)) {
+			if (!world.isClientSide()) {
+				ProgressiveBreaker br = ProgressiveRecursiveBreaker.instance.addBlockPosWithReturn(world, pos, 3);
+				br.drops = false;
+				br.tickRate = 2;
+				br.player = ep;
+				br.hungerFactor = 0;
+				br.causeUpdates = false;
+				br.call = this;
+				if (ep == null || !ep.getAbilities().instabuild)
+					is.shrink(1);
+			}
+			return InteractionResult.SUCCESS;
 		}
-		else if (ItemDye.applyBonemeal(is, world, x, y, z, ep))
-			return true;
-		return false;
+		if (BoneMealItem.growCrop(is, world, pos)) {
+			if (!world.isClientSide())
+				world.levelEvent(1505, pos, 15);
+			return InteractionResult.SUCCESS;
+		}
+		return InteractionResult.PASS;
 	}
 
 	@Override
-	public boolean onEntityItemUpdate(EntityItem ei) {
-		if (ei.age >= 4800) //compensating for creative setAgeToDespawn
-			ei.age -= 4800;
-		if (ei.age < INITIAL_DELAY) {
-			//vanilla code
+	public boolean onEntityItemUpdate(ItemStack stack, ItemEntity ei) {
+		int age = ei.getAge();
+		if (age < INITIAL_DELAY) {
+			// vanilla behaviour until the seed wakes
 		}
-		else if (!ei.worldObj.isRemote && ei.age < INITIAL_DELAY+10) {
-			int x0 = MathHelper.floor_double(ei.posX);
-			int y0 = MathHelper.floor_double(ei.posY);
-			int z0 = MathHelper.floor_double(ei.posZ);
-			if (ei.worldObj.checkChunksExist(x0-3, y0-3, z0-3, x0+3, y0+3, z0+3)) {
-				ItemStack is = ei.getEntityItem();
-				int ticks = (2+2*is.getItemDamage())*is.stackSize;
+		else if (ei.level() instanceof ServerLevel world && age < INITIAL_DELAY + 10) {
+			int x0 = Mth.floor(ei.getX());
+			int y0 = Mth.floor(ei.getY());
+			int z0 = Mth.floor(ei.getZ());
+			if (world.hasChunksAt(x0 - 3, y0 - 3, z0 - 3, x0 + 3, y0 + 3, z0 + 3)) {
+				Random rand = new Random(world.getRandom().nextLong());
+				int ticks = (2 + 2 * potency) * stack.getCount();
 				for (int i = 0; i < ticks; i++) {
-					int x = ReikaRandomHelper.getRandomPlusMinus(x0, 2);
-					int y = ReikaRandomHelper.getRandomPlusMinus(y0, 1);
-					int z = ReikaRandomHelper.getRandomPlusMinus(z0, 2);
-					Block b = ei.worldObj.getBlock(x, y, z);
-					if (this.canTickBlock(b, ei.worldObj.getBlockMetadata(x, y, z))) {
-						BlockTickEvent.fire(b, ei.worldObj, x, y, z, UpdateFlags.FORCED);
-						ReikaPacketHelper.sendDataPacketWithRadius(ChromatiCraft.packetChannel, ChromaPackets.FERTILITYSEED.ordinal(), ei.worldObj, x, y, z, 96);
+					BlockPos pos = new BlockPos(ReikaRandomHelper.getRandomPlusMinus(x0, 2, rand),
+							ReikaRandomHelper.getRandomPlusMinus(y0, 1, rand),
+							ReikaRandomHelper.getRandomPlusMinus(z0, 2, rand));
+					BlockState b = world.getBlockState(pos);
+					if (this.canTickBlock(world, pos, b)) {
+						BlockTickEvent.fire(b, world, pos, UpdateFlags.FORCED);
+						ChromaNetwork.sendFertilitySeed(world, pos);
 					}
 				}
 			}
 		}
-		else {
-			ei.setDead();
+		else if (!ei.level().isClientSide() && age >= INITIAL_DELAY + 10) {
+			ei.discard();
 			return true;
 		}
 		return false;
 	}
 
-	@SideOnly(Side.CLIENT)
-	public static void doFertilizeFX(World world, int x, int y, int z) {
-		double d = Minecraft.getMinecraft().thePlayer.getDistanceSq(x+0.5, y+0.5, z+0.5);
-		int n = d >= 4096 ? 4 : d >= 1024 ? 6 : 8;
-		int maxl = d >= 4096 ? 20 : d >= 576 ? 30 : 40;
-		Block b = world.getBlock(x, y, z);
-		b.setBlockBoundsBasedOnState(world, x, y, z);
-		for (int i = 0; i < n; i++) {
-			double px = x+b.getBlockBoundsMinX()+(b.getBlockBoundsMaxX()-b.getBlockBoundsMinX())*fxRand.nextDouble();
-			double py = y+b.getBlockBoundsMinY()+(b.getBlockBoundsMaxY()-b.getBlockBoundsMinY())*fxRand.nextDouble();
-			double pz = z+b.getBlockBoundsMinZ()+(b.getBlockBoundsMaxZ()-b.getBlockBoundsMinZ())*fxRand.nextDouble();
-			int c = ReikaColorAPI.getModifiedHue(0x00ff00, ReikaRandomHelper.getRandomBetween(80, 150));
-			float f = 0.5F+fxRand.nextFloat();
-			int l = ReikaRandomHelper.getRandomBetween(10, maxl);
-			EntityFX fx = new EntityCCBlurFX(world, px, py, pz).setColor(c).setScale(f).setLife(l);
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-		}
-	}
-
-	private boolean canTickBlock(Block b, int meta) {
-		return b == Blocks.grass || b == Blocks.mycelium || b instanceof BlockSapling || ReikaCropHelper.isCrop(b) || ModCropList.isModCrop(b, meta);
+	private boolean canTickBlock(Level world, BlockPos pos, BlockState b) {
+		Block block = b.getBlock();
+		return block == Blocks.GRASS_BLOCK || block == Blocks.MYCELIUM || block instanceof SaplingBlock
+				|| ReikaCropHelper.isCrop(block) || ModCropList.isModCrop(world, pos, b);
 	}
 
 	@Override
-	public boolean canBreak(ProgressiveBreaker b, World world, int x, int y, int z, Block id, int meta) {
-		return id == Blocks.dirt && world.getBlock(x, y+1, z).getLightOpacity(world, x, y+1, z) <= 2;
+	public boolean canBreak(ProgressiveBreaker b, Level world, BlockPos pos, Block id) {
+		return id == Blocks.DIRT && world.getBlockState(pos.above()).getLightDampening() <= 2;
 	}
 
 	@Override
-	public void onPreBreak(ProgressiveBreaker b, World world, int x, int y, int z, Block id, int meta) {
+	public void onPreBreak(ProgressiveBreaker b, Level world, BlockPos pos, Block id) {
 
 	}
 
 	@Override
-	public void onPostBreak(ProgressiveBreaker b, World world, int x, int y, int z, Block id, int meta) {
-		world.setBlock(x, y, z, Blocks.grass);
+	public void onPostBreak(ProgressiveBreaker b, Level world, BlockPos pos, Block id) {
+		world.setBlock(pos, Blocks.GRASS_BLOCK.defaultBlockState(), 3);
 	}
 
 	@Override
@@ -160,4 +167,8 @@ public class ItemFertilitySeed extends ItemChromaBasic implements BreakerCallbac
 
 	}
 
+	/** V33a's leaf-passthrough target: every leaf block, which the tag covers along with dye and glow leaves. */
+	public static boolean passesThrough(BlockState state) {
+		return state.is(BlockTags.LEAVES);
+	}
 }

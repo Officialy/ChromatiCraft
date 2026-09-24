@@ -131,6 +131,16 @@ public final class ChromaItems {
 	public static final DeferredItem<reika.chromaticraft.items.tools.ItemEnderCrystal> ENDER_CRYSTAL_MOVER =
 			reg("ender_crystal_mover", () -> new reika.chromaticraft.items.tools.ItemEnderCrystal(
 					itemProperties()));
+	/** V33a FERTILITYSEED metadata 0-6: one registered item per potency, all "Fertility Seeds". */
+	public static final java.util.List<DeferredItem<reika.chromaticraft.items.ItemFertilitySeed>> FERTILITY_SEEDS =
+			new java.util.ArrayList<>();
+	static {
+		for (int i = 0; i < reika.chromaticraft.items.ItemFertilitySeed.POTENCIES; i++) {
+			final int potency = i;
+			FERTILITY_SEEDS.add(reg("fertility_seeds_" + i,
+					() -> new reika.chromaticraft.items.ItemFertilitySeed(potency, itemProperties())));
+		}
+	}
 	/** V33a ARTEFACT metadata 1. It has none of the harmful full-artefact behavior. */
 	public static final DeferredItem<Item> UNKNOWN_ARTEFACT_FRAGMENT =
 			reg("unknown_artefact_fragment", () -> new Item(itemProperties().stacksTo(1)));

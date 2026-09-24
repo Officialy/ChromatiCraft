@@ -36,6 +36,7 @@ public final class ChromaNetwork {
 		registrar.playToClient(RelayConnection.TYPE, RelayConnection.CODEC,
 				(payload, context) -> context.enqueueWork(() -> ClientPayloadHandlers.relayConnection(
 						payload.path(), element(payload.color()))));
+		registrar.playToClient(FertilitySeed.TYPE, FertilitySeed.CODEC, ChromaNetwork::handleFertilitySeed);
 		registrar.playToClient(FarmerHarvest.TYPE, FarmerHarvest.CODEC,
 				(payload, context) -> context.enqueueWork(() ->
 						ClientPayloadHandlers.farmerHarvest(payload.source(), payload.target())));
@@ -192,6 +193,23 @@ public final class ChromaNetwork {
 	public static void sendPylonTurboFx(ServerLevel level, BlockPos source, int effect, int data) {
 		PacketDistributor.sendToPlayersNear(level, null, source.getX() + 0.5, source.getY() + 0.5,
 				source.getZ() + 0.5, 256, new PylonTurboFx(source, effect, data));
+	}
+
+	/** V33a FERTILITYSEED packet: one fertilised block, sparkled for players within 96 blocks. */
+	public record FertilitySeed(BlockPos pos) implements CustomPacketPayload {
+		public static final Type<FertilitySeed> TYPE = createType("fertility_seed");
+		public static final StreamCodec<ByteBuf, FertilitySeed> CODEC = StreamCodec.composite(
+				BlockPos.STREAM_CODEC, FertilitySeed::pos, FertilitySeed::new);
+		@Override public Type<FertilitySeed> type() { return TYPE; }
+	}
+
+	public static void sendFertilitySeed(ServerLevel level, BlockPos pos) {
+		PacketDistributor.sendToPlayersNear(level, null, pos.getX() + 0.5, pos.getY() + 0.5,
+				pos.getZ() + 0.5, 96, new FertilitySeed(pos));
+	}
+
+	private static void handleFertilitySeed(FertilitySeed payload, IPayloadContext context) {
+		context.enqueueWork(() -> ClientPayloadHandlers.fertilitySeed(payload.pos()));
 	}
 
 	public record FarmerHarvest(BlockPos source, BlockPos target) implements CustomPacketPayload {

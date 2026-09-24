@@ -69,8 +69,14 @@ public final class BlockGlowRoot extends Block {
             level.levelEvent(2001, pos, Block.getId(state));
             level.levelEvent(2001, target, Block.getId(grown));
         }
-        // CHROMA-PORT: V33a also emits a weighted Fertility Seed on 1/4 non-growth ticks.
-        // Restore that call when the seven concrete (former metadata) Fertility Seed items land.
+        // V33a Flowers.GLOWROOT.tick, run only on ticks that did not grow: one tick in four, with the
+        // surrounding 33x33 area loaded, it drops a Fertility Seed of weighted potency.
+        else if (random.nextInt(4) == 0 && level.hasChunksAt(pos.getX() - 16, pos.getY(), pos.getZ() - 16,
+                pos.getX() + 16, pos.getY(), pos.getZ() + 16)) {
+            int potency = reika.chromaticraft.items.ItemFertilitySeed.getRandomAmbientDropPotency(random);
+            net.minecraft.world.level.block.Block.popResource(level, pos, new net.minecraft.world.item.ItemStack(
+                    reika.chromaticraft.registry.ChromaItems.FERTILITY_SEEDS.get(potency).get()));
+        }
     }
 
     @Override
