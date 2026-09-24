@@ -29,7 +29,7 @@ public final class OverworldBiomePresence {
 
 	private OverworldBiomePresence() {}
 
-	private record Identities(Registry<Biome> registry, Biome enderForest, Biome rainbowStream) {}
+	private record Identities(Registry<Biome> registry, Biome enderForest, Biome rainbowStream, Biome rainbowForest) {}
 
 	/** Written on the client thread, read from meshing threads; one volatile reference, never torn. */
 	private static volatile Identities identities;
@@ -40,6 +40,11 @@ public final class OverworldBiomePresence {
 	public static final ColorResolver RAINBOW_STREAM =
 			(biome, x, z) -> biome == identity(ChromaBiomes.RAINBOW_STREAM) ? 0xffffff : 0x000000;
 
+	/** V33a {@code ChromatiCraft.isRainbowForest}: the forest or its stream. */
+	public static final ColorResolver RAINBOW_FOREST = (biome, x, z) ->
+			biome != null && (biome == identity(ChromaBiomes.RAINBOW_FOREST) || biome == identity(ChromaBiomes.RAINBOW_STREAM))
+					? 0xffffff : 0x000000;
+
 	private static Biome identity(ResourceKey<Biome> key) {
 		Identities current = identities;
 		if (current == null) {
@@ -48,10 +53,12 @@ public final class OverworldBiomePresence {
 				return null;
 			Registry<Biome> registry = level.registryAccess().lookupOrThrow(Registries.BIOME);
 			current = new Identities(registry, registry.getValue(ChromaBiomes.ENDER_FOREST),
-					registry.getValue(ChromaBiomes.RAINBOW_STREAM));
+					registry.getValue(ChromaBiomes.RAINBOW_STREAM), registry.getValue(ChromaBiomes.RAINBOW_FOREST));
 			identities = current;
 		}
-		return key == ChromaBiomes.ENDER_FOREST ? current.enderForest() : current.rainbowStream();
+		if (key == ChromaBiomes.ENDER_FOREST)
+			return current.enderForest();
+		return key == ChromaBiomes.RAINBOW_FOREST ? current.rainbowForest() : current.rainbowStream();
 	}
 
 	/** Drops the cached identities when the client leaves a level. */

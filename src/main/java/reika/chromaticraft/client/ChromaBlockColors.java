@@ -200,6 +200,7 @@ public final class ChromaBlockColors {
         event.register(ProximaBiomeColors.PROXIMA_PRESENCE);
         event.register(OverworldBiomePresence.ENDER_FOREST);
         event.register(OverworldBiomePresence.RAINBOW_STREAM);
+        event.register(OverworldBiomePresence.RAINBOW_FOREST);
     }
 
     @SubscribeEvent

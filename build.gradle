@@ -183,6 +183,7 @@ sourceSets.main.java {
       include 'reika/chromaticraft/client/OverworldBiomePresence.java'
       include 'reika/chromaticraft/client/EnderForestColors.java'
       include 'reika/chromaticraft/client/ChromaWaterColors.java'
+    include 'reika/chromaticraft/client/RainbowForestLogGlow.java'
       include 'reika/chromaticraft/client/CrystalRuneTextures.java'
       include 'reika/chromaticraft/client/LuminousCliffsColors.java'
       include 'reika/chromaticraft/client/ChromaModelOutlineRenderer.java'

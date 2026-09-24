@@ -68,7 +68,13 @@ probability, retuned to the live option by the `rainbow_forest_spawn_density` bi
 `colorSheep` is not ported: it only ran for the bare `LivingSpawnEvent` class, which Forge 1.7.10
 never posts, so it was dead upstream.
 
-Next: the Rainbow Forest log glow overlay. Then Luminous Cliffs parity. ColorTreeGenerator (overworld-wide dye trees) is a
+**Rainbow Forest, unit 4 — log glow**: `RainbowForestLogGlow` wraps every pillar block's model and,
+for logs (tag checked at mesh time) in the Rainbow Forest whose trunk ends in a natural dye leaf, adds
+V33a's second-pass overlay: one of the five animated `dye/tree_overlay` sprites (chosen by the
+`woodGlowNoise` field) on each exposed side, full-bright, in the leaf's dye colour. CHROMA-PORT: the
+LOS-ability suppression. Needs an in-game look.
+
+Rainbow Forest is complete apart from the gaps listed above. Next: Luminous Cliffs parity. Then Luminous Cliffs parity. ColorTreeGenerator (overworld-wide dye trees) is a
 separate follow-up.
 
 ## Working checkpoint — 2026-08-16 (Proxima decoration blocks)
