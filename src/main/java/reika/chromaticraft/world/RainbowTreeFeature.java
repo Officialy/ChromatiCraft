@@ -43,17 +43,33 @@ public final class RainbowTreeFeature extends Feature<NoneFeatureConfiguration> 
 		RandomSource random = context.random();
 		BlockPos origin = context.origin();
 		BlockState log = chooseLog(random);
-		if (canPlaceLargeTree(world, origin, log)) {
-			prepareLargeTreeGround(world, origin);
-			NBTStructureLoader.place(world, ChromaStructureTemplateProvider.RAINBOW_TREE,
-					origin, LARGE_TREE_ANCHOR, state -> replaceTemplateLog(state, log), 2);
+		if (placeLarge(world, origin, log))
 			return true;
-		}
 		// V33a only tries the small rainbow silhouette one time in five after the large authored
 		// tree is obstructed. The caller's remaining weighted-tree fallback is outside this feature.
 		if (random.nextInt(5) != 0)
 			return false;
+		return placeSmall(world, origin, random, log);
+	}
 
+	/**
+	 * V33a {@code checkRainbowTreeSpace} + {@code generateLargeRainbowTree}: the authored tree, only
+	 * where it fits. Its leaves are then given their distance to the trunk; see {@link LeafDistances}.
+	 */
+	static boolean placeLarge(WorldGenLevel world, BlockPos origin, BlockState log) {
+		if (!canPlaceLargeTree(world, origin, log))
+			return false;
+		prepareLargeTreeGround(world, origin);
+		NBTStructureLoader.place(world, ChromaStructureTemplateProvider.RAINBOW_TREE,
+				origin, LARGE_TREE_ANCHOR, state -> replaceTemplateLog(state, log), 2);
+		// The template is 10x32x10 with its anchor at (5,3,5).
+		LeafDistances.updateBox(world, origin.offset(-LARGE_TREE_ANCHOR.getX(), -LARGE_TREE_ANCHOR.getY(), -LARGE_TREE_ANCHOR.getZ()),
+				origin.offset(10 - 1 - LARGE_TREE_ANCHOR.getX(), 32 - 1 - LARGE_TREE_ANCHOR.getY(), 10 - 1 - LARGE_TREE_ANCHOR.getZ()));
+		return true;
+	}
+
+	/** V33a {@code tryGenerateSmallRainbowTree(..., 1)}. */
+	static boolean placeSmall(WorldGenLevel world, BlockPos origin, RandomSource random, BlockState log) {
 		BlockState leaves = ChromaBlocks.RAINBOW_LEAVES.get().defaultBlockState();
 		int lowerCrown = 2 + random.nextInt(3);
 		int height = lowerCrown + Mth.ceil(5 + random.nextInt(7));
@@ -100,6 +116,10 @@ public final class RainbowTreeFeature extends Feature<NoneFeatureConfiguration> 
 			}
 		}
 		placeLeaf(world, origin.above(height + 1), leaves);
+		java.util.List<BlockPos> trunk = new java.util.ArrayList<>();
+		for (int layer = 0; layer < height; layer++)
+			trunk.add(origin.above(layer));
+		LeafDistances.update(world, trunk);
 		return true;
 	}
 
@@ -143,7 +163,8 @@ public final class RainbowTreeFeature extends Feature<NoneFeatureConfiguration> 
 		}
 	}
 
-	private static BlockState chooseLog(RandomSource random) {
+	/** One uniformly chosen overworld log for a whole tree; shared with {@link TreeShaper}. */
+	static BlockState chooseLog(RandomSource random) {
 		List<BlockState> logs = StreamSupport.stream(
 				BuiltInRegistries.BLOCK.getTagOrEmpty(BlockTags.OVERWORLD_NATURAL_LOGS).spliterator(), false)
 				.map(Holder::value)

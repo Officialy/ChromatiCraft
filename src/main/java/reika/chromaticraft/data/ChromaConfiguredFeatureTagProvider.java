@@ -25,6 +25,7 @@ public final class ChromaConfiguredFeatureTagProvider extends TagsProvider<Confi
 
     @Override
     protected void addTags(HolderLookup.Provider registries) {
-        this.tag(FeatureTags.CAN_SPAWN_FROM_BONE_MEAL).add(ChromaWorldGenProvider.ENDER_FOREST_FLOWER);
+        this.tag(FeatureTags.CAN_SPAWN_FROM_BONE_MEAL).add(ChromaWorldGenProvider.ENDER_FOREST_FLOWER,
+                ChromaWorldGenProvider.RAINBOW_FOREST_FLOWER);
     }
 }

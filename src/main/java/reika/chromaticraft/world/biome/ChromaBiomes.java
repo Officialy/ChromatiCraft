@@ -3,7 +3,6 @@ package reika.chromaticraft.world.biome;
 import net.minecraft.core.HolderGetter;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.BiomeDefaultFeatures;
-import net.minecraft.data.worldgen.placement.AquaticPlacements;
 import net.minecraft.data.worldgen.BootstrapContext;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
@@ -60,35 +59,44 @@ public final class ChromaBiomes {
         context.register(ENDER_FOREST, createEnderForest(features, carvers));
     }
 
+    /**
+     * V33a {@code BiomeRainbowForest} and {@code RainbowRiver}, decorated by {@code RainbowForestDecorator}
+     * and {@code DecoratorRainbowRiver}.
+     *
+     * <p>Upstream replaced the whole 1.7.10 decorator, so nothing vanilla decorates these biomes beyond
+     * the terrain passes every overworld biome shared (ores, lakes, dungeons, springs). There are no
+     * vanilla trees, bushes, mushrooms, pumpkins or mixed flowers: only dye trees, dye flowers,
+     * dandelions (and in the stream, poppies), grass, sugar cane, sand and clay, the sparkling ground and
+     * lights underground, and the odd rainbow tree. The stream uses the same decorator with its own
+     * counts, and no lava springs.
+     */
     private static Biome create(HolderGetter<PlacedFeature> features,
             HolderGetter<ConfiguredWorldCarver<?>> carvers, boolean stream) {
         MobSpawnSettings.Builder mobs = sourceSpawns();
         BiomeGenerationSettings.Builder generation = new BiomeGenerationSettings.Builder(features, carvers);
-        addGlobalOverworldGeneration(generation);
+        addGlobalOverworldGeneration(generation, !stream);
         BiomeDefaultFeatures.addDefaultOres(generation);
-        BiomeDefaultFeatures.addDefaultSoftDisks(generation);
-        BiomeDefaultFeatures.addForestFlowers(generation);
-        if (stream) {
-            BiomeDefaultFeatures.addWaterTrees(generation);
-        } else {
-            for (CrystalElement element : CrystalElement.elements) {
-                generation.addFeature(GenerationStep.Decoration.VEGETAL_DECORATION,
-                        features.getOrThrow(ChromaWorldGenProvider.dyeTreePlaced(element)));
-            }
-            generation.addFeature(GenerationStep.Decoration.VEGETAL_DECORATION,
-                    features.getOrThrow(ChromaWorldGenProvider.RAINBOW_TREE_PLACED));
-        }
-        BiomeDefaultFeatures.addBushes(generation);
-        BiomeDefaultFeatures.addDefaultFlowers(generation);
-        BiomeDefaultFeatures.addForestGrass(generation);
-        BiomeDefaultFeatures.addDefaultMushrooms(generation);
-        BiomeDefaultFeatures.addDefaultExtraVegetation(generation, true);
-        if (stream) {
-            // Keep the shared river features in vanilla River's order. FeatureSorter compares
-            // their relative order across every biome; moving seagrass ahead of bushes/flowers
-            // creates a River <-> Rainbow Stream cycle during worldgen bootstrap.
-            generation.addFeature(GenerationStep.Decoration.VEGETAL_DECORATION, AquaticPlacements.SEAGRASS_RIVER);
-        }
+        ChromaWorldGenProvider.RainbowDecoration deco = stream
+                ? ChromaWorldGenProvider.RAINBOW_STREAM_DECORATION : ChromaWorldGenProvider.RAINBOW_FOREST_DECORATION;
+        generation.addFeature(GenerationStep.Decoration.UNDERGROUND_ORES, features.getOrThrow(deco.sandDisk()));
+        generation.addFeature(GenerationStep.Decoration.UNDERGROUND_ORES, features.getOrThrow(deco.clayDisk()));
+        generation.addFeature(GenerationStep.Decoration.UNDERGROUND_ORES, features.getOrThrow(deco.lateSandDisk()));
+        generation.addFeature(GenerationStep.Decoration.UNDERGROUND_DECORATION,
+                features.getOrThrow(ChromaWorldGenProvider.RAINBOW_FOREST_UNDERGROUND_PLACED));
+        // V33a genDecorations order: dye flowers, then the auxiliary flowers, grass and reeds, and the
+        // trees last of all.
+        generation.addFeature(GenerationStep.Decoration.VEGETAL_DECORATION,
+                features.getOrThrow(ChromaWorldGenProvider.DYE_FLOWER_PATCH_PLACED));
+        generation.addFeature(GenerationStep.Decoration.VEGETAL_DECORATION, features.getOrThrow(deco.dandelion()));
+        if (deco.roses())
+            generation.addFeature(GenerationStep.Decoration.VEGETAL_DECORATION, features.getOrThrow(deco.rose()));
+        generation.addFeature(GenerationStep.Decoration.VEGETAL_DECORATION, features.getOrThrow(deco.grassPatch()));
+        generation.addFeature(GenerationStep.Decoration.VEGETAL_DECORATION, features.getOrThrow(deco.reedPatch()));
+        generation.addFeature(GenerationStep.Decoration.VEGETAL_DECORATION,
+                features.getOrThrow(ChromaWorldGenProvider.RAINBOW_FOREST_TREE_PLACED));
+        // Bone meal's plantFlower; count zero, never run by world generation.
+        generation.addFeature(GenerationStep.Decoration.VEGETAL_DECORATION,
+                features.getOrThrow(ChromaWorldGenProvider.RAINBOW_FOREST_FLOWER_PLACED));
 
         return new Biome.BiomeBuilder()
                 .hasPrecipitation(true)
@@ -275,11 +283,23 @@ public final class ChromaBiomes {
     }
 
     private static void addGlobalOverworldGeneration(BiomeGenerationSettings.Builder generation) {
+        addGlobalOverworldGeneration(generation, true);
+    }
+
+    /**
+     * 1.7.10's decorator made 50 water and 20 lava springs per chunk, vanilla's modern springs are its
+     * translation of those; {@code DecoratorRainbowRiver.generateLavaLakes} turns the lava ones off.
+     */
+    private static void addGlobalOverworldGeneration(BiomeGenerationSettings.Builder generation, boolean lavaSprings) {
         BiomeDefaultFeatures.addDefaultCarversAndLakes(generation);
         BiomeDefaultFeatures.addDefaultCrystalFormations(generation);
         BiomeDefaultFeatures.addDefaultMonsterRoom(generation);
         BiomeDefaultFeatures.addDefaultUndergroundVariety(generation);
-        BiomeDefaultFeatures.addDefaultSprings(generation);
+        if (lavaSprings)
+            BiomeDefaultFeatures.addDefaultSprings(generation);
+        else
+            generation.addFeature(GenerationStep.Decoration.FLUID_SPRINGS,
+                    net.minecraft.data.worldgen.placement.MiscOverworldPlacements.SPRING_WATER);
         BiomeDefaultFeatures.addSurfaceFreezing(generation);
     }
 

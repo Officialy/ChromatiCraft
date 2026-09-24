@@ -97,6 +97,26 @@ public final class ChromaFeatures {
     public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> ENDER_FOREST_FLOWER =
             FEATURES.register("ender_forest_flower", reika.chromaticraft.world.EnderForestFlowerFeature::new);
 
+    /** V33a TreeShaper as a configured feature: what dye saplings grow into. */
+    public static final DeferredHolder<Feature<?>, Feature<reika.chromaticraft.world.DyeTreeFeature.Config>> DYE_TREE =
+            FEATURES.register("dye_tree", reika.chromaticraft.world.DyeTreeFeature::new);
+
+    /** V33a RainbowForestGenerator: one Rainbow Forest tree attempt. */
+    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> RAINBOW_FOREST_TREE =
+            FEATURES.register("rainbow_forest_tree", reika.chromaticraft.world.RainbowForestTreeFeature::new);
+
+    /** V33a RainbowForestDecorator.generateDyeFlowers. */
+    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> DYE_FLOWER_PATCH =
+            FEATURES.register("dye_flower_patch", reika.chromaticraft.world.DyeFlowerPatchFeature::new);
+
+    /** V33a RainbowForestDecorator.generateUndergroundLight. */
+    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> RAINBOW_FOREST_UNDERGROUND =
+            FEATURES.register("rainbow_forest_underground", reika.chromaticraft.world.RainbowForestUndergroundFeature::new);
+
+    /** V33a BiomeRainbowForest.plantFlower, reached only by bone meal. */
+    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> RAINBOW_FOREST_FLOWER =
+            FEATURES.register("rainbow_forest_flower", reika.chromaticraft.world.RainbowForestFlowerFeature::new);
+
     public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> RAINBOW_TREE =
             FEATURES.register("rainbow_tree", reika.chromaticraft.world.RainbowTreeFeature::new);
 

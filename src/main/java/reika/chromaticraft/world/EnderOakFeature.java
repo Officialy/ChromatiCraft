@@ -290,6 +290,8 @@ public class EnderOakFeature extends Feature<NoneFeatureConfiguration> {
 			for (BlockPos pos : this.allLeaves())
 				if (!logs.contains(pos))
 					world.setBlock(pos, leaf, 2);
+			// Feature-placed leaves start at distance 7 and would decay on their first random tick.
+			LeafDistances.update(world, logs);
 		}
 
 		/** V33a Branch: logs along a polar vector, with leaves scattered around each half-step. */

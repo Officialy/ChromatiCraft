@@ -136,7 +136,6 @@ public final class ChromaWorldGenProvider {
     public static final ResourceKey<PlacedFeature> LUMINOUS_ISLAND_PLACED = placedKey("luminous_island");
     public static final ResourceKey<PlacedFeature> LUMINOUS_FLORA_PLACED = placedKey("luminous_flora");
     public static final ResourceKey<ConfiguredFeature<?, ?>> RAINBOW_TREE = configuredKey("rainbow_tree");
-    public static final ResourceKey<PlacedFeature> RAINBOW_TREE_PLACED = placedKey("rainbow_tree");
     public static final ResourceKey<ConfiguredFeature<?, ?>> GLOWING_TREE = configuredKey("glowing_tree");
     public static final ResourceKey<PlacedFeature> ENDER_FOREST_TREE_PLACED = placedKey("ender_forest_tree");
     public static final ResourceKey<PlacedFeature> ENDER_POOL_PLACED = placedKey("ender_pool");
@@ -148,14 +147,44 @@ public final class ChromaWorldGenProvider {
             configuredKey("ender_forest_flower");
     public static final ResourceKey<PlacedFeature> GLOWING_TREE_PLACED = placedKey("glowing_tree");
 
+    // V33a RainbowForestDecorator / DecoratorRainbowRiver. Every Rainbow placed feature is ChromatiCraft's
+    // own key, so no vanilla feature's relative order is shared with another biome (FeatureSorter).
+    public static final ResourceKey<PlacedFeature> RAINBOW_FOREST_TREE_PLACED = placedKey("rainbow_forest_tree");
+    public static final ResourceKey<PlacedFeature> DYE_FLOWER_PATCH_PLACED = placedKey("dye_flower_patch");
+    public static final ResourceKey<PlacedFeature> RAINBOW_FOREST_UNDERGROUND_PLACED = placedKey("rainbow_forest_underground");
+    public static final ResourceKey<PlacedFeature> RAINBOW_FOREST_FLOWER_PLACED = placedKey("rainbow_forest_flower");
+    /** The bone-meal feature; see {@code RainbowForestFlowerFeature}. */
+    public static final ResourceKey<ConfiguredFeature<?, ?>> RAINBOW_FOREST_FLOWER = configuredKey("rainbow_forest_flower");
+
+    /** Per-biome counts of the Rainbow auxiliary decoration: forest and stream. */
+    public record RainbowDecoration(String prefix, int sandDisks, int clayDisks, int lateSandDisks,
+            int dandelions, boolean roses, int grass, int reeds) {
+        public ResourceKey<PlacedFeature> sandDisk() { return placedKey(prefix + "_disk_sand"); }
+        public ResourceKey<PlacedFeature> clayDisk() { return placedKey(prefix + "_disk_clay"); }
+        public ResourceKey<PlacedFeature> lateSandDisk() { return placedKey(prefix + "_disk_sand_late"); }
+        public ResourceKey<PlacedFeature> dandelion() { return placedKey(prefix + "_dandelion"); }
+        public ResourceKey<PlacedFeature> rose() { return placedKey(prefix + "_rose"); }
+        public ResourceKey<PlacedFeature> grassPatch() { return placedKey(prefix + "_grass"); }
+        public ResourceKey<PlacedFeature> reedPatch() { return placedKey(prefix + "_reeds"); }
+    }
+
+    /**
+     * V33a RainbowForestDecorator: sandPerChunk2 3, clayPerChunk 1, sandPerChunk 1 (both sand loops use
+     * the sand generator), 16 dandelion attempts, grass 8, reeds 50 plus a further 10.
+     */
+    public static final RainbowDecoration RAINBOW_FOREST_DECORATION =
+            new RainbowDecoration("rainbow_forest", 3, 1, 1, 16, false, 8, 50 + 10);
+    /**
+     * V33a DecoratorRainbowRiver: sand2 /2 = 1, clay x9 = 9, sand x8 = 8, flowers x6 = 96 with a rose
+     * one time in four, grass x0.4 = 3, reeds x15 = 750 plus the same further 10.
+     */
+    public static final RainbowDecoration RAINBOW_STREAM_DECORATION =
+            new RainbowDecoration("rainbow_stream", 1, 9, 8, 96, true, 3, 750 + 10);
+
     private ChromaWorldGenProvider() {}
 
     public static ResourceKey<ConfiguredFeature<?, ?>> dyeTree(CrystalElement element) {
         return configuredKey("dye_tree_" + element.getEnglishName());
-    }
-
-    public static ResourceKey<PlacedFeature> dyeTreePlaced(CrystalElement element) {
-        return placedKey("dye_tree_" + element.getEnglishName());
     }
 
     private static Identifier coloredPylon(CrystalElement element) {
@@ -205,6 +234,21 @@ public final class ChromaWorldGenProvider {
                                                     .add(net.minecraft.world.level.block.Blocks.POPPY.defaultBlockState(), 2)
                                                     .add(net.minecraft.world.level.block.Blocks.DANDELION.defaultBlockState(), 1)))));
             registerConfigured(bootstrap, features, id("rainbow_tree"));
+            registerConfigured(bootstrap, features, id("rainbow_forest_tree"));
+            registerConfigured(bootstrap, features, id("dye_flower_patch"));
+            registerConfigured(bootstrap, features, id("rainbow_forest_underground"));
+            registerConfigured(bootstrap, features, id("rainbow_forest_flower"));
+            // V33a WorldGenFlowers(yellow_flower), WorldGenFlowers(red_flower) and WorldGenTallGrass
+            // (tallgrass meta 1): single blocks, each only where it can stand (SimpleBlockFeature).
+            bootstrap.register(configuredKey("rainbow_dandelion"), new ConfiguredFeature<>(Feature.SIMPLE_BLOCK,
+                    new net.minecraft.world.level.levelgen.feature.configurations.SimpleBlockConfiguration(
+                            BlockStateProvider.simple(Blocks.DANDELION))));
+            bootstrap.register(configuredKey("rainbow_rose"), new ConfiguredFeature<>(Feature.SIMPLE_BLOCK,
+                    new net.minecraft.world.level.levelgen.feature.configurations.SimpleBlockConfiguration(
+                            BlockStateProvider.simple(Blocks.POPPY))));
+            bootstrap.register(configuredKey("rainbow_grass"), new ConfiguredFeature<>(Feature.SIMPLE_BLOCK,
+                    new net.minecraft.world.level.levelgen.feature.configurations.SimpleBlockConfiguration(
+                            BlockStateProvider.simple(Blocks.SHORT_GRASS))));
             for (ChromaDecoFlowers flower : ChromaDecoFlowers.list)
                 registerConfigured(bootstrap, features, id(flower.registryName()));
             for (ChromaTieredPlants plant : ChromaTieredPlants.list)
@@ -259,9 +303,11 @@ public final class ChromaWorldGenProvider {
                                 ore.veinSize())));
             }
             HolderGetter<Biome> biomes = bootstrap.lookup(Registries.BIOME);
+            // V33a BlockDyeSapling grows a TreeShaper tree, not a vanilla blob tree.
             for (CrystalElement element : CrystalElement.elements) {
-                bootstrap.register(dyeTree(element), new ConfiguredFeature<>(Feature.TREE,
-                        dyeTreeConfiguration(element, biomes)));
+                bootstrap.register(dyeTree(element), new ConfiguredFeature<>(
+                        reika.chromaticraft.registry.ChromaFeatures.DYE_TREE.get(),
+                        reika.chromaticraft.world.DyeTreeFeature.Config.sapling(element)));
             }
             bootstrap.register(GLOWING_TREE, new ConfiguredFeature<>(Feature.TREE,
                     glowingTreeConfiguration(biomes)));
@@ -641,18 +687,93 @@ public final class ChromaWorldGenProvider {
 			registerPlaced(bootstrap, configured, NATURAL_BIOME_FRAGMENT, List.of(
 					RarityFilter.onAverageOnceEvery(1600), InSquarePlacement.spread(), BiomeFilter.biome()));
 			registerPlaced(bootstrap, configured, BIOME_FRAGMENT);
-            for (CrystalElement element : CrystalElement.elements) {
-                bootstrap.register(dyeTreePlaced(element), new PlacedFeature(configured.getOrThrow(dyeTree(element)),
-                        VegetationPlacements.treePlacement(RarityFilter.onAverageOnceEvery(2),
-                                ChromaBlocks.dyeSapling(element).get())));
-            }
-            bootstrap.register(RAINBOW_TREE_PLACED, new PlacedFeature(configured.getOrThrow(RAINBOW_TREE),
-                    VegetationPlacements.treePlacement(RarityFilter.onAverageOnceEvery(10),
-                            ChromaBlocks.RAINBOW_SAPLING.get())));
+            registerRainbowPlacements(bootstrap, configured);
             bootstrap.register(GLOWING_TREE_PLACED, new PlacedFeature(configured.getOrThrow(GLOWING_TREE),
                     VegetationPlacements.treePlacement(RarityFilter.onAverageOnceEvery(5), Blocks.OAK_SAPLING)));
         });
         return builder;
+    }
+
+    /**
+     * The Rainbow Forest's decoration. The whole-chunk passes are placed at the chunk's surface so the
+     * biome filter reads the surface biome, which is what V33a's 2D biome lookup meant.
+     */
+    private static void registerRainbowPlacements(BootstrapContext<PlacedFeature> bootstrap,
+            HolderGetter<ConfiguredFeature<?, ?>> configured) {
+        PlacementModifier surface = net.minecraft.world.level.levelgen.placement.HeightmapPlacement
+                .onHeightmap(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES);
+        // V33a: nine attempts per chunk, each standing on its column's top solid block.
+        registerPlaced(bootstrap, configured, id("rainbow_forest_tree"), List.of(
+                CountPlacement.of(9), InSquarePlacement.spread(), surface, BiomeFilter.biome()));
+        registerPlaced(bootstrap, configured, id("dye_flower_patch"), List.of(surface, BiomeFilter.biome()));
+        registerPlaced(bootstrap, configured, id("rainbow_forest_underground"), List.of(surface, BiomeFilter.biome()));
+        // Bone meal only; see ender_forest_flower.
+        registerPlaced(bootstrap, configured, id("rainbow_forest_flower"), List.of(CountPlacement.of(0), BiomeFilter.biome()));
+        for (RainbowDecoration deco : List.of(RAINBOW_FOREST_DECORATION, RAINBOW_STREAM_DECORATION))
+            registerRainbowDecoration(bootstrap, configured, deco);
+    }
+
+    /**
+     * V33a {@code RainbowForestDecorator.auxDeco}, with 1.7.10's own generators reproduced in placement
+     * modifiers:
+     * <ul>
+     * <li>disks are vanilla's (WorldGenSand(sand, 7) and WorldGenClay(4) are its radius 2-6 and 2-3
+     * disks, placed on the top solid block and only under water), with upstream's counts;</li>
+     * <li>flowers, grass and reeds start at {@code rand(128)}, a random height below 128, and succeed only
+     * where that lands near ground, which is why 1.7.10 needed so many attempts;</li>
+     * <li>WorldGenFlowers is 64 tries spread {@code rand(8)-rand(8)} across and {@code rand(4)-rand(4)}
+     * up, into air, where the flower can stand: a triangle(7, 3) offset exactly;</li>
+     * <li>WorldGenTallGrass first sinks through air and leaves to the ground, then makes 128 such tries;
+     * </li>
+     * <li>WorldGenReed is 20 tries spread {@code rand(4)-rand(4)} at the same height, into air beside
+     * water, each a column of 2 + rand(rand(3)+1); vanilla's sugar cane configured feature is that
+     * column exactly.</li>
+     * </ul>
+     */
+    private static void registerRainbowDecoration(BootstrapContext<PlacedFeature> bootstrap,
+            HolderGetter<ConfiguredFeature<?, ?>> configured, RainbowDecoration deco) {
+        var sand = configured.getOrThrow(net.minecraft.data.worldgen.features.MiscOverworldFeatures.DISK_SAND);
+        var clay = configured.getOrThrow(net.minecraft.data.worldgen.features.MiscOverworldFeatures.DISK_CLAY);
+        bootstrap.register(deco.sandDisk(), new PlacedFeature(sand, disk(deco.sandDisks())));
+        bootstrap.register(deco.clayDisk(), new PlacedFeature(clay, disk(deco.clayDisks())));
+        bootstrap.register(deco.lateSandDisk(), new PlacedFeature(sand, disk(deco.lateSandDisks())));
+
+        PlacementModifier legacyHeight = net.minecraft.world.level.levelgen.placement.HeightRangePlacement.uniform(
+                net.minecraft.world.level.levelgen.VerticalAnchor.absolute(0),
+                net.minecraft.world.level.levelgen.VerticalAnchor.absolute(127));
+        PlacementModifier intoAir = net.minecraft.world.level.levelgen.placement.BlockPredicateFilter.forPredicate(
+                net.minecraft.world.level.levelgen.blockpredicates.BlockPredicate.ONLY_IN_AIR_PREDICATE);
+        PlacementModifier flowerSpread = net.minecraft.world.level.levelgen.placement.RandomOffsetPlacement.ofTriangle(7, 3);
+
+        bootstrap.register(deco.dandelion(), new PlacedFeature(configured.getOrThrow(configuredKey("rainbow_dandelion")),
+                List.of(CountPlacement.of(deco.dandelions()), InSquarePlacement.spread(), legacyHeight, BiomeFilter.biome(),
+                        CountPlacement.of(64), flowerSpread, intoAir)));
+        if (deco.roses())
+            bootstrap.register(deco.rose(), new PlacedFeature(configured.getOrThrow(configuredKey("rainbow_rose")),
+                    List.of(CountPlacement.of(deco.dandelions()), RarityFilter.onAverageOnceEvery(4),
+                            InSquarePlacement.spread(), legacyHeight, BiomeFilter.biome(),
+                            CountPlacement.of(64), flowerSpread, intoAir)));
+
+        PlacementModifier groundBelow = reika.chromaticraft.world.SinkThroughAirPlacement.INSTANCE;
+        bootstrap.register(deco.grassPatch(), new PlacedFeature(configured.getOrThrow(configuredKey("rainbow_grass")),
+                List.of(CountPlacement.of(deco.grass()), InSquarePlacement.spread(), legacyHeight, groundBelow,
+                        BiomeFilter.biome(), CountPlacement.of(128), flowerSpread, intoAir)));
+
+        bootstrap.register(deco.reedPatch(), new PlacedFeature(
+                configured.getOrThrow(net.minecraft.data.worldgen.features.VegetationFeatures.SUGAR_CANE),
+                List.of(CountPlacement.of(deco.reeds()), InSquarePlacement.spread(), legacyHeight, BiomeFilter.biome(),
+                        CountPlacement.of(20),
+                        net.minecraft.world.level.levelgen.placement.RandomOffsetPlacement.ofTriangle(3, 0),
+                        net.minecraft.data.worldgen.features.VegetationFeatures.nearWaterPredicate(Blocks.SUGAR_CANE))));
+    }
+
+    /** Vanilla's disk placement (MiscOverworldPlacements) with V33a's count. */
+    private static List<PlacementModifier> disk(int count) {
+        return List.of(CountPlacement.of(count), InSquarePlacement.spread(), PlacementUtils.HEIGHTMAP_TOP_SOLID,
+                net.minecraft.world.level.levelgen.placement.BlockPredicateFilter.forPredicate(
+                        net.minecraft.world.level.levelgen.blockpredicates.BlockPredicate.matchesFluids(
+                                net.minecraft.world.level.material.Fluids.WATER)),
+                BiomeFilter.biome());
     }
 
 	private static ItemStackTemplate flawedFocusCrystal() {
@@ -661,15 +782,6 @@ public final class ChromaWorldGenProvider {
 		return new ItemStackTemplate(ChromaTiles.FOCUSCRYSTAL.getBlock().asItem(),
 				DataComponentPatch.builder().set(DataComponents.CUSTOM_DATA, CustomData.of(tag)).build());
 	}
-
-    private static TreeConfiguration dyeTreeConfiguration(CrystalElement element, HolderGetter<Biome> biomes) {
-        return new TreeConfiguration.TreeConfigurationBuilder(randomOverworldLog(),
-                new StraightTrunkPlacer(5, 2, 0),
-                BlockStateProvider.simple(ChromaBlocks.dyeLeaves(element).get()),
-                new BlobFoliagePlacer(ConstantInt.of(2), ConstantInt.of(0), 3),
-                new TwoLayersFeatureSize(1, 0, 1),
-                TreeConfiguration.defaultPlaceBelowTreeTrunkProvider(biomes)).ignoreVines().build();
-    }
 
     private static TreeConfiguration glowingTreeConfiguration(HolderGetter<Biome> biomes) {
         WeightedStateProvider foliage = new WeightedStateProvider(WeightedList.<BlockState>builder()

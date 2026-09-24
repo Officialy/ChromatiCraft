@@ -35,9 +35,30 @@ no 26.2 biome hook and is not reproduced.
   the Ender Forest colour cells were not upstream's either, despite the claim above; now they are),
   Voronoi displacement semantics and a cross-thread race in `getClosestRoot`.
 
-Next units: TreeShaper + Rainbow Forest generator + decorator rework (and leaf DISTANCE for
-feature-placed leaves, which currently decay), spawn rules/drops/density, then the Rainbow Forest
-log glow overlay. Then Luminous Cliffs parity. ColorTreeGenerator (overworld-wide dye trees) is a
+**Rainbow Forest, unit 2 — worldgen**:
+- `TreeShaper` ported in place: the BASIC/TALL/LUMPY dye trees layer for layer, vines and fertile
+  tips (including upstream's quirk where a fertile tip with no room below replaces its own leaf), and
+  `ColorTreeGenerator.canGenerateTree`'s site rules. `DyeTreeFeature` makes it a configured feature;
+  the `dye_tree_<colour>` keys now hold it, so dye saplings grow V33a trees (no stage, grow on the
+  first qualifying tick; bone meal always works where the tree fits) instead of vanilla blob trees.
+- `RainbowForestTreeFeature` (V33a RainbowForestGenerator): 9 attempts/chunk, colour from the
+  displaced 3D Voronoi field, 1/10 rainbow tree (large + mud ring, else 1/5 small) falling back to a
+  dye tree. The Thaumcraft Ethereal Bloom extra is CHROMA-PORT (disabled).
+- The biome lists are now exactly V33a's decorator: dye flowers (`DyeFlowerPatchFeature`), sparkle
+  ellipsoids + ethereal lights underground, sand/clay disks with upstream counts, dandelions (and
+  stream poppies), grass (`SinkThroughAirPlacement` for WorldGenTallGrass's descent; vanilla's scan caps
+  at 32), sugar cane, trees last; the stream has no lava springs. All vanilla trees, bushes,
+  mushrooms, pumpkins, mixed flowers and river seagrass are gone, as in V33a. 1.7.10's random-height
+  `rand(128)` attempts are reproduced with placement modifiers, so densities match upstream.
+- Bone meal: `RainbowForestFlowerFeature` (7/8 dye flower, else dandelion/poppy) is the only tagged
+  feature in both biomes.
+- Leaf decay: feature-placed leaves started at DISTANCE 7 and rotted on their first random tick.
+  `LeafDistances` now runs after TreeShaper, both rainbow trees and the Ender Oak.
+- Gaps recorded: V33a's height-based cooling (snow above y≈191 in the Rainbow Forest) has no 26.2
+  biome hook; the 0.095% grass-colour bias is not reproduced (below one colour step).
+- Needs an in-world check on a fresh world: datagen cannot detect FeatureSorter cycles.
+
+Next units: spawn rules/drops/density, then the Rainbow Forest log glow overlay. Then Luminous Cliffs parity. ColorTreeGenerator (overworld-wide dye trees) is a
 separate follow-up.
 
 ## Working checkpoint — 2026-08-16 (Proxima decoration blocks)
