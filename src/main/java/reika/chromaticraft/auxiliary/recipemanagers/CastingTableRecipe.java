@@ -29,6 +29,7 @@ import net.minecraft.world.level.Level;
 import reika.chromaticraft.registry.ChromaRecipeSerializers;
 import reika.chromaticraft.registry.ChromaRecipeTypes;
 import reika.chromaticraft.magic.progression.ProgressStage;
+import reika.chromaticraft.magic.progression.ResearchLevel;
 import reika.chromaticraft.registry.CrystalElement;
 
 /** Data-driven physical contract shared by the four V33a casting tiers. */
@@ -72,20 +73,29 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 	}
 	/**
 	 * Source recipe callbacks expressed as data instead of a runtime recipe-class hierarchy.
-	 * Storage crystals use all three parts: carry the central crystal's energy forward, award the
-	 * STORAGE stage on completion, and play the source 0.5/1/2 casting chord.
+	 * Storage crystals use three parts: carry the central crystal's energy forward, award the
+	 * STORAGE stage on completion, and play the source 0.5/1/2 casting chord. {@code stamp_caster}
+	 * is V33a {@code RepeaterRecipe.handleNBTResult}'s {@code caster} tag: the casting player's UUID
+	 * written into the result's custom data, which networking-tier repeaters read when placed.
 	 */
 	public record CompletionBehavior(boolean copyCenterCustomData,
-			List<ProgressStage> grantedProgress, List<Float> harmonics) {
-		public static final CompletionBehavior DEFAULT = new CompletionBehavior(false, List.of(), List.of());
+			List<ProgressStage> grantedProgress, List<Float> harmonics, boolean stampCaster) {
+		public static final CompletionBehavior DEFAULT = new CompletionBehavior(false, List.of(), List.of(), false);
 		public static final Codec<CompletionBehavior> CODEC = RecordCodecBuilder.create(instance -> instance.group(
 				Codec.BOOL.optionalFieldOf("copy_center_custom_data", false)
 						.forGetter(CompletionBehavior::copyCenterCustomData),
 				PROGRESS_CODEC.listOf().optionalFieldOf("granted_progress", List.of())
 						.forGetter(CompletionBehavior::grantedProgress),
 				Codec.FLOAT.listOf().optionalFieldOf("harmonics", List.of())
-						.forGetter(CompletionBehavior::harmonics)
+						.forGetter(CompletionBehavior::harmonics),
+				Codec.BOOL.optionalFieldOf("stamp_caster", false)
+						.forGetter(CompletionBehavior::stampCaster)
 		).apply(instance, CompletionBehavior::new));
+
+		public CompletionBehavior(boolean copyCenterCustomData, List<ProgressStage> grantedProgress,
+				List<Float> harmonics) {
+			this(copyCenterCustomData, grantedProgress, harmonics, false);
+		}
 
 		public CompletionBehavior {
 			grantedProgress = List.copyOf(grantedProgress);
@@ -123,6 +133,13 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 	 * bare-table tier.
 	 */
 	private final List<ProgressStage> requiredProgress;
+	/**
+	 * V33a research-tier checks in {@code canRunRecipe} overrides, e.g. {@code RepeaterRecipe}'s
+	 * {@code getPlayerResearchLevel(ep) >= NETWORKING}. Research tiers are not progress stages (a tier
+	 * also needs its gating Lexicon fragments), so they cannot be expressed through
+	 * {@link #requiredProgress}.
+	 */
+	private final ResearchLevel minimumResearch;
 	private final CompletionBehavior completion;
 
 	public CastingTableRecipe(Tier tier, List<GridIngredient> grid, List<StandIngredient> stands,
@@ -168,6 +185,18 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 			int duration, int experience, List<ProgressStage> requiredProgress,
 			float stackingFactor, boolean stackable, boolean requiresTuningKey,
 			int penaltyThreshold, float penaltyMultiplier, CompletionBehavior completion) {
+		this(tier, grid, stands, runes, aura, output, duration, experience, requiredProgress,
+				stackingFactor, stackable, requiresTuningKey, penaltyThreshold, penaltyMultiplier,
+				completion, ResearchLevel.ENTRY);
+	}
+
+	public CastingTableRecipe(Tier tier, List<GridIngredient> grid, List<StandIngredient> stands,
+			List<RuneRequirement> runes, List<AuraRequirement> aura, ItemStackTemplate output,
+			int duration, int experience, List<ProgressStage> requiredProgress,
+			float stackingFactor, boolean stackable, boolean requiresTuningKey,
+			int penaltyThreshold, float penaltyMultiplier, CompletionBehavior completion,
+			ResearchLevel minimumResearch) {
+		this.minimumResearch = minimumResearch;
 		this.penaltyThreshold = penaltyThreshold;
 		this.penaltyMultiplier = penaltyMultiplier;
 		this.requiredProgress = List.copyOf(requiredProgress);
@@ -187,6 +216,7 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 	}
 
 	public List<ProgressStage> requiredProgress() { return requiredProgress; }
+	public ResearchLevel minimumResearch() { return minimumResearch; }
 	public CompletionBehavior completion() { return completion; }
 
 	private void validate() {
@@ -265,19 +295,33 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 	public CastingTableRecipe withPenaltyThreshold(int threshold) {
 		return new CastingTableRecipe(tier, grid, stands, runes, aura, output, duration, experience,
 				requiredProgress, stackingFactor, stackable, requiresTuningKey, threshold,
-				penaltyMultiplier, completion);
+				penaltyMultiplier, completion, minimumResearch);
 	}
 	/** Datagen convenience for the few V33a recipes that override both penalty values. */
 	public CastingTableRecipe withPenalty(int threshold, float multiplier) {
 		return new CastingTableRecipe(tier, grid, stands, runes, aura, output, duration, experience,
 				requiredProgress, stackingFactor, stackable, requiresTuningKey, threshold,
-				multiplier, completion);
+				multiplier, completion, minimumResearch);
 	}
 	public CastingTableRecipe withCompletionBehavior(boolean copyCenterCustomData,
 			List<ProgressStage> grantedProgress, List<Float> harmonics) {
 		return new CastingTableRecipe(tier, grid, stands, runes, aura, output, duration, experience,
 				requiredProgress, stackingFactor, stackable, requiresTuningKey, penaltyThreshold,
-				penaltyMultiplier, new CompletionBehavior(copyCenterCustomData, grantedProgress, harmonics));
+				penaltyMultiplier, new CompletionBehavior(copyCenterCustomData, grantedProgress, harmonics,
+						completion.stampCaster()), minimumResearch);
+	}
+	/** Datagen convenience: V33a RepeaterRecipe.handleNBTResult's caster stamp. */
+	public CastingTableRecipe withCasterStamp() {
+		return new CastingTableRecipe(tier, grid, stands, runes, aura, output, duration, experience,
+				requiredProgress, stackingFactor, stackable, requiresTuningKey, penaltyThreshold,
+				penaltyMultiplier, new CompletionBehavior(completion.copyCenterCustomData(),
+						completion.grantedProgress(), completion.harmonics(), true), minimumResearch);
+	}
+	/** Datagen convenience: a V33a {@code canRunRecipe} research-tier check. */
+	public CastingTableRecipe withMinimumResearch(ResearchLevel level) {
+		return new CastingTableRecipe(tier, grid, stands, runes, aura, output, duration, experience,
+				requiredProgress, stackingFactor, stackable, requiresTuningKey, penaltyThreshold,
+				penaltyMultiplier, completion, level);
 	}
 	public int penaltyThreshold() { return penaltyThreshold; }
 	public float penaltyMultiplier() { return penaltyMultiplier; }
@@ -307,6 +351,11 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 		catch (IllegalArgumentException e) { return DataResult.error(() -> "Unknown progress stage '" + name + "'"); }
 	}, stage -> stage.name().toLowerCase(Locale.ROOT));
 
+	private static final Codec<ResearchLevel> RESEARCH_CODEC = Codec.STRING.comapFlatMap(name -> {
+		try { return DataResult.success(ResearchLevel.valueOf(name.toUpperCase(Locale.ROOT))); }
+		catch (IllegalArgumentException e) { return DataResult.error(() -> "Unknown research level '" + name + "'"); }
+	}, level -> level.name().toLowerCase(Locale.ROOT));
+
 	public static final MapCodec<CastingTableRecipe> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
 			Tier.CODEC.fieldOf("tier").forGetter(recipe -> recipe.tier),
 			GridIngredient.CODEC.listOf().optionalFieldOf("grid", List.of()).forGetter(recipe -> recipe.grid),
@@ -322,7 +371,8 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 			Codec.BOOL.optionalFieldOf("requires_tuning_key", false).forGetter(recipe -> recipe.requiresTuningKey),
 			Codec.intRange(1, Integer.MAX_VALUE).optionalFieldOf("penalty_threshold", Integer.MAX_VALUE).forGetter(recipe -> recipe.penaltyThreshold),
 			Codec.floatRange(0F, 1F).optionalFieldOf("penalty_multiplier", 0.75F).forGetter(recipe -> recipe.penaltyMultiplier),
-			CompletionBehavior.CODEC.optionalFieldOf("completion", CompletionBehavior.DEFAULT).forGetter(recipe -> recipe.completion)
+			CompletionBehavior.CODEC.optionalFieldOf("completion", CompletionBehavior.DEFAULT).forGetter(recipe -> recipe.completion),
+			RESEARCH_CODEC.optionalFieldOf("minimum_research", ResearchLevel.ENTRY).forGetter(recipe -> recipe.minimumResearch)
 	).apply(instance, CastingTableRecipe::new));
 
 
@@ -352,6 +402,8 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 		for (ProgressStage stage : recipe.completion.grantedProgress()) buffer.writeVarInt(stage.ordinal());
 		buffer.writeVarInt(recipe.completion.harmonics().size());
 		for (float pitch : recipe.completion.harmonics()) buffer.writeFloat(pitch);
+		buffer.writeBoolean(recipe.completion.stampCaster());
+		buffer.writeVarInt(recipe.minimumResearch.ordinal());
 	}
 	private static CastingTableRecipe decode(RegistryFriendlyByteBuf buffer) {
 		int tierOrdinal = buffer.readVarInt();
@@ -379,10 +431,15 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 		for (int i = buffer.readVarInt(); i > 0; i--) grantedProgress.add(ProgressStage.list[buffer.readVarInt()]);
 		List<Float> harmonics = new ArrayList<>();
 		for (int i = buffer.readVarInt(); i > 0; i--) harmonics.add(buffer.readFloat());
+		boolean stampCaster = buffer.readBoolean();
+		int researchOrdinal = buffer.readVarInt();
+		if (researchOrdinal < 0 || researchOrdinal >= ResearchLevel.levelList.length)
+			throw new IllegalArgumentException("Invalid research level ordinal " + researchOrdinal);
 		return new CastingTableRecipe(Tier.values()[tierOrdinal], grid, stands, runes, aura,
 				result, duration, experience, progress, stackingFactor, stackable, requiresTuningKey,
 				penaltyThreshold, penaltyMultiplier,
-				new CompletionBehavior(copyCenterCustomData, grantedProgress, harmonics));
+				new CompletionBehavior(copyCenterCustomData, grantedProgress, harmonics, stampCaster),
+				ResearchLevel.levelList[researchOrdinal]);
 	}
 	private static CrystalElement element(int ordinal) {
 		if (ordinal < 0 || ordinal >= CrystalElement.elements.length) throw new IllegalArgumentException("Invalid crystal element ordinal " + ordinal);

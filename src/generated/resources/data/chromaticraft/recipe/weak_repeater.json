@@ -1,0 +1,104 @@
+{
+  "type": "chromaticraft:casting",
+  "duration": 80,
+  "experience": 80,
+  "grid": [
+    {
+      "ingredient": "#minecraft:planks",
+      "slot": 0
+    },
+    {
+      "ingredient": "chromaticraft:transmissive_dust",
+      "slot": 1
+    },
+    {
+      "ingredient": "#minecraft:planks",
+      "slot": 2
+    },
+    {
+      "ingredient": "#c:rods/wooden",
+      "slot": 3
+    },
+    {
+      "ingredient": "chromaticraft:chroma_bucket",
+      "slot": 4
+    },
+    {
+      "ingredient": "#c:rods/wooden",
+      "slot": 5
+    },
+    {
+      "ingredient": "#minecraft:planks",
+      "slot": 6
+    },
+    {
+      "ingredient": "minecraft:glowstone_dust",
+      "slot": 7
+    },
+    {
+      "ingredient": "#minecraft:planks",
+      "slot": 8
+    }
+  ],
+  "minimum_research": "energy",
+  "required_progress": [
+    "charge",
+    "pylon",
+    "makechroma"
+  ],
+  "result": {
+    "count": 8,
+    "id": "chromaticraft:weak_repeater"
+  },
+  "runes": [
+    {
+      "element": "yellow",
+      "offset": [
+        -1,
+        -1,
+        2
+      ]
+    },
+    {
+      "element": "blue",
+      "offset": [
+        2,
+        -1,
+        -2
+      ]
+    },
+    {
+      "element": "white",
+      "offset": [
+        5,
+        -1,
+        5
+      ]
+    },
+    {
+      "element": "white",
+      "offset": [
+        -5,
+        -1,
+        -5
+      ]
+    },
+    {
+      "element": "black",
+      "offset": [
+        5,
+        -1,
+        0
+      ]
+    },
+    {
+      "element": "black",
+      "offset": [
+        -5,
+        -1,
+        0
+      ]
+    }
+  ],
+  "tier": "temple"
+}

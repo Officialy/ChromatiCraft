@@ -22,6 +22,7 @@ import reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe.RuneRequi
 import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
 import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.magic.progression.ProgressionManager;
+import reika.chromaticraft.magic.progression.ResearchLevel;
 import reika.chromaticraft.registry.*;
 
 import java.util.ArrayList;
@@ -147,6 +148,7 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 			// wooden planks/stick, Transmissive Dust and glowstone dust. It is a four-times-duration
 			// Temple cast (80 ticks), twice the normal temple XP (80), with two ring runes and the
 			// four authored outer runes. The bucket's normal crafting remainder returns the empty pail.
+			// V33a canRunRecipe also demanded research tier ENERGY or above; see withMinimumResearch.
 			saveShapedTemple("weak_repeater",
 					new ItemStackTemplate(ChromaBlocks.WEAK_REPEATER.get().asItem(), 8), 80, 80,
 					List.of(ProgressStage.CHARGE, ProgressStage.PYLON, ProgressStage.MAKECHROMA),
@@ -161,6 +163,7 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 							'c', Ingredient.of(ChromaItems.CHROMA_BUCKET.get()),
 							'r', Ingredient.of(Items.GLOWSTONE_DUST)),
 					"wgw", "scs", "wrw");
+			saveCrystalRepeater();
 
 			// V33a RelayRecipe: the smooth Crystalline Stone centre is retained as an auxiliary
 			// ingredient too, alongside three glowstone dusts and the matching boosted shard.
@@ -1016,9 +1019,68 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 		private void saveShapedTemple(String name, ItemStackTemplate result, int duration, int energy,
 				List<ProgressStage> progress, List<RuneRequirement> runes,
 				Map<Character, Ingredient> ingredients, String... pattern) {
-			saveRecipe(name, new CastingTableRecipe(CastingTableRecipe.Tier.TEMPLE,
+			CastingTableRecipe recipe = new CastingTableRecipe(CastingTableRecipe.Tier.TEMPLE,
 					shapedGrid(ingredients, pattern), List.of(), runes, List.of(),
-					result, duration, energy, progress));
+					result, duration, energy, progress);
+			// V33a WeakRepeaterRecipe.canRunRecipe: research tier ENERGY or above.
+			if (name.equals("weak_repeater"))
+				recipe = recipe.withMinimumResearch(ResearchLevel.ENERGY);
+			saveRecipe(name, recipe);
+		}
+
+		/**
+		 * V33a {@code RecipeCrystalRepeater} (a {@code RepeaterRecipe}): sixteen Crystal Repeaters from
+		 * a Crystal Core, with Transmissive Dust on all sixteen outer-ring stands, charged white shards
+		 * on the four inner corners and the two inner X-axis stands, and Lumenite on the two Z-axis ones.
+		 *
+		 * <p>Multiblock tier. Duration is the tier's 100 ticks x2.4 (RepeaterRecipe) x4 = 960; experience
+		 * the tier's 200 x2 = 400. RepeaterRecipe's rune layout, its A5/D5 + F#5/D5 chord, and the
+		 * tuning key. {@code canRunRecipe} also needs research tier NETWORKING (having cast any
+		 * multiblock recipe, plus that tier's fragments) and BLOWREPEATER; {@code getRequiredProgress}
+		 * adds every prerequisite of REPEATER, read from the live DAG; {@code onCrafted} grants REPEATER,
+		 * which is what opens the PYLONCRAFT research tier. The result carries {@code boosted:false}
+		 * (turbochargeable repeaters always do) and the caster's UUID (networking-tier tiles).
+		 */
+		private void saveCrystalRepeater() {
+			Ingredient dust = tiered(ChromaTieredItems.BEACON_DUST);
+			Ingredient white = Ingredient.of(ChromaItems.BOOSTED_SHARDS.get(CrystalElement.WHITE).get());
+			Ingredient lumen = tiered(ChromaTieredItems.LUMEN_GEM);
+			List<CastingTableRecipe.StandIngredient> stands = new ArrayList<>();
+			int[][] ring = {{-4,-4},{-2,-4},{0,-4},{2,-4},{4,-4},{4,-2},{4,0},{4,2},
+					{4,4},{2,4},{0,4},{-2,4},{-4,4},{-4,2},{-4,0},{-4,-2}};
+			for (int[] pos : ring)
+				stands.add(auxStand(pos[0], pos[1], dust));
+			for (int[] pos : new int[][] {{-2,-2},{2,-2},{-2,2},{2,2},{2,0},{-2,0}})
+				stands.add(auxStand(pos[0], pos[1], white));
+			stands.add(auxStand(0, -2, lumen));
+			stands.add(auxStand(0, 2, lumen));
+
+			net.minecraft.nbt.CompoundTag boosted = new net.minecraft.nbt.CompoundTag();
+			boosted.putBoolean("boosted", false);
+			ItemStackTemplate result = new ItemStackTemplate(
+					ChromaBlocks.REPEATER.get().asItem().builtInRegistryHolder(), 16,
+					net.minecraft.core.component.DataComponentPatch.builder()
+							.set(net.minecraft.core.component.DataComponents.CUSTOM_DATA,
+									net.minecraft.world.item.component.CustomData.of(boosted))
+							.build());
+
+			List<ProgressStage> progress = new ArrayList<>(ProgressionManager.instance.getPrereqs(ProgressStage.REPEATER));
+			if (!progress.contains(ProgressStage.BLOWREPEATER))
+				progress.add(ProgressStage.BLOWREPEATER);
+			List<Float> chord = List.of(
+					(float)reika.dragonapi.libraries.mathsci.ReikaMusicHelper.MusicKey.A5.getRatio(
+							reika.dragonapi.libraries.mathsci.ReikaMusicHelper.MusicKey.D5),
+					(float)reika.dragonapi.libraries.mathsci.ReikaMusicHelper.MusicKey.Fs5.getRatio(
+							reika.dragonapi.libraries.mathsci.ReikaMusicHelper.MusicKey.D5));
+
+			saveRecipe("crystal_repeater", new CastingTableRecipe(CastingTableRecipe.Tier.MULTIBLOCK,
+					List.of(new GridIngredient(4, Ingredient.of(
+							ChromaItems.CLUSTERS.get(ChromaClusterItems.CRYSTAL_CORE).get()))),
+					stands, REPEATER_RUNES, List.of(), result, 960, 400, List.copyOf(progress),
+					0.75F, true, true, 1, 0.75F, CastingTableRecipe.CompletionBehavior.DEFAULT)
+					.withCompletionBehavior(false, List.of(ProgressStage.REPEATER), chord)
+					.withCasterStamp()
+					.withMinimumResearch(ResearchLevel.NETWORKING));
 		}
 
 		/**

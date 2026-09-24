@@ -1,0 +1,363 @@
+{
+  "type": "chromaticraft:casting",
+  "completion": {
+    "granted_progress": [
+      "repeater"
+    ],
+    "harmonics": [
+      1.4991482,
+      1.2606474
+    ],
+    "stamp_caster": true
+  },
+  "duration": 960,
+  "experience": 400,
+  "grid": [
+    {
+      "ingredient": "chromaticraft:crystal_core",
+      "slot": 4
+    }
+  ],
+  "minimum_research": "networking",
+  "penalty_threshold": 1,
+  "required_progress": [
+    "blowrepeater",
+    "energyidea",
+    "tunecast"
+  ],
+  "requires_tuning_key": true,
+  "result": {
+    "components": {
+      "minecraft:custom_data": {
+        "boosted": 0
+      }
+    },
+    "count": 16,
+    "id": "chromaticraft:crystal_repeater"
+  },
+  "runes": [
+    {
+      "element": "black",
+      "offset": [
+        0,
+        -1,
+        5
+      ]
+    },
+    {
+      "element": "black",
+      "offset": [
+        0,
+        -1,
+        -5
+      ]
+    },
+    {
+      "element": "black",
+      "offset": [
+        5,
+        -1,
+        0
+      ]
+    },
+    {
+      "element": "black",
+      "offset": [
+        -5,
+        -1,
+        0
+      ]
+    },
+    {
+      "element": "white",
+      "offset": [
+        5,
+        -1,
+        5
+      ]
+    },
+    {
+      "element": "white",
+      "offset": [
+        -5,
+        -1,
+        -5
+      ]
+    },
+    {
+      "element": "white",
+      "offset": [
+        5,
+        -1,
+        -5
+      ]
+    },
+    {
+      "element": "white",
+      "offset": [
+        -5,
+        -1,
+        5
+      ]
+    },
+    {
+      "element": "red",
+      "offset": [
+        -5,
+        -1,
+        -4
+      ]
+    },
+    {
+      "element": "red",
+      "offset": [
+        5,
+        -1,
+        4
+      ]
+    },
+    {
+      "element": "blue",
+      "offset": [
+        5,
+        -1,
+        -4
+      ]
+    },
+    {
+      "element": "blue",
+      "offset": [
+        -5,
+        -1,
+        4
+      ]
+    },
+    {
+      "element": "green",
+      "offset": [
+        -4,
+        -1,
+        -5
+      ]
+    },
+    {
+      "element": "green",
+      "offset": [
+        4,
+        -1,
+        5
+      ]
+    },
+    {
+      "element": "yellow",
+      "offset": [
+        4,
+        -1,
+        -5
+      ]
+    },
+    {
+      "element": "yellow",
+      "offset": [
+        -4,
+        -1,
+        5
+      ]
+    }
+  ],
+  "stands": [
+    {
+      "ingredient": "chromaticraft:transmissive_dust",
+      "offset": [
+        -4,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:transmissive_dust",
+      "offset": [
+        -2,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:transmissive_dust",
+      "offset": [
+        0,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:transmissive_dust",
+      "offset": [
+        2,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:transmissive_dust",
+      "offset": [
+        4,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:transmissive_dust",
+      "offset": [
+        4,
+        1,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:transmissive_dust",
+      "offset": [
+        4,
+        1,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:transmissive_dust",
+      "offset": [
+        4,
+        1,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:transmissive_dust",
+      "offset": [
+        4,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:transmissive_dust",
+      "offset": [
+        2,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:transmissive_dust",
+      "offset": [
+        0,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:transmissive_dust",
+      "offset": [
+        -2,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:transmissive_dust",
+      "offset": [
+        -4,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:transmissive_dust",
+      "offset": [
+        -4,
+        1,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:transmissive_dust",
+      "offset": [
+        -4,
+        1,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:transmissive_dust",
+      "offset": [
+        -4,
+        1,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_white",
+      "offset": [
+        -2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_white",
+      "offset": [
+        2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_white",
+      "offset": [
+        -2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_white",
+      "offset": [
+        2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_white",
+      "offset": [
+        2,
+        0,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_white",
+      "offset": [
+        -2,
+        0,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:lumenite",
+      "offset": [
+        0,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:lumenite",
+      "offset": [
+        0,
+        0,
+        2
+      ]
+    }
+  ],
+  "tier": "multiblock"
+}

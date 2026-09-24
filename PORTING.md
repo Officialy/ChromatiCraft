@@ -164,6 +164,47 @@ Forest generator's.
 - Not ported: retrogen and the `dyetree` rerun command (no decorator-rerun framework in the port).
 - Unverified in-game: FeatureSorter ordering with the new all-overworld VEGETAL feature.
 
+## Progression audit: game start → pylon crafting — 2026-09-24
+
+Pylon crafting = casting a PYLON-tier recipe. The table enforces PYLON + REPEATER for that tier, and
+research tier PYLONCRAFT only opens on REPEATER. Research tiers are sequential, and each one also needs
+every tier-gating Lexicon fragment of the tier below (`PlayerResearch.checkForUpgrade`, as V33a's
+`ChromaResearchManager`). The whole V33a ladder (ResearchLevel.canProgressTo + the ProgressionManager DAG),
+with the live 26.2 grant site for every stage on it:
+
+| Research tier | Opens when | Stage grant sites (26.2) |
+|---|---|---|
+| RAWEXPLORE | CRYSTALS: sight a cave crystal | `ExplorationMonitor` → `BlockCaveCrystal` |
+| BASICCRAFT | ANYSTRUCT: activate any generated structure | `TileEntityStructureController` |
+| RUNECRAFT | cast any CRAFTING-tier recipe (CASTING stage) | `TileEntityCastingTable` |
+| ENERGY | CHARGE (wand at a pylon) + PYLON (sight one) | `PylonCharging`, `BlockCrystalPylonTile` |
+| MULTICRAFT | cast any TEMPLE-tier recipe (needs RUNEUSE ← ALLCOLORS + CASTING) | table; ALLCOLORS auto |
+| NETWORKING | cast any MULTIBLOCK-tier recipe (needs MULTIBLOCK ← RUNEUSE + VILLAGECASTING) | table; village casting ruin chest |
+| PYLONCRAFT | REPEATER ← BLOWREPEATER + ENERGYIDEA + TUNECAST | **was none** — see below |
+
+REPEATER's prerequisites: BLOWREPEATER (overload a Wooden Repeater, ← USEENERGY ← PYLON + RUNEUSE),
+ENERGYIDEA (chained from FOCUSCRYSTAL or RELAYS once USEENERGY is held), TUNECAST (table tuning,
+← RUNEUSE + CHROMA + MULTIBLOCK; CHROMA ← MAKECHROMA ← CASTING). All had live grant sites.
+
+**The break:** REPEATER's only grant was V33a `RepeaterRecipe.onCrafted`, and `RecipeCrystalRepeater` was
+never ported. So no survival player could reach PYLONCRAFT, and the Crystal Repeaters that route pylon
+energy to the table were uncraftable. Ported as data (`crystal_repeater`): multiblock tier, Crystal Core
+centre, 16 Transmissive Dust (outer ring), 6 charged white shards and 2 Lumenite (inner), RepeaterRecipe's
+16 runes and A5/D5 + F#5/D5 chord, 960 ticks, 400 XP, 16 out, tuning key, penalty threshold 1.
+- Its `canRunRecipe` needed research ≥ NETWORKING, which no stage can express. The recipe schema gained
+  `minimum_research` (checked by the table against `ResearchProgress`). The Wooden Repeater's V33a
+  research ≥ ENERGY check, dropped when it was ported, is restored the same way.
+- `RepeaterRecipe.handleNBTResult` → new `completion.stamp_caster` (caster UUID in the result's custom
+  data) + `boosted:false` in the result template. `onCrafted` → `granted_progress: [repeater]`.
+- GameTest `weak_repeater_survival_loop` now also asserts the Crystal Repeater recipe and both gates
+  (written, **not yet run**).
+
+**Still looser than V33a (not a blocker):** `CastingRecipe.canRunRecipe` also required owning the
+recipe's own Lexicon fragment. The data-driven schema has no recipe↔fragment relation yet (see the
+casting GUI note), so casting never checks it. Not ported and not needed on this path:
+`RepeaterUpcraftRecipe`, `RepeaterTurboRecipe`, `CompoundRepeaterRecipe`, and `filterMatchTags`
+(stripping boosted/caster when a repeater is itself an ingredient).
+
 ## Working checkpoint — 2026-08-16 (Proxima decoration blocks)
 
 - Registered eight of V33a's ten `DimDecoTypes` as distinct blocks — Miasma, Floatstone, Lifewater,

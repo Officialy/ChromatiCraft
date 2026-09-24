@@ -8039,6 +8039,28 @@ public final class ChromaGameTests {
 				&& grid.get(4).test(new ItemStack(ChromaItems.CHROMA_BUCKET.get()))
 				&& grid.get(7).test(new ItemStack(Items.GLOWSTONE_DUST)),
 				"the 3x3 recipe must retain its plank, Transmissive Dust, stick, Liquid Chroma and glowstone layout");
+		helper.assertTrue(recipe.minimumResearch() == ResearchLevel.ENERGY,
+				"V33a WeakRepeaterRecipe.canRunRecipe requires research tier ENERGY");
+
+		// V33a RecipeCrystalRepeater: the only source of Crystal Repeaters and of the REPEATER stage,
+		// which opens PYLONCRAFT. Without it pylon-tier casting was unreachable in survival.
+		List<CastingTableRecipe> crystal = reika.chromaticraft.network.ChromaNetwork.guideCastingRecipes(
+				helper.getLevel().getServer().getRecipeManager(), ChromaBlocks.REPEATER.get().asItem());
+		helper.assertTrue(crystal.size() == 1, "crystal_repeater must have one registered casting recipe");
+		CastingTableRecipe cr = crystal.getFirst();
+		helper.assertTrue(cr.tier() == CastingTableRecipe.Tier.MULTIBLOCK
+				&& cr.output().getCount() == 16 && cr.duration() == 960 && cr.experience() == 400
+				&& cr.stands().size() == 24 && cr.runes().size() == 16 && cr.requiresTuningKey()
+				&& cr.minimumResearch() == ResearchLevel.NETWORKING
+				&& cr.requiredProgress().containsAll(List.of(ProgressStage.BLOWREPEATER,
+						ProgressStage.ENERGYIDEA, ProgressStage.TUNECAST))
+				&& cr.completion().grantedProgress().contains(ProgressStage.REPEATER)
+				&& cr.completion().stampCaster(),
+				"Crystal Repeater recipe must keep V33a's tier, yield, timing, stands, runes, key, gates and REPEATER grant");
+		helper.assertTrue(cr.grid().size() == 1 && cr.grid().getFirst().slot() == 4
+				&& cr.grid().getFirst().ingredient().test(new ItemStack(
+						ChromaItems.CLUSTERS.get(ChromaClusterItems.CRYSTAL_CORE).get())),
+				"the Crystal Repeater is cast on a Crystal Core");
 		helper.succeed();
 	}
 
