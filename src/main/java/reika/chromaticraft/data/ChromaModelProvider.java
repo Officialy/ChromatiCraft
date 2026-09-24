@@ -308,6 +308,8 @@ public class ChromaModelProvider extends ModelProvider {
 		runeBlock(blockStateOut, itemModelOut, modelOut);
 		encrustedBlock(blockStateOut, itemModelOut, modelOut);
 		dyeTreeBlocks(blockStateOut, itemModelOut, modelOut);
+		dyeFloraBlocks(blockStateOut, itemModelOut, modelOut);
+		sparkleBlocks(blockStateOut, itemModelOut, modelOut);
 		cliffBlocks(blockStateOut, itemModelOut, modelOut);
 		luminousPlants(blockStateOut, itemModelOut, modelOut);
 	}
@@ -1603,7 +1605,10 @@ public class ChromaModelProvider extends ModelProvider {
 			Identifier leavesModel = ModelTemplates.LEAVES.create(leaves, TextureMapping.cube(leavesTexture), modelOut);
 			blockStateOut.accept(MultiVariantGenerator.dispatch(leaves,
 					new MultiVariant(WeightedList.of(new Variant(leavesModel)))));
-			itemModelOut.accept(leaves.asItem(), ItemModelUtils.tintedModel(leavesModel, new Constant(element.getColor())));
+			// V33a ItemBlockDyeTypes defers to the leaf's getRenderColor for leaves, which is the dye
+			// palette; every other dye block item takes the crystal colour.
+			itemModelOut.accept(leaves.asItem(), ItemModelUtils.tintedModel(leavesModel, new Constant(
+					0xFF000000 | reika.dragonapi.libraries.registry.ReikaDyeHelper.dyes[element.ordinal()].getColor())));
 
 			Block sapling = ChromaBlocks.dyeSapling(element).get();
 			Identifier saplingModel = ModelTemplates.TINTED_CROSS.create(sapling, TextureMapping.cross(saplingTexture), modelOut);
@@ -1633,6 +1638,74 @@ public class ChromaModelProvider extends ModelProvider {
 				new MultiVariant(WeightedList.of(new Variant(rainbowSaplingModel)))));
 		itemModelOut.accept(rainbowSapling.asItem(), ItemModelUtils.plainModel(rainbowSaplingModel));
 	}
+	/**
+	 * V33a dye flowers and dye vines. Flowers are vanilla-style tinted crosses of the one greyscale
+	 * {@code dye/flower} sprite. Vines are {@code DyeVineModel}, which replays V33a's per-position
+	 * renderer. Both item forms are the flat first sprite in the crystal colour, which is what
+	 * {@code ItemBlockDyeTypes} tinted them with.
+	 */
+	private static void dyeFloraBlocks(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		Material flowerTexture = new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/dye/flower"));
+		Material vineTexture = new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/dye/vine/0"));
+		List<Identifier> strands = new java.util.ArrayList<>();
+		for (int i = 0; i < 4; i++)
+			strands.add(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/dye/vine/" + i));
+		Identifier glow = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/dye/vine/glow");
+		for (CrystalElement element : CrystalElement.elements) {
+			Block flower = ChromaBlocks.dyeFlower(element).get();
+			Identifier flowerModel = ModelTemplates.TINTED_CROSS.create(flower, TextureMapping.cross(flowerTexture), modelOut);
+			blockStateOut.accept(MultiVariantGenerator.dispatch(flower,
+					new MultiVariant(WeightedList.of(new Variant(flowerModel)))));
+			Identifier flowerItem = ModelTemplates.FLAT_ITEM.create(ModelLocationUtils.getModelLocation(flower.asItem()),
+					TextureMapping.layer0(flowerTexture), modelOut);
+			itemModelOut.accept(flower.asItem(), ItemModelUtils.tintedModel(flowerItem, new Constant(element.getColor())));
+
+			for (boolean fertile : new boolean[] {false, true}) {
+				Block vine = ChromaBlocks.dyeVine(element, fertile).get();
+				blockStateOut.accept(customBlockState(vine,
+						new reika.chromaticraft.render.model.DyeVineModel.Unbaked(strands, glow)));
+				Identifier vineItem = ModelTemplates.FLAT_ITEM.create(ModelLocationUtils.getModelLocation(vine.asItem()),
+						TextureMapping.layer0(vineTexture), modelOut);
+				itemModelOut.accept(vine.asItem(), ItemModelUtils.tintedModel(vineItem, new Constant(element.getColor())));
+			}
+		}
+	}
+
+	/**
+	 * V33a sparkling blocks. In the world, {@code SparkleModel} draws the proxy's own block model with
+	 * the position-seeded motes over it. The item is V33a's inventory render: the proxy cube with the
+	 * {@code sparkle2} icon over every face, full-bright and greyed to 0x909090.
+	 */
+	private static void sparkleBlocks(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		Identifier fade = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/icons/basicfade");
+		Identifier fadeFast = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/icons/basicfade_f");
+		Identifier surround = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/dye/block");
+		for (reika.chromaticraft.block.worldgen26.BlockSparkle.Type type
+				: reika.chromaticraft.block.worldgen26.BlockSparkle.Type.list) {
+			Block block = ChromaBlocks.sparkle(type).get();
+			Identifier proxyModel = ModelLocationUtils.getModelLocation(type.getBlockProxy());
+			blockStateOut.accept(customBlockState(block, new reika.chromaticraft.render.model.SparkleModel.Unbaked(
+					new net.minecraft.client.renderer.block.dispatch.SingleVariant.Unbaked(new Variant(proxyModel)),
+					fade, fadeFast, surround)));
+
+			String[] base = new String[Direction.values().length];
+			String[] sparkle = new String[Direction.values().length];
+			java.util.Arrays.fill(base, proxyModel.toString());
+			java.util.Arrays.fill(sparkle, ChromatiCraft.MODID + ":block/icons/sparkle2");
+			Identifier itemModel = ModelLocationUtils.getModelLocation(block.asItem());
+			modelOut.accept(itemModel, () -> {
+				JsonObject model = layeredCube(base, sparkle);
+				JsonObject glowElement = model.getAsJsonArray("elements").get(1).getAsJsonObject();
+				for (var face : glowElement.getAsJsonObject("faces").entrySet())
+					face.getValue().getAsJsonObject().addProperty("tintindex", 0);
+				return model;
+			});
+			itemModelOut.accept(block.asItem(), ItemModelUtils.tintedModel(itemModel, new Constant(0x909090)));
+		}
+	}
+
 	private static void crystalChargerModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
 			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
 		Material particle = new Material(Identifier.fromNamespaceAndPath(

@@ -34,6 +34,10 @@ public final class ChromaLootProviders {
 			TUNING_SCALED_COUNT = NUMBER_PROVIDERS.register("tuning_scaled_count",
 					() -> TuningScaledCount.MAP_CODEC);
 
+	public static final DeferredHolder<MapCodec<? extends NumberProvider>, MapCodec<reika.chromaticraft.auxiliary.loot.FortuneBonusCount>>
+			FORTUNE_BONUS_COUNT = NUMBER_PROVIDERS.register("fortune_bonus_count",
+					() -> reika.chromaticraft.auxiliary.loot.FortuneBonusCount.MAP_CODEC);
+
 	public static final DeferredRegister<MapCodec<? extends LootItemCondition>> CONDITIONS =
 			DeferredRegister.create(BuiltInRegistries.LOOT_CONDITION_TYPE, ChromatiCraft.MODID);
 

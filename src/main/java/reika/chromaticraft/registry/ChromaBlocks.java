@@ -190,6 +190,78 @@ public final class ChromaBlocks {
 		return List.of(blocks);
 	}
 
+	/**
+	 * V33a DYEFLOWER, DYEVINE and FERTILEDYEVINE were each one block with sixteen metadata colours; here
+	 * every colour of each is its own id.
+	 */
+	public static final List<DeferredBlock<reika.chromaticraft.block.dye26.BlockDyeFlower>> DYE_FLOWERS =
+			registerDyeFlowers();
+	public static final List<DeferredBlock<reika.chromaticraft.block.dye26.BlockDyeVine>> DYE_VINES =
+			registerDyeVines(false);
+	public static final List<DeferredBlock<reika.chromaticraft.block.dye26.BlockDyeVine>> FERTILE_DYE_VINES =
+			registerDyeVines(true);
+	/** V33a SPARKLE, one id per former {@code BlockSparkle.BlockTypes} metadata. */
+	public static final Map<reika.chromaticraft.block.worldgen26.BlockSparkle.Type,
+			DeferredBlock<reika.chromaticraft.block.worldgen26.BlockSparkle>> SPARKLE = registerSparkle();
+
+	private static List<DeferredBlock<reika.chromaticraft.block.dye26.BlockDyeFlower>> registerDyeFlowers() {
+		DeferredBlock<reika.chromaticraft.block.dye26.BlockDyeFlower>[] blocks = new DeferredBlock[CrystalElement.elements.length];
+		for (CrystalElement element : CrystalElement.elements) {
+			blocks[element.ordinal()] = register(coloredName("dye_flower", element),
+					() -> new reika.chromaticraft.block.dye26.BlockDyeFlower(blockProperties().mapColor(MapColor.PLANT)
+							.noCollision().instabreak().sound(SoundType.GRASS).pushReaction(PushReaction.DESTROY),
+							element));
+		}
+		return List.of(blocks);
+	}
+
+	private static List<DeferredBlock<reika.chromaticraft.block.dye26.BlockDyeVine>> registerDyeVines(boolean fertile) {
+		DeferredBlock<reika.chromaticraft.block.dye26.BlockDyeVine>[] blocks = new DeferredBlock[CrystalElement.elements.length];
+		for (CrystalElement element : CrystalElement.elements) {
+			// V33a extended BlockTallGrass: no collision, instant break, replaceable.
+			blocks[element.ordinal()] = register(coloredName(fertile ? "fertile_dye_vine" : "dye_vine", element),
+					() -> new reika.chromaticraft.block.dye26.BlockDyeVine(blockProperties().mapColor(MapColor.PLANT)
+							.noCollision().instabreak().replaceable().noOcclusion().sound(SoundType.GRASS)
+							.pushReaction(PushReaction.DESTROY), element, fertile));
+		}
+		return List.of(blocks);
+	}
+
+	/**
+	 * Each type takes its proxy's hardness, blast resistance, sound and map colour. The proxy's
+	 * correct-tool requirement is deliberately not copied; see {@code BlockSparkle}.
+	 */
+	private static Map<reika.chromaticraft.block.worldgen26.BlockSparkle.Type,
+			DeferredBlock<reika.chromaticraft.block.worldgen26.BlockSparkle>> registerSparkle() {
+		EnumMap<reika.chromaticraft.block.worldgen26.BlockSparkle.Type,
+				DeferredBlock<reika.chromaticraft.block.worldgen26.BlockSparkle>> map =
+				new EnumMap<>(reika.chromaticraft.block.worldgen26.BlockSparkle.Type.class);
+		for (reika.chromaticraft.block.worldgen26.BlockSparkle.Type type
+				: reika.chromaticraft.block.worldgen26.BlockSparkle.Type.list) {
+			map.put(type, register(type.registryName(), () -> {
+				Block proxy = type.getBlockProxy();
+				return new reika.chromaticraft.block.worldgen26.BlockSparkle(blockProperties()
+						.mapColor(proxy.defaultMapColor())
+						.strength(proxy.defaultDestroyTime(), proxy.getExplosionResistance())
+						.sound(proxy.defaultBlockState().getSoundType()), type);
+			}));
+		}
+		return java.util.Collections.unmodifiableMap(map);
+	}
+
+	public static DeferredBlock<reika.chromaticraft.block.dye26.BlockDyeFlower> dyeFlower(CrystalElement element) {
+		return DYE_FLOWERS.get(element.ordinal());
+	}
+
+	public static DeferredBlock<reika.chromaticraft.block.dye26.BlockDyeVine> dyeVine(CrystalElement element, boolean fertile) {
+		return (fertile ? FERTILE_DYE_VINES : DYE_VINES).get(element.ordinal());
+	}
+
+	public static DeferredBlock<reika.chromaticraft.block.worldgen26.BlockSparkle> sparkle(
+			reika.chromaticraft.block.worldgen26.BlockSparkle.Type type) {
+		return SPARKLE.get(type);
+	}
+
 	public static DeferredBlock<BlockDyeLeaf> dyeLeaves(CrystalElement element) {
 		return DYE_LEAVES.get(element.ordinal());
 	}

@@ -374,6 +374,16 @@ public final class ChromaLootProvider extends LootTableProvider {
 				else if (block instanceof reika.chromaticraft.block.dye26.BlockDyeLeaf leaf) {
 					this.add(block, this.dyeLeafTable(block, leaf.getElement()));
 				}
+				else if (block instanceof reika.chromaticraft.block.dye26.BlockDyeVine vine) {
+					this.add(block, this.dyeVineTable(block, vine));
+				}
+				else if (block instanceof reika.chromaticraft.block.worldgen26.BlockSparkle sparkle
+						&& sparkle.getType().getDropType() != sparkle.getType()) {
+					// V33a damageDropped: Sparkling Stone breaks to Sparkling Cobblestone. Silk Touch keeps
+					// the stone, as createStackedBlock did for a silk-harvestable block.
+					this.add(block, this.createSingleItemTableWithSilkTouch(block,
+							reika.chromaticraft.registry.ChromaBlocks.sparkle(sparkle.getType().getDropType()).get()));
+				}
 				else if (block instanceof BlockCrystallineStone stone) {
 					this.add(block, this.crystallineStoneTable(stone));
 				}
@@ -514,6 +524,33 @@ public final class ChromaLootProvider extends LootTableProvider {
 					LootItem.lootTableItem(ChromaItems.BERRIES.get(element).get())
 							.apply(SetItemCountFunction.setCount(ChromaBerryCount.INSTANCE)),
 					FortuneScaledChance.exponential(ChromaBerryCount.BASE_CHANCE));
+			return table;
+		}
+
+		/**
+		 * V33a {@code BlockDyeVine.getDrops}. A vine never drops itself, shears or not ({@code isShearable}
+		 * is false), and every entry rolls independently: a fertile vine always gives
+		 * {@code 1 + rand(1 + fortune/2)} shards of its colour; any vine gives its sapling one time in
+		 * {@code max(1, 10 - 2*fortune)} and {@code 1 + rand(1 + fortune)} berries one time in
+		 * {@code max(1, 3 - fortune)}.
+		 */
+		private LootTable.Builder dyeVineTable(Block block, reika.chromaticraft.block.dye26.BlockDyeVine vine) {
+			CrystalElement element = vine.getElement();
+			LootTable.Builder table = LootTable.lootTable();
+			if (vine.isFertile()) {
+				table.withPool(this.applyExplosionCondition(block, LootPool.lootPool().setRolls(ConstantValue.exactly(1))
+						.add(LootItem.lootTableItem(ChromaItems.SHARDS.get(element).get())
+								.apply(SetItemCountFunction.setCount(
+										new reika.chromaticraft.auxiliary.loot.FortuneBonusCount(1, 2))))));
+			}
+			table.withPool(this.applyExplosionCondition(block, LootPool.lootPool().setRolls(ConstantValue.exactly(1))
+					.when(() -> FortuneScaledChance.reciprocal(10, 2))
+					.add(LootItem.lootTableItem(ChromaBlocks.dyeSapling(element).get()))));
+			table.withPool(this.applyExplosionCondition(block, LootPool.lootPool().setRolls(ConstantValue.exactly(1))
+					.when(() -> FortuneScaledChance.reciprocal(3, 1))
+					.add(LootItem.lootTableItem(ChromaItems.BERRIES.get(element).get())
+							.apply(SetItemCountFunction.setCount(
+									new reika.chromaticraft.auxiliary.loot.FortuneBonusCount(1, 1))))));
 			return table;
 		}
 

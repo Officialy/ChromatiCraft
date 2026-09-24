@@ -137,6 +137,15 @@ public class ChromaLang extends LanguageProvider {
 		add("block.chromaticraft.skypeater", "Lumen Node");
 		add("block.chromaticraft.compound_repeater", "Multi-Aura Repeater");
 		add("block.chromaticraft.pylon_link", "Pylon Network Node");
+		// V33a SPARKLE: "Sparkling " + the proxy block's 1.7.10 display name.
+		add("block.chromaticraft.sparkle_dirt", "Sparkling Dirt");
+		add("block.chromaticraft.sparkle_sand", "Sparkling Sand");
+		add("block.chromaticraft.sparkle_gravel", "Sparkling Gravel");
+		add("block.chromaticraft.sparkle_cobble", "Sparkling Cobblestone");
+		add("block.chromaticraft.sparkle_stone", "Sparkling Stone");
+		add("block.chromaticraft.sparkle_clay", "Sparkling Clay");
+		add("block.chromaticraft.sparkle_bricks", "Sparkling Bricks");
+		add("block.chromaticraft.sparkle_obsidian", "Sparkling Obsidian");
 		// V33a chroma.creativepylon has no en_US.lang entry either; left unadded (no invented text).
 		for (CrystalElement element : CrystalElement.elements) {
 			// Registry id suffix (getEnglishName(): light_gray/light_blue) must match ChromaBlocks.coloredName().
@@ -145,6 +154,11 @@ public class ChromaLang extends LanguageProvider {
 			// port previously invented "Dye Leaves"/"Dye Sapling".
 			add("block.chromaticraft.dye_leaves_" + suffix, element.displayName + " Leaf");
 			add("block.chromaticraft.dye_sapling_" + suffix, element.displayName + " Sapling");
+			// V33a en_US.lang: dye.flower=Flower, chroma.dyevine=Dye Vine, chroma.dyevinefertile=Fertile
+			// Dye Vine, prefixed with the colour by getMultiValuedName.
+			add("block.chromaticraft.dye_flower_" + suffix, element.displayName + " Flower");
+			add("block.chromaticraft.dye_vine_" + suffix, element.displayName + " Dye Vine");
+			add("block.chromaticraft.fertile_dye_vine_" + suffix, element.displayName + " Fertile Dye Vine");
 		}
 		for (CrystalElement element : CrystalElement.elements) {
 			// V33a crystal.cave = "Cave Crystal"; the colour word must be CrystalElement.displayName

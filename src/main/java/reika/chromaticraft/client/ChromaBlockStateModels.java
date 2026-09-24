@@ -30,5 +30,9 @@ public final class ChromaBlockStateModels {
 				reika.chromaticraft.render.model.TieredPlantModel.Unbaked.CODEC);
 		event.registerModel(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "miasma"),
 				reika.chromaticraft.render.model.MiasmaModel.Unbaked.CODEC);
+		event.registerModel(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "dye_vine"),
+				reika.chromaticraft.render.model.DyeVineModel.Unbaked.CODEC);
+		event.registerModel(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "sparkle"),
+				reika.chromaticraft.render.model.SparkleModel.Unbaked.CODEC);
 	}
 }

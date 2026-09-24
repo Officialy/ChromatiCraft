@@ -28,8 +28,14 @@ public final class BlockDyeLeaf extends LeavesBlock {
         return element;
     }
 
+    /**
+     * V33a {@code BlockDyeLeaf.getColor(meta, false)}: the vanilla dye colour brightened. Upstream used
+     * the dye palette ({@code ReikaDyeHelper}), not the crystal palette; the two differ for most colours
+     * (red is 0x993333 as a dye, 0xFF0000 as a crystal).
+     */
     public int getTintColor() {
-        return 0xFF000000 | element.getJavaColor().brighter().getRGB();
+        return 0xFF000000 | reika.dragonapi.libraries.registry.ReikaDyeHelper.dyes[element.ordinal()]
+                .getJavaColor().brighter().getRGB();
     }
 
     @Override

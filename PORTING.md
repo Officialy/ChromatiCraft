@@ -1,5 +1,45 @@
 # ChromatiCraft 1.7.10 V33a → Minecraft 26.2 / NeoForge port
 
+## Working checkpoint — 2026-09-24 (overworld biomes: Ender Forest done, Rainbow Forest in progress)
+
+**Ender Forest** (committed c58a34ab, DragonAPI 036c421b): Liquid Ender pools (`EnderPoolFeature`,
+live `ENDERPOOLS` density), the per-block forest/ice-plains grass and foliage blend
+(`EnderForestColors`, a tint-source wrapper because a `ColorResolver` never sees Y), the
+`ENDERCOLORING` pink palette, bone meal's `plantFlower` (`EnderForestFlowerFeature`, the only
+`can_spawn_from_bone_meal` feature in the biome), the full 1.7.10 forest spawn list, and the
+forest's own sky and untinted water. Water recolouring now runs through DragonAPI's
+`WaterColorEvent` (a `BiomeColors.getAverageWaterColor` mixin), which also finally hooks the
+Luminous Cliffs water colour that had been written but never called, and the Rainbow Stream's
+noise-mixed blue. Known gap: V33a's `canSpawnLightningBolt() == true` (lightning without rain) has
+no 26.2 biome hook and is not reproduced.
+
+**Rainbow Forest, unit 1 — blocks** (this commit):
+- Dye Flower ×16, Dye Vine ×16 and Fertile Dye Vine ×16, and Sparkling Dirt/Sand/Gravel/Cobblestone/
+  Stone/Clay/Bricks/Obsidian, each its own id. Vines hang only from same-colour dye leaves or vines
+  and fall apart downward; sparkle blocks take their proxy's hardness, resistance, sound and mining
+  speed (`getDestroyProgress` delegates) but, like V33a's `Material.ground`, never need a correct
+  tool to drop; sand and gravel sparkle blocks fall; Sparkling Stone drops Sparkling Cobblestone.
+- `DyeVineModel` replays V33a `DyeVineRenderer` exactly: both of its per-position `Random` seeds
+  (`chunkXZ2Int(x,z)^y` and `chunkXZ2Int(x,z)`) and every draw in order, so sway, texture, width and
+  shade match upstream; colours are baked per vertex (NeoForge `MutableQuad`). Fertile vines add the
+  full-bright glow planes. `SparkleModel` draws the proxy model plus V33a's plus-shaped motes, seeded
+  from the position instead of upstream's unseeded (re-mesh-flickering) random, culled per face.
+- Loot: vines never drop themselves; `FortuneBonusCount` expresses V33a's integer-division
+  `1 + rand(1 + fortune/2)` shard count, which vanilla's rounding bonus gets wrong at odd Fortune.
+  Recipes: flower → vanilla dye (the default-config branch; crystal dye is CHROMA-PORT), sparkling
+  clay → bricks and cobblestone → stone smelting.
+- Parity fixes found on the way: dye leaves and saplings were tinted with the *crystal* palette;
+  V33a used the dye palette (`ReikaDyeHelper`, red 0x993333 not 0xFF0000). DragonAPI (8b9df889):
+  `DecimalPosition.hashCode` was a constant (every Voronoi-root choice collapsed to one value —
+  every Rainbow Forest tree would have been red), `Coordinate.coordHash` was not V33a's formula (so
+  the Ender Forest colour cells were not upstream's either, despite the claim above; now they are),
+  Voronoi displacement semantics and a cross-thread race in `getClosestRoot`.
+
+Next units: TreeShaper + Rainbow Forest generator + decorator rework (and leaf DISTANCE for
+feature-placed leaves, which currently decay), spawn rules/drops/density, then the Rainbow Forest
+log glow overlay. Then Luminous Cliffs parity. ColorTreeGenerator (overworld-wide dye trees) is a
+separate follow-up.
+
 ## Working checkpoint — 2026-08-16 (Proxima decoration blocks)
 
 - Registered eight of V33a's ten `DimDecoTypes` as distinct blocks — Miasma, Floatstone, Lifewater,

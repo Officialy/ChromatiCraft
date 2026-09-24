@@ -43,6 +43,15 @@ public final class ChromaBlockColors {
         }
     };
 
+    /** V33a {@code BlockDyeFlower.colorMultiplier}: the dye colour brightened. */
+    private static final BlockTintSource DYE_FLOWER = new BlockTintSource() {
+        @Override public int color(BlockState state) { return tint(state); }
+        @Override public int colorInWorld(BlockState state, BlockAndTintGetter level, BlockPos pos) { return tint(state); }
+        private int tint(BlockState state) {
+            return ((reika.chromaticraft.block.dye26.BlockDyeFlower)state.getBlock()).getTintColor();
+        }
+    };
+
     /** Vanilla's grass-block tint, plus the Luminous Cliffs hue/altitude shift. */
     private static final BlockTintSource CLIFF_GRASS =
             LuminousCliffsColors.wrapTerrain(net.minecraft.client.color.block.BlockTintSources.grassBlock());
@@ -206,6 +215,9 @@ public final class ChromaBlockColors {
                 .map(h -> (net.minecraft.world.level.block.Block)h.get())
                 .toArray(net.minecraft.world.level.block.Block[]::new);
         event.register(List.of(DYE_TREE), dyeBlocks);
+        event.register(List.of(DYE_FLOWER), ChromaBlocks.DYE_FLOWERS.stream()
+                .map(h -> (net.minecraft.world.level.block.Block)h.get())
+                .toArray(net.minecraft.world.level.block.Block[]::new));
         event.register(List.of(RAINBOW_LEAF), ChromaBlocks.RAINBOW_LEAVES.get());
 		event.register(List.of(HOVER), ChromaBlocks.HOVER.get());
         event.register(List.of(CRYSTAL_LEAF), ChromaBlocks.deco(

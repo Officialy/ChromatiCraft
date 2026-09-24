@@ -95,6 +95,36 @@ public final class ChromaRecipeProvider extends RecipeProvider.Runner {
 					.pattern("def")
 					.unlockedBy("has_shard", has(ChromaItemTags.CRYSTAL_SHARDS))
 					.save(out, key("chromic_lexicon"));
+
+			// V33a ChromatiCraft.load: GameRegistry.addShapelessRecipe(used, flower), where `used` is the
+			// vanilla dye when isVanillaDyeMoreCommon (getVanillaDyeChance > 50) and ChromatiCraft's
+			// own dye otherwise. The chance defaults to 100, so on default config it is always the
+			// vanilla dye. CHROMA-PORT: the crystal-dye branch returns with ItemCrystalDye and the
+			// per-colour dye-chance config.
+			for (CrystalElement element : CrystalElement.elements) {
+				Item dye = Items.DYE.pick(reika.dragonapi.libraries.registry.ReikaDyeHelper.dyes[element.ordinal()].getDye());
+				shapeless(RecipeCategory.MISC, dye)
+						.requires(ChromaBlocks.dyeFlower(element).get())
+						.unlockedBy("has_dye_flower", has(ChromaBlocks.dyeFlower(element).get()))
+						.save(out, key("dye_from_dye_flower_" + element.getEnglishName()));
+			}
+
+			// V33a ChromaRecipes: sparkling clay bakes to sparkling bricks (0.2 xp) and sparkling
+			// cobblestone to sparkling stone (no xp), exactly as their proxies do.
+			sparkleSmelting(reika.chromaticraft.block.worldgen26.BlockSparkle.Type.CLAY,
+					reika.chromaticraft.block.worldgen26.BlockSparkle.Type.BRICKS, 0.2F);
+			sparkleSmelting(reika.chromaticraft.block.worldgen26.BlockSparkle.Type.COBBLE,
+					reika.chromaticraft.block.worldgen26.BlockSparkle.Type.STONE, 0);
+		}
+
+		private void sparkleSmelting(reika.chromaticraft.block.worldgen26.BlockSparkle.Type from,
+				reika.chromaticraft.block.worldgen26.BlockSparkle.Type to, float xp) {
+			net.minecraft.world.level.block.Block input = ChromaBlocks.sparkle(from).get();
+			net.minecraft.data.recipes.SimpleCookingRecipeBuilder.smelting(Ingredient.of(input),
+					RecipeCategory.BUILDING_BLOCKS, net.minecraft.world.item.crafting.CookingBookCategory.BLOCKS,
+					ChromaBlocks.sparkle(to).get(), xp, 200)
+					.unlockedBy("has_" + from.registryName(), has(input))
+					.save(out, key(to.registryName() + "_from_smelting"));
 		}
 
 		/**

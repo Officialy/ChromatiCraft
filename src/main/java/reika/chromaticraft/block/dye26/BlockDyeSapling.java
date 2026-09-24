@@ -21,7 +21,9 @@ public final class BlockDyeSapling extends SaplingBlock {
         return element;
     }
 
+    /** V33a {@code colorMultiplier}: the dye colour brightened, as the leaves are. */
     public int getTintColor() {
-        return 0xFF000000 | element.getColor();
+        return 0xFF000000 | reika.dragonapi.libraries.registry.ReikaDyeHelper.dyes[element.ordinal()]
+                .getJavaColor().brighter().getRGB();
     }
 }

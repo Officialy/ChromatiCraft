@@ -86,5 +86,16 @@ public final class ChromaBlockTagsProvider extends BlockTagsProvider {
 		ChromaBlocks.DYE_LEAVES.forEach(block -> hoe.add(block.getKey()));
 		hoe.add(ChromaBlocks.RAINBOW_LEAVES.getKey(), ChromaBlocks.GLOWING_LEAVES.getKey());
 		tag(BlockTags.MINEABLE_WITH_AXE).add(ChromaBlocks.LOOT_CHEST.getKey());
+		// Sparkling blocks mine at their proxy's speed (BlockSparkle.getDestroyProgress delegates), so
+		// the tool tags simply follow the proxy's. They never need a correct tool to drop.
+		// Tags are unbound during datagen, so the proxy's own tags cannot be queried here.
+		ChromaBlocks.SPARKLE.forEach((type, block) -> {
+			switch (type) {
+				case COBBLE, STONE, BRICKS, OBSIDIAN -> pickaxe.add(block.getKey());
+				case DIRT, SAND, GRAVEL, CLAY -> tag(BlockTags.MINEABLE_WITH_SHOVEL).add(block.getKey());
+			}
+		});
+		// V33a BlockDyeFlower is a BlockFlower; it joins the flowers the way vanilla's own do.
+		ChromaBlocks.DYE_FLOWERS.forEach(block -> tag(BlockTags.SMALL_FLOWERS).add(block.getKey()));
     }
 }
