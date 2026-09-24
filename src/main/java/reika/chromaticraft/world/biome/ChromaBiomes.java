@@ -260,7 +260,7 @@ public final class ChromaBiomes {
                 ChromaWorldGenProvider.LUMINOUS_FLOWERS_PLACED, ChromaWorldGenProvider.LUMINOUS_GRASS_PLACED,
                 ChromaWorldGenProvider.LUMINOUS_LILY_PAD_PLACED, ChromaWorldGenProvider.LUMINOUS_BROWN_MUSHROOM_PLACED,
                 ChromaWorldGenProvider.LUMINOUS_RED_MUSHROOM_PLACED, ChromaWorldGenProvider.LUMINOUS_REEDS_PLACED,
-                ChromaWorldGenProvider.LUMINOUS_FLORA_PLACED, ChromaWorldGenProvider.LUMINOUS_CLIFFS_FLOWER_PLACED))
+                ChromaWorldGenProvider.LUMINOUS_CLIFFS_FLOWER_PLACED))
             generation.addFeature(GenerationStep.Decoration.VEGETAL_DECORATION, features.getOrThrow(key));
 
         return new Biome.BiomeBuilder()

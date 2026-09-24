@@ -65,7 +65,6 @@ public final class ChromaWorldGenProvider {
     private static final Identifier LUMINOUS_CLIFFS_TERRAIN = id("luminous_cliffs_terrain");
     private static final Identifier LUMA_PATCH = id("luma_patch");
     private static final Identifier LUMINOUS_ISLAND = id("luminous_island");
-    private static final Identifier LUMINOUS_FLORA = id("luminous_flora");
     private static final Identifier NETHER_ROOF_STRUCTURE = id("nether_roof_structure");
     private static final Identifier NETHER_LAVA_RIVER = id("nether_lava_river");
     private static final Identifier CRYSTAL_SHRUB = id("crystal_shrub");
@@ -134,7 +133,6 @@ public final class ChromaWorldGenProvider {
     public static final ResourceKey<PlacedFeature> LUMINOUS_CLIFFS_TERRAIN_PLACED = placedKey("luminous_cliffs_terrain");
     public static final ResourceKey<PlacedFeature> LUMA_PATCH_PLACED = placedKey("luma_patch");
     public static final ResourceKey<PlacedFeature> LUMINOUS_ISLAND_PLACED = placedKey("luminous_island");
-    public static final ResourceKey<PlacedFeature> LUMINOUS_FLORA_PLACED = placedKey("luminous_flora");
     public static final ResourceKey<ConfiguredFeature<?, ?>> RAINBOW_TREE = configuredKey("rainbow_tree");
     public static final ResourceKey<ConfiguredFeature<?, ?>> GLOWING_TREE = configuredKey("glowing_tree");
     public static final ResourceKey<PlacedFeature> ENDER_FOREST_TREE_PLACED = placedKey("ender_forest_tree");
@@ -163,6 +161,11 @@ public final class ChromaWorldGenProvider {
     public static final ResourceKey<PlacedFeature> LUMINOUS_SPRING_WATER_PLACED = placedKey("luminous_spring_water");
     public static final ResourceKey<PlacedFeature> LUMINOUS_SPRING_LAVA_PLACED = placedKey("luminous_spring_lava");
     public static final ResourceKey<PlacedFeature> LUMINOUS_CLIFFS_FLOWER_PLACED = placedKey("luminous_cliffs_flower");
+    /** V33a {@code getUndergroundTreeGen}: the cavern trees the aux pass grows from the shaper's saplings. */
+    public static final ResourceKey<ConfiguredFeature<?, ?>> UNDERGROUND_GLOWING_TREE_SMALL =
+            configuredKey("underground_glowing_tree_small");
+    public static final ResourceKey<ConfiguredFeature<?, ?>> UNDERGROUND_GLOWING_TREE_BIG =
+            configuredKey("underground_glowing_tree_big");
     /** Bone meal's flower list; see {@code ChromaConfiguredFeatureTagProvider}. */
     public static final ResourceKey<ConfiguredFeature<?, ?>> LUMINOUS_CLIFFS_FLOWER = configuredKey("luminous_cliffs_flower");
 
@@ -255,6 +258,7 @@ public final class ChromaWorldGenProvider {
                                                     .add(net.minecraft.world.level.block.Blocks.POPPY.defaultBlockState(), 1)))));
             registerConfigured(bootstrap, features, id("rainbow_tree"));
             registerConfigured(bootstrap, features, id("no_floating_gravel"));
+            registerConfigured(bootstrap, features, id("luminous_cliffs_aux"));
             // V33a BiomeGenBase.func_150572_a, which the Luminous Cliffs do not override: a dandelion
             // two times in three, otherwise a poppy.
             bootstrap.register(configuredKey("luminous_flowers"), new ConfiguredFeature<>(Feature.SIMPLE_BLOCK,
@@ -316,7 +320,6 @@ public final class ChromaWorldGenProvider {
             registerConfigured(bootstrap, features, LUMINOUS_CLIFFS_TERRAIN);
             registerConfigured(bootstrap, features, LUMA_PATCH);
             registerConfigured(bootstrap, features, LUMINOUS_ISLAND);
-            registerConfigured(bootstrap, features, LUMINOUS_FLORA);
             registerConfigured(bootstrap, features, NETHER_ROOF_STRUCTURE);
             registerConfigured(bootstrap, features, NETHER_LAVA_RIVER);
             registerConfigured(bootstrap, features, CRYSTAL_SHRUB);
@@ -364,6 +367,16 @@ public final class ChromaWorldGenProvider {
             }
             bootstrap.register(GLOWING_TREE, new ConfiguredFeature<>(Feature.TREE,
                     glowingTreeConfiguration(biomes)));
+            // V33a setGlowChance(10): one leaf in ten glows. The small tree is DragonAPI's
+            // ModifiableSmallTrees, 1.7.10's plain oak, whose 26.2 form is vanilla's oak shape.
+            bootstrap.register(UNDERGROUND_GLOWING_TREE_SMALL, new ConfiguredFeature<>(Feature.TREE,
+                    new TreeConfiguration.TreeConfigurationBuilder(BlockStateProvider.simple(Blocks.OAK_LOG),
+                            new StraightTrunkPlacer(4, 2, 0), glowingFoliage(9),
+                            new BlobFoliagePlacer(ConstantInt.of(2), ConstantInt.of(0), 3),
+                            new TwoLayersFeatureSize(1, 0, 1),
+                            TreeConfiguration.defaultPlaceBelowTreeTrunkProvider(biomes)).ignoreVines().build()));
+            bootstrap.register(UNDERGROUND_GLOWING_TREE_BIG, new ConfiguredFeature<>(Feature.TREE,
+                    fancyGlowingTree(glowingFoliage(9), biomes)));
         });
         // Proxima's oversized decoration generates as structures rather than features, so its pieces
         // can be written chunk by chunk with a clipped box. See GlassCliffPiece.
@@ -601,7 +614,6 @@ public final class ChromaWorldGenProvider {
                     List.of(CountPlacement.of(1), BiomeFilter.biome()));
             registerPlaced(bootstrap, configured, LUMINOUS_ISLAND,
                     List.of(RarityFilter.onAverageOnceEvery(4), BiomeFilter.biome()));
-            registerPlaced(bootstrap, configured, LUMINOUS_FLORA, List.of(BiomeFilter.biome()));
             // V33a BASE_GEN_FACTOR = 1/64 per Nether chunk; the feature retains its weighted type roll.
             registerPlaced(bootstrap, configured, NETHER_ROOF_STRUCTURE, List.of(
                     RarityFilter.onAverageOnceEvery(64), InSquarePlacement.spread(), BiomeFilter.biome()));
@@ -742,6 +754,8 @@ public final class ChromaWorldGenProvider {
 			registerPlaced(bootstrap, configured, BIOME_FRAGMENT);
             registerRainbowPlacements(bootstrap, configured);
             registerLuminousPlacements(bootstrap, configured);
+            // Attached to every overworld biome, like the terrain pass; it checks each column itself.
+            registerPlaced(bootstrap, configured, id("luminous_cliffs_aux"), List.of(BiomeFilter.biome()));
         });
         return builder;
     }
@@ -940,9 +954,17 @@ public final class ChromaWorldGenProvider {
      * DragonAPI generator's default log is.
      */
     private static TreeConfiguration glowingTreeConfiguration(HolderGetter<Biome> biomes) {
-        WeightedStateProvider foliage = new WeightedStateProvider(WeightedList.<BlockState>builder()
-                .add(Blocks.OAK_LEAVES.defaultBlockState(), 15)
+        return fancyGlowingTree(glowingFoliage(15), biomes);
+    }
+
+    /** Oak leaves with one in {@code oneIn} a Glowing Leaf: V33a {@code selectGlowingTreeLeaf}. */
+    private static WeightedStateProvider glowingFoliage(int oneIn) {
+        return new WeightedStateProvider(WeightedList.<BlockState>builder()
+                .add(Blocks.OAK_LEAVES.defaultBlockState(), oneIn - 1)
                 .add(ChromaBlocks.GLOWING_LEAVES.get().defaultBlockState(), 1));
+    }
+
+    private static TreeConfiguration fancyGlowingTree(WeightedStateProvider foliage, HolderGetter<Biome> biomes) {
         return new TreeConfiguration.TreeConfigurationBuilder(BlockStateProvider.simple(Blocks.OAK_LOG),
                 new net.minecraft.world.level.levelgen.feature.trunkplacers.FancyTrunkPlacer(3, 11, 0),
                 foliage,

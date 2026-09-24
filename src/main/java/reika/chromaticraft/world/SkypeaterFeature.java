@@ -13,8 +13,7 @@ import reika.chromaticraft.data.ChromaBiomeTagProvider;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.tileentity.networking.TileEntitySkypeater;
 import reika.chromaticraft.tileentity.networking.TileEntitySkypeater.NodeClass;
-import reika.chromaticraft.world.luminous.LuminousCliffsTerrainFeature;
-import reika.chromaticraft.world.luminous.LuminousCliffsTerrainFeature.GlowCliffRegion;
+import reika.chromaticraft.world.GlowingCliffsColumnShaper.GlowCliffRegion;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -50,6 +49,8 @@ public final class SkypeaterFeature extends Feature<NoneFeatureConfiguration> {
 		RandomSource random = context.random();
 		BlockPos origin = context.origin();
 		List<int[]> attempts = new ArrayList<>(attemptOffsets);
+		reika.chromaticraft.world.GlowingCliffsColumnShaper.Sampler terrain =
+				reika.chromaticraft.world.luminous.LuminousCliffsTerrainFeature.sampler(world);
 		while (!attempts.isEmpty()) {
 			int[] offset = attempts.remove(random.nextInt(attempts.size()));
 			int x = origin.getX() + offset[0];
@@ -57,8 +58,9 @@ public final class SkypeaterFeature extends Feature<NoneFeatureConfiguration> {
 			BlockPos column = new BlockPos(x, world.getSeaLevel(), z);
 			if (!world.getBiome(column).is(ChromaBiomeTagProvider.LUMINOUS_CLIFFS))
 				continue;
-			GlowCliffRegion region = LuminousCliffsTerrainFeature.getRegion(world, x, z);
-			int middleTop = LuminousCliffsTerrainFeature.getMiddleTop(world, x, z);
+			GlowCliffRegion region = terrain.region(x, z);
+			// V33a places both node classes relative to the constant MAX_MIDDLE_TOP_Y, not the local shelf.
+			int middleTop = reika.chromaticraft.world.GlowingCliffsColumnShaper.MAX_MIDDLE_TOP_Y;
 			NodeClass type;
 			int y;
 			if (region == GlowCliffRegion.WATER) {
@@ -111,7 +113,7 @@ public final class SkypeaterFeature extends Feature<NoneFeatureConfiguration> {
 				for (int dy = -SEPARATION; dy <= SEPARATION; dy += 4) {
 					cursor.set(pos.getX() + dx, pos.getY() + dy, pos.getZ() + dz);
 					if (world instanceof WorldGenRegion region && !region.isWithinWriteZone(cursor))
-            continue;
+            			continue;
 					if (!world.ensureCanWrite(cursor))
 						continue;
 					if (world.getBlockState(cursor).is(ChromaBlocks.SKYPEATER.get()))

@@ -23,7 +23,6 @@ import reika.chromaticraft.world.OverworldStructureFeature;
 import reika.chromaticraft.world.luminous.LumaPatchFeature;
 import reika.chromaticraft.world.luminous.LuminousCliffsTerrainFeature;
 import reika.chromaticraft.world.luminous.LuminousIslandFeature;
-import reika.chromaticraft.world.luminous.LuminousFloraFeature;
 
 /** Runtime feature registry for ChromatiCraft's data-driven 26.2 world generation. */
 public final class ChromaFeatures {
@@ -121,6 +120,10 @@ public final class ChromaFeatures {
     public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> NO_FLOATING_GRAVEL =
             FEATURES.register("no_floating_gravel", reika.chromaticraft.world.luminous.NoFloatingGravelFeature::new);
 
+    /** V33a GlowingCliffsAuxGenerator: cavern sapling growth and cleanup. */
+    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> LUMINOUS_CLIFFS_AUX =
+            FEATURES.register("luminous_cliffs_aux", reika.chromaticraft.world.luminous.LuminousCliffsAuxFeature::new);
+
     public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> RAINBOW_TREE =
             FEATURES.register("rainbow_tree", reika.chromaticraft.world.RainbowTreeFeature::new);
 
@@ -168,9 +171,6 @@ public final class ChromaFeatures {
             FEATURES.register("luma_patch", LumaPatchFeature::new);
     public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> LUMINOUS_ISLAND =
             FEATURES.register("luminous_island", LuminousIslandFeature::new);
-
-    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> LUMINOUS_FLORA =
-            FEATURES.register("luminous_flora", LuminousFloraFeature::new);
 
     public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> NETHER_ROOF_STRUCTURE =
             FEATURES.register("nether_roof_structure", () -> new NetherRoofStructureFeature());

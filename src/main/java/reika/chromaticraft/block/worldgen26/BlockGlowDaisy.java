@@ -58,8 +58,9 @@ public final class BlockGlowDaisy extends VegetationBlock {
     }
     @Override
     protected boolean mayPlaceOn(BlockState state, BlockGetter level, BlockPos pos) {
-        return state.is(BlockTags.DIRT) || state.is(ChromaBlocks.CLIFF_DIRT.get())
-                || state.is(ChromaBlocks.CLIFF_GRASS.get());
+        // V33a canPlantAt: dirt or grass. 26.2's dirt tag leaves grass blocks out, so it is named.
+        return state.is(BlockTags.DIRT) || state.is(net.minecraft.world.level.block.Blocks.GRASS_BLOCK)
+                || state.is(ChromaBlocks.CLIFF_DIRT.get()) || state.is(ChromaBlocks.CLIFF_GRASS.get());
     }
 
     @Override

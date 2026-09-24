@@ -49,6 +49,10 @@ public final class ChromaBiomeModifierProvider implements DataProvider {
 		futures.add(save(cache, "luminous_cliffs_terrain_overworld", "#minecraft:is_overworld",
 				id("luminous_cliffs_terrain").toString(),
 				GenerationStep.Decoration.LOCAL_MODIFICATIONS));
+		// V33a GlowingCliffsAuxGenerator ran after population: cavern saplings to trees, then cleanup.
+		futures.add(save(cache, "luminous_cliffs_aux_overworld", "#minecraft:is_overworld",
+				id("luminous_cliffs_aux").toString(),
+				GenerationStep.Decoration.TOP_LAYER_MODIFICATION));
         // V33a's PylonGenerator was a RetroactiveGenerator, so it ran after the chunk was fully
         // populated -- which is why its site test is built around trees (log/leaf replaceability,
         // getTreeDodgeAttempt, sinking the array through wood and leaves). SURFACE_STRUCTURES is

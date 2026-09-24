@@ -41,7 +41,8 @@ public final class BlockGlowRoot extends Block {
     protected boolean canSurvive(BlockState state, LevelReader level, BlockPos pos) {
         BlockState above = level.getBlockState(pos.above());
         boolean ceiling = above.is(this) || above.is(BlockTags.BASE_STONE_OVERWORLD)
-                || above.is(BlockTags.DIRT) || above.is(ChromaBlocks.CLIFF_STONE.get())
+                || above.is(BlockTags.DIRT) || above.is(net.minecraft.world.level.block.Blocks.GRASS_BLOCK)
+                || above.is(ChromaBlocks.CLIFF_STONE.get())
                 || above.is(ChromaBlocks.CLIFF_DIRT.get()) || above.is(ChromaBlocks.CLIFF_GRASS.get());
         return ceiling && !isRootTooLong(level, pos);
     }

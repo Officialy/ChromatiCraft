@@ -89,8 +89,24 @@ animals and squid restored, monsters in groups of four, bats 8. Bone meal draws 
 (all small vanilla flowers, weighted). Ender Forest's world-gen flowers were poppy-heavy (26.2's
 flower_default); V33a's are two dandelions to one poppy, now fixed.
 
+**Luminous Cliffs, unit 2 — terrain**: the cliffs' terrain was a three-band approximation laid in
+cliff material. `GlowingCliffsColumnShaper` is now V33a's shaper ported in place, as a pure function of
+seed, `LUMCLIFFSEEDSHIFT` and a biome mask (`LuminousCliffsBiomeMask`, sampled at sea level per quart):
+landmass hval with V33a's inward ring-search blending (toward sea level, a quarter of it beside
+oceans, or the shores biome's own hval), four regions, the ocean floor slope, the two undercut plateaus
+with their elliptical cavern hollows, dirt thickness, `cleanColumn` (its two quirks kept), and the
+cavern plants (6% Glow Daisy, 0.8% sapling, 0.3% Rock Flower, 0.8% 1-4 Glow Roots, from TerrainShaper's
+per-column seed). Blocks are vanilla stone/dirt/grass as upstream's were. `BIOMEBLEND` outward blending
+(16 blocks, `EDGE_BLENDING` curve) reshapes neighbours and moves their surface layers up or down. Caves
+and aquifers below the pre-shaping ground are kept; raised ground has no carver caves (gap).
+`LuminousFloraFeature` (an approximation of the cavern plants) is removed. `LuminousCliffsAuxFeature`
+ports the aux generator's sapling growth (1/40 big, else small oak, 1/10 glowing leaves) and
+`cleanupBlocks`; Mystcraft crystal veins are CHROMA-PORT. Skypeater siting now uses the real regions and
+upstream's constant height. Glow Daisy / Glow Root survival accepted dirt but not grass (26.2's dirt tag
+excludes grass); fixed to V33a's dirt-or-grass. Existing worlds will show seams at old cliff chunks.
+
 Next: V33a's floating islands (the current `LuminousIslandFeature` is an approximation, not a port) as
-a Structure, then the aux pass and the client effects (sky hue, fog, ambience).
+a Structure on top of the shaper, then the client effects (sky hue, fog, ambience).
 
 ## Working checkpoint — 2026-08-16 (Proxima decoration blocks)
 
