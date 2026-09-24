@@ -403,7 +403,7 @@ public abstract class TileEntityAuraInfuser extends TileEntityChromaticBase impl
 	@Override public void setDataFromItemStackTag(ItemStack stack) {
 		CompoundTag tag = ReikaItemHelper.getStackTag(stack);
 		if (tag == null) return;
-		placer = tag.getStringOr("place", "");
+		placer = tag.getStringOr("place", placer != null ? placer : "");
 		if (tag.contains("placeUUID")) placerUUID = UUID.fromString(tag.getStringOr("placeUUID", ""));
 	}
 	@Override public void addTooltipInfo(List list, boolean shift) {}

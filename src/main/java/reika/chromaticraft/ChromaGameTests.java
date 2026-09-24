@@ -7691,6 +7691,19 @@ public final class ChromaGameTests {
 				&& ProgressStage.MAKECHROMA.isPlayerAtStage(player),
 				"a complete direct-intake pulse must make five mB, consume five XP, and grant MAKECHROMA");
 
+		// The real placement path: BlockChromaticTile records the placer, then restores the item's data.
+		// A freshly crafted Collector carries no owners, and restoring it used to wipe the placer, so the
+		// tick never found anyone to drain.
+		collector.setPlacer(player);
+		collector.setDataFromItemStackTag(new ItemStack(ChromaBlocks.COLLECTOR.get().asItem()));
+		helper.assertTrue(collector.getOwners().contains(player.getUUID()) && collector.isOwnedByPlayer(player),
+				"restoring a fresh Collector item must keep its placer as owner");
+		player.setPos(absolute.getX() + 0.5, absolute.getY() + 1, absolute.getZ() + 0.5);
+		player.giveExperiencePoints(5);
+		collector.updateEntity(helper.getLevel(), absolute);
+		helper.assertTrue(collector.getOutputLevel() == 85 && player.totalExperience == 0,
+				"an owner standing on the Collector must be drained by the normal tick");
+
 		List<CastingTableRecipe> recipes = reika.chromaticraft.network.ChromaNetwork.guideCastingRecipes(
 				helper.getLevel().getServer().getRecipeManager(), ChromaBlocks.COLLECTOR.get().asItem());
 		helper.assertTrue(recipes.size() == 1, "collector must have one registered casting recipe");

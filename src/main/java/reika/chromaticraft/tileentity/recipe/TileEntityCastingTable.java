@@ -863,8 +863,10 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver
     @Override public void setDataFromItemStackTag(ItemStack stack) {
         super.setDataFromItemStackTag(stack);
         CompoundTag tag = stack.get(DataComponents.CUSTOM_DATA) != null ? stack.get(DataComponents.CUSTOM_DATA).copyTag() : new CompoundTag();
-        tableXP = tag.getIntOr("tableXP", 0); placer = tag.getStringOr("place", "");
-        String owner = tag.getStringOr("placeUUID", ""); placerUUID = owner.isEmpty() ? null : UUID.fromString(owner);
+        // A fresh table carries no owner: keep the placer BlockChromaticTile just recorded. Wiping it
+        // here left the table ownerless, so pylon energy never granted USEENERGY to anyone.
+        tableXP = tag.getIntOr("tableXP", 0); placer = tag.getStringOr("place", placer != null ? placer : "");
+        String owner = tag.getStringOr("placeUUID", ""); if (!owner.isEmpty()) placerUUID = UUID.fromString(owner);
         isTuned = tag.getBooleanOr("tuned", false);
     }
     @Override public void addTooltipInfo(List list, boolean shift) {

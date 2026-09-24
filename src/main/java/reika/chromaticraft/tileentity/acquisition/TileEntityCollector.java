@@ -9,12 +9,15 @@
  ******************************************************************************/
 package reika.chromaticraft.tileentity.acquisition;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.NonNullList;
+import net.minecraft.core.UUIDUtil;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
@@ -68,6 +71,13 @@ public final class TileEntityCollector extends TileEntityChromaticBase
 	private FluidResource inputFluid = FluidResource.EMPTY;
 	private int inputLevel;
 	private int outputLevel;
+	/**
+	 * V33a {@code TileEntityChromaticBase.owners}: the placer is added on placement, the set rides on the
+	 * dropped item, and every owner in this world standing on the Collector feeds it XP. Held here rather
+	 * than as the base placer, because restoring a fresh item's data after {@code setPlacer} used to wipe
+	 * the placer, which left the Collector with nobody to drain.
+	 */
+	private final Set<UUID> owners = new HashSet<>();
 
 	public TileEntityCollector(BlockPos pos, BlockState state) {
 		super(ChromaBlockEntities.COLLECTOR.get(), pos, state);
@@ -81,8 +91,19 @@ public final class TileEntityCollector extends TileEntityChromaticBase
 		this.internalizeXPBottle();
 		// V33a redstone pauses only piped-fluid conversion, not bottles or direct owner intake.
 		if (!this.hasRedstoneSignal()) this.convertInputFluid();
-		this.tryIntakeXPFromPlayer(this.getPlacer(), true);
+		// V33a: for (EntityPlayer ep : this.getOwners(false)) tryIntakeXPFromPlayer(ep, true);
+		for (UUID id : owners)
+			this.tryIntakeXPFromPlayer(world.getPlayerByUUID(id), true);
 	}
+
+	@Override
+	protected void onSetPlacer(Player player) {
+		super.onSetPlacer(player);
+		if (player != null && owners.add(player.getUUID()))
+			this.contentsChanged();
+	}
+
+	public Set<UUID> getOwners() { return Set.copyOf(owners); }
 
 	@Override
 	protected void animateWithTick(Level world, BlockPos pos) {
@@ -157,6 +178,11 @@ public final class TileEntityCollector extends TileEntityChromaticBase
 		inputLevel = Math.clamp(input.getIntOr("inputLevel", 0), 0, CAPACITY);
 		outputLevel = Math.clamp(input.getIntOr("outputLevel", 0), 0, CAPACITY);
 		if (inputLevel == 0 || inputFluid.isEmpty()) { inputLevel = 0; inputFluid = FluidResource.EMPTY; }
+		owners.clear();
+		owners.addAll(input.read("owners", UUIDUtil.STRING_CODEC.listOf()).orElse(List.of()));
+		// Collectors saved before the owner set existed only know their placer.
+		if (owners.isEmpty() && this.getPlacerID() != null)
+			owners.add(this.getPlacerID());
 	}
 	@Override protected void saveAdditional(ValueOutput output) {
 		super.saveAdditional(output);
@@ -164,6 +190,8 @@ public final class TileEntityCollector extends TileEntityChromaticBase
 		output.store("inputFluid", FluidResource.OPTIONAL_CODEC, inputFluid);
 		output.putInt("inputLevel", inputLevel);
 		output.putInt("outputLevel", outputLevel);
+		if (!owners.isEmpty())
+			output.store("owners", UUIDUtil.STRING_CODEC.listOf(), List.copyOf(owners));
 	}
 
 	@Override public int getContainerSize() { return inventory.size(); }
@@ -193,17 +221,28 @@ public final class TileEntityCollector extends TileEntityChromaticBase
 
 	@Override public boolean onlyAllowOwnersToMine() { return true; }
 	@Override public boolean onlyAllowOwnersToUse() { return false; }
-	@Override public boolean isOwnedByPlayer(Player player) { return placerUUID == null || placerUUID.equals(player.getUUID()); }
+	/** V33a {@code isOwnedByPlayer}: an ownerless Collector belongs to everyone. */
+	@Override public boolean isOwnedByPlayer(Player player) { return owners.isEmpty() || owners.contains(player.getUUID()); }
+	/** V33a {@code writeOwnerData}: the owner set, when there is one. */
 	@Override public void getTagsToWriteToStack(CompoundTag tag) {
-		if (placer != null && !placer.isEmpty()) tag.putString("place", placer);
-		if (placerUUID != null) tag.putString("placeUUID", placerUUID.toString());
+		if (owners.isEmpty()) return;
+		net.minecraft.nbt.ListTag list = new net.minecraft.nbt.ListTag();
+		for (UUID id : owners) list.add(net.minecraft.nbt.StringTag.valueOf(id.toString()));
+		tag.put("owners", list);
 	}
+	/**
+	 * V33a {@code readOwnerData}: only an item that carries an owner set replaces the owners. A freshly
+	 * crafted Collector carries none and keeps the placer that {@code setPlacer} just recorded.
+	 */
 	@Override public void setDataFromItemStackTag(ItemStack stack) {
 		var custom = stack.get(DataComponents.CUSTOM_DATA);
-		CompoundTag tag = custom != null ? custom.copyTag() : new CompoundTag();
-		placer = tag.getStringOr("place", "");
-		String owner = tag.getStringOr("placeUUID", "");
-		placerUUID = owner.isEmpty() ? null : UUID.fromString(owner);
+		if (custom == null || !custom.copyTag().contains("owners")) return;
+		owners.clear();
+		for (net.minecraft.nbt.Tag value : custom.copyTag().getListOrEmpty("owners")) {
+			try { owners.add(UUID.fromString(value.asString().orElse(""))); }
+			catch (IllegalArgumentException ignored) { /* skip malformed entries, keep the rest */ }
+		}
+		this.contentsChanged();
 	}
 	@Override public void addTooltipInfo(List list, boolean shift) {
 		if (placer != null && !placer.isEmpty()) list.add(Component.literal("Owner: " + placer));

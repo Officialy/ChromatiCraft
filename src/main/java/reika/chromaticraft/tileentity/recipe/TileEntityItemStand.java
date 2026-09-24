@@ -203,9 +203,10 @@ public class TileEntityItemStand extends TileEntityChromaticBase
 	@Override public void setDataFromItemStackTag(ItemStack stack) {
 		CompoundTag tag = stack.get(net.minecraft.core.component.DataComponents.CUSTOM_DATA) != null
 				? stack.get(net.minecraft.core.component.DataComponents.CUSTOM_DATA).copyTag() : new CompoundTag();
-		placer = tag.getStringOr("place", "");
+		// A fresh stand carries no owner: keep the placer BlockChromaticTile just recorded.
+		placer = tag.getStringOr("place", placer != null ? placer : "");
 		String ownerId = tag.getStringOr("placeUUID", "");
-		placerUUID = ownerId.isEmpty() ? null : UUID.fromString(ownerId);
+		if (!ownerId.isEmpty()) placerUUID = UUID.fromString(ownerId);
 	}
 	@Override public void addTooltipInfo(java.util.List list, boolean shift) {
 		if (placer != null && !placer.isEmpty()) list.add(Component.literal("Owner: "+placer));
