@@ -187,7 +187,10 @@ public final class ProximaBiomeColors {
 		else {
 			shifted = ReikaColorAPI.multiplyChannels(delegate, 1, grassFactor(x, z), 1);
 		}
-		return proxima >= 1 ? shifted : ReikaColorAPI.mixColors(shifted, delegate, proxima);
+		int mixed = proxima >= 1 ? shifted : ReikaColorAPI.mixColors(shifted, delegate, proxima);
+		// Keep the wrapped source's alpha: 26.2 multiplies the tint's ARGB into the quad, and the
+		// colour helpers do not carry alpha through (see LuminousCliffsColors.applyCliffShift).
+		return (delegate & 0xff000000) | (mixed & 0xffffff);
 	}
 
 	/**

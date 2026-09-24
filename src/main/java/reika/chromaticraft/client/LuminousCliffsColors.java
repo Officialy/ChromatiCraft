@@ -204,13 +204,21 @@ public final class LuminousCliffsColors {
 		return count;
 	}
 
-	/** Applies the V33a shift, faded in over the biome border by {@link #cliffStrength}. */
+	/**
+	 * Applies the V33a shift, faded in over the biome border by {@link #cliffStrength}.
+	 *
+	 * <p>Only the RGB is shifted; the base's alpha is kept. 26.2 multiplies the tint into the quad's
+	 * ARGB, and {@code mixColors} does not carry alpha through (the white it washes toward has none,
+	 * and it reads an opaque alpha as -1), so without this the cliffs' grass and leaves drew fully
+	 * transparent. 1.7.10 ignored a tint's alpha, which is why upstream never noticed.
+	 */
 	public static int applyCliffShift(int base, BlockAndTintGetter level, BlockPos pos) {
 		float strength = cliffStrength(level, pos);
 		if (strength <= 0)
 			return base;
 		int shifted = shiftTerrainColor(base, pos);
-		return strength >= 1 ? shifted : ReikaColorAPI.mixColors(shifted, base, strength);
+		int mixed = strength >= 1 ? shifted : ReikaColorAPI.mixColors(shifted, base, strength);
+		return (base & 0xff000000) | (mixed & 0xffffff);
 	}
 
 	/**
