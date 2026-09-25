@@ -30,7 +30,7 @@ import reika.dragonapi.libraries.java.ReikaRandomHelper;
  * the coloured altars). V33a kept the colour in metadata; each colour is its own block here, carrying its
  * {@link CrystalElement}.
  *
- * <p>The block chimes -- a note from its element's chord -- when placed, broken, walked on or struck. V33a's
+ * <p>The block chimes -- a note from its element's chord -- when placed, broken, stepped on or struck. V33a's
  * step sound is stone at zero volume, so walking makes only that chime ({@link #SILENT_STONE}). V33a's
  * per-position light ({@code getBrightness}) is a blockstate light level in 26.2, set on the properties.
  */
@@ -73,11 +73,23 @@ public abstract class CrystalTypeBlock extends Block {
 
 	}
 
+	/**
+	 * V33a {@code onEntityWalking} ran once per footstep: whenever the entity's walked distance passed its next
+	 * whole block, alongside the step sound. 26.2 calls {@code stepOn} every tick an entity stands on the block,
+	 * so the chime is kept to those step boundaries of {@link Entity#moveDist}.
+	 */
 	@Override
 	public void stepOn(Level level, BlockPos pos, BlockState state, Entity entity) {
 		super.stepOn(level, pos, state, entity);
-		ding(level, pos, element);
+		if (level.isClientSide())
+			return;
+		int step = (int)entity.moveDist;
+		Integer last = LAST_STEP.put(entity, step);
+		if (last != null && step > last)
+			ding(level, pos, element);
 	}
+
+	private static final java.util.Map<Entity, Integer> LAST_STEP = new java.util.WeakHashMap<>();
 
 	@Override
 	protected void attack(BlockState state, Level level, BlockPos pos, Player player) {
