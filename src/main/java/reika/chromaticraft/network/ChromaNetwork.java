@@ -65,6 +65,7 @@ public final class ChromaNetwork {
 		registrar.playToClient(ShardBoost.TYPE, ShardBoost.CODEC, ChromaNetwork::handleShardBoost);
 		registrar.playToClient(PoolAlloyingFx.TYPE, PoolAlloyingFx.CODEC,
 				ChromaNetwork::handlePoolAlloyingFx);
+		registrar.playToClient(ArtealloyBurst.TYPE, ArtealloyBurst.CODEC, ChromaNetwork::handleArtealloyBurst);
 		registrar.playToClient(ProgressionNote.TYPE, ProgressionNote.CODEC, ChromaNetwork::handleProgressionNote);
 		registrar.playToClient(StructureEntry.TYPE, StructureEntry.CODEC, ChromaNetwork::handleStructureEntry);
 		registrar.playToClient(StructurePassword.TYPE, StructurePassword.CODEC,
@@ -310,12 +311,32 @@ public final class ChromaNetwork {
 	}
 
 	/** One authoritative V33a pool-alloying droplet for every client tracking the active catalyst. */
-	public static void sendPoolAlloyingFx(ServerLevel level, Entity catalyst) {
+	public static void sendPoolAlloyingFx(ServerLevel level, Entity catalyst,
+			java.util.List<reika.chromaticraft.auxiliary.recipemanagers.poolrecipes.AlloyingEffect> effects) {
+		java.util.List<String> ids = effects.stream()
+				.map(reika.chromaticraft.auxiliary.recipemanagers.poolrecipes.AlloyingEffect.Registry::getId).toList();
 		for (ServerPlayer player : level.players()) {
 			if (player.connection != null && player.connection.hasChannel(PoolAlloyingFx.TYPE)
 					&& player.distanceToSqr(catalyst) <= 64D * 64D)
-				PacketDistributor.sendToPlayer(player, new PoolAlloyingFx(catalyst.getId()));
+				PacketDistributor.sendToPlayer(player, new PoolAlloyingFx(catalyst.getId(), ids));
 		}
+	}
+
+	/** V33a ARTEALLOYBURST: an artealloy shockwave, to every player within 128. */
+	public record ArtealloyBurst(int entityId) implements CustomPacketPayload {
+		public static final Type<ArtealloyBurst> TYPE = createType("artealloy_burst");
+		public static final StreamCodec<ByteBuf, ArtealloyBurst> CODEC = StreamCodec.composite(
+				ByteBufCodecs.VAR_INT, ArtealloyBurst::entityId, ArtealloyBurst::new);
+		@Override public Type<ArtealloyBurst> type() { return TYPE; }
+	}
+
+	public static void sendArtealloyBurst(ServerLevel level, Entity catalyst) {
+		PacketDistributor.sendToPlayersNear(level, null, catalyst.getX(), catalyst.getY(), catalyst.getZ(), 128,
+				new ArtealloyBurst(catalyst.getId()));
+	}
+
+	private static void handleArtealloyBurst(ArtealloyBurst payload, IPayloadContext context) {
+		context.enqueueWork(() -> ClientPayloadHandlers.artealloyBurst(payload.entityId()));
 	}
 
 	/** V33a MONUMENTCOMPLETE: the one-shot visual transition before the Aura Locus conversion. */
@@ -674,10 +695,13 @@ public final class ChromaNetwork {
 				ByteBufCodecs.VAR_INT, ShardBoost::color, ShardBoost::new);
 		@Override public Type<ShardBoost> type() { return TYPE; }
 	}
-	public record PoolAlloyingFx(int entityId) implements CustomPacketPayload {
+	/** One pool-alloying tick; {@code effects} names the recipe's alloying effects for their client visuals. */
+	public record PoolAlloyingFx(int entityId, java.util.List<String> effects) implements CustomPacketPayload {
 		public static final Type<PoolAlloyingFx> TYPE = createType("pool_alloying_fx");
 		public static final StreamCodec<ByteBuf, PoolAlloyingFx> CODEC = StreamCodec.composite(
-				ByteBufCodecs.VAR_INT, PoolAlloyingFx::entityId, PoolAlloyingFx::new);
+				ByteBufCodecs.VAR_INT, PoolAlloyingFx::entityId,
+				ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list()), PoolAlloyingFx::effects,
+				PoolAlloyingFx::new);
 		@Override public Type<PoolAlloyingFx> type() { return TYPE; }
 	}
 	public record SetHeatLampTemperature(BlockPos source, int temperature) implements CustomPacketPayload {
@@ -1078,7 +1102,7 @@ public final class ChromaNetwork {
 				payload.source, element(payload.color)));
 	}
 	private static void handlePoolAlloyingFx(PoolAlloyingFx payload, IPayloadContext context) {
-		context.enqueueWork(() -> ClientPayloadHandlers.poolAlloyingFx(payload.entityId));
+		context.enqueueWork(() -> ClientPayloadHandlers.poolAlloyingFx(payload.entityId, payload.effects));
 	}
 	private static void handlePylonCrystalBreak(PylonCrystalBreak payload, IPayloadContext context) {
 		context.enqueueWork(() -> ClientPayloadHandlers.pylonCrystalBreak(payload.source, element(payload.color)));

@@ -264,6 +264,18 @@ public final class ChromaRenderPipelines {
 					.build())
 			.build();
 
+	/** V33a ARTEALLOY$SHOCK and ARTEALLOY$GLOW in one pass; see {@code ArtealloyEffects}. */
+	public static final RenderPipeline ARTEALLOY = RenderPipeline.builder(
+				net.minecraft.client.renderer.RenderPipelines.POST_PROCESSING_SNIPPET)
+			.withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "pipeline/artealloy"))
+			.withVertexShader("core/screenquad")
+			.withFragmentShader(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "post/artealloy"))
+			.withBindGroupLayout(com.mojang.blaze3d.pipeline.BindGroupLayout.builder()
+					.withSampler("InSampler")
+					.withUniform("Artealloy", com.mojang.blaze3d.shaders.UniformType.UNIFORM_BUFFER)
+					.build())
+			.build();
+
 	public static final RenderPipeline LOCUS_POINTS = RenderPipeline.builder(
 				net.minecraft.client.renderer.RenderPipelines.POST_PROCESSING_SNIPPET)
 			.withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "pipeline/locus_points"))
@@ -373,6 +385,7 @@ public final class ChromaRenderPipelines {
         event.registerPipeline(MONUMENT_GRADE);
 		event.registerPipeline(LOCUS_POINTS);
 		event.registerPipeline(UA_ZONE);
+		event.registerPipeline(ARTEALLOY);
 		event.registerPipeline(AURA_LOCUS_LINES);
     }
 }

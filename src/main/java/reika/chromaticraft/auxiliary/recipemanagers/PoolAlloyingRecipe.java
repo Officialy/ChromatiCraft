@@ -23,6 +23,7 @@ import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
 
+import reika.chromaticraft.auxiliary.recipemanagers.poolrecipes.AlloyingEffect;
 import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.registry.ChromaRecipeSerializers;
 import reika.chromaticraft.registry.ChromaRecipeTypes;
@@ -45,10 +46,17 @@ public final class PoolAlloyingRecipe implements Recipe<PoolAlloyingInput> {
 	private final List<ProgressStage> requiredProgress;
 	private final boolean allowDoubling;
 	private final int minimumDuration;
+	private final List<AlloyingEffect> effects;
 
 	public PoolAlloyingRecipe(Ingredient catalyst, List<CountedIngredient> ingredients,
 			ItemStackTemplate result, List<ProgressStage> requiredProgress,
 			boolean allowDoubling, int minimumDuration) {
+		this(catalyst, ingredients, result, requiredProgress, allowDoubling, minimumDuration, List.of());
+	}
+
+	public PoolAlloyingRecipe(Ingredient catalyst, List<CountedIngredient> ingredients,
+			ItemStackTemplate result, List<ProgressStage> requiredProgress,
+			boolean allowDoubling, int minimumDuration, List<AlloyingEffect> effects) {
 		if (ingredients.isEmpty()) throw new IllegalArgumentException("Pool alloying recipes need ingredients");
 		this.catalyst = catalyst;
 		this.ingredients = List.copyOf(ingredients);
@@ -56,6 +64,7 @@ public final class PoolAlloyingRecipe implements Recipe<PoolAlloyingInput> {
 		this.requiredProgress = List.copyOf(requiredProgress);
 		this.allowDoubling = allowDoubling;
 		this.minimumDuration = minimumDuration;
+		this.effects = List.copyOf(effects);
 	}
 
 	@Override
@@ -88,6 +97,8 @@ public final class PoolAlloyingRecipe implements Recipe<PoolAlloyingInput> {
 	public List<ProgressStage> requiredProgress() { return requiredProgress; }
 	public boolean allowDoubling() { return allowDoubling; }
 	public int minimumDuration() { return minimumDuration; }
+	/** V33a {@code PoolRecipe.effects}. */
+	public List<AlloyingEffect> effects() { return effects; }
 
 	@Override public boolean isSpecial() { return true; }
 	@Override public boolean showNotification() { return true; }
@@ -108,7 +119,8 @@ public final class PoolAlloyingRecipe implements Recipe<PoolAlloyingInput> {
 			ItemStackTemplate.CODEC.fieldOf("result").forGetter(recipe -> recipe.result),
 			PROGRESS_CODEC.listOf().optionalFieldOf("required_progress", List.of()).forGetter(recipe -> recipe.requiredProgress),
 			Codec.BOOL.optionalFieldOf("allow_doubling", true).forGetter(recipe -> recipe.allowDoubling),
-			Codec.intRange(0, Integer.MAX_VALUE).optionalFieldOf("minimum_duration", 0).forGetter(recipe -> recipe.minimumDuration)
+			Codec.intRange(0, Integer.MAX_VALUE).optionalFieldOf("minimum_duration", 0).forGetter(recipe -> recipe.minimumDuration),
+			AlloyingEffect.Registry.CODEC.listOf().optionalFieldOf("effects", List.of()).forGetter(recipe -> recipe.effects)
 	).apply(instance, PoolAlloyingRecipe::new));
 
 	public static final StreamCodec<RegistryFriendlyByteBuf, PoolAlloyingRecipe> STREAM_CODEC = StreamCodec.of(
@@ -126,6 +138,8 @@ public final class PoolAlloyingRecipe implements Recipe<PoolAlloyingInput> {
 		for (ProgressStage stage : recipe.requiredProgress) buffer.writeVarInt(stage.ordinal());
 		buffer.writeBoolean(recipe.allowDoubling);
 		buffer.writeVarInt(recipe.minimumDuration);
+		buffer.writeVarInt(recipe.effects.size());
+		for (AlloyingEffect effect : recipe.effects) buffer.writeUtf(AlloyingEffect.Registry.getId(effect));
 	}
 
 	private static PoolAlloyingRecipe decode(RegistryFriendlyByteBuf buffer) {
@@ -137,8 +151,20 @@ public final class PoolAlloyingRecipe implements Recipe<PoolAlloyingInput> {
 		List<ProgressStage> progress = java.util.stream.IntStream.range(0, buffer.readVarInt())
 				.mapToObj(i -> decodeProgressStage(buffer.readVarInt()))
 				.toList();
+		boolean allowDoubling = buffer.readBoolean();
+		int minimumDuration = buffer.readVarInt();
+		List<AlloyingEffect> effects = java.util.stream.IntStream.range(0, buffer.readVarInt())
+				.mapToObj(i -> decodeEffect(buffer.readUtf()))
+				.toList();
 		return new PoolAlloyingRecipe(catalyst, ingredients, result, progress,
-				buffer.readBoolean(), buffer.readVarInt());
+				allowDoubling, minimumDuration, effects);
+	}
+
+	private static AlloyingEffect decodeEffect(String id) {
+		AlloyingEffect effect = AlloyingEffect.Registry.get(id);
+		if (effect == null)
+			throw new IllegalArgumentException("Unknown ChromatiCraft pool alloying effect " + id);
+		return effect;
 	}
 
 	private static ProgressStage decodeProgressStage(int ordinal) {

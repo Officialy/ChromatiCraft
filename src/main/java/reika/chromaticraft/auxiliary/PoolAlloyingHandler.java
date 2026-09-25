@@ -17,6 +17,7 @@ import net.neoforged.neoforge.event.tick.EntityTickEvent;
 
 import reika.chromaticraft.auxiliary.recipemanagers.PoolAlloyingInput;
 import reika.chromaticraft.auxiliary.recipemanagers.PoolAlloyingRecipe;
+import reika.chromaticraft.auxiliary.recipemanagers.poolrecipes.AlloyingEffect;
 import reika.chromaticraft.block.BlockChromaFluid;
 import reika.chromaticraft.magic.ChromaAbilityData;
 import reika.chromaticraft.magic.progression.ProgressStage;
@@ -40,9 +41,14 @@ public final class PoolAlloyingHandler {
 		if (!timingRoll && !catalyst.getPersistentData().getBooleanOr(ACTIVE_TAG, false)) return;
 		RecipeHolder<PoolAlloyingRecipe> holder = findRecipe(catalyst);
 		if (holder == null) return;
-		catalyst.getPersistentData().putBoolean(ACTIVE_TAG, true);
 		PoolAlloyingRecipe recipe = holder.value();
-		ChromaNetwork.sendPoolAlloyingFx(level, catalyst);
+		// V33a "chromaalloy": the recipe's effects initialize once, then run every tick it stays active.
+		if (!catalyst.getPersistentData().getBooleanOr(ACTIVE_TAG, false)) {
+			catalyst.getPersistentData().putBoolean(ACTIVE_TAG, true);
+			for (AlloyingEffect effect : recipe.effects()) effect.initialize(catalyst);
+		}
+		for (AlloyingEffect effect : recipe.effects()) effect.doEffect(catalyst);
+		ChromaNetwork.sendPoolAlloyingFx(level, catalyst, recipe.effects());
 		if (timingRoll && catalyst.tickCount >= recipe.minimumDuration() && catalyst.tickCount > 20) {
 			BlockChromaFluid.TileEntityChroma pool = pool(catalyst);
 			int speed = BlockChromaFluid.getSpeedMultiplier(pool.getEtherCount());
@@ -101,6 +107,8 @@ public final class PoolAlloyingHandler {
 		if (catalystStack.isEmpty()) catalyst.discard();
 		else catalyst.setItem(catalystStack);
 
+		// V33a cleared the pool's energy before making the recipe; effects may remove the pool block below.
+		pool.clear();
 		int outputMultiplier = recipe.allowDoubling()
 				&& level.getRandom().nextFloat() < BlockChromaFluid.getDoublingChance(pool.getEtherCount()) ? 2 : 1;
 		if (ChromaAbilityData.hasDoubleCraft(owner)) outputMultiplier *= 2;
@@ -112,8 +120,8 @@ public final class PoolAlloyingHandler {
 			output.setUnlimitedLifetime();
 			output.setThrower(owner);
 			level.addFreshEntity(output);
+			for (AlloyingEffect effect : recipe.effects()) effect.onFinish(catalyst, output);
 		}
-		pool.clear();
 		level.setBlock(pos, Blocks.AIR.defaultBlockState(), 3);
 		ProgressStage.ALLOY.stepPlayerTo(owner);
 		return true;

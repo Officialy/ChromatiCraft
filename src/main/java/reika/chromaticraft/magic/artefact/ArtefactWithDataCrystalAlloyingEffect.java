@@ -1,46 +1,52 @@
 package reika.chromaticraft.magic.artefact;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.Random;
 
-import net.minecraft.client.Minecraft;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.item.EntityItem;
-import net.minecraft.init.Blocks;
-import net.minecraft.util.AxisAlignedBB;
-import net.minecraft.util.DamageSource;
+import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.AABB;
 
-import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.auxiliary.recipemanagers.poolrecipes.AlloyingEffect;
+import reika.chromaticraft.entity.EntityDataCrystal;
+import reika.chromaticraft.network.ChromaNetwork;
 import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaIcons;
-import reika.chromaticraft.registry.ChromaPackets;
 import reika.chromaticraft.registry.ChromaSounds;
-import reika.chromaticraft.render.particle.EntityCCBlurFX;
 import reika.dragonapi.auxiliary.trackers.TickScheduler;
-import reika.dragonapi.instantiable.data.immutable.Coordinate;
 import reika.dragonapi.instantiable.data.immutable.DecimalPosition;
 import reika.dragonapi.instantiable.event.ScheduledTickEvent;
 import reika.dragonapi.instantiable.event.scheduledtickevent.DelayedAttack;
 import reika.dragonapi.instantiable.event.scheduledtickevent.DelayedKnockback;
-import reika.dragonapi.instantiable.event.scheduledtickevent.ScheduledEvent;
-import reika.dragonapi.libraries.ReikaAABBHelper;
-import reika.dragonapi.libraries.ReikaEntityHelper;
-import reika.dragonapi.libraries.io.ReikaPacketHelper;
-import reika.dragonapi.libraries.io.ReikaSoundHelper;
-import reika.dragonapi.libraries.java.ReikaRandomHelper;
-import reika.dragonapi.libraries.rendering.ReikaColorAPI;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
-
+/**
+ * V33a: the Artifact Distribution Map's Pool Recipe, where a Memory Crystal and an Unknown Artefact are
+ * alloyed together. The crystal turns orange and bathes the screen in a shifting amber glow; every so often
+ * the pool throws a shockwave that, twelve ticks later, knocks back and hurts everything within twelve
+ * blocks; and when the map forms, the pool goes up in a fiery explosion that the map and its catalyst survive.
+ *
+ * <p>The client half (particles, the burst sound and shockwave, the GLOW/SHOCK shaders) is
+ * {@code ArtealloyEffects}; the orange crystal is {@link EntityDataCrystal#isArtealloy()}.
+ *
+ * <p>V33a gated bursts on {@code fireTick == 0}, but only the client's burst handler ever set that field. In
+ * singleplayer the static was shared with the integrated server, so bursts were at least 50 ticks apart; on a
+ * dedicated server the gate never closed. The singleplayer spacing is kept as a server-side cooldown. Likewise
+ * the shared static was ticked by both sides in singleplayer; only the server ticks it here.
+ */
 public class ArtefactWithDataCrystalAlloyingEffect implements AlloyingEffect {
 
 	public static final ArtefactWithDataCrystalAlloyingEffect instance = new ArtefactWithDataCrystalAlloyingEffect();
 
+	/** Marks every item that took part, as V33a's {@code getEntityData().setBoolean("artealloy", true)}. */
+	public static final String TAG = "artealloy";
+
+	private static final int BURST_COOLDOWN = 50;
+
 	private int tick = 0;
-	private int fireTick = 0;
+	private int burstCooldown = 0;
 
 	private final Random rand = new Random();
 
@@ -48,114 +54,56 @@ public class ArtefactWithDataCrystalAlloyingEffect implements AlloyingEffect {
 
 	}
 
-	public void initialize(EntityItem ei) {
-		rand.setSeed(ei.getEntityId());
+	@Override
+	public void initialize(ItemEntity ei) {
+		rand.setSeed(ei.getId());
 		rand.nextBoolean();
 		rand.nextBoolean();
-		ei.getEntityData().setBoolean("artealloy", true);
+		mark(ei);
 		tick = 0;
-		AxisAlignedBB box = ReikaAABBHelper.getBlockAABB(new Coordinate(ei));
-		Collection<EntityItem> li = ei.worldObj.getEntitiesWithinAABB(EntityItem.class, box);
-		for (EntityItem ei2 : li) {
-			ei2.getEntityData().setBoolean("artealloy", true);
+		AABB box = new AABB(ei.blockPosition());
+		for (ItemEntity ei2 : ei.level().getEntitiesOfClass(ItemEntity.class, box)) {
+			mark(ei2);
 		}
 	}
 
+	private static void mark(ItemEntity ei) {
+		ei.getPersistentData().putBoolean(TAG, true);
+		if (ei instanceof EntityDataCrystal crystal)
+			crystal.setArtealloy(true);
+	}
+
 	@Override
-	public void doEffect(EntityItem ei) {
-		//ReikaJavaLibrary.pConsole(ei.worldObj.isRemote+" @ "+tick+" for "+ei.getEntityItem());
-		if (ei.worldObj.isRemote) {
-			this.doClientFX(ei);
-			if (fireTick > 0)
-				fireTick--;
-		}
-		else {
-			if (tick%45 == 0)
-				ChromaSounds.ARTEALLOY.playSoundNoAttenuation(ei.worldObj, ei.posX, ei.posY, ei.posZ, 2, 1, 96);
-			if (fireTick == 0 && tick > 10 && rand.nextInt(90) == 0) {
-				List<EntityLivingBase> li = ei.worldObj.getEntitiesWithinAABB(EntityLivingBase.class, ReikaAABBHelper.getEntityCenteredAABB(ei, 12));
-				for (EntityLivingBase e : li) {
-					TickScheduler.instance.scheduleEvent(new ScheduledTickEvent(new DelayedKnockback(e, new DecimalPosition(ei), 5, 0.5)), 12);
-					TickScheduler.instance.scheduleEvent(new ScheduledTickEvent(new DelayedAttack(e, DamageSource.magic, 2)), 12);
-				}
-				ReikaPacketHelper.sendDataPacketWithRadius(ChromatiCraft.packetChannel, ChromaPackets.ARTEALLOYBURST.ordinal(), ei, 128, ei.getEntityId());//ChromaSounds.ARTEALLOYHIT.playSound(ei, 2, 1);
+	public void doEffect(ItemEntity ei) {
+		if (!(ei.level() instanceof ServerLevel level))
+			return;
+		if (tick % 45 == 0)
+			ChromaSounds.ARTEALLOY.playSoundNoAttenuation(level, ei.blockPosition(), 2, 1, 96);
+		if (burstCooldown > 0)
+			burstCooldown--;
+		if (burstCooldown == 0 && tick > 10 && rand.nextInt(90) == 0) {
+			List<LivingEntity> li = level.getEntitiesOfClass(LivingEntity.class, ei.getBoundingBox().inflate(12));
+			DecimalPosition from = new DecimalPosition(ei);
+			for (LivingEntity e : li) {
+				TickScheduler.instance.scheduleEvent(new ScheduledTickEvent(new DelayedKnockback(e, from, 5, 0.5)), 12);
+				TickScheduler.instance.scheduleEvent(new ScheduledTickEvent(new DelayedAttack(e, level.damageSources().magic(), 2)), 12);
 			}
+			ChromaNetwork.sendArtealloyBurst(level, ei);
+			burstCooldown = BURST_COOLDOWN;
 		}
 		tick++;
 	}
 
-	@SideOnly(Side.CLIENT)
-	private void doClientFX(EntityItem ei) {
-		int n = ReikaRandomHelper.getRandomBetween(2, 7);
-		for (int i = 0; i < n; i++) {
-			double vx = ReikaRandomHelper.getRandomPlusMinus(0, 0.0625);
-			double vz = ReikaRandomHelper.getRandomPlusMinus(0, 0.0625);
-			double vy = ReikaRandomHelper.getRandomBetween(0.1875, 0.4);
-			if (ReikaRandomHelper.doWithChance(15))
-				vy += 0.375;
-			float s = (float)ReikaRandomHelper.getRandomPlusMinus(1.5, 2.5);
-			float g = (float)ReikaRandomHelper.getRandomBetween(0.03125, 0.125)*(float)(vy/0.125)*1.5F;
-			EntityCCBlurFX fx1 = new EntityCCBlurFX(Minecraft.getMinecraft().theWorld, ei.posX, ei.posY, ei.posZ, vx, vy, vz);
-			fx1.setIcon(ChromaIcons.FADE_RAY).setColor(0xffffff).setGravity(g).setScale(s).setLife(40).setRapidExpand();
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx1);
-		}
-	}
-
-	public void doBurst(EntityItem ei) {
-		ReikaSoundHelper.playClientSound(ChromaSounds.ARTEALLOYHIT, ei, 2, 1, false);
-		fireTick = 50;
-		TickScheduler.instance.scheduleEvent(new ScheduledTickEvent(new ParticleBurst(new DecimalPosition(ei))), 10);
-	}
-
-	public int getFireTick() {
-		return fireTick;
-	}
-
 	@Override
-	public void onFinish(EntityItem ei, EntityItem result) {
-		Coordinate c = new Coordinate(ei);
-		if (c.getBlock(ei.worldObj) == ChromaBlocks.CHROMA.getBlockInstance())
-			c.setBlock(ei.worldObj, Blocks.air);
-		ReikaEntityHelper.setInvulnerable(ei, true);
-		ReikaEntityHelper.setInvulnerable(result, true);
-		ei.worldObj.newExplosion(ei, ei.posX, ei.posY, ei.posZ, 6, true, true);
-	}
-
-	private static class ParticleBurst implements ScheduledEvent {
-
-		private final DecimalPosition position;
-
-		public ParticleBurst(DecimalPosition pos) {
-			position = pos;
-		}
-
-		@Override
-		public void fire() {
-			this.fireClient();
-		}
-
-		@SideOnly(Side.CLIENT)
-		private void fireClient() {
-			for (int i = 0; i < 32; i++) {
-				double px = ReikaRandomHelper.getRandomPlusMinus(position.xCoord, 0.25);
-				double py = ReikaRandomHelper.getRandomPlusMinus(position.yCoord, 0.25);
-				double pz = ReikaRandomHelper.getRandomPlusMinus(position.zCoord, 0.25);
-				double vx = ReikaRandomHelper.getRandomPlusMinus(0, 0.125);
-				double vz = ReikaRandomHelper.getRandomPlusMinus(0, 0.125);
-				double vy = ReikaRandomHelper.getRandomBetween(0.03125, 0.25);
-				float s = (float)ReikaRandomHelper.getRandomPlusMinus(5, 2.5);
-				EntityCCBlurFX fx1 = new EntityCCBlurFX(Minecraft.getMinecraft().theWorld, px, py, pz, vx, vy, vz);
-				int c = ReikaColorAPI.getModifiedHue(0xff0000, ReikaRandomHelper.getRandomBetween(20, 45));
-				fx1.setIcon(ChromaIcons.FADE_GENTLE).setColor(c).setScale(s).setLife(30).setRapidExpand();
-				Minecraft.getMinecraft().effectRenderer.addEffect(fx1);
-			}
-		}
-
-		@Override
-		public boolean runOnSide(Side s) {
-			return s == Side.CLIENT;
-		}
-
+	public void onFinish(ItemEntity ei, ItemEntity result) {
+		Level world = ei.level();
+		BlockPos c = ei.blockPosition();
+		if (world.getBlockState(c).is(ChromaBlocks.CHROMA.get()))
+			world.setBlock(c, Blocks.AIR.defaultBlockState(), 3);
+		ei.setInvulnerable(true);
+		result.setInvulnerable(true);
+		// newExplosion(ei, ..., 6, flaming, smoking): fire, and blocks broken regardless of mob griefing.
+		world.explode(ei, ei.getX(), ei.getY(), ei.getZ(), 6, true, Level.ExplosionInteraction.TNT);
 	}
 
 }

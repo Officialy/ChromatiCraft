@@ -374,6 +374,50 @@ public abstract class ChromaParticle extends SingleQuadParticle {
 		}
 	}
 
+	/**
+	 * V33a {@code ArtefactWithDataCrystalAlloyingEffect.doClientFX}: each tick of the Artifact Distribution Map
+	 * alloy, two to seven white rays shoot up out of the pool and fall back.
+	 */
+	public static void spawnArtealloyRays(ItemEntity ei) {
+		if (!(ei.level() instanceof ClientLevel level)) return;
+		RandomSource rand = level.getRandom();
+		int n = 2 + rand.nextInt(6);
+		for (int i = 0; i < n; i++) {
+			double vx = plusMinus(rand, 0, 0.0625);
+			double vz = plusMinus(rand, 0, 0.0625);
+			double vy = between(rand, 0.1875, 0.4);
+			if (rand.nextInt(100) < 15)
+				vy += 0.375;
+			float s = (float)plusMinus(rand, 1.5, 2.5);
+			float g = (float)between(rand, 0.03125, 0.125) * (float)(vy / 0.125) * 1.5F;
+			FadeGlow fx = new FadeGlow(level, ei.getX(), ei.getY(), ei.getZ(), vx, vy, vz, 0xffffff, 40, s,
+					true, null, 0, "fade_ray", true);
+			fx.gravity = g;
+			Minecraft.getInstance().particleEngine.add(fx);
+		}
+	}
+
+	/**
+	 * V33a {@code ArtefactWithDataCrystalAlloyingEffect.ParticleBurst}: ten ticks after an artealloy shockwave,
+	 * 32 large orange-to-amber blurs puff out of the pool.
+	 */
+	public static void spawnArtealloyBurst(Level world, double x, double y, double z) {
+		if (!(world instanceof ClientLevel level)) return;
+		RandomSource rand = level.getRandom();
+		for (int i = 0; i < 32; i++) {
+			double px = plusMinus(rand, x, 0.25);
+			double py = plusMinus(rand, y, 0.25);
+			double pz = plusMinus(rand, z, 0.25);
+			double vx = plusMinus(rand, 0, 0.125);
+			double vz = plusMinus(rand, 0, 0.125);
+			double vy = between(rand, 0.03125, 0.25);
+			float s = (float)plusMinus(rand, 5, 2.5);
+			int c = reika.dragonapi.libraries.rendering.ReikaColorAPI.getModifiedHue(0xff0000, 20 + rand.nextInt(26));
+			Minecraft.getInstance().particleEngine.add(new FadeGlow(level, px, py, pz, vx, vy, vz, c, 30, s,
+					true, null, 0, "fade_gentle", true));
+		}
+	}
+
 	/** Exact V33a {@code ChromaFX.poolRecipeParticles}: one rising chroma-fluid droplet per tick. */
 	public static void spawnPoolAlloying(net.minecraft.world.entity.item.ItemEntity item,
 			RandomSource random) {

@@ -198,10 +198,21 @@ public final class ClientPayloadHandlers {
 			ChromaParticle.spawnShardBoostCompletion(mc.level, source, colour, mc.level.getRandom());
 	}
 
-	public static void poolAlloyingFx(int entityId) {
+	public static void poolAlloyingFx(int entityId, java.util.List<String> effects) {
+		Minecraft mc = Minecraft.getInstance();
+		if (mc.level != null && mc.level.getEntity(entityId) instanceof net.minecraft.world.entity.item.ItemEntity item) {
+			ChromaParticle.spawnPoolAlloying(item, mc.level.getRandom());
+			for (String effect : effects) {
+				if (reika.chromaticraft.auxiliary.recipemanagers.poolrecipes.AlloyingEffect.Registry.ARTEFACT_DATA_CRYSTAL.equals(effect))
+					reika.chromaticraft.client.render.ArtealloyEffects.doClientFX(item);
+			}
+		}
+	}
+
+	public static void artealloyBurst(int entityId) {
 		Minecraft mc = Minecraft.getInstance();
 		if (mc.level != null && mc.level.getEntity(entityId) instanceof net.minecraft.world.entity.item.ItemEntity item)
-			ChromaParticle.spawnPoolAlloying(item, mc.level.getRandom());
+			reika.chromaticraft.client.render.ArtealloyEffects.doBurst(item);
 	}
 
 	public static void pylonCrystalBreak(BlockPos source, CrystalElement colour) {
