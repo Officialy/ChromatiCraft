@@ -104,6 +104,8 @@ public final class ScreenChromicLexicon extends Screen {
 			ChromatiCraft.MODID, "textures/block/pylon/block_0.png");
 	private static final Identifier TABLE_TILE = Identifier.fromNamespaceAndPath(
 			ChromatiCraft.MODID, "textures/block/tile/table_top.png");
+	/** runes/frontpng/tileN_0.png is 16x1024: 64 animation frames. */
+	private static final int RUNE_FACE_FRAMES = 64;
 
 	/** V33a GuiNavigation.getScrollingTexture: the pannable backdrop beneath the frame. */
 	private static final Identifier NAV_SCROLL = Identifier.fromNamespaceAndPath(
@@ -161,6 +163,11 @@ public final class ScreenChromicLexicon extends Screen {
 	private boolean castingRecipeView;
 	private int recipeIndex;
 	private int recipeSubpage;
+	/** Which Y layer of a rune pattern the Runes subpage shows, counted up from the lowest. */
+	private int runeLayer;
+	/** The cursor for the frame being drawn, for page-item tooltips. */
+	private int frameMouseX;
+	private int frameMouseY;
 	private final java.util.Map<String, List<CastingTableRecipe>> castingRecipeCache = new java.util.HashMap<>();
 	/**
 	 * The recipe book only holds what the server has awarded the player, and the client has no other
@@ -363,6 +370,7 @@ public final class ScreenChromicLexicon extends Screen {
 		descriptionSubpage = 0;
 		recipeIndex = 0;
 		recipeSubpage = 0;
+		runeLayer = 0;
 		castingRecipeView = recipeMode;
 		structureMode = 0;
 		structureRender = null;
@@ -603,11 +611,13 @@ public final class ScreenChromicLexicon extends Screen {
 			addRenderableWidget(Button.builder(Component.literal("‹"), button -> {
 				recipeIndex = Math.floorMod(recipeIndex - 1, recipes.size());
 				recipeSubpage = 0;
+				runeLayer = 0;
 				rebuildWidgets();
 			}).bounds(left + 205, top - 3, 10, 12).build());
 			addRenderableWidget(Button.builder(Component.literal("›"), button -> {
 				recipeIndex = (recipeIndex + 1) % recipes.size();
 				recipeSubpage = 0;
+				runeLayer = 0;
 				rebuildWidgets();
 			}).bounds(left + 215, top - 3, 10, 12).build());
 		}
@@ -620,6 +630,28 @@ public final class ScreenChromicLexicon extends Screen {
 			addRenderableWidget(Button.builder(Component.literal("<"), button -> moveRecipeSubpage(-1))
 					.bounds(left + WIDTH - 27, top + 52, 20, 20).build());
 		}
+		// V33a cycled a multi-layer rune pattern on its own, one layer per five seconds. By request the
+		// layer is stepped by hand instead, with arrows either side of the "y=" label.
+		int[] range = runeLayerRange(recipe);
+		if (recipeSubpage == 1 && range[1] > 1) {
+			addRenderableWidget(Button.builder(Component.literal("▲"), button -> {
+				runeLayer = Math.floorMod(runeLayer + 1, range[1]);
+			}).bounds(left + 128 + 93, top + 110 - 18, 12, 12).build());
+			addRenderableWidget(Button.builder(Component.literal("▼"), button -> {
+				runeLayer = Math.floorMod(runeLayer - 1, range[1]);
+			}).bounds(left + 128 + 93, top + 110 + 7, 12, 12).build());
+		}
+	}
+
+	/** {min Y, number of layers} of a recipe's rune pattern; the table's own layer (0) is always included. */
+	private static int[] runeLayerRange(CastingTableRecipe recipe) {
+		int minY = 0;
+		int maxY = 0;
+		for (CastingTableRecipe.RuneRequirement rune : recipe.runes()) {
+			minY = Math.min(minY, rune.offset().getY());
+			maxY = Math.max(maxY, rune.offset().getY());
+		}
+		return new int[] {minY, Math.max(1, maxY - minY + 1)};
 	}
 
 	private void addCraftingRecipeButtons(int left, int top, int count) {
@@ -758,6 +790,8 @@ public final class ScreenChromicLexicon extends Screen {
 	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
 		int left = (width - WIDTH) / 2;
 		int top = (height - HEIGHT) / 2;
+		frameMouseX = mouseX;
+		frameMouseY = mouseY;
 		guiTick++;
 		boolean scrolling = selected == null && (view == View.NAVIGATION || view == View.STORED_PAGES);
 		if (scrolling) {
@@ -1054,7 +1088,7 @@ public final class ScreenChromicLexicon extends Screen {
 				else if (machinePage() == MachinePage.MAIN
 						&& !machineRender.render(graphics, icon, left, top, width, height, partialTick)
 						&& !icon.isEmpty())
-					graphics.item(icon, left + 120, top + 43);
+					pageItem(graphics, icon, left + 120, top + 43);
 			}
 			case TOOLS -> {
 				// GuiToolDescription: scale 4, translated to (posX+132, posY+12). posY is top-8.
@@ -1084,12 +1118,12 @@ public final class ScreenChromicLexicon extends Screen {
 					renderAbilityRitual(graphics, entry, left, top);
 			}
 			case STRUCTURES -> {
-				if (!icon.isEmpty()) graphics.item(icon, left + 120, top + 43);
+				if (!icon.isEmpty()) pageItem(graphics, icon, left + 120, top + 43);
 				graphics.text(font, Component.literal("NBT Structure Template"), left + 140, top + 47,
 						0xff80dfff, false);
 			}
 			default -> {
-				if (!icon.isEmpty()) graphics.item(icon, left + 120, top + 43);
+				if (!icon.isEmpty()) pageItem(graphics, icon, left + 120, top + 43);
 			}
 		}
 	}
@@ -1227,6 +1261,22 @@ public final class ScreenChromicLexicon extends Screen {
 		graphics.pose().scale(4, 4);
 		graphics.item(icon, 0, 0);
 		graphics.pose().popMatrix();
+		tooltipIfHovered(graphics, icon, x, y, 64);
+	}
+
+	/**
+	 * Draws an item on the page and, like an inventory slot, shows its name and tooltip while the cursor is over
+	 * it. {@code x}/{@code y} are screen coordinates (not under a pose transform).
+	 */
+	private void pageItem(GuiGraphicsExtractor graphics, ItemStack stack, int x, int y) {
+		graphics.item(stack, x, y);
+		tooltipIfHovered(graphics, stack, x, y, 16);
+	}
+
+	private void tooltipIfHovered(GuiGraphicsExtractor graphics, ItemStack stack, int x, int y, int size) {
+		if (!stack.isEmpty() && frameMouseX >= x && frameMouseX < x + size
+				&& frameMouseY >= y && frameMouseY < y + size)
+			graphics.setTooltipForNextFrame(font, stack, frameMouseX, frameMouseY);
 	}
 
 	/** V33a GuiBasicInfo.renderPylon: a 96px additive round flare cycling through all elements. */
@@ -1776,10 +1826,10 @@ public final class ScreenChromicLexicon extends Screen {
 
 		for (int i = 0; i < 9; i++)
 			if (!grid[i].isEmpty())
-				graphics.item(grid[i], posX + 54 + (i % 3) * 18, posY + 10 + (i / 3) * 18);
+				pageItem(graphics, grid[i], posX + 54 + (i % 3) * 18, posY + 10 + (i / 3) * 18);
 		ItemStack result = cycle(entry.display().result(), context);
 		if (!result.isEmpty())
-			graphics.item(result, posX + 7, posY + 5);
+			pageItem(graphics, result, posX + 7, posY + 5);
 
 		java.util.Map<String, Integer> counts = new java.util.TreeMap<>();
 		for (ItemStack stack : grid)
@@ -1832,7 +1882,7 @@ public final class ScreenChromicLexicon extends Screen {
 		graphics.text(font, output.getHoverName(), left + 27, top - 2, 0xffffffff, false);
 		// ChromaBookData.drawCastingRecipe renders this before switching on the recipe subpage. The
 		// result therefore stays in its source slot on Runes, Stands and Aura as well as on Grid.
-		graphics.item(output, left + 7, top + 5);
+		pageItem(graphics, output, left + 7, top + 5);
 
 		switch (recipeSubpage) {
 			case 0 -> renderCastingGrid(graphics, recipe, left, top);
@@ -1880,7 +1930,7 @@ public final class ScreenChromicLexicon extends Screen {
 			int slot = ingredient.slot();
 			ItemStack stack = ingredientStack(ingredient.ingredient());
 			if (!stack.isEmpty())
-				graphics.item(stack, left + 54 + slot % 3 * 18, top + 10 + slot / 3 * 18);
+				pageItem(graphics, stack, left + 54 + slot % 3 * 18, top + 10 + slot / 3 * 18);
 		}
 	}
 
@@ -1889,8 +1939,12 @@ public final class ScreenChromicLexicon extends Screen {
 	 *
 	 * <p>It is a top-down map, not a list: an 11x11 floor of 16-pixel crystalline-stone tiles centred
 	 * on the casting table, with the recipe's runes laid on the tiles at their real offsets. Only one
-	 * Y layer is shown at a time and it cycles every five seconds, which is how a multi-layer rune
-	 * pattern reads in the book. The "y=" label sits at (midx+93, midy-4).
+	 * Y layer is shown at a time; V33a cycled it every five seconds, here the arrows beside the "y=" label
+	 * (midx+93, midy-4) choose it.
+	 *
+	 * <p>Each rune is the rune block's own icon ({@code getBlockRune()}: {@code runes/backpng}, the engraving
+	 * on crystalline stone) under the animated {@code getFaceRune()} ({@code runes/frontpng}, a 64-frame strip
+	 * stepped one frame per tick as the atlas would).
 	 */
 	private void renderRuneRequirements(GuiGraphicsExtractor graphics, CastingTableRecipe recipe, int left, int top) {
 		int midX = left + 128;
@@ -1899,16 +1953,9 @@ public final class ScreenChromicLexicon extends Screen {
 		int dx = midX - w / 2;
 		int dy = midY - w / 2;
 
-		// V33a animates through the pattern's own Y range, one layer per five seconds.
-		int minY = 0;
-		int maxY = 0;
-		for (CastingTableRecipe.RuneRequirement rune : recipe.runes()) {
-			minY = Math.min(minY, rune.offset().getY());
-			maxY = Math.max(maxY, rune.offset().getY());
-		}
-		int span = Math.max(1, maxY - minY + 1);
-		int layer = recipe.runes().isEmpty() ? 0
-				: minY + (int)((System.currentTimeMillis() / 5000) % span);
+		int[] range = runeLayerRange(recipe);
+		int layer = recipe.runes().isEmpty() ? 0 : range[0] + Math.floorMod(runeLayer, range[1]);
+		int faceFrame = (int)(System.currentTimeMillis() / 50 % RUNE_FACE_FRAMES);
 
 		for (int x = -5; x <= 5; x++)
 			for (int z = -5; z <= 5; z++)
@@ -1919,17 +1966,15 @@ public final class ScreenChromicLexicon extends Screen {
 		for (CastingTableRecipe.RuneRequirement rune : recipe.runes()) {
 			if (rune.offset().getY() != layer)
 				continue;
-			Identifier engraved = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
-					"textures/block/runes/engraved/tile" + rune.element().ordinal() + "_0.png");
-			graphics.blit(RenderPipelines.GUI_TEXTURED, engraved,
+			Identifier block = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
+					"textures/block/runes/backpng/tile" + rune.element().ordinal() + "_0.png");
+			graphics.blit(RenderPipelines.GUI_TEXTURED, block,
 					dx + rune.offset().getX() * w, dy + rune.offset().getZ() * w, 0, 0, w, w, w, w);
-			// RuneShapeRenderer overlays getFaceRune() after getBlockRune(). The engraved layer is
-			// deliberately near-black; omitting this second pass is why every handbook rune lost its
-			// element colour even though the texture files themselves were correct.
-			Identifier glow = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
-					"textures/block/runes/glow/tile" + rune.element().ordinal() + "_0.png");
-			graphics.blit(RenderPipelines.GUI_TEXTURED, glow,
-					dx + rune.offset().getX() * w, dy + rune.offset().getZ() * w, 0, 0, w, w, w, w);
+			Identifier face = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
+					"textures/block/runes/frontpng/tile" + rune.element().ordinal() + "_0.png");
+			graphics.blit(RenderPipelines.GUI_TEXTURED, face,
+					dx + rune.offset().getX() * w, dy + rune.offset().getZ() * w, 0, faceFrame * w, w, w,
+					w, w * RUNE_FACE_FRAMES);
 		}
 
 		if (!recipe.runes().isEmpty())
@@ -1949,7 +1994,7 @@ public final class ScreenChromicLexicon extends Screen {
 			int slot = ingredient.slot();
 			ItemStack stack = ingredientStack(ingredient.ingredient());
 			if (!stack.isEmpty())
-				graphics.item(stack, left + 102 + slot % 3 * 18, top + 76 + slot / 3 * 18);
+				pageItem(graphics, stack, left + 102 + slot % 3 * 18, top + 76 + slot / 3 * 18);
 		}
 		for (CastingTableRecipe.StandIngredient stand : recipe.stands()) {
 			int i = stand.offset().getX();
@@ -1960,7 +2005,7 @@ public final class ScreenChromicLexicon extends Screen {
 			int ty = Math.abs(k) == 2 ? 38 : 63;
 			ItemStack stack = ingredientStack(stand.ingredient());
 			if (!stack.isEmpty())
-				graphics.item(stack, left + 120 + sx * tx, top + 94 + sy * ty);
+				pageItem(graphics, stack, left + 120 + sx * tx, top + 94 + sy * ty);
 		}
 	}
 
@@ -1973,7 +2018,7 @@ public final class ScreenChromicLexicon extends Screen {
 		for (int i = 0; i < recipe.aura().size(); i++) {
 			CastingTableRecipe.AuraRequirement aura = recipe.aura().get(i);
 			CrystalElement element = aura.element();
-			graphics.item(new ItemStack(ChromaBlocks.rune(element).get()), left + 62, top + 64 + i * 19);
+			pageItem(graphics, new ItemStack(ChromaBlocks.rune(element).get()), left + 62, top + 64 + i * 19);
 			graphics.text(font, Component.literal(element.displayName + ": " + aura.amount() + " Lumens"),
 					left + 82, top + 68 + i * 19, 0xff000000 | element.getColor(), false);
 		}
