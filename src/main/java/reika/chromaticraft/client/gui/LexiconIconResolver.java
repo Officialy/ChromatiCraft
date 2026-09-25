@@ -171,6 +171,7 @@ public final class LexiconIconResolver {
 			case "fertilityseed" -> ChromaItems.FERTILITY_SEEDS.getFirst().get();
 			case "endereye" -> ChromaItems.ENDER_EYE.get();
 			case "artefact" -> ChromaBlocks.UNKNOWN_ARTEFACT_ITEM.get();
+			case "structmap" -> ChromaItems.STRUCTURE_MAP.get();
 			default -> null;
 		};
 	}

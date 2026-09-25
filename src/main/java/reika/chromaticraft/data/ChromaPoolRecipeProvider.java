@@ -88,6 +88,23 @@ public final class ChromaPoolRecipeProvider extends RecipeProvider.Runner {
 					List.of(count(ChromaCraftingItems.CRYSTAL_POWDER, 18)),
 					new ItemStackTemplate(ChromaItems.DATA_CRYSTAL.get()), List.of(ProgressStage.TOWER),
 					true, 0));
+
+			// V33a STRUCTMAP: a map, alloyed with a compass, a Data Crystal, an Unknown Artefact, a Lumen Pod,
+			// twelve Enhanced Ender Eyes and dusts. No doubling, at least two minutes, and the artefact/data
+			// crystal alloying effect (shockwaves, the orange crystal, and an explosion when the map forms).
+			save("structure_map", new PoolAlloyingRecipe(Ingredient.of(net.minecraft.world.item.Items.MAP),
+					List.of(count(net.minecraft.world.item.Items.COMPASS, 1),
+							count(ChromaItems.DATA_CRYSTAL.get(), 1),
+							count(reika.chromaticraft.registry.ChromaBlocks.UNKNOWN_ARTEFACT_ITEM.get(), 1),
+							count(reika.chromaticraft.registry.ChromaBlocks.META_ALLOY_LAMP.get(), 1),
+							count(ChromaItems.ENDER_EYE.get(), 12),
+							count(ChromaTieredItems.AURA_DUST, 64),
+							count(ChromaTieredItems.SPACE_DUST, 48),
+							count(net.minecraft.world.item.Items.GLOWSTONE_DUST, 32)),
+					new ItemStackTemplate(ChromaItems.STRUCTURE_MAP.get()),
+					List.of(ProgressStage.TOWER, ProgressStage.ARTEFACT), false, 20 * 60 * 2,
+					List.of(reika.chromaticraft.auxiliary.recipemanagers.poolrecipes.AlloyingEffect.Registry.get(
+							reika.chromaticraft.auxiliary.recipemanagers.poolrecipes.AlloyingEffect.Registry.ARTEFACT_DATA_CRYSTAL))));
 		}
 
 		private void save(String name, net.minecraft.world.level.ItemLike catalyst,

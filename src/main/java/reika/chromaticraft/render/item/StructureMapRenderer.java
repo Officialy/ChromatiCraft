@@ -9,136 +9,97 @@
  ******************************************************************************/
 package reika.chromaticraft.render.item;
 
-import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL12;
+import java.util.Map.Entry;
 
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.entity.AbstractClientPlayer;
-import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.client.renderer.entity.RenderManager;
-import net.minecraft.client.renderer.entity.RenderPlayer;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.MathHelper;
-import net.minecraftforge.client.IItemRenderer;
+import com.mojang.blaze3d.vertex.PoseStack;
+
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.core.BlockPos;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.item.ItemStack;
 
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.items.tools.ItemStructureMap;
-import reika.dragonapi.instantiable.rendering.MultiSheetItemRenderer;
-import reika.dragonapi.libraries.io.ReikaTextureHelper;
-import reika.dragonapi.libraries.java.reikaglhelper.BlendMode;
-import reika.dragonapi.libraries.rendering.ReikaRenderHelper;
+import reika.chromaticraft.items.tools.ItemStructureMap.StructureMapData;
+import reika.chromaticraft.items.tools.ItemStructureMap.StructurePresence;
+import reika.chromaticraft.items.tools.ItemStructureMap.StructureSearchType;
+import reika.dragonapi.instantiable.rendering.HeldMapRenderers;
 
+/**
+ * V33a {@code StructureMapRenderer} plus {@code ItemStructureMap.renderMap}: in first person the map is held like
+ * a vanilla map (both arms when the off hand is free; the arm and swing transforms V33a copied from vanilla are
+ * vanilla's own here, via {@link HeldMapRenderers}), showing its parchment, the overlay for the structure type it
+ * seeks, and a coloured marker per site -- yellow planned, green generated. Other views draw the flat icon.
+ *
+ * <p>Map space is 0..128 with the origin at the top left; markers are placed around the scan's origin at 40/range
+ * pixels per block. Stronghold and tower maps (range -1) are centred on the bounds of what they found and scaled
+ * to its farthest extent.
+ */
+public final class StructureMapRenderer {
 
-public class StructureMapRenderer implements IItemRenderer {
+	private static final Identifier BACKGROUND = texture("bcg");
+	private static final Identifier OVERLAY = texture("overlay_typed");
+	private static final Identifier MARKER = texture("marker");
 
-	private final MultiSheetItemRenderer baseRender;
+	private StructureMapRenderer() {}
 
-	public StructureMapRenderer(MultiSheetItemRenderer ref) {
-		baseRender = ref;
+	private static Identifier texture(String name) {
+		return Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "textures/gui/structure_map/" + name + ".png");
 	}
 
-	@Override
-	public boolean shouldUseRenderHelper(ItemRenderType type, ItemStack item, ItemRendererHelper helper) {
-		return baseRender.shouldUseRenderHelper(type, item, helper);//helper == ItemRendererHelper.ENTITY_BOBBING;
+	public static void register(net.minecraft.world.item.Item map) {
+		HeldMapRenderers.register(map, StructureMapRenderer::render);
 	}
 
-	@Override
-	public void renderItem(ItemRenderType type, ItemStack item, Object... data) {
-		if (type == ItemRenderType.EQUIPPED_FIRST_PERSON) {
-			GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
-			GL11.glPopMatrix();
-			GL11.glPushMatrix();
-			float ptick = ReikaRenderHelper.getPartialTickTime();
-			AbstractClientPlayer e = (AbstractClientPlayer)data[1];
-			GL11.glLoadIdentity();
-			this.prepareRender(ptick, e);
-			this.drawBackground();
+	/** V33a {@code drawBackground} then {@code renderMap}. */
+	public static void render(PoseStack poseStack, SubmitNodeCollector collector, int light, ItemStack item) {
+		int b0 = 7;
+		quad(poseStack, collector, RenderTypes.text(BACKGROUND), -b0, -b0, 128 + b0, 128 + b0, 0, 0, 0, 1, 1, 0xffffffff, light);
 
-			ItemStructureMap.renderMap(item, ptick, e);
+		StructureMapData data = ItemStructureMap.getMapData(item);
+		if (data == null)
+			return;
+		StructureSearchType type = ItemStructureMap.getMode(item);
+		float ou = (type.ordinal() % 4) / 4F;
+		float ov = (type.ordinal() / 4) / 4F;
+		// V33a drew the overlay and markers at full brightness (setBrightness(240)).
+		int bright = 0xF000F0;
+		float rz = -0.01F;
+		quad(poseStack, collector, RenderTypes.text(OVERLAY), -b0, -b0, 128 + b0, 128 + b0, rz, ou, ov, ou + 0.25F,
+				ov + 0.25F, 0xffffffff, bright);
 
-			GL11.glPopMatrix();
-			GL11.glPushMatrix();
-			GL11.glPopAttrib();
+		int px = data.originX;
+		int pz = data.originZ;
+		int max = type.getSearchRange();
+		if (max == -1) {
+			px = data.bounds.getCenterX();
+			pz = data.bounds.getCenterZ();
+			BlockPos far = data.bounds.getFarthestPointFrom(px, data.bounds.getCenterY(), pz);
+			max = Math.max(Math.abs(far.getX() - px), Math.abs(far.getZ() - pz));
 		}
-		else {
-			baseRender.renderItem(type, item, data);
+		if (max == 0)
+			max = 1;
+		float sc = 2;
+		RenderType markers = RenderTypes.text(MARKER);
+		for (Entry<BlockPos, StructurePresence> e : data.map.entrySet()) {
+			BlockPos loc = e.getKey();
+			int x = (int)Math.round((loc.getX() - px) * 40D / max + 64);
+			int z = (int)Math.round((loc.getZ() - pz) * 40D / max + 64);
+			quad(poseStack, collector, markers, x - sc, z - sc, x + sc, z + sc, rz * 2, 0, 0, 1, 1,
+					0xff000000 | e.getValue().renderColor, bright);
 		}
 	}
 
-	private void prepareRender(float ptick, AbstractClientPlayer e) {
-		float f1 = 1;//this.prevEquippedProgress + (this.equippedProgress - this.prevEquippedProgress) * ptick;
-		float f13 = 0.8F;
-		float f2 = e.prevRotationPitch + (e.rotationPitch - e.prevRotationPitch) * ptick;
-		float f5 = e.getSwingProgress(ptick);
-		float f6 = MathHelper.sin(f5 * (float)Math.PI);
-		float f7 = MathHelper.sin(MathHelper.sqrt_float(f5) * (float)Math.PI);
-		GL11.glTranslatef(-f7 * 0.4F, MathHelper.sin(MathHelper.sqrt_float(f5) * (float)Math.PI * 2.0F) * 0.2F, -f6 * 0.2F);
-		f5 = 1.0F - f2 / 45.0F + 0.1F;
-
-		if (f5 < 0.0F)
-		{
-			f5 = 0.0F;
-		}
-
-		if (f5 > 1.0F)
-		{
-			f5 = 1.0F;
-		}
-
-		f5 = -MathHelper.cos(f5 * (float)Math.PI) * 0.5F + 0.5F;
-		GL11.glTranslatef(0.0F, 0.0F * f13 - (1.0F - f1) * 1.2F - f5 * 0.5F + 0.04F, -0.9F * f13);
-		GL11.glRotatef(90.0F, 0.0F, 1.0F, 0.0F);
-		GL11.glRotatef(f5 * -85.0F, 0.0F, 0.0F, 1.0F);
-		GL11.glEnable(GL12.GL_RESCALE_NORMAL);
-		Minecraft.getMinecraft().getTextureManager().bindTexture(e.getLocationSkin());
-
-		for (int i1 = 0; i1 < 2; ++i1)
-		{
-			int j1 = i1 * 2 - 1;
-			GL11.glPushMatrix();
-			GL11.glTranslatef(-0.0F, -0.6F, 1.1F * j1);
-			GL11.glRotatef(-45 * j1, 1.0F, 0.0F, 0.0F);
-			GL11.glRotatef(-90.0F, 0.0F, 0.0F, 1.0F);
-			GL11.glRotatef(59.0F, 0.0F, 0.0F, 1.0F);
-			GL11.glRotatef(-65 * j1, 0.0F, 1.0F, 0.0F);
-			RenderPlayer renderplayer = (RenderPlayer)RenderManager.instance.getEntityRenderObject(e);
-			renderplayer.renderFirstPersonArm(e);
-			GL11.glPopMatrix();
-		}
-
-		f6 = e.getSwingProgress(ptick);
-		f7 = MathHelper.sin(f6 * f6 * (float)Math.PI);
-		float f8 = MathHelper.sin(MathHelper.sqrt_float(f6) * (float)Math.PI);
-		GL11.glRotatef(-f7 * 20.0F, 0.0F, 1.0F, 0.0F);
-		GL11.glRotatef(-f8 * 20.0F, 0.0F, 0.0F, 1.0F);
-		GL11.glRotatef(-f8 * 80.0F, 1.0F, 0.0F, 0.0F);
-		float f9 = 0.38F;
-		GL11.glScalef(f9, f9, f9);
-		GL11.glRotatef(90.0F, 0.0F, 1.0F, 0.0F);
-		GL11.glRotatef(180.0F, 0.0F, 0.0F, 1.0F);
-		GL11.glTranslatef(-1.0F, -1.0F, 0.0F);
-		float f10 = 0.015625F;
-		GL11.glScalef(f10, f10, f10);
-	}
-
-	private void drawBackground() {
-		GL11.glEnable(GL11.GL_BLEND);
-		BlendMode.DEFAULT.apply();
-		ReikaTextureHelper.bindTexture(ChromatiCraft.class, "Textures/StructureMap/bcg.png");
-		Tessellator tessellator = Tessellator.instance;
-		GL11.glNormal3f(0.0F, 0.0F, -1.0F);
-		tessellator.startDrawingQuads();
-		byte b0 = 7;
-		tessellator.addVertexWithUV(0 - b0, 128 + b0, 0.0D, 0.0D, 1.0D);
-		tessellator.addVertexWithUV(128 + b0, 128 + b0, 0.0D, 1.0D, 1.0D);
-		tessellator.addVertexWithUV(128 + b0, 0 - b0, 0.0D, 1.0D, 0.0D);
-		tessellator.addVertexWithUV(0 - b0, 0 - b0, 0.0D, 0.0D, 0.0D);
-		tessellator.draw();
-	}
-
-	@Override
-	public boolean handleRenderType(ItemStack item, ItemRenderType type) {
-		return true;
+	private static void quad(PoseStack poseStack, SubmitNodeCollector collector, RenderType type, float x0, float y0,
+			float x1, float y1, float z, float u0, float v0, float u1, float v1, int color, int light) {
+		collector.submitCustomGeometry(poseStack, type, (pose, buffer) -> {
+			buffer.addVertex(pose, x0, y1, z).setColor(color).setUv(u0, v1).setLight(light);
+			buffer.addVertex(pose, x1, y1, z).setColor(color).setUv(u1, v1).setLight(light);
+			buffer.addVertex(pose, x1, y0, z).setColor(color).setUv(u1, v0).setLight(light);
+			buffer.addVertex(pose, x0, y0, z).setColor(color).setUv(u0, v0).setLight(light);
+		});
 	}
 
 }

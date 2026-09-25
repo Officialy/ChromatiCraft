@@ -9,237 +9,212 @@
  ******************************************************************************/
 package reika.chromaticraft.items.tools;
 
-import java.lang.reflect.Field;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.UUID;
+import java.util.function.Consumer;
 
-import org.lwjgl.opengl.GL11;
+import net.minecraft.ChatFormatting;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.Mth;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.TooltipDisplay;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.chunk.ChunkAccess;
+import net.minecraft.world.level.chunk.status.ChunkStatus;
+import net.minecraft.world.level.levelgen.structure.BuiltinStructures;
+import net.minecraft.world.level.levelgen.structure.Structure;
+import net.minecraft.world.level.levelgen.structure.StructureStart;
+import net.minecraft.world.level.levelgen.structure.placement.ConcentricRingsStructurePlacement;
+import net.minecraft.world.level.levelgen.structure.placement.StructurePlacement;
 
-import net.minecraft.client.gui.GuiScreen;
-import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.client.renderer.entity.RenderItem;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.nbt.NBTTagList;
-import net.minecraft.util.MathHelper;
-import net.minecraft.world.ChunkPosition;
-import net.minecraft.world.World;
-import net.minecraft.world.WorldServer;
-import net.minecraft.world.gen.ChunkProviderGenerate;
-import net.minecraft.world.gen.structure.MapGenStronghold;
-import net.minecraft.world.gen.structure.StructureBoundingBox;
-import net.minecraft.world.gen.structure.StructureStart;
-import net.minecraftforge.classloading.FMLForgePlugin;
-import net.minecraftforge.client.IItemRenderer.ItemRenderType;
-
-import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.auxiliary.render.ChromaFontRenderer;
-import reika.chromaticraft.base.ItemChromaTool;
+import reika.chromaticraft.magic.lore.LoreManager;
 import reika.chromaticraft.magic.lore.Towers;
 import reika.chromaticraft.registry.ChromaSounds;
-import reika.chromaticraft.registry.ChromaStructures;
-import reika.chromaticraft.world.iwg.DungeonGenerator;
-import reika.chromaticraft.world.iwg.dungeongenerator.StructureGenStatus;
+import reika.chromaticraft.world.DungeonZones;
+import reika.chromaticraft.world.OverworldStructureFeature;
 import reika.dragonapi.instantiable.data.immutable.BlockBox;
-import reika.dragonapi.instantiable.data.immutable.Coordinate;
-import reika.dragonapi.instantiable.data.maps.PlayerMap;
-import reika.dragonapi.interfaces.item.SpriteRenderCallback;
-import reika.dragonapi.libraries.reikanbthelper.NBTTypes;
-import reika.dragonapi.libraries.io.ReikaChatHelper;
-import reika.dragonapi.libraries.io.ReikaTextureHelper;
-import reika.dragonapi.libraries.java.reikaglhelper.BlendMode;
-import reika.dragonapi.libraries.java.ReikaObfuscationHelper;
-import reika.dragonapi.libraries.java.ReikaReflectionHelper;
-import reika.dragonapi.libraries.java.ReikaStringParser;
-import reika.dragonapi.libraries.rendering.ReikaRenderHelper;
-import reika.dragonapi.libraries.world.ReikaWorldHelper;
+import reika.dragonapi.libraries.registry.ReikaItemHelper;
+import reika.dragonapi.libraries.level.ReikaWorldHelper;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
-
-
-public class ItemStructureMap extends ItemChromaTool implements SpriteRenderCallback {
+/**
+ * V33a {@code ItemStructureMap}, the Artifact Distribution Map. Right-click cycles what it seeks (strongholds,
+ * the glowing towers, or one of the ChromatiCraft structures); sneak-right-click begins a scan from where the
+ * player stands, which runs while the map is held and, when done, fills the map with the sites found: yellow
+ * where a structure is planned, green where it has been generated. Held in first person, it is read like a
+ * vanilla map ({@code StructureMapRenderer}).
+ *
+ * <p>The structure scans cover 257x257 chunks around the origin, 24 chunks a tick, reading each chunk's zone
+ * status ({@link DungeonZones#getGenStatus}); strongholds and towers are known in full at once.
+ *
+ * <p>V33a kept the seek mode in the item damage. It is a setting, not a variant, so it lives in the map's
+ * custom data ("mode"). The scan's progress is also written there (every ten ticks) so the tooltip can show it
+ * on a dedicated server; V33a read the server's search table from the client, which only worked in
+ * singleplayer.
+ */
+public class ItemStructureMap extends Item {
 
 	private static final String TAG_NAME = "mapdata";
 
-	private static final PlayerMap<StructureSearch> activeSearches = new PlayerMap();
+	private static final Map<UUID, StructureSearch> activeSearches = new HashMap<>();
 
-	public ItemStructureMap(int index) {
-		super(index);
+	public ItemStructureMap(Item.Properties properties) {
+		super(properties.stacksTo(1));
+	}
+
+	public static StructureSearchType getMode(ItemStack is) {
+		CompoundTag tag = ReikaItemHelper.getStackTag(is);
+		int mode = tag == null ? 0 : tag.getIntOr("mode", 0);
+		return StructureSearchType.list[Mth.clamp(mode, 0, StructureSearchType.list.length - 1)];
+	}
+
+	private static CompoundTag tag(ItemStack is) {
+		CompoundTag tag = ReikaItemHelper.getStackTag(is);
+		return tag != null ? tag : new CompoundTag();
 	}
 
 	@Override
-	public ItemStack onItemRightClick(ItemStack is, World world, EntityPlayer ep) {
-		if (!world.isRemote) {
-			if (ep.isSneaking()) {
-				if (activeSearches.containsKey(ep)) {
-					ReikaChatHelper.sendChatToPlayer(ep, "Another scan is in progress.");
+	public InteractionResult use(Level world, Player ep, InteractionHand hand) {
+		ItemStack is = ep.getItemInHand(hand);
+		if (world instanceof ServerLevel server) {
+			CompoundTag tag = tag(is);
+			if (ep.isShiftKeyDown()) {
+				if (activeSearches.containsKey(ep.getUUID())) {
+					ep.sendSystemMessage(Component.literal("Another scan is in progress."));
 				}
-				else if (is.stackTagCompound != null && (is.stackTagCompound.hasKey(TAG_NAME) || is.stackTagCompound.getBoolean("scanning") || is.stackTagCompound.getBoolean("searcher"))) {
-					ReikaChatHelper.sendChatToPlayer(ep, "This map is already scanning the world.");
+				else if (tag.contains(TAG_NAME) || tag.getBooleanOr("scanning", false) || tag.contains("searcher")) {
+					ep.sendSystemMessage(Component.literal("This map is already scanning the world."));
 				}
 				else {
-					StructureSearchType s = StructureSearchType.list[is.getItemDamage()];
-					int x0 = MathHelper.floor_double(ep.posX);
-					int z0 = MathHelper.floor_double(ep.posZ);
-					if (is.stackTagCompound == null)
-						is.stackTagCompound = new NBTTagCompound();
-					is.stackTagCompound.setBoolean("scanning", true);
-					is.stackTagCompound.setString("searcher", ep.getUniqueID().toString());
-					activeSearches.put(ep, s.beginSearch((WorldServer)world, x0, z0));
+					StructureSearchType s = getMode(is);
+					int x0 = Mth.floor(ep.getX());
+					int z0 = Mth.floor(ep.getZ());
+					tag.putBoolean("scanning", true);
+					tag.putString("searcher", ep.getUUID().toString());
+					tag.putFloat("progress", 0);
+					ReikaItemHelper.setStackTag(is, tag);
+					activeSearches.put(ep.getUUID(), s.beginSearch(server, x0, z0));
 				}
 			}
 			else {
+				int mode = getMode(is).ordinal();
 				boolean flag = true;
 				while (flag) {
-					is.setItemDamage((is.getItemDamage()+1)%StructureSearchType.list.length);
-					flag = StructureSearchType.list[is.getItemDamage()].skip();
+					mode = (mode + 1) % StructureSearchType.list.length;
+					flag = StructureSearchType.list[mode].skip();
 				}
+				tag.putInt("mode", mode);
+				ReikaItemHelper.setStackTag(is, tag);
 			}
 		}
-		return is;
+		return InteractionResult.SUCCESS;
 	}
 
 	@Override
-	public void onUpdate(ItemStack is, World world, Entity e, int slot, boolean held) {
-		if (!world.isRemote && held && is.stackTagCompound != null && is.stackTagCompound.getBoolean("scanning") && is.stackTagCompound.hasKey("searcher")) {
-			UUID uid = UUID.fromString(is.stackTagCompound.getString("searcher"));
-			StructureSearch s = activeSearches.directGet(uid);
-			if (s == null) {
-				activeSearches.directRemove(uid);
-			}
-			else {
-				StructureMapData data = s.tick((WorldServer)world);
-				if (data != null) {
-					is.stackTagCompound.setTag(TAG_NAME, data.writeToNBT());
-					is.stackTagCompound.removeTag("scanning");
-					activeSearches.directRemove(uid);
-					ChromaSounds.CRAFTDONE.playSound(e);
-				}
-			}
+	public void inventoryTick(ItemStack is, ServerLevel world, Entity e, EquipmentSlot slot) {
+		CompoundTag tag = ReikaItemHelper.getStackTag(is);
+		if (slot != EquipmentSlot.MAINHAND || tag == null || !tag.getBooleanOr("scanning", false) || !tag.contains("searcher"))
+			return;
+		UUID uid = UUID.fromString(tag.getStringOr("searcher", ""));
+		StructureSearch s = activeSearches.get(uid);
+		if (s == null) {
+			activeSearches.remove(uid);
+			return;
+		}
+		StructureMapData data = s.tick(world);
+		if (data != null) {
+			tag.put(TAG_NAME, data.writeToNBT());
+			tag.remove("scanning");
+			tag.remove("progress");
+			ReikaItemHelper.setStackTag(is, tag);
+			activeSearches.remove(uid);
+			ChromaSounds.CRAFTDONE.playSound(e);
+		}
+		else if (world.getGameTime() % 10 == 0) {
+			tag.putFloat("progress", s.getProgress());
+			ReikaItemHelper.setStackTag(is, tag);
 		}
 	}
 
 	@Override
-	@SideOnly(Side.CLIENT)
-	public void addInformation(ItemStack is, EntityPlayer ep, List li, boolean vb) {
-		li.add("Seeking "+StructureSearchType.list[is.getItemDamage()].displayName());
-		if (is.stackTagCompound != null && is.stackTagCompound.getBoolean("scanning")) {
-			li.add(String.format("Map is scanning: %.1f%% complete.", activeSearches.directGet(UUID.fromString(is.stackTagCompound.getString("searcher"))).getProgress()));
+	public void appendHoverText(ItemStack is, TooltipContext context, TooltipDisplay display, Consumer<Component> li,
+			TooltipFlag flag) {
+		CompoundTag tag = tag(is);
+		li.accept(Component.literal("Seeking ").append(getMode(is).displayName()));
+		if (tag.getBooleanOr("scanning", false)) {
+			li.accept(Component.literal(String.format(Locale.ROOT, "Map is scanning: %.1f%% complete.",
+					tag.getFloatOr("progress", 0))));
 		}
-		else if (is.stackTagCompound != null && is.stackTagCompound.hasKey(TAG_NAME)) {
-			if (GuiScreen.isCtrlKeyDown()) {
-				StructureMapData map = StructureMapData.readFromNBT(is.stackTagCompound.getCompoundTag(TAG_NAME));
+		else if (tag.contains(TAG_NAME)) {
+			// V33a showed the count while Ctrl was held; the advanced-tooltip flag stands in for it.
+			if (flag.isAdvanced()) {
+				StructureMapData map = StructureMapData.readFromNBT(tag.getCompoundOrEmpty(TAG_NAME));
 				map.addTooltip(li);
 			}
 			else {
-				li.add("Map is populated.");
+				li.accept(Component.literal("Map is populated."));
 			}
 		}
 		else {
-			li.add("Map is empty.");
+			li.accept(Component.literal("Map is empty."));
 		}
 	}
 
-	public boolean doPreGLTransforms(ItemStack is, ItemRenderType type) {
-		return true;
-	}
-
-	@Override
-	public boolean onRender(RenderItem ri, ItemStack is, ItemRenderType type) {
-		return false;
-	}
-
-	@SideOnly(Side.CLIENT)
-	public static void renderMap(ItemStack item, float ptick, EntityPlayer ep) {
-		if (item.stackTagCompound == null || !item.stackTagCompound.hasKey(TAG_NAME))
-			return;
-		StructureMapData data = StructureMapData.readFromNBT(item.stackTagCompound.getCompoundTag(TAG_NAME));
-		ReikaRenderHelper.disableEntityLighting();
-		ReikaRenderHelper.disableLighting();
-		Tessellator v5 = Tessellator.instance;
-		GL11.glEnable(GL11.GL_BLEND);
-		GL11.glColor4f(1, 1, 1, 1);
-		BlendMode.DEFAULT.apply();
-		GL11.glEnable(GL11.GL_TEXTURE_2D);
-		StructureSearchType type = StructureSearchType.list[item.getItemDamage()];
-		ReikaTextureHelper.bindTexture(ChromatiCraft.class, "Textures/StructureMap/overlay_typed.png");
-		double ou = (type.ordinal()%4)/4D;
-		double ov = (type.ordinal()/4)/4D;
-		v5.startDrawingQuads();
-		v5.setBrightness(240);
-		v5.setColorOpaque_I(0xffffff);
-		byte b0 = 7;
-		double rz = -0.01;
-		/*
-		int px = MathHelper.floor_double(ep.posX+(ep.lastTickPosX-ep.posX)*ptick);
-		int pz = MathHelper.floor_double(ep.posZ+(ep.lastTickPosZ-ep.posZ)*ptick);
-		 */
-		int px = data.originX;
-		int pz = data.originZ;
-		int max = type.getSearchRange();
-		if (max == -1) {
-			px = data.bounds.getCenterX();
-			pz = data.bounds.getCenterZ();
-			Coordinate far = data.bounds.getFarthestPointFrom(px, data.bounds.getCenterY(), pz);
-			max = Math.max(Math.abs(far.xCoord-px), Math.abs(far.zCoord-pz));
-		}
-		v5.addVertexWithUV(0 - b0, 128 + b0, rz, ou, ov+0.25);
-		v5.addVertexWithUV(128 + b0, 128 + b0, rz, ou+0.25, ov+0.25);
-		v5.addVertexWithUV(128 + b0, 0 - b0, rz, ou+0.25, ov);
-		v5.addVertexWithUV(0 - b0, 0 - b0, rz, ou, ov);
-		v5.draw();
-		//GL11.glDisable(GL11.GL_TEXTURE_2D);
-		int d = 12;
-		//GL11.glPointSize(2);
-		GL11.glDepthMask(false);
-		ReikaTextureHelper.bindTexture(ChromatiCraft.class, "Textures/StructureMap/marker.png");
-		//v5.startDrawing(GL11.GL_POINTS);
-		v5.startDrawingQuads();
-		v5.setBrightness(240);
-		double sc = 2;
-		for (Entry<Coordinate, StructurePresence> e : data.map.entrySet()) {
-			Coordinate loc = e.getKey();
-			StructurePresence s = e.getValue();
-			int x = (int)Math.round((loc.xCoord-px)*40D/max+64);
-			int z = (int)Math.round((loc.zCoord-pz)*40D/max+64);
-			v5.setColorOpaque_I(s.renderColor);
-			//v5.addVertex(x, z, rz*2);
-			v5.addVertexWithUV(x-sc, z+sc, rz*2, 0, 1);
-			v5.addVertexWithUV(x+sc, z+sc, rz*2, 1, 1);
-			v5.addVertexWithUV(x+sc, z-sc, rz*2, 1, 0);
-			v5.addVertexWithUV(x-sc, z-sc, rz*2, 0, 0);
-		}
-		v5.draw();
+	/** The stored scan, for the renderer; null if the map is empty. */
+	public static StructureMapData getMapData(ItemStack is) {
+		CompoundTag tag = ReikaItemHelper.getStackTag(is);
+		if (tag == null || !tag.contains(TAG_NAME))
+			return null;
+		return StructureMapData.readFromNBT(tag.getCompoundOrEmpty(TAG_NAME));
 	}
 
 	public static enum StructureSearchType {
-
 		STRONGHOLD(),
 		TOWERS(),
-		CAVERN(ChromaStructures.CAVERN),
-		BURROW(ChromaStructures.BURROW),
-		OCEAN(ChromaStructures.OCEAN),
-		DESERT(ChromaStructures.DESERT),
-		SNOWSTRUCT(ChromaStructures.SNOWSTRUCT),
+		CAVERN(OverworldStructureFeature.Type.CAVERN, "Crystal Shrine"),
+		BURROW(OverworldStructureFeature.Type.BURROW, "Crystal Burrow"),
+		OCEAN(OverworldStructureFeature.Type.OCEAN, "Ocean Temple"),
+		DESERT(OverworldStructureFeature.Type.DESERT, "Sandy Burrow"),
+		SNOWSTRUCT(OverworldStructureFeature.Type.SNOW, "Frozen Outpost"),
 		MINESHAFT(),
-		BIOME(ChromaStructures.BIOMEFRAG),
+		BIOME(OverworldStructureFeature.Type.BIOME_FRAGMENT, "Magic Outpost"),
 		;
 
-		private static final StructureSearchType[] list = values();
+		public static final StructureSearchType[] list = values();
 
-		private final ChromaStructures structure;
+		private final OverworldStructureFeature.Type structure;
+		/** V33a {@code chromastruct.*} display name. */
+		private final String structureName;
 
 		private StructureSearchType() {
-			this(null);
+			this(null, null);
 		}
 
-		private StructureSearch beginSearch(WorldServer world, int x0, int z0) {
+		private StructureSearchType(OverworldStructureFeature.Type s, String name) {
+			structure = s;
+			structureName = name;
+		}
+
+		private StructureSearch beginSearch(ServerLevel world, int x0, int z0) {
 			return new StructureSearch(this, x0, z0);
 		}
 
@@ -249,28 +224,20 @@ public class ItemStructureMap extends ItemChromaTool implements SpriteRenderCall
 
 		public int getSearchRange() {
 			if (structure != null) {
-				return 128*16;
+				return 128 * 16;
 			}
-			switch(this) {
-				case STRONGHOLD:
-				case TOWERS:
-					return -1;
-				default:
-					return 1;
-			}
+			return switch (this) {
+				case STRONGHOLD, TOWERS -> -1;
+				default -> 1;
+			};
 		}
 
-		private StructureSearchType(ChromaStructures s) {
-			structure = s;
-		}
-
-		public String displayName() {
+		public Component displayName() {
 			if (this == TOWERS)
-				return ChromaFontRenderer.FontType.OBFUSCATED.id+"GlowingTowers";
-			if (structure != null) {
-				return structure.getDisplayName();
-			}
-			return ReikaStringParser.capFirstChar(this.name());
+				return Component.literal("GlowingTowers").withStyle(ChatFormatting.OBFUSCATED);
+			if (structure != null)
+				return Component.literal(structureName);
+			return Component.literal(this.name().charAt(0) + this.name().substring(1).toLowerCase(Locale.ROOT));
 		}
 	}
 
@@ -284,10 +251,11 @@ public class ItemStructureMap extends ItemChromaTool implements SpriteRenderCall
 
 		private int scanI = -RANGE;
 		private int scanK = -RANGE;
-
 		private int scannedChunks = 0;
 
-		private final HashMap<Coordinate, StructurePresence> foundStructures = new HashMap();
+		private final LinkedHashMap<BlockPos, StructurePresence> foundStructures = new LinkedHashMap<>();
+		private BlockBox bounds = BlockBox.nothing();
+		private int confirmed;
 
 		private StructureSearch(StructureSearchType t, int x, int z) {
 			type = t;
@@ -309,101 +277,103 @@ public class ItemStructureMap extends ItemChromaTool implements SpriteRenderCall
 					return true;
 				}
 			}
-			//ReikaJavaLibrary.pConsole(scanI+","+scanK);
 			return false;
 		}
 
 		public float getProgress() {
-			int r = RANGE*2+1;
-			return scannedChunks*100F/(r*r);
+			int r = RANGE * 2 + 1;
+			return scannedChunks * 100F / (r * r);
 		}
 
-		/** Return coords are absolute, not relative */
-		private StructureMapData tick(WorldServer world) {
-			int cc = 0;
-			BlockBox bounds = BlockBox.nothing();
+		private void add(BlockPos c, StructurePresence s) {
+			bounds = bounds.addCoordinate(c.getX(), c.getY(), c.getZ());
+			if (s == StructurePresence.CONFIRMED)
+				confirmed++;
+			foundStructures.put(c, s);
+		}
+
+		/**
+		 * V33a {@code tick}; returns the finished map, or null while scanning. Return coords are absolute.
+		 *
+		 * <p>V33a counted and bounded only the current tick's finds for the structure scans (its counters were
+		 * locals); the finished map re-counts confirmed sites when read, so only its stored bounds differed. They
+		 * accumulate over the whole scan here.
+		 */
+		private StructureMapData tick(ServerLevel world) {
 			if (type.structure != null) {
 				for (int i = 0; i < 24; i++) {
-					int rx = originX+scanI*16;
-					int rz = originZ+scanK*16;
-					StructureGenStatus at = DungeonGenerator.instance.getGenStatus(type.structure, world, rx, rz);
-					if (at.hasStructure()) {
-						Coordinate c = new Coordinate(rx, 0, rz);
-						boolean cf = at.isFinalized();
-						if (cf)
-							cc++;
-						bounds = bounds.addCoordinate(c.xCoord, c.yCoord, c.zCoord);
-						foundStructures.put(c, cf ? StructurePresence.CONFIRMED : StructurePresence.EXPECTED);
-					}
+					int rx = originX + scanI * 16;
+					int rz = originZ + scanK * 16;
+					DungeonZones.Status at = DungeonZones.getGenStatus(world, type.structure, rx, rz);
+					if (at.hasStructure())
+						this.add(new BlockPos(rx, 0, rz), at.isFinalized() ? StructurePresence.CONFIRMED : StructurePresence.EXPECTED);
 					scannedChunks++;
 					if (this.updateScanChunk())
-						return new StructureMapData(foundStructures, originX, originZ, cc, bounds);
+						return new StructureMapData(foundStructures, originX, originZ, confirmed, bounds);
 				}
 				return null;
 			}
-			else {
-				switch(type) {
-					case STRONGHOLD:
-						MapGenStronghold mg = ((ChunkProviderGenerate)world.theChunkProviderServer.currentChunkProvider).strongholdGenerator;
-						Field f = ReikaReflectionHelper.getProtectedInheritedField(mg, FMLForgePlugin.RUNTIME_DEOBF ? "field_75039_c" : "worldObj");
-						f.setAccessible(true);
-						try {
-							f.set(mg, world);
-						}
-						catch (Exception e) {
-							e.printStackTrace();
-						}
-						ReikaObfuscationHelper.invoke("canSpawnStructureAtCoords", mg, 0, 0); //populate the map
-						List li0 = (List)ReikaObfuscationHelper.invoke("getCoordList", mg);
-						if (li0 != null) {
-							for (Object o : li0) {
-								Coordinate c = new Coordinate((ChunkPosition)o).to2D();
-								bounds = bounds.addCoordinate(c.xCoord, c.yCoord, c.zCoord);
-								foundStructures.put(c, StructurePresence.EXPECTED);
-							}
-						}
-						for (StructureStart ss : ((Map<Long, StructureStart>)mg.structureMap).values()) {
-							if (ss.isSizeableStructure()) {
-								StructureBoundingBox sbb = ss.getBoundingBox();
-								if (sbb != null) {
-									Coordinate c = new Coordinate(sbb.getCenterX(), 0, sbb.getCenterZ());
-									bounds = bounds.addCoordinate(c.xCoord, c.yCoord, c.zCoord);
-									foundStructures.put(c, StructurePresence.CONFIRMED);
-									cc++;
-								}
-							}
-						}
-						break;
-					case TOWERS:
-						for (Towers t : Towers.towerList) {
-							Coordinate c = t.getGeneratedLocation();
-							if (c == null)
-								c = new Coordinate(t.getRootPosition().chunkXPos, 0, t.getRootPosition().chunkZPos);
-							bounds = bounds.addCoordinate(c.xCoord, c.yCoord, c.zCoord);
-							boolean cf = ReikaWorldHelper.isChunkGenerated(world, c.xCoord, c.zCoord);
-							if (cf)
-								cc++;
-							foundStructures.put(c, cf ? StructurePresence.CONFIRMED : StructurePresence.EXPECTED);
-						}
-						break;
-					default:
-						break;
+			switch (type) {
+				case STRONGHOLD -> this.findStrongholds(world);
+				case TOWERS -> {
+					LoreManager.instance.initTowers(world);
+					for (Towers t : Towers.towerList) {
+						BlockPos c = t.getGeneratedLocation();
+						// V33a fell back to the root chunk's coordinates as if they were block coordinates, which
+						// plotted ungenerated towers near the origin; the chunk's centre is used instead.
+						if (c == null)
+							c = new BlockPos(t.getRootPosition().getMiddleBlockX(), 0, t.getRootPosition().getMiddleBlockZ());
+						c = new BlockPos(c.getX(), 0, c.getZ());
+						boolean cf = ReikaWorldHelper.isChunkGenerated(world, c.getX(), c.getZ());
+						this.add(c, cf ? StructurePresence.CONFIRMED : StructurePresence.EXPECTED);
+					}
 				}
-				return new StructureMapData(foundStructures, originX, originZ, cc, bounds);
+				default -> {}
 			}
+			return new StructureMapData(foundStructures, originX, originZ, confirmed, bounds);
 		}
 
+		/**
+		 * V33a read MapGenStronghold's planned ring positions (expected) and its generated starts (confirmed, at
+		 * the start's centre). 26.2 strongholds are concentric-ring placements: every ring position is expected,
+		 * and where that chunk has been generated its stronghold start is read and marked confirmed.
+		 */
+		private void findStrongholds(ServerLevel world) {
+			var registry = world.registryAccess().lookupOrThrow(Registries.STRUCTURE);
+			Holder<Structure> stronghold = registry.get(BuiltinStructures.STRONGHOLD).orElse(null);
+			if (stronghold == null)
+				return;
+			var state = world.getChunkSource().getGeneratorState();
+			for (StructurePlacement placement : state.getPlacementsForStructure(stronghold)) {
+				if (!(placement instanceof ConcentricRingsStructurePlacement rings))
+					continue;
+				List<ChunkPos> positions = state.getRingPositionsFor(rings);
+				if (positions == null)
+					continue;
+				for (ChunkPos pos : positions) {
+					this.add(new BlockPos(pos.getMiddleBlockX(), 0, pos.getMiddleBlockZ()), StructurePresence.EXPECTED);
+					if (ReikaWorldHelper.isChunkGeneratedChunkCoords(world, pos.x(), pos.z())) {
+						ChunkAccess chunk = world.getChunk(pos.x(), pos.z(), ChunkStatus.STRUCTURE_STARTS, true);
+						StructureStart start = chunk != null ? chunk.getStartForStructure(stronghold.value()) : null;
+						if (start != null && start.isValid()) {
+							var bb = start.getBoundingBox();
+							this.add(new BlockPos(bb.getCenter().getX(), 0, bb.getCenter().getZ()), StructurePresence.CONFIRMED);
+						}
+					}
+				}
+			}
+		}
 	}
 
-	private static class StructureMapData {
+	public static final class StructureMapData {
 
-		private final HashMap<Coordinate, StructurePresence> map;
-		private final int originX;
-		private final int originZ;
-		private final BlockBox bounds;
+		public final Map<BlockPos, StructurePresence> map;
+		public final int originX;
+		public final int originZ;
+		public final BlockBox bounds;
 		private final int confirmedCount;
 
-		private StructureMapData(HashMap<Coordinate, StructurePresence> data, int x, int z, int cc, BlockBox box) {
+		private StructureMapData(Map<BlockPos, StructurePresence> data, int x, int z, int cc, BlockBox box) {
 			map = data;
 			originX = x;
 			originZ = z;
@@ -411,51 +381,58 @@ public class ItemStructureMap extends ItemChromaTool implements SpriteRenderCall
 			bounds = box;
 		}
 
-		public void addTooltip(List li) {
-			li.add("Confirmed "+confirmedCount+"/"+map.size()+" locations.");
+		public void addTooltip(Consumer<Component> li) {
+			li.accept(Component.literal("Confirmed " + confirmedCount + "/" + map.size() + " locations."));
 		}
 
-		public static StructureMapData readFromNBT(NBTTagCompound data) {
-			HashMap<Coordinate, StructurePresence> values = new HashMap();
-			NBTTagList li = data.getTagList("mapdata", NBTTypes.COMPOUND.ordinal());
+		public static StructureMapData readFromNBT(CompoundTag data) {
+			LinkedHashMap<BlockPos, StructurePresence> values = new LinkedHashMap<>();
 			int cc = 0;
-			for (Object o : li.tagList) {
-				NBTTagCompound tag = (NBTTagCompound)o;
-				Coordinate loc = Coordinate.readFromNBT("loc", tag);
-				StructurePresence s = StructurePresence.valueOf(tag.getString("state"));
+			for (Tag t : data.getListOrEmpty("mapdata")) {
+				if (!(t instanceof CompoundTag tag))
+					continue;
+				CompoundTag loc = tag.getCompoundOrEmpty("loc");
+				BlockPos pos = new BlockPos(loc.getIntOr("x", 0), loc.getIntOr("y", 0), loc.getIntOr("z", 0));
+				StructurePresence s;
+				try {
+					s = StructurePresence.valueOf(tag.getStringOr("state", "EXPECTED"));
+				}
+				catch (IllegalArgumentException e) {
+					continue;
+				}
 				if (s == StructurePresence.CONFIRMED)
 					cc++;
-				values.put(loc, s);
+				values.put(pos, s);
 			}
-
-			NBTTagCompound meta = data.getCompoundTag("metadata");
-			return new StructureMapData(values, meta.getInteger("rootX"), meta.getInteger("rootZ"), cc, BlockBox.readFromNBT(meta));
+			CompoundTag meta = data.getCompoundOrEmpty("metadata");
+			return new StructureMapData(values, meta.getIntOr("rootX", 0), meta.getIntOr("rootZ", 0), cc,
+					BlockBox.load(meta));
 		}
 
-		private NBTTagCompound writeToNBT() {
-			NBTTagCompound ret = new NBTTagCompound();
-			NBTTagList tag = new NBTTagList();
-			for (Entry<Coordinate, StructurePresence> e : map.entrySet()) {
-				NBTTagCompound val = new NBTTagCompound();
-				e.getKey().writeToNBT("loc", val);
-				val.setString("state", e.getValue().name());
-				tag.appendTag(val);
+		private CompoundTag writeToNBT() {
+			CompoundTag ret = new CompoundTag();
+			ListTag tag = new ListTag();
+			for (Entry<BlockPos, StructurePresence> e : map.entrySet()) {
+				CompoundTag val = new CompoundTag();
+				CompoundTag loc = new CompoundTag();
+				loc.putInt("x", e.getKey().getX());
+				loc.putInt("y", e.getKey().getY());
+				loc.putInt("z", e.getKey().getZ());
+				val.put("loc", loc);
+				val.putString("state", e.getValue().name());
+				tag.add(val);
 			}
-
-			NBTTagCompound meta = new NBTTagCompound();
-			bounds.writeToNBT(meta);
-			meta.setInteger("rootX", originX);
-			meta.setInteger("rootZ", originZ);
-
-			ret.setTag("mapdata", tag);
-			ret.setTag("metadata", meta);
-
+			CompoundTag meta = new CompoundTag();
+			bounds.saveAdditional(meta);
+			meta.putInt("rootX", originX);
+			meta.putInt("rootZ", originZ);
+			ret.put("mapdata", tag);
+			ret.put("metadata", meta);
 			return ret;
 		}
-
 	}
 
-	private static enum StructurePresence {
+	public static enum StructurePresence {
 		EXPECTED(0xffff00),
 		CONFIRMED(0x00ff00),
 		FAILED(0xff0000);

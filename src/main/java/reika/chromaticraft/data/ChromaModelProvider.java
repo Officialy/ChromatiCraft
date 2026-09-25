@@ -225,7 +225,7 @@ public class ChromaModelProvider extends ModelProvider {
 					new TextureMapping().put(TextureSlot.LAYER0, new Material(seedTexture)), modelOut)));
 		}
 		for (Item item : List.of(ChromaItems.GLOW_CAVE_DUST.get(), ChromaItems.UNKNOWN_ARTEFACT_FRAGMENT.get(),
-				ChromaItems.ENDER_EYE.get())) {
+				ChromaItems.ENDER_EYE.get(), ChromaItems.STRUCTURE_MAP.get())) {
 			itemModelOut.accept(item, ItemModelUtils.plainModel(ModelTemplates.FLAT_ITEM.create(
 					ModelLocationUtils.getModelLocation(item), TextureMapping.layer0(item), modelOut)));
 		}

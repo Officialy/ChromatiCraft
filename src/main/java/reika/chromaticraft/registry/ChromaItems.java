@@ -144,6 +144,9 @@ public final class ChromaItems {
 	/** V33a ENDEREYE, the Enhanced Ender Eye; its owner is stored in CUSTOM_DATA. */
 	public static final DeferredItem<reika.chromaticraft.items.ItemT2EnderEye> ENDER_EYE =
 			reg("enhanced_ender_eye", () -> new reika.chromaticraft.items.ItemT2EnderEye(itemProperties()));
+	/** V33a STRUCTMAP, the Artifact Distribution Map; its seek mode and scan live in CUSTOM_DATA. */
+	public static final DeferredItem<reika.chromaticraft.items.tools.ItemStructureMap> STRUCTURE_MAP =
+			reg("structure_map", () -> new reika.chromaticraft.items.tools.ItemStructureMap(itemProperties()));
 	/** V33a ARTEFACT metadata 1. It has none of the harmful full-artefact behavior. */
 	public static final DeferredItem<Item> UNKNOWN_ARTEFACT_FRAGMENT =
 			reg("unknown_artefact_fragment", () -> new Item(itemProperties().stacksTo(1)));

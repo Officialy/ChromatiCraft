@@ -51,6 +51,9 @@ public final class ChromaClientRenderers {
 		bus.addListener(reika.chromaticraft.client.gui.StructureNotificationOverlay::register);
 		bus.addListener(MouseoverStatusOverlay::register);
 		bus.addListener(ChromaClientRenderers::registerEnvironmentEffects);
+		bus.addListener((net.neoforged.fml.event.lifecycle.FMLClientSetupEvent event) -> event.enqueueWork(() ->
+				reika.chromaticraft.render.item.StructureMapRenderer.register(
+						reika.chromaticraft.registry.ChromaItems.STRUCTURE_MAP.get())));
 	}
 
 	/**
