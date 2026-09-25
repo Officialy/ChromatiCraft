@@ -198,6 +198,7 @@ public class ChromaLang extends LanguageProvider {
 		add(ChromaBlocks.FUNCTION_RELAY.get(), "Area Delegation Point");
 		for (CrystalElement element : CrystalElement.elements)
 			add(ChromaBlocks.crystalGlass(element).get(), element.displayName + " Crystal Glass"); // V33a chroma.glass
+		add(ChromaBlocks.SELECTIVE_GLASS.get(), "Defensive Glass"); // V33a chroma.selectiveglass
 		// V33a getMultiValuedName GLOW: "<Base>-Based <Element> Glow".
 		for (var holder : ChromaBlocks.CRYSTAL_GLOWS)
 			add(holder.get(), holder.get().getBase().displayName + "-Based "

@@ -152,6 +152,7 @@ public final class LexiconIconResolver {
 			case "crystal" -> ChromaBlocks.caveCrystal(CrystalElement.PURPLE).get();
 			case "rune" -> ChromaBlocks.rune(CrystalElement.LIGHTBLUE).get();
 			case "glass" -> ChromaBlocks.crystalGlass(CrystalElement.BLUE).get(); // V33a GLASS research icon meta
+			case "selectiveglass" -> ChromaBlocks.SELECTIVE_GLASS.get();
 			case "glow" -> ChromaBlocks.crystalGlow(CrystalElement.RED,
 					reika.chromaticraft.block.crystal.BlockCrystalGlow.Bases.STONE).get(); // V33a GLOW icon meta RED
 			case "pylonstruct" -> ChromaBlocks.crystallineStone(

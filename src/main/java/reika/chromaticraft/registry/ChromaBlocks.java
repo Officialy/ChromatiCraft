@@ -861,6 +861,16 @@ public final class ChromaBlocks {
 	}
 
 	/**
+	 * V33a SELECTIVEGLASS, Defensive Glass: glass material, hardness 1, resistance 7.5 (1.7.10 terms, so 4.5).
+	 * Its sides are solid, but it is see-through and never suffocates or conducts redstone.
+	 */
+	public static final DeferredBlock<reika.chromaticraft.block.BlockSelectiveGlass> SELECTIVE_GLASS =
+			register("selective_glass", () -> new reika.chromaticraft.block.BlockSelectiveGlass(blockProperties()
+					.strength(1F, 4.5F).noOcclusion().sound(SoundType.GLASS)
+					.isRedstoneConductor((s, l, p) -> false).isSuffocating((s, l, p) -> false)
+					.isViewBlocking((s, l, p) -> false)));
+
+	/**
 	 * V33a GLOW metadata (element + 16*base), one block per element and base, registered colour-major as V33a
 	 * listed them. Hardness and resistance 0, light 15, no collision; its tile entity made it immovable by
 	 * pistons.

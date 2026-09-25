@@ -108,7 +108,7 @@ public final class ChromaTabs {
 			return BlockCategory.WORLDGEN;
 		if (type.contains(".block.decoration.") || type.endsWith(".BlockCrystalLamp") || type.endsWith(".BlockCrystalGlow")
 				|| type.endsWith(".BlockSuperCrystal") || id.contains("decor")
-				|| id.contains("altar") || id.contains("glass"))
+				|| id.contains("altar") || (id.contains("glass") && !type.endsWith(".BlockSelectiveGlass")))
 			return BlockCategory.DECORATION;
 		return BlockCategory.MAIN;
 	}

@@ -242,6 +242,7 @@ public class ChromaModelProvider extends ModelProvider {
 				blockStateOut, itemModelOut, modelOut);
 		crystalGlassModels(blockStateOut, itemModelOut, modelOut);
 		crystalGlowItems(itemModelOut, modelOut);
+		selectiveGlassItem(itemModelOut, modelOut);
 		basedCrystalBlocks(ChromaBlocks.SUPER_CRYSTALS, "super_crystal",
 				Identifier.fromNamespaceAndPath("minecraft", "block/obsidian"),
 				blockStateOut, itemModelOut, modelOut);
@@ -1631,6 +1632,43 @@ public class ChromaModelProvider extends ModelProvider {
 		}
 	}
 
+	/**
+	 * V33a SelectiveGlassRenderer.renderInventoryBlock: a cube with the full border sprite (glass_0) on every face
+	 * and the centre sprite (glass_5) over it (renderCentralTextureForItem), face-shaded and full-bright.
+	 */
+	private static void selectiveGlassItem(ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		Identifier id = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "item/selective_glass");
+		modelOut.accept(id, () -> {
+			JsonObject root = new JsonObject();
+			root.addProperty("parent", "minecraft:block/block");
+			JsonObject textures = new JsonObject();
+			textures.addProperty("particle", ChromatiCraft.MODID + ":block/glass/glass_0");
+			textures.addProperty("edge", ChromatiCraft.MODID + ":block/glass/glass_0");
+			textures.addProperty("centre", ChromatiCraft.MODID + ":block/glass/glass_5");
+			root.add("textures", textures);
+			JsonObject edgeFaces = new JsonObject();
+			JsonObject centreFaces = new JsonObject();
+			for (Direction face : Direction.values()) {
+				JsonObject edge = modelFace("#edge", face.getSerializedName());
+				edge.add("uv", uvFull());
+				edgeFaces.add(face.getSerializedName(), edge);
+				JsonObject centre = modelFace("#centre", face.getSerializedName());
+				centre.add("uv", uvFull());
+				centreFaces.add(face.getSerializedName(), centre);
+			}
+			JsonArray elements = new JsonArray();
+			JsonObject edge = modelElement(0, 16, edgeFaces, false);
+			edge.addProperty("light_emission", 15);
+			elements.add(edge);
+			JsonObject centre = modelElement(-0.01F, 16.01F, centreFaces, false);
+			centre.addProperty("light_emission", 15);
+			elements.add(centre);
+			root.add("elements", elements);
+			return root;
+		});
+		itemModelOut.accept(ChromaBlocks.SELECTIVE_GLASS.get().asItem(), ItemModelUtils.plainModel(id));
+	}
+
 	/** V33a renderInventoryBlock for GLOW: a flat tilted card, drawn by CrystalGlowItemRenderer. */
 	private static void crystalGlowItems(ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
 		Identifier base = ModelTemplates.CUBE_ALL.create(
@@ -1681,6 +1719,8 @@ public class ChromaModelProvider extends ModelProvider {
 				// Glows are built in code by CrystalGlowModel (chamfered, per-facing); their hand-authored
 				// blockstates name that model type.
 				.filter(h -> !(h.value() instanceof reika.chromaticraft.block.crystal.BlockCrystalGlow))
+				// Defensive Glass is connected-texture and light-dependent (SelectiveGlassModel).
+				.filter(h -> h.value() != ChromaBlocks.SELECTIVE_GLASS.get())
 				// Tiered ores ship a hand-authored blockstate pointing at TieredOreModel: the model has
 				// to pick between the real ore and its host-stone disguise per viewer.
 				.filter(h -> !(h.value() instanceof reika.chromaticraft.block.worldgen26.BlockTieredOre))

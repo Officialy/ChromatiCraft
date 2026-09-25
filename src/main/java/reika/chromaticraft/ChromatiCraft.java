@@ -150,6 +150,10 @@ public class ChromatiCraft extends DragonAPIMod {
 		event.enqueueWork(() -> {
 			PylonFinder.registerTransparentBlock(RotaryBlocks.BLASTGLASS.get());
 			PylonFinder.registerTransparentBlock(RotaryBlocks.BLASTPANE.get());
+			// V33a: network rays and visual line-of-sight checks both see through Defensive Glass.
+			PylonFinder.registerTransparentBlock(reika.chromaticraft.registry.ChromaBlocks.SELECTIVE_GLASS.get());
+			reika.dragonapi.instantiable.RayTracer.addVisuallyTransparentBlock(
+					reika.chromaticraft.registry.ChromaBlocks.SELECTIVE_GLASS.get());
 			terrablender.api.Regions.register(new reika.chromaticraft.world.biome.ChromaRegion());
 			terrablender.api.Regions.register(new reika.chromaticraft.world.biome.LuminousCliffsRegion());
 		});

@@ -138,6 +138,18 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 						"chroma_ingot");
 			}
 
+			// V33a SelectiveGlassRecipe (a DecoCastingRecipe): nine panes for half the crafting XP; typical total
+			// 270 over nine per craft puts the XP penalty after 22 crafts.
+			saveRecipe("selective_glass", new CastingTableRecipe(CastingTableRecipe.Tier.CRAFTING,
+					shapedGrid(Map.of('G', Ingredient.of(Items.GLASS), 'g', Ingredient.of(Items.GLOWSTONE_DUST),
+							'e', Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.TELEPORTATION_DUST).get()),
+							'v', Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.VOID_DUST).get()),
+							'b', Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.ICY_DUST).get())),
+							"GgG", "beb", "GvG"),
+					List.of(), List.of(), List.of(),
+					new ItemStackTemplate(ChromaBlocks.SELECTIVE_GLASS.get().asItem(), 9), 5, 2)
+					.withPenaltyThreshold(22));
+
 			saveShaped("ritual_table", new ItemStackTemplate(ChromaBlocks.RITUAL_TABLE.get().asItem()),
 					5, 5,
 					Map.of('C', tag(Tags.Items.COBBLESTONES_NORMAL),
@@ -1141,13 +1153,13 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 		/**
 		 * Ported recipes whose V33a class returns {@code canGiveDoubleOutput() == true} (directly or through
 		 * DecoCastingRecipe / the core-recipe bases), by recipe id or id folder: RuneRecipe, EnhancedRuneRecipe,
-		 * RelayRecipe, CrystalGlassRecipe, CrystalGlowRecipe, CrystalStoneRecipe, CrystalGroupRecipe, CrystalClusterRecipe,
+		 * RelayRecipe, CrystalGlassRecipe, CrystalGlowRecipe, SelectiveGlassRecipe, CrystalStoneRecipe, CrystalGroupRecipe, CrystalClusterRecipe,
 		 * LowCoreRecipe and HighCoreRecipe (and their subclasses), CrystalMirrorRecipe, RawCrystalRecipe,
 		 * LumenCoreRecipe, IridescentChunkRecipe, ElementUnitRecipe, CrystalStarRecipe, CrystalLensRecipe,
 		 * CrystalFocusRecipe and CrystalCoreRecipe.
 		 */
 		private static final List<String> DOUBLE_OUTPUT = List.of("crystal_rune/", "lumen_relay/", "crystal_glass/",
-				"crystal_glow/",
+				"crystal_glow/", "selective_glass",
 				"crystal_stone/", "crystal_group/", "crystal_cluster/", "low_core/", "high_core/", "crystal_mirror/",
 				"raw_crystal", "lumen_core", "iridescent_chunk", "element_unit", "crystal_star", "crystal_lens",
 				"crystal_focus", "crystal_core");

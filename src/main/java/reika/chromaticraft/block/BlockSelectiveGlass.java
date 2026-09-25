@@ -9,239 +9,67 @@
  ******************************************************************************/
 package reika.chromaticraft.block;
 
-import java.util.ArrayList;
-import java.util.HashSet;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.projectile.Projectile;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.EntityCollisionContext;
+import net.minecraft.world.phys.shapes.Shapes;
+import net.minecraft.world.phys.shapes.VoxelShape;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.material.Material;
-import net.minecraft.client.renderer.texture.IIconRegister;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.item.EntityItem;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.projectile.EntityArrow;
-import net.minecraft.entity.projectile.EntityFireball;
-import net.minecraft.entity.projectile.EntityThrowable;
-import net.minecraft.util.IIcon;
-import net.minecraft.world.IBlockAccess;
-import net.minecraft.world.World;
-import net.minecraftforge.common.util.ForgeDirection;
+import reika.dragonapi.interfaces.entity.CustomProjectile;
 
-import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.entity.EntityVacuum;
-import reika.chromaticraft.registry.ChromaISBRH;
-import reika.dragonapi.ModList;
-import reika.dragonapi.interfaces.block.ConnectedTextureGlass;
-import reika.dragonapi.modregistry.InterfaceCache;
+/**
+ * V33a {@code BlockSelectiveGlass}, Defensive Glass: a connected-texture pane solid to everything except the
+ * projectiles a player fires -- arrows, thrown things and fireballs a player launched fly straight through, while
+ * anything a mob fires stops. Its faces are drawn by {@code SelectiveGlassModel}; faces between two panes are
+ * hidden.
+ *
+ * <p>V33a made projectiles pass by an ASM hook on the collision box ({@code ChromaAux.getInterceptedCollisionBox});
+ * in 26.2 projectiles find blocks through the collision shape with themselves as the context, so the block
+ * answers directly. Its sides are all solid ({@code isSideSolid}), so it keeps the full collision shape
+ * otherwise.
+ */
+public class BlockSelectiveGlass extends Block {
 
-
-public class BlockSelectiveGlass extends Block implements ConnectedTextureGlass {
-
-	private final ArrayList<Integer> allDirs = new ArrayList();
-	private final IIcon[] edges = new IIcon[10];
-
-	public BlockSelectiveGlass(Material mat) {
-		super(mat);
-
-		for (int i = 1; i < 10; i++) {
-			allDirs.add(i);
-		}
-
-		this.setResistance(7.5F);
-		this.setHardness(1);
-		this.setCreativeTab(ChromatiCraft.tabChroma);
+	public BlockSelectiveGlass(BlockBehaviour.Properties props) {
+		super(props);
 	}
 
 	@Override
-	public boolean isOpaqueCube() {
-		return false;
+	protected VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+		if (context instanceof EntityCollisionContext ec && ec.getEntity() != null && isProjectile(ec.getEntity())
+				&& canEntityPass(ec.getEntity()))
+			return Shapes.empty();
+		return super.getCollisionShape(state, level, pos, context);
 	}
 
 	@Override
-	public boolean renderAsNormalBlock() {
-		return false;
+	protected boolean skipRendering(BlockState state, BlockState neighbor, Direction direction) {
+		return neighbor.is(this) || super.skipRendering(state, neighbor, direction);
 	}
 
-	@Override
-	public int getRenderBlockPass() {
-		return 1;
+	/** V33a's {@code IProjectile || EntityFireball || CustomProjectile} test in the collision hook. */
+	private static boolean isProjectile(Entity e) {
+		return e instanceof Projectile || e instanceof CustomProjectile;
 	}
 
-	@Override
-	public boolean canRenderInPass(int pass) {
-		ChromaISBRH.selective.setRenderPass(pass);
-		return pass <= 1;
-	}
-
-	@Override
-	public int getRenderType() {
-		return ChromaISBRH.selective.getRenderID();
-	}
-	/*
-	@Override
-	public AxisAlignedBB getCollisionBoundingBoxFromPool(World world, int x, int y, int z) {
-		AxisAlignedBB ret = null;
-		Coordinate c = new Coordinate(x, y, z);
-		Entity e = collidingEntities.get(c);
-		if (e == null || !this.canEntityPass(world, x, y, z, e)) {
-			ret = super.getCollisionBoundingBoxFromPool(world, x, y, z);
-		}
-		collidingEntities.remove(c);
-		return ret;
-	}
-
-	@Override
-	public void addCollisionBoxesToList(World world, int x, int y, int z, AxisAlignedBB box, List li, Entity e) {
-		if (this.canEntityPass(world, x, y, z, e)) {
-
-		}
-		else {
-			//collide = true;
-			super.addCollisionBoxesToList(world, x, y, z, box, li, e);
-			//li.add(ReikaAABBHelper.getBlockAABB(x, y, z));
-		}
-	}
-
-	@Override
-	public MovingObjectPosition collisionRayTrace(World world, int x, int y, int z, Vec3 vec1, Vec3 vec2) {
-		Coordinate c = new Coordinate(x, y, z);
-		Entity e = collidingEntities.get(c);
-		if (e != null && this.canEntityPass(world, x, y, z, e)) {
-			return null;
-		}
-		collidingEntities.remove(c);
-		return super.collisionRayTrace(world, x, y, z, vec1, vec2);
-	}
+	/**
+	 * V33a {@code canEntityPass}: throwables, arrows and fireballs pass when a player fired them. V33a also let
+	 * its item-vacuum projectile and Blood Magic spell shots through.
 	 */
-	@Override
-	public boolean isSideSolid(IBlockAccess world, int x, int y, int z, ForgeDirection dir) {
-		return true;
-	}
-
-	@Override
-	public void onEntityCollidedWithBlock(World world, int x, int y, int z, Entity e) {
-		if (!this.canEntityPass(world, x, y, z, e)) {
-			//e.setDead();
-		}
-	}
-
-	public static boolean canEntityPass(World world, int x, int y, int z, Entity e) {
-		if (e instanceof EntityThrowable) {
-			return ((EntityThrowable)e).getThrower() instanceof EntityPlayer;
-		}
-		else if (e instanceof EntityFireball) {
-			return ((EntityFireball)e).shootingEntity instanceof EntityPlayer;
-		}
-		else if (e instanceof EntityArrow) {
-			return ((EntityArrow)e).shootingEntity instanceof EntityPlayer;
-		}
-		else if (e instanceof EntityVacuum) {
-			return true;
-		}
-		else if (ModList.BLOODMAGIC.isLoaded() && InterfaceCache.SPELLSHOT.instanceOf(e)) {
-			return true;
-		}
-		else if (e instanceof EntityItem)
-			return true;
+	public static boolean canEntityPass(Entity e) {
+		if (e instanceof Projectile p)
+			return p.getOwner() instanceof Player;
+		// CHROMA-PORT: V33a EntityVacuum (a CustomProjectile) always passes; add it here when it is ported.
+		// Blood Magic's spell shot passed too; that mod has no 26.2 port.
 		return false;
-	}
-
-	@Override
-	public boolean shouldSideBeRendered(IBlockAccess iba, int x, int y, int z, int side) {
-		ForgeDirection dir = ForgeDirection.VALID_DIRECTIONS[side];
-		return iba.getBlock(x+dir.offsetX, y+dir.offsetY, z+dir.offsetZ) != this; //NOT translated by side
-	}
-
-	@Override
-	public void registerBlockIcons(IIconRegister ico) {
-
-		for (int i = 0; i < 10; i++) {
-			edges[i] = ico.registerIcon("chromaticraft:glass/glass_"+i);
-		}
-	}
-
-	public HashSet<Integer> getEdgesForFace(IBlockAccess world, int x, int y, int z, ForgeDirection face) {
-		HashSet<Integer> li = new HashSet();
-		li.addAll(allDirs);
-
-		li.remove(5); //glass tex
-
-		if (face.offsetX != 0) { //test YZ
-			//sides; removed if have adjacent on side
-			if (world.getBlock(x, y, z+1) == this)
-				li.remove(2);
-			if (world.getBlock(x, y, z-1) == this)
-				li.remove(8);
-			if (world.getBlock(x, y+1, z) == this)
-				li.remove(4);
-			if (world.getBlock(x, y-1, z) == this)
-				li.remove(6);
-
-			//Corners; only removed if have adjacent on side AND corner
-			if (world.getBlock(x, y+1, z+1) == this && !li.contains(4) && !li.contains(2))
-				li.remove(1);
-			if (world.getBlock(x, y-1, z-1) == this && !li.contains(6) && !li.contains(8))
-				li.remove(9);
-			if (world.getBlock(x, y+1, z-1) == this && !li.contains(4) && !li.contains(8))
-				li.remove(7);
-			if (world.getBlock(x, y-1, z+1) == this && !li.contains(2) && !li.contains(6))
-				li.remove(3);
-		}
-		if (face.offsetY != 0) { //test XZ
-			//sides; removed if have adjacent on side
-			if (world.getBlock(x, y, z+1) == this)
-				li.remove(2);
-			if (world.getBlock(x, y, z-1) == this)
-				li.remove(8);
-			if (world.getBlock(x+1, y, z) == this)
-				li.remove(4);
-			if (world.getBlock(x-1, y, z) == this)
-				li.remove(6);
-
-			//Corners; only removed if have adjacent on side AND corner
-			if (world.getBlock(x+1, y, z+1) == this && !li.contains(4) && !li.contains(2))
-				li.remove(1);
-			if (world.getBlock(x-1, y, z-1) == this && !li.contains(6) && !li.contains(8))
-				li.remove(9);
-			if (world.getBlock(x+1, y, z-1) == this && !li.contains(4) && !li.contains(8))
-				li.remove(7);
-			if (world.getBlock(x-1, y, z+1) == this && !li.contains(2) && !li.contains(6))
-				li.remove(3);
-		}
-		if (face.offsetZ != 0) { //test XY
-			//sides; removed if have adjacent on side
-			if (world.getBlock(x, y+1, z) == this)
-				li.remove(4);
-			if (world.getBlock(x, y-1, z) == this)
-				li.remove(6);
-			if (world.getBlock(x+1, y, z) == this)
-				li.remove(2);
-			if (world.getBlock(x-1, y, z) == this)
-				li.remove(8);
-
-			//Corners; only removed if have adjacent on side AND corner
-			if (world.getBlock(x+1, y+1, z) == this && !li.contains(2) && !li.contains(4))
-				li.remove(1);
-			if (world.getBlock(x-1, y-1, z) == this && !li.contains(8) && !li.contains(6))
-				li.remove(9);
-			if (world.getBlock(x+1, y-1, z) == this && !li.contains(2) && !li.contains(6))
-				li.remove(3);
-			if (world.getBlock(x-1, y+1, z) == this && !li.contains(4) && !li.contains(8))
-				li.remove(7);
-		}
-		return li;
-	}
-
-	public IIcon getIconForEdge(IBlockAccess world, int x, int y, int z, int edge) {
-		return edges[edge];
-	}
-
-	public IIcon getIconForEdge(int itemMeta, int edge) {
-		return edges[edge];
-	}
-
-	@Override
-	public boolean renderCentralTextureForItem(int meta) {
-		return true;
 	}
 
 }
