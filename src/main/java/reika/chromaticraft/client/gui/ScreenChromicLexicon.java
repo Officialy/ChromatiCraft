@@ -165,6 +165,9 @@ public final class ScreenChromicLexicon extends Screen {
 	private int recipeSubpage;
 	/** Which Y layer of a rune pattern the Runes subpage shows, counted up from the lowest. */
 	private int runeLayer;
+	/** A page to open once the screen is first laid out ({@link #openAtOnInit}). */
+	private LexiconCatalog.Entry pendingPage;
+	private boolean pendingRecipes;
 	/** The cursor for the frame being drawn, for page-item tooltips. */
 	private int frameMouseX;
 	private int frameMouseY;
@@ -203,10 +206,24 @@ public final class ScreenChromicLexicon extends Screen {
 		view = fragmentInventory ? View.STORED_PAGES : View.NAVIGATION;
 	}
 
+	/** Opens {@code page} (in its recipe view if {@code recipes}) when the screen is shown. */
+	public void openAtOnInit(LexiconCatalog.Entry page, boolean recipes) {
+		pendingPage = page;
+		pendingRecipes = recipes;
+	}
+
 	@Override
 	protected void init() {
 		super.init();
 		clearWidgets();
+		if (pendingPage != null) {
+			LexiconCatalog.Entry page = pendingPage;
+			pendingPage = null;
+			recipeMode = pendingRecipes;
+			// openEntry rebuilds the widgets, which runs this method again with the page selected.
+			openEntry(page);
+			return;
+		}
 		int left = (width - WIDTH) / 2;
 		int top = (height - HEIGHT) / 2;
 		if (selected == null && (view == View.NAVIGATION || view == View.STORED_PAGES)) {

@@ -15,4 +15,12 @@ public final class ChromaClientScreens {
 		Minecraft.getInstance().gui.setScreen(new ScreenChromicLexicon(player, book, fragmentInventory));
 	}
 
+	/** Opens the Lexicon straight to a page's recipes, as a recipe viewer's "open in Lexicon" button does. */
+	public static void openLexiconAt(Player player, ItemStack book,
+			reika.chromaticraft.magic.progression.LexiconCatalog.Entry page) {
+		ScreenChromicLexicon screen = new ScreenChromicLexicon(player, book, false);
+		screen.openAtOnInit(page, true);
+		Minecraft.getInstance().gui.setScreen(screen);
+	}
+
 }
