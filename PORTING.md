@@ -251,8 +251,8 @@ Pylon Link and Lumen Node (V33a had no casting recipe for either).
 
 - **ENTRY** — 7/7 ported.
 - **RAWEXPLORE** — 20/20 ported (Fertility Seeds and the Artifact Distribution Map landed 2026-09-25).
-- **BASICCRAFT** — 8/27 ported.
-  Missing: Crystal Glass; Glow; Defensive Glass; Enchantments; Crystal Brewery; Chromatic Flower; Vertical Propulsion Panel; Lumen Wire; Crystal Orchestra; Particle Spawner; Knowledge Entanglement Pedestal; Tool Compression Crate; Lumen Turret; Subterranean Route Finder; Pylon Compass; Illumination Gun; Ownership Expansion Key; Examination Crystals; Corrosion Resistant Cell.
+- **BASICCRAFT** — 10/27 ported (Crystal Glass and Glow landed 2026-09-25).
+  Missing: Defensive Glass; Enchantments; Crystal Brewery; Chromatic Flower; Vertical Propulsion Panel; Lumen Wire; Crystal Orchestra; Particle Spawner; Knowledge Entanglement Pedestal; Tool Compression Crate; Lumen Turret; Subterranean Route Finder; Pylon Compass; Illumination Gun; Ownership Expansion Key; Examination Crystals; Corrosion Resistant Cell.
 - **RUNECRAFT** — 11/36 ported.
   Missing: Artificial Sky; Physics Suspension Lamp; Lumen Lamp; Travel Path; Redstone Pod; Flux Pod; Subterranean Illuminator; Chromatic Enchanter; Fluid Radiator; Fluid Link Anchor; Suspension Field Controller; Item Inserter; Lumen Lamp Controller; Crystal Seeds; Item Mover; Voidlinked Bucket; Linker; Creature Sounding Star; Multitool; Nether Layer Crystal; Ore-Finding Pickaxe; Ore Harvester; Bezier Crystals; Aura Tracker; Recall Tablet.
 - **ENERGY** — 15/30 ported.
@@ -8483,3 +8483,16 @@ what NeoForge's patched bytecode tests, not the decompiled source's `has(MAP_ID)
 `ChunkGeneratorStructureState.getRingPositionsFor`; "confirmed" uses `ReikaWorldHelper.isChunkGenerated`
 (`ChunkMap.isExistingChunkFull` invoker). Deviations are listed in the commit and the class Javadoc. The
 mixin and renderer are unverified in game.
+
+**BASICCRAFT: Crystal Glass, Glow, Doublecraft (2026-09-25).**
+- `CrystalTypeBlock` now follows the per-element-id convention. It ports V33a's chime (place, break, click, and
+  once per footstep: 26.2's `stepOn` runs every tick, so the chime follows `Entity.moveDist` step boundaries)
+  and the silent stone step sound.
+- Crystal Glass: one block per element, tinted glass under a full-bright overlay, culling against any crystal
+  glass.
+- Glow: 96 blocks (element x base); facing, axis parity and mode are blockstate instead of V33a's tile entity.
+  `CrystalGlowModel` bakes V33a's chamfered vertex lists into the chunk mesh, and its blockstates are
+  hand-authored. The Manipulator rotates it or cycles its mode.
+- Doublecraft: the casting table never doubled output. Recipes now carry `completion.double_output` (V33a
+  `canGiveDoubleOutput`), set in datagen for every ported recipe whose V33a class allowed it.
+- Unverified in game: the glow model orientation per facing and the inventory card.
