@@ -8416,3 +8416,63 @@ the table machine and its thirty-nine effects are not claimed complete.
 - Two serial, 3 GB-capped compiles and two serial client-data runs passed, including the later
   hitbox and multipart-model edits. No GameTests or client instances were launched because
   concurrent suites previously exhausted the user's RAM; visual behavior remains unverified.
+
+## Artefact alloying, render audits and requested UI changes (2026-09-25)
+
+**Artifact Distribution Map prerequisites (RAWEXPLORE).**
+- DragonAPI now has `TickScheduler` and the scheduled-event actions (`DelayedAttack`, `DelayedKnockback`,
+  sounds, block place/break, packets, entity spawn). V33a nested these in `ScheduledTickEvent`; the port
+  puts them in `instantiable.event.scheduledtickevent`, which is where ported code already imports them.
+  `ReikaEntityHelper.knockbackEntityFromPos` is ported. It guards an entity exactly above the point
+  (1.7.10 gave NaN motion) and sets `hurtMarked` so players get the motion.
+- Pool recipes gained an `effects` list (`AlloyingEffect.Registry`: ids are validated when the recipe loads).
+  Effects initialize once, run every server tick, and finish once per output. The per-tick FX packet
+  carries the effect ids, so the client can run their visuals.
+- `ArtefactWithDataCrystalAlloyingEffect` is ported: sound, 12-tick delayed knockback and magic damage
+  within 12 blocks, rising rays, an amber particle burst, and a fiery explosion on completion that the
+  outputs survive. The data crystal turns orange (a synced, saved flag). Its ARTEALLOY GLOW and SHOCK
+  shaders are one post pass (`ArtealloyEffects`, `post/artealloy.fsh`).
+  - Deviation: V33a's `fireTick == 0` burst gate was only ever set client-side. It worked in singleplayer
+    because the static was shared, and never closed on a dedicated server. The singleplayer spacing is
+    kept as a 50-tick server cooldown.
+- `complete()` now clears the pool before making outputs (V33a order), because an effect may remove the
+  pool block.
+- The map item and its pool recipe are still to do (see Pending).
+
+**Render audits.**
+- Dropped data crystal: V33a scale is 1.5, not 3. Forge's `BLOCK_3D` custom item renderer is drawn at half
+  scale, and the port had missed that. The 1.7.10 item y-offset (0.125), the prism's mid pivot, and the
+  non-spinning prism are also restored. The flare is ±3 in `0xb0e0ff`, drawn through walls, and only with
+  line of sight.
+- Alpha-blended ChromaParticles now use `LEGACY_TRANSLUCENT_PARTICLE`, which writes no depth and clips at
+  alpha 1/255, like DragonAPI's ParticleEngine. Vanilla's translucent particle pipeline wrote depth and
+  clipped at 0.1, which cut hard-edged holes; this was the Enhanced Ender Eye trail bug. FadeGlow gained
+  V33a `setAlphaFading()`.
+- Focus crystal: full `RenderFocusCrystal` port. It covers the tier base plate, the ordered and messy
+  Techne rings with per-shard shimmer, and the truncated-cube bobber, star flare and beam. It also has an
+  item renderer. DragonAPI `TruncatedCube` is ported. `UNLIT_ENTITY_CUTOUT` reproduces
+  `disableEntityLighting`.
+- Portal Rift item flare: `bigflare.png` is an 80-frame strip, and the renderer now steps through it.
+- Encrusted crystal items sample the icon per face by render bounds (`partialRenderBounds`), with V33a's 90°
+  inventory turn.
+- Relay Source and Area Delegation Point items now use a base model with the block display transforms.
+  The particle-only base had none, so they drew face-on.
+
+**Names and items.**
+- Hand-registered block items (lumen relays, Unknown Artefact) need `useBlockDescriptionPrefix()`. Without
+  it they showed raw `item.*` keys.
+- The all-element relay is V33a's "Omni Lumen Relay".
+- Relay item icons are untinted `basic/relay`. The V33a jar confirms this: `RelayRenderer` draws no 3D
+  inventory form, and there is no `getRenderColor` override.
+- Berries and elemental stones register in separate loops, so the creative tab groups them.
+
+**Requested departures from V33a.**
+- Lexicon Runes subpage: the Y layer is stepped with arrows instead of cycling every 5s. Runes now use
+  V33a's real icons (`runes/backpng` under the animated `runes/frontpng`) instead of engraved/glow.
+- Items on Lexicon pages show tooltips on hover.
+- JEI (`modinterface/jei/ChromaJEIPlugin`): V33a's NEI config deliberately never registered casting
+  recipes. Casting and Pool recipes are synced with `OnDatapackSyncEvent.sendRecipes`. A recipe shows only
+  once the player holds the Lexicon page for its output and meets its research level or progress stages.
+  Each recipe has an "open in Lexicon" button while a carried Lexicon holds that page.
+
+**Unverified in game:** everything above was derived from source. No client has been run for this batch.
