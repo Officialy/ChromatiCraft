@@ -52,6 +52,12 @@ public final class EncrustedCrystalItemRenderer implements NoDataSpecialModelRen
 		Random random = new Random(seed);
 		random.nextBoolean(); // exact discarded V33a inventory roll
 		int colour = 0xFF000000 | ReikaColorAPI.mixColors(element.getColor(), 0xFFFFFF, 0.85F);
+		// renderInventoryBlock's glRotatef(90, 0, 1, 0) about the block centre.
+		poseStack.pushPose();
+		poseStack.translate(0.5F, 0.5F, 0.5F);
+		poseStack.mulPose(com.mojang.math.Axis.YP.rotationDegrees(90));
+		poseStack.translate(-0.5F, -0.5F, -0.5F);
+		PoseStack.Pose pose = poseStack.last().copy();
 		collector.submitCustomGeometry(poseStack, RenderTypes.itemTranslucent(TextureAtlas.LOCATION_BLOCKS),
 				(unused, vertices) -> {
 					boolean[][] used = new boolean[6][6];
@@ -66,10 +72,11 @@ public final class EncrustedCrystalItemRenderer implements NoDataSpecialModelRen
 						float z0 = z / 6F;
 						float z1 = (z + 1) / 6F;
 						float y1 = 0.2F + random.nextFloat() * 0.6F;
-						emitBox(poseStack.last(), vertices, sprite, colour, lightCoords, overlayCoords,
+						emitBox(pose, vertices, sprite, colour, lightCoords, overlayCoords,
 								x0, 0, z0, x1, y1, z1);
 					}
 				});
+		poseStack.popPose();
 	}
 
 	private static void emitBox(PoseStack.Pose pose, com.mojang.blaze3d.vertex.VertexConsumer vertices,
@@ -89,12 +96,26 @@ public final class EncrustedCrystalItemRenderer implements NoDataSpecialModelRen
 				x1,y0,z1, x1,y0,z0, x1,y1,z0, x1,y1,z1);
 	}
 
+	/**
+	 * V33a drew each piece with {@code partialRenderBounds}, so RenderBlocks sampled only the part of the icon
+	 * the face covers (u/v from the render bounds x16), not the whole icon squeezed onto a sixth-block face.
+	 */
 	private static void emitFace(PoseStack.Pose pose, com.mojang.blaze3d.vertex.VertexConsumer vertices,
 			TextureAtlasSprite sprite, int colour, int light, int overlay, Direction normal, float... xyz) {
 		for (int i = 0; i < 4; i++) {
-			float u = (i == 1 || i == 2) ? 1 : 0;
-			float v = i >= 2 ? 1 : 0;
-			vertices.addVertex(pose, xyz[i * 3], xyz[i * 3 + 1], xyz[i * 3 + 2])
+			float x = xyz[i * 3];
+			float y = xyz[i * 3 + 1];
+			float z = xyz[i * 3 + 2];
+			float u;
+			float v;
+			switch (normal) {
+				case DOWN, UP -> { u = x; v = z; }
+				case NORTH -> { u = 1 - x; v = 1 - y; }
+				case SOUTH -> { u = x; v = 1 - y; }
+				case WEST -> { u = z; v = 1 - y; }
+				default -> { u = 1 - z; v = 1 - y; }
+			}
+			vertices.addVertex(pose, x, y, z)
 					.setColor(colour).setUv(sprite.getU(u), sprite.getV(v))
 					.setOverlay(overlay).setLight(light)
 					.setNormal(pose, normal.getStepX(), normal.getStepY(), normal.getStepZ());

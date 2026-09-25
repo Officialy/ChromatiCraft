@@ -1409,8 +1409,11 @@ public class ChromaModelProvider extends ModelProvider {
 						new Material(reika.chromaticraft.render.tesr.RenderFunctionRelay.SPRITE)), modelOut);
 		blockStateOut.accept(MultiVariantGenerator.dispatch(ChromaBlocks.FUNCTION_RELAY.get(),
 				new MultiVariant(WeightedList.of(new Variant(model)))));
+		Identifier itemBase = ModelTemplates.CUBE_ALL.create(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/function_relay_inventory"),
+				TextureMapping.cube(new Material(reika.chromaticraft.render.tesr.RenderFunctionRelay.SPRITE)), modelOut);
 		itemModelOut.accept(ChromaBlocks.FUNCTION_RELAY.get().asItem(),
-				ItemModelUtils.specialModel(model, new reika.chromaticraft.render.item.FunctionRelayItemRenderer.Unbaked()));
+				ItemModelUtils.specialModel(itemBase, new reika.chromaticraft.render.item.FunctionRelayItemRenderer.Unbaked()));
 	}
 
 	private static void relaySourceModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
@@ -1422,28 +1425,33 @@ public class ChromaModelProvider extends ModelProvider {
 				new TextureMapping().put(TextureSlot.PARTICLE, particle), modelOut);
 		blockStateOut.accept(MultiVariantGenerator.dispatch(ChromaBlocks.RELAY_SOURCE.get(),
 				new MultiVariant(WeightedList.of(new Variant(model)))));
+		// The item needs a base carrying the block display transforms (as the charger and infusers do); the
+		// particle-only world model has none, so the item drew face-on instead of in the inventory tilt.
+		Identifier itemBase = ModelTemplates.CUBE_ALL.create(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/relay_source_inventory"),
+				TextureMapping.cube(particle), modelOut);
 		itemModelOut.accept(ChromaBlocks.RELAY_SOURCE.get().asItem(),
-				ItemModelUtils.specialModel(model, new RelaySourceItemRenderer.Unbaked()));
+				ItemModelUtils.specialModel(itemBase, new RelaySourceItemRenderer.Unbaked()));
 	}
 
 	/**
-	 * The world geometry is the live V33a relay renderer; the old inventory form was deliberately a
-	 * flat, element-tinted relay icon ({@code shouldRender3DInInventory=false}).
+	 * The world geometry is the live V33a relay renderer. The inventory form was a flat icon
+	 * ({@code RelayRenderer.shouldRender3DInInventory} is false): ItemBlock's {@code getIconFromDamage} gave the
+	 * block's {@code basic/relay} icon, and with no {@code getRenderColor} override it was untinted, the same for
+	 * every element; the tooltip ("Conducts ...") and the name told them apart.
 	 */
 	private static void lumenRelayModels(Consumer<BlockModelDefinitionGenerator> blockStateOut,
 			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
 		Material relayTexture = new Material(Identifier.fromNamespaceAndPath(
 				ChromatiCraft.MODID, "block/basic/relay"));
 		for (CrystalElement element : CrystalElement.elements)
-			lumenRelayModel(ChromaBlocks.lumenRelay(element).get(), element.getColor(), relayTexture,
+			lumenRelayModel(ChromaBlocks.lumenRelay(element).get(), relayTexture,
 					blockStateOut, itemModelOut, modelOut);
-		// V33a's all-colour relay icon was the untinted base icon; its live world mote selects a
-		// random element every display tick.
-		lumenRelayModel(ChromaBlocks.MULTICHROMIC_RELAY.get(), 0xffffffff, relayTexture,
+		lumenRelayModel(ChromaBlocks.MULTICHROMIC_RELAY.get(), relayTexture,
 				blockStateOut, itemModelOut, modelOut);
 	}
 
-	private static void lumenRelayModel(Block block, int color, Material relayTexture,
+	private static void lumenRelayModel(Block block, Material relayTexture,
 			Consumer<BlockModelDefinitionGenerator> blockStateOut, ItemModelOutput itemModelOut,
 			BiConsumer<Identifier, ModelInstance> modelOut) {
 		Identifier particleModel = ModelTemplates.PARTICLE_ONLY.create(block,
@@ -1453,7 +1461,7 @@ public class ChromaModelProvider extends ModelProvider {
 		Identifier itemModel = ModelTemplates.FLAT_ITEM.create(
 				ModelLocationUtils.getModelLocation(block.asItem()),
 				new TextureMapping().put(TextureSlot.LAYER0, relayTexture), modelOut);
-		itemModelOut.accept(block.asItem(), ItemModelUtils.tintedModel(itemModel, new Constant(color)));
+		itemModelOut.accept(block.asItem(), ItemModelUtils.plainModel(itemModel));
 	}
 
 	private static void caveCrystalItems(ItemModelOutput itemModelOut,

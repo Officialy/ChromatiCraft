@@ -197,7 +197,7 @@ public class ChromaLang extends LanguageProvider {
 		add(ChromaBlocks.FUNCTION_RELAY.get(), "Area Delegation Point");
 		for (CrystalElement element : CrystalElement.elements)
 			add(ChromaBlocks.lumenRelay(element).get(), element.displayName + " Lumen Relay");
-		add(ChromaBlocks.MULTICHROMIC_RELAY.get(), "Multichromic Lumen Relay");
+		add(ChromaBlocks.MULTICHROMIC_RELAY.get(), "Omni Lumen Relay"); // V33a getMultiValuedName RELAY meta 16
 		add(ChromaItems.GLOW_CAVE_DUST.get(), "Glow Cave Dust"); // V33a chromaitem.dimgen.glowcave
 		add(ChromaItems.UNKNOWN_ARTEFACT_FRAGMENT.get(), "Unknown Fragments"); // V33a chromaunknownartefact.fragment
 		add(ChromaItems.ENDER_CRYSTAL_MOVER.get(), "End Crystal Mover");

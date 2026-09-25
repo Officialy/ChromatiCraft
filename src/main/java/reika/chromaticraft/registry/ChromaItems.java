@@ -197,13 +197,14 @@ public final class ChromaItems {
 	/** Former ELEMENTAL metadata split into sixteen stable color identities. */
 	public static final EnumMap<CrystalElement, DeferredItem<ItemElementalStone>> ELEMENTAL_STONES = new EnumMap<>(CrystalElement.class);
 	static {
-		for (CrystalElement element : CrystalElement.elements) {
-			String suffix = element.getEnglishName();
-			BERRIES.put(element, reg("chroma_berries_" + suffix,
+		// Separate loops: creative tabs list items in registration order, and V33a showed each family's
+		// sixteen metadata values together rather than interleaved.
+		for (CrystalElement element : CrystalElement.elements)
+			BERRIES.put(element, reg("chroma_berries_" + element.getEnglishName(),
 					() -> new ItemChromaBerry(element, itemProperties())));
-			ELEMENTAL_STONES.put(element, reg("elemental_stone_" + suffix,
+		for (CrystalElement element : CrystalElement.elements)
+			ELEMENTAL_STONES.put(element, reg("elemental_stone_" + element.getEnglishName(),
 					() -> new ItemElementalStone(element, itemProperties())));
-		}
 	}
 
 	public static ItemStack berryStack(CrystalElement element) {

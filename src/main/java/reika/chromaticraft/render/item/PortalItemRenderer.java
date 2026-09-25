@@ -31,6 +31,14 @@ public final class PortalItemRenderer implements NoDataSpecialModelRenderer {
 	private static final Identifier BIG_FLARE = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
 			"textures/block/icons/bigflare.png");
 
+	/**
+	 * V33a's BIGFLARE was an atlas icon, which the atlas animated: 80 square frames of 256x256, two ticks each
+	 * (bigflare.png.mcmeta). Bound as a raw texture, the whole 256x20480 strip must be stepped by hand, or every
+	 * frame is squashed onto the cube face at once.
+	 */
+	private static final int FLARE_FRAMES = 80;
+	private static final int FLARE_FRAME_TICKS = 2;
+
 	private PortalItemRenderer() {}
 
 	@Override
@@ -45,8 +53,11 @@ public final class PortalItemRenderer implements NoDataSpecialModelRenderer {
 		PoseStack flarePose = copy(poseStack);
 		int color = 0xff000000 | (Color.HSBtoRGB(
 				(System.currentTimeMillis() % 15_000L) / 15_000F, 1, 1) & 0xffffff);
+		int frame = (int)(System.currentTimeMillis() / (50L * FLARE_FRAME_TICKS) % FLARE_FRAMES);
+		float v0 = frame / (float)FLARE_FRAMES;
+		float v1 = (frame + 1) / (float)FLARE_FRAMES;
 		collector.submitCustomGeometry(poseStack, ChromaRenderPipelines.additiveSprite(BIG_FLARE),
-				(unused, vertices) -> renderFlareCube(flarePose.last(), vertices, color));
+				(unused, vertices) -> renderFlareCube(flarePose.last(), vertices, color, v0, v1));
 		poseStack.popPose();
 	}
 
@@ -59,13 +70,13 @@ public final class PortalItemRenderer implements NoDataSpecialModelRenderer {
 		litFace(pose, out, 1,0,0, 1,0,1, 0,0,1, 0,0,0, 0,-1,0);
 	}
 
-	private static void renderFlareCube(PoseStack.Pose pose, VertexConsumer out, int color) {
-		face(pose, out, 0,0,1, 1,0,1, 1,1,1, 0,1,1, color);
-		face(pose, out, 0,1,0, 1,1,0, 1,0,0, 0,0,0, color);
-		face(pose, out, 1,1,0, 1,1,1, 1,0,1, 1,0,0, color);
-		face(pose, out, 0,0,0, 0,0,1, 0,1,1, 0,1,0, color);
-		face(pose, out, 0,1,0, 0,1,1, 1,1,1, 1,1,0, color);
-		face(pose, out, 1,0,0, 1,0,1, 0,0,1, 0,0,0, color);
+	private static void renderFlareCube(PoseStack.Pose pose, VertexConsumer out, int color, float v0, float v1) {
+		face(pose, out, 0,0,1, 1,0,1, 1,1,1, 0,1,1, color, v0, v1);
+		face(pose, out, 0,1,0, 1,1,0, 1,0,0, 0,0,0, color, v0, v1);
+		face(pose, out, 1,1,0, 1,1,1, 1,0,1, 1,0,0, color, v0, v1);
+		face(pose, out, 0,0,0, 0,0,1, 0,1,1, 0,1,0, color, v0, v1);
+		face(pose, out, 0,1,0, 0,1,1, 1,1,1, 1,1,0, color, v0, v1);
+		face(pose, out, 1,0,0, 1,0,1, 0,0,1, 0,0,0, color, v0, v1);
 	}
 
 	private static void litFace(PoseStack.Pose pose, VertexConsumer out,
@@ -87,11 +98,11 @@ public final class PortalItemRenderer implements NoDataSpecialModelRenderer {
 
 	private static void face(PoseStack.Pose pose, VertexConsumer out,
 			float x1,float y1,float z1, float x2,float y2,float z2,
-			float x3,float y3,float z3, float x4,float y4,float z4, int color) {
-		out.addVertex(pose,x1,y1,z1).setUv(0,0).setColor(color);
-		out.addVertex(pose,x2,y2,z2).setUv(1,0).setColor(color);
-		out.addVertex(pose,x3,y3,z3).setUv(1,1).setColor(color);
-		out.addVertex(pose,x4,y4,z4).setUv(0,1).setColor(color);
+			float x3,float y3,float z3, float x4,float y4,float z4, int color, float v0, float v1) {
+		out.addVertex(pose,x1,y1,z1).setUv(0,v0).setColor(color);
+		out.addVertex(pose,x2,y2,z2).setUv(1,v0).setColor(color);
+		out.addVertex(pose,x3,y3,z3).setUv(1,v1).setColor(color);
+		out.addVertex(pose,x4,y4,z4).setUv(0,v1).setColor(color);
 	}
 
 	private static PoseStack copy(PoseStack source) {

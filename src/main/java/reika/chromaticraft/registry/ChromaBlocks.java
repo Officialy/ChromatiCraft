@@ -146,14 +146,18 @@ public final class ChromaBlocks {
 		});
 	}
 
-	/** Registers one former relay metadata value as its own block and BlockItem identity. */
+	/**
+	 * Registers one former relay metadata value as its own block and BlockItem identity. Hand-registered block
+	 * items must opt into the block's description id, as registerSimpleBlockItem does, or they show a raw
+	 * item.* key.
+	 */
 	private static DeferredBlock<BlockLumenRelay> registerLumenRelay(String name,
 			CrystalElement element) {
 		DeferredBlock<BlockLumenRelay> block = registerBlockOnly(name,
 				() -> new BlockLumenRelay(blockProperties().mapColor(MapColor.NONE)
 						.instabreak().strength(0F, 6000F).sound(SoundType.STONE)
 						.lightLevel(state -> 12).noOcclusion().noCollision(), element));
-		registerItemOnly(name, () -> new ItemBlockLumenRelay(block.get(), itemProperties()));
+		registerItemOnly(name, () -> new ItemBlockLumenRelay(block.get(), itemProperties().useBlockDescriptionPrefix()));
 		return block;
 	}
 
@@ -724,7 +728,7 @@ public final class ChromaBlocks {
 					.strength(12F, 300000F).requiresCorrectToolForDrops().noOcclusion()));
 	/** V33a ARTEFACT metadata ARTIFACT: the whole relic, which buries itself back as the block. */
 	public static final DeferredItem<Item> UNKNOWN_ARTEFACT_ITEM = registerItemOnly("unknown_artefact",
-			() -> new reika.chromaticraft.items.ItemUnknownArtefact(UNKNOWN_ARTEFACT.get(), itemProperties()));
+			() -> new reika.chromaticraft.items.ItemUnknownArtefact(UNKNOWN_ARTEFACT.get(), itemProperties().useBlockDescriptionPrefix()));
 
 	/**
 	 * V33a Piezo Crystal: stone's hardness, a third of its resistance, and light 10 while active.

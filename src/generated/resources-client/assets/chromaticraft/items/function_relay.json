@@ -1,7 +1,7 @@
 {
   "model": {
     "type": "minecraft:special",
-    "base": "chromaticraft:block/function_relay",
+    "base": "chromaticraft:block/function_relay_inventory",
     "model": {
       "type": "chromaticraft:function_relay"
     }
