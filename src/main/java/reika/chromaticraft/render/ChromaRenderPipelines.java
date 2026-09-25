@@ -214,6 +214,29 @@ public final class ChromaRenderPipelines {
             .withCull(false)
             .build();
 
+    /**
+     * V33a's alpha-blended ("basic blend") particles. DragonAPI's ParticleEngine drew every layer with
+     * {@code glDepthMask(false)} and an alpha clip of 1/255; vanilla's translucent particle pipeline writes depth
+     * and discards below 0.1, so overlapping soft sprites (the Enhanced Ender Eye's spiral) cut hard-edged holes
+     * in whatever lay behind them.
+     */
+    public static final RenderPipeline LEGACY_TRANSLUCENT_PARTICLE = RenderPipeline.builder()
+            .withLocation(Identifier.fromNamespaceAndPath(
+                    ChromatiCraft.MODID, "pipeline/legacy_translucent_particle"))
+            .withBindGroupLayout(BindGroupLayouts.GLOBALS)
+            .withBindGroupLayout(BindGroupLayouts.MATRICES_PROJECTION)
+            .withBindGroupLayout(BindGroupLayouts.FOG)
+            .withVertexShader("core/particle")
+            .withFragmentShader(Identifier.fromNamespaceAndPath(
+                    ChromatiCraft.MODID, "core/legacy_translucent_particle"))
+            .withBindGroupLayout(BindGroupLayouts.SAMPLER0_SAMPLER2)
+            .withColorTargetState(new ColorTargetState(BlendFunction.TRANSLUCENT))
+            .withVertexBinding(0, DefaultVertexFormat.PARTICLE)
+            .withPrimitiveTopology(PrimitiveTopology.QUADS)
+            .withDepthStencilState(PARTICLE_DEPTH_NO_WRITE)
+            .withCull(false)
+            .build();
+
     public static final RenderPipeline LEGACY_ADDITIVE_PARTICLE = RenderPipeline.builder()
             .withLocation(Identifier.fromNamespaceAndPath(
                     ChromatiCraft.MODID, "pipeline/legacy_additive_particle"))
@@ -381,6 +404,7 @@ public final class ChromaRenderPipelines {
         event.registerPipeline(ENERGY_BEAM);
         event.registerPipeline(ADDITIVE_PARTICLE);
         event.registerPipeline(LEGACY_ADDITIVE_PARTICLE);
+        event.registerPipeline(LEGACY_TRANSLUCENT_PARTICLE);
         event.registerPipeline(LEGACY_ADDITIVE_PARTICLE_NO_DEPTH);
         event.registerPipeline(MONUMENT_GRADE);
 		event.registerPipeline(LOCUS_POINTS);

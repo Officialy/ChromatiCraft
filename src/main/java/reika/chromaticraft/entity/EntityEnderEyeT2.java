@@ -272,7 +272,7 @@ public final class EntityEnderEyeT2 extends Entity implements ItemSupplier, IEnt
 				if (this.random.nextInt(6) > 0)
 					c = (int)distanceColor.getValue(totalDistance);
 				reika.chromaticraft.render.particle.ChromaParticle.spawnIconFade(this.level(), dx, dy, dz, 0, 0, 0,
-						c, l, s, "fade_gentle", true);
+						c, l, s, "fade_gentle", true, true);
 			}
 		}
 
@@ -283,7 +283,7 @@ public final class EntityEnderEyeT2 extends Entity implements ItemSupplier, IEnt
 			double ang = t * 360D / lf * 2;
 			Vec3 vec = reika.dragonapi.libraries.mathsci.ReikaVectorHelper.getPointAroundVector(this.getDeltaMovement(), 3, ang);
 			reika.chromaticraft.render.particle.ChromaParticle.spawnIconFade(this.level(), this.getX() + vec.x,
-					this.getY() + vec.y, this.getZ() + vec.z, 0, 0, 0, c, 180, 7.5F, "fade_basic", false);
+					this.getY() + vec.y, this.getZ() + vec.z, 0, 0, 0, c, 180, 7.5F, "fade_basic", false, true);
 		}
 	}
 

@@ -51,6 +51,9 @@ public abstract class ChromaParticle extends SingleQuadParticle {
             Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "textures/particle/16x.png"),
             ChromaRenderPipelines.ADDITIVE_PARTICLE);
 
+    private static final Layer TRANSLUCENT_TERRAIN = new Layer(
+            true, net.minecraft.client.renderer.texture.TextureAtlas.LOCATION_BLOCKS,
+            ChromaRenderPipelines.LEGACY_TRANSLUCENT_PARTICLE);
     private static final Layer ADDITIVE_TERRAIN_NO_DEPTH = new Layer(
             true, net.minecraft.client.renderer.texture.TextureAtlas.LOCATION_BLOCKS,
             ChromaRenderPipelines.LEGACY_ADDITIVE_PARTICLE_NO_DEPTH);
@@ -279,9 +282,17 @@ public abstract class ChromaParticle extends SingleQuadParticle {
 	/** A rapid-expanding stationary or drifting fade blur with a chosen V33a icon and blend. */
 	public static void spawnIconFade(Level world, double x, double y, double z, double vx, double vy, double vz,
 			int color, int life, float scale, String icon, boolean additive) {
+		spawnIconFade(world, x, y, z, vx, vy, vz, color, life, scale, icon, additive, false);
+	}
+
+	/** As above; {@code alphaFading} is V33a {@code setAlphaFading()} (see {@link FadeGlow#setAlphaFading}). */
+	public static void spawnIconFade(Level world, double x, double y, double z, double vx, double vy, double vz,
+			int color, int life, float scale, String icon, boolean additive, boolean alphaFading) {
 		if (!(world instanceof ClientLevel level)) return;
-		Minecraft.getInstance().particleEngine.add(new FadeGlow(level, x, y, z, vx, vy, vz, color, life, scale,
-				true, null, 0, icon, additive));
+		FadeGlow fx = new FadeGlow(level, x, y, z, vx, vy, vz, color, life, scale, true, null, 0, icon, additive);
+		if (alphaFading)
+			fx.setAlphaFading();
+		Minecraft.getInstance().particleEngine.add(fx);
 	}
 
 	/**
@@ -2019,7 +2030,7 @@ public abstract class ChromaParticle extends SingleQuadParticle {
     protected Layer getLayer() {
         if (additive && noDepth)
             return ADDITIVE_TERRAIN_NO_DEPTH;
-        return additive ? ADDITIVE_TERRAIN : Layer.TRANSLUCENT_TERRAIN;
+        return additive ? ADDITIVE_TERRAIN : TRANSLUCENT_TERRAIN;
     }
 
     @Override
@@ -2692,6 +2703,10 @@ public abstract class ChromaParticle extends SingleQuadParticle {
         private final float fullScale;
         private final boolean rapidExpand;
         private final PositionController controller;
+        private float alphaFade;
+        private float baseRed;
+        private float baseGreen;
+        private float baseBlue;
 
         public FadeGlow(ClientLevel level, double x, double y, double z, double vx, double vy, double vz,
                 int color, int life, float scale, boolean rapidExpand) {
@@ -2718,7 +2733,20 @@ public abstract class ChromaParticle extends SingleQuadParticle {
             this.controller = controller;
             this.age = startAge;
             this.setRgb(color);
+            this.baseRed = this.rCol;
+            this.baseGreen = this.gCol;
+            this.baseBlue = this.bCol;
             this.updateAppearance();
+        }
+
+        /**
+         * V33a {@code EntityBlurFX.setAlphaFading()}: the blur keeps its full size and instead fades, its colour
+         * when additive, its alpha when alpha-blended, along the same envelope the size would have followed.
+         */
+        public FadeGlow setAlphaFading() {
+            this.alphaFade = 1;
+            this.updateAppearance();
+            return this;
         }
 
         @Override
@@ -2752,6 +2780,18 @@ public abstract class ChromaParticle extends SingleQuadParticle {
                     ? (this.lifetime / (float)particleAge >= 12
                             ? particleAge * 12F / this.lifetime : 1F - particleAge / (float)this.lifetime)
                     : net.minecraft.util.Mth.sin((float)Math.toRadians(180D * particleAge / this.lifetime));
+            if (this.alphaFade > 0) {
+                this.quadSize = 0.1F * this.fullScale;
+                if (((ChromaParticle)this).additive) {
+                    this.rCol = this.baseRed * f;
+                    this.gCol = this.baseGreen * f;
+                    this.bCol = this.baseBlue * f;
+                }
+                else {
+                    this.alpha = Math.max(0, f * this.alphaFade);
+                }
+                return;
+            }
             this.quadSize = 0.1F * this.fullScale * Math.max(0, f);
         }
     }
