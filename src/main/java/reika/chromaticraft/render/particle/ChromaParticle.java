@@ -2786,6 +2786,9 @@ public abstract class ChromaParticle extends SingleQuadParticle {
                     this.rCol = this.baseRed * f;
                     this.gCol = this.baseGreen * f;
                     this.bCol = this.baseBlue * f;
+                    // Colour blending ignores alpha here, but under Fabulous graphics the particle target is
+                    // composited by alpha; an unfaded alpha would darken the scene behind a faded mote.
+                    this.alpha = Math.max(0, f);
                 }
                 else {
                     this.alpha = Math.max(0, f * this.alphaFade);
