@@ -93,6 +93,8 @@ public final class ChromaClientRenderers {
 				reika.chromaticraft.render.item.PersonalChargerItemRenderer.Unbaked.MAP_CODEC);
 		event.register(reika.chromaticraft.render.item.EnderCrystalItemRenderer.ID,
 				reika.chromaticraft.render.item.EnderCrystalItemRenderer.Unbaked.MAP_CODEC);
+		event.register(reika.chromaticraft.render.item.FocusCrystalItemRenderer.ID,
+				reika.chromaticraft.render.item.FocusCrystalItemRenderer.Unbaked.MAP_CODEC);
 		event.register(reika.chromaticraft.render.item.RelaySourceItemRenderer.ID,
 				reika.chromaticraft.render.item.RelaySourceItemRenderer.Unbaked.MAP_CODEC);
 		event.register(reika.chromaticraft.render.item.FunctionRelayItemRenderer.ID,
@@ -177,6 +179,10 @@ public final class ChromaClientRenderers {
 		event.registerLayerDefinition(RenderPylonTurboCharger.MODEL_LAYER,
 				reika.chromaticraft.models.ModelTurbo::createBodyLayer);
 		event.registerLayerDefinition(RenderInfuser3.MODEL_LAYER, reika.chromaticraft.models.ModelInfuser2::createBodyLayer);
+		event.registerLayerDefinition(reika.chromaticraft.render.tesr.RenderFocusCrystal.ORDERED_LAYER,
+				reika.chromaticraft.models.ModelFocusCrystal::createBodyLayer);
+		event.registerLayerDefinition(reika.chromaticraft.render.tesr.RenderFocusCrystal.MESSY_LAYER,
+				reika.chromaticraft.models.ModelFocusCrystalMessy::createBodyLayer);
 		event.registerLayerDefinition(RenderRelaySource.MODEL_LAYER,
 				reika.chromaticraft.models.ModelRelaySource::createBodyLayer);
 		event.registerLayerDefinition(reika.chromaticraft.render.tesr.RenderFarmer.MODEL_LAYER,
@@ -192,6 +198,8 @@ public final class ChromaClientRenderers {
 		event.registerBlockEntityRenderer(ChromaBlockEntities.REPEATER.get(), RenderCrystalRepeater::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.WEAK_REPEATER.get(), RenderCrystalRepeater::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.RELAY_SOURCE.get(), RenderRelaySource::new);
+		event.registerBlockEntityRenderer(ChromaBlockEntities.FOCUS_CRYSTAL.get(),
+				reika.chromaticraft.render.tesr.RenderFocusCrystal::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.FUNCTION_RELAY.get(),
 				reika.chromaticraft.render.tesr.RenderFunctionRelay::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.LUMEN_RELAY.get(), RenderLumenRelay::new);

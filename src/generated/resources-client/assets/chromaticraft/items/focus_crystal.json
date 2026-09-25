@@ -1,6 +1,9 @@
 {
   "model": {
-    "type": "minecraft:model",
-    "model": "chromaticraft:block/focus_crystal"
+    "type": "minecraft:special",
+    "base": "chromaticraft:block/focus_crystal_inventory",
+    "model": {
+      "type": "chromaticraft:focus_crystal"
+    }
   }
 }

@@ -237,6 +237,28 @@ public final class ChromaRenderPipelines {
             .withCull(false)
             .build();
 
+    /**
+     * V33a Techne models drawn with {@code ReikaRenderHelper.disableEntityLighting()}: GL lighting off, so no
+     * directional shading, but the lightmap still applied. The vanilla entity shader with NO_CARDINAL_LIGHTING.
+     */
+    public static final RenderPipeline UNLIT_ENTITY_CUTOUT = RenderPipeline.builder()
+            .withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "pipeline/unlit_entity_cutout"))
+            .withBindGroupLayout(BindGroupLayouts.GLOBALS)
+            .withBindGroupLayout(BindGroupLayouts.MATRICES_PROJECTION)
+            .withBindGroupLayout(BindGroupLayouts.FOG)
+            .withBindGroupLayout(BindGroupLayouts.LIGHTING)
+            .withVertexShader("core/entity")
+            .withFragmentShader("core/entity")
+            .withBindGroupLayout(BindGroupLayouts.SAMPLER0_SAMPLER2)
+            .withVertexBinding(0, DefaultVertexFormat.ENTITY)
+            .withPrimitiveTopology(PrimitiveTopology.QUADS)
+            .withDepthStencilState(DepthStencilState.DEFAULT)
+            .withShaderDefine("ALPHA_CUTOUT", 0.1F)
+            .withShaderDefine("NO_OVERLAY")
+            .withShaderDefine("NO_CARDINAL_LIGHTING")
+            .withCull(false)
+            .build();
+
     public static final RenderPipeline LEGACY_ADDITIVE_PARTICLE = RenderPipeline.builder()
             .withLocation(Identifier.fromNamespaceAndPath(
                     ChromatiCraft.MODID, "pipeline/legacy_additive_particle"))
@@ -360,7 +382,15 @@ public final class ChromaRenderPipelines {
 					RenderSetup.builder(LEGACY_ADDITIVE_SPRITE_THROUGH_WALL)
 							.withTexture("Sampler0", texture).sortOnUpload().createRenderSetup()));
 
+    private static final Function<Identifier, RenderType> UNLIT_ENTITY_CUTOUT_TYPES = Util.memoize(texture ->
+            RenderType.create("chromaticraft_unlit_entity_cutout", RenderSetup.builder(UNLIT_ENTITY_CUTOUT)
+                    .withTexture("Sampler0", texture).useLightmap().createRenderSetup()));
+
     private ChromaRenderPipelines() {}
+
+    public static RenderType unlitEntityCutout(Identifier texture) {
+        return UNLIT_ENTITY_CUTOUT_TYPES.apply(texture);
+    }
 
     public static RenderType additiveSprite(Identifier texture) {
         return ADDITIVE_TYPES.apply(texture);
@@ -405,6 +435,7 @@ public final class ChromaRenderPipelines {
         event.registerPipeline(ADDITIVE_PARTICLE);
         event.registerPipeline(LEGACY_ADDITIVE_PARTICLE);
         event.registerPipeline(LEGACY_TRANSLUCENT_PARTICLE);
+        event.registerPipeline(UNLIT_ENTITY_CUTOUT);
         event.registerPipeline(LEGACY_ADDITIVE_PARTICLE_NO_DEPTH);
         event.registerPipeline(MONUMENT_GRADE);
 		event.registerPipeline(LOCUS_POINTS);

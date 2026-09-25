@@ -155,7 +155,7 @@ public class ChromaModelProvider extends ModelProvider {
 		itemAuraInfuserModel(blockStateOut, itemModelOut, modelOut);
 		playerAuraInfuserModel(blockStateOut, itemModelOut, modelOut);
 		portalRiftModels(blockStateOut, itemModelOut, modelOut);
-		networkTileModel(ChromaBlocks.FOCUS_CRYSTAL.get(), "focus_crystal", "block/crystal/chroma", blockStateOut, itemModelOut, modelOut);
+		focusCrystalModel(blockStateOut, itemModelOut, modelOut);
 		dataNodeModel(blockStateOut, itemModelOut, modelOut);
 		structureControllerModel(blockStateOut, modelOut);
 		structurePasswordModel(blockStateOut, modelOut);
@@ -1414,6 +1414,25 @@ public class ChromaModelProvider extends ModelProvider {
 				TextureMapping.cube(new Material(reika.chromaticraft.render.tesr.RenderFunctionRelay.SPRITE)), modelOut);
 		itemModelOut.accept(ChromaBlocks.FUNCTION_RELAY.get().asItem(),
 				ItemModelUtils.specialModel(itemBase, new reika.chromaticraft.render.item.FunctionRelayItemRenderer.Unbaked()));
+	}
+
+	/**
+	 * V33a draws the focus crystal entirely through RenderFocusCrystal; the block needs only a particle-carrying
+	 * definition, and the item an inventory base (block display transforms) under its special renderer.
+	 */
+	private static void focusCrystalModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		Material particle = new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/crystal/chroma"));
+		Identifier model = ModelTemplates.PARTICLE_ONLY.create(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/focus_crystal"),
+				new TextureMapping().put(TextureSlot.PARTICLE, particle), modelOut);
+		blockStateOut.accept(MultiVariantGenerator.dispatch(ChromaBlocks.FOCUS_CRYSTAL.get(),
+				new MultiVariant(WeightedList.of(new Variant(model)))));
+		Identifier itemBase = ModelTemplates.CUBE_ALL.create(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/focus_crystal_inventory"),
+				TextureMapping.cube(particle), modelOut);
+		itemModelOut.accept(ChromaBlocks.FOCUS_CRYSTAL.get().asItem(),
+				ItemModelUtils.specialModel(itemBase, new reika.chromaticraft.render.item.FocusCrystalItemRenderer.Unbaked()));
 	}
 
 	private static void relaySourceModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
