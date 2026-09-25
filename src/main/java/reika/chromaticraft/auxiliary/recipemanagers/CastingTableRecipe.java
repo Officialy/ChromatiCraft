@@ -77,10 +77,11 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 	 * STORAGE stage on completion, and play the source 0.5/1/2 casting chord. {@code caster_tag} names a
 	 * custom-data key that receives the casting player's UUID: V33a {@code RepeaterRecipe.handleNBTResult}'s
 	 * {@code caster} (read by networking-tier repeaters) and {@code EnderEyeRecipe.getOutputTag}'s
-	 * {@code owner} (who may pick up and throw the eyes). Empty means none.
+	 * {@code owner} (who may pick up and throw the eyes). Empty means none. {@code double_output} is V33a
+	 * {@code canGiveDoubleOutput}: a caster with the Doublecraft ability gets twice the output.
 	 */
 	public record CompletionBehavior(boolean copyCenterCustomData,
-			List<ProgressStage> grantedProgress, List<Float> harmonics, String casterTag) {
+			List<ProgressStage> grantedProgress, List<Float> harmonics, String casterTag, boolean doubleOutput) {
 		public static final CompletionBehavior DEFAULT = new CompletionBehavior(false, List.of(), List.of(), "");
 		public static final Codec<CompletionBehavior> CODEC = RecordCodecBuilder.create(instance -> instance.group(
 				Codec.BOOL.optionalFieldOf("copy_center_custom_data", false)
@@ -90,12 +91,19 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 				Codec.FLOAT.listOf().optionalFieldOf("harmonics", List.of())
 						.forGetter(CompletionBehavior::harmonics),
 				Codec.STRING.optionalFieldOf("caster_tag", "")
-						.forGetter(CompletionBehavior::casterTag)
+						.forGetter(CompletionBehavior::casterTag),
+				Codec.BOOL.optionalFieldOf("double_output", false)
+						.forGetter(CompletionBehavior::doubleOutput)
 		).apply(instance, CompletionBehavior::new));
 
 		public CompletionBehavior(boolean copyCenterCustomData, List<ProgressStage> grantedProgress,
 				List<Float> harmonics) {
 			this(copyCenterCustomData, grantedProgress, harmonics, "");
+		}
+
+		public CompletionBehavior(boolean copyCenterCustomData, List<ProgressStage> grantedProgress,
+				List<Float> harmonics, String casterTag) {
+			this(copyCenterCustomData, grantedProgress, harmonics, casterTag, false);
 		}
 
 		public CompletionBehavior {
@@ -309,14 +317,23 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 		return new CastingTableRecipe(tier, grid, stands, runes, aura, output, duration, experience,
 				requiredProgress, stackingFactor, stackable, requiresTuningKey, penaltyThreshold,
 				penaltyMultiplier, new CompletionBehavior(copyCenterCustomData, grantedProgress, harmonics,
-						completion.casterTag()), minimumResearch);
+						completion.casterTag(), completion.doubleOutput()), minimumResearch);
 	}
 	/** Datagen convenience: write the caster's UUID into the result under {@code key}. */
 	public CastingTableRecipe withCasterStamp(String key) {
 		return new CastingTableRecipe(tier, grid, stands, runes, aura, output, duration, experience,
 				requiredProgress, stackingFactor, stackable, requiresTuningKey, penaltyThreshold,
 				penaltyMultiplier, new CompletionBehavior(completion.copyCenterCustomData(),
-						completion.grantedProgress(), completion.harmonics(), key), minimumResearch);
+						completion.grantedProgress(), completion.harmonics(), key, completion.doubleOutput()),
+				minimumResearch);
+	}
+	/** Datagen convenience: V33a {@code canGiveDoubleOutput() == true}. */
+	public CastingTableRecipe withDoubleOutput() {
+		return new CastingTableRecipe(tier, grid, stands, runes, aura, output, duration, experience,
+				requiredProgress, stackingFactor, stackable, requiresTuningKey, penaltyThreshold,
+				penaltyMultiplier, new CompletionBehavior(completion.copyCenterCustomData(),
+						completion.grantedProgress(), completion.harmonics(), completion.casterTag(), true),
+				minimumResearch);
 	}
 	/** Datagen convenience: a V33a {@code canRunRecipe} research-tier check. */
 	public CastingTableRecipe withMinimumResearch(ResearchLevel level) {
@@ -404,6 +421,7 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 		buffer.writeVarInt(recipe.completion.harmonics().size());
 		for (float pitch : recipe.completion.harmonics()) buffer.writeFloat(pitch);
 		buffer.writeUtf(recipe.completion.casterTag());
+		buffer.writeBoolean(recipe.completion.doubleOutput());
 		buffer.writeVarInt(recipe.minimumResearch.ordinal());
 	}
 	private static CastingTableRecipe decode(RegistryFriendlyByteBuf buffer) {
@@ -433,13 +451,14 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 		List<Float> harmonics = new ArrayList<>();
 		for (int i = buffer.readVarInt(); i > 0; i--) harmonics.add(buffer.readFloat());
 		String casterTag = buffer.readUtf();
+		boolean doubleOutput = buffer.readBoolean();
 		int researchOrdinal = buffer.readVarInt();
 		if (researchOrdinal < 0 || researchOrdinal >= ResearchLevel.levelList.length)
 			throw new IllegalArgumentException("Invalid research level ordinal " + researchOrdinal);
 		return new CastingTableRecipe(Tier.values()[tierOrdinal], grid, stands, runes, aura,
 				result, duration, experience, progress, stackingFactor, stackable, requiresTuningKey,
 				penaltyThreshold, penaltyMultiplier,
-				new CompletionBehavior(copyCenterCustomData, grantedProgress, harmonics, casterTag),
+				new CompletionBehavior(copyCenterCustomData, grantedProgress, harmonics, casterTag, doubleOutput),
 				ResearchLevel.levelList[researchOrdinal]);
 	}
 	private static CrystalElement element(int ordinal) {

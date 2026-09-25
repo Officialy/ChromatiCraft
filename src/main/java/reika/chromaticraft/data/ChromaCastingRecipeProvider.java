@@ -1127,10 +1127,31 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 				{2,2}, {1,2}, {0,2}, {-1,2}, {-2,2}, {-2,1}, {-2,0}, {-2,-1}
 		};
 
+		/**
+		 * Ported recipes whose V33a class returns {@code canGiveDoubleOutput() == true} (directly or through
+		 * DecoCastingRecipe / the core-recipe bases), by recipe id or id folder: RuneRecipe, EnhancedRuneRecipe,
+		 * RelayRecipe, CrystalGlassRecipe, CrystalStoneRecipe, CrystalGroupRecipe, CrystalClusterRecipe,
+		 * LowCoreRecipe and HighCoreRecipe (and their subclasses), CrystalMirrorRecipe, RawCrystalRecipe,
+		 * LumenCoreRecipe, IridescentChunkRecipe, ElementUnitRecipe, CrystalStarRecipe, CrystalLensRecipe,
+		 * CrystalFocusRecipe and CrystalCoreRecipe.
+		 */
+		private static final List<String> DOUBLE_OUTPUT = List.of("crystal_rune/", "lumen_relay/", "crystal_glass/",
+				"crystal_stone/", "crystal_group/", "crystal_cluster/", "low_core/", "high_core/", "crystal_mirror/",
+				"raw_crystal", "lumen_core", "iridescent_chunk", "element_unit", "crystal_star", "crystal_lens",
+				"crystal_focus", "crystal_core");
+
+		private static boolean doublesOutput(String name) {
+			for (String id : DOUBLE_OUTPUT) {
+				if (id.endsWith("/") ? name.startsWith(id) : name.equals(id))
+					return true;
+			}
+			return false;
+		}
+
 		private void saveRecipe(String name, CastingTableRecipe recipe) {
 			ResourceKey<Recipe<?>> key = ResourceKey.create(Registries.RECIPE,
 					Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, name));
-			output.accept(key, recipe, null);
+			output.accept(key, doublesOutput(name) ? recipe.withDoubleOutput() : recipe, null);
 		}
 	}
 }

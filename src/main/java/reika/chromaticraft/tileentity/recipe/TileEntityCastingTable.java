@@ -164,7 +164,7 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver
         if (!this.playerCanRun(activeRecipe.value(), player)) return this.rejectCraftingTrigger();
         CastingTableRecipe recipe = activeRecipe.value();
         int amount = this.calculateCraftableAmount(recipe);
-        int outputAmount = recipe.stackable() ? amount : 1;
+        int outputAmount = (recipe.stackable() ? amount : 1) * outputMultiplier(recipe, player);
         if (amount <= 0 || !this.canAccept(recipe.output(), outputAmount)) return this.rejectCraftingTrigger();
         craftingAmount = amount;
         craftingTick = this.calculateCraftDuration(recipe, amount);
@@ -499,6 +499,15 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver
 				ChromaSounds.CASTHARMONIC.playSoundAtBlock(this, 1, 1);
 		}
     }
+    /**
+     * V33a {@code Chromabilities.DOUBLECRAFT.enabledOn(craftingPlayer) && activeRecipe.canGiveDoubleOutput()}:
+     * the caster's Doublecraft ability doubles the output of recipes that allow it.
+     */
+    private static int outputMultiplier(CastingTableRecipe recipe, Player player) {
+        return player != null && recipe.completion().doubleOutput()
+                && reika.chromaticraft.magic.ChromaAbilityData.hasDoubleCraft(player) ? 2 : 1;
+    }
+
     private void completeCraft() {
         if (!this.craftStateStillValid() || !this.hasRequiredAura()) { this.cancelCraft(); return; }
         CastingTableRecipe recipe = activeRecipe.value();
@@ -508,7 +517,8 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver
 		// Capture output components before the centre input is consumed. V33a StorageCrystalRecipe's
 		// getOutputTag returns the central crystal's NBT so upgrades never erase stored lumens.
 		ItemStack output = recipe.output(this.snapshot());
-		output.setCount(output.getCount() * amount);
+		output.setCount(output.getCount() * amount
+				* outputMultiplier(recipe, playerId != null ? this.getLevel().getPlayerByUUID(playerId) : null));
 		// V33a handleNBTResult/getOutputTag: repeaters remember who cast them, eyes who owns them.
 		String casterTag = recipe.completion().casterTag();
 		if (!casterTag.isEmpty() && playerId != null)
