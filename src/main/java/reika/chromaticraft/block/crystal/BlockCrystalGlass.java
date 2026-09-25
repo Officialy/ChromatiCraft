@@ -9,79 +9,31 @@
  ******************************************************************************/
 package reika.chromaticraft.block.crystal;
 
-import net.minecraft.block.material.Material;
-import net.minecraft.client.renderer.texture.IIconRegister;
-import net.minecraft.util.IIcon;
-import net.minecraft.world.IBlockAccess;
+import net.minecraft.core.Direction;
+import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.block.state.BlockState;
 
-import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.base.CrystalTypeBlock;
-import reika.chromaticraft.registry.ChromaISBRH;
 import reika.chromaticraft.registry.CrystalElement;
 
-
+/**
+ * V33a {@code BlockCrystalGlass}: glowing (light 12) glass in an element's colour, with a bright white overlay
+ * over every face. The block model draws both, as V33a's {@code CrystalGlassRenderer} did: the glass tinted
+ * with the element colour on the translucent pass, and the overlay untinted at full brightness just outside
+ * each face.
+ *
+ * <p>V33a's glass was one block for all sixteen colours, and a face was hidden against any other crystal
+ * glass, whatever its colour; so it is here.
+ */
 public class BlockCrystalGlass extends CrystalTypeBlock {
 
-	private static IIcon overlay;
-
-	public BlockCrystalGlass(Material mat) {
-		super(mat);
-		this.setHardness(0.125F);
-		this.setResistance(2);
-		this.setCreativeTab(ChromatiCraft.tabChromaDeco);
+	public BlockCrystalGlass(BlockBehaviour.Properties props, CrystalElement element) {
+		super(props, element);
 	}
 
 	@Override
-	public int getBrightness(IBlockAccess iba, int x, int y, int z) {
-		return 12;
-	}
-
-	@Override
-	public final int getRenderType() {
-		return ChromaISBRH.glass.getRenderID();
-	}
-
-	@Override
-	public final boolean isOpaqueCube() {
-		return false;
-	}
-
-	@Override
-	public final boolean renderAsNormalBlock() {
-		return false;
-	}
-
-	@Override
-	public final int getRenderBlockPass() {
-		return 1;
-	}
-
-	@Override
-	public void registerBlockIcons(IIconRegister ico) {
-		blockIcon = ico.registerIcon("chromaticraft:basic/glass");
-		overlay = ico.registerIcon("chromaticraft:basic/glass_overlay");
-	}
-
-	@Override
-	public final int getRenderColor(int dmg)
-	{
-		return CrystalElement.elements[dmg].getColor();
-	}
-
-	@Override
-	public final int colorMultiplier(IBlockAccess iba, int x, int y, int z)
-	{
-		int dmg = iba.getBlockMetadata(x, y, z);
-		return CrystalElement.elements[dmg].getJavaColor().brighter().getRGB();
-	}
-
-	@Override
-	public boolean shouldSideBeRendered(IBlockAccess iba, int x, int y, int z, int s) {
-		return super.shouldSideBeRendered(iba, x, y, z, s) && iba.getBlock(x, y, z) != this;
-	}
-
-	public static IIcon getOverlay() {
-		return overlay;
+	protected boolean skipRendering(BlockState state, BlockState neighbor, Direction direction) {
+		return neighbor.getBlock() instanceof BlockCrystalGlass || super.skipRendering(state, neighbor, direction);
 	}
 
 }

@@ -43,6 +43,18 @@ public final class ChromaBlockColors {
         }
     };
 
+    /**
+     * V33a {@code CrystalGlassRenderer}: the glass is tinted with its element's colour (in world it passed the
+     * element's rgb straight to the renderer; in inventory {@code getRenderColor} is the same colour).
+     */
+    private static final BlockTintSource CRYSTAL_TYPE = new BlockTintSource() {
+        @Override public int color(BlockState state) { return tint(state); }
+        @Override public int colorInWorld(BlockState state, BlockAndTintGetter level, BlockPos pos) { return tint(state); }
+        private int tint(BlockState state) {
+            return 0xFF000000 | ((reika.chromaticraft.base.CrystalTypeBlock)state.getBlock()).getCrystalElement().getColor();
+        }
+    };
+
     /** V33a {@code BlockDyeFlower.colorMultiplier}: the dye colour brightened. */
     private static final BlockTintSource DYE_FLOWER = new BlockTintSource() {
         @Override public int color(BlockState state) { return tint(state); }
@@ -211,6 +223,9 @@ public final class ChromaBlockColors {
                 .map(h -> (net.minecraft.world.level.block.Block)h.get())
                 .toArray(net.minecraft.world.level.block.Block[]::new);
         event.register(List.of(CRYSTAL), crystals);
+        event.register(List.of(CRYSTAL_TYPE), ChromaBlocks.CRYSTAL_GLASS.stream()
+                .map(h -> (net.minecraft.world.level.block.Block)h.get())
+                .toArray(net.minecraft.world.level.block.Block[]::new));
         net.minecraft.world.level.block.Block[] dyeBlocks = java.util.stream.Stream.concat(
                 ChromaBlocks.DYE_LEAVES.stream(), ChromaBlocks.DYE_SAPLINGS.stream())
                 .map(h -> (net.minecraft.world.level.block.Block)h.get())

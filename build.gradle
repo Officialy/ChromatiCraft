@@ -86,6 +86,7 @@ sourceSets.main.java {
     include 'reika/chromaticraft/base/CrystalBlock.java'
     include 'reika/chromaticraft/block/crystal/BlockCaveCrystal.java'
     include 'reika/chromaticraft/block/crystal/BlockCrystalLamp.java'
+    include 'reika/chromaticraft/block/crystal/BlockCrystalGlass.java'
     include 'reika/chromaticraft/block/crystal/BlockSuperCrystal.java'
 
     // TE infrastructure (BlockEntityBase/TileEnum re-arch): registry + base + first TE + tile block

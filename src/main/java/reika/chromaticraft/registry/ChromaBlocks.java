@@ -835,6 +835,31 @@ public final class ChromaBlocks {
 		return SUPER_CRYSTALS.get(element.ordinal());
 	}
 
+	/**
+	 * V33a GLASS metadata 0-15, one block per element. Hardness 0.125; resistance 2 in 1.7.10 terms, which that
+	 * version tripled and then divided by five for explosions, so 1.2 here. Light 12. Glass-like: no mob spawns,
+	 * suffocation or redstone conduction, and it does not block vision.
+	 */
+	public static final List<DeferredBlock<reika.chromaticraft.block.crystal.BlockCrystalGlass>> CRYSTAL_GLASS =
+			registerCrystalGlass();
+
+	private static List<DeferredBlock<reika.chromaticraft.block.crystal.BlockCrystalGlass>> registerCrystalGlass() {
+		List<DeferredBlock<reika.chromaticraft.block.crystal.BlockCrystalGlass>> list = new java.util.ArrayList<>();
+		for (CrystalElement element : CrystalElement.elements) {
+			list.add(register(coloredName("crystal_glass", element),
+					() -> new reika.chromaticraft.block.crystal.BlockCrystalGlass(blockProperties()
+							.strength(0.125F, 1.2F).lightLevel(s -> 12).noOcclusion()
+							.sound(reika.chromaticraft.base.CrystalTypeBlock.SILENT_STONE)
+							.isValidSpawn((s, l, p, e) -> false).isRedstoneConductor((s, l, p) -> false)
+							.isSuffocating((s, l, p) -> false).isViewBlocking((s, l, p) -> false), element)));
+		}
+		return List.copyOf(list);
+	}
+
+	public static DeferredBlock<reika.chromaticraft.block.crystal.BlockCrystalGlass> crystalGlass(CrystalElement element) {
+		return CRYSTAL_GLASS.get(element.ordinal());
+	}
+
 	// First TileEntity block (the TE-infrastructure proving vertical). References ChromaTiles.DISPLAY,
 	// which back-references this DeferredBlock — both are lazy holders, so no init-order cycle.
 	public static final DeferredBlock<Block> DISPLAY_POINT =

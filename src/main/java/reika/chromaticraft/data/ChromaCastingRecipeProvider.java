@@ -112,6 +112,14 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 						List.of(ProgressStage.ALLCOLORS), List.of(runeRingRune(element)),
 						Map.of('S', runeStone, 'C', Ingredient.of(ChromaItems.BOOSTED_SHARDS.get(element).get())),
 						"SSS", "SCS", "SSS");
+				// V33a CrystalGlassRecipe (a DecoCastingRecipe): sixteen from glass around the colour's shard. Its
+				// typical total of 1024 over sixteen per craft gives an XP penalty threshold of 48 crafts.
+				saveRecipe("crystal_glass/" + element.getEnglishName(), new CastingTableRecipe(CastingTableRecipe.Tier.CRAFTING,
+						shapedGrid(Map.of('G', Ingredient.of(Items.GLASS),
+								'S', Ingredient.of(ChromaItems.SHARDS.get(element).get())), "GSG", "SGS", "GSG"),
+						List.of(), List.of(), List.of(),
+						new ItemStackTemplate(ChromaBlocks.crystalGlass(element).get().asItem(), 16), 5, 5)
+						.withPenaltyThreshold(48));
 				saveTintedLens(element, Items.IRON_INGOT, 1, "iron");
 				saveTintedLens(element, Items.GOLD_INGOT, 2, "gold");
 				saveTintedLens(element,

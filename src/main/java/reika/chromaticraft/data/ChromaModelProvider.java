@@ -240,6 +240,7 @@ public class ChromaModelProvider extends ModelProvider {
 		basedCrystalBlocks(ChromaBlocks.CRYSTAL_LAMPS, "crystal_lamp",
 				Identifier.fromNamespaceAndPath("minecraft", "block/smooth_stone"),
 				blockStateOut, itemModelOut, modelOut);
+		crystalGlassModels(blockStateOut, itemModelOut, modelOut);
 		basedCrystalBlocks(ChromaBlocks.SUPER_CRYSTALS, "super_crystal",
 				Identifier.fromNamespaceAndPath("minecraft", "block/obsidian"),
 				blockStateOut, itemModelOut, modelOut);
@@ -1584,6 +1585,48 @@ public class ChromaModelProvider extends ModelProvider {
 			itemModelOut.accept(block.asItem(), ItemModelUtils.specialModel(base,
 					new reika.chromaticraft.render.item.CaveCrystalItemRenderer.Unbaked(
 							outline, element, java.util.Optional.of(baseTexture))));
+		}
+	}
+
+	/**
+	 * V33a {@code CrystalGlassRenderer}: the glass cube tinted with the element colour, with ambient occlusion,
+	 * and the white overlay 0.005 outside each face at full brightness. Both sprites are partly transparent, so
+	 * the model lands on the translucent layer. Faces cull against any crystal glass (see BlockCrystalGlass).
+	 */
+	private static void crystalGlassModels(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		Identifier id = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/crystal_glass");
+		modelOut.accept(id, () -> {
+			JsonObject root = new JsonObject();
+			root.addProperty("parent", "minecraft:block/block");
+			JsonObject textures = new JsonObject();
+			textures.addProperty("particle", ChromatiCraft.MODID + ":block/basic/glass");
+			textures.addProperty("glass", ChromatiCraft.MODID + ":block/basic/glass");
+			textures.addProperty("overlay", ChromatiCraft.MODID + ":block/basic/glass_overlay");
+			root.add("textures", textures);
+			JsonObject glassFaces = new JsonObject();
+			JsonObject overlayFaces = new JsonObject();
+			for (Direction face : Direction.values()) {
+				String name = face.getSerializedName();
+				JsonObject glass = modelFace("#glass", name);
+				glass.add("uv", uvFull());
+				glass.addProperty("tintindex", 0);
+				glassFaces.add(name, glass);
+				JsonObject overlay = modelFace("#overlay", name);
+				overlay.add("uv", uvFull());
+				overlayFaces.add(name, overlay);
+			}
+			JsonArray elements = new JsonArray();
+			elements.add(modelElement(0, 16, glassFaces, false));
+			elements.add(modelElement(-0.08F, 16.08F, overlayFaces, true));
+			root.add("elements", elements);
+			return root;
+		});
+		MultiVariant variant = new MultiVariant(WeightedList.of(new Variant(id)));
+		for (CrystalElement element : CrystalElement.elements) {
+			Block block = ChromaBlocks.crystalGlass(element).get();
+			blockStateOut.accept(MultiVariantGenerator.dispatch(block, variant));
+			itemModelOut.accept(block.asItem(), ItemModelUtils.tintedModel(id, new Constant(0xff000000 | element.getColor())));
 		}
 	}
 

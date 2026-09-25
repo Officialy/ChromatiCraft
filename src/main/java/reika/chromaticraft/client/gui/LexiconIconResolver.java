@@ -66,6 +66,7 @@ public final class LexiconIconResolver {
 			case "rune" -> addElements(items, element -> ChromaBlocks.rune(element).get());
 			case "dyeleaf" -> addElements(items, element -> ChromaBlocks.dyeLeaves(element).get());
 			case "lamp" -> addElements(items, element -> ChromaBlocks.crystalLamp(element).get());
+			case "glass" -> addElements(items, element -> ChromaBlocks.crystalGlass(element).get());
 			case "super" -> addElements(items, element -> ChromaBlocks.superCrystal(element).get());
 			case "berry" -> addElements(items, element -> ChromaItems.BERRIES.get(element).get());
 			case "shards" -> addElements(items, element -> ChromaItems.SHARDS.get(element).get());
@@ -146,6 +147,7 @@ public final class LexiconIconResolver {
 		return switch (id) {
 			case "crystal" -> ChromaBlocks.caveCrystal(CrystalElement.PURPLE).get();
 			case "rune" -> ChromaBlocks.rune(CrystalElement.LIGHTBLUE).get();
+			case "glass" -> ChromaBlocks.crystalGlass(CrystalElement.BLUE).get(); // V33a GLASS research icon meta
 			case "pylonstruct" -> ChromaBlocks.crystallineStone(
 					reika.chromaticraft.block.BlockCrystallineStone.StoneTypes.SMOOTH).get();
 			case "mud" -> ChromaBlocks.MUD.get();
