@@ -1,0 +1,9 @@
+{
+  "variants": {
+    "": {
+      "type": "chromaticraft:crystal_glow",
+      "base": "minecraft:block/obsidian",
+      "lamp": "chromaticraft:block/crystal/overbright/bloom_brown"
+    }
+  }
+}

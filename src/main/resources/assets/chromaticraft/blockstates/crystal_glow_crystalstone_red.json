@@ -1,0 +1,9 @@
+{
+  "variants": {
+    "": {
+      "type": "chromaticraft:crystal_glow",
+      "base": "chromaticraft:block/pylon/block_0",
+      "lamp": "chromaticraft:block/crystal/overbright/bloom_red"
+    }
+  }
+}

@@ -860,6 +860,35 @@ public final class ChromaBlocks {
 		return CRYSTAL_GLASS.get(element.ordinal());
 	}
 
+	/**
+	 * V33a GLOW metadata (element + 16*base), one block per element and base, registered colour-major as V33a
+	 * listed them. Hardness and resistance 0, light 15, no collision; its tile entity made it immovable by
+	 * pistons.
+	 */
+	public static final List<DeferredBlock<reika.chromaticraft.block.crystal.BlockCrystalGlow>> CRYSTAL_GLOWS =
+			registerCrystalGlows();
+
+	private static List<DeferredBlock<reika.chromaticraft.block.crystal.BlockCrystalGlow>> registerCrystalGlows() {
+		List<DeferredBlock<reika.chromaticraft.block.crystal.BlockCrystalGlow>> list = new java.util.ArrayList<>();
+		for (CrystalElement element : CrystalElement.elements) {
+			for (reika.chromaticraft.block.crystal.BlockCrystalGlow.Bases base
+					: reika.chromaticraft.block.crystal.BlockCrystalGlow.Bases.baseList) {
+				list.add(register(coloredName("crystal_glow_" + base.id(), element),
+						() -> new reika.chromaticraft.block.crystal.BlockCrystalGlow(blockProperties()
+								.strength(0F, 0F).lightLevel(s -> 15).noCollision().noOcclusion()
+								.sound(reika.chromaticraft.base.CrystalTypeBlock.SILENT_STONE)
+								.pushReaction(net.minecraft.world.level.material.PushReaction.BLOCK), element, base)));
+			}
+		}
+		return List.copyOf(list);
+	}
+
+	public static DeferredBlock<reika.chromaticraft.block.crystal.BlockCrystalGlow> crystalGlow(CrystalElement element,
+			reika.chromaticraft.block.crystal.BlockCrystalGlow.Bases base) {
+		return CRYSTAL_GLOWS.get(element.ordinal() * reika.chromaticraft.block.crystal.BlockCrystalGlow.Bases.baseList.length
+				+ base.ordinal());
+	}
+
 	// First TileEntity block (the TE-infrastructure proving vertical). References ChromaTiles.DISPLAY,
 	// which back-references this DeferredBlock — both are lazy holders, so no init-order cycle.
 	public static final DeferredBlock<Block> DISPLAY_POINT =

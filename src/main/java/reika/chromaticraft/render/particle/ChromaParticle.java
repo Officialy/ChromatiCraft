@@ -429,6 +429,35 @@ public abstract class ChromaParticle extends SingleQuadParticle {
 		}
 	}
 
+	/**
+	 * V33a {@code BlockCrystalGlow.randomDisplayTick}: a mote of the glow's colour -- a blur, a centre-blur or a
+	 * laser flicker -- drifting in toward or out from the middle of the block, rising unless the glow hangs.
+	 */
+	public static void spawnCrystalGlow(Level world, BlockPos pos, CrystalElement e, boolean hanging, RandomSource rand) {
+		if (!(world instanceof ClientLevel level)) return;
+		double rx = pos.getX() + rand.nextDouble();
+		double ry = pos.getY() + rand.nextDouble();
+		double rz = pos.getZ() + rand.nextDouble();
+		float g = (float)plusMinus(rand, 0.025, 0.0125);
+		if (!hanging)
+			g = -g;
+		boolean in = rand.nextBoolean();
+		double v = 0.0125;
+		double vx = in ? v * (0.5 - (rx - pos.getX())) : (rx - pos.getX()) * v;
+		double vz = in ? v * (0.5 - (rz - pos.getZ())) : (rz - pos.getZ()) * v;
+		float scale = 1 + rand.nextFloat();
+		ChromaParticle fx = switch (rand.nextInt(3)) {
+			// EntityCCBlurFX: the plain fade, 60 ticks.
+			case 0 -> new FadeGlow(level, rx, ry, rz, vx, 0, vz, e.getColor(), 60, scale, false);
+			// EntityCenterBlurFX
+			case 1 -> new AnimatedSheetParticle(level, rx, ry, rz, vx, 0, vz, e, scale, ADDITIVE_LASER_SHEET, 4);
+			// EntityLaserFX
+			default -> new AnimatedSheetParticle(level, rx, ry, rz, vx, 0, vz, e, scale, ADDITIVE_LASER_SHEET, 0);
+		};
+		fx.gravity = g;
+		Minecraft.getInstance().particleEngine.add(fx);
+	}
+
 	/** Exact V33a {@code ChromaFX.poolRecipeParticles}: one rising chroma-fluid droplet per tick. */
 	public static void spawnPoolAlloying(net.minecraft.world.entity.item.ItemEntity item,
 			RandomSource random) {

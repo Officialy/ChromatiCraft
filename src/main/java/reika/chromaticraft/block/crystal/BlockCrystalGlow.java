@@ -9,374 +9,194 @@
  ******************************************************************************/
 package reika.chromaticraft.block.crystal;
 
-import java.util.Random;
+import java.util.Locale;
+import java.util.function.Supplier;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockSlab;
-import net.minecraft.block.material.Material;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.particle.EntityFX;
-import net.minecraft.client.renderer.texture.IIconRegister;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.init.Blocks;
-import net.minecraft.init.Items;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.network.NetworkManager;
-import net.minecraft.network.Packet;
-import net.minecraft.network.play.server.S35PacketUpdateTileEntity;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.AxisAlignedBB;
-import net.minecraft.util.MovingObjectPosition;
-import net.minecraft.world.IBlockAccess;
-import net.minecraft.world.World;
-import net.minecraftforge.common.util.ForgeDirection;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.resources.Identifier;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.util.RandomSource;
+import net.minecraft.util.StringRepresentable;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.context.BlockPlaceContext;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.ItemLike;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.level.ScheduledTickAccess;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.BooleanProperty;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.VoxelShape;
 
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.base.CrystalTypeBlock;
+import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
 import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaISBRH;
-import reika.chromaticraft.render.particle.EntityCCBlurFX;
-import reika.chromaticraft.render.particle.EntityCenterBlurFX;
-import reika.chromaticraft.render.particle.EntityLaserFX;
-import reika.dragonapi.libraries.ReikaAABBHelper;
-import reika.dragonapi.libraries.ReikaDirectionHelper;
-import reika.dragonapi.libraries.io.ReikaSoundHelper;
-import reika.dragonapi.libraries.java.ReikaRandomHelper;
-import reika.dragonapi.libraries.registry.ReikaItemHelper;
+import reika.chromaticraft.registry.CrystalElement;
+import reika.chromaticraft.render.particle.ChromaParticle;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
-
+/**
+ * V33a {@code BlockCrystalGlow}: a small glowing crystal bar (light 15) mounted on a plate of some base material,
+ * stuck to the face of a block. It has no collision, falls off (dropping itself) if its support goes, and the
+ * Manipulator turns it a quarter turn or, sneaking, cycles its crystal between the element's own colour,
+ * iridescent and rainbow.
+ *
+ * <p>V33a kept the element in metadata and the base, facing, long axis and crystal mode in a tile entity. None of
+ * that changes once placed except by the Manipulator, and all of it is only drawn, so: one block per element and
+ * base (so drops, pick-block and names come for free), and the rest in the blockstate. The long axis only ever
+ * mattered as parallel or perpendicular to the renderer's reference direction, which is {@link #SWAPPED}; a fresh
+ * placement is swapped, because V33a started {@code longAxis} on that reference direction.
+ */
 public class BlockCrystalGlow extends CrystalTypeBlock {
 
-	public BlockCrystalGlow(Material mat) {
-		super(mat);
-		this.setHardness(0);
-		this.setResistance(0);
-		this.setCreativeTab(ChromatiCraft.tabChromaDeco);
+	public static final EnumProperty<Direction> FACING = BlockStateProperties.FACING;
+	public static final BooleanProperty SWAPPED = BooleanProperty.create("swapped");
+	public static final EnumProperty<Mode> MODE = EnumProperty.create("mode", Mode.class);
+
+	private static final VoxelShape[] SHAPES = new VoxelShape[6];
+
+	static {
+		double h = 2;
+		double w = 4;
+		SHAPES[Direction.UP.ordinal()] = Block.box(8 - w, 0, 8 - w, 8 + w, h, 8 + w);
+		SHAPES[Direction.DOWN.ordinal()] = Block.box(8 - w, 16 - h, 8 - w, 8 + w, 16, 8 + w);
+		SHAPES[Direction.EAST.ordinal()] = Block.box(0, 8 - w, 8 - w, h, 8 + w, 8 + w);
+		SHAPES[Direction.WEST.ordinal()] = Block.box(16 - h, 8 - w, 8 - w, 16, 8 + w, 8 + w);
+		SHAPES[Direction.SOUTH.ordinal()] = Block.box(8 - w, 8 - w, 0, 8 + w, 8 + w, h);
+		SHAPES[Direction.NORTH.ordinal()] = Block.box(8 - w, 8 - w, 16 - h, 8 + w, 8 + w, 16);
+	}
+
+	private final Bases base;
+
+	public BlockCrystalGlow(BlockBehaviour.Properties props, CrystalElement element, Bases base) {
+		super(props, element);
+		this.base = base;
+		this.registerDefaultState(this.stateDefinition.any().setValue(FACING, Direction.UP).setValue(SWAPPED, true)
+				.setValue(MODE, Mode.NORMAL));
+	}
+
+	public Bases getBase() {
+		return base;
 	}
 
 	@Override
-	public void registerBlockIcons(IIconRegister ico) {
-		blockIcon = ico.registerIcon("chromaticraft:basic/glow");
+	protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+		builder.add(FACING, SWAPPED, MODE);
 	}
 
 	@Override
-	public int getBrightness(IBlockAccess iba, int x, int y, int z) {
-		return 15;
+	public BlockState getStateForPlacement(BlockPlaceContext context) {
+		BlockState state = this.defaultBlockState().setValue(FACING, context.getClickedFace());
+		return this.canSurvive(state, context.getLevel(), context.getClickedPos()) ? state : null;
+	}
+
+	/** V33a {@code canPlaceOn}: the face it sits on must be solid (its slab special case is part of this test). */
+	@Override
+	protected boolean canSurvive(BlockState state, LevelReader level, BlockPos pos) {
+		Direction facing = state.getValue(FACING);
+		BlockPos support = pos.relative(facing.getOpposite());
+		return level.getBlockState(support).isFaceSturdy(level, support, facing);
+	}
+
+	/** V33a {@code onNeighborBlockChange}: it falls off, dropping itself, when its support goes. */
+	@Override
+	protected BlockState updateShape(BlockState state, LevelReader level, ScheduledTickAccess ticks, BlockPos pos,
+			Direction direction, BlockPos neighborPos, BlockState neighbor, RandomSource random) {
+		if (direction == state.getValue(FACING).getOpposite() && !this.canSurvive(state, level, pos))
+			return Blocks.AIR.defaultBlockState();
+		return super.updateShape(state, level, ticks, pos, direction, neighborPos, neighbor, random);
 	}
 
 	@Override
-	@SideOnly(Side.CLIENT)
-	public void randomDisplayTick(World world, int x, int y, int z, Random rand) {
-		double rx = x+rand.nextDouble();
-		double ry = y+rand.nextDouble();
-		double rz = z+rand.nextDouble();
-		float g = (float)ReikaRandomHelper.getRandomPlusMinus(0.025, 0.0125);
-		TileEntityCrystalGlow te = (TileEntityCrystalGlow)world.getTileEntity(x, y, z);
-		if (te.getDirection() != ForgeDirection.DOWN)
-			g = -g;
-		boolean in = rand.nextBoolean();
-		double v = 0.0125;
-		double vx = in ? v*(0.5-(rx-x)) : (rx-x)*v;//ReikaRandomHelper.getRandomPlusMinus(0, 0.03125);
-		double vz = in ? v*(0.5-(rz-z)) : (rz-z)*v;//ReikaRandomHelper.getRandomPlusMinus(0, 0.03125);
-		EntityFX fx = null;
-		int type = rand.nextInt(3);
-		switch(type) {
-			case 0:
-				fx = new EntityCCBlurFX(this.getCrystalElement(world, x, y, z), world, rx, ry, rz, vx, 0, vz).setScale(1+rand.nextFloat()).setGravity(g);
-				break;
-			case 1:
-				fx = new EntityCenterBlurFX(this.getCrystalElement(world, x, y, z), world, rx, ry, rz, vx, 0, vz).setScale(1+rand.nextFloat()).setGravity(g);
-				break;
-			case 2:
-				fx = new EntityLaserFX(this.getCrystalElement(world, x, y, z), world, rx, ry, rz, vx, 0, vz).setScale(1+rand.nextFloat()).setGravity(g);
-				break;
-		}
-		Minecraft.getMinecraft().effectRenderer.addEffect(fx);
+	protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+		return SHAPES[state.getValue(FACING).ordinal()];
 	}
 
+	/**
+	 * V33a {@code randomDisplayTick}: a mote drifting in or out across the block, rising unless the glow hangs
+	 * from a ceiling.
+	 */
 	@Override
-	public final int getRenderType() {
-		return ChromaISBRH.glow.getRenderID();
+	public void animateTick(BlockState state, Level level, BlockPos pos, RandomSource random) {
+		ChromaParticle.spawnCrystalGlow(level, pos, this.getCrystalElement(), state.getValue(FACING) == Direction.DOWN,
+				random);
 	}
 
-	@Override
-	public final boolean isOpaqueCube() {
-		return false;
-	}
-
-	@Override
-	public final boolean renderAsNormalBlock() {
-		return false;
-	}
-
-	@Override
-	public final int getRenderBlockPass() {
-		return 1;
-	}
-
-	@Override
-	public boolean canRenderInPass(int pass) {
-		ChromaISBRH.glow.setRenderPass(pass);
-		return pass <= 1;
-	}
-
-	public boolean canPlaceOn(World world, int x, int y, int z, int side) {
-		return this.canPlaceOn(world, x, y, z, ForgeDirection.VALID_DIRECTIONS[side]);
-	}
-
-	public boolean canPlaceOn(World world, int x, int y, int z, ForgeDirection side) {
-		Block b = world.getBlock(x, y, z);
-		if (b instanceof BlockSlab) { //because slabs are not coded properly
-			if (side == ForgeDirection.DOWN) {
-				return world.getBlockMetadata(x, y, z) < 8;
-			}
-		}
-		return b.isSideSolid(world, x, y, z, side);
-	}
-
-	public void setSide(World world, int x, int y, int z, ForgeDirection dir) {
-		TileEntityCrystalGlow te = (TileEntityCrystalGlow)world.getTileEntity(x, y, z);
-		te.direction = dir;
-		te.longAxis = ReikaDirectionHelper.getPerpendicularDirections(dir).get(0);
-	}
-
-	@Override
-	public AxisAlignedBB getCollisionBoundingBoxFromPool(World world, int x, int y, int z) {
-		return null;
-	}
-
-	@Override
-	public void onNeighborBlockChange(World world, int x, int y, int z, Block b) {
-		TileEntityCrystalGlow te = (TileEntityCrystalGlow)world.getTileEntity(x, y, z);
-		ForgeDirection dir = te.direction;
-		if (!this.canPlaceOn(world, x-dir.offsetX, y-dir.offsetY, z-dir.offsetZ, dir)) {
-			ItemStack is = ChromaBlocks.GLOW.getStackOfMetadata(world.getBlockMetadata(x, y, z)+16*te.base.ordinal());
-			world.setBlock(x, y, z, Blocks.air);
-			ReikaSoundHelper.playBreakSound(world, x, y, z, this);
-			ReikaItemHelper.dropItem(world, x+0.5, y+0.5, z+0.5, is);
-		}
-	}
-
-	@Override
-	public void setBlockBoundsBasedOnState(IBlockAccess iba, int x, int y, int z) {
-		float xmin = 0;
-		float ymin = 0;
-		float zmin = 0;
-		float xmax = 1;
-		float ymax = 1;
-		float zmax = 1;
-		float h = 0.125F;
-		float w = 0.25F;
-		TileEntity te = iba.getTileEntity(x, y, z);
-		ForgeDirection dir = te instanceof TileEntityCrystalGlow ? ((TileEntityCrystalGlow)te).direction : ForgeDirection.UNKNOWN;
-		ForgeDirection ax = te instanceof TileEntityCrystalGlow ? ((TileEntityCrystalGlow)te).longAxis : ForgeDirection.UNKNOWN;
-		switch(dir) {
-			case WEST:
-				zmin = 0.5F-w;
-				zmax = 0.5F+w;
-				ymin = 0.5F-w;
-				ymax = 0.5F+w;
-				xmin = 1-h;
-				break;
-			case EAST:
-				zmin = 0.5F-w;
-				zmax = 0.5F+w;
-				ymin = 0.5F-w;
-				ymax = 0.5F+w;
-				xmax = h;
-				break;
-			case NORTH:
-				xmin = 0.5F-w;
-				xmax = 0.5F+w;
-				ymin = 0.5F-w;
-				ymax = 0.5F+w;
-				zmin = 1-h;
-				break;
-			case SOUTH:
-				xmin = 0.5F-w;
-				xmax = 0.5F+w;
-				ymin = 0.5F-w;
-				ymax = 0.5F+w;
-				zmax = h;
-				break;
-			case UP:
-				xmin = 0.5F-w;
-				xmax = 0.5F+w;
-				zmin = 0.5F-w;
-				zmax = 0.5F+w;
-				ymax = h;
-				break;
-			case DOWN:
-				xmin = 0.5F-w;
-				xmax = 0.5F+w;
-				zmin = 0.5F-w;
-				zmax = 0.5F+w;
-				ymin = 1-h;
-				break;
-			default:
-				break;
-		}
-		this.setBlockBounds(xmin, ymin, zmin, xmax, ymax, zmax);
-	}
-
-	@Override
-	public TileEntity createTileEntity(World world, int meta) {
-		return new TileEntityCrystalGlow();
-	}
-
-	@Override
-	public boolean hasTileEntity(int meta) {
-		return true;
-	}
-
-	@Override
-	public boolean removedByPlayer(World world, EntityPlayer player, int x, int y, int z, boolean harvest)
-	{
-		if (this.canHarvest(world, player, x, y, z))
-			this.harvestBlock(world, player, x, y, z, 0);
-		return world.setBlockToAir(x, y, z);
-	}
-
-	private boolean canHarvest(World world, EntityPlayer ep, int x, int y, int z) {
-		if (ep.capabilities.isCreativeMode)
-			return false;
-		return true;
-	}
-
-	@Override
-	public void harvestBlock(World world, EntityPlayer ep, int x, int y, int z, int meta)
-	{
-		if (!this.canHarvest(world, ep, x, y, z))
+	/** V33a {@code TileEntityCrystalGlow.toggle} (sneaking Manipulator): own colour, then iridescent, then rainbow. */
+	public static void toggle(Level level, BlockPos pos, BlockState state) {
+		if (!(state.getBlock() instanceof BlockCrystalGlow glow))
 			return;
-		TileEntityCrystalGlow te = (TileEntityCrystalGlow)world.getTileEntity(x, y, z);
-		if (te != null) {
-			ItemStack is = ChromaBlocks.GLOW.getStackOfMetadata(world.getBlockMetadata(x, y, z)+16*te.base.ordinal());
-			ReikaItemHelper.dropItem(world, x+0.5, y+0.5, z+0.5, is);
+		ding(level, pos, glow.getCrystalElement());
+		level.setBlock(pos, state.setValue(MODE, state.getValue(MODE).next()), 3);
+		playManipulatorSound(level, pos);
+	}
+
+	/** V33a {@code TileEntityCrystalGlow.rotate} (Manipulator): a quarter turn about the facing. */
+	public static void rotate(Level level, BlockPos pos, BlockState state) {
+		if (!(state.getBlock() instanceof BlockCrystalGlow glow))
+			return;
+		ding(level, pos, glow.getCrystalElement());
+		level.setBlock(pos, state.setValue(SWAPPED, !state.getValue(SWAPPED)), 3);
+		playManipulatorSound(level, pos);
+	}
+
+	/** V33a {@code ReikaSoundHelper.playBreakSound(world, x, y, z, Blocks.stone, 0.35F, 0.05F)}. */
+	private static void playManipulatorSound(Level level, BlockPos pos) {
+		level.playSound(null, pos, SoundEvents.STONE_BREAK, SoundSource.BLOCKS, 0.35F, 0.05F);
+	}
+
+	public static enum Mode implements StringRepresentable {
+		NORMAL,
+		IRIDESCENT,
+		RAINBOW;
+
+		public Mode next() {
+			return switch (this) {
+				case NORMAL -> IRIDESCENT;
+				case IRIDESCENT -> RAINBOW;
+				case RAINBOW -> NORMAL;
+			};
+		}
+
+		@Override
+		public String getSerializedName() {
+			return this.name().toLowerCase(Locale.ROOT);
 		}
 	}
 
-	@Override
-	public ItemStack getPickBlock(MovingObjectPosition target, World world, int x, int y, int z) {
-		int meta = world.getBlockMetadata(x, y, z);
-		TileEntityCrystalGlow te = (TileEntityCrystalGlow)world.getTileEntity(x, y, z);
-		return new ItemStack(this, 1, meta+16*te.base.ordinal());
-	}
-
+	/** V33a {@code BlockCrystalGlow.Bases}: the plate material, its recipe ingredient and its texture (side 0). */
 	public static enum Bases {
-		STONE("Stone", Blocks.stone),
-		CRYSTALSTONE("Crystal Stone", ChromaBlocks.PYLONSTRUCT.getBlockInstance()),
-		IRON("Iron", Items.iron_ingot, Blocks.iron_block),
-		GOLD("Gold", Items.gold_ingot, Blocks.gold_block),
-		OBSIDIAN("Obsidian", Blocks.obsidian),
-		QUARTZ("Quartz", Blocks.quartz_block);
-
-		public final Object ingredient;
-		public final Block texture;
-		public final String displayName;
+		STONE("Stone", () -> Items.STONE, Identifier.withDefaultNamespace("block/stone")),
+		CRYSTALSTONE("Crystal Stone", () -> ChromaBlocks.crystallineStone(StoneTypes.SMOOTH).get(),
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/pylon/block_0")),
+		IRON("Iron", () -> Items.IRON_INGOT, Identifier.withDefaultNamespace("block/iron_block")),
+		GOLD("Gold", () -> Items.GOLD_INGOT, Identifier.withDefaultNamespace("block/gold_block")),
+		OBSIDIAN("Obsidian", () -> Items.OBSIDIAN, Identifier.withDefaultNamespace("block/obsidian")),
+		QUARTZ("Quartz", () -> Items.QUARTZ_BLOCK, Identifier.withDefaultNamespace("block/quartz_block_bottom"));
 
 		public static final Bases[] baseList = values();
 
-		private Bases(String s, Block b) {
-			this(s, b, b);
-		}
+		public final String displayName;
+		public final Supplier<ItemLike> ingredient;
+		public final Identifier texture;
 
-		private Bases(String s, Object o, Block b) {
+		private Bases(String s, Supplier<ItemLike> ingredient, Identifier texture) {
 			displayName = s;
-			ingredient = o;
-			texture = b;
-		}
-	}
-
-	public static class TileEntityCrystalGlow extends TileEntity {
-
-		private ForgeDirection direction = ForgeDirection.UNKNOWN;
-		private ForgeDirection longAxis = ForgeDirection.UNKNOWN;
-		public Bases base = Bases.STONE;
-		public boolean isIridescent;
-		public boolean isRainbow;
-
-		@Override
-		public boolean canUpdate() {
-			return false;
+			this.ingredient = ingredient;
+			this.texture = texture;
 		}
 
-		@Override
-		public void writeToNBT(NBTTagCompound NBT) {
-			super.writeToNBT(NBT);
-
-			NBT.setInteger("dir", direction.ordinal());
-			NBT.setInteger("long", longAxis.ordinal());
-
-			NBT.setInteger("base", base.ordinal());
-
-			NBT.setBoolean("irid", isIridescent);
-			NBT.setBoolean("rainbow", isRainbow);
-		}
-
-		@Override
-		public void readFromNBT(NBTTagCompound NBT) {
-			super.readFromNBT(NBT);
-
-			direction = ForgeDirection.values()[NBT.getInteger("dir")];
-			longAxis = ForgeDirection.values()[NBT.getInteger("long")];
-
-			isIridescent = NBT.getBoolean("irid");
-			isRainbow = NBT.getBoolean("rainbow");
-
-			base = Bases.baseList[NBT.getInteger("base")];
-		}
-
-		@Override
-		public Packet getDescriptionPacket() {
-			NBTTagCompound NBT = new NBTTagCompound();
-			this.writeToNBT(NBT);
-			S35PacketUpdateTileEntity pack = new S35PacketUpdateTileEntity(xCoord, yCoord, zCoord, 0, NBT);
-			return pack;
-		}
-
-		@Override
-		public void onDataPacket(NetworkManager net, S35PacketUpdateTileEntity p)  {
-			this.readFromNBT(p.field_148860_e);
-			worldObj.markBlockForUpdate(xCoord, yCoord, zCoord);
-		}
-
-		@Override
-		public AxisAlignedBB getRenderBoundingBox() {
-			return ReikaAABBHelper.getBlockAABB(xCoord, yCoord, zCoord);
-		}
-
-		public ForgeDirection getDirection() {
-			return direction;
-		}
-
-		public ForgeDirection getLongAxis() {
-			return longAxis;
-		}
-
-		public void toggle() {
-			CrystalTypeBlock.ding(worldObj, xCoord, yCoord, zCoord);
-
-			if (isIridescent) {
-				isIridescent = false;
-				isRainbow = true;
-			}
-			else if (isRainbow) {
-				isRainbow = false;
-			}
-			else {
-				isIridescent = true;
-			}
-
-			worldObj.markBlockForUpdate(xCoord, yCoord, zCoord);
-		}
-
-		public void rotate() {
-			CrystalTypeBlock.ding(worldObj, xCoord, yCoord, zCoord);
-			longAxis = longAxis.getRotation(direction);
-			worldObj.markBlockForUpdate(xCoord, yCoord, zCoord);
+		public String id() {
+			return this.name().toLowerCase(Locale.ROOT);
 		}
 	}
 

@@ -241,6 +241,7 @@ public class ChromaModelProvider extends ModelProvider {
 				Identifier.fromNamespaceAndPath("minecraft", "block/smooth_stone"),
 				blockStateOut, itemModelOut, modelOut);
 		crystalGlassModels(blockStateOut, itemModelOut, modelOut);
+		crystalGlowItems(itemModelOut, modelOut);
 		basedCrystalBlocks(ChromaBlocks.SUPER_CRYSTALS, "super_crystal",
 				Identifier.fromNamespaceAndPath("minecraft", "block/obsidian"),
 				blockStateOut, itemModelOut, modelOut);
@@ -1630,6 +1631,21 @@ public class ChromaModelProvider extends ModelProvider {
 		}
 	}
 
+	/** V33a renderInventoryBlock for GLOW: a flat tilted card, drawn by CrystalGlowItemRenderer. */
+	private static void crystalGlowItems(ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		Identifier base = ModelTemplates.CUBE_ALL.create(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/crystal_glow_inventory"),
+				TextureMapping.cube(new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/basic/glow"))),
+				modelOut);
+		for (var holder : ChromaBlocks.CRYSTAL_GLOWS) {
+			reika.chromaticraft.block.crystal.BlockCrystalGlow glow = holder.get();
+			Identifier lamp = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
+					"block/crystal/overbright/bloom_" + glow.getCrystalElement().name().toLowerCase(java.util.Locale.ROOT));
+			itemModelOut.accept(glow.asItem(), ItemModelUtils.specialModel(base,
+					new reika.chromaticraft.render.item.CrystalGlowItemRenderer.Unbaked(glow.getBase().texture, lamp)));
+		}
+	}
+
 	private static void crystalColourBlocks(List<? extends net.neoforged.neoforge.registries.DeferredBlock<? extends Block>> blocks,
 			String name, Consumer<BlockModelDefinitionGenerator> blockStateOut, ItemModelOutput itemModelOut,
 			BiConsumer<Identifier, ModelInstance> modelOut) {
@@ -1662,6 +1678,9 @@ public class ChromaModelProvider extends ModelProvider {
 				// Every crystalline-stone variant ships a hand-authored blockstate: the neighbour-scanned
 				// ones need the custom model type, which MultiVariantGenerator cannot emit.
 				.filter(h -> !(h.value() instanceof BlockCrystallineStone))
+				// Glows are built in code by CrystalGlowModel (chamfered, per-facing); their hand-authored
+				// blockstates name that model type.
+				.filter(h -> !(h.value() instanceof reika.chromaticraft.block.crystal.BlockCrystalGlow))
 				// Tiered ores ship a hand-authored blockstate pointing at TieredOreModel: the model has
 				// to pick between the real ore and its host-stone disguise per viewer.
 				.filter(h -> !(h.value() instanceof reika.chromaticraft.block.worldgen26.BlockTieredOre))

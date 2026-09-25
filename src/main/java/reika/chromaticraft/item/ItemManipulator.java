@@ -114,6 +114,18 @@ public class ItemManipulator extends Item {
 
 		BlockCliffStone.transparify(level, pos, player);
 
+		// V33a: a Crystal Glow turns a quarter turn, or (sneaking) cycles its crystal's colour mode.
+		net.minecraft.world.level.block.state.BlockState clicked = level.getBlockState(pos);
+		if (clicked.getBlock() instanceof reika.chromaticraft.block.crystal.BlockCrystalGlow) {
+			if (!level.isClientSide()) {
+				if (player.isShiftKeyDown())
+					reika.chromaticraft.block.crystal.BlockCrystalGlow.toggle(level, pos, clicked);
+				else
+					reika.chromaticraft.block.crystal.BlockCrystalGlow.rotate(level, pos, clicked);
+			}
+			return InteractionResult.SUCCESS;
+		}
+
 
 		BlockEntity tile = level.getBlockEntity(pos);
 		// Structure dummy blocks are the real hit target for tall models such as DATANODE. Resolve

@@ -120,6 +120,17 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 						List.of(), List.of(), List.of(),
 						new ItemStackTemplate(ChromaBlocks.crystalGlass(element).get().asItem(), 16), 5, 5)
 						.withPenaltyThreshold(48));
+				// V33a CrystalGlowRecipe: the colour's shard over the base ingredient makes sixteen. It is a
+				// CoreRecipe, so it is never XP-penalised (its halved threshold of MAX_VALUE is still unreachable).
+				for (reika.chromaticraft.block.crystal.BlockCrystalGlow.Bases base
+						: reika.chromaticraft.block.crystal.BlockCrystalGlow.Bases.baseList)
+					saveRecipe("crystal_glow/" + element.getEnglishName() + "_" + base.id(),
+							new CastingTableRecipe(CastingTableRecipe.Tier.CRAFTING,
+									shapedGrid(Map.of('S', Ingredient.of(ChromaItems.SHARDS.get(element).get()),
+											's', Ingredient.of(base.ingredient.get())), "S", "s"),
+									List.of(), List.of(), List.of(),
+									new ItemStackTemplate(ChromaBlocks.crystalGlow(element, base).get().asItem(), 16), 5, 5)
+									.withPenalty(Integer.MAX_VALUE, 0.5F));
 				saveTintedLens(element, Items.IRON_INGOT, 1, "iron");
 				saveTintedLens(element, Items.GOLD_INGOT, 2, "gold");
 				saveTintedLens(element,
@@ -1130,12 +1141,13 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 		/**
 		 * Ported recipes whose V33a class returns {@code canGiveDoubleOutput() == true} (directly or through
 		 * DecoCastingRecipe / the core-recipe bases), by recipe id or id folder: RuneRecipe, EnhancedRuneRecipe,
-		 * RelayRecipe, CrystalGlassRecipe, CrystalStoneRecipe, CrystalGroupRecipe, CrystalClusterRecipe,
+		 * RelayRecipe, CrystalGlassRecipe, CrystalGlowRecipe, CrystalStoneRecipe, CrystalGroupRecipe, CrystalClusterRecipe,
 		 * LowCoreRecipe and HighCoreRecipe (and their subclasses), CrystalMirrorRecipe, RawCrystalRecipe,
 		 * LumenCoreRecipe, IridescentChunkRecipe, ElementUnitRecipe, CrystalStarRecipe, CrystalLensRecipe,
 		 * CrystalFocusRecipe and CrystalCoreRecipe.
 		 */
 		private static final List<String> DOUBLE_OUTPUT = List.of("crystal_rune/", "lumen_relay/", "crystal_glass/",
+				"crystal_glow/",
 				"crystal_stone/", "crystal_group/", "crystal_cluster/", "low_core/", "high_core/", "crystal_mirror/",
 				"raw_crystal", "lumen_core", "iridescent_chunk", "element_unit", "crystal_star", "crystal_lens",
 				"crystal_focus", "crystal_core");

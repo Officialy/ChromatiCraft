@@ -198,6 +198,10 @@ public class ChromaLang extends LanguageProvider {
 		add(ChromaBlocks.FUNCTION_RELAY.get(), "Area Delegation Point");
 		for (CrystalElement element : CrystalElement.elements)
 			add(ChromaBlocks.crystalGlass(element).get(), element.displayName + " Crystal Glass"); // V33a chroma.glass
+		// V33a getMultiValuedName GLOW: "<Base>-Based <Element> Glow".
+		for (var holder : ChromaBlocks.CRYSTAL_GLOWS)
+			add(holder.get(), holder.get().getBase().displayName + "-Based "
+					+ holder.get().getCrystalElement().displayName + " Glow");
 		for (CrystalElement element : CrystalElement.elements)
 			add(ChromaBlocks.lumenRelay(element).get(), element.displayName + " Lumen Relay");
 		add(ChromaBlocks.MULTICHROMIC_RELAY.get(), "Omni Lumen Relay"); // V33a getMultiValuedName RELAY meta 16

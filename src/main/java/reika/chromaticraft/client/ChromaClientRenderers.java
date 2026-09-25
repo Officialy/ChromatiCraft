@@ -75,6 +75,8 @@ public final class ChromaClientRenderers {
 
 	private static void registerSpecialModelRenderers(RegisterSpecialModelRendererEvent event) {
 		event.register(ItemStandItemRenderer.ID, ItemStandItemRenderer.Unbaked.MAP_CODEC);
+		event.register(reika.chromaticraft.render.item.CrystalGlowItemRenderer.ID,
+				reika.chromaticraft.render.item.CrystalGlowItemRenderer.Unbaked.MAP_CODEC);
 		event.register(reika.chromaticraft.render.item.CaveCrystalItemRenderer.ID,
 				reika.chromaticraft.render.item.CaveCrystalItemRenderer.Unbaked.MAP_CODEC);
 		event.register(reika.chromaticraft.render.item.PowerCrystalItemRenderer.ID,
