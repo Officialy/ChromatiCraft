@@ -250,14 +250,13 @@ one comes only from villager trade), Multi-Aura Repeater (CompoundRepeaterRecipe
 Pylon Link and Lumen Node (V33a had no casting recipe for either).
 
 - **ENTRY** — 7/7 ported.
-- **RAWEXPLORE** — 18/20 ported.
-  Missing: Fertility Seeds; Artifact Distribution Map.
+- **RAWEXPLORE** — 20/20 ported (Fertility Seeds and the Artifact Distribution Map landed 2026-09-25).
 - **BASICCRAFT** — 8/27 ported.
   Missing: Crystal Glass; Glow; Defensive Glass; Enchantments; Crystal Brewery; Chromatic Flower; Vertical Propulsion Panel; Lumen Wire; Crystal Orchestra; Particle Spawner; Knowledge Entanglement Pedestal; Tool Compression Crate; Lumen Turret; Subterranean Route Finder; Pylon Compass; Illumination Gun; Ownership Expansion Key; Examination Crystals; Corrosion Resistant Cell.
 - **RUNECRAFT** — 11/36 ported.
   Missing: Artificial Sky; Physics Suspension Lamp; Lumen Lamp; Travel Path; Redstone Pod; Flux Pod; Subterranean Illuminator; Chromatic Enchanter; Fluid Radiator; Fluid Link Anchor; Suspension Field Controller; Item Inserter; Lumen Lamp Controller; Crystal Seeds; Item Mover; Voidlinked Bucket; Linker; Creature Sounding Star; Multitool; Nether Layer Crystal; Ore-Finding Pickaxe; Ore Harvester; Bezier Crystals; Aura Tracker; Recall Tablet.
-- **ENERGY** — 14/30 ported.
-  Missing: Collective Aura; Lumen Flood; Pursuit Diversion; Pylon Surge Protection; Linear Construction; Crystal Altar; Enchantment Decomposer; Transmutation Flame; Item Rift; Elemental Lamp; Enhanced Ender Eye; Excavation Star; Inventory Warp; Pendant; Spawner Interference Crystal; Transition Star.
+- **ENERGY** — 15/30 ported.
+  Missing: Collective Aura; Lumen Flood; Pursuit Diversion; Pylon Surge Protection; Linear Construction; Crystal Altar; Enchantment Decomposer; Transmutation Flame; Item Rift; Elemental Lamp; Excavation Star; Inventory Warp; Pendant; Spawner Interference Crystal; Transition Star.
 - **MULTICRAFT** — 4/26 ported.
   Missing: Lumen Fence Relay; Casting Stand Insertion Relay; Crystal Tank Block; Area Breaker; Cloaking Beacon; Lumen Fence Emitter; Casting Stand Insertion Focus; Construction Mirror; Item Distribution Node; Inventory Simulator; Warp Glass; Ambient Lumen Distributor; Aura Pouch; Construction Star; Capture Star; Chain Gun; Luma Capsule; Growth Star; Recipe Tablet; Splash Gun; Mobility Star; Absorption Ring.
 - **NETWORKING** — 3/6 ported.
@@ -8476,3 +8475,11 @@ the table machine and its thirty-nine effects are not claimed complete.
   Each recipe has an "open in Lexicon" button while a carried Lexicon holds that page.
 
 **Unverified in game:** everything above was derived from source. No client has been run for this batch.
+
+**Artifact Distribution Map (2026-09-25).** `ItemStructureMap` + `StructureMapRenderer` ported, with its pool
+recipe running the artefact/data crystal effect. First-person holding goes through vanilla's map path via
+DragonAPI `HeldMapRenderers` (a MixinExtras wrap of `submitArmWithItem`'s `instanceof MapItem`, which is
+what NeoForge's patched bytecode tests, not the decompiled source's `has(MAP_ID)`). Strongholds come from
+`ChunkGeneratorStructureState.getRingPositionsFor`; "confirmed" uses `ReikaWorldHelper.isChunkGenerated`
+(`ChunkMap.isExistingChunkFull` invoker). Deviations are listed in the commit and the class Javadoc. The
+mixin and renderer are unverified in game.
