@@ -252,8 +252,8 @@ Pylon Link and Lumen Node (V33a had no casting recipe for either).
 - **ENTRY** — 7/7 ported.
 - **RAWEXPLORE** — 20/20 ported (Fertility Seeds and the Artifact Distribution Map landed 2026-09-25).
 - **BASICCRAFT** — 14/27 ported (Crystal Glass and Glow landed 2026-09-25; Defensive Glass, the
-  Enchantments, the Crystal Brewery and the Chromatic Flower 2026-09-26).
-  Missing: Vertical Propulsion Panel; Lumen Wire; Crystal Orchestra; Particle Spawner; Knowledge Entanglement Pedestal; Tool Compression Crate; Lumen Turret; Subterranean Route Finder; Pylon Compass; Illumination Gun; Ownership Expansion Key; Examination Crystals; Corrosion Resistant Cell.
+  Enchantments, the Crystal Brewery, the Chromatic Flower and the Pylon Compass 2026-09-26).
+  Missing: Vertical Propulsion Panel; Lumen Wire; Crystal Orchestra; Particle Spawner; Knowledge Entanglement Pedestal; Tool Compression Crate; Lumen Turret; Subterranean Route Finder; Illumination Gun; Ownership Expansion Key; Examination Crystals; Corrosion Resistant Cell.
 - **RUNECRAFT** — 11/36 ported.
   Missing: Artificial Sky; Physics Suspension Lamp; Lumen Lamp; Travel Path; Redstone Pod; Flux Pod; Subterranean Illuminator; Chromatic Enchanter; Fluid Radiator; Fluid Link Anchor; Suspension Field Controller; Item Inserter; Lumen Lamp Controller; Crystal Seeds; Item Mover; Voidlinked Bucket; Linker; Creature Sounding Star; Multitool; Nether Layer Crystal; Ore-Finding Pickaxe; Ore Harvester; Bezier Crystals; Aura Tracker; Recall Tablet.
 - **ENERGY** — 15/30 ported.
@@ -8625,3 +8625,25 @@ is ported in place (`world/iwg/PylonGenerator`). Its worldgen half was already `
 - CHROMA-PORT: V33a's `canGenerateIn` also excluded modded dimensions (Deep Dark, Twilight Forest,
   Witchery, the Miner's World) and gated Mystcraft ages. The tracker also synced `PylonLinkNetwork` and the
   lore towers; neither has a client side yet.
+
+**BASICCRAFT: Pylon Compass (2026-09-26).** `pylon_finder` (V33a FINDER): its sprite is sheet index 4 of V33a's
+`items_tool.png`, extracted and checked against the manipulator at index 32.
+- `PylonFinderOverlay` is ported onto a GUI layer above the camera overlays (V33a's HELMET element). It draws
+  with DragonAPI's new `GuiShapes`, since the 26.2 GUI has no triangles or line loops.
+- For each colour it marks the nearest pylon in the client's cache:
+  - An arrow at the screen edge when out of view, a rune box at its bearing when in view.
+  - The player's own linked pylons get an animated frame and a link count.
+  - A turbocharged pylon gets an eclipse-flare halo on a new `GUI_ADDITIVE_DARK` pipeline.
+  - Power crystals show as diamonds in the chroma colour ramp (now `ChromaColorTiles`; `ChromaFX` is still
+    unported).
+  - A broken structure gets a red slashed circle, and the distance is labelled with SI prefixes.
+- Bottleneck warnings keep their API and art (`gui/pylon_bottleneck.png` from the jar), taking an ordinal
+  in place of `WarningLevels`.
+- Recipe: "SIS / IAI / SIS" with any shard, iron and aura dust.
+- CHROMA-PORT:
+  - The Aura Pouch path (the compass working from inside a pouch) waits for `ItemAuraPouch`; the overlay
+    already reads its timestamp.
+  - The Bottleneck Finder is the only caller of the warnings.
+  - The HUD bitmap font (vanilla font for now).
+  - The link count off single player, until `PylonLinkNetwork` syncs.
+- Unverified in game.

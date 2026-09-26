@@ -9,27 +9,23 @@
  ******************************************************************************/
 package reika.chromaticraft.items.tools;
 
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
-import net.minecraft.world.World;
+import net.minecraft.world.item.Item;
 
-import reika.chromaticraft.base.ItemChromaTool;
-import reika.chromaticraft.registry.ChromaItems;
-
-public class ItemPylonFinder extends ItemChromaTool {
+/**
+ * V33a {@code ItemPylonFinder}, the Pylon Compass: held, it shows the nearest known pylon of every colour on the HUD
+ * ({@code PylonFinderOverlay}, reading the synced pylon cache). It has no behaviour of its own beyond that.
+ *
+ * <p>CHROMA-PORT: V33a also let it work from inside an Aura Pouch -- the pouch ticked its contents, and the compass,
+ * seeing its tick come from the pouch's slot, stamped {@link #NBT_KEY} with the world time every 8 ticks, which the
+ * overlay honours for 20 ticks. The overlay reads the stamp; the pouch ({@code ItemAuraPouch}, its
+ * {@code WORKS_IN_POUCH} effect) has to land before anything writes it.
+ */
+public class ItemPylonFinder extends Item {
 
 	public static final String NBT_KEY = "pylonoverlay";
 
-	public ItemPylonFinder(int index) {
-		super(index);
-		ItemAuraPouch.setSpecialEffect(ItemAuraPouch.WORKS_IN_POUCH_EFFECT_DESC, this);
-	}
-
-	@Override
-	public void onUpdate(ItemStack is, World world, Entity e, int slot, boolean selected) {
-		if (e instanceof EntityPlayer && ChromaItems.AURAPOUCH.matchWith(((EntityPlayer)e).inventory.mainInventory[slot]) && world.getTotalWorldTime()%8 == 0)
-			e.getEntityData().setLong(NBT_KEY, world.getTotalWorldTime());
+	public ItemPylonFinder(Properties properties) {
+		super(properties);
 	}
 
 }

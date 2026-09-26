@@ -144,6 +144,9 @@ public final class ChromaItems {
 	/** V33a ENDEREYE, the Enhanced Ender Eye; its owner is stored in CUSTOM_DATA. */
 	public static final DeferredItem<reika.chromaticraft.items.ItemT2EnderEye> ENDER_EYE =
 			reg("enhanced_ender_eye", () -> new reika.chromaticraft.items.ItemT2EnderEye(itemProperties()));
+	/** V33a FINDER, the Pylon Compass (a one-item ItemChromaTool). */
+	public static final DeferredItem<reika.chromaticraft.items.tools.ItemPylonFinder> PYLON_FINDER =
+			reg("pylon_finder", () -> new reika.chromaticraft.items.tools.ItemPylonFinder(itemProperties().stacksTo(1)));
 	/** V33a STRUCTMAP, the Artifact Distribution Map; its seek mode and scan live in CUSTOM_DATA. */
 	public static final DeferredItem<reika.chromaticraft.items.tools.ItemStructureMap> STRUCTURE_MAP =
 			reg("structure_map", () -> new reika.chromaticraft.items.tools.ItemStructureMap(itemProperties()));

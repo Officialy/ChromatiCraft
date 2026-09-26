@@ -110,6 +110,15 @@ public enum CrystalElement implements OverlayColor, ProgressAccess, CrystalEleme
 		return ReikaColorAPI.getBlue(this.getColor());
 	}
 
+	/**
+	 * V33a {@code getFaceRune()}: the animated 64-frame rune ({@code runes/frontpng/tileN_0}), as a block-atlas sprite
+	 * id for drawing it from code (the lexicon draws the raw strip instead).
+	 */
+	public net.minecraft.resources.Identifier getFaceRuneSprite() {
+		return net.minecraft.resources.Identifier.fromNamespaceAndPath(reika.chromaticraft.ChromatiCraft.MODID,
+				"block/runes/frontpng/tile"+this.ordinal()+"_0");
+	}
+
 	public Color getJavaColor() {
 		return new Color(rgb);
 	}

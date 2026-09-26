@@ -1,0 +1,46 @@
+{
+  "type": "chromaticraft:casting",
+  "experience": 5,
+  "grid": [
+    {
+      "ingredient": "#chromaticraft:crystal_shards",
+      "slot": 0
+    },
+    {
+      "ingredient": "minecraft:iron_ingot",
+      "slot": 1
+    },
+    {
+      "ingredient": "#chromaticraft:crystal_shards",
+      "slot": 2
+    },
+    {
+      "ingredient": "minecraft:iron_ingot",
+      "slot": 3
+    },
+    {
+      "ingredient": "chromaticraft:aura_dust",
+      "slot": 4
+    },
+    {
+      "ingredient": "minecraft:iron_ingot",
+      "slot": 5
+    },
+    {
+      "ingredient": "#chromaticraft:crystal_shards",
+      "slot": 6
+    },
+    {
+      "ingredient": "minecraft:iron_ingot",
+      "slot": 7
+    },
+    {
+      "ingredient": "#chromaticraft:crystal_shards",
+      "slot": 8
+    }
+  ],
+  "result": {
+    "id": "chromaticraft:pylon_finder"
+  },
+  "tier": "crafting"
+}

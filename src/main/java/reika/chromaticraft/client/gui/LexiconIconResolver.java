@@ -183,6 +183,7 @@ public final class LexiconIconResolver {
 			case "endereye" -> ChromaItems.ENDER_EYE.get();
 			case "artefact" -> ChromaBlocks.UNKNOWN_ARTEFACT_ITEM.get();
 			case "structmap" -> ChromaItems.STRUCTURE_MAP.get();
+			case "finder" -> ChromaItems.PYLON_FINDER.get();
 			default -> null;
 		};
 	}

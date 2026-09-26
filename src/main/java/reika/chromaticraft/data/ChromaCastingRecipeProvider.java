@@ -281,6 +281,13 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 							new RuneRequirement(new net.minecraft.core.BlockPos(-5, 0, 4), CrystalElement.YELLOW)),
 					List.of(), new ItemStackTemplate(ChromaBlocks.RELAY_SOURCE.get().asItem()), 100, 200));
 
+			// V33a PylonFinderRecipe, a plain CastingRecipe (its runes were commented out): aura dust ringed by iron and
+			// any shard.
+			saveShaped("pylon_finder", new ItemStackTemplate(ChromaItems.PYLON_FINDER.get()), 5, 5,
+					Map.of('S', tag(ChromaItemTags.CRYSTAL_SHARDS), 'I', Ingredient.of(Items.IRON_INGOT),
+							'A', Ingredient.of(ChromaItems.TIERED.get(ChromaTieredItems.AURA_DUST).get())),
+					"SIS", "IAI", "SIS");
+
 			// V33a ChromaFlowerRecipe (a DecoCastingRecipe): leaves, a flower, glowstone and any shard for one flower.
 			// Typical total 4 makes the penalty threshold (4*3/4)*4/5 = 2 crafts, at a quarter XP beyond it.
 			saveRecipe("chroma_flower", new CastingTableRecipe(CastingTableRecipe.Tier.CRAFTING,

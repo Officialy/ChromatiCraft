@@ -64,6 +64,19 @@ public final class ChromaRenderPipelines {
 			BlendFactor.SRC_ALPHA, BlendFactor.ONE,
 			BlendFactor.ONE, BlendFactor.ONE_MINUS_SRC_ALPHA);
 
+    /** The GUI-textured pipeline with V33a's ADDITIVEDARK blend, for HUD flares (the Pylon Compass turbo halo). */
+    public static final RenderPipeline GUI_ADDITIVE_DARK = RenderPipeline.builder()
+            .withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "pipeline/gui_additive_dark"))
+            .withBindGroupLayout(BindGroupLayouts.GLOBALS)
+            .withBindGroupLayout(BindGroupLayouts.MATRICES_PROJECTION)
+            .withVertexShader("core/position_tex_color")
+            .withFragmentShader("core/position_tex_color")
+            .withBindGroupLayout(BindGroupLayouts.SAMPLER0)
+            .withColorTargetState(new ColorTargetState(ADDITIVE_DARK))
+            .withVertexBinding(0, DefaultVertexFormat.POSITION_TEX_COLOR)
+            .withPrimitiveTopology(PrimitiveTopology.QUADS)
+            .build();
+
     public static final RenderPipeline ADDITIVE_SPRITE = RenderPipeline.builder()
             .withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "pipeline/additive_sprite"))
             .withBindGroupLayout(BindGroupLayouts.GLOBALS)
@@ -426,6 +439,7 @@ public final class ChromaRenderPipelines {
 
     private static void registerPipelines(RegisterRenderPipelinesEvent event) {
         event.registerPipeline(ADDITIVE_SPRITE);
+        event.registerPipeline(GUI_ADDITIVE_DARK);
         event.registerPipeline(TRANSLUCENT_SPRITE);
 		event.registerPipeline(PYLON_CORE);
 		event.registerPipeline(ADDITIVE_ALPHA_SPRITE);
