@@ -8603,3 +8603,25 @@ mixin and renderer are unverified in game.
   (`c:flowers/small`, 1.7.10's "flower" ore name), glowstone and any shard. Double output; penalty after
   2 crafts at 0.25.
 - Unverified in game: the look and the hue cycle.
+
+**Pylon location cache (2026-09-26), prerequisite for the Pylon Compass.** V33a `PylonGenerator`'s cache half
+is ported in place (`world/iwg/PylonGenerator`). Its worldgen half was already `PylonFeature` with
+`PylonGridPlacement`; the class keeps only `canGenerateIn`.
+- `PylonEntry` records colour, place, power crystals, turbo, link and structure. It persists through the
+  existing `CrystalNetworker.PylonLocationData` hook (`registerPylonLocationDataHandler`, which had been
+  waiting for this handler) and is loaded as each server level loads.
+- Sync (V33a PYLONCACHE): a `pylon_cache` payload is sent on login and dimension change
+  (`PylonCacheLoader`, ported from the DragonAPI PlayerTracker to NeoForge events), and to everyone when a
+  pylon is cached.
+- The pylon re-caches itself where V33a did: first tick, link, (in)validated multiblock, enhance and
+  disenhance. `setColor` removes and re-adds the entry, as V33a's `ChromaAux.changePylonColor` did. The
+  six V33a calls had been dropped from the ported pylon without a marker.
+- Deviations:
+  - Client and server keep separate maps; V33a shared one singleton across the SP sides.
+  - Every entry carries its dimension; V33a stamped synced entries with the client's current dimension.
+  - Stale entries (pylon gone or recoloured) are pruned as their chunk loads. V33a force-loaded each
+    pylon's chunk while reading the save, which a 26.2 saved-data load cannot do.
+  - The client cache clears on logout and the server cache on server stop.
+- CHROMA-PORT: V33a's `canGenerateIn` also excluded modded dimensions (Deep Dark, Twilight Forest,
+  Witchery, the Miner's World) and gated Mystcraft ages. The tracker also synced `PylonLinkNetwork` and the
+  lore towers; neither has a client side yet.

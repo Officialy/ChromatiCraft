@@ -180,6 +180,10 @@ public final class ClientPayloadHandlers {
 			reika.chromaticraft.client.render.ArtefactZoneScreenEffect.refresh(Minecraft.getInstance().level);
 	}
 
+	public static void pylonCache(java.util.List<reika.chromaticraft.world.iwg.PylonGenerator.PylonEntry> entries) {
+		reika.chromaticraft.world.iwg.PylonGenerator.instance.cachePylonLocations(entries);
+	}
+
 	public static void enderEyeSync(int entityId, int ticks) {
 		Minecraft mc = Minecraft.getInstance();
 		if (mc.level != null && mc.level.getEntity(entityId) instanceof reika.chromaticraft.entity.EntityEnderEyeT2 eye)

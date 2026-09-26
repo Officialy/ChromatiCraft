@@ -141,6 +141,7 @@ public class TileEntityCrystalPylon extends CrystalTransmitterBase implements Na
 	@Override
 	protected void onFirstTick(Level world, BlockPos pos) {
 		super.onFirstTick(world, pos);
+		reika.chromaticraft.world.iwg.PylonGenerator.instance.cachePylon(this);
 		if (!world.isClientSide()) {
 			this.refreshStructure();
 			if (structure != null)
@@ -719,6 +720,8 @@ public class TileEntityCrystalPylon extends CrystalTransmitterBase implements Na
 	public void link(TileEntityPylonLink tile) {
 		linkTile = tile != null ? new WorldLocation(tile) : null;
 		this.syncAllData(true);
+		if (tile != null)
+			reika.chromaticraft.world.iwg.PylonGenerator.instance.cachePylon(this);
 	}
 
 	private TileEntityPylonLink getLinkTile() {
@@ -761,10 +764,15 @@ public class TileEntityCrystalPylon extends CrystalTransmitterBase implements Na
 	}
 
 	public void setColor(CrystalElement e) {
+		// V33a ChromaAux.changePylonColor: the cache entry follows the colour.
+		if (this.getLevel() != null)
+			reika.chromaticraft.world.iwg.PylonGenerator.instance.removeCachedPylon(this);
 		color = e;
 		structure = null;
 		this.forceCrystalColorMatch();
 		this.syncAllData(true);
+		if (this.getLevel() != null)
+			reika.chromaticraft.world.iwg.PylonGenerator.instance.cachePylon(this);
 	}
 
 	@Override
@@ -795,6 +803,7 @@ public class TileEntityCrystalPylon extends CrystalTransmitterBase implements Na
 		enhanced = true;
 		enhancing = false;
 		this.syncAllData(true);
+		reika.chromaticraft.world.iwg.PylonGenerator.instance.cachePylon(this);
 	}
 
 	public void disenhance() {
@@ -802,6 +811,7 @@ public class TileEntityCrystalPylon extends CrystalTransmitterBase implements Na
 		enhancing = false;
 		energy = Math.min(energy, this.getMaxStorage(color));
 		this.syncAllData(true);
+		reika.chromaticraft.world.iwg.PylonGenerator.instance.cachePylon(this);
 	}
 
 	public boolean hasBroadcastUpgrade() {
@@ -900,6 +910,7 @@ public class TileEntityCrystalPylon extends CrystalTransmitterBase implements Na
 		hasMultiblock = true;
 		this.refreshBroadcastUpgrade();
 		this.syncAllData(true);
+		reika.chromaticraft.world.iwg.PylonGenerator.instance.cachePylon(this);
 	}
 
 	/** Rechecks the complete NBT-backed broadcast monument and synchronizes LOS behavior. */
@@ -927,6 +938,7 @@ public class TileEntityCrystalPylon extends CrystalTransmitterBase implements Na
 		if (this.getLevel() != null) {
 			ChunkManager.instance.unloadChunks(this);
 			this.syncAllData(true);
+			reika.chromaticraft.world.iwg.PylonGenerator.instance.cachePylon(this);
 		}
 		else {
 			this.setChanged();

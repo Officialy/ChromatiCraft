@@ -13,267 +13,187 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumMap;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Random;
+import java.util.Optional;
 import java.util.UUID;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockBush;
-import net.minecraft.block.BlockFlower;
-import net.minecraft.block.BlockLiquid;
-import net.minecraft.block.material.Material;
-import net.minecraft.command.ICommandSender;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.init.Blocks;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.nbt.NBTTagList;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.world.World;
-import net.minecraft.world.WorldType;
-import net.minecraft.world.biome.BiomeGenBase;
-import net.minecraft.world.chunk.IChunkProvider;
-import net.minecraftforge.common.BiomeDictionary;
-import net.minecraftforge.common.BiomeDictionary.Type;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.common.util.ForgeDirection;
-import net.minecraftforge.event.world.WorldEvent;
-import net.minecraftforge.fluids.BlockFluidBase;
+import io.netty.buffer.ByteBuf;
+
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.UUIDUtil;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.world.level.dimension.DimensionType;
+import net.neoforged.neoforge.event.level.ChunkEvent;
 
 import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.api.event.PylonGenerationEvent;
-import reika.chromaticraft.magic.ElementTagCompound;
-import reika.chromaticraft.magic.aura.BaseAura;
+import reika.chromaticraft.magic.network.CrystalNetworker;
 import reika.chromaticraft.magic.network.PylonLinkNetwork;
-import reika.chromaticraft.modinterface.MystPages;
-import reika.chromaticraft.registry.ChromaBlocks;
+import reika.chromaticraft.network.ChromaNetwork;
 import reika.chromaticraft.registry.ChromaOptions;
-import reika.chromaticraft.registry.ChromaPackets;
-import reika.chromaticraft.registry.ChromaStructures;
-import reika.chromaticraft.registry.ChromaTiles;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.tileentity.auxiliary.TileEntityChromaCrystal;
 import reika.chromaticraft.tileentity.networking.TileEntityCrystalPylon;
-import reika.dragonapi.ModList;
-import reika.dragonapi.instantiable.data.ShuffledGrid;
-import reika.dragonapi.instantiable.data.blockstruct.FilledBlockArray;
-import reika.dragonapi.instantiable.data.blockstruct.StructuredBlockArray;
-import reika.dragonapi.instantiable.data.immutable.Coordinate;
 import reika.dragonapi.instantiable.data.immutable.WorldLocation;
-import reika.dragonapi.instantiable.event.client.ClientLogoutEvent;
-import reika.dragonapi.instantiable.event.client.SinglePlayerLogoutEvent;
-import reika.dragonapi.interfaces.RetroactiveGenerator;
-import reika.dragonapi.libraries.reikanbthelper.NBTTypes;
-import reika.dragonapi.libraries.io.ReikaPacketHelper;
-import reika.dragonapi.libraries.java.ReikaJavaLibrary;
-import reika.dragonapi.libraries.java.ReikaRandomHelper;
-import reika.dragonapi.libraries.world.ReikaBlockHelper;
-import reika.dragonapi.libraries.world.ReikaWorldHelper;
-import reika.dragonapi.modinteract.deepinteract.ReikaMystcraftHelper;
-import reika.dragonapi.modinteract.itemhandlers.ExtraUtilsHandler;
-import reika.dragonapi.modinteract.itemhandlers.TwilightForestHandler;
-import reika.dragonapi.modregistry.ModWoodList;
 
-import cpw.mods.fml.common.FMLCommonHandler;
-import cpw.mods.fml.common.eventhandler.SubscribeEvent;
-import cpw.mods.fml.common.network.FMLNetworkEvent.ClientDisconnectionFromServerEvent;
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
-
-public final class PylonGenerator implements RetroactiveGenerator {
+/**
+ * V33a {@code PylonGenerator}'s pylon location cache: every crystal pylon's colour, place, power crystals, turbocharge,
+ * player link and structure state, kept on the server (saved through {@code CrystalNetworker.PylonLocationData}) and
+ * mirrored to each client for the Pylon Compass and the full-screen pylon overlay.
+ *
+ * <p>V33a's class was also the pylon worldgen itself (a {@code RetroactiveGenerator} with its own shuffled chunk grid).
+ * That half lives in the port's placed feature, {@code PylonFeature} with {@code PylonGridPlacement}; this class keeps
+ * {@link #canGenerateIn}, the dimension rule the overlays gate on.
+ *
+ * <p>V33a shared one map between the logical client and server (they ran in one JVM in single player) and stamped each
+ * synced entry with the client's current dimension. Here the two sides keep separate maps and every entry carries its
+ * own dimension. V33a pruned stale entries (pylon gone or recoloured) by loading each pylon's chunk when the cache was
+ * read at world load; a 26.2 saved-data load cannot touch chunks, so each entry is checked when its chunk next loads.
+ */
+public final class PylonGenerator implements CrystalNetworker.PylonLocationDataHandler {
 
 	public static final PylonGenerator instance = new PylonGenerator();
 
-	private final ForgeDirection[] dirs = ForgeDirection.values();
-
-	private final Random rand = new Random();
-	private final int GRIDSIZE = 256;
-	private final HashMap<Integer, ShuffledGrid> chunkFilter = new HashMap();
-
 	public static final String NBT_TAG = "pylonloc";
+
 	private final EnumMap<CrystalElement, Collection<PylonEntry>> colorCache = new EnumMap(CrystalElement.class);
+	private final EnumMap<CrystalElement, Collection<PylonEntry>> clientCache = new EnumMap(CrystalElement.class);
 
 	private PylonGenerator() {
-		MinecraftForge.EVENT_BUS.register(this);
-		FMLCommonHandler.instance().bus().register(this);
+
 	}
 
-	public void savePylonLocations(NBTTagCompound NBT) {
-		NBTTagList li = NBT.getTagList(NBT_TAG, NBTTypes.COMPOUND.ID);
+	/** Hooks the cache into the network's saved data; call once during setup. */
+	public static void register() {
+		CrystalNetworker.registerPylonLocationDataHandler(instance);
+	}
+
+	private EnumMap<CrystalElement, Collection<PylonEntry>> cache(boolean client) {
+		return client ? clientCache : colorCache;
+	}
+
+	@Override
+	public void savePylonLocations(CompoundTag NBT) {
+		ListTag li = new ListTag();
 		for (CrystalElement e : colorCache.keySet()) {
 			Collection<PylonEntry> c = colorCache.get(e);
 			for (PylonEntry loc : c) {
-				NBTTagCompound tag = new NBTTagCompound();
-				loc.location.writeToNBT("pos", tag);
-				tag.setInteger("color", e.ordinal());
-				tag.setBoolean("turbo", loc.isTurboCharged);
-				tag.setBoolean("struct", loc.hasStructure);
+				CompoundTag tag = new CompoundTag();
+				loc.location.saveAdditional("pos", tag);
+				tag.putInt("color", e.ordinal());
+				tag.putBoolean("turbo", loc.isTurboCharged);
+				tag.putBoolean("struct", loc.hasStructure);
 				if (loc.playerLink != null) {
-					tag.setString("link", loc.playerLink.toString());
+					tag.putString("link", loc.playerLink.toString());
 				}
-				NBTTagList li2 = new NBTTagList();
-				for (Coordinate c2 : loc.powerCrystals) {
-					li2.appendTag(c2.writeToTag());
+				ListTag li2 = new ListTag();
+				for (BlockPos c2 : loc.powerCrystals) {
+					CompoundTag ct = new CompoundTag();
+					ct.putInt("x", c2.getX());
+					ct.putInt("y", c2.getY());
+					ct.putInt("z", c2.getZ());
+					li2.add(ct);
 				}
-				tag.setTag("crystals", li2);
-				li.appendTag(tag);
+				tag.put("crystals", li2);
+				li.add(tag);
 			}
 		}
-		NBT.setTag(NBT_TAG, li);
-		//ChromatiCraft.logger.log("["+FMLCommonHandler.instance().getEffectiveSide()+"] Saved pylons to "+li+": "+colorCache);
+		NBT.put(NBT_TAG, li);
 	}
 
-	public void loadPylonLocations(NBTTagCompound NBT) {
-		NBTTagList li = NBT.getTagList(NBT_TAG, NBTTypes.COMPOUND.ID);
-		Iterator<NBTTagCompound> it = li.tagList.iterator();
-		while (it.hasNext()) {
-			NBTTagCompound tag = it.next();
-			WorldLocation loc = WorldLocation.readFromNBT("pos", tag);
-			CrystalElement e = CrystalElement.elements[tag.getInteger("color")];
-			boolean turbo = tag.getBoolean("turbo");
-			String uids = tag.hasKey("link") ? tag.getString("link") : null;
-			UUID uid = uids != null ? UUID.fromString(uids) : null;
-			boolean struct = tag.getBoolean("struct");
-			NBTTagList crystals = tag.getTagList("crystals", NBTTypes.COMPOUND.ID);
-			ArrayList<Coordinate> li2 = new ArrayList();
-			for (Object o : crystals.tagList) {
-				NBTTagCompound tag2 = (NBTTagCompound)o;
-				Coordinate c = Coordinate.readTag(tag2);
-				li2.add(c);
+	@Override
+	public void loadPylonLocations(CompoundTag NBT) {
+		ListTag li = NBT.getListOrEmpty(NBT_TAG);
+		for (Tag t : li) {
+			if (!(t instanceof CompoundTag tag))
+				continue;
+			WorldLocation loc = WorldLocation.load("pos", tag);
+			if (loc == null)
+				continue;
+			CrystalElement e = CrystalElement.elements[tag.getIntOr("color", 0)];
+			boolean turbo = tag.getBooleanOr("turbo", false);
+			String uids = tag.getStringOr("link", "");
+			UUID uid = uids.isEmpty() ? null : UUID.fromString(uids);
+			boolean struct = tag.getBooleanOr("struct", false);
+			ArrayList<BlockPos> li2 = new ArrayList();
+			for (Tag t2 : tag.getListOrEmpty("crystals")) {
+				if (t2 instanceof CompoundTag c)
+					li2.add(new BlockPos(c.getIntOr("x", 0), c.getIntOr("y", 0), c.getIntOr("z", 0)));
 			}
-			if (this.validateCachedLocation(loc, e)) {
-				this.addLocation(loc, e, li2, turbo, uid, struct);
-			}
-			else {
-				it.remove();
-			}
+			this.addLocation(colorCache, new PylonEntry(e, loc, li2, turbo, uid, struct));
 		}
-		NBT.setTag(NBT_TAG, li);
-		//ChromatiCraft.logger.log("["+FMLCommonHandler.instance().getEffectiveSide()+"] Loaded pylons from "+li+": "+colorCache);
 	}
 
-	private boolean validateCachedLocation(WorldLocation loc, CrystalElement e) {
-		TileEntity te = loc.getTileEntity();
-		return te instanceof TileEntityCrystalPylon && ((TileEntityCrystalPylon)te).getColor() == e;
-	}
-
-	public void sendDimensionCacheToPlayer(EntityPlayerMP ep, int dim) {
-		//ReikaJavaLibrary.pConsole("["+FMLCommonHandler.instance().getEffectiveSide()+"] Sending cache in DIM"+dim+" to "+ep+": "+colorCache);
+	/** V33a {@code validateCachedLocation}, run as a pylon's chunk loads: a pylon of the cached colour must still be there. */
+	public void validateLoadedChunk(ChunkEvent.Load evt) {
+		if (!(evt.getLevel() instanceof ServerLevel world) || !(evt.getChunk() instanceof LevelChunk chunk))
+			return;
+		boolean changed = false;
 		for (CrystalElement e : colorCache.keySet()) {
-			Collection<PylonEntry> c = colorCache.get(e);
-			for (PylonEntry loc : c) {
-				if (loc.location.dimensionID == dim) {
-					ArrayList<Integer> li = ReikaJavaLibrary.makeIntListFromArray(loc.location.xCoord, loc.location.yCoord, loc.location.zCoord, e.ordinal());
-					li.add(loc.isTurboCharged ? 1 : 0);
-					li.add(loc.hasStructure ? 1 : 0);
-					if (loc.playerLink != null) {
-						long l1 = loc.playerLink.getLeastSignificantBits();
-						long l2 = loc.playerLink.getMostSignificantBits();
-						int[] a1 = ReikaJavaLibrary.splitLong(l1);
-						int[] a2 = ReikaJavaLibrary.splitLong(l2);
-						li.add(a1[0]);
-						li.add(a1[1]);
-						li.add(a2[0]);
-						li.add(a2[1]);
-					}
-					else {
-						li.add(-1);
-						li.add(-1);
-						li.add(-1);
-						li.add(-1);
-					}
-					for (Coordinate c2 : loc.powerCrystals) {
-						li.add(c2.xCoord);
-						li.add(c2.yCoord);
-						li.add(c2.zCoord);
-					}
-					li.add(0, li.size());
-					ReikaPacketHelper.sendDataPacket(ChromatiCraft.packetChannel, ChromaPackets.PYLONCACHE.ordinal(), ep, li);
-				}
-			}
-		}
-	}
-
-	@SubscribeEvent
-	public void clearOnUnload(WorldEvent.Unload evt) {
-		if (evt.world.isRemote) {
-			//this.clear(evt.world);
-		}
-		else {
-			this.clear(evt.world);
-			//ReikaPacketHelper.sendDataPacketToEntireServer(ChromatiCraft.packetChannel, ChromaPackets.PYLONCLEAR.ordinal(), evt.world.provider.dimensionId);
-		}
-	}
-
-	@SubscribeEvent
-	public void clearOnLogout(ClientDisconnectionFromServerEvent evt) {
-		ChromatiCraft.logger.debug("["+FMLCommonHandler.instance().getEffectiveSide()+"] Logout clear");
-		colorCache.clear();
-	}
-
-	@SubscribeEvent
-	@SideOnly(Side.CLIENT)
-	public void clearOnLogout(ClientLogoutEvent evt) {
-		ChromatiCraft.logger.debug("["+FMLCommonHandler.instance().getEffectiveSide()+"] Logout clear");
-		colorCache.clear();
-	}
-
-	@SubscribeEvent
-	@SideOnly(Side.CLIENT)
-	public void clearOnLogout(SinglePlayerLogoutEvent evt) {
-		ChromatiCraft.logger.debug("["+FMLCommonHandler.instance().getEffectiveSide()+"] Logout clear");
-		colorCache.clear();
-	}
-
-	private void clear(World world) {
-		this.clearDimension(world.provider.dimensionId);
-	}
-
-	//@SideOnly(Side.CLIENT)
-	public void clearDimension(int dim) {
-		chunkFilter.remove(dim);
-
-		/*
-		for (CrystalElement e : colorCache.keySet()) {
-			Iterator<WorldLocation> it = colorCache.get(e).iterator();
+			Iterator<PylonEntry> it = colorCache.get(e).iterator();
 			while (it.hasNext()) {
-				WorldLocation loc = it.next();
-				if (loc.dimensionID == dim) {
+				PylonEntry loc = it.next();
+				if (!loc.location.getDimension().equals(world.dimension()))
+					continue;
+				BlockPos pos = loc.location.pos;
+				if ((pos.getX() >> 4) != chunk.getPos().x() || (pos.getZ() >> 4) != chunk.getPos().z())
+					continue;
+				BlockEntity te = chunk.getBlockEntity(pos);
+				if (!(te instanceof TileEntityCrystalPylon pylon) || pylon.getColor() != e) {
 					it.remove();
-					//ReikaJavaLibrary.pConsole("["+FMLCommonHandler.instance().getEffectiveSide()+"] #"+System.identityHashCode(colorCache)+"/"+System.identityHashCode(this)+" Removed "+loc+"="+e+" from DIM"+dim);
+					changed = true;
 				}
 			}
 		}
-		 */
+		if (changed)
+			CrystalNetworker.markPylonLocationsDirty(world);
 	}
 
-	private ShuffledGrid getGrid(World world) {
-		int dim = world.provider.dimensionId;
-		ShuffledGrid arr = chunkFilter.get(dim);
-		if (arr == null) {
-			arr = new ShuffledGrid(GRIDSIZE, 4, 10);
-			this.populateWorldData(world, arr);
-			chunkFilter.put(dim, arr);
+	/** V33a {@code PylonCacheLoader}: on login and on changing dimension, the player gets that dimension's pylons. */
+	public void sendDimensionCacheToPlayer(ServerPlayer ep, ResourceKey<Level> dim) {
+		List<PylonEntry> li = new ArrayList();
+		for (CrystalElement e : colorCache.keySet()) {
+			for (PylonEntry loc : colorCache.get(e)) {
+				if (loc.location.getDimension().equals(dim))
+					li.add(loc);
+			}
 		}
-		return arr;
+		if (!li.isEmpty())
+			ChromaNetwork.sendPylonCache(ep, li);
 	}
 
-	private void populateWorldData(World world, ShuffledGrid grid) {
-		int id = world.provider.dimensionId;
-		rand.setSeed(world.getSeed() ^ id);
-		grid.calculate(rand);
+	/** V33a cleared the client cache on every kind of logout; the server's map goes with the server. */
+	public void clearClientCache() {
+		clientCache.clear();
 	}
 
-	public PylonEntry getNearestPylonSpawn(World world, double x, double y, double z, CrystalElement e) {
-		Collection<PylonEntry> c = colorCache.get(e);
+	public void clearServerCache() {
+		colorCache.clear();
+	}
+
+	/** The nearest known pylon of that colour in the level's dimension, from whichever side's cache {@code world} belongs to. */
+	public PylonEntry getNearestPylonSpawn(Level world, double x, double y, double z, CrystalElement e) {
+		Collection<PylonEntry> c = this.cache(world.isClientSide()).get(e);
 		if (c == null)
 			return null;
 		double dist = Double.POSITIVE_INFINITY;
 		PylonEntry close = null;
 		for (PylonEntry loc : c) {
-			if (loc.location.dimensionID == world.provider.dimensionId) {
+			if (loc.location.getDimension().equals(world.dimension())) {
 				double d = loc.location.getDistanceTo(x, y, z);
 				if (d < dist) {
 					dist = d;
@@ -284,282 +204,32 @@ public final class PylonGenerator implements RetroactiveGenerator {
 		return close;
 	}
 
-	public boolean isGennableChunk(World world, int chunkX, int chunkZ) {
-		return this.getGrid(world).isValid(chunkX, chunkZ);
-	}
-
-	@Override
-	public void generate(Random r, int chunkX, int chunkZ, World world, IChunkProvider gen, IChunkProvider p) {
-		if (this.canGenerateIn(world)) {
-			if (this.isGennableChunk(world, chunkX, chunkZ)) {
-				this.tryForceGenerate(world, chunkX*16, chunkZ*16, r);
-			}
-		}
-	}
-
-	private void tryForceGenerate(World world, int cx, int cz, Random r) {
-		int maxtries = 24;
-		for (int i = 0; i < maxtries; i++) {
-			int x = cx+r.nextInt(16);
-			int z = cz+r.nextInt(16);
-
-			//world.setBlock(x, 128, z, Blocks.flowing_lava);
-			int y = world.getTopSolidOrLiquidBlock(x, z)-1;
-			if (this.canGenerateAt(world, x, y, z)) {
-				ChromatiCraft.logger.debug("Generated pylon at "+x+", "+z);
-				this.generatePylon(r, world, x, y, z);
-				break;
-			}
-		}
-	}
-
-	public boolean canGenerateIn(World world) {
-		if (world.provider.dimensionId == 0)
+	/**
+	 * V33a {@code canGenerateIn}: the overworld always; never the Nether, the End, or any skyless or ceilinged
+	 * dimension; a superflat world only with the flat-worldgen option; any other dimension only with the
+	 * non-overworld option.
+	 *
+	 * <p>CHROMA-PORT: V33a also excluded the Extra Utilities Deep Dark, the Twilight Forest, the Miner's World and
+	 * Witchery's dimensions, and in a Mystcraft age required its pylon page. None of those mods has a 26.2 port.
+	 */
+	public boolean canGenerateIn(Level world) {
+		if (world.dimension() == Level.OVERWORLD)
 			return true;
-		if (Math.abs(world.provider.dimensionId) == 1)
+		if (world.dimension() == Level.NETHER || world.dimension() == Level.END)
 			return false;
-		if (world.provider.isHellWorld || world.provider.hasNoSky)
+		DimensionType type = world.dimensionType();
+		if (type.hasCeiling() || !type.hasSkyLight())
 			return false;
-		if (world.provider.dimensionId == ExtraUtilsHandler.getInstance().darkID)
-			return false;
-		if (world.provider.dimensionId == TwilightForestHandler.getInstance().dimensionID)
-			return false;
-		if (world.provider.getClass().getName().endsWith("WorldProviderMiner"))
-			return false;
-		if (world.provider.getClass().getName().startsWith("com.emoniph.witchery"))
-			return false;
-		if (ModList.MYSTCRAFT.isLoaded() && ReikaMystcraftHelper.isMystAge(world)) {
-			return MystPages.Pages.PYLONS.existsInWorld(world);
-		}
-		if (world.getWorldInfo().getTerrainType() == WorldType.FLAT && !ChromaOptions.FLATGEN.getState())
+		if (isFlat(world) && !ChromaOptions.FLATGEN.getState())
 			return false;
 		return ChromaOptions.NONWORLDGEN.getState();
 	}
 
-	private boolean canGenerateAt(World world, int x, int y, int z) {
-		BiomeGenBase biome = world.getBiomeGenForCoords(x, z);
-		if (BiomeDictionary.isBiomeOfType(biome, Type.NETHER))
-			return false;
-
-		if (world.getBlock(x, 0, z) == Blocks.air || world.canBlockSeeTheSky(x, 1, z)) //sky/void world
-			return false;
-
-		if (ReikaBlockHelper.isWood(world, x, y, z) || ReikaBlockHelper.isLeaf(world, x, y, z))
-			return false;
-
-		/*
-		for (int i = y+1; i < world.getHeight(); i++) {
-			Block b = world.getBlock(x, i, z);
-			if (b != Blocks.air && b != Blocks.leaves && b != Blocks.leaves2 && !ReikaWorldHelper.softBlocks(world, x, i, z))
-				;//return false;
-		}
-		 */
-
-		StructuredBlockArray blocks = new StructuredBlockArray(world);
-
-		for (int n = 0; n <= 9; n++) {
-			int dy = y+n;
-			for (int i = 2; i < 6; i++) {
-				ForgeDirection dir = dirs[i];
-				for (int k = 0; k <= 3; k++) {
-					int dx = x+dir.offsetX*k;
-					int dz = z+dir.offsetZ*k;
-					blocks.addBlockCoordinate(dx, dy, dz);
-					if (dir.offsetX == 0) {
-						blocks.addBlockCoordinate(dx+dir.offsetZ, dy, dz);
-						blocks.addBlockCoordinate(dx-dir.offsetZ, dy, dz);
-					}
-					else if (dir.offsetZ == 0) {
-						blocks.addBlockCoordinate(dx, dy, dz+dir.offsetX);
-						blocks.addBlockCoordinate(dx, dy, dz-dir.offsetX);
-					}
-				}
-			}
-		}
-
-		//precalc:
-		for (int i = 0; i < blocks.getSize(); i++) {
-			Coordinate c = blocks.getNthBlock(i);
-			int dx = c.xCoord;
-			int dy = c.yCoord;
-			int dz = c.zCoord;
-			Block b = world.getBlock(dx, dy, dz);
-			//if (b == Blocks.stone || b == Blocks.dirt || b == Blocks.grass) {
-			//	blocks.offset(0, 1, 0);
-			//	break precalc;
-			//}
-			if (b instanceof BlockLiquid || b instanceof BlockFluidBase)
-				return false;
-			if (!ReikaWorldHelper.softBlocks(world, dx, dy, dz)) {
-				int meta = world.getBlockMetadata(dx, dy, dz);
-
-				if (dy == blocks.getMinY()) {
-					if (!this.isFloorReplaceable(b, meta))
-						return false;
-				}
-				else {
-					if (!this.isAirReplaceable(b, meta))
-						return false;
-				}
-			}
-		}
-
-		return true;
-	}
-
-	private boolean isFloorReplaceable(Block b, int meta) {
-		if (b == Blocks.stone)
-			return true;
-		if (b == Blocks.dirt)
-			return true;
-		if (b == Blocks.grass)
-			return true;
-		if (b == Blocks.gravel)
-			return true;
-		if (b == Blocks.sand)
-			return true;
-		if (b == Blocks.hardened_clay)
-			return true;
-		if (b.getMaterial() == Material.ground)
-			return true;
-		if (b == Blocks.log || b == Blocks.log2 || ModWoodList.isModWood(b, meta))
-			return true;
-		if (b == Blocks.leaves || b == Blocks.leaves2 || ModWoodList.isModLeaf(b, meta))
-			return true;
-		if (b == Blocks.red_flower || b == Blocks.yellow_flower || b instanceof BlockFlower)
-			return true;
-		if (b == Blocks.red_mushroom || b == Blocks.brown_mushroom)
-			return true;
-		if (b instanceof BlockBush)
-			return true;
-		if (b == Blocks.reeds)
-			return true;
-		if (b == Blocks.cactus)
-			return true;
-		return false;
-	}
-
-	private boolean isAirReplaceable(Block b, int meta) {
-		if (b == Blocks.dirt)
-			return true;
-		if (b == Blocks.grass)
-			return true;
-		if (b == Blocks.gravel)
-			return true;
-		if (b == Blocks.log || b == Blocks.log2 || ModWoodList.isModWood(b, meta))
-			return true;
-		if (b == Blocks.leaves || b == Blocks.leaves2 || ModWoodList.isModLeaf(b, meta))
-			return true;
-		if (b == Blocks.red_flower || b == Blocks.yellow_flower || b instanceof BlockFlower)
-			return true;
-		if (b == Blocks.red_mushroom || b == Blocks.brown_mushroom)
-			return true;
-		if (b instanceof BlockBush)
-			return true;
-		if (b == Blocks.reeds)
-			return true;
-		if (b == Blocks.cactus)
-			return true;
-		return false;
-	}
-
-	private void generatePylon(Random rand, World world, int x, int y, int z) {
-		Block b = ChromaBlocks.PYLONSTRUCT.getBlockInstance();
-		ElementTagCompound tag = BaseAura.getBaseAura(world, x, y, z);
-		if (rand.nextInt(25) > 0)
-			tag.clipToPrimaries();
-		CrystalElement e = CrystalElement.randomElement();//tag.asWeightedRandom().getRandomEntry();
-		FilledBlockArray array = ChromaStructures.PYLON.getArray(world, x, y+9, z, e);
-
-		boolean broken = ChromaOptions.BROKENPYLON.getState() && rand.nextInt(2) == 0;
-		if (broken)
-			this.breakPylon(array);
-
-		Coordinate offset = this.getTreeDodgeAttempt(array, world, x, y, z, 8, 16);
-		array.offset(offset.xCoord, offset.yCoord, offset.zCoord);
-
-		y -= array.sink(world, Material.wood, Material.leaves);
-
-		if (array.getMaxY() >= 255)
-			return;
-
-		for (int n = -4; n < 0; n++) {
-			int dy = y+n;
-			for (int i = 2; i < 6; i++) {
-				ForgeDirection dir = dirs[i];
-				for (int k = 0; k <= 3; k++) {
-					int dx = x+dir.offsetX*k;
-					int dz = z+dir.offsetZ*k;
-					if (ReikaWorldHelper.softBlocks(world, dx, dy, dz))
-						array.setBlock(dx, dy, dz, b, 0);
-					if (dir.offsetX == 0) {
-						if (ReikaWorldHelper.softBlocks(world, dx+dir.offsetZ, dy, dz))
-							array.setBlock(dx+dir.offsetZ, dy, dz, b, 0);
-						if (ReikaWorldHelper.softBlocks(world, dx-dir.offsetZ, dy, dz))
-							array.setBlock(dx-dir.offsetZ, dy, dz, b, 0);
-					}
-					else if (dir.offsetZ == 0) {
-						if (ReikaWorldHelper.softBlocks(world, dx, dy, dz+dir.offsetX))
-							array.setBlock(dx, dy, dz+dir.offsetX, b, 0);
-						if (ReikaWorldHelper.softBlocks(world, dx, dy, dz-dir.offsetX))
-							array.setBlock(dx, dy, dz-dir.offsetX, b, 0);
-					}
-				}
-			}
-		}
-
-		array.place();
-
-		//TileEntity
-		world.setBlock(x, y+9, z, ChromaTiles.PYLON.getBlock(), ChromaTiles.PYLON.getBlockMetadata(), 3);
-		TileEntityCrystalPylon te = (TileEntityCrystalPylon)world.getTileEntity(x, y+9, z);
-		te.generateColor(e);
-		if (broken)
-			te.invalidateMultiblock();
-		else
-			te.validateMultiblock(array);
-		world.func_147451_t(x, y+9, z);
-		this.cachePylon(te);
-		MinecraftForge.EVENT_BUS.post(new PylonGenerationEvent(world, x, y+9, z, rand, broken, e));
-	}
-
-	private Coordinate getTreeDodgeAttempt(FilledBlockArray array, World world, int x0, int y0, int z0, int tries, int range) {
-		if (!this.isTreePylon(array, world, x0, y0, z0))
-			return new Coordinate(0, 0, 0);
-
-		for (int i = 0; i < tries; i++) {
-			int x = ReikaRandomHelper.getRandomPlusMinus(x0, range);
-			int z = ReikaRandomHelper.getRandomPlusMinus(z0, range);
-			int y = world.getTopSolidOrLiquidBlock(x, z)-1;
-			if (!this.isTreePylon(array, world, x, y, z)) {
-				Coordinate c = new Coordinate(x-x0, y-y0, z-z0);
-				ChromatiCraft.logger.debug("Moved pylon @ "+x0+","+z0+" to avoid in-tree generation: delta="+c);
-				return c;
-			}
-			else if (ChromatiCraft.logger.shouldDebug()) {
-				Coordinate c = new Coordinate(x-x0, y-y0, z-z0);
-				ChromatiCraft.logger.debug("Pylon @ "+x0+","+z0+" tree avoidance attempt "+i+": delta "+c+" failed. Floor block = "+world.getBlock(array.getMidX(), array.getMinY(), array.getMidZ()));
-			}
-		}
-		ChromatiCraft.logger.debug("Tried moving pylon @ "+x0+","+z0+" to avoid in-tree generation, but failed to find better spawn after "+tries+" attempts.");
-		return new Coordinate(0, 0, 0);
-	}
-
-	private boolean isTreePylon(FilledBlockArray array, World world, int x, int y, int z) {
-		int midx = array.getMidX();
-		int miny = array.getMinY();
-		int midz = array.getMidZ();
-		if (ChromatiCraft.logger.shouldDebug()) {
-			ChromatiCraft.logger.debug("Testing prospective pylon location "+x+", "+y+", "+z);
-		}
-		if (ReikaBlockHelper.isWood(world, midx, miny, midz) || ReikaBlockHelper.isLeaf(world, midx, miny, midz))
-			return true;
-		if (ReikaBlockHelper.isWood(world, midx, miny-1, midz) || ReikaBlockHelper.isLeaf(world, midx, miny-1, midz))
-			return true;
-		if (ChromatiCraft.logger.shouldDebug()) {
-			ChromatiCraft.logger.debug("Pylon location passed tree test.");
-		}
-		return false;
+	private static boolean isFlat(Level world) {
+		if (world instanceof ServerLevel sl)
+			return sl.isFlat();
+		// The client's level data keeps the superflat flag privately; its horizon is the world floor only when flat.
+		return world.getLevelData() instanceof ClientLevel.ClientLevelData data && data.getHorizonHeight(world) != 63.0;
 	}
 
 	public void removeCachedPylon(TileEntityCrystalPylon te) {
@@ -568,118 +238,90 @@ public final class PylonGenerator implements RetroactiveGenerator {
 		if (c != null) {
 			c.remove(loc);
 		}
+		if (te.getLevel() instanceof ServerLevel sl)
+			CrystalNetworker.markPylonLocationsDirty(sl);
 	}
 
+	/** Records (or refreshes) a pylon and tells every player; server side only, as in V33a the client learns by packet. */
 	public void cachePylon(TileEntityCrystalPylon te) {
-		this.addToCache(new PylonEntry(te));
+		if (!(te.getLevel() instanceof ServerLevel sl))
+			return;
+		PylonEntry e = new PylonEntry(te);
+		this.addLocation(colorCache, e);
+		CrystalNetworker.markPylonLocationsDirty(sl);
+		ChromaNetwork.sendPylonCacheToAll(sl.getServer(), List.of(e));
 	}
 
-	private void addToCache(PylonEntry e) {
-		this.addLocation(e);
-		List<Integer> li = ReikaJavaLibrary.makeIntListFromArray(e.location.xCoord, e.location.yCoord, e.location.zCoord, e.color.ordinal());
-		li.add(e.isTurboCharged ? 1 : 0);
-		li.add(e.hasStructure ? 1 : 0);
-		if (e.playerLink != null) {
-			long l1 = e.playerLink.getLeastSignificantBits();
-			long l2 = e.playerLink.getMostSignificantBits();
-			int[] a1 = ReikaJavaLibrary.splitLong(l1);
-			int[] a2 = ReikaJavaLibrary.splitLong(l2);
-			li.add(a1[0]);
-			li.add(a1[1]);
-			li.add(a2[0]);
-			li.add(a2[1]);
-		}
-		else {
-			li.add(-1);
-			li.add(-1);
-			li.add(-1);
-			li.add(-1);
-		}
-		for (Coordinate c : e.powerCrystals) {
-			li.add(c.xCoord);
-			li.add(c.yCoord);
-			li.add(c.zCoord);
-		}
-		li.add(0, li.size());
-		ReikaPacketHelper.sendDataPacketToEntireServer(ChromatiCraft.packetChannel, ChromaPackets.PYLONCACHE.ordinal(), li);
+	/** The client side of V33a's PYLONCACHE packet. */
+	public void cachePylonLocations(List<PylonEntry> entries) {
+		for (PylonEntry e : entries)
+			this.addLocation(clientCache, e);
 	}
 
-	@SideOnly(Side.CLIENT)
-	public void cachePylonLocation(World world, int x, int y, int z, CrystalElement e, ArrayList<Coordinate> li, boolean turbo, UUID link, boolean struct) {
-		//ReikaJavaLibrary.pConsole("Receive for cache in DIM"+world.provider.dimensionId+": "+x+","+y+","+z+"="+e);
-		this.addLocation(new WorldLocation(world, x, y, z), e, li, turbo, link, struct);
-	}
-
-	private void addLocation(WorldLocation loc, CrystalElement e, ArrayList<Coordinate> li, boolean turbo, UUID link, boolean struct) {
-		this.addLocation(new PylonEntry(e, loc, li, turbo, link, struct));
-	}
-
-	private void addLocation(PylonEntry pe) {
-		//ReikaJavaLibrary.pConsole("["+FMLCommonHandler.instance().getEffectiveSide()+"] Add to cache: "+loc+"="+e);
-		Collection<PylonEntry> c = colorCache.get(pe.color);
+	private void addLocation(EnumMap<CrystalElement, Collection<PylonEntry>> map, PylonEntry pe) {
+		Collection<PylonEntry> c = map.get(pe.color);
 		if (c == null) {
 			c = new HashSet();
-			colorCache.put(pe.color, c);
+			map.put(pe.color, c);
 		}
 		c.remove(pe);
 		c.add(pe);
 	}
 
-	private void breakPylon(FilledBlockArray array) {
-		int n = 3+rand.nextInt(4);
-		int i = 0;
-		Block b = ChromaBlocks.PYLONSTRUCT.getBlockInstance();
-		while (i < n) {
-			Coordinate c = array.getRandomBlock();
-			int x = c.xCoord;
-			int y = c.yCoord;
-			int z = c.zCoord;
-			if (array.hasBlockAt(x, y, z, b, 0) || array.hasBlockAt(x, y, z, b, 1) || array.hasBlockAt(x, y, z, b, 2) || array.hasBlockAt(x, y, z, b, 7) || array.hasBlockAt(x, y, z, b, 8)) {
-				i++;
-				array.setBlock(x, y, z, Blocks.air);
-			}
-		}
-	}
-
-	@Override
-	public boolean canGenerateAt(World world, int chunkX, int chunkZ) {
-		return true;
-	}
-
-	@Override
-	public String getIDString() {
-		return "ChromatiCraft Pylons";
-	}
-
-	public void printPylonCache(ICommandSender ics) {
-		ReikaJavaLibrary.pConsole("["+FMLCommonHandler.instance().getEffectiveSide()+"] Cache Debug: "+System.identityHashCode(colorCache)+"/"+System.identityHashCode(this)+"#"+colorCache);
+	public String printPylonCache() {
+		return "Cache Debug: server "+colorCache+" / client "+clientCache;
 	}
 
 	public static class PylonEntry {
 
+		public static final StreamCodec<ByteBuf, PylonEntry> STREAM_CODEC = StreamCodec.of(PylonEntry::write, PylonEntry::read);
+
 		public final CrystalElement color;
 		public final WorldLocation location;
-		private final ArrayList<Coordinate> powerCrystals = new ArrayList();
+		private final ArrayList<BlockPos> powerCrystals = new ArrayList();
 		public final boolean isTurboCharged;
 		public final UUID playerLink;
 		public final boolean hasStructure;
 
 		private PylonEntry(TileEntityCrystalPylon te) {
-			this(te.getColor(), new WorldLocation(te), te.getBoosterCrystals(te.worldObj, te.xCoord, te.yCoord, te.zCoord, false), te.isEnhanced(), te.getLinkTileUUID(), te.hasStructure());
+			this(te.getColor(), new WorldLocation(te), crystals(te), te.isEnhanced(), te.getLinkTileUUID(), te.hasStructure());
 		}
 
-		public PylonEntry(CrystalElement e, WorldLocation loc, ArrayList li, boolean turbo, UUID link, boolean struct) {
+		public PylonEntry(CrystalElement e, WorldLocation loc, List<BlockPos> li, boolean turbo, UUID link, boolean struct) {
 			color = e;
 			location = loc;
-			for (Object o : li) {
-				if (o instanceof Coordinate)
-					powerCrystals.add((Coordinate)o);
-				else if (o instanceof TileEntityChromaCrystal)
-					powerCrystals.add(new Coordinate((TileEntity)o));
-			}
+			powerCrystals.addAll(li);
 			isTurboCharged = turbo;
 			playerLink = link;
 			hasStructure = struct;
+		}
+
+		private static List<BlockPos> crystals(TileEntityCrystalPylon te) {
+			List<BlockPos> li = new ArrayList();
+			for (TileEntityChromaCrystal c : te.getBoosterCrystals(false))
+				li.add(c.getBlockPos());
+			return li;
+		}
+
+		private static void write(ByteBuf buf, PylonEntry e) {
+			ResourceKey.streamCodec(Registries.DIMENSION).encode(buf, e.location.getDimension());
+			BlockPos.STREAM_CODEC.encode(buf, e.location.pos);
+			ByteBufCodecs.VAR_INT.encode(buf, e.color.ordinal());
+			ByteBufCodecs.BOOL.encode(buf, e.isTurboCharged);
+			ByteBufCodecs.BOOL.encode(buf, e.hasStructure);
+			ByteBufCodecs.optional(UUIDUtil.STREAM_CODEC).encode(buf, Optional.ofNullable(e.playerLink));
+			BlockPos.STREAM_CODEC.apply(ByteBufCodecs.list()).encode(buf, e.powerCrystals);
+		}
+
+		private static PylonEntry read(ByteBuf buf) {
+			ResourceKey<Level> dim = ResourceKey.streamCodec(Registries.DIMENSION).decode(buf);
+			BlockPos pos = BlockPos.STREAM_CODEC.decode(buf);
+			CrystalElement color = CrystalElement.elements[ByteBufCodecs.VAR_INT.decode(buf)];
+			boolean turbo = ByteBufCodecs.BOOL.decode(buf);
+			boolean struct = ByteBufCodecs.BOOL.decode(buf);
+			UUID link = ByteBufCodecs.optional(UUIDUtil.STREAM_CODEC).decode(buf).orElse(null);
+			List<BlockPos> crystals = BlockPos.STREAM_CODEC.apply(ByteBufCodecs.list()).decode(buf);
+			return new PylonEntry(color, new WorldLocation(dim, pos.getX(), pos.getY(), pos.getZ()), crystals, turbo, link, struct);
 		}
 
 		@Override
@@ -697,15 +339,15 @@ public final class PylonGenerator implements RetroactiveGenerator {
 			return color.name()+" @ "+location.toString()+" [CRY = "+powerCrystals.size()+"x/TRB = "+isTurboCharged+"/LNK = "+playerLink+"/STR = "+hasStructure+"]";
 		}
 
-		public Collection<Coordinate> getCrystals() {
+		public Collection<BlockPos> getCrystals() {
 			return Collections.unmodifiableCollection(powerCrystals);
 		}
 
 		/** Returns the number of pylons *other* than this one that are linked. */
-		public int getLinkedPylons() {
+		public int getLinkedPylons(Level world) {
 			if (playerLink == null)
 				return 0;
-			return PylonLinkNetwork.instance.getLinkedPylons(location.getWorld(), playerLink, color).size()-1;
+			return PylonLinkNetwork.instance.getLinkedPylons(world, playerLink, color).size()-1;
 		}
 
 	}

@@ -41,6 +41,8 @@ public final class ChromaNetwork {
 		registrar.playToClient(ArtefactFx.TYPE, ArtefactFx.CODEC, ChromaNetwork::handleArtefactFx);
 		registrar.playToClient(ArtefactZone.TYPE, ArtefactZone.CODEC, ChromaNetwork::handleArtefactZone);
 		registrar.playToClient(EnderEyeSync.TYPE, EnderEyeSync.CODEC, ChromaNetwork::handleEnderEyeSync);
+		registrar.playToClient(PylonCache.TYPE, PylonCache.CODEC, (payload, context) -> context.enqueueWork(() ->
+				ClientPayloadHandlers.pylonCache(payload.entries())));
 		registrar.playToClient(FarmerHarvest.TYPE, FarmerHarvest.CODEC,
 				(payload, context) -> context.enqueueWork(() ->
 						ClientPayloadHandlers.farmerHarvest(payload.source(), payload.target())));
@@ -207,6 +209,26 @@ public final class ChromaNetwork {
 				net.minecraft.network.codec.ByteBufCodecs.VAR_INT, EnderEyeSync::entityId,
 				net.minecraft.network.codec.ByteBufCodecs.VAR_INT, EnderEyeSync::ticks, EnderEyeSync::new);
 		@Override public Type<EnderEyeSync> type() { return TYPE; }
+	}
+
+	/** V33a PYLONCACHE: pylon cache entries for the client's copy. */
+	public record PylonCache(java.util.List<reika.chromaticraft.world.iwg.PylonGenerator.PylonEntry> entries)
+			implements CustomPacketPayload {
+		public static final Type<PylonCache> TYPE = createType("pylon_cache");
+		public static final StreamCodec<ByteBuf, PylonCache> CODEC =
+				reika.chromaticraft.world.iwg.PylonGenerator.PylonEntry.STREAM_CODEC.apply(ByteBufCodecs.list())
+						.map(PylonCache::new, PylonCache::entries);
+		@Override public Type<PylonCache> type() { return TYPE; }
+	}
+
+	public static void sendPylonCache(ServerPlayer player,
+			java.util.List<reika.chromaticraft.world.iwg.PylonGenerator.PylonEntry> entries) {
+		PacketDistributor.sendToPlayer(player, new PylonCache(java.util.List.copyOf(entries)));
+	}
+
+	public static void sendPylonCacheToAll(net.minecraft.server.MinecraftServer server,
+			java.util.List<reika.chromaticraft.world.iwg.PylonGenerator.PylonEntry> entries) {
+		PacketDistributor.sendToAllPlayers(new PylonCache(java.util.List.copyOf(entries)));
 	}
 
 	public static void sendEnderEyeSync(ServerLevel level, reika.chromaticraft.entity.EntityEnderEyeT2 eye) {

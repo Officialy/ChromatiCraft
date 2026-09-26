@@ -9,50 +9,63 @@
  ******************************************************************************/
 package reika.chromaticraft.auxiliary;
 
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.event.level.ChunkEvent;
+import net.neoforged.neoforge.event.level.LevelEvent;
+import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 
-import reika.chromaticraft.magic.lore.LoreManager;
-import reika.chromaticraft.magic.network.PylonLinkNetwork;
+import reika.chromaticraft.ChromatiCraft;
+import reika.chromaticraft.magic.network.CrystalNetworker;
 import reika.chromaticraft.world.iwg.PylonGenerator;
-import reika.dragonapi.auxiliary.trackers.playerhandler.PlayerTracker;
 
-
-public class PylonCacheLoader implements PlayerTracker {
-
-	public static final PylonCacheLoader instance = new PylonCacheLoader();
+/**
+ * V33a {@code PylonCacheLoader} (a DragonAPI {@code PlayerTracker}): a player logging in or changing dimension is sent
+ * the pylon cache for the dimension they are now in. The pylon cache's own lifecycle rides along: each server level
+ * loads its saved pylon locations as it loads, entries are checked as their chunks load, and the server's cache is
+ * dropped when the server stops (the client's goes on logout, in {@code PylonCacheClientEvents}).
+ *
+ * <p>CHROMA-PORT: V33a's tracker also synced the player's pylon link network ({@code PylonLinkNetwork.sync}) and the
+ * lore towers ({@code LoreManager.sendTowersToClient}); neither has a client side in the port yet.
+ */
+@EventBusSubscriber(modid = ChromatiCraft.MODID)
+public final class PylonCacheLoader {
 
 	private PylonCacheLoader() {
 
 	}
 
-	@Override
-	public void onPlayerLogin(EntityPlayer ep) {
-		if (ep instanceof EntityPlayerMP) {
-			PylonGenerator.instance.sendDimensionCacheToPlayer((EntityPlayerMP)ep, ep.worldObj.provider.dimensionId);
-			PylonLinkNetwork.instance.sync((EntityPlayerMP)ep);
-			LoreManager.instance.sendTowersToClient((EntityPlayerMP)ep);
+	@SubscribeEvent
+	public static void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent evt) {
+		if (evt.getEntity() instanceof ServerPlayer ep) {
+			PylonGenerator.instance.sendDimensionCacheToPlayer(ep, ep.level().dimension());
 		}
 	}
 
-	@Override
-	public void onPlayerLogout(EntityPlayer player) {
-
-	}
-
-	@Override
-	public void onPlayerChangedDimension(EntityPlayer player, int dimFrom, int dimTo) {
-		if (player instanceof EntityPlayerMP) {
-			EntityPlayerMP ep = (EntityPlayerMP)player;
-			//ReikaPacketHelper.sendDataPacket(ChromatiCraft.packetChannel, ChromaPackets.PYLONCACHECLEAR.ordinal(), ep, dimFrom);
-			PylonGenerator.instance.sendDimensionCacheToPlayer(ep, dimTo);
-			PylonLinkNetwork.instance.sync(ep);
+	@SubscribeEvent
+	public static void onPlayerChangedDimension(PlayerEvent.PlayerChangedDimensionEvent evt) {
+		if (evt.getEntity() instanceof ServerPlayer ep) {
+			PylonGenerator.instance.sendDimensionCacheToPlayer(ep, evt.getTo());
 		}
 	}
 
-	@Override
-	public void onPlayerRespawn(EntityPlayer player) {
+	@SubscribeEvent
+	public static void loadLevelCache(LevelEvent.Load evt) {
+		if (evt.getLevel() instanceof ServerLevel level)
+			CrystalNetworker.loadPylonLocationData(level);
+	}
 
+	@SubscribeEvent
+	public static void validateChunk(ChunkEvent.Load evt) {
+		PylonGenerator.instance.validateLoadedChunk(evt);
+	}
+
+	@SubscribeEvent
+	public static void clearOnStop(ServerStoppedEvent evt) {
+		PylonGenerator.instance.clearServerCache();
 	}
 
 }

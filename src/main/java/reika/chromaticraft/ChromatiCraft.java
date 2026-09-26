@@ -149,6 +149,7 @@ public class ChromatiCraft extends DragonAPIMod {
 	private void commonSetup(FMLCommonSetupEvent event) {
 		event.enqueueWork(() -> {
 			PylonFinder.registerTransparentBlock(RotaryBlocks.BLASTGLASS.get());
+			reika.chromaticraft.world.iwg.PylonGenerator.register();
 			PylonFinder.registerTransparentBlock(RotaryBlocks.BLASTPANE.get());
 			// V33a: network rays and visual line-of-sight checks both see through Defensive Glass.
 			PylonFinder.registerTransparentBlock(reika.chromaticraft.registry.ChromaBlocks.SELECTIVE_GLASS.get());

@@ -866,6 +866,16 @@ public class CrystalNetworker implements TickHandler {
 		PylonLocationData.setHandler(handler);
 	}
 
+	/** Loads the level's saved pylon locations into the registered handler, if not loaded already. */
+	public static void loadPylonLocationData(ServerLevel level) {
+		PylonLocationData.initNetworkData(level);
+	}
+
+	/** Marks the level's saved pylon locations for writing. */
+	public static void markPylonLocationsDirty(ServerLevel level) {
+		PylonLocationData.initNetworkData(level).setDirty();
+	}
+
 	public interface PylonLocationDataHandler {
 		void loadPylonLocations(CompoundTag tag);
 		void savePylonLocations(CompoundTag tag);
