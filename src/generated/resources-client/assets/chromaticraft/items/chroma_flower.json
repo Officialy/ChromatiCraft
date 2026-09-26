@@ -1,0 +1,9 @@
+{
+  "model": {
+    "type": "minecraft:special",
+    "base": "chromaticraft:block/chroma_flower_inventory",
+    "model": {
+      "type": "chromaticraft:chroma_flower"
+    }
+  }
+}

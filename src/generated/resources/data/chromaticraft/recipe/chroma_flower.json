@@ -1,0 +1,39 @@
+{
+  "type": "chromaticraft:casting",
+  "completion": {
+    "double_output": true
+  },
+  "experience": 5,
+  "grid": [
+    {
+      "ingredient": "#minecraft:leaves",
+      "slot": 0
+    },
+    {
+      "ingredient": "#c:flowers/small",
+      "slot": 1
+    },
+    {
+      "ingredient": "#minecraft:leaves",
+      "slot": 2
+    },
+    {
+      "ingredient": "minecraft:glowstone_dust",
+      "slot": 3
+    },
+    {
+      "ingredient": "#chromaticraft:crystal_shards",
+      "slot": 4
+    },
+    {
+      "ingredient": "minecraft:glowstone_dust",
+      "slot": 5
+    }
+  ],
+  "penalty_multiplier": 0.25,
+  "penalty_threshold": 2,
+  "result": {
+    "id": "chromaticraft:chroma_flower"
+  },
+  "tier": "crafting"
+}

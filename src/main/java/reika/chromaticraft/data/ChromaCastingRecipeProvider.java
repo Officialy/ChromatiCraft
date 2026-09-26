@@ -281,6 +281,16 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 							new RuneRequirement(new net.minecraft.core.BlockPos(-5, 0, 4), CrystalElement.YELLOW)),
 					List.of(), new ItemStackTemplate(ChromaBlocks.RELAY_SOURCE.get().asItem()), 100, 200));
 
+			// V33a ChromaFlowerRecipe (a DecoCastingRecipe): leaves, a flower, glowstone and any shard for one flower.
+			// Typical total 4 makes the penalty threshold (4*3/4)*4/5 = 2 crafts, at a quarter XP beyond it.
+			saveRecipe("chroma_flower", new CastingTableRecipe(CastingTableRecipe.Tier.CRAFTING,
+					shapedGrid(Map.of('L', tag(net.minecraft.tags.ItemTags.LEAVES),
+							'F', tag(Tags.Items.FLOWERS_SMALL), 'G', Ingredient.of(Items.GLOWSTONE_DUST),
+							's', tag(ChromaItemTags.CRYSTAL_SHARDS)), "LFL", "GsG"),
+					List.of(), List.of(), List.of(),
+					new ItemStackTemplate(ChromaBlocks.CHROMA_FLOWER.get().asItem()), 5, 5)
+					.withPenalty(2, 0.25F));
+
 			// V33a CrystalBrewerRecipe, a plain CastingRecipe: any shard (getAnyMetaStack, boosted included) around
 			// a cauldron on a stone base.
 			saveShaped("crystal_brewer", new ItemStackTemplate(ChromaBlocks.CRYSTAL_BREWER.get().asItem()), 5, 5,
@@ -1165,7 +1175,7 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 		 * CrystalFocusRecipe and CrystalCoreRecipe.
 		 */
 		private static final List<String> DOUBLE_OUTPUT = List.of("crystal_rune/", "lumen_relay/", "crystal_glass/",
-				"crystal_glow/", "selective_glass",
+				"crystal_glow/", "selective_glass", "chroma_flower",
 				"crystal_stone/", "crystal_group/", "crystal_cluster/", "low_core/", "high_core/", "crystal_mirror/",
 				"raw_crystal", "lumen_core", "iridescent_chunk", "element_unit", "crystal_star", "crystal_lens",
 				"crystal_focus", "crystal_core");

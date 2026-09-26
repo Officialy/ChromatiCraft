@@ -251,9 +251,9 @@ Pylon Link and Lumen Node (V33a had no casting recipe for either).
 
 - **ENTRY** — 7/7 ported.
 - **RAWEXPLORE** — 20/20 ported (Fertility Seeds and the Artifact Distribution Map landed 2026-09-25).
-- **BASICCRAFT** — 13/27 ported (Crystal Glass and Glow landed 2026-09-25; Defensive Glass, the
-  Enchantments and the Crystal Brewery 2026-09-26).
-  Missing: Chromatic Flower; Vertical Propulsion Panel; Lumen Wire; Crystal Orchestra; Particle Spawner; Knowledge Entanglement Pedestal; Tool Compression Crate; Lumen Turret; Subterranean Route Finder; Pylon Compass; Illumination Gun; Ownership Expansion Key; Examination Crystals; Corrosion Resistant Cell.
+- **BASICCRAFT** — 14/27 ported (Crystal Glass and Glow landed 2026-09-25; Defensive Glass, the
+  Enchantments, the Crystal Brewery and the Chromatic Flower 2026-09-26).
+  Missing: Vertical Propulsion Panel; Lumen Wire; Crystal Orchestra; Particle Spawner; Knowledge Entanglement Pedestal; Tool Compression Crate; Lumen Turret; Subterranean Route Finder; Pylon Compass; Illumination Gun; Ownership Expansion Key; Examination Crystals; Corrosion Resistant Cell.
 - **RUNECRAFT** — 11/36 ported.
   Missing: Artificial Sky; Physics Suspension Lamp; Lumen Lamp; Travel Path; Redstone Pod; Flux Pod; Subterranean Illuminator; Chromatic Enchanter; Fluid Radiator; Fluid Link Anchor; Suspension Field Controller; Item Inserter; Lumen Lamp Controller; Crystal Seeds; Item Mover; Voidlinked Bucket; Linker; Creature Sounding Star; Multitool; Nether Layer Crystal; Ore-Finding Pickaxe; Ore Harvester; Bezier Crystals; Aura Tracker; Recall Tablet.
 - **ENERGY** — 15/30 ported.
@@ -8585,3 +8585,21 @@ mixin and renderer are unverified in game.
     handler was.
 - Recipe: "S S / ScS / CCC" with any shard (boosted included), a cauldron, and stone.
 - Unverified in game: the GUI, brewing, and the crystal potion tint.
+
+**BASICCRAFT: Chromatic Flower (2026-09-26).** `chroma_flower`, V33a `BlockChromaPlantTile` metadata 0 with
+`TileEntityChromaFlower`.
+- Block: no collision, a full-block selection box, light 9, instant break, and pistons break it (plant
+  material).
+- Survival follows 1.7.10 `ReikaPlantHelper.FLOWER`: dirt (coarse dirt and podzol included, which were
+  dirt metadata in 1.7.10) or grass below, and light at least 8 or open sky. Otherwise it breaks to its
+  item.
+- `ChromaFlowerRenderer` is V33a's TESR on the submit pipeline: three vertical planes 60 degrees apart
+  carry the stem (`plant/0_4`, cutout) and three alpha-blended petal layers (`plant/0_1..3`). Each layer
+  has its own hue (per-flower random base plus ticks, layers offset by a random 10-30 degrees; HSB with
+  S 1, B 0.5). Normals face up to stand in for V33a's disabled lighting.
+- The item uses the same geometry through `ChromaFlowerItemRenderer`. The hue follows the clock with a
+  fixed 20-degree layer offset, replacing V33a's render-only inventory tile.
+- Recipe (V33a `ChromaFlowerRecipe`, a DecoCastingRecipe): "LFL / GsG" with leaves, a small flower
+  (`c:flowers/small`, 1.7.10's "flower" ore name), glowstone and any shard. Double output; penalty after
+  2 crafts at 0.25.
+- Unverified in game: the look and the hue cycle.

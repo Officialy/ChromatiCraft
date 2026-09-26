@@ -157,6 +157,7 @@ public class ChromaModelProvider extends ModelProvider {
 		playerAuraInfuserModel(blockStateOut, itemModelOut, modelOut);
 		portalRiftModels(blockStateOut, itemModelOut, modelOut);
 		focusCrystalModel(blockStateOut, itemModelOut, modelOut);
+		chromaFlowerModel(blockStateOut, itemModelOut, modelOut);
 		dataNodeModel(blockStateOut, itemModelOut, modelOut);
 		structureControllerModel(blockStateOut, modelOut);
 		structurePasswordModel(blockStateOut, modelOut);
@@ -1457,6 +1458,25 @@ public class ChromaModelProvider extends ModelProvider {
 				TextureMapping.cube(particle), modelOut);
 		itemModelOut.accept(ChromaBlocks.FOCUS_CRYSTAL.get().asItem(),
 				ItemModelUtils.specialModel(itemBase, new reika.chromaticraft.render.item.FocusCrystalItemRenderer.Unbaked()));
+	}
+
+	/**
+	 * V33a draws the Chromatic Flower entirely through ChromaFlowerRenderer; its block icon, plant/0_0, is only the
+	 * particle. The item's base model carries block display transforms under ChromaFlowerItemRenderer.
+	 */
+	private static void chromaFlowerModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		Material particle = new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/plant/0_0"));
+		Identifier model = ModelTemplates.PARTICLE_ONLY.create(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/chroma_flower"),
+				new TextureMapping().put(TextureSlot.PARTICLE, particle), modelOut);
+		blockStateOut.accept(MultiVariantGenerator.dispatch(ChromaBlocks.CHROMA_FLOWER.get(),
+				new MultiVariant(WeightedList.of(new Variant(model)))));
+		Identifier itemBase = ModelTemplates.CUBE_ALL.create(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/chroma_flower_inventory"),
+				TextureMapping.cube(particle), modelOut);
+		itemModelOut.accept(ChromaBlocks.CHROMA_FLOWER.get().asItem(),
+				ItemModelUtils.specialModel(itemBase, new reika.chromaticraft.render.item.ChromaFlowerItemRenderer.Unbaked()));
 	}
 
 	private static void relaySourceModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,

@@ -9,18 +9,30 @@
  ******************************************************************************/
 package reika.chromaticraft.tileentity.plants;
 
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
 
 import reika.chromaticraft.base.tileentity.TileEntityChromaticBase;
+import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.ChromaTiles;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
-
+/**
+ * V33a {@code TileEntityChromaFlower}: a purely decorative flower whose three petal layers cycle through the hues, each
+ * layer a little ahead of or behind the first. The hues are per-flower random, as V33a's were (unsaved, so a reload
+ * reshuffles them).
+ *
+ * <p>V33a also advanced the base hue from {@code animateWithTick} for the inventory render tile (not in the world);
+ * the item form is now drawn by {@code ChromaFlowerItemRenderer}, which takes its hue from the clock instead.
+ */
 public class TileEntityChromaFlower extends TileEntityChromaticBase {
 
 	private int hueBaseOffset = rand.nextInt(360);
 	private int hueOffset = 10+rand.nextInt(21);
+
+	public TileEntityChromaFlower(BlockPos pos, BlockState state) {
+		super(ChromaBlockEntities.CHROMA_FLOWER.get(), pos, state);
+	}
 
 	@Override
 	public ChromaTiles getTile() {
@@ -28,30 +40,25 @@ public class TileEntityChromaFlower extends TileEntityChromaticBase {
 	}
 
 	@Override
-	public void updateEntity(World world, int x, int y, int z, int meta) {
+	public void updateEntity(Level world, BlockPos pos) {
 
 	}
 
 	@Override
-	protected void animateWithTick(World world, int x, int y, int z) {
-		if (!this.isInWorld() && System.currentTimeMillis()%10 == 0) {
-			hueBaseOffset++;
-		}
+	protected void animateWithTick(Level world, BlockPos pos) {
+
 	}
 
-	@SideOnly(Side.CLIENT)
 	public int getHue1() {
 		return (hueBaseOffset+this.getTicksExisted())%360;
 	}
 
-	@SideOnly(Side.CLIENT)
 	public int getHue2() {
 		return (hueBaseOffset+this.getTicksExisted()+hueOffset)%360;
 	}
 
-	@SideOnly(Side.CLIENT)
 	public int getHue3() {
-		return (hueBaseOffset+this.getTicksExisted()-hueOffset)%360;
+		return Math.floorMod(hueBaseOffset+this.getTicksExisted()-hueOffset, 360);
 	}
 
 }

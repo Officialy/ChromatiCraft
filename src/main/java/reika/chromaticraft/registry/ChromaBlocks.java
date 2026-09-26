@@ -962,6 +962,14 @@ public final class ChromaBlocks {
 			register("casting_table", () -> new BlockCastingTable(blockProperties().strength(4F, 16F).noOcclusion()));
 	public static final DeferredBlock<Block> RITUAL_TABLE =
 			register("ritual_table", () -> new BlockRitualTable(blockProperties().strength(4F, 16F).noOcclusion()));
+	/**
+	 * V33a CHROMAFLOWER, BlockChromaPlantTile metadata 0: plant material (pistons break it), hardness 0, resistance 0.5
+	 * (0.1 against explosions), grass sounds, light 9, no collision.
+	 */
+	public static final DeferredBlock<Block> CHROMA_FLOWER =
+			register("chroma_flower", () -> new reika.chromaticraft.block.BlockChromaFlower(blockProperties()
+					.strength(0F, 0.1F).noCollision().noOcclusion().sound(SoundType.GRASS).lightLevel(state -> 9)
+					.pushReaction(net.minecraft.world.level.material.PushReaction.DESTROY)));
 	/** V33a BREWER, a BlockChromaTile entry: rock, hardness 5, resistance 40 (so 8 against explosions). */
 	public static final DeferredBlock<Block> CRYSTAL_BREWER =
 			register("crystal_brewer", () -> new reika.chromaticraft.block.BlockCrystalBrewer(
