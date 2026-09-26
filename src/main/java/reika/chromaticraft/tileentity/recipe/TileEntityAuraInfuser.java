@@ -393,9 +393,6 @@ public abstract class TileEntityAuraInfuser extends TileEntityChromaticBase impl
 
 	@Override public final boolean onlyAllowOwnersToMine() { return true; }
 	@Override public final boolean onlyAllowOwnersToUse() { return true; }
-	@Override public final boolean isOwnedByPlayer(Player player) {
-		return placerUUID == null || placerUUID.equals(player.getUUID());
-	}
 	@Override public void getTagsToWriteToStack(CompoundTag tag) {
 		if (this.getPlacerName() != null && !this.getPlacerName().isEmpty()) tag.putString("place", this.getPlacerName());
 		if (placerUUID != null) tag.putString("placeUUID", placerUUID.toString());

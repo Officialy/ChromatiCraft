@@ -78,9 +78,6 @@ public final class TileEntityRitualTable extends InventoriedCrystalReceiver impl
     @Override public boolean canTakeItemThroughFace(int slot, ItemStack stack, Direction side) { return false; }
     @Override public boolean onlyAllowOwnersToMine() { return true; }
     @Override public boolean onlyAllowOwnersToUse() { return true; }
-    @Override public boolean isOwnedByPlayer(Player player) {
-        return placerUUID == null || placerUUID.equals(player.getUUID());
-    }
     @Override public Component getDisplayName() {
         return Component.translatable("block.chromaticraft.ritual_table");
     }

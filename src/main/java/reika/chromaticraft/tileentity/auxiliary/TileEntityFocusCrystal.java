@@ -206,9 +206,10 @@ public final class TileEntityFocusCrystal extends TileEntityChromaticBase implem
                 BlockEntity.class) : null;
     }
 
-    @Override public void getTagsToWriteToStack(CompoundTag tag) { tag.putInt("tier", tier.ordinal()); }
+    @Override public void getTagsToWriteToStack(CompoundTag tag) { tag.putInt("tier", tier.ordinal()); this.writeOwnerData(tag); }
 
     @Override public void setDataFromItemStackTag(ItemStack stack) {
+        this.readOwnerData(stack);
         CompoundTag tag = stack.get(DataComponents.CUSTOM_DATA) != null
                 ? stack.get(DataComponents.CUSTOM_DATA).copyTag() : new CompoundTag();
         tier = CrystalTier.VALUES[Mth.clamp(tag.getIntOr("tier", 0), 0, CrystalTier.VALUES.length - 1)];

@@ -189,10 +189,12 @@ public abstract class TileEntityRelayPowered extends TileEntityChromaticBase imp
         energy.writeToNBT("energy", tag);
         if (placer != null && !placer.isEmpty()) tag.putString("place", placer);
         if (placerUUID != null) tag.putString("placeUUID", placerUUID.toString());
+        this.writeOwnerData(tag);
     }
 
     @Override
     public void setDataFromItemStackTag(ItemStack stack) {
+        this.readOwnerData(stack);
         CompoundTag tag = ReikaItemHelper.getStackTag(stack);
         if (tag == null) {
             energy.clear();

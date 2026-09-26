@@ -270,10 +270,12 @@ public abstract class CrystalReceiverBase extends TileEntityCrystalBase implemen
 			NBT.putString("place", placer);
 		if (placerUUID != null)
 			NBT.putString("placeUUID", placerUUID.toString());
+		this.writeOwnerData(NBT);
 	}
 
 	@Override
 	public void setDataFromItemStackTag(ItemStack is) {
+		this.readOwnerData(is);
 		CompoundTag tag = is != null ? ReikaItemHelper.getStackTag(is) : null;
 		if (tag == null) {
 			energy.clear();

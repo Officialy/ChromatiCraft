@@ -113,7 +113,6 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver
     @Override public boolean canTakeItemThroughFace(int slot, ItemStack stack, Direction side) { return slot == 9; }
     @Override public boolean onlyAllowOwnersToMine() { return true; }
     @Override public boolean onlyAllowOwnersToUse() { return true; }
-    @Override public boolean isOwnedByPlayer(Player player) { return placerUUID == null || placerUUID.equals(player.getUUID()); }
     @Override public Component getDisplayName() { return Component.translatable("block.chromaticraft.casting_table"); }
     @Override public AbstractContainerMenu createMenu(int id, Inventory inventory, Player player) {
         return new MenuCastingTable(id, inventory, this);

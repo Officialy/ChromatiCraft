@@ -195,7 +195,6 @@ public class TileEntityItemStand extends TileEntityChromaticBase
 
 	@Override public boolean onlyAllowOwnersToMine() { return true; }
 	@Override public boolean onlyAllowOwnersToUse() { return true; }
-	@Override public boolean isOwnedByPlayer(Player player) { return placerUUID == null || placerUUID.equals(player.getUUID()); }
 	@Override public void getTagsToWriteToStack(CompoundTag tag) {
 		if (placer != null && !placer.isEmpty()) tag.putString("place", placer);
 		if (placerUUID != null) tag.putString("placeUUID", placerUUID.toString());

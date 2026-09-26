@@ -7696,7 +7696,7 @@ public final class ChromaGameTests {
 		// tick never found anyone to drain.
 		collector.setPlacer(player);
 		collector.setDataFromItemStackTag(new ItemStack(ChromaBlocks.COLLECTOR.get().asItem()));
-		helper.assertTrue(collector.getOwners().contains(player.getUUID()) && collector.isOwnedByPlayer(player),
+		helper.assertTrue(collector.getOwnerIDs().contains(player.getUUID()) && collector.isOwnedByPlayer(player),
 				"restoring a fresh Collector item must keep its placer as owner");
 		player.setPos(absolute.getX() + 0.5, absolute.getY() + 1, absolute.getZ() + 0.5);
 		player.giveExperiencePoints(5);

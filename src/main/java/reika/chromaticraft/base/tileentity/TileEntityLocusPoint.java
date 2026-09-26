@@ -138,21 +138,17 @@ public abstract class TileEntityLocusPoint extends TileEntityChromaticBase
 	}
 
 	@Override
-	public boolean isOwnedByPlayer(Player ep) {
-		UUID placer = this.getPlacerID();
-		return placer != null && placer.equals(ep.getUUID());
-	}
-
-	@Override
 	public void getTagsToWriteToStack(CompoundTag NBT) {
 		if (placer != null && !placer.isEmpty())
 			NBT.putString("place", placer);
 		if (placerUUID != null)
 			NBT.putString("placeUUID", placerUUID.toString());
+		this.writeOwnerData(NBT);
 	}
 
 	@Override
 	public void setDataFromItemStackTag(ItemStack is) {
+		this.readOwnerData(is);
 		CompoundTag tag = ReikaItemHelper.getStackTag(is);
 		if (tag == null)
 			return;

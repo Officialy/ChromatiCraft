@@ -164,9 +164,6 @@ public final class TileEntityPersonalCharger extends CrystalReceiverBase
 
 	@Override public boolean onlyAllowOwnersToMine() { return true; }
 	@Override public boolean onlyAllowOwnersToUse() { return false; }
-	@Override public boolean isOwnedByPlayer(Player player) {
-		return placerUUID == null || placerUUID.equals(player.getUUID());
-	}
 	@Override public void getTagsToWriteToStack(CompoundTag tag) {
 		super.getTagsToWriteToStack(tag);
 	}

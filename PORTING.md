@@ -8662,3 +8662,28 @@ is ported in place (`world/iwg/PylonGenerator`). Its worldgen half was already `
 - CHROMA-PORT: the Manipulator and bucket actions from the same V33a class. V33a's never-called
   `spawnTraceParticle` is not carried over.
 - Unverified in game.
+
+**Tile ownership unified on the V33a owner set (2026-09-26), prerequisite for the Ownership Expansion Key.**
+`TileEntityChromaticBase` now has V33a's `owners`:
+- The placer is added on placement and `addOwner` adds more.
+- `isOwnedByPlayer` is `final`, as in V33a, and admits any owner, or anyone while the set is empty.
+- `getOwners(allowFake)` returns owners who are online.
+- `writeOwnerData`/`readOwnerData` carry an `OwnedTile`'s owners on its item, merged in the way V33a's
+  `readCollectionFromNBT` added them.
+
+The set rides in the sync tag, which is also what the tile saves: `owners`, a list of UUID strings, the
+format the Collector and pylon enhancers already used, so their saves load unchanged. A tile loaded with no
+owners but a known placer takes the placer, so existing Casting Tables, Ritual Tables and the rest stay
+private.
+
+Removed, as port inventions V33a's final method ruled out:
+- The `placerUUID`-only `isOwnedByPlayer` overrides on the Casting Table, Ritual Table, Item Stand, Aura
+  Infuser, Crystal Repeater, Personal Charger and Locus Point. Locus Point's override was stricter still
+  (no placer meant no owner).
+- The duplicate owner sets on the Collector and `TileEntityPylonEnhancer`.
+
+The locus point, crystal receiver, relay-powered and focus-crystal item data now also carry owners, as V33a
+did.
+
+Needs a full GameTest run (ownership semantics changed across these tiles).
+

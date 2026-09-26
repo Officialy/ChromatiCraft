@@ -523,10 +523,6 @@ public class TileEntityCrystalRepeater extends CrystalTransmitterBase
 		return false;
 	}
 
-	@Override
-	public boolean isOwnedByPlayer(Player ep) {
-		return placerUUID == null || ep.getUUID().equals(placerUUID);
-	}
 
 	// ---- NBTTile ----
 
