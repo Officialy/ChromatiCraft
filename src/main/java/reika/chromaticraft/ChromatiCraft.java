@@ -30,7 +30,9 @@ import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.ChromaEntityTypes;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaFeatures;
+import reika.chromaticraft.registry.ChromaIcons;
 import reika.chromaticraft.registry.ChromaItems;
+import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.registry.ChromaMenus;
 import reika.chromaticraft.registry.ChromaOptions;
 import reika.chromaticraft.registry.ChromaPlacementModifiers;
@@ -150,6 +152,9 @@ public class ChromatiCraft extends DragonAPIMod {
 		event.enqueueWork(() -> {
 			PylonFinder.registerTransparentBlock(RotaryBlocks.BLASTGLASS.get());
 			reika.chromaticraft.world.iwg.PylonGenerator.register();
+			// V33a load(): ChromatiCraft's icons are addressable by name (the Particle Spawner saves its particle so).
+			reika.dragonapi.auxiliary.IconLookupRegistry.instance.registerIcons(instance, ChromaIcons.class);
+			reika.dragonapi.auxiliary.IconLookupRegistry.instance.registerIcons(instance, CrystalElement.class);
 			// V33a addDispenserAction(LIGHTGUN, ProjectileToolDispenserAction).
 			reika.chromaticraft.items.tools.ProjectileToolDispenseBehavior.register(ChromaItems.LIGHT_GUN.get());
 			PylonFinder.registerTransparentBlock(RotaryBlocks.BLASTPANE.get());

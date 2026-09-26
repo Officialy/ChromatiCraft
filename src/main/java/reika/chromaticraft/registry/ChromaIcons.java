@@ -9,17 +9,21 @@
  ******************************************************************************/
 package reika.chromaticraft.registry;
 
-import net.minecraft.client.renderer.texture.IIconRegister;
-import net.minecraft.client.renderer.texture.TextureMap;
-import net.minecraft.util.IIcon;
+import net.minecraft.resources.Identifier;
 
+import reika.chromaticraft.ChromatiCraft;
 import reika.dragonapi.auxiliary.trackers.SpecialDayTracker;
 import reika.dragonapi.interfaces.IconEnum;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
-
+/**
+ * V33a {@code ChromaIcons}: ChromatiCraft's named effect sprites. V33a stitched each into the terrain atlas (the lattice
+ * into the item atlas) as {@code chromaticraft:icons/<name>}; here each is a sprite id -- {@code block/icons/<name>} in the
+ * block atlas, or {@code item/icons/<name>} in the item atlas -- which particles and renderers resolve when drawing. The
+ * port's files use underscores where two V33a names had spaces. REGIONS and CAUSTICS_GENTLE_ALPHA had no texture in
+ * V33a either (only their animation metadata shipped).
+ */
 public enum ChromaIcons implements IconEnum {
+
 
 	TRANSPARENT("transparent"),
 	GUARDIANOUTER("guardian_outer"),
@@ -135,7 +139,6 @@ public enum ChromaIcons implements IconEnum {
 	COLORRING("color-ring"),
 	;
 
-	private IIcon icon;
 	private final String iconName;
 
 	public static final ChromaIcons[] iconList = values();
@@ -144,42 +147,20 @@ public enum ChromaIcons implements IconEnum {
 		iconName = icon;
 	}
 
-	public IIcon getIcon() {
-		return icon;
+	/** The V33a texture name (the sprite file under {@code icons/}). */
+	public String getIconName() {
+		return iconName;
 	}
 
-	@SideOnly(Side.CLIENT)
-	private void register(IIconRegister ico) {
-		String s = this.getIconName();
-		icon = ico.registerIcon(s);
+	/** The sprite id: in the item atlas for the lattice (V33a registered it on the item sheet), else the block atlas. */
+	@Override
+	public Identifier getIcon() {
+		String file = iconName.replace(' ', '_');
+		return Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, (this.isOnSheet(1) ? "item/icons/" : "block/icons/")+file);
 	}
 
-	private String getIconName() {
-		return "chromaticraft:icons/"+iconName;
-	}
-
-	/*
-	private void register(IIconRegister ico) {
-		String s = this.getIconName();
-		//icon = ico.registerIcon(s);
-		icon = new HardPathIcon(s).register((TextureMap)ico);
-	}
-
-	private String getIconName() {
-		return "Reika/ChromatiCraft/Textures/Icons/Animated/"+iconName+".png";
-	}
-	 */
-
-	@SideOnly(Side.CLIENT)
-	public static void registerAll(TextureMap ico) {
-		for (int i = 0; i < iconList.length; i++) {
-			ChromaIcons c = iconList[i];
-			if (c.isOnSheet(ico.getTextureType()))
-				c.register(ico);
-		}
-	}
-
-	private boolean isOnSheet(int sheet) {
+	/** V33a registered only the lattice on the item sheet (1); everything else on the terrain sheet (0). */
+	public boolean isOnSheet(int sheet) {
 		switch(this) {
 			case LATTICEITEM:
 				return sheet == 1;

@@ -122,6 +122,7 @@ sourceSets.main.java {
     include 'reika/chromaticraft/tileentity/transport/TileEntityLaunchPad.java'
     include 'reika/chromaticraft/render/tesr/RenderLaunchPad.java'
     include 'reika/chromaticraft/auxiliary/structure/LaunchPadStructure.java'
+    include 'reika/chromaticraft/registry/ChromaIcons.java'
     include 'reika/chromaticraft/render/model/SelectiveGlassModel.java'
     include 'reika/chromaticraft/block/crystal/BlockCrystalGlow.java'
     include 'reika/chromaticraft/render/model/CrystalGlowGeometry.java'

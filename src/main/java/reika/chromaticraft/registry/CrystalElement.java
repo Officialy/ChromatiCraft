@@ -30,7 +30,7 @@ import reika.dragonapi.libraries.java.ReikaJavaLibrary;
 import reika.dragonapi.libraries.registry.ReikaDyeHelper;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
 
-public enum CrystalElement implements OverlayColor, ProgressAccess, CrystalElementProxy {
+public enum CrystalElement implements reika.dragonapi.interfaces.IconEnum, OverlayColor, ProgressAccess, CrystalElementProxy {
 
 	BLACK("Kuro", 0x191919, ChatFormatting.BLACK), //Magic
 	RED("Karmir", 0xFF0000, ChatFormatting.DARK_RED), //Endurance
@@ -114,6 +114,13 @@ public enum CrystalElement implements OverlayColor, ProgressAccess, CrystalEleme
 	 * V33a {@code getFaceRune()}: the animated 64-frame rune ({@code runes/frontpng/tileN_0}), as a block-atlas sprite
 	 * id for drawing it from code (the lexicon draws the raw strip instead).
 	 */
+	/** V33a {@code getIcon()} (IconEnum): the element's glow rune, {@code runes/glow/tileN_0}. */
+	@Override
+	public net.minecraft.resources.Identifier getIcon() {
+		return net.minecraft.resources.Identifier.fromNamespaceAndPath(reika.chromaticraft.ChromatiCraft.MODID,
+				"block/runes/glow/tile"+this.ordinal()+"_0");
+	}
+
 	public net.minecraft.resources.Identifier getFaceRuneSprite() {
 		return net.minecraft.resources.Identifier.fromNamespaceAndPath(reika.chromaticraft.ChromatiCraft.MODID,
 				"block/runes/frontpng/tile"+this.ordinal()+"_0");
