@@ -281,6 +281,12 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 							new RuneRequirement(new net.minecraft.core.BlockPos(-5, 0, 4), CrystalElement.YELLOW)),
 					List.of(), new ItemStackTemplate(ChromaBlocks.RELAY_SOURCE.get().asItem()), 100, 200));
 
+			// V33a CrystalBrewerRecipe, a plain CastingRecipe: any shard (getAnyMetaStack, boosted included) around
+			// a cauldron on a stone base.
+			saveShaped("crystal_brewer", new ItemStackTemplate(ChromaBlocks.CRYSTAL_BREWER.get().asItem()), 5, 5,
+					Map.of('S', tag(ChromaItemTags.CRYSTAL_SHARDS), 'c', Ingredient.of(Items.CAULDRON),
+							'C', tag(Tags.Items.STONES)), "S S", "ScS", "CCC");
+
 			// V33a ChromaCollectorRecipe: any shard, an Ender Eye, glowstone, and a stone base.
 			// Its one-craft threshold with a zero multiplier makes repeated casts grant no XP.
 			saveRecipe("collector", new CastingTableRecipe(CastingTableRecipe.Tier.CRAFTING,

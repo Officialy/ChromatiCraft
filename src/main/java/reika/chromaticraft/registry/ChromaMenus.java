@@ -32,6 +32,8 @@ public interface ChromaMenus {
     Supplier<MenuType<MenuRitualTable>> RITUAL_TABLE = register("ritual_table", MenuRitualTable::new);
     Supplier<MenuType<MenuHeatLamp>> HEAT_LAMP = register("heat_lamp", MenuHeatLamp::new);
 	Supplier<MenuType<MenuCrystalCharger>> CRYSTAL_CHARGER = register("crystal_charger", MenuCrystalCharger::new);
+	Supplier<MenuType<reika.chromaticraft.container.MenuCrystalBrewer>> CRYSTAL_BREWER =
+			register("crystal_brewer", reika.chromaticraft.container.MenuCrystalBrewer::new);
 	Supplier<MenuType<MenuCollector>> COLLECTOR = register("collector", MenuCollector::new);
 	Supplier<MenuType<MenuStructurePassword>> STRUCTURE_PASSWORD = register(
 			"structure_password", MenuStructurePassword::new);

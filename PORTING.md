@@ -251,9 +251,9 @@ Pylon Link and Lumen Node (V33a had no casting recipe for either).
 
 - **ENTRY** — 7/7 ported.
 - **RAWEXPLORE** — 20/20 ported (Fertility Seeds and the Artifact Distribution Map landed 2026-09-25).
-- **BASICCRAFT** — 12/27 ported (Crystal Glass and Glow landed 2026-09-25; Defensive Glass and the
-  Enchantments 2026-09-26).
-  Missing: Crystal Brewery; Chromatic Flower; Vertical Propulsion Panel; Lumen Wire; Crystal Orchestra; Particle Spawner; Knowledge Entanglement Pedestal; Tool Compression Crate; Lumen Turret; Subterranean Route Finder; Pylon Compass; Illumination Gun; Ownership Expansion Key; Examination Crystals; Corrosion Resistant Cell.
+- **BASICCRAFT** — 13/27 ported (Crystal Glass and Glow landed 2026-09-25; Defensive Glass, the
+  Enchantments and the Crystal Brewery 2026-09-26).
+  Missing: Chromatic Flower; Vertical Propulsion Panel; Lumen Wire; Crystal Orchestra; Particle Spawner; Knowledge Entanglement Pedestal; Tool Compression Crate; Lumen Turret; Subterranean Route Finder; Pylon Compass; Illumination Gun; Ownership Expansion Key; Examination Crystals; Corrosion Resistant Cell.
 - **RUNECRAFT** — 11/36 ported.
   Missing: Artificial Sky; Physics Suspension Lamp; Lumen Lamp; Travel Path; Redstone Pod; Flux Pod; Subterranean Illuminator; Chromatic Enchanter; Fluid Radiator; Fluid Link Anchor; Suspension Field Controller; Item Inserter; Lumen Lamp Controller; Crystal Seeds; Item Mover; Voidlinked Bucket; Linker; Creature Sounding Star; Multitool; Nether Layer Crystal; Ore-Finding Pickaxe; Ore Harvester; Bezier Crystals; Aura Tracker; Recall Tablet.
 - **ENERGY** — 15/30 ported.
@@ -8549,3 +8549,39 @@ mixin and renderer are unverified in game.
   - The boosted vanilla-enchant lexicon pages and `isVisibleToPlayer` both wait for the Auto Enchanter.
   - The Excavator's three `EnchantmentRecipe`s wait for the Excavator.
 - Unverified in game: every effect. The mixins are confirmed to apply (datagen log).
+
+**BASICCRAFT: Crystal Brewery and Crystal Potions (2026-09-26).**
+- Crystal Potion (V33a `ChromaItems.POTION`): `crystal_potion_<colour>` and `splash_crystal_potion_<colour>`
+  for the five colours V33a could brew (`requiresCustomPotion`: cyan, yellow, lime, red, brown). The effect
+  goes into `POTION_CONTENTS` with the element colour at stack creation (`ItemCrystalPotion.create`), not
+  as a default component, since the ChromatiCraft effects are unbound at item registration.
+  - Durations: 3:00, 8:00 extended, level II boosted. Only the plain form is ambient; V33a rebuilt the
+    extended and boosted effects without the ambient flag.
+  - Vanilla potion models are tinted by the custom colour. The name is "<Element> Crystal Potion" with no
+    splash prefix, as in V33a. The tab lists V33a's seven variants per colour.
+- `InventoriedChromaticBase` ported onto the 26.2 container and persistence APIs, the same way as
+  `InventoriedCrystalReceiver`.
+- Crystal Brewery (`crystal_brewer`, V33a BREWER): V33a's 400-tick brew, one-item slots, and a redstone
+  override. It converts every occupied bottle slot, as V33a did. Hardness is 5 and explosion resistance 8
+  (V33a `BlockChromaTile`); textures are `tile/brewer_*`, verified byte-identical to the jar.
+  - Plain colours: the V33a outputs came from 1.7.10's potion algebra. `PotionHelper.applyIngredient` and
+    `getPotionEffects` were run in a Python port for each shard's ingredient string (plus fermented
+    spider eye for grey, light grey and white).
+    - Every plain result equals the same-named 26.2 potion and duration.
+    - Boosted shards set both the level II and extended bits. Night vision, slowness, weakness, fire
+      resistance and invisibility have no level II in 1.7.10, so they become `long_*`.
+    - Poison, swiftness, regeneration and strength get custom level II contents with 1.7.10's durations:
+      1:00, 4:00, 1:00 and 4:00.
+  - Black (redstone) and purple (glowstone) modify the bottle's own potion within its
+    base/`long_`/`strong_` family. With a boosted shard, the result is the strong level at half the long
+    duration (1.7.10 halved per level). The bottle keeps its form: drinkable, splash or lingering.
+  - Deviation: V33a turned a Crystal Potion under a modifier shard into a vanilla potion keyed by the
+    crystal potion's damage value, which was garbage. Here it lengthens or strengthens the Crystal Potion.
+  - GUI: V33a used 1.7.10's `brewing_stand.png`. That is Mojang's art, so the screen draws 26.2's
+    brewing-stand texture and sprites, with the slots at 26.2's positions (bottles 5px lower). The stand's
+    blaze-fuel slot and gauge show empty.
+  - JEI: a "Crystal Brewing" category (V33a `CrystalBrewerHandler`) with 32 shard recipes. The modifier
+    colours cycle every potion with an effect, linking each input to its output. It is ungated, as the NEI
+    handler was.
+- Recipe: "S S / ScS / CCC" with any shard (boosted included), a cauldron, and stone.
+- Unverified in game: the GUI, brewing, and the crystal potion tint.

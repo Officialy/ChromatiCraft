@@ -24,6 +24,7 @@ import mezz.jei.api.recipe.RecipeIngredientRole;
 import mezz.jei.api.recipe.advanced.IRecipeButtonControllerFactory;
 import mezz.jei.api.recipe.category.IRecipeCategory;
 import mezz.jei.api.recipe.types.IRecipeHolderType;
+import mezz.jei.api.recipe.types.IRecipeType;
 import mezz.jei.api.registration.IAdvancedRegistration;
 import mezz.jei.api.registration.IRecipeCatalystRegistration;
 import mezz.jei.api.registration.IRecipeCategoryRegistration;
@@ -66,6 +67,12 @@ public class ChromaJEIPlugin implements IModPlugin {
 	private static IRecipeHolderType<CastingTableRecipe> castingType;
 	private static IRecipeHolderType<PoolAlloyingRecipe> poolType;
 
+	/** One V33a {@code CrystalBrewerHandler} recipe: a shard of this colour, plain or boosted. */
+	public record BrewingRecipe(reika.chromaticraft.registry.CrystalElement color, boolean boosted) {}
+
+	public static final IRecipeType<BrewingRecipe> BREWING = IRecipeType.create(ChromatiCraft.MODID, "crystal_brewing",
+			BrewingRecipe.class);
+
 	private static @Nullable IJeiRuntime runtime;
 	private static boolean tickRegistered;
 	/** Recipe instances this plugin has put into the current runtime, and those it has hidden there. */
@@ -93,18 +100,25 @@ public class ChromaJEIPlugin implements IModPlugin {
 	@Override
 	public void registerCategories(IRecipeCategoryRegistration registration) {
 		IGuiHelper gui = registration.getJeiHelpers().getGuiHelper();
-		registration.addRecipeCategories(new CastingCategory(gui), new PoolCategory(gui));
+		registration.addRecipeCategories(new CastingCategory(gui), new PoolCategory(gui), new BrewingCategory(gui));
 	}
 
 	@Override
 	public void registerRecipeCatalysts(IRecipeCatalystRegistration registration) {
 		registration.addCraftingStation(castingType(), ChromaBlocks.CASTING_TABLE.get());
 		registration.addCraftingStation(poolType(), ChromaItems.CHROMA_BUCKET.get());
+		registration.addCraftingStation(BREWING, ChromaBlocks.CRYSTAL_BREWER.get());
 	}
 
 	@Override
 	public void registerRecipes(IRecipeRegistration registration) {
 		// The runtime is not up yet; recipes are added (and filtered) as soon as it is, see onRuntimeAvailable.
+		// Crystal brewing is not a data recipe and V33a's NEI handler was never gated: all 32 shards, always.
+		List<BrewingRecipe> brewing = new ArrayList<>();
+		for (boolean boosted : new boolean[] {false, true})
+			for (reika.chromaticraft.registry.CrystalElement e : reika.chromaticraft.registry.CrystalElement.elements)
+				brewing.add(new BrewingRecipe(e, boosted));
+		registration.addRecipes(BREWING, brewing);
 	}
 
 	@Override
@@ -295,6 +309,65 @@ public class ChromaJEIPlugin implements IModPlugin {
 		}
 	}
 
+	/**
+	 * V33a {@code CrystalBrewerHandler} ("Crystal Brewing"): the shard over a bottle and what the Brewery makes of it.
+	 * The plain colours take any bottle without an effect; black and purple cycle through every potion with one, the
+	 * output following the input.
+	 */
+	private static final class BrewingCategory implements IRecipeCategory<BrewingRecipe> {
+
+		private final IDrawable icon;
+
+		private BrewingCategory(IGuiHelper gui) {
+			icon = gui.createDrawableItemLike(ChromaBlocks.CRYSTAL_BREWER.get());
+		}
+
+		@Override public IRecipeType<BrewingRecipe> getRecipeType() { return BREWING; }
+		@Override public Component getTitle() { return Component.literal("Crystal Brewing"); }
+		@Override public int getWidth() { return 96; }
+		@Override public int getHeight() { return 48; }
+		@Override public IDrawable getIcon() { return icon; }
+
+		@Override
+		public void setRecipe(IRecipeLayoutBuilder builder, BrewingRecipe recipe, IFocusGroup focuses) {
+			ItemStack shard = new ItemStack(recipe.boosted() ? ChromaItems.BOOSTED_SHARDS.get(recipe.color()).get()
+					: ChromaItems.SHARDS.get(recipe.color()).get());
+			builder.addSlot(RecipeIngredientRole.INPUT, 39, 0).setStandardSlotBackground().add(shard);
+			List<ItemStack> in = new ArrayList<>();
+			List<ItemStack> out = new ArrayList<>();
+			if (reika.chromaticraft.magic.CrystalPotionController.instance.isPotionModifier(recipe.color())) {
+				net.minecraft.core.registries.BuiltInRegistries.POTION.listElements()
+						.filter(h -> !h.value().getEffects().isEmpty())
+						.forEach(h -> in.add(net.minecraft.world.item.alchemy.PotionContents.createItemStack(
+								net.minecraft.world.item.Items.POTION, h)));
+				for (var potion : ChromaItems.CRYSTAL_POTIONS.values())
+					in.add(potion.get().getDefaultInstance());
+				for (ItemStack is : in)
+					out.add(reika.chromaticraft.tileentity.recipe.TileEntityCrystalBrewer.getPotionStackFromColor(
+							is, recipe.color(), recipe.boosted()));
+			}
+			else {
+				for (var potion : List.of(net.minecraft.world.item.alchemy.Potions.WATER,
+						net.minecraft.world.item.alchemy.Potions.AWKWARD, net.minecraft.world.item.alchemy.Potions.MUNDANE,
+						net.minecraft.world.item.alchemy.Potions.THICK))
+					in.add(net.minecraft.world.item.alchemy.PotionContents.createItemStack(
+							net.minecraft.world.item.Items.POTION, potion));
+				out.add(reika.chromaticraft.tileentity.recipe.TileEntityCrystalBrewer.getPotionStackFromColor(
+						in.getFirst(), recipe.color(), recipe.boosted()));
+			}
+			var input = builder.addSlot(RecipeIngredientRole.INPUT, 12, 26).setStandardSlotBackground().addItemStacks(in);
+			var output = builder.addSlot(RecipeIngredientRole.OUTPUT, 66, 26).setOutputSlotBackground().addItemStacks(out);
+			if (out.size() == in.size())
+				builder.createFocusLink(input, output);
+		}
+
+		@Override
+		public void createRecipeExtras(mezz.jei.api.gui.widgets.IRecipeExtrasBuilder builder, BrewingRecipe recipe,
+				IFocusGroup focuses) {
+			builder.addRecipeArrow().setPosition(34, 27);
+		}
+	}
+
 	/** The "open in Lexicon" button beside each ChromatiCraft recipe. */
 	private static final class LexiconButtonFactory implements IRecipeButtonControllerFactory {
 
@@ -310,7 +383,7 @@ public class ChromaJEIPlugin implements IModPlugin {
 				case CastingTableRecipe c -> c.output();
 				case PoolAlloyingRecipe p -> p.result();
 				default -> ItemStack.EMPTY;
-			} : ItemStack.EMPTY;
+			} : layout.getRecipe() instanceof BrewingRecipe ? new ItemStack(ChromaBlocks.CRYSTAL_BREWER.get()) : ItemStack.EMPTY;
 			LexiconCatalog.Entry page = ChromaClientRecipes.pageFor(output);
 			if (page == null)
 				return null;

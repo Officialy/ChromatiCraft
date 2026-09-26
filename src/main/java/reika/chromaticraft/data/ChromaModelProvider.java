@@ -145,6 +145,7 @@ public class ChromaModelProvider extends ModelProvider {
 		networkTileModel(ChromaBlocks.PYLON_LINK.get(), "pylon_link", "block/tile/pylonlink_side", blockStateOut, itemModelOut, modelOut);
 		itemStandModel(blockStateOut, itemModelOut, modelOut);
 		castingTableModel(blockStateOut, itemModelOut, modelOut);
+		crystalBrewerModel(blockStateOut, itemModelOut, modelOut);
 		ritualTableModel(blockStateOut, itemModelOut, modelOut);
 		crystalChargerModel(blockStateOut, itemModelOut, modelOut);
 		pylonTurboModel(blockStateOut, itemModelOut, modelOut);
@@ -1286,6 +1287,20 @@ public class ChromaModelProvider extends ModelProvider {
 				TextureMapping.cube(texture), modelOut);
 		itemModelOut.accept(ChromaBlocks.ITEM_STAND.get().asItem(),
 				ItemModelUtils.specialModel(itemModel, new ItemStandItemRenderer.Unbaked()));
+	}
+
+	/** V33a BlockChromaTile: tile/brewer_bottom, _top and _side. */
+	private static void crystalBrewerModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		TextureMapping textures = new TextureMapping()
+				.put(TextureSlot.SIDE, new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/tile/brewer_side")))
+				.put(TextureSlot.TOP, new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/tile/brewer_top")))
+				.put(TextureSlot.BOTTOM, new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/tile/brewer_bottom")));
+		Identifier model = ModelTemplates.CUBE_BOTTOM_TOP.create(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/crystal_brewer"), textures, modelOut);
+		MultiVariant variant = new MultiVariant(WeightedList.of(new Variant(model)));
+		blockStateOut.accept(MultiVariantGenerator.dispatch(ChromaBlocks.CRYSTAL_BREWER.get(), variant));
+		itemModelOut.accept(ChromaBlocks.CRYSTAL_BREWER.get().asItem(), ItemModelUtils.plainModel(model));
 	}
 
 	private static void castingTableModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,

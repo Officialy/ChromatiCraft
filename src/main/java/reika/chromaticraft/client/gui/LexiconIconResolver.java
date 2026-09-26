@@ -139,6 +139,7 @@ public final class LexiconIconResolver {
 			case "table" -> ChromaBlocks.CASTING_TABLE.get();
 			case "ritual" -> ChromaBlocks.RITUAL_TABLE.get();
 			case "collector" -> ChromaBlocks.COLLECTOR.get();
+			case "brewer" -> ChromaBlocks.CRYSTAL_BREWER.get();
 			case "focuscrystal" -> ChromaBlocks.FOCUS_CRYSTAL.get();
 			case "personal" -> ChromaBlocks.PERSONAL_CHARGER.get();
 			case "relaysource" -> ChromaBlocks.RELAY_SOURCE.get();

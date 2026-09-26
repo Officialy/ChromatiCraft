@@ -182,6 +182,7 @@ public class ChromaLang extends LanguageProvider {
 		for (var seed : ChromaItems.FERTILITY_SEEDS)
 			add(seed.get(), "Fertility Seeds");
 		add(ChromaBlocks.CRYSTAL_CHARGER.get(), "Storage Crystal Charger"); // V33a chroma.charger
+		add(ChromaBlocks.CRYSTAL_BREWER.get(), "Crystal Brewery"); // V33a chroma.brewer
 		add(ChromaBlocks.PYLON_TURBOCHARGER.get(), "Energy Focal Point"); // V33a chroma.pylonturbo
 		add(ChromaBlocks.COLLECTOR.get(), "Chroma Collector"); // V33a chroma.collector
 		add(ChromaBlocks.FARMER.get(), "Elemental Harvester"); // V33a chroma.farmer

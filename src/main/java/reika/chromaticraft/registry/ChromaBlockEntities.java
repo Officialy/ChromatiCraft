@@ -107,6 +107,8 @@ public final class ChromaBlockEntities {
 			register("ritual_table", ChromaTiles.RITUAL);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityCrystalCharger>> CRYSTAL_CHARGER =
 			register("crystal_charger", ChromaTiles.CHARGER);
+	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<reika.chromaticraft.tileentity.recipe.TileEntityCrystalBrewer>> CRYSTAL_BREWER =
+			register("crystal_brewer", ChromaTiles.BREWER);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityCollector>> COLLECTOR =
 			register("collector", ChromaTiles.COLLECTOR);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityFarmer>> FARMER =

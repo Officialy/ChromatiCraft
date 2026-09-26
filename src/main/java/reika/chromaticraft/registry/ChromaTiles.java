@@ -71,6 +71,8 @@ public enum ChromaTiles implements TileEnum {
 	TABLE("chroma.castingtable", ChromaBlocks.CASTING_TABLE, TileEntityCastingTable.class),
 	RITUAL("chroma.ritual", ChromaBlocks.RITUAL_TABLE, TileEntityRitualTable.class),
 	CHARGER("chroma.charger", ChromaBlocks.CRYSTAL_CHARGER, TileEntityCrystalCharger.class),
+	BREWER("chroma.brewer", ChromaBlocks.CRYSTAL_BREWER,
+			reika.chromaticraft.tileentity.recipe.TileEntityCrystalBrewer.class),
 	COLLECTOR("chroma.collector", ChromaBlocks.COLLECTOR, TileEntityCollector.class),
 	FARMER("chroma.farmer", ChromaBlocks.FARMER, TileEntityFarmer.class),
 	HEATLILY("chroma.heatlily", ChromaBlocks.HEAT_LILY, TileEntityHeatLily.class),

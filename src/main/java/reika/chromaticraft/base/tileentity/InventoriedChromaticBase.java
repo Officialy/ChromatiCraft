@@ -1,50 +1,89 @@
 /*******************************************************************************
  * @author Reika Kalseki
- * 
+ *
  * Copyright 2017
- * 
+ *
  * All rights reserved.
  * Distribution of the software in any form is only allowed with
  * explicit, prior permission from the owner.
  ******************************************************************************/
 package reika.chromaticraft.base.tileentity;
 
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.init.Blocks;
-import net.minecraft.inventory.IInventory;
-import net.minecraft.inventory.ISidedInventory;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.nbt.NBTTagList;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.NonNullList;
+import net.minecraft.world.ContainerHelper;
+import net.minecraft.world.WorldlyContainer;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 
-import reika.dragonapi.interfaces.tileentity.InertIInv;
-import reika.dragonapi.libraries.ReikaInventoryHelper;
-import reika.dragonapi.libraries.reikanbthelper.NBTTypes;
+import reika.dragonapi.interfaces.blockentity.InertIInv;
 
-public abstract class InventoriedChromaticBase extends TileEntityChromaticBase implements ISidedInventory {
+/**
+ * V33a {@code InventoriedChromaticBase}: a ChromatiCraft tile with an inventory, every slot open from every side unless
+ * the tile is an {@link InertIInv}, insertion gated by {@link #canPlaceItem}. On 26.2's container and persistence APIs,
+ * as {@link InventoriedCrystalReceiver} does for the networked tiles; V33a's {@code onPreSlotSet}/{@code onSlotSet}
+ * hooks are kept.
+ */
+public abstract class InventoriedChromaticBase extends TileEntityChromaticBase implements WorldlyContainer {
 
-	protected ItemStack[] inv = new ItemStack[this.getSizeInventory()];
+	protected final NonNullList<ItemStack> inv;
 
-	public final int[] getAccessibleSlotsFromSide(int var1) {
+	protected InventoriedChromaticBase(BlockEntityType<?> type, BlockPos pos, BlockState state) {
+		super(type, pos, state);
+		inv = NonNullList.withSize(this.getSizeInventory(), ItemStack.EMPTY);
+	}
+
+	public abstract int getSizeInventory();
+
+	@Override
+	public final int getContainerSize() {
+		return this.getSizeInventory();
+	}
+
+	@Override
+	public final int[] getSlotsForFace(Direction side) {
 		if (this instanceof InertIInv)
 			return new int[0];
-		return ReikaInventoryHelper.getWholeInventoryForISided(this);
+		int[] slots = new int[this.getContainerSize()];
+		for (int i = 0; i < slots.length; i++)
+			slots[i] = i;
+		return slots;
 	}
 
-	public final boolean canInsertItem(int i, ItemStack is, int side) {
+	@Override
+	public final boolean canPlaceItemThroughFace(int slot, ItemStack stack, Direction side) {
 		if (this instanceof InertIInv)
 			return false;
-		return ((IInventory)this).isItemValidForSlot(i, is);
+		return this.canPlaceItem(slot, stack);
 	}
 
-	public final ItemStack getStackInSlot(int par1) {
-		return inv[par1];
+	@Override
+	public boolean canTakeItemThroughFace(int slot, ItemStack stack, Direction side) {
+		return !(this instanceof InertIInv);
 	}
 
-	public final void setInventorySlotContents(int par1, ItemStack is) {
-		this.onPreSlotSet(par1, is);
-		inv[par1] = is;
-		this.onSlotSet(par1, is);
+	@Override
+	public final boolean isEmpty() {
+		return inv.stream().allMatch(ItemStack::isEmpty);
+	}
+
+	@Override
+	public final ItemStack getItem(int slot) {
+		return inv.get(slot);
+	}
+
+	@Override
+	public final void setItem(int slot, ItemStack is) {
+		this.onPreSlotSet(slot, is);
+		inv.set(slot, is);
+		is.limitSize(this.getMaxStackSize());
+		this.onSlotSet(slot, is);
+		this.setChanged();
 	}
 
 	protected void onPreSlotSet(int slot, ItemStack is) {
@@ -55,80 +94,54 @@ public abstract class InventoriedChromaticBase extends TileEntityChromaticBase i
 
 	}
 
-	public boolean isUseableByPlayer(EntityPlayer var1) {
-		return this.isPlayerAccessible(var1);
-	}
-
-	public final ItemStack decrStackSize(int par1, int par2)
-	{
-		return ReikaInventoryHelper.decrStackSize(this, par1, par2);
-	}
-
-	public final ItemStack getStackInSlotOnClosing(int par1)
-	{
-		return ReikaInventoryHelper.getStackInSlotOnClosing(this, par1);
-	}
-
-	public final String getInventoryName() {
-		return this.getTEName();
-	}
-
-	public void openInventory() {}
-
-	public void closeInventory() {}
-
 	@Override
-	public final boolean hasCustomInventoryName() {
-		return true;
-	}
-
-	@Override
-	public void markDirty() {
-		blockMetadata = worldObj.getBlockMetadata(xCoord, yCoord, zCoord);
-		worldObj.markTileEntityChunkModified(xCoord, yCoord, zCoord, this);
-
-		if (this.getBlockType() != Blocks.air)
-		{
-			worldObj.func_147453_f(xCoord, yCoord, zCoord, this.getBlockType());
+	public final ItemStack removeItem(int slot, int amount) {
+		ItemStack removed = ContainerHelper.removeItem(inv, slot, amount);
+		if (!removed.isEmpty()) {
+			this.onSlotSet(slot, inv.get(slot));
+			this.setChanged();
 		}
+		return removed;
 	}
 
 	@Override
-	public void writeToNBT(NBTTagCompound NBT)
-	{
-		super.writeToNBT(NBT);
-
-		NBTTagList nbttaglist = new NBTTagList();
-
-		for (int i = 0; i < inv.length; i++) {
-			if (inv[i] != null) {
-				NBTTagCompound nbttagcompound = new NBTTagCompound();
-				nbttagcompound.setByte("Slot", (byte)i);
-				inv[i].writeToNBT(nbttagcompound);
-				nbttaglist.appendTag(nbttagcompound);
-			}
-		}
-
-		NBT.setTag("Items", nbttaglist);
+	public final ItemStack removeItemNoUpdate(int slot) {
+		ItemStack removed = ContainerHelper.takeItem(inv, slot);
+		if (!removed.isEmpty())
+			this.onSlotSet(slot, ItemStack.EMPTY);
+		return removed;
 	}
 
 	@Override
-	public void readFromNBT(NBTTagCompound NBT)
-	{
-		super.readFromNBT(NBT);
+	public boolean stillValid(Player player) {
+		return this.isPlayerAccessible(player);
+	}
 
-		NBTTagList nbttaglist = NBT.getTagList("Items", NBTTypes.COMPOUND.ID);
-		inv = new ItemStack[this.getSizeInventory()];
+	@Override
+	public void clearContent() {
+		inv.clear();
+		this.setChanged();
+	}
 
-		for (int i = 0; i < nbttaglist.tagCount(); i++)
-		{
-			NBTTagCompound nbttagcompound = nbttaglist.getCompoundTagAt(i);
-			byte byte0 = nbttagcompound.getByte("Slot");
+	/** V33a {@code markDirty}: also tells comparators and neighbours the contents changed. */
+	@Override
+	public void setChanged() {
+		super.setChanged();
+		if (this.getLevel() != null)
+			this.getLevel().updateNeighbourForOutputSignal(this.getBlockPos(), this.getBlockState().getBlock());
+	}
 
-			if (byte0 >= 0 && byte0 < inv.length) {
-				inv[byte0] = ItemStack.loadItemStackFromNBT(nbttagcompound);
-			}
-		}
+	@Override
+	protected void loadAdditional(ValueInput input) {
+		super.loadAdditional(input);
+		inv.clear();
+		ContainerHelper.loadAllItems(input, inv);
+	}
+
+	@Override
+	protected void saveAdditional(ValueOutput output) {
+		super.saveAdditional(output);
+		ContainerHelper.saveAllItems(output, inv);
 	}
 
 }
