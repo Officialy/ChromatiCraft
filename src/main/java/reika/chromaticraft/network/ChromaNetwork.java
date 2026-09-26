@@ -41,6 +41,8 @@ public final class ChromaNetwork {
 		registrar.playToClient(ArtefactFx.TYPE, ArtefactFx.CODEC, ChromaNetwork::handleArtefactFx);
 		registrar.playToClient(ArtefactZone.TYPE, ArtefactZone.CODEC, ChromaNetwork::handleArtefactZone);
 		registrar.playToClient(EnderEyeSync.TYPE, EnderEyeSync.CODEC, ChromaNetwork::handleEnderEyeSync);
+		registrar.playToClient(LaunchFire.TYPE, LaunchFire.CODEC, (payload, context) -> context.enqueueWork(() ->
+				ClientPayloadHandlers.launchFire(payload.pos())));
 		registrar.playToClient(PylonCache.TYPE, PylonCache.CODEC, (payload, context) -> context.enqueueWork(() ->
 				ClientPayloadHandlers.pylonCache(payload.entries())));
 		registrar.playToClient(FarmerHarvest.TYPE, FarmerHarvest.CODEC,
@@ -209,6 +211,18 @@ public final class ChromaNetwork {
 				net.minecraft.network.codec.ByteBufCodecs.VAR_INT, EnderEyeSync::entityId,
 				net.minecraft.network.codec.ByteBufCodecs.VAR_INT, EnderEyeSync::ticks, EnderEyeSync::new);
 		@Override public Type<EnderEyeSync> type() { return TYPE; }
+	}
+
+	/** V33a LAUNCHFIRE: a Vertical Propulsion Panel just fired. */
+	public record LaunchFire(BlockPos pos) implements CustomPacketPayload {
+		public static final Type<LaunchFire> TYPE = createType("launch_fire");
+		public static final StreamCodec<ByteBuf, LaunchFire> CODEC = BlockPos.STREAM_CODEC.map(LaunchFire::new, LaunchFire::pos);
+		@Override public Type<LaunchFire> type() { return TYPE; }
+	}
+
+	/** V33a sent it to everyone within 90 blocks. */
+	public static void sendLaunchFire(ServerLevel level, BlockPos pos) {
+		PacketDistributor.sendToPlayersNear(level, null, pos.getX()+0.5, pos.getY()+0.5, pos.getZ()+0.5, 90, new LaunchFire(pos));
 	}
 
 	/** V33a PYLONCACHE: pylon cache entries for the client's copy. */

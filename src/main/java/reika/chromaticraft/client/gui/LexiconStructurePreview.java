@@ -42,6 +42,7 @@ final class LexiconStructurePreview {
 			Map.entry("relay", "multiblock/relay_source"),
 			Map.entry("compound", "multiblock/compound_repeater"),
 			Map.entry("personal", "multiblock/personal_charger"),
+			Map.entry("launchpad", "multiblock/launch_pad"),
 			Map.entry("pylonbroadcast", "multiblock/pylon_broadcast"),
 			Map.entry("portal", "multiblock/portal"),
 			Map.entry("datanode", "worldgen/data_node"),

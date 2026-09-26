@@ -51,7 +51,8 @@ public enum ChromaStructures implements StructureEnum<ChromaStructureBase> {
 	RITUAL2(RitualStructure.Enhanced.class),
 	PERSONAL(PersonalChargerStructure.class),
 	PORTAL(PortalStructure.class),
-	DATANODE(DataTowerStructure.class);
+	DATANODE(DataTowerStructure.class),
+	LAUNCHPAD(reika.chromaticraft.auxiliary.structure.LaunchPadStructure.class);
 
 	public final boolean requiresColor;
 	private final Class<? extends ChromaStructureBase> structureClass;

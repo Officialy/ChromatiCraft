@@ -216,6 +216,8 @@ public final class ChromaClientRenderers {
 				reika.chromaticraft.render.tesr.RenderStructureController::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.LOOT_CHEST.get(), RenderLootChest::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.CRYSTAL_CHARGER.get(), RenderCrystalCharger::new);
+		event.registerBlockEntityRenderer(ChromaBlockEntities.LAUNCH_PAD.get(),
+				reika.chromaticraft.render.tesr.RenderLaunchPad::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.CHROMA_FLOWER.get(),
 				reika.chromaticraft.render.tesr.ChromaFlowerRenderer::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.PYLON_TURBOCHARGER.get(),

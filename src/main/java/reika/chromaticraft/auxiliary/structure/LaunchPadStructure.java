@@ -1,38 +1,28 @@
 package reika.chromaticraft.auxiliary.structure;
 
-import net.minecraft.world.World;
+import java.util.function.UnaryOperator;
+
+import net.minecraft.core.BlockPos;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.level.Level;
 
 import reika.chromaticraft.base.ChromaStructureBase;
-import reika.chromaticraft.block.blockpylonstructure.StoneTypes;
-import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaTiles;
 import reika.dragonapi.instantiable.data.blockstruct.FilledBlockArray;
 
-
+/**
+ * V33a {@code LaunchPadStructure}: the Vertical Propulsion Panel set flush in a 3x3 ring of crystalline stone, corners
+ * at the corners and grooves along the edges. Built from the {@code multiblock/launch_pad} template, which
+ * {@code ChromaStructureTemplateProvider} writes from V33a's own layout table.
+ */
 public class LaunchPadStructure extends ChromaStructureBase {
 
-	private static final StoneTypes[][] structureMetas = {
-			{StoneTypes.CORNER, StoneTypes.GROOVE2, StoneTypes.CORNER},
-			{StoneTypes.GROOVE1, null, StoneTypes.GROOVE1},
-			{StoneTypes.CORNER, StoneTypes.GROOVE2, StoneTypes.CORNER}
-	};
+	private static final Identifier TEMPLATE = NBTStructureLoader.chromaTemplate("multiblock/launch_pad");
+	/** The pad is the centre of the ring. */
+	private static final BlockPos ANCHOR = new BlockPos(1, 0, 1);
 
 	@Override
-	public FilledBlockArray getArray(World world, int x, int y, int z) {
-		FilledBlockArray array = new FilledBlockArray(world);
-		this.setTile(array, x, y, z, ChromaTiles.LAUNCHPAD);
-
-		for (int i = -1; i <= 1; i++) {
-			for (int k = -1; k <= 1; k++) {
-				if (i == 0 && k == 0)
-					continue;
-				int dx = x+i;
-				int dz = z+k;
-				array.setBlock(dx, y, dz, ChromaBlocks.PYLONSTRUCT.getBlockInstance(), structureMetas[i+1][k+1].ordinal());
-			}
-		}
-
-		return array;
+	public FilledBlockArray getArray(Level world, int x, int y, int z) {
+		return NBTStructureLoader.load(world, TEMPLATE, new BlockPos(x, y, z), ANCHOR, UnaryOperator.identity());
 	}
 
 }

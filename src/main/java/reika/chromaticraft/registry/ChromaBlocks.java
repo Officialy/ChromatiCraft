@@ -974,6 +974,10 @@ public final class ChromaBlocks {
 			register("chroma_flower", () -> new reika.chromaticraft.block.BlockChromaFlower(blockProperties()
 					.strength(0F, 0.1F).noCollision().noOcclusion().sound(SoundType.GRASS).lightLevel(state -> 9)
 					.pushReaction(net.minecraft.world.level.material.PushReaction.DESTROY)));
+	/** V33a LAUNCHPAD, a BlockChromaTile2 entry: rock, hardness 5, resistance 40 (8 against explosions). */
+	public static final DeferredBlock<Block> LAUNCH_PAD =
+			register("launch_pad", () -> new reika.chromaticraft.block.BlockChromaticTile(
+					blockProperties().strength(5F, 8F).requiresCorrectToolForDrops(), ChromaTiles.LAUNCHPAD));
 	/** V33a BREWER, a BlockChromaTile entry: rock, hardness 5, resistance 40 (so 8 against explosions). */
 	public static final DeferredBlock<Block> CRYSTAL_BREWER =
 			register("crystal_brewer", () -> new reika.chromaticraft.block.BlockCrystalBrewer(

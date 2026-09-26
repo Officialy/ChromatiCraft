@@ -9,88 +9,78 @@
  ******************************************************************************/
 package reika.chromaticraft.render.tesr;
 
-import org.lwjgl.opengl.GL11;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 
-import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraftforge.client.MinecraftForgeClient;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
+import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
+import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
+import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.phys.Vec3;
+
+import org.jspecify.annotations.Nullable;
 
 import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.base.ChromaRenderBase;
+import reika.chromaticraft.render.ChromaRenderPipelines;
 import reika.chromaticraft.tileentity.transport.TileEntityLaunchPad;
-import reika.dragonapi.interfaces.tileentity.RenderFetcher;
-import reika.dragonapi.libraries.io.ReikaTextureHelper;
-import reika.dragonapi.libraries.java.reikaglhelper.BlendMode;
-import reika.dragonapi.libraries.rendering.ReikaRenderHelper;
 
+/**
+ * V33a {@code RenderLaunchPad}: the pad block itself is an ordinary textured cube; over a built pad this draws the charge
+ * as a fan sweeping clockwise across the whole 3x3 frame, just above its surface, as far round as the charge has got --
+ * additive-dark, unlit, white, with a green fan under it when enhanced. The 1.7.10 triangle fan is emitted as
+ * triangles (a quad repeating its last corner) for the quad pipeline.
+ */
+public final class RenderLaunchPad implements BlockEntityRenderer<TileEntityLaunchPad, RenderLaunchPad.State> {
 
-public class RenderLaunchPad extends ChromaRenderBase {
+	private static final Identifier TEXTURE = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
+			"textures/misc/launchcharge_additive.png");
 
-	@Override
-	public String getImageFileName(RenderFetcher te) {
-		return "launchpad.png";
+	public RenderLaunchPad(BlockEntityRendererProvider.Context context) {
+
 	}
 
 	@Override
-	public void renderTileEntityAt(TileEntity tile, double par2, double par4, double par6, float par8) {
-		TileEntityLaunchPad te = (TileEntityLaunchPad)tile;
-		GL11.glPushMatrix();
-		GL11.glTranslated(par2, par4, par6);
-		GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
-		if (te.isInWorld() && te.hasStructure() && MinecraftForgeClient.getRenderPass() == 1) {
-			ReikaRenderHelper.disableLighting();
-			GL11.glEnable(GL11.GL_BLEND);
-			BlendMode.ADDITIVEDARK.apply();
-			GL11.glFrontFace(GL11.GL_CW);
-			//GL11.glDisable(GL11.GL_DEPTH_TEST);
-			GL11.glDepthMask(false);
-			this.renderCharge(te, par8);
-		}
-		GL11.glPopAttrib();
-		GL11.glPopMatrix();
+	public State createRenderState() {
+		return new State();
 	}
 
-	private void renderCharge(TileEntityLaunchPad tile, float par8) {
-		float f = tile.getChargeFraction();
-		if (f > 0) {
+	@Override
+	public void extractRenderState(TileEntityLaunchPad te, State state, float partialTick, Vec3 cameraPosition,
+			ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress) {
+		BlockEntityRenderer.super.extractRenderState(te, state, partialTick, cameraPosition, breakProgress);
+		state.charge = te.hasStructure() ? te.getChargeFraction() : 0;
+		state.enhanced = te.isEnhanced();
+	}
 
-			ReikaTextureHelper.bindTexture(ChromatiCraft.class, "Textures/launchcharge_additive.png");
-			//double x0 = 0.5-s;
-			//double x1 = 0.5+s;
-			//double z0 = 0.5-s;
-			//double z1 = 0.5+s;
-			Tessellator v5 = Tessellator.instance;
-			v5.setBrightness(240);
-			v5.startDrawing(GL11.GL_TRIANGLE_FAN);
-			v5.setNormal(0, 1, 0);
-
-			if (tile.isEnhanced()) {
-				this.renderFan(tile, v5, par8, f, 0x00ff00);
-				this.renderFan(tile, v5, par8, f, 0xffffff);
+	@Override
+	public void submit(State state, PoseStack poseStack, SubmitNodeCollector collector,
+			net.minecraft.client.renderer.state.level.CameraRenderState camera) {
+		float f = state.charge;
+		if (f <= 0)
+			return;
+		PoseStack.Pose pose = poseStack.last().copy();
+		boolean enhanced = state.enhanced;
+		collector.submitCustomGeometry(poseStack, ChromaRenderPipelines.additiveSprite(TEXTURE), (ignored, v5) -> {
+			if (enhanced) {
+				renderFan(pose, v5, f, 0x00ff00);
+				renderFan(pose, v5, f, 0xffffff);
 			}
 			else {
-				this.renderFan(tile, v5, par8, f, 0xffffff);
+				renderFan(pose, v5, f, 0xffffff);
 			}
-
-			v5.draw();
-		}
+		});
 	}
 
-	private void renderFan(TileEntityLaunchPad tile, Tessellator v5, float par8, float f, int color) {
+	private static void renderFan(PoseStack.Pose pose, VertexConsumer v5, float f, int color) {
 		double s = 1.5;
 		double lim = f*360;
 		double da = 5;
-		double h = 1.001;
+		float h = 1.001F;
+		int c = 0xff000000 | color;
 
-		v5.setColorOpaque_I(color);
-
-		//v5.addVertexWithUV(x0, h, z1, u, dv);
-		//v5.addVertexWithUV(x1, h, z1, du, dv);
-		//v5.addVertexWithUV(x1, h, z0, du, v);
-		//v5.addVertexWithUV(x0, h, z0, u, v);
-
-		v5.addVertexWithUV(0.5, h, 0.5, 0.5, 0.5);
-
+		double px = Double.NaN, pz = 0, pu = 0, pv = 0;
 		for (double a = 0; a <= lim; a += da) {
 			double ang = Math.toRadians(a);
 			double r = s*Math.min(Math.abs(1D/Math.cos(ang)), Math.abs(1D/Math.sin(ang)));
@@ -98,8 +88,22 @@ public class RenderLaunchPad extends ChromaRenderBase {
 			double dz = r*Math.sin(ang);
 			double u = 0.5+0.5*dx/s;
 			double v = 0.5+0.5*dz/s;
-			v5.addVertexWithUV(0.5+dx, h, 0.5+dz, u, v);
+			if (!Double.isNaN(px)) {
+				v5.addVertex(pose, 0.5F, h, 0.5F).setUv(0.5F, 0.5F).setColor(c);
+				v5.addVertex(pose, (float)(0.5+px), h, (float)(0.5+pz)).setUv((float)pu, (float)pv).setColor(c);
+				v5.addVertex(pose, (float)(0.5+dx), h, (float)(0.5+dz)).setUv((float)u, (float)v).setColor(c);
+				v5.addVertex(pose, (float)(0.5+dx), h, (float)(0.5+dz)).setUv((float)u, (float)v).setColor(c);
+			}
+			px = dx;
+			pz = dz;
+			pu = u;
+			pv = v;
 		}
+	}
+
+	public static final class State extends BlockEntityRenderState {
+		private float charge;
+		private boolean enhanced;
 	}
 
 }

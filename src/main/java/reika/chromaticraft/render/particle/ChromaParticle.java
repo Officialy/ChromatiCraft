@@ -776,6 +776,34 @@ public abstract class ChromaParticle extends SingleQuadParticle {
         }
     }
 
+    /**
+     * V33a {@code TileEntityLaunchPad.doFX}: 90 centre-blurs shoot straight up (2-5 blocks a tick) from across the 3x3
+     * pad, each a green blur with a smaller white core, alpha-fading.
+     */
+    public static void spawnLaunchPadFire(Level world, BlockPos pos) {
+        if (!(world instanceof ClientLevel level)) return;
+        RandomSource rand = level.getRandom();
+        int x = pos.getX();
+        int y = pos.getY();
+        int z = pos.getZ();
+        for (int i = 0; i < 90; i++) {
+            double dx = between(rand, x-1D, x+2);
+            double dz = between(rand, z-1D, z+2);
+            double dy = y+1.0625;
+            double v = between(rand, 2D, 5);
+            int l = 10+rand.nextInt(51);
+            float s = (float)between(rand, 0.5, 1.2);
+            FadeGlow fx = new FadeGlow(level, dx, dy, dz, 0, v, 0, 0x00ff00, l, s, true, null, 0, "centerblur3", true);
+            fx.hasPhysics = true;
+            fx.setAlphaFading();
+            FadeGlow fx2 = new FadeGlow(level, dx, dy, dz, 0, v, 0, 0xffffff, l, s*0.4F, true, null, 0, "centerblur3", true);
+            fx2.hasPhysics = true;
+            fx2.setAlphaFading();
+            Minecraft.getInstance().particleEngine.add(fx);
+            Minecraft.getInstance().particleEngine.add(fx2);
+        }
+    }
+
     public static void spawnEtherealLight(Level world, BlockPos pos) {
         if (!(world instanceof ClientLevel level)) return;
         RandomSource rand = level.getRandom();

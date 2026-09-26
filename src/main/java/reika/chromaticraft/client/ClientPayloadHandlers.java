@@ -184,6 +184,12 @@ public final class ClientPayloadHandlers {
 		reika.chromaticraft.world.iwg.PylonGenerator.instance.cachePylonLocations(entries);
 	}
 
+	public static void launchFire(BlockPos pos) {
+		Minecraft mc = Minecraft.getInstance();
+		if (mc.level != null)
+			reika.chromaticraft.render.particle.ChromaParticle.spawnLaunchPadFire(mc.level, pos);
+	}
+
 	public static void enderEyeSync(int entityId, int ticks) {
 		Minecraft mc = Minecraft.getInstance();
 		if (mc.level != null && mc.level.getEntity(entityId) instanceof reika.chromaticraft.entity.EntityEnderEyeT2 eye)

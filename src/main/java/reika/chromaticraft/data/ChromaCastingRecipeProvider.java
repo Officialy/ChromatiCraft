@@ -325,6 +325,15 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 					new ItemStackTemplate(ChromaBlocks.CHROMA_FLOWER.get().asItem()), 5, 5)
 					.withPenalty(2, 0.25F));
 
+			// V33a LaunchPadRecipe, a plain CastingRecipe: lime shards (the exact plain shard), aura dust, redstone and an
+			// engraved crystal stone.
+			saveShaped("launch_pad", new ItemStackTemplate(ChromaBlocks.LAUNCH_PAD.get().asItem()), 5, 5,
+					Map.of('s', Ingredient.of(ChromaItems.SHARDS.get(CrystalElement.LIME).get()),
+							'r', Ingredient.of(Items.REDSTONE),
+							'a', Ingredient.of(ChromaItems.TIERED.get(ChromaTieredItems.AURA_DUST).get()),
+							'g', Ingredient.of(ChromaBlocks.crystallineStone(StoneTypes.ENGRAVED).get())),
+					"sas", "aga", "rar");
+
 			// V33a CrystalBrewerRecipe, a plain CastingRecipe: any shard (getAnyMetaStack, boosted included) around
 			// a cauldron on a stone base.
 			saveShaped("crystal_brewer", new ItemStackTemplate(ChromaBlocks.CRYSTAL_BREWER.get().asItem()), 5, 5,

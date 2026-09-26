@@ -1,40 +1,51 @@
+/*******************************************************************************
+ * @author Reika Kalseki
+ *
+ * Copyright 2017
+ *
+ * All rights reserved.
+ * Distribution of the software in any form is only allowed with
+ * explicit, prior permission from the owner.
+ ******************************************************************************/
 package reika.chromaticraft.tileentity.transport;
 
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-import net.minecraft.block.Block;
-import net.minecraft.client.Minecraft;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.item.EntityItem;
-import net.minecraft.entity.item.EntityXPOrb;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.AxisAlignedBB;
-import net.minecraft.world.World;
-import net.minecraftforge.fluids.Fluid;
+import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.ExperienceOrb;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.material.FluidState;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 
-import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.auxiliary.interfaces.MultiBlockChromaTile;
 import reika.chromaticraft.base.ChromaStructureBase;
 import reika.chromaticraft.base.tileentity.TileEntityChromaticBase;
-import reika.chromaticraft.registry.ChromaIcons;
+import reika.chromaticraft.network.ChromaNetwork;
+import reika.chromaticraft.registry.ChromaBlockEntities;
+import reika.chromaticraft.registry.ChromaFluids;
 import reika.chromaticraft.registry.ChromaOptions;
-import reika.chromaticraft.registry.ChromaPackets;
 import reika.chromaticraft.registry.ChromaSounds;
 import reika.chromaticraft.registry.ChromaStructures;
 import reika.chromaticraft.registry.ChromaTiles;
-import reika.chromaticraft.render.particle.EntityCCBlurFX;
 import reika.dragonapi.instantiable.data.immutable.Coordinate;
 import reika.dragonapi.instantiable.data.maps.TimerMap;
-import reika.dragonapi.libraries.ReikaFluidHelper;
-import reika.dragonapi.libraries.io.ReikaPacketHelper;
-import reika.dragonapi.libraries.java.ReikaRandomHelper;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
-
-
+/**
+ * V33a {@code TileEntityLaunchPad}, the Vertical Propulsion Panel. On its crystalline-stone frame it charges for 20 ticks
+ * while something stands on it (a lone sneaking player excepted; items and XP orbs never count), then flings everything
+ * on it skyward -- players at 3.5-4 blocks a tick, anything else at 1.8 -- scaled by the power option, and cancels the
+ * fall of whatever lands on it. Ringed by liquid ender at distance two it is enhanced: 2.5 times the speed, and those it
+ * launched keep being pushed for 12-18 more ticks.
+ */
 public class TileEntityLaunchPad extends TileEntityChromaticBase implements MultiBlockChromaTile {
 
 	public static final int CHARGE_DURATION = 20;
@@ -45,7 +56,11 @@ public class TileEntityLaunchPad extends TileEntityChromaticBase implements Mult
 
 	private boolean needsBigUpdate;
 
-	private TimerMap<Entity> currentLaunches = new TimerMap();
+	private final TimerMap<Entity> currentLaunches = new TimerMap();
+
+	public TileEntityLaunchPad(BlockPos pos, BlockState state) {
+		super(ChromaBlockEntities.LAUNCH_PAD.get(), pos, state);
+	}
 
 	public float getChargeFraction() {
 		return charge/(float)CHARGE_DURATION;
@@ -56,15 +71,19 @@ public class TileEntityLaunchPad extends TileEntityChromaticBase implements Mult
 		return ChromaTiles.LAUNCHPAD;
 	}
 
+	@Override
 	public boolean hasStructure() {
 		return structure;
 	}
 
 	@Override
-	public void updateEntity(World world, int x, int y, int z, int meta) {
-		if (!world.isRemote && this.hasStructure()) {
-			AxisAlignedBB box = AxisAlignedBB.getBoundingBox(x-0.75, y+0.9375, z-0.75, x+1.75, y+2.5, z+1.75);
-			List<Entity> li = world.getEntitiesWithinAABB(Entity.class, box);
+	public void updateEntity(Level world, BlockPos pos) {
+		int x = pos.getX();
+		int y = pos.getY();
+		int z = pos.getZ();
+		if (!world.isClientSide() && this.hasStructure()) {
+			AABB box = new AABB(x-0.75, y+0.9375, z-0.75, x+1.75, y+2.5, z+1.75);
+			List<Entity> li = world.getEntitiesOfClass(Entity.class, box);
 			for (Entity e : li) {
 				e.fallDistance = 0;
 			}
@@ -75,15 +94,15 @@ public class TileEntityLaunchPad extends TileEntityChromaticBase implements Mult
 			}
 
 			boolean flag = charge > 0;
-			box = AxisAlignedBB.getBoundingBox(x-1, y+0.9375, z-1, x+2, y+1.0625, z+2);
-			li = world.getEntitiesWithinAABB(Entity.class, box);
+			box = new AABB(x-1, y+0.9375, z-1, x+2, y+1.0625, z+2);
+			li = new ArrayList(world.getEntitiesOfClass(Entity.class, box));
 			Iterator<Entity> it = li.iterator();
 			while (it.hasNext()) {
 				Entity e = it.next();
-				if (e instanceof EntityItem || e instanceof EntityXPOrb)
+				if (e instanceof ItemEntity || e instanceof ExperienceOrb)
 					it.remove();
 			}
-			if (li.size() == 1 && li.get(0).isSneaking())
+			if (li.size() == 1 && li.get(0).isShiftKeyDown())
 				li.clear();
 			if (!li.isEmpty()) {
 				if (charge == CHARGE_DURATION) {
@@ -92,7 +111,7 @@ public class TileEntityLaunchPad extends TileEntityChromaticBase implements Mult
 					}
 					needsBigUpdate = true;
 					ChromaSounds.KILLAURA.playSoundAtBlockNoAttenuation(this, 1, 0.5F, 90);
-					ReikaPacketHelper.sendDataPacketWithRadius(ChromatiCraft.packetChannel, ChromaPackets.LAUNCHFIRE.ordinal(), this, 90);
+					ChromaNetwork.sendLaunchFire((ServerLevel)world, pos);
 				}
 				else {
 					charge++;
@@ -103,7 +122,6 @@ public class TileEntityLaunchPad extends TileEntityChromaticBase implements Mult
 				charge = Math.max(0, charge-2);
 				if (charge == 0) {
 					needsBigUpdate = true;
-					this.scheduleBlockUpdate(2);
 				}
 			}
 			if (flag || charge > 0) {
@@ -112,38 +130,20 @@ public class TileEntityLaunchPad extends TileEntityChromaticBase implements Mult
 		}
 	}
 
-	@SideOnly(Side.CLIENT)
-	public void doFX(World world, int x, int y, int z) {
-		for (int i = 0; i < 90; i++) {
-			double dx = ReikaRandomHelper.getRandomBetween(x-1D, x+2);
-			double dz = ReikaRandomHelper.getRandomBetween(z-1D, z+2);
-			double dy = y+1.0625;
-			double v = ReikaRandomHelper.getRandomBetween(2D, 5);
-			EntityCCBlurFX fx = new EntityCCBlurFX(world, dx, dy, dz, 0, v, 0);
-			int l = ReikaRandomHelper.getRandomBetween(10, 60);
-			float s = (float)ReikaRandomHelper.getRandomBetween(0.5, 1.2);
-			EntityCCBlurFX fx2 = new EntityCCBlurFX(world, dx, dy, dz, 0, v, 0);
-			fx.setIcon(ChromaIcons.CENTER).setColliding().setLife(l).setScale(s).setColor(0x00ff00).setAlphaFading().setRapidExpand();
-			fx2.setIcon(ChromaIcons.CENTER).setLife(l).setScale(s*0.4F).setColor(0xffffff).setAlphaFading().setRapidExpand().setColliding().lockTo(fx2);
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx2);
-		}
-	}
-
 	private void flingEntity(Entity e, boolean cache) {
 		float v = this.getSpeedFactor();
-		if (e instanceof EntityPlayer) {
-			e.motionY = Math.max(e.motionY, (3.5+rand.nextDouble()*0.5)*v);
-			e.velocityChanged = true;
+		Vec3 m = e.getDeltaMovement();
+		if (e instanceof Player) {
+			e.setDeltaMovement(m.x, Math.max(m.y, (3.5+rand.nextDouble()*0.5)*v), m.z);
 		}
 		else {
-			e.motionY = 1.8*v;
-			e.velocityChanged = true;
+			e.setDeltaMovement(m.x, 1.8*v, m.z);
 		}
+		e.hurtMarked = true;
 		e.fallDistance = -100;
 
 		if (cache && this.isEnhanced()) {
-			currentLaunches.put(e, ReikaRandomHelper.getRandomBetween(12, 18));
+			currentLaunches.put(e, 12+rand.nextInt(7));
 		}
 	}
 
@@ -157,30 +157,37 @@ public class TileEntityLaunchPad extends TileEntityChromaticBase implements Mult
 	}
 
 	@Override
-	protected void onFirstTick(World world, int x, int y, int z) {
-		this.checkForStructure(world, x, y, z);
+	protected void onFirstTick(Level world, BlockPos pos) {
+		super.onFirstTick(world, pos);
+		this.checkForStructure(world, pos);
 	}
 
-	private void checkForStructure(World world, int x, int y, int z) {
+	/** V33a re-checked the frame whenever a neighbouring block changed. */
+	@Override
+	protected void onAdjacentBlockUpdate() {
+		this.validateStructure();
+	}
+
+	private void checkForStructure(Level world, BlockPos pos) {
 		ChromaStructureBase struct = ChromaStructures.LAUNCHPAD.getStructure();
 		struct.resetToDefaults();
 		enhanced = false;
-		structure = struct.getArray(world, x, y, z).matchInWorld();
+		structure = struct.getArray(world, pos.getX(), pos.getY(), pos.getZ()).matchInWorld();
 		if (structure) {
-			enhanced = this.checkForEnhanced(world, x, y, z);
+			enhanced = this.checkForEnhanced(world, pos);
 		}
+		if (!world.isClientSide())
+			this.syncAllData(true);
 	}
 
-	private boolean checkForEnhanced(World world, int x, int y, int z) {
+	/** Every block of the ring at distance two must be a liquid ender source (V33a: the "ender" fluid, metadata 0). */
+	private boolean checkForEnhanced(Level world, BlockPos pos) {
 		for (int i = -2; i <= 2; i++) {
 			for (int k = -2; k <= 2; k++) {
-				int dx = x+i;
-				int dz = z+k;
 				if (Math.abs(i) != 2 && Math.abs(k) != 2)
 					continue;
-				Block b = world.getBlock(dx, y, dz);
-				Fluid f = world.getBlockMetadata(dx, y, dz) == 0 ? ReikaFluidHelper.lookupFluidForBlock(b) : null;
-				if (f == null || !f.getName().equals("ender")) {
+				FluidState f = world.getFluidState(pos.offset(i, 0, k));
+				if (!f.is(ChromaFluids.ENDER.get()) || !f.isSource()) {
 					return false;
 				}
 			}
@@ -189,26 +196,26 @@ public class TileEntityLaunchPad extends TileEntityChromaticBase implements Mult
 	}
 
 	@Override
-	protected void animateWithTick(World world, int x, int y, int z) {
+	protected void animateWithTick(Level world, BlockPos pos) {
 
 	}
 
 	@Override
-	protected void writeSyncTag(NBTTagCompound NBT) {
+	protected void writeSyncTag(CompoundTag NBT) {
 		super.writeSyncTag(NBT);
 
-		NBT.setBoolean("struct", structure);
-		NBT.setBoolean("enhanced", enhanced);
-		NBT.setInteger("charge", charge);
+		NBT.putBoolean("struct", structure);
+		NBT.putBoolean("enhanced", enhanced);
+		NBT.putInt("charge", charge);
 	}
 
 	@Override
-	protected void readSyncTag(NBTTagCompound NBT) {
+	protected void readSyncTag(CompoundTag NBT) {
 		super.readSyncTag(NBT);
 
-		structure = NBT.getBoolean("struct");
-		enhanced = NBT.getBoolean("enhanced");
-		charge = NBT.getInteger("charge");
+		structure = NBT.getBooleanOr("struct", false);
+		enhanced = NBT.getBooleanOr("enhanced", false);
+		charge = NBT.getIntOr("charge", 0);
 	}
 
 	@Override
@@ -223,7 +230,8 @@ public class TileEntityLaunchPad extends TileEntityChromaticBase implements Mult
 
 	@Override
 	public void validateStructure() {
-		this.checkForStructure(worldObj, xCoord, yCoord, zCoord);
+		if (this.getLevel() != null)
+			this.checkForStructure(this.getLevel(), this.getBlockPos());
 	}
 
 	@Override

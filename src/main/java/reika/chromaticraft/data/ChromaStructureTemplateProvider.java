@@ -50,6 +50,7 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
     public static final Identifier RITUAL_BASE = id("multiblock/ritual_base");
     public static final Identifier RITUAL_ENHANCED = id("multiblock/ritual_enhanced");
     public static final Identifier PERSONAL_CHARGER = id("multiblock/personal_charger");
+    public static final Identifier LAUNCH_PAD = id("multiblock/launch_pad");
     public static final Identifier PORTAL = id("multiblock/portal");
     public static final Identifier DATANODE = id("worldgen/data_node");
     public static final Identifier RAINBOW_TREE = id("worldgen/rainbow_tree");
@@ -118,6 +119,7 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
                 write(cache, RITUAL_BASE, ritualAltar(false)),
                 write(cache, RITUAL_ENHANCED, ritualAltar(true)),
                 write(cache, PERSONAL_CHARGER, personalCharger()),
+                write(cache, LAUNCH_PAD, launchPad()),
                 write(cache, PORTAL, importPortal()),
                 write(cache, DATANODE, dataNode()),
                 write(cache, RAINBOW_TREE, rainbowTree()),
@@ -2565,6 +2567,25 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
 	 * the charger itself is six blocks above it at {@code (2,6,2)}. The black runes are palette
 	 * placeholders; {@code PersonalChargerStructure} replaces all four with the charger's colour.
 	 */
+	/** Exact V33a LaunchPadStructure: the pad in a ring of corners and grooves (x-edges GROOVE2, z-edges GROOVE1). */
+	private static TemplateData launchPad() {
+		TemplateData data = new TemplateData(3, 1, 3);
+		StoneTypes[][] structureMetas = {
+				{StoneTypes.CORNER, StoneTypes.GROOVE2, StoneTypes.CORNER},
+				{StoneTypes.GROOVE1, null, StoneTypes.GROOVE1},
+				{StoneTypes.CORNER, StoneTypes.GROOVE2, StoneTypes.CORNER}
+		};
+		for (int i = -1; i <= 1; i++) {
+			for (int k = -1; k <= 1; k++) {
+				if (i == 0 && k == 0)
+					continue;
+				data.set(i+1, 0, k+1, stone(structureMetas[i+1][k+1]));
+			}
+		}
+		data.set(1, 0, 1, new StateDef("chromaticraft:launch_pad", Map.of()));
+		return data;
+	}
+
 	private static TemplateData personalCharger() {
 		TemplateData data = new TemplateData(5, 7, 5);
 		int c = 2;

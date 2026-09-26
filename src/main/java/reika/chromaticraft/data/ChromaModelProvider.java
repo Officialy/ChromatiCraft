@@ -146,6 +146,7 @@ public class ChromaModelProvider extends ModelProvider {
 		itemStandModel(blockStateOut, itemModelOut, modelOut);
 		castingTableModel(blockStateOut, itemModelOut, modelOut);
 		crystalBrewerModel(blockStateOut, itemModelOut, modelOut);
+		launchPadModel(blockStateOut, itemModelOut, modelOut);
 		ritualTableModel(blockStateOut, itemModelOut, modelOut);
 		crystalChargerModel(blockStateOut, itemModelOut, modelOut);
 		pylonTurboModel(blockStateOut, itemModelOut, modelOut);
@@ -1290,6 +1291,20 @@ public class ChromaModelProvider extends ModelProvider {
 				TextureMapping.cube(texture), modelOut);
 		itemModelOut.accept(ChromaBlocks.ITEM_STAND.get().asItem(),
 				ItemModelUtils.specialModel(itemModel, new ItemStandItemRenderer.Unbaked()));
+	}
+
+	/** V33a BlockChromaTile2 standard cube: tile/launchpad_bottom, _top and _side (the charge fan is its TESR). */
+	private static void launchPadModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		TextureMapping textures = new TextureMapping()
+				.put(TextureSlot.SIDE, new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/tile/launchpad_side")))
+				.put(TextureSlot.TOP, new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/tile/launchpad_top")))
+				.put(TextureSlot.BOTTOM, new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/tile/launchpad_bottom")));
+		Identifier model = ModelTemplates.CUBE_BOTTOM_TOP.create(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/launch_pad"), textures, modelOut);
+		MultiVariant variant = new MultiVariant(WeightedList.of(new Variant(model)));
+		blockStateOut.accept(MultiVariantGenerator.dispatch(ChromaBlocks.LAUNCH_PAD.get(), variant));
+		itemModelOut.accept(ChromaBlocks.LAUNCH_PAD.get().asItem(), ItemModelUtils.plainModel(model));
 	}
 
 	/** V33a BlockChromaTile: tile/brewer_bottom, _top and _side. */

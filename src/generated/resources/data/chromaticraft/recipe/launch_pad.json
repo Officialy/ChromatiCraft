@@ -1,0 +1,46 @@
+{
+  "type": "chromaticraft:casting",
+  "experience": 5,
+  "grid": [
+    {
+      "ingredient": "chromaticraft:crystal_shard_lime",
+      "slot": 0
+    },
+    {
+      "ingredient": "chromaticraft:aura_dust",
+      "slot": 1
+    },
+    {
+      "ingredient": "chromaticraft:crystal_shard_lime",
+      "slot": 2
+    },
+    {
+      "ingredient": "chromaticraft:aura_dust",
+      "slot": 3
+    },
+    {
+      "ingredient": "chromaticraft:engraved_crystalline_stone",
+      "slot": 4
+    },
+    {
+      "ingredient": "chromaticraft:aura_dust",
+      "slot": 5
+    },
+    {
+      "ingredient": "minecraft:redstone",
+      "slot": 6
+    },
+    {
+      "ingredient": "chromaticraft:aura_dust",
+      "slot": 7
+    },
+    {
+      "ingredient": "minecraft:redstone",
+      "slot": 8
+    }
+  ],
+  "result": {
+    "id": "chromaticraft:launch_pad"
+  },
+  "tier": "crafting"
+}

@@ -252,8 +252,9 @@ Pylon Link and Lumen Node (V33a had no casting recipe for either).
 - **ENTRY** — 7/7 ported.
 - **RAWEXPLORE** — 20/20 ported (Fertility Seeds and the Artifact Distribution Map landed 2026-09-25).
 - **BASICCRAFT** — 14/27 ported (Crystal Glass and Glow landed 2026-09-25; Defensive Glass, the
-  Enchantments, the Crystal Brewery, the Chromatic Flower, the Pylon Compass, the Illumination Gun, the Ownership Expansion Key and the Subterranean Route Finder 2026-09-26).
-  Missing: Vertical Propulsion Panel; Lumen Wire; Crystal Orchestra; Particle Spawner; Knowledge Entanglement Pedestal; Tool Compression Crate; Lumen Turret; Examination Crystals; Corrosion Resistant Cell.
+  Enchantments, the Crystal Brewery, the Chromatic Flower, the Pylon Compass, the Illumination Gun, the Ownership Expansion Key, the Subterranean Route Finder and the Vertical Propulsion Panel
+  2026-09-26).
+  Missing: Lumen Wire; Crystal Orchestra; Particle Spawner; Knowledge Entanglement Pedestal; Tool Compression Crate; Lumen Turret; Examination Crystals; Corrosion Resistant Cell.
 - **RUNECRAFT** — 11/36 ported.
   Missing: Artificial Sky; Physics Suspension Lamp; Lumen Lamp; Travel Path; Redstone Pod; Flux Pod; Subterranean Illuminator; Chromatic Enchanter; Fluid Radiator; Fluid Link Anchor; Suspension Field Controller; Item Inserter; Lumen Lamp Controller; Crystal Seeds; Item Mover; Voidlinked Bucket; Linker; Creature Sounding Star; Multitool; Nether Layer Crystal; Ore-Finding Pickaxe; Ore Harvester; Bezier Crystals; Aura Tracker; Recall Tablet.
 - **ENERGY** — 15/30 ported.
@@ -8708,5 +8709,25 @@ Needs a full GameTest run (ownership semantics changed across these tiles).
   `ChromaTiles.isRepeater` added.
   - CHROMA-PORT: its Thaumcraft Manipulator-focus wand, and DELEGATE (the Automator).
 - The trail block keeps V33a's untranslated name, `chroma.trail` (no lang entry existed).
+- Unverified in game.
+
+**BASICCRAFT: Vertical Propulsion Panel (2026-09-26).** `launch_pad` (V33a LAUNCHPAD, `TileEntityLaunchPad`).
+- Structure: `LaunchPadStructure` loads a new `multiblock/launch_pad` template, written by
+  `ChromaStructureTemplateProvider` from V33a's layout table: corners and grooves round the pad. It is also
+  in the lexicon structure preview. The frame is re-checked on neighbour updates, as V33a did.
+- Enhancement is a ring of liquid ender sources at distance two.
+- Behaviour, as in V33a:
+  - It charges for 20 ticks under something standing on it; a lone sneaking player, items and XP orbs
+    don't count.
+  - It then flings players up at 3.5-4 blocks a tick and anything else at 1.8, times the power option,
+    with 2.5x and 12-18 ticks of continued push when enhanced.
+  - Fall damage is cancelled over it.
+  - Sounds: KILLAURA_CHARGE while charging and KILLAURA on launch.
+- `launch_fire` payload (V33a LAUNCHFIRE) triggers 90 upward green-and-white centre blurs.
+- `RenderLaunchPad` draws the charge as an additive fan across the 3x3 frame (green under white when
+  enhanced), with its V33a texture at `misc/launchcharge_additive.png`. The block itself is a cube of
+  `tile/launchpad_*`.
+- Recipe "sas / aga / rar": lime shard, aura dust, engraved crystal stone, redstone.
+- V33a's `scheduleBlockUpdate(2)` at charge-out was only a render refresh, which the sync covers.
 - Unverified in game.
 
