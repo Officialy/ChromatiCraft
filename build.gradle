@@ -88,6 +88,8 @@ sourceSets.main.java {
     include 'reika/chromaticraft/block/crystal/BlockCrystalLamp.java'
     include 'reika/chromaticraft/block/crystal/BlockCrystalGlass.java'
     include 'reika/chromaticraft/block/BlockSelectiveGlass.java'
+    include 'reika/chromaticraft/auxiliary/PylonDamage.java'
+    include 'reika/chromaticraft/data/ChromaDamageTypeTagsProvider.java'
     include 'reika/chromaticraft/render/model/SelectiveGlassModel.java'
     include 'reika/chromaticraft/block/crystal/BlockCrystalGlow.java'
     include 'reika/chromaticraft/render/model/CrystalGlowGeometry.java'

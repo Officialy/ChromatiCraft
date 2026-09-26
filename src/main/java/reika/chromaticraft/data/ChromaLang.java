@@ -199,6 +199,28 @@ public class ChromaLang extends LanguageProvider {
 		for (CrystalElement element : CrystalElement.elements)
 			add(ChromaBlocks.crystalGlass(element).get(), element.displayName + " Crystal Glass"); // V33a chroma.glass
 		add(ChromaBlocks.SELECTIVE_GLASS.get(), "Defensive Glass"); // V33a chroma.selectiveglass
+		// V33a PylonDamage.getDeathMessage, per element.
+		add("death.attack." + reika.chromaticraft.auxiliary.PylonDamage.messageId(null), "%1$s died to pylon energy");
+		String[][] pylonDeaths = {
+				{"BLACK", "%1$s died to black magic"},
+				{"RED", "%1$s protected themselves from living"},
+				{"GREEN", "%1$s has returned to nature"},
+				{"BROWN", "%1$s turned to mineral"},
+				{"BLUE", "%1$s was blinded by the light"},
+				{"PURPLE", "Apparently %1$s felt death was an improvement"},
+				{"CYAN", "%1$s drowned in energy"},
+				{"LIGHTGRAY", "A Crystal Pylon tricked %1$s into dying"},
+				{"GRAY", "%1$s experienced change...in the form of death"},
+				{"PINK", "%1$s got in a fight with a Crystal Pylon and lost"},
+				{"LIME", "%1$s became lethally agile"},
+				{"YELLOW", "%1$s experienced an energy overload"},
+				{"LIGHTBLUE", "%1$s accelerated everything, including dying"},
+				{"MAGENTA", "%1$s healed so strongly it killed them"},
+				{"ORANGE", "%1$s overheated"},
+				{"WHITE", "%1$s was purified into nothing"}};
+		for (String[] death : pylonDeaths)
+			add("death.attack." + reika.chromaticraft.auxiliary.PylonDamage.messageId(CrystalElement.valueOf(death[0])),
+					death[1]);
 		// V33a getMultiValuedName GLOW: "<Base>-Based <Element> Glow".
 		for (var holder : ChromaBlocks.CRYSTAL_GLOWS)
 			add(holder.get(), holder.get().getBase().displayName + "-Based "

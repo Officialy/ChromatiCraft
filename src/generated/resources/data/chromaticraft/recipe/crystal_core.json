@@ -1,5 +1,8 @@
 {
   "type": "chromaticraft:casting",
+  "completion": {
+    "double_output": true
+  },
   "duration": 200,
   "experience": 200,
   "grid": [

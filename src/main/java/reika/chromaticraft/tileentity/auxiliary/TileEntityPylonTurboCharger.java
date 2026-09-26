@@ -357,7 +357,7 @@ public final class TileEntityPylonTurboCharger extends TileEntityPylonEnhancer {
 				entity.hurtServer(world, world.damageSources().fellOutOfWorld(), 0.001F);
 			else if (entity instanceof Player) {
 				float amount = Math.max(5, Math.min(entity.getHealth() - 4, entity.getMaxHealth() * 0.75F));
-				if (amount > 0) entity.hurtServer(world, world.damageSources().magic(), amount);
+				if (amount > 0) reika.chromaticraft.auxiliary.PylonDamage.doPylonAttack(color, entity, amount);
 				ChromaSounds.DISCHARGE.playSound(entity, 1, 1);
 			}
 			else entity.hurtServer(world, world.damageSources().magic(), 0.001F);

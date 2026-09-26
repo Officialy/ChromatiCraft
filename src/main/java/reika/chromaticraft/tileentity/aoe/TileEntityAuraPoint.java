@@ -171,10 +171,9 @@ public class TileEntityAuraPoint extends TileEntityLocusPoint {
 	private void attack(LivingEntity e) {
 		if (!(this.getLevel() instanceof ServerLevel server))
 			return;
-		// Deferred: ChromaAux.doPylonAttack(null, e, dmg, false, getLootingLevel(), false). The damage
-		// is upstream's; the taper and progress flags, and routing the looting level into the drop
-		// roll, arrive with that helper.
-		e.hurtServer(server, server.damageSources().magic(), this.getAttackDamage(e));
+		// V33a ChromaAux.doPylonAttack(null, e, dmg, false, getLootingLevel(), false); that helper never read
+		// its looting argument.
+		reika.chromaticraft.auxiliary.PylonDamage.doPylonAttack(null, e, this.getAttackDamage(e), false, false);
 		ChromaSounds.DISCHARGE.playSound(e, 0.5F, 1);
 	}
 

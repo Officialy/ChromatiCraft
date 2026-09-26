@@ -6,6 +6,9 @@
       "element": "gray"
     }
   ],
+  "completion": {
+    "double_output": true
+  },
   "duration": 400,
   "experience": 500,
   "grid": [

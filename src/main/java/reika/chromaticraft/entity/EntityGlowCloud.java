@@ -350,9 +350,10 @@ public class EntityGlowCloud extends Mob implements DestroyOnUnload {
 				}
 			}
 		}
-		// CHROMA-PORT: ChromatiCraft.pylonDamage[0] (BLACK-element PylonDamage) self-damages this
-		// cloud for 2 after every attack in V33a. PylonDamage (auxiliary/PylonDamage.java) is still
-		// pristine 1.7.10, so `this.hurt(ChromatiCraft.pylonDamage[0], 2)` can't be wired up yet.
+		// V33a: each attack costs the cloud 2 health of black pylon energy (pylonDamage[0]).
+		if (this.level() instanceof ServerLevel server)
+			this.hurtServer(server, reika.chromaticraft.auxiliary.PylonDamage.source(server,
+					reika.chromaticraft.registry.CrystalElement.BLACK), 2);
 	}
 
 	@Override
@@ -427,9 +428,14 @@ public class EntityGlowCloud extends Mob implements DestroyOnUnload {
 			}
 			return flag;
 		}
-		// CHROMA-PORT: `src instanceof PylonDamage -> super.hurtServer + die()` can't be wired up
-		// (auxiliary/PylonDamage.java is still pristine 1.7.10 and off the 26.2 classpath). Every
-		// other damage source (fire, explosions, etc.) matches V33a's blanket `return false` below.
+		// V33a: pylon energy hurts it too (and finishes it); every other damage source (fire, explosions,
+		// etc.) is ignored.
+		if (reika.chromaticraft.auxiliary.PylonDamage.isPylonDamage(src)) {
+			boolean flag = super.hurtServer(level, src, dmg);
+			if (flag && this.getHealth() <= 0)
+				this.die();
+			return flag;
+		}
 		return false;
 	}
 

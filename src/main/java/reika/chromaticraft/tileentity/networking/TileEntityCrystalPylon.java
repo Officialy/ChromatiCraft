@@ -398,7 +398,10 @@ public class TileEntityCrystalPylon extends CrystalTransmitterBase implements Na
 			ChromaSounds.DISCHARGE.playSound(entity, 1, 1);
 		}
 		float amount = Math.max(this.isEnhanced() ? 10 : 5, entity.getHealth() / 4F);
-		boolean hurt = entity.hurtServer(server, server.damageSources().magic(), amount);
+		// V33a doPylonAttack(color, e, amt, taperNew=true, 0, progress=true).
+		float before = entity.getHealth();
+		reika.chromaticraft.auxiliary.PylonDamage.doPylonAttack(color, entity, amount, true, true);
+		boolean hurt = entity.getHealth() < before;
 		var effect = CrystalPotionController.instance.getEffectFromColor(color, 200, 2, false);
 		if (effect != null)
 			entity.addEffect(effect);
@@ -1007,7 +1010,7 @@ public class TileEntityCrystalPylon extends CrystalTransmitterBase implements Na
 					else {
 						float amount = Math.max(5, Math.min(entity.getHealth() - 4, entity.getMaxHealth() * 0.75F));
 						if (amount > 0)
-							entity.hurtServer(server, server.damageSources().magic(), amount);
+							reika.chromaticraft.auxiliary.PylonDamage.doPylonAttack(color, entity, amount);
 						ChromaSounds.DISCHARGE.playSound(entity, 1, 1);
 					}
 				}
