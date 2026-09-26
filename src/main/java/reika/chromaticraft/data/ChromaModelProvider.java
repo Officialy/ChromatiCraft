@@ -229,6 +229,12 @@ public class ChromaModelProvider extends ModelProvider {
 			itemModelOut.accept(item, ItemModelUtils.plainModel(ModelTemplates.FLAT_ITEM.create(
 					ModelLocationUtils.getModelLocation(item), TextureMapping.layer0(item), modelOut)));
 		}
+		// V33a ItemCrystalPotion used the vanilla potion icons with the liquid in the element colour, which is the
+		// potion tint reading POTION_CONTENTS' custom colour.
+		ChromaItems.CRYSTAL_POTIONS.values().forEach(potion -> itemModelOut.accept(potion.get(), ItemModelUtils.tintedModel(
+				Identifier.withDefaultNamespace("item/potion"), new net.minecraft.client.color.item.Potion())));
+		ChromaItems.SPLASH_CRYSTAL_POTIONS.values().forEach(potion -> itemModelOut.accept(potion.get(), ItemModelUtils.tintedModel(
+				Identifier.withDefaultNamespace("item/splash_potion"), new net.minecraft.client.color.item.Potion())));
 		Item fragment = ChromaItems.INFO_FRAGMENT.get();
 		Identifier fragmentModel = ModelTemplates.FLAT_ITEM.create(ModelLocationUtils.getModelLocation(fragment),
 				TextureMapping.layer0(fragment), modelOut);

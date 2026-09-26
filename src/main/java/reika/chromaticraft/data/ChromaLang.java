@@ -199,6 +199,9 @@ public class ChromaLang extends LanguageProvider {
 		for (CrystalElement element : CrystalElement.elements)
 			add(ChromaBlocks.crystalGlass(element).get(), element.displayName + " Crystal Glass"); // V33a chroma.glass
 		add(ChromaBlocks.SELECTIVE_GLASS.get(), "Defensive Glass"); // V33a chroma.selectiveglass
+		// V33a getMultiValuedName POTION: "<Element> Crystal Potion", splash or not.
+		ChromaItems.CRYSTAL_POTIONS.forEach((e, potion) -> add(potion.get(), e.displayName + " Crystal Potion"));
+		ChromaItems.SPLASH_CRYSTAL_POTIONS.forEach((e, potion) -> add(potion.get(), e.displayName + " Crystal Potion"));
 		// V33a en_US.lang enchantment.chroma.*.
 		String[][] enchantNames = {
 				{"WEAPONAOE", "Area Strike"}, {"AGGROMASK", "Aggro Mask"}, {"ENDERLOCK", "Ender Lock"},

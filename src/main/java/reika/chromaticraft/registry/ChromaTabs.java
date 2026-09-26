@@ -78,6 +78,10 @@ public final class ChromaTabs {
 			Item item = holder.get();
 			if (item == ChromaItems.INFO_FRAGMENT.get() || !seen.add(item))
 				continue;
+			// Listed per colour below, all seven V33a variants in order.
+			if (item instanceof reika.chromaticraft.items.tools.ItemCrystalPotion
+					|| item instanceof reika.chromaticraft.items.tools.ItemSplashCrystalPotion)
+				continue;
 			if ((selected == TOOLS.get()) == isTool(item))
 				event.accept(item);
 		}
@@ -85,6 +89,8 @@ public final class ChromaTabs {
 			event.accept(reika.chromaticraft.item.ItemChromaBook.creativeStack());
 			event.accept(reika.chromaticraft.items.tools.ItemEnderCrystal.filledCreativeStack(
 					ChromaItems.ENDER_CRYSTAL_MOVER.get()));
+			for (CrystalElement e : ChromaItems.CRYSTAL_POTIONS.keySet())
+				event.acceptAll(reika.chromaticraft.items.tools.ItemCrystalPotion.creativeStacks(e));
 		}
 		else {
 			for (StorageCrystalTier tier : StorageCrystalTier.list)

@@ -11,110 +11,98 @@ package reika.chromaticraft.items.tools;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
-import net.minecraft.creativetab.CreativeTabs;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemPotion;
-import net.minecraft.item.ItemStack;
-import net.minecraft.potion.PotionEffect;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.PotionItem;
+import net.minecraft.world.item.alchemy.PotionContents;
 
-import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.magic.CrystalPotionController;
 import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.CrystalElement;
-import reika.dragonapi.libraries.ReikaPotionHelper;
-import reika.dragonapi.libraries.java.ReikaJavaLibrary;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
+/**
+ * V33a {@code ItemCrystalPotion} (ChromaItems.POTION): the potions the Crystal Brewery makes for the colours vanilla has
+ * no potion for -- water breathing, haste, jump boost, resistance and the better-saturation effect. It is the vanilla
+ * potion bottle with its liquid in the element's colour.
+ *
+ * <p>V33a kept the colour and its extended, boosted and splash bits in the damage value. In 26.2 each colour is its own
+ * item, the splash form a separate {@link ItemSplashCrystalPotion}, and the effect -- 3:00 normally, 8:00 extended,
+ * level II boosted -- is written into {@code POTION_CONTENTS} (with the element colour) when a stack is made by
+ * {@link #create}, so drinking, splashing and the effect tooltip are vanilla's. The effect is not a default component:
+ * ChromatiCraft's own effects are not bound yet when items register.
+ */
+public class ItemCrystalPotion extends PotionItem {
 
-public class ItemCrystalPotion extends ItemPotion {
+	private final CrystalElement color;
 
-	public ItemCrystalPotion(int tex) {
-		super();
-		hasSubtypes = true;
-		this.setMaxDamage(0);
-		this.setCreativeTab(this.isAvailableInCreativeMode() ? ChromatiCraft.tabChromaTools : null);
+	public ItemCrystalPotion(CrystalElement color, Properties properties) {
+		super(properties);
+		this.color = color;
 	}
 
-	private boolean isAvailableInCreativeMode() {
-		if (ChromatiCraft.instance.isLocked())
-			return false;
-		return true;
+	public CrystalElement getColor() {
+		return color;
 	}
 
-	@Override
-	public List getEffects(ItemStack is) {
-		PotionEffect pot = CrystalPotionController.instance.getEffectFromColor(CrystalElement.elements[this.getUsableDamage(is)], 3600, 0, false);
-		if (pot == null)
-			return new ArrayList();
-		if (ReikaPotionHelper.isSplashPotion(is.getItemDamage()))
-			pot.setSplashPotion(true);
-		if (ReikaPotionHelper.isExtended(is.getItemDamage()))
-			pot = new PotionEffect(pot.getPotionID(), 9600, pot.getAmplifier());
-		if (ReikaPotionHelper.isBoosted(is.getItemDamage()))
-			pot = new PotionEffect(pot.getPotionID(), pot.getDuration(), 1);
-		return ReikaJavaLibrary.makeListFrom(pot);
+	/** V33a {@code getSubItems} (only colours needing a custom potion) and everything the Brewery can make. */
+	public static boolean isCrystalPotionColor(CrystalElement color) {
+		return CrystalPotionController.instance.requiresCustomPotion(color);
 	}
 
-	@Override
-	public void getSubItems(Item ID, CreativeTabs cr, List li)
-	{
-		for (int i = 0; i < CrystalElement.elements.length; i++) {
-			CrystalElement color = CrystalElement.elements[i];
-			if (CrystalPotionController.instance.requiresCustomPotion(color)) {
-
-				li.add(new ItemStack(ID, 1, i));
-				li.add(new ItemStack(ID, 1, ReikaPotionHelper.EXTENDED_BIT+i));
-				li.add(new ItemStack(ID, 1, ReikaPotionHelper.BOOST_BIT+i));
-
-				li.add(new ItemStack(ID, 1, ReikaPotionHelper.SPLASH_BIT+i));
-				li.add(new ItemStack(ID, 1, ReikaPotionHelper.EXTENDED_BIT+ReikaPotionHelper.SPLASH_BIT+i));
-				li.add(new ItemStack(ID, 1, ReikaPotionHelper.BOOST_BIT+ReikaPotionHelper.SPLASH_BIT+i));
-
-				li.add(new ItemStack(ID, 1, ReikaPotionHelper.EXTENDED_BIT+ReikaPotionHelper.BOOST_BIT+i));
-			}
+	/** V33a {@code getEffects}: the colour's effect at 3:00, lengthened to 8:00 if extended, level II if boosted. */
+	public static PotionContents contents(CrystalElement color, boolean extended, boolean boosted) {
+		MobEffectInstance pot = CrystalPotionController.instance.getEffectFromColor(color, 3600, 0, false);
+		List<MobEffectInstance> effects = new ArrayList<>();
+		if (pot != null) {
+			// V33a rebuilt the effect with the three-argument constructor for these, which is not ambient.
+			if (extended)
+				pot = new MobEffectInstance(pot.getEffect(), 9600, pot.getAmplifier());
+			if (boosted)
+				pot = new MobEffectInstance(pot.getEffect(), pot.getDuration(), 1);
+			effects.add(pot);
 		}
+		return new PotionContents(Optional.empty(), Optional.of(color.getColor() & 0xFFFFFF), effects, Optional.empty());
+	}
+
+	public static ItemStack create(CrystalElement color, boolean splash, boolean extended, boolean boosted) {
+		var holder = splash ? ChromaItems.SPLASH_CRYSTAL_POTIONS.get(color) : ChromaItems.CRYSTAL_POTIONS.get(color);
+		ItemStack is = new ItemStack(holder.get());
+		is.set(DataComponents.POTION_CONTENTS, contents(color, extended, boosted));
+		return is;
+	}
+
+	/** Whether a crystal potion stack is the 8:00 form. */
+	public static boolean isExtended(ItemStack is) {
+		PotionContents pc = is.get(DataComponents.POTION_CONTENTS);
+		return pc != null && !pc.customEffects().isEmpty() && pc.customEffects().getFirst().getDuration() > 3600;
+	}
+
+	/** Whether a crystal potion stack is the level II form. */
+	public static boolean isBoosted(ItemStack is) {
+		PotionContents pc = is.get(DataComponents.POTION_CONTENTS);
+		return pc != null && !pc.customEffects().isEmpty() && pc.customEffects().getFirst().getAmplifier() > 0;
+	}
+
+	/** The seven V33a {@code getSubItems} variants of one colour. */
+	public static List<ItemStack> creativeStacks(CrystalElement color) {
+		return List.of(create(color, false, false, false), create(color, false, true, false),
+				create(color, false, false, true), create(color, true, false, false), create(color, true, true, false),
+				create(color, true, false, true), create(color, false, true, true));
 	}
 
 	@Override
-	public void addInformation(ItemStack is, EntityPlayer ep, List li, boolean verbose)
-	{
-		int dmg = this.getUsableDamage(is);
-		CrystalElement color = CrystalElement.elements[this.getUsableDamage(is)];
-		StringBuilder name = new StringBuilder();
-		name.append(CrystalPotionController.instance.getPotionName(color));
-		if (ReikaPotionHelper.isBoosted(is.getItemDamage()))
-			name.append(" II");
-		if (ReikaPotionHelper.isExtended(is.getItemDamage()))
-			name.append(" 8:00");
-		else
-			name.append(" 3:00");
-		li.add(name.toString());
+	public ItemStack getDefaultInstance() {
+		return create(color, false, false, false);
 	}
 
+	/** V33a: "&lt;Element&gt; Crystal Potion", whatever the effect. */
 	@Override
-	public String getItemStackDisplayName(ItemStack is)
-	{
-		return ChromaItems.POTION.getMultiValuedName(this.getUsableDamage(is));
-	}
-
-	protected static int getUsableDamage(ItemStack is) {
-		return is.getItemDamage()&15;
-	}
-
-	@Override
-	@SideOnly(Side.CLIENT)
-	public int getColorFromDamage(int dmg)
-	{
-		return CrystalElement.elements[dmg&15].getJavaColor().getRGB();
-	}
-
-	@Override
-	protected String getIconString()
-	{
-		return "potion";
+	public Component getName(ItemStack is) {
+		return Component.translatable(this.getDescriptionId());
 	}
 
 }

@@ -147,6 +147,31 @@ public final class ChromaItems {
 	/** V33a STRUCTMAP, the Artifact Distribution Map; its seek mode and scan live in CUSTOM_DATA. */
 	public static final DeferredItem<reika.chromaticraft.items.tools.ItemStructureMap> STRUCTURE_MAP =
 			reg("structure_map", () -> new reika.chromaticraft.items.tools.ItemStructureMap(itemProperties()));
+	/**
+	 * V33a POTION, the Crystal Potion: one item per colour V33a could make (CrystalPotionController
+	 * requiresCustomPotion), and its splash form, which V33a kept in the same damage value.
+	 */
+	public static final EnumMap<CrystalElement, DeferredItem<reika.chromaticraft.items.tools.ItemCrystalPotion>> CRYSTAL_POTIONS =
+			new EnumMap<>(CrystalElement.class);
+	public static final EnumMap<CrystalElement, DeferredItem<reika.chromaticraft.items.tools.ItemSplashCrystalPotion>> SPLASH_CRYSTAL_POTIONS =
+			new EnumMap<>(CrystalElement.class);
+	static {
+		for (CrystalElement e : CrystalElement.elements) {
+			if (!reika.chromaticraft.items.tools.ItemCrystalPotion.isCrystalPotionColor(e))
+				continue;
+			CRYSTAL_POTIONS.put(e, reg("crystal_potion_" + e.getEnglishName(),
+					() -> new reika.chromaticraft.items.tools.ItemCrystalPotion(e, itemProperties().stacksTo(1)
+							.component(net.minecraft.core.component.DataComponents.POTION_CONTENTS,
+									net.minecraft.world.item.alchemy.PotionContents.EMPTY)
+							.component(net.minecraft.core.component.DataComponents.CONSUMABLE,
+									net.minecraft.world.item.component.Consumables.DEFAULT_DRINK)
+							.usingConvertsTo(net.minecraft.world.item.Items.GLASS_BOTTLE))));
+			SPLASH_CRYSTAL_POTIONS.put(e, reg("splash_crystal_potion_" + e.getEnglishName(),
+					() -> new reika.chromaticraft.items.tools.ItemSplashCrystalPotion(e, itemProperties().stacksTo(1)
+							.component(net.minecraft.core.component.DataComponents.POTION_CONTENTS,
+									net.minecraft.world.item.alchemy.PotionContents.EMPTY))));
+		}
+	}
 	/** V33a ARTEFACT metadata 1. It has none of the harmful full-artefact behavior. */
 	public static final DeferredItem<Item> UNKNOWN_ARTEFACT_FRAGMENT =
 			reg("unknown_artefact_fragment", () -> new Item(itemProperties().stacksTo(1)));
