@@ -208,8 +208,10 @@ public class ChromaLang extends LanguageProvider {
 				{"DATAKEEP", "Identity Retention"}, {"MINETIME", "Consistent Efficiency"}};
 		for (String[] ench : enchantNames)
 			add(reika.chromaticraft.registry.ChromaEnchants.valueOf(ench[0]).getUnlocalizedName(), ench[1]);
-		// V33a PylonDamage.getDeathMessage, per element.
+		// V33a PylonDamage.getDeathMessage, per element. V33a's message ignored who else was involved; 26.2 switches a
+		// source with no attacker to the ".player" key whenever the victim has kill credit, so both carry the text.
 		add("death.attack." + reika.chromaticraft.auxiliary.PylonDamage.messageId(null), "%1$s died to pylon energy");
+		add("death.attack." + reika.chromaticraft.auxiliary.PylonDamage.messageId(null) + ".player", "%1$s died to pylon energy");
 		String[][] pylonDeaths = {
 				{"BLACK", "%1$s died to black magic"},
 				{"RED", "%1$s protected themselves from living"},
@@ -227,9 +229,11 @@ public class ChromaLang extends LanguageProvider {
 				{"MAGENTA", "%1$s healed so strongly it killed them"},
 				{"ORANGE", "%1$s overheated"},
 				{"WHITE", "%1$s was purified into nothing"}};
-		for (String[] death : pylonDeaths)
-			add("death.attack." + reika.chromaticraft.auxiliary.PylonDamage.messageId(CrystalElement.valueOf(death[0])),
-					death[1]);
+		for (String[] death : pylonDeaths) {
+			String key = "death.attack." + reika.chromaticraft.auxiliary.PylonDamage.messageId(CrystalElement.valueOf(death[0]));
+			add(key, death[1]);
+			add(key + ".player", death[1]);
+		}
 		// V33a getMultiValuedName GLOW: "<Base>-Based <Element> Glow".
 		for (var holder : ChromaBlocks.CRYSTAL_GLOWS)
 			add(holder.get(), holder.get().getBase().displayName + "-Based "

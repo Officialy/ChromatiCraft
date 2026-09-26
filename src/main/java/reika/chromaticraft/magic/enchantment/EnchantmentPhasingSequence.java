@@ -16,8 +16,9 @@ import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
 import reika.chromaticraft.base.ChromaticEnchantment;
 
 /**
- * V33a Armor Breach: part of each hit is dealt as absolute pylon energy that armour and protection cannot stop, the
- * rest as the normal blow, for a slightly smaller total.
+ * V33a Armor Breach: part of each hit is also dealt as absolute pylon energy that armour and protection cannot stop,
+ * with the remainder re-dealt as a normal blow. The original hit is not cancelled, so the hurt cooldown decides how
+ * much of it still lands on top (roughly the full hit plus the piercing part).
  */
 public class EnchantmentPhasingSequence extends ChromaticEnchantment {
 

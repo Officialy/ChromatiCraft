@@ -14,7 +14,8 @@ import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.auxiliary.PylonDamage;
 
 /**
- * V33a {@code PylonDamage}'s behaviour as damage-type tags: unblockable (bypasses armour), absolute (no
+ * V33a {@code PylonDamage}'s behaviour as damage-type tags: unblockable (bypasses armour, and a shield, as 1.7.10
+ * sword-blocking never halved unblockable damage), absolute (no
  * Resistance, no Protection -- bypasses effects), magic (witches resist it), and with no attacker, no knockback.
  * Creative players stay immune, as V33a's {@code canHarmInCreative} was false.
  */
@@ -29,6 +30,7 @@ public final class ChromaDamageTypeTagsProvider extends TagsProvider<DamageType>
 		for (ResourceKey<DamageType> key : PylonDamage.keys()) {
 			tag(PylonDamage.TAG).add(key);
 			tag(DamageTypeTags.BYPASSES_ARMOR).add(key);
+			tag(DamageTypeTags.BYPASSES_SHIELD).add(key);
 			tag(DamageTypeTags.BYPASSES_EFFECTS).add(key);
 			tag(DamageTypeTags.WITCH_RESISTANT_TO).add(key);
 			tag(DamageTypeTags.NO_KNOCKBACK).add(key);
