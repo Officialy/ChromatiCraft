@@ -115,6 +115,7 @@ sourceSets.main.java {
     include 'reika/chromaticraft/items/tools/ProjectileToolDispenseBehavior.java'
     include 'reika/chromaticraft/entity/EntityLightShot.java'
     include 'reika/chromaticraft/render/entity/RenderLightShot.java'
+    include 'reika/chromaticraft/items/tools/ItemOwnerKey.java'
     include 'reika/chromaticraft/render/model/SelectiveGlassModel.java'
     include 'reika/chromaticraft/block/crystal/BlockCrystalGlow.java'
     include 'reika/chromaticraft/render/model/CrystalGlowGeometry.java'

@@ -252,8 +252,8 @@ Pylon Link and Lumen Node (V33a had no casting recipe for either).
 - **ENTRY** — 7/7 ported.
 - **RAWEXPLORE** — 20/20 ported (Fertility Seeds and the Artifact Distribution Map landed 2026-09-25).
 - **BASICCRAFT** — 14/27 ported (Crystal Glass and Glow landed 2026-09-25; Defensive Glass, the
-  Enchantments, the Crystal Brewery, the Chromatic Flower, the Pylon Compass and the Illumination Gun 2026-09-26).
-  Missing: Vertical Propulsion Panel; Lumen Wire; Crystal Orchestra; Particle Spawner; Knowledge Entanglement Pedestal; Tool Compression Crate; Lumen Turret; Subterranean Route Finder; Ownership Expansion Key; Examination Crystals; Corrosion Resistant Cell.
+  Enchantments, the Crystal Brewery, the Chromatic Flower, the Pylon Compass, the Illumination Gun and the Ownership Expansion Key 2026-09-26).
+  Missing: Vertical Propulsion Panel; Lumen Wire; Crystal Orchestra; Particle Spawner; Knowledge Entanglement Pedestal; Tool Compression Crate; Lumen Turret; Subterranean Route Finder; Examination Crystals; Corrosion Resistant Cell.
 - **RUNECRAFT** — 11/36 ported.
   Missing: Artificial Sky; Physics Suspension Lamp; Lumen Lamp; Travel Path; Redstone Pod; Flux Pod; Subterranean Illuminator; Chromatic Enchanter; Fluid Radiator; Fluid Link Anchor; Suspension Field Controller; Item Inserter; Lumen Lamp Controller; Crystal Seeds; Item Mover; Voidlinked Bucket; Linker; Creature Sounding Star; Multitool; Nether Layer Crystal; Ore-Finding Pickaxe; Ore Harvester; Bezier Crystals; Aura Tracker; Recall Tablet.
 - **ENERGY** — 15/30 ported.
@@ -8686,4 +8686,12 @@ The locus point, crystal receiver, relay-powered and focus-crystal item data now
 did.
 
 Needs a full GameTest run (ownership semantics changed across these tiles).
+
+**BASICCRAFT: Ownership Expansion Key (2026-09-26).** `ownership_key` (V33a SHARE, sprite 30).
+- It binds to its first holder: `owner` in custom data, shown in the tooltip as V33a's
+  "<uuid>'s Lumen Key".
+- Used on a ChromatiCraft tile whose placer is the key's owner, and online as V33a's `getPlacer()`
+  required, it adds the user to the tile's owner set, syncs, is consumed, and plays CAST.
+- Recipe "lil / gig / rir" with no XP. V33a's `handleNBTResult` stamping is the casting table's caster tag.
+- Unverified in game.
 

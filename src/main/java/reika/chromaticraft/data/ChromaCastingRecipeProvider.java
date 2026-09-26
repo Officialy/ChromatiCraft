@@ -281,6 +281,18 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 							new RuneRequirement(new net.minecraft.core.BlockPos(-5, 0, 4), CrystalElement.YELLOW)),
 					List.of(), new ItemStackTemplate(ChromaBlocks.RELAY_SOURCE.get().asItem()), 100, 200));
 
+			// V33a OwnerKeyRecipe: no XP, and the table's owner who casts it is written in as the key's owner
+			// (handleNBTResult; the casting table's caster tag).
+			saveRecipe("ownership_key", new CastingTableRecipe(CastingTableRecipe.Tier.CRAFTING,
+					shapedGrid(Map.of('i', Ingredient.of(Items.IRON_INGOT), 'r', Ingredient.of(Items.REDSTONE),
+							'l', Ingredient.of(Items.LAPIS_LAZULI), 'g', Ingredient.of(Items.GLOWSTONE_DUST)),
+							"lil", "gig", "rir"),
+					List.of(), List.of(), List.of(),
+					new ItemStackTemplate(ChromaItems.OWNERSHIP_KEY.get()), 5, 0,
+					List.of(), 0.75F, true, false, 1, 0F,
+					new CastingTableRecipe.CompletionBehavior(false, List.of(), List.of(),
+							reika.chromaticraft.items.tools.ItemOwnerKey.OWNER_TAG)));
+
 			// V33a LightGunRecipe, a plain CastingRecipe: a gold-bodied, stick-gripped gun with an aura-dust muzzle.
 			saveShaped("light_gun", new ItemStackTemplate(ChromaItems.LIGHT_GUN.get()), 5, 5,
 					Map.of('s', Ingredient.of(Items.STICK), 'g', Ingredient.of(Items.REDSTONE), 'G', Ingredient.of(Items.GOLD_INGOT),

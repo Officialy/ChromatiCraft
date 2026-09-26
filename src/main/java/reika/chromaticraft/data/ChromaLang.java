@@ -186,6 +186,7 @@ public class ChromaLang extends LanguageProvider {
 		add(ChromaBlocks.CHROMA_FLOWER.get(), "Chromatic Flower"); // V33a chroma.flower
 		add(ChromaItems.PYLON_FINDER.get(), "Pylon Compass"); // V33a chroma.finder
 		add(ChromaItems.LIGHT_GUN.get(), "Illumination Gun"); // V33a chroma.lightgun
+		add(ChromaItems.OWNERSHIP_KEY.get(), "Ownership Expansion Key"); // V33a chroma.share
 		add(reika.chromaticraft.registry.ChromaEntityTypes.LIGHT_SHOT.get(), "LightGun Shot"); // V33a ChromaEntities LIGHTGUN
 		add(ChromaBlocks.PYLON_TURBOCHARGER.get(), "Energy Focal Point"); // V33a chroma.pylonturbo
 		add(ChromaBlocks.COLLECTOR.get(), "Chroma Collector"); // V33a chroma.collector
