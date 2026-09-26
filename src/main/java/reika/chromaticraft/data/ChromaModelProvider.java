@@ -158,6 +158,7 @@ public class ChromaModelProvider extends ModelProvider {
 		portalRiftModels(blockStateOut, itemModelOut, modelOut);
 		focusCrystalModel(blockStateOut, itemModelOut, modelOut);
 		chromaFlowerModel(blockStateOut, itemModelOut, modelOut);
+		chromaTrailModel(blockStateOut, itemModelOut, modelOut);
 		dataNodeModel(blockStateOut, itemModelOut, modelOut);
 		structureControllerModel(blockStateOut, modelOut);
 		structurePasswordModel(blockStateOut, modelOut);
@@ -228,7 +229,7 @@ public class ChromaModelProvider extends ModelProvider {
 		}
 		for (Item item : List.of(ChromaItems.GLOW_CAVE_DUST.get(), ChromaItems.UNKNOWN_ARTEFACT_FRAGMENT.get(),
 				ChromaItems.ENDER_EYE.get(), ChromaItems.STRUCTURE_MAP.get(), ChromaItems.PYLON_FINDER.get(),
-				ChromaItems.LIGHT_GUN.get(), ChromaItems.OWNERSHIP_KEY.get())) {
+				ChromaItems.LIGHT_GUN.get(), ChromaItems.OWNERSHIP_KEY.get(), ChromaItems.CAVE_PATHER.get())) {
 			itemModelOut.accept(item, ItemModelUtils.plainModel(ModelTemplates.FLAT_ITEM.create(
 					ModelLocationUtils.getModelLocation(item), TextureMapping.layer0(item), modelOut)));
 		}
@@ -1478,6 +1479,20 @@ public class ChromaModelProvider extends ModelProvider {
 				TextureMapping.cube(particle), modelOut);
 		itemModelOut.accept(ChromaBlocks.CHROMA_FLOWER.get().asItem(),
 				ItemModelUtils.specialModel(itemBase, new reika.chromaticraft.render.item.ChromaFlowerItemRenderer.Unbaked()));
+	}
+
+	/** V33a BlockChromaTrail: ChromaIcons.TRANSPARENT for the block and its item; its tile draws the route. */
+	private static void chromaTrailModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		Material particle = new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/icons/transparent"));
+		Identifier model = ModelTemplates.PARTICLE_ONLY.create(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/chroma_trail"),
+				new TextureMapping().put(TextureSlot.PARTICLE, particle), modelOut);
+		blockStateOut.accept(MultiVariantGenerator.dispatch(ChromaBlocks.CHROMA_TRAIL.get(),
+				new MultiVariant(WeightedList.of(new Variant(model)))));
+		Identifier item = ModelTemplates.FLAT_ITEM.create(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "item/chroma_trail"),
+				new TextureMapping().put(TextureSlot.LAYER0, particle), modelOut);
+		itemModelOut.accept(ChromaBlocks.CHROMA_TRAIL.get().asItem(), ItemModelUtils.plainModel(item));
 	}
 
 	private static void relaySourceModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,

@@ -186,6 +186,7 @@ public final class LexiconIconResolver {
 			case "finder" -> ChromaItems.PYLON_FINDER.get();
 			case "lightgun" -> ChromaItems.LIGHT_GUN.get();
 			case "share" -> ChromaItems.OWNERSHIP_KEY.get();
+			case "cavepather" -> ChromaItems.CAVE_PATHER.get();
 			default -> null;
 		};
 	}

@@ -134,6 +134,22 @@ public enum ChromaTiles implements TileEnum {
 		return block.get();
 	}
 
+	/** V33a {@code isRepeater}: the tile relays network energy. */
+	public boolean isRepeater() {
+		return reika.chromaticraft.magic.interfaces.CrystalRepeater.class.isAssignableFrom(teClass);
+	}
+
+	/** The tile whose block this item places (V33a's placer-item metadata), or null. */
+	public static ChromaTiles getTileFromItem(net.minecraft.world.item.ItemStack is) {
+		if (is == null || !(is.getItem() instanceof net.minecraft.world.item.BlockItem bi))
+			return null;
+		for (ChromaTiles t : TEList) {
+			if (t.getBlock() == bi.getBlock())
+				return t;
+		}
+		return null;
+	}
+
 	public BlockEntity createBlockEntity(BlockPos pos, BlockState state) {
 		try {
 			return teClass.getConstructor(BlockPos.class, BlockState.class).newInstance(pos, state);

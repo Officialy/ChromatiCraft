@@ -1,0 +1,46 @@
+{
+  "type": "chromaticraft:casting",
+  "experience": 5,
+  "grid": [
+    {
+      "ingredient": "minecraft:redstone",
+      "slot": 0
+    },
+    {
+      "ingredient": "chromaticraft:aura_dust",
+      "slot": 1
+    },
+    {
+      "ingredient": "minecraft:quartz",
+      "slot": 2
+    },
+    {
+      "ingredient": "chromaticraft:transmissive_dust",
+      "slot": 3
+    },
+    {
+      "ingredient": "minecraft:quartz",
+      "slot": 4
+    },
+    {
+      "ingredient": "chromaticraft:aura_dust",
+      "slot": 5
+    },
+    {
+      "ingredient": "minecraft:stick",
+      "slot": 6
+    },
+    {
+      "ingredient": "chromaticraft:transmissive_dust",
+      "slot": 7
+    },
+    {
+      "ingredient": "minecraft:diamond",
+      "slot": 8
+    }
+  ],
+  "result": {
+    "id": "chromaticraft:cave_pather"
+  },
+  "tier": "crafting"
+}

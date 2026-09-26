@@ -252,8 +252,8 @@ Pylon Link and Lumen Node (V33a had no casting recipe for either).
 - **ENTRY** — 7/7 ported.
 - **RAWEXPLORE** — 20/20 ported (Fertility Seeds and the Artifact Distribution Map landed 2026-09-25).
 - **BASICCRAFT** — 14/27 ported (Crystal Glass and Glow landed 2026-09-25; Defensive Glass, the
-  Enchantments, the Crystal Brewery, the Chromatic Flower, the Pylon Compass, the Illumination Gun and the Ownership Expansion Key 2026-09-26).
-  Missing: Vertical Propulsion Panel; Lumen Wire; Crystal Orchestra; Particle Spawner; Knowledge Entanglement Pedestal; Tool Compression Crate; Lumen Turret; Subterranean Route Finder; Examination Crystals; Corrosion Resistant Cell.
+  Enchantments, the Crystal Brewery, the Chromatic Flower, the Pylon Compass, the Illumination Gun, the Ownership Expansion Key and the Subterranean Route Finder 2026-09-26).
+  Missing: Vertical Propulsion Panel; Lumen Wire; Crystal Orchestra; Particle Spawner; Knowledge Entanglement Pedestal; Tool Compression Crate; Lumen Turret; Examination Crystals; Corrosion Resistant Cell.
 - **RUNECRAFT** — 11/36 ported.
   Missing: Artificial Sky; Physics Suspension Lamp; Lumen Lamp; Travel Path; Redstone Pod; Flux Pod; Subterranean Illuminator; Chromatic Enchanter; Fluid Radiator; Fluid Link Anchor; Suspension Field Controller; Item Inserter; Lumen Lamp Controller; Crystal Seeds; Item Mover; Voidlinked Bucket; Linker; Creature Sounding Star; Multitool; Nether Layer Crystal; Ore-Finding Pickaxe; Ore Harvester; Bezier Crystals; Aura Tracker; Recall Tablet.
 - **ENERGY** — 15/30 ported.
@@ -8693,5 +8693,20 @@ Needs a full GameTest run (ownership semantics changed across these tiles).
 - Used on a ChromatiCraft tile whose placer is the key's owner, and online as V33a's `getPlacer()`
   required, it adds the user to the tile's owner set, syncs, is consumed, and plays CAST.
 - Recipe "lil / gig / rir" with no XP. V33a's `handleNBTResult` stamping is the casting table's caster tag.
+- Unverified in game.
+
+**BASICCRAFT: Subterranean Route Finder (2026-09-26).** `cave_pather` (V33a CAVEPATHER, sprite 45).
+- It runs a breadth-first search to the nearest sky-seeing block. When sneaking it instead heads down to
+  the deepest point reachable within 400 blocks without climbing. DragonAPI gains `BreadthFirstSearch` and
+  `OpenPathFinder`.
+- It marks every fourth block, and the exit, with a `chroma_trail` waypoint (V33a `BlockChromaTrail` with
+  its `TileChromaTrail`, synced).
+- Each waypoint draws blurs gliding along its stretch of the route spline, tinted by height (new
+  `FadeGlow.setHeightColor`). While a Manipulator is held it adds a haze.
+- Using a Manipulator on any waypoint clears the whole route.
+- `HoldingChecks` is ported, with placer-item metadata becoming each tile's own block item and
+  `ChromaTiles.isRepeater` added.
+  - CHROMA-PORT: its Thaumcraft Manipulator-focus wand, and DELEGATE (the Automator).
+- The trail block keeps V33a's untranslated name, `chroma.trail` (no lang entry existed).
 - Unverified in game.
 

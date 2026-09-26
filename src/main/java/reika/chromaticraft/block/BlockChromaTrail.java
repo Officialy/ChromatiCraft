@@ -11,171 +11,132 @@ package reika.chromaticraft.block;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 
-import net.minecraft.block.BlockContainer;
-import net.minecraft.block.material.Material;
-import net.minecraft.client.Minecraft;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.init.Blocks;
-import net.minecraft.item.Item;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.network.NetworkManager;
-import net.minecraft.network.Packet;
-import net.minecraft.network.play.server.S35PacketUpdateTileEntity;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.AxisAlignedBB;
-import net.minecraft.util.IIcon;
-import net.minecraft.world.IBlockAccess;
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.game.ClientGamePacketListener;
+import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.EntityBlock;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityTicker;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.Shapes;
+import net.minecraft.world.phys.shapes.VoxelShape;
 
-import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.auxiliary.HoldingChecks;
-import reika.chromaticraft.block.decoration.BlockEtherealLight;
-import reika.chromaticraft.registry.ChromaIcons;
-import reika.chromaticraft.render.particle.EntityCCBlurFX;
-import reika.dragonapi.instantiable.data.immutable.Coordinate;
+import reika.chromaticraft.registry.ChromaBlockEntities;
+import reika.chromaticraft.render.particle.ChromaParticle;
 import reika.dragonapi.instantiable.data.immutable.DecimalPosition;
-import reika.dragonapi.instantiable.effects.EntityBlurFX;
 import reika.dragonapi.instantiable.math.Spline;
-import reika.dragonapi.instantiable.math.spline.BasicVariablePoint;
-import reika.dragonapi.instantiable.math.spline.SplineType;
-import reika.dragonapi.instantiable.particlecontroller.ListOfPositionsController;
-import reika.dragonapi.libraries.java.ReikaRandomHelper;
-import reika.dragonapi.libraries.rendering.ReikaColorAPI;
+import reika.dragonapi.instantiable.math.Spline.BasicVariablePoint;
+import reika.dragonapi.instantiable.math.Spline.SplineType;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
+/**
+ * V33a {@code BlockChromaTrail}: one waypoint of a Subterranean Route Finder's trail -- invisible, collisionless, a small
+ * selection cube at the centre -- each remembering its neighbours, so the whole route can be found from any point and
+ * cleared by using a Manipulator on it. Its tile draws the route as blurs gliding along a spline through the waypoints,
+ * tinted by height like ethereal light, with a haze around each point while a Manipulator is held.
+ */
+public class BlockChromaTrail extends Block implements EntityBlock {
 
+	private static final VoxelShape SHAPE = box(6, 6, 6, 10, 10, 10);
 
-public class BlockChromaTrail extends BlockContainer {
-
-	public BlockChromaTrail(Material mat) {
-		super(mat);
-
-		this.setHardness(0);
-		this.setResistance(60000);
-		this.setCreativeTab(ChromatiCraft.tabChromaDeco);
+	public BlockChromaTrail(Properties properties) {
+		super(properties);
 	}
 
 	@Override
-	public TileEntity createNewTileEntity(World world, int meta) {
-		return new TileChromaTrail();
+	public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
+		return new TileChromaTrail(pos, state);
 	}
 
 	@Override
-	public IIcon getIcon(int s, int meta) {
-		return ChromaIcons.TRANSPARENT.getIcon();
+	public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> type) {
+		return level.isClientSide() && type == ChromaBlockEntities.CHROMA_TRAIL.get()
+				? (lvl, pos, st, te) -> ((TileChromaTrail)te).clientTick() : null;
 	}
 
 	@Override
-	public AxisAlignedBB getCollisionBoundingBoxFromPool(World world, int x, int y, int z) {
-		return null;
+	protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+		return SHAPE;
 	}
 
 	@Override
-	public Item getItemDropped(int meta, Random rand, int fortune) {
-		return null;
+	protected VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+		return Shapes.empty();
 	}
 
 	@Override
-	public boolean isOpaqueCube() {
-		return false;
-	}
-
-	@Override
-	public boolean renderAsNormalBlock() {
-		return false;
-	}
-
-	@Override
-	public void setBlockBoundsBasedOnState(IBlockAccess iba, int x, int y, int z) {
-		float s = 0.125F;
-		this.setBlockBounds(0.5F-s, 0.5F-s, 0.5F-s, 0.5F+s, 0.5F+s, 0.5F+s);
-	}
-
-	@Override
-	public boolean onBlockActivated(World world, int x, int y, int z, EntityPlayer ep, int s, float a, float b, float c) {
+	protected InteractionResult useItemOn(ItemStack stack, BlockState state, Level world, BlockPos pos, Player ep,
+			InteractionHand hand, BlockHitResult hit) {
 		if (HoldingChecks.MANIPULATOR.isHolding(ep)) {
-			for (Coordinate loc : ((TileChromaTrail)world.getTileEntity(x, y, z)).getFullPath()) {
-				TileEntity te = loc.getTileEntity(world);
-				loc.setBlock(world, Blocks.air);
+			if (world.getBlockEntity(pos) instanceof TileChromaTrail te) {
+				for (BlockPos loc : te.getFullPath()) {
+					world.setBlock(loc, Blocks.AIR.defaultBlockState(), 3);
+				}
 			}
-			return true;
+			return InteractionResult.SUCCESS;
 		}
-		return false;
+		return InteractionResult.PASS;
 	}
 
-	public static class TileChromaTrail extends TileEntity {
+	public static class TileChromaTrail extends BlockEntity {
 
-		private Coordinate nextLocation;
-		private Coordinate prevLocation;
+		private BlockPos nextLocation;
+		private BlockPos prevLocation;
 
 		private int pathIndex;
 		private List<DecimalPosition> overallPath;
 
-		@Override
-		public void updateEntity() {
-			if (worldObj.isRemote) {
-				this.doParticles(worldObj, xCoord, yCoord, zCoord);
-			}
+		public TileChromaTrail(BlockPos pos, BlockState state) {
+			super(ChromaBlockEntities.CHROMA_TRAIL.get(), pos, state);
 		}
 
-		public void setData(Coordinate prev, Coordinate next) {
+		private void clientTick() {
+			ChromaParticle.spawnChromaTrail(this.getLevel(), this.getBlockPos(), this);
+		}
+
+		public void setData(BlockPos prev, BlockPos next) {
 			prevLocation = prev;
 			nextLocation = next;
-			worldObj.markBlockForUpdate(xCoord, yCoord, zCoord);
+			overallPath = null;
+			this.setChanged();
+			if (this.getLevel() != null)
+				this.getLevel().sendBlockUpdated(this.getBlockPos(), this.getBlockState(), this.getBlockState(), 3);
 		}
 
-		@SideOnly(Side.CLIENT)
-		private void doParticles(World world, int x, int y, int z) {
-			int t = (int)(world.getTotalWorldTime()%12);
-			if (t < 6) {
-				if (overallPath == null)
-					overallPath = this.calcSpline();
-				//overallPath.update();
-				int l = 13;//20;
-				//int l2 = l*64;
-				//SplineMotionController s = new SplineMotionController(l2, overallPath).setTick(pathIndex*l2/l);
-				ListOfPositionsController s = new ListOfPositionsController(l, overallPath);
-				float f = 1.5F*((6-t)/6F);
-				EntityBlurFX fx = new EntityCCBlurFX(world, x+0.5, y+0.5, z+0.5).setLife(l*3/2).setScale(f).setColliding();
-				fx.setAlphaFading().setRapidExpand().setPositionController(s).setColorController(BlockEtherealLight.colorController);
-				Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-			}
-			if (HoldingChecks.MANIPULATOR.isClientHolding()) {
-				if (world.rand.nextInt(2) == 0) {
-					double px = ReikaRandomHelper.getRandomPlusMinus(x+0.5, 0.0625);
-					double py = ReikaRandomHelper.getRandomPlusMinus(y+0.5, 0.0625);
-					double pz = ReikaRandomHelper.getRandomPlusMinus(z+0.5, 0.0625);
-					int l = 10+world.rand.nextInt(31);
-					float f = 0.75F+world.rand.nextFloat()*0.75F;
-					EntityBlurFX fx = new EntityCCBlurFX(world, px, py, pz).setLife(l).setScale(f);
-					int c = ReikaColorAPI.mixColors(0xffffff, BlockEtherealLight.colorController.getColor(fx), world.rand.nextFloat()*0.375F);
-					fx.setColor(c);
-					Minecraft.getMinecraft().effectRenderer.addEffect(fx);
+		/** This point's stretch of the spline through the whole route, computed once. */
+		public List<DecimalPosition> getSplineSegment() {
+			if (overallPath == null)
+				overallPath = this.calcSpline();
+			return overallPath;
+		}
 
-					if (pathIndex%4 == 0 && world.rand.nextInt(4) == 0) {
-						px = ReikaRandomHelper.getRandomPlusMinus(x+0.5, 0.5);
-						py = ReikaRandomHelper.getRandomPlusMinus(y+0.5, 0.5);
-						pz = ReikaRandomHelper.getRandomPlusMinus(z+0.5, 0.5);
-						l = 25+world.rand.nextInt(51);
-						f *= 2;
-						fx = new EntityCCBlurFX(world, px, py, pz).setIcon(ChromaIcons.FADE_GENTLE).setLife(l).setScale(f);
-						c = ReikaColorAPI.getModifiedHue(c, ReikaRandomHelper.getRandomPlusMinus(ReikaColorAPI.getHue(c), 60));
-						fx.setColor(c);
-						Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-					}
-				}
-			}
+		public int getPathIndex() {
+			return pathIndex;
 		}
 
 		private List<DecimalPosition> calcSpline() {
-			ArrayList<Coordinate> path = this.getFullPath();
-			pathIndex = path.indexOf(new Coordinate(this));
+			ArrayList<BlockPos> path = this.getFullPath();
+			pathIndex = path.indexOf(this.getBlockPos());
 			Spline s = new Spline(SplineType.CENTRIPETAL);
-			for (Coordinate c : path) {
-				s.addPoint(new BasicVariablePoint(new DecimalPosition(c), 0.75, 0.0625));
+			for (BlockPos c : path) {
+				s.addPoint(new BasicVariablePoint(new DecimalPosition(c.getX()+0.5, c.getY()+0.5, c.getZ()+0.5), 0.75, 0.0625));
 			}
 			List<DecimalPosition> all = s.get(128, false);
 			int size = all.size()/path.size();
@@ -183,18 +144,17 @@ public class BlockChromaTrail extends BlockContainer {
 			return all.subList(idx, idx+size);
 		}
 
-		private ArrayList<Coordinate> getFullPath() {
-			ArrayList<Coordinate> path = new ArrayList();
-			path.add(new Coordinate(this));
+		private ArrayList<BlockPos> getFullPath() {
+			ArrayList<BlockPos> path = new ArrayList();
+			path.add(this.getBlockPos());
 			if (prevLocation != null) {
-				Coordinate c = prevLocation;
-				TileEntity te = c.getTileEntity(worldObj);
-				while (te instanceof TileChromaTrail) {
+				BlockPos c = prevLocation;
+				BlockEntity te = this.getLevel().getBlockEntity(c);
+				while (te instanceof TileChromaTrail tt) {
 					path.add(0, c);
-					TileChromaTrail tt = (TileChromaTrail)te;
 					if (tt.prevLocation != null) {
 						c = tt.prevLocation;
-						te = c.getTileEntity(worldObj);
+						te = this.getLevel().getBlockEntity(c);
 					}
 					else {
 						te = null;
@@ -202,14 +162,13 @@ public class BlockChromaTrail extends BlockContainer {
 				}
 			}
 			if (nextLocation != null) {
-				Coordinate c = nextLocation;
-				TileEntity te = c.getTileEntity(worldObj);
-				while (te instanceof TileChromaTrail) {
+				BlockPos c = nextLocation;
+				BlockEntity te = this.getLevel().getBlockEntity(c);
+				while (te instanceof TileChromaTrail tt) {
 					path.add(c);
-					TileChromaTrail tt = (TileChromaTrail)te;
 					if (tt.nextLocation != null) {
 						c = tt.nextLocation;
-						te = c.getTileEntity(worldObj);
+						te = this.getLevel().getBlockEntity(c);
 					}
 					else {
 						te = null;
@@ -220,35 +179,30 @@ public class BlockChromaTrail extends BlockContainer {
 		}
 
 		@Override
-		public void writeToNBT(NBTTagCompound tag) {
-			super.writeToNBT(tag);
-
+		protected void saveAdditional(ValueOutput output) {
+			super.saveAdditional(output);
 			if (nextLocation != null)
-				nextLocation.writeToNBT("next", tag);
+				output.store("next", BlockPos.CODEC, nextLocation);
 			if (prevLocation != null)
-				prevLocation.writeToNBT("prev", tag);
+				output.store("prev", BlockPos.CODEC, prevLocation);
 		}
 
 		@Override
-		public void readFromNBT(NBTTagCompound tag) {
-			super.readFromNBT(tag);
-
-			nextLocation = Coordinate.readFromNBT("next", tag);
-			prevLocation = Coordinate.readFromNBT("prev", tag);
+		protected void loadAdditional(ValueInput input) {
+			super.loadAdditional(input);
+			nextLocation = input.read("next", BlockPos.CODEC).orElse(null);
+			prevLocation = input.read("prev", BlockPos.CODEC).orElse(null);
+			overallPath = null;
 		}
 
 		@Override
-		public final Packet getDescriptionPacket() {
-			NBTTagCompound NBT = new NBTTagCompound();
-			this.writeToNBT(NBT);
-			S35PacketUpdateTileEntity pack = new S35PacketUpdateTileEntity(xCoord, yCoord, zCoord, 0, NBT);
-			return pack;
+		public Packet<ClientGamePacketListener> getUpdatePacket() {
+			return ClientboundBlockEntityDataPacket.create(this);
 		}
 
 		@Override
-		public final void onDataPacket(NetworkManager net, S35PacketUpdateTileEntity p)  {
-			this.readFromNBT(p.field_148860_e);
-			worldObj.markBlockForUpdate(xCoord, yCoord, zCoord);
+		public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
+			return this.saveCustomOnly(registries);
 		}
 
 	}

@@ -12,45 +12,44 @@ package reika.chromaticraft.items.tools;
 import java.util.ArrayList;
 import java.util.LinkedList;
 
-import net.minecraft.block.Block;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.init.Blocks;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.MathHelper;
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 
-import reika.chromaticraft.base.ItemChromaTool;
-import reika.chromaticraft.block.blockchromatrail.TileChromaTrail;
+import reika.chromaticraft.block.BlockChromaTrail.TileChromaTrail;
 import reika.chromaticraft.registry.ChromaBlocks;
-import reika.dragonapi.instantiable.data.blockstruct.abstractsearch.PropagationCondition;
-import reika.dragonapi.instantiable.data.blockstruct.abstractsearch.TerminationCondition;
+import reika.dragonapi.instantiable.data.blockstruct.AbstractSearch.PropagationCondition;
+import reika.dragonapi.instantiable.data.blockstruct.AbstractSearch.TerminationCondition;
 import reika.dragonapi.instantiable.data.blockstruct.BlockArray;
 import reika.dragonapi.instantiable.data.blockstruct.BreadthFirstSearch;
 import reika.dragonapi.instantiable.data.immutable.BlockBox;
-import reika.dragonapi.instantiable.data.immutable.Coordinate;
-import reika.dragonapi.libraries.world.ReikaBlockHelper;
-import reika.dragonapi.libraries.world.ReikaWorldHelper;
+import reika.dragonapi.libraries.level.ReikaBlockHelper;
+import reika.dragonapi.libraries.level.ReikaWorldHelper;
 
+/**
+ * V33a {@code ItemCaveExitFinder}, the Subterranean Route Finder. Used underground it finds the shortest open route to
+ * a block that sees the sky and marks it with trail waypoints every fourth block (ending at the exit); sneaking, it
+ * instead finds the way down to the deepest reachable point within 400 blocks, never climbing above where it started.
+ * Waypoints only go into air, never over liquids or leaves.
+ *
+ * <p>Open space is air, liquids, soft blocks, leaves, iron bars, doors (V33a's one wooden door is every wooden door
+ * here), and existing trail and Hover blocks. The search runs to completion in the use tick, as it did in V33a.
+ */
+public class ItemCaveExitFinder extends Item {
 
-public class ItemCaveExitFinder extends ItemChromaTool {
+	private static final TerminationCondition skyFinder = (world, pos) -> world.canSeeSky(pos);
 
-	private static final TerminationCondition skyFinder = new TerminationCondition() {
-
-		@Override
-		public boolean isValidTerminus(World world, int x, int y, int z) {
-			return world.canBlockSeeTheSky(x, y, z);
-		}
-
-	};
-
-	private static final PropagationCondition pathFinder = new PropagationCondition() {
-
-		@Override
-		public boolean isValidLocation(World world, int x, int y, int z, Coordinate from) {
-			Block b = world.getBlock(x, y, z);
-			return b.isAir(world, x, y, z) || b == ChromaBlocks.HOVER.getBlockInstance() || b == Blocks.wooden_door || b == Blocks.iron_door || b == Blocks.iron_bars || b == ChromaBlocks.TRAIL.getBlockInstance() || ReikaBlockHelper.isLiquid(b) || ReikaWorldHelper.softBlocks(world, x, y, z) || ReikaBlockHelper.isLeaf(world, x, y, z);
-		}
-
+	private static final PropagationCondition pathFinder = (world, pos, from) -> {
+		BlockState b = world.getBlockState(pos);
+		return b.isAir() || b.is(ChromaBlocks.HOVER.get()) || b.is(BlockTags.WOODEN_DOORS) || b.is(Blocks.IRON_DOOR)
+				|| b.is(Blocks.IRON_BARS) || b.is(ChromaBlocks.CHROMA_TRAIL.get()) || ReikaBlockHelper.isLiquid(b)
+				|| ReikaWorldHelper.softBlocks(world, pos) || ReikaBlockHelper.isLeaf(world, pos);
 	};
 
 	private static final class DownwardsFinder implements PropagationCondition {
@@ -62,11 +61,11 @@ public class ItemCaveExitFinder extends ItemChromaTool {
 		}
 
 		@Override
-		public boolean isValidLocation(World world, int x, int y, int z, Coordinate from) {
-			return pathFinder.isValidLocation(world, x, y, z, from) && y <= startY;
+		public boolean isValidLocation(Level world, BlockPos pos, BlockPos from) {
+			return pathFinder.isValidLocation(world, pos, from) && pos.getY() <= startY;
 		}
 
-	};
+	}
 
 	private static final class LowYFinder implements TerminationCondition {
 
@@ -77,46 +76,46 @@ public class ItemCaveExitFinder extends ItemChromaTool {
 		}
 
 		@Override
-		public boolean isValidTerminus(World world, int x, int y, int z) {
-			return y == endY;
+		public boolean isValidTerminus(Level world, BlockPos pos) {
+			return pos.getY() == endY;
 		}
 
-	};
+	}
 
-	public ItemCaveExitFinder(int index) {
-		super(index);
+	public ItemCaveExitFinder(Properties properties) {
+		super(properties);
 	}
 
 	@Override
-	public ItemStack onItemRightClick(ItemStack is, World world, EntityPlayer ep) {
-		if (world.isRemote)
-			return is;
-		int x = MathHelper.floor_double(ep.posX);
-		int y = MathHelper.floor_double(ep.posY);
-		int z = MathHelper.floor_double(ep.posZ);
-		boolean deep = ep.isSneaking();
-		if (!deep && skyFinder.isValidTerminus(world, x, y, z))
-			return is;
+	public InteractionResult use(Level world, Player ep, InteractionHand hand) {
+		if (world.isClientSide())
+			return InteractionResult.SUCCESS;
+		BlockPos start = ep.blockPosition();
+		int x = start.getX();
+		int y = start.getY();
+		int z = start.getZ();
+		boolean deep = ep.isShiftKeyDown();
+		if (!deep && skyFinder.isValidTerminus(world, start))
+			return InteractionResult.SUCCESS;
 		PropagationCondition f = deep ? new DownwardsFinder(y) : pathFinder;
 		TerminationCondition t = skyFinder;
 		BlockBox bounds = null;
 		if (deep) {
 			bounds = new BlockBox(x, y, z, x, y, z).expand(400, 256, 400);
 			BlockArray b = new BlockArray();
-			b.recursiveAddCallbackWithBounds(world, x, y, z, bounds.minX, 0, bounds.minZ, bounds.maxX, 256, bounds.maxZ, f);
+			b.recursiveAddCallbackWithBounds(world, x, y, z, bounds.minX, world.getMinY(), bounds.minZ, bounds.maxX,
+					world.getMaxY(), bounds.maxZ, f);
 			t = new LowYFinder(b.getMinY());
 		}
-		BreadthFirstSearch s = new BreadthFirstSearch(x, y, z, f, t);
+		BreadthFirstSearch s = new BreadthFirstSearch(start);
 		if (bounds != null)
 			s.limit = bounds;
-		while (!s.tick(world)) {
-
-		}
-		LinkedList<Coordinate> li = s.getResult().getPath();
+		s.complete(world, f, t);
+		LinkedList<BlockPos> li = new LinkedList(s.getResult());
 		if (!li.isEmpty()) {
 			int n = 0;
-			ArrayList<Coordinate> li2 = new ArrayList();
-			for (Coordinate c : li) {
+			ArrayList<BlockPos> li2 = new ArrayList();
+			for (BlockPos c : li) {
 				if (n%4 == 0 && !c.equals(li.getLast())) {
 					li2.add(c);
 				}
@@ -124,26 +123,17 @@ public class ItemCaveExitFinder extends ItemChromaTool {
 			}
 			li2.add(li.getLast());
 			for (int i = 0; i < li2.size(); i++) {
-				Coordinate c = li2.get(i);
-				Coordinate next = i < li2.size()-1 ? li2.get(i+1) : null;
-				Coordinate prev = i > 0 ? li2.get(i-1) : null;
-				if (c.getBlock(world).isAir(world, c.xCoord, c.yCoord, c.zCoord)) { //do not overwrite liquids, leaves, etc
-					c.setBlock(world, ChromaBlocks.TRAIL.getBlockInstance());
-					TileChromaTrail te = (TileChromaTrail)c.getTileEntity(world);
-					if (te == null) {
-						te = new TileChromaTrail();
-						te.worldObj = world;
-						te.xCoord = c.xCoord;
-						te.yCoord = c.yCoord;
-						te.zCoord = c.zCoord;
-						world.setTileEntity(c.xCoord, c.yCoord, c.zCoord, te);
-					}
-					te.setData(prev, next);
-					//ReikaJavaLibrary.pConsole(c);
+				BlockPos c = li2.get(i);
+				BlockPos next = i < li2.size()-1 ? li2.get(i+1) : null;
+				BlockPos prev = i > 0 ? li2.get(i-1) : null;
+				if (world.getBlockState(c).isAir()) { //do not overwrite liquids, leaves, etc
+					world.setBlock(c, ChromaBlocks.CHROMA_TRAIL.get().defaultBlockState(), 3);
+					if (world.getBlockEntity(c) instanceof TileChromaTrail te)
+						te.setData(prev, next);
 				}
 			}
 		}
-		return is;
+		return InteractionResult.SUCCESS;
 	}
 
 }

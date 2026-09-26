@@ -602,6 +602,10 @@ public final class ChromaBlocks {
 	public static final DeferredBlock<BlockHoverBlock> HOVER = register("hover",
 			() -> new BlockHoverBlock(blockProperties().mapColor(MapColor.NONE).strength(-1F, 600000F)
 					.noCollision().noOcclusion().lightLevel(state -> 6)));
+	/** V33a TRAIL: a Route Finder waypoint -- hardness 0, resistance 60000 (36000 here), no collision, no drops. */
+	public static final DeferredBlock<reika.chromaticraft.block.BlockChromaTrail> CHROMA_TRAIL = register("chroma_trail",
+			() -> new reika.chromaticraft.block.BlockChromaTrail(blockProperties().mapColor(MapColor.NONE).strength(0F, 36000F)
+					.noCollision().noOcclusion().noLootTable()));
 	public static final DeferredBlock<BlockLightPanel> LIGHT_PANEL = register("light_panel",
 			() -> new BlockLightPanel(blockProperties().mapColor(MapColor.STONE).strength(-1F, 600000F)
 					.sound(SoundType.STONE).lightLevel(state -> state.getValue(BlockLightPanel.ACTIVE) ? 15 : 0)));

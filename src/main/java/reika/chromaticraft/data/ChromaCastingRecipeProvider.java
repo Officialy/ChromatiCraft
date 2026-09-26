@@ -281,6 +281,14 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 							new RuneRequirement(new net.minecraft.core.BlockPos(-5, 0, 4), CrystalElement.YELLOW)),
 					List.of(), new ItemStackTemplate(ChromaBlocks.RELAY_SOURCE.get().asItem()), 100, 200));
 
+			// V33a CavePatherRecipe, a plain CastingRecipe.
+			saveShaped("cave_pather", new ItemStackTemplate(ChromaItems.CAVE_PATHER.get()), 5, 5,
+					Map.of('R', Ingredient.of(Items.REDSTONE), 'E', Ingredient.of(Items.DIAMOND),
+							'B', Ingredient.of(ChromaItems.TIERED.get(ChromaTieredItems.BEACON_DUST).get()),
+							'A', Ingredient.of(ChromaItems.TIERED.get(ChromaTieredItems.AURA_DUST).get()),
+							'S', Ingredient.of(Items.STICK), 'C', Ingredient.of(Items.QUARTZ)),
+					"RAC", "BCA", "SBE");
+
 			// V33a OwnerKeyRecipe: no XP, and the table's owner who casts it is written in as the key's owner
 			// (handleNBTResult; the casting table's caster tag).
 			saveRecipe("ownership_key", new CastingTableRecipe(CastingTableRecipe.Tier.CRAFTING,

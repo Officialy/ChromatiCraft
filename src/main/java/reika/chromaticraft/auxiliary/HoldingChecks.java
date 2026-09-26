@@ -1,21 +1,23 @@
 package reika.chromaticraft.auxiliary;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.ItemStack;
 
-import reika.chromaticraft.registry.ChromaBlocks;
+import reika.chromaticraft.block.BlockCrystalRune;
 import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.ChromaTiles;
-import reika.dragonapi.ModList;
-import reika.dragonapi.asm.dependentmethodstripper.ModDependent;
-import reika.dragonapi.libraries.registry.ReikaItemHelper;
-import reika.dragonapi.modinteract.deepinteract.ReikaThaumHelper;
-import reika.dragonapi.modinteract.itemhandlers.ThaumItemHelper;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
-
+/**
+ * V33a {@code HoldingChecks}: whether a player's held item is one of the tools and blocks that reveal hidden parts of
+ * the mod -- the Manipulator (network paths, trails), a Focus Crystal, a Power Crystal, a repeater, or a crystal rune --
+ * with a client-side fade in and out for overlays drawn while one is held. The placer items V33a checked by metadata are
+ * each tile's own block item here.
+ *
+ * <p>CHROMA-PORT: V33a also counted a Thaumcraft wand with the Manipulator focus as the Manipulator; DELEGATE (the
+ * Automator's item) matches nothing until the Automator is ported.
+ */
 public enum HoldingChecks {
 
 	MANIPULATOR(),
@@ -28,18 +30,17 @@ public enum HoldingChecks {
 	private float fade;
 	private long lastUpdate;
 
-	@SideOnly(Side.CLIENT)
 	public boolean isClientHolding() {
-		return this.isHolding(Minecraft.getMinecraft().thePlayer);
+		return this.isHolding(Minecraft.getInstance().player);
 	}
 
-	public boolean isHolding(EntityPlayer ep) {
-		return this.match(ep.getCurrentEquippedItem());
+	public boolean isHolding(Player ep) {
+		return ep != null && this.match(ep.getMainHandItem());
 	}
 
-	@SideOnly(Side.CLIENT)
 	public float getFade() {
-		long t = Minecraft.getMinecraft().theWorld.getTotalWorldTime();
+		Minecraft mc = Minecraft.getInstance();
+		long t = mc.level != null ? mc.level.getGameTime() : 0;
 		if (t != lastUpdate) {
 			lastUpdate = t;
 			if (this.isClientHolding()) {
@@ -53,29 +54,25 @@ public enum HoldingChecks {
 	}
 
 	private boolean match(ItemStack is) {
+		if (is == null || is.isEmpty())
+			return false;
+		ChromaTiles tile = ChromaTiles.getTileFromItem(is);
 		switch(this) {
 			case MANIPULATOR:
-				if (ModList.THAUMCRAFT.isLoaded() && this.isManipulatorFocusWand(is))
-					return true;
-				return ChromaItems.TOOL.matchWith(is);
+				return is.is(ChromaItems.MANIPULATOR.get());
 			case FOCUSCRYSTAL:
-				return ChromaItems.PLACER.matchWith(is) && is.getItemDamage() == ChromaTiles.FOCUSCRYSTAL.ordinal();
+				return tile == ChromaTiles.FOCUSCRYSTAL;
 			case DELEGATE:
-				return ChromaItems.PLACER.matchWith(is) && is.getItemDamage() == ChromaTiles.AUTOMATOR.ordinal();
+				return false;
 			case POWERCRYS:
-				return ChromaItems.PLACER.matchWith(is) && is.getItemDamage() == ChromaTiles.CRYSTAL.ordinal();
+				return tile == ChromaTiles.CRYSTAL;
 			case REPEATER:
-				return ChromaItems.PLACER.matchWith(is) && ChromaTiles.TEList[is.getItemDamage()].isRepeater();
+				return tile != null && tile.isRepeater();
 			case RUNE:
-				return ReikaItemHelper.matchStackWithBlock(is, ChromaBlocks.RUNE.getBlockInstance());
+				return is.getItem() instanceof BlockItem bi && bi.getBlock() instanceof BlockCrystalRune;
 			default:
 				return false;
 		}
-	}
-
-	@ModDependent(ModList.THAUMCRAFT)
-	private boolean isManipulatorFocusWand(ItemStack is) {
-		return is != null && is.getItem() == ThaumItemHelper.ItemEntry.WAND.getItem().getItem() && ReikaThaumHelper.getWandFocus(is) == ChromaItems.MANIPFOCUS.getItemInstance();
 	}
 
 }

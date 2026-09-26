@@ -144,6 +144,9 @@ public final class ChromaItems {
 	/** V33a ENDEREYE, the Enhanced Ender Eye; its owner is stored in CUSTOM_DATA. */
 	public static final DeferredItem<reika.chromaticraft.items.ItemT2EnderEye> ENDER_EYE =
 			reg("enhanced_ender_eye", () -> new reika.chromaticraft.items.ItemT2EnderEye(itemProperties()));
+	/** V33a CAVEPATHER, the Subterranean Route Finder. */
+	public static final DeferredItem<reika.chromaticraft.items.tools.ItemCaveExitFinder> CAVE_PATHER =
+			reg("cave_pather", () -> new reika.chromaticraft.items.tools.ItemCaveExitFinder(itemProperties().stacksTo(1)));
 	/** V33a SHARE, the Ownership Expansion Key. */
 	public static final DeferredItem<reika.chromaticraft.items.tools.ItemOwnerKey> OWNERSHIP_KEY =
 			reg("ownership_key", () -> new reika.chromaticraft.items.tools.ItemOwnerKey(itemProperties().stacksTo(1)));

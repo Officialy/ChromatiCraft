@@ -187,6 +187,9 @@ public class ChromaLang extends LanguageProvider {
 		add(ChromaItems.PYLON_FINDER.get(), "Pylon Compass"); // V33a chroma.finder
 		add(ChromaItems.LIGHT_GUN.get(), "Illumination Gun"); // V33a chroma.lightgun
 		add(ChromaItems.OWNERSHIP_KEY.get(), "Ownership Expansion Key"); // V33a chroma.share
+		add(ChromaItems.CAVE_PATHER.get(), "Subterranean Route Finder"); // V33a chroma.cavepather
+		// V33a's en_US.lang had no chroma.trail entry, so the block showed its raw key; it keeps that key as its name.
+		add(ChromaBlocks.CHROMA_TRAIL.get(), "chroma.trail");
 		add(reika.chromaticraft.registry.ChromaEntityTypes.LIGHT_SHOT.get(), "LightGun Shot"); // V33a ChromaEntities LIGHTGUN
 		add(ChromaBlocks.PYLON_TURBOCHARGER.get(), "Energy Focal Point"); // V33a chroma.pylonturbo
 		add(ChromaBlocks.COLLECTOR.get(), "Chroma Collector"); // V33a chroma.collector

@@ -113,6 +113,7 @@ public final class ChromaTabs {
 				|| id.contains("ore") || id.contains("artefact") || id.contains("warp_node"))
 			return BlockCategory.WORLDGEN;
 		if (type.contains(".block.decoration.") || type.endsWith(".BlockCrystalLamp") || type.endsWith(".BlockCrystalGlow")
+				|| type.endsWith(".BlockChromaTrail")
 				|| type.endsWith(".BlockSuperCrystal") || id.contains("decor")
 				|| id.contains("altar") || (id.contains("glass") && !type.endsWith(".BlockSelectiveGlass")))
 			return BlockCategory.DECORATION;

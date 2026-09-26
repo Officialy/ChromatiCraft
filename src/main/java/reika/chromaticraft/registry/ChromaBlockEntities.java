@@ -107,6 +107,9 @@ public final class ChromaBlockEntities {
 			register("ritual_table", ChromaTiles.RITUAL);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityCrystalCharger>> CRYSTAL_CHARGER =
 			register("crystal_charger", ChromaTiles.CHARGER);
+	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<reika.chromaticraft.block.BlockChromaTrail.TileChromaTrail>> CHROMA_TRAIL =
+			BLOCK_ENTITIES.register("chroma_trail", () -> new BlockEntityType<>(
+					reika.chromaticraft.block.BlockChromaTrail.TileChromaTrail::new, ChromaBlocks.CHROMA_TRAIL.get()));
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<reika.chromaticraft.tileentity.plants.TileEntityChromaFlower>> CHROMA_FLOWER =
 			register("chroma_flower", ChromaTiles.CHROMAFLOWER);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<reika.chromaticraft.tileentity.recipe.TileEntityCrystalBrewer>> CRYSTAL_BREWER =

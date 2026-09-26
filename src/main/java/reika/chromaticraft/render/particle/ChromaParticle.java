@@ -728,6 +728,54 @@ public abstract class ChromaParticle extends SingleQuadParticle {
      * V33a {@code BlockEtherealLight.randomDisplayTick}: one slow mote, in the colour that height gives
      * the light, drifting a little either way and either rising or falling at random.
      */
+    /**
+     * V33a {@code TileChromaTrail.doParticles}: for half of every 12 ticks a shrinking blur glides along this waypoint's
+     * stretch of the route spline, alpha-fading and tinted by height like ethereal light; while a Manipulator is held,
+     * a haze of blurs (and on every fourth waypoint an occasional larger gentle blur, hue-shifted) marks the point.
+     */
+    public static void spawnChromaTrail(Level world, BlockPos pos, reika.chromaticraft.block.BlockChromaTrail.TileChromaTrail te) {
+        if (!(world instanceof ClientLevel level)) return;
+        RandomSource rand = level.getRandom();
+        int x = pos.getX();
+        int y = pos.getY();
+        int z = pos.getZ();
+        int t = (int)(level.getGameTime()%12);
+        if (t < 6) {
+            int l = 13;
+            reika.dragonapi.instantiable.particlecontroller.ListOfPositionsController s =
+                    new reika.dragonapi.instantiable.particlecontroller.ListOfPositionsController(l, te.getSplineSegment());
+            float f = 1.5F*((6-t)/6F);
+            FadeGlow fx = new FadeGlow(level, x+0.5, y+0.5, z+0.5, 0, 0, 0, 0xffffff, l*3/2, f, true, s, 0, "fade", true);
+            fx.setAlphaFading();
+            fx.setHeightColor(h -> reika.chromaticraft.block.decoration.BlockEtherealLight.particleColor(level, h));
+            Minecraft.getInstance().particleEngine.add(fx);
+        }
+        if (reika.chromaticraft.auxiliary.HoldingChecks.MANIPULATOR.isClientHolding()) {
+            if (rand.nextInt(2) == 0) {
+                double px = plusMinus(rand, x+0.5, 0.0625);
+                double py = plusMinus(rand, y+0.5, 0.0625);
+                double pz = plusMinus(rand, z+0.5, 0.0625);
+                int l = 10+rand.nextInt(31);
+                float f = 0.75F+rand.nextFloat()*0.75F;
+                int c = ReikaColorAPI.mixColors(0xffffff,
+                        reika.chromaticraft.block.decoration.BlockEtherealLight.particleColor(level, (int)Math.floor(py)),
+                        rand.nextFloat()*0.375F);
+                Minecraft.getInstance().particleEngine.add(new FadeGlow(level, px, py, pz, 0, 0, 0, c, l, f, false));
+
+                if (te.getPathIndex()%4 == 0 && rand.nextInt(4) == 0) {
+                    px = plusMinus(rand, x+0.5, 0.5);
+                    py = plusMinus(rand, y+0.5, 0.5);
+                    pz = plusMinus(rand, z+0.5, 0.5);
+                    l = 25+rand.nextInt(51);
+                    f *= 2;
+                    c = ReikaColorAPI.getModifiedHue(c, (int)plusMinus(rand, ReikaColorAPI.getHue(c), 60));
+                    Minecraft.getInstance().particleEngine.add(new FadeGlow(level, px, py, pz, 0, 0, 0, c, l, f, false,
+                            null, 0, "fade_gentle", true));
+                }
+            }
+        }
+    }
+
     public static void spawnEtherealLight(Level world, BlockPos pos) {
         if (!(world instanceof ClientLevel level)) return;
         RandomSource rand = level.getRandom();
@@ -2733,6 +2781,7 @@ public abstract class ChromaParticle extends SingleQuadParticle {
         private final boolean rapidExpand;
         private final PositionController controller;
         private float alphaFade;
+        private java.util.function.IntUnaryOperator heightColor;
         private float baseRed;
         private float baseGreen;
         private float baseBlue;
@@ -2778,6 +2827,25 @@ public abstract class ChromaParticle extends SingleQuadParticle {
             return this;
         }
 
+        /**
+         * V33a {@code setColorController(BlockEtherealLight.colorController)}-style recolouring: every tick the blur takes
+         * the colour the function gives for the block height it has reached.
+         */
+        public FadeGlow setHeightColor(java.util.function.IntUnaryOperator colorAtY) {
+            this.heightColor = colorAtY;
+            this.applyHeightColor();
+            return this;
+        }
+
+        private void applyHeightColor() {
+            if (this.heightColor == null)
+                return;
+            this.setRgb(this.heightColor.applyAsInt((int)Math.floor(this.y)));
+            this.baseRed = this.rCol;
+            this.baseGreen = this.gCol;
+            this.baseBlue = this.bCol;
+        }
+
         @Override
         public void tick() {
             this.xo = this.x;
@@ -2800,6 +2868,7 @@ public abstract class ChromaParticle extends SingleQuadParticle {
                 this.yd -= 0.04 * this.gravity;
                 this.move(this.xd, this.yd, this.zd);
             }
+            this.applyHeightColor();
             this.updateAppearance();
         }
 
