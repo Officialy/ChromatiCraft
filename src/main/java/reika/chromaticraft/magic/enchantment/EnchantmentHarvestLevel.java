@@ -9,16 +9,15 @@
  ******************************************************************************/
 package reika.chromaticraft.magic.enchantment;
 
-import net.minecraft.enchantment.EnumEnchantmentType;
-import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.world.entity.player.Player;
 
 import reika.chromaticraft.base.ChromaticEnchantment;
 
-
+/** V33a Enhanced Utility: the tool harvests as if one or two tiers higher. */
 public class EnchantmentHarvestLevel extends ChromaticEnchantment {
 
-	public EnchantmentHarvestLevel(int id) {
-		super(id, EnumEnchantmentType.digger);
+	public EnchantmentHarvestLevel() {
+		super(Target.DIGGER);
 	}
 
 	@Override
@@ -27,7 +26,7 @@ public class EnchantmentHarvestLevel extends ChromaticEnchantment {
 	}
 
 	@Override
-	public boolean isVisibleToPlayer(EntityPlayer ep, int level) {
+	public boolean isVisibleToPlayer(Player ep, int level) {
 		return true;
 	}
 

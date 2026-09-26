@@ -251,8 +251,9 @@ Pylon Link and Lumen Node (V33a had no casting recipe for either).
 
 - **ENTRY** — 7/7 ported.
 - **RAWEXPLORE** — 20/20 ported (Fertility Seeds and the Artifact Distribution Map landed 2026-09-25).
-- **BASICCRAFT** — 10/27 ported (Crystal Glass and Glow landed 2026-09-25).
-  Missing: Defensive Glass; Enchantments; Crystal Brewery; Chromatic Flower; Vertical Propulsion Panel; Lumen Wire; Crystal Orchestra; Particle Spawner; Knowledge Entanglement Pedestal; Tool Compression Crate; Lumen Turret; Subterranean Route Finder; Pylon Compass; Illumination Gun; Ownership Expansion Key; Examination Crystals; Corrosion Resistant Cell.
+- **BASICCRAFT** — 12/27 ported (Crystal Glass and Glow landed 2026-09-25; Defensive Glass and the
+  Enchantments 2026-09-26).
+  Missing: Crystal Brewery; Chromatic Flower; Vertical Propulsion Panel; Lumen Wire; Crystal Orchestra; Particle Spawner; Knowledge Entanglement Pedestal; Tool Compression Crate; Lumen Turret; Subterranean Route Finder; Pylon Compass; Illumination Gun; Ownership Expansion Key; Examination Crystals; Corrosion Resistant Cell.
 - **RUNECRAFT** — 11/36 ported.
   Missing: Artificial Sky; Physics Suspension Lamp; Lumen Lamp; Travel Path; Redstone Pod; Flux Pod; Subterranean Illuminator; Chromatic Enchanter; Fluid Radiator; Fluid Link Anchor; Suspension Field Controller; Item Inserter; Lumen Lamp Controller; Crystal Seeds; Item Mover; Voidlinked Bucket; Linker; Creature Sounding Star; Multitool; Nether Layer Crystal; Ore-Finding Pickaxe; Ore Harvester; Bezier Crystals; Aura Tracker; Recall Tablet.
 - **ENERGY** — 15/30 ported.
@@ -1665,7 +1666,7 @@ post-process glow, whose `reika.dragonapi.io.shaders.*` hook was replaced wholes
 `extras/shader` package and never re-created); the ambient RF/IC2 tile-charging and Crystal Tank top-off
 (`TileEntityCrystalTank`/`CrystalTankAuxTile`, `ChromaBlocks.TANK`); the dynamic ethereal light block
 (`ChromaBlocks.LIGHT` / `BlockEtherealLight`); the pylon self-damage after a Glow Cloud attack and the
-`PylonDamage`-source invulnerability branch (`auxiliary/PylonDamage.java`); the ranged-pickup drop
+`PylonDamage`-source invulnerability branch (`auxiliary/PylonDamage.java`; both wired 2026-09-26); the ranged-pickup drop
 redirection (`Chromabilities.RANGEDBOOST` / `ItemInventoryLinker`); the Energy Powder drop (chains to
 `ChromaItems`, owned by the parallel naming-audit wave this cycle); the `CrystalMusicManager` attack-pitch
 scaling (its `reikamusichelper.*` imports predate the modern `ReikaMusicHelper` nested-enum layout); and
@@ -8496,3 +8497,55 @@ mixin and renderer are unverified in game.
 - Doublecraft: the casting table never doubled output. Recipes now carry `completion.double_output` (V33a
   `canGiveDoubleOutput`), set in datagen for every ported recipe whose V33a class allowed it.
 - Unverified in game: the glow model orientation per facing and the inventory card.
+
+**BASICCRAFT: Defensive Glass, pylon damage, Enchantments (2026-09-26).**
+- Defensive Glass (`selective_glass`): projectiles fired by players pass through, everything else collides.
+  `SelectiveGlassModel` draws V33a's connected edges at 16 light-dependent alpha levels. Pylon rays and
+  visual line-of-sight both see through it. CHROMA-PORT: V33a also let the Entity Vacuum's items and Blood
+  Magic spells through.
+- Pylon damage: V33a's 17 `PylonDamage` sources are data-driven damage types (`chromaticraft:pylon_<element>`
+  and the uncoloured `chromaticraft:pylon`, all in tag `chromaticraft:pylon`). Their tags carry V33a's source
+  flags: bypasses armour, bypasses effects (absolute), witch-resistant, no knockback. Each has its V33a death
+  message.
+  - `PylonDamage.doPylonAttack` is `ChromaAux.doPylonAttack`: SHOCK progression, new-player taper, and
+    health enforcement against the original amount.
+  - V33a enforces against the untapered amount too, so its taper never protects anyone. That is kept.
+  - Rewired off vanilla magic: pylon attacks, power-crystal breaks, turbocharger failure, the aura point,
+    and the glow cloud's self-damage and pylon vulnerability.
+- Enchantments: the 13 are data-driven registry entries built by `ChromaEnchants.bootstrap`. They are in no
+  enchanting-table, loot or trade tag. Weight is 1, the codec minimum (V33a had 0). Anvil cost is 0, as
+  V33a's weight made it.
+  - Supported items follow 1.7.10's types. `chromaticraft:enchantable/weapon_or_bow` holds swords and bow;
+    `.../digger` holds pickaxes, axes and shovels.
+  - `ChromaEnchants.getLevel` reads the stack's own holders (no registry needed) and caps at the maximum.
+  - The `cc_overenchant` NBT flag is gone. `isOverenchanted` computes it, and `OverenchantParticles` draws
+    V33a's teal hex flares.
+  - The effects are in `magic/enchantment/ChromaEnchantEvents`, V33a `ChromaticEventManager`'s enchantment
+    handlers; that class is otherwise unported.
+  - V33a's ASM hooks became DragonAPI events fired from mixins:
+    - `AttackAggroEvent` at `LivingEntity.resolveMobResponsibleForDamage`, for monsters.
+    - `PigZombieAggroSpreadEvent` at `HurtByTargetGoal.alertOthers` and `ZombifiedPiglin.alertOthers`.
+      26.2 re-alerts every few seconds, so a masked piglin remembers its attacker in persistent data.
+    - `EnderAttackTPEvent` at `EnderMan.hurtServer`'s projectile test. Cancelling the teleport event instead
+      would leave the arrow doing no damage.
+    - `CreeperAccessor`, for Capital Strike's creeper charge.
+  - Enhanced Utility uses `HarvestCheck`, climbing a tier ladder built from the `incorrect_for_*_tool` tags.
+  - Reposession reimplements 1.7.10 `dropEquipment` and hardcodes the `dropRareDrop` overrides, since 26.2
+    folded those into loot tables.
+  - Durability Leech runs on `LivingDamageEvent.Pre`, which comes after the hurt cooldown as LivingHurtEvent
+    did.
+  - Area Strike, Capital Strike and Armor Breach run on `LivingIncomingDamageEvent`, which comes before the
+    cooldown as LivingAttackEvent did.
+  - Lexicon: the ENCHANTS entry has V33a's 13 subpages ("Name: Up to Name V" plus `enchants.xml`).
+- Deviations:
+  - A vetoed Inventory Insertion pickup stays in the world; V33a cleared it.
+  - Area Strike pays a lethally struck mob's XP out once, then zeroes its drop.
+  - V33a's `autoCollectDirect` is not ported: its `collectItemPlayer` field was never set.
+- CHROMA-PORT, still to wire:
+  - Aggro Mask III is read by AbilityHelper's lying-cancel handler, which is not ported.
+  - Capital Strike's Lumen Turret exclusion lands with the turret.
+  - Area Strike's pendant XP multiplier lands with the pendants.
+  - The Identity Retention IC2 resin log and Thaumic Tinkerer kami drops have no 26.2 mods to port against.
+  - The boosted vanilla-enchant lexicon pages and `isVisibleToPlayer` both wait for the Auto Enchanter.
+  - The Excavator's three `EnchantmentRecipe`s wait for the Excavator.
+- Unverified in game: every effect. The mixins are confirmed to apply (datagen log).

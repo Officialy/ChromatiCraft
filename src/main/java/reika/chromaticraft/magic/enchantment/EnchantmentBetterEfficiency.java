@@ -9,16 +9,15 @@
  ******************************************************************************/
 package reika.chromaticraft.magic.enchantment;
 
-import net.minecraft.enchantment.EnumEnchantmentType;
-import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.world.entity.player.Player;
 
 import reika.chromaticraft.base.ChromaticEnchantment;
 
-
+/** V33a Consistent Efficiency: pulls the mining speed of every block toward the same fifteen ticks. */
 public class EnchantmentBetterEfficiency extends ChromaticEnchantment {
 
-	public EnchantmentBetterEfficiency(int id) {
-		super(id, EnumEnchantmentType.digger);
+	public EnchantmentBetterEfficiency() {
+		super(Target.DIGGER);
 	}
 
 	@Override
@@ -27,7 +26,7 @@ public class EnchantmentBetterEfficiency extends ChromaticEnchantment {
 	}
 
 	@Override
-	public boolean isVisibleToPlayer(EntityPlayer ep, int level) {
+	public boolean isVisibleToPlayer(Player ep, int level) {
 		return true;
 	}
 

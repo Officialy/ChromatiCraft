@@ -26,6 +26,9 @@ public final class LexiconDescriptions {
 	private static final String ROOT = "/assets/chromaticraft/resources/";
 	private static final Map<String, Map<String, Text>> DOCUMENTS = loadDocuments();
 	private static final Map<CrystalElement, String> ELEMENTS = loadElementDescriptions();
+	/** V33a {@code enchants.xml}; not a section document, so loaded on first use. */
+	private static final java.util.function.Supplier<Map<String, Text>> ENCHANTS =
+			com.google.common.base.Suppliers.memoize(() -> loadDocument("enchants"));
 
 	private LexiconDescriptions() {}
 
@@ -46,6 +49,18 @@ public final class LexiconDescriptions {
 		if (text == null || text.description().isBlank())
 			throw new IllegalStateException("Missing V33a ability description for " + id);
 		return text.description();
+	}
+
+	/**
+	 * V33a {@code GuiBasicInfo.renderEnchantDesc} for a ChromatiCraft enchantment: "Name: Up to Name V", then its
+	 * {@code enchants.xml} notes.
+	 */
+	public static String enchant(reika.chromaticraft.registry.ChromaEnchants e) {
+		Text text = ENCHANTS.get().get(e.getLexiconKey());
+		String name = e.getBasicName().getString();
+		int max = e.getEnchantment().getMaxLevel();
+		String level = net.minecraft.network.chat.Component.translatable("enchantment.level." + max).getString();
+		return name + ": Up to " + name + " " + level + "\n\n" + (text == null ? "" : text.description());
 	}
 
 	/** Original V33a {@code elements.xml}, including its authored element-name substitutions. */

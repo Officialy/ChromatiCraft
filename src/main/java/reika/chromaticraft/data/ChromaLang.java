@@ -199,6 +199,15 @@ public class ChromaLang extends LanguageProvider {
 		for (CrystalElement element : CrystalElement.elements)
 			add(ChromaBlocks.crystalGlass(element).get(), element.displayName + " Crystal Glass"); // V33a chroma.glass
 		add(ChromaBlocks.SELECTIVE_GLASS.get(), "Defensive Glass"); // V33a chroma.selectiveglass
+		// V33a en_US.lang enchantment.chroma.*.
+		String[][] enchantNames = {
+				{"WEAPONAOE", "Area Strike"}, {"AGGROMASK", "Aggro Mask"}, {"ENDERLOCK", "Ender Lock"},
+				{"USEREPAIR", "Durability Leech"}, {"RARELOOT", "Reposession"}, {"FASTSINK", "Submergence"},
+				{"HARVESTLEVEL", "Enhanced Utility"}, {"AIRMINER", "Air Miner"}, {"PHASING", "Armor Breach"},
+				{"BOSSKILL", "Capital Strike"}, {"AUTOCOLLECT", "Inventory Insertion"},
+				{"DATAKEEP", "Identity Retention"}, {"MINETIME", "Consistent Efficiency"}};
+		for (String[] ench : enchantNames)
+			add(reika.chromaticraft.registry.ChromaEnchants.valueOf(ench[0]).getUnlocalizedName(), ench[1]);
 		// V33a PylonDamage.getDeathMessage, per element.
 		add("death.attack." + reika.chromaticraft.auxiliary.PylonDamage.messageId(null), "%1$s died to pylon energy");
 		String[][] pylonDeaths = {

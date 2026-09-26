@@ -9,18 +9,16 @@
  ******************************************************************************/
 package reika.chromaticraft.magic.enchantment;
 
-import net.minecraft.enchantment.EnumEnchantmentType;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
+import net.minecraft.world.entity.player.Player;
 
-import reika.chromaticraft.base.ChromaticEnchantment;
 import reika.chromaticraft.magic.progression.ProgressStage;
+import reika.chromaticraft.base.ChromaticEnchantment;
 
-
+/** V33a Area Strike: a hit also lands, falling off with distance, on nearby mobs of the same kind. */
 public class EnchantmentWeaponAOE extends ChromaticEnchantment {
 
-	public EnchantmentWeaponAOE(int id) {
-		super(id, EnumEnchantmentType.weapon);
+	public EnchantmentWeaponAOE() {
+		super(Target.WEAPON_OR_BOW);
 	}
 
 	@Override
@@ -37,12 +35,7 @@ public class EnchantmentWeaponAOE extends ChromaticEnchantment {
 	}
 
 	@Override
-	public boolean canApply(ItemStack is) {
-		return EnumEnchantmentType.weapon.canEnchantItem(is.getItem()) || EnumEnchantmentType.bow.canEnchantItem(is.getItem());
-	}
-
-	@Override
-	public boolean isVisibleToPlayer(EntityPlayer ep, int level) {
+	public boolean isVisibleToPlayer(Player ep, int level) {
 		return ProgressStage.KILLMOB.isPlayerAtStage(ep);
 	}
 

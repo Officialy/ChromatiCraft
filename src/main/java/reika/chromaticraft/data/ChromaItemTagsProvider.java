@@ -50,5 +50,13 @@ public final class ChromaItemTagsProvider extends ItemTagsProvider {
 		ChromaBlocks.LUMEN_RELAYS.values().forEach(block ->
 				relays.add(ResourceKey.create(Registries.ITEM, block.getId())));
 		relays.add(ResourceKey.create(Registries.ITEM, ChromaBlocks.MULTICHROMIC_RELAY.getId()));
+
+		var weaponOrBow = tag(ChromaItemTags.ENCHANTABLE_WEAPON_OR_BOW);
+		weaponOrBow.addTag(net.minecraft.tags.ItemTags.SWORDS);
+		weaponOrBow.add(ResourceKey.create(Registries.ITEM, net.minecraft.resources.Identifier.withDefaultNamespace("bow")));
+		var digger = tag(ChromaItemTags.ENCHANTABLE_DIGGER);
+		digger.addTag(net.minecraft.tags.ItemTags.PICKAXES);
+		digger.addTag(net.minecraft.tags.ItemTags.AXES);
+		digger.addTag(net.minecraft.tags.ItemTags.SHOVELS);
 	}
 }

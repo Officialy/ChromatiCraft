@@ -11,32 +11,32 @@ package reika.chromaticraft.magic.enchantment;
 
 import java.util.HashMap;
 
-import net.minecraft.block.Block;
-import net.minecraft.enchantment.EnumEnchantmentType;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.init.Blocks;
-import net.minecraft.init.Items;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.world.World;
-import net.minecraftforge.common.util.ForgeDirection;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.CakeBlock;
+import net.minecraft.world.level.block.state.BlockState;
+import net.neoforged.neoforge.common.Tags;
 
 import reika.chromaticraft.base.ChromaticEnchantment;
 import reika.chromaticraft.registry.ChromaEnchants;
-import reika.dragonapi.ModList;
-import reika.dragonapi.instantiable.data.immutable.BlockKey;
 import reika.dragonapi.libraries.ReikaPlayerAPI;
 import reika.dragonapi.libraries.registry.ReikaItemHelper;
-import reika.dragonapi.libraries.world.ReikaBlockHelper;
-import reika.dragonapi.modinteract.itemhandlers.IC2RubberLogHandler;
 
-
+/**
+ * V33a Identity Retention: a few blocks that normally drop nothing of themselves (an uneaten cake) break into
+ * their own item instead.
+ */
 public class EnchantmentDataKeeper extends ChromaticEnchantment {
 
-	private static final HashMap<BlockKey, BlockHandler> handlers = new HashMap();
+	private static final HashMap<Block, BlockHandler> handlers = new HashMap();
 
-	public EnchantmentDataKeeper(int id) {
-		super(id, EnumEnchantmentType.digger);
+	public EnchantmentDataKeeper() {
+		super(Target.DIGGER);
 	}
 
 	@Override
@@ -45,72 +45,59 @@ public class EnchantmentDataKeeper extends ChromaticEnchantment {
 	}
 
 	@Override
-	public boolean isVisibleToPlayer(EntityPlayer ep, int level) {
+	public boolean isVisibleToPlayer(Player ep, int level) {
 		return true;
 	}
 
-	public static boolean handleBreak(World world, int x, int y, int z, Block b, int meta, EntityPlayer ep) {
+	/** True if the break was handled here, in which case the caller cancels it and clears the block. */
+	public static boolean handleBreak(Level world, BlockPos pos, BlockState state, Player ep) {
 		if (handlers.isEmpty())
 			initHandlers();
 		if (ep == null || ReikaPlayerAPI.isFake(ep))
 			return false;
-		ItemStack tool = ep.getCurrentEquippedItem();
+		ItemStack tool = ep.getMainHandItem();
 		if (ChromaEnchants.DATAKEEP.getLevel(tool) <= 0)
 			return false;
-		BlockHandler h = handlers.get(new BlockKey(b, meta));
+		BlockHandler h = handlers.get(state.getBlock());
 		if (h == null)
 			return false;
-		ItemStack is = h.getItem(world, x, y, z, b, meta, ep);
-		if (is == null && ReikaBlockHelper.isOre(b, meta))
-			is = new ItemStack(b, meta);
+		ItemStack is = h.getItem(world, pos, state, ep);
+		if (is == null && state.is(Tags.Blocks.ORES))
+			is = new ItemStack(state.getBlock());
 		if (is == null)
 			return false;
+		// V33a tested the dropped item, not the tool, for Inventory Insertion, so this always dropped in the world.
 		if (ChromaEnchants.AUTOCOLLECT.getLevel(is) > 0)
 			ReikaPlayerAPI.addOrDropItem(is, ep);
 		else
-			ReikaItemHelper.dropItem(world, x+world.rand.nextDouble(), y+world.rand.nextDouble(), z+world.rand.nextDouble(), is);
+			ReikaItemHelper.dropItem(world, pos.getX()+world.getRandom().nextDouble(), pos.getY()+world.getRandom().nextDouble(), pos.getZ()+world.getRandom().nextDouble(), is);
 		return true;
 	}
 
 	private static void initHandlers() {
-		handlers.put(new BlockKey(Blocks.cake, 0), new DirectDrop(Items.cake));
-		if (ModList.IC2.isLoaded()) {
-			Block b = IC2RubberLogHandler.getInstance().logBlock;
-			Item.getItemFromBlock(b).setHasSubtypes(true); //fixes stacking
-			handlers.put(new BlockKey(b), new IC2LogDrop());
-		}
-	}
-
-	private static final class IC2LogDrop extends BlockHandler {
-
-		private IC2LogDrop() {
-
-		}
-
-		@Override
-		protected ItemStack getItem(World world, int x, int y, int z, Block b, int meta, EntityPlayer ep) {
-			if (IC2RubberLogHandler.getInstance().isCrop(b, meta)) {
-				return new ItemStack(b, 1, IC2RubberLogHandler.getInstance().getMeta(ForgeDirection.EAST));
+		// V33a keyed this BlockKey(cake, 0): only an uneaten cake.
+		handlers.put(Blocks.CAKE, new DirectDrop(new ItemStack(Items.CAKE)) {
+			@Override
+			protected ItemStack getItem(Level world, BlockPos pos, BlockState state, Player ep) {
+				return state.getValue(CakeBlock.BITES) == 0 ? super.getItem(world, pos, state, ep) : null;
 			}
-			return null;
-		}
-
+		});
+		// CHROMA-PORT: V33a also kept an IC2 rubber log's resin spot (IC2LogDrop: a crop-state log dropped as the
+		// log block with its resin-hole metadata facing EAST, and marked the log item as having subtypes so the
+		// variants would not stack). IndustrialCraft 2 has no 26.2 port; add the handler with its block when one
+		// exists.
 	}
 
-	private static final class DirectDrop extends BlockHandler {
+	private static class DirectDrop extends BlockHandler {
 
 		private final ItemStack item;
-
-		private DirectDrop(Item i) {
-			this(new ItemStack(i));
-		}
 
 		private DirectDrop(ItemStack is) {
 			item = is.copy();
 		}
 
 		@Override
-		protected ItemStack getItem(World world, int x, int y, int z, Block b, int meta, EntityPlayer ep) {
+		protected ItemStack getItem(Level world, BlockPos pos, BlockState state, Player ep) {
 			return item.copy();
 		}
 
@@ -118,7 +105,7 @@ public class EnchantmentDataKeeper extends ChromaticEnchantment {
 
 	private abstract static class BlockHandler {
 
-		protected abstract ItemStack getItem(World world, int x, int y, int z, Block b, int meta, EntityPlayer ep);
+		protected abstract ItemStack getItem(Level world, BlockPos pos, BlockState state, Player ep);
 
 	}
 

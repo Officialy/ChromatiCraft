@@ -34,6 +34,11 @@ public final class ChromaItemTags {
 	/** All seventeen former RELAY metadata values, including the multichromic relay itself. */
 	public static final TagKey<Item> LUMEN_RELAYS = create("lumen_relays");
 
+	/** What V33a's weapon-or-bow enchantments ({@code canApply} overrides) go on: swords and bows. */
+	public static final TagKey<Item> ENCHANTABLE_WEAPON_OR_BOW = create("enchantable/weapon_or_bow");
+	/** 1.7.10 {@code EnumEnchantmentType.digger}, any {@code ItemTool}: pickaxes, axes and shovels. */
+	public static final TagKey<Item> ENCHANTABLE_DIGGER = create("enchantable/digger");
+
 	private static final Map<CrystalElement, TagKey<Item>> BY_COLOUR = byColour("crystal_shards/");
 	private static final Map<CrystalElement, TagKey<Item>> BOOSTED_BY_COLOUR =
 			byColour("boosted_crystal_shards/");

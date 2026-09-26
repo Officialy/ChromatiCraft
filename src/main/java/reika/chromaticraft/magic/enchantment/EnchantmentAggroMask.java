@@ -9,29 +9,25 @@
  ******************************************************************************/
 package reika.chromaticraft.magic.enchantment;
 
-import net.minecraft.enchantment.EnumEnchantmentType;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
+import net.minecraft.world.entity.player.Player;
 
-import reika.chromaticraft.base.ChromaticEnchantment;
 import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.registry.Chromabilities;
+import reika.chromaticraft.base.ChromaticEnchantment;
 
-
+/**
+ * V33a Aggro Mask: I keeps a struck zombified piglin from calling the others onto you, II keeps a struck monster from
+ * turning on you at all, III keeps a hit from breaking the Communicate ability's truce.
+ */
 public class EnchantmentAggroMask extends ChromaticEnchantment {
 
-	public EnchantmentAggroMask(int id) {
-		super(id, EnumEnchantmentType.weapon);
+	public EnchantmentAggroMask() {
+		super(Target.WEAPON_OR_BOW);
 	}
 
 	@Override
 	public int getMaxLevel() {
 		return 3;
-	}
-
-	@Override
-	public boolean canApply(ItemStack is) {
-		return EnumEnchantmentType.weapon.canEnchantItem(is.getItem()) || EnumEnchantmentType.bow.canEnchantItem(is.getItem());
 	}
 
 	public static boolean hidePigmanSpreadDamage(int level) {
@@ -47,7 +43,7 @@ public class EnchantmentAggroMask extends ChromaticEnchantment {
 	}
 
 	@Override
-	public boolean isVisibleToPlayer(EntityPlayer ep, int level) {
+	public boolean isVisibleToPlayer(Player ep, int level) {
 		return level == 3 ? ProgressStage.DIMENSION.playerHasPrerequisites(ep) && Chromabilities.COMMUNICATE.isAvailableToPlayer(ep) : ProgressStage.KILLMOB.isPlayerAtStage(ep);
 	}
 

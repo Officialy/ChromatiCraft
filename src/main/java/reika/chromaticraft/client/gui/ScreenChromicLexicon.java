@@ -36,6 +36,7 @@ import reika.chromaticraft.magic.progression.*;
 import reika.chromaticraft.network.ChromaNetwork;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaSounds;
+import reika.chromaticraft.registry.ChromaEnchants;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.render.ChromaRenderPipelines;
 import reika.chromaticraft.world.dimension.DimensionStructureType.StructureTypeData;
@@ -1013,6 +1014,8 @@ public final class ScreenChromicLexicon extends Screen {
 		else {
 			if (selected.id().equals("ELEMENTS") && descriptionSubpage > 0)
 				text = LexiconDescriptions.element(CrystalElement.elements[descriptionSubpage - 1]);
+			else if (selected.id().equals("ENCHANTS") && descriptionSubpage > 0)
+				text = LexiconDescriptions.enchant(ChromaEnchants.enchantmentList[descriptionSubpage - 1]);
 			else
 				text = descriptionSubpage > 0 && selected.section() == LexiconCatalog.Section.TOOLS
 						? LexiconDescriptions.notes(selected) : LexiconDescriptions.description(selected);
@@ -1025,6 +1028,11 @@ public final class ScreenChromicLexicon extends Screen {
 			return 1;
 		if (selected.id().equals("ELEMENTS"))
 			return CrystalElement.elements.length + 1;
+		// CHROMA-PORT: V33a followed the thirteen with one page per vanilla enchantment the Auto Enchanter can push
+		// past its normal maximum (TileEntityAutoEnchanter.getBoostedLevels, enchants.xml "boostedlevel"); add them
+		// with the Auto Enchanter.
+		if (selected.id().equals("ENCHANTS"))
+			return ChromaEnchants.enchantmentList.length + 1;
 		if (selected.id().equals("CASTTUNING") || selected.id().equals("STRUCTUREPASSWORDS"))
 			return 2;
 		return selected.section() == LexiconCatalog.Section.TOOLS

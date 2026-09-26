@@ -9,23 +9,17 @@
  ******************************************************************************/
 package reika.chromaticraft.magic.enchantment;
 
-import net.minecraft.enchantment.EnumEnchantmentType;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 
-import reika.chromaticraft.base.ChromaticEnchantment;
 import reika.chromaticraft.magic.progression.ProgressStage;
+import reika.chromaticraft.base.ChromaticEnchantment;
 
-
+/** V33a Durability Leech: each hit repairs the weapon a little, at the cost of a little of the damage. */
 public class EnchantmentUseRepair extends ChromaticEnchantment {
 
-	public EnchantmentUseRepair(int id) {
-		super(id, EnumEnchantmentType.bow);
-	}
-
-	@Override
-	public boolean canApply(ItemStack is) {
-		return EnumEnchantmentType.weapon.canEnchantItem(is.getItem()) || EnumEnchantmentType.bow.canEnchantItem(is.getItem());
+	public EnchantmentUseRepair() {
+		super(Target.WEAPON_OR_BOW);
 	}
 
 	@Override
@@ -33,14 +27,9 @@ public class EnchantmentUseRepair extends ChromaticEnchantment {
 		return 3;
 	}
 
-	@Override
-	public boolean isVisibleToPlayer(EntityPlayer ep, int level) {
-		return level < 3 || ProgressStage.MAKECHROMA.isPlayerAtStage(ep);
-	}
-
 	public static int getRepairedDurability(ItemStack item, int level, float damage/*, UseType type*/) {
-		float frac = (float)item.getItemDamage()/item.getMaxDamage();
-		return (int)Math.min(item.getItemDamage(), 1+level*level*frac*damage/2D);
+		float frac = (float)item.getDamageValue()/item.getMaxDamage();
+		return (int)Math.min(item.getDamageValue(), 1+level*level*frac*damage/2D);
 	}
 	/*
 	public static enum UseType {
@@ -49,4 +38,10 @@ public class EnchantmentUseRepair extends ChromaticEnchantment {
 		RANGED();
 	}
 	 */
+
+	@Override
+	public boolean isVisibleToPlayer(Player ep, int level) {
+		return level < 3 || ProgressStage.MAKECHROMA.isPlayerAtStage(ep);
+	}
+
 }

@@ -9,16 +9,26 @@
  ******************************************************************************/
 package reika.chromaticraft.magic.enchantment;
 
-import net.minecraft.enchantment.EnumEnchantmentType;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.LivingEntity;
 
-import reika.chromaticraft.base.ChromaticEnchantment;
 import reika.chromaticraft.magic.progression.ProgressStage;
+import reika.chromaticraft.base.ChromaticEnchantment;
 
-
+/**
+ * V33a Capital Strike: against a mob of enough maximum health each hit takes a fixed fraction of it, capped; anything
+ * weaker is not hurt at all, and the weapon takes wear for trying.
+ */
 public class EnchantmentBossKill extends ChromaticEnchantment {
+
+	public EnchantmentBossKill() {
+		super(Target.WEAPON_OR_BOW);
+	}
+
+	@Override
+	public int getMaxLevel() {
+		return damageFraction.length;
+	}
 
 	private static DamageProfile[] damageFraction = {
 			new DamageProfile(16, 50, 500),
@@ -27,26 +37,7 @@ public class EnchantmentBossKill extends ChromaticEnchantment {
 			new DamageProfile(2, 250, 100),
 	};
 
-	public EnchantmentBossKill(int id) {
-		super(id, EnumEnchantmentType.weapon);
-	}
-
-	@Override
-	public int getMaxLevel() {
-		return damageFraction.length;
-	}
-
-	@Override
-	public boolean canApply(ItemStack is) {
-		return EnumEnchantmentType.weapon.canEnchantItem(is.getItem()) || EnumEnchantmentType.bow.canEnchantItem(is.getItem());
-	}
-
-	@Override
-	public boolean isVisibleToPlayer(EntityPlayer ep, int level) {
-		return ProgressStage.KILLDRAGON.isPlayerAtStage(ep) || ProgressStage.KILLWITHER.isPlayerAtStage(ep);
-	}
-
-	public static float getDamageDealt(EntityLivingBase e, int lvl) {
+	public static float getDamageDealt(LivingEntity e, int lvl) {
 		float max = e.getMaxHealth();
 		DamageProfile dp = damageFraction[lvl-1];
 		if (max >= dp.damageThreshold) {
@@ -69,6 +60,11 @@ public class EnchantmentBossKill extends ChromaticEnchantment {
 			damageThreshold = thresh;
 		}
 
+	}
+
+	@Override
+	public boolean isVisibleToPlayer(Player ep, int level) {
+		return ProgressStage.KILLDRAGON.isPlayerAtStage(ep) || ProgressStage.KILLWITHER.isPlayerAtStage(ep);
 	}
 
 }

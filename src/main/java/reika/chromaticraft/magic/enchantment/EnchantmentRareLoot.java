@@ -9,18 +9,16 @@
  ******************************************************************************/
 package reika.chromaticraft.magic.enchantment;
 
-import net.minecraft.enchantment.EnumEnchantmentType;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
+import net.minecraft.world.entity.player.Player;
 
-import reika.chromaticraft.base.ChromaticEnchantment;
 import reika.chromaticraft.magic.progression.ProgressStage;
+import reika.chromaticraft.base.ChromaticEnchantment;
 
-
+/** V33a Reposession: a kill drops the mob's equipment, and often its rare drop and head. */
 public class EnchantmentRareLoot extends ChromaticEnchantment {
 
-	public EnchantmentRareLoot(int id) {
-		super(id, EnumEnchantmentType.weapon);
+	public EnchantmentRareLoot() {
+		super(Target.WEAPON_OR_BOW);
 	}
 
 	@Override
@@ -29,12 +27,7 @@ public class EnchantmentRareLoot extends ChromaticEnchantment {
 	}
 
 	@Override
-	public boolean canApply(ItemStack is) {
-		return EnumEnchantmentType.weapon.canEnchantItem(is.getItem()) || EnumEnchantmentType.bow.canEnchantItem(is.getItem());
-	}
-
-	@Override
-	public boolean isVisibleToPlayer(EntityPlayer ep, int level) {
+	public boolean isVisibleToPlayer(Player ep, int level) {
 		switch(level) {
 			case 1:
 			case 2:

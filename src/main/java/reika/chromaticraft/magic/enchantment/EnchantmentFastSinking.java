@@ -9,16 +9,15 @@
  ******************************************************************************/
 package reika.chromaticraft.magic.enchantment;
 
-import net.minecraft.enchantment.EnumEnchantmentType;
-import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.world.entity.player.Player;
 
 import reika.chromaticraft.base.ChromaticEnchantment;
 
-
+/** V33a Submergence: the wearer sinks faster through water. */
 public class EnchantmentFastSinking extends ChromaticEnchantment {
 
-	public EnchantmentFastSinking(int id) {
-		super(id, EnumEnchantmentType.armor_feet);
+	public EnchantmentFastSinking() {
+		super(Target.ARMOR_FEET);
 	}
 
 	@Override
@@ -27,7 +26,7 @@ public class EnchantmentFastSinking extends ChromaticEnchantment {
 	}
 
 	@Override
-	public boolean isVisibleToPlayer(EntityPlayer ep, int level) {
+	public boolean isVisibleToPlayer(Player ep, int level) {
 		return true;
 	}
 
