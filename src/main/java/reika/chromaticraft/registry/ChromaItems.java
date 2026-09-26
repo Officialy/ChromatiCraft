@@ -144,6 +144,9 @@ public final class ChromaItems {
 	/** V33a ENDEREYE, the Enhanced Ender Eye; its owner is stored in CUSTOM_DATA. */
 	public static final DeferredItem<reika.chromaticraft.items.ItemT2EnderEye> ENDER_EYE =
 			reg("enhanced_ender_eye", () -> new reika.chromaticraft.items.ItemT2EnderEye(itemProperties()));
+	/** V33a LIGHTGUN, the Illumination Gun. */
+	public static final DeferredItem<reika.chromaticraft.items.tools.ItemLightGun> LIGHT_GUN =
+			reg("light_gun", () -> new reika.chromaticraft.items.tools.ItemLightGun(itemProperties().stacksTo(1)));
 	/** V33a FINDER, the Pylon Compass (a one-item ItemChromaTool). */
 	public static final DeferredItem<reika.chromaticraft.items.tools.ItemPylonFinder> PYLON_FINDER =
 			reg("pylon_finder", () -> new reika.chromaticraft.items.tools.ItemPylonFinder(itemProperties().stacksTo(1)));

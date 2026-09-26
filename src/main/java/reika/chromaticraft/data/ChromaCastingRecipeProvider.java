@@ -281,6 +281,13 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 							new RuneRequirement(new net.minecraft.core.BlockPos(-5, 0, 4), CrystalElement.YELLOW)),
 					List.of(), new ItemStackTemplate(ChromaBlocks.RELAY_SOURCE.get().asItem()), 100, 200));
 
+			// V33a LightGunRecipe, a plain CastingRecipe: a gold-bodied, stick-gripped gun with an aura-dust muzzle.
+			saveShaped("light_gun", new ItemStackTemplate(ChromaItems.LIGHT_GUN.get()), 5, 5,
+					Map.of('s', Ingredient.of(Items.STICK), 'g', Ingredient.of(Items.REDSTONE), 'G', Ingredient.of(Items.GOLD_INGOT),
+							'a', Ingredient.of(ChromaItems.TIERED.get(ChromaTieredItems.AURA_DUST).get()),
+							'b', Ingredient.of(Items.OBSIDIAN)),
+					" ba", "gGb", "sg ");
+
 			// V33a PylonFinderRecipe, a plain CastingRecipe (its runes were commented out): aura dust ringed by iron and
 			// any shard.
 			saveShaped("pylon_finder", new ItemStackTemplate(ChromaItems.PYLON_FINDER.get()), 5, 5,

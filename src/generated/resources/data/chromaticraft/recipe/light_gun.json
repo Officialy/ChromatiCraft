@@ -1,0 +1,38 @@
+{
+  "type": "chromaticraft:casting",
+  "experience": 5,
+  "grid": [
+    {
+      "ingredient": "minecraft:obsidian",
+      "slot": 1
+    },
+    {
+      "ingredient": "chromaticraft:aura_dust",
+      "slot": 2
+    },
+    {
+      "ingredient": "minecraft:redstone",
+      "slot": 3
+    },
+    {
+      "ingredient": "minecraft:gold_ingot",
+      "slot": 4
+    },
+    {
+      "ingredient": "minecraft:obsidian",
+      "slot": 5
+    },
+    {
+      "ingredient": "minecraft:stick",
+      "slot": 6
+    },
+    {
+      "ingredient": "minecraft:redstone",
+      "slot": 7
+    }
+  ],
+  "result": {
+    "id": "chromaticraft:light_gun"
+  },
+  "tier": "crafting"
+}

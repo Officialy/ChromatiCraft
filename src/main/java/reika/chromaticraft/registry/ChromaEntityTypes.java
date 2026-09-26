@@ -60,6 +60,12 @@ public final class ChromaEntityTypes {
 					.<EntityLumaBurst>of(EntityLumaBurst::new, MobCategory.MISC)
 					.sized(0.25F, 0.25F).clientTrackingRange(64).updateInterval(1));
 
+	/** V33a LIGHTGUN shot: the Illumination Gun's light-planting bolt. */
+	public static final DeferredHolder<EntityType<?>, EntityType<reika.chromaticraft.entity.EntityLightShot>> LIGHT_SHOT =
+			register("light_shot", () -> EntityType.Builder
+					.<reika.chromaticraft.entity.EntityLightShot>of(reika.chromaticraft.entity.EntityLightShot::new, MobCategory.MISC)
+					.sized(0.125F, 0.125F).clientTrackingRange(64).updateInterval(1));
+
 	/** V33a Chromatic Beams travelling pulse; effectors create replacement pulses server-side. */
 	public static final DeferredHolder<EntityType<?>, EntityType<EntityLaserPulse>> LASER_PULSE =
 			register("laser_pulse", () -> EntityType.Builder

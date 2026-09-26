@@ -252,8 +252,8 @@ Pylon Link and Lumen Node (V33a had no casting recipe for either).
 - **ENTRY** — 7/7 ported.
 - **RAWEXPLORE** — 20/20 ported (Fertility Seeds and the Artifact Distribution Map landed 2026-09-25).
 - **BASICCRAFT** — 14/27 ported (Crystal Glass and Glow landed 2026-09-25; Defensive Glass, the
-  Enchantments, the Crystal Brewery, the Chromatic Flower and the Pylon Compass 2026-09-26).
-  Missing: Vertical Propulsion Panel; Lumen Wire; Crystal Orchestra; Particle Spawner; Knowledge Entanglement Pedestal; Tool Compression Crate; Lumen Turret; Subterranean Route Finder; Illumination Gun; Ownership Expansion Key; Examination Crystals; Corrosion Resistant Cell.
+  Enchantments, the Crystal Brewery, the Chromatic Flower, the Pylon Compass and the Illumination Gun 2026-09-26).
+  Missing: Vertical Propulsion Panel; Lumen Wire; Crystal Orchestra; Particle Spawner; Knowledge Entanglement Pedestal; Tool Compression Crate; Lumen Turret; Subterranean Route Finder; Ownership Expansion Key; Examination Crystals; Corrosion Resistant Cell.
 - **RUNECRAFT** — 11/36 ported.
   Missing: Artificial Sky; Physics Suspension Lamp; Lumen Lamp; Travel Path; Redstone Pod; Flux Pod; Subterranean Illuminator; Chromatic Enchanter; Fluid Radiator; Fluid Link Anchor; Suspension Field Controller; Item Inserter; Lumen Lamp Controller; Crystal Seeds; Item Mover; Voidlinked Bucket; Linker; Creature Sounding Star; Multitool; Nether Layer Crystal; Ore-Finding Pickaxe; Ore Harvester; Bezier Crystals; Aura Tracker; Recall Tablet.
 - **ENERGY** — 15/30 ported.
@@ -8646,4 +8646,19 @@ is ported in place (`world/iwg/PylonGenerator`). Its worldgen half was already `
   - The Bottleneck Finder is the only caller of the warnings.
   - The HUD bitmap font (vanilla font for now).
   - The link count off single player, until `PylonLinkNetwork` syncs.
+- Unverified in game.
+
+**BASICCRAFT: Illumination Gun (2026-09-26).** `light_gun` (V33a LIGHTGUN, sprite 51 of `items_tool.png`), with the
+`ItemProjectileFiringTool` base folded into the item (it implements the ported `ProjectileFiringTool` API).
+- `EntityLightShot` is an unaccelerated `AbstractHurtingProjectile` at 3.5 blocks a tick. One tick in 30 it
+  leaves a slow-decaying ethereal light. Against the first solid block it plants a lasting one (particles,
+  mineable, slow decay) on the struck face.
+- It dies after 50 ticks, or without its player. On death its trail lights get decay ticks and the bounce
+  sounds play.
+- `RenderLightShot`: a white chroma spark over the 180-frame spin flare (stepped by hand), camera-bearing
+  oriented. Recipe " ba / gGb / sg ".
+- Dispensers fire it via `ProjectileToolDispenseBehavior` (V33a `ProjectileToolDispenserAction`), from a
+  fake player at the dispenser's centre.
+- CHROMA-PORT: the Manipulator and bucket actions from the same V33a class. V33a's never-called
+  `spawnTraceParticle` is not carried over.
 - Unverified in game.

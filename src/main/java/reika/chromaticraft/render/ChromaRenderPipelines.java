@@ -375,6 +375,9 @@ public final class ChromaRenderPipelines {
             RenderType.create("chromaticraft_additive_sprite", RenderSetup.builder(ADDITIVE_SPRITE)
                     .withTexture("Sampler0", texture)
                     .sortOnUpload().createRenderSetup()));
+	private static final Function<Identifier, RenderType> TRANSLUCENT_TYPES = Util.memoize(texture ->
+			RenderType.create("chromaticraft_translucent_sprite", RenderSetup.builder(TRANSLUCENT_SPRITE)
+					.withTexture("Sampler0", texture).sortOnUpload().createRenderSetup()));
 	private static final Function<Identifier, RenderType> PYLON_CORE_TYPES = Util.memoize(texture ->
 			RenderType.create("chromaticraft_pylon_core", RenderSetup.builder(PYLON_CORE)
 					.withTexture("Sampler0", texture).sortOnUpload().createRenderSetup()));
@@ -408,6 +411,11 @@ public final class ChromaRenderPipelines {
     public static RenderType additiveSprite(Identifier texture) {
         return ADDITIVE_TYPES.apply(texture);
     }
+
+	/** V33a BlendMode.DEFAULT billboards without depth write (TRANSLUCENT_SPRITE), as a render type. */
+	public static RenderType translucentSprite(Identifier texture) {
+		return TRANSLUCENT_TYPES.apply(texture);
+	}
 
 	public static RenderType pylonCore(Identifier texture) {
 		return PYLON_CORE_TYPES.apply(texture);

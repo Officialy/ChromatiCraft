@@ -184,6 +184,7 @@ public final class LexiconIconResolver {
 			case "artefact" -> ChromaBlocks.UNKNOWN_ARTEFACT_ITEM.get();
 			case "structmap" -> ChromaItems.STRUCTURE_MAP.get();
 			case "finder" -> ChromaItems.PYLON_FINDER.get();
+			case "lightgun" -> ChromaItems.LIGHT_GUN.get();
 			default -> null;
 		};
 	}

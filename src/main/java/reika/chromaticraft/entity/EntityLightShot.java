@@ -11,123 +11,90 @@ package reika.chromaticraft.entity;
 
 import java.util.HashSet;
 
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.particle.EntityFX;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.projectile.EntityFireball;
-import net.minecraft.util.MovingObjectPosition;
-import net.minecraft.util.MovingObjectPosition.MovingObjectType;
-import net.minecraft.util.Vec3;
-import net.minecraft.world.World;
-import net.minecraftforge.common.util.ForgeDirection;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.projectile.hurtingprojectile.AbstractHurtingProjectile;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 
-import reika.chromaticraft.block.decoration.blockethereallight.Flags;
+import reika.chromaticraft.block.decoration.BlockEtherealLight;
 import reika.chromaticraft.registry.ChromaBlocks;
+import reika.chromaticraft.registry.ChromaEntityTypes;
 import reika.chromaticraft.registry.ChromaSounds;
-import reika.chromaticraft.render.particle.EntityCCBlurFX;
-import reika.dragonapi.instantiable.data.immutable.Coordinate;
 import reika.dragonapi.libraries.java.ReikaRandomHelper;
-import reika.dragonapi.libraries.registry.ReikaParticleHelper;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
+/**
+ * V33a {@code EntityLightShot}, the Illumination Gun's bolt: a fast, unaccelerated fireball (3.5 blocks a tick, slowed
+ * only by drag) that now and then leaves a short-lived ethereal light behind it, and plants a lasting one against the
+ * first solid block it meets. It lives 50 ticks, or dies at once without the player who fired it.
+ *
+ * <p>V33a's unused {@code spawnTraceParticle} blur trail was never called and is not carried over.
+ */
+public class EntityLightShot extends AbstractHurtingProjectile {
 
-public class EntityLightShot extends EntityFireball {
+	private final HashSet<BlockPos> trailCoords = new HashSet();
 
-	private EntityPlayer firingPlayer;
+	public EntityLightShot(EntityType<? extends EntityLightShot> type, Level world) {
+		super(type, world);
+		this.accelerationPower = 0;
+	}
 
-	private HashSet<Coordinate> trailCoords = new HashSet();
+	public EntityLightShot(Level world, Player ep, boolean randomVec) {
+		this(ChromaEntityTypes.LIGHT_SHOT.get(), world);
+		this.setOwner(ep);
 
-	public EntityLightShot(World world, EntityPlayer ep, boolean randomVec) {
-		super(world);
-		firingPlayer = ep;
-
-		Vec3 vec = ep.getLookVec();
+		Vec3 vec = ep.getLookAngle();
 		if (randomVec) {
-			vec.xCoord = ReikaRandomHelper.getRandomPlusMinus(0, 1D);
-			vec.yCoord = ReikaRandomHelper.getRandomPlusMinus(0, 1D);
-			vec.zCoord = ReikaRandomHelper.getRandomPlusMinus(0, 1D);
-			vec = vec.normalize();
+			vec = new Vec3(ReikaRandomHelper.getRandomPlusMinus(0, 1D), ReikaRandomHelper.getRandomPlusMinus(0, 1D),
+					ReikaRandomHelper.getRandomPlusMinus(0, 1D)).normalize();
 		}
 		double v = 3.5;
-		motionX = v*vec.xCoord;
-		motionY = v*vec.yCoord;
-		motionZ = v*vec.zCoord;
-
-		accelerationX = 0;
-		accelerationY = 0;
-		accelerationZ = 0;
-
-		this.setSize(0.125F, 0.125F);
-	}
-
-	public EntityLightShot(World world) {
-		super(world);
+		this.setDeltaMovement(vec.scale(v));
 	}
 
 	@Override
-	protected void entityInit() {
-		super.entityInit();
-	}
+	public void tick() {
+		super.tick();
 
-	@Override
-	public void onUpdate()
-	{
-		double mx = motionX;
-		double my = motionY;
-		double mz = motionZ;
-		super.onUpdate();
-
-		if (rand.nextInt(30) == 0) {
-			Coordinate c = new Coordinate(this);
-			if (c.isEmpty(worldObj)) {
-				c.setBlock(worldObj, ChromaBlocks.LIGHT.getBlockInstance(), Flags.SLOWDECAY.getFlag());
-				c.triggerRenderUpdate(worldObj);
+		if (!this.level().isClientSide() && random.nextInt(30) == 0) {
+			BlockPos c = this.blockPosition();
+			if (this.level().isEmptyBlock(c)) {
+				this.level().setBlock(c, ChromaBlocks.ETHEREAL_LIGHT.get().defaultBlockState()
+						.setValue(BlockEtherealLight.SLOW_DECAY, true), 3);
 				trailCoords.add(c);
 			}
 		}
 
-		if (!worldObj.isRemote && (firingPlayer == null || ticksExisted > 50)) {
+		if (!this.level().isClientSide() && (!(this.getOwner() instanceof Player) || tickCount > 50)) {
 			this.destroy(false);
 		}
 
-		if (worldObj.isRemote && ticksExisted > 10) {
-			ReikaParticleHelper.FIREWORK.spawnAt(this);
-		}
-	}
-
-	@SideOnly(Side.CLIENT)
-	private void spawnTraceParticle() {
-		double dd = 0.25;
-		if (Minecraft.getMinecraft().gameSettings.particleSetting > 0)
-			dd = 0.5;
-		if (Minecraft.getMinecraft().gameSettings.particleSetting > 1)
-			dd = 1;
-		for (double d = 0; d < 1; d += dd) {
-			double px = posX+motionX*d;
-			double py = posY+motionY*d;
-			double pz = posZ+motionZ*d;
-			int l = 20+rand.nextInt(80);
-			float s = (float)ReikaRandomHelper.getRandomPlusMinus(6D, 1D);
-			EntityFX fx = new EntityCCBlurFX(worldObj, px, py, pz, 0, 0, 0).setRapidExpand().setLife(l).setScale(s).setColor(0, 192, 255);
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx);
+		if (this.level().isClientSide() && tickCount > 10) {
+			this.level().addParticle(ParticleTypes.FIREWORK, this.getX(), this.getY(), this.getZ(), 0, 0, 0);
 		}
 	}
 
 	@Override
-	protected void onImpact(MovingObjectPosition mov) {
-		if (firingPlayer == null && !worldObj.isRemote) {
+	protected void onHit(HitResult mov) {
+		if (!(this.getOwner() instanceof Player) && !this.level().isClientSide()) {
 			this.destroy(true);
 			return;
 		}
-		if (!worldObj.isRemote) {
-			if (mov != null && mov.typeOfHit == MovingObjectType.BLOCK) {
-				Coordinate c = new Coordinate(mov);
-				if (c.getBlock(worldObj).getCollisionBoundingBoxFromPool(worldObj, c.xCoord, c.yCoord, c.zCoord) != null) {
-					c = c.offset(ForgeDirection.VALID_DIRECTIONS[mov.sideHit], 1);
-					if (c.isEmpty(worldObj)) {
-						c.setBlock(worldObj, ChromaBlocks.LIGHT.getBlockInstance(), Flags.PARTICLES.getFlag() | Flags.MINEABLE.getFlag() | Flags.SLOWDECAY.getFlag());
-						c.triggerRenderUpdate(worldObj);
+		if (!this.level().isClientSide()) {
+			if (mov instanceof BlockHitResult hit && mov.getType() == HitResult.Type.BLOCK) {
+				BlockPos c = hit.getBlockPos();
+				BlockState state = this.level().getBlockState(c);
+				if (!state.getCollisionShape(this.level(), c).isEmpty()) {
+					c = c.relative(hit.getDirection());
+					if (this.level().isEmptyBlock(c)) {
+						this.level().setBlock(c, ChromaBlocks.ETHEREAL_LIGHT.get().defaultBlockState()
+								.setValue(BlockEtherealLight.PARTICLES, true).setValue(BlockEtherealLight.MINEABLE, true)
+								.setValue(BlockEtherealLight.SLOW_DECAY, true), 3);
 						this.destroy(true);
 					}
 				}
@@ -136,20 +103,18 @@ public class EntityLightShot extends EntityFireball {
 	}
 
 	@Override
-	public boolean canRenderOnFire() {
+	protected boolean shouldBurn() {
 		return false;
 	}
 
 	private void destroy(boolean impact) {
-		if (!impact) {
-
-		}
-		this.setDead();
-		for (Coordinate c : trailCoords) {
-			c.scheduleUpdateTick(worldObj, rand.nextInt(40));
+		this.discard();
+		for (BlockPos c : trailCoords) {
+			if (this.level().getBlockState(c).is(ChromaBlocks.ETHEREAL_LIGHT.get()))
+				this.level().scheduleTick(c, ChromaBlocks.ETHEREAL_LIGHT.get(), random.nextInt(40));
 		}
 		ChromaSounds.BOUNCE.playSound(this, 0.5F, 0.5F);
-		if (firingPlayer != null)
-			ChromaSounds.BOUNCE.playSound(firingPlayer, 0.25F, 0.5F);
+		if (this.getOwner() instanceof Player ep)
+			ChromaSounds.BOUNCE.playSound(ep, 0.25F, 0.5F);
 	}
 }
