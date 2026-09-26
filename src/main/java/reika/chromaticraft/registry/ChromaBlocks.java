@@ -974,6 +974,13 @@ public final class ChromaBlocks {
 			register("chroma_flower", () -> new reika.chromaticraft.block.BlockChromaFlower(blockProperties()
 					.strength(0F, 0.1F).noCollision().noOcclusion().sound(SoundType.GRASS).lightLevel(state -> 9)
 					.pushReaction(net.minecraft.world.level.material.PushReaction.DESTROY)));
+	/**
+	 * V33a PARTICLES, a BlockModelledChromaTile entry: rock, hardness 5, resistance 40 (8 against explosions); intangible and
+	 * drawn only by its renderer.
+	 */
+	public static final DeferredBlock<Block> PARTICLE_SPAWNER =
+			register("particle_spawner", () -> new reika.chromaticraft.block.BlockParticleSpawner(
+					blockProperties().strength(5F, 8F).requiresCorrectToolForDrops().noCollision().noOcclusion()));
 	/** V33a LAUNCHPAD, a BlockChromaTile2 entry: rock, hardness 5, resistance 40 (8 against explosions). */
 	public static final DeferredBlock<Block> LAUNCH_PAD =
 			register("launch_pad", () -> new reika.chromaticraft.block.BlockChromaticTile(

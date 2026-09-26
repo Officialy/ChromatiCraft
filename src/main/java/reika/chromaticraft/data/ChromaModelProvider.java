@@ -147,6 +147,7 @@ public class ChromaModelProvider extends ModelProvider {
 		castingTableModel(blockStateOut, itemModelOut, modelOut);
 		crystalBrewerModel(blockStateOut, itemModelOut, modelOut);
 		launchPadModel(blockStateOut, itemModelOut, modelOut);
+		particleSpawnerModel(blockStateOut, itemModelOut, modelOut);
 		ritualTableModel(blockStateOut, itemModelOut, modelOut);
 		crystalChargerModel(blockStateOut, itemModelOut, modelOut);
 		pylonTurboModel(blockStateOut, itemModelOut, modelOut);
@@ -1291,6 +1292,25 @@ public class ChromaModelProvider extends ModelProvider {
 				TextureMapping.cube(texture), modelOut);
 		itemModelOut.accept(ChromaBlocks.ITEM_STAND.get().asItem(),
 				ItemModelUtils.specialModel(itemModel, new ItemStandItemRenderer.Unbaked()));
+	}
+
+	/**
+	 * V33a BlockModelledChromaTile: ChromaIcons.TRANSPARENT for the block, drawn by its TESR, which V33a also ran for the
+	 * item. The item's cube base only supplies the block display transforms.
+	 */
+	private static void particleSpawnerModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		Material particle = new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/icons/transparent"));
+		Identifier model = ModelTemplates.PARTICLE_ONLY.create(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/particle_spawner"),
+				new TextureMapping().put(TextureSlot.PARTICLE, particle), modelOut);
+		blockStateOut.accept(MultiVariantGenerator.dispatch(ChromaBlocks.PARTICLE_SPAWNER.get(),
+				new MultiVariant(WeightedList.of(new Variant(model)))));
+		Identifier itemBase = ModelTemplates.CUBE_ALL.create(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/particle_spawner_inventory"),
+				TextureMapping.cube(particle), modelOut);
+		itemModelOut.accept(ChromaBlocks.PARTICLE_SPAWNER.get().asItem(),
+				ItemModelUtils.specialModel(itemBase, new reika.chromaticraft.render.item.ParticleSpawnerItemRenderer.Unbaked()));
 	}
 
 	/** V33a BlockChromaTile2 standard cube: tile/launchpad_bottom, _top and _side (the charge fan is its TESR). */

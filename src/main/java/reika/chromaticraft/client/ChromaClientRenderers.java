@@ -99,6 +99,8 @@ public final class ChromaClientRenderers {
 				reika.chromaticraft.render.item.PersonalChargerItemRenderer.Unbaked.MAP_CODEC);
 		event.register(reika.chromaticraft.render.item.EnderCrystalItemRenderer.ID,
 				reika.chromaticraft.render.item.EnderCrystalItemRenderer.Unbaked.MAP_CODEC);
+		event.register(reika.chromaticraft.render.item.ParticleSpawnerItemRenderer.ID,
+				reika.chromaticraft.render.item.ParticleSpawnerItemRenderer.Unbaked.MAP_CODEC);
 		event.register(reika.chromaticraft.render.item.ChromaFlowerItemRenderer.ID,
 				reika.chromaticraft.render.item.ChromaFlowerItemRenderer.Unbaked.MAP_CODEC);
 		event.register(reika.chromaticraft.render.item.FocusCrystalItemRenderer.ID,
@@ -216,6 +218,8 @@ public final class ChromaClientRenderers {
 				reika.chromaticraft.render.tesr.RenderStructureController::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.LOOT_CHEST.get(), RenderLootChest::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.CRYSTAL_CHARGER.get(), RenderCrystalCharger::new);
+		event.registerBlockEntityRenderer(ChromaBlockEntities.PARTICLE_SPAWNER.get(),
+				reika.chromaticraft.render.tesr.RenderParticleSpawner::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.LAUNCH_PAD.get(),
 				reika.chromaticraft.render.tesr.RenderLaunchPad::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.CHROMA_FLOWER.get(),

@@ -141,6 +141,7 @@ public final class LexiconIconResolver {
 			case "collector" -> ChromaBlocks.COLLECTOR.get();
 			case "brewer" -> ChromaBlocks.CRYSTAL_BREWER.get();
 			case "launchpad" -> ChromaBlocks.LAUNCH_PAD.get();
+			case "particles" -> ChromaBlocks.PARTICLE_SPAWNER.get();
 			case "chromaflower" -> ChromaBlocks.CHROMA_FLOWER.get();
 			case "focuscrystal" -> ChromaBlocks.FOCUS_CRYSTAL.get();
 			case "personal" -> ChromaBlocks.PERSONAL_CHARGER.get();

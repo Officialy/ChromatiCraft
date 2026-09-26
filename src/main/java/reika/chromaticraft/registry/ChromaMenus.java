@@ -35,6 +35,8 @@ public interface ChromaMenus {
 	Supplier<MenuType<reika.chromaticraft.container.MenuCrystalBrewer>> CRYSTAL_BREWER =
 			register("crystal_brewer", reika.chromaticraft.container.MenuCrystalBrewer::new);
 	Supplier<MenuType<MenuCollector>> COLLECTOR = register("collector", MenuCollector::new);
+	Supplier<MenuType<reika.chromaticraft.container.MenuParticleSpawner>> PARTICLE_SPAWNER =
+			register("particle_spawner", reika.chromaticraft.container.MenuParticleSpawner::new);
 	Supplier<MenuType<MenuStructurePassword>> STRUCTURE_PASSWORD = register(
 			"structure_password", MenuStructurePassword::new);
     Supplier<MenuType<MenuLexiconPages>> LEXICON_PAGES = register("lexicon_pages", MenuLexiconPages::new);

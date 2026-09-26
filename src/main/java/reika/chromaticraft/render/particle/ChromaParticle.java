@@ -804,6 +804,151 @@ public abstract class ChromaParticle extends SingleQuadParticle {
         }
     }
 
+    /**
+     * V33a {@code ParticleDefinition.getFX}: one Particle Spawner particle. A crystal element spawns its rune; a fluid its
+     * still texture (chroma through the chroma fluid particle); any other icon a blur of that icon in the program's
+     * colour, alpha-blended for the icons V33a drew that way, with the collision, fast-expand, no-slowdown, alpha-fade
+     * and cycling-colour options.
+     */
+    public static void spawnProgrammedParticle(Level world, reika.dragonapi.interfaces.IconEnum icon,
+            double px, double py, double pz, double vx, double vy, double vz, float g, float s, int l, int color,
+            boolean collide, boolean rapidExpand, boolean noSlowdown, boolean alphaFade, boolean cycling) {
+        if (!(world instanceof ClientLevel level) || icon == null) return;
+        net.minecraft.client.particle.Particle fx;
+        if (icon instanceof CrystalElement e) {
+            Rune rune = new Rune(level, px, py, pz, vx, vy, vz, e, l, s);
+            rune.gravity = g;
+            fx = rune;
+        }
+        else if (icon instanceof reika.dragonapi.auxiliary.IconLookupRegistry.FluidDelegate fd) {
+            if (fd.fluid.isSame(ChromaFluids.CHROMA.get())) {
+                Fluid chroma = new Fluid(level, px, py, pz, vx, vy, vz, s, l, g);
+                chroma.hasPhysics = false;
+                chroma.noSlowdown = noSlowdown;
+                fx = chroma;
+            }
+            else {
+                fx = new FluidSprite(level, px, py, pz, vx, vy, vz, fd.fluid, g, l, s, collide);
+            }
+        }
+        else if (icon instanceof reika.chromaticraft.registry.ChromaIcons ico) {
+            FadeGlow blur = new FadeGlow(level, px, py, pz, vx, vy, vz, color, l, s, rapidExpand, null, 0,
+                    "block/icons/" + ico.getIconName().replace(' ', '_'), !ico.isTransparent());
+            blur.gravity = g;
+            blur.setLegacyMotion(noSlowdown);
+            if (collide)
+                blur.setColliding();
+            if (alphaFade)
+                blur.setAlphaFading();
+            if (cycling)
+                blur.setCyclingColor(1);
+            fx = blur;
+        }
+        else {
+            return;
+        }
+        Minecraft.getInstance().particleEngine.add(fx);
+    }
+
+    /**
+     * V33a DragonAPI {@code EntityFluidFX}: a fluid's still texture, alpha-blended, in the fluid's tint where the spawner
+     * stands (1.7.10 fluid icons carried their colour). Fullbright only for fluids brighter than light 12. It ignores
+     * blocks unless colliding, and a colliding one slides off at up to 1/16 block a tick on landing. Fades out over its
+     * last eight ticks (half its life, if shorter).
+     */
+    private static final class FluidSprite extends SingleQuadParticle {
+        private final boolean bright;
+        private boolean colliding;
+        private boolean collidedVertically;
+        private final float fadeStep;
+
+        FluidSprite(ClientLevel level, double x, double y, double z, double vx, double vy, double vz,
+                net.minecraft.world.level.material.Fluid fluid, float gravity, int life, float scale, boolean colliding) {
+            super(level, x, y, z, Minecraft.getInstance().getModelManager().getFluidStateModelSet()
+                    .get(fluid.defaultFluidState()).stillMaterial().sprite());
+            var model = Minecraft.getInstance().getModelManager().getFluidStateModelSet().get(fluid.defaultFluidState());
+            if (model.tintSource() != null)
+                this.setColor(model.tintSource().colorInWorld(fluid.defaultFluidState().createLegacyBlock(), level,
+                        BlockPos.containing(x, y, z)));
+            this.xd = vx;
+            this.yd = vy;
+            this.zd = vz;
+            this.gravity = gravity;
+            this.lifetime = life;
+            this.quadSize = 0.1F * scale;
+            this.hasPhysics = colliding;
+            this.colliding = colliding;
+            this.bright = fluid.getFluidType().getLightLevel() > 12;
+            this.fadeStep = 1F / Math.max(1, Math.min(life / 2, 8));
+        }
+
+        private void setColor(int rgb) {
+            this.setColor(((rgb >> 16) & 255) / 255F, ((rgb >> 8) & 255) / 255F, (rgb & 255) / 255F);
+        }
+
+        @Override
+        public void tick() {
+            if (this.colliding && this.collidedVertically) {
+                double v = this.random.nextDouble() * 0.0625;
+                double vel = Math.sqrt(this.xd * this.xd + this.zd * this.zd);
+                if (vel > 0) {
+                    this.xd = this.xd * v / vel;
+                    this.zd = this.zd * v / vel;
+                }
+                this.yd = 0;
+                this.colliding = false;
+                this.gravity *= 4;
+            }
+            this.xo = this.x;
+            this.yo = this.y;
+            this.zo = this.z;
+            if (this.age++ >= this.lifetime) {
+                this.remove();
+                return;
+            }
+            this.yd -= 0.04 * this.gravity;
+            this.collidedVertically = this.legacyMove(this.xd, this.yd, this.zd);
+            this.xd *= 0.98;
+            this.yd *= 0.98;
+            this.zd *= 0.98;
+            if (this.onGround) {
+                this.xd *= 0.7;
+                this.zd *= 0.7;
+            }
+            if (this.lifetime - this.age <= Math.min(this.lifetime / 2, 8))
+                this.alpha = Math.max(0, this.alpha - this.fadeStep);
+        }
+
+        /** As {@link FadeGlow}'s: 1.7.10 moveEntity, which never freezes the particle. */
+        private boolean legacyMove(double dx, double dy, double dz) {
+            Vec3 m = new Vec3(dx, dy, dz);
+            if (this.hasPhysics && m.lengthSqr() > 0)
+                m = net.minecraft.world.entity.Entity.collideBoundingBox(
+                        net.minecraft.world.phys.shapes.CollisionContext.positionContext(this.y), m,
+                        this.getBoundingBox(), this.level, List.of());
+            if (m.lengthSqr() > 0) {
+                this.setBoundingBox(this.getBoundingBox().move(m));
+                this.setLocationFromBoundingbox();
+            }
+            boolean vertical = m.y != dy;
+            this.onGround = vertical && dy < 0;
+            if (m.x != dx) this.xd = 0;
+            if (vertical) this.yd = 0;
+            if (m.z != dz) this.zd = 0;
+            return vertical;
+        }
+
+        @Override
+        protected Layer getLayer() {
+            return TRANSLUCENT_TERRAIN;
+        }
+
+        @Override
+        protected int getLightCoords(float partialTick) {
+            return this.bright ? 0xF000F0 : super.getLightCoords(partialTick);
+        }
+    }
+
     public static void spawnEtherealLight(Level world, BlockPos pos) {
         if (!(world instanceof ClientLevel level)) return;
         RandomSource rand = level.getRandom();
@@ -2509,7 +2654,10 @@ public abstract class ChromaParticle extends SingleQuadParticle {
         @Override protected float getV1() { return (frameY() + 1) / 16F; }
     }
 
-    /** V33a EntityRuneFX with constant no-gravity motion and the real per-element rune sprite. */
+    /**
+     * V33a EntityRuneFX with the real per-element rune sprite. With no gravity its velocity never changes; with gravity it
+     * falls (or rises) and slows like any EntityFX.
+     */
     private static final class Rune extends ChromaParticle {
         private final float fullScale;
         private final boolean fading;
@@ -2529,13 +2677,18 @@ public abstract class ChromaParticle extends SingleQuadParticle {
             this.quadSize = 0.1F * fullScale;
         }
         @Override public void tick() {
-            double vx = xd;
-            double vy = yd;
-            double vz = zd;
-            super.tick();
-            xd = vx;
-            yd = vy;
-            zd = vz;
+            if (this.gravity != 0) {
+                super.tick();
+            }
+            else {
+                double vx = xd;
+                double vy = yd;
+                double vz = zd;
+                super.tick();
+                xd = vx;
+                yd = vy;
+                zd = vz;
+            }
             if (fading)
                 this.quadSize = 0.1F * fullScale * Math.max(0, 1F - this.age / (float)this.lifetime);
         }
@@ -2810,6 +2963,11 @@ public abstract class ChromaParticle extends SingleQuadParticle {
         private final PositionController controller;
         private float alphaFade;
         private java.util.function.IntUnaryOperator heightColor;
+        private boolean legacyMotion;
+        private boolean noSlowdown;
+        private boolean collideSlide;
+        private boolean collidedVertically;
+        private float cycleScale;
         private float baseRed;
         private float baseGreen;
         private float baseBlue;
@@ -2859,6 +3017,33 @@ public abstract class ChromaParticle extends SingleQuadParticle {
          * V33a {@code setColorController(BlockEtherealLight.colorController)}-style recolouring: every tick the blur takes
          * the colour the function gives for the block height it has reached.
          */
+        /**
+         * V33a {@code EntityBlurFX} motion exactly as {@code EntityFX.onUpdate} ran it: gravity, the move, then 0.98 drag
+         * and 0.7 ground friction each tick -- or, with {@code noSlowdown}, the velocity restored after the move so it
+         * never changes. (The port's other blurs keep their straight-line motion.)
+         */
+        public FadeGlow setLegacyMotion(boolean noSlowdown) {
+            this.legacyMotion = true;
+            this.noSlowdown = noSlowdown;
+            return this;
+        }
+
+        /**
+         * V33a {@code EntityBlurFX.setColliding()}: the blur hits blocks, and on first landing slides off sideways at up to
+         * 1/16 block a tick with no slowdown and four times the gravity. Needs {@link #setLegacyMotion}.
+         */
+        public FadeGlow setColliding() {
+            this.hasPhysics = true;
+            this.collideSlide = true;
+            return this;
+        }
+
+        /** V33a {@code EntityCCBlurFX.setCyclingColor}: every tick the colour becomes the element blend for its age. */
+        public FadeGlow setCyclingColor(float scale) {
+            this.cycleScale = scale;
+            return this;
+        }
+
         public FadeGlow setHeightColor(java.util.function.IntUnaryOperator colorAtY) {
             this.heightColor = colorAtY;
             this.applyHeightColor();
@@ -2893,11 +3078,77 @@ public abstract class ChromaParticle extends SingleQuadParticle {
                 // V33a EntityBlurFX inherits EntityFX's per-tick gravity step; overriding tick()
                 // without it silently pinned every setGravity() caller (glow daisy/root motes, the
                 // portal's rising idle and active blurs) to straight-line motion.
-                this.yd -= 0.04 * this.gravity;
-                this.move(this.xd, this.yd, this.zd);
+                if (this.legacyMotion) {
+                    this.legacyTick();
+                }
+                else {
+                    this.yd -= 0.04 * this.gravity;
+                    this.move(this.xd, this.yd, this.zd);
+                }
             }
             this.applyHeightColor();
             this.updateAppearance();
+            if (this.cycleScale > 0) {
+                // Applied after the fade, as EntityCCBlurFX overwrote the colour EntityBlurFX had just faded.
+                this.setRgb(CrystalElement.getBlendedColor((int)(Math.max(this.age, 1) * this.cycleScale), 5));
+            }
+        }
+
+        private void legacyTick() {
+            if (this.collideSlide && this.collidedVertically) {
+                double v = this.random.nextDouble() * 0.0625;
+                double vel = Math.sqrt(this.xd * this.xd + this.zd * this.zd);
+                // V33a divided by this speed unguarded, so a blur that fell straight down went NaN and vanished.
+                if (vel > 0) {
+                    this.xd = this.xd * v / vel;
+                    this.zd = this.zd * v / vel;
+                }
+                this.collideSlide = false;
+                this.noSlowdown = true;
+                this.gravity *= 4;
+            }
+            double vx = this.xd;
+            double vy = this.yd;
+            double vz = this.zd;
+            this.yd -= 0.04 * this.gravity;
+            this.collidedVertically = this.legacyMove(this.xd, this.yd, this.zd);
+            if (this.noSlowdown) {
+                this.xd = vx;
+                this.yd = vy;
+                this.zd = vz;
+            }
+            else {
+                this.xd *= 0.98;
+                this.yd *= 0.98;
+                this.zd *= 0.98;
+                if (this.onGround) {
+                    this.xd *= 0.7;
+                    this.zd *= 0.7;
+                }
+            }
+        }
+
+        /**
+         * 1.7.10 {@code Entity.moveEntity} for a particle: blocked axes stop, but unlike 26.2's {@code Particle.move}
+         * (which freezes a particle for good once its vertical motion is blocked) it keeps moving afterwards, so the
+         * collision slide can happen. Returns whether the vertical move was blocked.
+         */
+        private boolean legacyMove(double dx, double dy, double dz) {
+            Vec3 m = new Vec3(dx, dy, dz);
+            if (this.hasPhysics && m.lengthSqr() > 0)
+                m = net.minecraft.world.entity.Entity.collideBoundingBox(
+                        net.minecraft.world.phys.shapes.CollisionContext.positionContext(this.y), m,
+                        this.getBoundingBox(), this.level, List.of());
+            if (m.lengthSqr() > 0) {
+                this.setBoundingBox(this.getBoundingBox().move(m));
+                this.setLocationFromBoundingbox();
+            }
+            boolean vertical = m.y != dy;
+            this.onGround = vertical && dy < 0;
+            if (m.x != dx) this.xd = 0;
+            if (vertical) this.yd = 0;
+            if (m.z != dz) this.zd = 0;
+            return vertical;
         }
 
         private void updateAppearance() {
@@ -2927,6 +3178,9 @@ public abstract class ChromaParticle extends SingleQuadParticle {
 
     /** V33a EntityChromaFluidFX: fullbright chroma sprite, gravity, drag, and 0.5 minimum size. */
     public static final class Fluid extends ChromaParticle {
+        /** V33a {@code EntityChromaFluidFX.setNoSlowdown()}: the velocity is restored after every move. */
+        private boolean noSlowdown;
+
         private Fluid(ClientLevel level, double x, double y, double z,
                 double vx, double vy, double vz, float scale, int life, float gravity) {
             super(level, x, y, z, "chroma_particle", false);
@@ -2941,7 +3195,15 @@ public abstract class ChromaParticle extends SingleQuadParticle {
 
         @Override
         public void tick() {
+            double vx = this.xd;
+            double vy = this.yd;
+            double vz = this.zd;
             super.tick();
+            if (this.noSlowdown) {
+                this.xd = vx;
+                this.yd = vy;
+                this.zd = vz;
+            }
             if (this.quadSize > 0.05F) this.quadSize *= 0.98F;
             if (this.quadSize < 0.05F) this.quadSize = 0.05F;
         }

@@ -9,40 +9,45 @@
  ******************************************************************************/
 package reika.chromaticraft.tileentity.decoration;
 
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.particle.EntityFX;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.world.World;
-import net.minecraftforge.fluids.Fluid;
+import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.MenuProvider;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.material.Fluid;
+import net.minecraft.network.chat.Component;
+import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.base.tileentity.TileEntityChromaticBase;
+import reika.chromaticraft.container.MenuParticleSpawner;
+import reika.chromaticraft.network.ChromaNetwork;
+import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.ChromaIcons;
-import reika.chromaticraft.registry.ChromaPackets;
 import reika.chromaticraft.registry.ChromaTiles;
-import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.render.particle.EntityCCBlurFX;
-import reika.chromaticraft.render.particle.EntityChromaFluidFX;
-import reika.chromaticraft.render.particle.EntityRuneFX;
+import reika.chromaticraft.render.particle.ChromaParticle;
 import reika.dragonapi.auxiliary.IconLookupRegistry;
-import reika.dragonapi.auxiliary.iconlookupregistry.FluidDelegate;
+import reika.dragonapi.auxiliary.IconLookupRegistry.FluidDelegate;
 import reika.dragonapi.instantiable.BoundedValue;
 import reika.dragonapi.instantiable.data.immutable.Coordinate;
-import reika.dragonapi.instantiable.effects.EntityFluidFX;
 import reika.dragonapi.instantiable.io.LuaBlock;
-import reika.dragonapi.instantiable.io.PacketTarget;
 import reika.dragonapi.interfaces.IconEnum;
-import reika.dragonapi.interfaces.tileentity.GuiController;
-import reika.dragonapi.interfaces.tileentity.NBTCopyable;
-import reika.dragonapi.libraries.io.ReikaPacketHelper;
+import reika.dragonapi.interfaces.blockentity.GuiController;
+import reika.dragonapi.interfaces.blockentity.NBTCopyable;
 import reika.dragonapi.libraries.java.ReikaRandomHelper;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
-
-
-public class TileEntityParticleSpawner extends TileEntityChromaticBase implements GuiController, NBTCopyable {
+/**
+ * V33a {@code TileEntityParticleSpawner}, the Particle Spawner: on the client it runs a particle "program" -- the icon (a
+ * ChromatiCraft icon, an element rune or a fluid), colour, spawn offset, velocity, size, gravity and lifetime each with a
+ * random variance, the spawn rate and the particle options -- pausing while it has a redstone signal. The program is set
+ * in its GUI, copied between spawners with a book (or the Linker, through {@link NBTCopyable}), and saved and loaded as files.
+ */
+public class TileEntityParticleSpawner extends TileEntityChromaticBase implements GuiController, NBTCopyable, MenuProvider {
 
 	public ParticleDefinition particles = new ParticleDefinition();
 
@@ -50,75 +55,86 @@ public class TileEntityParticleSpawner extends TileEntityChromaticBase implement
 
 	private int tick;
 
+	public TileEntityParticleSpawner(BlockPos pos, BlockState state) {
+		super(ChromaBlockEntities.PARTICLE_SPAWNER.get(), pos, state);
+	}
+
 	@Override
 	public ChromaTiles getTile() {
 		return ChromaTiles.PARTICLES;
 	}
 
 	@Override
-	public void updateEntity(World world, int x, int y, int z, int meta) {
-		if (world.isRemote) {
+	public void updateEntity(Level world, BlockPos pos) {
+		if (world.isClientSide()) {
 			if (this.hasRedstoneSignal())
 				tick = 0;
 			else
-				this.spawnParticles(world, x, y, z);
+				particles.spawn(world, tick);
 			tick++;
 		}
 	}
 
 	@Override
-	protected void onFirstTick(World world, int x, int y, int z) {
-		particles.location = new Coordinate(this);
-	}
-
-	@SideOnly(Side.CLIENT)
-	private void spawnParticles(World world, int x, int y, int z) {
-		EntityFX fx = particles.getFX(tick);
-		if (fx != null) {
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-		}
+	protected void onFirstTick(Level world, BlockPos pos) {
+		particles.setLocation(this);
 	}
 
 	@Override
-	protected void animateWithTick(World world, int x, int y, int z) {
+	protected void animateWithTick(Level world, BlockPos pos) {
 
 	}
 
 	@Override
-	public void markDirty() {
-		super.markDirty();
-	}
-
-	@Override
-	public void writeToNBT(NBTTagCompound NBT) {
-		super.writeToNBT(NBT);
+	protected void saveAdditional(CompoundTag NBT) {
+		super.saveAdditional(NBT);
 
 		particles.writeToNBT(NBT);
 	}
 
 	@Override
-	public void readFromNBT(NBTTagCompound NBT) {
-		super.readFromNBT(NBT);
+	public void load(CompoundTag NBT) {
+		super.load(NBT);
 
-		particles.readFromNBT(NBT);
-		this.markDirty();
+		// Only a full save carries the program; a tag without it must not reset the rate to an empty (0) bound.
+		if (NBT.contains("rate"))
+			particles.readFromNBT(NBT, this);
 	}
 
 	@Override
-	public void writeCopyableData(NBTTagCompound NBT) {
+	public void writeCopyableData(CompoundTag NBT) {
 		particles.writeToNBT(NBT);
 	}
 
 	@Override
-	public void readCopyableData(NBTTagCompound NBT) {
+	public void readCopyableData(CompoundTag NBT) {
 		particles.readFromNBT(NBT);
-		particles.location = new Coordinate(this);
-		this.markDirty();
+		particles.setLocation(this);
+		this.setChanged();
+		this.syncAllData(true);
+	}
+
+	/** V33a PARTICLESPAWNER: a program edited in a player's GUI, applied on the server and sent to everyone watching. */
+	public void receiveProgram(CompoundTag NBT) {
+		particles.readFromNBT(NBT, this);
+		this.setChanged();
 		this.syncAllData(true);
 	}
 
 	public void markAsFluid(Fluid f) {
 		particles.particleIcon = new FluidDelegate(f);
+		this.setChanged();
+		this.syncAllData(true);
+	}
+
+	@Override
+	public Component getDisplayName() {
+		return Component.translatable(this.getBlockState().getBlock().getDescriptionId());
+	}
+
+	@Override
+	public AbstractContainerMenu createMenu(int id, Inventory inventory, Player player) {
+		return new MenuParticleSpawner(id, inventory, this);
 	}
 
 	public static class ParticleDefinition {
@@ -155,86 +171,49 @@ public class TileEntityParticleSpawner extends TileEntityChromaticBase implement
 
 		}
 
-		@SideOnly(Side.CLIENT)
-		public EntityFX getFX(int tick) {
-			if (tick%(int)particleRate.getValue() == 0) {
-				World world = Minecraft.getMinecraft().theWorld;
-				double px = location.xCoord+0.5+ReikaRandomHelper.getRandomPlusMinus(particlePositionX.getValue(), particlePositionX.getVariation());
-				double py = location.yCoord+0.5+ReikaRandomHelper.getRandomPlusMinus(particlePositionY.getValue(), particlePositionY.getVariation());
-				double pz = location.zCoord+0.5+ReikaRandomHelper.getRandomPlusMinus(particlePositionZ.getValue(), particlePositionZ.getVariation());
-				double vx = ReikaRandomHelper.getRandomPlusMinus(particleVelocityX.getValue(), particleVelocityX.getVariation());
-				double vy = ReikaRandomHelper.getRandomPlusMinus(particleVelocityY.getValue(), particleVelocityY.getVariation());
-				double vz = ReikaRandomHelper.getRandomPlusMinus(particleVelocityZ.getValue(), particleVelocityZ.getVariation());
-				float g = (float)ReikaRandomHelper.getRandomPlusMinus(particleGravity.getValue(), particleGravity.getVariation());
-				float s = (float)ReikaRandomHelper.getRandomPlusMinus(particleSize.getValue(), particleSize.getVariation());
-				int l = ReikaRandomHelper.getRandomPlusMinus((int)particleLife.getValue(), (int)particleLife.getVariation());
-				if (particleIcon instanceof CrystalElement) {
-					EntityRuneFX fx = new EntityRuneFX(world, px, py, pz, vx, vy, vz, (CrystalElement)particleIcon).setGravity(g).setLife(l).setScale(s);
-					return fx;
-				}
-				else if (particleIcon instanceof FluidDelegate) {
-					Fluid f = ((FluidDelegate)particleIcon).fluid;
-					if (f == ChromatiCraft.chroma) {
-						EntityChromaFluidFX fx = new EntityChromaFluidFX(world, px, py, pz, vx, vy, vz).setGravity(g).setLife(l).setScale(s);
-						if (noSlowdown)
-							fx.setNoSlowdown();
-						return fx;
-					}
-					else {
-						EntityFluidFX fx = new EntityFluidFX(world, px, py, pz, vx, vy, vz, f).setGravity(g).setLife(l).setScale(s);
-						fx.noClip = true;
-						if (particleCollision)
-							fx.setColliding();
-						return fx;
-					}
-				}
-				else {
-					ChromaIcons ico = (ChromaIcons)particleIcon;
-					EntityCCBlurFX fx = new EntityCCBlurFX(world, px, py, pz, vx, vy, vz);
-					fx.setGravity(g).setLife(l).setScale(s).setColor(particleColor);
-					fx.setIcon(ico);
-					if (particleCollision)
-						fx.setColliding();
-					if (ico.isTransparent())
-						fx.setBasicBlend();
-					if (rapidExpand)
-						fx.setRapidExpand();
-					if (noSlowdown)
-						fx.setNoSlowdown();
-					if (alphaFade)
-						fx.setAlphaFading();
-					if (cyclingColor)
-						fx.setCyclingColor(1);
-					return fx;
-				}
-			}
-			else {
-				return null;
-			}
+		/**
+		 * V33a {@code getFX}: every {@code rate} ticks, one particle at the location's centre plus the offset, each value
+		 * drawn from its base plus or minus its variance. Client only; returns whether one was spawned.
+		 */
+		public boolean spawn(Level world, int tick) {
+			if (tick%Math.max(1, (int)particleRate.getValue()) != 0)
+				return false;
+			double px = location.xCoord+0.5+ReikaRandomHelper.getRandomPlusMinus(particlePositionX.getValue(), particlePositionX.getVariation());
+			double py = location.yCoord+0.5+ReikaRandomHelper.getRandomPlusMinus(particlePositionY.getValue(), particlePositionY.getVariation());
+			double pz = location.zCoord+0.5+ReikaRandomHelper.getRandomPlusMinus(particlePositionZ.getValue(), particlePositionZ.getVariation());
+			double vx = ReikaRandomHelper.getRandomPlusMinus(particleVelocityX.getValue(), particleVelocityX.getVariation());
+			double vy = ReikaRandomHelper.getRandomPlusMinus(particleVelocityY.getValue(), particleVelocityY.getVariation());
+			double vz = ReikaRandomHelper.getRandomPlusMinus(particleVelocityZ.getValue(), particleVelocityZ.getVariation());
+			float g = (float)ReikaRandomHelper.getRandomPlusMinus(particleGravity.getValue(), particleGravity.getVariation());
+			float s = (float)ReikaRandomHelper.getRandomPlusMinus(particleSize.getValue(), particleSize.getVariation());
+			int l = ReikaRandomHelper.getRandomPlusMinus((int)particleLife.getValue(), (int)particleLife.getVariation());
+			ChromaParticle.spawnProgrammedParticle(world, particleIcon, px, py, pz, vx, vy, vz, g, s, l, particleColor,
+					particleCollision, rapidExpand, noSlowdown, alphaFade, cyclingColor);
+			return true;
 		}
 
-		@SideOnly(Side.CLIENT)
+		/** V33a {@code sendData}: the GUI's edited program, sent to the server. Client only. */
 		public void sendData() {
-			NBTTagCompound nbt = new NBTTagCompound();
+			CompoundTag nbt = new CompoundTag();
 			this.writeToNBT(nbt);
-			location.writeToNBT("loc", nbt);
-			ReikaPacketHelper.sendNBTPacket(ChromatiCraft.packetChannel, ChromaPackets.PARTICLESPAWNER.ordinal(), nbt, PacketTarget.server);
+			ClientPacketDistributor.sendToServer(new ChromaNetwork.ParticleSpawnerProgram(location.asBlockPos(), nbt));
 		}
 
-		public void writeToNBT(NBTTagCompound NBT) {
-			NBT.setInteger("color", particleColor);
+		public void writeToNBT(CompoundTag NBT) {
+			NBT.putInt("color", particleColor);
 
-			NBT.setBoolean("collide", particleCollision);
-			NBT.setBoolean("rapid", rapidExpand);
-			NBT.setBoolean("noslow", noSlowdown);
-			NBT.setBoolean("afade", alphaFade);
-			NBT.setBoolean("cycle", cyclingColor);
+			NBT.putBoolean("collide", particleCollision);
+			NBT.putBoolean("rapid", rapidExpand);
+			NBT.putBoolean("noslow", noSlowdown);
+			NBT.putBoolean("afade", alphaFade);
+			NBT.putBoolean("cycle", cyclingColor);
 
-			NBT.setString("icon", particleIcon.name());
+			if (particleIcon != null)
+				NBT.putString("icon", particleIcon.name());
 
-			NBTTagCompound tag = new NBTTagCompound();
-			particleRate.writeToNBT(tag);
-			NBT.setTag("rate", tag);
+			CompoundTag tag = new CompoundTag();
+			particleRate.saveAdditional(tag);
+			NBT.put("rate", tag);
 
 			particleLife.writeToNBT("life", NBT);
 
@@ -257,27 +236,28 @@ public class TileEntityParticleSpawner extends TileEntityChromaticBase implement
 			location.writeToNBT("loc", NBT);
 		}
 
-		public void readFromNBT(NBTTagCompound NBT, TileEntityParticleSpawner te) {
+		public void readFromNBT(CompoundTag NBT, BlockEntity te) {
 			this.readFromNBT(NBT);
 			location = new Coordinate(te);
 		}
 
-		public void readFromNBT(NBTTagCompound NBT) {
-			particleColor = NBT.getInteger("color");
+		public void readFromNBT(CompoundTag NBT) {
+			particleColor = NBT.getIntOr("color", 0);
 
-			particleCollision = NBT.getBoolean("collide");
-			rapidExpand = NBT.getBoolean("rapid");
-			noSlowdown = NBT.getBoolean("noslow");
-			alphaFade = NBT.getBoolean("afade");
-			cyclingColor = NBT.getBoolean("cycle");
+			particleCollision = NBT.getBooleanOr("collide", false);
+			rapidExpand = NBT.getBooleanOr("rapid", false);
+			noSlowdown = NBT.getBooleanOr("noslow", false);
+			alphaFade = NBT.getBooleanOr("afade", false);
+			cyclingColor = NBT.getBooleanOr("cycle", false);
 
-			particleIcon = IconLookupRegistry.instance.getIcon(NBT.getString("icon"));
+			String icon = NBT.getStringOr("icon", "");
+			particleIcon = IconLookupRegistry.instance.getIcon(icon);
 			if (particleIcon == null) {
-				ChromatiCraft.logger.logError("Tried to load invalid particle type '"+NBT.getString("icon")+"' from NBT.");
+				ChromatiCraft.LOGGER.error("Tried to load invalid particle type '"+icon+"' from NBT.");
 			}
 
-			NBTTagCompound tag = NBT.getCompoundTag("rate");
-			particleRate = BoundedValue.readFromNBT(tag);
+			CompoundTag tag = NBT.getCompoundOrEmpty("rate");
+			particleRate = BoundedValue.load(tag);
 
 			particleLife.readFromNBT("life", NBT);
 
@@ -311,7 +291,7 @@ public class TileEntityParticleSpawner extends TileEntityChromaticBase implement
 
 			particleIcon = IconLookupRegistry.instance.getIcon(lb.getString("icon"));
 			if (particleIcon == null) {
-				ChromatiCraft.logger.logError("Tried to load invalid particle type '"+lb.getString("icon")+"' from NBT.");
+				ChromatiCraft.LOGGER.error("Tried to load invalid particle type '"+lb.getString("icon")+"' from NBT.");
 			}
 
 			particleRate = new BoundedValue(1, 1);
@@ -335,8 +315,12 @@ public class TileEntityParticleSpawner extends TileEntityChromaticBase implement
 			particleVelocityZ.readFromLuaBlock("speed_z", lb);
 		}
 
-		public void setLocation(TileEntity te) {
+		public void setLocation(BlockEntity te) {
 			location = new Coordinate(te);
+		}
+
+		public BlockPos getLocation() {
+			return location.asBlockPos();
 		}
 
 	}
@@ -413,25 +397,23 @@ public class TileEntityParticleSpawner extends TileEntityChromaticBase implement
 			return Math.min(Math.abs(Math.abs(bounds.getMinValue())-Math.abs(bounds.getValue())), Math.abs(Math.abs(bounds.getMaxValue())-Math.abs(bounds.getValue())));
 		}
 
-		public void writeToNBT(String s, NBTTagCompound NBT) {
-			NBTTagCompound tag = new NBTTagCompound();
-			NBTTagCompound tag1 = new NBTTagCompound();
-			NBTTagCompound tag2 = new NBTTagCompound();
-			bounds.writeToNBT(tag1);
-			variation.writeToNBT(tag2);
-			tag.setTag("bounds", tag1);
-			tag.setTag("vary", tag2);
-			NBT.setTag(s, tag);
-			//ReikaJavaLibrary.pConsole("Writing vary "+variation);
+		public void writeToNBT(String s, CompoundTag NBT) {
+			CompoundTag tag = new CompoundTag();
+			CompoundTag tag1 = new CompoundTag();
+			CompoundTag tag2 = new CompoundTag();
+			bounds.saveAdditional(tag1);
+			variation.saveAdditional(tag2);
+			tag.put("bounds", tag1);
+			tag.put("vary", tag2);
+			NBT.put(s, tag);
 		}
 
-		public void readFromNBT(String s, NBTTagCompound NBT) {
-			NBTTagCompound tag = NBT.getCompoundTag(s);
-			NBTTagCompound tag1 = tag.getCompoundTag("bounds");
-			NBTTagCompound tag2 = tag.getCompoundTag("vary");
-			bounds = BoundedValue.readFromNBT(tag1);
-			variation = BoundedValue.readFromNBT(tag2);
-			//ReikaJavaLibrary.pConsole("Reading vary "+variation);
+		public void readFromNBT(String s, CompoundTag NBT) {
+			CompoundTag tag = NBT.getCompoundOrEmpty(s);
+			CompoundTag tag1 = tag.getCompoundOrEmpty("bounds");
+			CompoundTag tag2 = tag.getCompoundOrEmpty("vary");
+			bounds = BoundedValue.load(tag1);
+			variation = BoundedValue.load(tag2);
 		}
 
 		public void readFromLuaBlock(String s, LuaBlock lb) {
@@ -440,7 +422,6 @@ public class TileEntityParticleSpawner extends TileEntityChromaticBase implement
 			double var = lb2.getDouble("variation");
 			bounds = new BoundedValue(val, val);
 			variation = new BoundedValue(var, var);
-			//ReikaJavaLibrary.pConsole("Reading vary "+variation);
 		}
 
 		@Override

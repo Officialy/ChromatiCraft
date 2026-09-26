@@ -9,210 +9,140 @@
  ******************************************************************************/
 package reika.chromaticraft.render.tesr;
 
-import org.lwjgl.opengl.GL11;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.IIcon;
-import net.minecraft.util.MovingObjectPosition;
-import net.minecraftforge.client.MinecraftForgeClient;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
+import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
+import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
+import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.client.renderer.texture.TextureAtlas;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.core.BlockPos;
+import net.minecraft.data.AtlasIds;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
+
+import org.jspecify.annotations.Nullable;
 
 import reika.chromaticraft.auxiliary.HoldingChecks;
-import reika.chromaticraft.base.ChromaRenderBase;
 import reika.chromaticraft.registry.ChromaIcons;
+import reika.chromaticraft.render.ChromaRenderPipelines;
 import reika.chromaticraft.tileentity.decoration.TileEntityParticleSpawner;
-import reika.dragonapi.interfaces.tileentity.RenderFetcher;
 import reika.dragonapi.libraries.ReikaPlayerAPI;
-import reika.dragonapi.libraries.io.ReikaTextureHelper;
-import reika.dragonapi.libraries.java.reikaglhelper.BlendMode;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
-import reika.dragonapi.libraries.rendering.ReikaRenderHelper;
 
-public class RenderParticleSpawner extends ChromaRenderBase {
+/**
+ * V33a {@code RenderParticleSpawner}: the otherwise invisible spawner shows as a small cross of six quarter-block planes
+ * around its centre, gentle caustics under a dimmer glow frame, additive and unlit. It fades in (1/8 a frame) while the
+ * player holds a Manipulator or looks at it from within 4.5 blocks, and out again (1/40 a frame) otherwise.
+ */
+public final class RenderParticleSpawner implements BlockEntityRenderer<TileEntityParticleSpawner, RenderParticleSpawner.State> {
 
-	@Override
-	public String getImageFileName(RenderFetcher te) {
-		return "";
+	public RenderParticleSpawner(BlockEntityRendererProvider.Context context) {
+
 	}
 
 	@Override
-	public void renderTileEntityAt(TileEntity tile, double par2, double par4, double par6, float par8) {
-		TileEntityParticleSpawner te = (TileEntityParticleSpawner)tile;
+	public State createRenderState() {
+		return new State();
+	}
 
+	@Override
+	public void extractRenderState(TileEntityParticleSpawner te, State state, float partialTick, Vec3 cameraPosition,
+			ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress) {
+		BlockEntityRenderer.super.extractRenderState(te, state, partialTick, cameraPosition, breakProgress);
 		if (te.isInWorld()) {
-			if (MinecraftForgeClient.getRenderPass() != 1)
-				return;
-			boolean flag = false;
-			if (HoldingChecks.MANIPULATOR.isClientHolding()) {
-				flag = true;
-			}
-			else if (Minecraft.getMinecraft().thePlayer.getDistanceSq(te.xCoord+0.5, te.yCoord+0.5, te.zCoord+0.5) <= 21) {
-				MovingObjectPosition mov = ReikaPlayerAPI.getLookedAtBlockClient(4.5, false);
-				if (mov != null && mov.blockX == te.xCoord && mov.blockY == te.yCoord && mov.blockZ == te.zCoord) {
-					flag = true;
-				}
-			}
-			if (flag) {
+			if (isRevealed(te.getBlockPos()))
 				te.renderOpacity = Math.min(1, te.renderOpacity+0.125F);
-			}
-			else {
+			else
 				te.renderOpacity = Math.max(0, te.renderOpacity-0.025F);
-			}
 		}
+		state.opacity = te.renderOpacity;
+	}
 
-		if (te.renderOpacity <= 0)
+	private static boolean isRevealed(BlockPos pos) {
+		if (HoldingChecks.MANIPULATOR.isClientHolding())
+			return true;
+		var player = Minecraft.getInstance().player;
+		if (player != null && player.getEyePosition().distanceToSqr(Vec3.atCenterOf(pos)) <= 21) {
+			BlockHitResult mov = ReikaPlayerAPI.getLookedAtBlockClient(4.5, false);
+			return mov != null && mov.getType() == BlockHitResult.Type.BLOCK && mov.getBlockPos().equals(pos);
+		}
+		return false;
+	}
+
+	@Override
+	public void submit(State state, PoseStack poseStack, SubmitNodeCollector collector, CameraRenderState camera) {
+		if (state.opacity <= 0)
 			return;
+		submitFrame(poseStack, collector, state.opacity);
+	}
 
-		GL11.glPushMatrix();
-		GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
-		GL11.glTranslated(par2, par4, par6);
-		GL11.glEnable(GL11.GL_BLEND);
-		BlendMode.ADDITIVEDARK.apply();
-		GL11.glDisable(GL11.GL_ALPHA_TEST);
-		GL11.glDisable(GL11.GL_CULL_FACE);
-		GL11.glDisable(GL11.GL_LIGHTING);
-		ReikaRenderHelper.disableEntityLighting();
-
-		Tessellator v5 = Tessellator.instance;
-
-		IIcon[] icons = {
-				ChromaIcons.CAUSTICS_GENTLE.getIcon(),
-				ChromaIcons.GLOWFRAME.getIcon()
+	/** The caustics then the glow frame, each on the same six planes; also the item's rendering, at full opacity. */
+	public static void submitFrame(PoseStack poseStack, SubmitNodeCollector collector, float opacity) {
+		var atlas = Minecraft.getInstance().getAtlasManager().getAtlasOrThrow(AtlasIds.BLOCKS);
+		TextureAtlasSprite[] icons = {
+				atlas.getSprite(ChromaIcons.CAUSTICS_GENTLE.getIcon()),
+				atlas.getSprite(ChromaIcons.GLOWFRAME.getIcon()),
 		};
 		for (int n = 0; n < icons.length; n++) {
-			IIcon ico = icons[n];
-
-			ReikaTextureHelper.bindTerrainTexture();
-
-			float u = ico.getMinU();
-			float v = ico.getMinV();
-			float du = ico.getMaxU();
-			float dv = ico.getMaxV();
-
-
-
-			//double su = du-u;
-			//double sv = dv-v;
-
-			/*
-		double in = 0.25;
-
-		double h0 = 0.25;
-		double h1 = 0.375;
-		double h2 = 0.5;
-
-		double u1 = u+su*in;
-		double u2 = u+su*(1-in);
-
-		double v1 = v+sv*in;
-		double v2 = v+sv*(1-in);
-			 */
-
-			v5.startDrawingQuads();
-
-			v5.setBrightness(240);
-
-			if (n >= 1)
-				v5.setColorRGBA_I(ReikaColorAPI.getColorWithBrightnessMultiplier(0x3f3f3f, te.renderOpacity), 128);
-			else
-				v5.setColorOpaque_I(ReikaColorAPI.getColorWithBrightnessMultiplier(0xffffff, te.renderOpacity));
-
-			double o = 0.4375;
-			double i = 0.3125;
-
-			v5.addVertexWithUV(i, o, i, u, v);
-			v5.addVertexWithUV(1-i, o, i, du, v);
-			v5.addVertexWithUV(1-i, o, 1-i, du, dv);
-			v5.addVertexWithUV(i, o, 1-i, u, dv);
-
-			v5.addVertexWithUV(i, 1-o, i, u, v);
-			v5.addVertexWithUV(1-i, 1-o, i, du, v);
-			v5.addVertexWithUV(1-i, 1-o, 1-i, du, dv);
-			v5.addVertexWithUV(i, 1-o, 1-i, u, dv);
-
-			v5.addVertexWithUV(o, i, i, u, v);
-			v5.addVertexWithUV(o, 1-i, i, du, v);
-			v5.addVertexWithUV(o, 1-i, 1-i, du, dv);
-			v5.addVertexWithUV(o, i, 1-i, u, dv);
-
-			v5.addVertexWithUV(1-o, i, i, u, v);
-			v5.addVertexWithUV(1-o, 1-i, i, du, v);
-			v5.addVertexWithUV(1-o, 1-i, 1-i, du, dv);
-			v5.addVertexWithUV(1-o, i, 1-i, u, dv);
-
-			v5.addVertexWithUV(i, i, o, u, v);
-			v5.addVertexWithUV(1-i, i, o, du, v);
-			v5.addVertexWithUV(1-i, 1-i, o, du, dv);
-			v5.addVertexWithUV(i, 1-i, o, u, dv);
-
-			v5.addVertexWithUV(i, i, 1-o, u, v);
-			v5.addVertexWithUV(1-i, i, 1-o, du, v);
-			v5.addVertexWithUV(1-i, 1-i, 1-o, du, dv);
-			v5.addVertexWithUV(i, 1-i, 1-o, u, dv);
-
-			/*
-		double dd = 0.03125;
-
-		for (double d1 = -0.5; d1 <= 0.5; d1 += dd) {
-			for (double d2 = -0.5; d2 <= 0.5; d2 += dd) {
-				double d11 = ReikaMathLibrary.py3d(d1, 0, d2);
-				double d12 = ReikaMathLibrary.py3d(d1, 0, d2+dd);
-				double d21 = ReikaMathLibrary.py3d(d1+dd, 0, d2);
-				double d22 = ReikaMathLibrary.py3d(d1+dd, 0, d2+dd);
-				double h11 = 0.5+0.25*Math.sin(te.xCoord+te.zCoord+4*d11+2*Math.toRadians(te.getTicksExisted()+par8));
-				double h12 = 0.5+0.25*Math.sin(te.xCoord+te.zCoord+4*d12+2*Math.toRadians(te.getTicksExisted()+par8));
-				double h21 = 0.5+0.25*Math.sin(te.xCoord+te.zCoord+4*d21+2*Math.toRadians(te.getTicksExisted()+par8));
-				double h22 = 0.5+0.25*Math.sin(te.xCoord+te.zCoord+4*d22+2*Math.toRadians(te.getTicksExisted()+par8));
-				double u1 = u+su*(d1+0.5);
-				double u2 = u+su*(d1+dd+0.5);
-				double v1 = v+sv*(d2+0.5);
-				double v2 = v+sv*(d2+dd+0.5);
-				v5.addVertexWithUV(d1, 		h11, d2, 		u1, v1);
-				v5.addVertexWithUV(d1+dd, 	h21, d2, 		u2, v1);
-				v5.addVertexWithUV(d1+dd, 	h22, d2+dd, 	u2, v2);
-				v5.addVertexWithUV(d1, 		h12, d2+dd, 	u1, v2);
-			}
+			TextureAtlasSprite ico = icons[n];
+			int color = 0xff000000 | ReikaColorAPI.getColorWithBrightnessMultiplier(n >= 1 ? 0x3f3f3f : 0xffffff, opacity);
+			collector.submitCustomGeometry(poseStack, ChromaRenderPipelines.additiveSprite(TextureAtlas.LOCATION_BLOCKS),
+					(pose, v5) -> planes(pose, v5, ico, color));
 		}
-			 */
+	}
 
-			/*
-		v5.addVertexWithUV(in, 		h2, in, 	u1, v1);
-		v5.addVertexWithUV(1-in, 	h2, in, 	u2, v1);
-		v5.addVertexWithUV(1-in, 	h2, 1-in, 	u2, v2);
-		v5.addVertexWithUV(in, 		h2, 1-in, 	u1, v2);
+	private static void planes(PoseStack.Pose pose, VertexConsumer v5, TextureAtlasSprite ico, int color) {
+		float u = ico.getU0();
+		float v = ico.getV0();
+		float du = ico.getU1();
+		float dv = ico.getV1();
 
-		v5.addVertexWithUV(0, 	h1, in, 	u, v1);
-		v5.addVertexWithUV(in, 	h2, in, 	u1, v1);
-		v5.addVertexWithUV(in, 	h2, 1-in, 	u1, v2);
-		v5.addVertexWithUV(0, 	h1, 1-in, 	u, v2);
+		float o = 0.4375F;
+		float i = 0.3125F;
 
-		v5.addVertexWithUV(1-in, 	h2, in, 	u2, v1);
-		v5.addVertexWithUV(1, 		h1, in, 	du, v1);
-		v5.addVertexWithUV(1, 		h1, 1-in, 	du, v2);
-		v5.addVertexWithUV(1-in, 	h2, 1-in, 	u2, v2);
+		vertex(v5, pose, i, o, i, u, v, color);
+		vertex(v5, pose, 1-i, o, i, du, v, color);
+		vertex(v5, pose, 1-i, o, 1-i, du, dv, color);
+		vertex(v5, pose, i, o, 1-i, u, dv, color);
 
-		v5.addVertexWithUV(in, 		h1, 0, 		u1, v);
-		v5.addVertexWithUV(1-in, 	h1, 0, 		u2, v);
-		v5.addVertexWithUV(1-in, 	h2, in, 	u2, v1);
-		v5.addVertexWithUV(in, 		h2, in, 	u1, v1);
+		vertex(v5, pose, i, 1-o, i, u, v, color);
+		vertex(v5, pose, 1-i, 1-o, i, du, v, color);
+		vertex(v5, pose, 1-i, 1-o, 1-i, du, dv, color);
+		vertex(v5, pose, i, 1-o, 1-i, u, dv, color);
 
-		v5.addVertexWithUV(in, 		h2, 1-in, 	u1, v2);
-		v5.addVertexWithUV(1-in, 	h2, 1-in, 	u2, v2);
-		v5.addVertexWithUV(1-in, 	h1, 1, 		u2, dv);
-		v5.addVertexWithUV(in, 		h1, 1, 		u1, dv);
+		vertex(v5, pose, o, i, i, u, v, color);
+		vertex(v5, pose, o, 1-i, i, du, v, color);
+		vertex(v5, pose, o, 1-i, 1-i, du, dv, color);
+		vertex(v5, pose, o, i, 1-i, u, dv, color);
 
-		v5.addVertexWithUV(0, 	h0, 0, 		u, v);
-		v5.addVertexWithUV(in, 	h1, 0, 		u1, v);
-		v5.addVertexWithUV(in, 	h2, in, 	u1, v1);
-		v5.addVertexWithUV(0, 	h1, in, 	u, v1);
-			 */
+		vertex(v5, pose, 1-o, i, i, u, v, color);
+		vertex(v5, pose, 1-o, 1-i, i, du, v, color);
+		vertex(v5, pose, 1-o, 1-i, 1-i, du, dv, color);
+		vertex(v5, pose, 1-o, i, 1-i, u, dv, color);
 
-			v5.draw();
-		}
+		vertex(v5, pose, i, i, o, u, v, color);
+		vertex(v5, pose, 1-i, i, o, du, v, color);
+		vertex(v5, pose, 1-i, 1-i, o, du, dv, color);
+		vertex(v5, pose, i, 1-i, o, u, dv, color);
 
-		GL11.glPopAttrib();
-		GL11.glPopMatrix();
+		vertex(v5, pose, i, i, 1-o, u, v, color);
+		vertex(v5, pose, 1-i, i, 1-o, du, v, color);
+		vertex(v5, pose, 1-i, 1-i, 1-o, du, dv, color);
+		vertex(v5, pose, i, 1-i, 1-o, u, dv, color);
+	}
+
+	private static void vertex(VertexConsumer v5, PoseStack.Pose pose, float x, float y, float z, float u, float v, int color) {
+		v5.addVertex(pose, x, y, z).setUv(u, v).setColor(color);
+	}
+
+	public static final class State extends BlockEntityRenderState {
+		private float opacity;
 	}
 
 }

@@ -184,6 +184,7 @@ public class ChromaLang extends LanguageProvider {
 		add(ChromaBlocks.CRYSTAL_CHARGER.get(), "Storage Crystal Charger"); // V33a chroma.charger
 		add(ChromaBlocks.CRYSTAL_BREWER.get(), "Crystal Brewery"); // V33a chroma.brewer
 		add(ChromaBlocks.LAUNCH_PAD.get(), "Vertical Propulsion Panel"); // V33a chroma.launchpad
+		add(ChromaBlocks.PARTICLE_SPAWNER.get(), "Particle Spawner"); // V33a chroma.particles
 		add(ChromaBlocks.CHROMA_FLOWER.get(), "Chromatic Flower"); // V33a chroma.flower
 		add(ChromaItems.PYLON_FINDER.get(), "Pylon Compass"); // V33a chroma.finder
 		add(ChromaItems.LIGHT_GUN.get(), "Illumination Gun"); // V33a chroma.lightgun

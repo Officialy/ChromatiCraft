@@ -3,6 +3,7 @@ package reika.chromaticraft.network;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -102,6 +103,8 @@ public final class ChromaNetwork {
 		registrar.playToClient(Inscription.TYPE, Inscription.CODEC, ChromaNetwork::handleInscription);
 		registrar.playToClient(OpenLorePuzzle.TYPE, OpenLorePuzzle.CODEC, ChromaNetwork::handleOpenLorePuzzle);
 		registrar.playToServer(LorePuzzleMove.TYPE, LorePuzzleMove.CODEC, ChromaNetwork::handleLorePuzzleMove);
+		registrar.playToServer(ParticleSpawnerProgram.TYPE, ParticleSpawnerProgram.CODEC,
+				ChromaNetwork::handleParticleSpawnerProgram);
 		registrar.playToServer(SetHeatLampTemperature.TYPE, SetHeatLampTemperature.CODEC,
 				ChromaNetwork::handleSetHeatLampTemperature);
 		registrar.playToServer(ToggleCrystalCharger.TYPE, ToggleCrystalCharger.CODEC,
@@ -740,6 +743,14 @@ public final class ChromaNetwork {
 				PoolAlloyingFx::new);
 		@Override public Type<PoolAlloyingFx> type() { return TYPE; }
 	}
+	/** V33a PARTICLESPAWNER: a Particle Spawner program edited in the GUI. */
+	public record ParticleSpawnerProgram(BlockPos source, CompoundTag program) implements CustomPacketPayload {
+		public static final Type<ParticleSpawnerProgram> TYPE = createType("particle_spawner_program");
+		public static final StreamCodec<ByteBuf, ParticleSpawnerProgram> CODEC = StreamCodec.composite(
+				BlockPos.STREAM_CODEC, ParticleSpawnerProgram::source, ByteBufCodecs.COMPOUND_TAG,
+				ParticleSpawnerProgram::program, ParticleSpawnerProgram::new);
+		@Override public Type<ParticleSpawnerProgram> type() { return TYPE; }
+	}
 	public record SetHeatLampTemperature(BlockPos source, int temperature) implements CustomPacketPayload {
 		public static final Type<SetHeatLampTemperature> TYPE = createType("set_heat_lamp_temperature");
 		public static final StreamCodec<ByteBuf, SetHeatLampTemperature> CODEC = StreamCodec.composite(
@@ -874,6 +885,17 @@ public final class ChromaNetwork {
 			if (context.player() instanceof ServerPlayer player
 					&& player.containerMenu instanceof reika.chromaticraft.container.MenuLexiconPages menu)
 				menu.scroll(payload.direction());
+		});
+	}
+	private static void handleParticleSpawnerProgram(ParticleSpawnerProgram payload, IPayloadContext context) {
+		context.enqueueWork(() -> {
+			if (!(context.player() instanceof ServerPlayer player)
+					|| !(player.containerMenu instanceof reika.chromaticraft.container.MenuParticleSpawner menu)
+					|| !menu.spawner().getBlockPos().equals(payload.source())
+					|| player.distanceToSqr(payload.source().getX() + 0.5, payload.source().getY() + 0.5,
+						payload.source().getZ() + 0.5) > 64)
+				return;
+			menu.spawner().receiveProgram(payload.program());
 		});
 	}
 	private static void handleSetHeatLampTemperature(SetHeatLampTemperature payload, IPayloadContext context) {

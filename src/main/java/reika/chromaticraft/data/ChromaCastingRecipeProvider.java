@@ -325,6 +325,13 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 					new ItemStackTemplate(ChromaBlocks.CHROMA_FLOWER.get().asItem()), 5, 5)
 					.withPenalty(2, 0.25F));
 
+			// V33a ParticleSpawnerRecipe, a plain CastingRecipe: any shard, glowstone dust and a block of redstone.
+			saveShaped("particle_spawner", new ItemStackTemplate(ChromaBlocks.PARTICLE_SPAWNER.get().asItem()), 5, 5,
+					Map.of('s', tag(ChromaItemTags.CRYSTAL_SHARDS),
+							'g', Ingredient.of(Items.GLOWSTONE_DUST),
+							'R', Ingredient.of(Items.REDSTONE_BLOCK)),
+					"sg ", "gRg", " gs");
+
 			// V33a LaunchPadRecipe, a plain CastingRecipe: lime shards (the exact plain shard), aura dust, redstone and an
 			// engraved crystal stone.
 			saveShaped("launch_pad", new ItemStackTemplate(ChromaBlocks.LAUNCH_PAD.get().asItem()), 5, 5,
