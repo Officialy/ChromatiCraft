@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/cube_bottom_top",
+  "textures": {
+    "bottom": "chromaticraft:block/tile/enchanter_bottom",
+    "side": "chromaticraft:block/tile/enchanter_side",
+    "top": "chromaticraft:block/tile/enchanter_top"
+  }
+}

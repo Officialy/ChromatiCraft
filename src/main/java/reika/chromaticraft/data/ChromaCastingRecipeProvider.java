@@ -233,6 +233,20 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 					List.of(), List.of(),
 					new ItemStackTemplate(ChromaBlocks.MULTICHROMIC_RELAY.get().asItem()), 100, 200));
 
+			// V33a EnchanterRecipe, a TempleCastingRecipe (20 ticks, 40 XP): emeralds, a gold ingot, obsidian, stone
+			// bricks and an enchanting table, with black and purple runes at the ring's (+-4,+-3)/(+-3,+-4) corners.
+			saveRecipe("auto_enchanter", new CastingTableRecipe(CastingTableRecipe.Tier.TEMPLE,
+					shapedGrid(Map.of('e', Ingredient.of(Items.EMERALD), 'O', Ingredient.of(Items.OBSIDIAN),
+							'B', Ingredient.of(Items.STONE_BRICKS), 'E', Ingredient.of(Items.ENCHANTING_TABLE),
+							'G', Ingredient.of(Items.GOLD_INGOT)),
+							"eGe", "OEO", "BOB"),
+					List.of(),
+					List.of(new RuneRequirement(new net.minecraft.core.BlockPos(-4, 0, -3), CrystalElement.BLACK),
+							new RuneRequirement(new net.minecraft.core.BlockPos(-3, 0, -4), CrystalElement.PURPLE),
+							new RuneRequirement(new net.minecraft.core.BlockPos(4, 0, 3), CrystalElement.BLACK),
+							new RuneRequirement(new net.minecraft.core.BlockPos(3, 0, 4), CrystalElement.PURPLE)),
+					List.of(), new ItemStackTemplate(ChromaBlocks.AUTO_ENCHANTER.get().asItem()), 20, 40));
+
 			saveRecipe("function_relay", new CastingTableRecipe(CastingTableRecipe.Tier.TEMPLE,
 					shapedGrid(Map.of('D', tiered(ChromaTieredItems.BEACON_DUST),
 							'A', tiered(ChromaTieredItems.AURA_DUST), 'C', Ingredient.of(Items.GLOWSTONE)),

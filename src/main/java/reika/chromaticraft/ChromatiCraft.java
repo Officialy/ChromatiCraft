@@ -192,6 +192,8 @@ public class ChromatiCraft extends DragonAPIMod {
 				reika.chromaticraft.client.gui.ScreenCrystalCharger::new);
 		event.register(ChromaMenus.CRYSTAL_BREWER.get(),
 				reika.chromaticraft.client.gui.ScreenCrystalBrewer::new);
+		event.register(ChromaMenus.AUTO_ENCHANTER.get(),
+				reika.chromaticraft.client.gui.ScreenAutoEnchanter::new);
 		event.register(ChromaMenus.PARTICLE_SPAWNER.get(),
 				reika.chromaticraft.client.gui.ScreenParticleSpawner::new);
 		event.register(ChromaMenus.COLLECTOR.get(),

@@ -9,16 +9,19 @@
  ******************************************************************************/
 package reika.chromaticraft.api.interfaces;
 
-import net.minecraft.enchantment.Enchantment;
-import net.minecraft.item.ItemStack;
+import net.minecraft.core.Holder;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.enchantment.Enchantment;
+import net.minecraft.util.TriState;
 
 import reika.dragonapi.interfaces.item.CustomEnchantingCategory;
 
-import cpw.mods.fml.common.eventhandler.Event.Result;
-
-
+/**
+ * V33a API {@code EnchantableItem}: an item that decides for itself which enchantments the Auto Enchanter may put on it
+ * -- TRUE allows, FALSE denies, DEFAULT falls through to the usual checks (1.7.10's {@code Event.Result}).
+ */
 public interface EnchantableItem extends CustomEnchantingCategory {
 
-	public Result getEnchantValidity(Enchantment e, ItemStack is);
+	public TriState getEnchantValidity(Holder<Enchantment> e, ItemStack is);
 
 }

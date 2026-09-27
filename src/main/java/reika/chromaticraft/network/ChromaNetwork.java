@@ -109,6 +109,8 @@ public final class ChromaNetwork {
 		registrar.playToClient(Inscription.TYPE, Inscription.CODEC, ChromaNetwork::handleInscription);
 		registrar.playToClient(OpenLorePuzzle.TYPE, OpenLorePuzzle.CODEC, ChromaNetwork::handleOpenLorePuzzle);
 		registrar.playToServer(LorePuzzleMove.TYPE, LorePuzzleMove.CODEC, ChromaNetwork::handleLorePuzzleMove);
+		registrar.playToServer(EnchanterSelect.TYPE, EnchanterSelect.CODEC, ChromaNetwork::handleEnchanterSelect);
+		registrar.playToServer(EnchanterReset.TYPE, EnchanterReset.CODEC, ChromaNetwork::handleEnchanterReset);
 		registrar.playToServer(ParticleSpawnerProgram.TYPE, ParticleSpawnerProgram.CODEC,
 				ChromaNetwork::handleParticleSpawnerProgram);
 		registrar.playToServer(SetHeatLampTemperature.TYPE, SetHeatLampTemperature.CODEC,
@@ -787,6 +789,21 @@ public final class ChromaNetwork {
 				PoolAlloyingFx::new);
 		@Override public Type<PoolAlloyingFx> type() { return TYPE; }
 	}
+	/** V33a ENCHANTER: raise or lower (shift: to the maximum or zero) one enchantment's selected level. */
+	public record EnchanterSelect(BlockPos source, net.minecraft.resources.Identifier enchantment, boolean increment, boolean all)
+			implements CustomPacketPayload {
+		public static final Type<EnchanterSelect> TYPE = createType("enchanter_select");
+		public static final StreamCodec<ByteBuf, EnchanterSelect> CODEC = StreamCodec.composite(
+				BlockPos.STREAM_CODEC, EnchanterSelect::source, net.minecraft.resources.Identifier.STREAM_CODEC, EnchanterSelect::enchantment,
+				ByteBufCodecs.BOOL, EnchanterSelect::increment, ByteBufCodecs.BOOL, EnchanterSelect::all, EnchanterSelect::new);
+		@Override public Type<EnchanterSelect> type() { return TYPE; }
+	}
+	/** V33a ENCHANTERRESET: clear the whole selection. */
+	public record EnchanterReset(BlockPos source) implements CustomPacketPayload {
+		public static final Type<EnchanterReset> TYPE = createType("enchanter_reset");
+		public static final StreamCodec<ByteBuf, EnchanterReset> CODEC = BlockPos.STREAM_CODEC.map(EnchanterReset::new, EnchanterReset::source);
+		@Override public Type<EnchanterReset> type() { return TYPE; }
+	}
 	/** V33a PARTICLESPAWNER: a Particle Spawner program edited in the GUI. */
 	public record ParticleSpawnerProgram(BlockPos source, CompoundTag program) implements CustomPacketPayload {
 		public static final Type<ParticleSpawnerProgram> TYPE = createType("particle_spawner_program");
@@ -929,6 +946,41 @@ public final class ChromaNetwork {
 			if (context.player() instanceof ServerPlayer player
 					&& player.containerMenu instanceof reika.chromaticraft.container.MenuLexiconPages menu)
 				menu.scroll(payload.direction());
+		});
+	}
+	private static reika.chromaticraft.tileentity.processing.TileEntityAutoEnchanter enchanterFor(IPayloadContext context, BlockPos source) {
+		if (!(context.player() instanceof ServerPlayer player)
+				|| !(player.containerMenu instanceof reika.chromaticraft.container.MenuAutoEnchanter menu)
+				|| !menu.tile.getBlockPos().equals(source)
+				|| player.distanceToSqr(source.getX() + 0.5, source.getY() + 0.5, source.getZ() + 0.5) > 64)
+			return null;
+		return menu.tile;
+	}
+	private static void handleEnchanterSelect(EnchanterSelect payload, IPayloadContext context) {
+		context.enqueueWork(() -> {
+			var ench = enchanterFor(context, payload.source());
+			if (ench == null)
+				return;
+			var key = net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.ENCHANTMENT, payload.enchantment());
+			if (reika.chromaticraft.tileentity.processing.TileEntityAutoEnchanter.isBlacklisted(key))
+				return;
+			var holder = context.player().level().registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.ENCHANTMENT).get(key);
+			if (holder.isEmpty())
+				return;
+			if (payload.increment())
+				ench.incrementEnchantment(holder.get(), payload.all(), context.player());
+			else
+				ench.decrementEnchantment(holder.get(), payload.all());
+			ench.syncAllData(true);
+		});
+	}
+	private static void handleEnchanterReset(EnchanterReset payload, IPayloadContext context) {
+		context.enqueueWork(() -> {
+			var ench = enchanterFor(context, payload.source());
+			if (ench == null)
+				return;
+			ench.clearEnchantments();
+			ench.syncAllData(true);
 		});
 	}
 	private static void handleParticleSpawnerProgram(ParticleSpawnerProgram payload, IPayloadContext context) {

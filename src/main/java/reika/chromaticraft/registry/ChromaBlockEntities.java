@@ -112,6 +112,8 @@ public final class ChromaBlockEntities {
 					reika.chromaticraft.block.BlockChromaTrail.TileChromaTrail::new, ChromaBlocks.CHROMA_TRAIL.get()));
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<reika.chromaticraft.tileentity.plants.TileEntityChromaFlower>> CHROMA_FLOWER =
 			register("chroma_flower", ChromaTiles.CHROMAFLOWER);
+	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<reika.chromaticraft.tileentity.processing.TileEntityAutoEnchanter>> AUTO_ENCHANTER =
+			register("auto_enchanter", ChromaTiles.ENCHANTER);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<reika.chromaticraft.tileentity.TileEntityLumenWire>> LUMEN_WIRE =
 			register("lumen_wire", ChromaTiles.LUMENWIRE);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<reika.chromaticraft.tileentity.aoe.defence.TileEntityLumenTurret>> LUMEN_TURRET =
@@ -270,6 +272,8 @@ public final class ChromaBlockEntities {
 				(infuser, context) -> infuser.fluidHandler());
 		event.registerBlockEntity(Capabilities.Fluid.BLOCK, PLAYER_INFUSER.get(),
 				(infuser, context) -> infuser.fluidHandler());
+		event.registerBlockEntity(Capabilities.Fluid.BLOCK, AUTO_ENCHANTER.get(),
+				(enchanter, context) -> enchanter.fluidHandler());
 		event.registerBlockEntity(Capabilities.Fluid.BLOCK, COLLECTOR.get(),
 				(collector, context) -> collector.fluidHandler());
 	}

@@ -255,8 +255,8 @@ Pylon Link and Lumen Node (V33a had no casting recipe for either).
   Enchantments, the Crystal Brewery, the Chromatic Flower, the Pylon Compass, the Illumination Gun, the Ownership Expansion Key, the Subterranean Route Finder and the Vertical Propulsion Panel
   2026-09-26; the Particle Spawner, Examination Crystals, the Lumen Turret and the Lumen Wire 2026-09-27).
   Missing: Crystal Orchestra; Knowledge Entanglement Pedestal (needs ProgressionLinking); Tool Compression Crate (needs TileEntityMassStorage); Corrosion Resistant Cell (blocked: an AE2 storage cell, and AE2 is not on the classpath -- CHROMA-PORT).
-- **RUNECRAFT** — 11/36 ported.
-  Missing: Artificial Sky; Physics Suspension Lamp; Lumen Lamp; Travel Path; Redstone Pod; Flux Pod; Subterranean Illuminator; Chromatic Enchanter; Fluid Radiator; Fluid Link Anchor; Suspension Field Controller; Item Inserter; Lumen Lamp Controller; Crystal Seeds; Item Mover; Voidlinked Bucket; Linker; Creature Sounding Star; Multitool; Nether Layer Crystal; Ore-Finding Pickaxe; Ore Harvester; Bezier Crystals; Aura Tracker; Recall Tablet.
+- **RUNECRAFT** — 12/36 ported (the Chromatic Enchanter 2026-09-27).
+  Missing: Artificial Sky; Physics Suspension Lamp; Lumen Lamp; Travel Path; Redstone Pod; Flux Pod; Subterranean Illuminator; Fluid Radiator; Fluid Link Anchor; Suspension Field Controller; Item Inserter; Lumen Lamp Controller; Crystal Seeds; Item Mover; Voidlinked Bucket; Linker; Creature Sounding Star; Multitool; Nether Layer Crystal; Ore-Finding Pickaxe; Ore Harvester; Bezier Crystals; Aura Tracker; Recall Tablet.
 - **ENERGY** — 15/30 ported.
   Missing: Collective Aura; Lumen Flood; Pursuit Diversion; Pylon Surge Protection; Linear Construction; Crystal Altar; Enchantment Decomposer; Transmutation Flame; Item Rift; Elemental Lamp; Excavation Star; Inventory Warp; Pendant; Spawner Interference Crystal; Transition Star.
 - **MULTICRAFT** — 4/26 ported.
@@ -8896,6 +8896,49 @@ Needs a full GameTest run (ownership semantics changed across these tiles).
   - Active: rose glows (`roses_w`) within 60 degrees of hue of the mode colour.
   - The render box spans the pair. The item draws the model at 2.5x.
 - Recipe " s / OGO / ccc ": blue shard, obsidian, glowstone dust, cobblestone (`c:cobblestones/normal`).
+- Unverified in game.
+
+**RUNECRAFT: Chromatic Enchanter (2026-09-27).** `auto_enchanter` (V33a ENCHANTER, `TileEntityAutoEnchanter`).
+- Choose enchantments and levels. Some go beyond vanilla's maximum: Fortune, Looting, Respiration, Luck of the Sea
+  and Unbreaking to 5, Power and Sharpness to 10, ChromatiCraft enchantments to the level the player has learnt
+  (`isVisibleToPlayer`).
+- The item in the main slot is enchanted every 40 ticks while the chroma suffices, each selected enchantment set to
+  exactly its level. Books become enchanted books; stored enchantments go through `EnchantmentHelper.updateEnchantments`.
+- Cost per level is 500 mB times the tier: worthless 0.25, basic 0.75, normal 1, valuable 1.5, rare 2, from V33a's
+  table on 26.2 keys; anything named multishot or soulbound is rare.
+  - At least 50 mB per level, rounded to the nearest 100.
+  - A donor in the second slot cuts each level by 0.8 of its own level, down to 0.25. The donor loses those
+    enchantments and takes (4-15) × level × tier damage.
+  - An enchanting table on top divides the cost by 1 plus its bookshelf power (at most 2.5), using V33a's
+    two-out-and-diagonals sampling with NeoForge `getEnchantPowerBonus`. The table also switches the sides to
+    `enchanter_side_variant` (the ASSISTED state; V33a's `VariableTexture`).
+- Validity:
+  - V33a's allowed pairs: Fortune with Silk Touch, Sharpness with Bane or Smite.
+  - Books take anything; 26.2 bars no enchantment from books.
+  - An `EnchantableItem` (API, now TriState) decides for itself.
+  - Soulbound goes on the Lexicon and on tools, swords, shears and armour.
+  - Shears take the mining, mining-loot, durability and ChromatiCraft digger enchantments.
+  - Otherwise `supportsEnchantment` decides.
+  - CHROMA-PORT: the bee frame, the Tinkers' Construct checks, and the other mods' soulbound pouches, backpacks and
+    wands.
+- Chroma comes in through the fluid capability only (12 B, never out); `ChromaPowered`/`ChromaExtractable` are kept.
+- The selection syncs as enchantment ids. The menu syncs progress and chroma (V33a used a progress bar and a tank
+  packet).
+- GUI:
+  - `ScreenLetterSearchable` is a port of V33a's `GuiLetterSearchable`, reusable for the spawner programmer and the
+    others that used it. It covers the search mode, the HOME/END/PGUP/PGDN keys, the dimmed key guide and the large
+    filter text.
+  - `ScreenAutoEnchanter` uses `enchanter2.png`: -/+ (shift: all the way), "x" with the reason when incompatible,
+    Reset, the tank, the cost in colour with its tank mark, and progress. The list is sorted by display name, as
+    V33a did.
+  - Deviation: V33a's arrow buttons passed a filter even with no modifier held, and that filter never matched, so a
+    plain click ran to the end of the list; its control filter also stopped only at entries the item could not take.
+    Here a plain click steps once and control skips invalid entries.
+- Payloads: `enchanter_select` (V33a ENCHANTER) and `enchanter_reset` (ENCHANTERRESET). Each is checked against the
+  open menu and distance, then followed by a full sync.
+- DragonAPI `CustomEnchantingCategory` now returns the item tag (26.2's enchanting category).
+- Recipe: temple, "eGe / OEO / BOB" (emerald, gold ingot, obsidian, enchanting table, stone bricks), with black and
+  purple runes at (-4,0,-3), (-3,0,-4), (4,0,3), (3,0,4); 20 ticks, 40 XP.
 - Unverified in game.
 
 **Overworld structure worldgen biome reads (2026-09-26).** The natural structure feature used

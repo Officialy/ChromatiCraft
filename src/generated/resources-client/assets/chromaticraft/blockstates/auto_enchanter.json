@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "assisted=false": {
+      "model": "chromaticraft:block/auto_enchanter"
+    },
+    "assisted=true": {
+      "model": "chromaticraft:block/auto_enchanter_assisted"
+    }
+  }
+}

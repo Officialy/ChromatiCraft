@@ -974,6 +974,10 @@ public final class ChromaBlocks {
 			register("chroma_flower", () -> new reika.chromaticraft.block.BlockChromaFlower(blockProperties()
 					.strength(0F, 0.1F).noCollision().noOcclusion().sound(SoundType.GRASS).lightLevel(state -> 9)
 					.pushReaction(net.minecraft.world.level.material.PushReaction.DESTROY)));
+	/** V33a ENCHANTER, a BlockChromaTile entry: rock, hardness 5, resistance 40 (8 against explosions). */
+	public static final DeferredBlock<Block> AUTO_ENCHANTER =
+			register("auto_enchanter", () -> new reika.chromaticraft.block.BlockAutoEnchanter(
+					blockProperties().strength(5F, 8F).requiresCorrectToolForDrops()));
 	/** V33a LUMENWIRE, a BlockModelledChromaTile entry: rock, hardness 5, resistance 40 (8 against explosions). */
 	public static final DeferredBlock<Block> LUMEN_WIRE =
 			register("lumen_wire", () -> new reika.chromaticraft.block.BlockLumenWire(

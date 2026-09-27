@@ -100,7 +100,7 @@ public final class PoweredItemClient {
 	/** V33a {@code RenderItemInSlotEvent.isRenderingStackHovered}: the stack is under the mouse in a container screen. */
 	private static boolean isHovered(ItemStack stack) {
 		if (Minecraft.getInstance().gui.screen() instanceof AbstractContainerScreen<?> screen) {
-			Slot slot = screen.getSlotUnderMouse();
+			Slot slot = screen.getHoveredSlot();
 			return slot != null && slot.getItem() == stack;
 		}
 		return false;

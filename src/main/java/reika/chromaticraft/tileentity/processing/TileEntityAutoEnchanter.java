@@ -1,11 +1,11 @@
 /*******************************************************************************
- *@author Reika Kalseki
+ * @author Reika Kalseki
  *
- *Copyright 2017
+ * Copyright 2017
  *
- *All rights reserved.
- *Distribution of the software in any form is only allowed with
- *explicit, prior permission from the owner.
+ * All rights reserved.
+ * Distribution of the software in any form is only allowed with
+ * explicit, prior permission from the owner.
  ******************************************************************************/
 package reika.chromaticraft.tileentity.processing;
 
@@ -13,29 +13,48 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import org.apache.commons.lang3.tuple.ImmutablePair;
 
-import net.minecraft.block.BlockEnchantmentTable;
-import net.minecraft.enchantment.Enchantment;
-import net.minecraft.enchantment.EnumEnchantmentType;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.init.Items;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemArmor;
-import net.minecraft.item.ItemShears;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.ItemSword;
-import net.minecraft.item.ItemTool;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.world.World;
-import net.minecraftforge.common.ForgeHooks;
-import net.minecraftforge.common.util.ForgeDirection;
-import net.minecraftforge.fluids.Fluid;
-import net.minecraftforge.fluids.FluidRegistry;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.Holder;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.ItemTags;
+import net.minecraft.tags.TagKey;
+import net.minecraft.world.MenuProvider;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.ContainerData;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.enchantment.Enchantment;
+import net.minecraft.world.item.enchantment.EnchantmentHelper;
+import net.minecraft.world.item.enchantment.Enchantments;
+import net.minecraft.world.item.enchantment.ItemEnchantments;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.EnchantingTableBlock;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.util.TriState;
+import net.neoforged.neoforge.transfer.ResourceHandler;
+import net.neoforged.neoforge.transfer.TransferPreconditions;
+import net.neoforged.neoforge.transfer.fluid.FluidResource;
+import net.neoforged.neoforge.transfer.transaction.SnapshotJournal;
+import net.neoforged.neoforge.transfer.transaction.TransactionContext;
 
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.api.interfaces.EnchantableItem;
@@ -43,85 +62,89 @@ import reika.chromaticraft.auxiliary.interfaces.ChromaExtractable;
 import reika.chromaticraft.auxiliary.interfaces.ChromaPowered;
 import reika.chromaticraft.auxiliary.interfaces.OperationInterval;
 import reika.chromaticraft.auxiliary.interfaces.VariableTexture;
-import reika.chromaticraft.base.ChromaticEnchantment;
 import reika.chromaticraft.base.ItemChromaTool;
-import reika.chromaticraft.base.tileentity.FluidReceiverInventoryBase;
+import reika.chromaticraft.base.tileentity.InventoriedChromaticBase;
+import reika.chromaticraft.container.MenuAutoEnchanter;
+import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.ChromaEnchants;
+import reika.chromaticraft.registry.ChromaFluids;
+import reika.chromaticraft.registry.ChromaItemTags;
 import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.ChromaTiles;
-import reika.dragonapi.ModList;
 import reika.dragonapi.instantiable.StepTimer;
-import reika.dragonapi.libraries.ReikaEnchantmentHelper;
-import reika.dragonapi.libraries.ReikaRegistryHelper;
 import reika.dragonapi.libraries.java.ReikaRandomHelper;
 import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
-import reika.dragonapi.modinteract.itemhandlers.InfusionEnchantmentHandler;
-import reika.dragonapi.modinteract.itemhandlers.ThaumItemHelper;
-import reika.dragonapi.modinteract.itemhandlers.TinkerToolHandler;
 
-import cpw.mods.fml.common.Loader;
-import cpw.mods.fml.common.eventhandler.Event.Result;
+/**
+ * V33a {@code TileEntityAutoEnchanter}, the Chromatic Enchanter: chosen enchantments (and levels, some beyond vanilla's
+ * maximum) are put on the item in its main slot over 40 ticks, for liquid chroma -- 500 mB per level, times the
+ * enchantment's tier (worthless 0.25 to rare 2), rounded to 100. An enchanted item in the second slot lowers the cost
+ * of the enchantments it carries (taking wear for them), and an enchanting table on top, surrounded by bookshelves as a
+ * table would be, divides the cost by up to 2.5. Books become enchanted books.
+ */
+public class TileEntityAutoEnchanter extends InventoriedChromaticBase implements ChromaPowered, ChromaExtractable,
+		OperationInterval, VariableTexture, MenuProvider {
 
-public class TileEntityAutoEnchanter extends FluidReceiverInventoryBase implements ChromaPowered, ChromaExtractable, OperationInterval, VariableTexture {
-
-	private HashMap<Enchantment, Integer> selected = new HashMap();
+	private LinkedHashMap<ResourceKey<Enchantment>, Integer> selected = new LinkedHashMap<>();
 
 	public static final int CHROMA_PER_LEVEL_BASE = 500;
-	private static final HashMap<Enchantment, EnchantmentTier> tiers = new HashMap();
-	private static final HashMap<Enchantment, Integer> boostedLevels = new HashMap();
-	private static final HashSet<Enchantment> blacklist = new HashSet();
-	private static final HashSet<ImmutablePair<Enchantment, Enchantment>> allowedPairs = new HashSet();
+	private static final int CAPACITY = 12000;//6000;
+	private static final HashMap<ResourceKey<Enchantment>, EnchantmentTier> tiers = new HashMap<>();
+	private static final HashMap<ResourceKey<Enchantment>, Integer> boostedLevels = new HashMap<>();
+	private static final HashSet<ResourceKey<Enchantment>> blacklist = new HashSet<>();
+	private static final HashSet<ImmutablePair<ResourceKey<Enchantment>, ResourceKey<Enchantment>>> allowedPairs = new HashSet<>();
 
 	static {
-		tiers.put(Enchantment.baneOfArthropods, EnchantmentTier.WORTHLESS);
-		tiers.put(Enchantment.smite, EnchantmentTier.WORTHLESS);
+		tiers.put(Enchantments.BANE_OF_ARTHROPODS, EnchantmentTier.WORTHLESS);
+		tiers.put(Enchantments.SMITE, EnchantmentTier.WORTHLESS);
 
-		tiers.put(Enchantment.knockback, EnchantmentTier.BASIC);
-		tiers.put(Enchantment.punch, EnchantmentTier.BASIC);
-		tiers.put(Enchantment.field_151369_A, EnchantmentTier.BASIC);
-		tiers.put(ChromaEnchants.FASTSINK.getEnchantment(), EnchantmentTier.BASIC);
+		tiers.put(Enchantments.KNOCKBACK, EnchantmentTier.BASIC);
+		tiers.put(Enchantments.PUNCH, EnchantmentTier.BASIC);
+		tiers.put(Enchantments.LURE, EnchantmentTier.BASIC);
+		tiers.put(ChromaEnchants.FASTSINK.key(), EnchantmentTier.BASIC);
 
-		tiers.put(Enchantment.fortune, EnchantmentTier.VALUABLE);
-		tiers.put(Enchantment.sharpness, EnchantmentTier.VALUABLE);
-		tiers.put(Enchantment.looting, EnchantmentTier.VALUABLE);
-		tiers.put(Enchantment.power, EnchantmentTier.VALUABLE);
-		tiers.put(Enchantment.protection, EnchantmentTier.VALUABLE);
-		tiers.put(ChromaEnchants.USEREPAIR.getEnchantment(), EnchantmentTier.VALUABLE);
-		tiers.put(ChromaEnchants.ENDERLOCK.getEnchantment(), EnchantmentTier.VALUABLE);
-		tiers.put(ChromaEnchants.AGGROMASK.getEnchantment(), EnchantmentTier.VALUABLE);
+		tiers.put(Enchantments.FORTUNE, EnchantmentTier.VALUABLE);
+		tiers.put(Enchantments.SHARPNESS, EnchantmentTier.VALUABLE);
+		tiers.put(Enchantments.LOOTING, EnchantmentTier.VALUABLE);
+		tiers.put(Enchantments.POWER, EnchantmentTier.VALUABLE);
+		tiers.put(Enchantments.PROTECTION, EnchantmentTier.VALUABLE);
+		tiers.put(ChromaEnchants.USEREPAIR.key(), EnchantmentTier.VALUABLE);
+		tiers.put(ChromaEnchants.ENDERLOCK.key(), EnchantmentTier.VALUABLE);
+		tiers.put(ChromaEnchants.AGGROMASK.key(), EnchantmentTier.VALUABLE);
 
-		tiers.put(Enchantment.silkTouch, EnchantmentTier.RARE);
-		tiers.put(Enchantment.infinity, EnchantmentTier.RARE);
-		tiers.put(ChromaEnchants.RARELOOT.getEnchantment(), EnchantmentTier.RARE);
-		tiers.put(ChromaEnchants.WEAPONAOE.getEnchantment(), EnchantmentTier.RARE);
-		tiers.put(ChromaEnchants.HARVESTLEVEL.getEnchantment(), EnchantmentTier.RARE);
-		tiers.put(ChromaEnchants.PHASING.getEnchantment(), EnchantmentTier.RARE);
-		tiers.put(ChromaEnchants.BOSSKILL.getEnchantment(), EnchantmentTier.RARE);
+		tiers.put(Enchantments.SILK_TOUCH, EnchantmentTier.RARE);
+		tiers.put(Enchantments.INFINITY, EnchantmentTier.RARE);
+		tiers.put(ChromaEnchants.RARELOOT.key(), EnchantmentTier.RARE);
+		tiers.put(ChromaEnchants.WEAPONAOE.key(), EnchantmentTier.RARE);
+		tiers.put(ChromaEnchants.HARVESTLEVEL.key(), EnchantmentTier.RARE);
+		tiers.put(ChromaEnchants.PHASING.key(), EnchantmentTier.RARE);
+		tiers.put(ChromaEnchants.BOSSKILL.key(), EnchantmentTier.RARE);
 
-		Enchantment multishot = ReikaEnchantmentHelper.getEnchantmentByName("Multishot");
-		if (multishot != null)
-			tiers.put(multishot, EnchantmentTier.RARE);
-		Enchantment soulbound = ReikaEnchantmentHelper.getEnchantmentByName("Soulbound");
-		if (soulbound != null)
-			tiers.put(soulbound, EnchantmentTier.RARE);
+		boostedLevels.put(Enchantments.FORTUNE, 5);
+		boostedLevels.put(Enchantments.LOOTING, 5);
+		boostedLevels.put(Enchantments.RESPIRATION, 5);
+		boostedLevels.put(Enchantments.LUCK_OF_THE_SEA, 5);
+		boostedLevels.put(Enchantments.POWER, 10);
+		boostedLevels.put(Enchantments.SHARPNESS, 10);
+		boostedLevels.put(Enchantments.PROTECTION, 5);
 
-		boostedLevels.put(Enchantment.fortune, 5);
-		boostedLevels.put(Enchantment.looting, 5);
-		boostedLevels.put(Enchantment.respiration, 5);
-		boostedLevels.put(Enchantment.field_151370_z, 5); //luck of sea
-		boostedLevels.put(Enchantment.power, 10);
-		boostedLevels.put(Enchantment.sharpness, 10);
-		boostedLevels.put(Enchantment.protection, 5);
-
-		allowedPairs.add(new ImmutablePair(Enchantment.fortune, Enchantment.silkTouch));
-		allowedPairs.add(new ImmutablePair(Enchantment.sharpness, Enchantment.baneOfArthropods));
-		allowedPairs.add(new ImmutablePair(Enchantment.sharpness, Enchantment.smite));
+		allowedPairs.add(new ImmutablePair<>(Enchantments.FORTUNE, Enchantments.SILK_TOUCH));
+		allowedPairs.add(new ImmutablePair<>(Enchantments.SHARPNESS, Enchantments.BANE_OF_ARTHROPODS));
+		allowedPairs.add(new ImmutablePair<>(Enchantments.SHARPNESS, Enchantments.SMITE));
 	}
 
 	private StepTimer progress = new StepTimer(40);
 	public int progressTimer;
 
-	public static Map<Enchantment, Integer> getBoostedLevels() {
+	private int chroma;
+
+	private final EnchanterFluidHandler fluidHandler = new EnchanterFluidHandler();
+
+	public TileEntityAutoEnchanter(BlockPos pos, BlockState state) {
+		super(ChromaBlockEntities.AUTO_ENCHANTER.get(), pos, state);
+	}
+
+	public static Map<ResourceKey<Enchantment>, Integer> getBoostedLevels() {
 		return Collections.unmodifiableMap(boostedLevels);
 	}
 
@@ -131,12 +154,11 @@ public class TileEntityAutoEnchanter extends FluidReceiverInventoryBase implemen
 	}
 
 	@Override
-	public void updateEntity(World world, int x, int y, int z, int meta) {
-
+	public void updateEntity(Level world, BlockPos pos) {
 		if (this.canProgress()) {
 			progress.update();
 			if (progress.checkCap()) {
-				if (!world.isRemote)
+				if (!world.isClientSide())
 					this.applyEnchants();
 			}
 		}
@@ -151,7 +173,7 @@ public class TileEntityAutoEnchanter extends FluidReceiverInventoryBase implemen
 	}
 
 	private boolean canProgress() {
-		return this.isValid(inv[0]) && this.hasSufficientChroma() && this.enchanting();
+		return this.isValid(inv.get(0)) && this.hasSufficientChroma() && this.enchanting();
 	}
 
 	private boolean hasSufficientChroma() {
@@ -161,46 +183,77 @@ public class TileEntityAutoEnchanter extends FluidReceiverInventoryBase implemen
 	private boolean enchanting() {
 		if (selected.isEmpty())
 			return false;
-		for (Enchantment e : selected.keySet()) {
-			int level = selected.get(e);
+		for (int level : selected.values()) {
 			if (level > 0)
 				return true;
 		}
 		return false;
 	}
 
+	@Override
 	public int getChromaLevel() {
-		return tank.getLevel();
+		return chroma;
 	}
 
+	public int getCapacity() {
+		return CAPACITY;
+	}
+
+	@Override
 	public boolean addChroma(int amt) {
-		if (tank.canTakeIn(amt)) {
-			tank.addLiquid(amt, FluidRegistry.getFluid("chroma"));
+		if (chroma+amt <= CAPACITY) {
+			chroma += amt;
+			this.setChanged();
 			return true;
 		}
 		return false;
 	}
 
+	@Override
+	public void removeLiquid(int amt) {
+		chroma = Math.max(0, chroma-amt);
+		this.setChanged();
+	}
+
+	private HolderLookup.RegistryLookup<Enchantment> enchantments() {
+		return level.registryAccess().lookupOrThrow(Registries.ENCHANTMENT);
+	}
+
+	private Holder<Enchantment> holder(ResourceKey<Enchantment> key) {
+		return this.enchantments().get(key).orElse(null);
+	}
+
+	/** The enchantments on a stack, stored ones for enchanted books (V33a {@code ReikaEnchantmentHelper.getEnchantments}). */
+	private static ItemEnchantments enchantmentsOn(ItemStack is) {
+		return EnchantmentHelper.getEnchantmentsForCrafting(is);
+	}
+
+	private static int levelOn(Holder<Enchantment> e, ItemStack is) {
+		return enchantmentsOn(is).getLevel(e);
+	}
+
 	private boolean isValid(ItemStack is) {
-		return is != null && this.isItemEnchantable(is) && this.areEnchantsValid(is);
+		return !is.isEmpty() && this.isItemEnchantable(is) && this.areEnchantsValid(is);
 	}
 
 	private boolean isItemEnchantable(ItemStack is) {
-		if (is.getItem() == Items.book || is.getItem() == Items.enchanted_book)
+		if (is.is(Items.BOOK) || is.is(Items.ENCHANTED_BOOK))
 			return true;
 		if (is.getItem() instanceof EnchantableItem)
 			return true;
-		if (ChromaItems.BEEFRAME.matchWith(is))
-			return true;
+		// CHROMA-PORT: V33a also took the Lumen Alveary bee frame (BEEFRAME, Forestry), which is not ported.
 		if (this.isSoulboundable(is, is.getItem()))
 			return true;
-		return is.getItem().getItemEnchantability(is) > 0;
+		return is.has(net.minecraft.core.component.DataComponents.ENCHANTABLE);
 	}
 
 	private boolean areEnchantsValid(ItemStack is) {
 		Item i = is.getItem();
-		Collection<Enchantment> has = ReikaEnchantmentHelper.getEnchantments(is).keySet();
-		for (Enchantment e : selected.keySet()) {
+		Collection<Holder<Enchantment>> has = enchantmentsOn(is).keySet();
+		for (ResourceKey<Enchantment> key : selected.keySet()) {
+			Holder<Enchantment> e = this.holder(key);
+			if (e == null)
+				return false;
 			if (!this.isEnchantValid(e, is, i, true))
 				return false;
 			if (!this.isCompatible(has, e))
@@ -223,196 +276,235 @@ public class TileEntityAutoEnchanter extends FluidReceiverInventoryBase implemen
 		}
 
 		public int getTextColor() {
-			switch(this) {
-				case VALID:
-					return 0xffffff;
-				case WRONGITEM:
-					return 0xfff740;
-				case INCOMPATIBLEWITHEXISTING:
-					return 0xffc740;
-				case INCOMPATIBLEWITHSELF:
-					return 0xff9090;
-			}
-			return 0;
+			return switch(this) {
+				case VALID -> 0xffffff;
+				case WRONGITEM -> 0xfff740;
+				case INCOMPATIBLEWITHEXISTING -> 0xffc740;
+				case INCOMPATIBLEWITHSELF -> 0xff9090;
+			};
 		}
 	}
 
-	public EnchantValidity isCompatible(Enchantment e) {
-		if (!this.isCompatible(selected.keySet(), e))
+	public EnchantValidity isCompatible(Holder<Enchantment> e) {
+		Collection<Holder<Enchantment>> sel = new java.util.ArrayList<>();
+		for (ResourceKey<Enchantment> key : selected.keySet()) {
+			Holder<Enchantment> h = this.holder(key);
+			if (h != null)
+				sel.add(h);
+		}
+		if (!this.isCompatible(sel, e))
 			return EnchantValidity.INCOMPATIBLEWITHSELF;
-		if (inv[0] != null) {
-			if (!this.isCompatible(ReikaEnchantmentHelper.getEnchantments(inv[0]).keySet(), e))
+		ItemStack in = inv.get(0);
+		if (!in.isEmpty()) {
+			if (!this.isCompatible(enchantmentsOn(in).keySet(), e))
 				return EnchantValidity.INCOMPATIBLEWITHEXISTING;
-			if (!this.isEnchantValid(e, inv[0], inv[0].getItem(), false))
+			if (!this.isEnchantValid(e, in, in.getItem(), false))
 				return EnchantValidity.WRONGITEM;
 		}
 		return EnchantValidity.VALID;
 	}
 
-	private boolean isCompatible(Collection<Enchantment> c, Enchantment e) {
-		for (Enchantment e2 : c) {
-			if (!this.isCompatible(e, e2))
+	private boolean isCompatible(Collection<Holder<Enchantment>> c, Holder<Enchantment> e) {
+		for (Holder<Enchantment> e2 : c) {
+			if (!isCompatible(e, e2))
 				return false;
 		}
 		return true;
 	}
 
-	private boolean isCompatible(Enchantment e, Enchantment e2) {
-		return e == e2 || allowedPairs.contains(new ImmutablePair(e, e2)) || allowedPairs.contains(new ImmutablePair(e2, e)) || ReikaEnchantmentHelper.areEnchantsCompatible(e, e2);
+	private static boolean isCompatible(Holder<Enchantment> e, Holder<Enchantment> e2) {
+		if (e.equals(e2))
+			return true;
+		var k1 = e.unwrapKey().orElse(null);
+		var k2 = e2.unwrapKey().orElse(null);
+		if (k1 != null && k2 != null && (allowedPairs.contains(new ImmutablePair<>(k1, k2)) || allowedPairs.contains(new ImmutablePair<>(k2, k1))))
+			return true;
+		return Enchantment.areCompatible(e, e2);
 	}
 
-	public boolean isEnchantValid(Enchantment e, ItemStack is, Item i, boolean checkLevels) {
-		if (i == Items.book || i == Items.enchanted_book) {
-			if (!e.isAllowedOnBooks()) {
+	/**
+	 * V33a {@code isEnchantValid}. Books take anything (26.2 has no enchantment barred from books); an
+	 * {@link EnchantableItem} decides for itself; soulbinding goes on anything soulboundable; shears take the digging,
+	 * mining-loot and durability enchantments; otherwise the enchantment's supported items decide.
+	 */
+	public boolean isEnchantValid(Holder<Enchantment> e, ItemStack is, Item i, boolean checkLevels) {
+		if (checkLevels) {
+			ResourceKey<Enchantment> key = e.unwrapKey().orElse(null);
+			if (levelOn(e, is) >= selected.getOrDefault(key, 0))
 				return false;
-			}
 		}
 
-		if (checkLevels && ReikaEnchantmentHelper.getEnchantmentLevel(e, is) >= selected.get(e))
-			return false;
-
-		if (i instanceof EnchantableItem) {
-			Result res = ((EnchantableItem)i).getEnchantValidity(e, is);
-			switch(res) {
-				case ALLOW:
-					return true;
-				case DEFAULT:
-					break;
-				case DENY:
-					return false;
-			}
+		if (i instanceof EnchantableItem ei) {
+			TriState res = ei.getEnchantValidity(e, is);
+			if (res == TriState.TRUE)
+				return true;
+			if (res == TriState.FALSE)
+				return false;
 		}
 
-		if (ChromaItems.BEEFRAME.matchWith(is))
-			if (e != Enchantment.unbreaking)
-				return false;
+		// CHROMA-PORT: V33a limited the bee frame (BEEFRAME) to Unbreaking here.
 
-		boolean soulbound = e.getName().toLowerCase(Locale.ENGLISH).contains("soulbound");
+		boolean soulbound = e.unwrapKey().map(k -> k.identifier().getPath().toLowerCase(Locale.ENGLISH).contains("soulbound")).orElse(false);
 
 		if (soulbound && this.isSoulboundable(is, i))
 			return true;
 
-		if (i instanceof ItemShears)
-			return e.type == EnumEnchantmentType.digger || e.type == EnumEnchantmentType.breakable || e.type == EnumEnchantmentType.all;
-
-		if (ModList.TINKERER.isLoaded() && TinkerToolHandler.getInstance().isTool(is)) {
-			return e instanceof ChromaticEnchantment && (e.type == EnumEnchantmentType.all || e.type == EnumEnchantmentType.digger);
-		}
-		else if (ModList.TINKERER.isLoaded() && TinkerToolHandler.getInstance().isWeapon(is)) {
-			return e instanceof ChromaticEnchantment && (e.type == EnumEnchantmentType.all || e.type == EnumEnchantmentType.weapon);
+		if (is.is(Items.SHEARS)) {
+			return isInCategory(e, ItemTags.MINING_ENCHANTABLE) || isInCategory(e, ItemTags.MINING_LOOT_ENCHANTABLE)
+					|| isInCategory(e, ItemTags.DURABILITY_ENCHANTABLE) || isInCategory(e, ChromaItemTags.ENCHANTABLE_DIGGER);
 		}
 
-		return i == Items.book || i == Items.enchanted_book ? true : e.canApply(is);
+		// CHROMA-PORT: V33a limited Tinkers' Construct tools and weapons to ChromatiCraft digger/weapon enchantments; no
+		// 26.2 Tinkers' Construct is on the classpath.
+
+		return is.is(Items.BOOK) || is.is(Items.ENCHANTED_BOOK) ? true : is.supportsEnchantment(e);
+	}
+
+	/** Whether an enchantment's supported items are this tag (26.2's version of 1.7.10's {@code EnumEnchantmentType}). */
+	private static boolean isInCategory(Holder<Enchantment> e, TagKey<Item> tag) {
+		return e.value().definition().supportedItems().unwrapKey().map(k -> k.equals(tag)).orElse(false);
 	}
 
 	private boolean isSoulboundable(ItemStack is, Item i) {
-		if (ChromaItems.HELP.matchWith(is))
+		if (is.is(ChromaItems.LEXICON.get()))
 			return true;
-		if (Loader.isModLoaded("Backpack") && i.getClass().getName().toLowerCase(Locale.ENGLISH).contains("backpack"))
+		// CHROMA-PORT: V33a also soulbound backpacks (Backpack), ender pouches (EnderStorage), Thaumcraft focus pouches
+		// and wands, Thaumic Tinkerer ichor pouches and Tinkers' tools, none of which have 26.2 ports here.
+		if (i instanceof ItemChromaTool || is.has(net.minecraft.core.component.DataComponents.TOOL) || is.is(ItemTags.SWORDS)
+				|| is.is(Items.SHEARS))
 			return true;
-		if (Loader.isModLoaded("EnderStorage") && i.getClass().getName().toLowerCase(Locale.ENGLISH).contains("enderpouch"))
-			return true;
-		if (ModList.THAUMCRAFT.isLoaded() && i.getClass().getName().toLowerCase(Locale.ENGLISH).contains("focuspouch"))
-			return true;
-		if (ModList.THAUMCRAFT.isLoaded() && i == ThaumItemHelper.ItemEntry.WAND.getItem().getItem())
-			return true;
-		if (ModList.THAUMICTINKER.isLoaded() && i.getClass().getName().toLowerCase(Locale.ENGLISH).contains("ichorpouch"))
-			return true;
-		if (i instanceof ItemChromaTool || i instanceof ItemTool || i instanceof ItemSword || i instanceof ItemShears || i instanceof ItemArmor)
-			return true;
-		if (ModList.TINKERER.isLoaded() && (TinkerToolHandler.getInstance().isTool(is) || TinkerToolHandler.getInstance().isWeapon(is)))
+		var equippable = is.get(net.minecraft.core.component.DataComponents.EQUIPPABLE);
+		if (equippable != null && equippable.slot().getType() == EquipmentSlot.Type.HUMANOID_ARMOR)
 			return true;
 		return false;
 	}
 
 	private void applyEnchants() {
-		if (inv[0].getItem() == Items.book)
-			inv[0] = new ItemStack(Items.enchanted_book);
-		ReikaEnchantmentHelper.removeEnchantments(inv[0], selected.keySet());
-		if (inv[1] != null) {
-			ReikaEnchantmentHelper.removeEnchantments(inv[1], selected.keySet());
-			int dmg = 0;
-			for (Entry<Enchantment, Integer> e : selected.entrySet())
-				dmg += e.getValue()*ReikaRandomHelper.getRandomBetween(4D, 15D)*this.getCostFactor(e.getKey());
-			inv[1].damageItem(dmg, this.getPlacer());
+		if (inv.get(0).is(Items.BOOK))
+			inv.set(0, new ItemStack(Items.ENCHANTED_BOOK));
+		ItemStack out = inv.get(0);
+		HashMap<Holder<Enchantment>, Integer> apply = new HashMap<>();
+		for (Entry<ResourceKey<Enchantment>, Integer> en : selected.entrySet()) {
+			Holder<Enchantment> h = this.holder(en.getKey());
+			if (h != null)
+				apply.put(h, en.getValue());
 		}
-		ReikaEnchantmentHelper.applyEnchantments(inv[0], selected);
-		tank.removeLiquid(this.getConsumedChroma());
+		ItemStack catalyst = inv.get(1);
+		if (!catalyst.isEmpty()) {
+			EnchantmentHelper.updateEnchantments(catalyst, m -> m.removeIf(h -> apply.containsKey(h)));
+			int dmg = 0;
+			for (Entry<Holder<Enchantment>, Integer> e : apply.entrySet())
+				dmg += e.getValue()*ReikaRandomHelper.getRandomBetween(4D, 15D)*this.getCostFactor(e.getKey().unwrapKey().orElse(null));
+			if (catalyst.isDamageableItem() && level instanceof ServerLevel sl)
+				catalyst.hurtAndBreak(dmg, sl, null, item -> {});
+			inv.set(1, catalyst);
+		}
+		// V33a removed then re-added the selected enchantments, so each is set to exactly the selected level.
+		EnchantmentHelper.updateEnchantments(out, m -> {
+			for (Entry<Holder<Enchantment>, Integer> e : apply.entrySet()) {
+				if (e.getValue() > 0)
+					m.set(e.getKey(), e.getValue());
+			}
+		});
+		this.removeLiquid(this.getConsumedChroma());
+		this.setChanged();
 		this.syncAllData(true);
 	}
 
 	public int getConsumedChroma() {
 		int total = 0;
-		for (Enchantment e : selected.keySet()) {
-			float level = selected.get(e);
-			if (inv[1] != null)
-				level = Math.max(0.25F, level-0.8F*ReikaEnchantmentHelper.getEnchantmentLevel(e, inv[1]));
-			float add = level*CHROMA_PER_LEVEL_BASE*this.getCostFactor(e);
+		ItemStack catalyst = inv.get(1);
+		for (Entry<ResourceKey<Enchantment>, Integer> en : selected.entrySet()) {
+			float lvl = en.getValue();
+			if (!catalyst.isEmpty() && level != null) {
+				Holder<Enchantment> h = this.holder(en.getKey());
+				if (h != null)
+					lvl = Math.max(0.25F, lvl-0.8F*levelOn(h, catalyst));
+			}
+			float add = lvl*CHROMA_PER_LEVEL_BASE*this.getCostFactor(en.getKey());
 			if (this.isAssisted())
 				add /= Math.min(2.5F, 1+this.getAssistPower());
-			add = Math.max(add, 50*level);
+			add = Math.max(add, 50*lvl);
 			add = ReikaMathLibrary.roundToNearestX(100, Math.round(add));
 			total += (int)add;
 		}
 		return total;
 	}
 
-	private float getCostFactor(Enchantment e) {
-		EnchantmentTier t = tiers.get(e);
+	private float getCostFactor(ResourceKey<Enchantment> e) {
+		EnchantmentTier t = e == null ? null : tiers.get(e);
+		if (t == null && e != null) {
+			// V33a looked "Multishot" and "Soulbound" up by name among the registered enchantments and made them rare.
+			String path = e.identifier().getPath();
+			if (path.equals("multishot") || path.equals("soulbound"))
+				t = EnchantmentTier.RARE;
+		}
 		if (t == null)
 			t = EnchantmentTier.NORMAL;
 		return t.costFactor;
 	}
 
-	public boolean setEnchantment(Enchantment e, int level) {
-		this.onEnchantChanged(e);
-		level = Math.min(this.getMaxEnchantmentLevel(e), level);
+	public boolean setEnchantment(Holder<Enchantment> e, int level) {
+		ResourceKey<Enchantment> key = e.unwrapKey().orElseThrow();
+		this.onEnchantChanged();
+		level = Math.min(getMaxEnchantmentLevel(e), level);
 		if (level <= 0) {
-			this.removeEnchantment(e);
+			this.removeEnchantment(key);
 			return true;
 		}
 		else {
-			selected.put(e, level);
+			selected.put(key, level);
+			this.setChanged();
 			return true;
 		}
 	}
 
-	private void onEnchantChanged(Enchantment e) {
+	private void onEnchantChanged() {
 		progress.reset();
 		progressTimer = 0;
 	}
 
-	public static int getMaxEnchantmentLevel(Enchantment e) {
-		if (e == Enchantment.fortune)
+	public static int getMaxEnchantmentLevel(Holder<Enchantment> e) {
+		if (e.is(Enchantments.FORTUNE))
 			return 5;
-		if (e == Enchantment.looting)
+		if (e.is(Enchantments.LOOTING))
 			return 5;
-		if (e == Enchantment.respiration)
+		if (e.is(Enchantments.RESPIRATION))
 			return 5;
-		if (e == Enchantment.field_151370_z) //luck of sea
+		if (e.is(Enchantments.LUCK_OF_THE_SEA))
 			return 5;
-		if (e == Enchantment.power)
+		if (e.is(Enchantments.POWER))
 			return 10;
-		if (e == Enchantment.sharpness)
+		if (e.is(Enchantments.SHARPNESS))
 			return 10;
-		if (e == Enchantment.unbreaking)
+		if (e.is(Enchantments.UNBREAKING))
 			return 5;
-		return e.getMaxLevel();
+		ChromaEnchants ce = chromatic(e);
+		return ce != null ? ce.getEnchantment().getMaxLevel() : e.value().getMaxLevel();
 	}
 
-	public void removeEnchantment(Enchantment e) {
+	private static ChromaEnchants chromatic(Holder<Enchantment> e) {
+		for (ChromaEnchants ce : ChromaEnchants.enchantmentList) {
+			if (e.is(ce.key()))
+				return ce;
+		}
+		return null;
+	}
+
+	public void removeEnchantment(ResourceKey<Enchantment> e) {
 		selected.remove(e);
-		this.onEnchantChanged(e);
+		this.onEnchantChanged();
+		this.setChanged();
 	}
 
-	public boolean incrementEnchantment(Enchantment e, boolean toMax, EntityPlayer ep) {
+	public boolean incrementEnchantment(Holder<Enchantment> e, boolean toMax, Player ep) {
 		int level = this.getEnchantment(e);
-		int max = this.getAvailableEnchantmentLevel(e, ep);
-		int newlevel = Math.min(max, toMax ? this.getMaxEnchantmentLevel(e) : level+1);
+		int max = getAvailableEnchantmentLevel(e, ep);
+		int newlevel = Math.min(max, toMax ? getMaxEnchantmentLevel(e) : level+1);
 		return this.setEnchantment(e, newlevel);
 	}
 
-	public void decrementEnchantment(Enchantment e, boolean toZero) {
+	public void decrementEnchantment(Holder<Enchantment> e, boolean toZero) {
 		int level = this.getEnchantment(e);
 		int newlevel = toZero ? 0 : Math.max(level-1, 0);
 		this.setEnchantment(e, newlevel);
@@ -420,18 +512,19 @@ public class TileEntityAutoEnchanter extends FluidReceiverInventoryBase implemen
 
 	public void clearEnchantments() {
 		selected.clear();
+		this.setChanged();
 	}
 
-	public int getEnchantment(Enchantment e) {
-		return selected.containsKey(e) ? selected.get(e) : 0;
+	public int getEnchantment(Holder<Enchantment> e) {
+		return e.unwrapKey().map(k -> selected.getOrDefault(k, 0)).orElse(0);
 	}
 
-	public Map<Enchantment, Integer> getEnchantments() {
+	public Map<ResourceKey<Enchantment>, Integer> getEnchantments() {
 		return Collections.unmodifiableMap(selected);
 	}
 
 	@Override
-	protected void animateWithTick(World world, int x, int y, int z) {
+	protected void animateWithTick(Level world, BlockPos pos) {
 
 	}
 
@@ -441,59 +534,44 @@ public class TileEntityAutoEnchanter extends FluidReceiverInventoryBase implemen
 	}
 
 	@Override
-	public boolean isItemValidForSlot(int i, ItemStack itemstack) {
+	public boolean canPlaceItem(int i, ItemStack itemstack) {
 		return this.isValid(itemstack);
 	}
 
 	@Override
-	public boolean canExtractItem(int i, ItemStack itemstack, int j) {
-		return ReikaEnchantmentHelper.hasEnchantments(itemstack);
+	public boolean canTakeItemThroughFace(int i, ItemStack itemstack, Direction side) {
+		return EnchantmentHelper.hasAnyEnchantments(itemstack) || itemstack.is(Items.ENCHANTED_BOOK);
 	}
 
 	@Override
-	public int getInventoryStackLimit() {
+	public int getMaxStackSize() {
 		return 1;
 	}
 
 	@Override
-	protected void writeSyncTag(NBTTagCompound NBT) {
+	protected void writeSyncTag(CompoundTag NBT) {
 		super.writeSyncTag(NBT);
 
-		for (int i = 0; i < Enchantment.enchantmentsList.length; i++) {
-			if (Enchantment.enchantmentsList[i] != null) {
-				int lvl = this.getEnchantment(Enchantment.enchantmentsList[i]);
-				NBT.setInteger(Enchantment.enchantmentsList[i].getName(), lvl);
-			}
-		}
+		CompoundTag ench = new CompoundTag();
+		for (Entry<ResourceKey<Enchantment>, Integer> e : selected.entrySet())
+			ench.putInt(e.getKey().identifier().toString(), e.getValue());
+		NBT.put("enchants", ench);
+		NBT.putInt("chroma", chroma);
 	}
 
 	@Override
-	protected void readSyncTag(NBTTagCompound NBT) {
+	protected void readSyncTag(CompoundTag NBT) {
 		super.readSyncTag(NBT);
 
-		selected = new HashMap();
-		for (int i = 0; i < Enchantment.enchantmentsList.length; i++) {
-			if (Enchantment.enchantmentsList[i] != null) {
-				int lvl = NBT.getInteger(Enchantment.enchantmentsList[i].getName());
-				if (lvl > 0)
-					selected.put(Enchantment.enchantmentsList[i], lvl);
-			}
+		selected = new LinkedHashMap<>();
+		CompoundTag ench = NBT.getCompoundOrEmpty("enchants");
+		for (String k : ench.keySet()) {
+			Identifier id = Identifier.tryParse(k);
+			int lvl = ench.getIntOr(k, 0);
+			if (id != null && lvl > 0)
+				selected.put(ResourceKey.create(Registries.ENCHANTMENT, id), lvl);
 		}
-	}
-
-	@Override
-	public int getCapacity() {
-		return 12000;//6000;
-	}
-
-	@Override
-	public Fluid getInputFluid() {
-		return FluidRegistry.getFluid("chroma");
-	}
-
-	@Override
-	public boolean canReceiveFrom(ForgeDirection from) {
-		return true;
+		chroma = Math.clamp(NBT.getIntOr("chroma", 0), 0, CAPACITY);
 	}
 
 	@Override
@@ -503,7 +581,7 @@ public class TileEntityAutoEnchanter extends FluidReceiverInventoryBase implemen
 
 	@Override
 	public OperationState getState() {
-		return this.isValid(inv[0]) && this.enchanting() ? (this.hasSufficientChroma() ? OperationState.RUNNING : OperationState.PENDING) : OperationState.INVALID;
+		return this.isValid(inv.get(0)) && this.enchanting() ? (this.hasSufficientChroma() ? OperationState.RUNNING : OperationState.PENDING) : OperationState.INVALID;
 	}
 
 	private static enum EnchantmentTier {
@@ -520,67 +598,84 @@ public class TileEntityAutoEnchanter extends FluidReceiverInventoryBase implemen
 		}
 	}
 
-	public static boolean isBlacklisted(Enchantment e) {
-		if (e.getName().toLowerCase(Locale.ENGLISH).startsWith("enchantment.molecule")) //Minechem
-			return true;
-		if (ModList.THAUMCRAFT.isLoaded() && InfusionEnchantmentHandler.instance.isInfusionEnchantment(e))
+	/** V33a also blacklisted Minechem's molecule enchantments and Thaumcraft infusion enchantments by name. */
+	public static boolean isBlacklisted(ResourceKey<Enchantment> e) {
+		if (e.identifier().getPath().toLowerCase(Locale.ENGLISH).startsWith("molecule"))
 			return true;
 		return blacklist.contains(e);
 	}
 
-	public static void blacklistEnchantment(Enchantment e) {
-		if (ReikaEnchantmentHelper.isVanillaEnchant(e)) {
-			ChromatiCraft.logger.logError("You cannot blacklist vanilla enchantments!");
+	/** V33a API: other mods may keep an enchantment out of the enchanter (never a vanilla or ChromatiCraft one). */
+	public static void blacklistEnchantment(ResourceKey<Enchantment> e) {
+		String ns = e.identifier().getNamespace();
+		if (ns.equals("minecraft")) {
+			ChromatiCraft.LOGGER.error("You cannot blacklist vanilla enchantments!");
 		}
-		else if (e instanceof ChromaticEnchantment) {
-			ChromatiCraft.logger.logError("You cannot blacklist ChromatiCraft enchantments!");
+		else if (ns.equals(ChromatiCraft.MODID)) {
+			ChromatiCraft.LOGGER.error("You cannot blacklist ChromatiCraft enchantments!");
 		}
 		else {
 			blacklist.add(e);
-			ChromatiCraft.logger.log("Received request to blacklist enchantment "+e.getName()+" from "+ReikaRegistryHelper.getActiveLoadingMod());
+			ChromatiCraft.LOGGER.info("Received request to blacklist enchantment "+e.identifier());
 		}
 	}
 
-	public static int getAvailableEnchantmentLevel(Enchantment e, EntityPlayer ep) {
-		return e instanceof ChromaticEnchantment ? getMaxEnchantment(ep, (ChromaticEnchantment)e) : getMaxEnchantmentLevel(e);
+	public static int getAvailableEnchantmentLevel(Holder<Enchantment> e, Player ep) {
+		ChromaEnchants ce = chromatic(e);
+		return ce != null ? getMaxEnchantment(ep, ce) : getMaxEnchantmentLevel(e);
 	}
 
-	private static int getMaxEnchantment(EntityPlayer ep, ChromaticEnchantment e) {
-		for (int i = 1; i <= e.getMaxLevel(); i++) {
-			if (!e.isVisibleToPlayer(ep, i)) {
+	private static int getMaxEnchantment(Player ep, ChromaEnchants e) {
+		int max = e.getEnchantment().getMaxLevel();
+		for (int i = 1; i <= max; i++) {
+			if (!e.getEnchantment().isVisibleToPlayer(ep, i)) {
 				return i-1;
 			}
 		}
-		return e.getMaxLevel();
+		return max;
 	}
 
 	public boolean isAssisted() {
-		return worldObj.getBlock(xCoord, yCoord+1, zCoord) instanceof BlockEnchantmentTable;
+		return level != null && level.getBlockState(this.getBlockPos().above()).getBlock() instanceof EnchantingTableBlock;
 	}
 
+	/**
+	 * V33a: the bookshelf power around the table above -- each of the eight directions whose two blocks next to the
+	 * table are air counts the two-high column two blocks out (and, on diagonals, the two flanking columns), as a
+	 * fraction of the most it could be.
+	 */
 	private float getAssistPower() {
 		float ret = 0;
 		float max = 0;
 
-		int y = yCoord+1;
+		BlockPos p = this.getBlockPos();
+		int x = p.getX();
+		int y = p.getY()+1;
+		int z = p.getZ();
 		for (int dz = -1; dz <= 1; dz++) {
 			for (int dx = -1; dx <= 1; dx++) {
-				if ((dz != 0 || dx != 0) && worldObj.isAirBlock(xCoord+dx, y, zCoord+dz) && worldObj.isAirBlock(xCoord+dx, y+1, zCoord+dz)) {
-					ret += ForgeHooks.getEnchantPower(worldObj, xCoord+dx*2, y, zCoord+dz*2);
-					ret += ForgeHooks.getEnchantPower(worldObj, xCoord+dx*2, y+1, zCoord+dz*2);
+				if ((dz != 0 || dx != 0) && level.isEmptyBlock(new BlockPos(x+dx, y, z+dz)) && level.isEmptyBlock(new BlockPos(x+dx, y+1, z+dz))) {
+					ret += this.enchantPower(x+dx*2, y, z+dz*2);
+					ret += this.enchantPower(x+dx*2, y+1, z+dz*2);
 					max += 2;
 
 					if (dx != 0 && dz != 0) {
-						ret += ForgeHooks.getEnchantPower(worldObj, xCoord+dx*2, y, zCoord+dz);
-						ret += ForgeHooks.getEnchantPower(worldObj, xCoord+dx*2, y+1, zCoord+dz);
-						ret += ForgeHooks.getEnchantPower(worldObj, xCoord+dx, y, zCoord+dz*2);
-						ret += ForgeHooks.getEnchantPower(worldObj, xCoord+dx, y+1, zCoord+dz*2);
+						ret += this.enchantPower(x+dx*2, y, z+dz);
+						ret += this.enchantPower(x+dx*2, y+1, z+dz);
+						ret += this.enchantPower(x+dx, y, z+dz*2);
+						ret += this.enchantPower(x+dx, y+1, z+dz*2);
 						max += 4;
 					}
 				}
 			}
 		}
-		return ret/max;
+		return max > 0 ? ret/max : 0;
+	}
+
+	/** Forge {@code ForgeHooks.getEnchantPower}: NeoForge's per-block enchant power. */
+	private float enchantPower(int x, int y, int z) {
+		BlockPos at = new BlockPos(x, y, z);
+		return level.getBlockState(at).getEnchantPowerBonus(level, at);
 	}
 
 	@Override
@@ -588,14 +683,80 @@ public class TileEntityAutoEnchanter extends FluidReceiverInventoryBase implemen
 		return side > 1 && this.isAssisted() ? 1 : 0;
 	}
 
+	/** V33a OperationInterval.hasWork (the port's interface does not carry it). */
+	public boolean hasWork() {
+		return this.getState() == OperationState.RUNNING;
+	}
+
+	/** V33a {@code FluidReceiverInventoryBase}: liquid chroma in from any side, never out. */
+	public ResourceHandler<FluidResource> fluidHandler() {
+		return fluidHandler;
+	}
+
+	/** The menu's synchronised values: progress and chroma level (V33a sent a progress bar and a tank packet). */
+	public final ContainerData data = new ContainerData() {
+		@Override
+		public int get(int index) {
+			return switch(index) {
+				case 0 -> progressTimer;
+				case 1 -> chroma;
+				default -> 0;
+			};
+		}
+
+		@Override
+		public void set(int index, int value) {
+			switch(index) {
+				case 0 -> progressTimer = value;
+				case 1 -> chroma = value;
+			}
+		}
+
+		@Override
+		public int getCount() {
+			return 2;
+		}
+	};
+
 	@Override
-	public void removeLiquid(int amt) {
-		tank.removeLiquid(amt);
+	public Component getDisplayName() {
+		return Component.translatable(this.getBlockState().getBlock().getDescriptionId());
 	}
 
 	@Override
-	public boolean hasWork() {
-		return this.getState() == OperationState.RUNNING;
+	public AbstractContainerMenu createMenu(int id, Inventory inventory, Player player) {
+		return new MenuAutoEnchanter(id, inventory, this, data);
+	}
+
+	private final class EnchanterFluidHandler extends SnapshotJournal<Integer> implements ResourceHandler<FluidResource> {
+		@Override public int size() { return 1; }
+		@Override public FluidResource getResource(int index) {
+			return index == 0 && chroma > 0 ? FluidResource.of(ChromaFluids.CHROMA.get()) : FluidResource.EMPTY;
+		}
+		@Override public long getAmountAsLong(int index) { return index == 0 ? chroma : 0; }
+		@Override public long getCapacityAsLong(int index, FluidResource resource) {
+			return index == 0 && (resource.isEmpty() || this.isValid(index, resource)) ? CAPACITY : 0;
+		}
+		@Override public boolean isValid(int index, FluidResource resource) {
+			return index == 0 && !resource.isEmpty() && resource.getFluid() == ChromaFluids.CHROMA.get();
+		}
+		@Override public int insert(int index, FluidResource resource, int amount, TransactionContext transaction) {
+			TransferPreconditions.checkNonEmptyNonNegative(resource, amount);
+			if (!this.isValid(index, resource))
+				return 0;
+			int accepted = Math.min(amount, CAPACITY-chroma);
+			if (accepted <= 0)
+				return 0;
+			this.updateSnapshots(transaction);
+			chroma += accepted;
+			return accepted;
+		}
+		@Override public int extract(int index, FluidResource resource, int amount, TransactionContext transaction) {
+			return 0;
+		}
+		@Override protected Integer createSnapshot() { return chroma; }
+		@Override protected void revertToSnapshot(Integer snapshot) { chroma = snapshot; }
+		@Override protected void onRootCommit(Integer originalState) { setChanged(); }
 	}
 
 }

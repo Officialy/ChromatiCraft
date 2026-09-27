@@ -152,6 +152,7 @@ public class ChromaModelProvider extends ModelProvider {
 		crystalChargerModel(blockStateOut, itemModelOut, modelOut);
 		lumenTurretModel(blockStateOut, itemModelOut, modelOut);
 		lumenWireModel(blockStateOut, itemModelOut, modelOut);
+		autoEnchanterModel(blockStateOut, itemModelOut, modelOut);
 		pylonTurboModel(blockStateOut, itemModelOut, modelOut);
 		personalChargerModel(blockStateOut, itemModelOut, modelOut);
 		collectorModel(blockStateOut, itemModelOut, modelOut);
@@ -1971,6 +1972,28 @@ public class ChromaModelProvider extends ModelProvider {
 				TextureMapping.cube(particle), modelOut);
 		itemModelOut.accept(ChromaBlocks.LUMEN_TURRET.get().asItem(),
 				ItemModelUtils.specialModel(itemBase, new reika.chromaticraft.render.item.LumenTurretItemRenderer.Unbaked()));
+	}
+
+	/**
+	 * V33a BlockChromaTile with VariableTexture: tile/enchanter_bottom, _top and _side, the sides becoming
+	 * enchanter_side_variant while an enchanting table sits on top.
+	 */
+	private static void autoEnchanterModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		Identifier[] models = new Identifier[2];
+		for (int i = 0; i < 2; i++) {
+			TextureMapping textures = new TextureMapping()
+					.put(TextureSlot.SIDE, new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/tile/enchanter_side"+(i == 1 ? "_variant" : ""))))
+					.put(TextureSlot.TOP, new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/tile/enchanter_top")))
+					.put(TextureSlot.BOTTOM, new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/tile/enchanter_bottom")));
+			models[i] = ModelTemplates.CUBE_BOTTOM_TOP.create(
+					Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/auto_enchanter"+(i == 1 ? "_assisted" : "")), textures, modelOut);
+		}
+		blockStateOut.accept(MultiVariantGenerator.dispatch(ChromaBlocks.AUTO_ENCHANTER.get()).with(
+				PropertyDispatch.initial(reika.chromaticraft.block.BlockAutoEnchanter.ASSISTED)
+						.select(false, new MultiVariant(WeightedList.of(new Variant(models[0]))))
+						.select(true, new MultiVariant(WeightedList.of(new Variant(models[1]))))));
+		itemModelOut.accept(ChromaBlocks.AUTO_ENCHANTER.get().asItem(), ItemModelUtils.plainModel(models[0]));
 	}
 
 	/**

@@ -1,0 +1,81 @@
+{
+  "type": "chromaticraft:casting",
+  "duration": 20,
+  "experience": 40,
+  "grid": [
+    {
+      "ingredient": "minecraft:emerald",
+      "slot": 0
+    },
+    {
+      "ingredient": "minecraft:gold_ingot",
+      "slot": 1
+    },
+    {
+      "ingredient": "minecraft:emerald",
+      "slot": 2
+    },
+    {
+      "ingredient": "minecraft:obsidian",
+      "slot": 3
+    },
+    {
+      "ingredient": "minecraft:enchanting_table",
+      "slot": 4
+    },
+    {
+      "ingredient": "minecraft:obsidian",
+      "slot": 5
+    },
+    {
+      "ingredient": "minecraft:stone_bricks",
+      "slot": 6
+    },
+    {
+      "ingredient": "minecraft:obsidian",
+      "slot": 7
+    },
+    {
+      "ingredient": "minecraft:stone_bricks",
+      "slot": 8
+    }
+  ],
+  "result": {
+    "id": "chromaticraft:auto_enchanter"
+  },
+  "runes": [
+    {
+      "element": "black",
+      "offset": [
+        -4,
+        0,
+        -3
+      ]
+    },
+    {
+      "element": "purple",
+      "offset": [
+        -3,
+        0,
+        -4
+      ]
+    },
+    {
+      "element": "black",
+      "offset": [
+        4,
+        0,
+        3
+      ]
+    },
+    {
+      "element": "purple",
+      "offset": [
+        3,
+        0,
+        4
+      ]
+    }
+  ],
+  "tier": "temple"
+}
