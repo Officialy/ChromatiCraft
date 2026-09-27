@@ -42,6 +42,10 @@ public final class ChromaNetwork {
 		registrar.playToClient(ArtefactFx.TYPE, ArtefactFx.CODEC, ChromaNetwork::handleArtefactFx);
 		registrar.playToClient(ArtefactZone.TYPE, ArtefactZone.CODEC, ChromaNetwork::handleArtefactZone);
 		registrar.playToClient(EnderEyeSync.TYPE, EnderEyeSync.CODEC, ChromaNetwork::handleEnderEyeSync);
+		registrar.playToClient(StructureError.TYPE, StructureError.CODEC, (payload, context) -> context.enqueueWork(() ->
+				ClientPayloadHandlers.structureError(payload.pos())));
+		registrar.playToClient(ProbeConnectivity.TYPE, ProbeConnectivity.CODEC, (payload, context) -> context.enqueueWork(() ->
+				ClientPayloadHandlers.probeConnectivity(payload.element(), payload.connected(), payload.valid())));
 		registrar.playToClient(LaunchFire.TYPE, LaunchFire.CODEC, (payload, context) -> context.enqueueWork(() ->
 				ClientPayloadHandlers.launchFire(payload.pos())));
 		registrar.playToClient(PylonCache.TYPE, PylonCache.CODEC, (payload, context) -> context.enqueueWork(() ->
@@ -214,6 +218,31 @@ public final class ChromaNetwork {
 				net.minecraft.network.codec.ByteBufCodecs.VAR_INT, EnderEyeSync::entityId,
 				net.minecraft.network.codec.ByteBufCodecs.VAR_INT, EnderEyeSync::ticks, EnderEyeSync::new);
 		@Override public Type<EnderEyeSync> type() { return TYPE; }
+	}
+
+	/** V33a STRUCTUREERROR: a structure check found the wrong block here. */
+	public record StructureError(BlockPos pos) implements CustomPacketPayload {
+		public static final Type<StructureError> TYPE = createType("structure_error");
+		public static final StreamCodec<ByteBuf, StructureError> CODEC = BlockPos.STREAM_CODEC.map(StructureError::new, StructureError::pos);
+		@Override public Type<StructureError> type() { return TYPE; }
+	}
+
+	/** V33a sent it to everyone within 32 blocks. */
+	public static void sendStructureError(ServerLevel level, BlockPos pos) {
+		PacketDistributor.sendToPlayersNear(level, null, pos.getX()+0.5, pos.getY()+0.5, pos.getZ()+0.5, 32, new StructureError(pos));
+	}
+
+	/** V33a CONNECTIVITY: one element's result of an Examination Crystals connectivity check. */
+	public record ProbeConnectivity(int element, boolean connected, boolean valid) implements CustomPacketPayload {
+		public static final Type<ProbeConnectivity> TYPE = createType("probe_connectivity");
+		public static final StreamCodec<ByteBuf, ProbeConnectivity> CODEC = StreamCodec.composite(
+				ByteBufCodecs.VAR_INT, ProbeConnectivity::element, ByteBufCodecs.BOOL, ProbeConnectivity::connected,
+				ByteBufCodecs.BOOL, ProbeConnectivity::valid, ProbeConnectivity::new);
+		@Override public Type<ProbeConnectivity> type() { return TYPE; }
+	}
+
+	public static void sendProbeConnectivity(ServerPlayer player, CrystalElement e, boolean connected, boolean valid) {
+		PacketDistributor.sendToPlayer(player, new ProbeConnectivity(e.ordinal(), connected, valid));
 	}
 
 	/** V33a LAUNCHFIRE: a Vertical Propulsion Panel just fired. */

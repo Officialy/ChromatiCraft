@@ -235,6 +235,20 @@ public class ChromaModelProvider extends ModelProvider {
 			itemModelOut.accept(item, ItemModelUtils.plainModel(ModelTemplates.FLAT_ITEM.create(
 					ModelLocationUtils.getModelLocation(item), TextureMapping.layer0(item), modelOut)));
 		}
+		// V33a offset the probe's sprite (53) by its charge state; the charge_state property picks probe_0..3.
+		{
+			Item probe = ChromaItems.PROBE.get();
+			net.minecraft.client.renderer.item.ItemModel.Unbaked[] states = new net.minecraft.client.renderer.item.ItemModel.Unbaked[4];
+			for (int i = 0; i < states.length; i++) {
+				states[i] = ItemModelUtils.plainModel(ModelTemplates.FLAT_ITEM.create(
+						Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "item/probe_"+i),
+						new TextureMapping().put(TextureSlot.LAYER0, new Material(
+								Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "item/probe_"+i))), modelOut));
+			}
+			itemModelOut.accept(probe, ItemModelUtils.rangeSelect(new reika.chromaticraft.client.PoweredItemClient.ChargeState(),
+					states[0], ItemModelUtils.override(states[1], 1), ItemModelUtils.override(states[2], 2),
+					ItemModelUtils.override(states[3], 3)));
+		}
 		// V33a ItemCrystalPotion used the vanilla potion icons with the liquid in the element colour, which is the
 		// potion tint reading POTION_CONTENTS' custom colour.
 		ChromaItems.CRYSTAL_POTIONS.values().forEach(potion -> itemModelOut.accept(potion.get(), ItemModelUtils.tintedModel(

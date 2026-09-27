@@ -184,6 +184,19 @@ public final class ClientPayloadHandlers {
 		reika.chromaticraft.world.iwg.PylonGenerator.instance.cachePylonLocations(entries);
 	}
 
+	public static void structureError(BlockPos pos) {
+		Minecraft mc = Minecraft.getInstance();
+		if (mc.level != null)
+			reika.chromaticraft.auxiliary.render.StructureErrorOverlays.instance.addCoordinate(mc.level.dimension(),
+					pos.getX(), pos.getY(), pos.getZ());
+	}
+
+	public static void probeConnectivity(int element, boolean connected, boolean valid) {
+		if (element >= 0 && element < reika.chromaticraft.registry.CrystalElement.elements.length)
+			reika.chromaticraft.auxiliary.render.ProbeInfoOverlayRenderer.instance.markConnectivity(
+					reika.chromaticraft.registry.CrystalElement.elements[element], connected, valid);
+	}
+
 	public static void launchFire(BlockPos pos) {
 		Minecraft mc = Minecraft.getInstance();
 		if (mc.level != null)

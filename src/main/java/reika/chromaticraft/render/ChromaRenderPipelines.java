@@ -91,6 +91,21 @@ public final class ChromaRenderPipelines {
             .withCull(false)
             .build();
 
+	/** As {@link #ADDITIVE_SPRITE} with no depth test: V33a ADDITIVEDARK drawn with GL_DEPTH_TEST off (the probe's error cubes). */
+	public static final RenderPipeline ADDITIVE_SPRITE_THROUGH_WALL = RenderPipeline.builder()
+			.withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "pipeline/additive_sprite_through_wall"))
+			.withBindGroupLayout(BindGroupLayouts.GLOBALS)
+			.withBindGroupLayout(BindGroupLayouts.MATRICES_PROJECTION)
+			.withVertexShader("core/position_tex_color")
+			.withFragmentShader("core/position_tex_color")
+			.withBindGroupLayout(BindGroupLayouts.SAMPLER0)
+			.withColorTargetState(new ColorTargetState(ADDITIVE_DARK))
+			.withVertexBinding(0, DefaultVertexFormat.POSITION_TEX_COLOR)
+			.withPrimitiveTopology(PrimitiveTopology.QUADS)
+			.withDepthStencilState(new DepthStencilState(CompareOp.ALWAYS_PASS, false))
+			.withCull(false)
+			.build();
+
 	/** Dense centre of the original pylon flare, alpha derived from its RGB rather than the atlas tile. */
 	public static final RenderPipeline PYLON_CORE = RenderPipeline.builder()
 			.withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "pipeline/pylon_core"))
@@ -447,6 +462,7 @@ public final class ChromaRenderPipelines {
 
     private static void registerPipelines(RegisterRenderPipelinesEvent event) {
         event.registerPipeline(ADDITIVE_SPRITE);
+        event.registerPipeline(ADDITIVE_SPRITE_THROUGH_WALL);
         event.registerPipeline(GUI_ADDITIVE_DARK);
         event.registerPipeline(TRANSLUCENT_SPRITE);
 		event.registerPipeline(PYLON_CORE);

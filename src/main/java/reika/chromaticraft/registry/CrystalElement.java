@@ -110,10 +110,6 @@ public enum CrystalElement implements reika.dragonapi.interfaces.IconEnum, Overl
 		return ReikaColorAPI.getBlue(this.getColor());
 	}
 
-	/**
-	 * V33a {@code getFaceRune()}: the animated 64-frame rune ({@code runes/frontpng/tileN_0}), as a block-atlas sprite
-	 * id for drawing it from code (the lexicon draws the raw strip instead).
-	 */
 	/** V33a {@code getIcon()} (IconEnum): the element's glow rune, {@code runes/glow/tileN_0}. */
 	@Override
 	public net.minecraft.resources.Identifier getIcon() {
@@ -121,6 +117,16 @@ public enum CrystalElement implements reika.dragonapi.interfaces.IconEnum, Overl
 				"block/runes/glow/tile"+this.ordinal()+"_0");
 	}
 
+	/** V33a {@code getOutlineRune()}: the rune's outline ({@code runes/outline/tileN_0}), as a block-atlas sprite id. */
+	public net.minecraft.resources.Identifier getOutlineRuneSprite() {
+		return net.minecraft.resources.Identifier.fromNamespaceAndPath(reika.chromaticraft.ChromatiCraft.MODID,
+				"block/runes/outline/tile"+this.ordinal()+"_0");
+	}
+
+	/**
+	 * V33a {@code getFaceRune()}: the animated 64-frame rune ({@code runes/frontpng/tileN_0}), as a block-atlas sprite
+	 * id for drawing it from code (the lexicon draws the raw strip instead).
+	 */
 	public net.minecraft.resources.Identifier getFaceRuneSprite() {
 		return net.minecraft.resources.Identifier.fromNamespaceAndPath(reika.chromaticraft.ChromatiCraft.MODID,
 				"block/runes/frontpng/tile"+this.ordinal()+"_0");

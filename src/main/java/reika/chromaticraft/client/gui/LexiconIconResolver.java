@@ -187,6 +187,7 @@ public final class LexiconIconResolver {
 			case "structmap" -> ChromaItems.STRUCTURE_MAP.get();
 			case "finder" -> ChromaItems.PYLON_FINDER.get();
 			case "lightgun" -> ChromaItems.LIGHT_GUN.get();
+			case "probe" -> ChromaItems.PROBE.get();
 			case "share" -> ChromaItems.OWNERSHIP_KEY.get();
 			case "cavepather" -> ChromaItems.CAVE_PATHER.get();
 			default -> null;

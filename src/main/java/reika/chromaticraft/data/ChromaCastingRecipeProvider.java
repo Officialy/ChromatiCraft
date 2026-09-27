@@ -332,6 +332,13 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 							'R', Ingredient.of(Items.REDSTONE_BLOCK)),
 					"sg ", "gRg", " gs");
 
+			// V33a ProbeRecipe, a plain CastingRecipe: black shards (the exact plain shard), glowstone dust and glass.
+			saveShaped("probe", new ItemStackTemplate(ChromaItems.PROBE.get()), 5, 5,
+					Map.of('s', Ingredient.of(ChromaItems.SHARDS.get(CrystalElement.BLACK).get()),
+							'g', Ingredient.of(Items.GLOWSTONE_DUST),
+							'G', Ingredient.of(Items.GLASS)),
+					" sg", "sGs", "gs ");
+
 			// V33a LaunchPadRecipe, a plain CastingRecipe: lime shards (the exact plain shard), aura dust, redstone and an
 			// engraved crystal stone.
 			saveShaped("launch_pad", new ItemStackTemplate(ChromaBlocks.LAUNCH_PAD.get().asItem()), 5, 5,

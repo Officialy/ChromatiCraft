@@ -151,6 +151,9 @@ public final class ChromaItems {
 	public static final DeferredItem<reika.chromaticraft.items.tools.ItemOwnerKey> OWNERSHIP_KEY =
 			reg("ownership_key", () -> new reika.chromaticraft.items.tools.ItemOwnerKey(itemProperties().stacksTo(1)));
 	/** V33a LIGHTGUN, the Illumination Gun. */
+	/** V33a PROBE, Examination Crystals (sprites 53-56 by charge state). */
+	public static final DeferredItem<reika.chromaticraft.items.tools.powered.ItemCrystalProbe> PROBE =
+			reg("probe", () -> new reika.chromaticraft.items.tools.powered.ItemCrystalProbe(itemProperties()));
 	public static final DeferredItem<reika.chromaticraft.items.tools.ItemLightGun> LIGHT_GUN =
 			reg("light_gun", () -> new reika.chromaticraft.items.tools.ItemLightGun(itemProperties().stacksTo(1)));
 	/** V33a FINDER, the Pylon Compass (a one-item ItemChromaTool). */

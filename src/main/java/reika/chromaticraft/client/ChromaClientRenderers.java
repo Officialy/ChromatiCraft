@@ -51,6 +51,8 @@ public final class ChromaClientRenderers {
 		bus.addListener(reika.chromaticraft.client.gui.ProgressionOverlay::register);
 		bus.addListener(reika.chromaticraft.client.gui.StructureNotificationOverlay::register);
 		bus.addListener(reika.chromaticraft.auxiliary.render.PylonFinderOverlay::register);
+		bus.addListener(reika.chromaticraft.auxiliary.render.ProbeInfoOverlayRenderer::register);
+		NeoForge.EVENT_BUS.addListener(reika.chromaticraft.auxiliary.render.StructureErrorOverlays::render);
 		bus.addListener(MouseoverStatusOverlay::register);
 		bus.addListener(ChromaClientRenderers::registerEnvironmentEffects);
 		bus.addListener((net.neoforged.fml.event.lifecycle.FMLClientSetupEvent event) -> event.enqueueWork(() ->

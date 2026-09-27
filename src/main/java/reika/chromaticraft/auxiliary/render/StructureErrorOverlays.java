@@ -12,132 +12,115 @@ package reika.chromaticraft.auxiliary.render;
 import java.util.ArrayList;
 import java.util.Iterator;
 
-import org.lwjgl.opengl.GL11;
+import com.mojang.blaze3d.vertex.PoseStack;
 
-import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.client.renderer.entity.RenderManager;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.util.IIcon;
-import net.minecraft.world.World;
+import net.minecraft.client.renderer.texture.TextureAtlas;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.core.BlockPos;
+import net.minecraft.data.AtlasIds;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 
-import reika.chromaticraft.ChromatiCraft;
+import reika.chromaticraft.client.render.WorldGeometryPass;
+import reika.chromaticraft.network.ChromaNetwork;
 import reika.chromaticraft.registry.ChromaIcons;
-import reika.chromaticraft.registry.ChromaPackets;
 import reika.chromaticraft.registry.ChromaSounds;
-import reika.dragonapi.DragonAPICore;
+import reika.chromaticraft.render.ChromaRenderPipelines;
+import reika.dragonapi.DragonAPI;
 import reika.dragonapi.instantiable.CubePoints;
-import reika.dragonapi.instantiable.cubepoints.CubeVertex;
+import reika.dragonapi.instantiable.CubePoints.CubeVertex;
 import reika.dragonapi.instantiable.data.blockstruct.filledblockarray.BlockMatchFailCallback;
-import reika.dragonapi.instantiable.data.immutable.BlockKey;
-import reika.dragonapi.instantiable.data.immutable.WorldLocation;
-import reika.dragonapi.instantiable.event.client.EntityRenderingLoopEvent;
 import reika.dragonapi.interfaces.BlockCheck;
-import reika.dragonapi.libraries.io.ReikaPacketHelper;
-import reika.dragonapi.libraries.io.ReikaSoundHelper;
-import reika.dragonapi.libraries.java.reikaglhelper.BlendMode;
-import reika.dragonapi.libraries.rendering.ReikaColorAPI;
-import reika.dragonapi.libraries.rendering.ReikaRenderHelper;
 import reika.dragonapi.libraries.java.ReikaJavaLibrary;
 import reika.dragonapi.libraries.java.ReikaRandomHelper;
+import reika.dragonapi.libraries.rendering.ReikaColorAPI;
 
-import cpw.mods.fml.common.FMLCommonHandler;
-import cpw.mods.fml.common.eventhandler.SubscribeEvent;
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
-
-
+/**
+ * V33a {@code StructureErrorOverlays}: where a structure check finds the wrong block, a jittering cube of static is
+ * drawn over that block, additive and through walls, for 1440 frames (fading over the last quarter); now and then one
+ * corner lurches out with an error blip. A failure found on the server reaches every player within 32 blocks.
+ */
 public class StructureErrorOverlays implements BlockMatchFailCallback {
 
 	public static final StructureErrorOverlays instance = new StructureErrorOverlays();
 
-	private final ArrayList<ErrorOverlay> coords = new ArrayList();
+	private final ArrayList<ErrorOverlay> coords = new ArrayList<>();
 
 	private static final int DURATION = 720*2;
+
+	/** Client only, and lazily: the server reaches this class through {@link #onBlockFailure}. */
+	private static final class Client {
+		private static final WorldGeometryPass PASS = new WorldGeometryPass("chromaticraft structure errors");
+	}
 
 	private StructureErrorOverlays() {
 
 	}
 
-	public void addCoordinate(World world, int x, int y, int z, BlockKey bk) {
-		coords.add(new ErrorOverlay(new WorldLocation(world, x, y, z)));
+	/** Client: a failed block of a structure in the given dimension. */
+	public void addCoordinate(ResourceKey<Level> dimension, int x, int y, int z) {
+		coords.add(new ErrorOverlay(dimension, new BlockPos(x, y, z)));
 	}
 
-	@SubscribeEvent
-	@SideOnly(Side.CLIENT)
-	public void render(EntityRenderingLoopEvent evt) {
-		if (!coords.isEmpty()) {
-			GL11.glPushMatrix();
-			GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
-			RenderManager rm = RenderManager.instance;
-			GL11.glTranslated(-rm.renderPosX, -rm.renderPosY, -rm.renderPosZ);
-			GL11.glDisable(GL11.GL_LIGHTING);
-			//GL11.glDisable(GL11.GL_TEXTURE_2D);
-			ReikaRenderHelper.disableEntityLighting();
-			GL11.glEnable(GL11.GL_BLEND);
-			GL11.glDepthMask(false);
-			GL11.glColor4f(1, 1, 1, 1);
-			GL11.glDisable(GL11.GL_DEPTH_TEST);
-			//BlendMode.DEFAULT.apply();
-			BlendMode.ADDITIVEDARK.apply();
-			GL11.glDisable(GL11.GL_ALPHA_TEST);
-			Tessellator.instance.startDrawingQuads();
-			int dim = Minecraft.getMinecraft().theWorld.provider.dimensionId;
-			EntityPlayer ep = Minecraft.getMinecraft().thePlayer;
+	/** Drawn after translucent blocks, against the finished scene, as V33a's entity-render-loop pass was. */
+	public static void render(RenderLevelStageEvent.AfterTranslucentBlocks evt) {
+		instance.renderAll(evt);
+	}
+
+	private void renderAll(RenderLevelStageEvent.AfterTranslucentBlocks evt) {
+		Minecraft mc = Minecraft.getInstance();
+		if (coords.isEmpty() || mc.level == null)
+			return;
+		ResourceKey<Level> dim = mc.level.dimension();
+		Vec3 camera = evt.getLevelRenderState().cameraRenderState.pos;
+		TextureAtlasSprite ico = mc.getAtlasManager().getAtlasOrThrow(AtlasIds.BLOCKS).getSprite(ChromaIcons.STATIC.getIcon());
+		PoseStack.Pose pose = new PoseStack().last();
+		Client.PASS.draw(ChromaRenderPipelines.ADDITIVE_SPRITE_THROUGH_WALL, TextureAtlas.LOCATION_BLOCKS,
+				new org.joml.Matrix4f(evt.getModelViewMatrix()), buffer -> {
 			Iterator<ErrorOverlay> it = coords.iterator();
 			while (it.hasNext()) {
 				ErrorOverlay loc = it.next();
-				if (loc.location.dimensionID == dim) {
-					this.renderPoint(loc, ep);
+				if (loc.dimension == dim) {
+					this.renderPoint(loc, buffer, pose, camera, ico);
 					loc.age--;
 					if (loc.age <= 0)
 						it.remove();
 				}
 			}
-			Tessellator.instance.draw();
-			GL11.glPopAttrib();
-			GL11.glPopMatrix();
-		}
+		});
 	}
 
-	@SideOnly(Side.CLIENT)
-	private void renderPoint(ErrorOverlay ticks, EntityPlayer ep) {
-		double o = 0.03125;
-		Tessellator v5 = Tessellator.instance;
-		//int a = ReikaRandomHelper.getRandomBetween(96, 160);
-		//int br = 255;//ReikaRandomHelper.getRandomBetween(127, 220);
+	private void renderPoint(ErrorOverlay ticks, com.mojang.blaze3d.vertex.VertexConsumer v5, PoseStack.Pose pose, Vec3 camera,
+			TextureAtlasSprite ico) {
 		int a = 255;
 		int br = ReikaRandomHelper.getRandomBetween(212, 255);
 		if (ticks.age < DURATION/4) {
 			float f = ticks.age*4F/DURATION;
 			br *= f;
 		}
-		/*
-		IIcon ico = ChromaIcons.STATIC.getIcon();
-		float u = ico.getMinU();
-		float v = ico.getMinV();
-		float du = ico.getMaxU();
-		float dv = ico.getMaxV();*/
-		v5.setColorRGBA_I(ReikaColorAPI.GStoHex(br), a);
-		v5.setBrightness(240);
-		ticks.renderArea(v5);
+		int color = a << 24 | ReikaColorAPI.GStoHex(br);
+		ticks.renderArea(v5, pose, camera, ico, color);
 	}
 
 	@Override
-	public void onBlockFailure(World world, int x, int y, int z, BlockCheck seek) {
-		if (FMLCommonHandler.instance().getEffectiveSide() == Side.CLIENT) {
-			this.addCoordinate(world, x, y, z, seek.asBlockKey());
+	public void onBlockFailure(Level world, int x, int y, int z, BlockCheck seek) {
+		if (world.isClientSide()) {
+			this.addCoordinate(world.dimension(), x, y, z);
 		}
-		else {
-			BlockKey bk = seek.asBlockKey();
-			ReikaPacketHelper.sendDataPacketWithRadius(ChromatiCraft.packetChannel, ChromaPackets.STRUCTUREERROR.ordinal(), world, x, y, z, 32, Block.getIdFromBlock(bk.blockID), bk.metadata);
+		else if (world instanceof ServerLevel level) {
+			ChromaNetwork.sendStructureError(level, new BlockPos(x, y, z));
 		}
 	}
 
 	private static class ErrorOverlay {
 
-		private final WorldLocation location;
+		private final ResourceKey<Level> dimension;
+		private final BlockPos location;
 
 		private final CubePoints box; //make randomly stretch a bit
 		private final CubePoints renderBox;
@@ -145,7 +128,8 @@ public class StructureErrorOverlays implements BlockMatchFailCallback {
 		private int age;
 		private String currentEdgeStretch;
 
-		private ErrorOverlay(WorldLocation loc) {
+		private ErrorOverlay(ResourceKey<Level> dim, BlockPos loc) {
+			dimension = dim;
 			location = loc;
 			box = CubePoints.fullBlock();
 			box.expand(0.03125);
@@ -154,49 +138,21 @@ public class StructureErrorOverlays implements BlockMatchFailCallback {
 			age = DURATION;
 		}
 
-		@SideOnly(Side.CLIENT)
-		public void renderArea(Tessellator v5) {
-			/*
-			v5.addVertexWithUV(c.xCoord, c.yCoord, c.zCoord, u, v);
-			v5.addVertexWithUV(c.xCoord+1, c.yCoord, c.zCoord, du, v);
-			v5.addVertexWithUV(c.xCoord+1, c.yCoord, c.zCoord+1, du, dv);
-			v5.addVertexWithUV(c.xCoord, c.yCoord, c.zCoord+1, u, dv);
-
-			v5.addVertexWithUV(c.xCoord, c.yCoord+1, c.zCoord+1, u, v);
-			v5.addVertexWithUV(c.xCoord+1, c.yCoord+1, c.zCoord+1, du, v);
-			v5.addVertexWithUV(c.xCoord+1, c.yCoord+1, c.zCoord, du, dv);
-			v5.addVertexWithUV(c.xCoord, c.yCoord+1, c.zCoord, u, dv);
-
-			v5.addVertexWithUV(c.xCoord+1, c.yCoord, c.zCoord, u, v);
-			v5.addVertexWithUV(c.xCoord+1, c.yCoord+1, c.zCoord, du, v);
-			v5.addVertexWithUV(c.xCoord+1, c.yCoord+1, c.zCoord+1, du, dv);
-			v5.addVertexWithUV(c.xCoord+1, c.yCoord, c.zCoord+1, u, dv);
-
-			v5.addVertexWithUV(c.xCoord, c.yCoord, c.zCoord+1, u, v);
-			v5.addVertexWithUV(c.xCoord, c.yCoord+1, c.zCoord+1, du, v);
-			v5.addVertexWithUV(c.xCoord, c.yCoord+1, c.zCoord, du, dv);
-			v5.addVertexWithUV(c.xCoord, c.yCoord, c.zCoord, u, dv);
-
-			v5.addVertexWithUV(c.xCoord+1, c.yCoord, c.zCoord+1, u, v);
-			v5.addVertexWithUV(c.xCoord+1, c.yCoord+1, c.zCoord+1, du, v);
-			v5.addVertexWithUV(c.xCoord, c.yCoord+1, c.zCoord+1, du, dv);
-			v5.addVertexWithUV(c.xCoord, c.yCoord, c.zCoord+1, u, dv);
-
-			v5.addVertexWithUV(c.xCoord, c.yCoord, c.zCoord, u, v);
-			v5.addVertexWithUV(c.xCoord, c.yCoord+1, c.zCoord, du, v);
-			v5.addVertexWithUV(c.xCoord+1, c.yCoord+1, c.zCoord, du, dv);
-			v5.addVertexWithUV(c.xCoord+1, c.yCoord, c.zCoord, u, dv);
-			 */
-			IIcon ico = ChromaIcons.STATIC.getIcon();
-			renderBox.renderIconOnSides(Minecraft.getMinecraft().theWorld, location.xCoord, location.yCoord, location.zCoord, ico, v5);
+		public void renderArea(com.mojang.blaze3d.vertex.VertexConsumer v5, PoseStack.Pose pose, Vec3 camera,
+				TextureAtlasSprite ico, int color) {
+			renderBox.renderIconOnSides(location.getX()-camera.x, location.getY()-camera.y, location.getZ()-camera.z,
+					ico, v5, pose, color);
 			if (age%5 == 0) {
 				if (age%40 == 0)
 					currentEdgeStretch = null;
 				double r = 0.03125*1.5;
-				String off = ReikaRandomHelper.doWithChance(0.033) ? ReikaJavaLibrary.getRandomCollectionEntry(DragonAPICore.rand, box.getVertices()).ID : null;
+				String off = ReikaRandomHelper.doWithChance(0.033) ? ReikaJavaLibrary.getRandomCollectionEntry(DragonAPI.rand, box.getVertices()).ID : null;
 				if (off != null) {
 					currentEdgeStretch = off;
-					ReikaSoundHelper.playClientSound(ChromaSounds.ERROR, location.xCoord, location.yCoord, location.zCoord, 0.5F, 2F);
+					Level world = Minecraft.getInstance().level;
+					if (world != null)
+						world.playLocalSound(location.getX()+0.5, location.getY()+0.5, location.getZ()+0.5,
+								ChromaSounds.ERROR.getSoundEvent(), SoundSource.BLOCKS, 0.5F, 2F, false);
 				}
 				this.jitter(off, r);
 			}

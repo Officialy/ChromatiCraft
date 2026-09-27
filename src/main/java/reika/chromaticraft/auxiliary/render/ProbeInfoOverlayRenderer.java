@@ -13,64 +13,61 @@ import java.util.EnumMap;
 import java.util.Iterator;
 import java.util.Map.Entry;
 
-import org.lwjgl.opengl.GL11;
-
+import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.util.IIcon;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.client.resources.sounds.SimpleSoundInstance;
+import net.minecraft.data.AtlasIds;
+import net.minecraft.resources.Identifier;
+import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
+import net.neoforged.neoforge.client.gui.GuiLayer;
+import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
 
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.registry.ChromaIcons;
-import reika.chromaticraft.registry.ChromaPackets;
 import reika.chromaticraft.registry.ChromaSounds;
 import reika.chromaticraft.registry.CrystalElement;
-import reika.dragonapi.libraries.io.ReikaPacketHelper;
-import reika.dragonapi.libraries.io.ReikaSoundHelper;
-import reika.dragonapi.libraries.io.ReikaTextureHelper;
-import reika.dragonapi.libraries.java.reikaglhelper.BlendMode;
 
-import cpw.mods.fml.common.FMLCommonHandler;
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
-
-
-public class ProbeInfoOverlayRenderer {
+/**
+ * V33a {@code ProbeInfoOverlayRenderer}: an Examination Crystals connectivity check shows, beside the crosshair, each
+ * element's outline rune with a check (reaches a source), a cross (conducts it but no path) or a no-entry sign (does not
+ * conduct it) -- the left column for the first eight elements, the right for the rest, staggered in and faded, for 480
+ * frames. A result found on the server is sent to the probing player.
+ */
+public class ProbeInfoOverlayRenderer implements GuiLayer {
 
 	public static final ProbeInfoOverlayRenderer instance = new ProbeInfoOverlayRenderer();
 
+	private static final Identifier ID = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "probe_connectivity");
+
 	private static final int CONNECTIVITY_DURATION = 480;
 
-	private final EnumMap<CrystalElement, PylonConnection> connectivityFlags = new EnumMap(CrystalElement.class);
+	private final EnumMap<CrystalElement, PylonConnection> connectivityFlags = new EnumMap<>(CrystalElement.class);
 
 	private ProbeInfoOverlayRenderer() {
 
 	}
 
-	@SideOnly(Side.CLIENT)
-	void renderConnectivityOverlays(EntityPlayer ep, int gsc) {
+	/** V33a drew it from ChromaOverlays' HUD pass; the camera-overlays layer is the same place in the 26.2 HUD. */
+	public static void register(RegisterGuiLayersEvent event) {
+		event.registerAbove(VanillaGuiLayers.CAMERA_OVERLAYS, ID, instance);
+	}
+
+	@Override
+	public void render(GuiGraphicsExtractor g, DeltaTracker delta) {
 		if (!connectivityFlags.isEmpty()) {
 			Iterator<Entry<CrystalElement, PylonConnection>> it = connectivityFlags.entrySet().iterator();
 			boolean nonEmpty = false;
-
-			Tessellator v5 = Tessellator.instance;
-			GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
-			GL11.glEnable(GL11.GL_BLEND);
-			GL11.glDepthMask(false);
-			GL11.glDisable(GL11.GL_DEPTH_TEST);
-			BlendMode.DEFAULT.apply();
-			ReikaTextureHelper.bindTerrainTexture();
-			v5.startDrawingQuads();
-			v5.setColorOpaque_I(0xffffff);
 
 			while (it.hasNext()) {
 				Entry<CrystalElement, PylonConnection> e = it.next();
 				PylonConnection tick = e.getValue();
 				if (tick.age == CONNECTIVITY_DURATION-5)
-					ReikaSoundHelper.playClientSound(ChromaSounds.BOUNCE, ep, 0.25F, 2F);
+					Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(ChromaSounds.BOUNCE.getSoundEvent(), 2F, 0.25F));
 				if (tick.shouldRender()) {
-					this.renderConnectivityStatus(v5, ep, gsc, tick);
+					this.renderConnectivityStatus(g, tick);
 				}
 				if (tick.age > 0)
 					tick.age--;
@@ -79,65 +76,42 @@ public class ProbeInfoOverlayRenderer {
 					it.remove();
 				}
 				else {
-					e.setValue(tick);
 					nonEmpty = true;
 				}
 			}
 
-			v5.draw();
-
 			if (!nonEmpty) {
 				connectivityFlags.clear();
 			}
-
-			GL11.glPopAttrib();
 		}
 	}
 
-	@SideOnly(Side.CLIENT)
-	private void renderConnectivityStatus(Tessellator v5, EntityPlayer ep, int gsc, PylonConnection pc) {
+	private void renderConnectivityStatus(GuiGraphicsExtractor g, PylonConnection pc) {
 		int ar = 12;
-		IIcon ico = pc.valid ? (pc.connected ? ChromaIcons.CHECK.getIcon() : ChromaIcons.X.getIcon()) : ChromaIcons.NOENTER.getIcon();
-		IIcon ico2 = pc.color.getOutlineRune();
+		var atlas = Minecraft.getInstance().getAtlasManager().getAtlasOrThrow(AtlasIds.BLOCKS);
+		TextureAtlasSprite ico = atlas.getSprite((pc.valid ? (pc.connected ? ChromaIcons.CHECK : ChromaIcons.X) : ChromaIcons.NOENTER).getIcon());
+		TextureAtlasSprite ico2 = atlas.getSprite(pc.color.getOutlineRuneSprite());
 
-		v5.setColorRGBA_I(0xffffff, pc.getAlpha());
+		int color = pc.getAlpha() << 24 | 0xffffff;
 
 		int dx = pc.color.ordinal() >= 8 ? 20 : -40;
 		int dy = (pc.color.ordinal()%8)*15-65;
 
-		int ox = dx+Minecraft.getMinecraft().displayWidth/(gsc*2)+ar-8;
-		int oy = dy+Minecraft.getMinecraft().displayHeight/(gsc*2)+ar-8;
+		int ox = dx+g.guiWidth()/2+ar-8;
+		int oy = dy+g.guiHeight()/2+ar-8;
 
-		double u = ico.getMinU();
-		double v = ico.getMinV();
-		double du = ico.getMaxU();
-		double dv = ico.getMaxV();
-
-		double u2 = ico2.getMinU();
-		double v2 = ico2.getMinV();
-		double du2 = ico2.getMaxU();
-		double dv2 = ico2.getMaxV();
-
-		double r = 12;
+		int r = 12;
 		int dw = 7;
-		v5.addVertexWithUV(ox+0+dw, oy+r, 0, u, dv);
-		v5.addVertexWithUV(ox+r+dw, oy+r, 0, du, dv);
-		v5.addVertexWithUV(ox+r+dw, oy+0, 0, du, v);
-		v5.addVertexWithUV(ox+0+dw, oy+0, 0, u, v);
-
-		v5.addVertexWithUV(ox+0-dw, oy+r, 0, u2, dv2);
-		v5.addVertexWithUV(ox+r-dw, oy+r, 0, du2, dv2);
-		v5.addVertexWithUV(ox+r-dw, oy+0, 0, du2, v2);
-		v5.addVertexWithUV(ox+0-dw, oy+0, 0, u2, v2);
+		g.blitSprite(RenderPipelines.GUI_TEXTURED, ico, ox+dw, oy, r, r, color);
+		g.blitSprite(RenderPipelines.GUI_TEXTURED, ico2, ox-dw, oy, r, r, color);
 	}
 
-	public void markConnectivity(EntityPlayer ep, CrystalElement e, boolean connected, boolean valid) {
-		if (FMLCommonHandler.instance().getEffectiveSide() == Side.CLIENT) {
-			connectivityFlags.put(e, new PylonConnection(e, connected, valid));
-		}
-		else {
-			ReikaPacketHelper.sendDataPacket(ChromatiCraft.packetChannel, ChromaPackets.CONNECTIVITY.ordinal(), (EntityPlayerMP)ep, e.ordinal(), connected ? 1 : 0, valid ? 1 : 0);
-		}
+	/**
+	 * Client only: records a result. V33a's method also sent it from the server; that half is
+	 * {@code ChromaNetwork.sendProbeConnectivity}, since this class (a GUI layer) must never load on a dedicated server.
+	 */
+	public void markConnectivity(CrystalElement e, boolean connected, boolean valid) {
+		connectivityFlags.put(e, new PylonConnection(e, connected, valid));
 	}
 
 	private static class PylonConnection {
@@ -169,7 +143,7 @@ public class ProbeInfoOverlayRenderer {
 				t = t-(CONNECTIVITY_DURATION-20);
 				ret = Math.min(255, 255-12*t);
 			}
-			return ret;
+			return Math.max(0, ret);
 		}
 
 	}

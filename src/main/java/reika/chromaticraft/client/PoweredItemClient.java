@@ -61,22 +61,45 @@ public final class PoweredItemClient {
 		event.register(CHARGE_STATE, ChargeState.MAP_CODEC);
 	}
 
+	/**
+	 * V33a {@code ItemCrystalProbe.renderExtraIcons}: with Control or when hovered, the mode icon from
+	 * {@code infoicons.png} -- a blinking lens for connectivity, a structure glyph cycling through the chroma colours for
+	 * the structure check, and the same glyph in white for multiblocks -- at half size in the slot's top right (full
+	 * size, hanging below and right, with Control).
+	 */
+	private static void probeIcons(GuiGraphicsExtractor graphics, SlotContext ctx) {
+		if (!ctx.ctrl() && !ctx.hovered())
+			return;
+		int act = reika.chromaticraft.items.tools.powered.ItemCrystalProbe.getActionType(ctx.stack());
+		int d = switch(act) {
+			case 0 -> (int)((System.currentTimeMillis()/500)%2);
+			default -> 2;
+		};
+		int c = 0xffffff;
+		if (act == 1) {
+			int[] arr = reika.chromaticraft.auxiliary.render.ChromaColorTiles.getChromaColorTiles();
+			c = arr[(int)((reika.dragonapi.libraries.rendering.ReikaRenderHelper.getRenderFrame()/6)%arr.length)];
+		}
+		int size = ctx.ctrl() ? 16 : 8;
+		int y = ctx.ctrl() ? ctx.y()+8 : ctx.y();
+		graphics.blit(RenderPipelines.GUI_TEXTURED, INFO_ICONS, ctx.x()+8, y, 16*d, 32, size, size, 16, 16, 256, 256,
+				0xff000000 | c);
+	}
+
 	private static void registerDecorators(RegisterItemDecorationsEvent event) {
+		registerExtraIcons(ChromaItems.PROBE.get(), PoweredItemClient::probeIcons);
 		for (var holder : ChromaItems.ITEMS.getEntries()) {
 			if (holder.get() instanceof PoweredItem)
 				event.register(holder.get(), new Decorator());
 		}
 	}
 
-	/** Where a slot is being drawn, and V33a's two modifiers for its overlay icons. */
-	public record SlotContext(ItemStack stack, int x, int y, boolean ctrl) {}
+	/** Where a slot is being drawn, whether its stack is under the mouse, and whether Control is held. */
+	public record SlotContext(ItemStack stack, int x, int y, boolean hovered, boolean ctrl) {}
 
-	/** Whether V33a's overlays show: shift held, or the stack is under the mouse in a container screen. */
-	private static boolean shouldShow(ItemStack stack) {
-		Minecraft mc = Minecraft.getInstance();
-		if (mc.hasShiftDown())
-			return true;
-		if (mc.gui.screen() instanceof AbstractContainerScreen<?> screen) {
+	/** V33a {@code RenderItemInSlotEvent.isRenderingStackHovered}: the stack is under the mouse in a container screen. */
+	private static boolean isHovered(ItemStack stack) {
+		if (Minecraft.getInstance().gui.screen() instanceof AbstractContainerScreen<?> screen) {
 			Slot slot = screen.getSlotUnderMouse();
 			return slot != null && slot.getItem() == stack;
 		}
@@ -92,12 +115,16 @@ public final class PoweredItemClient {
 
 		@Override
 		public boolean render(GuiGraphicsExtractor graphics, Font font, ItemStack stack, int x, int y) {
-			if (!(stack.getItem() instanceof PoweredItem pi) || !shouldShow(stack))
+			if (!(stack.getItem() instanceof PoweredItem pi))
 				return false;
 			boolean ctrl = Minecraft.getInstance().hasControlDown();
+			boolean hovered = isHovered(stack);
+			// V33a drew the item's own icons first, under its own condition.
 			BiConsumer<GuiGraphicsExtractor, SlotContext> extra = EXTRA_ICONS.get(stack.getItem());
 			if (extra != null)
-				extra.accept(graphics, new SlotContext(stack, x, y, ctrl));
+				extra.accept(graphics, new SlotContext(stack, x, y, hovered, ctrl));
+			if (!Minecraft.getInstance().hasShiftDown() && !hovered)
+				return false;
 
 			CrystalElement e = pi.getColor(stack);
 			int size = ctrl ? 16 : 8;

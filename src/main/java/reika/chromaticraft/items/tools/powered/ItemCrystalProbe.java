@@ -1,37 +1,45 @@
+/*******************************************************************************
+ * @author Reika Kalseki
+ *
+ * Copyright 2017
+ *
+ * All rights reserved.
+ * Distribution of the software in any form is only allowed with
+ * explicit, prior permission from the owner.
+ ******************************************************************************/
 package reika.chromaticraft.items.tools.powered;
 
-import java.util.List;
+import java.util.Locale;
+import java.util.function.Consumer;
 
-import org.apache.commons.lang3.text.WordUtils;
-import org.lwjgl.opengl.GL11;
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Mth;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.ItemUseAnimation;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.TooltipDisplay;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
 
-import net.minecraft.block.Block;
-import net.minecraft.client.gui.GuiScreen;
-import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.client.renderer.entity.RenderItem;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.EnumAction;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.MathHelper;
-import net.minecraft.util.MovingObjectPosition;
-import net.minecraft.world.World;
-import net.minecraftforge.client.IItemRenderer.ItemRenderType;
-import net.minecraftforge.common.util.ForgeDirection;
-
-import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.auxiliary.ChromaFX;
 import reika.chromaticraft.auxiliary.interfaces.ColoredMultiBlockChromaTile;
 import reika.chromaticraft.auxiliary.interfaces.MultiBlockChromaTile;
 import reika.chromaticraft.auxiliary.interfaces.SpecialStructureTile;
-import reika.chromaticraft.auxiliary.render.ProbeInfoOverlayRenderer;
 import reika.chromaticraft.auxiliary.render.StructureErrorOverlays;
 import reika.chromaticraft.auxiliary.structure.RitualStructure;
 import reika.chromaticraft.base.ItemPoweredChromaTool;
 import reika.chromaticraft.magic.ToolChargingSystem;
 import reika.chromaticraft.magic.interfaces.CrystalReceiver;
 import reika.chromaticraft.magic.network.CrystalNetworker;
+import reika.chromaticraft.network.ChromaNetwork;
 import reika.chromaticraft.registry.ChromaSounds;
 import reika.chromaticraft.registry.ChromaStructures;
 import reika.chromaticraft.registry.CrystalElement;
@@ -41,53 +49,54 @@ import reika.dragonapi.instantiable.data.blockstruct.FilledBlockArray;
 import reika.dragonapi.instantiable.data.immutable.Coordinate;
 import reika.dragonapi.instantiable.event.ScheduledTickEvent;
 import reika.dragonapi.instantiable.event.scheduledtickevent.ScheduledSoundEvent;
-import reika.dragonapi.instantiable.event.client.RenderItemInSlotEvent;
 import reika.dragonapi.libraries.ReikaPlayerAPI;
-import reika.dragonapi.libraries.io.ReikaTextureHelper;
-import reika.dragonapi.libraries.java.reikaglhelper.BlendMode;
-import reika.dragonapi.libraries.mathsci.reikamusichelper.MusicKey;
-import reika.dragonapi.libraries.rendering.ReikaRenderHelper;
+import reika.dragonapi.libraries.mathsci.ReikaMusicHelper.MusicKey;
+import reika.dragonapi.libraries.registry.ReikaItemHelper;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
-
+/**
+ * V33a {@code ItemCrystalProbe}, Examination Crystals: a blue-powered tool that, held for 2.5 seconds and released while
+ * looking at a block within 5, runs one of three inspections (sneak-use cycles them):
+ * <ul>
+ * <li>repeater connectivity (60 energy): for a crystal receiver, which elements it conducts and whether each reaches a
+ * source, shown beside the crosshair;</li>
+ * <li>structure check (1000): a ChromatiCraft multiblock's structure is matched, marking the first wrong block with a
+ * static cube, or chiming a rising triad when it is whole;</li>
+ * <li>multiblock (1500): the same for a DragonAPI multiblock block, checked from the face looked at.</li>
+ * </ul>
+ */
 public class ItemCrystalProbe extends ItemPoweredChromaTool {
 
 	public static final int CHARGE_TIME = 50;
 
-	public ItemCrystalProbe(int index) {
-		super(index);
+	public ItemCrystalProbe(Properties properties) {
+		super(properties);
 	}
 
 	@Override
-	public void addInformation(ItemStack is, EntityPlayer ep, List li, boolean vb) {
-		super.addInformation(is, ep, li, vb);
-		li.add("Mode: "+Inspections.list[this.getActionType(is)].displayName());
+	public void appendHoverText(ItemStack is, TooltipContext context, TooltipDisplay display, Consumer<Component> li,
+			TooltipFlag flag) {
+		super.appendHoverText(is, context, display, li, flag);
+		li.accept(Component.literal("Mode: "+Inspections.list[getActionType(is)].displayName()));
 	}
 
 	@Override
-	public void onPlayerStoppedUsing(ItemStack is, World world, EntityPlayer ep, int count) {
-		count = MathHelper.clamp_int(this.getMaxItemUseDuration(is)-count, 0, CHARGE_TIME);
-		//ReikaChatHelper.write(power+"  ->  "+charge);
-		//ReikaJavaLibrary.pConsole(count);
-		if (count >= CHARGE_TIME)
+	public boolean releaseUsing(ItemStack is, Level world, LivingEntity entity, int remaining) {
+		int count = Mth.clamp(this.getUseDuration(is, entity)-remaining, 0, CHARGE_TIME);
+		if (count >= CHARGE_TIME && entity instanceof Player ep)
 			this.fire(is, world, ep);
-		ep.setItemInUse(null, 0);
+		return true;
 	}
 
-	private void fire(ItemStack is, World world, EntityPlayer ep) {
-		if (world.isRemote)
+	private void fire(ItemStack is, Level world, Player ep) {
+		if (world.isClientSide())
 			return;
-		MovingObjectPosition mov = ReikaPlayerAPI.getLookedAtBlock(ep, 5, false);
-		if (mov != null) {
-			int x = mov.blockX;
-			int y = mov.blockY;
-			int z = mov.blockZ;
-			int s = mov.sideHit;
-			Inspections i = Inspections.list[this.getActionType(is)];
-			if (i != null && i.isValid(world, x, y, z) && ToolChargingSystem.instance.getCharge(is) >= i.energyCost) {
+		BlockHitResult mov = ReikaPlayerAPI.getLookedAtBlock(ep, 5, false);
+		if (mov != null && mov.getType() == HitResult.Type.BLOCK) {
+			BlockPos pos = mov.getBlockPos();
+			Inspections i = Inspections.list[getActionType(is)];
+			if (i != null && i.isValid(world, pos) && ToolChargingSystem.instance.getCharge(is) >= i.energyCost) {
 				ChromaSounds.LOREHEX.playSound(ep, 1, 1);
-				if (i.doEffect(world, x, y, z, s, ep, is)) {
+				if (i.doEffect(world, pos, mov, ep, is)) {
 					ToolChargingSystem.instance.removeCharge(is, i.energyCost, ep);
 				}
 			}
@@ -95,55 +104,49 @@ public class ItemCrystalProbe extends ItemPoweredChromaTool {
 	}
 
 	@Override
-	public ItemStack onEaten(ItemStack is, World world, EntityPlayer ep) {
-		return is;
-	}
-
-	@Override
-	public int getMaxItemUseDuration(ItemStack is) {
+	public int getUseDuration(ItemStack is, LivingEntity user) {
 		return 72000;
 	}
 
 	@Override
-	public EnumAction getItemUseAction(ItemStack is) {
-		return EnumAction.block;
+	public ItemUseAnimation getUseAnimation(ItemStack is) {
+		return ItemUseAnimation.BLOCK;
 	}
 
 	@Override
-	public ItemStack onItemRightClick(ItemStack is, World world, EntityPlayer ep) {
-		if (ep.isSneaking()) {
-			int type = this.getActionType(is);
-			type = (type+1)%Inspections.list.length;
-			is.stackTagCompound.setInteger("type", type);
-			ChromaSounds.USE.playSound(ep);
+	public InteractionResult use(Level world, Player ep, InteractionHand hand) {
+		ItemStack is = ep.getItemInHand(hand);
+		if (ep.isShiftKeyDown()) {
+			if (!world.isClientSide()) {
+				int type = (getActionType(is)+1)%Inspections.list.length;
+				ReikaItemHelper.updateStackTag(is, tag -> tag.putInt("type", type));
+				ChromaSounds.USE.playSound(ep);
+			}
+			return InteractionResult.SUCCESS;
 		}
-		else if (!this.handleUseAllowance(ep) && this.isActivated(ep, is, true))
-			ep.setItemInUse(is, this.getMaxItemUseDuration(is));
-		return is;
+		else if (!this.handleUseAllowance(ep) && this.isActivated(ep, is, true)) {
+			ep.startUsingItem(hand);
+			return InteractionResult.CONSUME;
+		}
+		return InteractionResult.PASS;
 	}
 
-	private int getActionType(ItemStack is) {
-		if (is.stackTagCompound == null) {
-			is.stackTagCompound = new NBTTagCompound();
-		}
-		int type = is.stackTagCompound != null ? is.stackTagCompound.getInteger("type") : 0;
-		return type;
-	}
-
-	@Override
-	public void onUsingTick(ItemStack is, EntityPlayer ep, int count) {
-		count = this.getMaxItemUseDuration(is)-count;
-		count = MathHelper.clamp_int(count, 0, CHARGE_TIME);
-		if (ep.worldObj.isRemote) {
-			//this.doChargingParticles(ep, count);
-		}
-		else {
-			ChromaSounds.USE.playSound(ep, 0.25F+2F*count/CHARGE_TIME, MathHelper.clamp_float(0.5F, 2F*count/CHARGE_TIME, 2F));
-		}
+	public static int getActionType(ItemStack is) {
+		var tag = ReikaItemHelper.getStackTag(is);
+		int type = tag != null ? tag.getIntOr("type", 0) : 0;
+		return Mth.clamp(type, 0, Inspections.list.length-1);
 	}
 
 	@Override
-	public boolean hasEffect(ItemStack is) {
+	public void onUseTick(Level world, LivingEntity entity, ItemStack is, int remaining) {
+		int count = Mth.clamp(this.getUseDuration(is, entity)-remaining, 0, CHARGE_TIME);
+		if (!world.isClientSide()) {
+			ChromaSounds.USE.playSound(entity, 0.25F+2F*count/CHARGE_TIME, Math.max(0.5F, 2F*count/CHARGE_TIME));
+		}
+	}
+
+	@Override
+	public boolean isFoil(ItemStack is) {
 		return ToolChargingSystem.instance.getCharge(is)/(float)this.getMaxCharge() > 0.8;
 	}
 
@@ -168,79 +171,22 @@ public class ItemCrystalProbe extends ItemPoweredChromaTool {
 	}
 
 	@Override
-	public boolean isActivated(EntityPlayer e, ItemStack is, boolean held) {
+	public boolean isActivated(Player e, ItemStack is, boolean held) {
 		return ToolChargingSystem.instance.getCharge(is) >= this.getRequiredCharge(is);
 	}
 
 	private int getRequiredCharge(ItemStack is) {
-		return Inspections.list[this.getActionType(is)].energyCost;
+		return Inspections.list[getActionType(is)].energyCost;
 	}
 
 	@Override
-	public int getChargeConsumptionRate(EntityPlayer e, World world, ItemStack is) {
+	public int getChargeConsumptionRate(Player e, Level world, ItemStack is) {
 		return 0;
 	}
 
 	@Override
-	protected boolean doTick(ItemStack is, World world, EntityPlayer e, boolean held) {
+	protected boolean doTick(ItemStack is, Level world, Player e, boolean held) {
 		return false;
-	}
-	/*
-	private static CrystalElement getTuning(ItemStack is) {
-		if (is.stackTagCompound != null && is.stackTagCompound.hasKey("tuned")) {
-			return CrystalElement.elements[is.stackTagCompound.getInteger("tuned")];
-		}
-		else {
-			return null;
-		}
-	}
-	 */
-
-	@Override
-	@SideOnly(Side.CLIENT)
-	protected void renderExtraIcons(RenderItem ri, ItemStack is, ItemRenderType type) {
-		if (type == ItemRenderType.INVENTORY && (GuiScreen.isCtrlKeyDown() || RenderItemInSlotEvent.isRenderingStackHovered(is))) {
-			GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
-			GL11.glPushMatrix();
-			GL11.glColor4f(1, 1, 1, 1);
-			GL11.glEnable(GL11.GL_BLEND);
-			BlendMode.DEFAULT.apply();
-			GL11.glDisable(GL11.GL_LIGHTING);
-			double sc = GuiScreen.isCtrlKeyDown() ? 1 : 0.5;
-			GL11.glScaled(sc, sc, sc);
-			GL11.glTranslated(0.5/sc, GuiScreen.isCtrlKeyDown() ? -0.5/sc : 0.5/sc, 0);
-			ReikaTextureHelper.bindTexture(ChromatiCraft.class, "Textures/infoicons.png");
-			int d = 0;
-			int act = this.getActionType(is);
-			switch(act) {
-				case 0:
-					d = (int)((System.currentTimeMillis()/500)%2);
-					break;
-				case 1:
-				case 2:
-					d = 2;
-					break;
-			}
-			double u = 0.0625*d;
-			double v = 0.125;
-			double s = 0.0625;
-			Tessellator v5 = Tessellator.instance;
-			double z = 50;
-			v5.startDrawingQuads();
-			int c = 0xffffff;
-			if (act == 1) {
-				int[] arr = ChromaFX.getChromaColorTiles();
-				c = arr[(int)((ReikaRenderHelper.getRenderFrame()/6)%arr.length)];
-			}
-			v5.setColorOpaque_I(c);
-			v5.addVertexWithUV(0, 0, z, u, v+s);
-			v5.addVertexWithUV(1, 0, z, u+s, v+s);
-			v5.addVertexWithUV(1, 1, z, u+s, v);
-			v5.addVertexWithUV(0, 1, z, u, v);
-			v5.draw();
-			GL11.glPopMatrix();
-			GL11.glPopAttrib();
-		}
 	}
 
 	@Override
@@ -274,18 +220,22 @@ public class ItemCrystalProbe extends ItemPoweredChromaTool {
 			trigger = check;
 		}
 
-		private boolean doEffect(World world, int x, int y, int z, int s, EntityPlayer ep, ItemStack is) {
+		private boolean doEffect(Level world, BlockPos pos, BlockHitResult hit, Player ep, ItemStack is) {
+			int x = pos.getX();
+			int y = pos.getY();
+			int z = pos.getZ();
 			switch(this) {
 				case REPEATER_CONNECTIVITY:
 					for (CrystalElement e : CrystalElement.elements) {
-						CrystalReceiver te = (CrystalReceiver)world.getTileEntity(x, y, z);
+						CrystalReceiver te = (CrystalReceiver)world.getBlockEntity(pos);
 						boolean can = te.isConductingElement(e);
 						boolean flag = can && CrystalNetworker.instance.checkConnectivity(e, te);
-						ProbeInfoOverlayRenderer.instance.markConnectivity(ep, e, flag, can);
+						if (ep instanceof ServerPlayer sp)
+							ChromaNetwork.sendProbeConnectivity(sp, e, flag, can);
 					}
 					return true;
 				case STRUCTURE_CHECK: {
-					MultiBlockChromaTile te = (MultiBlockChromaTile)world.getTileEntity(x, y, z);
+					MultiBlockChromaTile te = (MultiBlockChromaTile)world.getBlockEntity(pos);
 					if (te.canStructureBeInspected()) {
 						ChromaStructures str = te.getPrimaryStructure();
 						if (str != null) {
@@ -303,18 +253,14 @@ public class ItemCrystalProbe extends ItemPoweredChromaTool {
 							CrystalElement e = str.requiresColor ? ((ColoredMultiBlockChromaTile)te).getColor() : null;
 							FilledBlockArray arr = str.requiresColor ? str.getArray(world, x, y, z, e) : str.getArray(world, x+c.xCoord, y+c.yCoord, z+c.zCoord);
 							if (arr.matchInWorld(StructureErrorOverlays.instance)) {
-								ChromaSounds.CAST.playSoundAtBlock(world, x, y, z, 1, (float)MusicKey.G4.getRatio(MusicKey.C5));
-								TickScheduler.instance.scheduleEvent(new ScheduledTickEvent(new ScheduledSoundEvent(ChromaSounds.CAST, world, x+0.5, y+0.5, z+0.5, 1, 1)), 5);
-								TickScheduler.instance.scheduleEvent(new ScheduledTickEvent(new ScheduledSoundEvent(ChromaSounds.CAST, world, x+0.5, y+0.5, z+0.5, 1, (float)MusicKey.G5.getRatio(MusicKey.C5))), 10);
+								this.playSuccess(world, pos);
 							}
 							return true;
 						}
 						else if (te instanceof SpecialStructureTile) {
 							te.validateStructure();
 							if (te.hasStructure()) {
-								ChromaSounds.CAST.playSoundAtBlock(world, x, y, z, 1, (float)MusicKey.G4.getRatio(MusicKey.C5));
-								TickScheduler.instance.scheduleEvent(new ScheduledTickEvent(new ScheduledSoundEvent(ChromaSounds.CAST, world, x+0.5, y+0.5, z+0.5, 1, 1)), 5);
-								TickScheduler.instance.scheduleEvent(new ScheduledTickEvent(new ScheduledSoundEvent(ChromaSounds.CAST, world, x+0.5, y+0.5, z+0.5, 1, (float)MusicKey.G5.getRatio(MusicKey.C5))), 10);
+								this.playSuccess(world, pos);
 							}
 							else
 								((SpecialStructureTile)te).inspectStructure(StructureErrorOverlays.instance);
@@ -323,29 +269,39 @@ public class ItemCrystalProbe extends ItemPoweredChromaTool {
 					return false;
 				}
 				case MULTIBLOCK: {
-					BlockMultiBlock b = (BlockMultiBlock)world.getBlock(x, y, z);
-					b.checkForFullMultiBlock(world, x, y, z, ForgeDirection.VALID_DIRECTIONS[s].getOpposite(), StructureErrorOverlays.instance);
+					BlockMultiBlock b = (BlockMultiBlock)world.getBlockState(pos).getBlock();
+					b.checkForFullMultiBlock(world, x, y, z, hit.getDirection().getOpposite(), StructureErrorOverlays.instance);
 					return true;
-				}/*
-				case IMMERSIVE: {
-
-					b.checkForFullMultiBlock(world, x, y, z, ForgeDirection.VALID_DIRECTIONS[s].getOpposite(), StructureErrorOverlays.instance);
-					return true;
-				}*/
+				}
 				default:
 					return false;
 			}
 		}
 
-		public String displayName() {
-			return WordUtils.capitalize(this.name(), ' ', '_');
+		/** V33a: CAST at G4/C5, then 1 five ticks later, then G5/C5 at ten -- a rising triad. */
+		private void playSuccess(Level world, BlockPos pos) {
+			double x = pos.getX()+0.5;
+			double y = pos.getY()+0.5;
+			double z = pos.getZ()+0.5;
+			ChromaSounds.CAST.playSound(world, pos, 1, (float)MusicKey.G4.getRatio(MusicKey.C5));
+			TickScheduler.instance.scheduleEvent(new ScheduledTickEvent(new ScheduledSoundEvent(ChromaSounds.CAST, world, x, y, z, 1, 1)), 5);
+			TickScheduler.instance.scheduleEvent(new ScheduledTickEvent(new ScheduledSoundEvent(ChromaSounds.CAST, world, x, y, z, 1, (float)MusicKey.G5.getRatio(MusicKey.C5))), 10);
 		}
 
-		private boolean isValid(World world, int x, int y, int z) {
-			Block b = world.getBlock(x, y, z);
-			if (trigger.isAssignableFrom(b.getClass()))
+		/** V33a {@code WordUtils.capitalize(name(), ' ', '_')}, which only upper-cases, so the constant name as it is. */
+		public String displayName() {
+			StringBuilder sb = new StringBuilder(this.name());
+			for (int i = 0; i < sb.length(); i++) {
+				if (i == 0 || sb.charAt(i-1) == ' ' || sb.charAt(i-1) == '_')
+					sb.setCharAt(i, Character.toTitleCase(sb.charAt(i)));
+			}
+			return sb.toString();
+		}
+
+		private boolean isValid(Level world, BlockPos pos) {
+			if (trigger.isAssignableFrom(world.getBlockState(pos).getBlock().getClass()))
 				return true;
-			TileEntity te = world.getTileEntity(x, y, z);
+			BlockEntity te = world.getBlockEntity(pos);
 			return te != null && trigger.isAssignableFrom(te.getClass());
 		}
 

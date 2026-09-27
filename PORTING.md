@@ -251,10 +251,10 @@ Pylon Link and Lumen Node (V33a had no casting recipe for either).
 
 - **ENTRY** — 7/7 ported.
 - **RAWEXPLORE** — 20/20 ported (Fertility Seeds and the Artifact Distribution Map landed 2026-09-25).
-- **BASICCRAFT** — 20/27 ported (Crystal Glass and Glow landed 2026-09-25; Defensive Glass, the
+- **BASICCRAFT** — 21/27 ported (Crystal Glass and Glow landed 2026-09-25; Defensive Glass, the
   Enchantments, the Crystal Brewery, the Chromatic Flower, the Pylon Compass, the Illumination Gun, the Ownership Expansion Key, the Subterranean Route Finder and the Vertical Propulsion Panel
-  2026-09-26; the Particle Spawner 2026-09-27).
-  Missing: Lumen Wire; Crystal Orchestra; Knowledge Entanglement Pedestal (needs ProgressionLinking); Tool Compression Crate (needs TileEntityMassStorage); Lumen Turret; Examination Crystals; Corrosion Resistant Cell (blocked: an AE2 storage cell, and AE2 is not on the classpath -- CHROMA-PORT).
+  2026-09-26; the Particle Spawner and Examination Crystals 2026-09-27).
+  Missing: Lumen Wire; Crystal Orchestra; Knowledge Entanglement Pedestal (needs ProgressionLinking); Tool Compression Crate (needs TileEntityMassStorage); Lumen Turret; Corrosion Resistant Cell (blocked: an AE2 storage cell, and AE2 is not on the classpath -- CHROMA-PORT).
 - **RUNECRAFT** — 11/36 ported.
   Missing: Artificial Sky; Physics Suspension Lamp; Lumen Lamp; Travel Path; Redstone Pod; Flux Pod; Subterranean Illuminator; Chromatic Enchanter; Fluid Radiator; Fluid Link Anchor; Suspension Field Controller; Item Inserter; Lumen Lamp Controller; Crystal Seeds; Item Mover; Voidlinked Bucket; Linker; Creature Sounding Star; Multitool; Nether Layer Crystal; Ore-Finding Pickaxe; Ore Harvester; Bezier Crystals; Aura Tracker; Recall Tablet.
 - **ENERGY** — 15/30 ported.
@@ -8806,6 +8806,37 @@ Needs a full GameTest run (ownership semantics changed across these tiles).
 - Charge FX, as `doStandardChargeFX`: a full tool throws a turning six-blur wheel; a partly charged one spits one
   colliding blur a tick.
 - 26.2's inventory tick runs on the server only, where the charge lives.
+- Unverified in game.
+
+**BASICCRAFT: Examination Crystals (2026-09-27).** `probe` (V33a PROBE, `ItemCrystalProbe`), the first powered tool.
+- Sprites 53-56 of `items_tool.png` (`item/probe_0..3`) are chosen by `charge_state`. From 1/8 charge (the dearest
+  inspection's cost) the state is at least 1. Max charge 12000 blue; foil above 80%.
+- Sneak-use cycles the mode (tag `"type"`, USE sound). Otherwise, if charged for the mode, hold it: the USE sound
+  rises for 50 ticks, and a release after 50 ticks fires at the block looked at within 5 blocks (LOREHEX sound):
+  - REPEATER_CONNECTIVITY (60): per element of a CrystalReceiver, conducts? and `checkConnectivity`. Shown
+    beside the crosshair by `ProbeInfoOverlayRenderer`, a GUI layer: outline rune plus check/X/no-entry, left
+    column for elements 0-7, staggered fade, 480 frames.
+  - STRUCTURE_CHECK (1000): a MultiBlockChromaTile's primary structure is reset (the ritual with enhancement
+    allowed but not required) and matched. The first wrong block gets `StructureErrorOverlays`, a jittering
+    static cube, additive and through walls, 1440 frames, with ERROR blips. A whole structure plays the CAST
+    triad G4/C5, 1, G5/C5 at 0/5/10 ticks. The SpecialStructureTile branch revalidates, and as in V33a it spends
+    no charge.
+  - MULTIBLOCK (1500): DragonAPI `BlockMultiBlock.checkForFullMultiBlock` from the face opposite the one hit.
+- Mode names are V33a's `WordUtils.capitalize` of the constant names, which leaves them as they are
+  ("REPEATER_CONNECTIVITY").
+- Slot icons (V33a `renderExtraIcons`): with Control or hover, the mode glyph from `infoicons.png` (row 2)
+  top-right: blinking for connectivity, cycling chroma colours for the structure check.
+- Networking: `probe_connectivity` (V33a CONNECTIVITY, to the prober) and `structure_error` (V33a
+  STRUCTUREERROR, to players within 32).
+  - `ProbeInfoOverlayRenderer` is a GuiLayer, so the server sends connectivity through
+    `ChromaNetwork.sendProbeConnectivity` rather than calling into it.
+  - `StructureErrorOverlays` is reachable from the server, so its draw pass is held lazily.
+- DragonAPI:
+  - `CubePoints` is ported (mutable corners; draws into a vertex consumer).
+  - The reorg's top-level `filledblockarray.BlockMatchFailCallback` now extends
+    `FilledBlockArray.BlockMatchFailCallback`, so one callback serves structures and multiblocks.
+- New pipeline `ADDITIVE_SPRITE_THROUGH_WALL` (ADDITIVEDARK, no depth test) for the error cubes.
+- Recipe " sg / sGs / gs ": black shard, glowstone dust, glass.
 - Unverified in game.
 
 **Overworld structure worldgen biome reads (2026-09-26).** The natural structure feature used
