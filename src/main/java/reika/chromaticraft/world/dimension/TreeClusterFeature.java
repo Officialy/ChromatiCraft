@@ -33,7 +33,7 @@ import reika.chromaticraft.registry.ChromaBlocks;
  * <h2>Why the cluster is anchored at the chunk's centre</h2>
  *
  * <p>Upstream scatters each tree up to sixteen blocks from the cluster point, and a giant can reach
- * five more. A decoration feature may only write within a forty-eight block window, and a placement
+ * six more. A decoration feature may only write within a forty-eight block window, and a placement
  * that also randomised the anchor inside the chunk would push the far side of a cluster outside it —
  * where the writes are dropped in silence, which is the failure that once left structures half
  * generated. Anchoring at the chunk centre keeps the whole spread inside the window while leaving

@@ -40,11 +40,48 @@ public final class BiomeStructureMelodies {
 		return PREFABS;
 	}
 
+	/**
+	 * V33a {@code MusicPuzzleGenerator.addPrefabMelody}: the authored notes are transposed into the
+	 * nearest key the crystals can voice before the prefab is stored. Only an upward shift is applied, as
+	 * upstream does ({@code if (shift > 0)}); the second melody's only fit is five down, so it keeps its
+	 * authored pitches, and at thirty notes it is too long for any Crystal Music room.
+	 */
 	private static Melody melody(int playbackRate, String serialized) {
 		ArrayList<MusicKey> notes = new ArrayList<>();
 		for (String token : serialized.split(" "))
 			notes.add(token.equals("-") ? null : MusicKey.valueOf(token));
+		int shift = verify(notes);
+		if (shift > 0) {
+			for (int i = 0; i < notes.size(); i++) {
+				MusicKey key = notes.get(i);
+				if (key != null)
+					notes.set(i, key.getInterval(shift));
+			}
+		}
 		return new Melody(playbackRate, Collections.unmodifiableList(notes));
+	}
+
+	/** V33a {@code verify}: the first shift, trying 0..11 up then 1..11 down, at which every note is playable. */
+	private static int verify(List<MusicKey> notes) {
+		for (int d = 0; d < 12; d++)
+			if (fits(notes, d))
+				return d;
+		for (int d = -1; d > -12; d--)
+			if (fits(notes, d))
+				return d;
+		throw new IllegalStateException("Invalid prefab melody! " + notes);
+	}
+
+	private static boolean fits(List<MusicKey> notes, int shift) {
+		for (MusicKey key : notes) {
+			if (key == null)
+				continue;
+			// getInterval clamps at the ends of the key range; a clamped note is not a transposition.
+			if ((shift != 0 && key.getInterval(shift) == key)
+					|| !CrystalMusicManager.instance.canPlayKey(key.getInterval(shift)))
+				return false;
+		}
+		return true;
 	}
 
 	public record Melody(int playbackRate, List<MusicKey> notes) {

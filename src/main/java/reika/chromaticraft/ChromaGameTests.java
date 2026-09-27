@@ -1049,20 +1049,45 @@ public final class ChromaGameTests {
 	 */
 	private static void proximaStructurePlacement(GameTestHelper helper) {
 		// V33a's dev override, which assigns every structure type regardless of whether its generator
-		// finished. It is the only way to exercise the assignment loop while all eighteen puzzle
-		// generators are deliberately unported.
+		// finished, exercises the ring geometry over all eighteen types below; the natural assignment
+		// is checked first against the puzzles that are actually ported.
 		boolean previous = StructureCalculator.allowUnfinishedStructures;
 		try {
-			helper.assertTrue(DimensionStructureType.usableStructures().isEmpty(),
-					"no Proxima puzzle generator is ported yet, so no structure type may be usable");
+			// V33a admits a type only when its generator's test run produces a core.
+			java.util.Set<DimensionStructureType> ported = java.util.EnumSet.of(
+					DimensionStructureType.LIGHTPANEL, DimensionStructureType.TDMAZE,
+					DimensionStructureType.MUSIC, DimensionStructureType.GOL);
+			List<DimensionStructureType> usable = DimensionStructureType.usableStructures();
+			helper.assertTrue(usable.size() == ported.size() && ported.containsAll(usable),
+					"exactly the ported puzzle generators must be usable, found " + usable);
 
-			StructureCalculator unassigned = new StructureCalculator(1234L);
-			unassigned.generate();
-			helper.assertTrue(unassigned.getPlacements().isEmpty() && unassigned.arePositionsDetermined(),
-					"with nothing usable the ring must still resolve its origin, so the biome layer is"
-							+ " not blocked on the puzzles");
+			StructureCalculator natural = new StructureCalculator(1234L);
+			natural.generate();
+			List<StructureCalculator.StructurePlacement> assigned = natural.getPlacements();
+			helper.assertTrue(assigned.size() == CrystalElement.elements.length && natural.arePositionsDetermined(),
+					"every element must receive one of the ported structures, found " + assigned.size());
 			helper.assertTrue(ProximaGenerators.isReady(ProximaGenerators.Generator.STRUCTURE),
 					"finishing placement must clear the STRUCTURE bit of the generator gate");
+			// V33a's refill loop: four usable types for sixteen elements, drawn without replacement, so
+			// each round of four uses every type once and the next round bumps the generation index.
+			java.util.Map<DimensionStructureType, java.util.Set<Integer>> rounds =
+					new java.util.EnumMap<>(DimensionStructureType.class);
+			for (int i = 0; i < assigned.size(); i++) {
+				StructureCalculator.StructurePlacement placement = assigned.get(i);
+				helper.assertTrue(placement.color.ordinal() == i && placement.generationIndex == i / ported.size(),
+						"element " + placement.color + " must be in round " + i / ported.size()
+								+ ", found " + placement.generationIndex);
+				helper.assertTrue(ported.contains(placement.type),
+						"an unported type was assigned without the override: " + placement);
+				helper.assertTrue(rounds.computeIfAbsent(placement.type, t -> new java.util.HashSet<>())
+								.add(placement.generationIndex),
+						placement.type + " was drawn twice in round " + placement.generationIndex);
+				helper.assertTrue(placement.getGenerator() != null,
+						"a ported type's generator must have laid out " + placement);
+			}
+			helper.assertTrue(rounds.size() == ported.size()
+							&& rounds.values().stream().allMatch(r -> r.size() == 4),
+					"each ported type must appear once in each of the four rounds, found " + rounds);
 
 			StructureCalculator.allowUnfinishedStructures = true;
 			StructureCalculator calc = new StructureCalculator(1234L);
@@ -1101,10 +1126,13 @@ public final class ChromaGameTests {
 				helper.assertTrue(delta < 0.5,
 						"element " + placement.color + " must sit on its own 22.5-degree spoke, off by " + delta);
 				// Until a generator is ported the entry is the placement, which is also what V33a
-				// reports before calculate() runs.
-				helper.assertTrue(placement.getEntryPosX() == placement.placement().getX()
-								&& placement.getEntryPosZ() == placement.placement().getZ(),
-						"an unported generator must leave the entry position at the placement");
+				// reports before calculate() runs. A ported generator reports its own entry.
+				helper.assertTrue((placement.getGenerator() != null) == placement.type.isComplete(),
+						"exactly the ported types must carry a generator: " + placement);
+				if (placement.getGenerator() == null)
+					helper.assertTrue(placement.getEntryPosX() == placement.placement().getX()
+									&& placement.getEntryPosZ() == placement.placement().getZ(),
+							"an unported generator must leave the entry position at the placement");
 			}
 
 			// V33a's own upper bound: max ring radius from the wandered centre, not the actual radii.
@@ -2569,18 +2597,22 @@ public final class ChromaGameTests {
 				level.setBlock(centre.offset(i, 0, k), Blocks.GRASS_BLOCK.defaultBlockState(), 3);
 
 		var feature = reika.chromaticraft.registry.ChromaFeatures.TREE_CLUSTER.get();
+		// A placed feature receives its chunk's minimum corner and the cluster centres itself eight
+		// blocks in, so the origin handed over is that corner: the cluster then centres on `centre`.
+		BlockPos chunkCorner = centre.offset(-8, 1, -8);
 		boolean placed = false;
 		for (int attempt = 0; attempt < 16 && !placed; attempt++)
 			placed = feature.place(new net.minecraft.world.level.levelgen.feature.FeaturePlaceContext<>(
 					java.util.Optional.empty(), level,
-					level.getChunkSource().getGenerator(), level.getRandom(), centre.above(),
+					level.getChunkSource().getGenerator(), level.getRandom(), chunkCorner,
 					net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration.INSTANCE));
 		helper.assertTrue(placed, "the tree cluster refused sixteen attempts on open grass");
 
 		int logs = 0;
 		int leaves = 0;
 		int maxReach = 0;
-		for (BlockPos pos : BlockPos.betweenClosed(centre.offset(-24, 0, -24), centre.offset(24, 30, 24))) {
+		// A giant is up to 7 of trunk, 29 of canopy and a 2-block tip: 38 above the floor.
+		for (BlockPos pos : BlockPos.betweenClosed(centre.offset(-24, 0, -24), centre.offset(24, 40, 24))) {
 			BlockState state = level.getBlockState(pos);
 			boolean isLog = state.is(net.minecraft.tags.BlockTags.LOGS)
 					|| state.is(ChromaBlocks.GLOW_LOG.get());
@@ -2597,11 +2629,12 @@ public final class ChromaGameTests {
 		}
 		helper.assertTrue(logs > 0 && leaves > 0,
 				"a cluster must produce both trunks and canopy; got " + logs + " logs, " + leaves + " leaves");
-		// Sixteen of scatter plus five for a giant's bulge. More than this and the placement's lack of
-		// an InSquare offset stops being enough to keep it inside the write window.
-		helper.assertTrue(maxReach <= 21,
+		// Sixteen of scatter plus six for a giant's bulge: its radius is 1 + three height steps + two
+		// random steps once the canopy is 23 or taller (20 + rand(10)). Anchored eight blocks into the
+		// chunk, the write window allows 24 towards the corner and 23 away from it.
+		helper.assertTrue(maxReach <= 22,
 				"a cluster reached " + maxReach + " blocks from its anchor; upstream's scatter is 16 and "
-						+ "a giant adds 5, and past 21 the far side falls outside the feature write window");
+						+ "a giant adds 6, and past 22 the far side leaves the feature write window");
 		helper.succeed();
 	}
 
@@ -3370,6 +3403,15 @@ public final class ChromaGameTests {
 		helper.assertTrue(restingMelody.melody().size() == 3
 				&& restingMelody.melody().get(1) == null,
 				"Crystal Music must preserve V33a's null rest entries when freezing a prefab melody");
+		// V33a addPrefabMelody transposes each authored melody up into a key the crystals can voice. Every
+		// prefab short enough for the longest room (difficulty 3, last room) must come out playable.
+		int longestRoom = reika.chromaticraft.world.dimension.structure.MusicPuzzleLayout.puzzleLength(3,
+				reika.chromaticraft.world.dimension.structure.MusicPuzzleLayout.roomCount(3) - 1) * 5 / 2;
+		for (var prefab : reika.chromaticraft.auxiliary.BiomeStructureMelodies.prefabs())
+			if (prefab.notes().size() <= longestRoom)
+				for (var key : prefab.notes()) if (key != null)
+					helper.assertTrue(reika.chromaticraft.auxiliary.CrystalMusicManager.instance.canPlayKey(key),
+							"prefab melody " + prefab.notes() + " was not transposed into a playable key");
 		for (int difficulty = 1; difficulty <= 3; difficulty++) {
 			var first = reika.chromaticraft.world.dimension.structure.MusicPuzzleLayout.create(difficulty, seed);
 			var second = reika.chromaticraft.world.dimension.structure.MusicPuzzleLayout.create(difficulty, seed);
@@ -6435,6 +6477,19 @@ public final class ChromaGameTests {
 		helper.succeed();
 	}
 
+	/**
+	 * A new survival mock player for one progression gate. Granting a stage also grants every recursive
+	 * parent, exactly as V33a's setPlayerStage did, so one player carried across several gates is
+	 * already past a later gate's stage whenever that stage is a parent of an earlier one (MULTIBLOCK
+	 * implies PYLON; STRUCTCOMPLETE implies POWERCRYSTAL through DIMENSION).
+	 */
+	private static net.minecraft.world.entity.player.Player freshBeforeStage(GameTestHelper helper,
+			ProgressStage stage) {
+		net.minecraft.world.entity.player.Player player = helper.makeMockPlayer(GameType.SURVIVAL);
+		helper.assertTrue(!stage.isPlayerAtStage(player), "a fresh mock player must begin before " + stage);
+		return player;
+	}
+
 	private static int breakTieredOre(GameTestHelper helper, BlockPos pos,
 			net.minecraft.world.level.block.Block ore, net.minecraft.world.entity.player.Player player, net.minecraft.world.item.Item want) {
 		helper.getLevel().setBlock(pos, ore.defaultBlockState(), 3);
@@ -6761,7 +6816,7 @@ public final class ChromaGameTests {
 
 	/** Late tiered-plant survival sources retain their exact gates, supports and V33a drop math. */
 	private static void tieredPlantSurvivalSources(GameTestHelper helper) {
-		var player = helper.makeMockPlayer(GameType.SURVIVAL);
+		net.minecraft.world.entity.player.Player player = helper.makeMockPlayer(GameType.SURVIVAL);
 		var bulbs = reika.chromaticraft.registry.ChromaTieredPlants.ELEMENT_BULBS;
 		var bush = reika.chromaticraft.registry.ChromaTieredPlants.RADIANCE_BUSH;
 		var pod = reika.chromaticraft.registry.ChromaTieredPlants.VIBRANT_POD;
@@ -6776,6 +6831,7 @@ public final class ChromaGameTests {
 		helper.getLevel().setBlock(bulbPos.above(), Blocks.OAK_LEAVES.defaultBlockState(), 3);
 		BlockState bulbState = ChromaBlocks.tieredPlant(bulbs).get().defaultBlockState();
 		helper.getLevel().setBlock(bulbPos, bulbState, 3);
+		player = freshBeforeStage(helper, ProgressStage.MULTIBLOCK);
 		helper.assertTrue(bulbState.getShape(helper.getLevel(), bulbPos, CollisionContext.of(player)).isEmpty(),
 				"Element Bulbs must be untargetable before MULTIBLOCK progression");
 		ProgressionManager.instance.setPlayerStage(player, ProgressStage.MULTIBLOCK, true, false, false);
@@ -6793,6 +6849,7 @@ public final class ChromaGameTests {
 		helper.getLevel().setBlock(bushPos.below(), Blocks.SAND.defaultBlockState(), 3);
 		BlockState bushState = ChromaBlocks.tieredPlant(bush).get().defaultBlockState();
 		helper.getLevel().setBlock(bushPos, bushState, 3);
+		player = freshBeforeStage(helper, ProgressStage.PYLON);
 		helper.assertTrue(bushState.getShape(helper.getLevel(), bushPos, CollisionContext.of(player)).isEmpty(),
 				"Radiance Bush must be untargetable before PYLON progression");
 		ProgressionManager.instance.setPlayerStage(player, ProgressStage.PYLON, true, false, false);
@@ -6812,6 +6869,7 @@ public final class ChromaGameTests {
 		helper.assertTrue(podState.canSurvive(helper.getLevel(), podPos),
 				"Vibrant Pods must attach to a neighbouring tree log");
 		helper.getLevel().setBlock(podPos, podState, 3);
+		player = freshBeforeStage(helper, ProgressStage.ALLOY);
 		helper.assertTrue(podState.getShape(helper.getLevel(), podPos, CollisionContext.of(player)).isEmpty(),
 				"Vibrant Pods must be untargetable before ALLOY progression");
 		ProgressionManager.instance.setPlayerStage(player, ProgressStage.ALLOY, true, false, false);
@@ -6830,6 +6888,7 @@ public final class ChromaGameTests {
 		helper.assertTrue(rootState.canSurvive(helper.getLevel(), rootPos),
 				"Glowing Roots must accept V33a's dirt support at the base of a tree");
 		helper.getLevel().setBlock(rootPos, rootState, 3);
+		player = freshBeforeStage(helper, ProgressStage.TURBOCHARGE);
 		helper.assertTrue(rootState.getShape(helper.getLevel(), rootPos, CollisionContext.of(player)).isEmpty(),
 				"Glowing Roots must be untargetable before TURBOCHARGE progression");
 		ProgressionManager.instance.setPlayerStage(player, ProgressStage.TURBOCHARGE, true, false, false);
@@ -6869,10 +6928,15 @@ public final class ChromaGameTests {
 
 	/** Admitted tiered ores retain their distinct stages, host disguises and exact source drop math. */
 	private static void geodeOreSurvivalPath(GameTestHelper helper) {
-		var player = helper.makeMockPlayer(GameType.SURVIVAL);
+		net.minecraft.world.entity.player.Player player = helper.makeMockPlayer(GameType.SURVIVAL);
 		BlockPos enderPos = helper.absolutePos(new BlockPos(3, 3, 3));
+		// Every sample stays within twelve blocks of this corner. Only the 5x5 arena's chunks are forced,
+		// and drops popped two or more chunks beyond them land in entity sections that are not
+		// accessible, so a sample forty blocks out counted zero drops whenever the arena sat near a
+		// chunk edge. Pairs are four apart (countDrops looks two blocks around a sample) on two layers.
 		var binding = ChromaItems.TIERED.get(ChromaTieredItems.BINDING_CRYSTAL).get();
-		BlockPos bindingPos = enderPos.offset(0, 0, 20);
+		BlockPos bindingPos = enderPos.offset(4, 0, 0);
+		player = freshBeforeStage(helper, ProgressStage.CHARGE);
 		helper.assertTrue(breakTieredOre(helper, bindingPos, ChromaBlocks.FUSED_CRYSTALS.get(),
 				player, binding) == 0 && countDrops(helper, bindingPos, Items.COBBLESTONE) > 0,
 				"Fused Crystals must remain disguised until CHARGE progression");
@@ -6883,7 +6947,8 @@ public final class ChromaGameTests {
 				"fortune-zero Fused Crystals must use V33a's 1 + rand(3) count; got " + bindingDrops);
 
 		var focal = ChromaItems.TIERED.get(ChromaTieredItems.FOCUS_DUST).get();
-		BlockPos focalPos = enderPos.offset(0, 0, 28);
+		BlockPos focalPos = enderPos.offset(4, 0, 8);
+		player = freshBeforeStage(helper, ProgressStage.MULTIBLOCK);
 		helper.assertTrue(breakTieredOre(helper, focalPos, ChromaBlocks.RADIANT_STONE.get(),
 				player, focal) == 0 && countDrops(helper, focalPos, Items.COBBLESTONE) > 0,
 				"Radiant Stone must remain disguised until MULTIBLOCK progression");
@@ -6894,7 +6959,8 @@ public final class ChromaGameTests {
 				"fortune-zero Radiant Stone must use V33a's 1 + rand(6) count; got " + focalDrops);
 
 		var lumenite = ChromaItems.TIERED.get(ChromaTieredItems.LUMEN_GEM).get();
-		BlockPos hiddenLumenite = enderPos.offset(16, 0, 0);
+		BlockPos hiddenLumenite = enderPos.offset(8, 0, 0);
+		player = freshBeforeStage(helper, ProgressStage.USEENERGY);
 		helper.assertTrue(breakTieredOre(helper, hiddenLumenite, ChromaBlocks.LUMENITE_ORE.get(),
 				player, lumenite) == 0 && countDrops(helper, hiddenLumenite, Items.COBBLESTONE) > 0,
 				"Lumenite must remain disguised until USEENERGY progression");
@@ -6906,6 +6972,7 @@ public final class ChromaGameTests {
 		var enderDust = ChromaItems.TIERED.get(ChromaTieredItems.ENDER_DUST).get();
 		var thermitic = ChromaItems.TIERED.get(ChromaTieredItems.THERMITIC_CRYSTAL).get();
 		BlockPos hiddenThermitic = enderPos.offset(8, 0, 8);
+		player = freshBeforeStage(helper, ProgressStage.END);
 		helper.assertTrue(breakTieredOre(helper, hiddenThermitic, ChromaBlocks.THERMITIC_ROCK.get(),
 				player, thermitic) == 0
 				&& countDrops(helper, hiddenThermitic, Blocks.NETHERRACK.asItem()) > 0,
@@ -6930,30 +6997,34 @@ public final class ChromaGameTests {
 				"fortune-zero Firaxite must use V33a's 1 + rand(8) count; got " + drops);
 
 		var resonanceDust = ChromaItems.TIERED.get(ChromaTieredItems.RESONANCE_DUST).get();
-		BlockPos hiddenVibrant = enderPos.offset(0, 0, 36);
+		BlockPos hiddenVibrant = enderPos.offset(4, 4, 0);
+		player = freshBeforeStage(helper, ProgressStage.ABILITY);
 		helper.assertTrue(breakTieredOre(helper, hiddenVibrant, ChromaBlocks.VIBRANT_CRYSTALS.get(),
 				player, resonanceDust) == 0
 				&& countDrops(helper, hiddenVibrant, Blocks.END_STONE.asItem()) > 0,
 				"Vibrant Crystals must remain indistinguishable from End Stone before ABILITY");
 		ProgressionManager.instance.setPlayerStage(player, ProgressStage.ABILITY, true, false, false);
 		BlockPos revealedVibrant = hiddenVibrant.offset(0, 0, 4);
-		helper.assertTrue(breakTieredOre(helper, revealedVibrant, ChromaBlocks.VIBRANT_CRYSTALS.get(),
-				player, resonanceDust) == 1,
-				"fortune-zero Vibrant Crystals must emit exactly one Resonant Dust");
+		int resonance = breakTieredOre(helper, revealedVibrant, ChromaBlocks.VIBRANT_CRYSTALS.get(),
+				player, resonanceDust);
+		helper.assertTrue(resonance == 1,
+				"fortune-zero Vibrant Crystals must emit exactly one Resonant Dust; got " + resonance);
 
 		var spaceDust = ChromaItems.TIERED.get(ChromaTieredItems.SPACE_DUST).get();
-		BlockPos hiddenRift = enderPos.offset(0, 0, 12);
+		BlockPos hiddenRift = enderPos.offset(0, 4, 0);
+		player = freshBeforeStage(helper, ProgressStage.KILLDRAGON);
 		helper.assertTrue(breakTieredOre(helper, hiddenRift, ChromaBlocks.SPACERIFT_STONE.get(),
 				player, spaceDust) == 0 && countDrops(helper, hiddenRift, Blocks.END_STONE.asItem()) > 0,
 				"Spacerift Stone must remain indistinguishable from End Stone before KILLDRAGON");
 		ProgressionManager.instance.setPlayerStage(player, ProgressStage.KILLDRAGON, true, false, false);
-		BlockPos revealedRift = enderPos.offset(0, 0, 16);
+		BlockPos revealedRift = hiddenRift.offset(0, 0, 4);
 		helper.assertTrue(breakTieredOre(helper, revealedRift, ChromaBlocks.SPACERIFT_STONE.get(),
 				player, spaceDust) == 1,
 				"fortune-zero Spacerift Stone must emit exactly one Spatial Rifting Powder");
 
 		var lumaDust = ChromaItems.TIERED.get(ChromaTieredItems.LUMA_DUST).get();
-		BlockPos hiddenLuma = enderPos.offset(24, 0, 0);
+		BlockPos hiddenLuma = enderPos.offset(12, 0, 0);
+		player = freshBeforeStage(helper, ProgressStage.STRUCTCOMPLETE);
 		helper.assertTrue(breakTieredOre(helper, hiddenLuma, ChromaBlocks.GLOWING_ROCK.get(),
 				player, lumaDust) == 0 && countDrops(helper, hiddenLuma, Items.COBBLESTONE) > 0,
 				"Glowing Rock must remain disguised until STRUCTCOMPLETE progression");
@@ -6964,7 +7035,8 @@ public final class ChromaGameTests {
 				"fortune-zero Glowing Rock must use V33a's 1 + 4*rand(5) count; got " + lumaDrops);
 
 		var echoCrystal = ChromaItems.TIERED.get(ChromaTieredItems.ECHO_CRYSTAL).get();
-		BlockPos hiddenEcho = enderPos.offset(32, 0, 0);
+		BlockPos hiddenEcho = enderPos.offset(12, 0, 8);
+		player = freshBeforeStage(helper, ProgressStage.CTM);
 		helper.assertTrue(breakTieredOre(helper, hiddenEcho, ChromaBlocks.ECHOSTONE.get(),
 				player, echoCrystal) == 0 && countDrops(helper, hiddenEcho, Items.COBBLESTONE) > 0,
 				"Echostone must remain disguised until CTM progression");
@@ -6975,7 +7047,8 @@ public final class ChromaGameTests {
 				"fortune-zero Echostone must use V33a's 1 + rand(8) + rand(8) count; got " + echoDrops);
 
 		var avolite = ChromaItems.TIERED.get(ChromaTieredItems.AVOLITE).get();
-		BlockPos hiddenAvolite = enderPos.offset(40, 0, 0);
+		BlockPos hiddenAvolite = enderPos.offset(8, 4, 0);
+		player = freshBeforeStage(helper, ProgressStage.POWERCRYSTAL);
 		helper.assertTrue(breakTieredOre(helper, hiddenAvolite, ChromaBlocks.AVOLITE_ORE.get(),
 				player, avolite) == 0 && countDrops(helper, hiddenAvolite, Items.COBBLESTONE) > 0,
 				"Avolite must remain disguised until POWERCRYSTAL progression");

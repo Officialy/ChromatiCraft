@@ -110,6 +110,7 @@ public final class EntityBallLightning extends Mob implements DestroyOnUnload {
 
 	@Override
 	protected void defineSynchedData(SynchedEntityData.Builder builder) {
+		super.defineSynchedData(builder);
 		builder.define(COLOR, CrystalElement.WHITE.ordinal());
 		builder.define(RENDER_COLOR, CrystalElement.WHITE.getColor());
 		builder.define(BOLT_TARGET, 0);

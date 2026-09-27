@@ -108,9 +108,12 @@ public final class PoolAlloyingHandler {
 		else catalyst.setItem(catalystStack);
 
 		// V33a cleared the pool's energy before making the recipe; effects may remove the pool block below.
+		// The doubling roll still uses the ether the pool held, which V33a passed in as makePoolRecipe's
+		// ether argument after the clear.
+		int ether = pool.getEtherCount();
 		pool.clear();
 		int outputMultiplier = recipe.allowDoubling()
-				&& level.getRandom().nextFloat() < BlockChromaFluid.getDoublingChance(pool.getEtherCount()) ? 2 : 1;
+				&& level.getRandom().nextFloat() < BlockChromaFluid.getDoublingChance(ether) ? 2 : 1;
 		if (ChromaAbilityData.hasDoubleCraft(owner)) outputMultiplier *= 2;
 		ItemStack result = recipe.result();
 		int total = result.getCount() * outputMultiplier;

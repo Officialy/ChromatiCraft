@@ -6508,12 +6508,12 @@ dropped behaviour: the filter is upstream's own, and they return with the mods i
 ported.
 
 **The placement deliberately has no `InSquarePlacement`.** A cluster scatters each tree up to sixteen
-blocks from its anchor and a giant's bulge reaches five more; a decoration feature may only write
+blocks from its anchor and a giant's bulge reaches six more; a decoration feature may only write
 within a forty-eight block window. Randomising the anchor inside the chunk *as well* would push the far
 side of a cluster outside that window, where writes are dropped in silence — the failure that once left
 structures half generated. Anchored at the chunk's own corner the whole spread stays inside, and
 upstream's sixteen-block scatter is untouched. `chromaticraft:proxima_tree_cluster` asserts the reach
-stays within 21 for exactly this reason, so a future change that widens the scatter fails loudly rather
+stays within 22 (corrected 2026-09-27; it was 21) for exactly this reason, so a future change that widens the scatter fails loudly rather
 than quietly losing its far side.
 
 All six shapes are upstream's: the oak crown, the hanging curtains, the wide taper, the needle column,

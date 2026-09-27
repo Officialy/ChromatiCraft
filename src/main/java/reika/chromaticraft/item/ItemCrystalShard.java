@@ -78,7 +78,8 @@ public final class ItemCrystalShard extends Item {
 		if (entity.getOwner() instanceof Player owner) replacement.setThrower(owner);
 		entity.level().addFreshEntity(replacement);
 		entity.discard();
-		if (entity.getOwner() instanceof net.minecraft.server.level.ServerPlayer player)
+		// V33a stepped ReikaItemHelper.getDropper(ei), any EntityPlayer; stepPlayerTo itself skips fakes.
+		if (entity.getOwner() instanceof Player player)
 			ProgressStage.SHARDCHARGE.stepPlayerTo(player);
 		ChromaSounds.INFUSE.playSoundAtBlock(entity.level(), entity.blockPosition());
 		if (entity.level() instanceof ServerLevel server)
