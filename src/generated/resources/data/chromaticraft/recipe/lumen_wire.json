@@ -1,0 +1,38 @@
+{
+  "type": "chromaticraft:casting",
+  "experience": 5,
+  "grid": [
+    {
+      "ingredient": "chromaticraft:crystal_shard_blue",
+      "slot": 1
+    },
+    {
+      "ingredient": "minecraft:obsidian",
+      "slot": 3
+    },
+    {
+      "ingredient": "minecraft:glowstone_dust",
+      "slot": 4
+    },
+    {
+      "ingredient": "minecraft:obsidian",
+      "slot": 5
+    },
+    {
+      "ingredient": "#c:cobblestones/normal",
+      "slot": 6
+    },
+    {
+      "ingredient": "#c:cobblestones/normal",
+      "slot": 7
+    },
+    {
+      "ingredient": "#c:cobblestones/normal",
+      "slot": 8
+    }
+  ],
+  "result": {
+    "id": "chromaticraft:lumen_wire"
+  },
+  "tier": "crafting"
+}

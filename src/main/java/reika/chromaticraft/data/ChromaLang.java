@@ -186,6 +186,7 @@ public class ChromaLang extends LanguageProvider {
 		add(ChromaBlocks.LAUNCH_PAD.get(), "Vertical Propulsion Panel"); // V33a chroma.launchpad
 		add(ChromaBlocks.PARTICLE_SPAWNER.get(), "Particle Spawner"); // V33a chroma.particles
 		add(ChromaBlocks.LUMEN_TURRET.get(), "Lumen Turret"); // V33a chroma.turret
+		add(ChromaBlocks.LUMEN_WIRE.get(), "Lumen Wire"); // V33a chroma.lumenwire
 		// V33a LumenTurretDamage: "<victim> got too close to <placer>'s Lumen Turret". 26.2 picks the ".item" key when
 		// the placer holds a named item, and ".player" when no placer is known but the victim has kill credit.
 		String turretDeath = "death.attack." + reika.chromaticraft.auxiliary.LumenTurretDamage.MESSAGE_ID;

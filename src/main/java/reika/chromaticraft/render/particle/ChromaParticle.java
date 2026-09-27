@@ -1021,6 +1021,21 @@ public abstract class ChromaParticle extends SingleQuadParticle {
         }
     }
 
+    /** A ChromatiCraft icon's block-atlas sprite, for renderer-drawn effects such as a tile's FXCollection. */
+    public static TextureAtlasSprite iconSprite(reika.chromaticraft.registry.ChromaIcons ico) {
+        return Minecraft.getInstance().getAtlasManager().getAtlasOrThrow(AtlasIds.BLOCKS).getSprite(ico.getIcon());
+    }
+
+    /** A stationary V33a {@code EntityCCBlurFX} with another icon (additive unless the icon is alpha-blended). */
+    public static void spawnIconGlow(Level world, double x, double y, double z, reika.chromaticraft.registry.ChromaIcons ico,
+            int color, int life, float scale) {
+        if (!(world instanceof ClientLevel level)) return;
+        FadeGlow fx = new FadeGlow(level, x, y, z, 0, 0, 0, color, life, scale, false, null, 0,
+                "block/icons/" + ico.getIconName().replace(' ', '_'), !ico.isTransparent());
+        fx.setLegacyMotion(false);
+        Minecraft.getInstance().particleEngine.add(fx);
+    }
+
     public static void spawnEtherealLight(Level world, BlockPos pos) {
         if (!(world instanceof ClientLevel level)) return;
         RandomSource rand = level.getRandom();

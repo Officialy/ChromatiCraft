@@ -251,10 +251,10 @@ Pylon Link and Lumen Node (V33a had no casting recipe for either).
 
 - **ENTRY** — 7/7 ported.
 - **RAWEXPLORE** — 20/20 ported (Fertility Seeds and the Artifact Distribution Map landed 2026-09-25).
-- **BASICCRAFT** — 22/27 ported (Crystal Glass and Glow landed 2026-09-25; Defensive Glass, the
+- **BASICCRAFT** — 23/27 ported (Crystal Glass and Glow landed 2026-09-25; Defensive Glass, the
   Enchantments, the Crystal Brewery, the Chromatic Flower, the Pylon Compass, the Illumination Gun, the Ownership Expansion Key, the Subterranean Route Finder and the Vertical Propulsion Panel
-  2026-09-26; the Particle Spawner, Examination Crystals and the Lumen Turret 2026-09-27).
-  Missing: Lumen Wire; Crystal Orchestra; Knowledge Entanglement Pedestal (needs ProgressionLinking); Tool Compression Crate (needs TileEntityMassStorage); Corrosion Resistant Cell (blocked: an AE2 storage cell, and AE2 is not on the classpath -- CHROMA-PORT).
+  2026-09-26; the Particle Spawner, Examination Crystals, the Lumen Turret and the Lumen Wire 2026-09-27).
+  Missing: Crystal Orchestra; Knowledge Entanglement Pedestal (needs ProgressionLinking); Tool Compression Crate (needs TileEntityMassStorage); Corrosion Resistant Cell (blocked: an AE2 storage cell, and AE2 is not on the classpath -- CHROMA-PORT).
 - **RUNECRAFT** — 11/36 ported.
   Missing: Artificial Sky; Physics Suspension Lamp; Lumen Lamp; Travel Path; Redstone Pod; Flux Pod; Subterranean Illuminator; Chromatic Enchanter; Fluid Radiator; Fluid Link Anchor; Suspension Field Controller; Item Inserter; Lumen Lamp Controller; Crystal Seeds; Item Mover; Voidlinked Bucket; Linker; Creature Sounding Star; Multitool; Nether Layer Crystal; Ore-Finding Pickaxe; Ore Harvester; Bezier Crystals; Aura Tracker; Recall Tablet.
 - **ENERGY** — 15/30 ported.
@@ -8871,6 +8871,31 @@ Needs a full GameTest run (ownership semantics changed across these tiles).
   notes' `%s` with the upgrade list. Other ported pages still show raw V33a placeholders; a follow-up task was
   filed.
 - Recipe " g / gsg / b " makes 4: pink shard, glowstone dust, smooth crystalline stone.
+- Unverified in game.
+
+**BASICCRAFT: Lumen Wire (2026-09-27).** `lumen_wire` (V33a LUMENWIRE, `TileEntityLumenWire`).
+- Placed against a face. V33a's `SidePlacedTile.placeOnSide` side is now the block's FACING (the clicked face).
+  - It needs a sturdy support. When the support goes, `updateShape` removes it and it drops itself, as V33a's
+    `drop()` did.
+  - No collision; the hitbox is V33a's quarter-thick half square against the support.
+- Pairing: every 5 ticks it scans up to 6 air blocks along its facing for a wire facing back, and pairs with a
+  shared random id. Removal (`preRemoveSideEffects`/`BreakAction`) unpairs immediately.
+- While the paired box sees its mode's target, the server sets 30 ticks of activity:
+  - Both wires give strong and weak redstone 15 and update their own and their support's neighbours.
+  - Click sound: `ui.button.click` = V33a random.click, pitch 0.75 on and 0.675 off.
+  - `WireWatcher`s are notified, and `LumenWireToggleEvent` (V33a API, ported to a NeoForge Event) is posted.
+  - The client only keeps the countdown; V33a ran these side effects on both sides.
+  - CHROMA-PORT: V33a's OpenComputers signal (OC has no 26.2 port).
+- Modes, cycled by the Manipulator through the port's `ManipulatorInteraction` hook (both ends follow):
+  anything, owners (the default), players, Monster, Animal, living, items and XP orbs, projectiles.
+  - The Manipulator mouseover shows the mode icon (infoicons row 1), pulsing with the mode colour.
+- Render: `ModelLumenWire` (32x32, `textures/entity/lumen_wire.png`), with the core fullbright, turned per
+  facing as V33a did.
+  - The glints are a tile-owned `FXCollection`, ported to DragonAPI: camera-facing quads drawn by the BER,
+    additive, with distance-thinned spawning.
+  - Active: rose glows (`roses_w`) within 60 degrees of hue of the mode colour.
+  - The render box spans the pair. The item draws the model at 2.5x.
+- Recipe " s / OGO / ccc ": blue shard, obsidian, glowstone dust, cobblestone (`c:cobblestones/normal`).
 - Unverified in game.
 
 **Overworld structure worldgen biome reads (2026-09-26).** The natural structure feature used

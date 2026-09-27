@@ -143,6 +143,7 @@ public final class LexiconIconResolver {
 			case "launchpad" -> ChromaBlocks.LAUNCH_PAD.get();
 			case "particles" -> ChromaBlocks.PARTICLE_SPAWNER.get();
 			case "turret" -> ChromaBlocks.LUMEN_TURRET.get();
+			case "lumenwire" -> ChromaBlocks.LUMEN_WIRE.get();
 			case "chromaflower" -> ChromaBlocks.CHROMA_FLOWER.get();
 			case "focuscrystal" -> ChromaBlocks.FOCUS_CRYSTAL.get();
 			case "personal" -> ChromaBlocks.PERSONAL_CHARGER.get();

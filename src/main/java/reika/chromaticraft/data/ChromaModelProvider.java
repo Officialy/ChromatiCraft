@@ -151,6 +151,7 @@ public class ChromaModelProvider extends ModelProvider {
 		ritualTableModel(blockStateOut, itemModelOut, modelOut);
 		crystalChargerModel(blockStateOut, itemModelOut, modelOut);
 		lumenTurretModel(blockStateOut, itemModelOut, modelOut);
+		lumenWireModel(blockStateOut, itemModelOut, modelOut);
 		pylonTurboModel(blockStateOut, itemModelOut, modelOut);
 		personalChargerModel(blockStateOut, itemModelOut, modelOut);
 		collectorModel(blockStateOut, itemModelOut, modelOut);
@@ -1970,6 +1971,25 @@ public class ChromaModelProvider extends ModelProvider {
 				TextureMapping.cube(particle), modelOut);
 		itemModelOut.accept(ChromaBlocks.LUMEN_TURRET.get().asItem(),
 				ItemModelUtils.specialModel(itemBase, new reika.chromaticraft.render.item.LumenTurretItemRenderer.Unbaked()));
+	}
+
+	/**
+	 * V33a BlockModelledChromaTile: ChromaIcons.TRANSPARENT for every facing, drawn by its TESR, which V33a also ran
+	 * for the item. The item's cube base only supplies the block display transforms.
+	 */
+	private static void lumenWireModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		Material particle = new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/icons/transparent"));
+		Identifier worldModel = ModelTemplates.PARTICLE_ONLY.create(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/lumen_wire"),
+				new TextureMapping().put(TextureSlot.PARTICLE, particle), modelOut);
+		blockStateOut.accept(MultiVariantGenerator.dispatch(ChromaBlocks.LUMEN_WIRE.get(),
+				new MultiVariant(WeightedList.of(new Variant(worldModel)))));
+		Identifier itemBase = ModelTemplates.CUBE_ALL.create(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/lumen_wire_inventory"),
+				TextureMapping.cube(particle), modelOut);
+		itemModelOut.accept(ChromaBlocks.LUMEN_WIRE.get().asItem(),
+				ItemModelUtils.specialModel(itemBase, new reika.chromaticraft.render.item.LumenWireItemRenderer.Unbaked()));
 	}
 
 	private static void crystalChargerModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,

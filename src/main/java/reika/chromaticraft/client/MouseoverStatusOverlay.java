@@ -33,7 +33,7 @@ import reika.chromaticraft.tileentity.TileEntityDummyAux;
  * the {@link OperationState} ordinal, and underlaid the icon at index 4 as a backing plate.
  *
  * <p>The {@code OperationInterval} and {@code LumenTile} branches are active. The other branches
- * (focus acceleration, chroma-crafter contents, lumen wire, Forestry bee
+ * (focus acceleration, chroma-crafter contents, Forestry bee
  * housings and Thaumcraft nodes) belong to tiles that are not in the compile slice yet, and are not
  * stubbed in.
  */
@@ -82,6 +82,8 @@ public final class MouseoverStatusOverlay implements GuiLayer {
 			tile = dummy.getLinkedTile();
 		if (tile instanceof LumenTile lumen)
 			renderStorage(gui, lumen, mc);
+		if (tile instanceof reika.chromaticraft.tileentity.TileEntityLumenWire wire)
+			renderDetectionMode(gui, wire);
 		if (!(tile instanceof OperationInterval operation))
 			return;
 
@@ -93,6 +95,19 @@ public final class MouseoverStatusOverlay implements GuiLayer {
 		blit(gui, x, y, SIZE, state.ordinal());
 		if (state == OperationState.RUNNING)
 			this.renderProgress(gui, x, y, operation.getOperationFraction());
+	}
+
+	/**
+	 * V33a {@code renderDetectionMode}: the wire's mode icon (row 1 of {@code infoicons.png} in 16-pixel cells, by mode)
+	 * beside the crosshair at 12 pixels, pulsing between the mode colour and white.
+	 */
+	private static void renderDetectionMode(GuiGraphicsExtractor gui, reika.chromaticraft.tileentity.TileEntityLumenWire te) {
+		int ox = gui.guiWidth()/2+12-8;
+		int oy = gui.guiHeight()/2+12-8;
+		var mode = te.getMode();
+		float f = 0.75F+0.25F*(float)Math.sin(System.currentTimeMillis()/80D);
+		int c = reika.dragonapi.libraries.rendering.ReikaColorAPI.mixColors(mode.renderColor, 0xffffff, f);
+		gui.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, ICONS, ox, oy, 16*mode.ordinal(), 16, 12, 12, 16, 16, 256, 256, 0xff000000 | c);
 	}
 
 	private static void renderStorage(GuiGraphicsExtractor gui, LumenTile tile, Minecraft mc) {

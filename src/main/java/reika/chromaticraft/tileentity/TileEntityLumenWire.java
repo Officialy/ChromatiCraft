@@ -12,55 +12,53 @@ package reika.chromaticraft.tileentity;
 import java.util.ArrayList;
 import java.util.UUID;
 
-import net.minecraft.client.Minecraft;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.IProjectile;
-import net.minecraft.entity.monster.EntityMob;
-import net.minecraft.entity.passive.EntityAnimal;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.AxisAlignedBB;
-import net.minecraft.world.IBlockAccess;
-import net.minecraft.world.World;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.common.util.ForgeDirection;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.ExperienceOrb;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.animal.Animal;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.monster.Monster;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.projectile.Projectile;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.phys.AABB;
+import net.neoforged.neoforge.common.NeoForge;
 
 import reika.chromaticraft.api.event.LumenWireToggleEvent;
-import reika.chromaticraft.auxiliary.interfaces.CustomHitbox;
+import reika.chromaticraft.api.interfaces.ManipulatorInteraction;
 import reika.chromaticraft.base.tileentity.TileEntityChromaticBase;
+import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.ChromaIcons;
 import reika.chromaticraft.registry.ChromaSounds;
 import reika.chromaticraft.registry.ChromaTiles;
-import reika.chromaticraft.render.particle.EntityCCBlurFX;
-import reika.dragonapi.ModList;
-import reika.dragonapi.asm.dependentmethodstripper.ModDependent;
+import reika.chromaticraft.render.particle.ChromaParticle;
 import reika.dragonapi.instantiable.StepTimer;
 import reika.dragonapi.instantiable.data.immutable.Coordinate;
 import reika.dragonapi.instantiable.data.immutable.WorldLocation;
-import reika.dragonapi.instantiable.effects.EntityBlurFX;
 import reika.dragonapi.instantiable.rendering.FXCollection;
-import reika.dragonapi.interfaces.tileentity.BreakAction;
-import reika.dragonapi.interfaces.tileentity.RedstoneTile;
-import reika.dragonapi.interfaces.tileentity.SidePlacedTile;
-import reika.dragonapi.libraries.ReikaAABBHelper;
-import reika.dragonapi.libraries.ReikaEntityHelper;
-import reika.dragonapi.libraries.io.ReikaSoundHelper;
+import reika.dragonapi.interfaces.blockentity.BreakAction;
+import reika.dragonapi.interfaces.blockentity.RedstoneTile;
 import reika.dragonapi.libraries.java.ReikaRandomHelper;
-import reika.dragonapi.libraries.registry.ReikaItemHelper;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
-import reika.dragonapi.libraries.world.ReikaWorldHelper;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
-import li.cil.oc.api.Network;
-import li.cil.oc.api.network.Node;
-
-
-public class TileEntityLumenWire extends TileEntityChromaticBase implements BreakAction, SidePlacedTile, CustomHitbox, RedstoneTile {
-
-	private ForgeDirection facing;
+/**
+ * V33a {@code TileEntityLumenWire}: placed on a block face, it pairs with another wire facing it across up to 6 clear
+ * blocks. While anything its mode detects is inside the box spanning the pair, both wires emit a full redstone signal
+ * (held for 30 ticks after it leaves), click, notify their watchers and post a {@link LumenWireToggleEvent}. The
+ * Manipulator cycles the mode on both ends: anything, owners (the default), players, hostile mobs, animals, living
+ * things, items and XP, projectiles. A paired wire shows a stream of glints in the mode's colour between the two, and
+ * a burst of rose glows while active.
+ */
+public class TileEntityLumenWire extends TileEntityChromaticBase implements BreakAction, RedstoneTile, ManipulatorInteraction {
 
 	private StepTimer checkTimer = new StepTimer(5);
 
@@ -71,17 +69,16 @@ public class TileEntityLumenWire extends TileEntityChromaticBase implements Brea
 
 	private CheckType check = CheckType.OWNER;
 
-	private final ArrayList<WireWatcher> notifyList = new ArrayList();
+	private final ArrayList<WireWatcher> notifyList = new ArrayList<>();
 
 	public static final int MAX_LENGTH = 6;
 	public static final int ACTIVATION_LENGTH = 30;
 
-	@SideOnly(Side.CLIENT)
+	/** Client only, created on the first client tick: the glints drawn by the renderer. */
 	public FXCollection particles;
 
-	public TileEntityLumenWire() {
-		if (this.getSide() == Side.CLIENT)
-			particles = new FXCollection();
+	public TileEntityLumenWire(BlockPos pos, BlockState state) {
+		super(ChromaBlockEntities.LUMEN_WIRE.get(), pos, state);
 	}
 
 	@Override
@@ -89,69 +86,41 @@ public class TileEntityLumenWire extends TileEntityChromaticBase implements Brea
 		return ChromaTiles.LUMENWIRE;
 	}
 
-	public AxisAlignedBB getHitbox() {
-		AxisAlignedBB box = AxisAlignedBB.getBoundingBox(xCoord+0.5, yCoord+0.5, zCoord+0.5, xCoord+0.5, yCoord+0.5, zCoord+0.5);
-		switch(this.getFacing().getOpposite()) {
-			case DOWN:
-				box.minY = yCoord;
-				box.maxY = yCoord+0.25;
-				box.minX = xCoord+0.25;
-				box.maxX = xCoord+0.75;
-				box.minZ = zCoord+0.25;
-				box.maxZ = zCoord+0.75;
-				break;
-			case UP:
-				box.maxY = yCoord+1;
-				box.minY = yCoord+0.75;
-				box.minX = xCoord+0.25;
-				box.maxX = xCoord+0.75;
-				box.minZ = zCoord+0.25;
-				box.maxZ = zCoord+0.75;
-				break;
-			case EAST:
-				box.maxX = xCoord+1;
-				box.minX = xCoord+0.75;
-				box.minY = yCoord+0.25;
-				box.maxY = yCoord+0.75;
-				box.minZ = zCoord+0.25;
-				box.maxZ = zCoord+0.75;
-				break;
-			case WEST:
-				box.minX = xCoord;
-				box.maxX = xCoord+0.25;
-				box.minY = yCoord+0.25;
-				box.maxY = yCoord+0.75;
-				box.minZ = zCoord+0.25;
-				box.maxZ = zCoord+0.75;
-				break;
-			case NORTH:
-				box.minZ = zCoord;
-				box.maxZ = zCoord+0.25;
-				box.minY = yCoord+0.25;
-				box.maxY = yCoord+0.75;
-				box.minX = xCoord+0.25;
-				box.maxX = xCoord+0.75;
-				break;
-			case SOUTH:
-				box.maxZ = zCoord+1;
-				box.minZ = zCoord+0.75;
-				box.minY = yCoord+0.25;
-				box.maxY = yCoord+0.75;
-				box.minX = xCoord+0.25;
-				box.maxX = xCoord+0.75;
-				break;
-			default:
-				break;
-		}
-		return box;
+	/** V33a's {@code getHitbox}: a quarter-block-thick 1/2 square against the supporting face. */
+	public AABB getHitbox() {
+		BlockPos p = this.getBlockPos();
+		int x = p.getX();
+		int y = p.getY();
+		int z = p.getZ();
+		return switch(this.getFacing().getOpposite()) {
+			case DOWN -> new AABB(x+0.25, y, z+0.25, x+0.75, y+0.25, z+0.75);
+			case UP -> new AABB(x+0.25, y+0.75, z+0.25, x+0.75, y+1, z+0.75);
+			case EAST -> new AABB(x+0.75, y+0.25, z+0.25, x+1, y+0.75, z+0.75);
+			case WEST -> new AABB(x, y+0.25, z+0.25, x+0.25, y+0.75, z+0.75);
+			case NORTH -> new AABB(x+0.25, y+0.25, z, x+0.75, y+0.75, z+0.25);
+			case SOUTH -> new AABB(x+0.25, y+0.25, z+0.75, x+0.75, y+0.75, z+1);
+		};
 	}
 
 	public void cycleMode() {
 		ChromaSounds.USE.playSoundAtBlock(this);
 		check = check.next();
 		if (connection != null) {
-			((TileEntityLumenWire)connection.getTileEntity(worldObj)).check = check;
+			BlockEntity te = level.getBlockEntity(connection.asBlockPos());
+			if (te instanceof TileEntityLumenWire other) {
+				other.check = check;
+				other.syncAllData(false);
+			}
 		}
+		this.syncAllData(false);
+	}
+
+	/** V33a's Manipulator branch for LUMENWIRE. */
+	@Override
+	public boolean onManipulatorInteract(Player ep, int side) {
+		if (!level.isClientSide())
+			this.cycleMode();
+		return true;
 	}
 
 	public CheckType getMode() {
@@ -159,39 +128,42 @@ public class TileEntityLumenWire extends TileEntityChromaticBase implements Brea
 	}
 
 	@Override
-	protected void onFirstTick(World world, int x, int y, int z) {
-		this.checkConnection(world, x, y, z);
+	protected void onFirstTick(Level world, BlockPos pos) {
+		if (!world.isClientSide())
+			this.checkConnection(world, pos);
 	}
 
 	@Override
-	public void updateEntity(World world, int x, int y, int z, int meta) {
-		if (!world.isRemote) {
+	public void updateEntity(Level world, BlockPos pos) {
+		if (!world.isClientSide()) {
 			checkTimer.update();
 			if (checkTimer.checkCap()) {
-				this.checkConnection(world, x, y, z);
+				this.checkConnection(world, pos);
 			}
 		}
 		else {
+			if (particles == null)
+				particles = new FXCollection();
 			particles.update();
 		}
 
 		if (connection != null) {
 			if (activeTick > 0) {
 				if (activeTick == 1) {
-					this.toggle(world, x, y, z, false);
+					this.toggle(world, pos, false);
 				}
 				activeTick--;
 			}
 
-			if (world.isRemote) {
-				this.doConnectionParticles(world, x, y, z);
+			if (world.isClientSide()) {
+				this.doConnectionParticles(world, pos);
 				if (this.isActive()) {
-					this.doActiveParticles(world, x, y, z);
+					this.doActiveParticles(world, pos);
 				}
 			}
 			else {
-				if (this.testBounds(world, x, y, z)) {
-					this.toggle(world, x, y, z, true);
+				if (this.testBounds(world, pos)) {
+					this.toggle(world, pos, true);
 				}
 			}
 		}
@@ -200,64 +172,61 @@ public class TileEntityLumenWire extends TileEntityChromaticBase implements Brea
 		}
 	}
 
-	private void toggle(World world, int x, int y, int z, boolean on) {
+	/**
+	 * Switching is decided on the server; the client only keeps its countdown, as the sync resets it. (V33a also ran
+	 * the switch's side effects on the client.)
+	 */
+	private void toggle(Level world, BlockPos pos, boolean on) {
 		boolean change = on != this.isActive();
-		if (change)
-			ReikaSoundHelper.playSoundAtBlock(world, x, y, z, "random.click", 1F, on ? 0.75F : 0.675F);
 		if (on)
 			activeTick = ACTIVATION_LENGTH;
+		if (world.isClientSide())
+			return;
+		if (change)
+			world.playSound(null, pos, SoundEvents.UI_BUTTON_CLICK.value(), SoundSource.BLOCKS, 1F, on ? 0.75F : 0.675F);
 		if (change) {
-			this.causeUpdates(world, x, y, z);
-			TileEntityLumenWire te = (TileEntityLumenWire)connection.getTileEntity(world);
-			if (te != null)
-				te.causeUpdates(world, connection.xCoord, connection.yCoord, connection.zCoord);
-			if (ModList.OPENCOMPUTERS.isLoaded())
-				this.sendOCActivation(world, x, y, z, on);
+			this.causeUpdates(world, pos);
+			BlockEntity te = world.getBlockEntity(connection.asBlockPos());
+			if (te instanceof TileEntityLumenWire other)
+				other.causeUpdates(world, other.getBlockPos());
+			// CHROMA-PORT: V33a also sent an OpenComputers network packet and "computer.signal" ("lumen_wire", the
+			// pair id, on) from its OC node; OpenComputers has no 26.2 port.
 			for (WireWatcher w : notifyList) {
 				w.onToggle(new Coordinate(this), this.isActive());
 			}
-			MinecraftForge.EVENT_BUS.post(new LumenWireToggleEvent(world, x, y, z, connectionUID, on));
+			NeoForge.EVENT_BUS.post(new LumenWireToggleEvent(world, pos.getX(), pos.getY(), pos.getZ(), connectionUID, on));
 			this.syncAllData(false);
 		}
 	}
 
-	private void causeUpdates(World world, int x, int y, int z) {
-		ReikaWorldHelper.causeAdjacentUpdates(world, x, y, z);
-		ReikaWorldHelper.causeAdjacentUpdates(world, x-this.getFacing().offsetX, y-this.getFacing().offsetY, z-this.getFacing().offsetZ);
+	/** Neighbours of the wire and of the block it sits on, which it powers strongly. */
+	private void causeUpdates(Level world, BlockPos pos) {
+		world.updateNeighborsAt(pos, this.getBlockState().getBlock());
+		world.updateNeighborsAt(pos.relative(this.getFacing().getOpposite()), this.getBlockState().getBlock());
 	}
 
-	@ModDependent(ModList.OPENCOMPUTERS)
-	private void sendOCActivation(World world, int x, int y, int z, boolean on) {
-		if (!world.isRemote) {
-			String tag = "lumen_wire";
-			Node n = this.node();
-			Network.newPacket(n != null ? n.address() : "NULL", null, 500, new Object[]{tag, connectionUID.toString(), on});
-			if (n != null)
-				n.sendToReachable("computer.signal", tag, connectionUID.toString(), on);
-		}
-	}
-
-	private boolean testBounds(World world, int x, int y, int z) {
-		AxisAlignedBB box = this.getCheckBox(world, x, y, z);
+	private boolean testBounds(Level world, BlockPos pos) {
+		AABB box = this.getCheckBox(pos);
 		return check.check(this, world, box);
 	}
 
-	private AxisAlignedBB getCheckBox(World world, int x, int y, int z) {
-		AxisAlignedBB box = ReikaAABBHelper.getBlockAABB(x, y, z);
+	private AABB getCheckBox(BlockPos pos) {
+		AABB box = new AABB(pos);
 		if (connection == null)
 			return box;
-		box.minX = Math.min(box.minX, connection.xCoord);
-		box.minY = Math.min(box.minY, connection.yCoord);
-		box.minZ = Math.min(box.minZ, connection.zCoord);
-		box.maxX = Math.max(box.maxX, connection.xCoord+1);
-		box.maxY = Math.max(box.maxY, connection.yCoord+1);
-		box.maxZ = Math.max(box.maxZ, connection.zCoord+1);
-		return box;
+		return new AABB(Math.min(box.minX, connection.xCoord), Math.min(box.minY, connection.yCoord), Math.min(box.minZ, connection.zCoord),
+				Math.max(box.maxX, connection.xCoord+1), Math.max(box.maxY, connection.yCoord+1), Math.max(box.maxZ, connection.zCoord+1));
 	}
 
-	@SideOnly(Side.CLIENT)
-	private void doConnectionParticles(World world, int x, int y, int z) {
-		double dp = Minecraft.getMinecraft().thePlayer.getDistanceSq(x+0.5, y+0.5, z+0.5);
+	/** V33a: glints spread along the pair, thinner (and larger) the further the player is. */
+	private void doConnectionParticles(Level world, BlockPos pos) {
+		Player player = net.minecraft.client.Minecraft.getInstance().player;
+		if (player == null)
+			return;
+		int x = pos.getX();
+		int y = pos.getY();
+		int z = pos.getZ();
+		double dp = player.distanceToSqr(x+0.5, y+0.5, z+0.5);
 		int n = 1+rand.nextInt(3);
 		float ds = 0;
 		if (dp > 16384) {
@@ -290,9 +259,10 @@ public class TileEntityLumenWire extends TileEntityChromaticBase implements Brea
 		}
 		double in = 0.25;
 		double h = 0.5;
-		double inx = this.getFacing().offsetX == 0 ? 0.5 : in;
-		double iny = this.getFacing().offsetY == 0 ? h : in;
-		double inz = this.getFacing().offsetZ == 0 ? 0.5 : in;
+		Direction f = this.getFacing();
+		double inx = f.getStepX() == 0 ? 0.5 : in;
+		double iny = f.getStepY() == 0 ? h : in;
+		double inz = f.getStepZ() == 0 ? 0.5 : in;
 		for (int i = 0; i < n; i++) {
 			double d = rand.nextDouble();
 			double dx = x+inx+d*(connection.xCoord+1-inx*2-x);
@@ -301,50 +271,27 @@ public class TileEntityLumenWire extends TileEntityChromaticBase implements Brea
 			int l = 10+rand.nextInt(10);
 			float s = 1.5F+rand.nextFloat()*1F+ds;
 			int p = rand.nextInt(4);
-			/*
-			EntityBlurFX fx = new EntityBlurFX(world, dx, dy, dz).setLife(l).setColor(check.renderColor).setScale(s);
-			EntityBlurFX fx2 = new EntityBlurFX(world, dx, dy, dz).setLife(l).setColor(0xffffff).setScale(s/2);
-			if (rand.nextBoolean()) {
-				fx.setRapidExpand();
-				fx2.setRapidExpand();
-			}
-			switch(p) {
-				case 1:
-					fx.setIcon(ChromaIcons.FLARE);
-					fx2.setIcon(ChromaIcons.FLARE);
-					break;
-				case 2:
-					fx.setIcon(ChromaIcons.CENTER);
-					fx2.setIcon(ChromaIcons.CENTER);
-					break;
-				case 3:
-					fx.setIcon(ChromaIcons.BIGFLARE);
-					fx2.setIcon(ChromaIcons.BIGFLARE);
-					break;
-			}
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx2);
-			 */
-			ChromaIcons ico = ChromaIcons.FADE;
-			switch(p) {
-				case 1:
-					ico = ChromaIcons.FLARE;
-					break;
-				case 2:
-					ico = ChromaIcons.CENTER;
-					break;
-				case 3:
-					ico = ChromaIcons.BIGFLARE;
-					break;
-			}
-			particles.addEffect(dx-x, dy-y, dz-z, ico.getIcon(), l, s, check.renderColor);
-			particles.addEffect(dx-x, dy-y, dz-z, ico.getIcon(), l, s/2F, 0xffffff);
+			ChromaIcons ico = switch(p) {
+				case 1 -> ChromaIcons.FLARE;
+				case 2 -> ChromaIcons.CENTER;
+				case 3 -> ChromaIcons.BIGFLARE;
+				default -> ChromaIcons.FADE;
+			};
+			var sprite = ChromaParticle.iconSprite(ico);
+			particles.addEffect(dx-x, dy-y, dz-z, sprite, l, s, check.renderColor);
+			particles.addEffect(dx-x, dy-y, dz-z, sprite, l, s/2F, 0xffffff);
 		}
 	}
 
-	@SideOnly(Side.CLIENT)
-	private void doActiveParticles(World world, int x, int y, int z) {
-		double dp = Minecraft.getMinecraft().thePlayer.getDistanceSq(x+0.5, y+0.5, z+0.5);
+	/** V33a: one rose glow along the pair, largest mid-way, in a hue within 60 degrees of the mode colour. */
+	private void doActiveParticles(Level world, BlockPos pos) {
+		Player player = net.minecraft.client.Minecraft.getInstance().player;
+		if (player == null)
+			return;
+		int x = pos.getX();
+		int y = pos.getY();
+		int z = pos.getZ();
+		double dp = player.distanceToSqr(x+0.5, y+0.5, z+0.5);
 		int n = 1+rand.nextInt(3);
 		if (dp > 16384) {
 			if (rand.nextInt(4) > 0)
@@ -369,39 +316,36 @@ public class TileEntityLumenWire extends TileEntityChromaticBase implements Brea
 			return;
 		double in = 0.25;
 		double h = 0.5;
-		double inx = this.getFacing().offsetX == 0 ? 0.5 : in;
-		double iny = this.getFacing().offsetY == 0 ? h : in;
-		double inz = this.getFacing().offsetZ == 0 ? 0.5 : in;
+		Direction f = this.getFacing();
+		double inx = f.getStepX() == 0 ? 0.5 : in;
+		double iny = f.getStepY() == 0 ? h : in;
+		double inz = f.getStepZ() == 0 ? 0.5 : in;
 		double d = rand.nextDouble();
 		double dx = x+inx+d*(connection.xCoord+1-inx*2-x);
 		double dy = y+iny+d*(connection.yCoord+1-iny*2-y);
 		double dz = z+inz+d*(connection.zCoord+1-inz*2-z);
 		int l = 10+rand.nextInt(10);
 		float s = (float)(2.5+4*(0.5-Math.abs(0.5-d)));
-		int p = rand.nextInt(4);
 		int hue = ReikaRandomHelper.getRandomPlusMinus(ReikaColorAPI.getHue(check.renderColor), 60);
 		int c = ReikaColorAPI.getModifiedHue(check.renderColor, hue);
-		EntityBlurFX fx = new EntityCCBlurFX(world, dx, dy, dz).setIcon(ChromaIcons.ROSES_WHITE).setLife(l).setColor(c).setScale(s);
-		Minecraft.getMinecraft().effectRenderer.addEffect(fx);
+		ChromaParticle.spawnIconGlow(world, dx, dy, dz, ChromaIcons.ROSES_WHITE, c, l, s);
 	}
 
 	public boolean isActive() {
 		return activeTick > 0;
 	}
 
-	private void checkConnection(World world, int x, int y, int z) {
+	private void checkConnection(Level world, BlockPos pos) {
 		this.disconnect(true);
+		Direction f = this.getFacing();
 		for (int i = 1; i <= MAX_LENGTH; i++) {
-			int dx = x+this.getFacing().offsetX*i;
-			int dy = y+this.getFacing().offsetY*i;
-			int dz = z+this.getFacing().offsetZ*i;
-			ChromaTiles t = ChromaTiles.getTile(world, dx, dy, dz);
-			if (t == this.getTile()) {
-				TileEntityLumenWire te = (TileEntityLumenWire)world.getTileEntity(dx, dy, dz);
-				if (te.getFacing() == this.getFacing().getOpposite())
-					this.connect(te, true);
+			BlockPos at = pos.relative(f, i);
+			BlockEntity te = world.getBlockEntity(at);
+			if (te instanceof TileEntityLumenWire wire) {
+				if (wire.getFacing() == f.getOpposite())
+					this.connect(wire, true);
 			}
-			else if (!world.getBlock(dx, dy, dz).isAir(world, dx, dy, dz))
+			else if (!world.getBlockState(at).isAir())
 				return;
 		}
 	}
@@ -412,7 +356,7 @@ public class TileEntityLumenWire extends TileEntityChromaticBase implements Brea
 		connection = new Coordinate(te);
 		if (!connection.equals(old)) {
 			connectionUID = callOther ? UUID.randomUUID() : te.connectionUID;
-			this.markDirty();
+			this.setChanged();
 			this.syncAllData(false);
 			if (callOther)
 				te.connect(this, false);
@@ -421,49 +365,48 @@ public class TileEntityLumenWire extends TileEntityChromaticBase implements Brea
 
 	private void disconnect(boolean callOther) {
 		if (connection != null && callOther) {
-			TileEntityLumenWire te = (TileEntityLumenWire)connection.getTileEntity(worldObj);
-			if (te != null)
-				te.disconnect(false);
+			BlockEntity te = level.getBlockEntity(connection.asBlockPos());
+			if (te instanceof TileEntityLumenWire other)
+				other.disconnect(false);
 		}
 		connection = null;
 		connectionUID = null;
-		this.markDirty();
+		this.setChanged();
 		this.syncAllData(false);
 	}
 
 	@Override
-	protected void readSyncTag(NBTTagCompound NBT) {
+	protected void readSyncTag(CompoundTag NBT) {
 		super.readSyncTag(NBT);
 
-		connection = NBT.hasKey("loc") ? Coordinate.readFromNBT("loc", NBT) : null;
+		connection = NBT.contains("loc") ? Coordinate.readFromNBT("loc", NBT) : null;
 
-		activeTick = NBT.getInteger("activet");
+		activeTick = NBT.getIntOr("activet", 0);
 
-		facing = dirs[NBT.getInteger("dir")];
-
-		check = CheckType.list[NBT.getInteger("ctype")];
+		int ctype = NBT.getIntOr("ctype", CheckType.OWNER.ordinal());
+		check = CheckType.list[Math.clamp(ctype, 0, CheckType.list.length-1)];
 	}
 
 	@Override
-	protected void writeSyncTag(NBTTagCompound NBT) {
+	protected void writeSyncTag(CompoundTag NBT) {
 		super.writeSyncTag(NBT);
 
 		if (connection != null)
 			connection.writeToNBT("loc", NBT);
 
-		NBT.setInteger("activet", activeTick);
+		NBT.putInt("activet", activeTick);
 
-		NBT.setInteger("dir", this.getFacing().ordinal());
-
-		NBT.setInteger("ctype", check.ordinal());
+		NBT.putInt("ctype", check.ordinal());
 	}
 
-	public ForgeDirection getFacing() {
-		return facing != null ? facing : ForgeDirection.UP;
+	/** The face it points out of (V33a's {@code placeOnSide} side, now the block's FACING). */
+	public Direction getFacing() {
+		BlockState state = this.getBlockState();
+		return state.hasProperty(BlockStateProperties.FACING) ? state.getValue(BlockStateProperties.FACING) : Direction.UP;
 	}
 
 	@Override
-	protected void animateWithTick(World world, int x, int y, int z) {
+	protected void animateWithTick(Level world, BlockPos pos) {
 
 	}
 
@@ -473,8 +416,10 @@ public class TileEntityLumenWire extends TileEntityChromaticBase implements Brea
 	}
 
 	@Override
-	public void placeOnSide(int s) {
-		facing = ForgeDirection.VALID_DIRECTIONS[s];
+	public void preRemoveSideEffects(BlockPos pos, BlockState state) {
+		super.preRemoveSideEffects(pos, state);
+		if (level != null && !level.isClientSide())
+			this.breakBlock();
 	}
 
 	public static enum CheckType {
@@ -495,31 +440,23 @@ public class TileEntityLumenWire extends TileEntityChromaticBase implements Brea
 			renderColor = c;
 		}
 
-		private boolean check(TileEntityLumenWire te, World world, AxisAlignedBB box) {
-			switch(this) {
-				case ANY:
-					return !world.getEntitiesWithinAABB(Entity.class, box).isEmpty();
-				case LIVING:
-					return !world.getEntitiesWithinAABB(EntityLivingBase.class, box).isEmpty();
-				case ITEM:
-					return !world.getEntitiesWithinAABBExcludingEntity(null, box, ReikaEntityHelper.itemOrXPSelector).isEmpty();
-				case MOB:
-					return !world.getEntitiesWithinAABB(EntityMob.class, box).isEmpty();
-				case OWNER:
-					for (EntityPlayer ep : te.getOwners(false)) {
-						if (ep.boundingBox.intersectsWith(box))
-							return true;
+		private boolean check(TileEntityLumenWire te, Level world, AABB box) {
+			return switch(this) {
+				case ANY -> !world.getEntitiesOfClass(Entity.class, box).isEmpty();
+				case LIVING -> !world.getEntitiesOfClass(LivingEntity.class, box).isEmpty();
+				case ITEM -> !world.getEntities((Entity)null, box, e -> e instanceof ItemEntity || e instanceof ExperienceOrb).isEmpty();
+				case MOB -> !world.getEntitiesOfClass(Monster.class, box).isEmpty();
+				case OWNER -> {
+					for (Player ep : te.getOwners(false)) {
+						if (ep.getBoundingBox().intersects(box))
+							yield true;
 					}
-					return false;
-				case PASSIVE:
-					return !world.getEntitiesWithinAABB(EntityAnimal.class, box).isEmpty();
-				case PLAYER:
-					return !world.getEntitiesWithinAABB(EntityPlayer.class, box).isEmpty();
-				case PROJECTILE:
-					return !world.getEntitiesWithinAABB(IProjectile.class, box).isEmpty();
-				default:
-					return false;
-			}
+					yield false;
+				}
+				case PASSIVE -> !world.getEntitiesOfClass(Animal.class, box).isEmpty();
+				case PLAYER -> !world.getEntitiesOfClass(Player.class, box).isEmpty();
+				case PROJECTILE -> !world.getEntitiesOfClass(Projectile.class, box).isEmpty();
+			};
 		}
 
 		private CheckType next() {
@@ -528,33 +465,22 @@ public class TileEntityLumenWire extends TileEntityChromaticBase implements Brea
 	}
 
 	@Override
-	public boolean checkLocationValidity() {
-		WorldLocation loc = this.getAdjacentLocation(this.getFacing().getOpposite());
-		return loc.getBlock().isSideSolid(worldObj, loc.xCoord, loc.yCoord, loc.zCoord, this.getFacing());
-	}
-
-	public void drop() {
-		ReikaItemHelper.dropItem(worldObj, xCoord+0.5, yCoord+0.5, zCoord+0.5, this.getTile().getCraftedProduct());
-		this.delete();
-	}
-
-	@Override
-	public int getStrongPower(IBlockAccess world, int x, int y, int z, ForgeDirection side) {
+	public int getStrongPower(BlockGetter world, BlockPos pos, Direction side) {
 		return activeTick > 1 ? 15 : 0;
 	}
 
 	@Override
-	public int getWeakPower(IBlockAccess world, int x, int y, int z, ForgeDirection side) {
-		return this.getStrongPower(world, x, y, z, side);
+	public int getWeakPower(BlockGetter world, BlockPos pos, Direction side) {
+		return this.getStrongPower(world, pos, side);
 	}
 
 	@Override
-	public AxisAlignedBB getRenderBoundingBox() {
-		return this.getCheckBox(worldObj, xCoord, yCoord, zCoord);
+	public AABB getRenderBoundingBox() {
+		return this.getCheckBox(this.getBlockPos());
 	}
 
 	public void addWatcher(WireWatcher w) {
-		if (w instanceof TileEntity) {
+		if (w instanceof BlockEntity) {
 			w = new TileWireWatcher(w);
 		}
 		notifyList.add(w);
@@ -571,12 +497,13 @@ public class TileEntityLumenWire extends TileEntityChromaticBase implements Brea
 		private final WorldLocation location;
 
 		public TileWireWatcher(WireWatcher te) {
-			location = new WorldLocation((TileEntity)te);
+			location = new WorldLocation((BlockEntity)te);
 		}
 
 		@Override
 		public void onToggle(Coordinate wire, boolean active) {
-			((WireWatcher)location.getTileEntity()).onToggle(wire, active);
+			if (location.getBlockEntity() instanceof WireWatcher w)
+				w.onToggle(wire, active);
 		}
 
 	}

@@ -325,6 +325,15 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 					new ItemStackTemplate(ChromaBlocks.CHROMA_FLOWER.get().asItem()), 5, 5)
 					.withPenalty(2, 0.25F));
 
+			// V33a LumenWireRecipe, a plain CastingRecipe: a blue shard (the exact plain shard), obsidian, glowstone dust
+			// and cobblestone (the 1.7.10 "cobblestone" ore name).
+			saveShaped("lumen_wire", new ItemStackTemplate(ChromaBlocks.LUMEN_WIRE.get().asItem()), 5, 5,
+					Map.of('s', Ingredient.of(ChromaItems.SHARDS.get(CrystalElement.BLUE).get()),
+							'O', Ingredient.of(Items.OBSIDIAN),
+							'G', Ingredient.of(Items.GLOWSTONE_DUST),
+							'c', tag(Tags.Items.COBBLESTONES_NORMAL)),
+					" s ", "OGO", "ccc");
+
 			// V33a LumenTurretRecipe, a plain CastingRecipe making four: a pink shard (the exact plain shard) ringed by
 			// glowstone dust, on smooth crystalline stone.
 			saveShaped("lumen_turret", new ItemStackTemplate(ChromaBlocks.LUMEN_TURRET.get().asItem(), 4), 5, 5,
