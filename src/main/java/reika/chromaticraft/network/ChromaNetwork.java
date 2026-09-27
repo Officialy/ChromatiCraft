@@ -286,12 +286,19 @@ public final class ChromaNetwork {
 
 	public static void sendPylonCache(ServerPlayer player,
 			java.util.List<reika.chromaticraft.world.iwg.PylonGenerator.PylonEntry> entries) {
-		PacketDistributor.sendToPlayer(player, new PylonCache(java.util.List.copyOf(entries)));
+		if (player.connection != null && player.connection.hasChannel(PylonCache.TYPE))
+			PacketDistributor.sendToPlayer(player, new PylonCache(java.util.List.copyOf(entries)));
 	}
 
 	public static void sendPylonCacheToAll(net.minecraft.server.MinecraftServer server,
 			java.util.List<reika.chromaticraft.world.iwg.PylonGenerator.PylonEntry> entries) {
-		PacketDistributor.sendToAllPlayers(new PylonCache(java.util.List.copyOf(entries)));
+		// Only players that negotiated the channel: sendToAllPlayers throws on one that did not (a GameTest
+		// mock player, a fake player), crashing the pylon's first tick.
+		PylonCache packet = new PylonCache(java.util.List.copyOf(entries));
+		for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+			if (player.connection != null && player.connection.hasChannel(PylonCache.TYPE))
+				PacketDistributor.sendToPlayer(player, packet);
+		}
 	}
 
 	public static void sendEnderEyeSync(ServerLevel level, reika.chromaticraft.entity.EntityEnderEyeT2 eye) {
