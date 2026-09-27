@@ -41,7 +41,15 @@ public final class LexiconDescriptions {
 
 	public static String notes(LexiconCatalog.Entry entry) {
 		Text text = text(entry);
-		return text == null ? "" : text.notes();
+		String ret = text == null ? "" : text.notes();
+		// V33a ChromaResearch.getNotes: a tool implementing DynamicallyGeneratedSubpage appends its own notes.
+		if (entry.sourceType().equals("tool")
+				&& reika.chromaticraft.client.gui.LexiconIconResolver.icon(entry).getItem()
+				instanceof reika.chromaticraft.auxiliary.interfaces.DynamicallyGeneratedSubpage iw
+				&& !iw.replaceOriginal()) {
+			ret += (ret.isEmpty() ? "" : "\n")+iw.getNotes(0);
+		}
+		return ret;
 	}
 
 	public static String ability(String id) {

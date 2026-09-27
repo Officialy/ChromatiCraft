@@ -60,6 +60,13 @@ public final class ChromaEntityTypes {
 					.<EntityLumaBurst>of(EntityLumaBurst::new, MobCategory.MISC)
 					.sized(0.25F, 0.25F).clientTrackingRange(64).updateInterval(1));
 
+	/** V33a EntityChargingTool: a dropped powered tool, charging near crystal sources; sized and tracked as an item. */
+	public static final DeferredHolder<EntityType<?>, EntityType<reika.chromaticraft.magic.ToolChargingSystem.EntityChargingTool>> CHARGING_TOOL =
+			register("charging_tool", () -> EntityType.Builder
+					.<reika.chromaticraft.magic.ToolChargingSystem.EntityChargingTool>of(
+							reika.chromaticraft.magic.ToolChargingSystem.EntityChargingTool::new, MobCategory.MISC)
+					.sized(0.25F, 0.25F).eyeHeight(0.2125F).clientTrackingRange(6).updateInterval(20));
+
 	/** V33a LIGHTGUN shot: the Illumination Gun's light-planting bolt. */
 	public static final DeferredHolder<EntityType<?>, EntityType<reika.chromaticraft.entity.EntityLightShot>> LIGHT_SHOT =
 			register("light_shot", () -> EntityType.Builder

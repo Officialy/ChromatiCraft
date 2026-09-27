@@ -949,6 +949,37 @@ public abstract class ChromaParticle extends SingleQuadParticle {
         }
     }
 
+    /**
+     * V33a {@code ItemPoweredChromaTool.doStandardChargeFX}, for a charged powered tool lying on the ground. Full: six
+     * rapid-expanding blurs fan out flat from its block (a quarter above the floor of its Y), turning with its age.
+     * Otherwise: one colliding blur of random size flies off in a random direction.
+     */
+    public static void spawnPoweredItemCharge(Level world, double x, double y, double z, int age, int color, boolean full) {
+        if (!(world instanceof ClientLevel level)) return;
+        RandomSource rand = level.getRandom();
+        double py = (int)y+0.25;
+        if (full) {
+            double ang = 360*Math.sin(age/50D);
+            for (int i = 0; i < 360; i += 60) {
+                double v = 0.125+0.0625*Math.sin(age/250D);
+                double vx = v*Math.cos(Math.toRadians(ang+i));
+                double vz = v*Math.sin(Math.toRadians(ang+i));
+                FadeGlow fx = new FadeGlow(level, x, py, z, vx, 0, vz, color, 40, 1.5F, true);
+                fx.setLegacyMotion(false);
+                Minecraft.getInstance().particleEngine.add(fx);
+            }
+        }
+        else {
+            double v = 0.125+(rand.nextDouble()*2-1)*0.0625;
+            double[] vel = ReikaPhysicsHelper.polarToCartesian(v, rand.nextDouble()*360, rand.nextDouble()*360);
+            float s = 1+rand.nextFloat();
+            FadeGlow fx = new FadeGlow(level, x, py, z, vel[0], vel[1], vel[2], color, 40, s, false);
+            fx.setLegacyMotion(false);
+            fx.setColliding();
+            Minecraft.getInstance().particleEngine.add(fx);
+        }
+    }
+
     public static void spawnEtherealLight(Level world, BlockPos pos) {
         if (!(world instanceof ClientLevel level)) return;
         RandomSource rand = level.getRandom();

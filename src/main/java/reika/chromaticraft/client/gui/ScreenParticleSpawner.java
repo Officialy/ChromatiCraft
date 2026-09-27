@@ -576,7 +576,7 @@ public final class ScreenParticleSpawner extends AbstractContainerScreen<MenuPar
 		graphics.blit(RenderPipelines.GUI_TEXTURED, TEXTURE, j, k, 0, 0, imageWidth, imageHeight, 256, 256);
 
 		if (page == GuiPage.SAVELOAD) {
-			graphics.centeredText(font, "Particle File:", j+imageWidth/2, k+20, 0xff00ff00);
+			graphics.text(font, "Particle File:", j+imageWidth/2-font.width("Particle File:")/2, k+20, 0xff00ff00, false);
 
 			// V33a wrapped the folder path (with a trailing separator) at the last separator before every 24 characters.
 			char sep = File.separatorChar;
@@ -612,12 +612,12 @@ public final class ScreenParticleSpawner extends AbstractContainerScreen<MenuPar
 			i++;
 			graphics.blit(RenderPipelines.GUI_TEXTURED, TEXTURE, dx, dy, 0, 173, 102, 20, 256, 256);
 			String s = o.display+": "+String.valueOf(o.getValue());
-			graphics.centeredText(font, s, dx+51, dy+6, 0xffffffff);
+			graphics.text(font, s, dx+51-font.width(s)/2, dy+6, 0xffffffff, false);
 			if (o instanceof VariableOption v) {
 				dy += sy;
 				graphics.blit(RenderPipelines.GUI_TEXTURED, TEXTURE, dx, dy, 0, 173, 102, 20, 256, 256);
 				s = "Variance: "+String.valueOf(v.getVariance());
-				graphics.centeredText(font, s, dx+51, dy+6, 0xffffffff);
+				graphics.text(font, s, dx+51-font.width(s)/2, dy+6, 0xffffffff, false);
 				i++;
 			}
 		}

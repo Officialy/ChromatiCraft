@@ -82,8 +82,12 @@ public final class ChromaTabs {
 			if (item instanceof reika.chromaticraft.items.tools.ItemCrystalPotion
 					|| item instanceof reika.chromaticraft.items.tools.ItemSplashCrystalPotion)
 				continue;
-			if ((selected == TOOLS.get()) == isTool(item))
+			if ((selected == TOOLS.get()) == isTool(item)) {
 				event.accept(item);
+				// V33a ItemPoweredChromaTool.getSubItems: empty, then full.
+				if (item instanceof reika.chromaticraft.base.ItemPoweredChromaTool powered)
+					event.accept(reika.chromaticraft.magic.ToolChargingSystem.instance.getChargedItem(powered, powered.getMaxCharge()));
+			}
 		}
 		if (selected == TOOLS.get()) {
 			event.accept(reika.chromaticraft.item.ItemChromaBook.creativeStack());

@@ -8772,6 +8772,42 @@ Needs a full GameTest run (ownership semantics changed across these tiles).
   block has it.
 - Unverified in game.
 
+**Powered tools: the charging layer (2026-09-27).** This is shared by the seven V33a `ItemPoweredChromaTool`s
+(probe, ore pick, structure finder, purify crystal, body light, nether key, spawner bypass) and powered pendants.
+- `ItemChromaTool` is ported as the tool base: single stack, owner, and `canPlayerUse`/`handleUseAllowance` (a
+  PUNISH refusal drops the tool, deals magic damage and throws the player). Most earlier tool ports extend `Item`
+  directly; new ones should use this base.
+- `PoweredItem`: its V33a `SpriteRenderCallback` parent became `client/PoweredItemClient`.
+  - The `chromaticraft:charge_state` range-select item-model property replaces V33a's charge-state-as-damage
+    sprite offset. Don't reintroduce a damage value (the metadata-collapse trap).
+  - A NeoForge item decorator draws V33a's `renderItemAux` badge while shift is held or the stack is hovered:
+    frame, a cell cycling through the element colour, and the face rune; full size with Control.
+  - Items can register extra slot icons (`registerExtraIcons`).
+- `ToolChargingSystem`:
+  - Charge lives in CUSTOM_DATA `"charge"`, as in V33a.
+  - Charging a dropped tool matches V33a: within 32 blocks of a crystal source conducting its colour, at a rate on a
+    cosine curve. That rate is x1.25 at a pylon (x2 enhanced), x1.25 in a chroma source and x2 within 256 blocks of
+    an Aura Point. The source is drained 4x what the tool gains.
+  - The charged stack is set as a fresh copy so the item entity resyncs; this replaces V33a's entity sync packet.
+  - V33a's `TemporaryCrystalReceiver` served only as the search origin, so the Level/x,y,z
+    `getNearestTileOfType` overload replaces it.
+  - The Efficiency Crystal's /3 drain discount reads its `last_efficiency` player tag directly. CHROMA-PORT: the
+    crystal itself (ENERGY) is unported.
+- `EntityChargingTool` (`chromaticraft:charging_tool`, drawn by the item renderer): powered items swap to it through
+  NeoForge `createEntity`.
+  - Lifespan is MAX_VALUE, so it never despawns.
+  - It keeps its 5x5 chunks loaded through new entity tickets in DragonAPI `ChunkManager`. The tickets persist
+    across a restart and are released when it is picked up, killed or discarded.
+- Pylon charging now calls `chargePlayerTools` (V33a `ChromaAux`): a random main-inventory powered item of the
+  pylon's colour gains charge, if it carries `bufferlinked`. Only V33a's (unported) ChargedItemPlayerBufferConnection
+  special recipe sets that, so this stays inert for now. CHROMA-PORT: the ActivatedInventoryItem branch.
+- The creative Tools tab lists each powered tool empty and then full (V33a `getSubItems`).
+- The lexicon appends a tool's `DynamicallyGeneratedSubpage` notes, as V33a `ChromaResearch.getNotes` did.
+- Charge FX, as `doStandardChargeFX`: a full tool throws a turning six-blur wheel; a partly charged one spits one
+  colliding blur a tick.
+- 26.2's inventory tick runs on the server only, where the charge lives.
+- Unverified in game.
+
 **Overworld structure worldgen biome reads (2026-09-26).** The natural structure feature used
 `WorldGenRegion.getBiome` for its candidate and site checks. Vanilla's fiddled biome lookup may
 sample a quart across the edge of the feature step's available chunks, so generation of chunk

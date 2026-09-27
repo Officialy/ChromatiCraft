@@ -9,80 +9,76 @@
  ******************************************************************************/
 package reika.chromaticraft.base;
 
-import java.util.List;
+import java.util.Locale;
+import java.util.function.Consumer;
 
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.entity.RenderItem;
-import net.minecraft.creativetab.CreativeTabs;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.item.EntityItem;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.world.World;
-import net.minecraftforge.client.IItemRenderer.ItemRenderType;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.TooltipDisplay;
+import net.minecraft.world.level.Level;
 
 import reika.chromaticraft.magic.ToolChargingSystem;
-import reika.chromaticraft.magic.toolchargingsystem.EntityChargingTool;
+import reika.chromaticraft.magic.ToolChargingSystem.EntityChargingTool;
 import reika.chromaticraft.magic.interfaces.ChargingPoint;
 import reika.chromaticraft.magic.interfaces.PoweredItem;
 import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.render.particle.EntityCCBlurFX;
-import reika.dragonapi.instantiable.effects.EntityBlurFX;
-import reika.dragonapi.libraries.java.ReikaRandomHelper;
-import reika.dragonapi.libraries.mathsci.ReikaPhysicsHelper;
+import reika.chromaticraft.render.particle.ChromaParticle;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
-
-
+/**
+ * V33a {@code ItemPoweredChromaTool}: a tool that runs on its charge of one element. It drops as an
+ * {@link EntityChargingTool} that never despawns and fills near a crystal source; while activated it spends charge each
+ * tick its {@link #doTick} reports work (never for creative players). The creative tab lists it empty and full.
+ */
 public abstract class ItemPoweredChromaTool extends ItemChromaTool implements PoweredItem {
 
-	public ItemPoweredChromaTool(int index) {
-		super(index);
-		//this.setMaxDamage(getChargeStates()-1);
+	public ItemPoweredChromaTool(Properties properties) {
+		super(properties);
 	}
-
 
 	public abstract CrystalElement getColor(ItemStack is);
 	public abstract int getMaxCharge();
 	public abstract int getChargeStates();
 
-	protected abstract boolean isActivated(EntityPlayer e, ItemStack is, boolean held);
-	public abstract int getChargeConsumptionRate(EntityPlayer e, World world, ItemStack is);
-	protected abstract boolean doTick(ItemStack is, World world, EntityPlayer e, boolean held);
+	protected abstract boolean isActivated(Player e, ItemStack is, boolean held);
+	public abstract int getChargeConsumptionRate(Player e, Level world, ItemStack is);
+	protected abstract boolean doTick(ItemStack is, Level world, Player e, boolean held);
 
-	public float getPlayerChargeCoefficient(EntityPlayer ep, ChargingPoint te, ItemStack is) {
+	@Override
+	public float getPlayerChargeCoefficient(Player ep, ChargingPoint te, ItemStack is) {
 		return 0.05F;
 	}
 
+	@Override
 	public int getChargeRate(ItemStack is, int base) {
 		return base;
 	}
 
+	@Override
 	public int getChargeState(float frac) {
 		return Math.round((this.getChargeStates()-1)*frac);
 	}
 
 	@Override
-	public final void getSubItems(Item i, CreativeTabs c, List li) {
-		li.add(ToolChargingSystem.instance.getChargedItem(this, 0));
-		li.add(ToolChargingSystem.instance.getChargedItem(this, this.getMaxCharge()));
+	public void appendHoverText(ItemStack is, TooltipContext context, TooltipDisplay display, Consumer<Component> li,
+			TooltipFlag flag) {
+		li.accept(Component.literal(String.format(Locale.ROOT, "Energy: %.2f%s",
+				100F*ToolChargingSystem.instance.getCharge(is)/this.getMaxCharge(), "%")));
 	}
 
+	/** V33a {@code onUpdate}; in 26.2 the inventory tick runs on the server only, where the charge lives. */
 	@Override
-	public void addInformation(ItemStack is, EntityPlayer ep, List li, boolean vb) {
-		li.add(String.format("Energy: %.2f%s", 100F*ToolChargingSystem.instance.getCharge(is)/this.getMaxCharge(), "%"));
-	}
-
-	@Override
-	public final void onUpdate(ItemStack is, World world, Entity e, int slot, boolean held) {
-		if (e instanceof EntityPlayer) {
-			EntityPlayer ep = (EntityPlayer)e;
-			//ToolChargingSystem.instance.tryChargeFromPlayer(is, ep);
+	public final void inventoryTick(ItemStack is, ServerLevel world, Entity e, EquipmentSlot slot) {
+		if (e instanceof Player ep) {
+			boolean held = slot == EquipmentSlot.MAINHAND;
 			if (this.isActivated(ep, is, held)) {
 				if (ToolChargingSystem.instance.getCharge(is) > 0) {
-					if (this.doTick(is, world, ep, held) && !(ep).capabilities.isCreativeMode) {
+					if (this.doTick(is, world, ep, held) && !ep.isCreative()) {
 						ToolChargingSystem.instance.removeCharge(is, this.getChargeConsumptionRate(ep, world, is), ep);
 					}
 				}
@@ -91,7 +87,7 @@ public abstract class ItemPoweredChromaTool extends ItemChromaTool implements Po
 	}
 
 	@Override
-	public final int getEntityLifespan(ItemStack is, World world) {
+	public final int getEntityLifespan(ItemStack is, Level world) {
 		return Integer.MAX_VALUE;
 	}
 
@@ -101,71 +97,32 @@ public abstract class ItemPoweredChromaTool extends ItemChromaTool implements Po
 	}
 
 	@Override
-	public final Entity createEntity(World world, Entity location, ItemStack itemstack) {
-		return new EntityChargingTool(world, (EntityItem)location, itemstack);
+	public final Entity createEntity(Level world, Entity location, ItemStack itemstack) {
+		return new EntityChargingTool(world, (ItemEntity)location, itemstack);
 	}
 
 	@Override
-	public final boolean onEntityItemUpdate(EntityItem ei) {
+	public final boolean onEntityItemUpdate(ItemStack is, ItemEntity ei) {
 		return ToolChargingSystem.instance.tickItem(ei);
 	}
 
-	@SideOnly(Side.CLIENT)
-	public void doChargeFX(EntityItem ei, int charge) {
+	@Override
+	public void doChargeFX(ItemEntity ei, int charge) {
 		doStandardChargeFX(ei, charge);
 	}
 
-	@SideOnly(Side.CLIENT)
-	public static void doStandardChargeFX(EntityItem ei, int charge) {
-		ItemStack is = ei.getEntityItem();
+	/**
+	 * V33a: a fully charged tool throws a turning six-armed wheel of its colour; a partly charged one spits one
+	 * colliding blur in a random direction each tick.
+	 */
+	public static void doStandardChargeFX(ItemEntity ei, int charge) {
+		ItemStack is = ei.getItem();
 		PoweredItem pi = (PoweredItem)is.getItem();
-		if (charge == pi.getMaxCharge()) {
-			double ang = 360*Math.sin(ei.age/50D);
-			for (int i = 0; i < 360; i += 60) {
-				double v = 0.125+0.0625*Math.sin(ei.age/250D);
-				double vx = v*Math.cos(Math.toRadians(ang+i));
-				double vz = v*Math.sin(Math.toRadians(ang+i));
-				EntityBlurFX fx = new EntityCCBlurFX(ei.worldObj, ei.posX, (int)ei.posY+0.25, ei.posZ, vx, 0, vz).setLife(40).setRapidExpand().setScale(1.5F);
-				fx.setColor(pi.getColor(is).getColor());
-				Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-			}
-		}
-		else {
-			double v = ReikaRandomHelper.getRandomPlusMinus(0.125, 0.0625);
-			double[] vel = ReikaPhysicsHelper.polarToCartesian(v, itemRand.nextDouble()*360, itemRand.nextDouble()*360);
-			float s = 1+itemRand.nextFloat();
-			EntityBlurFX fx = new EntityCCBlurFX(ei.worldObj, ei.posX, (int)ei.posY+0.25, ei.posZ, vel[0], vel[1], vel[2]).setLife(40).setScale(s).setColliding();
-			fx.setColor(pi.getColor(is).getColor());
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-		}
-	}
-
-	@Override
-	public int getItemSpriteIndex(ItemStack item) {
-		return super.getItemSpriteIndex(item)+item.getItemDamage();
-	}
-
-	protected void renderExtraIcons(RenderItem ri, ItemStack is, ItemRenderType type) {
-
+		ChromaParticle.spawnPoweredItemCharge(ei.level(), ei.getX(), ei.getY(), ei.getZ(), ei.getAge(),
+				pi.getColor(is).getColor(), charge == pi.getMaxCharge());
 	}
 
 	public boolean hasChargeStates() {
-		return true;
-	}
-
-	@Override
-	@SideOnly(Side.CLIENT)
-	public final boolean onRender(RenderItem ri, ItemStack is, ItemRenderType type) {
-		if (is.stackTagCompound != null && is.stackTagCompound.getBoolean("tooltip"))
-			return false;
-		this.renderExtraIcons(ri, is, type);
-		ToolChargingSystem.instance.renderItemAux(ri, is, type);
-		return false;
-	}
-
-	@Override
-	@SideOnly(Side.CLIENT)
-	public final boolean doPreGLTransforms(ItemStack is, ItemRenderType type) {
 		return true;
 	}
 
@@ -179,6 +136,7 @@ public abstract class ItemPoweredChromaTool extends ItemChromaTool implements Po
 		return 1;
 	}
 
+	@Override
 	public boolean replaceOriginal() {
 		return false;
 	}
