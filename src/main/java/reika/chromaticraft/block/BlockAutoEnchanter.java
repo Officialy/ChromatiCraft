@@ -87,17 +87,4 @@ public final class BlockAutoEnchanter extends BlockChromaticTile {
 		return InteractionResult.SUCCESS;
 	}
 
-	@Override
-	public List<ItemStack> getDrops(BlockState state, LootParams.Builder params) {
-		List<ItemStack> drops = new ArrayList<>(super.getDrops(state, params));
-		BlockEntity blockEntity = params.getOptionalParameter(LootContextParams.BLOCK_ENTITY);
-		if (blockEntity instanceof TileEntityAutoEnchanter te) {
-			for (int slot = 0; slot < te.getContainerSize(); slot++) {
-				ItemStack stack = te.getItem(slot);
-				if (!stack.isEmpty()) drops.add(stack.copy());
-			}
-		}
-		return drops;
-	}
-
 }

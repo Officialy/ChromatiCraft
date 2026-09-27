@@ -21,6 +21,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 
+import reika.dragonapi.interfaces.blockentity.ConditionBreakDropsInventory;
 import reika.dragonapi.interfaces.blockentity.InertIInv;
 
 /**
@@ -29,7 +30,7 @@ import reika.dragonapi.interfaces.blockentity.InertIInv;
  * as {@link InventoriedCrystalReceiver} does for the networked tiles; V33a's {@code onPreSlotSet}/{@code onSlotSet}
  * hooks are kept.
  */
-public abstract class InventoriedChromaticBase extends TileEntityChromaticBase implements WorldlyContainer {
+public abstract class InventoriedChromaticBase extends TileEntityChromaticBase implements WorldlyContainer, ConditionBreakDropsInventory {
 
 	protected final NonNullList<ItemStack> inv;
 
@@ -129,6 +130,16 @@ public abstract class InventoriedChromaticBase extends TileEntityChromaticBase i
 		super.setChanged();
 		if (this.getLevel() != null)
 			this.getLevel().updateNeighbourForOutputSignal(this.getBlockPos(), this.getBlockState().getBlock());
+	}
+
+	/**
+	 * The contents drop from 26.2's {@code preRemoveSideEffects} (the stacks themselves, every component kept) however
+	 * the block goes. DragonAPI's player-break inventory drop is skipped: it rebuilt the stacks without their
+	 * components, and a block adding its contents to its loot as well dropped them twice when exploded.
+	 */
+	@Override
+	public boolean dropsInventoryOnBroken() {
+		return false;
 	}
 
 	@Override
