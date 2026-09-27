@@ -1,0 +1,9 @@
+{
+  "model": {
+    "type": "minecraft:special",
+    "base": "chromaticraft:block/personal_charger",
+    "model": {
+      "type": "chromaticraft:personal_charger"
+    }
+  }
+}

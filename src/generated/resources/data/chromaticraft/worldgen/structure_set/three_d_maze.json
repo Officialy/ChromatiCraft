@@ -1,0 +1,11 @@
+{
+  "placement": {
+    "type": "chromaticraft:three_d_maze"
+  },
+  "structures": [
+    {
+      "structure": "chromaticraft:three_d_maze",
+      "weight": 1
+    }
+  ]
+}

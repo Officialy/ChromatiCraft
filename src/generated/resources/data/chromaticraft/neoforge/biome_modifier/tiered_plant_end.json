@@ -1,0 +1,14 @@
+{
+  "type": "neoforge:add_features",
+  "biomes": "#minecraft:is_end",
+  "features": [
+    "chromaticraft:aura_bloom",
+    "chromaticraft:essence_lily",
+    "chromaticraft:element_bulbs",
+    "chromaticraft:radiance_bush",
+    "chromaticraft:vibrant_pod",
+    "chromaticraft:glowing_roots",
+    "chromaticraft:rock_flower_end"
+  ],
+  "step": "top_layer_modification"
+}

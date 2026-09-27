@@ -1,0 +1,11 @@
+{
+  "placement": {
+    "type": "chromaticraft:light_panel"
+  },
+  "structures": [
+    {
+      "structure": "chromaticraft:light_panel",
+      "weight": 1
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "enhanced=false": {
+      "model": "chromaticraft:block/ritual_table"
+    },
+    "enhanced=true": {
+      "model": "chromaticraft:block/ritual_table_enhanced"
+    }
+  }
+}

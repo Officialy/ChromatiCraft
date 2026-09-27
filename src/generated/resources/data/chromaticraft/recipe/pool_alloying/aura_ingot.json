@@ -1,0 +1,25 @@
+{
+  "type": "chromaticraft:pool_alloying",
+  "catalyst": "minecraft:iron_ingot",
+  "ingredients": [
+    {
+      "count": 8,
+      "ingredient": "chromaticraft:aura_dust"
+    },
+    {
+      "count": 8,
+      "ingredient": "minecraft:glowstone_dust"
+    },
+    {
+      "count": 16,
+      "ingredient": "minecraft:redstone"
+    },
+    {
+      "count": 4,
+      "ingredient": "minecraft:quartz"
+    }
+  ],
+  "result": {
+    "id": "chromaticraft:aura_ingot"
+  }
+}

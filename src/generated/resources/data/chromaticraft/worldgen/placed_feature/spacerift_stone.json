@@ -1,0 +1,23 @@
+{
+  "feature": "chromaticraft:spacerift_stone",
+  "placement": [
+    {
+      "type": "minecraft:rarity_filter",
+      "chance": 2
+    },
+    {
+      "type": "minecraft:count",
+      "count": 9
+    },
+    {
+      "type": "minecraft:in_square"
+    },
+    {
+      "type": "chromaticraft:tiered_ore_height",
+      "deep_band": true
+    },
+    {
+      "type": "minecraft:biome"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "model": {
+    "type": "minecraft:special",
+    "base": "chromaticraft:block/crystal_glow_inventory",
+    "model": {
+      "type": "chromaticraft:crystal_glow",
+      "base": "minecraft:block/iron_block",
+      "lamp": "chromaticraft:block/crystal/overbright/bloom_purple"
+    }
+  }
+}

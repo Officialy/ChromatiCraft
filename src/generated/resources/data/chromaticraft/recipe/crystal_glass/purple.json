@@ -1,0 +1,51 @@
+{
+  "type": "chromaticraft:casting",
+  "completion": {
+    "double_output": true
+  },
+  "experience": 5,
+  "grid": [
+    {
+      "ingredient": "minecraft:glass",
+      "slot": 0
+    },
+    {
+      "ingredient": "chromaticraft:crystal_shard_purple",
+      "slot": 1
+    },
+    {
+      "ingredient": "minecraft:glass",
+      "slot": 2
+    },
+    {
+      "ingredient": "chromaticraft:crystal_shard_purple",
+      "slot": 3
+    },
+    {
+      "ingredient": "minecraft:glass",
+      "slot": 4
+    },
+    {
+      "ingredient": "chromaticraft:crystal_shard_purple",
+      "slot": 5
+    },
+    {
+      "ingredient": "minecraft:glass",
+      "slot": 6
+    },
+    {
+      "ingredient": "chromaticraft:crystal_shard_purple",
+      "slot": 7
+    },
+    {
+      "ingredient": "minecraft:glass",
+      "slot": 8
+    }
+  ],
+  "penalty_threshold": 48,
+  "result": {
+    "count": 16,
+    "id": "chromaticraft:crystal_glass_purple"
+  },
+  "tier": "crafting"
+}

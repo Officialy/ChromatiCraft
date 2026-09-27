@@ -1,0 +1,12 @@
+{
+  "type": "neoforge:add_features",
+  "biomes": "#minecraft:is_nether",
+  "features": [
+    "chromaticraft:aura_bloom",
+    "chromaticraft:element_bulbs",
+    "chromaticraft:radiance_bush",
+    "chromaticraft:vibrant_pod",
+    "chromaticraft:glowing_roots"
+  ],
+  "step": "top_layer_modification"
+}

@@ -1,0 +1,48 @@
+{
+  "type": "chromaticraft:casting",
+  "experience": 5,
+  "grid": [
+    {
+      "ingredient": "#chromaticraft:crystal_shards",
+      "slot": 0
+    },
+    {
+      "ingredient": "minecraft:ender_eye",
+      "slot": 1
+    },
+    {
+      "ingredient": "#chromaticraft:crystal_shards",
+      "slot": 2
+    },
+    {
+      "ingredient": "#chromaticraft:crystal_shards",
+      "slot": 3
+    },
+    {
+      "ingredient": "minecraft:glowstone",
+      "slot": 4
+    },
+    {
+      "ingredient": "#chromaticraft:crystal_shards",
+      "slot": 5
+    },
+    {
+      "ingredient": "#c:stones",
+      "slot": 6
+    },
+    {
+      "ingredient": "#c:stones",
+      "slot": 7
+    },
+    {
+      "ingredient": "#c:stones",
+      "slot": 8
+    }
+  ],
+  "penalty_multiplier": 0.0,
+  "penalty_threshold": 1,
+  "result": {
+    "id": "chromaticraft:collector"
+  },
+  "tier": "crafting"
+}

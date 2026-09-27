@@ -1,0 +1,29 @@
+{
+  "type": "chromaticraft:pool_alloying",
+  "catalyst": "minecraft:iron_ingot",
+  "ingredients": [
+    {
+      "count": 16,
+      "ingredient": "chromaticraft:spatial_rifting_powder"
+    },
+    {
+      "count": 32,
+      "ingredient": "minecraft:glowstone_dust"
+    },
+    {
+      "count": 64,
+      "ingredient": "minecraft:redstone"
+    },
+    {
+      "count": 16,
+      "ingredient": "minecraft:quartz"
+    },
+    {
+      "count": 4,
+      "ingredient": "minecraft:diamond"
+    }
+  ],
+  "result": {
+    "id": "chromaticraft:space_ingot"
+  }
+}

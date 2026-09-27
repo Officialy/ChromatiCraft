@@ -1,0 +1,17 @@
+{
+  "type": "chromaticraft:pool_alloying",
+  "catalyst": "minecraft:gold_ingot",
+  "ingredients": [
+    {
+      "count": 8,
+      "ingredient": "minecraft:redstone"
+    },
+    {
+      "count": 16,
+      "ingredient": "chromaticraft:transmissive_dust"
+    }
+  ],
+  "result": {
+    "id": "chromaticraft:conductive_ingot"
+  }
+}

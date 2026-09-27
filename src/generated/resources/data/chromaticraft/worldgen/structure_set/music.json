@@ -1,0 +1,11 @@
+{
+  "placement": {
+    "type": "chromaticraft:music"
+  },
+  "structures": [
+    {
+      "structure": "chromaticraft:music",
+      "weight": 1
+    }
+  ]
+}

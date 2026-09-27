@@ -1,0 +1,17 @@
+{
+  "type": "chromaticraft:pool_alloying",
+  "catalyst": "minecraft:iron_ingot",
+  "ingredients": [
+    {
+      "count": 16,
+      "ingredient": "chromaticraft:enderstone_powder"
+    },
+    {
+      "count": 4,
+      "ingredient": "minecraft:ender_pearl"
+    }
+  ],
+  "result": {
+    "id": "chromaticraft:ender_ingot"
+  }
+}

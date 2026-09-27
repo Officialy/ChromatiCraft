@@ -1,0 +1,16 @@
+{
+  "variants": {
+    "active=false,memory=false": {
+      "model": "chromaticraft:block/gol_tile_floor_off"
+    },
+    "active=false,memory=true": {
+      "model": "chromaticraft:block/gol_tile_memory_off"
+    },
+    "active=true,memory=false": {
+      "model": "chromaticraft:block/gol_tile_floor_on"
+    },
+    "active=true,memory=true": {
+      "model": "chromaticraft:block/gol_tile_memory_on"
+    }
+  }
+}

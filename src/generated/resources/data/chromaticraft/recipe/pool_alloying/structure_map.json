@@ -1,0 +1,50 @@
+{
+  "type": "chromaticraft:pool_alloying",
+  "allow_doubling": false,
+  "catalyst": "minecraft:map",
+  "effects": [
+    "artefact_data_crystal"
+  ],
+  "ingredients": [
+    {
+      "count": 1,
+      "ingredient": "minecraft:compass"
+    },
+    {
+      "count": 1,
+      "ingredient": "chromaticraft:data_crystal"
+    },
+    {
+      "count": 1,
+      "ingredient": "chromaticraft:unknown_artefact"
+    },
+    {
+      "count": 1,
+      "ingredient": "chromaticraft:meta_alloy_lamp"
+    },
+    {
+      "count": 12,
+      "ingredient": "chromaticraft:enhanced_ender_eye"
+    },
+    {
+      "count": 64,
+      "ingredient": "chromaticraft:aura_dust"
+    },
+    {
+      "count": 48,
+      "ingredient": "chromaticraft:spatial_rifting_powder"
+    },
+    {
+      "count": 32,
+      "ingredient": "minecraft:glowstone_dust"
+    }
+  ],
+  "minimum_duration": 2400,
+  "required_progress": [
+    "tower",
+    "artefact"
+  ],
+  "result": {
+    "id": "chromaticraft:structure_map"
+  }
+}

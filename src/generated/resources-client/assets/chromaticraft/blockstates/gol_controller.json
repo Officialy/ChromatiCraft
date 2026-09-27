@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "active=false": {
+      "model": "chromaticraft:block/gol_controller_play"
+    },
+    "active=true": {
+      "model": "chromaticraft:block/gol_controller_stop"
+    }
+  }
+}

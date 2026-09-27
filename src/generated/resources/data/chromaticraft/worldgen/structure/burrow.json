@@ -1,0 +1,6 @@
+{
+  "type": "chromaticraft:burrow",
+  "biomes": [],
+  "spawn_overrides": {},
+  "step": "underground_structures"
+}

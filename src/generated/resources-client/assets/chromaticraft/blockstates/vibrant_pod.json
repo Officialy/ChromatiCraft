@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "": {
+      "type": "chromaticraft:tiered_plant_pod",
+      "back": "chromaticraft:block/plant/tierplant_5_back",
+      "front": "chromaticraft:block/plant/tierplant_5_front",
+      "stage": "ALLOY"
+    }
+  }
+}

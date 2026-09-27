@@ -1,0 +1,84 @@
+{
+  "type": "chromaticraft:casting",
+  "completion": {
+    "double_output": true
+  },
+  "duration": 100,
+  "experience": 200,
+  "grid": [
+    {
+      "ingredient": "minecraft:diamond",
+      "slot": 4
+    }
+  ],
+  "result": {
+    "id": "chromaticraft:lumen_relay_multichromic"
+  },
+  "stands": [
+    {
+      "ingredient": "chromaticraft:infused_dust",
+      "offset": [
+        -2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:infused_dust",
+      "offset": [
+        2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:infused_dust",
+      "offset": [
+        -2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:infused_dust",
+      "offset": [
+        2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:transmissive_dust",
+      "offset": [
+        -2,
+        0,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:transmissive_dust",
+      "offset": [
+        2,
+        0,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:transmissive_dust",
+      "offset": [
+        0,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "#chromaticraft:lumen_relays",
+      "offset": [
+        0,
+        0,
+        2
+      ]
+    }
+  ],
+  "tier": "multiblock"
+}

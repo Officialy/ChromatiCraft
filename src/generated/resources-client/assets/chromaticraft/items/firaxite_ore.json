@@ -1,0 +1,12 @@
+{
+  "model": {
+    "type": "minecraft:special",
+    "base": "chromaticraft:block/firaxite_ore_item",
+    "model": {
+      "type": "chromaticraft:tiered_ore",
+      "geode": true,
+      "overlay": "chromaticraft:block/ore/tier_6_geode",
+      "underlay": "minecraft:block/stone"
+    }
+  }
+}

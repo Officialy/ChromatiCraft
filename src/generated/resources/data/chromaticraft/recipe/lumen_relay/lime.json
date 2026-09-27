@@ -1,0 +1,71 @@
+{
+  "type": "chromaticraft:casting",
+  "completion": {
+    "double_output": true
+  },
+  "duration": 100,
+  "experience": 200,
+  "grid": [
+    {
+      "ingredient": "chromaticraft:crystalline_stone",
+      "slot": 4
+    }
+  ],
+  "result": {
+    "count": 8,
+    "id": "chromaticraft:lumen_relay_lime"
+  },
+  "runes": [
+    {
+      "element": "lime",
+      "offset": [
+        0,
+        -1,
+        2
+      ]
+    }
+  ],
+  "stands": [
+    {
+      "ingredient": "minecraft:glowstone_dust",
+      "offset": [
+        0,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "minecraft:glowstone_dust",
+      "offset": [
+        -2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "minecraft:glowstone_dust",
+      "offset": [
+        2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_lime",
+      "offset": [
+        0,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:crystalline_stone",
+      "offset": [
+        0,
+        0,
+        2
+      ]
+    }
+  ],
+  "tier": "multiblock"
+}

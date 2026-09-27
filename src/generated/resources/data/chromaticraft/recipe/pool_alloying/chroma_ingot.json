@@ -1,0 +1,13 @@
+{
+  "type": "chromaticraft:pool_alloying",
+  "catalyst": "minecraft:iron_ingot",
+  "ingredients": [
+    {
+      "count": 16,
+      "ingredient": "chromaticraft:chromic_dust"
+    }
+  ],
+  "result": {
+    "id": "chromaticraft:chroma_ingot"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "type": "chromaticraft:casting",
+  "completion": {
+    "double_output": true
+  },
+  "experience": 5,
+  "grid": [
+    {
+      "ingredient": "chromaticraft:crystal_shard_brown",
+      "slot": 1
+    },
+    {
+      "ingredient": "minecraft:iron_ingot",
+      "slot": 4
+    }
+  ],
+  "penalty_multiplier": 0.5,
+  "result": {
+    "count": 16,
+    "id": "chromaticraft:crystal_glow_iron_brown"
+  },
+  "tier": "crafting"
+}

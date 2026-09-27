@@ -1,0 +1,17 @@
+{
+  "type": "chromaticraft:pool_alloying",
+  "catalyst": "chromaticraft:iridescent_chunk",
+  "ingredients": [
+    {
+      "count": 4,
+      "ingredient": "minecraft:obsidian"
+    },
+    {
+      "count": 8,
+      "ingredient": "minecraft:emerald"
+    }
+  ],
+  "result": {
+    "id": "chromaticraft:experience_gem"
+  }
+}

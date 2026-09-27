@@ -1,0 +1,11 @@
+{
+  "model": {
+    "type": "minecraft:special",
+    "base": "chromaticraft:block/vibrant_crystals_item",
+    "model": {
+      "type": "chromaticraft:tiered_ore",
+      "overlay": "chromaticraft:block/ore/tier_11_overlay",
+      "underlay": "chromaticraft:block/ore/tier_11_underlay"
+    }
+  }
+}

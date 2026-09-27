@@ -1,0 +1,21 @@
+{
+  "type": "chromaticraft:pool_alloying",
+  "catalyst": "minecraft:gold_ingot",
+  "ingredients": [
+    {
+      "count": 16,
+      "ingredient": "chromaticraft:firaxite"
+    },
+    {
+      "count": 8,
+      "ingredient": "minecraft:blaze_powder"
+    },
+    {
+      "count": 2,
+      "ingredient": "minecraft:coal"
+    }
+  ],
+  "result": {
+    "id": "chromaticraft:fiery_ingot"
+  }
+}

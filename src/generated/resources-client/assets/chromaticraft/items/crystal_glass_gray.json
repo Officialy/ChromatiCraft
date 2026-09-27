@@ -1,0 +1,12 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "chromaticraft:block/crystal_glass",
+    "tints": [
+      {
+        "type": "minecraft:constant",
+        "value": -12566464
+      }
+    ]
+  }
+}

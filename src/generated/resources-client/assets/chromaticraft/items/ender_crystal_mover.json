@@ -1,0 +1,9 @@
+{
+  "model": {
+    "type": "minecraft:special",
+    "base": "chromaticraft:item/ender_crystal_mover",
+    "model": {
+      "type": "chromaticraft:ender_crystal_mover"
+    }
+  }
+}

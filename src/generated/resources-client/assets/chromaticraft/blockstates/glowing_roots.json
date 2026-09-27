@@ -1,0 +1,11 @@
+{
+  "variants": {
+    "": {
+      "type": "chromaticraft:tiered_plant",
+      "appearance": {
+        "model": "chromaticraft:block/glowing_roots"
+      },
+      "stage": "TURBOCHARGE"
+    }
+  }
+}

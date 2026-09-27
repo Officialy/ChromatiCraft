@@ -1,0 +1,17 @@
+{
+  "type": "chromaticraft:pool_alloying",
+  "catalyst": "minecraft:iron_ingot",
+  "ingredients": [
+    {
+      "count": 16,
+      "ingredient": "chromaticraft:fluid_essence"
+    },
+    {
+      "count": 2,
+      "ingredient": "minecraft:gold_ingot"
+    }
+  ],
+  "result": {
+    "id": "chromaticraft:water_ingot"
+  }
+}

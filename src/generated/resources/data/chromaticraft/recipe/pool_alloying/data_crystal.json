@@ -1,0 +1,16 @@
+{
+  "type": "chromaticraft:pool_alloying",
+  "catalyst": "chromaticraft:data_crystal",
+  "ingredients": [
+    {
+      "count": 18,
+      "ingredient": "chromaticraft:crystal_powder"
+    }
+  ],
+  "required_progress": [
+    "tower"
+  ],
+  "result": {
+    "id": "chromaticraft:data_crystal"
+  }
+}

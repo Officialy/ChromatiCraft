@@ -1,0 +1,46 @@
+{
+  "type": "chromaticraft:casting",
+  "experience": 5,
+  "grid": [
+    {
+      "ingredient": "#chromaticraft:crystal_shards",
+      "slot": 0
+    },
+    {
+      "ingredient": "chromaticraft:energy_powder",
+      "slot": 1
+    },
+    {
+      "ingredient": "#chromaticraft:crystal_shards",
+      "slot": 2
+    },
+    {
+      "ingredient": "#c:cobblestones/normal",
+      "slot": 3
+    },
+    {
+      "ingredient": "#chromaticraft:crystal_shards",
+      "slot": 4
+    },
+    {
+      "ingredient": "#c:cobblestones/normal",
+      "slot": 5
+    },
+    {
+      "ingredient": "#c:cobblestones/normal",
+      "slot": 6
+    },
+    {
+      "ingredient": "#c:cobblestones/normal",
+      "slot": 7
+    },
+    {
+      "ingredient": "#c:cobblestones/normal",
+      "slot": 8
+    }
+  ],
+  "result": {
+    "id": "chromaticraft:ritual_table"
+  },
+  "tier": "crafting"
+}

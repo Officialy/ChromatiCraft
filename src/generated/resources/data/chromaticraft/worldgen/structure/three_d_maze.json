@@ -1,0 +1,6 @@
+{
+  "type": "chromaticraft:three_d_maze",
+  "biomes": "chromaticraft:structure_field",
+  "spawn_overrides": {},
+  "step": "underground_structures"
+}

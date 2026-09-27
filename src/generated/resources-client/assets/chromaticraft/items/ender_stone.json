@@ -1,0 +1,12 @@
+{
+  "model": {
+    "type": "minecraft:special",
+    "base": "chromaticraft:block/ender_stone_item",
+    "model": {
+      "type": "chromaticraft:tiered_ore",
+      "geode": true,
+      "overlay": "chromaticraft:block/ore/tier_4_geode",
+      "underlay": "minecraft:block/stone"
+    }
+  }
+}

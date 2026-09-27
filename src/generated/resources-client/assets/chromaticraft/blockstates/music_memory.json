@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=east": {
+      "model": "chromaticraft:block/music_memory",
+      "y": 90
+    },
+    "facing=north": {
+      "model": "chromaticraft:block/music_memory"
+    },
+    "facing=south": {
+      "model": "chromaticraft:block/music_memory",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "chromaticraft:block/music_memory",
+      "y": 270
+    }
+  }
+}

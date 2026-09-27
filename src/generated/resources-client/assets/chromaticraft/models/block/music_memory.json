@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/orientable",
+  "textures": {
+    "front": "chromaticraft:block/dimstruct/musicmemory_front",
+    "side": "chromaticraft:block/dimstruct/musicmemory",
+    "top": "chromaticraft:block/dimstruct/musicmemory"
+  }
+}

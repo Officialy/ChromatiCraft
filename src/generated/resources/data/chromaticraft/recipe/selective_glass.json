@@ -1,0 +1,51 @@
+{
+  "type": "chromaticraft:casting",
+  "completion": {
+    "double_output": true
+  },
+  "experience": 2,
+  "grid": [
+    {
+      "ingredient": "minecraft:glass",
+      "slot": 0
+    },
+    {
+      "ingredient": "minecraft:glowstone_dust",
+      "slot": 1
+    },
+    {
+      "ingredient": "minecraft:glass",
+      "slot": 2
+    },
+    {
+      "ingredient": "chromaticraft:icy_dust",
+      "slot": 3
+    },
+    {
+      "ingredient": "chromaticraft:teleportation_dust",
+      "slot": 4
+    },
+    {
+      "ingredient": "chromaticraft:icy_dust",
+      "slot": 5
+    },
+    {
+      "ingredient": "minecraft:glass",
+      "slot": 6
+    },
+    {
+      "ingredient": "chromaticraft:void_dust",
+      "slot": 7
+    },
+    {
+      "ingredient": "minecraft:glass",
+      "slot": 8
+    }
+  ],
+  "penalty_threshold": 22,
+  "result": {
+    "count": 9,
+    "id": "chromaticraft:selective_glass"
+  },
+  "tier": "crafting"
+}

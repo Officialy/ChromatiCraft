@@ -1,0 +1,11 @@
+{
+  "placement": {
+    "type": "chromaticraft:gol"
+  },
+  "structures": [
+    {
+      "structure": "chromaticraft:gol",
+      "weight": 1
+    }
+  ]
+}

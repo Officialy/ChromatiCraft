@@ -1,0 +1,6 @@
+{
+  "type": "chromaticraft:portal",
+  "biomes": [],
+  "spawn_overrides": {},
+  "step": "surface_structures"
+}

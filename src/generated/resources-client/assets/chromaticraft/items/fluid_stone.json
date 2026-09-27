@@ -1,0 +1,11 @@
+{
+  "model": {
+    "type": "minecraft:special",
+    "base": "chromaticraft:block/fluid_stone_item",
+    "model": {
+      "type": "chromaticraft:tiered_ore",
+      "overlay": "chromaticraft:block/ore/tier_5_overlay",
+      "underlay": "chromaticraft:block/ore/tier_5_underlay"
+    }
+  }
+}

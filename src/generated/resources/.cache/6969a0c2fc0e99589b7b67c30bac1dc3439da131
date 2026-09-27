@@ -1,0 +1,7 @@
+// 26.2	2026-09-27T14:41:27.7330799	Tags for minecraft:damage_type mod id chromaticraft
+7791c609e8e75771636e1f77c209701feef9536a data/chromaticraft/tags/damage_type/pylon.json
+7791c609e8e75771636e1f77c209701feef9536a data/minecraft/tags/damage_type/bypasses_armor.json
+7791c609e8e75771636e1f77c209701feef9536a data/minecraft/tags/damage_type/bypasses_effects.json
+7791c609e8e75771636e1f77c209701feef9536a data/minecraft/tags/damage_type/bypasses_shield.json
+7791c609e8e75771636e1f77c209701feef9536a data/minecraft/tags/damage_type/no_knockback.json
+8e9069276c9e87fe9d83fe64e95e91384d247cb4 data/minecraft/tags/damage_type/witch_resistant_to.json

@@ -1,0 +1,37 @@
+{
+  "type": "chromaticraft:pool_alloying",
+  "catalyst": "chromaticraft:experience_gem",
+  "ingredients": [
+    {
+      "count": 1,
+      "ingredient": "chromaticraft:chroma_ingot"
+    },
+    {
+      "count": 1,
+      "ingredient": "chromaticraft:ender_ingot"
+    },
+    {
+      "count": 1,
+      "ingredient": "chromaticraft:water_ingot"
+    },
+    {
+      "count": 1,
+      "ingredient": "chromaticraft:space_ingot"
+    },
+    {
+      "count": 1,
+      "ingredient": "chromaticraft:fiery_ingot"
+    },
+    {
+      "count": 1,
+      "ingredient": "chromaticraft:aura_ingot"
+    },
+    {
+      "count": 1,
+      "ingredient": "chromaticraft:conductive_ingot"
+    }
+  ],
+  "result": {
+    "id": "chromaticraft:complex_ingot"
+  }
+}
