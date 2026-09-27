@@ -9037,3 +9037,52 @@ from `BlockTEBase.onDestroyedByPlayer`, so only a player's break reached it (and
   must drop those calls when ported, or the action runs twice.
 - GameTest `break_action_on_any_removal`: `destroyBlock` on a mid-craft Casting Table must unlock and unlink all four
   stands, and on an Aura Infuser must remove its lookup-cache entry and drop its item exactly once.
+
+**Full-suite failures of 2026-09-27 (eight tests).** The unselected run of 168 tests had eight required failures.
+None was suite-only. Each reproduced alone, or once its anchor was fixed was deterministic, and all reproduced on
+the committed checkpoint, so they were not caused by uncommitted work. Five of the eight tests had never run:
+the notes above record them as "registered but not launched".
+- Real port bugs, checked against V33a:
+  - `pool_alloying_survival_loop`: `PoolAlloyingHandler.complete` cleared the pool and then rolled the doubling
+    chance from `pool.getEtherCount()`, which was now 0, so a fully etherized pool never doubled. This is a
+    regression from `82c9fbec`, which moved `clear()` up. V33a's `makePoolRecipe(ei, pr, ether, ...)` is handed the
+    ether read before the clear; the port now does the same.
+  - `liquid_chroma_elemental_loop`: shard charging granted SHARDCHARGE only when the owner was a `ServerPlayer`.
+    V33a steps `ReikaItemHelper.getDropper(ei)`, any `EntityPlayer`, and `stepPlayerTo` already skips fake players.
+  - `ball_lightning_entity_contract`: `EntityBallLightning.defineSynchedData` did not call `super`, so
+    `LivingEntity`'s synched data (id 8 and up) was undefined and constructing the entity threw. Any real spawn
+    would have crashed. No other `defineSynchedData` override in the six mods drops a non-empty parent.
+  - `music_puzzle_layout`: `BiomeStructureMelodies` copied V33a's authored prefab notes but skipped
+    `MusicPuzzleGenerator.addPrefabMelody`'s `verify()`. That step transposes each melody up (0 to 11 semitones)
+    into the first key the crystals can voice, so the port shipped Bb4, Eb4 and similar notes nothing can play.
+    - `verify()` is ported exactly, including V33a's quirk of applying only a positive shift. The second melody's
+      only fit is −5, so it keeps its authored pitches. At 30 notes it exceeds the longest Crystal Music room (22).
+    - Both consumers get the transposed notes, as in V33a: the Music structure and the Biome Fragment puzzle.
+    - The test now also asserts that every prefab short enough for a room is playable.
+- Stale or unsound tests:
+  - `geode_ore_survival_path` and `tiered_plant_survival_sources` carried one mock player across every gate.
+    `setPlayerStage` grants all recursive parents, exactly as V33a's does (checked), so the order itself made the
+    tests impossible:
+    - MULTIBLOCK → RUNEUSE → ALLCOLORS → PYLON revealed the Radiance Bush early.
+    - STRUCTCOMPLETE → DIMENSION → POWERCRYSTAL revealed Avolite early.
+    - Each gate now uses `freshBeforeStage`, a new player with a precondition assert. All the gates themselves
+      match V33a's `TieredOres`/`TieredPlants` stages.
+  - The geode run then exposed a flake. Vanilla forces only the arena's own chunks, and the arena is 5x5, so
+    drops popped 40 blocks out could land two or more chunks beyond them. Entity sections there are not
+    accessible, so those drops counted as zero depending on where the test was placed. The samples are now packed
+    within 12 blocks (4-block pairs on two layers); three consecutive runs pass. No other entity-counting test
+    samples that far out.
+  - `proxima_tree_cluster`: the feature now centres the cluster at its origin + 8, because a placed feature
+    receives the chunk corner. The test still passed its own centre as the origin and measured from that centre.
+    It now passes the corner. The bound is also corrected: V33a's giant canopy radius reaches 6 (not 5) once the
+    canopy is at least 23, so the reach is up to 22, which still fits the write window. The javadoc and the
+    earlier note are corrected to match.
+  - `proxima_structure_placement` still assumed no puzzle generator was ported. LIGHTPANEL, TDMAZE, MUSIC and GOL
+    are registered, so it now checks:
+    - Exactly those four are usable, and all 16 elements get one.
+    - V33a's refill loop: each round of four uses every type once, and the generation index is `i / 4`.
+    - Each ported placement ran its generator. The entry-equals-placement check is kept only for generator-less
+      placements under the dev override.
+- Focused runs in an isolated worktree: all eight pass. The main checkout was being edited by another session.
+- Full unselected suite afterwards (`:ChromatiCraft:runGameTest --offline`, in the isolated worktree):
+  **all 168 required tests passed** in 23.61 min.
