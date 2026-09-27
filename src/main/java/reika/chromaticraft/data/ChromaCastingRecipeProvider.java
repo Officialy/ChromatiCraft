@@ -339,6 +339,14 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 					new ItemStackTemplate(ChromaBlocks.CHROMA_FLOWER.get().asItem()), 5, 5)
 					.withPenalty(2, 0.25F));
 
+			// V33a ToolStorageRecipe, a plain CastingRecipe: quartz, a glowstone block, a Loot Chest, stone and oak logs
+			// (V33a used 16k ME storage for the two side logs with Applied Energistics loaded).
+			saveShaped("tool_storage", new ItemStackTemplate(ChromaBlocks.TOOL_STORAGE.get().asItem()), 5, 5,
+					Map.of('q', Ingredient.of(Items.QUARTZ), 'g', Ingredient.of(Items.GLOWSTONE),
+							'a', Ingredient.of(Items.OAK_LOG), 'c', Ingredient.of(ChromaBlocks.LOOT_CHEST.get().asItem()),
+							'w', Ingredient.of(Items.OAK_LOG), 's', Ingredient.of(Items.STONE)),
+					"qgq", "aca", "wsw");
+
 			// V33a LumenWireRecipe, a plain CastingRecipe: a blue shard (the exact plain shard), obsidian, glowstone dust
 			// and cobblestone (the 1.7.10 "cobblestone" ore name).
 			saveShaped("lumen_wire", new ItemStackTemplate(ChromaBlocks.LUMEN_WIRE.get().asItem()), 5, 5,

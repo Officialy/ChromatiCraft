@@ -229,6 +229,8 @@ public final class ChromaClientRenderers {
 				reika.chromaticraft.render.tesr.RenderStructureController::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.LOOT_CHEST.get(), RenderLootChest::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.CRYSTAL_CHARGER.get(), RenderCrystalCharger::new);
+		event.registerBlockEntityRenderer(ChromaBlockEntities.TOOL_STORAGE.get(),
+				reika.chromaticraft.render.tesr.RenderMassStorage::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.LUMEN_WIRE.get(),
 				reika.chromaticraft.render.tesr.RenderLumenWire::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.LUMEN_TURRET.get(),

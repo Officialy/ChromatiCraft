@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/cube_bottom_top",
+  "textures": {
+    "bottom": "chromaticraft:block/tile/toolstorage_bottom",
+    "side": "chromaticraft:block/tile/toolstorage_side",
+    "top": "chromaticraft:block/tile/toolstorage_top"
+  }
+}

@@ -1,227 +1,209 @@
+/*******************************************************************************
+ * @author Reika Kalseki
+ *
+ * Copyright 2017
+ *
+ * All rights reserved.
+ * Distribution of the software in any form is only allowed with
+ * explicit, prior permission from the owner.
+ ******************************************************************************/
 package reika.chromaticraft.base.tileentity;
 
-import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.UUID;
 
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.inventory.IInventory;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.nbt.NBTTagList;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.world.World;
-import net.minecraft.world.WorldSavedData;
-import net.minecraftforge.common.util.ForgeDirection;
+import com.mojang.serialization.Codec;
+
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.UUIDUtil;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.datafix.DataFixTypes;
+import net.minecraft.world.Container;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.saveddata.SavedData;
+import net.minecraft.world.level.saveddata.SavedDataType;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 
 import reika.chromaticraft.ChromatiCraft;
-import reika.dragonapi.ModList;
-import reika.dragonapi.asm.apistripper.Strippable;
-import reika.dragonapi.asm.dependentmethodstripper.ModDependent;
-import reika.dragonapi.auxiliary.trackers.ReflectiveFailureTracker;
-import reika.dragonapi.instantiable.InertItem;
 import reika.dragonapi.instantiable.StepTimer;
 import reika.dragonapi.instantiable.data.KeyedItemStack;
 import reika.dragonapi.instantiable.data.maps.CountMap;
-import reika.dragonapi.instantiable.modinteract.BasicAEInterface;
-import reika.dragonapi.instantiable.modinteract.MEWorkTracker;
-import reika.dragonapi.interfaces.tileentity.BreakAction;
-import reika.dragonapi.interfaces.tileentity.ConditionBreakDropsInventory;
-import reika.dragonapi.libraries.ReikaInventoryHelper;
-import reika.dragonapi.libraries.reikanbthelper.KeyedItemStackConverter;
-import reika.dragonapi.libraries.reikanbthelper.NBTTypes;
+import reika.dragonapi.interfaces.blockentity.BreakAction;
+import reika.dragonapi.interfaces.blockentity.ConditionBreakDropsInventory;
 import reika.dragonapi.libraries.registry.ReikaItemHelper;
-import reika.dragonapi.modinteract.deepinteract.MESystemReader;
 
-import appeng.api.AEApi;
-import appeng.api.networking.IGridBlock;
-import appeng.api.networking.IGridNode;
-import appeng.api.networking.security.IActionHost;
-import appeng.api.networking.storage.IStorageGrid;
-import appeng.api.parts.IPart;
-import appeng.api.parts.IPartHost;
-import appeng.api.storage.ICellProvider;
-import appeng.api.storage.IMEInventoryHandler;
-import appeng.api.storage.StorageChannel;
-import appeng.api.storage.data.IAEItemStack;
-import appeng.api.storage.data.IItemList;
-import appeng.api.util.AECableType;
-import appeng.api.util.DimensionalCoord;
-import cpw.mods.fml.common.FMLCommonHandler;
-import cpw.mods.fml.relauncher.Side;
+/**
+ * V33a {@code TileEntityMassStorage}: a crate holding any number of unstackable items. Its contents live in world data
+ * keyed by the crate's id rather than in the tile (so a huge crate does not bloat its chunk); items enter through a
+ * single pending slot (slot 0, which automation fills) and each stored item is its own further slot. Breaking it drops
+ * everything.
+ *
+ * <p>CHROMA-PORT: V33a was also an Applied Energistics 2 grid node that pulled matching items out of the ME network
+ * (and could be read through a storage bus). AE2 has no 26.2 port on the classpath; the grid node, ME reader and
+ * cell scanning are left out and {@link #canPullFromME} is kept for when it lands.
+ */
+public abstract class TileEntityMassStorage extends TileEntityChromaticBase implements Container, BreakAction, ConditionBreakDropsInventory {
 
+	private static final List<ItemStack> NO_ITEMS = Collections.emptyList();
 
-@Strippable(value={"appeng.api.networking.security.IActionHost", "appeng.api.storage.ICellContainer", "appeng.api.storage.IMEInventoryHandler"})
-public abstract class TileEntityMassStorage extends TileEntityChromaticBase implements IInventory, IActionHost/*, ICellContainer, IMEInventoryHandler*/, BreakAction, ConditionBreakDropsInventory {
-
-	private static final HashMap<UUID, ArrayList<ItemStack>> itemData = new HashMap();
-
-	private final CountMap<KeyedItemStack> types = new CountMap();
-	private ItemStack pendingInput;
+	private final CountMap<KeyedItemStack> types = new CountMap<>();
+	private ItemStack pendingInput = ItemStack.EMPTY;
 	private UUID identifier = UUID.randomUUID();
+	/** V33a read items still stored in the tile (from before the world data) into the crate; applied on first tick. */
+	private List<ItemStack> legacyItems;
 
-	@ModDependent(ModList.APPENG)
-	private MESystemReader network;
-	private Object aeGridBlock;
-	private Object aeGridNode;
-	private MEWorkTracker hasWork = new MEWorkTracker();
-	private final ArrayList<ItemStack> MEStacks = new ArrayList();
 	private final StepTimer updateTimer = new StepTimer(200);
 
-	private static Class storageBusClass;
-	private static Method storageBusSide;
-	private static Method storageBusHost;
+	private boolean broken;
 
-	static {
-		if (ModList.APPENG.isLoaded()) {
-			try {
-				storageBusClass = Class.forName("appeng.parts.misc.PartStorageBus");
-				storageBusSide = storageBusClass.getMethod("getSide");
-				storageBusHost = storageBusClass.getMethod("getHost");
-			}
-			catch (Exception e) {
-				e.printStackTrace();
-				ChromatiCraft.logger.logError("Could not load storage bus methods!");
-				ReflectiveFailureTracker.instance.logModReflectiveFailure(ModList.APPENG, e);
-			}
+	protected TileEntityMassStorage(BlockEntityType<?> type, BlockPos pos, BlockState state) {
+		super(type, pos, state);
+	}
+
+	/** V33a {@code WorldToolCrateData}: every crate's contents, in the overworld's data (1.7.10's shared map storage). */
+	public static final class ToolCrateData extends SavedData {
+
+		private static final String IDENTIFIER = "tool_crate_items";
+		private static final Codec<ToolCrateData> CODEC = Codec.unboundedMap(UUIDUtil.STRING_CODEC, ItemStack.CODEC.listOf())
+				.xmap(ToolCrateData::new, d -> d.items);
+		private static final SavedDataType<ToolCrateData> TYPE = new SavedDataType<>(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, IDENTIFIER),
+				ToolCrateData::new, CODEC, DataFixTypes.SAVED_DATA_MAP_DATA);
+
+		private final HashMap<UUID, List<ItemStack>> items = new HashMap<>();
+
+		private ToolCrateData() {
+
+		}
+
+		private ToolCrateData(Map<UUID, List<ItemStack>> data) {
+			for (Map.Entry<UUID, List<ItemStack>> e : data.entrySet())
+				items.put(e.getKey(), new ArrayList<>(e.getValue()));
+		}
+
+		private static ToolCrateData get(Level level) {
+			if (!(level instanceof ServerLevel server))
+				return null;
+			return server.getServer().overworld().getDataStorage().computeIfAbsent(TYPE);
 		}
 	}
 
-	protected TileEntityMassStorage() {
-		if (ModList.APPENG.isLoaded()) {
-			aeGridBlock = new BasicAEInterface(this, this.getTile().getCraftedProduct());
-			aeGridNode = FMLCommonHandler.instance().getEffectiveSide() == Side.SERVER ? AEApi.instance().createGridNode((IGridBlock)aeGridBlock) : null;
-
-			//for (int i = 0; i < lock.length; i++) {
-			//	lock[i] = new CraftingLock();
-			//}
-		}
-	}
-
-	private static void loadItemData(NBTTagCompound data) {
-		//ChromatiCraft.logger.log("Loading tool crate data from disk: "+data);
-		itemData.clear();
-		NBTTagList list = data.getTagList("data", NBTTypes.COMPOUND.ID);
-		for (Object o : list.tagList) {
-			NBTTagCompound NBT = (NBTTagCompound)o;
-			NBTTagList items = NBT.getTagList("Items", NBTTypes.COMPOUND.ID);
-			ArrayList<ItemStack> li = new ArrayList();
-			for (int i = 0; i < items.tagCount(); i++) {
-				NBTTagCompound tag = items.getCompoundTagAt(i);
-				li.add(ItemStack.loadItemStackFromNBT(tag));
-			}
-			UUID key = UUID.fromString(NBT.getString("id"));
-			itemData.put(key, li);
-		}
-	}
-
-	private static void saveItemData(NBTTagCompound data) {
-		NBTTagList list = new NBTTagList();
-		for (Entry<UUID, ArrayList<ItemStack>> e : itemData.entrySet()) {
-			NBTTagCompound NBT = new NBTTagCompound();
-			UUID key = e.getKey();
-			ArrayList<ItemStack> li = e.getValue();
-			NBTTagList nbttaglist = new NBTTagList();
-			for (ItemStack is : li) {
-				NBTTagCompound tag = new NBTTagCompound();
-				is.writeToNBT(tag);
-				nbttaglist.appendTag(tag);
-			}
-			NBT.setTag("Items", nbttaglist);
-			NBT.setString("id", key.toString());
-			list.appendTag(NBT);
-		}
-		data.setTag("data", list);
-	}
-
-	protected final ArrayList<ItemStack> getItems() {
+	protected final List<ItemStack> getItems() {
 		return this.getOrCreateItemList();
 	}
 
-	private ArrayList<ItemStack> getOrCreateItemList() {
-		ArrayList<ItemStack> ret = itemData.get(identifier);
-		if (ret == null) {
-			ret = new ArrayList();
-			itemData.put(identifier, ret);
-		}
-		return ret;
+	private List<ItemStack> getOrCreateItemList() {
+		ToolCrateData data = level != null ? ToolCrateData.get(level) : null;
+		if (data == null)
+			return NO_ITEMS;
+		return data.items.computeIfAbsent(identifier, k -> new ArrayList<>());
+	}
+
+	private void markDataDirty() {
+		ToolCrateData data = level != null ? ToolCrateData.get(level) : null;
+		if (data != null)
+			data.setDirty();
 	}
 
 	@Override
-	public final int getSizeInventory() {
+	public final int getContainerSize() {
 		return this.getItems().size()+1;
 	}
 
 	@Override
-	public final ItemStack getStackInSlot(int slot) {
-		ArrayList<ItemStack> li = this.getItems();
-		if (slot > li.size()) {
-			ChromatiCraft.logger.logError("Something tried pulling from an off-list slot #"+slot+"!");
-			Thread.dumpStack();
-			return null;
+	public final ItemStack getItem(int slot) {
+		List<ItemStack> li = this.getItems();
+		if (slot > li.size() || slot < 0) {
+			ChromatiCraft.LOGGER.error("Something tried pulling from an off-list slot #"+slot+"!");
+			return ItemStack.EMPTY;
 		}
 		return slot == 0 ? pendingInput : li.get(slot-1);
 	}
 
-	public final ItemStack decrStackSize(int par1, int par2) {
-		return ReikaInventoryHelper.decrStackSize(this, par1, par2);
-	}
-
-	public final ItemStack getStackInSlotOnClosing(int par1) {
-		return ReikaInventoryHelper.getStackInSlotOnClosing(this, par1);
+	@Override
+	public final ItemStack removeItem(int slot, int amount) {
+		if (slot == 0) {
+			ItemStack ret = pendingInput.split(amount);
+			this.setChanged();
+			return ret;
+		}
+		List<ItemStack> li = this.getItems();
+		if (slot < 1 || slot > li.size())
+			return ItemStack.EMPTY;
+		ItemStack is = li.get(slot-1);
+		if (amount >= is.getCount()) {
+			this.removeItemAt(slot-1);
+			return is;
+		}
+		ItemStack ret = is.split(amount);
+		types.subtract(this.key(ret), ret.getCount());
+		this.markDataDirty();
+		return ret;
 	}
 
 	@Override
-	public final void setInventorySlotContents(int slot, ItemStack is) {
+	public final ItemStack removeItemNoUpdate(int slot) {
+		ItemStack is = this.getItem(slot);
+		return this.removeItem(slot, is.getCount());
+	}
+
+	/**
+	 * Slot 0 takes the pending input; emptying a stored slot removes that item. V33a threw on putting an item into a
+	 * stored slot, which a hopper does when it has to hand an item back; here it replaces the item.
+	 */
+	@Override
+	public final void setItem(int slot, ItemStack is) {
 		if (slot == 0) {
 			pendingInput = is;
+			this.setChanged();
 		}
-		else if (is == null) {
-			this.removeItem(slot-1);
+		else if (is.isEmpty()) {
+			this.removeItemAt(slot-1);
 		}
-		else {
-			throw new IllegalArgumentException("Something tried to insert into an invalid slot!");
+		else if (slot-1 < this.getItems().size()) {
+			ItemStack old = this.getItems().set(slot-1, is);
+			types.subtract(this.key(old), old.getCount());
+			types.increment(this.key(is), is.getCount());
+			this.markDataDirty();
 		}
 	}
 
 	@Override
-	public final String getInventoryName() {
-		return this.getTEName();
-	}
-
-	@Override
-	public final boolean hasCustomInventoryName() {
-		return true;
-	}
-
-	@Override
-	public final int getInventoryStackLimit() {
+	public final int getMaxStackSize() {
 		return 1;
 	}
 
 	@Override
-	public final boolean isUseableByPlayer(EntityPlayer ep) {
+	public final boolean stillValid(Player ep) {
 		return this.isPlayerAccessible(ep);
 	}
 
 	@Override
-	public final void openInventory() {}
-
-	@Override
-	public final void closeInventory() {}
-
-	@Override
-	public final boolean isItemValidForSlot(int slot, ItemStack is) {
-		return slot == 0 && (pendingInput == null || ReikaItemHelper.areStacksCombinable(pendingInput, is, is.getMaxStackSize())) && this.isItemValid(is) && this.getItems().size() < this.maxItemCount();
+	public final boolean canPlaceItem(int slot, ItemStack is) {
+		return slot == 0 && (pendingInput.isEmpty() || ItemStack.isSameItemSameComponents(pendingInput, is)
+				&& pendingInput.getCount()+is.getCount() <= is.getMaxStackSize())
+				&& this.isItemValid(is) && this.getItems().size() < this.maxItemCount();
 	}
 
-	public abstract InertItem getFilterItemRender();
+	@Override
+	public final void clearContent() {
+		for (int i = this.getItems().size()-1; i >= 0; i--)
+			this.removeItemAt(i);
+		pendingInput = ItemStack.EMPTY;
+	}
+
+	/** The item the renderer floats above the crate (V33a {@code getFilterItemRender}); empty draws a question mark. */
+	public abstract ItemStack getFilterItemRender();
 
 	public abstract boolean isItemValid(ItemStack is);
 	public abstract int maxItemCount();
@@ -231,47 +213,39 @@ public abstract class TileEntityMassStorage extends TileEntityChromaticBase impl
 	}
 
 	@Override
-	public final void updateEntity(World world, int x, int y, int z, int meta) {
-		if (pendingInput != null && !world.isRemote) {
-			//ReikaJavaLibrary.pConsole(pendingInput+" > "+pendingInput.getDisplayName());
+	public final void updateEntity(Level world, BlockPos pos) {
+		if (!pendingInput.isEmpty() && !world.isClientSide()) {
 			this.addItem(pendingInput);
-			pendingInput = null;
+			pendingInput = ItemStack.EMPTY;
 		}
 
-		this.onTick(world, x, y, z);
+		this.onTick(world, pos);
 
 		updateTimer.update();
-		if (updateTimer.checkCap() && !world.isRemote) {
+		if (updateTimer.checkCap() && !world.isClientSide()) {
 			this.buildCache();
 		}
 
-		if (ModList.APPENG.isLoaded()) {
-			if (network != null)
-				network.tick();
-			if (aeGridBlock != null && !world.isRemote) {
-				((BasicAEInterface)aeGridBlock).setPowerCost(1);
-			}
-
-			//ReikaJavaLibrary.pConsole(MEStacks, Side.SERVER);
-			if (!world.isRemote && network != null && !MEStacks.isEmpty() && pendingInput == null) {
-				hasWork.tick();
-				if (hasWork.hasWork()) {
-					//ReikaJavaLibrary.pConsole("Executing tick");
-					if (ModList.APPENG.isLoaded() && network != null && !network.isEmpty)
-						hasWork.reset();
-					this.injectItems();
-				}
-			}
-		}
+		// CHROMA-PORT: V33a ticked its ME system reader here and, with a network holding matching items, pulled one
+		// random stack of them into the pending slot whenever the network had work.
 	}
 
-	protected void onTick(World world, int x, int y, int z) {
+	protected void onTick(Level world, BlockPos pos) {
 
 	}
 
 	@Override
-	protected final void onFirstTick(World world, int x, int y, int z) {
-		WorldToolCrateData.initItemData(world).setDirty(true);
+	protected final void onFirstTick(Level world, BlockPos pos) {
+		if (world.isClientSide())
+			return;
+		if (legacyItems != null) {
+			this.getItems().clear();
+			types.clear();
+			for (ItemStack is : legacyItems)
+				this.addItem(is);
+			legacyItems = null;
+		}
+		this.markDataDirty();
 		this.initTypeData();
 	}
 
@@ -279,124 +253,33 @@ public abstract class TileEntityMassStorage extends TileEntityChromaticBase impl
 		types.clear();
 		for (ItemStack is : this.getItems()) {
 			KeyedItemStack ks = this.key(is);
-			types.increment(ks, is.stackSize);
+			types.increment(ks, is.getCount());
 			this.onAddItem(is);
 		}
 	}
 
-	private void injectItems() {
-		//ReikaJavaLibrary.pConsole("Injecting");
-		int idx = rand.nextInt(MEStacks.size());
-		ItemStack is = MEStacks.get(idx);
-		ItemStack copy = is.copy();
-		is = ReikaItemHelper.getSizedItemStack(is, is.getMaxStackSize());
-		int ret = (int)network.removeItem(is, false, true);
-		if (ret > 0) {
-			pendingInput = ReikaItemHelper.getSizedItemStack(is, ret);
-			if (ret >= copy.stackSize)
-				MEStacks.remove(idx);
-			else
-				MEStacks.get(idx).stackSize -= ret;
-		}
-		//ReikaJavaLibrary.pConsole(MEStacks+" after removing "+copy);
-	}
-
 	protected final void resetWorkTimer() {
-		MEStacks.clear();
 		updateTimer.setTick(updateTimer.getCap()+2);
 	}
 
+	/** CHROMA-PORT: V33a rebuilt its list of matching ME network items here every 200 ticks. */
 	private void buildCache() {
-		if (ModList.APPENG.isLoaded()) {
-			Object oldNode = aeGridNode;
-			if (aeGridNode == null) {
-				aeGridNode = FMLCommonHandler.instance().getEffectiveSide() == Side.SERVER ? AEApi.instance().createGridNode((IGridBlock)aeGridBlock) : null;
-			}
-			if (aeGridNode != null)
-				((IGridNode)aeGridNode).updateState();
 
-			if (oldNode != aeGridNode || network == null) {
-				if (aeGridNode == null)
-					network = null;
-				else if (network == null)
-					network = new MESystemReader((IGridNode)aeGridNode, this);
-				else
-					network = new MESystemReader((IGridNode)aeGridNode, network);
-			}
-
-			if (network != null && this.canPullFromME()) {
-				network.clearCallbacks();
-				network.addGlobalCallback(hasWork);
-
-				//ReikaJavaLibrary.pConsole("Rebuilding");
-				MEStacks.clear();
-				Collection<ItemStack> li = new ArrayList();//network.getRawMESystemContents();
-
-				IStorageGrid isg = (IStorageGrid)this.getActionableNode().getGrid().getCache(IStorageGrid.class);
-				HashSet<ICellProvider> set = MESystemReader.getAllCellContainers(isg);
-				if (set != null) {
-					for (ICellProvider icp : set) {
-						if (this.isStorageBusToSelf(icp))
-							continue;
-						List<IMEInventoryHandler> invs = icp.getCellArray(StorageChannel.ITEMS);
-						for (IMEInventoryHandler inv : invs) {
-							IItemList<IAEItemStack> items = inv.getAvailableItems(StorageChannel.ITEMS.createList());
-							for (IAEItemStack iae : items) {
-								if (iae.isItem() && iae.isMeaningful()) {
-									ItemStack is = iae.getItemStack();
-									if (this.isItemValid(is)) {
-										MEStacks.add(is);
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-			//network.setRequester(this);
-		}
 	}
 
 	protected boolean canPullFromME() {
 		return true;
 	}
 
-	private final boolean isStorageBusToSelf(ICellProvider icp) {
-		try {
-			if (icp.getClass() == storageBusClass) {
-				IPart part = (IPart)icp;
-				IPartHost block = (IPartHost)storageBusHost.invoke(part);
-				ForgeDirection dir = (ForgeDirection)storageBusSide.invoke(icp);
-				DimensionalCoord loc = block.getLocation();
-				TileEntity tile = block.getTile().worldObj.getTileEntity(loc.x+dir.offsetX, loc.y+dir.offsetY, loc.z+dir.offsetZ);
-				return tile == this;
-			}
-			return false;
-		}
-		catch (Exception e) {
-			e.printStackTrace();
-			return false;
-		}
-	}
-
-	@Override
-	protected final void onInvalidateOrUnload(World world, int x, int y, int z, boolean invalid) {
-		super.onInvalidateOrUnload(world, x, y, z, invalid);
-		if (ModList.APPENG.isLoaded() && aeGridNode != null)
-			((IGridNode)aeGridNode).destroy();
-	}
-
 	private void addItem(ItemStack is) {
-		if (worldObj.isRemote)
+		if (level == null || level.isClientSide())
 			return;
 		this.getItems().add(is);
-		if (worldObj != null)
-			WorldToolCrateData.initItemData(worldObj).setDirty(true);
+		this.markDataDirty();
 		KeyedItemStack ks = this.key(is);
-		types.increment(ks, is.stackSize);
+		types.increment(ks, is.getCount());
 		this.onAddItem(is);
-		if (worldObj != null)
-			this.syncAllData(false);
+		this.syncAllData(false);
 	}
 
 	protected void onAddItem(ItemStack is) {
@@ -407,299 +290,93 @@ public abstract class TileEntityMassStorage extends TileEntityChromaticBase impl
 
 	}
 
-	private void removeItem(int slot) {
-		if (worldObj.isRemote)
+	private void removeItemAt(int slot) {
+		if (level == null || level.isClientSide())
 			return;
-		ItemStack is = this.getItems().remove(slot);
-		if (is == null)
+		List<ItemStack> li = this.getItems();
+		if (slot < 0 || slot >= li.size())
 			return;
-		if (worldObj != null)
-			WorldToolCrateData.initItemData(worldObj).setDirty(true);
+		ItemStack is = li.remove(slot);
+		this.markDataDirty();
 		KeyedItemStack ks = this.key(is);
-		types.subtract(ks, is.stackSize);
+		types.subtract(ks, is.getCount());
 		this.onRemoveItem(is);
-		if (worldObj != null)
-			this.syncAllData(false);
+		this.syncAllData(false);
 	}
 
+	@Override
 	public final boolean isEmpty() {
 		return this.getItems().isEmpty();
 	}
 
 	protected abstract KeyedItemStack key(ItemStack is);
 
+	/** How many of each kind of item it holds (V33a showed this in its WAILA tooltip; no tooltip mod is ported yet). */
 	public final Map<KeyedItemStack, Integer> getItemTypes() {
-		return types.view();
+		HashMap<KeyedItemStack, Integer> ret = new HashMap<>();
+		for (KeyedItemStack ks : types.keySet())
+			ret.put(ks, types.get(ks));
+		return Collections.unmodifiableMap(ret);
 	}
 
 	@Override
-	protected void animateWithTick(World world, int x, int y, int z) {
-
-	}
-
-	@Override
-	public void writeToNBT(NBTTagCompound NBT) {
-		super.writeToNBT(NBT);
-
-		if (pendingInput != null) {
-			NBTTagCompound tag = new NBTTagCompound();
-			pendingInput.writeToNBT(tag);
-			NBT.setTag("pending", tag);
-		}
-
-		NBT.setString("boxid", identifier.toString());
-	}
-
-	@Override
-	public void readFromNBT(NBTTagCompound NBT) {
-		super.readFromNBT(NBT);
-
-		if (NBT.hasKey("boxid")) {
-			identifier = UUID.fromString(NBT.getString("boxid"));
-		}
-
-		if (NBT.hasKey("Items")) {
-			NBTTagList li = NBT.getTagList("Items", NBTTypes.COMPOUND.ID);
-			//ChromatiCraft.logger.log("Loading legacy tool crate data from NBT: "+li);
-			this.getItems().clear();
-			types.clear();
-
-			for (int i = 0; i < li.tagCount(); i++) {
-				NBTTagCompound tag = li.getCompoundTagAt(i);
-				this.addItem(ItemStack.loadItemStackFromNBT(tag));
-			}
-		}
-
-		if (NBT.hasKey("pending")) {
-			NBTTagCompound tag = NBT.getCompoundTag("pending");
-			pendingInput = ItemStack.loadItemStackFromNBT(tag);
-		}
-	}
-
-	@Override
-	protected void writeSyncTag(NBTTagCompound NBT) {
-		super.writeSyncTag(NBT);
-
-		NBTTagCompound tag = new NBTTagCompound();
-		types.writeToNBT(tag, KeyedItemStackConverter.instance);
-		NBT.setTag("types", tag);
-	}
-
-	@Override
-	protected void readSyncTag(NBTTagCompound NBT) {
-		super.readSyncTag(NBT);
-
-		if (NBT.hasKey("types")) {
-			types.readFromNBT(NBT.getCompoundTag("types"), KeyedItemStackConverter.instance);
-		}
-	}
-
-	@Override
-	@ModDependent(ModList.APPENG)
-	public final IGridNode getGridNode(ForgeDirection dir) {
-		return (IGridNode)aeGridNode;
-	}
-
-	@Override
-	@ModDependent(ModList.APPENG)
-	public final IGridNode getActionableNode() {
-		return (IGridNode)aeGridNode;
-	}
-
-	@Override
-	@ModDependent(ModList.APPENG)
-	public final AECableType getCableConnectionType(ForgeDirection dir) {
-		return AECableType.COVERED;
-	}
-
-	@Override
-	@ModDependent(ModList.APPENG)
-	public final void securityBreak() {
-
-	}
-	/*
-	@Override
-	@ModDependent(ModList.APPENG)
-	public final void blinkCell(int slot) {
-		TO DO maybe a packet to spawn some particles or something
-	}
-
-	@Override
-	@ModDependent(ModList.APPENG)
-	public final List<IMEInventoryHandler> getCellArray(StorageChannel channel) {
-		return Arrays.asList(this);
-	}
-
-	@Override
-	@ModDependent(ModList.APPENG)
-	public final int getPriority() {
-		return 60000;
-	}
-
-	@Override
-	@ModDependent(ModList.APPENG)
-	public final void saveChanges(IMEInventory cellInventory) {
+	protected void animateWithTick(Level world, BlockPos pos) {
 
 	}
 
 	@Override
-	public final AccessRestriction getAccess() {
-		return AccessRestriction.READ_WRITE;
+	protected void saveAdditional(ValueOutput output) {
+		super.saveAdditional(output);
+		if (!pendingInput.isEmpty())
+			output.store("pending", ItemStack.CODEC, pendingInput);
+		output.store("boxid", UUIDUtil.STRING_CODEC, identifier);
 	}
 
 	@Override
-	public boolean isPrioritized(IAEStack input) {
-		return this.canAccept(input);
+	protected void loadAdditional(ValueInput input) {
+		super.loadAdditional(input);
+		input.read("boxid", UUIDUtil.STRING_CODEC).ifPresent(id -> identifier = id);
+		input.read("Items", ItemStack.CODEC.listOf()).ifPresent(li -> legacyItems = new ArrayList<>(li));
+		pendingInput = input.read("pending", ItemStack.CODEC).orElse(ItemStack.EMPTY);
 	}
 
-	@Override
-	@ModDependent(ModList.APPENG)
-	public final boolean canAccept(IAEStack input) {
-		return input.isMeaningful() && input.isItem() && this.isItemValid(((IAEItemStack)input).getItemStack());
-	}
-
-	@Override
-	@ModDependent(ModList.APPENG)
-	public final int getSlot() {
-		return 0;
-	}
-
-	@Override
-	@ModDependent(ModList.APPENG)
-	public boolean validForPass(int i) {
-		return true;
-	}
-
-	@Override
-	@ModDependent(ModList.APPENG)
-	public final IAEStack injectItems(IAEStack input, Actionable type, BaseActionSource src) { FIX ME this disobeys maxItemCount
-		if (!input.isItem())
-			return input;
-		ItemStack ref = ((IAEItemStack)input).getItemStack();
-		if (ref == null || ref.getItem() == null)
-			return input;
-		if (type == Actionable.SIMULATE)
-			return null;
-		long amt = input.getStackSize();
-		long added = 0;
-		while (amt > 0) {
-			ItemStack put = ReikaItemHelper.getSizedItemStack(ref, Math.min((int)Math.min(Integer.MAX_VALUE, amt), ref.getMaxStackSize()));
-			this.addItem(put);
-			amt -= put.stackSize;
-			added += put.stackSize;
-		}
-		return null; //add can never fail
-	}
-
-	@Override
-	@ModDependent(ModList.APPENG)
-	public final IAEStack extractItems(IAEStack request, Actionable mode, BaseActionSource src) {
-		if (!request.isItem())
-			return null;
-		ItemStack seek = ((IAEItemStack)request).getItemStack();
-		int amt = this.countExactItem(seek);
-		if (amt == 0)
-			return null;
-		long get = Math.min(request.getStackSize(), amt);
-		if (mode == Actionable.MODULATE) {
-			long take = get;
-			Iterator<ItemStack> it = this.getItems().iterator();
-			while (it.hasNext()) {
-				ItemStack at = it.next();
-				if (ReikaItemHelper.matchStacks(at, seek) && ItemStack.areItemStackTagsEqual(seek, at)) {
-					if (take >= at.stackSize) {
-						take -= at.stackSize;
-						it.remove();
-					}
-					else {
-						take = 0;
-						at.stackSize -= take;
-					}
-					if (take <= 0)
-						break;
-				}
-			}
-		}
-		IAEItemStack ret = (IAEItemStack)request.copy();
-		ret.setStackSize(get);
-		return ret;
-	}
-
-	private int countExactItem(ItemStack seek) {
-		int amt = 0;
-		for (ItemStack is : this.getItems()) {
-			if (ReikaItemHelper.matchStacks(is, seek) && ItemStack.areItemStackTagsEqual(is, seek)) {
-				amt += is.stackSize;
-			}
-		}
-		return amt;
-	}
-
-	@Override
-	@ModDependent(ModList.APPENG)
-	public final IItemList getAvailableItems(IItemList out) {
-		IItemList li = AEApi.instance().storage().createItemList();
-		for (ItemStack is : this.getItems()) {
-			li.add(MESystemReader.createAEStack(is));
-		}
-		return li;
-	}
-
-	@Override
-	@ModDependent(ModList.APPENG)
-	public final StorageChannel getChannel() {
-		return StorageChannel.ITEMS;
-	}
-	 */
+	/** Drops every stored item and the pending one, then forgets the crate's data. */
 	@Override
 	public final void breakBlock() {
-		ReikaItemHelper.dropItems(worldObj, xCoord+0.5, yCoord+0.5, zCoord+0.5, this.getItems());
-		itemData.remove(identifier);
+		if (broken || level == null || level.isClientSide())
+			return;
+		broken = true;
+		BlockPos p = this.getBlockPos();
+		ReikaItemHelper.dropItems(level, p.getX()+0.5, p.getY()+0.5, p.getZ()+0.5, new ArrayList<>(this.getItems()));
+		if (!pendingInput.isEmpty())
+			ReikaItemHelper.dropItems(level, p.getX()+0.5, p.getY()+0.5, p.getZ()+0.5, List.of(pendingInput));
+		pendingInput = ItemStack.EMPTY;
+		ToolCrateData data = ToolCrateData.get(level);
+		if (data != null) {
+			data.items.remove(identifier);
+			data.setDirty();
+		}
 	}
 
+	/** Any removal, not only a player's break (V33a's BlockChromaTile.breakBlock). */
+	@Override
+	public void preRemoveSideEffects(BlockPos pos, BlockState state) {
+		this.breakBlock();
+	}
+
+	/** The contents drop from {@link #breakBlock}, never also as an inventory. */
+	@Override
 	public final boolean dropsInventoryOnBroken() {
 		return false;
 	}
 
 	public final ItemStack removeLastItem() {
-		ArrayList<ItemStack> li = this.getItems();
+		List<ItemStack> li = this.getItems();
 		if (li.isEmpty())
-			return null;
+			return ItemStack.EMPTY;
 		ItemStack is = li.get(li.size()-1);
-		this.removeItem(li.size()-1);
+		this.removeItemAt(li.size()-1);
 		return is;
-	}
-
-	public static class WorldToolCrateData extends WorldSavedData {
-
-		private static final String IDENTIFIER = "ToolCrateItems";
-
-		public WorldToolCrateData() {
-			super(IDENTIFIER);
-		}
-
-		public WorldToolCrateData(String s) {
-			super(s);
-		}
-
-		@Override
-		public void readFromNBT(NBTTagCompound NBT) {
-			loadItemData(NBT);
-		}
-
-		@Override
-		public void writeToNBT(NBTTagCompound NBT) {
-			saveItemData(NBT);
-		}
-
-		private static WorldToolCrateData initItemData(World world) {
-			WorldToolCrateData data = (WorldToolCrateData)world.loadItemData(WorldToolCrateData.class, IDENTIFIER);
-			if (data == null) {
-				data = new WorldToolCrateData();
-				world.setItemData(IDENTIFIER, data);
-			}
-			return data;
-		}
 	}
 
 }

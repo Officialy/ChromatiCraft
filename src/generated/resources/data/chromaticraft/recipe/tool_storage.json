@@ -1,0 +1,46 @@
+{
+  "type": "chromaticraft:casting",
+  "experience": 5,
+  "grid": [
+    {
+      "ingredient": "minecraft:quartz",
+      "slot": 0
+    },
+    {
+      "ingredient": "minecraft:glowstone",
+      "slot": 1
+    },
+    {
+      "ingredient": "minecraft:quartz",
+      "slot": 2
+    },
+    {
+      "ingredient": "minecraft:oak_log",
+      "slot": 3
+    },
+    {
+      "ingredient": "chromaticraft:loot_chest",
+      "slot": 4
+    },
+    {
+      "ingredient": "minecraft:oak_log",
+      "slot": 5
+    },
+    {
+      "ingredient": "minecraft:oak_log",
+      "slot": 6
+    },
+    {
+      "ingredient": "minecraft:stone",
+      "slot": 7
+    },
+    {
+      "ingredient": "minecraft:oak_log",
+      "slot": 8
+    }
+  ],
+  "result": {
+    "id": "chromaticraft:tool_storage"
+  },
+  "tier": "crafting"
+}

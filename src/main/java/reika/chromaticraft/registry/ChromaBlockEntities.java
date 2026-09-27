@@ -112,6 +112,8 @@ public final class ChromaBlockEntities {
 					reika.chromaticraft.block.BlockChromaTrail.TileChromaTrail::new, ChromaBlocks.CHROMA_TRAIL.get()));
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<reika.chromaticraft.tileentity.plants.TileEntityChromaFlower>> CHROMA_FLOWER =
 			register("chroma_flower", ChromaTiles.CHROMAFLOWER);
+	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<reika.chromaticraft.tileentity.storage.TileEntityToolStorage>> TOOL_STORAGE =
+			register("tool_storage", ChromaTiles.TOOLSTORAGE);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<reika.chromaticraft.tileentity.processing.TileEntityAutoEnchanter>> AUTO_ENCHANTER =
 			register("auto_enchanter", ChromaTiles.ENCHANTER);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<reika.chromaticraft.tileentity.TileEntityLumenWire>> LUMEN_WIRE =

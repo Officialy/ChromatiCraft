@@ -251,10 +251,10 @@ Pylon Link and Lumen Node (V33a had no casting recipe for either).
 
 - **ENTRY** — 7/7 ported.
 - **RAWEXPLORE** — 20/20 ported (Fertility Seeds and the Artifact Distribution Map landed 2026-09-25).
-- **BASICCRAFT** — 23/27 ported (Crystal Glass and Glow landed 2026-09-25; Defensive Glass, the
+- **BASICCRAFT** — 24/27 ported (Crystal Glass and Glow landed 2026-09-25; Defensive Glass, the
   Enchantments, the Crystal Brewery, the Chromatic Flower, the Pylon Compass, the Illumination Gun, the Ownership Expansion Key, the Subterranean Route Finder and the Vertical Propulsion Panel
-  2026-09-26; the Particle Spawner, Examination Crystals, the Lumen Turret and the Lumen Wire 2026-09-27).
-  Missing: Crystal Orchestra; Knowledge Entanglement Pedestal (needs ProgressionLinking); Tool Compression Crate (needs TileEntityMassStorage); Corrosion Resistant Cell (blocked: an AE2 storage cell, and AE2 is not on the classpath -- CHROMA-PORT).
+  2026-09-26; the Particle Spawner, Examination Crystals, the Lumen Turret, the Lumen Wire and the Tool Compression Crate 2026-09-27).
+  Missing: Crystal Orchestra; Knowledge Entanglement Pedestal (needs ProgressionLinking); Corrosion Resistant Cell (blocked: an AE2 storage cell, and AE2 is not on the classpath -- CHROMA-PORT).
 - **RUNECRAFT** — 12/36 ported (the Chromatic Enchanter 2026-09-27).
   Missing: Artificial Sky; Physics Suspension Lamp; Lumen Lamp; Travel Path; Redstone Pod; Flux Pod; Subterranean Illuminator; Fluid Radiator; Fluid Link Anchor; Suspension Field Controller; Item Inserter; Lumen Lamp Controller; Crystal Seeds; Item Mover; Voidlinked Bucket; Linker; Creature Sounding Star; Multitool; Nether Layer Crystal; Ore-Finding Pickaxe; Ore Harvester; Bezier Crystals; Aura Tracker; Recall Tablet.
 - **ENERGY** — 15/30 ported.
@@ -8939,6 +8939,35 @@ Needs a full GameTest run (ownership semantics changed across these tiles).
 - DragonAPI `CustomEnchantingCategory` now returns the item tag (26.2's enchanting category).
 - Recipe: temple, "eGe / OEO / BOB" (emerald, gold ingot, obsidian, enchanting table, stone bricks), with black and
   purple runes at (-4,0,-3), (-3,0,-4), (4,0,3), (3,0,4); 20 ticks, 40 XP.
+- Unverified in game.
+
+**BASICCRAFT: Tool Compression Crate (2026-09-27).** `tool_storage` (V33a TOOLSTORAGE, `TileEntityToolStorage` on
+`TileEntityMassStorage`).
+- Up to 360,000 unstackable items of one kind. The kind is chosen with the Manipulator while the crate is empty (use
+  sound; error sound when it is not empty): pickaxe, axe, shovel, sword, bow, shears, each armour slot, enchanted
+  book, horse armour (iron/gold/diamond, as V33a), potion, or any unstackable item.
+  - Kinds are now tags and components: ItemTags.PICKAXES/AXES/SHOVELS/SWORDS, BowItem, ShearsItem, EQUIPPABLE
+    humanoid armour slots, PotionItem.
+  - CHROMA-PORT: the Tinkers' Construct mode and the Botania brew, AE cell and Forestry gene item checks.
+- Contents live in overworld SavedData `chromaticraft:tool_crate_items`, keyed by the crate's `boxid`, as V33a's
+  `WorldToolCrateData` did. V33a's legacy in-tile `Items` list is still read, on first tick.
+- Container access: slot 0 is the pending input (automation and hoppers insert there, applied next tick), and every
+  stored item is a further slot. V33a threw when a stored slot was set to an item, which a hopper does to hand an
+  item back; here it replaces the item.
+- Right-click with an accepted item puts it in; an empty hand takes the last one out; both play a pop. Sneaking does
+  nothing.
+- Any removal drops everything and forgets the data (`preRemoveSideEffects`), exactly once.
+- `RenderMassStorage` floats the kind's icon item above the crate, swinging ±45°, or an additive question mark at
+  half size for the catch-all mode.
+  - Deviation: V33a drew the item as a dim (0.2) additive ghost. The 26.2 item pipeline picks its own render type,
+    so it is drawn as an ordinary item at the crate's light.
+- CHROMA-PORT: the whole Applied Energistics 2 side (a grid node pulling matching ME items, storage-bus self-check)
+  and the WAILA "item x count" tooltip (`getItemTypes` is kept). The lexicon notes' `%s` (V33a
+  `ToolType.getTypesAsString`) still needs registering with the note-args mechanism.
+- Recipe "qgq / aca / wsw": quartz, glowstone block, Loot Chest, stone, oak logs (V33a used 16k ME storage for the
+  side logs with AE).
+- Also this session: `InventoriedChromaticBase` now drops its contents once, with components (see the
+  Brewery/Enchanter fix commit); the same issue in other blocks is a filed follow-up task.
 - Unverified in game.
 
 **Overworld structure worldgen biome reads (2026-09-26).** The natural structure feature used

@@ -1,56 +1,84 @@
+/*******************************************************************************
+ * @author Reika Kalseki
+ *
+ * Copyright 2017
+ *
+ * All rights reserved.
+ * Distribution of the software in any form is only allowed with
+ * explicit, prior permission from the owner.
+ ******************************************************************************/
 package reika.chromaticraft.tileentity.storage;
 
-import net.minecraft.client.Minecraft;
-import net.minecraft.init.Items;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemArmor;
-import net.minecraft.item.ItemAxe;
-import net.minecraft.item.ItemBow;
-import net.minecraft.item.ItemEnchantedBook;
-import net.minecraft.item.ItemPickaxe;
-import net.minecraft.item.ItemPotion;
-import net.minecraft.item.ItemShears;
-import net.minecraft.item.ItemSpade;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.ItemSword;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.potion.Potion;
+import java.util.Locale;
 
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.tags.ItemTags;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.BowItem;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.PotionItem;
+import net.minecraft.world.item.ShearsItem;
+import net.minecraft.world.item.alchemy.PotionContents;
+import net.minecraft.world.item.alchemy.Potions;
+import net.minecraft.world.level.block.state.BlockState;
+
+import reika.chromaticraft.api.interfaces.ManipulatorInteraction;
 import reika.chromaticraft.base.tileentity.TileEntityMassStorage;
+import reika.chromaticraft.registry.ChromaBlockEntities;
+import reika.chromaticraft.registry.ChromaSounds;
 import reika.chromaticraft.registry.ChromaTiles;
-import reika.dragonapi.ModList;
-import reika.dragonapi.instantiable.InertItem;
 import reika.dragonapi.instantiable.data.KeyedItemStack;
-import reika.dragonapi.libraries.ReikaPotionHelper;
-import reika.dragonapi.libraries.java.ReikaStringParser;
-import reika.dragonapi.modinteract.bees.ReikaBeeHelper;
-import reika.dragonapi.modinteract.itemhandlers.AppEngHandler;
-import reika.dragonapi.modinteract.itemhandlers.TinkerToolHandler;
-import reika.dragonapi.modregistry.InterfaceCache;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
-
-
-public class TileEntityToolStorage extends TileEntityMassStorage {
+/**
+ * V33a {@code TileEntityToolStorage}, the Tool Compression Crate: holds up to 360,000 tools of one kind, chosen with the
+ * Manipulator while it is empty -- pickaxes, axes, shovels, swords, bows, shears, each armour piece, enchanted books,
+ * horse armour, potions, or any other unstackable item -- showing that kind floating above it.
+ */
+public class TileEntityToolStorage extends TileEntityMassStorage implements ManipulatorInteraction {
 
 	private static final int MAX_COUNT = 360000;
 
 	private ToolType filter = ToolType.OTHER;
 
+	public TileEntityToolStorage(BlockPos pos, BlockState state) {
+		super(ChromaBlockEntities.TOOL_STORAGE.get(), pos, state);
+	}
+
 	public boolean stepMode() {
-		if (this.getPendingInput() == null && this.getItems().isEmpty()) {
+		if (this.getPendingInput().isEmpty() && this.getItems().isEmpty()) {
 			filter = filter.next();
 			while (!filter.isValid())
 				filter = filter.next();
 			this.resetWorkTimer();
+			this.setChanged();
+			this.syncAllData(true);
 			return true;
 		}
 		return false;
 	}
 
+	/** V33a's Manipulator branch for TOOLSTORAGE: the use sound on a change, the error sound when not empty. */
 	@Override
-	public InertItem getFilterItemRender() {
+	public boolean onManipulatorInteract(Player ep, int side) {
+		if (!level.isClientSide()) {
+			if (this.stepMode())
+				ChromaSounds.USE.playSoundAtBlock(this);
+			else
+				ChromaSounds.ERROR.playSoundAtBlock(this);
+		}
+		return true;
+	}
+
+	public ToolType getFilter() {
+		return filter;
+	}
+
+	@Override
+	public ItemStack getFilterItemRender() {
 		return filter.getRenderItem();
 	}
 
@@ -59,9 +87,10 @@ public class TileEntityToolStorage extends TileEntityMassStorage {
 		return ChromaTiles.TOOLSTORAGE;
 	}
 
+	/** Counted per kind: ignoring damage and components unless the filter distinguishes by them (V33a meta and NBT). */
 	@Override
 	protected KeyedItemStack key(ItemStack is) {
-		return new KeyedItemStack(is).setIgnoreMetadata(!filter.isDamageImportant()).setIgnoreNBT(!filter.isNBTImportant()).setSized(false).setSimpleHash(true);
+		return new KeyedItemStack(is).setIgnoreNBT(!filter.isDamageImportant() && !filter.isNBTImportant()).setSized(false).setSimpleHash(true);
 	}
 
 	@Override
@@ -75,57 +104,52 @@ public class TileEntityToolStorage extends TileEntityMassStorage {
 	}
 
 	@Override
-	public void writeToNBT(NBTTagCompound NBT) {
-		super.writeToNBT(NBT);
-
-		NBT.setInteger("mode", filter.ordinal());
-	}
-
-	@Override
-	public void readFromNBT(NBTTagCompound NBT) {
-		super.readFromNBT(NBT);
-
-		filter = ToolType.list[NBT.getInteger("mode")];
-	}
-
-	@Override
-	protected void writeSyncTag(NBTTagCompound NBT) {
+	protected void writeSyncTag(CompoundTag NBT) {
 		super.writeSyncTag(NBT);
+
+		NBT.putInt("mode", filter.ordinal());
 	}
 
 	@Override
-	protected void readSyncTag(NBTTagCompound NBT) {
+	protected void readSyncTag(CompoundTag NBT) {
 		super.readSyncTag(NBT);
+
+		int mode = NBT.getIntOr("mode", ToolType.OTHER.ordinal());
+		filter = ToolType.list[Math.clamp(mode, 0, ToolType.list.length-1)];
 	}
 
 	public static enum ToolType {
-		PICK(Items.diamond_pickaxe),
-		AXE(Items.iron_axe),
-		SHOVEL(Items.golden_shovel),
-		SWORD(Items.diamond_sword),
-		BOW(Items.bow),
-		SHEARS(Items.shears),
-		HELMET(Items.diamond_helmet),
-		CHESTPLATE(Items.diamond_chestplate),
-		LEGS(Items.diamond_leggings),
-		BOOTS(Items.diamond_boots),
-		BOOK(Items.enchanted_book),
-		HORSEARMOR(Items.golden_horse_armor),
-		POTION(ReikaPotionHelper.getPotionItem(Potion.regeneration, false, false, false)),
-		TINKER(ModList.TINKERER.isLoaded() ? TinkerToolHandler.Tools.HAMMER.getToolOfMaterials(1, 1, 1, 1) : (ItemStack)null),
-		OTHER((ItemStack)null);
+		PICK(() -> new ItemStack(Items.DIAMOND_PICKAXE)),
+		AXE(() -> new ItemStack(Items.IRON_AXE)),
+		SHOVEL(() -> new ItemStack(Items.GOLDEN_SHOVEL)),
+		SWORD(() -> new ItemStack(Items.DIAMOND_SWORD)),
+		BOW(() -> new ItemStack(Items.BOW)),
+		SHEARS(() -> new ItemStack(Items.SHEARS)),
+		HELMET(() -> new ItemStack(Items.DIAMOND_HELMET)),
+		CHESTPLATE(() -> new ItemStack(Items.DIAMOND_CHESTPLATE)),
+		LEGS(() -> new ItemStack(Items.DIAMOND_LEGGINGS)),
+		BOOTS(() -> new ItemStack(Items.DIAMOND_BOOTS)),
+		BOOK(() -> new ItemStack(Items.ENCHANTED_BOOK)),
+		HORSEARMOR(() -> new ItemStack(Items.GOLDEN_HORSE_ARMOR)),
+		POTION(() -> PotionContents.createItemStack(Items.POTION, Potions.REGENERATION)),
+		// CHROMA-PORT: V33a's Tinkers' Construct mode (a hammer icon), only offered with TiC loaded; no 26.2 TiC here.
+		TINKER(() -> ItemStack.EMPTY),
+		OTHER(() -> ItemStack.EMPTY);
 
 		private static final ToolType[] list = values();
 
-		private final ItemStack icon;
-		private InertItem render;
+		/** Built on first use: an ItemStack made during class initialisation can precede its components being bound. */
+		private final java.util.function.Supplier<ItemStack> iconFactory;
+		private ItemStack icon;
 
-		@SideOnly(Side.CLIENT)
-		public InertItem getRenderItem() {
-			if (render == null && icon != null) {
-				render = new InertItem(Minecraft.getMinecraft().theWorld, icon);
-			}
-			return render;
+		private ToolType(java.util.function.Supplier<ItemStack> is) {
+			iconFactory = is;
+		}
+
+		public ItemStack getRenderItem() {
+			if (icon == null)
+				icon = iconFactory.get();
+			return icon;
 		}
 
 		public ToolType next() {
@@ -133,135 +157,71 @@ public class TileEntityToolStorage extends TileEntityMassStorage {
 		}
 
 		public boolean isDamageImportant() {
-			switch(this) {
-				case POTION:
-				case OTHER:
-					return true;
-				default:
-					return false;
-			}
+			return switch(this) {
+				case POTION, OTHER -> true;
+				default -> false;
+			};
 		}
 
 		public boolean isValid() {
-			switch(this) {
-				case TINKER:
-					return ModList.TINKERER.isLoaded();
-				default:
-					return true;
-			}
+			return switch(this) {
+				case TINKER -> false;
+				default -> true;
+			};
 		}
 
 		public boolean isNBTImportant() {
-			switch(this) {
-				case TINKER:
-				case BOOK:
-				case OTHER:
-					return true;
-				default:
-					return false;
-			}
-		}
-
-		private ToolType(Item i) {
-			this(new ItemStack(i));
-		}
-
-		private ToolType(ItemStack is) {
-			icon = is;
+			return switch(this) {
+				case TINKER, BOOK, OTHER -> true;
+				default -> false;
+			};
 		}
 
 		public boolean isItemValid(ItemStack is) {
-			return this.getTypeForTool(is) == this;
-			/*
-			if (this.isTinker(is))
-				return this == TINKER;
-			int type = -1;
-			if (is.getItem() instanceof ItemArmor) {
-				type = ((ItemArmor)is.getIt	em()).armorType;
-			}
-			switch(this) {
-				case AXE:
-					return is.getItem() instanceof ItemAxe;
-				case BOW:
-					return is.getItem() instanceof ItemBow;
-				case PICK:
-					return is.getItem() instanceof ItemPickaxe;
-				case SHEARS:
-					return is.getItem() instanceof ItemShears;
-				case SHOVEL:
-					return is.getItem() instanceof ItemSpade;
-				case SWORD:
-					return is.getItem() instanceof ItemSword;
-				case HELMET:
-					return type == 0;
-				case CHESTPLATE:
-					return type == 1;
-				case LEGS:
-					return type == 2;
-				case BOOTS:
-					return type == 3;
-				case TINKER:
-					return this.isTinker(is);
-				default:
-					break;
-			}
-			return this == OTHER;*/
+			return getTypeForTool(is) == this;
 		}
 
 		private static ToolType getTypeForTool(ItemStack is) {
-			if (isTinker(is))
-				return TINKER;
-			if (is.getItem() instanceof ItemArmor) {
-				int type = ((ItemArmor)is.getItem()).armorType;
-				switch(type) {
-					case 0:
+			var equippable = is.get(DataComponents.EQUIPPABLE);
+			if (equippable != null && equippable.slot().getType() == EquipmentSlot.Type.HUMANOID_ARMOR) {
+				switch(equippable.slot()) {
+					case HEAD:
 						return HELMET;
-					case 1:
+					case CHEST:
 						return CHESTPLATE;
-					case 2:
+					case LEGS:
 						return LEGS;
-					case 3:
+					case FEET:
 						return BOOTS;
+					default:
+						break;
 				}
 			}
-			if (is.getItem() instanceof ItemAxe)
+			if (is.is(ItemTags.AXES))
 				return AXE;
-			if (is.getItem() instanceof ItemBow)
+			if (is.getItem() instanceof BowItem)
 				return BOW;
-			if (is.getItem() instanceof ItemPickaxe)
+			if (is.is(ItemTags.PICKAXES))
 				return PICK;
-			if (is.getItem() instanceof ItemShears)
+			if (is.getItem() instanceof ShearsItem)
 				return SHEARS;
-			if (is.getItem() instanceof ItemSpade)
+			if (is.is(ItemTags.SHOVELS))
 				return SHOVEL;
-			if (is.getItem() instanceof ItemSword)
+			if (is.is(ItemTags.SWORDS))
 				return SWORD;
-			if (is.getItem() instanceof ItemEnchantedBook)
+			if (is.is(Items.ENCHANTED_BOOK))
 				return BOOK;
-			if (is.getItem() == Items.iron_horse_armor || is.getItem() == Items.golden_horse_armor || is.getItem() == Items.diamond_horse_armor)
+			if (is.is(Items.IRON_HORSE_ARMOR) || is.is(Items.GOLDEN_HORSE_ARMOR) || is.is(Items.DIAMOND_HORSE_ARMOR))
 				return HORSEARMOR;
-			if (is.getItem() instanceof ItemPotion)
+			if (is.getItem() instanceof PotionItem)
 				return POTION;
-			if (ModList.BOTANIA.isLoaded() && InterfaceCache.BREWITEM.instanceOf(is.getItem()))
-				return POTION;
+			// CHROMA-PORT: V33a also counted Botania brews as potions.
 			return isValidMiscToolItem(is) ? OTHER : null;
 		}
 
+		/** CHROMA-PORT: V33a also refused AE storage cells and Forestry genetic items here. */
 		private static boolean isValidMiscToolItem(ItemStack is) {
-			if (ModList.APPENG.isLoaded()) {
-				Item i = is.getItem();
-				if (i == AppEngHandler.getInstance().get1KCell() || i == AppEngHandler.getInstance().get4KCell())
-					return false;
-				if (i == AppEngHandler.getInstance().get16KCell() || i == AppEngHandler.getInstance().get64KCell())
-					return false;
-			}
-			if (ModList.FORESTRY.isLoaded() && ReikaBeeHelper.isGenedItem(is))
-				return false;
 			return is.getMaxStackSize() == 1;
-		}
-
-		private static boolean isTinker(ItemStack is) {
-			return ModList.TINKERER.isLoaded() && (TinkerToolHandler.getInstance().isTool(is) || TinkerToolHandler.getInstance().isWeapon(is));
 		}
 
 		public static String getTypesAsString() {
@@ -274,8 +234,10 @@ public class TileEntityToolStorage extends TileEntityMassStorage {
 			return sb.toString();
 		}
 
+		/** V33a {@code ReikaStringParser.capFirstChar}: first letter upper case, the rest lower. */
 		public String displayName() {
-			return ReikaStringParser.capFirstChar(this.name());
+			String n = this.name();
+			return n.substring(0, 1)+n.substring(1).toLowerCase(Locale.ENGLISH);
 		}
 	}
 

@@ -153,6 +153,7 @@ public class ChromaModelProvider extends ModelProvider {
 		lumenTurretModel(blockStateOut, itemModelOut, modelOut);
 		lumenWireModel(blockStateOut, itemModelOut, modelOut);
 		autoEnchanterModel(blockStateOut, itemModelOut, modelOut);
+		toolStorageModel(blockStateOut, itemModelOut, modelOut);
 		pylonTurboModel(blockStateOut, itemModelOut, modelOut);
 		personalChargerModel(blockStateOut, itemModelOut, modelOut);
 		collectorModel(blockStateOut, itemModelOut, modelOut);
@@ -1972,6 +1973,19 @@ public class ChromaModelProvider extends ModelProvider {
 				TextureMapping.cube(particle), modelOut);
 		itemModelOut.accept(ChromaBlocks.LUMEN_TURRET.get().asItem(),
 				ItemModelUtils.specialModel(itemBase, new reika.chromaticraft.render.item.LumenTurretItemRenderer.Unbaked()));
+	}
+
+	/** V33a BlockChromaTile2 standard cube: tile/toolstorage_bottom, _top and _side (its TESR floats the filter item). */
+	private static void toolStorageModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		TextureMapping textures = new TextureMapping()
+				.put(TextureSlot.SIDE, new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/tile/toolstorage_side")))
+				.put(TextureSlot.TOP, new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/tile/toolstorage_top")))
+				.put(TextureSlot.BOTTOM, new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/tile/toolstorage_bottom")));
+		Identifier model = ModelTemplates.CUBE_BOTTOM_TOP.create(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/tool_storage"), textures, modelOut);
+		blockStateOut.accept(MultiVariantGenerator.dispatch(ChromaBlocks.TOOL_STORAGE.get(), new MultiVariant(WeightedList.of(new Variant(model)))));
+		itemModelOut.accept(ChromaBlocks.TOOL_STORAGE.get().asItem(), ItemModelUtils.plainModel(model));
 	}
 
 	/**

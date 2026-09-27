@@ -145,6 +145,7 @@ public final class LexiconIconResolver {
 			case "turret" -> ChromaBlocks.LUMEN_TURRET.get();
 			case "lumenwire" -> ChromaBlocks.LUMEN_WIRE.get();
 			case "enchanter" -> ChromaBlocks.AUTO_ENCHANTER.get();
+			case "toolstorage" -> ChromaBlocks.TOOL_STORAGE.get();
 			case "chromaflower" -> ChromaBlocks.CHROMA_FLOWER.get();
 			case "focuscrystal" -> ChromaBlocks.FOCUS_CRYSTAL.get();
 			case "personal" -> ChromaBlocks.PERSONAL_CHARGER.get();

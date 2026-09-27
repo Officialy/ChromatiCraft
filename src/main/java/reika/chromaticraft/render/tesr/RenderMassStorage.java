@@ -1,117 +1,105 @@
+/*******************************************************************************
+ * @author Reika Kalseki
+ *
+ * Copyright 2017
+ *
+ * All rights reserved.
+ * Distribution of the software in any form is only allowed with
+ * explicit, prior permission from the owner.
+ ******************************************************************************/
 package reika.chromaticraft.render.tesr;
 
-import org.lwjgl.opengl.GL11;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.math.Axis;
 
-import net.minecraft.client.renderer.ItemRenderer;
-import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.client.renderer.entity.RenderItem;
-import net.minecraft.client.renderer.entity.RenderManager;
-import net.minecraft.entity.item.EntityItem;
-import net.minecraft.init.Blocks;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.IIcon;
-import net.minecraftforge.client.MinecraftForgeClient;
+import org.jspecify.annotations.Nullable;
 
-import reika.chromaticraft.base.ChromaRenderBase;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
+import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
+import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
+import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
+import net.minecraft.client.renderer.item.ItemModelResolver;
+import net.minecraft.client.renderer.item.ItemStackRenderState;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.client.renderer.texture.TextureAtlas;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.data.AtlasIds;
+import net.minecraft.world.item.ItemDisplayContext;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.phys.Vec3;
+
 import reika.chromaticraft.base.tileentity.TileEntityMassStorage;
 import reika.chromaticraft.registry.ChromaIcons;
-import reika.dragonapi.interfaces.tileentity.RenderFetcher;
-import reika.dragonapi.libraries.io.ReikaTextureHelper;
-import reika.dragonapi.libraries.java.reikaglhelper.BlendMode;
-import reika.dragonapi.libraries.registry.ReikaItemHelper;
-import reika.dragonapi.libraries.rendering.ReikaRenderHelper;
+import reika.chromaticraft.render.ChromaRenderPipelines;
 
+/**
+ * V33a {@code RenderMassStorage}: above the crate, swinging 45 degrees either way, the kind of item it holds -- or, for
+ * the catch-all mode, a question mark at half size, additive. V33a drew the item as a dim (0.2) additive ghost; the 26.2
+ * item pipeline chooses its own render type, so here it is the item as an item frame would show it, at the crate's light.
+ */
+public final class RenderMassStorage implements BlockEntityRenderer<TileEntityMassStorage, RenderMassStorage.State> {
 
-public class RenderMassStorage extends ChromaRenderBase {
+	private final ItemModelResolver itemModelResolver;
 
-	@Override
-	public String getImageFileName(RenderFetcher te) {
-		return null;
+	public RenderMassStorage(BlockEntityRendererProvider.Context context) {
+		itemModelResolver = context.itemModelResolver();
 	}
 
 	@Override
-	public void renderTileEntityAt(TileEntity tile, double par2, double par4, double par6, float par8) {
-		TileEntityMassStorage te = (TileEntityMassStorage)tile;
-		GL11.glPushMatrix();
-		GL11.glTranslated(par2, par4, par6);
-		if (te.isInWorld() && MinecraftForgeClient.getRenderPass() == 1)
-			this.renderItem(te, par8);
-		GL11.glPopMatrix();
+	public State createRenderState() {
+		return new State();
 	}
 
-	private void renderItem(TileEntityMassStorage te, float par8) {
-		EntityItem ei = te.getFilterItemRender();
-		if (ei != null && ReikaItemHelper.matchStackWithBlock(ei.getEntityItem(), Blocks.stone))
-			ei = null;
-		GL11.glPushMatrix();
-		GL11.glTranslated(0.5, 1.25, 0.5);
-		double s = 1;
-		float tick = par8+te.getTicksExisted();
-		double ang = 45*Math.sin(Math.toRadians(tick*3));
-		if (ei == null) {
-			s *= 0.5;
+	@Override
+	public void extractRenderState(TileEntityMassStorage te, State state, float partialTick, Vec3 cameraPosition,
+			ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress) {
+		BlockEntityRenderer.super.extractRenderState(te, state, partialTick, cameraPosition, breakProgress);
+		state.tick = partialTick+te.getTicksExisted();
+		state.item = null;
+		ItemStack filter = te.getFilterItemRender();
+		if (!filter.isEmpty()) {
+			state.item = new ItemStackRenderState();
+			itemModelResolver.updateForTopItem(state.item, filter, ItemDisplayContext.FIXED, te.getLevel(), null, 0);
 		}
-		GL11.glScaled(s, s, s);
-		GL11.glRotated(ang, 0, 1, 0);
-		if (ei != null) {
-			double s2 = s;//0.25;
-			ei.age = 0;
-			ei.hoverStart = 0;
-			ei.rotationYaw = 0;
-			//for (double dt = -0.0625; dt <= 0.0625; dt += 0.0625) {
-			boolean blend = true;//Math.abs(dt) < 0.125;
-			//double s = 2;
-			GL11.glScaled(s, s, s2);
-			//GL11.glTranslated(0, 0, dt);
-			GL11.glEnable(GL11.GL_BLEND);
-			double c = 0.2;
-			double a = blend ? 1 : 0.125;
-			GL11.glColor4d(c, c, c, a);
-			if (blend) {
-				//GL11.glDisable(GL11.GL_CULL_FACE);
-				//GL11.glDisable(GL11.GL_DEPTH_TEST);
-				BlendMode.ADDITIVE.apply();
-			}
-			ReikaRenderHelper.disableEntityLighting();
-			RenderItem.renderInFrame = true;
-			RenderManager.instance.renderEntityWithPosYaw(ei, 0, 0, 0, 0, 0/*tick*/);
-			RenderItem.renderInFrame = false;
-			ReikaRenderHelper.enableEntityLighting();
-			if (blend) {
-				BlendMode.DEFAULT.apply();
-				//GL11.glEnable(GL11.GL_DEPTH_TEST);
-				//GL11.glEnable(GL11.GL_CULL_FACE);
-			}
+	}
 
-			GL11.glDisable(GL11.GL_BLEND);
-			//}
+	@Override
+	public void submit(State state, PoseStack poseStack, SubmitNodeCollector collector, CameraRenderState camera) {
+		poseStack.pushPose();
+		poseStack.translate(0.5, 1.25, 0.5);
+		float s = 1;
+		double ang = 45*Math.sin(Math.toRadians(state.tick*3));
+		if (state.item == null)
+			s *= 0.5F;
+		poseStack.scale(s, s, s);
+		poseStack.mulPose(Axis.YP.rotationDegrees((float)ang));
+		if (state.item != null) {
+			state.item.submit(poseStack, collector, state.lightCoords, OverlayTexture.NO_OVERLAY, 0);
 		}
 		else {
-			GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
-			GL11.glColor4d(1, 1, 1, 1);
-			GL11.glTranslated(-0.5, 0, 0);
-			GL11.glEnable(GL11.GL_BLEND);
-			GL11.glDisable(GL11.GL_CULL_FACE);
-			ReikaRenderHelper.disableEntityLighting();
-			ReikaRenderHelper.disableLighting();
-			BlendMode.ADDITIVEDARK.apply();
-			ReikaTextureHelper.bindTerrainTexture();
-			Tessellator v5 = Tessellator.instance;
-			IIcon ico = ChromaIcons.QUESTION.getIcon();
-			float u = ico.getMinU();
-			float v = ico.getMinV();
-			float du = ico.getMaxU();
-			float dv = ico.getMaxV();
-			v5.setBrightness(240);
-			v5.setColorOpaque_I(0xffffff);
-			//v5.addVertexWithUV(-s, -s, 0, du, dv);
-			//v5.addVertexWithUV(s, -s, 0, u, dv);
-			//v5.addVertexWithUV(s, s, 0, u, v);
-			//v5.addVertexWithUV(-s, s, 0, du, v);
-			ItemRenderer.renderItemIn2D(v5, u, v, du, dv, 256, 256, 0.0625F);
-			GL11.glPopAttrib();
+			TextureAtlasSprite ico = Minecraft.getInstance().getAtlasManager().getAtlasOrThrow(AtlasIds.BLOCKS)
+					.getSprite(ChromaIcons.QUESTION.getIcon());
+			collector.submitCustomGeometry(poseStack, ChromaRenderPipelines.additiveSprite(TextureAtlas.LOCATION_BLOCKS),
+					(pose, v5) -> questionMark(pose, v5, ico));
 		}
-		GL11.glPopMatrix();
+		poseStack.popPose();
+	}
+
+	/** V33a {@code renderItemIn2D} of the question icon, centred: one square, unculled. */
+	private static void questionMark(PoseStack.Pose pose, VertexConsumer v5, TextureAtlasSprite ico) {
+		v5.addVertex(pose, -0.5F, 0, 0).setUv(ico.getU1(), ico.getV1()).setColor(0xffffffff);
+		v5.addVertex(pose, 0.5F, 0, 0).setUv(ico.getU0(), ico.getV1()).setColor(0xffffffff);
+		v5.addVertex(pose, 0.5F, 1, 0).setUv(ico.getU0(), ico.getV0()).setColor(0xffffffff);
+		v5.addVertex(pose, -0.5F, 1, 0).setUv(ico.getU1(), ico.getV0()).setColor(0xffffffff);
+	}
+
+	public static final class State extends BlockEntityRenderState {
+		private float tick;
+		private ItemStackRenderState item;
 	}
 
 }

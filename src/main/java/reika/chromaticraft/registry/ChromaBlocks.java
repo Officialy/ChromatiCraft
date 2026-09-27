@@ -974,6 +974,10 @@ public final class ChromaBlocks {
 			register("chroma_flower", () -> new reika.chromaticraft.block.BlockChromaFlower(blockProperties()
 					.strength(0F, 0.1F).noCollision().noOcclusion().sound(SoundType.GRASS).lightLevel(state -> 9)
 					.pushReaction(net.minecraft.world.level.material.PushReaction.DESTROY)));
+	/** V33a TOOLSTORAGE, a BlockChromaTile2 entry: rock, hardness 5, resistance 40 (8 against explosions). */
+	public static final DeferredBlock<Block> TOOL_STORAGE =
+			register("tool_storage", () -> new reika.chromaticraft.block.BlockToolStorage(
+					blockProperties().strength(5F, 8F).requiresCorrectToolForDrops()));
 	/** V33a ENCHANTER, a BlockChromaTile entry: rock, hardness 5, resistance 40 (8 against explosions). */
 	public static final DeferredBlock<Block> AUTO_ENCHANTER =
 			register("auto_enchanter", () -> new reika.chromaticraft.block.BlockAutoEnchanter(
