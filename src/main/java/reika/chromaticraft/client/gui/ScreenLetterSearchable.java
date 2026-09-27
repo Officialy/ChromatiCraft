@@ -144,9 +144,16 @@ public abstract class ScreenLetterSearchable<M extends AbstractContainerMenu, E>
 		return amt;
 	}
 
+	/**
+	 * While searching, every key but ESC (with nothing typed) stays with the search: the text itself arrives through
+	 * {@link #charTyped}, and passing the key on would let the inventory key close the screen or a number key swap the
+	 * hovered slot mid-word. (V33a consumed searchable characters in the same keyTyped call.)
+	 */
 	@Override
 	public boolean keyPressed(KeyEvent event) {
 		if (this.isSearchActive() && this.handleKey(event.key()))
+			return true;
+		if (this.isSearchActive() && searchActive && event.key() != 256)
 			return true;
 		return super.keyPressed(event);
 	}

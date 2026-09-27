@@ -75,7 +75,7 @@ public abstract class TileEntityMassStorage extends TileEntityChromaticBase impl
 
 		private static final String IDENTIFIER = "tool_crate_items";
 		private static final Codec<ToolCrateData> CODEC = Codec.unboundedMap(UUIDUtil.STRING_CODEC, ItemStack.CODEC.listOf())
-				.xmap(ToolCrateData::new, d -> d.items);
+				.xmap(ToolCrateData::new, ToolCrateData::nonEmpty);
 		private static final SavedDataType<ToolCrateData> TYPE = new SavedDataType<>(
 				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, IDENTIFIER),
 				ToolCrateData::new, CODEC, DataFixTypes.SAVED_DATA_MAP_DATA);
@@ -89,6 +89,14 @@ public abstract class TileEntityMassStorage extends TileEntityChromaticBase impl
 		private ToolCrateData(Map<UUID, List<ItemStack>> data) {
 			for (Map.Entry<UUID, List<ItemStack>> e : data.entrySet())
 				items.put(e.getKey(), new ArrayList<>(e.getValue()));
+		}
+
+		/** ItemStack.CODEC rejects empty stacks, and one would lose every crate's save; they are dropped on write. */
+		private Map<UUID, List<ItemStack>> nonEmpty() {
+			HashMap<UUID, List<ItemStack>> ret = new HashMap<>();
+			for (Map.Entry<UUID, List<ItemStack>> e : items.entrySet())
+				ret.put(e.getKey(), e.getValue().stream().filter(is -> !is.isEmpty()).toList());
+			return ret;
 		}
 
 		private static ToolCrateData get(Level level) {
