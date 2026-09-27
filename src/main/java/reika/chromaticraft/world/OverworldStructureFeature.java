@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.UUID;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.core.registries.Registries;
@@ -14,6 +15,7 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.WorldGenLevel;
+import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.AbstractFurnaceBlockEntity;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
@@ -136,13 +138,24 @@ public final class OverworldStructureFeature extends Feature<NoneFeatureConfigur
 			int x = (cx << 4) + random.nextInt(16);
 			int z = (cz << 4) + random.nextInt(16);
 			int y = world.getHeight(Heightmap.Types.WORLD_SURFACE_WG, x, z);
-			if (!DungeonZones.isValidBiome(type, world.getBiome(new BlockPos(x, y, z))))
+			if (!DungeonZones.isValidBiome(type, biomeAt(world, new BlockPos(x, y, z))))
 				continue;
 			BlockPos controller = this.placeAt(world, random, new BlockPos(x, world.getMinY(), z));
 			if (controller != null)
 				return net.minecraft.world.level.ChunkPos.containing(controller);
 		}
 		return null;
+	}
+
+	/**
+	 * Keep vanilla's fiddled block-biome selection without asking a bounded WorldGenRegion for
+	 * a neighbouring chunk. Its biome manager can sample a quart just across the edge of the
+	 * feature step's available chunks, even when the position itself is inside the write window.
+	 */
+	private static Holder<Biome> biomeAt(WorldGenLevel world, BlockPos pos) {
+		if (world instanceof net.minecraft.server.level.WorldGenRegion)
+			return world.getBiomeManager().withDifferentSource(world::getUncachedNoiseBiome).getBiome(pos);
+		return world.getBiome(pos);
 	}
 
 	/** One placement attempt with {@code origin}'s column; returns the controller position, or null. */
@@ -486,7 +499,7 @@ public final class OverworldStructureFeature extends Feature<NoneFeatureConfigur
 	}
 
 	private boolean validNaturalBiomeFragmentSite(WorldGenLevel world, BlockPos controllerPos) {
-		var biome = world.getBiome(controllerPos);
+		var biome = biomeAt(world, controllerPos);
 		if (biome.is(reika.chromaticraft.world.biome.ChromaBiomes.RAINBOW_STREAM)
 				|| !(biome.is(reika.chromaticraft.world.biome.ChromaBiomes.RAINBOW_FOREST)
 				|| biome.is(reika.chromaticraft.world.biome.ChromaBiomes.ENDER_FOREST)
@@ -533,7 +546,7 @@ public final class OverworldStructureFeature extends Feature<NoneFeatureConfigur
 	}
 
 	private static BlockState biomeFragmentLiquid(WorldGenLevel world, BlockPos root) {
-		var biome = world.getBiome(root);
+		var biome = biomeAt(world, root);
 		if (biome.is(reika.chromaticraft.world.biome.ChromaBiomes.RAINBOW_FOREST))
 			return ChromaBlocks.CHROMA.get().defaultBlockState();
 		if (biome.is(reika.chromaticraft.world.biome.ChromaBiomes.LUMINOUS_CLIFFS)
@@ -573,11 +586,11 @@ public final class OverworldStructureFeature extends Feature<NoneFeatureConfigur
 		List<BlockPos> corners = List.of(sourceOrigin, sourceOrigin.offset(16, 0, 0),
 				sourceOrigin.offset(0, 0, 16), sourceOrigin.offset(16, 0, 16));
 		int min = Integer.MAX_VALUE, max = Integer.MIN_VALUE;
-		var biome = world.getBiome(corners.getFirst());
+		var biome = biomeAt(world, corners.getFirst());
 		for (BlockPos corner : corners) {
 			int height = world.getHeight(Heightmap.Types.WORLD_SURFACE_WG, corner.getX(), corner.getZ());
 			min = Math.min(min, height); max = Math.max(max, height);
-			if (!world.getBiome(corner).equals(biome)) return false;
+			if (!biomeAt(world, corner).equals(biome)) return false;
 			for (int depth = 1; depth <= 5; depth++) {
 				BlockPos support = new BlockPos(corner.getX(), height - depth, corner.getZ());
 				if (world.getBlockState(support).isAir() || !world.getFluidState(support).isEmpty()) return false;
@@ -619,9 +632,11 @@ public final class OverworldStructureFeature extends Feature<NoneFeatureConfigur
 		TagKey<net.minecraft.world.level.biome.Biome> sandy = TagKey.create(Registries.BIOME,
 				Identifier.fromNamespaceAndPath("c", "is_sandy"));
 		for (BlockPos corner : List.of(sourceOrigin, sourceOrigin.offset(14, 0, 0),
-				sourceOrigin.offset(0, 0, 15), sourceOrigin.offset(14, 0, 15)))
-			if (!world.getBiome(corner).is(sandy) || world.getBiome(corner).is(BiomeTags.IS_BADLANDS))
+				sourceOrigin.offset(0, 0, 15), sourceOrigin.offset(14, 0, 15))) {
+			Holder<Biome> biome = biomeAt(world, corner);
+			if (!biome.is(sandy) || biome.is(BiomeTags.IS_BADLANDS))
 				return false;
+		}
 		return NBTStructureLoader.canPlace(world, type.template, controllerPos, type.templateAnchor,
 				state -> state, (pos, authored) -> authored.is(Blocks.STRUCTURE_VOID)
 						|| !(world.getBlockState(pos).getBlock()
@@ -635,7 +650,7 @@ public final class OverworldStructureFeature extends Feature<NoneFeatureConfigur
 		// V33a requires both authored bounds to remain ocean and at least one flooded end cap.
 		for (BlockPos corner : List.of(controllerPos.offset(-3, 0, -3), controllerPos.offset(27, 0, -3),
 				controllerPos.offset(-3, 0, 27), controllerPos.offset(27, 0, 27)))
-			if (!world.getBiome(corner).is(BiomeTags.IS_OCEAN))
+			if (!biomeAt(world, corner).is(BiomeTags.IS_OCEAN))
 				return false;
 		boolean openX = floodedOceanEnd(world, controllerPos.offset(28, 3, 0));
 		boolean openZ = floodedOceanEnd(world, controllerPos.offset(0, 3, 28));

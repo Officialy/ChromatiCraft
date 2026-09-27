@@ -48,6 +48,7 @@ import reika.chromaticraft.render.particle.ChromaParticle;
 import reika.chromaticraft.tileentity.auxiliary.TileEntityFocusCrystal;
 import reika.chromaticraft.tileentity.networking.TileEntityCrystalRepeater;
 import reika.dragonapi.instantiable.data.blockstruct.BlockArray;
+import reika.dragonapi.interfaces.blockentity.BreakAction;
 import reika.dragonapi.libraries.ReikaInventoryHelper;
 import reika.dragonapi.libraries.ReikaPlayerAPI;
 
@@ -55,7 +56,7 @@ import java.util.*;
 
 /** Complete server-authoritative controller for all four V33a casting tiers. */
 public final class TileEntityCastingTable extends InventoriedCrystalReceiver
-        implements OwnedTile, NBTTile, MenuProvider, OperationInterval, FocusAcceleratable {
+        implements BreakAction, OwnedTile, NBTTile, MenuProvider, OperationInterval, FocusAcceleratable {
 
     public enum TableTier {
         CRAFTING(0), TEMPLE(250), MULTIBLOCK(2000), PYLON(15000);
@@ -636,6 +637,7 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver
     }
 
     public void cancelCraft() { if (this.isCrafting()) this.finishCraft(); }
+    @Override
     public void breakBlock() {
         this.cancelCraft();
         for (TileEntityItemStand stand : this.getOtherStands().values()) if (this.getBlockPos().equals(stand.getTable())) stand.setTable(null);

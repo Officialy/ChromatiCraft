@@ -144,12 +144,6 @@ public final class TileEntityRitualTable extends InventoriedCrystalReceiver impl
         super.onChunkUnloaded();
     }
 
-    @Override
-    public void setRemoved() {
-        breakBlock();
-        super.setRemoved();
-    }
-
     private void onRitualTick(Level world, BlockPos pos) {
         if (ability == null) {
             killRitual();

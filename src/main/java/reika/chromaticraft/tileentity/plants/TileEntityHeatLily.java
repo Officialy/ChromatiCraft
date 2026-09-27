@@ -57,12 +57,6 @@ public final class TileEntityHeatLily extends TileEntityMagicPlant implements Lo
 		if (level != null) CACHE.remove(new WorldLocation(level, worldPosition));
 	}
 
-	@Override
-	public void setRemoved() {
-		this.breakBlock();
-		super.setRemoved();
-	}
-
 	public static boolean stopFreeze(Level world, BlockPos pos) {
 		for (WorldLocation location : CACHE) {
 			if (!location.getDimension().equals(world.dimension())) continue;

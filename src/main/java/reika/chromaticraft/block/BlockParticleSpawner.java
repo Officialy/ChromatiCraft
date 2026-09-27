@@ -1,6 +1,5 @@
 package reika.chromaticraft.block;
 
-import java.util.Optional;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
@@ -21,7 +20,7 @@ import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import net.neoforged.neoforge.fluids.FluidStack;
-import net.neoforged.neoforge.fluids.FluidUtil;
+import net.neoforged.neoforge.transfer.fluid.FluidUtil;
 
 import reika.chromaticraft.registry.ChromaTiles;
 import reika.chromaticraft.tileentity.decoration.TileEntityParticleSpawner;
@@ -76,10 +75,10 @@ public final class BlockParticleSpawner extends BlockChromaticTile {
 			}
 		}
 		else {
-			Optional<FluidStack> fs = FluidUtil.getFluidContained(is);
-			if (fs.isPresent() && !fs.get().isEmpty()) {
+			FluidStack fs = FluidUtil.getFirstStackContained(is);
+			if (!fs.isEmpty()) {
 				if (!level.isClientSide())
-					tp.markAsFluid(fs.get().getFluid());
+					tp.markAsFluid(fs.getFluid());
 				return InteractionResult.SUCCESS;
 			}
 		}

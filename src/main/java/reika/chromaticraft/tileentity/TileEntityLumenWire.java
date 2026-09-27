@@ -415,13 +415,6 @@ public class TileEntityLumenWire extends TileEntityChromaticBase implements Brea
 		this.disconnect(true);
 	}
 
-	@Override
-	public void preRemoveSideEffects(BlockPos pos, BlockState state) {
-		super.preRemoveSideEffects(pos, state);
-		if (level != null && !level.isClientSide())
-			this.breakBlock();
-	}
-
 	public static enum CheckType {
 		ANY(0xffffff),
 		OWNER(0x22aaff),

@@ -366,7 +366,10 @@ public abstract class TileEntityMassStorage extends TileEntityChromaticBase impl
 		}
 	}
 
-	/** Any removal, not only a player's break (V33a's BlockChromaTile.breakBlock). */
+	/**
+	 * Any removal, not only a player's break (V33a's BlockChromaTile.breakBlock). Deliberately skips super: breakBlock
+	 * drops copies of getItems() without clearing them, so vanilla's Container spill would drop everything again.
+	 */
 	@Override
 	public void preRemoveSideEffects(BlockPos pos, BlockState state) {
 		this.breakBlock();
