@@ -53,11 +53,12 @@ import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.ChromaFluids;
 import reika.chromaticraft.registry.ChromaTiles;
 import reika.chromaticraft.render.particle.ChromaParticle;
+import reika.dragonapi.interfaces.blockentity.ConditionBreakDropsInventory;
 import reika.dragonapi.modinteract.ReikaXPFluidHelper;
 
 /** Complete V33a Chroma Collector on the 26.2 inventory, persistence, and transfer APIs. */
 public final class TileEntityCollector extends TileEntityChromaticBase
-		implements WorldlyContainer, MenuProvider, OwnedTile, ChromaExtractable {
+		implements WorldlyContainer, MenuProvider, OwnedTile, ChromaExtractable, ConditionBreakDropsInventory {
 
 	public static final int XP_PER_CHROMA = 1;
 	public static final int XP_PER_BOTTLE = 300;
@@ -186,6 +187,8 @@ public final class TileEntityCollector extends TileEntityChromaticBase
 		this.contentsChanged();
 	}
 	@Override public void clearContent() { inventory.clear(); this.contentsChanged(); }
+	/** The contents drop from 26.2's {@code preRemoveSideEffects}, every component kept; DragonAPI's lossy player-break drop is skipped. */
+	@Override public boolean dropsInventoryOnBroken() { return false; }
 	@Override public boolean stillValid(Player player) { return this.isPlayerAccessible(player); }
 	@Override public boolean canPlaceItem(int slot, ItemStack stack) { return slot == 0 && stack.is(Items.EXPERIENCE_BOTTLE); }
 	@Override public int[] getSlotsForFace(Direction side) { return new int[] {0, 1}; }

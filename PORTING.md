@@ -8970,6 +8970,41 @@ Needs a full GameTest run (ownership semantics changed across these tiles).
   Brewery/Enchanter fix commit); the same issue in other blocks is a filed follow-up task.
 - Unverified in game.
 
+**Inventory drops: one path, components kept (2026-09-27).** The follow-up to the Enchanter drop fix.
+- V33a: `BlockTEBase.breakBlock` ran on *any* removal and spilled every `IInventory` through
+  `ReikaItemHelper.dropInventory` (full-NBT copies) unless the tile said `dropsInventoryOnBroken() == false`.
+- 26.2 has two paths. `BlockTEBase.onDestroyedByPlayer` runs `dropInventory` on a player break only, and vanilla
+  `BlockEntity.preRemoveSideEffects` drops every `Container` on every removal.
+  - DragonAPI (`6c897c65`): `dropInventory` rebuilt each split as `new ItemStack(item, j)` plus CUSTOM_DATA, stripping
+    enchantments, damage, names and potions. It now splits the real stack (`copyWithCount`, then `shrink`). The
+    player overload also shrank by 1 per split, so it duplicated. Slots are cleared explicitly, in case `getItem`
+    returns a copy.
+  - Casting Table, Item Stand, Collector, Crystal Charger and Relay Source also added their contents in `getDrops`.
+    An explosion or `destroyBlock` therefore dropped everything twice. Those additions are removed.
+- One path per tile, the vanilla one: `dropsInventoryOnBroken() == false` on `InventoriedCrystalReceiver` (Casting
+  Table, Ritual Table, Charger, Relay Source, Item Fabricator, Void Monster Trap), `TileEntityItemStand`, and
+  `TileEntityCollector`.
+  - Their `BreakAction`s were checked, and none writes into a slot that the vanilla drop would then spill.
+- Aura Infuser: V33a's `dropsInventoryOnBroken() == false` is restored. Its `BreakAction.dropItem` drops the real
+  stack; before this, DragonAPI's lossy drop ran first and emptied the slot.
+- Audit: RotaryCraft, ReactorCraft, ElectriCraft and GeoStrata have no block adding contents in `getDrops`. Their
+  machines had only the lossy player-break drop, which the DragonAPI change fixes. `BlockMultiBlock` uses the same
+  helper.
+- GameTests `inventory_drop_keeps_components` and `inventory_tiles_drop_once`:
+  - Both `dropInventory` overloads.
+  - A player-broken RotaryCraft Composter (the full `BlockTEBase` path).
+  - A player-broken Charger and Item Stand.
+  - A Collector removed without a player.
+  - Each asserts exact counts and `isSameItemSameComponents` on an enchanted, damaged, renamed sword or a Mending
+    book.
+  - Mutation-checked: the old lossy copy fails both tests, and a restored Collector `getDrops` fails the second.
+- Known gaps, not fixed here:
+  - `BreakAction` fires only on a player break, not on explosion or `/setblock` as V33a's `breakBlock` did. The Aura
+    Infuser cache and Casting Table stand links leak.
+  - RotaryCraft's Scaleable Chest (`dropsInventoryOnBroken() == false`) spills through vanilla. V33a wrote the
+    contents into the dropped chest item (`writeInventoryToItem`), which is not ported yet; do not suppress the spill
+    until it is.
+
 **Overworld structure worldgen biome reads (2026-09-26).** The natural structure feature used
 `WorldGenRegion.getBiome` for its candidate and site checks. Vanilla's fiddled biome lookup may
 sample a quart across the edge of the feature step's available chunks, so generation of chunk
@@ -8978,3 +9013,27 @@ neighbouring candidate. The feature now uses the same biome manager with the gen
 noise-biome source for bounded worldgen views; command placement retains the normal world biome
 lookup. `:ChromatiCraft:compileJava --offline` passes. Needs an in-world check with the original
 world and C2ME configuration.
+
+**BreakAction on any removal (2026-09-27).** V33a's `BlockTEBase.breakBlock` ran `BreakAction.breakBlock()` from
+`Block.breakBlock`, which fires on every server-side removal: explosion, `/setblock`, fluids, code. The port ran it
+from `BlockTEBase.onDestroyedByPlayer`, so only a player's break reached it (and on the client as well).
+- DragonAPI: `BlockEntityBase.preRemoveSideEffects` now runs it, before `super`. That is 26.2's any-removal hook,
+  server-only like 1.7.10's `Chunk` call. `super` is vanilla's Container spill, so an action that empties its own slot
+  (the Aura Infuser's `dropItem`) runs first and nothing drops twice. The `onDestroyedByPlayer` call is gone.
+  - V33a order was inventory drop first, then BreakAction. On a non-player removal the spill now comes after; no
+    active `breakBlock` clears a slot without dropping it, so nothing is lost.
+- Casting Table: V33a implements `BreakAction`; the port had dropped the interface and called `breakBlock()` from
+  `BlockCastingTable.onDestroyedByPlayer`. That call ran before `BlockChromaticTile`'s owner/unbreakability checks,
+  so a non-owner's swing cancelled a running craft while the table survived. The interface is restored and the
+  override removed.
+- Double runs removed: `TileEntityLumenWire.preRemoveSideEffects` (super + `breakBlock`), and the `setRemoved()`
+  workarounds on `TileEntityRitualTable` and `TileEntityHeatLily`. `setRemoved` also fires on chunk unload, which
+  V33a never did; the Ritual Table's unload stays in `onChunkUnloaded`. `TileEntityMassStorage` keeps its override,
+  deliberately without `super`: its `breakBlock` drops copies without clearing them.
+- Audited every `BreakAction` implementer in DragonAPI/RotaryCraft/ReactorCraft/ElectriCraft/GeoStrata/
+  ChromatiCraft. None depends on a player or on the client. The multiblock-breaking ones (ReactorCraft fusion/turbine
+  parts) now also cascade on non-player removal, as in V33a.
+- Pristine 1.7.10 blocks that call `breakBlock()` themselves (`BlockCrystalConsole`, `BlockDimensionChunkloader`)
+  must drop those calls when ported, or the action runs twice.
+- GameTest `break_action_on_any_removal`: `destroyBlock` on a mid-craft Casting Table must unlock and unlink all four
+  stands, and on an Aura Infuser must remove its lookup-cache entry and drop its item exactly once.

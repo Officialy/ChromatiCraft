@@ -11,10 +11,11 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
+import reika.dragonapi.interfaces.blockentity.ConditionBreakDropsInventory;
 import reika.dragonapi.interfaces.blockentity.InertIInv;
 
 /** V33a inventory receiver semantics on the managed 26.2 container and persistence APIs. */
-public abstract class InventoriedCrystalReceiver extends CrystalReceiverBase implements WorldlyContainer {
+public abstract class InventoriedCrystalReceiver extends CrystalReceiverBase implements WorldlyContainer, ConditionBreakDropsInventory {
 	protected final NonNullList<ItemStack> inv;
 	protected InventoriedCrystalReceiver(BlockEntityType<?> type, BlockPos pos, BlockState state) {
 		super(type, pos, state);
@@ -55,6 +56,11 @@ public abstract class InventoriedCrystalReceiver extends CrystalReceiverBase imp
 	}
 	@Override public boolean stillValid(Player player) { return this.isPlayerAccessible(player); }
 	@Override public void clearContent() { inv.clear(); this.setChanged(); }
+	/**
+	 * The contents drop from 26.2's {@code preRemoveSideEffects} (the stacks themselves, every component kept) however
+	 * the block goes, as {@link InventoriedChromaticBase} does; DragonAPI's player-break inventory drop is skipped.
+	 */
+	@Override public boolean dropsInventoryOnBroken() { return false; }
 	@Override public void setChanged() {
 		super.setChanged();
 		if (this.getLevel() != null)

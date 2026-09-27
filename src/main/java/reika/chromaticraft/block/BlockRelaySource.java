@@ -1,25 +1,19 @@
 package reika.chromaticraft.block;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.storage.loot.LootParams;
-import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.BlockHitResult;
 
 import reika.chromaticraft.registry.ChromaTiles;
 import reika.chromaticraft.tileentity.networking.TileEntityRelaySource;
 import reika.dragonapi.libraries.registry.ReikaItemHelper;
 
-/** V33a direct insert/eject interaction and inventory drops for the Lumen Relay source. */
+/** V33a direct insert/eject interaction for the Lumen Relay source; its item drops as a container. */
 public final class BlockRelaySource extends BlockChromaticTile {
 
 	public BlockRelaySource(Properties properties) {
@@ -53,14 +47,5 @@ public final class BlockRelaySource extends BlockChromaticTile {
 		else source.setChanged();
 		source.syncAllData(true);
 		return InteractionResult.SUCCESS;
-	}
-
-	@Override
-	public List<ItemStack> getDrops(BlockState state, LootParams.Builder params) {
-		List<ItemStack> drops = new ArrayList<>(super.getDrops(state, params));
-		BlockEntity blockEntity = params.getOptionalParameter(LootContextParams.BLOCK_ENTITY);
-		if (blockEntity instanceof TileEntityRelaySource source && !source.getItem(0).isEmpty())
-			drops.add(source.getItem(0).copy());
-		return drops;
 	}
 }

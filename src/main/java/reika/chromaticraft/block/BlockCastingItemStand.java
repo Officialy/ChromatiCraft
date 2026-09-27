@@ -1,6 +1,4 @@
 package reika.chromaticraft.block;
-import java.util.ArrayList;
-import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -11,13 +9,11 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.FluidState;
-import net.minecraft.world.level.storage.loot.LootParams;
-import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.BlockHitResult;
 import reika.chromaticraft.registry.ChromaTiles;
 import reika.chromaticraft.tileentity.recipe.TileEntityItemStand;
 
-/** Player-facing V33a casting stand interaction and dynamic inventory drops. */
+/** Player-facing V33a casting stand interaction; the held item drops as a container. */
 public final class BlockCastingItemStand extends BlockChromaticTile {
 	public BlockCastingItemStand(Properties properties) { super(properties, ChromaTiles.STAND); }
 	@Override public void setPlacedBy(Level level, BlockPos pos, BlockState state, LivingEntity placer, ItemStack stack) {
@@ -42,11 +38,5 @@ public final class BlockCastingItemStand extends BlockChromaticTile {
 	@Override public boolean onDestroyedByPlayer(BlockState state, Level level, BlockPos pos, Player player, ItemStack toolStack, boolean willHarvest, FluidState fluid) {
 		if (level.getBlockEntity(pos) instanceof TileEntityItemStand stand && stand.isLocked()) return false;
 		return super.onDestroyedByPlayer(state, level, pos, player, toolStack, willHarvest, fluid);
-	}
-	@Override public List<ItemStack> getDrops(BlockState state, LootParams.Builder params) {
-		List<ItemStack> drops = new ArrayList<>(super.getDrops(state, params));
-		BlockEntity blockEntity = params.getOptionalParameter(LootContextParams.BLOCK_ENTITY);
-		if (blockEntity instanceof TileEntityItemStand stand && !stand.getItem(0).isEmpty()) drops.add(stand.getItem(0).copy());
-		return drops;
 	}
 }

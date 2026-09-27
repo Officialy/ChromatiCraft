@@ -30,12 +30,13 @@ import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.ChromaSounds;
 import reika.chromaticraft.registry.ChromaTiles;
 import reika.chromaticraft.render.particle.ChromaParticle;
+import reika.dragonapi.interfaces.blockentity.ConditionBreakDropsInventory;
 import reika.dragonapi.interfaces.blockentity.ConditionalUnbreakability;
 import reika.dragonapi.interfaces.blockentity.InertIInv;
 
 /** V33a casting stand: one inert slot, owner access, locking, table linking, and spread-fill. */
 public class TileEntityItemStand extends TileEntityChromaticBase
-		implements WorldlyContainer, OwnedTile, NBTTile, InertIInv, ConditionalUnbreakability {
+		implements WorldlyContainer, OwnedTile, NBTTile, InertIInv, ConditionalUnbreakability, ConditionBreakDropsInventory {
 
 	private final NonNullList<ItemStack> inventory = NonNullList.withSize(1, ItemStack.EMPTY);
 	private BlockPos table;
@@ -181,6 +182,8 @@ public class TileEntityItemStand extends TileEntityChromaticBase
 	@Override public void setItem(int slot, ItemStack stack) { inventory.set(slot, stack); stack.limitSize(getMaxStackSize()); inventoryChanged(); }
 	@Override public boolean stillValid(Player player) { return this.isPlayerAccessible(player) && this.isOwnedByPlayer(player); }
 	@Override public void clearContent() { inventory.set(0, ItemStack.EMPTY); inventoryChanged(); }
+	/** The stand's item drops from 26.2's {@code preRemoveSideEffects}, every component kept; DragonAPI's lossy player-break drop is skipped. */
+	@Override public boolean dropsInventoryOnBroken() { return false; }
 	/** Pushes the post-craft item change to every client tracking this chunk. */
 	public void syncAfterCraft() {
 		if (this.getLevel() != null && !this.getLevel().isClientSide()) this.syncAllData(true);

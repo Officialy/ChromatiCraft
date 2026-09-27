@@ -392,6 +392,7 @@ public final class ChromaGameTests {
 		register(event, env, "casting_table_tiered_multiblock_chain", ChromaGameTests::castingTableTieredMultiblockChain);
 		register(event, env, "casting_table_lumen_core_multicolor", ChromaGameTests::castingTableLumenCoreMulticolor);
 		register(event, env, "casting_table_structure_loss_cancel", ChromaGameTests::castingTableStructureLossCancel);
+		register(event, env, "break_action_on_any_removal", ChromaGameTests::breakActionOnAnyRemoval);
 		register(event, env, "casting_table_pylon_network_core", 520, ChromaGameTests::castingTablePylonNetworkCore);
 		register(event, env, "casting_table_receiver_capacity", ChromaGameTests::castingTableReceiverCapacity);
 		register(event, env, "colored_block_registry_identity", ChromaGameTests::coloredBlockRegistryIdentity);
@@ -500,6 +501,139 @@ public final class ChromaGameTests {
 		register(event, env, "proxima_biome_source", 200, ChromaGameTests::proximaBiomeSource);
 		register(event, env, "proxima_terrain_profile", 200, ChromaGameTests::proximaTerrainProfile);
 		register(event, env, "proxima_dimension_registered", 200, ChromaGameTests::proximaDimensionGenerates);
+		register(event, env, "inventory_drop_keeps_components", ChromaGameTests::inventoryDropKeepsComponents);
+		register(event, env, "inventory_tiles_drop_once", ChromaGameTests::inventoryTilesDropOnce);
+	}
+
+	/** An enchanted, damaged, renamed sword: every component V33a's full-NBT copy would have carried. */
+	private static ItemStack dropProbe(GameTestHelper helper) {
+		var enchantments = helper.getLevel().registryAccess().lookupOrThrow(Registries.ENCHANTMENT);
+		ItemStack sword = new ItemStack(Items.DIAMOND_SWORD);
+		sword.enchant(enchantments.getOrThrow(net.minecraft.world.item.enchantment.Enchantments.SHARPNESS), 3);
+		sword.setDamageValue(17);
+		sword.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Drop Probe"));
+		return sword;
+	}
+
+	private static ItemStack dropProbeBook(GameTestHelper helper) {
+		var enchantments = helper.getLevel().registryAccess().lookupOrThrow(Registries.ENCHANTMENT);
+		return net.minecraft.world.item.enchantment.EnchantmentHelper.createBook(
+				new net.minecraft.world.item.enchantment.EnchantmentInstance(
+						enchantments.getOrThrow(net.minecraft.world.item.enchantment.Enchantments.MENDING), 1));
+	}
+
+	/** Every loose item around {@code pos}, removed from the world so the next check starts clean. */
+	private static List<ItemStack> collectDrops(GameTestHelper helper, BlockPos pos) {
+		List<ItemEntity> entities = helper.getLevel().getEntitiesOfClass(ItemEntity.class, new AABB(pos).inflate(3));
+		List<ItemStack> stacks = entities.stream().map(e -> e.getItem().copy()).toList();
+		entities.forEach(ItemEntity::discard);
+		return stacks;
+	}
+
+	private static int countDropped(List<ItemStack> drops, net.minecraft.world.item.Item item) {
+		return drops.stream().filter(s -> s.is(item)).mapToInt(ItemStack::getCount).sum();
+	}
+
+	private static void assertSingleProbe(GameTestHelper helper, List<ItemStack> drops, ItemStack probe, String where) {
+		List<ItemStack> matches = drops.stream().filter(s -> s.is(probe.getItem())).toList();
+		helper.assertTrue(matches.size() == 1 && matches.getFirst().getCount() == 1,
+				where + " must drop the probe exactly once, got " + matches);
+		helper.assertTrue(ItemStack.isSameItemSameComponents(matches.getFirst(), probe),
+				where + " stripped the probe's components: " + matches.getFirst().getComponentsPatch()
+						+ " vs " + probe.getComponentsPatch());
+	}
+
+	/**
+	 * DragonAPI's {@code dropInventory} must split the real stacks (V33a copied the whole NBT), not rebuild
+	 * them from item and count; the player overload also shrank each stack by one while dropping a whole
+	 * split, duplicating most of it.
+	 */
+	private static void inventoryDropKeepsComponents(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		BlockPos chestPos = helper.absolutePos(new BlockPos(2, 1, 2));
+		level.setBlock(chestPos, Blocks.CHEST.defaultBlockState(), 3);
+		var chest = (net.minecraft.world.Container)level.getBlockEntity(chestPos);
+		ItemStack sword = dropProbe(helper);
+		ItemStack book = dropProbeBook(helper);
+		chest.setItem(0, sword.copy());
+		chest.setItem(1, new ItemStack(Items.WHEAT, 64));
+		chest.setItem(2, book.copy());
+		ReikaItemHelper.dropInventory(level, chestPos);
+		List<ItemStack> drops = collectDrops(helper, chestPos);
+		assertSingleProbe(helper, drops, sword, "dropInventory(Level, BlockPos)");
+		assertSingleProbe(helper, drops, book, "dropInventory(Level, BlockPos)");
+		helper.assertTrue(countDropped(drops, Items.WHEAT) == 64,
+				"dropInventory(Level, BlockPos) must drop exactly the 64 wheat, got " + countDropped(drops, Items.WHEAT));
+		helper.assertTrue(chest.isEmpty(), "dropInventory(Level, BlockPos) must empty the inventory it dropped");
+
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		player.snapTo(net.minecraft.world.phys.Vec3.atCenterOf(chestPos.above()));
+		player.getInventory().setItem(0, sword.copy());
+		player.getInventory().setItem(1, new ItemStack(Items.CARROT, 64));
+		ReikaItemHelper.dropInventory(player);
+		drops = collectDrops(helper, player.blockPosition());
+		assertSingleProbe(helper, drops, sword, "dropInventory(Player)");
+		helper.assertTrue(countDropped(drops, Items.CARROT) == 64,
+				"dropInventory(Player) must drop exactly the 64 carrots, got " + countDropped(drops, Items.CARROT));
+		helper.assertTrue(player.getInventory().getItem(0).isEmpty() && player.getInventory().getItem(1).isEmpty(),
+				"dropInventory(Player) must empty the slots it dropped");
+
+		// The whole BlockTEBase path, on a RotaryCraft machine that keeps DragonAPI's player-break drop.
+		player.setGameMode(GameType.SURVIVAL);
+		BlockPos machinePos = helper.absolutePos(new BlockPos(2, 1, 4));
+		level.setBlock(machinePos, reika.rotarycraft.registry.RotaryBlocks.COMPOSTER.get().defaultBlockState(), 3);
+		var composter = (net.minecraft.world.Container)level.getBlockEntity(machinePos);
+		composter.setItem(0, new ItemStack(Items.WHEAT, 64));
+		composter.setItem(1, sword.copy());
+		helper.assertTrue(player.gameMode.destroyBlock(machinePos), "the player could not break the Composter");
+		drops = collectDrops(helper, machinePos);
+		assertSingleProbe(helper, drops, sword, "a player-broken RotaryCraft Composter");
+		helper.assertTrue(countDropped(drops, Items.WHEAT) == 64,
+				"a player-broken Composter must drop exactly its 64 wheat, got " + countDropped(drops, Items.WHEAT));
+		helper.succeed();
+	}
+
+	/**
+	 * Inventoried tiles drop their contents once, as the real stacks, however they go: 26.2's
+	 * {@code preRemoveSideEffects} is the one path. A player break used to run DragonAPI's component-stripping
+	 * drop first, and a non-player removal (explosion, {@code destroyBlock}) dropped the contents twice because
+	 * the block also added them to its loot.
+	 */
+	private static void inventoryTilesDropOnce(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		player.setGameMode(GameType.SURVIVAL);
+		ItemStack sword = dropProbe(helper);
+		ItemStack book = dropProbeBook(helper);
+
+		BlockPos chargerPos = helper.absolutePos(new BlockPos(1, 1, 1));
+		level.setBlock(chargerPos, ChromaBlocks.CRYSTAL_CHARGER.get().defaultBlockState(), 3);
+		TileEntityCrystalCharger charger = (TileEntityCrystalCharger)level.getBlockEntity(chargerPos);
+		charger.setPlacer(player);
+		charger.setItem(0, sword.copy());
+		helper.assertTrue(player.gameMode.destroyBlock(chargerPos), "the owner could not break the Crystal Charger");
+		assertSingleProbe(helper, collectDrops(helper, chargerPos), sword, "a player-broken Crystal Charger");
+
+		BlockPos standPos = helper.absolutePos(new BlockPos(3, 1, 1));
+		level.setBlock(standPos, ChromaBlocks.ITEM_STAND.get().defaultBlockState(), 3);
+		var stand = (reika.chromaticraft.tileentity.recipe.TileEntityItemStand)level.getBlockEntity(standPos);
+		stand.setPlacer(player);
+		stand.setItem(0, book.copy());
+		helper.assertTrue(player.gameMode.destroyBlock(standPos), "the owner could not break the Item Stand");
+		assertSingleProbe(helper, collectDrops(helper, standPos), book, "a player-broken Item Stand");
+
+		BlockPos collectorPos = helper.absolutePos(new BlockPos(2, 1, 3));
+		level.setBlock(collectorPos, ChromaBlocks.COLLECTOR.get().defaultBlockState(), 3);
+		TileEntityCollector collector = (TileEntityCollector)level.getBlockEntity(collectorPos);
+		collector.setItem(0, sword.copy());
+		collector.setItem(1, new ItemStack(Items.COBBLESTONE, 40));
+		helper.assertTrue(level.destroyBlock(collectorPos, true), "the Chroma Collector was not removed");
+		List<ItemStack> drops = collectDrops(helper, collectorPos);
+		assertSingleProbe(helper, drops, sword, "a Chroma Collector removed without a player");
+		helper.assertTrue(countDropped(drops, Items.COBBLESTONE) == 40,
+				"a Chroma Collector removed without a player must drop its 40 cobblestone once, got "
+						+ countDropped(drops, Items.COBBLESTONE));
+		helper.succeed();
 	}
 
 	/**
@@ -7269,6 +7403,54 @@ public final class ChromaGameTests {
 		helper.assertTrue(table.getTableXP() == 2000 && table.getCompletedRecipes().isEmpty(),
 				"cancelled work must award neither XP nor recipe completion history");
 		helper.succeed();
+	}
+
+	/**
+	 * V33a ran BreakAction from Block.breakBlock, i.e. on any removal. The port ran it only for a player's break,
+	 * so a table removed by an explosion or /setblock mid-craft left its whole stand ring locked (unbreakable) and
+	 * pointing at a table that no longer existed, and a removed Aura Infuser stayed in its lookup cache forever.
+	 * {@code destroyBlock} is the non-player removal here.
+	 */
+	private static void breakActionOnAnyRemoval(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		BlockPos tablePos = placeCastingTable(helper, ChromaStructures.CASTING2, 2000);
+		TileEntityCastingTable table = (TileEntityCastingTable)level.getBlockEntity(tablePos);
+		var owner = helper.makeMockPlayer(GameType.SURVIVAL);
+		table.setPlacer(owner);
+		ProgressionManager.instance.setPlayerStage(owner, ProgressStage.MULTIBLOCK, true, false, false);
+		table.setItem(4, new ItemStack(Items.DIAMOND));
+		setStand(helper, tablePos, new BlockPos(-2,0,0), ChromaItems.clusterStack(ChromaClusterItems.PRIMARY_CLUSTER), owner);
+		setStand(helper, tablePos, new BlockPos(2,0,0), ChromaItems.clusterStack(ChromaClusterItems.PRIMARY_CLUSTER), owner);
+		setStand(helper, tablePos, new BlockPos(0,0,-2), ChromaItems.clusterStack(ChromaClusterItems.SECONDARY_CLUSTER), owner);
+		setStand(helper, tablePos, new BlockPos(0,0,2), ChromaItems.clusterStack(ChromaClusterItems.SECONDARY_CLUSTER), owner);
+		helper.assertTrue(table.triggerCrafting(owner), "the multiblock craft must start before the table is removed");
+		List<TileEntityItemStand> stands = List.copyOf(table.getOtherStands().values());
+		helper.assertTrue(stands.size() == 4 && stands.stream().allMatch(TileEntityItemStand::isLocked)
+						&& stands.stream().allMatch(stand -> tablePos.equals(stand.getTable())),
+				"a running craft must lock and link all four auxiliary stands");
+		helper.assertTrue(level.destroyBlock(tablePos, false), "the Casting Table was not removed");
+		helper.assertTrue(stands.stream().noneMatch(TileEntityItemStand::isLocked),
+				"a Casting Table removed without a player must release its stand locks");
+		helper.assertTrue(stands.stream().allMatch(stand -> stand.getTable() == null),
+				"a Casting Table removed without a player must unlink its stands");
+
+		BlockPos infuserPos = helper.absolutePos(new BlockPos(4, 2, 4));
+		level.setBlock(infuserPos, ChromaBlocks.ITEM_INFUSER.get().defaultBlockState(), 3);
+		TileEntityItemInfuser infuser = (TileEntityItemInfuser)level.getBlockEntity(infuserPos);
+		WorldLocation here = new WorldLocation(infuser);
+		helper.runAfterDelay(5, () -> {
+			helper.assertTrue(TileEntityAuraInfuser.searchForMatch(here::equals) != null,
+					"a ticking Aura Infuser must register itself in the lookup cache");
+			infuser.setItem(0, new ItemStack(Items.EMERALD));
+			helper.assertTrue(level.destroyBlock(infuserPos, false), "the Aura Infuser was not removed");
+			helper.assertTrue(TileEntityAuraInfuser.searchForMatch(here::equals) == null,
+					"an Aura Infuser removed without a player must leave the lookup cache");
+			int emeralds = level.getEntitiesOfClass(ItemEntity.class, new AABB(infuserPos).inflate(2)).stream()
+					.filter(item -> item.getItem().is(Items.EMERALD)).mapToInt(item -> item.getItem().getCount()).sum();
+			helper.assertTrue(emeralds == 1,
+					"the Aura Infuser's item must leave exactly once (its dropItem, then no spill), got " + emeralds);
+			helper.succeed();
+		});
 	}
 
 	/** A real V33a pylon recipe requests through a required repeater, then commits its aura atomically. */

@@ -50,6 +50,7 @@ import reika.chromaticraft.tileentity.auxiliary.TileEntityFocusCrystal.CrystalTi
 import reika.dragonapi.instantiable.data.blockstruct.FilledBlockArray;
 import reika.dragonapi.instantiable.data.immutable.WorldLocation;
 import reika.dragonapi.interfaces.blockentity.BreakAction;
+import reika.dragonapi.interfaces.blockentity.ConditionBreakDropsInventory;
 import reika.dragonapi.interfaces.blockentity.InertIInv;
 import reika.dragonapi.libraries.registry.ReikaItemHelper;
 
@@ -59,7 +60,7 @@ import reika.dragonapi.libraries.registry.ReikaItemHelper;
  * V33a. Its consumable is the source Liquid Chroma ring encoded by {@link ChromaStructures#INFUSION}.
  */
 public abstract class TileEntityAuraInfuser extends TileEntityChromaticBase implements WorldlyContainer,
-		OwnedTile, OperationInterval, FocusAcceleratable, NBTTile, BreakAction, InertIInv {
+		OwnedTile, OperationInterval, FocusAcceleratable, NBTTile, BreakAction, InertIInv, ConditionBreakDropsInventory {
 
 	public static final int DURATION = 608;
 	private static final Set<WorldLocation> CACHE = Collections.synchronizedSet(new HashSet<>());
@@ -386,6 +387,8 @@ public abstract class TileEntityAuraInfuser extends TileEntityChromaticBase impl
 		this.inventoryChanged();
 	}
 	@Override public final void clearContent() { inv.set(0, ItemStack.EMPTY); this.inventoryChanged(); }
+	/** V33a: the item leaves through {@link #breakBlock}'s {@code dropItem}, never also as a spilled inventory. */
+	@Override public final boolean dropsInventoryOnBroken() { return false; }
 	@Override public final boolean stillValid(Player player) { return this.isPlayerAccessible(player); }
 	@Override public final int[] getSlotsForFace(Direction side) { return new int[0]; }
 	@Override public final boolean canPlaceItemThroughFace(int slot, ItemStack stack, Direction side) { return false; }

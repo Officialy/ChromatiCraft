@@ -1,8 +1,5 @@
 package reika.chromaticraft.block;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -11,17 +8,16 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.material.FluidState;
-import net.minecraft.world.level.storage.loot.LootParams;
-import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.BlockHitResult;
 
 import reika.chromaticraft.registry.ChromaTiles;
 import reika.chromaticraft.tileentity.recipe.TileEntityCastingTable;
 
-/** Player interaction, ownership, teardown, and inventory drops for the casting controller. */
+/**
+ * Player interaction and ownership for the casting controller; its inventory drops as a container. Teardown is the
+ * table's BreakAction, run on any removal from BlockEntityBase.preRemoveSideEffects.
+ */
 public final class BlockCastingTable extends BlockChromaticTile {
     public BlockCastingTable(Properties properties) { super(properties, ChromaTiles.TABLE); }
 
@@ -56,23 +52,5 @@ public final class BlockCastingTable extends BlockChromaticTile {
         }
         if (player instanceof ServerPlayer serverPlayer) serverPlayer.openMenu(table, pos);
         return InteractionResult.SUCCESS;
-    }
-
-    @Override
-    public boolean onDestroyedByPlayer(BlockState state, Level level, BlockPos pos, Player player,
-            ItemStack toolStack, boolean willHarvest, FluidState fluid) {
-        if (level.getBlockEntity(pos) instanceof TileEntityCastingTable table) table.breakBlock();
-        return super.onDestroyedByPlayer(state, level, pos, player, toolStack, willHarvest, fluid);
-    }
-
-    @Override
-    public List<ItemStack> getDrops(BlockState state, LootParams.Builder params) {
-        List<ItemStack> drops = new ArrayList<>(super.getDrops(state, params));
-        BlockEntity blockEntity = params.getOptionalParameter(LootContextParams.BLOCK_ENTITY);
-        if (blockEntity instanceof TileEntityCastingTable table) {
-            for (int slot = 0; slot < table.getContainerSize(); slot++)
-                if (!table.getItem(slot).isEmpty()) drops.add(table.getItem(slot).copy());
-        }
-        return drops;
     }
 }
