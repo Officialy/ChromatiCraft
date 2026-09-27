@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "chromaticraft:block/particle_spawner"
+    }
+  }
+}

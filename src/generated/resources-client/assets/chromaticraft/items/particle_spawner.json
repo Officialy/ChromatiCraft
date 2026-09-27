@@ -1,0 +1,9 @@
+{
+  "model": {
+    "type": "minecraft:special",
+    "base": "chromaticraft:block/particle_spawner_inventory",
+    "model": {
+      "type": "chromaticraft:particle_spawner"
+    }
+  }
+}

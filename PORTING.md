@@ -251,10 +251,10 @@ Pylon Link and Lumen Node (V33a had no casting recipe for either).
 
 - **ENTRY** — 7/7 ported.
 - **RAWEXPLORE** — 20/20 ported (Fertility Seeds and the Artifact Distribution Map landed 2026-09-25).
-- **BASICCRAFT** — 14/27 ported (Crystal Glass and Glow landed 2026-09-25; Defensive Glass, the
+- **BASICCRAFT** — 20/27 ported (Crystal Glass and Glow landed 2026-09-25; Defensive Glass, the
   Enchantments, the Crystal Brewery, the Chromatic Flower, the Pylon Compass, the Illumination Gun, the Ownership Expansion Key, the Subterranean Route Finder and the Vertical Propulsion Panel
-  2026-09-26).
-  Missing: Lumen Wire; Crystal Orchestra; Particle Spawner; Knowledge Entanglement Pedestal; Tool Compression Crate; Lumen Turret; Examination Crystals; Corrosion Resistant Cell.
+  2026-09-26; the Particle Spawner 2026-09-27).
+  Missing: Lumen Wire; Crystal Orchestra; Knowledge Entanglement Pedestal (needs ProgressionLinking); Tool Compression Crate (needs TileEntityMassStorage); Lumen Turret; Examination Crystals; Corrosion Resistant Cell (blocked: an AE2 storage cell, and AE2 is not on the classpath -- CHROMA-PORT).
 - **RUNECRAFT** — 11/36 ported.
   Missing: Artificial Sky; Physics Suspension Lamp; Lumen Lamp; Travel Path; Redstone Pod; Flux Pod; Subterranean Illuminator; Chromatic Enchanter; Fluid Radiator; Fluid Link Anchor; Suspension Field Controller; Item Inserter; Lumen Lamp Controller; Crystal Seeds; Item Mover; Voidlinked Bucket; Linker; Creature Sounding Star; Multitool; Nether Layer Crystal; Ore-Finding Pickaxe; Ore Harvester; Bezier Crystals; Aura Tracker; Recall Tablet.
 - **ENERGY** — 15/30 ported.
@@ -8731,3 +8731,52 @@ Needs a full GameTest run (ownership semantics changed across these tiles).
 - V33a's `scheduleBlockUpdate(2)` at charge-out was only a render refresh, which the sync covers.
 - Unverified in game.
 
+**BASICCRAFT: Particle Spawner (2026-09-27).** `particle_spawner` (V33a PARTICLES, `TileEntityParticleSpawner`).
+- Program: `ParticleDefinition` and `VariableValue` keep V33a's NBT keys and `BoundedValue` compounds, so
+  V33a `.par` files and `readLuaBlock` programs load. `ConfigRecipe` (still pristine) forward-references
+  `readLuaBlock`/`setLocation`; `getFX` became `spawn(world, tick)`.
+- The client spawns one particle every `rate` ticks unless powered, via
+  `ChromaParticle.spawnProgrammedParticle`:
+  - An element gives its rune. Runes now obey gravity as V33a's EntityRuneFX did (constant velocity
+    only at zero gravity). This changes every rune caller that sets gravity.
+  - Chroma gives the chroma fluid particle, with `noSlowdown`.
+  - Another fluid gives a new `FluidSprite`, DragonAPI's EntityFluidFX: the fluid's still sprite tinted
+    in-world, alpha fade over the last 8 ticks, and world light unless the fluid's light is above 12.
+  - An icon gives a `FadeGlow` with V33a EntityFX motion (`setLegacyMotion`: 0.98 drag, 0.7 ground
+    friction, or constant under no-slowdown), `setColliding` (slides off on landing, x4 gravity) and
+    `setCyclingColor`. Alpha blend is used for V33a's transparent icons.
+  - Collisions use a local 1.7.10-style move, because 26.2's `Particle.move` freezes a particle for good
+    once its vertical motion is blocked.
+  - V33a's divide-by-zero, which made a blur that fell straight down vanish (NaN), is guarded.
+- Block: intangible, with a 4px centre hitbox; rock 5/8; pickaxe.
+  - A book copies the program into `particleprogram` custom data, or loads it from a programmed book.
+    The GUI then opens, as V33a fell through to it.
+  - A fluid container sets the fluid (`FluidUtil.getFluidContained`).
+  - Sneaking does nothing.
+- GUI: `MenuParticleSpawner` is slotless, as V33a's CoreContainer was. `ScreenParticleSpawner` ports all
+  seven pages 1:1:
+  - Same texture (`gui/particle.png` from the V33a jar), coordinates, icon whitelist and shift multipliers.
+  - `.par` save/load goes to `<gamedir>/ChromatiCraft_Data/ParticlePrograms`.
+  - Each change goes to the server as a `particle_spawner_program` payload, which validates the open menu
+    and distance, then applies and full-syncs to all watchers. V33a did not rebroadcast, so other players
+    saw edits only after a reload.
+- DragonAPI `ScrollingButtonList.reset()` had also zeroed the button count. It is back to V33a's scroll-only
+  reset, with `clear()` and `getPositionOf` restored.
+- Render: `RenderParticleSpawner` draws V33a's six quarter-block planes, gentle caustics then a 0x3f3f3f
+  glow frame, additive and unculled. They fade in by 1/8 per frame while holding a Manipulator or looking
+  at the block within 4.5 blocks, and out by 1/40 otherwise. The item draws the same at full opacity.
+- Recipe "sg / gRg / gs": any shard, glowstone dust, redstone block.
+- Known mod-wide gap: V33a `GuiChromaBase.drawFromBackground` drew GUIs see-through (ONE,SRC_ALPHA at
+  0.5 then default blend at 0.25). Every ported ChromatiCraft screen, this one included, blits opaque.
+- Not ported: V33a's generic 50% interaction ball-lightning on BlockChromaTile clicks. No ported tile
+  block has it.
+- Unverified in game.
+
+**Overworld structure worldgen biome reads (2026-09-26).** The natural structure feature used
+`WorldGenRegion.getBiome` for its candidate and site checks. Vanilla's fiddled biome lookup may
+sample a quart across the edge of the feature step's available chunks, so generation of chunk
+`[-6, 13]` failed with `Requested chunk unavailable during world generation` while checking a
+neighbouring candidate. The feature now uses the same biome manager with the generator's uncached
+noise-biome source for bounded worldgen views; command placement retains the normal world biome
+lookup. `:ChromatiCraft:compileJava --offline` passes. Needs an in-world check with the original
+world and C2ME configuration.

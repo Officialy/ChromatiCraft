@@ -1,0 +1,38 @@
+{
+  "type": "chromaticraft:casting",
+  "experience": 5,
+  "grid": [
+    {
+      "ingredient": "#chromaticraft:crystal_shards",
+      "slot": 0
+    },
+    {
+      "ingredient": "minecraft:glowstone_dust",
+      "slot": 1
+    },
+    {
+      "ingredient": "minecraft:glowstone_dust",
+      "slot": 3
+    },
+    {
+      "ingredient": "minecraft:redstone_block",
+      "slot": 4
+    },
+    {
+      "ingredient": "minecraft:glowstone_dust",
+      "slot": 5
+    },
+    {
+      "ingredient": "minecraft:glowstone_dust",
+      "slot": 7
+    },
+    {
+      "ingredient": "#chromaticraft:crystal_shards",
+      "slot": 8
+    }
+  ],
+  "result": {
+    "id": "chromaticraft:particle_spawner"
+  },
+  "tier": "crafting"
+}
