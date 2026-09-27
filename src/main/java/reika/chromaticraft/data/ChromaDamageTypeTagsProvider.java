@@ -35,5 +35,7 @@ public final class ChromaDamageTypeTagsProvider extends TagsProvider<DamageType>
 			tag(DamageTypeTags.WITCH_RESISTANT_TO).add(key);
 			tag(DamageTypeTags.NO_KNOCKBACK).add(key);
 		}
+		// V33a LumenTurretDamage.isMagicDamage: only witches' resistance followed from that in 1.7.10.
+		tag(DamageTypeTags.WITCH_RESISTANT_TO).add(reika.chromaticraft.auxiliary.LumenTurretDamage.KEY);
 	}
 }

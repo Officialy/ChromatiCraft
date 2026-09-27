@@ -974,6 +974,10 @@ public final class ChromaBlocks {
 			register("chroma_flower", () -> new reika.chromaticraft.block.BlockChromaFlower(blockProperties()
 					.strength(0F, 0.1F).noCollision().noOcclusion().sound(SoundType.GRASS).lightLevel(state -> 9)
 					.pushReaction(net.minecraft.world.level.material.PushReaction.DESTROY)));
+	/** V33a TURRET, a BlockModelledChromaTile entry: rock, hardness 5, resistance 40 (8 against explosions). */
+	public static final DeferredBlock<Block> LUMEN_TURRET =
+			register("lumen_turret", () -> new reika.chromaticraft.block.BlockLumenTurret(
+					blockProperties().strength(5F, 8F).requiresCorrectToolForDrops().noOcclusion()));
 	/**
 	 * V33a PARTICLES, a BlockModelledChromaTile entry: rock, hardness 5, resistance 40 (8 against explosions); intangible and
 	 * drawn only by its renderer.

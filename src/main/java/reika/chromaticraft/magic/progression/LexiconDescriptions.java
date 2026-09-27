@@ -39,9 +39,24 @@ public final class LexiconDescriptions {
 				: text.description();
 	}
 
+	/** V33a {@code ChromaDescriptions.addNotes}: values formatted into a page's notes, by lexicon entry id. */
+	private static final Map<String, java.util.function.Supplier<Object[]>> NOTE_ARGS = new java.util.concurrent.ConcurrentHashMap<>();
+
+	static {
+		registerNoteArgs("TURRET", () -> new Object[] {
+				reika.chromaticraft.tileentity.aoe.defence.TileEntityLumenTurret.getUpgradesListString()});
+	}
+
+	public static void registerNoteArgs(String entryId, java.util.function.Supplier<Object[]> args) {
+		NOTE_ARGS.put(entryId, args);
+	}
+
 	public static String notes(LexiconCatalog.Entry entry) {
 		Text text = text(entry);
 		String ret = text == null ? "" : text.notes();
+		java.util.function.Supplier<Object[]> args = NOTE_ARGS.get(entry.id());
+		if (args != null && !ret.isEmpty())
+			ret = String.format(Locale.ROOT, ret, args.get());
 		// V33a ChromaResearch.getNotes: a tool implementing DynamicallyGeneratedSubpage appends its own notes.
 		if (entry.sourceType().equals("tool")
 				&& reika.chromaticraft.client.gui.LexiconIconResolver.icon(entry).getItem()

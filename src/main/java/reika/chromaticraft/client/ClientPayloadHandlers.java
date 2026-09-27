@@ -184,6 +184,12 @@ public final class ClientPayloadHandlers {
 		reika.chromaticraft.world.iwg.PylonGenerator.instance.cachePylonLocations(entries);
 	}
 
+	public static void turretAttack(BlockPos pos, int entityId) {
+		Minecraft mc = Minecraft.getInstance();
+		if (mc.level != null && mc.level.getBlockEntity(pos) instanceof reika.chromaticraft.tileentity.aoe.defence.TileEntityLumenTurret te)
+			te.doAttackParticles(entityId);
+	}
+
 	public static void structureError(BlockPos pos) {
 		Minecraft mc = Minecraft.getInstance();
 		if (mc.level != null)

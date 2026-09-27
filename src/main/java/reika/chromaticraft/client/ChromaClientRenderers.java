@@ -102,6 +102,8 @@ public final class ChromaClientRenderers {
 				reika.chromaticraft.render.item.PersonalChargerItemRenderer.Unbaked.MAP_CODEC);
 		event.register(reika.chromaticraft.render.item.EnderCrystalItemRenderer.ID,
 				reika.chromaticraft.render.item.EnderCrystalItemRenderer.Unbaked.MAP_CODEC);
+		event.register(reika.chromaticraft.render.item.LumenTurretItemRenderer.ID,
+				reika.chromaticraft.render.item.LumenTurretItemRenderer.Unbaked.MAP_CODEC);
 		event.register(reika.chromaticraft.render.item.ParticleSpawnerItemRenderer.ID,
 				reika.chromaticraft.render.item.ParticleSpawnerItemRenderer.Unbaked.MAP_CODEC);
 		event.register(reika.chromaticraft.render.item.ChromaFlowerItemRenderer.ID,
@@ -187,6 +189,8 @@ public final class ChromaClientRenderers {
 		 event.registerLayerDefinition(RenderItemStand.MODEL_LAYER, RenderItemStand::createStandLayer);
 		event.registerLayerDefinition(RenderTunnelNuker.MODEL_LAYER, reika.chromaticraft.models.ModelTunnelNuker::createBodyLayer);
 		event.registerLayerDefinition(RenderLootChest.MODEL_LAYER, reika.chromaticraft.models.ModelLootChest::createBodyLayer);
+		event.registerLayerDefinition(reika.chromaticraft.render.tesr.RenderLumenTurret.MODEL_LAYER,
+				reika.chromaticraft.models.ModelTurret::createBodyLayer);
 		event.registerLayerDefinition(RenderCrystalCharger.MODEL_LAYER,
 				reika.chromaticraft.models.ModelCrystalCharger::createBodyLayer);
 		event.registerLayerDefinition(RenderPylonTurboCharger.MODEL_LAYER,
@@ -221,6 +225,8 @@ public final class ChromaClientRenderers {
 				reika.chromaticraft.render.tesr.RenderStructureController::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.LOOT_CHEST.get(), RenderLootChest::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.CRYSTAL_CHARGER.get(), RenderCrystalCharger::new);
+		event.registerBlockEntityRenderer(ChromaBlockEntities.LUMEN_TURRET.get(),
+				reika.chromaticraft.render.tesr.RenderLumenTurret::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.PARTICLE_SPAWNER.get(),
 				reika.chromaticraft.render.tesr.RenderParticleSpawner::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.LAUNCH_PAD.get(),

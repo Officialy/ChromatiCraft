@@ -150,6 +150,7 @@ public class ChromaModelProvider extends ModelProvider {
 		particleSpawnerModel(blockStateOut, itemModelOut, modelOut);
 		ritualTableModel(blockStateOut, itemModelOut, modelOut);
 		crystalChargerModel(blockStateOut, itemModelOut, modelOut);
+		lumenTurretModel(blockStateOut, itemModelOut, modelOut);
 		pylonTurboModel(blockStateOut, itemModelOut, modelOut);
 		personalChargerModel(blockStateOut, itemModelOut, modelOut);
 		collectorModel(blockStateOut, itemModelOut, modelOut);
@@ -1950,6 +1951,25 @@ public class ChromaModelProvider extends ModelProvider {
 			});
 			itemModelOut.accept(block.asItem(), ItemModelUtils.tintedModel(itemModel, new Constant(0x909090)));
 		}
+	}
+
+	/**
+	 * V33a BlockModelledChromaTile: ChromaIcons.TRANSPARENT for the block, drawn by its TESR, which V33a also ran for the
+	 * item. The item's cube base only supplies the block display transforms.
+	 */
+	private static void lumenTurretModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		Material particle = new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/icons/transparent"));
+		Identifier worldModel = ModelTemplates.PARTICLE_ONLY.create(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/lumen_turret"),
+				new TextureMapping().put(TextureSlot.PARTICLE, particle), modelOut);
+		blockStateOut.accept(MultiVariantGenerator.dispatch(ChromaBlocks.LUMEN_TURRET.get(),
+				new MultiVariant(WeightedList.of(new Variant(worldModel)))));
+		Identifier itemBase = ModelTemplates.CUBE_ALL.create(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/lumen_turret_inventory"),
+				TextureMapping.cube(particle), modelOut);
+		itemModelOut.accept(ChromaBlocks.LUMEN_TURRET.get().asItem(),
+				ItemModelUtils.specialModel(itemBase, new reika.chromaticraft.render.item.LumenTurretItemRenderer.Unbaked()));
 	}
 
 	private static void crystalChargerModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,

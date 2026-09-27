@@ -217,7 +217,10 @@ public final class ChromaWorldGenProvider {
 
     public static RegistrySetBuilder buildRegistrySet() {
         RegistrySetBuilder builder = new RegistrySetBuilder();
-        builder.add(Registries.DAMAGE_TYPE, reika.chromaticraft.auxiliary.PylonDamage::bootstrap);
+        builder.add(Registries.DAMAGE_TYPE, context -> {
+            reika.chromaticraft.auxiliary.PylonDamage.bootstrap(context);
+            reika.chromaticraft.auxiliary.LumenTurretDamage.bootstrap(context);
+        });
         builder.add(Registries.ENCHANTMENT, reika.chromaticraft.registry.ChromaEnchants::bootstrap);
         builder.add(Registries.VILLAGER_TRADE, bootstrap -> {
             bootstrap.register(FOCUS_CRYSTAL_TRADE,

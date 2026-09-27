@@ -73,6 +73,8 @@ public enum ChromaTiles implements TileEnum {
 	CHARGER("chroma.charger", ChromaBlocks.CRYSTAL_CHARGER, TileEntityCrystalCharger.class),
 	CHROMAFLOWER("chroma.flower", ChromaBlocks.CHROMA_FLOWER,
 			reika.chromaticraft.tileentity.plants.TileEntityChromaFlower.class),
+	TURRET("chroma.turret", ChromaBlocks.LUMEN_TURRET,
+			reika.chromaticraft.tileentity.aoe.defence.TileEntityLumenTurret.class),
 	PARTICLES("chroma.particles", ChromaBlocks.PARTICLE_SPAWNER,
 			reika.chromaticraft.tileentity.decoration.TileEntityParticleSpawner.class),
 	LAUNCHPAD("chroma.launchpad", ChromaBlocks.LAUNCH_PAD,

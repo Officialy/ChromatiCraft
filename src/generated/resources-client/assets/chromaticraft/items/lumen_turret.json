@@ -1,0 +1,9 @@
+{
+  "model": {
+    "type": "minecraft:special",
+    "base": "chromaticraft:block/lumen_turret_inventory",
+    "model": {
+      "type": "chromaticraft:lumen_turret"
+    }
+  }
+}

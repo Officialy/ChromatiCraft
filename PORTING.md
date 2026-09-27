@@ -251,10 +251,10 @@ Pylon Link and Lumen Node (V33a had no casting recipe for either).
 
 - **ENTRY** — 7/7 ported.
 - **RAWEXPLORE** — 20/20 ported (Fertility Seeds and the Artifact Distribution Map landed 2026-09-25).
-- **BASICCRAFT** — 21/27 ported (Crystal Glass and Glow landed 2026-09-25; Defensive Glass, the
+- **BASICCRAFT** — 22/27 ported (Crystal Glass and Glow landed 2026-09-25; Defensive Glass, the
   Enchantments, the Crystal Brewery, the Chromatic Flower, the Pylon Compass, the Illumination Gun, the Ownership Expansion Key, the Subterranean Route Finder and the Vertical Propulsion Panel
-  2026-09-26; the Particle Spawner and Examination Crystals 2026-09-27).
-  Missing: Lumen Wire; Crystal Orchestra; Knowledge Entanglement Pedestal (needs ProgressionLinking); Tool Compression Crate (needs TileEntityMassStorage); Lumen Turret; Corrosion Resistant Cell (blocked: an AE2 storage cell, and AE2 is not on the classpath -- CHROMA-PORT).
+  2026-09-26; the Particle Spawner, Examination Crystals and the Lumen Turret 2026-09-27).
+  Missing: Lumen Wire; Crystal Orchestra; Knowledge Entanglement Pedestal (needs ProgressionLinking); Tool Compression Crate (needs TileEntityMassStorage); Corrosion Resistant Cell (blocked: an AE2 storage cell, and AE2 is not on the classpath -- CHROMA-PORT).
 - **RUNECRAFT** — 11/36 ported.
   Missing: Artificial Sky; Physics Suspension Lamp; Lumen Lamp; Travel Path; Redstone Pod; Flux Pod; Subterranean Illuminator; Chromatic Enchanter; Fluid Radiator; Fluid Link Anchor; Suspension Field Controller; Item Inserter; Lumen Lamp Controller; Crystal Seeds; Item Mover; Voidlinked Bucket; Linker; Creature Sounding Star; Multitool; Nether Layer Crystal; Ore-Finding Pickaxe; Ore Harvester; Bezier Crystals; Aura Tracker; Recall Tablet.
 - **ENERGY** — 15/30 ported.
@@ -8837,6 +8837,40 @@ Needs a full GameTest run (ownership semantics changed across these tiles).
     `FilledBlockArray.BlockMatchFailCallback`, so one callback serves structures and multiblocks.
 - New pipeline `ADDITIVE_SPRITE_THROUGH_WALL` (ADDITIVEDARK, no depth test) for the error cubes.
 - Recipe " sg / sGs / gs ": black shard, glowstone dust, glass.
+- Unverified in game.
+
+**BASICCRAFT: Lumen Turret (2026-09-27).** `lumen_turret` (V33a TURRET, `TileEntityLumenTurret`).
+- Every 5 ticks, if it can see the sky, it strikes each visible hostile mob in 6 blocks (2 vertically).
+  - Line of sight runs from its tip to the target's feet, middle or top.
+  - Each hit deals 4 damage, then that mob is ignored for 10 ticks (5 for endermen and creepers).
+  - Each hit also resets the target's invulnerability time and clears its target.
+  - Sound: DISCHARGE at 0.25 volume, pitch 1.5.
+  - The `turret_attack` payload shows 2-5 pink flares flying at the target.
+- Never targeted: tamed mobs, `TameHostile` mobs (ported to DragonAPI), ball lightning, and its owners.
+- V33a's `isHostile(player)` is always false, so the purple upgrade never lets it shoot players. Kept.
+- Upgrades come from rune blocks stacked up to 4 deep directly beneath. A multichromic crystalline stone
+  beneath counts as all of them.
+  - Green: passive mobs. Purple: players. Lime: range 10/4. Pink: 7 damage. Light blue: half the cooldown.
+  - Blue: no sky needed. Orange: sets targets on fire for 2 s. Light grey: the fake placer is credited.
+  - Each tick one random fitted upgrade puffs a rising blur of its colour.
+  - Deviation: V33a's upgrade loop never re-read the block as it went down, so under a rune it read the metadata
+    of whatever lay up to 4 deep. The port walks the rune stack, which is the same for any stack of runes.
+- `LumenTurretDamage` is the data-driven `chromaticraft:lumen_turret` damage type:
+  - Credited to the placer, or to the fake placer with the light-grey upgrade or the placer's Communication
+    ability.
+  - Magic, so witches resist it. Exhaustion is 0.3 (the 1.7.10 default). Knockback applies.
+  - Death message: "got too close to <placer>'s Lumen Turret", with `.item`/`.player` variants. With no placer at
+    all, 26.2 shows the raw format string where V33a showed "null's".
+  - Capital Strike now skips turret damage, which resolves the CHROMA-PORT marker in
+    `ChromaEnchantEvents.applyBossKill`.
+- Render: `ModelTurret` (64x32, `textures/entity/lumen_turret.png` from V33a `turret.png`), plus a
+  camera-facing glow-section/centre-blur spark at the tip, additive. The item draws the model at 1.75x, raised
+  3/16.
+- Block: 0.25-0.75 × 0-0.625 bounds; rock 5/8; pickaxe.
+- Lexicon: new `LexiconDescriptions.registerNoteArgs` (V33a `ChromaDescriptions.addNotes`) fills the turret
+  notes' `%s` with the upgrade list. Other ported pages still show raw V33a placeholders; a follow-up task was
+  filed.
+- Recipe " g / gsg / b " makes 4: pink shard, glowstone dust, smooth crystalline stone.
 - Unverified in game.
 
 **Overworld structure worldgen biome reads (2026-09-26).** The natural structure feature used

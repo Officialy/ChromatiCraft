@@ -980,6 +980,47 @@ public abstract class ChromaParticle extends SingleQuadParticle {
         }
     }
 
+    /** V33a {@code TileEntityLumenTurret.doParticles}: one rising blur in a fitted upgrade's colour. */
+    public static void spawnTurretUpgradeGlow(Level world, double x, double y, double z, int color, float gravity,
+            float scale, int life) {
+        if (!(world instanceof ClientLevel level)) return;
+        FadeGlow fx = new FadeGlow(level, x, y, z, 0, 0, 0, color, life, scale, false);
+        fx.gravity = gravity;
+        fx.setLegacyMotion(false);
+        Minecraft.getInstance().particleEngine.add(fx);
+    }
+
+    /**
+     * V33a {@code TileEntityLumenTurret.doAttackParticles}: 2-5 pink flares from the turret's tip at 0.75 blocks a tick
+     * toward the target (each velocity jittered by 1/32), living 2 ticks plus one per block of distance, no gravity.
+     */
+    public static void spawnTurretAttack(Level world, double px, double py, double pz, double tx, double ty, double tz) {
+        if (!(world instanceof ClientLevel level)) return;
+        RandomSource rand = level.getRandom();
+        double dx = tx-px;
+        double dy = ty-py;
+        double dz = tz-pz;
+        double dd = Math.sqrt(dx*dx+dy*dy+dz*dz);
+        if (dd <= 0)
+            return;
+        double v = 0.75;
+        double vx = v*dx/dd;
+        double vy = v*dy/dd;
+        double vz = v*dz/dd;
+        int n = 2+rand.nextInt(4);
+        double dv = 0.03125;
+        int l = 2+(int)dd;
+        for (int i = 0; i < n; i++) {
+            Flare fx = new Flare(level, px, py, pz, CrystalElement.PINK, 0, 2);
+            fx.gravity = 0;
+            fx.lifetime = l;
+            fx.xd = vx+(rand.nextDouble()*2-1)*dv;
+            fx.yd = vy+(rand.nextDouble()*2-1)*dv;
+            fx.zd = vz+(rand.nextDouble()*2-1)*dv;
+            Minecraft.getInstance().particleEngine.add(fx);
+        }
+    }
+
     public static void spawnEtherealLight(Level world, BlockPos pos) {
         if (!(world instanceof ClientLevel level)) return;
         RandomSource rand = level.getRandom();

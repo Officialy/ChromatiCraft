@@ -42,6 +42,8 @@ public final class ChromaNetwork {
 		registrar.playToClient(ArtefactFx.TYPE, ArtefactFx.CODEC, ChromaNetwork::handleArtefactFx);
 		registrar.playToClient(ArtefactZone.TYPE, ArtefactZone.CODEC, ChromaNetwork::handleArtefactZone);
 		registrar.playToClient(EnderEyeSync.TYPE, EnderEyeSync.CODEC, ChromaNetwork::handleEnderEyeSync);
+		registrar.playToClient(TurretAttack.TYPE, TurretAttack.CODEC, (payload, context) -> context.enqueueWork(() ->
+				ClientPayloadHandlers.turretAttack(payload.pos(), payload.entityId())));
 		registrar.playToClient(StructureError.TYPE, StructureError.CODEC, (payload, context) -> context.enqueueWork(() ->
 				ClientPayloadHandlers.structureError(payload.pos())));
 		registrar.playToClient(ProbeConnectivity.TYPE, ProbeConnectivity.CODEC, (payload, context) -> context.enqueueWork(() ->
@@ -218,6 +220,19 @@ public final class ChromaNetwork {
 				net.minecraft.network.codec.ByteBufCodecs.VAR_INT, EnderEyeSync::entityId,
 				net.minecraft.network.codec.ByteBufCodecs.VAR_INT, EnderEyeSync::ticks, EnderEyeSync::new);
 		@Override public Type<EnderEyeSync> type() { return TYPE; }
+	}
+
+	/** V33a TURRETATTACK: a Lumen Turret just struck this entity. */
+	public record TurretAttack(BlockPos pos, int entityId) implements CustomPacketPayload {
+		public static final Type<TurretAttack> TYPE = createType("turret_attack");
+		public static final StreamCodec<ByteBuf, TurretAttack> CODEC = StreamCodec.composite(
+				BlockPos.STREAM_CODEC, TurretAttack::pos, ByteBufCodecs.VAR_INT, TurretAttack::entityId, TurretAttack::new);
+		@Override public Type<TurretAttack> type() { return TYPE; }
+	}
+
+	/** V33a sent it to everyone within 32 blocks. */
+	public static void sendTurretAttack(ServerLevel level, BlockPos pos, int entityId) {
+		PacketDistributor.sendToPlayersNear(level, null, pos.getX()+0.5, pos.getY()+0.5, pos.getZ()+0.5, 32, new TurretAttack(pos, entityId));
 	}
 
 	/** V33a STRUCTUREERROR: a structure check found the wrong block here. */

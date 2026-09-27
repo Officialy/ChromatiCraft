@@ -328,8 +328,9 @@ public final class ChromaEnchantEvents {
 	@SubscribeEvent
 	public static void applyBossKill(LivingIncomingDamageEvent evt) {
 		DamageSource src = evt.getSource();
-		// CHROMA-PORT: V33a returned here for LumenTurretDamage, so a turret's shots never counted as the player's
-		// Capital Strike. The Lumen Turret's damage type lands with the turret; test it here then.
+		// V33a: a turret's shots never count as the player's Capital Strike.
+		if (reika.chromaticraft.auxiliary.LumenTurretDamage.isTurretDamage(src))
+			return;
 		LivingEntity mob = evt.getEntity();
 		if (!(mob.level() instanceof ServerLevel))
 			return;

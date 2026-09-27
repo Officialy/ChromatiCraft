@@ -1,0 +1,31 @@
+{
+  "type": "chromaticraft:casting",
+  "experience": 5,
+  "grid": [
+    {
+      "ingredient": "minecraft:glowstone_dust",
+      "slot": 1
+    },
+    {
+      "ingredient": "minecraft:glowstone_dust",
+      "slot": 3
+    },
+    {
+      "ingredient": "chromaticraft:crystal_shard_pink",
+      "slot": 4
+    },
+    {
+      "ingredient": "minecraft:glowstone_dust",
+      "slot": 5
+    },
+    {
+      "ingredient": "chromaticraft:crystalline_stone",
+      "slot": 7
+    }
+  ],
+  "result": {
+    "count": 4,
+    "id": "chromaticraft:lumen_turret"
+  },
+  "tier": "crafting"
+}

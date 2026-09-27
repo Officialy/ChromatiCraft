@@ -1,0 +1,38 @@
+{
+  "type": "chromaticraft:casting",
+  "experience": 5,
+  "grid": [
+    {
+      "ingredient": "chromaticraft:crystal_shard_black",
+      "slot": 1
+    },
+    {
+      "ingredient": "minecraft:glowstone_dust",
+      "slot": 2
+    },
+    {
+      "ingredient": "chromaticraft:crystal_shard_black",
+      "slot": 3
+    },
+    {
+      "ingredient": "minecraft:glass",
+      "slot": 4
+    },
+    {
+      "ingredient": "chromaticraft:crystal_shard_black",
+      "slot": 5
+    },
+    {
+      "ingredient": "minecraft:glowstone_dust",
+      "slot": 6
+    },
+    {
+      "ingredient": "chromaticraft:crystal_shard_black",
+      "slot": 7
+    }
+  ],
+  "result": {
+    "id": "chromaticraft:probe"
+  },
+  "tier": "crafting"
+}

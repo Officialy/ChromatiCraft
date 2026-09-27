@@ -325,6 +325,14 @@ public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
 					new ItemStackTemplate(ChromaBlocks.CHROMA_FLOWER.get().asItem()), 5, 5)
 					.withPenalty(2, 0.25F));
 
+			// V33a LumenTurretRecipe, a plain CastingRecipe making four: a pink shard (the exact plain shard) ringed by
+			// glowstone dust, on smooth crystalline stone.
+			saveShaped("lumen_turret", new ItemStackTemplate(ChromaBlocks.LUMEN_TURRET.get().asItem(), 4), 5, 5,
+					Map.of('s', Ingredient.of(ChromaItems.SHARDS.get(CrystalElement.PINK).get()),
+							'g', Ingredient.of(Items.GLOWSTONE_DUST),
+							'b', Ingredient.of(ChromaBlocks.crystallineStone(StoneTypes.SMOOTH).get().asItem())),
+					" g ", "gsg", " b ");
+
 			// V33a ParticleSpawnerRecipe, a plain CastingRecipe: any shard, glowstone dust and a block of redstone.
 			saveShaped("particle_spawner", new ItemStackTemplate(ChromaBlocks.PARTICLE_SPAWNER.get().asItem()), 5, 5,
 					Map.of('s', tag(ChromaItemTags.CRYSTAL_SHARDS),
