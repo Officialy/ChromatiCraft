@@ -3,7 +3,7 @@ package reika.chromaticraft.client.gui;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.lwjgl.glfw.GLFW;
+import com.mojang.blaze3d.platform.InputConstants;
 
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
@@ -110,13 +110,13 @@ public final class ScreenAbilitySelect extends Screen {
 	@Override
 	public boolean keyPressed(KeyEvent event) {
 		return switch (event.key()) {
-			case GLFW.GLFW_KEY_LEFT -> selectOffset(-1);
-			case GLFW.GLFW_KEY_RIGHT -> selectOffset(1);
-			case GLFW.GLFW_KEY_UP -> changePower(1);
-			case GLFW.GLFW_KEY_DOWN -> changePower(-1);
-			case GLFW.GLFW_KEY_HOME -> select(0);
-			case GLFW.GLFW_KEY_END -> select(abilities.size() - 1);
-			case GLFW.GLFW_KEY_ENTER, GLFW.GLFW_KEY_SPACE -> activate();
+			case InputConstants.KEY_LEFT -> selectOffset(-1);
+			case InputConstants.KEY_RIGHT -> selectOffset(1);
+			case InputConstants.KEY_UP -> changePower(1);
+			case InputConstants.KEY_DOWN -> changePower(-1);
+			case InputConstants.KEY_HOME -> select(0);
+			case InputConstants.KEY_END -> select(abilities.size() - 1);
+			case InputConstants.KEY_RETURN, InputConstants.KEY_SPACE -> activate();
 			default -> super.keyPressed(event);
 		};
 	}
@@ -130,7 +130,7 @@ public final class ScreenAbilitySelect extends Screen {
 
 	@Override
 	public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-		if (event.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT && !abilities.isEmpty()
+		if (event.button() == InputConstants.MOUSE_BUTTON_LEFT && !abilities.isEmpty()
 				&& Math.abs(event.x() - width / 2D) <= SELECTED_ICON / 2D
 				&& Math.abs(event.y() - (height / 2D + 49)) <= SELECTED_ICON / 2D)
 			return activate();

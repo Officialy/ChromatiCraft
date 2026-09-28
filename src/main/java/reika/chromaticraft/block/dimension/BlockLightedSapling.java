@@ -1,6 +1,5 @@
 package reika.chromaticraft.block.dimension;
 
-import com.mojang.serialization.MapCodec;
 
 import net.minecraft.world.level.block.VegetationBlock;
 import net.minecraft.world.level.block.state.BlockBehaviour;
@@ -21,14 +20,9 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
  */
 public class BlockLightedSapling extends VegetationBlock {
 
-	private final MapCodec<BlockLightedSapling> codec = MapCodec.unit(this);
 
 	public BlockLightedSapling(BlockBehaviour.Properties properties) {
 		super(properties);
 	}
 
-	@Override
-	public MapCodec<? extends BlockLightedSapling> codec() {
-		return codec;
-	}
 }

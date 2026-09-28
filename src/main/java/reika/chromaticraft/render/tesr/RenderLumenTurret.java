@@ -60,7 +60,7 @@ public final class RenderLumenTurret implements BlockEntityRenderer<TileEntityLu
 
 		poseStack.pushPose();
 		poseStack.translate(0.5F, 0.625F, 0.5F);
-		poseStack.mulPose(camera.orientation);
+		poseStack.rotate(camera.orientation);
 		var atlas = Minecraft.getInstance().getAtlasManager().getAtlasOrThrow(AtlasIds.BLOCKS);
 		ChromaIcons[] icons = {
 				ChromaIcons.GLOWSECTION,

@@ -2,7 +2,6 @@ package reika.chromaticraft.data;
 
 import java.util.function.BiConsumer;
 
-import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.loot.LootTableSubProvider;
 import net.minecraft.resources.Identifier;
@@ -14,9 +13,8 @@ import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.entries.EmptyLootItem;
 import net.minecraft.world.level.storage.loot.entries.LootItem;
 import net.minecraft.world.level.storage.loot.functions.SetItemCountFunction;
-import net.minecraft.world.level.storage.loot.providers.number.ConstantValue;
-import net.minecraft.world.level.storage.loot.providers.number.NumberProvider;
-import net.minecraft.world.level.storage.loot.providers.number.UniformGenerator;
+import net.minecraft.world.level.storage.loot.providers.number.ints.ContextIntProviders;
+import net.minecraft.world.level.storage.loot.providers.number.ints.ContextIntProvider;
 
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.registry.ChromaItems;
@@ -53,7 +51,7 @@ import reika.chromaticraft.registry.CrystalElement;
  * absolute rate while the V33a weights keep every rate relative to every other. Without it the modifier
  * would guarantee ChromatiCraft loot in every single chest.
  */
-public record ChromaChestLoot(HolderLookup.Provider registries) implements LootTableSubProvider {
+public record ChromaChestLoot(LootTableSubProvider.Context context) implements LootTableSubProvider {
 
 	/**
 	 * The stand-in for the 1.7.10 vanilla pool total these weights were written against. See the class
@@ -70,33 +68,33 @@ public record ChromaChestLoot(HolderLookup.Provider registries) implements LootT
 	 */
 	public enum Location {
 		/** V33a {@code Location.BONUS} — {@code ChestGenHooks.BONUS_CHEST}. */
-		BONUS(BuiltInLootTables.SPAWN_BONUS_CHEST, ConstantValue.exactly(1)),
+		BONUS(BuiltInLootTables.SPAWN_BONUS_CHEST, ContextIntProviders.exactly(1)),
 		/** V33a {@code Location.VILLAGE} — {@code ChestGenHooks.VILLAGE_BLACKSMITH}. */
-		VILLAGE(BuiltInLootTables.VILLAGE_WEAPONSMITH, UniformGenerator.between(3, 8)),
+		VILLAGE(BuiltInLootTables.VILLAGE_WEAPONSMITH, ContextIntProviders.between(3, 8)),
 		/** V33a {@code Location.DUNGEON} — {@code ChestGenHooks.DUNGEON_CHEST}. */
-		DUNGEON(BuiltInLootTables.SIMPLE_DUNGEON, UniformGenerator.between(1, 3)),
+		DUNGEON(BuiltInLootTables.SIMPLE_DUNGEON, ContextIntProviders.between(1, 3)),
 		/** V33a {@code Location.MINESHAFT} — {@code ChestGenHooks.MINESHAFT_CORRIDOR}. */
-		MINESHAFT(BuiltInLootTables.ABANDONED_MINESHAFT, ConstantValue.exactly(1)),
+		MINESHAFT(BuiltInLootTables.ABANDONED_MINESHAFT, ContextIntProviders.exactly(1)),
 		/** V33a {@code Location.STRONGHOLD_LIBRARY}. */
-		STRONGHOLD_LIBRARY(BuiltInLootTables.STRONGHOLD_LIBRARY, UniformGenerator.between(2, 10)),
+		STRONGHOLD_LIBRARY(BuiltInLootTables.STRONGHOLD_LIBRARY, ContextIntProviders.between(2, 10)),
 		/** V33a {@code Location.STRONGHOLD_CROSSING}. */
-		STRONGHOLD_CROSSING(BuiltInLootTables.STRONGHOLD_CROSSING, UniformGenerator.between(1, 4)),
+		STRONGHOLD_CROSSING(BuiltInLootTables.STRONGHOLD_CROSSING, ContextIntProviders.between(1, 4)),
 		/** V33a {@code Location.STRONGHOLD_HALLWAY} — {@code ChestGenHooks.STRONGHOLD_CORRIDOR}. */
-		STRONGHOLD_HALLWAY(BuiltInLootTables.STRONGHOLD_CORRIDOR, UniformGenerator.between(2, 3)),
+		STRONGHOLD_HALLWAY(BuiltInLootTables.STRONGHOLD_CORRIDOR, ContextIntProviders.between(2, 3)),
 		/** V33a {@code Location.PYRAMID} — {@code ChestGenHooks.PYRAMID_DESERT_CHEST}. */
-		PYRAMID(BuiltInLootTables.DESERT_PYRAMID, UniformGenerator.between(2, 4)),
+		PYRAMID(BuiltInLootTables.DESERT_PYRAMID, ContextIntProviders.between(2, 4)),
 		/** V33a {@code Location.JUNGLE_PUZZLE} — {@code ChestGenHooks.PYRAMID_JUNGLE_CHEST}. */
-		JUNGLE_PUZZLE(BuiltInLootTables.JUNGLE_TEMPLE, UniformGenerator.between(2, 6)),
+		JUNGLE_PUZZLE(BuiltInLootTables.JUNGLE_TEMPLE, ContextIntProviders.between(2, 6)),
 		/** V33a {@code Location.JUNGLE_DISPENSER} — {@code ChestGenHooks.PYRAMID_JUNGLE_DISPENSER}. */
-		JUNGLE_DISPENSER(BuiltInLootTables.JUNGLE_TEMPLE_DISPENSER, UniformGenerator.between(1, 2));
+		JUNGLE_DISPENSER(BuiltInLootTables.JUNGLE_TEMPLE_DISPENSER, ContextIntProviders.between(1, 2));
 
 		/** The vanilla table this location's loot is added to. */
 		public final ResourceKey<LootTable> target;
 		/** The ChromatiCraft subtable the loot modifier rolls alongside it. */
 		public final ResourceKey<LootTable> subtable;
-		private final NumberProvider rolls;
+		private final net.minecraft.core.Holder<ContextIntProvider> rolls;
 
-		Location(ResourceKey<LootTable> target, NumberProvider rolls) {
+		Location(ResourceKey<LootTable> target, net.minecraft.core.Holder<ContextIntProvider> rolls) {
 			this.target = target;
 			this.rolls = rolls;
 			this.subtable = ResourceKey.create(Registries.LOOT_TABLE, Identifier.fromNamespaceAndPath(
@@ -110,7 +108,8 @@ public record ChromaChestLoot(HolderLookup.Provider registries) implements LootT
 	}
 
 	@Override
-	public void generate(BiConsumer<ResourceKey<LootTable>, LootTable.Builder> output) {
+	public void run() {
+        BiConsumer<ResourceKey<LootTable>, LootTable.Builder> output = context::accept;
 		for (Location location : Location.values()) {
 			LootPool.Builder pool = LootPool.lootPool().setRolls(location.rolls);
 			contents(location, pool);
@@ -173,7 +172,7 @@ public record ChromaChestLoot(HolderLookup.Provider registries) implements LootT
 	private static void add(LootPool.Builder pool, ItemLike item, int minimum, int maximum, int weight) {
 		LootItem.Builder<?> entry = LootItem.lootTableItem(item).setWeight(weight);
 		if (minimum != 1 || maximum != 1)
-			entry.apply(SetItemCountFunction.setCount(UniformGenerator.between(minimum, maximum)));
+			entry.apply(SetItemCountFunction.setCount(ContextIntProviders.between(minimum, maximum)));
 		pool.add(entry);
 	}
 }

@@ -33,7 +33,7 @@ public final class FarmerItemRenderer implements NoDataSpecialModelRenderer {
             int overlayCoords, boolean hasFoil, int outlineColor) {
         pose.pushPose();
         pose.translate(0.5, 0.5, 0.5);
-        pose.mulPose(Axis.YP.rotationDegrees(180));
+        pose.rotate(Axis.YP.rotationDegrees(180));
         pose.scale(0.85F, 0.85F, 0.85F);
         pose.translate(-0.5, -0.5, -0.5);
         RenderFarmer.submitMachine(pose, collector, model, lightCoords);

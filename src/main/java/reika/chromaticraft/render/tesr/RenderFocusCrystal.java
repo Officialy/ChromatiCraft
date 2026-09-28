@@ -133,7 +133,7 @@ public final class RenderFocusCrystal
 		}
 		poseStack.pushPose();
 		poseStack.translate(0.5, 1.625, 0.5);
-		poseStack.mulPose(Axis.XP.rotationDegrees(180));
+		poseStack.rotate(Axis.XP.rotationDegrees(180));
 		PoseStack modelPose = copy(poseStack);
 		int color = tier.renderColor(t);
 		collector.submitCustomGeometry(poseStack, ChromaRenderPipelines.unlitEntityCutout(texture(tier)),
@@ -178,9 +178,9 @@ public final class RenderFocusCrystal
 		poseStack.pushPose();
 		poseStack.translate(0.5, 0.5 + dy, 0.5);
 		float ang = (float)((100 * state.t / (state.n * state.n)) % 360D);
-		poseStack.mulPose(Axis.XP.rotationDegrees(ang));
-		poseStack.mulPose(Axis.YP.rotationDegrees(ang));
-		poseStack.mulPose(Axis.ZP.rotationDegrees(ang));
+		poseStack.rotate(Axis.XP.rotationDegrees(ang));
+		poseStack.rotate(Axis.YP.rotationDegrees(ang));
+		poseStack.rotate(Axis.ZP.rotationDegrees(ang));
 		float s = (1 + state.tier.effectiveOrdinal()) / 4F;
 		poseStack.scale(s, s, s);
 		int c0 = state.tier.renderColor(state.t);
@@ -205,7 +205,7 @@ public final class RenderFocusCrystal
 		double s = 0.75 * (0.25 + (1 + state.tier.ordinal()) / 4D);
 		poseStack.translate(0.5, 0.5 + dy, 0.5);
 		poseStack.scale((float)s, (float)s, (float)s);
-		poseStack.mulPose(camera.orientation);
+		poseStack.rotate(camera.orientation);
 		int c = 0xff000000 | ReikaColorAPI.getColorWithBrightnessMultiplier(state.tier.renderColor(state.t), 0.75F);
 		TextureAtlasSprite ico = Minecraft.getInstance().getAtlasManager().getAtlasOrThrow(AtlasIds.BLOCKS).getSprite(STARFLARE);
 		PoseStack.Pose pose = poseStack.last().copy();

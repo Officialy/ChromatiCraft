@@ -6,8 +6,6 @@ import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaDecoFlowers;
@@ -24,22 +22,29 @@ import reika.chromaticraft.registry.ChromaDecoFlowers;
  * <p>Void Reeds and Aura Ivy additionally extend along their column once sited — reeds upward in a
  * run of up to 4, ivy downward in a run of up to 12.
  */
-public final class DecoFlowerFeature extends Feature<NoneFeatureConfiguration> {
+public final class DecoFlowerFeature implements Feature {
+
+	public static final com.mojang.serialization.MapCodec<DecoFlowerFeature> CODEC =
+			com.mojang.serialization.Codec.STRING.fieldOf("flower")
+					.xmap(name -> new DecoFlowerFeature(ChromaDecoFlowers.valueOf(name.toUpperCase(java.util.Locale.ROOT))),
+							feature -> feature.flower.name().toLowerCase(java.util.Locale.ROOT));
+
+	@Override
+	public com.mojang.serialization.MapCodec<DecoFlowerFeature> codec() {
+		return CODEC;
+	}
 
 	private static final int MAX_TRIES = 40;
 
 	private final ChromaDecoFlowers flower;
 
 	public DecoFlowerFeature(ChromaDecoFlowers flower) {
-		super(NoneFeatureConfiguration.CODEC);
+
 		this.flower = flower;
 	}
 
 	@Override
-	public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-		WorldGenLevel world = context.level();
-		RandomSource random = context.random();
-		BlockPos origin = context.origin();
+	public boolean place(net.minecraft.world.level.WorldGenLevel world, net.minecraft.world.level.chunk.ChunkGenerator generator, net.minecraft.util.RandomSource random, net.minecraft.core.BlockPos origin) {
 		BlockState state = ChromaBlocks.decoFlower(flower).get().defaultBlockState();
 		int wanted = random.nextInt(5) == 0 ? 1 + random.nextInt(4) + random.nextInt(6) : 1;
 		int done = 0;

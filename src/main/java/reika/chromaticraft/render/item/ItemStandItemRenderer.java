@@ -41,7 +41,7 @@ public final class ItemStandItemRenderer implements NoDataSpecialModelRenderer {
 		// centres a 0.72-tall model: 0.5 - 0.72/2.
 		poseStack.translate(0.5F, 0.14F, 0.5F);
 		poseStack.scale(0.72F, -0.72F, -0.72F);
-		poseStack.mulPose(Axis.YP.rotationDegrees(180F));
+		poseStack.rotate(Axis.YP.rotationDegrees(180F));
 		poseStack.translate(0F, -1.5F, 0F);
 		PoseStack modelPose = new PoseStack();
 		modelPose.last().set(poseStack.last());

@@ -9086,3 +9086,45 @@ the notes above record them as "registered but not launched".
 - Focused runs in an isolated worktree: all eight pass. The main checkout was being edited by another session.
 - Full unselected suite afterwards (`:ChromatiCraft:runGameTest --offline`, in the isolated worktree):
   **all 168 required tests passed** in 23.61 min.
+
+## 26.3 migration checkpoint (2026-09-28)
+
+The root build now targets Minecraft 26.3 / NeoForge `26.3.0.26-beta`. DragonAPI,
+RotaryCraft, ElectriCraft, ReactorCraft, and GeoStrata pass `compileJava`; ChromatiCraft's
+accepted source slice remains red. The final full 26.3 compile reports 1,202 errors,
+with the largest clusters in the removed `ConfiguredFeature`/`FeatureConfiguration`
+API, the reloadable recipe/loot provider APIs, and render pipeline changes. The four custom
+loot count formulas (`CrystalShardCount`, `ChromaBerryCount`, `FortuneBonusCount`,
+`TuningScaledCount`) now implement 26.3 `ContextIntProvider` and keep their original formulas.
+Their registry uses `CONTEXT_INT_PROVIDER_TYPE`, and the loot table's custom count call sites
+now pass holders. The surrounding Chroma loot provider, worldgen, and tests still need full
+26.3 migration before compile/datagen/GameTests can run again. The earlier 26.2 GameTest
+result above is historical, not a 26.3 verification.
+
+## 26.3 worldgen and data registry checkpoint (2026-09-28)
+
+The active custom feature classes now implement the 26.3 `Feature` interface with codecs
+for their parameters. `ChromaWorldGenProvider` registers feature instances directly under
+`Registries.FEATURE`, including the existing tree and flower mixes, tiered ore sizes,
+colour specific dye trees and pylons, and named structure variants. It builds placed
+features from those holders. The four custom placement modifiers and five Proxima
+structure placements implement the new interfaces and retain their site rules. Feature
+callers in the active worldgen cluster and the related game tests use the direct `place`
+signature and `FEATURE` keys.
+
+Proxima's radial density function now compiles a 26.3 sampler with its original arithmetic.
+Its noise settings retain the 4×8 interpolation and bind a registered material rule for
+bedrock, beach, grass, and dirt. The game test checks the new interpolation fields.
+
+The casting, pool, cobble generator, and grid recipe bodies are now executed by one recipe
+and advancement registry bootstrap. The block and chest loot subproviders use the 26.3
+`LootTableProvider` bootstrap and context integer counts. All preexisting recipe entries,
+chest weights, and subtable mappings remain in their providers.
+
+Verification: `:ChromatiCraft:compileJava --offline` is still red, with **250 errors** at
+this checkpoint versus 1,202 at the first 26.3 full compile. The other five module
+compile tasks complete. There are no compile errors reported in the migrated feature,
+placement, Proxima noise/material, recipe, or loot provider files. ChromatiCraft datagen
+and GameTests cannot yet run; the remaining errors include biome setup, rendering APIs,
+and stale 26.2 calls in other accepted files. The 26.2 GameTest results above do not
+verify this 26.3 state.

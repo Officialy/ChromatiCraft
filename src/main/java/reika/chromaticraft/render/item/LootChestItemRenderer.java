@@ -31,7 +31,7 @@ public final class LootChestItemRenderer implements NoDataSpecialModelRenderer {
 			int overlayCoords, boolean hasFoil, int outlineColor) {
 		poseStack.pushPose();
 		poseStack.translate(0.5F, 0, 0.5F);
-		poseStack.mulPose(Axis.YP.rotationDegrees(180));
+		poseStack.rotate(Axis.YP.rotationDegrees(180));
 		poseStack.translate(-0.5F, 0, -0.5F);
 		model.setLidRotation(0);
 		PoseStack modelPose = new PoseStack();

@@ -1,6 +1,5 @@
 package reika.chromaticraft.block.dimension;
 
-import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
@@ -41,7 +40,6 @@ import reika.chromaticraft.tileentity.dimension.TileEntityFireJet;
  */
 public class BlockFireJet extends BaseEntityBlock {
 
-	public static final MapCodec<BlockFireJet> CODEC = simpleCodec(BlockFireJet::new);
 
 	/** V33a tickRate: four hundred ticks between attempts, plus up to that again at random. */
 	public static final int TICK_RATE = 400;
@@ -50,10 +48,6 @@ public class BlockFireJet extends BaseEntityBlock {
 		super(properties);
 	}
 
-	@Override
-	protected MapCodec<? extends BaseEntityBlock> codec() {
-		return CODEC;
-	}
 
 	@Override
 	public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {

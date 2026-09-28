@@ -10,7 +10,7 @@ import net.minecraft.world.level.biome.BiomeGenerationSettings;
 import net.minecraft.world.level.biome.BiomeSpecialEffects;
 import net.minecraft.world.level.biome.MobSpawnSettings;
 import net.minecraft.world.level.levelgen.GenerationStep;
-import net.minecraft.world.level.levelgen.carver.ConfiguredWorldCarver;
+import net.minecraft.world.level.levelgen.carver.WorldCarver;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
 
 import reika.chromaticraft.ChromatiCraft;
@@ -70,7 +70,7 @@ public final class ProximaBiomeDefinitions {
 
 	public static void bootstrap(BootstrapContext<Biome> context) {
 		HolderGetter<PlacedFeature> features = context.lookup(Registries.PLACED_FEATURE);
-		HolderGetter<ConfiguredWorldCarver<?>> carvers = context.lookup(Registries.CONFIGURED_CARVER);
+		HolderGetter<WorldCarver> carvers = context.lookup(Registries.CARVER);
 
 		for (ProximaBiomes b : ProximaBiomes.biomeList)
 			context.register(b.biomeKey(), define(b, features, carvers));
@@ -79,12 +79,11 @@ public final class ProximaBiomeDefinitions {
 	}
 
 	private static Biome define(ProximaBiomeType type, HolderGetter<PlacedFeature> features,
-			HolderGetter<ConfiguredWorldCarver<?>> carvers) {
+			HolderGetter<WorldCarver> carvers) {
 		MobSpawnSettings.Builder mobs = new MobSpawnSettings.Builder();
 		if (type == ProximaBiomes.CENTER) {
 			// V33a BiomeGenCentral: the only spawn anywhere in Proxima, and only ever one at a time.
-			mobs.addSpawn(ChromaEntityTypes.TUNNEL_NUKER.get().getCategory(), 1,
-					new MobSpawnSettings.SpawnerData(ChromaEntityTypes.TUNNEL_NUKER.get(), 1, 1));
+			mobs.addSpawn(ChromaEntityTypes.TUNNEL_NUKER.get(), 1, 1, 1);
 		}
 
 		BiomeSpecialEffects.Builder effects = new BiomeSpecialEffects.Builder()
@@ -126,7 +125,7 @@ public final class ProximaBiomeDefinitions {
 	 * biomes are declared on the structure itself.
 	 */
 	private static BiomeGenerationSettings generation(ProximaBiomeType type,
-			HolderGetter<PlacedFeature> features, HolderGetter<ConfiguredWorldCarver<?>> carvers) {
+			HolderGetter<PlacedFeature> features, HolderGetter<WorldCarver> carvers) {
 		BiomeGenerationSettings.Builder builder = new BiomeGenerationSettings.Builder(features, carvers);
 		// Upstream's shape, kept deliberately: the Luminescent Sanctuary is not a biome with a list of
 		// its own, it is "everything that is not dedicated to somewhere else". Reproducing that as a

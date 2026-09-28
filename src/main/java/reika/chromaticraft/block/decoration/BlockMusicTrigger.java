@@ -1,6 +1,5 @@
 package reika.chromaticraft.block.decoration;
 
-import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -31,13 +30,11 @@ public final class BlockMusicTrigger extends Block {
 				@Nullable Player player);
 	}
 
-	private final MapCodec<BlockMusicTrigger> codec = MapCodec.unit(this);
 
 	public BlockMusicTrigger(BlockBehaviour.Properties properties) {
 		super(properties);
 	}
 
-	@Override public MapCodec<? extends BlockMusicTrigger> codec() { return codec; }
 
 	@Override
 	protected void neighborChanged(BlockState state, Level level, BlockPos pos, Block neighbor,

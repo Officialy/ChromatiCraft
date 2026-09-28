@@ -1,6 +1,5 @@
 package reika.chromaticraft.block.dimension.structure.music;
 
-import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -30,14 +29,13 @@ import reika.chromaticraft.tileentity.TileEntityMusicMemory;
 public final class BlockMusicMemory extends Block implements EntityBlock {
 
 	public static final EnumProperty<Direction> FACING = BlockStateProperties.HORIZONTAL_FACING;
-	private final MapCodec<BlockMusicMemory> codec = MapCodec.unit(this);
+
 
 	public BlockMusicMemory(BlockBehaviour.Properties properties) {
 		super(properties);
 		registerDefaultState(stateDefinition.any().setValue(FACING, Direction.NORTH));
 	}
 
-	@Override public MapCodec<? extends BlockMusicMemory> codec() { return codec; }
 
 	@Override
 	protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {

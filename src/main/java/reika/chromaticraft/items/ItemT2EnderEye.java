@@ -127,11 +127,11 @@ public class ItemT2EnderEye extends Item implements OwnableItem {
 
 	@Override
 	public boolean onEntityItemUpdate(ItemStack stack, ItemEntity ei) {
-		ei.setInvulnerable(true);
+		ei.setPermanentlyInvulnerable(true);
 		if (ei.level().getBlockState(ei.blockPosition()).is(Blocks.WATER)) {
 			Vec3 v = ei.getDeltaMovement();
 			ei.setDeltaMovement(v.x * 0.85, v.y + 0.07, v.z * 0.85);
-			ei.hurtMarked = true;
+			ei.syncVelocity = true;
 		}
 		UUID uid = owner(stack);
 		if (uid != null) {
@@ -159,7 +159,7 @@ public class ItemT2EnderEye extends Item implements OwnableItem {
 							my = Math.max(1, my);
 						ei.setDeltaMovement(mx, my, mz);
 						if (!ei.level().isClientSide())
-							ei.hurtMarked = true;
+							ei.syncVelocity = true;
 					}
 				}
 			}

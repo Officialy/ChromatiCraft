@@ -5,12 +5,13 @@ import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.core.Holder;
 import net.minecraft.world.level.storage.loot.LootContext;
+import net.minecraft.world.level.storage.loot.Validatable;
+import net.minecraft.world.level.storage.loot.ValidationContext;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
-import net.minecraft.world.level.storage.loot.providers.number.ConstantValue;
-import net.minecraft.world.level.storage.loot.providers.number.NumberProvider;
-import net.minecraft.world.level.storage.loot.providers.number.NumberProviders;
-import net.minecraft.world.level.storage.loot.providers.number.UniformGenerator;
+import net.minecraft.world.level.storage.loot.providers.number.ints.ContextIntProvider;
+import net.minecraft.world.level.storage.loot.providers.number.ints.ContextIntProviders;
 
 import reika.chromaticraft.world.dimension.DimensionTuningManager;
 
@@ -37,22 +38,22 @@ import reika.chromaticraft.world.dimension.DimensionTuningManager;
  * @param base    the unscaled roll, which is the variant's own drop count
  * @param maximum the variant's {@code getMaxDrops} ceiling
  */
-public record TuningScaledCount(NumberProvider base, int maximum) implements NumberProvider {
+public record TuningScaledCount(Holder<ContextIntProvider> base, int maximum) implements ContextIntProvider {
 
 	public static final MapCodec<TuningScaledCount> MAP_CODEC = RecordCodecBuilder.mapCodec(
 			instance -> instance.group(
-					NumberProviders.CODEC.fieldOf("base").forGetter(TuningScaledCount::base),
+					ContextIntProviders.CODEC.fieldOf("base").forGetter(TuningScaledCount::base),
 					Codec.INT.fieldOf("maximum").forGetter(TuningScaledCount::maximum))
 					.apply(instance, TuningScaledCount::new));
 
 	/** V33a's ordinary case: a single item before tuning. */
 	public static TuningScaledCount single(int maximum) {
-		return new TuningScaledCount(ConstantValue.exactly(1), maximum);
+		return new TuningScaledCount(ContextIntProviders.exactly(1), maximum);
 	}
 
 	/** V33a's Glow Cave case: {@code getRandomBetween(1, 6)} before tuning. */
 	public static TuningScaledCount between(int minimum, int maximum, int ceiling) {
-		return new TuningScaledCount(UniformGenerator.between(minimum, maximum), ceiling);
+		return new TuningScaledCount(ContextIntProviders.between(minimum, maximum), ceiling);
 	}
 
 	@Override
@@ -61,17 +62,17 @@ public record TuningScaledCount(NumberProvider base, int maximum) implements Num
 	}
 
 	@Override
-	public int getInt(LootContext context) {
-		int rolled = base.getInt(context);
+	public int getIntUnsafe(LootContext context) {
+		int rolled = base.value().getInt(context);
 		// Block loot carries the breaking entity as THIS_ENTITY; upstream reads the same thing from
 		// its harvesters thread-local.
-		if (!(context.getOptionalParameter(LootContextParams.THIS_ENTITY) instanceof Player player))
+		if (!(context.getOptional(LootContextParams.THIS_ENTITY) instanceof Player player))
 			return rolled;
 		return DimensionTuningManager.instance.getTunedDropCount(player, rolled, 1, maximum);
 	}
 
 	@Override
-	public float getFloat(LootContext context) {
-		return this.getInt(context);
+	public void validate(ValidationContext context) {
+		Validatable.validateHolder(context, "base", base);
 	}
 }

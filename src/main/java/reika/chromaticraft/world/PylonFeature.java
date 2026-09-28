@@ -13,8 +13,6 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
 import net.neoforged.neoforge.common.NeoForge;
 
@@ -33,7 +31,22 @@ import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
  * 256-chunk grid, 24 surface probes, footprint rules, optional damage, and generation event.
  * Geometry is always placed from the canonical {@code multiblock/pylon.nbt} template.
  */
-public final class PylonFeature extends Feature<NoneFeatureConfiguration> {
+public final class PylonFeature implements Feature {
+
+    public static final com.mojang.serialization.MapCodec<PylonFeature> CODEC =
+            com.mojang.serialization.codecs.RecordCodecBuilder.mapCodec(instance -> instance.group(
+                    com.mojang.serialization.Codec.STRING.optionalFieldOf("variant", "normal")
+                            .forGetter(feature -> feature.variant.name().toLowerCase(java.util.Locale.ROOT)),
+                    com.mojang.serialization.Codec.INT.optionalFieldOf("color", -1)
+                            .forGetter(feature -> feature.fixedColor == null ? -1 : feature.fixedColor.ordinal())
+            ).apply(instance, (variant, color) -> new PylonFeature(
+                    Variant.valueOf(variant.toUpperCase(java.util.Locale.ROOT)),
+                    color < 0 ? null : CrystalElement.elements[color])));
+
+    @Override
+    public com.mojang.serialization.MapCodec<PylonFeature> codec() {
+        return CODEC;
+    }
 
     public enum Variant {
         NORMAL,
@@ -63,18 +76,13 @@ public final class PylonFeature extends Feature<NoneFeatureConfiguration> {
     }
 
     private PylonFeature(Variant variant, CrystalElement fixedColor) {
-        super(NoneFeatureConfiguration.CODEC);
+
         this.variant = variant;
         this.fixedColor = fixedColor;
     }
 
     @Override
-    public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-        WorldGenLevel world = context.level();
-
-        BlockPos origin = context.origin();
-
-        RandomSource random = context.random();
+    public boolean place(net.minecraft.world.level.WorldGenLevel world, net.minecraft.world.level.chunk.ChunkGenerator generator, net.minecraft.util.RandomSource random, net.minecraft.core.BlockPos origin) {
         for (int i = 0; i < ATTEMPTS; i++) {
             int x = origin.getX() + random.nextInt(16);
             int z = origin.getZ() + random.nextInt(16);

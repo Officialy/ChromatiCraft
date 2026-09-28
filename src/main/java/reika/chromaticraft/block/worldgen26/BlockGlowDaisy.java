@@ -1,6 +1,5 @@
 package reika.chromaticraft.block.worldgen26;
 
-import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -31,17 +30,13 @@ import reika.chromaticraft.render.particle.ChromaParticle;
 public final class BlockGlowDaisy extends VegetationBlock {
     public static final BooleanProperty CROP_BOOSTED = BooleanProperty.create("crop_boosted");
     private static final VoxelShape SHAPE = BlockGlowDaisy.box(0, 0, 0, 16, 10, 16);
-    private final MapCodec<BlockGlowDaisy> codec = MapCodec.unit(this);
+
 
     public BlockGlowDaisy(BlockBehaviour.Properties properties) {
         super(properties);
         registerDefaultState(stateDefinition.any().setValue(CROP_BOOSTED, false));
     }
 
-    @Override
-    public MapCodec<? extends BlockGlowDaisy> codec() {
-        return codec;
-    }
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {

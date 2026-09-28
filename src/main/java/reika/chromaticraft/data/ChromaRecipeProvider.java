@@ -2,13 +2,12 @@ package reika.chromaticraft.data;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 
-import net.minecraft.core.HolderLookup;
-import net.minecraft.data.PackOutput;
 import net.minecraft.data.recipes.RecipeCategory;
 import net.minecraft.data.recipes.RecipeOutput;
 import net.minecraft.data.recipes.RecipeProvider;
+import net.minecraft.data.worldgen.BootstrapContext;
+import net.minecraft.advancements.Advancement;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.Item;
@@ -29,29 +28,21 @@ import reika.chromaticraft.registry.CrystalElement;
  * <p>Almost all of ChromatiCraft is crafted on the Casting Table, so this provider is small by
  * design — its job is the handful of bootstrap recipes that let a player reach the table at all.
  */
-public final class ChromaRecipeProvider extends RecipeProvider.Runner {
+public final class ChromaRecipeProvider {
 
-	public ChromaRecipeProvider(PackOutput output, CompletableFuture<HolderLookup.Provider> registries) {
-		super(output, registries);
-	}
+    private ChromaRecipeProvider() {}
 
-	@Override
-	public String getName() {
-		return "ChromatiCraft Recipes";
-	}
-
-	@Override
-	protected RecipeProvider createRecipeProvider(HolderLookup.Provider registries, RecipeOutput out) {
-		return new Recipes(registries, out);
-	}
+    public static void bootstrap(BootstrapContext<Recipe<?>> recipes, BootstrapContext<Advancement> advancements) {
+        new Recipes(recipes, advancements).buildRecipes();
+    }
 
 	private static final class Recipes extends RecipeProvider {
 
 		private final RecipeOutput out;
 
-		Recipes(HolderLookup.Provider registries, RecipeOutput out) {
-			super(registries, out);
-			this.out = out;
+		Recipes(BootstrapContext<Recipe<?>> recipes, BootstrapContext<Advancement> advancements) {
+            super(recipes, advancements);
+            this.out = super.output;
 		}
 
 		@Override

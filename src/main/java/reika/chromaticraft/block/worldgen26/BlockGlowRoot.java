@@ -1,6 +1,5 @@
 package reika.chromaticraft.block.worldgen26;
 
-import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -26,16 +25,12 @@ import reika.chromaticraft.registry.ChromaBlocks;
 /** V33a Glow Root: a self-limiting luminous chain suspended from natural cave ceilings. */
 public final class BlockGlowRoot extends Block {
     private static final VoxelShape SHAPE = BlockGlowRoot.box(4, 4, 4, 12, 12, 12);
-    private final MapCodec<BlockGlowRoot> codec = MapCodec.unit(this);
+
 
     public BlockGlowRoot(BlockBehaviour.Properties properties) {
         super(properties);
     }
 
-    @Override
-    public MapCodec<? extends BlockGlowRoot> codec() {
-        return codec;
-    }
 
     @Override
     protected boolean canSurvive(BlockState state, LevelReader level, BlockPos pos) {

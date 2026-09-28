@@ -10,8 +10,6 @@ import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
 import reika.chromaticraft.block.worldgen26.BlockLootChest;
 import reika.chromaticraft.registry.ChromaBlocks;
@@ -55,7 +53,15 @@ import reika.chromaticraft.world.dimension.biome.ProximaBiomes;
  * generates in oceans?" and "currently cannot generate here" — so the Glowing Forest and the Crystal
  * Plains are the whole of it.
  */
-public final class MiniAltarFeature extends Feature<NoneFeatureConfiguration> {
+public final class MiniAltarFeature implements Feature {
+
+    public static final com.mojang.serialization.MapCodec<MiniAltarFeature> CODEC =
+            com.mojang.serialization.MapCodec.unit(MiniAltarFeature::new);
+
+    @Override
+    public com.mojang.serialization.MapCodec<MiniAltarFeature> codec() {
+        return CODEC;
+    }
 
 	/** V33a {@code r}: the platform reaches three blocks from centre, so seven by seven. */
 	private static final int PLATFORM_RADIUS = 3;
@@ -65,16 +71,15 @@ public final class MiniAltarFeature extends Feature<NoneFeatureConfiguration> {
 	private static final int BURROW_DEPTH = 3;
 
 	public MiniAltarFeature() {
-		super(NoneFeatureConfiguration.CODEC);
+
 	}
 
 	@Override
-	public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-		WorldGenLevel world = context.level();
-		RandomSource rand = context.random();
+	public boolean place(net.minecraft.world.level.WorldGenLevel world, net.minecraft.world.level.chunk.ChunkGenerator generator, net.minecraft.util.RandomSource random, net.minecraft.core.BlockPos origin) {
+		RandomSource rand = random;
 		// V33a's first statement is `y--`: the placement hands it the first air block and the altar is
 		// built on the ground under it.
-		BlockPos origin = context.origin().below();
+		origin = origin.below();
 		if (!canGenerate(world, origin))
 			return false;
 

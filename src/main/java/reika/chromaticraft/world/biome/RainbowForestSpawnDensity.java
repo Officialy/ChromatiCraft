@@ -5,8 +5,10 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderSet;
-import net.minecraft.core.RegistryCodecs;
+import net.minecraft.core.RegistryAccess;
+import net.minecraft.core.registries.codec.RegistryCodecs;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.world.attribute.EnvironmentAttributes;
 import net.minecraft.world.level.biome.Biome;
 
 import net.neoforged.neoforge.common.world.BiomeModifier;
@@ -28,7 +30,7 @@ import reika.chromaticraft.registry.ChromaOptions;
 public record RainbowForestSpawnDensity(HolderSet<Biome> biomes) implements BiomeModifier {
 
 	public static final MapCodec<RainbowForestSpawnDensity> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
-			RegistryCodecs.homogeneousList(Registries.BIOME).fieldOf("biomes").forGetter(RainbowForestSpawnDensity::biomes)
+			RegistryCodecs.holderSet(Registries.BIOME).fieldOf("biomes").forGetter(RainbowForestSpawnDensity::biomes)
 	).apply(i, RainbowForestSpawnDensity::new));
 
 	/** V33a {@code getSpawningChance} for a given option value. */
@@ -37,9 +39,10 @@ public record RainbowForestSpawnDensity(HolderSet<Biome> biomes) implements Biom
 	}
 
 	@Override
-	public void modify(Holder<Biome> biome, Phase phase, ModifiableBiomeInfo.BiomeInfo.Builder builder) {
+	public void modify(RegistryAccess registries, Holder<Biome> biome, Phase phase, ModifiableBiomeInfo.BiomeInfo.Builder builder) {
 		if (phase == Phase.MODIFY && biomes.contains(biome))
-			builder.getMobSpawnSettings().creatureGenerationProbability(spawningChance(ChromaOptions.ANIMALSPAWN.getValue()));
+			builder.getAttributes().set(EnvironmentAttributes.CREATURE_WORLD_GEN_SPAWN_PROBABILITY,
+					spawningChance(ChromaOptions.ANIMALSPAWN.getValue()));
 	}
 
 	@Override

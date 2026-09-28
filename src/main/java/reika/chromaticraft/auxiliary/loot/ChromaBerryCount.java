@@ -3,7 +3,8 @@ package reika.chromaticraft.auxiliary.loot;
 import com.mojang.serialization.MapCodec;
 
 import net.minecraft.world.level.storage.loot.LootContext;
-import net.minecraft.world.level.storage.loot.providers.number.NumberProvider;
+import net.minecraft.world.level.storage.loot.ValidationContext;
+import net.minecraft.world.level.storage.loot.providers.number.ints.ContextIntProvider;
 
 /**
  * V33a chroma-berry stack size from {@code BlockDyeLeaf.getDrops}:
@@ -22,7 +23,7 @@ import net.minecraft.world.level.storage.loot.providers.number.NumberProvider;
  * overflow is repeatedly traded for extra berries. {@link FortuneScaledChance#exponential} tests the
  * same curve for whether the drop happens at all.
  */
-public record ChromaBerryCount() implements NumberProvider {
+public record ChromaBerryCount() implements ContextIntProvider {
 
 	public static final ChromaBerryCount INSTANCE = new ChromaBerryCount();
 	public static final MapCodec<ChromaBerryCount> MAP_CODEC = MapCodec.unit(INSTANCE);
@@ -36,7 +37,7 @@ public record ChromaBerryCount() implements NumberProvider {
 	}
 
 	@Override
-	public int getInt(LootContext context) {
+	public int getIntUnsafe(LootContext context) {
 		double chance = BASE_CHANCE * Math.pow(2, CrystalShardCount.fortuneLevel(context));
 		int count = 1;
 		while (chance > 1) {
@@ -47,7 +48,5 @@ public record ChromaBerryCount() implements NumberProvider {
 	}
 
 	@Override
-	public float getFloat(LootContext context) {
-		return this.getInt(context);
-	}
+	public void validate(ValidationContext context) {}
 }

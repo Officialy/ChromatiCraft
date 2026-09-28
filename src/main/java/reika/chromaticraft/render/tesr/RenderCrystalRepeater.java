@@ -128,7 +128,7 @@ public class RenderCrystalRepeater<T extends TileEntityCrystalRepeater>
             submitRangeSphere(state, poseStack, collector);
 
         poseStack.pushPose();
-        poseStack.mulPose(camera.orientation);
+        poseStack.rotate(camera.orientation);
         submitAtlasBillboard(poseStack, collector, SPARKLE, 0.75F, 0xffffffff, 0);
 
         float iconScale = (float)((2.75 + 0.125 * Math.sin(state.ticks / 40D)) * 0.75);
@@ -201,7 +201,7 @@ public class RenderCrystalRepeater<T extends TileEntityCrystalRepeater>
         for (int angle = 0; angle < 90; angle += 15) {
             cumulative += angle + (float)phase;
             poseStack.pushPose();
-            poseStack.mulPose(Axis.ZP.rotationDegrees(cumulative));
+            poseStack.rotate(Axis.ZP.rotationDegrees(cumulative));
             float z = -angle / 15F * 0.0075F;
             float scale = (float)((1.5 + 0.5 * Math.sin(Math.toRadians(4 * phase + angle * 2))) * 0.75);
             submitTexturedQuad(poseStack, collector, TURBO_SECTIONS, scale, state.color, z, 0, 0, 1, 1);

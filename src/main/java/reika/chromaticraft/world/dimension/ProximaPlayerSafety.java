@@ -182,7 +182,7 @@ public final class ProximaPlayerSafety {
 		java.util.HashSet<net.minecraft.world.level.levelgen.structure.StructureStart> checked =
 				new java.util.HashSet<>();
 		for (net.minecraft.world.level.ChunkPos chunk : clearing.intersectingChunks().toList()) {
-			for (var start : level.structureManager().startsForStructure(chunk, structure -> {
+			for (var start : level.structureManager().startsForStructure(chunk.x(), chunk.z(), structure -> {
 				Identifier key = structures.getKey(structure);
 				return key != null && ChromatiCraft.MODID.equals(key.getNamespace());
 			})) {

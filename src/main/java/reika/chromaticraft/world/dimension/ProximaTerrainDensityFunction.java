@@ -3,17 +3,22 @@ package reika.chromaticraft.world.dimension;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
-import net.minecraft.util.KeyDispatchDataCodec;
+import net.minecraft.util.Interval;
+import net.minecraft.world.level.levelgen.densityfunction.DensityBuffer;
+import net.minecraft.world.level.levelgen.densityfunction.DensitySampler;
+import net.minecraft.world.level.levelgen.densityfunction.DensityVolume;
+import net.minecraft.world.level.levelgen.densityfunction.DfRewriteRule;
+import net.minecraft.world.level.levelgen.densityfunction.SamplerContext;
 import net.minecraft.util.StringRepresentable;
-import net.minecraft.world.level.levelgen.DensityFunction;
+import net.minecraft.world.level.levelgen.densityfunction.DensityFunction;
 
 /**
- * V33a's radial terrain profile, expressed as a 26.2 {@link DensityFunction} so the ordinary
+ * V33a's radial terrain profile, expressed as a 26.3 {@link DensityFunction} so the ordinary
  * {@code NoiseBasedChunkGenerator} pipeline can build Proxima.
  *
  * <p>1.7.10 substituted two values into its copy of {@code ChunkProviderGenerate} — {@code f3}, the
  * base height, and {@code f4}, the height variation — which vanilla otherwise read from the biome.
- * Everything else in that method was stock. 26.2 expresses exactly the same two concepts as the
+ * Everything else in that method was stock. The density router expresses exactly the same two concepts as the
  * <em>offset</em> and <em>factor</em> inputs of the noise router, so the port supplies only those and
  * lets vanilla own the noise, the interpolation, the cell lattice and the surface pass.
  *
@@ -44,7 +49,7 @@ import net.minecraft.world.level.levelgen.DensityFunction;
  * outrunning. With no layout yet it falls back to the undamped profile rather than failing a chunk
  * build.
  */
-public record ProximaTerrainDensityFunction(Mode mode) implements DensityFunction.SimpleFunction {
+public record ProximaTerrainDensityFunction(Mode mode) implements DensityFunction {
 
 	public enum Mode implements StringRepresentable {
 		/** V33a {@code f3}: the base height the column is built around. */
@@ -71,26 +76,52 @@ public record ProximaTerrainDensityFunction(Mode mode) implements DensityFunctio
 			i -> i.group(Mode.CODEC.fieldOf("mode").forGetter(ProximaTerrainDensityFunction::mode))
 					.apply(i, ProximaTerrainDensityFunction::new));
 
-	public static final KeyDispatchDataCodec<ProximaTerrainDensityFunction> DISPATCH_CODEC =
-			KeyDispatchDataCodec.of(CODEC);
+    @Override
+    public DensitySampler compileSampler(DensityFunction.CompileContext context) {
+        return new Sampler(this);
+    }
 
-	@Override
-	public double compute(FunctionContext context) {
-		// The router works in block coordinates; V33a's profile is written against the quart lattice
-		// its noise layer sampled, which is one cell per four blocks.
-		double roughness = this.roughness(context.blockX() >> 2, context.blockZ() >> 2);
-		if (mode == Mode.OFFSET) {
-			// V33a f1 = (f3*4 - 1)/8, its own conversion of the base height into the term the column
-			// formula adds. Range [-0.25, -0.0625]: highest at the centre, lowest far out.
-			return (ProximaTerrainProfile.baseHeightFor(roughness) * 4 - 1) / 8;
-		}
-		// V33a divides its vertical slope by d14 = 0.9*f4 + 0.1; 26.2 multiplies depth by the factor.
-		// So the factor is the reciprocal, and getting this the right way round is the difference
-		// between a flat centre with mountainous edges and exactly the opposite: f4 is 0 at the origin,
-		// giving the maximum factor 10 and terrain that hugs its base height, and grows without bound
-		// outward, driving the factor towards 0 and letting the land range freely.
-		return 1 / (0.9 * ProximaTerrainProfile.heightVariationFor(roughness) + 0.1);
-	}
+    @Override
+    public DensityFunction rewriteChildren(DfRewriteRule rule) {
+        return this;
+    }
+
+    @Override
+    public Interval range() {
+        return mode == Mode.OFFSET ? Interval.of(-0.25F, -0.0625F) : Interval.of(0, 10);
+    }
+
+    @Override
+    public @DensityFunction.Axes int domainAxes() {
+        return DensityFunction.AXIS_X | DensityFunction.AXIS_Z;
+    }
+
+    @Override
+    public MapCodec<ProximaTerrainDensityFunction> codec() {
+        return CODEC;
+    }
+
+    /** Evaluate the unchanged V33a radial profile at a block column. */
+    public float compute(int blockX, int blockZ) {
+        // The source profile samples one horizontal cell for every four blocks.
+        double roughness = this.roughness(blockX >> 2, blockZ >> 2);
+        if (mode == Mode.OFFSET)
+            return (float)((ProximaTerrainProfile.baseHeightFor(roughness) * 4 - 1) / 8);
+        // A large factor holds the flat centre close to its base height; the outer terrain varies more.
+        return (float)(1 / (0.9 * ProximaTerrainProfile.heightVariationFor(roughness) + 0.1));
+    }
+
+    private record Sampler(ProximaTerrainDensityFunction function) implements DensitySampler {
+        @Override
+        public void sampleVolume(SamplerContext context, DensityBuffer output, DensityVolume volume) {
+            DensitySampler.sampleVolumeNaive(context, output, volume, this);
+        }
+
+        @Override
+        public float sampleValue(SamplerContext context, int blockX, int blockY, int blockZ) {
+            return function.compute(blockX, blockZ);
+        }
+    }
 
 	private double roughness(int quartX, int quartZ) {
 		ProximaGenerators.Layout layout = ProximaGenerators.getLayout();
@@ -104,22 +135,4 @@ public record ProximaTerrainDensityFunction(Mode mode) implements DensityFunctio
 		return new ProximaTerrainProfile(layout.structures()).roughness(quartX, quartZ);
 	}
 
-	@Override
-	public double minValue() {
-		// The offset floor is V33a's own -0.25 base height run through f1; the factor tends to zero as
-		// the height variation grows, but never reaches it.
-		return mode == Mode.OFFSET ? -0.25 : 0;
-	}
-
-	@Override
-	public double maxValue() {
-		// f3 caps at 0.125, so the offset caps at (0.125*4-1)/8; f4 bottoms out at 0 at the world
-		// origin, so the factor caps at 1/0.1.
-		return mode == Mode.OFFSET ? -0.0625 : 10;
-	}
-
-	@Override
-	public KeyDispatchDataCodec<? extends DensityFunction> codec() {
-		return DISPATCH_CODEC;
-	}
 }

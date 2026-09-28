@@ -936,7 +936,7 @@ public final class ChromaNetwork {
 				var data = reika.chromaticraft.magic.progression.LexiconData.read(book);
 				if (!data.creative() && data.pages().contains(page.id())) {
 					data.withoutPage(page.id()).writeTo(book);
-					player.getInventory().placeItemBackInInventory(reika.chromaticraft.item.ItemInfoFragment.forPage(page));
+					player.getInventory().placeItemBackInInventory(reika.chromaticraft.item.ItemInfoFragment.forPage(page), net.minecraft.util.Prediction.SERVER_ONLY);
 				}
 			}
 		});

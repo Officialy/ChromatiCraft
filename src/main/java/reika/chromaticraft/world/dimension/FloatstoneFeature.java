@@ -6,8 +6,6 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ProximaDecoTypes;
@@ -39,17 +37,22 @@ import reika.chromaticraft.registry.ProximaDecoTypes;
  * across, so with the scatter a whole cluster spans roughly twenty-seven blocks and sits inside the
  * chunks this generation step may write to.
  */
-public final class FloatstoneFeature extends Feature<NoneFeatureConfiguration> {
+public final class FloatstoneFeature implements Feature {
+
+    public static final com.mojang.serialization.MapCodec<FloatstoneFeature> CODEC =
+            com.mojang.serialization.MapCodec.unit(FloatstoneFeature::new);
+
+    @Override
+    public com.mojang.serialization.MapCodec<FloatstoneFeature> codec() {
+        return CODEC;
+    }
 
 	public FloatstoneFeature() {
-		super(NoneFeatureConfiguration.CODEC);
+
 	}
 
 	@Override
-	public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-		WorldGenLevel world = context.level();
-		RandomSource random = context.random();
-		BlockPos origin = context.origin();
+	public boolean place(net.minecraft.world.level.WorldGenLevel world, net.minecraft.world.level.chunk.ChunkGenerator generator, net.minecraft.util.RandomSource random, net.minecraft.core.BlockPos origin) {
 		// V33a: the cluster floats twelve to twenty-four blocks above whatever it was anchored to.
 		int clusterY = origin.getY() + 12 + random.nextInt(12);
 		int veins = 2 + random.nextInt(6);

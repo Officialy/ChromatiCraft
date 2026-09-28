@@ -5,10 +5,12 @@ import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 
 import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.CommandBuildContext;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.IdentifierArgument;
 import net.minecraft.commands.arguments.ResourceKeyArgument;
+import net.minecraft.commands.arguments.ResourceOrIdArgument;
 import net.minecraft.commands.arguments.coordinates.BlockPosArgument;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
@@ -25,20 +27,20 @@ public final class ChromaGenerateCommand {
 
 	private ChromaGenerateCommand() {}
 
-	public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
+	public static void register(CommandDispatcher<CommandSourceStack> dispatcher, CommandBuildContext buildContext) {
 		dispatcher.register(Commands.literal("chromagen")
 				.requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
 				.then(Commands.literal("build")
 						.then(Commands.argument("template", IdentifierArgument.id())
 								.suggests((context, builder) -> SharedSuggestionProvider.suggestResource(
-										context.getSource().getLevel().getStructureManager().listTemplates()
+									context.getSource().getServer().getStructureTemplateManager().listTemplates()
 												.filter(id -> id.getNamespace().equals(ChromatiCraft.MODID)), builder))
 								.executes(context -> build(context, sourcePosition(context)))
 								.then(Commands.argument("pos", BlockPosArgument.blockPos())
 										.executes(context -> build(context,
 												BlockPosArgument.getLoadedBlockPos(context, "pos"))))))
 				.then(Commands.literal("feature")
-						.then(Commands.argument("feature", ResourceKeyArgument.key(Registries.CONFIGURED_FEATURE))
+					.then(Commands.argument("feature", ResourceOrIdArgument.feature(buildContext))
 								.executes(context -> feature(context, sourcePosition(context)))
 								.then(Commands.argument("pos", BlockPosArgument.blockPos())
 										.executes(context -> feature(context,
@@ -66,8 +68,8 @@ public final class ChromaGenerateCommand {
 
 	private static int feature(CommandContext<CommandSourceStack> context, BlockPos pos)
 			throws CommandSyntaxException {
-		var holder = ResourceKeyArgument.getConfiguredFeature(context, "feature");
-		if (!isChroma(context.getSource(), holder.key().identifier()))
+		var holder = ResourceOrIdArgument.getFeature(context, "feature");
+		if (!isChroma(context.getSource(), holder.unwrapKey().map(key -> key.identifier()).orElse(Identifier.parse("minecraft:unregistered"))))
 			return 0;
 		return PlaceCommand.placeFeature(context.getSource(), holder, pos);
 	}

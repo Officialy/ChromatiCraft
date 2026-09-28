@@ -1,6 +1,5 @@
 package reika.chromaticraft.block.worldgen26;
 
-import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -32,17 +31,13 @@ public class BlockDecoFlower extends Block {
 	private static final VoxelShape SHAPE = box(2, 0, 2, 14, 16, 14);
 
 	private final ChromaDecoFlowers flower;
-	private final MapCodec<BlockDecoFlower> codec = MapCodec.unit(this);
+
 
 	public BlockDecoFlower(BlockBehaviour.Properties properties, ChromaDecoFlowers flower) {
 		super(properties);
 		this.flower = flower;
 	}
 
-	@Override
-	public MapCodec<? extends BlockDecoFlower> codec() {
-		return codec;
-	}
 
 	public ChromaDecoFlowers getFlower() {
 		return flower;

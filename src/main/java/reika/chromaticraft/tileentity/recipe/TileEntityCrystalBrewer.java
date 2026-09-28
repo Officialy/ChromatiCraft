@@ -284,7 +284,8 @@ public class TileEntityCrystalBrewer extends InventoriedChromaticBase implements
 			return i == 0;
 		if (isVanillaPotion(is))
 			return i != 0;
-		if (this.getLevel() != null && this.getLevel().potionBrewing().isIngredient(is))
+		if (this.getLevel() != null && this.getLevel().recipeAccess()
+				.propertySet(net.minecraft.world.item.crafting.RecipePropertySet.BREWING_REAGENTS).test(is))
 			return i == 0;
 		return false;
 	}

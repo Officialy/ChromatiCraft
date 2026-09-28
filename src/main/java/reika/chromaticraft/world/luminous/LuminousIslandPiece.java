@@ -23,7 +23,7 @@ import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkGenerator;
-import net.minecraft.world.level.levelgen.feature.ConfiguredFeature;
+import net.minecraft.world.level.levelgen.feature.Feature;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.StructurePiece;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext;
@@ -302,9 +302,9 @@ public final class LuminousIslandPiece extends StructurePiece {
 
 	/** V33a {@code BiomeGlowingCliffs.func_150567_a}: a big glowing tree 1/20, a big oak 1/10, an oak. */
 	private void tree(WorldGenLevel level, ChunkGenerator generator, Random rand, BlockPos pos) {
-		ResourceKey<ConfiguredFeature<?, ?>> key = rand.nextInt(20) == 0 ? ChromaWorldGenProvider.GLOWING_TREE
+		ResourceKey<Feature> key = rand.nextInt(20) == 0 ? ChromaWorldGenProvider.GLOWING_TREE
 				: rand.nextInt(10) == 0 ? TreeFeatures.FANCY_OAK : TreeFeatures.OAK;
-		ConfiguredFeature<?, ?> tree = level.registryAccess().lookupOrThrow(Registries.CONFIGURED_FEATURE).getValue(key);
+		Feature tree = level.registryAccess().lookupOrThrow(Registries.FEATURE).getValue(key);
 		if (tree != null)
 			tree.place(level, generator, RandomSource.create(rand.nextLong()), pos);
 	}

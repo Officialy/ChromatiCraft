@@ -1,6 +1,5 @@
 package reika.chromaticraft.block;
 
-import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
@@ -40,14 +39,13 @@ public final class BlockTrapFloor extends Block {
 
 	public static final EnumProperty<Disguise> DISGUISE = EnumProperty.create("disguise", Disguise.class);
 	private static final VoxelShape FLOOR = box(0, 0, 0, 16, 14, 16);
-	private final MapCodec<BlockTrapFloor> codec = MapCodec.unit(this);
+
 
 	public BlockTrapFloor(BlockBehaviour.Properties properties) {
 		super(properties);
 		registerDefaultState(stateDefinition.any().setValue(DISGUISE, Disguise.SELF));
 	}
 
-	@Override public MapCodec<? extends BlockTrapFloor> codec() { return codec; }
 
 	@Override
 	protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {

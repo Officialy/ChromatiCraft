@@ -37,7 +37,7 @@ final class CrystalQuads {
 		QuadBakingVertexConsumer vertex = new QuadBakingVertexConsumer();
 		vertex.setSprite(material, Transparency.TRANSLUCENT);
 		vertex.setTintIndex(-1);
-		vertex.setShade(false);
+		vertex.setShadeOverride(Direction.UP);
 		vertex.setAmbientOcclusion(false);
 		vertex.setLightEmission(15);
 		vertex.setDirection(face);

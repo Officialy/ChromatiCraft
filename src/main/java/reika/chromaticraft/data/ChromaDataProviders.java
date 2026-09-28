@@ -24,22 +24,18 @@ public final class ChromaDataProviders {
 
 	@SubscribeEvent
 	public static void onGatherServer(GatherDataEvent.Server event) {
-		event.createProvider(ChromaLootProvider::new);
 		event.createProvider(ChromaLootModifierProvider::new);
 		event.createProvider(ChromaTestStructureProvider::new);
 		event.createProvider(ChromaStructureTemplateProvider::new);
 		event.createProvider(ChromaVillagePoolProvider::new);
-		event.createProvider(ChromaCastingRecipeProvider::new);
-		event.createProvider(ChromaPoolRecipeProvider::new);
-		event.createProvider(ChromaCobbleGeneratorRecipeProvider::new);
-		event.createProvider(ChromaRecipeProvider::new);
-		event.createDatapackRegistryObjects(ChromaWorldGenProvider.buildRegistrySet());
+		event.createWorldRegistryObjects(ChromaWorldGenProvider.buildRegistrySet());
+		event.createReloadableRegistryObjects(ChromaWorldGenProvider.buildReloadableRegistrySet());
 		event.createProvider(ChromaBiomeModifierProvider::new);
-		event.createProvider(output -> new ChromaBiomeTagProvider(output, event.getLookupProvider()));
-		event.createProvider(output -> new ChromaConfiguredFeatureTagProvider(output, event.getLookupProvider()));
-		event.createProvider(output -> new ChromaBlockTagsProvider(output, event.getLookupProvider()));
-		event.createProvider(output -> new ChromaFluidTagsProvider(output, event.getLookupProvider()));
-		event.createProvider(output -> new ChromaItemTagsProvider(output, event.getLookupProvider()));
-		event.createProvider(output -> new ChromaDamageTypeTagsProvider(output, event.getLookupProvider()));
+		event.createProvider((output, lookup) -> new ChromaBiomeTagProvider(output, lookup));
+		event.createProvider((output, lookup) -> new ChromaConfiguredFeatureTagProvider(output, lookup));
+		event.createProvider((output, lookup) -> new ChromaBlockTagsProvider(output, lookup));
+		event.createProvider((output, lookup) -> new ChromaFluidTagsProvider(output, lookup));
+		event.createProvider((output, lookup) -> new ChromaItemTagsProvider(output, lookup));
+		event.createProvider((output, lookup) -> new ChromaDamageTypeTagsProvider(output, lookup));
 	}
 }

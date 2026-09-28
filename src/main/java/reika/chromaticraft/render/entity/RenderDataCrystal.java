@@ -109,11 +109,11 @@ public final class RenderDataCrystal extends EntityRenderer<EntityDataCrystal, R
 		poseStack.translate(0, 0.125, 0);
 
 		PoseStack prismPose = copy(poseStack);
-		prismPose.mulPose(Axis.ZP.rotationDegrees(27.5F));
+		prismPose.rotate(Axis.ZP.rotationDegrees(27.5F));
 		float rotation = 90;
 		if (state.airborneOwned)
 			rotation = state.ageInTicks * 90F / (20 + Math.floorMod(state.identity, 10));
-		prismPose.mulPose(Axis.XP.rotationDegrees(rotation));
+		prismPose.rotate(Axis.XP.rotationDegrees(rotation));
 		prismPose.translate(0, -PRISM_HEIGHT / 2, 0);
 		boolean orange = state.artealloy;
 		collector.submitCustomGeometry(poseStack, ChromaRenderPipelines.additiveSprite(orange ? NODE_ORANGE : NODE),
@@ -121,7 +121,7 @@ public final class RenderDataCrystal extends EntityRenderer<EntityDataCrystal, R
 
 		if (state.lineOfSight) {
 			PoseStack flarePose = copy(poseStack);
-			flarePose.mulPose(camera.orientation);
+			flarePose.rotate(camera.orientation);
 			collector.submitCustomGeometry(poseStack, ChromaRenderPipelines.legacyAdditiveSpriteThroughWall(FLARE),
 					(pose, out) -> flare(flarePose.last(), out));
 		}

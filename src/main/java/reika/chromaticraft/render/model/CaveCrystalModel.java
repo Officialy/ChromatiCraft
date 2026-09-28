@@ -1,5 +1,6 @@
 package reika.chromaticraft.render.model;
 
+import net.minecraft.core.Direction;
 import java.util.List;
 
 import com.mojang.blaze3d.platform.Transparency;
@@ -149,7 +150,7 @@ public final class CaveCrystalModel implements DynamicBlockStateModel {
                 QuadBakingVertexConsumer vertex = new QuadBakingVertexConsumer();
                 vertex.setSprite(material, Transparency.TRANSLUCENT);
                 vertex.setTintIndex(0);
-                vertex.setShade(false);
+                vertex.setShadeOverride(Direction.UP);
                 vertex.setLightEmission(15);
                 vertex.setAmbientOcclusion(false);
                 for (CaveCrystalGeometry.Point point : points) {
@@ -166,7 +167,7 @@ public final class CaveCrystalModel implements DynamicBlockStateModel {
                     QuadBakingVertexConsumer vertex = new QuadBakingVertexConsumer();
                     vertex.setSprite(base, Transparency.NONE);
                     vertex.setTintIndex(-1);
-                    vertex.setShade(false);
+                    vertex.setShadeOverride(Direction.UP);
                     vertex.setAmbientOcclusion(false);
                     int colour = 0xFF000000 | (shade << 16) | (shade << 8) | shade;
                     for (CaveCrystalGeometry.Point point : points) {

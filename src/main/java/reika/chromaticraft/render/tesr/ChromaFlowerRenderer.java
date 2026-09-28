@@ -101,7 +101,7 @@ public final class ChromaFlowerRenderer implements BlockEntityRenderer<TileEntit
 			PoseStack stack = new PoseStack();
 			stack.last().set(base);
 			stack.translate(0.5, 0, 0.5);
-			stack.mulPose(Axis.YP.rotationDegrees(60*i));
+			stack.rotate(Axis.YP.rotationDegrees(60*i));
 			stack.translate(-0.5, 0, -0.5);
 			PoseStack.Pose pose = stack.last();
 			vertex(v5, pose, 0.5F, 0, 1, du, dv, color, light);

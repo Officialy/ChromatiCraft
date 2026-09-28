@@ -1,11 +1,10 @@
 package reika.chromaticraft.world;
 
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
 import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.FeatureConfiguration;
 
 import reika.chromaticraft.registry.CrystalElement;
 
@@ -14,10 +13,9 @@ import reika.chromaticraft.registry.CrystalElement;
  * {@code BlockDyeSapling} called {@code generateRandomWeightedTree(..., force = true, vineChance = 0.25,
  * fertility = 0)}, and the sixteen {@code dye_tree_<colour>} configured features carry exactly that.
  */
-public final class DyeTreeFeature extends Feature<DyeTreeFeature.Config> {
+public final class DyeTreeFeature implements Feature {
 
-	public record Config(CrystalElement color, boolean force, float vineChance, float vineFertility)
-			implements FeatureConfiguration {
+	public record Config(CrystalElement color, boolean force, float vineChance, float vineFertility) {
 
 		private static final Codec<CrystalElement> ELEMENT = Codec.INT.xmap(
 				i -> CrystalElement.elements[Math.floorMod(i, CrystalElement.elements.length)], CrystalElement::ordinal);
@@ -35,14 +33,27 @@ public final class DyeTreeFeature extends Feature<DyeTreeFeature.Config> {
 		}
 	}
 
-	public DyeTreeFeature() {
-		super(Config.CODEC);
+	public static final MapCodec<DyeTreeFeature> CODEC = Config.CODEC.fieldOf("config")
+			.xmap(DyeTreeFeature::new, DyeTreeFeature::config);
+	private final Config config;
+
+	public DyeTreeFeature(Config config) {
+		this.config = config;
+	}
+
+	public Config config() {
+		return config;
 	}
 
 	@Override
-	public boolean place(FeaturePlaceContext<Config> context) {
-		Config config = context.config();
-		return TreeShaper.generateRandomWeightedTree(context.level(), context.origin(), context.random(),
+	public MapCodec<DyeTreeFeature> codec() {
+		return CODEC;
+	}
+
+	@Override
+	public boolean place(net.minecraft.world.level.WorldGenLevel world, net.minecraft.world.level.chunk.ChunkGenerator generator,
+			net.minecraft.util.RandomSource random, net.minecraft.core.BlockPos origin) {
+		return TreeShaper.generateRandomWeightedTree(world, origin, random,
 				config.color(), config.force(), config.vineChance(), config.vineFertility());
 	}
 }

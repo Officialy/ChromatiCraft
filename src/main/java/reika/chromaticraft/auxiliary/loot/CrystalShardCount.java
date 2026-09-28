@@ -7,7 +7,8 @@ import net.minecraft.world.item.ItemInstance;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.level.storage.loot.LootContext;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
-import net.minecraft.world.level.storage.loot.providers.number.NumberProvider;
+import net.minecraft.world.level.storage.loot.ValidationContext;
+import net.minecraft.world.level.storage.loot.providers.number.ints.ContextIntProvider;
 
 /**
  * V33a {@code BlockCaveCrystal.getNumberDrops(Random, int fortune)}:
@@ -20,7 +21,7 @@ import net.minecraft.world.level.storage.loot.providers.number.NumberProvider;
  * change the mod's entire early-game shard economy, so the formula is registered as its own provider
  * and the loot table stays data-driven.
  */
-public record CrystalShardCount() implements NumberProvider {
+public record CrystalShardCount() implements ContextIntProvider {
 
 	public static final CrystalShardCount INSTANCE = new CrystalShardCount();
 	public static final MapCodec<CrystalShardCount> MAP_CODEC = MapCodec.unit(INSTANCE);
@@ -31,7 +32,7 @@ public record CrystalShardCount() implements NumberProvider {
 	}
 
 	@Override
-	public int getInt(LootContext context) {
+	public int getIntUnsafe(LootContext context) {
 		RandomSource random = context.getRandom();
 		int fortune = fortuneLevel(context);
 		return 1 + random.nextInt(6 + fortune)
@@ -40,13 +41,11 @@ public record CrystalShardCount() implements NumberProvider {
 	}
 
 	@Override
-	public float getFloat(LootContext context) {
-		return this.getInt(context);
-	}
+	public void validate(ValidationContext context) {}
 
 	/** Shared with the dye-leaf drop providers. */
 	static int fortuneLevel(LootContext context) {
-		ItemInstance tool = context.getOptionalParameter(LootContextParams.TOOL);
+		ItemInstance tool = context.getOptional(LootContextParams.TOOL);
 		if (tool == null || tool.count() <= 0)
 			return 0;
 		return EnchantmentHelper.getItemEnchantmentLevel(

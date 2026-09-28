@@ -75,7 +75,7 @@ public final class EnderCrystalItemRenderer implements SpecialModelRenderer<Bool
 		state.lightCoords = LightCoordsUtil.FULL_BRIGHT;
 		state.outlineColor = outlineColor;
 		collector.submitModel(crystalModel, state, poseStack, CRYSTAL_TEXTURE,
-				LightCoordsUtil.FULL_BRIGHT, overlayCoords, outlineColor, null);
+				LightCoordsUtil.FULL_BRIGHT, overlayCoords, outlineColor);
 		poseStack.popPose();
 	}
 

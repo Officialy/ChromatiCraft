@@ -371,8 +371,8 @@ public final class MonumentRitualEffects {
 	private static final int MAX_CORES = 16;
 	/** std140: ivec4 CoreCount, vec4 Intensity, then vec4 Focus[16] and vec4 CoreColor[16]. */
 	private static final int UBO_SIZE = 16 + 16 + MAX_CORES * 16 * 2;
-	private static final int UBO_USAGE = com.mojang.blaze3d.buffers.GpuBuffer.USAGE_MAP_WRITE
-			| com.mojang.blaze3d.buffers.GpuBuffer.USAGE_UNIFORM;
+	private static final int UBO_USAGE = com.mojang.renderpearl.api.buffers.GpuBuffer.USAGE_MAP_WRITE
+			| com.mojang.renderpearl.api.buffers.GpuBuffer.USAGE_UNIFORM;
 	private static final net.minecraft.resources.Identifier EFFECT_ID =
 			net.minecraft.resources.Identifier.fromNamespaceAndPath(
 					reika.chromaticraft.ChromatiCraft.MODID, "monument");
@@ -401,8 +401,7 @@ public final class MonumentRitualEffects {
 		var frame = new com.mojang.blaze3d.framegraph.FrameGraphBuilder();
 		var mainHandle = frame.importExternal("main", main);
 		var gradedHandle = frame.createInternal("chromaticraft_monument_graded",
-				new com.mojang.blaze3d.resource.RenderTargetDescriptor(width, height, false,
-						new org.joml.Vector4f(0, 0, 0, 0), com.mojang.blaze3d.GpuFormat.RGBA8_UNORM));
+				new com.mojang.blaze3d.resource.RenderTargetDescriptor(width, height, new com.mojang.blaze3d.resource.RenderTargetDescriptor.TextureProperties(new org.joml.Vector4f(0, 0, 0, 0), com.mojang.renderpearl.api.GpuFormat.RGBA8_UNORM), null));
 		var pass = frame.addPass("chromaticraft_monument_grade");
 		pass.reads(mainHandle);
 		var gradedOut = pass.readsAndWrites(gradedHandle);
@@ -464,12 +463,12 @@ public final class MonumentRitualEffects {
 		var encoder = com.mojang.blaze3d.systems.RenderSystem.getDevice().createCommandEncoder();
 		try (var pass = encoder.createRenderPass(() -> "ChromatiCraft monument grade",
 				target.getColorTextureView(), java.util.Optional.empty())) {
-			pass.setPipeline(reika.chromaticraft.render.ChromaRenderPipelines.MONUMENT_GRADE);
+			pass.setPipeline(com.mojang.blaze3d.systems.RenderSystem.getCompiledPipeline(reika.chromaticraft.render.ChromaRenderPipelines.MONUMENT_GRADE));
 			com.mojang.blaze3d.systems.RenderSystem.bindDefaultUniforms(pass);
 			pass.setUniform("MonumentCores", coreUbo.currentBuffer());
-			pass.bindTexture("InSampler", source.getColorTextureView(),
+			pass.setUniform("InSampler", source.getColorTextureView(),
 					com.mojang.blaze3d.systems.RenderSystem.getSamplerCache()
-							.getClampToEdge(com.mojang.blaze3d.textures.FilterMode.LINEAR));
+							.getClampToEdge(com.mojang.renderpearl.api.textures.FilterMode.LINEAR));
 			pass.draw(3, 1, 0, 0);
 		}
 	}

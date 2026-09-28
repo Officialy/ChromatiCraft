@@ -2,13 +2,13 @@ package reika.chromaticraft.render;
 
 import java.util.function.Function;
 
-import com.mojang.blaze3d.PrimitiveTopology;
-import com.mojang.blaze3d.pipeline.BlendFunction;
-import com.mojang.blaze3d.pipeline.ColorTargetState;
-import com.mojang.blaze3d.pipeline.DepthStencilState;
-import com.mojang.blaze3d.pipeline.RenderPipeline;
-import com.mojang.blaze3d.platform.BlendFactor;
-import com.mojang.blaze3d.platform.CompareOp;
+import com.mojang.renderpearl.api.pipeline.PrimitiveTopology;
+import com.mojang.renderpearl.api.pipeline.BlendFunction;
+import com.mojang.renderpearl.api.pipeline.ColorTargetState;
+import com.mojang.renderpearl.api.pipeline.DepthStencilState;
+import com.mojang.renderpearl.api.pipeline.RenderPipeline;
+import com.mojang.renderpearl.api.pipeline.BlendFactor;
+import com.mojang.renderpearl.api.pipeline.CompareOp;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 
 import net.minecraft.util.Util;
@@ -68,7 +68,8 @@ public final class ChromaRenderPipelines {
     public static final RenderPipeline GUI_ADDITIVE_DARK = RenderPipeline.builder()
             .withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "pipeline/gui_additive_dark"))
             .withBindGroupLayout(BindGroupLayouts.GLOBALS)
-            .withBindGroupLayout(BindGroupLayouts.MATRICES_PROJECTION)
+            .withBindGroupLayout(BindGroupLayouts.PROJECTION)
+            .withBindGroupLayout(BindGroupLayouts.DYNAMIC_TRANSFORMS)
             .withVertexShader("core/position_tex_color")
             .withFragmentShader("core/position_tex_color")
             .withBindGroupLayout(BindGroupLayouts.SAMPLER0)
@@ -80,7 +81,8 @@ public final class ChromaRenderPipelines {
     public static final RenderPipeline ADDITIVE_SPRITE = RenderPipeline.builder()
             .withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "pipeline/additive_sprite"))
             .withBindGroupLayout(BindGroupLayouts.GLOBALS)
-            .withBindGroupLayout(BindGroupLayouts.MATRICES_PROJECTION)
+            .withBindGroupLayout(BindGroupLayouts.PROJECTION)
+            .withBindGroupLayout(BindGroupLayouts.DYNAMIC_TRANSFORMS)
             .withVertexShader("core/position_tex_color")
             .withFragmentShader("core/position_tex_color")
             .withBindGroupLayout(BindGroupLayouts.SAMPLER0)
@@ -95,7 +97,8 @@ public final class ChromaRenderPipelines {
 	public static final RenderPipeline ADDITIVE_SPRITE_THROUGH_WALL = RenderPipeline.builder()
 			.withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "pipeline/additive_sprite_through_wall"))
 			.withBindGroupLayout(BindGroupLayouts.GLOBALS)
-			.withBindGroupLayout(BindGroupLayouts.MATRICES_PROJECTION)
+			.withBindGroupLayout(BindGroupLayouts.PROJECTION)
+            .withBindGroupLayout(BindGroupLayouts.DYNAMIC_TRANSFORMS)
 			.withVertexShader("core/position_tex_color")
 			.withFragmentShader("core/position_tex_color")
 			.withBindGroupLayout(BindGroupLayouts.SAMPLER0)
@@ -110,7 +113,8 @@ public final class ChromaRenderPipelines {
 	public static final RenderPipeline PYLON_CORE = RenderPipeline.builder()
 			.withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "pipeline/pylon_core"))
 			.withBindGroupLayout(BindGroupLayouts.GLOBALS)
-			.withBindGroupLayout(BindGroupLayouts.MATRICES_PROJECTION)
+			.withBindGroupLayout(BindGroupLayouts.PROJECTION)
+            .withBindGroupLayout(BindGroupLayouts.DYNAMIC_TRANSFORMS)
 			.withVertexShader("core/position_tex_color")
 			.withFragmentShader(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "core/pylon_core"))
 			.withBindGroupLayout(BindGroupLayouts.SAMPLER0)
@@ -125,7 +129,8 @@ public final class ChromaRenderPipelines {
 	public static final RenderPipeline TRANSLUCENT_SPRITE = RenderPipeline.builder()
 			.withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "pipeline/translucent_sprite"))
 			.withBindGroupLayout(BindGroupLayouts.GLOBALS)
-			.withBindGroupLayout(BindGroupLayouts.MATRICES_PROJECTION)
+			.withBindGroupLayout(BindGroupLayouts.PROJECTION)
+            .withBindGroupLayout(BindGroupLayouts.DYNAMIC_TRANSFORMS)
 			.withVertexShader("core/position_tex_color")
 			.withFragmentShader("core/position_tex_color")
 			.withBindGroupLayout(BindGroupLayouts.SAMPLER0)
@@ -139,7 +144,8 @@ public final class ChromaRenderPipelines {
 	public static final RenderPipeline ADDITIVE_ALPHA_SPRITE = RenderPipeline.builder()
 			.withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "pipeline/additive_alpha_sprite"))
 			.withBindGroupLayout(BindGroupLayouts.GLOBALS)
-			.withBindGroupLayout(BindGroupLayouts.MATRICES_PROJECTION)
+			.withBindGroupLayout(BindGroupLayouts.PROJECTION)
+            .withBindGroupLayout(BindGroupLayouts.DYNAMIC_TRANSFORMS)
 			.withVertexShader("core/position_tex_color")
 			.withFragmentShader("core/position_tex_color")
 			.withBindGroupLayout(BindGroupLayouts.SAMPLER0)
@@ -159,7 +165,8 @@ public final class ChromaRenderPipelines {
 			.withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
 					"pipeline/legacy_additive_sprite"))
 			.withBindGroupLayout(BindGroupLayouts.GLOBALS)
-			.withBindGroupLayout(BindGroupLayouts.MATRICES_PROJECTION)
+			.withBindGroupLayout(BindGroupLayouts.PROJECTION)
+            .withBindGroupLayout(BindGroupLayouts.DYNAMIC_TRANSFORMS)
 			.withVertexShader("core/position_tex_color")
 			.withFragmentShader(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
 					"core/legacy_additive_sprite"))
@@ -176,7 +183,8 @@ public final class ChromaRenderPipelines {
 			.withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
 					"pipeline/legacy_additive_sprite_through_wall"))
 			.withBindGroupLayout(BindGroupLayouts.GLOBALS)
-			.withBindGroupLayout(BindGroupLayouts.MATRICES_PROJECTION)
+			.withBindGroupLayout(BindGroupLayouts.PROJECTION)
+            .withBindGroupLayout(BindGroupLayouts.DYNAMIC_TRANSFORMS)
 			.withVertexShader("core/position_tex_color")
 			.withFragmentShader(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
 					"core/legacy_additive_sprite"))
@@ -192,7 +200,8 @@ public final class ChromaRenderPipelines {
     public static final RenderPipeline ENERGY_BEAM = RenderPipeline.builder()
             .withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "pipeline/energy_beam"))
             .withBindGroupLayout(BindGroupLayouts.GLOBALS)
-            .withBindGroupLayout(BindGroupLayouts.MATRICES_PROJECTION)
+            .withBindGroupLayout(BindGroupLayouts.PROJECTION)
+            .withBindGroupLayout(BindGroupLayouts.DYNAMIC_TRANSFORMS)
             .withVertexShader("core/position_tex_color")
             .withFragmentShader("core/position_tex_color")
             .withBindGroupLayout(BindGroupLayouts.SAMPLER0)
@@ -211,7 +220,8 @@ public final class ChromaRenderPipelines {
     public static final RenderPipeline ADDITIVE_PARTICLE = RenderPipeline.builder()
             .withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "pipeline/additive_particle"))
             .withBindGroupLayout(BindGroupLayouts.GLOBALS)
-            .withBindGroupLayout(BindGroupLayouts.MATRICES_PROJECTION)
+            .withBindGroupLayout(BindGroupLayouts.PROJECTION)
+            .withBindGroupLayout(BindGroupLayouts.DYNAMIC_TRANSFORMS)
             .withBindGroupLayout(BindGroupLayouts.FOG)
             .withVertexShader("core/particle")
             .withFragmentShader("core/particle")
@@ -228,7 +238,8 @@ public final class ChromaRenderPipelines {
             .withLocation(Identifier.fromNamespaceAndPath(
                     ChromatiCraft.MODID, "pipeline/legacy_additive_particle_no_depth"))
             .withBindGroupLayout(BindGroupLayouts.GLOBALS)
-            .withBindGroupLayout(BindGroupLayouts.MATRICES_PROJECTION)
+            .withBindGroupLayout(BindGroupLayouts.PROJECTION)
+            .withBindGroupLayout(BindGroupLayouts.DYNAMIC_TRANSFORMS)
             .withBindGroupLayout(BindGroupLayouts.FOG)
             .withVertexShader("core/particle")
             .withFragmentShader(Identifier.fromNamespaceAndPath(
@@ -252,7 +263,8 @@ public final class ChromaRenderPipelines {
             .withLocation(Identifier.fromNamespaceAndPath(
                     ChromatiCraft.MODID, "pipeline/legacy_translucent_particle"))
             .withBindGroupLayout(BindGroupLayouts.GLOBALS)
-            .withBindGroupLayout(BindGroupLayouts.MATRICES_PROJECTION)
+            .withBindGroupLayout(BindGroupLayouts.PROJECTION)
+            .withBindGroupLayout(BindGroupLayouts.DYNAMIC_TRANSFORMS)
             .withBindGroupLayout(BindGroupLayouts.FOG)
             .withVertexShader("core/particle")
             .withFragmentShader(Identifier.fromNamespaceAndPath(
@@ -272,7 +284,8 @@ public final class ChromaRenderPipelines {
     public static final RenderPipeline UNLIT_ENTITY_CUTOUT = RenderPipeline.builder()
             .withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "pipeline/unlit_entity_cutout"))
             .withBindGroupLayout(BindGroupLayouts.GLOBALS)
-            .withBindGroupLayout(BindGroupLayouts.MATRICES_PROJECTION)
+            .withBindGroupLayout(BindGroupLayouts.PROJECTION)
+            .withBindGroupLayout(BindGroupLayouts.DYNAMIC_TRANSFORMS)
             .withBindGroupLayout(BindGroupLayouts.FOG)
             .withBindGroupLayout(BindGroupLayouts.LIGHTING)
             .withVertexShader("core/entity")
@@ -291,7 +304,8 @@ public final class ChromaRenderPipelines {
             .withLocation(Identifier.fromNamespaceAndPath(
                     ChromatiCraft.MODID, "pipeline/legacy_additive_particle"))
             .withBindGroupLayout(BindGroupLayouts.GLOBALS)
-            .withBindGroupLayout(BindGroupLayouts.MATRICES_PROJECTION)
+            .withBindGroupLayout(BindGroupLayouts.PROJECTION)
+            .withBindGroupLayout(BindGroupLayouts.DYNAMIC_TRANSFORMS)
             .withBindGroupLayout(BindGroupLayouts.FOG)
             .withVertexShader("core/particle")
             .withFragmentShader(Identifier.fromNamespaceAndPath(
@@ -317,10 +331,10 @@ public final class ChromaRenderPipelines {
             // Identifier or it resolves as "minecraft:chromaticraft:post/monument".
             .withVertexShader("core/screenquad")
             .withFragmentShader(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "post/monument"))
-            .withBindGroupLayout(com.mojang.blaze3d.pipeline.BindGroupLayout.builder()
-                    .withSampler("InSampler")
+            .withBindGroupLayout(com.mojang.renderpearl.api.pipeline.BindGroupLayout.builder()
+                    .withUniform("InSampler", com.mojang.renderpearl.api.pipeline.UniformType.COMBINED_IMAGE_SAMPLER)
                     .withUniform("MonumentCores",
-                            com.mojang.blaze3d.shaders.UniformType.UNIFORM_BUFFER)
+                            com.mojang.renderpearl.api.pipeline.UniformType.UNIFORM_BUFFER)
                     .build())
             .build();
 
@@ -331,9 +345,9 @@ public final class ChromaRenderPipelines {
 			.withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "pipeline/ua_zone"))
 			.withVertexShader("core/screenquad")
 			.withFragmentShader(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "post/ua_zone"))
-			.withBindGroupLayout(com.mojang.blaze3d.pipeline.BindGroupLayout.builder()
-					.withSampler("InSampler")
-					.withUniform("UaZone", com.mojang.blaze3d.shaders.UniformType.UNIFORM_BUFFER)
+			.withBindGroupLayout(com.mojang.renderpearl.api.pipeline.BindGroupLayout.builder()
+					.withUniform("InSampler", com.mojang.renderpearl.api.pipeline.UniformType.COMBINED_IMAGE_SAMPLER)
+					.withUniform("UaZone", com.mojang.renderpearl.api.pipeline.UniformType.UNIFORM_BUFFER)
 					.build())
 			.build();
 
@@ -343,9 +357,9 @@ public final class ChromaRenderPipelines {
 			.withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "pipeline/artealloy"))
 			.withVertexShader("core/screenquad")
 			.withFragmentShader(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "post/artealloy"))
-			.withBindGroupLayout(com.mojang.blaze3d.pipeline.BindGroupLayout.builder()
-					.withSampler("InSampler")
-					.withUniform("Artealloy", com.mojang.blaze3d.shaders.UniformType.UNIFORM_BUFFER)
+			.withBindGroupLayout(com.mojang.renderpearl.api.pipeline.BindGroupLayout.builder()
+					.withUniform("InSampler", com.mojang.renderpearl.api.pipeline.UniformType.COMBINED_IMAGE_SAMPLER)
+					.withUniform("Artealloy", com.mojang.renderpearl.api.pipeline.UniformType.UNIFORM_BUFFER)
 					.build())
 			.build();
 
@@ -355,10 +369,10 @@ public final class ChromaRenderPipelines {
 			.withVertexShader("core/screenquad")
 			.withFragmentShader(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
 					"post/locus_points"))
-			.withBindGroupLayout(com.mojang.blaze3d.pipeline.BindGroupLayout.builder()
-					.withSampler("InSampler")
+			.withBindGroupLayout(com.mojang.renderpearl.api.pipeline.BindGroupLayout.builder()
+					.withUniform("InSampler", com.mojang.renderpearl.api.pipeline.UniformType.COMBINED_IMAGE_SAMPLER)
 					.withUniform("LocusPoints",
-							com.mojang.blaze3d.shaders.UniformType.UNIFORM_BUFFER)
+							com.mojang.renderpearl.api.pipeline.UniformType.UNIFORM_BUFFER)
 					.build())
 			.build();
 
@@ -371,7 +385,8 @@ public final class ChromaRenderPipelines {
 			.withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
 					"pipeline/aura_locus_lines"))
 			.withBindGroupLayout(BindGroupLayouts.GLOBALS)
-			.withBindGroupLayout(BindGroupLayouts.MATRICES_PROJECTION)
+			.withBindGroupLayout(BindGroupLayouts.PROJECTION)
+            .withBindGroupLayout(BindGroupLayouts.DYNAMIC_TRANSFORMS)
 			.withBindGroupLayout(BindGroupLayouts.FOG)
 			.withVertexShader("core/rendertype_lines")
 			.withFragmentShader("core/rendertype_lines")

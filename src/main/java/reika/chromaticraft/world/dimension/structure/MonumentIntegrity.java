@@ -38,7 +38,7 @@ public final class MonumentIntegrity {
 
 	public static boolean repairLegacyLayout(ServerLevel level, BlockPos controllerPos) {
 		BlockPos anchor = controllerPos.subtract(MonumentPiece.CONTROLLER_OFFSET);
-		StructureTemplate template = level.getStructureManager()
+		StructureTemplate template = level.getStructureTemplateManager()
 				.get(ChromaStructureTemplateProvider.PROXIMA_MONUMENT).orElse(null);
 		if (template == null) {
 			ChromatiCraft.LOGGER.error("Cannot repair monument at {}: template {} is missing",

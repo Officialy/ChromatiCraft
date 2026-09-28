@@ -68,7 +68,7 @@ public final class RenderAuraPoint implements
 		// RenderLocusPoint's inherited three animated ADDITIVE2 layers.
 		poseStack.pushPose();
 		poseStack.translate(0.5, 0.5, 0.5);
-		poseStack.mulPose(camera.orientation);
+		poseStack.rotate(camera.orientation);
 		RenderDimensionCore.submitLayers(poseStack, collector, state.color & 0xffffff,
 				state.frame, true);
 		poseStack.popPose();
@@ -93,7 +93,7 @@ public final class RenderAuraPoint implements
 				.getAtlasOrThrow(AtlasIds.BLOCKS).getSprite(spriteId);
 		poseStack.pushPose();
 		poseStack.translate(0.5, 0.5, 0.5);
-		poseStack.mulPose(camera.orientation);
+		poseStack.rotate(camera.orientation);
 		PoseStack renderPose = copy(poseStack);
 		submitAfterTerrain(poseStack, collector,
 				ChromaRenderPipelines.legacyAdditiveSprite(TextureAtlas.LOCATION_BLOCKS),

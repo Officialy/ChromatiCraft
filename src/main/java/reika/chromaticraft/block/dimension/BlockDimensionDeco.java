@@ -1,6 +1,5 @@
 package reika.chromaticraft.block.dimension;
 
-import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.Entity;
@@ -44,17 +43,13 @@ import reika.chromaticraft.world.dimension.DimensionTuningManager;
 public class BlockDimensionDeco extends Block {
 
 	private final ProximaDecoTypes type;
-	private final MapCodec<BlockDimensionDeco> codec = MapCodec.unit(this);
+
 
 	public BlockDimensionDeco(BlockBehaviour.Properties properties, ProximaDecoTypes type) {
 		super(properties);
 		this.type = type;
 	}
 
-	@Override
-	public MapCodec<? extends BlockDimensionDeco> codec() {
-		return codec;
-	}
 
 	public ProximaDecoTypes getDecoType() {
 		return type;

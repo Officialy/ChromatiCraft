@@ -103,7 +103,7 @@ public final class CrystalGlowModel implements DynamicBlockStateModel {
 			QuadBakingVertexConsumer vertex = new QuadBakingVertexConsumer();
 			vertex.setSprite(sprite, Transparency.NONE);
 			vertex.setTintIndex(-1);
-			vertex.setShade(false);
+			vertex.setShadeOverride(Direction.UP);
 			vertex.setAmbientOcclusion(false);
 			vertex.setLightEmission(emission);
 			float[] n = normal(corners);

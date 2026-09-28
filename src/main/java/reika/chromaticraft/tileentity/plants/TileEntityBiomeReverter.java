@@ -83,9 +83,10 @@ public final class TileEntityBiomeReverter extends TileEntityMagicPlant implemen
 			target = relayed.asBlockPos();
 			if (!world.hasChunkAt(target)) return;
 		}
-		Holder<Biome> natural = world.getChunkSource().getGenerator().getBiomeSource().getNoiseBiome(
+		Holder<Biome> natural = world.getChunkSource().getGenerator().getBiomeSource()
+				.createUncachedResolver(world.getChunkSource().randomState()).getNoiseBiome(
 				QuartPos.fromBlock(target.getX()), QuartPos.fromBlock(target.getY()),
-				QuartPos.fromBlock(target.getZ()), world.getChunkSource().randomState().sampler());
+				QuartPos.fromBlock(target.getZ()));
 		if (world.getBiome(target).equals(natural)) return;
 		FillBiomeCommand.fill(world,
 				new BlockPos(target.getX(), world.getMinY(), target.getZ()),

@@ -1,6 +1,5 @@
 package reika.chromaticraft.block.dimension.structure.locks;
 
-import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.DustParticleOptions;
@@ -37,14 +36,13 @@ public final class BlockColoredLock extends Block implements EntityBlock {
 
 	public static final BooleanProperty OPEN = BooleanProperty.create("open");
 	public static final BooleanProperty GATE = BooleanProperty.create("gate");
-	private final MapCodec<BlockColoredLock> codec = MapCodec.unit(this);
+
 
 	public BlockColoredLock(BlockBehaviour.Properties properties) {
 		super(properties);
 		registerDefaultState(stateDefinition.any().setValue(OPEN, false).setValue(GATE, false));
 	}
 
-	@Override public MapCodec<? extends BlockColoredLock> codec() { return codec; }
 
 	@Override
 	protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {

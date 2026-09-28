@@ -29,7 +29,7 @@ dependencies {
     implementation project(":RotaryCraft")
     implementation project(":GeoStrata")
     implementation project(":ReactorCraft")
-    implementation "maven.modrinth:kkmrDlKT:TzDe72Nr"
+    implementation "maven.modrinth:kkmrDlKT:Z28Rt8Ne"
 }
 
 // PORT-IN-PROGRESS allowlist (mirrors ReactorCraft). The sources are still mostly original 1.7.10

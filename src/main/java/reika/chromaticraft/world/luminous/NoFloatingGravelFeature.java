@@ -7,8 +7,6 @@ import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
 import reika.chromaticraft.block.worldgen26.BlockCliffStone;
 
@@ -26,23 +24,30 @@ import reika.chromaticraft.block.worldgen26.BlockCliffStone;
  * place of the ordinary gravel ore), and the two "sand" patches a chunk laid on the top solid block,
  * because the decorator's second sand loop used the gravel generator.
  */
-public final class NoFloatingGravelFeature extends Feature<NoneFeatureConfiguration> {
+public final class NoFloatingGravelFeature implements Feature {
+
+    public static final com.mojang.serialization.MapCodec<NoFloatingGravelFeature> CODEC =
+            com.mojang.serialization.MapCodec.unit(NoFloatingGravelFeature::new);
+
+    @Override
+    public com.mojang.serialization.MapCodec<NoFloatingGravelFeature> codec() {
+        return CODEC;
+    }
 
 	/** V33a {@code new NoFloatingGravelVein(32)}. */
 	private static final int VEIN_SIZE = 32;
 
 	public NoFloatingGravelFeature() {
-		super(NoneFeatureConfiguration.CODEC);
+
 	}
 
 	/** DragonAPI {@code ControllableOreVein.generate}. */
 	@Override
-	public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-		WorldGenLevel world = context.level();
-		RandomSource rand = context.random();
-		int x = context.origin().getX() - 8;
-		int y = context.origin().getY();
-		int z = context.origin().getZ() - 8;
+	public boolean place(net.minecraft.world.level.WorldGenLevel world, net.minecraft.world.level.chunk.ChunkGenerator generator, net.minecraft.util.RandomSource random, net.minecraft.core.BlockPos origin) {
+		RandomSource rand = random;
+		int x = origin.getX() - 8;
+		int y = origin.getY();
+		int z = origin.getZ() - 8;
 		BlockState gravel = Blocks.GRAVEL.defaultBlockState();
 
 		float f = rand.nextFloat() * (float)Math.PI;

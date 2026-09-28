@@ -2,7 +2,7 @@ package reika.chromaticraft.client.gui;
 
 import java.util.List;
 
-import org.lwjgl.glfw.GLFW;
+import com.mojang.blaze3d.platform.InputConstants;
 
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
@@ -128,7 +128,7 @@ public final class ScreenRitualTable extends AbstractContainerScreen<MenuRitualT
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        if (event.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT && slideDirection == 0
+        if (event.button() == InputConstants.MOUSE_BUTTON_LEFT && slideDirection == 0
                 && !options.isEmpty()) {
             double x = event.x();
             double y = event.y();
@@ -149,12 +149,12 @@ public final class ScreenRitualTable extends AbstractContainerScreen<MenuRitualT
     @Override
     public boolean keyPressed(KeyEvent event) {
         return switch (event.key()) {
-            case GLFW.GLFW_KEY_LEFT -> scroll(-1);
-            case GLFW.GLFW_KEY_RIGHT -> scroll(1);
-            case GLFW.GLFW_KEY_PAGE_UP -> jump(-Math.max(1, options.size() / 8));
-            case GLFW.GLFW_KEY_PAGE_DOWN -> jump(Math.max(1, options.size() / 8));
-            case GLFW.GLFW_KEY_HOME -> jump(-options.size());
-            case GLFW.GLFW_KEY_END -> jump(options.size());
+            case InputConstants.KEY_LEFT -> scroll(-1);
+            case InputConstants.KEY_RIGHT -> scroll(1);
+            case InputConstants.KEY_PAGEUP -> jump(-Math.max(1, options.size() / 8));
+            case InputConstants.KEY_PAGEDOWN -> jump(Math.max(1, options.size() / 8));
+            case InputConstants.KEY_HOME -> jump(-options.size());
+            case InputConstants.KEY_END -> jump(options.size());
             default -> super.keyPressed(event);
         };
     }

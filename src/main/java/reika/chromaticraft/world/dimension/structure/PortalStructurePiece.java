@@ -58,7 +58,7 @@ public final class PortalStructurePiece extends StructurePiece {
 			ChunkGenerator generator, RandomSource random, BoundingBox chunkBox, ChunkPos chunkPos,
 			BlockPos referencePos) {
 		BlockPos origin = centre.offset(-TEMPLATE_RADIUS, 0, -TEMPLATE_RADIUS);
-		level.getLevel().getStructureManager().get(ChromaStructureTemplateProvider.PORTAL)
+		level.getLevel().getStructureTemplateManager().get(ChromaStructureTemplateProvider.PORTAL)
 				.orElseThrow(() -> new IllegalStateException(
 						"Missing portal template " + ChromaStructureTemplateProvider.PORTAL))
 				.placeInWorld(level, origin, origin,

@@ -111,7 +111,7 @@ public final class ChromaEnchantEvents {
 		if (!boots.isEmpty() && ChromaEnchants.FASTSINK.getLevel(boots) > 0) {
 			if (!e.onGround() && e.isInWater() && e.getDeltaMovement().y < 0) {
 				e.setDeltaMovement(e.getDeltaMovement().add(0, -0.0625, 0));
-				e.hurtMarked = true;
+				e.syncVelocity = true;
 			}
 		}
 	}

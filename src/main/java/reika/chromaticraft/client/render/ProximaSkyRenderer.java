@@ -1,5 +1,7 @@
 package reika.chromaticraft.client.render;
 
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.renderpearl.api.buffers.GpuBufferSlice;
 import java.util.Random;
 
 import com.mojang.blaze3d.vertex.BufferBuilder;
@@ -130,8 +132,10 @@ public final class ProximaSkyRenderer implements CustomSkyboxRenderer {
 
 	@Override
 	public boolean renderSky(LevelRenderState levelRenderState, SkyRenderState skyRenderState,
-			Matrix4fc modelViewMatrix, Runnable setupFog) {
-		setupFog.run();
+			Matrix4fc modelViewMatrix, GpuBufferSlice skyFog) {
+		// 26.3 hands the fog buffer over directly; this is what 26.2's setupFog runnable did, and what
+		// vanilla SkyRenderer#render does first.
+		RenderSystem.setShaderFog(skyFog);
 		reportOnce("reached", "the custom skybox hook is selected and firing");
 		// True is returned on every path below, including the ones that draw nothing: this renderer is
 		// selected for Proxima and Proxima has no sun or moon, so falling through to vanilla when the

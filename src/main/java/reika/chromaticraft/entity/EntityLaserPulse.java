@@ -127,7 +127,7 @@ public final class EntityLaserPulse extends ParticleEntity {
 			this.snapTo(this.getBlockX() + 0.5, this.getBlockY() + 0.5,
 					this.getBlockZ() + 0.5, 0, 0);
 		this.setDeltaMovement(direction.directionX * moveSpeed, 0, direction.directionZ * moveSpeed);
-		this.hurtMarked = true;
+		this.syncVelocity = true;
 	}
 
 	public Pulse pulse() { return new Pulse(direction, color); }

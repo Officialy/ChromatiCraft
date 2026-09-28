@@ -1,13 +1,10 @@
 package reika.chromaticraft.world.dimension.structure;
 
-import java.util.Optional;
 
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Vec3i;
 import net.minecraft.world.level.chunk.ChunkGeneratorStructureState;
 import net.minecraft.world.level.levelgen.structure.placement.StructurePlacement;
-import net.minecraft.world.level.levelgen.structure.placement.StructurePlacementType;
 
 import reika.chromaticraft.world.dimension.ProximaGenerators;
 
@@ -25,7 +22,7 @@ import reika.chromaticraft.world.dimension.ProximaGenerators;
  * Before it does, this answers no rather than guessing: a monument placed at a fallback position would
  * be written into a saved chunk and be wrong for the life of that world.
  */
-public class MonumentPlacement extends StructurePlacement {
+public class MonumentPlacement implements StructurePlacement {
 
 	/**
 	 * There is nothing to configure: the position comes from the dimension's layout, not from data.
@@ -35,17 +32,16 @@ public class MonumentPlacement extends StructurePlacement {
 			MapCodec.unit(MonumentPlacement::new);
 
 	public MonumentPlacement() {
-		super(Vec3i.ZERO, StructurePlacement.FrequencyReductionMethod.DEFAULT, 1F, 0, Optional.empty());
 	}
 
 	@Override
-	protected boolean isPlacementChunk(ChunkGeneratorStructureState state, int chunkX, int chunkZ) {
+	public boolean isStructureChunk(ChunkGeneratorStructureState state, int chunkX, int chunkZ) {
 		BlockPos monument = ProximaGenerators.monumentPosition();
 		return monument != null && (monument.getX() >> 4) == chunkX && (monument.getZ() >> 4) == chunkZ;
 	}
 
 	@Override
-	public StructurePlacementType<?> type() {
-		return ProximaStructures.MONUMENT_PLACEMENT.get();
+	public MapCodec<MonumentPlacement> codec() {
+		return CODEC;
 	}
 }

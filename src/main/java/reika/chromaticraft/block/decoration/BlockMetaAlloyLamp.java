@@ -1,6 +1,5 @@
 package reika.chromaticraft.block.decoration;
 
-import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -39,17 +38,13 @@ public final class BlockMetaAlloyLamp extends Block {
 	public static final EnumProperty<Direction> FACING = BlockStateProperties.FACING;
 	public static final BooleanProperty POD = BooleanProperty.create("pod");
 	private static final VoxelShape HALF = box(0, 0, 0, 16, 8, 16);
-	private static final MapCodec<BlockMetaAlloyLamp> CODEC = simpleCodec(BlockMetaAlloyLamp::new);
+
 
 	public BlockMetaAlloyLamp(Properties properties) {
 		super(properties);
 		this.registerDefaultState(this.stateDefinition.any().setValue(FACING, Direction.DOWN).setValue(POD, false));
 	}
 
-	@Override
-	protected MapCodec<? extends BlockMetaAlloyLamp> codec() {
-		return CODEC;
-	}
 
 	@Override
 	protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {

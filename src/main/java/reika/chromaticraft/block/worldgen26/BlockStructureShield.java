@@ -1,6 +1,5 @@
 package reika.chromaticraft.block.worldgen26;
 
-import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Player;
@@ -30,7 +29,7 @@ public class BlockStructureShield extends Block {
 	public static final BooleanProperty REINFORCED = BooleanProperty.create("reinforced");
 
 	private final ChromaShieldTypes type;
-	private final MapCodec<BlockStructureShield> codec = MapCodec.unit(this);
+
 
 	public BlockStructureShield(BlockBehaviour.Properties properties, ChromaShieldTypes type) {
 		super(properties);
@@ -38,10 +37,6 @@ public class BlockStructureShield extends Block {
 		registerDefaultState(stateDefinition.any().setValue(REINFORCED, false));
 	}
 
-	@Override
-	public MapCodec<? extends BlockStructureShield> codec() {
-		return codec;
-	}
 
 	public ChromaShieldTypes getShieldType() {
 		return type;
@@ -66,7 +61,7 @@ public class BlockStructureShield extends Block {
 	/** V33a getMobilityFlag: structure blocks are not piston-movable. */
 	@Override
 	public PushReaction getPistonPushReaction(BlockState state) {
-		return state.getValue(REINFORCED) ? PushReaction.BLOCK : PushReaction.NORMAL;
+		return state.getValue(REINFORCED) ? PushReaction.IMMOVEABLE : PushReaction.PUSH_PULL;
 	}
 
 	// V33a getLightOpacity returns 0 only for Glass. 26.2 has no getLightBlock override; occlusion

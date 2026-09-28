@@ -1,6 +1,6 @@
 package reika.chromaticraft.world;
 
-import java.util.stream.Stream;
+import java.util.function.Consumer;
 
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -9,7 +9,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.levelgen.placement.PlacementContext;
 import net.minecraft.world.level.levelgen.placement.PlacementModifier;
-import net.minecraft.world.level.levelgen.placement.PlacementModifierType;
 
 import reika.chromaticraft.registry.ChromaPlacementModifiers;
 
@@ -31,7 +30,7 @@ import reika.chromaticraft.registry.ChromaPlacementModifiers;
  * 0, so only the overworld floor ever moved, and V33a's own {@code rand(128)} nether band already
  * means what it says.
  */
-public final class TieredOreHeightPlacement extends PlacementModifier {
+public final class TieredOreHeightPlacement implements PlacementModifier {
 
 	private final boolean deepBand;
 
@@ -48,14 +47,14 @@ public final class TieredOreHeightPlacement extends PlacementModifier {
 	).apply(i, TieredOreHeightPlacement::new));
 
 	@Override
-	public Stream<BlockPos> getPositions(PlacementContext context, RandomSource random, BlockPos origin) {
+	public void modify(PlacementContext context, RandomSource random, BlockPos origin, Consumer<BlockPos> output) {
 		int y = deepBand ? random.nextInt(128)
 				: random.nextBoolean() ? random.nextInt(32) : random.nextInt(64);
-		return Stream.of(new BlockPos(origin.getX(), y, origin.getZ()));
+		output.accept(new BlockPos(origin.getX(), y, origin.getZ()));
 	}
 
 	@Override
-	public PlacementModifierType<?> type() {
-		return ChromaPlacementModifiers.TIERED_ORE_HEIGHT.get();
+	public MapCodec<TieredOreHeightPlacement> codec() {
+		return CODEC;
 	}
 }

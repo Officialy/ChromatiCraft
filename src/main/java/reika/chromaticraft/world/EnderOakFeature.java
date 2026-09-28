@@ -17,8 +17,6 @@ import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
 import reika.dragonapi.instantiable.math.LobulatedCurve;
 import reika.dragonapi.libraries.mathsci.ReikaPhysicsHelper;
@@ -37,7 +35,17 @@ import reika.dragonapi.libraries.mathsci.ReikaPhysicsHelper;
  *
  * <p>Three variants exist, differing only in constructor parameters; see {@link Variant}.
  */
-public class EnderOakFeature extends Feature<NoneFeatureConfiguration> {
+public class EnderOakFeature implements Feature {
+
+	public static final com.mojang.serialization.MapCodec<EnderOakFeature> CODEC =
+			com.mojang.serialization.Codec.STRING.fieldOf("variant")
+					.xmap(name -> new EnderOakFeature(Variant.valueOf(name.toUpperCase(java.util.Locale.ROOT))),
+							feature -> feature.variant.name().toLowerCase(java.util.Locale.ROOT));
+
+	@Override
+	public com.mojang.serialization.MapCodec<EnderOakFeature> codec() {
+		return CODEC;
+	}
 
 	/** V33a BiomeEnderForest's three configured Ender Oaks, verbatim. */
 	public enum Variant {
@@ -74,15 +82,12 @@ public class EnderOakFeature extends Feature<NoneFeatureConfiguration> {
 	private final Variant variant;
 
 	public EnderOakFeature(Variant variant) {
-		super(NoneFeatureConfiguration.CODEC);
+
 		this.variant = variant;
 	}
 
 	@Override
-	public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-		WorldGenLevel world = context.level();
-		RandomSource random = context.random();
-		BlockPos origin = context.origin();
+	public boolean place(net.minecraft.world.level.WorldGenLevel world, net.minecraft.world.level.chunk.ChunkGenerator generator, net.minecraft.util.RandomSource random, net.minecraft.core.BlockPos origin) {
 		// V33a gates on ReikaPlantHelper.SAPLING.canPlantAt: ordinary sapling ground.
 		BlockState soil = world.getBlockState(origin.below());
 		if (!soil.is(Blocks.GRASS_BLOCK) && !soil.is(Blocks.DIRT) && !soil.is(Blocks.PODZOL)

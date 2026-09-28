@@ -79,7 +79,7 @@ public final class EntityTunnelNuker extends Mob implements DestroyOnUnload {
 		double speed = 0.075;
 		double vy = Math.clamp((top - this.getY() + 8) / 32D, -0.08, 0.125);
 		this.setDeltaMovement(-Math.sin(yaw) * speed, vy, Math.cos(yaw) * speed);
-		this.hurtMarked = true;
+		this.syncVelocity = true;
 
 		if (this.level().isClientSide()) {
 			if (this.tickCount % 16 == 0)

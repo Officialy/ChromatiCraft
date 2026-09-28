@@ -1,7 +1,6 @@
 package reika.chromaticraft.client.gui;
 
 import com.mojang.blaze3d.platform.InputConstants;
-import com.mojang.blaze3d.platform.Window;
 import net.minecraft.SharedConstants;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -24,7 +23,6 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.ResolvableProfile;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
-import org.lwjgl.glfw.GLFW;
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.auxiliary.ElementEncodedNumber;
 import reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe;
@@ -1460,14 +1458,13 @@ public final class ScreenChromicLexicon extends Screen {
 	 * mechanism for the disagreement was ever verified, so do not read one into this.
 	 */
 	private void spinStructure(StructureRenderer render) {
-		Window window = minecraft.getWindow();
-		if (InputConstants.isKeyDown(window, GLFW.GLFW_KEY_A))
+		if (InputConstants.isKeyDown(InputConstants.KEY_A))
 			render.rotate(0, 0.75, 0);
-		else if (InputConstants.isKeyDown(window, GLFW.GLFW_KEY_D))
+		else if (InputConstants.isKeyDown(InputConstants.KEY_D))
 			render.rotate(0, -0.75, 0);
-		else if (InputConstants.isKeyDown(window, GLFW.GLFW_KEY_W))
+		else if (InputConstants.isKeyDown(InputConstants.KEY_W))
 			render.rotate(0.75, 0, 0);
-		else if (InputConstants.isKeyDown(window, GLFW.GLFW_KEY_S))
+		else if (InputConstants.isKeyDown(InputConstants.KEY_S))
 			render.rotate(-0.75, 0, 0);
 	}
 
@@ -1494,18 +1491,18 @@ public final class ScreenChromicLexicon extends Screen {
 	@Override
 	public boolean keyPressed(KeyEvent event) {
 		if (searching) {
-			if (event.key() == GLFW.GLFW_KEY_BACKSPACE && !search.isEmpty()) {
+			if (event.key() == InputConstants.KEY_BACKSPACE && !search.isEmpty()) {
 				search = search.substring(0, search.length() - 1);
 				pageOffset = 0;
 				rebuildWidgets();
 				return true;
 			}
-			if (event.key() == GLFW.GLFW_KEY_ENTER || event.key() == GLFW.GLFW_KEY_KP_ENTER) {
+			if (event.key() == InputConstants.KEY_RETURN || event.key() == InputConstants.KEY_NUMPADENTER) {
 				searching = false;
 				rebuildWidgets();
 				return true;
 			}
-			if (event.key() == GLFW.GLFW_KEY_ESCAPE) {
+			if (event.key() == InputConstants.KEY_ESCAPE) {
 				searching = false;
 				rebuildWidgets();
 				return true;
@@ -1515,10 +1512,10 @@ public final class ScreenChromicLexicon extends Screen {
 		// The progress graph pans with the held movement keys through LexiconScrollPane, the same way
 		// the navigation sheet does, so W/A/S/D are deliberately not consumed as discrete steps here.
 		if (selected != null && castingRecipeView && !castingRecipes().isEmpty()) {
-			if (key == GLFW.GLFW_KEY_A || key == GLFW.GLFW_KEY_LEFT) return moveRecipe(-1);
-			if (key == GLFW.GLFW_KEY_D || key == GLFW.GLFW_KEY_RIGHT) return moveRecipe(1);
-			if (key == GLFW.GLFW_KEY_W || key == GLFW.GLFW_KEY_UP) return moveRecipeSubpage(-1);
-			if (key == GLFW.GLFW_KEY_S || key == GLFW.GLFW_KEY_DOWN) return moveRecipeSubpage(1);
+			if (key == InputConstants.KEY_A || key == InputConstants.KEY_LEFT) return moveRecipe(-1);
+			if (key == InputConstants.KEY_D || key == InputConstants.KEY_RIGHT) return moveRecipe(1);
+			if (key == InputConstants.KEY_W || key == InputConstants.KEY_UP) return moveRecipeSubpage(-1);
+			if (key == InputConstants.KEY_S || key == InputConstants.KEY_DOWN) return moveRecipeSubpage(1);
 		}
 		if (selected != null && selected.section() == LexiconCatalog.Section.STRUCTURES && !castingRecipeView) {
 			// W/A/S/D are NOT consumed here in the 3D view: V33a polls them every frame so the model
@@ -1526,11 +1523,11 @@ public final class ScreenChromicLexicon extends Screen {
 			// events would turn that back into a per-press step.
 			StructureRenderer render = structureRenderer();
 			if (render != null && structureMode == 1) {
-				if (key == GLFW.GLFW_KEY_W || key == GLFW.GLFW_KEY_UP) {
+				if (key == InputConstants.KEY_W || key == InputConstants.KEY_UP) {
 					render.incrementStepY();
 					return true;
 				}
-				if (key == GLFW.GLFW_KEY_S || key == GLFW.GLFW_KEY_DOWN) {
+				if (key == InputConstants.KEY_S || key == InputConstants.KEY_DOWN) {
 					render.decrementStepY();
 					return true;
 				}
@@ -1543,31 +1540,31 @@ public final class ScreenChromicLexicon extends Screen {
 						.hasRitual(selected.sourceId())) {
 			// V33a reaches GuiRitual from the ability's page; here it is that page's second subpage,
 			// turned the same way every other book page turns.
-			if (key == GLFW.GLFW_KEY_W || key == GLFW.GLFW_KEY_UP) return moveAbilitySubpage(-1);
-			if (key == GLFW.GLFW_KEY_S || key == GLFW.GLFW_KEY_DOWN) return moveAbilitySubpage(1);
+			if (key == InputConstants.KEY_W || key == InputConstants.KEY_UP) return moveAbilitySubpage(-1);
+			if (key == InputConstants.KEY_S || key == InputConstants.KEY_DOWN) return moveAbilitySubpage(1);
 		}
 		if (selected != null && !castingRecipeView
 				&& selected.section() == LexiconCatalog.Section.MACHINES
 				&& machinePages().size() > 1) {
 			// V33a pageList is MAIN, NOTES when authored, ENERGY when applicable.
-			if (key == GLFW.GLFW_KEY_W || key == GLFW.GLFW_KEY_UP) return moveMachineSubpage(-1);
-			if (key == GLFW.GLFW_KEY_S || key == GLFW.GLFW_KEY_DOWN) return moveMachineSubpage(1);
+			if (key == InputConstants.KEY_W || key == InputConstants.KEY_UP) return moveMachineSubpage(-1);
+			if (key == InputConstants.KEY_S || key == InputConstants.KEY_DOWN) return moveMachineSubpage(1);
 		}
 		if (selected != null) {
-			if (key == GLFW.GLFW_KEY_A || key == GLFW.GLFW_KEY_LEFT) return moveEntry(-1);
-			if (key == GLFW.GLFW_KEY_D || key == GLFW.GLFW_KEY_RIGHT) return moveEntry(1);
-			if (key == GLFW.GLFW_KEY_W || key == GLFW.GLFW_KEY_UP)
+			if (key == InputConstants.KEY_A || key == InputConstants.KEY_LEFT) return moveEntry(-1);
+			if (key == InputConstants.KEY_D || key == InputConstants.KEY_RIGHT) return moveEntry(1);
+			if (key == InputConstants.KEY_W || key == InputConstants.KEY_UP)
 				return specialistSubpageCount() > 1 ? moveSpecialistSubpage(-1) : moveTextPage(-1);
-			if (key == GLFW.GLFW_KEY_S || key == GLFW.GLFW_KEY_DOWN)
+			if (key == InputConstants.KEY_S || key == InputConstants.KEY_DOWN)
 				return specialistSubpageCount() > 1 ? moveSpecialistSubpage(1) : moveTextPage(1);
 		}
 		else if (view == View.NAVIGATION || view == View.STORED_PAGES) {
 			// W/A/S/D and the arrows are NOT handled here: V33a pans the navigation sheet with the
 			// held movement keys every frame (see LexiconScrollPane), and consuming them as discrete
 			// steps here would fight that. Sections move on the tab buttons, pages on the wheel.
-			if (key == GLFW.GLFW_KEY_PAGE_UP) return moveSection(-1);
-			if (key == GLFW.GLFW_KEY_PAGE_DOWN) return moveSection(1);
-			if (key == GLFW.GLFW_KEY_SLASH) {
+			if (key == InputConstants.KEY_PAGEUP) return moveSection(-1);
+			if (key == InputConstants.KEY_PAGEDOWN) return moveSection(1);
+			if (key == InputConstants.KEY_SLASH) {
 				searching = true;
 				rebuildWidgets();
 				return true;
@@ -1626,7 +1623,7 @@ public final class ScreenChromicLexicon extends Screen {
 	public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
 		// V33a drawMachineRender: holding the left button over the model tips it, one degree per unit
 		// of travel, clamped either side of level. There is no yaw drag -- that runs off a clock.
-		if (event.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT && selected != null && !castingRecipeView
+		if (event.button() == InputConstants.MOUSE_BUTTON_LEFT && selected != null && !castingRecipeView
 				&& selected.section() == LexiconCatalog.Section.MACHINES) {
 			int left = (width - WIDTH) / 2;
 			int top = (height - HEIGHT) / 2;
@@ -1637,7 +1634,7 @@ public final class ScreenChromicLexicon extends Screen {
 		}
 		// V33a draw3d: rotate(0.25*dY, 0.25*dX, 0) while the left button is held. The pitch sign is
 		// flipped for the same reason spinStructure's is -- see the note there.
-		if (event.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT && structureMode == 0
+		if (event.button() == InputConstants.MOUSE_BUTTON_LEFT && structureMode == 0
 				&& isInsideStructurePreview(event.x(), event.y())) {
 			StructureRenderer render = structureRenderer();
 			if (render != null) {
@@ -1650,7 +1647,7 @@ public final class ScreenChromicLexicon extends Screen {
 
 	@Override
 	public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-		if (event.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT && selected == null
+		if (event.button() == InputConstants.MOUSE_BUTTON_LEFT && selected == null
 				&& (view == View.NAVIGATION || view == View.STORED_PAGES)) {
 			LexiconCatalog.Entry hit = sheetHit((int)event.x(), (int)event.y());
 			if (hit != null) {
@@ -1658,14 +1655,14 @@ public final class ScreenChromicLexicon extends Screen {
 				return true;
 			}
 		}
-		if (event.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT && selected == null && view == View.RECOVERY) {
+		if (event.button() == InputConstants.MOUSE_BUTTON_LEFT && selected == null && view == View.RECOVERY) {
 			LexiconCatalog.Entry page = recoveryHit((int)event.x(), (int)event.y());
 			if (page != null) {
 				ClientPacketDistributor.sendToServer(new ChromaNetwork.RecoverResearchPage(page.id()));
 				return true;
 			}
 		}
-		if (event.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT && selected == null && view == View.PROGRESS) {
+		if (event.button() == InputConstants.MOUSE_BUTTON_LEFT && selected == null && view == View.PROGRESS) {
 			int left = (width - WIDTH) / 2;
 			int top = (height - HEIGHT) / 2;
 			ProgressStage stage = progressGraph.hit(progressView, left, top,
@@ -1676,7 +1673,7 @@ public final class ScreenChromicLexicon extends Screen {
 			}
 		}
 		// V33a draw3d: the right button snaps the model back to its default orientation.
-		if (event.button() == GLFW.GLFW_MOUSE_BUTTON_RIGHT && structureMode == 0
+		if (event.button() == InputConstants.MOUSE_BUTTON_RIGHT && structureMode == 0
 				&& isInsideStructurePreview(event.x(), event.y())) {
 			StructureRenderer render = structureRenderer();
 			if (render != null) {

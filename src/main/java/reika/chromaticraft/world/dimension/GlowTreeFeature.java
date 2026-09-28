@@ -6,8 +6,6 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.world.dimension.GlowTreeShapes.Shape;
@@ -37,20 +35,25 @@ import reika.chromaticraft.world.dimension.GlowTreeShapes.Shape;
  * exists the value would be carried and never read, so it is recorded here instead — the same choice
  * the glowing log already makes.
  */
-public final class GlowTreeFeature extends Feature<NoneFeatureConfiguration> {
+public final class GlowTreeFeature implements Feature {
+
+    public static final com.mojang.serialization.MapCodec<GlowTreeFeature> CODEC =
+            com.mojang.serialization.MapCodec.unit(GlowTreeFeature::new);
+
+    @Override
+    public com.mojang.serialization.MapCodec<GlowTreeFeature> codec() {
+        return CODEC;
+    }
 
 	/** V33a canGenerateTree: how much clear air an attempt needs above its origin. */
 	private static final int REQUIRED_CLEARANCE = 8;
 
 	public GlowTreeFeature() {
-		super(NoneFeatureConfiguration.CODEC);
+
 	}
 
 	@Override
-	public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-		WorldGenLevel world = context.level();
-		RandomSource random = context.random();
-		BlockPos origin = context.origin();
+	public boolean place(net.minecraft.world.level.WorldGenLevel world, net.minecraft.world.level.chunk.ChunkGenerator generator, net.minecraft.util.RandomSource random, net.minecraft.core.BlockPos origin) {
 		if (!canGenerate(world, origin))
 			return false;
 

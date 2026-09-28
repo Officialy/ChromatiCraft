@@ -7,10 +7,7 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.levelgen.feature.ConfiguredFeature;
 import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
 import reika.chromaticraft.block.worldgen26.BlockGlowDaisy;
 import reika.chromaticraft.block.worldgen26.BlockTieredPlant;
@@ -33,24 +30,31 @@ import reika.chromaticraft.world.GlowingCliffsColumnShaper;
  * <p>The floating islands, the third pass, are {@code LuminousIslandStructure}. The fourth,
  * {@code generateMaterialVeins}, only ever placed Mystcraft crystal and is CHROMA-PORT with Mystcraft.
  */
-public final class LuminousCliffsAuxFeature extends Feature<NoneFeatureConfiguration> {
+public final class LuminousCliffsAuxFeature implements Feature {
+
+    public static final com.mojang.serialization.MapCodec<LuminousCliffsAuxFeature> CODEC =
+            com.mojang.serialization.MapCodec.unit(LuminousCliffsAuxFeature::new);
+
+    @Override
+    public com.mojang.serialization.MapCodec<LuminousCliffsAuxFeature> codec() {
+        return CODEC;
+    }
 
 	/** V33a {@code getUndergroundTreeGen(rand, true, 40)}. */
 	private static final int BIG_TREE_CHANCE = 40;
 
 	public LuminousCliffsAuxFeature() {
-		super(NoneFeatureConfiguration.CODEC);
+
 	}
 
 	@Override
-	public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-		WorldGenLevel level = context.level();
-		RandomSource random = context.random();
-		ChunkPos chunk = ChunkPos.containing(context.origin());
+	public boolean place(net.minecraft.world.level.WorldGenLevel world, net.minecraft.world.level.chunk.ChunkGenerator generator, net.minecraft.util.RandomSource random, net.minecraft.core.BlockPos origin) {
+		WorldGenLevel level = world;
+		ChunkPos chunk = ChunkPos.containing(origin);
 		GlowingCliffsColumnShaper.Sampler sampler = LuminousCliffsTerrainFeature.sampler(level);
-		var configured = level.registryAccess().lookupOrThrow(Registries.CONFIGURED_FEATURE);
-		ConfiguredFeature<?, ?> small = configured.getValue(ChromaWorldGenProvider.UNDERGROUND_GLOWING_TREE_SMALL);
-		ConfiguredFeature<?, ?> big = configured.getValue(ChromaWorldGenProvider.UNDERGROUND_GLOWING_TREE_BIG);
+		var features = level.registryAccess().lookupOrThrow(Registries.FEATURE);
+		Feature small = features.getValue(ChromaWorldGenProvider.UNDERGROUND_GLOWING_TREE_SMALL);
+		Feature big = features.getValue(ChromaWorldGenProvider.UNDERGROUND_GLOWING_TREE_BIG);
 		boolean changed = false;
 		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
 
@@ -65,10 +69,10 @@ public final class LuminousCliffsAuxFeature extends Feature<NoneFeatureConfigura
 					if (!level.getBlockState(pos).is(Blocks.OAK_SAPLING))
 						continue;
 					level.setBlock(pos, Blocks.AIR.defaultBlockState(), 2);
-					ConfiguredFeature<?, ?> tree = random.nextInt(BIG_TREE_CHANCE) == 0 ? big : small;
+					Feature tree = random.nextInt(BIG_TREE_CHANCE) == 0 ? big : small;
 					BlockPos at = pos.immutable();
-					if (tree != null && !tree.place(level, context.chunkGenerator(), random, at))
-						tree.place(level, context.chunkGenerator(), random, at);
+					if (tree != null && !tree.place(level, generator, random, at))
+						tree.place(level, generator, random, at);
 					changed = true;
 				}
 			}

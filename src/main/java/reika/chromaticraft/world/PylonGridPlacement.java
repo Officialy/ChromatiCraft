@@ -8,7 +8,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.levelgen.FlatLevelSource;
 import net.minecraft.world.level.levelgen.placement.PlacementContext;
 import net.minecraft.world.level.levelgen.placement.PlacementFilter;
-import net.minecraft.world.level.levelgen.placement.PlacementModifierType;
 
 import reika.chromaticraft.registry.ChromaOptions;
 import reika.chromaticraft.registry.ChromaPlacementModifiers;
@@ -18,7 +17,7 @@ import reika.chromaticraft.registry.ChromaPlacementModifiers;
  * policy outside {@link PylonFeature} lets the configured feature remain directly testable with
  * {@code /place feature chromaticraft:pylon}.
  */
-public final class PylonGridPlacement extends PlacementFilter {
+public final class PylonGridPlacement implements PlacementFilter {
 
     public static final PylonGridPlacement INSTANCE = new PylonGridPlacement();
     public static final MapCodec<PylonGridPlacement> CODEC = MapCodec.unit(() -> INSTANCE);
@@ -26,7 +25,7 @@ public final class PylonGridPlacement extends PlacementFilter {
     private PylonGridPlacement() {}
 
     @Override
-    protected boolean shouldPlace(PlacementContext context, RandomSource random, BlockPos origin) {
+    public boolean shouldPlace(PlacementContext context, RandomSource random, BlockPos origin) {
         if (context.getLevel().getLevel().dimension() != Level.OVERWORLD
                 || context.generator() instanceof FlatLevelSource && !ChromaOptions.FLATGEN.getState())
             return false;
@@ -36,7 +35,7 @@ public final class PylonGridPlacement extends PlacementFilter {
     }
 
     @Override
-    public PlacementModifierType<?> type() {
-        return ChromaPlacementModifiers.PYLON_GRID.get();
+    public MapCodec<PylonGridPlacement> codec() {
+        return CODEC;
     }
 }

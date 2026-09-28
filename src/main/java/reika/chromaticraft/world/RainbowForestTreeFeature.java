@@ -9,8 +9,6 @@ import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
 import reika.chromaticraft.block.dye26.BlockDyeFlower;
 import reika.chromaticraft.block.dye26.BlockDyeSapling;
@@ -41,7 +39,15 @@ import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
  * mud were Ethereal Blooms. Thaumcraft-only behaviour stays disabled, so those eight attempts are not
  * made.
  */
-public final class RainbowForestTreeFeature extends Feature<NoneFeatureConfiguration> {
+public final class RainbowForestTreeFeature implements Feature {
+
+    public static final com.mojang.serialization.MapCodec<RainbowForestTreeFeature> CODEC =
+            com.mojang.serialization.MapCodec.unit(RainbowForestTreeFeature::new);
+
+    @Override
+    public com.mojang.serialization.MapCodec<RainbowForestTreeFeature> codec() {
+        return CODEC;
+    }
 
 	private static final float FERTILE_VINE_CHANCE_FACTOR = 0.12F;
 
@@ -55,7 +61,7 @@ public final class RainbowForestTreeFeature extends Feature<NoneFeatureConfigura
 	private static final NoiseGeneratorBase WOOD_GLOW_NOISE = new Simplex3DGenerator(191327 ^ ROOT).setFrequency(0.8);
 
 	public RainbowForestTreeFeature() {
-		super(NoneFeatureConfiguration.CODEC);
+
 	}
 
 	private static VoronoiNoiseGenerator createColorNoise() {
@@ -78,11 +84,9 @@ public final class RainbowForestTreeFeature extends Feature<NoneFeatureConfigura
 	}
 
 	@Override
-	public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-		WorldGenLevel world = context.level();
-		RandomSource random = context.random();
-		int x = context.origin().getX();
-		int z = context.origin().getZ();
+	public boolean place(net.minecraft.world.level.WorldGenLevel world, net.minecraft.world.level.chunk.ChunkGenerator generator, net.minecraft.util.RandomSource random, net.minecraft.core.BlockPos origin) {
+		int x = origin.getX();
+		int z = origin.getZ();
 		BlockPos pos = new BlockPos(x, ReikaWorldHelper.getTopSolidOrLiquidBlock(world, x, z), z);
 		if (!TreeShaper.canGenerateTree(world, x, z) || !BlockDyeSapling.canGrowAt(world, pos, true))
 			return false;

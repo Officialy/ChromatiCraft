@@ -21,7 +21,7 @@ import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.monster.Creeper;
-import net.minecraft.world.entity.monster.EnderMan;
+import net.minecraft.world.entity.monster.Enderman;
 import net.minecraft.world.entity.monster.zombie.ZombifiedPiglin;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.Projectile;
@@ -65,7 +65,7 @@ public final class AbilityEffects {
 		Vec3 motion = player.getDeltaMovement();
 		player.setDeltaMovement(motion.x,
 				motion.y + power / 2D * (1 + player.getRandom().nextDouble()), motion.z);
-		player.hurtMarked = true;
+		player.syncVelocity = true;
 		player.resetFallDistance();
 		ChromaSounds.RIFT.playSound(player, 1, 2);
 		return true;
@@ -158,7 +158,7 @@ public final class AbilityEffects {
 				Mth.clamp(motion.y + delta.y / distance / distance / 2 +
 						(entity.getY() < target.y ? lift : 0), -0.75, 0.75),
 				Mth.clamp(motion.z + delta.z / distance / distance / horizontalDivisor, -0.75, 0.75));
-		entity.hurtMarked = true;
+		entity.syncVelocity = true;
 	}
 
 	public static void stopArrows(Player player) {
@@ -174,14 +174,14 @@ public final class AbilityEffects {
 			arrow.setDeltaMovement(arrow.getDeltaMovement().scale(-0.1));
 			arrow.setYRot(arrow.getYRot() + 180);
 			arrow.yRotO += 180;
-			arrow.hurtMarked = true;
+			arrow.syncVelocity = true;
 		}
 	}
 
 	public static void deAggroMobs(Player player) {
 		for (Mob mob : player.level().getEntitiesOfClass(Mob.class,
 				player.getBoundingBox().inflate(12))) {
-			if (mob instanceof EnderMan || mob instanceof ZombifiedPiglin)
+			if (mob instanceof Enderman || mob instanceof ZombifiedPiglin)
 				continue;
 			if (mob.getTarget() == player)
 				mob.setTarget(null);
@@ -213,7 +213,7 @@ public final class AbilityEffects {
 					0.25F + player.getRandom().nextFloat());
 		player.setDeltaMovement(motion.x * 1.05, Math.max(0, motion.y), motion.z * 1.05);
 		player.setPos(player.getX(), Mth.floor(player.getY()) + 0.7, player.getZ());
-		player.hurtMarked = true;
+		player.syncVelocity = true;
 	}
 
 	public static void shockwave(Player player) {
@@ -227,7 +227,7 @@ public final class AbilityEffects {
 			Vec3 away = target.position().subtract(player.position());
 			double horizontal = Math.max(0.001, away.horizontalDistance());
 			target.push(away.x / horizontal * 4, 0.5, away.z / horizontal * 4);
-			target.hurtMarked = true;
+			target.syncVelocity = true;
 		}
 	}
 }

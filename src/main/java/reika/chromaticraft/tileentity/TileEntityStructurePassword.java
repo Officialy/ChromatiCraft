@@ -99,7 +99,7 @@ public final class TileEntityStructurePassword extends BlockEntity implements Co
 		generator.forceOpen(level);
 		for (int slot = 0; slot < SIZE; slot++) {
 			ItemStack stack = items.get(slot);
-			if (!stack.isEmpty()) player.getInventory().placeItemBackInInventory(stack.copy());
+			if (!stack.isEmpty()) player.getInventory().placeItemBackInInventory(stack.copy(), net.minecraft.util.Prediction.SERVER_ONLY);
 			items.set(slot, ItemStack.EMPTY);
 		}
 		setChanged();

@@ -45,8 +45,6 @@ import net.minecraft.world.level.block.CrossCollisionBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.Rotation;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 import net.minecraft.world.level.storage.loot.BuiltInLootTables;
 import net.minecraft.world.level.storage.loot.LootContext;
 import net.minecraft.world.level.storage.loot.LootTable;
@@ -172,7 +170,6 @@ import reika.chromaticraft.world.dimension.ProximaTerrainProfile;
 import reika.chromaticraft.registry.ChromaDimensions;
 import reika.chromaticraft.world.dimension.ProximaNoiseSettings;
 import reika.chromaticraft.world.dimension.ProximaTerrainDensityFunction;
-import net.minecraft.world.level.levelgen.DensityFunction;
 import reika.chromaticraft.world.dimension.biome.ProximaBiomeType;
 import reika.chromaticraft.world.dimension.biome.ProximaBiomes;
 import reika.chromaticraft.world.dimension.biome.ProximaSubBiomes;
@@ -648,8 +645,7 @@ public final class ChromaGameTests {
 		var noise = registries.lookupOrThrow(net.minecraft.core.registries.Registries.NOISE_SETTINGS)
 				.getOrThrow(ProximaNoiseSettings.PROXIMA).value();
 		helper.assertTrue(noise.seaLevel() == 63, "V33a's sea level is 63");
-		helper.assertTrue(!noise.aquifersEnabled() && !noise.oreVeinsEnabled(),
-				"V33a has neither aquifers nor ore veins");
+		helper.assertTrue(noise.aquifers().isEmpty(), "V33a has no aquifers");
 		helper.assertTrue(noise.defaultBlock().is(Blocks.STONE) && noise.defaultFluid().is(Blocks.WATER),
 				"Proxima is stone and water");
 		var settings = noise.noiseSettings();
@@ -657,9 +653,10 @@ public final class ChromaGameTests {
 				"V33a WorldProviderChroma.getHeight is 256 from y=0");
 		// V33a samples 5x33x5 per chunk: four horizontal cells of four blocks, thirty-two vertical of
 		// eight. Getting this wrong silently changes the shape of every hill in the dimension.
-		helper.assertTrue(settings.getCellWidth() == 4 && settings.getCellHeight() == 8,
-				"the noise lattice must match V33a's, found " + settings.getCellWidth() + "x"
-						+ settings.getCellHeight());
+		helper.assertTrue(noise.noiseRouter().finalDensity() instanceof
+				net.minecraft.world.level.levelgen.densityfunction.op.InterpolatedFunction lattice
+				&& lattice.cellSizeXz() == 4 && lattice.cellSizeY() == 8,
+				"the noise lattice must match V33a's 4x8 cells");
 
 		var type = registries.lookupOrThrow(net.minecraft.core.registries.Registries.DIMENSION_TYPE)
 				.getOrThrow(ChromaDimensions.PROXIMA_TYPE).value();
@@ -676,15 +673,13 @@ public final class ChromaGameTests {
 		// shape of the dimension, and it is pure arithmetic, so it is assertable without a level.
 		var offset = new ProximaTerrainDensityFunction(ProximaTerrainDensityFunction.Mode.OFFSET);
 		var factor = new ProximaTerrainDensityFunction(ProximaTerrainDensityFunction.Mode.FACTOR);
-		DensityFunction.FunctionContext atOrigin = new DensityFunction.SinglePointContext(0, 64, 0);
-		DensityFunction.FunctionContext farOut = new DensityFunction.SinglePointContext(400000, 64, 400000);
-		helper.assertTrue(offset.compute(atOrigin) > offset.compute(farOut),
+		helper.assertTrue(offset.compute(0, 0) > offset.compute(400000, 400000),
 				"the centre of Proxima must sit higher than its outskirts");
 		// The reciprocal is the easy thing to get backwards: a big factor means terrain hugs its base
 		// height, so the flat centre must have the LARGER factor.
-		helper.assertTrue(factor.compute(atOrigin) == 10,
-				"the flat centre must take the maximum factor, found " + factor.compute(atOrigin));
-		helper.assertTrue(factor.compute(farOut) < factor.compute(atOrigin),
+		helper.assertTrue(factor.compute(0, 0) == 10,
+				"the flat centre must take the maximum factor, found " + factor.compute(0, 0));
+		helper.assertTrue(factor.compute(400000, 400000) < factor.compute(0, 0),
 				"the mountainous outskirts must take a smaller factor, or the dimension is inside out");
 		helper.succeed();
 	}
@@ -782,9 +777,11 @@ public final class ChromaGameTests {
 
 			// V33a BiomeGenCentral is the only biome anywhere in Proxima with a spawn.
 			for (ProximaBiomes b : ProximaBiomes.biomeList) {
-				boolean anySpawns = b.biomeKey() != null && lookup.getOrThrow(b.biomeKey()).value()
-						.getMobSettings().getMobs(ChromaEntityTypes.TUNNEL_NUKER.get().getCategory())
-						.unwrap().size() > 0;
+				var spawnAttribute = lookup.getOrThrow(b.biomeKey()).value().getAttributes()
+						.get(net.minecraft.world.attribute.EnvironmentAttributes.NATURAL_MOB_SPAWNS);
+				boolean anySpawns = spawnAttribute != null &&
+						((net.minecraft.world.level.biome.MobSpawnSettings)spawnAttribute.argument())
+								.getMobsToSpawn(ChromaEntityTypes.TUNNEL_NUKER.get().getCategory()).unwrap().size() > 0;
 				helper.assertTrue(anySpawns == (b == ProximaBiomes.CENTER),
 						"only the Luminescent Sanctuary may spawn anything, " + b + " disagreed");
 			}
@@ -800,13 +797,13 @@ public final class ChromaGameTests {
 			// climate sampling at all.
 			int mx = layout.structures().getMonumentPosition().getX();
 			int mz = layout.structures().getMonumentPosition().getZ();
-			helper.assertTrue(source.getNoiseBiome(QuartPos.fromBlock(mx), 0, QuartPos.fromBlock(mz), null)
+			helper.assertTrue(source.createResolver(null).getNoiseBiome(QuartPos.fromBlock(mx), 0, QuartPos.fromBlock(mz))
 							.is(ProximaBiomes.MONUMENT.biomeKey()),
 					"the monument position must resolve to the Monument Field through the biome source");
-			helper.assertTrue(source.getNoiseBiome(0, 0, 0, null).is(ProximaBiomes.CENTER.biomeKey()),
+			helper.assertTrue(source.createResolver(null).getNoiseBiome(0, 0, 0).is(ProximaBiomes.CENTER.biomeKey()),
 					"the world origin is inside the central region");
 			for (int qx = 0; qx < 64; qx++) {
-				Holder<Biome> got = source.getNoiseBiome(qx * 97, 0, qx * 53, null);
+				Holder<Biome> got = source.createResolver(null).getNoiseBiome(qx * 97, 0, qx * 53);
 				helper.assertTrue(got != null && got.unwrapKey().isPresent(),
 						"every query must resolve to a registered biome");
 			}
@@ -814,7 +811,7 @@ public final class ChromaGameTests {
 			// The documented race answer: with no map painted, the source still answers rather than
 			// throwing during a chunk build.
 			BiomeDistributor.clear();
-			helper.assertTrue(source.getNoiseBiome(12345, 0, 6789, null).is(ProximaBiomes.CENTER.biomeKey()),
+			helper.assertTrue(source.createResolver(null).getNoiseBiome(12345, 0, 6789).is(ProximaBiomes.CENTER.biomeKey()),
 					"before the map exists the source must fall back to the Luminescent Sanctuary");
 		}
 		finally {
@@ -1506,11 +1503,9 @@ public final class ChromaGameTests {
 	/** Canonical NBT, runtime colour substitution, delegates, loot locks and melody completion. */
 	private static void biomeFragmentNbtCompletion(GameTestHelper helper) {
 		BlockPos origin = helper.absolutePos(new BlockPos(12, 6, 12));
-		FeaturePlaceContext<NoneFeatureConfiguration> context = new FeaturePlaceContext<>(Optional.empty(),
-				helper.getLevel(), helper.getLevel().getChunkSource().getGenerator(),
-				RandomSource.create(0xB10FEA6L), origin, NoneFeatureConfiguration.INSTANCE);
+		RandomSource random = RandomSource.create(0xB10FEA6L);
 		helper.assertTrue(new OverworldStructureFeature(
-				OverworldStructureFeature.Type.BIOME_FRAGMENT, false).place(context),
+				OverworldStructureFeature.Type.BIOME_FRAGMENT, false).place(helper.getLevel(), helper.getLevel().getChunkSource().getGenerator(), random, origin),
 				"command Biome Fragment feature must place the canonical V33a NBT at its controller coordinate");
 		helper.assertTrue(helper.getLevel().getBlockEntity(origin) instanceof TileEntityStructureController,
 				"the reserved Biome Fragment template cell must become its persistent controller");
@@ -1583,10 +1578,8 @@ public final class ChromaGameTests {
 
 	private static void structureDesertNbtController(GameTestHelper helper) {
 		BlockPos origin = helper.absolutePos(new BlockPos(10, 10, 10));
-		FeaturePlaceContext<NoneFeatureConfiguration> context = new FeaturePlaceContext<>(Optional.empty(),
-				helper.getLevel(), helper.getLevel().getChunkSource().getGenerator(),
-				RandomSource.create(0xDE5E471L), origin, NoneFeatureConfiguration.INSTANCE);
-		helper.assertTrue(new OverworldStructureFeature(OverworldStructureFeature.Type.DESERT, false).place(context),
+		RandomSource random = RandomSource.create(0xDE5E471L);
+		helper.assertTrue(new OverworldStructureFeature(OverworldStructureFeature.Type.DESERT, false).place(helper.getLevel(), helper.getLevel().getChunkSource().getGenerator(), random, origin),
 				"command Desert feature must place the canonical V33a NBT at its controller coordinate");
 		TileEntityStructureController controller = (TileEntityStructureController)helper.getLevel().getBlockEntity(origin);
 		helper.assertTrue(controller != null && controller.getStructureType()
@@ -1603,10 +1596,8 @@ public final class ChromaGameTests {
 	/** Exact Snow NBT plus its source-seeded cracks and one-of-four concealed route. */
 	private static void structureSnowNbtRoute(GameTestHelper helper) {
 		BlockPos origin = helper.absolutePos(new BlockPos(10, 10, 10));
-		FeaturePlaceContext<NoneFeatureConfiguration> context = new FeaturePlaceContext<>(Optional.empty(),
-				helper.getLevel(), helper.getLevel().getChunkSource().getGenerator(),
-				RandomSource.create(0x5A0A71L), origin, NoneFeatureConfiguration.INSTANCE);
-		helper.assertTrue(new OverworldStructureFeature(OverworldStructureFeature.Type.SNOW, false).place(context),
+		RandomSource random = RandomSource.create(0x5A0A71L);
+		helper.assertTrue(new OverworldStructureFeature(OverworldStructureFeature.Type.SNOW, false).place(helper.getLevel(), helper.getLevel().getChunkSource().getGenerator(), random, origin),
 				"command Snow feature must place the canonical V33a NBT at its controller coordinate");
 		TileEntityStructureController controller = (TileEntityStructureController)helper.getLevel().getBlockEntity(origin);
 		helper.assertTrue(controller != null && controller.getStructureType()
@@ -1648,10 +1639,8 @@ public final class ChromaGameTests {
 	/** Exact Ocean NBT, spawners/chests, proximity panels and the timed pit cover operate together. */
 	private static void structureOceanNbtTrap(GameTestHelper helper) {
 		BlockPos origin = helper.absolutePos(new BlockPos(10, 20, 10));
-		FeaturePlaceContext<NoneFeatureConfiguration> context = new FeaturePlaceContext<>(Optional.empty(),
-				helper.getLevel(), helper.getLevel().getChunkSource().getGenerator(),
-				RandomSource.create(0x0CEA711L), origin, NoneFeatureConfiguration.INSTANCE);
-		helper.assertTrue(new OverworldStructureFeature(OverworldStructureFeature.Type.OCEAN, false).place(context),
+		RandomSource random = RandomSource.create(0x0CEA711L);
+		helper.assertTrue(new OverworldStructureFeature(OverworldStructureFeature.Type.OCEAN, false).place(helper.getLevel(), helper.getLevel().getChunkSource().getGenerator(), random, origin),
 				"command Ocean feature must place the canonical V33a NBT at its controller coordinate");
 		helper.assertTrue(helper.getLevel().getBlockEntity(origin) instanceof TileEntityStructureController,
 				"Ocean template anchor must become a structure controller");
@@ -1924,7 +1913,7 @@ public final class ChromaGameTests {
 		cow.setHealth(1);
 		var zombie = helper.spawn(EntityTypes.ZOMBIE, new BlockPos(4, 4, 4));
 		float zombieHealth = zombie.getHealth();
-		zombie.invulnerableTime = 0;
+		zombie.setInvulnerableTime(0);
 		helper.runAfterDelay(10, () -> {
 			helper.assertTrue(cow.getHealth() > 1,
 					"Lifewater must heal a living entity standing in it; health stayed " + cow.getHealth());
@@ -1952,7 +1941,7 @@ public final class ChromaGameTests {
 		// Without grass beneath, nothing grows however lucky the roll.
 		level.setBlock(origin.below(), Blocks.STONE.defaultBlockState(), 3);
 		for (long seed = 0; seed < 32; seed++)
-			helper.assertTrue(!feature.place(shrubContext(helper, origin, seed)),
+			helper.assertTrue(!feature.place(helper.getLevel(), helper.getLevel().getChunkSource().getGenerator(), RandomSource.create(seed), origin),
 					"a crystal shrub must refuse to grow on stone");
 
 		level.setBlock(origin.below(), Blocks.GRASS_BLOCK.defaultBlockState(), 3);
@@ -1963,7 +1952,7 @@ public final class ChromaGameTests {
 			for (BlockPos pos : BlockPos.betweenClosedStream(origin.offset(-3, 0, -3),
 					origin.offset(3, 6, 3)).map(BlockPos::immutable).toList())
 				level.setBlock(pos, Blocks.AIR.defaultBlockState(), 3);
-			if (!feature.place(shrubContext(helper, origin, seed)))
+			if (!feature.place(helper.getLevel(), helper.getLevel().getChunkSource().getGenerator(), RandomSource.create(seed), origin))
 				continue;
 			grown++;
 			// Whatever the size, the crown's top layer is a radius-1 diamond, so its corners stay open.
@@ -1976,12 +1965,6 @@ public final class ChromaGameTests {
 		helper.succeed();
 	}
 
-	private static FeaturePlaceContext<NoneFeatureConfiguration> shrubContext(GameTestHelper helper,
-			BlockPos origin, long seed) {
-		return new FeaturePlaceContext<>(Optional.empty(), helper.getLevel(),
-				helper.getLevel().getChunkSource().getGenerator(), RandomSource.create(seed), origin,
-				NoneFeatureConfiguration.INSTANCE);
-	}
 
 	/**
 	 * V33a's Floatstone drifts must hang in the air above their anchor, and stay small enough to land.
@@ -2006,7 +1989,7 @@ public final class ChromaGameTests {
 					origin.offset(30, 40, 30)).map(BlockPos::immutable).toList())
 				if (level.getBlockState(pos).is(floatstone))
 					level.setBlock(pos, Blocks.AIR.defaultBlockState(), 3);
-			if (!feature.place(shrubContext(helper, origin, seed)))
+			if (!feature.place(helper.getLevel(), helper.getLevel().getChunkSource().getGenerator(), RandomSource.create(seed), origin))
 				continue;
 			producedAny++;
 			int minX = Integer.MAX_VALUE, maxX = Integer.MIN_VALUE, minY = Integer.MAX_VALUE;
@@ -2125,7 +2108,7 @@ public final class ChromaGameTests {
 			for (BlockPos pos : area)
 				if (level.getBlockState(pos).is(leaves) || level.getBlockState(pos).is(shielding))
 					level.setBlock(pos, Blocks.AIR.defaultBlockState(), 3);
-			if (!feature.place(shrubContext(helper, origin, seed)))
+			if (!feature.place(helper.getLevel(), helper.getLevel().getChunkSource().getGenerator(), RandomSource.create(seed), origin))
 				continue;
 			grown++;
 			// All or nothing: a trunk with no canopy anywhere above it is the failure mode that matters.
@@ -2161,7 +2144,7 @@ public final class ChromaGameTests {
 				reika.chromaticraft.registry.ChromaShieldTypes.CLOAK).get();
 
 		// Nothing beneath: every lining cell fails its support check, so no geode may form.
-		helper.assertTrue(!feature.place(shrubContext(helper, origin, 1)),
+		helper.assertTrue(!feature.place(helper.getLevel(), helper.getLevel().getChunkSource().getGenerator(), RandomSource.create(1), origin),
 				"a geode must refuse to carve itself where its lining has nothing to rest on");
 
 		// A solid block of stone around the site is ground a geode can be cut into.
@@ -2169,7 +2152,7 @@ public final class ChromaGameTests {
 				.map(BlockPos::immutable).toList();
 		for (BlockPos pos : area)
 			level.setBlock(pos, Blocks.STONE.defaultBlockState(), 3);
-		helper.assertTrue(feature.place(shrubContext(helper, origin, 1)),
+		helper.assertTrue(feature.place(helper.getLevel(), helper.getLevel().getChunkSource().getGenerator(), RandomSource.create(1), origin),
 				"a geode must form in solid stone");
 
 		int lining = 0;
@@ -2255,7 +2238,7 @@ public final class ChromaGameTests {
 			for (var existing : level.getEntitiesOfClass(reika.chromaticraft.entity.EntityAurora.class,
 					new AABB(origin).inflate(400)))
 				existing.discard();
-			if (!feature.place(shrubContext(helper, origin, seed)))
+			if (!feature.place(helper.getLevel(), helper.getLevel().getChunkSource().getGenerator(), RandomSource.create(seed), origin))
 				continue;
 			displays++;
 			var ribbons = level.getEntitiesOfClass(reika.chromaticraft.entity.EntityAurora.class,
@@ -2550,14 +2533,10 @@ public final class ChromaGameTests {
 		// And the feature itself builds something. Grass under, air above, which is the site rule.
 		BlockPos base = helper.absolutePos(new BlockPos(8, 3, 8));
 		helper.getLevel().setBlock(base, Blocks.GRASS_BLOCK.defaultBlockState(), 3);
-		var feature = reika.chromaticraft.registry.ChromaFeatures.GLOW_TREE.get();
+		var feature = featureByName(helper, "glow_tree");
 		boolean placedTree = false;
 		for (int attempt = 0; attempt < 32 && !placedTree; attempt++)
-			placedTree = feature.place(new net.minecraft.world.level.levelgen.feature.FeaturePlaceContext<>(
-					java.util.Optional.empty(), helper.getLevel(),
-					helper.getLevel().getLevel().getChunkSource().getGenerator(),
-					helper.getLevel().getRandom(), base.above(),
-					net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration.INSTANCE));
+			placedTree = feature.place(helper.getLevel(), helper.getLevel().getChunkSource().getGenerator(), helper.getLevel().getRandom(), base.above());
 		helper.assertTrue(placedTree, "the glowing tree refused every one of thirty-two attempts on "
 				+ "grass with clear air above it");
 
@@ -2596,16 +2575,13 @@ public final class ChromaGameTests {
 			for (int k = -22; k <= 22; k++)
 				level.setBlock(centre.offset(i, 0, k), Blocks.GRASS_BLOCK.defaultBlockState(), 3);
 
-		var feature = reika.chromaticraft.registry.ChromaFeatures.TREE_CLUSTER.get();
+		var feature = featureByName(helper, "tree_cluster");
 		// A placed feature receives its chunk's minimum corner and the cluster centres itself eight
 		// blocks in, so the origin handed over is that corner: the cluster then centres on `centre`.
 		BlockPos chunkCorner = centre.offset(-8, 1, -8);
 		boolean placed = false;
 		for (int attempt = 0; attempt < 16 && !placed; attempt++)
-			placed = feature.place(new net.minecraft.world.level.levelgen.feature.FeaturePlaceContext<>(
-					java.util.Optional.empty(), level,
-					level.getChunkSource().getGenerator(), level.getRandom(), chunkCorner,
-					net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration.INSTANCE));
+			placed = feature.place(level, level.getChunkSource().getGenerator(), level.getRandom(), chunkCorner);
 		helper.assertTrue(placed, "the tree cluster refused sixteen attempts on open grass");
 
 		int logs = 0;
@@ -2640,7 +2616,7 @@ public final class ChromaGameTests {
 
 	private static void proximaMonumentTemplate(GameTestHelper helper) {
 		var level = helper.getLevel();
-		var template = level.getStructureManager()
+		var template = level.getStructureTemplateManager()
 				.get(reika.chromaticraft.data.ChromaStructureTemplateProvider.PROXIMA_MONUMENT)
 				.orElse(null);
 		helper.assertTrue(template != null, "the monument template is missing entirely");
@@ -2703,7 +2679,7 @@ public final class ChromaGameTests {
 		BlockPos origin = helper.absolutePos(new BlockPos(24, 34, 24));
 		for (BlockPos pos : BlockPos.betweenClosed(origin.offset(-8, -30, -8), origin.offset(8, -1, 8)))
 			level.setBlock(pos, Blocks.STONE.defaultBlockState(), 2);
-		var feature = reika.chromaticraft.registry.ChromaFeatures.GLOWING_CRACKS.get();
+		var feature = featureByName(helper, "glowing_cracks");
 
 		// The site rule is nine by nine of grass one below; stone alone must be refused.
 		helper.assertTrue(!place(helper, feature, origin),
@@ -2835,7 +2811,7 @@ public final class ChromaGameTests {
 						reika.chromaticraft.registry.ChromaShieldTypes.STONE).get().defaultBlockState()
 				.setValue(reika.chromaticraft.block.worldgen26.BlockStructureShield.REINFORCED, true), 2);
 
-		var feature = reika.chromaticraft.registry.ChromaFeatures.FISSURE.get();
+		var feature = featureByName(helper, "fissure");
 		boolean cut = false;
 		for (int attempt = 0; attempt < 16 && !cut; attempt++)
 			cut = place(helper, feature, origin);
@@ -2891,7 +2867,7 @@ public final class ChromaGameTests {
 		BlockPos base = helper.absolutePos(new BlockPos(10, 3, 10));
 		for (BlockPos pos : BlockPos.betweenClosed(base.offset(-4, 0, -4), base.offset(4, 0, 4)))
 			level.setBlock(pos, Blocks.GRASS_BLOCK.defaultBlockState(), 3);
-		var feature = reika.chromaticraft.registry.ChromaFeatures.MINI_ALTAR.get();
+		var feature = featureByName(helper, "mini_altar");
 
 		// One non-grass cell inside the footprint has to be enough to refuse it.
 		level.setBlock(base.offset(2, 0, 2), Blocks.STONE.defaultBlockState(), 3);
@@ -2937,16 +2913,17 @@ public final class ChromaGameTests {
 		helper.succeed();
 	}
 
-	private static boolean place(GameTestHelper helper,
-			net.minecraft.world.level.levelgen.feature.Feature<
-					net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration> feature,
-			BlockPos at) {
-		return feature.place(new net.minecraft.world.level.levelgen.feature.FeaturePlaceContext<>(
-				java.util.Optional.empty(), helper.getLevel(),
-				helper.getLevel().getLevel().getChunkSource().getGenerator(),
-				helper.getLevel().getRandom(), at,
-				net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration.INSTANCE));
-	}
+    private static boolean place(GameTestHelper helper,
+            net.minecraft.world.level.levelgen.feature.Feature feature, BlockPos at) {
+        return feature.place(helper.getLevel(), helper.getLevel().getChunkSource().getGenerator(),
+                helper.getLevel().getRandom(), at);
+    }
+
+    private static net.minecraft.world.level.levelgen.feature.Feature featureByName(GameTestHelper helper, String path) {
+        var registry = helper.getLevel().registryAccess().lookupOrThrow(Registries.FEATURE);
+        return registry.getOrThrow(net.minecraft.resources.ResourceKey.create(Registries.FEATURE,
+                Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, path))).value();
+    }
 
 	private static void dimensionCoreRing(GameTestHelper helper) {
 		var seen = new java.util.HashSet<net.minecraft.core.Vec3i>();
@@ -4067,7 +4044,7 @@ public final class ChromaGameTests {
 	 *     out unconnected otherwise.</li>
 	 * <li>The Nether Temple's redstone must come out wired, not as isolated dots. 1.7.10 had no dot
 	 *     shape: a wire with no wire neighbours was a cross that powered everything around it, which is
-	 *     what the temple puzzle runs on. 26.2's {@code RedStoneWireBlock.getConnectionState} preserves
+	 *     what the temple puzzle runs on. 26.2's {@code RedstoneWireBlock.getConnectionState} preserves
 	 *     an existing dot before it ever reaches its auto-connect logic, so a template authoring "none"
 	 *     on all four sides produced wires that no update could ever open up. The cells themselves were
 	 *     never wrong — all twenty-eight map to V33a's own placement — so this asserts the shape rather
@@ -4120,10 +4097,10 @@ public final class ChromaGameTests {
 			boolean connected = false;
 			for (net.minecraft.world.level.block.state.properties.EnumProperty
 					<net.minecraft.world.level.block.state.properties.RedstoneSide> side
-					: java.util.List.of(net.minecraft.world.level.block.RedStoneWireBlock.NORTH,
-							net.minecraft.world.level.block.RedStoneWireBlock.EAST,
-							net.minecraft.world.level.block.RedStoneWireBlock.SOUTH,
-							net.minecraft.world.level.block.RedStoneWireBlock.WEST))
+					: java.util.List.of(net.minecraft.world.level.block.RedstoneWireBlock.NORTH,
+							net.minecraft.world.level.block.RedstoneWireBlock.EAST,
+							net.minecraft.world.level.block.RedstoneWireBlock.SOUTH,
+							net.minecraft.world.level.block.RedstoneWireBlock.WEST))
 				connected |= wire.getValue(side).isConnected();
 			helper.assertTrue(connected, "the temple's redstone wire at " + at[0] + "," + at[1] + ","
 					+ at[2] + " came out as an unconnected dot, which cannot carry the puzzle's signal");
@@ -4179,16 +4156,16 @@ public final class ChromaGameTests {
 		chest.stopOpen(player);
 		helper.assertTrue(!chest.isOpenedByAnyone(), "closing must clear the opener counter");
 		helper.assertTrue(level.getBlockState(dust).getValue(
-						net.minecraft.world.level.block.RedStoneWireBlock.POWER) == 0,
+						net.minecraft.world.level.block.RedstoneWireBlock.POWER) == 0,
 				"dust beside a closed chest must be unpowered");
 		chest.startOpen(player);
 		helper.assertTrue(level.getBlockState(dust).getValue(
-						net.minecraft.world.level.block.RedStoneWireBlock.POWER) > 0,
+						net.minecraft.world.level.block.RedstoneWireBlock.POWER) > 0,
 				"opening the chest must update its neighbours so the trap circuit actually powers;"
 						+ " without the neighbour notification the signal is correct but never read");
 		chest.stopOpen(player);
 		helper.assertTrue(level.getBlockState(dust).getValue(
-						net.minecraft.world.level.block.RedStoneWireBlock.POWER) == 0,
+						net.minecraft.world.level.block.RedstoneWireBlock.POWER) == 0,
 				"closing must drop the circuit again");
 		helper.succeed();
 	}
@@ -4360,10 +4337,8 @@ public final class ChromaGameTests {
 	/** Exact Cavern NBT, persistent controller reward, tunnel and entry trap form one runtime loop. */
 	private static void structureCavernNbtController(GameTestHelper helper) {
 		BlockPos origin = helper.absolutePos(new BlockPos(10, 10, 10));
-		FeaturePlaceContext<NoneFeatureConfiguration> context = new FeaturePlaceContext<>(Optional.empty(),
-				helper.getLevel(), helper.getLevel().getChunkSource().getGenerator(),
-				RandomSource.create(0xCA73A11L), origin, NoneFeatureConfiguration.INSTANCE);
-		helper.assertTrue(new OverworldStructureFeature(OverworldStructureFeature.Type.CAVERN, false).place(context),
+		RandomSource random = RandomSource.create(0xCA73A11L);
+		helper.assertTrue(new OverworldStructureFeature(OverworldStructureFeature.Type.CAVERN, false).place(helper.getLevel(), helper.getLevel().getChunkSource().getGenerator(), random, origin),
 				"command Cavern feature must place its canonical NBT at the requested controller coordinate");
 		helper.assertTrue(helper.getLevel().getBlockEntity(origin) instanceof TileEntityStructureController,
 				"the reserved template anchor must become the registered structure controller");
@@ -4444,9 +4419,9 @@ public final class ChromaGameTests {
 	private static void rainbowTreeShapeAndLog(GameTestHelper helper) {
 		BlockPos origin = helper.absolutePos(new BlockPos(8, 3, 8));
 		helper.getLevel().setBlock(origin.below(), Blocks.GRASS_BLOCK.defaultBlockState(), 3);
-		var registry = helper.getLevel().registryAccess().lookupOrThrow(Registries.CONFIGURED_FEATURE);
+		var registry = helper.getLevel().registryAccess().lookupOrThrow(Registries.FEATURE);
 		var feature = registry.getOrThrow(net.minecraft.resources.ResourceKey.create(
-				Registries.CONFIGURED_FEATURE,
+				Registries.FEATURE,
 				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "rainbow_tree"))).value();
 		helper.assertTrue(feature.place(helper.getLevel(), helper.getLevel().getChunkSource().getGenerator(),
 				RandomSource.create(0x5241494E424F574CL), origin),
@@ -5039,10 +5014,8 @@ public final class ChromaGameTests {
         long featureSeed = 0xC4A0A33L;
         RandomSource probe = RandomSource.create(featureSeed);
         BlockPos featureOrigin = base.offset(-probe.nextInt(16), 0, -probe.nextInt(16));
-        FeaturePlaceContext<NoneFeatureConfiguration> context = new FeaturePlaceContext<>(Optional.empty(),
-                helper.getLevel(), helper.getLevel().getChunkSource().getGenerator(),
-                RandomSource.create(featureSeed), featureOrigin, NoneFeatureConfiguration.INSTANCE);
-        helper.assertTrue(new PylonFeature().place(context),
+        RandomSource random = RandomSource.create(featureSeed);
+        helper.assertTrue(new PylonFeature().place(helper.getLevel(), helper.getLevel().getChunkSource().getGenerator(), random, featureOrigin),
                 "configured pylon feature must bypass the natural grid and place canonical NBT on valid terrain");
         BlockPos pylonPos = base.above(9);
         helper.assertTrue(helper.getLevel().getBlockEntity(pylonPos) instanceof TileEntityCrystalPylon,
@@ -5477,14 +5450,14 @@ public final class ChromaGameTests {
 		TileEntityCrystalPylon pylon = placePylon(helper, pylonPos, CrystalElement.YELLOW);
 		var player = helper.makeMockPlayer(GameType.SURVIVAL);
 		player.snapTo(pylonPos.getX() + 0.5, pylonPos.getY() + 36, pylonPos.getZ() + 0.5, 0, 0);
-		player.invulnerableTime = 0;
+		player.setInvulnerableTime(0);
 		float health = player.getHealth();
 		helper.assertTrue(pylon.tryAttackClimber(player),
 				"a visible survival player in the pylon column should trigger the anti-climb strike");
 		helper.assertTrue(player.getHealth() < health,
 				"the anti-climb strike should apply authoritative pylon damage");
 
-		player.invulnerableTime = 0;
+		player.setInvulnerableTime(0);
 		ChromaAbilityData.setPylonImmunity(player, true);
 		health = player.getHealth();
 		helper.assertTrue(ChromaAbilityData.hasPylonImmunity(player),
@@ -5522,9 +5495,9 @@ public final class ChromaGameTests {
 	private static void runicAltarFeature(GameTestHelper helper) {
 		BlockPos origin = helper.absolutePos(new BlockPos(8, 4, 8));
 		BlockPos tablePos = origin.above(2);
-		var registry = helper.getLevel().registryAccess().lookupOrThrow(Registries.CONFIGURED_FEATURE);
+		var registry = helper.getLevel().registryAccess().lookupOrThrow(Registries.FEATURE);
 		var configured = registry.getOrThrow(net.minecraft.resources.ResourceKey.create(
-				Registries.CONFIGURED_FEATURE,
+				Registries.FEATURE,
 				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "runic_altar"))).value();
 		helper.assertTrue(configured.place(helper.getLevel(), helper.getLevel().getChunkSource().getGenerator(),
 				RandomSource.create(0xA17AAL), origin),
@@ -6517,9 +6490,9 @@ public final class ChromaGameTests {
 		helper.getLevel().setBlock(guarded, ChromaBlocks.CLIFF_STONE.get().defaultBlockState(), 3);
 
 		var registry = helper.getLevel().registryAccess()
-				.lookupOrThrow(net.minecraft.core.registries.Registries.CONFIGURED_FEATURE);
+				.lookupOrThrow(net.minecraft.core.registries.Registries.FEATURE);
 		var configured = registry.getOrThrow(net.minecraft.resources.ResourceKey.create(
-				net.minecraft.core.registries.Registries.CONFIGURED_FEATURE,
+				net.minecraft.core.registries.Registries.FEATURE,
 				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "energized_rock"))).value();
 		helper.assertTrue(configured.place(helper.getLevel(),
 						helper.getLevel().getChunkSource().getGenerator(),
@@ -8584,7 +8557,8 @@ public final class ChromaGameTests {
 			String name, int maxTicks, Consumer<GameTestHelper> body) {
 		Identifier id = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, name);
 		TestData<Holder<TestEnvironmentDefinition<?>>> data =
-				new TestData<>(env, ChromaTestStructureProvider.ARENA, maxTicks, 0, true, Rotation.NONE, false, 1, 1, false, 96);
+				new TestData<>(env, net.minecraft.world.level.Level.OVERWORLD,
+						ChromaTestStructureProvider.ARENA, maxTicks, 0, true, Rotation.NONE, false, 1, 1, false, 96);
 		event.registerTest(id, new DirectInstance(data, body));
 	}
 

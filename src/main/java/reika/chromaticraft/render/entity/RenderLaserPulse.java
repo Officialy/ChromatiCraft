@@ -35,7 +35,7 @@ public final class RenderLaserPulse extends EntityRenderer<EntityLaserPulse, Ren
 	public void submit(State state, PoseStack poseStack, SubmitNodeCollector collector,
 			CameraRenderState camera) {
 		poseStack.pushPose();
-		poseStack.mulPose(camera.orientation);
+		poseStack.rotate(camera.orientation);
 		collector.submitCustomGeometry(poseStack, RenderTypes.entityTranslucentEmissive(TEXTURE),
 				(pose, buffer) -> quad(pose, buffer, state.color));
 		poseStack.popPose();

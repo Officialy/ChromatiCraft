@@ -15,8 +15,6 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.auxiliary.structure.NBTStructureLoader;
@@ -30,18 +28,23 @@ import reika.chromaticraft.data.ChromaStructureTemplateProvider;
  * crown with vanilla blob foliage. This feature chooses one overworld log for the whole tree, then
  * reproduces {@code tryGenerateSmallRainbowTree(..., 1)} layer for layer.
  */
-public final class RainbowTreeFeature extends Feature<NoneFeatureConfiguration> {
+public final class RainbowTreeFeature implements Feature {
+
+    public static final com.mojang.serialization.MapCodec<RainbowTreeFeature> CODEC =
+            com.mojang.serialization.MapCodec.unit(RainbowTreeFeature::new);
+
+    @Override
+    public com.mojang.serialization.MapCodec<RainbowTreeFeature> codec() {
+        return CODEC;
+    }
 	private static final BlockPos LARGE_TREE_ANCHOR = new BlockPos(5, 3, 5);
 
 	public RainbowTreeFeature() {
-		super(NoneFeatureConfiguration.CODEC);
+
 	}
 
 	@Override
-	public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-		WorldGenLevel world = context.level();
-		RandomSource random = context.random();
-		BlockPos origin = context.origin();
+	public boolean place(net.minecraft.world.level.WorldGenLevel world, net.minecraft.world.level.chunk.ChunkGenerator generator, net.minecraft.util.RandomSource random, net.minecraft.core.BlockPos origin) {
 		BlockState log = chooseLog(random);
 		if (placeLarge(world, origin, log))
 			return true;

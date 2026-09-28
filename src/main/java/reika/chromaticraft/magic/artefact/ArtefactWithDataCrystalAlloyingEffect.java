@@ -100,8 +100,8 @@ public class ArtefactWithDataCrystalAlloyingEffect implements AlloyingEffect {
 		BlockPos c = ei.blockPosition();
 		if (world.getBlockState(c).is(ChromaBlocks.CHROMA.get()))
 			world.setBlock(c, Blocks.AIR.defaultBlockState(), 3);
-		ei.setInvulnerable(true);
-		result.setInvulnerable(true);
+		ei.setPermanentlyInvulnerable(true);
+		result.setPermanentlyInvulnerable(true);
 		// newExplosion(ei, ..., 6, flaming, smoking): fire, and blocks broken regardless of mob griefing.
 		world.explode(ei, ei.getX(), ei.getY(), ei.getZ(), 6, true, Level.ExplosionInteraction.TNT);
 	}

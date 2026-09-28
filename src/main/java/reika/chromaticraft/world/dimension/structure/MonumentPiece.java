@@ -114,7 +114,7 @@ public class MonumentPiece extends StructurePiece {
 		// Vanilla's own template placement rather than NBTStructureLoader: the loader is written for
 		// the feature case, where the write window is the constraint and the caller does not get a box.
 		// Here the box is exactly what is wanted, and placeInWorld honours it natively.
-		level.getLevel().getStructureManager()
+		level.getLevel().getStructureTemplateManager()
 				.get(ChromaStructureTemplateProvider.PROXIMA_MONUMENT)
 				.orElseThrow(() -> new IllegalStateException(
 						"Missing monument template " + ChromaStructureTemplateProvider.PROXIMA_MONUMENT))

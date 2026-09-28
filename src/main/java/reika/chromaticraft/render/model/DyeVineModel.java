@@ -1,5 +1,6 @@
 package reika.chromaticraft.render.model;
 
+import net.minecraft.core.Direction;
 import java.util.List;
 import java.util.Random;
 
@@ -135,7 +136,7 @@ public final class DyeVineModel implements DynamicBlockStateModel {
 		quad.setColor(color);
 		quad.recomputeNormals(true);
 		// The 1.7.10 tessellator path set its colour directly, with no face shading and no smoothing.
-		quad.setShade(false);
+		quad.setShadeOverride(Direction.UP);
 		quad.setAmbientOcclusion(false);
 		quad.setLightEmission(light);
 		quad.setTintIndex(-1);

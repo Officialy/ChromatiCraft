@@ -51,7 +51,7 @@ public class RenderLumaBurst extends EntityRenderer<EntityLumaBurst, RenderLumaB
 	public void submit(State state, PoseStack poseStack, SubmitNodeCollector collector,
 			CameraRenderState camera) {
 		poseStack.pushPose();
-		poseStack.mulPose(camera.orientation);
+		poseStack.rotate(camera.orientation);
 		int innerRgb = ReikaColorAPI.mixColors(state.color & 0xFFFFFF, 0xFFFFFF, 0.25F) & 0xFFFFFF;
 		int inner = 0xFF000000 | innerRgb;
 		collector.submitCustomGeometry(poseStack, RenderTypes.entityTranslucentEmissive(TEXTURE),

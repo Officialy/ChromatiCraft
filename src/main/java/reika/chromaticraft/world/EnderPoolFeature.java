@@ -11,8 +11,6 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaOptions;
@@ -39,14 +37,22 @@ import reika.dragonapi.libraries.level.ReikaWorldHelper;
  * one-in-12, 6 or 3 chance per chunk. It is therefore rolled here from the live option, not baked into
  * the placed feature, so changing the option changes new chunks without regenerating the datapack.
  */
-public final class EnderPoolFeature extends Feature<NoneFeatureConfiguration> {
+public final class EnderPoolFeature implements Feature {
+
+    public static final com.mojang.serialization.MapCodec<EnderPoolFeature> CODEC =
+            com.mojang.serialization.MapCodec.unit(EnderPoolFeature::new);
+
+    @Override
+    public com.mojang.serialization.MapCodec<EnderPoolFeature> codec() {
+        return CODEC;
+    }
 
 	/** V33a {@code placeables}: exact identities, which is how upstream compared them. */
 	private static final Set<Block> PLACEABLES = Set.of(
 			Blocks.DIRT, Blocks.GRASS_BLOCK, Blocks.GRAVEL, Blocks.STONE, Blocks.SAND);
 
 	public EnderPoolFeature() {
-		super(NoneFeatureConfiguration.CODEC);
+
 	}
 
 	/** V33a DecoratorEnderForest's option switch, with its own default for an out-of-range value. */
@@ -60,12 +66,9 @@ public final class EnderPoolFeature extends Feature<NoneFeatureConfiguration> {
 	}
 
 	@Override
-	public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-		WorldGenLevel world = context.level();
-		RandomSource random = context.random();
+	public boolean place(net.minecraft.world.level.WorldGenLevel world, net.minecraft.world.level.chunk.ChunkGenerator generator, net.minecraft.util.RandomSource random, net.minecraft.core.BlockPos origin) {
 		if (random.nextInt(chunkChance(ChromaOptions.ENDERPOOLS.getValue())) != 0)
 			return false;
-		BlockPos origin = context.origin();
 		for (int i = 2; i < 7; i++) {
 			BlockPos at = origin.below(i);
 			if (PLACEABLES.contains(world.getBlockState(at).getBlock()) && placeShape(world, random, at))

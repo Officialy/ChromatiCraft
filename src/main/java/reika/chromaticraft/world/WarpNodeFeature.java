@@ -8,8 +8,6 @@ import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.world.biome.ChromaBiomes;
@@ -27,7 +25,15 @@ import reika.dragonapi.instantiable.data.ShuffledGrid;
  * never below y 128 — because the whole point is that you reach them by flying and enter them at
  * speed. The node itself is inert until opened; see {@code BlockWarpNode}.
  */
-public final class WarpNodeFeature extends Feature<NoneFeatureConfiguration> {
+public final class WarpNodeFeature implements Feature {
+
+    public static final com.mojang.serialization.MapCodec<WarpNodeFeature> CODEC =
+            com.mojang.serialization.MapCodec.unit(WarpNodeFeature::new);
+
+    @Override
+    public com.mojang.serialization.MapCodec<WarpNodeFeature> codec() {
+        return CODEC;
+    }
 
 	private static final int GRID_SIZE = 2048;
 	private static final int GRID_DEVIATION = 20;
@@ -38,14 +44,11 @@ public final class WarpNodeFeature extends Feature<NoneFeatureConfiguration> {
 	private boolean gridReady;
 
 	public WarpNodeFeature() {
-		super(NoneFeatureConfiguration.CODEC);
+
 	}
 
 	@Override
-	public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-		WorldGenLevel world = context.level();
-		RandomSource random = context.random();
-		BlockPos origin = context.origin();
+	public boolean place(net.minecraft.world.level.WorldGenLevel world, net.minecraft.world.level.chunk.ChunkGenerator generator, net.minecraft.util.RandomSource random, net.minecraft.core.BlockPos origin) {
 		if (!(world.getLevel() instanceof ServerLevel server))
 			return false;
 		if (!this.isGennableChunk(server, origin.getX() >> 4, origin.getZ() >> 4))

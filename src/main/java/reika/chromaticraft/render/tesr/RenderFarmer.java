@@ -67,7 +67,7 @@ public final class RenderFarmer implements BlockEntityRenderer<TileEntityFarmer,
             case WEST -> -90;
             default -> 0;
         };
-        pose.mulPose(Axis.YP.rotationDegrees(angle));
+        pose.rotate(Axis.YP.rotationDegrees(angle));
         pose.translate(-0.5, 0, -0.5);
         submitMachine(pose, collector, model, state.lightCoords);
         pose.popPose();

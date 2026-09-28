@@ -1,6 +1,5 @@
 package reika.chromaticraft.block.worldgen26;
 
-import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.Mth;
@@ -32,16 +31,11 @@ public class BlockUnknownArtefact extends Block {
 	/** V33a setBlockBounds(0, 0, 0, 1, 0.75F, 1): sunk into the ground. */
 	private static final VoxelShape SHAPE = box(0, 0, 0, 16, 12, 16);
 
-	private final MapCodec<BlockUnknownArtefact> codec = MapCodec.unit(this);
 
 	public BlockUnknownArtefact(BlockBehaviour.Properties properties) {
 		super(properties);
 	}
 
-	@Override
-	public MapCodec<? extends BlockUnknownArtefact> codec() {
-		return codec;
-	}
 
 	@Override
 	protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
@@ -79,7 +73,7 @@ public class BlockUnknownArtefact extends Block {
 		double[] v = ReikaPhysicsHelper.polarToCartesian(6, angles[1] - 90, -angles[2] - 90);
 		Vec3 motion = player.getDeltaMovement();
 		player.setDeltaMovement(motion.x + v[0], Mth.clamp(v[1], 1.25, 1.75), motion.z + v[2]);
-		player.hurtMarked = true;
+		player.syncVelocity = true;
 		if (level instanceof net.minecraft.server.level.ServerLevel server)
 			reika.chromaticraft.network.ChromaNetwork.sendArtefactClick(server, pos);
 	}
@@ -98,7 +92,7 @@ public class BlockUnknownArtefact extends Block {
 	 * (ARTEFACT). The drops themselves are the loot table's.
 	 */
 	@Override
-	public void playerDestroy(Level level, Player player, BlockPos pos, BlockState state,
+	public void playerDestroy(net.minecraft.server.level.ServerLevel level, net.minecraft.server.level.ServerPlayer player, BlockPos pos, BlockState state,
 			net.minecraft.world.level.block.entity.BlockEntity blockEntity, net.minecraft.world.item.ItemStack tool) {
 		super.playerDestroy(level, player, pos, state, blockEntity, tool);
 		var silk = level.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.ENCHANTMENT)

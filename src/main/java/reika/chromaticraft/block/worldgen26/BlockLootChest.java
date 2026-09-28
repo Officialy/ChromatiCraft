@@ -2,7 +2,6 @@ package reika.chromaticraft.block.worldgen26;
 
 import javax.annotation.Nullable;
 
-import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -48,17 +47,12 @@ public class BlockLootChest extends Block implements EntityBlock {
 	/** V33a setBlockBoundsBasedOnState: the usual inset chest body. */
 	private static final VoxelShape SHAPE = box(1, 0, 1, 15, 14, 15);
 
-	private final MapCodec<BlockLootChest> codec = MapCodec.unit(this);
 
 	public BlockLootChest(BlockBehaviour.Properties properties) {
 		super(properties);
 		registerDefaultState(stateDefinition.any().setValue(FACING, Direction.NORTH));
 	}
 
-	@Override
-	public MapCodec<? extends BlockLootChest> codec() {
-		return codec;
-	}
 
 	@Override
 	protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {

@@ -7,8 +7,6 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaShieldTypes;
@@ -26,19 +24,25 @@ import reika.chromaticraft.registry.ChromaShieldTypes;
  * would land on the surface of the pool rather than in it, and {@code OCEAN_FLOOR} would skip past the
  * water entirely to the bed beneath.
  */
-public final class FireJetFeature extends Feature<NoneFeatureConfiguration> {
+public final class FireJetFeature implements Feature {
+
+    public static final com.mojang.serialization.MapCodec<FireJetFeature> CODEC =
+            com.mojang.serialization.MapCodec.unit(FireJetFeature::new);
+
+    @Override
+    public com.mojang.serialization.MapCodec<FireJetFeature> codec() {
+        return CODEC;
+    }
 
 	/** V33a: at least this much water above the jet. */
 	private static final int REQUIRED_DEPTH = 2;
 
 	public FireJetFeature() {
-		super(NoneFeatureConfiguration.CODEC);
+
 	}
 
 	@Override
-	public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-		WorldGenLevel world = context.level();
-		BlockPos origin = context.origin();
+	public boolean place(net.minecraft.world.level.WorldGenLevel world, net.minecraft.world.level.chunk.ChunkGenerator generator, net.minecraft.util.RandomSource random, net.minecraft.core.BlockPos origin) {
 		// MOTION_BLOCKING counts water, so this lands on the pool's own surface column.
 		int surface = world.getHeight(Heightmap.Types.MOTION_BLOCKING, origin.getX(), origin.getZ());
 		BlockPos top = new BlockPos(origin.getX(), surface - 1, origin.getZ());

@@ -1,6 +1,5 @@
 package reika.chromaticraft.block.dimension.structure.gol;
 
-import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.InteractionResult;
@@ -24,14 +23,13 @@ import reika.chromaticraft.tileentity.TileEntityGOLController;
 public final class BlockGOLController extends Block implements EntityBlock {
 
 	public static final BooleanProperty ACTIVE = BooleanProperty.create("active");
-	private final MapCodec<BlockGOLController> codec = MapCodec.unit(this);
+
 
 	public BlockGOLController(BlockBehaviour.Properties properties) {
 		super(properties);
 		registerDefaultState(stateDefinition.any().setValue(ACTIVE, false));
 	}
 
-	@Override public MapCodec<? extends BlockGOLController> codec() { return codec; }
 
 	@Override
 	protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {

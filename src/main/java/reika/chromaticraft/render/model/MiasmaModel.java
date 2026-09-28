@@ -1,5 +1,6 @@
 package reika.chromaticraft.render.model;
 
+import net.minecraft.core.Direction;
 import java.util.List;
 
 import com.mojang.blaze3d.platform.Transparency;
@@ -114,7 +115,7 @@ public final class MiasmaModel implements DynamicBlockStateModel {
 			vertex.setSprite(material, Transparency.TRANSLUCENT);
 			// Tint index 0: the blue comes from the position-dependent tint source, not the texture.
 			vertex.setTintIndex(0);
-			vertex.setShade(false);
+			vertex.setShadeOverride(Direction.UP);
 			// V33a setBrightness(240): the cloud lights itself.
 			vertex.setLightEmission(15);
 			vertex.setAmbientOcclusion(false);

@@ -1,7 +1,5 @@
 package reika.chromaticraft.block.dimension;
 
-import com.mojang.serialization.MapCodec;
-import com.mojang.serialization.codecs.RecordCodecBuilder;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Player;
@@ -38,11 +36,6 @@ import reika.chromaticraft.tileentity.technical.TileEntityDimensionCore;
  */
 public class BlockDimensionCore extends BaseEntityBlock {
 
-	public static final MapCodec<BlockDimensionCore> CODEC = RecordCodecBuilder.mapCodec(
-			instance -> instance.group(
-					propertiesCodec(),
-					CrystalElement.CODEC.fieldOf("element").forGetter(BlockDimensionCore::getElement)
-			).apply(instance, BlockDimensionCore::new));
 
 	private final CrystalElement element;
 
@@ -56,10 +49,6 @@ public class BlockDimensionCore extends BaseEntityBlock {
 		return element;
 	}
 
-	@Override
-	protected MapCodec<? extends BaseEntityBlock> codec() {
-		return CODEC;
-	}
 
 	@Override
 	public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {

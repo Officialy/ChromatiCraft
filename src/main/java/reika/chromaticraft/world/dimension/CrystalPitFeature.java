@@ -7,8 +7,6 @@ import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaShieldTypes;
@@ -28,7 +26,15 @@ import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
  * must have solid rock, grass, ground or metal beneath it, so a pit cannot hang half out of a cliff
  * face or over a cave. Upstream tests all of that before touching a block.
  */
-public final class CrystalPitFeature extends Feature<NoneFeatureConfiguration> {
+public final class CrystalPitFeature implements Feature {
+
+    public static final com.mojang.serialization.MapCodec<CrystalPitFeature> CODEC =
+            com.mojang.serialization.MapCodec.unit(CrystalPitFeature::new);
+
+    @Override
+    public com.mojang.serialization.MapCodec<CrystalPitFeature> codec() {
+        return CODEC;
+    }
 
 	/** V33a's horizontal and vertical radii. */
 	private static final int RADIUS = 8;
@@ -46,14 +52,11 @@ public final class CrystalPitFeature extends Feature<NoneFeatureConfiguration> {
 	};
 
 	public CrystalPitFeature() {
-		super(NoneFeatureConfiguration.CODEC);
+
 	}
 
 	@Override
-	public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-		WorldGenLevel world = context.level();
-		RandomSource random = context.random();
-		BlockPos origin = context.origin();
+	public boolean place(net.minecraft.world.level.WorldGenLevel world, net.minecraft.world.level.chunk.ChunkGenerator generator, net.minecraft.util.RandomSource random, net.minecraft.core.BlockPos origin) {
 		if (!canFormAt(world, origin))
 			return false;
 

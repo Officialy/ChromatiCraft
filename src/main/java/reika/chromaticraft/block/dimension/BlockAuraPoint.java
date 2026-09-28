@@ -1,6 +1,5 @@
 package reika.chromaticraft.block.dimension;
 
-import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
@@ -23,16 +22,11 @@ import reika.chromaticraft.tileentity.aoe.TileEntityAuraPoint;
  */
 public class BlockAuraPoint extends BaseEntityBlock {
 
-	public static final MapCodec<BlockAuraPoint> CODEC = simpleCodec(BlockAuraPoint::new);
 
 	public BlockAuraPoint(BlockBehaviour.Properties properties) {
 		super(properties);
 	}
 
-	@Override
-	protected MapCodec<? extends BaseEntityBlock> codec() {
-		return CODEC;
-	}
 
 	@Override
 	public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {

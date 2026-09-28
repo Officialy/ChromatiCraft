@@ -217,7 +217,7 @@ public final class MenuFragmentSelection extends AbstractContainerMenu {
 				ResearchFragmentData data = ResearchFragmentData.read(stack);
 				if (data.blank())
 					programRandom(stack, player);
-				player.getInventory().placeItemBackInInventory(stack);
+				player.getInventory().placeItemBackInInventory(stack, net.minecraft.util.Prediction.SERVER_ONLY);
 			}
 		}
 		super.removed(player);

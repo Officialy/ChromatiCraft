@@ -90,8 +90,8 @@ public final class InfoFragmentItemModel implements ItemModel {
 
 	private static boolean shiftDown() {
 		var window = Minecraft.getInstance().getWindow();
-		return InputConstants.isKeyDown(window, InputConstants.KEY_LSHIFT)
-				|| InputConstants.isKeyDown(window, InputConstants.KEY_RSHIFT);
+		return InputConstants.isKeyDown(InputConstants.KEY_LSHIFT)
+				|| InputConstants.isKeyDown(InputConstants.KEY_RSHIFT);
 	}
 
 	private static final class NestedItemRenderer implements SpecialModelRenderer<ItemStackRenderState> {

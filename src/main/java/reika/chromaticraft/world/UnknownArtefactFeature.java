@@ -14,8 +14,6 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 import net.minecraft.world.level.material.Fluids;
 
 import reika.chromaticraft.magic.lore.Towers;
@@ -33,7 +31,15 @@ import reika.chromaticraft.registry.ChromaBlocks;
  * <p>The chunk set depends only on the tower layout, so it is cached per world seed and rebuilt when
  * that changes — as upstream does.
  */
-public final class UnknownArtefactFeature extends Feature<NoneFeatureConfiguration> {
+public final class UnknownArtefactFeature implements Feature {
+
+    public static final com.mojang.serialization.MapCodec<UnknownArtefactFeature> CODEC =
+            com.mojang.serialization.MapCodec.unit(UnknownArtefactFeature::new);
+
+    @Override
+    public com.mojang.serialization.MapCodec<UnknownArtefactFeature> codec() {
+        return CODEC;
+    }
 
 	private static final int INNER_RADIUS = 384;
 	private static final int OUTER_RADIUS = 512;
@@ -43,14 +49,11 @@ public final class UnknownArtefactFeature extends Feature<NoneFeatureConfigurati
 	private static boolean cached;
 
 	public UnknownArtefactFeature() {
-		super(NoneFeatureConfiguration.CODEC);
+
 	}
 
 	@Override
-	public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-		WorldGenLevel world = context.level();
-		RandomSource random = context.random();
-		BlockPos origin = context.origin();
+	public boolean place(net.minecraft.world.level.WorldGenLevel world, net.minecraft.world.level.chunk.ChunkGenerator generator, net.minecraft.util.RandomSource random, net.minecraft.core.BlockPos origin) {
 		if (!(world.getLevel() instanceof ServerLevel server))
 			return false;
 		// V33a keys the set on the chunk's block-aligned corner, not its chunk index.

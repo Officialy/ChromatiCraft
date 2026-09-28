@@ -230,8 +230,8 @@ public final class DungeonZones {
 	/** V33a {@code isValidBiomeAt}: the planned biome, without generating the chunk. */
 	public static boolean isValidBiomeAt(ServerLevel level, int x, int z, Type s) {
 		var source = level.getChunkSource();
-		Holder<Biome> biome = source.getGenerator().getBiomeSource().getNoiseBiome(QuartPos.fromBlock(x),
-				QuartPos.fromBlock(level.getSeaLevel()), QuartPos.fromBlock(z), source.randomState().sampler());
+		Holder<Biome> biome = source.getGenerator().getBiomeSource().createUncachedResolver(source.randomState())
+				.getNoiseBiome(QuartPos.fromBlock(x), QuartPos.fromBlock(level.getSeaLevel()), QuartPos.fromBlock(z));
 		return isValidBiome(s, biome);
 	}
 

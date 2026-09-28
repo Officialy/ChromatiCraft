@@ -56,7 +56,7 @@ public final class BlockChromaMud extends Block {
 	@Override
 	protected void neighborChanged(BlockState state, Level level, BlockPos pos, Block neighbor,
 			@Nullable Orientation orientation, boolean movedByPiston) {
-		if (!level.isClientSide() && level.getBlockState(pos.above()).blocksMotion())
+		if (!level.isClientSide() && level.getBlockState(pos.above()).isSolid())
 			level.setBlockAndUpdate(pos, Blocks.DIRT.defaultBlockState());
 	}
 

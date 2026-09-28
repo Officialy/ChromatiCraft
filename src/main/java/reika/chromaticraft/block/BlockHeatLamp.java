@@ -1,6 +1,5 @@
 package reika.chromaticraft.block;
 
-import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -43,7 +42,7 @@ public final class BlockHeatLamp extends Block implements EntityBlock {
 	private static final VoxelShape EAST = box(0, 4, 4, 4, 12, 12);
 
 	private final boolean cold;
-	private final MapCodec<BlockHeatLamp> codec = MapCodec.unit(this);
+
 
 	public BlockHeatLamp(BlockBehaviour.Properties properties, boolean cold) {
 		super(properties);
@@ -51,7 +50,6 @@ public final class BlockHeatLamp extends Block implements EntityBlock {
 		registerDefaultState(stateDefinition.any().setValue(FACING, Direction.UP));
 	}
 
-	@Override public MapCodec<? extends BlockHeatLamp> codec() { return codec; }
 	public boolean isCold() { return cold; }
 
 	@Override

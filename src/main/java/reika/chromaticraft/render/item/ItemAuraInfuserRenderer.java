@@ -34,7 +34,7 @@ public final class ItemAuraInfuserRenderer implements NoDataSpecialModelRenderer
 		poseStack.pushPose();
 		poseStack.translate(0.5F, 0.06F, 0.5F);
 		poseStack.scale(0.88F, -0.88F, -0.88F);
-		poseStack.mulPose(Axis.YP.rotationDegrees(180));
+		poseStack.rotate(Axis.YP.rotationDegrees(180));
 		poseStack.translate(0, -1.5F, 0);
 		PoseStack modelPose = new PoseStack();
 		modelPose.last().set(poseStack.last());

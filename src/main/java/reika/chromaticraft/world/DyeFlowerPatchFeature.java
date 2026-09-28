@@ -6,8 +6,6 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
 import reika.chromaticraft.block.dye26.BlockDyeFlower;
 import reika.chromaticraft.registry.ChromaBlocks;
@@ -24,17 +22,23 @@ import reika.dragonapi.libraries.level.ReikaWorldHelper;
  * level. At 128 and above the roll's range is 1 and it always fails, so upstream grew no dye flowers
  * on high ground; that is kept.
  */
-public final class DyeFlowerPatchFeature extends Feature<NoneFeatureConfiguration> {
+public final class DyeFlowerPatchFeature implements Feature {
+
+    public static final com.mojang.serialization.MapCodec<DyeFlowerPatchFeature> CODEC =
+            com.mojang.serialization.MapCodec.unit(DyeFlowerPatchFeature::new);
+
+    @Override
+    public com.mojang.serialization.MapCodec<DyeFlowerPatchFeature> codec() {
+        return CODEC;
+    }
 
 	public DyeFlowerPatchFeature() {
-		super(NoneFeatureConfiguration.CODEC);
+
 	}
 
 	@Override
-	public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-		WorldGenLevel world = context.level();
-		RandomSource random = context.random();
-		ChunkPos chunk = ChunkPos.containing(context.origin());
+	public boolean place(net.minecraft.world.level.WorldGenLevel world, net.minecraft.world.level.chunk.ChunkGenerator generator, net.minecraft.util.RandomSource random, net.minecraft.core.BlockPos origin) {
+		ChunkPos chunk = ChunkPos.containing(origin);
 		int num = 8 * (1 + random.nextInt(8));
 		boolean any = false;
 		for (int i = 0; i < num; i++) {

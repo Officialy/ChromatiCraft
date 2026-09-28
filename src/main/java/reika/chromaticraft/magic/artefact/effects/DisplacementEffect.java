@@ -21,7 +21,7 @@ public class DisplacementEffect extends UABombingEffect.EntityEffect {
 	public void trigger(Entity e) {
 		e.setDeltaMovement(e.getDeltaMovement().add(ReikaRandomHelper.getRandomPlusMinus(0, 0.5),
 				ReikaRandomHelper.getRandomPlusMinus(0.5, 0.25), ReikaRandomHelper.getRandomPlusMinus(0, 0.5)));
-		e.hurtMarked = true;
+		e.syncVelocity = true;
 	}
 
 }

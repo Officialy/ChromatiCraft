@@ -16,7 +16,9 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.RegistryOps;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeSource;
+import net.minecraft.world.level.biome.BiomeResolver;
 import net.minecraft.world.level.biome.Climate;
+import net.minecraft.world.level.levelgen.RandomState;
 
 import net.minecraft.world.level.LevelReader;
 
@@ -81,11 +83,11 @@ public class ProximaBiomeSource extends BiomeSource {
 	@Override
 	public Pair<BlockPos, Holder<Biome>> findClosestBiome3d(BlockPos origin, int searchRadius,
 			int sampleResolutionHorizontal, int sampleResolutionVertical, Predicate<Holder<Biome>> allowed,
-			Climate.Sampler sampler, LevelReader level) {
+			RandomState randomState, LevelReader level) {
 		ProximaGenerators.Layout layout = ProximaGenerators.getLayout();
 		if (layout == null)
 			return super.findClosestBiome3d(origin, searchRadius, sampleResolutionHorizontal,
-					sampleResolutionVertical, allowed, sampler, level);
+					sampleResolutionVertical, allowed, randomState, level);
 
 		Holder<Biome> monument = biomes.getOrThrow(ProximaBiomes.MONUMENT.biomeKey());
 		if (allowed.test(monument)) {
@@ -116,13 +118,15 @@ public class ProximaBiomeSource extends BiomeSource {
 		int reach = (int)(layout.structures().getMaximumDistanceFromOrigin()
 				+ reika.chromaticraft.world.dimension.RegionMapper.MAX_BUFFER) * 2;
 		return super.findClosestBiome3d(origin, Math.max(searchRadius, reach),
-				sampleResolutionHorizontal, sampleResolutionVertical, allowed, sampler, level);
+				sampleResolutionHorizontal, sampleResolutionVertical, allowed, randomState, level);
 	}
 
 	@Override
-	public Holder<Biome> getNoiseBiome(int quartX, int quartY, int quartZ, Climate.Sampler sampler) {
-		ProximaBiomeType type = BiomeDistributor.getBiome(
-				QuartPos.toBlock(quartX), QuartPos.toBlock(quartZ));
-		return biomes.getOrThrow((type == null ? ProximaBiomes.CENTER : type).biomeKey());
+	public BiomeResolver createResolver(Climate.Sampler sampler) {
+		return (quartX, quartY, quartZ) -> {
+			ProximaBiomeType type = BiomeDistributor.getBiome(
+					QuartPos.toBlock(quartX), QuartPos.toBlock(quartZ));
+			return biomes.getOrThrow((type == null ? ProximaBiomes.CENTER : type).biomeKey());
+		};
 	}
 }

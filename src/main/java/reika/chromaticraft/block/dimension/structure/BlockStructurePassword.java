@@ -1,6 +1,5 @@
 package reika.chromaticraft.block.dimension.structure;
 
-import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
@@ -19,13 +18,11 @@ import reika.chromaticraft.tileentity.TileEntityStructurePassword;
 /** V33a structure-password bypass terminal. The eight crystal slots live in its block entity. */
 public final class BlockStructurePassword extends Block implements EntityBlock {
 
-	private final MapCodec<BlockStructurePassword> codec = MapCodec.unit(this);
 
 	public BlockStructurePassword(BlockBehaviour.Properties properties) {
 		super(properties);
 	}
 
-	@Override public MapCodec<? extends BlockStructurePassword> codec() { return codec; }
 
 	@Override
 	public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {

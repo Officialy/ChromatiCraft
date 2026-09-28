@@ -76,7 +76,7 @@ public final class RenderCrystalCharger
 			for (float offset : new float[] {-0.1F, 0.1F}) {
 				poseStack.pushPose();
 				poseStack.translate(0.5F, 0.65F, 0.5F);
-				poseStack.mulPose(Axis.YP.rotationDegrees(-state.angle));
+				poseStack.rotate(Axis.YP.rotationDegrees(-state.angle));
 				poseStack.translate(0, 0, offset);
 				poseStack.scale(1.35F, 1.3F, 1.35F);
 				state.item.submit(poseStack, collector, state.lightCoords, OverlayTexture.NO_OVERLAY, 0);

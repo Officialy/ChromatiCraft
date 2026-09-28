@@ -1,6 +1,5 @@
 package reika.chromaticraft.block;
 
-import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
@@ -46,7 +45,7 @@ public final class BlockHoverBlock extends Block {
 
 	public static final EnumProperty<HoverType> TYPE = EnumProperty.create("type", HoverType.class);
 	public static final EnumProperty<Decay> DECAY = EnumProperty.create("decay", Decay.class);
-	private final MapCodec<BlockHoverBlock> codec = MapCodec.unit(this);
+
 
 	public BlockHoverBlock(BlockBehaviour.Properties properties) {
 		super(properties);
@@ -54,7 +53,6 @@ public final class BlockHoverBlock extends Block {
 				.setValue(DECAY, Decay.PERMANENT));
 	}
 
-	@Override public MapCodec<? extends BlockHoverBlock> codec() { return codec; }
 
 	@Override
 	protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {

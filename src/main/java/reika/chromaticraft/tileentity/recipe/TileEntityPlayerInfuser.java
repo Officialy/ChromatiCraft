@@ -92,7 +92,7 @@ public final class TileEntityPlayerInfuser extends TileEntityAuraInfuser {
 		Vec3 velocity = player.getDeltaMovement();
 		player.setDeltaMovement(velocity.add(dx * dx * 0.25 * Math.signum(dx),
 				dy * dy * 0.375 * Math.signum(dy), dz * dz * 0.25 * Math.signum(dz)));
-		player.hurtMarked = true;
+		player.syncVelocity = true;
 	}
 
 	@Override protected void spawnCraftingParticles(Level world, BlockPos pos) {

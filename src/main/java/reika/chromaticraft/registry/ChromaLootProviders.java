@@ -3,7 +3,7 @@ package reika.chromaticraft.registry;
 import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.world.level.storage.loot.providers.number.NumberProvider;
+import net.minecraft.world.level.storage.loot.providers.number.ints.ContextIntProvider;
 
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
@@ -19,22 +19,22 @@ import reika.chromaticraft.auxiliary.loot.TuningScaledCount;
 /** Custom loot number providers for V33a drop formulas vanilla cannot express. */
 public final class ChromaLootProviders {
 
-	public static final DeferredRegister<MapCodec<? extends NumberProvider>> NUMBER_PROVIDERS =
-			DeferredRegister.create(BuiltInRegistries.LOOT_NUMBER_PROVIDER_TYPE, ChromatiCraft.MODID);
+	public static final DeferredRegister<MapCodec<? extends ContextIntProvider>> NUMBER_PROVIDERS =
+			DeferredRegister.create(BuiltInRegistries.CONTEXT_INT_PROVIDER_TYPE, ChromatiCraft.MODID);
 
-	public static final DeferredHolder<MapCodec<? extends NumberProvider>, MapCodec<CrystalShardCount>>
+	public static final DeferredHolder<MapCodec<? extends ContextIntProvider>, MapCodec<CrystalShardCount>>
 			CRYSTAL_SHARD_COUNT = NUMBER_PROVIDERS.register("crystal_shard_count",
 					() -> CrystalShardCount.MAP_CODEC);
 
-	public static final DeferredHolder<MapCodec<? extends NumberProvider>, MapCodec<ChromaBerryCount>>
+	public static final DeferredHolder<MapCodec<? extends ContextIntProvider>, MapCodec<ChromaBerryCount>>
 			CHROMA_BERRY_COUNT = NUMBER_PROVIDERS.register("chroma_berry_count",
 					() -> ChromaBerryCount.MAP_CODEC);
 
-	public static final DeferredHolder<MapCodec<? extends NumberProvider>, MapCodec<TuningScaledCount>>
+	public static final DeferredHolder<MapCodec<? extends ContextIntProvider>, MapCodec<TuningScaledCount>>
 			TUNING_SCALED_COUNT = NUMBER_PROVIDERS.register("tuning_scaled_count",
 					() -> TuningScaledCount.MAP_CODEC);
 
-	public static final DeferredHolder<MapCodec<? extends NumberProvider>, MapCodec<reika.chromaticraft.auxiliary.loot.FortuneBonusCount>>
+	public static final DeferredHolder<MapCodec<? extends ContextIntProvider>, MapCodec<reika.chromaticraft.auxiliary.loot.FortuneBonusCount>>
 			FORTUNE_BONUS_COUNT = NUMBER_PROVIDERS.register("fortune_bonus_count",
 					() -> reika.chromaticraft.auxiliary.loot.FortuneBonusCount.MAP_CODEC);
 

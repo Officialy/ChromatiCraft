@@ -1,7 +1,5 @@
 package reika.chromaticraft.block.dimension;
 
-import com.mojang.serialization.MapCodec;
-import com.mojang.serialization.codecs.RecordCodecBuilder;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -47,11 +45,6 @@ import reika.chromaticraft.world.dimension.DimensionTuningManager;
  */
 public class BlockVoidRift extends BaseEntityBlock {
 
-	public static final MapCodec<BlockVoidRift> CODEC = RecordCodecBuilder.mapCodec(
-			instance -> instance.group(
-					propertiesCodec(),
-					CrystalElement.CODEC.fieldOf("element").forGetter(BlockVoidRift::getElement)
-			).apply(instance, BlockVoidRift::new));
 
 	private final CrystalElement element;
 
@@ -64,10 +57,6 @@ public class BlockVoidRift extends BaseEntityBlock {
 		return element;
 	}
 
-	@Override
-	protected MapCodec<? extends BaseEntityBlock> codec() {
-		return CODEC;
-	}
 
 	@Override
 	public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {

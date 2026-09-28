@@ -19,8 +19,6 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.FlatLevelSource;
 import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
 import net.neoforged.neoforge.common.NeoForge;
 
@@ -34,26 +32,30 @@ import reika.chromaticraft.registry.ChromaBlocks;
  * per-chunk attempts (scaled by dimension/biome density), so placement modifiers intentionally do
  * not add a second count or height distribution.
  */
-public final class CrystalFeature extends Feature<NoneFeatureConfiguration> {
+public final class CrystalFeature implements Feature {
+
+    public static final com.mojang.serialization.MapCodec<CrystalFeature> CODEC =
+            com.mojang.serialization.MapCodec.unit(CrystalFeature::new);
+
+    @Override
+    public com.mojang.serialization.MapCodec<CrystalFeature> codec() {
+        return CODEC;
+    }
 
 	private static final int PER_CHUNK = 60;
 	private static final TagKey<Biome> RAINBOW_FOREST = TagKey.create(Registries.BIOME,
 			Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "is_rainbow_forest"));
 
 	public CrystalFeature() {
-		super(NoneFeatureConfiguration.CODEC);
+
 	}
 
 	@Override
-	public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-		if (context.chunkGenerator() instanceof FlatLevelSource)
+	public boolean place(net.minecraft.world.level.WorldGenLevel world, net.minecraft.world.level.chunk.ChunkGenerator generator, net.minecraft.util.RandomSource random, net.minecraft.core.BlockPos origin) {
+		if (generator instanceof FlatLevelSource)
 			return false;
-		WorldGenLevel world = context.level();
 		if (world.getLevel().dimension() == Level.END)
 			return false;
-
-		RandomSource random = context.random();
-		BlockPos origin = context.origin();
 		int attempts = (int)(PER_CHUNK * getDensityFactor(world, origin));
 		int maximumY = world.getLevel().dimension() == Level.NETHER ? 128 : 64;
 		boolean placedAny = false;

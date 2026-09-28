@@ -14,8 +14,6 @@ import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.SpawnerBlockEntity;
 import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 import net.minecraft.world.level.storage.loot.BuiltInLootTables;
 import net.minecraft.world.level.storage.TagValueInput;
 
@@ -29,7 +27,19 @@ import reika.chromaticraft.magic.progression.ProgressStage;
  * The natural variant retains the original 200:15:30:24:8 weighted choice; named variants are
  * command/debug seams so each layout can be tested independently with {@code /place feature}.
  */
-public final class NetherRoofStructureFeature extends Feature<NoneFeatureConfiguration> {
+public final class NetherRoofStructureFeature implements Feature {
+
+    public static final com.mojang.serialization.MapCodec<NetherRoofStructureFeature> CODEC =
+            com.mojang.serialization.Codec.STRING.optionalFieldOf("forced_type", "")
+                    .xmap(name -> name.isEmpty() ? new NetherRoofStructureFeature()
+                                    : new NetherRoofStructureFeature(Type.valueOf(name.toUpperCase(java.util.Locale.ROOT))),
+                            feature -> feature.forcedType == null ? ""
+                                    : feature.forcedType.name().toLowerCase(java.util.Locale.ROOT));
+
+    @Override
+    public com.mojang.serialization.MapCodec<NetherRoofStructureFeature> codec() {
+        return CODEC;
+    }
 
     public enum Type {
         HUT("hut", 200), TEMPLE("temple", 15), MAZE("maze", 30), SPIRAL("spiral", 24), DIORAMA("diorama", 8);
@@ -63,24 +73,23 @@ public final class NetherRoofStructureFeature extends Feature<NoneFeatureConfigu
     }
 
     public NetherRoofStructureFeature(Type forcedType) {
-        super(NoneFeatureConfiguration.CODEC);
+
         this.forcedType = forcedType;
     }
 
     @Override
-    public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-        WorldGenLevel world = context.level();
+    public boolean place(net.minecraft.world.level.WorldGenLevel world, net.minecraft.world.level.chunk.ChunkGenerator generator, net.minecraft.util.RandomSource random, net.minecraft.core.BlockPos origin) {
         if (world.getLevel().dimension() != Level.NETHER)
             return false;
-        Type type = forcedType != null ? forcedType : Type.random(context.random());
-        BlockPos base = new BlockPos(context.origin().getX(), 128, context.origin().getZ());
+        Type type = forcedType != null ? forcedType : Type.random(random);
+        BlockPos base = new BlockPos(origin.getX(), 128, origin.getZ());
         // The Diorama is 32 wide and the Temple 26, either of which can reach past the chunks this
         // step may write to and come out half built. Resolve the anchor before anything uses it, so
         // the structure and the chest offsets below agree on where it ended up.
         base = NBTStructureLoader.fitToWriteWindow(world, type.template, base, BlockPos.ZERO);
         List<BlockPos> placed = NBTStructureLoader.place(world, type.template, base, BlockPos.ZERO,
                 state -> state, 3);
-        initializeContents(world, base, type, context.random());
+        initializeContents(world, base, type, random);
         return !placed.isEmpty();
     }
 

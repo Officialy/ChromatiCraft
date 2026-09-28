@@ -13,8 +13,6 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaShieldTypes;
@@ -38,7 +36,15 @@ import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
  * <p>Every column this writes belongs to the chunk being generated, so unlike the roof structures
  * there is no question of reaching outside the region a feature may write to.
  */
-public final class NetherLavaRiverFeature extends Feature<NoneFeatureConfiguration> {
+public final class NetherLavaRiverFeature implements Feature {
+
+    public static final com.mojang.serialization.MapCodec<NetherLavaRiverFeature> CODEC =
+            com.mojang.serialization.MapCodec.unit(NetherLavaRiverFeature::new);
+
+    @Override
+    public com.mojang.serialization.MapCodec<NetherLavaRiverFeature> codec() {
+        return CODEC;
+    }
 
 	/** V33a RIVER_THRESH: how far from a noise zero crossing still counts as river at all. */
 	private static final double RIVER_THRESH = 0.2;
@@ -89,17 +95,16 @@ public final class NetherLavaRiverFeature extends Feature<NoneFeatureConfigurati
 	private volatile Fields fields;
 
 	public NetherLavaRiverFeature() {
-		super(NoneFeatureConfiguration.CODEC);
+
 	}
 
 	@Override
-	public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-		WorldGenLevel world = context.level();
+	public boolean place(net.minecraft.world.level.WorldGenLevel world, net.minecraft.world.level.chunk.ChunkGenerator generator, net.minecraft.util.RandomSource random, net.minecraft.core.BlockPos origin) {
 		if (world.getLevel().dimension() != Level.NETHER)
 			return false;
 		Fields active = fieldsFor(world.getSeed());
 		BlockState shielding = ChromaBlocks.shielding(ChromaShieldTypes.STONE).get().defaultBlockState();
-		ChunkPos chunk = ChunkPos.containing(context.origin());
+		ChunkPos chunk = ChunkPos.containing(origin);
 		boolean placed = false;
 		for (int i = 0; i < 16; i++) {
 			for (int k = 0; k < 16; k++) {

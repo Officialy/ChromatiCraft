@@ -6,8 +6,6 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
 import reika.chromaticraft.block.worldgen26.BlockSparkle;
 import reika.chromaticraft.registry.ChromaBlocks;
@@ -25,17 +23,23 @@ import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
  * <p>The heights are upstream's absolute ones; 26.2's deeper world below them is left untouched, as it
  * did not exist.
  */
-public final class RainbowForestUndergroundFeature extends Feature<NoneFeatureConfiguration> {
+public final class RainbowForestUndergroundFeature implements Feature {
+
+    public static final com.mojang.serialization.MapCodec<RainbowForestUndergroundFeature> CODEC =
+            com.mojang.serialization.MapCodec.unit(RainbowForestUndergroundFeature::new);
+
+    @Override
+    public com.mojang.serialization.MapCodec<RainbowForestUndergroundFeature> codec() {
+        return CODEC;
+    }
 
 	public RainbowForestUndergroundFeature() {
-		super(NoneFeatureConfiguration.CODEC);
+
 	}
 
 	@Override
-	public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-		WorldGenLevel world = context.level();
-		RandomSource random = context.random();
-		ChunkPos chunk = ChunkPos.containing(context.origin());
+	public boolean place(net.minecraft.world.level.WorldGenLevel world, net.minecraft.world.level.chunk.ChunkGenerator generator, net.minecraft.util.RandomSource random, net.minecraft.core.BlockPos origin) {
+		ChunkPos chunk = ChunkPos.containing(origin);
 		if (random.nextInt(2) == 0) {
 			int y = 4 + random.nextInt(64);
 			int x = chunk.getMinBlockX() + random.nextInt(16);

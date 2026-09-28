@@ -201,7 +201,7 @@ public final class SelectiveGlassModel implements DynamicBlockStateModel {
 			QuadBakingVertexConsumer vertex = new QuadBakingVertexConsumer();
 			vertex.setSprite(sprite, Transparency.TRANSLUCENT);
 			vertex.setTintIndex(-1);
-			vertex.setShade(false);
+			vertex.setShadeOverride(Direction.UP);
 			vertex.setAmbientOcclusion(false);
 			vertex.setLightEmission(emission);
 			vertex.setDirection(face);

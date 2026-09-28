@@ -55,7 +55,7 @@ public final class RenderPersonalCharger implements
 			CameraRenderState camera) {
 		poseStack.pushPose();
 		poseStack.translate(0.5, 0.5, 0.5);
-		poseStack.mulPose(camera.orientation);
+		poseStack.rotate(camera.orientation);
 		if (!state.active) {
 			submitLayer(poseStack, collector, CENTER, 0.5F, 0xffffffff, 0, true);
 		}

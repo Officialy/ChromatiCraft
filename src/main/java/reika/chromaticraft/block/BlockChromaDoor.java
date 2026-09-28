@@ -1,6 +1,5 @@
 package reika.chromaticraft.block;
 
-import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -48,7 +47,7 @@ public final class BlockChromaDoor extends Block implements EntityBlock {
 	public static final BooleanProperty EAST = BooleanProperty.create("east");
 	public static final BooleanProperty WEST = BooleanProperty.create("west");
 	private static final VoxelShape CORE = box(6, 6, 6, 10, 10, 10);
-	private final MapCodec<BlockChromaDoor> codec = MapCodec.unit(this);
+
 
 	public BlockChromaDoor(BlockBehaviour.Properties properties) {
 		super(properties);
@@ -58,7 +57,6 @@ public final class BlockChromaDoor extends Block implements EntityBlock {
 				.setValue(SOUTH, false).setValue(EAST, false).setValue(WEST, false));
 	}
 
-	@Override public MapCodec<? extends BlockChromaDoor> codec() { return codec; }
 
 	@Override
 	protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {

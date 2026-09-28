@@ -172,7 +172,7 @@ public final class CheatingPreventionSystem {
 		Vec3 from = ep.position().add(look.x, look.y - 1.5, look.z);
 		Vec3 push = ep.position().subtract(from).normalize().scale(2.5);
 		ep.setDeltaMovement(ep.getDeltaMovement().add(push));
-		ep.hurtMarked = true;
+		ep.syncVelocity = true;
 		ep.fallDistance += 10;
 	}
 
@@ -230,7 +230,7 @@ public final class CheatingPreventionSystem {
 		private static void dropPermanently(Player ep, ItemStack is, ServerLevel dropInto, Vec3 dropAt) {
 			ItemStack copy = is.copy();
 			if (dropInto == null) {
-				ItemEntity dropped = ep.drop(copy, false);
+				ItemEntity dropped = ep.drop(copy, false, net.minecraft.util.Prediction.SERVER_ONLY);
 				if (dropped != null)
 					dropped.setUnlimitedLifetime();
 				return;

@@ -56,7 +56,7 @@ public final class RenderDimensionCore implements
 			CameraRenderState camera) {
 		poseStack.pushPose();
 		poseStack.translate(0.5, 0.5, 0.5);
-		poseStack.mulPose(camera.orientation);
+		poseStack.rotate(camera.orientation);
 		// Dimension cores remain supernatural landmarks through terrain outside the monument ritual as
 		// well. Their matching DIMCORE post effect is likewise intentionally not LOS-culled.
 		submitLayers(poseStack, collector, state.color, state.frame, true, true);

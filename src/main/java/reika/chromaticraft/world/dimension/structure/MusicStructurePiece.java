@@ -183,7 +183,7 @@ public final class MusicStructurePiece extends StructurePiece {
 	}
 
 	private void placeTemplate(WorldGenLevel level, BoundingBox chunkBox, Identifier id, BlockPos anchor) {
-		level.getLevel().getStructureManager().get(id)
+		level.getLevel().getStructureTemplateManager().get(id)
 				.orElseThrow(() -> new IllegalStateException("Missing Crystal Music template " + id))
 				.placeInWorld(level, anchor, anchor, new StructurePlaceSettings().setRotation(Rotation.NONE)
 						.setIgnoreEntities(true).setBoundingBox(chunkBox),

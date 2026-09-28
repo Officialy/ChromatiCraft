@@ -9,8 +9,6 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
 import reika.chromaticraft.registry.ChromaBlocks;
 
@@ -39,7 +37,15 @@ import reika.chromaticraft.registry.ChromaBlocks;
  * generated. Anchoring at the chunk centre keeps the whole spread inside the window while leaving
  * upstream's own sixteen-block scatter untouched.
  */
-public final class TreeClusterFeature extends Feature<NoneFeatureConfiguration> {
+public final class TreeClusterFeature implements Feature {
+
+    public static final com.mojang.serialization.MapCodec<TreeClusterFeature> CODEC =
+            com.mojang.serialization.MapCodec.unit(TreeClusterFeature::new);
+
+    @Override
+    public com.mojang.serialization.MapCodec<TreeClusterFeature> codec() {
+        return CODEC;
+    }
 
 	/** V33a canGenerateTree: fourteen blocks of clear air, which is what a giant needs. */
 	private static final int REQUIRED_CLEARANCE = 14;
@@ -47,7 +53,7 @@ public final class TreeClusterFeature extends Feature<NoneFeatureConfiguration> 
 	private static final int SPREAD = 16;
 
 	public TreeClusterFeature() {
-		super(NoneFeatureConfiguration.CODEC);
+
 	}
 
 	/** V33a's wood table, less the entries whose mods are absent; weights are upstream's. */
@@ -136,13 +142,11 @@ public final class TreeClusterFeature extends Feature<NoneFeatureConfiguration> 
 	}
 
 	@Override
-	public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-		WorldGenLevel world = context.level();
-		RandomSource random = context.random();
+	public boolean place(net.minecraft.world.level.WorldGenLevel world, net.minecraft.world.level.chunk.ChunkGenerator generator, net.minecraft.util.RandomSource random, net.minecraft.core.BlockPos origin) {
 		// A placed feature receives the chunk's minimum corner, not its centre. Omitting this offset
 		// let the +/-16 scatter plus a giant canopy enter a chunk two steps away; 26.2 correctly
 		// rejected those far-chunk writes and produced the perfectly flat half-trees seen in-world.
-		BlockPos centre = context.origin().offset(8, 0, 8);
+		BlockPos centre = origin.offset(8, 0, 8);
 		int count = 3 + random.nextInt(8);
 		boolean any = false;
 		for (int i = 0; i < count; i++) {

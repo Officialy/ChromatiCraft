@@ -52,7 +52,7 @@ public final class ProximaDimension {
 		net.minecraft.world.attribute.EnvironmentAttributeMap attributes =
 				net.minecraft.world.attribute.EnvironmentAttributeMap.builder()
 						.set(net.minecraft.world.attribute.EnvironmentAttributes.BED_RULE,
-								net.minecraft.world.attribute.BedRule.EXPLODES)
+								net.minecraft.world.attribute.BedRule.DESTROY_ON_USE)
 						.set(net.minecraft.world.attribute.EnvironmentAttributes.RESPAWN_ANCHOR_WORKS, false)
 						.set(net.minecraft.world.attribute.EnvironmentAttributes.NETHER_PORTAL_SPAWNS_PIGLINS,
 								false)

@@ -1,6 +1,6 @@
 package reika.chromaticraft.world;
 
-import java.util.stream.Stream;
+import java.util.function.Consumer;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
@@ -13,7 +13,6 @@ import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.placement.PlacementContext;
 import net.minecraft.world.level.levelgen.placement.PlacementModifier;
-import net.minecraft.world.level.levelgen.placement.PlacementModifierType;
 
 import reika.chromaticraft.registry.ChromaPlacementModifiers;
 
@@ -30,7 +29,7 @@ import reika.chromaticraft.registry.ChromaPlacementModifiers;
  * <p>Vanilla's environment scan does the same walks but is capped at 32 steps, and 1.7.10's starting
  * heights were often much further above the ground than that. Both stop at the world floor.
  */
-public final class SinkThroughAirPlacement extends PlacementModifier {
+public final class SinkThroughAirPlacement implements PlacementModifier {
 
 	public enum Mode implements StringRepresentable {
 		ONTO_GROUND,
@@ -57,7 +56,7 @@ public final class SinkThroughAirPlacement extends PlacementModifier {
 	}
 
 	@Override
-	public Stream<BlockPos> getPositions(PlacementContext context, RandomSource random, BlockPos origin) {
+	public void modify(PlacementContext context, RandomSource random, BlockPos origin, Consumer<BlockPos> output) {
 		WorldGenLevel level = context.getLevel();
 		BlockPos.MutableBlockPos pos = origin.mutable();
 		while (pos.getY() > level.getMinY()) {
@@ -71,11 +70,11 @@ public final class SinkThroughAirPlacement extends PlacementModifier {
 			}
 			pos.move(0, -1, 0);
 		}
-		return Stream.of(pos.immutable());
+		output.accept(pos.immutable());
 	}
 
 	@Override
-	public PlacementModifierType<?> type() {
-		return ChromaPlacementModifiers.SINK_THROUGH_AIR.get();
+	public MapCodec<SinkThroughAirPlacement> codec() {
+		return CODEC;
 	}
 }

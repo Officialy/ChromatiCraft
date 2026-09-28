@@ -43,7 +43,7 @@ public final class RenderBallLightning extends EntityRenderer<EntityBallLightnin
 		TextureAtlasSprite sprite = Minecraft.getInstance().getAtlasManager()
 				.getAtlasOrThrow(AtlasIds.BLOCKS).getSprite(ROUND_FLARE);
 		poseStack.pushPose();
-		poseStack.mulPose(camera.orientation);
+		poseStack.rotate(camera.orientation);
 		PoseStack renderPose = new PoseStack();
 		renderPose.last().set(poseStack.last());
 		int color = state.color;

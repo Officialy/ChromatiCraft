@@ -63,12 +63,12 @@ public abstract class ModelFocusCrystalBase {
 
 	protected final void prepareOuterRing(PoseStack pose) {
 		pose.translate(-0.625, 0.03125, 0);
-		pose.mulPose(Axis.ZP.rotationDegrees(-25));
+		pose.rotate(Axis.ZP.rotationDegrees(-25));
 	}
 
 	protected final void prepareInnerRing(PoseStack pose) {
 		pose.translate(-0.625, 0.0875, 0);
-		pose.mulPose(Axis.ZP.rotationDegrees(-25));
+		pose.rotate(Axis.ZP.rotationDegrees(-25));
 	}
 
 	protected final void renderPart(PoseStack pose, VertexConsumer out, int light, ModelPart part, Object te,

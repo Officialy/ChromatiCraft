@@ -11,8 +11,6 @@ import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 import net.minecraft.server.level.WorldGenRegion;
 
 import reika.chromaticraft.block.dimension.BlockDimensionCore;
@@ -37,17 +35,23 @@ import reika.chromaticraft.registry.ProximaDecoTypes;
  * chests and anything unbreakable are all left standing, so a fissure that wanders into a structure
  * damages nothing.
  */
-public final class FissureFeature extends Feature<NoneFeatureConfiguration> {
+public final class FissureFeature implements Feature {
+
+    public static final com.mojang.serialization.MapCodec<FissureFeature> CODEC =
+            com.mojang.serialization.MapCodec.unit(FissureFeature::new);
+
+    @Override
+    public com.mojang.serialization.MapCodec<FissureFeature> codec() {
+        return CODEC;
+    }
 
 	public FissureFeature() {
-		super(NoneFeatureConfiguration.CODEC);
+
 	}
 
 	@Override
-	public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-		WorldGenLevel world = context.level();
-		RandomSource rand = context.random();
-		BlockPos origin = context.origin();
+	public boolean place(net.minecraft.world.level.WorldGenLevel world, net.minecraft.world.level.chunk.ChunkGenerator generator, net.minecraft.util.RandomSource random, net.minecraft.core.BlockPos origin) {
+		RandomSource rand = random;
 		// V33a: never under water, checked at the origin and the block above it.
 		if (world.getBlockState(origin).is(Blocks.WATER)
 				|| world.getBlockState(origin.above()).is(Blocks.WATER))

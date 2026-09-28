@@ -6,8 +6,6 @@ import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaShieldTypes;
@@ -29,20 +27,25 @@ import reika.chromaticraft.registry.ProximaDecoTypes;
  * <p>Every cell is placed only into air and the whole shape is five blocks across, so it cannot reach
  * outside the chunks this generation step may write to.
  */
-public final class CrystalShrubFeature extends Feature<NoneFeatureConfiguration> {
+public final class CrystalShrubFeature implements Feature {
+
+    public static final com.mojang.serialization.MapCodec<CrystalShrubFeature> CODEC =
+            com.mojang.serialization.MapCodec.unit(CrystalShrubFeature::new);
+
+    @Override
+    public com.mojang.serialization.MapCodec<CrystalShrubFeature> codec() {
+        return CODEC;
+    }
 
 	/** V33a's three crown layers: diamonds of radius 2, 2 then 1, tested as {@code |i|+|k| <= r+1}. */
 	private static final int[] CROWN_RADII = {2, 2, 1};
 
 	public CrystalShrubFeature() {
-		super(NoneFeatureConfiguration.CODEC);
+
 	}
 
 	@Override
-	public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-		WorldGenLevel world = context.level();
-		RandomSource random = context.random();
-		BlockPos origin = context.origin();
+	public boolean place(net.minecraft.world.level.WorldGenLevel world, net.minecraft.world.level.chunk.ChunkGenerator generator, net.minecraft.util.RandomSource random, net.minecraft.core.BlockPos origin) {
 		// V33a requires grass directly beneath; a shrub does not grow on stone or sand.
 		if (!world.getBlockState(origin.below()).is(Blocks.GRASS_BLOCK))
 			return false;

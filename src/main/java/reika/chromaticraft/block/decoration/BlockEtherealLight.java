@@ -1,6 +1,5 @@
 package reika.chromaticraft.block.decoration;
 
-import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
@@ -37,7 +36,6 @@ import reika.chromaticraft.render.particle.ChromaParticle;
  */
 public class BlockEtherealLight extends Block {
 
-	public static final MapCodec<BlockEtherealLight> CODEC = simpleCodec(BlockEtherealLight::new);
 
 	/** V33a Flags.MINEABLE — recorded, and deliberately without effect; see the class note. */
 	public static final BooleanProperty MINEABLE = BooleanProperty.create("mineable");
@@ -54,10 +52,6 @@ public class BlockEtherealLight extends Block {
 				.setValue(PARTICLES, false).setValue(SLOW_DECAY, false).setValue(FAST_DECAY, false));
 	}
 
-	@Override
-	protected MapCodec<? extends Block> codec() {
-		return CODEC;
-	}
 
 	@Override
 	protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {

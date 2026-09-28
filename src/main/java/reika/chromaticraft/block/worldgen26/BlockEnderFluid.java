@@ -59,7 +59,7 @@ public final class BlockEnderFluid extends LiquidBlock {
                 entity.getDeltaMovement().y + 0.2,
                 ReikaRandomHelper.getRandomPlusMinus(0, v));
         entity.fallDistance = 0;
-        entity.hurtMarked = true;
+        entity.syncVelocity = true;
         if (entity instanceof LivingEntity)
             level.playSound(null, entity.getX(), entity.getY(), entity.getZ(),
                     SoundEvents.ENDERMAN_TELEPORT, SoundSource.BLOCKS, 0.5F, 1.0F);

@@ -1,6 +1,5 @@
 package reika.chromaticraft.block.dimension.structure.locks;
 
-import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -40,14 +39,13 @@ import reika.chromaticraft.tileentity.TileEntityLockKey;
 public final class BlockLockKey extends Block implements EntityBlock {
 
 	public static final IntegerProperty CHANNEL = IntegerProperty.create("channel", 0, 7);
-	private final MapCodec<BlockLockKey> codec = MapCodec.unit(this);
+
 
 	public BlockLockKey(BlockBehaviour.Properties properties) {
 		super(properties);
 		registerDefaultState(stateDefinition.any().setValue(CHANNEL, 0));
 	}
 
-	@Override public MapCodec<? extends BlockLockKey> codec() { return codec; }
 
 	@Override
 	protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {

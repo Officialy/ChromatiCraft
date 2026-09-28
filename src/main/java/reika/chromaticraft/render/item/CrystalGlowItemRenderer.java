@@ -49,8 +49,8 @@ public final class CrystalGlowItemRenderer implements NoDataSpecialModelRenderer
 			boolean hasFoil, int outlineColor) {
 		poseStack.pushPose();
 		poseStack.translate(0.5, 0.5, 0.5);
-		poseStack.mulPose(Axis.YP.rotationDegrees(45));
-		poseStack.mulPose(Axis.XP.rotationDegrees(-30));
+		poseStack.rotate(Axis.YP.rotationDegrees(45));
+		poseStack.rotate(Axis.XP.rotationDegrees(-30));
 		poseStack.scale(1.6F, 1.6F, 1.6F);
 		poseStack.translate(-0.5, -0.5, 0);
 		PoseStack.Pose pose = poseStack.last().copy();

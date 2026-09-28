@@ -3,7 +3,6 @@ package reika.chromaticraft.block.worldgen26;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -60,17 +59,13 @@ public class BlockTieredPlant extends Block {
 	private static final VoxelShape SHAPE = Shapes.block();
 
 	private final ChromaTieredPlants plant;
-	private final MapCodec<BlockTieredPlant> codec = MapCodec.unit(this);
+
 
 	public BlockTieredPlant(BlockBehaviour.Properties properties, ChromaTieredPlants plant) {
 		super(properties);
 		this.plant = plant;
 	}
 
-	@Override
-	public MapCodec<? extends BlockTieredPlant> codec() {
-		return codec;
-	}
 
 	public ChromaTieredPlants getPlant() {
 		return plant;

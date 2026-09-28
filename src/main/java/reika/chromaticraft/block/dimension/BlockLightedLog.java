@@ -1,6 +1,5 @@
 package reika.chromaticraft.block.dimension;
 
-import com.mojang.serialization.MapCodec;
 
 import net.minecraft.world.level.block.RotatedPillarBlock;
 import net.minecraft.world.level.block.state.BlockBehaviour;
@@ -16,14 +15,9 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
  */
 public class BlockLightedLog extends RotatedPillarBlock {
 
-	private final MapCodec<BlockLightedLog> codec = MapCodec.unit(this);
 
 	public BlockLightedLog(BlockBehaviour.Properties properties) {
 		super(properties);
 	}
 
-	@Override
-	public MapCodec<? extends BlockLightedLog> codec() {
-		return codec;
-	}
 }

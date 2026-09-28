@@ -189,8 +189,8 @@ public final class RenderCrystalPylon implements BlockEntityRenderer<TileEntityC
         TextureAtlasSprite sprite = Minecraft.getInstance().getAtlasManager()
                 .getAtlasOrThrow(AtlasIds.BLOCKS).getSprite(spriteId);
         poseStack.pushPose();
-        poseStack.mulPose(camera.orientation);
-        if (roll != 0) poseStack.mulPose(Axis.ZP.rotationDegrees(roll));
+        poseStack.rotate(camera.orientation);
+        if (roll != 0) poseStack.rotate(Axis.ZP.rotationDegrees(roll));
         PoseStack renderPose = new PoseStack();
         renderPose.last().set(poseStack.last());
         if (core) {

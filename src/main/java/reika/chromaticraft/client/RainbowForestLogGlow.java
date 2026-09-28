@@ -130,7 +130,7 @@ public final class RainbowForestLogGlow {
 			}
 			quad.setColor(color);
 			quad.recomputeNormals(false);
-			quad.setShade(false);
+			quad.setShadeOverride(Direction.UP);
 			quad.setAmbientOcclusion(false);
 			quad.setLightEmission(15);
 			quad.setTintIndex(-1);

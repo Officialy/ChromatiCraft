@@ -1,6 +1,5 @@
 package reika.chromaticraft.block.dimension;
 
-import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -29,7 +28,6 @@ import reika.chromaticraft.render.particle.ChromaParticle;
  */
 public class BlockVoidCave extends Block {
 
-	public static final MapCodec<BlockVoidCave> CODEC = simpleCodec(BlockVoidCave::new);
 
 	public static final BooleanProperty NORTH = BooleanProperty.create("north");
 	public static final BooleanProperty SOUTH = BooleanProperty.create("south");
@@ -42,10 +40,6 @@ public class BlockVoidCave extends Block {
 				.setValue(SOUTH, false).setValue(WEST, false).setValue(EAST, false));
 	}
 
-	@Override
-	protected MapCodec<? extends Block> codec() {
-		return CODEC;
-	}
 
 	@Override
 	protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {

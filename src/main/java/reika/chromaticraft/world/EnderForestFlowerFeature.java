@@ -6,8 +6,6 @@ import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaDecoFlowers;
@@ -27,17 +25,24 @@ import reika.chromaticraft.registry.ChromaDecoFlowers;
  * biome with a count of zero, because bone meal only finds features the biome lists and upstream never
  * used this path during world generation.
  */
-public final class EnderForestFlowerFeature extends Feature<NoneFeatureConfiguration> {
+public final class EnderForestFlowerFeature implements Feature {
+
+    public static final com.mojang.serialization.MapCodec<EnderForestFlowerFeature> CODEC =
+            com.mojang.serialization.MapCodec.unit(EnderForestFlowerFeature::new);
+
+    @Override
+    public com.mojang.serialization.MapCodec<EnderForestFlowerFeature> codec() {
+        return CODEC;
+    }
 
 	public EnderForestFlowerFeature() {
-		super(NoneFeatureConfiguration.CODEC);
+
 	}
 
 	@Override
-	public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-		WorldGenLevel world = context.level();
-		RandomSource rand = context.random();
-		BlockPos pos = context.origin();
+	public boolean place(net.minecraft.world.level.WorldGenLevel world, net.minecraft.world.level.chunk.ChunkGenerator generator, net.minecraft.util.RandomSource random, net.minecraft.core.BlockPos origin) {
+		RandomSource rand = random;
+		BlockPos pos = origin;
 		BlockState flower;
 		if (rand.nextInt(4) > 0) {
 			ChromaDecoFlowers type = rand.nextInt(2) == 0

@@ -98,9 +98,9 @@ public final class RenderLumenWire implements BlockEntityRenderer<TileEntityLume
 			}
 		}
 		poseStack.translate(dx, dy, dz);
-		poseStack.mulPose(Axis.YP.rotationDegrees(rot));
-		poseStack.mulPose(Axis.XP.rotationDegrees(90));
-		poseStack.mulPose(Axis.XP.rotationDegrees(rotx));
+		poseStack.rotate(Axis.YP.rotationDegrees(rot));
+		poseStack.rotate(Axis.XP.rotationDegrees(90));
+		poseStack.rotate(Axis.XP.rotationDegrees(rotx));
 		submitModel(model, poseStack, collector, state.lightCoords);
 		poseStack.popPose();
 

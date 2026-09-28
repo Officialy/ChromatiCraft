@@ -5,8 +5,6 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
 import reika.chromaticraft.auxiliary.structure.NBTStructureLoader;
 import reika.chromaticraft.registry.ChromaBlocks;
@@ -22,19 +20,27 @@ import reika.chromaticraft.registry.ChromaBlocks;
  * matcher, because that reads existing state through the backing level and deadlocks a worldgen
  * worker; the same reason natural pylon placement uses it.
  */
-public final class CastingTempleFeature extends Feature<NoneFeatureConfiguration> {
+public final class CastingTempleFeature implements Feature {
+
+	public static final com.mojang.serialization.MapCodec<CastingTempleFeature> CODEC =
+			com.mojang.serialization.Codec.INT.fieldOf("tier")
+					.xmap(CastingTempleFeature::new, feature -> feature.tier);
+
+	@Override
+	public com.mojang.serialization.MapCodec<CastingTempleFeature> codec() {
+		return CODEC;
+	}
 
 	private final int tier;
 
 	public CastingTempleFeature(int tier) {
-		super(NoneFeatureConfiguration.CODEC);
+
 		this.tier = tier;
 	}
 
 	@Override
-	public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-		WorldGenLevel level = context.level();
-		BlockPos origin = context.origin();
+	public boolean place(net.minecraft.world.level.WorldGenLevel world, net.minecraft.world.level.chunk.ChunkGenerator generator, net.minecraft.util.RandomSource random, net.minecraft.core.BlockPos origin) {
+		WorldGenLevel level = world;
 		Identifier template = NBTStructureLoader.chromaTemplate("multiblock/casting_l" + tier);
 		// The template anchor is the table-minus-one cell, matching CastingStructure.
 		BlockPos anchor = new BlockPos(tier == 3 ? 8 : 6, 0, tier == 3 ? 8 : 6);

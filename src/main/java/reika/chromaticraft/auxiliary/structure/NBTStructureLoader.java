@@ -79,7 +79,7 @@ public final class NBTStructureLoader {
         if (!(world instanceof ServerLevel server))
             throw new IllegalStateException("Structure template " + templateId + " requires a server level");
 
-        StructureTemplate template = server.getStructureManager().get(templateId).orElseThrow(() ->
+        StructureTemplate template = server.getStructureTemplateManager().get(templateId).orElseThrow(() ->
                 new IllegalStateException("Missing ChromatiCraft structure template data/" + templateId.getNamespace()
                         + "/structure/" + templateId.getPath() + ".nbt"));
         CompoundTag serialized = template.save(new CompoundTag());
@@ -153,7 +153,7 @@ public final class NBTStructureLoader {
     public static List<BlockPos> place(WorldGenLevel world, Identifier templateId, BlockPos worldAnchor,
             BlockPos templateAnchor, UnaryOperator<BlockState> stateTransform, int flags) {
         ServerLevel server = world.getLevel();
-        StructureTemplate template = server.getStructureManager().get(templateId).orElseThrow(() ->
+        StructureTemplate template = server.getStructureTemplateManager().get(templateId).orElseThrow(() ->
                 new IllegalStateException("Missing ChromatiCraft structure template data/" + templateId.getNamespace()
                         + "/structure/" + templateId.getPath() + ".nbt"));
         CompoundTag serialized = template.save(new CompoundTag());
@@ -238,7 +238,7 @@ public final class NBTStructureLoader {
      */
     public static BlockPos fitToWriteWindow(WorldGenLevel world, Identifier templateId,
             BlockPos worldAnchor, BlockPos templateAnchor) {
-        StructureTemplate template = world.getLevel().getStructureManager().get(templateId).orElseThrow(() ->
+        StructureTemplate template = world.getLevel().getStructureTemplateManager().get(templateId).orElseThrow(() ->
                 new IllegalStateException("Missing ChromatiCraft structure template data/"
                         + templateId.getNamespace() + "/structure/" + templateId.getPath() + ".nbt"));
         return fitToWriteWindow(world, worldAnchor, templateAnchor, template.getSize());
@@ -284,7 +284,7 @@ public final class NBTStructureLoader {
      * <p>Redstone is the case worth spelling out, because it was measured while chasing a Nether Temple
      * fault. {@code onPlace} runs regardless of the update flags but only recomputes <em>power</em>; the
      * connection shape comes from {@code updateShape}, which is exactly what this pass drives. That
-     * still leaves a trap upstream of here: {@code RedStoneWireBlock.getConnectionState} short-circuits
+     * still leaves a trap upstream of here: {@code RedstoneWireBlock.getConnectionState} short-circuits
      * on a wire that is already a dot, so a template storing "none" on all four sides stays a dot
      * through every update. The templates therefore author wires as crosses, and this pass resolves
      * them down to whatever their neighbours actually justify.
@@ -309,7 +309,7 @@ public final class NBTStructureLoader {
             BlockPos templateAnchor, UnaryOperator<BlockState> stateTransform,
             BiPredicate<BlockPos, BlockState> cellPredicate) {
         ServerLevel server = world.getLevel();
-        StructureTemplate template = server.getStructureManager().get(templateId).orElseThrow(() ->
+        StructureTemplate template = server.getStructureTemplateManager().get(templateId).orElseThrow(() ->
                 new IllegalStateException("Missing ChromatiCraft structure template data/" + templateId.getNamespace()
                         + "/structure/" + templateId.getPath() + ".nbt"));
         CompoundTag serialized = template.save(new CompoundTag());

@@ -203,7 +203,7 @@ public final class LightPanelPiece extends StructurePiece {
 	}
 
 	private void placeTemplate(WorldGenLevel level, BoundingBox chunkBox, Identifier id, BlockPos anchor) {
-		level.getLevel().getStructureManager().get(id)
+		level.getLevel().getStructureTemplateManager().get(id)
 				.orElseThrow(() -> new IllegalStateException("Missing Glowing Logic template " + id))
 				.placeInWorld(level, anchor, anchor,
 						new StructurePlaceSettings().setRotation(Rotation.NONE)

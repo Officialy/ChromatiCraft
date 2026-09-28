@@ -1,6 +1,5 @@
 package reika.chromaticraft.block.dimension.structure;
 
-import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.InteractionResult;
@@ -16,13 +15,11 @@ import reika.chromaticraft.tileentity.TileEntityStructureController;
 /** Modern NBT-safe form of the V33a structure-data callback that replays the Biome melody. */
 public final class BlockBiomeReplay extends Block {
 
-	private final MapCodec<BlockBiomeReplay> codec = MapCodec.unit(this);
 
 	public BlockBiomeReplay(BlockBehaviour.Properties properties) {
 		super(properties);
 	}
 
-	@Override public MapCodec<? extends BlockBiomeReplay> codec() { return codec; }
 
 	@Override
 	protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos,

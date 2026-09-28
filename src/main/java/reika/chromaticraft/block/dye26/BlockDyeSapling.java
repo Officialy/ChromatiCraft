@@ -1,6 +1,6 @@
 package reika.chromaticraft.block.dye26;
 
-import java.util.Optional;
+import net.minecraft.util.random.WeightedList;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
@@ -8,6 +8,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.SaplingBlock;
+import net.minecraft.world.level.block.BonemealSource;
 import net.minecraft.world.level.block.state.BlockState;
 import reika.dragonapi.libraries.level.ReikaWorldHelper;
 import net.minecraft.world.level.block.grower.TreeGrower;
@@ -31,7 +32,8 @@ public final class BlockDyeSapling extends SaplingBlock {
 
     public BlockDyeSapling(BlockBehaviour.Properties properties, CrystalElement element) {
         super(new TreeGrower("chromaticraft_dye_" + element.name().toLowerCase(java.util.Locale.ROOT),
-                Optional.empty(), Optional.of(ChromaWorldGenProvider.dyeTree(element)), Optional.empty()), properties);
+                WeightedList.of(ChromaWorldGenProvider.dyeTree(element)), WeightedList.of(),
+                WeightedList.of(), ChromaWorldGenProvider.dyeTree(element)), properties);
         this.element = element;
     }
 
@@ -43,18 +45,18 @@ public final class BlockDyeSapling extends SaplingBlock {
     }
 
     @Override
-    public boolean isValidBonemealTarget(LevelReader level, BlockPos pos, BlockState state) {
+    public boolean isValidBonemealTarget(LevelReader level, BlockPos pos, BlockState state, BonemealSource source) {
         return true;
     }
 
     /** V33a grew on every bone meal, not 45% of them. */
     @Override
-    public boolean isBonemealSuccess(Level level, RandomSource random, BlockPos pos, BlockState state) {
+    public boolean isBonemealSuccess(Level level, RandomSource random, BlockPos pos, BlockState state, BonemealSource source) {
         return true;
     }
 
     @Override
-    public void performBonemeal(ServerLevel level, RandomSource random, BlockPos pos, BlockState state) {
+    public void performBonemeal(ServerLevel level, RandomSource random, BlockPos pos, BlockState state, BonemealSource source) {
         if (canGrowAt(level, pos, true))
             this.treeGrower.growTree(level, level.getChunkSource().getGenerator(), pos, state, random);
     }

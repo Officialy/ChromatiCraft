@@ -382,7 +382,7 @@ public class TileEntityCrystalPylon extends CrystalTransmitterBase implements Na
 			return false;
 		int distanceBand = Math.max(1, Math.min(10,
 				(int)(Math.abs(player.getY() - this.getY() - 0.5) / 6D)));
-		if (player.invulnerableTime > rand.nextInt(11 - distanceBand))
+		if (player.getInvulnerableTime() > rand.nextInt(11 - distanceBand))
 			return false;
 		if (!PylonFinder.lineOfSight(world, this.getX(), this.getY(), this.getZ(), player).hasLineOfSight)
 			return false;

@@ -204,7 +204,7 @@ public final class EntityEnderEyeT2 extends Entity implements ItemSupplier, IEnt
 		else {
 			this.setDeltaMovement(this.getDeltaMovement().scale(0.7));
 		}
-		this.hurtMarked = true;
+		this.syncVelocity = true;
 	}
 
 	/** 26.2 {@code EyeOfEnder.tick}, with V33a's lifetime and its never-drop-a-vanilla-eye rule. */

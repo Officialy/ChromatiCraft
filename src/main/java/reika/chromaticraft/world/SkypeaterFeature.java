@@ -6,8 +6,6 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 import net.minecraft.world.level.material.Fluids;
 import reika.chromaticraft.data.ChromaBiomeTagProvider;
 import reika.chromaticraft.registry.ChromaBlocks;
@@ -33,24 +31,29 @@ import java.util.List;
  * <p>Not attached to any biome: the Skypeater was an unfinished WIP feature and must not generate
  * (see {@code ChromaBiomeModifierProvider}). Kept registered and fully ported for anyone re-enabling it.
  */
-public final class SkypeaterFeature extends Feature<NoneFeatureConfiguration> {
+public final class SkypeaterFeature implements Feature {
+
+    public static final com.mojang.serialization.MapCodec<SkypeaterFeature> CODEC =
+            com.mojang.serialization.MapCodec.unit(SkypeaterFeature::new);
+
+    @Override
+    public com.mojang.serialization.MapCodec<SkypeaterFeature> codec() {
+        return CODEC;
+    }
 
 	private static final int SEPARATION = 32;
 
 	private final List<int[]> attemptOffsets = new ArrayList<>();
 
 	public SkypeaterFeature() {
-		super(NoneFeatureConfiguration.CODEC);
+
 		for (int i = 0; i < 4; i++)
 			for (int k = 0; k < 4; k++)
 				attemptOffsets.add(new int[] {i * 4 + 2, k * 4 + 2});
 	}
 
 	@Override
-	public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-		WorldGenLevel world = context.level();
-		RandomSource random = context.random();
-		BlockPos origin = context.origin();
+	public boolean place(net.minecraft.world.level.WorldGenLevel world, net.minecraft.world.level.chunk.ChunkGenerator generator, net.minecraft.util.RandomSource random, net.minecraft.core.BlockPos origin) {
 		List<int[]> attempts = new ArrayList<>(attemptOffsets);
 		reika.chromaticraft.world.GlowingCliffsColumnShaper.Sampler terrain =
 				reika.chromaticraft.world.luminous.LuminousCliffsTerrainFeature.sampler(world);

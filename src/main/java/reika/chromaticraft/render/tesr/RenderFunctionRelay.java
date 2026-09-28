@@ -49,7 +49,7 @@ public final class RenderFunctionRelay implements BlockEntityRenderer<TileEntity
     @Override public void submit(State state, PoseStack poseStack, SubmitNodeCollector collector, CameraRenderState camera) {
         poseStack.pushPose();
         poseStack.translate(0.5, 0.5, 0.5);
-        poseStack.mulPose(camera.orientation);
+        poseStack.rotate(camera.orientation);
         poseStack.scale(0.875F, -0.875F, 0.875F);
         submitSprite(poseStack, collector, state.color);
         poseStack.popPose();
@@ -59,8 +59,8 @@ public final class RenderFunctionRelay implements BlockEntityRenderer<TileEntity
         poseStack.pushPose();
         poseStack.translate(0.5, 0.5, 0.5);
         poseStack.scale(1, -1, -1);
-        poseStack.mulPose(Axis.YP.rotationDegrees(-45));
-        poseStack.mulPose(Axis.XP.rotationDegrees(-30));
+        poseStack.rotate(Axis.YP.rotationDegrees(-45));
+        poseStack.rotate(Axis.XP.rotationDegrees(-30));
         poseStack.scale(1.125F, 1.125F, 1.125F);
         submitSprite(poseStack, collector, colorAt(System.currentTimeMillis() / 50));
         poseStack.popPose();

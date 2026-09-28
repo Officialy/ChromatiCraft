@@ -21,7 +21,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.monster.Creeper;
-import net.minecraft.world.entity.monster.EnderMan;
+import net.minecraft.world.entity.monster.Enderman;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
@@ -169,7 +169,7 @@ public class TileEntityLumenTurret extends TileEntityChromaticBase {
 		if (e instanceof PathfinderMob em) {
 			em.setTarget(null); //de-aggro
 		}
-		e.invulnerableTime = 0;
+		e.setInvulnerableTime(0);
 		if (TurretUpgrades.FIRE.check(this))
 			e.igniteForSeconds(2);
 		ChromaSounds.DISCHARGE.playSound(world, pos, 0.25F, 1.5F);
@@ -193,8 +193,8 @@ public class TileEntityLumenTurret extends TileEntityChromaticBase {
 
 	private int getAttackCooldown(LivingEntity e) {
 		if (TurretUpgrades.FIRERATE.check(this))
-			return e instanceof EnderMan || e instanceof Creeper ? 2 : 5;
-		return e instanceof EnderMan || e instanceof Creeper ? 5 : 10;
+			return e instanceof Enderman || e instanceof Creeper ? 2 : 5;
+		return e instanceof Enderman || e instanceof Creeper ? 5 : 10;
 	}
 
 	private AABB getBox(BlockPos pos) {

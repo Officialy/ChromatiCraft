@@ -51,7 +51,7 @@ public final class ModelLootChest {
 		// V33a's TileEntityChestRenderer frame: translate up and back one block, then turn the model
 		// over. See the class documentation for why the texture requires it.
 		pose.translate(0, 1, 1);
-		pose.mulPose(com.mojang.math.Axis.XP.rotationDegrees(180));
+		pose.rotate(com.mojang.math.Axis.XP.rotationDegrees(180));
 		root.render(pose, vertices, light, overlay);
 		pose.popPose();
 	}

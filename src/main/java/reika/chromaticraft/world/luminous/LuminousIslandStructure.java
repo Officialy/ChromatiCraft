@@ -102,9 +102,9 @@ public final class LuminousIslandStructure extends Structure {
 		Prediction(Structure.GenerationContext context) {
 			this.context = context;
 			var source = context.biomeSource();
-			var climate = context.randomState().sampler();
+			var resolver = source.createUncachedResolver(context.randomState());
 			this.sampler = GlowingCliffsColumnShaper.forSeed(context.seed()).new Sampler(new LuminousCliffsBiomeMask(
-					(qx, qy, qz) -> source.getNoiseBiome(qx, qy, qz, climate), context.chunkGenerator().getSeaLevel()));
+					resolver::getNoiseBiome, context.chunkGenerator().getSeaLevel()));
 		}
 
 		private GlowingCliffsColumnShaper.Column column(int x, int z) {

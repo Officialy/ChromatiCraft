@@ -6,8 +6,6 @@ import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
 import reika.chromaticraft.registry.ChromaBlocks;
 
@@ -21,17 +19,22 @@ import reika.chromaticraft.registry.ChromaBlocks;
  * per chunk". Biome restriction is left to the biome modifier, which attaches this feature to the
  * two Luminous Cliffs biomes only.
  */
-public final class CaveIndicatorFeature extends Feature<NoneFeatureConfiguration> {
+public final class CaveIndicatorFeature implements Feature {
+
+    public static final com.mojang.serialization.MapCodec<CaveIndicatorFeature> CODEC =
+            com.mojang.serialization.MapCodec.unit(CaveIndicatorFeature::new);
+
+    @Override
+    public com.mojang.serialization.MapCodec<CaveIndicatorFeature> codec() {
+        return CODEC;
+    }
 
 	public CaveIndicatorFeature() {
-		super(NoneFeatureConfiguration.CODEC);
+
 	}
 
 	@Override
-	public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-		WorldGenLevel world = context.level();
-		RandomSource random = context.random();
-		BlockPos origin = context.origin();
+	public boolean place(net.minecraft.world.level.WorldGenLevel world, net.minecraft.world.level.chunk.ChunkGenerator generator, net.minecraft.util.RandomSource random, net.minecraft.core.BlockPos origin) {
 		BlockState indicator = ChromaBlocks.CAVE_INDICATOR.get().defaultBlockState();
 		boolean placed = false;
 		for (int i = 0; i < 16; i++) {

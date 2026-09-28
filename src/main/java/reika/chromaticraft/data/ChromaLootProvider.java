@@ -2,11 +2,8 @@ package reika.chromaticraft.data;
 
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
 
-import net.minecraft.core.HolderLookup;
-import net.minecraft.data.PackOutput;
 import net.minecraft.data.loot.BlockLootSubProvider;
 import net.minecraft.data.loot.LootTableProvider;
 import net.minecraft.data.loot.LootTableSubProvider;
@@ -26,14 +23,12 @@ import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.entries.EmptyLootItem;
 import net.minecraft.world.level.storage.loot.entries.LootItem;
 import net.minecraft.world.level.storage.loot.entries.TagEntry;
-import net.minecraft.world.level.storage.loot.entries.LootPoolSingletonContainer;
+import net.minecraft.world.level.storage.loot.entries.UniformContainerBase;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
-import net.minecraft.world.level.storage.loot.predicates.LootItemBlockStatePropertyCondition;
 import net.minecraft.world.level.storage.loot.predicates.LocationCheck;
 import net.minecraft.world.level.storage.loot.predicates.LootItemCondition;
 import net.minecraft.world.level.storage.loot.predicates.LootItemRandomChanceCondition;
-import net.minecraft.world.level.storage.loot.providers.number.ConstantValue;
-import net.minecraft.world.level.storage.loot.providers.number.UniformGenerator;
+import net.minecraft.world.level.storage.loot.providers.number.ints.ContextIntProviders;
 import net.minecraft.advancements.predicates.StatePropertiesPredicate;
 import reika.chromaticraft.block.BlockEncrustedCrystal;
 
@@ -83,8 +78,8 @@ public final class ChromaLootProvider extends LootTableProvider {
 			net.minecraft.core.registries.Registries.LOOT_TABLE,
 			net.minecraft.resources.Identifier.fromNamespaceAndPath("chromaticraft", "chests/light_panel_room"));
 
-	public ChromaLootProvider(PackOutput output, CompletableFuture<HolderLookup.Provider> registries) {
-		super(output, Set.of(), List.of(
+	public ChromaLootProvider() {
+        super(Set.of(), List.of(
 				new SubProviderEntry(Blocks::new, LootContextParamSets.BLOCK),
 				new SubProviderEntry(BurrowCache::new, LootContextParamSets.CHEST),
 				new SubProviderEntry(VillageCasting::new, LootContextParamSets.CHEST),
@@ -92,7 +87,7 @@ public final class ChromaLootProvider extends LootTableProvider {
 				// V33a ChromaChests' injections into the vanilla chest tables; attached by
 				// ChromaLootModifierProvider.
 				new SubProviderEntry(ChromaChestLoot::new, LootContextParamSets.CHEST)
-		), registries);
+		));
 	}
 
 	/**
@@ -102,10 +97,11 @@ public final class ChromaLootProvider extends LootTableProvider {
 	 * independent chances; the stronghold pools are copied from the active 26.2 vanilla provider so
 	 * the table remains data-driven and validates without a cross-pack nested-table reference.
 	 */
-	private record LightPanelRoomLoot(HolderLookup.Provider registries) implements LootTableSubProvider {
+	private record LightPanelRoomLoot(LootTableSubProvider.Context context) implements LootTableSubProvider {
 		@Override
-		public void generate(BiConsumer<ResourceKey<LootTable>, LootTable.Builder> output) {
-			LootPool.Builder corridor = LootPool.lootPool().setRolls(UniformGenerator.between(2, 3));
+		public void run() {
+            BiConsumer<ResourceKey<LootTable>, LootTable.Builder> output = context::accept;
+			LootPool.Builder corridor = LootPool.lootPool().setRolls(ContextIntProviders.between(2, 3));
 			add(corridor, Items.ENDER_PEARL, 1, 1, 10);
 			add(corridor, Items.DIAMOND, 1, 3, 3);
 			add(corridor, Items.IRON_INGOT, 1, 5, 10);
@@ -127,10 +123,10 @@ public final class ChromaLootProvider extends LootTableProvider {
 			add(corridor, Items.DIAMOND_HORSE_ARMOR, 1, 1, 1);
 			add(corridor, Items.MUSIC_DISC_OTHERSIDE, 1, 1, 1);
 			corridor.add(LootItem.lootTableItem(Items.BOOK)
-					.apply(EnchantWithLevelsFunction.enchantWithLevels(registries,
-							ConstantValue.exactly(30))));
+					.apply(EnchantWithLevelsFunction.enchantWithLevels(context.lookup(net.minecraft.core.registries.Registries.ENCHANTMENT),
+							ContextIntProviders.exactly(30))));
 
-			LootPool.Builder trim = LootPool.lootPool().setRolls(ConstantValue.exactly(1))
+			LootPool.Builder trim = LootPool.lootPool().setRolls(ContextIntProviders.exactly(1))
 					.add(EmptyLootItem.emptyItem().setWeight(9))
 					.add(LootItem.lootTableItem(Items.EYE_ARMOR_TRIM_SMITHING_TEMPLATE));
 			LootTable.Builder table = LootTable.lootTable().withPool(corridor).withPool(trim)
@@ -143,7 +139,7 @@ public final class ChromaLootProvider extends LootTableProvider {
 		}
 
 		private static LootPool.Builder chance(Item item, float chance) {
-			return LootPool.lootPool().setRolls(ConstantValue.exactly(1))
+			return LootPool.lootPool().setRolls(ContextIntProviders.exactly(1))
 					.when(LootItemRandomChanceCondition.randomChance(chance))
 					.add(LootItem.lootTableItem(item));
 		}
@@ -152,20 +148,21 @@ public final class ChromaLootProvider extends LootTableProvider {
 				int minimum, int maximum, int weight) {
 			LootItem.Builder<?> entry = LootItem.lootTableItem(item).setWeight(weight);
 			if (minimum != 1 || maximum != 1)
-				entry.apply(SetItemCountFunction.setCount(UniformGenerator.between(minimum, maximum)));
+				entry.apply(SetItemCountFunction.setCount(ContextIntProviders.between(minimum, maximum)));
 			pool.add(entry);
 		}
 	}
 
 	/** V33a village-blacksmith loot plus ChromaChests' VILLAGE additions and the bonus roll. */
-	private record VillageCasting(HolderLookup.Provider registries) implements LootTableSubProvider {
+	private record VillageCasting(LootTableSubProvider.Context context) implements LootTableSubProvider {
 		@Override
-		public void generate(BiConsumer<ResourceKey<LootTable>, LootTable.Builder> output) {
+		public void run() {
+            BiConsumer<ResourceKey<LootTable>, LootTable.Builder> output = context::accept;
 			// Copy the active 26.2 weaponsmith chest pools into this table instead of nesting the
 			// vanilla table. LootTableProvider validates only the tables generated by this provider,
 			// so a cross-pack reference is rejected even though it resolves at runtime. Keeping these
 			// entries here also makes the village casting chest a self-contained data-driven table.
-			LootPool.Builder weaponsmith = LootPool.lootPool().setRolls(UniformGenerator.between(3, 8));
+			LootPool.Builder weaponsmith = LootPool.lootPool().setRolls(ContextIntProviders.between(3, 8));
 			add(weaponsmith, Items.DIAMOND, 1, 3, 3);
 			add(weaponsmith, Items.IRON_INGOT, 1, 5, 10);
 			add(weaponsmith, Items.GOLD_INGOT, 1, 3, 5);
@@ -187,10 +184,10 @@ public final class ChromaLootProvider extends LootTableProvider {
 			add(weaponsmith, Items.GOLDEN_HORSE_ARMOR, 1, 1, 1);
 			add(weaponsmith, Items.DIAMOND_HORSE_ARMOR, 1, 1, 1);
 
-			LootPool.Builder bundle = LootPool.lootPool().setRolls(ConstantValue.exactly(1))
+			LootPool.Builder bundle = LootPool.lootPool().setRolls(ContextIntProviders.exactly(1))
 					.add(LootItem.lootTableItem(Items.BUNDLE))
 					.add(EmptyLootItem.emptyItem().setWeight(2));
-			LootPool.Builder chroma = LootPool.lootPool().setRolls(ConstantValue.exactly(1));
+			LootPool.Builder chroma = LootPool.lootPool().setRolls(ContextIntProviders.exactly(1));
 			for (CrystalElement element : CrystalElement.elements)
 				add(chroma, ChromaItems.SHARDS.get(element).get(), 1, 3, 2);
 			add(chroma, ChromaItems.LEXICON.get(), 1, 1, 1);
@@ -202,11 +199,11 @@ public final class ChromaLootProvider extends LootTableProvider {
 					// generateMultipliedLoot(1): one additional weighted draw.
 					.withPool(chroma)
 					// Unowned structure chests independently have the V33a 50% fragment insertion.
-					.withPool(LootPool.lootPool().setRolls(ConstantValue.exactly(1))
+					.withPool(LootPool.lootPool().setRolls(ContextIntProviders.exactly(1))
 							.when(LootItemRandomChanceCondition.randomChance(0.5F))
 							.add(LootItem.lootTableItem(ChromaItems.INFO_FRAGMENT.get()))));
 
-			LootPool.Builder junk = LootPool.lootPool().setRolls(ConstantValue.exactly(10));
+			LootPool.Builder junk = LootPool.lootPool().setRolls(ContextIntProviders.exactly(10));
 			add(junk, Items.COAL, 1, 1, 125);
 			add(junk, Items.IRON_INGOT, 1, 1, 100);
 			add(junk, Items.GOLD_INGOT, 1, 1, 50);
@@ -220,15 +217,16 @@ public final class ChromaLootProvider extends LootTableProvider {
 		private static void add(LootPool.Builder pool, net.minecraft.world.level.ItemLike item,
 				int minimum, int maximum, int weight) {
 			pool.add(LootItem.lootTableItem(item).setWeight(weight).apply(SetItemCountFunction.setCount(
-					UniformGenerator.between(minimum, maximum))));
+					ContextIntProviders.between(minimum, maximum))));
 		}
 	}
 
 	/** Data-driven form of V33a BurrowStructure.buildLootCache's weighted 13-20 draws. */
-	private record BurrowCache(HolderLookup.Provider registries) implements LootTableSubProvider {
+	private record BurrowCache(LootTableSubProvider.Context context) implements LootTableSubProvider {
 		@Override
-		public void generate(BiConsumer<ResourceKey<LootTable>, LootTable.Builder> output) {
-			LootPool.Builder pool = LootPool.lootPool().setRolls(UniformGenerator.between(13, 20));
+		public void run() {
+            BiConsumer<ResourceKey<LootTable>, LootTable.Builder> output = context::accept;
+			LootPool.Builder pool = LootPool.lootPool().setRolls(ContextIntProviders.between(13, 20));
 			add(pool, Items.IRON_ORE, 12, 32, 35);
 			add(pool, Items.GOLD_ORE, 8, 24, 15);
 			addTag(pool, "ores/copper", 16, 40, 40);
@@ -323,28 +321,29 @@ public final class ChromaLootProvider extends LootTableProvider {
 		@SafeVarargs
 		private LootPool.Builder biomeBonus(net.minecraft.world.level.ItemLike item, int minimum,
 				int maximum, float chance, ResourceKey<Biome>... keys) {
-			var biomes = registries.lookupOrThrow(net.minecraft.core.registries.Registries.BIOME);
+			var biomes = context.lookup(net.minecraft.core.registries.Registries.BIOME);
 			HolderSet<Biome> set = HolderSet.direct(java.util.Arrays.stream(keys)
 					.map(biomes::getOrThrow).toList());
-			return LootPool.lootPool().setRolls(ConstantValue.exactly(1))
+			return LootPool.lootPool().setRolls(ContextIntProviders.exactly(1))
 					.when(LootItemRandomChanceCondition.randomChance(chance))
 					.when(LocationCheck.checkLocation(LocationPredicate.Builder.location().setBiomes(set)))
 					.add(LootItem.lootTableItem(item).apply(SetItemCountFunction.setCount(
-							UniformGenerator.between(minimum, maximum))));
+							ContextIntProviders.between(minimum, maximum))));
 		}
 
 		private static void add(LootPool.Builder pool, net.minecraft.world.level.ItemLike item,
 				int minimum, int maximum, int weight) {
 			pool.add(LootItem.lootTableItem(item).setWeight(weight).apply(SetItemCountFunction.setCount(
-					UniformGenerator.between(minimum, maximum))));
+					ContextIntProviders.between(minimum, maximum))));
 		}
 
-		private static void addTag(LootPool.Builder pool, String path, int minimum, int maximum,
+		private void addTag(LootPool.Builder pool, String path, int minimum, int maximum,
 				int weight) {
 			TagKey<Item> tag = TagKey.create(net.minecraft.core.registries.Registries.ITEM,
 					net.minecraft.resources.Identifier.fromNamespaceAndPath("c", path));
-			pool.add(TagEntry.expandTag(tag).setWeight(weight).apply(SetItemCountFunction.setCount(
-					UniformGenerator.between(minimum, maximum))));
+			pool.add(TagEntry.expandTag(context.lookup(net.minecraft.core.registries.Registries.ITEM)
+					.getOrThrow(tag)).setWeight(weight).apply(SetItemCountFunction.setCount(
+					ContextIntProviders.between(minimum, maximum))));
 		}
 
 		private static Item dye(net.minecraft.world.item.DyeColor color) {
@@ -354,8 +353,8 @@ public final class ChromaLootProvider extends LootTableProvider {
 
 	private static final class Blocks extends BlockLootSubProvider {
 
-		Blocks(HolderLookup.Provider registries) {
-			super(Set.of(), FeatureFlags.REGISTRY.allFlags(), registries);
+		Blocks(LootTableSubProvider.Context context) {
+            super(Set.of(), FeatureFlags.REGISTRY.allFlags(), context);
 		}
 
 		@Override
@@ -371,12 +370,12 @@ public final class ChromaLootProvider extends LootTableProvider {
 					// V33a harvestBlock: Silk Touch lifts the whole artefact; anything else shatters it into
 					// one to four fragments. (Creative breaks drop nothing, as loot tables already do.)
 					this.add(block, LootTable.lootTable().withPool(LootPool.lootPool()
-							.setRolls(ConstantValue.exactly(1))
+							.setRolls(ContextIntProviders.exactly(1))
 							.add(net.minecraft.world.level.storage.loot.entries.AlternativesEntry.alternatives(
 									LootItem.lootTableItem(ChromaBlocks.UNKNOWN_ARTEFACT_ITEM.get()).when(this.hasSilkTouch()),
 									LootItem.lootTableItem(reika.chromaticraft.registry.ChromaItems.UNKNOWN_ARTEFACT_FRAGMENT.get())
 											.apply(SetItemCountFunction.setCount(
-													net.minecraft.world.level.storage.loot.providers.number.UniformGenerator.between(1, 4)))))));
+													ContextIntProviders.between(1, 4)))))));
 				}
 				else if (block instanceof reika.chromaticraft.block.crystal.BlockCaveCrystal crystal) {
 					// V33a BlockCaveCrystal.getDrops: never itself, always N shards of its own colour.
@@ -417,16 +416,15 @@ public final class ChromaLootProvider extends LootTableProvider {
 					// The dust branch cannot fire at all without Fortune, which is upstream's own
 					// arithmetic rather than an omission here.
 					this.add(block, LootTable.lootTable().withPool(LootPool.lootPool()
-							.setRolls(ConstantValue.exactly(1))
+							.setRolls(ContextIntProviders.exactly(1))
 							.add(net.minecraft.world.level.storage.loot.entries.AlternativesEntry.alternatives(
 									LootItem.lootTableItem(ChromaBlocks.GLOW_SAPLING.get())
 											.when(() -> FortuneScaledChance.reciprocal(50, 5)),
 									LootItem.lootTableItem(net.minecraft.world.item.Items.GLOWSTONE_DUST)
 											.when(() -> FortuneScaledChance.reciprocalComplement(1, 0.5))
 											.apply(net.minecraft.world.level.storage.loot.functions.ApplyBonusCount
-													.addUniformBonusCount(registries.lookupOrThrow(
-															net.minecraft.core.registries.Registries.ENCHANTMENT)
-															.getOrThrow(net.minecraft.world.item.enchantment.Enchantments.FORTUNE), 1))))));
+												.addUniformBonusCount(this.enchantments.getOrThrow(
+														net.minecraft.world.item.enchantment.Enchantments.FORTUNE), 1))))));
 				}
 				else if (block instanceof reika.chromaticraft.block.dimension.BlockDimensionDeco deco) {
 					// V33a addDrops: one item, except Glow Cave which yields one to six, then scaled by
@@ -437,9 +435,9 @@ public final class ChromaLootProvider extends LootTableProvider {
 							? reika.chromaticraft.auxiliary.loot.TuningScaledCount.between(1, 6, type.maxDrops())
 							: reika.chromaticraft.auxiliary.loot.TuningScaledCount.single(type.maxDrops());
 					this.add(block, LootTable.lootTable().withPool(LootPool.lootPool()
-							.setRolls(ConstantValue.exactly(1))
+							.setRolls(ContextIntProviders.exactly(1))
 							.add(LootItem.lootTableItem(block)
-									.apply(SetItemCountFunction.setCount(count)))));
+									.apply(SetItemCountFunction.setCount(net.minecraft.core.Holder.direct(count))))));
 				}
 				else if (block instanceof reika.chromaticraft.block.BlockHoverBlock) {
 					this.add(block, noDrop());
@@ -500,10 +498,10 @@ public final class ChromaLootProvider extends LootTableProvider {
 		private LootTable.Builder caveCrystalTable(Block block, CrystalElement element) {
 			return LootTable.lootTable().withPool(this.applyExplosionCondition(block,
 					LootPool.lootPool()
-							.setRolls(ConstantValue.exactly(1))
+							.setRolls(ContextIntProviders.exactly(1))
 							.add(LootItem.lootTableItem(ChromaItems.SHARDS.get(element).get())
 									.apply(SetItemCountFunction.setCount(
-											reika.chromaticraft.auxiliary.loot.CrystalShardCount.INSTANCE)))));
+											net.minecraft.core.Holder.direct(reika.chromaticraft.auxiliary.loot.CrystalShardCount.INSTANCE))))));
 		}
 
 		/**
@@ -518,11 +516,13 @@ public final class ChromaLootProvider extends LootTableProvider {
 		 */
 		private LootTable.Builder dyeLeafTable(Block block, CrystalElement element) {
 			LootTable.Builder table = LootTable.lootTable();
-			table.withPool(LootPool.lootPool().setRolls(ConstantValue.exactly(1))
-					.when(this.hasShears().or(this.hasSilkTouch()))
+			table.withPool(LootPool.lootPool().setRolls(ContextIntProviders.exactly(1))
+					.when(net.minecraft.world.level.storage.loot.predicates.AnyOfCondition.anyOf()
+							.or(this.hasShears()).or(this.hasSilkTouch()))
 					.add(LootItem.lootTableItem(block)));
 
-			LootItemCondition.Builder notSheared = this.hasShears().or(this.hasSilkTouch()).invert();
+			LootItemCondition.Builder notSheared = net.minecraft.world.level.storage.loot.predicates.AnyOfCondition
+					.anyOf().or(this.hasShears()).or(this.hasSilkTouch()).invert();
 			this.addDyeLeafDrop(table, notSheared, LootItem.lootTableItem(
 					ChromaBlocks.dyeSapling(element).get()), FortuneScaledChance.linear(0.05, 1));
 			this.addDyeLeafDrop(table, notSheared, LootItem.lootTableItem(Items.APPLE),
@@ -533,7 +533,7 @@ public final class ChromaLootProvider extends LootTableProvider {
 					ChromaBlocks.RAINBOW_SAPLING.get()), FortuneScaledChance.quadratic(0.0001));
 			this.addDyeLeafDrop(table, notSheared,
 					LootItem.lootTableItem(ChromaItems.BERRIES.get(element).get())
-							.apply(SetItemCountFunction.setCount(ChromaBerryCount.INSTANCE)),
+							.apply(SetItemCountFunction.setCount(net.minecraft.core.Holder.direct(ChromaBerryCount.INSTANCE))),
 					FortuneScaledChance.exponential(ChromaBerryCount.BASE_CHANCE));
 			return table;
 		}
@@ -549,25 +549,25 @@ public final class ChromaLootProvider extends LootTableProvider {
 			CrystalElement element = vine.getElement();
 			LootTable.Builder table = LootTable.lootTable();
 			if (vine.isFertile()) {
-				table.withPool(this.applyExplosionCondition(block, LootPool.lootPool().setRolls(ConstantValue.exactly(1))
+				table.withPool(this.applyExplosionCondition(block, LootPool.lootPool().setRolls(ContextIntProviders.exactly(1))
 						.add(LootItem.lootTableItem(ChromaItems.SHARDS.get(element).get())
 								.apply(SetItemCountFunction.setCount(
-										new reika.chromaticraft.auxiliary.loot.FortuneBonusCount(1, 2))))));
+										net.minecraft.core.Holder.direct(new reika.chromaticraft.auxiliary.loot.FortuneBonusCount(1, 2)))))));
 			}
-			table.withPool(this.applyExplosionCondition(block, LootPool.lootPool().setRolls(ConstantValue.exactly(1))
+			table.withPool(this.applyExplosionCondition(block, LootPool.lootPool().setRolls(ContextIntProviders.exactly(1))
 					.when(() -> FortuneScaledChance.reciprocal(10, 2))
 					.add(LootItem.lootTableItem(ChromaBlocks.dyeSapling(element).get()))));
-			table.withPool(this.applyExplosionCondition(block, LootPool.lootPool().setRolls(ConstantValue.exactly(1))
+			table.withPool(this.applyExplosionCondition(block, LootPool.lootPool().setRolls(ContextIntProviders.exactly(1))
 					.when(() -> FortuneScaledChance.reciprocal(3, 1))
 					.add(LootItem.lootTableItem(ChromaItems.BERRIES.get(element).get())
 							.apply(SetItemCountFunction.setCount(
-									new reika.chromaticraft.auxiliary.loot.FortuneBonusCount(1, 1))))));
+									net.minecraft.core.Holder.direct(new reika.chromaticraft.auxiliary.loot.FortuneBonusCount(1, 1)))))));
 			return table;
 		}
 
 		private void addDyeLeafDrop(LootTable.Builder table, LootItemCondition.Builder notSheared,
-				LootPoolSingletonContainer.Builder<?> entry, FortuneScaledChance chance) {
-			table.withPool(LootPool.lootPool().setRolls(ConstantValue.exactly(1))
+				UniformContainerBase.Builder<?> entry, FortuneScaledChance chance) {
+			table.withPool(LootPool.lootPool().setRolls(ContextIntProviders.exactly(1))
 					.when(notSheared).when(() -> chance).add(entry));
 		}
 
@@ -612,8 +612,8 @@ public final class ChromaLootProvider extends LootTableProvider {
 		 */
 		private LootTable.Builder crystallineStoneTable(BlockCrystallineStone block) {
 			StoneTypes type = block.getStoneType();
-			LootPoolSingletonContainer.Builder<?> self = LootItem.lootTableItem(block);
-			LootPool.Builder pool = LootPool.lootPool().setRolls(ConstantValue.exactly(1));
+			UniformContainerBase.Builder<?> self = LootItem.lootTableItem(block);
+			LootPool.Builder pool = LootPool.lootPool().setRolls(ContextIntProviders.exactly(1));
 			if (type.needsSilkTouch()) {
 				Item base = ChromaBlocks.crystallineStone(type.getDropVariant()).get().asItem();
 				pool.add(self.when(this.hasSilkTouch()).otherwise(LootItem.lootTableItem(base)));

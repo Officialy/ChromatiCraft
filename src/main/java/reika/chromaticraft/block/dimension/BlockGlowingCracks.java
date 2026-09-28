@@ -1,6 +1,5 @@
 package reika.chromaticraft.block.dimension;
 
-import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Player;
@@ -35,7 +34,6 @@ import reika.chromaticraft.tileentity.dimension.TileEntityGlowingCracks;
  */
 public class BlockGlowingCracks extends BaseEntityBlock {
 
-	public static final MapCodec<BlockGlowingCracks> CODEC = simpleCodec(BlockGlowingCracks::new);
 
 	/** V33a {@code BlockBounds.block().cut(ForgeDirection.UP, 0.999)}. */
 	private static final VoxelShape SHAPE = Shapes.box(0, 0, 0, 1, 0.001, 1);
@@ -44,10 +42,6 @@ public class BlockGlowingCracks extends BaseEntityBlock {
 		super(properties);
 	}
 
-	@Override
-	protected MapCodec<? extends BaseEntityBlock> codec() {
-		return CODEC;
-	}
 
 	@Override
 	public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {

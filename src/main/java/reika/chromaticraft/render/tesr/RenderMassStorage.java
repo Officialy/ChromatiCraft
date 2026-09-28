@@ -76,7 +76,7 @@ public final class RenderMassStorage implements BlockEntityRenderer<TileEntityMa
 		if (state.item == null)
 			s *= 0.5F;
 		poseStack.scale(s, s, s);
-		poseStack.mulPose(Axis.YP.rotationDegrees((float)ang));
+		poseStack.rotate(Axis.YP.rotationDegrees((float)ang));
 		if (state.item != null) {
 			state.item.submit(poseStack, collector, state.lightCoords, OverlayTexture.NO_OVERLAY, 0);
 		}

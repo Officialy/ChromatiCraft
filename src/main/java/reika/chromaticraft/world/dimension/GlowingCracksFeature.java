@@ -10,8 +10,6 @@ import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
 import reika.chromaticraft.block.worldgen26.BlockStructureShield;
 import reika.chromaticraft.registry.ChromaBlocks;
@@ -32,20 +30,26 @@ import reika.chromaticraft.registry.ChromaBlocks;
  * the vanilla weighting Reika gives — emerald 10, diamond 20, redstone 50, gold 40 — against the same
  * even split with the tiered ores, so the shape of the choice is hers even though the pool is shorter.
  */
-public final class GlowingCracksFeature extends Feature<NoneFeatureConfiguration> {
+public final class GlowingCracksFeature implements Feature {
+
+    public static final com.mojang.serialization.MapCodec<GlowingCracksFeature> CODEC =
+            com.mojang.serialization.MapCodec.unit(GlowingCracksFeature::new);
+
+    @Override
+    public com.mojang.serialization.MapCodec<GlowingCracksFeature> codec() {
+        return CODEC;
+    }
 
 	/** V33a {@code r}: the ground it reinforces reaches four blocks out, so nine by nine. */
 	private static final int GROUND_RADIUS = 4;
 
 	public GlowingCracksFeature() {
-		super(NoneFeatureConfiguration.CODEC);
+
 	}
 
 	@Override
-	public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-		WorldGenLevel world = context.level();
-		RandomSource rand = context.random();
-		BlockPos origin = context.origin();
+	public boolean place(net.minecraft.world.level.WorldGenLevel world, net.minecraft.world.level.chunk.ChunkGenerator generator, net.minecraft.util.RandomSource random, net.minecraft.core.BlockPos origin) {
+		RandomSource rand = random;
 
 		// V33a: every cell of the nine-by-nine must be grass one below the placement, or nothing.
 		for (int i = -GROUND_RADIUS; i <= GROUND_RADIUS; i++)

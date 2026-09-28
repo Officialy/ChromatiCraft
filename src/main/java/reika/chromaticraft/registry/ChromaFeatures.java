@@ -2,7 +2,6 @@ package reika.chromaticraft.registry;
 
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
@@ -26,8 +25,8 @@ import reika.chromaticraft.world.luminous.LuminousCliffsTerrainFeature;
 /** Runtime feature registry for ChromatiCraft's data-driven 26.2 world generation. */
 public final class ChromaFeatures {
 
-    public static final DeferredRegister<Feature<?>> FEATURES =
-            DeferredRegister.create(Registries.FEATURE, ChromatiCraft.MODID);
+    public static final DeferredRegister<com.mojang.serialization.MapCodec<? extends Feature>> FEATURES =
+            DeferredRegister.create(Registries.FEATURE_TYPE, ChromatiCraft.MODID);
 
     /**
      * Proxima answers biome queries from its own painted map rather than from climate parameters, so
@@ -47,249 +46,236 @@ public final class ChromaFeatures {
      * it enters the modern pipeline as a density function and everything else - noise, interpolation,
      * cell lattice, surface pass - stays vanilla's.
      */
-    public static final DeferredRegister<com.mojang.serialization.MapCodec<? extends net.minecraft.world.level.levelgen.DensityFunction>> DENSITY_FUNCTION_TYPES =
+    public static final DeferredRegister<com.mojang.serialization.MapCodec<? extends net.minecraft.world.level.levelgen.densityfunction.DensityFunction>> DENSITY_FUNCTION_TYPES =
             DeferredRegister.create(Registries.DENSITY_FUNCTION_TYPE, ChromatiCraft.MODID);
 
-    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends net.minecraft.world.level.levelgen.DensityFunction>,
+    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends net.minecraft.world.level.levelgen.densityfunction.DensityFunction>,
             com.mojang.serialization.MapCodec<reika.chromaticraft.world.dimension.ProximaTerrainDensityFunction>> PROXIMA_TERRAIN =
             DENSITY_FUNCTION_TYPES.register("proxima_terrain",
                     () -> reika.chromaticraft.world.dimension.ProximaTerrainDensityFunction.CODEC);
 
-    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> CAVE_CRYSTAL =
-            FEATURES.register("cave_crystal", CrystalFeature::new);
+    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> CAVE_CRYSTAL =
+            FEATURES.register("cave_crystal", () -> CrystalFeature.CODEC);
     /**
      * The plant half of V33a's TieredWorldGenerator, one feature per plant identity. Each resolves
      * its own registered block lazily so registration order does not matter.
      */
-    public static final java.util.Map<ChromaTieredPlants, DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>>> TIERED_PLANTS =
+    public static final java.util.Map<ChromaTieredPlants, DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>>> TIERED_PLANTS =
             registerTieredPlants();
 
-    private static java.util.Map<ChromaTieredPlants, DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>>> registerTieredPlants() {
-        java.util.EnumMap<ChromaTieredPlants, DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>>> map =
+    private static java.util.Map<ChromaTieredPlants, DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>>> registerTieredPlants() {
+        java.util.EnumMap<ChromaTieredPlants, DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>>> map =
                 new java.util.EnumMap<>(ChromaTieredPlants.class);
         for (ChromaTieredPlants plant : ChromaTieredPlants.list)
-            map.put(plant, FEATURES.register(plant.registryName(), () -> new TieredPlantFeature(plant,
-                    () -> ChromaBlocks.tieredPlant(plant).get().defaultBlockState())));
+            map.put(plant, FEATURES.register(plant.registryName(), () -> TieredPlantFeature.CODEC));
         return map;
     }
 
-    public static final java.util.Map<ChromaDecoFlowers, DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>>> DECO_FLOWERS =
+    public static final java.util.Map<ChromaDecoFlowers, DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>>> DECO_FLOWERS =
             registerDecoFlowers();
 
-    private static java.util.Map<ChromaDecoFlowers, DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>>> registerDecoFlowers() {
-        java.util.EnumMap<ChromaDecoFlowers, DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>>> map =
+    private static java.util.Map<ChromaDecoFlowers, DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>>> registerDecoFlowers() {
+        java.util.EnumMap<ChromaDecoFlowers, DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>>> map =
                 new java.util.EnumMap<>(ChromaDecoFlowers.class);
         for (ChromaDecoFlowers flower : ChromaDecoFlowers.list)
-            map.put(flower, FEATURES.register(flower.registryName(), () -> new DecoFlowerFeature(flower)));
+            map.put(flower, FEATURES.register(flower.registryName(), () -> DecoFlowerFeature.CODEC));
         return map;
     }
 
-    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> ENDER_FOREST_TREE =
-            FEATURES.register("ender_forest_tree", EnderForestTreeFeature::new);
+    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> ENDER_FOREST_TREE =
+            FEATURES.register("ender_forest_tree", () -> EnderForestTreeFeature.CODEC);
 
     /** V33a EnderPoolGenerator; the chunk chance is rolled from the live ENDERPOOLS option. */
-    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> ENDER_POOL =
-            FEATURES.register("ender_pool", reika.chromaticraft.world.EnderPoolFeature::new);
+    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> ENDER_POOL =
+            FEATURES.register("ender_pool", () -> reika.chromaticraft.world.EnderPoolFeature.CODEC);
 
     /** V33a BiomeEnderForest.plantFlower; bone meal's only choice in the Ender Forest. */
-    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> ENDER_FOREST_FLOWER =
-            FEATURES.register("ender_forest_flower", reika.chromaticraft.world.EnderForestFlowerFeature::new);
+    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> ENDER_FOREST_FLOWER =
+            FEATURES.register("ender_forest_flower", () -> reika.chromaticraft.world.EnderForestFlowerFeature.CODEC);
 
     /** V33a TreeShaper as a configured feature: what dye saplings grow into. */
-    public static final DeferredHolder<Feature<?>, Feature<reika.chromaticraft.world.DyeTreeFeature.Config>> DYE_TREE =
-            FEATURES.register("dye_tree", reika.chromaticraft.world.DyeTreeFeature::new);
+    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> DYE_TREE =
+            FEATURES.register("dye_tree", () -> reika.chromaticraft.world.DyeTreeFeature.CODEC);
 
     /** V33a ColorTreeGenerator: the odd dye or rainbow tree across the ordinary overworld. */
-    public static final DeferredHolder<Feature<?>, Feature<reika.chromaticraft.world.ColorTreeFeature.Config>> COLOR_TREE =
-            FEATURES.register("color_tree", reika.chromaticraft.world.ColorTreeFeature::new);
+    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> COLOR_TREE =
+            FEATURES.register("color_tree", () -> reika.chromaticraft.world.ColorTreeFeature.CODEC);
 
     /** V33a RainbowForestGenerator: one Rainbow Forest tree attempt. */
-    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> RAINBOW_FOREST_TREE =
-            FEATURES.register("rainbow_forest_tree", reika.chromaticraft.world.RainbowForestTreeFeature::new);
+    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> RAINBOW_FOREST_TREE =
+            FEATURES.register("rainbow_forest_tree", () -> reika.chromaticraft.world.RainbowForestTreeFeature.CODEC);
 
     /** V33a RainbowForestDecorator.generateDyeFlowers. */
-    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> DYE_FLOWER_PATCH =
-            FEATURES.register("dye_flower_patch", reika.chromaticraft.world.DyeFlowerPatchFeature::new);
+    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> DYE_FLOWER_PATCH =
+            FEATURES.register("dye_flower_patch", () -> reika.chromaticraft.world.DyeFlowerPatchFeature.CODEC);
 
     /** V33a RainbowForestDecorator.generateUndergroundLight. */
-    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> RAINBOW_FOREST_UNDERGROUND =
-            FEATURES.register("rainbow_forest_underground", reika.chromaticraft.world.RainbowForestUndergroundFeature::new);
+    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> RAINBOW_FOREST_UNDERGROUND =
+            FEATURES.register("rainbow_forest_underground", () -> reika.chromaticraft.world.RainbowForestUndergroundFeature.CODEC);
 
     /** V33a BiomeRainbowForest.plantFlower, reached only by bone meal. */
-    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> RAINBOW_FOREST_FLOWER =
-            FEATURES.register("rainbow_forest_flower", reika.chromaticraft.world.RainbowForestFlowerFeature::new);
+    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> RAINBOW_FOREST_FLOWER =
+            FEATURES.register("rainbow_forest_flower", () -> reika.chromaticraft.world.RainbowForestFlowerFeature.CODEC);
 
     /** V33a GlowingCliffsDecorator.NoFloatingGravelVein. */
-    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> NO_FLOATING_GRAVEL =
-            FEATURES.register("no_floating_gravel", reika.chromaticraft.world.luminous.NoFloatingGravelFeature::new);
+    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> NO_FLOATING_GRAVEL =
+            FEATURES.register("no_floating_gravel", () -> reika.chromaticraft.world.luminous.NoFloatingGravelFeature.CODEC);
 
     /** V33a GlowingCliffsAuxGenerator: cavern sapling growth and cleanup. */
-    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> LUMINOUS_CLIFFS_AUX =
-            FEATURES.register("luminous_cliffs_aux", reika.chromaticraft.world.luminous.LuminousCliffsAuxFeature::new);
+    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> LUMINOUS_CLIFFS_AUX =
+            FEATURES.register("luminous_cliffs_aux", () -> reika.chromaticraft.world.luminous.LuminousCliffsAuxFeature.CODEC);
 
-    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> RAINBOW_TREE =
-            FEATURES.register("rainbow_tree", reika.chromaticraft.world.RainbowTreeFeature::new);
+    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> RAINBOW_TREE =
+            FEATURES.register("rainbow_tree", () -> reika.chromaticraft.world.RainbowTreeFeature.CODEC);
 
-    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> SKYPEATER =
-            FEATURES.register("skypeater", SkypeaterFeature::new);
+    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> SKYPEATER =
+            FEATURES.register("skypeater", () -> SkypeaterFeature.CODEC);
 
-    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> WARP_NODE =
-            FEATURES.register("warp_node", WarpNodeFeature::new);
+    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> WARP_NODE =
+            FEATURES.register("warp_node", () -> WarpNodeFeature.CODEC);
 
-    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> UNKNOWN_ARTEFACT =
-            FEATURES.register("unknown_artefact", UnknownArtefactFeature::new);
+    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> UNKNOWN_ARTEFACT =
+            FEATURES.register("unknown_artefact", () -> UnknownArtefactFeature.CODEC);
 
-    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> CAVE_INDICATOR =
-            FEATURES.register("cave_indicator", CaveIndicatorFeature::new);
+    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> CAVE_INDICATOR =
+            FEATURES.register("cave_indicator", () -> CaveIndicatorFeature.CODEC);
 
     /** Natural worldgen keeps the source random colour roll under an explicitly natural-only id. */
-    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> NATURAL_PYLON =
-            FEATURES.register("natural_pylon", () -> new PylonFeature());
+    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> NATURAL_PYLON =
+            FEATURES.register("natural_pylon", () -> PylonFeature.CODEC);
     /** Command/debug features: /place feature chromaticraft:pylon_<vanilla dye name>. */
-    public static final java.util.Map<CrystalElement, DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>>> COLORED_PYLONS =
+    public static final java.util.Map<CrystalElement, DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>>> COLORED_PYLONS =
             registerColoredPylons();
 
-    private static java.util.Map<CrystalElement, DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>>> registerColoredPylons() {
-        java.util.EnumMap<CrystalElement, DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>>> map =
+    private static java.util.Map<CrystalElement, DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>>> registerColoredPylons() {
+        java.util.EnumMap<CrystalElement, DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>>> map =
                 new java.util.EnumMap<>(CrystalElement.class);
         for (CrystalElement element : CrystalElement.elements)
             map.put(element, FEATURES.register("pylon_" + element.getEnglishName(),
-                    () -> new PylonFeature(element)));
+                    () -> PylonFeature.CODEC));
         return java.util.Map.copyOf(map);
     }
-    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> DATA_TOWER =
-            FEATURES.register("data_tower", DataTowerFeature::new);
-    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> RUNIC_ALTAR =
-            FEATURES.register("runic_altar", reika.chromaticraft.world.RunicAltarFeature::new);
-    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> TURBOCHARGED_PYLON =
+    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> DATA_TOWER =
+            FEATURES.register("data_tower", () -> DataTowerFeature.CODEC);
+    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> RUNIC_ALTAR =
+            FEATURES.register("runic_altar", () -> reika.chromaticraft.world.RunicAltarFeature.CODEC);
+    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> TURBOCHARGED_PYLON =
             FEATURES.register("turbocharged_pylon",
-                    () -> new PylonFeature(PylonFeature.Variant.TURBOCHARGED));
-    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> POWER_CRYSTAL_BOOSTED_PYLON =
+                    () -> PylonFeature.CODEC);
+    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> POWER_CRYSTAL_BOOSTED_PYLON =
             FEATURES.register("power_crystal_boosted_pylon",
-                    () -> new PylonFeature(PylonFeature.Variant.POWER_CRYSTAL_BOOSTED));
+                    () -> PylonFeature.CODEC);
 
-    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> LUMINOUS_CLIFFS_TERRAIN =
-            FEATURES.register("luminous_cliffs_terrain", LuminousCliffsTerrainFeature::new);
-    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> LUMA_PATCH =
-            FEATURES.register("luma_patch", LumaPatchFeature::new);
+    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> LUMINOUS_CLIFFS_TERRAIN =
+            FEATURES.register("luminous_cliffs_terrain", () -> LuminousCliffsTerrainFeature.CODEC);
+    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> LUMA_PATCH =
+            FEATURES.register("luma_patch", () -> LumaPatchFeature.CODEC);
 
-    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> NETHER_ROOF_STRUCTURE =
-            FEATURES.register("nether_roof_structure", () -> new NetherRoofStructureFeature());
+    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> NETHER_ROOF_STRUCTURE =
+            FEATURES.register("nether_roof_structure", () -> NetherRoofStructureFeature.CODEC);
 
-    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> AURORAE =
+    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> AURORAE =
             FEATURES.register("aurorae",
-                    reika.chromaticraft.world.dimension.AuroraeFeature::new);
+                    () -> reika.chromaticraft.world.dimension.AuroraeFeature.CODEC);
 
-    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> CRYSTAL_PIT =
+    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> CRYSTAL_PIT =
             FEATURES.register("crystal_pit",
-                    reika.chromaticraft.world.dimension.CrystalPitFeature::new);
+                    () -> reika.chromaticraft.world.dimension.CrystalPitFeature.CODEC);
 
-    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> CRYSTAL_TREE =
+    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> CRYSTAL_TREE =
             FEATURES.register("crystal_tree",
-                    reika.chromaticraft.world.dimension.CrystalTreeFeature::new);
+                    () -> reika.chromaticraft.world.dimension.CrystalTreeFeature.CODEC);
 
-    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> FLOATSTONE =
+    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> FLOATSTONE =
             FEATURES.register("floatstone",
-                    reika.chromaticraft.world.dimension.FloatstoneFeature::new);
+                    () -> reika.chromaticraft.world.dimension.FloatstoneFeature.CODEC);
 
-    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> GLOW_TREE =
+    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> GLOW_TREE =
             FEATURES.register("glow_tree",
-                    reika.chromaticraft.world.dimension.GlowTreeFeature::new);
+                    () -> reika.chromaticraft.world.dimension.GlowTreeFeature.CODEC);
 
-    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> TREE_CLUSTER =
+    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> TREE_CLUSTER =
             FEATURES.register("tree_cluster",
-                    reika.chromaticraft.world.dimension.TreeClusterFeature::new);
+                    () -> reika.chromaticraft.world.dimension.TreeClusterFeature.CODEC);
 
-    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> FIRE_JET =
+    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> FIRE_JET =
             FEATURES.register("fire_jet",
-                    reika.chromaticraft.world.dimension.FireJetFeature::new);
+                    () -> reika.chromaticraft.world.dimension.FireJetFeature.CODEC);
 
-    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> GLOWING_CRACKS =
+    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> GLOWING_CRACKS =
             FEATURES.register("glowing_cracks",
-                    reika.chromaticraft.world.dimension.GlowingCracksFeature::new);
+                    () -> reika.chromaticraft.world.dimension.GlowingCracksFeature.CODEC);
 
-    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> FISSURE =
+    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> FISSURE =
             FEATURES.register("fissure",
-                    reika.chromaticraft.world.dimension.FissureFeature::new);
+                    () -> reika.chromaticraft.world.dimension.FissureFeature.CODEC);
 
-    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> MINI_ALTAR =
+    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> MINI_ALTAR =
             FEATURES.register("mini_altar",
-                    reika.chromaticraft.world.dimension.MiniAltarFeature::new);
+                    () -> reika.chromaticraft.world.dimension.MiniAltarFeature.CODEC);
 
-    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> LIGHTED_SHRUB =
+    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> LIGHTED_SHRUB =
             FEATURES.register("lighted_shrub",
-                    reika.chromaticraft.world.dimension.LightedShrubFeature::new);
+                    () -> reika.chromaticraft.world.dimension.LightedShrubFeature.CODEC);
 
-    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> CRYSTAL_SHRUB =
+    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> CRYSTAL_SHRUB =
             FEATURES.register("crystal_shrub",
-                    reika.chromaticraft.world.dimension.CrystalShrubFeature::new);
+                    () -> reika.chromaticraft.world.dimension.CrystalShrubFeature.CODEC);
 
-    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> NETHER_LAVA_RIVER =
+    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> NETHER_LAVA_RIVER =
             FEATURES.register("nether_lava_river",
-                    reika.chromaticraft.world.NetherLavaRiverFeature::new);
+                    () -> reika.chromaticraft.world.NetherLavaRiverFeature.CODEC);
     /** Command/debug variants: /place feature chromaticraft:nether_hut, ... */
     public static final java.util.Map<NetherRoofStructureFeature.Type,
-            DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>>> NETHER_ROOF_STRUCTURES =
+            DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>>> NETHER_ROOF_STRUCTURES =
             registerNetherRoofStructures();
 
     private static java.util.Map<NetherRoofStructureFeature.Type,
-            DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>>> registerNetherRoofStructures() {
+            DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>>> registerNetherRoofStructures() {
         java.util.EnumMap<NetherRoofStructureFeature.Type,
-                DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>>> map =
+                DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>>> map =
                 new java.util.EnumMap<>(NetherRoofStructureFeature.Type.class);
         for (NetherRoofStructureFeature.Type type : NetherRoofStructureFeature.Type.values())
             map.put(type, FEATURES.register("nether_" + type.name().toLowerCase(java.util.Locale.ROOT),
-                    () -> new NetherRoofStructureFeature(type)));
+                    () -> NetherRoofStructureFeature.CODEC));
         return java.util.Map.copyOf(map);
     }
 
-    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> NATURAL_CAVERN =
-            FEATURES.register("natural_cavern", () -> new OverworldStructureFeature(
-                    OverworldStructureFeature.Type.CAVERN, true));
+    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> NATURAL_CAVERN =
+            FEATURES.register("natural_cavern", () -> OverworldStructureFeature.CODEC);
     /** Command/debug seam: /place feature chromaticraft:cavern. */
-    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> CAVERN =
-            FEATURES.register("cavern", () -> new OverworldStructureFeature(
-                    OverworldStructureFeature.Type.CAVERN, false));
+    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> CAVERN =
+            FEATURES.register("cavern", () -> OverworldStructureFeature.CODEC);
 
-    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> NATURAL_BURROW =
-            FEATURES.register("natural_burrow", () -> new OverworldStructureFeature(
-                    OverworldStructureFeature.Type.BURROW, true));
+    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> NATURAL_BURROW =
+            FEATURES.register("natural_burrow", () -> OverworldStructureFeature.CODEC);
     /**
      * Command/debug seam: /place feature chromaticraft:burrow, with the command position as controller
      * and both optional annexes forced so the lamps, key and locked cache can be inspected together.
      */
-    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> BURROW =
-            FEATURES.register("burrow", () -> new OverworldStructureFeature(
-                    OverworldStructureFeature.Type.BURROW, false));
+    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> BURROW =
+            FEATURES.register("burrow", () -> OverworldStructureFeature.CODEC);
 
-    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> NATURAL_OCEAN =
-            FEATURES.register("natural_ocean", () -> new OverworldStructureFeature(
-                    OverworldStructureFeature.Type.OCEAN, true));
+    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> NATURAL_OCEAN =
+            FEATURES.register("natural_ocean", () -> OverworldStructureFeature.CODEC);
     /** Command/debug seam: /place feature chromaticraft:ocean, with the command position as controller. */
-    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> OCEAN =
-            FEATURES.register("ocean", () -> new OverworldStructureFeature(
-                    OverworldStructureFeature.Type.OCEAN, false));
+    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> OCEAN =
+            FEATURES.register("ocean", () -> OverworldStructureFeature.CODEC);
 
-    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> NATURAL_DESERT =
-            FEATURES.register("natural_desert", () -> new OverworldStructureFeature(
-                    OverworldStructureFeature.Type.DESERT, true));
-    public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> DESERT =
-            FEATURES.register("desert", () -> new OverworldStructureFeature(
-                    OverworldStructureFeature.Type.DESERT, false));
+    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> NATURAL_DESERT =
+            FEATURES.register("natural_desert", () -> OverworldStructureFeature.CODEC);
+    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> DESERT =
+            FEATURES.register("desert", () -> OverworldStructureFeature.CODEC);
 
-	public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> NATURAL_SNOW =
-			FEATURES.register("natural_snow", () -> new OverworldStructureFeature(
-					OverworldStructureFeature.Type.SNOW, true));
-	public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> SNOW =
-			FEATURES.register("snow", () -> new OverworldStructureFeature(
-					OverworldStructureFeature.Type.SNOW, false));
-	public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> NATURAL_BIOME_FRAGMENT =
-			FEATURES.register("natural_biome_fragment", () -> new OverworldStructureFeature(
-					OverworldStructureFeature.Type.BIOME_FRAGMENT, true));
+	public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> NATURAL_SNOW =
+			FEATURES.register("natural_snow", () -> OverworldStructureFeature.CODEC);
+	public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> SNOW =
+			FEATURES.register("snow", () -> OverworldStructureFeature.CODEC);
+	public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> NATURAL_BIOME_FRAGMENT =
+			FEATURES.register("natural_biome_fragment", () -> OverworldStructureFeature.CODEC);
 	/** Command/debug seam: /place feature chromaticraft:biome_fragment. */
-	public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> BIOME_FRAGMENT =
-			FEATURES.register("biome_fragment", () -> new OverworldStructureFeature(
-					OverworldStructureFeature.Type.BIOME_FRAGMENT, false));
+	public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> BIOME_FRAGMENT =
+			FEATURES.register("biome_fragment", () -> OverworldStructureFeature.CODEC);
 
     private ChromaFeatures() {}
 }

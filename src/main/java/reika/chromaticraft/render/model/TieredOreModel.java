@@ -156,7 +156,7 @@ public final class TieredOreModel implements DynamicBlockStateModel {
 			QuadBakingVertexConsumer vertex = new QuadBakingVertexConsumer();
 			vertex.setSprite(material, Transparency.NONE);
 			vertex.setTintIndex(-1);
-			vertex.setShade(!emissive);
+			vertex.setShadeOverride(emissive ? Direction.UP : null);
 			vertex.setAmbientOcclusion(!emissive);
 			vertex.setLightEmission(emissive ? 15 : 0);
 			vertex.setDirection(quad.face());

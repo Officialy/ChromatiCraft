@@ -1,6 +1,5 @@
 package reika.chromaticraft.block.worldgen26;
 
-import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Player;
@@ -21,16 +20,11 @@ import reika.chromaticraft.tileentity.TileEntityStructureController;
 /** The persistent root and reward cache of each V33a overworld fragment structure. */
 public final class BlockStructureController extends Block implements EntityBlock {
 
-	private final MapCodec<BlockStructureController> codec = MapCodec.unit(this);
 
 	public BlockStructureController(BlockBehaviour.Properties properties) {
 		super(properties);
 	}
 
-	@Override
-	public MapCodec<? extends BlockStructureController> codec() {
-		return codec;
-	}
 
 	@Override
 	public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {

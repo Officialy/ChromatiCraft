@@ -75,7 +75,7 @@ public final class RenderDataNode implements BlockEntityRenderer<TileEntityDataN
 				(pose, vertices) -> renderBase(basePose.last(), vertices, state));
 
 		PoseStack towerPose = copy(poseStack);
-		towerPose.mulPose(Axis.YP.rotationDegrees((float)state.rotation));
+		towerPose.rotate(Axis.YP.rotationDegrees((float)state.rotation));
 		collector.submitCustomGeometry(poseStack, RenderTypes.entityCutout(NODE),
 				(pose, vertices) -> renderTower(towerPose.last(), vertices, state));
 		PoseStack collarPose = copy(towerPose);
@@ -170,7 +170,7 @@ public final class RenderDataNode implements BlockEntityRenderer<TileEntityDataN
 		for (int i = 0; i < 6; i++) {
 			PoseStack glyphPose = copy(poseStack);
 			glyphPose.translate(0, y, 0);
-			glyphPose.mulPose(Axis.YP.rotationDegrees((float)(rotation + i * 60)));
+			glyphPose.rotate(Axis.YP.rotationDegrees((float)(rotation + i * 60)));
 			glyphPose.translate(0, 0, 1.75);
 			PoseStack.Pose matrix = glyphPose.last();
 			collector.submitCustomGeometry(poseStack, ChromaRenderPipelines.additiveSprite(SYMBOLS),
@@ -185,7 +185,7 @@ public final class RenderDataNode implements BlockEntityRenderer<TileEntityDataN
 		int color = 0xff000000 | ReikaColorAPI.getColorWithBrightnessMultiplier(0xb0e0ff, factor);
 		PoseStack flarePose = copy(poseStack);
 		flarePose.translate(0, state.extension0 + state.extension1 + state.extension2 + 0.75, 0);
-		flarePose.mulPose(camera.orientation);
+		flarePose.rotate(camera.orientation);
 		PoseStack.Pose matrix = flarePose.last();
 		collector.submitCustomGeometry(poseStack, ChromaRenderPipelines.additiveSprite(FLARE),
 				(pose, out) -> quad(matrix, out, -3, -3, 3, 3, color, 0, 1, 1, 0));

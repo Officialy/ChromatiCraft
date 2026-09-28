@@ -58,7 +58,7 @@ public abstract class ItemChromaTool extends Item {
 			double[] xyz = ReikaPhysicsHelper.polarToCartesian(5, 0, phi);
 			ep.teleportTo(ep.getX(), ep.getY()+0.5, ep.getZ());
 			ep.setDeltaMovement(new Vec3(xyz[0], 1, xyz[2]));
-			ep.hurtMarked = true;
+			ep.syncVelocity = true;
 			if (severe)
 				ep.fallDistance += 8;
 			ChromaSounds.DISCHARGE.playSound(ep);

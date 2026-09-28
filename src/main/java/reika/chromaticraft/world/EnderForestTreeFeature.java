@@ -8,10 +8,7 @@ import net.minecraft.data.worldgen.features.TreeFeatures;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
-import net.minecraft.world.level.levelgen.feature.ConfiguredFeature;
 import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
 import reika.dragonapi.instantiable.math.noise.NoiseGeneratorBase;
 import reika.dragonapi.instantiable.math.noise.Simplex3DGenerator;
@@ -32,7 +29,15 @@ import reika.dragonapi.instantiable.math.noise.Simplex3DGenerator;
  * static {@code WeightedList} would reproduce the average and lose the structure entirely, which is
  * the whole character of the biome.
  */
-public final class EnderForestTreeFeature extends Feature<NoneFeatureConfiguration> {
+public final class EnderForestTreeFeature implements Feature {
+
+    public static final com.mojang.serialization.MapCodec<EnderForestTreeFeature> CODEC =
+            com.mojang.serialization.MapCodec.unit(EnderForestTreeFeature::new);
+
+    @Override
+    public com.mojang.serialization.MapCodec<EnderForestTreeFeature> codec() {
+        return CODEC;
+    }
 
 	/** V33a: {@code new Simplex3DGenerator(seed).setFrequency(1/30D)}. */
 	private static final double FREQUENCY = 1 / 30D;
@@ -60,14 +65,11 @@ public final class EnderForestTreeFeature extends Feature<NoneFeatureConfigurati
 	private long noiseSeed;
 
 	public EnderForestTreeFeature() {
-		super(NoneFeatureConfiguration.CODEC);
+
 	}
 
 	@Override
-	public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-		WorldGenLevel world = context.level();
-		RandomSource random = context.random();
-		BlockPos origin = context.origin();
+	public boolean place(net.minecraft.world.level.WorldGenLevel world, net.minecraft.world.level.chunk.ChunkGenerator generator, net.minecraft.util.RandomSource random, net.minecraft.core.BlockPos origin) {
 		// V33a derives the noise seed from the world seed with this exact shuffle, so the field is
 		// stable for a world but unrelated to the ordinary worldgen random.
 		long seed = (world.getSeed() << 17) + (world.getSeed() >> 43);
@@ -80,14 +82,14 @@ public final class EnderForestTreeFeature extends Feature<NoneFeatureConfigurati
 		if (chosen == null)
 			return false;
 		if (chosen.variant() != null)
-			return new EnderOakFeature(chosen.variant()).place(context);
+			return new EnderOakFeature(chosen.variant()).place(world, generator, random, origin);
 		// V33a's other two entries are the biome's own worldGeneratorTrees and worldGeneratorBigTree,
 		// i.e. plain vanilla oaks competing in the same draw. Their modern equivalents are configured
 		// features rather than callable generators, so they are resolved from the registry and placed
 		// here. Dropping them would quietly thin the forest and skew the mix toward ender oaks.
-		ResourceKey<ConfiguredFeature<?, ?>> key = chosen.vanillaBig() ? TreeFeatures.FANCY_OAK : TreeFeatures.OAK;
-		return world.registryAccess().lookupOrThrow(Registries.CONFIGURED_FEATURE).getOrThrow(key)
-				.value().place(world, context.chunkGenerator(), random, origin);
+		ResourceKey<Feature> key = chosen.vanillaBig() ? TreeFeatures.FANCY_OAK : TreeFeatures.OAK;
+		return world.registryAccess().lookupOrThrow(Registries.FEATURE).getOrThrow(key)
+				.value().place(world, generator, random, origin);
 	}
 
 	/** V33a WeightedRandom over the recomputed dynamic weights. */

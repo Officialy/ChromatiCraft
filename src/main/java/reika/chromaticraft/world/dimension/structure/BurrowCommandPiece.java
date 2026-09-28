@@ -1,6 +1,5 @@
 package reika.chromaticraft.world.dimension.structure;
 
-import java.util.Optional;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
@@ -9,8 +8,6 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.StructureManager;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.chunk.ChunkGenerator;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.StructurePiece;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext;
@@ -60,8 +57,7 @@ public final class BurrowCommandPiece extends StructurePiece {
 			BlockPos referencePos) {
 		// The bounds invariant above means this piece is processed exactly once and every authored
 		// cell is in chunkBox. Reuse the same NBT placement/callback authority as the feature alias.
-		new OverworldStructureFeature(OverworldStructureFeature.Type.BURROW, false).place(
-				new FeaturePlaceContext<>(Optional.empty(), level, generator, random, controller,
-						NoneFeatureConfiguration.INSTANCE));
+		new OverworldStructureFeature(OverworldStructureFeature.Type.BURROW, false)
+				.place(level, generator, random, controller);
 	}
 }

@@ -129,11 +129,19 @@ public class GlowCavePiece extends StructurePiece {
 		// Seeded off the piece, not off the chunk, so every chunk that writes part of this cave makes
 		// the same decisions about it.
 		RandomSource rand = RandomSource.create(seed ^ 0x9E3779B97F4A7C15L);
-		net.minecraft.world.level.levelgen.synth.PerlinSimplexNoise wallNoise =
-				new net.minecraft.world.level.levelgen.synth.PerlinSimplexNoise(
-						new net.minecraft.world.level.levelgen.WorldgenRandom(
-								new net.minecraft.world.level.levelgen.LegacyRandomSource(seed)),
-						java.util.List.of(-2, -1, 0));
+		// 26.2's PerlinSimplexNoise(random, [-2, -1, 0]) read with useNoiseStart=false. 26.3 removed the
+		// class; this is vanilla's own migration of the identical octave set (Biome#FROZEN_TEMPERATURE_NOISE):
+		// three offset-free simplex layers drawn from the same random, at 1, 1/2 and 1/4 input scale and
+		// 1/7, 2/7 and 4/7 of the value.
+		net.minecraft.world.level.levelgen.WorldgenRandom noiseRandom =
+				new net.minecraft.world.level.levelgen.WorldgenRandom(
+						new net.minecraft.world.level.levelgen.LegacyRandomSource(seed));
+		net.minecraft.world.level.levelgen.synth.Noise wallNoise =
+				net.minecraft.world.level.levelgen.synth.NoiseStack.builder()
+						.add(new net.minecraft.world.level.levelgen.synth.SimplexNoise(noiseRandom, true), 1.0, 0.14285715F)
+						.add(new net.minecraft.world.level.levelgen.synth.SimplexNoise(noiseRandom, true), 0.5, 0.2857143F)
+						.add(new net.minecraft.world.level.levelgen.synth.SimplexNoise(noiseRandom, true), 0.25, 0.5714286F)
+						.build();
 
 		Set<BlockPos> air = new HashSet<>();
 		Set<BlockPos> ledges = new HashSet<>();
@@ -191,7 +199,7 @@ public class GlowCavePiece extends StructurePiece {
 
 	/** V33a's edge branch: bedrock and its cracks below the noise line, shielding and glow above it. */
 	private BlockState wall(WorldGenLevel level, RandomSource rand,
-			net.minecraft.world.level.levelgen.synth.PerlinSimplexNoise noise, BlockPos cell,
+			net.minecraft.world.level.levelgen.synth.Noise noise, BlockPos cell,
 			Set<BlockPos> set, BoundingBox chunkBB) {
 		if (isBedrockWall(noise, cell)) {
 			if (cell.getY() >= MAX_CRACK_Y || rand.nextDouble() >= crackChance(cell))
@@ -236,12 +244,12 @@ public class GlowCavePiece extends StructurePiece {
 	 * line so the transition is ragged rather than flat.
 	 */
 	private static boolean isBedrockWall(
-			net.minecraft.world.level.levelgen.synth.PerlinSimplexNoise noise, BlockPos cell) {
+			net.minecraft.world.level.levelgen.synth.Noise noise, BlockPos cell) {
 		if (cell.getY() >= MAX_BEDROCK_Y)
 			return false;
 		if (cell.getY() <= FULL_BEDROCK_Y)
 			return true;
-		double n = noise.getValue(cell.getX() / 3D, cell.getZ() / 3D, false);
+		double n = noise.get(cell.getX() / 3D, cell.getZ() / 3D);
 		double line = FULL_BEDROCK_Y + (n + 1) / 2D * (MAX_BEDROCK_Y - FULL_BEDROCK_Y);
 		return cell.getY() <= line;
 	}

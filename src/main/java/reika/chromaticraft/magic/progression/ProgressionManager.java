@@ -422,7 +422,7 @@ public class ProgressionManager implements ProgressRegistry {
 		LexiconCatalog.Entry page = id == null ? null : LexiconCatalog.byId(id);
 		if (page != null && !PlayerResearch.hasFragment(ep, page)) {
 			PlayerResearch.giveFragment(ep, page, true);
-			ep.getInventory().placeItemBackInInventory(reika.chromaticraft.item.ItemInfoFragment.forPage(page));
+			ep.getInventory().placeItemBackInInventory(reika.chromaticraft.item.ItemInfoFragment.forPage(page), net.minecraft.util.Prediction.SERVER_ONLY);
 		}
 	}
 

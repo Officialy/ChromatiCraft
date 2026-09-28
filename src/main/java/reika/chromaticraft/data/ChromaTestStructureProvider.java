@@ -53,7 +53,7 @@ public class ChromaTestStructureProvider implements DataProvider {
 
 		ListTag palette = new ListTag();
 		CompoundTag stone = new CompoundTag();
-		stone.putString("Name", "minecraft:stone");
+		stone.putString("id", "minecraft:stone"); // 26.3 block state NBT key (was "Name")
 		palette.add(stone);
 		root.put("palette", palette);
 

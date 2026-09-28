@@ -3,8 +3,8 @@ package reika.chromaticraft.client.render;
 import java.util.Optional;
 import java.util.Set;
 
-import com.mojang.blaze3d.GpuFormat;
-import com.mojang.blaze3d.buffers.GpuBuffer;
+import com.mojang.renderpearl.api.GpuFormat;
+import com.mojang.renderpearl.api.buffers.GpuBuffer;
 import com.mojang.blaze3d.buffers.Std140Builder;
 import com.mojang.blaze3d.framegraph.FrameGraphBuilder;
 import com.mojang.blaze3d.pipeline.RenderTarget;
@@ -12,7 +12,7 @@ import com.mojang.blaze3d.resource.GraphicsResourceAllocator;
 import com.mojang.blaze3d.resource.RenderTargetDescriptor;
 import com.mojang.blaze3d.resource.ResourceHandle;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.textures.FilterMode;
+import com.mojang.renderpearl.api.textures.FilterMode;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MappableRingBuffer;
@@ -145,7 +145,7 @@ public final class ArtealloyEffects {
 		FrameGraphBuilder frame = new FrameGraphBuilder();
 		ResourceHandle<RenderTarget> mainHandle = frame.importExternal("main", main);
 		ResourceHandle<RenderTarget> gradedHandle = frame.createInternal("chromaticraft_artealloy_graded",
-				new RenderTargetDescriptor(main.width, main.height, false, new Vector4f(0, 0, 0, 0), GpuFormat.RGBA8_UNORM));
+				new com.mojang.blaze3d.resource.RenderTargetDescriptor(main.width, main.height, new com.mojang.blaze3d.resource.RenderTargetDescriptor.TextureProperties(new org.joml.Vector4f(0, 0, 0, 0), com.mojang.renderpearl.api.GpuFormat.RGBA8_UNORM), null));
 		var pass = frame.addPass("chromaticraft_artealloy");
 		pass.reads(mainHandle);
 		ResourceHandle<RenderTarget> gradedOut = pass.readsAndWrites(gradedHandle);
@@ -170,10 +170,10 @@ public final class ArtealloyEffects {
 		var encoder = RenderSystem.getDevice().createCommandEncoder();
 		try (var pass = encoder.createRenderPass(() -> "ChromatiCraft artealloy shaders",
 				target.getColorTextureView(), Optional.empty())) {
-			pass.setPipeline(ChromaRenderPipelines.ARTEALLOY);
+			pass.setPipeline(RenderSystem.getCompiledPipeline(ChromaRenderPipelines.ARTEALLOY));
 			RenderSystem.bindDefaultUniforms(pass);
 			pass.setUniform("Artealloy", ubo.currentBuffer());
-			pass.bindTexture("InSampler", source.getColorTextureView(),
+			pass.setUniform("InSampler", source.getColorTextureView(),
 					RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR));
 			pass.draw(3, 1, 0, 0);
 		}

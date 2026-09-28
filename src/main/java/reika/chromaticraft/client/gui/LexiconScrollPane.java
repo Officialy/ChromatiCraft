@@ -109,12 +109,12 @@ public final class LexiconScrollPane {
 
 	private static boolean down(com.mojang.blaze3d.platform.Window window, net.minecraft.client.KeyMapping mapping) {
 		InputConstants.Key key = mapping.getKey();
-		return key.getType() == InputConstants.Type.KEYSYM && key.getValue() != InputConstants.UNKNOWN.getValue()
-				&& InputConstants.isKeyDown(window, key.getValue());
+		return key.getType() == InputConstants.Type.KEYBOARD && key.getValue() != InputConstants.UNKNOWN.getValue()
+				&& InputConstants.isKeyDown(key.getValue());
 	}
 
 	private static boolean down(com.mojang.blaze3d.platform.Window window, int keyCode) {
-		return InputConstants.isKeyDown(window, keyCode);
+		return InputConstants.isKeyDown(keyCode);
 	}
 
 	private static boolean hasShiftDown(com.mojang.blaze3d.platform.Window window) {

@@ -2084,7 +2084,7 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
             // Authored as a cross, not a dot, and that is load-bearing rather than cosmetic. 1.7.10 had
             // no dot shape at all: a wire with no wire neighbours rendered as a cross and powered every
             // block around it, which is what the temple's puzzle wiring relies on. 26.2 added the dot,
-            // and RedStoneWireBlock.getConnectionState preserves one that already exists —
+            // and RedstoneWireBlock.getConnectionState preserves one that already exists —
             // "if (wasDot && isDot(state)) return state;" short-circuits before the auto-connect logic.
             // A template that stored "none" on all four sides is therefore a dot that no placement,
             // neighbour update or shape-resolution pass will ever open up. Storing "side" makes wasDot
@@ -2757,11 +2757,11 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
     private record StateDef(String name, Map<String, String> properties) {
         CompoundTag toNBT() {
             CompoundTag tag = new CompoundTag();
-            tag.putString("Name", name);
+            tag.putString("id", name); // 26.3 block state NBT keys are "id" and "properties"
             if (!properties.isEmpty()) {
                 CompoundTag props = new CompoundTag();
                 properties.forEach(props::putString);
-                tag.put("Properties", props);
+                tag.put("properties", props);
             }
             return tag;
         }

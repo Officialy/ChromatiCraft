@@ -106,10 +106,10 @@ public final class RenderRelaySource
 			Crystal crystal = state.crystals.get(i);
 			PoseStack draw = copy(poseStack);
 			draw.translate(0.5, 0.5, 0.5);
-			draw.mulPose(Axis.YP.rotationDegrees((float)(state.time + i * 360D / count)));
+			draw.rotate(Axis.YP.rotationDegrees((float)(state.time + i * 360D / count)));
 			draw.translate(0, 0.1 * Math.sin(state.time / 8D + i), 0);
 			draw.translate(0.5, 0.5, 0.5);
-			draw.mulPose(Axis.YP.rotationDegrees(state.time * 4));
+			draw.rotate(Axis.YP.rotationDegrees(state.time * 4));
 			collector.submitCustomGeometry(draw,
 					ChromaRenderPipelines.legacyAdditiveSprite(TextureAtlas.LOCATION_BLOCKS),
 					(unused, out) -> crystal(out, draw.last(), sprite, crystal));

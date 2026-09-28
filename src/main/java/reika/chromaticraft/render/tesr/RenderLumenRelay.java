@@ -81,11 +81,11 @@ public final class RenderLumenRelay
 		PoseStack pose = copy(source);
 		pose.translate(0.5, 0.5, 0.5);
 		switch (facing) {
-			case DOWN -> pose.mulPose(Axis.XP.rotationDegrees(180));
-			case EAST -> pose.mulPose(Axis.ZP.rotationDegrees(-90));
-			case WEST -> pose.mulPose(Axis.ZP.rotationDegrees(90));
-			case SOUTH -> pose.mulPose(Axis.XP.rotationDegrees(90));
-			case NORTH -> pose.mulPose(Axis.XP.rotationDegrees(-90));
+			case DOWN -> pose.rotate(Axis.XP.rotationDegrees(180));
+			case EAST -> pose.rotate(Axis.ZP.rotationDegrees(-90));
+			case WEST -> pose.rotate(Axis.ZP.rotationDegrees(90));
+			case SOUTH -> pose.rotate(Axis.XP.rotationDegrees(90));
+			case NORTH -> pose.rotate(Axis.XP.rotationDegrees(-90));
 			case UP -> {}
 		}
 		pose.translate(-0.5, -0.5, -0.5);

@@ -1,6 +1,5 @@
 package reika.chromaticraft.block.dimension.structure.shiftmaze;
 
-import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -81,14 +80,13 @@ public final class BlockShiftLock extends Block {
 
 	public static final EnumProperty<Passability> PASSABILITY = EnumProperty.create("passability", Passability.class);
 	private static final double INSET = 2;
-	private final MapCodec<BlockShiftLock> codec = MapCodec.unit(this);
+
 
 	public BlockShiftLock(BlockBehaviour.Properties properties) {
 		super(properties);
 		registerDefaultState(stateDefinition.any().setValue(PASSABILITY, Passability.CLOSED));
 	}
 
-	@Override public MapCodec<? extends BlockShiftLock> codec() { return codec; }
 
 	@Override
 	protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {

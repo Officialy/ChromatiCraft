@@ -6,8 +6,6 @@ import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.CrystalElement;
@@ -20,17 +18,24 @@ import reika.chromaticraft.registry.CrystalElement;
  * rest. As with {@link EnderForestFlowerFeature}, this is the only {@code can_spawn_from_bone_meal}
  * feature the biome lists, and it is listed with a count of zero so world generation never runs it.
  */
-public final class RainbowForestFlowerFeature extends Feature<NoneFeatureConfiguration> {
+public final class RainbowForestFlowerFeature implements Feature {
+
+    public static final com.mojang.serialization.MapCodec<RainbowForestFlowerFeature> CODEC =
+            com.mojang.serialization.MapCodec.unit(RainbowForestFlowerFeature::new);
+
+    @Override
+    public com.mojang.serialization.MapCodec<RainbowForestFlowerFeature> codec() {
+        return CODEC;
+    }
 
 	public RainbowForestFlowerFeature() {
-		super(NoneFeatureConfiguration.CODEC);
+
 	}
 
 	@Override
-	public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-		WorldGenLevel world = context.level();
-		RandomSource rand = context.random();
-		BlockPos pos = context.origin();
+	public boolean place(net.minecraft.world.level.WorldGenLevel world, net.minecraft.world.level.chunk.ChunkGenerator generator, net.minecraft.util.RandomSource random, net.minecraft.core.BlockPos origin) {
+		RandomSource rand = random;
+		BlockPos pos = origin;
 		if (!world.getBlockState(pos).isAir())
 			return false;
 		if (rand.nextInt(8) > 0) {

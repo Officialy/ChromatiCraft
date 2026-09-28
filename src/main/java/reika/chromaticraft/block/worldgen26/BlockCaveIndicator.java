@@ -1,6 +1,5 @@
 package reika.chromaticraft.block.worldgen26;
 
-import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -31,17 +30,12 @@ public class BlockCaveIndicator extends Block {
 
 	public static final BooleanProperty ACTIVE = BooleanProperty.create("active");
 
-	private final MapCodec<BlockCaveIndicator> codec = MapCodec.unit(this);
 
 	public BlockCaveIndicator(BlockBehaviour.Properties properties) {
 		super(properties);
 		registerDefaultState(stateDefinition.any().setValue(ACTIVE, false));
 	}
 
-	@Override
-	public MapCodec<? extends BlockCaveIndicator> codec() {
-		return codec;
-	}
 
 	@Override
 	protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {

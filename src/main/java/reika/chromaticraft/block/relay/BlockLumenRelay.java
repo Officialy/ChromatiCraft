@@ -1,6 +1,5 @@
 package reika.chromaticraft.block.relay;
 
-import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -44,7 +43,7 @@ public final class BlockLumenRelay extends BlockRelayBase {
 	private static final VoxelShape DOWN = box(6, 2, 6, 10, 16, 10);
 
 	private final @Nullable CrystalElement element;
-	private final MapCodec<BlockLumenRelay> codec = MapCodec.unit(this);
+
 
 	/** A null element is V33a metadata 16: the multichromic relay. */
 	public BlockLumenRelay(BlockBehaviour.Properties properties, @Nullable CrystalElement element) {
@@ -53,7 +52,6 @@ public final class BlockLumenRelay extends BlockRelayBase {
 		registerDefaultState(stateDefinition.any().setValue(FACING, Direction.UP));
 	}
 
-	@Override public MapCodec<? extends BlockLumenRelay> codec() { return codec; }
 	public boolean isMultichromic() { return element == null; }
 	public @Nullable CrystalElement getElement() { return element; }
 

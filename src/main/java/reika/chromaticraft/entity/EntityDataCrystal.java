@@ -26,7 +26,7 @@ public final class EntityDataCrystal extends ItemEntity {
 
 	public EntityDataCrystal(EntityType<? extends ItemEntity> type, Level level) {
 		super(type, level);
-		this.setInvulnerable(true);
+		this.setPermanentlyInvulnerable(true);
 		this.setUnlimitedLifetime();
 	}
 
@@ -34,7 +34,7 @@ public final class EntityDataCrystal extends ItemEntity {
 		super(ChromaEntityTypes.DATA_CRYSTAL.get(), level);
 		this.setPos(x, y, z);
 		this.setItem(stack);
-		this.setInvulnerable(true);
+		this.setPermanentlyInvulnerable(true);
 		this.setUnlimitedLifetime();
 	}
 
@@ -77,7 +77,7 @@ public final class EntityDataCrystal extends ItemEntity {
 		if (motion.y < -0.125) motion = new Vec3(motion.x, -0.125, motion.z);
 		if (this.isInWater()) motion = motion.add(0, 0.05, 0);
 		this.setDeltaMovement(motion);
-		if (!this.level().isClientSide()) this.hurtMarked = true;
+		if (!this.level().isClientSide()) this.syncVelocity = true;
 	}
 
 	@Override

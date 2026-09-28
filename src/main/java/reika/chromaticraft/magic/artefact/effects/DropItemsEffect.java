@@ -37,7 +37,7 @@ public class DropItemsEffect extends UABombingEffect.BlockEffect {
 				ItemEntity ei = new ItemEntity(te.getLevel(), pos.getX() + 0.5, pos.getY() + 0.75, pos.getZ() + 0.5, in);
 				ei.setDeltaMovement(ReikaRandomHelper.getRandomPlusMinus(0, 0.5), ReikaRandomHelper.getRandomPlusMinus(0, 0.5),
 						ReikaRandomHelper.getRandomPlusMinus(0, 0.5));
-				ei.hurtMarked = true;
+				ei.syncVelocity = true;
 				te.getLevel().addFreshEntity(ei);
 				inv.setItem(slot, ItemStack.EMPTY);
 				break;

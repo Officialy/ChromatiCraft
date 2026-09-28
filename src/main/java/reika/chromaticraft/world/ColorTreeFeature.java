@@ -3,6 +3,7 @@ package reika.chromaticraft.world;
 import java.util.List;
 
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
 import net.minecraft.core.BlockPos;
@@ -14,8 +15,6 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.FeatureConfiguration;
 
 import reika.chromaticraft.registry.CrystalElement;
 import reika.dragonapi.libraries.level.ReikaWorldHelper;
@@ -43,7 +42,7 @@ import reika.dragonapi.libraries.level.ReikaWorldHelper;
  * page doubled the count. Neither mod exists for 26.2. V33a's rainbow chance of 1 in 16 in the Twilight
  * Forest was unreachable, since {@code canGenerateTree} refused that dimension outright.
  */
-public final class ColorTreeFeature extends Feature<ColorTreeFeature.Config> {
+public final class ColorTreeFeature implements Feature {
 
 	/** One tag of biomes and the tree count it stands for. */
 	public record Count(TagKey<Biome> biomes, int trees) {
@@ -59,8 +58,7 @@ public final class ColorTreeFeature extends Feature<ColorTreeFeature.Config> {
 	 * @param chance        V33a {@code CHANCE}: one attempt in this many places a tree
 	 * @param rainbowChance V33a {@code getRainbowChance} outside the Twilight Forest
 	 */
-	public record Config(List<Count> counts, List<Count> fallback, int chance, int rainbowChance)
-			implements FeatureConfiguration {
+	public record Config(List<Count> counts, List<Count> fallback, int chance, int rainbowChance) {
 		public static final Codec<Config> CODEC = RecordCodecBuilder.create(i -> i.group(
 				Count.CODEC.listOf().fieldOf("counts").forGetter(Config::counts),
 				Count.CODEC.listOf().fieldOf("fallback").forGetter(Config::fallback),
@@ -69,8 +67,21 @@ public final class ColorTreeFeature extends Feature<ColorTreeFeature.Config> {
 		).apply(i, Config::new));
 	}
 
-	public ColorTreeFeature() {
-		super(Config.CODEC);
+	public static final MapCodec<ColorTreeFeature> CODEC = Config.CODEC.fieldOf("config")
+			.xmap(ColorTreeFeature::new, ColorTreeFeature::config);
+	private final Config config;
+
+	public ColorTreeFeature(Config config) {
+		this.config = config;
+	}
+
+	public Config config() {
+		return config;
+	}
+
+	@Override
+	public MapCodec<ColorTreeFeature> codec() {
+		return CODEC;
 	}
 
 	/** V33a {@code getTreeCount}. */
@@ -88,12 +99,10 @@ public final class ColorTreeFeature extends Feature<ColorTreeFeature.Config> {
 	}
 
 	@Override
-	public boolean place(FeaturePlaceContext<Config> context) {
-		WorldGenLevel world = context.level();
-		RandomSource r = context.random();
-		Config config = context.config();
-		int chunkX = context.origin().getX() & ~15;
-		int chunkZ = context.origin().getZ() & ~15;
+	public boolean place(WorldGenLevel world, net.minecraft.world.level.chunk.ChunkGenerator generator,
+			RandomSource r, BlockPos origin) {
+		int chunkX = origin.getX() & ~15;
+		int chunkZ = origin.getZ() & ~15;
 
 		int cornerY = ReikaWorldHelper.getTopSolidOrLiquidBlock(world, chunkX, chunkZ);
 		int trees = getTreeCount(world.getBiome(new BlockPos(chunkX, cornerY, chunkZ)), config);

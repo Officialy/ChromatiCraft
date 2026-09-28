@@ -106,11 +106,11 @@ public final class RenderItemStand implements BlockEntityRenderer<TileEntityItem
             double bob = 0.0625D * Math.sin(Math.toRadians(angle * 2D));
             poseStack.pushPose();
             poseStack.translate(0.5, 0.625 + bob, 0.5);
-            poseStack.mulPose(Axis.YP.rotationDegrees((float)angle));
+            poseStack.rotate(Axis.YP.rotationDegrees((float)angle));
             if (state.copyCount > 1) {
                 poseStack.scale((float)scale, (float)scale, (float)scale);
                 poseStack.translate(0.3125, 0, 0);
-                poseStack.mulPose(Axis.YP.rotationDegrees(state.animationTick * 4F + i * 90F / state.copyCount));
+                poseStack.rotate(Axis.YP.rotationDegrees(state.animationTick * 4F + i * 90F / state.copyCount));
             }
             item.submit(poseStack, collector, state.lightCoords, OverlayTexture.NO_OVERLAY, 0);
             poseStack.popPose();
@@ -120,7 +120,7 @@ public final class RenderItemStand implements BlockEntityRenderer<TileEntityItem
             var text = Component.literal(Integer.toString(state.stackCount)).getVisualOrderText();
             poseStack.pushPose();
             poseStack.translate(0.5, 1.25, 0.5);
-            poseStack.mulPose(camera.orientation);
+            poseStack.rotate(camera.orientation);
             poseStack.scale(0.03125F, -0.03125F, 0.03125F);
             collector.submitText(poseStack, -font.width(text) / 2F, 0, text, true,
                     Font.DisplayMode.POLYGON_OFFSET, 15728880, 0xffffffff, 0, 0);

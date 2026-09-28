@@ -50,7 +50,7 @@ public final class RenderLootChest implements BlockEntityRenderer<TileEntityLoot
 	public void submit(State state, PoseStack poseStack, SubmitNodeCollector collector, CameraRenderState camera) {
 		poseStack.pushPose();
 		poseStack.translate(0.5F, 0, 0.5F);
-		poseStack.mulPose(Axis.YP.rotationDegrees(-state.facing.toYRot()));
+		poseStack.rotate(Axis.YP.rotationDegrees(-state.facing.toYRot()));
 		poseStack.translate(-0.5F, 0, -0.5F);
 		float lidRotation = -state.open * ((float)Math.PI / 2F);
 		PoseStack modelPose = new PoseStack();

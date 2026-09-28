@@ -7,23 +7,27 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
 import reika.chromaticraft.registry.ChromaBlocks;
 
 /** V33a LumaGenerator: one or two low cave-floor ellipsoids per selected chunk. */
-public final class LumaPatchFeature extends Feature<NoneFeatureConfiguration> {
+public final class LumaPatchFeature implements Feature {
+
+    public static final com.mojang.serialization.MapCodec<LumaPatchFeature> CODEC =
+            com.mojang.serialization.MapCodec.unit(LumaPatchFeature::new);
+
+    @Override
+    public com.mojang.serialization.MapCodec<LumaPatchFeature> codec() {
+        return CODEC;
+    }
 
     public LumaPatchFeature() {
-        super(NoneFeatureConfiguration.CODEC);
+
     }
 
     @Override
-    public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-        WorldGenLevel level = context.level();
-        RandomSource random = context.random();
-        BlockPos origin = context.origin();
+    public boolean place(net.minecraft.world.level.WorldGenLevel world, net.minecraft.world.level.chunk.ChunkGenerator generator, net.minecraft.util.RandomSource random, net.minecraft.core.BlockPos origin) {
+        WorldGenLevel level = world;
         boolean placed = false;
         int patches = 1 + random.nextInt(2);
         for (int n = 0; n < patches; n++) {

@@ -77,7 +77,7 @@ public final class RenderInfuser3 implements BlockEntityRenderer<TileEntityAuraI
 		double bob = 0.0625 * Math.sin(Math.toRadians(angle * 2));
 		poseStack.pushPose();
 		poseStack.translate(0.5, 0.6875 + bob, 0.5);
-		poseStack.mulPose(Axis.YP.rotationDegrees(angle));
+		poseStack.rotate(Axis.YP.rotationDegrees(angle));
 		state.item.submit(poseStack, collector, state.lightCoords, OverlayTexture.NO_OVERLAY, 0);
 		poseStack.popPose();
 

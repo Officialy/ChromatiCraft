@@ -1,6 +1,5 @@
 package reika.chromaticraft.block.dimension.structure.lightpanel;
 
-import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.sounds.SoundEvents;
@@ -23,14 +22,13 @@ import reika.chromaticraft.tileentity.TileEntityLightSwitch;
 public final class BlockLightSwitch extends Block implements EntityBlock {
 
 	public static final BooleanProperty UP = BooleanProperty.create("up");
-	private final MapCodec<BlockLightSwitch> codec = MapCodec.unit(this);
+
 
 	public BlockLightSwitch(BlockBehaviour.Properties properties) {
 		super(properties);
 		registerDefaultState(stateDefinition.any().setValue(UP, false));
 	}
 
-	@Override public MapCodec<? extends BlockLightSwitch> codec() { return codec; }
 
 	@Override
 	protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {

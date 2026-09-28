@@ -2,7 +2,6 @@ package reika.chromaticraft.block.worldgen26;
 
 import javax.annotation.Nullable;
 
-import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
@@ -53,16 +52,11 @@ public class BlockWarpNode extends Block implements EntityBlock {
 	private static final long COOLDOWN = 200;
 	private static final String COOLDOWN_TAG = "lastWarpNode";
 
-	private final MapCodec<BlockWarpNode> codec = MapCodec.unit(this);
 
 	public BlockWarpNode(BlockBehaviour.Properties properties) {
 		super(properties);
 	}
 
-	@Override
-	public MapCodec<? extends BlockWarpNode> codec() {
-		return codec;
-	}
 
 	@Override
 	public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
@@ -130,7 +124,7 @@ public class BlockWarpNode extends Block implements EntityBlock {
 				motion.x + (player.getRandom().nextDouble() * 1.5 - 0.75),
 				motion.y + (player.getRandom().nextDouble() * 1.5 - 0.75),
 				motion.z + (player.getRandom().nextDouble() * 1.5 - 0.75));
-		player.hurtMarked = true;
+		player.syncVelocity = true;
 		// V33a: the ride is rough until you have LINK, and steadily less so as you progress.
 		if (!player.isCreative() && !ProgressStage.LINK.isPlayerAtStage(player)) {
 			int odds = ProgressStage.USEENERGY.isPlayerAtStage(player) ? 2

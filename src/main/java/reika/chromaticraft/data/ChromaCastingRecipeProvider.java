@@ -1,10 +1,10 @@
 package reika.chromaticraft.data;
 
-import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.data.PackOutput;
 import net.minecraft.data.recipes.RecipeOutput;
 import net.minecraft.data.recipes.RecipeProvider;
+import net.minecraft.data.worldgen.BootstrapContext;
+import net.minecraft.advancements.Advancement;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.Item;
@@ -28,32 +28,24 @@ import reika.chromaticraft.registry.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 
 /**
  * Datapack-owned casting recipes, transcribed from V33a {@code RecipesCastingTable}. This first
  * family is the complete ordinary CrystalStoneRecipe set that only depends on registered 26.2
  * content. Boosted-shard stabilizer/resonance recipes follow when boosted shard components land.
  */
-public final class ChromaCastingRecipeProvider extends RecipeProvider.Runner {
+public final class ChromaCastingRecipeProvider {
 
-	public ChromaCastingRecipeProvider(PackOutput output, CompletableFuture<HolderLookup.Provider> registries) {
-		super(output, registries);
-	}
+    private ChromaCastingRecipeProvider() {}
 
-	@Override public String getName() { return "ChromatiCraft Casting Recipes"; }
-
-	@Override
-	protected RecipeProvider createRecipeProvider(HolderLookup.Provider registries, RecipeOutput output) {
-		return new Recipes(registries, output);
-	}
+    public static void bootstrap(BootstrapContext<Recipe<?>> recipes, BootstrapContext<Advancement> advancements) {
+        new Recipes(recipes, advancements).buildRecipes();
+    }
 
 	private static final class Recipes extends RecipeProvider {
-		private final RecipeOutput output;
 
-		private Recipes(HolderLookup.Provider registries, RecipeOutput output) {
-			super(registries, output);
-			this.output = output;
+		private Recipes(BootstrapContext<Recipe<?>> recipes, BootstrapContext<Advancement> advancements) {
+            super(recipes, advancements);
 		}
 
 		@Override

@@ -21,8 +21,6 @@ import net.minecraft.world.level.block.entity.AbstractFurnaceBlockEntity;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.storage.loot.BuiltInLootTables;
 
@@ -40,7 +38,20 @@ import reika.chromaticraft.item.ItemDoorKey;
 import reika.chromaticraft.tileentity.TileEntityChromaDoor;
 
 /** NBT-backed runtime feature family for V33a's six natural overworld structures. */
-public final class OverworldStructureFeature extends Feature<NoneFeatureConfiguration> {
+public final class OverworldStructureFeature implements Feature {
+	public static final com.mojang.serialization.MapCodec<OverworldStructureFeature> CODEC =
+			com.mojang.serialization.codecs.RecordCodecBuilder.mapCodec(instance -> instance.group(
+					com.mojang.serialization.Codec.STRING.fieldOf("structure")
+							.forGetter(feature -> feature.type.name().toLowerCase(java.util.Locale.ROOT)),
+					com.mojang.serialization.Codec.BOOL.fieldOf("natural")
+							.forGetter(feature -> feature.natural)
+			).apply(instance, (name, natural) -> new OverworldStructureFeature(
+					Type.valueOf(name.toUpperCase(java.util.Locale.ROOT)), natural)));
+
+	@Override
+	public com.mojang.serialization.MapCodec<OverworldStructureFeature> codec() {
+		return CODEC;
+	}
 	private static final Identifier BURROW_FURNACE = NBTStructureLoader.chromaTemplate(
 			"worldgen/overworld/burrow_furnace");
 	private static final Identifier BURROW_LOOT = NBTStructureLoader.chromaTemplate(
@@ -82,18 +93,16 @@ public final class OverworldStructureFeature extends Feature<NoneFeatureConfigur
 	private final boolean natural;
 
 	public OverworldStructureFeature(Type type, boolean natural) {
-		super(NoneFeatureConfiguration.CODEC);
+
 		this.type = type;
 		this.natural = natural;
 	}
 
 	@Override
-	public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-		WorldGenLevel world = context.level();
-		RandomSource random = context.random();
+	public boolean place(net.minecraft.world.level.WorldGenLevel world, net.minecraft.world.level.chunk.ChunkGenerator generator, net.minecraft.util.RandomSource random, net.minecraft.core.BlockPos origin) {
 		if (!natural)
-			return this.placeAt(world, random, context.origin()) != null;
-		return this.placeNatural(world, random, context.origin());
+			return this.placeAt(world, random, origin) != null;
+		return this.placeNatural(world, random, origin);
 	}
 
 	/**

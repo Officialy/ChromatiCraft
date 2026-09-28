@@ -11,8 +11,6 @@ import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.auxiliary.structure.NBTStructureLoader;
@@ -26,24 +24,30 @@ import reika.chromaticraft.tileentity.TileEntityDummyAux.Flags;
 import reika.chromaticraft.tileentity.TileEntityLootChest;
 
 /** V33a's thirteen fixed lore towers, placed from the canonical DATANODE NBT template. */
-public final class DataTowerFeature extends Feature<NoneFeatureConfiguration> {
+public final class DataTowerFeature implements Feature {
+
+    public static final com.mojang.serialization.MapCodec<DataTowerFeature> CODEC =
+            com.mojang.serialization.MapCodec.unit(DataTowerFeature::new);
+
+    @Override
+    public com.mojang.serialization.MapCodec<DataTowerFeature> codec() {
+        return CODEC;
+    }
 
 	private static final Identifier TEMPLATE =
 			Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "worldgen/data_node");
 	private static final BlockPos ANCHOR = new BlockPos(1, 0, 1);
 
 	public DataTowerFeature() {
-		super(NoneFeatureConfiguration.CODEC);
+
 	}
 
 	@Override
-	public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-		WorldGenLevel world = context.level();
-		BlockPos origin = context.origin();
+	public boolean place(net.minecraft.world.level.WorldGenLevel world, net.minecraft.world.level.chunk.ChunkGenerator generator, net.minecraft.util.RandomSource random, net.minecraft.core.BlockPos origin) {
 		Towers tower = Towers.getTower(world.getLevel(), origin.getX(), origin.getZ());
 		if (tower == null)
 			return false;
-		return placeAt(world, origin.offset(8, 0, 8), tower, context.random());
+		return placeAt(world, origin.offset(8, 0, 8), tower, random);
 	}
 
 	/** Deterministic seam used by the feature command and focused GameTests. */

@@ -8,8 +8,6 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaShieldTypes;
@@ -32,20 +30,25 @@ import reika.chromaticraft.registry.ProximaDecoTypes;
  * <p>The largest class reaches thirty blocks of trunk under a seven-tall crown, and a crown is at most
  * about thirteen across, so a tree fits comfortably inside the chunks this step may write to.
  */
-public final class CrystalTreeFeature extends Feature<NoneFeatureConfiguration> {
+public final class CrystalTreeFeature implements Feature {
+
+    public static final com.mojang.serialization.MapCodec<CrystalTreeFeature> CODEC =
+            com.mojang.serialization.MapCodec.unit(CrystalTreeFeature::new);
+
+    @Override
+    public com.mojang.serialization.MapCodec<CrystalTreeFeature> codec() {
+        return CODEC;
+    }
 
 	/** V33a sizeRand: weights 10, 7, 4 and 1 across the four size classes. */
 	private static final int[] SIZE_WEIGHTS = {10, 7, 4, 1};
 
 	public CrystalTreeFeature() {
-		super(NoneFeatureConfiguration.CODEC);
+
 	}
 
 	@Override
-	public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-		WorldGenLevel world = context.level();
-		RandomSource random = context.random();
-		BlockPos origin = context.origin();
+	public boolean place(net.minecraft.world.level.WorldGenLevel world, net.minecraft.world.level.chunk.ChunkGenerator generator, net.minecraft.util.RandomSource random, net.minecraft.core.BlockPos origin) {
 
 		int size = drawSize(random);
 		List<CrystalTreeShapes> candidates = shapesOfSize(size);

@@ -68,7 +68,7 @@ public final class ElementBufferOverlay implements GuiLayer {
 		if (!(held.getItem() instanceof ItemManipulator))
 			return;
 
-		int r = InputConstants.isKeyDown(mc.getWindow(), InputConstants.KEY_LSHIFT) ? 48 : 32;
+		int r = InputConstants.isKeyDown(InputConstants.KEY_LSHIFT) ? 48 : 32;
 		int ox = pieX(graphics, r);
 		int oy = pieY(graphics, r);
 

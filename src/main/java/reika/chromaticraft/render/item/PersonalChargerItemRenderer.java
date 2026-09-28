@@ -30,8 +30,8 @@ public final class PersonalChargerItemRenderer implements NoDataSpecialModelRend
 			int overlayCoords, boolean hasFoil, int outlineColor) {
 		poseStack.pushPose();
 		poseStack.translate(0.5, 0.5, 0.5);
-		poseStack.mulPose(Axis.YP.rotationDegrees(45));
-		poseStack.mulPose(Axis.XP.rotationDegrees(-45));
+		poseStack.rotate(Axis.YP.rotationDegrees(45));
+		poseStack.rotate(Axis.XP.rotationDegrees(-45));
 		RenderPersonalCharger.submitItem(poseStack, collector);
 		poseStack.popPose();
 	}

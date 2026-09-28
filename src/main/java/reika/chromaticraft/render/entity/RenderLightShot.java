@@ -76,8 +76,8 @@ public final class RenderLightShot extends EntityRenderer<EntityLightShot, Rende
 		if (state.alive) {
 			Vec3 cam = camera.pos;
 			double[] angs = ReikaPhysicsHelper.cartesianToPolar(state.x-cam.x, state.y-cam.y, state.z-cam.z);
-			poseStack.mulPose(Axis.YP.rotationDegrees((float)angs[2]));
-			poseStack.mulPose(Axis.XP.rotationDegrees((float)(90-angs[1])));
+			poseStack.rotate(Axis.YP.rotationDegrees((float)angs[2]));
+			poseStack.rotate(Axis.XP.rotationDegrees((float)(90-angs[1])));
 		}
 		PoseStack.Pose pose = poseStack.last().copy();
 		TextureAtlasSprite spark = Minecraft.getInstance().getAtlasManager().getAtlasOrThrow(AtlasIds.BLOCKS).getSprite(CHROMA);

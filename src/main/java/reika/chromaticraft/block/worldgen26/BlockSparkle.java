@@ -2,7 +2,6 @@ package reika.chromaticraft.block.worldgen26;
 
 import java.util.Locale;
 
-import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -86,7 +85,7 @@ public final class BlockSparkle extends Block implements Fallable {
 	private static final int FALL_DELAY = 2;
 
 	private final Type type;
-	private final MapCodec<BlockSparkle> codec = MapCodec.unit(this);
+
 
 	public BlockSparkle(BlockBehaviour.Properties properties, Type type) {
 		super(properties);
@@ -97,10 +96,6 @@ public final class BlockSparkle extends Block implements Fallable {
 		return type;
 	}
 
-	@Override
-	protected MapCodec<? extends BlockSparkle> codec() {
-		return codec;
-	}
 
 	/**
 	 * V33a {@code getPlayerRelativeBlockHardness}: the proxy's own answer, so tool choice and the

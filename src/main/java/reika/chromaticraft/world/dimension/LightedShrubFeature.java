@@ -7,8 +7,6 @@ import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
 import reika.chromaticraft.registry.ChromaBlocks;
 
@@ -29,20 +27,26 @@ import reika.chromaticraft.registry.ChromaBlocks;
  *
  * <p>Leaves are only ever placed into air, so a shrub never eats terrain it grows against.
  */
-public final class LightedShrubFeature extends Feature<NoneFeatureConfiguration> {
+public final class LightedShrubFeature implements Feature {
+
+    public static final com.mojang.serialization.MapCodec<LightedShrubFeature> CODEC =
+            com.mojang.serialization.MapCodec.unit(LightedShrubFeature::new);
+
+    @Override
+    public com.mojang.serialization.MapCodec<LightedShrubFeature> codec() {
+        return CODEC;
+    }
 
 	/** V33a's three crown layers, shared by both the large and middle forms. */
 	private static final int[] CROWN_RADII = {2, 2, 1};
 
 	public LightedShrubFeature() {
-		super(NoneFeatureConfiguration.CODEC);
+
 	}
 
 	@Override
-	public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-		WorldGenLevel world = context.level();
-		RandomSource rand = context.random();
-		BlockPos origin = context.origin();
+	public boolean place(net.minecraft.world.level.WorldGenLevel world, net.minecraft.world.level.chunk.ChunkGenerator generator, net.minecraft.util.RandomSource random, net.minecraft.core.BlockPos origin) {
+		RandomSource rand = random;
 		// V33a: grass directly beneath, and nothing else will do.
 		if (!world.getBlockState(origin.below()).is(Blocks.GRASS_BLOCK))
 			return false;

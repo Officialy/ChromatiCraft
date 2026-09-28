@@ -1,6 +1,6 @@
 package reika.chromaticraft.world;
 
-import java.util.stream.Stream;
+import java.util.function.Consumer;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
@@ -11,7 +11,6 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.placement.PlacementContext;
 import net.minecraft.world.level.levelgen.placement.PlacementModifier;
-import net.minecraft.world.level.levelgen.placement.PlacementModifierType;
 
 import reika.chromaticraft.registry.ChromaPlacementModifiers;
 
@@ -25,7 +24,7 @@ import reika.chromaticraft.registry.ChromaPlacementModifiers;
  * <p>1.7.10's height map is the first light-blocking block from the top, which counts leaves and water;
  * {@code MOTION_BLOCKING} is the 26.2 height map that does the same.
  */
-public final class LegacyHeightmapScaledPlacement extends PlacementModifier {
+public final class LegacyHeightmapScaledPlacement implements PlacementModifier {
 
 	public static final MapCodec<LegacyHeightmapScaledPlacement> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
 			Codec.INT.fieldOf("multiplier").forGetter(LegacyHeightmapScaledPlacement::multiplier),
@@ -49,15 +48,15 @@ public final class LegacyHeightmapScaledPlacement extends PlacementModifier {
 	}
 
 	@Override
-	public Stream<BlockPos> getPositions(PlacementContext context, RandomSource random, BlockPos origin) {
+	public void modify(PlacementContext context, RandomSource random, BlockPos origin, Consumer<BlockPos> output) {
 		int height = context.getHeight(Heightmap.Types.MOTION_BLOCKING, origin.getX(), origin.getZ());
 		int bound = height * multiplier + add;
 		int y = bound <= 1 ? 0 : random.nextInt(bound);
-		return Stream.of(new BlockPos(origin.getX(), y, origin.getZ()));
+		output.accept(new BlockPos(origin.getX(), y, origin.getZ()));
 	}
 
 	@Override
-	public PlacementModifierType<?> type() {
-		return ChromaPlacementModifiers.LEGACY_HEIGHTMAP_SCALED.get();
+	public MapCodec<LegacyHeightmapScaledPlacement> codec() {
+		return CODEC;
 	}
 }

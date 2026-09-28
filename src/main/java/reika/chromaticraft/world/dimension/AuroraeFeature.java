@@ -5,8 +5,6 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 import net.minecraft.world.phys.Vec3;
 
 import reika.chromaticraft.entity.AuroraData;
@@ -34,7 +32,15 @@ import reika.chromaticraft.registry.ChromaEntityTypes;
  * and Green with Pink. Those three are the pairs whose gradients muddy into each other, and dropping the
  * rule would be invisible in code review and obvious in the sky.
  */
-public final class AuroraeFeature extends Feature<NoneFeatureConfiguration> {
+public final class AuroraeFeature implements Feature {
+
+    public static final com.mojang.serialization.MapCodec<AuroraeFeature> CODEC =
+            com.mojang.serialization.MapCodec.unit(AuroraeFeature::new);
+
+    @Override
+    public com.mojang.serialization.MapCodec<AuroraeFeature> codec() {
+        return CODEC;
+    }
 
 	/**
 	 * V33a's weighted aurora palette. The weights matter as much as the colours: the three primaries
@@ -77,14 +83,11 @@ public final class AuroraeFeature extends Feature<NoneFeatureConfiguration> {
 	}
 
 	public AuroraeFeature() {
-		super(NoneFeatureConfiguration.CODEC);
+
 	}
 
 	@Override
-	public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-		WorldGenLevel world = context.level();
-		RandomSource random = context.random();
-		BlockPos origin = context.origin();
+	public boolean place(net.minecraft.world.level.WorldGenLevel world, net.minecraft.world.level.chunk.ChunkGenerator generator, net.minecraft.util.RandomSource random, net.minecraft.core.BlockPos origin) {
 
 		int ribbons = 1 + random.nextInt(12);
 		double bearing = Math.toRadians(random.nextDouble() * 360);

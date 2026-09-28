@@ -13,8 +13,6 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 import net.minecraft.world.level.material.Fluids;
 
 import net.neoforged.neoforge.common.Tags;
@@ -32,22 +30,33 @@ import reika.chromaticraft.registry.ChromaTieredPlants;
  * {@code count} modifiers, and this class owns only the column search — which is the part that has
  * no vanilla equivalent, because each plant looks for a different thing at a different depth.
  */
-public final class TieredPlantFeature extends Feature<NoneFeatureConfiguration> {
+public final class TieredPlantFeature implements Feature {
+
+	public static final com.mojang.serialization.MapCodec<TieredPlantFeature> CODEC =
+			com.mojang.serialization.Codec.STRING.fieldOf("plant")
+					.xmap(name -> {
+						ChromaTieredPlants plant = ChromaTieredPlants.valueOf(name.toUpperCase(java.util.Locale.ROOT));
+						return new TieredPlantFeature(plant,
+								() -> reika.chromaticraft.registry.ChromaBlocks.tieredPlant(plant).get().defaultBlockState());
+					}, feature -> feature.plant.name().toLowerCase(java.util.Locale.ROOT));
+
+	@Override
+	public com.mojang.serialization.MapCodec<TieredPlantFeature> codec() {
+		return CODEC;
+	}
 
 	private final ChromaTieredPlants plant;
 	private final Supplier<BlockState> state;
 
 	public TieredPlantFeature(ChromaTieredPlants plant, Supplier<BlockState> state) {
-		super(NoneFeatureConfiguration.CODEC);
+
 		this.plant = plant;
 		this.state = state;
 	}
 
 	@Override
-	public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-		WorldGenLevel world = context.level();
-		BlockPos origin = context.origin();
-		BlockPos target = this.findSite(world, origin.getX(), origin.getZ(), context.random());
+	public boolean place(net.minecraft.world.level.WorldGenLevel world, net.minecraft.world.level.chunk.ChunkGenerator generator, net.minecraft.util.RandomSource random, net.minecraft.core.BlockPos origin) {
+		BlockPos target = this.findSite(world, origin.getX(), origin.getZ(), random);
 		if (target == null)
 			return false;
 		// Worldgen writes take the no-neighbour-update flag, as the other ChromatiCraft features do.

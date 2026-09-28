@@ -1,6 +1,5 @@
 package reika.chromaticraft.block.dye26;
 
-import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.BlockGetter;
@@ -34,7 +33,7 @@ public final class BlockDyeFlower extends VegetationBlock {
 	private static final VoxelShape SHAPE = Block.box(4.8, 0, 4.8, 11.2, 9.6, 11.2);
 
 	private final CrystalElement element;
-	private final MapCodec<BlockDyeFlower> codec = MapCodec.unit(this);
+
 
 	public BlockDyeFlower(BlockBehaviour.Properties properties, CrystalElement element) {
 		super(properties);
@@ -45,10 +44,6 @@ public final class BlockDyeFlower extends VegetationBlock {
 		return element;
 	}
 
-	@Override
-	protected MapCodec<? extends BlockDyeFlower> codec() {
-		return codec;
-	}
 
 	@Override
 	protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {

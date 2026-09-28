@@ -6,14 +6,15 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.BootstrapContext;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.world.level.biome.Climate;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.levelgen.DensityFunction;
-import net.minecraft.world.level.levelgen.DensityFunctions;
 import net.minecraft.world.level.levelgen.NoiseGeneratorSettings;
 import net.minecraft.world.level.levelgen.NoiseRouter;
 import net.minecraft.world.level.levelgen.NoiseSettings;
-import net.minecraft.world.level.levelgen.SurfaceRules;
+import net.minecraft.world.level.levelgen.densityfunction.DensityFunction;
+import net.minecraft.world.level.levelgen.densityfunction.DensityFunctions;
+import net.minecraft.world.level.levelgen.material.MaterialRules;
+import net.minecraft.world.level.levelgen.material.rule.MaterialRule;
+import net.minecraft.world.level.levelgen.placement.CaveSurface;
 import net.minecraft.world.level.levelgen.synth.BlendedNoise;
 
 import reika.chromaticraft.ChromatiCraft;
@@ -55,6 +56,8 @@ public final class ProximaNoiseSettings {
 
 	public static final ResourceKey<NoiseGeneratorSettings> PROXIMA = ResourceKey.create(
 			Registries.NOISE_SETTINGS, Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "proxima"));
+	public static final ResourceKey<MaterialRule> SURFACE = ResourceKey.create(
+			Registries.MATERIAL_RULE, Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "proxima_surface"));
 
 	/** V33a WorldProviderChroma.getHeight. */
 	public static final int MIN_Y = 0;
@@ -66,17 +69,17 @@ public final class ProximaNoiseSettings {
 
 	public static void bootstrap(BootstrapContext<NoiseGeneratorSettings> context) {
 		context.register(PROXIMA, new NoiseGeneratorSettings(
-				new NoiseSettings(MIN_Y, HEIGHT, 1, 2),
+				NoiseSettings.create(MIN_Y, HEIGHT),
 				Blocks.STONE.defaultBlockState(),
 				Blocks.WATER.defaultBlockState(),
 				router(),
-				surfaceRules(),
-				List.<Climate.ParameterPoint>of(),
+				context.lookup(Registries.MATERIAL_RULE).getOrThrow(SURFACE),
+				List.of(),
 				SEA_LEVEL,
 				false,
+				java.util.Optional.empty(),
 				false,
-				false,
-				false));
+				NoiseGeneratorSettings.DebugFunctions.EMPTY));
 	}
 
 	/**
@@ -92,17 +95,16 @@ public final class ProximaNoiseSettings {
 		DensityFunction offset = new ProximaTerrainDensityFunction(Mode.OFFSET);
 		DensityFunction factor = new ProximaTerrainDensityFunction(Mode.FACTOR);
 		DensityFunction depth = DensityFunctions.add(
-				DensityFunctions.yClampedGradient(MIN_Y, MIN_Y + HEIGHT, 1.5, -1.5), offset);
+				DensityFunctions.yClampedGradient(MIN_Y, MIN_Y + HEIGHT, 1.5F, -1.5F), offset);
 		DensityFunction initialDensity = DensityFunctions.mul(DensityFunctions.constant(4),
 				DensityFunctions.mul(depth, factor).quarterNegative());
 		DensityFunction terrain = DensityFunctions.add(initialDensity,
-				BlendedNoise.createUnseeded(1, 1, 80, 160, 8));
+				new BlendedNoise(1, 1, 80, 160, 8));
 		DensityFunction finalDensity = DensityFunctions.interpolated(
-				DensityFunctions.blendDensity(terrain));
+				DensityFunctions.blendDensity(terrain), 4, 8);
 
 		DensityFunction zero = DensityFunctions.zero();
-		return new NoiseRouter(zero, zero, zero, zero, zero, zero, zero, zero, depth, zero, zero,
-				finalDensity, zero, zero, zero);
+		return new NoiseRouter(zero, zero, zero, zero, depth, zero, finalDensity, finalDensity);
 	}
 
 	/**
@@ -110,25 +112,29 @@ public final class ProximaNoiseSettings {
 	 * with sand where the surface meets the sea. Vanilla's {@link SurfaceRules} express all three, and
 	 * the biome-specific variants land with the per-biome terrain shapers.
 	 */
-	private static SurfaceRules.RuleSource surfaceRules() {
-		SurfaceRules.RuleSource grass = SurfaceRules.state(Blocks.GRASS_BLOCK.defaultBlockState());
-		SurfaceRules.RuleSource dirt = SurfaceRules.state(Blocks.DIRT.defaultBlockState());
-		SurfaceRules.RuleSource sand = SurfaceRules.state(Blocks.SAND.defaultBlockState());
+	public static void bootstrapMaterialRule(BootstrapContext<MaterialRule> context) {
+		context.register(SURFACE, surfaceRules());
+	}
+
+	private static MaterialRule surfaceRules() {
+		MaterialRule grass = MaterialRules.state(Blocks.GRASS_BLOCK.defaultBlockState());
+		MaterialRule dirt = MaterialRules.state(Blocks.DIRT.defaultBlockState());
+		MaterialRule sand = MaterialRules.state(Blocks.SAND.defaultBlockState());
 
 		// V33a generateSandBeaches: sand where the column surfaces within a couple of blocks of sea
 		// level, rather than grass.
-		SurfaceRules.RuleSource beachOrGrass = SurfaceRules.sequence(
-				SurfaceRules.ifTrue(SurfaceRules.waterBlockCheck(-1, 0), grass),
+		MaterialRule beachOrGrass = MaterialRules.sequence(
+				MaterialRules.ifTrue(MaterialRules.waterBlockCheck(-1, 0), grass),
 				sand);
 
-		return SurfaceRules.sequence(
+		return MaterialRules.sequence(
 				// V33a generateBedrockLayer: the floor of the world.
-				SurfaceRules.ifTrue(SurfaceRules.verticalGradient("bedrock_floor", VerticalAnchorAt(MIN_Y),
-						VerticalAnchorAt(MIN_Y + 5)), SurfaceRules.state(Blocks.BEDROCK.defaultBlockState())),
-				SurfaceRules.ifTrue(SurfaceRules.abovePreliminarySurface(),
-						SurfaceRules.sequence(
-								SurfaceRules.ifTrue(SurfaceRules.ON_FLOOR, beachOrGrass),
-								SurfaceRules.ifTrue(SurfaceRules.UNDER_FLOOR, dirt))));
+				MaterialRules.ifTrue(MaterialRules.verticalGradient("bedrock_floor", VerticalAnchorAt(MIN_Y),
+						VerticalAnchorAt(MIN_Y + 5)), MaterialRules.state(Blocks.BEDROCK.defaultBlockState())),
+				MaterialRules.ifTrue(MaterialRules.abovePreliminarySurface(),
+						MaterialRules.sequence(
+								MaterialRules.ifTrue(MaterialRules.stoneDepthCheck(0, false, CaveSurface.FLOOR), beachOrGrass),
+								MaterialRules.ifTrue(MaterialRules.stoneDepthCheck(0, true, CaveSurface.FLOOR), dirt))));
 	}
 
 	private static net.minecraft.world.level.levelgen.VerticalAnchor VerticalAnchorAt(int y) {

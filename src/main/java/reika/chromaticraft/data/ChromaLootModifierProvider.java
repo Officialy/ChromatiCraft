@@ -4,7 +4,8 @@ import java.util.concurrent.CompletableFuture;
 
 import net.minecraft.core.HolderLookup;
 import net.minecraft.data.PackOutput;
-import net.minecraft.world.level.storage.loot.predicates.LootItemCondition;
+import net.minecraft.core.Holder;
+import java.util.Optional;
 import net.neoforged.neoforge.common.data.GlobalLootModifierProvider;
 import net.neoforged.neoforge.common.loot.AddTableLootModifier;
 import net.neoforged.neoforge.common.loot.LootTableIdCondition;
@@ -38,7 +39,7 @@ public final class ChromaLootModifierProvider extends GlobalLootModifierProvider
 	protected void start() {
 		for (Location location : Location.values())
 			add(location.modifierName(), new AddTableLootModifier(
-					new LootItemCondition[] {LootTableIdCondition.builder(location.target.identifier()).build()},
+					Optional.of(Holder.direct(LootTableIdCondition.builder(location.target.identifier()).build())),
 					0, location.subtable));
 	}
 }

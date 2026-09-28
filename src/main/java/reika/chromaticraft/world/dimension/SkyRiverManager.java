@@ -172,7 +172,7 @@ public final class SkyRiverManager {
 					Vec3 back = toVec(closest.position()).subtract(player.position());
 					if (back.lengthSqr() > 1.0E-4) {
 						player.setDeltaMovement(back.normalize().scale(Math.min(SPEED, back.length())));
-						player.hurtMarked = true;
+						player.syncVelocity = true;
 					}
 					continue;
 				}
@@ -223,7 +223,7 @@ public final class SkyRiverManager {
 			eject(player, state);
 			Vec3 back = toVec(point.next()).subtract(toVec(point.position())).normalize().scale(-1);
 			player.setDeltaMovement(back);
-			player.hurtMarked = true;
+			player.syncVelocity = true;
 			return false;
 		}
 		if (tuning < 1) {
@@ -252,12 +252,12 @@ public final class SkyRiverManager {
 			// chunk. Keeping the rider caught, weightless and stationary lets queued generation finish
 			// without Entity#setPosRaw forcing the server thread to wait for it synchronously.
 			player.setDeltaMovement(Vec3.ZERO);
-			player.hurtMarked = true;
+			player.syncVelocity = true;
 			player.setNoGravity(true);
 			return true;
 		}
 		player.setDeltaMovement(move.scale(SPEED));
-		player.hurtMarked = true;
+		player.syncVelocity = true;
 		// A rider hangs hundreds of blocks up moving faster than the server's anti-flight check
 		// tolerates, and would be kicked for floating. V33a zeroes the private counter directly;
 		// 26.2 exempts an entity whose gravity is effectively zero, which is both reachable without

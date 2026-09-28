@@ -1,6 +1,5 @@
 package reika.chromaticraft.block.dye26;
 
-import com.mojang.serialization.MapCodec;
 import java.awt.Color;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.LeavesBlock;
@@ -18,10 +17,10 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 
 /** Rainbow-tree leaves retain the original position-varying hue instead of biome foliage tint. */
 public final class BlockRainbowLeaf extends LeavesBlock {
-    private final MapCodec<BlockRainbowLeaf> codec = MapCodec.unit(this);
+
 
     public BlockRainbowLeaf(BlockBehaviour.Properties properties) {
-        super(0.02F, properties);
+        super(net.minecraft.world.level.block.sounds.AmbientLeavesBlockSoundPlayer.noAmbientSound(), properties);
     }
 
     public static int getTintColor(BlockPos pos) {
@@ -33,13 +32,11 @@ public final class BlockRainbowLeaf extends LeavesBlock {
     }
 
     @Override
-    public MapCodec<? extends BlockRainbowLeaf> codec() {
-        return codec;
-    }
-    @Override
-    protected void spawnFallingLeavesParticle(Level level, BlockPos pos, RandomSource random) {
-        ParticleUtils.spawnParticleBelow(level, pos, random,
-                ColorParticleOption.create(ParticleTypes.TINTED_LEAVES, getTintColor(pos)));
+    public void animateTick(BlockState state, Level level, BlockPos pos, RandomSource random) {
+        super.animateTick(state, level, pos, random);
+        if (random.nextFloat() < 0.02F)
+            ParticleUtils.spawnParticleBelow(level, pos, random,
+                    ColorParticleOption.create(ParticleTypes.TINTED_LEAVES, getTintColor(pos)));
     }
 
     @Override

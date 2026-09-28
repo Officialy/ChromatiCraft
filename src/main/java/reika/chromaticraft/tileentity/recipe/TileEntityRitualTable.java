@@ -207,7 +207,7 @@ public final class TileEntityRitualTable extends InventoriedCrystalReceiver impl
             player.setDeltaMovement(new Vec3(-speed * Math.copySign(dx * dx, dx),
                     -speed * Math.copySign(dy * dy, dy),
                     -speed * Math.copySign(dz * dz, dz)));
-            player.hurtMarked = true;
+            player.syncVelocity = true;
         }
         player.resetFallDistance();
         if (!capturedNoGravity) {
@@ -234,7 +234,7 @@ public final class TileEntityRitualTable extends InventoriedCrystalReceiver impl
                     net.minecraft.sounds.SoundSource.BLOCKS, 1, 1);
             Vec3 away = player.position().subtract(Vec3.atCenterOf(worldPosition.below())).normalize();
             player.setDeltaMovement(away.scale(4));
-            player.hurtMarked = true;
+            player.syncVelocity = true;
             player.fallDistance += 12;
             return false;
         }

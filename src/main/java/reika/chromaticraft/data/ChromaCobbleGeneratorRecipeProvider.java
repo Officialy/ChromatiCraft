@@ -1,13 +1,12 @@
 package reika.chromaticraft.data;
 
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 
-import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.data.PackOutput;
 import net.minecraft.data.recipes.RecipeOutput;
 import net.minecraft.data.recipes.RecipeProvider;
+import net.minecraft.data.worldgen.BootstrapContext;
+import net.minecraft.advancements.Advancement;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.ItemStackTemplate;
@@ -23,25 +22,18 @@ import reika.chromaticraft.registry.ChromaFluids;
 import reika.chromaticraft.registry.CrystalElement;
 
 /** Exact V33a fluid-mix table for the Coalescence Orchid. */
-public final class ChromaCobbleGeneratorRecipeProvider extends RecipeProvider.Runner {
-	public ChromaCobbleGeneratorRecipeProvider(PackOutput output,
-			CompletableFuture<HolderLookup.Provider> registries) {
-		super(output, registries);
-	}
+public final class ChromaCobbleGeneratorRecipeProvider {
 
-	@Override public String getName() { return "ChromatiCraft Coalescence Orchid Recipes"; }
+    private ChromaCobbleGeneratorRecipeProvider() {}
 
-	@Override
-	protected RecipeProvider createRecipeProvider(HolderLookup.Provider registries, RecipeOutput output) {
-		return new Recipes(registries, output);
-	}
+    public static void bootstrap(BootstrapContext<Recipe<?>> recipes, BootstrapContext<Advancement> advancements) {
+        new Recipes(recipes, advancements).buildRecipes();
+    }
 
 	private static final class Recipes extends RecipeProvider {
-		private final RecipeOutput output;
 
-		private Recipes(HolderLookup.Provider registries, RecipeOutput output) {
-			super(registries, output);
-			this.output = output;
+		private Recipes(BootstrapContext<Recipe<?>> recipes, BootstrapContext<Advancement> advancements) {
+            super(recipes, advancements);
 		}
 
 		@Override

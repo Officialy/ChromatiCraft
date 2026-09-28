@@ -84,7 +84,7 @@ public final class RenderGlowingCracks
 		final int r = TileEntityGlowingCracks.RADIUS;
 		poseStack.pushPose();
 		poseStack.translate(0.5F, 0F, 0.5F);
-		poseStack.mulPose(Axis.YP.rotationDegrees(state.quarterTurns * 90F));
+		poseStack.rotate(Axis.YP.rotationDegrees(state.quarterTurns * 90F));
 		poseStack.translate(-0.5F, 0F, -0.5F);
 
 		final int[] tint = new int[4];

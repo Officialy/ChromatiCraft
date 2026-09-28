@@ -139,7 +139,7 @@ public class TileEntityLaunchPad extends TileEntityChromaticBase implements Mult
 		else {
 			e.setDeltaMovement(m.x, 1.8*v, m.z);
 		}
-		e.hurtMarked = true;
+		e.syncVelocity = true;
 		e.fallDistance = -100;
 
 		if (cache && this.isEnhanced()) {

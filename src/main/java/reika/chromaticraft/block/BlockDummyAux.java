@@ -2,7 +2,6 @@ package reika.chromaticraft.block;
 
 import javax.annotation.Nullable;
 
-import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.InteractionResult;
@@ -34,16 +33,11 @@ import reika.chromaticraft.tileentity.TileEntityDummyAux.Flags;
  */
 public class BlockDummyAux extends Block implements EntityBlock {
 
-	private final MapCodec<BlockDummyAux> codec = MapCodec.unit(this);
 
 	public BlockDummyAux(BlockBehaviour.Properties properties) {
 		super(properties);
 	}
 
-	@Override
-	public MapCodec<? extends BlockDummyAux> codec() {
-		return codec;
-	}
 
 	@Override
 	public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {

@@ -131,7 +131,7 @@ public final class MouseoverStatusOverlay implements GuiLayer {
 			fractions[index] = capacity <= 0 ? 0 : Math.clamp(tile.getEnergy(element) / (float)capacity, 0, 1);
 			index++;
 		}
-		int radius = InputConstants.isKeyDown(mc.getWindow(), InputConstants.KEY_LSHIFT) ? 24 : 12;
+		int radius = InputConstants.isKeyDown(InputConstants.KEY_LSHIFT) ? 24 : 12;
 		int centerX = gui.guiWidth() / 2 - 20;
 		int centerY = gui.guiHeight() / 2 - 20;
 		int hash = System.identityHashCode(tile);

@@ -16,7 +16,6 @@ import java.util.Set;
 
 import javax.annotation.Nullable;
 
-import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -79,7 +78,6 @@ import reika.chromaticraft.world.dimension.ProximaGenerators;
 public class BlockChromaPortal extends Block implements EntityBlock, Portal {
 	private static final String DENIAL_MESSAGE_TIME = "chromaticraft_portal_denial_time";
 
-	private final MapCodec<BlockChromaPortal> codec = MapCodec.unit(this);
 
 	/** V33a metadata 15: destination is the Overworld and the structure check is skipped. */
 	private final boolean returnPortal;
@@ -93,10 +91,6 @@ public class BlockChromaPortal extends Block implements EntityBlock, Portal {
 		return returnPortal;
 	}
 
-	@Override
-	public MapCodec<? extends BlockChromaPortal> codec() {
-		return codec;
-	}
 
 	@Override
 	public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
@@ -339,7 +333,7 @@ public class BlockChromaPortal extends Block implements EntityBlock, Portal {
 		e.setDeltaMovement(motion.x + (level.getRandom().nextDouble() * 2 - 1) * 0.25, 1.5,
 				motion.z + (level.getRandom().nextDouble() * 2 - 1) * 0.25);
 		e.fallDistance = Math.max(e.fallDistance, 500);
-		e.hurtMarked = true;
+		e.syncVelocity = true;
 		ChromaSounds.POWERDOWN.playSound(e);
 	}
 

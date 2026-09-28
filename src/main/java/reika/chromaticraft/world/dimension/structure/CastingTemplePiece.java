@@ -71,7 +71,7 @@ public final class CastingTemplePiece extends StructurePiece {
 				}
 			}
 		}
-		level.getLevel().getStructureManager().get(template)
+		level.getLevel().getStructureTemplateManager().get(template)
 				.orElseThrow(() -> new IllegalStateException("Missing casting template " + template))
 				.placeInWorld(level, origin, origin,
 						new StructurePlaceSettings().setRotation(Rotation.NONE)

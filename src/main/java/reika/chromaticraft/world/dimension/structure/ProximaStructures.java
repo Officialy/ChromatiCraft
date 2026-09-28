@@ -99,25 +99,25 @@ public final class ProximaStructures {
 	 * The monument's placement is its own type because it names one chunk rather than a spread; see
 	 * {@link MonumentPlacement}.
 	 */
-	public static final DeferredRegister<net.minecraft.world.level.levelgen.structure.placement.StructurePlacementType<?>>
+	public static final DeferredRegister<com.mojang.serialization.MapCodec<? extends net.minecraft.world.level.levelgen.structure.placement.StructurePlacement>>
 			PLACEMENTS = DeferredRegister.create(
 					net.minecraft.core.registries.BuiltInRegistries.STRUCTURE_PLACEMENT, ChromatiCraft.MODID);
 
-	public static final DeferredHolder<net.minecraft.world.level.levelgen.structure.placement.StructurePlacementType<?>,
-			net.minecraft.world.level.levelgen.structure.placement.StructurePlacementType<MonumentPlacement>>
-			MONUMENT_PLACEMENT = PLACEMENTS.register("monument", () -> () -> MonumentPlacement.CODEC);
-	public static final DeferredHolder<net.minecraft.world.level.levelgen.structure.placement.StructurePlacementType<?>,
-			net.minecraft.world.level.levelgen.structure.placement.StructurePlacementType<LightPanelPlacement>>
-			LIGHT_PANEL_PLACEMENT = PLACEMENTS.register("light_panel", () -> () -> LightPanelPlacement.CODEC);
-	public static final DeferredHolder<net.minecraft.world.level.levelgen.structure.placement.StructurePlacementType<?>,
-			net.minecraft.world.level.levelgen.structure.placement.StructurePlacementType<ThreeDMazePlacement>>
-			THREE_D_MAZE_PLACEMENT = PLACEMENTS.register("three_d_maze", () -> () -> ThreeDMazePlacement.CODEC);
-	public static final DeferredHolder<net.minecraft.world.level.levelgen.structure.placement.StructurePlacementType<?>,
-			net.minecraft.world.level.levelgen.structure.placement.StructurePlacementType<MusicPlacement>>
-			MUSIC_PLACEMENT = PLACEMENTS.register("music", () -> () -> MusicPlacement.CODEC);
-	public static final DeferredHolder<net.minecraft.world.level.levelgen.structure.placement.StructurePlacementType<?>,
-			net.minecraft.world.level.levelgen.structure.placement.StructurePlacementType<GOLPlacement>>
-			GOL_PLACEMENT = PLACEMENTS.register("gol", () -> () -> GOLPlacement.CODEC);
+	public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends net.minecraft.world.level.levelgen.structure.placement.StructurePlacement>,
+			com.mojang.serialization.MapCodec<MonumentPlacement>>
+			MONUMENT_PLACEMENT = PLACEMENTS.register("monument", () -> MonumentPlacement.CODEC);
+	public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends net.minecraft.world.level.levelgen.structure.placement.StructurePlacement>,
+			com.mojang.serialization.MapCodec<LightPanelPlacement>>
+			LIGHT_PANEL_PLACEMENT = PLACEMENTS.register("light_panel", () -> LightPanelPlacement.CODEC);
+	public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends net.minecraft.world.level.levelgen.structure.placement.StructurePlacement>,
+			com.mojang.serialization.MapCodec<ThreeDMazePlacement>>
+			THREE_D_MAZE_PLACEMENT = PLACEMENTS.register("three_d_maze", () -> ThreeDMazePlacement.CODEC);
+	public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends net.minecraft.world.level.levelgen.structure.placement.StructurePlacement>,
+			com.mojang.serialization.MapCodec<MusicPlacement>>
+			MUSIC_PLACEMENT = PLACEMENTS.register("music", () -> MusicPlacement.CODEC);
+	public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends net.minecraft.world.level.levelgen.structure.placement.StructurePlacement>,
+			com.mojang.serialization.MapCodec<GOLPlacement>>
+			GOL_PLACEMENT = PLACEMENTS.register("gol", () -> GOLPlacement.CODEC);
 
 	public static final ResourceKey<Structure> MONUMENT = ResourceKey.create(Registries.STRUCTURE,
 			Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "monument"));

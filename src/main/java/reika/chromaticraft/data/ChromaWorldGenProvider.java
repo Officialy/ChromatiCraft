@@ -23,10 +23,7 @@ import net.minecraft.util.valueproviders.ConstantInt;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.levelgen.feature.ConfiguredFeature;
 import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
-import net.minecraft.world.level.levelgen.feature.configurations.TreeConfiguration;
 import net.minecraft.world.level.levelgen.feature.featuresize.TwoLayersFeatureSize;
 import net.minecraft.world.level.levelgen.feature.foliageplacers.BlobFoliagePlacer;
 import net.minecraft.world.level.levelgen.feature.stateproviders.BlockStateProvider;
@@ -137,16 +134,16 @@ public final class ChromaWorldGenProvider {
 
     public static final ResourceKey<PlacedFeature> LUMINOUS_CLIFFS_TERRAIN_PLACED = placedKey("luminous_cliffs_terrain");
     public static final ResourceKey<PlacedFeature> LUMA_PATCH_PLACED = placedKey("luma_patch");
-    public static final ResourceKey<ConfiguredFeature<?, ?>> RAINBOW_TREE = configuredKey("rainbow_tree");
-    public static final ResourceKey<ConfiguredFeature<?, ?>> GLOWING_TREE = configuredKey("glowing_tree");
+    public static final ResourceKey<Feature> RAINBOW_TREE = featureKey("rainbow_tree");
+    public static final ResourceKey<Feature> GLOWING_TREE = featureKey("glowing_tree");
     public static final ResourceKey<PlacedFeature> ENDER_FOREST_TREE_PLACED = placedKey("ender_forest_tree");
     public static final ResourceKey<PlacedFeature> ENDER_POOL_PLACED = placedKey("ender_pool");
     public static final ResourceKey<PlacedFeature> ENDER_FOREST_FLOWER_PLACED = placedKey("ender_forest_flower");
     public static final ResourceKey<PlacedFeature> ENDER_FOREST_DEFAULT_FLOWERS_PLACED =
             placedKey("ender_forest_default_flowers");
     /** The bone-meal feature; see {@code EnderForestFlowerFeature} and {@code ChromaConfiguredFeatureTagProvider}. */
-    public static final ResourceKey<ConfiguredFeature<?, ?>> ENDER_FOREST_FLOWER =
-            configuredKey("ender_forest_flower");
+    public static final ResourceKey<Feature> ENDER_FOREST_FLOWER =
+            featureKey("ender_forest_flower");
 
     // V33a RainbowForestDecorator / DecoratorRainbowRiver. Every Rainbow placed feature is ChromatiCraft's
     // own key, so no vanilla feature's relative order is shared with another biome (FeatureSorter).
@@ -166,19 +163,19 @@ public final class ChromaWorldGenProvider {
     public static final ResourceKey<PlacedFeature> LUMINOUS_SPRING_LAVA_PLACED = placedKey("luminous_spring_lava");
     public static final ResourceKey<PlacedFeature> LUMINOUS_CLIFFS_FLOWER_PLACED = placedKey("luminous_cliffs_flower");
     /** V33a {@code getUndergroundTreeGen}: the cavern trees the aux pass grows from the shaper's saplings. */
-    public static final ResourceKey<ConfiguredFeature<?, ?>> UNDERGROUND_GLOWING_TREE_SMALL =
-            configuredKey("underground_glowing_tree_small");
-    public static final ResourceKey<ConfiguredFeature<?, ?>> UNDERGROUND_GLOWING_TREE_BIG =
-            configuredKey("underground_glowing_tree_big");
+    public static final ResourceKey<Feature> UNDERGROUND_GLOWING_TREE_SMALL =
+            featureKey("underground_glowing_tree_small");
+    public static final ResourceKey<Feature> UNDERGROUND_GLOWING_TREE_BIG =
+            featureKey("underground_glowing_tree_big");
     /** Bone meal's flower list; see {@code ChromaConfiguredFeatureTagProvider}. */
-    public static final ResourceKey<ConfiguredFeature<?, ?>> LUMINOUS_CLIFFS_FLOWER = configuredKey("luminous_cliffs_flower");
+    public static final ResourceKey<Feature> LUMINOUS_CLIFFS_FLOWER = featureKey("luminous_cliffs_flower");
 
     public static final ResourceKey<PlacedFeature> RAINBOW_FOREST_TREE_PLACED = placedKey("rainbow_forest_tree");
     public static final ResourceKey<PlacedFeature> DYE_FLOWER_PATCH_PLACED = placedKey("dye_flower_patch");
     public static final ResourceKey<PlacedFeature> RAINBOW_FOREST_UNDERGROUND_PLACED = placedKey("rainbow_forest_underground");
     public static final ResourceKey<PlacedFeature> RAINBOW_FOREST_FLOWER_PLACED = placedKey("rainbow_forest_flower");
     /** The bone-meal feature; see {@code RainbowForestFlowerFeature}. */
-    public static final ResourceKey<ConfiguredFeature<?, ?>> RAINBOW_FOREST_FLOWER = configuredKey("rainbow_forest_flower");
+    public static final ResourceKey<Feature> RAINBOW_FOREST_FLOWER = featureKey("rainbow_forest_flower");
 
     /** Per-biome counts of the Rainbow auxiliary decoration: forest and stream. */
     public record RainbowDecoration(String prefix, int sandDisks, int clayDisks, int lateSandDisks,
@@ -207,12 +204,28 @@ public final class ChromaWorldGenProvider {
 
     private ChromaWorldGenProvider() {}
 
-    public static ResourceKey<ConfiguredFeature<?, ?>> dyeTree(CrystalElement element) {
-        return configuredKey("dye_tree_" + element.getEnglishName());
+    public static ResourceKey<Feature> dyeTree(CrystalElement element) {
+        return featureKey("dye_tree_" + element.getEnglishName());
     }
 
     private static Identifier coloredPylon(CrystalElement element) {
         return id("pylon_" + element.getEnglishName());
+    }
+
+    public static RegistrySetBuilder buildReloadableRegistrySet() {
+        RegistrySetBuilder builder = new RegistrySetBuilder();
+        builder.add(Registries.LOOT_TABLE, new ChromaLootProvider());
+        builder.add(net.minecraft.data.recipes.RecipeProvider.asBootstrap((recipes, advancements) ->
+                new net.minecraft.data.recipes.RecipeProvider(recipes, advancements) {
+                    @Override
+                    protected void buildRecipes() {
+                        ChromaCastingRecipeProvider.bootstrap(recipes, advancements);
+                        ChromaPoolRecipeProvider.bootstrap(recipes, advancements);
+                        ChromaCobbleGeneratorRecipeProvider.bootstrap(recipes, advancements);
+                        ChromaRecipeProvider.bootstrap(recipes, advancements);
+                    }
+                }));
+        return builder;
     }
 
     public static RegistrySetBuilder buildRegistrySet() {
@@ -224,26 +237,26 @@ public final class ChromaWorldGenProvider {
         builder.add(Registries.ENCHANTMENT, reika.chromaticraft.registry.ChromaEnchants::bootstrap);
         builder.add(Registries.VILLAGER_TRADE, bootstrap -> {
             bootstrap.register(FOCUS_CRYSTAL_TRADE,
-                new VillagerTrade(
+                VillagerTrade.builder(
                         new TradeCost(Items.EMERALD, 1),
 						flawedFocusCrystal(),
                         Integer.MAX_VALUE,
                         1,
-                        0,
-                        java.util.Optional.empty(),
-                        java.util.List.of()));
+                        0).build());
             // V33a UATypeTrade: the villager pays calcValue(commodity) emeralds, and never tires of it.
-            bootstrap.register(UA_TRADE, new VillagerTrade(
+            bootstrap.register(UA_TRADE, VillagerTrade.builder(
                     new TradeCost(ChromaBlocks.UNKNOWN_ARTEFACT_ITEM.get(), 1),
                     new net.minecraft.world.item.ItemStackTemplate(Items.EMERALD,
                             reika.chromaticraft.magic.artefact.UATrades.calcValue("Thargoid Sensor")),
-                    Integer.MAX_VALUE, 1, 0, java.util.Optional.empty(), java.util.List.of()));
-            bootstrap.register(META_ALLOY_TRADE, new VillagerTrade(
+                    Integer.MAX_VALUE, 1, 0).build());
+            bootstrap.register(META_ALLOY_TRADE, VillagerTrade.builder(
                     new TradeCost(ChromaBlocks.META_ALLOY_LAMP.get().asItem(), 1),
                     new net.minecraft.world.item.ItemStackTemplate(Items.EMERALD,
                             reika.chromaticraft.magic.artefact.UATrades.calcValue("Meta-Alloys")),
-                    Integer.MAX_VALUE, 1, 0, java.util.Optional.empty(), java.util.List.of()));
+                    Integer.MAX_VALUE, 1, 0).build());
         });
+        builder.add(Registries.MATERIAL_RULE,
+                reika.chromaticraft.world.dimension.ProximaNoiseSettings::bootstrapMaterialRule);
         builder.add(Registries.NOISE_SETTINGS,
                 reika.chromaticraft.world.dimension.ProximaNoiseSettings::bootstrap);
         builder.add(Registries.DIMENSION_TYPE,
@@ -254,47 +267,42 @@ public final class ChromaWorldGenProvider {
             ChromaBiomes.bootstrap(bootstrap);
             reika.chromaticraft.world.dimension.biome.ProximaBiomeDefinitions.bootstrap(bootstrap);
         });
-        builder.add(Registries.CONFIGURED_FEATURE, bootstrap -> {
-            HolderGetter<Feature<?>> features = bootstrap.lookup(Registries.FEATURE);
-            registerConfigured(bootstrap, features, CAVE_CRYSTAL);
-            registerConfigured(bootstrap, features, id("cave_indicator"));
-            registerConfigured(bootstrap, features, id("unknown_artefact"));
-            registerConfigured(bootstrap, features, id("warp_node"));
-            registerConfigured(bootstrap, features, id("skypeater"));
-            registerConfigured(bootstrap, features, id("ender_forest_tree"));
-            registerConfigured(bootstrap, features, id("ender_pool"));
-            registerConfigured(bootstrap, features, id("ender_forest_flower"));
+        builder.add(Registries.FEATURE, bootstrap -> {
+            registerFeature(bootstrap, CAVE_CRYSTAL, new reika.chromaticraft.world.CrystalFeature());
+            registerFeature(bootstrap, id("cave_indicator"), new reika.chromaticraft.world.CaveIndicatorFeature());
+            registerFeature(bootstrap, id("unknown_artefact"), new reika.chromaticraft.world.UnknownArtefactFeature());
+            registerFeature(bootstrap, id("warp_node"), new reika.chromaticraft.world.WarpNodeFeature());
+            registerFeature(bootstrap, id("skypeater"), new reika.chromaticraft.world.SkypeaterFeature());
+            registerFeature(bootstrap, id("ender_forest_tree"), new reika.chromaticraft.world.EnderForestTreeFeature());
+            registerFeature(bootstrap, id("ender_pool"), new reika.chromaticraft.world.EnderPoolFeature());
+            registerFeature(bootstrap, id("ender_forest_flower"), new reika.chromaticraft.world.EnderForestFlowerFeature());
             // Vanilla's flower_default placement under ChromatiCraft's name, so that it is *not* in
             // minecraft:can_spawn_from_bone_meal, with the flower mix corrected to V33a's. The Ender Forest's world-generation flowers stay exactly
             // vanilla's, while bone meal in that biome sees only ender_forest_flower -- the V33a
             // plantFlower override -- instead of choosing between the two.
-            bootstrap.register(configuredKey("ender_forest_default_flowers"),
-                    new ConfiguredFeature<>(Feature.SIMPLE_BLOCK,
-                            new net.minecraft.world.level.levelgen.feature.configurations.SimpleBlockConfiguration(
+            bootstrap.register(featureKey("ender_forest_default_flowers"),
+                    new net.minecraft.world.level.levelgen.feature.SimpleBlockFeature(
                                     new net.minecraft.world.level.levelgen.feature.stateproviders.WeightedStateProvider(
                                             net.minecraft.util.random.WeightedList.<net.minecraft.world.level.block.state.BlockState>builder()
                                                     // V33a BiomeGenForest (type 0) leaves func_150572_a to
                                                     // BiomeGenBase: a dandelion two times in three. 26.2's
                                                     // flower_default flipped that to mostly poppies.
                                                     .add(net.minecraft.world.level.block.Blocks.DANDELION.defaultBlockState(), 2)
-                                                    .add(net.minecraft.world.level.block.Blocks.POPPY.defaultBlockState(), 1)))));
-            registerConfigured(bootstrap, features, id("rainbow_tree"));
-            bootstrap.register(configuredKey("color_tree"), new ConfiguredFeature<>(
-                    reika.chromaticraft.registry.ChromaFeatures.COLOR_TREE.get(), colorTreeConfig()));
-            registerConfigured(bootstrap, features, id("no_floating_gravel"));
-            registerConfigured(bootstrap, features, id("luminous_cliffs_aux"));
+                                                    .add(net.minecraft.world.level.block.Blocks.POPPY.defaultBlockState(), 1))));
+            registerFeature(bootstrap, id("rainbow_tree"), new reika.chromaticraft.world.RainbowTreeFeature());
+            bootstrap.register(featureKey("color_tree"), new reika.chromaticraft.world.ColorTreeFeature(colorTreeConfig()));
+            registerFeature(bootstrap, id("no_floating_gravel"), new reika.chromaticraft.world.luminous.NoFloatingGravelFeature());
+            registerFeature(bootstrap, id("luminous_cliffs_aux"), new reika.chromaticraft.world.luminous.LuminousCliffsAuxFeature());
             // V33a BiomeGenBase.func_150572_a, which the Luminous Cliffs do not override: a dandelion
             // two times in three, otherwise a poppy.
-            bootstrap.register(configuredKey("luminous_flowers"), new ConfiguredFeature<>(Feature.SIMPLE_BLOCK,
-                    new net.minecraft.world.level.levelgen.feature.configurations.SimpleBlockConfiguration(
+            bootstrap.register(featureKey("luminous_flowers"), new net.minecraft.world.level.levelgen.feature.SimpleBlockFeature(
                             new WeightedStateProvider(WeightedList.<BlockState>builder()
                                     .add(Blocks.DANDELION.defaultBlockState(), 2)
-                                    .add(Blocks.POPPY.defaultBlockState(), 1)))));
+                                    .add(Blocks.POPPY.defaultBlockState(), 1))));
             // V33a BiomeGlowingCliffs' Forge flower list, which is what bone meal's plantFlower draws
             // from: BiomeGenBase's defaults (dandelion 20, poppy 10) plus every red-flower metadata and
             // the dandelion again at 20 each.
-            bootstrap.register(LUMINOUS_CLIFFS_FLOWER, new ConfiguredFeature<>(Feature.SIMPLE_BLOCK,
-                    new net.minecraft.world.level.levelgen.feature.configurations.SimpleBlockConfiguration(
+            bootstrap.register(LUMINOUS_CLIFFS_FLOWER, new net.minecraft.world.level.levelgen.feature.SimpleBlockFeature(
                             new WeightedStateProvider(WeightedList.<BlockState>builder()
                                     .add(Blocks.DANDELION.defaultBlockState(), 40)
                                     .add(Blocks.POPPY.defaultBlockState(), 30)
@@ -305,101 +313,94 @@ public final class ChromaWorldGenProvider {
                                     .add(Blocks.ORANGE_TULIP.defaultBlockState(), 20)
                                     .add(Blocks.WHITE_TULIP.defaultBlockState(), 20)
                                     .add(Blocks.PINK_TULIP.defaultBlockState(), 20)
-                                    .add(Blocks.OXEYE_DAISY.defaultBlockState(), 20)))));
-            bootstrap.register(configuredKey("luminous_lily_pad"), new ConfiguredFeature<>(Feature.SIMPLE_BLOCK,
-                    new net.minecraft.world.level.levelgen.feature.configurations.SimpleBlockConfiguration(
-                            BlockStateProvider.simple(Blocks.LILY_PAD))));
-            bootstrap.register(configuredKey("luminous_brown_mushroom"), new ConfiguredFeature<>(Feature.SIMPLE_BLOCK,
-                    new net.minecraft.world.level.levelgen.feature.configurations.SimpleBlockConfiguration(
-                            BlockStateProvider.simple(Blocks.BROWN_MUSHROOM))));
-            bootstrap.register(configuredKey("luminous_red_mushroom"), new ConfiguredFeature<>(Feature.SIMPLE_BLOCK,
-                    new net.minecraft.world.level.levelgen.feature.configurations.SimpleBlockConfiguration(
-                            BlockStateProvider.simple(Blocks.RED_MUSHROOM))));
-            registerConfigured(bootstrap, features, id("rainbow_forest_tree"));
-            registerConfigured(bootstrap, features, id("dye_flower_patch"));
-            registerConfigured(bootstrap, features, id("rainbow_forest_underground"));
-            registerConfigured(bootstrap, features, id("rainbow_forest_flower"));
+                                    .add(Blocks.OXEYE_DAISY.defaultBlockState(), 20))));
+            bootstrap.register(featureKey("luminous_lily_pad"), new net.minecraft.world.level.levelgen.feature.SimpleBlockFeature(
+                            new net.minecraft.world.level.levelgen.feature.stateproviders.SimpleStateProvider(Blocks.LILY_PAD.defaultBlockState())));
+            bootstrap.register(featureKey("luminous_brown_mushroom"), new net.minecraft.world.level.levelgen.feature.SimpleBlockFeature(
+                            new net.minecraft.world.level.levelgen.feature.stateproviders.SimpleStateProvider(Blocks.BROWN_MUSHROOM.defaultBlockState())));
+            bootstrap.register(featureKey("luminous_red_mushroom"), new net.minecraft.world.level.levelgen.feature.SimpleBlockFeature(
+                            new net.minecraft.world.level.levelgen.feature.stateproviders.SimpleStateProvider(Blocks.RED_MUSHROOM.defaultBlockState())));
+            registerFeature(bootstrap, id("rainbow_forest_tree"), new reika.chromaticraft.world.RainbowForestTreeFeature());
+            registerFeature(bootstrap, id("dye_flower_patch"), new reika.chromaticraft.world.DyeFlowerPatchFeature());
+            registerFeature(bootstrap, id("rainbow_forest_underground"), new reika.chromaticraft.world.RainbowForestUndergroundFeature());
+            registerFeature(bootstrap, id("rainbow_forest_flower"), new reika.chromaticraft.world.RainbowForestFlowerFeature());
             // V33a WorldGenFlowers(yellow_flower), WorldGenFlowers(red_flower) and WorldGenTallGrass
             // (tallgrass meta 1): single blocks, each only where it can stand (SimpleBlockFeature).
-            bootstrap.register(configuredKey("rainbow_dandelion"), new ConfiguredFeature<>(Feature.SIMPLE_BLOCK,
-                    new net.minecraft.world.level.levelgen.feature.configurations.SimpleBlockConfiguration(
-                            BlockStateProvider.simple(Blocks.DANDELION))));
-            bootstrap.register(configuredKey("rainbow_rose"), new ConfiguredFeature<>(Feature.SIMPLE_BLOCK,
-                    new net.minecraft.world.level.levelgen.feature.configurations.SimpleBlockConfiguration(
-                            BlockStateProvider.simple(Blocks.POPPY))));
-            bootstrap.register(configuredKey("rainbow_grass"), new ConfiguredFeature<>(Feature.SIMPLE_BLOCK,
-                    new net.minecraft.world.level.levelgen.feature.configurations.SimpleBlockConfiguration(
-                            BlockStateProvider.simple(Blocks.SHORT_GRASS))));
+            bootstrap.register(featureKey("rainbow_dandelion"), new net.minecraft.world.level.levelgen.feature.SimpleBlockFeature(
+                            new net.minecraft.world.level.levelgen.feature.stateproviders.SimpleStateProvider(Blocks.DANDELION.defaultBlockState())));
+            bootstrap.register(featureKey("rainbow_rose"), new net.minecraft.world.level.levelgen.feature.SimpleBlockFeature(
+                            new net.minecraft.world.level.levelgen.feature.stateproviders.SimpleStateProvider(Blocks.POPPY.defaultBlockState())));
+            bootstrap.register(featureKey("rainbow_grass"), new net.minecraft.world.level.levelgen.feature.SimpleBlockFeature(
+                            new net.minecraft.world.level.levelgen.feature.stateproviders.SimpleStateProvider(Blocks.SHORT_GRASS.defaultBlockState())));
             for (ChromaDecoFlowers flower : ChromaDecoFlowers.list)
-                registerConfigured(bootstrap, features, id(flower.registryName()));
+                registerFeature(bootstrap, id(flower.registryName()), new reika.chromaticraft.world.DecoFlowerFeature(flower));
             for (ChromaTieredPlants plant : ChromaTieredPlants.list)
-                registerConfigured(bootstrap, features, id(plant.registryName()));
-            registerConfigured(bootstrap, features, NATURAL_PYLON);
+                registerFeature(bootstrap, id(plant.registryName()), new reika.chromaticraft.world.TieredPlantFeature(plant,
+                        () -> ChromaBlocks.tieredPlant(plant).get().defaultBlockState()));
+            registerFeature(bootstrap, NATURAL_PYLON, new reika.chromaticraft.world.PylonFeature());
             for (CrystalElement element : CrystalElement.elements)
-                registerConfigured(bootstrap, features, coloredPylon(element));
-            registerConfigured(bootstrap, features, DATA_TOWER);
-            registerConfigured(bootstrap, features, RUNIC_ALTAR);
-            registerConfigured(bootstrap, features, TURBOCHARGED_PYLON);
-            registerConfigured(bootstrap, features, POWER_CRYSTAL_BOOSTED_PYLON);
-            registerConfigured(bootstrap, features, LUMINOUS_CLIFFS_TERRAIN);
-            registerConfigured(bootstrap, features, LUMA_PATCH);
-            registerConfigured(bootstrap, features, NETHER_ROOF_STRUCTURE);
-            registerConfigured(bootstrap, features, NETHER_LAVA_RIVER);
-            registerConfigured(bootstrap, features, CRYSTAL_SHRUB);
-            registerConfigured(bootstrap, features, FLOATSTONE);
-            registerConfigured(bootstrap, features, CRYSTAL_TREE);
-            registerConfigured(bootstrap, features, GLOW_TREE);
-            registerConfigured(bootstrap, features, TREE_CLUSTER);
-            registerConfigured(bootstrap, features, FIRE_JET);
-            registerConfigured(bootstrap, features, MINI_ALTAR);
-            registerConfigured(bootstrap, features, FISSURE);
-            registerConfigured(bootstrap, features, GLOWING_CRACKS);
-            registerConfigured(bootstrap, features, LIGHTED_SHRUB);
-            registerConfigured(bootstrap, features, CRYSTAL_PIT);
-            registerConfigured(bootstrap, features, AURORAE);
+                registerFeature(bootstrap, coloredPylon(element), new reika.chromaticraft.world.PylonFeature(element));
+            registerFeature(bootstrap, DATA_TOWER, new reika.chromaticraft.world.DataTowerFeature());
+            registerFeature(bootstrap, RUNIC_ALTAR, new reika.chromaticraft.world.RunicAltarFeature());
+            registerFeature(bootstrap, TURBOCHARGED_PYLON, new reika.chromaticraft.world.PylonFeature(reika.chromaticraft.world.PylonFeature.Variant.TURBOCHARGED));
+            registerFeature(bootstrap, POWER_CRYSTAL_BOOSTED_PYLON, new reika.chromaticraft.world.PylonFeature(reika.chromaticraft.world.PylonFeature.Variant.POWER_CRYSTAL_BOOSTED));
+            registerFeature(bootstrap, LUMINOUS_CLIFFS_TERRAIN, new reika.chromaticraft.world.luminous.LuminousCliffsTerrainFeature());
+            registerFeature(bootstrap, LUMA_PATCH, new reika.chromaticraft.world.luminous.LumaPatchFeature());
+            registerFeature(bootstrap, NETHER_ROOF_STRUCTURE, new reika.chromaticraft.world.NetherRoofStructureFeature());
+            registerFeature(bootstrap, NETHER_LAVA_RIVER, new reika.chromaticraft.world.NetherLavaRiverFeature());
+            registerFeature(bootstrap, CRYSTAL_SHRUB, new reika.chromaticraft.world.dimension.CrystalShrubFeature());
+            registerFeature(bootstrap, FLOATSTONE, new reika.chromaticraft.world.dimension.FloatstoneFeature());
+            registerFeature(bootstrap, CRYSTAL_TREE, new reika.chromaticraft.world.dimension.CrystalTreeFeature());
+            registerFeature(bootstrap, GLOW_TREE, new reika.chromaticraft.world.dimension.GlowTreeFeature());
+            registerFeature(bootstrap, TREE_CLUSTER, new reika.chromaticraft.world.dimension.TreeClusterFeature());
+            registerFeature(bootstrap, FIRE_JET, new reika.chromaticraft.world.dimension.FireJetFeature());
+            registerFeature(bootstrap, MINI_ALTAR, new reika.chromaticraft.world.dimension.MiniAltarFeature());
+            registerFeature(bootstrap, FISSURE, new reika.chromaticraft.world.dimension.FissureFeature());
+            registerFeature(bootstrap, GLOWING_CRACKS, new reika.chromaticraft.world.dimension.GlowingCracksFeature());
+            registerFeature(bootstrap, LIGHTED_SHRUB, new reika.chromaticraft.world.dimension.LightedShrubFeature());
+            registerFeature(bootstrap, CRYSTAL_PIT, new reika.chromaticraft.world.dimension.CrystalPitFeature());
+            registerFeature(bootstrap, AURORAE, new reika.chromaticraft.world.dimension.AuroraeFeature());
             for (Identifier structure : NETHER_ROOF_STRUCTURES)
-                registerConfigured(bootstrap, features, structure);
-            registerConfigured(bootstrap, features, NATURAL_CAVERN);
-            registerConfigured(bootstrap, features, CAVERN);
-            registerConfigured(bootstrap, features, NATURAL_BURROW);
-            registerConfigured(bootstrap, features, BURROW);
-            registerConfigured(bootstrap, features, NATURAL_OCEAN);
-            registerConfigured(bootstrap, features, OCEAN);
-            registerConfigured(bootstrap, features, NATURAL_DESERT);
-            registerConfigured(bootstrap, features, DESERT);
-			registerConfigured(bootstrap, features, NATURAL_SNOW);
-			registerConfigured(bootstrap, features, SNOW);
-			registerConfigured(bootstrap, features, NATURAL_BIOME_FRAGMENT);
-			registerConfigured(bootstrap, features, BIOME_FRAGMENT);
+                registerFeature(bootstrap, structure, new reika.chromaticraft.world.NetherRoofStructureFeature(
+                        reika.chromaticraft.world.NetherRoofStructureFeature.Type.valueOf(
+                                structure.getPath().substring("nether_".length()).toUpperCase(java.util.Locale.ROOT))));
+            registerFeature(bootstrap, NATURAL_CAVERN, new reika.chromaticraft.world.OverworldStructureFeature(reika.chromaticraft.world.OverworldStructureFeature.Type.CAVERN, true));
+            registerFeature(bootstrap, CAVERN, new reika.chromaticraft.world.OverworldStructureFeature(reika.chromaticraft.world.OverworldStructureFeature.Type.CAVERN, false));
+            registerFeature(bootstrap, NATURAL_BURROW, new reika.chromaticraft.world.OverworldStructureFeature(reika.chromaticraft.world.OverworldStructureFeature.Type.BURROW, true));
+            registerFeature(bootstrap, BURROW, new reika.chromaticraft.world.OverworldStructureFeature(reika.chromaticraft.world.OverworldStructureFeature.Type.BURROW, false));
+            registerFeature(bootstrap, NATURAL_OCEAN, new reika.chromaticraft.world.OverworldStructureFeature(reika.chromaticraft.world.OverworldStructureFeature.Type.OCEAN, true));
+            registerFeature(bootstrap, OCEAN, new reika.chromaticraft.world.OverworldStructureFeature(reika.chromaticraft.world.OverworldStructureFeature.Type.OCEAN, false));
+            registerFeature(bootstrap, NATURAL_DESERT, new reika.chromaticraft.world.OverworldStructureFeature(reika.chromaticraft.world.OverworldStructureFeature.Type.DESERT, true));
+            registerFeature(bootstrap, DESERT, new reika.chromaticraft.world.OverworldStructureFeature(reika.chromaticraft.world.OverworldStructureFeature.Type.DESERT, false));
+			registerFeature(bootstrap, NATURAL_SNOW, new reika.chromaticraft.world.OverworldStructureFeature(reika.chromaticraft.world.OverworldStructureFeature.Type.SNOW, true));
+			registerFeature(bootstrap, SNOW, new reika.chromaticraft.world.OverworldStructureFeature(reika.chromaticraft.world.OverworldStructureFeature.Type.SNOW, false));
+			registerFeature(bootstrap, NATURAL_BIOME_FRAGMENT, new reika.chromaticraft.world.OverworldStructureFeature(reika.chromaticraft.world.OverworldStructureFeature.Type.BIOME_FRAGMENT, true));
+			registerFeature(bootstrap, BIOME_FRAGMENT, new reika.chromaticraft.world.OverworldStructureFeature(reika.chromaticraft.world.OverworldStructureFeature.Type.BIOME_FRAGMENT, false));
             for (TieredOre ore : TIERED_ORES) {
                 // V33a BlockExcludingOreVein targets only the host block, which is what makes these
                 // ores replace stone/netherrack and never the cliff material it explicitly excluded.
-                bootstrap.register(configuredKey(ore.name()), new ConfiguredFeature<>(Feature.ORE,
-                        new net.minecraft.world.level.levelgen.feature.configurations.OreConfiguration(
-                                List.of(net.minecraft.world.level.levelgen.feature.configurations.OreConfiguration.target(
-                                        new net.minecraft.world.level.levelgen.structure.templatesystem.BlockMatchTest(ore.host()),
-                                        ore.block().get().defaultBlockState())),
-                                ore.veinSize())));
+                bootstrap.register(featureKey(ore.name()), new net.minecraft.world.level.levelgen.feature.OreFeature(
+                        new net.minecraft.world.level.levelgen.structure.templatesystem.BlockMatchTest(ore.host()),
+                        ore.block().get().defaultBlockState(), ore.veinSize()));
             }
-            HolderGetter<Biome> biomes = bootstrap.lookup(Registries.BIOME);
+            var belowTrunk = bootstrap.lookup(Registries.BLOCK_STATE_PROVIDER)
+                    .getOrThrow(net.minecraft.data.worldgen.BlockStateProviders.SOIL_BENEATH_TREE);
             // V33a BlockDyeSapling grows a TreeShaper tree, not a vanilla blob tree.
             for (CrystalElement element : CrystalElement.elements) {
-                bootstrap.register(dyeTree(element), new ConfiguredFeature<>(
-                        reika.chromaticraft.registry.ChromaFeatures.DYE_TREE.get(),
+                bootstrap.register(dyeTree(element), new reika.chromaticraft.world.DyeTreeFeature(
                         reika.chromaticraft.world.DyeTreeFeature.Config.sapling(element)));
             }
-            bootstrap.register(GLOWING_TREE, new ConfiguredFeature<>(Feature.TREE,
-                    glowingTreeConfiguration(biomes)));
+            bootstrap.register(GLOWING_TREE, glowingTreeConfiguration(belowTrunk));
             // V33a setGlowChance(10): one leaf in ten glows. The small tree is DragonAPI's
             // ModifiableSmallTrees, 1.7.10's plain oak, whose 26.2 form is vanilla's oak shape.
-            bootstrap.register(UNDERGROUND_GLOWING_TREE_SMALL, new ConfiguredFeature<>(Feature.TREE,
-                    new TreeConfiguration.TreeConfigurationBuilder(BlockStateProvider.simple(Blocks.OAK_LOG),
+            bootstrap.register(UNDERGROUND_GLOWING_TREE_SMALL,
+                    new net.minecraft.world.level.levelgen.feature.TreeFeature.Builder(new net.minecraft.world.level.levelgen.feature.stateproviders.SimpleStateProvider(Blocks.OAK_LOG.defaultBlockState()),
                             new StraightTrunkPlacer(4, 2, 0), glowingFoliage(9),
                             new BlobFoliagePlacer(ConstantInt.of(2), ConstantInt.of(0), 3),
                             new TwoLayersFeatureSize(1, 0, 1),
-                            TreeConfiguration.defaultPlaceBelowTreeTrunkProvider(biomes)).ignoreVines().build()));
-            bootstrap.register(UNDERGROUND_GLOWING_TREE_BIG, new ConfiguredFeature<>(Feature.TREE,
-                    fancyGlowingTree(glowingFoliage(9), biomes)));
+                            belowTrunk).ignoreVines().build());
+            bootstrap.register(UNDERGROUND_GLOWING_TREE_BIG,
+                    fancyGlowingTree(glowingFoliage(9), belowTrunk));
         });
         // Proxima's oversized decoration generates as structures rather than features, so its pieces
         // can be written chunk by chunk with a clipped box. See GlassCliffPiece.
@@ -578,7 +579,7 @@ public final class ChromaWorldGenProvider {
 							new reika.chromaticraft.world.dimension.structure.GOLPlacement()));
         });
         builder.add(Registries.PLACED_FEATURE, bootstrap -> {
-            HolderGetter<ConfiguredFeature<?, ?>> configured = bootstrap.lookup(Registries.CONFIGURED_FEATURE);
+            HolderGetter<Feature> configured = bootstrap.lookup(Registries.FEATURE);
             registerPlaced(bootstrap, configured, CAVE_CRYSTAL);
             registerPlaced(bootstrap, configured, id("cave_indicator"), List.of(BiomeFilter.biome()));
             // The feature owns its own tower-ring filter and 1-in-40 roll; no count modifiers.
@@ -618,7 +619,7 @@ public final class ChromaWorldGenProvider {
                             .onHeightmap(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING),
                     BiomeFilter.biome(),
                     CountPlacement.of(64),
-                    net.minecraft.world.level.levelgen.placement.RandomOffsetPlacement.ofTriangle(7, 3),
+                    net.minecraft.world.level.levelgen.placement.OffsetPlacement.ofTriangle(7, 3),
                     net.minecraft.world.level.levelgen.placement.BlockPredicateFilter.forPredicate(
                             net.minecraft.world.level.levelgen.blockpredicates.BlockPredicate.ONLY_IN_AIR_PREDICATE)));
             for (ChromaDecoFlowers flower : ChromaDecoFlowers.list)
@@ -633,7 +634,7 @@ public final class ChromaWorldGenProvider {
                         BiomeFilter.biome()));
 			// V33a Rock Flower changes from one-in-two chunks to every chunk in dimension 1.
 			bootstrap.register(placedKey("rock_flower_end"), new PlacedFeature(
-					configured.getOrThrow(configuredKey(ChromaTieredPlants.ROCK_FLOWER.registryName())),
+					configured.getOrThrow(featureKey(ChromaTieredPlants.ROCK_FLOWER.registryName())),
 					List.of(CountPlacement.of(ChromaTieredPlants.ROCK_FLOWER.generationCount()),
 							InSquarePlacement.spread(), BiomeFilter.biome())));
             for (TieredOre ore : TIERED_ORES) {
@@ -801,7 +802,7 @@ public final class ChromaWorldGenProvider {
      * biome filter reads the surface biome, which is what V33a's 2D biome lookup meant.
      */
     private static void registerRainbowPlacements(BootstrapContext<PlacedFeature> bootstrap,
-            HolderGetter<ConfiguredFeature<?, ?>> configured) {
+            HolderGetter<Feature> configured) {
         PlacementModifier surface = net.minecraft.world.level.levelgen.placement.HeightmapPlacement
                 .onHeightmap(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES);
         // V33a: nine attempts per chunk, each standing on its column's top solid block.
@@ -833,7 +834,7 @@ public final class ChromaWorldGenProvider {
      * </ul>
      */
     private static void registerRainbowDecoration(BootstrapContext<PlacedFeature> bootstrap,
-            HolderGetter<ConfiguredFeature<?, ?>> configured, RainbowDecoration deco) {
+            HolderGetter<Feature> configured, RainbowDecoration deco) {
         var sand = configured.getOrThrow(net.minecraft.data.worldgen.features.MiscOverworldFeatures.DISK_SAND);
         var clay = configured.getOrThrow(net.minecraft.data.worldgen.features.MiscOverworldFeatures.DISK_CLAY);
         bootstrap.register(deco.sandDisk(), new PlacedFeature(sand, disk(deco.sandDisks())));
@@ -845,19 +846,19 @@ public final class ChromaWorldGenProvider {
                 net.minecraft.world.level.levelgen.VerticalAnchor.absolute(127));
         PlacementModifier intoAir = net.minecraft.world.level.levelgen.placement.BlockPredicateFilter.forPredicate(
                 net.minecraft.world.level.levelgen.blockpredicates.BlockPredicate.ONLY_IN_AIR_PREDICATE);
-        PlacementModifier flowerSpread = net.minecraft.world.level.levelgen.placement.RandomOffsetPlacement.ofTriangle(7, 3);
+        PlacementModifier flowerSpread = net.minecraft.world.level.levelgen.placement.OffsetPlacement.ofTriangle(7, 3);
 
-        bootstrap.register(deco.dandelion(), new PlacedFeature(configured.getOrThrow(configuredKey("rainbow_dandelion")),
+        bootstrap.register(deco.dandelion(), new PlacedFeature(configured.getOrThrow(featureKey("rainbow_dandelion")),
                 List.of(CountPlacement.of(deco.dandelions()), InSquarePlacement.spread(), legacyHeight, BiomeFilter.biome(),
                         CountPlacement.of(64), flowerSpread, intoAir)));
         if (deco.roses())
-            bootstrap.register(deco.rose(), new PlacedFeature(configured.getOrThrow(configuredKey("rainbow_rose")),
+            bootstrap.register(deco.rose(), new PlacedFeature(configured.getOrThrow(featureKey("rainbow_rose")),
                     List.of(CountPlacement.of(deco.dandelions()), RarityFilter.onAverageOnceEvery(4),
                             InSquarePlacement.spread(), legacyHeight, BiomeFilter.biome(),
                             CountPlacement.of(64), flowerSpread, intoAir)));
 
         PlacementModifier groundBelow = reika.chromaticraft.world.SinkThroughAirPlacement.INSTANCE;
-        bootstrap.register(deco.grassPatch(), new PlacedFeature(configured.getOrThrow(configuredKey("rainbow_grass")),
+        bootstrap.register(deco.grassPatch(), new PlacedFeature(configured.getOrThrow(featureKey("rainbow_grass")),
                 List.of(CountPlacement.of(deco.grass()), InSquarePlacement.spread(), legacyHeight, groundBelow,
                         BiomeFilter.biome(), CountPlacement.of(128), flowerSpread, intoAir)));
 
@@ -865,7 +866,7 @@ public final class ChromaWorldGenProvider {
                 configured.getOrThrow(net.minecraft.data.worldgen.features.VegetationFeatures.SUGAR_CANE),
                 List.of(CountPlacement.of(deco.reeds()), InSquarePlacement.spread(), legacyHeight, BiomeFilter.biome(),
                         CountPlacement.of(20),
-                        net.minecraft.world.level.levelgen.placement.RandomOffsetPlacement.ofTriangle(3, 0),
+                        net.minecraft.world.level.levelgen.placement.OffsetPlacement.ofTriangle(3, 0),
                         net.minecraft.data.worldgen.features.VegetationFeatures.nearWaterPredicate(Blocks.SUGAR_CANE))));
     }
 
@@ -885,8 +886,8 @@ public final class ChromaWorldGenProvider {
      * </ul>
      */
     private static void registerLuminousPlacements(BootstrapContext<PlacedFeature> bootstrap,
-            HolderGetter<ConfiguredFeature<?, ?>> configured) {
-        var gravel = configured.getOrThrow(configuredKey("no_floating_gravel"));
+            HolderGetter<Feature> configured) {
+        var gravel = configured.getOrThrow(featureKey("no_floating_gravel"));
         bootstrap.register(LUMINOUS_GRAVEL_ORE_PLACED, new PlacedFeature(gravel, List.of(
                 CountPlacement.of(10), InSquarePlacement.spread(),
                 net.minecraft.world.level.levelgen.placement.HeightRangePlacement.uniform(
@@ -900,41 +901,40 @@ public final class ChromaWorldGenProvider {
         bootstrap.register(LUMINOUS_GRAVEL_PATCH_PLACED, new PlacedFeature(gravel, List.of(
                 CountPlacement.of(2), InSquarePlacement.spread(), PlacementUtils.HEIGHTMAP_TOP_SOLID, BiomeFilter.biome())));
 
-        var trees = new ConfiguredFeature<>(Feature.RANDOM_SELECTOR,
-                new net.minecraft.world.level.levelgen.feature.configurations.RandomFeatureConfiguration(List.of(
+        var trees = new net.minecraft.world.level.levelgen.feature.RandomSelectorFeature(List.of(
                         new net.minecraft.world.level.levelgen.feature.WeightedPlacedFeature(
                                 PlacementUtils.inlinePlaced(configured.getOrThrow(GLOWING_TREE)), 0.05F),
                         new net.minecraft.world.level.levelgen.feature.WeightedPlacedFeature(
                                 bootstrap.lookup(net.minecraft.core.registries.Registries.PLACED_FEATURE)
                                         .getOrThrow(net.minecraft.data.worldgen.placement.TreePlacements.FANCY_OAK_CHECKED), 0.1F)),
                         bootstrap.lookup(net.minecraft.core.registries.Registries.PLACED_FEATURE)
-                                .getOrThrow(net.minecraft.data.worldgen.placement.TreePlacements.OAK_CHECKED)));
+                                .getOrThrow(net.minecraft.data.worldgen.placement.TreePlacements.OAK_CHECKED));
         bootstrap.register(LUMINOUS_TREES_PLACED, new PlacedFeature(net.minecraft.core.Holder.direct(trees),
                 VegetationPlacements.treePlacement(PlacementUtils.countExtra(4, 0.1F, 1))));
 
         PlacementModifier intoAir = net.minecraft.world.level.levelgen.placement.BlockPredicateFilter.forPredicate(
                 net.minecraft.world.level.levelgen.blockpredicates.BlockPredicate.ONLY_IN_AIR_PREDICATE);
-        PlacementModifier spread = net.minecraft.world.level.levelgen.placement.RandomOffsetPlacement.ofTriangle(7, 3);
-        bootstrap.register(LUMINOUS_FLOWERS_PLACED, new PlacedFeature(configured.getOrThrow(configuredKey("luminous_flowers")),
+        PlacementModifier spread = net.minecraft.world.level.levelgen.placement.OffsetPlacement.ofTriangle(7, 3);
+        bootstrap.register(LUMINOUS_FLOWERS_PLACED, new PlacedFeature(configured.getOrThrow(featureKey("luminous_flowers")),
                 List.of(CountPlacement.of(8), InSquarePlacement.spread(),
                         new reika.chromaticraft.world.LegacyHeightmapScaledPlacement(1, 32), BiomeFilter.biome(),
                         CountPlacement.of(64), spread, intoAir)));
-        bootstrap.register(LUMINOUS_GRASS_PLACED, new PlacedFeature(configured.getOrThrow(configuredKey("rainbow_grass")),
+        bootstrap.register(LUMINOUS_GRASS_PLACED, new PlacedFeature(configured.getOrThrow(featureKey("rainbow_grass")),
                 List.of(CountPlacement.of(3), InSquarePlacement.spread(),
                         new reika.chromaticraft.world.LegacyHeightmapScaledPlacement(2, 0),
                         reika.chromaticraft.world.SinkThroughAirPlacement.INSTANCE, BiomeFilter.biome(),
                         CountPlacement.of(128), spread, intoAir)));
         // WorldGenWaterlily: ten tries spread rand(8)-rand(8) across and rand(4)-rand(4) up.
-        bootstrap.register(LUMINOUS_LILY_PAD_PLACED, new PlacedFeature(configured.getOrThrow(configuredKey("luminous_lily_pad")),
+        bootstrap.register(LUMINOUS_LILY_PAD_PLACED, new PlacedFeature(configured.getOrThrow(featureKey("luminous_lily_pad")),
                 List.of(CountPlacement.of(2), InSquarePlacement.spread(),
                         new reika.chromaticraft.world.LegacyHeightmapScaledPlacement(2, 0),
                         reika.chromaticraft.world.SinkThroughAirPlacement.ABOVE_GROUND, BiomeFilter.biome(),
                         CountPlacement.of(10), spread, intoAir)));
-        bootstrap.register(LUMINOUS_BROWN_MUSHROOM_PLACED, new PlacedFeature(configured.getOrThrow(configuredKey("luminous_brown_mushroom")),
+        bootstrap.register(LUMINOUS_BROWN_MUSHROOM_PLACED, new PlacedFeature(configured.getOrThrow(featureKey("luminous_brown_mushroom")),
                 List.of(RarityFilter.onAverageOnceEvery(4), InSquarePlacement.spread(),
                         new reika.chromaticraft.world.LegacyHeightmapScaledPlacement(2, 0), BiomeFilter.biome(),
                         CountPlacement.of(64), spread, intoAir)));
-        bootstrap.register(LUMINOUS_RED_MUSHROOM_PLACED, new PlacedFeature(configured.getOrThrow(configuredKey("luminous_red_mushroom")),
+        bootstrap.register(LUMINOUS_RED_MUSHROOM_PLACED, new PlacedFeature(configured.getOrThrow(featureKey("luminous_red_mushroom")),
                 List.of(RarityFilter.onAverageOnceEvery(8), InSquarePlacement.spread(),
                         new reika.chromaticraft.world.LegacyHeightmapScaledPlacement(2, 0), BiomeFilter.biome(),
                         CountPlacement.of(64), spread, intoAir)));
@@ -943,7 +943,7 @@ public final class ChromaWorldGenProvider {
                 List.of(CountPlacement.of(10 + 10), InSquarePlacement.spread(),
                         new reika.chromaticraft.world.LegacyHeightmapScaledPlacement(2, 0), BiomeFilter.biome(),
                         CountPlacement.of(20),
-                        net.minecraft.world.level.levelgen.placement.RandomOffsetPlacement.ofTriangle(3, 0),
+                        net.minecraft.world.level.levelgen.placement.OffsetPlacement.ofTriangle(3, 0),
                         net.minecraft.data.worldgen.features.VegetationFeatures.nearWaterPredicate(Blocks.SUGAR_CANE))));
 
         bootstrap.register(LUMINOUS_SPRING_WATER_PLACED, new PlacedFeature(
@@ -989,8 +989,9 @@ public final class ChromaWorldGenProvider {
      * big oak's 26.2 form, so this is fancy oak with the leaf mix changed. The wood is oak, as the
      * DragonAPI generator's default log is.
      */
-    private static TreeConfiguration glowingTreeConfiguration(HolderGetter<Biome> biomes) {
-        return fancyGlowingTree(glowingFoliage(15), biomes);
+    private static net.minecraft.world.level.levelgen.feature.TreeFeature glowingTreeConfiguration(
+            net.minecraft.core.Holder<BlockStateProvider> belowTrunk) {
+        return fancyGlowingTree(glowingFoliage(15), belowTrunk);
     }
 
     /** Oak leaves with one in {@code oneIn} a Glowing Leaf: V33a {@code selectGlowingTreeLeaf}. */
@@ -1000,14 +1001,15 @@ public final class ChromaWorldGenProvider {
                 .add(ChromaBlocks.GLOWING_LEAVES.get().defaultBlockState(), 1));
     }
 
-    private static TreeConfiguration fancyGlowingTree(WeightedStateProvider foliage, HolderGetter<Biome> biomes) {
-        return new TreeConfiguration.TreeConfigurationBuilder(BlockStateProvider.simple(Blocks.OAK_LOG),
+    private static net.minecraft.world.level.levelgen.feature.TreeFeature fancyGlowingTree(WeightedStateProvider foliage,
+            net.minecraft.core.Holder<BlockStateProvider> belowTrunk) {
+        return new net.minecraft.world.level.levelgen.feature.TreeFeature.Builder(new net.minecraft.world.level.levelgen.feature.stateproviders.SimpleStateProvider(Blocks.OAK_LOG.defaultBlockState()),
                 new net.minecraft.world.level.levelgen.feature.trunkplacers.FancyTrunkPlacer(3, 11, 0),
                 foliage,
                 new net.minecraft.world.level.levelgen.feature.foliageplacers.FancyFoliagePlacer(
                         ConstantInt.of(2), ConstantInt.of(4), 4),
                 new TwoLayersFeatureSize(0, 0, 0, java.util.OptionalInt.of(4)),
-                TreeConfiguration.defaultPlaceBelowTreeTrunkProvider(biomes)).ignoreVines().build();
+                belowTrunk).ignoreVines().build();
     }
 
     /**
@@ -1058,29 +1060,25 @@ public final class ChromaWorldGenProvider {
         return new reika.chromaticraft.world.ColorTreeFeature.Config(counts, fallback, 128, 32);
     }
 
-    private static void registerConfigured(BootstrapContext<ConfiguredFeature<?, ?>> bootstrap,
-            HolderGetter<Feature<?>> features, Identifier id) {
-        ResourceKey<Feature<?>> featureKey = ResourceKey.create(Registries.FEATURE, id);
-        ResourceKey<ConfiguredFeature<?, ?>> configuredKey = ResourceKey.create(Registries.CONFIGURED_FEATURE, id);
-        bootstrap.register(configuredKey, new ConfiguredFeature(
-                (Feature)features.getOrThrow(featureKey).value(), NoneFeatureConfiguration.INSTANCE));
+    private static void registerFeature(BootstrapContext<Feature> bootstrap, Identifier id, Feature feature) {
+        bootstrap.register(ResourceKey.create(Registries.FEATURE, id), feature);
     }
 
     private static void registerPlaced(BootstrapContext<PlacedFeature> bootstrap,
-            HolderGetter<ConfiguredFeature<?, ?>> configured, Identifier id) {
+            HolderGetter<Feature> configured, Identifier id) {
         registerPlaced(bootstrap, configured, id,
                 id.equals(NATURAL_PYLON) ? List.of(PylonGridPlacement.INSTANCE) : List.of());
     }
 
     private static void registerPlaced(BootstrapContext<PlacedFeature> bootstrap,
-            HolderGetter<ConfiguredFeature<?, ?>> configured, Identifier id, List<PlacementModifier> modifiers) {
-        ResourceKey<ConfiguredFeature<?, ?>> configuredKey = ResourceKey.create(Registries.CONFIGURED_FEATURE, id);
+            HolderGetter<Feature> configured, Identifier id, List<PlacementModifier> modifiers) {
+        ResourceKey<Feature> featureKey = ResourceKey.create(Registries.FEATURE, id);
         ResourceKey<PlacedFeature> placedKey = ResourceKey.create(Registries.PLACED_FEATURE, id);
-        bootstrap.register(placedKey, new PlacedFeature(configured.getOrThrow(configuredKey), modifiers));
+        bootstrap.register(placedKey, new PlacedFeature(configured.getOrThrow(featureKey), modifiers));
     }
 
-    private static ResourceKey<ConfiguredFeature<?, ?>> configuredKey(String path) {
-        return ResourceKey.create(Registries.CONFIGURED_FEATURE, id(path));
+    private static ResourceKey<Feature> featureKey(String path) {
+        return ResourceKey.create(Registries.FEATURE, id(path));
     }
 
     private static ResourceKey<PlacedFeature> placedKey(String path) {

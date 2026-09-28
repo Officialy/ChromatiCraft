@@ -78,7 +78,7 @@ public final class RenderStructureController
 	public void submit(State state, PoseStack poseStack, SubmitNodeCollector collector, CameraRenderState camera) {
 		poseStack.pushPose();
 		poseStack.translate(0.5, 0.5, 0.5);
-		poseStack.mulPose(com.mojang.math.Axis.YP.rotationDegrees(state.yaw));
+		poseStack.rotate(com.mojang.math.Axis.YP.rotationDegrees(state.yaw));
 		PoseStack.Pose pose = poseStack.last();
 		float v0 = state.frame * FRAME_V;
 		float v1 = v0 + FRAME_V;

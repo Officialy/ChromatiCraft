@@ -3,7 +3,6 @@ package reika.chromaticraft.block.dimension;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Player;
@@ -38,7 +37,6 @@ import reika.chromaticraft.world.dimension.DimensionTuningManager;
  */
 public class BlockBedrockCrack extends Block {
 
-	public static final MapCodec<BlockBedrockCrack> CODEC = simpleCodec(BlockBedrockCrack::new);
 
 	/** V33a metadata 0-9: how far the crack has been opened. */
 	public static final IntegerProperty DEPTH = IntegerProperty.create("depth", 0, 9);
@@ -48,10 +46,6 @@ public class BlockBedrockCrack extends Block {
 		this.registerDefaultState(this.stateDefinition.any().setValue(DEPTH, 0));
 	}
 
-	@Override
-	protected MapCodec<? extends Block> codec() {
-		return CODEC;
-	}
 
 	@Override
 	protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {

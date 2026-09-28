@@ -55,7 +55,7 @@ public final class EncrustedCrystalItemRenderer implements NoDataSpecialModelRen
 		// renderInventoryBlock's glRotatef(90, 0, 1, 0) about the block centre.
 		poseStack.pushPose();
 		poseStack.translate(0.5F, 0.5F, 0.5F);
-		poseStack.mulPose(com.mojang.math.Axis.YP.rotationDegrees(90));
+		poseStack.rotate(com.mojang.math.Axis.YP.rotationDegrees(90));
 		poseStack.translate(-0.5F, -0.5F, -0.5F);
 		PoseStack.Pose pose = poseStack.last().copy();
 		collector.submitCustomGeometry(poseStack, RenderTypes.itemTranslucent(TextureAtlas.LOCATION_BLOCKS),

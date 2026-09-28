@@ -172,7 +172,7 @@ public final class ChromaBlocks {
 	public static final DeferredBlock<BlockMetaAlloyLamp> META_ALLOY_LAMP = register("meta_alloy_lamp",
 			() -> new BlockMetaAlloyLamp(blockProperties().strength(0.25F).randomTicks().noOcclusion()
 					.sound(SoundType.GRASS).lightLevel(state -> state.getValue(BlockMetaAlloyLamp.POD) ? 15 : 0)
-					.pushReaction(PushReaction.DESTROY)));
+					.pushReaction(PushReaction.POPPED)));
 
 	private static List<DeferredBlock<BlockDyeLeaf>> registerDyeLeaves() {
 		DeferredBlock<BlockDyeLeaf>[] blocks = new DeferredBlock[CrystalElement.elements.length];
@@ -213,7 +213,7 @@ public final class ChromaBlocks {
 		for (CrystalElement element : CrystalElement.elements) {
 			blocks[element.ordinal()] = register(coloredName("dye_flower", element),
 					() -> new reika.chromaticraft.block.dye26.BlockDyeFlower(blockProperties().mapColor(MapColor.PLANT)
-							.noCollision().instabreak().sound(SoundType.GRASS).pushReaction(PushReaction.DESTROY),
+							.noCollision().instabreak().sound(SoundType.GRASS).pushReaction(PushReaction.POPPED),
 							element));
 		}
 		return List.of(blocks);
@@ -226,7 +226,7 @@ public final class ChromaBlocks {
 			blocks[element.ordinal()] = register(coloredName(fertile ? "fertile_dye_vine" : "dye_vine", element),
 					() -> new reika.chromaticraft.block.dye26.BlockDyeVine(blockProperties().mapColor(MapColor.PLANT)
 							.noCollision().instabreak().replaceable().noOcclusion().sound(SoundType.GRASS)
-							.pushReaction(PushReaction.DESTROY), element, fertile));
+							.pushReaction(PushReaction.POPPED), element, fertile));
 		}
 		return List.of(blocks);
 	}
@@ -430,7 +430,7 @@ public final class ChromaBlocks {
 			map.put(plant, register(plant.registryName(),
 					() -> new BlockTieredPlant(blockProperties().noCollision().instabreak()
 							.explosionResistance(2).sound(SoundType.GRASS).lightLevel(state -> 4)
-							.noOcclusion().pushReaction(PushReaction.DESTROY), plant)));
+							.noOcclusion().pushReaction(PushReaction.POPPED), plant)));
 		return map;
 	}
 
@@ -449,7 +449,7 @@ public final class ChromaBlocks {
 			map.put(flower, register(flower.registryName(),
 					() -> new BlockDecoFlower(blockProperties().noCollision().instabreak()
 							.sound(SoundType.GRASS).noOcclusion()
-							.pushReaction(PushReaction.DESTROY), flower)));
+							.pushReaction(PushReaction.POPPED), flower)));
 		return map;
 	}
 
@@ -570,7 +570,7 @@ public final class ChromaBlocks {
 							blockProperties().mapColor(MapColor.NONE).strength(0F, 3600000F)
 									.noCollision().noOcclusion().replaceable().noLootTable()
 									.lightLevel(state -> 15).randomTicks()
-									.pushReaction(net.minecraft.world.level.material.PushReaction.DESTROY)));
+									.pushReaction(net.minecraft.world.level.material.PushReaction.POPPED)));
 
 	/** V33a's Aura Point: the monument's completed form, and a standing area effect thereafter. */
 	public static final DeferredBlock<Block> AURA_POINT =
@@ -855,7 +855,7 @@ public final class ChromaBlocks {
 							.strength(0.125F, 1.2F).lightLevel(s -> 12).noOcclusion()
 							.sound(reika.chromaticraft.base.CrystalTypeBlock.SILENT_STONE)
 							.isValidSpawn((s, l, p, e) -> false).isRedstoneConductor((s, l, p) -> false)
-							.isSuffocating((s, l, p) -> false).isViewBlocking((s, l, p) -> false), element)));
+							.isSuffocating((s, l, p) -> false).isViewBlocking((s, l, p, nearPlane) -> false), element)));
 		}
 		return List.copyOf(list);
 	}
@@ -872,7 +872,7 @@ public final class ChromaBlocks {
 			register("selective_glass", () -> new reika.chromaticraft.block.BlockSelectiveGlass(blockProperties()
 					.strength(1F, 4.5F).noOcclusion().sound(SoundType.GLASS)
 					.isRedstoneConductor((s, l, p) -> false).isSuffocating((s, l, p) -> false)
-					.isViewBlocking((s, l, p) -> false)));
+					.isViewBlocking((s, l, p, nearPlane) -> false)));
 
 	/**
 	 * V33a GLOW metadata (element + 16*base), one block per element and base, registered colour-major as V33a
@@ -891,7 +891,7 @@ public final class ChromaBlocks {
 						() -> new reika.chromaticraft.block.crystal.BlockCrystalGlow(blockProperties()
 								.strength(0F, 0F).lightLevel(s -> 15).noCollision().noOcclusion()
 								.sound(reika.chromaticraft.base.CrystalTypeBlock.SILENT_STONE)
-								.pushReaction(net.minecraft.world.level.material.PushReaction.BLOCK), element, base)));
+								.pushReaction(net.minecraft.world.level.material.PushReaction.IMMOVEABLE), element, base)));
 			}
 		}
 		return List.copyOf(list);
@@ -973,7 +973,7 @@ public final class ChromaBlocks {
 	public static final DeferredBlock<Block> CHROMA_FLOWER =
 			register("chroma_flower", () -> new reika.chromaticraft.block.BlockChromaFlower(blockProperties()
 					.strength(0F, 0.1F).noCollision().noOcclusion().sound(SoundType.GRASS).lightLevel(state -> 9)
-					.pushReaction(net.minecraft.world.level.material.PushReaction.DESTROY)));
+					.pushReaction(net.minecraft.world.level.material.PushReaction.POPPED)));
 	/** V33a TOOLSTORAGE, a BlockChromaTile2 entry: rock, hardness 5, resistance 40 (8 against explosions). */
 	public static final DeferredBlock<Block> TOOL_STORAGE =
 			register("tool_storage", () -> new reika.chromaticraft.block.BlockToolStorage(

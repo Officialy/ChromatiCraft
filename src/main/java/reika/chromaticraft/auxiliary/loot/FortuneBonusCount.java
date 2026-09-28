@@ -5,7 +5,8 @@ import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
 import net.minecraft.world.level.storage.loot.LootContext;
-import net.minecraft.world.level.storage.loot.providers.number.NumberProvider;
+import net.minecraft.world.level.storage.loot.ValidationContext;
+import net.minecraft.world.level.storage.loot.providers.number.ints.ContextIntProvider;
 
 /**
  * V33a's {@code base + rand.nextInt(1 + fortune/divisor)} stack size, with Java's integer division.
@@ -15,7 +16,7 @@ import net.minecraft.world.level.storage.loot.providers.number.NumberProvider;
  * uses this shape twice: {@code 1 + rand(1 + fortune/2)} shards from a fertile vine and
  * {@code 1 + rand(1 + fortune)} berries.
  */
-public record FortuneBonusCount(int base, int divisor) implements NumberProvider {
+public record FortuneBonusCount(int base, int divisor) implements ContextIntProvider {
 
 	public static final MapCodec<FortuneBonusCount> MAP_CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
 			Codec.INT.fieldOf("base").forGetter(FortuneBonusCount::base),
@@ -28,13 +29,11 @@ public record FortuneBonusCount(int base, int divisor) implements NumberProvider
 	}
 
 	@Override
-	public int getInt(LootContext context) {
+	public int getIntUnsafe(LootContext context) {
 		int fortune = CrystalShardCount.fortuneLevel(context);
 		return base + context.getRandom().nextInt(1 + fortune / Math.max(1, divisor));
 	}
 
 	@Override
-	public float getFloat(LootContext context) {
-		return this.getInt(context);
-	}
+	public void validate(ValidationContext context) {}
 }

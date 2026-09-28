@@ -15,20 +15,19 @@ import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.levelgen.Heightmap;
-import net.minecraft.world.level.levelgen.feature.ConfiguredFeature;
+import net.minecraft.world.level.levelgen.feature.Feature;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.common.ItemAbilities;
 import net.neoforged.neoforge.event.entity.living.MobDespawnEvent;
 import net.neoforged.neoforge.event.entity.living.MobSpawnEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
-import net.neoforged.neoforge.event.level.BlockEvent;
 
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.data.ChromaBiomeTagProvider;
 import reika.chromaticraft.data.ChromaWorldGenProvider;
 import reika.chromaticraft.registry.ChromaBlocks;
+import reika.dragonapi.instantiable.event.BlockTransformResultEvent;
 import reika.dragonapi.instantiable.event.FireSpreadEvent;
 import reika.dragonapi.instantiable.event.GrassSustainCropEvent;
 import reika.dragonapi.instantiable.event.LavaSpawnFireEvent;
@@ -78,15 +77,16 @@ public final class LuminousCliffsEvents {
 			event.setResult(GrassSustainCropEvent.Result.ALLOW);
 	}
 
-	/** V33a {@code createCliffFarmland}. */
+	/**
+	 * V33a {@code createCliffFarmland}. 26.3 tills through the hoe's data-driven block transformer, which
+	 * no longer raises NeoForge's tool-modification event; DragonAPI's transform-result event takes its place.
+	 */
 	@SubscribeEvent
-	public static void createCliffFarmland(BlockEvent.BlockToolModificationEvent event) {
-		if (event.getItemAbility() != ItemAbilities.HOE_TILL || event.getFinalState() == null)
+	public static void createCliffFarmland(BlockTransformResultEvent event) {
+		if (!event.getResult().is(Blocks.FARMLAND))
 			return;
-		if (!event.getFinalState().is(Blocks.FARMLAND) || !(event.getLevel() instanceof LevelReader level))
-			return;
-		if (isLuminousCliffs(level, event.getPos()))
-			event.setFinalState(ChromaBlocks.CLIFF_FARMLAND.get().defaultBlockState());
+		if (isLuminousCliffs(event.world, event.context.getClickedPos()))
+			event.setResult(ChromaBlocks.CLIFF_FARMLAND.get().defaultBlockState());
 	}
 
 	/** V33a {@code changeLightSpawnCurve}. */
@@ -140,7 +140,7 @@ public final class LuminousCliffsEvents {
 		level.setBlock(pos, Blocks.AIR.defaultBlockState(), 3);
 		var key = rand.nextInt(12) == 0 ? ChromaWorldGenProvider.UNDERGROUND_GLOWING_TREE_BIG
 				: ChromaWorldGenProvider.UNDERGROUND_GLOWING_TREE_SMALL;
-		ConfiguredFeature<?, ?> tree = level.registryAccess().lookupOrThrow(Registries.CONFIGURED_FEATURE).getValue(key);
+		Feature tree = level.registryAccess().lookupOrThrow(Registries.FEATURE).getValue(key);
 		if (tree != null && !tree.place(level, level.getChunkSource().getGenerator(), rand, pos))
 			tree.place(level, level.getChunkSource().getGenerator(), rand, pos);
 		if (!event.getEntity().getAbilities().instabuild)

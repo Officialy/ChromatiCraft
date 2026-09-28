@@ -36,7 +36,7 @@ public final class PylonTurboItemRenderer implements NoDataSpecialModelRenderer 
 		poseStack.pushPose();
 		poseStack.translate(0.5F, 0.08F, 0.5F);
 		poseStack.scale(0.84F, -0.84F, -0.84F);
-		poseStack.mulPose(Axis.YP.rotationDegrees(180));
+		poseStack.rotate(Axis.YP.rotationDegrees(180));
 		poseStack.translate(0, -1.5F, 0);
 		PoseStack modelPose = new PoseStack();
 		modelPose.last().set(poseStack.last());
