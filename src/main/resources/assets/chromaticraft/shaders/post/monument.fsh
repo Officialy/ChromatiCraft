@@ -1,6 +1,7 @@
 #version 330
+#extension GL_ARB_separate_shader_objects : require
 
-#moj_import <minecraft:globals.glsl>
+#include <minecraft:globals.glsl>
 
 // The monument completion ritual's screen effect. Ported from V33a's Shaders/monument/general.frag
 // and chords.frag, which were two shaders and are one pass here.
@@ -28,8 +29,8 @@ layout(std140) uniform MonumentCores {
 
 uniform sampler2D InSampler;
 
-in vec2 texCoord;
-out vec4 fragColor;
+layout(location = 0) in vec2 texCoord;
+layout(location = 0) out vec4 fragColor;
 
 // V33a lib_color: perceptual brightness, not the arithmetic mean.
 float getVisualBrightness(vec3 rgb) {

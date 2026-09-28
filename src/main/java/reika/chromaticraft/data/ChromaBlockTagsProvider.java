@@ -7,6 +7,7 @@ import net.minecraft.tags.BlockTags;
 import net.neoforged.neoforge.common.data.BlockTagsProvider;
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.registry.ChromaBlocks;
+import reika.dragonapi.libraries.level.LegacyMotionTags;
 
 /** Runtime-semantic tags for ChromatiCraft blocks whose behaviour depends on vanilla families. */
 public final class ChromaBlockTagsProvider extends BlockTagsProvider {
@@ -16,6 +17,13 @@ public final class ChromaBlockTagsProvider extends BlockTagsProvider {
 
     @Override
     protected void addTags(HolderLookup.Provider provider) {
+        // 26.3 made movement blocking, suffocation, fluid blocking and fluid washing tag-driven and
+        // NeoForge tags no modded blocks; give every block its 26.2 behaviour (see LegacyMotionTags).
+        var motionTag = tag(BlockTags.BLOCKS_MOTION_NO_LEAVES);
+        var leafTag = tag(BlockTags.LEAVES);
+        var washedTag = tag(BlockTags.WASHED_AWAY_BY_FLUIDS);
+        LegacyMotionTags.classifyEntries(ChromaBlocks.BLOCKS.getEntries(), motionTag::add, leafTag::add, washedTag::add);
+
         var leaves = tag(BlockTags.LEAVES);
         ChromaBlocks.DYE_LEAVES.forEach(block -> leaves.add(block.getKey()));
         leaves.add(ChromaBlocks.RAINBOW_LEAVES.getKey(), ChromaBlocks.GLOWING_LEAVES.getKey());

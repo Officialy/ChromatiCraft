@@ -1,10 +1,11 @@
 #version 330
+#extension GL_ARB_separate_shader_objects : require
 
 // V33a Shaders/uazone.frag, with the DragonAPI #import libraries it used inlined:
 // lib_color (visual brightness), lib_effects (grayscaled blurred Sobel edge detection) and
 // lib_noise (Ian McEwan / Ashima Arts 4D simplex noise, MIT licensed).
 
-#moj_import <minecraft:globals.glsl>
+#include <minecraft:globals.glsl>
 
 layout(std140) uniform UaZone {
     vec4 Params; // x intensity, y time (player ticks), z sky brightness, w head yaw + pitch (degrees)
@@ -12,8 +13,8 @@ layout(std140) uniform UaZone {
 
 uniform sampler2D InSampler;
 
-in vec2 texCoord;
-out vec4 fragColor;
+layout(location = 0) in vec2 texCoord;
+layout(location = 0) out vec4 fragColor;
 
 float getVisualBrightness(vec3 color) {
     return color.r * 0.2989 + color.g * 0.5870 + color.b * 0.1140;

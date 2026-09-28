@@ -1,11 +1,12 @@
 #version 330
+#extension GL_ARB_separate_shader_objects : require
 
 // V33a Shaders/artealloy/shock.frag then Shaders/artealloy/glow.frag, the two ARTEALLOY registry passes
 // run in order in one pass (GLOW only recolours, so sampling SHOCK's output at the same pixel is exact).
 // DragonAPI's lib_math distsq and lib_color rgb2hsb/hsb2rgb are inlined; getScreenPos(0,0,0), the
 // projected Memory Crystal, arrives in the UBO.
 
-#moj_import <minecraft:globals.glsl>
+#include <minecraft:globals.glsl>
 
 layout(std140) uniform Artealloy {
     vec4 Glow;   // xy focus screen UV, z intensity, w squared viewer distance
@@ -15,8 +16,8 @@ layout(std140) uniform Artealloy {
 
 uniform sampler2D InSampler;
 
-in vec2 texCoord;
-out vec4 fragColor;
+layout(location = 0) in vec2 texCoord;
+layout(location = 0) out vec4 fragColor;
 
 float distsq(vec2 a, vec2 b) {
     float f = ScreenSize.y / ScreenSize.x;
