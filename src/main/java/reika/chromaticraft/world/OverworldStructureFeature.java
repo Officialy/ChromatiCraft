@@ -169,16 +169,17 @@ public final class OverworldStructureFeature implements Feature {
 
 	/** One placement attempt with {@code origin}'s column; returns the controller position, or null. */
 	private BlockPos placeAt(WorldGenLevel world, RandomSource random, BlockPos originIn) {
-		// The Ocean structure is 31 blocks across and can reach past the chunks this step may write to,
-		// which leaves it half built. What slides is the origin, before anything is derived from it:
+		// A structure or its construction checks can reach past the chunks this step may access.
+		// What slides is the origin, before anything is derived from it:
 		// naturalControllerPosition reads the heightmap at the origin's own column and validNaturalSite
 		// judges the site it returns, so moving the structure afterwards would place it at a depth
 		// taken from a different column, on ground that was never approved. Sliding first also keeps
 		// the random draw for the Cavern's depth to a single call.
 		net.minecraft.core.Vec3i controllerOffset = natural ? naturalControllerOffset(type)
 				: net.minecraft.core.Vec3i.ZERO;
-		BlockPos origin = NBTStructureLoader.fitToWriteWindow(world, type.template,
-				originIn.offset(controllerOffset), type.templateAnchor).subtract(controllerOffset);
+		BlockPos fitAnchor = NBTStructureLoader.fitToWriteWindow(world, originIn.offset(controllerOffset),
+				this.writeFootprint(world));
+		BlockPos origin = fitAnchor.subtract(controllerOffset);
 		BlockPos controllerPos = natural ? naturalControllerPosition(world, origin, random) : origin;
 		if (natural && !validNaturalSite(world, controllerPos))
 			return null;
@@ -247,6 +248,34 @@ public final class OverworldStructureFeature implements Feature {
 					chest.setMaxReach(2.5);
 		}
 		return controllerPos;
+	}
+
+	/**
+	 * Every column this placement reads or writes, relative to the controller, fitted as one before any
+	 * terrain is probed. Cells within {@link NBTStructureLoader#NEIGHBOUR_MARGIN} of it (neighbour-shape
+	 * resolution, the Burrow's six-neighbour host test, the Ocean's flooded-end probe at +28) are covered
+	 * by the margin the fit already keeps.
+	 */
+	private NBTStructureLoader.HorizontalFootprint writeFootprint(WorldGenLevel world) {
+		var footprint = type == Type.BURROW
+				// Both optional rooms are built from the same controller. Their template footprints extend
+				// beyond the core, including the UUID-door cells in the loot room. Reserve their entire
+				// union before site checks, regardless of which room rolls later succeed.
+				? NBTStructureLoader.horizontalFootprint(world.getLevel(),
+						new NBTStructureLoader.TemplateFootprint(type.template, type.templateAnchor),
+						new NBTStructureLoader.TemplateFootprint(BURROW_FURNACE, BURROW_ANNEX_ANCHOR),
+						new NBTStructureLoader.TemplateFootprint(BURROW_LOOT, BURROW_ANNEX_ANCHOR))
+				: NBTStructureLoader.horizontalFootprint(world.getLevel(),
+						new NBTStructureLoader.TemplateFootprint(type.template, type.templateAnchor));
+		if (!natural)
+			return footprint;
+		return switch (type) {
+			// Cavern site validation and the exit tunnel both read through controller + 17 X.
+			case CAVERN -> footprint.union(new NBTStructureLoader.HorizontalFootprint(0, 17, 0, 0));
+			// weatherNaturalBiomeFragment clears logs and regrades the rim out to nine blocks each way.
+			case BIOME_FRAGMENT -> footprint.union(new NBTStructureLoader.HorizontalFootprint(-9, 9, -9, 9));
+			default -> footprint;
+		};
 	}
 
 	private static void placeOceanPit(WorldGenLevel world, BlockPos controllerPos) {

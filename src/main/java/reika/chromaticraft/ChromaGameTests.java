@@ -439,6 +439,7 @@ public final class ChromaGameTests {
 		register(event, env, "burrow_cache_loot_halves", ChromaGameTests::burrowCacheLootHalves);
 		register(event, env, "structure_chest_fragments", ChromaGameTests::structureChestFragments);
 		register(event, env, "structure_write_window_fit", ChromaGameTests::structureWriteWindowFit);
+		register(event, env, "burrow_annex_write_window_fit", ChromaGameTests::burrowAnnexWriteWindowFit);
 		register(event, env, "nether_lava_rivers", ChromaGameTests::netherLavaRivers);
 		register(event, env, "proxima_deco_blocks", ChromaGameTests::proximaDecoBlocks);
 		register(event, env, "crystal_shrub_feature", ChromaGameTests::crystalShrubFeature);
@@ -1783,7 +1784,8 @@ public final class ChromaGameTests {
 	 * {@code setBlock} is silently dropped — that is what made the Nether Diorama and Temple come out
 	 * half built. This sweeps all sixteen offsets for each real template size and asserts the slid
 	 * result is fully contained, which is the property the fix has to hold rather than any particular
-	 * coordinate it happens to choose.
+	 * coordinate it happens to choose. Contained includes the one-block neighbour ring, since 26.3 warns
+	 * on any read outside the write radius and neighbour-shape resolution reads that ring.
 	 */
 	private static void structureWriteWindowFit(GameTestHelper helper) {
 		int radius = net.minecraft.world.level.chunk.status.ChunkPyramid.GENERATION_PYRAMID
@@ -1792,33 +1794,70 @@ public final class ChromaGameTests {
 		helper.assertTrue(radius == 1,
 				"the feature write radius changed to " + radius + "; the structure fit assumes one chunk");
 		// Every ChromatiCraft template that a feature places from a per-chunk random origin, widest
-		// first. The three above seventeen are exactly the ones reported as half-generating.
+		// first. The cavern extent also includes the exit tunnel beyond its NBT template.
 		record Template(String name, int extent) {}
 		for (Template template : java.util.List.of(
 				new Template("nether/diorama", 32), new Template("overworld/ocean", 31),
-				new Template("nether/temple", 26), new Template("nether/spiral", 19),
+				new Template("nether/temple", 26),
+				new Template("overworld/cavern including exit tunnel", 25),
+				new Template("nether/spiral", 19),
 				new Template("overworld/snow", 17), new Template("nether/maze", 16),
 				new Template("nether/hut", 9)))
 			for (int centreChunk : new int[] {0, 1, -1, 37, -64}) {
+				int margin = NBTStructureLoader.NEIGHBOUR_MARGIN;
 				int windowMin = (centreChunk - radius) * 16;
 				int windowMax = (centreChunk + radius) * 16 + 15;
 				for (int offset = 0; offset < 16; offset++) {
 					int requested = centreChunk * 16 + offset;
 					int start = NBTStructureLoader.slide(requested, template.extent(), centreChunk, radius);
-					helper.assertTrue(start >= windowMin && start + template.extent() - 1 <= windowMax,
+					helper.assertTrue(start - margin >= windowMin && start + template.extent() - 1 + margin <= windowMax,
 							template.name() + " at chunk " + centreChunk + " offset " + offset
-									+ " slid to " + start + ", which still leaves it outside the writable "
+									+ " slid to " + start + ", which still leaves it or its neighbour ring outside the writable "
 									+ windowMin + ".." + windowMax + " window");
 					helper.assertTrue(start <= requested,
 							template.name() + " was pushed forward to " + start + " from " + requested
 									+ "; the fit may only pull a structure back inside the window");
 					// Anything that already fitted must not be moved at all, or every small structure
 					// in the mod would drift towards the chunk edge.
-					if (requested + template.extent() - 1 <= windowMax)
+					if (requested + template.extent() - 1 + margin <= windowMax)
 						helper.assertTrue(start == requested, template.name() + " at offset " + offset
 								+ " already fitted but was moved from " + requested + " to " + start);
 				}
 			}
+		helper.succeed();
+	}
+
+	/** The optional Burrow rooms extend beyond its core and must fit in the reported feature window. */
+	private static void burrowAnnexWriteWindowFit(GameTestHelper helper) {
+		BlockPos mainAnchor = new BlockPos(3, 3, 3);
+		BlockPos annexAnchor = new BlockPos(0, 3, 4);
+		var footprint = NBTStructureLoader.horizontalFootprint(helper.getLevel(),
+				new NBTStructureLoader.TemplateFootprint(
+						Identifier.fromNamespaceAndPath("chromaticraft", "worldgen/overworld/burrow"), mainAnchor),
+				new NBTStructureLoader.TemplateFootprint(
+						Identifier.fromNamespaceAndPath("chromaticraft", "worldgen/overworld/burrow_furnace"), annexAnchor),
+				new NBTStructureLoader.TemplateFootprint(
+						Identifier.fromNamespaceAndPath("chromaticraft", "worldgen/overworld/burrow_loot"), annexAnchor));
+		helper.assertTrue(footprint.minX() == -3 && footprint.maxX() == 7
+				&& footprint.minZ() == -4 && footprint.maxZ() == 6,
+				"the three authored Burrow templates must form the expected shared-anchor envelope");
+		int radius = net.minecraft.world.level.chunk.status.ChunkPyramid.GENERATION_PYRAMID
+				.getStepTo(net.minecraft.world.level.chunk.status.ChunkStatus.FEATURES)
+				.blockStateWriteRadius();
+		var centre = new net.minecraft.world.level.ChunkPos(-4, 15);
+		int maxX = (centre.x() + radius) * 16 + 15;
+		int maxZ = (centre.z() + radius) * 16 + 15;
+		int margin = NBTStructureLoader.NEIGHBOUR_MARGIN;
+		// The main template fits here exactly; the loot door and furnace annex do not.
+		BlockPos requested = new BlockPos(maxX - 6, 64, maxZ - 3);
+		BlockPos fitted = NBTStructureLoader.fitToWriteWindow(requested, footprint, centre, radius);
+		helper.assertTrue(fitted.equals(requested.offset(-1 - margin, 0, -3 - margin)),
+				"Burrow anchor must move west two and north four to retain both optional rooms and their neighbour ring");
+		helper.assertTrue(fitted.getX() + footprint.maxX() + margin <= maxX
+				&& fitted.getZ() + footprint.maxZ() + margin <= maxZ
+				&& fitted.getX() + footprint.minX() - margin >= (centre.x() - radius) * 16
+				&& fitted.getZ() + footprint.minZ() - margin >= (centre.z() - radius) * 16,
+				"all Burrow and annex cells, and their neighbours, must remain in the feature write window");
 		helper.succeed();
 	}
 

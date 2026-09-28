@@ -9128,3 +9128,27 @@ placement, Proxima noise/material, recipe, or loot provider files. ChromatiCraft
 and GameTests cannot yet run; the remaining errors include biome setup, rendering APIs,
 and stale 26.2 calls in other accepted files. The 26.2 GameTest results above do not
 verify this 26.3 state.
+
+### Worldgen neighbour margin and per-type structure reach — 2026-09-28
+
+The natural Burrow and Cavern still logged "Detected unsafe terrain read during worldgen" at
+distance 2 after their footprints were fitted. 26.3's `WorldGenRegion` warns on any
+`getBlockState`, `getFluidState` or `getHeight` outside the write radius; 26.2 allowed reads out to
+the step's dependency radius. A fitted structure could sit flush against the window edge, and
+`NBTStructureLoader.resolveConnectedShapes`, which mirrors vanilla `StructureTemplate.placeInWorld`,
+reads all six neighbours of every placed cell. The Burrow's host test probes the same neighbours.
+`NBTStructureLoader.slide` now keeps `NEIGHBOUR_MARGIN` (one block) free on both sides, so edge
+cells resolve against real terrain inside the window. Every fitted feature gets this, the Nether
+roof structures included.
+
+`OverworldStructureFeature.writeFootprint` replaces the Cavern-only east extension. It fits each
+type's templates (with the Burrow annexes) together with the reach of its natural site checks and
+finishing passes. It found a second fault: the natural Biome Fragment's weathering pass clears logs
+and regrades the rim out to nine blocks around the controller. The template spans only seven, so rim
+writes near the window edge were silently dropped. That reach is now fitted too. The Desert, Snow
+and Ocean checks stay inside their templates or the one-block margin (the Ocean's flooded-end probe
+at +28).
+
+`structure_write_window_fit` and `burrow_annex_write_window_fit` now assert the margin; the Burrow
+edge case moves two west and four north instead of one and three. `:ChromatiCraft:compileJava`
+passes. The GameTests and a fresh-chunk check for the warning have not been run with this change.

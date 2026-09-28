@@ -235,6 +235,14 @@ public final class NBTStructureLoader {
      * it places anything — not inside {@link #place}. Several structures place annexes and address
      * chests at fixed offsets from that anchor, and clamping each template separately would slide the
      * pieces by different amounts and take the structure apart.
+     *
+     * <p>26.3 also polices reads. 26.2 let a feature read anywhere in the step's dependency radius;
+     * 26.3's {@code WorldGenRegion} logs "Detected unsafe terrain read during worldgen" for any
+     * {@code getBlockState}, {@code getFluidState} or {@code getHeight} outside the write radius. A
+     * structure slid flush against the window edge then trips it from {@link #resolveConnectedShapes},
+     * which, like vanilla's {@code StructureTemplate.placeInWorld}, reads all six neighbours of every
+     * placed cell. {@link #slide} therefore keeps a {@link #NEIGHBOUR_MARGIN} ring inside the window
+     * as well, so the edge cells resolve against the real terrain beside them.
      */
     public static BlockPos fitToWriteWindow(WorldGenLevel world, Identifier templateId,
             BlockPos worldAnchor, BlockPos templateAnchor) {
@@ -242,6 +250,78 @@ public final class NBTStructureLoader {
                 new IllegalStateException("Missing ChromatiCraft structure template data/"
                         + templateId.getNamespace() + "/structure/" + templateId.getPath() + ".nbt"));
         return fitToWriteWindow(world, worldAnchor, templateAnchor, template.getSize());
+    }
+
+    /** One template in a structure assembled around a shared world anchor. */
+    public record TemplateFootprint(Identifier template, BlockPos anchor) {}
+
+    /** Horizontal offsets from that shared anchor, inclusive at both ends. */
+    public record HorizontalFootprint(int minX, int maxX, int minZ, int maxZ) {
+        public int width() { return maxX - minX + 1; }
+        public int depth() { return maxZ - minZ + 1; }
+
+        /** The smallest footprint covering both, for site checks or passes reaching past the templates. */
+        public HorizontalFootprint union(HorizontalFootprint other) {
+            return new HorizontalFootprint(Math.min(minX, other.minX), Math.max(maxX, other.maxX),
+                    Math.min(minZ, other.minZ), Math.max(maxZ, other.maxZ));
+        }
+    }
+
+    public static HorizontalFootprint horizontalFootprint(ServerLevel level, TemplateFootprint... templates) {
+        if (templates.length == 0)
+            throw new IllegalArgumentException("A structure footprint needs at least one template");
+        int minX = Integer.MAX_VALUE;
+        int maxX = Integer.MIN_VALUE;
+        int minZ = Integer.MAX_VALUE;
+        int maxZ = Integer.MIN_VALUE;
+        for (TemplateFootprint footprint : templates) {
+            StructureTemplate template = level.getStructureTemplateManager()
+                    .get(footprint.template()).orElseThrow(() -> new IllegalStateException(
+                            "Missing ChromatiCraft structure template " + footprint.template()));
+            net.minecraft.core.Vec3i size = template.getSize();
+            minX = Math.min(minX, -footprint.anchor().getX());
+            maxX = Math.max(maxX, size.getX() - footprint.anchor().getX() - 1);
+            minZ = Math.min(minZ, -footprint.anchor().getZ());
+            maxZ = Math.max(maxZ, size.getZ() - footprint.anchor().getZ() - 1);
+        }
+        return new HorizontalFootprint(minX, maxX, minZ, maxZ);
+    }
+
+    /** Fit an already measured footprint inside one feature step's horizontal write window. */
+    public static BlockPos fitToWriteWindow(BlockPos worldAnchor, HorizontalFootprint footprint,
+            net.minecraft.world.level.ChunkPos centre, int radius) {
+        int firstX = worldAnchor.getX() + footprint.minX();
+        int firstZ = worldAnchor.getZ() + footprint.minZ();
+        return worldAnchor.offset(
+                slide(firstX, footprint.width(), centre.x(), radius) - firstX,
+                0,
+                slide(firstZ, footprint.depth(), centre.z(), radius) - firstZ);
+    }
+
+    /**
+     * Fits the union of a main template and its optional annexes before any of them are placed.
+     * Their anchors differ, so fitting only the main template can leave an annex outside the
+     * {@code WorldGenRegion} write window even though the core fits.
+     */
+    public static BlockPos fitToWriteWindow(WorldGenLevel world, BlockPos worldAnchor,
+            TemplateFootprint... templates) {
+        return fitToWriteWindow(world, worldAnchor, horizontalFootprint(world.getLevel(), templates));
+    }
+
+    /**
+     * Fits an already measured footprint, typically templates unioned with the reach of a feature's
+     * site checks and finishing passes, inside the current step's write window.
+     */
+    public static BlockPos fitToWriteWindow(WorldGenLevel world, BlockPos worldAnchor,
+            HorizontalFootprint footprint) {
+        if (!(world instanceof net.minecraft.server.level.WorldGenRegion region))
+            return worldAnchor;
+        int radius = net.minecraft.world.level.chunk.status.ChunkPyramid.GENERATION_PYRAMID
+                .getStepTo(net.minecraft.world.level.chunk.status.ChunkStatus.FEATURES)
+                .blockStateWriteRadius();
+        if (radius < 0)
+            return worldAnchor;
+        return fitToWriteWindow(worldAnchor, footprint, region.getCenter(), radius);
     }
 
     private static BlockPos fitToWriteWindow(WorldGenLevel world, BlockPos worldAnchor,
@@ -262,12 +342,20 @@ public final class NBTStructureLoader {
     }
 
     /**
-     * One axis of {@link #fitToWriteWindow}: the lowest coordinate the template may start at. Public
-     * because it is the whole of the arithmetic and can be checked without a world.
+     * Blocks kept free between a fitted structure and the write window's edge, so the neighbour reads
+     * of {@link #resolveConnectedShapes} and of site checks probing a cell's six neighbours stay inside
+     * the chunks 26.3 lets a feature read.
+     */
+    public static final int NEIGHBOUR_MARGIN = 1;
+
+    /**
+     * One axis of {@link #fitToWriteWindow}: the lowest coordinate the template may start at, keeping
+     * {@link #NEIGHBOUR_MARGIN} free on both sides. Public because it is the whole of the arithmetic
+     * and can be checked without a world.
      */
     public static int slide(int start, int extent, int centreChunk, int radius) {
-        int windowMin = (centreChunk - radius) * 16;
-        int windowMax = (centreChunk + radius) * 16 + 15;
+        int windowMin = (centreChunk - radius) * 16 + NEIGHBOUR_MARGIN;
+        int windowMax = (centreChunk + radius) * 16 + 15 - NEIGHBOUR_MARGIN;
         // Math.max guards the unfittable case: never push the near edge outside the window trying to
         // pull the far edge in, which would trade one truncated end for two.
         return Math.max(windowMin, Math.min(start, windowMax - (extent - 1)));
