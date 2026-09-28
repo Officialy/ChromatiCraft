@@ -209,6 +209,8 @@ public final class ChromaRenderPipelines {
             .withPrimitiveTopology(PrimitiveTopology.QUADS)
             .withDepthStencilState(DepthStencilState.DEFAULT)
             .withCull(false)
+            // 26.2 defaulted a pipeline with no colour target to this; 26.3 gives it none.
+            .withColorTargetState(ColorTargetState.DEFAULT)
             .build();
 
     /*
@@ -298,6 +300,8 @@ public final class ChromaRenderPipelines {
             .withShaderDefine("NO_OVERLAY")
             .withShaderDefine("NO_CARDINAL_LIGHTING")
             .withCull(false)
+            // 26.2 defaulted a pipeline with no colour target to this; 26.3 gives it none.
+            .withColorTargetState(ColorTargetState.DEFAULT)
             .build();
 
     public static final RenderPipeline LEGACY_ADDITIVE_PARTICLE = RenderPipeline.builder()
@@ -336,6 +340,7 @@ public final class ChromaRenderPipelines {
                     .withUniform("MonumentCores",
                             com.mojang.renderpearl.api.pipeline.UniformType.UNIFORM_BUFFER)
                     .build())
+            .withColorTargetState(ColorTargetState.DEFAULT)
             .build();
 
 	/** V33a DIMCORE and AURALOC global-no-GUI shaders, resolved from live locus-point emitters. */
@@ -349,6 +354,7 @@ public final class ChromaRenderPipelines {
 					.withUniform("InSampler", com.mojang.renderpearl.api.pipeline.UniformType.COMBINED_IMAGE_SAMPLER)
 					.withUniform("UaZone", com.mojang.renderpearl.api.pipeline.UniformType.UNIFORM_BUFFER)
 					.build())
+			.withColorTargetState(ColorTargetState.DEFAULT)
 			.build();
 
 	/** V33a ARTEALLOY$SHOCK and ARTEALLOY$GLOW in one pass; see {@code ArtealloyEffects}. */
@@ -361,6 +367,7 @@ public final class ChromaRenderPipelines {
 					.withUniform("InSampler", com.mojang.renderpearl.api.pipeline.UniformType.COMBINED_IMAGE_SAMPLER)
 					.withUniform("Artealloy", com.mojang.renderpearl.api.pipeline.UniformType.UNIFORM_BUFFER)
 					.build())
+			.withColorTargetState(ColorTargetState.DEFAULT)
 			.build();
 
 	public static final RenderPipeline LOCUS_POINTS = RenderPipeline.builder(
@@ -374,6 +381,7 @@ public final class ChromaRenderPipelines {
 					.withUniform("LocusPoints",
 							com.mojang.renderpearl.api.pipeline.UniformType.UNIFORM_BUFFER)
 					.build())
+			.withColorTargetState(ColorTargetState.DEFAULT)
 			.build();
 
 	/**
