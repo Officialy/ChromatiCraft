@@ -9278,3 +9278,28 @@ V33a's mutual recursion ripens both, and the test now asserts that.
 
 Full suite 2026-09-29: 171/172, the one failure being the new pendant test's own precondition (a missing stamp reads
 as time 0, so a world under a second old counts every pendant active); guarded, it passes on its own.
+
+### Lumen Buffer Connection (V33a ChargedItemPlayerBufferConnectionRecipe) — 2026-09-29
+
+- `buffer_link/probe` (cost factor 1), `buffer_link/purification_gem` (10) and
+  `buffer_link/enhanced_pendant/<colour>` (15).
+  - Each is a Pylon cast of the powered item on itself: half the tier's 400 ticks, two fifths of its
+    500 XP, and 6000 × factor of the item's colour.
+  - It uses V33a's twenty stands: Luma Beans, Lumenite, redstone and glowstone.
+  - The item comes back with its data (its charge) and `bufferlinked` set, which
+    `PylonCharging.chargePlayerTools` already reads.
+  - The Nether Key (3), Spawner Bypass (2), Ore Pick (4) and Structure Finder (1) get theirs when those
+    items are ported; the list sits with the calls in `ChromaCastingRecipeProvider`.
+- `CastingTableRecipe.output`: with `copy_center_custom_data`, the output's own authored data now goes
+  *over* the copied centre data. It used to replace it. This is V33a's `getOutputTag` shape (input tag,
+  then the recipe's keys). No existing recipe combined the two, so nothing else changes.
+- V33a `isIndexed` is now `CompletionBehavior.indexed`, defaulting to true; the recipe codec is at
+  `RecordCodecBuilder`'s sixteen-field limit. `ChromaNetwork.guideCastingRecipes` drops unindexed
+  recipes, as `ChromaResearch.getCraftingRecipes` did, so the gem's and pendants' lexicon pages list
+  only their own recipes.
+- `PylonCharging.chargePlayerTools` regains V33a's tool-bag branch: a random active slot inside an
+  `ActivatedInventoryItem`. The marker said that interface was unported, but DragonAPI has it.
+- GameTest `buffer_link_recipe` covers:
+  - the linked gem keeping its charge and gaining the flag
+  - the recipe being unindexed
+  - the gem's guide listing only its own recipe

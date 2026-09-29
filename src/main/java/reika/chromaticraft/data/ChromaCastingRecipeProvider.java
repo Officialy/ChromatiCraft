@@ -414,6 +414,13 @@ public final class ChromaCastingRecipeProvider {
 			saveMagicPlants();
 			savePendants();
 			savePurificationGem();
+			// V33a RecipesCastingTable: ChargedItemPlayerBufferConnectionRecipe for PROBE (1), NETHERKEY (3),
+			// SPAWNERBYPASS (2), OREPICK (4), STRUCTUREFINDER (1), PURIFY (10) and each PENDANT3 (15). The Nether
+			// Key, Spawner Bypass, Ore Pick and Structure Finder add theirs when those items are ported.
+			saveBufferLink("probe", ChromaItems.PROBE.get(), CrystalElement.BLUE, 1);
+			saveBufferLink("purification_gem", ChromaItems.PURIFY.get(), CrystalElement.WHITE, 10);
+			for (CrystalElement e : CrystalElement.elements)
+				saveBufferLink("enhanced_pendant/" + e.getEnglishName(), ChromaItems.BOOSTED_PENDANTS.get(e).get(), e, 15);
 
 			// V33a RawCrystalRecipe: four Purification Powder around one exact plain shard. The
 			// source registers the same recipe once for each of the sixteen shard metadata values;
@@ -1176,6 +1183,39 @@ public final class ChromaCastingRecipeProvider {
 							new AuraRequirement(CrystalElement.BLUE, 10000)),
 					new ItemStackTemplate(ChromaItems.PURIFY.get()), 800, 500)
 					.withPenalty(1, 0F));
+		}
+
+		/**
+		 * V33a ChargedItemPlayerBufferConnectionRecipe ("Lumen Buffer Connection"), a PylonCastingRecipe: the powered
+		 * item itself in the centre, whatever its data, comes back with its data kept and {@code bufferlinked} set, so
+		 * {@code PylonCharging.chargePlayerTools} tops it up from the player's lumen buffer. Half the tier's 400
+		 * ticks, two fifths of its 500 XP, 6000 per cost factor of the item's own colour (its PoweredItem.getColor), twenty stands, and left
+		 * off the lexicon's recipe pages ({@code isIndexed() == false}).
+		 */
+		private <I extends net.minecraft.world.item.Item & reika.chromaticraft.magic.interfaces.PoweredItem> void saveBufferLink(
+				String name, I item, CrystalElement color, int costFactor) {
+			Ingredient beans = tiered(ChromaTieredItems.LUMA_BEANS);
+			Ingredient lumen = tiered(ChromaTieredItems.LUMEN_GEM);
+			Ingredient redstone = Ingredient.of(Items.REDSTONE);
+			Ingredient glow = Ingredient.of(Items.GLOWSTONE_DUST);
+			List<CastingTableRecipe.StandIngredient> stands = List.of(
+					auxStand(-2, -2, beans), auxStand(2, -2, beans), auxStand(-2, 2, beans), auxStand(2, 2, beans),
+					auxStand(0, -2, lumen), auxStand(2, 0, lumen), auxStand(0, 2, lumen), auxStand(-2, 0, lumen),
+					auxStand(0, -4, redstone), auxStand(4, 0, redstone), auxStand(0, 4, redstone), auxStand(-4, 0, redstone),
+					auxStand(4, -2, glow), auxStand(-2, -4, glow), auxStand(-4, 2, glow), auxStand(2, 4, glow),
+					auxStand(4, 2, glow), auxStand(-2, 4, glow), auxStand(-4, -2, glow), auxStand(2, -4, glow));
+			net.minecraft.nbt.CompoundTag linked = new net.minecraft.nbt.CompoundTag();
+			linked.putBoolean("bufferlinked", true);
+			ItemStackTemplate result = new ItemStackTemplate(item.builtInRegistryHolder(), 1,
+					net.minecraft.core.component.DataComponentPatch.builder()
+							.set(net.minecraft.core.component.DataComponents.CUSTOM_DATA,
+									net.minecraft.world.item.component.CustomData.of(linked))
+							.build());
+			saveRecipe("buffer_link/" + name, new CastingTableRecipe(CastingTableRecipe.Tier.PYLON,
+					List.of(new GridIngredient(4, Ingredient.of(item))), stands, List.of(),
+					List.of(new AuraRequirement(color, 6000*costFactor)), result, 200, 200)
+					.withCompletionBehavior(true, List.of(), List.of())
+					.unindexed());
 		}
 
 		private Ingredient tiered(ChromaTieredItems item) { return Ingredient.of(ChromaItems.TIERED.get(item).get()); }

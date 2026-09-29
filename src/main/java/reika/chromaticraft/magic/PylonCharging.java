@@ -73,9 +73,17 @@ public final class PylonCharging {
 		int slot = player.getRandom().nextInt(inv.size());
 		ItemStack at = inv.get(slot);
 		if (!at.isEmpty()) {
-			// CHROMA-PORT: V33a also reached into an ActivatedInventoryItem (tool bags) here, charging a random active
-			// slot inside it; that interface is not ported yet.
-			if (at.getItem() instanceof PoweredItem) {
+			if (at.getItem() instanceof reika.dragonapi.interfaces.item.ActivatedInventoryItem aii) {
+				int size = aii.getInventorySize(at);
+				slot = player.getRandom().nextInt(size);
+				if (aii.isSlotActive(at, slot)) {
+					ItemStack in = aii.getItem(at, slot);
+					if (in != null && in.getItem() instanceof PoweredItem) {
+						tryChargePoweredItem(in, player, te, e);
+					}
+				}
+			}
+			else if (at.getItem() instanceof PoweredItem) {
 				tryChargePoweredItem(at, player, te, e);
 			}
 		}

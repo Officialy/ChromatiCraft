@@ -78,10 +78,13 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 	 * custom-data key that receives the casting player's UUID: V33a {@code RepeaterRecipe.handleNBTResult}'s
 	 * {@code caster} (read by networking-tier repeaters) and {@code EnderEyeRecipe.getOutputTag}'s
 	 * {@code owner} (who may pick up and throw the eyes). Empty means none. {@code double_output} is V33a
-	 * {@code canGiveDoubleOutput}: a caster with the Doublecraft ability gets twice the output.
+	 * {@code canGiveDoubleOutput}: a caster with the Doublecraft ability gets twice the output. {@code indexed}
+	 * is V33a {@code isIndexed}: an unindexed recipe (the Lumen Buffer Connection) still casts but is left off
+	 * its output's lexicon recipe pages. It lives here only because the recipe codec is at its field limit.
 	 */
 	public record CompletionBehavior(boolean copyCenterCustomData,
-			List<ProgressStage> grantedProgress, List<Float> harmonics, String casterTag, boolean doubleOutput) {
+			List<ProgressStage> grantedProgress, List<Float> harmonics, String casterTag, boolean doubleOutput,
+			boolean indexed) {
 		public static final CompletionBehavior DEFAULT = new CompletionBehavior(false, List.of(), List.of(), "");
 		public static final Codec<CompletionBehavior> CODEC = RecordCodecBuilder.create(instance -> instance.group(
 				Codec.BOOL.optionalFieldOf("copy_center_custom_data", false)
@@ -93,7 +96,9 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 				Codec.STRING.optionalFieldOf("caster_tag", "")
 						.forGetter(CompletionBehavior::casterTag),
 				Codec.BOOL.optionalFieldOf("double_output", false)
-						.forGetter(CompletionBehavior::doubleOutput)
+						.forGetter(CompletionBehavior::doubleOutput),
+				Codec.BOOL.optionalFieldOf("indexed", true)
+						.forGetter(CompletionBehavior::indexed)
 		).apply(instance, CompletionBehavior::new));
 
 		public CompletionBehavior(boolean copyCenterCustomData, List<ProgressStage> grantedProgress,
@@ -104,6 +109,11 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 		public CompletionBehavior(boolean copyCenterCustomData, List<ProgressStage> grantedProgress,
 				List<Float> harmonics, String casterTag) {
 			this(copyCenterCustomData, grantedProgress, harmonics, casterTag, false);
+		}
+
+		public CompletionBehavior(boolean copyCenterCustomData, List<ProgressStage> grantedProgress,
+				List<Float> harmonics, String casterTag, boolean doubleOutput) {
+			this(copyCenterCustomData, grantedProgress, harmonics, casterTag, doubleOutput, true);
 		}
 
 		public CompletionBehavior {
@@ -290,8 +300,16 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 		ItemStack created = output.create();
 		if (completion.copyCenterCustomData()) {
 			var custom = input.getItem(4).get(net.minecraft.core.component.DataComponents.CUSTOM_DATA);
-			if (custom != null)
-				created.set(net.minecraft.core.component.DataComponents.CUSTOM_DATA, custom);
+			if (custom != null) {
+				// V33a getOutputTag(ep, input) started from the central item's tag and then set its own keys (the
+				// Lumen Buffer Connection's "bufferlinked"), so the output's authored data goes over the copy.
+				net.minecraft.nbt.CompoundTag merged = custom.copyTag();
+				var own = created.get(net.minecraft.core.component.DataComponents.CUSTOM_DATA);
+				if (own != null)
+					merged.merge(own.copyTag());
+				created.set(net.minecraft.core.component.DataComponents.CUSTOM_DATA,
+						net.minecraft.world.item.component.CustomData.of(merged));
+			}
 		}
 		return created;
 	}
@@ -317,14 +335,24 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 		return new CastingTableRecipe(tier, grid, stands, runes, aura, output, duration, experience,
 				requiredProgress, stackingFactor, stackable, requiresTuningKey, penaltyThreshold,
 				penaltyMultiplier, new CompletionBehavior(copyCenterCustomData, grantedProgress, harmonics,
-						completion.casterTag(), completion.doubleOutput()), minimumResearch);
+						completion.casterTag(), completion.doubleOutput(), completion.indexed()), minimumResearch);
 	}
 	/** Datagen convenience: write the caster's UUID into the result under {@code key}. */
 	public CastingTableRecipe withCasterStamp(String key) {
 		return new CastingTableRecipe(tier, grid, stands, runes, aura, output, duration, experience,
 				requiredProgress, stackingFactor, stackable, requiresTuningKey, penaltyThreshold,
 				penaltyMultiplier, new CompletionBehavior(completion.copyCenterCustomData(),
-						completion.grantedProgress(), completion.harmonics(), key, completion.doubleOutput()),
+						completion.grantedProgress(), completion.harmonics(), key, completion.doubleOutput(),
+						completion.indexed()),
+				minimumResearch);
+	}
+	/** Datagen convenience: V33a {@code isIndexed() == false}, kept off its output's lexicon recipe pages. */
+	public CastingTableRecipe unindexed() {
+		return new CastingTableRecipe(tier, grid, stands, runes, aura, output, duration, experience,
+				requiredProgress, stackingFactor, stackable, requiresTuningKey, penaltyThreshold,
+				penaltyMultiplier, new CompletionBehavior(completion.copyCenterCustomData(),
+						completion.grantedProgress(), completion.harmonics(), completion.casterTag(),
+						completion.doubleOutput(), false),
 				minimumResearch);
 	}
 	/** Datagen convenience: V33a {@code canGiveDoubleOutput() == true}. */
@@ -332,7 +360,8 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 		return new CastingTableRecipe(tier, grid, stands, runes, aura, output, duration, experience,
 				requiredProgress, stackingFactor, stackable, requiresTuningKey, penaltyThreshold,
 				penaltyMultiplier, new CompletionBehavior(completion.copyCenterCustomData(),
-						completion.grantedProgress(), completion.harmonics(), completion.casterTag(), true),
+						completion.grantedProgress(), completion.harmonics(), completion.casterTag(), true,
+						completion.indexed()),
 				minimumResearch);
 	}
 	/** Datagen convenience: a V33a {@code canRunRecipe} research-tier check. */
@@ -422,6 +451,7 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 		for (float pitch : recipe.completion.harmonics()) buffer.writeFloat(pitch);
 		buffer.writeUtf(recipe.completion.casterTag());
 		buffer.writeBoolean(recipe.completion.doubleOutput());
+		buffer.writeBoolean(recipe.completion.indexed());
 		buffer.writeVarInt(recipe.minimumResearch.ordinal());
 	}
 	private static CastingTableRecipe decode(RegistryFriendlyByteBuf buffer) {
@@ -452,13 +482,14 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 		for (int i = buffer.readVarInt(); i > 0; i--) harmonics.add(buffer.readFloat());
 		String casterTag = buffer.readUtf();
 		boolean doubleOutput = buffer.readBoolean();
+		boolean indexed = buffer.readBoolean();
 		int researchOrdinal = buffer.readVarInt();
 		if (researchOrdinal < 0 || researchOrdinal >= ResearchLevel.levelList.length)
 			throw new IllegalArgumentException("Invalid research level ordinal " + researchOrdinal);
 		return new CastingTableRecipe(Tier.values()[tierOrdinal], grid, stands, runes, aura,
 				result, duration, experience, progress, stackingFactor, stackable, requiresTuningKey,
 				penaltyThreshold, penaltyMultiplier,
-				new CompletionBehavior(copyCenterCustomData, grantedProgress, harmonics, casterTag, doubleOutput),
+				new CompletionBehavior(copyCenterCustomData, grantedProgress, harmonics, casterTag, doubleOutput, indexed),
 				ResearchLevel.levelList[researchOrdinal]);
 	}
 	private static CrystalElement element(int ordinal) {

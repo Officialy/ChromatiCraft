@@ -1,0 +1,193 @@
+{
+  "type": "chromaticraft:casting",
+  "aura": [
+    {
+      "amount": 90000,
+      "element": "lightgray"
+    }
+  ],
+  "completion": {
+    "copy_center_custom_data": true,
+    "indexed": false
+  },
+  "duration": 200,
+  "experience": 200,
+  "grid": [
+    {
+      "ingredient": "chromaticraft:enhanced_pendant_light_gray",
+      "slot": 4
+    }
+  ],
+  "result": {
+    "components": {
+      "minecraft:custom_data": {
+        "bufferlinked": 1
+      }
+    },
+    "id": "chromaticraft:enhanced_pendant_light_gray"
+  },
+  "stackable": false,
+  "stands": [
+    {
+      "ingredient": "chromaticraft:luma_beans",
+      "offset": [
+        -2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:luma_beans",
+      "offset": [
+        2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:luma_beans",
+      "offset": [
+        -2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:luma_beans",
+      "offset": [
+        2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:lumenite",
+      "offset": [
+        0,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:lumenite",
+      "offset": [
+        2,
+        0,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:lumenite",
+      "offset": [
+        0,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:lumenite",
+      "offset": [
+        -2,
+        0,
+        0
+      ]
+    },
+    {
+      "ingredient": "minecraft:redstone",
+      "offset": [
+        0,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "minecraft:redstone",
+      "offset": [
+        4,
+        1,
+        0
+      ]
+    },
+    {
+      "ingredient": "minecraft:redstone",
+      "offset": [
+        0,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "minecraft:redstone",
+      "offset": [
+        -4,
+        1,
+        0
+      ]
+    },
+    {
+      "ingredient": "minecraft:glowstone_dust",
+      "offset": [
+        4,
+        1,
+        -2
+      ]
+    },
+    {
+      "ingredient": "minecraft:glowstone_dust",
+      "offset": [
+        -2,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "minecraft:glowstone_dust",
+      "offset": [
+        -4,
+        1,
+        2
+      ]
+    },
+    {
+      "ingredient": "minecraft:glowstone_dust",
+      "offset": [
+        2,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "minecraft:glowstone_dust",
+      "offset": [
+        4,
+        1,
+        2
+      ]
+    },
+    {
+      "ingredient": "minecraft:glowstone_dust",
+      "offset": [
+        -2,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "minecraft:glowstone_dust",
+      "offset": [
+        -4,
+        1,
+        -2
+      ]
+    },
+    {
+      "ingredient": "minecraft:glowstone_dust",
+      "offset": [
+        2,
+        1,
+        -4
+      ]
+    }
+  ],
+  "tier": "pylon"
+}

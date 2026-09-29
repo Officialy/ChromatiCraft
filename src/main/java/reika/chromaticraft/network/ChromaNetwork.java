@@ -1068,7 +1068,9 @@ public final class ChromaNetwork {
 			net.minecraft.world.item.crafting.RecipeManager manager, net.minecraft.world.item.Item item) {
 		java.util.ArrayList<CastingTableRecipe> recipes = new java.util.ArrayList<>();
 		for (var holder : manager.getRecipes()) {
-			if (holder.value() instanceof CastingTableRecipe recipe && recipe.output().is(item))
+			// V33a ChromaResearch.getCraftingRecipes listed only c.isIndexed() recipes.
+			if (holder.value() instanceof CastingTableRecipe recipe && recipe.output().is(item)
+					&& recipe.completion().indexed())
 				recipes.add(recipe);
 		}
 		recipes.sort(java.util.Comparator.comparingInt(recipe -> recipe.tier().ordinal()));

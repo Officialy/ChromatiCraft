@@ -426,6 +426,7 @@ public final class ChromaGameTests {
 		register(event, env, "tiered_plant_survival_sources", ChromaGameTests::tieredPlantSurvivalSources);
 		register(event, env, "crystal_bloom_cycle", ChromaGameTests::crystalBloomCycle);
 		register(event, env, "pendants_and_purification", ChromaGameTests::pendantsAndPurification);
+		register(event, env, "buffer_link_recipe", ChromaGameTests::bufferLinkRecipe);
 		register(event, env, "creative_tiered_resource_access", ChromaGameTests::creativeTieredResourceAccess);
 		register(event, env, "rainbow_tree_shape_and_log", ChromaGameTests::rainbowTreeShapeAndLog);
 		register(event, env, "structure_cavern_nbt_controller", ChromaGameTests::structureCavernNbtController);
@@ -4488,6 +4489,39 @@ public final class ChromaGameTests {
 				&& axes.getOrDefault(Direction.Axis.X, 0) == 28
 				&& axes.getOrDefault(Direction.Axis.Z, 0) == 28,
 				"the NBT must retain V33a's 152 vertical and 28+28 branching log axes; got " + axes);
+		helper.succeed();
+	}
+
+	/**
+	 * V33a ChargedItemPlayerBufferConnectionRecipe: the linked item keeps the centre's data (its charge) with
+	 * {@code bufferlinked} set over it, the recipe is unindexed so the gem's lexicon page lists only its own
+	 * recipe, and pylon charging then reads the flag.
+	 */
+	private static void bufferLinkRecipe(GameTestHelper helper) {
+		var manager = helper.getLevel().getServer().getRecipeManager();
+		CastingTableRecipe link = null;
+		for (var holder : manager.getRecipes()) {
+			if (holder.id().identifier().getPath().equals("buffer_link/purification_gem")
+					&& holder.value() instanceof CastingTableRecipe recipe)
+				link = recipe;
+		}
+		helper.assertTrue(link != null && !link.completion().indexed() && link.completion().copyCenterCustomData(),
+				"the gem's Lumen Buffer Connection must exist, copy its centre and stay unindexed");
+
+		ItemStack gem = new ItemStack(ChromaItems.PURIFY.get());
+		reika.chromaticraft.magic.ToolChargingSystem.instance.addCharge(gem, 1234);
+		java.util.List<ItemStack> grid = new java.util.ArrayList<>(java.util.Collections.nCopies(9, ItemStack.EMPTY));
+		grid.set(4, gem);
+		ItemStack out = link.output(new CastingRecipeInput(grid, Map.of(), Map.of(), Map.of()));
+		CompoundTag data = out.getOrDefault(net.minecraft.core.component.DataComponents.CUSTOM_DATA,
+				net.minecraft.world.item.component.CustomData.EMPTY).copyTag();
+		helper.assertTrue(data.getBooleanOr("bufferlinked", false)
+				&& reika.chromaticraft.magic.ToolChargingSystem.instance.getCharge(out) == 1234,
+				"the linked gem must keep its charge and gain bufferlinked; got " + data);
+
+		var guide = reika.chromaticraft.network.ChromaNetwork.guideCastingRecipes(manager, ChromaItems.PURIFY.get());
+		helper.assertTrue(guide.size() == 1 && guide.getFirst().completion().indexed(),
+				"the gem's lexicon page lists only its own recipe, not the unindexed buffer link");
 		helper.succeed();
 	}
 
