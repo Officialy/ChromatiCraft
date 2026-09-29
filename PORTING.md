@@ -9464,10 +9464,11 @@ as time 0, so a world under a second old counts every pendant active); guarded, 
   - Throughput is 200 + 4×|pressure| mB/t, capped at 2000.
   - Tanks are reached through `Capabilities.Fluid.BLOCK`, using simulate-then-commit transactions.
   - Network positions are `BlockPos` and skip unloaded chunks, so the scan never loads a chunk.
-- First tick: V33a scanned inside `updateEntity` while `getTicksExisted()` was still 0.
-  - The port's `BlockEntityBase` counts that tick before `updateEntity(Level, BlockPos)` runs, so
-    the check never fired. The first scan now lives in `onFirstTick`.
-  - The same off-by-one affects other ported tiles. It is flagged as a separate task.
+- First tick: V33a scans inside `updateEntity` while `getTicksExisted()` is still 0.
+  - The port's `BlockEntityBase` first counted that tick before `updateEntity(Level, BlockPos)`
+    ran, so the check never fired, and the scan was moved to `onFirstTick` as a stopgap.
+  - DragonAPI `ee1b2589` restored the 1.7.10 count for every tile, so the anchor is back to V33a's
+    `cacheTimer.checkCap() || getTicksExisted() == 0` (2026-09-30; `fluid_relay_transfer` passes).
 - GUI (`MenuFluidRelay` + `ScreenFluidRelay`, V33a `GuiFluidRelay` on its `fluidrelay.png`):
   - **Filter slots:** seven. Left-click with a fluid container sets a slot. Right-click selects a
     slot for V33a's letter search over every registered source fluid.
