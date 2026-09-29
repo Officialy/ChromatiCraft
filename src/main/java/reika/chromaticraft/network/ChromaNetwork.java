@@ -50,6 +50,8 @@ public final class ChromaNetwork {
 				ClientPayloadHandlers.probeConnectivity(payload.element(), payload.connected(), payload.valid())));
 		registrar.playToClient(LaunchFire.TYPE, LaunchFire.CODEC, (payload, context) -> context.enqueueWork(() ->
 				ClientPayloadHandlers.launchFire(payload.pos())));
+		registrar.playToClient(GrowthWand.TYPE, GrowthWand.CODEC, (payload, context) -> context.enqueueWork(() ->
+				ClientPayloadHandlers.growthWand(payload.pos())));
 		registrar.playToClient(PylonCache.TYPE, PylonCache.CODEC, (payload, context) -> context.enqueueWork(() ->
 				ClientPayloadHandlers.pylonCache(payload.entries())));
 		registrar.playToClient(FarmerHarvest.TYPE, FarmerHarvest.CODEC,
@@ -263,6 +265,18 @@ public final class ChromaNetwork {
 	}
 
 	/** V33a LAUNCHFIRE: a Vertical Propulsion Panel just fired. */
+	/** V33a GROWTH: one extra block tick from the Growth Wand's wave. */
+	public record GrowthWand(BlockPos pos) implements CustomPacketPayload {
+		public static final Type<GrowthWand> TYPE = createType("growth_wand");
+		public static final StreamCodec<ByteBuf, GrowthWand> CODEC = BlockPos.STREAM_CODEC.map(GrowthWand::new, GrowthWand::pos);
+		@Override public Type<GrowthWand> type() { return TYPE; }
+	}
+
+	/** V33a sent it to everyone within 16 blocks. */
+	public static void sendGrowthWand(ServerLevel level, BlockPos pos) {
+		PacketDistributor.sendToPlayersNear(level, null, pos.getX()+0.5, pos.getY()+0.5, pos.getZ()+0.5, 16, new GrowthWand(pos));
+	}
+
 	public record LaunchFire(BlockPos pos) implements CustomPacketPayload {
 		public static final Type<LaunchFire> TYPE = createType("launch_fire");
 		public static final StreamCodec<ByteBuf, LaunchFire> CODEC = BlockPos.STREAM_CODEC.map(LaunchFire::new, LaunchFire::pos);

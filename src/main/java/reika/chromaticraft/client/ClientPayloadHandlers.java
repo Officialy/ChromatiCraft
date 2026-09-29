@@ -203,6 +203,12 @@ public final class ClientPayloadHandlers {
 					reika.chromaticraft.registry.CrystalElement.elements[element], connected, valid);
 	}
 
+	public static void growthWand(BlockPos pos) {
+		Minecraft mc = Minecraft.getInstance();
+		if (mc.level != null)
+			reika.chromaticraft.render.particle.ChromaParticle.spawnGrowthWand(mc.level, pos);
+	}
+
 	public static void launchFire(BlockPos pos) {
 		Minecraft mc = Minecraft.getInstance();
 		if (mc.level != null)

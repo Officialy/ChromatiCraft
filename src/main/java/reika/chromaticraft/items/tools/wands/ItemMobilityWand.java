@@ -1,64 +1,71 @@
 /*******************************************************************************
  * @author Reika Kalseki
- * 
+ *
  * Copyright 2017
- * 
+ *
  * All rights reserved.
  * Distribution of the software in any form is only allowed with
  * explicit, prior permission from the owner.
  ******************************************************************************/
 package reika.chromaticraft.items.tools.wands;
 
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.MovingObjectPosition;
-import net.minecraft.world.World;
-import net.minecraftforge.common.util.ForgeDirection;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.BlockHitResult;
 
 import reika.chromaticraft.base.ItemWandBase;
 import reika.chromaticraft.registry.Chromabilities;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.dragonapi.libraries.ReikaPlayerAPI;
-import reika.dragonapi.libraries.java.ReikaRandomHelper;
 import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
-import reika.dragonapi.libraries.registry.ReikaParticleHelper;
-import reika.dragonapi.libraries.world.ReikaWorldHelper;
 
+/**
+ * V33a {@code ItemMobilityWand} (TELEPORT): teleports the user onto the face of the block they look at, up to 192
+ * blocks away, for Black, Lime and Purple energy scaled by how far up and how far away the target is. The target
+ * must have two free blocks unless the Ore Clip ability is on.
+ */
 public class ItemMobilityWand extends ItemWandBase {
 
-	public ItemMobilityWand(int index) {
-		super(index);
+	public ItemMobilityWand(Properties properties) {
+		super(properties);
 		this.addEnergyCost(CrystalElement.BLACK, 100);
 		this.addEnergyCost(CrystalElement.LIME, 250);
 		this.addEnergyCost(CrystalElement.PURPLE, 50);
 	}
 
 	@Override
-	public ItemStack onItemRightClick(ItemStack is, World world, EntityPlayer ep) {
-		MovingObjectPosition mov = ReikaPlayerAPI.getLookedAtBlock(ep, 192, true);
+	public InteractionResult use(Level world, Player ep, InteractionHand hand) {
+		BlockHitResult mov = ReikaPlayerAPI.getLookedAtBlock(ep, 192, true);
 		if (mov != null) {
-			ForgeDirection dir = mov.sideHit >= 0 ? ForgeDirection.VALID_DIRECTIONS[mov.sideHit] : ForgeDirection.UNKNOWN;
-			int x = mov.blockX+dir.offsetX;
-			int y = mov.blockY+dir.offsetY;
-			int z = mov.blockZ+dir.offsetZ;
-			if (Chromabilities.ORECLIP.enabledOn(ep) || this.isValidTarget(world, x, y, z)) {
-				float f = this.getUsageFactor(ep.posX, ep.posY, ep.posZ, x, y, z);
+			BlockPos target = mov.getBlockPos().relative(mov.getDirection());
+			int x = target.getX();
+			int y = target.getY();
+			int z = target.getZ();
+			if (Chromabilities.ORECLIP.enabledOn(ep) || this.isValidTarget(world, target)) {
+				float f = this.getUsageFactor(ep.getX(), ep.getY(), ep.getZ(), x, y, z);
 				if (this.sufficientEnergy(ep, f)) {
-					if (!world.isRemote) {
+					if (!world.isClientSide()) {
 						this.drainPlayer(ep, f);
+						ep.teleportTo(x+0.5, y+0.25, z+0.5);
 					}
-					ep.setPositionAndUpdate(x+0.5, y+0.25, z+0.5);
-					ep.playSound("mob.endermen.portal", 1, 1);
-					for (int i = 0; i < 128; i++) {
-						double rx = ReikaRandomHelper.getRandomPlusMinus(ep.posX, 0.75);
-						double ry = ReikaRandomHelper.getRandomPlusMinus(ep.posY-1, 0.5);
-						double rz = ReikaRandomHelper.getRandomPlusMinus(ep.posZ, 0.75);
-						ReikaParticleHelper.PORTAL.spawnAt(world, rx, ry, rz);
+					ep.playSound(SoundEvents.ENDERMAN_TELEPORT, 1, 1);
+					if (world.isClientSide()) {
+						for (int i = 0; i < 128; i++) {
+							double rx = x+0.5+(ep.getRandom().nextDouble()*2-1)*0.75;
+							double ry = y+0.25-1+(ep.getRandom().nextDouble()*2-1)*0.5;
+							double rz = z+0.5+(ep.getRandom().nextDouble()*2-1)*0.75;
+							world.addParticle(ParticleTypes.PORTAL, rx, ry, rz, 0, 0, 0);
+						}
 					}
 				}
 			}
 		}
-		return is;
+		return InteractionResult.SUCCESS;
 	}
 
 	private float getUsageFactor(double posX, double posY, double posZ, int x, int y, int z) {
@@ -75,6 +82,7 @@ public class ItemMobilityWand extends ItemWandBase {
 		if (y >= posY+128) {
 			num *= 4F;
 		}
+		// V33a measured this "horizontal" distance from x and y, not x and z; kept as written.
 		double dd = ReikaMathLibrary.py3d(x-posX, 0, y-posY);
 		if (dd >= 16) {
 			num *= 1.25F;
@@ -88,12 +96,12 @@ public class ItemMobilityWand extends ItemWandBase {
 		if (dd >= 128) {
 			num *= 4F;
 		}
-		//ReikaJavaLibrary.pConsole(num+": "+this.getEnergy(num), Side.SERVER);
 		return num;
 	}
 
-	private boolean isValidTarget(World world, int x, int y, int z) {
-		return ReikaWorldHelper.softBlocks(world, x, y, z) && ReikaWorldHelper.softBlocks(world, x, y+1, z);
+	/** V33a {@code softBlocks} at the target and the block above it. */
+	private boolean isValidTarget(Level world, BlockPos pos) {
+		return world.getBlockState(pos).canBeReplaced() && world.getBlockState(pos.above()).canBeReplaced();
 	}
 
 }

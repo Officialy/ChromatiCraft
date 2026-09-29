@@ -267,6 +267,11 @@ public class ChromaModelProvider extends ModelProvider {
 					states[0], ItemModelUtils.override(states[1], 1), ItemModelUtils.override(states[2], 2),
 					ItemModelUtils.override(states[3], 3)));
 		}
+		// V33a wands: items_tool.png sprites 83 (Mobility), 86 (Animal Repulsion), 87 (Growth) and 91 (Light).
+		for (Item wand : List.of(ChromaItems.MOBILITY_WAND.get(), ChromaItems.SHOO_WAND.get(),
+				ChromaItems.GROWTH_WAND.get(), ChromaItems.LIGHT_WAND.get()))
+			itemModelOut.accept(wand, ItemModelUtils.plainModel(ModelTemplates.FLAT_ITEM.create(
+					ModelLocationUtils.getModelLocation(wand), TextureMapping.layer0(wand), modelOut)));
 		// V33a Pendants: items_color.png sprites 96 + colour (Pendant) and 112 + colour (Enhanced Pendant).
 		for (CrystalElement element : CrystalElement.elements) {
 			for (Item pendant : List.of(ChromaItems.PENDANTS.get(element).get(), ChromaItems.BOOSTED_PENDANTS.get(element).get()))

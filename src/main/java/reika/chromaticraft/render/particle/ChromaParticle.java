@@ -1750,6 +1750,22 @@ public abstract class ChromaParticle extends SingleQuadParticle {
         }
     }
 
+    /**
+     * V33a {@code ChromaFX.doGrowthWandParticles}: a green mote thrown up from the ticked block, falling back at a
+     * quarter gravity, passing through blocks.
+     */
+    public static void spawnGrowthWand(Level world, BlockPos pos) {
+        if (!(world instanceof ClientLevel level)) return;
+        net.minecraft.util.RandomSource r = level.getRandom();
+        double vx = (r.nextDouble()*2-1)*0.0625;
+        double vy = 0.1875+(r.nextDouble()*2-1)*0.0625;
+        double vz = (r.nextDouble()*2-1)*0.0625;
+        FadeGlow fx = new FadeGlow(level, pos.getX()+0.5, pos.getY()+0.125, pos.getZ()+0.5, vx, vy, vz, 0x00C000, 20, 1, false);
+        fx.gravity = 0.25F;
+        fx.setLegacyMotion(false);
+        Minecraft.getInstance().particleEngine.add(fx);
+    }
+
     /** V33a Glow Root's long-lived, falling, colliding purple/white blur. */
     public static void spawnGlowRoot(net.minecraft.world.level.Level level, BlockPos pos,
             net.minecraft.util.RandomSource random) {

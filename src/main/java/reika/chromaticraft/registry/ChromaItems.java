@@ -151,6 +151,18 @@ public final class ChromaItems {
 	public static final DeferredItem<reika.chromaticraft.items.tools.ItemOwnerKey> OWNERSHIP_KEY =
 			reg("ownership_key", () -> new reika.chromaticraft.items.tools.ItemOwnerKey(itemProperties().stacksTo(1)));
 	/** V33a LIGHTGUN, the Illumination Gun. */
+	/** V33a TELEPORT, the Mobility Star (tool sprite 83). */
+	public static final DeferredItem<reika.chromaticraft.items.tools.wands.ItemMobilityWand> MOBILITY_WAND =
+			reg("mobility_star", () -> new reika.chromaticraft.items.tools.wands.ItemMobilityWand(itemProperties()));
+	/** V33a SHOO, the Animal Repulsion Star (tool sprite 86): inert in V33a, with no recipe. */
+	public static final DeferredItem<reika.chromaticraft.items.tools.wands.ItemShooWand> SHOO_WAND =
+			reg("animal_repulsion_star", () -> new reika.chromaticraft.items.tools.wands.ItemShooWand(itemProperties()));
+	/** V33a GROWTH, the Growth Star (tool sprite 87). */
+	public static final DeferredItem<reika.chromaticraft.items.tools.wands.ItemGrowthWand> GROWTH_WAND =
+			reg("growth_star", () -> new reika.chromaticraft.items.tools.wands.ItemGrowthWand(itemProperties()));
+	/** V33a LIGHTWAND (tool sprite 91); V33a shipped no name for it. */
+	public static final DeferredItem<reika.chromaticraft.items.tools.wands.ItemLightWand> LIGHT_WAND =
+			reg("light_wand", () -> new reika.chromaticraft.items.tools.wands.ItemLightWand(itemProperties()));
 	/** V33a PURIFY, the Aura Purification Gem (sprites 33-36 by charge state). */
 	public static final DeferredItem<reika.chromaticraft.items.tools.powered.ItemPurifyCrystal> PURIFY =
 			reg("purification_gem", () -> new reika.chromaticraft.items.tools.powered.ItemPurifyCrystal(itemProperties()));

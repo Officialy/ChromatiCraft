@@ -73,6 +73,12 @@ public final class ChromaEntityTypes {
 					.<reika.chromaticraft.entity.EntityLightShot>of(reika.chromaticraft.entity.EntityLightShot::new, MobCategory.MISC)
 					.sized(0.125F, 0.125F).clientTrackingRange(64).updateInterval(1));
 
+	/** V33a LIGHT (EntityFlyingLight), the Light Wand's shot, sized 1/8 as V33a set it. */
+	public static final DeferredHolder<EntityType<?>, EntityType<reika.chromaticraft.entity.EntityFlyingLight>> FLYING_LIGHT =
+			register("flying_light", () -> EntityType.Builder
+					.<reika.chromaticraft.entity.EntityFlyingLight>of(reika.chromaticraft.entity.EntityFlyingLight::new, MobCategory.MISC)
+					.sized(0.125F, 0.125F).clientTrackingRange(64).updateInterval(1));
+
 	/** V33a Chromatic Beams travelling pulse; effectors create replacement pulses server-side. */
 	public static final DeferredHolder<EntityType<?>, EntityType<EntityLaserPulse>> LASER_PULSE =
 			register("laser_pulse", () -> EntityType.Builder

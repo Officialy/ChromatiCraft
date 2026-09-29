@@ -265,6 +265,7 @@ public final class ChromaClientRenderers {
 		event.registerEntityRenderer(ChromaEntityTypes.GLOW_CLOUD.get(), RenderGlowCloud::new);
 		event.registerEntityRenderer(ChromaEntityTypes.BALL_LIGHTNING.get(), RenderBallLightning::new);
 		event.registerEntityRenderer(ChromaEntityTypes.LIGHT_SHOT.get(), reika.chromaticraft.render.entity.RenderLightShot::new);
+		event.registerEntityRenderer(ChromaEntityTypes.FLYING_LIGHT.get(), reika.chromaticraft.render.entity.RenderFlyingLight::new);
 		event.registerEntityRenderer(ChromaEntityTypes.CHARGING_TOOL.get(), net.minecraft.client.renderer.entity.ItemEntityRenderer::new);
 		event.registerEntityRenderer(ChromaEntityTypes.LUMA_BURST.get(), RenderLumaBurst::new);
 		event.registerEntityRenderer(ChromaEntityTypes.LASER_PULSE.get(), RenderLaserPulse::new);

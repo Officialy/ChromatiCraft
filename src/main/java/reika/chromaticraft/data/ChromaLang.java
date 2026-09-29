@@ -392,6 +392,11 @@ public class ChromaLang extends LanguageProvider {
 		add("item.chromaticraft.pendant.hold_shift", "Hold %s for effect data");
 		add("item.chromaticraft.pendant.shift", "Shift");
 		add(ChromaItems.PURIFY.get(), "Aura Purification Gem"); // V33a chroma.purify
+		add(ChromaItems.MOBILITY_WAND.get(), "Mobility Star"); // V33a chroma.teleport
+		add(ChromaItems.SHOO_WAND.get(), "Animal Repulsion Star"); // V33a chroma.shoo
+		add(ChromaItems.GROWTH_WAND.get(), "Growth Star"); // V33a chroma.growth
+		// V33a chroma.lightwand has no lang entry anywhere (the item showed its raw key); none is invented here.
+		add("item.chromaticraft.wand.hold_shift", "Hold %s for cost data"); // V33a ItemWandBase.addInformation
 		// V33a ItemCrystalSeeds.addInformation: each present modifier's displayName, and the sterile note.
 		for (reika.chromaticraft.tileentity.plants.TileEntityCrystalPlant.Modifier m
 				: reika.chromaticraft.tileentity.plants.TileEntityCrystalPlant.Modifier.list)

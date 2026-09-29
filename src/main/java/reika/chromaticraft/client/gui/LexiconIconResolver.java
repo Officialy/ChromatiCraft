@@ -196,6 +196,8 @@ public final class LexiconIconResolver {
 			// V33a ChromaResearch.SEED: ChromaItems.SEED.getStackOf(CrystalElement.MAGENTA).
 			case "seed" -> ChromaItems.CRYSTAL_SEEDS.get(CrystalElement.MAGENTA).get();
 			case "purify" -> ChromaItems.PURIFY.get();
+			case "teleport" -> ChromaItems.MOBILITY_WAND.get();
+			case "growth" -> ChromaItems.GROWTH_WAND.get();
 			case "endereye" -> ChromaItems.ENDER_EYE.get();
 			case "artefact" -> ChromaBlocks.UNKNOWN_ARTEFACT_ITEM.get();
 			case "structmap" -> ChromaItems.STRUCTURE_MAP.get();

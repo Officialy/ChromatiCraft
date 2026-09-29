@@ -427,6 +427,7 @@ public final class ChromaGameTests {
 		register(event, env, "crystal_bloom_cycle", ChromaGameTests::crystalBloomCycle);
 		register(event, env, "pendants_and_purification", ChromaGameTests::pendantsAndPurification);
 		register(event, env, "buffer_link_recipe", ChromaGameTests::bufferLinkRecipe);
+		register(event, env, "wands_basic", 60, ChromaGameTests::wandsBasic);
 		register(event, env, "creative_tiered_resource_access", ChromaGameTests::creativeTieredResourceAccess);
 		register(event, env, "rainbow_tree_shape_and_log", ChromaGameTests::rainbowTreeShapeAndLog);
 		register(event, env, "structure_cavern_nbt_controller", ChromaGameTests::structureCavernNbtController);
@@ -6982,6 +6983,53 @@ public final class ChromaGameTests {
 				&& !reika.chromaticraft.magic.CrystalPotionController.instance.shouldBeHostile(player, level),
 				"a ticking Gem marks its carrier as shielded from hostile worlds");
 		helper.succeed();
+	}
+
+	/**
+	 * V33a wands: the Mobility Star teleports onto the looked-at face, the Light Wand fires its flying light, and the
+	 * Growth Star's wave gives the clicked column extra block ticks on the next level tick (sugar cane, whose random
+	 * tick always ages it, makes that deterministic). A creative user needs no lumen energy, as in V33a.
+	 */
+	private static void wandsBasic(GameTestHelper helper) {
+		var level = helper.getLevel();
+		net.minecraft.world.entity.player.Player player = helper.makeMockPlayer(GameType.CREATIVE);
+		// The mock player reports creative but keeps survival abilities; V33a's check was capabilities.isCreativeMode.
+		player.getAbilities().instabuild = true;
+
+		BlockPos floor = helper.absolutePos(new BlockPos(2, 1, 2));
+		level.setBlock(floor, Blocks.STONE.defaultBlockState(), 3);
+		for (int i = 1; i <= 4; i++)
+			level.setBlock(floor.above(i), Blocks.AIR.defaultBlockState(), 3);
+		player.snapTo(floor.getX()+0.5, floor.getY()+4, floor.getZ()+0.5, 0, 90);
+		ItemStack mobility = new ItemStack(ChromaItems.MOBILITY_WAND.get());
+		player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, mobility);
+		var look = reika.dragonapi.libraries.ReikaPlayerAPI.getLookedAtBlock(player, 192, true);
+		helper.assertTrue(look != null && look.getBlockPos().equals(floor),
+				"looking straight down must hit the floor; eye=" + player.getEyePosition() + " view="
+						+ player.getViewVector(1F) + " hit=" + (look == null ? null : look.getBlockPos()) + " floor=" + floor);
+		mobility.use(level, player, net.minecraft.world.InteractionHand.MAIN_HAND);
+		helper.assertTrue(Math.abs(player.getY()-(floor.getY()+1.25)) < 1e-6,
+				"the Mobility Star must teleport onto the looked-at face; y=" + player.getY());
+
+		ItemStack light = new ItemStack(ChromaItems.LIGHT_WAND.get());
+		light.use(level, player, net.minecraft.world.InteractionHand.MAIN_HAND);
+		helper.assertTrue(!level.getEntitiesOfClass(reika.chromaticraft.entity.EntityFlyingLight.class,
+				new AABB(player.blockPosition()).inflate(4)).isEmpty(), "the Light Wand must fire a flying light");
+
+		BlockPos cane = helper.absolutePos(new BlockPos(6, 2, 6));
+		level.setBlock(cane.below(), Blocks.SAND.defaultBlockState(), 3);
+		level.setBlock(cane.below().east(), Blocks.WATER.defaultBlockState(), 3);
+		level.setBlock(cane, Blocks.SUGAR_CANE.defaultBlockState(), 3);
+		ItemStack growth = new ItemStack(ChromaItems.GROWTH_WAND.get());
+		player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, growth);
+		var hit = new net.minecraft.world.phys.BlockHitResult(net.minecraft.world.phys.Vec3.atCenterOf(cane),
+				net.minecraft.core.Direction.UP, cane, false);
+		helper.assertTrue(growth.useOn(new net.minecraft.world.item.context.UseOnContext(player,
+				net.minecraft.world.InteractionHand.MAIN_HAND, hit)).consumesAction(), "a creative user can always start a growth wave");
+		helper.succeedWhen(() -> helper.assertTrue(
+				level.getBlockState(cane).getValue(net.minecraft.world.level.block.SugarCaneBlock.AGE) > 0
+						|| level.getBlockState(cane.above()).is(Blocks.SUGAR_CANE),
+				"the growth wave must tick the clicked column first"));
 	}
 
 	/** Late tiered-plant survival sources retain their exact gates, supports and V33a drop math. */

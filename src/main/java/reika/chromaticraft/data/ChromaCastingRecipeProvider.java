@@ -414,6 +414,7 @@ public final class ChromaCastingRecipeProvider {
 			saveMagicPlants();
 			savePendants();
 			savePurificationGem();
+			saveWands();
 			// V33a RecipesCastingTable: ChargedItemPlayerBufferConnectionRecipe for PROBE (1), NETHERKEY (3),
 			// SPAWNERBYPASS (2), OREPICK (4), STRUCTUREFINDER (1), PURIFY (10) and each PENDANT3 (15). The Nether
 			// Key, Spawner Bypass, Ore Pick and Structure Finder add theirs when those items are ported.
@@ -1216,6 +1217,46 @@ public final class ChromaCastingRecipeProvider {
 					List.of(new AuraRequirement(color, 6000*costFactor)), result, 200, 200)
 					.withCompletionBehavior(true, List.of(), List.of())
 					.unindexed());
+		}
+
+		/**
+		 * V33a TeleportWandRecipe (Mobility Star, on an Energy Core) and GrowthWandRecipe (Growth Star, on a diamond),
+		 * both plain MultiBlockCastingRecipes: the tier's 100 ticks and 200 XP, no runes, typical amount 1 so the XP
+		 * penalty starts after one craft. V33a's "stickWood" ore name is the wooden-rod tag. The Growth Star's
+		 * Power upgrade is V33a's Star Enchanting EnchantmentRecipe, which is not ported yet.
+		 */
+		private void saveWands() {
+			Ingredient stick = tag(Tags.Items.RODS_WOODEN);
+			Ingredient chromaDust = tiered(ChromaTieredItems.CHROMA_DUST);
+			Ingredient auraDust = tiered(ChromaTieredItems.AURA_DUST);
+			Ingredient chromaIngot = Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.CHROMA_INGOT).get());
+			saveRecipe("mobility_star", new CastingTableRecipe(CastingTableRecipe.Tier.MULTIBLOCK,
+					List.of(new GridIngredient(4, Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.ENERGY_CORE).get()))),
+					List.of(auxStand(-4, -2, Ingredient.of(Items.ENDER_PEARL)), auxStand(4, -2, Ingredient.of(Items.ENDER_PEARL)),
+							auxStand(0, 4, Ingredient.of(Items.ENDER_PEARL)),
+							auxStand(-4, 2, Ingredient.of(Items.DIAMOND)), auxStand(4, 2, Ingredient.of(Items.DIAMOND)),
+							auxStand(0, -4, Ingredient.of(Items.DIAMOND)),
+							auxStand(-4, -4, stick), auxStand(4, -4, stick), auxStand(-4, 4, stick), auxStand(4, 4, stick),
+							auxStand(-2, 0, chromaDust), auxStand(2, 0, chromaDust), auxStand(0, 2, chromaDust), auxStand(0, -2, chromaDust),
+							auxStand(-2, -2, chromaIngot), auxStand(2, -2, chromaIngot), auxStand(-2, 2, chromaIngot), auxStand(2, 2, chromaIngot),
+							auxStand(-2, -4, auraDust), auxStand(2, -4, auraDust), auxStand(-2, 4, auraDust), auxStand(2, 4, auraDust)),
+					List.of(), List.of(), new ItemStackTemplate(ChromaItems.MOBILITY_WAND.get()), 100, 200)
+					.withPenaltyThreshold(1));
+
+			Ingredient green = shard(CrystalElement.GREEN, false);
+			Ingredient living = Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.LIVING_ESSENCE).get());
+			Ingredient bonemeal = Ingredient.of(Items.BONE_MEAL);
+			saveRecipe("growth_star", new CastingTableRecipe(CastingTableRecipe.Tier.MULTIBLOCK,
+					List.of(new GridIngredient(4, Ingredient.of(Items.DIAMOND))),
+					List.of(auxStand(-2, -2, stick), auxStand(2, 2, stick), auxStand(-2, 2, stick), auxStand(2, -2, stick),
+							auxStand(-2, 0, chromaIngot), auxStand(2, 0, chromaIngot), auxStand(0, 2, chromaIngot), auxStand(0, -2, chromaIngot),
+							auxStand(-4, 0, Ingredient.of(Items.WATER_BUCKET)), auxStand(4, 0, Ingredient.of(Items.WATER_BUCKET)),
+							auxStand(0, -4, auraDust), auxStand(0, 4, auraDust),
+							auxStand(4, -2, green), auxStand(-4, 2, green), auxStand(-2, -4, green), auxStand(2, 4, green),
+							auxStand(-4, -2, living), auxStand(-2, 4, living), auxStand(4, 2, living), auxStand(2, -4, living),
+							auxStand(-4, 4, bonemeal), auxStand(-4, -4, bonemeal), auxStand(4, 4, bonemeal), auxStand(4, -4, bonemeal)),
+					List.of(), List.of(), new ItemStackTemplate(ChromaItems.GROWTH_WAND.get()), 100, 200)
+					.withPenaltyThreshold(1));
 		}
 
 		private Ingredient tiered(ChromaTieredItems item) { return Ingredient.of(ChromaItems.TIERED.get(item).get()); }

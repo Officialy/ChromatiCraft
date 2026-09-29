@@ -9303,3 +9303,54 @@ as time 0, so a world under a second old counts every pendant active); guarded, 
   - the linked gem keeping its charge and gaining the flag
   - the recipe being unindexed
   - the gem's guide listing only its own recipe
+
+### Wands, first set: Mobility, Animal Repulsion, Growth and Light Stars — 2026-09-29
+
+- `ItemWandBase` is ported in place.
+  - A per-element lumen cost is drawn from the player buffer. Creative (`instabuild`, V33a
+    `isCreativeMode`) is free.
+  - The cost tooltip shows with Shift. The lexicon notes list the cost.
+  - `canUseBoostedEffect` is CTM progression.
+- `mobility_star` (V33a TELEPORT, "Mobility Star", tool sprite 83) teleports onto the looked-at face
+  up to 192 blocks away.
+  - It costs Black 100 / Lime 250 / Purple 50, scaled by V33a's height and distance factors.
+  - V33a's "horizontal" distance is computed from x and **y**; that is kept as written.
+  - The target needs two soft blocks unless Ore Clip is on.
+- `animal_repulsion_star` (V33a SHOO, sprite 86) is registered inert. V33a gave it no behaviour,
+  cost, recipe or research.
+- `growth_star` (V33a GROWTH, sprite 87) starts a wave over the square around the clicked block:
+  radius 4, or 8 at CTM.
+  - Each server level tick it takes one random column from the innermost remaining ring and gives
+    it 1-6 block ticks, n*(n+1) with Power on the wand. 26.x's random tick is the one that grows
+    plants.
+  - It drains Black 2 / Purple 10 / Green 40 per column, ×16 when Power-enhanced.
+  - Each tick sends the new `growth_wand` payload (V33a GROWTH packet, 16 blocks). It draws
+    `ChromaFX.doGrowthWandParticles`' green mote with V33a EntityFX motion.
+  - V33a also queued the wave on the client, where it never ticked and only leaked; that copy is
+    not kept.
+- `light_wand` (V33a LIGHTWAND, sprite 91) fires `flying_light`, V33a `EntityFlyingLight`.
+  - It is a drag-less, non-burning fireball at 1.5 blocks/tick for 200 ticks or until it hits a
+    block.
+  - It carries a client-only Ethereal Light: placed in its air block each tick, last tick's
+    removed.
+  - V33a never cleared the last one when the server removed the entity; it is cleared on client
+    removal here.
+  - V33a bound no renderer, so 1.7.10 drew `RenderEntity`'s lit white box. That is reproduced with
+    vanilla face shading.
+  - V33a listed a Blue cost but never drained it; kept.
+  - V33a has no lang entry for `chroma.lightwand` (upstream gap: the raw key showed), so none is
+    invented.
+- Casting (both Multiblock, 100 ticks, 200 XP, penalty after 1):
+  - **Mobility Star:** V33a TeleportWandRecipe, on an Energy Core with 22 stands.
+  - **Growth Star:** GrowthWandRecipe, on a diamond with 24 stands. V33a's "stickWood" is the
+    wooden-rod tag.
+- Not yet:
+  - Reset Wand + `ChunkResetter`: chunk regeneration needs the 26.x chunk-status pipeline, a
+    redesign.
+  - Flight Wand: needs `GuiFlightWand` and a mode packet.
+  - Creature Sounding Star: needs `MobSonarRenderer`'s render-loop overlay.
+  - Star Enchanting `EnchantmentRecipe`: casting output that adds an enchantment.
+- GameTest `wands_basic` covers the teleport onto the looked-at face, the light shot, and the growth
+  wave ageing sugar cane on the next tick.
+  - The mock player reports creative but keeps survival abilities; the test sets `instabuild` as
+    V33a's check reads it.
