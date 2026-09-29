@@ -1,0 +1,33 @@
+{
+  "model": {
+    "type": "minecraft:range_dispatch",
+    "entries": [
+      {
+        "model": {
+          "type": "minecraft:model",
+          "model": "chromaticraft:item/purification_gem_1"
+        },
+        "threshold": 1.0
+      },
+      {
+        "model": {
+          "type": "minecraft:model",
+          "model": "chromaticraft:item/purification_gem_2"
+        },
+        "threshold": 2.0
+      },
+      {
+        "model": {
+          "type": "minecraft:model",
+          "model": "chromaticraft:item/purification_gem_3"
+        },
+        "threshold": 3.0
+      }
+    ],
+    "fallback": {
+      "type": "minecraft:model",
+      "model": "chromaticraft:item/purification_gem_0"
+    },
+    "property": "chromaticraft:charge_state"
+  }
+}

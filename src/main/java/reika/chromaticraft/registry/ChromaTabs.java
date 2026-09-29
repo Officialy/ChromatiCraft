@@ -82,6 +82,15 @@ public final class ChromaTabs {
 			if (item instanceof reika.chromaticraft.items.tools.ItemCrystalPotion
 					|| item instanceof reika.chromaticraft.items.tools.ItemSplashCrystalPotion)
 				continue;
+			// Listed below in V33a metadata order: every plain seed, then each shown modifier's sixteen.
+			if (item instanceof reika.chromaticraft.items.ItemCrystalSeeds)
+				continue;
+			// V33a ItemBoostedPendant.addNBTForCreative: fully charged when charging is required.
+			if (item instanceof reika.chromaticraft.items.tools.ItemBoostedPendant pendant) {
+				if (selected == TOOLS.get())
+					event.accept(pendant.creativeStack());
+				continue;
+			}
 			if ((selected == TOOLS.get()) == isTool(item)) {
 				event.accept(item);
 				// V33a ItemPoweredChromaTool.getSubItems: empty, then full.
@@ -97,6 +106,7 @@ public final class ChromaTabs {
 				event.acceptAll(reika.chromaticraft.items.tools.ItemCrystalPotion.creativeStacks(e));
 		}
 		else {
+			event.acceptAll(reika.chromaticraft.items.ItemCrystalSeeds.creativeStacks());
 			for (StorageCrystalTier tier : StorageCrystalTier.list)
 				event.accept(reika.chromaticraft.items.ItemStorageCrystal.fullStack(tier));
 		}
@@ -117,6 +127,7 @@ public final class ChromaTabs {
 				|| id.contains("ore") || id.contains("artefact") || id.contains("warp_node"))
 			return BlockCategory.WORLDGEN;
 		if (type.contains(".block.decoration.") || type.endsWith(".BlockCrystalLamp") || type.endsWith(".BlockCrystalGlow")
+				|| type.endsWith(".BlockCrystalPlant")
 				|| type.endsWith(".BlockChromaTrail")
 				|| type.endsWith(".BlockSuperCrystal") || id.contains("decor")
 				|| id.contains("altar") || (id.contains("glass") && !type.endsWith(".BlockSelectiveGlass")))

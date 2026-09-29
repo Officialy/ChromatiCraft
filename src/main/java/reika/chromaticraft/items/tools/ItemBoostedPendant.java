@@ -9,36 +9,40 @@
  ******************************************************************************/
 package reika.chromaticraft.items.tools;
 
-import java.util.List;
+import java.util.Locale;
+import java.util.function.Consumer;
 
-import net.minecraft.client.renderer.entity.RenderItem;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.item.EntityItem;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
-import net.minecraft.world.World;
-import net.minecraftforge.client.IItemRenderer.ItemRenderType;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.TooltipDisplay;
+import net.minecraft.world.level.Level;
+
+import org.jspecify.annotations.Nullable;
 
 import reika.chromaticraft.base.ItemPoweredChromaTool;
 import reika.chromaticraft.magic.ToolChargingSystem;
-import reika.chromaticraft.magic.toolchargingsystem.EntityChargingTool;
 import reika.chromaticraft.magic.interfaces.ChargingPoint;
 import reika.chromaticraft.magic.interfaces.PoweredItem;
 import reika.chromaticraft.registry.ChromaOptions;
 import reika.chromaticraft.registry.CrystalElement;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
-
+/**
+ * V33a {@code ItemBoostedPendant} ("Enhanced Pendant"): a Pendant at amplifier 2 with a five-minute effect. With
+ * {@code POWEREDPENDANTS} (off by default) it holds 60 hours of charge, runs down one per tick, is enhanced only
+ * while charged, and charges on the ground like the powered tools; otherwise it is always enhanced and needs none.
+ */
 public class ItemBoostedPendant extends ItemPendant implements PoweredItem {
 
 	private static final int MAX_CHARGE = 20*3600*60; //60h
 
-	public ItemBoostedPendant(int tex) {
-		super(tex);
-		hasSubtypes = true;
-		maxStackSize = 1;
-		this.setNoRepair();
+	public ItemBoostedPendant(CrystalElement color, Properties properties) {
+		super(color, properties);
 	}
 
 	@Override
@@ -47,7 +51,7 @@ public class ItemBoostedPendant extends ItemPendant implements PoweredItem {
 	}
 
 	@Override
-	protected void onTick(ItemStack is, World world, EntityPlayer ep, int slot) {
+	protected void onTick(ItemStack is, ServerLevel world, Player ep, @Nullable EquipmentSlot slot) {
 		if (ChromaOptions.POWEREDPENDANTS.getState()) {
 			//ToolChargingSystem.instance.tryChargeFromPlayer(is, ep);
 			ToolChargingSystem.instance.removeCharge(is, this.getChargeConsumptionRate(ep, world, is), ep);
@@ -55,26 +59,28 @@ public class ItemBoostedPendant extends ItemPendant implements PoweredItem {
 	}
 
 	@Override
-	public void addInformation(ItemStack is, EntityPlayer ep, List li, boolean vb) {
-		super.addInformation(is, ep, li, vb);
+	public void appendHoverText(ItemStack is, TooltipContext context, TooltipDisplay display, Consumer<Component> li,
+			TooltipFlag flag) {
+		super.appendHoverText(is, context, display, li, flag);
 		if (ChromaOptions.POWEREDPENDANTS.getState())
-			li.add(String.format("Energy: %.2f%s", 100F*ToolChargingSystem.instance.getCharge(is)/this.getMaxCharge(), "%"));
+			li.accept(Component.literal(String.format(Locale.ROOT, "Energy: %.2f%s",
+					100F*ToolChargingSystem.instance.getCharge(is)/this.getMaxCharge(), "%")));
+	}
+
+	/** V33a {@code addNBTForCreative}: the creative-tab stack comes fully charged when charging is required. */
+	public ItemStack creativeStack() {
+		return ChromaOptions.POWEREDPENDANTS.getState()
+				? ToolChargingSystem.instance.getChargedItem(this, MAX_CHARGE) : new ItemStack(this);
 	}
 
 	@Override
-	protected void addNBTForCreative(ItemStack item) {
-		if (ChromaOptions.POWEREDPENDANTS.getState()) {
-			ToolChargingSystem.instance.addCharge(item, MAX_CHARGE);
-		}
+	public final boolean onEntityItemUpdate(ItemStack is, ItemEntity ei) {
+		return ChromaOptions.POWEREDPENDANTS.getState() ? ToolChargingSystem.instance.tickItem(ei)
+				: super.onEntityItemUpdate(is, ei);
 	}
 
 	@Override
-	public final boolean onEntityItemUpdate(EntityItem ei) {
-		return ChromaOptions.POWEREDPENDANTS.getState() ? ToolChargingSystem.instance.tickItem(ei) : super.onEntityItemUpdate(ei);
-	}
-
-	@Override
-	public final int getEntityLifespan(ItemStack is, World world) {
+	public final int getEntityLifespan(ItemStack is, Level world) {
 		return ChromaOptions.POWEREDPENDANTS.getState() ? Integer.MAX_VALUE : super.getEntityLifespan(is, world);
 	}
 
@@ -84,8 +90,10 @@ public class ItemBoostedPendant extends ItemPendant implements PoweredItem {
 	}
 
 	@Override
-	public final Entity createEntity(World world, Entity location, ItemStack itemstack) {
-		return ChromaOptions.POWEREDPENDANTS.getState() ? new EntityChargingTool(world, (EntityItem)location, itemstack) : super.createEntity(world, location, itemstack);
+	public final @Nullable Entity createEntity(Level world, Entity location, ItemStack itemstack) {
+		return ChromaOptions.POWEREDPENDANTS.getState()
+				? new ToolChargingSystem.EntityChargingTool(world, (ItemEntity)location, itemstack)
+				: super.createEntity(world, location, itemstack);
 	}
 
 	@Override
@@ -109,7 +117,7 @@ public class ItemBoostedPendant extends ItemPendant implements PoweredItem {
 	}
 
 	@Override
-	public int getChargeConsumptionRate(EntityPlayer e, World world, ItemStack is) {
+	public int getChargeConsumptionRate(Player e, Level world, ItemStack is) {
 		return 1;
 	}
 
@@ -119,33 +127,17 @@ public class ItemBoostedPendant extends ItemPendant implements PoweredItem {
 	}
 
 	@Override
-	@SideOnly(Side.CLIENT)
-	public void doChargeFX(EntityItem ei, int charge) {
+	public void doChargeFX(ItemEntity ei, int charge) {
 		ItemPoweredChromaTool.doStandardChargeFX(ei, charge);
 	}
 
 	@Override
 	public CrystalElement getColor(ItemStack is) {
-		return CrystalElement.elements[is.getItemDamage()];
+		return this.getColor();
 	}
 
 	@Override
-	@SideOnly(Side.CLIENT)
-	public final boolean onRender(RenderItem ri, ItemStack is, ItemRenderType type) {
-		if (is.stackTagCompound != null && is.stackTagCompound.getBoolean("tooltip"))
-			return false;
-		ToolChargingSystem.instance.renderItemAux(ri, is, type);
-		return false;
-	}
-
-	@Override
-	@SideOnly(Side.CLIENT)
-	public final boolean doPreGLTransforms(ItemStack is, ItemRenderType type) {
-		return true;
-	}
-
-	@Override
-	public float getPlayerChargeCoefficient(EntityPlayer ep, ChargingPoint te, ItemStack is) {
+	public float getPlayerChargeCoefficient(Player ep, ChargingPoint te, ItemStack is) {
 		return 0.5F;
 	}
 	/*

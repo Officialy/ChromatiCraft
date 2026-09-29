@@ -12,15 +12,23 @@ package reika.chromaticraft.tileentity.plants;
 import java.util.ArrayList;
 import java.util.Random;
 
-import net.minecraft.block.Block;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.network.NetworkManager;
-import net.minecraft.network.Packet;
-import net.minecraft.network.play.server.S35PacketUpdateTileEntity;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraftforge.common.util.ForgeDirection;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.game.ClientGamePacketListener;
+import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 
+import reika.chromaticraft.block.BlockCrystalPlant;
+import reika.chromaticraft.items.ItemCrystalSeeds;
+import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.ChromaOptions;
@@ -28,41 +36,58 @@ import reika.chromaticraft.registry.CrystalElement;
 import reika.dragonapi.libraries.java.ReikaRandomHelper;
 import reika.dragonapi.libraries.registry.ReikaItemHelper;
 
-public class TileEntityCrystalPlant extends TileEntity {
+/**
+ * V33a {@code TileEntityCrystalPlant}: the Crystal Bloom's modifiers, sterility and shard timer.
+ *
+ * <p>V33a kept the growth counter here too ({@code growthTick}, 2 = freshly planted or harvested, 0 = ripe) and
+ * derived the block's light from it. 26.x light comes from the block state, so the counter is the block's
+ * {@link BlockCrystalPlant#GROWTH} property, alongside {@link BlockCrystalPlant#PURE} and
+ * {@link BlockCrystalPlant#PRIMAL} which pick the light level and the cross texture. The flags stay here as the
+ * authority and are mirrored to the state whenever they change.
+ */
+public class TileEntityCrystalPlant extends BlockEntity {
 
 	private static final Random random = new Random();
+
+	/** V33a {@code ForgeDirection.VALID_DIRECTIONS[2..5]}, in that order. */
+	private static final Direction[] HORIZONTAL = {Direction.NORTH, Direction.SOUTH, Direction.WEST, Direction.EAST};
 
 	private int flags;
 	private boolean sterile;
 
-	private int growthTick = 2;
 	private long lastShardTick = -1;
 
+	public TileEntityCrystalPlant(BlockPos pos, BlockState state) {
+		super(ChromaBlockEntities.CRYSTAL_PLANT.get(), pos, state);
+	}
+
+	private int growthTick() {
+		return this.getBlockState().getValue(BlockCrystalPlant.GROWTH);
+	}
+
 	public boolean renderPod() {
-		return growthTick <= 1;
+		return this.growthTick() <= 1;
 	}
 
 	public boolean emitsLight() {
-		return growthTick == 0;
+		return this.growthTick() == 0;
 	}
 
 	public void grow() {
+		int growthTick = this.growthTick();
 		if (growthTick > 0) {
-			growthTick--;
+			this.setGrowth(growthTick-1);
 			if (this.isPure()) {
-				for (int i = 2; i < 6; i++) {
+				for (Direction dir : HORIZONTAL) {
 					double chance = this.is(Modifier.PRIMAL) ? 80 : this.is(Modifier.BOOSTED) ? 30 : 5;
-					if (worldObj.getBlock(xCoord, yCoord-1, zCoord) == ChromaBlocks.MUD.getBlockInstance())
+					if (this.isOnMud())
 						chance *= 2;
+					// V33a capped a percentage at 1 and handed it to doWithChance, which reads anything above 1 as a
+					// percentage; 1% or more is therefore certain, so a pure plant always pushes its neighbours on.
 					if (ReikaRandomHelper.doWithChance(Math.min(1, chance))) {
-						ForgeDirection dir = ForgeDirection.VALID_DIRECTIONS[i];
-						int dx = xCoord+dir.offsetX;
-						int dy = yCoord+dir.offsetY;
-						int dz = zCoord+dir.offsetZ;
-						Block id = worldObj.getBlock(dx, dy, dz);
-						int meta = worldObj.getBlockMetadata(dx, dy, dz);
-						if (id == ChromaBlocks.PLANT.getBlockInstance() && meta == this.getColor().ordinal()) {
-							TileEntityCrystalPlant te = (TileEntityCrystalPlant)worldObj.getTileEntity(dx, dy, dz);
+						BlockPos n = worldPosition.relative(dir);
+						if (level.getBlockState(n).is(this.getBlockState().getBlock())
+								&& level.getBlockEntity(n) instanceof TileEntityCrystalPlant te) {
 							te.grow();
 						}
 					}
@@ -75,19 +100,19 @@ public class TileEntityCrystalPlant extends TileEntity {
 		this.updateLight();
 	}
 
+	private boolean isOnMud() {
+		return level.getBlockState(worldPosition.below()).is(ChromaBlocks.MUD.get());
+	}
+
+	/** V33a: stops at the first side without an Enriched plant of the same colour, so all four must be. */
 	private void tryGrowPrimal() {
-		if (random.nextInt(worldObj.getBlock(xCoord, yCoord-1, zCoord) == ChromaBlocks.MUD.getBlockInstance() ? 40 : 60) > 0)
+		if (random.nextInt(this.isOnMud() ? 40 : 60) > 0)
 			return;
-		for (int i = 2; i < 6; i++) {
+		for (Direction dir : HORIZONTAL) {
 			boolean flag = false;
-			ForgeDirection dir = ForgeDirection.VALID_DIRECTIONS[i];
-			int dx = xCoord+dir.offsetX;
-			int dy = yCoord+dir.offsetY;
-			int dz = zCoord+dir.offsetZ;
-			Block id = worldObj.getBlock(dx, dy, dz);
-			int meta = worldObj.getBlockMetadata(dx, dy, dz);
-			if (id == ChromaBlocks.PLANT.getBlockInstance() && meta == this.getColor().ordinal()) {
-				TileEntityCrystalPlant te = (TileEntityCrystalPlant)worldObj.getTileEntity(dx, dy, dz);
+			BlockPos n = worldPosition.relative(dir);
+			if (level.getBlockState(n).is(this.getBlockState().getBlock())
+					&& level.getBlockEntity(n) instanceof TileEntityCrystalPlant te) {
 				if (te.is(Modifier.BOOSTED)) {
 					flag = true;
 				}
@@ -96,33 +121,51 @@ public class TileEntityCrystalPlant extends TileEntity {
 				return;
 		}
 		flags |= Modifier.PRIMAL.flag;
+		this.setChanged();
 	}
 
 	public void makeRipe() {
-		while(!this.canHarvest())
+		while (!this.canHarvest())
 			this.grow();
 	}
 
+	/** V33a {@code updateLight}: relight and resend. The light itself now follows the mirrored state. */
 	public void updateLight() {
-		worldObj.func_147479_m(xCoord, yCoord, zCoord);
-		worldObj.markBlockForUpdate(xCoord, yCoord, zCoord);
+		this.syncState(this.growthTick());
+		if (level != null)
+			level.sendBlockUpdated(worldPosition, this.getBlockState(), this.getBlockState(), 3);
+	}
+
+	private void setGrowth(int growth) {
+		this.syncState(growth);
+	}
+
+	private void syncState(int growth) {
+		if (level == null || level.isClientSide())
+			return;
+		BlockState state = this.getBlockState();
+		BlockState updated = state.setValue(BlockCrystalPlant.GROWTH, growth)
+				.setValue(BlockCrystalPlant.PURE, this.isPure())
+				.setValue(BlockCrystalPlant.PRIMAL, this.is(Modifier.PRIMAL));
+		if (updated != state)
+			level.setBlock(worldPosition, updated, 3);
 	}
 
 	public void harvest(boolean drops) {
-		growthTick = 2;
+		this.setGrowth(2);
 		if (drops) {
 			ArrayList<ItemStack> li = this.getDrops();
-			ReikaItemHelper.dropItems(worldObj, xCoord+0.5, yCoord+0.5, zCoord+0.5, li);
+			ReikaItemHelper.dropItems(level, worldPosition.getX()+0.5, worldPosition.getY()+0.5, worldPosition.getZ()+0.5, li);
 		}
 		this.updateLight();
 	}
 
 	public ArrayList<ItemStack> getDrops() {
-		ArrayList<ItemStack> li = new ArrayList();
+		ArrayList<ItemStack> li = new ArrayList<>();
 		if (this.isSterile())
 			return li;
 		if (this.isPure() || random.nextInt(4) == 0) {
-			int meta = this.getColor().ordinal();
+			CrystalElement color = this.getColor();
 			if (this.isPure() && !this.is(Modifier.PRIMAL)) {
 				int rand = random.nextInt(20);
 				int num = 0;
@@ -132,25 +175,23 @@ public class TileEntityCrystalPlant extends TileEntity {
 				else if (rand < 5) {
 					num = 1;
 				}
-				int smeta = meta+Modifier.IMPURE.flag;
-				if (this.isPure() && random.nextInt(this.is(Modifier.BOOSTED) ? 4 : (worldObj.getBlock(xCoord, yCoord-1, zCoord) == ChromaBlocks.MUD.getBlockInstance() ? 200 : 400)) == 0)
-					smeta = meta+Modifier.BOOSTED.flag;
+				int seedFlags = Modifier.IMPURE.flag;
+				if (this.isPure() && random.nextInt(this.is(Modifier.BOOSTED) ? 4 : (this.isOnMud() ? 200 : 400)) == 0)
+					seedFlags = Modifier.BOOSTED.flag;
 				for (int i = 0; i < num; i++) {
-					li.add(ChromaItems.SEED.getStackOfMetadata(smeta));
+					li.add(ItemCrystalSeeds.stack(color, seedFlags, false, 1));
 				}
 				if (random.nextInt(10) == 0) {
-					ItemStack deco = ChromaItems.SEED.getStackOfMetadata(smeta);
-					deco.stackTagCompound = new NBTTagCompound();
-					deco.stackTagCompound.setBoolean("sterile", true);
-					li.add(deco);
+					li.add(ItemCrystalSeeds.stack(color, seedFlags, true, 1));
 				}
 			}
-			long time = worldObj.getTotalWorldTime();
+			long time = level.getGameTime();
 			if (ChromaOptions.CRYSTALFARM.getState()) {
 				if (time-lastShardTick >= (this.is(Modifier.PRIMAL) ? 60 : this.is(Modifier.BOOSTED) ? 150 : 600)) {
 					if (ReikaRandomHelper.doWithChance(this.is(Modifier.PRIMAL) ? 10 : this.is(Modifier.BOOSTED) ? 5 : 2)) {
-						li.add(ChromaItems.SHARD.getStackOfMetadata(meta));
+						li.add(ChromaItems.shardStack(color));
 						lastShardTick = time;
+						this.setChanged();
 					}
 				}
 			}
@@ -159,62 +200,54 @@ public class TileEntityCrystalPlant extends TileEntity {
 	}
 
 	public boolean canHarvest() {
-		return growthTick == 0;
+		return this.growthTick() == 0;
 	}
 
 	public CrystalElement getColor() {
-		return CrystalElement.elements[worldObj.getBlockMetadata(xCoord, yCoord, zCoord)];
+		return ((BlockCrystalPlant)this.getBlockState().getBlock()).getElement();
 	}
 
 	@Override
-	public boolean canUpdate() {
-		return false;
+	public Packet<ClientGamePacketListener> getUpdatePacket() {
+		return ClientboundBlockEntityDataPacket.create(this);
 	}
 
 	@Override
-	public void onDataPacket(NetworkManager net, S35PacketUpdateTileEntity pkt) {
-		this.readFromNBT(pkt.field_148860_e);
+	public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
+		return this.saveCustomOnly(registries);
 	}
 
 	@Override
-	public Packet getDescriptionPacket() {
-		NBTTagCompound nbt = new NBTTagCompound();
-		this.writeToNBT(nbt);
-		return new S35PacketUpdateTileEntity(xCoord, yCoord, zCoord, 0, nbt);
+	protected void loadAdditional(ValueInput input) {
+		super.loadAdditional(input);
+		lastShardTick = input.getLongOr("shard", -1);
+		flags = input.getIntOr("flags", 0);
+		sterile = input.getBooleanOr("sterile", false);
 	}
 
 	@Override
-	public void readFromNBT(NBTTagCompound NBT) {
-		super.readFromNBT(NBT);
-		growthTick = NBT.getInteger("growth");
-		lastShardTick = NBT.getLong("shard");
-		flags = NBT.getInteger("flags");
-		sterile = NBT.getBoolean("sterile");
-	}
-
-	@Override
-	public void writeToNBT(NBTTagCompound NBT) {
-		super.writeToNBT(NBT);
-
-		NBT.setInteger("growth", growthTick);
-		NBT.setLong("shard", lastShardTick);
-		NBT.setInteger("flags", flags);
-		NBT.setBoolean("sterile", sterile);
+	protected void saveAdditional(ValueOutput output) {
+		super.saveAdditional(output);
+		output.putLong("shard", lastShardTick);
+		output.putInt("flags", flags);
+		output.putBoolean("sterile", sterile);
 	}
 
 	public int getGrowthState() {
-		return growthTick;
+		return this.growthTick();
 	}
 
 	public void setStates(ItemStack item) {
-		int meta = item.getItemDamage();
+		int itemFlags = ItemCrystalSeeds.getFlags(item);
 		for (int i = 0; i < Modifier.list.length; i++) {
 			Modifier m = Modifier.list[i];
-			if (m.present(meta)) {
+			if (m.present(itemFlags)) {
 				this.setState(m);
 			}
 		}
-		sterile = item.stackTagCompound != null && item.stackTagCompound.getBoolean("sterile");
+		sterile = ItemCrystalSeeds.isSterile(item);
+		this.setChanged();
+		this.updateLight();
 	}
 
 	public void setState(Modifier m) {
@@ -262,6 +295,11 @@ public class TileEntityCrystalPlant extends TileEntity {
 
 		public boolean showsInCreative() {
 			return this != PRIMAL;
+		}
+
+		/** The lang key of V33a's literal tooltip line {@link #displayName}. */
+		public String translationKey() {
+			return "item.chromaticraft.crystal_seeds.modifier."+this.name().toLowerCase(java.util.Locale.ROOT);
 		}
 	}
 

@@ -1,0 +1,99 @@
+{
+  "type": "chromaticraft:casting",
+  "completion": {
+    "harmonics": [
+      0.9445507,
+      1.1892926,
+      1.414914
+    ]
+  },
+  "duration": 400,
+  "experience": 200,
+  "grid": [
+    {
+      "ingredient": "chromaticraft:cave_crystal_magenta",
+      "slot": 4
+    }
+  ],
+  "penalty_threshold": 1,
+  "result": {
+    "id": "chromaticraft:pendant_magenta"
+  },
+  "runes": [
+    {
+      "element": "magenta",
+      "offset": [
+        -2,
+        -1,
+        1
+      ]
+    }
+  ],
+  "stands": [
+    {
+      "ingredient": "minecraft:glowstone",
+      "offset": [
+        -2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "minecraft:string",
+      "offset": [
+        0,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "minecraft:glowstone",
+      "offset": [
+        2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "minecraft:quartz",
+      "offset": [
+        -2,
+        0,
+        0
+      ]
+    },
+    {
+      "ingredient": "minecraft:quartz",
+      "offset": [
+        2,
+        0,
+        0
+      ]
+    },
+    {
+      "ingredient": "minecraft:ender_pearl",
+      "offset": [
+        -2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "minecraft:ender_pearl",
+      "offset": [
+        2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "minecraft:diamond",
+      "offset": [
+        0,
+        0,
+        2
+      ]
+    }
+  ],
+  "tier": "multiblock"
+}

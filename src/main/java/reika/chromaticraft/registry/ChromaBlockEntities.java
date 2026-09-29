@@ -110,6 +110,13 @@ public final class ChromaBlockEntities {
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<reika.chromaticraft.block.BlockChromaTrail.TileChromaTrail>> CHROMA_TRAIL =
 			BLOCK_ENTITIES.register("chroma_trail", () -> new BlockEntityType<>(
 					reika.chromaticraft.block.BlockChromaTrail.TileChromaTrail::new, ChromaBlocks.CHROMA_TRAIL.get()));
+	/** V33a CCCrystalPlant: one tile type for all sixteen Crystal Bloom blocks. */
+	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<reika.chromaticraft.tileentity.plants.TileEntityCrystalPlant>> CRYSTAL_PLANT =
+			BLOCK_ENTITIES.register("crystal_plant", () -> new BlockEntityType<>(
+					reika.chromaticraft.tileentity.plants.TileEntityCrystalPlant::new,
+					ChromaBlocks.CRYSTAL_PLANTS.values().stream()
+							.map(net.neoforged.neoforge.registries.DeferredHolder::get)
+							.toArray(net.minecraft.world.level.block.Block[]::new)));
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<reika.chromaticraft.tileentity.plants.TileEntityChromaFlower>> CHROMA_FLOWER =
 			register("chroma_flower", ChromaTiles.CHROMAFLOWER);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<reika.chromaticraft.tileentity.storage.TileEntityToolStorage>> TOOL_STORAGE =

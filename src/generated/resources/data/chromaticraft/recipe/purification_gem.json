@@ -1,0 +1,292 @@
+{
+  "type": "chromaticraft:casting",
+  "aura": [
+    {
+      "amount": 40000,
+      "element": "black"
+    },
+    {
+      "amount": 60000,
+      "element": "white"
+    },
+    {
+      "amount": 20000,
+      "element": "red"
+    },
+    {
+      "amount": 20000,
+      "element": "magenta"
+    },
+    {
+      "amount": 10000,
+      "element": "blue"
+    }
+  ],
+  "duration": 800,
+  "experience": 500,
+  "grid": [
+    {
+      "ingredient": "chromaticraft:iridescent_chunk",
+      "slot": 4
+    }
+  ],
+  "penalty_multiplier": 0.0,
+  "penalty_threshold": 1,
+  "result": {
+    "id": "chromaticraft:purification_gem"
+  },
+  "runes": [
+    {
+      "element": "white",
+      "offset": [
+        -4,
+        -1,
+        2
+      ]
+    },
+    {
+      "element": "black",
+      "offset": [
+        3,
+        -1,
+        2
+      ]
+    },
+    {
+      "element": "black",
+      "offset": [
+        0,
+        -1,
+        -3
+      ]
+    },
+    {
+      "element": "white",
+      "offset": [
+        0,
+        -1,
+        -4
+      ]
+    },
+    {
+      "element": "red",
+      "offset": [
+        -1,
+        -1,
+        -2
+      ]
+    },
+    {
+      "element": "magenta",
+      "offset": [
+        -2,
+        -1,
+        1
+      ]
+    },
+    {
+      "element": "blue",
+      "offset": [
+        2,
+        -1,
+        -2
+      ]
+    }
+  ],
+  "stackable": false,
+  "stands": [
+    {
+      "ingredient": "chromaticraft:purification_powder",
+      "offset": [
+        -2,
+        0,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:purification_powder",
+      "offset": [
+        2,
+        0,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:purification_powder",
+      "offset": [
+        0,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:purification_powder",
+      "offset": [
+        0,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:raw_crystal",
+      "offset": [
+        2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:raw_crystal",
+      "offset": [
+        -2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:purification_powder",
+      "offset": [
+        2,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:purification_powder",
+      "offset": [
+        -2,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:purification_powder",
+      "offset": [
+        4,
+        1,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:purification_powder",
+      "offset": [
+        -4,
+        1,
+        2
+      ]
+    },
+    {
+      "ingredient": "minecraft:lapis_lazuli",
+      "offset": [
+        0,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "minecraft:lapis_lazuli",
+      "offset": [
+        0,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "minecraft:lapis_lazuli",
+      "offset": [
+        4,
+        1,
+        0
+      ]
+    },
+    {
+      "ingredient": "minecraft:lapis_lazuli",
+      "offset": [
+        -4,
+        1,
+        0
+      ]
+    },
+    {
+      "ingredient": "minecraft:lapis_lazuli",
+      "offset": [
+        -2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "minecraft:lapis_lazuli",
+      "offset": [
+        2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:energy_powder",
+      "offset": [
+        -4,
+        1,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:energy_powder",
+      "offset": [
+        -2,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:energy_powder",
+      "offset": [
+        4,
+        1,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:energy_powder",
+      "offset": [
+        2,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:multichromic_rune",
+      "offset": [
+        -4,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:aura_stabilizer",
+      "offset": [
+        4,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_black",
+      "offset": [
+        -4,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_white",
+      "offset": [
+        4,
+        1,
+        -4
+      ]
+    }
+  ],
+  "tier": "pylon"
+}

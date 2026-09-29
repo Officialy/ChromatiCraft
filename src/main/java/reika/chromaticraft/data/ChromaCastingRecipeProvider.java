@@ -123,6 +123,20 @@ public final class ChromaCastingRecipeProvider {
 									List.of(), List.of(), List.of(),
 									new ItemStackTemplate(ChromaBlocks.crystalGlow(element, base).get().asItem(), 16), 5, 5)
 									.withPenalty(Integer.MAX_VALUE, 0.5F));
+				// V33a CrystalSeedRecipe (a TempleCastingRecipe, 20 ticks and 40 XP): wheat seeds ringed by the
+				// colour's shards with glowstone dust on the corners, and that colour's rune in the ring. The plain
+				// shard makes one; the boosted shard ("enhanced") makes eight. Its typical crafted amount of 4 puts
+				// the XP penalty after max(1, 4*3/4) = 3 crafts, and it may give double output.
+				for (boolean enhanced : new boolean[] {false, true}) {
+					Item shard = enhanced ? ChromaItems.BOOSTED_SHARDS.get(element).get() : ChromaItems.SHARDS.get(element).get();
+					saveRecipe("crystal_seeds/" + element.getEnglishName() + (enhanced ? "_boosted" : ""),
+							new CastingTableRecipe(CastingTableRecipe.Tier.TEMPLE,
+									shapedGrid(Map.of('G', Ingredient.of(Items.GLOWSTONE_DUST), 'S', Ingredient.of(shard),
+											's', Ingredient.of(Items.WHEAT_SEEDS)), "GSG", "SsS", "GSG"),
+									List.of(), List.of(runeRingRune(element)), List.of(),
+									new ItemStackTemplate(ChromaItems.CRYSTAL_SEEDS.get(element).get(), enhanced ? 8 : 1), 20, 40)
+									.withPenaltyThreshold(3));
+				}
 				saveTintedLens(element, Items.IRON_INGOT, 1, "iron");
 				saveTintedLens(element, Items.GOLD_INGOT, 2, "gold");
 				saveTintedLens(element,
@@ -398,6 +412,8 @@ public final class ChromaCastingRecipeProvider {
 
 			saveFarmer();
 			saveMagicPlants();
+			savePendants();
+			savePurificationGem();
 
 			// V33a RawCrystalRecipe: four Purification Powder around one exact plain shard. The
 			// source registers the same recipe once for each of the sixteen shard metadata values;
@@ -1079,6 +1095,89 @@ public final class ChromaCastingRecipeProvider {
 					List.of(new AuraRequirement(primary, 5000)), new ItemStackTemplate(ChromaItems.CRAFTING.get(output).get()), 400, 500));
 		}
 
+		/**
+		 * V33a PendantRecipe (a MultiBlockCastingRecipe) and EnhancedPendantRecipe (a PylonCastingRecipe), per
+		 * element. The Pendant grows from the colour's cave crystal: four times the tier's 100 ticks, its 200 XP, the
+		 * colour's ring rune, and the element's three-note ding (root, third, fifth) as its completion harmonics.
+		 * The Enhanced Pendant grows from the colour's potion crystal with that Pendant on the north stand: eight
+		 * times the tier's 400 ticks, its 500 XP, and 8000 Purple, 2000 White and 16000 of its own colour, summed
+		 * where they coincide as V33a's ElementTagCompound did. Neither overrides the typical crafted amount of 1,
+		 * so both are XP-penalised after max(1, 1*3/4) = 1 craft.
+		 */
+		private void savePendants() {
+			for (CrystalElement e : CrystalElement.elements) {
+				List<Float> ding = new ArrayList<>();
+				for (int i = 0; i <= 2; i++)
+					ding.add(reika.chromaticraft.auxiliary.CrystalMusicManager.instance.getScaledDing(e, i));
+				saveRecipe("pendant/" + e.getEnglishName(), new CastingTableRecipe(CastingTableRecipe.Tier.MULTIBLOCK,
+						List.of(new GridIngredient(4, Ingredient.of(ChromaBlocks.caveCrystal(e).get().asItem()))),
+						List.of(auxStand(-2, -2, Ingredient.of(Items.GLOWSTONE)), auxStand(0, -2, Ingredient.of(Items.STRING)),
+								auxStand(2, -2, Ingredient.of(Items.GLOWSTONE)),
+								auxStand(-2, 0, Ingredient.of(Items.QUARTZ)), auxStand(2, 0, Ingredient.of(Items.QUARTZ)),
+								auxStand(-2, 2, Ingredient.of(Items.ENDER_PEARL)), auxStand(2, 2, Ingredient.of(Items.ENDER_PEARL)),
+								auxStand(0, 2, Ingredient.of(Items.DIAMOND))),
+						List.of(runeRingRune(e)), List.of(),
+						new ItemStackTemplate(ChromaItems.PENDANTS.get(e).get()), 400, 200)
+						.withPenaltyThreshold(1)
+						.withCompletionBehavior(false, List.of(), ding));
+
+				java.util.EnumMap<CrystalElement, Integer> aura = new java.util.EnumMap<>(CrystalElement.class);
+				aura.merge(CrystalElement.PURPLE, 8000, Integer::sum);
+				aura.merge(CrystalElement.WHITE, 2000, Integer::sum);
+				aura.merge(e, 16000, Integer::sum);
+				List<AuraRequirement> auraList = new ArrayList<>();
+				aura.forEach((element, amount) -> auraList.add(new AuraRequirement(element, amount)));
+				saveRecipe("enhanced_pendant/" + e.getEnglishName(), new CastingTableRecipe(CastingTableRecipe.Tier.PYLON,
+						List.of(new GridIngredient(4, Ingredient.of(ChromaBlocks.superCrystal(e).get().asItem()))),
+						List.of(auxStand(-2, -2, Ingredient.of(Items.DIAMOND)),
+								auxStand(0, -2, Ingredient.of(ChromaItems.PENDANTS.get(e).get())),
+								auxStand(2, -2, Ingredient.of(Items.DIAMOND)),
+								auxStand(-2, 0, Ingredient.of(Items.GOLD_INGOT)), auxStand(2, 0, Ingredient.of(Items.GOLD_INGOT)),
+								auxStand(-2, 2, Ingredient.of(Items.ENDER_EYE)), auxStand(2, 2, Ingredient.of(Items.ENDER_EYE)),
+								auxStand(0, 2, Ingredient.of(Items.GHAST_TEAR))),
+						List.of(), List.copyOf(auraList),
+						new ItemStackTemplate(ChromaItems.BOOSTED_PENDANTS.get(e).get()), 3200, 500)
+						.withPenaltyThreshold(1));
+			}
+		}
+
+		/**
+		 * V33a PurifyCrystalRecipe (a PylonCastingRecipe) on an Iridescent Crystal Chunk: twice the tier's 400 ticks,
+		 * its 500 XP, a zero repeat-XP multiplier, four placed runes plus three ring runes, twenty-four stands, and
+		 * 40000 Black, 60000 White, 20000 Red, 20000 Magenta and 10000 Blue.
+		 */
+		private void savePurificationGem() {
+			Ingredient purity = tiered(ChromaTieredItems.PURITY_DUST);
+			Ingredient raw = Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.RAW_CRYSTAL).get());
+			Ingredient lapis = Ingredient.of(Items.LAPIS_LAZULI);
+			Ingredient energy = Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.ENERGY_POWDER).get());
+			List<CastingTableRecipe.StandIngredient> stands = List.of(
+					auxStand(-2, 0, purity), auxStand(2, 0, purity), auxStand(0, 2, purity), auxStand(0, -2, purity),
+					auxStand(2, -2, raw), auxStand(-2, 2, raw),
+					auxStand(2, -4, purity), auxStand(-2, 4, purity), auxStand(4, -2, purity), auxStand(-4, 2, purity),
+					auxStand(0, -4, lapis), auxStand(0, 4, lapis), auxStand(4, 0, lapis), auxStand(-4, 0, lapis),
+					auxStand(-2, -2, lapis), auxStand(2, 2, lapis),
+					auxStand(-4, -2, energy), auxStand(-2, -4, energy), auxStand(4, 2, energy), auxStand(2, 4, energy),
+					auxStand(-4, -4, Ingredient.of(ChromaBlocks.crystallineStone(StoneTypes.MULTICHROMIC).get().asItem())),
+					auxStand(4, 4, Ingredient.of(ChromaBlocks.crystallineStone(StoneTypes.STABILIZER).get().asItem())),
+					auxStand(-4, 4, shard(CrystalElement.BLACK, true)),
+					auxStand(4, -4, shard(CrystalElement.WHITE, true)));
+			List<RuneRequirement> runes = List.of(
+					new RuneRequirement(new net.minecraft.core.BlockPos(-4, -1, 2), CrystalElement.WHITE),
+					new RuneRequirement(new net.minecraft.core.BlockPos(3, -1, 2), CrystalElement.BLACK),
+					new RuneRequirement(new net.minecraft.core.BlockPos(0, -1, -3), CrystalElement.BLACK),
+					new RuneRequirement(new net.minecraft.core.BlockPos(0, -1, -4), CrystalElement.WHITE),
+					runeRingRune(CrystalElement.RED), runeRingRune(CrystalElement.MAGENTA), runeRingRune(CrystalElement.BLUE));
+			saveRecipe("purification_gem", new CastingTableRecipe(CastingTableRecipe.Tier.PYLON,
+					List.of(new GridIngredient(4, Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.IRIDESCENT_CHUNK).get()))),
+					stands, runes,
+					List.of(new AuraRequirement(CrystalElement.BLACK, 40000), new AuraRequirement(CrystalElement.WHITE, 60000),
+							new AuraRequirement(CrystalElement.RED, 20000), new AuraRequirement(CrystalElement.MAGENTA, 20000),
+							new AuraRequirement(CrystalElement.BLUE, 10000)),
+					new ItemStackTemplate(ChromaItems.PURIFY.get()), 800, 500)
+					.withPenalty(1, 0F));
+		}
+
 		private Ingredient tiered(ChromaTieredItems item) { return Ingredient.of(ChromaItems.TIERED.get(item).get()); }
 		private CastingTableRecipe.StandIngredient stand(int x, int y, int z, Ingredient item) { return new CastingTableRecipe.StandIngredient(new net.minecraft.core.BlockPos(x, y, z), item); }
 		private void save(String name, StoneTypes result, int count,
@@ -1256,13 +1355,13 @@ public final class ChromaCastingRecipeProvider {
 
 		/**
 		 * Ported recipes whose V33a class returns {@code canGiveDoubleOutput() == true} (directly or through
-		 * DecoCastingRecipe / the core-recipe bases), by recipe id or id folder: RuneRecipe, EnhancedRuneRecipe,
+		 * DecoCastingRecipe / the core-recipe bases), by recipe id or id folder: RuneRecipe, EnhancedRuneRecipe, CrystalSeedRecipe,
 		 * RelayRecipe, CrystalGlassRecipe, CrystalGlowRecipe, SelectiveGlassRecipe, CrystalStoneRecipe, CrystalGroupRecipe, CrystalClusterRecipe,
 		 * LowCoreRecipe and HighCoreRecipe (and their subclasses), CrystalMirrorRecipe, RawCrystalRecipe,
 		 * LumenCoreRecipe, IridescentChunkRecipe, ElementUnitRecipe, CrystalStarRecipe, CrystalLensRecipe,
 		 * CrystalFocusRecipe and CrystalCoreRecipe.
 		 */
-		private static final List<String> DOUBLE_OUTPUT = List.of("crystal_rune/", "lumen_relay/", "crystal_glass/",
+		private static final List<String> DOUBLE_OUTPUT = List.of("crystal_rune/", "crystal_seeds/", "lumen_relay/", "crystal_glass/",
 				"crystal_glow/", "selective_glass", "chroma_flower",
 				"crystal_stone/", "crystal_group/", "crystal_cluster/", "low_core/", "high_core/", "crystal_mirror/",
 				"raw_crystal", "lumen_core", "iridescent_chunk", "element_unit", "crystal_star", "crystal_lens",

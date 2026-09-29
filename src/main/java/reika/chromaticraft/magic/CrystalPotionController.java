@@ -39,8 +39,8 @@ import reika.chromaticraft.registry.CrystalElement;
  * Maps crystal colours to potion (26.2 {@link MobEffect}) effects and applies them. Port note: the
  * 1.7.10 {@code Potion}/{@code PotionEffect} + int-id API became {@code Holder<MobEffect>} /
  * {@code MobEffectInstance}. DEFERRED integrations (reference unported content, so cannot function
- * yet — re-add when those port): the ItemPurifyCrystal / ItemPendant player-item modifiers, and the
- * ExtraUtils/Thaumcraft/Mystcraft "hostile world" checks (only the vanilla Nether remains). The
+ * yet — re-add when those port): the ExtraUtils/Thaumcraft/Mystcraft "hostile world" checks (only the
+ * vanilla Nether remains). The
  * ReikaPotionHelper bad-effect helpers are inlined via {@link MobEffectCategory#HARMFUL}.
  */
 public class CrystalPotionController implements CrystalPotionAPI {
@@ -102,7 +102,8 @@ public class CrystalPotionController implements CrystalPotionAPI {
 	}
 
 	public boolean shouldBeHostile(LivingEntity e, Level world) {
-		// ItemPurifyCrystal player check deferred (item unported).
+		if (e instanceof Player ep && reika.chromaticraft.items.tools.powered.ItemPurifyCrystal.isActive(ep))
+			return false;
 		return this.isWorldHostile(world);
 	}
 
@@ -124,7 +125,8 @@ public class CrystalPotionController implements CrystalPotionAPI {
 			if (has.getDuration() > eff.getDuration())
 				return false;
 		}
-		// ItemPurifyCrystal "only good effects" override deferred (item unported).
+		if (e instanceof Player ep && reika.chromaticraft.items.tools.powered.ItemPurifyCrystal.isActive(ep))
+			return !isBadEffect(pot);
 		if (!(e instanceof Player)) {
 			boolean flag = e.isInvertedHealAndHarm(); // undead
 			return this.shouldBeHostile(e, e.level()) ? isBadEffect(pot) == flag : true;
@@ -280,8 +282,16 @@ public class CrystalPotionController implements CrystalPotionAPI {
 					if (e instanceof Player ep && !e.level().isClientSide() && (level > 0 || rand.nextInt(2) == 0)) {
 						if (doFX)
 							ep.level().playSound(null, ep.getX(), ep.getY(), ep.getZ(), SoundEvents.EXPERIENCE_ORB_PICKUP, SoundSource.PLAYERS, 0.2F, rand.nextFloat() * 2);
-						// ItemPendant PURPLE-boost multiplier deferred (item unported).
-						ep.giveExperiencePoints(1);
+						int amt = 1;
+
+						int lvl = reika.chromaticraft.items.tools.ItemPendant.getActivePendantLevel(ep, CrystalElement.PURPLE);
+						if (lvl == 1) {
+							amt *= 3;
+						}
+						else if (lvl == 0) {
+							amt *= 2;
+						}
+						ep.giveExperiencePoints(amt);
 					}
 					break;
 				default:

@@ -9152,3 +9152,129 @@ at +28).
 `structure_write_window_fit` and `burrow_annex_write_window_fit` now assert the margin; the Burrow
 edge case moves two west and four north instead of one and three. `:ChromatiCraft:compileJava`
 passes. The GameTests and a fresh-chunk check for the warning have not been run with this change.
+
+### Crystal Bloom and Crystal Seeds (V33a PLANT + SEED) — 2026-09-29
+
+The Crystal Bloom growth cycle is ported: seeds, the plant, its tile and renderer, the crop handler,
+the casting recipes and the data.
+
+- `crystal_bloom_<colour>` (16 blocks, one `crystal_plant` tile type) and `crystal_seeds_<colour>`
+  (16 items). V33a's `meta % 16` colour became the identity. The modifier bits above it (16 Impure,
+  32 Enriched, 64 Primal) and the NBT `sterile` flag moved to `CUSTOM_DATA` (`flags`, `sterile`),
+  written only when set, so a plain pure seed carries no data. Cast, harvested and dropped seeds
+  therefore stack with each other.
+- V33a lit the bloom from the tile (`emitsLight() ? isPure() ? 15 : 12 : 0`). 26.x light is per
+  block state, so the tile's growth counter became the `growth` property (2 planted, 1 budding,
+  0 ripe). `pure` and `primal` mirror the tile's flags. The flags, the shard timer and sterility
+  stay on the tile; `primal` also swaps the cross texture (`plant` / `plant_primal`).
+- Two growth quirks were kept. `grow()` caps a 5-160 "percent" at 1 and passes it to
+  `doWithChance`, which reads values above 1 as percentages, so a pure bloom *always* pushes growth
+  into same-colour horizontal neighbours. `tryGrowPrimal` returns at the first side without an
+  Enriched same-colour bloom, so Primal needs all four.
+- Soil follows V33a exactly:
+  - The plant survives, and seeds plant, on dirt, coarse dirt, podzol, grass or Chroma Mud
+    (`canBlockStay`, `SAPLING.canPlantAt` = `isDirtType`).
+  - The bloom's own block item places only on the dirt types (`canPlaceBlockAt`), not mud, and
+    arrives ripe (two `grow()` calls).
+  - Not farmland, and not the dirt tag.
+- A broken bloom drops one Impure seed of its colour (`damageDropped` = `meta % 16 + 16`) through a
+  loot table whose `set_custom_data` matches `ItemCrystalSeeds.stack` exactly. Right click harvests
+  a ripe bloom and consumes the click regardless, as V33a's `onBlockActivated` did.
+- `CrystalPlantHandler` implements both V33a's `CustomCropHandler` and DragonAPI's `CropType`. The
+  ported Farmer queries `CropType` through `ModCropList`, and it is registered for all sixteen
+  blooms in common setup (V33a: `ModCropList.addCustomCropType`).
+- `CrystalPlantRenderer` reproduces V33a's pointed `crystal/bloom` pod vertex for vertex. V33a drew
+  it in its `glScalef(1, -1, -1)` frame, so each vertex is carried into block space. It uses the
+  0.625-scale offset pod while budding, and when ripe adds the camera-facing `plant_glow` +
+  `sparkle2` billboards (legacy additive) at (0.5, 1.25, 0.5). The render box extends half a block
+  up.
+- `randomDisplayTick` particles are ported into `ChromaParticle.spawnCrystalPlant`:
+  - the flare
+  - the ripe fade clouds
+  - the Enriched rising pair
+  - the Primal spiral
+  
+  `FadeGlow` gained V33a's `lockTo`. DragonAPI's `SpiralMotionController.getPositionY`
+  dereferences the legacy entity, so a local `SpiralPath` carries y.
+- Casting: all 32 V33a `CrystalSeedRecipe`s. Each is Temple tier, 20 ticks, 40 XP, with the
+  colour's rune in the ring and wheat seeds ringed by shards with glowstone corners. A plain shard
+  gives 1 seed and a boosted shard 8. The penalty threshold is max(1, 4*3/4) = 3, with double
+  output.
+- Seed art is cut from V33a `items_color.png` indices 128-143, by the method that reproduces the
+  ported berry sprites (176-191) bit for bit. Names are V33a's `getMultiValuedName` ("Kurauri
+  Crystal Bloom" / "Kurauri Crystal Seeds"). The tooltip lines are V33a's literals via lang. The
+  lexicon SEED page now has its Magenta Seeds icon.
+- Forward references kept for unported consumers: `ItemCrystalSeeds.getAllVariants`,
+  `getElement`, `stack/getFlags/isSterile`, and `TileEntityCrystalPlant.Modifier`. These cover the
+  item collector filter, transmutation, element tags, the aspect manager, the duplication wand and
+  bee product checks.
+- GameTest `crystal_bloom_cycle` checks:
+  - soil
+  - state light (0 / 15 / 12)
+  - the certain neighbour spread
+  - harvest reset
+  - the `CropType` path
+  - the break drop's exact data
+  - loss of support
+
+The full suite passed apart from this test's first draft, which expected one grow() to move both blooms to budding;
+V33a's mutual recursion ripens both, and the test now asserts that.
+
+### Pendants and the Aura Purification Gem (V33a PENDANT, PENDANT3, PURIFY) — 2026-09-29
+
+- `pendant_<colour>` and `enhanced_pendant_<colour>` (16 each). V33a names are "<Colour> Pendant" and
+  "<Colour> Enhanced Pendant". Sprites are cut from `items_color.png` 96+ / 112+.
+- A carried Pendant keeps its colour's crystal effect on the player each inventory tick, at the cave
+  crystal's level. The effect lasts 100 ticks (Blue: 3), or 6000 at amplifier 2 when enhanced.
+  Every tick it stamps the `pendant_status` persistent data that
+  `ItemPendant.getActivePendantLevel` reads.
+  - V33a's function returns 1 for anything stamped on an earlier tick, never reading the enhanced
+    bit. This quirk is kept.
+  - 26.x ticks inventory items on the server only, which is where the effects and stamps live.
+- The Enhanced Pendant is a `PoweredItem`, charged only with `POWEREDPENDANTS` (off by default).
+  - Without the option it is always enhanced.
+  - With it, it holds 60 h of charge, drains one per tick, and charges on the ground as an
+    `EntityChargingTool`. Its creative stack comes fully charged.
+  - The slot badge comes from `PoweredItemClient`'s automatic `PoweredItem` decorator.
+- The consumers that were waiting behind CHROMA-PORT markers are restored:
+  - Black's lumen-buffer discount: ×0.5 / ×0.8 in `PlayerElementBuffer.removeFromPlayer`.
+  - Purple's crystal-XP multiplier: ×3 / ×2 in `CrystalPotionController`.
+  - Area Strike's pendant XP: ×4 / ×2 in `ChromaEnchantEvents`.
+- `PendantEventBridge` transcribes V33a `ChromaticEventManager.carryPotionEffect` and `extraXP`, and
+  hides particles:
+  - **Carry:** striking a mob lays every inventory pendant's effect on it, recursing into
+    `ActivatedInventoryItem`s, unless a Gem-carrier hits a hostile mob.
+  - **XP:** the Purple Pendant adds one extra orb of the kill's worth, three with the Enhanced
+    Pendant, paid directly with RANGEDBOOST.
+  - **Hostile-world XP (faithful, and notable):** V33a gave *no* XP for any player kill in a
+    hostile world (the Nether), pendant or not. The port withholds it through
+    `LivingExperienceDropEvent`.
+  - **Particles:** `NOPARTICLES` was `setNoPotionParticles`, which zeroed the potion-colour watcher
+    until effects next changed. NeoForge's `EffectParticleModificationEvent` fires at exactly that
+    rebuild, so a carrier's effect particles are hidden there.
+- `purification_gem` ("Aura Purification Gem", V33a PURIFY) is a four-state powered tool, sprites
+  `items_tool.png` 33-36.
+  - While charged anywhere in the inventory it marks its carrier active. `CrystalPotionController`
+    then stops treating the world as hostile and accepts only good effects; both hooks are restored.
+  - It drains 12×/tick in a hostile world. Its orbiting motes (V33a `doHeldFX`, client half of
+    `onUpdate`) are `PurifyCrystalClient`, centred at eye height as 1.7.10's client `posY` was.
+- Casting:
+  - **Pendant:** Multiblock, 400 ticks, 200 XP, the colour's ring rune, the element's
+    root/third/fifth ding as harmonics.
+  - **Enhanced Pendant:** Pylon, 3200 ticks, 500 XP, 8000 Purple + 2000 White + 16000 own
+    colour, summed as V33a's `ElementTagCompound` did.
+  - **Gem:** Pylon, 800 ticks, 500 XP, zero repeat XP, 24 stands, 7 runes, 150000 aura across
+    five colours.
+- Not yet ported: `ChargedItemPlayerBufferConnectionRecipe`, V33a's Pylon "Lumen Buffer
+  Connection" for Probe, Nether Key, Spawner Bypass, Ore Pick, Structure Finder, Gem and Enhanced
+  Pendants. `PylonCharging` already honours `bufferlinked`. The casting table still has to merge
+  that flag into the copied centre data instead of replacing it, and four of the seven items are
+  unported. Next slice.
+- GameTest `pendants_and_purification` covers:
+  - the carried effect and amplifier 2 enhanced
+  - the activity stamp
+  - stack size 1
+  - Gem activity switching off world hostility
+
+Full suite 2026-09-29: 171/172, the one failure being the new pendant test's own precondition (a missing stamp reads
+as time 0, so a world under a second old counts every pendant active); guarded, it passes on its own.

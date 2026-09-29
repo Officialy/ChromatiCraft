@@ -22,11 +22,10 @@ public final class ChromaBlockTagsProvider extends BlockTagsProvider {
         var motionTag = tag(BlockTags.BLOCKS_MOTION_NO_LEAVES);
         var leafTag = tag(BlockTags.LEAVES);
         var washedTag = tag(BlockTags.WASHED_AWAY_BY_FLUIDS);
+        // Every leaf block (dye, rainbow and glowing leaves) is a LeavesBlock, so the classifier already puts it in
+        // #minecraft:leaves; listing them again only duplicated the entries.
         LegacyMotionTags.classifyEntries(ChromaBlocks.BLOCKS.getEntries(), motionTag::add, leafTag::add, washedTag::add);
 
-        var leaves = tag(BlockTags.LEAVES);
-        ChromaBlocks.DYE_LEAVES.forEach(block -> leaves.add(block.getKey()));
-        leaves.add(ChromaBlocks.RAINBOW_LEAVES.getKey(), ChromaBlocks.GLOWING_LEAVES.getKey());
         tag(BlockTags.SMALL_FLOWERS).add(ChromaBlocks.GLOW_DAISY.getKey());
 
 		// Tool speed is tag-driven in 26.2. Hardness alone left every ported stone/crystal machine

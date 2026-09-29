@@ -106,9 +106,11 @@ public final class PlayerElementBuffer {
 		if (ep.getAbilities().instabuild)
 			return;
 
-		// CHROMA-PORT: V33a discounts the cost by the player's active black pendant
-		// (ItemPendant.getActivePendantLevel: level 1 halves it, level 0 takes a fifth off). ItemPendant
-		// is not ported, so no discount applies yet. Restore this when the pendant lands.
+		int lvl = reika.chromaticraft.items.tools.ItemPendant.getActivePendantLevel(ep, CrystalElement.BLACK);
+		if (lvl == 1)
+			amt = Math.max(1, (int)(amt*0.5F));
+		else if (lvl == 0)
+			amt = Math.max(1, (int)(amt*0.8F));
 
 		CompoundTag tag = bufferTag(ep);
 		int has = tag.getIntOr(e.name(), 0);

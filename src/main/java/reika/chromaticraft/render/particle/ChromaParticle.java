@@ -1651,6 +1651,105 @@ public abstract class ChromaParticle extends SingleQuadParticle {
                 0, 90, 0.875F, 20, 0xffffff, 0xffffff, "fade", true, 0.0625, 60));
     }
 
+    /**
+     * V33a {@code BlockCrystalPlant.randomDisplayTick} for a pure bloom: a short pale flare somewhere around the
+     * stem, four expanding clouds over a ripe pod, a rising colour-and-white pair on an Enriched bloom, and on a
+     * Primal one a colour-and-white pair spiralling up out of the pod.
+     */
+    public static void spawnCrystalPlant(Level world, BlockPos pos, int color, boolean ripe, boolean boosted,
+            boolean primal, RandomSource r) {
+        if (!(world instanceof ClientLevel level)) return;
+        int x = pos.getX();
+        int y = pos.getY();
+        int z = pos.getZ();
+        double rad = 0.375 + (r.nextDouble() * 2 - 1) * 0.125;
+        double a = Math.toRadians(r.nextDouble() * 360);
+        double px = x + 0.5 + rad * Math.cos(a);
+        double pz = z + 0.5 + rad * Math.sin(a);
+        Minecraft.getInstance().particleEngine.add(new FadeGlow(level, px, y + r.nextDouble(), pz, 0, 0, 0,
+                ReikaColorAPI.mixColors(color, 0xffffff, 0.8F), 5, 1, false, null, 0, "bigflare", true));
+
+        if (ripe) {
+            for (int i = 0; i < 4; i++) {
+                float s = (float)(0.25 + r.nextDouble() * 0.75);
+                Minecraft.getInstance().particleEngine.add(new FadeGlow(level, x + 0.5,
+                        y + 1.03125 + 0.1875 * r.nextDouble(), z + 0.5, 0, 0, 0,
+                        ReikaColorAPI.mixColors(color, 0xffffff, 0.5F), 20, s, true, null, 0, "fade_cloud", true));
+            }
+        }
+
+        if (boosted) {
+            px = x + r.nextDouble();
+            pz = z + r.nextDouble();
+            FadeGlow fx = new FadeGlow(level, px, y + r.nextDouble(), pz, 0, 0, 0, color, 60, 1, false);
+            fx.gravity = -0.03125F;
+            Minecraft.getInstance().particleEngine.add(fx);
+            float fs = (float)(0.125 + r.nextDouble() * 0.625);
+            Minecraft.getInstance().particleEngine.add(new FadeGlow(level, px, fx.y, pz, 0, 0, 0, 0xffffff, 60, fs,
+                    false).lockTo(fx));
+        }
+        if (primal) {
+            // V33a SpiralMotionController(x+0.5, z+0.5, 15 deg/tick, rising 0.015/tick, radius 0.25, phase from the clock).
+            a = System.currentTimeMillis() / 40D;
+            px = x + 0.5;
+            pz = z + 0.5;
+            SpiralPath path = new SpiralPath(new reika.dragonapi.instantiable.particlecontroller.SpiralMotionController(
+                    px, pz, 15, 0.015, 0.25, 0, a), y + 0.9375, 0.015);
+            FadeGlow fx = new FadeGlow(level, px, y + 0.9375, pz, 0, 0, 0, color, 100, 1, true, path, 0);
+            Minecraft.getInstance().particleEngine.add(fx);
+            float fs = (float)(0.125 + r.nextDouble() * 0.625);
+            Minecraft.getInstance().particleEngine.add(new FadeGlow(level, px, fx.y, pz, 0, 0, 0, 0xffffff, 100, fs,
+                    true).lockTo(fx));
+        }
+    }
+
+    /** V33a {@code EntityCCBlurFX.setIcon(...).setPositionController(p).setLife(l).setScale(s)}: an additive blur on a path. */
+    public static void spawnControlledGlow(Level world, double x, double y, double z, int color, int life, float scale,
+            PositionController path, String icon) {
+        if (!(world instanceof ClientLevel level)) return;
+        Minecraft.getInstance().particleEngine.add(new FadeGlow(level, x, y, z, 0, 0, 0, color, life, scale, false,
+                path, 0, icon, true));
+    }
+
+    /**
+     * A {@link reika.dragonapi.instantiable.particlecontroller.SpiralMotionController} as V33a drove it: the
+     * controller placed x and z, while y climbed by its vertical velocity through the particle's own motion. Its
+     * {@code getPositionY} reads the legacy entity, which a 26.x particle is not, so y is carried here instead.
+     */
+    private static final class SpiralPath implements PositionController {
+        private final reika.dragonapi.instantiable.particlecontroller.SpiralMotionController spiral;
+        private final double verticalVelocity;
+        private double y;
+
+        SpiralPath(reika.dragonapi.instantiable.particlecontroller.SpiralMotionController spiral, double y,
+                double verticalVelocity) {
+            this.spiral = spiral;
+            this.y = y;
+            this.verticalVelocity = verticalVelocity;
+        }
+
+        @Override
+        public void update(net.minecraft.world.entity.Entity e) {
+            spiral.update(null);
+            y += verticalVelocity;
+        }
+
+        @Override
+        public double getPositionX(net.minecraft.world.entity.Entity e) {
+            return spiral.getPositionX(null);
+        }
+
+        @Override
+        public double getPositionY(net.minecraft.world.entity.Entity e) {
+            return y;
+        }
+
+        @Override
+        public double getPositionZ(net.minecraft.world.entity.Entity e) {
+            return spiral.getPositionZ(null);
+        }
+    }
+
     /** V33a Glow Root's long-lived, falling, colliding purple/white blur. */
     public static void spawnGlowRoot(net.minecraft.world.level.Level level, BlockPos pos,
             net.minecraft.util.RandomSource random) {
@@ -3058,6 +3157,7 @@ public abstract class ChromaParticle extends SingleQuadParticle {
         private float baseRed;
         private float baseGreen;
         private float baseBlue;
+        private ChromaParticle lock;
 
         public FadeGlow(ClientLevel level, double x, double y, double z, double vx, double vy, double vz,
                 int color, int life, float scale, boolean rapidExpand) {
@@ -3125,6 +3225,17 @@ public abstract class ChromaParticle extends SingleQuadParticle {
             return this;
         }
 
+        /**
+         * V33a {@code EntityBlurFX.lockTo}: after its own step each tick, the blur takes the leader's position and
+         * velocity, so a second blur of another colour or size rides on the first.
+         */
+        public FadeGlow lockTo(ChromaParticle leader) {
+            if (leader == this)
+                throw new IllegalArgumentException("Cannot lock a particle to itself");
+            this.lock = leader;
+            return this;
+        }
+
         /** V33a {@code EntityCCBlurFX.setCyclingColor}: every tick the colour becomes the element blend for its age. */
         public FadeGlow setCyclingColor(float scale) {
             this.cycleScale = scale;
@@ -3172,6 +3283,14 @@ public abstract class ChromaParticle extends SingleQuadParticle {
                     this.yd -= 0.04 * this.gravity;
                     this.move(this.xd, this.yd, this.zd);
                 }
+            }
+            if (this.lock != null) {
+                this.x = this.lock.x;
+                this.y = this.lock.y;
+                this.z = this.lock.z;
+                this.xd = this.lock.xd;
+                this.yd = this.lock.yd;
+                this.zd = this.lock.zd;
             }
             this.applyHeightColor();
             this.updateAppearance();

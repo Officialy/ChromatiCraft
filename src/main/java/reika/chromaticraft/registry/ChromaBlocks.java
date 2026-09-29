@@ -835,6 +835,34 @@ public final class ChromaBlocks {
 		return CRYSTAL_LAMPS.get(element.ordinal());
 	}
 
+	/**
+	 * V33a PLANT ("Crystal Bloom") metadata 0-15, one block per element. Hardness 0; resistance 1 in 1.7.10 terms,
+	 * which that version tripled and then divided by five for explosions, so 0.6 here. Grass sounds, no collision,
+	 * light from the ripe state ({@link reika.chromaticraft.block.BlockCrystalPlant#lightLevel}).
+	 */
+	public static final EnumMap<CrystalElement, DeferredBlock<reika.chromaticraft.block.BlockCrystalPlant>> CRYSTAL_PLANTS =
+			registerCrystalPlants();
+
+	private static EnumMap<CrystalElement, DeferredBlock<reika.chromaticraft.block.BlockCrystalPlant>> registerCrystalPlants() {
+		EnumMap<CrystalElement, DeferredBlock<reika.chromaticraft.block.BlockCrystalPlant>> map = new EnumMap<>(CrystalElement.class);
+		for (CrystalElement element : CrystalElement.elements) {
+			String name = coloredName("crystal_bloom", element);
+			DeferredBlock<reika.chromaticraft.block.BlockCrystalPlant> block = registerBlockOnly(name,
+					() -> new reika.chromaticraft.block.BlockCrystalPlant(blockProperties().mapColor(MapColor.PLANT)
+							.instabreak().strength(0F, 0.6F).sound(SoundType.GRASS).noCollision().noOcclusion()
+							.randomTicks().pushReaction(net.minecraft.world.level.material.PushReaction.POPPED)
+							.lightLevel(reika.chromaticraft.block.BlockCrystalPlant::lightLevel), element));
+			registerItemOnly(name, () -> new reika.chromaticraft.items.itemblock.ItemBlockCrystalPlant(block.get(),
+					itemProperties().useBlockDescriptionPrefix()));
+			map.put(element, block);
+		}
+		return map;
+	}
+
+	public static DeferredBlock<reika.chromaticraft.block.BlockCrystalPlant> crystalPlant(CrystalElement element) {
+		return CRYSTAL_PLANTS.get(element);
+	}
+
 	public static DeferredBlock<BlockSuperCrystal> superCrystal(CrystalElement element) {
 		return SUPER_CRYSTALS.get(element.ordinal());
 	}

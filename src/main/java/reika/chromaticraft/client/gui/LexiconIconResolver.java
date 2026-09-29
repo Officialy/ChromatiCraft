@@ -73,6 +73,13 @@ public final class LexiconIconResolver {
 			}
 			case "super" -> addElements(items, element -> ChromaBlocks.superCrystal(element).get());
 			case "berry" -> addElements(items, element -> ChromaItems.BERRIES.get(element).get());
+			// V33a ChromaResearch.PENDANT: each colour's Pendant followed by its Enhanced Pendant.
+			case "pendant" -> {
+				for (CrystalElement element : CrystalElement.elements) {
+					items.add(new ItemStack(ChromaItems.PENDANTS.get(element).get()));
+					items.add(new ItemStack(ChromaItems.BOOSTED_PENDANTS.get(element).get()));
+				}
+			}
 			case "shards" -> addElements(items, element -> ChromaItems.SHARDS.get(element).get());
 			case "dusts" -> {
 				// Exact V33a DUSTS display list. Do not broaden this to every tiered item.
@@ -186,6 +193,9 @@ public final class LexiconIconResolver {
 			case "elemental" -> ChromaItems.ELEMENTAL_STONES.get(CrystalElement.BLUE).get();
 			case "datacrystal" -> ChromaItems.DATA_CRYSTAL.get();
 			case "fertilityseed" -> ChromaItems.FERTILITY_SEEDS.getFirst().get();
+			// V33a ChromaResearch.SEED: ChromaItems.SEED.getStackOf(CrystalElement.MAGENTA).
+			case "seed" -> ChromaItems.CRYSTAL_SEEDS.get(CrystalElement.MAGENTA).get();
+			case "purify" -> ChromaItems.PURIFY.get();
 			case "endereye" -> ChromaItems.ENDER_EYE.get();
 			case "artefact" -> ChromaBlocks.UNKNOWN_ARTEFACT_ITEM.get();
 			case "structmap" -> ChromaItems.STRUCTURE_MAP.get();

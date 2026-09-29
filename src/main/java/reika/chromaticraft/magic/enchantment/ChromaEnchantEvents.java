@@ -394,9 +394,14 @@ public final class ChromaEnchantEvents {
 									if (e instanceof Mob && dmg2 >= e.getHealth() && Chromabilities.RANGEDBOOST.enabledOn(ep)
 											&& XP_TAKEN.add(e)) {
 										int xp = e.getExperienceReward(world, ep);
-										// CHROMA-PORT: V33a quadrupled this with a purple Crystal Pendant III in the
-										// inventory, or doubled it with a purple Crystal Pendant; the pendants are
-										// not yet ported.
+										if (ep.getInventory().contains(is -> is.is(reika.chromaticraft.registry.ChromaItems
+												.BOOSTED_PENDANTS.get(reika.chromaticraft.registry.CrystalElement.PURPLE).get()))) {
+											xp *= 4;
+										}
+										else if (ep.getInventory().contains(is -> is.is(reika.chromaticraft.registry.ChromaItems
+												.PENDANTS.get(reika.chromaticraft.registry.CrystalElement.PURPLE).get()))) {
+											xp *= 2;
+										}
 										ep.giveExperiencePoints(xp);
 									}
 									e.hurtServer(world, src, dmg2);

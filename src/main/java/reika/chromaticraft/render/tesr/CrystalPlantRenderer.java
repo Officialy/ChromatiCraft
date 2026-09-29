@@ -1,273 +1,164 @@
 /*******************************************************************************
  * @author Reika Kalseki
- * 
+ *
  * Copyright 2017
- * 
+ *
  * All rights reserved.
  * Distribution of the software in any form is only allowed with
  * explicit, prior permission from the owner.
  ******************************************************************************/
 package reika.chromaticraft.render.tesr;
 
-import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL12;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 
-import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.client.renderer.entity.RenderManager;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.IIcon;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
+import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
+import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
+import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.client.renderer.texture.TextureAtlas;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.data.AtlasIds;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 
-import reika.chromaticraft.base.ChromaRenderBase;
-import reika.chromaticraft.block.BlockCrystalPlant;
-import reika.chromaticraft.registry.ChromaBlocks;
+import org.jspecify.annotations.Nullable;
+
+import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.registry.ChromaIcons;
-import reika.chromaticraft.registry.CrystalElement;
+import reika.chromaticraft.render.ChromaRenderPipelines;
 import reika.chromaticraft.tileentity.plants.TileEntityCrystalPlant;
-import reika.dragonapi.interfaces.tileentity.RenderFetcher;
-import reika.dragonapi.libraries.io.ReikaTextureHelper;
-import reika.dragonapi.libraries.java.reikaglhelper.BlendMode;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
 
-public class CrystalPlantRenderer extends ChromaRenderBase {
+/**
+ * V33a {@code CrystalPlantRenderer}: once a bloom buds it grows a pointed pod of {@code crystal/bloom} over the
+ * cross, in its element's colour at three-quarter saturation; while budding the pod is at 0.625 scale, off to one
+ * side. A ripe bloom adds a camera-facing glow ({@code plant_glow}) and sparkle ({@code sparkle2}) above the pod
+ * in its element's colour, ADDITIVEDARK and unlit.
+ *
+ * <p>V33a drew in a frame flipped by {@code glScalef(1, -1, -1)} from {@code (x, y+1, z+1)} and nudged by 1/16;
+ * every vertex here is that frame's point carried into block space, so the geometry is V33a's exactly.
+ */
+public final class CrystalPlantRenderer implements BlockEntityRenderer<TileEntityCrystalPlant, CrystalPlantRenderer.State> {
 
-	@Override
-	public void renderTileEntityAt(TileEntity te, double par2, double par4, double par6, float f) {
-		TileEntityCrystalPlant tile = (TileEntityCrystalPlant)te;
-		if (tile.renderPod()) {
-			GL11.glPushMatrix();
-			GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
-			GL11.glEnable(GL12.GL_RESCALE_NORMAL);
-			GL11.glEnable(GL11.GL_BLEND);
-			GL11.glDisable(GL11.GL_LIGHTING);
-			GL11.glDepthMask(false);
-			GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
-			GL11.glTranslatef((float)par2, (float)par4 + 1.0F, (float)par6 + 1.0F);
-			GL11.glScalef(1.0F, -1.0F, -1.0F);
+	private static final Identifier BULB = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/crystal/bloom");
 
-			ReikaTextureHelper.bindTerrainTexture();
-			//this.drawInner(tile);
-			GL11.glTranslated(0, 0.0625, 0);
-			double d = 0.625;
-			double a1 = 0.2;
-			double b1 = 0;
-			double c1 = 0.2;
-			if (!tile.emitsLight()) {
-				GL11.glTranslated(a1, b1, c1);
-				GL11.glScaled(d, d, d);
-			}
-			this.drawBulb(tile);
-			if (!tile.emitsLight()) {
-				GL11.glScaled(1/d, 1/d, 1/d);
-				GL11.glTranslated(-a1, -b1, -c1);
-			}
-			GL11.glTranslated(0, -0.0625, 0);
+	/** V33a drawBulb: half-width, body height and point height. */
+	private static final double S = 0.1;
+	private static final double H = 0.3;
+	private static final double PH = 0.15;
 
-			if (tile.emitsLight()) {
-				GL11.glColor4f(1, 1, 1, 1);
-				CrystalElement dye = tile.getColor();
-				GL11.glColor4f(dye.getRed()/255F, dye.getGreen()/255F, dye.getBlue()/255F, 1);
-				double s = 0.25;
-				GL11.glTranslated(0.5, -0.25, 0.5);
-				GL11.glScaled(s, s, s);
-				RenderManager rm = RenderManager.instance;
-				GL11.glRotatef(rm.playerViewY, 0.0F, 1.0F, 0.0F);
-				GL11.glRotatef(rm.playerViewX, 1.0F, 0.0F, 0.0F);
-				BlendMode.ADDITIVEDARK.apply();
-				this.drawGlow(tile);
-				this.drawSparkle(tile);
-				GL11.glScaled(1/s, 1/s, 1/s);
-				BlendMode.DEFAULT.apply();
-			}
+	/**
+	 * V33a drawBulb, as (x, y, z, u-slot, v-slot) per vertex in its flipped frame. The slots name V33a's texture
+	 * coordinates: 0 = min, 1 = mid, 2 = max.
+	 */
+	private static final double[][] BULB_VERTICES = {
+			//Bottom
+			{0.5-S, 0, 0.5+S, 0, 2}, {0.5+S, 0, 0.5+S, 2, 2}, {0.5+S, 0, 0.5-S, 2, 0}, {0.5-S, 0, 0.5-S, 0, 0},
+			//Top point
+			{0.5-S, -H, 0.5-S, 0, 2}, {0.5, -H-PH/2, 0.5-S, 1, 2}, {0.5, -H-PH, 0.5, 1, 1}, {0.5-S, -H-PH/2, 0.5, 0, 1},
+			{0.5-S, -H-PH/2, 0.5, 0, 1}, {0.5, -H-PH, 0.5, 1, 1}, {0.5, -H-PH/2, 0.5+S, 1, 0}, {0.5-S, -H, 0.5+S, 0, 0},
+			{0.5+S, -H-PH/2, 0.5, 0, 1}, {0.5, -H-PH, 0.5, 1, 1}, {0.5, -H-PH/2, 0.5-S, 1, 0}, {0.5+S, -H, 0.5-S, 0, 0},
+			{0.5+S, -H, 0.5+S, 0, 2}, {0.5, -H-PH/2, 0.5+S, 1, 2}, {0.5, -H-PH, 0.5, 1, 1}, {0.5+S, -H-PH/2, 0.5, 0, 1},
+			//Sides
+			{0.5+S, 0, 0.5, 0, 1}, {0.5+S, -H-PH/2, 0.5, 2, 1}, {0.5+S, -H, 0.5-S, 2, 0}, {0.5+S, 0, 0.5-S, 0, 0},
+			{0.5+S, 0, 0.5+S, 0, 2}, {0.5+S, -H, 0.5+S, 2, 2}, {0.5+S, -H-PH/2, 0.5, 2, 1}, {0.5+S, 0, 0.5, 0, 1},
+			{0.5-S, 0, 0.5, 0, 1}, {0.5-S, -H-PH/2, 0.5, 2, 1}, {0.5-S, -H, 0.5+S, 2, 2}, {0.5-S, 0, 0.5+S, 0, 2},
+			{0.5-S, 0, 0.5-S, 0, 0}, {0.5-S, -H, 0.5-S, 2, 0}, {0.5-S, -H-PH/2, 0.5, 2, 1}, {0.5-S, 0, 0.5, 0, 1},
+			{0.5, 0, 0.5+S, 0, 1}, {0.5, -H-PH/2, 0.5+S, 2, 1}, {0.5+S, -H, 0.5+S, 2, 2}, {0.5+S, 0, 0.5+S, 0, 2},
+			{0.5-S, 0, 0.5+S, 0, 0}, {0.5-S, -H, 0.5+S, 2, 0}, {0.5, -H-PH/2, 0.5+S, 2, 1}, {0.5, 0, 0.5+S, 0, 1},
+			{0.5+S, 0, 0.5-S, 0, 2}, {0.5+S, -H, 0.5-S, 2, 2}, {0.5, -H-PH/2, 0.5-S, 2, 1}, {0.5, 0, 0.5-S, 0, 1},
+			{0.5, 0, 0.5-S, 0, 1}, {0.5, -H-PH/2, 0.5-S, 2, 1}, {0.5-S, -H, 0.5-S, 2, 0}, {0.5-S, 0, 0.5-S, 0, 0},
+	};
 
-			GL11.glPopAttrib();
-			GL11.glPopMatrix();
-		}
-	}
+	public CrystalPlantRenderer(BlockEntityRendererProvider.Context context) {
 
-	private void drawSparkle(TileEntityCrystalPlant tile) {
-		Tessellator v5 = Tessellator.instance;
-		IIcon ico = ChromaIcons.SPARKLE.getIcon();
-		float u = ico.getMinU();
-		float v = ico.getMinV();
-		float du = ico.getMaxU();
-		float dv = ico.getMaxV();
-		v5.startDrawingQuads();
-		v5.addVertexWithUV(-1, -1, 0, u, v);
-		v5.addVertexWithUV(1, -1, 0, du, v);
-		v5.addVertexWithUV(1, 1, 0, du, dv);
-		v5.addVertexWithUV(-1, 1, 0, u, dv);
-		v5.draw();
-	}
-
-	private void drawGlow(TileEntityCrystalPlant tile) {
-		Tessellator v5 = Tessellator.instance;
-		IIcon ico = ChromaIcons.RADIATE.getIcon();
-		float u = ico.getMinU();
-		float v = ico.getMinV();
-		float du = ico.getMaxU();
-		float dv = ico.getMaxV();
-		v5.startDrawingQuads();
-		v5.addVertexWithUV(-1, -1, 0, u, v);
-		v5.addVertexWithUV(1, -1, 0, du, v);
-		v5.addVertexWithUV(1, 1, 0, du, dv);
-		v5.addVertexWithUV(-1, 1, 0, u, dv);
-		v5.draw();
-	}
-
-	private void drawBulb(TileEntityCrystalPlant tile) {
-		Tessellator v5 = Tessellator.instance;
-		IIcon ico = ((BlockCrystalPlant)ChromaBlocks.PLANT.getBlockInstance()).getBulbIcon(tile.getColor());
-		float u = ico.getMinU();
-		float v = ico.getMinV();
-		float du = ico.getMaxU();
-		float dv = ico.getMaxV();
-		float mu = u+(du-u)/2;
-		float mv = v+(dv-v)/2;
-
-		double s = 0.1;
-		double h = 0.3;
-		double ph = 0.15;
-
-		GL11.glColor4f(1, 1, 1, 0.25F);
-
-		CrystalElement dye = tile.getColor();
-		//GL11.glColor4f(dye.getRed()/255F, dye.getGreen()/255F, dye.getBlue()/255F, 1);
-		BlendMode.DEFAULT.apply();
-		v5.startDrawingQuads();
-		int color = ReikaColorAPI.getModifiedSat(dye.getColor(), 0.75F);
-		v5.setColorRGBA_I(color, 255);
-		//Bottom
-		v5.addVertexWithUV(0.5-s, 0, 0.5+s, u, dv);
-		v5.addVertexWithUV(0.5+s, 0, 0.5+s, du, dv);
-		v5.addVertexWithUV(0.5+s, 0, 0.5-s, du, v);
-		v5.addVertexWithUV(0.5-s, 0, 0.5-s, u, v);
-
-		//Top point
-		v5.addVertexWithUV(0.5-s, -h, 0.5-s, u, dv);
-		v5.addVertexWithUV(0.5, -h-ph/2, 0.5-s, mu, dv);
-		v5.addVertexWithUV(0.5, -h-ph, 0.5, mu, mv);
-		v5.addVertexWithUV(0.5-s, -h-ph/2, 0.5, u, mv);
-
-		v5.addVertexWithUV(0.5-s, -h-ph/2, 0.5, u, mv);
-		v5.addVertexWithUV(0.5, -h-ph, 0.5, mu, mv);
-		v5.addVertexWithUV(0.5, -h-ph/2, 0.5+s, mu, v);
-		v5.addVertexWithUV(0.5-s, -h, 0.5+s, u, v);
-
-		v5.addVertexWithUV(0.5+s, -h-ph/2, 0.5, u, mv);
-		v5.addVertexWithUV(0.5, -h-ph, 0.5, mu, mv);
-		v5.addVertexWithUV(0.5, -h-ph/2, 0.5-s, mu, v);
-		v5.addVertexWithUV(0.5+s, -h, 0.5-s, u, v);
-
-		v5.addVertexWithUV(0.5+s, -h, 0.5+s, u, dv);
-		v5.addVertexWithUV(0.5, -h-ph/2, 0.5+s, mu, dv);
-		v5.addVertexWithUV(0.5, -h-ph, 0.5, mu, mv);
-		v5.addVertexWithUV(0.5+s, -h-ph/2, 0.5, u, mv);
-
-
-		v5.addVertexWithUV(0.5+s, 0, 0.5, u, mv);
-		v5.addVertexWithUV(0.5+s, -h-ph/2, 0.5, du, mv);
-		v5.addVertexWithUV(0.5+s, -h, 0.5-s, du, v);
-		v5.addVertexWithUV(0.5+s, 0, 0.5-s, u, v);
-
-		v5.addVertexWithUV(0.5+s, 0, 0.5+s, u, dv);
-		v5.addVertexWithUV(0.5+s, -h, 0.5+s, du, dv);
-		v5.addVertexWithUV(0.5+s, -h-ph/2, 0.5, du, mv);
-		v5.addVertexWithUV(0.5+s, 0, 0.5, u, mv);
-
-		v5.addVertexWithUV(0.5-s, 0, 0.5, u, mv);
-		v5.addVertexWithUV(0.5-s, -h-ph/2, 0.5, du, mv);
-		v5.addVertexWithUV(0.5-s, -h, 0.5+s, du, dv);
-		v5.addVertexWithUV(0.5-s, 0, 0.5+s, u, dv);
-
-		v5.addVertexWithUV(0.5-s, 0, 0.5-s, u, v);
-		v5.addVertexWithUV(0.5-s, -h, 0.5-s, du, v);
-		v5.addVertexWithUV(0.5-s, -h-ph/2, 0.5, du, mv);
-		v5.addVertexWithUV(0.5-s, 0, 0.5, u, mv);
-
-		v5.addVertexWithUV(0.5, 0, 0.5+s, u, mv);
-		v5.addVertexWithUV(0.5, -h-ph/2, 0.5+s, du, mv);
-		v5.addVertexWithUV(0.5+s, -h, 0.5+s, du, dv);
-		v5.addVertexWithUV(0.5+s, 0, 0.5+s, u, dv);
-
-		v5.addVertexWithUV(0.5-s, 0, 0.5+s, u, v);
-		v5.addVertexWithUV(0.5-s, -h, 0.5+s, du, v);
-		v5.addVertexWithUV(0.5, -h-ph/2, 0.5+s, du, mv);
-		v5.addVertexWithUV(0.5, 0, 0.5+s, u, mv);
-
-		v5.addVertexWithUV(0.5+s, 0, 0.5-s, u, dv);
-		v5.addVertexWithUV(0.5+s, -h, 0.5-s, du, dv);
-		v5.addVertexWithUV(0.5, -h-ph/2, 0.5-s, du, mv);
-		v5.addVertexWithUV(0.5, 0, 0.5-s, u, mv);
-
-		v5.addVertexWithUV(0.5, 0, 0.5-s, u, mv);
-		v5.addVertexWithUV(0.5, -h-ph/2, 0.5-s, du, mv);
-		v5.addVertexWithUV(0.5-s, -h, 0.5-s, du, v);
-		v5.addVertexWithUV(0.5-s, 0, 0.5-s, u, v);
-		v5.draw();
-
-		BlendMode.DEFAULT.apply();
-	}
-
-
-	private void drawInner(TileEntityCrystalPlant te) {
-		ReikaTextureHelper.bindTerrainTexture();
-		IIcon ico = ChromaIcons.GUARDIANINNER.getIcon();
-		float u = ico.getMinU();
-		float v = ico.getMinV();
-		float du = ico.getMaxU();
-		float dv = ico.getMaxV();
-		float uu = du-u;
-		float vv = dv-v;
-
-		float r = 16;
-		u += uu/r;
-		du -= uu/r;
-		v += vv/r;
-		dv -= vv/r;
-
-		Tessellator v5 = Tessellator.instance;
-		BlendMode.ADDITIVEDARK.apply();
-
-		double s = 0.5;
-		if (te.hasWorldObj()) {
-			GL11.glTranslated(0.5, -0.15, 0.5);
-			GL11.glScaled(s, s, s);
-			RenderManager rm = RenderManager.instance;
-			GL11.glRotatef(rm.playerViewY, 0.0F, 1.0F, 0.0F);
-			GL11.glRotatef(rm.playerViewX, 1.0F, 0.0F, 0.0F);
-		}
-		else {
-			GL11.glTranslated(0.5, 0.5, 0.5);
-			GL11.glScaled(s, s, s);
-			GL11.glRotated(-90, 0, 1, 0);
-		}
-		//double ang = (System.currentTimeMillis()/20D)%360;
-		//GL11.glRotated(ang, 0, 0, 1);
-		v5.startDrawingQuads();
-		v5.addVertexWithUV(-1, -1, 0, u, v);
-		v5.addVertexWithUV(1, -1, 0, du, v);
-		v5.addVertexWithUV(1, 1, 0, du, dv);
-		v5.addVertexWithUV(-1, 1, 0, u, dv);
-		v5.draw();
-		BlendMode.DEFAULT.apply();
-
-		if (te.hasWorldObj()) {
-			RenderManager rm = RenderManager.instance;
-			GL11.glRotatef(-rm.playerViewX, 1.0F, 0.0F, 0.0F);
-			GL11.glRotatef(-rm.playerViewY, 0.0F, 1.0F, 0.0F);
-			GL11.glScaled(1/s, 1/s, 1/s);
-			GL11.glTranslated(-0.5, 0.15, -0.5);
-		}
-		else {
-			GL11.glRotated(90, 0, 1, 0);
-			GL11.glScaled(1/s, 1/s, 1/s);
-			GL11.glTranslated(-0.5, -0.5, -0.5);
-		}
 	}
 
 	@Override
-	public String getImageFileName(RenderFetcher te) {
-		return "";
+	public State createRenderState() {
+		return new State();
+	}
+
+	@Override
+	public void extractRenderState(TileEntityCrystalPlant te, State state, float partialTick, Vec3 cameraPosition,
+			ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress) {
+		BlockEntityRenderer.super.extractRenderState(te, state, partialTick, cameraPosition, breakProgress);
+		state.pod = te.renderPod();
+		state.ripe = te.emitsLight();
+		state.color = te.getColor().getColor();
+	}
+
+	@Override
+	public void submit(State state, PoseStack poseStack, SubmitNodeCollector collector, CameraRenderState camera) {
+		if (!state.pod)
+			return;
+		var atlas = Minecraft.getInstance().getAtlasManager().getAtlasOrThrow(AtlasIds.BLOCKS);
+		TextureAtlasSprite bulb = atlas.getSprite(BULB);
+		int bulbColor = 0xFF000000 | ReikaColorAPI.getModifiedSat(state.color, 0.75F);
+		boolean ripe = state.ripe;
+		collector.submitCustomGeometry(poseStack, ChromaRenderPipelines.translucentSprite(TextureAtlas.LOCATION_BLOCKS),
+				(pose, vertices) -> bulb(pose, vertices, bulb, bulbColor, ripe));
+
+		if (ripe) {
+			poseStack.pushPose();
+			poseStack.translate(0.5, 1.25, 0.5);
+			poseStack.rotate(camera.orientation);
+			int glowColor = 0xFF000000 | state.color;
+			TextureAtlasSprite glow = atlas.getSprite(ChromaIcons.RADIATE.getIcon());
+			TextureAtlasSprite sparkle = atlas.getSprite(ChromaIcons.SPARKLE.getIcon());
+			collector.submitCustomGeometry(poseStack, ChromaRenderPipelines.legacyAdditiveSprite(TextureAtlas.LOCATION_BLOCKS),
+					(pose, vertices) -> {
+						billboard(pose, vertices, glow, glowColor);
+						billboard(pose, vertices, sparkle, glowColor);
+					});
+			poseStack.popPose();
+		}
+	}
+
+	private static void bulb(PoseStack.Pose pose, VertexConsumer out, TextureAtlasSprite ico, int color, boolean ripe) {
+		float[] us = {ico.getU0(), ico.getU0()+(ico.getU1()-ico.getU0())/2, ico.getU1()};
+		float[] vs = {ico.getV0(), ico.getV0()+(ico.getV1()-ico.getV0())/2, ico.getV1()};
+		for (double[] v : BULB_VERTICES) {
+			double x = v[0];
+			double y = v[1];
+			double z = v[2];
+			if (!ripe) {
+				// V33a: glTranslated(0.2, 0, 0.2) then glScaled(0.625) while the pod is still budding.
+				x = 0.2+0.625*x;
+				y = 0.625*y;
+				z = 0.2+0.625*z;
+			}
+			y += 0.0625;
+			// The flipped frame: glTranslatef(x, y+1, z+1), glScalef(1, -1, -1).
+			out.addVertex(pose, (float)x, (float)(1-y), (float)(1-z))
+					.setUv(us[(int)v[3]], vs[(int)v[4]]).setColor(color);
+		}
+	}
+
+	/** V33a's unit quad at a quarter scale, facing the camera. */
+	private static void billboard(PoseStack.Pose pose, VertexConsumer out, TextureAtlasSprite ico, int color) {
+		float s = 0.25F;
+		out.addVertex(pose, -s, -s, 0).setUv(ico.getU0(), ico.getV1()).setColor(color);
+		out.addVertex(pose, s, -s, 0).setUv(ico.getU1(), ico.getV1()).setColor(color);
+		out.addVertex(pose, s, s, 0).setUv(ico.getU1(), ico.getV0()).setColor(color);
+		out.addVertex(pose, -s, s, 0).setUv(ico.getU0(), ico.getV0()).setColor(color);
+	}
+
+	/** The pod and its glow rise half a block above the plant's own cube. */
+	@Override
+	public AABB getRenderBoundingBox(TileEntityCrystalPlant te) {
+		return new AABB(te.getBlockPos()).expandTowards(0, 0.5, 0);
+	}
+
+	public static final class State extends BlockEntityRenderState {
+		private boolean pod;
+		private boolean ripe;
+		private int color;
 	}
 
 }

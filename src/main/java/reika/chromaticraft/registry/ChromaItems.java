@@ -151,6 +151,9 @@ public final class ChromaItems {
 	public static final DeferredItem<reika.chromaticraft.items.tools.ItemOwnerKey> OWNERSHIP_KEY =
 			reg("ownership_key", () -> new reika.chromaticraft.items.tools.ItemOwnerKey(itemProperties().stacksTo(1)));
 	/** V33a LIGHTGUN, the Illumination Gun. */
+	/** V33a PURIFY, the Aura Purification Gem (sprites 33-36 by charge state). */
+	public static final DeferredItem<reika.chromaticraft.items.tools.powered.ItemPurifyCrystal> PURIFY =
+			reg("purification_gem", () -> new reika.chromaticraft.items.tools.powered.ItemPurifyCrystal(itemProperties()));
 	/** V33a PROBE, Examination Crystals (sprites 53-56 by charge state). */
 	public static final DeferredItem<reika.chromaticraft.items.tools.powered.ItemCrystalProbe> PROBE =
 			reg("probe", () -> new reika.chromaticraft.items.tools.powered.ItemCrystalProbe(itemProperties()));
@@ -248,6 +251,32 @@ public final class ChromaItems {
 		for (CrystalElement element : CrystalElement.elements)
 			ELEMENTAL_STONES.put(element, reg("elemental_stone_" + element.getEnglishName(),
 					() -> new ItemElementalStone(element, itemProperties())));
+	}
+
+	/**
+	 * V33a SEED ("Crystal Seeds"), whose colour was {@code meta % 16}, split into sixteen identities; the modifier
+	 * bits above the colour and the sterile flag are item data (see {@link reika.chromaticraft.items.ItemCrystalSeeds}).
+	 */
+	public static final EnumMap<CrystalElement, DeferredItem<reika.chromaticraft.items.ItemCrystalSeeds>> CRYSTAL_SEEDS =
+			new EnumMap<>(CrystalElement.class);
+	static {
+		for (CrystalElement element : CrystalElement.elements)
+			CRYSTAL_SEEDS.put(element, reg("crystal_seeds_" + element.getEnglishName(),
+					() -> new reika.chromaticraft.items.ItemCrystalSeeds(element, itemProperties())));
+	}
+
+	/** V33a PENDANT ("Pendant") and PENDANT3 ("Enhanced Pendant"), metadata 0-15 split per element. */
+	public static final EnumMap<CrystalElement, DeferredItem<reika.chromaticraft.items.tools.ItemPendant>> PENDANTS =
+			new EnumMap<>(CrystalElement.class);
+	public static final EnumMap<CrystalElement, DeferredItem<reika.chromaticraft.items.tools.ItemBoostedPendant>> BOOSTED_PENDANTS =
+			new EnumMap<>(CrystalElement.class);
+	static {
+		for (CrystalElement element : CrystalElement.elements)
+			PENDANTS.put(element, reg("pendant_" + element.getEnglishName(),
+					() -> new reika.chromaticraft.items.tools.ItemPendant(element, itemProperties())));
+		for (CrystalElement element : CrystalElement.elements)
+			BOOSTED_PENDANTS.put(element, reg("enhanced_pendant_" + element.getEnglishName(),
+					() -> new reika.chromaticraft.items.tools.ItemBoostedPendant(element, itemProperties())));
 	}
 
 	public static ItemStack berryStack(CrystalElement element) {

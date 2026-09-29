@@ -1,0 +1,97 @@
+{
+  "type": "chromaticraft:casting",
+  "aura": [
+    {
+      "amount": 8000,
+      "element": "purple"
+    },
+    {
+      "amount": 16000,
+      "element": "lightblue"
+    },
+    {
+      "amount": 2000,
+      "element": "white"
+    }
+  ],
+  "duration": 3200,
+  "experience": 500,
+  "grid": [
+    {
+      "ingredient": "chromaticraft:super_crystal_light_blue",
+      "slot": 4
+    }
+  ],
+  "penalty_threshold": 1,
+  "result": {
+    "id": "chromaticraft:enhanced_pendant_light_blue"
+  },
+  "stackable": false,
+  "stands": [
+    {
+      "ingredient": "minecraft:diamond",
+      "offset": [
+        -2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:pendant_light_blue",
+      "offset": [
+        0,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "minecraft:diamond",
+      "offset": [
+        2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "minecraft:gold_ingot",
+      "offset": [
+        -2,
+        0,
+        0
+      ]
+    },
+    {
+      "ingredient": "minecraft:gold_ingot",
+      "offset": [
+        2,
+        0,
+        0
+      ]
+    },
+    {
+      "ingredient": "minecraft:ender_eye",
+      "offset": [
+        -2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "minecraft:ender_eye",
+      "offset": [
+        2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "minecraft:ghast_tear",
+      "offset": [
+        0,
+        0,
+        2
+      ]
+    }
+  ],
+  "tier": "pylon"
+}

@@ -138,6 +138,7 @@ public class ChromatiCraft extends DragonAPIMod {
 		reika.chromaticraft.auxiliary.ExplorationMonitor.register();
 		// V33a's mining, dimension-entry, potion, death and boss-kill progression hooks.
 		reika.chromaticraft.auxiliary.ProgressionEventBridge.register();
+		reika.chromaticraft.auxiliary.PendantEventBridge.register();
 		// Proxima arrivals fall from Y=1024, and death there returns the player home with a buffer cost.
 		reika.chromaticraft.world.dimension.ProximaPlayerSafety.register();
 		reika.chromaticraft.world.dimension.ProximaStructureSessions.register();
@@ -157,6 +158,8 @@ public class ChromatiCraft extends DragonAPIMod {
 			reika.dragonapi.auxiliary.IconLookupRegistry.instance.registerIcons(instance, CrystalElement.class);
 			// V33a addDispenserAction(LIGHTGUN, ProjectileToolDispenserAction).
 			reika.chromaticraft.items.tools.ProjectileToolDispenseBehavior.register(ChromaItems.LIGHT_GUN.get());
+			// V33a load(): ModCropList.addCustomCropType(new CrystalPlantHandler()), so harvesters reap Crystal Blooms.
+			reika.chromaticraft.auxiliary.CrystalPlantHandler.register();
 			PylonFinder.registerTransparentBlock(RotaryBlocks.BLASTPANE.get());
 			// V33a: network rays and visual line-of-sight checks both see through Defensive Glass.
 			PylonFinder.registerTransparentBlock(reika.chromaticraft.registry.ChromaBlocks.SELECTIVE_GLASS.get());

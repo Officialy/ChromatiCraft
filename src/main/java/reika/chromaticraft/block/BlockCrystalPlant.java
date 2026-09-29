@@ -9,292 +9,131 @@
  ******************************************************************************/
 package reika.chromaticraft.block;
 
-import java.util.Random;
+import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.EntityBlock;
+import net.minecraft.world.level.block.VegetationBlock;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.BooleanProperty;
+import net.minecraft.world.level.block.state.properties.IntegerProperty;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.VoxelShape;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.material.Material;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.particle.EntityFX;
-import net.minecraft.client.renderer.texture.IIconRegister;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.AxisAlignedBB;
-import net.minecraft.util.IIcon;
-import net.minecraft.util.MovingObjectPosition;
-import net.minecraft.world.IBlockAccess;
-import net.minecraft.world.World;
-
-import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaIcons;
-import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.render.particle.EntityCCBlurFX;
+import reika.chromaticraft.render.particle.ChromaParticle;
 import reika.chromaticraft.tileentity.plants.TileEntityCrystalPlant;
-import reika.chromaticraft.tileentity.plants.tileentitycrystalplant.Modifier;
-import reika.dragonapi.instantiable.effects.EntityBlurFX;
-import reika.dragonapi.instantiable.particlecontroller.SpiralMotionController;
-import reika.dragonapi.libraries.java.ReikaRandomHelper;
-import reika.dragonapi.libraries.registry.ReikaPlantHelper;
-import reika.dragonapi.libraries.rendering.ReikaColorAPI;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
+/**
+ * V33a {@code BlockCrystalPlant} ("Crystal Bloom"), one block per element where V33a used metadata. It grows on a
+ * random tick one time in twelve, from freshly planted ({@code growth} 2) through a budding pod (1) to ripe (0),
+ * when it glows and a right click harvests it for seeds and, with {@code CRYSTALFARM}, the occasional shard. The
+ * pod, glow and sparkle are drawn by {@link reika.chromaticraft.render.tesr.CrystalPlantRenderer}; the cross is
+ * the block model, {@code plant} or, once Primal, {@code plant_primal}.
+ */
+public final class BlockCrystalPlant extends VegetationBlock implements EntityBlock {
 
-public class BlockCrystalPlant extends Block {
+	/** V33a {@code TileEntityCrystalPlant.growthTick}: 2 planted, 1 budding, 0 ripe. */
+	public static final IntegerProperty GROWTH = IntegerProperty.create("growth", 0, 2);
+	/** Mirrors the tile's lack of {@code Modifier.IMPURE}: a ripe pure bloom lights to 15, an impure one to 12. */
+	public static final BooleanProperty PURE = BooleanProperty.create("pure");
+	/** Mirrors {@code Modifier.PRIMAL}, which swapped V33a's cross texture. */
+	public static final BooleanProperty PRIMAL = BooleanProperty.create("primal");
 
-	public static IIcon colorIcon;
-	public static IIcon colorIcon2;
-	public static IIcon fastIcon;
-	public static IIcon fastIcon2;
-	public static IIcon center;
+	/** V33a {@code setBlockBounds(0, 0, 0, 0.9375F, 0.9375F, 0.9375F)}: flush with the block's low corner. */
+	private static final VoxelShape SHAPE = Block.box(0, 0, 0, 15, 15, 15);
 
-	private static final Random rand = new Random();
+	private final CrystalElement element;
 
-	public BlockCrystalPlant(Material mat) {
-		super(mat);
-		this.setTickRandomly(true);
-		this.setLightOpacity(0);
-		this.setHardness(0);
-		this.setResistance(1F);
-		this.setStepSound(soundTypeGrass);
-		this.setCreativeTab(ChromatiCraft.tabChromaDeco);
-		this.setBlockBounds(0, 0, 0, 0.9375F, 0.9375F, 0.9375F);
+	public BlockCrystalPlant(BlockBehaviour.Properties properties, CrystalElement element) {
+		super(properties);
+		this.element = element;
+		this.registerDefaultState(stateDefinition.any().setValue(GROWTH, 2).setValue(PURE, true).setValue(PRIMAL, false));
+	}
+
+	public CrystalElement getElement() {
+		return element;
+	}
+
+	/** V33a {@code getLightValue}: {@code te.emitsLight() ? te.isPure() ? 15 : 12 : 0}. */
+	public static int lightLevel(BlockState state) {
+		return state.getValue(GROWTH) == 0 ? state.getValue(PURE) ? 15 : 12 : 0;
 	}
 
 	@Override
-	public AxisAlignedBB getCollisionBoundingBoxFromPool(World world, int x, int y, int z) {
-		return null;
+	protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+		builder.add(GROWTH, PURE, PRIMAL);
+	}
+
+	/**
+	 * V33a {@code ReikaPlantHelper.SAPLING.canPlantAt}, i.e. {@code ReikaBlockHelper.isDirtType}: any 1.7.10 dirt
+	 * metadata (plain, coarse, podzol) or grass. Not farmland, and not 26.x's dirt tag.
+	 */
+	public static boolean isDirtType(BlockState below) {
+		return below.is(Blocks.DIRT) || below.is(Blocks.COARSE_DIRT) || below.is(Blocks.PODZOL)
+				|| below.is(Blocks.GRASS_BLOCK);
+	}
+
+	/** V33a {@code canBlockStay} and the seeds' soil check: dirt-type ground, or Chroma Mud. */
+	public static boolean canGrowOn(BlockState below) {
+		return below.is(ChromaBlocks.MUD.get()) || isDirtType(below);
 	}
 
 	@Override
-	public boolean canPlaceBlockAt(World world, int x, int y, int z) {
-		return ReikaPlantHelper.SAPLING.canPlantAt(world, x, y, z) && super.canPlaceBlockAt(world, x, y, z);
+	protected boolean mayPlaceOn(BlockState state, BlockGetter level, BlockPos pos) {
+		return canGrowOn(state);
 	}
 
 	@Override
-	public void onNeighborBlockChange(World world, int x, int y, int z, Block par5)
-	{
-		super.onNeighborBlockChange(world, x, y, z, par5);
-		if (!this.canBlockStay(world, x, y, z)) {
-			this.die(world, x, y, z);
-		}
-	}
-
-	private void die(World world, int x, int y, int z) {
-		this.dropBlockAsItem(world, x, y, z, world.getBlockMetadata(x, y, z), 0);
-		world.setBlockToAir(x, y, z);
-	}
-
-	@Override
-	public boolean canBlockStay(World world, int x, int y, int z) {
-		return world.getBlock(x, y-1, z) == ChromaBlocks.MUD.getBlockInstance() || ReikaPlantHelper.SAPLING.canPlantAt(world, x, y, z);
-	}
-
-	@Override
-	@SideOnly(Side.CLIENT)
-	public void randomDisplayTick(World world, int x, int y, int z, Random r) {
-		TileEntityCrystalPlant te = (TileEntityCrystalPlant)world.getTileEntity(x, y, z);
-		if (te.isPure()) {
-			double rad = ReikaRandomHelper.getRandomPlusMinus(0.375, 0.125);
-			double a = Math.toRadians(r.nextDouble()*360);
-			double px = x+0.5+rad*Math.cos(a);
-			double pz = z+0.5+rad*Math.sin(a);
-			EntityBlurFX fx = new EntityCCBlurFX(world, px, y+r.nextDouble(), pz).setIcon(ChromaIcons.BIGFLARE);
-			fx.setLife(5);
-			fx.setColor(ReikaColorAPI.mixColors(te.getColor().getColor(), 0xffffff, 0.8F));
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-
-			if (te.canHarvest()) {
-				for (int i = 0; i < 4; i++) {
-					float s = (float)ReikaRandomHelper.getRandomBetween(0.25, 1);
-					fx = new EntityCCBlurFX(world, x+0.5, y+1.03125+0.1875*r.nextDouble(), z+0.5).setLife(20).setRapidExpand().setScale(s);
-					fx.setColor(ReikaColorAPI.mixColors(te.getColor().getColor(), 0xffffff, 0.5F));
-					((EntityCCBlurFX)fx).setIcon(ChromaIcons.FADE_CLOUD);
-					Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-				}
-			}
-
-			if (te.is(Modifier.BOOSTED)) {
-				px = x+r.nextDouble();
-				pz = z+r.nextDouble();
-				fx = new EntityCCBlurFX(world, px, y+r.nextDouble(), pz).setColor(te.getColor().getColor());
-				fx.setGravity(-0.03125F);
-				Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-				float fs = (float)ReikaRandomHelper.getRandomBetween(0.125, 0.75);
-				EntityFX fx2 = new EntityCCBlurFX(world, px, fx.posY, pz).setColor(0xffffff).lockTo(fx).setScale(fs);
-				Minecraft.getMinecraft().effectRenderer.addEffect(fx2);
-			}
-			if (te.is(Modifier.PRIMAL)) {
-				rad = 0.25;
-				a = System.currentTimeMillis()/40D;
-				px = x+0.5;
-				pz = z+0.5;
-				double v = 0;//0.03125;
-				double vx = v*Math.cos(a);
-				double vz = v*Math.sin(a);
-				fx = new EntityCCBlurFX(world, px, y+0.9375, pz, vx, 0, vz).setColor(te.getColor().getColor()).setRapidExpand();
-				SpiralMotionController m = new SpiralMotionController(x+0.5, z+0.5, 15, 0.015, rad, 0, a);
-				fx.setMotionController(m).setPositionController(m).setLife(100);
-				Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-				float fs = (float)ReikaRandomHelper.getRandomBetween(0.125, 0.75);
-				EntityFX fx2 = new EntityCCBlurFX(world, px, fx.posY, pz).setColor(0xffffff).lockTo(fx).setScale(fs).setRapidExpand().setLife(100);
-				Minecraft.getMinecraft().effectRenderer.addEffect(fx2);
-			}
-		}
-	}
-
-	@Override
-	public void updateTick(World world, int x, int y, int z, Random random) {
-		if (this.canBlockStay(world, x, y, z)) {
-			if (random.nextInt(12) == 0) {
-				TileEntityCrystalPlant te = (TileEntityCrystalPlant)world.getTileEntity(x, y, z);
+	protected void randomTick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
+		if (state.canSurvive(level, pos)) {
+			if (random.nextInt(12) == 0 && level.getBlockEntity(pos) instanceof TileEntityCrystalPlant te) {
 				te.grow();
 			}
 		}
 		else {
-			this.die(world, x, y, z);
+			// V33a die(): drop as broken, then clear.
+			level.destroyBlock(pos, true);
 		}
 	}
 
 	@Override
-	public int getLightValue(IBlockAccess iba, int x, int y, int z) {
-		TileEntityCrystalPlant te = (TileEntityCrystalPlant)iba.getTileEntity(x, y, z);
-		return te.emitsLight() ? te.isPure() ? 15 : 12 : 0;
+	public void animateTick(BlockState state, Level level, BlockPos pos, RandomSource random) {
+		if (level.getBlockEntity(pos) instanceof TileEntityCrystalPlant te && te.isPure())
+			ChromaParticle.spawnCrystalPlant(level, pos, element.getColor(), te.canHarvest(),
+					te.is(TileEntityCrystalPlant.Modifier.BOOSTED), te.is(TileEntityCrystalPlant.Modifier.PRIMAL),
+					random);
 	}
 
+	/** V33a {@code onBlockActivated}: harvests a ripe bloom, and takes the click either way. */
 	@Override
-	public int getRenderType() {
-		return 1; //cross tex, render the "plant" part here
-	}
-
-	@Override
-	public boolean hasTileEntity(int meta) {
-		return true;
-	}
-
-	@Override
-	public TileEntity createTileEntity(World world, int meta) {
-		return new TileEntityCrystalPlant();
-	}
-
-	@Override
-	public boolean isOpaqueCube() {
-		return false;
-	}
-
-	@Override
-	public boolean renderAsNormalBlock() {
-		return false;
-	}
-
-	@Override
-	public int getRenderColor(int meta) {
-		return super.getRenderColor(meta);
-	}
-
-	@Override
-	public Item getItemDropped(int meta, Random rand, int fortune) {
-		return ChromaItems.SEED.getItemInstance();
-	}
-
-	@Override
-	public int damageDropped(int meta) {
-		return meta%16+16;
-	}
-
-	@Override
-	public int colorMultiplier(IBlockAccess iba, int x, int y, int z) {/*
-		int l = 0;
-		int i1 = 0;
-		int j1 = 0;
-
-		for (int k1 = -1; k1 <= 1; ++k1)
-		{
-			for (int l1 = -1; l1 <= 1; ++l1)
-			{
-				int i2 = iba.getBiomeGenForCoords(x + l1, z + k1).getBiomeGrassColor();
-				l += (i2 & 16711680) >> 16;
-			i1 += (i2 & 65280) >> 8;
-			j1 += i2 & 255;
-			}
-		}
-
-		return (l / 9 & 255) << 16 | (i1 / 9 & 255) << 8 | j1 / 9 & 255;*/
-		return super.colorMultiplier(iba, x, y, z);
-	}
-
-	@Override
-	public IIcon getIcon(int s, int meta) {
-		//return Minecraft.getMinecraft().gameSettings.fancyGraphics ? colorIcon : fastIcon;
-		return fastIcon;
-	}
-
-	@Override
-	public IIcon getIcon(IBlockAccess world, int x, int y, int z, int s) {
-		TileEntityCrystalPlant te = (TileEntityCrystalPlant)world.getTileEntity(x, y, z);
-		return te.is(Modifier.PRIMAL) ? fastIcon2 : fastIcon;
-	}
-
-	@Override
-	public boolean onBlockActivated(World world, int x, int y, int z, EntityPlayer ep, int s, float a, float b, float c) {
-		TileEntityCrystalPlant te = (TileEntityCrystalPlant)world.getTileEntity(x, y, z);
-		if (te.canHarvest()) {
+	protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player,
+			BlockHitResult hit) {
+		if (!level.isClientSide() && level.getBlockEntity(pos) instanceof TileEntityCrystalPlant te && te.canHarvest()) {
 			te.harvest(true);
 		}
-		return true;
+		return InteractionResult.SUCCESS;
 	}
 
 	@Override
-	public void registerBlockIcons(IIconRegister ico) {
-		fastIcon = ico.registerIcon("chromaticraft:plant");
-		fastIcon2 = ico.registerIcon("chromaticraft:plant_primal");
-		colorIcon = ico.registerIcon("chromaticraft:plant_gray");
-		colorIcon2 = ico.registerIcon("chromaticraft:plant_gray_primal");
-		center = ico.registerIcon("chromaticraft:crystal/bloom");
-	}
-
-	public IIcon getBulbIcon(CrystalElement color) {
-		return center;//bulb[color.ordinal()];
-	}
-	/*
-	@Override
-	public boolean isReadyToHarvest(World world, int x, int y, int z) {
-		if (world.getBlock(x, y-1, z) == Blocks.grass)
-			;//return false;
-		TileEntityCrystalPlant te = (TileEntityCrystalPlant)world.getTileEntity(x, y, z);
-		return te.canHarvest();
+	protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+		return SHAPE;
 	}
 
 	@Override
-	public void setPostHarvest(World world, int x, int y, int z) {
-		TileEntityCrystalPlant te = (TileEntityCrystalPlant)world.getTileEntity(x, y, z);
-		te.harvest();
-	}
-
-	@Override
-	public ArrayList<ItemStack> getHarvestProducts(World world, int x, int y, int z) {
-		if (ChromaOptions.CRYSTALFARM.getState() && ReikaRandomHelper.doWithChance(0.01)) {
-			ArrayList li = new ArrayList();
-			ItemStack shard = ChromaItems.SHARD.getStackOfMetadata(world.getBlockMetadata(x, y, z));
-			li.add(shard);
-			return li;
-		}
-		return null;
-	}
-
-	@Override
-	public float getHarvestingSpeed() {
-		return 0.33F;
-	}*/
-
-	@Override
-	public ItemStack getPickBlock(MovingObjectPosition target, World world, int x, int y, int z, EntityPlayer ep)
-	{
-		int meta = world.getBlockMetadata(x, y, z);
-		return new ItemStack(ChromaBlocks.PLANT.getBlockInstance(), 1, meta);
+	public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
+		return new TileEntityCrystalPlant(pos, state);
 	}
 
 }

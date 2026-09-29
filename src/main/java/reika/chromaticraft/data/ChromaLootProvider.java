@@ -480,6 +480,19 @@ public final class ChromaLootProvider extends LootTableProvider {
 				else if (block instanceof BlockGlowDaisy) {
 					this.add(block, this.glowstoneDustTable(block, 0.5F));
 				}
+				else if (block instanceof reika.chromaticraft.block.BlockCrystalPlant plant) {
+					// V33a getItemDropped SEED, damageDropped meta%16+16: an Impure seed of the bloom's colour, in
+					// the same item data ItemCrystalSeeds.stack writes, so it stacks with harvested Impure seeds.
+					net.minecraft.nbt.CompoundTag impure = new net.minecraft.nbt.CompoundTag();
+					impure.putInt(reika.chromaticraft.items.ItemCrystalSeeds.FLAGS_KEY,
+							reika.chromaticraft.tileentity.plants.TileEntityCrystalPlant.Modifier.IMPURE.flag);
+					this.add(block, LootTable.lootTable().withPool(this.applyExplosionCondition(block, LootPool.lootPool()
+							.setRolls(ContextIntProviders.exactly(1))
+							.add(LootItem.lootTableItem(reika.chromaticraft.registry.ChromaItems.CRYSTAL_SEEDS
+									.get(plant.getElement()).get())
+									.apply(net.minecraft.world.level.storage.loot.functions.SetCustomDataFunction
+											.setCustomData(impure))))));
+				}
 				else if (block instanceof BlockGlowRoot) {
 					this.add(block, this.glowstoneDustTable(block, 0.25F));
 				}

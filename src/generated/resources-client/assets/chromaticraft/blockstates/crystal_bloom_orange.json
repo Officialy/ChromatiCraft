@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "primal=false": {
+      "model": "chromaticraft:block/crystal_bloom"
+    },
+    "primal=true": {
+      "model": "chromaticraft:block/crystal_bloom_primal"
+    }
+  }
+}

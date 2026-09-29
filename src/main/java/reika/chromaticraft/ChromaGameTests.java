@@ -424,6 +424,8 @@ public final class ChromaGameTests {
 		register(event, env, "geode_ore_survival_path", ChromaGameTests::geodeOreSurvivalPath);
 		register(event, env, "tiered_ore_worldgen", ChromaGameTests::tieredOreWorldgen);
 		register(event, env, "tiered_plant_survival_sources", ChromaGameTests::tieredPlantSurvivalSources);
+		register(event, env, "crystal_bloom_cycle", ChromaGameTests::crystalBloomCycle);
+		register(event, env, "pendants_and_purification", ChromaGameTests::pendantsAndPurification);
 		register(event, env, "creative_tiered_resource_access", ChromaGameTests::creativeTieredResourceAccess);
 		register(event, env, "rainbow_tree_shape_and_log", ChromaGameTests::rainbowTreeShapeAndLog);
 		register(event, env, "structure_cavern_nbt_controller", ChromaGameTests::structureCavernNbtController);
@@ -6823,6 +6825,128 @@ public final class ChromaGameTests {
 		helper.getLevel().destroyBlock(broken, false);
 		helper.assertTrue(!central.checkForArrangement(),
 				"removing one focal point must open the circuit and invalidate the ritual");
+		helper.succeed();
+	}
+
+	/**
+	 * V33a Crystal Bloom: dirt-type or mud soil, growth and light carried by the block state, the certain spread of
+	 * growth between adjacent pure blooms of one colour, harvest back to freshly planted, an Impure seed from a
+	 * broken bloom in exactly the seed item's own data, the harvester-facing crop type, and loss of support.
+	 */
+	private static void crystalBloomCycle(GameTestHelper helper) {
+		var level = helper.getLevel();
+		CrystalElement color = CrystalElement.MAGENTA;
+		var bloom = ChromaBlocks.crystalPlant(color).get();
+
+		helper.assertTrue(reika.chromaticraft.block.BlockCrystalPlant.canGrowOn(Blocks.DIRT.defaultBlockState())
+				&& reika.chromaticraft.block.BlockCrystalPlant.canGrowOn(Blocks.COARSE_DIRT.defaultBlockState())
+				&& reika.chromaticraft.block.BlockCrystalPlant.canGrowOn(Blocks.PODZOL.defaultBlockState())
+				&& reika.chromaticraft.block.BlockCrystalPlant.canGrowOn(Blocks.GRASS_BLOCK.defaultBlockState())
+				&& reika.chromaticraft.block.BlockCrystalPlant.canGrowOn(ChromaBlocks.MUD.get().defaultBlockState()),
+				"blooms must grow on V33a's dirt types and Chroma Mud");
+		helper.assertTrue(!reika.chromaticraft.block.BlockCrystalPlant.canGrowOn(Blocks.FARMLAND.defaultBlockState())
+				&& !reika.chromaticraft.block.BlockCrystalPlant.canGrowOn(Blocks.SAND.defaultBlockState())
+				&& !reika.chromaticraft.block.BlockCrystalPlant.isDirtType(ChromaBlocks.MUD.get().defaultBlockState()),
+				"farmland and sand are not bloom soil, and mud is not a dirt type for the bloom's own item");
+
+		BlockPos a = helper.absolutePos(new BlockPos(3, 4, 3));
+		BlockPos b = a.east();
+		for (BlockPos p : List.of(a, b)) {
+			level.setBlock(p.below(), Blocks.DIRT.defaultBlockState(), 3);
+			level.setBlock(p, bloom.defaultBlockState(), 3);
+		}
+		var teA = (reika.chromaticraft.tileentity.plants.TileEntityCrystalPlant)level.getBlockEntity(a);
+		var teB = (reika.chromaticraft.tileentity.plants.TileEntityCrystalPlant)level.getBlockEntity(b);
+		helper.assertTrue(teA != null && teB != null, "every bloom must carry its tile");
+		helper.assertTrue(level.getBlockState(a).getLightEmission() == 0 && teA.getGrowthState() == 2,
+				"a planted bloom starts at growth 2, unlit");
+
+		// V33a grow() pushes each pure neighbour, which pushes back: the capped chance is certain, so the two
+		// recurse into each other until both are ripe from a single growth step.
+		teA.grow();
+		helper.assertTrue(teA.canHarvest() && teB.canHarvest(),
+				"a pure bloom's growth always carries into its same-colour neighbour and back, ripening both");
+		helper.assertTrue(level.getBlockState(a).getLightEmission() == 15,
+				"a ripe pure bloom lights to 15 from its state");
+
+		teA.harvest(true);
+		helper.assertTrue(teA.getGrowthState() == 2 && level.getBlockState(a).getLightEmission() == 0,
+				"harvesting resets the bloom to freshly planted");
+
+		var crop = reika.dragonapi.modregistry.ModCropList.getModCrop(level, b, level.getBlockState(b));
+		helper.assertTrue(crop == reika.chromaticraft.auxiliary.CrystalPlantHandler.instance,
+				"harvesters must see blooms through the registered crop handler");
+		crop.makeRipe(level, b);
+		helper.assertTrue(crop.isRipe(level, b), "makeRipe must ripen the bloom");
+		crop.setHarvested(level, b);
+		helper.assertTrue(!crop.isRipe(level, b) && teB.getGrowthState() == 2 && !crop.destroyOnHarvest(),
+				"a harvester resets the bloom in place");
+
+		BlockPos c = helper.absolutePos(new BlockPos(6, 4, 6));
+		level.setBlock(c.below(), ChromaBlocks.MUD.get().defaultBlockState(), 3);
+		level.setBlock(c, bloom.defaultBlockState(), 3);
+		var teC = (reika.chromaticraft.tileentity.plants.TileEntityCrystalPlant)level.getBlockEntity(c);
+		teC.setStates(reika.chromaticraft.items.ItemCrystalSeeds.stack(color,
+				reika.chromaticraft.tileentity.plants.TileEntityCrystalPlant.Modifier.IMPURE.flag, false, 1));
+		teC.makeRipe();
+		helper.assertTrue(!level.getBlockState(c).getValue(reika.chromaticraft.block.BlockCrystalPlant.PURE)
+				&& level.getBlockState(c).getLightEmission() == 12,
+				"an impure ripe bloom lights to 12");
+
+		level.destroyBlock(a, true);
+		ItemStack expected = reika.chromaticraft.items.ItemCrystalSeeds.stack(color,
+				reika.chromaticraft.tileentity.plants.TileEntityCrystalPlant.Modifier.IMPURE.flag, false, 1);
+		boolean impureDrop = level.getEntitiesOfClass(ItemEntity.class, new AABB(a).inflate(1)).stream()
+				.anyMatch(e -> ItemStack.isSameItemSameComponents(e.getItem(), expected));
+		helper.assertTrue(impureDrop, "a broken bloom drops one Impure seed of its colour, stackable with harvested ones");
+
+		level.setBlock(b.below(), Blocks.AIR.defaultBlockState(), 3);
+		helper.assertTrue(!level.getBlockState(b).is(bloom), "a bloom without soil beneath breaks");
+		helper.succeed();
+	}
+
+	/**
+	 * V33a Pendants and the Aura Purification Gem: an inventory Pendant keeps its colour's crystal effect on the
+	 * carrier and stamps the one-second activity window the Purple/Black consumers read; the Enhanced Pendant is
+	 * enhanced (amplifier 2) without charge unless charging is required; the Gem, while charged, marks its carrier
+	 * active so hostile worlds stop turning crystal effects against them.
+	 */
+	private static void pendantsAndPurification(GameTestHelper helper) {
+		var level = helper.getLevel();
+		net.minecraft.world.entity.player.Player player = helper.makeMockPlayer(GameType.SURVIVAL);
+		CrystalElement color = CrystalElement.LIGHTBLUE; // Speed: a good effect the Overworld allows players
+		var effect = reika.chromaticraft.magic.CrystalPotionController.instance.getEffectFromColor(color, 100, 0, false);
+		helper.assertTrue(effect != null, "the test colour must map to a crystal effect");
+
+		var pendant = ChromaItems.PENDANTS.get(color).get();
+		ItemStack stack = new ItemStack(pendant);
+		helper.assertTrue(stack.getMaxStackSize() == 1, "pendants do not stack");
+		// V33a reads a missing stamp as time 0, so in a world under a second old nothing reads as inactive.
+		helper.assertTrue(level.getGameTime() <= 20
+				|| reika.chromaticraft.items.tools.ItemPendant.getActivePendantLevel(player, color) == -1,
+				"no pendant is active before one is carried");
+		pendant.inventoryTick(stack, level, player, null);
+		helper.assertTrue(player.hasEffect(effect.getEffect()) && player.getEffect(effect.getEffect()).getAmplifier() == 0,
+				"a carried Pendant applies its colour's effect at level 1");
+		helper.assertTrue(reika.chromaticraft.items.tools.ItemPendant.getActivePendantLevel(player, color) >= 0
+				&& reika.chromaticraft.items.tools.ItemPendant.hasActivePendant(player),
+				"a carried Pendant stamps the activity window its consumers read");
+
+		player.removeAllEffects();
+		var enhanced = ChromaItems.BOOSTED_PENDANTS.get(color).get();
+		enhanced.inventoryTick(new ItemStack(enhanced), level, player, null);
+		helper.assertTrue(reika.chromaticraft.registry.ChromaOptions.POWEREDPENDANTS.getState()
+				|| player.hasEffect(effect.getEffect()) && player.getEffect(effect.getEffect()).getAmplifier() == 2,
+				"without required charging an Enhanced Pendant applies its effect at amplifier 2");
+
+		var gem = ChromaItems.PURIFY.get();
+		helper.assertTrue(level.getGameTime() < 20
+				|| !reika.chromaticraft.items.tools.powered.ItemPurifyCrystal.isActive(player),
+				"the Gem is inactive before it ticks");
+		gem.doTick(new ItemStack(gem), level, player, false);
+		helper.assertTrue(reika.chromaticraft.items.tools.powered.ItemPurifyCrystal.isActive(player)
+				&& !reika.chromaticraft.magic.CrystalPotionController.instance.shouldBeHostile(player, level),
+				"a ticking Gem marks its carrier as shielded from hostile worlds");
 		helper.succeed();
 	}
 

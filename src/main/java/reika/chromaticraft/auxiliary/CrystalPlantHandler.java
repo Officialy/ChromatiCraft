@@ -10,79 +10,122 @@
 package reika.chromaticraft.auxiliary;
 
 import java.util.ArrayList;
+import java.util.List;
 
-import net.minecraft.block.Block;
-import net.minecraft.item.ItemStack;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
 
+import reika.chromaticraft.block.BlockCrystalPlant;
+import reika.chromaticraft.items.ItemCrystalSeeds;
 import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.tileentity.plants.TileEntityCrystalPlant;
 import reika.dragonapi.ModList;
 import reika.dragonapi.interfaces.CustomCropHandler;
+import reika.dragonapi.interfaces.registry.CropType;
 import reika.dragonapi.interfaces.registry.ModEntry;
+import reika.dragonapi.modregistry.ModCropList;
 
-public class CrystalPlantHandler implements CustomCropHandler {
+/**
+ * V33a {@code CrystalPlantHandler}: how harvesters see a Crystal Bloom. A harvest takes the tile's drops (seeds
+ * and shards; never the block's own drop, V33a's empty {@code getDropsOverride}) and resets it to freshly planted.
+ *
+ * <p>It is also DragonAPI's {@link CropType}, which is what the ported harvesters (the Farmer) query through
+ * {@link ModCropList}; {@link #register()} adds it for all sixteen blooms.
+ */
+public final class CrystalPlantHandler implements CustomCropHandler, CropType {
 
-	@Override
-	public int getHarvestedMeta(World world, int x, int y, int z) {
-		return world.getBlockMetadata(x, y, z);
+	public static final CrystalPlantHandler instance = new CrystalPlantHandler();
+
+	private CrystalPlantHandler() {}
+
+	public static void register() {
+		for (var plant : ChromaBlocks.CRYSTAL_PLANTS.values())
+			ModCropList.registerCrop(plant.get(), instance);
 	}
 
 	@Override
-	public boolean isCrop(Block id, int meta) {
-		return id == ChromaBlocks.PLANT.getBlockInstance();
+	public boolean isCrop(Block id) {
+		return id instanceof BlockCrystalPlant;
 	}
 
 	@Override
-	public boolean isRipeCrop(World world, int x, int y, int z) {
-		TileEntity te = world.getTileEntity(x, y, z);
-		return te instanceof TileEntityCrystalPlant && ((TileEntityCrystalPlant)te).canHarvest();
+	public boolean isCrop(BlockState state) {
+		return this.isCrop(state.getBlock());
 	}
 
 	@Override
-	public void makeRipe(World world, int x, int y, int z) {
-		TileEntity te = world.getTileEntity(x, y, z);
-		if (te instanceof TileEntityCrystalPlant) {
-			((TileEntityCrystalPlant)te).makeRipe();
+	public boolean isRipeCrop(Level world, BlockPos pos) {
+		return world.getBlockEntity(pos) instanceof TileEntityCrystalPlant te && te.canHarvest();
+	}
+
+	@Override
+	public boolean isRipe(Level level, BlockPos pos) {
+		return this.isRipeCrop(level, pos);
+	}
+
+	@Override
+	public void makeRipe(Level world, BlockPos pos) {
+		if (world.getBlockEntity(pos) instanceof TileEntityCrystalPlant te) {
+			te.makeRipe();
 		}
 	}
 
 	@Override
 	public boolean isSeedItem(ItemStack is) {
-		return ChromaItems.SEED.matchWith(is);
+		return is.getItem() instanceof ItemCrystalSeeds;
 	}
 
 	@Override
-	public ArrayList<ItemStack> getAdditionalDrops(World world, int x, int y, int z, Block id, int meta, int fortune) {
-		TileEntityCrystalPlant te = (TileEntityCrystalPlant)world.getTileEntity(x, y, z);
-		return te.getDrops();
+	public List<ItemStack> getAdditionalDrops(Level world, BlockPos pos, Block id, int fortune) {
+		return world.getBlockEntity(pos) instanceof TileEntityCrystalPlant te ? te.getDrops() : new ArrayList<>();
 	}
 
 	@Override
-	public void editTileDataForHarvest(World world, int x, int y, int z) {
-		TileEntity te = world.getTileEntity(x, y, z);
-		if (te instanceof TileEntityCrystalPlant) {
-			((TileEntityCrystalPlant)te).harvest(false);
+	public List<ItemStack> getDrops(Level level, BlockPos pos, int fortune) {
+		List<ItemStack> drops = new ArrayList<>(this.getDropsOverride(level, pos, level.getBlockState(pos).getBlock(), fortune));
+		drops.addAll(this.getAdditionalDrops(level, pos, level.getBlockState(pos).getBlock(), fortune));
+		return drops;
+	}
+
+	@Override
+	public void editTileDataForHarvest(Level world, BlockPos pos) {
+		if (world.getBlockEntity(pos) instanceof TileEntityCrystalPlant te) {
+			te.harvest(false);
 		}
 	}
 
 	@Override
+	public void setHarvested(Level level, BlockPos pos) {
+		this.editTileDataForHarvest(level, pos);
+	}
+
+	@Override
+	public boolean destroyOnHarvest() {
+		return false;
+	}
+
+	@Override
 	public boolean initializedProperly() {
-		return ChromaBlocks.PLANT.getBlockInstance() != null;
+		return !ChromaBlocks.CRYSTAL_PLANTS.isEmpty();
 	}
 
 	@Override
-	public ArrayList<ItemStack> getDropsOverride(World world, int x, int y, int z, Block id, int meta, int fortune) {
-		return new ArrayList();
+	public boolean existsInGame() {
+		return this.initializedProperly();
 	}
 
 	@Override
-	public int getGrowthState(World world, int x, int y, int z) {
-		TileEntity te = world.getTileEntity(x, y, z);
-		if (te instanceof TileEntityCrystalPlant) {
-			return ((TileEntityCrystalPlant)te).getGrowthState();
+	public List<ItemStack> getDropsOverride(Level world, BlockPos pos, Block id, int fortune) {
+		return new ArrayList<>();
+	}
+
+	@Override
+	public int getGrowthState(Level world, BlockPos pos) {
+		if (world.getBlockEntity(pos) instanceof TileEntityCrystalPlant te) {
+			return te.getGrowthState();
 		}
 		else {
 			return 0;
@@ -105,7 +148,7 @@ public class CrystalPlantHandler implements CustomCropHandler {
 	}
 
 	@Override
-	public boolean isTileEntity() {
+	public boolean isBlockEntity() {
 		return true;
 	}
 
@@ -113,10 +156,5 @@ public class CrystalPlantHandler implements CustomCropHandler {
 	public boolean neverDropsSecondSeed() {
 		return false;
 	}
-	/*
-	@Override
-	public CropFormat getShape() {
-		return CropFormat.PLANT;
-	}*/
 
 }

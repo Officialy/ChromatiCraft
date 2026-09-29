@@ -1,0 +1,62 @@
+{
+  "type": "chromaticraft:casting",
+  "completion": {
+    "double_output": true
+  },
+  "duration": 20,
+  "experience": 40,
+  "grid": [
+    {
+      "ingredient": "minecraft:glowstone_dust",
+      "slot": 0
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_cyan",
+      "slot": 1
+    },
+    {
+      "ingredient": "minecraft:glowstone_dust",
+      "slot": 2
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_cyan",
+      "slot": 3
+    },
+    {
+      "ingredient": "minecraft:wheat_seeds",
+      "slot": 4
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_cyan",
+      "slot": 5
+    },
+    {
+      "ingredient": "minecraft:glowstone_dust",
+      "slot": 6
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_cyan",
+      "slot": 7
+    },
+    {
+      "ingredient": "minecraft:glowstone_dust",
+      "slot": 8
+    }
+  ],
+  "penalty_threshold": 3,
+  "result": {
+    "count": 8,
+    "id": "chromaticraft:crystal_seeds_cyan"
+  },
+  "runes": [
+    {
+      "element": "cyan",
+      "offset": [
+        2,
+        -1,
+        0
+      ]
+    }
+  ],
+  "tier": "temple"
+}

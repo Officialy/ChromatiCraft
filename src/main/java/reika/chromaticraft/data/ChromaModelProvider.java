@@ -253,6 +253,26 @@ public class ChromaModelProvider extends ModelProvider {
 					states[0], ItemModelUtils.override(states[1], 1), ItemModelUtils.override(states[2], 2),
 					ItemModelUtils.override(states[3], 3)));
 		}
+		// V33a offset the Aura Purification Gem's sprite (33) by its charge state, as for the probe.
+		{
+			Item gem = ChromaItems.PURIFY.get();
+			net.minecraft.client.renderer.item.ItemModel.Unbaked[] states = new net.minecraft.client.renderer.item.ItemModel.Unbaked[4];
+			for (int i = 0; i < states.length; i++) {
+				states[i] = ItemModelUtils.plainModel(ModelTemplates.FLAT_ITEM.create(
+						Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "item/purification_gem_"+i),
+						new TextureMapping().put(TextureSlot.LAYER0, new Material(
+								Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "item/purification_gem_"+i))), modelOut));
+			}
+			itemModelOut.accept(gem, ItemModelUtils.rangeSelect(new reika.chromaticraft.client.PoweredItemClient.ChargeState(),
+					states[0], ItemModelUtils.override(states[1], 1), ItemModelUtils.override(states[2], 2),
+					ItemModelUtils.override(states[3], 3)));
+		}
+		// V33a Pendants: items_color.png sprites 96 + colour (Pendant) and 112 + colour (Enhanced Pendant).
+		for (CrystalElement element : CrystalElement.elements) {
+			for (Item pendant : List.of(ChromaItems.PENDANTS.get(element).get(), ChromaItems.BOOSTED_PENDANTS.get(element).get()))
+				itemModelOut.accept(pendant, ItemModelUtils.plainModel(ModelTemplates.FLAT_ITEM.create(
+						ModelLocationUtils.getModelLocation(pendant), TextureMapping.layer0(pendant), modelOut)));
+		}
 		// V33a ItemCrystalPotion used the vanilla potion icons with the liquid in the element colour, which is the
 		// potion tint reading POTION_CONTENTS' custom colour.
 		ChromaItems.CRYSTAL_POTIONS.values().forEach(potion -> itemModelOut.accept(potion.get(), ItemModelUtils.tintedModel(
@@ -343,6 +363,7 @@ public class ChromaModelProvider extends ModelProvider {
 		warpNodeModel(blockStateOut, modelOut);
 		unknownArtefactBlock(blockStateOut, itemModelOut, modelOut);
 		decoFlowerBlocks(blockStateOut, itemModelOut, modelOut);
+		crystalPlantBlocks(blockStateOut, itemModelOut, modelOut);
 		caveIndicatorBlock(blockStateOut, itemModelOut, modelOut);
 		tieredPlantBlocks(blockStateOut, itemModelOut, modelOut);
 		pylonStructureBlock(blockStateOut, itemModelOut, modelOut);
@@ -661,6 +682,37 @@ public class ChromaModelProvider extends ModelProvider {
 					ModelLocationUtils.getModelLocation(block.asItem()),
 					new TextureMapping().put(TextureSlot.LAYER0, texture), modelOut);
 			itemModelOut.accept(block.asItem(), ItemModelUtils.plainModel(itemModel));
+		}
+	}
+
+	/**
+	 * V33a Crystal Bloom: render type 1 (crossed squares) with {@code plant}, or {@code plant_primal} once Primal;
+	 * growth and purity change only the tile-drawn pod and the light. The item was V33a's {@code getIcon(0, meta)},
+	 * the plain {@code plant} sprite, flat. Seeds are their items_color.png sprites (sheet 128 + colour).
+	 */
+	private static void crystalPlantBlocks(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		Material plant = new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/plant"));
+		Material primal = new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/plant_primal"));
+		Identifier plainModel = ModelTemplates.CROSS.create(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/crystal_bloom"), TextureMapping.cross(plant), modelOut);
+		Identifier primalModel = ModelTemplates.CROSS.create(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/crystal_bloom_primal"),
+				TextureMapping.cross(primal), modelOut);
+		Identifier itemModel = ModelTemplates.FLAT_ITEM.create(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "item/crystal_bloom"),
+				new TextureMapping().put(TextureSlot.LAYER0, plant), modelOut);
+		for (CrystalElement element : CrystalElement.elements) {
+			Block block = ChromaBlocks.crystalPlant(element).get();
+			blockStateOut.accept(MultiVariantGenerator.dispatch(block)
+					.with(PropertyDispatch.initial(reika.chromaticraft.block.BlockCrystalPlant.PRIMAL)
+							.select(false, new MultiVariant(WeightedList.of(new Variant(plainModel))))
+							.select(true, new MultiVariant(WeightedList.of(new Variant(primalModel))))));
+			itemModelOut.accept(block.asItem(), ItemModelUtils.plainModel(itemModel));
+
+			Item seeds = ChromaItems.CRYSTAL_SEEDS.get(element).get();
+			itemModelOut.accept(seeds, ItemModelUtils.plainModel(ModelTemplates.FLAT_ITEM.create(
+					ModelLocationUtils.getModelLocation(seeds), TextureMapping.layer0(seeds), modelOut)));
 		}
 	}
 

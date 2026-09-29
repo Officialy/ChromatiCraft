@@ -1,43 +1,49 @@
 /*******************************************************************************
  * @author Reika Kalseki
- * 
+ *
  * Copyright 2017
- * 
+ *
  * All rights reserved.
  * Distribution of the software in any form is only allowed with
  * explicit, prior permission from the owner.
  ******************************************************************************/
 package reika.chromaticraft.items.itemblock;
 
-import net.minecraft.block.Block;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.IIcon;
-import net.minecraft.world.World;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.context.BlockPlaceContext;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
 
+import reika.chromaticraft.block.BlockCrystalPlant;
 import reika.chromaticraft.tileentity.plants.TileEntityCrystalPlant;
 
-public class ItemBlockCrystalPlant extends ItemBlockCrystalColors {
+/**
+ * V33a {@code ItemBlockCrystalPlant}: the bloom itself as an item. It places only where
+ * {@code BlockCrystalPlant.canPlaceBlockAt} allowed (dirt-type ground; unlike seeds, not Chroma Mud) and grows the
+ * new plant twice, so it arrives ripe.
+ */
+public class ItemBlockCrystalPlant extends BlockItem {
 
-	public ItemBlockCrystalPlant(Block b) {
-		super(b);
+	public ItemBlockCrystalPlant(Block b, Properties properties) {
+		super(b, properties);
 	}
 
 	@Override
-	public IIcon getIconFromDamage(int dmg) {
-		return field_150939_a.getIcon(0, dmg);
+	protected boolean canPlace(BlockPlaceContext context, BlockState state) {
+		return BlockCrystalPlant.isDirtType(context.getLevel().getBlockState(context.getClickedPos().below()))
+				&& super.canPlace(context, state);
 	}
 
 	@Override
-	public boolean placeBlockAt(ItemStack stack, EntityPlayer player, World world, int x, int y, int z, int side, float hitX, float hitY, float hitZ, int metadata)
-	{
-		boolean flag = super.placeBlockAt(stack, player, world, x, y, z, side, hitX, hitY, hitZ, metadata);
-		if (flag) {
-			TileEntityCrystalPlant te = (TileEntityCrystalPlant)world.getTileEntity(x, y, z);
+	public InteractionResult place(BlockPlaceContext context) {
+		InteractionResult result = super.place(context);
+		if (result.consumesAction() && !context.getLevel().isClientSide()
+				&& context.getLevel().getBlockEntity(context.getClickedPos()) instanceof TileEntityCrystalPlant te) {
 			te.grow();
 			te.grow();
 		}
-		return flag;
+		return result;
 	}
 
 }

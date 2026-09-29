@@ -376,7 +376,27 @@ public class ChromaLang extends LanguageProvider {
 			add(ChromaItems.ELEMENTAL_STONES.get(element).get(), element.displayName + " Elemental Stone");
 			add(ChromaItems.TINTED_LENSES.get(element).get(),
 					element.displayName + " Tinted Crystal Lens");
+			// V33a getMultiValuedName: case PLANT and case SEED both prefix the colour to crystal.plant
+			// ("Crystal Bloom") and crystal.seeds ("Crystal Seeds").
+			add(ChromaBlocks.crystalPlant(element).get(), element.displayName + " Crystal Bloom");
+			add(ChromaItems.CRYSTAL_SEEDS.get(element).get(), element.displayName + " Crystal Seeds");
+			// V33a case PENDANT/PENDANT3: the colour before crystal.pendant ("Pendant") / crystal.pendant3
+			// ("Enhanced Pendant").
+			add(ChromaItems.PENDANTS.get(element).get(), element.displayName + " Pendant");
+			add(ChromaItems.BOOSTED_PENDANTS.get(element).get(), element.displayName + " Enhanced Pendant");
 		}
+		// V33a ItemPendant.addInformation's literal lines.
+		add("item.chromaticraft.pendant.effect.purple", "Boosts XP yields");
+		add("item.chromaticraft.pendant.effect.black", "Improved lumen buffer usage efficiency");
+		add("item.chromaticraft.pendant.level", "Level: %s");
+		add("item.chromaticraft.pendant.hold_shift", "Hold %s for effect data");
+		add("item.chromaticraft.pendant.shift", "Shift");
+		add(ChromaItems.PURIFY.get(), "Aura Purification Gem"); // V33a chroma.purify
+		// V33a ItemCrystalSeeds.addInformation: each present modifier's displayName, and the sterile note.
+		for (reika.chromaticraft.tileentity.plants.TileEntityCrystalPlant.Modifier m
+				: reika.chromaticraft.tileentity.plants.TileEntityCrystalPlant.Modifier.list)
+			add(m.translationKey(), m.displayName);
+		add("item.chromaticraft.crystal_seeds.sterile", "Will plant a sterile plant, for decoration only");
 
 		// Crystalline stone — each variant is its own block now, so the names key off the real block
 		// rather than a per-metadata description id. Text verbatim from V33a's chromablock.pylon.N.
