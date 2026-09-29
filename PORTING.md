@@ -9404,3 +9404,41 @@ as time 0, so a world under a second old counts every pendant active); guarded, 
   - Fluid Radiator (FLUIDDISTRIBUTOR)
   - World Rift (RIFT)
   - Teleportation Pump (TELEPUMP)
+
+### Fluids and V33a materials (washed_away_by_fluids) — 2026-09-29
+
+- 26.3 lets flowing fluid replace only blocks in `#minecraft:washed_away_by_fluids`.
+  `ChromaBlockTagsProvider` filled that tag with DragonAPI `LegacyMotionTags`' shape rule and no
+  material predicate. So every block without a solid default shape was washed away, including the
+  pylon, every lumen relay, the wire, turret, fluid anchor, particle spawner and personal charger.
+- 1.7.10 used material instead. `BlockDynamicLiquid.func_149807_p` refused to flow into doors,
+  signs, ladders, reeds, `Material.portal`, and any block whose `Material.blocksMovement()` was
+  true.
+  - V33a `ChromaBlocks.getBlockMaterial` defaults to `Material.rock`.
+  - Crystal blocks, `PYLON`, `RELAY`, `TILECRYSTAL*` and the other crystal tiles use
+    `CrystalMaterial`, which also blocks movement.
+- The provider now passes V33a's material rule as the `legacyMaterialBlocksMovement` predicate.
+  - Every block blocks movement unless it is a `LiquidBlock` or its V33a material did not block
+    movement:
+    - plants: `TILEPLANT`, `DECOPLANT`, `TIEREDPLANT`, `DECOFLOWER` (Glow Daisy/Root), `PLANT`
+      (Crystal Bloom), `METAALLOYLAMP`, the dye vines, and the vanilla-sapling/flower dye blocks
+    - circuits: `LIGHT`
+    - pseudo-air: `HOVER`, `TRAIL`
+    - portal
+  - These 145 blocks left the washed tag and joined `blocks_motion_no_leaves`:
+    - all 96 `crystal_glow_*` and 16 `encrusted_crystal_*`
+    - `pylon`, `personal_charger` (a `PYLON` tile), and all 17 lumen relays including multichromic
+    - `function_relay`, `lumen_wire`, `lumen_turret`, `fluid_relay`, `particle_spawner`
+      (`TILEMODELLED*`, rock)
+    - `warp_node`, `glowing_cracks`, `chroma_door`, `heat_lamp`/`cold_lamp`, `dummy_aux`,
+      `deco_miasma`/`deco_lifewater`/`deco_lattice` (rock)
+  - Blocking motion is what 1.7.10's material also did for precipitation height and heightmaps.
+    Suffocation still needs a full collision shape, so noCollision blocks do not suffocate.
+- `portal_rift` and `return_portal_rift` are in neither tag. `Material.portal` did not block
+  movement, but `func_149807_p` still refused to flow into it.
+- These stay washable because V33a made them `Material.plants`: `biome_reverter`,
+  `cobble_generator`, `heat_lily`, `plant_accelerator`, `crop_speed_plant`, `harvest_plant` and
+  `chroma_flower`. The same goes for every sapling, flower, vine and crystal bloom; `ethereal_light`,
+  `hover`, `chroma_trail`; and the three fluids.
+- Known divergence, in the other direction: `meta_alloy_lamp` was `Material.plants` in V33a, but its
+  port shape is solid, so it still blocks motion. The predicate cannot un-block a solid shape.

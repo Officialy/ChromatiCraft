@@ -1,9 +1,16 @@
 package reika.chromaticraft.data;
 
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Stream;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.data.PackOutput;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.LiquidBlock;
 import net.neoforged.neoforge.common.data.BlockTagsProvider;
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.registry.ChromaBlocks;
@@ -24,7 +31,16 @@ public final class ChromaBlockTagsProvider extends BlockTagsProvider {
         var washedTag = tag(BlockTags.WASHED_AWAY_BY_FLUIDS);
         // Every leaf block (dye, rainbow and glowing leaves) is a LeavesBlock, so the classifier already puts it in
         // #minecraft:leaves; listing them again only duplicated the entries.
-        LegacyMotionTags.classifyEntries(ChromaBlocks.BLOCKS.getEntries(), motionTag::add, leafTag::add, washedTag::add);
+        // 1.7.10 judged fluid flow by V33a's Material rather than by shape, so restore it (see below). Material.portal
+        // did not block movement, but func_149807_p still refused to flow into it: the rifts are in neither tag.
+        Set<Block> v33aPassable = v33aPassableMaterialBlocks();
+        Set<ResourceKey<Block>> v33aPortal = Set.of(ChromaBlocks.PORTAL.getKey(), ChromaBlocks.RETURN_PORTAL.getKey());
+        LegacyMotionTags.classifyEntries(ChromaBlocks.BLOCKS.getEntries(),
+                block -> !(block instanceof LiquidBlock) && !v33aPassable.contains(block),
+                motionTag::add, leafTag::add, key -> {
+                    if (!v33aPortal.contains(key))
+                        washedTag.add(key);
+                });
 
         tag(BlockTags.SMALL_FLOWERS).add(ChromaBlocks.GLOW_DAISY.getKey());
 
@@ -113,4 +129,27 @@ public final class ChromaBlockTagsProvider extends BlockTagsProvider {
 		// V33a BlockDyeFlower is a BlockFlower; it joins the flowers the way vanilla's own do.
 		ChromaBlocks.DYE_FLOWERS.forEach(block -> tag(BlockTags.SMALL_FLOWERS).add(block.getKey()));
     }
+
+	/**
+	 * The blocks whose V33a Material did not block movement, so 1.7.10 flowing liquid could wash them away
+	 * (BlockDynamicLiquid func_149807_p). V33a ChromaBlocks.getBlockMaterial defaulted to Material.rock, and its
+	 * crystal blocks, pylons and relays used CrystalMaterial, which also blocks movement; every other registered
+	 * block is therefore protected. The exceptions: Material.plants (TILEPLANT, DECOPLANT, TIEREDPLANT, DECOFLOWER,
+	 * PLANT, METAALLOYLAMP, the dye vines, and the BlockSapling/BlockFlower dye saplings and flowers), circuits
+	 * (LIGHT), PseudoAirMaterial (HOVER, TRAIL) and portal (PORTAL). The water-material fluids are LiquidBlocks.
+	 */
+	private static Set<Block> v33aPassableMaterialBlocks() {
+		Set<Block> blocks = new HashSet<>();
+		Stream.of(ChromaBlocks.DYE_SAPLINGS, ChromaBlocks.DYE_FLOWERS, ChromaBlocks.DYE_VINES,
+				ChromaBlocks.FERTILE_DYE_VINES).flatMap(List::stream).forEach(block -> blocks.add(block.get()));
+		ChromaBlocks.TIERED_PLANTS.values().forEach(block -> blocks.add(block.get()));
+		ChromaBlocks.DECO_FLOWERS.values().forEach(block -> blocks.add(block.get()));
+		ChromaBlocks.CRYSTAL_PLANTS.values().forEach(block -> blocks.add(block.get()));
+		Stream.of(ChromaBlocks.RAINBOW_SAPLING, ChromaBlocks.GLOW_SAPLING, ChromaBlocks.GLOW_DAISY,
+				ChromaBlocks.GLOW_ROOT, ChromaBlocks.META_ALLOY_LAMP, ChromaBlocks.CHROMA_FLOWER, ChromaBlocks.HEAT_LILY,
+				ChromaBlocks.BIOME_REVERTER, ChromaBlocks.COBBLE_GENERATOR, ChromaBlocks.PLANT_ACCELERATOR,
+				ChromaBlocks.CROP_SPEED_PLANT, ChromaBlocks.HARVEST_PLANT, ChromaBlocks.ETHEREAL_LIGHT,
+				ChromaBlocks.HOVER, ChromaBlocks.CHROMA_TRAIL, ChromaBlocks.PORTAL, ChromaBlocks.RETURN_PORTAL).forEach(block -> blocks.add(block.get()));
+		return blocks;
+	}
 }
