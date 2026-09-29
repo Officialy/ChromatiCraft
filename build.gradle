@@ -9,6 +9,13 @@ ext {
 // runs every test in the chromaticraft namespace (progression core) and exits non-zero on failure.
 neoForge {
     runs {
+        clientData {
+            gameDirectory = file('run-client-data')
+        }
+        serverData {
+            // Datagen must not load optional client mods from the normal run/mods directory.
+            gameDirectory = file('run-data')
+        }
         gameTest {
             type = "gameTestServer"
             // Never share logs, configs, playerdata, or the generated test level with a live client.
@@ -29,11 +36,11 @@ dependencies {
     implementation project(":RotaryCraft")
     implementation project(":GeoStrata")
     implementation project(":ReactorCraft")
-    implementation "maven.modrinth:kkmrDlKT:Z28Rt8Ne"
+    implementation "com.github.glitchfiend:TerraBlender-neoforge:26.3-26.3.0.0.7-local.1"
 }
 
 // PORT-IN-PROGRESS allowlist (mirrors ReactorCraft). The sources are still mostly original 1.7.10
-// and will not compile, so we compile ONLY files fully ported to 26.2. This list IS the done-tracker:
+// and will not compile, so we compile ONLY files fully ported to 26.3. This list IS the done-tracker:
 // add a file the moment it is ported. Remove this whole block once the entire mod is ported.
 sourceSets.main.java {
     // api/ implementable interfaces (leaf contracts). Deferred: OrePings (dead IIcon system),
@@ -165,6 +172,14 @@ sourceSets.main.java {
     include 'reika/chromaticraft/render/item/LumenTurretItemRenderer.java'
     include 'reika/chromaticraft/auxiliary/FluidNetwork.java'
     include 'reika/chromaticraft/tileentity/transport/TileEntityFluidRelay.java'
+    include 'reika/chromaticraft/base/tileentity/TileEntityAreaDistributor.java'
+    include 'reika/chromaticraft/api/interfaces/customrangeupgrade/RangeUpgradeable.java'
+    include 'reika/chromaticraft/tileentity/transport/TileEntityFluidDistributor.java'
+    include 'reika/chromaticraft/render/tesr/RenderFluidDistributor.java'
+    include 'reika/chromaticraft/auxiliary/interfaces/LinkedTile.java'
+    include 'reika/chromaticraft/base/tileentity/LinkedTileBase.java'
+    include 'reika/chromaticraft/auxiliary/interfaces/AdjacencyUpgrade.java'
+    include 'reika/chromaticraft/base/tileentity/ChargedCrystalPowered.java'
     include 'reika/chromaticraft/block/BlockFluidRelay.java'
     include 'reika/chromaticraft/container/MenuFluidRelay.java'
     include 'reika/chromaticraft/client/gui/ScreenFluidRelay.java'

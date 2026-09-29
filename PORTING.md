@@ -9129,6 +9129,100 @@ and GameTests cannot yet run; the remaining errors include biome setup, renderin
 and stale 26.2 calls in other accepted files. The 26.2 GameTest results above do not
 verify this 26.3 state.
 
+## 26.3 integration and data verification (2026-09-28)
+
+The earlier red-build checkpoint is superseded for the accepted source slice: the full
+`compileJava --continue --offline` now passes. GeoStrata and ChromatiCraft use the locally
+published NeoForge TerraBlender build `26.3-26.3.0.0.7-local.1`, whose region registry
+listener uses `NewDatapackRegistryEvent.worldRegistry`.
+
+Server datagen exposed a 26.3 feature-type registry constraint: one `MapCodec` object
+cannot be registered under multiple IDs. `ChromaFeatures` now registers each shared
+plant, flower, pylon, Nether roof, and overworld structure codec once. Their distinct
+world `FEATURE` entries, including command and natural variants, remain in
+`ChromaWorldGenProvider`. Server and client datagen both pass and have refreshed their
+tracked 26.3 output. They use separate run directories to avoid the 26.2 optional jars
+kept in the normal client run directory.
+
+The Burrow loot table includes optional common ore and ingot tags. Its provider now
+emits empty `c:` tag definitions for materials absent from this mod stack, allowing
+datapack loading without removing those weighted loot entries; other mods can merge
+their material entries into the same tags. The 26.3 GameTest suite passed all 168
+required tests in 19.24 minutes. The new `worldgen/feature` JSON and common tags are
+visible to Git alongside the previously tracked generated data.
+
+## Lumafly spawn and damage correction (2026-09-28)
+
+The 26.3 port made `EntityTunnelNuker` reject all damage even though the V33a entity
+used ordinary living-entity damage. The explicit invulnerability overrides are removed,
+and the entity GameTest checks that a generic hit reduces health. The port also
+registered `TunnelNukerSpawner` on every level tick, while V33a left that global
+player-nearby spawner disabled. The listener is removed. Lore towers still spawn their
+local Lumaflies in the Overworld, and the Luminescent Sanctuary still lists them as
+natural spawns; both of those sources existed in V33a.
+
+Verification: `:ChromatiCraft:compileJava --offline` passed, and the focused
+`chromaticraft:tunnel_nuker_entity_contract` GameTest passed on the 26.3 server.
+
+## 26.3 cavern terrain read and screen pass correction (2026-09-28)
+
+The natural Cavern feature fitted only its NBT footprint into the feature step's
+three-by-three chunk window. Its exit tunnel still checked and carved 17 blocks east of
+the controller, allowing a read two chunks from the generated centre. The fit helper now
+accepts an eastward extension and Cavern includes its full tunnel reach before any site
+checks or placement. The structure-window GameTest sweeps the resulting 25-block width.
+
+Locus Point's one-attachment screen render pass crashed in 26.3 because its pipeline
+declared zero color target states. The Monument, UA Zone, and Artealloy screen passes
+shared that mismatch. Each now declares one default color target state, matching its
+render pass. `:ChromatiCraft:compileJava --offline` and the focused
+`chromaticraft:structure_write_window_fit` GameTest passed. Client rendering and
+natural Cavern generation still need an in-world check with the updated build.
+
+## 26.3 Distant Horizons tint and JEI subtype integration (2026-09-28)
+
+Distant Horizons calls `WaterColorEvent` with a tint-only view that rejects block-state
+reads. Luminous Cliffs water needs those reads for depth, flow, light, and open edges.
+The water listener now preserves the incoming biome color for a tint-only view and
+caches its view class after the first unsupported read, avoiding repeated exceptions
+for LOD cells. Other unsupported operations still propagate as errors.
+
+JEI subtype registration now includes potion contents for Crystal Potion variants and
+custom data for charged tools, storage crystals, the Lexicon, Ender Crystal Mover, and
+Information Fragments. Those variants intentionally share item identities in the
+creative tabs; JEI needs their component data to distinguish them. ElectriCraft also
+registers custom-data subtypes for its empty/full batteries and wireless chargers.
+DragonAPI, ReactorCraft, ElectriCraft, and ChromatiCraft `compileJava` tasks passed.
+The DH rendering path and JEI warning counts still need a development client check.
+
+### Pylon colour discovery feedback — 2026-09-28
+
+The sight scan already recorded a charged pylon's colour and granted `PYLON`, but
+`setPlayerDiscoveredColor` dropped V33a's per-colour progression note. A new clientbound
+`ColorDiscoveryNote` now fires only when a colour changes from undiscovered to discovered with
+notifications enabled. The existing progression overlay shows the original colour name, rune icon,
+and "A new form of crystal energy" caption, with the same sound and duration as stage notes. The
+existing stage and ALLCOLORS prerequisites remain unchanged. The focused
+`pylon_color_discovery_on_sight` GameTest exercises a real structured, charged pylon and verifies
+both persisted colour discovery and the PYLON stage.
+
+### Burrow annex write window and world geometry pass — 2026-09-28
+
+The natural Burrow feature fitted only its main NBT template to the feature step's chunk write
+window. Its optional furnace and loot rooms share the controller but extend farther north, east,
+and south. A door placement outside the window could be dropped, leaving stone for
+`BlockChromaDoor.withConnections` and crashing feature placement. The fit now measures the union of
+the three actual template sizes and anchors before site checks or placement. The focused
+`burrow_annex_write_window_fit` GameTest reproduces the reported chunk `[-4,15]` edge case and
+passed. The existing `structure_burrow_nbt_controller` in-world placement test also passed. The
+command-placement Burrow path remains unchanged outside a bounded `WorldGenRegion`.
+
+NeoForge 26.3 fires `AfterTranslucentBlocks` with an active render pass; buffer uploads and a new
+render pass are illegal there. Luminous Cliffs fog crashed in `WorldGeometryPass.upload`, and sky
+rivers used the same vulnerable stage. Both now render at `AfterLevel`, after the level's pass has
+closed, retaining the camera matrix and depth-composited geometry. Their client presentation still
+needs an in-game check.
+
 ### Worldgen neighbour margin and per-type structure reach — 2026-09-28
 
 The natural Burrow and Cavern still logged "Detected unsafe terrain read during worldgen" at
@@ -9401,9 +9495,30 @@ as time 0, so a world under a second old counts every pendant active); guarded, 
 - GameTest `fluid_relay_transfer`: an anchor at +200 on a Collector pushes 1200 mB of Liquid
   Chroma into an Enchanter's anchor three blocks away. Removing the Enchanter pops its anchor.
 - Next in this cluster:
-  - Fluid Radiator (FLUIDDISTRIBUTOR)
   - World Rift (RIFT)
   - Teleportation Pump (TELEPUMP)
+
+### Fluid Radiator and next-machine foundations — 2026-09-29
+
+- `FLUIDDISTRIBUTOR` is registered as `fluid_distributor`, with its 26.3 fluid capability,
+  block entity, client lattice-halo renderer, English name, mining tag, loot, model and exact
+  V33a Temple recipe (water/iron/glowstone grid, lime and cyan runes). The shared
+  `TileEntityAreaDistributor` retains the 40-tick scan, input exclusion, lower-half search area
+  and small/soft-block open-path rule. Fluid insertion passes the caller's transaction to
+  target tanks, so simulation rolls back; particle trails are emitted only on commit.
+- `fluid_distributor_transfer` exercises an accessible lower tank, transaction rollback,
+  committed transfer and redstone shutdown. Its first run exposed two DragonAPI path-search
+  errors: `CoordHelper.getAdjacentCoordinates` ignored its input position, and
+  `ReikaBlockHelper.getBlockVolume` called `bounds()` on empty shapes. Both are corrected.
+- `LinkedTile` and `LinkedTileBase` now carry modern dimension-aware World Rift link, reset,
+  drop, ownership and sync behavior. The 26.3 `WorldRift` interface was already present.
+  `TileEntityRift` itself remains pristine V33a pending capability and optional-mod integration.
+- `ChargedCrystalPowered` now uses current storage-crystal items and lumen tags. Its
+  `AdjacencyUpgrade` interface is the forward reference for the unported adjacency tile;
+  black efficiency factors match V33a. This is the Telepump's base; `TileEntityTeleportationPump`
+  and its GUI remain pristine V33a.
+- Crystal Tank controller, glass aux tile, multiblock and renderer remain pristine V33a. They
+  require their shared adjacency-capacity and tank-render dependencies before activation.
 
 ### Fluids and V33a materials (washed_away_by_fluids) — 2026-09-29
 

@@ -528,7 +528,9 @@ public class ProgressionManager implements ProgressRegistry {
 			if (disc)
 				this.checkPlayerColors(ep);
 			this.syncToClient(ep);
-			//Deferred: handbook toast notify, ProgressionEvent, backup cache.
+			if (disc && notify && ep instanceof ServerPlayer player)
+				reika.chromaticraft.network.ChromaNetwork.sendColorDiscoveryNote(player, e);
+			//Deferred: ProgressionEvent, backup cache.
 			return true;
 		}
 		return false;

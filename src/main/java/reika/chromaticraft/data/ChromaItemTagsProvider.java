@@ -5,7 +5,9 @@ import java.util.concurrent.CompletableFuture;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.data.PackOutput;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.tags.TagKey;
 import net.neoforged.neoforge.common.data.ItemTagsProvider;
 
 import reika.chromaticraft.ChromatiCraft;
@@ -58,5 +60,14 @@ public final class ChromaItemTagsProvider extends ItemTagsProvider {
 		digger.addTag(net.minecraft.tags.ItemTags.PICKAXES);
 		digger.addTag(net.minecraft.tags.ItemTags.AXES);
 		digger.addTag(net.minecraft.tags.ItemTags.SHOVELS);
+
+		// Burrow caches draw optional modded ores and ingots. Define their common tags even when
+		// none of the corresponding material mods are installed, so the loot table still loads.
+		for (String path : new String[] {
+				"ores/copper", "ores/tin", "ores/silver", "ores/nickel", "ores/lead",
+				"ingots/nickel", "ingots/lead", "ingots/silver"
+		}) {
+			tag(TagKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath("c", path)));
+		}
 	}
 }

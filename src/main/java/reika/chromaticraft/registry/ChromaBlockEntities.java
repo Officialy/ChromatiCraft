@@ -129,6 +129,8 @@ public final class ChromaBlockEntities {
 			register("lumen_turret", ChromaTiles.TURRET);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<reika.chromaticraft.tileentity.transport.TileEntityFluidRelay>> FLUID_RELAY =
 			register("fluid_relay", ChromaTiles.FLUIDRELAY);
+	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<reika.chromaticraft.tileentity.transport.TileEntityFluidDistributor>> FLUID_DISTRIBUTOR =
+			register("fluid_distributor", ChromaTiles.FLUIDDISTRIBUTOR);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<reika.chromaticraft.tileentity.decoration.TileEntityParticleSpawner>> PARTICLE_SPAWNER =
 			register("particle_spawner", ChromaTiles.PARTICLES);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<reika.chromaticraft.tileentity.transport.TileEntityLaunchPad>> LAUNCH_PAD =
@@ -287,6 +289,8 @@ public final class ChromaBlockEntities {
 				(enchanter, context) -> enchanter.fluidHandler());
 		event.registerBlockEntity(Capabilities.Fluid.BLOCK, COLLECTOR.get(),
 				(collector, context) -> collector.fluidHandler());
+		event.registerBlockEntity(Capabilities.Fluid.BLOCK, FLUID_DISTRIBUTOR.get(),
+				(distributor, side) -> distributor.fluidHandler(side));
 	}
 
 	private ChromaBlockEntities() {}

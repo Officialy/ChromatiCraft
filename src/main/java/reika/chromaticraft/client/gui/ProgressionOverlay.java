@@ -24,6 +24,8 @@ import reika.chromaticraft.magic.progression.ResearchLevel;
 import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.ChromaOptions;
 import reika.chromaticraft.registry.ChromaSounds;
+import reika.chromaticraft.registry.ChromaBlocks;
+import reika.chromaticraft.registry.CrystalElement;
 
 /**
  * Modern render-state implementation of V33a {@code ProgressOverlayRenderer}.
@@ -52,13 +54,20 @@ public final class ProgressionOverlay implements GuiLayer {
 		INSTANCE.add(new Note(1_000_000 + stage.ordinal(),
 				Component.literal(ProgressionDescriptions.title(stage)),
 				Component.literal(ProgressionDescriptions.description(stage)),
-				ProgressStageIconResolver.icon(stage), 0));
+				ProgressStageIconResolver.icon(stage), 0xffffffff, 0));
+	}
+
+	/** V33a ColorDiscovery: the element name, its rune and the original short description. */
+	public static void add(CrystalElement element) {
+		INSTANCE.add(new Note(element.ordinal(), Component.literal(element.displayName),
+				Component.literal("A new form of crystal energy"),
+				new ItemStack(ChromaBlocks.rune(element).get()), 0xff000000 | element.getColor(), 0));
 	}
 
 	public static void add(ResearchLevel level) {
 		INSTANCE.add(new Note(2_000_000 + level.ordinal(), level.getDisplayName(),
 				Component.literal("More of the world becomes visible to you."),
-				new ItemStack(ChromaItems.INFO_FRAGMENT.get()), 0));
+				new ItemStack(ChromaItems.INFO_FRAGMENT.get()), 0xffffffff, 0));
 	}
 
 	private void add(Note note) {
@@ -67,7 +76,7 @@ public final class ProgressionOverlay implements GuiLayer {
 			return;
 		long now = mc.level.getGameTime();
 		notes.put(note.order(), new Note(note.order(), note.title(), note.description(),
-				note.icon(), now + DURATION));
+				note.icon(), note.textColor(), now + DURATION));
 		if (now >= soundCooldownUntil) {
 			mc.level.playLocalSound(mc.player, ChromaSounds.GAINPROGRESS.getSoundEvent(),
 					ChromaSounds.GAINPROGRESS.getCategory(), 0.5F, 1F);
@@ -106,7 +115,7 @@ public final class ProgressionOverlay implements GuiLayer {
 			graphics.outline(x + 2, y + 2, width - 4, height - 4, 0xffcccccc);
 			if (height == fullHeight) {
 				graphics.text(font, note.title(), x + width - 4 - titleWidth, y + 4,
-						0xffffffff, false);
+						note.textColor(), false);
 				graphics.pose().pushMatrix();
 				graphics.pose().scale(0.5F, 0.5F);
 				for (int line = 0; line < description.size(); line++)
@@ -121,6 +130,6 @@ public final class ProgressionOverlay implements GuiLayer {
 		expired.forEach(notes::remove);
 	}
 
-	private record Note(int order, Component title, Component description, ItemStack icon,
+	private record Note(int order, Component title, Component description, ItemStack icon, int textColor,
 			long expiresAt) {}
 }

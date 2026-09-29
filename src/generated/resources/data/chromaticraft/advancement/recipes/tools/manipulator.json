@@ -13,7 +13,7 @@
     },
     "has_the_recipe": {
       "conditions": {
-        "recipe": "chromaticraft:manipulator"
+        "recipes": "chromaticraft:manipulator"
       },
       "trigger": "minecraft:recipe_unlocked"
     }

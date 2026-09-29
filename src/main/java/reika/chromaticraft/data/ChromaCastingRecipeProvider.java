@@ -278,6 +278,17 @@ public final class ChromaCastingRecipeProvider {
 					List.of(), new ItemStackTemplate(ChromaBlocks.FLUID_RELAY.get().asItem(), 4), 20, 40)
 					.withPenaltyThreshold(6));
 
+			// V33a FluidDistributorRecipe: water buckets and iron around a glowstone core,
+			// with a lime rune at (-1,0,-3) and cyan's ring position (2,-1,0).
+			saveRecipe("fluid_distributor", new CastingTableRecipe(CastingTableRecipe.Tier.TEMPLE,
+					shapedGrid(Map.of('I', Ingredient.of(Items.IRON_INGOT),
+							'R', Ingredient.of(Items.WATER_BUCKET), 'G', Ingredient.of(Blocks.GLOWSTONE)),
+							"RIR", "IGI", "RIR"),
+					List.of(),
+					List.of(new RuneRequirement(new net.minecraft.core.BlockPos(-1, 0, -3), CrystalElement.LIME),
+							new RuneRequirement(new net.minecraft.core.BlockPos(2, -1, 0), CrystalElement.CYAN)),
+					List.of(), new ItemStackTemplate(ChromaBlocks.FLUID_DISTRIBUTOR.get().asItem()), 20, 40));
+
 			// Complete V33a RelaySourceRecipe. The repeated (0,-4) Focal Powder assignment in the
 			// source intentionally resolves to one stand, leaving the authored full set of 24.
 			List<CastingTableRecipe.StandIngredient> relayStands = List.of(

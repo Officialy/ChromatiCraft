@@ -1,11 +1,9 @@
 {
   "type": "neoforge:add_table",
-  "conditions": [
-    {
-      "condition": "neoforge:loot_table_id",
-      "loot_table_id": "minecraft:chests/village/village_weaponsmith"
-    }
-  ],
+  "condition": {
+    "type": "neoforge:loot_table_id",
+    "loot_table_id": "minecraft:chests/village/village_weaponsmith"
+  },
   "priority": 0,
   "table": "chromaticraft:chests/injected/village"
 }

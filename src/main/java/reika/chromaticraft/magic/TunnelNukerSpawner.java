@@ -14,7 +14,10 @@ import reika.chromaticraft.magic.lore.LoreTowerProgress;
 import reika.chromaticraft.magic.lore.Towers;
 import reika.chromaticraft.registry.ChromaEntityTypes;
 
-/** V33a world-tick Lumafly guide spawner for players who still have an unscanned lore tower. */
+/**
+ * Lumafly guide spawner for players with an unscanned lore tower. V33a left its tick handler
+ * registration disabled, so this port keeps the implementation without subscribing it.
+ */
 public final class TunnelNukerSpawner {
 
 	private TunnelNukerSpawner() {}

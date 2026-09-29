@@ -69,12 +69,12 @@ public final class SkyRiverRenderer {
 	}
 
 	/**
-	 * Drawn after translucent blocks so a river composites over the world. It is not drawn in the
-	 * weather or particle stages: those target separate buffers that the post chain composites, and an
-	 * additive glow belongs against the finished scene colour.
+	 * Drawn after the level so a river composites over the completed world. In 26.3 the translucent
+	 * stage owns an active render pass, and {@link WorldGeometryPass} cannot upload a buffer or open
+	 * another pass there. This stage has no active pass and retains the camera's model-view matrix.
 	 */
 	@SubscribeEvent
-	public static void onRenderLevel(RenderLevelStageEvent.AfterTranslucentBlocks event) {
+	public static void onRenderLevel(RenderLevelStageEvent.AfterLevel event) {
 		Minecraft minecraft = Minecraft.getInstance();
 		if (minecraft.level == null || minecraft.player == null
 				|| minecraft.level.dimension() != ChromaDimensions.PROXIMA)

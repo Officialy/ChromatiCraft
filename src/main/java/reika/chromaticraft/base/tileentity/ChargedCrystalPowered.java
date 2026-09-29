@@ -1,162 +1,70 @@
-/*******************************************************************************
- * @author Reika Kalseki
- *
- * Copyright 2017
- *
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
- ******************************************************************************/
 package reika.chromaticraft.base.tileentity;
 
-import java.util.List;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.state.BlockState;
 
-import net.minecraft.block.Block;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.world.World;
-
-import reika.chromaticraft.base.tileentity.tileentityadjacencyupgrade.AdjacencyCheckHandlerImpl;
+import reika.chromaticraft.auxiliary.interfaces.AdjacencyUpgrade;
 import reika.chromaticraft.items.ItemStorageCrystal;
 import reika.chromaticraft.magic.ElementTagCompound;
 import reika.chromaticraft.magic.interfaces.LumenConsumer;
-import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.tileentity.aoe.effect.TileEntityEfficiencyUpgrade;
 
+/** V33a's charged-storage-crystal machine base, with the original black efficiency upgrade scale. */
 public abstract class ChargedCrystalPowered extends InventoriedChromaticBase implements LumenConsumer {
-
-	private static final AdjacencyCheckHandlerImpl adjacency = TileEntityAdjacencyUpgrade.getOrCreateAdjacencyCheckHandler(CrystalElement.BLACK, null);
-
+	private static final double[] COST_FACTOR = {0.9375, 0.875, 0.75, 0.625, 0.5, 0.25, 0.125, 0.0625};
 	private int efficiencyBoost;
 
-	public void onAdjacentUpdate(World world, int x, int y, int z, Block b) {
+	protected ChargedCrystalPowered(BlockEntityType<?> type, BlockPos pos, BlockState state) {
+		super(type, pos, state);
+	}
+
+	@Override
+	protected void onFirstTick(Level world, BlockPos pos) {
+		super.onFirstTick(world, pos);
+		this.calcEfficiency();
+	}
+
+	@Override
+	public void onAdjacentUpdate(Level world, BlockPos pos, Block changed) {
 		this.calcEfficiency();
 		this.syncAllData(false);
 	}
 
-	@Override
-	protected void readSyncTag(NBTTagCompound NBT) {
-		super.readSyncTag(NBT);
-
-		efficiencyBoost = NBT.getInteger("eff");
+	private void calcEfficiency() {
+		if (level == null)
+			return;
+		int max = 0;
+		for (Direction dir : Direction.values()) {
+			BlockEntity te = level.getBlockEntity(worldPosition.relative(dir));
+			if (te instanceof AdjacencyUpgrade upgrade && upgrade.isOperating()
+					&& upgrade.getColor() == CrystalElement.BLACK)
+				max = Math.max(max, 1 + upgrade.getTier());
+		}
+		efficiencyBoost = max;
 	}
 
 	@Override
-	protected void writeSyncTag(NBTTagCompound NBT) {
-		super.writeSyncTag(NBT);
-
-		NBT.setInteger("eff", efficiencyBoost);
+	protected void readSyncTag(CompoundTag tag) {
+		super.readSyncTag(tag);
+		efficiencyBoost = tag.getIntOr("eff", 0);
 	}
 
+	@Override
+	protected void writeSyncTag(CompoundTag tag) {
+		super.writeSyncTag(tag);
+		tag.putInt("eff", efficiencyBoost);
+	}
+
+	@Override
 	public final int getEfficiencyBoost() {
 		return efficiencyBoost;
-	}
-
-	protected final float getEnergyCostScale() {
-		float f = 1;
-		int e = this.getEfficiencyBoost();
-		if (e > 0)
-			f *= TileEntityEfficiencyUpgrade.getCostFactor(e-1);
-		f *= this.getCostModifier();
-		return f;
-	}
-
-	public abstract float getCostModifier();
-
-	private void calcEfficiency() {
-		efficiencyBoost = adjacency.getAdjacentUpgrade(this);
-	}
-
-	public final int getEnergy(CrystalElement e) {
-		if (e == null)
-			return 0;
-		if (ChromaItems.STORAGE.matchWith(inv[0])) {
-			ItemStack is = inv[0];
-			return ((ItemStorageCrystal)is.getItem()).getStoredEnergy(is, e);
-		}
-		return 0;
-	}
-
-	protected final int getStoredEnergy(boolean onlyUsedColors) {
-		if (ChromaItems.STORAGE.matchWith(inv[0])) {
-			ItemStack is = inv[0];
-			ElementTagCompound tag = ((ItemStorageCrystal)is.getItem()).getStoredTags(is);
-			if (onlyUsedColors) {
-				for (int i = 0; i < 16; i++) {
-					CrystalElement e = CrystalElement.elements[i];
-					if (!this.usesColor(e))
-						tag.removeTag(e);
-				}
-			}
-			return tag.getTotalEnergy();
-		}
-		return 0;
-	}
-
-	protected final void useEnergy(CrystalElement e, int amt) {
-		if (this.allowsEfficiencyBoost())
-			amt = (int)Math.max(1, amt*this.getEnergyCostScale());
-		ItemStorageCrystal c = ((ItemStorageCrystal)inv[0].getItem());
-		c.removeEnergy(inv[0], e, amt);
-	}
-
-	protected final void useEnergy(ElementTagCompound tag) {
-		for (CrystalElement e : tag.elementSet()) {
-			this.useEnergy(e, tag.getValue(e));
-		}
-	}
-
-	public final int getMaxStorage(CrystalElement e) {
-		if (ChromaItems.STORAGE.matchWith(inv[0])) {
-			ItemStack is = inv[0];
-			return ((ItemStorageCrystal)is.getItem()).getCapacity(is);
-		}
-		return 0;
-	}
-
-	protected final boolean hasEnergy(ElementTagCompound tag) {
-		for (CrystalElement e : tag.elementSet()) {
-			if (!this.hasEnergy(e, tag.getValue(e)))
-				return false;
-		}
-		return true;
-	}
-
-	protected final boolean hasEnergy(CrystalElement e, int amt) {
-		return this.getEnergy(e) >= amt;
-	}
-
-	public final ElementTagCompound getEnergy() {
-		ElementTagCompound tag = new ElementTagCompound();
-		for (int i = 0; i < CrystalElement.elements.length; i++) {
-			CrystalElement e = CrystalElement.elements[i];
-			if (this.usesColor(e))
-				tag.setTag(e, this.getEnergy(e));
-		}
-		return tag;
-	}
-
-	public abstract boolean usesColor(CrystalElement e);
-
-	public final boolean canExtractItem(int slot, ItemStack is, int side) {
-		return slot == 0 ? this.getStoredEnergy(true) == 0 : this.canExtractOtherItem(slot, is, side);
-	}
-
-	public final boolean isItemValidForSlot(int slot, ItemStack is) {
-		return slot == 0 ? ChromaItems.STORAGE.matchWith(is) : this.isItemValidForOtherSlot(slot, is);
-	}
-
-	protected abstract boolean canExtractOtherItem(int slot, ItemStack is, int side);
-
-	protected abstract boolean isItemValidForOtherSlot(int slot, ItemStack is) ;
-
-	public abstract ElementTagCompound getRequiredEnergy();
-
-	@Override
-	protected void onFirstTick(World world, int x, int y, int z) {
-		super.onFirstTick(world, x, y, z);
-		this.calcEfficiency();
 	}
 
 	@Override
@@ -164,19 +72,78 @@ public abstract class ChargedCrystalPowered extends InventoriedChromaticBase imp
 		return true;
 	}
 
-	@Override
-	public void getTagsToWriteToStack(NBTTagCompound NBT) {
+	protected final float getEnergyCostScale() {
+		float factor = this.getCostModifier();
+		if (efficiencyBoost > 0)
+			factor *= COST_FACTOR[Math.min(COST_FACTOR.length, efficiencyBoost) - 1];
+		return factor;
+	}
 
+	public abstract float getCostModifier();
+	public abstract boolean usesColor(CrystalElement element);
+	public abstract ElementTagCompound getRequiredEnergy();
+	protected abstract boolean canExtractOtherItem(int slot, ItemStack stack, Direction side);
+	protected abstract boolean isItemValidForOtherSlot(int slot, ItemStack stack);
+
+	@Override
+	public final int getEnergy(CrystalElement element) {
+		return element != null ? ItemStorageCrystal.getStoredEnergy(inv.get(0), element) : 0;
+	}
+
+	protected final int getStoredEnergy(boolean onlyUsedColors) {
+		ElementTagCompound stored = ItemStorageCrystal.getStoredTags(inv.get(0));
+		if (onlyUsedColors) {
+			for (CrystalElement element : CrystalElement.elements) {
+				if (!this.usesColor(element))
+					stored.removeTag(element);
+			}
+		}
+		return stored.getTotalEnergy();
+	}
+
+	protected final void useEnergy(CrystalElement element, int amount) {
+		if (this.allowsEfficiencyBoost())
+			amount = (int)Math.max(1, amount * this.getEnergyCostScale());
+		ItemStorageCrystal.removeEnergy(inv.get(0), element, amount);
+		this.setChanged();
+	}
+
+	protected final void useEnergy(ElementTagCompound tag) {
+		for (CrystalElement element : tag.elementSet())
+			this.useEnergy(element, tag.getValue(element));
 	}
 
 	@Override
-	public void setDataFromItemStackTag(ItemStack is) {
+	public final int getMaxStorage(CrystalElement element) {
+		return ItemStorageCrystal.getCapacity(inv.get(0));
+	}
 
+	protected final boolean hasEnergy(ElementTagCompound tag) {
+		for (CrystalElement element : tag.elementSet()) {
+			if (this.getEnergy(element) < tag.getValue(element))
+				return false;
+		}
+		return true;
 	}
 
 	@Override
-	public void addTooltipInfo(List li, boolean shift) {
-
+	public final ElementTagCompound getEnergy() {
+		ElementTagCompound tag = new ElementTagCompound();
+		for (CrystalElement element : CrystalElement.elements) {
+			if (this.usesColor(element))
+				tag.setTag(element, this.getEnergy(element));
+		}
+		return tag;
 	}
 
+	@Override
+	public final boolean canPlaceItem(int slot, ItemStack stack) {
+		return slot == 0 ? ItemStorageCrystal.isStorageCrystal(stack)
+				: this.isItemValidForOtherSlot(slot, stack);
+	}
+
+	@Override
+	public final boolean canTakeItemThroughFace(int slot, ItemStack stack, Direction side) {
+		return slot == 0 ? this.getStoredEnergy(true) == 0 : this.canExtractOtherItem(slot, stack, side);
+	}
 }

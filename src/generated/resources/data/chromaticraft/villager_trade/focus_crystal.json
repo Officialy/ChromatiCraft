@@ -7,7 +7,7 @@
     },
     "id": "chromaticraft:focus_crystal"
   },
-  "max_uses": 2.1474836E9,
+  "max_uses": 2147483647,
   "wants": {
     "id": "minecraft:emerald"
   }

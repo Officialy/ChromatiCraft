@@ -3,7 +3,7 @@
     "count": 19,
     "id": "minecraft:emerald"
   },
-  "max_uses": 2.1474836E9,
+  "max_uses": 2147483647,
   "wants": {
     "id": "chromaticraft:meta_alloy_lamp"
   }

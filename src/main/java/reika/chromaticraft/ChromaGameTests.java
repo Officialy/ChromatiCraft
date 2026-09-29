@@ -336,6 +336,7 @@ public final class ChromaGameTests {
 		register(event, env, "progression_recursive_parents", ChromaGameTests::recursiveParents);
 		register(event, env, "progression_prereq_gating", ChromaGameTests::prereqGating);
 		register(event, env, "progression_color_discovery", ChromaGameTests::colorDiscovery);
+		register(event, env, "pylon_color_discovery_on_sight", ChromaGameTests::pylonColorDiscoveryOnSight);
 		register(event, env, "progression_chained_energy_idea", ChromaGameTests::chainedEnergyIdea);
 		register(event, env, "network_pylon_to_receiver", ChromaGameTests::pylonToReceiver);
 		register(event, env, "relay_path_routing", ChromaGameTests::relayPathRouting);
@@ -429,6 +430,7 @@ public final class ChromaGameTests {
 		register(event, env, "buffer_link_recipe", ChromaGameTests::bufferLinkRecipe);
 		register(event, env, "wands_basic", 60, ChromaGameTests::wandsBasic);
 		register(event, env, "fluid_relay_transfer", 60, ChromaGameTests::fluidRelayTransfer);
+		register(event, env, "fluid_distributor_transfer", 60, ChromaGameTests::fluidDistributorTransfer);
 		register(event, env, "creative_tiered_resource_access", ChromaGameTests::creativeTieredResourceAccess);
 		register(event, env, "rainbow_tree_shape_and_log", ChromaGameTests::rainbowTreeShapeAndLog);
 		register(event, env, "structure_cavern_nbt_controller", ChromaGameTests::structureCavernNbtController);
@@ -4765,8 +4767,10 @@ public final class ChromaGameTests {
 		entity.aiStep();
 		helper.assertTrue(entity.getDeltaMovement().horizontalDistanceSqr() > 0.005,
 				"Tunnel Nuker must retain V33a's source-driven 0.075 horizontal flight");
-		helper.assertTrue(!entity.hurtServer(helper.getLevel(), helper.getLevel().damageSources().generic(), 100),
-				"Tunnel Nuker must remain invulnerable");
+		float health = entity.getHealth();
+		helper.assertTrue(entity.hurtServer(helper.getLevel(), helper.getLevel().damageSources().generic(), 4)
+				&& entity.getHealth() == health - 4,
+				"Lumafly must take ordinary mob damage, as in V33a");
 		helper.succeed();
 	}
 
@@ -5258,6 +5262,28 @@ public final class ChromaGameTests {
 				"discovered colour should be stored");
 		helper.assertTrue(ProgressStage.ALLCOLORS.isPlayerAtStage(p),
 				"ALLCOLORS should be auto-granted after all 16 colours (PYLON prereq held)");
+		helper.succeed();
+	}
+
+	/** A real charged pylon grants both its per-colour discovery and the PYLON stage on sight. */
+	private static void pylonColorDiscoveryOnSight(GameTestHelper helper) {
+		BlockPos pos = helper.absolutePos(new BlockPos(8, 12, 8));
+		TileEntityCrystalPylon pylon = placePylon(helper, pos, CrystalElement.CYAN);
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		helper.assertTrue(pylon.hasStructure()
+				&& pylon.getEnergy(CrystalElement.CYAN) >= pylon.getMaxStorage(CrystalElement.CYAN) / 10,
+				"the test pylon must meet the original colour discovery threshold");
+		helper.assertTrue(!ProgressionManager.instance.hasPlayerDiscoveredColor(player, CrystalElement.CYAN)
+				&& !ProgressStage.PYLON.isPlayerAtStage(player),
+				"a fresh player must begin without this pylon colour or stage");
+		ExplorationMonitor.scanLookedAtBlock(player, helper.getLevel(), pos);
+		helper.assertTrue(ProgressionManager.instance.hasPlayerDiscoveredColor(player, CrystalElement.CYAN),
+				"looking at a charged pylon must record its colour");
+		helper.assertTrue(ProgressStage.PYLON.isPlayerAtStage(player),
+				"looking at a conducting pylon must grant the PYLON stage");
+		helper.assertTrue(!ProgressionManager.instance.setPlayerDiscoveredColor(
+				player, CrystalElement.CYAN, true, true),
+				"looking at the same colour again must not create a second discovery");
 		helper.succeed();
 	}
 
@@ -7024,6 +7050,52 @@ public final class ChromaGameTests {
 							+ collector.getOutputLevel() + " enchanter=" + enchanter.getChromaLevel());
 			level.setBlock(sink, Blocks.AIR.defaultBlockState(), 3);
 			helper.assertTrue(level.getBlockState(sink.above()).isAir(), "an anchor must pop off once its tank is gone");
+			helper.succeed();
+		});
+	}
+
+	/** The Fluid Radiator reaches a lower, open-path tank; a simulated insert rolls back with its caller. */
+	private static void fluidDistributorTransfer(GameTestHelper helper) {
+		var level = helper.getLevel();
+		BlockPos radiatorPos = helper.absolutePos(new BlockPos(2, 4, 2));
+		BlockPos tankPos = helper.absolutePos(new BlockPos(2, 2, 2));
+		level.setBlock(helper.absolutePos(new BlockPos(2, 3, 2)), Blocks.AIR.defaultBlockState(), 3);
+		level.setBlock(radiatorPos, ChromaBlocks.FLUID_DISTRIBUTOR.get().defaultBlockState(), 3);
+		level.setBlock(tankPos, ChromaBlocks.AUTO_ENCHANTER.get().defaultBlockState(), 3);
+		helper.runAfterDelay(3, () -> {
+			var radiator = (reika.chromaticraft.tileentity.transport.TileEntityFluidDistributor)level.getBlockEntity(radiatorPos);
+			var enchanter = (reika.chromaticraft.tileentity.processing.TileEntityAutoEnchanter)level.getBlockEntity(tankPos);
+			helper.assertTrue(level.getCapability(net.neoforged.neoforge.capabilities.Capabilities.Fluid.BLOCK,
+					tankPos, Direction.UP) != null,
+					"the enchanter must expose a fluid capability on its top face");
+			var radiatorPath = reika.dragonapi.instantiable.data.blockstruct.BreadthFirstSearch.getOpenPathBetween(
+					level, radiatorPos, tankPos, 16,
+					new reika.dragonapi.instantiable.data.immutable.BlockBox(radiatorPos.getX(), radiatorPos.getY(),
+							radiatorPos.getZ(), tankPos.getX(), tankPos.getY(), tankPos.getZ()),
+					java.util.EnumSet.of(reika.dragonapi.instantiable.data.blockstruct.OpenPathFinder.PassRules.SOFT,
+							reika.dragonapi.instantiable.data.blockstruct.OpenPathFinder.PassRules.SMALLNONSOLID));
+			helper.assertTrue(!radiatorPath.isEmpty(), "the tank must have an open path; path=" + radiatorPath);
+			FluidResource chroma = FluidResource.of(ChromaFluids.CHROMA.get());
+			try (Transaction tx = Transaction.openRoot()) {
+				int inserted = radiator.fluidHandler(Direction.WEST).insert(chroma, 500, tx);
+				helper.assertTrue(inserted == 500, "the lower, accessible tank must accept all 500 mB; inserted="
+						+ inserted + " targets=" + radiator.getCachedTargetCount() + " ticks=" + radiator.getTicksExisted());
+			}
+			helper.assertTrue(enchanter.getChromaLevel() == 0, "a simulated transfer must roll back");
+			try (Transaction tx = Transaction.openRoot()) {
+				int inserted = radiator.fluidHandler(Direction.WEST).insert(chroma, 500, tx);
+				helper.assertTrue(inserted == 500, "the committed transfer must accept all 500 mB");
+				tx.commit();
+			}
+			helper.assertTrue(enchanter.getChromaLevel() == 500, "the target must contain exactly 500 mB");
+			level.setBlock(radiatorPos.west(), Blocks.REDSTONE_BLOCK.defaultBlockState(), 3);
+			try (Transaction tx = Transaction.openRoot()) {
+				helper.assertTrue(radiator.fluidHandler(Direction.WEST).insert(chroma, 100, tx) == 0,
+						"a powered radiator must reject incoming fluid");
+				tx.commit();
+			}
+			helper.assertTrue(enchanter.getChromaLevel() == 500,
+					"redstone rejection must leave the target unchanged");
 			helper.succeed();
 		});
 	}

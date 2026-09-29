@@ -1,0 +1,65 @@
+{
+  "type": "chromaticraft:casting",
+  "duration": 20,
+  "experience": 40,
+  "grid": [
+    {
+      "ingredient": "minecraft:water_bucket",
+      "slot": 0
+    },
+    {
+      "ingredient": "minecraft:iron_ingot",
+      "slot": 1
+    },
+    {
+      "ingredient": "minecraft:water_bucket",
+      "slot": 2
+    },
+    {
+      "ingredient": "minecraft:iron_ingot",
+      "slot": 3
+    },
+    {
+      "ingredient": "minecraft:glowstone",
+      "slot": 4
+    },
+    {
+      "ingredient": "minecraft:iron_ingot",
+      "slot": 5
+    },
+    {
+      "ingredient": "minecraft:water_bucket",
+      "slot": 6
+    },
+    {
+      "ingredient": "minecraft:iron_ingot",
+      "slot": 7
+    },
+    {
+      "ingredient": "minecraft:water_bucket",
+      "slot": 8
+    }
+  ],
+  "result": {
+    "id": "chromaticraft:fluid_distributor"
+  },
+  "runes": [
+    {
+      "element": "lime",
+      "offset": [
+        -1,
+        0,
+        -3
+      ]
+    },
+    {
+      "element": "cyan",
+      "offset": [
+        2,
+        -1,
+        0
+      ]
+    }
+  ],
+  "tier": "temple"
+}

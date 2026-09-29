@@ -1,8 +1,6 @@
 package reika.chromaticraft.entity;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
@@ -19,7 +17,7 @@ import reika.chromaticraft.registry.ChromaSounds;
 import reika.chromaticraft.render.particle.ChromaParticle;
 import reika.dragonapi.interfaces.entity.DestroyOnUnload;
 
-/** V33a Lumafly/Tunnel Nuker: a slow circling, terrain-following immortal lore-tower guide. */
+/** V33a Lumafly/Tunnel Nuker: a slow circling, terrain-following lore-tower guide. */
 public final class EntityTunnelNuker extends Mob implements DestroyOnUnload {
 
 	public EntityTunnelNuker(EntityType<? extends EntityTunnelNuker> type, Level level) {
@@ -98,16 +96,6 @@ public final class EntityTunnelNuker extends Mob implements DestroyOnUnload {
 		AABB nearby = this.getBoundingBox().inflate(32);
 		return this.level().canSeeSky(pos.above())
 				&& this.level().getEntitiesOfClass(EntityTunnelNuker.class, nearby, e -> e != this).isEmpty();
-	}
-
-	@Override
-	public boolean hurtServer(ServerLevel level, DamageSource source, float damage) {
-		return false;
-	}
-
-	@Override
-	public boolean isInvulnerableTo(ServerLevel level, DamageSource source) {
-		return true;
 	}
 
 	@Override

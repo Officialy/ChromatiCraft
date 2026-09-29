@@ -83,6 +83,8 @@ public enum ChromaTiles implements TileEnum {
 			reika.chromaticraft.tileentity.aoe.defence.TileEntityLumenTurret.class),
 	FLUIDRELAY("chroma.fluidrelay", ChromaBlocks.FLUID_RELAY,
 			reika.chromaticraft.tileentity.transport.TileEntityFluidRelay.class),
+	FLUIDDISTRIBUTOR("chroma.fluiddistributor", ChromaBlocks.FLUID_DISTRIBUTOR,
+			reika.chromaticraft.tileentity.transport.TileEntityFluidDistributor.class),
 	PARTICLES("chroma.particles", ChromaBlocks.PARTICLE_SPAWNER,
 			reika.chromaticraft.tileentity.decoration.TileEntityParticleSpawner.class),
 	LAUNCHPAD("chroma.launchpad", ChromaBlocks.LAUNCH_PAD,

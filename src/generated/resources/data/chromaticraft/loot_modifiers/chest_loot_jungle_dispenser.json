@@ -1,11 +1,9 @@
 {
   "type": "neoforge:add_table",
-  "conditions": [
-    {
-      "condition": "neoforge:loot_table_id",
-      "loot_table_id": "minecraft:chests/jungle_temple_dispenser"
-    }
-  ],
+  "condition": {
+    "type": "neoforge:loot_table_id",
+    "loot_table_id": "minecraft:chests/jungle_temple_dispenser"
+  },
   "priority": 0,
   "table": "chromaticraft:chests/injected/jungle_dispenser"
 }

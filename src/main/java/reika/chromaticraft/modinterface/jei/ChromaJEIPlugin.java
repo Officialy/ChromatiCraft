@@ -29,9 +29,11 @@ import mezz.jei.api.registration.IAdvancedRegistration;
 import mezz.jei.api.registration.IRecipeCatalystRegistration;
 import mezz.jei.api.registration.IRecipeCategoryRegistration;
 import mezz.jei.api.registration.IRecipeRegistration;
+import mezz.jei.api.registration.ISubtypeRegistration;
 import mezz.jei.api.runtime.IJeiRuntime;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;
@@ -83,6 +85,22 @@ public class ChromaJEIPlugin implements IModPlugin {
 	@Override
 	public Identifier getPluginUid() {
 		return UID;
+	}
+
+	@Override
+	public void registerItemSubtypes(ISubtypeRegistration registration) {
+		for (var holder : ChromaItems.ITEMS.getEntries()) {
+			var item = holder.get();
+			if (item instanceof reika.chromaticraft.items.tools.ItemCrystalPotion
+					|| item instanceof reika.chromaticraft.items.tools.ItemSplashCrystalPotion)
+				registration.registerFromDataComponentTypes(item, DataComponents.POTION_CONTENTS);
+			else if (item instanceof reika.chromaticraft.base.ItemPoweredChromaTool
+					|| item instanceof reika.chromaticraft.items.ItemStorageCrystal
+					|| item instanceof reika.chromaticraft.item.ItemInfoFragment
+					|| item instanceof reika.chromaticraft.item.ItemChromaBook
+					|| item instanceof reika.chromaticraft.items.tools.ItemEnderCrystal)
+				registration.registerFromDataComponentTypes(item, DataComponents.CUSTOM_DATA);
+		}
 	}
 
 	private static IRecipeHolderType<CastingTableRecipe> castingType() {

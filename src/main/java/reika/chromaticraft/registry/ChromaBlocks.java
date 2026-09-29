@@ -1022,6 +1022,10 @@ public final class ChromaBlocks {
 	public static final DeferredBlock<Block> FLUID_RELAY =
 			register("fluid_relay", () -> new reika.chromaticraft.block.BlockFluidRelay(
 					blockProperties().strength(5F, 8F).requiresCorrectToolForDrops().noOcclusion()));
+	/** V33a FLUIDDISTRIBUTOR, a BlockModelledChromaTile with rock hardness 5 and resistance 40. */
+	public static final DeferredBlock<Block> FLUID_DISTRIBUTOR =
+			register("fluid_distributor", () -> new reika.chromaticraft.block.BlockChromaticTile(
+					blockProperties().strength(5F, 8F).requiresCorrectToolForDrops().noOcclusion(), ChromaTiles.FLUIDDISTRIBUTOR));
 	/**
 	 * V33a PARTICLES, a BlockModelledChromaTile entry: rock, hardness 5, resistance 40 (8 against explosions); intangible and
 	 * drawn only by its renderer.

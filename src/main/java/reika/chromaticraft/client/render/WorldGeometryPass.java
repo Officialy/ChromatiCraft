@@ -25,11 +25,12 @@ import net.minecraft.resources.Identifier;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Draws arbitrary textured geometry into the world, from a level-render stage.
+ * Draws arbitrary textured geometry into the world, from a level-render stage without an active
+ * render pass (such as {@code RenderLevelStageEvent.AfterLevel}).
  *
  * <h2>Why this exists</h2>
  *
- * <p>26.2 has two ways to get geometry on screen and neither covers this case. The submit pipeline —
+ * <p>26.3 has two ways to get geometry on screen and neither covers this case. The submit pipeline —
  * {@code SubmitNodeCollector.submitCustomGeometry}, which the aurora curtain uses — is reached through
  * an entity or block-entity renderer, and every collector inside {@code LevelRenderer} is private, so
  * a {@code RenderLevelStageEvent} handler cannot get one. Post-effect chains, which RotaryCraft's heat

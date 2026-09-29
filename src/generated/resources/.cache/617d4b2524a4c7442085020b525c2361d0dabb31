@@ -1,4 +1,4 @@
-// 26.2	2026-09-26T14:27:24.449254	Tags for minecraft:item mod id chromaticraft
+// 26.3	2026-09-28T15:11:47.1898212	Tags for minecraft:item mod id chromaticraft
 feabfa49d9b792553bd1027be79b260ef59c1f69 data/chromaticraft/tags/item/boosted_crystal_shards.json
 2837437a0b60e117de8d248ad6b021c132633d7e data/chromaticraft/tags/item/boosted_crystal_shards/black.json
 ee3045f172b1666e013385a19db8c0f6dbcd266f data/chromaticraft/tags/item/boosted_crystal_shards/blue.json
@@ -37,3 +37,11 @@ c4a9fd03b40d59c17b70f44e504be0f55184f63d data/chromaticraft/tags/item/enchantabl
 5c6135d42953468e22c2f1061e98411f973205fe data/chromaticraft/tags/item/enchantable/weapon_or_bow.json
 13d2d6fa3cd9128c56d79fa2a59a3ca8e26dca3c data/chromaticraft/tags/item/lumen_relays.json
 d0c390092cba797988b8e891d00856f505854b4a data/chromaticraft/tags/item/plain_crystal_shards.json
+35133e95f1c8fdd7a1c21afcc231fc0bffefb9a8 data/c/tags/item/ingots/lead.json
+35133e95f1c8fdd7a1c21afcc231fc0bffefb9a8 data/c/tags/item/ingots/nickel.json
+35133e95f1c8fdd7a1c21afcc231fc0bffefb9a8 data/c/tags/item/ingots/silver.json
+35133e95f1c8fdd7a1c21afcc231fc0bffefb9a8 data/c/tags/item/ores/copper.json
+35133e95f1c8fdd7a1c21afcc231fc0bffefb9a8 data/c/tags/item/ores/lead.json
+35133e95f1c8fdd7a1c21afcc231fc0bffefb9a8 data/c/tags/item/ores/nickel.json
+35133e95f1c8fdd7a1c21afcc231fc0bffefb9a8 data/c/tags/item/ores/silver.json
+35133e95f1c8fdd7a1c21afcc231fc0bffefb9a8 data/c/tags/item/ores/tin.json

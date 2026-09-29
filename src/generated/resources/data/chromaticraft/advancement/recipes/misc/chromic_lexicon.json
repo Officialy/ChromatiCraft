@@ -13,7 +13,7 @@
     },
     "has_the_recipe": {
       "conditions": {
-        "recipe": "chromaticraft:chromic_lexicon"
+        "recipes": "chromaticraft:chromic_lexicon"
       },
       "trigger": "minecraft:recipe_unlocked"
     }

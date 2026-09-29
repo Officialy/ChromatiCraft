@@ -241,6 +241,8 @@ public final class ChromaClientRenderers {
 				reika.chromaticraft.render.tesr.RenderLumenTurret::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.FLUID_RELAY.get(),
 				reika.chromaticraft.render.tesr.RenderFluidRelay::new);
+		event.registerBlockEntityRenderer(ChromaBlockEntities.FLUID_DISTRIBUTOR.get(),
+				reika.chromaticraft.render.tesr.RenderFluidDistributor::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.PARTICLE_SPAWNER.get(),
 				reika.chromaticraft.render.tesr.RenderParticleSpawner::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.LAUNCH_PAD.get(),

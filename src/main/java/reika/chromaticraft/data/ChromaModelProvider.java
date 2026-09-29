@@ -153,6 +153,7 @@ public class ChromaModelProvider extends ModelProvider {
 		lumenTurretModel(blockStateOut, itemModelOut, modelOut);
 		lumenWireModel(blockStateOut, itemModelOut, modelOut);
 		fluidRelayModel(blockStateOut, itemModelOut, modelOut);
+		fluidDistributorModel(blockStateOut, itemModelOut, modelOut);
 		autoEnchanterModel(blockStateOut, itemModelOut, modelOut);
 		toolStorageModel(blockStateOut, itemModelOut, modelOut);
 		pylonTurboModel(blockStateOut, itemModelOut, modelOut);
@@ -2104,6 +2105,21 @@ public class ChromaModelProvider extends ModelProvider {
 				TextureMapping.cube(particle), modelOut);
 		itemModelOut.accept(ChromaBlocks.FLUID_RELAY.get().asItem(),
 				ItemModelUtils.specialModel(itemBase, new reika.chromaticraft.render.item.FluidRelayItemRenderer.Unbaked()));
+	}
+
+	/** The V33a radiator has only a rendered lattice halo in-world; its inventory icon uses that lattice. */
+	private static void fluidDistributorModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		Material lattice = new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/icons/lattice"));
+		Identifier worldModel = ModelTemplates.PARTICLE_ONLY.create(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/fluid_distributor"),
+				new TextureMapping().put(TextureSlot.PARTICLE, lattice), modelOut);
+		blockStateOut.accept(MultiVariantGenerator.dispatch(ChromaBlocks.FLUID_DISTRIBUTOR.get(),
+				new MultiVariant(WeightedList.of(new Variant(worldModel)))));
+		Identifier itemModel = ModelTemplates.CUBE_ALL.create(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/fluid_distributor_inventory"),
+				TextureMapping.cube(lattice), modelOut);
+		itemModelOut.accept(ChromaBlocks.FLUID_DISTRIBUTOR.get().asItem(), ItemModelUtils.plainModel(itemModel));
 	}
 
 	private static void crystalChargerModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,

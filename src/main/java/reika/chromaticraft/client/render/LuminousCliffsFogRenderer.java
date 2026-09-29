@@ -62,8 +62,9 @@ public final class LuminousCliffsFogRenderer {
 		return level.getBiome(new BlockPos(bx, y, bz)).is(ChromaBiomeTagProvider.LUMINOUS_CLIFFS);
 	}
 
+	/** The geometry uploader needs the completed level, after Minecraft closes its translucent pass. */
 	@SubscribeEvent
-	public static void onRenderLevel(RenderLevelStageEvent.AfterTranslucentBlocks event) {
+	public static void onRenderLevel(RenderLevelStageEvent.AfterLevel event) {
 		Minecraft mc = Minecraft.getInstance();
 		if (mc.level == null || mc.player == null || mc.level != lastLevel) {
 			clouds.clear();

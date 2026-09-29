@@ -224,4 +224,7 @@ pip-log.txt
 # NeoForge client/datagen and isolated headless GameTest working dirs
 run/
 run-gametest/
-/src/generated
+run-data/
+run-client-data/
+/src/generated/resources/.cache/
+/src/generated/resources-client/.cache/

@@ -83,6 +83,8 @@ public final class ChromaNetwork {
 				ChromaNetwork::handlePoolAlloyingFx);
 		registrar.playToClient(ArtealloyBurst.TYPE, ArtealloyBurst.CODEC, ChromaNetwork::handleArtealloyBurst);
 		registrar.playToClient(ProgressionNote.TYPE, ProgressionNote.CODEC, ChromaNetwork::handleProgressionNote);
+		registrar.playToClient(ColorDiscoveryNote.TYPE, ColorDiscoveryNote.CODEC,
+				ChromaNetwork::handleColorDiscoveryNote);
 		registrar.playToClient(StructureEntry.TYPE, StructureEntry.CODEC, ChromaNetwork::handleStructureEntry);
 		registrar.playToClient(StructurePassword.TYPE, StructurePassword.CODEC,
 				ChromaNetwork::handleStructurePassword);
@@ -553,6 +555,14 @@ public final class ChromaNetwork {
 		@Override public Type<ProgressionNote> type() { return TYPE; }
 	}
 
+	/** V33a's per-element progression note, shown only on the first discovery of that colour. */
+	public record ColorDiscoveryNote(int color) implements CustomPacketPayload {
+		public static final Type<ColorDiscoveryNote> TYPE = createType("color_discovery_note");
+		public static final StreamCodec<ByteBuf, ColorDiscoveryNote> CODEC =
+				ByteBufCodecs.VAR_INT.map(ColorDiscoveryNote::new, ColorDiscoveryNote::color);
+		@Override public Type<ColorDiscoveryNote> type() { return TYPE; }
+	}
+
 	/** V33a STRUCTUREENTRY: starts the structure-name scroll at the puzzle entrance. */
 	public record StructureEntry(int structureType) implements CustomPacketPayload {
 		public static final Type<StructureEntry> TYPE = createType("structure_entry");
@@ -930,6 +940,9 @@ public final class ChromaNetwork {
 		context.enqueueWork(() -> ClientPayloadHandlers.progressionNote(
 				payload.researchLevel(), payload.ordinal()));
 	}
+	private static void handleColorDiscoveryNote(ColorDiscoveryNote payload, IPayloadContext context) {
+		context.enqueueWork(() -> ClientPayloadHandlers.colorDiscoveryNote(payload.color()));
+	}
 	private static void handleStructureEntry(StructureEntry payload, IPayloadContext context) {
 		context.enqueueWork(() -> ClientPayloadHandlers.structureEntry(payload.structureType()));
 	}
@@ -1299,6 +1312,11 @@ public final class ChromaNetwork {
 		if (player.connection == null || !player.connection.hasChannel(ProgressionNote.TYPE))
 			return;
 		PacketDistributor.sendToPlayer(player, new ProgressionNote(false, stageOrdinal));
+	}
+
+	public static void sendColorDiscoveryNote(ServerPlayer player, CrystalElement color) {
+		if (player.connection != null && player.connection.hasChannel(ColorDiscoveryNote.TYPE))
+			PacketDistributor.sendToPlayer(player, new ColorDiscoveryNote(color.ordinal()));
 	}
 
 	/** The same V33a overlay channel also carried research-tier milestones. */

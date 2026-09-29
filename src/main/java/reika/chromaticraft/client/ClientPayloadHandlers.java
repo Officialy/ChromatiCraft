@@ -108,6 +108,12 @@ public final class ClientPayloadHandlers {
 		}
 	}
 
+	public static void colorDiscoveryNote(int ordinal) {
+		if (Minecraft.getInstance().player != null && ordinal >= 0
+				&& ordinal < CrystalElement.elements.length)
+			reika.chromaticraft.client.gui.ProgressionOverlay.add(CrystalElement.elements[ordinal]);
+	}
+
 	public static void jarRejection(BlockPos source, CrystalElement colour) {
 		Minecraft mc = Minecraft.getInstance();
 		if (mc.level != null)

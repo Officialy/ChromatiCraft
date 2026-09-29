@@ -133,7 +133,6 @@ public class ChromatiCraft extends DragonAPIMod {
 
 		NeoForge.EVENT_BUS.addListener(ChromatiCraft::registerCommands);
 		NeoForge.EVENT_BUS.addListener(ChromatiCraft::playerLoggedIn);
-		NeoForge.EVENT_BUS.addListener(reika.chromaticraft.magic.TunnelNukerSpawner::tick);
 		// The discovery scan that grants CRYSTALS (and BEDROCK/DEEPCAVE/biome stages) on sight.
 		reika.chromaticraft.auxiliary.ExplorationMonitor.register();
 		// V33a's mining, dimension-entry, potion, death and boss-kill progression hooks.

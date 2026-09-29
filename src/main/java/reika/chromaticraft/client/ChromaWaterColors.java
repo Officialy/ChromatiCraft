@@ -1,5 +1,8 @@
 package reika.chromaticraft.client;
 
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+
 import net.minecraft.client.renderer.block.BlockAndTintGetter;
 import net.minecraft.core.BlockPos;
 import net.neoforged.api.distmarker.Dist;
@@ -40,24 +43,37 @@ public final class ChromaWaterColors {
 			new SimplexNoiseGenerator(System.currentTimeMillis() * 2387).setFrequency(1 / 8D);
 	/** V33a {@code RainbowRiver}'s blue end of the mix. */
 	private static final int STREAM_BLUE = 0x0000ff;
+	/** Some LOD tint views expose biome color but reject all block and light reads. */
+	private static final Set<Class<?>> TINT_ONLY_GETTERS = ConcurrentHashMap.newKeySet();
 
 	private ChromaWaterColors() {}
 
 	@SubscribeEvent
 	public static void onWaterColor(WaterColorEvent event) {
 		BlockAndTintGetter level = event.access;
+		if (TINT_ONLY_GETTERS.contains(level.getClass()))
+			return;
 		BlockPos pos = event.pos;
 		int color = event.color;
 
-		float cliffs = LuminousCliffsColors.cliffStrength(level, pos);
-		if (cliffs > 0)
-			color = blend(LuminousCliffsColors.waterColor(level, pos), color, cliffs);
+		try {
+			float cliffs = LuminousCliffsColors.cliffStrength(level, pos);
+			if (cliffs > 0)
+				color = blend(LuminousCliffsColors.waterColor(level, pos), color, cliffs);
 
-		float stream = OverworldBiomePresence.strength(level, pos, OverworldBiomePresence.RAINBOW_STREAM);
-		if (stream > 0)
-			color = blend(streamColor(pos), color, stream);
+			float stream = OverworldBiomePresence.strength(level, pos, OverworldBiomePresence.RAINBOW_STREAM);
+			if (stream > 0)
+				color = blend(streamColor(pos), color, stream);
 
-		event.color = EnderForestColors.applyWater(color, level, pos);
+			event.color = EnderForestColors.applyWater(color, level, pos);
+		}
+		catch (UnsupportedOperationException ex) {
+			if (ex.getMessage() == null || !ex.getMessage().contains("Object is for tinting only"))
+				throw ex;
+			// A tint-only view cannot answer V33a's depth, flow, light, or neighbour queries.
+			// Keep the incoming biome color and avoid repeating exceptions for every LOD cell.
+			TINT_ONLY_GETTERS.add(level.getClass());
+		}
 	}
 
 	/**

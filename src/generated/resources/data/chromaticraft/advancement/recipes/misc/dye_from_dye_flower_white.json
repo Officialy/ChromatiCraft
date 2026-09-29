@@ -13,7 +13,7 @@
     },
     "has_the_recipe": {
       "conditions": {
-        "recipe": "chromaticraft:dye_from_dye_flower_white"
+        "recipes": "chromaticraft:dye_from_dye_flower_white"
       },
       "trigger": "minecraft:recipe_unlocked"
     }

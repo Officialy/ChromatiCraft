@@ -5,1692 +5,1517 @@
       "entries": [
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 32.0,
-                "min": 12.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 32,
+              "min": 12
             }
-          ],
+          },
           "name": "minecraft:iron_ore",
           "weight": 35
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 24.0,
-                "min": 8.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 24,
+              "min": 8
             }
-          ],
+          },
           "name": "minecraft:gold_ore",
           "weight": 15
         },
         {
           "type": "minecraft:tag",
           "expand": true,
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 40.0,
-                "min": 16.0
-              },
-              "function": "minecraft:set_count"
+          "items": "#c:ores/copper",
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 40,
+              "min": 16
             }
-          ],
-          "name": "c:ores/copper",
+          },
           "weight": 40
         },
         {
           "type": "minecraft:tag",
           "expand": true,
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 40.0,
-                "min": 16.0
-              },
-              "function": "minecraft:set_count"
+          "items": "#c:ores/tin",
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 40,
+              "min": 16
             }
-          ],
-          "name": "c:ores/tin",
+          },
           "weight": 40
         },
         {
           "type": "minecraft:tag",
           "expand": true,
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 24.0,
-                "min": 12.0
-              },
-              "function": "minecraft:set_count"
+          "items": "#c:ores/silver",
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 24,
+              "min": 12
             }
-          ],
-          "name": "c:ores/silver",
+          },
           "weight": 20
         },
         {
           "type": "minecraft:tag",
           "expand": true,
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 24.0,
-                "min": 12.0
-              },
-              "function": "minecraft:set_count"
+          "items": "#c:ores/nickel",
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 24,
+              "min": 12
             }
-          ],
-          "name": "c:ores/nickel",
+          },
           "weight": 15
         },
         {
           "type": "minecraft:tag",
           "expand": true,
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 24.0,
-                "min": 12.0
-              },
-              "function": "minecraft:set_count"
+          "items": "#c:ores/lead",
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 24,
+              "min": 12
             }
-          ],
-          "name": "c:ores/lead",
+          },
           "weight": 20
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 4.0,
-                "min": 1.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 4,
+              "min": 1
             }
-          ],
+          },
           "name": "minecraft:diamond",
           "weight": 5
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 12.0,
-                "min": 3.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 12,
+              "min": 3
             }
-          ],
+          },
           "name": "minecraft:diamond",
           "weight": 2
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 6.0,
-                "min": 2.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 6,
+              "min": 2
             }
-          ],
+          },
           "name": "minecraft:blue_dye",
           "weight": 20
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 30.0,
-                "min": 12.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 30,
+              "min": 12
             }
-          ],
+          },
           "name": "minecraft:blue_dye",
           "weight": 5
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 64.0,
-                "min": 4.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 64,
+              "min": 4
             }
-          ],
+          },
           "name": "minecraft:redstone",
           "weight": 40
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 64.0,
-                "min": 16.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 64,
+              "min": 16
             }
-          ],
+          },
           "name": "minecraft:coal",
           "weight": 40
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 24.0,
-                "min": 4.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 24,
+              "min": 4
             }
-          ],
+          },
           "name": "minecraft:coal",
           "weight": 60
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 16.0,
-                "min": 4.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 16,
+              "min": 4
             }
-          ],
+          },
           "name": "minecraft:gold_ingot",
           "weight": 25
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 40.0,
-                "min": 16.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 40,
+              "min": 16
             }
-          ],
+          },
           "name": "minecraft:gold_ingot",
           "weight": 10
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 40.0,
-                "min": 16.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 40,
+              "min": 16
             }
-          ],
+          },
           "name": "minecraft:iron_ingot",
           "weight": 60
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 64.0,
-                "min": 32.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 64,
+              "min": 32
             }
-          ],
+          },
           "name": "minecraft:iron_ingot",
           "weight": 20
         },
         {
           "type": "minecraft:tag",
           "expand": true,
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 48.0,
-                "min": 16.0
-              },
-              "function": "minecraft:set_count"
+          "items": "#c:ingots/nickel",
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 48,
+              "min": 16
             }
-          ],
-          "name": "c:ingots/nickel",
+          },
           "weight": 40
         },
         {
           "type": "minecraft:tag",
           "expand": true,
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 48.0,
-                "min": 16.0
-              },
-              "function": "minecraft:set_count"
+          "items": "#c:ingots/lead",
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 48,
+              "min": 16
             }
-          ],
-          "name": "c:ingots/lead",
+          },
           "weight": 40
         },
         {
           "type": "minecraft:tag",
           "expand": true,
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 48.0,
-                "min": 16.0
-              },
-              "function": "minecraft:set_count"
+          "items": "#c:ingots/silver",
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 48,
+              "min": 16
             }
-          ],
-          "name": "c:ingots/silver",
+          },
           "weight": 50
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 32.0,
-                "min": 12.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 32,
+              "min": 12
             }
-          ],
+          },
           "name": "minecraft:flint",
           "weight": 40
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 60.0,
-                "min": 30.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 60,
+              "min": 30
             }
-          ],
+          },
           "name": "minecraft:clay_ball",
           "weight": 40
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 20.0,
-                "min": 10.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 20,
+              "min": 10
             }
-          ],
+          },
           "name": "minecraft:slime_ball",
           "weight": 15
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 15.0,
-                "min": 5.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 15,
+              "min": 5
             }
-          ],
+          },
           "name": "minecraft:bone",
           "weight": 40
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 15.0,
-                "min": 5.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 15,
+              "min": 5
             }
-          ],
+          },
           "name": "minecraft:rotten_flesh",
           "weight": 50
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 30.0,
-                "min": 10.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 30,
+              "min": 10
             }
-          ],
+          },
           "name": "minecraft:string",
           "weight": 50
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 20.0,
-                "min": 5.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 20,
+              "min": 5
             }
-          ],
+          },
           "name": "minecraft:gunpowder",
           "weight": 30
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 25.0,
-                "min": 10.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 25,
+              "min": 10
             }
-          ],
+          },
           "name": "minecraft:leather",
           "weight": 30
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 15.0,
-                "min": 5.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 15,
+              "min": 5
             }
-          ],
+          },
           "name": "minecraft:feather",
           "weight": 25
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 15.0,
-                "min": 5.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 15,
+              "min": 5
             }
-          ],
+          },
           "name": "minecraft:black_dye",
           "weight": 30
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 12.0,
-                "min": 4.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 12,
+              "min": 4
             }
-          ],
+          },
           "name": "minecraft:ender_pearl",
           "weight": 10
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 30.0,
-                "min": 18.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 30,
+              "min": 18
             }
-          ],
+          },
           "name": "minecraft:wheat",
           "weight": 35
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 30.0,
-                "min": 18.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 30,
+              "min": 18
             }
-          ],
+          },
           "name": "minecraft:carrot",
           "weight": 35
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 30.0,
-                "min": 18.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 30,
+              "min": 18
             }
-          ],
+          },
           "name": "minecraft:potato",
           "weight": 35
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 30.0,
-                "min": 18.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 30,
+              "min": 18
             }
-          ],
+          },
           "name": "minecraft:apple",
           "weight": 35
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 16.0,
-                "min": 8.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 16,
+              "min": 8
             }
-          ],
+          },
           "name": "minecraft:porkchop",
           "weight": 20
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 16.0,
-                "min": 8.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 16,
+              "min": 8
             }
-          ],
+          },
           "name": "minecraft:beef",
           "weight": 20
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 16.0,
-                "min": 8.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 16,
+              "min": 8
             }
-          ],
+          },
           "name": "minecraft:cod",
           "weight": 20
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 16.0,
-                "min": 8.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 16,
+              "min": 8
             }
-          ],
+          },
           "name": "minecraft:chicken",
           "weight": 20
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 6.0,
-                "min": 1.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 6,
+              "min": 1
             }
-          ],
+          },
           "name": "minecraft:sugar_cane",
           "weight": 20
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 8.0,
-                "min": 2.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 8,
+              "min": 2
             }
-          ],
+          },
           "name": "chromaticraft:crystal_shard_black",
           "weight": 5
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 8.0,
-                "min": 2.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 8,
+              "min": 2
             }
-          ],
+          },
           "name": "chromaticraft:cave_crystal_black"
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 8.0,
-                "min": 2.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 8,
+              "min": 2
             }
-          ],
+          },
           "name": "chromaticraft:crystal_shard_red",
           "weight": 5
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 8.0,
-                "min": 2.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 8,
+              "min": 2
             }
-          ],
+          },
           "name": "chromaticraft:cave_crystal_red"
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 8.0,
-                "min": 2.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 8,
+              "min": 2
             }
-          ],
+          },
           "name": "chromaticraft:crystal_shard_green",
           "weight": 5
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 8.0,
-                "min": 2.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 8,
+              "min": 2
             }
-          ],
+          },
           "name": "chromaticraft:cave_crystal_green"
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 8.0,
-                "min": 2.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 8,
+              "min": 2
             }
-          ],
+          },
           "name": "chromaticraft:crystal_shard_brown",
           "weight": 5
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 8.0,
-                "min": 2.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 8,
+              "min": 2
             }
-          ],
+          },
           "name": "chromaticraft:cave_crystal_brown"
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 8.0,
-                "min": 2.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 8,
+              "min": 2
             }
-          ],
+          },
           "name": "chromaticraft:crystal_shard_blue",
           "weight": 5
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 8.0,
-                "min": 2.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 8,
+              "min": 2
             }
-          ],
+          },
           "name": "chromaticraft:cave_crystal_blue"
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 8.0,
-                "min": 2.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 8,
+              "min": 2
             }
-          ],
+          },
           "name": "chromaticraft:crystal_shard_purple",
           "weight": 5
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 8.0,
-                "min": 2.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 8,
+              "min": 2
             }
-          ],
+          },
           "name": "chromaticraft:cave_crystal_purple"
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 8.0,
-                "min": 2.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 8,
+              "min": 2
             }
-          ],
+          },
           "name": "chromaticraft:crystal_shard_cyan",
           "weight": 5
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 8.0,
-                "min": 2.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 8,
+              "min": 2
             }
-          ],
+          },
           "name": "chromaticraft:cave_crystal_cyan"
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 8.0,
-                "min": 2.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 8,
+              "min": 2
             }
-          ],
+          },
           "name": "chromaticraft:crystal_shard_light_gray",
           "weight": 5
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 8.0,
-                "min": 2.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 8,
+              "min": 2
             }
-          ],
+          },
           "name": "chromaticraft:cave_crystal_light_gray"
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 8.0,
-                "min": 2.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 8,
+              "min": 2
             }
-          ],
+          },
           "name": "chromaticraft:crystal_shard_gray",
           "weight": 5
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 8.0,
-                "min": 2.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 8,
+              "min": 2
             }
-          ],
+          },
           "name": "chromaticraft:cave_crystal_gray"
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 8.0,
-                "min": 2.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 8,
+              "min": 2
             }
-          ],
+          },
           "name": "chromaticraft:crystal_shard_pink",
           "weight": 5
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 8.0,
-                "min": 2.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 8,
+              "min": 2
             }
-          ],
+          },
           "name": "chromaticraft:cave_crystal_pink"
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 8.0,
-                "min": 2.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 8,
+              "min": 2
             }
-          ],
+          },
           "name": "chromaticraft:crystal_shard_lime",
           "weight": 5
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 8.0,
-                "min": 2.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 8,
+              "min": 2
             }
-          ],
+          },
           "name": "chromaticraft:cave_crystal_lime"
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 8.0,
-                "min": 2.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 8,
+              "min": 2
             }
-          ],
+          },
           "name": "chromaticraft:crystal_shard_yellow",
           "weight": 5
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 8.0,
-                "min": 2.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 8,
+              "min": 2
             }
-          ],
+          },
           "name": "chromaticraft:cave_crystal_yellow"
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 8.0,
-                "min": 2.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 8,
+              "min": 2
             }
-          ],
+          },
           "name": "chromaticraft:crystal_shard_light_blue",
           "weight": 5
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 8.0,
-                "min": 2.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 8,
+              "min": 2
             }
-          ],
+          },
           "name": "chromaticraft:cave_crystal_light_blue"
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 8.0,
-                "min": 2.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 8,
+              "min": 2
             }
-          ],
+          },
           "name": "chromaticraft:crystal_shard_magenta",
           "weight": 5
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 8.0,
-                "min": 2.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 8,
+              "min": 2
             }
-          ],
+          },
           "name": "chromaticraft:cave_crystal_magenta"
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 8.0,
-                "min": 2.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 8,
+              "min": 2
             }
-          ],
+          },
           "name": "chromaticraft:crystal_shard_orange",
           "weight": 5
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 8.0,
-                "min": 2.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 8,
+              "min": 2
             }
-          ],
+          },
           "name": "chromaticraft:cave_crystal_orange"
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 8.0,
-                "min": 2.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 8,
+              "min": 2
             }
-          ],
+          },
           "name": "chromaticraft:crystal_shard_white",
           "weight": 5
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 8.0,
-                "min": 2.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 8,
+              "min": 2
             }
-          ],
+          },
           "name": "chromaticraft:cave_crystal_white"
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 30.0,
-                "min": 6.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 30,
+              "min": 6
             }
-          ],
+          },
           "name": "chromaticraft:aura_dust",
           "weight": 5
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 1.0,
-                "min": 1.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 1,
+              "min": 1
             }
-          ],
+          },
           "name": "minecraft:lava_bucket",
           "weight": 10
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 32.0,
-                "min": 12.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 32,
+              "min": 12
             }
-          ],
+          },
           "name": "minecraft:quartz",
           "weight": 15
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 12.0,
-                "min": 4.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 12,
+              "min": 4
             }
-          ],
+          },
           "name": "minecraft:glowstone_dust",
           "weight": 25
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 32.0,
-                "min": 16.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 32,
+              "min": 16
             }
-          ],
+          },
           "name": "minecraft:glowstone_dust",
           "weight": 5
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 8.0,
-                "min": 4.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 8,
+              "min": 4
             }
-          ],
+          },
           "name": "minecraft:blaze_powder",
           "weight": 15
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 20.0,
-                "min": 4.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 20,
+              "min": 4
             }
-          ],
+          },
           "name": "minecraft:torch",
           "weight": 50
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 64.0,
-                "min": 24.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 64,
+              "min": 24
             }
-          ],
+          },
           "name": "minecraft:oak_planks",
           "weight": 50
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 64.0,
-                "min": 24.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 64,
+              "min": 24
             }
-          ],
+          },
           "name": "minecraft:sand",
           "weight": 50
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 8.0,
-                "min": 4.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 8,
+              "min": 4
             }
-          ],
+          },
           "name": "minecraft:obsidian",
           "weight": 10
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 16.0,
-                "min": 8.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 16,
+              "min": 8
             }
-          ],
+          },
           "name": "minecraft:obsidian",
           "weight": 5
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 32.0,
-                "min": 16.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 32,
+              "min": 16
             }
-          ],
+          },
           "name": "minecraft:mossy_cobblestone",
           "weight": 15
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 64.0,
-                "min": 32.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 64,
+              "min": 32
             }
-          ],
+          },
           "name": "minecraft:cobblestone",
           "weight": 100
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 64.0,
-                "min": 32.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 64,
+              "min": 32
             }
-          ],
+          },
           "name": "minecraft:dirt",
           "weight": 100
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 64.0,
-                "min": 32.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 64,
+              "min": 32
             }
-          ],
+          },
           "name": "minecraft:gravel",
           "weight": 40
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 16.0,
-                "min": 4.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 16,
+              "min": 4
             }
-          ],
+          },
           "name": "minecraft:red_dye",
           "weight": 20
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 16.0,
-                "min": 4.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 16,
+              "min": 4
             }
-          ],
+          },
           "name": "minecraft:yellow_dye",
           "weight": 20
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 16.0,
-                "min": 4.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 16,
+              "min": 4
             }
-          ],
+          },
           "name": "minecraft:green_dye",
           "weight": 20
         },
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 8.0,
-                "min": 2.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 8,
+              "min": 2
             }
-          ],
+          },
           "name": "minecraft:paper",
           "weight": 15
         }
       ],
       "rolls": {
         "type": "minecraft:uniform",
-        "max": 20.0,
-        "min": 13.0
+        "max": 20,
+        "min": 13
       }
     },
     {
-      "conditions": [
-        {
-          "chance": 0.25,
-          "condition": "minecraft:random_chance"
-        },
-        {
-          "condition": "minecraft:location_check",
-          "predicate": {
-            "biomes": [
-              "minecraft:snowy_plains",
-              "minecraft:snowy_taiga",
-              "minecraft:ice_spikes",
-              "minecraft:snowy_slopes",
-              "minecraft:frozen_peaks",
-              "minecraft:jagged_peaks"
-            ]
+      "condition": {
+        "type": "minecraft:all_of",
+        "terms": [
+          {
+            "type": "minecraft:random_chance",
+            "chance": 0.25
+          },
+          {
+            "type": "minecraft:location_check",
+            "predicate": {
+              "biomes": [
+                "minecraft:snowy_plains",
+                "minecraft:snowy_taiga",
+                "minecraft:ice_spikes",
+                "minecraft:snowy_slopes",
+                "minecraft:frozen_peaks",
+                "minecraft:jagged_peaks"
+              ]
+            }
           }
-        }
-      ],
+        ]
+      },
       "entries": [
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 32.0,
-                "min": 12.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 32,
+              "min": 12
             }
-          ],
+          },
           "name": "minecraft:ice"
         }
       ],
-      "rolls": 1.0
+      "rolls": 1
     },
     {
-      "conditions": [
-        {
-          "chance": 0.33333334,
-          "condition": "minecraft:random_chance"
-        },
-        {
-          "condition": "minecraft:location_check",
-          "predicate": {
-            "biomes": [
-              "minecraft:taiga",
-              "minecraft:snowy_taiga",
-              "minecraft:old_growth_pine_taiga",
-              "minecraft:old_growth_spruce_taiga"
-            ]
+      "condition": {
+        "type": "minecraft:all_of",
+        "terms": [
+          {
+            "type": "minecraft:random_chance",
+            "chance": 0.33333334
+          },
+          {
+            "type": "minecraft:location_check",
+            "predicate": {
+              "biomes": [
+                "minecraft:taiga",
+                "minecraft:snowy_taiga",
+                "minecraft:old_growth_pine_taiga",
+                "minecraft:old_growth_spruce_taiga"
+              ]
+            }
           }
-        }
-      ],
+        ]
+      },
       "entries": [
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 6.0,
-                "min": 1.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 6,
+              "min": 1
             }
-          ],
+          },
           "name": "minecraft:spruce_sapling"
         }
       ],
-      "rolls": 1.0
+      "rolls": 1
     },
     {
-      "conditions": [
-        {
-          "chance": 0.33333334,
-          "condition": "minecraft:random_chance"
-        },
-        {
-          "condition": "minecraft:location_check",
-          "predicate": {
-            "biomes": [
-              "minecraft:birch_forest",
-              "minecraft:old_growth_birch_forest"
-            ]
+      "condition": {
+        "type": "minecraft:all_of",
+        "terms": [
+          {
+            "type": "minecraft:random_chance",
+            "chance": 0.33333334
+          },
+          {
+            "type": "minecraft:location_check",
+            "predicate": {
+              "biomes": [
+                "minecraft:birch_forest",
+                "minecraft:old_growth_birch_forest"
+              ]
+            }
           }
-        }
-      ],
+        ]
+      },
       "entries": [
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 6.0,
-                "min": 1.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 6,
+              "min": 1
             }
-          ],
+          },
           "name": "minecraft:birch_sapling"
         }
       ],
-      "rolls": 1.0
+      "rolls": 1
     },
     {
-      "conditions": [
-        {
-          "chance": 0.33333334,
-          "condition": "minecraft:random_chance"
-        },
-        {
-          "condition": "minecraft:location_check",
-          "predicate": {
-            "biomes": [
-              "minecraft:jungle",
-              "minecraft:sparse_jungle",
-              "minecraft:bamboo_jungle"
-            ]
+      "condition": {
+        "type": "minecraft:all_of",
+        "terms": [
+          {
+            "type": "minecraft:random_chance",
+            "chance": 0.33333334
+          },
+          {
+            "type": "minecraft:location_check",
+            "predicate": {
+              "biomes": [
+                "minecraft:jungle",
+                "minecraft:sparse_jungle",
+                "minecraft:bamboo_jungle"
+              ]
+            }
           }
-        }
-      ],
+        ]
+      },
       "entries": [
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 6.0,
-                "min": 1.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 6,
+              "min": 1
             }
-          ],
+          },
           "name": "minecraft:jungle_sapling"
         }
       ],
-      "rolls": 1.0
+      "rolls": 1
     },
     {
-      "conditions": [
-        {
-          "chance": 0.33333334,
-          "condition": "minecraft:random_chance"
-        },
-        {
-          "condition": "minecraft:location_check",
-          "predicate": {
-            "biomes": [
-              "minecraft:savanna",
-              "minecraft:savanna_plateau",
-              "minecraft:windswept_savanna"
-            ]
+      "condition": {
+        "type": "minecraft:all_of",
+        "terms": [
+          {
+            "type": "minecraft:random_chance",
+            "chance": 0.33333334
+          },
+          {
+            "type": "minecraft:location_check",
+            "predicate": {
+              "biomes": [
+                "minecraft:savanna",
+                "minecraft:savanna_plateau",
+                "minecraft:windswept_savanna"
+              ]
+            }
           }
-        }
-      ],
+        ]
+      },
       "entries": [
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 6.0,
-                "min": 1.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 6,
+              "min": 1
             }
-          ],
+          },
           "name": "minecraft:acacia_sapling"
         }
       ],
-      "rolls": 1.0
+      "rolls": 1
     },
     {
-      "conditions": [
-        {
-          "chance": 0.33333334,
-          "condition": "minecraft:random_chance"
-        },
-        {
-          "condition": "minecraft:location_check",
-          "predicate": {
-            "biomes": "minecraft:dark_forest"
+      "condition": {
+        "type": "minecraft:all_of",
+        "terms": [
+          {
+            "type": "minecraft:random_chance",
+            "chance": 0.33333334
+          },
+          {
+            "type": "minecraft:location_check",
+            "predicate": {
+              "biomes": "minecraft:dark_forest"
+            }
           }
-        }
-      ],
+        ]
+      },
       "entries": [
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 6.0,
-                "min": 1.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 6,
+              "min": 1
             }
-          ],
+          },
           "name": "minecraft:dark_oak_sapling"
         }
       ],
-      "rolls": 1.0
+      "rolls": 1
     },
     {
-      "conditions": [
-        {
-          "chance": 0.33333334,
-          "condition": "minecraft:random_chance"
-        },
-        {
-          "condition": "minecraft:location_check",
-          "predicate": {
-            "biomes": "minecraft:mangrove_swamp"
+      "condition": {
+        "type": "minecraft:all_of",
+        "terms": [
+          {
+            "type": "minecraft:random_chance",
+            "chance": 0.33333334
+          },
+          {
+            "type": "minecraft:location_check",
+            "predicate": {
+              "biomes": "minecraft:mangrove_swamp"
+            }
           }
-        }
-      ],
+        ]
+      },
       "entries": [
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 6.0,
-                "min": 1.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 6,
+              "min": 1
             }
-          ],
+          },
           "name": "minecraft:mangrove_propagule"
         }
       ],
-      "rolls": 1.0
+      "rolls": 1
     },
     {
-      "conditions": [
-        {
-          "chance": 0.33333334,
-          "condition": "minecraft:random_chance"
-        },
-        {
-          "condition": "minecraft:location_check",
-          "predicate": {
-            "biomes": "minecraft:cherry_grove"
+      "condition": {
+        "type": "minecraft:all_of",
+        "terms": [
+          {
+            "type": "minecraft:random_chance",
+            "chance": 0.33333334
+          },
+          {
+            "type": "minecraft:location_check",
+            "predicate": {
+              "biomes": "minecraft:cherry_grove"
+            }
           }
-        }
-      ],
+        ]
+      },
       "entries": [
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 6.0,
-                "min": 1.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 6,
+              "min": 1
             }
-          ],
+          },
           "name": "minecraft:cherry_sapling"
         }
       ],
-      "rolls": 1.0
+      "rolls": 1
     },
     {
-      "conditions": [
-        {
-          "chance": 0.33333334,
-          "condition": "minecraft:random_chance"
-        },
-        {
-          "condition": "minecraft:location_check",
-          "predicate": {
-            "biomes": [
-              "minecraft:plains",
-              "minecraft:sunflower_plains",
-              "minecraft:forest",
-              "minecraft:flower_forest",
-              "minecraft:swamp",
-              "minecraft:windswept_forest",
-              "minecraft:wooded_badlands"
-            ]
+      "condition": {
+        "type": "minecraft:all_of",
+        "terms": [
+          {
+            "type": "minecraft:random_chance",
+            "chance": 0.33333334
+          },
+          {
+            "type": "minecraft:location_check",
+            "predicate": {
+              "biomes": [
+                "minecraft:plains",
+                "minecraft:sunflower_plains",
+                "minecraft:forest",
+                "minecraft:flower_forest",
+                "minecraft:swamp",
+                "minecraft:windswept_forest",
+                "minecraft:wooded_badlands"
+              ]
+            }
           }
-        }
-      ],
+        ]
+      },
       "entries": [
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "count": {
-                "type": "minecraft:uniform",
-                "max": 6.0,
-                "min": 1.0
-              },
-              "function": "minecraft:set_count"
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "max": 6,
+              "min": 1
             }
-          ],
+          },
           "name": "minecraft:oak_sapling"
         }
       ],
-      "rolls": 1.0
+      "rolls": 1
     }
   ],
   "random_sequence": "chromaticraft:chests/burrow_cache"

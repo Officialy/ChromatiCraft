@@ -1,4 +1,21 @@
 {
+  "attributes": {
+    "minecraft:gameplay/natural_mob_spawns": {
+      "argument": {
+        "spawn_costs": {},
+        "spawns_by_category": {
+          "creature": [
+            {
+              "type": "chromaticraft:tunnel_nuker",
+              "count": 1,
+              "weight": 1
+            }
+          ]
+        }
+      },
+      "modifier": "overlay"
+    }
+  },
   "carvers": [],
   "downfall": 0.5,
   "effects": {
@@ -29,23 +46,5 @@
     ]
   ],
   "has_precipitation": false,
-  "spawn_costs": {},
-  "spawners": {
-    "ambient": [],
-    "axolotls": [],
-    "creature": [
-      {
-        "type": "chromaticraft:tunnel_nuker",
-        "maxCount": 1,
-        "minCount": 1,
-        "weight": 1
-      }
-    ],
-    "misc": [],
-    "monster": [],
-    "underground_water_creature": [],
-    "water_ambient": [],
-    "water_creature": []
-  },
   "temperature": 0.5
 }
