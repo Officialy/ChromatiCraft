@@ -101,7 +101,7 @@ public abstract class TileEntityAuraInfuser extends TileEntityChromaticBase impl
 			return;
 		}
 		if (fluidCooldown > 0) fluidCooldown--;
-		if (this.getTicksExisted() == 1) {
+		if (this.getTicksExisted() == 0) { // V33a onFirstTick
 			this.validateStructure();
 			CACHE.add(new WorldLocation(this));
 		}
