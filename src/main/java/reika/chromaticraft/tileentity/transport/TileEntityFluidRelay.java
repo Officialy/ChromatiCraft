@@ -95,7 +95,7 @@ public class TileEntityFluidRelay extends TileEntityChromaticBase implements Bre
 			cacheTimer.setCap(connections.isEmpty() ? 100 : 500);
 			cacheTimer.update();
 		}
-		if (cacheTimer.checkCap()) {
+		if (cacheTimer.checkCap() || this.getTicksExisted() == 0) {
 			this.scanAndCache(world, pos);
 		}
 		if (!world.isClientSide()) {
@@ -124,9 +124,6 @@ public class TileEntityFluidRelay extends TileEntityChromaticBase implements Bre
 			network = new FluidNetwork();
 			network.add(this);
 		}
-		// V33a scanned in updateEntity while getTicksExisted() was still 0. The port's BlockEntityBase counts that
-		// tick before updateEntity(Level, BlockPos) runs, so the first-tick scan lives here, right after the network.
-		this.scanAndCache(world, pos);
 	}
 
 	/** Toward the tank this anchor is fixed to (V33a {@code getFacing}, default DOWN). */
