@@ -264,6 +264,20 @@ public final class ChromaCastingRecipeProvider {
 					List.of(), new ItemStackTemplate(ChromaBlocks.FUNCTION_RELAY.get().asItem()), 20, 40)
 					.withPenaltyThreshold(1));
 
+			// V33a FluidRelayRecipe, a TempleCastingRecipe (20 ticks, 40 XP) making four: beacon dust over aura dust
+			// flanked by lapis, on iron ingots around glass, with cyan and lime runes at (+-3, 0, -3). Typically crafted
+			// eight at a time, so the repeat penalty starts at six.
+			saveRecipe("fluid_relay", new CastingTableRecipe(CastingTableRecipe.Tier.TEMPLE,
+					shapedGrid(Map.of('D', tiered(ChromaTieredItems.BEACON_DUST),
+							'A', tiered(ChromaTieredItems.AURA_DUST), 'L', Ingredient.of(Items.LAPIS_LAZULI),
+							'I', Ingredient.of(Items.IRON_INGOT), 'G', Ingredient.of(Items.GLASS)),
+							" D ", "LAL", "IGI"),
+					List.of(),
+					List.of(new RuneRequirement(new net.minecraft.core.BlockPos(3, 0, -3), CrystalElement.CYAN),
+							new RuneRequirement(new net.minecraft.core.BlockPos(-3, 0, -3), CrystalElement.LIME)),
+					List.of(), new ItemStackTemplate(ChromaBlocks.FLUID_RELAY.get().asItem(), 4), 20, 40)
+					.withPenaltyThreshold(6));
+
 			// Complete V33a RelaySourceRecipe. The repeated (0,-4) Focal Powder assignment in the
 			// source intentionally resolves to one stand, leaving the authored full set of 24.
 			List<CastingTableRecipe.StandIngredient> relayStands = List.of(

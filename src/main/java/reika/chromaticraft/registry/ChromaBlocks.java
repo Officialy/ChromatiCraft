@@ -1018,6 +1018,10 @@ public final class ChromaBlocks {
 	public static final DeferredBlock<Block> LUMEN_TURRET =
 			register("lumen_turret", () -> new reika.chromaticraft.block.BlockLumenTurret(
 					blockProperties().strength(5F, 8F).requiresCorrectToolForDrops().noOcclusion()));
+	/** V33a FLUIDRELAY, a BlockModelledChromaTile entry: rock, hardness 5, resistance 40 (8 against explosions). */
+	public static final DeferredBlock<Block> FLUID_RELAY =
+			register("fluid_relay", () -> new reika.chromaticraft.block.BlockFluidRelay(
+					blockProperties().strength(5F, 8F).requiresCorrectToolForDrops().noOcclusion()));
 	/**
 	 * V33a PARTICLES, a BlockModelledChromaTile entry: rock, hardness 5, resistance 40 (8 against explosions); intangible and
 	 * drawn only by its renderer.

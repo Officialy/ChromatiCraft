@@ -405,6 +405,28 @@ public final class ChromaRenderPipelines {
 			.withDepthStencilState(new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL, false))
 			.build();
 
+	/**
+	 * V33a untextured ADDITIVEDARK geometry (DragonAPI {@code TruncatedCube}'s faces and corners): position-colour
+	 * triangles, depth-tested without writing depth, unculled.
+	 */
+	public static final RenderPipeline ADDITIVE_COLOR_TRIANGLES = RenderPipeline.builder()
+			.withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "pipeline/additive_color_triangles"))
+			.withBindGroupLayout(BindGroupLayouts.GLOBALS)
+			.withBindGroupLayout(BindGroupLayouts.PROJECTION)
+			.withBindGroupLayout(BindGroupLayouts.DYNAMIC_TRANSFORMS)
+			.withVertexShader("core/position_color")
+			.withFragmentShader("core/position_color")
+			.withColorTargetState(new ColorTargetState(ADDITIVE_DARK))
+			.withVertexBinding(0, DefaultVertexFormat.POSITION_COLOR)
+			.withPrimitiveTopology(PrimitiveTopology.TRIANGLES)
+			.withDepthStencilState(new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL, false))
+			.withCull(false)
+			.build();
+
+	private static final RenderType ADDITIVE_COLOR_TRIANGLE_TYPE = RenderType.create(
+			"chromaticraft_additive_color_triangles",
+			RenderSetup.builder(ADDITIVE_COLOR_TRIANGLES).sortOnUpload().createRenderSetup());
+
 	private static final RenderType AURA_LOCUS_LINE_TYPE = RenderType.create(
 			"chromaticraft_aura_locus_lines",
 			RenderSetup.builder(AURA_LOCUS_LINES).createRenderSetup());
@@ -475,6 +497,10 @@ public final class ChromaRenderPipelines {
 		return LEGACY_ADDITIVE_THROUGH_WALL_TYPES.apply(texture);
 	}
 
+	public static RenderType additiveColorTriangles() {
+		return ADDITIVE_COLOR_TRIANGLE_TYPE;
+	}
+
 	public static RenderType auraLocusLines() {
 		return AURA_LOCUS_LINE_TYPE;
 	}
@@ -485,6 +511,7 @@ public final class ChromaRenderPipelines {
 
     private static void registerPipelines(RegisterRenderPipelinesEvent event) {
         event.registerPipeline(ADDITIVE_SPRITE);
+        event.registerPipeline(ADDITIVE_COLOR_TRIANGLES);
         event.registerPipeline(ADDITIVE_SPRITE_THROUGH_WALL);
         event.registerPipeline(GUI_ADDITIVE_DARK);
         event.registerPipeline(TRANSLUCENT_SPRITE);

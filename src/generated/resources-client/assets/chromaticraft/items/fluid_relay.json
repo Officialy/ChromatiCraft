@@ -1,0 +1,9 @@
+{
+  "model": {
+    "type": "minecraft:special",
+    "base": "chromaticraft:block/fluid_relay_inventory",
+    "model": {
+      "type": "chromaticraft:fluid_relay"
+    }
+  }
+}

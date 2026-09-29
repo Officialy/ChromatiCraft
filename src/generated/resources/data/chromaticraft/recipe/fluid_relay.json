@@ -1,0 +1,59 @@
+{
+  "type": "chromaticraft:casting",
+  "duration": 20,
+  "experience": 40,
+  "grid": [
+    {
+      "ingredient": "chromaticraft:transmissive_dust",
+      "slot": 1
+    },
+    {
+      "ingredient": "minecraft:lapis_lazuli",
+      "slot": 3
+    },
+    {
+      "ingredient": "chromaticraft:aura_dust",
+      "slot": 4
+    },
+    {
+      "ingredient": "minecraft:lapis_lazuli",
+      "slot": 5
+    },
+    {
+      "ingredient": "minecraft:iron_ingot",
+      "slot": 6
+    },
+    {
+      "ingredient": "minecraft:glass",
+      "slot": 7
+    },
+    {
+      "ingredient": "minecraft:iron_ingot",
+      "slot": 8
+    }
+  ],
+  "penalty_threshold": 6,
+  "result": {
+    "count": 4,
+    "id": "chromaticraft:fluid_relay"
+  },
+  "runes": [
+    {
+      "element": "cyan",
+      "offset": [
+        3,
+        0,
+        -3
+      ]
+    },
+    {
+      "element": "lime",
+      "offset": [
+        -3,
+        0,
+        -3
+      ]
+    }
+  ],
+  "tier": "temple"
+}

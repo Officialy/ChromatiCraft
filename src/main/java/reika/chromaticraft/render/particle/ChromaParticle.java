@@ -1766,6 +1766,40 @@ public abstract class ChromaParticle extends SingleQuadParticle {
         Minecraft.getInstance().particleEngine.add(fx);
     }
 
+    /**
+     * V33a {@code TileEntityFluidRelay.sendFluidParticles}: one drop of the fluid from this anchor's face toward each
+     * linked anchor's face, at 1/16 to 1/4 block a tick with a little scatter. The drop is V33a's plain
+     * {@code EntityFluidFX}: no gravity, its default EntityFX life and unit scale.
+     */
+    public static void spawnFluidRelay(Level world, reika.chromaticraft.tileentity.transport.TileEntityFluidRelay te,
+            net.minecraft.world.level.material.Fluid f) {
+        if (!(world instanceof ClientLevel level)) return;
+        RandomSource rand = level.getRandom();
+        double d = 0.0625;
+        Direction face = te.getFacing();
+        BlockPos pos = te.getBlockPos();
+        double px = pos.getX()+0.5+d*face.getStepX();
+        double py = pos.getY()+0.5+d*face.getStepY();
+        double pz = pos.getZ()+0.5+d*face.getStepZ();
+        for (BlockPos c : te.getConnections()) {
+            if (!(level.getBlockEntity(c) instanceof reika.chromaticraft.tileentity.transport.TileEntityFluidRelay te2))
+                continue;
+            Direction face2 = te2.getFacing();
+            double dx = c.getX()+0.5+d*face2.getStepX()-px;
+            double dy = c.getY()+0.5+d*face2.getStepY()-py;
+            double dz = c.getZ()+0.5+d*face2.getStepZ()-pz;
+            double dd = Math.sqrt(dx*dx+dy*dy+dz*dz);
+            double v = 0.0625+rand.nextDouble()*(0.25-0.0625);
+            double dv = 0.03125/2;
+            double vx = v*dx/dd+(rand.nextDouble()*2-1)*dv;
+            double vy = v*dy/dd+(rand.nextDouble()*2-1)*dv;
+            double vz = v*dz/dd+(rand.nextDouble()*2-1)*dv;
+            // 1.7.10 EntityFX's default life: (int)(4 / (rand * 0.9 + 0.1)).
+            int life = (int)(4F/(rand.nextFloat()*0.9F+0.1F));
+            Minecraft.getInstance().particleEngine.add(new FluidSprite(level, px, py, pz, vx, vy, vz, f, 0, life, 1, false));
+        }
+    }
+
     /** V33a Glow Root's long-lived, falling, colliding purple/white blur. */
     public static void spawnGlowRoot(net.minecraft.world.level.Level level, BlockPos pos,
             net.minecraft.util.RandomSource random) {

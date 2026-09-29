@@ -39,6 +39,8 @@ public interface ChromaMenus {
 			register("auto_enchanter", reika.chromaticraft.container.MenuAutoEnchanter::new);
 	Supplier<MenuType<reika.chromaticraft.container.MenuParticleSpawner>> PARTICLE_SPAWNER =
 			register("particle_spawner", reika.chromaticraft.container.MenuParticleSpawner::new);
+	Supplier<MenuType<reika.chromaticraft.container.MenuFluidRelay>> FLUID_RELAY =
+			register("fluid_relay", reika.chromaticraft.container.MenuFluidRelay::new);
 	Supplier<MenuType<MenuStructurePassword>> STRUCTURE_PASSWORD = register(
 			"structure_password", MenuStructurePassword::new);
     Supplier<MenuType<MenuLexiconPages>> LEXICON_PAGES = register("lexicon_pages", MenuLexiconPages::new);

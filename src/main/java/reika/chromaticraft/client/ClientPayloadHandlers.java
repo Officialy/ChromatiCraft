@@ -203,6 +203,16 @@ public final class ClientPayloadHandlers {
 					reika.chromaticraft.registry.CrystalElement.elements[element], connected, valid);
 	}
 
+	public static void fluidRelayFlow(BlockPos pos, int fluidId) {
+		Minecraft mc = Minecraft.getInstance();
+		if (mc.level != null && mc.level.getBlockEntity(pos)
+				instanceof reika.chromaticraft.tileentity.transport.TileEntityFluidRelay relay) {
+			var fluid = net.minecraft.core.registries.BuiltInRegistries.FLUID.byId(fluidId);
+			if (fluid != null && fluid != net.minecraft.world.level.material.Fluids.EMPTY)
+				reika.chromaticraft.render.particle.ChromaParticle.spawnFluidRelay(mc.level, relay, fluid);
+		}
+	}
+
 	public static void growthWand(BlockPos pos) {
 		Minecraft mc = Minecraft.getInstance();
 		if (mc.level != null)

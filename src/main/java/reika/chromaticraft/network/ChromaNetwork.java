@@ -52,6 +52,9 @@ public final class ChromaNetwork {
 				ClientPayloadHandlers.launchFire(payload.pos())));
 		registrar.playToClient(GrowthWand.TYPE, GrowthWand.CODEC, (payload, context) -> context.enqueueWork(() ->
 				ClientPayloadHandlers.growthWand(payload.pos())));
+		registrar.playToClient(FluidRelayFlow.TYPE, FluidRelayFlow.CODEC, (payload, context) -> context.enqueueWork(() ->
+				ClientPayloadHandlers.fluidRelayFlow(payload.pos(), payload.fluid())));
+		registrar.playToServer(FluidRelayControl.TYPE, FluidRelayControl.CODEC, ChromaNetwork::handleFluidRelayControl);
 		registrar.playToClient(PylonCache.TYPE, PylonCache.CODEC, (payload, context) -> context.enqueueWork(() ->
 				ClientPayloadHandlers.pylonCache(payload.entries())));
 		registrar.playToClient(FarmerHarvest.TYPE, FarmerHarvest.CODEC,
@@ -265,6 +268,39 @@ public final class ChromaNetwork {
 	}
 
 	/** V33a LAUNCHFIRE: a Vertical Propulsion Panel just fired. */
+	/** V33a RELAYFLUID: a Fluid Link Anchor just moved this fluid; nearby clients stream it along the links. */
+	public record FluidRelayFlow(BlockPos pos, int fluid) implements CustomPacketPayload {
+		public static final Type<FluidRelayFlow> TYPE = createType("fluid_relay_flow");
+		public static final StreamCodec<ByteBuf, FluidRelayFlow> CODEC = StreamCodec.composite(
+				BlockPos.STREAM_CODEC, FluidRelayFlow::pos, ByteBufCodecs.VAR_INT, FluidRelayFlow::fluid, FluidRelayFlow::new);
+		@Override public Type<FluidRelayFlow> type() { return TYPE; }
+	}
+
+	/** V33a sent it to everyone within 24 blocks. */
+	public static void sendFluidRelayFlow(ServerLevel level, BlockPos pos, net.minecraft.world.level.material.Fluid fluid) {
+		PacketDistributor.sendToPlayersNear(level, null, pos.getX()+0.5, pos.getY()+0.5, pos.getZ()+0.5, 24,
+				new FluidRelayFlow(pos, BuiltInRegistries.FLUID.getId(fluid)));
+	}
+
+	/**
+	 * V33a RELAYPRESSUREBASE / RELAYPRESSUREVAR (value = the change), RELAYCLEAR, RELAYCOPY, RELAYAUTO and RELAYFLUIDKEY
+	 * (value = filter slot, fluid = registry id or -1), from the Fluid Link Anchor GUI.
+	 */
+	public record FluidRelayControl(BlockPos pos, int action, int value, int fluid) implements CustomPacketPayload {
+		public static final int BASE_PRESSURE = 0;
+		public static final int FUNCTION_PRESSURE = 1;
+		public static final int CLEAR = 2;
+		public static final int COPY = 3;
+		public static final int AUTO = 4;
+		public static final int SET_FLUID = 5;
+		public static final Type<FluidRelayControl> TYPE = createType("fluid_relay_control");
+		public static final StreamCodec<ByteBuf, FluidRelayControl> CODEC = StreamCodec.composite(
+				BlockPos.STREAM_CODEC, FluidRelayControl::pos, ByteBufCodecs.VAR_INT, FluidRelayControl::action,
+				ByteBufCodecs.VAR_INT, FluidRelayControl::value, ByteBufCodecs.VAR_INT, FluidRelayControl::fluid,
+				FluidRelayControl::new);
+		@Override public Type<FluidRelayControl> type() { return TYPE; }
+	}
+
 	/** V33a GROWTH: one extra block tick from the Growth Wand's wave. */
 	public record GrowthWand(BlockPos pos) implements CustomPacketPayload {
 		public static final Type<GrowthWand> TYPE = createType("growth_wand");
@@ -1015,6 +1051,34 @@ public final class ChromaNetwork {
 			menu.spawner().receiveProgram(payload.program());
 		});
 	}
+	private static void handleFluidRelayControl(FluidRelayControl payload, IPayloadContext context) {
+		context.enqueueWork(() -> {
+			if (!(context.player() instanceof ServerPlayer player)
+					|| !(player.containerMenu instanceof reika.chromaticraft.container.MenuFluidRelay menu)
+					|| !menu.relay().getBlockPos().equals(payload.pos())
+					|| player.distanceToSqr(payload.pos().getX() + 0.5, payload.pos().getY() + 0.5,
+						payload.pos().getZ() + 0.5) > 64)
+				return;
+			var relay = menu.relay();
+			switch (payload.action()) {
+				case FluidRelayControl.BASE_PRESSURE -> relay.changeBasePressure(payload.value());
+				case FluidRelayControl.FUNCTION_PRESSURE -> relay.changeFunctionPressure(payload.value());
+				case FluidRelayControl.CLEAR -> relay.clearFilters();
+				case FluidRelayControl.COPY -> relay.copyFilters();
+				case FluidRelayControl.AUTO -> relay.toggleAutoFilter();
+				case FluidRelayControl.SET_FLUID -> {
+					if (payload.value() < 0 || payload.value() >= reika.chromaticraft.container.MenuFluidRelay.FILTER_SLOTS)
+						return;
+					var fluid = payload.fluid() < 0 ? null : BuiltInRegistries.FLUID.byId(payload.fluid());
+					if (fluid == net.minecraft.world.level.material.Fluids.EMPTY)
+						fluid = null;
+					relay.setFluid(payload.value(), fluid);
+				}
+				default -> { }
+			}
+		});
+	}
+
 	private static void handleSetHeatLampTemperature(SetHeatLampTemperature payload, IPayloadContext context) {
 		context.enqueueWork(() -> {
 			if (!(context.player() instanceof ServerPlayer player)

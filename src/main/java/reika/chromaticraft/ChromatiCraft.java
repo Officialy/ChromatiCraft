@@ -199,6 +199,8 @@ public class ChromatiCraft extends DragonAPIMod {
 				reika.chromaticraft.client.gui.ScreenAutoEnchanter::new);
 		event.register(ChromaMenus.PARTICLE_SPAWNER.get(),
 				reika.chromaticraft.client.gui.ScreenParticleSpawner::new);
+		event.register(ChromaMenus.FLUID_RELAY.get(),
+				reika.chromaticraft.client.gui.ScreenFluidRelay::new);
 		event.register(ChromaMenus.COLLECTOR.get(),
 				reika.chromaticraft.client.gui.ScreenCollector::new);
 		event.register(ChromaMenus.LEXICON_PAGES.get(),

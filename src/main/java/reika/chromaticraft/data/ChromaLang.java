@@ -187,6 +187,7 @@ public class ChromaLang extends LanguageProvider {
 		add(ChromaBlocks.PARTICLE_SPAWNER.get(), "Particle Spawner"); // V33a chroma.particles
 		add(ChromaBlocks.LUMEN_TURRET.get(), "Lumen Turret"); // V33a chroma.turret
 		add(ChromaBlocks.LUMEN_WIRE.get(), "Lumen Wire"); // V33a chroma.lumenwire
+		add(ChromaBlocks.FLUID_RELAY.get(), "Fluid Link Anchor"); // V33a chroma.fluidrelay
 		add(ChromaBlocks.AUTO_ENCHANTER.get(), "Chromatic Enchanter"); // V33a chroma.enchanter
 		add(ChromaBlocks.TOOL_STORAGE.get(), "Tool Compression Crate"); // V33a chroma.toolstorage
 		// V33a LumenTurretDamage: "<victim> got too close to <placer>'s Lumen Turret". 26.2 picks the ".item" key when

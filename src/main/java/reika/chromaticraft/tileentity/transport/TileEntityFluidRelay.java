@@ -9,60 +9,71 @@
  ******************************************************************************/
 package reika.chromaticraft.tileentity.transport;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 
-import net.minecraft.block.Block;
-import net.minecraft.client.Minecraft;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.nbt.NBTTagList;
-import net.minecraft.nbt.NBTTagString;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.AxisAlignedBB;
-import net.minecraft.world.World;
-import net.minecraftforge.common.util.ForgeDirection;
-import net.minecraftforge.fluids.Fluid;
-import net.minecraftforge.fluids.FluidRegistry;
-import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.FluidTankInfo;
-import net.minecraftforge.fluids.IFluidHandler;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.StringTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.MenuProvider;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.material.Fluid;
+import net.minecraft.world.level.material.Fluids;
 
-import reika.chromaticraft.ChromatiCraft;
+import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.transfer.ResourceHandler;
+import net.neoforged.neoforge.transfer.fluid.FluidResource;
+import net.neoforged.neoforge.transfer.transaction.Transaction;
+
+import org.jspecify.annotations.Nullable;
+
 import reika.chromaticraft.auxiliary.FluidNetwork;
-import reika.chromaticraft.auxiliary.interfaces.CustomHitbox;
 import reika.chromaticraft.base.tileentity.TileEntityChromaticBase;
-import reika.chromaticraft.registry.ChromaPackets;
+import reika.chromaticraft.block.BlockFluidRelay;
+import reika.chromaticraft.container.MenuFluidRelay;
+import reika.chromaticraft.network.ChromaNetwork;
+import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.ChromaTiles;
 import reika.dragonapi.instantiable.StepTimer;
-import reika.dragonapi.instantiable.data.immutable.Coordinate;
-import reika.dragonapi.instantiable.effects.EntityFluidFX;
-import reika.dragonapi.interfaces.tileentity.BreakAction;
-import reika.dragonapi.interfaces.tileentity.SidePlacedTile;
-import reika.dragonapi.libraries.ReikaAABBHelper;
-import reika.dragonapi.libraries.reikanbthelper.NBTTypes;
-import reika.dragonapi.libraries.io.ReikaPacketHelper;
-import reika.dragonapi.libraries.java.ReikaRandomHelper;
+import reika.dragonapi.interfaces.blockentity.BreakAction;
 import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
-import reika.dragonapi.libraries.registry.ReikaItemHelper;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
-
-public class TileEntityFluidRelay extends TileEntityChromaticBase implements BreakAction, SidePlacedTile, CustomHitbox {
+/**
+ * V33a {@code TileEntityFluidRelay} ("Fluid Link Anchor"). It attaches to a tank face and links to every other anchor
+ * within 16 blocks. Anchors with positive pressure push the fluids in their filter out of their tank into the network;
+ * negative ones pull them in. Pressure is a base value plus a per-bucket term times the filtered fluid in the tank,
+ * and throughput is 200 + 4|pressure| mB a tick, capped at 2000.
+ *
+ * <p>The facing (toward the tank) is block state, so the block's shape and survival can read it; V33a stored it on
+ * the tile. V33a's {@code IFluidHandler} tank is now the neighbour's {@code Capabilities.Fluid.BLOCK} handler on the
+ * touching face, with each transfer simulated in an uncommitted transaction first and then committed for the exact
+ * amount, as V33a's drain(false)/drain(true) pairs did. Filters store source-fluid registry ids.
+ */
+public class TileEntityFluidRelay extends TileEntityChromaticBase implements BreakAction, MenuProvider {
 
 	private final StepTimer cacheTimer = new StepTimer(100);
 
 	public static final int RELAY_RANGE = 16;
 	public static final int MAX_THROUGHPUT = 2000;
 
-	private final HashSet<Coordinate> connections = new HashSet();
+	private final HashSet<BlockPos> connections = new HashSet<>();
 
 	private FluidNetwork network;
-	private ForgeDirection facing;
 
-	private final HashSet<Fluid> fluidTypes = new HashSet();
+	private final HashSet<Fluid> fluidTypes = new HashSet<>();
 	private final Fluid[] fluidAccess = new Fluid[7];
 
 	private int basePressure;
@@ -74,17 +85,20 @@ public class TileEntityFluidRelay extends TileEntityChromaticBase implements Bre
 
 	public boolean autoFilter = false;
 
+	public TileEntityFluidRelay(BlockPos pos, BlockState state) {
+		super(ChromaBlockEntities.FLUID_RELAY.get(), pos, state);
+	}
+
 	@Override
-	public void updateEntity(World world, int x, int y, int z, int meta) {
-		if (!world.isRemote) {
+	public void updateEntity(Level world, BlockPos pos) {
+		if (!world.isClientSide()) {
 			cacheTimer.setCap(connections.isEmpty() ? 100 : 500);
 			cacheTimer.update();
 		}
-		if (cacheTimer.checkCap() || this.getTicksExisted() == 0) {
-			this.scanAndCache(world, x, y, z);
+		if (cacheTimer.checkCap()) {
+			this.scanAndCache(world, pos);
 		}
-
-		if (!world.isRemote) {
+		if (!world.isClientSide()) {
 			lastPressure = currentPressure;
 			currentPressure = this.getBasePressure()+this.getDynamicPressure();
 			if (this.getFunctionPressure() != 0) {
@@ -105,32 +119,42 @@ public class TileEntityFluidRelay extends TileEntityChromaticBase implements Bre
 	}
 
 	@Override
-	protected void onFirstTick(World world, int x, int y, int z) {
-		if (!world.isRemote) {
+	protected void onFirstTick(Level world, BlockPos pos) {
+		if (!world.isClientSide()) {
 			network = new FluidNetwork();
 			network.add(this);
 		}
+		// V33a scanned in updateEntity while getTicksExisted() was still 0. The port's BlockEntityBase counts that
+		// tick before updateEntity(Level, BlockPos) runs, so the first-tick scan lives here, right after the network.
+		this.scanAndCache(world, pos);
 	}
 
-	public ForgeDirection getFacing() {
-		return facing != null ? facing : ForgeDirection.DOWN;
+	/** Toward the tank this anchor is fixed to (V33a {@code getFacing}, default DOWN). */
+	public Direction getFacing() {
+		BlockState state = this.getBlockState();
+		return state.hasProperty(BlockFluidRelay.FACING) ? state.getValue(BlockFluidRelay.FACING) : Direction.DOWN;
 	}
 
-	private void scanAndCache(World world, int x, int y, int z) {
+	/**
+	 * V33a scanned every block within {@link #RELAY_RANGE} for another anchor, on both sides (the client for the
+	 * beams). Unloaded positions are skipped so the scan never loads chunks.
+	 */
+	private void scanAndCache(Level world, BlockPos pos) {
 		connections.clear();
 		int r = RELAY_RANGE;
+		BlockPos.MutableBlockPos p = new BlockPos.MutableBlockPos();
 		for (int i = -r; i <= r; i++) {
 			for (int k = -r; k <= r; k++) {
 				for (int j = -r; j <= r; j++) {
-					if (i != 0 || k != 0 || j != 0) {
-						int dx = x+i;
-						int dy = y+j;
-						int dz = z+k;
-						if (ChromaTiles.getTile(world, dx, dy, dz) == this.getTile() && ReikaMathLibrary.py3d(i, j, k) <= r) {
-							connections.add(new Coordinate(dx, dy, dz));
-							TileEntityFluidRelay te = (TileEntityFluidRelay)world.getTileEntity(dx, dy, dz);
-							te.connections.add(new Coordinate(this));
-							if (!world.isRemote) {
+					if ((i != 0 || k != 0 || j != 0) && ReikaMathLibrary.py3d(i, j, k) <= r) {
+						p.setWithOffset(pos, i, j, k);
+						if (!world.isLoaded(p) || !world.getBlockState(p).is(this.getBlockState().getBlock()))
+							continue;
+						if (world.getBlockEntity(p) instanceof TileEntityFluidRelay te) {
+							BlockPos c = p.immutable();
+							connections.add(c);
+							te.connections.add(pos);
+							if (!world.isClientSide()) {
 								network.merge(te.network, world);
 							}
 						}
@@ -140,7 +164,7 @@ public class TileEntityFluidRelay extends TileEntityChromaticBase implements Bre
 		}
 	}
 
-	public Collection<Coordinate> getConnections() {
+	public Collection<BlockPos> getConnections() {
 		return Collections.unmodifiableCollection(connections);
 	}
 
@@ -150,62 +174,69 @@ public class TileEntityFluidRelay extends TileEntityChromaticBase implements Bre
 	}
 
 	@Override
-	protected void animateWithTick(World world, int x, int y, int z) {
+	protected void animateWithTick(Level world, BlockPos pos) {
 
 	}
 
 	@Override
-	protected void writeSyncTag(NBTTagCompound NBT) {
+	protected void writeSyncTag(CompoundTag NBT) {
 		super.writeSyncTag(NBT);
 
-		NBT.setInteger("face", this.getFacing().ordinal());
-		NBT.setInteger("press", basePressure);
-		NBT.setInteger("func", pressureFunction);
+		NBT.putInt("press", basePressure);
+		NBT.putInt("func", pressureFunction);
+		NBT.putBoolean("auto", autoFilter);
 
-		NBT.setBoolean("auto", autoFilter);
-
-		NBTTagList li = new NBTTagList();
+		ListTag li = new ListTag();
 		for (int i = 0; i < fluidAccess.length; i++) {
 			Fluid f = fluidAccess[i];
-			String s = f != null ? f.getName() : "empty";
-			li.appendTag(new NBTTagString(s));
+			li.add(StringTag.valueOf(f != null ? BuiltInRegistries.FLUID.getKey(f).toString() : "empty"));
 		}
-		NBT.setTag("fluids", li);
+		NBT.put("fluids", li);
 
-		li = new NBTTagList();
-		for (Coordinate c : connections) {
-			NBTTagCompound tag = c.writeToTag();
-			li.appendTag(tag);
+		ListTag cl = new ListTag();
+		for (BlockPos c : connections) {
+			CompoundTag tag = new CompoundTag();
+			tag.putInt("x", c.getX());
+			tag.putInt("y", c.getY());
+			tag.putInt("z", c.getZ());
+			cl.add(tag);
 		}
-		NBT.setTag("connections", li);
+		NBT.put("connections", cl);
 	}
 
 	@Override
-	protected void readSyncTag(NBTTagCompound NBT) {
+	protected void readSyncTag(CompoundTag NBT) {
 		super.readSyncTag(NBT);
 
-		basePressure = NBT.getInteger("press");
-		pressureFunction = NBT.getInteger("func");
-		facing = dirs[NBT.getInteger("face")];
-
-		autoFilter = NBT.getBoolean("auto");
+		basePressure = NBT.getIntOr("press", 0);
+		pressureFunction = NBT.getIntOr("func", 0);
+		autoFilter = NBT.getBooleanOr("auto", false);
 
 		fluidTypes.clear();
-		NBTTagList li = NBT.getTagList("fluids", NBTTypes.STRING.ID);
-		for (int i = 0; i < li.tagList.size(); i++) {
-			String s = li.getStringTagAt(i);
-			Fluid f = FluidRegistry.getFluid(s);
+		ListTag li = NBT.getListOrEmpty("fluids");
+		for (int i = 0; i < fluidAccess.length; i++) {
+			Fluid f = i < li.size() ? fluidFromId(li.getStringOr(i, "empty")) : null;
 			fluidAccess[i] = f;
 			if (f != null)
 				fluidTypes.add(f);
 		}
 
 		connections.clear();
-		li = NBT.getTagList("connections", NBTTypes.COMPOUND.ID);
-		for (Object o : li.tagList) {
-			Coordinate c = Coordinate.readTag((NBTTagCompound)o);
-			connections.add(c);
+		ListTag cl = NBT.getListOrEmpty("connections");
+		for (int i = 0; i < cl.size(); i++) {
+			CompoundTag tag = cl.getCompoundOrEmpty(i);
+			connections.add(new BlockPos(tag.getIntOr("x", 0), tag.getIntOr("y", 0), tag.getIntOr("z", 0)));
 		}
+	}
+
+	private static @Nullable Fluid fluidFromId(String s) {
+		if (s == null || s.equals("empty"))
+			return null;
+		Identifier id = Identifier.tryParse(s);
+		if (id == null)
+			return null;
+		Fluid f = BuiltInRegistries.FLUID.getValue(id);
+		return f == Fluids.EMPTY ? null : f;
 	}
 
 	public int getBasePressure() {
@@ -217,73 +248,39 @@ public class TileEntityFluidRelay extends TileEntityChromaticBase implements Bre
 	}
 
 	private int getDynamicPressure() {
-		IFluidHandler ifl = this.getTank();
+		ResourceHandler<FluidResource> ifl = this.getTank();
 		if (ifl == null)
 			return 0;
-		FluidTankInfo[] info = ifl.getTankInfo(this.getFacing().getOpposite());
 		int sum = 0;
-		for (int i = 0; i < info.length; i++) {
-			if (info[i] != null && info[i].fluid != null) {
-				if (fluidTypes.contains(info[i].fluid.getFluid())) {
-					sum += info[i].fluid.amount;
-				}
+		for (int i = 0; i < ifl.size(); i++) {
+			FluidResource res = ifl.getResource(i);
+			if (!res.isEmpty() && fluidTypes.contains(res.getFluid())) {
+				sum += ifl.getAmountAsInt(i);
 			}
 		}
 		return this.getFunctionPressure()*sum/1000;
 	}
 
+	/** V33a RELAYFLUID: players within 24 blocks see the fluid stream along every link. */
 	private void renderFluid(Fluid f) {
-		if (!worldObj.isRemote) {
-			ReikaPacketHelper.sendDataPacketWithRadius(ChromatiCraft.packetChannel, ChromaPackets.RELAYFLUID.ordinal(), this, 24, f.getID());
-		}
-	}
-
-	@SideOnly(Side.CLIENT)
-	public void sendFluidParticles(World world, int x, int y, int z, Fluid f) {
-		double d = 0.0625;
-		double px = x+0.5+d*this.getFacing().offsetX;
-		double py = y+0.5+d*this.getFacing().offsetY;
-		double pz = z+0.5+d*this.getFacing().offsetZ;
-
-		for (Coordinate c : connections) {
-			TileEntityFluidRelay te2 = (TileEntityFluidRelay)c.getTileEntity(world);
-			double x2 = c.xCoord+0.5+d*te2.getFacing().offsetX;
-			double y2 = c.yCoord+0.5+d*te2.getFacing().offsetY;
-			double z2 = c.zCoord+0.5+d*te2.getFacing().offsetZ;
-
-			double dx = x2-px;
-			double dy = y2-py;
-			double dz = z2-pz;
-
-			double dd = ReikaMathLibrary.py3d(dx, dy, dz);
-			double v = ReikaRandomHelper.getRandomBetween(0.0625, 0.25);
-			double vx = v*dx/dd;
-			double vy = v*dy/dd;
-			double vz = v*dz/dd;
-
-			double dv = 0.03125/2;
-
-			vx = ReikaRandomHelper.getRandomPlusMinus(vx, dv);
-			vy = ReikaRandomHelper.getRandomPlusMinus(vy, dv);
-			vz = ReikaRandomHelper.getRandomPlusMinus(vz, dv);
-
-			EntityFluidFX fx = new EntityFluidFX(world, px, py, pz, vx, vy, vz, f);
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx);
+		if (level instanceof ServerLevel sl) {
+			ChromaNetwork.sendFluidRelayFlow(sl, worldPosition, f);
 		}
 	}
 
 	public void pushFluids() {
 		if (network == null)
 			return;
-		IFluidHandler ifl = this.getTank();
+		ResourceHandler<FluidResource> ifl = this.getTank();
 		if (ifl == null)
 			return;
-		for (Fluid f : fluidTypes) {
-			FluidStack max = ifl.drain(this.getFacing().getOpposite(), new FluidStack(f, Integer.MAX_VALUE), false);
-			if (max != null) {
-				int ret = network.push(worldObj, f, Math.min(max.amount, this.getThroughput()));
+		for (Fluid f : new ArrayList<>(fluidTypes)) {
+			FluidResource res = FluidResource.of(f);
+			int max = extract(ifl, res, Integer.MAX_VALUE, false);
+			if (max > 0) {
+				int ret = network.push(level, f, Math.min(max, this.getThroughput()));
 				if (ret > 0) {
-					ifl.drain(this.getFacing().getOpposite(), new FluidStack(f, ret), true);
+					extract(ifl, res, ret, true);
 					this.renderFluid(f);
 				}
 			}
@@ -293,19 +290,38 @@ public class TileEntityFluidRelay extends TileEntityChromaticBase implements Bre
 	public void suckFluids() {
 		if (network == null)
 			return;
-		IFluidHandler ifl = this.getTank();
+		ResourceHandler<FluidResource> ifl = this.getTank();
 		if (ifl == null)
 			return;
-		for (Fluid f : fluidTypes) {
-			int max = ifl.fill(this.getFacing().getOpposite(), new FluidStack(f, Integer.MAX_VALUE), false);
+		for (Fluid f : new ArrayList<>(fluidTypes)) {
+			FluidResource res = FluidResource.of(f);
+			int max = insert(ifl, res, Integer.MAX_VALUE, false);
 			if (max > 0) {
 				max = Math.min(this.getThroughput(), max);
-				int ret = network.suck(worldObj, f, max);
+				int ret = network.suck(level, f, max);
 				if (ret > 0) {
-					ifl.fill(this.getFacing().getOpposite(), new FluidStack(f, ret), true);
+					insert(ifl, res, ret, true);
 					this.renderFluid(f);
 				}
 			}
+		}
+	}
+
+	private static int extract(ResourceHandler<FluidResource> h, FluidResource res, int amt, boolean commit) {
+		try (Transaction tx = Transaction.openRoot()) {
+			int n = h.extract(res, amt, tx);
+			if (commit)
+				tx.commit();
+			return n;
+		}
+	}
+
+	private static int insert(ResourceHandler<FluidResource> h, FluidResource res, int amt, boolean commit) {
+		try (Transaction tx = Transaction.openRoot()) {
+			int n = h.insert(res, amt, tx);
+			if (commit)
+				tx.commit();
+			return n;
 		}
 	}
 
@@ -313,17 +329,20 @@ public class TileEntityFluidRelay extends TileEntityChromaticBase implements Bre
 		return Arrays.copyOf(fluidAccess, fluidAccess.length);
 	}
 
-	public IFluidHandler getTank() {
-		TileEntity te = this.getAdjacentTileEntity(this.getFacing());
-		return te instanceof IFluidHandler ? (IFluidHandler)te : null;
+	/** V33a: the {@code IFluidHandler} tile in the facing direction, asked through the side touching this anchor. */
+	public @Nullable ResourceHandler<FluidResource> getTank() {
+		if (level == null)
+			return null;
+		Direction dir = this.getFacing();
+		return level.getCapability(Capabilities.Fluid.BLOCK, worldPosition.relative(dir), dir.getOpposite());
 	}
 
 	public int pushFluid(Fluid f, int amt) {
 		if (!fluidTypes.contains(f))
 			return 0;
-		IFluidHandler ifl = this.getTank();
+		ResourceHandler<FluidResource> ifl = this.getTank();
 		if (ifl != null) {
-			int ret = ifl.fill(this.getFacing().getOpposite(), new FluidStack(f, amt), true);
+			int ret = insert(ifl, FluidResource.of(f), amt, true);
 			if (ret > 0)
 				this.renderFluid(f);
 			return ret;
@@ -336,12 +355,12 @@ public class TileEntityFluidRelay extends TileEntityChromaticBase implements Bre
 	public int suckFluid(Fluid f, int amt) {
 		if (!fluidTypes.contains(f))
 			return 0;
-		IFluidHandler ifl = this.getTank();
+		ResourceHandler<FluidResource> ifl = this.getTank();
 		if (ifl != null) {
-			FluidStack ret = ifl.drain(this.getFacing().getOpposite(), new FluidStack(f, amt), true);
-			if (ret != null)
+			int ret = extract(ifl, FluidResource.of(f), amt, true);
+			if (ret > 0)
 				this.renderFluid(f);
-			return ret != null ? ret.amount : 0;
+			return ret;
 		}
 		else {
 			return 0;
@@ -352,50 +371,6 @@ public class TileEntityFluidRelay extends TileEntityChromaticBase implements Bre
 	public void breakBlock() {
 		if (network != null)
 			network.remove(this);
-	}
-
-	@Override
-	public void placeOnSide(int s) {
-		facing = dirs[s].getOpposite();
-	}
-
-	@Override
-	public boolean checkLocationValidity() {
-		ForgeDirection dir = this.getFacing();
-		Block b = worldObj.getBlock(xCoord+dir.offsetX, yCoord+dir.offsetY, zCoord+dir.offsetZ);
-		if (b.getMaterial().isSolid()) {
-			b.setBlockBoundsBasedOnState(worldObj, xCoord+dir.offsetX, yCoord+dir.offsetY, zCoord+dir.offsetZ);
-			switch(dir.getOpposite()) {
-				case DOWN:
-					return b.getBlockBoundsMinY() == 0;
-				case UP:
-					return b.getBlockBoundsMaxY() == 1;
-				case WEST:
-					return b.getBlockBoundsMinX() == 0;
-				case EAST:
-					return b.getBlockBoundsMaxX() == 1;
-				case NORTH:
-					return b.getBlockBoundsMinZ() == 0;
-				case SOUTH:
-					return b.getBlockBoundsMaxZ() == 1;
-				default:
-					break;
-			}
-		}
-		return false;
-	}
-
-	@Override
-	public void drop() {
-		ReikaItemHelper.dropItem(worldObj, xCoord+0.5, yCoord+0.5, zCoord+0.5, this.getTile().getCraftedProduct());
-		this.delete();
-	}
-
-	@Override
-	public AxisAlignedBB getHitbox() {
-		ForgeDirection dir = this.getFacing();
-		double d = 0.3125;
-		return ReikaAABBHelper.getBlockAABB(this).contract(d, d, d).offset(dir.offsetX*d, dir.offsetY*d, dir.offsetZ*d);
 	}
 
 	public void assignNetwork(FluidNetwork net) {
@@ -413,13 +388,22 @@ public class TileEntityFluidRelay extends TileEntityChromaticBase implements Bre
 	public void changeBasePressure(int dp) {
 		basePressure += dp;
 		currentPressure = this.getBasePressure()+this.getDynamicPressure();
-		network.updateState(this);
+		if (network != null)
+			network.updateState(this);
+		this.syncAllData(false);
 	}
 
 	public void changeFunctionPressure(int dp) {
 		pressureFunction += dp;
 		currentPressure = this.getBasePressure()+this.getDynamicPressure();
-		network.updateState(this);
+		if (network != null)
+			network.updateState(this);
+		this.syncAllData(false);
+	}
+
+	public void toggleAutoFilter() {
+		autoFilter = !autoFilter;
+		this.syncAllData(false);
 	}
 
 	public void clearFilters() {
@@ -429,17 +413,18 @@ public class TileEntityFluidRelay extends TileEntityChromaticBase implements Bre
 		this.rebuildFluidLists();
 	}
 
+	/** V33a: the filter becomes the fluids currently in the tank, in tank order, up to seven. */
 	public void copyFilters() {
 		for (int i = 0; i < 7; i++) {
 			fluidAccess[i] = null;
 		}
-		IFluidHandler ifl = this.getTank();
+		ResourceHandler<FluidResource> ifl = this.getTank();
 		if (ifl != null) {
 			int idx = 0;
-			FluidTankInfo[] info = ifl.getTankInfo(this.getFacing().getOpposite());
-			for (int i = 0; i < info.length; i++) {
-				if (info[i] != null && info[i].fluid != null) {
-					fluidAccess[idx] = info[i].fluid.getFluid();
+			for (int i = 0; i < ifl.size(); i++) {
+				FluidResource res = ifl.getResource(i);
+				if (!res.isEmpty() && ifl.getAmountAsInt(i) > 0) {
+					fluidAccess[idx] = res.getFluid();
 					idx++;
 					if (idx >= 7)
 						break;
@@ -449,7 +434,7 @@ public class TileEntityFluidRelay extends TileEntityChromaticBase implements Bre
 		this.rebuildFluidLists();
 	}
 
-	public void setFluid(int slot, Fluid f) {
+	public void setFluid(int slot, @Nullable Fluid f) {
 		if (fluidAccess[slot] != f) {
 			fluidAccess[slot] = f;
 			this.rebuildFluidLists();
@@ -457,7 +442,7 @@ public class TileEntityFluidRelay extends TileEntityChromaticBase implements Bre
 	}
 
 	private void rebuildFluidLists() {
-		HashSet<Fluid> old = new HashSet(fluidTypes);
+		HashSet<Fluid> old = new HashSet<>(fluidTypes);
 		fluidTypes.clear();
 		for (int i = 0; i < fluidAccess.length; i++) {
 			Fluid in = fluidAccess[i];
@@ -468,11 +453,19 @@ public class TileEntityFluidRelay extends TileEntityChromaticBase implements Bre
 			currentPressure = this.getBasePressure()+this.getDynamicPressure();
 			network.updateState(this);
 		}
+		this.setChanged();
+		if (level != null && !level.isClientSide())
+			this.syncAllData(false);
 	}
 
 	@Override
-	public AxisAlignedBB getRenderBoundingBox() {
-		return ReikaAABBHelper.getBlockAABB(this).expand(RELAY_RANGE, RELAY_RANGE, RELAY_RANGE);
+	public Component getDisplayName() {
+		return this.getBlockState().getBlock().getName();
+	}
+
+	@Override
+	public AbstractContainerMenu createMenu(int id, Inventory inventory, Player player) {
+		return new MenuFluidRelay(id, inventory, this);
 	}
 
 }

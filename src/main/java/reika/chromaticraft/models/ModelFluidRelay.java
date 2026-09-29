@@ -1,8 +1,8 @@
 /*******************************************************************************
  * @author Reika Kalseki
- * 
+ *
  * Copyright 2017
- * 
+ *
  * All rights reserved.
  * Distribution of the software in any form is only allowed with
  * explicit, prior permission from the owner.
@@ -15,89 +15,50 @@
 
 package reika.chromaticraft.models;
 
-import java.util.ArrayList;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 
-import net.minecraft.tileentity.TileEntity;
+import net.minecraft.client.model.geom.ModelPart;
+import net.minecraft.client.model.geom.PartPose;
+import net.minecraft.client.model.geom.builders.CubeListBuilder;
+import net.minecraft.client.model.geom.builders.LayerDefinition;
+import net.minecraft.client.model.geom.builders.MeshDefinition;
+import net.minecraft.client.model.geom.builders.PartDefinition;
 
-import reika.chromaticraft.base.ChromaModelBase;
-import reika.dragonapi.instantiable.rendering.LODModelPart;
+/** V33a {@code ModelFluidRelay}: the Fluid Link Anchor's stem, cup and four splayed prongs, on a 32x32 texture. */
+public final class ModelFluidRelay {
 
-public class ModelFluidRelay extends ChromaModelBase
-{
-	//fields
-	LODModelPart Shape1;
-	LODModelPart Shape2;
-	LODModelPart Shape3;
-	LODModelPart Shape4;
-	LODModelPart Shape4a;
-	LODModelPart Shape4b;
-	LODModelPart Shape4c;
-	LODModelPart Shape5;
+	private final ModelPart root;
 
-	public ModelFluidRelay() {
-		textureWidth = 32;
-		textureHeight = 32;
-
-		Shape1 = new LODModelPart(this, 8, 4);
-		Shape1.addBox(0F, 0F, 0F, 1, 1, 1);
-		Shape1.setRotationPoint(-0.5F, 19F, -0.5F);
-		Shape1.setTextureSize(32, 32);
-		Shape1.mirror = true;
-		this.setRotation(Shape1, 0F, 0F, 0F);
-		Shape2 = new LODModelPart(this, 8, 0);
-		Shape2.addBox(0F, 0F, 0F, 2, 1, 2);
-		Shape2.setRotationPoint(-1F, 20F, -1F);
-		Shape2.setTextureSize(32, 32);
-		Shape2.mirror = true;
-		this.setRotation(Shape2, 0F, 0F, 0F);
-		Shape3 = new LODModelPart(this, 17, 0);
-		Shape3.addBox(0F, 0F, 0F, 3, 3, 3);
-		Shape3.setRotationPoint(-1.5F, 21F, -1.5F);
-		Shape3.setTextureSize(32, 32);
-		Shape3.mirror = true;
-		this.setRotation(Shape3, 0F, 0F, 0F);
-		Shape4 = new LODModelPart(this, 0, 14);
-		Shape4.addBox(-0.5F, -0.4F, -0.8F, 1, 6, 1);
-		Shape4.setRotationPoint(0F, 20F, 0F);
-		Shape4.setTextureSize(32, 32);
-		Shape4.mirror = true;
-		this.setRotation(Shape4, -0.5235988F, 0F, 0F);
-		Shape4a = new LODModelPart(this, 5, 14);
-		Shape4a.addBox(-0.8F, -0.4F, -0.5F, 1, 6, 1);
-		Shape4a.setRotationPoint(0F, 20F, 0F);
-		Shape4a.setTextureSize(32, 32);
-		Shape4a.mirror = true;
-		this.setRotation(Shape4a, 0F, 0F, 0.5235988F);
-		Shape4b = new LODModelPart(this, 10, 14);
-		Shape4b.addBox(-0.5F, -0.4F, -0.2F, 1, 6, 1);
-		Shape4b.setRotationPoint(0F, 20F, 0F);
-		Shape4b.setTextureSize(32, 32);
-		Shape4b.mirror = true;
-		this.setRotation(Shape4b, 0.5235988F, 0F, 0F);
-		Shape4c = new LODModelPart(this, 15, 14);
-		Shape4c.addBox(-0.2F, -0.4F, -0.5F, 1, 6, 1);
-		Shape4c.setRotationPoint(0F, 20F, 0F);
-		Shape4c.setTextureSize(32, 32);
-		Shape4c.mirror = true;
-		this.setRotation(Shape4c, 0F, 0F, -0.5235988F);
-		Shape5 = new LODModelPart(this, 0, 8);
-		Shape5.addBox(0F, 0F, 0F, 4, 1, 4);
-		Shape5.setRotationPoint(-2F, 22F, -2F);
-		Shape5.setTextureSize(32, 32);
-		Shape5.mirror = true;
-		this.setRotation(Shape5, 0F, 0F, 0F);
+	public ModelFluidRelay(ModelPart root) {
+		this.root = root;
 	}
 
-	@Override
-	public void renderAll(TileEntity te, ArrayList li) 	{
-		Shape1.render(te, f5);
-		Shape2.render(te, f5);
-		Shape3.render(te, f5);
-		Shape4.render(te, f5);
-		Shape4a.render(te, f5);
-		Shape4b.render(te, f5);
-		Shape4c.render(te, f5);
-		Shape5.render(te, f5);
+	public void render(PoseStack pose, VertexConsumer vertices, int light, int overlay) {
+		root.render(pose, vertices, light, overlay);
+	}
+
+	public static LayerDefinition createBodyLayer() {
+		MeshDefinition mesh = new MeshDefinition();
+		PartDefinition root = mesh.getRoot();
+		float a = 0.5235988F;
+		part(root, "shape1", 8, 4, 0F, 0F, 0F, 1, 1, 1, -0.5F, 19F, -0.5F, 0, 0, 0);
+		part(root, "shape2", 8, 0, 0F, 0F, 0F, 2, 1, 2, -1F, 20F, -1F, 0, 0, 0);
+		part(root, "shape3", 17, 0, 0F, 0F, 0F, 3, 3, 3, -1.5F, 21F, -1.5F, 0, 0, 0);
+		part(root, "shape4", 0, 14, -0.5F, -0.4F, -0.8F, 1, 6, 1, 0F, 20F, 0F, -a, 0, 0);
+		part(root, "shape4a", 5, 14, -0.8F, -0.4F, -0.5F, 1, 6, 1, 0F, 20F, 0F, 0, 0, a);
+		part(root, "shape4b", 10, 14, -0.5F, -0.4F, -0.2F, 1, 6, 1, 0F, 20F, 0F, a, 0, 0);
+		part(root, "shape4c", 15, 14, -0.2F, -0.4F, -0.5F, 1, 6, 1, 0F, 20F, 0F, 0, 0, -a);
+		part(root, "shape5", 0, 8, 0F, 0F, 0F, 4, 1, 4, -2F, 22F, -2F, 0, 0, 0);
+		return LayerDefinition.create(mesh, 32, 32);
+	}
+
+	private static void part(PartDefinition parent, String name, int u, int v,
+			float x, float y, float z, float dx, float dy, float dz,
+			float px, float py, float pz, float xRad, float yRad, float zRad) {
+		parent.addOrReplaceChild(name, CubeListBuilder.create().texOffs(u, v).mirror()
+				.addBox(x, y, z, dx, dy, dz),
+				PartPose.offsetAndRotation(px, py, pz, xRad, yRad, zRad));
 	}
 
 }

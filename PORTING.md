@@ -9354,3 +9354,53 @@ as time 0, so a world under a second old counts every pendant active); guarded, 
   wave ageing sugar cane on the next tick.
   - The mock player reports creative but keeps survival abilities; the test sets `instabuild` as
     V33a's check reads it.
+
+### Fluid Link Anchor — 2026-09-29
+
+- `fluid_relay` (V33a FLUIDRELAY, "Fluid Link Anchor", a BlockModelledChromaTile) is ported in
+  place: `TileEntityFluidRelay`, `FluidNetwork`, `ModelFluidRelay` and `RenderFluidRelay`.
+  - `BlockFluidRelay` holds a `FACING` toward its tank. It is placed against a face, which it then
+    needs to stay sturdy. When the support goes, it pops off as an item (V33a `drop`).
+  - Its hitbox is V33a's `getHitbox`: the block shrunk by 5/16 and pushed 5/16 toward the tank.
+- Every anchor links to all anchors within 16 blocks. The linked anchors share one `FluidNetwork`.
+  - Each anchor's pressure is its base pressure plus (per-bucket term × filtered buckets in its
+    tank / 1000).
+  - Positive-pressure anchors push their filtered fluids to the zero/negative ones. Negative ones
+    suck from the zero/positive ones.
+  - Throughput is 200 + 4×|pressure| mB/t, capped at 2000.
+  - Tanks are reached through `Capabilities.Fluid.BLOCK`, using simulate-then-commit transactions.
+  - Network positions are `BlockPos` and skip unloaded chunks, so the scan never loads a chunk.
+- First tick: V33a scanned inside `updateEntity` while `getTicksExisted()` was still 0.
+  - The port's `BlockEntityBase` counts that tick before `updateEntity(Level, BlockPos)` runs, so
+    the check never fired. The first scan now lives in `onFirstTick`.
+  - The same off-by-one affects other ported tiles. It is flagged as a separate task.
+- GUI (`MenuFluidRelay` + `ScreenFluidRelay`, V33a `GuiFluidRelay` on its `fluidrelay.png`):
+  - **Filter slots:** seven. Left-click with a fluid container sets a slot. Right-click selects a
+    slot for V33a's letter search over every registered source fluid.
+  - **Pressure:** "Pressure: base + per/B". The ± rows step by 10, by 1 with Control, by 100 with
+    Shift; the icons swap while sneaking.
+  - **Buttons:** clear, "Auto" (copy the tank's fluids into the filter) and the auto-filter
+    toggle.
+  - Controls are the `fluid_relay_control` payload: V33a RELAYPRESSUREBASE / VAR / CLEAR / COPY /
+    AUTO / FLUIDKEY. It checks the open menu, the position and distance.
+- Render:
+  - The Techne model is rotated from its downward mounting, as in V33a.
+  - The spinning, breathing truncated cube is drawn within 24 blocks. Its faces use the new
+    `additiveColorTriangles` (ADDITIVEDARK); its outline is lines thinning with distance. It
+    hue-cycles while auto-filtering.
+  - Links are `ChromaBeam` beams (V33a `renderBeam`), drawn by one end. They flash now and then,
+    and fade in while holding the Manipulator or an anchor.
+  - Moved fluid streams along the links as `FluidSprite` drops: the `fluid_relay_flow` payload,
+    24 blocks, V33a RELAYFLUID.
+  - The item draws the model (3×, V33a's out-of-world branch) through `FluidRelayItemRenderer`.
+- DragonAPI `TruncatedCube` is ported (faces as triangles, outline as line segments).
+- Casting: V33a FluidRelayRecipe, Temple tier (20 ticks, 40 XP), making four.
+  - Pattern: beacon dust / lapis-aura dust-lapis / iron-glass-iron.
+  - Runes: cyan (3,0,-3) and lime (-3,0,-3).
+  - Typical amount 8, so the penalty starts at 6.
+- GameTest `fluid_relay_transfer`: an anchor at +200 on a Collector pushes 1200 mB of Liquid
+  Chroma into an Enchanter's anchor three blocks away. Removing the Enchanter pops its anchor.
+- Next in this cluster:
+  - Fluid Radiator (FLUIDDISTRIBUTOR)
+  - World Rift (RIFT)
+  - Teleportation Pump (TELEPUMP)

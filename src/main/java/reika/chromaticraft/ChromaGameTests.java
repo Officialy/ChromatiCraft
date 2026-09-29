@@ -428,6 +428,7 @@ public final class ChromaGameTests {
 		register(event, env, "pendants_and_purification", ChromaGameTests::pendantsAndPurification);
 		register(event, env, "buffer_link_recipe", ChromaGameTests::bufferLinkRecipe);
 		register(event, env, "wands_basic", 60, ChromaGameTests::wandsBasic);
+		register(event, env, "fluid_relay_transfer", 60, ChromaGameTests::fluidRelayTransfer);
 		register(event, env, "creative_tiered_resource_access", ChromaGameTests::creativeTieredResourceAccess);
 		register(event, env, "rainbow_tree_shape_and_log", ChromaGameTests::rainbowTreeShapeAndLog);
 		register(event, env, "structure_cavern_nbt_controller", ChromaGameTests::structureCavernNbtController);
@@ -6983,6 +6984,48 @@ public final class ChromaGameTests {
 				&& !reika.chromaticraft.magic.CrystalPotionController.instance.shouldBeHostile(player, level),
 				"a ticking Gem marks its carrier as shielded from hostile worlds");
 		helper.succeed();
+	}
+
+	/**
+	 * V33a Fluid Link Anchors: an anchor on a Collector, raised to +200 pressure (1000 mB/t throughput) and filtered to
+	 * Liquid Chroma, pushes the Collector's output into a zero-pressure anchor's Chromatic Enchanter three blocks away,
+	 * all 1200 mB within a couple of ticks. An anchor whose tank goes away pops off.
+	 */
+	private static void fluidRelayTransfer(GameTestHelper helper) {
+		var level = helper.getLevel();
+		BlockPos source = helper.absolutePos(new BlockPos(1, 2, 1));
+		BlockPos sink = helper.absolutePos(new BlockPos(4, 2, 1));
+		level.setBlock(source, ChromaBlocks.COLLECTOR.get().defaultBlockState(), 3);
+		level.setBlock(sink, ChromaBlocks.AUTO_ENCHANTER.get().defaultBlockState(), 3);
+		var relayState = ChromaBlocks.FLUID_RELAY.get().defaultBlockState()
+				.setValue(reika.chromaticraft.block.BlockFluidRelay.FACING, Direction.DOWN);
+		helper.assertTrue(relayState.canSurvive(level, source.above()),
+				"an anchor must mount on the top of a full tank block");
+		level.setBlock(source.above(), relayState, 3);
+		level.setBlock(sink.above(), relayState, 3);
+		TileEntityCollector collector = (TileEntityCollector)level.getBlockEntity(source);
+		collector.setItem(0, new ItemStack(Items.EXPERIENCE_BOTTLE, 4));
+		for (int i = 0; i < 4; i++) collector.updateEntity(level, source);
+		helper.assertTrue(collector.getOutputLevel() == 1200, "four XP bottles must make 1200 mB of Liquid Chroma");
+
+		var from = (reika.chromaticraft.tileentity.transport.TileEntityFluidRelay)level.getBlockEntity(source.above());
+		var to = (reika.chromaticraft.tileentity.transport.TileEntityFluidRelay)level.getBlockEntity(sink.above());
+		from.setFluid(0, ChromaFluids.CHROMA.get());
+		to.setFluid(3, ChromaFluids.CHROMA.get());
+		from.changeBasePressure(200);
+		helper.assertTrue(from.getThroughput() == 1000, "+200 pressure must give 200 + 4*200 mB/t throughput");
+
+		helper.runAfterDelay(20, () -> {
+			var enchanter = (reika.chromaticraft.tileentity.processing.TileEntityAutoEnchanter)level.getBlockEntity(sink);
+			helper.assertTrue(from.getConnections().contains(sink.above()) && to.getConnections().contains(source.above()),
+					"anchors within sixteen blocks must link both ways");
+			helper.assertTrue(collector.getOutputLevel() == 0 && enchanter.getChromaLevel() == 1200,
+					"the pushing anchor must move all of the Collector's chroma into the Enchanter; collector="
+							+ collector.getOutputLevel() + " enchanter=" + enchanter.getChromaLevel());
+			level.setBlock(sink, Blocks.AIR.defaultBlockState(), 3);
+			helper.assertTrue(level.getBlockState(sink.above()).isAir(), "an anchor must pop off once its tank is gone");
+			helper.succeed();
+		});
 	}
 
 	/**

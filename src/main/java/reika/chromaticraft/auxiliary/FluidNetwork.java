@@ -14,28 +14,34 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
 
-import net.minecraft.world.World;
-import net.minecraftforge.fluids.Fluid;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.material.Fluid;
 
 import reika.chromaticraft.tileentity.transport.TileEntityFluidRelay;
-import reika.dragonapi.instantiable.data.immutable.Coordinate;
 
-
+/**
+ * V33a {@code FluidNetwork}: the Fluid Link Anchors joined by range. Anchors with positive pressure push the fluids
+ * they filter out of their tank into the non-positive ones, highest pressure first; negative ones pull into their
+ * tank from the non-negative ones, lowest first. It is transient, rebuilt as anchors tick and merge, as in V33a.
+ */
 public class FluidNetwork {
 
 	private static final PushSorter pushSorter = new PushSorter();
 	private static final SuckSorter suckSorter = new SuckSorter();
 
-	private final ArrayList<PressureData> relays = new ArrayList();
-	private final ArrayList<PressureData> pushers = new ArrayList();
-	private final ArrayList<PressureData> suckers = new ArrayList();
+	private final ArrayList<PressureData> relays = new ArrayList<>();
+	private final ArrayList<PressureData> pushers = new ArrayList<>();
+	private final ArrayList<PressureData> suckers = new ArrayList<>();
 
 	private long lastUpdate;
 
-	public void merge(FluidNetwork net, World world) {
+	public void merge(FluidNetwork net, Level world) {
 		if (net != null && net != this) {
 			for (PressureData p : net.relays) {
 				TileEntityFluidRelay te = p.getTile(world);
+				if (te == null)
+					continue;
 				this.add(te);
 				te.assignNetwork(this);
 			}
@@ -77,70 +83,48 @@ public class FluidNetwork {
 		this.add(te);
 	}
 
-	public void update(World world) {
-		if (lastUpdate != world.getTotalWorldTime() && !world.isRemote) {
+	public void update(Level world) {
+		if (lastUpdate != world.getGameTime() && !world.isClientSide()) {
 			this.doUpdate(world);
 		}
-		lastUpdate = world.getTotalWorldTime();
+		lastUpdate = world.getGameTime();
 	}
 
-	private void doUpdate(World world) {
+	private void doUpdate(Level world) {
 		Iterator<PressureData> it = pushers.iterator();
-		while(it.hasNext()) {
+		while (it.hasNext()) {
 			PressureData p = it.next();
 			TileEntityFluidRelay te = p.getTile(world);
 			if (te == null) {
 				it.remove();
 				continue;
 			}
-			this.tryPush(te);
+			te.pushFluids();
 		}
-
 		it = suckers.iterator();
-		while(it.hasNext()) {
+		while (it.hasNext()) {
 			PressureData p = it.next();
 			TileEntityFluidRelay te = p.getTile(world);
 			if (te == null) {
 				it.remove();
 				continue;
 			}
-			this.trySuck(te);
+			te.suckFluids();
 		}
 	}
 
-	private void tryPush(TileEntityFluidRelay te) {
-		te.pushFluids();
-		/*
-		for (Fluid f : map.keySet()) {
-			int supply = this.suck(te.worldObj, f, map.get(f), false);
-			this.push(te.worldObj, f, supply, false);
-		}
-		 */
-	}
-
-	private void trySuck(TileEntityFluidRelay te) {
-		te.suckFluids();
-		/*
-		for (Fluid f : map.keySet()) {
-			int space = this.push(te.worldObj, f, map.get(f), false);
-			this.suck(te.worldObj, f, space, false);
-		}
-		 */
-	}
-
-	public int suck(World world, Fluid f, int max) {
+	/** Drains up to {@code max} of {@code f} from the network's non-suction anchors; returns what it took. */
+	public int suck(Level world, Fluid f, int max) {
 		int ret = 0;
 		Iterator<PressureData> it = relays.iterator();
-		while(it.hasNext()) {
+		while (it.hasNext()) {
 			PressureData p = it.next();
 			if (p.pressure >= 0) {
 				TileEntityFluidRelay te = p.getTile(world);
-
 				if (te == null) {
 					it.remove();
 					continue;
 				}
-
 				int amt = te.suckFluid(f, max);
 				if (amt > 0) {
 					max -= amt;
@@ -153,19 +137,18 @@ public class FluidNetwork {
 		return ret;
 	}
 
-	public int push(World world, Fluid f, int max) {
+	/** Fills up to {@code max} of {@code f} into the network's non-pushing anchors; returns what they took. */
+	public int push(Level world, Fluid f, int max) {
 		int ret = 0;
 		Iterator<PressureData> it = relays.iterator();
-		while(it.hasNext()) {
+		while (it.hasNext()) {
 			PressureData p = it.next();
 			if (p.pressure <= 0) {
 				TileEntityFluidRelay te = p.getTile(world);
-
 				if (te == null) {
 					it.remove();
 					continue;
 				}
-
 				int amt = te.pushFluid(f, max);
 				if (amt > 0) {
 					max -= amt;
@@ -180,16 +163,19 @@ public class FluidNetwork {
 
 	private static class PressureData {
 
-		private final Coordinate location;
+		private final BlockPos location;
 		private final int pressure;
 
 		private PressureData(TileEntityFluidRelay te) {
-			location = new Coordinate(te);
+			location = te.getBlockPos().immutable();
 			pressure = te.getCurrentPressure();
 		}
 
-		private TileEntityFluidRelay getTile(World world) {
-			return (TileEntityFluidRelay)location.getTileEntity(world);
+		/** Null when the anchor is gone or its chunk is not loaded (V33a: {@code Coordinate.getTileEntity}). */
+		private TileEntityFluidRelay getTile(Level world) {
+			if (!world.isLoaded(location))
+				return null;
+			return world.getBlockEntity(location) instanceof TileEntityFluidRelay te ? te : null;
 		}
 
 		@Override
@@ -199,12 +185,12 @@ public class FluidNetwork {
 
 		@Override
 		public boolean equals(Object o) {
-			return o instanceof PressureData && ((PressureData)o).location.equals(location);
+			return o instanceof PressureData p && p.location.equals(location);
 		}
 
 		@Override
 		public String toString() {
-			return "P = "+pressure+" @ "+location.toString();
+			return "P = "+pressure+" @ "+location;
 		}
 
 	}

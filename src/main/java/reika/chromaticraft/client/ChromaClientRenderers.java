@@ -106,6 +106,8 @@ public final class ChromaClientRenderers {
 				reika.chromaticraft.render.item.LumenWireItemRenderer.Unbaked.MAP_CODEC);
 		event.register(reika.chromaticraft.render.item.LumenTurretItemRenderer.ID,
 				reika.chromaticraft.render.item.LumenTurretItemRenderer.Unbaked.MAP_CODEC);
+		event.register(reika.chromaticraft.render.item.FluidRelayItemRenderer.ID,
+				reika.chromaticraft.render.item.FluidRelayItemRenderer.Unbaked.MAP_CODEC);
 		event.register(reika.chromaticraft.render.item.ParticleSpawnerItemRenderer.ID,
 				reika.chromaticraft.render.item.ParticleSpawnerItemRenderer.Unbaked.MAP_CODEC);
 		event.register(reika.chromaticraft.render.item.ChromaFlowerItemRenderer.ID,
@@ -195,6 +197,8 @@ public final class ChromaClientRenderers {
 				reika.chromaticraft.models.ModelLumenWire::createBodyLayer);
 		event.registerLayerDefinition(reika.chromaticraft.render.tesr.RenderLumenTurret.MODEL_LAYER,
 				reika.chromaticraft.models.ModelTurret::createBodyLayer);
+		event.registerLayerDefinition(reika.chromaticraft.render.tesr.RenderFluidRelay.MODEL_LAYER,
+				reika.chromaticraft.models.ModelFluidRelay::createBodyLayer);
 		event.registerLayerDefinition(RenderCrystalCharger.MODEL_LAYER,
 				reika.chromaticraft.models.ModelCrystalCharger::createBodyLayer);
 		event.registerLayerDefinition(RenderPylonTurboCharger.MODEL_LAYER,
@@ -235,6 +239,8 @@ public final class ChromaClientRenderers {
 				reika.chromaticraft.render.tesr.RenderLumenWire::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.LUMEN_TURRET.get(),
 				reika.chromaticraft.render.tesr.RenderLumenTurret::new);
+		event.registerBlockEntityRenderer(ChromaBlockEntities.FLUID_RELAY.get(),
+				reika.chromaticraft.render.tesr.RenderFluidRelay::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.PARTICLE_SPAWNER.get(),
 				reika.chromaticraft.render.tesr.RenderParticleSpawner::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.LAUNCH_PAD.get(),
