@@ -16,6 +16,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import javax.annotation.Nullable;
+
 import com.mojang.serialization.Codec;
 
 import net.minecraft.core.BlockPos;
@@ -35,6 +37,12 @@ import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 
 import reika.chromaticraft.ChromatiCraft;
+import reika.chromaticraft.modinterface.ae.MassStorageME;
+import reika.dragonapi.ModList;
+import reika.dragonapi.instantiable.modinteract.BasicAEInterface;
+import reika.dragonapi.instantiable.modinteract.MEWorkTracker;
+import reika.dragonapi.interfaces.blockentity.MEGridHost;
+import reika.dragonapi.modinteract.deepinteract.MESystemReader;
 import reika.dragonapi.instantiable.StepTimer;
 import reika.dragonapi.instantiable.data.KeyedItemStack;
 import reika.dragonapi.instantiable.data.maps.CountMap;
@@ -48,11 +56,11 @@ import reika.dragonapi.libraries.registry.ReikaItemHelper;
  * single pending slot (slot 0, which automation fills) and each stored item is its own further slot. Breaking it drops
  * everything.
  *
- * <p>CHROMA-PORT: V33a was also an Applied Energistics 2 grid node that pulled matching items out of the ME network
- * (and could be read through a storage bus). AE2 has no 26.2 port on the classpath; the grid node, ME reader and
- * cell scanning are left out and {@link #canPullFromME} is kept for when it lands.
+ * <p>With Applied Energistics 2 it is also a grid node (DragonAPI {@code BasicAEInterface} behind the AE-free
+ * {@link MEGridHost}) that pulls items it can hold out of its ME network, one random stack at a time into the pending
+ * slot, whenever the network changes ({@link #canPullFromME}); see {@code modinterface.ae.MassStorageME}.
  */
-public abstract class TileEntityMassStorage extends TileEntityChromaticBase implements Container, BreakAction, ConditionBreakDropsInventory {
+public abstract class TileEntityMassStorage extends TileEntityChromaticBase implements Container, BreakAction, ConditionBreakDropsInventory, MEGridHost {
 
 	private static final List<ItemStack> NO_ITEMS = Collections.emptyList();
 
@@ -66,8 +74,46 @@ public abstract class TileEntityMassStorage extends TileEntityChromaticBase impl
 
 	private boolean broken;
 
+	/** {@code BasicAEInterface} when AE2 is loaded; typed Object so AE-less installs never resolve it. */
+	private final Object aeGridBlock;
+	private MESystemReader network;
+	private final MEWorkTracker hasWork = ModList.APPENG.isLoaded() ? new MEWorkTracker() : null;
+	private final ArrayList<ItemStack> MEStacks = new ArrayList<>();
+
 	protected TileEntityMassStorage(BlockEntityType<?> type, BlockPos pos, BlockState state) {
 		super(type, pos, state);
+		aeGridBlock = ModList.APPENG.isLoaded() ? this.createAEInterface(state) : null;
+	}
+
+	private Object createAEInterface(BlockState state) {
+		return new BasicAEInterface(this, new ItemStack(state.getBlock()));
+	}
+
+	@Nullable
+	@Override
+	public Object getAEInterface() {
+		return aeGridBlock;
+	}
+
+	@Override
+	public void clearRemoved() {
+		super.clearRemoved();
+		if (aeGridBlock != null)
+			((BasicAEInterface)aeGridBlock).onReady();
+	}
+
+	@Override
+	public void onChunkUnloaded() {
+		super.onChunkUnloaded();
+		if (aeGridBlock != null)
+			((BasicAEInterface)aeGridBlock).destroy();
+	}
+
+	@Override
+	public void setRemoved() {
+		super.setRemoved();
+		if (aeGridBlock != null)
+			((BasicAEInterface)aeGridBlock).destroy();
 	}
 
 	/** V33a {@code WorldToolCrateData}: every crate's contents, in the overworld's data (1.7.10's shared map storage). */
@@ -234,8 +280,38 @@ public abstract class TileEntityMassStorage extends TileEntityChromaticBase impl
 			this.buildCache();
 		}
 
-		// CHROMA-PORT: V33a ticked its ME system reader here and, with a network holding matching items, pulled one
-		// random stack of them into the pending slot whenever the network had work.
+		if (ModList.APPENG.isLoaded()) {
+			if (network != null)
+				network.tick();
+			if (aeGridBlock != null && !world.isClientSide()) {
+				((BasicAEInterface)aeGridBlock).setPowerCost(1);
+			}
+
+			if (!world.isClientSide() && network != null && !MEStacks.isEmpty() && pendingInput.isEmpty()) {
+				hasWork.tick();
+				if (hasWork.hasWork()) {
+					if (!network.isEmpty)
+						hasWork.reset();
+					this.injectItems();
+				}
+			}
+		}
+	}
+
+	/** V33a: pull one random matching stack out of the ME network into the pending slot. */
+	private void injectItems() {
+		int idx = level.getRandom().nextInt(MEStacks.size());
+		ItemStack is = MEStacks.get(idx);
+		ItemStack copy = is.copy();
+		is = is.copyWithCount(is.getMaxStackSize());
+		int ret = (int)network.removeItem(is, false, true);
+		if (ret > 0) {
+			pendingInput = is.copyWithCount(ret);
+			if (ret >= copy.getCount())
+				MEStacks.remove(idx);
+			else
+				MEStacks.get(idx).shrink(ret);
+		}
 	}
 
 	protected void onTick(Level world, BlockPos pos) {
@@ -267,12 +343,22 @@ public abstract class TileEntityMassStorage extends TileEntityChromaticBase impl
 	}
 
 	protected final void resetWorkTimer() {
+		MEStacks.clear();
 		updateTimer.setTick(updateTimer.getCap()+2);
 	}
 
-	/** CHROMA-PORT: V33a rebuilt its list of matching ME network items here every 200 ticks. */
+	/** V33a: refresh the ME reader and rebuild the list of network items this crate could take, every 200 ticks. */
 	private void buildCache() {
+		if (ModList.APPENG.isLoaded() && aeGridBlock != null) {
+			network = ((BasicAEInterface)aeGridBlock).updateReader(network);
 
+			if (network != null && this.canPullFromME()) {
+				network.clearCallbacks();
+				network.addGlobalCallback(hasWork);
+				MEStacks.clear();
+				MEStacks.addAll(MassStorageME.findPullable(network, this, this::isItemValid, this.getItems()));
+			}
+		}
 	}
 
 	protected boolean canPullFromME() {
@@ -335,6 +421,8 @@ public abstract class TileEntityMassStorage extends TileEntityChromaticBase impl
 	@Override
 	protected void saveAdditional(ValueOutput output) {
 		super.saveAdditional(output);
+		if (aeGridBlock != null)
+			((BasicAEInterface)aeGridBlock).saveNode(output);
 		if (!pendingInput.isEmpty())
 			output.store("pending", ItemStack.CODEC, pendingInput);
 		output.store("boxid", UUIDUtil.STRING_CODEC, identifier);
@@ -343,6 +431,8 @@ public abstract class TileEntityMassStorage extends TileEntityChromaticBase impl
 	@Override
 	protected void loadAdditional(ValueInput input) {
 		super.loadAdditional(input);
+		if (aeGridBlock != null)
+			((BasicAEInterface)aeGridBlock).loadNode(input);
 		input.read("boxid", UUIDUtil.STRING_CODEC).ifPresent(id -> identifier = id);
 		input.read("Items", ItemStack.CODEC.listOf()).ifPresent(li -> legacyItems = new ArrayList<>(li));
 		pendingInput = input.read("pending", ItemStack.CODEC).orElse(ItemStack.EMPTY);

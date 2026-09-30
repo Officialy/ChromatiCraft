@@ -96,6 +96,8 @@ public class ChromatiCraft extends DragonAPIMod {
 		// V33a AbilityHelper: the ME Inventory Link chromability's handlers, only with Applied Energistics 2.
 		if (reika.dragonapi.ModList.APPENG.isLoaded())
 			reika.chromaticraft.modinterface.ae.MEInventoryAbility.register();
+		// V33a TileEntityMassStorage (the Tool Storage crate) was an AE grid host pulling items from its network.
+		reika.dragonapi.modinteract.AEHooks.registerGridHost(ChromaBlockEntities.TOOL_STORAGE);
 		ChromaMenus.REGISTRY.register(modEventBus);
 		ChromaEntityTypes.ENTITY_TYPES.register(modEventBus);
 		modEventBus.addListener(EntityGlowCloud::registerAttributes);
