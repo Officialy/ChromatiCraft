@@ -9,20 +9,27 @@
  ******************************************************************************/
 package reika.chromaticraft.tileentity.aoe.effect;
 
-import net.minecraft.world.World;
-import net.minecraftforge.common.util.ForgeDirection;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
 
 import reika.chromaticraft.base.tileentity.TileEntityAdjacencyUpgrade;
 import reika.chromaticraft.magic.interfaces.LumenConsumer;
 import reika.chromaticraft.registry.AdjacencyUpgrades;
+import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.ChromaOptions;
 import reika.chromaticraft.registry.ChromaTiles;
 import reika.chromaticraft.registry.CrystalElement;
 
-
+/**
+ * V33a {@code TileEntityEfficiencyUpgrade}, the black Efficiency Augment. It does nothing itself; lumen consumers on
+ * any of its faces read its tier and scale their costs by {@link #getCostFactor}.
+ */
 public class TileEntityEfficiencyUpgrade extends TileEntityAdjacencyUpgrade {
 
-	private static double[] factor = {
+	private static final double[] factor = {
 			0.9375,
 			0.875,
 			0.75,
@@ -32,32 +39,40 @@ public class TileEntityEfficiencyUpgrade extends TileEntityAdjacencyUpgrade {
 			0.125,
 			0.0625,
 	};
-	;
 
-	private static void initHandlers() {
+	public TileEntityEfficiencyUpgrade(BlockPos pos, BlockState state) {
+		super(ChromaBlockEntities.ADJACENCY.get(), pos, state);
+	}
+
+	/**
+	 * V33a {@code initHandlers}: the lexicon lists every non-repeater lumen consumer that accepts the boost, and with
+	 * powered upgrades on, every implemented upgrade too (they drain lumens).
+	 */
+	public static void initHandlers() {
 		String desc = "Improves lumen efficiency usage";
 		AdjacencyEffectDescription adj = TileEntityAdjacencyUpgrade.registerEffectDescription(CrystalElement.BLACK, desc);
 		for (int i = 0; i < ChromaTiles.TEList.length; i++) {
 			ChromaTiles r = ChromaTiles.TEList[i];
-			if (r == ChromaTiles.ADJACENCY || r.isDummiedOut() || r.isIncomplete())
+			if (r == ChromaTiles.ADJACENCY)
 				continue;
 			if (LumenConsumer.class.isAssignableFrom(r.getTEClass()) && !r.isRepeater()) {
-				LumenConsumer lc = (LumenConsumer)r.createTEInstanceForRender(0);
-				if (lc.allowsEfficiencyBoost()) {
-					adj.addItems(r.getCraftedProduct());
+				BlockEntity lc = r.createBlockEntity(BlockPos.ZERO, r.getBlockState());
+				if (((LumenConsumer)lc).allowsEfficiencyBoost()) {
+					adj.addItems(java.util.List.of(r::getCraftedProduct));
 				}
 			}
 		}
 		if (ChromaOptions.POWEREDACCEL.getState()) {
 			for (int i = 0; i < 16; i++) {
-				if (AdjacencyUpgrades.upgrades[i].isImplemented())
-					adj.addItems(AdjacencyUpgrades.upgrades[i].getStackOfTier(2));
+				AdjacencyUpgrades a = AdjacencyUpgrades.upgrades[i];
+				if (a.isImplemented())
+					adj.addItems(java.util.List.of(() -> a.getStackOfTier(2)));
 			}
 		}
 	}
 
 	@Override
-	protected EffectResult tickDirection(World world, int x, int y, int z, ForgeDirection dir, long startTime) {
+	protected EffectResult tickDirection(Level world, BlockPos pos, Direction dir, long startTime) {
 		return EffectResult.STOP;
 	}
 
@@ -67,8 +82,13 @@ public class TileEntityEfficiencyUpgrade extends TileEntityAdjacencyUpgrade {
 	}
 
 	@Override
-	protected void animateWithTick(World world, int x, int y, int z) {
+	protected void animateWithTick(Level world, BlockPos pos) {
 
+	}
+
+	@Override
+	public int getRedstoneOverride() {
+		return 0;
 	}
 
 	public static double getCostFactor(int tier) {

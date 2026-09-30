@@ -442,7 +442,7 @@ public class TileEntityTeleportationPump extends ChargedCrystalPowered implement
 		double r = 1;
 		int val = AdjacencyUpgrade.getAdjacentTier(level, worldPosition, CrystalElement.LIME);
 		if (val > 0)
-			r = AdjacencyUpgrade.RANGE_FACTORS[val-1];
+			r = reika.chromaticraft.tileentity.aoe.effect.TileEntityRangeBoost.getFactor(val-1);
 		range = testRange > 0 ? testRange : (int)(MAXRANGE*r);
 		if (scanning && oldrange != range) {
 			scanY = level.getMinY();

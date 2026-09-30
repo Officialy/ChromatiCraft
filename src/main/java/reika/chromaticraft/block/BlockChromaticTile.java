@@ -15,6 +15,9 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityTicker;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.redstone.Orientation;
+import reika.dragonapi.interfaces.blockentity.AdjacentUpdateWatcher;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
@@ -58,6 +61,19 @@ public class BlockChromaticTile extends BlockTEBase {
 		// this, a wall/ceiling repeater remains hard-coded DOWN until manually redirected.
 		if (blockEntity instanceof reika.chromaticraft.tileentity.networking.TileEntityCrystalRepeater repeater)
 			repeater.findFirstValidSide();
+    }
+
+    /**
+     * V33a {@code BlockChromaTile.onNeighborBlockChange}: an {@link AdjacentUpdateWatcher} hears every neighbour change
+     * (lumen consumers recount their adjacent Efficiency Augments; receiver multiblocks revalidate). 1.7.10 sent these
+     * only on the server; 26.x also runs them on the client, where the watchers have nothing to recount.
+     */
+    @Override
+    public void neighborChanged(BlockState state, Level world, BlockPos pos, Block changed,
+            @Nullable Orientation orientation, boolean movedByPiston) {
+        super.neighborChanged(state, world, pos, changed, orientation, movedByPiston);
+        if (!world.isClientSide() && world.getBlockEntity(pos) instanceof AdjacentUpdateWatcher watcher)
+            watcher.onAdjacentUpdate(world, pos, changed);
     }
 
     @Override

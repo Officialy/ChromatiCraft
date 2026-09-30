@@ -9,177 +9,116 @@
  ******************************************************************************/
 package reika.chromaticraft.items;
 
-import java.util.List;
+import java.util.function.Consumer;
 
-import com.bioxx.tfc.api.Enums.EnumItemReach;
-import com.bioxx.tfc.api.Enums.EnumSize;
-import com.bioxx.tfc.api.Enums.EnumWeight;
-import com.bioxx.tfc.api.Interfaces.ISize;
+import org.jspecify.annotations.Nullable;
 
-import net.minecraft.block.material.Material;
-import net.minecraft.client.renderer.texture.IIconRegister;
-import net.minecraft.creativetab.CreativeTabs;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.AxisAlignedBB;
-import net.minecraft.util.EnumChatFormatting;
-import net.minecraft.world.World;
+import net.minecraft.ChatFormatting;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.network.chat.Component;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.tags.FluidTags;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.TooltipDisplay;
+import net.minecraft.world.item.context.UseOnContext;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.SoundType;
+import net.minecraft.world.phys.AABB;
 
-import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.auxiliary.interfaces.NBTTile;
 import reika.chromaticraft.base.tileentity.TileEntityAdjacencyUpgrade;
-import reika.chromaticraft.base.tileentity.TileEntityChromaticBase;
+import reika.chromaticraft.block.BlockAdjacencyUpgrade;
 import reika.chromaticraft.registry.AdjacencyUpgrades;
-import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.tileentity.aoe.effect.TileEntityAccelerator;
-import reika.chromaticraft.tileentity.aoe.effect.TileEntityHeatRelay;
-import reika.dragonapi.ModList;
-import reika.dragonapi.asm.apistripper.Strippable;
-import reika.dragonapi.asm.dependentmethodstripper.ModDependent;
-import reika.dragonapi.libraries.io.ReikaSoundHelper;
-import reika.dragonapi.libraries.world.ReikaWorldHelper;
+import reika.dragonapi.libraries.level.ReikaWorldHelper;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
+/**
+ * V33a {@code ItemAdjacencyPlacer}, one per implemented colour (V33a's damage value). It goes into an open (soft or
+ * liquid) spot or against a face, never where a living thing stands (the block has no collision), and the placed tile
+ * takes the placer and the stack's tier and data.
+ */
+public class ItemAdjacencyPlacer extends BlockItem {
 
-@Strippable(value = {"com.bioxx.tfc.api.Interfaces.ISize"})
-public class ItemAdjacencyPlacer extends Item implements ISize {
+	public ItemAdjacencyPlacer(BlockAdjacencyUpgrade block, Properties props) {
+		super(block, props);
+	}
 
-	public ItemAdjacencyPlacer(int tex) {
-		super();
-		this.setHasSubtypes(true);
-		this.setMaxDamage(0);
-		maxStackSize = 64;
-		this.setCreativeTab(ChromatiCraft.instance.isLocked() ? null : ChromatiCraft.tabChroma);
+	public AdjacencyUpgrades getUpgrade() {
+		return ((BlockAdjacencyUpgrade)this.getBlock()).upgrade;
 	}
 
 	@Override
-	public boolean onItemUse(ItemStack is, EntityPlayer ep, World world, int x, int y, int z, int side, float par8, float par9, float par10) {
-		if (!ReikaWorldHelper.softBlocks(world, x, y, z) && ReikaWorldHelper.getMaterial(world, x, y, z) != Material.water && ReikaWorldHelper.getMaterial(world, x, y, z) != Material.lava) {
-			if (side == 0)
-				--y;
-			if (side == 1)
-				++y;
-			if (side == 2)
-				--z;
-			if (side == 3)
-				++z;
-			if (side == 4)
-				--x;
-			if (side == 5)
-				++x;
-			if (!ReikaWorldHelper.softBlocks(world, x, y, z) && ReikaWorldHelper.getMaterial(world, x, y, z) != Material.water && ReikaWorldHelper.getMaterial(world, x, y, z) != Material.lava)
-				return false;
+	public InteractionResult useOn(UseOnContext context) {
+		Level world = context.getLevel();
+		BlockPos pos = context.getClickedPos();
+		ItemStack is = context.getItemInHand();
+		Player ep = context.getPlayer();
+		if (!isOpen(world, pos)) {
+			pos = pos.relative(context.getClickedFace());
+			if (!isOpen(world, pos))
+				return InteractionResult.FAIL;
 		}
-		if (!this.checkValidBounds(is, ep, world, x, y, z))
-			return false;
-		AxisAlignedBB box = AxisAlignedBB.getBoundingBox(x, y, z, x+1, y+1, z+1);
-		List inblock = world.getEntitiesWithinAABB(EntityLivingBase.class, box);
-		if (inblock.size() > 0)
-			return false;
-		if (!ep.canPlayerEdit(x, y, z, 0, is))
-			return false;
-		else {
-			if (!ep.capabilities.isCreativeMode)
-				--is.stackSize;
-			world.setBlock(x, y, z, ChromaBlocks.ADJACENCY.getBlockInstance(), is.getItemDamage(), 3);
+		if (!this.checkValidBounds(is, ep, world, pos))
+			return InteractionResult.FAIL;
+		if (!world.getEntitiesOfClass(LivingEntity.class, new AABB(pos)).isEmpty())
+			return InteractionResult.FAIL;
+		if (ep != null && !ep.mayUseItemAt(pos, Direction.DOWN, is))
+			return InteractionResult.FAIL;
+		if (world.isClientSide())
+			return InteractionResult.SUCCESS;
+		// Copied before the decrement: a 26.x stack that reaches zero drops its components, where a 1.7.10 stack
+		// kept its NBT at size 0, so the last upgrade of a stack placed as tier 0.
+		ItemStack placed = is.copyWithCount(1);
+		if (ep == null || !ep.getAbilities().instabuild)
+			is.shrink(1);
+		world.setBlock(pos, this.getBlock().defaultBlockState(), 3);
+
+		// V33a ReikaSoundHelper.playPlaceSound(world, x, y, z, ChromaBlocks.ADJACENCY): the block's place sound at
+		// volume and pitch 1, broadcast from the server.
+		SoundType sound = this.getBlock().defaultBlockState().getSoundType();
+		world.playSound(null, pos, sound.getPlaceSound(), SoundSource.BLOCKS, 1, 1);
+
+		if (world.getBlockEntity(pos) instanceof TileEntityAdjacencyUpgrade te) {
+			if (ep != null)
+				te.setPlacer(ep);
+			te.setDataFromItemStackTag(placed);
 		}
+		return InteractionResult.SUCCESS;
+	}
 
-		ReikaSoundHelper.playPlaceSound(world, x, y, z, ChromaBlocks.ADJACENCY.getBlockInstance());
+	/** V33a: a soft block, or any water or lava. */
+	private static boolean isOpen(Level world, BlockPos pos) {
+		return ReikaWorldHelper.softBlocks(world, pos) || world.getFluidState(pos).is(FluidTags.WATER)
+				|| world.getFluidState(pos).is(FluidTags.LAVA);
+	}
 
-		TileEntityChromaticBase te = (TileEntityChromaticBase)world.getTileEntity(x, y, z);
-		te.setPlacer(ep);
-		if (te instanceof NBTTile && is.stackTagCompound != null) {
-			((NBTTile)te).setDataFromItemStackTag(is);
-		}
-		return true;
+	/** V33a: {@code y > 0 && y < height-1}, one block inside each end of the world. */
+	protected boolean checkValidBounds(ItemStack is, @Nullable Player ep, Level world, BlockPos pos) {
+		return pos.getY() > world.getMinY() && pos.getY() < world.getMaxY();
 	}
 
 	@Override
-	@SideOnly(Side.CLIENT)
-	public void getSubItems(Item par1, CreativeTabs par2CreativeTabs, List par3List) {
-		for (int i = 0; i < 16; i++) {
-			if (AdjacencyUpgrades.upgrades[i].isImplemented()) {
-				ItemStack item = new ItemStack(par1, 1, i);
-				for (int k = 0; k < TileEntityAdjacencyUpgrade.MAX_TIER; k++) {
-					ItemStack item2 = item.copy();
-					item2.stackTagCompound = new NBTTagCompound();
-					item2.stackTagCompound.setInteger("tier", k);
-					par3List.add(item2);
-				}
-			}
-		}
-	}
-
-	protected boolean checkValidBounds(ItemStack is, EntityPlayer ep, World world, int x, int y, int z) {
-		return y > 0 && y < world.provider.getHeight()-1;
+	public Component getName(ItemStack is) {
+		return this.getUpgrade().getName();
 	}
 
 	@Override
-	public int getMetadata(int meta) {
-		return meta;
-	}
-
-	@Override
-	public final String getUnlocalizedName(ItemStack is)
-	{
-		int d = is.getItemDamage();
-		return super.getUnlocalizedName() + "." + String.valueOf(d);
-	}
-
-	@Override
-	public final void registerIcons(IIconRegister ico) {}
-
-	@Override
-	public void addInformation(ItemStack is, EntityPlayer ep, List li, boolean vb) {
-		if (is.stackTagCompound != null) {
-			int tier = is.stackTagCompound.getInteger("tier");
-			li.add(AdjacencyUpgrades.upgrades[is.getItemDamage()].getDesc(tier));
-			if (is.getItemDamage() == CrystalElement.LIGHTBLUE.ordinal()) {
-				long max = TileEntityAccelerator.MAX_LAG/1000000;
-				li.add(EnumChatFormatting.GOLD+"Admin Note:"+EnumChatFormatting.WHITE+" Will not cause more than "+max+"ms lag.");
-			}
-			else if (ModList.IC2.isLoaded() && is.getItemDamage() == CrystalElement.ORANGE.ordinal()) {
-				li.add("Can move HU between adjacent blocks, up");
-				li.add(String.format("to %d per tick, with %.2f%% efficiency", TileEntityHeatRelay.getIc2Max(tier), TileEntityHeatRelay.getIc2Eff(tier)*100));
-			}
+	public void appendHoverText(ItemStack is, TooltipContext context, TooltipDisplay display, Consumer<Component> li,
+			TooltipFlag flag) {
+		int tier = TileEntityAdjacencyUpgrade.getTier(is);
+		AdjacencyUpgrades a = this.getUpgrade();
+		li.accept(Component.literal(a.getDesc(tier)));
+		if (a.getColor() == CrystalElement.LIGHTBLUE) {
+			long max = TileEntityAccelerator.getMaxLag()/1000000;
+			li.accept(Component.literal("Admin Note:").withStyle(ChatFormatting.GOLD)
+					.append(Component.literal(" Will not cause more than "+max+"ms lag.").withStyle(ChatFormatting.WHITE)));
 		}
 	}
-
-	@Override
-	public String getItemStackDisplayName(ItemStack is) {
-		ChromaItems ir = ChromaItems.getEntry(is);
-		return ir.getMultiValuedName(is.getItemDamage());
-	}
-
-	@Override
-	@ModDependent(ModList.TFC)
-	public EnumSize getSize(ItemStack is) {
-		return EnumSize.SMALL;
-	}
-
-	@Override
-	@ModDependent(ModList.TFC)
-	public EnumWeight getWeight(ItemStack is) {
-		return EnumWeight.LIGHT;
-	}
-
-	@Override
-	@ModDependent(ModList.TFC)
-	public EnumItemReach getReach(ItemStack is) {
-		return EnumItemReach.SHORT;
-	}
-
-	@Override
-	@ModDependent(ModList.TFC)
-	public boolean canStack() {
-		return true;
-	}
-
 
 }

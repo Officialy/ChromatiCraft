@@ -1,0 +1,109 @@
+{
+  "type": "chromaticraft:casting",
+  "aura": [
+    {
+      "amount": 20000,
+      "element": "lime"
+    },
+    {
+      "amount": 500,
+      "element": "yellow"
+    }
+  ],
+  "completion": {
+    "copy_center_custom_data": true
+  },
+  "duration": 400,
+  "experience": 500,
+  "grid": [
+    {
+      "ingredient": "chromaticraft:crystal_star",
+      "slot": 4
+    }
+  ],
+  "penalty_threshold": 24,
+  "result": {
+    "components": {
+      "chromaticraft:adjacency_tier": 0
+    },
+    "id": "chromaticraft:adjacency_upgrade_lime"
+  },
+  "runes": [
+    {
+      "element": "lime",
+      "offset": [
+        0,
+        -1,
+        2
+      ]
+    }
+  ],
+  "stackable": false,
+  "stands": [
+    {
+      "ingredient": "minecraft:diamond",
+      "offset": [
+        -2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "minecraft:diamond",
+      "offset": [
+        2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "minecraft:diamond",
+      "offset": [
+        2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "minecraft:diamond",
+      "offset": [
+        -2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_lime",
+      "offset": [
+        0,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_lime",
+      "offset": [
+        2,
+        0,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_lime",
+      "offset": [
+        0,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_lime",
+      "offset": [
+        -2,
+        0,
+        0
+      ]
+    }
+  ],
+  "tier": "pylon"
+}

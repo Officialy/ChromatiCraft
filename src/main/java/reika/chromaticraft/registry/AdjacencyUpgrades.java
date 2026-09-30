@@ -9,59 +9,50 @@
  ******************************************************************************/
 package reika.chromaticraft.registry;
 
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.StatCollector;
+import java.util.Locale;
 
-import reika.chromaticraft.ChromatiCraft;
+import org.jspecify.annotations.Nullable;
+
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.state.BlockState;
+
 import reika.chromaticraft.base.tileentity.TileEntityAdjacencyUpgrade;
 import reika.chromaticraft.tileentity.aoe.effect.TileEntityAccelerator;
-import reika.chromaticraft.tileentity.aoe.effect.TileEntityBlockShuffler;
-import reika.chromaticraft.tileentity.aoe.effect.TileEntityBlockTicker;
-import reika.chromaticraft.tileentity.aoe.effect.TileEntityDamageBoost;
 import reika.chromaticraft.tileentity.aoe.effect.TileEntityEfficiencyUpgrade;
-import reika.chromaticraft.tileentity.aoe.effect.TileEntityEnergyIncrease;
-import reika.chromaticraft.tileentity.aoe.effect.TileEntityHealingCore;
-import reika.chromaticraft.tileentity.aoe.effect.TileEntityHeatRelay;
-import reika.chromaticraft.tileentity.aoe.effect.TileEntityOreCreator;
-import reika.chromaticraft.tileentity.aoe.effect.TileEntityPerformanceBoost;
-import reika.chromaticraft.tileentity.aoe.effect.TileEntityPlayerDelegate;
-import reika.chromaticraft.tileentity.aoe.effect.TileEntityProtectionUpgrade;
 import reika.chromaticraft.tileentity.aoe.effect.TileEntityRangeBoost;
-import reika.chromaticraft.tileentity.aoe.effect.TileEntityStabilityCore;
-import reika.chromaticraft.tileentity.aoe.effect.TileEntityTankCapacityUpgrade;
-import reika.dragonapi.exception.RegistrationException;
 import reika.dragonapi.libraries.java.ReikaStringParser;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
-
-
+/**
+ * V33a {@code AdjacencyUpgrades}: the sixteen Adjacency Upgrade colours, their two render colours and their tile. A
+ * colour with no tile is not implemented: it has no block, item, recipe or creative entry. In V33a only BLUE was
+ * unimplemented; here the other colours join it until each one's effect tile is ported, when its constructor gains the
+ * tile factory and {@link #getFactor}/{@link #getDesc} their case.
+ */
 public enum AdjacencyUpgrades {
 
-	BLACK(0x000000, 0x505050, TileEntityEfficiencyUpgrade.class),
-	RED(0xff0000, 0x800000, TileEntityProtectionUpgrade.class),
-	GREEN(0x00C90E, 0x008206, TileEntityBlockTicker.class),
-	BROWN(0xA06139, 0x56341F, TileEntityOreCreator.class),
+	BLACK(0x000000, 0x505050, TileEntityEfficiencyUpgrade::new),
+	RED(0xff0000, 0x800000),
+	GREEN(0x00C90E, 0x008206),
+	BROWN(0xA06139, 0x56341F),
 	BLUE(0x0000FF, 0x0065FF),
-	PURPLE(0xBE00EA, 0x7400EA, TileEntityPerformanceBoost.class),
-	CYAN(0x009F8C, 0x009FF0, TileEntityTankCapacityUpgrade.class),
-	LIGHTGRAY(0x808080, 0xC0C0C0, TileEntityPlayerDelegate.class),
-	GRAY(0x404040, 0x808080, TileEntityBlockShuffler.class),
-	PINK(0xff4040, 0xffcfcf, TileEntityDamageBoost.class),
-	LIME(0x00ff00, 0x00ffff, TileEntityRangeBoost.class),
-	YELLOW(0xffff00, 0xffffff, TileEntityEnergyIncrease.class),
-	LIGHTBLUE(0x0000ff, 0x00ffff, TileEntityAccelerator.class),
-	MAGENTA(0xFF61DC, 0xD900DC, TileEntityHealingCore.class),
-	ORANGE(0xffcf00, 0xff4000, TileEntityHeatRelay.class),
-	WHITE(0xffffff, 0xffffff, TileEntityStabilityCore.class);
+	PURPLE(0xBE00EA, 0x7400EA),
+	CYAN(0x009F8C, 0x009FF0),
+	LIGHTGRAY(0x808080, 0xC0C0C0),
+	GRAY(0x404040, 0x808080),
+	PINK(0xff4040, 0xffcfcf),
+	LIME(0x00ff00, 0x00ffff, TileEntityRangeBoost::new),
+	YELLOW(0xffff00, 0xffffff),
+	LIGHTBLUE(0x0000ff, 0x00ffff, TileEntityAccelerator::new),
+	MAGENTA(0xFF61DC, 0xD900DC),
+	ORANGE(0xffcf00, 0xff4000),
+	WHITE(0xffffff, 0xffffff);
 
 	public final int color1;
 	public final int color2;
 
-	private final Class tileClass;
-
-	private TileEntityAdjacencyUpgrade renderInstance;
+	private final @Nullable TileFactory tileFactory;
 
 	public static final AdjacencyUpgrades[] upgrades = values();
 
@@ -69,77 +60,38 @@ public enum AdjacencyUpgrades {
 		this(c1, c2, null);
 	}
 
-	private AdjacencyUpgrades(int c1, int c2, Class c) {
-		tileClass = c;
+	private AdjacencyUpgrades(int c1, int c2, @Nullable TileFactory c) {
+		tileFactory = c;
 		color1 = c1;
 		color2 = c2;
 	}
 
-	@SideOnly(Side.CLIENT)
-	public TileEntityAdjacencyUpgrade createTEInstanceForRender() {
-		if (renderInstance == null) {
-			renderInstance = this.createTileEntity();
-		}
-		return renderInstance;
-	}
-
 	public boolean isImplemented() {
-		return tileClass != null;
+		return tileFactory != null;
 	}
 
-	public Class getTileClass() {
-		return tileClass;
-	}
-
-	public TileEntityAdjacencyUpgrade createTileEntity() {
+	public @Nullable TileEntityAdjacencyUpgrade createTileEntity(BlockPos pos, BlockState state) {
 		if (!this.isImplemented())
 			return null;
-		try {
-			return (TileEntityAdjacencyUpgrade)tileClass.newInstance();
-		}
-		catch (Exception e) {
-			throw new RegistrationException(ChromatiCraft.instance, "Could not instantiate an adjacency upgrade TileEntity "+this, e);
-		}
+		return tileFactory.create(pos, state);
 	}
 
-	public String getName() {
-		return StatCollector.translateToLocal("adjacency."+this.name().toLowerCase());
+	public Component getName() {
+		return Component.translatable("adjacency."+this.name().toLowerCase(Locale.ROOT));
 	}
 
 	public String getDesc(int tier) {
 		switch(this) {
 			case BLACK:
 				return String.format("Reduces lumen consumption by %sx", ReikaStringParser.getAutoDecimal(1-this.getFactor(tier)));
-			case RED:
-				return String.format("Protects against explosions up to %sx TNT", ReikaStringParser.getAutoDecimal(this.getFactor(tier)/4D));
-			case GREEN:
-				return String.format("Ticks blocks around it, %d times per 5 seconds", (int)(this.getFactor(tier)*50));
-			case BROWN:
-				return String.format("Transmutes stone into mineral, %s per second, up to rarity '%s'", ReikaStringParser.getAutoDecimal(this.getFactor(tier)*20), TileEntityOreCreator.getMaxSpawnableRarity(tier));
 			case BLUE:
 				break;
-			case PURPLE:
-				return String.format("Improves the performance of adjacent constructs, Tier %d", tier);
-			case CYAN:
-				return String.format("Increases fluid capacity %sx", ReikaStringParser.getAutoDecimal(this.getFactor(tier)));
-			case GRAY:
-				return String.format("Shuffles blocks around it %s times a second", ReikaStringParser.getAutoDecimal(this.getFactor(tier)));
-			case LIGHTGRAY:
-				return String.format("Fakes player interaction, Tier %d", tier);
-			case PINK:
-				return String.format("Increases construct damage %sx", ReikaStringParser.getAutoDecimal(this.getFactor(tier)));
 			case LIME:
 				return String.format("Increases construct range %sx", ReikaStringParser.getAutoDecimal(this.getFactor(tier)));
-			case YELLOW:
-				return String.format("Multiplies energy output %sx", ReikaStringParser.getAutoDecimal(this.getFactor(tier)));
 			case LIGHTBLUE:
 				return String.format("Accelerates time by %dx for TileEntities adjacent to it.", (int)this.getFactor(tier));
-			case MAGENTA:
-				return String.format("Repairs adjacent blocks, Tier %d", tier);
-			case ORANGE:
-				return String.format("Exchanges and balances heat, %s%s per tick", ReikaStringParser.getAutoDecimal(this.getFactor(tier)), "%");
-			case WHITE:
-				return String.format("Stabilizes adjacent constructs, Tier %d", tier);
+			default:
+				break;
 		}
 		return "Does nothing...yet";
 	}
@@ -148,49 +100,32 @@ public enum AdjacencyUpgrades {
 		switch(this) {
 			case BLACK:
 				return TileEntityEfficiencyUpgrade.getCostFactor(tier);
-			case RED:
-				return TileEntityProtectionUpgrade.getMaxProtectedPower(tier);
-			case GREEN:
-				return (TileEntityBlockTicker.getTicksPerTick(tier));
-			case BROWN:
-				return TileEntityOreCreator.getOreChance(tier);
 			case BLUE:
 				break;
-			case PURPLE:
-				break;
-			case CYAN:
-				return TileEntityTankCapacityUpgrade.getCapacityFactor(tier);
-			case GRAY:
-				return TileEntityBlockShuffler.getOperationsPerSecond(tier);
-			case LIGHTGRAY:
-				break;
-			case PINK:
-				return TileEntityDamageBoost.getFactor(tier);
 			case LIME:
 				return TileEntityRangeBoost.getFactor(tier);
-			case YELLOW:
-				return 1+TileEntityEnergyIncrease.getFactor(tier);
 			case LIGHTBLUE:
 				return 1+TileEntityAccelerator.getAccelFromTier(tier);
-			case MAGENTA:
-				break;
-			case ORANGE:
-				return 100*TileEntityHeatRelay.getFactor(tier);
-			case WHITE:
+			default:
 				break;
 		}
 		return 0;
 	}
 
+	/** V33a {@code getStackOfTier}: one of this colour's item, with its tier set. */
 	public ItemStack getStackOfTier(int tier) {
-		ItemStack is = ChromaItems.ADJACENCY.getStackOfMetadata(this.ordinal());
-		is.stackTagCompound = new NBTTagCompound();
-		is.stackTagCompound.setInteger("tier", tier);
+		ItemStack is = new ItemStack(ChromaBlocks.adjacencyUpgradeItem(this).get());
+		is.set(ChromaDataComponents.ADJACENCY_TIER.get(), tier);
 		return is;
 	}
 
 	public CrystalElement getColor() {
 		return CrystalElement.elements[this.ordinal()];
+	}
+
+	@FunctionalInterface
+	public interface TileFactory {
+		TileEntityAdjacencyUpgrade create(BlockPos pos, BlockState state);
 	}
 
 }

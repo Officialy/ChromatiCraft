@@ -15,58 +15,66 @@ import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
+import java.util.function.Supplier;
 
-import net.minecraft.client.Minecraft;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.world.World;
-import net.minecraftforge.common.util.ForgeDirection;
+import com.google.common.base.Strings;
 
-import reika.chromaticraft.api.ChromatiAPI;
-import reika.chromaticraft.api.CrystalElementAccessor;
-import reika.chromaticraft.api.crystalelementaccessor.CrystalElementProxy;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.AABB;
+
+import reika.chromaticraft.api.CrystalElementAccessor.CrystalElementProxy;
 import reika.chromaticraft.api.interfaces.AdjacencyCheckHandler;
+import reika.chromaticraft.auxiliary.interfaces.AdjacencyUpgrade;
 import reika.chromaticraft.auxiliary.interfaces.NBTTile;
 import reika.chromaticraft.auxiliary.interfaces.SneakPop;
-import reika.chromaticraft.registry.ChromaItems;
+import reika.chromaticraft.magic.interfaces.AdjacencyUpgradeProvider;
+import reika.chromaticraft.registry.AdjacencyUpgrades;
+import reika.chromaticraft.registry.ChromaDataComponents;
+import reika.chromaticraft.registry.ChromaIcons;
 import reika.chromaticraft.registry.ChromaOptions;
 import reika.chromaticraft.registry.ChromaSounds;
 import reika.chromaticraft.registry.ChromaTiles;
 import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.render.particle.EntityCCBlurFX;
-import reika.chromaticraft.render.particle.EntitySparkleFX;
-import reika.dragonapi.ModList;
-import reika.dragonapi.base.TileEntityBase;
+import reika.chromaticraft.render.particle.ChromaParticle;
 import reika.dragonapi.instantiable.data.maps.NestedMap;
-import reika.dragonapi.instantiable.effects.EntityBlurFX;
-import reika.dragonapi.instantiable.gui.GuiItemDisplay;
-import reika.dragonapi.instantiable.itemspecificeffectdescription.ItemListEffectDescription;
 import reika.dragonapi.interfaces.registry.TileEnum;
-import reika.dragonapi.libraries.java.ReikaRandomHelper;
 import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
 import reika.dragonapi.libraries.registry.ReikaItemHelper;
-import reika.dragonapi.modinteract.deepinteract.MultiblockControllerFinder;
-import reika.dragonapi.modinteract.deepinteract.TransvectorHandler;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
-
-
-
-public abstract class TileEntityAdjacencyUpgrade extends TileEntityWirelessPowered implements NBTTile, SneakPop {
+/**
+ * V33a {@code TileEntityAdjacencyUpgrade}: the sixteen-colour family of "Tile Accelerator" cores. Each is placed
+ * from its own colour's item, carries a tier from 0 to {@link #MAX_TIER}-1, and either acts on the six blocks around
+ * it each tick ({@link #tickDirection}) or is read passively by the machines it touches (the
+ * {@link AdjacencyCheckHandlerImpl}s and {@link AdjacencyUpgrade#getAdjacentTier}). A redstone signal stops it; with
+ * "Adjacency Upgrades Require Energy" on (the default) it pulls its own colour wirelessly and burns
+ * {@link #getConsumedEnergy} every eight ticks, and only counts as present to a machine while holding at least 100.
+ */
+public abstract class TileEntityAdjacencyUpgrade extends TileEntityWirelessPowered
+		implements NBTTile, SneakPop, AdjacencyUpgrade, AdjacencyUpgradeProvider {
 
 	public static final int MAX_TIER = 8;
 
-	private static final NestedMap<CrystalElement, String, AdjacencyEffectDescription> effectMap = new NestedMap();
-	private static final EnumMap<CrystalElement, AdjacencyCheckHandlerImpl> adjacencyChecks = new EnumMap(CrystalElement.class);
+	private static final NestedMap<CrystalElement, String, AdjacencyEffectDescription> effectMap = new NestedMap<>();
+	private static final EnumMap<CrystalElement, AdjacencyCheckHandlerImpl> adjacencyChecks = new EnumMap<>(CrystalElement.class);
 
 	private int tier;
 
 	private boolean particles = true;
 	private int soundtick = 0;
 
+	protected TileEntityAdjacencyUpgrade(BlockEntityType<?> type, BlockPos pos, BlockState state) {
+		super(type, pos, state);
+	}
+
+	@Override
 	public final int getTier() {
 		return tier;
 	}
@@ -90,14 +98,14 @@ public abstract class TileEntityAdjacencyUpgrade extends TileEntityWirelessPower
 	}
 
 	@Override
-	public final void updateEntity(World world, int x, int y, int z, int meta) {
-		if (!this.canRun(world, x, y, z)) {
+	public final void updateEntity(Level world, BlockPos pos) {
+		if (!this.canRun(world, pos)) {
 			soundtick = 0;
 			return;
 		}
 
-		if (particles && world.isRemote) {
-			this.spawnParticles(world, x, y, z);
+		if (particles && world.isClientSide()) {
+			ChromaParticle.spawnAdjacencyUpgrade(world, pos, this.getTier(), world.getRandom());
 		}
 
 		soundtick++;
@@ -105,18 +113,22 @@ public abstract class TileEntityAdjacencyUpgrade extends TileEntityWirelessPower
 		float f = 1+(1+this.getTier())/(float)MAX_TIER;
 		int l = (int)(221/f);
 		if (soundtick%l == 0)
-			ChromaSounds.DRONE.playSoundAtBlock(world, x, y, z, 0.25F, f);
+			ChromaSounds.DRONE.playSoundAtBlock(world, pos, 0.25F, f);
 
 		if (ChromaOptions.POWEREDACCEL.getState()) {
 			CrystalElement e = this.getColor();
-			if (this.getTicksExisted()%8 == 0) {
+			// 1.7.10 ran the request and the drain on both sides; the client's copy of the energy is the server's,
+			// synced, so only the server may take from a source or burn its own store.
+			if (!world.isClientSide() && this.getTicksExisted()%8 == 0) {
 				if (energy.getValue(e) < this.getMaxStorage(e))
 					this.requestEnergy(this.getColor(), this.getMaxStorage(e)-energy.getValue(e));
 			}
 
 			if (this.hasSufficientEnergy()) {
-				if (this.getTicksExisted()%8 == 0)
+				if (!world.isClientSide() && this.getTicksExisted()%8 == 0) {
 					energy.subtract(e, this.getConsumedEnergy());
+					this.setChanged();
+				}
 			}
 			else
 				return;
@@ -125,147 +137,143 @@ public abstract class TileEntityAdjacencyUpgrade extends TileEntityWirelessPower
 		if (this.ticksIndividually()) {
 			long time = System.nanoTime();
 			for (int i = 0; i < 6; i++) {
-				ForgeDirection dir = dirs[i];
-				EffectResult res = this.tickDirection(world, x, y, z, dir, time);
+				Direction dir = dirs[i];
+				EffectResult res = this.tickDirection(world, pos, dir, time);
 				if (res.didAction) {
-					if (world.isRemote && rand.nextInt(4) == 0)
-						this.spawnActionParticles(world, x, y, z, dir);
+					if (world.isClientSide() && world.getRandom().nextInt(4) == 0)
+						ChromaParticle.spawnAdjacencyAction(world, pos, dir, this.getColor().getColor(), world.getRandom());
 				}
 				if (!res.shouldContinue)
 					break;
 			}
 		}
 		else {
-			this.doCollectiveTick(world, x, y, z);
+			this.doCollectiveTick(world, pos);
 		}
 	}
 
-	protected final TileEntity getEffectiveTileOnSide(ForgeDirection dir) {
-		TileEntity te = this.getAdjacentTileEntity(dir);
-		if (ModList.THAUMICTINKER.isLoaded())
-			te = TransvectorHandler.getRelayedTile(te);
-		if (te != null && MultiblockControllerFinder.instance.isMultiblockTile(te))
-			return MultiblockControllerFinder.instance.getController(te);
-		return te;
+	/**
+	 * V33a: the tile on that face, relayed through a Thaumic Tinkerer transvector and resolved to its multiblock's
+	 * controller.
+	 * DRAGONAPI-PORT: {@code TransvectorHandler} (Thaumic Tinkerer) and {@code MultiblockControllerFinder} (the 1.7.10
+	 * Immersive Engineering and Railcraft multiblock part classes) have no 26.3 targets; the face's own tile is used.
+	 */
+	protected final BlockEntity getEffectiveTileOnSide(Direction dir) {
+		return this.getAdjacentBlockEntity(dir);
 	}
 
-	@SideOnly(Side.CLIENT)
-	private void spawnActionParticles(World world, int x, int y, int z, ForgeDirection dir) {
-		double o = 0.0625;
-		double px = x+dir.offsetX-o+rand.nextDouble()*(1+2*o);
-		double py = y+dir.offsetY-o+rand.nextDouble()*(1+2*o);
-		double pz = z+dir.offsetZ-o+rand.nextDouble()*(1+2*o);
-		EntityBlurFX fx = new EntityCCBlurFX(world, px, py, pz);
-		fx.setRapidExpand().setAlphaFading().setLife(ReikaRandomHelper.getRandomBetween(8, 40)).setColor(this.getColor().getColor());
-		Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-	}
+	protected abstract EffectResult tickDirection(Level world, BlockPos pos, Direction dir, long startTime);
 
-	@SideOnly(Side.CLIENT)
-	private void spawnParticles(World world, int x, int y, int z) {
-		int p2 = Minecraft.getMinecraft().gameSettings.particleSetting;
-		if (rand.nextInt(1+p2) == 0) {
-			int p = this.getTier() > 0 ? (this.getTier()+1)/2 : rand.nextBoolean() ? 1 : 0;
-			for (int i = 0; i < p; i++) {
-				double dx = rand.nextDouble();
-				double dy = rand.nextDouble();
-				double dz = rand.nextDouble();
-				double v = 0.125;
-				double vx = v*(dx-0.5);
-				double vy = v*(dy-0.5);
-				double vz = v*(dz-0.5);
-				//ReikaParticleHelper.FLAME.spawnAt(world, x-0.5+dx*2, y-0.5+dy*2, z-0.5+dz*2, v*(-1+dx*2), v*(-1+dy*2), v*(-1+dz*2));
-				//Minecraft.getMinecraft().effectRenderer.addEffect(new EntitySparkleFX(world, x+0.5, y+0.5, z+0.5, vx, vy, vz));
-				//Minecraft.getMinecraft().effectRenderer.addEffect(new EntitySparkleFX(world, x+0.5, y+0.5, z+0.5, vx, vy, vz));
-
-				dx = x-2+dx*4;
-				dy = y-2+dy*4;
-				dz = z-2+dz*4;
-
-				vx = -(dx-x)/8;
-				vy = -(dy-y)/8;
-				vz = -(dz-z)/8;
-				Minecraft.getMinecraft().effectRenderer.addEffect(new EntitySparkleFX(world, dx+0.5, dy+0.5, dz+0.5, vx, vy, vz));
-			}
-		}
-	}
-
-	protected abstract EffectResult tickDirection(World world, int x, int y, int z, ForgeDirection dir, long startTime);
-
-	public boolean canRun(World world, int x, int y, int z) {
-		return !this.hasRedstoneSignal();//world.getBlockPowerInput(x, y, z) < 15;
+	public boolean canRun(Level world, BlockPos pos) {
+		return !this.hasRedstoneSignal();
 	}
 
 	protected boolean ticksIndividually() {
 		return true;
 	}
 
-	protected void doCollectiveTick(World world, int x, int y, int z) {
+	protected void doCollectiveTick(Level world, BlockPos pos) {
 
 	}
 
+	@Override
 	public abstract CrystalElement getColor();
+
+	/** {@link AdjacencyUpgrade}: V33a's provider gates, no redstone and (when powered) at least 100 of its colour. */
+	@Override
+	public final boolean isOperating() {
+		return this.canRun(level, worldPosition) && (!ChromaOptions.POWEREDACCEL.getState() || energy.containsAtLeast(this.getColor(), 100));
+	}
+
+	@Override
+	public final CrystalElement getAdjacencyColor() {
+		return this.getColor();
+	}
+
+	@Override
+	public final int getAdjacencyTier() {
+		return this.getTier();
+	}
+
+	@Override
+	public final boolean isAdjacencyUpgradeActive() {
+		return this.isOperating();
+	}
+
+	/** Test hook: tops this upgrade's own colour up to its capacity, as a wireless source would. */
+	public final void fillEnergyForTest() {
+		energy.setTag(this.getColor(), this.getMaxStorage(this.getColor()));
+		this.setChanged();
+	}
+
+	/** The stored {@code tier}, from the stack's tier component (V33a's {@code tier} stack tag). */
+	public static int getTier(ItemStack is) {
+		Integer t = is.get(ChromaDataComponents.ADJACENCY_TIER.get());
+		return t != null ? t : 0;
+	}
 
 	@Override
 	public final void setDataFromItemStackTag(ItemStack is) {
 		super.setDataFromItemStackTag(is);
-		if (ChromaItems.ADJACENCY.matchWith(is)) {
-			if (is.stackTagCompound != null) {
-				tier = is.stackTagCompound.getInteger("tier");
-			}
+		if (is.getItem() instanceof reika.chromaticraft.items.ItemAdjacencyPlacer) {
+			tier = getTier(is);
+			this.syncAllData(true);
 		}
 	}
 
-	@Override
-	public final void getTagsToWriteToStack(NBTTagCompound NBT) {
-		super.getTagsToWriteToStack(NBT);
-		NBT.setInteger("tier", this.getTier());
+	/** V33a {@code getTagsToWriteToStack} wrote the tier beside the energy and owners; here it is the component. */
+	public final ItemStack writeToStack(ItemStack is) {
+		CompoundTag tag = new CompoundTag();
+		this.getTagsToWriteToStack(tag);
+		if (!tag.isEmpty())
+			ReikaItemHelper.setStackTag(is, tag);
+		is.set(ChromaDataComponents.ADJACENCY_TIER.get(), this.getTier());
+		return is;
 	}
 
 	@Override
-	protected void readSyncTag(NBTTagCompound NBT) {
+	protected void readSyncTag(CompoundTag NBT) {
 		super.readSyncTag(NBT);
 
-		tier = NBT.getInteger("tier");
-
-		energy.readFromNBT("energy", NBT);
+		tier = NBT.getIntOr("tier", 0);
 	}
 
 	@Override
-	protected void writeSyncTag(NBTTagCompound NBT) {
+	protected void writeSyncTag(CompoundTag NBT) {
 		super.writeSyncTag(NBT);
 
-		NBT.setInteger("tier", tier);
+		NBT.putInt("tier", tier);
 	}
 
 	@Override
-	public final void writeToNBT(NBTTagCompound NBT) {
-		super.writeToNBT(NBT);
+	protected void saveAdditional(CompoundTag NBT) {
+		super.saveAdditional(NBT);
 
-		NBT.setBoolean("particle", particles);
+		NBT.putBoolean("particle", particles);
 	}
 
 	@Override
-	public final void readFromNBT(NBTTagCompound NBT) {
-		super.readFromNBT(NBT);
+	public void load(CompoundTag NBT) {
+		super.load(NBT);
 
-		particles = NBT.getBoolean("particle");
+		particles = NBT.getBooleanOr("particle", true);
 	}
 
+	/** V33a {@code drop}: the colour's item with this tile's data, then the block goes. */
 	@Override
 	public final void drop() {
-		ItemStack is = ChromaItems.ADJACENCY.getStackOf(this.getColor());
-		is.stackTagCompound = new NBTTagCompound();
-		this.getTagsToWriteToStack(is.stackTagCompound);
-		ReikaItemHelper.dropItem(worldObj, xCoord+0.5, yCoord+0.5, zCoord+0.5, is);
+		ItemStack is = this.writeToStack(AdjacencyUpgrades.upgrades[this.getColor().ordinal()].getStackOfTier(this.getTier()));
+		ReikaItemHelper.dropItem(level, worldPosition.getX()+0.5, worldPosition.getY()+0.5, worldPosition.getZ()+0.5, is);
 		this.delete();
 	}
 
-	public final boolean canDrop(EntityPlayer ep) {
-		return ep.getUniqueID().equals(placerUUID);
+	@Override
+	public final boolean canDrop(Player ep) {
+		return ep.getUUID().equals(placerUUID);
 	}
 
 	@Override
-	public boolean allowMining(EntityPlayer ep) {
+	public boolean allowMining(Player ep) {
 		return true;
 	}
 
@@ -274,65 +282,60 @@ public abstract class TileEntityAdjacencyUpgrade extends TileEntityWirelessPower
 		return ChromaTiles.ADJACENCY;
 	}
 
-	protected static int getAdjacentUpgrade(TileEntityBase core, CrystalElement color) {
-		Integer ret = getAdjacentUpgrades(core).get(color);
+	@Override
+	public AABB getRenderBoundingBox() {
+		return new AABB(worldPosition);
+	}
+
+	protected static int getAdjacentUpgrade(BlockEntity core, CrystalElement color) {
+		Integer ret = getAdjacentUpgrades(core.getLevel(), core.getBlockPos()).get(color);
 		return ret != null ? ret.intValue() : 0;
 	}
 
-	protected static int getAdjacentUpgrade(World world, int x, int y, int z, CrystalElement color) {
-		Integer ret = getAdjacentUpgrades(world, x, y, z).get(color);
+	protected static int getAdjacentUpgrade(Level world, BlockPos pos, CrystalElement color) {
+		Integer ret = getAdjacentUpgrades(world, pos).get(color);
 		return ret != null ? ret.intValue() : 0;
 	}
 
-	protected static HashMap<CrystalElement, Integer> getAdjacentUpgrades(TileEntityBase core) {
-		HashMap<CrystalElement, Integer> set = new HashMap();
-		for (int i = 0; i < 6; i++) {
-			TileEntity te = core.getAdjacentTileEntity(ForgeDirection.VALID_DIRECTIONS[i]);
-			if (te != null && ModList.THAUMICTINKER.isLoaded())
-				te = TransvectorHandler.getRelayedTile(te);
-			if (te instanceof TileEntityAdjacencyUpgrade) {
-				TileEntityAdjacencyUpgrade ta = (TileEntityAdjacencyUpgrade)te;
-				if (ta.canRun(ta.worldObj, ta.xCoord, ta.yCoord, ta.zCoord) && (!ChromaOptions.POWEREDACCEL.getState() || ta.energy.containsAtLeast(ta.getColor(), 100))) {
-					Integer get = set.get(ta.getColor());
-					int has = get != null ? get.intValue() : 0;
-					set.put(ta.getColor(), Math.max(1+ta.getTier(), has));
-				}
-			}
-		}
-		return set;
-	}
-
-	protected static HashMap<CrystalElement, Integer> getAdjacentUpgrades(World world, int x, int y, int z) {
-		HashMap<CrystalElement, Integer> set = new HashMap();
-		for (int i = 0; i < 6; i++) {
-			ForgeDirection dir = ForgeDirection.VALID_DIRECTIONS[i];
-			int dx = x+dir.offsetX;
-			int dy = y+dir.offsetY;
-			int dz = z+dir.offsetZ;
-			TileEntity te = world.getTileEntity(dx, dy, dz);
-			if (te != null && ModList.THAUMICTINKER.isLoaded())
-				te = TransvectorHandler.getRelayedTile(te);
-			if (te instanceof TileEntityAdjacencyUpgrade) {
-				TileEntityAdjacencyUpgrade ta = (TileEntityAdjacencyUpgrade)te;
-				if (ta.canRun(ta.worldObj, ta.xCoord, ta.yCoord, ta.zCoord) && (!ChromaOptions.POWEREDACCEL.getState() || ta.energy.containsAtLeast(ta.getColor(), 100))) {
-					Integer get = set.get(ta.getColor());
-					int has = get != null ? get.intValue() : 0;
-					set.put(ta.getColor(), Math.max(1+ta.getTier(), has));
-				}
+	/**
+	 * V33a {@code getAdjacentUpgrades}: for each colour, the highest {@code 1+tier} among operating upgrades on the six
+	 * faces.
+	 * DRAGONAPI-PORT: V33a relayed each face through a Thaumic Tinkerer transvector first; that mod has no 26.3 port.
+	 */
+	public static HashMap<CrystalElement, Integer> getAdjacentUpgrades(Level world, BlockPos pos) {
+		HashMap<CrystalElement, Integer> set = new HashMap<>();
+		for (Direction dir : Direction.values()) {
+			BlockEntity te = world.getBlockEntity(pos.relative(dir));
+			if (te instanceof TileEntityAdjacencyUpgrade ta && ta.isOperating()) {
+				Integer get = set.get(ta.getColor());
+				int has = get != null ? get.intValue() : 0;
+				set.put(ta.getColor(), Math.max(1+ta.getTier(), has));
 			}
 		}
 		return set;
 	}
 
 	public static AdjacencyCheckHandler createAdjacencyCheckHandler(CrystalElementProxy color, String desc, ItemStack... items) {
-		return getOrCreateAdjacencyCheckHandler(CrystalElement.elements[color.ordinal()], desc, items);
+		List<Supplier<ItemStack>> li = new ArrayList<>();
+		for (ItemStack is : items)
+			li.add(() -> is);
+		return getOrCreateAdjacencyCheckHandler(CrystalElement.elements[color.ordinal()], desc, li);
 	}
 
+	/**
+	 * V33a took {@code te.getCraftedProduct()} here, but its callers are static field initialisers that run before
+	 * item components are bound, so the product is resolved when the description is first read.
+	 */
 	public static AdjacencyCheckHandlerImpl getOrCreateAdjacencyCheckHandler(CrystalElement color, String desc, TileEnum te) {
-		return getOrCreateAdjacencyCheckHandler(color, desc, te.getCraftedProduct());
+		return getOrCreateAdjacencyCheckHandler(color, desc, List.of(te::getCraftedProduct));
 	}
 
-	public static AdjacencyCheckHandlerImpl getOrCreateAdjacencyCheckHandler(CrystalElement color, String desc, ItemStack... items) {
+	@SafeVarargs
+	public static AdjacencyCheckHandlerImpl getOrCreateAdjacencyCheckHandler(CrystalElement color, String desc, Supplier<ItemStack>... items) {
+		return getOrCreateAdjacencyCheckHandler(color, desc, List.of(items));
+	}
+
+	public static synchronized AdjacencyCheckHandlerImpl getOrCreateAdjacencyCheckHandler(CrystalElement color, String desc, List<Supplier<ItemStack>> items) {
 		AdjacencyCheckHandlerImpl check = adjacencyChecks.get(color);
 		if (check == null) {
 			check = new AdjacencyCheckHandlerImpl(color);
@@ -346,10 +349,10 @@ public abstract class TileEntityAdjacencyUpgrade extends TileEntityWirelessPower
 		return registerEffectDescription(color, desc, 0);
 	}
 
-	public static AdjacencyEffectDescription registerEffectDescription(CrystalElement color, String desc, int index) {
+	public static synchronized AdjacencyEffectDescription registerEffectDescription(CrystalElement color, String desc, int index) {
 		AdjacencyEffectDescription ef = effectMap.get(color, desc);
 		if (ef == null) {
-			ef = (AdjacencyEffectDescription)new AdjacencyEffectDescription(color, desc).setOrderIndex(index);
+			ef = new AdjacencyEffectDescription(color, desc).setOrderIndex(index);
 			effectMap.put(color, desc, ef);
 		}
 		return ef;
@@ -363,52 +366,109 @@ public abstract class TileEntityAdjacencyUpgrade extends TileEntityWirelessPower
 			color = e;
 		}
 
-		public int getAdjacentUpgradeTier(World world, int x, int y, int z) {
-			Integer get = TileEntityAdjacencyUpgrade.getAdjacentUpgrades(world, x, y, z).get(color);
+		@Override
+		public int getAdjacentUpgradeTier(Level world, int x, int y, int z) {
+			Integer get = TileEntityAdjacencyUpgrade.getAdjacentUpgrades(world, new BlockPos(x, y, z)).get(color);
 			return get != null ? get.intValue() : 0;
 		}
 
-		public double getFactorSimple(World world, int x, int y, int z) {
+		@Override
+		public double getFactorSimple(Level world, int x, int y, int z) {
 			int tier = this.getAdjacentUpgradeTier(world, x, y, z);
-			return tier > 0 ? ChromatiAPI.getAPI().adjacency().getFactor(CrystalElementAccessor.getByIndex(color.ordinal()), tier) : 1;
+			// V33a went through ChromatiAPI.getAPI().adjacency().getFactor, which is AdjacencyUpgrades.getFactor.
+			return tier > 0 ? AdjacencyUpgrades.upgrades[color.ordinal()].getFactor(tier) : 1;
 		}
 
-		public int getAdjacentUpgrade(TileEntityBase te) {
+		public int getAdjacentUpgrade(BlockEntity te) {
 			return TileEntityAdjacencyUpgrade.getAdjacentUpgrade(te, color);
 		}
 
-		public int getAdjacentUpgrade(World world, int x, int y, int z) {
-			return TileEntityAdjacencyUpgrade.getAdjacentUpgrade(world, x, y, z, color);
+		public int getAdjacentUpgrade(Level world, BlockPos pos) {
+			return TileEntityAdjacencyUpgrade.getAdjacentUpgrade(world, pos, color);
 		}
 	}
 
-	public static final class AdjacencyEffectDescription extends ItemListEffectDescription {
+	/**
+	 * One kind of target in the lexicon's effect list for a colour: V33a's DragonAPI {@code ItemListEffectDescription}
+	 * with its {@code GuiItemDisplay} entries. The displays are data here (item suppliers resolved when first read, an
+	 * icon with its tooltip, or a struck-through blacklist group) for the lexicon's adjacency page to draw.
+	 */
+	public static final class AdjacencyEffectDescription implements Comparable<AdjacencyEffectDescription> {
 
 		public final CrystalElement color;
+		public final String description;
+		private final List<EffectDisplay> displays = new ArrayList<>();
+		private int ordering;
 
-		protected AdjacencyEffectDescription(CrystalElement e, String s) {
-			super(s);
+		private AdjacencyEffectDescription(CrystalElement e, String s) {
 			color = e;
+			description = s;
+		}
+
+		public AdjacencyEffectDescription setOrderIndex(int index) {
+			ordering = index;
+			return this;
+		}
+
+		public synchronized AdjacencyEffectDescription addItems(Collection<Supplier<ItemStack>> items) {
+			for (Supplier<ItemStack> is : items)
+				displays.add(new EffectDisplay.Stack(is));
+			return this;
+		}
+
+		public synchronized AdjacencyEffectDescription addItems(ItemStack... items) {
+			for (ItemStack is : items)
+				displays.add(new EffectDisplay.Stack(() -> is));
+			return this;
+		}
+
+		public synchronized AdjacencyEffectDescription addDisplays(EffectDisplay... set) {
+			for (EffectDisplay d : set) {
+				if (!displays.contains(d))
+					displays.add(d);
+			}
+			return this;
+		}
+
+		public synchronized AdjacencyEffectDescription addDisplays(Collection<EffectDisplay> set) {
+			return this.addDisplays(set.toArray(new EffectDisplay[0]));
+		}
+
+		public synchronized List<EffectDisplay> getRelevantItems() {
+			return Collections.unmodifiableList(new ArrayList<>(displays));
+		}
+
+		@Override
+		public int compareTo(AdjacencyEffectDescription o) {
+			if (o.ordering != ordering)
+				return Integer.compare(ordering, o.ordering);
+			if (Strings.isNullOrEmpty(description) && Strings.isNullOrEmpty(o.description))
+				return 0;
+			else if (Strings.isNullOrEmpty(description))
+				return -1;
+			else if (Strings.isNullOrEmpty(o.description))
+				return 1;
+			else
+				return description.compareToIgnoreCase(o.description);
 		}
 
 		@Override
 		public String toString() {
-			return color+": "+super.toString();
+			return color+": "+description+": "+displays;
 		}
-
 	}
 
-	protected static abstract class BasicAdjacencyInterface {
+	/** V33a's three {@code GuiItemDisplay} kinds used by the adjacency effect lists. */
+	public sealed interface EffectDisplay {
 
-		protected abstract Collection<GuiItemDisplay> getRelevantItems();
+		/** {@code GuiStackDisplay}: one item. */
+		record Stack(Supplier<ItemStack> item) implements EffectDisplay {}
 
-		public abstract String getDescription();
+		/** {@code GuiIconDisplay}, drawn additively, with a tooltip. */
+		record Icon(ChromaIcons icon, String tooltip) implements EffectDisplay {}
 
-		@Override
-		public String toString() {
-			return this.getDescription()+": "+this.getRelevantItems().toString();
-		}
-
+		/** The accelerator's {@code BlacklistDisplay}: a cycling stack list with a half-alpha red X over it. */
+		record Blacklist(List<Supplier<ItemStack>> items) implements EffectDisplay {}
 	}
 
 	public static Collection<CrystalElement> getSpecificEffectColors() {
@@ -416,11 +476,11 @@ public abstract class TileEntityAdjacencyUpgrade extends TileEntityWirelessPower
 	}
 
 	public static Collection<AdjacencyEffectDescription> getSpecificEffects(CrystalElement e) {
-		Collection<AdjacencyEffectDescription> c = effectMap.getAllValuesIn(e);
+		java.util.Map<String, AdjacencyEffectDescription> c = effectMap.getMap(e);
 		if (c == null)
-			return new ArrayList();
-		ArrayList ret = new ArrayList(c);
-		Collections.sort((List)ret);
+			return new ArrayList<>();
+		ArrayList<AdjacencyEffectDescription> ret = new ArrayList<>(c.values());
+		Collections.sort(ret);
 		return ret;
 	}
 
@@ -430,8 +490,8 @@ public abstract class TileEntityAdjacencyUpgrade extends TileEntityWirelessPower
 		CONTINUE(false, true),
 		STOP(false, false);
 
-		public boolean didAction;
-		public boolean shouldContinue;
+		public final boolean didAction;
+		public final boolean shouldContinue;
 
 		private EffectResult(boolean act, boolean con) {
 			didAction = act;

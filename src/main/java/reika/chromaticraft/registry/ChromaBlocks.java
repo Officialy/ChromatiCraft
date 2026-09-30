@@ -1,5 +1,6 @@
 package reika.chromaticraft.registry;
 
+import net.minecraft.sounds.SoundEvents;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -1034,6 +1035,55 @@ public final class ChromaBlocks {
 	public static final DeferredBlock<Block> TELEPUMP =
 			register("teleportation_pump", () -> new reika.chromaticraft.block.BlockTelePump(
 					blockProperties().strength(5F, 8F).requiresCorrectToolForDrops()));
+	/**
+	 * V33a ADJACENCY on crystal material (quartz map colour, immovable) with {@code BlockCrystalTile}'s hardness 4.5,
+	 * resistance 6000, full light and stone sound at half pitch: one block and placer item per implemented colour. The
+	 * item map fills first so the block registration can hand each block its item.
+	 */
+	public static final EnumMap<AdjacencyUpgrades, DeferredItem<reika.chromaticraft.items.ItemAdjacencyPlacer>> ADJACENCY_UPGRADE_ITEMS =
+			new EnumMap<>(AdjacencyUpgrades.class);
+	public static final EnumMap<AdjacencyUpgrades, DeferredBlock<reika.chromaticraft.block.BlockAdjacencyUpgrade>> ADJACENCY_UPGRADES =
+			registerAdjacencyUpgrades();
+
+	private static EnumMap<AdjacencyUpgrades, DeferredBlock<reika.chromaticraft.block.BlockAdjacencyUpgrade>> registerAdjacencyUpgrades() {
+		EnumMap<AdjacencyUpgrades, DeferredBlock<reika.chromaticraft.block.BlockAdjacencyUpgrade>> map =
+				new EnumMap<>(AdjacencyUpgrades.class);
+		SoundType sound = new SoundType(1.0F, 0.5F, SoundEvents.STONE_BREAK, SoundEvents.STONE_STEP,
+				SoundEvents.STONE_PLACE, SoundEvents.STONE_HIT, SoundEvents.STONE_FALL);
+		for (AdjacencyUpgrades a : AdjacencyUpgrades.upgrades) {
+			if (!a.isImplemented())
+				continue;
+			String name = coloredName("adjacency_upgrade", a.getColor());
+			DeferredBlock<reika.chromaticraft.block.BlockAdjacencyUpgrade> block = registerBlockOnly(name,
+					() -> new reika.chromaticraft.block.BlockAdjacencyUpgrade(blockProperties().mapColor(MapColor.QUARTZ)
+							.strength(4.5F, 6000F).lightLevel(s -> 15).sound(sound).noOcclusion().noCollision()
+							.pushReaction(PushReaction.IMMOVEABLE), a));
+			map.put(a, block);
+			@SuppressWarnings("unchecked")
+			DeferredItem<reika.chromaticraft.items.ItemAdjacencyPlacer> item =
+					(DeferredItem<reika.chromaticraft.items.ItemAdjacencyPlacer>)(DeferredItem<?>)registerItemOnly(name,
+							() -> new reika.chromaticraft.items.ItemAdjacencyPlacer(block.get(), itemProperties()
+									.useBlockDescriptionPrefix()
+									.component(ChromaDataComponents.ADJACENCY_TIER.get(), 0)));
+			ADJACENCY_UPGRADE_ITEMS.put(a, item);
+		}
+		return map;
+	}
+
+	/** The placer item of an implemented Adjacency Upgrade colour. */
+	public static DeferredItem<reika.chromaticraft.items.ItemAdjacencyPlacer> adjacencyUpgradeItem(AdjacencyUpgrades a) {
+		DeferredItem<reika.chromaticraft.items.ItemAdjacencyPlacer> item = ADJACENCY_UPGRADE_ITEMS.get(a);
+		if (item == null)
+			throw new IllegalArgumentException("Adjacency upgrade "+a+" is not implemented");
+		return item;
+	}
+
+	/** The same identity where a plain {@code DeferredBlock<Block>} is what the caller holds. */
+	@SuppressWarnings("unchecked")
+	public static DeferredBlock<Block> adjacencyUpgradeBlock(AdjacencyUpgrades a) {
+		return (DeferredBlock<Block>)(DeferredBlock<?>)ADJACENCY_UPGRADES.get(a);
+	}
+
 	public static final DeferredBlock<Block> RIFT =
 			registerBlockOnly("world_rift", () -> new reika.chromaticraft.block.BlockRift(
 					blockProperties().strength(-1F, 600000F).sound(SoundType.WOOL).noOcclusion()));

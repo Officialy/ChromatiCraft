@@ -16,9 +16,6 @@ public interface AdjacencyUpgrade {
 	int getTier();
 	boolean isOperating();
 
-	/** V33a {@code TileEntityRangeBoost.factors}: the LIME upgrade's range multiplier, by tier (0-7). */
-	double[] RANGE_FACTORS = {1.03125, 1.0625, 1.125, 1.25, 1.5, 2, 3, 4};
-
 	/**
 	 * V33a {@code TileEntityAdjacencyUpgrade.getAdjacentUpgrade}: the highest {@code 1+tier} among operating upgrades of
 	 * {@code color} on the six faces of {@code pos}, or 0 when there is none.

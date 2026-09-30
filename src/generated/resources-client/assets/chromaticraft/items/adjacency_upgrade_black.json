@@ -1,0 +1,9 @@
+{
+  "model": {
+    "type": "minecraft:special",
+    "base": "chromaticraft:block/adjacency_upgrade_inventory",
+    "model": {
+      "type": "chromaticraft:adjacency_upgrade"
+    }
+  }
+}

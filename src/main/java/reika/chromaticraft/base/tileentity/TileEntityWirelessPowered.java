@@ -12,45 +12,53 @@ package reika.chromaticraft.base.tileentity;
 import java.util.Collection;
 import java.util.List;
 
-import net.minecraft.block.Block;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.state.BlockState;
 
-import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.base.tileentity.tileentityadjacencyupgrade.AdjacencyCheckHandlerImpl;
+import reika.chromaticraft.auxiliary.interfaces.AdjacencyUpgrade;
 import reika.chromaticraft.magic.ElementTagCompound;
 import reika.chromaticraft.magic.interfaces.LumenConsumer;
 import reika.chromaticraft.magic.interfaces.WirelessSource;
 import reika.chromaticraft.magic.network.CrystalNetworker;
-import reika.chromaticraft.registry.ChromaPackets;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.tileentity.aoe.TileEntityAuraPoint;
 import reika.chromaticraft.tileentity.aoe.effect.TileEntityEfficiencyUpgrade;
-import reika.dragonapi.DragonAPICore;
-import reika.dragonapi.libraries.io.ReikaPacketHelper;
+import reika.dragonapi.DragonAPI;
+import reika.dragonapi.libraries.registry.ReikaItemHelper;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
-
-
+/**
+ * V33a {@code TileEntityWirelessPowered}: a lumen consumer fed without a network path, by requesting from any
+ * {@link WirelessSource} (the Ambient Lumen Distributor, Lumen Leaves) within its receive range, half as far again for
+ * a player who owns an Aura Point. A black Efficiency Augment on any face scales its costs.
+ */
 public abstract class TileEntityWirelessPowered extends TileEntityChromaticBase implements LumenConsumer {
 
-	private static AdjacencyCheckHandlerImpl adjacency;
-
+	/** V33a: registers the black Efficiency Augment's check handler (its lexicon entry). */
 	public static void loadAdjacencyHandler() {
-		TileEntityAdjacencyUpgrade.getOrCreateAdjacencyCheckHandler(CrystalElement.BLACK, null);
+		reika.chromaticraft.base.tileentity.TileEntityAdjacencyUpgrade.getOrCreateAdjacencyCheckHandler(CrystalElement.BLACK, null,
+				java.util.List.of());
 	}
 
 	protected final ElementTagCompound energy = new ElementTagCompound();
 
 	private int efficiencyBoost;
 
-	public final void onAdjacentUpdate(World world, int x, int y, int z, Block b) {
+	protected TileEntityWirelessPowered(BlockEntityType<?> type, BlockPos pos, BlockState state) {
+		super(type, pos, state);
+	}
+
+	@Override
+	public final void onAdjacentUpdate(Level world, BlockPos pos, Block b) {
 		this.calcEfficiency();
 		this.syncAllData(false);
 	}
 
+	@Override
 	public final int getEfficiencyBoost() {
 		return efficiencyBoost;
 	}
@@ -64,23 +72,26 @@ public abstract class TileEntityWirelessPowered extends TileEntityChromaticBase 
 	}
 
 	private void calcEfficiency() {
-		efficiencyBoost = adjacency.getAdjacentUpgrade(this);
+		efficiencyBoost = AdjacencyUpgrade.getAdjacentTier(level, worldPosition, CrystalElement.BLACK);
 	}
 
 	protected final boolean requestEnergy(CrystalElement e, int amt) {
-		if (DragonAPICore.debugtest && !worldObj.isRemote) {
+		if (DragonAPI.debugtest && !level.isClientSide()) {
 			energy.addValueToColor(e, amt);
 		}
 		int r = this.getReceiveRange(e);
 		if (TileEntityAuraPoint.hasAuraPoints(placerUUID))
 			r *= 1.5;
-		Collection<WirelessSource> c = CrystalNetworker.instance.getNearTilesOfType(worldObj, xCoord, yCoord, zCoord, WirelessSource.class, r);
+		Collection<WirelessSource> c = CrystalNetworker.instance.getNearTilesOfType(level, worldPosition.getX(),
+				worldPosition.getY(), worldPosition.getZ(), WirelessSource.class, r);
 		for (WirelessSource s : c) {
 			if (s.canConduct() && s.canTransmitTo(this)) {
-				int ret = s.request(e, amt, xCoord, yCoord, zCoord);
+				int ret = s.request(e, amt, worldPosition.getX(), worldPosition.getY(), worldPosition.getZ());
 				if (ret > 0) {
 					energy.addValueToColor(e, ret);
-					ReikaPacketHelper.sendDataPacketWithRadius(ChromatiCraft.packetChannel, ChromaPackets.WIRELESS.ordinal(), this, 64, s.getX(), s.getY(), s.getZ(), e.ordinal(), ret);
+					// V33a also sent ChromaPackets.WIRELESS here, whose client handler (doEnergyRequestClient, a
+					// "particle bezier" TODO) was empty; the packet had no effect, so it is not sent.
+					this.setChanged();
 					return true;
 				}
 			}
@@ -88,11 +99,7 @@ public abstract class TileEntityWirelessPowered extends TileEntityChromaticBase 
 		return false;
 	}
 
-	@SideOnly(Side.CLIENT)
-	public final void doEnergyRequestClient(World world, int x, int y, int z, int dx, int dy, int dz, CrystalElement e, int amt) {
-		//particle bezier
-	}
-
+	@Override
 	public final int getEnergy(CrystalElement e) {
 		return energy.getValue(e);
 	}
@@ -100,21 +107,21 @@ public abstract class TileEntityWirelessPowered extends TileEntityChromaticBase 
 	protected abstract int getReceiveRange(CrystalElement e);
 
 	@Override
-	protected void readSyncTag(NBTTagCompound NBT) {
+	protected void readSyncTag(CompoundTag NBT) {
 		super.readSyncTag(NBT);
 
 		energy.readFromNBT("energy", NBT);
 
-		efficiencyBoost = NBT.getInteger("eff");
+		efficiencyBoost = NBT.getIntOr("eff", 0);
 	}
 
 	@Override
-	protected void writeSyncTag(NBTTagCompound NBT) {
+	protected void writeSyncTag(CompoundTag NBT) {
 		super.writeSyncTag(NBT);
 
 		energy.writeToNBT("energy", NBT);
 
-		NBT.setInteger("eff", efficiencyBoost);
+		NBT.putInt("eff", efficiencyBoost);
 	}
 
 	protected final void drainEnergy(CrystalElement e, int amt) {
@@ -131,21 +138,22 @@ public abstract class TileEntityWirelessPowered extends TileEntityChromaticBase 
 		energy.subtract(tag);
 	}
 
+	@Override
 	public boolean allowsEfficiencyBoost() {
 		return true;
 	}
 
-	@SideOnly(Side.CLIENT)
 	public final void setEnergyClient(CrystalElement e, int lvl) {
 		energy.setTag(e, lvl);
 	}
 
+	@Override
 	public final ElementTagCompound getEnergy() {
 		return energy.copy();
 	}
 
 	@Override
-	public void getTagsToWriteToStack(NBTTagCompound NBT) {
+	public void getTagsToWriteToStack(CompoundTag NBT) {
 		this.writeOwnerData(NBT);
 		energy.writeToNBT("energy", NBT);
 	}
@@ -153,9 +161,10 @@ public abstract class TileEntityWirelessPowered extends TileEntityChromaticBase 
 	@Override
 	public void setDataFromItemStackTag(ItemStack is) {
 		this.readOwnerData(is);
-		if (is.stackTagCompound == null)
+		CompoundTag tag = is != null ? ReikaItemHelper.getStackTag(is) : null;
+		if (tag == null)
 			return;
-		energy.readFromNBT("energy", is.stackTagCompound);
+		energy.readFromNBT("energy", tag);
 	}
 
 	@Override

@@ -135,6 +135,16 @@ public final class ChromaBlockEntities {
 			register("world_rift", ChromaTiles.RIFT);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<reika.chromaticraft.tileentity.acquisition.TileEntityTeleportationPump>> TELEPUMP =
 			register("teleportation_pump", ChromaTiles.TELEPUMP);
+	/**
+	 * V33a's single {@code chroma.accelerator} tile id serves every colour: the type spans each implemented colour's
+	 * block, and the factory builds that colour's own subclass.
+	 */
+	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<reika.chromaticraft.base.tileentity.TileEntityAdjacencyUpgrade>> ADJACENCY =
+			BLOCK_ENTITIES.register("adjacency_upgrade", () -> new BlockEntityType<>(
+					(pos, state) -> ((reika.chromaticraft.block.BlockAdjacencyUpgrade)state.getBlock()).upgrade.createTileEntity(pos, state),
+					ChromaBlocks.ADJACENCY_UPGRADES.values().stream()
+							.map(net.neoforged.neoforge.registries.DeferredHolder::get)
+							.toArray(net.minecraft.world.level.block.Block[]::new)));
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<reika.chromaticraft.tileentity.decoration.TileEntityParticleSpawner>> PARTICLE_SPAWNER =
 			register("particle_spawner", ChromaTiles.PARTICLES);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<reika.chromaticraft.tileentity.transport.TileEntityLaunchPad>> LAUNCH_PAD =

@@ -34,9 +34,6 @@ import reika.dragonapi.libraries.registry.ReikaItemHelper;
 
 public abstract class TileEntityRelayPowered extends TileEntityChromaticBase implements LumenConsumer {
 
-    private static final float[] EFFICIENCY_FACTORS = {
-            0.9375F, 0.875F, 0.75F, 0.625F, 0.5F, 0.25F, 0.125F, 0.0625F
-    };
 
     protected final ElementTagCompound energy = new ElementTagCompound();
     private int requestTimer = rand.nextInt(200);
@@ -64,8 +61,8 @@ public abstract class TileEntityRelayPowered extends TileEntityChromaticBase imp
     @Override public final int getEfficiencyBoost() { return efficiencyBoost; }
 
     protected final float getEnergyCostScale() {
-        return efficiencyBoost > 0 ? EFFICIENCY_FACTORS[Math.min(efficiencyBoost - 1,
-                EFFICIENCY_FACTORS.length - 1)] : 1;
+        return efficiencyBoost > 0 ? (float)reika.chromaticraft.tileentity.aoe.effect.TileEntityEfficiencyUpgrade
+                .getCostFactor(Math.min(efficiencyBoost - 1, 7)) : 1;
     }
 
     private void calcEfficiency() {

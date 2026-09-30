@@ -65,6 +65,14 @@ public final class ChromaTabs {
 				Item item = holder.get();
 				if (!(item instanceof BlockItem blockItem) || item == Items.AIR || !seen.add(item))
 					continue;
+				// V33a ItemAdjacencyPlacer.getSubItems, on the main tab: every tier of each implemented colour.
+				if (item instanceof reika.chromaticraft.items.ItemAdjacencyPlacer placer) {
+					if (selected == CHROMATICRAFT.get()) {
+						for (int k = 0; k < reika.chromaticraft.base.tileentity.TileEntityAdjacencyUpgrade.MAX_TIER; k++)
+							event.accept(placer.getUpgrade().getStackOfTier(k));
+					}
+					continue;
+				}
 				if (selected == tabFor(category(blockItem.getBlock())).get())
 					event.accept(item);
 			}

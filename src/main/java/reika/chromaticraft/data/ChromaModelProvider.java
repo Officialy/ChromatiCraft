@@ -155,6 +155,7 @@ public class ChromaModelProvider extends ModelProvider {
 		fluidRelayModel(blockStateOut, itemModelOut, modelOut);
 		fluidDistributorModel(blockStateOut, itemModelOut, modelOut);
 		worldRiftModel(blockStateOut, itemModelOut, modelOut);
+		adjacencyUpgradeModels(blockStateOut, itemModelOut, modelOut);
 		autoEnchanterModel(blockStateOut, itemModelOut, modelOut);
 		telePumpModel(blockStateOut, itemModelOut, modelOut);
 		toolStorageModel(blockStateOut, itemModelOut, modelOut);
@@ -2142,6 +2143,28 @@ public class ChromaModelProvider extends ModelProvider {
 				TextureMapping.cube(particle), modelOut);
 		itemModelOut.accept(ChromaItems.WORLD_RIFT.get(),
 				ItemModelUtils.specialModel(itemBase, new reika.chromaticraft.render.item.RiftItemRenderer.Unbaked()));
+	}
+
+	/**
+	 * V33a ADJACENCY: drawn only by its TESR, its block icon the transparent one (so also its particle). Its items
+	 * registered no icon and were drawn by the same TESR at the stack's tier; the cube base only supplies the block
+	 * display transforms.
+	 */
+	private static void adjacencyUpgradeModels(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		Material particle = new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/icons/transparent"));
+		Identifier worldModel = ModelTemplates.PARTICLE_ONLY.create(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/adjacency_upgrade"),
+				new TextureMapping().put(TextureSlot.PARTICLE, particle), modelOut);
+		Identifier itemBase = ModelTemplates.CUBE_ALL.create(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/adjacency_upgrade_inventory"),
+				TextureMapping.cube(particle), modelOut);
+		for (var entry : ChromaBlocks.ADJACENCY_UPGRADES.entrySet()) {
+			blockStateOut.accept(MultiVariantGenerator.dispatch(entry.getValue().get(),
+					new MultiVariant(WeightedList.of(new Variant(worldModel)))));
+			itemModelOut.accept(ChromaBlocks.adjacencyUpgradeItem(entry.getKey()).get(),
+					ItemModelUtils.specialModel(itemBase, new reika.chromaticraft.render.item.AdjacencyUpgradeItemRenderer.Unbaked()));
+		}
 	}
 
 	private static void fluidDistributorModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,

@@ -88,6 +88,10 @@ public enum ChromaTiles implements TileEnum {
 	RIFT("chroma.rift", ChromaBlocks.RIFT, reika.chromaticraft.tileentity.transport.TileEntityRift.class),
 	TELEPUMP("chroma.telepump", ChromaBlocks.TELEPUMP,
 			reika.chromaticraft.tileentity.acquisition.TileEntityTeleportationPump.class),
+	// One identity per implemented colour, each its own V33a subclass; LIGHTBLUE (the Tile Accelerator, whose name
+	// the family carries) stands for them here, as ChromaTiles is a block->tile lookup.
+	ADJACENCY("chroma.accelerator", ChromaBlocks.adjacencyUpgradeBlock(AdjacencyUpgrades.LIGHTBLUE),
+			reika.chromaticraft.base.tileentity.TileEntityAdjacencyUpgrade.class),
 	PARTICLES("chroma.particles", ChromaBlocks.PARTICLE_SPAWNER,
 			reika.chromaticraft.tileentity.decoration.TileEntityParticleSpawner.class),
 	LAUNCHPAD("chroma.launchpad", ChromaBlocks.LAUNCH_PAD,
@@ -160,7 +164,51 @@ public enum ChromaTiles implements TileEnum {
 	public net.minecraft.world.item.ItemStack getCraftedProduct() {
 		if (this == RIFT)
 			return new net.minecraft.world.item.ItemStack(ChromaItems.WORLD_RIFT.get());
+		// V33a ChromaItems.ADJACENCY.getStackOf(): the first colour's item. BLACK is implemented here too, so the
+		// same Efficiency Augment stands for the family; its tier is written, as every created upgrade stack's is.
+		if (this == ADJACENCY)
+			return AdjacencyUpgrades.BLACK.getStackOfTier(0);
 		return new net.minecraft.world.item.ItemStack(this.getBlock().asItem());
+	}
+
+	/**
+	 * V33a {@code allowsAcceleration}: whether the Tile Accelerator may run this tile's tick more than once a tick.
+	 * Never repeaters or Focus Crystal-accelerated tiles, nor V33a's listed tiles (those not ported yet, the Power
+	 * Tree, Automator, Cloaking Tower and Lumen Alveary, join the list with their entries).
+	 */
+	public boolean allowsAcceleration() {
+		if (this.isRepeater())
+			return false;
+		if (reika.chromaticraft.auxiliary.interfaces.FocusAcceleratable.class.isAssignableFrom(teClass))
+			return false;
+		switch(this) {
+			case RITUAL:
+			case PYLON:
+			case AURAPOINT:
+			case RELAYSOURCE:
+			case PERSONAL:
+			case PYLONTURBO:
+			case ADJACENCY:
+				return false;
+			default:
+				return true;
+		}
+	}
+
+	/**
+	 * V33a {@code loadPostMappings}: every tile with a range the Range Expander can scale gets its basic handling (and
+	 * its lexicon entry).
+	 */
+	@SuppressWarnings("unchecked")
+	public static void loadPostMappings() {
+		for (int i = 0; i < TEList.length; i++) {
+			ChromaTiles r = TEList[i];
+			if (reika.chromaticraft.api.interfaces.CustomRangeUpgrade.RangeUpgradeable.class.isAssignableFrom(r.teClass)) {
+				reika.chromaticraft.tileentity.aoe.effect.TileEntityRangeBoost.addBasicHandling(
+						(Class<? extends reika.chromaticraft.api.interfaces.CustomRangeUpgrade.RangeUpgradeable>)(Class<?>)r.teClass,
+						java.util.List.of(r::getCraftedProduct));
+			}
+		}
 	}
 
 	/** V33a {@code isRepeater}: the tile relays network energy. */
@@ -180,6 +228,12 @@ public enum ChromaTiles implements TileEnum {
 	}
 
 	public BlockEntity createBlockEntity(BlockPos pos, BlockState state) {
+		// V33a createTEFromIDAndMetadata: each Adjacency Upgrade colour is its own subclass of the abstract base.
+		if (this == ADJACENCY) {
+			reika.chromaticraft.block.BlockAdjacencyUpgrade b = (reika.chromaticraft.block.BlockAdjacencyUpgrade)
+					(state.getBlock() instanceof reika.chromaticraft.block.BlockAdjacencyUpgrade ? state.getBlock() : this.getBlock());
+			return b.upgrade.createTileEntity(pos, state);
+		}
 		try {
 			return teClass.getConstructor(BlockPos.class, BlockState.class).newInstance(pos, state);
 		}

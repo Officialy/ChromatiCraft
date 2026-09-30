@@ -437,6 +437,10 @@ public final class ChromaGameTests {
 		register(event, env, "aura_pouch_contents", 30, ChromaGameTests::auraPouchContents);
 		register(event, env, "luma_capsule_void_gaze", ChromaGameTests::lumaCapsuleVoidGaze);
 		register(event, env, "teleportation_pump_scan", 600, ChromaGameTests::teleportationPumpScan);
+		register(event, env, "adjacency_accelerator_furnace", 100, ChromaGameTests::adjacencyAcceleratorFurnace);
+		register(event, env, "adjacency_tier_roundtrip", ChromaGameTests::adjacencyTierRoundtrip);
+		register(event, env, "adjacency_efficiency_provider", ChromaGameTests::adjacencyEfficiencyProvider);
+		register(event, env, "adjacency_recipe_centre", ChromaGameTests::adjacencyRecipeCentre);
 		register(event, env, "fluid_distributor_transfer", 60, ChromaGameTests::fluidDistributorTransfer);
 		register(event, env, "creative_tiered_resource_access", ChromaGameTests::creativeTieredResourceAccess);
 		register(event, env, "rainbow_tree_shape_and_log", ChromaGameTests::rainbowTreeShapeAndLog);
@@ -7446,6 +7450,146 @@ public final class ChromaGameTests {
 	 * then lists water (a tenth per source; flowing water counts nothing) and lava. Aimed at lava with a charged crystal
 	 * it takes the source (spending its lumens) and fills the bucket in its second slot.
 	 */
+	/** A placed Adjacency Upgrade of {@code a} at {@code rel}, at {@code tier}, optionally filled with its colour. */
+	private static reika.chromaticraft.base.tileentity.TileEntityAdjacencyUpgrade placeAdjacency(GameTestHelper helper,
+			BlockPos rel, reika.chromaticraft.registry.AdjacencyUpgrades a, int tier, boolean energised) {
+		BlockPos pos = helper.absolutePos(rel);
+		helper.getLevel().setBlock(pos, ChromaBlocks.ADJACENCY_UPGRADES.get(a).get().defaultBlockState(), 3);
+		var te = (reika.chromaticraft.base.tileentity.TileEntityAdjacencyUpgrade)helper.getLevel().getBlockEntity(pos);
+		te.setDataFromItemStackTag(a.getStackOfTier(tier));
+		if (energised)
+			te.fillEnergyForTest();
+		return te;
+	}
+
+	private static net.minecraft.world.level.block.entity.FurnaceBlockEntity smeltingFurnace(GameTestHelper helper, BlockPos rel) {
+		BlockPos pos = helper.absolutePos(rel);
+		helper.getLevel().setBlock(pos, Blocks.FURNACE.defaultBlockState(), 3);
+		var furnace = (net.minecraft.world.level.block.entity.FurnaceBlockEntity)helper.getLevel().getBlockEntity(pos);
+		furnace.setItem(0, new ItemStack(Items.RAW_IRON));
+		furnace.setItem(1, new ItemStack(Items.COAL));
+		return furnace;
+	}
+
+	/**
+	 * V33a Tile Accelerator: a tier 2 core runs an adjacent furnace's tick seven extra times, so it smelts its 200-tick
+	 * iron in 25 ticks; a redstone-stopped core and one with no stored lumens (powered upgrades are the default) do
+	 * nothing, and a bare furnace is still smelting.
+	 */
+	private static void adjacencyAcceleratorFurnace(GameTestHelper helper) {
+		var accelerated = smeltingFurnace(helper, new BlockPos(0, 1, 0));
+		placeAdjacency(helper, new BlockPos(1, 1, 0), reika.chromaticraft.registry.AdjacencyUpgrades.LIGHTBLUE, 2, true);
+		var control = smeltingFurnace(helper, new BlockPos(4, 1, 0));
+		var stopped = smeltingFurnace(helper, new BlockPos(0, 1, 4));
+		placeAdjacency(helper, new BlockPos(1, 1, 4), reika.chromaticraft.registry.AdjacencyUpgrades.LIGHTBLUE, 2, true);
+		helper.getLevel().setBlock(helper.absolutePos(new BlockPos(1, 2, 4)), Blocks.REDSTONE_BLOCK.defaultBlockState(), 3);
+		var unpowered = smeltingFurnace(helper, new BlockPos(4, 1, 2));
+		placeAdjacency(helper, new BlockPos(3, 1, 2), reika.chromaticraft.registry.AdjacencyUpgrades.LIGHTBLUE, 2, false);
+		helper.runAtTickTime(60, () -> {
+			helper.assertTrue(accelerated.getItem(2).is(Items.IRON_INGOT),
+					"a tier 2 Tile Accelerator must finish a 200-tick smelt within 60 ticks");
+			helper.assertTrue(control.getItem(2).isEmpty(), "an unaccelerated furnace cannot have smelted in 60 ticks");
+			helper.assertTrue(stopped.getItem(2).isEmpty(), "a redstone signal must stop the accelerator");
+			helper.assertTrue(unpowered.getItem(2).isEmpty(), "a powered-mode accelerator with no lumens must do nothing");
+			helper.succeed();
+		});
+	}
+
+	/**
+	 * The tier rides the item: the last upgrade of a stack still places at its tier (a 26.x stack drops its components
+	 * at zero), and sneak-popping or mining it gives back its colour's item at that tier.
+	 */
+	private static void adjacencyTierRoundtrip(GameTestHelper helper) {
+		var level = helper.getLevel();
+		var lime = reika.chromaticraft.registry.AdjacencyUpgrades.LIME;
+		BlockPos floor = helper.absolutePos(new BlockPos(2, 0, 2));
+		BlockPos pos = floor.above();
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		player.setPos(pos.getX()+3.5, pos.getY(), pos.getZ()+0.5);
+		// The mock player is creative; a survival placement must spend the item.
+		player.getAbilities().instabuild = false;
+		ItemStack last = lime.getStackOfTier(3);
+		player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, last);
+		var hit = new net.minecraft.world.phys.BlockHitResult(net.minecraft.world.phys.Vec3.atCenterOf(floor).add(0, 0.5, 0),
+				Direction.UP, floor, false);
+		helper.assertTrue(last.getItem().useOn(new net.minecraft.world.item.context.UseOnContext(player,
+				net.minecraft.world.InteractionHand.MAIN_HAND, hit)).consumesAction(), "the upgrade must place on a floor");
+		helper.assertTrue(last.isEmpty(), "placing must use up the stack");
+		var te = (reika.chromaticraft.base.tileentity.TileEntityAdjacencyUpgrade)level.getBlockEntity(pos);
+		helper.assertTrue(te != null && te.getColor() == CrystalElement.LIME && te.getTier() == 3 && te.isPlacer(player),
+				"the last upgrade of a stack must place its own colour at tier 3 for its placer");
+		te.drop();
+		helper.assertTrue(level.getBlockState(pos).isAir(), "sneak-popping must remove the upgrade");
+		var popped = level.getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class,
+				new net.minecraft.world.phys.AABB(pos).inflate(1));
+		helper.assertTrue(popped.size() == 1 && popped.getFirst().getItem().is(lime.getStackOfTier(0).getItem())
+				&& reika.chromaticraft.base.tileentity.TileEntityAdjacencyUpgrade.getTier(popped.getFirst().getItem()) == 3,
+				"the popped item must be the Range Expander at tier 3");
+		popped.getFirst().discard();
+		placeAdjacency(helper, new BlockPos(2, 1, 2), lime, 5, true);
+		level.destroyBlock(pos, true, player);
+		var mined = level.getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class,
+				new net.minecraft.world.phys.AABB(pos).inflate(1));
+		helper.assertTrue(mined.size() == 1
+				&& reika.chromaticraft.base.tileentity.TileEntityAdjacencyUpgrade.getTier(mined.getFirst().getItem()) == 5
+				&& reika.dragonapi.libraries.registry.ReikaItemHelper.getStackTag(mined.getFirst().getItem()) != null
+				&& reika.dragonapi.libraries.registry.ReikaItemHelper.getStackTag(mined.getFirst().getItem()).contains("energy"),
+				"mining must drop the tier 5 item with its stored lumens");
+		helper.succeed();
+	}
+
+	/**
+	 * V33a's provider gates: a machine counts a black Efficiency Augment only while it holds 100 lumens and has no
+	 * redstone signal, and a neighbour change makes the machine recount (BlockChromaTile.onNeighborBlockChange).
+	 */
+	private static void adjacencyEfficiencyProvider(GameTestHelper helper) {
+		var level = helper.getLevel();
+		BlockPos pumpPos = helper.absolutePos(new BlockPos(2, 1, 2));
+		level.setBlock(pumpPos, ChromaBlocks.TELEPUMP.get().defaultBlockState(), 3);
+		var pump = (reika.chromaticraft.tileentity.acquisition.TileEntityTeleportationPump)level.getBlockEntity(pumpPos);
+		var black = placeAdjacency(helper, new BlockPos(3, 1, 2), reika.chromaticraft.registry.AdjacencyUpgrades.BLACK, 4, false);
+		helper.assertTrue(reika.chromaticraft.auxiliary.interfaces.AdjacencyUpgrade.getAdjacentTier(level, pumpPos, CrystalElement.BLACK) == 0,
+				"an empty powered-mode augment must not count");
+		black.fillEnergyForTest();
+		helper.assertTrue(reika.chromaticraft.auxiliary.interfaces.AdjacencyUpgrade.getAdjacentTier(level, pumpPos, CrystalElement.BLACK) == 5,
+				"a filled tier 4 augment must count as 5");
+		level.setBlock(pumpPos.west(), Blocks.STONE.defaultBlockState(), 3);
+		helper.assertTrue(pump.getEfficiencyBoost() == 5, "a neighbour change must make the pump recount its augments; got "
+				+ pump.getEfficiencyBoost());
+		level.setBlock(helper.absolutePos(new BlockPos(4, 1, 2)), Blocks.REDSTONE_BLOCK.defaultBlockState(), 3);
+		helper.assertTrue(reika.chromaticraft.auxiliary.interfaces.AdjacencyUpgrade.getAdjacentTier(level, pumpPos, CrystalElement.BLACK) == 0,
+				"a redstone-stopped augment must not count");
+		helper.succeed();
+	}
+
+	/**
+	 * V33a AdjacencyRecipe: each tier is cast on the tier below of the same colour, matched by tier alone (the centre's
+	 * stored lumens do not matter, as isValidCentralNBT stripped them), and yields the next tier.
+	 */
+	private static void adjacencyRecipeCentre(GameTestHelper helper) {
+		CastingTableRecipe recipe = null;
+		for (var holder : helper.getLevel().getServer().getRecipeManager().getRecipes()) {
+			if (holder.id().identifier().getPath().equals("adjacency_upgrade/light_blue_1")
+					&& holder.value() instanceof CastingTableRecipe r)
+				recipe = r;
+		}
+		helper.assertTrue(recipe != null, "the tier 1 Tile Accelerator recipe must exist");
+		var blue = reika.chromaticraft.registry.AdjacencyUpgrades.LIGHTBLUE;
+		var centre = recipe.grid().getFirst().ingredient();
+		ItemStack used = blue.getStackOfTier(0);
+		net.minecraft.nbt.CompoundTag energy = new net.minecraft.nbt.CompoundTag();
+		new reika.chromaticraft.magic.ElementTagCompound(CrystalElement.LIGHTBLUE, 500).writeToNBT("energy", energy);
+		reika.dragonapi.libraries.registry.ReikaItemHelper.setStackTag(used, energy);
+		helper.assertTrue(centre.test(blue.getStackOfTier(0)) && centre.test(used),
+				"a tier 0 Tile Accelerator, used or not, must fit the tier 1 centre");
+		helper.assertTrue(!centre.test(blue.getStackOfTier(1)), "a tier 1 accelerator must not fit the tier 1 centre");
+		helper.assertTrue(!centre.test(reika.chromaticraft.registry.AdjacencyUpgrades.BLACK.getStackOfTier(0)),
+				"another colour must not fit the centre");
+		helper.assertTrue(reika.chromaticraft.base.tileentity.TileEntityAdjacencyUpgrade.getTier(recipe.output()) == 1
+				&& recipe.output().is(used.getItem()), "the recipe must make a tier 1 Tile Accelerator");
+		helper.succeed();
+	}
+
 	private static void teleportationPumpScan(GameTestHelper helper) {
 		var level = helper.getLevel();
 		BlockPos pumpPos = helper.absolutePos(new BlockPos(2, 1, 2));

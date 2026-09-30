@@ -1,0 +1,118 @@
+{
+  "type": "chromaticraft:casting",
+  "aura": [
+    {
+      "amount": 300000,
+      "element": "lime"
+    },
+    {
+      "amount": 4000,
+      "element": "yellow"
+    }
+  ],
+  "completion": {
+    "copy_center_custom_data": true
+  },
+  "duration": 1600,
+  "experience": 500,
+  "grid": [
+    {
+      "ingredient": {
+        "neoforge:ingredient_type": "neoforge:components",
+        "components": {
+          "chromaticraft:adjacency_tier": 6
+        },
+        "items": "chromaticraft:adjacency_upgrade_lime"
+      },
+      "slot": 4
+    }
+  ],
+  "penalty_threshold": 24,
+  "required_progress": [
+    "ctm"
+  ],
+  "result": {
+    "components": {
+      "chromaticraft:adjacency_tier": 7
+    },
+    "id": "chromaticraft:adjacency_upgrade_lime"
+  },
+  "runes": [
+    {
+      "element": "lime",
+      "offset": [
+        0,
+        -1,
+        2
+      ]
+    }
+  ],
+  "stackable": false,
+  "stands": [
+    {
+      "ingredient": "minecraft:nether_star",
+      "offset": [
+        -2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "minecraft:nether_star",
+      "offset": [
+        2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "minecraft:nether_star",
+      "offset": [
+        2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "minecraft:nether_star",
+      "offset": [
+        -2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_lime",
+      "offset": [
+        0,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_lime",
+      "offset": [
+        2,
+        0,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_lime",
+      "offset": [
+        0,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_lime",
+      "offset": [
+        -2,
+        0,
+        0
+      ]
+    }
+  ],
+  "tier": "pylon"
+}

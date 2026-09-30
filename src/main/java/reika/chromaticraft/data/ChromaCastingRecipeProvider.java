@@ -440,6 +440,7 @@ public final class ChromaCastingRecipeProvider {
 			saveAuraPouch();
 			saveLumaCapsule();
 			saveTelePump();
+			saveAdjacencyUpgrades();
 			saveMagicPlants();
 			savePendants();
 			savePurificationGem();
@@ -879,6 +880,61 @@ public final class ChromaCastingRecipeProvider {
 							new AuraRequirement(CrystalElement.YELLOW, 2000)),
 					new ItemStackTemplate(ChromaItems.WORLD_RIFT.get(), 4),
 					600, 500).withPenaltyThreshold(6));
+		}
+
+		/**
+		 * V33a AdjacencyRecipe, a PylonCastingRecipe per implemented colour and tier (RecipesCastingTable): tier 0 is
+		 * cast on a Crystal Star with diamond corners, each later tier on the tier below (same colour, matched by tier
+		 * alone as V33a's isValidCentralNBT ignored stored energy) with iron, iron, gold, gold, diamond, emerald and
+		 * then Nether Star corners; the colour's charged shard on the four edges and its rune in the ring. It costs
+		 * 20000*(2*tier+1) of its colour and 500*(tier+1) yellow, takes the Pylon tier's 400 ticks times
+		 * (int)(1+tier/2), is typically made 32 at a time (penalty after 24), carries the centre's stored lumens over,
+		 * and the top four tiers need the dimension, structures, cores and CTM stages.
+		 */
+		private void saveAdjacencyUpgrades() {
+			Item[] upgrade = {Items.IRON_INGOT, Items.IRON_INGOT, Items.GOLD_INGOT, Items.GOLD_INGOT,
+					Items.DIAMOND, Items.EMERALD, Items.NETHER_STAR};
+			for (reika.chromaticraft.registry.AdjacencyUpgrades a : reika.chromaticraft.registry.AdjacencyUpgrades.upgrades) {
+				if (!a.isImplemented())
+					continue;
+				CrystalElement e = a.getColor();
+				Item item = ChromaBlocks.adjacencyUpgradeItem(a).get();
+				for (int tier = 0; tier < reika.chromaticraft.base.tileentity.TileEntityAdjacencyUpgrade.MAX_TIER; tier++) {
+					Ingredient corner = Ingredient.of(tier == 0 ? Items.DIAMOND : upgrade[tier-1]);
+					Ingredient shard = Ingredient.of(ChromaItems.BOOSTED_SHARDS.get(e).get());
+					List<CastingTableRecipe.StandIngredient> stands = List.of(
+							auxStand(-2, -2, corner), auxStand(2, -2, corner), auxStand(2, 2, corner), auxStand(-2, 2, corner),
+							auxStand(0, -2, shard), auxStand(2, 0, shard), auxStand(0, 2, shard), auxStand(-2, 0, shard));
+					Ingredient main = tier == 0
+							? Ingredient.of(ChromaItems.CLUSTERS.get(ChromaClusterItems.CRYSTAL_STAR).get())
+							: net.neoforged.neoforge.common.crafting.DataComponentIngredient.of(false,
+									net.minecraft.core.component.DataComponentPatch.builder()
+											.set(reika.chromaticraft.registry.ChromaDataComponents.ADJACENCY_TIER.get(), tier-1)
+											.build(), item);
+					List<ProgressStage> progress = switch (tier) {
+						case 7 -> List.of(ProgressStage.CTM);
+						case 6 -> List.of(ProgressStage.ALLCORES);
+						case 5 -> List.of(ProgressStage.STRUCTCOMPLETE);
+						case 4 -> List.of(ProgressStage.DIMENSION);
+						default -> List.of();
+					};
+					ItemStackTemplate result = new ItemStackTemplate(item.builtInRegistryHolder(), 1,
+							net.minecraft.core.component.DataComponentPatch.builder()
+									.set(reika.chromaticraft.registry.ChromaDataComponents.ADJACENCY_TIER.get(), tier)
+									.build());
+					saveRecipe("adjacency_upgrade/" + e.getEnglishName() + "_" + tier,
+							new CastingTableRecipe(CastingTableRecipe.Tier.PYLON, List.of(new GridIngredient(4, main)),
+									stands, List.of(runeRingRune(e)),
+									// V33a added both to one ElementTagCompound, so a yellow upgrade's costs sum.
+									e == CrystalElement.YELLOW
+											? List.of(new AuraRequirement(e, 20000*(tier*2+1)+500*(tier+1)))
+											: List.of(new AuraRequirement(e, 20000*(tier*2+1)),
+													new AuraRequirement(CrystalElement.YELLOW, 500*(tier+1))),
+									result, 400*(int)(1+tier/2D), 500, progress)
+									.withPenaltyThreshold(24)
+									.withCompletionBehavior(true, List.of(), List.of()));
+				}
+			}
 		}
 
 		/** Exact V33a FarmerRecipe, including all sixteen stands and both aura channels. */

@@ -18,7 +18,6 @@ import reika.chromaticraft.registry.CrystalElement;
 
 /** V33a's charged-storage-crystal machine base, with the original black efficiency upgrade scale. */
 public abstract class ChargedCrystalPowered extends InventoriedChromaticBase implements LumenConsumer {
-	private static final double[] COST_FACTOR = {0.9375, 0.875, 0.75, 0.625, 0.5, 0.25, 0.125, 0.0625};
 	private int efficiencyBoost;
 
 	protected ChargedCrystalPowered(BlockEntityType<?> type, BlockPos pos, BlockState state) {
@@ -68,7 +67,7 @@ public abstract class ChargedCrystalPowered extends InventoriedChromaticBase imp
 	protected final float getEnergyCostScale() {
 		float factor = this.getCostModifier();
 		if (efficiencyBoost > 0)
-			factor *= COST_FACTOR[Math.min(COST_FACTOR.length, efficiencyBoost) - 1];
+			factor *= reika.chromaticraft.tileentity.aoe.effect.TileEntityEfficiencyUpgrade.getCostFactor(Math.min(8, efficiencyBoost) - 1);
 		return factor;
 	}
 

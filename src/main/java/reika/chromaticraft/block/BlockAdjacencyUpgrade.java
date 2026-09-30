@@ -1,96 +1,90 @@
 /*******************************************************************************
  * @author Reika Kalseki
- * 
+ *
  * Copyright 2017
- * 
+ *
  * All rights reserved.
  * Distribution of the software in any form is only allowed with
  * explicit, prior permission from the owner.
  ******************************************************************************/
 package reika.chromaticraft.block;
 
-import java.util.ArrayList;
+import java.util.List;
 
-import net.minecraft.block.material.Material;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.AxisAlignedBB;
-import net.minecraft.util.IIcon;
-import net.minecraft.util.MovingObjectPosition;
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.level.block.RenderShape;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.loot.LootParams;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.Shapes;
+import net.minecraft.world.phys.shapes.VoxelShape;
 
-import reika.chromaticraft.auxiliary.ChromaStacks;
-import reika.chromaticraft.auxiliary.interfaces.NBTTile;
 import reika.chromaticraft.base.tileentity.TileEntityAdjacencyUpgrade;
-import reika.chromaticraft.registry.ChromaIcons;
-import reika.chromaticraft.registry.ChromaItems;
+import reika.chromaticraft.registry.AdjacencyUpgrades;
 import reika.chromaticraft.registry.ChromaTiles;
-import reika.chromaticraft.registry.CrystalElement;
-import reika.dragonapi.ModList;
-import reika.dragonapi.asm.dependentmethodstripper.ModDependent;
 
-import mcp.mobius.waila.api.IWailaConfigHandler;
-import mcp.mobius.waila.api.IWailaDataAccessor;
+/**
+ * V33a {@code BlockAdjacencyUpgrade}, one identity per implemented colour (V33a's metadata): no collision, a
+ * 0.375-block selection box in the middle, drawn only by its renderer (its icon was the transparent one). Breaking it,
+ * picking it, or sneak-popping it gives its colour's item with the tile's tier, stored lumens and owners.
+ */
+public class BlockAdjacencyUpgrade extends BlockChromaticTile {
 
+	private static final double R = 0.3125;
+	private static final VoxelShape SELECTION = Shapes.box(R, R, R, 1-R, 1-R, 1-R);
 
-public class BlockAdjacencyUpgrade extends BlockCrystalTileNonCube {
+	public final AdjacencyUpgrades upgrade;
 
-	public BlockAdjacencyUpgrade(Material mat) {
-		super(mat);
+	public BlockAdjacencyUpgrade(Properties props, AdjacencyUpgrades upgrade) {
+		super(props, ChromaTiles.ADJACENCY);
+		this.upgrade = upgrade;
 	}
 
 	@Override
-	public AxisAlignedBB getCollisionBoundingBoxFromPool(World world, int x, int y, int z) {
-		return null;
+	public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
+		return upgrade.createTileEntity(pos, state);
 	}
 
 	@Override
-	public AxisAlignedBB getSelectedBoundingBoxFromPool(World world, int x, int y, int z) {
-		double r = 0.3125;
-		AxisAlignedBB box = this.getBlockAABB(x, y, z).contract(r, r, r);
-		this.setBounds(box, x, y, z);
-		return box;
-	}
-
-
-	@Override
-	public IIcon getIcon(int s, int meta) {
-		return ChromaIcons.TRANSPARENT.getIcon();
+	protected VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+		return Shapes.empty();
 	}
 
 	@Override
-	public ArrayList<ItemStack> getPieces(World world, int x, int y, int z) {
-		ArrayList<ItemStack> li = new ArrayList();
-		int meta = world.getBlockMetadata(x, y, z);
-		li.add(ChromaStacks.crystalStar);
-		for (int i = 0; i < 4; i++) {
-			li.add(ChromaStacks.getChargedShard(CrystalElement.elements[meta]));
+	protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+		return SELECTION;
+	}
+
+	@Override
+	protected RenderShape getRenderShape(BlockState state) {
+		return RenderShape.INVISIBLE;
+	}
+
+	/** V33a harvested the colour's item with {@code getTagsToWriteToStack}, the tier among them. */
+	@Override
+	public List<ItemStack> getDrops(BlockState state, LootParams.Builder params) {
+		List<ItemStack> drops = super.getDrops(state, params);
+		if (params.getOptionalParameter(LootContextParams.BLOCK_ENTITY) instanceof TileEntityAdjacencyUpgrade te) {
+			for (ItemStack is : drops) {
+				if (is.is(this.asItem()))
+					te.writeToStack(is);
+			}
 		}
-		return li;
+		return drops;
 	}
 
+	/** V33a {@code getPickBlock}: the colour's item carrying the tile's data. */
 	@Override
-	protected ItemStack getHarvestedItemStack(World world, int x, int y, int z, int meta, ChromaTiles c) {
-		return ChromaItems.ADJACENCY.getStackOfMetadata(meta);
-	}
-
-	@Override
-	public final ItemStack getPickBlock(MovingObjectPosition target, World world, int x, int y, int z) {
-		int meta = world.getBlockMetadata(target.blockX, target.blockY, target.blockZ);
-		ChromaTiles m = ChromaTiles.getTileFromIDandMetadata(this, meta);
-		ItemStack is = this.getHarvestedItemStack(world, target.blockX, target.blockY, target.blockZ, meta, m);
-		NBTTagCompound nbt = new NBTTagCompound();
-		((TileEntityAdjacencyUpgrade)world.getTileEntity(target.blockX, target.blockY, target.blockZ)).getTagsToWriteToStack(nbt);
-		is.stackTagCompound = nbt.hasNoTags() ? null : (NBTTagCompound)nbt.copy();
+	protected ItemStack getCloneItemStack(LevelReader level, BlockPos pos, BlockState state, boolean includeData) {
+		ItemStack is = upgrade.getStackOfTier(0);
+		if (level.getBlockEntity(pos) instanceof TileEntityAdjacencyUpgrade te)
+			te.writeToStack(is);
 		return is;
 	}
 
-	@Override
-	@ModDependent(ModList.WAILA)
-	public ItemStack getWailaStack(IWailaDataAccessor acc, IWailaConfigHandler cfg) {
-		ItemStack is = ChromaItems.ADJACENCY.getStackOfMetadata(acc.getMetadata());
-		is.stackTagCompound = new NBTTagCompound();
-		((NBTTile)acc.getTileEntity()).getTagsToWriteToStack(is.stackTagCompound);
-		return is;
-	}
 }

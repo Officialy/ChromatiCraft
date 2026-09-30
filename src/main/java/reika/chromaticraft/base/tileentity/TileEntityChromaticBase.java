@@ -64,6 +64,14 @@ public abstract class TileEntityChromaticBase extends BlockEntityBase {
 		return this.getTile().getName();
 	}
 
+	/** V33a: a Tile Accelerator's extra ticks run only on tiles whose entry allows it. */
+	@Override
+	public final boolean allowTickAcceleration() {
+		// Structure tiles registered outside ChromaTiles report no entry; V33a had none of those.
+		ChromaTiles t = this.getTile();
+		return t == null || t.allowsAcceleration();
+	}
+
 	@Override
 	protected void onSetPlacer(Player ep) {
 		super.onSetPlacer(ep);

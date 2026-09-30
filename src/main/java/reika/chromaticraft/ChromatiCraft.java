@@ -91,6 +91,7 @@ public class ChromatiCraft extends DragonAPIMod {
 		ChromaBlocks.ITEMS.register(modEventBus);
 		ChromaItems.ITEMS.register(modEventBus);
 		ChromaBlockEntities.BLOCK_ENTITIES.register(modEventBus);
+		reika.chromaticraft.registry.ChromaDataComponents.COMPONENTS.register(modEventBus);
 		modEventBus.addListener(ChromaBlockEntities::registerCapabilities);
 		ChromaMenus.REGISTRY.register(modEventBus);
 		ChromaEntityTypes.ENTITY_TYPES.register(modEventBus);
@@ -163,6 +164,12 @@ public class ChromatiCraft extends DragonAPIMod {
 			// V33a postInit: ItemAuraPouch.setDefaultSpecialEffects() (every projectile tool fires from a pouch).
 			reika.chromaticraft.items.tools.ItemAuraPouch.setDefaultSpecialEffects(
 					ChromaItems.ITEMS.getEntries().stream().map(h -> (net.minecraft.world.item.Item)h.get()).toList());
+			// V33a postInit: ChromaTiles.loadPostMappings(), each implemented Adjacency Upgrade colour's initHandlers()
+			// and TileEntityWirelessPowered.loadAdjacencyHandler() (the accelerator blacklist and lexicon effect lists).
+			reika.chromaticraft.registry.ChromaTiles.loadPostMappings();
+			reika.chromaticraft.tileentity.aoe.effect.TileEntityAccelerator.initHandlers();
+			reika.chromaticraft.tileentity.aoe.effect.TileEntityEfficiencyUpgrade.initHandlers();
+			reika.chromaticraft.base.tileentity.TileEntityWirelessPowered.loadAdjacencyHandler();
 			// V33a load(): ModCropList.addCustomCropType(new CrystalPlantHandler()), so harvesters reap Crystal Blooms.
 			reika.chromaticraft.auxiliary.CrystalPlantHandler.register();
 			PylonFinder.registerTransparentBlock(RotaryBlocks.BLASTPANE.get());

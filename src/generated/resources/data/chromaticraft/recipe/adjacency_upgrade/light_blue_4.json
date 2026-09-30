@@ -1,0 +1,118 @@
+{
+  "type": "chromaticraft:casting",
+  "aura": [
+    {
+      "amount": 180000,
+      "element": "lightblue"
+    },
+    {
+      "amount": 2500,
+      "element": "yellow"
+    }
+  ],
+  "completion": {
+    "copy_center_custom_data": true
+  },
+  "duration": 1200,
+  "experience": 500,
+  "grid": [
+    {
+      "ingredient": {
+        "neoforge:ingredient_type": "neoforge:components",
+        "components": {
+          "chromaticraft:adjacency_tier": 3
+        },
+        "items": "chromaticraft:adjacency_upgrade_light_blue"
+      },
+      "slot": 4
+    }
+  ],
+  "penalty_threshold": 24,
+  "required_progress": [
+    "dimension"
+  ],
+  "result": {
+    "components": {
+      "chromaticraft:adjacency_tier": 4
+    },
+    "id": "chromaticraft:adjacency_upgrade_light_blue"
+  },
+  "runes": [
+    {
+      "element": "lightblue",
+      "offset": [
+        -2,
+        -1,
+        2
+      ]
+    }
+  ],
+  "stackable": false,
+  "stands": [
+    {
+      "ingredient": "minecraft:gold_ingot",
+      "offset": [
+        -2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "minecraft:gold_ingot",
+      "offset": [
+        2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "minecraft:gold_ingot",
+      "offset": [
+        2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "minecraft:gold_ingot",
+      "offset": [
+        -2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_light_blue",
+      "offset": [
+        0,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_light_blue",
+      "offset": [
+        2,
+        0,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_light_blue",
+      "offset": [
+        0,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_light_blue",
+      "offset": [
+        -2,
+        0,
+        0
+      ]
+    }
+  ],
+  "tier": "pylon"
+}

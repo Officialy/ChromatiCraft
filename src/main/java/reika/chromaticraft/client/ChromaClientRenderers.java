@@ -110,6 +110,8 @@ public final class ChromaClientRenderers {
 				reika.chromaticraft.render.item.FluidRelayItemRenderer.Unbaked.MAP_CODEC);
 		event.register(reika.chromaticraft.render.item.RiftItemRenderer.ID,
 				reika.chromaticraft.render.item.RiftItemRenderer.Unbaked.MAP_CODEC);
+		event.register(reika.chromaticraft.render.item.AdjacencyUpgradeItemRenderer.ID,
+				reika.chromaticraft.render.item.AdjacencyUpgradeItemRenderer.Unbaked.MAP_CODEC);
 		event.register(reika.chromaticraft.render.item.ParticleSpawnerItemRenderer.ID,
 				reika.chromaticraft.render.item.ParticleSpawnerItemRenderer.Unbaked.MAP_CODEC);
 		event.register(reika.chromaticraft.render.item.ChromaFlowerItemRenderer.ID,
@@ -245,6 +247,8 @@ public final class ChromaClientRenderers {
 				reika.chromaticraft.render.tesr.RenderFluidRelay::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.RIFT.get(),
 				reika.chromaticraft.render.tesr.RenderRift::new);
+		event.registerBlockEntityRenderer(ChromaBlockEntities.ADJACENCY.get(),
+				reika.chromaticraft.render.tesr.AdjacencyUpgradeRenderer::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.FLUID_DISTRIBUTOR.get(),
 				reika.chromaticraft.render.tesr.RenderFluidDistributor::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.PARTICLE_SPAWNER.get(),

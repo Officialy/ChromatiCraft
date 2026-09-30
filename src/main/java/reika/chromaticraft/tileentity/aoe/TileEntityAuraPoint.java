@@ -64,6 +64,18 @@ public class TileEntityAuraPoint extends TileEntityLocusPoint {
 		super(ChromaBlockEntities.AURA_POINT.get(), pos, state);
 	}
 
+	/** V33a: whether this player owns an Aura Point anywhere. */
+	public static boolean hasAuraPoints(Player ep) {
+		return hasAuraPoints(ep.getUUID());
+	}
+
+	/** V33a: whether the player with this UUID owns an Aura Point anywhere; false for no player. */
+	public static boolean hasAuraPoints(UUID uid) {
+		if (uid == null)
+			return false;
+		return TileEntityLocusPoint.hasLoci(TileEntityAuraPoint.class, uid);
+	}
+
 	@Override
 	public ChromaTiles getTile() {
 		return ChromaTiles.AURAPOINT;

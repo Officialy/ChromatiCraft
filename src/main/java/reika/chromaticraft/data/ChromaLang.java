@@ -29,6 +29,24 @@ public class ChromaLang extends LanguageProvider {
 		super(output, ChromatiCraft.MODID, locale);
 	}
 
+	/** V33a en_US adjacency.<colour> names, for the Adjacency Upgrade blocks. */
+	private static final java.util.Map<reika.chromaticraft.registry.AdjacencyUpgrades, String> ADJACENCY_NAMES = java.util.Map.ofEntries(
+			java.util.Map.entry(reika.chromaticraft.registry.AdjacencyUpgrades.BLACK, "Efficiency Augment"),
+			java.util.Map.entry(reika.chromaticraft.registry.AdjacencyUpgrades.RED, "Protection Core"),
+			java.util.Map.entry(reika.chromaticraft.registry.AdjacencyUpgrades.GREEN, "Growth Accelerator"),
+			java.util.Map.entry(reika.chromaticraft.registry.AdjacencyUpgrades.BROWN, "Mineral Enricher"),
+			java.util.Map.entry(reika.chromaticraft.registry.AdjacencyUpgrades.PURPLE, "Performance Enhancer"),
+			java.util.Map.entry(reika.chromaticraft.registry.AdjacencyUpgrades.CYAN, "Capacity Boost"),
+			java.util.Map.entry(reika.chromaticraft.registry.AdjacencyUpgrades.LIGHTGRAY, "Player Imitation Core"),
+			java.util.Map.entry(reika.chromaticraft.registry.AdjacencyUpgrades.GRAY, "Block Exchanger"),
+			java.util.Map.entry(reika.chromaticraft.registry.AdjacencyUpgrades.PINK, "Damage Booster"),
+			java.util.Map.entry(reika.chromaticraft.registry.AdjacencyUpgrades.LIME, "Range Expander"),
+			java.util.Map.entry(reika.chromaticraft.registry.AdjacencyUpgrades.YELLOW, "Energy Booster"),
+			java.util.Map.entry(reika.chromaticraft.registry.AdjacencyUpgrades.LIGHTBLUE, "Tile Accelerator"),
+			java.util.Map.entry(reika.chromaticraft.registry.AdjacencyUpgrades.MAGENTA, "Healing Core"),
+			java.util.Map.entry(reika.chromaticraft.registry.AdjacencyUpgrades.ORANGE, "Heat Relay"),
+			java.util.Map.entry(reika.chromaticraft.registry.AdjacencyUpgrades.WHITE, "Stability Focus"));
+
 	@Override
 	protected void addTranslations() {
 		add("commands.chromaticraft.locate_data_tower.success",
@@ -193,6 +211,12 @@ public class ChromaLang extends LanguageProvider {
 		add(ChromaItems.WORLD_RIFT.get(), "World Rift"); // V33a chroma.rift (ChromaItems.RIFT)
 		add(ChromaItems.AURA_POUCH.get(), "Aura Pouch"); // V33a chroma.aurapouch
 		add(ChromaBlocks.TELEPUMP.get(), "Teleportation Pump"); // V33a chroma.telepump
+		// V33a adjacency.<colour>: each Adjacency Upgrade's name (the items show these); BLUE never had one. The blocks of
+		// the implemented colours carry the same names.
+		for (var entry : ADJACENCY_NAMES.entrySet())
+			add("adjacency."+entry.getKey().name().toLowerCase(java.util.Locale.ROOT), entry.getValue());
+		for (var entry : ChromaBlocks.ADJACENCY_UPGRADES.entrySet())
+			add(entry.getValue().get(), ADJACENCY_NAMES.get(entry.getKey()));
 		add(ChromaItems.LUMA_CAPSULE.get(), "Luma Capsule"); // V33a chroma.etherpendant
 		add("effect.chromaticraft.void_gaze", "Void Gaze"); // V33a chromapotion.voidgaze
 		add("container.chromaticraft.aura_pouch", "Aura Pouch"); // V33a PouchInventory("Aura Pouch")

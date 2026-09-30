@@ -1813,6 +1813,44 @@ public abstract class ChromaParticle extends SingleQuadParticle {
         Minecraft.getInstance().particleEngine.add(fx);
     }
 
+    /**
+     * V33a {@code TileEntityAdjacencyUpgrade.spawnParticles}: skipped at random by the particle setting, then
+     * {@code (tier+1)/2} sparkles (a coin flip for one at tier 0) starting anywhere in the 4-block cube around the
+     * upgrade and drifting in towards it at an eighth of their offset per tick.
+     */
+    public static void spawnAdjacencyUpgrade(Level world, BlockPos pos, int tier, RandomSource rand) {
+        if (!(world instanceof ClientLevel level)) return;
+        int p2 = Minecraft.getInstance().options.particles().get().ordinal();
+        if (rand.nextInt(1+p2) != 0) return;
+        int p = tier > 0 ? (tier+1)/2 : rand.nextBoolean() ? 1 : 0;
+        int x = pos.getX();
+        int y = pos.getY();
+        int z = pos.getZ();
+        for (int i = 0; i < p; i++) {
+            double dx = x-2+rand.nextDouble()*4;
+            double dy = y-2+rand.nextDouble()*4;
+            double dz = z-2+rand.nextDouble()*4;
+            double vx = -(dx-x)/8;
+            double vy = -(dy-y)/8;
+            double vz = -(dz-z)/8;
+            Sparkle fx = new Sparkle(level, dx+0.5, dy+0.5, dz+0.5, vx, vy, vz, 0.5F);
+            fx.hasPhysics = false;
+            Minecraft.getInstance().particleEngine.add(fx);
+        }
+    }
+
+    /**
+     * V33a {@code TileEntityAdjacencyUpgrade.spawnActionParticles}: a rapidly expanding, alpha-fading blur in the
+     * upgrade's colour somewhere over the block it just acted on, living 8 to 40 ticks.
+     */
+    public static void spawnAdjacencyAction(Level world, BlockPos pos, Direction dir, int color, RandomSource rand) {
+        double o = 0.0625;
+        double px = pos.getX()+dir.getStepX()-o+rand.nextDouble()*(1+2*o);
+        double py = pos.getY()+dir.getStepY()-o+rand.nextDouble()*(1+2*o);
+        double pz = pos.getZ()+dir.getStepZ()-o+rand.nextDouble()*(1+2*o);
+        spawnIconFade(world, px, py, pz, 0, 0, 0, color, 8+rand.nextInt(33), 1F, "fade", true, true);
+    }
+
     /** V33a Glow Root's long-lived, falling, colliding purple/white blur. */
     public static void spawnGlowRoot(net.minecraft.world.level.Level level, BlockPos pos,
             net.minecraft.util.RandomSource random) {

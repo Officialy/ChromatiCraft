@@ -9721,3 +9721,56 @@ as time 0, so a world under a second old counts every pendant active); guarded, 
   fluidic essence ingots on the corners, resonating ingots down both outer sides, beacon dust at x +-2; 8000 black,
   16000 cyan, 32000 lime.
 - GameTest `teleportation_pump_scan` (test range 4, with a waterlogged chest that must survive); RotaryCraft `pump_drains_source`/`pump_drains_lava_source` pass.
+
+### Adjacency Upgrades: Tile Accelerator, Efficiency Augment, Range Expander — 2026-09-30
+
+- The V33a ADJACENCY family is ported on `TileEntityWirelessPowered` + `TileEntityAdjacencyUpgrade`, with three colours
+  bound: LIGHTBLUE `TileEntityAccelerator` ("Tile Accelerator"), BLACK `TileEntityEfficiencyUpgrade` ("Efficiency
+  Augment") and LIME `TileEntityRangeBoost` ("Range Expander"). `AdjacencyUpgrades` keeps all sixteen colours and their
+  render colours; a colour with no tile factory is unimplemented (no block, item, recipe or creative entry), which in
+  V33a meant only BLUE. The other twelve join as their effect tiles land (each adds its factory and its
+  `getFactor`/`getDesc` case).
+- Identities: `adjacency_upgrade_<colour>` block + `ItemAdjacencyPlacer` (a `BlockItem`) per implemented colour; one
+  shared `adjacency_upgrade` block entity type (V33a's single `chroma.accelerator` tile), whose factory builds the
+  colour's subclass. `ChromaTiles.ADJACENCY` uses LIGHTBLUE as the family's block and dispatches `createBlockEntity`.
+- The tier is the new `chromaticraft:adjacency_tier` data component (default 0 on the item), not custom data, because
+  the casting table matches its centre by component and V33a's `isValidCentralNBT` compared the tier while ignoring the
+  stored `energy`. Custom data still carries the energy (and owners, for owned tiles). Drops, pick-block, sneak-pop,
+  creative, lexicon and recipe stacks all write the tier.
+- Behaviour kept from V33a: redstone stops a core; with "Adjacency Upgrades Require Energy" on (default) it asks
+  wireless sources for its colour every 8 ticks (range 16, x1.5 with an Aura Point) and burns
+  `max(1, (tier+1)^2/4)` per 8 ticks, and machines count it only at >=100 stored. The request and burn run on the
+  server only (1.7.10 ran both sides against the same networker); the client reads synced energy. V33a's WIRELESS
+  packet had an empty client handler and is not sent.
+- **No wireless source is ported yet** (Ambient Lumen Distributor, Lumen Leaves), so in the default powered mode the
+  upgrades are inert in survival until the Distributor lands (next slice). With the option off they work at once.
+- Accelerator: runs the neighbour's own ticker `2^(tier+1)-1` extra times (1.7.10 `updateEntity`; a tile with no
+  ticker does nothing), stops for the tick at the configured lag budget and puffs cloud on that face for a second.
+  Blacklists: its own family, repeaters, Focus Crystal-accelerated tiles, V33a's listed tiles that exist
+  (`ChromaTiles.allowsAcceleration`), the name heuristics (conduit/wire/cable/solar/wind/water mill/appeng), and V33a's
+  by-name mod list (ICBM, DartCraft, Torcherino, ProjectRed — 1.7.10 class names, logged as not found). The class cache
+  is concurrent (both threads in singleplayer). `TileEntityChromaticBase.allowTickAcceleration` and RotaryCraft's
+  `RotaryCraftBlockEntity.allowTickAcceleration` (with Blast Furnace, Drying Bed, Composter, Hydrator re-enabled in
+  `MachineRegistry.allowsAcceleration`) gate the extra ticks as in V33a.
+- Range Expander: its own per-tick push is dormant exactly as in V33a (`specialInteractions` keyed by class, looked up by
+  tile instance, so it never matches); machines apply range through their own lookups. Not "fixed", which would apply
+  it twice. The pump now reads `TileEntityRangeBoost.getFactor`; `ChargedCrystalPowered` and `TileEntityRelayPowered`
+  read `TileEntityEfficiencyUpgrade.getCostFactor` (the copied tables are gone).
+- `BlockChromaticTile.neighborChanged` now dispatches `AdjacentUpdateWatcher.onAdjacentUpdate` on the server
+  (V33a `BlockChromaTile.onNeighborBlockChange`); nothing called it before, so lumen consumers never recounted their
+  augments after the first tick and receiver multiblocks never revalidated on neighbour edits.
+- Effect descriptions (lexicon data) are kept as `AdjacencyEffectDescription`/`EffectDisplay` with lazily resolved item
+  suppliers (static initialisers in unported machines call `getOrCreateAdjacencyCheckHandler` before components bind).
+  The lexicon's adjacency page itself is not ported yet. `initHandlers` run from common setup (V33a postInit).
+- DRAGONAPI-PORT: Thaumic Tinkerer transvector relaying and `MultiblockControllerFinder` (1.7.10 IE/Railcraft classes)
+  have no 26.3 targets; the face's own tile is used. Not ported yet: `AdjacencyUpgradeAPIImpl` (so RotaryCraft's and
+  ElectriCraft's V33a accelerator blacklists via the API are still CHROMA-PORT markers) and the special accelerations
+  (Forestry apiary/multifarm, IC2 reactor).
+- Renderer: `AdjacencyUpgradeRenderer` (three line rings from V33a's GL_LINE_LOOPs as segment pairs, width 4; the
+  camera-facing glow section) and `AdjacencyUpgradeItemRenderer` (the out-of-world cross, tier from the stack).
+- Casting: V33a AdjacencyRecipe for each implemented colour and tier 0-7 (Crystal Star centre at tier 0, then the tier
+  below by `DataComponentIngredient`; corner and charged-shard stands; the colour's ring rune; 20000*(2t+1) of the
+  colour + 500*(t+1) yellow, summed for a yellow upgrade; 400*(int)(1+t/2) ticks; penalty after 24; centre custom data
+  (energy) carried over; DIMENSION/STRUCTCOMPLETE/ALLCORES/CTM on tiers 4-7).
+- GameTests: `adjacency_accelerator_furnace`, `adjacency_tier_roundtrip`, `adjacency_efficiency_provider`,
+  `adjacency_recipe_centre`.

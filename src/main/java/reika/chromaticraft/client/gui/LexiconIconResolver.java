@@ -22,6 +22,9 @@ public final class LexiconIconResolver {
 	private LexiconIconResolver() {}
 
 	public static ItemStack icon(LexiconCatalog.Entry entry) {
+		// V33a ChromaResearch.ACCEL's icon is the light blue Tile Accelerator, though its stacks list runs from black.
+		if ("adjacency".equals(entry.sourceId()))
+			return reika.chromaticraft.registry.AdjacencyUpgrades.LIGHTBLUE.getStackOfTier(0);
 		List<ItemStack> icons = icons(entry);
 		return icons.isEmpty() ? ItemStack.EMPTY : icons.getFirst();
 	}
@@ -78,6 +81,15 @@ public final class LexiconIconResolver {
 				for (CrystalElement element : CrystalElement.elements) {
 					items.add(new ItemStack(ChromaItems.PENDANTS.get(element).get()));
 					items.add(new ItemStack(ChromaItems.BOOSTED_PENDANTS.get(element).get()));
+				}
+			}
+			// V33a ChromaResearch.getItemStacks for ACCEL: every tier of each implemented colour.
+			case "adjacency" -> {
+				for (reika.chromaticraft.registry.AdjacencyUpgrades a : reika.chromaticraft.registry.AdjacencyUpgrades.upgrades) {
+					if (a.isImplemented()) {
+						for (int k = 0; k < reika.chromaticraft.base.tileentity.TileEntityAdjacencyUpgrade.MAX_TIER; k++)
+							items.add(a.getStackOfTier(k));
+					}
 				}
 			}
 			case "shards" -> addElements(items, element -> ChromaItems.SHARDS.get(element).get());
