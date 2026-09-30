@@ -7440,6 +7440,12 @@ public final class ChromaGameTests {
 			level.setBlock(p, Blocks.STONE.defaultBlockState(), 3);
 		level.setBlock(water, Blocks.WATER.defaultBlockState(), 3);
 		level.setBlock(lava, Blocks.LAVA.defaultBlockState(), 3);
+		// A waterlogged chest in range is not a water source: it must be neither counted nor taken.
+		BlockPos chestPos = helper.absolutePos(new BlockPos(0, 1, 4));
+		level.setBlock(chestPos, Blocks.CHEST.defaultBlockState()
+				.setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.WATERLOGGED, true), 3);
+		((net.minecraft.world.level.block.entity.ChestBlockEntity)level.getBlockEntity(chestPos))
+				.setItem(0, new ItemStack(Items.DIAMOND));
 		level.setBlock(pumpPos, ChromaBlocks.TELEPUMP.get().defaultBlockState(), 3);
 		var pump = (reika.chromaticraft.tileentity.acquisition.TileEntityTeleportationPump)level.getBlockEntity(pumpPos);
 		pump.overrideRangeForTest(4);
@@ -7467,6 +7473,8 @@ public final class ChromaGameTests {
 			helper.assertTrue(ItemStorageCrystal.getStoredEnergy(pump.getItem(0), CrystalElement.LIME) == 4_500
 					&& ItemStorageCrystal.getStoredEnergy(pump.getItem(0), CrystalElement.CYAN) == 4_750,
 					"taking the source must spend 500 lime and 250 cyan");
+			helper.assertTrue(level.getBlockEntity(chestPos) instanceof net.minecraft.world.level.block.entity.ChestBlockEntity c
+					&& c.getItem(0).is(Items.DIAMOND), "the waterlogged chest and its contents must survive");
 		});
 	}
 

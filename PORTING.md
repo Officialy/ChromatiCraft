@@ -9712,9 +9712,11 @@ as time 0, so a world under a second old counts every pendant active); guarded, 
   - Range: `AdjacencyUpgrade.getAdjacentTier(..., LIME)` with V33a's Range Boost factors (the shared lookup
     `ChargedCrystalPowered` now uses for black efficiency). It finds nothing until the Range Boost tile is ported --
     V33a's behaviour with no boost placed.
-- DragonAPI: `getDrainableFluid` returns only source blocks, as 1.7.10 did (the port returned a bucket for flowing
-  liquid; RotaryCraft's pump had guarded against that itself); `ReikaFluidHelper.fluidComparator` is ported.
+- DragonAPI: `getDrainableFluid` returns only liquid source blocks (`LiquidBlock`), as 1.7.10 did. The port returned a
+  bucket for flowing liquid (RotaryCraft's pump had guarded against that itself) and for any block with a source fluid
+  state, so waterlogged chests, stairs and kelp would have been counted and deleted; the pump's `matchInWorld` also
+  requires a liquid block. `ReikaFluidHelper.fluidComparator` is ported.
 - Casting: V33a TelePumpRecipe, Pylon tier on an Energized Energy Core: glass rows at z +-2, cobblestone rows at z +-4,
   fluidic essence ingots on the corners, resonating ingots down both outer sides, beacon dust at x +-2; 8000 black,
   16000 cyan, 32000 lime.
-- GameTest `teleportation_pump_scan` (test range 4); RotaryCraft `pump_drains_source`/`pump_drains_lava_source` pass.
+- GameTest `teleportation_pump_scan` (test range 4, with a waterlogged chest that must survive); RotaryCraft `pump_drains_source`/`pump_drains_lava_source` pass.

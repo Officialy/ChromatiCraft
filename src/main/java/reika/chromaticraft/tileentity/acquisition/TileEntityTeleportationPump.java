@@ -489,9 +489,15 @@ public class TileEntityTeleportationPump extends ChargedCrystalPowered implement
 			amount = amt;
 		}
 
-		/** V33a: the block there is still this fluid's block, at any level (V33a matched the block, not its metadata). */
+		/**
+		 * V33a: the block there is still this fluid's liquid block, at any level (V33a matched the block, not its
+		 * metadata). A waterlogged block now standing there is not taken.
+		 */
 		public boolean matchInWorld(Level world) {
-			Fluid found = ReikaFluidHelper.lookupFluidForBlock(world.getBlockState(location));
+			BlockState state = world.getBlockState(location);
+			if (!(state.getBlock() instanceof net.minecraft.world.level.block.LiquidBlock))
+				return false;
+			Fluid found = ReikaFluidHelper.lookupFluidForBlock(state);
 			return found != null && found.isSame(fluid);
 		}
 
