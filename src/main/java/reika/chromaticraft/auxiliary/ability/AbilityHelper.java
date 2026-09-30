@@ -194,4 +194,19 @@ public final class AbilityHelper implements AbilityAPI {
 				? this.getUsageElementsFor(a, player)
 				: new ElementTagCompound();
 	}
+
+	/**
+	 * V33a: put a stack into the player's linked ME network (ME Inventory Link); returns how many went in. The ME
+	 * work itself lives in the AE-only {@code MEInventoryAbility}.
+	 */
+	public int addStackToMESystem(Player ep, net.minecraft.world.item.ItemStack is) {
+		if (!reika.dragonapi.ModList.APPENG.isLoaded())
+			return 0;
+		return reika.chromaticraft.modinterface.ae.MEInventoryAbility.addStackToMESystem(ep, is);
+	}
+
+	public void saveMESystemLocation(Player ep, net.minecraft.world.level.Level world, net.minecraft.core.BlockPos pos, int s) {
+		if (reika.dragonapi.ModList.APPENG.isLoaded())
+			reika.chromaticraft.modinterface.ae.MEInventoryAbility.saveMESystemLocation(ep, world, pos, s);
+	}
 }

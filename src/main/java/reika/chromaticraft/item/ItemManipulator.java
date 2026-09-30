@@ -236,6 +236,15 @@ public class ItemManipulator extends Item {
 			return InteractionResult.SUCCESS;
 		}
 
+		// V33a: clicking any ME grid block binds the player's ME Inventory Link ability to that network.
+		if (reika.dragonapi.ModList.APPENG.isLoaded()
+				&& reika.chromaticraft.modinterface.ae.MEInventoryAbility.isGridHost(level, pos)) {
+			if (!level.isClientSide())
+				reika.chromaticraft.modinterface.ae.MEInventoryAbility.saveMESystemLocation(player, level, pos,
+						context.getClickedFace().get3DDataValue());
+			return InteractionResult.SUCCESS;
+		}
+
 		// Generic API hook, so third-party and not-yet-ported tiles can claim the click themselves.
 		if (tile instanceof ManipulatorInteraction hook) {
 			Direction face = context.getClickedFace();

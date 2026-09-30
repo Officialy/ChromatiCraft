@@ -93,6 +93,9 @@ public class ChromatiCraft extends DragonAPIMod {
 		ChromaBlockEntities.BLOCK_ENTITIES.register(modEventBus);
 		reika.chromaticraft.registry.ChromaDataComponents.COMPONENTS.register(modEventBus);
 		modEventBus.addListener(ChromaBlockEntities::registerCapabilities);
+		// V33a AbilityHelper: the ME Inventory Link chromability's handlers, only with Applied Energistics 2.
+		if (reika.dragonapi.ModList.APPENG.isLoaded())
+			reika.chromaticraft.modinterface.ae.MEInventoryAbility.register();
 		ChromaMenus.REGISTRY.register(modEventBus);
 		ChromaEntityTypes.ENTITY_TYPES.register(modEventBus);
 		modEventBus.addListener(EntityGlowCloud::registerAttributes);

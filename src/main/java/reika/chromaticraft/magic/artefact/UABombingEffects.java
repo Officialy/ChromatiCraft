@@ -24,8 +24,8 @@ import reika.dragonapi.instantiable.data.WeightedRandom;
  * holds it. Carried, it rolls an entity effect (displacement 50, lightning 5); stored, a container effect
  * (drain nearby power 100, fling an item 20, explode 2).
  *
- * <p>CHROMA-PORT: with Applied Energistics present, V33a also drained any ME network whose unshielded
- * storage cells held an artefact. AE2 has no 26.2 build.
+ * <p>With Applied Energistics present, V33a also drained any ME network whose unshielded storage cells held an
+ * artefact: see {@code modinterface.ae.UAMESystemEffect}, registered from ChromatiCraft's constructor.
  */
 public class UABombingEffects {
 

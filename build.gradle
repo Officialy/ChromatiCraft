@@ -661,6 +661,7 @@ sourceSets.main.java {
     include 'reika/chromaticraft/auxiliary/recipemanagers/AbilityRituals.java'
     include 'reika/chromaticraft/registry/Chromabilities.java'
     include 'reika/chromaticraft/auxiliary/ability/AbilityHelper.java'
+    include 'reika/chromaticraft/modinterface/ae/MEInventoryAbility.java'
     include 'reika/chromaticraft/auxiliary/ability/AbilityEffects.java'
     include 'reika/chromaticraft/auxiliary/ability/AbilityDeathHandler.java'
     include 'reika/chromaticraft/auxiliary/ability/ChromabilityHandler.java'
