@@ -28,7 +28,7 @@ public class UAMESystemEffect extends MESystemReader.ItemInSystemEffect {
 	}
 
 	public UAMESystemEffect() {
-		super(new ItemStack(ChromaBlocks.UNKNOWN_ARTEFACT_ITEM.get()));
+		super(() -> new ItemStack(ChromaBlocks.UNKNOWN_ARTEFACT_ITEM.get()), false);
 	}
 
 	@Override
