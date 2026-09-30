@@ -431,6 +431,7 @@ public final class ChromaGameTests {
 		register(event, env, "wands_basic", 60, ChromaGameTests::wandsBasic);
 		register(event, env, "fluid_relay_transfer", 60, ChromaGameTests::fluidRelayTransfer);
 		register(event, env, "world_rift_link", 40, ChromaGameTests::worldRiftLink);
+		register(event, env, "world_rift_far_link", 200, ChromaGameTests::worldRiftFarLink);
 		register(event, env, "fluid_distributor_transfer", 60, ChromaGameTests::fluidDistributorTransfer);
 		register(event, env, "creative_tiered_resource_access", ChromaGameTests::creativeTieredResourceAccess);
 		register(event, env, "rainbow_tree_shape_and_log", ChromaGameTests::rainbowTreeShapeAndLog);
@@ -7211,6 +7212,49 @@ public final class ChromaGameTests {
 			helper.assertTrue(dropped == 2, "each end must drop one World Rift item; found " + dropped);
 			helper.succeed();
 		});
+	}
+
+	/**
+	 * V33a World Rift linking across distance, from a stack of exactly two: the first end, placed ~13 chunks away, has
+	 * had its chunk unload by the time the second (the stack's last item) is placed. V33a's getTileEntity loaded it on
+	 * demand, and a size-0 1.7.10 stack kept its link NBT, so the pair must still link.
+	 */
+	private static void worldRiftFarLink(GameTestHelper helper) {
+		var level = helper.getLevel();
+		var near = helper.absolutePos(new BlockPos(2, 2, 2));
+		var far = near.offset(208, 0, 0);
+		level.setBlock(near.below(), Blocks.STONE.defaultBlockState(), 3);
+		level.setBlock(far.below(), Blocks.STONE.defaultBlockState(), 3);
+		level.setBlock(far, Blocks.AIR.defaultBlockState(), 3);
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		player.setGameMode(GameType.SURVIVAL);
+		player.setPos(near.getX()+0.5, near.getY()+12, near.getZ()+0.5);
+		ItemStack rifts = new ItemStack(ChromaItems.WORLD_RIFT.get(), 2);
+		player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, rifts);
+		rifts.useOn(new net.minecraft.world.item.context.UseOnContext(player, net.minecraft.world.InteractionHand.MAIN_HAND,
+				new BlockHitResult(Vec3.atCenterOf(far.below()).add(0, 0.5, 0), Direction.UP, far.below(), false)));
+		helper.assertTrue(level.getBlockEntity(far) instanceof reika.chromaticraft.tileentity.transport.TileEntityRift,
+				"the far end must be placed");
+		pollUntilUnloaded(helper, far, 0, () -> {
+			rifts.useOn(new net.minecraft.world.item.context.UseOnContext(player, net.minecraft.world.InteractionHand.MAIN_HAND,
+					new BlockHitResult(Vec3.atCenterOf(near.below()).add(0, 0.5, 0), Direction.UP, near.below(), false)));
+			var b = (reika.chromaticraft.tileentity.transport.TileEntityRift)level.getBlockEntity(near);
+			helper.assertTrue(b != null && b.isLinked() && b.getLinkTarget().equals(level, far),
+					"the second end, the stack's last item, must link to the first although its chunk had unloaded");
+			var a = (reika.chromaticraft.tileentity.transport.TileEntityRift)level.getBlockEntity(far);
+			helper.assertTrue(a.isLinked() && a.getLinkTarget().equals(level, near) && a.isPrimary(),
+					"the far end must link back and become primary");
+			helper.succeed();
+		});
+	}
+
+	private static void pollUntilUnloaded(GameTestHelper helper, BlockPos pos, int waited, Runnable then) {
+		if (!helper.getLevel().isLoaded(pos)) {
+			then.run();
+			return;
+		}
+		helper.assertTrue(waited < 150, "the far chunk never unloaded, so this cannot test an unloaded link");
+		helper.runAfterDelay(5, () -> pollUntilUnloaded(helper, pos, waited+5, then));
 	}
 
 	/**

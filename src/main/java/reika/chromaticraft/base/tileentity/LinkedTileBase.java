@@ -67,7 +67,9 @@ public abstract class LinkedTileBase extends TileEntityChromaticBase implements 
 		this.resetOther();
 		target = new WorldLocation(world, pos);
 		this.createRandomLinkID();
-		LinkedTile other = this.getOther();
+		// V33a read the far tile with getTileEntity, which loaded its chunk on demand, so a pair links however far
+		// apart its ends are. getOther() only answers for chunks already held loaded, so resolve it directly here.
+		LinkedTile other = world.getBlockEntity(pos) instanceof LinkedTile linked ? linked : null;
 		if (other == null) {
 			target = null;
 			return false;

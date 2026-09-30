@@ -57,7 +57,9 @@ public class BlockRift extends BlockChromaticTile {
 	public void neighborChanged(BlockState state, Level world, BlockPos pos, Block id, @Nullable Orientation orientation,
 			boolean movedByPiston) {
 		super.neighborChanged(state, world, pos, id, orientation, movedByPiston);
-		if (id != this && !id.defaultBlockState().isAir() && world.getBlockEntity(pos) instanceof TileEntityRift te)
+		// 1.7.10 notified neighbours only on the server; 26.x runs these updates on the client too.
+		if (!world.isClientSide() && id != this && !id.defaultBlockState().isAir()
+				&& world.getBlockEntity(pos) instanceof TileEntityRift te)
 			te.passThrough();
 	}
 

@@ -9605,3 +9605,15 @@ as time 0, so a world under a second old counts every pendant active); guarded, 
 - GameTest `world_rift_link`: placement and linking through the item, fluid to an Enchanter, items to a chest
   after the Manipulator picks a face, the lever/lamp redstone mirror, the rift-loop guard, and the sneak-pop drop
   of two items.
+- Follow-ups (2026-09-30):
+  - Linking across distance: V33a's `getTileEntity` loaded the first end's chunk on demand (1.7.10's
+    `loadChunkOnProvideRequest` is never turned off), so a pair linked however far apart. The placer and
+    `LinkedTileBase.linkTo` now read the far tile with `getBlockEntity` (which loads it); `getOther()` answers only
+    for ticket-held chunks, and a sync-loaded chunk is not one.
+  - The placer reads the pending location before spending the item: a 26.x stack that reaches zero drops its
+    components (a 1.7.10 size-0 stack kept its NBT), so a pair placed from a stack of exactly two never linked.
+  - `BlockRift.neighborChanged` passes through on the server only, as 1.7.10 notified neighbours only there.
+  - Open decision: at runtime V33a also forwarded into an unloaded far chunk (loading it on every access). The
+    port forwards only while the far end is loaded (both ends in loaded areas, or the World Rifts Chunkload option
+    on); unloaded, the rift passes nothing.
+  - GameTest `world_rift_far_link`: the first end ~13 chunks away, its chunk unloaded, linked from the last item.

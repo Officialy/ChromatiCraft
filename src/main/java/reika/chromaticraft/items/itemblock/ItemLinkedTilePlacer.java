@@ -70,10 +70,13 @@ public class ItemLinkedTilePlacer extends Item {
 			return InteractionResult.PASS;
 		if (world.isClientSide())
 			return InteractionResult.SUCCESS;
+		// Read before the decrement: a 26.x stack that reaches zero drops its components, where a 1.7.10 stack kept
+		// its NBT at size 0, so the last item of a stack could never complete a pair.
+		WorldLocation pending = getRiftLocation(is);
 		if (ep == null || !ep.getAbilities().instabuild)
 			is.shrink(1);
 		world.setBlock(pos, this.getBlock().defaultBlockState(), 3);
-		linkTile(world, pos, is, ep);
+		linkTile(world, pos, is, ep, pending);
 		return InteractionResult.SUCCESS;
 	}
 
@@ -83,21 +86,22 @@ public class ItemLinkedTilePlacer extends Item {
 				|| world.getFluidState(pos).is(FluidTags.LAVA);
 	}
 
-	static void linkTile(Level world, BlockPos pos, ItemStack is, @Nullable Player ep) {
+	static void linkTile(Level world, BlockPos pos, ItemStack is, @Nullable Player ep, @Nullable WorldLocation loc) {
 		// V33a ReikaSoundHelper.playPlaceSound(world, x, y, z, Blocks.wool): the cloth step sound, broadcast.
 		SoundType wool = SoundType.WOOL;
 		world.playSound(null, pos, wool.getStepSound(), SoundSource.BLOCKS, wool.getVolume(), wool.getPitch());
 		LinkedTile te = (LinkedTile)world.getBlockEntity(pos);
 		if (ep != null)
 			te.setPlacer(ep);
-		WorldLocation loc = getRiftLocation(is);
 		if (loc == null) {
 			saveRiftLocation(world, pos, is);
 		}
 		else {
 			if (!loc.equals(world, pos)) {
 				Level other = loc.getWorld();
-				BlockEntity tile2 = other != null && other.isLoaded(loc.pos) ? other.getBlockEntity(loc.pos) : null;
+				// V33a loc.getTileEntity() loaded the first end's chunk on demand (1.7.10 never refused a provide
+				// request), so a pair can be linked however far apart its ends are placed.
+				BlockEntity tile2 = other != null ? other.getBlockEntity(loc.pos) : null;
 				if (tile2 instanceof LinkedTile te2) {
 					te.linkTo(loc);
 					te2.setPrimary(true);
