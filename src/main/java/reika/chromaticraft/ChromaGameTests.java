@@ -439,6 +439,7 @@ public final class ChromaGameTests {
 		register(event, env, "teleportation_pump_scan", 600, ChromaGameTests::teleportationPumpScan);
 		register(event, env, "adjacency_accelerator_furnace", 100, ChromaGameTests::adjacencyAcceleratorFurnace);
 		register(event, env, "adjacency_tier_roundtrip", ChromaGameTests::adjacencyTierRoundtrip);
+		register(event, env, "adjacency_accelerator_gate", 60, ChromaGameTests::adjacencyAcceleratorGate);
 		register(event, env, "adjacency_efficiency_provider", ChromaGameTests::adjacencyEfficiencyProvider);
 		register(event, env, "adjacency_recipe_centre", ChromaGameTests::adjacencyRecipeCentre);
 		register(event, env, "fluid_distributor_transfer", 60, ChromaGameTests::fluidDistributorTransfer);
@@ -7491,6 +7492,34 @@ public final class ChromaGameTests {
 			helper.assertTrue(control.getItem(2).isEmpty(), "an unaccelerated furnace cannot have smelted in 60 ticks");
 			helper.assertTrue(stopped.getItem(2).isEmpty(), "a redstone signal must stop the accelerator");
 			helper.assertTrue(unpowered.getItem(2).isEmpty(), "a powered-mode accelerator with no lumens must do nothing");
+			helper.succeed();
+		});
+	}
+
+	/**
+	 * V33a {@code allowTickAcceleration}: a RotaryCraft machine not on MachineRegistry.allowsAcceleration (the Smoke
+	 * Detector, whose tick counter only climbs without a coil) is not ticked any faster by a powered tier 2 core.
+	 */
+	private static void adjacencyAcceleratorGate(GameTestHelper helper) {
+		var level = helper.getLevel();
+		BlockPos gatedPos = helper.absolutePos(new BlockPos(0, 1, 0));
+		BlockPos controlPos = helper.absolutePos(new BlockPos(4, 1, 4));
+		// A Smoke Detector hangs from a ceiling and drops on a neighbour update without one.
+		level.setBlock(gatedPos.above(), Blocks.STONE.defaultBlockState(), 3);
+		level.setBlock(controlPos.above(), Blocks.STONE.defaultBlockState(), 3);
+		level.setBlock(gatedPos, reika.rotarycraft.registry.RotaryBlocks.SMOKE_DETECTOR.get().defaultBlockState(), 3);
+		level.setBlock(controlPos, reika.rotarycraft.registry.RotaryBlocks.SMOKE_DETECTOR.get().defaultBlockState(), 3);
+		placeAdjacency(helper, new BlockPos(1, 1, 0), reika.chromaticraft.registry.AdjacencyUpgrades.LIGHTBLUE, 2, true);
+		helper.runAtTickTime(40, () -> {
+			helper.assertTrue(level.getBlockEntity(gatedPos) instanceof reika.rotarycraft.base.blockentity.RotaryCraftBlockEntity
+					&& level.getBlockEntity(controlPos) instanceof reika.rotarycraft.base.blockentity.RotaryCraftBlockEntity,
+					"both detectors must stand; gated " + level.getBlockState(gatedPos) + " " + level.getBlockEntity(gatedPos)
+							+ ", control " + level.getBlockState(controlPos) + " " + level.getBlockEntity(controlPos));
+			var gated = (reika.rotarycraft.base.blockentity.RotaryCraftBlockEntity)level.getBlockEntity(gatedPos);
+			var control = (reika.rotarycraft.base.blockentity.RotaryCraftBlockEntity)level.getBlockEntity(controlPos);
+			helper.assertTrue(control.getTick() > 20 && Math.abs(gated.getTick()-control.getTick()) <= 1,
+					"a machine that disallows acceleration must tick at the natural rate beside a Tile Accelerator; gated "
+							+ gated.getTick() + ", control " + control.getTick());
 			helper.succeed();
 		});
 	}

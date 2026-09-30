@@ -62,14 +62,14 @@ public class ItemAdjacencyPlacer extends BlockItem {
 		if (!isOpen(world, pos)) {
 			pos = pos.relative(context.getClickedFace());
 			if (!isOpen(world, pos))
-				return InteractionResult.FAIL;
+				return InteractionResult.PASS;
 		}
 		if (!this.checkValidBounds(is, ep, world, pos))
-			return InteractionResult.FAIL;
+			return InteractionResult.PASS;
 		if (!world.getEntitiesOfClass(LivingEntity.class, new AABB(pos)).isEmpty())
-			return InteractionResult.FAIL;
+			return InteractionResult.PASS;
 		if (ep != null && !ep.mayUseItemAt(pos, Direction.DOWN, is))
-			return InteractionResult.FAIL;
+			return InteractionResult.PASS;
 		if (world.isClientSide())
 			return InteractionResult.SUCCESS;
 		// Copied before the decrement: a 26.x stack that reaches zero drops its components, where a 1.7.10 stack

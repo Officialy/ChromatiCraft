@@ -9751,7 +9751,10 @@ as time 0, so a world under a second old counts every pendant active); guarded, 
   by-name mod list (ICBM, DartCraft, Torcherino, ProjectRed — 1.7.10 class names, logged as not found). The class cache
   is concurrent (both threads in singleplayer). `TileEntityChromaticBase.allowTickAcceleration` and RotaryCraft's
   `RotaryCraftBlockEntity.allowTickAcceleration` (with Blast Furnace, Drying Bed, Composter, Hydrator re-enabled in
-  `MachineRegistry.allowsAcceleration`) gate the extra ticks as in V33a.
+  `MachineRegistry.allowsAcceleration`) answer V33a's gate. V33a applied it inside `TileEntityBase.updateEntity`;
+  the port's tile tickers run the real body after that call regardless (so the gate alone skipped nothing -- a
+  Smoke Detector beside a tier 2 core ticked 308 times in 40), so the accelerator checks each tile's
+  `allowTickAcceleration` itself before its extra ticks, per tile and uncached. GameTest `adjacency_accelerator_gate`.
 - Range Expander: its own per-tick push is dormant exactly as in V33a (`specialInteractions` keyed by class, looked up by
   tile instance, so it never matches); machines apply range through their own lookups. Not "fixed", which would apply
   it twice. The pump now reads `TileEntityRangeBoost.getFactor`; `ChargedCrystalPowered` and `TileEntityRelayPowered`

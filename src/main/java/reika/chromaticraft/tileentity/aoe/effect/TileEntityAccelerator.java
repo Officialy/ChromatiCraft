@@ -45,6 +45,7 @@ import reika.chromaticraft.registry.ChromaOptions;
 import reika.chromaticraft.registry.ChromaTiles;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.dragonapi.ModList;
+import reika.dragonapi.base.BlockEntityBase;
 import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
 
 /**
@@ -254,7 +255,12 @@ public class TileEntityAccelerator extends TileEntityAdjacencyUpgrade {
 				}
 			}
 			else {
-				BlockEntityTicker<BlockEntity> ticker = tickerOf(world, te);
+				// V33a gated this inside TileEntityBase.updateEntity: an accelerated (non-natural) tick of a tile that
+				// disallows acceleration returned at once. The port's tile tickers run the real body after that gate
+				// regardless, so the gate is applied here, per tile (RotaryCraft's answer depends on the machine), and
+				// never cached by class. The core still reports acting on it, as V33a's no-op calls did.
+				boolean gated = te instanceof BlockEntityBase base && !base.allowTickAcceleration();
+				BlockEntityTicker<BlockEntity> ticker = gated ? null : tickerOf(world, te);
 				for (int k = 0; k < max; k++) {
 					if (debugLevel > 2) {
 						ChromatiCraft.LOGGER.info("Ticked "+te+" "+k+"th time");
