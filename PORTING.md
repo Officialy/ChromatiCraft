@@ -9613,9 +9613,10 @@ as time 0, so a world under a second old counts every pendant active); guarded, 
   - The placer reads the pending location before spending the item: a 26.x stack that reaches zero drops its
     components (a 1.7.10 size-0 stack kept its NBT), so a pair placed from a stack of exactly two never linked.
   - `BlockRift.neighborChanged` passes through on the server only, as 1.7.10 notified neighbours only there.
-  - Open decision: at runtime V33a also forwarded into an unloaded far chunk (loading it on every access). The
-    port forwards only while the far end is loaded (both ends in loaded areas, or the World Rifts Chunkload option
-    on); unloaded, the rift passes nothing.
+  - Runtime, as V33a (decided 2026-09-30): every access to the far end loads its area on demand -- the partner
+    lookup, the far-side capability views and `WorldRift.forward` for RotaryCraft/ElectriCraft. Since the near rift
+    reads its partner every tick, a linked rift keeps its far end loaded while the near end is active. The separate
+    World Rifts Chunkload option (V33a default off) still force-loads the 5x5 chunks around each end.
   - GameTest `world_rift_far_link`: the first end ~13 chunks away, its chunk unloaded, linked from the last item.
 
 ### World Rift support in RotaryCraft and ElectriCraft — 2026-09-30

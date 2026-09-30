@@ -134,11 +134,16 @@ public abstract class LinkedTileBase extends TileEntityChromaticBase implements 
 	protected void onReset() {}
 	protected void onResetOther(LinkedTile other) {}
 
+	/**
+	 * V33a {@code getLinkTarget().getTileEntity()}: on the server this loads the far end's chunk if it is not loaded,
+	 * as 1.7.10's chunk provider did, so a pair keeps working however far apart and whatever is loaded. (A client
+	 * cannot load chunks and sees null.)
+	 */
 	protected LinkedTile getOther() {
 		if (target == null)
 			return null;
 		Level world = target.getWorld();
-		if (world == null || !world.isLoaded(target.pos))
+		if (world == null)
 			return null;
 		BlockEntity te = world.getBlockEntity(target.pos);
 		return te instanceof LinkedTile linked ? linked : null;

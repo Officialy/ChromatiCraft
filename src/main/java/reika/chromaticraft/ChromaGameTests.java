@@ -432,7 +432,7 @@ public final class ChromaGameTests {
 		register(event, env, "wands_basic", 60, ChromaGameTests::wandsBasic);
 		register(event, env, "fluid_relay_transfer", 60, ChromaGameTests::fluidRelayTransfer);
 		register(event, env, "world_rift_link", 40, ChromaGameTests::worldRiftLink);
-		register(event, env, "world_rift_far_link", 200, ChromaGameTests::worldRiftFarLink);
+		register(event, env, "world_rift_far_link", 400, ChromaGameTests::worldRiftFarLink);
 		register(event, env, "world_rift_shaft_power", 40, ChromaGameTests::worldRiftShaftPower);
 		register(event, env, "aura_pouch_contents", 30, ChromaGameTests::auraPouchContents);
 		register(event, env, "luma_capsule_void_gaze", ChromaGameTests::lumaCapsuleVoidGaze);
@@ -7231,6 +7231,7 @@ public final class ChromaGameTests {
 		level.setBlock(near.below(), Blocks.STONE.defaultBlockState(), 3);
 		level.setBlock(far.below(), Blocks.STONE.defaultBlockState(), 3);
 		level.setBlock(far, Blocks.AIR.defaultBlockState(), 3);
+		level.setBlock(far.south(), ChromaBlocks.AUTO_ENCHANTER.get().defaultBlockState(), 3);
 		ServerPlayer player = helper.makeMockServerPlayerInLevel();
 		player.setGameMode(GameType.SURVIVAL);
 		player.setPos(near.getX()+0.5, near.getY()+12, near.getZ()+0.5);
@@ -7249,7 +7250,22 @@ public final class ChromaGameTests {
 			var a = (reika.chromaticraft.tileentity.transport.TileEntityRift)level.getBlockEntity(far);
 			helper.assertTrue(a.isLinked() && a.getLinkTarget().equals(level, near) && a.isPrimary(),
 					"the far end must link back and become primary");
-			helper.succeed();
+			// V33a read its partner every tick, loading the far area on demand, so a linked rift keeps its far end loaded
+			// while the near end is active; passing through then works whatever else is loaded there.
+			helper.runAfterDelay(60, () -> {
+				helper.assertTrue(level.isLoaded(far), "a linked rift must keep its far end loaded while it is active");
+				var fluids = level.getCapability(net.neoforged.neoforge.capabilities.Capabilities.Fluid.BLOCK, near,
+						Direction.NORTH);
+				int moved;
+				try (Transaction tx = Transaction.openRoot()) {
+					moved = fluids.insert(FluidResource.of(ChromaFluids.CHROMA.get()), 300, tx);
+					tx.commit();
+				}
+				var enchanter = (reika.chromaticraft.tileentity.processing.TileEntityAutoEnchanter)level.getBlockEntity(far.south());
+				helper.assertTrue(moved == 300 && enchanter.getChromaLevel() == 300,
+						"fluid must pass through to the far end; moved " + moved);
+				helper.succeed();
+			});
 		});
 	}
 

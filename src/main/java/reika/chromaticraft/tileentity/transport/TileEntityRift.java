@@ -249,13 +249,13 @@ public class TileEntityRift extends LinkedTileBase implements WorldRift, ChunkLo
 		return this.isLinked() ? this.getLinkTarget().move(from.getOpposite(), 1) : null;
 	}
 
-	/** The tile beside the far rift on {@code dir}, or null (also while the far side is unloaded). */
+	/** The tile beside the far rift on {@code dir}, or null; its chunk is loaded on demand, as in V33a. */
 	private @Nullable BlockEntity getAdjacentTargetTile(Direction dir) {
 		TileEntityRift te = this.getOther();
 		if (te == null)
 			return null;
 		BlockPos p = te.getBlockPos().relative(dir);
-		BlockEntity tile = te.getLevel().isLoaded(p) ? te.getLevel().getBlockEntity(p) : null;
+		BlockEntity tile = te.getLevel().getBlockEntity(p);
 		return tile != null && !tile.isRemoved() ? tile : null;
 	}
 
@@ -323,7 +323,7 @@ public class TileEntityRift extends LinkedTileBase implements WorldRift, ChunkLo
 		return side != null ? energyViews[side.ordinal()] : EmptyEnergyHandler.INSTANCE;
 	}
 
-	/** The far side's handler for a query on {@code side}, or null while unlinked, unloaded or absent. */
+	/** The far side's handler for a query on {@code side}, or null while unlinked or absent (loaded on demand). */
 	private <H> @Nullable H farHandler(BlockCapability<H, @Nullable Direction> cap, Direction side, boolean single) {
 		TileEntityRift te = this.getOther();
 		if (te == null)
@@ -337,10 +337,7 @@ public class TileEntityRift extends LinkedTileBase implements WorldRift, ChunkLo
 		else {
 			target = te.getBlockPos().relative(side.getOpposite());
 		}
-		Level world = te.getLevel();
-		if (!world.isLoaded(target))
-			return null;
-		return world.getCapability(cap, target, side);
+		return te.getLevel().getCapability(cap, target, side);
 	}
 
 	private static boolean enter() {
