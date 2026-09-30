@@ -432,6 +432,7 @@ public final class ChromaGameTests {
 		register(event, env, "fluid_relay_transfer", 60, ChromaGameTests::fluidRelayTransfer);
 		register(event, env, "world_rift_link", 40, ChromaGameTests::worldRiftLink);
 		register(event, env, "world_rift_far_link", 200, ChromaGameTests::worldRiftFarLink);
+		register(event, env, "world_rift_shaft_power", 40, ChromaGameTests::worldRiftShaftPower);
 		register(event, env, "fluid_distributor_transfer", 60, ChromaGameTests::fluidDistributorTransfer);
 		register(event, env, "creative_tiered_resource_access", ChromaGameTests::creativeTieredResourceAccess);
 		register(event, env, "rainbow_tree_shape_and_log", ChromaGameTests::rainbowTreeShapeAndLog);
@@ -7244,6 +7245,49 @@ public final class ChromaGameTests {
 			var a = (reika.chromaticraft.tileentity.transport.TileEntityRift)level.getBlockEntity(far);
 			helper.assertTrue(a.isLinked() && a.getLinkTarget().equals(level, near) && a.isPrimary(),
 					"the far end must link back and become primary");
+			helper.succeed();
+		});
+	}
+
+	/**
+	 * V33a RotaryCraft World Rift support: a creative coil writing into rift A powers the bedrock shaft beyond rift B
+	 * (a transmission reading through the rift, the coil recognising the far shaft as its target), and a second coil
+	 * into rift C powers the Pump beyond rift D (a power receiver reading through the rift).
+	 */
+	private static void worldRiftShaftPower(GameTestHelper helper) {
+		var level = helper.getLevel();
+		var facing = reika.rotarycraft.base.blocks.BlockRotaryCraftMachine.FACING;
+		var coils = new reika.rotarycraft.blockentities.transmission.BlockEntityCreativeCoil[2];
+		for (int y = 1; y <= 2; y++) {
+			helper.setBlock(new BlockPos(0, y, 1), Blocks.REDSTONE_BLOCK);
+			helper.setBlock(new BlockPos(1, y, 1), reika.rotarycraft.registry.RotaryBlocks.CREATIVE_COIL.get()
+					.defaultBlockState().setValue(facing, Direction.EAST));
+			var coil = helper.getBlockEntity(new BlockPos(1, y, 1),
+					reika.rotarycraft.blockentities.transmission.BlockEntityCreativeCoil.class);
+			coil.setReleaseTorque(256);
+			coil.setReleaseOmega(512);
+			coils[y-1] = coil;
+			helper.setBlock(new BlockPos(2, y, 1), ChromaBlocks.RIFT.get());
+			helper.setBlock(new BlockPos(0, y, 3), ChromaBlocks.RIFT.get());
+			var near = (reika.chromaticraft.tileentity.transport.TileEntityRift)level.getBlockEntity(
+					helper.absolutePos(new BlockPos(2, y, 1)));
+			helper.assertTrue(near.linkTo(level, helper.absolutePos(new BlockPos(0, y, 3))), "the rifts must link");
+		}
+		helper.setBlock(new BlockPos(1, 1, 3), reika.rotarycraft.registry.RotaryBlocks.BEDROCK_SHAFT.get()
+				.defaultBlockState().setValue(facing, Direction.EAST));
+		helper.setBlock(new BlockPos(1, 2, 3), reika.rotarycraft.registry.RotaryBlocks.PUMP.get()
+				.defaultBlockState().setValue(facing, Direction.EAST));
+		var shaft = helper.getBlockEntity(new BlockPos(1, 1, 3), reika.rotarycraft.blockentities.transmission.BlockEntityShaft.class);
+		var pump = helper.getBlockEntity(new BlockPos(1, 2, 3), reika.rotarycraft.blockentities.production.BlockEntityPump.class);
+		helper.runAfterDelay(20, () -> {
+			helper.assertTrue(coils[0].isWritingTo(shaft),
+					"the coil must see the shaft beyond the far rift as its write target");
+			helper.assertTrue(shaft.torque == 256 && shaft.omega == 512,
+					"the shaft beyond rift B must carry the coil's 256 Nm at 512 rad/s; got " + shaft.torque + " Nm, "
+							+ shaft.omega + " rad/s");
+			helper.assertTrue(pump.torque == 256 && pump.omega == 512,
+					"the Pump beyond rift D must receive the coil's power; got " + pump.torque + " Nm, " + pump.omega
+							+ " rad/s");
 			helper.succeed();
 		});
 	}

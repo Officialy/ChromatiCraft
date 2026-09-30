@@ -9617,3 +9617,30 @@ as time 0, so a world under a second old counts every pendant active); guarded, 
     port forwards only while the far end is loaded (both ends in loaded areas, or the World Rifts Chunkload option
     on); unloaded, the rift passes nothing.
   - GameTest `world_rift_far_link`: the first end ~13 chunks away, its chunk unloaded, linked from the last item.
+
+### World Rift support in RotaryCraft and ElectriCraft — 2026-09-30
+
+- The rift contract moved to DragonAPI (`reika.dragonapi.interfaces.blockentity.WorldRift`); ChromatiCraft's API
+  `WorldRift` extends it. In 1.7.10 every mod jar shipped a copy of ChromatiCraft's API package; 26.x modules cannot
+  share a package, and RotaryCraft/ElectriCraft sit below ChromatiCraft, so they test for the DragonAPI type.
+- `WorldRift.forward(rift, loc -> ...)` is the 1.7.10 inline `loc = sr.getLinkTarget(); if (loc != null) ...`, only
+  while the far end is loaded (as the rift's own capabilities) and at most eight rifts deep per call chain (a rift
+  loop recursed until the stack overflowed in 1.7.10).
+- RotaryCraft, all restored from the V33a branches (most were commented out, some silently dropped):
+  - Shaft, Gearbox, Advanced Gear, Bevel Gear (dropped), Clutch, Multi-Clutch, Distribution Clutch, Flywheel,
+    Monitor (its `omega = torque = 0` fallback was commented out with it), Splitter (three branches) and every
+    `BlockEntityPowerReceiver` read (three, dropped) read on through a rift.
+  - `setPower` writes on through a rift; `PowerTransferHelper.checkPowerFrom` and `PowerSourceList.getAllFrom`
+    (dropped; V33a stayed in the near world, the far one is used) follow it.
+  - `matchTile` is V33a's again: it compared the looked-through tile with this machine's position instead of the
+    other tile's IO block, so `isReadingFrom` was always false, and `isWritingTo`/`isWritingTo2` had been rewritten
+    as plain adjacency checks that a rift cannot pass. Both route through it as in V33a.
+  - Pipes connect to rifts and pump to, and draw from, pipes and tanks past the far end (per-face target level;
+    V33a leaked the far world into the remaining faces).
+  - The Blower relays items through rifts, and follows chained blowers from each blower's own face again (the port
+    read the first blower's neighbour, which broke chains).
+- ElectriCraft: wires connect to rifts, networks merge through them, path finding continues past the far end and
+  records the rifts, and a network whose rift is gone rebuilds (`checkRiftConnections`). RF cables already connect
+  through the rift's energy capability. The EU cable stays commented out with IC2.
+- Tests: `world_rift_shaft_power` (a creative coil through a rift pair into a bedrock shaft, and into a Pump);
+  RotaryCraft 201/201 and ElectriCraft 13/13 full suites pass with the `matchTile` change.
