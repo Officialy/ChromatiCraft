@@ -35,8 +35,27 @@ public final class BlockLumaFluid extends LiquidBlock {
             InsideBlockEffectApplier effects, boolean precise) {
         if (entity instanceof LivingEntity living && living.getAirSupply() < living.getMaxAirSupply())
             living.setAirSupply(living.getAirSupply() + 1);
-        if (!level.isClientSide() && entity instanceof Player player && state.getValue(LEVEL) == 0)
+        if (!level.isClientSide() && entity instanceof Player player && state.getValue(LEVEL) == 0) {
             ProgressStage.LUMA.stepPlayerTo(player);
+            addPotions(player);
+        }
+    }
+
+    /**
+     * V33a {@code BlockEtherealLuma.addPotions}: bathing in a Luma source (re)applies Void Gaze for five seconds at the
+     * highest level the player qualifies for, once the current one is nearly out.
+     */
+    public static void addPotions(Player ep) {
+        net.minecraft.world.effect.MobEffectInstance cur = ep.getEffect(reika.chromaticraft.ChromatiCraft.voidGaze);
+        if (cur == null || cur.getDuration() < 5) {
+            int lvl = reika.chromaticraft.magic.potions.PotionVoidGaze.VoidGazeLevels.getAppliedLevel(ep);
+            if (lvl >= 0) {
+                ep.addEffect(new net.minecraft.world.effect.MobEffectInstance(reika.chromaticraft.ChromatiCraft.voidGaze,
+                        100, lvl));
+                if (cur == null)
+                    reika.chromaticraft.magic.potions.PotionVoidGaze.VoidGazeLevels.list[lvl].onStart(ep);
+            }
+        }
     }
 
     @Override

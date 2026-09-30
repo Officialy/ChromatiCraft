@@ -67,6 +67,9 @@ public class ChromatiCraft extends DragonAPIMod {
 			() -> new PotionCustomRegen(MobEffectCategory.BENEFICIAL, 0xCD5CAB));
 	public static final DeferredHolder<MobEffect, MobEffect> betterSat = MOB_EFFECTS.register("saturation",
 			() -> new PotionBetterSaturation(MobEffectCategory.BENEFICIAL, 0xA55926));
+	/** V33a voidGaze: from Ethereal Luma, or a carried Luma Capsule. */
+	public static final DeferredHolder<MobEffect, MobEffect> voidGaze = MOB_EFFECTS.register("void_gaze",
+			reika.chromaticraft.magic.potions.PotionVoidGaze::new);
 
 	public ChromatiCraft(IEventBus modEventBus, ModContainer modContainer) {
 		instance = this;

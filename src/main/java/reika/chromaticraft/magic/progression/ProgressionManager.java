@@ -544,6 +544,12 @@ public class ProgressionManager implements ProgressRegistry {
 		ProgressStage.ALLCOLORS.stepPlayerTo(ep);
 	}
 
+	/** V33a: whether the player has found any generated structure (burrow, cavern, ocean or desert). */
+	public boolean hasPlayerDiscoveredAGeneratedStructure(Player ep) {
+		return ProgressStage.BURROW.isPlayerAtStage(ep) || ProgressStage.CAVERN.isPlayerAtStage(ep)
+				|| ProgressStage.OCEAN.isPlayerAtStage(ep) || ProgressStage.DESERTSTRUCT.isPlayerAtStage(ep);
+	}
+
 	public boolean hasPlayerDiscoveredColor(Player ep, CrystalElement e) {
 		return NBTCompat.getBoolean(this.getColorTag(ep), e.name(), false);
 	}

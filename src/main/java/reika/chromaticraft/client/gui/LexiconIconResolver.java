@@ -199,6 +199,7 @@ public final class LexiconIconResolver {
 			case "seed" -> ChromaItems.CRYSTAL_SEEDS.get(CrystalElement.MAGENTA).get();
 			case "purify" -> ChromaItems.PURIFY.get();
 			case "aurapouch" -> ChromaItems.AURA_POUCH.get();
+			case "etherpendant" -> ChromaItems.LUMA_CAPSULE.get();
 			case "teleport" -> ChromaItems.MOBILITY_WAND.get();
 			case "growth" -> ChromaItems.GROWTH_WAND.get();
 			case "endereye" -> ChromaItems.ENDER_EYE.get();

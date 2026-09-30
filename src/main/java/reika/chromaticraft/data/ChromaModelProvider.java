@@ -239,7 +239,7 @@ public class ChromaModelProvider extends ModelProvider {
 		for (Item item : List.of(ChromaItems.GLOW_CAVE_DUST.get(), ChromaItems.UNKNOWN_ARTEFACT_FRAGMENT.get(),
 				ChromaItems.ENDER_EYE.get(), ChromaItems.STRUCTURE_MAP.get(), ChromaItems.PYLON_FINDER.get(),
 				ChromaItems.LIGHT_GUN.get(), ChromaItems.OWNERSHIP_KEY.get(), ChromaItems.CAVE_PATHER.get(),
-				ChromaItems.AURA_POUCH.get())) {
+				ChromaItems.AURA_POUCH.get(), ChromaItems.LUMA_CAPSULE.get())) {
 			itemModelOut.accept(item, ItemModelUtils.plainModel(ModelTemplates.FLAT_ITEM.create(
 					ModelLocationUtils.getModelLocation(item), TextureMapping.layer0(item), modelOut)));
 		}

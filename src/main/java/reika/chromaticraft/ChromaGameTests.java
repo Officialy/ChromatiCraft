@@ -435,6 +435,7 @@ public final class ChromaGameTests {
 		register(event, env, "world_rift_far_link", 200, ChromaGameTests::worldRiftFarLink);
 		register(event, env, "world_rift_shaft_power", 40, ChromaGameTests::worldRiftShaftPower);
 		register(event, env, "aura_pouch_contents", 30, ChromaGameTests::auraPouchContents);
+		register(event, env, "luma_capsule_void_gaze", ChromaGameTests::lumaCapsuleVoidGaze);
 		register(event, env, "fluid_distributor_transfer", 60, ChromaGameTests::fluidDistributorTransfer);
 		register(event, env, "creative_tiered_resource_access", ChromaGameTests::creativeTieredResourceAccess);
 		register(event, env, "rainbow_tree_shape_and_log", ChromaGameTests::rainbowTreeShapeAndLog);
@@ -7362,6 +7363,65 @@ public final class ChromaGameTests {
 					"an active compass ticked from the pouch must stamp the player every 8 ticks; stamp " + stamp);
 			helper.succeed();
 		});
+	}
+
+	/**
+	 * V33a Void Gaze and the Luma Capsule: Luma gives nothing before the PYLON stage, then Void Gaze at the highest
+	 * level earned (pylon x-ray; with RUNEUSE also cave sparkles). A carried Luma Capsule counts as every level with no
+	 * progression at all, from the inventory or an active Aura Pouch slot but not an inactive one, and its inventory
+	 * tick stamps the carrier.
+	 */
+	private static void lumaCapsuleVoidGaze(GameTestHelper helper) {
+		var gaze = reika.chromaticraft.magic.potions.PotionVoidGaze.VoidGazeLevels.class;
+		ServerPlayer novice = helper.makeMockServerPlayerInLevel();
+		reika.chromaticraft.block.worldgen26.BlockLumaFluid.addPotions(novice);
+		helper.assertTrue(novice.getEffect(ChromatiCraft.voidGaze) == null,
+				"Luma must give no Void Gaze before the pylon stage");
+
+		ServerPlayer seer = helper.makeMockServerPlayerInLevel();
+		ProgressionManager.instance.setPlayerStage(seer, ProgressStage.PYLON, true, false, false);
+		reika.chromaticraft.block.worldgen26.BlockLumaFluid.addPotions(seer);
+		var eff = seer.getEffect(ChromatiCraft.voidGaze);
+		helper.assertTrue(eff != null && eff.getAmplifier() == 0 && eff.getDuration() == 100,
+				"Luma must give five seconds of level-0 Void Gaze at the pylon stage");
+		helper.assertTrue(reika.chromaticraft.magic.potions.PotionVoidGaze.VoidGazeLevels.PYLONXRAY.isActiveOnPlayer(seer)
+				&& !reika.chromaticraft.magic.potions.PotionVoidGaze.VoidGazeLevels.CAVEPARTICLES.isActiveOnPlayer(seer),
+				"level 0 must show pylons through walls and nothing more");
+		ProgressionManager.instance.setPlayerStage(seer, ProgressStage.RUNEUSE, true, false, false);
+		seer.removeEffect(ChromatiCraft.voidGaze);
+		reika.chromaticraft.block.worldgen26.BlockLumaFluid.addPotions(seer);
+		helper.assertTrue(seer.getEffect(ChromatiCraft.voidGaze).getAmplifier() == 1
+				&& reika.chromaticraft.magic.potions.PotionVoidGaze.VoidGazeLevels.CAVEPARTICLES.isActiveOnPlayer(seer),
+				"with RUNEUSE, Luma must give level-1 Void Gaze and its cave sparkles");
+
+		ServerPlayer carrier = helper.makeMockServerPlayerInLevel();
+		ItemStack capsule = new ItemStack(ChromaItems.LUMA_CAPSULE.get());
+		carrier.getInventory().add(capsule);
+		for (var lvl : gaze.getEnumConstants())
+			helper.assertTrue(lvl.isActiveOnPlayer(carrier), "a carried Luma Capsule must count as " + lvl);
+		// Inventory.add moved the stack into its slot and emptied this one; tick the carried stack.
+		for (ItemStack is : carrier.getInventory().getNonEquipmentItems())
+			if (is.is(ChromaItems.LUMA_CAPSULE.get()))
+				is.inventoryTick(helper.getLevel(), carrier, null);
+		helper.assertTrue(carrier.getPersistentData().getLongOr("last_lumapendant", -1) == helper.getLevel().getGameTime(),
+				"the capsule's tick must stamp its carrier");
+
+		ServerPlayer pouched = helper.makeMockServerPlayerInLevel();
+		ItemStack pouch = new ItemStack(ChromaItems.AURA_POUCH.get());
+		ItemStack[] inv = ChromaItems.AURA_POUCH.get().getInventory(pouch);
+		inv[4] = new ItemStack(ChromaItems.LUMA_CAPSULE.get());
+		ChromaItems.AURA_POUCH.get().setItems(pouch, inv);
+		pouched.getInventory().add(pouch);
+		ItemStack held = ItemStack.EMPTY;
+		for (ItemStack is : pouched.getInventory().getNonEquipmentItems())
+			if (is.is(ChromaItems.AURA_POUCH.get()))
+				held = is;
+		helper.assertTrue(reika.chromaticraft.items.tools.ItemEtherealPendant.isActive(pouched),
+				"a capsule in an active pouch slot must count");
+		ChromaItems.AURA_POUCH.get().setSlotActive(held, 4, false);
+		helper.assertTrue(!reika.chromaticraft.items.tools.ItemEtherealPendant.isActive(pouched),
+				"a capsule in an inactive pouch slot must not count");
+		helper.succeed();
 	}
 
 	private static void pollUntilUnloaded(GameTestHelper helper, BlockPos pos, int waited, Runnable then) {

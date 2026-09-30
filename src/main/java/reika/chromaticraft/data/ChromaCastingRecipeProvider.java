@@ -438,6 +438,7 @@ public final class ChromaCastingRecipeProvider {
 			saveFarmer();
 			saveWorldRift();
 			saveAuraPouch();
+			saveLumaCapsule();
 			saveMagicPlants();
 			savePendants();
 			savePurificationGem();
@@ -758,6 +759,35 @@ public final class ChromaCastingRecipeProvider {
 							stands, List.of(), List.of(),
 							new ItemStackTemplate(ChromaItems.TINTED_LENSES.get(element).get(), amount),
 							100, 200).withPenaltyThreshold(48));
+		}
+
+		/**
+		 * V33a EtherealPendantRecipe, a MultiBlockCastingRecipe on a Void Core: Ethereal Luma (any Luma container; the
+		 * bucket) on the inner edges, black crystal glass on the outer edges and blue on the inner corners, string and
+		 * Spatially Warping Ingots across the far edges, and aura dust on the outer sides.
+		 */
+		private void saveLumaCapsule() {
+			Ingredient black = Ingredient.of(ChromaBlocks.crystalGlass(CrystalElement.BLACK).get().asItem());
+			Ingredient blue = Ingredient.of(ChromaBlocks.crystalGlass(CrystalElement.BLUE).get().asItem());
+			List<CastingTableRecipe.StandIngredient> stands = new ArrayList<>();
+			for (int[] point : new int[][] {{-2, 0}, {2, 0}, {0, 2}, {0, -2}})
+				stands.add(auxStand(point[0], point[1], Ingredient.of(ChromaItems.LUMA_BUCKET.get())));
+			for (int[] point : new int[][] {{-4, 0}, {4, 0}, {0, 4}, {0, -4}})
+				stands.add(auxStand(point[0], point[1], black));
+			for (int[] point : new int[][] {{2, 2}, {-2, 2}, {2, -2}, {-2, -2}})
+				stands.add(auxStand(point[0], point[1], blue));
+			stands.add(auxStand(-2, -4, Ingredient.of(Items.STRING)));
+			stands.add(auxStand(2, -4, Ingredient.of(Items.STRING)));
+			stands.add(auxStand(-2, 4, Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.SPACE_INGOT).get())));
+			stands.add(auxStand(2, 4, Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.SPACE_INGOT).get())));
+			for (int[] point : new int[][] {{4, -2}, {4, 2}, {-4, -2}, {-4, 2}})
+				stands.add(auxStand(point[0], point[1], tiered(ChromaTieredItems.AURA_DUST)));
+			saveRecipe("luma_capsule", new CastingTableRecipe(CastingTableRecipe.Tier.MULTIBLOCK,
+					List.of(new GridIngredient(4, Ingredient.of(ChromaItems.CRAFTING.get(
+							ChromaCraftingItems.VOID_CORE).get()))),
+					List.copyOf(stands), List.of(), List.of(),
+					new ItemStackTemplate(ChromaItems.LUMA_CAPSULE.get()), 100, 200)
+					.withPenaltyThreshold(1));
 		}
 
 		/**

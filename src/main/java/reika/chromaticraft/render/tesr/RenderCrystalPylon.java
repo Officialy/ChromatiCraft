@@ -82,6 +82,10 @@ public final class RenderCrystalPylon implements BlockEntityRenderer<TileEntityC
         state.hasTargets = !state.beams.isEmpty();
         state.color = 0xff000000 | pylon.getRenderColor();
         state.randomOffset = pylon.randomOffset;
+        var viewer = Minecraft.getInstance().player;
+        // V33a: Void Gaze's first level drew the flares with the depth test off, through any wall.
+        state.xray = viewer != null && reika.chromaticraft.magic.potions.PotionVoidGaze.VoidGazeLevels.PYLONXRAY
+                .isActiveOnPlayer(viewer);
     }
 
     @Override
@@ -113,7 +117,7 @@ public final class RenderCrystalPylon implements BlockEntityRenderer<TileEntityC
             if (state.hasTargets) scale++;
             if (!state.conducting) scale = 0.75;
             this.submitBillboard(poseStack, collector, camera, sun ? SUN_FLARE : ROUND_FLARE,
-                    (float)scale, state.color, 0, layer == 0 && !sun);
+                    (float)scale, state.color, 0, layer == 0 && !sun, state.xray);
         }
 
         if (state.conducting && state.enhanced) {
@@ -123,7 +127,7 @@ public final class RenderCrystalPylon implements BlockEntityRenderer<TileEntityC
                     state.color & 0xffffff, 0, mix / 255F);
             float scale = (float)(3 + Math.sin(Math.toRadians(angle)));
             this.submitBillboard(poseStack, collector, camera, TURBO, scale,
-                    haloColor, (float)-angle, false);
+                    haloColor, (float)-angle, false, state.xray);
         }
         poseStack.popPose();
     }
@@ -185,7 +189,7 @@ public final class RenderCrystalPylon implements BlockEntityRenderer<TileEntityC
 
     private void submitBillboard(PoseStack poseStack, SubmitNodeCollector collector,
             CameraRenderState camera, Identifier spriteId, float scale, int color, float roll,
-            boolean core) {
+            boolean core, boolean xray) {
         TextureAtlasSprite sprite = Minecraft.getInstance().getAtlasManager()
                 .getAtlasOrThrow(AtlasIds.BLOCKS).getSprite(spriteId);
         poseStack.pushPose();
@@ -196,13 +200,15 @@ public final class RenderCrystalPylon implements BlockEntityRenderer<TileEntityC
         if (core) {
             CustomFeatureRenderer.Submit base = new CustomFeatureRenderer.Submit(
                     poseStack.last().copy(),
-                    ChromaRenderPipelines.pylonCore(TextureAtlas.LOCATION_BLOCKS),
+                    xray ? ChromaRenderPipelines.pylonCoreThroughWall(TextureAtlas.LOCATION_BLOCKS)
+                            : ChromaRenderPipelines.pylonCore(TextureAtlas.LOCATION_BLOCKS),
                     (pose, vertices) -> quad(renderPose.last(), vertices, sprite, scale, color));
             ((OrderedSubmitNodeCollectorExtension)collector.order(-1))
                     .submitSpecial(RenderPhaseKeys.AFTER_TERRAIN, base);
         }
         submitAfterTerrain(poseStack, collector,
-                ChromaRenderPipelines.additiveSprite(TextureAtlas.LOCATION_BLOCKS),
+                xray ? ChromaRenderPipelines.additiveSpriteThroughWall(TextureAtlas.LOCATION_BLOCKS)
+                        : ChromaRenderPipelines.additiveSprite(TextureAtlas.LOCATION_BLOCKS),
                 (pose, vertices) -> quad(renderPose.last(), vertices, sprite, scale, color));
         poseStack.popPose();
     }
@@ -254,6 +260,7 @@ public final class RenderCrystalPylon implements BlockEntityRenderer<TileEntityC
         private int color = 0xffffffff;
         private int randomOffset;
         private long time;
+        private boolean xray;
         private final List<Beam> beams = new ArrayList<>();
     }
 

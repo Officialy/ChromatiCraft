@@ -125,6 +125,22 @@ public final class ChromaRenderPipelines {
 			.withCull(false)
 			.build();
 
+	/** As {@link #PYLON_CORE} with no depth test: V33a's pylon flare under Void Gaze's PYLONXRAY. */
+	public static final RenderPipeline PYLON_CORE_THROUGH_WALL = RenderPipeline.builder()
+			.withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "pipeline/pylon_core_through_wall"))
+			.withBindGroupLayout(BindGroupLayouts.GLOBALS)
+			.withBindGroupLayout(BindGroupLayouts.PROJECTION)
+            .withBindGroupLayout(BindGroupLayouts.DYNAMIC_TRANSFORMS)
+			.withVertexShader("core/position_tex_color")
+			.withFragmentShader(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "core/pylon_core"))
+			.withBindGroupLayout(BindGroupLayouts.SAMPLER0)
+			.withColorTargetState(new ColorTargetState(BlendFunction.TRANSLUCENT))
+			.withVertexBinding(0, DefaultVertexFormat.POSITION_TEX_COLOR)
+			.withPrimitiveTopology(PrimitiveTopology.QUADS)
+			.withDepthStencilState(new DepthStencilState(CompareOp.ALWAYS_PASS, false))
+			.withCull(false)
+			.build();
+
 	/** Plain alpha-blended world sprites with no depth write: V33a's BlendMode.DEFAULT billboards. */
 	public static final RenderPipeline TRANSLUCENT_SPRITE = RenderPipeline.builder()
 			.withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "pipeline/translucent_sprite"))
@@ -448,6 +464,13 @@ public final class ChromaRenderPipelines {
 			RenderType.create("chromaticraft_additive_alpha_sprite",
 					RenderSetup.builder(ADDITIVE_ALPHA_SPRITE)
 							.withTexture("Sampler0", texture).sortOnUpload().createRenderSetup()));
+	private static final Function<Identifier, RenderType> ADDITIVE_THROUGH_WALL_TYPES = Util.memoize(texture ->
+			RenderType.create("chromaticraft_additive_sprite_through_wall",
+					RenderSetup.builder(ADDITIVE_SPRITE_THROUGH_WALL)
+							.withTexture("Sampler0", texture).sortOnUpload().createRenderSetup()));
+	private static final Function<Identifier, RenderType> PYLON_CORE_THROUGH_WALL_TYPES = Util.memoize(texture ->
+			RenderType.create("chromaticraft_pylon_core_through_wall", RenderSetup.builder(PYLON_CORE_THROUGH_WALL)
+					.withTexture("Sampler0", texture).sortOnUpload().createRenderSetup()));
 	private static final Function<Identifier, RenderType> LEGACY_ADDITIVE_TYPES = Util.memoize(texture ->
 			RenderType.create("chromaticraft_legacy_additive_sprite",
 					RenderSetup.builder(LEGACY_ADDITIVE_SPRITE)
@@ -493,6 +516,16 @@ public final class ChromaRenderPipelines {
 		return LEGACY_ADDITIVE_TYPES.apply(texture);
 	}
 
+	/** {@link #additiveSprite} without the depth test. */
+	public static RenderType additiveSpriteThroughWall(Identifier texture) {
+		return ADDITIVE_THROUGH_WALL_TYPES.apply(texture);
+	}
+
+	/** {@link #pylonCore} without the depth test. */
+	public static RenderType pylonCoreThroughWall(Identifier texture) {
+		return PYLON_CORE_THROUGH_WALL_TYPES.apply(texture);
+	}
+
 	public static RenderType legacyAdditiveSpriteThroughWall(Identifier texture) {
 		return LEGACY_ADDITIVE_THROUGH_WALL_TYPES.apply(texture);
 	}
@@ -516,6 +549,7 @@ public final class ChromaRenderPipelines {
         event.registerPipeline(GUI_ADDITIVE_DARK);
         event.registerPipeline(TRANSLUCENT_SPRITE);
 		event.registerPipeline(PYLON_CORE);
+		event.registerPipeline(PYLON_CORE_THROUGH_WALL);
 		event.registerPipeline(ADDITIVE_ALPHA_SPRITE);
 		event.registerPipeline(LEGACY_ADDITIVE_SPRITE);
 		event.registerPipeline(LEGACY_ADDITIVE_SPRITE_THROUGH_WALL);

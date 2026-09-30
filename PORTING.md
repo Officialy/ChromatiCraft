@@ -9668,3 +9668,25 @@ as time 0, so a world under a second old counts every pendant active); guarded, 
   dust on the outer edges with chromic dust beside it, chroma alloy ingots on the outer corners; white/black/light
   gray/purple runes at (-4|4, -1, +-2).
 - GameTest `aura_pouch_contents`.
+
+### Luma Capsule and Void Gaze — 2026-09-30
+
+- `luma_capsule` (V33a ETHERPENDANT, the Ethereal Pendant, named "Luma Capsule" by V33a's lang; tool sprite 72,
+  always glinting) is ported in place. Carried, it counts as every Void Gaze level at once. Its inventory tick stamps
+  the carrier; since 26.x ticks items on the server only, `isActive` also finds a capsule in the inventory or an
+  active Aura Pouch slot (V33a's client saw its own stamp).
+- `void_gaze` (V33a `PotionVoidGaze`, colour 0x61008E, icon 2 of `Textures/potions.png`) is registered; bathing in a
+  Luma source applies it again (`BlockLumaFluid.addPotions`, dropped by the fluid's port) for 5 s at the highest level
+  earned: PYLONXRAY (PYLON stage), CAVEPARTICLES (RUNEUSE), FACEFLIP (MULTICRAFT research, END, CHROMA and a found
+  generated structure; `ProgressionManager.hasPlayerDiscoveredAGeneratedStructure` is ported).
+  - PYLONXRAY: pylon flares and their core draw with the depth test off (new `additiveSpriteThroughWall` and
+    `pylonCoreThroughWall` render types).
+  - CAVEPARTICLES: `VoidGazeClient` sparks white flares in dark (no sky light) air around the player.
+  - Level on/off transitions call `onStart`/`onFinish` from the client (effect ticks are server-only in 26.x).
+  - CHROMA-PORT: FACEFLIP's rendering (terrain drawn with `glFrontFace(GL_CW)`, snow layers skipped) needs a
+    render-state hook around chunk-layer drawing and an in-client check; the level, its condition and its chunk
+    rerender on transition are in place. V33a's exclusion of its own dimension waits on that dimension.
+- Casting: V33a EtherealPendantRecipe, Multiblock tier on a Void Core: Luma (the bucket) on the inner edges, black
+  crystal glass on the outer edges and blue on the inner corners, string and Spatially Warping Ingots across the far
+  edges, aura dust on the outer sides.
+- GameTest `luma_capsule_void_gaze`.
