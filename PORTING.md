@@ -254,7 +254,7 @@ Pylon Link and Lumen Node (V33a had no casting recipe for either).
 - **BASICCRAFT** — 24/27 ported (Crystal Glass and Glow landed 2026-09-25; Defensive Glass, the
   Enchantments, the Crystal Brewery, the Chromatic Flower, the Pylon Compass, the Illumination Gun, the Ownership Expansion Key, the Subterranean Route Finder and the Vertical Propulsion Panel
   2026-09-26; the Particle Spawner, Examination Crystals, the Lumen Turret, the Lumen Wire and the Tool Compression Crate 2026-09-27).
-  Missing: Crystal Orchestra; Knowledge Entanglement Pedestal (needs ProgressionLinking); Corrosion Resistant Cell (blocked: an AE2 storage cell, and AE2 is not on the classpath -- CHROMA-PORT).
+  Missing: Crystal Orchestra; Knowledge Entanglement Pedestal (needs ProgressionLinking). (The Corrosion Resistant Cell landed 2026-09-30 as an AE2 cell, registered only with AE2.)
 - **RUNECRAFT** — 12/36 ported (the Chromatic Enchanter 2026-09-27).
   Missing: Artificial Sky; Physics Suspension Lamp; Lumen Lamp; Travel Path; Redstone Pod; Flux Pod; Subterranean Illuminator; Fluid Radiator; Fluid Link Anchor; Suspension Field Controller; Item Inserter; Lumen Lamp Controller; Crystal Seeds; Item Mover; Voidlinked Bucket; Linker; Creature Sounding Star; Multitool; Nether Layer Crystal; Ore-Finding Pickaxe; Ore Harvester; Bezier Crystals; Aura Tracker; Recall Tablet.
 - **ENERGY** — 15/30 ported.
@@ -9777,3 +9777,20 @@ as time 0, so a world under a second old counts every pendant active); guarded, 
   (energy) carried over; DIMENSION/STRUCTCOMPLETE/ALLCORES/CTM on tiers 4-7).
 - GameTests: `adjacency_accelerator_furnace`, `adjacency_tier_roundtrip`, `adjacency_efficiency_provider`,
   `adjacency_recipe_centre`.
+
+
+## Applied Energistics 2 content (2026-09-30)
+
+AE2 (26.3 port fork) is compile-only; the full integration record is in `ReactorCraft/PORTING.md`
+("Applied Energistics 2 integration"). ChromatiCraft side:
+- `modinterface/ae`: `ItemVoidStorage` (Void Cell), `ItemCrystalCell` (one 16-colour family per cell,
+  families = the `CrystalElement`-keyed maps in ChromaItems/ChromaBlocks + vanilla dyes; dimension cores
+  exact), `ItemShieldedCell` (Corrosion Resistant Cell), all `IBasicCellItem`s registered only with AE2
+  via `ChromaAEItems` (ChromaItems fields are null without AE2). Real sprites: items_tool.png 10/22/47.
+- `UAMESystemEffect` (artefact drains unshielded networks), `MEInventoryAbility` (MEINV chromability,
+  Manipulator binding), `MassStorageME` (Tool Storage crate pulls from its network).
+- Casting recipes (void/crystal/shielded cell, `tool_storage_ae2`) are conditional on ae2; datagen needs
+  AE2 in run-data/run-client-data mods or those recipes/models/lang are simply not emitted.
+- Deferred: ME Item Distributor (tile + model + GUI); Pattern Cache/Crystal (V33a WIP, no recipes);
+  Remote Terminal (commented out in V33a); the cells' shift-held stored-item icon overlay (needs a
+  custom item model, CHROMA-PORT in the item classes).
