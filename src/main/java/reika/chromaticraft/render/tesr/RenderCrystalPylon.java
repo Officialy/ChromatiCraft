@@ -82,10 +82,9 @@ public final class RenderCrystalPylon implements BlockEntityRenderer<TileEntityC
         state.hasTargets = !state.beams.isEmpty();
         state.color = 0xff000000 | pylon.getRenderColor();
         state.randomOffset = pylon.randomOffset;
-        var viewer = Minecraft.getInstance().player;
         // V33a: Void Gaze's first level drew the flares with the depth test off, through any wall.
-        state.xray = viewer != null && reika.chromaticraft.magic.potions.PotionVoidGaze.VoidGazeLevels.PYLONXRAY
-                .isActiveOnPlayer(viewer);
+        state.xray = reika.chromaticraft.client.VoidGazeClient.isActive(
+                reika.chromaticraft.magic.potions.PotionVoidGaze.VoidGazeLevels.PYLONXRAY);
     }
 
     @Override

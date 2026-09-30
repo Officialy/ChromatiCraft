@@ -74,8 +74,14 @@ public class PotionVoidGaze extends MobEffect {
 			}
 		}
 
+		/**
+		 * V33a rebuilt every chunk here so the flip (and its skipped snow layers) took effect. While the flip itself is
+		 * dormant (see {@code VoidGazeClient}) a rebuild would change nothing and cost a 192-block remesh on every
+		 * capsule pickup, so it waits for the flip:
+		 * {@code ReikaRenderHelper.rerenderAllChunksLazily();}
+		 */
 		private static void rerenderAllChunks() {
-			reika.dragonapi.libraries.rendering.ReikaRenderHelper.rerenderAllChunksLazily();
+
 		}
 
 		public boolean canApply(Player ep) {

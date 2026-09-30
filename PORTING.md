@@ -9682,7 +9682,9 @@ as time 0, so a world under a second old counts every pendant active); guarded, 
   - PYLONXRAY: pylon flares and their core draw with the depth test off (new `additiveSpriteThroughWall` and
     `pylonCoreThroughWall` render types).
   - CAVEPARTICLES: `VoidGazeClient` sparks white flares in dark (no sky light) air around the player.
-  - Level on/off transitions call `onStart`/`onFinish` from the client (effect ticks are server-only in 26.x).
+  - Level on/off transitions call `onStart`/`onFinish` from the client (effect ticks are server-only in 26.x);
+    `VoidGazeClient` caches each level per tick for per-frame readers (the pylon renderer). FACEFLIP's chunk rebuild
+    waits for the flip itself (it would only cost a remesh on every capsule pickup).
   - CHROMA-PORT: FACEFLIP's rendering (terrain drawn with `glFrontFace(GL_CW)`, snow layers skipped) needs a
     render-state hook around chunk-layer drawing and an in-client check; the level, its condition and its chunk
     rerender on transition are in place. V33a's exclusion of its own dimension waits on that dimension.

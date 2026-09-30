@@ -34,12 +34,19 @@ public final class VoidGazeClient {
 
 	private VoidGazeClient() {}
 
+	/** Whether {@code lvl} is active on the client player, as of this client tick (for per-frame renderers). */
+	public static boolean isActive(VoidGazeLevels lvl) {
+		return wasActive[lvl.ordinal()];
+	}
+
 	@SubscribeEvent
 	public static void tick(ClientTickEvent.Post evt) {
 		Minecraft mc = Minecraft.getInstance();
 		LocalPlayer ep = mc.player;
-		if (ep == null)
+		if (ep == null) {
+			java.util.Arrays.fill(wasActive, false);
 			return;
+		}
 		for (VoidGazeLevels lvl : VoidGazeLevels.list) {
 			boolean now = lvl.isActiveOnPlayer(ep);
 			if (now != wasActive[lvl.ordinal()]) {
