@@ -1,0 +1,54 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "ae2"
+    }
+  ],
+  "type": "chromaticraft:casting",
+  "experience": 5,
+  "grid": [
+    {
+      "ingredient": "minecraft:redstone",
+      "slot": 0
+    },
+    {
+      "ingredient": "chromaticraft:unknown_artefact_fragment",
+      "slot": 1
+    },
+    {
+      "ingredient": "minecraft:redstone",
+      "slot": 2
+    },
+    {
+      "ingredient": "chromaticraft:unknown_artefact_fragment",
+      "slot": 3
+    },
+    {
+      "ingredient": "ae2:item_storage_cell_4k",
+      "slot": 4
+    },
+    {
+      "ingredient": "chromaticraft:unknown_artefact_fragment",
+      "slot": 5
+    },
+    {
+      "ingredient": "chromaticraft:shielding_stone",
+      "slot": 6
+    },
+    {
+      "ingredient": "minecraft:quartz",
+      "slot": 7
+    },
+    {
+      "ingredient": "chromaticraft:shielding_stone",
+      "slot": 8
+    }
+  ],
+  "penalty_multiplier": 0.0,
+  "penalty_threshold": 1,
+  "result": {
+    "id": "chromaticraft:shielded_cell"
+  },
+  "tier": "crafting"
+}

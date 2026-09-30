@@ -211,6 +211,17 @@ public final class ChromaItems {
 									net.minecraft.world.item.alchemy.PotionContents.EMPTY))));
 		}
 	}
+	/**
+	 * V33a VOIDCELL / CRYSTALCELL / SHIELDEDCELL: Applied Energistics 2 storage cells, registered only with AE2 (null
+	 * otherwise), as V33a's {@code ModList.APPENG} prerequisite dummied them out. See {@code modinterface.ae}.
+	 */
+	public static final DeferredItem<Item> VOID_CELL = reika.dragonapi.ModList.APPENG.isLoaded()
+			? reg("void_cell", reika.chromaticraft.modinterface.ae.ChromaAEItems::voidCell) : null;
+	public static final DeferredItem<Item> CRYSTAL_CELL = reika.dragonapi.ModList.APPENG.isLoaded()
+			? reg("crystal_cell", reika.chromaticraft.modinterface.ae.ChromaAEItems::crystalCell) : null;
+	public static final DeferredItem<Item> SHIELDED_CELL = reika.dragonapi.ModList.APPENG.isLoaded()
+			? reg("shielded_cell", reika.chromaticraft.modinterface.ae.ChromaAEItems::shieldedCell) : null;
+
 	/** V33a ARTEFACT metadata 1. It has none of the harmful full-artefact behavior. */
 	public static final DeferredItem<Item> UNKNOWN_ARTEFACT_FRAGMENT =
 			reg("unknown_artefact_fragment", () -> new Item(itemProperties().stacksTo(1)));

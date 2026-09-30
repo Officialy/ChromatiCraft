@@ -44,7 +44,7 @@ public class UAMESystemEffect extends MESystemReader.ItemInSystemEffect {
 		AEItemKey artefact = AEItemKey.of(ChromaBlocks.UNKNOWN_ARTEFACT_ITEM.get());
 		for (IChestOrDrive icp : grid.getMachines(IChestOrDrive.class)) {
 			for (int i = 0; i < icp.getCellCount(); i++) {
-				if (icp.getCellItem(i) instanceof ItemShieldedCell)
+				if (icp.getCellItem(i) instanceof ItemShieldedCell) //the Corrosion Resistant Cell
 					continue;
 				StorageCell cellInv = icp.getOriginalCellInventory(i);
 				if (cellInv != null && cellInv.getAvailableStacks().get(artefact) > 0) {

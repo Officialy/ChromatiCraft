@@ -245,6 +245,14 @@ public class ChromaModelProvider extends ModelProvider {
 			itemModelOut.accept(item, ItemModelUtils.plainModel(ModelTemplates.FLAT_ITEM.create(
 					ModelLocationUtils.getModelLocation(item), TextureMapping.layer0(item), modelOut)));
 		}
+		// Applied Energistics 2 cells: registered (and so modelled) only when datagen runs with AE2.
+		for (var cell : java.util.Arrays.asList(ChromaItems.VOID_CELL, ChromaItems.CRYSTAL_CELL, ChromaItems.SHIELDED_CELL)) {
+			if (cell == null)
+				continue;
+			Item item = cell.get();
+			itemModelOut.accept(item, ItemModelUtils.plainModel(ModelTemplates.FLAT_ITEM.create(
+					ModelLocationUtils.getModelLocation(item), TextureMapping.layer0(item), modelOut)));
+		}
 		// V33a offset the probe's sprite (53) by its charge state; the charge_state property picks probe_0..3.
 		{
 			Item probe = ChromaItems.PROBE.get();

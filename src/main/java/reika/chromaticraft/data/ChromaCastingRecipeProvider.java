@@ -24,6 +24,7 @@ import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.magic.progression.ProgressionManager;
 import reika.chromaticraft.magic.progression.ResearchLevel;
 import reika.chromaticraft.registry.*;
+import reika.dragonapi.modinteract.itemhandlers.AppEngHandler;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -370,13 +371,23 @@ public final class ChromaCastingRecipeProvider {
 					new ItemStackTemplate(ChromaBlocks.CHROMA_FLOWER.get().asItem()), 5, 5)
 					.withPenalty(2, 0.25F));
 
-			// V33a ToolStorageRecipe, a plain CastingRecipe: quartz, a glowstone block, a Loot Chest, stone and oak logs
-			// (V33a used 16k ME storage for the two side logs with Applied Energistics loaded).
-			saveShaped("tool_storage", new ItemStackTemplate(ChromaBlocks.TOOL_STORAGE.get().asItem()), 5, 5,
-					Map.of('q', Ingredient.of(Items.QUARTZ), 'g', Ingredient.of(Items.GLOWSTONE),
-							'a', Ingredient.of(Items.OAK_LOG), 'c', Ingredient.of(ChromaBlocks.LOOT_CHEST.get().asItem()),
-							'w', Ingredient.of(Items.OAK_LOG), 's', Ingredient.of(Items.STONE)),
-					"qgq", "aca", "wsw");
+			// V33a ToolStorageRecipe, a plain CastingRecipe: quartz, a glowstone block, a Loot Chest, stone and oak logs;
+			// with Applied Energistics loaded the two side logs were 16k ME storage components instead.
+			withConditions(new net.neoforged.neoforge.common.conditions.NotCondition(AE2), () ->
+					saveShaped("tool_storage", new ItemStackTemplate(ChromaBlocks.TOOL_STORAGE.get().asItem()), 5, 5,
+							Map.of('q', Ingredient.of(Items.QUARTZ), 'g', Ingredient.of(Items.GLOWSTONE),
+									'a', Ingredient.of(Items.OAK_LOG), 'c', Ingredient.of(ChromaBlocks.LOOT_CHEST.get().asItem()),
+									'w', Ingredient.of(Items.OAK_LOG), 's', Ingredient.of(Items.STONE)),
+							"qgq", "aca", "wsw"));
+			if (AppEngHandler.getInstance().getAEItem("cell_component_16k") != null) {
+				withConditions(AE2, () ->
+						saveShaped("tool_storage_ae2", new ItemStackTemplate(ChromaBlocks.TOOL_STORAGE.get().asItem()), 5, 5,
+								Map.of('q', Ingredient.of(Items.QUARTZ), 'g', Ingredient.of(Items.GLOWSTONE),
+										'a', Ingredient.of(AppEngHandler.getInstance().getAEItem("cell_component_16k")),
+										'c', Ingredient.of(ChromaBlocks.LOOT_CHEST.get().asItem()),
+										'w', Ingredient.of(Items.OAK_LOG), 's', Ingredient.of(Items.STONE)),
+								"qgq", "aca", "wsw"));
+			}
 
 			// V33a LumenWireRecipe, a plain CastingRecipe: a blue shard (the exact plain shard), obsidian, glowstone dust
 			// and cobblestone (the 1.7.10 "cobblestone" ore name).
@@ -439,6 +450,7 @@ public final class ChromaCastingRecipeProvider {
 			saveWorldRift();
 			saveAuraPouch();
 			saveLumaCapsule();
+			saveAECells();
 			saveTelePump();
 			saveAdjacencyUpgrades();
 			saveMagicPlants();
@@ -1663,7 +1675,117 @@ public final class ChromaCastingRecipeProvider {
 		private void saveRecipe(String name, CastingTableRecipe recipe) {
 			ResourceKey<Recipe<?>> key = ResourceKey.create(Registries.RECIPE,
 					Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, name));
-			output.accept(key, doublesOutput(name) ? recipe.withDoubleOutput() : recipe, null);
+			(conditionalOutput != null ? conditionalOutput : output).accept(key, doublesOutput(name) ? recipe.withDoubleOutput() : recipe, null);
+		}
+
+		/** Set while {@link #withConditions} runs: the output that tags every saved recipe with its conditions. */
+		private RecipeOutput conditionalOutput;
+
+		private static final net.neoforged.neoforge.common.conditions.ICondition AE2 =
+				new net.neoforged.neoforge.common.conditions.ModLoadedCondition("ae2");
+
+		/** Runs {@code body} with every recipe it saves carrying {@code condition}. */
+		private void withConditions(net.neoforged.neoforge.common.conditions.ICondition condition, Runnable body) {
+			RecipeOutput was = conditionalOutput;
+			conditionalOutput = (was != null ? was : output).withConditions(condition);
+			try {
+				body.run();
+			}
+			finally {
+				conditionalOutput = was;
+			}
+		}
+
+		/**
+		 * V33a RecipesCastingTable, with Applied Energistics loaded: the Void Cell (a PylonCastingRecipe on a Void Core),
+		 * the Crystal Cell (a MultiBlockCastingRecipe on a Crystal Focus) and the Corrosion Resistant Cell (a plain
+		 * CastingRecipe around a 4k cell). Only generated when datagen runs with AE2 (its items must exist), and every
+		 * recipe is conditional on ae2 being loaded.
+		 */
+		private void saveAECells() {
+			if (ChromaItems.VOID_CELL == null)
+				return;
+			AppEngHandler ae = AppEngHandler.getInstance();
+			Ingredient quartzGlass = Ingredient.of(ae.getAEItem("quartz_glass"));
+			Ingredient gold = Ingredient.of(ae.getAEItem("logic_processor"));
+			Ingredient quartz = Ingredient.of(ae.getAEItem("calculation_processor"));
+			Ingredient diamond = Ingredient.of(ae.getAEItem("engineering_processor"));
+			Ingredient redstone = Ingredient.of(Items.REDSTONE);
+			Ingredient iron = Ingredient.of(Items.IRON_INGOT);
+			Ingredient energyPowder = Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.ENERGY_POWDER).get());
+			Ingredient icyDust = Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.ICY_DUST).get());
+			Ingredient voidDust = Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.VOID_DUST).get());
+			Ingredient chromaDust = tiered(ChromaTieredItems.CHROMA_DUST);
+			Ingredient elementDust = tiered(ChromaTieredItems.ELEMENT_DUST);
+			withConditions(AE2, () -> {
+				// VoidStorageRecipe
+				List<CastingTableRecipe.StandIngredient> v = new ArrayList<>();
+				v.add(auxStand(-2, -2, quartzGlass));
+				v.add(auxStand(0, -2, redstone));
+				v.add(auxStand(2, -2, quartzGlass));
+				v.add(auxStand(-2, 0, redstone));
+				v.add(auxStand(2, 0, redstone));
+				v.add(auxStand(-2, 2, iron));
+				v.add(auxStand(0, 2, iron));
+				v.add(auxStand(2, 2, iron));
+				v.add(auxStand(0, -4, diamond));
+				v.add(auxStand(0, 4, diamond));
+				v.add(auxStand(-4, 0, quartz));
+				v.add(auxStand(4, 0, quartz));
+				for (int[] p : new int[][] {{-4, -4}, {4, -4}, {-4, 4}, {4, 4}})
+					v.add(auxStand(p[0], p[1], gold));
+				v.add(auxStand(-2, -4, voidDust));
+				v.add(auxStand(2, -4, chromaDust));
+				v.add(auxStand(2, 4, voidDust));
+				v.add(auxStand(-2, 4, chromaDust));
+				v.add(auxStand(4, -2, voidDust));
+				v.add(auxStand(-4, -2, chromaDust));
+				v.add(auxStand(-4, 2, voidDust));
+				v.add(auxStand(4, 2, chromaDust));
+				saveRecipe("void_cell", new CastingTableRecipe(CastingTableRecipe.Tier.PYLON,
+						List.of(new GridIngredient(4, Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.VOID_CORE).get()))),
+						List.copyOf(v), List.of(),
+						List.of(new AuraRequirement(CrystalElement.BLACK, 5000), new AuraRequirement(CrystalElement.BROWN, 5000),
+								new AuraRequirement(CrystalElement.PURPLE, 5000), new AuraRequirement(CrystalElement.WHITE, 5000)),
+						new ItemStackTemplate(ChromaItems.VOID_CELL.get()), 400, 500)
+						.withPenaltyThreshold(10 * 3 / 4)); //V33a typical 10 (one drive bay)
+
+				// CrystalCellRecipe
+				List<CastingTableRecipe.StandIngredient> c = new ArrayList<>();
+				c.add(auxStand(-2, -2, quartzGlass));
+				c.add(auxStand(0, -2, redstone));
+				c.add(auxStand(2, -2, quartzGlass));
+				c.add(auxStand(-2, 0, redstone));
+				c.add(auxStand(2, 0, redstone));
+				c.add(auxStand(-2, 2, iron));
+				c.add(auxStand(0, 2, iron));
+				c.add(auxStand(2, 2, iron));
+				c.add(auxStand(0, 4, gold));
+				c.add(auxStand(0, -4, quartz));
+				c.add(auxStand(-2, -4, energyPowder));
+				c.add(auxStand(2, -4, elementDust));
+				c.add(auxStand(2, 4, energyPowder));
+				c.add(auxStand(-2, 4, elementDust));
+				c.add(auxStand(4, -2, icyDust));
+				c.add(auxStand(-4, -2, energyPowder));
+				c.add(auxStand(-4, 2, icyDust));
+				c.add(auxStand(4, 2, energyPowder));
+				saveRecipe("crystal_cell", new CastingTableRecipe(CastingTableRecipe.Tier.MULTIBLOCK,
+						List.of(new GridIngredient(4, Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.CRYSTAL_FOCUS).get()))),
+						List.copyOf(c), List.of(), List.of(),
+						new ItemStackTemplate(ChromaItems.CRYSTAL_CELL.get()), 100, 200)
+						.withPenaltyThreshold(18 * 3 / 4)); //V33a typical 18 (types of compatible items)
+
+				// ShieldedCellRecipe: typical 1, penalised from the first craft at no XP
+				saveRecipe("shielded_cell", new CastingTableRecipe(CastingTableRecipe.Tier.CRAFTING,
+						shapedGrid(Map.of('u', Ingredient.of(ChromaItems.UNKNOWN_ARTEFACT_FRAGMENT.get()),
+								'S', Ingredient.of(ChromaBlocks.SHIELDING.get(ChromaShieldTypes.STONE).get().asItem()),
+								'C', Ingredient.of(ae.get4KCell()), 'r', redstone, 'g', Ingredient.of(Items.QUARTZ)),
+								"rur", "uCu", "SgS"),
+						List.of(), List.of(), List.of(),
+						new ItemStackTemplate(ChromaItems.SHIELDED_CELL.get()), 5, 5)
+						.withPenalty(1, 0F));
+			});
 		}
 	}
 }

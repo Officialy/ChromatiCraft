@@ -333,6 +333,9 @@ public final class ChromaGameTests {
 				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "default"),
 				new TestEnvironmentDefinition.AllOf(List.of()));
 
+		// Applied Energistics 2 integration; only with AE2 in run-gametest/mods (the normal GameTest runtime has none).
+		if (reika.dragonapi.ModList.APPENG.isLoaded())
+			ChromaAETests.register(event, env);
 		register(event, env, "progression_grant_and_query", ChromaGameTests::grantAndQuery);
 		register(event, env, "progression_recursive_parents", ChromaGameTests::recursiveParents);
 		register(event, env, "progression_prereq_gating", ChromaGameTests::prereqGating);
@@ -9489,7 +9492,7 @@ public final class ChromaGameTests {
 		register(event, env, name, 20, body);
 	}
 
-	private static void register(RegisterGameTestsEvent event, Holder<TestEnvironmentDefinition<?>> env,
+	static void register(RegisterGameTestsEvent event, Holder<TestEnvironmentDefinition<?>> env,
 			String name, int maxTicks, Consumer<GameTestHelper> body) {
 		Identifier id = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, name);
 		TestData<Holder<TestEnvironmentDefinition<?>>> data =

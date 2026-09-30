@@ -223,6 +223,10 @@ public final class LexiconIconResolver {
 			case "probe" -> ChromaItems.PROBE.get();
 			case "share" -> ChromaItems.OWNERSHIP_KEY.get();
 			case "cavepather" -> ChromaItems.CAVE_PATHER.get();
+			// Applied Energistics 2 cells; unregistered (null) without AE2, like their V33a pages.
+			case "voidcell" -> ChromaItems.VOID_CELL != null ? ChromaItems.VOID_CELL.get() : null;
+			case "crystalcell" -> ChromaItems.CRYSTAL_CELL != null ? ChromaItems.CRYSTAL_CELL.get() : null;
+			case "shieldedcell" -> ChromaItems.SHIELDED_CELL != null ? ChromaItems.SHIELDED_CELL.get() : null;
 			default -> null;
 		};
 	}

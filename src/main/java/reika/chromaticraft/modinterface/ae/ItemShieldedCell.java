@@ -1,49 +1,46 @@
 /*******************************************************************************
  * @author Reika Kalseki
- * 
+ *
  * Copyright 2017
- * 
+ *
  * All rights reserved.
  * Distribution of the software in any form is only allowed with
  * explicit, prior permission from the owner.
  ******************************************************************************/
 package reika.chromaticraft.modinterface.ae;
 
-import java.util.List;
+import java.util.Set;
+import java.util.function.Consumer;
 
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.inventory.IInventory;
-import net.minecraft.item.ItemStack;
-
-import reika.chromaticraft.base.ItemChromaTool;
-import reika.chromaticraft.registry.ChromaItems;
-import reika.dragonapi.ModList;
-import reika.dragonapi.asm.apistripper.Strippable;
-import reika.dragonapi.asm.dependentmethodstripper.ModDependent;
-import reika.dragonapi.instantiable.BasicInventory;
-import reika.dragonapi.instantiable.modinteract.AECellFormat;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.TooltipDisplay;
 
 import appeng.api.config.FuzzyMode;
-import appeng.api.implementations.items.IStorageCell;
-import appeng.api.storage.data.IAEItemStack;
+import appeng.api.stacks.AEKey;
+import appeng.api.stacks.AEKeyType;
+import appeng.api.storage.cells.IBasicCellItem;
+import appeng.api.upgrades.IUpgradeInventory;
+import appeng.api.upgrades.UpgradeInventories;
+import appeng.items.contents.CellConfig;
+import appeng.util.ConfigInventory;
+import reika.chromaticraft.base.ItemChromaTool;
 
-@Strippable(value = "appeng.api.implementations.items.IStorageCell")
-public class ItemShieldedCell extends ItemChromaTool implements IStorageCell {
+/**
+ * V33a {@code ItemShieldedCell}, the Corrosion Resistant Cell: a small (1024-byte, two-type) ME storage cell that an
+ * Unknown Artefact cannot corrupt - the artefact's ME power drain ({@link UAMESystemEffect}) ignores it. Two upgrade
+ * slots and a 63-slot partition, like the Void Cell.
+ */
+public class ItemShieldedCell extends ItemChromaTool implements IBasicCellItem {
 
-	private static class CellInventory extends BasicInventory {
-
-		public CellInventory() {
-			super(ChromaItems.SHIELDEDCELL.getBasicName(), 2, 1);
-		}
-
-		@Override
-		public boolean isItemValidForSlot(int i, ItemStack is) {
-			return true;
-		}
+	public ItemShieldedCell(Properties properties) {
+		super(properties);
 	}
 
-	public ItemShieldedCell(int index) {
-		super(index);
+	@Override
+	public AEKeyType getKeyType() {
+		return AEKeyType.items();
 	}
 
 	@Override
@@ -53,27 +50,22 @@ public class ItemShieldedCell extends ItemChromaTool implements IStorageCell {
 
 	@Override
 	public FuzzyMode getFuzzyMode(ItemStack is) {
-		//if (is.stackTagCompound == null)
-		//	is.stackTagCompound = new NBTTagCompound();
-		//return FuzzyMode.values()[is.getTagCompound().getInteger("fuzzyMode")];
 		return FuzzyMode.IGNORE_ALL;
 	}
 
 	@Override
 	public void setFuzzyMode(ItemStack is, FuzzyMode fzMode) {
-		//if (is.stackTagCompound == null)
-		//	is.stackTagCompound = new NBTTagCompound();
-		//is.getTagCompound().setInteger("fuzzyMode", fzMode.ordinal());
+
 	}
 
 	@Override
-	public IInventory getUpgradesInventory(ItemStack is) {
-		return new AECellFormat(is, "upgrades", 2);
+	public IUpgradeInventory getUpgrades(ItemStack is) {
+		return UpgradeInventories.forItem(is, 2);
 	}
 
 	@Override
-	public IInventory getConfigInventory(ItemStack is) {
-		return new AECellFormat(is, "config", 63);
+	public ConfigInventory getConfigInventory(ItemStack is) {
+		return CellConfig.create(Set.of(AEKeyType.items()), is, 63);
 	}
 
 	@Override
@@ -82,12 +74,7 @@ public class ItemShieldedCell extends ItemChromaTool implements IStorageCell {
 	}
 
 	@Override
-	public int BytePerType(ItemStack cellItem) {
-		return 1;
-	}
-
-	//@Override
-	public int getBytesPerType(ItemStack is) {
+	public int getBytesPerType(ItemStack cellItem) {
 		return 1;
 	}
 
@@ -97,8 +84,7 @@ public class ItemShieldedCell extends ItemChromaTool implements IStorageCell {
 	}
 
 	@Override
-	@ModDependent(ModList.APPENG)
-	public boolean isBlackListed(ItemStack cellItem, IAEItemStack requestedAddition) {
+	public boolean isBlackListed(ItemStack cellItem, AEKey requestedAddition) {
 		return false;
 	}
 
@@ -108,75 +94,13 @@ public class ItemShieldedCell extends ItemChromaTool implements IStorageCell {
 	}
 
 	@Override
-	public boolean isStorageCell(ItemStack is) {
-		return true;
-	}
-
-	@Override
 	public double getIdleDrain() {
 		return 4;
 	}
 
 	@Override
-	public void addInformation(ItemStack is, EntityPlayer ep, List li, boolean vb) {
-		if (ModList.APPENG.isLoaded()) {
-			/*
-			ICellRegistry icr = AEApi.instance().registries().cell();
-			IMEInventoryHandler inv = icr.getCellInventory(is, null, StorageChannel.ITEMS);
-			ICellInventoryHandler icih = (ICellInventoryHandler)inv;
-			ICellInventory cellInv = icih.getCellInv();
-			long usedBytes = cellInv.getUsedBytes();
-
-			li.add(String.format("%s of %s item bytes used.", usedBytes, cellInv.getTotalBytes()));
-			li.add(String.format("%s of %s item types used.", cellInv.getStoredItemTypes(), cellInv.getTotalItemTypes()));
-			if (usedBytes > 0L) {
-				li.add(String.format("contains %s items.", cellInv.getStoredItemCount()));
-
-				IItemList<IAEItemStack> items = cellInv.getAvailableItems(StorageChannel.ITEMS.createList());
-				li.add(String.format("Stores %s.", items.getFirstItem().getItemStack().getDisplayName()));
-			}
-			 */
-		}
-		else {
-			li.add("Kind of useless without an ME system to add it to.");
-		}
+	public void appendHoverText(ItemStack is, TooltipContext ctx, TooltipDisplay display, Consumer<Component> li, TooltipFlag flag) {
+		this.addCellInformationToTooltip(is, li);
 	}
 
-	/*
-	@ModDependent(ModList.APPENG)
-	public static ItemStack getStoredItem(ItemStack is) {
-		if (ModList.APPENG.isLoaded()) {
-			ICellRegistry icr = AEApi.instance().registries().cell();
-			IMEInventoryHandler inv = icr.getCellInventory(is, null, StorageChannel.ITEMS);
-			ICellInventoryHandler icih = (ICellInventoryHandler)inv;
-			ICellInventory cellInv = icih.getCellInv();
-			IItemList<IAEItemStack> items = cellInv.getAvailableItems(StorageChannel.ITEMS.createList());
-			return items.isEmpty() ? null : items.getFirstItem().getItemStack(); //first since one type per cell
-		}
-		else {
-			return null;
-		}
-	}
-
-	@Override
-	public boolean onRender(RenderItem ri, ItemStack is, ItemRenderType type) {
-		if (type == ItemRenderType.INVENTORY) {
-			if (Keyboard.isKeyDown(Keyboard.KEY_LSHIFT)) {
-				ItemStack store = ItemShieldedCell.getStoredItem(is);
-				if (store != null) {
-					double s = 0.063;
-					GL11.glScaled(s, -s, s);
-					ReikaGuiAPI.instance.drawItemStack(ri, ReikaItemHelper.getSizedItemStack(store, 1), 0, -16);
-					return true;
-				}
-			}
-		}
-		return false;
-	}
-
-	@Override
-	public boolean doPreGLTransforms(ItemStack is, ItemRenderType type) {
-		return true;
-	}
-	 */
 }

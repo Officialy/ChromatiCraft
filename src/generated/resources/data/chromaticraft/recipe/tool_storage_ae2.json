@@ -1,0 +1,52 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "ae2"
+    }
+  ],
+  "type": "chromaticraft:casting",
+  "experience": 5,
+  "grid": [
+    {
+      "ingredient": "minecraft:quartz",
+      "slot": 0
+    },
+    {
+      "ingredient": "minecraft:glowstone",
+      "slot": 1
+    },
+    {
+      "ingredient": "minecraft:quartz",
+      "slot": 2
+    },
+    {
+      "ingredient": "ae2:cell_component_16k",
+      "slot": 3
+    },
+    {
+      "ingredient": "chromaticraft:loot_chest",
+      "slot": 4
+    },
+    {
+      "ingredient": "ae2:cell_component_16k",
+      "slot": 5
+    },
+    {
+      "ingredient": "minecraft:oak_log",
+      "slot": 6
+    },
+    {
+      "ingredient": "minecraft:stone",
+      "slot": 7
+    },
+    {
+      "ingredient": "minecraft:oak_log",
+      "slot": 8
+    }
+  ],
+  "result": {
+    "id": "chromaticraft:tool_storage"
+  },
+  "tier": "crafting"
+}

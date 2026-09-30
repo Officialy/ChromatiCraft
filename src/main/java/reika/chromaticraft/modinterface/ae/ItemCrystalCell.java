@@ -9,66 +9,66 @@
  ******************************************************************************/
 package reika.chromaticraft.modinterface.ae;
 
-import java.util.List;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
-import org.lwjgl.input.Keyboard;
-import org.lwjgl.opengl.GL11;
+import javax.annotation.Nullable;
 
-import net.minecraft.client.renderer.entity.RenderItem;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.init.Items;
-import net.minecraft.inventory.IInventory;
-import net.minecraft.item.ItemStack;
-import net.minecraftforge.client.IItemRenderer.ItemRenderType;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.DyeItem;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.TooltipDisplay;
+import net.minecraft.world.level.ItemLike;
 
-import reika.chromaticraft.api.interfaces.CrystalTypesProxy;
+import appeng.api.config.FuzzyMode;
+import appeng.api.stacks.AEItemKey;
+import appeng.api.stacks.AEKey;
+import appeng.api.stacks.AEKeyType;
+import appeng.api.storage.StorageCells;
+import appeng.api.storage.cells.IBasicCellItem;
+import appeng.api.storage.cells.StorageCell;
+import appeng.util.ConfigInventory;
 import reika.chromaticraft.base.ItemChromaTool;
-import reika.chromaticraft.base.ItemCrystalBasic;
-import reika.chromaticraft.items.itemblock.ItemBlockCrystal;
-import reika.chromaticraft.items.itemblock.ItemBlockCrystalColors;
-import reika.chromaticraft.items.itemblock.ItemBlockDyeTypes;
-import reika.chromaticraft.modinterface.ItemColoredModInteract;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaItems;
-import reika.chromaticraft.registry.ChromaTiles;
 import reika.chromaticraft.registry.CrystalElement;
-import reika.dragonapi.ModList;
-import reika.dragonapi.asm.apistripper.Strippable;
-import reika.dragonapi.asm.dependentmethodstripper.ModDependent;
-import reika.dragonapi.instantiable.BasicInventory;
-import reika.dragonapi.instantiable.DummyInventory;
-import reika.dragonapi.interfaces.item.SpriteRenderCallback;
-import reika.dragonapi.libraries.registry.ReikaItemHelper;
-import reika.dragonapi.libraries.rendering.ReikaGuiAPI;
 
-import appeng.api.AEApi;
-import appeng.api.config.FuzzyMode;
-import appeng.api.implementations.items.IStorageCell;
-import appeng.api.storage.ICellInventory;
-import appeng.api.storage.ICellInventoryHandler;
-import appeng.api.storage.ICellRegistry;
-import appeng.api.storage.IMEInventoryHandler;
-import appeng.api.storage.StorageChannel;
-import appeng.api.storage.data.IAEItemStack;
-import appeng.api.storage.data.IItemList;
+/**
+ * V33a {@code ItemCrystalCell}: a 1,048,576-byte, 16-type ME storage cell that only takes one "crystal type" - the
+ * sixteen colours of one crystal item or block (shards, berries, seeds, stones, pendants, cave crystals, lamps,
+ * runes, dye blocks, plants...) or vanilla dye - so all sixteen fit in one cell.
+ *
+ * <p>V33a told the colours of one type apart by metadata ({@code damage/16} was the type). The port split every
+ * colour into its own item, each colour family being one {@code CrystalElement}-keyed map in {@link ChromaItems}
+ * or {@link ChromaBlocks}, so the family is looked up from those maps. Dimension cores, as in V33a, only stack with
+ * the exact same core. V33a's crystal cell partition inventory was never saved, so it has none here.
+ *
+ * <p>CHROMA-PORT: V33a also drew the stored type, cycling through its colours, over the cell's icon while Shift was
+ * held ({@code SpriteRenderCallback}); that needs a custom item model.
+ */
+public class ItemCrystalCell extends ItemChromaTool implements IBasicCellItem {
 
-@Strippable(value = "appeng.api.implementations.items.IStorageCell")
-public class ItemCrystalCell extends ItemChromaTool implements SpriteRenderCallback, IStorageCell {
+	/** V33a colour families that were not CrystalTypesProxy / ItemCrystalBasic / crystal or dye ItemBlocks. */
+	private static final Set<String> NOT_CRYSTAL_TYPES = Set.of("CRYSTAL_POTIONS", "SPLASH_CRYSTAL_POTIONS", "TINTED_LENSES", "LUMEN_RELAYS");
+	private static final String DYES = "DYE";
+	private static final String EXACT = "DIMENSION_CORES";
 
-	private static class CellInventory extends BasicInventory {
+	private static Map<Item, String> families;
 
-		public CellInventory() {
-			super(ChromaItems.CRYSTALCELL.getBasicName(), 63, 1);
-		}
-
-		@Override
-		public boolean isItemValidForSlot(int i, ItemStack is) {
-			return isTypeStorable(is);
-		}
+	public ItemCrystalCell(Properties properties) {
+		super(properties);
 	}
 
-	public ItemCrystalCell(int index) {
-		super(index);
+	@Override
+	public AEKeyType getKeyType() {
+		return AEKeyType.items();
 	}
 
 	@Override
@@ -77,13 +77,8 @@ public class ItemCrystalCell extends ItemChromaTool implements SpriteRenderCallb
 	}
 
 	@Override
-	public IInventory getUpgradesInventory(ItemStack is) {
-		return new DummyInventory();
-	}
-
-	@Override
-	public IInventory getConfigInventory(ItemStack is) {
-		return new CellInventory();
+	public ConfigInventory getConfigInventory(ItemStack is) {
+		return ConfigInventory.emptyTypes();
 	}
 
 	@Override
@@ -92,23 +87,17 @@ public class ItemCrystalCell extends ItemChromaTool implements SpriteRenderCallb
 	}
 
 	@Override
-	@ModDependent(ModList.APPENG)
 	public void setFuzzyMode(ItemStack is, FuzzyMode fzMode) {
 
 	}
 
 	@Override
 	public int getBytes(ItemStack cellItem) { //Total storage
-		return 262144*4; //increased 4x
+		return 262144 * 4; //increased 4x
 	}
 
 	@Override
-	public int BytePerType(ItemStack cellItem) {
-		return 1;
-	}
-
-	//@Override
-	public int getBytesPerType(ItemStack is) {
+	public int getBytesPerType(ItemStack cellItem) {
 		return 1;
 	}
 
@@ -118,9 +107,8 @@ public class ItemCrystalCell extends ItemChromaTool implements SpriteRenderCallb
 	}
 
 	@Override
-	@ModDependent(ModList.APPENG)
-	public boolean isBlackListed(ItemStack cellItem, IAEItemStack requestedAddition) {
-		return !this.isItemValid(cellItem, requestedAddition.getItemStack());
+	public boolean isBlackListed(ItemStack cellItem, AEKey requestedAddition) {
+		return !(requestedAddition instanceof AEItemKey key) || !isItemValid(cellItem, key.toStack());
 	}
 
 	@Override
@@ -129,116 +117,83 @@ public class ItemCrystalCell extends ItemChromaTool implements SpriteRenderCallb
 	}
 
 	@Override
-	public boolean isStorageCell(ItemStack is) {
-		return true;
-	}
-
-	@Override
 	public double getIdleDrain() {
 		return 2;
 	}
 
 	@Override
-	public void addInformation(ItemStack is, EntityPlayer ep, List li, boolean vb) {
-		if (ModList.APPENG.isLoaded()) {
-			ICellRegistry icr = AEApi.instance().registries().cell();
-			IMEInventoryHandler inv = icr.getCellInventory(is, null, StorageChannel.ITEMS);
-			ICellInventoryHandler icih = (ICellInventoryHandler)inv;
-			ICellInventory cellInv = icih.getCellInv();
-			long usedBytes = cellInv.getUsedBytes();
-
-			li.add(String.format("%s of %s item bytes used.", usedBytes, cellInv.getTotalBytes()));
-			li.add(String.format("%s of %s item types used.", cellInv.getStoredItemTypes(), cellInv.getTotalItemTypes()));
-			if (usedBytes > 0L) {
-				li.add(String.format("contains %s items.", cellInv.getStoredItemCount()));
-
-				IItemList<IAEItemStack> items = cellInv.getAvailableItems(StorageChannel.ITEMS.createList());
-				ItemStack in = items.getFirstItem().getItemStack();
-				String n = in.getDisplayName();
-				ChromaItems c = ChromaItems.getEntry(in);
-				if (c != null) {
-					n = c.getBasicName();
-				}
-				ChromaBlocks b = ChromaBlocks.getEntryByItem(in);
-				if (b != null) {
-					n = b.getBasicName();
-				}
-				if (in != null && in.getItem() == Items.dye) {
-					n = "Dye";
-				}
-				li.add(String.format("Stores %s.", n));
-			}
-		}
-		else {
-			li.add("Kind of useless without an ME system to add it to.");
+	public void appendHoverText(ItemStack is, TooltipContext ctx, TooltipDisplay display, Consumer<Component> li, TooltipFlag flag) {
+		this.addCellInformationToTooltip(is, li);
+		ItemStack in = getStoredItemType(is);
+		if (!in.isEmpty()) {
+			String family = getFamily(in.getItem());
+			li.accept(DYES.equals(family) ? Component.literal("Stores Dye.") : Component.literal("Stores ").append(in.getHoverName()).append("."));
 		}
 	}
 
-	@ModDependent(ModList.APPENG)
+	/** An item of the type the cell holds, or EMPTY if it is empty. */
 	public static ItemStack getStoredItemType(ItemStack is) {
-		if (ModList.APPENG.isLoaded()) {
-			ICellRegistry icr = AEApi.instance().registries().cell();
-			IMEInventoryHandler inv = icr.getCellInventory(is, null, StorageChannel.ITEMS);
-			ICellInventoryHandler icih = (ICellInventoryHandler)inv;
-			ICellInventory cellInv = icih.getCellInv();
-			IItemList<IAEItemStack> items = cellInv.getAvailableItems(StorageChannel.ITEMS.createList());
-			ItemStack in = items.isEmpty() ? null : items.getFirstItem().getItemStack();
-			return in == null ? null : new ItemStack(in.getItem(), 1, CrystalElement.WHITE.ordinal()+16*(in.getItemDamage()/16));
-		}
-		else {
-			return null;
-		}
+		StorageCell cellInv = StorageCells.getCellInventory(is, null);
+		if (cellInv == null)
+			return ItemStack.EMPTY;
+		AEKey key = cellInv.getAvailableStacks().getFirstKey();
+		return key instanceof AEItemKey iae ? iae.toStack() : ItemStack.EMPTY;
 	}
 
 	public static boolean isItemValid(ItemStack cell, ItemStack is) {
-		if (ModList.APPENG.isLoaded()) {
-			ItemStack in = getStoredItemType(cell);
-			if (ChromaItems.PLACER.matchWith(is) && is.getItemDamage() == ChromaTiles.DIMENSIONCORE.ordinal())
-				return ReikaItemHelper.matchStacks(is, in);
-			return in != null ? (in.getItem() == is.getItem() && in.getItemDamage()/16 == is.getItemDamage()/16) : isTypeStorable(is);
-		}
-		else {
+		String fam = getFamily(is.getItem());
+		if (fam == null)
 			return false;
-		}
+		ItemStack in = getStoredItemType(cell);
+		if (in.isEmpty())
+			return true;
+		if (EXACT.equals(fam))
+			return ItemStack.isSameItemSameComponents(is, in);
+		return fam.equals(getFamily(in.getItem())); //V33a: same item, same damage/16 (plain and boosted shards are separate families here too)
 	}
 
 	public static boolean isTypeStorable(ItemStack is) {
-		if (is.getItem() == Items.dye)
-			return true;
-		if (is.getItem() instanceof ItemCrystalBasic || is.getItem() instanceof ItemBlockCrystalColors || is.getItem() instanceof ItemBlockCrystal)
-			return true;
-		if (is.getItem() instanceof CrystalTypesProxy && ((CrystalTypesProxy)is.getItem()).isCrystalType(is))
-			return true;
-		if (ChromaItems.PLACER.matchWith(is) && is.getItemDamage() == ChromaTiles.DIMENSIONCORE.ordinal())
-			return true;
-		return is.getItem() instanceof ItemBlockDyeTypes || is.getItem() instanceof ItemColoredModInteract;
+		return getFamily(is.getItem()) != null;
 	}
 
-	@Override
-	public boolean onRender(RenderItem ri, ItemStack is, ItemRenderType type) {
-		if (type == ItemRenderType.INVENTORY) {
-			if (Keyboard.isKeyDown(Keyboard.KEY_LSHIFT)) {
-				ItemStack store = ItemCrystalCell.getStoredItemType(is);
-				if (store != null) {
-					double s = 0.063;
-					GL11.glScaled(s, -s, s);
-					store = store.copy();
-					store.setItemDamage(((store.getItemDamage()/16)*16)+(int)((System.currentTimeMillis()/250)%16));
-					//float hue = (float)(((System.currentTimeMillis()/10D)%360)/360F);
-					//int rgb = Color.HSBtoRGB(hue, 1, 1);
-					//GL11.glColor4f(ReikaColorAPI.getRed(rgb)/255F, ReikaColorAPI.getGreen(rgb)/255F, ReikaColorAPI.getBlue(rgb)/255F, 1);
-					ReikaGuiAPI.instance.drawItemStack(ri, ReikaItemHelper.getSizedItemStack(store, 1), 0, -16);
-					GL11.glColor4f(1, 1, 1, 1);
-					return true;
+	@Nullable
+	private static String getFamily(Item item) {
+		if (families == null)
+			families = buildFamilies();
+		return families.get(item);
+	}
+
+	private static Map<Item, String> buildFamilies() {
+		Map<Item, String> map = new HashMap<>();
+		scan(ChromaItems.class, map);
+		scan(ChromaBlocks.class, map);
+		for (Item item : net.minecraft.core.registries.BuiltInRegistries.ITEM) {
+			if (item instanceof DyeItem)
+				map.put(item, DYES);
+		}
+		return map;
+	}
+
+	/** Every static CrystalElement-keyed map of registry holders is one colour family. */
+	private static void scan(Class<?> registry, Map<Item, String> map) {
+		for (Field f : registry.getDeclaredFields()) {
+			if (!Modifier.isStatic(f.getModifiers()) || !Map.class.isAssignableFrom(f.getType()) || NOT_CRYSTAL_TYPES.contains(f.getName()))
+				continue;
+			try {
+				f.setAccessible(true);
+				Map<?, ?> m = (Map<?, ?>)f.get(null);
+				if (m == null || m.isEmpty() || !(m.keySet().iterator().next() instanceof CrystalElement))
+					continue;
+				for (Object v : m.values()) {
+					Object o = v instanceof Supplier<?> s ? s.get() : v;
+					if (o instanceof ItemLike il && il.asItem() != null && il.asItem() != net.minecraft.world.item.Items.AIR)
+						map.put(il.asItem(), f.getName());
 				}
 			}
+			catch (ReflectiveOperationException | RuntimeException e) {
+				e.printStackTrace();
+			}
 		}
-		return false;
-	}
-
-	@Override
-	public boolean doPreGLTransforms(ItemStack is, ItemRenderType type) {
-		return true;
 	}
 
 }

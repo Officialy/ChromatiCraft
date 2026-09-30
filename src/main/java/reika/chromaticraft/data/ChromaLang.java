@@ -230,6 +230,12 @@ public class ChromaLang extends LanguageProvider {
 		add(turretDeath + ".player", "%1$s got too close to %2$s's Lumen Turret");
 		add(ChromaBlocks.CHROMA_FLOWER.get(), "Chromatic Flower"); // V33a chroma.flower
 		add(ChromaItems.PYLON_FINDER.get(), "Pylon Compass"); // V33a chroma.finder
+		// Applied Energistics 2 cells (only registered with AE2): V33a chroma.aecell / crystalcell / shieldedcell.
+		if (ChromaItems.VOID_CELL != null) {
+			add(ChromaItems.VOID_CELL.get(), "Void Cell");
+			add(ChromaItems.CRYSTAL_CELL.get(), "Crystal Cell");
+			add(ChromaItems.SHIELDED_CELL.get(), "Corrosion Resistant Cell");
+		}
 		add(ChromaItems.LIGHT_GUN.get(), "Illumination Gun"); // V33a chroma.lightgun
 		add(ChromaItems.PROBE.get(), "Examination Crystals"); // V33a chroma.probe
 		add(reika.chromaticraft.registry.ChromaEntityTypes.CHARGING_TOOL.get(), "Item");

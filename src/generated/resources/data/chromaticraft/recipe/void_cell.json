@@ -1,0 +1,235 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "ae2"
+    }
+  ],
+  "type": "chromaticraft:casting",
+  "aura": [
+    {
+      "amount": 5000,
+      "element": "black"
+    },
+    {
+      "amount": 5000,
+      "element": "brown"
+    },
+    {
+      "amount": 5000,
+      "element": "purple"
+    },
+    {
+      "amount": 5000,
+      "element": "white"
+    }
+  ],
+  "duration": 400,
+  "experience": 500,
+  "grid": [
+    {
+      "ingredient": "chromaticraft:void_core",
+      "slot": 4
+    }
+  ],
+  "penalty_threshold": 7,
+  "result": {
+    "id": "chromaticraft:void_cell"
+  },
+  "stackable": false,
+  "stands": [
+    {
+      "ingredient": "ae2:quartz_glass",
+      "offset": [
+        -2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "minecraft:redstone",
+      "offset": [
+        0,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "ae2:quartz_glass",
+      "offset": [
+        2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "minecraft:redstone",
+      "offset": [
+        -2,
+        0,
+        0
+      ]
+    },
+    {
+      "ingredient": "minecraft:redstone",
+      "offset": [
+        2,
+        0,
+        0
+      ]
+    },
+    {
+      "ingredient": "minecraft:iron_ingot",
+      "offset": [
+        -2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "minecraft:iron_ingot",
+      "offset": [
+        0,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "minecraft:iron_ingot",
+      "offset": [
+        2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "ae2:engineering_processor",
+      "offset": [
+        0,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "ae2:engineering_processor",
+      "offset": [
+        0,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "ae2:calculation_processor",
+      "offset": [
+        -4,
+        1,
+        0
+      ]
+    },
+    {
+      "ingredient": "ae2:calculation_processor",
+      "offset": [
+        4,
+        1,
+        0
+      ]
+    },
+    {
+      "ingredient": "ae2:logic_processor",
+      "offset": [
+        -4,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "ae2:logic_processor",
+      "offset": [
+        4,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "ae2:logic_processor",
+      "offset": [
+        -4,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "ae2:logic_processor",
+      "offset": [
+        4,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:void_dust",
+      "offset": [
+        -2,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:chromic_dust",
+      "offset": [
+        2,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:void_dust",
+      "offset": [
+        2,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:chromic_dust",
+      "offset": [
+        -2,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:void_dust",
+      "offset": [
+        4,
+        1,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:chromic_dust",
+      "offset": [
+        -4,
+        1,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:void_dust",
+      "offset": [
+        -4,
+        1,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:chromic_dust",
+      "offset": [
+        4,
+        1,
+        2
+      ]
+    }
+  ],
+  "tier": "pylon"
+}
