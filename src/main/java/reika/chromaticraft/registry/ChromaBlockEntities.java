@@ -133,6 +133,8 @@ public final class ChromaBlockEntities {
 			register("fluid_distributor", ChromaTiles.FLUIDDISTRIBUTOR);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<reika.chromaticraft.tileentity.transport.TileEntityRift>> RIFT =
 			register("world_rift", ChromaTiles.RIFT);
+	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<reika.chromaticraft.tileentity.acquisition.TileEntityTeleportationPump>> TELEPUMP =
+			register("teleportation_pump", ChromaTiles.TELEPUMP);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<reika.chromaticraft.tileentity.decoration.TileEntityParticleSpawner>> PARTICLE_SPAWNER =
 			register("particle_spawner", ChromaTiles.PARTICLES);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<reika.chromaticraft.tileentity.transport.TileEntityLaunchPad>> LAUNCH_PAD =
@@ -297,6 +299,8 @@ public final class ChromaBlockEntities {
 		event.registerBlockEntity(Capabilities.Fluid.BLOCK, RIFT.get(), (rift, side) -> rift.fluidHandler(side));
 		event.registerBlockEntity(Capabilities.Energy.BLOCK, RIFT.get(), (rift, side) -> rift.energyHandler(side));
 		event.registerBlockEntity(Capabilities.Item.BLOCK, RIFT.get(), (rift, side) -> rift.itemHandler(side));
+		// V33a Teleportation Pump: IFluidHandler, drain-only.
+		event.registerBlockEntity(Capabilities.Fluid.BLOCK, TELEPUMP.get(), (pump, side) -> pump.fluidHandler());
 	}
 
 	private ChromaBlockEntities() {}

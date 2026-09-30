@@ -55,6 +55,7 @@ public final class ChromaNetwork {
 		registrar.playToClient(FluidRelayFlow.TYPE, FluidRelayFlow.CODEC, (payload, context) -> context.enqueueWork(() ->
 				ClientPayloadHandlers.fluidRelayFlow(payload.pos(), payload.fluid())));
 		registrar.playToServer(FluidRelayControl.TYPE, FluidRelayControl.CODEC, ChromaNetwork::handleFluidRelayControl);
+		registrar.playToServer(TelePumpSelect.TYPE, TelePumpSelect.CODEC, ChromaNetwork::handleTelePumpSelect);
 		registrar.playToClient(PylonCache.TYPE, PylonCache.CODEC, (payload, context) -> context.enqueueWork(() ->
 				ClientPayloadHandlers.pylonCache(payload.entries())));
 		registrar.playToClient(FarmerHarvest.TYPE, FarmerHarvest.CODEC,
@@ -288,6 +289,33 @@ public final class ChromaNetwork {
 	 * V33a RELAYPRESSUREBASE / RELAYPRESSUREVAR (value = the change), RELAYCLEAR, RELAYCOPY, RELAYAUTO and RELAYFLUIDKEY
 	 * (value = filter slot, fluid = registry id or -1), from the Fluid Link Anchor GUI.
 	 */
+	/** V33a TELEPUMP: the Teleportation Pump GUI's pick, as a fluid registry id. */
+	public record TelePumpSelect(BlockPos pos, int fluid) implements CustomPacketPayload {
+		public static final Type<TelePumpSelect> TYPE = createType("telepump_select");
+		public static final StreamCodec<ByteBuf, TelePumpSelect> CODEC = StreamCodec.composite(
+				BlockPos.STREAM_CODEC, TelePumpSelect::pos, ByteBufCodecs.VAR_INT, TelePumpSelect::fluid, TelePumpSelect::new);
+		@Override public Type<TelePumpSelect> type() { return TYPE; }
+	}
+
+	/** The pump's menu must be open on that pump, and the fluid one it found and the player has discovered. */
+	private static void handleTelePumpSelect(TelePumpSelect payload, IPayloadContext context) {
+		context.enqueueWork(() -> {
+			if (!(context.player() instanceof ServerPlayer player)
+					|| !(player.containerMenu instanceof reika.chromaticraft.container.MenuTelePump menu)
+					|| !menu.pump().getBlockPos().equals(payload.pos())
+					|| player.distanceToSqr(payload.pos().getX() + 0.5, payload.pos().getY() + 0.5,
+						payload.pos().getZ() + 0.5) > 64)
+				return;
+			var fluid = BuiltInRegistries.FLUID.byId(payload.fluid());
+			var pump = menu.pump();
+			if (fluid == null || !pump.getFluids().contains(fluid)
+					|| !reika.chromaticraft.tileentity.acquisition.TileEntityTeleportationPump.isFluidDiscovered(fluid, player))
+				return;
+			pump.setTargetedFluid(fluid);
+			player.closeContainer();
+		});
+	}
+
 	public record FluidRelayControl(BlockPos pos, int action, int value, int fluid) implements CustomPacketPayload {
 		public static final int BASE_PRESSURE = 0;
 		public static final int FUNCTION_PRESSURE = 1;

@@ -192,6 +192,7 @@ public class ChromaLang extends LanguageProvider {
 		add(ChromaBlocks.RIFT.get(), "World Rift"); // V33a chroma.rift
 		add(ChromaItems.WORLD_RIFT.get(), "World Rift"); // V33a chroma.rift (ChromaItems.RIFT)
 		add(ChromaItems.AURA_POUCH.get(), "Aura Pouch"); // V33a chroma.aurapouch
+		add(ChromaBlocks.TELEPUMP.get(), "Teleportation Pump"); // V33a chroma.telepump
 		add(ChromaItems.LUMA_CAPSULE.get(), "Luma Capsule"); // V33a chroma.etherpendant
 		add("effect.chromaticraft.void_gaze", "Void Gaze"); // V33a chromapotion.voidgaze
 		add("container.chromaticraft.aura_pouch", "Aura Pouch"); // V33a PouchInventory("Aura Pouch")

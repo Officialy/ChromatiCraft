@@ -439,6 +439,7 @@ public final class ChromaCastingRecipeProvider {
 			saveWorldRift();
 			saveAuraPouch();
 			saveLumaCapsule();
+			saveTelePump();
 			saveMagicPlants();
 			savePendants();
 			savePurificationGem();
@@ -759,6 +760,39 @@ public final class ChromaCastingRecipeProvider {
 							stands, List.of(), List.of(),
 							new ItemStackTemplate(ChromaItems.TINTED_LENSES.get(element).get(), amount),
 							100, 200).withPenaltyThreshold(48));
+		}
+
+		/**
+		 * V33a TelePumpRecipe, a PylonCastingRecipe on an Energized Energy Core: glass rows at z +-2 and cobblestone rows
+		 * at z +-4, fluidic essence ingots on the outer corners, resonating ingots down both outer sides, beacon dust at
+		 * x +-2; 8000 black, 16000 cyan and 32000 lime lumens.
+		 */
+		private void saveTelePump() {
+			List<CastingTableRecipe.StandIngredient> stands = new ArrayList<>();
+			for (int x : new int[] {-2, 0, 2}) {
+				stands.add(auxStand(x, 2, Ingredient.of(Items.GLASS)));
+				stands.add(auxStand(x, -2, Ingredient.of(Items.GLASS)));
+				stands.add(auxStand(x, 4, Ingredient.of(Items.COBBLESTONE)));
+				stands.add(auxStand(x, -4, Ingredient.of(Items.COBBLESTONE)));
+			}
+			for (int[] point : new int[][] {{-4, 4}, {-4, -4}, {4, 4}, {4, -4}})
+				stands.add(auxStand(point[0], point[1], Ingredient.of(ChromaItems.CRAFTING.get(
+						ChromaCraftingItems.WATER_INGOT).get())));
+			for (int z : new int[] {2, 0, -2}) {
+				stands.add(auxStand(-4, z, Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.ENDER_INGOT).get())));
+				stands.add(auxStand(4, z, Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.ENDER_INGOT).get())));
+			}
+			stands.add(auxStand(2, 0, tiered(ChromaTieredItems.BEACON_DUST)));
+			stands.add(auxStand(-2, 0, tiered(ChromaTieredItems.BEACON_DUST)));
+			saveRecipe("teleportation_pump", new CastingTableRecipe(CastingTableRecipe.Tier.PYLON,
+					List.of(new GridIngredient(4, Ingredient.of(ChromaItems.CRAFTING.get(
+							ChromaCraftingItems.HIGH_ENERGY_CORE).get()))),
+					List.copyOf(stands), List.of(),
+					List.of(new AuraRequirement(CrystalElement.BLACK, 8000),
+							new AuraRequirement(CrystalElement.CYAN, 16000),
+							new AuraRequirement(CrystalElement.LIME, 32000)),
+					new ItemStackTemplate(ChromaBlocks.TELEPUMP.get().asItem()), 400, 500)
+					.withPenaltyThreshold(1));
 		}
 
 		/**

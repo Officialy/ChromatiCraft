@@ -208,6 +208,8 @@ public class ChromatiCraft extends DragonAPIMod {
 				reika.chromaticraft.client.gui.ScreenFluidRelay::new);
 		event.register(ChromaMenus.AURA_POUCH.get(),
 				reika.chromaticraft.client.gui.ScreenAuraPouch::new);
+		event.register(ChromaMenus.TELEPUMP.get(),
+				reika.chromaticraft.client.gui.ScreenTelePump::new);
 		event.register(ChromaMenus.COLLECTOR.get(),
 				reika.chromaticraft.client.gui.ScreenCollector::new);
 		event.register(ChromaMenus.LEXICON_PAGES.get(),

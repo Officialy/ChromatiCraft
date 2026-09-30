@@ -40,14 +40,7 @@ public abstract class ChargedCrystalPowered extends InventoriedChromaticBase imp
 	private void calcEfficiency() {
 		if (level == null)
 			return;
-		int max = 0;
-		for (Direction dir : Direction.values()) {
-			BlockEntity te = level.getBlockEntity(worldPosition.relative(dir));
-			if (te instanceof AdjacencyUpgrade upgrade && upgrade.isOperating()
-					&& upgrade.getColor() == CrystalElement.BLACK)
-				max = Math.max(max, 1 + upgrade.getTier());
-		}
-		efficiencyBoost = max;
+		efficiencyBoost = AdjacencyUpgrade.getAdjacentTier(level, worldPosition, CrystalElement.BLACK);
 	}
 
 	@Override

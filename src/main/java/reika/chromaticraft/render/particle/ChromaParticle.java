@@ -1800,6 +1800,19 @@ public abstract class ChromaParticle extends SingleQuadParticle {
         }
     }
 
+    /**
+     * V33a {@code TileEntityTeleportationPump.doScanFX}'s blur: a purple (0xC227FF) fade ray in the block above the
+     * pump, falling at 1/32 to 1/16 gravity, with EntityBlurFX's default 60-tick life and unit scale.
+     */
+    public static void spawnTelePumpScan(Level world, BlockPos pos, RandomSource rand) {
+        if (!(world instanceof ClientLevel level)) return;
+        FadeGlow fx = new FadeGlow(level, pos.getX()+rand.nextDouble(), pos.getY()+1+rand.nextDouble(),
+                pos.getZ()+rand.nextDouble(), 0, 0, 0, 0xC227FF, 60, 1F, false, null, 0, "fade_ray", true);
+        fx.setLegacyMotion(false);
+        fx.gravity = (float)(0.03125+rand.nextDouble()*(0.0625-0.03125));
+        Minecraft.getInstance().particleEngine.add(fx);
+    }
+
     /** V33a Glow Root's long-lived, falling, colliding purple/white blur. */
     public static void spawnGlowRoot(net.minecraft.world.level.Level level, BlockPos pos,
             net.minecraft.util.RandomSource random) {

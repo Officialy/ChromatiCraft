@@ -14,82 +14,97 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Set;
 
-import net.minecraft.block.Block;
-import net.minecraft.client.Minecraft;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.init.Blocks;
-import net.minecraft.init.Items;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.world.ChunkCoordIntPair;
-import net.minecraft.world.World;
-import net.minecraftforge.common.util.ForgeDirection;
-import net.minecraftforge.fluids.Fluid;
-import net.minecraftforge.fluids.FluidContainerRegistry;
-import net.minecraftforge.fluids.FluidRegistry;
-import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.FluidTankInfo;
-import net.minecraftforge.fluids.IFluidHandler;
+import org.jspecify.annotations.Nullable;
 
+import net.minecraft.client.Minecraft;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.MenuProvider;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.item.BucketItem;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.material.Fluid;
+import net.minecraft.world.level.material.Fluids;
+
+import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.fluids.FluidStack;
+import net.neoforged.neoforge.transfer.ResourceHandler;
+import net.neoforged.neoforge.transfer.fluid.FluidResource;
+import net.neoforged.neoforge.transfer.transaction.Transaction;
+
+import reika.chromaticraft.auxiliary.interfaces.AdjacencyUpgrade;
 import reika.chromaticraft.auxiliary.interfaces.OwnedTile;
 import reika.chromaticraft.base.tileentity.ChargedCrystalPowered;
-import reika.chromaticraft.base.tileentity.TileEntityAdjacencyUpgrade;
-import reika.chromaticraft.base.tileentity.tileentityadjacencyupgrade.AdjacencyCheckHandlerImpl;
+import reika.chromaticraft.container.MenuTelePump;
 import reika.chromaticraft.magic.ElementTagCompound;
 import reika.chromaticraft.magic.progression.ProgressStage;
-import reika.chromaticraft.registry.ChromaIcons;
+import reika.chromaticraft.registry.ChromaBlockEntities;
+import reika.chromaticraft.registry.ChromaFluids;
 import reika.chromaticraft.registry.ChromaSounds;
 import reika.chromaticraft.registry.ChromaTiles;
 import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.render.particle.EntityCCBlurFX;
-import reika.chromaticraft.tileentity.aoe.effect.TileEntityRangeBoost;
+import reika.chromaticraft.render.particle.ChromaParticle;
 import reika.dragonapi.auxiliary.ChunkManager;
 import reika.dragonapi.instantiable.HybridTank;
-import reika.dragonapi.instantiable.data.immutable.Coordinate;
 import reika.dragonapi.instantiable.data.maps.CountMap;
-import reika.dragonapi.interfaces.tileentity.ChunkLoadingTile;
+import reika.dragonapi.instantiable.storage.HybridTankResourceHandler;
+import reika.dragonapi.interfaces.blockentity.ChunkLoadingTile;
 import reika.dragonapi.libraries.ReikaFluidHelper;
-import reika.dragonapi.libraries.java.ReikaRandomHelper;
+import reika.dragonapi.libraries.level.ReikaWorldHelper;
 import reika.dragonapi.libraries.registry.ReikaParticleHelper;
-import reika.dragonapi.libraries.world.ReikaWorldHelper;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
-
-public class TileEntityTeleportationPump extends ChargedCrystalPowered implements IFluidHandler, OwnedTile, ChunkLoadingTile {
+/**
+ * V33a Teleportation Pump: from a storage crystal's cyan/black/lime lumens it pulls fluid source blocks from anywhere
+ * within 256 blocks (more with a lime Range Boost) straight into its 4-bucket tank, which empties into adjacent tanks
+ * and fills a bucket.
+ * <ul>
+ * <li>First it scans the area layer by layer from the bottom of the world up, one layer a tick (with a Range Boost, a
+ * layer only one tick in {@code ceil(range/256)}); on finishing it chimes, and each fluid's sources are shuffled and
+ * sorted top first. A pump reloaded after its scan finished rebuilds its list 32 layers a tick.</li>
+ * <li>Its GUI (closed while scanning) lists every fluid found with its total; picking one sets the target. Each tick
+ * after that, if the top source of it is still that fluid, the tank has room and the crystal has 250 cyan, 100 black
+ * and 500 lime (scaled by the black efficiency upgrade), the source is taken and removed. Water counts a tenth.</li>
+ * </ul>
+ * <p>26.3: the scan covers the level's build height (V33a: y 0-255). Like V33a it reads every column in range, loading
+ * (and generating) chunks it reaches; it keeps none loaded (V33a only ever released them, on break). V33a scaled the
+ * energy cost by the efficiency upgrade twice (here and in {@code useEnergy}); that is kept.
+ */
+public class TileEntityTeleportationPump extends ChargedCrystalPowered implements OwnedTile, ChunkLoadingTile, MenuProvider {
 
 	public static final int MAXRANGE = 256;
 
-	private static final AdjacencyCheckHandlerImpl adjacency = TileEntityAdjacencyUpgrade.getOrCreateAdjacencyCheckHandler(CrystalElement.LIME, TileEntityRangeBoost.basicRangeUpgradeable.getDescription(), ChromaTiles.TELEPUMP);
-
 	private final HybridTank tank = new HybridTank("telepump", 4000);
-	private HashMap<Fluid, ArrayList<FluidSource>> fluids = new HashMap();
-	private CountMap<Fluid> counts = new CountMap();
+	private final ResourceHandler<FluidResource> fluidHandler = new HybridTankResourceHandler(new HybridTank[] {tank},
+			(i, r) -> false, (i, r) -> ReikaFluidHelper.isFluidDrainableFromTank(r.toStack(1), tank), this::setChanged);
+	private HashMap<Fluid, ArrayList<FluidSource>> fluids = new HashMap<>();
+	private CountMap<Fluid> counts = new CountMap<>();
 
-	private Fluid selected = null;
+	private @Nullable Fluid selected = null;
 
 	private boolean scanning = true;
 	private boolean fastscan = false;
-	private int scanY = 0;
+	private int scanY = Integer.MIN_VALUE;
 
 	private int range = MAXRANGE;
+	private int testRange = -1;
 
 	private static final ElementTagCompound required = new ElementTagCompound();
 
-	private static final HashMap<Fluid, ProgressStage> liquidProgress = new HashMap();
-
-	private static final Comparator<FluidSource> comparator = new Comparator<FluidSource>() {
-
-		@Override
-		public int compare(FluidSource o1, FluidSource o2) {
-			return o2.location.yCoord-o1.location.yCoord; //higher first
-		}
-
-	};
+	private static final Comparator<FluidSource> comparator = (o1, o2) -> o2.location.getY()-o1.location.getY(); //higher first
 
 	static {
 		required.addTag(CrystalElement.CYAN, 250);
@@ -97,12 +112,13 @@ public class TileEntityTeleportationPump extends ChargedCrystalPowered implement
 		required.addTag(CrystalElement.LIME, 500);
 	}
 
-	public static void buildProgressionMap() {
-		liquidProgress.put(FluidRegistry.getFluid("luma"), ProgressStage.LUMA);
+	public TileEntityTeleportationPump(BlockPos pos, BlockState state) {
+		super(ChromaBlockEntities.TELEPUMP.get(), pos, state);
 	}
 
-	public static boolean isFluidDiscovered(Fluid f, EntityPlayer ep) {
-		ProgressStage p = liquidProgress.get(f);
+	/** V33a {@code liquidProgress}: Ethereal Luma shows as unknown until the player has touched it. */
+	public static boolean isFluidDiscovered(Fluid f, Player ep) {
+		ProgressStage p = f == ChromaFluids.LUMA.get() ? ProgressStage.LUMA : null;
 		return p == null || p.isPlayerAtStage(ep);
 	}
 
@@ -112,15 +128,15 @@ public class TileEntityTeleportationPump extends ChargedCrystalPowered implement
 	}
 
 	@Override
-	protected void onFirstTick(World world, int x, int y, int z) {
-		super.onFirstTick(world, x, y, z);
+	protected void onFirstTick(Level world, BlockPos pos) {
+		super.onFirstTick(world, pos);
 		this.updateRange();
 	}
 
 	@Override
-	public void onAdjacentUpdate(World world, int x, int y, int z, Block b) {
+	public void onAdjacentUpdate(Level world, BlockPos pos, Block b) {
 		this.updateRange();
-		super.onAdjacentUpdate(world, x, y, z, b);
+		super.onAdjacentUpdate(world, pos, b);
 	}
 
 	@Override
@@ -129,45 +145,20 @@ public class TileEntityTeleportationPump extends ChargedCrystalPowered implement
 	}
 
 	@Override
-	public int getInventoryStackLimit() {
+	public int getMaxStackSize() {
 		return 1;
 	}
 
-	@Override
-	public int fill(ForgeDirection from, FluidStack resource, boolean doFill) {
-		return 0;
+	/** V33a IFluidHandler: drain-only, any side. */
+	public ResourceHandler<FluidResource> fluidHandler() {
+		return fluidHandler;
 	}
 
 	@Override
-	public FluidStack drain(ForgeDirection from, FluidStack resource, boolean doDrain) {
-		return this.canDrain(from, resource.getFluid()) ? tank.drain(resource.amount, doDrain) : null;
-	}
-
-	@Override
-	public FluidStack drain(ForgeDirection from, int maxDrain, boolean doDrain) {
-		return tank.drain(maxDrain, doDrain);
-	}
-
-	@Override
-	public boolean canFill(ForgeDirection from, Fluid fluid) {
-		return false;
-	}
-
-	@Override
-	public boolean canDrain(ForgeDirection from, Fluid fluid) {
-		return ReikaFluidHelper.isFluidDrainableFromTank(fluid, tank);
-	}
-
-	@Override
-	public FluidTankInfo[] getTankInfo(ForgeDirection from) {
-		return new FluidTankInfo[]{tank.getInfo()};
-	}
-
-	@Override
-	protected boolean canExtractOtherItem(int slot, ItemStack is, int side) {
+	protected boolean canExtractOtherItem(int slot, ItemStack is, Direction side) {
 		switch(slot) {
 			case 1:
-				return FluidContainerRegistry.isFilledContainer(is);
+				return is.getItem() instanceof BucketItem && !is.is(Items.BUCKET);
 			default:
 				return false;
 		}
@@ -177,7 +168,7 @@ public class TileEntityTeleportationPump extends ChargedCrystalPowered implement
 	protected boolean isItemValidForOtherSlot(int slot, ItemStack is) {
 		switch(slot) {
 			case 1:
-				return is.getItem() == Items.bucket;
+				return is.is(Items.BUCKET);
 			default:
 				return false;
 		}
@@ -188,7 +179,7 @@ public class TileEntityTeleportationPump extends ChargedCrystalPowered implement
 	}
 
 	public int getFluidCount(Fluid f) {
-		return counts.containsKey(f) ? counts.get(f) : 0;//fluids.containsKey(f) ? fluids.get(f).size() : 0;
+		return counts.containsKey(f) ? counts.get(f) : 0;
 	}
 
 	@Override
@@ -196,48 +187,59 @@ public class TileEntityTeleportationPump extends ChargedCrystalPowered implement
 		return ChromaTiles.TELEPUMP;
 	}
 
-	public void setTargetedFluid(int fid) {
-		selected = FluidRegistry.getFluid(fid);
+	public void setTargetedFluid(@Nullable Fluid f) {
+		selected = f;
+		this.setChanged();
+	}
+
+	public @Nullable Fluid getTargetedFluid() {
+		return selected;
+	}
+
+	public boolean isScanning() {
+		return scanning;
 	}
 
 	@Override
-	public void updateEntity(World world, int x, int y, int z, int meta) {
-		if (scanning && world.isRemote) {
-			this.doScanFX(world, x, y, z);
+	public void updateEntity(Level world, BlockPos pos) {
+		if (scanning && world.isClientSide()) {
+			this.doScanFX(world, pos);
 		}
-		if (world.isRemote)
+		if (world.isClientSide())
 			return;
+		int minY = world.getMinY();
+		int maxY = world.getMaxY();
+		if (scanY < minY)
+			scanY = minY;
 		int boost = (int)Math.ceil(this.getRange()/(float)MAXRANGE);
 		if (boost == 1 && !scanning && fluids.isEmpty() && this.getTicksExisted() == 0) {
 			fastscan = true;
 		}
 		if (scanning || fastscan) {
-			int n = rand.nextInt(boost);
+			int n = world.getRandom().nextInt(boost);
 			while (n == 0 || (fastscan && n < 32)) {
 				int r = this.getRange();
+				BlockPos.MutableBlockPos at = new BlockPos.MutableBlockPos();
 				for (int i = -r; i <= r; i++) {
 					for (int k = -r; k <= r; k++) {
-						int dx = x+i;
-						int dy = scanY;
-						int dz = z+k;
-						Block b = world.getBlock(dx, dy, dz);
-						FluidStack fs = this.getDrainableFluid(world, dx, dy, dz);
+						at.set(pos.getX()+i, scanY, pos.getZ()+k);
+						FluidStack fs = this.getDrainableFluid(world, at);
 						if (fs != null) {
-							this.addFluidBlock(dx, dy, dz, fs);
-							//ReikaJavaLibrary.pConsole(f.getName()+" @ "+dx+","+dy+","+dz, Side.SERVER, f.getName().startsWith("o"));
+							this.addFluidBlock(at.immutable(), fs);
 						}
 					}
 				}
 				scanY++;
-				if (scanY > 255) {
+				if (scanY > maxY) {
 					scanning = false;
 					fastscan = false;
 					ChromaSounds.CRAFTDONE.playSoundAtBlock(this, 1, 1.25F);
-					Collection<ArrayList<FluidSource>> vals = fluids.values();
-					for (ArrayList<FluidSource> li : vals) {
+					for (ArrayList<FluidSource> li : fluids.values()) {
 						Collections.shuffle(li);
-						Collections.sort(li, comparator);
+						li.sort(comparator);
 					}
+					this.syncAllData(false);
+					break;
 				}
 				n++;
 			}
@@ -248,28 +250,31 @@ public class TileEntityTeleportationPump extends ChargedCrystalPowered implement
 				if (li != null && !li.isEmpty()) {
 					FluidSource src = li.get(0);
 					if (src.matchInWorld(world)) {
-						if (this.canAddFluid(src.fluid.amount, selected) && this.hasEnergy(required)) {
-							tank.addLiquid(src.fluid.amount, selected);
-							src.location.setBlock(world, Blocks.air);
+						if (this.canAddFluid(src.amount, selected) && this.hasEnergy(required)) {
+							tank.addLiquid(src.amount, selected);
+							world.setBlock(src.location, Blocks.AIR.defaultBlockState(), 3);
 							this.useEnergy(required.copy().scale(this.getEnergyCostScale()));
 							li.remove(0);
-							this.decrFluid(src.fluid.amount, selected);
+							this.decrFluid(src.amount, selected);
 						}
 					}
 				}
 
-				Fluid f = tank.getActualFluid();
-				if (f != null) {
-					if (tank.getLevel() >= 1000) {
-						this.fillBucket(f);
+				FluidStack f = tank.getActualFluid();
+				if (f != null && !f.isEmpty()) {
+					if (tank.getFluidLevel() >= 1000) {
+						this.fillBucket(f.getFluid());
 					}
 					if (!tank.isEmpty()) {
-						for (int k = 0; k < 6; k++) {
-							ForgeDirection dir = dirs[k];
-							TileEntity te = this.getAdjacentTileEntity(dir);
-							if (te instanceof IFluidHandler) {
-								IFluidHandler ifl = (IFluidHandler)te;
-								int amt = ifl.fill(dir.getOpposite(), tank.getFluid(), true);
+						for (Direction dir : Direction.values()) {
+							ResourceHandler<FluidResource> ifl = world.getCapability(Capabilities.Fluid.BLOCK,
+									pos.relative(dir), dir.getOpposite());
+							if (ifl != null) {
+								int amt;
+								try (Transaction tx = Transaction.openRoot()) {
+									amt = ifl.insert(FluidResource.of(tank.getFluid()), tank.getFluidLevel(), tx);
+									tx.commit();
+								}
 								if (amt > 0) {
 									tank.removeLiquid(amt);
 									if (tank.isEmpty())
@@ -283,70 +288,77 @@ public class TileEntityTeleportationPump extends ChargedCrystalPowered implement
 		}
 	}
 
-	private FluidStack getDrainableFluid(World world, int x, int y, int z) {
-		FluidStack ret = ReikaWorldHelper.getDrainableFluid(world, x, y, z);
+	private @Nullable FluidStack getDrainableFluid(Level world, BlockPos pos) {
+		FluidStack ret = ReikaWorldHelper.getDrainableFluid(world, pos);
 		if (ret == null)
 			return null;
 		ret = ret.copy();
-		if (ret.getFluid() == FluidRegistry.WATER)
-			ret.amount /= 10;
-		return ret.amount > 0 ? ret : null;
+		if (ret.getFluid() == Fluids.WATER)
+			ret.setAmount(ret.getAmount()/10);
+		return ret.getAmount() > 0 ? ret : null;
 	}
 
 	private void fillBucket(Fluid f) {
-		if (inv[1] != null) {
-			int amt = FluidContainerRegistry.getContainerCapacity(inv[1]);
-			ItemStack is = FluidContainerRegistry.fillFluidContainer(new FluidStack(f, amt), inv[1]);
-			if (is != null) {
-				inv[1] = is;
-				tank.removeLiquid(amt);
+		ItemStack in = inv.get(1);
+		if (in.is(Items.BUCKET)) {
+			ItemStack is = new ItemStack(f.getBucket());
+			if (!is.isEmpty() && is.getItem() != Items.AIR) {
+				inv.set(1, is);
+				tank.removeLiquid(1000);
+				this.setChanged();
 			}
 		}
 	}
 
 	private void decrFluid(int rem, Fluid f) {
 		counts.increment(f, -rem);
-		//ReikaJavaLibrary.pConsole(counts.get(f));
 	}
 
 	@Override
-	public boolean isPlayerAccessible(EntityPlayer var1) {
+	public boolean isPlayerAccessible(Player var1) {
 		return !scanning && super.isPlayerAccessible(var1);
 	}
 
-	@SideOnly(Side.CLIENT)
-	private void doScanFX(World world, int x, int y, int z) {
-		ReikaParticleHelper.PORTAL.spawnAroundBlock(world, x, y, z, 8);
-		if (Minecraft.getMinecraft().gameSettings.particleSetting == 2) {
-			EntityCCBlurFX fx = new EntityCCBlurFX(world, x+rand.nextDouble(), y+1+rand.nextDouble(), z+rand.nextDouble());
-			fx.setIcon(ChromaIcons.FADE_RAY).setGravity((float)ReikaRandomHelper.getRandomBetween(0.03125F, 0.0625F)).setColor(0xC227FF);
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-		}
+	/** V33a doScanFX: portal particles about the block, and on Minimal particles a falling purple fade ray. */
+	private void doScanFX(Level world, BlockPos pos) {
+		ReikaParticleHelper.PORTAL.spawnAroundBlock(world, pos, 8);
+		if (Minecraft.getInstance().options.particles().get().ordinal() == 2)
+			ChromaParticle.spawnTelePumpScan(world, pos, world.getRandom());
 	}
 
 	public int getRange() {
 		return range;
 	}
 
-	private void addFluidBlock(int x, int y, int z, FluidStack fs) {
+	/** GameTests only: the real range is 256 blocks and more, which would load thousands of chunks in a test. */
+	public void overrideRangeForTest(int r) {
+		testRange = r;
+		range = r;
+	}
+
+	private void addFluidBlock(BlockPos pos, FluidStack fs) {
 		Fluid f = fs.getFluid();
 		ArrayList<FluidSource> li = fluids.get(f);
 		if (li == null) {
-			li = new ArrayList();
+			li = new ArrayList<>();
 			fluids.put(f, li);
 			counts.set(f, 0);
 		}
-		li.add(new FluidSource(x, y, z, fs));
-		counts.increment(f, fs.amount);
-		//ReikaJavaLibrary.pConsole("Found "+fs.amount+" of "+f.getName()+" @ "+x+", "+y+", "+z+", now have "+counts.get(f)+" mB");
+		li.add(new FluidSource(pos, f, fs.getAmount()));
+		counts.increment(f, fs.getAmount());
 	}
 
 	public int getLiquidScaled(int a) {
-		return a * tank.getLevel() / tank.getCapacity();
+		return a * tank.getFluidLevel() / tank.getCapacity();
 	}
 
-	public Fluid getTankFluid() {
-		return tank.getActualFluid();
+	public @Nullable Fluid getTankFluid() {
+		FluidStack fs = tank.getActualFluid();
+		return fs != null && !fs.isEmpty() ? fs.getFluid() : null;
+	}
+
+	public int getTankLevel() {
+		return tank.getFluidLevel();
 	}
 
 	private boolean canAddFluid(int amt, Fluid f) {
@@ -354,47 +366,52 @@ public class TileEntityTeleportationPump extends ChargedCrystalPowered implement
 	}
 
 	@Override
-	protected void animateWithTick(World world, int x, int y, int z) {
+	protected void animateWithTick(Level world, BlockPos pos) {
 
 	}
 
 	@Override
-	protected void writeSyncTag(NBTTagCompound NBT) {
+	protected void writeSyncTag(CompoundTag NBT) {
 		super.writeSyncTag(NBT);
 
 		tank.writeToNBT(NBT);
 
-		NBT.setBoolean("scan", scanning);
-		NBT.setString("fluid", selected != null ? selected.getName() : "null");
+		NBT.putBoolean("scan", scanning);
+		NBT.putString("fluid", selected != null ? BuiltInRegistries.FLUID.getKey(selected).toString() : "null");
 
-		NBTTagCompound tag = new NBTTagCompound();
+		CompoundTag tag = new CompoundTag();
 		for (Fluid f : counts.keySet()) {
-			String s = f.getName();
-			int c = counts.get(f);
-			tag.setInteger(s, c);
+			tag.putInt(BuiltInRegistries.FLUID.getKey(f).toString(), counts.get(f));
 		}
-		NBT.setTag("counts", tag);
+		NBT.put("counts", tag);
 	}
 
 	@Override
-	protected void readSyncTag(NBTTagCompound NBT) {
+	protected void readSyncTag(CompoundTag NBT) {
 		super.readSyncTag(NBT);
 
 		tank.readFromNBT(NBT);
 
-		scanning = NBT.getBoolean("scan");
-		String fid = NBT.hasKey("fluid") ? NBT.getString("fluid") : null;
-		selected = fid == null || fid.equals("null") ? null : FluidRegistry.getFluid(fid);
+		scanning = NBT.getBooleanOr("scan", true);
+		String fid = NBT.getStringOr("fluid", "null");
+		selected = fid.equals("null") ? null : fluidOf(fid);
 
-		NBTTagCompound tag = NBT.getCompoundTag("counts");
-		for (Object o : tag.func_150296_c()) {
-			String s = (String)o;
-			Fluid f = FluidRegistry.getFluid(s);
+		CompoundTag tag = NBT.getCompoundOrEmpty("counts");
+		counts.clear();
+		for (String s : tag.keySet()) {
+			Fluid f = fluidOf(s);
 			if (f != null) {
-				counts.set(f, tag.getInteger(s));
+				counts.set(f, tag.getIntOr(s, 0));
 			}
 		}
-		//ReikaJavaLibrary.pConsole(counts);
+	}
+
+	private static @Nullable Fluid fluidOf(String id) {
+		Identifier key = Identifier.tryParse(id);
+		if (key == null)
+			return null;
+		Fluid f = BuiltInRegistries.FLUID.getValue(key);
+		return f == Fluids.EMPTY ? null : f;
 	}
 
 	@Override
@@ -413,26 +430,29 @@ public class TileEntityTeleportationPump extends ChargedCrystalPowered implement
 	}
 
 	@Override
-	public Collection<ChunkCoordIntPair> getChunksToLoad() {
-		return ChunkManager.getChunkSquare(xCoord, zCoord, range >> 4);
+	public Collection<ChunkPos> getChunksToLoad() {
+		return ChunkManager.getChunkSquare(worldPosition.getX(), worldPosition.getZ(), range >> 4);
 	}
 
+	/** V33a: {@code MAXRANGE} times the lime upgrade's factor for the tier beside it; a rescan starts if it changes mid-scan. */
 	private void updateRange() {
+		if (level == null)
+			return;
 		int oldrange = range;
 		double r = 1;
-		int val = adjacency.getAdjacentUpgrade(this);
+		int val = AdjacencyUpgrade.getAdjacentTier(level, worldPosition, CrystalElement.LIME);
 		if (val > 0)
-			r = TileEntityRangeBoost.getFactor(val-1);
-		range = (int)(MAXRANGE*r);
+			r = AdjacencyUpgrade.RANGE_FACTORS[val-1];
+		range = testRange > 0 ? testRange : (int)(MAXRANGE*r);
 		if (scanning && oldrange != range) {
-			scanY = 0;
+			scanY = level.getMinY();
 			fluids.clear();
 			counts.clear();
 		}
 	}
 
 	@Override
-	public void getTagsToWriteToStack(NBTTagCompound NBT) {
+	public void getTagsToWriteToStack(CompoundTag NBT) {
 		this.writeOwnerData(NBT);
 	}
 
@@ -442,22 +462,37 @@ public class TileEntityTeleportationPump extends ChargedCrystalPowered implement
 	}
 
 	@Override
-	public void addTooltipInfo(List li, boolean shift) {
+	@SuppressWarnings("rawtypes")
+	public void addTooltipInfo(java.util.List li, boolean shift) {
 
 	}
 
-	private static class FluidSource {
+	@Override
+	public Component getDisplayName() {
+		return this.getBlockState().getBlock().getName();
+	}
 
-		private final Coordinate location;
-		private final FluidStack fluid;
+	@Override
+	public AbstractContainerMenu createMenu(int id, Inventory inventory, Player player) {
+		return new MenuTelePump(id, inventory, this);
+	}
 
-		private FluidSource(int x, int y, int z, FluidStack fs) {
-			location = new Coordinate(x, y, z);
-			fluid = fs;
+	private static final class FluidSource {
+
+		private final BlockPos location;
+		private final Fluid fluid;
+		private final int amount;
+
+		private FluidSource(BlockPos pos, Fluid f, int amt) {
+			location = pos;
+			fluid = f;
+			amount = amt;
 		}
 
-		public boolean matchInWorld(World world) {
-			return ReikaFluidHelper.lookupFluidForBlock(location.getBlock(world)) == fluid.getFluid();
+		/** V33a: the block there is still this fluid's block, at any level (V33a matched the block, not its metadata). */
+		public boolean matchInWorld(Level world) {
+			Fluid found = ReikaFluidHelper.lookupFluidForBlock(world.getBlockState(location));
+			return found != null && found.isSame(fluid);
 		}
 
 	}

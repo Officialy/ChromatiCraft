@@ -77,6 +77,7 @@ public final class ChromaBlockTagsProvider extends BlockTagsProvider {
 		pickaxe.add(ChromaBlocks.FLUID_RELAY.getKey());
 		pickaxe.add(ChromaBlocks.FLUID_DISTRIBUTOR.getKey());
 		pickaxe.add(ChromaBlocks.AUTO_ENCHANTER.getKey());
+		pickaxe.add(ChromaBlocks.TELEPUMP.getKey());
 		pickaxe.add(ChromaBlocks.TOOL_STORAGE.getKey());
 		pickaxe.add(ChromaBlocks.PYLON_TURBOCHARGER.getKey());
 		pickaxe.add(ChromaBlocks.COLLECTOR.getKey());

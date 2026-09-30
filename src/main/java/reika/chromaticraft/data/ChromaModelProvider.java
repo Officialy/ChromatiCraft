@@ -156,6 +156,7 @@ public class ChromaModelProvider extends ModelProvider {
 		fluidDistributorModel(blockStateOut, itemModelOut, modelOut);
 		worldRiftModel(blockStateOut, itemModelOut, modelOut);
 		autoEnchanterModel(blockStateOut, itemModelOut, modelOut);
+		telePumpModel(blockStateOut, itemModelOut, modelOut);
 		toolStorageModel(blockStateOut, itemModelOut, modelOut);
 		pylonTurboModel(blockStateOut, itemModelOut, modelOut);
 		personalChargerModel(blockStateOut, itemModelOut, modelOut);
@@ -2053,6 +2054,20 @@ public class ChromaModelProvider extends ModelProvider {
 	 * V33a BlockChromaTile with VariableTexture: tile/enchanter_bottom, _top and _side, the sides becoming
 	 * enchanter_side_variant while an enchanting table sits on top.
 	 */
+	/** V33a TELEPUMP's block icons: tile/telepump_top, _bottom and the animated _side. */
+	private static void telePumpModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		TextureMapping textures = new TextureMapping()
+				.put(TextureSlot.SIDE, new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/tile/telepump_side")))
+				.put(TextureSlot.TOP, new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/tile/telepump_top")))
+				.put(TextureSlot.BOTTOM, new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/tile/telepump_bottom")));
+		Identifier model = ModelTemplates.CUBE_BOTTOM_TOP.create(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/teleportation_pump"), textures, modelOut);
+		blockStateOut.accept(MultiVariantGenerator.dispatch(ChromaBlocks.TELEPUMP.get(),
+				new MultiVariant(WeightedList.of(new Variant(model)))));
+		itemModelOut.accept(ChromaBlocks.TELEPUMP.get().asItem(), ItemModelUtils.plainModel(model));
+	}
+
 	private static void autoEnchanterModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
 			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
 		Identifier[] models = new Identifier[2];

@@ -436,6 +436,7 @@ public final class ChromaGameTests {
 		register(event, env, "world_rift_shaft_power", 40, ChromaGameTests::worldRiftShaftPower);
 		register(event, env, "aura_pouch_contents", 30, ChromaGameTests::auraPouchContents);
 		register(event, env, "luma_capsule_void_gaze", ChromaGameTests::lumaCapsuleVoidGaze);
+		register(event, env, "teleportation_pump_scan", 600, ChromaGameTests::teleportationPumpScan);
 		register(event, env, "fluid_distributor_transfer", 60, ChromaGameTests::fluidDistributorTransfer);
 		register(event, env, "creative_tiered_resource_access", ChromaGameTests::creativeTieredResourceAccess);
 		register(event, env, "rainbow_tree_shape_and_log", ChromaGameTests::rainbowTreeShapeAndLog);
@@ -7422,6 +7423,51 @@ public final class ChromaGameTests {
 		helper.assertTrue(!reika.chromaticraft.items.tools.ItemEtherealPendant.isActive(pouched),
 				"a capsule in an inactive pouch slot must not count");
 		helper.succeed();
+	}
+
+	/**
+	 * V33a Teleportation Pump, at a test range of 4: it is closed while scanning the world's height layer by layer,
+	 * then lists water (a tenth per source; flowing water counts nothing) and lava. Aimed at lava with a charged crystal
+	 * it takes the source (spending its lumens) and fills the bucket in its second slot.
+	 */
+	private static void teleportationPumpScan(GameTestHelper helper) {
+		var level = helper.getLevel();
+		BlockPos pumpPos = helper.absolutePos(new BlockPos(2, 1, 2));
+		BlockPos water = helper.absolutePos(new BlockPos(0, 1, 0));
+		BlockPos lava = helper.absolutePos(new BlockPos(4, 1, 4));
+		for (BlockPos p : new BlockPos[] {water.east(), water.south(), water.west(), water.north(), water.below(),
+				lava.west(), lava.north(), lava.east(), lava.south(), lava.below()})
+			level.setBlock(p, Blocks.STONE.defaultBlockState(), 3);
+		level.setBlock(water, Blocks.WATER.defaultBlockState(), 3);
+		level.setBlock(lava, Blocks.LAVA.defaultBlockState(), 3);
+		level.setBlock(pumpPos, ChromaBlocks.TELEPUMP.get().defaultBlockState(), 3);
+		var pump = (reika.chromaticraft.tileentity.acquisition.TileEntityTeleportationPump)level.getBlockEntity(pumpPos);
+		pump.overrideRangeForTest(4);
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		player.setPos(pumpPos.getX()+0.5, pumpPos.getY()+1, pumpPos.getZ()+0.5);
+		helper.assertTrue(pump.isScanning() && !pump.isPlayerAccessible(player), "the pump must refuse its GUI while scanning");
+		ItemStack crystal = ChromaItems.storageCrystalStack(StorageCrystalTier.SAMI);
+		for (CrystalElement e : new CrystalElement[] {CrystalElement.CYAN, CrystalElement.BLACK, CrystalElement.LIME})
+			ItemStorageCrystal.addEnergy(crystal, e, 5_000);
+		pump.setItem(0, crystal);
+		pump.setItem(1, new ItemStack(Items.BUCKET));
+		helper.succeedWhen(() -> {
+			helper.assertTrue(!pump.isScanning(), "still scanning");
+			if (pump.getTargetedFluid() == null) {
+				helper.assertTrue(pump.getFluidCount(net.minecraft.world.level.material.Fluids.WATER) == 100
+						&& pump.getFluidCount(net.minecraft.world.level.material.Fluids.LAVA) == 1000,
+						"the scan must find one water source (a tenth) and one lava source; water "
+								+ pump.getFluidCount(net.minecraft.world.level.material.Fluids.WATER) + ", lava "
+								+ pump.getFluidCount(net.minecraft.world.level.material.Fluids.LAVA));
+				helper.assertTrue(pump.isPlayerAccessible(player), "the finished pump must open its GUI");
+				pump.setTargetedFluid(net.minecraft.world.level.material.Fluids.LAVA);
+			}
+			helper.assertTrue(level.getBlockState(lava).isAir(), "the lava source must be taken");
+			helper.assertTrue(pump.getItem(1).is(Items.LAVA_BUCKET), "the bucket must be filled with the lava");
+			helper.assertTrue(ItemStorageCrystal.getStoredEnergy(pump.getItem(0), CrystalElement.LIME) == 4_500
+					&& ItemStorageCrystal.getStoredEnergy(pump.getItem(0), CrystalElement.CYAN) == 4_750,
+					"taking the source must spend 500 lime and 250 cyan");
+		});
 	}
 
 	private static void pollUntilUnloaded(GameTestHelper helper, BlockPos pos, int waited, Runnable then) {

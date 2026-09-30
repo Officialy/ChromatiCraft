@@ -1030,6 +1030,10 @@ public final class ChromaBlocks {
 	 * V33a RIFT: unbreakable, resistance 600000, cloth sounds. It has no block item: the World Rift item
 	 * ({@link ChromaItems#WORLD_RIFT}) places and links it.
 	 */
+	/** V33a TELEPUMP, a BlockChromaTile entry: rock, hardness 5, resistance 40 (8 against explosions). */
+	public static final DeferredBlock<Block> TELEPUMP =
+			register("teleportation_pump", () -> new reika.chromaticraft.block.BlockTelePump(
+					blockProperties().strength(5F, 8F).requiresCorrectToolForDrops()));
 	public static final DeferredBlock<Block> RIFT =
 			registerBlockOnly("world_rift", () -> new reika.chromaticraft.block.BlockRift(
 					blockProperties().strength(-1F, 600000F).sound(SoundType.WOOL).noOcclusion()));

@@ -9692,3 +9692,29 @@ as time 0, so a world under a second old counts every pendant active); guarded, 
   crystal glass on the outer edges and blue on the inner corners, string and Spatially Warping Ingots across the far
   edges, aura dust on the outer sides.
 - GameTest `luma_capsule_void_gaze`.
+
+### Teleportation Pump — 2026-09-30
+
+- `teleportation_pump` (V33a TELEPUMP, "Teleportation Pump") is ported in place: `TileEntityTeleportationPump` on the
+  already-ported `ChargedCrystalPowered`, with `BlockTelePump`, `MenuTelePump` and `ScreenTelePump` (V33a
+  `ContainerTelePump`/`GuiTelePump`, `telepump3.png` restored from V33a).
+  - It scans every column within 256 blocks, a layer a tick from the bottom of the world to the top (26.3 build
+    height; V33a y 0-255), one layer only every `ceil(range/256)` ticks on average with a Range Boost; a pump reloaded
+    after its scan rebuilds its list 32 layers a tick. Finishing chimes and sorts each fluid's sources top first.
+    Like V33a it loads (and generates) the chunks it reads, and keeps none loaded (V33a only released them on break).
+  - The GUI (refused while scanning) lists the fluids found, most first, with totals; unknown Ethereal Luma shows as
+    "[Unknown]" until the LUMA stage. The pick is the `telepump_select` payload (a registry id), checked against the
+    open menu, the pump's list and the player's discovery.
+  - Each tick after that, if the top source is still that fluid's block, the tank has room and the storage crystal
+    has 250 cyan / 100 black / 500 lime, it takes the source. Water counts a tenth. V33a scaled the cost by the black
+    upgrade twice (in the pump and in `useEnergy`); kept. The 4-bucket tank drains to adjacent tanks and a bucket in
+    the second slot; the pump is drain-only as a fluid capability.
+  - Range: `AdjacencyUpgrade.getAdjacentTier(..., LIME)` with V33a's Range Boost factors (the shared lookup
+    `ChargedCrystalPowered` now uses for black efficiency). It finds nothing until the Range Boost tile is ported --
+    V33a's behaviour with no boost placed.
+- DragonAPI: `getDrainableFluid` returns only source blocks, as 1.7.10 did (the port returned a bucket for flowing
+  liquid; RotaryCraft's pump had guarded against that itself); `ReikaFluidHelper.fluidComparator` is ported.
+- Casting: V33a TelePumpRecipe, Pylon tier on an Energized Energy Core: glass rows at z +-2, cobblestone rows at z +-4,
+  fluidic essence ingots on the corners, resonating ingots down both outer sides, beacon dust at x +-2; 8000 black,
+  16000 cyan, 32000 lime.
+- GameTest `teleportation_pump_scan` (test range 4); RotaryCraft `pump_drains_source`/`pump_drains_lava_source` pass.

@@ -86,6 +86,8 @@ public enum ChromaTiles implements TileEnum {
 	FLUIDDISTRIBUTOR("chroma.fluiddistributor", ChromaBlocks.FLUID_DISTRIBUTOR,
 			reika.chromaticraft.tileentity.transport.TileEntityFluidDistributor.class),
 	RIFT("chroma.rift", ChromaBlocks.RIFT, reika.chromaticraft.tileentity.transport.TileEntityRift.class),
+	TELEPUMP("chroma.telepump", ChromaBlocks.TELEPUMP,
+			reika.chromaticraft.tileentity.acquisition.TileEntityTeleportationPump.class),
 	PARTICLES("chroma.particles", ChromaBlocks.PARTICLE_SPAWNER,
 			reika.chromaticraft.tileentity.decoration.TileEntityParticleSpawner.class),
 	LAUNCHPAD("chroma.launchpad", ChromaBlocks.LAUNCH_PAD,

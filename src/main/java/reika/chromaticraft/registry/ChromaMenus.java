@@ -45,6 +45,8 @@ public interface ChromaMenus {
 			"structure_password", MenuStructurePassword::new);
     Supplier<MenuType<MenuLexiconPages>> LEXICON_PAGES = register("lexicon_pages", MenuLexiconPages::new);
     Supplier<MenuType<MenuFragmentSelection>> FRAGMENT_SELECTION = register("fragment_selection", MenuFragmentSelection::new);
+	Supplier<MenuType<reika.chromaticraft.container.MenuTelePump>> TELEPUMP =
+			register("teleportation_pump", reika.chromaticraft.container.MenuTelePump::new);
 	Supplier<MenuType<reika.chromaticraft.container.MenuAuraPouch>> AURA_POUCH =
 			register("aura_pouch", reika.chromaticraft.container.MenuAuraPouch::new);
 }
