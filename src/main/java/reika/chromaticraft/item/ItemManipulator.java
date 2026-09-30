@@ -144,6 +144,13 @@ public class ItemManipulator extends Item {
 			}
 		}
 
+		// V33a: a World Rift takes the clicked face as the one its items pass through.
+		if (tile instanceof reika.chromaticraft.tileentity.transport.TileEntityRift rift) {
+			if (!level.isClientSide())
+				rift.setDirection(context.getClickedFace());
+			return InteractionResult.SUCCESS;
+		}
+
 		// The casting trigger. V33a: if (t == ChromaTiles.TABLE) return triggerCrafting(ep);
 		if (tile instanceof TileEntityCastingTable table) {
 			if (level.isClientSide())
@@ -237,7 +244,7 @@ public class ItemManipulator extends Item {
 		}
 
 		// CHROMA-PORT: the remaining V33a dispatch, each blocked on its own unported tile —
-		//   RIFT setDirection, RITUAL triggerRitual, PROGRESSLINK trigger, MINER triggerDigging,
+		//   PROGRESSLINK trigger, MINER triggerDigging,
 		//   ITEMRIFT flip, CONSOLE setFacing, AURAPOINT togglePVP, BIOMEPAINTER safeMode,
 		//   LANDMARK anchor, ASPECTJAR lock, ESSENTIARELAY, POWERTREE aux, CRYSTALGLOW,
 		//   CRYSTALFENCE aux, DUMMYAUX relayManipulatorClick, and the Chromability/

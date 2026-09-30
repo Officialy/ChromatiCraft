@@ -1,0 +1,162 @@
+{
+  "type": "chromaticraft:casting",
+  "aura": [
+    {
+      "amount": 5000,
+      "element": "black"
+    },
+    {
+      "amount": 5000,
+      "element": "lime"
+    },
+    {
+      "amount": 2000,
+      "element": "yellow"
+    }
+  ],
+  "duration": 600,
+  "experience": 500,
+  "grid": [
+    {
+      "ingredient": "chromaticraft:void_core",
+      "slot": 4
+    }
+  ],
+  "penalty_threshold": 6,
+  "result": {
+    "count": 4,
+    "id": "chromaticraft:world_rift"
+  },
+  "stackable": false,
+  "stands": [
+    {
+      "ingredient": "chromaticraft:spatial_rifting_powder",
+      "offset": [
+        -2,
+        0,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:spatial_rifting_powder",
+      "offset": [
+        2,
+        0,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:spatial_rifting_powder",
+      "offset": [
+        0,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:spatial_rifting_powder",
+      "offset": [
+        0,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:spatial_rifting_powder",
+      "offset": [
+        -2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:spatial_rifting_powder",
+      "offset": [
+        -2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:spatial_rifting_powder",
+      "offset": [
+        2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:spatial_rifting_powder",
+      "offset": [
+        2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_lime",
+      "offset": [
+        -4,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_yellow",
+      "offset": [
+        4,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_blue",
+      "offset": [
+        -4,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_lime",
+      "offset": [
+        4,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_black",
+      "offset": [
+        0,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_black",
+      "offset": [
+        0,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_black",
+      "offset": [
+        4,
+        1,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_black",
+      "offset": [
+        -4,
+        1,
+        0
+      ]
+    }
+  ],
+  "tier": "pylon"
+}

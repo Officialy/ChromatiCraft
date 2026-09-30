@@ -85,6 +85,7 @@ public enum ChromaTiles implements TileEnum {
 			reika.chromaticraft.tileentity.transport.TileEntityFluidRelay.class),
 	FLUIDDISTRIBUTOR("chroma.fluiddistributor", ChromaBlocks.FLUID_DISTRIBUTOR,
 			reika.chromaticraft.tileentity.transport.TileEntityFluidDistributor.class),
+	RIFT("chroma.rift", ChromaBlocks.RIFT, reika.chromaticraft.tileentity.transport.TileEntityRift.class),
 	PARTICLES("chroma.particles", ChromaBlocks.PARTICLE_SPAWNER,
 			reika.chromaticraft.tileentity.decoration.TileEntityParticleSpawner.class),
 	LAUNCHPAD("chroma.launchpad", ChromaBlocks.LAUNCH_PAD,
@@ -148,6 +149,16 @@ public enum ChromaTiles implements TileEnum {
 
 	public Block getBlock() {
 		return block.get();
+	}
+
+	/**
+	 * V33a {@code getCraftedProduct}: the item a tile is crafted as and drops as. The World Rift is its own placer item
+	 * (its block has none); every other ported tile is its block's item.
+	 */
+	public net.minecraft.world.item.ItemStack getCraftedProduct() {
+		if (this == RIFT)
+			return new net.minecraft.world.item.ItemStack(ChromaItems.WORLD_RIFT.get());
+		return new net.minecraft.world.item.ItemStack(this.getBlock().asItem());
 	}
 
 	/** V33a {@code isRepeater}: the tile relays network energy. */

@@ -154,6 +154,7 @@ public class ChromaModelProvider extends ModelProvider {
 		lumenWireModel(blockStateOut, itemModelOut, modelOut);
 		fluidRelayModel(blockStateOut, itemModelOut, modelOut);
 		fluidDistributorModel(blockStateOut, itemModelOut, modelOut);
+		worldRiftModel(blockStateOut, itemModelOut, modelOut);
 		autoEnchanterModel(blockStateOut, itemModelOut, modelOut);
 		toolStorageModel(blockStateOut, itemModelOut, modelOut);
 		pylonTurboModel(blockStateOut, itemModelOut, modelOut);
@@ -2108,6 +2109,25 @@ public class ChromaModelProvider extends ModelProvider {
 	}
 
 	/** The V33a radiator has only a rendered lattice halo in-world; its inventory icon uses that lattice. */
+	/**
+	 * V33a RIFT: drawn only by its TESR (the particle is its rift icon). The item, V33a ChromaItems.RIFT, registered no
+	 * icon and was drawn by the same TESR; its cube base only supplies the block display transforms.
+	 */
+	private static void worldRiftModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		Material particle = new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/icons/rift"));
+		Identifier worldModel = ModelTemplates.PARTICLE_ONLY.create(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/world_rift"),
+				new TextureMapping().put(TextureSlot.PARTICLE, particle), modelOut);
+		blockStateOut.accept(MultiVariantGenerator.dispatch(ChromaBlocks.RIFT.get(),
+				new MultiVariant(WeightedList.of(new Variant(worldModel)))));
+		Identifier itemBase = ModelTemplates.CUBE_ALL.create(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/world_rift_inventory"),
+				TextureMapping.cube(particle), modelOut);
+		itemModelOut.accept(ChromaItems.WORLD_RIFT.get(),
+				ItemModelUtils.specialModel(itemBase, new reika.chromaticraft.render.item.RiftItemRenderer.Unbaked()));
+	}
+
 	private static void fluidDistributorModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
 			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
 		Material lattice = new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/icons/lattice"));

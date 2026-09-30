@@ -9558,3 +9558,50 @@ as time 0, so a world under a second old counts every pendant active); guarded, 
   `hover`, `chroma_trail`; and the three fluids.
 - Known divergence, in the other direction: `meta_alloy_lamp` was `Material.plants` in V33a, but its
   port shape is solid, so it still blocks motion. The predicate cannot un-block a solid shape.
+
+### World Rift — 2026-09-30
+
+- `world_rift` (V33a RIFT, "World Rift") is ported in place: `TileEntityRift`, `BlockRift`, `RenderRift` and the
+  placer `ItemLinkedTilePlacer` (V33a's RIFT item; the older `ItemRiftPlacer` stays pristine and unbuilt).
+  - The block has no BlockItem. Two uses of one `world_rift` item stack place and link a pair: the first
+    remembers its location (dimension included) in the stack's `loc` custom data, the second links to it and
+    makes it the primary end. It places into soft blocks, water or lava, or against the clicked face.
+  - Unbreakable (resistance 600000), cloth sounds, no collision with a full selection box, drawn only by its
+    renderer. Only a sneak-click with the Manipulator by the placer removes it: both ends drop a World Rift item
+    on their next tick.
+  - `ChromaTiles.getCraftedProduct()` is V33a's: the World Rift item for RIFT, the block item otherwise.
+    `LinkedTileBase` now drops it; `getBlock().asItem()` was air for an itemless block.
+  - DragonAPI `BlockEntityBase.delete()` uses flag 3, as V33a's `setBlockToAir` did. Flag 1 left the removed
+    rift on clients.
+- Behaviour, all through the far rift: a face `side` reaches the tile beside the far rift's `side.getOpposite()`
+  face, asked through `side`.
+  - Fluids (`Capabilities.Fluid.BLOCK`) and energy (`Capabilities.Energy.BLOCK`, V33a RF) on every face.
+  - Items (`Capabilities.Item.BLOCK`) only through the face the Manipulator picked (`setDirection`; the far
+    rift takes the opposite), shown as a lime glow rune on that face. Before a face is picked no items pass.
+  - The views are always present and resolve the far side on every call, so pipes never cache a stale
+    handler. A call passing through more than eight rifts in a row returns nothing: a pair whose ends face each
+    other recursed forever in V33a.
+  - Redstone: on a neighbour change each face's received signal is stored in the far rift, which emits it one
+    level weaker on the mirrored face (a lever east of A lights a lamp west of B). As in 1.7.10, a neighbour
+    update names the block that was there before and V33a ignored updates from air, so placing a power source
+    does not pass through until it changes; flipping or breaking it does.
+  - Every block beside the far rift gets a neighbour update; tile caches beside this one refresh.
+  - The World Rifts Chunkload option keeps the 5x5 chunks around each rift loaded.
+- `WorldRift` API: `getBlockIDFrom` / `getTileEntityFrom` as V33a (the latter does not flip the direction, the
+  former does, exactly as V33a). `getBlockMetadataFrom` answers 0 for a linked rift (26.x has no metadata);
+  `getBlockStateFrom` gives the full state.
+- Render: the unlit black box (animated rift icon at 62.5% grey), five ADDITIVEDARK halo shells to 0.05 in the
+  pair's colour, and the lime rune on the item face. The item draws the box with 0.025 shells in a hue cycling
+  every fifteen seconds (V33a's out-of-world TESR branch; V33a registered no item icon).
+- Casting: V33a RiftRecipe, Pylon tier on a Void Core making four: Spatial Rifting Powder on the inner ring,
+  charged lime/yellow/blue/lime shards on the outer corners and charged black shards on the outer edges;
+  5000 black, 5000 lime, 2000 yellow; 600 ticks (200 beyond the tier), 500 XP; penalty after 6.
+- The Fluid Radiator's World Rift exclusion is now an `instanceof`.
+- CHROMA-PORT, dormant (no 26.3 targets): Botania mana bursts teleporting through (recoloured, re-sourced, mana
+  reset; `shouldTeleport` keeps its five-tick guard and passes nothing else, as in V33a), OpenComputers per-face
+  nodes, ComputerCraft peripheral and ProjectRed bundled passthrough, Thaumcraft essentia/aspect views, and
+  BuildCraft power-pipe handling. RotaryCraft/ElectriCraft's `WorldRift` hooks (shaft power, wire paths) remain
+  commented out in those mods.
+- GameTest `world_rift_link`: placement and linking through the item, fluid to an Enchanter, items to a chest
+  after the Manipulator picks a face, the lever/lamp redstone mirror, the rift-loop guard, and the sneak-pop drop
+  of two items.

@@ -163,6 +163,9 @@ public final class ChromaItems {
 	/** V33a LIGHTWAND (tool sprite 91); V33a shipped no name for it. */
 	public static final DeferredItem<reika.chromaticraft.items.tools.wands.ItemLightWand> LIGHT_WAND =
 			reg("light_wand", () -> new reika.chromaticraft.items.tools.wands.ItemLightWand(itemProperties()));
+	/** V33a RIFT, the World Rift: an ItemLinkedTilePlacer placing ChromaBlocks.RIFT in linked pairs. */
+	public static final DeferredItem<reika.chromaticraft.items.itemblock.ItemLinkedTilePlacer> WORLD_RIFT =
+			reg("world_rift", () -> new reika.chromaticraft.items.itemblock.ItemLinkedTilePlacer(itemProperties()));
 	/** V33a PURIFY, the Aura Purification Gem (sprites 33-36 by charge state). */
 	public static final DeferredItem<reika.chromaticraft.items.tools.powered.ItemPurifyCrystal> PURIFY =
 			reg("purification_gem", () -> new reika.chromaticraft.items.tools.powered.ItemPurifyCrystal(itemProperties()));

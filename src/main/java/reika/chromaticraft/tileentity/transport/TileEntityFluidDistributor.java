@@ -68,8 +68,8 @@ public class TileEntityFluidDistributor extends TileEntityAreaDistributor {
 	protected boolean isValidTarget(BlockEntity te) {
 		if (te == null || te == this || te.getBlockPos().getY() >= worldPosition.getY())
 			return false;
-		// The original explicitly excluded World Rifts. Its port will join the active source set later.
-		if (te.getClass().getName().equals("reika.chromaticraft.tileentity.transport.TileEntityRift"))
+		// The original explicitly excluded World Rifts.
+		if (te instanceof TileEntityRift)
 			return false;
 		Class<?> type = te.getClass();
 		if (BLACKLIST.contains(type))

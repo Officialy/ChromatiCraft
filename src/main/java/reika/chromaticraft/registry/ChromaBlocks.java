@@ -1027,6 +1027,13 @@ public final class ChromaBlocks {
 			register("fluid_distributor", () -> new reika.chromaticraft.block.BlockChromaticTile(
 					blockProperties().strength(5F, 8F).requiresCorrectToolForDrops().noOcclusion(), ChromaTiles.FLUIDDISTRIBUTOR));
 	/**
+	 * V33a RIFT: unbreakable, resistance 600000, cloth sounds. It has no block item: the World Rift item
+	 * ({@link ChromaItems#WORLD_RIFT}) places and links it.
+	 */
+	public static final DeferredBlock<Block> RIFT =
+			registerBlockOnly("world_rift", () -> new reika.chromaticraft.block.BlockRift(
+					blockProperties().strength(-1F, 600000F).sound(SoundType.WOOL).noOcclusion()));
+	/**
 	 * V33a PARTICLES, a BlockModelledChromaTile entry: rock, hardness 5, resistance 40 (8 against explosions); intangible and
 	 * drawn only by its renderer.
 	 */

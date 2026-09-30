@@ -1,72 +1,74 @@
 /*******************************************************************************
  * @author Reika Kalseki
- * 
+ *
  * Copyright 2017
- * 
+ *
  * All rights reserved.
  * Distribution of the software in any form is only allowed with
  * explicit, prior permission from the owner.
  ******************************************************************************/
 package reika.chromaticraft.block;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.material.Material;
-import net.minecraft.init.Blocks;
-import net.minecraft.util.AxisAlignedBB;
-import net.minecraft.util.IIcon;
-import net.minecraft.world.IBlockAccess;
-import net.minecraft.world.World;
-import net.minecraftforge.common.util.ForgeDirection;
+import org.jspecify.annotations.Nullable;
 
-import reika.chromaticraft.base.BlockModelledChromaTile;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.RenderShape;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.redstone.Orientation;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.Shapes;
+import net.minecraft.world.phys.shapes.VoxelShape;
+
+import reika.chromaticraft.registry.ChromaTiles;
 import reika.chromaticraft.tileentity.transport.TileEntityRift;
-import reika.dragonapi.libraries.ReikaAABBHelper;
 
-public class BlockRift extends BlockModelledChromaTile {
+/**
+ * V33a {@code BlockRift}: unbreakable (resistance 600000), cloth-sounding, walked through but selectable as a full
+ * block, drawn only by its TESR. Any other block changing beside it passes through to the far rift, and it emits the
+ * redstone its far rift receives. It is removed only by sneak-clicking it with the Manipulator, which drops the World
+ * Rift item for both ends.
+ */
+public class BlockRift extends BlockChromaticTile {
 
-	public BlockRift(Material par2Material) {
-		super(par2Material);
-		this.setBlockUnbreakable();
-		this.setResistance(600000);
-		stepSound = soundTypeCloth;
+	public BlockRift(Properties props) {
+		super(props, ChromaTiles.RIFT);
 	}
 
 	@Override
-	public AxisAlignedBB getCollisionBoundingBoxFromPool(World world, int x, int y, int z) {
-		return null;
+	protected VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+		return Shapes.empty();
 	}
 
 	@Override
-	public AxisAlignedBB getSelectedBoundingBoxFromPool(World world, int x, int y, int z) {
-		return ReikaAABBHelper.getBlockAABB(x, y, z);
+	protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+		return Shapes.block();
 	}
 
 	@Override
-	public IIcon getIcon(int s, int meta) {
-		return blockIcon;
+	protected RenderShape getRenderShape(BlockState state) {
+		return RenderShape.INVISIBLE;
 	}
 
 	@Override
-	public void onNeighborBlockChange(World world, int x, int y, int z, Block id) {
-		if (id != this && id != Blocks.air)
-			((TileEntityRift)world.getTileEntity(x, y, z)).passThrough();
+	public void neighborChanged(BlockState state, Level world, BlockPos pos, Block id, @Nullable Orientation orientation,
+			boolean movedByPiston) {
+		super.neighborChanged(state, world, pos, id, orientation, movedByPiston);
+		if (id != this && !id.defaultBlockState().isAir() && world.getBlockEntity(pos) instanceof TileEntityRift te)
+			te.passThrough();
 	}
 
 	@Override
-	public final boolean canProvidePower() {
+	protected boolean isSignalSource(BlockState state) {
 		return true;
 	}
-	/*
-	@Override
-	public boolean shouldCheckWeakPower(World world, int x, int y, int z, int side)
-	{
-		return true;
-	}*/
 
 	@Override
-	public int isProvidingWeakPower(IBlockAccess iba, int x, int y, int z, int s)
-	{
-		return ((TileEntityRift)iba.getTileEntity(x, y, z)).getRedstoneLevel(ForgeDirection.VALID_DIRECTIONS[s]);
+	protected int getSignal(BlockState state, BlockGetter iba, BlockPos pos, Direction s) {
+		return iba.getBlockEntity(pos) instanceof TileEntityRift te ? te.getRedstoneLevel(s) : 0;
 	}
 
 }

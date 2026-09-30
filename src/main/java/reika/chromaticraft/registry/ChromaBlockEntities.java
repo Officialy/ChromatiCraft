@@ -131,6 +131,8 @@ public final class ChromaBlockEntities {
 			register("fluid_relay", ChromaTiles.FLUIDRELAY);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<reika.chromaticraft.tileentity.transport.TileEntityFluidDistributor>> FLUID_DISTRIBUTOR =
 			register("fluid_distributor", ChromaTiles.FLUIDDISTRIBUTOR);
+	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<reika.chromaticraft.tileentity.transport.TileEntityRift>> RIFT =
+			register("world_rift", ChromaTiles.RIFT);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<reika.chromaticraft.tileentity.decoration.TileEntityParticleSpawner>> PARTICLE_SPAWNER =
 			register("particle_spawner", ChromaTiles.PARTICLES);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<reika.chromaticraft.tileentity.transport.TileEntityLaunchPad>> LAUNCH_PAD =
@@ -291,6 +293,10 @@ public final class ChromaBlockEntities {
 				(collector, context) -> collector.fluidHandler());
 		event.registerBlockEntity(Capabilities.Fluid.BLOCK, FLUID_DISTRIBUTOR.get(),
 				(distributor, side) -> distributor.fluidHandler(side));
+		// V33a World Rift: IFluidHandler, RF IEnergyHandler and ISidedInventory views of the far side.
+		event.registerBlockEntity(Capabilities.Fluid.BLOCK, RIFT.get(), (rift, side) -> rift.fluidHandler(side));
+		event.registerBlockEntity(Capabilities.Energy.BLOCK, RIFT.get(), (rift, side) -> rift.energyHandler(side));
+		event.registerBlockEntity(Capabilities.Item.BLOCK, RIFT.get(), (rift, side) -> rift.itemHandler(side));
 	}
 
 	private ChromaBlockEntities() {}

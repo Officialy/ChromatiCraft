@@ -436,6 +436,7 @@ public final class ChromaCastingRecipeProvider {
 					CastingTableRecipe.CompletionBehavior.DEFAULT));
 
 			saveFarmer();
+			saveWorldRift();
 			saveMagicPlants();
 			savePendants();
 			savePurificationGem();
@@ -756,6 +757,35 @@ public final class ChromaCastingRecipeProvider {
 							stands, List.of(), List.of(),
 							new ItemStackTemplate(ChromaItems.TINTED_LENSES.get(element).get(), amount),
 							100, 200).withPenaltyThreshold(48));
+		}
+
+		/**
+		 * V33a RiftRecipe, a PylonCastingRecipe on a Void Core making four (typically eight at a time): Spatial Rifting
+		 * Powder on the inner ring, charged lime/yellow/blue/lime shards on the outer corners and charged black shards
+		 * on the outer edges, 5000 black and lime and 2000 yellow lumens, and 200 ticks beyond the Pylon tier's 400.
+		 */
+		private void saveWorldRift() {
+			List<CastingTableRecipe.StandIngredient> stands = new ArrayList<>();
+			for (int[] point : new int[][] {
+					{-2, 0}, {2, 0}, {0, 2}, {0, -2},
+					{-2, -2}, {-2, 2}, {2, -2}, {2, 2}})
+				stands.add(auxStand(point[0], point[1], tiered(ChromaTieredItems.SPACE_DUST)));
+			stands.add(auxStand(-4, -4, Ingredient.of(ChromaItems.BOOSTED_SHARDS.get(CrystalElement.LIME).get())));
+			stands.add(auxStand(4, -4, Ingredient.of(ChromaItems.BOOSTED_SHARDS.get(CrystalElement.YELLOW).get())));
+			stands.add(auxStand(-4, 4, Ingredient.of(ChromaItems.BOOSTED_SHARDS.get(CrystalElement.BLUE).get())));
+			stands.add(auxStand(4, 4, Ingredient.of(ChromaItems.BOOSTED_SHARDS.get(CrystalElement.LIME).get())));
+			for (int[] point : new int[][] {{0, 4}, {0, -4}, {4, 0}, {-4, 0}})
+				stands.add(auxStand(point[0], point[1],
+						Ingredient.of(ChromaItems.BOOSTED_SHARDS.get(CrystalElement.BLACK).get())));
+			saveRecipe("world_rift", new CastingTableRecipe(CastingTableRecipe.Tier.PYLON,
+					List.of(new GridIngredient(4, Ingredient.of(ChromaItems.CRAFTING.get(
+							ChromaCraftingItems.VOID_CORE).get()))),
+					List.copyOf(stands), List.of(),
+					List.of(new AuraRequirement(CrystalElement.BLACK, 5000),
+							new AuraRequirement(CrystalElement.LIME, 5000),
+							new AuraRequirement(CrystalElement.YELLOW, 2000)),
+					new ItemStackTemplate(ChromaItems.WORLD_RIFT.get(), 4),
+					600, 500).withPenaltyThreshold(6));
 		}
 
 		/** Exact V33a FarmerRecipe, including all sixteen stands and both aura channels. */

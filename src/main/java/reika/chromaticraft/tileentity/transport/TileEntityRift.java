@@ -10,99 +10,88 @@
 package reika.chromaticraft.tileentity.transport;
 
 import java.awt.Color;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
-import net.minecraft.block.Block;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.init.Blocks;
-import net.minecraft.inventory.IInventory;
-import net.minecraft.inventory.ISidedInventory;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.AxisAlignedBB;
-import net.minecraft.world.ChunkCoordIntPair;
-import net.minecraft.world.World;
-import net.minecraftforge.common.util.ForgeDirection;
-import net.minecraftforge.fluids.Fluid;
-import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.FluidTankInfo;
-import net.minecraftforge.fluids.IFluidHandler;
+import org.jspecify.annotations.Nullable;
+
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.AABB;
+
+import net.neoforged.neoforge.capabilities.BlockCapability;
+import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.transfer.EmptyResourceHandler;
+import net.neoforged.neoforge.transfer.ResourceHandler;
+import net.neoforged.neoforge.transfer.energy.EmptyEnergyHandler;
+import net.neoforged.neoforge.transfer.energy.EnergyHandler;
+import net.neoforged.neoforge.transfer.fluid.FluidResource;
+import net.neoforged.neoforge.transfer.item.ItemResource;
+import net.neoforged.neoforge.transfer.resource.Resource;
+import net.neoforged.neoforge.transfer.transaction.TransactionContext;
 
 import reika.chromaticraft.api.interfaces.WorldRift;
 import reika.chromaticraft.auxiliary.interfaces.LinkedTile;
 import reika.chromaticraft.base.tileentity.LinkedTileBase;
+import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.ChromaOptions;
 import reika.chromaticraft.registry.ChromaTiles;
-import reika.dragonapi.ModList;
-import reika.dragonapi.asm.apistripper.Strippable;
-import reika.dragonapi.asm.dependentmethodstripper.ModDependent;
-import reika.dragonapi.asm.interfaceinjector.Injectable;
 import reika.dragonapi.auxiliary.ChunkManager;
-import reika.dragonapi.base.TileEntityBase;
+import reika.dragonapi.base.BlockEntityBase;
 import reika.dragonapi.instantiable.data.immutable.WorldLocation;
-import reika.dragonapi.interfaces.tileentity.ChunkLoadingTile;
-import reika.dragonapi.libraries.ReikaAABBHelper;
-import reika.dragonapi.libraries.io.ReikaSoundHelper;
-import reika.dragonapi.libraries.java.ReikaRandomHelper;
-import reika.dragonapi.modregistry.InterfaceCache;
+import reika.dragonapi.interfaces.blockentity.ChunkLoadingTile;
 
-import buildcraft.api.transport.IPipe;
-import buildcraft.api.transport.IPipeConnection;
-import buildcraft.api.transport.IPipeTile;
-import buildcraft.api.transport.IPipeTile.PipeType;
-import buildcraft.transport.Pipe;
-import buildcraft.transport.PipeTransportPower;
-import cofh.api.energy.IEnergyConnection;
-import cofh.api.energy.IEnergyHandler;
-import cofh.api.energy.IEnergyProvider;
-import cofh.api.energy.IEnergyReceiver;
-import cpw.mods.fml.common.FMLCommonHandler;
-import cpw.mods.fml.relauncher.Side;
-import dan200.computercraft.api.lua.ILuaContext;
-import dan200.computercraft.api.lua.LuaException;
-import dan200.computercraft.api.peripheral.IComputerAccess;
-import dan200.computercraft.api.peripheral.IPeripheral;
-import li.cil.oc.api.Network;
-import li.cil.oc.api.network.Environment;
-import li.cil.oc.api.network.Node;
-import li.cil.oc.api.network.Visibility;
-import mrtjp.projectred.api.IBundledTile;
-import mrtjp.projectred.api.ProjectRedAPI;
-import thaumcraft.api.aspects.Aspect;
-import thaumcraft.api.aspects.AspectList;
-import thaumcraft.api.aspects.IAspectContainer;
-import thaumcraft.api.aspects.IEssentiaTransport;
-import vazkii.botania.api.internal.IManaBurst;
-import vazkii.botania.api.mana.IManaCollisionGhost;
-import vazkii.botania.api.mana.IManaReceiver;
+/**
+ * V33a World Rift: one end of a linked pair. Whatever touches one face of this rift is joined to whatever sits on the
+ * opposite face of the other rift, in any dimension: fluids and energy on every face, items through the one face the
+ * Manipulator picked ({@link #setDirection}), redstone (mirrored, one level weaker) and block updates. With the
+ * World Rifts Chunkload option on it keeps the 5x5 chunks around itself loaded.
+ *
+ * <p>The 26.3 capability views resolve the far side on every call, so a relink, reset or far-side change never
+ * leaves a pipe holding a stale handler. A call that has passed through {@link #MAX_DEPTH} rifts in a row returns
+ * nothing: two rift pairs whose far ends face each other forwarded forever in V33a (a stack overflow).
+ */
+public class TileEntityRift extends LinkedTileBase implements WorldRift, ChunkLoadingTile {
 
-@Strippable(value = {"buildcraft.api.transport.IPipeConnection", "cofh.api.energy.IEnergyHandler", "thaumcraft.api.aspects.IEssentiaTransport",
-		"thaumcraft.api.aspects.IAspectContainer", "vazkii.botania.api.mana.IManaCollisionGhost", "vazkii.botania.api.mana.IManaReceiver",
-"mrtjp.projectred.api.IBundledTile"})
-@Injectable(value = {"dan200.computercraft.api.peripheral.IPeripheral", "li.cil.oc.api.network.Environment",
-		"li.cil.oc.api.network.ManagedPeripheral", "li.cil.oc.api.network.SidedEnvironment"})
-public class TileEntityRift extends LinkedTileBase implements WorldRift, IPipeConnection, IFluidHandler, IEnergyHandler,
-IEssentiaTransport, IAspectContainer, ISidedInventory, ChunkLoadingTile, IManaCollisionGhost, IManaReceiver, IBundledTile {
+	/** Rift-to-rift hops one capability call may make before it gives up. */
+	private static final int MAX_DEPTH = 8;
+	private static final ThreadLocal<int[]> DEPTH = ThreadLocal.withInitial(() -> new int[1]);
 
 	private int color = 0xffffff;
 	private int[] redstoneCache = new int[6];
-	private ForgeDirection singleDirection;
+	private @Nullable Direction singleDirection;
 
-	private final Object[] sidedOCNode = new Object[6];
+	private final RiftResourceHandler<FluidResource>[] fluidViews = views(Capabilities.Fluid.BLOCK, false);
+	private final RiftResourceHandler<ItemResource>[] itemViews = views(Capabilities.Item.BLOCK, true);
+	private final RiftEnergyHandler[] energyViews = new RiftEnergyHandler[6];
 
-	public TileEntityRift() {
-		if (ModList.OPENCOMPUTERS.isLoaded() && FMLCommonHandler.instance().getEffectiveSide() == Side.SERVER) {
-			this.initOCNodes();
-		}
+	// CHROMA-PORT: V33a also made the rift an OpenComputers SidedEnvironment (one network node per face, joined to the
+	// far rift's opposite-face node on link and split on reset), a ComputerCraft peripheral and a ProjectRed
+	// IBundledTile, all passing through to the single-direction tile, plus Thaumcraft IEssentiaTransport and
+	// IAspectContainer views of the far side. None of those mods target 26.3; restore them from V33a when they do.
+
+	public TileEntityRift(BlockPos pos, BlockState state) {
+		super(ChromaBlockEntities.RIFT.get(), pos, state);
+		for (Direction dir : Direction.values())
+			energyViews[dir.ordinal()] = new RiftEnergyHandler(dir);
 	}
 
-	private void initOCNodes() {
-		for (int i = 0; i < 6; i++) {
-			sidedOCNode[i] = Network.newNode((Environment)this, Visibility.Network).create();
-		}
+	@SuppressWarnings("unchecked")
+	private <T extends Resource> RiftResourceHandler<T>[] views(BlockCapability<ResourceHandler<T>, @Nullable Direction> cap,
+			boolean single) {
+		RiftResourceHandler<T>[] arr = new RiftResourceHandler[6];
+		for (Direction dir : Direction.values())
+			arr[dir.ordinal()] = new RiftResourceHandler<>(cap, dir, single);
+		return arr;
 	}
 
 	@Override
@@ -111,11 +100,11 @@ IEssentiaTransport, IAspectContainer, ISidedInventory, ChunkLoadingTile, IManaCo
 	}
 
 	@Override
-	public void updateEntity(World world, int x, int y, int z, int meta) {
-		super.updateEntity(world, x, y, z, meta);
-		if (!world.isRemote && this.isLinked() && this.getOther() != null) {
-			AxisAlignedBB box = ReikaAABBHelper.getBlockAABB(x, y, z);//.expand(0.15, 0.15, 0.15);
-			List<Entity> li = world.getEntitiesWithinAABB(Entity.class, box);
+	public void updateEntity(Level world, BlockPos pos) {
+		super.updateEntity(world, pos);
+		if (!world.isClientSide() && this.isLinked() && this.getOther() != null) {
+			AABB box = new AABB(pos);//.inflate(0.15);
+			List<Entity> li = world.getEntitiesOfClass(Entity.class, box);
 			for (Entity e : li) {
 				if (this.shouldTeleport(e)) {
 					this.teleport(e);
@@ -125,87 +114,74 @@ IEssentiaTransport, IAspectContainer, ISidedInventory, ChunkLoadingTile, IManaCo
 	}
 
 	private void teleport(Entity e) {
-		double rx = 1-(e.posX-xCoord);
-		double ry = 1-(e.posY-yCoord);
-		double rz = 1-(e.posZ-zCoord);
+		double rx = 1-(e.getX()-worldPosition.getX());
+		double ry = 1-(e.getY()-worldPosition.getY());
+		double rz = 1-(e.getZ()-worldPosition.getZ());
 		TileEntityRift te = this.getOther();
-		if (ModList.BOTANIA.isLoaded() && e instanceof IManaBurst) {
-			IManaBurst b = (IManaBurst)e;
-			/*
-			int c = b.getColor();
-			float[] hsb = Color.RGBtoHSB(ReikaColorAPI.getRed(c), ReikaColorAPI.getGreen(c), ReikaColorAPI.getBlue(c), null);
-			hsb[1] = 1;
-			hsb[0] += 0.1667F; //60 deg purpleshift
-			if (hsb[0] > 1)
-				hsb[0] -= 1;
-			c = Color.HSBtoRGB(hsb[0], hsb[1], hsb[2]);
-			b.setColor(c);
-			 */
-			b.setColor(color);
-			b.setBurstSourceCoords(te.xCoord, te.yCoord, te.zCoord);
-			b.setMana(b.getStartingMana()); //reset life
-			ReikaSoundHelper.playSoundAtBlock(worldObj, te.xCoord, te.yCoord, te.zCoord, "botania:spreaderFire", 0.5F, (float)ReikaRandomHelper.getRandomPlusMinus(1, 0.25));
-		}
-		e.setLocationAndAngles(te.xCoord+rx, te.yCoord+ry, te.zCoord+rz, e.rotationYaw, e.rotationPitch);
-		e.getEntityData().setLong("rift_teleported", worldObj.getTotalWorldTime());
+		// CHROMA-PORT: for a Botania IManaBurst V33a also recoloured the burst to this rift's colour, moved its source
+		// to the far rift, reset its mana to the starting amount (a fresh life) and played botania:spreaderFire at
+		// the far rift (0.5 volume, pitch 1 +- 0.25).
+		BlockPos to = te.getBlockPos();
+		e.snapTo(to.getX()+rx, to.getY()+ry, to.getZ()+rz, e.getYRot(), e.getXRot());
+		e.getPersistentData().putLong("rift_teleported", level.getGameTime());
 	}
 
 	private boolean shouldTeleport(Entity e) {
-		long get = e.getEntityData().getLong("rift_teleported");
-		if (worldObj.getTotalWorldTime()-get < 5)
+		long get = e.getPersistentData().getLongOr("rift_teleported", 0);
+		if (level.getGameTime()-get < 5)
 			return false;
-		if (ModList.BOTANIA.isLoaded() && e instanceof IManaBurst) {
-			return true;
-		}
+		// CHROMA-PORT: V33a passed only Botania mana bursts (IManaBurst) through; nothing else ever teleported.
 		return false;
 	}
 
 	@Override
-	protected void onFirstTick(World world, int x, int y, int z) {
+	protected void onFirstTick(Level world, BlockPos pos) {
 		if (ChromaOptions.RIFTLOAD.getState()) {
 			ChunkManager.instance.loadChunks(this);
 		}
 	}
 
-	public void setDirection(ForgeDirection dir) {
+	/** V33a: the Manipulator picks the face items pass through; the far rift takes the opposite. */
+	public void setDirection(Direction dir) {
 		if (this.isLinked() && this.getOther() != null) {
 			singleDirection = dir;
 			this.getOther().singleDirection = dir.getOpposite();
+			this.syncAllData(false);
+			this.getOther().syncAllData(false);
 		}
 	}
 
-	public ForgeDirection getSingleDirection() {
+	public @Nullable Direction getSingleDirection() {
 		return singleDirection;
 	}
 
-	public boolean canDrop(EntityPlayer ep) {
-		return ep.getUniqueID().equals(placerUUID);
+	@Override
+	public boolean canDrop(Player ep) {
+		return ep.getUUID().equals(placerUUID);
 	}
 
+	/**
+	 * V33a, on any neighbour change: record the redstone each face receives into the far rift (which emits it on the
+	 * mirrored face), tell every block around the far rift, and refresh the caches of tiles around this one.
+	 */
 	public void passThrough() {
 		if (this.isLinked()) {
 			WorldLocation loc = this.getLinkTarget();
 			TileEntityRift te = this.getOther();
 			if (te != null) {
-				for (int i = 0; i < 6; i++) {
-					ForgeDirection dir = dirs[i];
-					ForgeDirection opp = dir.getOpposite();
-					int dx = loc.xCoord+dir.offsetX;
-					int dy = loc.yCoord+dir.offsetY;
-					int dz = loc.zCoord+dir.offsetZ;
-					int ddx = xCoord-dir.offsetX;
-					int ddy = yCoord-dir.offsetY;
-					int ddz = zCoord-dir.offsetZ;
-					Block id = worldObj.getBlock(dx, dy, dz);
-					Block id2 = worldObj.getBlock(ddx, ddy, ddz);
-					int pwr = worldObj.getIndirectPowerLevelTo(xCoord+dir.offsetX, yCoord+dir.offsetY, zCoord+dir.offsetZ, opp.ordinal());
-					te.redstoneCache[i] = pwr;
-					if (id != Blocks.air) {
-						id.onNeighborBlockChange(worldObj, dx, dy, dz, id);
+				Level other = te.getLevel();
+				for (Direction dir : Direction.values()) {
+					Direction opp = dir.getOpposite();
+					BlockPos d = loc.pos.relative(dir);
+					int pwr = level.getSignal(worldPosition.relative(dir), opp);
+					te.redstoneCache[dir.ordinal()] = pwr;
+					BlockState id = other.getBlockState(d);
+					if (!id.isAir()) {
+						other.neighborChanged(d, id.getBlock(), null);
 					}
-					TileEntity tile = this.getAdjacentTileEntity(dir);
-					if (tile != this && tile instanceof TileEntityBase) {
-						((TileEntityBase)tile).updateCache(dir.getOpposite());
+					BlockEntity tile = this.getAdjacentBlockEntity(dir);
+					if (tile != this && tile instanceof BlockEntityBase base) {
+						base.updateCache(dir.getOpposite());
 					}
 				}
 			}
@@ -213,12 +189,12 @@ IEssentiaTransport, IAspectContainer, ISidedInventory, ChunkLoadingTile, IManaCo
 		}
 	}
 
-	public int getRedstoneLevel(ForgeDirection side) {
+	public int getRedstoneLevel(Direction side) {
 		return Math.max(redstoneCache[side.ordinal()]-1, 0);
 	}
 
 	@Override
-	protected void animateWithTick(World world, int x, int y, int z) {
+	protected void animateWithTick(Level world, BlockPos pos) {
 
 	}
 
@@ -234,755 +210,362 @@ IEssentiaTransport, IAspectContainer, ISidedInventory, ChunkLoadingTile, IManaCo
 	}
 
 	@Override
-	protected void onLinkTo(World world, int x, int y, int z, LinkedTile tile) {
-		TileEntityRift te = (TileEntityRift)tile;
-		if (ModList.OPENCOMPUTERS.isLoaded() && !world.isRemote) {
-			for (int i = 0; i < 6; i++) {
-				if (sidedOCNode[i] != null && te.sidedOCNode[i] != null)
-					((Node)te.sidedOCNode[dirs[i].getOpposite().ordinal()]).connect((Node)sidedOCNode[i]);
-			}
-		}
-	}
-
-	@Override
 	protected void onReset() {
 		color = 0xffffff;
 		redstoneCache = new int[6];
 		singleDirection = null;
-		if (ModList.OPENCOMPUTERS.isLoaded() && !worldObj.isRemote) {
-			TileEntityRift te = this.getOther();
-			if (te != null) {
-				for (int i = 0; i < 6; i++) {
-					if (sidedOCNode[i] != null && te.sidedOCNode[i] != null)
-						((Node)sidedOCNode[i]).disconnect(((Node)te.sidedOCNode[i]));
-				}
-			}
-		}
 	}
 
 	@Override
 	protected void onResetOther(LinkedTile tile) {
 		TileEntityRift te = (TileEntityRift)tile;
 		te.color = 0xffffff;
-		if (ModList.OPENCOMPUTERS.isLoaded() && !worldObj.isRemote) {
-			for (int i = 0; i < 6; i++) {
-				if (sidedOCNode[i] != null && te.sidedOCNode[i] != null)
-					((Node)te.sidedOCNode[i]).disconnect(((Node)sidedOCNode[i]));
-			}
-		}
 	}
 
+	/** The pair's shared hue; outside a world (the item) V33a cycled through every hue in fifteen seconds. */
 	public int getColor() {
-		return this.isInWorld() ? color : Color.HSBtoRGB((System.currentTimeMillis()%15000)/15000F, 1, 1);
+		return this.isInWorld() ? color : itemColor();
+	}
+
+	public static int itemColor() {
+		return Color.HSBtoRGB((System.currentTimeMillis()%15000)/15000F, 1, 1);
 	}
 
 	private int getRandomColor() {
-		return Color.HSBtoRGB(rand.nextFloat(), 1, 1);
+		return Color.HSBtoRGB(level.getRandom().nextFloat(), 1, 1);
 	}
 
 	@Override
-	public boolean canLinkTo(World world, int x, int y, int z) {
-		return ChromaTiles.getTile(world, x, y, z) == this.getTile();
+	public boolean canLinkTo(Level world, BlockPos pos) {
+		return world.getBlockEntity(pos) instanceof TileEntityRift;
 	}
 
-	public TileEntityRift getOther() {
-		return this.isLinked() ? ((TileEntityRift)this.getLinkTarget().getTileEntity()) : null;
+	@Override
+	public @Nullable TileEntityRift getOther() {
+		return super.getOther() instanceof TileEntityRift te ? te : null;
 	}
 
-	public WorldLocation getBlockFrom(ForgeDirection from) {
+	public @Nullable WorldLocation getBlockFrom(Direction from) {
 		return this.isLinked() ? this.getLinkTarget().move(from.getOpposite(), 1) : null;
 	}
 
-	private TileEntity getAdjacentTargetTile(ForgeDirection dir) {
-		TileEntity te = this.isLinked() && this.getOther() != null ? this.getOther().getAdjacentTileEntity(dir) : null;
-		return te != null && !te.isInvalid() && te.worldObj != null ? te : null;
-	}
-
-	private TileEntity getSingleDirTile() {
-		return singleDirection != null && this.isLinked() ? this.getOther().getAdjacentTileEntity(singleDirection.getOpposite()) : null;
+	/** The tile beside the far rift on {@code dir}, or null (also while the far side is unloaded). */
+	private @Nullable BlockEntity getAdjacentTargetTile(Direction dir) {
+		TileEntityRift te = this.getOther();
+		if (te == null)
+			return null;
+		BlockPos p = te.getBlockPos().relative(dir);
+		BlockEntity tile = te.getLevel().isLoaded(p) ? te.getLevel().getBlockEntity(p) : null;
+		return tile != null && !tile.isRemoved() ? tile : null;
 	}
 
 	@Override
-	public Block getBlockIDFrom(ForgeDirection dir) {
+	public @Nullable Block getBlockIDFrom(Direction dir) {
 		return this.isLinked() ? this.getBlockFrom(dir).getBlock() : null;
 	}
 
+	/** 26.x blocks have states, not metadata: 0 for a linked rift, as for any single-state block in 1.7.10. */
 	@Override
-	public int getBlockMetadataFrom(ForgeDirection dir) {
-		return this.isLinked() ? this.getBlockFrom(dir).getBlockMetadata() : -1;
+	public int getBlockMetadataFrom(Direction dir) {
+		return this.isLinked() ? 0 : -1;
 	}
 
+	/** The state {@link #getBlockIDFrom} reads, in full. */
+	public @Nullable BlockState getBlockStateFrom(Direction dir) {
+		if (!this.isLinked())
+			return null;
+		WorldLocation loc = this.getBlockFrom(dir);
+		Level world = loc.getWorld();
+		return world != null ? world.getBlockState(loc.pos) : null;
+	}
+
+	/** As V33a: the far rift's neighbour on {@code dir} itself (unlike {@link #getBlockFrom}, which flips it). */
 	@Override
-	public TileEntity getTileEntityFrom(ForgeDirection dir) {
+	public @Nullable BlockEntity getTileEntityFrom(Direction dir) {
 		return this.isLinked() ? this.getAdjacentTargetTile(dir) : null;
 	}
 
 	@Override
-	protected void writeSyncTag(NBTTagCompound NBT) {
+	protected void writeSyncTag(CompoundTag NBT) {
 		super.writeSyncTag(NBT);
 
-		NBT.setInteger("color", color);
-		NBT.setIntArray("redstone", redstoneCache);
-		NBT.setInteger("dir", singleDirection != null ? singleDirection.ordinal() : -1);
+		NBT.putInt("color", color);
+		NBT.putIntArray("redstone", redstoneCache);
+		NBT.putInt("dir", singleDirection != null ? singleDirection.ordinal() : -1);
 	}
 
 	@Override
-	protected void readSyncTag(NBTTagCompound NBT) {
+	protected void readSyncTag(CompoundTag NBT) {
 		super.readSyncTag(NBT);
 
-		color = NBT.getInteger("color");
-		redstoneCache = NBT.getIntArray("redstone");
-		int dir = NBT.getInteger("dir");
-		singleDirection = dir != -1 ? dirs[dir] : null;
+		color = NBT.getIntOr("color", 0xffffff);
+		int[] rs = NBT.getIntArray("redstone").orElse(new int[6]);
+		redstoneCache = rs.length == 6 ? rs : Arrays.copyOf(rs, 6);
+		int dir = NBT.getIntOr("dir", -1);
+		singleDirection = dir >= 0 && dir < 6 ? Direction.values()[dir] : null;
 	}
 
-	@Override
-	@ModDependent(ModList.THAUMCRAFT)
-	public boolean isConnectable(ForgeDirection face) {
-		if (this.getOther() != null && this.getAdjacentTargetTile(face.getOpposite()) instanceof IEssentiaTransport) {
-			return ((IEssentiaTransport)this.getAdjacentTargetTile(face.getOpposite())).isConnectable(face);
+	// CHROMA-PORT: V33a also accepted a BuildCraft power pipe on the far side (receiveEnergy/requestEnergy on its
+	// PipeTransportPower) and told BuildCraft transport pipes to connect to every face. BuildCraft has no 26.3 build.
+
+	/** V33a IFluidHandler: face {@code side} reaches the tile beside the far rift's opposite face. */
+	public ResourceHandler<FluidResource> fluidHandler(@Nullable Direction side) {
+		return side != null ? fluidViews[side.ordinal()] : EmptyResourceHandler.instance();
+	}
+
+	/** V33a ISidedInventory: only through the Manipulator-chosen face's far tile, whichever face asks. */
+	public ResourceHandler<ItemResource> itemHandler(@Nullable Direction side) {
+		return itemViews[(side != null ? side : Direction.DOWN).ordinal()];
+	}
+
+	/** V33a IEnergyHandler (RF): face {@code side} reaches the tile beside the far rift's opposite face. */
+	public EnergyHandler energyHandler(@Nullable Direction side) {
+		return side != null ? energyViews[side.ordinal()] : EmptyEnergyHandler.INSTANCE;
+	}
+
+	/** The far side's handler for a query on {@code side}, or null while unlinked, unloaded or absent. */
+	private <H> @Nullable H farHandler(BlockCapability<H, @Nullable Direction> cap, Direction side, boolean single) {
+		TileEntityRift te = this.getOther();
+		if (te == null)
+			return null;
+		BlockPos target;
+		if (single) {
+			if (singleDirection == null)
+				return null;
+			target = te.getBlockPos().relative(singleDirection.getOpposite());
 		}
-		return false;
-	}
-
-	@Override
-	@ModDependent(ModList.THAUMCRAFT)
-	public boolean canInputFrom(ForgeDirection face) {
-		if (this.getOther() != null && this.getAdjacentTargetTile(face.getOpposite()) instanceof IEssentiaTransport) {
-			return ((IEssentiaTransport)this.getAdjacentTargetTile(face.getOpposite())).canInputFrom(face);
+		else {
+			target = te.getBlockPos().relative(side.getOpposite());
 		}
-		return false;
+		Level world = te.getLevel();
+		if (!world.isLoaded(target))
+			return null;
+		return world.getCapability(cap, target, side);
 	}
 
-	@Override
-	@ModDependent(ModList.THAUMCRAFT)
-	public boolean canOutputTo(ForgeDirection face) {
-		if (this.getOther() != null && this.getAdjacentTargetTile(face.getOpposite()) instanceof IEssentiaTransport) {
-			return ((IEssentiaTransport)this.getAdjacentTargetTile(face.getOpposite())).canOutputTo(face);
+	private static boolean enter() {
+		int[] d = DEPTH.get();
+		if (d[0] >= MAX_DEPTH)
+			return false;
+		d[0]++;
+		return true;
+	}
+
+	private static void exit() {
+		DEPTH.get()[0]--;
+	}
+
+	private final class RiftResourceHandler<T extends Resource> implements ResourceHandler<T> {
+
+		private final BlockCapability<ResourceHandler<T>, @Nullable Direction> cap;
+		private final Direction side;
+		private final boolean single;
+
+		private RiftResourceHandler(BlockCapability<ResourceHandler<T>, @Nullable Direction> cap, Direction side,
+				boolean single) {
+			this.cap = cap;
+			this.side = side;
+			this.single = single;
 		}
-		return false;
-	}
 
-	@Override
-	@ModDependent(ModList.THAUMCRAFT)
-	public void setSuction(Aspect aspect, int amount) {
-		if (this.getOther() != null && this.getSingleDirTile() instanceof IEssentiaTransport) {
-			((IEssentiaTransport)this.getSingleDirTile()).setSuction(aspect, amount);
+		private @Nullable ResourceHandler<T> target() {
+			return TileEntityRift.this.farHandler(cap, side, single);
 		}
-	}
 
-	@Override
-	@ModDependent(ModList.THAUMCRAFT)
-	public Aspect getSuctionType(ForgeDirection face) {
-		if (this.getOther() != null && this.getAdjacentTargetTile(face.getOpposite()) instanceof IEssentiaTransport) {
-			return ((IEssentiaTransport)this.getAdjacentTargetTile(face.getOpposite())).getSuctionType(face);
-		}
-		return null;
-	}
-
-	@Override
-	@ModDependent(ModList.THAUMCRAFT)
-	public int getSuctionAmount(ForgeDirection face) {
-		if (this.getOther() != null && this.getAdjacentTargetTile(face.getOpposite()) instanceof IEssentiaTransport) {
-			return ((IEssentiaTransport)this.getAdjacentTargetTile(face.getOpposite())).getSuctionAmount(face);
-		}
-		return 0;
-	}
-
-	@Override
-	@ModDependent(ModList.THAUMCRAFT)
-	public int takeEssentia(Aspect aspect, int amount, ForgeDirection face) {
-		if (this.getOther() != null && this.getAdjacentTargetTile(face.getOpposite()) instanceof IEssentiaTransport) {
-			return ((IEssentiaTransport)this.getAdjacentTargetTile(face.getOpposite())).takeEssentia(aspect, amount, face);
-		}
-		return 0;
-	}
-
-	@Override
-	@ModDependent(ModList.THAUMCRAFT)
-	public int addEssentia(Aspect aspect, int amount, ForgeDirection face) {
-		if (this.getOther() != null && this.getAdjacentTargetTile(face.getOpposite()) instanceof IEssentiaTransport) {
-			return ((IEssentiaTransport)this.getAdjacentTargetTile(face.getOpposite())).addEssentia(aspect, amount, face);
-		}
-		return 0;
-	}
-
-	@Override
-	@ModDependent(ModList.THAUMCRAFT)
-	public Aspect getEssentiaType(ForgeDirection face) {
-		if (this.getOther() != null && this.getAdjacentTargetTile(face.getOpposite()) instanceof IEssentiaTransport) {
-			return ((IEssentiaTransport)this.getAdjacentTargetTile(face.getOpposite())).getEssentiaType(face);
-		}
-		return null;
-	}
-
-	@Override
-	@ModDependent(ModList.THAUMCRAFT)
-	public int getEssentiaAmount(ForgeDirection face) {
-		if (this.getOther() != null && this.getAdjacentTargetTile(face.getOpposite()) instanceof IEssentiaTransport) {
-			return ((IEssentiaTransport)this.getAdjacentTargetTile(face.getOpposite())).getEssentiaAmount(face);
-		}
-		return 0;
-	}
-
-	@Override
-	@ModDependent(ModList.THAUMCRAFT)
-	public int getMinimumSuction() {
-		if (this.getOther() != null && this.getSingleDirTile() instanceof IEssentiaTransport) {
-			return ((IEssentiaTransport)this.getSingleDirTile()).getMinimumSuction();
-		}
-		return 0;
-	}
-
-	@Override
-	@ModDependent(ModList.THAUMCRAFT)
-	public boolean renderExtendedTube() {
-		return false;
-	}
-
-	@Override
-	@ModDependent(ModList.BCTRANSPORT)
-	public ConnectOverride overridePipeConnection(PipeType type, ForgeDirection with) {
-		return ConnectOverride.CONNECT;
-	}
-
-	@ModDependent(ModList.BCTRANSPORT)
-	private int sendEnergyToBCPipe(TileEntity other, ForgeDirection from, int maxReceive, boolean simulate) {
-		if (simulate)
-			return maxReceive;
-		IPipeTile pipe = (IPipeTile)other;
-		if (pipe.getPipeType() == PipeType.POWER) {
-			IPipe p = pipe.getPipe();
-			if (p instanceof Pipe && ((Pipe)p).transport instanceof PipeTransportPower) {
-				return (int)((PipeTransportPower)((Pipe)p).transport).receiveEnergy(from, maxReceive); //I know it says to never call this, but nothing else works...
-			}
-		}
-		return 0;
-	}
-
-	@ModDependent(ModList.BCTRANSPORT)
-	private int takeEnergyFromBCPipe(TileEntity other, ForgeDirection from, int maxExtract, boolean simulate) {
-		if (simulate)
-			return maxExtract;
-		IPipeTile pipe = (IPipeTile)other;
-		if (pipe.getPipeType() == PipeType.POWER) {
-			IPipe p = pipe.getPipe();
-			if (p instanceof Pipe && ((Pipe)p).transport instanceof PipeTransportPower) {
-				((PipeTransportPower)((Pipe)p).transport).requestEnergy(from, maxExtract);
+		@Override
+		public int size() {
+			if (!enter())
 				return 0;
+			try {
+				ResourceHandler<T> h = this.target();
+				return h != null ? h.size() : 0;
+			}
+			finally {
+				exit();
 			}
 		}
-		return 0;
-	}
 
-	@Override
-	public int receiveEnergy(ForgeDirection from, int maxReceive, boolean simulate) {
-		TileEntity other = this.getOther() != null ? this.getAdjacentTargetTile(from.getOpposite()) : null;
-		if (ModList.BCTRANSPORT.isLoaded() && InterfaceCache.BCPIPE.instanceOf(other)) {
-			return this.sendEnergyToBCPipe(other, from, maxReceive, simulate);
-		}
-		else if (other instanceof IEnergyReceiver) {
-			return ((IEnergyReceiver)other).receiveEnergy(from, maxReceive, simulate);
-		}
-		return 0;
-	}
-
-	@Override
-	public int extractEnergy(ForgeDirection from, int maxExtract, boolean simulate) {
-		TileEntity other = this.getOther() != null ? this.getAdjacentTargetTile(from.getOpposite()) : null;
-		if (ModList.BCTRANSPORT.isLoaded() && InterfaceCache.BCPIPE.instanceOf(other)) {
-			return this.takeEnergyFromBCPipe(other, from, maxExtract, simulate);
-		}
-		else if (other instanceof IEnergyProvider) {
-			return ((IEnergyProvider)other).extractEnergy(from, maxExtract, simulate);
-		}
-		return 0;
-	}
-
-	@Override
-	public boolean canConnectEnergy(ForgeDirection from) {
-		TileEntity other = this.getOther() != null ? this.getAdjacentTargetTile(from.getOpposite()) : null;
-		if (ModList.BCTRANSPORT.isLoaded() && InterfaceCache.BCPIPE.instanceOf(other)) {
-			return true;
-		}
-		else if (other instanceof IEnergyConnection) {
-			return ((IEnergyConnection)other).canConnectEnergy(from);
-		}
-		return false;
-	}
-
-	@Override
-	public int getEnergyStored(ForgeDirection from) {
-		TileEntity other = this.getOther() != null ? this.getAdjacentTargetTile(from.getOpposite()) : null;
-		if (other instanceof IEnergyProvider) {
-			return ((IEnergyProvider)other).getEnergyStored(from);
-		}
-		return 0;
-	}
-
-	@Override
-	public int getMaxEnergyStored(ForgeDirection from) {
-		TileEntity other = this.getOther() != null ? this.getAdjacentTargetTile(from.getOpposite()) : null;
-		if (other instanceof IEnergyProvider) {
-			return ((IEnergyProvider)other).getMaxEnergyStored(from);
-		}
-		return 0;
-	}
-
-	@Override
-	public int fill(ForgeDirection from, FluidStack resource, boolean doFill) {
-		if (this.getOther() != null && this.getAdjacentTargetTile(from.getOpposite()) instanceof IFluidHandler) {
-			return ((IFluidHandler)this.getAdjacentTargetTile(from.getOpposite())).fill(from, resource, doFill);
-		}
-		return 0;
-	}
-
-	@Override
-	public FluidStack drain(ForgeDirection from, FluidStack resource, boolean doDrain) {
-		if (this.getOther() != null && this.getAdjacentTargetTile(from.getOpposite()) instanceof IFluidHandler) {
-			return ((IFluidHandler)this.getAdjacentTargetTile(from.getOpposite())).drain(from, resource, doDrain);
-		}
-		return null;
-	}
-
-	@Override
-	public FluidStack drain(ForgeDirection from, int maxDrain, boolean doDrain) {
-		if (this.getOther() != null && this.getAdjacentTargetTile(from.getOpposite()) instanceof IFluidHandler) {
-			return ((IFluidHandler)this.getAdjacentTargetTile(from.getOpposite())).drain(from, maxDrain, doDrain);
-		}
-		return null;
-	}
-
-	@Override
-	public boolean canFill(ForgeDirection from, Fluid fluid) {
-		if (this.getOther() != null && this.getAdjacentTargetTile(from.getOpposite()) instanceof IFluidHandler) {
-			return ((IFluidHandler)this.getAdjacentTargetTile(from.getOpposite())).canFill(from, fluid);
-		}
-		return false;
-	}
-
-	@Override
-	public boolean canDrain(ForgeDirection from, Fluid fluid) {
-		if (this.getOther() != null && this.getAdjacentTargetTile(from.getOpposite()) instanceof IFluidHandler) {
-			return ((IFluidHandler)this.getAdjacentTargetTile(from.getOpposite())).canDrain(from, fluid);
-		}
-		return false;
-	}
-
-	@Override
-	public FluidTankInfo[] getTankInfo(ForgeDirection from) {
-		if (this.getOther() != null && this.getAdjacentTargetTile(from.getOpposite()) instanceof IFluidHandler) {
-			return ((IFluidHandler)this.getAdjacentTargetTile(from.getOpposite())).getTankInfo(from);
-		}
-		return null;
-	}
-
-	@Override
-	public int getSizeInventory() {
-		if (this.getOther() != null && this.getSingleDirTile() instanceof IInventory) {
-			return ((IInventory)this.getSingleDirTile()).getSizeInventory();
-		}
-		return 0;
-	}
-
-	@Override
-	public ItemStack getStackInSlot(int i) {
-		if (this.getOther() != null && this.getSingleDirTile() instanceof IInventory) {
-			return ((IInventory)this.getSingleDirTile()).getStackInSlot(i);
-		}
-		return null;
-	}
-
-	@Override
-	public ItemStack decrStackSize(int i, int j) {
-		if (this.getOther() != null && this.getSingleDirTile() instanceof IInventory) {
-			return ((IInventory)this.getSingleDirTile()).decrStackSize(i, j);
-		}
-		return null;
-	}
-
-	@Override
-	public ItemStack getStackInSlotOnClosing(int i) {
-		if (this.getOther() != null && this.getSingleDirTile() instanceof IInventory) {
-			return ((IInventory)this.getSingleDirTile()).getStackInSlotOnClosing(i);
-		}
-		return null;
-	}
-
-	@Override
-	public void setInventorySlotContents(int i, ItemStack itemstack) {
-		if (this.getOther() != null && this.getSingleDirTile() instanceof IInventory) {
-			((IInventory)this.getSingleDirTile()).setInventorySlotContents(i, itemstack);
-		}
-	}
-
-	@Override
-	public String getInventoryName() {
-		if (this.getOther() != null && this.getSingleDirTile() instanceof IInventory) {
-			return ((IInventory)this.getSingleDirTile()).getInventoryName();
-		}
-		return null;
-	}
-
-	@Override
-	public boolean hasCustomInventoryName() {
-		if (this.getOther() != null && this.getSingleDirTile() instanceof IInventory) {
-			return ((IInventory)this.getSingleDirTile()).hasCustomInventoryName();
-		}
-		return false;
-	}
-
-	@Override
-	public int getInventoryStackLimit() {
-		if (this.getOther() != null && this.getSingleDirTile() instanceof IInventory) {
-			return ((IInventory)this.getSingleDirTile()).getInventoryStackLimit();
-		}
-		return 0;
-	}
-
-	@Override
-	public boolean isUseableByPlayer(EntityPlayer entityplayer) {
-		if (this.getOther() != null && this.getSingleDirTile() instanceof IInventory) {
-			return ((IInventory)this.getSingleDirTile()).isUseableByPlayer(entityplayer);
-		}
-		return false;
-	}
-
-	@Override
-	public void openInventory() {
-		if (this.getOther() != null && this.getSingleDirTile() instanceof IInventory) {
-			((IInventory)this.getSingleDirTile()).openInventory();
-		}
-	}
-
-	@Override
-	public void closeInventory() {
-		if (this.getOther() != null && this.getSingleDirTile() instanceof IInventory) {
-			((IInventory)this.getSingleDirTile()).closeInventory();
-		}
-	}
-
-	@Override
-	public boolean isItemValidForSlot(int i, ItemStack itemstack) {
-		if (this.getOther() != null && this.getSingleDirTile() instanceof IInventory) {
-			return ((IInventory)this.getSingleDirTile()).isItemValidForSlot(i, itemstack);
-		}
-		return false;
-	}
-
-	@Override
-	public int[] getAccessibleSlotsFromSide(int var1) {
-		if (this.getOther() != null) {
-			if (this.getSingleDirTile() instanceof ISidedInventory) {
-				return ((ISidedInventory)this.getSingleDirTile()).getAccessibleSlotsFromSide(var1);
+		/** Callers read slots below {@link #size}; an index the far side no longer has is out of bounds. */
+		@Override
+		public T getResource(int index) {
+			if (!enter())
+				throw new IndexOutOfBoundsException(index);
+			try {
+				ResourceHandler<T> h = this.target();
+				if (h == null || index >= h.size())
+					throw new IndexOutOfBoundsException(index);
+				return h.getResource(index);
 			}
-			else if (this.getSingleDirTile() instanceof IInventory) {
-				int size = ((IInventory)this.getSingleDirTile()).getSizeInventory();
-				int[] sides = new int[size];
-				for (int i = 0; i < size; i++) {
-					sides[i] = i;
-				}
-				return sides;
+			finally {
+				exit();
 			}
 		}
-		return new int[0];
-	}
 
-	@Override
-	public boolean canInsertItem(int i, ItemStack itemstack, int j) {
-		if (this.getOther() != null) {
-			if (this.getSingleDirTile() instanceof ISidedInventory) {
-				return ((ISidedInventory)this.getSingleDirTile()).canInsertItem(i, itemstack, j);
+		@Override
+		public long getAmountAsLong(int index) {
+			if (!enter())
+				return 0;
+			try {
+				ResourceHandler<T> h = this.target();
+				return h != null && index < h.size() ? h.getAmountAsLong(index) : 0;
 			}
-			else if (this.getSingleDirTile() instanceof IInventory) {
-				return ((IInventory)this.getSingleDirTile()).isItemValidForSlot(i, itemstack);
+			finally {
+				exit();
 			}
 		}
-		return false;
-	}
 
-	@Override
-	public boolean canExtractItem(int i, ItemStack itemstack, int j) {
-		if (this.getOther() != null && this.getSingleDirTile() instanceof ISidedInventory) {
-			return ((ISidedInventory)this.getSingleDirTile()).canExtractItem(i, itemstack, j);
+		@Override
+		public long getCapacityAsLong(int index, T resource) {
+			if (!enter())
+				return 0;
+			try {
+				ResourceHandler<T> h = this.target();
+				return h != null && index < h.size() ? h.getCapacityAsLong(index, resource) : 0;
+			}
+			finally {
+				exit();
+			}
 		}
-		return false;
-	}
 
-	@Override
-	@ModDependent(ModList.THAUMCRAFT)
-	public AspectList getAspects() {
-		if (this.getOther() != null && this.getSingleDirTile() instanceof IAspectContainer) {
-			return ((IAspectContainer)this.getSingleDirTile()).getAspects();
+		@Override
+		public boolean isValid(int index, T resource) {
+			if (!enter())
+				return false;
+			try {
+				ResourceHandler<T> h = this.target();
+				return h != null && index < h.size() && h.isValid(index, resource);
+			}
+			finally {
+				exit();
+			}
 		}
-		return new AspectList();
-	}
 
-	@Override
-	@ModDependent(ModList.THAUMCRAFT)
-	public void setAspects(AspectList aspects) {
-		if (this.getOther() != null && this.getSingleDirTile() instanceof IAspectContainer) {
-			((IAspectContainer)this.getSingleDirTile()).setAspects(aspects);
+		@Override
+		public int insert(int index, T resource, int amount, TransactionContext transaction) {
+			if (!enter())
+				return 0;
+			try {
+				ResourceHandler<T> h = this.target();
+				return h != null && index < h.size() ? h.insert(index, resource, amount, transaction) : 0;
+			}
+			finally {
+				exit();
+			}
 		}
-	}
 
-	@Override
-	@ModDependent(ModList.THAUMCRAFT)
-	public boolean doesContainerAccept(Aspect tag) {
-		if (this.getOther() != null && this.getSingleDirTile() instanceof IAspectContainer) {
-			return ((IAspectContainer)this.getSingleDirTile()).doesContainerAccept(tag);
+		@Override
+		public int insert(T resource, int amount, TransactionContext transaction) {
+			if (!enter())
+				return 0;
+			try {
+				ResourceHandler<T> h = this.target();
+				return h != null ? h.insert(resource, amount, transaction) : 0;
+			}
+			finally {
+				exit();
+			}
 		}
-		return false;
-	}
 
-	@Override
-	@ModDependent(ModList.THAUMCRAFT)
-	public int addToContainer(Aspect tag, int amount) {
-		if (this.getOther() != null && this.getSingleDirTile() instanceof IAspectContainer) {
-			return ((IAspectContainer)this.getSingleDirTile()).addToContainer(tag, amount);
+		@Override
+		public int extract(int index, T resource, int amount, TransactionContext transaction) {
+			if (!enter())
+				return 0;
+			try {
+				ResourceHandler<T> h = this.target();
+				return h != null && index < h.size() ? h.extract(index, resource, amount, transaction) : 0;
+			}
+			finally {
+				exit();
+			}
 		}
-		return 0;
-	}
 
-	@Override
-	@ModDependent(ModList.THAUMCRAFT)
-	public boolean takeFromContainer(Aspect tag, int amount) {
-		if (this.getOther() != null && this.getSingleDirTile() instanceof IAspectContainer) {
-			return ((IAspectContainer)this.getSingleDirTile()).takeFromContainer(tag, amount);
-		}
-		return false;
-	}
-
-	@Override
-	@ModDependent(ModList.THAUMCRAFT)
-	public boolean takeFromContainer(AspectList ot) {
-		if (this.getOther() != null && this.getSingleDirTile() instanceof IAspectContainer) {
-			return ((IAspectContainer)this.getSingleDirTile()).takeFromContainer(ot);
-		}
-		return false;
-	}
-
-	@Override
-	@ModDependent(ModList.THAUMCRAFT)
-	public boolean doesContainerContainAmount(Aspect tag, int amount) {
-		if (this.getOther() != null && this.getSingleDirTile() instanceof IAspectContainer) {
-			return ((IAspectContainer)this.getSingleDirTile()).doesContainerContainAmount(tag, amount);
-		}
-		return false;
-	}
-
-	@Override
-	@ModDependent(ModList.THAUMCRAFT)
-	public boolean doesContainerContain(AspectList ot) {
-		if (this.getOther() != null && this.getSingleDirTile() instanceof IAspectContainer) {
-			return ((IAspectContainer)this.getSingleDirTile()).doesContainerContain(ot);
-		}
-		return false;
-	}
-
-	@Override
-	@ModDependent(ModList.THAUMCRAFT)
-	public int containerContains(Aspect tag) {
-		if (this.getOther() != null && this.getSingleDirTile() instanceof IAspectContainer) {
-			return ((IAspectContainer)this.getSingleDirTile()).containerContains(tag);
-		}
-		return 0;
-	}
-
-	@Override
-	@ModDependent(ModList.COMPUTERCRAFT)
-	public boolean equals(IPeripheral p) {
-		if (this.getOther() != null && this.getSingleDirTile() instanceof IPeripheral) {
-			return ((IPeripheral)this.getSingleDirTile()).equals(p);
-		}
-		return false;
-	}
-
-	@Override
-	@ModDependent(ModList.COMPUTERCRAFT)
-	public String getType() {
-		if (this.getOther() != null && this.getSingleDirTile() instanceof IPeripheral) {
-			return ((IPeripheral)this.getSingleDirTile()).getType();
-		}
-		return "No connection";
-	}
-
-	@Override
-	@ModDependent(ModList.COMPUTERCRAFT)
-	public String[] getMethodNames() {
-		if (this.getOther() != null && this.getSingleDirTile() instanceof IPeripheral) {
-			return ((IPeripheral)this.getSingleDirTile()).getMethodNames();
-		}
-		return new String[0];
-	}
-
-	@Override
-	@ModDependent(ModList.COMPUTERCRAFT)
-	public Object[] callMethod(IComputerAccess computer, ILuaContext context, int method, Object[] arguments) throws LuaException, InterruptedException {
-		if (this.getOther() != null && this.getSingleDirTile() instanceof IPeripheral) {
-			return ((IPeripheral)this.getSingleDirTile()).callMethod(computer, context, method, arguments);
-		}
-		return null;
-	}
-
-	@Override
-	@ModDependent(ModList.COMPUTERCRAFT)
-	public void attach(IComputerAccess computer) {
-		if (this.getOther() != null && this.getSingleDirTile() instanceof IPeripheral) {
-			((IPeripheral)this.getSingleDirTile()).attach(computer);
-		}
-	}
-
-	@Override
-	@ModDependent(ModList.COMPUTERCRAFT)
-	public void detach(IComputerAccess computer) {
-		if (this.getOther() != null && this.getSingleDirTile() instanceof IPeripheral) {
-			((IPeripheral)this.getSingleDirTile()).detach(computer);
-		}
-	}
-	/*
-	@Override
-	@ModDependent(ModList.OPENCOMPUTERS)
-	public String[] methods() {
-		if (this.getOther() != null && this.getSingleDirTile() instanceof ManagedPeripheral) {
-			return ((ManagedPeripheral)this.getSingleDirTile()).methods();
-		}
-		return new String[0];
-	}
-
-	@Override
-	@ModDependent(ModList.OPENCOMPUTERS)
-	public Object[] invoke(String method, Context context, Arguments args) throws Exception {
-		if (this.getOther() != null && this.getSingleDirTile() instanceof ManagedPeripheral) {
-			return ((ManagedPeripheral)this.getSingleDirTile()).invoke(method, context, args);
-		}
-		return null;
-	}
-
-	@Override
-	@ModDependent(ModList.OPENCOMPUTERS)
-	public final Node node() {
-		if (this.getOther() != null && this.getSingleDirTile() instanceof Environment) {
-			return ((Environment)this.getSingleDirTile()).node();
-		}
-		return null;
-	}
-	 */
-	@Override
-	@ModDependent(ModList.OPENCOMPUTERS)
-	public final void onConnect(Node node) {
-		TileEntityRift te = this.getOther();
-		if (te != null) {
-			for (int i = 0; i < 6; i++) {
-				if (sidedOCNode[i] != null && sidedOCNode[i] == node && this.getOtherNode(te, i) != null) {
-					((Node)sidedOCNode[i]).connect(this.getOtherNode(te, i));
-				}
+		@Override
+		public int extract(T resource, int amount, TransactionContext transaction) {
+			if (!enter())
+				return 0;
+			try {
+				ResourceHandler<T> h = this.target();
+				return h != null ? h.extract(resource, amount, transaction) : 0;
+			}
+			finally {
+				exit();
 			}
 		}
 	}
-	/*
-	@Override
-	@ModDependent(ModList.OPENCOMPUTERS)
-	public final void onDisconnect(Node node) {
-		TileEntityRift te = this.getOther();
-		if (te != null) {
-			for (int i = 0; i < 6; i++) {
-				if (sidedOCNode[i] != null && sidedOCNode[i] == node && this.getOtherNode(te, i) != null) {
-					((Node)sidedOCNode[i]).disconnect(this.getOtherNode(te, i));
-				}
+
+	private final class RiftEnergyHandler implements EnergyHandler {
+
+		private final Direction side;
+
+		private RiftEnergyHandler(Direction side) {
+			this.side = side;
+		}
+
+		private @Nullable EnergyHandler target() {
+			return TileEntityRift.this.farHandler(Capabilities.Energy.BLOCK, side, false);
+		}
+
+		@Override
+		public long getAmountAsLong() {
+			if (!enter())
+				return 0;
+			try {
+				EnergyHandler h = this.target();
+				return h != null ? h.getAmountAsLong() : 0;
+			}
+			finally {
+				exit();
 			}
 		}
-	}
-	 */
-	@ModDependent(ModList.OPENCOMPUTERS)
-	private Node getOtherNode(TileEntityRift te, int side) {
-		return (Node)te.sidedOCNode[dirs[side].getOpposite().ordinal()];
+
+		@Override
+		public long getCapacityAsLong() {
+			if (!enter())
+				return 0;
+			try {
+				EnergyHandler h = this.target();
+				return h != null ? h.getCapacityAsLong() : 0;
+			}
+			finally {
+				exit();
+			}
+		}
+
+		@Override
+		public int insert(int amount, TransactionContext transaction) {
+			if (!enter())
+				return 0;
+			try {
+				EnergyHandler h = this.target();
+				return h != null ? h.insert(amount, transaction) : 0;
+			}
+			finally {
+				exit();
+			}
+		}
+
+		@Override
+		public int extract(int amount, TransactionContext transaction) {
+			if (!enter())
+				return 0;
+			try {
+				EnergyHandler h = this.target();
+				return h != null ? h.extract(amount, transaction) : 0;
+			}
+			finally {
+				exit();
+			}
+		}
 	}
 
-	@Override
-	protected void onInvalidateOrUnload(World world, int x, int y, int z, boolean invalid) {
-		/* handled in TEBase now
-		if (ModList.OPENCOMPUTERS.isLoaded()) {
-			for (int i = 0; i < 6; i++) {
-				if (sidedOCNode[i] != null) {
-					((Node)sidedOCNode[i]).remove();
-				}
-			}
-		}*/
-	}
-	/*
-	@Override
-	@ModDependent(ModList.OPENCOMPUTERS)
-	public final void onMessage(Message message) {
-		if (this.getOther() != null && this.getSingleDirTile() instanceof Environment) {
-			((Environment)this.getSingleDirTile()).onMessage(message);
-		}
-	}
-	 */
 	@Override
 	public void breakBlock() {
 		ChunkManager.instance.unloadChunks(this);
 	}
 
 	@Override
-	public Collection<ChunkCoordIntPair> getChunksToLoad() {
-		return ChunkManager.getChunkSquare(xCoord, zCoord, 2);
-	}
-
-	@Override
-	public int getCurrentMana() {
-		return 0;
-	}
-
-	@Override
-	public boolean isGhost() {
-		return false;
-	}
-
-	@Override
-	public boolean isFull() {
-		return false;
-	}
-
-	@Override
-	public void recieveMana(int mana) {
-
-	}
-
-	@Override
-	public boolean canRecieveManaFromBursts() {
-		return true;
-	}
-
-	//@Override
-	@ModDependent(ModList.OPENCOMPUTERS)
-	public Node sidedNode(ForgeDirection side) { //OC
-		return (Node)sidedOCNode[side.ordinal()];
-	}
-
-	//@Override
-	@ModDependent(ModList.OPENCOMPUTERS)
-	public boolean canConnect(ForgeDirection side) { //OC
-		return this.isLinked();
-	}
-
-	@Override
-	public byte[] getBundledSignal(int dir) {
-		if (!this.isLinked())
-			return new byte[16];
-		WorldLocation other = this.getLinkTarget();
-		byte[] ret = ProjectRedAPI.transmissionAPI.getBundledInput(other.getWorld(), other.xCoord, other.yCoord, other.zCoord, ForgeDirection.VALID_DIRECTIONS[dir].getOpposite().ordinal());
-		if (ret == null)
-			return ret;
-		for (int i = 0; i < ret.length; i++) {
-			ret[i] = (byte)Math.max((ret[i] & 0xFF)-2, 0);
-		}
-		return ret;
-	}
-
-	@Override
-	public boolean canConnectBundled(int side) {
-		return this.isLinked();
+	public Collection<ChunkPos> getChunksToLoad() {
+		return ChunkManager.getChunkSquare(worldPosition.getX(), worldPosition.getZ(), 2);
 	}
 
 }

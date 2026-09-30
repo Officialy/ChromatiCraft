@@ -34,7 +34,7 @@ public abstract class LinkedTileBase extends TileEntityChromaticBase implements 
 	public void updateEntity(Level world, BlockPos pos) {
 		if (shouldDrop && !world.isClientSide()) {
 			ItemEntity item = ReikaItemHelper.dropItem(world, pos.getX() + 0.5, pos.getY() + 0.5,
-					pos.getZ() + 0.5, new ItemStack(this.getTile().getBlock().asItem()));
+					pos.getZ() + 0.5, this.getTile().getCraftedProduct());
 			item.setUnlimitedLifetime();
 			this.delete();
 		}

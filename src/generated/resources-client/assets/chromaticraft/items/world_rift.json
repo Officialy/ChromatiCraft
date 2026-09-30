@@ -1,0 +1,9 @@
+{
+  "model": {
+    "type": "minecraft:special",
+    "base": "chromaticraft:block/world_rift_inventory",
+    "model": {
+      "type": "chromaticraft:world_rift"
+    }
+  }
+}

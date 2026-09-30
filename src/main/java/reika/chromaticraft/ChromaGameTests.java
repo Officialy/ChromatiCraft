@@ -430,6 +430,7 @@ public final class ChromaGameTests {
 		register(event, env, "buffer_link_recipe", ChromaGameTests::bufferLinkRecipe);
 		register(event, env, "wands_basic", 60, ChromaGameTests::wandsBasic);
 		register(event, env, "fluid_relay_transfer", 60, ChromaGameTests::fluidRelayTransfer);
+		register(event, env, "world_rift_link", 40, ChromaGameTests::worldRiftLink);
 		register(event, env, "fluid_distributor_transfer", 60, ChromaGameTests::fluidDistributorTransfer);
 		register(event, env, "creative_tiered_resource_access", ChromaGameTests::creativeTieredResourceAccess);
 		register(event, env, "rainbow_tree_shape_and_log", ChromaGameTests::rainbowTreeShapeAndLog);
@@ -7096,6 +7097,118 @@ public final class ChromaGameTests {
 			}
 			helper.assertTrue(enchanter.getChromaLevel() == 500,
 					"redstone rejection must leave the target unchanged");
+			helper.succeed();
+		});
+	}
+
+	/**
+	 * V33a World Rift: two uses of one World Rift stack place and link a pair (shared colour, first end primary). Fluid
+	 * entering A's north face reaches the tile south of B; after the Manipulator picks A's top face, items entering A
+	 * reach the chest below B; a lever flipped east of A lights a lamp west of B; a pair whose ends face each other
+	 * refuses the looping insert instead of overflowing the stack; sneak-clicking A with the Manipulator drops a World
+	 * Rift item for each end.
+	 */
+	private static void worldRiftLink(GameTestHelper helper) {
+		var level = helper.getLevel();
+		var riftA = helper.absolutePos(new BlockPos(1, 2, 1));
+		var riftB = helper.absolutePos(new BlockPos(3, 2, 3));
+		level.setBlock(riftA.below(), Blocks.STONE.defaultBlockState(), 3);
+		level.setBlock(riftB.below(), Blocks.STONE.defaultBlockState(), 3);
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		player.setGameMode(GameType.SURVIVAL);
+		player.setPos(riftA.getX()+0.5, riftA.getY()+12, riftA.getZ()+0.5);
+		ItemStack rifts = new ItemStack(ChromaItems.WORLD_RIFT.get(), 3);
+		player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, rifts);
+		for (BlockPos at : new BlockPos[] {riftA, riftB}) {
+			var hit = new BlockHitResult(Vec3.atCenterOf(at.below()).add(0, 0.5, 0), Direction.UP, at.below(), false);
+			InteractionResult r = rifts.useOn(new net.minecraft.world.item.context.UseOnContext(player,
+					net.minecraft.world.InteractionHand.MAIN_HAND, hit));
+			helper.assertTrue(r.consumesAction(), "placing a World Rift on stone must succeed");
+		}
+		helper.assertTrue(rifts.getCount() == 1 && !rifts.has(net.minecraft.core.component.DataComponents.CUSTOM_DATA),
+				"two placements must spend two items and clear the pending link location");
+		var a = (reika.chromaticraft.tileentity.transport.TileEntityRift)level.getBlockEntity(riftA);
+		var b = (reika.chromaticraft.tileentity.transport.TileEntityRift)level.getBlockEntity(riftB);
+		helper.assertTrue(a.getOther() == b && b.getOther() == a && a.getColor() == b.getColor() && a.getColor() != 0xffffff,
+				"the two placed rifts must link to each other and share one colour");
+		helper.assertTrue(a.isPrimary() && !b.isPrimary(), "the first rift placed must be the pair's primary end");
+
+		// Fluid: A's north face leads to the tile beside B's south face.
+		level.setBlock(riftB.south(), ChromaBlocks.AUTO_ENCHANTER.get().defaultBlockState(), 3);
+		var fluids = level.getCapability(net.neoforged.neoforge.capabilities.Capabilities.Fluid.BLOCK, riftA, Direction.NORTH);
+		int moved;
+		try (Transaction tx = Transaction.openRoot()) {
+			moved = fluids.insert(FluidResource.of(ChromaFluids.CHROMA.get()), 500, tx);
+			tx.commit();
+		}
+		var enchanter = (reika.chromaticraft.tileentity.processing.TileEntityAutoEnchanter)level.getBlockEntity(riftB.south());
+		helper.assertTrue(moved == 500 && enchanter.getChromaLevel() == 500,
+				"fluid put into A's north face must fill the Enchanter south of B; moved " + moved);
+
+		// Items: only through the Manipulator's face; A's top face means the chest below B.
+		level.setBlock(riftB.below(), Blocks.CHEST.defaultBlockState(), 3);
+		var items = level.getCapability(net.neoforged.neoforge.capabilities.Capabilities.Item.BLOCK, riftA, Direction.NORTH);
+		try (Transaction tx = Transaction.openRoot()) {
+			helper.assertTrue(items.insert(net.neoforged.neoforge.transfer.item.ItemResource.of(Items.STONE), 5, tx) == 0,
+					"before a face is chosen the rift must pass no items");
+		}
+		ItemStack manipulator = new ItemStack(ChromaItems.MANIPULATOR.get());
+		player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, manipulator);
+		manipulator.useOn(new net.minecraft.world.item.context.UseOnContext(player, net.minecraft.world.InteractionHand.MAIN_HAND,
+				new BlockHitResult(Vec3.atCenterOf(riftA).add(0, 0.5, 0), Direction.UP, riftA, false)));
+		helper.assertTrue(a.getSingleDirection() == Direction.UP && b.getSingleDirection() == Direction.DOWN,
+				"the Manipulator must set the clicked face on A and its opposite on B");
+		try (Transaction tx = Transaction.openRoot()) {
+			int in = items.insert(net.neoforged.neoforge.transfer.item.ItemResource.of(Items.STONE), 5, tx);
+			tx.commit();
+			helper.assertTrue(in == 5, "items put into A must reach the chest below B; inserted " + in);
+		}
+		var chest = (net.minecraft.world.level.block.entity.ChestBlockEntity)level.getBlockEntity(riftB.below());
+		helper.assertTrue(chest.getItem(0).is(Items.STONE) && chest.getItem(0).getCount() == 5,
+				"the chest below B must hold the five stone");
+
+		// Redstone: power east of A is emitted, one weaker, west of B. As in 1.7.10 a neighbour update names the block
+		// that was there before, and V33a ignored updates from air, so placing a power source does nothing; flipping
+		// a lever already beside the rift passes through.
+		level.setBlock(riftB.west(), Blocks.REDSTONE_LAMP.defaultBlockState(), 3);
+		level.setBlock(riftA.east().below(), Blocks.STONE.defaultBlockState(), 3);
+		level.setBlock(riftA.east(), Blocks.LEVER.defaultBlockState()
+				.setValue(net.minecraft.world.level.block.LeverBlock.FACE,
+						net.minecraft.world.level.block.state.properties.AttachFace.FLOOR), 3);
+		helper.assertTrue(b.getRedstoneLevel(Direction.EAST) == 0, "placing an unpowered lever must pass nothing");
+		((net.minecraft.world.level.block.LeverBlock)Blocks.LEVER).pull(level.getBlockState(riftA.east()), level,
+				riftA.east(), null);
+		helper.assertTrue(b.getRedstoneLevel(Direction.EAST) == 14,
+				"B must carry the 15 received east of A as 14; got " + b.getRedstoneLevel(Direction.EAST));
+		helper.assertTrue(level.getBlockState(riftB.west()).getValue(net.minecraft.world.level.block.RedstoneLampBlock.LIT),
+				"the lamp west of B must light from the lever east of A");
+
+		// A pair whose ends face each other: E's east face leads back into E, which V33a overflowed on.
+		var riftE = helper.absolutePos(new BlockPos(0, 3, 4));
+		var riftF = helper.absolutePos(new BlockPos(1, 3, 4));
+		level.setBlock(riftE, ChromaBlocks.RIFT.get().defaultBlockState(), 3);
+		level.setBlock(riftF, ChromaBlocks.RIFT.get().defaultBlockState(), 3);
+		var e = (reika.chromaticraft.tileentity.transport.TileEntityRift)level.getBlockEntity(riftE);
+		helper.assertTrue(e.linkTo(level, riftF), "rifts placed directly must link");
+		var loop = level.getCapability(net.neoforged.neoforge.capabilities.Capabilities.Fluid.BLOCK, riftE, Direction.EAST);
+		try (Transaction tx = Transaction.openRoot()) {
+			helper.assertTrue(loop.insert(FluidResource.of(ChromaFluids.CHROMA.get()), 100, tx) == 0,
+					"a rift loop must accept nothing rather than recurse forever");
+		}
+
+		// Sneak-pop: the placer's Manipulator drops both ends as World Rift items.
+		player.setShiftKeyDown(true);
+		manipulator.useOn(new net.minecraft.world.item.context.UseOnContext(player, net.minecraft.world.InteractionHand.MAIN_HAND,
+				new BlockHitResult(Vec3.atCenterOf(riftA).add(0, 0.5, 0), Direction.UP, riftA, false)));
+		helper.runAfterDelay(3, () -> {
+			helper.assertTrue(level.getBlockState(riftA).isAir() && level.getBlockState(riftB).isAir(),
+					"sneak-popping one end must remove both rifts");
+			int dropped = 0;
+			for (var item : level.getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class,
+					new net.minecraft.world.phys.AABB(riftA).minmax(new net.minecraft.world.phys.AABB(riftB)).inflate(2)))
+				if (item.getItem().is(ChromaItems.WORLD_RIFT.get()))
+					dropped += item.getItem().getCount();
+			helper.assertTrue(dropped == 2, "each end must drop one World Rift item; found " + dropped);
 			helper.succeed();
 		});
 	}
