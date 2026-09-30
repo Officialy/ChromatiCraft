@@ -9644,3 +9644,27 @@ as time 0, so a world under a second old counts every pendant active); guarded, 
   through the rift's energy capability. The EU cable stays commented out with IC2.
 - Tests: `world_rift_shaft_power` (a creative coil through a rift pair into a bedrock shaft, and into a Pump);
   RotaryCraft 201/201 and ElectriCraft 13/13 full suites pass with the `matchTile` change.
+
+### Aura Pouch — 2026-09-30
+
+- `aura_pouch` (V33a AURAPOUCH, "Aura Pouch", tool sprite 29 cut from `items_tool.png`) is ported in place, with the
+  new `MenuAuraPouch` and `ScreenAuraPouch` (V33a `ContainerAuraPouch` / `GuiAuraPouch`).
+  - 27 slots, opened with right-click (main hand: 1.7.10 had no off hand). The contents are the `container` component,
+    hidden from the tooltip as V33a showed none; inactive slots are custom data `inactive` (absent = all active,
+    V33a's initialised state).
+  - Every active item runs its inventory tick as though carried; armour also ticks in its worn slot (V33a
+    `onArmorTick`); projectile tools (the Light Gun; the Spline Attack when ported) fire at their autofire rate.
+    26.x ticks items on the server only.
+  - The menu writes every change straight back into the pouch in hand and again on close; right-clicking a pouch
+    slot toggles it active (pulsing green/red) instead of picking up; shift-click moves nothing; a pouch in the hotbar
+    can be neither clicked nor number-key swapped (V33a's slot check and its `HotbarKeyEvent` cancel). V33a's check
+    against a pouch in the player-inventory slot of the same index is kept as written.
+  - `ActivatedInventoryItem` is implemented, so the ported pendant bridge and pylon tool charging reach into it.
+  - The effect list for the lexicon page (`getEffects`) keeps V33a's "Fires automatically" / "Keeps functionality
+    active" lines; stacks are built lazily (an item constructor registering itself ran before components bind).
+- The Pylon Compass works from a pouch again (V33a's "Keeps functionality active"): ticked from a pouch it stamps the
+  player every 8 ticks, and since that stamp no longer reaches the client, the HUD also asks the pouches directly.
+- Casting: V33a AuraPouchRecipe, Multiblock tier (100 ticks, 200 XP) on a Void Core: leather on the inner ring, aura
+  dust on the outer edges with chromic dust beside it, chroma alloy ingots on the outer corners; white/black/light
+  gray/purple runes at (-4|4, -1, +-2).
+- GameTest `aura_pouch_contents`.

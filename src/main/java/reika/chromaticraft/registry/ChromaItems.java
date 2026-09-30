@@ -166,6 +166,9 @@ public final class ChromaItems {
 	/** V33a RIFT, the World Rift: an ItemLinkedTilePlacer placing ChromaBlocks.RIFT in linked pairs. */
 	public static final DeferredItem<reika.chromaticraft.items.itemblock.ItemLinkedTilePlacer> WORLD_RIFT =
 			reg("world_rift", () -> new reika.chromaticraft.items.itemblock.ItemLinkedTilePlacer(itemProperties()));
+	/** V33a AURAPOUCH, the Aura Pouch (tool sprite 29); leather's enchantability, as V33a returned. */
+	public static final DeferredItem<reika.chromaticraft.items.tools.ItemAuraPouch> AURA_POUCH =
+			reg("aura_pouch", () -> new reika.chromaticraft.items.tools.ItemAuraPouch(itemProperties().enchantable(15)));
 	/** V33a PURIFY, the Aura Purification Gem (sprites 33-36 by charge state). */
 	public static final DeferredItem<reika.chromaticraft.items.tools.powered.ItemPurifyCrystal> PURIFY =
 			reg("purification_gem", () -> new reika.chromaticraft.items.tools.powered.ItemPurifyCrystal(itemProperties()));

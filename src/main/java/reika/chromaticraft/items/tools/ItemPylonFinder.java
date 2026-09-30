@@ -9,16 +9,23 @@
  ******************************************************************************/
 package reika.chromaticraft.items.tools;
 
+import org.jspecify.annotations.Nullable;
+
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 
 /**
  * V33a {@code ItemPylonFinder}, the Pylon Compass: held, it shows the nearest known pylon of every colour on the HUD
- * ({@code PylonFinderOverlay}, reading the synced pylon cache). It has no behaviour of its own beyond that.
+ * ({@code PylonFinderOverlay}, reading the synced pylon cache). It also works from inside an Aura Pouch (V33a
+ * registered it for the pouch's "Keeps functionality active" line): ticked from a pouch it stamps {@link #NBT_KEY}
+ * with the world time every 8 ticks, which the overlay honours for 20 ticks.
  *
- * <p>CHROMA-PORT: V33a also let it work from inside an Aura Pouch -- the pouch ticked its contents, and the compass,
- * seeing its tick come from the pouch's slot, stamped {@link #NBT_KEY} with the world time every 8 ticks, which the
- * overlay honours for 20 ticks. The overlay reads the stamp; the pouch ({@code ItemAuraPouch}, its
- * {@code WORKS_IN_POUCH} effect) has to land before anything writes it.
+ * <p>26.x ticks items on the server only and entity data is not synced, so the client overlay also asks the pouches
+ * directly ({@code ItemAuraPouch.containsActive}); V33a's client saw its own stamp, as 1.7.10 ticked both sides.
  */
 public class ItemPylonFinder extends Item {
 
@@ -26,6 +33,13 @@ public class ItemPylonFinder extends Item {
 
 	public ItemPylonFinder(Properties properties) {
 		super(properties);
+		ItemAuraPouch.setSpecialEffect(ItemAuraPouch.WORKS_IN_POUCH_EFFECT_DESC, this);
+	}
+
+	@Override
+	public void inventoryTick(ItemStack is, ServerLevel world, Entity e, @Nullable EquipmentSlot slot) {
+		if (e instanceof Player && ItemAuraPouch.isPouchTick() && world.getGameTime()%8 == 0)
+			e.getPersistentData().putLong(NBT_KEY, world.getGameTime());
 	}
 
 }

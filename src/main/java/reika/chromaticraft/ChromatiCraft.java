@@ -157,6 +157,9 @@ public class ChromatiCraft extends DragonAPIMod {
 			reika.dragonapi.auxiliary.IconLookupRegistry.instance.registerIcons(instance, CrystalElement.class);
 			// V33a addDispenserAction(LIGHTGUN, ProjectileToolDispenserAction).
 			reika.chromaticraft.items.tools.ProjectileToolDispenseBehavior.register(ChromaItems.LIGHT_GUN.get());
+			// V33a postInit: ItemAuraPouch.setDefaultSpecialEffects() (every projectile tool fires from a pouch).
+			reika.chromaticraft.items.tools.ItemAuraPouch.setDefaultSpecialEffects(
+					ChromaItems.ITEMS.getEntries().stream().map(h -> (net.minecraft.world.item.Item)h.get()).toList());
 			// V33a load(): ModCropList.addCustomCropType(new CrystalPlantHandler()), so harvesters reap Crystal Blooms.
 			reika.chromaticraft.auxiliary.CrystalPlantHandler.register();
 			PylonFinder.registerTransparentBlock(RotaryBlocks.BLASTPANE.get());
@@ -200,6 +203,8 @@ public class ChromatiCraft extends DragonAPIMod {
 				reika.chromaticraft.client.gui.ScreenParticleSpawner::new);
 		event.register(ChromaMenus.FLUID_RELAY.get(),
 				reika.chromaticraft.client.gui.ScreenFluidRelay::new);
+		event.register(ChromaMenus.AURA_POUCH.get(),
+				reika.chromaticraft.client.gui.ScreenAuraPouch::new);
 		event.register(ChromaMenus.COLLECTOR.get(),
 				reika.chromaticraft.client.gui.ScreenCollector::new);
 		event.register(ChromaMenus.LEXICON_PAGES.get(),

@@ -437,6 +437,7 @@ public final class ChromaCastingRecipeProvider {
 
 			saveFarmer();
 			saveWorldRift();
+			saveAuraPouch();
 			saveMagicPlants();
 			savePendants();
 			savePurificationGem();
@@ -757,6 +758,34 @@ public final class ChromaCastingRecipeProvider {
 							stands, List.of(), List.of(),
 							new ItemStackTemplate(ChromaItems.TINTED_LENSES.get(element).get(), amount),
 							100, 200).withPenaltyThreshold(48));
+		}
+
+		/**
+		 * V33a AuraPouchRecipe, a MultiBlockCastingRecipe on a Void Core: leather on the inner ring, aura dust on the
+		 * outer edges with chroma dust beside it, chroma ingots on the outer corners, and white/black/light gray/purple
+		 * runes at (-4|4, -1, +-2).
+		 */
+		private void saveAuraPouch() {
+			List<CastingTableRecipe.StandIngredient> stands = new ArrayList<>();
+			for (int[] point : new int[][] {{-2, -2}, {0, -2}, {2, -2}, {-2, 0}, {2, 0}, {-2, 2}, {0, 2}, {2, 2}})
+				stands.add(auxStand(point[0], point[1], Ingredient.of(Items.LEATHER)));
+			for (int[] point : new int[][] {{-4, 0}, {4, 0}, {0, -4}, {0, 4}})
+				stands.add(auxStand(point[0], point[1], tiered(ChromaTieredItems.AURA_DUST)));
+			for (int[] point : new int[][] {{-4, 2}, {-4, -2}, {4, 2}, {4, -2}, {-2, 4}, {-2, -4}, {2, 4}, {2, -4}})
+				stands.add(auxStand(point[0], point[1], tiered(ChromaTieredItems.CHROMA_DUST)));
+			for (int[] point : new int[][] {{-4, 4}, {-4, -4}, {4, 4}, {4, -4}})
+				stands.add(auxStand(point[0], point[1], Ingredient.of(ChromaItems.CRAFTING.get(
+						ChromaCraftingItems.CHROMA_INGOT).get())));
+			saveRecipe("aura_pouch", new CastingTableRecipe(CastingTableRecipe.Tier.MULTIBLOCK,
+					List.of(new GridIngredient(4, Ingredient.of(ChromaItems.CRAFTING.get(
+							ChromaCraftingItems.VOID_CORE).get()))),
+					List.copyOf(stands),
+					List.of(new RuneRequirement(new net.minecraft.core.BlockPos(-4, -1, 2), CrystalElement.WHITE),
+							new RuneRequirement(new net.minecraft.core.BlockPos(-4, -1, -2), CrystalElement.BLACK),
+							new RuneRequirement(new net.minecraft.core.BlockPos(4, -1, 2), CrystalElement.LIGHTGRAY),
+							new RuneRequirement(new net.minecraft.core.BlockPos(4, -1, -2), CrystalElement.PURPLE)),
+					List.of(), new ItemStackTemplate(ChromaItems.AURA_POUCH.get()), 100, 200)
+					.withPenaltyThreshold(1));
 		}
 
 		/**

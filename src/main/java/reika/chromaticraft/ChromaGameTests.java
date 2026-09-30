@@ -59,6 +59,7 @@ import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 import net.neoforged.neoforge.event.RegisterGameTestsEvent;
+import reika.chromaticraft.items.tools.ItemAuraPouch;
 import reika.chromaticraft.auxiliary.ExplorationMonitor;
 import reika.chromaticraft.auxiliary.PoolAlloyingHandler;
 import reika.chromaticraft.auxiliary.recipemanagers.CastingRecipeInput;
@@ -433,6 +434,7 @@ public final class ChromaGameTests {
 		register(event, env, "world_rift_link", 40, ChromaGameTests::worldRiftLink);
 		register(event, env, "world_rift_far_link", 200, ChromaGameTests::worldRiftFarLink);
 		register(event, env, "world_rift_shaft_power", 40, ChromaGameTests::worldRiftShaftPower);
+		register(event, env, "aura_pouch_contents", 30, ChromaGameTests::auraPouchContents);
 		register(event, env, "fluid_distributor_transfer", 60, ChromaGameTests::fluidDistributorTransfer);
 		register(event, env, "creative_tiered_resource_access", ChromaGameTests::creativeTieredResourceAccess);
 		register(event, env, "rainbow_tree_shape_and_log", ChromaGameTests::rainbowTreeShapeAndLog);
@@ -7288,6 +7290,76 @@ public final class ChromaGameTests {
 			helper.assertTrue(pump.torque == 256 && pump.omega == 512,
 					"the Pump beyond rift D must receive the coil's power; got " + pump.torque + " Nm, " + pump.omega
 							+ " rad/s");
+			helper.succeed();
+		});
+	}
+
+	/**
+	 * V33a Aura Pouch: contents round-trip through the stack, every slot starts active, and an inactive slot is the
+	 * only custom data left. An active Pylon Compass inside is ticked as though carried (it stamps the player every 8
+	 * ticks) and the HUD check sees it; an inactive one does neither. The menu writes each change back into the pouch
+	 * in hand, right-click toggles a slot instead of picking up, shift-click moves nothing, and the open pouch cannot
+	 * be number-key swapped into its own slots.
+	 */
+	private static void auraPouchContents(GameTestHelper helper) {
+		var level = helper.getLevel();
+		var pouchItem = ChromaItems.AURA_POUCH.get();
+		ItemStack pouch = new ItemStack(pouchItem);
+		ItemStack[] inv = pouchItem.getInventory(pouch);
+		inv[0] = new ItemStack(ChromaItems.PYLON_FINDER.get());
+		inv[5] = new ItemStack(Items.DIAMOND, 7);
+		pouchItem.setItems(pouch, inv);
+		helper.assertTrue(pouchItem.getItem(pouch, 5).is(Items.DIAMOND) && pouchItem.getItem(pouch, 5).getCount() == 7
+				&& pouchItem.getInventory(pouch)[0].is(ChromaItems.PYLON_FINDER.get()), "the contents must round-trip");
+		pouchItem.decrementSlot(pouch, 5, 2);
+		helper.assertTrue(pouchItem.getItem(pouch, 5).getCount() == 5, "decrementSlot must take from the slot");
+		boolean all = true;
+		for (int i = 0; i < ItemAuraPouch.SIZE; i++)
+			all &= pouchItem.isSlotActive(pouch, i);
+		helper.assertTrue(all && !pouch.has(net.minecraft.core.component.DataComponents.CUSTOM_DATA),
+				"every slot must start active with no custom data");
+
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, pouch);
+		helper.assertTrue(ItemAuraPouch.containsActive(player, is -> is.is(ChromaItems.PYLON_FINDER.get())),
+				"an active compass in a carried pouch must count for the HUD");
+		pouchItem.setSlotActive(pouch, 0, false);
+		helper.assertTrue(!pouchItem.isSlotActive(pouch, 0)
+				&& !ItemAuraPouch.containsActive(player, is -> is.is(ChromaItems.PYLON_FINDER.get())),
+				"an inactive slot must not count");
+		pouchItem.setSlotActive(pouch, 0, true);
+		helper.assertTrue(!pouch.has(net.minecraft.core.component.DataComponents.CUSTOM_DATA),
+				"reactivating the last inactive slot must leave no custom data");
+
+		// Menu behaviour, on the pouch in hand.
+		var menu = new reika.chromaticraft.container.MenuAuraPouch(1, player.getInventory());
+		helper.assertTrue(menu.getSlot(5).getItem().is(Items.DIAMOND), "the menu must show the pouch's contents");
+		helper.assertTrue(menu.quickMoveStack(player, 5).isEmpty(), "shift-click must move nothing");
+		menu.clicked(5, 0, net.minecraft.world.inventory.ContainerInput.PICKUP, player);
+		menu.clicked(7, 0, net.minecraft.world.inventory.ContainerInput.PICKUP, player);
+		ItemStack held = player.getMainHandItem();
+		helper.assertTrue(pouchItem.getItem(held, 5).isEmpty() && pouchItem.getItem(held, 7).is(Items.DIAMOND),
+				"moving a stack inside the menu must be written back into the pouch in hand");
+		menu.clicked(3, 1, net.minecraft.world.inventory.ContainerInput.PICKUP, player);
+		helper.assertTrue(!pouchItem.isSlotActive(held, 3) && menu.getCarried().isEmpty(),
+				"right-clicking a pouch slot must toggle it instead of picking up");
+		menu.clicked(3, 1, net.minecraft.world.inventory.ContainerInput.PICKUP, player);
+		int selected = player.getInventory().getSelectedSlot();
+		menu.clicked(9, selected, net.minecraft.world.inventory.ContainerInput.SWAP, player);
+		helper.assertTrue(player.getMainHandItem().getItem() == pouchItem && menu.getSlot(9).getItem().isEmpty(),
+				"the open pouch must not be swappable into its own slots");
+		menu.removed(player);
+
+		// Ticking: the active compass stamps the player from inside the pouch.
+		long start = level.getGameTime();
+		for (int t = 0; t <= 8; t++) {
+			int delay = t;
+			helper.runAfterDelay(delay, () -> pouchItem.inventoryTick(player.getMainHandItem(), level, player, null));
+		}
+		helper.runAfterDelay(9, () -> {
+			long stamp = player.getPersistentData().getLongOr(reika.chromaticraft.items.tools.ItemPylonFinder.NBT_KEY, -1);
+			helper.assertTrue(stamp >= start && stamp%8 == 0,
+					"an active compass ticked from the pouch must stamp the player every 8 ticks; stamp " + stamp);
 			helper.succeed();
 		});
 	}

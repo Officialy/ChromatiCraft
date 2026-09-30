@@ -83,7 +83,9 @@ public final class PylonFinderOverlay implements GuiLayer {
 			return;
 		if (PylonGenerator.instance.canGenerateIn(ep.level())) {
 			boolean compass = ep.getMainHandItem().is(ChromaItems.PYLON_FINDER.get())
-					|| ep.getPersistentData().getLongOr(ItemPylonFinder.NBT_KEY, Long.MIN_VALUE) >= ep.level().getGameTime()-20;
+					|| ep.getPersistentData().getLongOr(ItemPylonFinder.NBT_KEY, Long.MIN_VALUE) >= ep.level().getGameTime()-20
+					|| reika.chromaticraft.items.tools.ItemAuraPouch.containsActive(ep,
+							is -> is.is(ChromaItems.PYLON_FINDER.get()));
 			if (compass || !renders.isEmpty()) {
 				int h = g.guiHeight()/2;
 				float yaw = ep.getYHeadRot()%360;
