@@ -1,4 +1,4 @@
-// 26.3	2026-09-29T20:28:50.9457003	ChromatiCraft Canonical Structure Templates
+// 26.3	2026-10-01T15:35:49.1209131	ChromatiCraft Canonical Structure Templates
 439d19b3a1fe5a9e4c37aaf0d9c3aeefe6fa9bb8 data/chromaticraft/structure/multiblock/casting_l1.nbt
 a04978a62d159d07a365799ca14fc61e25e258db data/chromaticraft/structure/multiblock/casting_l2.nbt
 73fa45454dad10e36260d940e834134aa7cc95c7 data/chromaticraft/structure/multiblock/casting_l3.nbt
@@ -40,13 +40,13 @@ c31d3963bc7c022183e5bf036313cd125acccf41 data/chromaticraft/structure/worldgen/p
 4933d45ffaf26a07d89cb8cdc23084141e5d80dd data/chromaticraft/structure/worldgen/proxima/gol/loot.nbt
 813e3074e0e0fa5cf3df3af2f69a9f38b977bce9 data/chromaticraft/structure/worldgen/proxima/gol/surface.nbt
 def6e2d8c787b35ea45644ecf308c672f9b7d46e data/chromaticraft/structure/worldgen/proxima/light_panel/loot.nbt
-08932554857d41cb61238ca9e9d0ecbfce53da0a data/chromaticraft/structure/worldgen/proxima/light_panel/room_tier_0.nbt
-4b434d0f75c51b16928acbac6ecd5aa7909fe847 data/chromaticraft/structure/worldgen/proxima/light_panel/room_tier_1.nbt
-0f0644a0b232badf38504160908eceaae82db2b8 data/chromaticraft/structure/worldgen/proxima/light_panel/room_tier_2.nbt
-c42837d801cb79aa605a5db03527771c9ae13bfc data/chromaticraft/structure/worldgen/proxima/light_panel/room_tier_3.nbt
-730682827fd154250a12cd733507b3434323e880 data/chromaticraft/structure/worldgen/proxima/light_panel/room_tier_4.nbt
-e6f6f2203110739a48c24ef850ea65865f22028b data/chromaticraft/structure/worldgen/proxima/light_panel/room_tier_5.nbt
-52bd8fe4c87de32247ac4c7ae7c054b4eb9adf2e data/chromaticraft/structure/worldgen/proxima/light_panel/room_tier_6.nbt
+00a2894d86b626701dedb835f1d746836990d038 data/chromaticraft/structure/worldgen/proxima/light_panel/room_tier_0.nbt
+5a77d3fec504f8351f7409e0a1c3d853d824a2ac data/chromaticraft/structure/worldgen/proxima/light_panel/room_tier_1.nbt
+a03c307c63334c1a7d56d73cc14f8591e50f582b data/chromaticraft/structure/worldgen/proxima/light_panel/room_tier_2.nbt
+dce1d3b2b11959a8e469d7133df9614568e1bde9 data/chromaticraft/structure/worldgen/proxima/light_panel/room_tier_3.nbt
+10256ff5ebe1941d8ad1007dd106dc4a4c2bf5af data/chromaticraft/structure/worldgen/proxima/light_panel/room_tier_4.nbt
+11eccb22341b5e59f2ee7513e690e413f4102dc1 data/chromaticraft/structure/worldgen/proxima/light_panel/room_tier_5.nbt
+2d15a080798822ea29cb9101866fa72d800a1cc9 data/chromaticraft/structure/worldgen/proxima/light_panel/room_tier_6.nbt
 3bb499c0d092c5e5561b108abd12189c3815e1f3 data/chromaticraft/structure/worldgen/proxima/light_panel/stair_bottom.nbt
 445330cdda19c9ac09c96198e7d0424d20b26449 data/chromaticraft/structure/worldgen/proxima/light_panel/stair_section.nbt
 57321f66352107e5855dc4b9487dc80f12e20f8b data/chromaticraft/structure/worldgen/proxima/light_panel/stair_top.nbt

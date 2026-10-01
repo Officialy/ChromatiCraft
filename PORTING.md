@@ -9791,6 +9791,15 @@ AE2 (26.3 port fork) is compile-only; the full integration record is in `Reactor
   Manipulator binding), `MassStorageME` (Tool Storage crate pulls from its network).
 - Casting recipes (void/crystal/shielded cell, `tool_storage_ae2`) are conditional on ae2; datagen needs
   AE2 in run-data/run-client-data mods or those recipes/models/lang are simply not emitted.
-- Deferred: ME Item Distributor (tile + model + GUI); Pattern Cache/Crystal (V33a WIP, no recipes);
+- ME Item Distributor (2026-10-01): `TileEntityMEDistributor` (always registered; AE objects untyped, a
+  `DirectionalAEInterface` exposed only on the placed face), `BlockMEDistributor` (FACING = clicked face, TESR
+  only), `ModelMEDistributor`/`RenderMEDistributor` + item renderer on the real medistrib.png (128x128),
+  `MenuMEDistributor`/`ScreenMEDistributor` (ghost query/transfer slots, threshold boxes, match-mode buttons,
+  `MEDistributorControl` packet), transfer particles via `METransfer`. Transfers are transactional: the
+  inserted amount is pulled from the network and the insert only commits if all of it came out. The particle
+  colour is blue until `ItemElementCalculator` lands (CHROMA-PORT). Casting recipe `me_distributor`
+  (V33a MEDistributorRecipe, Transformation Core multiblock) is ae2-conditional. GameTest
+  `ae2_me_distributor_stocks_inventory`.
+- Deferred: Pattern Cache/Crystal (V33a WIP, no recipes);
   Remote Terminal (commented out in V33a); the cells' shift-held stored-item icon overlay (needs a
   custom item model, CHROMA-PORT in the item classes).

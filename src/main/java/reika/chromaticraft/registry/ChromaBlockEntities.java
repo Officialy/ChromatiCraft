@@ -127,6 +127,8 @@ public final class ChromaBlockEntities {
 			register("lumen_wire", ChromaTiles.LUMENWIRE);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<reika.chromaticraft.tileentity.aoe.defence.TileEntityLumenTurret>> LUMEN_TURRET =
 			register("lumen_turret", ChromaTiles.TURRET);
+	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<reika.chromaticraft.modinterface.ae.TileEntityMEDistributor>> ME_DISTRIBUTOR =
+			register("me_distributor", ChromaTiles.MEDISTRIBUTOR);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<reika.chromaticraft.tileentity.transport.TileEntityFluidRelay>> FLUID_RELAY =
 			register("fluid_relay", ChromaTiles.FLUIDRELAY);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<reika.chromaticraft.tileentity.transport.TileEntityFluidDistributor>> FLUID_DISTRIBUTOR =

@@ -55,6 +55,9 @@ public final class ChromaNetwork {
 		registrar.playToClient(FluidRelayFlow.TYPE, FluidRelayFlow.CODEC, (payload, context) -> context.enqueueWork(() ->
 				ClientPayloadHandlers.fluidRelayFlow(payload.pos(), payload.fluid())));
 		registrar.playToServer(FluidRelayControl.TYPE, FluidRelayControl.CODEC, ChromaNetwork::handleFluidRelayControl);
+		registrar.playToServer(MEDistributorControl.TYPE, MEDistributorControl.CODEC, ChromaNetwork::handleMEDistributorControl);
+		registrar.playToClient(METransfer.TYPE, METransfer.CODEC, (payload, context) -> context.enqueueWork(() ->
+				reika.chromaticraft.client.ClientPayloadHandlers.meTransfer(payload.pos(), payload.item())));
 		registrar.playToServer(TelePumpSelect.TYPE, TelePumpSelect.CODEC, ChromaNetwork::handleTelePumpSelect);
 		registrar.playToClient(PylonCache.TYPE, PylonCache.CODEC, (payload, context) -> context.enqueueWork(() ->
 				ClientPayloadHandlers.pylonCache(payload.entries())));
@@ -329,6 +332,47 @@ public final class ChromaNetwork {
 				ByteBufCodecs.VAR_INT, FluidRelayControl::value, ByteBufCodecs.VAR_INT, FluidRelayControl::fluid,
 				FluidRelayControl::new);
 		@Override public Type<FluidRelayControl> type() { return TYPE; }
+	}
+
+	/** V33a MEDISTRIBTHRESH / MEDISTRIBFUZZY from the ME Item Distributor's GUI. */
+	public record MEDistributorControl(BlockPos pos, int action, int slot, int value) implements CustomPacketPayload {
+		public static final int THRESHOLD = 0;
+		public static final int MODE = 1;
+		public static final Type<MEDistributorControl> TYPE = createType("me_distributor_control");
+		public static final StreamCodec<ByteBuf, MEDistributorControl> CODEC = StreamCodec.composite(
+				BlockPos.STREAM_CODEC, MEDistributorControl::pos, ByteBufCodecs.VAR_INT, MEDistributorControl::action,
+				ByteBufCodecs.VAR_INT, MEDistributorControl::slot, ByteBufCodecs.VAR_INT, MEDistributorControl::value,
+				MEDistributorControl::new);
+		@Override public Type<MEDistributorControl> type() { return TYPE; }
+	}
+
+	private static void handleMEDistributorControl(MEDistributorControl payload, IPayloadContext context) {
+		context.enqueueWork(() -> {
+			if (!(context.player() instanceof ServerPlayer player)
+					|| !(player.containerMenu instanceof reika.chromaticraft.container.MenuMEDistributor menu)
+					|| !menu.tile().getBlockPos().equals(payload.pos())
+					|| payload.slot() < 0 || payload.slot() >= reika.chromaticraft.modinterface.ae.TileEntityMEDistributor.NSLOTS)
+				return;
+			switch (payload.action()) {
+				case MEDistributorControl.THRESHOLD -> menu.tile().setThreshold(payload.slot(), payload.value());
+				case MEDistributorControl.MODE -> menu.tile().toggleFuzzy(payload.slot());
+				default -> {}
+			}
+		});
+	}
+
+	/** V33a METRANSFER: an item moved out of the network; the distributor puffs particles over the inventory. */
+	public record METransfer(BlockPos pos, int item) implements CustomPacketPayload {
+		public static final Type<METransfer> TYPE = createType("me_transfer");
+		public static final StreamCodec<ByteBuf, METransfer> CODEC = StreamCodec.composite(
+				BlockPos.STREAM_CODEC, METransfer::pos, ByteBufCodecs.VAR_INT, METransfer::item, METransfer::new);
+		@Override public Type<METransfer> type() { return TYPE; }
+	}
+
+	/** V33a sent it to everyone within 32 blocks. */
+	public static void sendMETransfer(ServerLevel level, BlockPos pos, int item) {
+		PacketDistributor.sendToPlayersNear(level, null, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, 32,
+				new METransfer(pos, item));
 	}
 
 	/** V33a GROWTH: one extra block tick from the Growth Wand's wave. */

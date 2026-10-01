@@ -1,80 +1,110 @@
 /*******************************************************************************
  * @author Reika Kalseki
- * 
+ *
  * Copyright 2017
- * 
+ *
  * All rights reserved.
  * Distribution of the software in any form is only allowed with
  * explicit, prior permission from the owner.
  ******************************************************************************/
 package reika.chromaticraft.render.tesr;
 
-import org.lwjgl.opengl.GL11;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
 
-import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraftforge.client.MinecraftForgeClient;
+import net.minecraft.client.model.geom.ModelLayerLocation;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
+import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
+import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
+import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.core.Direction;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.phys.Vec3;
 
-import reika.chromaticraft.base.ChromaRenderBase;
-import reika.chromaticraft.modinterface.ae.TileEntityMEDistributor;
+import org.jspecify.annotations.Nullable;
+
+import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.models.ModelMEDistributor;
-import reika.dragonapi.interfaces.tileentity.RenderFetcher;
+import reika.chromaticraft.modinterface.ae.TileEntityMEDistributor;
 
-public class RenderMEDistributor extends ChromaRenderBase {
+/**
+ * V33a {@code RenderMEDistributor}: the frame model on medistrib.png, turned from its UP orientation to the side it
+ * was placed on (V33a's metadata switch, one case per side).
+ */
+public final class RenderMEDistributor implements BlockEntityRenderer<TileEntityMEDistributor, RenderMEDistributor.State> {
 
-	private final ModelMEDistributor model = new ModelMEDistributor();
+	public static final ModelLayerLocation MODEL_LAYER = new ModelLayerLocation(
+			Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "me_distributor"), "main");
+	public static final Identifier TEXTURE = Identifier.fromNamespaceAndPath(
+			ChromatiCraft.MODID, "textures/entity/me_distributor.png");
 
-	@Override
-	public String getImageFileName(RenderFetcher te) {
-		return "medistrib.png";
+	private final ModelMEDistributor model;
+
+	public RenderMEDistributor(BlockEntityRendererProvider.Context context) {
+		model = new ModelMEDistributor(context.bakeLayer(MODEL_LAYER));
 	}
 
 	@Override
-	public void renderTileEntityAt(TileEntity tile, double par2, double par4, double par6, float par8) {
-		TileEntityMEDistributor te = (TileEntityMEDistributor) tile;
-		GL11.glPushMatrix();
-		GL11.glTranslated(par2, par4, par6);
-		if (!te.isInWorld() || MinecraftForgeClient.getRenderPass() == 0) {
-			if (te.isInWorld()) {
-				switch(te.getBlockMetadata()) {
-					case 0:
-						GL11.glTranslated(0, 1, 1);
-						GL11.glRotated(180, 1, 0, 0);
-						break;
-					case 2:
-						GL11.glTranslated(0, 0, 1);
-						GL11.glRotated(-90, 1, 0, 0);
-						break;
-					case 3:
-						GL11.glTranslated(0, 1, 0);
-						GL11.glRotated(90, 1, 0, 0);
-						break;
-					case 4:
-						GL11.glTranslated(1, 0, 0);
-						GL11.glRotated(90, 0, 0, 1);
-						break;
-					case 5:
-						GL11.glTranslated(0, 1, 0);
-						GL11.glRotated(-90, 0, 0, 1);
-						break;
-				}
+	public State createRenderState() {
+		return new State();
+	}
+
+	@Override
+	public void extractRenderState(TileEntityMEDistributor te, State state, float partialTick, Vec3 cameraPosition,
+			ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress) {
+		BlockEntityRenderer.super.extractRenderState(te, state, partialTick, cameraPosition, breakProgress);
+		state.facing = te.getFacing();
+	}
+
+	@Override
+	public void submit(State state, PoseStack poseStack, SubmitNodeCollector collector, CameraRenderState camera) {
+		poseStack.pushPose();
+		switch (state.facing) {
+			case DOWN -> {
+				poseStack.translate(0, 1, 1);
+				poseStack.rotate(Axis.XP.rotationDegrees(180));
 			}
-			this.renderModel(te, model, te.isInWorld());
+			case NORTH -> {
+				poseStack.translate(0, 0, 1);
+				poseStack.rotate(Axis.XP.rotationDegrees(-90));
+			}
+			case SOUTH -> {
+				poseStack.translate(0, 1, 0);
+				poseStack.rotate(Axis.XP.rotationDegrees(90));
+			}
+			case WEST -> {
+				poseStack.translate(1, 0, 0);
+				poseStack.rotate(Axis.ZP.rotationDegrees(90));
+			}
+			case EAST -> {
+				poseStack.translate(0, 1, 0);
+				poseStack.rotate(Axis.ZP.rotationDegrees(-90));
+			}
+			case UP -> {}
 		}
-		else {
-			this.renderFX(te);
-		}
-		GL11.glPopMatrix();
+		submitModel(model, poseStack, collector, state.lightCoords, true);
+		poseStack.popPose();
 	}
 
-	private void renderFX(TileEntityMEDistributor te) {
-		GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
-		GL11.glDisable(GL11.GL_LIGHTING);
-		Tessellator v5 = Tessellator.instance;
-		v5.startDrawingQuads();
-		v5.setBrightness(240);
-		v5.draw();
-		GL11.glPopAttrib();
+	/** V33a {@code renderModel}: the model's origin at the block's top centre, flipped. */
+	public static void submitModel(ModelMEDistributor model, PoseStack poseStack, SubmitNodeCollector collector, int light,
+			boolean inWorld) {
+		poseStack.pushPose();
+		poseStack.translate(0.5F, 1.5F, 0.5F);
+		poseStack.scale(1F, -1F, -1F);
+		PoseStack modelPose = new PoseStack();
+		modelPose.last().set(poseStack.last());
+		collector.submitCustomGeometry(poseStack, RenderTypes.entityCutout(TEXTURE), (unused, vertices) ->
+				model.render(modelPose, vertices, light, OverlayTexture.NO_OVERLAY, inWorld));
+		poseStack.popPose();
+	}
+
+	public static final class State extends BlockEntityRenderState {
+		private Direction facing = Direction.UP;
 	}
 
 }

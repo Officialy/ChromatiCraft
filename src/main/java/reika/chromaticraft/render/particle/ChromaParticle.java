@@ -199,6 +199,41 @@ public abstract class ChromaParticle extends SingleQuadParticle {
 				2 + random.nextFloat() * 2, 20));
 	}
 
+	/** V33a {@code TileEntityMEDistributor.spawnParticles}: a purple blur drifting in from the outer face. */
+	public static void spawnMEDistributorAmbient(Level world, BlockPos pos, Direction dir, RandomSource random) {
+		if (!(world instanceof ClientLevel level)) return;
+		double r = 0.475;
+		double v = -(0.03125 + (random.nextDouble() * 2 - 1) * 0.015);
+		double dx = pos.getX() + 0.5 + dir.getStepX() * r + (random.nextDouble() * 2 - 1) * 0.03125;
+		double dy = pos.getY() + 0.5 + dir.getStepY() * r + (random.nextDouble() * 2 - 1) * 0.03125;
+		double dz = pos.getZ() + 0.5 + dir.getStepZ() * r + (random.nextDouble() * 2 - 1) * 0.03125;
+		double vx = v * dir.getStepX() + (random.nextDouble() * 2 - 1) * 0.008;
+		double vy = v * dir.getStepY() + (random.nextDouble() * 2 - 1) * 0.008;
+		double vz = v * dir.getStepZ() + (random.nextDouble() * 2 - 1) * 0.008;
+		float s = 1.25F + (random.nextFloat() * 2 - 1) * 0.25F;
+		int l = 40 + random.nextInt(30);
+		Minecraft.getInstance().particleEngine.add(new FadeGlow(level, dx, dy, dz, vx, vy, vz, 0x875aa5, l, s, true));
+	}
+
+	/**
+	 * V33a {@code TileEntityMEDistributor.spawnTransferParticles}: blurs over the inventory an item went into.
+	 * CHROMA-PORT: V33a coloured them by the item's elements ({@code ItemElementCalculator}, not yet ported); an item
+	 * with no elements took this branch - one to five plain blue blurs - which is what every item takes until then.
+	 */
+	public static void spawnMEDistributorTransfer(Level world, BlockPos pos, Direction dir, net.minecraft.world.item.ItemStack is,
+			RandomSource random) {
+		if (!(world instanceof ClientLevel level)) return;
+		float s = 6 + (random.nextFloat() * 2 - 1) * 2;
+		int l = 20 + random.nextInt(20);
+		int n = 1 + random.nextInt(5);
+		for (int i = 0; i < n; i++) {
+			double dx = pos.getX() - dir.getStepX() + random.nextDouble();
+			double dy = pos.getY() - dir.getStepY() + random.nextDouble();
+			double dz = pos.getZ() - dir.getStepZ() + random.nextDouble();
+			Minecraft.getInstance().particleEngine.add(new FadeGlow(level, dx, dy, dz, 0, 0, 0, 0x2096ff, l, s, true));
+		}
+	}
+
 	/** Exact V33a Collector idle effect: a random elemental rune just outside the machine body. */
 	public static void spawnCollectorRune(Level world, BlockPos pos, RandomSource random) {
 		if (!(world instanceof ClientLevel level)) return;

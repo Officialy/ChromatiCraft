@@ -164,6 +164,7 @@ public final class LexiconIconResolver {
 			case "turret" -> ChromaBlocks.LUMEN_TURRET.get();
 			case "lumenwire" -> ChromaBlocks.LUMEN_WIRE.get();
 			case "fluidrelay" -> ChromaBlocks.FLUID_RELAY.get();
+			case "medistributor" -> ChromaBlocks.ME_DISTRIBUTOR.get();
 			case "telepump" -> ChromaBlocks.TELEPUMP.get();
 			case "rift" -> ChromaItems.WORLD_RIFT.get();
 			case "enchanter" -> ChromaBlocks.AUTO_ENCHANTER.get();

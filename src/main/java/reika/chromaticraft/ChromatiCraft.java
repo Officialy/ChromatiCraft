@@ -101,6 +101,7 @@ public class ChromatiCraft extends DragonAPIMod {
 		}
 		// V33a TileEntityMassStorage (the Tool Storage crate) was an AE grid host pulling items from its network.
 		reika.dragonapi.modinteract.AEHooks.registerGridHost(ChromaBlockEntities.TOOL_STORAGE);
+		reika.dragonapi.modinteract.AEHooks.registerGridHost(ChromaBlockEntities.ME_DISTRIBUTOR);
 		ChromaMenus.REGISTRY.register(modEventBus);
 		ChromaEntityTypes.ENTITY_TYPES.register(modEventBus);
 		modEventBus.addListener(EntityGlowCloud::registerAttributes);
@@ -221,6 +222,8 @@ public class ChromatiCraft extends DragonAPIMod {
 				reika.chromaticraft.client.gui.ScreenParticleSpawner::new);
 		event.register(ChromaMenus.FLUID_RELAY.get(),
 				reika.chromaticraft.client.gui.ScreenFluidRelay::new);
+		event.register(ChromaMenus.ME_DISTRIBUTOR.get(),
+				reika.chromaticraft.client.gui.ScreenMEDistributor::new);
 		event.register(ChromaMenus.AURA_POUCH.get(),
 				reika.chromaticraft.client.gui.ScreenAuraPouch::new);
 		event.register(ChromaMenus.TELEPUMP.get(),

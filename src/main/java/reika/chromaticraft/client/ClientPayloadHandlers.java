@@ -34,6 +34,13 @@ public final class ClientPayloadHandlers {
 					minecraft.level, color, path.get(index - 1), path.get(index)));
 	}
 
+	public static void meTransfer(BlockPos pos, int item) {
+		Minecraft minecraft = Minecraft.getInstance();
+		if (minecraft.level != null && minecraft.level.getBlockEntity(pos) instanceof reika.chromaticraft.modinterface.ae.TileEntityMEDistributor te)
+			ChromaParticle.spawnMEDistributorTransfer(minecraft.level, pos, te.getFacing(),
+					new net.minecraft.world.item.ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.byId(item)), minecraft.level.getRandom());
+	}
+
 	public static void farmerHarvest(BlockPos source, BlockPos target) {
 		Minecraft minecraft = Minecraft.getInstance();
 		if (minecraft.level != null)

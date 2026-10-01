@@ -153,6 +153,7 @@ public class ChromaModelProvider extends ModelProvider {
 		lumenTurretModel(blockStateOut, itemModelOut, modelOut);
 		lumenWireModel(blockStateOut, itemModelOut, modelOut);
 		fluidRelayModel(blockStateOut, itemModelOut, modelOut);
+		meDistributorModel(blockStateOut, itemModelOut, modelOut);
 		fluidDistributorModel(blockStateOut, itemModelOut, modelOut);
 		worldRiftModel(blockStateOut, itemModelOut, modelOut);
 		adjacencyUpgradeModels(blockStateOut, itemModelOut, modelOut);
@@ -2131,6 +2132,22 @@ public class ChromaModelProvider extends ModelProvider {
 				TextureMapping.cube(particle), modelOut);
 		itemModelOut.accept(ChromaBlocks.FLUID_RELAY.get().asItem(),
 				ItemModelUtils.specialModel(itemBase, new reika.chromaticraft.render.item.FluidRelayItemRenderer.Unbaked()));
+	}
+
+	/** V33a MEDISTRIBUTOR: drawn only by its TESR (block and item), so the block model is particle-only. */
+	private static void meDistributorModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		Material particle = new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/icons/transparent"));
+		Identifier worldModel = ModelTemplates.PARTICLE_ONLY.create(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/me_distributor"),
+				new TextureMapping().put(TextureSlot.PARTICLE, particle), modelOut);
+		blockStateOut.accept(MultiVariantGenerator.dispatch(ChromaBlocks.ME_DISTRIBUTOR.get(),
+				new MultiVariant(WeightedList.of(new Variant(worldModel)))));
+		Identifier itemBase = ModelTemplates.CUBE_ALL.create(
+				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/me_distributor_inventory"),
+				TextureMapping.cube(particle), modelOut);
+		itemModelOut.accept(ChromaBlocks.ME_DISTRIBUTOR.get().asItem(),
+				ItemModelUtils.specialModel(itemBase, new reika.chromaticraft.render.item.MEDistributorItemRenderer.Unbaked()));
 	}
 
 	/** The V33a radiator has only a rendered lattice halo in-world; its inventory icon uses that lattice. */

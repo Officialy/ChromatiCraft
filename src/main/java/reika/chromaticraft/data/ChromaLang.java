@@ -206,6 +206,7 @@ public class ChromaLang extends LanguageProvider {
 		add(ChromaBlocks.LUMEN_TURRET.get(), "Lumen Turret"); // V33a chroma.turret
 		add(ChromaBlocks.LUMEN_WIRE.get(), "Lumen Wire"); // V33a chroma.lumenwire
 		add(ChromaBlocks.FLUID_RELAY.get(), "Fluid Link Anchor"); // V33a chroma.fluidrelay
+		add(ChromaBlocks.ME_DISTRIBUTOR.get(), "ME Item Distributor"); // V33a chroma.medistrib
 		add(ChromaBlocks.FLUID_DISTRIBUTOR.get(), "Fluid Radiator"); // V33a chroma.fluiddistributor
 		add(ChromaBlocks.RIFT.get(), "World Rift"); // V33a chroma.rift
 		add(ChromaItems.WORLD_RIFT.get(), "World Rift"); // V33a chroma.rift (ChromaItems.RIFT)

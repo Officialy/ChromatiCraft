@@ -337,6 +337,7 @@ public final class ChromaGameTests {
 		if (reika.dragonapi.ModList.APPENG.isLoaded())
 			ChromaAETests.register(event, env);
 		register(event, env, "rainbow_leaf_drops", ChromaGameTests::rainbowLeafDrops);
+		register(event, env, "me_distributor_ticks_without_ae", 100, ChromaGameTests::meDistributorTicksWithoutAE);
 		register(event, env, "progression_grant_and_query", ChromaGameTests::grantAndQuery);
 		register(event, env, "progression_recursive_parents", ChromaGameTests::recursiveParents);
 		register(event, env, "progression_prereq_gating", ChromaGameTests::prereqGating);
@@ -1738,6 +1739,24 @@ public final class ChromaGameTests {
 	 * is guaranteed a Fragment and asserting on one would be asserting on the RNG.
 	 */
 	/** V33a BlockRainbowLeaf.getDrops: broken normally it never drops itself but always 1+ dyes; shears give the leaf. */
+	/**
+	 * The ME Item Distributor is registered with or without AE2; without it the tile must place, tick past its cache
+	 * pass and save without touching an AE class (its AE objects are untyped and behind ModList.APPENG).
+	 */
+	private static void meDistributorTicksWithoutAE(GameTestHelper helper) {
+		BlockPos pos = new BlockPos(2, 1, 2);
+		helper.setBlock(pos.below(), Blocks.CHEST);
+		helper.setBlock(pos, ChromaBlocks.ME_DISTRIBUTOR.get());
+		var med = helper.getBlockEntity(pos, reika.chromaticraft.modinterface.ae.TileEntityMEDistributor.class);
+		med.setMapping(0, new ItemStack(Items.GOLD_INGOT));
+		med.setThreshold(0, 5);
+		helper.runAfterDelay(60, () -> {
+			helper.assertTrue(med.getMapping(0).is(Items.GOLD_INGOT) && med.getThreshold(0) == 5, "the rule must persist");
+			med.saveWithFullMetadata(helper.getLevel().registryAccess());
+			helper.succeed();
+		});
+	}
+
 	private static void rainbowLeafDrops(GameTestHelper helper) {
 		ServerLevel level = helper.getLevel();
 		BlockPos pos = helper.absolutePos(new BlockPos(2, 2, 2));

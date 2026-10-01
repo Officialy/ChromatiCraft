@@ -1776,6 +1776,25 @@ public final class ChromaCastingRecipeProvider {
 						new ItemStackTemplate(ChromaItems.CRYSTAL_CELL.get()), 100, 200)
 						.withPenaltyThreshold(18 * 3 / 4)); //V33a typical 18 (types of compatible items)
 
+				// MEDistributorRecipe, a MultiBlockCastingRecipe on a Transformation Core
+				List<CastingTableRecipe.StandIngredient> m = new ArrayList<>();
+				m.add(auxStand(0, -4, quartz));
+				m.add(auxStand(-2, -2, quartz));
+				m.add(auxStand(2, -2, quartz));
+				m.add(auxStand(0, -2, diamond));
+				for (int[] p : new int[][] {{-2, 2}, {2, 2}, {-2, 4}, {2, 4}})
+					m.add(auxStand(p[0], p[1], gold));
+				for (int[] p : new int[][] {{-4, 0}, {-4, 2}, {-4, 4}, {4, 0}, {4, 2}, {4, 4}, {-4, -2}, {4, -2}})
+					m.add(auxStand(p[0], p[1], iron));
+				m.add(auxStand(-2, 0, Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.AURA_INGOT).get())));
+				m.add(auxStand(2, 0, Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.AURA_INGOT).get())));
+				m.add(auxStand(-2, -4, Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.CONDUCTIVE_INGOT).get())));
+				m.add(auxStand(2, -4, Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.CONDUCTIVE_INGOT).get())));
+				saveRecipe("me_distributor", new CastingTableRecipe(CastingTableRecipe.Tier.MULTIBLOCK,
+						List.of(new GridIngredient(4, Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.TRANSFORMATION_CORE).get()))),
+						List.copyOf(m), List.of(), List.of(),
+						new ItemStackTemplate(ChromaBlocks.ME_DISTRIBUTOR.get().asItem()), 100, 200));
+
 				// ShieldedCellRecipe: typical 1, penalised from the first craft at no XP
 				saveRecipe("shielded_cell", new CastingTableRecipe(CastingTableRecipe.Tier.CRAFTING,
 						shapedGrid(Map.of('u', Ingredient.of(ChromaItems.UNKNOWN_ARTEFACT_FRAGMENT.get()),
