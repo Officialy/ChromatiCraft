@@ -38,12 +38,20 @@ public final class ChromaLootProviders {
 			FORTUNE_BONUS_COUNT = NUMBER_PROVIDERS.register("fortune_bonus_count",
 					() -> reika.chromaticraft.auxiliary.loot.FortuneBonusCount.MAP_CODEC);
 
+	public static final DeferredHolder<MapCodec<? extends ContextIntProvider>, MapCodec<reika.chromaticraft.auxiliary.loot.RainbowLeafDyeCount>>
+			RAINBOW_LEAF_DYE_COUNT = NUMBER_PROVIDERS.register("rainbow_leaf_dye_count",
+					() -> reika.chromaticraft.auxiliary.loot.RainbowLeafDyeCount.MAP_CODEC);
+
 	public static final DeferredRegister<MapCodec<? extends LootItemCondition>> CONDITIONS =
 			DeferredRegister.create(BuiltInRegistries.LOOT_CONDITION_TYPE, ChromatiCraft.MODID);
 
 	public static final DeferredHolder<MapCodec<? extends LootItemCondition>, MapCodec<FortuneScaledChance>>
 			FORTUNE_SCALED_CHANCE = CONDITIONS.register("fortune_scaled_chance",
 					() -> FortuneScaledChance.MAP_CODEC);
+
+	public static final DeferredHolder<MapCodec<? extends LootItemCondition>, MapCodec<reika.chromaticraft.auxiliary.loot.RainbowGoldAppleChance>>
+			RAINBOW_GOLD_APPLE_CHANCE = CONDITIONS.register("rainbow_gold_apple_chance",
+					() -> reika.chromaticraft.auxiliary.loot.RainbowGoldAppleChance.MAP_CODEC);
 
 	private ChromaLootProviders() {}
 }

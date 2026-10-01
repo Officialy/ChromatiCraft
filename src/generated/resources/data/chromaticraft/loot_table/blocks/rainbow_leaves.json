@@ -3,7 +3,11 @@
   "pools": [
     {
       "condition": {
-        "type": "minecraft:survives_explosion"
+        "type": "minecraft:any_of",
+        "terms": [
+          "minecraft:tool/can_shear",
+          "minecraft:tool/can_silk_touch"
+        ]
       },
       "entries": [
         {
@@ -12,6 +16,200 @@
         }
       ],
       "rolls": 1
+    },
+    {
+      "condition": {
+        "type": "minecraft:all_of",
+        "terms": [
+          {
+            "type": "minecraft:inverted",
+            "term": {
+              "type": "minecraft:any_of",
+              "terms": [
+                "minecraft:tool/can_shear",
+                "minecraft:tool/can_silk_touch"
+              ]
+            }
+          },
+          {
+            "type": "chromaticraft:fortune_scaled_chance",
+            "base": 0.0125
+          }
+        ]
+      },
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "chromaticraft:rainbow_sapling"
+        }
+      ],
+      "rolls": 1
+    },
+    {
+      "condition": {
+        "type": "minecraft:all_of",
+        "terms": [
+          {
+            "type": "minecraft:inverted",
+            "term": {
+              "type": "minecraft:any_of",
+              "terms": [
+                "minecraft:tool/can_shear",
+                "minecraft:tool/can_silk_touch"
+              ]
+            }
+          },
+          {
+            "type": "chromaticraft:fortune_scaled_chance",
+            "base": 0.1,
+            "per_level": 5.0
+          }
+        ]
+      },
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:apple"
+        }
+      ],
+      "rolls": 1
+    },
+    {
+      "condition": {
+        "type": "minecraft:all_of",
+        "terms": [
+          {
+            "type": "minecraft:inverted",
+            "term": {
+              "type": "minecraft:any_of",
+              "terms": [
+                "minecraft:tool/can_shear",
+                "minecraft:tool/can_silk_touch"
+              ]
+            }
+          },
+          {
+            "type": "chromaticraft:fortune_scaled_chance",
+            "base": 0.025,
+            "per_level": 3.0
+          }
+        ]
+      },
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:golden_apple"
+        }
+      ],
+      "rolls": 1
+    },
+    {
+      "condition": {
+        "type": "minecraft:all_of",
+        "terms": [
+          {
+            "type": "minecraft:inverted",
+            "term": {
+              "type": "minecraft:any_of",
+              "terms": [
+                "minecraft:tool/can_shear",
+                "minecraft:tool/can_silk_touch"
+              ]
+            }
+          },
+          {
+            "type": "chromaticraft:rainbow_gold_apple_chance"
+          }
+        ]
+      },
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:enchanted_golden_apple"
+        }
+      ],
+      "rolls": 1
+    },
+    {
+      "condition": {
+        "type": "minecraft:inverted",
+        "term": {
+          "type": "minecraft:any_of",
+          "terms": [
+            "minecraft:tool/can_shear",
+            "minecraft:tool/can_silk_touch"
+          ]
+        }
+      },
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:black_dye"
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:red_dye"
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:green_dye"
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:brown_dye"
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:blue_dye"
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:purple_dye"
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:cyan_dye"
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:light_gray_dye"
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:gray_dye"
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:pink_dye"
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:lime_dye"
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:yellow_dye"
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:light_blue_dye"
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:magenta_dye"
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:orange_dye"
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:white_dye"
+        }
+      ],
+      "rolls": {
+        "type": "chromaticraft:rainbow_leaf_dye_count"
+      }
     }
   ],
   "random_sequence": "chromaticraft:blocks/rainbow_leaves"

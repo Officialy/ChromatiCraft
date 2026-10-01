@@ -750,6 +750,8 @@ sourceSets.main.java {
     include 'reika/chromaticraft/item/ItemManipulator.java'
     include 'reika/chromaticraft/auxiliary/loot/CrystalShardCount.java'
     include 'reika/chromaticraft/auxiliary/loot/ChromaBerryCount.java'
+    include 'reika/chromaticraft/auxiliary/loot/RainbowLeafDyeCount.java'
+    include 'reika/chromaticraft/auxiliary/loot/RainbowGoldAppleChance.java'
     include 'reika/chromaticraft/auxiliary/loot/FortuneScaledChance.java'
     include 'reika/chromaticraft/auxiliary/loot/FortuneBonusCount.java'
     include 'reika/chromaticraft/registry/ChromaLootProviders.java'

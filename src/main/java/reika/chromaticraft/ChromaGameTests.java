@@ -336,6 +336,7 @@ public final class ChromaGameTests {
 		// Applied Energistics 2 integration; only with AE2 in run-gametest/mods (the normal GameTest runtime has none).
 		if (reika.dragonapi.ModList.APPENG.isLoaded())
 			ChromaAETests.register(event, env);
+		register(event, env, "rainbow_leaf_drops", ChromaGameTests::rainbowLeafDrops);
 		register(event, env, "progression_grant_and_query", ChromaGameTests::grantAndQuery);
 		register(event, env, "progression_recursive_parents", ChromaGameTests::recursiveParents);
 		register(event, env, "progression_prereq_gating", ChromaGameTests::prereqGating);
@@ -1736,6 +1737,24 @@ public final class ChromaGameTests {
 	 * <p>Seeds are swept rather than fixed: every entry is weighted against a filler, so no single seed
 	 * is guaranteed a Fragment and asserting on one would be asserting on the RNG.
 	 */
+	/** V33a BlockRainbowLeaf.getDrops: broken normally it never drops itself but always 1+ dyes; shears give the leaf. */
+	private static void rainbowLeafDrops(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		BlockPos pos = helper.absolutePos(new BlockPos(2, 2, 2));
+		var state = ChromaBlocks.RAINBOW_LEAVES.get().defaultBlockState();
+		for (int i = 0; i < 50; i++) {
+			java.util.List<ItemStack> drops = net.minecraft.world.level.block.Block.getDrops(state, level, pos, null, null, ItemStack.EMPTY);
+			helper.assertTrue(drops.stream().noneMatch(is -> is.is(ChromaBlocks.RAINBOW_LEAVES.get().asItem())),
+					"an unsheared rainbow leaf must not drop itself, got " + drops);
+			helper.assertTrue(drops.stream().anyMatch(is -> is.getItem() instanceof net.minecraft.world.item.DyeItem),
+					"an unsheared rainbow leaf always drops at least one dye, got " + drops);
+		}
+		java.util.List<ItemStack> sheared = net.minecraft.world.level.block.Block.getDrops(state, level, pos, null, null, new ItemStack(Items.SHEARS));
+		helper.assertTrue(sheared.size() == 1 && sheared.get(0).is(ChromaBlocks.RAINBOW_LEAVES.get().asItem()),
+				"sheared rainbow leaves drop exactly themselves, got " + sheared);
+		helper.succeed();
+	}
+
 	private static void structureChestFragments(GameTestHelper helper) {
 		BlockPos pos = helper.absolutePos(new BlockPos(8, 4, 8));
 		LootParams params = new LootParams.Builder(helper.getLevel())

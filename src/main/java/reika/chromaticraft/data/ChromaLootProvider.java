@@ -381,6 +381,9 @@ public final class ChromaLootProvider extends LootTableProvider {
 					// V33a BlockCaveCrystal.getDrops: never itself, always N shards of its own colour.
 					this.add(block, this.caveCrystalTable(block, crystal.getCrystalElement()));
 				}
+				else if (block == ChromaBlocks.RAINBOW_LEAVES.get()) {
+					this.add(block, this.rainbowLeafTable(block));
+				}
 				else if (block instanceof reika.chromaticraft.block.dye26.BlockDyeLeaf leaf) {
 					this.add(block, this.dyeLeafTable(block, leaf.getElement()));
 				}
@@ -552,6 +555,41 @@ public final class ChromaLootProvider extends LootTableProvider {
 					LootItem.lootTableItem(ChromaItems.BERRIES.get(element).get())
 							.apply(SetItemCountFunction.setCount(net.minecraft.core.Holder.direct(ChromaBerryCount.INSTANCE))),
 					FortuneScaledChance.exponential(ChromaBerryCount.BASE_CHANCE));
+			return table;
+		}
+
+		/**
+		 * V33a {@code BlockRainbowLeaf.getDrops} (natural leaf). Shears (or silk touch) yield the leaf itself, as
+		 * {@code onSheared} did; otherwise it never drops itself, and rolls independently: a Rainbow Sapling 1.25%,
+		 * an apple 10% and a golden apple 2.5% (scaled by 1+fortune, 1+5*fortune and 1+3*fortune), an enchanted
+		 * golden apple at the config's GOLDAPPLES rate (default 0.25%, times 1+3*fortune), plus
+		 * {@link reika.chromaticraft.auxiliary.loot.RainbowLeafDyeCount} dyes of random colours. The dyes are the
+		 * vanilla dye: V33a's {@code getVanillaDyeChance} defaults to 100 (see {@link #dyeLeafTable}).
+		 */
+		private LootTable.Builder rainbowLeafTable(Block block) {
+			LootTable.Builder table = LootTable.lootTable();
+			table.withPool(LootPool.lootPool().setRolls(ContextIntProviders.exactly(1))
+					.when(net.minecraft.world.level.storage.loot.predicates.AnyOfCondition.anyOf()
+							.or(this.hasShears()).or(this.hasSilkTouch()))
+					.add(LootItem.lootTableItem(block)));
+
+			LootItemCondition.Builder notSheared = net.minecraft.world.level.storage.loot.predicates.AnyOfCondition
+					.anyOf().or(this.hasShears()).or(this.hasSilkTouch()).invert();
+			this.addDyeLeafDrop(table, notSheared, LootItem.lootTableItem(ChromaBlocks.RAINBOW_SAPLING.get()),
+					FortuneScaledChance.linear(0.0125, 1));
+			this.addDyeLeafDrop(table, notSheared, LootItem.lootTableItem(Items.APPLE),
+					FortuneScaledChance.linear(0.1, 5));
+			this.addDyeLeafDrop(table, notSheared, LootItem.lootTableItem(Items.GOLDEN_APPLE),
+					FortuneScaledChance.linear(0.025, 3));
+			table.withPool(LootPool.lootPool().setRolls(ContextIntProviders.exactly(1))
+					.when(notSheared).when(() -> reika.chromaticraft.auxiliary.loot.RainbowGoldAppleChance.INSTANCE)
+					.add(LootItem.lootTableItem(Items.ENCHANTED_GOLDEN_APPLE)));
+			LootPool.Builder dyes = LootPool.lootPool()
+					.setRolls(net.minecraft.core.Holder.direct(reika.chromaticraft.auxiliary.loot.RainbowLeafDyeCount.INSTANCE))
+					.when(notSheared);
+			for (CrystalElement e : CrystalElement.elements)
+				dyes.add(LootItem.lootTableItem(vanillaDye(e)));
+			table.withPool(dyes);
 			return table;
 		}
 
