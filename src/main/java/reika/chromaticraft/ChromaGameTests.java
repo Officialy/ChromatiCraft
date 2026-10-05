@@ -454,6 +454,7 @@ public final class ChromaGameTests {
 		register(event, env, "water_lock_rotation", 80, ChromaGameTests::waterLockRotation);
 		register(event, env, "water_flow_floor", 200, ChromaGameTests::waterFlowFloor);
 		register(event, env, "water_structure_chunk", ChromaGameTests::waterStructureChunk);
+		register(event, env, "water_floor_descent", 1200, ChromaGameTests::waterFloorDescent);
 		register(event, env, "proxima_structure_completion_loop", ChromaGameTests::proximaStructureCompletionLoop);
 		register(event, env, "aurorae_feature", ChromaGameTests::auroraeFeature);
 		register(event, env, "aurora_curtain_drift", ChromaGameTests::auroraCurtainDrift);
@@ -4103,6 +4104,18 @@ public final class ChromaGameTests {
 	private static void waterPuzzleLayout(GameTestHelper helper) {
 		helper.assertTrue(DimensionStructureType.WATER.isComplete(),
 				"Channeled Flow's generator did not pass the V33a core gate");
+		// A floor with no checkpoints counts as solved from the start, so its trapdoors can never toggle open;
+		// V33a shares that soft-lock (only the structure bypass helps). Count it rather than hide it.
+		int empty = 0;
+		int total = 0;
+		for (int difficulty = 1; difficulty <= 3; difficulty++)
+			for (long seed = 0; seed < 300; seed++)
+				for (var floor : reika.chromaticraft.world.dimension.structure.WaterPuzzleLayout.create(difficulty, seed).floors()) {
+					total++;
+					if (floor.checkpoints().isEmpty())
+						empty++;
+				}
+		reika.chromaticraft.ChromatiCraft.LOGGER.info("Channeled Flow census: {} of {} floors have no checkpoint", empty, total);
 		for (int difficulty = 1; difficulty <= 3; difficulty++) {
 			for (long seed = 0; seed < 24; seed++) {
 				var layout = reika.chromaticraft.world.dimension.structure.WaterPuzzleLayout.create(difficulty, seed);
@@ -4233,6 +4246,75 @@ public final class ChromaGameTests {
 				? "removing the source did not drain the channel, clear the lock and close the trapdoor"
 				: "the source did not fill the checkpoint's channel and open the trapdoor (fluid="
 						+ level.getBlockState(channel) + ")"));
+	}
+
+	/**
+	 * The only route to the core: with the real piece laid across floors 0 and 1, turning every floor-0 lock
+	 * back to its solved heading lets the source's fluid run the whole path, fill the checkpoints (opening the
+	 * corner trapdoors) and drop through the exit lock as a new source onto floor 1's start channel.
+	 */
+	private static void waterFloorDescent(GameTestHelper helper) {
+		var level = helper.getLevel();
+		BlockPos placement = helper.absolutePos(new BlockPos(2, 0, 2));
+		var plan = new reika.chromaticraft.world.dimension.structure.WaterStructureGenerator();
+		plan.setType(DimensionStructureType.WATER, 0);
+		plan.startCalculate(CrystalElement.CYAN, placement.getX(), placement.getZ(), new java.util.Random(0x51DE));
+		var layout = plan.layout();
+		var floor0 = layout.floors().get(0);
+		var floor1 = layout.floors().get(1);
+		int r = floor1.width() + 1;
+		var box = new net.minecraft.world.level.levelgen.structure.BoundingBox(placement.getX() - r,
+				layout.floorY(1) - 3, placement.getZ() - r, placement.getX() + r,
+				layout.topY() + reika.chromaticraft.world.dimension.structure.WaterPuzzleLayout.FLOOR_HEIGHT + 5,
+				placement.getZ() + r);
+		java.util.List<net.minecraft.world.level.ChunkPos> forced = new java.util.ArrayList<>();
+		for (int cx = box.minX() >> 4; cx <= box.maxX() >> 4; cx++)
+			for (int cz = box.minZ() >> 4; cz <= box.maxZ() >> 4; cz++)
+				if (level.setChunkForced(cx, cz, true))
+					forced.add(new net.minecraft.world.level.ChunkPos(cx, cz));
+		var piece = new reika.chromaticraft.world.dimension.structure.WaterStructurePiece(placement, plan,
+				layout.topY() + 30, CrystalElement.CYAN, 0);
+		piece.postProcess(level, level.structureManager(), level.getChunkSource().getGenerator(),
+				RandomSource.create(11), box, net.minecraft.world.level.ChunkPos.containing(placement), placement);
+
+		BlockPos origin0 = plan.floorOrigin(floor0);
+		BlockPos origin1 = plan.floorOrigin(floor1);
+		int spacing = reika.chromaticraft.world.dimension.structure.WaterPuzzleLayout.LOCK_SPACING;
+		for (int i = -floor0.radius(); i <= floor0.radius(); i++) {
+			for (int k = -floor0.radius(); k <= floor0.radius(); k++) {
+				int turns = floor0.lock(i, k).turns();
+				BlockPos at = reika.chromaticraft.tileentity.TileEntityRotatingLock.lockPosition(origin0, i, k);
+				for (int t = 0; t < turns; t++)
+					helper.runAfterDelay(2 + 32 * t, () -> {
+						if (level.getBlockEntity(at) instanceof reika.chromaticraft.tileentity.TileEntityRotatingLock lock)
+							lock.startRotating(true);
+					});
+			}
+		}
+		var exit = floor0.path().end();
+		BlockPos floor1Start = origin1.offset(exit.x() * spacing, 2, exit.z() * spacing);
+		BlockPos door = origin0.offset(floor0.width() - 1, 2, floor0.width() - 1);
+		Runnable release = () -> forced.forEach(c -> level.setChunkForced(c.x(), c.z(), false));
+		helper.onEachTick(() -> {
+			boolean open = level.getBlockState(door).is(ChromaBlocks.CHROMA_DOOR.get())
+					&& level.getBlockState(door).getValue(reika.chromaticraft.block.BlockChromaDoor.OPEN);
+			boolean solved = floor0.checkpoints().isEmpty()
+					|| reika.chromaticraft.tileentity.TileEntityRotatingLock.isFloorSolved(level, origin0, floor0.radius());
+			if (solved && (open || floor0.checkpoints().isEmpty())
+					&& level.getBlockState(floor1Start).is(ChromaBlocks.EVER_FLUID.get())) {
+				release.run();
+				helper.succeed();
+			}
+		});
+		helper.runAfterDelay(1190, () -> {
+			release.run();
+			helper.fail("floor 0's fluid never reached floor 1's start channel at " + floor1Start
+					+ " (floor 0 solved=" + reika.chromaticraft.tileentity.TileEntityRotatingLock.isFloorSolved(
+							level, origin0, floor0.radius()) + ", exit lock fluid=" + level.getBlockState(
+							reika.chromaticraft.tileentity.TileEntityRotatingLock.lockPosition(origin0, exit.x(), exit.z()).above())
+					+ ", drop cell=" + level.getBlockState(reika.chromaticraft.tileentity.TileEntityRotatingLock
+							.lockPosition(origin0, exit.x(), exit.z()).below()) + ")");
+		});
 	}
 
 	/** The native piece installs a configured lock grid, the structure terminal and the source column. */

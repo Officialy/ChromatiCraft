@@ -10508,3 +10508,9 @@ from the V33a jar; `dimstruct/waterlock` and the `waterlock` sound were already 
 Unverified: in-client visuals (lock model, light cones, grey fluid), and a full natural Proxima walk-through.
 Server datagen also rewrote nether/overworld/laser/light-panel template NBTs whose content differs from the
 committed copies. Nothing in this slice touches those providers, so they are left uncommitted for their owner.
+
+Follow-up: `water_floor_descent` places the real piece across floors 0–1 (force-loaded), turns every floor-0
+lock back, and confirms the fluid runs the path, opens the trapdoors and drops through the exit lock onto
+floor 1's start channel. It passes. Census: 15 of 3,900 floors (300 seeds × 3 difficulties) have no checkpoint.
+Such a floor counts as solved from the start, so its trapdoors never open and only the structure bypass helps.
+That soft-lock is faithful V33a behaviour and is deliberately not fixed.
