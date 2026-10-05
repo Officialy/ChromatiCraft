@@ -1,4 +1,4 @@
-// 26.3	2026-10-04T13:41:27.034767	Registries for world
+// 26.3	2026-10-05T16:54:20.6293815	Registries for world
 ebba3c085de743cf156dd7ff4cbb48a887aa68dd data/chromaticraft/damage_type/lumen_turret.json
 3d62f58226f2920df21625fc8dfc3699c1952323 data/chromaticraft/damage_type/pylon.json
 36dce11021a30f71d76a37b2f0164c7b422ea902 data/chromaticraft/damage_type/pylon_black.json
@@ -325,6 +325,7 @@ b61e049b3d14c59b9832963bdd3cbea5adaf9f73 data/chromaticraft/worldgen/structure/g
 fc8573bd81ca4cb55c6360e460727ae9d690b691 data/chromaticraft/worldgen/structure/music.json
 53e37d2c4c5f90f228b2ecd96067bfe40f3132fc data/chromaticraft/worldgen/structure/portal.json
 ef16773471c551ab6dd0ea84412df7b338a125b7 data/chromaticraft/worldgen/structure/three_d_maze.json
+6962d673617ba09396e4d241b865d3b3e1ed4ea7 data/chromaticraft/worldgen/structure/water.json
 d399f5213392928b9da1a41d3518d9e411910433 data/chromaticraft/worldgen/structure_set/glass_cliff.json
 8ad0aa7553647b78b8118b0167fb0eabe75dfa28 data/chromaticraft/worldgen/structure_set/glow_cave.json
 f3e973bbd8892812da3580f49e49111e1e86ca3a data/chromaticraft/worldgen/structure_set/gol.json
@@ -334,3 +335,4 @@ cbc2d763b40219352f1f534cb7e1de13cfd5c34c data/chromaticraft/worldgen/structure_s
 82a273ceee12ea5d65d65cf8f4f10b6548762b59 data/chromaticraft/worldgen/structure_set/monument.json
 0361acb8a623490ed54c2d439188f11afdde9917 data/chromaticraft/worldgen/structure_set/music.json
 0cfc0580945f1457593e1964c45af7d5540cc8e9 data/chromaticraft/worldgen/structure_set/three_d_maze.json
+d1303122e4797784083737ed7725bca833eab757 data/chromaticraft/worldgen/structure_set/water.json

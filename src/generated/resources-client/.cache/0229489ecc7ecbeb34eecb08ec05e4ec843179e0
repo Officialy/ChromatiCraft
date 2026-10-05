@@ -1,4 +1,4 @@
-// 26.3	2026-10-05T16:17:02.1195804	Model Definitions - chromaticraft
+// 26.3	2026-10-05T16:54:55.8663152	Model Definitions - chromaticraft
 7e6edeb747f433f7bfd666120a69743c6d57e685 assets/chromaticraft/blockstates/adjacency_upgrade_black.json
 7e6edeb747f433f7bfd666120a69743c6d57e685 assets/chromaticraft/blockstates/adjacency_upgrade_light_blue.json
 7e6edeb747f433f7bfd666120a69743c6d57e685 assets/chromaticraft/blockstates/adjacency_upgrade_lime.json
@@ -271,6 +271,7 @@ ea60c7a4835968a5a82cafdd6de3248c90280ded assets/chromaticraft/blockstates/purple
 5492aad79c7e5b57db6f6e8c7ade8b241d5df1db assets/chromaticraft/blockstates/return_portal_rift.json
 c975c1c99f739fc5948df4380b18c659eb72518d assets/chromaticraft/blockstates/ritual_table.json
 9bc8c37d635f55ac39941bd82b11c21e6c26afc0 assets/chromaticraft/blockstates/rock_flower.json
+f6fe2e875e3cbe9211edac9252cf86b072dada4f assets/chromaticraft/blockstates/rotating_lock.json
 b2f79615c4ae7d6fb38e48e8d4aebfbc933a0698 assets/chromaticraft/blockstates/sano_bloom.json
 5bce4f7ebdaa088777b25d6f211bc621ffcf4b13 assets/chromaticraft/blockstates/shielding_cloak.json
 f4a6c67aebdda4ac20b6c674fa735cd8b1cebeda assets/chromaticraft/blockstates/shielding_cobble.json
@@ -1471,6 +1472,7 @@ ab9ef7a28e59dad8ffb7ad8d9164cc345cb8f17b assets/chromaticraft/models/block/retur
 19949378a612026d6c946b2032de543462faf357 assets/chromaticraft/models/block/ritual_table.json
 d00af7dd9f9cfd85150f844778f69601b3e68198 assets/chromaticraft/models/block/ritual_table_enhanced.json
 1cbd0089eb15a9ebbd6341aa6a43e0985b9cdf92 assets/chromaticraft/models/block/rock_flower.json
+4957958a17135286631f50087c2b680a04686ea9 assets/chromaticraft/models/block/rotating_lock.json
 6737787442360b46f24606868f715c234e3dd995 assets/chromaticraft/models/block/sano_bloom.json
 9428b35e210158d65a0530a36838d4056ddbd67f assets/chromaticraft/models/block/shielding_cloak.json
 de9b7a5af0c7f9e2d0049777fba26e9937d56368 assets/chromaticraft/models/block/shielding_cobble.json

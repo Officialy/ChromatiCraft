@@ -1,4 +1,4 @@
-// 26.3	2026-10-05T13:21:16.9794025	Registries for reloadable
+// 26.3	2026-10-05T16:54:20.61642	Registries for reloadable
 e6a38e871196a8ae22cd01a33b4c3ce15d9cba71 data/chromaticraft/advancement/progression/ability.json
 9ea98a1504eb3619ce8c212744191024a6b0238e data/chromaticraft/advancement/progression/allcolors.json
 ab49d6f9d592f12d7937de74c2bfb441e2d98f0a data/chromaticraft/advancement/progression/allcores.json
@@ -539,6 +539,7 @@ ada5b195e263ddc739c43345f9a1ca961c1c0048 data/chromaticraft/loot_table/blocks/re
 62e7962b4bac428de0d027077d1ab03d8e9dd099 data/chromaticraft/loot_table/blocks/resonant_clover.json
 d089c60e87442ff082b3afb485379024a2684a8c data/chromaticraft/loot_table/blocks/ritual_table.json
 8788da8741cd3bd76d795fa4dff1b18beda26c68 data/chromaticraft/loot_table/blocks/rock_flower.json
+0ca849afa59d40cc729bb23e028ddca993991980 data/chromaticraft/loot_table/blocks/rotating_lock.json
 7681f3ef6c4467ed3c9db264adefd841eb9cbfaa data/chromaticraft/loot_table/blocks/sano_bloom.json
 7cb80f6ce0fa3c13a85f57a182cf568c6716398a data/chromaticraft/loot_table/blocks/selective_glass.json
 f90636c7a7428e08cf11b345dab04de5a99d1567 data/chromaticraft/loot_table/blocks/shielding_cloak.json
