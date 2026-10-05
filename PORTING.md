@@ -10428,3 +10428,29 @@ Validation: `:ChromatiCraft:compileJava` and `runClientData` pass. All eight `la
 the two new ones, as does `proxima_structure_placement`. The first batch run of `laser_pulse_travel` failed once:
 its fixed 80-tick deadline fell inside a 30 s batch-preparation stall. The test now polls for the solved state
 and has a 110-tick diagnostic deadline. No production assertion was weakened.
+
+## 2026-10-05 — Proxima puzzle audit: seven of the eighteen were never finished upstream
+
+`DimensionStructureType.registerGenerator` reproduces V33a's gate: a type joins the assignment pool only if
+its generator places a core. Checked against the pristine generators and their piece packages:
+
+| Type | V33a state | Places a core? |
+|---|---|---|
+| TESSELLATION (Spatial Satisfaction) | `//FIXME complete this structure`, empty `calculate` | no |
+| PINBALL (Expanding Motion) | `//FIXME complete this structure`, empty `calculate` | no |
+| GRAVITY (Luma Bursts) | `//FIXME complete this structure`, empty `calculate` | no |
+| ALTAR | `//TODO cancelled` | no |
+| TRACES (Parallel Connections) | `//FIXME complete this structure` | no |
+| ANTFARM (Fading Light) | `//FIXME complete this structure` | no |
+| BRIDGE (Dynamic Bridges) | `//TODO cancelled` | no |
+
+All seven were filtered out of the assignment pool in V33a and could never appear in a player's Proxima. A
+faithful port of any of them would be rejected by the same gate, so their pristine files are left untouched
+as the faithful state; nothing is lost. Their dedicated blocks were still registered upstream (`BlockGravityTile`,
+`BlockPinballTile`, `BlockAntKey`, `BlockDynamicBridge`, `BlockBridgeControl`) with renderers/entities
+(`RenderGravityTile`, `EntityLumaBurst`, `RenderBouncePad`, `EntityTNTPinball`, `RenderAntKey`). Nothing
+outside the dead structures references them, so they are registered-but-unreachable content and remain
+open items rather than puzzle work.
+
+The six real remaining puzzles, each of which reaches `placeCore`: WATER (Channeled Flow), PISTONTAPE
+(Filter Cycle), RAYBLEND (Crystal Interference), SHIFTMAZE (Shifting Maze), NONEUCLID (Complex Spaces), LOCKS.
