@@ -615,6 +615,18 @@ public final class ChromaBlocks {
 					blockProperties().mapColor(MapColor.WATER).strength(-1F, 60000F).noCollision().replaceable()
 							.noOcclusion().noLootTable().lightLevel(state -> 10)
 							.pushReaction(net.minecraft.world.level.material.PushReaction.POPPED)));
+	/** V33a PISTONBIT ("Filter Bit"): hardness 0 so pistons can move it, never minable (see the block). */
+	public static final DeferredBlock<reika.chromaticraft.block.dimension.structure.pistontape.BlockPistonTapeBit26> PISTON_TAPE_BIT = register("piston_tape_bit",
+			() -> new reika.chromaticraft.block.dimension.structure.pistontape.BlockPistonTapeBit26(blockProperties().mapColor(MapColor.QUARTZ).strength(0F, 6000F)
+					.sound(SoundType.GLASS).noOcclusion()));
+	/** V33a PISTONTARGET: read heads (type 0) and door receivers (type 1). */
+	public static final DeferredBlock<reika.chromaticraft.block.dimension.structure.pistontape.BlockPistonTarget26> PISTON_TARGET = registerBlockOnly("piston_target",
+			() -> new reika.chromaticraft.block.dimension.structure.pistontape.BlockPistonTarget26(blockProperties().mapColor(MapColor.STONE).strength(-1F, 6000F)
+					.sound(SoundType.STONE)));
+	/** V33a PISTONCONTROL (light 12): playback, fire, step and display. */
+	public static final DeferredBlock<reika.chromaticraft.block.dimension.structure.pistontape.BlockPistonController26> PISTON_CONTROLLER = registerBlockOnly("piston_controller",
+			() -> new reika.chromaticraft.block.dimension.structure.pistontape.BlockPistonController26(blockProperties().mapColor(MapColor.STONE).strength(-1F, 6000F)
+					.sound(SoundType.STONE).lightLevel(state -> 12)));
 	public static final DeferredBlock<BlockLaserController> LASER_CONTROLLER = registerBlockOnly("laser_controller",
 			() -> new BlockLaserController(blockProperties().mapColor(MapColor.STONE)
 					.strength(-1F, 600000F).sound(SoundType.STONE).lightLevel(state -> 4)));
@@ -659,6 +671,39 @@ public final class ChromaBlocks {
 
 	public static DeferredBlock<BlockStructureShield> shielding(ChromaShieldTypes type) {
 		return SHIELDING.get(type);
+	}
+
+	/**
+	 * V33a SPECIALSHIELD ("Shielding Stone Variant"), one identity per material V33a shipped art for (see
+	 * {@link reika.chromaticraft.block.dimension.structure.BlockSpecialShield26#hasArt}).
+	 */
+	public static final Map<ChromaShieldTypes, DeferredBlock<reika.chromaticraft.block.dimension.structure.BlockSpecialShield26>>
+			SPECIAL_SHIELDING = registerSpecialShielding();
+
+	private static Map<ChromaShieldTypes, DeferredBlock<reika.chromaticraft.block.dimension.structure.BlockSpecialShield26>> registerSpecialShielding() {
+		EnumMap<ChromaShieldTypes, DeferredBlock<reika.chromaticraft.block.dimension.structure.BlockSpecialShield26>> map =
+				new EnumMap<>(ChromaShieldTypes.class);
+		for (ChromaShieldTypes type : ChromaShieldTypes.list) {
+			if (!reika.chromaticraft.block.dimension.structure.BlockSpecialShield26.hasArt(type))
+				continue;
+			map.put(type, register("special_" + type.registryName(), () -> {
+				BlockBehaviour.Properties props = blockProperties().mapColor(MapColor.STONE)
+						.strength(2F, 6000F).requiresCorrectToolForDrops()
+						.lightLevel(state -> type.lightValue());
+				if (type.isTransparent())
+					props = props.noOcclusion();
+				return new reika.chromaticraft.block.dimension.structure.BlockSpecialShield26(props, type);
+			}));
+		}
+		return map;
+	}
+
+	public static DeferredBlock<reika.chromaticraft.block.dimension.structure.BlockSpecialShield26> specialShielding(
+			ChromaShieldTypes type) {
+		DeferredBlock<reika.chromaticraft.block.dimension.structure.BlockSpecialShield26> block = SPECIAL_SHIELDING.get(type);
+		if (block == null)
+			throw new IllegalArgumentException("V33a shipped no special shield art for " + type);
+		return block;
 	}
 
 	/**

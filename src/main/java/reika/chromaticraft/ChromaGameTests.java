@@ -455,6 +455,8 @@ public final class ChromaGameTests {
 		register(event, env, "water_flow_floor", 200, ChromaGameTests::waterFlowFloor);
 		register(event, env, "water_structure_chunk", ChromaGameTests::waterStructureChunk);
 		register(event, env, "water_floor_descent", 1200, ChromaGameTests::waterFloorDescent);
+		register(event, env, "piston_tape_plan", ChromaGameTests::pistonTapePlan);
+		register(event, env, "piston_tape_playback", 2400, ChromaGameTests::pistonTapePlayback);
 		register(event, env, "proxima_structure_completion_loop", ChromaGameTests::proximaStructureCompletionLoop);
 		register(event, env, "aurorae_feature", ChromaGameTests::auroraeFeature);
 		register(event, env, "aurora_curtain_drift", ChromaGameTests::auroraCurtainDrift);
@@ -1041,7 +1043,7 @@ public final class ChromaGameTests {
 			java.util.Set<DimensionStructureType> ported = java.util.EnumSet.of(
 					DimensionStructureType.LIGHTPANEL, DimensionStructureType.TDMAZE,
 					DimensionStructureType.MUSIC, DimensionStructureType.GOL,
-					DimensionStructureType.LASER, DimensionStructureType.WATER);
+					DimensionStructureType.LASER, DimensionStructureType.WATER, DimensionStructureType.PISTONTAPE);
 			List<DimensionStructureType> usable = DimensionStructureType.usableStructures();
 			helper.assertTrue(usable.size() == ported.size() && ported.containsAll(usable),
 					"exactly the ported puzzle generators must be usable, found " + usable);
@@ -4314,6 +4316,161 @@ public final class ChromaGameTests {
 							reika.chromaticraft.tileentity.TileEntityRotatingLock.lockPosition(origin0, exit.x(), exit.z()).above())
 					+ ", drop cell=" + level.getBlockState(reika.chromaticraft.tileentity.TileEntityRotatingLock
 							.lockPosition(origin0, exit.x(), exit.z()).below()) + ")");
+		});
+	}
+
+	/**
+	 * V33a PistonTapeGenerator/Slice/DoorKey: one seed gives one structure; every tape filter is white or a
+	 * secondary; each door expects exactly the intersection of the two filters its read beam crosses; each ring is
+	 * a closed loop of distinct neighbouring cells; the vault has V33a's 27 breakable plates and holds the core.
+	 */
+	private static void pistonTapePlan(GameTestHelper helper) {
+		helper.assertTrue(DimensionStructureType.PISTONTAPE.isComplete(),
+				"Filter Cycle's generator did not pass the V33a core gate");
+		for (int difficulty = 1; difficulty <= 3; difficulty++) {
+			for (long seed = 0; seed < 12; seed++) {
+				var plan = reika.chromaticraft.world.dimension.structure.PistonTapePlan.create(difficulty, seed, 100, -40);
+				var twin = reika.chromaticraft.world.dimension.structure.PistonTapePlan.create(difficulty, seed, 100, -40);
+				helper.assertTrue(plan.posY() == twin.posY() && plan.core().equals(twin.core())
+						&& plan.breakables().size() == 27 && plan.breakables().equals(twin.breakables()),
+						"the same seed produced a different Filter Cycle plan");
+				for (var stage : plan.stages()) {
+					for (int b = 0; b < stage.sliceCount(); b++) {
+						var slice = stage.slice(b);
+						java.util.Set<BlockPos> cells = new java.util.HashSet<>();
+						for (int n = 0; n < slice.bitCount; n++) {
+							BlockPos c = slice.bitPosition(n);
+							BlockPos next = slice.bitPosition((n + 1) % slice.bitCount);
+							// V33a skips the first and third corners, so the tape steps diagonally past them.
+							int dx = Math.abs(c.getX() - next.getX()), dy = Math.abs(c.getY() - next.getY()),
+									dz = Math.abs(c.getZ() - next.getZ());
+							helper.assertTrue(cells.add(c) && Math.max(dx, Math.max(dy, dz)) == 1,
+									"stage " + stage.index + " slice " + b + " is not a closed ring of neighbouring cells");
+							var bit = slice.bitColor(n);
+							helper.assertTrue(bit != null && !bit.isBlack() && !bit.isPrimary(),
+									"a tape filter must be white or a secondary colour");
+						}
+						for (var door : stage.doors()) {
+							var expected = slice.bitColor(door.index).copy();
+							expected.intersect(slice.bitColor((door.index + slice.secondFilterOffset()) % slice.bitCount));
+							helper.assertTrue(door.color(b).matchColor(slice.netColor(door.index))
+									&& expected.matchColor(slice.netColor(door.index)),
+									"door " + door.index + " does not expect its read beam's filtered colour");
+						}
+					}
+				}
+			}
+		}
+		helper.succeed();
+	}
+
+	/**
+	 * The whole Filter Cycle stage 0, placed by the real piece: V33a's debug solution is laid on the tape, the
+	 * Fire control opens door 0 through a real beam, read head and spline, and the Playback control then pistons
+	 * the tape through every step until every stage-0 door has been validated, with every ring left intact.
+	 */
+	private static void pistonTapePlayback(GameTestHelper helper) {
+		var level = helper.getLevel();
+		BlockPos origin = helper.absolutePos(new BlockPos(2, 0, 2));
+		var gen = new reika.chromaticraft.world.dimension.structure.PistonTapeStructureGenerator();
+		gen.setType(DimensionStructureType.PISTONTAPE, 0);
+		gen.startCalculate(CrystalElement.PURPLE, origin.getX(), origin.getZ(), new java.util.Random(0x7A9E));
+		var plan = gen.plan();
+		int[] b = plan.bounds();
+		var box = new net.minecraft.world.level.levelgen.structure.BoundingBox(b[0], b[1], b[2], b[3], b[4], b[5]);
+		java.util.List<net.minecraft.world.level.ChunkPos> forced = new java.util.ArrayList<>();
+		for (int cx = box.minX() >> 4; cx <= box.maxX() >> 4; cx++)
+			for (int cz = box.minZ() >> 4; cz <= box.maxZ() >> 4; cz++)
+				if (level.setChunkForced(cx, cz, true))
+					forced.add(new net.minecraft.world.level.ChunkPos(cx, cz));
+		Runnable release = () -> forced.forEach(c -> level.setChunkForced(c.x(), c.z(), false));
+		var piece = new reika.chromaticraft.world.dimension.structure.PistonTapeStructurePiece(gen, plan.posY() + 40,
+				CrystalElement.PURPLE, 0);
+		piece.postProcess(level, level.structureManager(), level.getChunkSource().getGenerator(), RandomSource.create(5),
+				box, net.minecraft.world.level.ChunkPos.containing(origin), origin);
+		var stage = plan.stages().getFirst();
+		helper.assertTrue(level.getBlockEntity(stage.playback()) instanceof reika.chromaticraft.tileentity.TileEntityPistonController pc
+				&& pc.type() == 0 && pc.stage() != null, "the playback control was not placed and bound");
+		int bitsPlaced = 0;
+		for (int i = 0; i < stage.sliceCount(); i++) {
+			var slice = stage.slice(i);
+			helper.assertTrue(level.getBlockState(slice.piston(net.minecraft.core.Direction.UP)).is(Blocks.PISTON)
+					&& level.getBlockEntity(slice.emitter()) instanceof reika.chromaticraft.tileentity.TileEntityLaserEffector
+					&& level.getBlockEntity(slice.target()) instanceof reika.chromaticraft.tileentity.TileEntityPistonTarget,
+					"slice " + i + " lost its piston, emitter or read head");
+			for (int n = 0; n < slice.bitCount; n++) {
+				BlockPos at = slice.bitPosition(n);
+				helper.assertTrue(level.getBlockState(at).is(ChromaBlocks.PISTON_TAPE_BIT.get()),
+						"slice " + i + " has no tape cell at position " + n);
+				level.setBlock(at, ChromaBlocks.PISTON_TAPE_BIT.get().defaultBlockState().setValue(
+						reika.chromaticraft.block.dimension.structure.pistontape.BlockPistonTapeBit26.BIT,
+						reika.chromaticraft.block.dimension.structure.pistontape.BlockPistonTapeBit26.getMetaFor(
+								slice.bitColor(n), true)), 3);
+				bitsPlaced++;
+			}
+		}
+		int totalBits = bitsPlaced;
+		BlockPos trigger = stage.playback().below();
+		((reika.chromaticraft.tileentity.TileEntityPistonController)level.getBlockEntity(trigger)).onRightClick();
+		var door0 = stage.doors().getFirst();
+		for (var door : stage.doors())
+			for (int i = 0; i < door.colorCount(); i++)
+				helper.assertTrue(!(level.getBlockEntity(door.target(i)) instanceof reika.chromaticraft.tileentity.TileEntityPistonTarget t)
+						|| !t.isValidated(), "a door receiver started validated");
+		int[] phase = {0};
+		long[] started = {level.getGameTime(), 0};
+		helper.onEachTick(() -> {
+			if (phase[0] == 0) {
+				boolean validated = true;
+				for (int i = 0; i < door0.colorCount(); i++)
+					validated &= level.getBlockEntity(door0.target(i)) instanceof reika.chromaticraft.tileentity.TileEntityPistonTarget t
+							&& t.isValidated();
+				if (validated) {
+					helper.assertTrue(level.getGameTime() - started[0] >= 15,
+							"door 0 validated before a beam and spline could have travelled");
+					phase[0] = 1;
+					started[1] = level.getGameTime();
+					((reika.chromaticraft.tileentity.TileEntityPistonController)level.getBlockEntity(stage.playback())).onRightClick();
+				}
+			}
+			else if (phase[0] == 1) {
+				for (var door : stage.doors()) {
+					boolean any = false;
+					for (int i = 0; i < door.colorCount(); i++)
+						any |= level.getBlockEntity(door.target(i)) instanceof reika.chromaticraft.tileentity.TileEntityPistonTarget t
+								&& t.isValidated();
+					if (!any)
+						return;
+				}
+				int bits = 0;
+				for (int x = box.minX(); x <= box.maxX(); x++)
+					for (int y = box.minY(); y <= box.maxY(); y++)
+						for (int z = box.minZ(); z <= box.maxZ(); z++)
+							if (level.getBlockState(new BlockPos(x, y, z)).is(ChromaBlocks.PISTON_TAPE_BIT.get()))
+								bits++;
+				int expectedBits = 0;
+				for (var st : plan.stages())
+					for (int i = 0; i < st.sliceCount(); i++)
+						expectedBits += st.slice(i).bitCount;
+				helper.assertTrue(bits == expectedBits, "the pistons lost or duplicated tape cells: " + bits + " of " + expectedBits);
+				helper.assertTrue(level.getGameTime() - started[1] >= 70L * (stage.doorCount - 1),
+						"playback validated every door faster than V33a's 70-tick step delay allows");
+				release.run();
+				helper.succeed();
+			}
+		});
+		helper.runAfterDelay(2390, () -> {
+			release.run();
+			StringBuilder sb = new StringBuilder();
+			for (var door : stage.doors()) {
+				boolean any = false;
+				for (int i = 0; i < door.colorCount(); i++)
+					any |= level.getBlockEntity(door.target(i)) instanceof reika.chromaticraft.tileentity.TileEntityPistonTarget t
+							&& t.isValidated();
+				sb.append(any ? '1' : '0');
+			}
+			helper.fail("Filter Cycle stage 0 never validated every door (phase " + phase[0] + ", doors " + sb
+					+ ", " + totalBits + " cells laid)");
 		});
 	}
 

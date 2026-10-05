@@ -254,6 +254,8 @@ public final class ChromaClientRenderers {
 				reika.chromaticraft.render.tesr.RenderFocusCrystal::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.LASER_EFFECTOR.get(),
 				reika.chromaticraft.render.tesr.dimension.RenderLaserTarget::new);
+		event.registerBlockEntityRenderer(ChromaBlockEntities.PISTON_CONTROLLER.get(),
+				reika.chromaticraft.render.tesr.dimension.RenderPistonDisplay::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.ROTATING_LOCK.get(),
 				reika.chromaticraft.render.tesr.dimension.RenderWaterLock::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.FUNCTION_RELAY.get(),
@@ -314,6 +316,9 @@ public final class ChromaClientRenderers {
 		event.registerEntityRenderer(ChromaEntityTypes.CHARGING_TOOL.get(), net.minecraft.client.renderer.entity.ItemEntityRenderer::new);
 		event.registerEntityRenderer(ChromaEntityTypes.LUMA_BURST.get(), RenderLumaBurst::new);
 		event.registerEntityRenderer(ChromaEntityTypes.LASER_PULSE.get(), RenderLaserPulse::new);
+		// V33a RenderPistonSpline returned before drawing anything: the spline is seen only through its trail.
+		event.registerEntityRenderer(ChromaEntityTypes.PISTON_SPLINE.get(),
+				net.minecraft.client.renderer.entity.NoopRenderer::new);
 		event.registerEntityRenderer(ChromaEntityTypes.TUNNEL_NUKER.get(), RenderTunnelNuker::new);
 		event.registerEntityRenderer(ChromaEntityTypes.DATA_CRYSTAL.get(), RenderDataCrystal::new);
 		event.registerEntityRenderer(ChromaEntityTypes.AURORA.get(),

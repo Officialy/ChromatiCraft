@@ -1,0 +1,40 @@
+{
+  "variants": {
+    "facing=down,type=0": {
+      "model": "chromaticraft:block/piston_target_0_y"
+    },
+    "facing=down,type=1": {
+      "model": "chromaticraft:block/piston_target_1_y"
+    },
+    "facing=east,type=0": {
+      "model": "chromaticraft:block/piston_target_0_x"
+    },
+    "facing=east,type=1": {
+      "model": "chromaticraft:block/piston_target_1_x"
+    },
+    "facing=north,type=0": {
+      "model": "chromaticraft:block/piston_target_0_z"
+    },
+    "facing=north,type=1": {
+      "model": "chromaticraft:block/piston_target_1_z"
+    },
+    "facing=south,type=0": {
+      "model": "chromaticraft:block/piston_target_0_z"
+    },
+    "facing=south,type=1": {
+      "model": "chromaticraft:block/piston_target_1_z"
+    },
+    "facing=up,type=0": {
+      "model": "chromaticraft:block/piston_target_0_y"
+    },
+    "facing=up,type=1": {
+      "model": "chromaticraft:block/piston_target_1_y"
+    },
+    "facing=west,type=0": {
+      "model": "chromaticraft:block/piston_target_0_x"
+    },
+    "facing=west,type=1": {
+      "model": "chromaticraft:block/piston_target_1_x"
+    }
+  }
+}

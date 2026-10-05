@@ -1,0 +1,9 @@
+{
+  "variants": {
+    "": {
+      "type": "chromaticraft:special_shield",
+      "texture": "chromaticraft:block/basic/specialshield_7",
+      "unlit": true
+    }
+  }
+}

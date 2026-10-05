@@ -327,6 +327,56 @@ public abstract class ChromaParticle extends SingleQuadParticle {
 		}
 	}
 
+	/**
+	 * V33a {@code EntityPistonSpline.spawnParticle}: one to three alpha-fading, rapid-expanding blurs in the read
+	 * colour around the spline head (FADE_GENTLE, scale 2.25-3.75, a third of them falling), each carrying a
+	 * smaller white FADE blur locked to it.
+	 */
+	public static void spawnPistonSplineTrail(Level world, double x, double y, double z, int color, RandomSource rand) {
+		if (!(world instanceof ClientLevel level)) return;
+		int n = 1 + rand.nextInt(3);
+		double r = 0.125;
+		for (int i = 0; i < n; i++) {
+			int life = 20 + rand.nextInt(41);
+			double px = x + (rand.nextDouble() * 2 - 1) * r;
+			double py = y + (rand.nextDouble() * 2 - 1) * r;
+			double pz = z + (rand.nextDouble() * 2 - 1) * r;
+			float scale = (float)(2.25 + rand.nextDouble() * 1.5);
+			float g = rand.nextInt(3) > 0 ? 0 : (float)(rand.nextDouble() * 0.125);
+			FadeGlow fx = new FadeGlow(level, px, py, pz, 0, 0, 0, color, life, scale, true, null, 0,
+					ChromaIcons.FADE_GENTLE.getIconName(), true).setGravity(g).setAlphaFading();
+			Minecraft.getInstance().particleEngine.add(fx);
+			FadeGlow fx2 = new FadeGlow(level, px, py, pz, 0, 0, 0, 0xffffff, life, scale * 0.72F, true, null, 0,
+					ChromaIcons.FADE.getIconName(), true).setGravity(g).setAlphaFading().lockTo(fx);
+			Minecraft.getInstance().particleEngine.add(fx2);
+		}
+	}
+
+	/**
+	 * V33a {@code PistonDoorTile.receptionParticles}: sixteen stationary EntityCCBlurFX in the receiver's colour on
+	 * the face it looks out of, scale 0.8-1.5, living 10-40 ticks.
+	 */
+	public static void spawnPistonDoorReception(Level world, BlockPos pos, net.minecraft.core.Direction facing, int color) {
+		if (!(world instanceof ClientLevel level)) return;
+		RandomSource rand = level.getRandom();
+		for (int i = 0; i < 16; i++) {
+			double x = pos.getX() + rand.nextDouble();
+			double y = pos.getY() + rand.nextDouble();
+			double z = pos.getZ() + rand.nextDouble();
+			switch (facing) {
+				case DOWN -> y = pos.getY();
+				case UP -> y = pos.getY() + 1;
+				case WEST -> x = pos.getX();
+				case EAST -> x = pos.getX() + 1;
+				case NORTH -> z = pos.getZ();
+				case SOUTH -> z = pos.getZ() + 1;
+			}
+			float s = (float)(0.8 + rand.nextDouble() * 0.7);
+			int l = 10 + rand.nextInt(31);
+			Minecraft.getInstance().particleEngine.add(new FadeGlow(level, x, y, z, 0, 0, 0, color, l, s, false));
+		}
+	}
+
 	/** A rapid-expanding stationary or drifting fade blur with a chosen V33a icon and blend. */
 	public static void spawnIconFade(Level world, double x, double y, double z, double vx, double vy, double vz,
 			int color, int life, float scale, String icon, boolean additive) {

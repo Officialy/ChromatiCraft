@@ -103,6 +103,7 @@ public final class ChromaBlockTagsProvider extends BlockTagsProvider {
 		pickaxe.add(ChromaBlocks.MUSIC_MEMORY.getKey());
 		pickaxe.add(ChromaBlocks.GOL_TILE.getKey(), ChromaBlocks.GOL_CONTROLLER.getKey());
 		ChromaBlocks.SHIELDING.values().forEach(block -> pickaxe.add(block.getKey()));
+		ChromaBlocks.SPECIAL_SHIELDING.values().forEach(block -> pickaxe.add(block.getKey()));
 		// V33a requiresPickaxe is only true for some of the decoration; the rest breaks by hand, so
 		// only those go in the pickaxe tag.
 		for (reika.chromaticraft.registry.ProximaDecoTypes type

@@ -10514,3 +10514,38 @@ lock back, and confirms the fluid runs the path, opens the trapdoors and drops t
 floor 1's start channel. It passes. Census: 15 of 3,900 floors (300 seeds × 3 difficulties) have no checkpoint.
 Such a floor counts as solved from the start, so its trapdoors never open and only the structure bypass helps.
 That soft-lock is faithful V33a behaviour and is deliberately not fixed.
+
+## 2026-10-05 — Special shields and Filter Cycle (PISTONTAPE)
+
+**`BlockSpecialShield26` (V33a SPECIALSHIELD, "Shielding Stone Variant")** is ported as shared infrastructure:
+Shifting Maze, Crystal Interference and Complex Spaces also build with it.
+- **Materials:** five are registered (`special_shielding_<type>`): Cloak, Stone, Cobble, Glass and Cracks, the only ones the V33a jar has art for and the only ones upstream places.
+- **Rules:** it inherits every `BlockStructureShield` rule and drops the plain structure shield.
+- **`SpecialShieldModel`** ports `SpecialShieldRenderer` with DragonAPI's `EdgeDetectionRenderer`:
+  - 0.5/1/0.8/0.65 face shading; Cloak, Stone and Cracks unlit;
+  - Cobble's two alternating overlays;
+  - Cloak/Stone edge glints with the upstream wildcard neighbour match, keeping its side-0 occlusion-probe quirk.
+- **Deferred:** `onNeighborBlockChange → generator.onBlockUpdate` is used only by RAYBLEND, so it lands with that puzzle.
+- **`EntityLaserPulse` corrected:** V33a lets a pulse pass only *special-shield* glass; the port had used structure-shield glass. Laser tests still pass.
+
+**Filter Cycle** is admitted to the assignment pool.
+- **`PistonTapePlan`** transcribes `PistonTapeGenerator.calculate` and every piece once, against a sink:
+  - stages, entry areas, tape areas, loops and slices;
+  - access halls, door sections (with escape shift-locks and mineshaft chests), staircases;
+  - the encrusted-crystal vault with its core and 27 breakable plates, and the entrance shaft.
+
+  A dry run records every runtime position and the bounds; the piece replays it per chunk. The entrance and the crystal growth used `world.rand` upstream and use a per-position seed here.
+- **Blocks:**
+  - `BlockPistonTapeBit26` ("Filter Bit", the 0–8 metadata as BIT). It keeps hardness 0 because vanilla pistons refuse destroy-speed −1 blocks, and refuses mining by `getDestroyProgress` (V33a's SemiUnbreakable). Only players collide with it, and it filters pulses.
+  - `BlockPistonTarget26`: read head / door receiver, with an overlay tinted from state.
+  - `BlockPistonController26`: playback / fire / step / display.
+- **Pistons:** they are vanilla. DragonAPI gains `ReikaBlockHelper.extendPiston`, which mirrors 26.3's own extend branch by reflecting `moveBlocks` (upstream reflected `tryExtend`); the unpowered piston retracts itself as before.
+- **Persisted state (deliberate):** the tape's half-cycle state lives in the playback tile and door validation in each receiver, so both survive restarts. V33a kept them in generator memory.
+- **Spline:** `EntitySplineProjectile` and `EntityPistonSpline` are ported. The entity renderer is a no-op, as upstream's returned immediately, and the trail particles are ported.
+- **Display:** `RenderPistonDisplay` (BER) draws the door table with numbers.
+
+**Tests:**
+- `piston_tape_plan`: determinism, the colour rules, the intersection invariant, closed rings, 27 breakables.
+- `piston_tape_playback`: places the whole structure and lays V33a's debug solution. The Fire control opens door 0 through a real beam, read head and spline. Playback then pistons the tape through every step until all stage-0 doors validate, with every tape cell conserved and V33a's step timing respected.
+
+`proxima_structure_placement` now includes PISTONTAPE. Unverified: in-client visuals and a natural Proxima walk-through.

@@ -418,11 +418,14 @@ public class ChromaLang extends LanguageProvider {
 		add(ChromaBlocks.MUSIC_TRIGGER.get(), "Crystal Music Trigger");
 		add(ChromaBlocks.MUSIC_MEMORY.get(), "Melody Memory");
 		add(ChromaBlocks.GOL_TILE.get(), "Cellular Automata Cell");
+		add(ChromaBlocks.PISTON_TAPE_BIT.get(), "Filter Bit");
 		add(ChromaBlocks.GOL_CONTROLLER.get(), "Cellular Automata Controller");
 		add(ChromaBlocks.BIOME_REPLAY.get(), "Melody Replay Pedestal");
 		for (ChromaShieldTypes type : ChromaShieldTypes.list) {
 			add(ChromaBlocks.shielding(type).get(), type.displayName());
 		}
+		// V33a chroma.specialshield: one name for every material.
+		ChromaBlocks.SPECIAL_SHIELDING.values().forEach(block -> add(block.get(), "Shielding Stone Variant"));
 		for (reika.chromaticraft.registry.ProximaDecoTypes deco
 				: reika.chromaticraft.registry.ProximaDecoTypes.list)
 			add(ChromaBlocks.deco(deco).get(), deco.displayName());

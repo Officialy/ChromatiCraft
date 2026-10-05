@@ -74,7 +74,7 @@ public final class EntityLaserPulse extends ParticleEntity {
 	@Override
 	protected boolean onEnterBlock(Level world, BlockPos pos) {
 		BlockState state = world.getBlockState(pos);
-		if (state.isAir() || state.is(ChromaBlocks.shielding(ChromaShieldTypes.GLASS).get()))
+		if (state.isAir() || state.is(ChromaBlocks.specialShielding(ChromaShieldTypes.GLASS).get()))
 			return false;
 
 		BlockEntity blockEntity = world.getBlockEntity(pos);

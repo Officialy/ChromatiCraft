@@ -430,6 +430,10 @@ public final class ChromaLootProvider extends LootTableProvider {
 					// V33a World Rift: unbreakable and itemless; only the Manipulator's sneak-pop drops the World Rift item.
 					this.add(block, noDrop());
 				}
+				else if (block instanceof reika.chromaticraft.block.dimension.structure.BlockSpecialShield26 special) {
+					// V33a getItemDropped: the plain structure shield of the same material.
+					this.dropOther(block, ChromaBlocks.shielding(special.getShieldType()).get());
+				}
 				else if (block instanceof BlockStructureShield) {
 					// V33a damageDropped = meta % 8: a reinforced shield yields the plain form of the
 					// same material, and the plain form drops itself.

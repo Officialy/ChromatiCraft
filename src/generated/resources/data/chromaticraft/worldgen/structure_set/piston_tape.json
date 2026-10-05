@@ -1,0 +1,11 @@
+{
+  "placement": {
+    "type": "chromaticraft:piston_tape"
+  },
+  "structures": [
+    {
+      "structure": "chromaticraft:piston_tape",
+      "weight": 1
+    }
+  ]
+}

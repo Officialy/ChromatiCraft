@@ -9,136 +9,165 @@
  ******************************************************************************/
 package reika.chromaticraft.render.tesr.dimension;
 
+import java.util.ArrayList;
 import java.util.List;
 
-import org.lwjgl.opengl.GL11;
+import org.jspecify.annotations.Nullable;
 
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.FontRenderer;
-import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraftforge.client.MinecraftForgeClient;
-import net.minecraftforge.common.util.ForgeDirection;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.math.Axis;
 
-import reika.chromaticraft.base.ChromaRenderBase;
-import reika.chromaticraft.block.dimension.structure.pistontape.blockpistoncontroller.TilePistonDisplay;
-import reika.chromaticraft.world.dimension.structure.pistontape.DoorKey;
-import reika.dragonapi.interfaces.tileentity.RenderFetcher;
-import reika.dragonapi.libraries.java.reikaglhelper.BlendMode;
-import reika.dragonapi.libraries.rendering.ReikaRenderHelper;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
+import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
+import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
+import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.core.Direction;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 
-public class RenderPistonDisplay extends ChromaRenderBase {
+import reika.chromaticraft.render.ChromaRenderPipelines;
+import reika.chromaticraft.tileentity.TileEntityPistonController;
+import reika.chromaticraft.world.dimension.structure.PistonTapePlan;
 
-	@Override
-	public String getImageFileName(RenderFetcher te) {
-		return null;
+/**
+ * V33a {@code RenderPistonDisplay}, for the Tape Data Display controller: a black 2.5-block panel on its front
+ * with one row per door, each row the door's expected colours (pulsing slightly, solid on the step being
+ * played) followed by its number, white on the active step and grey otherwise. Drawn unlit with alpha blending.
+ */
+public final class RenderPistonDisplay implements BlockEntityRenderer<TileEntityPistonController, RenderPistonDisplay.State> {
+
+	private final Font font;
+
+	public RenderPistonDisplay(BlockEntityRendererProvider.Context context) {
+		font = context.font();
 	}
 
 	@Override
-	public void renderTileEntityAt(TileEntity tile, double par2, double par4, double par6, float par8) {
-		TilePistonDisplay te = (TilePistonDisplay)tile;
-		if (MinecraftForgeClient.getRenderPass() != 1)
-			return;
-		GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
-		GL11.glPushMatrix();
-		GL11.glTranslated(par2, par4, par6);
-		GL11.glEnable(GL11.GL_BLEND);
-		GL11.glDisable(GL11.GL_LIGHTING);
-		ReikaRenderHelper.disableEntityLighting();
-		//GL11.glDisable(GL11.GL_CULL_FACE);
-		GL11.glDepthMask(false);
-		BlendMode.DEFAULT.apply();
-		GL11.glDisable(GL11.GL_ALPHA_TEST);
-		this.renderDisplay(te);
-		GL11.glPopMatrix();
-		GL11.glPopAttrib();
+	public State createRenderState() {
+		return new State();
 	}
 
-	private void renderDisplay(TilePistonDisplay te) {
-		ForgeDirection dir = te.getFacing();
-		List<DoorKey> li = te.getDisplayList();
-		if (li.isEmpty())
+	@Override
+	public void extractRenderState(TileEntityPistonController te, State state, float partialTick, Vec3 cameraPosition,
+			ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress) {
+		BlockEntityRenderer.super.extractRenderState(te, state, partialTick, cameraPosition, breakProgress);
+		state.visible = te.type() == 3;
+		state.facing = te.facing();
+		state.doors.clear();
+		if (state.visible)
+			for (PistonTapePlan.DoorKey key : te.displayList()) {
+				int[] colors = new int[key.colorCount()];
+				for (int i = 0; i < colors.length; i++)
+					colors[i] = key.color(i).getRenderColor();
+				state.doors.add(new Row(key.value, colors, key.index));
+			}
+		state.active = te.isDisplayActive();
+		state.activeDoor = te.activeDoor();
+	}
+
+	@Override
+	public void submit(State state, PoseStack poseStack, SubmitNodeCollector collector, CameraRenderState camera) {
+		if (!state.visible || state.doors.isEmpty())
 			return;
-		//double s = 0.5;//0.75;//1.5;
-		double tw = 1.25;//1;
-		double th = 1.25;//0.5;
-		double o = 0.03125/2;
-		double y2 = +th-o;
-		double y1 = -th+o;
-		double dy = (y2-y1)/li.size();
+		double tw = 1.25;
+		double th = 1.25;
+		double o = 0.03125 / 2;
+		double y2 = th - o;
+		double y1 = -th + o;
+		double dy = (y2 - y1) / state.doors.size();
 		double y = y2;
-		GL11.glTranslated(0.5, 0.5, -o);
-		GL11.glRotated(180, 0, 0, 1);
-		switch(dir) {
-			case NORTH:
-				break;
-			case SOUTH:
-				GL11.glRotated(180, 0, 1, 0);
-				GL11.glTranslated(0, 0, -1-o*2);
-				break;
-			case WEST:
-				GL11.glRotated(270, 0, 1, 0);
-				GL11.glTranslated(tw/2, 0, -0.5-o);
-				break;
-			case EAST:
-				GL11.glRotated(90, 0, 1, 0);
-				GL11.glTranslated(-tw/2, 0, -0.5-o);
-				break;
-			default:
-				break;
+		poseStack.pushPose();
+		poseStack.translate(0.5, 0.5, -o);
+		poseStack.rotate(Axis.ZP.rotationDegrees(180));
+		switch (state.facing) {
+			case SOUTH -> {
+				poseStack.rotate(Axis.YP.rotationDegrees(180));
+				poseStack.translate(0, 0, -1 - o * 2);
+			}
+			case WEST -> {
+				poseStack.rotate(Axis.YP.rotationDegrees(270));
+				poseStack.translate(tw / 2, 0, -0.5 - o);
+			}
+			case EAST -> {
+				poseStack.rotate(Axis.YP.rotationDegrees(90));
+				poseStack.translate(-tw / 2, 0, -0.5 - o);
+			}
+			default -> {}
 		}
-		Tessellator v5 = Tessellator.instance;
-		GL11.glDisable(GL11.GL_TEXTURE_2D);
-		v5.startDrawingQuads();
-		v5.setColorRGBA_I(0x0, 255);
-		v5.addVertex(-tw, th, 0);
-		v5.addVertex(tw, th, 0);
-		v5.addVertex(tw, -th, 0);
-		v5.addVertex(-tw, -th, 0);
-		v5.draw();
-		double pad = o*0.5;
-		double gap = 0.03125/2;
-		for (int door = 0; door < li.size(); door++) {
-			DoorKey d = li.get(door);
-			boolean active = te.isActive() && te.getActiveDoor() == door;
-			GL11.glPushMatrix();
-			GL11.glTranslated(0, -y, 0);
-			double sw = 0.0625+0.03125*(d.colorCount-1);
-			GL11.glDisable(GL11.GL_TEXTURE_2D);
-			v5.startDrawingQuads();
-			double x = 0;
-			double h = th*2/li.size()-gap;
-			double w = (tw*2/d.colorCount)*(1-sw)-pad/(d.colorCount*2)-gap;
-			for (int i = 0; i < d.colorCount; i++) {
-				double ox = pad+i*w-tw+gap*d.colorCount/2D;
-				double t = System.identityHashCode(d)*2.8734+i*3.47820+System.currentTimeMillis()/300D;
-				int a = active ? 255 : 230+(int)(25*Math.sin(t));
-				v5.setColorRGBA_I(d.getValue(i).getRenderColor(), a);
-				v5.addVertex(ox, h, 0);
-				v5.addVertex(w+ox, h, 0);
-				v5.addVertex(w+ox, 0, 0);
-				v5.addVertex(ox, 0, 0);
+		PoseStack.Pose backing = poseStack.last().copy();
+		collector.submitCustomGeometry(poseStack, ChromaRenderPipelines.translucentColorTriangles(),
+				(unused, out) -> quad(backing, out, -tw, th, tw, -th, 0xff000000));
+		double pad = o * 0.5;
+		double gap = 0.03125 / 2;
+		for (Row d : state.doors) {
+			boolean active = state.active && state.activeDoor == d.index();
+			int count = d.colors().length;
+			poseStack.pushPose();
+			poseStack.translate(0, -y, 0);
+			double sw = 0.0625 + 0.03125 * (count - 1);
+			double h = th * 2 / state.doors.size() - gap;
+			double w = (tw * 2 / count) * (1 - sw) - pad / (count * 2) - gap;
+			PoseStack.Pose rowPose = poseStack.last().copy();
+			List<double[]> rects = new ArrayList<>(count);
+			for (int i = 0; i < count; i++) {
+				double ox = pad + i * w - tw + gap * count / 2D;
+				double t = d.index() * 2.8734 + i * 3.47820 + System.currentTimeMillis() / 300D;
+				int a = active ? 255 : 230 + (int)(25 * Math.sin(t));
+				rects.add(new double[] {ox, h, w + ox, 0, ((long)a << 24 | (d.colors()[i] & 0xffffff))});
 			}
-			v5.draw();
-			GL11.glEnable(GL11.GL_TEXTURE_2D);
-			GL11.glColor4f(1, 1, 1, 1);
-			double fs = 0.03125*Math.min(tw, th)/1.5/2;
-			GL11.glScaled(fs, fs, fs);
-			FontRenderer fr = Minecraft.getMinecraft().fontRenderer;
-			String sg = String.valueOf(d.value);
-			while(sg.length() < d.colorCount) {
-				sg = "0"+sg;
-			}
+			collector.submitCustomGeometry(poseStack, ChromaRenderPipelines.translucentColorTriangles(),
+					(unused, out) -> {
+						for (double[] r : rects)
+							quad(rowPose, out, r[0], r[1], r[2], r[3], (int)(long)r[4]);
+					});
+			double fs = 0.03125 * Math.min(tw, th) / 1.5 / 2;
+			poseStack.scale((float)fs, (float)fs, (float)fs);
+			StringBuilder sg = new StringBuilder(String.valueOf(d.value()));
+			while (sg.length() < count)
+				sg.insert(0, '0');
 			double ds = Math.max(tw, th);
-			double ox = -(d.colorCount-3)/fs*0.275-0.25/fs;
-			if (d.colorCount == 4) {
-				ox += 0.175/fs;
-			}
-			GL11.glTranslated(-fr.getStringWidth(sg)/2D+(1-sw)*w/fs+sw*1.35/fs*ds-ox, fr.FONT_HEIGHT/2D*ds*1.35, 0);
-			//GL11.glTranslated((1-sw)/fs*0.9375-ox, fr.FONT_HEIGHT/2D*ds, 0);
-			fr.drawString(sg, 0, 0, active ? 0xffffff : 0xb0b0b0);
+			double ox = -(count - 3) / fs * 0.275 - 0.25 / fs;
+			if (count == 4)
+				ox += 0.175 / fs;
+			var text = Component.literal(sg.toString()).getVisualOrderText();
+			poseStack.translate(-font.width(text) / 2D + (1 - sw) * w / fs + sw * 1.35 / fs * ds - ox,
+					font.lineHeight / 2D * ds * 1.35, 0);
+			collector.submitText(poseStack, 0, 0, text, false, Font.DisplayMode.POLYGON_OFFSET, 15728880,
+					active ? 0xffffffff : 0xffb0b0b0, 0, 0);
 			y -= dy;
-			GL11.glPopMatrix();
+			poseStack.popPose();
 		}
+		poseStack.popPose();
+	}
+
+	/** One flat quad as two triangles, at z = 0 in the pose. */
+	private static void quad(PoseStack.Pose pose, VertexConsumer out, double x1, double y1, double x2, double y2, int argb) {
+		float ax = (float)x1, ay = (float)y1, bx = (float)x2, by = (float)y2;
+		out.addVertex(pose, ax, ay, 0).setColor(argb);
+		out.addVertex(pose, bx, ay, 0).setColor(argb);
+		out.addVertex(pose, bx, by, 0).setColor(argb);
+		out.addVertex(pose, ax, ay, 0).setColor(argb);
+		out.addVertex(pose, bx, by, 0).setColor(argb);
+		out.addVertex(pose, ax, by, 0).setColor(argb);
+	}
+
+	@Override
+	public AABB getRenderBoundingBox(TileEntityPistonController te) {
+		return new AABB(te.getBlockPos()).inflate(3);
+	}
+
+	private record Row(int value, int[] colors, int index) {}
+
+	public static final class State extends BlockEntityRenderState {
+		private boolean visible;
+		private Direction facing = Direction.NORTH;
+		private final List<Row> doors = new ArrayList<>();
+		private boolean active;
+		private int activeDoor;
 	}
 }

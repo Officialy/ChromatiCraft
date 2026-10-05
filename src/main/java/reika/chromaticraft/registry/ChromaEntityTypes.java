@@ -72,6 +72,12 @@ public final class ChromaEntityTypes {
 					.<reika.chromaticraft.entity.EntityFlyingLight>of(reika.chromaticraft.entity.EntityFlyingLight::new, MobCategory.MISC)
 					.sized(0.125F, 0.125F).clientTrackingRange(64).updateInterval(1));
 
+	/** V33a Filter Cycle read result, carried along a spline to a door receiver. */
+	public static final DeferredHolder<EntityType<?>, EntityType<reika.chromaticraft.entity.EntityPistonSpline>> PISTON_SPLINE =
+			register("piston_spline", () -> EntityType.Builder
+					.<reika.chromaticraft.entity.EntityPistonSpline>of(reika.chromaticraft.entity.EntityPistonSpline::new, MobCategory.MISC)
+					.sized(0.125F, 0.125F).clientTrackingRange(128).updateInterval(1).noSummon());
+
 	/** V33a Chromatic Beams travelling pulse; effectors create replacement pulses server-side. */
 	public static final DeferredHolder<EntityType<?>, EntityType<EntityLaserPulse>> LASER_PULSE =
 			register("laser_pulse", () -> EntityType.Builder

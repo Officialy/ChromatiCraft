@@ -1,0 +1,31 @@
+{
+  "variants": {
+    "bit=0": {
+      "model": "chromaticraft:block/piston_tape_bit_zero"
+    },
+    "bit=1": {
+      "model": "chromaticraft:block/piston_tape_bit_one"
+    },
+    "bit=2": {
+      "model": "chromaticraft:block/piston_tape_bit_zero"
+    },
+    "bit=3": {
+      "model": "chromaticraft:block/piston_tape_bit_one"
+    },
+    "bit=4": {
+      "model": "chromaticraft:block/piston_tape_bit_zero"
+    },
+    "bit=5": {
+      "model": "chromaticraft:block/piston_tape_bit_one"
+    },
+    "bit=6": {
+      "model": "chromaticraft:block/piston_tape_bit_one"
+    },
+    "bit=7": {
+      "model": "chromaticraft:block/piston_tape_bit_one"
+    },
+    "bit=8": {
+      "model": "chromaticraft:block/piston_tape_bit_one"
+    }
+  }
+}

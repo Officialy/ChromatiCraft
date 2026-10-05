@@ -40,6 +40,8 @@ public final class ChromaBlockStateModels {
 				reika.chromaticraft.render.model.SparkleModel.Unbaked.CODEC);
 		event.registerModel(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "laser_effector"),
 				reika.chromaticraft.render.model.LaserEffectorModel.Unbaked.CODEC);
+		event.registerModel(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "special_shield"),
+				reika.chromaticraft.render.model.SpecialShieldModel.Unbaked.CODEC);
 		event.registerModel(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "ever_fluid"),
 				reika.chromaticraft.render.model.EverFluidModel.Unbaked.CODEC);
 	}

@@ -1,127 +1,120 @@
+/*******************************************************************************
+ * @author Reika Kalseki
+ *
+ * Copyright 2017
+ *
+ * All rights reserved.
+ * Distribution of the software in any form is only allowed with
+ * explicit, prior permission from the owner.
+ ******************************************************************************/
 package reika.chromaticraft.entity;
 
-import net.minecraft.block.Block;
-import net.minecraft.client.Minecraft;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializers;
+import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 
-import reika.chromaticraft.block.dimension.structure.pistontape.BlockPistonTarget;
+import reika.chromaticraft.block.dimension.structure.pistontape.BlockPistonTarget26;
 import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaIcons;
+import reika.chromaticraft.registry.ChromaEntityTypes;
 import reika.chromaticraft.registry.ChromaSounds;
-import reika.chromaticraft.render.particle.EntityCCBlurFX;
+import reika.chromaticraft.render.particle.ChromaParticle;
 import reika.dragonapi.instantiable.RGBColorData;
-import reika.dragonapi.instantiable.data.immutable.Coordinate;
 import reika.dragonapi.instantiable.math.Spline;
-import reika.dragonapi.libraries.io.ReikaSoundHelper;
-import reika.dragonapi.libraries.java.ReikaRandomHelper;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
-import io.netty.buffer.ByteBuf;
+/**
+ * V33a {@code EntityPistonSpline}: Filter Cycle's read result, carried along a spline from a read head to the
+ * door target of the step being played, in the colour the tape filtered the beam to. It is drawn only by its
+ * trail (the V33a entity renderer returned before drawing anything) and hums every two seconds.
+ */
+public final class EntityPistonSpline extends EntitySplineProjectile {
 
-public class EntityPistonSpline extends EntitySplineProjectile {
+	private static final EntityDataAccessor<Byte> COLOR = SynchedEntityData.defineId(EntityPistonSpline.class,
+			EntityDataSerializers.BYTE);
 
-	public RGBColorData color = RGBColorData.white();
+	private RGBColorData color = RGBColorData.white();
 
-	public EntityPistonSpline(World world, Spline s, RGBColorData clr) {
-		super(world, s, 20);
-		color = clr;
+	public EntityPistonSpline(Level world, Spline s, RGBColorData clr) {
+		super(ChromaEntityTypes.PISTON_SPLINE.get(), world, s, 20);
+		color = clr.copy();
+		this.entityData.set(COLOR, pack(color));
 	}
 
-	public EntityPistonSpline(World world) {
-		super(world);
+	public EntityPistonSpline(EntityType<? extends EntityPistonSpline> type, Level world) {
+		super(type, world);
 	}
 
 	@Override
-	protected void entityInit() {
-		super.entityInit();
-		dataWatcher.addObject(24, 0);
-		dataWatcher.addObject(25, 0);
-		dataWatcher.addObject(26, 0);
+	protected void defineSynchedData(SynchedEntityData.Builder builder) {
+		builder.define(COLOR, pack(RGBColorData.white()));
+	}
+
+	private static byte pack(RGBColorData c) {
+		return (byte)((c.red ? 4 : 0) | (c.green ? 2 : 0) | (c.blue ? 1 : 0));
+	}
+
+	private static RGBColorData unpack(byte b) {
+		return new RGBColorData((b & 4) != 0, (b & 2) != 0, (b & 1) != 0);
+	}
+
+	public RGBColorData color() {
+		return color.copy();
 	}
 
 	@Override
 	protected void onTick() {
 		super.onTick();
-		if (!worldObj.isRemote) {
-			dataWatcher.updateObject(24, color.red ? 1 : 0);
-			dataWatcher.updateObject(25, color.green ? 1 : 0);
-			dataWatcher.updateObject(26, color.blue ? 1 : 0);
+		if (!this.level().isClientSide()) {
+			this.entityData.set(COLOR, pack(color));
 		}
 		else {
-			color.red = dataWatcher.getWatchableObjectInt(24) > 0;
-			color.green = dataWatcher.getWatchableObjectInt(25) > 0;
-			color.blue = dataWatcher.getWatchableObjectInt(26) > 0;
-			this.spawnParticle();
-			if (ticksExisted%40 == 0)
-				ReikaSoundHelper.playClientSound(ChromaSounds.FIRE, this, 0.3F, 0.5F);
-		}
-	}
-
-	@SideOnly(Side.CLIENT)
-	private void spawnParticle() {
-		Minecraft mc = Minecraft.getMinecraft();
-		int n = ReikaRandomHelper.getRandomBetween(1, 3);
-		double r = 0.125;
-		for (int i = 0; i < n; i++) {
-			int l = ReikaRandomHelper.getRandomBetween(20, 60);
-			double px = ReikaRandomHelper.getRandomPlusMinus(posX, r);
-			double py = ReikaRandomHelper.getRandomPlusMinus(posY, r);
-			double pz = ReikaRandomHelper.getRandomPlusMinus(posZ, r);
-			float s = (float)ReikaRandomHelper.getRandomBetween(2.25, 3.75);
-			float g = rand.nextInt(3) > 0 ? 0 : (float)ReikaRandomHelper.getRandomBetween(0, 0.125);
-			int c = color.getRenderColor();//ReikaColorAPI.mixColors(color.getRenderColor(), 0xffffff, 0.75F);
-			EntityCCBlurFX fx = new EntityCCBlurFX(worldObj, px, py, pz);
-			fx.setColor(c).setLife(l).setScale(s).setGravity(g);
-			fx.setIcon(ChromaIcons.FADE_GENTLE).setAlphaFading().setRapidExpand().forceIgnoreLimits();
-			mc.effectRenderer.addEffect(fx);
-
-			EntityCCBlurFX fx2 = new EntityCCBlurFX(worldObj, px, py, pz);
-			fx2.setColor(0xffffff).setLife(l).setScale(s*0.72F).setGravity(g).forceIgnoreLimits();
-			fx2.setIcon(ChromaIcons.FADE).setAlphaFading().setRapidExpand();
-			fx2.lockTo(fx);
-			mc.effectRenderer.addEffect(fx2);
+			color = unpack(this.entityData.get(COLOR));
+			ChromaParticle.spawnPistonSplineTrail(this.level(), this.getX(), this.getY(), this.getZ(),
+					color.getRenderColor(), this.random);
+			if (this.tickCount % 40 == 0)
+				ChromaSounds.FIRE.playSound(this.level(), this.getX(), this.getY(), this.getZ(), 0.3F, 0.5F);
 		}
 	}
 
 	@Override
-	protected void readEntityFromNBT(NBTTagCompound tag) {
-		super.readEntityFromNBT(tag);
-		color = RGBColorData.white();
-		color.readFromNBT(tag);
+	protected void readAdditionalSaveData(ValueInput input) {
+		super.readAdditionalSaveData(input);
+		color = unpack((byte)input.getIntOr("rgb", 7));
 	}
 
 	@Override
-	protected void writeEntityToNBT(NBTTagCompound tag) {
-		super.writeEntityToNBT(tag);
-		color.writeToNBT(tag);
+	protected void addAdditionalSaveData(ValueOutput output) {
+		super.addAdditionalSaveData(output);
+		output.putInt("rgb", pack(color));
 	}
 
 	@Override
-	public void writeSpawnData(ByteBuf data) {
+	public void writeSpawnData(RegistryFriendlyByteBuf data) {
 		super.writeSpawnData(data);
-		color.writeBuf(data);
+		data.writeByte(pack(color));
 	}
 
 	@Override
-	public void readSpawnData(ByteBuf data) {
+	public void readSpawnData(RegistryFriendlyByteBuf data) {
 		super.readSpawnData(data);
-		color = RGBColorData.white();
-		color.readBuf(data);
+		color = unpack(data.readByte());
 	}
 
+	/** V33a: absorbed only by the door target at the very end of its path. */
 	@Override
-	protected boolean onEnterBlock(World world, int x, int y, int z) {
-		Block b = world.getBlock(x, y, z);
-		if (b == ChromaBlocks.PISTONTARGET.getBlockInstance()) {
-			Coordinate end = this.getFinalPathBlock();
-			if (end != null && end.equals(x, y, z)) {
-				((BlockPistonTarget)b).receiveSplineParticle(world, x, y, z, this);
+	protected boolean onEnterBlock(Level world, BlockPos pos) {
+		if (world.getBlockState(pos).is(ChromaBlocks.PISTON_TARGET.get())) {
+			BlockPos end = this.getFinalPathBlock();
+			if (end != null && end.equals(pos)) {
+				BlockPistonTarget26.receiveSplineParticle(world, pos, this);
 				return true;
 			}
 		}
-		return false;//!b.isAir(world, x, y, z);
+		return false;
 	}
-
 }

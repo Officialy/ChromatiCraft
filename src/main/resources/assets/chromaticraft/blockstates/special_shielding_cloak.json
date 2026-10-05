@@ -1,0 +1,15 @@
+{
+  "variants": {
+    "": {
+      "type": "chromaticraft:special_shield",
+      "texture": "chromaticraft:block/basic/specialshield_0",
+      "edges": [
+        "chromaticraft:block/basic/side0",
+        "chromaticraft:block/basic/side1",
+        "chromaticraft:block/basic/side2",
+        "chromaticraft:block/basic/side3"
+      ],
+      "unlit": true
+    }
+  }
+}

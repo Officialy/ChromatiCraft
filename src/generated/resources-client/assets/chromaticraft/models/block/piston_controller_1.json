@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/orientable",
+  "textures": {
+    "front": "chromaticraft:block/dimstruct/piston_control_fire",
+    "side": "chromaticraft:block/dimstruct/piston_control",
+    "top": "chromaticraft:block/dimstruct/piston_control"
+  }
+}

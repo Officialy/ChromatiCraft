@@ -1,0 +1,12 @@
+{
+  "variants": {
+    "": {
+      "type": "chromaticraft:special_shield",
+      "texture": "chromaticraft:block/basic/specialshield_2",
+      "overlays": [
+        "chromaticraft:block/basic/specialshield_2a",
+        "chromaticraft:block/basic/specialshield_2b"
+      ]
+    }
+  }
+}

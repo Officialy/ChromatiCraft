@@ -70,6 +70,8 @@ public final class ProximaStructures {
 			LASER_TYPE = TYPES.register("laser", () -> () -> ProximaLaserStructure.CODEC);
 	public static final DeferredHolder<StructureType<?>, StructureType<ProximaWaterStructure>>
 			WATER_TYPE = TYPES.register("water", () -> () -> ProximaWaterStructure.CODEC);
+	public static final DeferredHolder<StructureType<?>, StructureType<ProximaPistonTapeStructure>>
+			PISTONTAPE_TYPE = TYPES.register("piston_tape", () -> () -> ProximaPistonTapeStructure.CODEC);
 
 	public static final DeferredHolder<StructureType<?>, StructureType<PortalStructureCommand>>
 			PORTAL_TYPE = TYPES.register("portal", () -> () -> PortalStructureCommand.CODEC);
@@ -128,6 +130,9 @@ public final class ProximaStructures {
 	public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends net.minecraft.world.level.levelgen.structure.placement.StructurePlacement>,
 			com.mojang.serialization.MapCodec<WaterPlacement>>
 			WATER_PLACEMENT = PLACEMENTS.register("water", () -> WaterPlacement.CODEC);
+	public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends net.minecraft.world.level.levelgen.structure.placement.StructurePlacement>,
+			com.mojang.serialization.MapCodec<PistonTapePlacement>>
+			PISTONTAPE_PLACEMENT = PLACEMENTS.register("piston_tape", () -> PistonTapePlacement.CODEC);
 
 	public static final ResourceKey<Structure> MONUMENT = ResourceKey.create(Registries.STRUCTURE,
 			Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "monument"));
@@ -166,6 +171,11 @@ public final class ProximaStructures {
 	public static final ResourceKey<net.minecraft.world.level.levelgen.structure.StructureSet>
 			WATER_SET = ResourceKey.create(Registries.STRUCTURE_SET,
 					Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "water"));
+	public static final ResourceKey<Structure> PISTONTAPE = ResourceKey.create(Registries.STRUCTURE,
+			Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "piston_tape"));
+	public static final ResourceKey<net.minecraft.world.level.levelgen.structure.StructureSet>
+			PISTONTAPE_SET = ResourceKey.create(Registries.STRUCTURE_SET,
+					Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "piston_tape"));
 
 	private ProximaStructures() {}
 }

@@ -48,8 +48,8 @@ public final class TileEntityLaserEffector extends BlockEntity implements LaserP
 		super(ChromaBlockEntities.LASER_EFFECTOR.get(), pos, state);
 	}
 
-	public void configure(Effector effector, BlockPos controller) {
-		controllerPos = controller.immutable();
+	public void configure(Effector effector, @Nullable BlockPos controller) {
+		controllerPos = controller == null ? null : controller.immutable();
 		color = new BeamColor(effector.red(), effector.green(), effector.blue());
 		rotateable = effector.rotateable();
 		fixed = effector.fixed();

@@ -120,6 +120,18 @@ public final class ChromaBlockColors {
         }
     };
 
+	private static final BlockTintSource PISTON_BIT = new BlockTintSource() {
+		@Override public int color(BlockState state) {
+			return reika.chromaticraft.block.dimension.structure.pistontape.BlockPistonTapeBit26.tint(state);
+		}
+		@Override public int colorInWorld(BlockState state, BlockAndTintGetter level, BlockPos pos) { return color(state); }
+	};
+	private static final BlockTintSource PISTON_TARGET = new BlockTintSource() {
+		@Override public int color(BlockState state) {
+			return reika.chromaticraft.block.dimension.structure.pistontape.BlockPistonTarget26.tint(state);
+		}
+		@Override public int colorInWorld(BlockState state, BlockAndTintGetter level, BlockPos pos) { return color(state); }
+	};
 	private static final BlockTintSource HOVER = new BlockTintSource() {
 		@Override public int color(BlockState state) { return BlockHoverBlock.tint(state); }
 		@Override public int colorInWorld(BlockState state, BlockAndTintGetter level, BlockPos pos) {
@@ -237,6 +249,8 @@ public final class ChromaBlockColors {
                 .toArray(net.minecraft.world.level.block.Block[]::new));
         event.register(List.of(RAINBOW_LEAF), ChromaBlocks.RAINBOW_LEAVES.get());
 		event.register(List.of(HOVER), ChromaBlocks.HOVER.get());
+		event.register(List.of(PISTON_BIT), ChromaBlocks.PISTON_TAPE_BIT.get());
+		event.register(List.of(PISTON_TARGET), ChromaBlocks.PISTON_TARGET.get());
         event.register(List.of(CRYSTAL_LEAF), ChromaBlocks.deco(
                 reika.chromaticraft.registry.ProximaDecoTypes.CRYSTALLEAF).get());
         event.register(List.of(DIMENSION_CORE), ChromaBlocks.DIMENSION_CORES.values().stream()

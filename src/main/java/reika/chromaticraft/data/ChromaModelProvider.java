@@ -375,6 +375,7 @@ public class ChromaModelProvider extends ModelProvider {
 		lootChestModel(blockStateOut, itemModelOut, modelOut);
 		dummyAuxModel(blockStateOut, modelOut);
 		shieldingBlocks(blockStateOut, itemModelOut, modelOut);
+		specialShieldItems(itemModelOut, modelOut);
 		dimensionDecoBlocks(blockStateOut, itemModelOut, modelOut);
 		glowTreeBlocks(blockStateOut, itemModelOut, modelOut);
 		trapFloorModel(blockStateOut, itemModelOut, modelOut);
@@ -388,6 +389,7 @@ public class ChromaModelProvider extends ModelProvider {
 		musicMemoryModel(blockStateOut, modelOut);
 		golModels(blockStateOut, modelOut);
 		laserModels(blockStateOut, modelOut);
+		pistonTapeModels(blockStateOut, itemModelOut, modelOut);
 		biomeReplayModel(blockStateOut, modelOut);
 		warpNodeModel(blockStateOut, modelOut);
 		unknownArtefactBlock(blockStateOut, itemModelOut, modelOut);
@@ -562,6 +564,140 @@ public class ChromaModelProvider extends ModelProvider {
 				new TextureMapping().put(TextureSlot.PARTICLE, particle), modelOut);
 		blockStateOut.accept(MultiVariantGenerator.dispatch(ChromaBlocks.DUMMY_AUX.get(),
 				new MultiVariant(WeightedList.of(new Variant(model)))));
+	}
+
+	/**
+	 * V33a Filter Cycle blocks. Bits are tinted cubes of {@code bit_zero} (clear) or {@code bit_one} (filter). The
+	 * controller shows its type's front icon on one face. A target is the {@code piston_target} cube plus a tinted,
+	 * full-bright overlay on the two faces of its axis ({@code PistonTargetRenderer}'s second pass); V33a's names are
+	 * crossed, so a read head draws {@code piston_target_overlay} and a receiver {@code piston_emitter_overlay}.
+	 */
+	private static void pistonTapeModels(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		Block bit = ChromaBlocks.PISTON_TAPE_BIT.get();
+		PropertyDispatch.C1<MultiVariant, Integer> bits = PropertyDispatch.initial(
+				reika.chromaticraft.block.dimension.structure.pistontape.BlockPistonTapeBit26.BIT);
+		Identifier zero = ModelTemplates.LEAVES.create(ModelLocationUtils.getModelLocation(bit).withSuffix("_zero"),
+				TextureMapping.cube(new Material(dimstruct("bit_zero"))), modelOut);
+		Identifier one = ModelTemplates.LEAVES.create(ModelLocationUtils.getModelLocation(bit).withSuffix("_one"),
+				TextureMapping.cube(new Material(dimstruct("bit_one"))), modelOut);
+		for (int meta = 0; meta <= 8; meta++)
+			bits.select(meta, variant(meta < 6 && meta % 2 == 0 ? zero : one));
+		blockStateOut.accept(MultiVariantGenerator.dispatch(bit).with(bits));
+		itemModelOut.accept(bit.asItem(), ItemModelUtils.plainModel(zero));
+
+		Block controller = ChromaBlocks.PISTON_CONTROLLER.get();
+		Identifier base = dimstruct("piston_control");
+		Identifier[] fronts = {dimstruct("musicmemory_front"), dimstruct("piston_control_fire"),
+				dimstruct("piston_control_step"), base};
+		PropertyDispatch.C2<MultiVariant, Integer, Direction> controls = PropertyDispatch.initial(
+				reika.chromaticraft.block.dimension.structure.pistontape.BlockPistonController26.TYPE,
+				reika.chromaticraft.block.dimension.structure.pistontape.BlockPistonController26.FACING);
+		for (int type = 0; type < 4; type++) {
+			Identifier model = ModelTemplates.CUBE_ORIENTABLE.create(
+					ModelLocationUtils.getModelLocation(controller).withSuffix("_" + type),
+					new TextureMapping().put(TextureSlot.TOP, new Material(base)).put(TextureSlot.SIDE, new Material(base))
+							.put(TextureSlot.FRONT, new Material(fronts[type])), modelOut);
+			for (Direction dir : Direction.Plane.HORIZONTAL)
+				controls.select(type, dir, variant(model).with(yRotation(dir)));
+		}
+		blockStateOut.accept(MultiVariantGenerator.dispatch(controller).with(controls));
+
+		Block target = ChromaBlocks.PISTON_TARGET.get();
+		PropertyDispatch.C2<MultiVariant, Integer, Direction> targets = PropertyDispatch.initial(
+				reika.chromaticraft.block.dimension.structure.pistontape.BlockPistonTarget26.TYPE,
+				reika.chromaticraft.block.dimension.structure.pistontape.BlockPistonTarget26.FACING);
+		for (int type = 0; type < 2; type++) {
+			Identifier overlay = dimstruct(type == 0 ? "piston_target_overlay" : "piston_emitter_overlay");
+			for (Direction.Axis axis : Direction.Axis.values()) {
+				Identifier id = ModelLocationUtils.getModelLocation(target).withSuffix("_" + type + "_" + axis.getName());
+				Direction.Axis a = axis;
+				modelOut.accept(id, () -> pistonTargetModel(dimstruct("piston_target"), overlay, a));
+				for (Direction dir : Direction.values())
+					if (dir.getAxis() == axis)
+						targets.select(type, dir, variant(id));
+			}
+		}
+		blockStateOut.accept(MultiVariantGenerator.dispatch(target).with(targets));
+	}
+
+	private static Identifier dimstruct(String name) {
+		return Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/dimstruct/" + name);
+	}
+
+	private static net.minecraft.client.renderer.block.dispatch.VariantMutator yRotation(Direction dir) {
+		return switch (dir) {
+			case EAST -> BlockModelGenerators.Y_ROT_90;
+			case SOUTH -> BlockModelGenerators.Y_ROT_180;
+			case WEST -> BlockModelGenerators.Y_ROT_270;
+			default -> BlockModelGenerators.NOP;
+		};
+	}
+
+	private static JsonObject pistonTargetModel(Identifier base, Identifier overlay, Direction.Axis axis) {
+		JsonObject root = new JsonObject();
+		root.addProperty("parent", "minecraft:block/block");
+		JsonObject textures = new JsonObject();
+		textures.addProperty("particle", base.toString());
+		textures.addProperty("base", base.toString());
+		textures.addProperty("overlay", overlay.toString());
+		root.add("textures", textures);
+		JsonArray elements = new JsonArray();
+		JsonObject cube = new JsonObject();
+		cube.add("from", vec(0, 0, 0));
+		cube.add("to", vec(16, 16, 16));
+		JsonObject faces = new JsonObject();
+		for (Direction face : Direction.values()) {
+			JsonObject f = new JsonObject();
+			f.addProperty("texture", "#base");
+			f.addProperty("cullface", face.getSerializedName());
+			faces.add(face.getSerializedName(), f);
+		}
+		cube.add("faces", faces);
+		elements.add(cube);
+		JsonObject over = new JsonObject();
+		over.add("from", vec(-0.01, -0.01, -0.01));
+		over.add("to", vec(16.01, 16.01, 16.01));
+		over.addProperty("shade", false);
+		over.addProperty("light_emission", 15);
+		JsonObject overFaces = new JsonObject();
+		for (Direction face : Direction.values()) {
+			if (face.getAxis() != axis)
+				continue;
+			JsonObject f = new JsonObject();
+			f.addProperty("texture", "#overlay");
+			f.addProperty("cullface", face.getSerializedName());
+			f.addProperty("tintindex", 0);
+			overFaces.add(face.getSerializedName(), f);
+		}
+		over.add("faces", overFaces);
+		elements.add(over);
+		root.add("elements", elements);
+		return root;
+	}
+
+	private static JsonArray vec(double x, double y, double z) {
+		JsonArray a = new JsonArray();
+		a.add(x);
+		a.add(y);
+		a.add(z);
+		return a;
+	}
+
+	/**
+	 * V33a SpecialShieldRenderer drew the inventory block as a plain cube of the material's icon; the world
+	 * block ships a hand-authored blockstate naming SpecialShieldModel.
+	 */
+	private static void specialShieldItems(ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+		for (var entry : ChromaBlocks.SPECIAL_SHIELDING.entrySet()) {
+			Block block = entry.getValue().get();
+			Material texture = new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
+					"block/basic/specialshield_" + entry.getKey().ordinal()));
+			Identifier model = ModelTemplates.CUBE_ALL.create(
+					ModelLocationUtils.getModelLocation(block).withSuffix("_inventory"),
+					TextureMapping.cube(texture), modelOut);
+			itemModelOut.accept(block.asItem(), ItemModelUtils.plainModel(model));
+		}
 	}
 
 	private static void shieldingBlocks(Consumer<BlockModelDefinitionGenerator> blockStateOut,
@@ -1956,6 +2092,8 @@ public class ChromaModelProvider extends ModelProvider {
 				.filter(h -> h.value() != ChromaBlocks.LASER_EFFECTOR.get())
 				// Channeled Flow's fluid is neighbour-shaped geometry (EverFluidModel).
 				.filter(h -> h.value() != ChromaBlocks.EVER_FLUID.get())
+				// Special shields are face- and neighbour-dependent (SpecialShieldModel).
+				.filter(h -> !(h.value() instanceof reika.chromaticraft.block.dimension.structure.BlockSpecialShield26))
 				// Lamps and potion crystals now ship hand-authored blockstates pointing at the
 				// shared dynamic crystal model, exactly as the cave crystals do.
 				.filter(h -> !(h.value() instanceof reika.chromaticraft.block.crystal.BlockCrystalLamp))
