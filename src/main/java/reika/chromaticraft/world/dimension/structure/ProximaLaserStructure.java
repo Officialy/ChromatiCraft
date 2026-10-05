@@ -24,12 +24,10 @@ public final class ProximaLaserStructure extends Structure {
 		if (placement == null || !(placement.getGenerator() instanceof LaserStructureGenerator plan))
 			return Optional.empty();
 		BlockPos center = placement.placement();
-		int surface = Integer.MIN_VALUE;
-		for (int dx = -2; dx <= 2; dx++) for (int dz = -2; dz <= 2; dz++)
-			surface = Math.max(surface, context.chunkGenerator().getFirstFreeHeight(
-					center.getX() + dx, center.getZ() + dz,
-					Heightmap.Types.WORLD_SURFACE_WG, context.heightAccessor(), context.randomState()) - 1);
-		int finalSurface = surface;
+		// V33a LaserEntrance: getTopSolidOrLiquidBlock at the centre column (the cell above the top
+		// solid block), then upward to the first air cell, which is exactly the first free height.
+		int finalSurface = context.chunkGenerator().getFirstFreeHeight(center.getX(), center.getZ(),
+				Heightmap.Types.WORLD_SURFACE_WG, context.heightAccessor(), context.randomState());
 		return Optional.of(new GenerationStub(new BlockPos(center.getX(), plan.getPosY(), center.getZ()),
 				builder -> builder.addPiece(new LaserStructurePiece(placement, plan, finalSurface))));
 	}

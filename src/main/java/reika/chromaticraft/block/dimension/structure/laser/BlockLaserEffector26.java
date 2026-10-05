@@ -31,16 +31,18 @@ public final class BlockLaserEffector26 extends Block implements EntityBlock {
 	public static final IntegerProperty COLOR = IntegerProperty.create("color", 0, 7);
 	public static final BooleanProperty LIT = BooleanProperty.create("lit");
 	public static final BooleanProperty FULL_BLOCK = BooleanProperty.create("full_block");
+	/** V33a {@code LaserEffectTile.isRotateable()}, which the renderer shows as a chiseled plinth. */
+	public static final BooleanProperty ROTATEABLE = BooleanProperty.create("rotateable");
 	private static final VoxelShape HALF = Block.box(0, 0, 0, 16, 8, 16);
 
 	public BlockLaserEffector26(BlockBehaviour.Properties properties) {
 		super(properties);
 		registerDefaultState(stateDefinition.any().setValue(TYPE, 0).setValue(DIRECTION, 0).setValue(COLOR, 7)
-				.setValue(LIT, false).setValue(FULL_BLOCK, false));
+				.setValue(LIT, false).setValue(FULL_BLOCK, false).setValue(ROTATEABLE, false));
 	}
 
 	@Override protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-		builder.add(TYPE, DIRECTION, COLOR, LIT, FULL_BLOCK);
+		builder.add(TYPE, DIRECTION, COLOR, LIT, FULL_BLOCK, ROTATEABLE);
 	}
 
 	@Override protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos,
@@ -64,6 +66,13 @@ public final class BlockLaserEffector26 extends Block implements EntityBlock {
 		if (level.isClientSide() || type != ChromaBlockEntities.LASER_EFFECTOR.get()) return null;
 		return (world, pos, current, entity) -> TileEntityLaserEffector.serverTick(
 				world, pos, current, (TileEntityLaserEffector)entity);
+	}
+
+	/** Forwards the target-hit FX event to the tile, as {@code BaseEntityBlock} does. */
+	@Override protected boolean triggerEvent(BlockState state, Level level, BlockPos pos, int id, int param) {
+		super.triggerEvent(state, level, pos, id, param);
+		BlockEntity tile = level.getBlockEntity(pos);
+		return tile != null && tile.triggerEvent(id, param);
 	}
 
 	@Override protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos,

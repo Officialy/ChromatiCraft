@@ -1,6 +1,8 @@
 package reika.chromaticraft.tileentity;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -68,18 +70,39 @@ public final class TileEntityLaserEffector extends BlockEntity implements LaserP
 		return CubeDirections.list[getBlockState().getValue(BlockLaserEffector26.DIRECTION)];
 	}
 
+	/**
+	 * V33a {@code LaserEffectTile.isRotateable()} with {@code PARTIAL_ROTATEABILITY} false: targets,
+	 * emitters and fixed devices never turn, and a device with a minimum difficulty only turns at or
+	 * above it. Omnidirectional devices count as rotateable here, exactly as upstream; the click handler
+	 * and the renderer each skip them separately.
+	 */
+	public static boolean isRotateable(EffectType type, boolean fixed, int rotateableDifficulty) {
+		if (rotateableDifficulty > 0 && ChromaOptions.getStructureDifficulty() < rotateableDifficulty)
+			return false;
+		return !type.isTarget() && type != EffectType.EMITTER && !fixed;
+	}
+
+	public boolean isRotateable() {
+		return isRotateable(effectType(), fixed, rotateableDifficulty);
+	}
+
+	/** V33a {@code onInteract} then {@code rotate}: refused while this room's lasers are in play. */
 	public void rotate(boolean reverse) {
-		if (level == null || fixed || effectType().isOmnidirectional()
-				|| effectType().isTarget() || effectType() == EffectType.EMITTER
-				|| rotateableDifficulty > ChromaOptions.getStructureDifficulty()) return;
+		if (level == null || effectType().isOmnidirectional() || !isRotateable()) return;
 		if (controllerPos != null && level.getBlockEntity(controllerPos)
 				instanceof TileEntityLaserController controller && controller.isFiring()) return;
 		CubeDirections next = facing().getRotation(!reverse);
 		level.setBlock(worldPosition, getBlockState().setValue(BlockLaserEffector26.DIRECTION,
 				next.ordinal()), Block.UPDATE_ALL);
-		ChromaSounds.USE.playSoundAtBlock(level, worldPosition, 0.4F, 0.5F);
+		level.playSound(null, worldPosition, SoundEvents.UI_BUTTON_CLICK.value(), SoundSource.BLOCKS,
+				0.4F, 0.5F);
 	}
 
+	/**
+	 * The room switch. V33a fires each emitter exactly once per switch-on ({@code LaserEffectTile.fire()});
+	 * {@code EmitterTile.keepFiring} is only ever read from a {@code firing} tag that no authored room
+	 * carries, so no emitter repeats. {@code firing} records the room state for the rotation lock.
+	 */
 	public void setFiring(boolean active) {
 		if (firing == active) return;
 		firing = active;
@@ -112,10 +135,13 @@ public final class TileEntityLaserEffector extends BlockEntity implements LaserP
 		if (level == null || level.isClientSide()) return true;
 		LaserPulseLogic.Interaction interaction = LaserPulseLogic.interact(effectType(), facing(),
 				color, entity.pulse());
-		if (interaction.targetMatched() && !triggered) {
+		if (interaction.targetMatched()) {
+			// V33a TargetTile.trigger(true, true, true) runs on every matching hit: the cast sound,
+			// the client burst, a refreshed auto-reset and the room's completion check.
 			triggered = true;
 			setLit(true);
 			ChromaSounds.CAST.playSoundAtBlock(level, worldPosition);
+			level.blockEvent(worldPosition, getBlockState().getBlock(), TARGET_HIT_EVENT, 0);
 			if (controllerPos != null && level.getBlockEntity(controllerPos)
 					instanceof TileEntityLaserController controller)
 				controller.targetTriggered(worldPosition, true);
@@ -134,20 +160,29 @@ public final class TileEntityLaserEffector extends BlockEntity implements LaserP
 
 	public static void serverTick(Level level, BlockPos pos, BlockState state,
 			TileEntityLaserEffector effector) {
-		if (effector.effectType() == EffectType.EMITTER && effector.firing
-				&& level.getRandom().nextInt(4) == 0) effector.fire();
 		if (effector.prismCountdown > 0 && --effector.prismCountdown == 0
 				&& !effector.pending.isBlack()) {
 			effector.spawn(new Pulse(effector.facing(), effector.pending));
 			effector.pending = BeamColor.BLACK;
 			effector.setChanged();
 		}
-		if (effector.resetTick > 0 && --effector.resetTick == 0) {
+		// V33a TargetTile.reset() is trigger(false, false, false): it darkens the target without
+		// notifying the room, so an auto-reset target that was hit stays counted towards completion.
+		if (effector.resetTick > 0 && --effector.resetTick == 0)
 			effector.resetTarget();
-			if (effector.controllerPos != null && level.getBlockEntity(effector.controllerPos)
-					instanceof TileEntityLaserController controller)
-				controller.targetTriggered(pos, false);
+	}
+
+	private static final int TARGET_HIT_EVENT = 1;
+
+	/** V33a TargetTile.doFXClient, delivered as a block event because the hit is resolved on the server. */
+	@Override public boolean triggerEvent(int id, int value) {
+		if (id == TARGET_HIT_EVENT) {
+			if (level != null && level.isClientSide())
+				reika.chromaticraft.render.particle.ChromaParticle.spawnLaserTargetHit(level,
+						worldPosition, color.renderColor());
+			return true;
 		}
+		return super.triggerEvent(id, value);
 	}
 
 	@Override protected void saveAdditional(ValueOutput output) {

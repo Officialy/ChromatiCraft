@@ -38,5 +38,7 @@ public final class ChromaBlockStateModels {
 				reika.chromaticraft.render.model.DyeVineModel.Unbaked.CODEC);
 		event.registerModel(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "sparkle"),
 				reika.chromaticraft.render.model.SparkleModel.Unbaked.CODEC);
+		event.registerModel(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "laser_effector"),
+				reika.chromaticraft.render.model.LaserEffectorModel.Unbaked.CODEC);
 	}
 }

@@ -448,6 +448,8 @@ public final class ChromaGameTests {
 		register(event, env, "laser_pulse_interactions", ChromaGameTests::laserPulseInteractions);
 		register(event, env, "laser_runtime_room", ChromaGameTests::laserRuntimeRoom);
 		register(event, env, "laser_structure_chunk", ChromaGameTests::laserStructureChunk);
+		register(event, env, "laser_pulse_travel", 120, ChromaGameTests::laserPulseTravel);
+		register(event, env, "laser_effector_geometry", ChromaGameTests::laserEffectorGeometry);
 		register(event, env, "proxima_structure_completion_loop", ChromaGameTests::proximaStructureCompletionLoop);
 		register(event, env, "aurorae_feature", ChromaGameTests::auroraeFeature);
 		register(event, env, "aurora_curtain_drift", ChromaGameTests::auroraCurtainDrift);
@@ -3985,6 +3987,107 @@ public final class ChromaGameTests {
 					"a second switch press did not reset the target, emitter and gate");
 			helper.succeed();
 		});
+	}
+
+	/**
+	 * The live loop: one switch press fires the emitter exactly once (V33a has no repeating emitter),
+	 * the real pulse entity travels to the target, lights it and opens the gate, and a second press
+	 * closes the gate and leaves no pulse in the room.
+	 */
+	private static void laserPulseTravel(GameTestHelper helper) {
+		var level = helper.getLevel();
+		var east = reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.EAST;
+		var types = reika.chromaticraft.world.dimension.structure.LaserPuzzleLayout.EffectType.values();
+		var emitter = new reika.chromaticraft.world.dimension.structure.LaserPuzzleLayout.Effector(
+				BlockPos.ZERO, types[0], east, true, true, true, false, false, 0, 2, 0, false, false, 1);
+		var target = new reika.chromaticraft.world.dimension.structure.LaserPuzzleLayout.Effector(
+				new BlockPos(4, 0, 0), types[1], east, true, true, true, false, false, 0, 2, 0, false, false, 1);
+		var blueprint = new reika.chromaticraft.world.dimension.structure.LaserPuzzleLayout.RoomBlueprint(
+				"travel", 4, 2, java.util.List.of(emitter, target));
+		BlockPos origin = helper.absolutePos(new BlockPos(1, 3, 8));
+		BlockPos controllerPos = origin.offset(2, 4, -3);
+		BlockPos targetPos = origin.offset(4, 0, 0);
+		BlockPos doorPos = origin.offset(4 + 7, 3, 1);
+		level.setBlock(controllerPos, ChromaBlocks.LASER_CONTROLLER.get().defaultBlockState(), 3);
+		level.setBlock(controllerPos.below(), ChromaBlocks.LIGHT_PANEL.get().defaultBlockState(), 3);
+		level.setBlock(doorPos, ChromaBlocks.CHROMA_DOOR.get().defaultBlockState(), 3);
+		for (var device : java.util.List.of(emitter, target)) {
+			BlockPos at = origin.offset(device.position());
+			level.setBlock(at, ChromaBlocks.LASER_EFFECTOR.get().defaultBlockState()
+					.setValue(reika.chromaticraft.block.dimension.structure.laser.BlockLaserEffector26.TYPE,
+							device.type().ordinal())
+					.setValue(reika.chromaticraft.block.dimension.structure.laser.BlockLaserEffector26.DIRECTION,
+							device.direction().ordinal()), 3);
+			((reika.chromaticraft.tileentity.TileEntityLaserEffector)level.getBlockEntity(at))
+					.configure(device, controllerPos);
+		}
+		var controller = (reika.chromaticraft.tileentity.TileEntityLaserController)
+				level.getBlockEntity(controllerPos);
+		controller.configure(blueprint, origin);
+		net.minecraft.world.phys.AABB room = new net.minecraft.world.phys.AABB(origin).inflate(8);
+		int[] maxPulses = {0};
+		boolean[] done = {false};
+		helper.onEachTick(() -> {
+			maxPulses[0] = Math.max(maxPulses[0], level.getEntitiesOfClass(
+					reika.chromaticraft.entity.EntityLaserPulse.class, room).size());
+			boolean lit = level.getBlockState(targetPos).getValue(
+					reika.chromaticraft.block.dimension.structure.laser.BlockLaserEffector26.LIT);
+			boolean open = level.getBlockState(doorPos).getValue(reika.chromaticraft.block.BlockChromaDoor.OPEN);
+			if (done[0] || !controller.isSolved() || !lit || !open)
+				return;
+			done[0] = true;
+			helper.assertTrue(maxPulses[0] == 1,
+					"one switch press must fire the emitter exactly once, saw " + maxPulses[0] + " pulses");
+			controller.toggle();
+			helper.assertTrue(!controller.isFiring()
+					&& !level.getBlockState(doorPos).getValue(reika.chromaticraft.block.BlockChromaDoor.OPEN)
+					&& level.getEntitiesOfClass(reika.chromaticraft.entity.EntityLaserPulse.class, room).isEmpty(),
+					"the second switch press must close the gate and leave no pulse in the room");
+			helper.succeed();
+		});
+		controller.toggle();
+		helper.runAfterDelay(110, () -> {
+			if (!done[0])
+				helper.fail("the travelling pulse did not light the target and open the gate (solved="
+						+ controller.isSolved() + " pulses=" + level.getEntitiesOfClass(
+								reika.chromaticraft.entity.EntityLaserPulse.class, room).stream()
+								.map(e -> e.position().toString()).toList() + " target=" + targetPos + ")");
+		});
+	}
+
+	/**
+	 * V33a LaserEffectorRenderer, as baked: every device stays inside its block, and each heading turns
+	 * the emitter's crystal lens and the mirror plate to the direction its pulses actually travel.
+	 */
+	private static void laserEffectorGeometry(GameTestHelper helper) {
+		var types = reika.chromaticraft.world.dimension.structure.LaserPuzzleLayout.EffectType.values();
+		for (var type : types)
+			for (var dir : reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.list)
+				for (boolean full : new boolean[] {false, true})
+					for (var quad : reika.chromaticraft.render.model.LaserEffectorGeometry.build(type, dir, 7,
+							full, true))
+						for (var v : quad.vertices())
+							helper.assertTrue(v.x() >= -0.002 && v.x() <= 1.002 && v.y() >= -0.002
+									&& v.y() <= 1.002 && v.z() >= -0.002 && v.z() <= 1.002,
+									type + "/" + dir + " geometry leaves its block at " + v);
+		for (var dir : reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.list) {
+			var lens = reika.chromaticraft.render.model.LaserEffectorGeometry.build(types[0], dir, 1, false, false)
+					.stream().filter(q -> q.sprite()
+							== reika.chromaticraft.render.model.LaserEffectorGeometry.Sprite.CRYSTAL).toList();
+			helper.assertTrue(lens.size() == 1, "the emitter must have exactly one crystal lens");
+			double cx = 0, cz = 0;
+			for (var v : lens.getFirst().vertices()) {
+				cx += v.x() / 4 - 0.125;
+				cz += v.z() / 4 - 0.125;
+			}
+			double len = Math.hypot(dir.directionX, dir.directionZ);
+			double dot = (cx * dir.directionX + cz * dir.directionZ) / (Math.hypot(cx, cz) * len);
+			helper.assertTrue(dot > 0.99, "the emitter lens faces away from its " + dir + " pulses");
+			helper.assertTrue((lens.getFirst().a().argb() & 0xFFFFFF) == (reika.dragonapi.libraries.rendering
+							.ReikaColorAPI.mixColors(0xFF0000, 0xFFFFFF, 0.675F) & 0xFFFFFF),
+					"the emitter lens lost V33a's 67.5% beam/white mix");
+		}
+		helper.succeed();
 	}
 
 	/** The native structure piece installs the authored first room inside a clipped write window. */

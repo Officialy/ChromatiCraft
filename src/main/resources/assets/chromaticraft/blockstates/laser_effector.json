@@ -1,0 +1,18 @@
+{
+  "variants": {
+    "": {
+      "type": "chromaticraft:laser_effector",
+      "slab_top": "minecraft:block/smooth_stone",
+      "slab_side": "minecraft:block/smooth_stone_slab_side",
+      "obsidian": "minecraft:block/obsidian",
+      "crystal": "chromaticraft:block/crystal/crystal_outline",
+      "planks": "minecraft:block/oak_planks",
+      "chiseled": "minecraft:block/chiseled_stone_bricks",
+      "base": "chromaticraft:block/dimstruct/laser_block_base",
+      "emitter_back": "chromaticraft:block/dimstruct/laser_front/emitter_back",
+      "emitter_front": "chromaticraft:block/dimstruct/laser_front/emitter_front",
+      "target_back": "chromaticraft:block/dimstruct/laser_front/target_back",
+      "target_front": "chromaticraft:block/dimstruct/laser_front/target_front"
+    }
+  }
+}

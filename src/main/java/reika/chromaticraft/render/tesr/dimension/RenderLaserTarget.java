@@ -9,105 +9,126 @@
  ******************************************************************************/
 package reika.chromaticraft.render.tesr.dimension;
 
-import org.lwjgl.opengl.GL11;
-
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.client.renderer.entity.RenderManager;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.IIcon;
-
-import reika.chromaticraft.base.ChromaRenderBase;
-import reika.chromaticraft.block.dimension.structure.laser.blocklasereffector.TargetTile;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
+import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
+import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
+import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.client.renderer.texture.TextureAtlas;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.data.AtlasIds;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
+import reika.chromaticraft.block.dimension.structure.laser.BlockLaserEffector26;
 import reika.chromaticraft.registry.ChromaIcons;
+import reika.chromaticraft.render.ChromaRenderPipelines;
+import reika.chromaticraft.render.model.LaserEffectorGeometry;
+import reika.chromaticraft.tileentity.TileEntityLaserEffector;
+import reika.chromaticraft.world.dimension.structure.LaserPuzzleLayout.EffectType;
 import reika.dragonapi.instantiable.effects.TruncatedCube;
-import reika.dragonapi.interfaces.tileentity.RenderFetcher;
-import reika.dragonapi.libraries.io.ReikaTextureHelper;
-import reika.dragonapi.libraries.java.reikaglhelper.BlendMode;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
-import reika.dragonapi.libraries.rendering.ReikaRenderHelper;
 
-
-public class RenderLaserTarget extends ChromaRenderBase {
+/**
+ * V33a {@code RenderLaserTarget}, bound to the target tiles. Above each half-block target it tumbles a
+ * truncated cube in the target colour at 192 alpha with lighter edges, bobbing and breathing on
+ * wall-clock sines that run twice as fast once the target is triggered; a triggered target also faces
+ * the camera with the rotating flare. Full-block targets draw nothing here. Everything is drawn
+ * fullbright with V33a's ADDITIVEDARK blend. The pass-through target's ISBRH centre was commented out
+ * upstream, so this renderer is the only part of it above the pedestal.
+ */
+public final class RenderLaserTarget
+		implements BlockEntityRenderer<TileEntityLaserEffector, RenderLaserTarget.State> {
 
 	private static final TruncatedCube cube = new TruncatedCube(0.045, 0.125);
 
+	public RenderLaserTarget(BlockEntityRendererProvider.Context context) {}
+
 	@Override
-	public String getImageFileName(RenderFetcher te) {
-		return null;
+	public State createRenderState() {
+		return new State();
 	}
 
 	@Override
-	public void renderTileEntityAt(TileEntity tile, double par2, double par4, double par6, float par8) {
-		TargetTile te = (TargetTile)tile;
-		if (te.renderAsFullBlock)
+	public void extractRenderState(TileEntityLaserEffector te, State state, float partialTick,
+			Vec3 cameraPosition, ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress) {
+		BlockEntityRenderer.super.extractRenderState(te, state, partialTick, cameraPosition, breakProgress);
+		BlockState block = te.getBlockState();
+		EffectType type = EffectType.byLegacyMetadata(block.getValue(BlockLaserEffector26.TYPE));
+		state.visible = type.isTarget() && !block.getValue(BlockLaserEffector26.FULL_BLOCK);
+		state.triggered = block.getValue(BlockLaserEffector26.LIT);
+		state.color = LaserEffectorGeometry.renderColor(block.getValue(BlockLaserEffector26.COLOR));
+		state.hash = te.hashCode();
+		state.pdist = (float)Math.sqrt(cameraPosition.distanceToSqr(Vec3.atCenterOf(te.getBlockPos())));
+	}
+
+	@Override
+	public void submit(State state, PoseStack poseStack, SubmitNodeCollector collector, CameraRenderState camera) {
+		if (!state.visible)
 			return;
-		GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
-		GL11.glPushMatrix();
-
-		GL11.glTranslated(par2, par4, par6);
-		GL11.glDisable(GL11.GL_LIGHTING);
-		GL11.glEnable(GL11.GL_BLEND);
-		GL11.glDisable(GL11.GL_ALPHA_TEST);
-		GL11.glDisable(GL11.GL_TEXTURE_2D);
-		GL11.glDepthMask(false);
-		ReikaRenderHelper.disableEntityLighting();
-		BlendMode.ADDITIVEDARK.apply();
-
 		double t = System.currentTimeMillis();
-		if (te.isTriggered())
+		if (state.triggered)
 			t *= 2;
-		double s = (te.isTriggered() ? 0.625 : 0.5)+0.0625*Math.sin(t/400D)+0.125*Math.sin(t/2000D);
-		double dy = (te.isTriggered() ? 0.1875 : 0.125)+0.0625*Math.cos(t/1200D)+0.125*Math.cos(t/4000D);
-
-		int c = (te.getRenderColor() & 0xffffff) | (192 << 24);
+		double s = (state.triggered ? 0.625 : 0.5) + 0.0625 * Math.sin(t / 400D) + 0.125 * Math.sin(t / 2000D);
+		double dy = (state.triggered ? 0.1875 : 0.125) + 0.0625 * Math.cos(t / 1200D) + 0.125 * Math.cos(t / 4000D);
+		int c = (state.color & 0xffffff) | (192 << 24);
 		int c2 = ReikaColorAPI.mixColors(c, 0xffffff | (192 << 24), 0.75F);
-		if ((te.getRenderColor() & 0xffffff) == 0xffffff)
-			c = (c&0xff000000) | 0xbfbfbf;
+		if ((state.color & 0xffffff) == 0xffffff)
+			c = (c & 0xff000000) | 0xbfbfbf;
 
-		GL11.glPushMatrix();
-		GL11.glTranslated(0.5, 0.5+dy, 0.5);
-		GL11.glRotated((t/20D)%360, 1, 0, 0);
-		GL11.glRotated((t/20D+te.hashCode())%360, 0, 1, 0);
-		GL11.glRotated((t/20D-te.hashCode())%360, 0, 0, 1);
-		double s2 = Math.sqrt(s*1.75);
-		GL11.glScaled(s2, s2, s2);
-		float pdist = (float)Minecraft.getMinecraft().thePlayer.getDistance(te.xCoord+0.5, te.yCoord+0.5, te.zCoord+0.5);
-		cube.render(0, 0, 0, c, c2, true, pdist);
-		GL11.glPopMatrix();
+		poseStack.pushPose();
+		poseStack.translate(0.5, 0.5 + dy, 0.5);
+		poseStack.rotate(Axis.XP.rotationDegrees((float)((t / 20D) % 360)));
+		poseStack.rotate(Axis.YP.rotationDegrees((float)((t / 20D + state.hash) % 360)));
+		poseStack.rotate(Axis.ZP.rotationDegrees((float)((t / 20D - state.hash) % 360)));
+		float s2 = (float)Math.sqrt(s * 1.75);
+		poseStack.scale(s2, s2, s2);
+		int fill = c;
+		float pdist = state.pdist;
+		PoseStack.Pose cubePose = poseStack.last().copy();
+		collector.submitCustomGeometry(poseStack, RenderTypes.lightning(),
+				(unused, out) -> cube.renderFaces(cubePose, out, 0, 0, 0, fill));
+		collector.submitCustomGeometry(poseStack, RenderTypes.linesTranslucent(),
+				(unused, out) -> cube.renderEdges(cubePose, out, 0, 0, 0, c2, pdist));
+		poseStack.popPose();
 
-		GL11.glEnable(GL11.GL_TEXTURE_2D);
-		c = te.getRenderColor();
-
-		if (te.isTriggered()) {
-			GL11.glTranslated(0.5, 0.5+dy, 0.5);
-			//if (te.renderAsFullBlock)
-			//	s *= 3;
-			GL11.glScaled(s, s, s);
-			RenderManager rm = RenderManager.instance;
-			GL11.glRotatef(180-rm.playerViewY, 0.0F, 1.0F, 0.0F);
-			GL11.glRotatef(-rm.playerViewX, 1.0F, 0.0F, 0.0F);
-
-			ReikaTextureHelper.bindTerrainTexture();
-			IIcon ico = ChromaIcons.SPINFLARE.getIcon();
-			float u = ico.getMinU();
-			float v = ico.getMinV();
-			float du = ico.getMaxU();
-			float dv = ico.getMaxV();
-
-			Tessellator v5 = Tessellator.instance;
-			v5.startDrawingQuads();
-			v5.setColorOpaque_I(c);
-			v5.addVertexWithUV(-1, -1, 0, u, v);
-			v5.addVertexWithUV(1, -1, 0, du, v);
-			v5.addVertexWithUV(1, 1, 0, du, dv);
-			v5.addVertexWithUV(-1, 1, 0, u, dv);
-			v5.draw();
-
+		if (state.triggered) {
+			poseStack.pushPose();
+			poseStack.translate(0.5, 0.5 + dy, 0.5);
+			poseStack.scale((float)s, (float)s, (float)s);
+			poseStack.rotate(camera.orientation);
+			int flare = 0xff000000 | state.color;
+			TextureAtlasSprite ico = Minecraft.getInstance().getAtlasManager()
+					.getAtlasOrThrow(AtlasIds.BLOCKS).getSprite(ChromaIcons.SPINFLARE.getIcon());
+			PoseStack.Pose pose = poseStack.last().copy();
+			collector.submitCustomGeometry(poseStack,
+					ChromaRenderPipelines.legacyAdditiveSprite(TextureAtlas.LOCATION_BLOCKS), (unused, out) -> {
+						out.addVertex(pose, -1, -1, 0).setUv(ico.getU0(), ico.getV0()).setColor(flare);
+						out.addVertex(pose, 1, -1, 0).setUv(ico.getU1(), ico.getV0()).setColor(flare);
+						out.addVertex(pose, 1, 1, 0).setUv(ico.getU1(), ico.getV1()).setColor(flare);
+						out.addVertex(pose, -1, 1, 0).setUv(ico.getU0(), ico.getV1()).setColor(flare);
+					});
+			poseStack.popPose();
 		}
-
-		GL11.glPopAttrib();
-		GL11.glPopMatrix();
 	}
 
+	/** The cube bobs up to ~0.6 above the block centre and spans up to ~0.6 either side. */
+	@Override
+	public AABB getRenderBoundingBox(TileEntityLaserEffector te) {
+		return new AABB(te.getBlockPos()).inflate(1);
+	}
+
+	public static final class State extends BlockEntityRenderState {
+		private boolean visible;
+		private boolean triggered;
+		private int color;
+		private int hash;
+		private float pdist;
+	}
 }

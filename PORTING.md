@@ -10364,3 +10364,67 @@ outlines, sonar lines, HUD diagnostics and branch animation remain visually unve
 Satisforestry/Twilight Forest runtime and real multiplayer packet delivery are not covered by headless
 checks. The remaining original registered item/machine clusters remain open; excluded legacy duplicates
 are not a reliable list of missing registered content (see build/original-item-boundary-audit.json).
+
+### Void Monster screen-effect guards — 2026-10-05
+
+For the reported persistent circular camera warp, guard the optional Void ritual renderer against
+Iris shadow passes: shadows cannot mark a trap focus, run/consume its post pass, or substitute ritual
+terrain pipelines. Sphere/trap screen projection now rejects nonfinite, behind-camera and offscreen
+focus coordinates. The authored distortion equations and active ritual terrain deformation remain.
+The accompanying VM fix refreshes distance/focus during fade, validates entity lifetime, and allows
+native administrative `/kill` to bypass gameplay damage immunities; see VoidMonster/PORTING.md.
+
+Both changed modules compiled/built with the existing complete 26.3 RotaryCraft validation jar in
+`build/void-visual-fix-validated-build.log`; three projection regressions and 22 policy assertions pass.
+All ten native VM contracts pass in `build/void-visual-fix-final-validation.log`. That later combined
+run subsequently encountered the independently changing LaserEffectorModel's reference to missing
+BlockLaserEffector26.ROTATEABLE. Ordinary workspace compilation also has the independent pile-driver
+forward reference. No unrelated source was modified or excluded. Live screenshot/Iris/DH comparison
+remains unverified; headless tests do not establish that the exact visual report is resolved.
+
+## 2026-10-05 — Chromatic Beams (LASER) completion
+
+**Fabricated art removed.** The earlier laser slice shipped 768 `textures/block/dimstruct/laser/device_T_H_C.png`
+composites, plus 1,536 cube models with one of those composites on every face. None of them exists in
+`ChromatiCraft 1.7.10 V33a.jar`. The jar ships exactly five laser files: `laser_block_base` and the emitter/target
+`laser_front/*_back|_front` pairs. Those five are byte-identical (SHA-256) in `textures/block/dimstruct/`. The
+fakes, the generated `laser_effector_*` models and the generated blockstate are deleted. The effector is
+excluded from `ChromaModelProvider.getKnownBlocks`, so a stale datagen blockstate cannot clobber the
+hand-authored one again.
+
+**`LaserEffectorModel` / `LaserEffectorGeometry` port V33a's `LaserEffectorRenderer` ISBRH vertex for vertex.**
+- **Base and posts:** a stone-slab base keeps V33a's explicit 0.4/1/0.7/0.55 face brightness; its sides sample the lowest third of `smooth_stone_slab_side`. Four obsidian corner posts keep their winding inversion.
+- **Central items, all twelve:** the emitter is a planks block with a crystal lens tinted 67.5% beam colour + 32.5% white. Mirrors, double mirrors and slit mirrors are crystal/planks plates. One-way, polarizer (five planks slats), prism (four rotated crystal/planks wedges in white/blue/green/red), refractor, splitter, colorizer (75% tint), target and the empty pass-through target are all transcribed.
+- **Plinth:** rotatable devices add the chiseled-brick plinth and are raised 1/16.
+- **Heading:** everything turns by `-facing.angle` plus each type's ±90/180 correction. The convention is DragonAPI's euler matrix, x' = x·cos − z·sin, z' = x·sin + z·cos.
+- **Sprites,** mapped from the 1.7.10 sources (`BlockStoneSlab`, `BlockStoneBrick` "carved", `BlockWood` oak, V33a `BlockCaveCrystal` → `crystal/crystal_outline`), not from memory.
+- **Render pass:** V33a drew everything in render pass 0, where 1.7.10 has blending off. Its alpha 210 therefore never produced translucency, and the quads use their sprites' own cutout/solid layer.
+- **Baking:** parts bake lazily per TYPE × DIRECTION × COLOR × FULL_BLOCK × new ROTATEABLE state.
+- **Full-block mode** (`fullblock` tag) is ported: front texture plus a tinted translucent overlay. No authored room uses it. Only the emitter and target ever had front art (V33a registered icons for the other ten types that the jar never shipped), so those keep the base texture on the front; nothing was invented.
+
+**`RenderLaserTarget` is ported** (it was still pristine):
+- above each half-block target, a tumbling 192-alpha `TruncatedCube` in the target colour with lighter edges;
+- wall-clock bob and scale sines that double in speed when the target is lit;
+- a camera-facing SPINFLARE when lit.
+
+It reads LIT/COLOR/FULL_BLOCK from block state, so nothing needs syncing. Without it the pass-through
+target, whose ISBRH centre V33a commented out, was an empty pedestal.
+
+**Behaviour divergences fixed against V33a:**
+- **Emitters fire once per switch-on.** `EmitterTile.keepFiring` is only read from a `firing` tag that none of the twelve `.struct` rooms carries; all twelve were decoded to check. The port's 1-in-4-per-tick refire is removed.
+- **Targets act on every matching hit:** CAST sound, the 32-particle coloured blur burst (`TargetTile.doFXClient`, now sent as a block event because hits resolve on the server), a refreshed auto-reset and the completion check.
+- **Auto-reset no longer notifies the room,** because V33a's `reset()` is `trigger(false,false,false)`. No room sets `reset`.
+- **Rotation** uses V33a's `isRotateable()` predicate, shared with the new ROTATEABLE state that is set at placement. The click is vanilla `random.click` (`UI_BUTTON_CLICK`) at 0.4/0.5.
+- **Entrance height** comes from the centre column's first free height, which equals V33a's `getTopSolidOrLiquidBlock` followed by the climb to air. The port had used the max over a 5×5 area minus one, an off-by-one.
+- **The room data tile** (`LASER_CONTROLLER`, V33a `STRUCTDATA` meta 0) now uses `dimdata_side` rather than `laser_block_base`.
+
+**Tests added:**
+- `laser_pulse_travel`: a real pulse entity runs switch → single fire → target lit → gate open → second press → gate closed with no pulses left.
+- `laser_effector_geometry`: every device stays within its block in all eight headings, and the emitter lens faces its pulse direction with the exact 67.5% mix.
+
+**Unverified:** in-client visual parity of the effector meshes and the target cube/flare has not been checked; headless tests do not establish it.
+
+Validation: `:ChromatiCraft:compileJava` and `runClientData` pass. All eight `laser_*` GameTests pass, including
+the two new ones, as does `proxima_structure_placement`. The first batch run of `laser_pulse_travel` failed once:
+its fixed 80-tick deadline fell inside a 30 s batch-preparation stall. The test now polls for the solved state
+and has a 110-tick diagnostic deadline. No production assertion was weakened.

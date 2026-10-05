@@ -250,6 +250,8 @@ public final class ChromaClientRenderers {
 		event.registerBlockEntityRenderer(ChromaBlockEntities.RELAY_SOURCE.get(), RenderRelaySource::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.FOCUS_CRYSTAL.get(),
 				reika.chromaticraft.render.tesr.RenderFocusCrystal::new);
+		event.registerBlockEntityRenderer(ChromaBlockEntities.LASER_EFFECTOR.get(),
+				reika.chromaticraft.render.tesr.dimension.RenderLaserTarget::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.FUNCTION_RELAY.get(),
 				reika.chromaticraft.render.tesr.RenderFunctionRelay::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.LUMEN_RELAY.get(), RenderLumenRelay::new);

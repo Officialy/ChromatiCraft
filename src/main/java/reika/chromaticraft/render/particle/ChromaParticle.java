@@ -310,6 +310,23 @@ public abstract class ChromaParticle extends SingleQuadParticle {
 		}
 	}
 
+	/**
+	 * V33a {@code BlockLaserEffector.TargetTile.doFXClient}: 32 stationary {@code EntityCCBlurFX} in the
+	 * target's beam colour, scattered +/-0.75 horizontally and +/-0.5 vertically, each living 8..30 ticks.
+	 */
+	public static void spawnLaserTargetHit(Level world, BlockPos pos, int color) {
+		if (!(world instanceof ClientLevel level)) return;
+		RandomSource rand = level.getRandom();
+		for (int i = 0; i < 32; i++) {
+			double x = pos.getX() + 0.5 + (rand.nextDouble() * 2 - 1) * 0.75;
+			double y = pos.getY() + 0.5 + (rand.nextDouble() * 2 - 1) * 0.5;
+			double z = pos.getZ() + 0.5 + (rand.nextDouble() * 2 - 1) * 0.75;
+			int life = 8 + rand.nextInt(23);
+			Minecraft.getInstance().particleEngine.add(new FadeGlow(level, x, y, z, 0, 0, 0, color, life,
+					1F, false));
+		}
+	}
+
 	/** A rapid-expanding stationary or drifting fade blur with a chosen V33a icon and blend. */
 	public static void spawnIconFade(Level world, double x, double y, double z, double vx, double vy, double vz,
 			int color, int life, float scale, String icon, boolean additive) {

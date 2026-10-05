@@ -23,7 +23,6 @@ import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
 import reika.chromaticraft.block.decoration.BlockMetaAlloyLamp;
 import reika.chromaticraft.block.dimension.structure.gol.BlockGOLController;
 import reika.chromaticraft.block.dimension.structure.gol.BlockGOLTile;
-import reika.chromaticraft.block.dimension.structure.laser.BlockLaserEffector26;
 import reika.chromaticraft.block.dimension.structure.lightpanel.BlockLightPanel;
 import reika.chromaticraft.block.dimension.structure.lightpanel.BlockLightSwitch;
 import reika.chromaticraft.block.dimension.structure.locks.BlockColoredLock;
@@ -1776,67 +1775,18 @@ public class ChromaModelProvider extends ModelProvider {
 		blockStateOut.accept(MultiVariantGenerator.dispatch(controller).with(controls));
 	}
 
-	/** All authored device identities, headings and RGB combinations remain legible in world. */
+	/**
+	 * V33a's room data tile ({@code BlockStructureDataStorage} meta 0) draws {@code dimdata_side} on every
+	 * face. The effectors themselves are built in code by {@code LaserEffectorModel} from V33a's
+	 * {@code LaserEffectorRenderer} and ship a hand-authored blockstate naming that model type.
+	 */
 	private static void laserModels(Consumer<BlockModelDefinitionGenerator> blockStateOut,
 			BiConsumer<Identifier, ModelInstance> modelOut) {
-		Block effector = ChromaBlocks.LASER_EFFECTOR.get();
-		PropertyDispatch.C4<MultiVariant, Integer, Integer, Integer, Boolean> variants =
-				PropertyDispatch.initial(BlockLaserEffector26.TYPE, BlockLaserEffector26.DIRECTION,
-						BlockLaserEffector26.COLOR, BlockLaserEffector26.FULL_BLOCK);
-		Identifier halfParent = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
-				"block/laser_effector_half_parent");
-		modelOut.accept(halfParent, ChromaModelProvider::laserEffectorHalfParent);
-		for (int type = 0; type < 12; type++) for (int heading = 0; heading < 8; heading++)
-			for (int color = 0; color < 8; color++) {
-				String suffix = "_" + type + "_" + heading + "_" + color;
-				Identifier texture = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
-						"block/dimstruct/laser/device" + suffix);
-				Identifier fullModel = ModelTemplates.CUBE_ALL.create(
-						ModelLocationUtils.getModelLocation(effector).withSuffix(suffix + "_full"),
-						TextureMapping.cube(new Material(texture)), modelOut);
-				Identifier halfModel = ModelLocationUtils.getModelLocation(effector)
-						.withSuffix(suffix + "_half");
-				modelOut.accept(halfModel, () -> {
-					JsonObject root = new JsonObject();
-					root.addProperty("parent", halfParent.toString());
-					JsonObject textures = new JsonObject();
-					textures.addProperty("all", texture.toString());
-					textures.addProperty("particle", texture.toString());
-					root.add("textures", textures);
-					return root;
-				});
-				variants.select(type, heading, color, false, variant(halfModel));
-				variants.select(type, heading, color, true, variant(fullModel));
-			}
-		blockStateOut.accept(MultiVariantGenerator.dispatch(effector).with(variants).with(
-				PropertyDispatch.modify(BlockLaserEffector26.LIT)
-						.select(false, BlockModelGenerators.NOP)
-						.select(true, BlockModelGenerators.NOP)));
-
 		Block controller = ChromaBlocks.LASER_CONTROLLER.get();
 		Identifier controllerModel = ModelTemplates.CUBE_ALL.create(controller,
 				TextureMapping.cube(new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
-						"block/dimstruct/laser_block_base"))), modelOut);
+						"block/dimstruct/dimdata_side"))), modelOut);
 		blockStateOut.accept(MultiVariantGenerator.dispatch(controller, variant(controllerModel)));
-	}
-
-	private static JsonObject laserEffectorHalfParent() {
-		JsonObject root = new JsonObject();
-		JsonObject element = new JsonObject();
-		JsonArray from = new JsonArray(); from.add(0); from.add(0); from.add(0);
-		JsonArray to = new JsonArray(); to.add(16); to.add(8); to.add(16);
-		element.add("from", from); element.add("to", to);
-		JsonObject faces = new JsonObject();
-		for (String name : List.of("north", "south", "east", "west", "up", "down")) {
-			JsonObject face = new JsonObject();
-			face.addProperty("texture", "#all");
-			face.addProperty("cullface", name);
-			faces.add(name, face);
-		}
-		element.add("faces", faces);
-		JsonArray elements = new JsonArray(); elements.add(element);
-		root.add("elements", elements);
-		return root;
 	}
 
 	/** NeoForge's canonical bucket silhouette with the registered fluid sprite and tint. */
@@ -1995,6 +1945,8 @@ public class ChromaModelProvider extends ModelProvider {
 				.filter(h -> h.getKey().identifier().getNamespace().equals(ChromatiCraft.MODID))
 				.filter(h -> !(h.value() instanceof reika.chromaticraft.block.crystal.BlockCaveCrystal))
 				.filter(h -> h.value() != ChromaBlocks.CLIFF_DIRT.get())
+				// Chromatic Beams effectors are non-cuboid, per-heading geometry (LaserEffectorModel).
+				.filter(h -> h.value() != ChromaBlocks.LASER_EFFECTOR.get())
 				// Lamps and potion crystals now ship hand-authored blockstates pointing at the
 				// shared dynamic crystal model, exactly as the cave crystals do.
 				.filter(h -> !(h.value() instanceof reika.chromaticraft.block.crystal.BlockCrystalLamp))

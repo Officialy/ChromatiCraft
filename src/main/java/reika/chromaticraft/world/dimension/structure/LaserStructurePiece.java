@@ -145,6 +145,8 @@ public final class LaserStructurePiece extends StructurePiece {
 					.setValue(BlockLaserEffector26.TYPE, effector.type().ordinal())
 					.setValue(BlockLaserEffector26.DIRECTION, effector.direction().ordinal())
 					.setValue(BlockLaserEffector26.FULL_BLOCK, effector.fullBlock())
+					.setValue(BlockLaserEffector26.ROTATEABLE, TileEntityLaserEffector.isRotateable(
+							effector.type(), effector.fixed(), effector.rotateableDifficulty()))
 					.setValue(BlockLaserEffector26.COLOR, (effector.red() ? 1 : 0)
 							| (effector.green() ? 2 : 0) | (effector.blue() ? 4 : 0));
 			level.setBlock(at, state, 2);
