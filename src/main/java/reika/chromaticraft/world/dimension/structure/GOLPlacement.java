@@ -19,8 +19,7 @@ public final class GOLPlacement implements StructurePlacement {
 
 	@Override public boolean isStructureChunk(ChunkGeneratorStructureState state, int chunkX, int chunkZ) {
 		ProximaGenerators.Layout layout = ProximaGenerators.getLayout();
-		return layout != null && layout.structures().getPlacementInChunk(
-				DimensionStructureType.GOL, chunkX, chunkZ) != null;
+		return layout != null && ProximaStructureSegments.ownerAt(DimensionStructureType.GOL, chunkX, chunkZ) != null;
 	}
 
 	@Override

@@ -17,19 +17,16 @@ public final class ProximaLaserStructure extends Structure {
 	public ProximaLaserStructure(StructureSettings settings) { super(settings); }
 
 	@Override public Optional<GenerationStub> findGenerationPoint(GenerationContext context) {
-		ProximaGenerators.Layout layout = ProximaGenerators.getLayout();
-		if (layout == null) return Optional.empty();
-		StructureCalculator.StructurePlacement placement = layout.structures().getPlacementInChunk(
-				DimensionStructureType.LASER, context.chunkPos().x(), context.chunkPos().z());
-		if (placement == null || !(placement.getGenerator() instanceof LaserStructureGenerator plan))
-			return Optional.empty();
-		BlockPos center = placement.placement();
-		// V33a LaserEntrance: getTopSolidOrLiquidBlock at the centre column (the cell above the top
-		// solid block), then upward to the first air cell, which is exactly the first free height.
-		int finalSurface = context.chunkGenerator().getFirstFreeHeight(center.getX(), center.getZ(),
-				Heightmap.Types.WORLD_SURFACE_WG, context.heightAccessor(), context.randomState());
-		return Optional.of(new GenerationStub(new BlockPos(center.getX(), plan.getPosY(), center.getZ()),
-				builder -> builder.addPiece(new LaserStructurePiece(placement, plan, finalSurface))));
+		return ProximaStructureSegments.generate(context, DimensionStructureType.LASER, placement -> {
+			if (!(placement.getGenerator() instanceof LaserStructureGenerator plan))
+				return null;
+			BlockPos center = placement.placement();
+			// V33a LaserEntrance: getTopSolidOrLiquidBlock at the centre column (the cell above the top
+			// solid block), then upward to the first air cell, which is exactly the first free height.
+			int finalSurface = context.chunkGenerator().getFirstFreeHeight(center.getX(), center.getZ(),
+					Heightmap.Types.WORLD_SURFACE_WG, context.heightAccessor(), context.randomState());
+			return new ProximaStructureSegments.Candidate(new LaserStructurePiece(placement, plan, finalSurface), new BlockPos(center.getX(), plan.getPosY(), center.getZ()));
+		});
 	}
 
 	@Override public StructureType<?> type() { return ProximaStructures.LASER_TYPE.get(); }

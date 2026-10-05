@@ -416,6 +416,8 @@ sourceSets.main.java {
     include 'reika/chromaticraft/entity/EntityPistonSpline.java'
     include 'reika/chromaticraft/render/tesr/dimension/RenderPistonDisplay.java'
     include 'reika/chromaticraft/world/dimension/structure/PistonTapePlan.java'
+    include 'reika/chromaticraft/world/dimension/structure/ProximaStructureSegments.java'
+    include 'reika/chromaticraft/world/dimension/structure/ProximaSegmentPiece.java'
     include 'reika/chromaticraft/world/dimension/structure/PistonTapeStructureGenerator.java'
     include 'reika/chromaticraft/world/dimension/structure/PistonTapePlacement.java'
     include 'reika/chromaticraft/world/dimension/structure/ProximaPistonTapeStructure.java'

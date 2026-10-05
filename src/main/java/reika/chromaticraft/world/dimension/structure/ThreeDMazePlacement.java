@@ -20,8 +20,7 @@ public final class ThreeDMazePlacement implements StructurePlacement {
 	@Override
 	public boolean isStructureChunk(ChunkGeneratorStructureState state, int chunkX, int chunkZ) {
 		ProximaGenerators.Layout layout = ProximaGenerators.getLayout();
-		return layout != null && layout.structures().getPlacementInChunk(
-				DimensionStructureType.TDMAZE, chunkX, chunkZ) != null;
+		return layout != null && ProximaStructureSegments.ownerAt(DimensionStructureType.TDMAZE, chunkX, chunkZ) != null;
 	}
 
 	@Override

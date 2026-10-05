@@ -10549,3 +10549,23 @@ Shifting Maze, Crystal Interference and Complex Spaces also build with it.
 - `piston_tape_playback`: places the whole structure and lays V33a's debug solution. The Fire control opens door 0 through a real beam, read head and spline. Playback then pistons the tape through every step until all stage-0 doors validate, with every tape cell conserved and V33a's step timing respected.
 
 `proxima_structure_placement` now includes PISTONTAPE. Unverified: in-client visuals and a natural Proxima walk-through.
+
+## 2026-10-05 — Proxima structures larger than 26.3's start reach
+
+**Problem:** 26.3's `ChunkGenerator.createReferences` links a chunk only to structure starts within 8 chunks of it,
+so anything farther from a start's chunk is never placed. The new `proxima_structure_reach` test measured natural
+placements: Crystal Music reaches 13 chunks, Glowing Logic 21 and Chromatic Beams 26. Their far rooms, loot
+rooms and cores could never generate in a real world, although every earlier test called `postProcess` directly
+and passed. Water (4), Filter Cycle (5), 3D Maze (6) and Cellular Automata (3) were within reach.
+
+**Fix: `ProximaStructureSegments`** tiles each structure into 15×15-chunk regions on a grid centred on its
+placement chunk.
+- The centre chunk of each region the footprint touches is a start, so no start reaches more than 7 chunks.
+- That start's piece is the full structure clipped to its region (`ProximaSegmentPiece`, which wraps and serialises the inner piece). Every full piece already clips its writes to the box it is given, so every block is written exactly once.
+- A structure that fits its centre region keeps its single plain piece.
+- Placements cannot see terrain, so the tiling uses a conservative footprint: the union over every surface height Proxima can have. Glowing Logic's surface-dependent mountain therefore gives it up to 121 candidate starts; starts the real structure does not reach yield nothing.
+- All seven structure starts now go through `ProximaStructureSegments.generate`, which offers every placement claiming the chunk, so overlapping conservative footprints cannot drop a region.
+
+**Tests:** `proxima_structure_reach` checks that every chunk of every ported type's box lies in a region start within 7 chunks, and round-trips a saved region piece. Results: Chromatic Beams 3 starts, Crystal Music 2, everything else 1 apart from Glowing Logic. All 18 `proxima_*`, 8 `laser_*`, 5 `water_*` and both `piston_tape_*` tests pass. `piston_tape_playback` now also plays stage 1 (mirrored orientation) and requires door 0's panel to open.
+
+**Unverified:** a fresh natural Proxima world has not been walked to confirm the far rooms in game.

@@ -20,18 +20,15 @@ public final class ProximaMusicStructure extends Structure {
 
 	@Override
 	public Optional<GenerationStub> findGenerationPoint(GenerationContext context) {
-		ProximaGenerators.Layout layout = ProximaGenerators.getLayout();
-		if (layout == null) return Optional.empty();
-		StructureCalculator.StructurePlacement placement = layout.structures().getPlacementInChunk(
-				DimensionStructureType.MUSIC, context.chunkPos().x(), context.chunkPos().z());
-		if (placement == null || !(placement.getGenerator() instanceof MusicStructureGenerator plan))
-			return Optional.empty();
-		BlockPos entry = placement.placement();
-		int surface = context.chunkGenerator().getFirstFreeHeight(entry.getX(), entry.getZ(),
-				Heightmap.Types.WORLD_SURFACE_WG, context.heightAccessor(), context.randomState());
-		BlockPos anchor = new BlockPos(plan.getPosX(), plan.getPosY(), plan.getPosZ());
-		return Optional.of(new GenerationStub(anchor,
-				builder -> builder.addPiece(new MusicStructurePiece(placement, plan, surface))));
+		return ProximaStructureSegments.generate(context, DimensionStructureType.MUSIC, placement -> {
+			if (!(placement.getGenerator() instanceof MusicStructureGenerator plan))
+				return null;
+			BlockPos entry = placement.placement();
+			int surface = context.chunkGenerator().getFirstFreeHeight(entry.getX(), entry.getZ(),
+					Heightmap.Types.WORLD_SURFACE_WG, context.heightAccessor(), context.randomState());
+			BlockPos anchor = new BlockPos(plan.getPosX(), plan.getPosY(), plan.getPosZ());
+			return new ProximaStructureSegments.Candidate(new MusicStructurePiece(placement, plan, surface), anchor);
+		});
 	}
 
 	@Override public StructureType<?> type() { return ProximaStructures.MUSIC_TYPE.get(); }

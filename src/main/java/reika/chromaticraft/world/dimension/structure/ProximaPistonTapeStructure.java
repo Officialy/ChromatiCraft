@@ -22,18 +22,15 @@ public final class ProximaPistonTapeStructure extends Structure {
 
 	@Override
 	public Optional<GenerationStub> findGenerationPoint(GenerationContext context) {
-		ProximaGenerators.Layout layout = ProximaGenerators.getLayout();
-		if (layout == null) return Optional.empty();
-		StructureCalculator.StructurePlacement placement = layout.structures().getPlacementInChunk(
-				DimensionStructureType.PISTONTAPE, context.chunkPos().x(), context.chunkPos().z());
-		if (placement == null || !(placement.getGenerator() instanceof PistonTapeStructureGenerator plan))
-			return Optional.empty();
-		BlockPos start = plan.plan().entranceStart();
-		// V33a PistonTapeEntrance: getTopSolidOrLiquidBlock at the shaft's column.
-		int surface = context.chunkGenerator().getFirstFreeHeight(start.getX(), start.getZ(),
-				Heightmap.Types.WORLD_SURFACE_WG, context.heightAccessor(), context.randomState());
-		return Optional.of(new GenerationStub(start,
-				builder -> builder.addPiece(new PistonTapeStructurePiece(placement, plan, surface))));
+		return ProximaStructureSegments.generate(context, DimensionStructureType.PISTONTAPE, placement -> {
+			if (!(placement.getGenerator() instanceof PistonTapeStructureGenerator plan))
+				return null;
+			BlockPos start = plan.plan().entranceStart();
+			// V33a PistonTapeEntrance: getTopSolidOrLiquidBlock at the shaft's column.
+			int surface = context.chunkGenerator().getFirstFreeHeight(start.getX(), start.getZ(),
+					Heightmap.Types.WORLD_SURFACE_WG, context.heightAccessor(), context.randomState());
+			return new ProximaStructureSegments.Candidate(new PistonTapeStructurePiece(placement, plan, surface), start);
+		});
 	}
 
 	@Override public StructureType<?> type() { return ProximaStructures.PISTONTAPE_TYPE.get(); }

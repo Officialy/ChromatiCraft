@@ -19,8 +19,7 @@ public final class WaterPlacement implements StructurePlacement {
 
 	@Override public boolean isStructureChunk(ChunkGeneratorStructureState state, int chunkX, int chunkZ) {
 		ProximaGenerators.Layout layout = ProximaGenerators.getLayout();
-		return layout != null && layout.structures().getPlacementInChunk(
-				DimensionStructureType.WATER, chunkX, chunkZ) != null;
+		return layout != null && ProximaStructureSegments.ownerAt(DimensionStructureType.WATER, chunkX, chunkZ) != null;
 	}
 
 	@Override

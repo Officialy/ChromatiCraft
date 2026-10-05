@@ -22,18 +22,15 @@ public final class ProximaWaterStructure extends Structure {
 
 	@Override
 	public Optional<GenerationStub> findGenerationPoint(GenerationContext context) {
-		ProximaGenerators.Layout layout = ProximaGenerators.getLayout();
-		if (layout == null) return Optional.empty();
-		StructureCalculator.StructurePlacement placement = layout.structures().getPlacementInChunk(
-				DimensionStructureType.WATER, context.chunkPos().x(), context.chunkPos().z());
-		if (placement == null || !(placement.getGenerator() instanceof WaterStructureGenerator plan))
-			return Optional.empty();
-		BlockPos center = placement.placement();
-		// V33a WaterStructureEntrance: getTopSolidOrLiquidBlock at the centre column.
-		int surface = context.chunkGenerator().getFirstFreeHeight(center.getX(), center.getZ(),
-				Heightmap.Types.WORLD_SURFACE_WG, context.heightAccessor(), context.randomState());
-		return Optional.of(new GenerationStub(new BlockPos(center.getX(), plan.getPosY(), center.getZ()),
-				builder -> builder.addPiece(new WaterStructurePiece(placement, plan, surface))));
+		return ProximaStructureSegments.generate(context, DimensionStructureType.WATER, placement -> {
+			if (!(placement.getGenerator() instanceof WaterStructureGenerator plan))
+				return null;
+			BlockPos center = placement.placement();
+			// V33a WaterStructureEntrance: getTopSolidOrLiquidBlock at the centre column.
+			int surface = context.chunkGenerator().getFirstFreeHeight(center.getX(), center.getZ(),
+					Heightmap.Types.WORLD_SURFACE_WG, context.heightAccessor(), context.randomState());
+			return new ProximaStructureSegments.Candidate(new WaterStructurePiece(placement, plan, surface), new BlockPos(center.getX(), plan.getPosY(), center.getZ()));
+		});
 	}
 
 	@Override public StructureType<?> type() { return ProximaStructures.WATER_TYPE.get(); }

@@ -20,8 +20,7 @@ public final class LightPanelPlacement implements StructurePlacement {
 	@Override
 	public boolean isStructureChunk(ChunkGeneratorStructureState state, int chunkX, int chunkZ) {
 		ProximaGenerators.Layout layout = ProximaGenerators.getLayout();
-		return layout != null && layout.structures().getPlacementInChunk(
-				DimensionStructureType.LIGHTPANEL, chunkX, chunkZ) != null;
+		return layout != null && ProximaStructureSegments.ownerAt(DimensionStructureType.LIGHTPANEL, chunkX, chunkZ) != null;
 	}
 
 	@Override

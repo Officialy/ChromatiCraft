@@ -23,18 +23,15 @@ public final class ProximaThreeDMazeStructure extends Structure {
 
 	@Override
 	public Optional<GenerationStub> findGenerationPoint(GenerationContext context) {
-		ProximaGenerators.Layout layout = ProximaGenerators.getLayout();
-		if (layout == null) return Optional.empty();
-		StructureCalculator.StructurePlacement placement = layout.structures().getPlacementInChunk(
-				DimensionStructureType.TDMAZE, context.chunkPos().x(), context.chunkPos().z());
-		if (placement == null || !(placement.getGenerator() instanceof ThreeDMazeStructureGenerator plan))
-			return Optional.empty();
-		BlockPos entry = new BlockPos(plan.getEntryPosX(), 0, plan.getEntryPosZ());
-		int surface = context.chunkGenerator().getFirstFreeHeight(entry.getX(), entry.getZ(),
-				Heightmap.Types.WORLD_SURFACE_WG, context.heightAccessor(), context.randomState());
-		BlockPos anchor = new BlockPos(plan.getPosX(), plan.getPosY(), plan.getPosZ());
-		return Optional.of(new GenerationStub(anchor,
-				builder -> builder.addPiece(new ThreeDMazePiece(placement, plan, surface))));
+		return ProximaStructureSegments.generate(context, DimensionStructureType.TDMAZE, placement -> {
+			if (!(placement.getGenerator() instanceof ThreeDMazeStructureGenerator plan))
+				return null;
+			BlockPos entry = new BlockPos(plan.getEntryPosX(), 0, plan.getEntryPosZ());
+			int surface = context.chunkGenerator().getFirstFreeHeight(entry.getX(), entry.getZ(),
+					Heightmap.Types.WORLD_SURFACE_WG, context.heightAccessor(), context.randomState());
+			BlockPos anchor = new BlockPos(plan.getPosX(), plan.getPosY(), plan.getPosZ());
+			return new ProximaStructureSegments.Candidate(new ThreeDMazePiece(placement, plan, surface), anchor);
+		});
 	}
 
 	@Override

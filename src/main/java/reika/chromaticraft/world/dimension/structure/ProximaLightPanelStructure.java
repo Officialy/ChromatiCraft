@@ -23,18 +23,15 @@ public final class ProximaLightPanelStructure extends Structure {
 
 	@Override
 	public Optional<GenerationStub> findGenerationPoint(GenerationContext context) {
-		ProximaGenerators.Layout layout = ProximaGenerators.getLayout();
-		if (layout == null) return Optional.empty();
-		StructureCalculator.StructurePlacement placement = layout.structures().getPlacementInChunk(
-				DimensionStructureType.LIGHTPANEL, context.chunkPos().x(), context.chunkPos().z());
-		if (placement == null || !(placement.getGenerator() instanceof LightPanelStructureGenerator plan))
-			return Optional.empty();
-		BlockPos entry = placement.placement();
-		int surface = context.chunkGenerator().getFirstFreeHeight(entry.getX(), entry.getZ(),
-				Heightmap.Types.WORLD_SURFACE_WG, context.heightAccessor(), context.randomState());
-		BlockPos anchor = new BlockPos(entry.getX(), plan.getPosY(), entry.getZ());
-		return Optional.of(new GenerationStub(anchor, builder -> builder.addPiece(
-				new LightPanelPiece(placement, plan, surface))));
+		return ProximaStructureSegments.generate(context, DimensionStructureType.LIGHTPANEL, placement -> {
+			if (!(placement.getGenerator() instanceof LightPanelStructureGenerator plan))
+				return null;
+			BlockPos entry = placement.placement();
+			int surface = context.chunkGenerator().getFirstFreeHeight(entry.getX(), entry.getZ(),
+					Heightmap.Types.WORLD_SURFACE_WG, context.heightAccessor(), context.randomState());
+			BlockPos anchor = new BlockPos(entry.getX(), plan.getPosY(), entry.getZ());
+			return new ProximaStructureSegments.Candidate(new LightPanelPiece(placement, plan, surface), anchor);
+		});
 	}
 
 	@Override

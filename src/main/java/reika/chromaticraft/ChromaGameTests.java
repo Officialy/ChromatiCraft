@@ -456,7 +456,8 @@ public final class ChromaGameTests {
 		register(event, env, "water_structure_chunk", ChromaGameTests::waterStructureChunk);
 		register(event, env, "water_floor_descent", 1200, ChromaGameTests::waterFloorDescent);
 		register(event, env, "piston_tape_plan", ChromaGameTests::pistonTapePlan);
-		register(event, env, "piston_tape_playback", 2400, ChromaGameTests::pistonTapePlayback);
+		register(event, env, "proxima_structure_reach", ChromaGameTests::proximaStructureReach);
+		register(event, env, "piston_tape_playback", 4000, ChromaGameTests::pistonTapePlayback);
 		register(event, env, "proxima_structure_completion_loop", ChromaGameTests::proximaStructureCompletionLoop);
 		register(event, env, "aurorae_feature", ChromaGameTests::auroraeFeature);
 		register(event, env, "aurora_curtain_drift", ChromaGameTests::auroraCurtainDrift);
@@ -4392,8 +4393,9 @@ public final class ChromaGameTests {
 		helper.assertTrue(level.getBlockEntity(stage.playback()) instanceof reika.chromaticraft.tileentity.TileEntityPistonController pc
 				&& pc.type() == 0 && pc.stage() != null, "the playback control was not placed and bound");
 		int bitsPlaced = 0;
-		for (int i = 0; i < stage.sliceCount(); i++) {
-			var slice = stage.slice(i);
+		for (var st : plan.stages().subList(0, 2))
+		for (int i = 0; i < st.sliceCount(); i++) {
+			var slice = st.slice(i);
 			helper.assertTrue(level.getBlockState(slice.piston(net.minecraft.core.Direction.UP)).is(Blocks.PISTON)
 					&& level.getBlockEntity(slice.emitter()) instanceof reika.chromaticraft.tileentity.TileEntityLaserEffector
 					&& level.getBlockEntity(slice.target()) instanceof reika.chromaticraft.tileentity.TileEntityPistonTarget,
@@ -4419,7 +4421,12 @@ public final class ChromaGameTests {
 						|| !t.isValidated(), "a door receiver started validated");
 		int[] phase = {0};
 		long[] started = {level.getGameTime(), 0};
+		boolean[] panelOpened = {false};
+		var stage1 = plan.stages().get(1);
 		helper.onEachTick(() -> {
+			if (level.getBlockState(door0.panel()).is(ChromaBlocks.CHROMA_DOOR.get())
+					&& level.getBlockState(door0.panel()).getValue(reika.chromaticraft.block.BlockChromaDoor.OPEN))
+				panelOpened[0] = true;
 			if (phase[0] == 0) {
 				boolean validated = true;
 				for (int i = 0; i < door0.colorCount(); i++)
@@ -4433,14 +4440,24 @@ public final class ChromaGameTests {
 					((reika.chromaticraft.tileentity.TileEntityPistonController)level.getBlockEntity(stage.playback())).onRightClick();
 				}
 			}
-			else if (phase[0] == 1) {
-				for (var door : stage.doors()) {
+			else if (phase[0] == 1 || phase[0] == 2) {
+				var current = phase[0] == 1 ? stage : stage1;
+				for (var door : current.doors()) {
 					boolean any = false;
 					for (int i = 0; i < door.colorCount(); i++)
 						any |= level.getBlockEntity(door.target(i)) instanceof reika.chromaticraft.tileentity.TileEntityPistonTarget t
 								&& t.isValidated();
 					if (!any)
 						return;
+				}
+				if (phase[0] == 1) {
+					helper.assertTrue(panelOpened[0], "door 0's panel never opened although its receivers were lit");
+					helper.assertTrue(level.getGameTime() - started[1] >= 70L * (stage.doorCount - 1),
+							"playback validated every door faster than V33a's 70-tick step delay allows");
+					phase[0] = 2;
+					// Stage 1 runs WEST: its loops face NORTH, mirroring stage 0's pistons, emitters and heads.
+					((reika.chromaticraft.tileentity.TileEntityPistonController)level.getBlockEntity(stage1.playback())).onRightClick();
+					return;
 				}
 				int bits = 0;
 				for (int x = box.minX(); x <= box.maxX(); x++)
@@ -4453,16 +4470,14 @@ public final class ChromaGameTests {
 					for (int i = 0; i < st.sliceCount(); i++)
 						expectedBits += st.slice(i).bitCount;
 				helper.assertTrue(bits == expectedBits, "the pistons lost or duplicated tape cells: " + bits + " of " + expectedBits);
-				helper.assertTrue(level.getGameTime() - started[1] >= 70L * (stage.doorCount - 1),
-						"playback validated every door faster than V33a's 70-tick step delay allows");
 				release.run();
 				helper.succeed();
 			}
 		});
-		helper.runAfterDelay(2390, () -> {
+		helper.runAfterDelay(3990, () -> {
 			release.run();
 			StringBuilder sb = new StringBuilder();
-			for (var door : stage.doors()) {
+			for (var door : (phase[0] == 2 ? stage1 : stage).doors()) {
 				boolean any = false;
 				for (int i = 0; i < door.colorCount(); i++)
 					any |= level.getBlockEntity(door.target(i)) instanceof reika.chromaticraft.tileentity.TileEntityPistonTarget t
@@ -4472,6 +4487,61 @@ public final class ChromaGameTests {
 			helper.fail("Filter Cycle stage 0 never validated every door (phase " + phase[0] + ", doors " + sb
 					+ ", " + totalBits + " cells laid)");
 		});
+	}
+
+	/**
+	 * 26.3's ChunkGenerator.createReferences links a chunk only to structure starts within 8 chunks of it. Every
+	 * chunk of every ported structure (natural placements) must lie in one of its region starts' 15x15 regions.
+	 */
+	private static void proximaStructureReach(GameTestHelper helper) {
+		java.util.Map<DimensionStructureType, Integer> reach = new java.util.EnumMap<>(DimensionStructureType.class);
+		java.util.Map<DimensionStructureType, Integer> segments = new java.util.EnumMap<>(DimensionStructureType.class);
+		for (long seed = 1; seed <= 6; seed++) {
+			StructureCalculator natural = new StructureCalculator(seed * 7919L);
+			natural.generate();
+			for (StructureCalculator.StructurePlacement p : natural.getPlacements()) {
+				var piece = reika.chromaticraft.world.dimension.structure.ProximaStructureSegments.piece(p, 100);
+				if (piece == null)
+					continue;
+				var box = piece.getBoundingBox();
+				int cx = p.placement().getX() >> 4, cz = p.placement().getZ() >> 4;
+				reach.merge(p.type, Math.max(Math.max(cx - (box.minX() >> 4), (box.maxX() >> 4) - cx),
+						Math.max(cz - (box.minZ() >> 4), (box.maxZ() >> 4) - cz)), Math::max);
+				var starts = reika.chromaticraft.world.dimension.structure.ProximaStructureSegments.starts(p);
+				segments.merge(p.type, starts.size(), Math::max);
+				for (int x = box.minX() >> 4; x <= box.maxX() >> 4; x++)
+					for (int z = box.minZ() >> 4; z <= box.maxZ() >> 4; z++) {
+						boolean covered = false;
+						for (int[] st : starts)
+							covered |= Math.abs(st[0] - x) <= 7 && Math.abs(st[1] - z) <= 7;
+						helper.assertTrue(covered, p.type + " chunk " + x + "," + z
+								+ " belongs to no region start within 7 chunks; 26.3 would never generate it");
+					}
+			}
+		}
+		// A saved region piece must come back as the same structure clipped to the same region.
+		StructureCalculator calc = new StructureCalculator(7919L);
+		calc.generate();
+		for (StructureCalculator.StructurePlacement p : calc.getPlacements()) {
+			if (p.type != DimensionStructureType.LASER)
+				continue;
+			var full = reika.chromaticraft.world.dimension.structure.ProximaStructureSegments.piece(p, 100);
+			var region = new net.minecraft.world.level.levelgen.structure.BoundingBox(full.getBoundingBox().minX(),
+					full.getBoundingBox().minY(), full.getBoundingBox().minZ(), full.getBoundingBox().minX() + 40,
+					full.getBoundingBox().maxY(), full.getBoundingBox().maxZ());
+			var segment = new reika.chromaticraft.world.dimension.structure.ProximaSegmentPiece(full, region);
+			var context = net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext
+					.fromLevel(helper.getLevel());
+			CompoundTag tag = segment.createTag(context);
+			var loaded = new reika.chromaticraft.world.dimension.structure.ProximaSegmentPiece(context, tag);
+			helper.assertTrue(loaded.getBoundingBox().equals(region)
+					&& loaded.inner() instanceof reika.chromaticraft.world.dimension.structure.LaserStructurePiece
+					&& loaded.inner().getBoundingBox().equals(full.getBoundingBox()),
+					"a saved Proxima region piece did not reload as the same clipped structure");
+			break;
+		}
+		reika.chromaticraft.ChromatiCraft.LOGGER.info("Proxima structure reach in chunks {}, region starts {}", reach, segments);
+		helper.succeed();
 	}
 
 	/** The native piece installs a configured lock grid, the structure terminal and the source column. */

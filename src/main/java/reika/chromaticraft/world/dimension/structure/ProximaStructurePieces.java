@@ -55,6 +55,10 @@ public final class ProximaStructurePieces {
 	public static final DeferredHolder<StructurePieceType, StructurePieceType> LASER =
 			PIECES.register("laser",
 					() -> (StructurePieceType)(context, tag) -> new LaserStructurePiece(tag));
+	/** One region of an oversized structure split across several starts (see ProximaStructureSegments). */
+	public static final DeferredHolder<StructurePieceType, StructurePieceType> SEGMENT =
+			PIECES.register("segment",
+					() -> (StructurePieceType)(context, tag) -> new ProximaSegmentPiece(context, tag));
 	public static final DeferredHolder<StructurePieceType, StructurePieceType> WATER =
 			PIECES.register("water",
 					() -> (StructurePieceType)(context, tag) -> new WaterStructurePiece(tag));

@@ -13,8 +13,7 @@ public final class LaserPlacement implements StructurePlacement {
 	public static final MapCodec<LaserPlacement> CODEC = MapCodec.unit(LaserPlacement::new);
 	@Override public boolean isStructureChunk(ChunkGeneratorStructureState state, int chunkX, int chunkZ) {
 		ProximaGenerators.Layout layout = ProximaGenerators.getLayout();
-		return layout != null && layout.structures().getPlacementInChunk(
-				DimensionStructureType.LASER, chunkX, chunkZ) != null;
+		return layout != null && ProximaStructureSegments.ownerAt(DimensionStructureType.LASER, chunkX, chunkZ) != null;
 	}
 	@Override public MapCodec<LaserPlacement> codec() { return CODEC; }
 }
