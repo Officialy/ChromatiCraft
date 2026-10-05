@@ -1,6 +1,5 @@
 package reika.chromaticraft.render.item;
 
-import java.util.function.Consumer;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.client.renderer.SubmitNodeCollector;
@@ -10,6 +9,8 @@ import net.minecraft.resources.Identifier;
 import org.joml.Vector3f;
 import org.joml.Vector3fc;
 import reika.chromaticraft.render.tesr.RenderFunctionRelay;
+
+import java.util.function.Consumer;
 
 public final class FunctionRelayItemRenderer implements NoDataSpecialModelRenderer {
     public static final Identifier ID = Identifier.fromNamespaceAndPath("chromaticraft", "function_relay");

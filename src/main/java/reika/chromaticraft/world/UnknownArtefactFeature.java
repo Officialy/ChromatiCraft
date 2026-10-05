@@ -1,23 +1,20 @@
 package reika.chromaticraft.world;
 
-import java.util.HashSet;
-import java.util.Set;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
-import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.feature.Feature;
 import net.minecraft.world.level.material.Fluids;
-
 import reika.chromaticraft.magic.lore.Towers;
 import reika.chromaticraft.registry.ChromaBlocks;
+
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * V33a {@code UnknownArtefactGenerator}: artefacts buried in a ring around each lore tower.
@@ -47,6 +44,7 @@ public final class UnknownArtefactFeature implements Feature {
 	private static final Set<ChunkPos> artefactChunks = new HashSet<>();
 	private static long cachedSeed;
 	private static boolean cached;
+	private static java.lang.ref.WeakReference<ServerLevel> cachedWorld = new java.lang.ref.WeakReference<>(null);
 
 	public UnknownArtefactFeature() {
 
@@ -64,7 +62,7 @@ public final class UnknownArtefactFeature implements Feature {
 
 		int x = origin.getX() + random.nextInt(16);
 		int z = origin.getZ() + random.nextInt(16);
-		int y = world.getHeight(Heightmap.Types.WORLD_SURFACE_WG, x, z) - 1;
+		int y = OverworldStructureFeature.terrainTop(world, x, z) - 1;
 		BlockPos surface = new BlockPos(x, y, z);
 		if (!canGenerateArtefactAt(world, surface))
 			return false;
@@ -78,9 +76,10 @@ public final class UnknownArtefactFeature implements Feature {
 	 * a tower's artefact ring. The Artefact Spawner asks this about the player's chunk every tick.
 	 */
 	public static boolean isUAChunk(ServerLevel world, int x, int z) {
+		if (!canGenerateIn(world)) return false;
 		synchronized (artefactChunks) {
 			calculate(world);
-			return canGenerateIn(world) && artefactChunks.contains(new ChunkPos(x, z));
+			return artefactChunks.contains(new ChunkPos(x, z));
 		}
 	}
 
@@ -95,7 +94,7 @@ public final class UnknownArtefactFeature implements Feature {
 	}
 
 	private static void calculate(ServerLevel world) {
-		if (cached && cachedSeed == world.getSeed())
+		if (cached && cachedWorld.get() == world && cachedSeed == world.getSeed())
 			return;
 		if (!Towers.initialized(world))
 			Towers.loadPositions(world, 64 * 16 * 2);
@@ -118,6 +117,7 @@ public final class UnknownArtefactFeature implements Feature {
 			}
 		}
 		cachedSeed = world.getSeed();
+		cachedWorld = new java.lang.ref.WeakReference<>(world);
 		cached = true;
 	}
 

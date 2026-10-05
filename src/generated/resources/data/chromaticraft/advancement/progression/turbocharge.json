@@ -1,0 +1,29 @@
+{
+  "parent": "chromaticraft:progression/dimension",
+  "criteria": {
+    "trigger": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "display": {
+    "announce_to_chat": false,
+    "description": {
+      "translate": "advancements.chromaticraft.turbocharge.description"
+    },
+    "frame": "challenge",
+    "hidden": true,
+    "icon": {
+      "id": "chromaticraft:chromic_lexicon"
+    },
+    "show_toast": false,
+    "title": {
+      "translate": "advancements.chromaticraft.turbocharge.title"
+    }
+  },
+  "requirements": [
+    [
+      "trigger"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

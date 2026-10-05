@@ -9,28 +9,26 @@
  ******************************************************************************/
 package reika.chromaticraft.entity;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.Vec3;
-import net.minecraft.core.particles.ParticleTypes;
 import net.neoforged.neoforge.entity.IEntityWithComplexSpawn;
-
 import reika.chromaticraft.magic.interfaces.CrystalFuse;
 import reika.chromaticraft.registry.ChromaEntityTypes;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.tileentity.networking.TileEntityCrystalPylon;
 import reika.dragonapi.base.InertEntity;
 import reika.dragonapi.libraries.level.ReikaWorldHelper;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * The travelling destructive pulse emitted by an unstable pylon. The server owns impact effects;

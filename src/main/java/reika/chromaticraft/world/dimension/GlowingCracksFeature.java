@@ -1,18 +1,16 @@
 package reika.chromaticraft.world.dimension;
 
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Set;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.RandomSource;
-import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.feature.Feature;
-
 import reika.chromaticraft.block.worldgen26.BlockStructureShield;
 import reika.chromaticraft.registry.ChromaBlocks;
+
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * V33a {@code WorldGenGlowingCracks}: the seam of light, and the ore crystal buried under it.

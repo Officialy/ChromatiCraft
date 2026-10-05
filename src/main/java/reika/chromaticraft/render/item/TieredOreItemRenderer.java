@@ -1,13 +1,9 @@
 package reika.chromaticraft.render.item;
 
-import java.util.function.Consumer;
-
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-
-import net.minecraft.util.LightCoordsUtil;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.special.NoDataSpecialModelRenderer;
@@ -18,12 +14,13 @@ import net.minecraft.client.resources.model.sprite.SpriteGetter;
 import net.minecraft.client.resources.model.sprite.SpriteId;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.Identifier;
-
+import net.minecraft.util.LightCoordsUtil;
 import org.joml.Vector3f;
 import org.joml.Vector3fc;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.render.model.TieredOreGeodeGeometry;
+
+import java.util.function.Consumer;
 
 /** Inventory equivalent of V33a's two-pass TieredOreRenderer. */
 public final class TieredOreItemRenderer implements NoDataSpecialModelRenderer {

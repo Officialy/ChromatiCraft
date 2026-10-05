@@ -1,15 +1,7 @@
 package reika.chromaticraft.render.tesr;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.WeakHashMap;
-
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
@@ -22,15 +14,14 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
-
 import org.jspecify.annotations.Nullable;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.block.BlockCrystallineStone;
 import reika.chromaticraft.registry.CrystalElement;
-import reika.dragonapi.instantiable.rendering.structure.StructureRenderer;
 import reika.chromaticraft.tileentity.recipe.TileEntityCastingTable;
-import reika.dragonapi.instantiable.data.blockstruct.BlockArray;
+import reika.dragonapi.instantiable.rendering.structure.StructureRenderer;
+
+import java.util.*;
 
 /** V33a's full-bright, transient elemental engravings across an upgraded casting structure. */
 public final class RenderCastingTable implements BlockEntityRenderer<TileEntityCastingTable, RenderCastingTable.State> {

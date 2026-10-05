@@ -1,20 +1,18 @@
 package reika.chromaticraft.data;
 
-import java.nio.file.Path;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-
 import com.google.common.collect.ImmutableList;
 import com.google.gson.JsonObject;
-
 import net.minecraft.data.CachedOutput;
 import net.minecraft.data.DataProvider;
 import net.minecraft.data.PackOutput;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.levelgen.GenerationStep;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.registry.ChromaTieredPlants;
+
+import java.nio.file.Path;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 /** Adds cave crystals and NBT-backed natural pylons to their V33a-compatible biome sets. */
 public final class ChromaBiomeModifierProvider implements DataProvider {
@@ -74,6 +72,9 @@ public final class ChromaBiomeModifierProvider implements DataProvider {
                 GenerationStep.Decoration.VEGETAL_DECORATION));
         futures.add(saveMany(cache, "aura_ivy_hills", "#minecraft:is_mountain",
                 List.of(id("aura_ivy").toString()), GenerationStep.Decoration.VEGETAL_DECORATION));
+        futures.add(saveMany(cache, "glowing_flowers_overworld", "#minecraft:is_overworld",
+                List.of(id("glow_daisy").toString(), id("glow_root").toString()),
+                GenerationStep.Decoration.TOP_LAYER_MODIFICATION));
         // V33a SkypeaterGenerator is deliberately not attached: the Skypeater was an unfinished WIP
         // feature (project owner's call), so it must not generate even though V33a's source still
         // registered the generator. The feature stays registered as `chromaticraft:skypeater` for
@@ -90,10 +91,9 @@ public final class ChromaBiomeModifierProvider implements DataProvider {
         // annulus, not the biome, is what confines it.
         futures.add(save(cache, "unknown_artefact_overworld", "#minecraft:is_overworld",
                 id("unknown_artefact").toString(), GenerationStep.Decoration.SURFACE_STRUCTURES));
-        // V33a CaveIndicatorGenerator is gated on BiomeGlowingCliffs.isGlowingCliffs, so this goes
-        // to the two Luminous Cliffs biomes only rather than to an overworld tag.
-        futures.add(saveManyBiomes(cache, "cave_indicator_cliffs",
-                List.of(id("luminous_cliffs").toString(), id("luminous_cliffs_shores").toString()),
+        // Both original decorators inspect each actual column. Global admission keeps the
+        // Cliffs side of a boundary chunk even when decoration samples its ordinary biome.
+        futures.add(saveMany(cache, "cave_indicator_overworld", "#minecraft:is_overworld",
                 List.of(id("cave_indicator").toString()),
                 GenerationStep.Decoration.UNDERGROUND_DECORATION));
         futures.add(save(cache, "pylon_overworld", "#minecraft:is_overworld",
@@ -154,20 +154,19 @@ public final class ChromaBiomeModifierProvider implements DataProvider {
                 NATURAL_CAVERN, GenerationStep.Decoration.UNDERGROUND_STRUCTURES));
         futures.add(save(cache, "burrow_overworld", "#minecraft:is_overworld",
                 NATURAL_BURROW, GenerationStep.Decoration.SURFACE_STRUCTURES));
-        futures.add(save(cache, "ocean_structure_oceans", "#minecraft:is_ocean",
+        // The zone planner samples the root within the chunk and owns each type's biome gate.
+        // A root near a biome edge can belong to a different biome from the chunk's decoration
+        // samples. Attach every dungeon globally, as V33a's generator did, so those roots run too.
+        futures.add(save(cache, "ocean_structure_overworld", "#minecraft:is_overworld",
                 NATURAL_OCEAN, GenerationStep.Decoration.SURFACE_STRUCTURES));
-        futures.add(save(cache, "desert_structure_sandy", "#c:is_sandy",
+        futures.add(save(cache, "desert_structure_overworld", "#minecraft:is_overworld",
                 NATURAL_DESERT, GenerationStep.Decoration.SURFACE_STRUCTURES));
-		futures.add(save(cache, "snow_structure_snowy", "#c:is_snowy",
+		futures.add(save(cache, "snow_structure_overworld", "#minecraft:is_overworld",
 				NATURAL_SNOW, GenerationStep.Decoration.TOP_LAYER_MODIFICATION));
 		// V33a BiomeStructureGenerator was restricted to ChromatiCraft's special overworld
-		// biomes. Rainbow Stream is deliberately excluded: it is a river overlay and was not
-		// a legal host for the room. Keep this explicit to avoid NeoForge feature-order cycles
-		// between the custom biomes and vanilla river generation.
-		futures.add(saveManyBiomes(cache, "biome_fragment_special_biomes",
-				List.of(id("rainbow_forest").toString(), id("ender_forest").toString(),
-						id("luminous_cliffs").toString(), id("luminous_cliffs_shores").toString()),
-				List.of(NATURAL_BIOME_FRAGMENT), GenerationStep.Decoration.SURFACE_STRUCTURES));
+		// biomes. The planner's site predicate excludes Rainbow Stream, a river overlay.
+		futures.add(save(cache, "biome_fragment_overworld", "#minecraft:is_overworld",
+				NATURAL_BIOME_FRAGMENT, GenerationStep.Decoration.SURFACE_STRUCTURES));
 		// V33a BiomeRainbowForest.getSpawningChance follows the live ANIMALSPAWN option.
 		JsonObject density = new JsonObject();
 		density.addProperty("type", id("rainbow_forest_spawn_density").toString());

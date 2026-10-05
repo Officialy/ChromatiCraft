@@ -1,25 +1,23 @@
 package reika.chromaticraft.data;
 
-import java.util.List;
-
+import net.minecraft.advancements.Advancement;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.data.recipes.RecipeOutput;
 import net.minecraft.data.recipes.RecipeProvider;
 import net.minecraft.data.worldgen.BootstrapContext;
-import net.minecraft.advancements.Advancement;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.level.ItemLike;
 import net.minecraft.world.level.material.Fluid;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.auxiliary.recipemanagers.CobbleGeneratorRecipe;
 import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaFluids;
 import reika.chromaticraft.registry.CrystalElement;
+
+import java.util.List;
 
 /** Exact V33a fluid-mix table for the Coalescence Orchid. */
 public final class ChromaCobbleGeneratorRecipeProvider {

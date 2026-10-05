@@ -9,11 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.tileentity.recipe;
 
-import java.util.ArrayList;
-import java.util.EnumMap;
-import java.util.List;
-import java.util.Optional;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Holder;
@@ -36,7 +31,6 @@ import net.minecraft.world.item.alchemy.PotionContents;
 import net.minecraft.world.item.alchemy.Potions;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
-
 import reika.chromaticraft.auxiliary.interfaces.OperationInterval;
 import reika.chromaticraft.base.tileentity.InventoriedChromaticBase;
 import reika.chromaticraft.container.MenuCrystalBrewer;
@@ -47,6 +41,11 @@ import reika.chromaticraft.magic.CrystalPotionController;
 import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.ChromaTiles;
 import reika.chromaticraft.registry.CrystalElement;
+
+import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Optional;
 
 /**
  * V33a {@code TileEntityCrystalBrewer}, the Crystal Brewery: a crystal shard in the top slot turns every bottle below it
@@ -119,11 +118,8 @@ public class TileEntityCrystalBrewer extends InventoriedChromaticBase implements
 	private boolean canBrew() {
 		if (!(inv.get(0).getItem() instanceof ItemCrystalShard))
 			return false;
-		if (!this.isSlotModifiable(1) && !this.isSlotModifiable(2) && !this.isSlotModifiable(3))
-			return false;
-
-		return true;
-	}
+        return this.isSlotModifiable(1) || this.isSlotModifiable(2) || this.isSlotModifiable(3);
+    }
 
 	private boolean isSlotModifiable(int i) {
 		ItemStack is = inv.get(i);

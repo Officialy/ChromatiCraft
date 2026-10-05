@@ -1,10 +1,10 @@
 package reika.chromaticraft.magic;
 
+import reika.dragonapi.libraries.mathsci.ReikaMusicHelper.MusicKey;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
-import reika.dragonapi.libraries.mathsci.ReikaMusicHelper.MusicKey;
 
 /**
  * V33a's monument ritual score: the melody, and the event schedule derived from it.

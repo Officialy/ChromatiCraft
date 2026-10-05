@@ -1,18 +1,10 @@
 package reika.chromaticraft.world.dimension;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Vec3i;
 import net.minecraft.util.RandomSource;
+
+import java.util.*;
 
 /**
  * V33a {@code FissurePatternCalculator}: the five hundred fissure shapes Proxima chooses from.

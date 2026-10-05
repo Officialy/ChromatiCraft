@@ -11,6 +11,6 @@ package reika.chromaticraft.magic.interfaces;
 
 public interface NaturalCrystalSource extends CrystalSource, NaturalNetworkTile {
 
-	public boolean regeneratesEnergy();
+	boolean regeneratesEnergy();
 
 }

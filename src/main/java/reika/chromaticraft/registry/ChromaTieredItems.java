@@ -1,9 +1,8 @@
 package reika.chromaticraft.registry;
 
 /**
- * V33a {@code ChromaItems.TIERED} identities required by the active crystal/casting and Player
- * Infusion graphs. The original metadata is retained explicitly so later resource slices can join
- * this registry without changing data identities.
+ * All V33a {@code ChromaItems.TIERED} identities, split into stable item registrations.
+ * The original metadata is retained for discovery stages and authoritative sprite extraction.
  */
 public enum ChromaTieredItems {
 
@@ -27,9 +26,13 @@ public enum ChromaTieredItems {
 	BOOST_ROOT(22, "boost_root", "Enrichment Root"),
 	LUMEN_GEM(23, "lumenite", "Lumenite"),
 	AVOLITE(24, "avolite", "Avolite"),
-	// V33a ChromaStacks.bedrockloot / bedrockloot2. Proxima's bedrock-crack loot, and the only thing
-	// the Portal Rift accepts as tuning energy. Names from the V33a en_US.lang chromacraft.bedrockloot
-	// keys; sprites are authoritative crops of items_resource.png indices 154 and 155.
+	CAVERN_FRAGMENT(13, "cavern_fragment", "Cavern Fragment"),
+	BURROW_FRAGMENT(14, "burrow_fragment", "Burrow Fragment"),
+	OCEAN_FRAGMENT(15, "ocean_fragment", "Ocean Fragment"),
+	RESONANT_CRYSTAL(18, "resonant_crystal", "Resonant Crystal"),
+	DESERT_FRAGMENT(20, "desert_fragment", "Desert Fragment"),
+	SNOW_FRAGMENT(25, "snow_fragment", "Snow Fragment"),
+	// V33a ChromaStacks.bedrockloot / bedrockloot2: bedrock-crack loot and Portal Rift tuning energy.
 	PROXIMAL_ESSENCE(26, "proximal_essence", "Proximal Essence"),
 	PURE_PROXIMAL_ESSENCE(27, "pure_proximal_essence", "Pure Proximal Essence");
 

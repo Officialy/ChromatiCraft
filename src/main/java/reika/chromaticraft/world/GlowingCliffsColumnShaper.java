@@ -1,18 +1,17 @@
 package reika.chromaticraft.world;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Random;
-import java.util.concurrent.ConcurrentHashMap;
-
 import net.minecraft.util.Mth;
-
 import reika.chromaticraft.registry.ChromaOptions;
 import reika.dragonapi.instantiable.Interpolation;
 import reika.dragonapi.instantiable.math.noise.NoiseGeneratorBase;
 import reika.dragonapi.instantiable.math.noise.SimplexNoiseGenerator;
 import reika.dragonapi.libraries.java.ReikaRandomHelper;
 import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * V33a {@code GlowingCliffsColumnShaper}: the shape of the Luminous Cliffs, column by column.

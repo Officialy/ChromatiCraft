@@ -9,23 +9,8 @@
  ******************************************************************************/
 package reika.chromaticraft.world.dimension;
 
-import java.awt.Color;
-import java.awt.Point;
-import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.EnumMap;
-import java.util.List;
-import java.util.Random;
-
-import javax.imageio.ImageIO;
-
 import net.minecraft.core.Direction;
 import net.minecraft.util.Mth;
-
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.world.dimension.StructureCalculator.StructurePlacement;
 import reika.chromaticraft.world.dimension.biome.ProximaBiomeType;
@@ -33,6 +18,14 @@ import reika.chromaticraft.world.dimension.biome.ProximaBiomes;
 import reika.chromaticraft.world.dimension.biome.ProximaSubBiomes;
 import reika.dragonapi.instantiable.data.maps.MultiMap;
 import reika.dragonapi.instantiable.math.LobulatedCurve;
+
+import javax.imageio.ImageIO;
+import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
+import java.util.List;
 
 /**
  * V33a {@code BiomeDistributor}: Proxima's global biome map.

@@ -9,12 +9,8 @@
  ******************************************************************************/
 package reika.chromaticraft.render.tesr;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.geom.ModelLayerLocation;
 import net.minecraft.client.renderer.SubmitNodeCollector;
@@ -32,9 +28,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-
 import org.jspecify.annotations.Nullable;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.models.ModelFluidRelay;
 import reika.chromaticraft.registry.ChromaBlocks;
@@ -44,6 +38,9 @@ import reika.chromaticraft.render.ChromaRenderPipelines;
 import reika.chromaticraft.tileentity.transport.TileEntityFluidRelay;
 import reika.dragonapi.instantiable.effects.TruncatedCube;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * V33a {@code RenderFluidRelay}. The model stands on the tank face, rotated from its default downward mounting. Over it

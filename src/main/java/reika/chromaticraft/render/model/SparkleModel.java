@@ -1,11 +1,7 @@
 package reika.chromaticraft.render.model;
 
-import java.util.List;
-import java.util.Random;
-
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-
 import net.minecraft.client.renderer.block.BlockAndTintGetter;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
@@ -20,13 +16,14 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.state.BlockState;
-
 import net.neoforged.neoforge.client.model.DynamicBlockStateModel;
 import net.neoforged.neoforge.client.model.block.CustomUnbakedBlockStateModel;
 import net.neoforged.neoforge.client.model.quad.MutableQuad;
-
 import reika.dragonapi.libraries.java.ReikaRandomHelper;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
+
+import java.util.List;
+import java.util.Random;
 
 /**
  * V33a {@code SparklingBlockRender}: the proxy block, with a scatter of glinting motes on each face.

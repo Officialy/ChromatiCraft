@@ -2,7 +2,6 @@ package reika.chromaticraft.block;
 
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -21,7 +20,6 @@ import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
-
 import reika.chromaticraft.block.worldgen26.BlockStructureShield;
 import reika.chromaticraft.item.ItemManipulator;
 import reika.chromaticraft.registry.ChromaSounds;

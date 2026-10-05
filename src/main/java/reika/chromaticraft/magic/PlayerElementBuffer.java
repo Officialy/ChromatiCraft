@@ -1,12 +1,9 @@
 package reika.chromaticraft.magic;
 
-import java.util.UUID;
-
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
-
 import reika.chromaticraft.api.CrystalElementAccessor.CrystalElementProxy;
 import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.registry.ChromaSounds;
@@ -14,6 +11,8 @@ import reika.chromaticraft.registry.CrystalElement;
 import reika.dragonapi.instantiable.data.maps.CountMap;
 import reika.dragonapi.libraries.ReikaPlayerAPI;
 import reika.dragonapi.libraries.io.NBTCompat;
+
+import java.util.UUID;
 
 /**
  * V33a {@code PlayerElementBuffer}: the sixteen-element energy store every player carries, filled by

@@ -1,17 +1,14 @@
 package reika.chromaticraft.client.gui;
 
-import java.util.List;
-
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.renderer.RenderPipelines;
-import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe;
 import reika.chromaticraft.container.MenuCastingTable;
@@ -20,6 +17,8 @@ import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.tileentity.recipe.TileEntityCastingTable;
 import reika.chromaticraft.tileentity.recipe.TileEntityItemStand;
+
+import java.util.List;
 
 /**
  * The V33a casting-table GUI on the 26.2 extracted-GUI pipeline.
@@ -177,7 +176,7 @@ public final class ScreenCastingTable extends AbstractContainerScreen<MenuCastin
         graphics.blit(RenderPipelines.GUI_TEXTURED, BAR_TEXTURE, x, y, textureX, 0,
                 width, height, 512, 128);
         int fill = (int)(Math.min(fraction, 1) * height);
-        graphics.fill(x, y + height - fill, x + width, y + height, element.getColor());
+        graphics.fill(x, y + height - fill, x + width, y + height, element.color());
     }
 
     private Identifier guiTexture() {

@@ -11,8 +11,8 @@ package reika.chromaticraft.magic.interfaces;
 
 public interface RegionalSensitiveRepeater extends CrystalRepeater {
 
-	public void onRegionUpdated();
+	void onRegionUpdated();
 
-	public int getSensitivityRadius();
+	int getSensitivityRadius();
 
 }

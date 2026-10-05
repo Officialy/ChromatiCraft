@@ -1,29 +1,26 @@
 package reika.chromaticraft.client;
 
 import com.mojang.blaze3d.vertex.VertexConsumer;
-
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.block.FluidRenderer;
 import net.minecraft.client.renderer.block.BlockAndTintGetter;
 import net.minecraft.client.renderer.block.FluidModel;
-import net.minecraft.data.AtlasIds;
+import net.minecraft.client.renderer.block.FluidRenderer;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.resources.model.sprite.Material;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.data.AtlasIds;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.block.LiquidBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.FluidState;
-
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.RegisterFluidModelsEvent;
-import net.neoforged.neoforge.client.fluid.FluidTintSource;
 import net.neoforged.neoforge.client.fluid.CustomFluidRenderer;
+import net.neoforged.neoforge.client.fluid.FluidTintSource;
 import net.neoforged.neoforge.client.model.pipeline.VertexConsumerWrapper;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.block.BlockChromaFluid.TileEntityChroma;
 import reika.chromaticraft.registry.ChromaBlocks;

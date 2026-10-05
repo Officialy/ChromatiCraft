@@ -1,10 +1,5 @@
 package reika.chromaticraft.client.gui;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
-
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -12,20 +7,19 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.item.ItemStack;
-
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.gui.GuiLayer;
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.magic.progression.ProgressionDescriptions;
 import reika.chromaticraft.magic.progression.ResearchLevel;
-import reika.chromaticraft.registry.ChromaItems;
-import reika.chromaticraft.registry.ChromaOptions;
-import reika.chromaticraft.registry.ChromaSounds;
-import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.CrystalElement;
+import reika.chromaticraft.registry.*;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 /**
  * Modern render-state implementation of V33a {@code ProgressOverlayRenderer}.
@@ -61,7 +55,7 @@ public final class ProgressionOverlay implements GuiLayer {
 	public static void add(CrystalElement element) {
 		INSTANCE.add(new Note(element.ordinal(), Component.literal(element.displayName),
 				Component.literal("A new form of crystal energy"),
-				new ItemStack(ChromaBlocks.rune(element).get()), 0xff000000 | element.getColor(), 0));
+				new ItemStack(ChromaBlocks.rune(element).get()), 0xff000000 | element.color(), 0));
 	}
 
 	public static void add(ResearchLevel level) {
@@ -95,7 +89,7 @@ public final class ProgressionOverlay implements GuiLayer {
 		List<Integer> expired = new ArrayList<>();
 		for (Map.Entry<Integer, Note> entry : notes.entrySet()) {
 			Note note = entry.getValue();
-			int remaining = (int)Math.clamp(note.expiresAt() - now, 0, DURATION);
+			int remaining = Math.clamp(note.expiresAt() - now, 0, DURATION);
 			if (remaining <= 0) {
 				expired.add(entry.getKey());
 				continue;

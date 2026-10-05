@@ -1,12 +1,8 @@
 package reika.chromaticraft.render.entity;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.entity.EntityRenderer;
@@ -17,12 +13,14 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.client.render.ArtealloyEffects;
 import reika.chromaticraft.entity.EntityDataCrystal;
 import reika.chromaticraft.render.ChromaRenderPipelines;
 import reika.dragonapi.instantiable.RayTracer;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * V33a {@code DataCrystalRenderer}: the dropped Memory Crystal as a tilted lore-tower prism with a flare.

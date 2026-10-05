@@ -194,7 +194,7 @@ public class ItemManipulator extends Item {
 				var element = repeater.getActiveColor();
 				ChromaSounds.CAST.playSoundAtBlock(repeater);
 				if (element != null) {
-					int color = element.getColor();
+					int color = element.color();
 					ReikaPacketHelper.sendDataPacketWithRadius(DragonAPI.packetChannel,
 							APIPacketHandler.PacketIDs.COLOREDPARTICLE.ordinal(), repeater, 128,
 							color >> 16 & 255, color >> 8 & 255, color & 255, 32, 8);

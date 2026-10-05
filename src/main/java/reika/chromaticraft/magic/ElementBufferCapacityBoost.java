@@ -1,25 +1,24 @@
 package reika.chromaticraft.magic;
 
-import java.util.ArrayList;
-import java.util.TreeSet;
-import java.util.function.BiFunction;
-import java.util.function.Supplier;
-
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-
 import reika.chromaticraft.magic.lore.LoreManager;
 import reika.chromaticraft.magic.progression.ProgressAccess;
 import reika.chromaticraft.magic.progression.ProgressStage;
-import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.registry.ChromaCraftingItems;
 import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.ChromaTieredItems;
+import reika.chromaticraft.registry.CrystalElement;
 import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
+
+import java.util.ArrayList;
+import java.util.TreeSet;
+import java.util.function.BiFunction;
+import java.util.function.Supplier;
 
 /**
  * V33a {@code ElementBufferCapacityBoost}: the progression gates on how much elemental energy a

@@ -1,12 +1,6 @@
 package reika.chromaticraft.client;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
 import com.mojang.blaze3d.vertex.PoseStack;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.renderer.SubmitNodeCollector;
@@ -19,18 +13,20 @@ import net.minecraft.client.renderer.state.level.LevelRenderState;
 import net.minecraft.client.resources.model.geometry.BakedQuad;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.RandomSource;
-
 import net.neoforged.neoforge.client.CustomBlockOutlineRenderer;
 import net.neoforged.neoforge.client.event.ExtractBlockOutlineRenderStateEvent;
-
+import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector3fc;
-import org.joml.Matrix4f;
-
 import reika.chromaticraft.base.CrystalBlock;
+import reika.chromaticraft.models.ModelTurbo;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.render.tesr.RenderItemStand;
-import reika.chromaticraft.models.ModelTurbo;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 /** Exact hover/mining outlines extracted from ChromatiCraft's non-voxel rendered models. */
 public final class ChromaModelOutlineRenderer implements CustomBlockOutlineRenderer {

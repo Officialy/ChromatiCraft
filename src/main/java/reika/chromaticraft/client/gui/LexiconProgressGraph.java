@@ -1,21 +1,16 @@
 package reika.chromaticraft.client.gui;
 
-import java.util.ArrayList;
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-
 import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.magic.progression.ProgressionDescriptions;
 import reika.chromaticraft.magic.progression.ProgressionManager;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
+
+import java.util.*;
 
 /**
  * V33a {@code GuiProgressStages} and its two subclasses: the research graph, laid out as a panned
@@ -180,12 +175,14 @@ final class LexiconProgressGraph {
 
 		if (hovered != null) {
 			List<Component> lines = new ArrayList<>();
-			lines.add(Component.literal(ProgressionDescriptions.title(hovered)));
+			boolean clear = hovered.isPlayerAtStage(player) || hovered.playerHasPrerequisites(player);
+			lines.add(reika.chromaticraft.auxiliary.render.ChromaText.conceal(
+					Component.literal(ProgressionDescriptions.title(hovered)), !clear && !hovered.isOneStepAway(player)));
 			String text = hovered.isPlayerAtStage(player)
 					? ProgressionDescriptions.reveal(hovered)
 					: ProgressionDescriptions.hint(hovered);
 			if (!text.isBlank())
-				lines.add(Component.literal(text));
+				lines.add(reika.chromaticraft.auxiliary.render.ChromaText.conceal(Component.literal(text), !clear));
 			graphics.setComponentTooltipForNextFrame(font, lines, mouseX, mouseY);
 		}
 		return hovered;

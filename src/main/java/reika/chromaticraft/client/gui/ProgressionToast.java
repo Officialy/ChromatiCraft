@@ -1,7 +1,5 @@
 package reika.chromaticraft.client.gui;
 
-import java.util.List;
-
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.toasts.Toast;
@@ -9,11 +7,12 @@ import net.minecraft.client.gui.components.toasts.ToastManager;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.item.ItemStack;
-
 import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.magic.progression.ProgressionDescriptions;
 import reika.chromaticraft.magic.progression.ResearchLevel;
 import reika.chromaticraft.registry.ChromaItems;
+
+import java.util.List;
 
 /**
  * Modern presentation of V33a {@code ProgressOverlayRenderer}'s progression note.

@@ -9,10 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.auxiliary.render;
 
-import java.util.EnumMap;
-import java.util.Iterator;
-import java.util.Map.Entry;
-
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -24,11 +20,14 @@ import net.minecraft.resources.Identifier;
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.gui.GuiLayer;
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.registry.ChromaIcons;
 import reika.chromaticraft.registry.ChromaSounds;
 import reika.chromaticraft.registry.CrystalElement;
+
+import java.util.EnumMap;
+import java.util.Iterator;
+import java.util.Map.Entry;
 
 /**
  * V33a {@code ProbeInfoOverlayRenderer}: an Examination Crystals connectivity check shows, beside the crosshair, each

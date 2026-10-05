@@ -19,8 +19,8 @@ import net.minecraft.data.AtlasIds;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.ResolvableProfile;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import reika.chromaticraft.ChromatiCraft;
@@ -33,8 +33,8 @@ import reika.chromaticraft.magic.castingtuning.CastingTuningRegistry;
 import reika.chromaticraft.magic.progression.*;
 import reika.chromaticraft.network.ChromaNetwork;
 import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaSounds;
 import reika.chromaticraft.registry.ChromaEnchants;
+import reika.chromaticraft.registry.ChromaSounds;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.render.ChromaRenderPipelines;
 import reika.chromaticraft.world.dimension.DimensionStructureType.StructureTypeData;
@@ -42,12 +42,7 @@ import reika.chromaticraft.world.dimension.StructureCalculator;
 import reika.dragonapi.instantiable.rendering.structure.StructureRenderer;
 import reika.dragonapi.libraries.ReikaDirectionHelper.FanDirections;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
 
 /** First 26.2 rendering pass for V33a's navigation and basic-description guide screens. */
 public final class ScreenChromicLexicon extends Screen {
@@ -420,7 +415,10 @@ public final class ScreenChromicLexicon extends Screen {
 		for (CrystalElement element : CrystalElement.elements)
 			structureRender.addBlockHook(ChromaBlocks.rune(element).get(),
 					() -> ChromaBlocks.rune(elementByTick()).get().defaultBlockState());
-		structureRenderFor = selected.sourceId();
+		if (selected.sourceId().equals("voidritual") || selected.sourceId().equals("nethertrap"))
+            structureRender.addBlockEntityHook(ChromaBlocks.VOID_MONSTER_TRAP.get(), tile ->
+                    ((reika.chromaticraft.modinterface.voidritual.TileEntityVoidMonsterTrap)tile).setPreviewNether(selected.sourceId().equals("nethertrap")));
+        structureRenderFor = selected.sourceId();
 		return structureRender;
 	}
 
@@ -913,13 +911,20 @@ public final class ScreenChromicLexicon extends Screen {
 		if (selectedProgress != null) {
 			int textX = left + DESC_X;
 			int y = top + 116;
-			graphics.textWithWordWrap(font, Component.literal(ProgressionDescriptions.title(selectedProgress)),
+			boolean clear = selectedProgress.isPlayerAtStage(player) || selectedProgress.playerHasPrerequisites(player);
+			graphics.textWithWordWrap(font, reika.chromaticraft.auxiliary.render.ChromaText.conceal(
+					Component.literal(ProgressionDescriptions.title(selectedProgress)),
+					!clear && !selectedProgress.isOneStepAway(player)),
 					textX, y, 242, 0xffffffff, false);
 			y += 20;
 			String detail = selectedProgress.isPlayerAtStage(player)
 					? ProgressionDescriptions.reveal(selectedProgress)
 					: ProgressionDescriptions.hint(selectedProgress);
-			graphics.textWithWordWrap(font, Component.literal(detail), textX, y, 242, 0xffffffff, false);
+			graphics.textWithWordWrap(font, reika.chromaticraft.auxiliary.render.ChromaText.conceal(
+					Component.literal(detail), !clear), textX, y, 242, 0xffffffff, false);
+			if (!selectedProgress.isPlayerAtStage(player))
+				graphics.textWithWordWrap(font, reika.chromaticraft.auxiliary.render.ChromaText.scramble(
+						Component.literal("There is still much to learn...")), textX, top + 195, 242, 0xffffffff, false);
 		}
 	}
 
@@ -1170,7 +1175,7 @@ public final class ScreenChromicLexicon extends Screen {
 				: CastingTuningRegistry.instance.compassLocations().entrySet()) {
 			CrystalElement element = runes.get(entry.getValue());
 			if (element != null)
-				sectors.add(new CastingTuningCompass.Sector(-entry.getKey().angle, element.getColor()));
+				sectors.add(new CastingTuningCompass.Sector(-entry.getKey().angle, element.color()));
 		}
 		graphics.submitPictureInPictureRenderState(new CastingTuningCompass.State(
 				sectors, outerRadius, innerRadius,
@@ -1241,7 +1246,7 @@ public final class ScreenChromicLexicon extends Screen {
 					32, 32, 256, 256);
 			if (!complete)
 				continue;
-			graphics.outline(x - 1, y - 1, 34, 34, 0xff000000 | data.color().getColor());
+			graphics.outline(x - 1, y - 1, 34, 34, 0xff000000 | data.color().color());
 			if (mouseX < x || mouseX > x + 33 || mouseY < y || mouseY > y + 33)
 				continue;
 			int password = data.getPassword(player, SharedConstants.getCurrentVersion().name());
@@ -1309,8 +1314,8 @@ public final class ScreenChromicLexicon extends Screen {
 		int first = Math.floorMod((int)Math.floor(phase), CrystalElement.elements.length);
 		int second = (first + 1) % CrystalElement.elements.length;
 		float mix = (float)Math.min((phase - Math.floor(phase)) * 2, 1);
-		int color = mixColors(CrystalElement.elements[first].getColor(),
-				CrystalElement.elements[second].getColor(), mix);
+		int color = mixColors(CrystalElement.elements[first].color(),
+				CrystalElement.elements[second].color(), mix);
 		TextureAtlasSprite flare = Minecraft.getInstance().getAtlasManager()
 				.getAtlasOrThrow(AtlasIds.BLOCKS).getSprite(Identifier.fromNamespaceAndPath(
 						ChromatiCraft.MODID, "block/icons/roundflare"));
@@ -1901,7 +1906,10 @@ public final class ScreenChromicLexicon extends Screen {
 		CastingTableRecipe recipe = recipes.get(recipeIndex);
 		ItemStack output = recipe.output();
 		// GuiCastingRecipe.getTitleOffset() = 27; there is no tier banner upstream.
-		graphics.text(font, output.getHoverName(), left + 27, top - 2, 0xffffffff, false);
+		boolean readable = reika.chromaticraft.client.ChromaClientRecipes.isVisible(player, recipe,
+				PlayerResearch.fragments(player)) && reika.chromaticraft.magic.progression.ChromaNameKnowledge.recipeStagesKnown(recipe, player);
+		graphics.text(font, reika.chromaticraft.auxiliary.render.ChromaText.conceal(output.getHoverName(), !readable),
+				left + 27, top - 2, 0xffffffff, false);
 		// ChromaBookData.drawCastingRecipe renders this before switching on the recipe subpage. The
 		// result therefore stays in its source slot on Runes, Stands and Aura as well as on Grid.
 		pageItem(graphics, output, left + 7, top + 5);
@@ -2042,7 +2050,7 @@ public final class ScreenChromicLexicon extends Screen {
 			CrystalElement element = aura.element();
 			pageItem(graphics, new ItemStack(ChromaBlocks.rune(element).get()), left + 62, top + 64 + i * 19);
 			graphics.text(font, Component.literal(element.displayName + ": " + aura.amount() + " Lumens"),
-					left + 82, top + 68 + i * 19, 0xff000000 | element.getColor(), false);
+					left + 82, top + 68 + i * 19, 0xff000000 | element.color(), false);
 		}
 	}
 

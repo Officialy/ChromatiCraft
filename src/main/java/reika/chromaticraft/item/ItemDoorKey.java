@@ -1,8 +1,5 @@
 package reika.chromaticraft.item;
 
-import java.util.UUID;
-import java.util.function.Consumer;
-
 import net.minecraft.ChatFormatting;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
@@ -15,10 +12,12 @@ import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.component.TooltipDisplay;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
-
 import reika.chromaticraft.block.BlockChromaDoor;
 import reika.chromaticraft.tileentity.TileEntityChromaDoor;
 import reika.dragonapi.libraries.registry.ReikaItemHelper;
+
+import java.util.UUID;
+import java.util.function.Consumer;
 
 /** UUID-bearing key for Chroma Doors; V33a's metadata mode bit is modern CUSTOM_DATA. */
 public final class ItemDoorKey extends Item {

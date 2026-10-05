@@ -1,12 +1,10 @@
 package reika.chromaticraft.registry;
 
+import com.mojang.serialization.MapCodec;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.level.levelgen.placement.PlacementModifier;
-import com.mojang.serialization.MapCodec;
-
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.world.PylonGridPlacement;
 

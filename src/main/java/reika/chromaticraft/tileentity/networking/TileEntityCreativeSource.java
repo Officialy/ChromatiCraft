@@ -9,13 +9,10 @@
  ******************************************************************************/
 package reika.chromaticraft.tileentity.networking;
 
-import java.util.UUID;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
-
 import reika.chromaticraft.base.tileentity.CrystalTransmitterBase;
 import reika.chromaticraft.base.tileentity.TileEntityChromaticBase;
 import reika.chromaticraft.base.tileentity.TileEntityCrystalBase;
@@ -26,6 +23,8 @@ import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.ChromaTiles;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.dragonapi.DragonAPI;
+
+import java.util.UUID;
 
 /** A creative infinite-energy source (the creative pylon). Supplies only its creative-mode owner. */
 public class TileEntityCreativeSource extends CrystalTransmitterBase implements CrystalSource {
@@ -109,7 +108,7 @@ public class TileEntityCreativeSource extends CrystalTransmitterBase implements 
 		UUID other = te.getPlacerUUID();
 		if (ep != null && ep.getUUID().equals(DragonAPI.Reika_UUID))
 			return true;
-		return ep != null && other != null && ep.getUUID().equals(other) && ep.getAbilities().instabuild;
+		return ep != null && ep.getUUID().equals(other) && ep.getAbilities().instabuild;
 	}
 
 	@Override

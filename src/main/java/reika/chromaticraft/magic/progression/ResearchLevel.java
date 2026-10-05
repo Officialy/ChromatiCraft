@@ -1,11 +1,10 @@
 package reika.chromaticraft.magic.progression;
 
-import java.util.Locale;
-
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
-
 import reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe;
+
+import java.util.Locale;
 
 /** The world/casting milestone that must be completed before a research tier becomes available. */
 public enum ResearchLevel implements ProgressAccess {

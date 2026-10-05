@@ -9,8 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.items.tools;
 
-import org.jspecify.annotations.Nullable;
-
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
@@ -18,6 +16,7 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import org.jspecify.annotations.Nullable;
 
 /**
  * V33a {@code ItemEtherealPendant}, the Luma Capsule (tool sprite 72, always glinting): carried, it counts as every

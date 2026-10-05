@@ -9,30 +9,23 @@
  ******************************************************************************/
 package reika.chromaticraft.tileentity.auxiliary;
 
-import java.util.Collection;
-import java.util.UUID;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-
 import reika.chromaticraft.base.tileentity.TileEntityPylonEnhancer;
 import reika.chromaticraft.block.BlockCrystalRune;
 import reika.chromaticraft.magic.network.CrystalNetworker;
 import reika.chromaticraft.network.ChromaNetwork;
-import reika.chromaticraft.registry.ChromaBlockEntities;
-import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaSounds;
-import reika.chromaticraft.registry.ChromaTiles;
-import reika.chromaticraft.registry.CrystalElement;
+import reika.chromaticraft.registry.*;
 import reika.chromaticraft.tileentity.networking.TileEntityCrystalPylon;
 import reika.dragonapi.instantiable.data.immutable.Coordinate;
+
+import java.util.Collection;
+import java.util.UUID;
 
 /** One of the eight owner-bound power crystals surrounding a pylon. */
 public class TileEntityChromaCrystal extends TileEntityPylonEnhancer {

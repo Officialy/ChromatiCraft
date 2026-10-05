@@ -9,13 +9,13 @@
  ******************************************************************************/
 package reika.chromaticraft.magic.network;
 
-import java.util.Comparator;
-
 import reika.chromaticraft.magic.interfaces.CrystalReceiver;
 import reika.chromaticraft.magic.interfaces.CrystalSource;
 import reika.chromaticraft.magic.interfaces.CrystalTransmitter;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.dragonapi.instantiable.data.immutable.WorldLocation;
+
+import java.util.Comparator;
 
 class NetworkSorters {
 

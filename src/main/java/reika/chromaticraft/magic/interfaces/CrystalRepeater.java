@@ -15,17 +15,17 @@ import reika.chromaticraft.registry.CrystalElement;
 
 public interface CrystalRepeater extends CrystalReceiver, CrystalTransmitter {
 
-	public int getSignalDegradation(boolean point);
+	int getSignalDegradation(boolean point);
 
-	public int getThoughputBonus(boolean point);
+	int getThoughputBonus(boolean point);
 
-	public int getThoughputInsurance();
+	int getThoughputInsurance();
 
-	public int getSignalDepth(CrystalElement e);
+	int getSignalDepth(CrystalElement e);
 
-	public void setSignalDepth(CrystalElement e, int d);
+	void setSignalDepth(CrystalElement e, int d);
 
-	public boolean checkConnectivity();
+	boolean checkConnectivity();
 
 	//public void onTransfer(CrystalSource src, CrystalReceiver r, CrystalElement element, int amt);
 

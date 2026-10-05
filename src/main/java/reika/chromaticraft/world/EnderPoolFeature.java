@@ -1,8 +1,5 @@
 package reika.chromaticraft.world;
 
-import java.util.LinkedHashSet;
-import java.util.Set;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.util.RandomSource;
@@ -11,10 +8,12 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.feature.Feature;
-
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaOptions;
 import reika.dragonapi.libraries.level.ReikaWorldHelper;
+
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 /**
  * V33a {@code EnderPoolGenerator} and {@code DecoratorEnderForest}: the Liquid Ender pools of the Ender

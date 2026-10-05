@@ -499,6 +499,87 @@
       }
     ]
   },
+  "music/elemental_precursors": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:music/elemental_precursors",
+        "stream": true
+      }
+    ]
+  },
+  "music/ethereal_contact_c": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:music/ethereal_contact_c",
+        "stream": true
+      }
+    ]
+  },
+  "music/explorer": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:music/explorer",
+        "stream": true
+      }
+    ]
+  },
+  "music/glowing_horizons": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:music/glowing_horizons",
+        "stream": true
+      }
+    ]
+  },
+  "music/luminescence": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:music/luminescence",
+        "stream": true
+      }
+    ]
+  },
+  "music/nightfall": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:music/nightfall",
+        "stream": true
+      }
+    ]
+  },
+  "music/polychromacy_c": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:music/polychromacy_c",
+        "stream": true
+      }
+    ]
+  },
+  "music/singularity": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:music/singularity",
+        "stream": true
+      }
+    ]
+  },
+  "music/transcendental_journey": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:music/transcendental_journey",
+        "stream": true
+      }
+    ]
+  },
   "networkopt": {
     "sounds": [
       {

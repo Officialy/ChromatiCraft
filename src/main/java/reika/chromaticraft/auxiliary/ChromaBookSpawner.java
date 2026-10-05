@@ -9,25 +9,15 @@
  ******************************************************************************/
 package reika.chromaticraft.auxiliary;
 
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
+import net.minecraft.world.item.ItemStack;
 
 import reika.chromaticraft.registry.ChromaItems;
-import reika.dragonapi.auxiliary.trackers.playerfirsttimetracker.PlayerTracker;
-import reika.dragonapi.libraries.ReikaInventoryHelper;
+import reika.dragonapi.instantiable.ItemOnSpawnTracker;
 
-public class ChromaBookSpawner implements PlayerTracker {
-
-	@Override
-	public void onNewPlayer(EntityPlayer ep) {
-		if (ReikaInventoryHelper.checkForItemStack(this.getItem(), ep.inventory, false))
-			return;
-		if (!ep.inventory.addItemStackToInventory(this.getItem()))
-			ep.dropPlayerItemWithRandomChoice(this.getItem(), true);
-	}
+public class ChromaBookSpawner extends ItemOnSpawnTracker {
 
 	public ItemStack getItem() {
-		return ChromaItems.HELP.getStackOf();
+		return ChromaItems.LEXICON.get().getDefaultInstance();
 	}
 
 	@Override

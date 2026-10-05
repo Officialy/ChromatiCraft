@@ -9,15 +9,13 @@
  ******************************************************************************/
 package reika.chromaticraft.auxiliary.recipemanagers.poolrecipes;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
-
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
-
 import net.minecraft.world.entity.item.ItemEntity;
-
 import reika.chromaticraft.magic.artefact.ArtefactWithDataCrystalAlloyingEffect;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * V33a {@code PoolRecipes.AlloyingEffect}: extra behaviour a Pool Recipe runs while it alloys. A recipe names

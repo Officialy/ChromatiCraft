@@ -1,0 +1,28 @@
+{
+  "parent": "chromaticraft:progression/bedrock",
+  "criteria": {
+    "trigger": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "display": {
+    "announce_to_chat": false,
+    "description": {
+      "translate": "advancements.chromaticraft.nether.description"
+    },
+    "hidden": true,
+    "icon": {
+      "id": "chromaticraft:chromic_lexicon"
+    },
+    "show_toast": false,
+    "title": {
+      "translate": "advancements.chromaticraft.nether.title"
+    }
+  },
+  "requirements": [
+    [
+      "trigger"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

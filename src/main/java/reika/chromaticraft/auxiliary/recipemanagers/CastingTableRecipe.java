@@ -1,36 +1,28 @@
 package reika.chromaticraft.auxiliary.recipemanagers;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
-
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ItemStackTemplate;
-import net.minecraft.world.item.crafting.Ingredient;
-import net.minecraft.world.item.crafting.PlacementInfo;
-import net.minecraft.world.item.crafting.Recipe;
-import net.minecraft.world.item.crafting.RecipeBookCategories;
-import net.minecraft.world.item.crafting.RecipeBookCategory;
-import net.minecraft.world.item.crafting.RecipeSerializer;
-import net.minecraft.world.item.crafting.RecipeType;
+import net.minecraft.world.item.enchantment.Enchantment;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.crafting.*;
 import net.minecraft.world.level.Level;
-
-import reika.chromaticraft.registry.ChromaRecipeSerializers;
-import reika.chromaticraft.registry.ChromaRecipeTypes;
 import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.magic.progression.ResearchLevel;
+import reika.chromaticraft.registry.ChromaRecipeSerializers;
+import reika.chromaticraft.registry.ChromaRecipeTypes;
 import reika.chromaticraft.registry.CrystalElement;
+import reika.chromaticraft.magic.progression.PlayerResearch;
+import reika.chromaticraft.magic.progression.LexiconCatalog;
+
+import java.util.*;
 
 /** Data-driven physical contract shared by the four V33a casting tiers. */
 
@@ -71,6 +63,18 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 				Codec.intRange(1, Integer.MAX_VALUE).fieldOf("amount").forGetter(AuraRequirement::amount)
 		).apply(instance, AuraRequirement::new));
 	}
+	/** V33a Star Enchanting upgrades a central wand while retaining all its other data. */
+	public record Enhancement(Holder<Enchantment> enchantment, int level) {
+		public Enhancement {
+			Objects.requireNonNull(enchantment);
+			if (level < 1 || level > 255) throw new IllegalArgumentException("Enchantment level must be in [1, 255]");
+		}
+		public static final Codec<Enhancement> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+				Enchantment.CODEC.fieldOf("enchantment").forGetter(Enhancement::enchantment),
+				Codec.intRange(1, 255).fieldOf("level").forGetter(Enhancement::level)
+		).apply(instance, Enhancement::new));
+	}
+
 	/**
 	 * Source recipe callbacks expressed as data instead of a runtime recipe-class hierarchy.
 	 * Storage crystals use three parts: carry the central crystal's energy forward, award the
@@ -84,7 +88,7 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 	 */
 	public record CompletionBehavior(boolean copyCenterCustomData,
 			List<ProgressStage> grantedProgress, List<Float> harmonics, String casterTag, boolean doubleOutput,
-			boolean indexed) {
+			boolean indexed, Optional<Enhancement> enhancement, String requiredFragment) {
 		public static final CompletionBehavior DEFAULT = new CompletionBehavior(false, List.of(), List.of(), "");
 		public static final Codec<CompletionBehavior> CODEC = RecordCodecBuilder.create(instance -> instance.group(
 				Codec.BOOL.optionalFieldOf("copy_center_custom_data", false)
@@ -98,8 +102,16 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 				Codec.BOOL.optionalFieldOf("double_output", false)
 						.forGetter(CompletionBehavior::doubleOutput),
 				Codec.BOOL.optionalFieldOf("indexed", true)
-						.forGetter(CompletionBehavior::indexed)
+						.forGetter(CompletionBehavior::indexed),
+				Enhancement.CODEC.optionalFieldOf("enhancement").forGetter(CompletionBehavior::enhancement),
+				Codec.STRING.optionalFieldOf("required_fragment", "").forGetter(CompletionBehavior::requiredFragment)
 		).apply(instance, CompletionBehavior::new));
+
+		public CompletionBehavior(boolean copyCenterCustomData, List<ProgressStage> grantedProgress,
+				List<Float> harmonics, String casterTag, boolean doubleOutput, boolean indexed) {
+			this(copyCenterCustomData, grantedProgress, harmonics, casterTag, doubleOutput, indexed,
+					Optional.empty(), "");
+		}
 
 		public CompletionBehavior(boolean copyCenterCustomData, List<ProgressStage> grantedProgress,
 				List<Float> harmonics) {
@@ -117,6 +129,8 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 		}
 
 		public CompletionBehavior {
+			Objects.requireNonNull(enhancement);
+			Objects.requireNonNull(requiredFragment);
 			grantedProgress = List.copyOf(grantedProgress);
 			harmonics = List.copyOf(harmonics);
 			if (harmonics.stream().anyMatch(pitch -> !Float.isFinite(pitch) || pitch <= 0))
@@ -269,6 +283,10 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 	}
 
 	private boolean matches(CastingRecipeInput input, boolean checkAura) {
+		if (completion.enhancement().isPresent()) {
+			Enhancement enhancement = completion.enhancement().get();
+			if (input.getItem(4).getEnchantmentLevel(enhancement.enchantment()) >= enhancement.level()) return false;
+		}
 		Map<Integer, Ingredient> requiredGrid = new HashMap<>();
 		grid.forEach(entry -> requiredGrid.put(entry.slot(), entry.ingredient()));
 		for (int slot = 0; slot < 9; slot++) {
@@ -298,6 +316,12 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 	/** Creates the committed output, including source-defined central-item NBT transfer. */
 	public ItemStack output(CastingRecipeInput input) {
 		ItemStack created = output.create();
+		if (completion.enhancement().isPresent()) {
+			Enhancement enhancement = completion.enhancement().get();
+			ItemStack upgraded = input.getItem(4).copyWithCount(created.getCount());
+			upgraded.enchant(enhancement.enchantment(), enhancement.level());
+			return upgraded;
+		}
 		if (completion.copyCenterCustomData()) {
 			var custom = input.getItem(4).get(net.minecraft.core.component.DataComponents.CUSTOM_DATA);
 			if (custom != null) {
@@ -335,7 +359,8 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 		return new CastingTableRecipe(tier, grid, stands, runes, aura, output, duration, experience,
 				requiredProgress, stackingFactor, stackable, requiresTuningKey, penaltyThreshold,
 				penaltyMultiplier, new CompletionBehavior(copyCenterCustomData, grantedProgress, harmonics,
-						completion.casterTag(), completion.doubleOutput(), completion.indexed()), minimumResearch);
+						completion.casterTag(), completion.doubleOutput(), completion.indexed(),
+						completion.enhancement(), completion.requiredFragment()), minimumResearch);
 	}
 	/** Datagen convenience: write the caster's UUID into the result under {@code key}. */
 	public CastingTableRecipe withCasterStamp(String key) {
@@ -343,7 +368,7 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 				requiredProgress, stackingFactor, stackable, requiresTuningKey, penaltyThreshold,
 				penaltyMultiplier, new CompletionBehavior(completion.copyCenterCustomData(),
 						completion.grantedProgress(), completion.harmonics(), key, completion.doubleOutput(),
-						completion.indexed()),
+						completion.indexed(), completion.enhancement(), completion.requiredFragment()),
 				minimumResearch);
 	}
 	/** Datagen convenience: V33a {@code isIndexed() == false}, kept off its output's lexicon recipe pages. */
@@ -352,7 +377,7 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 				requiredProgress, stackingFactor, stackable, requiresTuningKey, penaltyThreshold,
 				penaltyMultiplier, new CompletionBehavior(completion.copyCenterCustomData(),
 						completion.grantedProgress(), completion.harmonics(), completion.casterTag(),
-						completion.doubleOutput(), false),
+						completion.doubleOutput(), false, completion.enhancement(), completion.requiredFragment()),
 				minimumResearch);
 	}
 	/** Datagen convenience: V33a {@code canGiveDoubleOutput() == true}. */
@@ -361,7 +386,7 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 				requiredProgress, stackingFactor, stackable, requiresTuningKey, penaltyThreshold,
 				penaltyMultiplier, new CompletionBehavior(completion.copyCenterCustomData(),
 						completion.grantedProgress(), completion.harmonics(), completion.casterTag(), true,
-						completion.indexed()),
+						completion.indexed(), completion.enhancement(), completion.requiredFragment()),
 				minimumResearch);
 	}
 	/** Datagen convenience: a V33a {@code canRunRecipe} research-tier check. */
@@ -369,6 +394,24 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 		return new CastingTableRecipe(tier, grid, stands, runes, aura, output, duration, experience,
 				requiredProgress, stackingFactor, stackable, requiresTuningKey, penaltyThreshold,
 				penaltyMultiplier, completion, level);
+	}
+	public CastingTableRecipe withRequiredFragment(String fragment) {
+		return withEnhancementAndFragment(completion.enhancement(), fragment);
+	}
+	public CastingTableRecipe withEnhancement(Holder<Enchantment> enchantment, int level) {
+		return withEnhancementAndFragment(Optional.of(new Enhancement(enchantment, level)), completion.requiredFragment());
+	}
+	private CastingTableRecipe withEnhancementAndFragment(Optional<Enhancement> enhancement, String fragment) {
+		return new CastingTableRecipe(tier, grid, stands, runes, aura, output, duration, experience,
+				requiredProgress, stackingFactor, stackable, requiresTuningKey, penaltyThreshold,
+				penaltyMultiplier, new CompletionBehavior(completion.copyCenterCustomData(),
+						completion.grantedProgress(), completion.harmonics(), completion.casterTag(),
+						completion.doubleOutput(), completion.indexed(), enhancement, fragment), minimumResearch);
+	}
+	public boolean hasRequiredFragment(Player player) {
+		if (completion.requiredFragment().isEmpty()) return true;
+		var page = LexiconCatalog.byId(completion.requiredFragment());
+		return player != null && page != null && PlayerResearch.hasFragment(player, page);
 	}
 	public int penaltyThreshold() { return penaltyThreshold; }
 	public float penaltyMultiplier() { return penaltyMultiplier; }
@@ -452,6 +495,13 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 		buffer.writeUtf(recipe.completion.casterTag());
 		buffer.writeBoolean(recipe.completion.doubleOutput());
 		buffer.writeBoolean(recipe.completion.indexed());
+		buffer.writeBoolean(recipe.completion.enhancement().isPresent());
+		if (recipe.completion.enhancement().isPresent()) {
+			Enhancement enhancement = recipe.completion.enhancement().get();
+			Enchantment.STREAM_CODEC.encode(buffer, enhancement.enchantment());
+			buffer.writeVarInt(enhancement.level());
+		}
+		buffer.writeUtf(recipe.completion.requiredFragment());
 		buffer.writeVarInt(recipe.minimumResearch.ordinal());
 	}
 	private static CastingTableRecipe decode(RegistryFriendlyByteBuf buffer) {
@@ -483,13 +533,17 @@ public final class CastingTableRecipe implements Recipe<CastingRecipeInput> {
 		String casterTag = buffer.readUtf();
 		boolean doubleOutput = buffer.readBoolean();
 		boolean indexed = buffer.readBoolean();
+		Optional<Enhancement> enhancement = buffer.readBoolean()
+				? Optional.of(new Enhancement(Enchantment.STREAM_CODEC.decode(buffer), buffer.readVarInt())) : Optional.empty();
+		String requiredFragment = buffer.readUtf();
 		int researchOrdinal = buffer.readVarInt();
 		if (researchOrdinal < 0 || researchOrdinal >= ResearchLevel.levelList.length)
 			throw new IllegalArgumentException("Invalid research level ordinal " + researchOrdinal);
 		return new CastingTableRecipe(Tier.values()[tierOrdinal], grid, stands, runes, aura,
 				result, duration, experience, progress, stackingFactor, stackable, requiresTuningKey,
 				penaltyThreshold, penaltyMultiplier,
-				new CompletionBehavior(copyCenterCustomData, grantedProgress, harmonics, casterTag, doubleOutput, indexed),
+				new CompletionBehavior(copyCenterCustomData, grantedProgress, harmonics, casterTag, doubleOutput, indexed,
+						enhancement, requiredFragment),
 				ResearchLevel.levelList[researchOrdinal]);
 	}
 	private static CrystalElement element(int ordinal) {

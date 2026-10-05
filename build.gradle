@@ -9,6 +9,10 @@ ext {
 // runs every test in the chromaticraft namespace (progression core) and exits non-zero on failure.
 neoForge {
     runs {
+        client {
+            if (project.hasProperty('chromaClientDirectory'))
+                gameDirectory = file(project.property('chromaClientDirectory').toString())
+        }
         clientData {
             gameDirectory = file('run-client-data')
         }
@@ -19,7 +23,7 @@ neoForge {
         gameTest {
             type = "gameTestServer"
             // Never share logs, configs, playerdata, or the generated test level with a live client.
-            gameDirectory = file('run-gametest')
+            gameDirectory = file(project.findProperty('chromaTestDirectory') ?: 'run-gametest')
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
             // The namespace property controls registration, not selection. Without --tests,
             // vanilla runs every registered test from every loaded dependency.
@@ -32,10 +36,13 @@ neoForge {
 }
 
 dependencies {
+    compileOnly project(":VoidMonster")
+    if (project.hasProperty('chromaWithVoidMonster')) runtimeOnly project(":VoidMonster")
     implementation project(":DragonAPI")
     implementation project(":RotaryCraft")
     implementation project(":GeoStrata")
     implementation project(":ReactorCraft")
+    implementation project(":ElectriCraft")
     implementation "com.github.glitchfiend:TerraBlender-neoforge:26.3-26.3.0.0.7-local.1"
 }
 
@@ -43,6 +50,69 @@ dependencies {
 // and will not compile, so we compile ONLY files fully ported to 26.3. This list IS the done-tracker:
 // add a file the moment it is ported. Remove this whole block once the entire mod is ported.
 sourceSets.main.java {
+    include 'reika/chromaticraft/base/ItemBlockChangingWand.java'
+    include 'reika/chromaticraft/items/tools/wands/ItemExcavationWand.java'
+    include 'reika/chromaticraft/items/tools/wands/ItemBuilderWand.java'
+    include 'reika/chromaticraft/items/tools/wands/ItemFlightWand.java'
+    include 'reika/chromaticraft/items/tools/wands/ItemMobSonar.java'
+    include 'reika/chromaticraft/items/tools/ItemMultiTool.java'
+    include 'reika/chromaticraft/items/tools/ItemOreSilker.java'
+    include 'reika/chromaticraft/items/tools/ItemBottleneckFinder.java'
+    include 'reika/chromaticraft/items/tools/ItemBulkMover.java'
+    include 'reika/chromaticraft/modinterface/ae/BulkMoverAE.java'
+    include 'reika/chromaticraft/container/MenuBulkMover.java'
+    include 'reika/chromaticraft/client/gui/ScreenBulkMover.java'
+    include 'reika/chromaticraft/items/tools/powered/ItemSpawnerBypass.java'
+    include 'reika/chromaticraft/items/ItemMagicBranch.java'
+    include 'reika/chromaticraft/client/MagicBranchFrame.java'
+    include 'reika/chromaticraft/mixin/SpawnerActivationMixin.java'
+    include 'reika/chromaticraft/auxiliary/MobSonar.java'
+    include 'reika/chromaticraft/auxiliary/render/MobSonarRenderer.java'
+    include 'reika/chromaticraft/modinterface/SatisforestrySonar.java'
+    include 'reika/chromaticraft/auxiliary/render/BlockChangeCache.java'
+    include 'reika/chromaticraft/client/WandAreaPreview.java'
+    include 'reika/chromaticraft/client/gui/ScreenHoverWand.java'
+    include 'reika/chromaticraft/modinterface/voidritual/**'
+    include 'reika/chromaticraft/render/item/ColoredAltarItemRenderer.java'
+    include 'reika/chromaticraft/render/item/VoidMonsterTrapItemRenderer.java'
+    include 'reika/chromaticraft/mixin/VoidRitualTerrainMixin.java'
+    include 'reika/chromaticraft/client/render/ColoredAltarEffects.java'
+    include 'reika/chromaticraft/block/decoration/BlockColoredAltar.java'
+    include 'reika/chromaticraft/models/ModelColoredAltar.java'
+    include 'reika/chromaticraft/render/tesr/RenderColoredAltar.java'
+    include 'reika/chromaticraft/entity/EntityMonsterBait.java'
+    include 'reika/chromaticraft/entity/EntityDeathFog.java'
+    include 'reika/chromaticraft/tileentity/aoe/TileEntityDeathFogEmitter.java'
+    include 'reika/chromaticraft/render/entity/RenderMonsterBait.java'
+    include 'reika/chromaticraft/render/entity/RenderDeathFog.java'
+    include 'reika/chromaticraft/render/tesr/RenderVoidMonsterTrap.java'
+    // V33a progression-gated names and original glyph font on 26.3 styled components.
+    include 'reika/chromaticraft/auxiliary/render/ChromaText.java'
+    include 'reika/chromaticraft/magic/progression/ChromaNameKnowledge.java'
+    include 'reika/chromaticraft/client/ChromaTextClient.java'
+    include 'reika/chromaticraft/mixin/ItemStackNameMixin.java'
+    include 'reika/chromaticraft/data/ChromaFontProvider.java'
+    include 'reika/chromaticraft/ChromaTextTests.java'
+    include 'reika/chromaticraft/client/render/IrisCompatibility.java'
+    include 'reika/chromaticraft/render/ShaderCompatibleRenderTypes.java'
+    include 'reika/chromaticraft/client/render/LegacyGlowSpriteSource.java'
+    include 'reika/chromaticraft/data/ChromaSpriteSourceProvider.java'
+    // Item-first V33a backlog: resources, passive efficiency, recall and mob capture.
+    include 'reika/chromaticraft/items/tools/ItemEfficiencyCrystal.java'
+    include 'reika/chromaticraft/client/EfficiencyCrystalClient.java'
+    include 'reika/chromaticraft/items/tools/ItemWarpCapsule.java'
+    include 'reika/chromaticraft/items/tools/ItemRecipeCacheCapsule.java'
+    include 'reika/chromaticraft/items/tools/wands/ItemCaptureWand.java'
+    include 'reika/chromaticraft/items/ItemDimGen.java'
+    include 'reika/chromaticraft/items/ItemTieredResource.java'
+    include 'reika/chromaticraft/auxiliary/interfaces/TieredItem.java'
+    include 'reika/chromaticraft/registry/ChromaDimensionItems.java'
+    include 'reika/chromaticraft/ChromaItemPortTests.java'
+    include 'reika/chromaticraft/ChromaVoidCompatibilityTests.java'
+    include 'reika/chromaticraft/ChromaAdvancementTests.java'
+    include 'reika/chromaticraft/data/ChromaAdvancementProvider.java'
+    include 'reika/chromaticraft/magic/progression/ChromaAdvancements.java'
+    include 'reika/chromaticraft/auxiliary/ChromaBookSpawner.java'
     // api/ implementable interfaces (leaf contracts). Deferred: OrePings (dead IIcon system),
     // EnchantableItem (DragonAPI CustomEnchantingCategory not yet ported).
     include 'reika/chromaticraft/api/CrystalElementAccessor.java'
@@ -297,6 +367,7 @@ sourceSets.main.java {
     include 'reika/chromaticraft/client/sound/PortalSoundManager.java'
     include 'reika/chromaticraft/client/sound/AuraLocusSoundInstance.java'
     include 'reika/chromaticraft/client/sound/AuraLocusSoundManager.java'
+    include 'reika/chromaticraft/client/sound/ProximaMusic.java'
       include 'reika/chromaticraft/render/item/ItemStandItemRenderer.java'
       include 'reika/chromaticraft/render/model/CaveCrystalModel.java'
       include 'reika/chromaticraft/render/model/CaveCrystalGeometry.java'
@@ -411,6 +482,7 @@ sourceSets.main.java {
     include 'reika/chromaticraft/world/luminous/LuminousIsland.java'
     include 'reika/chromaticraft/world/luminous/LuminousIslandStructure.java'
     include 'reika/chromaticraft/world/luminous/LuminousIslandPiece.java'
+    include 'reika/chromaticraft/world/luminous/LuminousIslandCandidatePiece.java'
     include 'reika/chromaticraft/world/luminous/LuminousCliffsBiomeMask.java'
     include 'reika/chromaticraft/world/luminous/LuminousCliffsAuxFeature.java'
     include 'reika/chromaticraft/world/GlowingCliffsColumnShaper.java'
@@ -421,6 +493,8 @@ sourceSets.main.java {
     include 'reika/chromaticraft/world/TieredPlantFeature.java'
     include 'reika/chromaticraft/world/CaveIndicatorFeature.java'
     include 'reika/chromaticraft/world/DecoFlowerFeature.java'
+    include 'reika/chromaticraft/world/CliffsFlowerFeature.java'
+    include 'reika/chromaticraft/registry/ChromaBlockTags.java'
     include 'reika/chromaticraft/world/EnderOakFeature.java'
     include 'reika/chromaticraft/world/UnknownArtefactFeature.java'
     include 'reika/chromaticraft/world/WarpNodeFeature.java'
@@ -498,11 +572,20 @@ sourceSets.main.java {
     include 'reika/chromaticraft/world/NetherRoofStructureFeature.java'
     include 'reika/chromaticraft/world/OverworldStructureFeature.java'
     include 'reika/chromaticraft/world/DungeonZones.java'
+    include 'reika/chromaticraft/world/DungeonRetryPlan.java'
+    include 'reika/chromaticraft/world/SavedWorldgenRandom.java'
+    include 'reika/chromaticraft/world/PostPopulationWorldgen.java'
+    include 'reika/chromaticraft/WorldgenParityGameTests.java'
+    include 'reika/chromaticraft/world/OverworldGenerationGameTests.java'
+    include 'reika/chromaticraft/mixin/*.java'
+    include 'reika/chromaticraft/registry/ChromaWeatherAttributes.java'
+    include 'reika/chromaticraft/world/biome/ChromaBiomeWeather.java'
     include 'reika/chromaticraft/world/biome/ChromaBiomes.java'
     include 'reika/chromaticraft/world/biome/ChromaRegion.java'
     include 'reika/chromaticraft/world/biome/LuminousCliffsRegion.java'
     include 'reika/chromaticraft/api/event/CrystalGenEvent.java'
     include 'reika/chromaticraft/api/event/PylonGenerationEvent.java'
+    include 'reika/chromaticraft/api/event/NexusGenEvent.java'
     include 'reika/chromaticraft/registry/ChromaFluids.java'
     include 'reika/chromaticraft/block/BlockChromaFluid.java'
     include 'reika/chromaticraft/block/BlockChromaMud.java'
@@ -541,6 +624,10 @@ sourceSets.main.java {
 	include 'reika/chromaticraft/tileentity/TileEntityGOLController.java'
 	include 'reika/chromaticraft/block/dimension/structure/gol/BlockGOLTile.java'
 	include 'reika/chromaticraft/block/dimension/structure/gol/BlockGOLController.java'
+	include 'reika/chromaticraft/block/dimension/structure/laser/BlockLaserEffector26.java'
+	include 'reika/chromaticraft/block/dimension/structure/laser/BlockLaserController.java'
+	include 'reika/chromaticraft/tileentity/TileEntityLaserEffector.java'
+	include 'reika/chromaticraft/tileentity/TileEntityLaserController.java'
 	include 'reika/chromaticraft/block/dimension/structure/BlockStructurePassword.java'
 	include 'reika/chromaticraft/tileentity/TileEntityStructurePassword.java'
 	include 'reika/chromaticraft/block/dimension/structure/locks/BlockColoredLock.java'
@@ -821,7 +908,9 @@ sourceSets.main.java {
 
     // In-world game tests for the progression core + the arena structure they run on.
     include 'reika/chromaticraft/ChromaGameTests.java'
+    include 'reika/chromaticraft/ChromaWandPortTests.java'
     include 'reika/chromaticraft/data/ChromaTestStructureProvider.java'
+    include 'reika/chromaticraft/world/OverworldGenerationFixTests.java'
 
     // Datagen (client: lang + models; server: loot) — mirrors ReactorCraft data/.
     include 'reika/chromaticraft/data/ChromaDataProviders.java'
@@ -839,6 +928,7 @@ sourceSets.main.java {
 	include 'reika/chromaticraft/data/ChromaPoolRecipeProvider.java'
     include 'reika/chromaticraft/data/ChromaRecipeProvider.java'
     include 'reika/chromaticraft/data/ChromaModelProvider.java'
+    include 'reika/chromaticraft/data/ChromaVoidVisualData.java'
     include 'reika/chromaticraft/data/ChromaSoundProvider.java'
     include 'reika/chromaticraft/block/dimension/BlockLightedLog.java'
     include 'reika/chromaticraft/block/dimension/BlockLightedSapling.java'
@@ -893,6 +983,7 @@ sourceSets.main.java {
 	include 'reika/chromaticraft/world/dimension/structure/GOLPuzzleLayout.java'
 	include 'reika/chromaticraft/world/dimension/structure/LaserPuzzleLayout.java'
 	include 'reika/chromaticraft/world/dimension/structure/laser/LaserPulseLogic.java'
+	include 'reika/chromaticraft/world/dimension/structure/laser/LaserRoomState.java'
 	include 'reika/chromaticraft/world/dimension/structure/laser/LaserPulseReceiver.java'
 	include 'reika/chromaticraft/auxiliary/interfaces/LaserPulseEffect.java'
 	include 'reika/chromaticraft/entity/EntityLaserPulse.java'
@@ -905,6 +996,10 @@ sourceSets.main.java {
 	include 'reika/chromaticraft/world/dimension/structure/GOLPlacement.java'
 	include 'reika/chromaticraft/world/dimension/structure/ProximaGOLStructure.java'
 	include 'reika/chromaticraft/world/dimension/structure/GOLStructurePiece.java'
+	include 'reika/chromaticraft/world/dimension/structure/LaserStructureGenerator.java'
+	include 'reika/chromaticraft/world/dimension/structure/LaserPlacement.java'
+	include 'reika/chromaticraft/world/dimension/structure/ProximaLaserStructure.java'
+	include 'reika/chromaticraft/world/dimension/structure/LaserStructurePiece.java'
       include 'reika/chromaticraft/world/dimension/structure/PortalStructureCommand.java'
       include 'reika/chromaticraft/world/dimension/structure/PortalStructurePiece.java'
       include 'reika/chromaticraft/world/dimension/structure/CastingTempleStructure.java'

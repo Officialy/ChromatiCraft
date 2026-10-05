@@ -1,11 +1,5 @@
 package reika.chromaticraft.world.luminous;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
@@ -28,20 +22,23 @@ import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.StructurePiece;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext;
 import net.minecraft.world.level.material.Fluids;
-
 import reika.chromaticraft.block.worldgen26.BlockCliffStone;
 import reika.chromaticraft.data.ChromaWorldGenProvider;
 import reika.chromaticraft.registry.ChromaBlocks;
+import reika.chromaticraft.world.PostPopulationWorldgen;
 import reika.chromaticraft.world.dimension.structure.ProximaStructurePieces;
 import reika.chromaticraft.world.luminous.LuminousIsland.Kind;
 import reika.chromaticraft.world.luminous.LuminousIsland.Shape;
 
+import java.util.*;
+
 /**
- * One Luminous Cliffs floating island, painted chunk by chunk.
+ * One Luminous Cliffs floating island, painted after its complete footprint is populated.
  *
- * <p>Each chunk the island touches writes the island's cells inside its own box (V33a
- * {@code placeBlocks}), then the island's decoration attempts whose anchor column is in this chunk
- * (V33a {@code genIslandDecorations}), then the parts of its ore veins inside the box.
+ * <p>The server checks every authored cell for air before painting the complete body (V33a
+ * {@code placeBlocks}), decoration (V33a {@code genIslandDecorations}) and ore veins. New candidates
+ * consume ore draws from the shared generation stream before their parent continues calculating;
+ * previously saved pieces retain their serialized veins.
  *
  * <p>Decoration is upstream's, with two things to know. Upstream seeded it with the world seed for every
  * island, so all islands draw the same decoration sequence; the anchors here are drawn from that stream in
@@ -76,6 +73,10 @@ public final class LuminousIslandPiece extends StructurePiece {
 		super(ProximaStructurePieces.LUMINOUS_ISLAND.get(), 0, boundsFor(island));
 		this.island = island;
 		this.ores = ores;
+	}
+
+	LuminousIslandPiece(LuminousIsland island) {
+		this(island, List.of());
 	}
 
 	public LuminousIslandPiece(CompoundTag tag) {
@@ -149,11 +150,55 @@ public final class LuminousIslandPiece extends StructurePiece {
 	@Override
 	public void postProcess(WorldGenLevel level, StructureManager structureManager, ChunkGenerator generator,
 			RandomSource unusedRandom, BoundingBox chunkBB, ChunkPos chunkPos, BlockPos referencePos) {
-		Shape shape = this.shape(level.getSeed());
-		this.placeBlocks(level, chunkBB, shape);
-		this.decorate(level, generator, chunkBB, shape);
+		// Enqueue once from the island's centre. All parts are placed together after vegetation,
+		// so a collision in a distant chunk rejects the whole island before any cells are written.
+		ChunkPos origin = new ChunkPos(island.originX >> 4, island.originZ >> 4);
+		if (!chunkPos.equals(origin)) return;
+		int reach = Math.max(Math.max(island.originX - boundingBox.minX(), boundingBox.maxX() - island.originX),
+				Math.max(island.originZ - boundingBox.minZ(), boundingBox.maxZ() - island.originZ));
+		PostPopulationWorldgen.get(level.getLevel()).enqueueIsland(origin, island.key(),
+				(reach + 15) / 16 + 2, this.createTag(StructurePieceSerializationContext.fromLevel(level.getLevel())));
+	}
+
+	/** Atomic V33a air check against populated terrain, trees, fluids and previously placed islands. */
+	public boolean placeAfterPopulation(net.minecraft.server.level.ServerLevel level) {
+		if (!this.placeBodyAndDecoration(level)) return false;
 		for (Ore ore : ores)
-			this.generateOre(level, chunkBB, ore);
+			this.generateOre(level, null, ore, new Random(ore.seed()));
+		return true;
+	}
+
+	/** New candidates use the shared source stream through every vein before the parent continues. */
+	boolean placeAfterPopulation(net.minecraft.server.level.ServerLevel level, Random random) {
+		if (!this.placeBodyAndDecoration(level)) return false;
+		int count = 2 + random.nextInt(7);
+		for (int i = 0; i < count; i++) {
+			int roll = random.nextInt(100), type = 0;
+			while (roll >= ORE_WEIGHTS[type]) {
+				roll -= ORE_WEIGHTS[type];
+				type++;
+			}
+			Ore ore = new Ore(type, island.getRandomX(random), island.getRandomY(random), island.getRandomZ(random),
+					12 + random.nextInt(20), 0);
+			this.generateOre(level, null, ore, random);
+		}
+		return true;
+	}
+
+	private boolean placeBodyAndDecoration(net.minecraft.server.level.ServerLevel level) {
+		Shape shape = this.shape(level.getSeed());
+		if (!shape.canGenerate(new LuminousIsland.Terrain() {
+			public int topSolidOrLiquid(int x, int z) {
+				return level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.OCEAN_FLOOR, x, z);
+			}
+			public boolean isSolid(int x, int y, int z) {
+				return !level.getBlockState(new BlockPos(x, y, z)).isAir();
+			}
+		})) return false;
+		BoundingBox whole = this.getBoundingBox();
+		this.placeBlocks(level, whole, shape);
+		this.decorate(level, level.getChunkSource().getGenerator(), whole, shape);
+		return true;
 	}
 
 	private BlockState stateFor(Kind kind) {
@@ -384,14 +429,13 @@ public final class LuminousIslandPiece extends StructurePiece {
 	}
 
 	/** Minecraft 1.7.10 {@code WorldGenMinable} into vanilla stone, clipped to this chunk. */
-	private void generateOre(WorldGenLevel level, BoundingBox box, Ore ore) {
+	private void generateOre(WorldGenLevel level, BoundingBox box, Ore ore, Random rand) {
 		BlockState block = switch (ore.type()) {
 			case 0 -> Blocks.DIAMOND_ORE.defaultBlockState();
 			case 1 -> Blocks.EMERALD_ORE.defaultBlockState();
 			case 2 -> Blocks.REDSTONE_ORE.defaultBlockState();
 			default -> Blocks.GOLD_ORE.defaultBlockState();
 		};
-		Random rand = new Random(ore.seed());
 		int size = ore.size();
 		float f = rand.nextFloat() * (float)Math.PI;
 		double x1 = ore.x() + 8 + Mth.sin(f) * size / 8F;
@@ -420,7 +464,7 @@ public final class LuminousIslandPiece extends StructurePiece {
 						if (rx * rx + ry * ry + rz * rz >= 1D)
 							continue;
 						BlockPos p = new BlockPos(dx, dy, dz);
-						if (box.isInside(p) && level.getBlockState(p).is(Blocks.STONE))
+						if ((box == null || box.isInside(p)) && level.getBlockState(p).is(Blocks.STONE))
 							level.setBlock(p, block, 2);
 					}
 				}

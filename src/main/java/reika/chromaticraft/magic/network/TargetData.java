@@ -10,10 +10,9 @@
 package reika.chromaticraft.magic.network;
 
 import net.minecraft.world.entity.player.Player;
-import net.neoforged.fml.loading.FMLEnvironment;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.AABB;
-
+import net.neoforged.fml.loading.FMLEnvironment;
 import reika.chromaticraft.magic.CrystalTarget;
 import reika.dragonapi.instantiable.data.immutable.DecimalPosition;
 import reika.dragonapi.instantiable.data.immutable.WorldLocation;
@@ -38,9 +37,9 @@ public class TargetData {
 		source = tg.source;
 
 		renderBox = source.asAABB()
-				.expandTowards(position.xCoord + 0.5 - source.pos.getX(),
-						position.yCoord + 0.5 - source.pos.getY(),
-						position.zCoord + 0.5 - source.pos.getZ())
+				.expandTowards(position.xCoord() + 0.5 - source.pos.getX(),
+						position.yCoord() + 0.5 - source.pos.getY(),
+						position.zCoord() + 0.5 - source.pos.getZ())
 				.inflate(1);
 		//ReikaJavaLibrary.pConsole(source+", "+position+" > "+renderBox);
 	}
@@ -65,7 +64,7 @@ public class TargetData {
 	}
 
 	public boolean isMaximumEndpointDistanceWithin(Player ep, double dist) {
-		return ep.distanceToSqr(position.xCoord, position.yCoord, position.zCoord) <= dist * dist
+		return ep.distanceToSqr(position.xCoord(), position.yCoord(), position.zCoord()) <= dist * dist
 				|| ep.distanceToSqr(source.pos.getX() + 0.5, source.pos.getY() + 0.5, source.pos.getZ() + 0.5) <= dist * dist;
 	}
 

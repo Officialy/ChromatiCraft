@@ -1,11 +1,6 @@
 package reika.chromaticraft.tileentity;
 
-import java.util.EnumSet;
-import java.util.Set;
-import java.util.UUID;
-
 import com.mojang.serialization.Codec;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.NonNullList;
 import net.minecraft.network.chat.Component;
@@ -16,19 +11,17 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ChestMenu;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.entity.ContainerOpenersCounter;
-import net.minecraft.world.level.block.entity.ChestLidController;
-import net.minecraft.world.level.block.entity.LidBlockEntity;
+import net.minecraft.world.level.block.entity.*;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
-import net.minecraft.world.RandomizableContainer;
-import net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity;
-
-import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.magic.progression.ProgressStage;
+import reika.chromaticraft.registry.ChromaBlockEntities;
+
+import java.util.EnumSet;
+import java.util.Set;
+import java.util.UUID;
 
 /**
  * V33a {@code BlockLootChest.TileEntityLootChest}: a 54-slot chest that remembers who may open it.
@@ -182,7 +175,7 @@ public class TileEntityLootChest extends RandomizableContainerBlockEntity implem
 
 	/** V33a isOwnedBy. */
 	public boolean isOwnedBy(Player player) {
-		return placer != null && player.getUUID().equals(placer);
+		return player.getUUID().equals(placer);
 	}
 
 	/** V33a isAccessibleBy: an unclaimed chest is open to anyone. */

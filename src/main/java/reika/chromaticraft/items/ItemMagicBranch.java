@@ -1,82 +1,33 @@
 /*******************************************************************************
  * @author Reika Kalseki
- *
- * Copyright 2017
- *
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
+ * Copyright 2017. All rights reserved.
+ * Distribution requires explicit, prior permission from the owner.
  ******************************************************************************/
 package reika.chromaticraft.items;
 
-import net.minecraft.item.ItemStack;
-
-import reika.chromaticraft.base.ItemChromaMulti;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import reika.chromaticraft.registry.ChromaItems;
-import reika.dragonapi.interfaces.item.AnimatedSpritesheet;
 
+import java.util.Locale;
 
-public class ItemMagicBranch extends ItemChromaMulti implements AnimatedSpritesheet {
+/** V33a's six Magic Branch materials, split from metadata into native registry entries. */
+public final class ItemMagicBranch extends Item {
+    private final BranchTypes type;
+    public ItemMagicBranch(Properties properties, BranchTypes type) {
+        super(properties);
+        this.type=type;
+    }
+    public BranchTypes branchType() { return type; }
 
-	public ItemMagicBranch(int tex) {
-		super(tex);
-	}
+    /** ReikaSpriteSheets used (wall-clock milliseconds / 32 / frameSpeed + frameOffset) % frameCount. */
+    public int frameAt(long milliseconds) { return (int)Math.floorMod(milliseconds/32/4 + type.ordinal()*4,16); }
 
-	public static enum BranchTypes {
-
-		SPEED(),
-		RANGE(),
-		POWER(),
-		BONUS(),
-		DAMAGE(),
-		CRYSTAL();
-
-		public static final BranchTypes[] list = values();
-
-		public ItemStack getStack() {
-			return ChromaItems.MAGICBRANCH.getStackOfMetadata(this.ordinal());
-		}
-
-	}
-
-	@Override
-	public boolean useAnimatedRender(ItemStack is) {
-		return true;
-	}
-
-	@Override
-	public int getFrameCount(ItemStack is) {
-		return 16;
-	}
-
-	@Override
-	public int getBaseRow(ItemStack is) {
-		return is.getItemDamage();
-	}
-
-	@Override
-	public int getColumn(ItemStack is) {
-		return 0;
-	}
-
-	@Override
-	public int getFrameOffset(ItemStack is) {
-		return is.getItemDamage()*4;
-	}
-
-	@Override
-	public int getFrameSpeed(ItemStack is) {
-		return 4;
-	}
-
-	@Override
-	public String getTexture(ItemStack is) {
-		return this.useAnimatedRender(is) ? "/Reika/ChromatiCraft/Textures/Items/branches.png" : super.getTexture(is);
-	}
-
-	@Override
-	public boolean verticalFrames() {
-		return false;
-	}
-
+    public enum BranchTypes {
+        SPEED, RANGE, POWER, BONUS, DAMAGE, CRYSTAL;
+        public static final BranchTypes[] list=values();
+        public String registryName() { return name().toLowerCase(Locale.ROOT)+"_magic_branch"; }
+        public ItemStack getStack() { return new ItemStack(ChromaItems.BRANCHES.get(this).get()); }
+    }
 }
+

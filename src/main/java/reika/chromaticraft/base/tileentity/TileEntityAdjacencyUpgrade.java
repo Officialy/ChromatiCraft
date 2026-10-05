@@ -9,16 +9,7 @@
  ******************************************************************************/
 package reika.chromaticraft.base.tileentity;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.List;
-import java.util.function.Supplier;
-
 import com.google.common.base.Strings;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -29,25 +20,21 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
-
 import reika.chromaticraft.api.CrystalElementAccessor.CrystalElementProxy;
 import reika.chromaticraft.api.interfaces.AdjacencyCheckHandler;
 import reika.chromaticraft.auxiliary.interfaces.AdjacencyUpgrade;
 import reika.chromaticraft.auxiliary.interfaces.NBTTile;
 import reika.chromaticraft.auxiliary.interfaces.SneakPop;
 import reika.chromaticraft.magic.interfaces.AdjacencyUpgradeProvider;
-import reika.chromaticraft.registry.AdjacencyUpgrades;
-import reika.chromaticraft.registry.ChromaDataComponents;
-import reika.chromaticraft.registry.ChromaIcons;
-import reika.chromaticraft.registry.ChromaOptions;
-import reika.chromaticraft.registry.ChromaSounds;
-import reika.chromaticraft.registry.ChromaTiles;
-import reika.chromaticraft.registry.CrystalElement;
+import reika.chromaticraft.registry.*;
 import reika.chromaticraft.render.particle.ChromaParticle;
 import reika.dragonapi.instantiable.data.maps.NestedMap;
 import reika.dragonapi.interfaces.registry.TileEnum;
 import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
 import reika.dragonapi.libraries.registry.ReikaItemHelper;
+
+import java.util.*;
+import java.util.function.Supplier;
 
 /**
  * V33a {@code TileEntityAdjacencyUpgrade}: the sixteen-colour family of "Tile Accelerator" cores. Each is placed
@@ -141,7 +128,7 @@ public abstract class TileEntityAdjacencyUpgrade extends TileEntityWirelessPower
 				EffectResult res = this.tickDirection(world, pos, dir, time);
 				if (res.didAction) {
 					if (world.isClientSide() && world.getRandom().nextInt(4) == 0)
-						ChromaParticle.spawnAdjacencyAction(world, pos, dir, this.getColor().getColor(), world.getRandom());
+						ChromaParticle.spawnAdjacencyAction(world, pos, dir, this.getColor().color(), world.getRandom());
 				}
 				if (!res.shouldContinue)
 					break;
@@ -362,7 +349,7 @@ public abstract class TileEntityAdjacencyUpgrade extends TileEntityWirelessPower
 
 		public final CrystalElement color;
 
-		protected AdjacencyCheckHandlerImpl(CrystalElement e) {
+		private AdjacencyCheckHandlerImpl(CrystalElement e) {
 			color = e;
 		}
 
@@ -484,7 +471,7 @@ public abstract class TileEntityAdjacencyUpgrade extends TileEntityWirelessPower
 		return ret;
 	}
 
-	protected static enum EffectResult {
+	protected enum EffectResult {
 		ACTION(true, true),
 		FINAL_ACTION(true, false),
 		CONTINUE(false, true),
@@ -493,7 +480,7 @@ public abstract class TileEntityAdjacencyUpgrade extends TileEntityWirelessPower
 		public final boolean didAction;
 		public final boolean shouldContinue;
 
-		private EffectResult(boolean act, boolean con) {
+		EffectResult(boolean act, boolean con) {
 			didAction = act;
 			shouldContinue = con;
 		}

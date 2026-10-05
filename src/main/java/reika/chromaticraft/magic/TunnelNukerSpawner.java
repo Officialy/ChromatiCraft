@@ -1,18 +1,17 @@
 package reika.chromaticraft.magic;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.neoforged.neoforge.event.tick.LevelTickEvent;
-
 import reika.chromaticraft.entity.EntityTunnelNuker;
 import reika.chromaticraft.magic.lore.LoreTowerProgress;
 import reika.chromaticraft.magic.lore.Towers;
 import reika.chromaticraft.registry.ChromaEntityTypes;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Lumafly guide spawner for players with an unscanned lore tower. V33a left its tick handler

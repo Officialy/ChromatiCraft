@@ -19,20 +19,20 @@ import reika.dragonapi.instantiable.data.immutable.Coordinate;
 
 public interface ChargingPoint extends CrystalNetworkTile, LumenTile {
 
-	public CrystalElement getDeliveredColor(Player ep, Level world, int clickX, int clickY, int clickZ);
+	CrystalElement getDeliveredColor(Player ep, Level world, int clickX, int clickY, int clickZ);
 
-	public int getEnergy(CrystalElement e);
+	int getEnergy(CrystalElement e);
 
-	public boolean allowCharging(Player ep, CrystalElement e);
+	boolean allowCharging(Player ep, CrystalElement e);
 
-	public float getChargeRateMultiplier(Player ep, CrystalElement e);
+	float getChargeRateMultiplier(Player ep, CrystalElement e);
 
-	public void onUsedBy(Player ep, CrystalElement e);
+	void onUsedBy(Player ep, CrystalElement e);
 
-	public boolean drain(CrystalElement e, int amt);
+	boolean drain(CrystalElement e, int amt);
 
-	public Coordinate getChargeParticleOrigin(Player ep, CrystalElement e);
+	Coordinate getChargeParticleOrigin(Player ep, CrystalElement e);
 
-	public float getHeldToolChargingPower(Player ep, CrystalElement e, ItemStack is);
+	float getHeldToolChargingPower(Player ep, CrystalElement e, ItemStack is);
 
 }

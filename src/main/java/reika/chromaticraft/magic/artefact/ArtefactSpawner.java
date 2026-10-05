@@ -9,11 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.magic.artefact;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.Random;
-import java.util.UUID;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -25,13 +20,17 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.level.block.BreakBlockEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.network.ChromaNetwork;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.world.UnknownArtefactFeature;
 import reika.dragonapi.libraries.ReikaPlayerAPI;
 import reika.dragonapi.libraries.level.ReikaWorldHelper;
+
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.Random;
+import java.util.UUID;
 
 /**
  * V33a {@code ArtefactSpawner}: in the artefact rings around the lore towers, the ground hides more relics

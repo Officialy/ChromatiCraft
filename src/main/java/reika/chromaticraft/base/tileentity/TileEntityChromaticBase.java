@@ -9,12 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.base.tileentity;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.UUID;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -25,12 +19,13 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
-
 import reika.chromaticraft.auxiliary.interfaces.OwnedTile;
 import reika.chromaticraft.registry.ChromaTiles;
 import reika.dragonapi.base.BlockEntityBase;
 import reika.dragonapi.libraries.ReikaPlayerAPI;
 import reika.dragonapi.libraries.registry.ReikaItemHelper;
+
+import java.util.*;
 
 /**
  * V33a {@code TileEntityChromaticBase}: every ChromatiCraft tile, with V33a's owner set. The placer becomes an owner when

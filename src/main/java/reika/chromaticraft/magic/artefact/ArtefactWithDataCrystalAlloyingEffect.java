@@ -1,8 +1,5 @@
 package reika.chromaticraft.magic.artefact;
 
-import java.util.List;
-import java.util.Random;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.LivingEntity;
@@ -10,7 +7,6 @@ import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.AABB;
-
 import reika.chromaticraft.auxiliary.recipemanagers.poolrecipes.AlloyingEffect;
 import reika.chromaticraft.entity.EntityDataCrystal;
 import reika.chromaticraft.network.ChromaNetwork;
@@ -21,6 +17,9 @@ import reika.dragonapi.instantiable.data.immutable.DecimalPosition;
 import reika.dragonapi.instantiable.event.ScheduledTickEvent;
 import reika.dragonapi.instantiable.event.scheduledtickevent.DelayedAttack;
 import reika.dragonapi.instantiable.event.scheduledtickevent.DelayedKnockback;
+
+import java.util.List;
+import java.util.Random;
 
 /**
  * V33a: the Artifact Distribution Map's Pool Recipe, where a Memory Crystal and an Unknown Artefact are

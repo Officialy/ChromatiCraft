@@ -9,10 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.items.itemblock;
 
-import java.util.function.Consumer;
-
-import org.jspecify.annotations.Nullable;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponents;
@@ -34,11 +30,13 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.AABB;
-
+import org.jspecify.annotations.Nullable;
 import reika.chromaticraft.auxiliary.interfaces.LinkedTile;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.dragonapi.instantiable.data.immutable.WorldLocation;
 import reika.dragonapi.libraries.level.ReikaWorldHelper;
+
+import java.util.function.Consumer;
 
 /**
  * V33a {@code ItemLinkedTilePlacer}, the World Rift item: placed into an open (soft or liquid) spot, or against a
@@ -137,7 +135,7 @@ public class ItemLinkedTilePlacer extends Item {
 			TooltipFlag flag) {
 		WorldLocation loc = getRiftLocation(is);
 		if (loc != null)
-			li.accept(Component.literal("Linking to "+loc.toString()));
+			li.accept(Component.literal("Linking to "+ loc));
 	}
 
 	protected boolean checkValidBounds(ItemStack is, @Nullable Player ep, Level world, BlockPos pos) {

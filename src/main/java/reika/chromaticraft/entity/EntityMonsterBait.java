@@ -1,199 +1,85 @@
 package reika.chromaticraft.entity;
 
-import java.util.List;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializers;
+import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.monster.Monster;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
+import reika.chromaticraft.registry.ChromaEntityTypes;
+import reika.dragonapi.libraries.ReikaEntityHelper;
+import reika.dragonapi.libraries.rendering.ReikaColorAPI;
+
 import java.util.UUID;
 
-import net.minecraft.client.Minecraft;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.monster.EntityMob;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.AxisAlignedBB;
-import net.minecraft.world.World;
-
-import reika.chromaticraft.registry.ChromaIcons;
-import reika.chromaticraft.render.particle.EntityCCBlurFX;
-import reika.dragonapi.asm.apistripper.Strippable;
-import reika.dragonapi.base.InertEntity;
-import reika.dragonapi.instantiable.particlecontroller.EntityLockMotionController;
-import reika.dragonapi.interfaces.MotionController;
-import reika.dragonapi.libraries.ReikaAABBHelper;
-import reika.dragonapi.libraries.ReikaEntityHelper;
-import reika.dragonapi.libraries.io.ReikaPacketHelper;
-import reika.dragonapi.libraries.java.ReikaRandomHelper;
-import reika.dragonapi.libraries.mathsci.ReikaPhysicsHelper;
-import reika.dragonapi.libraries.rendering.ReikaColorAPI;
-import reika.voidmonster.auxiliary.VoidMonsterBait;
-
-import cpw.mods.fml.common.registry.IEntityAdditionalSpawnData;
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
-import io.netty.buffer.ByteBuf;
-
-@Strippable(value = "Reika.VoidMonster.Auxiliary.VoidMonsterBait")
-public class EntityMonsterBait extends InertEntity implements IEntityAdditionalSpawnData, VoidMonsterBait {
-
-	private static final int MIN_LIFE = 100; //5s
-	private static final int MAX_LIFE = 600; //30s
-
-	private UUID placer;
-	private int lifespan;
-
-	private int life;
-	private EntityMob currentEntity;
-
-	public EntityMonsterBait(World world) {
-		super(world);
-	}
-
-	public EntityMonsterBait(World world, EntityPlayer ep) {
-		super(world);
-		this.setLifeSpan(ReikaRandomHelper.getRandomBetween(MIN_LIFE, MAX_LIFE));
-		this.setLocationAndAngles(ep.posX, ep.posY+ep.getEyeHeight()/4F, ep.posZ, 0, 0);
-		placer = ep.getPersistentID();
-	}
-
-	@Override
-	protected void entityInit() {
-		dataWatcher.addObject(24, 0);
-	}
-
-	@Override
-	public void onUpdate() {
-		super.onUpdate();
-		currentEntity = this.findClosestValidMob();
-		if (worldObj.isRemote) {
-			life = dataWatcher.getWatchableObjectInt(24);
-			if (life > 5)
-				this.doParticles();
-		}
-		else {
-			if (this.isActive() && currentEntity != null) {
-				currentEntity.setTarget(this);
-			}
-			life--;
-			if (life <= 0)
-				this.setDead();
-			else
-				dataWatcher.updateObject(24, life);
-		}
-	}
-
-	private EntityMob findClosestValidMob() {
-		AxisAlignedBB box = ReikaAABBHelper.getEntityCenteredAABB(this, 16);
-		List<EntityMob> li = worldObj.getEntitiesWithinAABB(EntityMob.class, box);
-		EntityMob ret = null;
-		double maxd = Double.POSITIVE_INFINITY;
-		for (EntityMob e : li) {
-			if (!e.isDead) {
-				Entity tgt = e.getEntityToAttack();
-				if (tgt != this && tgt instanceof EntityMonsterBait)
-					continue;
-				double dist = e.getDistanceSqToEntity(this);
-				if (dist < maxd) {
-					maxd = dist;
-					ret = e;
-				}
-			}
-		}
-		return ret;
-	}
-
-	@SideOnly(Side.CLIENT)
-	private void doParticles() {
-		int n = 1+rand.nextInt(4);
-		for (int i = 0; i < n; i++) {
-			double r = ReikaRandomHelper.getRandomPlusMinus(0.5, 0.0625);
-			double[] xyz = ReikaPhysicsHelper.polarToCartesian(r, 0, rand.nextDouble()*360);
-			int c = ReikaColorAPI.mixColors(0xa0a0a0, 0xffffff, Math.min(rand.nextFloat(), this.getBrightness()));
-			float g = (float)ReikaRandomHelper.getRandomPlusMinus(0, 0.035);
-			int l = Math.min(life, ReikaRandomHelper.getRandomBetween(10, 80));
-			float s = (float)ReikaRandomHelper.getRandomBetween(0.5, 2);
-			EntityCCBlurFX fx = new EntityCCBlurFX(worldObj, posX+xyz[0], posY+xyz[1], posZ+xyz[2]);
-			fx.setGravity(g).setLife(l).setScale(s);
-			fx.setIcon(ChromaIcons.FADE_GENTLE).setAlphaFading().setRapidExpand().forceIgnoreLimits();
-			if (currentEntity != null) {
-				MotionController m = new EntityLockMotionController(currentEntity, 0.03125/8, 0.125*4, 0.875);
-				fx.setMotionController(m);
-				c = ReikaColorAPI.mixColorBiDirectional(ReikaEntityHelper.mobToColor(currentEntity), 0x000000, 0xffffff, (float)ReikaRandomHelper.getRandomPlusMinus(0.5, 0.25));
-			}
-			fx.setColor(c);
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-		}
-	}
-
-	@Override
-	protected void readEntityFromNBT(NBTTagCompound tag) {
-		this.setLifeSpan(tag.getInteger("life"));
-		if (tag.hasKey("placer"))
-			placer = UUID.fromString(tag.getString("placer"));
-	}
-
-	@Override
-	protected void writeEntityToNBT(NBTTagCompound tag) {
-		if (placer != null)
-			tag.setString("placer", placer.toString());
-		tag.setInteger("life", lifespan);
-	}
-
-	@Override
-	public void writeSpawnData(ByteBuf buf) {
-		buf.writeInt(lifespan);
-		if (placer != null) {
-			buf.writeBoolean(true);
-			ReikaPacketHelper.writeString(buf, placer.toString());
-		}
-		else {
-			buf.writeBoolean(false);
-		}
-	}
-
-	@Override
-	public void readSpawnData(ByteBuf buf) {
-		this.setLifeSpan(buf.readInt());
-		boolean has = buf.readBoolean();
-		if (has)
-			placer = UUID.fromString(ReikaPacketHelper.readString(buf));
-	}
-
-	private void setLifeSpan(int val) {
-		lifespan = life = val;
-	}
-
-	@Override
-	public boolean isActive() {
-		return placer != null && life > 0;
-	}
-
-	@Override
-	public double maxRangeSquared() {
-		return 100;
-	}
-
-	@Override
-	public void attack(double dmg) {
-		life -= dmg/4D;
-		if (life <= 0)
-			this.setDead();
-	}
-
-	public int getLife() {
-		return life;
-	}
-
-	public float getBrightness() {
-		return life <= 0 ? 0 : life >= MIN_LIFE ? 1 : (float)Math.sqrt(life/(float)MIN_LIFE);
-	}
-
-	public int getRenderColor(double layer) {
-		if (currentEntity != null) {
-			float f = (float)(0.5+0.25*Math.sin(ticksExisted/12D+layer*60D));
-			return ReikaColorAPI.mixColorBiDirectional(ReikaEntityHelper.mobToColor(currentEntity), 0x000000, 0xffffff, f);
-		}
-		else {
-			int c0 = ReikaColorAPI.getColorWithBrightnessMultiplier(0xffffff, this.getBrightness());
-			return ReikaColorAPI.getColorWithBrightnessMultiplier(c0, 0.65F+(float)(0.35F*Math.sin(ticksExisted/10D+layer*40D)));
-		}
-	}
-
+/** V33a inert bait. A Mob on 26.3 so hostile mobs can retain it as their real LivingEntity target. */
+public class EntityMonsterBait extends Mob {
+    private static final int MIN_LIFE=100, MAX_LIFE=600;
+    private static final EntityDataAccessor<Integer> LIFE=SynchedEntityData.defineId(EntityMonsterBait.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<String> PLACER=SynchedEntityData.defineId(EntityMonsterBait.class, EntityDataSerializers.STRING);
+    private UUID placer;
+    private int lifespan;
+    private Monster currentEntity;
+    public EntityMonsterBait(EntityType<? extends EntityMonsterBait> type, Level level) { super(type, level); setNoAi(true); }
+    public EntityMonsterBait(Level level, Player player) {
+        this(ChromaEntityTypes.MONSTER_BAIT.get(), level);
+        initialize(player);
+    }
+    public void initialize(Player player) {
+        setLifeSpan(MIN_LIFE+random.nextInt(1+MAX_LIFE-MIN_LIFE));
+        snapTo(player.getX(), player.getY()+player.getEyeHeight()/4, player.getZ(), 0, 0);
+        placer=player.getUUID(); entityData.set(PLACER,placer.toString());
+    }
+    @Override protected void defineSynchedData(SynchedEntityData.Builder builder) { super.defineSynchedData(builder); builder.define(LIFE,0); builder.define(PLACER,""); }
+    @Override public void tick() {
+        xOld=getX(); yOld=getY(); zOld=getZ(); tickCount++;
+        currentEntity=findClosestValidMob();
+        if (level().isClientSide()) {
+            if (getLife()>5) reika.chromaticraft.modinterface.voidritual.VoidBaitParticles.spawn(this,currentEntity);
+        } else {
+            if (isActive() && currentEntity!=null) currentEntity.setTarget(this);
+            entityData.set(LIFE,getLife()-1);
+            if (getLife()<=0 || getY()<level().getMinY()-40) discard();
+        }
+    }
+    private Monster findClosestValidMob() {
+        Monster best=null; double distance=Double.POSITIVE_INFINITY;
+        for (Monster mob: level().getEntitiesOfClass(Monster.class,getBoundingBox().inflate(16))) {
+            if (!mob.isAlive() || mob.getTarget()!=this && mob.getTarget() instanceof EntityMonsterBait) continue;
+            double d=distanceToSqr(mob);
+            if (d<distance) { distance=d; best=mob; }
+        }
+        return best;
+    }
+    @Override protected void readAdditionalSaveData(ValueInput input) {
+        super.readAdditionalSaveData(input); setLifeSpan(input.getIntOr("life",0));
+        placer=input.read("placer",net.minecraft.core.UUIDUtil.STRING_CODEC).orElse(null); entityData.set(PLACER,placer==null?"":placer.toString());
+    }
+    @Override protected void addAdditionalSaveData(ValueOutput output) {
+        super.addAdditionalSaveData(output); output.putInt("life",lifespan);
+        if (placer!=null) output.store("placer",net.minecraft.core.UUIDUtil.STRING_CODEC,placer);
+    }
+    private void setLifeSpan(int value) { lifespan=value; entityData.set(LIFE,value); }
+    public boolean isActive() { return !entityData.get(PLACER).isEmpty() && getLife()>0; }
+    public double maxRangeSquared() { return 100; }
+    public void attack(double damage) { entityData.set(LIFE,(int)(getLife()-damage/4)); if (getLife()<=0) discard(); }
+    public int getLife() { return entityData.get(LIFE); }
+    public float getBrightness() { return getLife()<=0?0:getLife()>=MIN_LIFE?1:(float)Math.sqrt(getLife()/(float)MIN_LIFE); }
+    public int getRenderColor(double layer) {
+        if (currentEntity!=null) return ReikaColorAPI.mixColorBiDirectional(ReikaEntityHelper.mobToColor(currentEntity),0,0xffffff,(float)(.5+.25*Math.sin(tickCount/12D+layer*60)));
+        int color=ReikaColorAPI.getColorWithBrightnessMultiplier(0xffffff,getBrightness());
+        return ReikaColorAPI.getColorWithBrightnessMultiplier(color,.65F+(float)(.35*Math.sin(tickCount/10D+layer*40)));
+    }
+    @Override public boolean hurtServer(ServerLevel level, DamageSource source,float amount) { return false; }
+    @Override public boolean isAttackable() { return false; }
+    @Override public boolean isPushable() { return false; }
+    @Override public boolean isPushedByFluid() { return false; }
+    @Override public boolean displayFireAnimation() { return false; }
+    @Override public void checkDespawn() { }
 }

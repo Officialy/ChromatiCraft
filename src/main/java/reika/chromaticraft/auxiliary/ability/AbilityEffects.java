@@ -1,21 +1,13 @@
 package reika.chromaticraft.auxiliary.ability;
 
-import java.util.List;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
-import net.minecraft.tags.FluidTags;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.tags.FluidTags;
 import net.minecraft.util.Mth;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntitySpawnReason;
-import net.minecraft.world.entity.EntityTypes;
-import net.minecraft.world.entity.ExperienceOrb;
-import net.minecraft.world.entity.LightningBolt;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.*;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -24,7 +16,6 @@ import net.minecraft.world.entity.monster.Creeper;
 import net.minecraft.world.entity.monster.Enderman;
 import net.minecraft.world.entity.monster.zombie.ZombifiedPiglin;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.entity.projectile.arrow.AbstractArrow;
 import net.minecraft.world.entity.projectile.hurtingprojectile.LargeFireball;
 import net.minecraft.world.level.Level;
@@ -35,10 +26,11 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.registry.ChromaSounds;
 import reika.chromaticraft.registry.Chromabilities;
+
+import java.util.List;
 
 /** Direct 26.2 implementations of V33a Chromability effects with no intermediary legacy API. */
 @EventBusSubscriber(modid = ChromatiCraft.MODID)
@@ -57,6 +49,14 @@ public final class AbilityEffects {
 			player.heal(event.getOriginalDamage() * 0.1F);
 	}
 
+    public static boolean mobBait(Player player) {
+        if (!player.onGround()) return false;
+        if ((!player.level().dimension().equals(Level.NETHER) || player.getY()<player.level().getMinY()+127.5)
+            && !player.level().getEntitiesOfClass(reika.chromaticraft.entity.EntityMonsterBait.class,player.getBoundingBox().inflate(6)).isEmpty()) return false;
+        var bait=reika.chromaticraft.registry.ChromaEntityTypes.MONSTER_BAIT.get().create(player.level(),EntitySpawnReason.TRIGGERED);
+        if (bait==null) return false;
+        bait.initialize(player); return player.level().addFreshEntity(bait);
+    }
 	public static void heal(Player player, int health) {
 		player.heal(health);
 	}

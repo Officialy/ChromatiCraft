@@ -9,12 +9,8 @@
  ******************************************************************************/
 package reika.chromaticraft.items.tools.powered;
 
-import java.util.Locale;
-import java.util.function.Consumer;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
@@ -29,7 +25,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
-
 import reika.chromaticraft.auxiliary.interfaces.ColoredMultiBlockChromaTile;
 import reika.chromaticraft.auxiliary.interfaces.MultiBlockChromaTile;
 import reika.chromaticraft.auxiliary.interfaces.SpecialStructureTile;
@@ -52,6 +47,8 @@ import reika.dragonapi.instantiable.event.scheduledtickevent.ScheduledSoundEvent
 import reika.dragonapi.libraries.ReikaPlayerAPI;
 import reika.dragonapi.libraries.mathsci.ReikaMusicHelper.MusicKey;
 import reika.dragonapi.libraries.registry.ReikaItemHelper;
+
+import java.util.function.Consumer;
 
 /**
  * V33a {@code ItemCrystalProbe}, Examination Crystals: a blue-powered tool that, held for 2.5 seconds and released while
@@ -203,7 +200,7 @@ public class ItemCrystalProbe extends ItemPoweredChromaTool {
 		return sb.toString();
 	}
 
-	private static enum Inspections {
+	private enum Inspections {
 		REPEATER_CONNECTIVITY(60, CrystalReceiver.class),
 		STRUCTURE_CHECK(1000, MultiBlockChromaTile.class),
 		MULTIBLOCK(1500, BlockMultiBlock.class),
@@ -215,7 +212,7 @@ public class ItemCrystalProbe extends ItemPoweredChromaTool {
 
 		private static final Inspections[] list = values();
 
-		private Inspections(int energy, Class check) {
+		Inspections(int energy, Class check) {
 			energyCost = energy;
 			trigger = check;
 		}
@@ -251,7 +248,7 @@ public class ItemCrystalProbe extends ItemPoweredChromaTool {
 									break;
 							}
 							CrystalElement e = str.requiresColor ? ((ColoredMultiBlockChromaTile)te).getColor() : null;
-							FilledBlockArray arr = str.requiresColor ? str.getArray(world, x, y, z, e) : str.getArray(world, x+c.xCoord, y+c.yCoord, z+c.zCoord);
+							FilledBlockArray arr = str.requiresColor ? str.getArray(world, x, y, z, e) : str.getArray(world, x+ c.xCoord(), y+ c.yCoord(), z+ c.zCoord());
 							if (arr.matchInWorld(StructureErrorOverlays.instance)) {
 								this.playSuccess(world, pos);
 							}

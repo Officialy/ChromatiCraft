@@ -9,12 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.tileentity.transport;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -32,14 +26,11 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.Fluids;
-
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.transfer.ResourceHandler;
 import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import net.neoforged.neoforge.transfer.transaction.Transaction;
-
 import org.jspecify.annotations.Nullable;
-
 import reika.chromaticraft.auxiliary.FluidNetwork;
 import reika.chromaticraft.base.tileentity.TileEntityChromaticBase;
 import reika.chromaticraft.block.BlockFluidRelay;
@@ -50,6 +41,8 @@ import reika.chromaticraft.registry.ChromaTiles;
 import reika.dragonapi.instantiable.StepTimer;
 import reika.dragonapi.interfaces.blockentity.BreakAction;
 import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
+
+import java.util.*;
 
 /**
  * V33a {@code TileEntityFluidRelay} ("Fluid Link Anchor"). It attaches to a tank face and links to every other anchor

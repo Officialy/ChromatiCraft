@@ -9,80 +9,40 @@
  ******************************************************************************/
 package reika.chromaticraft.render.entity;
 
-import org.lwjgl.opengl.GL11;
-
-import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.client.renderer.entity.Render;
-import net.minecraft.entity.Entity;
-import net.minecraft.util.IIcon;
-import net.minecraft.util.ResourceLocation;
-
+import com.mojang.blaze3d.vertex.PoseStack;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.entity.EntityRenderer;
+import net.minecraft.client.renderer.entity.EntityRendererProvider;
+import net.minecraft.client.renderer.entity.state.EntityRenderState;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.client.renderer.texture.TextureAtlas;
+import net.minecraft.data.AtlasIds;
 import reika.chromaticraft.entity.EntityMonsterBait;
 import reika.chromaticraft.registry.ChromaIcons;
-import reika.dragonapi.libraries.io.ReikaTextureHelper;
-import reika.dragonapi.libraries.java.reikaglhelper.BlendMode;
+import reika.chromaticraft.render.ChromaRenderPipelines;
 
-public class RenderMonsterBait extends Render {
-
-	@Override
-	public void doRender(Entity e, double par2, double par4, double par6, float par8, float ptick) {
-		ReikaTextureHelper.bindTerrainTexture();
-		EntityMonsterBait eb = (EntityMonsterBait)e;
-		Tessellator v5 = Tessellator.instance;
-		IIcon icon = ChromaIcons.ROSEFLARE.getIcon();
-		float u = icon.getMinU();
-		float v = icon.getMinV();
-		float du = icon.getMaxU();
-		float dv = icon.getMaxV();
-		GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
-		GL11.glPushMatrix();
-		GL11.glEnable(GL11.GL_BLEND);
-		GL11.glDisable(GL11.GL_LIGHTING);
-		GL11.glDisable(GL11.GL_CULL_FACE);
-		BlendMode.ADDITIVEDARK.apply();
-		GL11.glShadeModel(GL11.GL_SMOOTH);
-		GL11.glDepthMask(false);
-		GL11.glTranslated(par2, par4, par6);
-		/*
-		if (!e.isDead) {
-			RenderManager rm = RenderManager.instance;
-			double dx = e.posX-RenderManager.renderPosX;
-			double dy = e.posY-RenderManager.renderPosY;
-			double dz = e.posZ-RenderManager.renderPosZ;
-			double[] angs = ReikaPhysicsHelper.cartesianToPolar(dx, dy, dz);
-			GL11.glRotated(angs[2], 0, 1, 0);
-			GL11.glRotated(90-angs[1], 1, 0, 0);
-		}
-		 */
-		//GL11.glRotatef(rm.playerViewX, 1.0F, 0.0F, 0.0F);
-		v5.startDrawingQuads();
-		v5.setBrightness(240);
-		double s1 = 0.5;
-		double r = 0.0625;//0.0625+0.03125*Math.sin(eb.ticksExisted/8D);
-		for (double y = -r; y <= r; y += r/4D) {
-			double t = e.ticksExisted/10D+y*40;
-			int c = eb.getRenderColor(y);
-			double dx = 0.0625*Math.sin(t*0.46);
-			double dz = 0.0625*Math.sin(t*0.78);
-			v5.setColorOpaque_I(c);
-			v5.addVertexWithUV(-s1+dx, y, -s1+dz, u, v);
-			v5.addVertexWithUV(s1+dx, y, -s1+dz, du, v);
-			v5.addVertexWithUV(s1+dx, y, s1+dz, du, dv);
-			v5.addVertexWithUV(-s1+dx, y, s1+dz, u, dv);
-		}
-		v5.draw();
-		/*
-		TessellatorVertexList tv5 = new TessellatorVertexList(0, 0, 0);
-		ReikaRenderHelper.renderIconIn3D(tv5, icon, 0, 0, 0);
-		tv5.render();
-		 */
-		GL11.glPopAttrib();
-		GL11.glPopMatrix();
-	}
-
-	@Override
-	protected ResourceLocation getEntityTexture(Entity e) {
-		return null;
-	}
-
+/** V33a's nine horizontal rose-flare layers, with their per-layer color and drift. */
+public final class RenderMonsterBait extends EntityRenderer<EntityMonsterBait,RenderMonsterBait.State> {
+    public RenderMonsterBait(EntityRendererProvider.Context context) { super(context); shadowRadius=0; }
+    public State createRenderState() { return new State(); }
+    @Override public void extractRenderState(EntityMonsterBait entity,State state,float partial) {
+        super.extractRenderState(entity,state,partial);
+        for (int i=0;i<9;i++) state.colors[i]=entity.getRenderColor(-.0625+i*.015625);
+    }
+    @Override public void submit(State state,PoseStack stack,SubmitNodeCollector collector,CameraRenderState camera) {
+        var icon=Minecraft.getInstance().getAtlasManager().getAtlasOrThrow(AtlasIds.BLOCKS).getSprite(ChromaIcons.ROSEFLARE.getIcon());
+        int[] colors=state.colors.clone(); double age=state.ageInTicks;
+        collector.submitCustomGeometry(stack,ChromaRenderPipelines.additiveSprite(TextureAtlas.LOCATION_BLOCKS),(pose,out)-> {
+            for (int i=0;i<9;i++) {
+                double y=-.0625+i*.015625,t=age/10+y*40,dx=.0625*Math.sin(t*.46),dz=.0625*Math.sin(t*.78);
+                int color=0xff000000|colors[i];
+                out.addVertex(pose,(float)(dx-.5),(float)y,(float)(dz-.5)).setColor(color).setUv(icon.getU0(),icon.getV0());
+                out.addVertex(pose,(float)(dx+.5),(float)y,(float)(dz-.5)).setColor(color).setUv(icon.getU1(),icon.getV0());
+                out.addVertex(pose,(float)(dx+.5),(float)y,(float)(dz+.5)).setColor(color).setUv(icon.getU1(),icon.getV1());
+                out.addVertex(pose,(float)(dx-.5),(float)y,(float)(dz+.5)).setColor(color).setUv(icon.getU0(),icon.getV1());
+            }
+        });
+    }
+    public static final class State extends EntityRenderState { final int[] colors=new int[9]; }
 }

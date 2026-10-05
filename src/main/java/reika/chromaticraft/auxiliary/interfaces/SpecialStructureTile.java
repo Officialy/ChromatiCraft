@@ -4,6 +4,6 @@ import reika.dragonapi.instantiable.data.blockstruct.filledblockarray.BlockMatch
 
 public interface SpecialStructureTile extends MultiBlockChromaTile {
 
-	public void inspectStructure(BlockMatchFailCallback call);
+	void inspectStructure(BlockMatchFailCallback call);
 
 }

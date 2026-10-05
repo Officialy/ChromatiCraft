@@ -1,11 +1,7 @@
 package reika.chromaticraft.render.model;
 
-import net.minecraft.core.Direction;
-import java.util.List;
-
 import com.mojang.blaze3d.platform.Transparency;
 import com.mojang.serialization.MapCodec;
-
 import net.minecraft.client.renderer.block.BlockAndTintGetter;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
@@ -15,19 +11,18 @@ import net.minecraft.client.resources.model.geometry.BakedQuad;
 import net.minecraft.client.resources.model.geometry.QuadCollection;
 import net.minecraft.client.resources.model.sprite.Material;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.state.BlockState;
-
 import net.neoforged.neoforge.client.model.DynamicBlockStateModel;
 import net.neoforged.neoforge.client.model.block.CustomUnbakedBlockStateModel;
 import net.neoforged.neoforge.client.model.pipeline.QuadBakingVertexConsumer;
-
-import org.joml.Vector3f;
-
 import reika.chromaticraft.base.CrystalBlock;
 import reika.chromaticraft.block.crystal.BlockCaveCrystal;
 import reika.chromaticraft.registry.ChromaBlocks;
+
+import java.util.List;
 
 /**
  * Exact 26.2 chunk-mesh port of V33a {@code CrystalRenderer}.
@@ -72,7 +67,7 @@ public final class CaveCrystalModel implements DynamicBlockStateModel {
     @Override
     public void collectParts(BlockAndTintGetter level, BlockPos pos, BlockState state,
             RandomSource random, List<BlockStateModelPart> parts) {
-        int arms = allArms ? 0xF : BlockCaveCrystal.armMask(pos);
+        int arms = BlockCaveCrystal.visibleArmMask(level, pos, allArms);
         BlockState belowState = level.getBlockState(pos.below());
         BlockState aboveState = level.getBlockState(pos.above());
         boolean flip = BlockCaveCrystal.isCeilingMounted(level, pos);

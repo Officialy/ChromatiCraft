@@ -1,23 +1,14 @@
 package reika.chromaticraft.base.tileentity;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.StringTag;
-import net.minecraft.nbt.Tag;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
-
 import reika.chromaticraft.auxiliary.interfaces.OwnedTile;
 import reika.dragonapi.interfaces.blockentity.BreakAction;
-import reika.dragonapi.libraries.registry.ReikaItemHelper;
+
+import java.util.List;
 
 /** Shared V33a multi-owner and item-NBT behavior for pylon enhancement blocks. */
 public abstract class TileEntityPylonEnhancer extends TileEntityChromaticBase implements OwnedTile, BreakAction {

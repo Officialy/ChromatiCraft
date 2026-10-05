@@ -9,9 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.entity;
 
-import java.awt.Color;
-import java.util.List;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvent;
@@ -19,13 +16,7 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntitySpawnReason;
-import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.SpawnGroupData;
-import net.minecraft.world.entity.SpawnPlacementTypes;
+import net.minecraft.world.entity.*;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
@@ -38,10 +29,8 @@ import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.AABB;
-
 import net.neoforged.neoforge.event.entity.EntityAttributeCreationEvent;
 import net.neoforged.neoforge.event.entity.RegisterSpawnPlacementsEvent;
-
 import reika.chromaticraft.registry.ChromaEntityTypes;
 import reika.chromaticraft.registry.ChromaSounds;
 import reika.chromaticraft.render.particle.ChromaParticle;
@@ -53,6 +42,9 @@ import reika.dragonapi.libraries.java.ReikaRandomHelper;
 import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
 import reika.dragonapi.libraries.registry.ReikaItemHelper;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
+
+import java.awt.*;
+import java.util.List;
 
 /**
  * V33a "Luma Fog" (registry id {@code glow_cloud}): a wandering, non-hostile-until-provoked cloud
@@ -74,7 +66,7 @@ import reika.dragonapi.libraries.rendering.ReikaColorAPI;
  */
 public class EntityGlowCloud extends Mob implements DestroyOnUnload {
 
-	private SphericalVector velocity;
+	private final SphericalVector velocity;
 	private double targetTheta;
 	private double targetPhi;
 	private double targetVelocity;
@@ -335,7 +327,7 @@ public class EntityGlowCloud extends Mob implements DestroyOnUnload {
 
 	private void attack() {
 		this.doAttack();
-		((ServerLevel)this.level()).broadcastEntityEvent(this, ATTACK_EVENT_ID);
+		this.level().broadcastEntityEvent(this, ATTACK_EVENT_ID);
 	}
 
 	private void doAttack() {

@@ -17,9 +17,12 @@ public final class ChromaDataProviders {
 
 	@SubscribeEvent
 	public static void onGatherClient(GatherDataEvent.Client event) {
+		event.createProvider(ChromaFontProvider::new);
 		event.createProvider(output -> new ChromaLang(output, "en_us"));
 		event.createProvider(ChromaModelProvider::new);
 		event.createProvider(ChromaSoundProvider::new);
+        event.createProvider(ChromaVoidVisualData::new);
+		event.createProvider(ChromaSpriteSourceProvider::new);
 	}
 
 	@SubscribeEvent

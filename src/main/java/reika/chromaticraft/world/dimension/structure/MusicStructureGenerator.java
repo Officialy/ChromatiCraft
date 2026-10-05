@@ -1,15 +1,14 @@
 package reika.chromaticraft.world.dimension.structure;
 
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.Level;
+import reika.chromaticraft.registry.ChromaOptions;
+import reika.chromaticraft.tileentity.TileEntityMusicMemory;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
-
-import net.minecraft.core.BlockPos;
-import net.minecraft.world.level.Level;
-
-import reika.chromaticraft.registry.ChromaOptions;
-import reika.chromaticraft.tileentity.TileEntityMusicMemory;
 
 /** Modern persistent planner for V33a's Crystal Music structure. */
 public final class MusicStructureGenerator extends StructureGeneratorBase {

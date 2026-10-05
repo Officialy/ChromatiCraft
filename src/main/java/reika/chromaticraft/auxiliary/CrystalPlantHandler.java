@@ -9,15 +9,11 @@
  ******************************************************************************/
 package reika.chromaticraft.auxiliary;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
-
 import reika.chromaticraft.block.BlockCrystalPlant;
 import reika.chromaticraft.items.ItemCrystalSeeds;
 import reika.chromaticraft.registry.ChromaBlocks;
@@ -27,6 +23,9 @@ import reika.dragonapi.interfaces.CustomCropHandler;
 import reika.dragonapi.interfaces.registry.CropType;
 import reika.dragonapi.interfaces.registry.ModEntry;
 import reika.dragonapi.modregistry.ModCropList;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * V33a {@code CrystalPlantHandler}: how harvesters see a Crystal Bloom. A harvest takes the tile's drops (seeds

@@ -9,23 +9,14 @@
  ******************************************************************************/
 package reika.chromaticraft.registry;
 
-import java.util.Locale;
-
 import net.minecraft.util.Mth;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.dragonapi.auxiliary.trackers.KeyWatcher.Key;
-import reika.dragonapi.interfaces.configuration.BooleanConfig;
-import reika.dragonapi.interfaces.configuration.CustomCategoryConfig;
-import reika.dragonapi.interfaces.configuration.DecimalConfig;
-import reika.dragonapi.interfaces.configuration.IntegerConfig;
-import reika.dragonapi.interfaces.configuration.MatchingConfig;
-import reika.dragonapi.interfaces.configuration.SegmentedConfigList;
-import reika.dragonapi.interfaces.configuration.SelectiveConfig;
-import reika.dragonapi.interfaces.configuration.StringConfig;
-import reika.dragonapi.interfaces.configuration.UserSpecificConfig;
+import reika.dragonapi.interfaces.configuration.*;
 import reika.dragonapi.interfaces.registry.Dependency;
 import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
+
+import java.util.Locale;
 
 /**
  * ChromatiCraft's config options (read via {@code ChromatiCraft.config.getControl(ordinal)} on the
@@ -104,42 +95,42 @@ public enum ChromaOptions implements SegmentedConfigList, SelectiveConfig, Integ
 	LUMCLIFFSEEDSHIFT("Luminous Cliffs Terrain Shape Seed Shift", 0),
 	;
 
-	private String label;
+	private final String label;
 	private boolean defaultState;
 	private int defaultValue;
 	private float defaultFloat;
 	private String defaultString;
-	private Class type;
+	private final Class type;
 	private boolean enforcing = false;
 
-	private static boolean t2ConfigModel = false;
+	private static final boolean t2ConfigModel = false;
 
 	public static final ChromaOptions[] optionList = values();
 
-	private ChromaOptions(String l, boolean d) {
+	ChromaOptions(String l, boolean d) {
 		label = l;
 		defaultState = d;
 		type = boolean.class;
 	}
 
-	private ChromaOptions(String l, boolean d, boolean tag) {
+	ChromaOptions(String l, boolean d, boolean tag) {
 		this(l, d);
 		enforcing = true;
 	}
 
-	private ChromaOptions(String l, int d) {
+	ChromaOptions(String l, int d) {
 		label = l;
 		defaultValue = d;
 		type = int.class;
 	}
 
-	private ChromaOptions(String l, float d) {
+	ChromaOptions(String l, float d) {
 		label = l;
 		defaultFloat = d;
 		type = float.class;
 	}
 
-	private ChromaOptions(String l, String d) {
+	ChromaOptions(String l, String d) {
 		label = l;
 		defaultString = d;
 		type = String.class;

@@ -1,8 +1,5 @@
 package reika.chromaticraft.world;
 
-import java.util.List;
-import java.util.stream.StreamSupport;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -15,10 +12,12 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.levelgen.feature.Feature;
-
-import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.auxiliary.structure.NBTStructureLoader;
 import reika.chromaticraft.data.ChromaStructureTemplateProvider;
+import reika.chromaticraft.registry.ChromaBlocks;
+
+import java.util.List;
+import java.util.stream.StreamSupport;
 
 /**
  * V33a Rainbow Tree generator: the authored large tree, with its small-tree fallback.

@@ -1,11 +1,7 @@
 package reika.chromaticraft.render.model;
 
-import java.util.List;
-import java.util.Random;
-
 import com.mojang.blaze3d.platform.Transparency;
 import com.mojang.serialization.MapCodec;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.block.BlockAndTintGetter;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
@@ -23,14 +19,15 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.state.BlockState;
-
 import net.neoforged.neoforge.client.model.DynamicBlockStateModel;
 import net.neoforged.neoforge.client.model.block.CustomUnbakedBlockStateModel;
 import net.neoforged.neoforge.client.model.pipeline.QuadBakingVertexConsumer;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.dragonapi.instantiable.rendering.connected.ConnectedQuads;
+
+import java.util.List;
+import java.util.Random;
 
 /**
  * V33a {@code SelectiveGlassRenderer} (translucent pass only; the solid pass drew nothing):

@@ -9,14 +9,9 @@
  ******************************************************************************/
 package reika.chromaticraft.render.tesr;
 
-import org.joml.Quaternionfc;
-import org.joml.Vector3f;
-import org.jspecify.annotations.Nullable;
-
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
@@ -29,7 +24,9 @@ import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.data.AtlasIds;
 import net.minecraft.world.phys.Vec3;
-
+import org.joml.Quaternionfc;
+import org.joml.Vector3f;
+import org.jspecify.annotations.Nullable;
 import reika.chromaticraft.base.tileentity.TileEntityAdjacencyUpgrade;
 import reika.chromaticraft.registry.AdjacencyUpgrades;
 import reika.chromaticraft.registry.ChromaIcons;

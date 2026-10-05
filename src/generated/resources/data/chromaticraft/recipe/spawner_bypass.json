@@ -1,0 +1,69 @@
+{
+  "type": "chromaticraft:casting",
+  "completion": {
+    "required_fragment": "SPAWNERBYPASS"
+  },
+  "duration": 20,
+  "experience": 40,
+  "grid": [
+    {
+      "ingredient": "minecraft:ender_pearl",
+      "slot": 0
+    },
+    {
+      "ingredient": "chromaticraft:transmissive_dust",
+      "slot": 1
+    },
+    {
+      "ingredient": "minecraft:quartz",
+      "slot": 2
+    },
+    {
+      "ingredient": "chromaticraft:aura_dust",
+      "slot": 3
+    },
+    {
+      "ingredient": "minecraft:diamond",
+      "slot": 4
+    },
+    {
+      "ingredient": "chromaticraft:aura_dust",
+      "slot": 5
+    },
+    {
+      "ingredient": "minecraft:redstone",
+      "slot": 6
+    },
+    {
+      "ingredient": "chromaticraft:void_dust",
+      "slot": 7
+    },
+    {
+      "ingredient": "minecraft:ender_pearl",
+      "slot": 8
+    }
+  ],
+  "penalty_threshold": 1,
+  "result": {
+    "id": "chromaticraft:spawner_bypass"
+  },
+  "runes": [
+    {
+      "element": "pink",
+      "offset": [
+        -1,
+        0,
+        3
+      ]
+    },
+    {
+      "element": "lightgray",
+      "offset": [
+        3,
+        0,
+        -1
+      ]
+    }
+  ],
+  "tier": "temple"
+}

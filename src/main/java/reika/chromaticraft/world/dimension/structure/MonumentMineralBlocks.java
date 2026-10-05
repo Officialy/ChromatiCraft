@@ -1,18 +1,13 @@
 package reika.chromaticraft.world.dimension.structure;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.EnumMap;
-import java.util.List;
-import java.util.Map;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
-
 import reika.chromaticraft.registry.ChromaBlocks;
+
+import java.util.*;
 
 /**
  * V33a {@code MonumentMineralBlocks}: the monument's mineral inlay, and the ritual's second gate.

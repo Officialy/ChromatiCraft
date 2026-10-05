@@ -12,7 +12,6 @@ package reika.chromaticraft.render.tesr;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.geom.ModelLayerLocation;
 import net.minecraft.client.renderer.SubmitNodeCollector;
@@ -25,13 +24,11 @@ import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.core.Direction;
 import net.minecraft.data.AtlasIds;
 import net.minecraft.resources.Identifier;
-import net.minecraft.core.Direction;
 import net.minecraft.world.phys.Vec3;
-
 import org.jspecify.annotations.Nullable;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.models.ModelFarmer;
 import reika.chromaticraft.registry.CrystalElement;
@@ -118,7 +115,7 @@ public final class RenderFarmer implements BlockEntityRenderer<TileEntityFarmer,
 
     private static void vertex(PoseStack.Pose pose, VertexConsumer output, TextureAtlasSprite sprite,
             float x, float y, float z, float u, float v) {
-        output.addVertex(pose, x, y, z).setColor(0xff000000 | CrystalElement.GREEN.getColor())
+        output.addVertex(pose, x, y, z).setColor(0xff000000 | CrystalElement.GREEN.color())
                 .setUv(sprite.getU0() + u * (sprite.getU1() - sprite.getU0()),
                         sprite.getV0() + v * (sprite.getV1() - sprite.getV0()))
                 .setOverlay(OverlayTexture.NO_OVERLAY).setLight(0xF000F0).setNormal(pose, 0, 1, 0);

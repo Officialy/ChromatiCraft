@@ -1,8 +1,5 @@
 package reika.chromaticraft.client;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.renderer.RenderPipelines;
@@ -10,10 +7,12 @@ import net.minecraft.resources.Identifier;
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.gui.GuiLayer;
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.magic.lore.KeyAssemblyPuzzle;
 import reika.chromaticraft.magic.lore.Towers;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /** V33a's five-second, three-group lore-tower discovery presentation. */
 public final class LoreDiscoveryOverlay implements GuiLayer {

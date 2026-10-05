@@ -1,8 +1,5 @@
 package reika.chromaticraft.block.worldgen26;
 
-import java.util.Locale;
-
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
@@ -19,6 +16,8 @@ import net.minecraft.world.level.block.Fallable;
 import net.minecraft.world.level.block.FallingBlock;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
+
+import java.util.Locale;
 
 /**
  * V33a {@code BlockSparkle}: an ordinary terrain block with glinting white motes on its faces, one

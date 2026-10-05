@@ -1,49 +1,46 @@
 package reika.chromaticraft.auxiliary.render;
 
-import net.minecraft.block.Block;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.world.World;
-
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
 import reika.chromaticraft.base.ItemBlockChangingWand;
 import reika.dragonapi.instantiable.data.blockstruct.BlockArray;
-import reika.dragonapi.instantiable.data.immutable.BlockKey;
-import reika.dragonapi.instantiable.data.immutable.Coordinate;
 
-public class BlockChangeCache {
+import java.util.List;
 
-	private Coordinate overlayOrigin;
-	private BlockKey overlayBlock;
-	private BlockArray overlay;
-	private boolean isSneak;
-	private Item overlayItem;
+/** The original targeted-wand preview cache, refreshed when its selection or surrounding world changes. */
+public final class BlockChangeCache {
+    private Level level;
+    private BlockPos origin;
+    private BlockState state;
+    private ItemStack item = ItemStack.EMPTY;
+    private boolean sneaking;
+    private int depth;
+    private long tick = Long.MIN_VALUE;
+    private List<BlockPos> overlay = List.of();
 
-	public void updateAndVerifyCache(World world, int x, int y, int z, BlockKey bk, EntityPlayer ep, ItemStack is) {
-		Coordinate loc = new Coordinate(x, y, z);
-		boolean sp = ep.isSneaking();
+    public List<BlockPos> get(Level level, BlockPos pos, Player player, ItemStack stack) {
+        ItemBlockChangingWand wand = (ItemBlockChangingWand)stack.getItem();
+        int range = wand.getDepth(player, level, pos);
+        BlockState target = level.getBlockState(pos);
+        if (this.level != level || !pos.equals(origin) || target != state || sneaking != player.isShiftKeyDown()
+                || !ItemStack.isSameItemSameComponents(stack, item) || depth != range || tick != level.getGameTime()) {
+            BlockArray blocks = new BlockArray();
+            blocks.maxDepth = range-1;
+            wand.getSpreadBlocks(level, pos, blocks, player, stack);
+            var positions = new java.util.ArrayList<BlockPos>();
+            for (int i = 0; i < blocks.getSize(); i++) positions.add(blocks.getNthBlock(i).immutable());
+            overlay = List.copyOf(positions);
+            this.level = level; origin = pos.immutable(); state = target; sneaking = player.isShiftKeyDown();
+            item = stack.copy(); depth = range; tick = level.getGameTime();
+        }
+        return overlay;
+    }
 
-		if (!loc.equals(overlayOrigin) || !bk.equals(overlayBlock) || (isSneak != sp) || (is.getItem() != overlayItem)) {
-			overlay = null;
-		}
-		overlayBlock = bk;
-		overlayOrigin = loc;
-		isSneak = sp;
-		overlayItem = is.getItem();
-	}
-
-	public void clearCache() {
-		overlay = null;
-	}
-
-	public BlockArray getCachedOverlay(World world, int x, int y, int z, Block id, int meta, EntityPlayer ep, ItemStack is) {
-		if (overlay == null) {
-			ItemBlockChangingWand i = (ItemBlockChangingWand)is.getItem();
-			overlay = new BlockArray();
-			overlay.maxDepth = i.getDepth(ep, world, x, y, z)-1;
-			i.getSpreadBlocks(world, x, y, z, overlay, ep, is);
-		}
-		return overlay;
-	}
-
+    public void clearCache() {
+        level = null; item = ItemStack.EMPTY; overlay = List.of(); tick = Long.MIN_VALUE;
+    }
 }
+

@@ -11,8 +11,8 @@ package reika.chromaticraft.auxiliary.interfaces;
 
 public interface ChromaPowered {
 
-	public int getChromaLevel();
+	int getChromaLevel();
 
-	public boolean addChroma(int amt);
+	boolean addChroma(int amt);
 
 }

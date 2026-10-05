@@ -1,10 +1,6 @@
 package reika.chromaticraft.magic.network;
 
-import reika.chromaticraft.magic.interfaces.CrystalNetworkTile;
-import reika.chromaticraft.magic.interfaces.CrystalReceiver;
-import reika.chromaticraft.magic.interfaces.CrystalRepeater;
-import reika.chromaticraft.magic.interfaces.CrystalSource;
-import reika.chromaticraft.magic.interfaces.CrystalTransmitter;
+import reika.chromaticraft.magic.interfaces.*;
 import reika.dragonapi.instantiable.data.immutable.WorldLocation;
 
 public class PathNode {

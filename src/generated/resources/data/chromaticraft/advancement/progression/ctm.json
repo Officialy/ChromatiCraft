@@ -1,0 +1,29 @@
+{
+  "parent": "chromaticraft:progression/allcores",
+  "criteria": {
+    "trigger": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "display": {
+    "announce_to_chat": false,
+    "description": {
+      "translate": "advancements.chromaticraft.ctm.description"
+    },
+    "frame": "challenge",
+    "hidden": true,
+    "icon": {
+      "id": "chromaticraft:chromic_lexicon"
+    },
+    "show_toast": false,
+    "title": {
+      "translate": "advancements.chromaticraft.ctm.title"
+    }
+  },
+  "requirements": [
+    [
+      "trigger"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

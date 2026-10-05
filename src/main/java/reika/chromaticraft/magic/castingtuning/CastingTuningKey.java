@@ -1,14 +1,13 @@
 package reika.chromaticraft.magic.castingtuning;
 
+import net.minecraft.core.BlockPos;
+import reika.chromaticraft.registry.CrystalElement;
+import reika.dragonapi.DragonAPI;
+
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
-
-import net.minecraft.core.BlockPos;
-
-import reika.chromaticraft.registry.CrystalElement;
-import reika.dragonapi.DragonAPI;
 
 /** Immutable server-side form of the V33a player-specific casting tuning key. */
 public final class CastingTuningKey {

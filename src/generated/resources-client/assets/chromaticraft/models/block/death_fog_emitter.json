@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/cube_bottom_top",
+  "textures": {
+    "bottom": "chromaticraft:block/tile/deathfog_bottom",
+    "side": "chromaticraft:block/tile/deathfog_side",
+    "top": "chromaticraft:block/tile/deathfog_top"
+  }
+}

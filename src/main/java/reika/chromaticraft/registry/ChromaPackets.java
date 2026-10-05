@@ -238,15 +238,15 @@ public enum ChromaPackets {
 	public final int numInts;
 	public final PacketTypes type;
 
-	private ChromaPackets() {
+	ChromaPackets() {
 		this(0);
 	}
 
-	private ChromaPackets(int size) {
+	ChromaPackets(int size) {
 		this(size, PacketTypes.DATA);
 	}
 
-	private ChromaPackets(int size, PacketTypes t) {
+	ChromaPackets(int size, PacketTypes t) {
 		numInts = size;
 		type = t;
 	}

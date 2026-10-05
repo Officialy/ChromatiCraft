@@ -6,33 +6,29 @@ import net.minecraft.client.particle.SingleQuadParticle;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.server.level.ParticleStatus;
-import java.util.Random;
-import java.util.Collection;
-import java.util.List;
-import java.util.Locale;
-import net.minecraft.util.RandomSource;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.entity.item.ItemEntity;
-import net.minecraft.world.phys.Vec3;
 import net.minecraft.data.AtlasIds;
 import net.minecraft.resources.Identifier;
-
+import net.minecraft.server.level.ParticleStatus;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
 import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaFluids;
-import reika.chromaticraft.registry.ChromaSounds;
-import reika.chromaticraft.registry.ChromaTieredPlants;
 import reika.chromaticraft.magic.lore.Towers;
-import reika.chromaticraft.tileentity.auxiliary.TileEntityChromaCrystal;
+import reika.chromaticraft.registry.*;
 import reika.chromaticraft.render.ChromaRenderPipelines;
-import reika.dragonapi.instantiable.particlecontroller.CollectingPositionController;
+import reika.chromaticraft.tileentity.auxiliary.TileEntityChromaCrystal;
 import reika.dragonapi.instantiable.data.immutable.DecimalPosition;
 import reika.dragonapi.instantiable.effects.LightningBolt;
+import reika.dragonapi.instantiable.particlecontroller.CollectingPositionController;
 import reika.dragonapi.interfaces.PositionController;
 import reika.dragonapi.libraries.mathsci.ReikaPhysicsHelper;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
+
+import java.util.Collection;
+import java.util.List;
+import java.util.Locale;
+import java.util.Random;
 
 /** Reusable V33a ChromatiCraft particle families on the 26.2 particle pipeline. */
 public abstract class ChromaParticle extends SingleQuadParticle {
@@ -137,7 +133,7 @@ public abstract class ChromaParticle extends SingleQuadParticle {
 		double pz = pos.getZ() + 0.5 + (random.nextDouble() * 2 - 1);
 		double py = pos.getY() + (random.nextDouble() * 0.75 - 0.375);
 		float gravity = random.nextFloat() * 0.25F;
-		Blur outer = new Blur(level, px, py, pz, color.getColor(), 2F, 100);
+		Blur outer = new Blur(level, px, py, pz, color.color(), 2F, 100);
 		Blur inner = new Blur(level, px, py, pz, 0xffffff, 1F, 100);
 		outer.gravity = inner.gravity = gravity;
 		Minecraft.getInstance().particleEngine.add(outer);
@@ -195,7 +191,7 @@ public abstract class ChromaParticle extends SingleQuadParticle {
 		double x = pos.getX() + 0.5 + facing.getStepX() * offset;
 		double y = pos.getY() + 0.5 + facing.getStepY() * offset;
 		double z = pos.getZ() + 0.5 + facing.getStepZ() * offset;
-		Minecraft.getInstance().particleEngine.add(new Blur(level, x, y, z, color.getColor(),
+		Minecraft.getInstance().particleEngine.add(new Blur(level, x, y, z, color.color(),
 				2 + random.nextFloat() * 2, 20));
 	}
 
@@ -375,7 +371,7 @@ public abstract class ChromaParticle extends SingleQuadParticle {
 			double vz = (random.nextDouble() * 2 - 1) * 0.125;
 			Minecraft.getInstance().particleEngine.add(new FadeGlow(level,
 					pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5,
-					vx, vy, vz, color.getColor(), 20, 1F, true));
+					vx, vy, vz, color.color(), 20, 1F, true));
 		}
 	}
 
@@ -483,7 +479,7 @@ public abstract class ChromaParticle extends SingleQuadParticle {
 		float scale = 1 + rand.nextFloat();
 		ChromaParticle fx = switch (rand.nextInt(3)) {
 			// EntityCCBlurFX: the plain fade, 60 ticks.
-			case 0 -> new FadeGlow(level, rx, ry, rz, vx, 0, vz, e.getColor(), 60, scale, false);
+			case 0 -> new FadeGlow(level, rx, ry, rz, vx, 0, vz, e.color(), 60, scale, false);
 			// EntityCenterBlurFX
 			case 1 -> new AnimatedSheetParticle(level, rx, ry, rz, vx, 0, vz, e, scale, ADDITIVE_LASER_SHEET, 4);
 			// EntityLaserFX
@@ -686,14 +682,14 @@ public abstract class ChromaParticle extends SingleQuadParticle {
         }
         if (enhanced) {
             int count = 2 + (int)Math.sin(Math.toRadians(ticksExisted));
-            int startColor = ReikaColorAPI.mixColors(color.getColor(), 0xffffff, 0.375F);
+            int startColor = ReikaColorAPI.mixColors(color.color(), 0xffffff, 0.375F);
             for (int i = 0; i < count; i++) {
                 float scale = 1F + random.nextFloat() * 2F;
                 int life = 10 + random.nextInt(50);
                 FloatingSeed seed = new FloatingSeed(level,
                         pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5,
                         random.nextInt(360), -90 + random.nextDouble() * 180,
-                        scale, life, startColor, color.getColor());
+                        scale, life, startColor, color.color());
                 seed.setMotion(0.0625, 180, 6.75);
                 Minecraft.getInstance().particleEngine.add(seed);
             }
@@ -751,7 +747,7 @@ public abstract class ChromaParticle extends SingleQuadParticle {
             double r = 32.5 - 2.5 * Math.abs(Math.sin(Math.toRadians(index * 2)));
             double x = pos.getX() + 0.5 + r * Math.cos(a);
             double z = pos.getZ() + 0.5 + r * Math.sin(a);
-            int color = CrystalElement.elements[index % CrystalElement.elements.length].getColor();
+            int color = CrystalElement.elements[index % CrystalElement.elements.length].color();
             float scale = (1 + level.getRandom().nextFloat()) * 4;
             int life = 60 + level.getRandom().nextInt(40);
             Minecraft.getInstance().particleEngine.add(
@@ -856,14 +852,14 @@ public abstract class ChromaParticle extends SingleQuadParticle {
             fx = rune;
         }
         else if (icon instanceof reika.dragonapi.auxiliary.IconLookupRegistry.FluidDelegate fd) {
-            if (fd.fluid.isSame(ChromaFluids.CHROMA.get())) {
+            if (fd.fluid().isSame(ChromaFluids.CHROMA.get())) {
                 Fluid chroma = new Fluid(level, px, py, pz, vx, vy, vz, s, l, g);
                 chroma.hasPhysics = false;
                 chroma.noSlowdown = noSlowdown;
                 fx = chroma;
             }
             else {
-                fx = new FluidSprite(level, px, py, pz, vx, vy, vz, fd.fluid, g, l, s, collide);
+                fx = new FluidSprite(level, px, py, pz, vx, vy, vz, fd.fluid(), g, l, s, collide);
             }
         }
         else if (icon instanceof reika.chromaticraft.registry.ChromaIcons ico) {
@@ -1153,7 +1149,7 @@ public abstract class ChromaParticle extends SingleQuadParticle {
             double f = p / dd;
             // Upstream's sine envelope: the beam is thin at both cores and fattest at its midpoint.
             float scale = 1 + 1.5F * (float)Math.sin(f * Math.PI);
-            int color = mixColors(e1.getColor(), e2.getColor(), 1 - (float)f);
+            int color = mixColors(e1.color(), e2.color(), 1 - (float)f);
             Minecraft.getInstance().particleEngine.add(new Blur(level,
                     from.getX() + 0.5 + f * dx, from.getY() + 0.5 + f * dy, from.getZ() + 0.5 + f * dz,
                     color, scale, 20));
@@ -1184,7 +1180,7 @@ public abstract class ChromaParticle extends SingleQuadParticle {
             // Upstream's seeds blow straight up (-90 climb) with three times the angular velocity and
             // five times the freedom of the default, which is what makes them spiral rather than drift.
             Minecraft.getInstance().particleEngine.add(new FloatingSeed(level, x, y, z,
-                    rand.nextDouble() * 360, -90, scale, 80, color.getColor(), color.getColor()));
+                    rand.nextDouble() * 360, -90, scale, 80, color.color(), color.color()));
         }
     }
 
@@ -1231,9 +1227,9 @@ public abstract class ChromaParticle extends SingleQuadParticle {
                 var point = reika.dragonapi.instantiable.data.immutable.DecimalPosition
                         .interpolate(from, to, fraction);
                 Minecraft.getInstance().particleEngine.add(new Blur(level,
-                        point.xCoord, point.yCoord, point.zCoord, color.getColor(), 5F, life));
+                        point.xCoord(), point.yCoord(), point.zCoord(), color.color(), 5F, life));
                 Minecraft.getInstance().particleEngine.add(new Blur(level,
-                        point.xCoord, point.yCoord, point.zCoord, 0xFFFFFF, 2F, life));
+                        point.xCoord(), point.yCoord(), point.zCoord(), 0xFFFFFF, 2F, life));
             }
         }
     }
@@ -1251,7 +1247,7 @@ public abstract class ChromaParticle extends SingleQuadParticle {
         for (int i = 0; i < count; i++) {
             double phi = rand.nextDouble() * 360;
             double theta = plusMinus(rand, 0, 90);
-            int color = CrystalElement.elements[rand.nextInt(CrystalElement.elements.length)].getColor();
+            int color = CrystalElement.elements[rand.nextInt(CrystalElement.elements.length)].color();
             int life = 30 + rand.nextInt(40);
             FloatingSeed seed = new FloatingSeed(level,
                     pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5,
@@ -1386,7 +1382,7 @@ public abstract class ChromaParticle extends SingleQuadParticle {
                 (int)((System.currentTimeMillis() / 40 + (pos.getX() + pos.getY() + pos.getZ()) * 8L) % 360L));
         var below = level.getBlockState(pos.below()).getBlock();
         if (below instanceof reika.chromaticraft.block.BlockCrystalRune rune)
-            color = rune.getColor().getColor();
+            color = rune.getColor().color();
         Blur blur = new Blur(level, pos.getX() + 0.5, pos.getY() + 0.9, pos.getZ() + 0.5, color, 4F, 40);
         blur.yd = 0.0625 + level.getRandom().nextDouble() * 0.02 - 0.01;
         Minecraft.getInstance().particleEngine.add(blur);
@@ -1407,7 +1403,7 @@ public abstract class ChromaParticle extends SingleQuadParticle {
             double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
             float scale = 2F + (float)Math.sin(Math.toRadians(
                     4D * (ticksExisted + index * 90D / boosters.size())));
-            Blur blur = new Blur(level, x, y, z, color.getColor(), scale, 38);
+            Blur blur = new Blur(level, x, y, z, color.color(), scale, 38);
             if (distance > 0) {
                 blur.xd = dx / distance * 0.125;
                 blur.yd = dy / distance * 0.125;
@@ -1440,7 +1436,7 @@ public abstract class ChromaParticle extends SingleQuadParticle {
                 int life = 8 + random.nextInt(33);
                 float scale = 0.25F + random.nextFloat();
                 Minecraft.getInstance().particleEngine.add(new Blur(level, x, y, z,
-                        color.getColor(), scale, life, true));
+                        color.color(), scale, life, true));
                 Minecraft.getInstance().particleEngine.add(new Blur(level, x, y, z,
                         0xffffff, scale * 0.6F, life, true));
             }
@@ -1477,7 +1473,7 @@ public abstract class ChromaParticle extends SingleQuadParticle {
         double distance = player.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
         if (distance > 1024) count = Math.min(count, 2);
         else if (distance > 256) count = 1;
-        int base = color != null ? color.getColor() : 0xffffff;
+        int base = color != null ? color.color() : 0xffffff;
         for (int i = 0; i < count; i++) {
             double x = pos.getX() + 0.5 + (random.nextDouble() * 2 - 1) * 1.25;
             double y = pos.getY() + 0.5 + (random.nextDouble() * 2 - 1) * 1.25;
@@ -1519,7 +1515,7 @@ public abstract class ChromaParticle extends SingleQuadParticle {
         float scale = 1 + random.nextFloat();
         int life = 20;
         Minecraft.getInstance().particleEngine.add(new MovingBlur(level, x, y, z,
-                vx, vy, vz, color.getColor(), life, scale));
+                vx, vy, vz, color.color(), life, scale));
         Minecraft.getInstance().particleEngine.add(new MovingBlur(level, x, y, z,
                 vx, vy, vz, 0xffffff, life, scale / 2.5F));
     }
@@ -1541,7 +1537,7 @@ public abstract class ChromaParticle extends SingleQuadParticle {
             int life = 20 + random.nextInt(80);
             Minecraft.getInstance().particleEngine.add(new MovingBlur(level,
                     pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5,
-                    velocity[0], velocity[1], velocity[2], color.getColor(), life, scale));
+                    velocity[0], velocity[1], velocity[2], color.color(), life, scale));
         }
     }
 
@@ -1564,7 +1560,7 @@ public abstract class ChromaParticle extends SingleQuadParticle {
                 default -> "centerblur3";
             };
             Minecraft.getInstance().particleEngine.add(new SurgeBlur(level, x, y, z,
-                    vx, vy, vz, color.getColor(), scale, gravity, icon));
+                    vx, vy, vz, color.color(), scale, gravity, icon));
         }
         level.playLocalSound(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5,
                 ChromaSounds.POWERDOWN.getSoundEvent(), ChromaSounds.POWERDOWN.getCategory(), 1, 1, false);
@@ -1639,7 +1635,7 @@ public abstract class ChromaParticle extends SingleQuadParticle {
             Minecraft.getInstance().particleEngine.add(new FloatingSeed(level, x, y, z,
                     random.nextDouble() * 360, -90 + random.nextDouble() * 180,
                     2F + random.nextFloat() * 8F, 40 + random.nextInt(120),
-                    color.getColor(), color.getColor(), icon.path, icon.additive, 0.5, 60));
+                    color.color(), color.color(), icon.path, icon.additive, 0.5, 60));
         }
         for (int i = 0; i < 16; i++) {
             Minecraft.getInstance().particleEngine.add(new BallLightning(level, x, y, z,
@@ -1656,7 +1652,7 @@ public abstract class ChromaParticle extends SingleQuadParticle {
                     pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5,
                     random.nextDouble() * 360, random.nextDouble() * 360,
                     1F + random.nextFloat() * 2F, 30 + random.nextInt(50),
-                    color.getColor(), color.getColor(), "node2", true, 0.0625, 60));
+                    color.color(), color.color(), "node2", true, 0.0625, 60));
         }
     }
     /** V33a maximum-tier Focus Crystal: short-lived colored flare within the crystal volume. */
@@ -1741,9 +1737,14 @@ public abstract class ChromaParticle extends SingleQuadParticle {
     /** V33a {@code EntityCCBlurFX.setIcon(...).setPositionController(p).setLife(l).setScale(s)}: an additive blur on a path. */
     public static void spawnControlledGlow(Level world, double x, double y, double z, int color, int life, float scale,
             PositionController path, String icon) {
+        spawnControlledGlow(world, x, y, z, color, life, scale, path, icon, true);
+    }
+
+    public static void spawnControlledGlow(Level world, double x, double y, double z, int color, int life, float scale,
+            PositionController path, String icon, boolean additive) {
         if (!(world instanceof ClientLevel level)) return;
         Minecraft.getInstance().particleEngine.add(new FadeGlow(level, x, y, z, 0, 0, 0, color, life, scale, false,
-                path, 0, icon, true));
+                path, 0, icon, additive));
     }
 
     /**
@@ -2056,7 +2057,7 @@ public abstract class ChromaParticle extends SingleQuadParticle {
                 Vec3 direction = new Vec3(pos.getX() + 0.5 - px, pos.getY() + 0.5 - py,
                         pos.getZ() + 0.5 - pz).normalize().scale(0.03125 + random.nextDouble() * 0.0625);
                 Minecraft.getInstance().particleEngine.add(new FadeGlow(level, px, py, pz,
-                        direction.x, direction.y, direction.z, color.getColor(),
+                        direction.x, direction.y, direction.z, color.color(),
                         20 + random.nextInt(20), 3F + random.nextFloat() * 3F, true));
             }
         }
@@ -2112,12 +2113,12 @@ public abstract class ChromaParticle extends SingleQuadParticle {
             double vz = 0;
             float scale = 1.5F + random.nextFloat() * 3F;
             int life = 20 + random.nextInt(40);
-            int particleColor = color.getColor();
+            int particleColor = color.color();
             switch (type) {
                 case COMPLETE, FLASH -> {
                     Vec3 vector = randomUnit(random).scale(type.name().equals("COMPLETE") ? 0.125 : 0.08);
                     vx = vector.x; vy = vector.y; vz = vector.z;
-                    particleColor = random.nextBoolean() ? 0xffffff : color.getColor();
+                    particleColor = random.nextBoolean() ? 0xffffff : color.color();
                 }
                 case FAIL -> {
                     double angle = random.nextDouble() * Math.PI * 2;
@@ -2130,7 +2131,7 @@ public abstract class ChromaParticle extends SingleQuadParticle {
                 case BEAM -> {
                     double f = random.nextDouble();
                     py = pos.getY() + 0.5 + f * 8;
-                    particleColor = random.nextBoolean() ? 0xffffff : color.getColor();
+                    particleColor = random.nextBoolean() ? 0xffffff : color.color();
                     life = 8 + random.nextInt(12);
                 }
                 case JETS -> {
@@ -2192,7 +2193,7 @@ public abstract class ChromaParticle extends SingleQuadParticle {
 			float scale = 2 + random.nextFloat() * 5;
 			int life = 10 + random.nextInt(10);
 			Minecraft.getInstance().particleEngine.add(new RapidGlow(level, x, y, z,
-					0, 0, 0, element.getColor(), life, scale, "turbo", true));
+					0, 0, 0, element.color(), life, scale, "turbo", true));
 			Minecraft.getInstance().particleEngine.add(new RapidGlow(level, x, y, z,
 					0, 0, 0, 0xffffff, life, scale / 1.125F, "turbo", true));
 			Minecraft.getInstance().particleEngine.add(new RapidGlow(level, x, y, z,
@@ -2213,11 +2214,11 @@ public abstract class ChromaParticle extends SingleQuadParticle {
 			DecimalPosition from = bolt.getPosition(step);
 			DecimalPosition to = bolt.getPosition(step + 1);
 			for (double interpolation = 0; interpolation <= 1; interpolation += 0.03125) {
-				double x = from.xCoord + interpolation * (to.xCoord - from.xCoord);
-				double y = from.yCoord + interpolation * (to.yCoord - from.yCoord);
-				double z = from.zCoord + interpolation * (to.zCoord - from.zCoord);
+				double x = from.xCoord() + interpolation * (to.xCoord() - from.xCoord());
+				double y = from.yCoord() + interpolation * (to.yCoord() - from.yCoord());
+				double z = from.zCoord() + interpolation * (to.zCoord() - from.zCoord());
 				Minecraft.getInstance().particleEngine.add(new RapidGlow(level, x, y, z,
-						0, 0, 0, element.getColor(), life, 2, "fade", true));
+						0, 0, 0, element.color(), life, 2, "fade", true));
 				Minecraft.getInstance().particleEngine.add(new RapidGlow(level, x, y, z,
 						0, 0, 0, 0xffffff, life, 1, "fade", true));
 			}
@@ -2234,8 +2235,8 @@ public abstract class ChromaParticle extends SingleQuadParticle {
 			Random random) {
 		if (!(world instanceof ClientLevel level) || color == null) return;
 		int count = 32 + random.nextInt(64);
-		int bright = ReikaColorAPI.mixColors(color.getColor(), 0xffffff, 0.25F);
-		int dark = ReikaColorAPI.mixColors(color.getColor(), 0x000000, 0.25F);
+		int bright = ReikaColorAPI.mixColors(color.color(), 0xffffff, 0.25F);
+		int dark = ReikaColorAPI.mixColors(color.color(), 0x000000, 0.25F);
 		for (int i = 0; i < count; i++) {
 			double[] velocity = ReikaPhysicsHelper.polarToCartesian(
 					0.125 + random.nextDouble() * 0.25,
@@ -2245,7 +2246,7 @@ public abstract class ChromaParticle extends SingleQuadParticle {
 			double z = pos.getZ() + random.nextDouble();
 			float scale = 5 + 2.5F * random.nextFloat();
 			Minecraft.getInstance().particleEngine.add(new RapidGlow(level, x, y, z,
-					velocity[0], velocity[1], velocity[2], color.getColor(), 20, scale, "fade", true));
+					velocity[0], velocity[1], velocity[2], color.color(), 20, scale, "fade", true));
 			Minecraft.getInstance().particleEngine.add(new RapidGlow(level, x, y, z,
 					velocity[0], velocity[1], velocity[2], bright, 20, scale * 0.5F, "fade", true));
 			Minecraft.getInstance().particleEngine.add(new RapidGlow(level, x, y, z,
@@ -2542,7 +2543,7 @@ public abstract class ChromaParticle extends SingleQuadParticle {
 		if (!(world instanceof ClientLevel level)) return;
 		RandomSource random = level.getRandom();
 		int offset = random.nextInt(5);
-		int color = element != null ? element.getColor() : 0x22aaff;
+		int color = element != null ? element.color() : 0x22aaff;
 		double speed = success ? 0.0625 : 0.375;
 		for (int angle = offset; angle < 360; angle += 5) {
 			double radians = Math.toRadians(angle);
@@ -2677,7 +2678,7 @@ public abstract class ChromaParticle extends SingleQuadParticle {
 			this.yd = 0.1875;
 			this.quadSize = 0.25F;
 			this.lifetime = 25;
-			this.setRgb(CrystalElement.ORANGE.getColor());
+			this.setRgb(CrystalElement.ORANGE.color());
 		}
 
 		@Override public void tick() {
@@ -2729,7 +2730,7 @@ public abstract class ChromaParticle extends SingleQuadParticle {
             this.lifetime = 30 + this.random.nextInt(30);
             this.gravity = this.random.nextInt(3) == 0 ? gravity : -gravity;
             this.quadSize = 0.1F * scale;
-            this.setRgb(color.getColor());
+            this.setRgb(color.color());
         }
     }
 
@@ -2885,7 +2886,7 @@ public abstract class ChromaParticle extends SingleQuadParticle {
             this.color = color;
             this.lifetime = 120;
             this.quadSize = 0.1F;
-            this.setRgb(color.getColor());
+            this.setRgb(color.color());
             double[] jitter = ReikaPhysicsHelper.polarToCartesian(
                     0.0625, this.random.nextInt(360), this.random.nextInt(360));
             this.jitterVX = jitter[0];
@@ -2917,7 +2918,7 @@ public abstract class ChromaParticle extends SingleQuadParticle {
             if (this.random.nextInt(3) == 0) {
                 Minecraft.getInstance().particleEngine.add(new Blur(this.level,
                         this.x + this.jitterX, this.y + this.jitterY, this.z + this.jitterZ,
-                        this.color.getColor(), 0.5F + 3F * this.random.nextFloat(), 16));
+                        this.color.color(), 0.5F + 3F * this.random.nextFloat(), 16));
             }
         }
 
@@ -2943,6 +2944,13 @@ public abstract class ChromaParticle extends SingleQuadParticle {
                         this.x, this.y, this.z, velocity[0], velocity[1], velocity[2]));
             }
         }
+    }
+
+    /** V33a altar laser: the original animated sheet, 63-tick life and signed gravity. */
+    public static void spawnAltarLaser(ClientLevel level,Vec3 point,CrystalElement color,float scale,float gravity) {
+        var particle=new AnimatedSheetParticle(level,point.x,point.y,point.z,0,0,0,color,scale,ADDITIVE_LASER_SHEET,0);
+        particle.gravity=gravity;
+        Minecraft.getInstance().particleEngine.add(particle);
     }
 
     /** The original 64-frame ping-pong particles backed by rows in the retained 16x16 sheets. */
@@ -3090,14 +3098,14 @@ public abstract class ChromaParticle extends SingleQuadParticle {
 				Minecraft.getInstance().particleEngine.add(new FadeGlow(level,
 						triggerX + 0.5, memory.getY() + 1.5, triggerZ + 0.5,
 						Math.cos(angle) * 0.08, 0.04, Math.sin(angle) * 0.08,
-						element.getColor(), 20, 1.25F, true));
+						element.color(), 20, 1.25F, true));
 			}
 			int interval = reika.chromaticraft.auxiliary.CrystalMusicManager.instance
 					.getIntervalFor(element, key);
 			if (interval < 0) continue;
 			double x = triggerX + 0.5 + (element.ordinal() >= 8 ? 0.75 : -0.75);
 			Minecraft.getInstance().particleEngine.add(new RitualBlur(level,
-					x, memory.getY() + 0.5, triggerZ + 0.5, element.getColor(), 3F, 30, 0,
+					x, memory.getY() + 0.5, triggerZ + 0.5, element.color(), 3F, 30, 0,
 					"ring" + interval, true, true));
 		}
 	}
@@ -3294,6 +3302,16 @@ public abstract class ChromaParticle extends SingleQuadParticle {
         private float baseGreen;
         private float baseBlue;
         private ChromaParticle lock;
+        private java.util.function.Consumer<FadeGlow> tickMotion;
+        private int lifeFreeze;
+        private Double collisionSlideAngle;
+        public FadeGlow freezeLife(int ticks) { lifeFreeze=ticks; return this; }
+        public FadeGlow setColliding(double angle) { collisionSlideAngle=Math.toRadians(angle); return setColliding(); }
+        public FadeGlow setTickMotion(java.util.function.Consumer<FadeGlow> motion) { tickMotion=motion; return this; }
+        public FadeGlow setGravity(float amount) { gravity=amount; return this; }
+        public net.minecraft.world.phys.Vec3 position() { return new net.minecraft.world.phys.Vec3(x,y,z); }
+        public void setMotion(net.minecraft.world.phys.Vec3 motion) { xd=motion.x; yd=motion.y; zd=motion.z; }
+        public int getAge() { return age; }
 
         public FadeGlow(ClientLevel level, double x, double y, double z, double vx, double vy, double vz,
                 int color, int life, float scale, boolean rapidExpand) {
@@ -3398,10 +3416,12 @@ public abstract class ChromaParticle extends SingleQuadParticle {
             this.xo = this.x;
             this.yo = this.y;
             this.zo = this.z;
+            if (lifeFreeze>0) { age--; lifeFreeze--; }
             if (this.age++ >= this.lifetime) {
                 this.remove();
                 return;
             }
+            if (this.tickMotion != null) this.tickMotion.accept(this);
             if (this.controller != null) {
                 this.controller.update(null);
                 this.x = this.controller.getPositionX(null);
@@ -3441,7 +3461,10 @@ public abstract class ChromaParticle extends SingleQuadParticle {
                 double v = this.random.nextDouble() * 0.0625;
                 double vel = Math.sqrt(this.xd * this.xd + this.zd * this.zd);
                 // V33a divided by this speed unguarded, so a blur that fell straight down went NaN and vanished.
-                if (vel > 0) {
+                if (collisionSlideAngle!=null) {
+                    this.xd=v*Math.sin(collisionSlideAngle); this.zd=v*Math.cos(collisionSlideAngle);
+                }
+                else if (vel > 0) {
                     this.xd = this.xd * v / vel;
                     this.zd = this.zd * v / vel;
                 }

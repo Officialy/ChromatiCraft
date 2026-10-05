@@ -1,24 +1,21 @@
 package reika.chromaticraft.render.item;
 
-import java.util.Locale;
-import java.util.function.Consumer;
-
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.special.NoDataSpecialModelRenderer;
 import net.minecraft.client.renderer.special.SpecialModelRenderer;
 import net.minecraft.resources.Identifier;
-
 import org.joml.Vector3f;
 import org.joml.Vector3fc;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.render.tesr.RenderDimensionCore;
+
+import java.util.Locale;
+import java.util.function.Consumer;
 
 /** V33a inventory presentation of one coloured Dimension Core. */
 public final class DimensionCoreItemRenderer implements NoDataSpecialModelRenderer {
@@ -41,7 +38,7 @@ public final class DimensionCoreItemRenderer implements NoDataSpecialModelRender
 		// model coordinate system. In the modern item pose that inversion is absent, so the equivalent
 		// visible tilt is +30 degrees.
 		poseStack.rotate(Axis.XP.rotationDegrees(30));
-		RenderDimensionCore.submitLayers(poseStack, collector, element.getColor(),
+		RenderDimensionCore.submitLayers(poseStack, collector, element.color(),
 				(int)(System.currentTimeMillis() / 250 % 80), false);
 		poseStack.popPose();
 	}

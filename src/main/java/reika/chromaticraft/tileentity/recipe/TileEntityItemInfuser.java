@@ -9,16 +9,10 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
-
 import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
 import reika.chromaticraft.magic.ChromaAbilityData;
 import reika.chromaticraft.magic.progression.ProgressStage;
-import reika.chromaticraft.registry.ChromaBlockEntities;
-import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaCraftingItems;
-import reika.chromaticraft.registry.ChromaItems;
-import reika.chromaticraft.registry.ChromaStructures;
-import reika.chromaticraft.registry.ChromaTiles;
+import reika.chromaticraft.registry.*;
 import reika.chromaticraft.render.particle.ChromaParticle;
 import reika.dragonapi.instantiable.data.blockstruct.FilledBlockArray;
 import reika.dragonapi.libraries.registry.ReikaItemHelper;

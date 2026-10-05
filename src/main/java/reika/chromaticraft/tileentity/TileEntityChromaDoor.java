@@ -1,10 +1,5 @@
 package reika.chromaticraft.tileentity;
 
-import java.util.ArrayDeque;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.UUID;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -14,14 +9,14 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
-
 import org.jspecify.annotations.Nullable;
-
-import reika.chromaticraft.block.BlockChromaDoor;
 import reika.chromaticraft.auxiliary.interfaces.SneakPop;
+import reika.chromaticraft.block.BlockChromaDoor;
 import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaSounds;
+
+import java.util.*;
 
 /** Persistent UUID/owner state shared logically by every connected Chroma Door cell. */
 public final class TileEntityChromaDoor extends BlockEntity implements SneakPop {
@@ -112,7 +107,7 @@ public final class TileEntityChromaDoor extends BlockEntity implements SneakPop 
 	}
 
 	private boolean sameID(TileEntityChromaDoor other) {
-		return uid == null ? other.uid == null : uid.equals(other.uid);
+		return Objects.equals(uid, other.uid);
 	}
 
 	private Set<BlockPos> connectedDoor() {

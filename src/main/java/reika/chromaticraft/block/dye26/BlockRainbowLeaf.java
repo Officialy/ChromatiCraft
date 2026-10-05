@@ -1,19 +1,20 @@
 package reika.chromaticraft.block.dye26;
 
-import java.awt.Color;
 import net.minecraft.core.BlockPos;
-import net.minecraft.world.level.block.LeavesBlock;
 import net.minecraft.core.particles.ColorParticleOption;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.ParticleUtils;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.Level;
-import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.block.LeavesBlock;
+import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import reika.chromaticraft.entity.EntityBallLightning;
 import reika.chromaticraft.registry.ChromaOptions;
 import reika.chromaticraft.registry.CrystalElement;
-import net.minecraft.world.level.block.state.BlockBehaviour;
+
+import java.awt.*;
 
 /** Rainbow-tree leaves retain the original position-varying hue instead of biome foliage tint. */
 public final class BlockRainbowLeaf extends LeavesBlock {

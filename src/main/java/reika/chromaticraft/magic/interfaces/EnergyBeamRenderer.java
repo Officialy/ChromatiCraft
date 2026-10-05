@@ -9,24 +9,24 @@
  ******************************************************************************/
 package reika.chromaticraft.magic.interfaces;
 
-import java.util.Collection;
-
 import reika.chromaticraft.magic.CrystalTarget;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.dragonapi.instantiable.data.immutable.WorldLocation;
 
+import java.util.Collection;
+
 public interface EnergyBeamRenderer {
 
-	public Collection<CrystalTarget> getTargets();
+	Collection<CrystalTarget> getTargets();
 
-	public void addTarget(WorldLocation loc, CrystalElement e, double dx, double dy, double dz, double w, double maxW);
+	void addTarget(WorldLocation loc, CrystalElement e, double dx, double dy, double dz, double w, double maxW);
 
-	public void addSelfTickingTarget(WorldLocation loc, CrystalElement e, double dx, double dy, double dz, double w, double maxW, int ticks);
+	void addSelfTickingTarget(WorldLocation loc, CrystalElement e, double dx, double dy, double dz, double w, double maxW, int ticks);
 
-	public void removeTarget(WorldLocation loc, CrystalElement e);
+	void removeTarget(WorldLocation loc, CrystalElement e);
 
-	public void clearTargets(boolean unload);
+	void clearTargets(boolean unload);
 
-	public double getOutgoingBeamRadius();
+	double getOutgoingBeamRadius();
 
 }

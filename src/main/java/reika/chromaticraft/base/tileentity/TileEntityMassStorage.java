@@ -9,17 +9,7 @@
  ******************************************************************************/
 package reika.chromaticraft.base.tileentity;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-
-import javax.annotation.Nullable;
-
 import com.mojang.serialization.Codec;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.resources.Identifier;
@@ -35,20 +25,22 @@ import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.level.saveddata.SavedDataType;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.modinterface.ae.MassStorageME;
 import reika.dragonapi.ModList;
-import reika.dragonapi.instantiable.modinteract.BasicAEInterface;
-import reika.dragonapi.instantiable.modinteract.MEWorkTracker;
-import reika.dragonapi.interfaces.blockentity.MEGridHost;
-import reika.dragonapi.modinteract.deepinteract.MESystemReader;
 import reika.dragonapi.instantiable.StepTimer;
 import reika.dragonapi.instantiable.data.KeyedItemStack;
 import reika.dragonapi.instantiable.data.maps.CountMap;
+import reika.dragonapi.instantiable.modinteract.BasicAEInterface;
+import reika.dragonapi.instantiable.modinteract.MEWorkTracker;
 import reika.dragonapi.interfaces.blockentity.BreakAction;
 import reika.dragonapi.interfaces.blockentity.ConditionBreakDropsInventory;
+import reika.dragonapi.interfaces.blockentity.MEGridHost;
 import reika.dragonapi.libraries.registry.ReikaItemHelper;
+import reika.dragonapi.modinteract.deepinteract.MESystemReader;
+
+import javax.annotation.Nullable;
+import java.util.*;
 
 /**
  * V33a {@code TileEntityMassStorage}: a crate holding any number of unstackable items. Its contents live in world data

@@ -1,28 +1,32 @@
 package reika.chromaticraft.client.render;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Random;
-
-import com.mojang.blaze3d.vertex.BufferBuilder;
-
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.feature.CustomFeatureRenderer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.Identifier;
+import net.minecraft.util.LightCoordsUtil;
+import net.minecraft.util.context.ContextKey;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+import net.neoforged.neoforge.client.event.ExtractLevelRenderStateEvent;
+import net.neoforged.neoforge.client.event.SubmitCustomGeometryEvent;
+import net.neoforged.neoforge.client.submit.RenderPhaseKeys;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.data.ChromaBiomeTagProvider;
-import reika.chromaticraft.render.ChromaRenderPipelines;
+import reika.chromaticraft.render.ShaderCompatibleRenderTypes;
 import reika.dragonapi.libraries.java.ReikaRandomHelper;
+
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Random;
 
 /**
  * V33a {@code CliffFogRenderer}: drifting banks of mist over the Luminous Cliffs.
@@ -44,7 +48,8 @@ public final class LuminousCliffsFogRenderer {
 	/** Reika's {@code Textures/biomefog_alpha.png}. */
 	private static final Identifier TEXTURE = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
 			"textures/environment/biomefog_alpha.png");
-	private static final WorldGeometryPass PASS = new WorldGeometryPass("ChromatiCraft Luminous Cliffs fog");
+	private static final ContextKey<List<CloudFrame>> FOG = new ContextKey<>(
+			Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "cliffs_mist"));
 	private static final double STEP_NANOS = 1_000_000_000D / 60;
 
 	private static final List<Cloud> clouds = new ArrayList<>();
@@ -62,10 +67,11 @@ public final class LuminousCliffsFogRenderer {
 		return level.getBiome(new BlockPos(bx, y, bz)).is(ChromaBiomeTagProvider.LUMINOUS_CLIFFS);
 	}
 
-	/** The geometry uploader needs the completed level, after Minecraft closes its translucent pass. */
+	/** Step the simulation and snapshot it once during extraction, before any world or shadow draws. */
 	@SubscribeEvent
-	public static void onRenderLevel(RenderLevelStageEvent.AfterLevel event) {
+	public static void extract(ExtractLevelRenderStateEvent event) {
 		Minecraft mc = Minecraft.getInstance();
+		event.getRenderState().setRenderData(FOG, List.of());
 		if (mc.level == null || mc.player == null || mc.level != lastLevel) {
 			clouds.clear();
 			lastStep = -1;
@@ -73,7 +79,6 @@ public final class LuminousCliffsFogRenderer {
 			if (mc.level == null || mc.player == null)
 				return;
 		}
-		Vec3 camera = event.getLevelRenderState().cameraRenderState.pos;
 		Vec3 player = mc.player.position();
 
 		long now = System.nanoTime();
@@ -99,15 +104,24 @@ public final class LuminousCliffsFogRenderer {
 				if (it.next().update(vx, 0, vz))
 					it.remove();
 		}
-		if (clouds.isEmpty())
-			return;
+		event.getRenderState().setRenderData(FOG, clouds.stream().map(Cloud::snapshot).toList());
+	}
 
-		Quaternionf rotation = mc.gameRenderer.mainCamera().rotation();
-		PASS.draw(ChromaRenderPipelines.TRANSLUCENT_SPRITE, TEXTURE, new org.joml.Matrix4f(event.getModelViewMatrix()),
-				true, buffer -> {
-					for (Cloud c : clouds)
-						c.render(buffer, rotation, camera);
+	/** Submit into the world's translucent pass, before Iris composites its G-buffers. */
+	@SubscribeEvent
+	public static void submit(SubmitCustomGeometryEvent event) {
+		if (IrisCompatibility.shadowPass()) return;
+		var frames = event.getLevelRenderState().getRenderData(FOG);
+		if (frames == null || frames.isEmpty()) return;
+		var cameraState = event.getLevelRenderState().cameraRenderState;
+		Vec3 camera = cameraState.pos;
+		Quaternionf rotation = new Quaternionf(cameraState.orientation);
+		var geometry = new CustomFeatureRenderer.Submit(event.getPoseStack().last().copy(),
+				ShaderCompatibleRenderTypes.mist(TEXTURE), (pose, vertices) -> {
+					for (var frame : frames) frame.render(pose, vertices, rotation, camera);
 				});
+		event.getSubmitNodeCollector().order(1)
+				.submitSpecial(RenderPhaseKeys.AFTER_TERRAIN, geometry);
 	}
 
 	/** V33a {@code createCloud}. */
@@ -184,9 +198,16 @@ public final class LuminousCliffsFogRenderer {
 			return (float)Math.sin(Math.toRadians(180D * age / lifespan));
 		}
 
+		private CloudFrame snapshot() {
+			return new CloudFrame(textureX, textureY, sizeX, sizeY, scale, getAlpha(), posX, posY, posZ);
+		}
+	}
+
+	private record CloudFrame(float textureX, float textureY, float sizeX, float sizeY, double scale,
+			float alpha, double posX, double posY, double posZ) {
 		/** V33a {@code Cloud.render}: the 8x8 grid, each corner's alpha the life alpha times a tent falloff. */
-		private void render(BufferBuilder buffer, Quaternionf rotation, Vec3 camera) {
-			float f = this.getAlpha();
+		private void render(PoseStack.Pose pose, VertexConsumer buffer, Quaternionf rotation, Vec3 camera) {
+			float f = alpha;
 			double x1 = -scale * sizeX;
 			double x2 = scale * sizeX;
 			double y1 = -scale * sizeY;
@@ -202,10 +223,10 @@ public final class LuminousCliffsFogRenderer {
 					float u2 = (float)(u1 + ds * sizeX);
 					float v1 = (float)(textureY + d2 * sizeY);
 					float v2 = (float)(v1 + ds * sizeY);
-					this.vertex(buffer, rotation, camera, dx, dy, u1, v1, f * tent(d1) * tent(d2));
-					this.vertex(buffer, rotation, camera, dx2, dy, u2, v1, f * tent(d1 + ds) * tent(d2));
-					this.vertex(buffer, rotation, camera, dx2, dy2, u2, v2, f * tent(d1 + ds) * tent(d2 + ds));
-					this.vertex(buffer, rotation, camera, dx, dy2, u1, v2, f * tent(d1) * tent(d2 + ds));
+					this.vertex(pose, buffer, rotation, camera, dx, dy, u1, v1, f * tent(d1) * tent(d2));
+					this.vertex(pose, buffer, rotation, camera, dx2, dy, u2, v1, f * tent(d1 + ds) * tent(d2));
+					this.vertex(pose, buffer, rotation, camera, dx2, dy2, u2, v2, f * tent(d1 + ds) * tent(d2 + ds));
+					this.vertex(pose, buffer, rotation, camera, dx, dy2, u1, v2, f * tent(d1) * tent(d2 + ds));
 				}
 			}
 		}
@@ -214,12 +235,12 @@ public final class LuminousCliffsFogRenderer {
 			return (float)(1 - Math.abs(d * 2 - 1));
 		}
 
-		private void vertex(BufferBuilder buffer, Quaternionf rotation, Vec3 camera, double lx, double ly,
+		private void vertex(PoseStack.Pose pose, VertexConsumer buffer, Quaternionf rotation, Vec3 camera, double lx, double ly,
 				float u, float v, float alpha) {
 			Vector3f p = rotation.transform(new Vector3f((float)lx, (float)ly, 0));
 			int a = Math.max(0, Math.min(255, (int)(255 * alpha)));
-			buffer.addVertex((float)(posX - camera.x + p.x()), (float)(posY - camera.y + p.y()), (float)(posZ - camera.z + p.z()))
-					.setUv(u, v).setColor(255, 255, 255, a);
+			buffer.addVertex(pose, (float)(posX - camera.x + p.x()), (float)(posY - camera.y + p.y()), (float)(posZ - camera.z + p.z()))
+					.setUv(u, v).setColor(255, 255, 255, a).setLight(LightCoordsUtil.FULL_BRIGHT);
 		}
 	}
 }

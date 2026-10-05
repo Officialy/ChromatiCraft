@@ -5,13 +5,11 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
-
 import org.jspecify.annotations.Nullable;
-
 import reika.chromaticraft.block.BlockChromaDoor;
 import reika.chromaticraft.block.dimension.structure.gol.BlockGOLController;
 import reika.chromaticraft.block.dimension.structure.gol.BlockGOLTile;

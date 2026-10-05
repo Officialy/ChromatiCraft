@@ -1,0 +1,50 @@
+{
+  "type": "chromaticraft:casting",
+  "duration": 20,
+  "experience": 40,
+  "grid": [
+    {
+      "ingredient": "minecraft:iron_ingot",
+      "slot": 1
+    },
+    {
+      "ingredient": "chromaticraft:crystal_shard_lime",
+      "slot": 2
+    },
+    {
+      "ingredient": "chromaticraft:aura_dust",
+      "slot": 3
+    },
+    {
+      "ingredient": "chromaticraft:elemental_stone_lime",
+      "slot": 4
+    },
+    {
+      "ingredient": "chromaticraft:aura_dust",
+      "slot": 5
+    },
+    {
+      "ingredient": "chromaticraft:crystal_shard_light_blue",
+      "slot": 6
+    },
+    {
+      "ingredient": "minecraft:iron_ingot",
+      "slot": 7
+    }
+  ],
+  "penalty_threshold": 1,
+  "result": {
+    "id": "chromaticraft:recall_tablet"
+  },
+  "runes": [
+    {
+      "element": "lime",
+      "offset": [
+        4,
+        0,
+        0
+      ]
+    }
+  ],
+  "tier": "temple"
+}

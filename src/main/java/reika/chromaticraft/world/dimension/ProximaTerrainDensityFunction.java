@@ -2,15 +2,9 @@ package reika.chromaticraft.world.dimension;
 
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-
 import net.minecraft.util.Interval;
-import net.minecraft.world.level.levelgen.densityfunction.DensityBuffer;
-import net.minecraft.world.level.levelgen.densityfunction.DensitySampler;
-import net.minecraft.world.level.levelgen.densityfunction.DensityVolume;
-import net.minecraft.world.level.levelgen.densityfunction.DfRewriteRule;
-import net.minecraft.world.level.levelgen.densityfunction.SamplerContext;
 import net.minecraft.util.StringRepresentable;
-import net.minecraft.world.level.levelgen.densityfunction.DensityFunction;
+import net.minecraft.world.level.levelgen.densityfunction.*;
 
 /**
  * V33a's radial terrain profile, expressed as a 26.3 {@link DensityFunction} so the ordinary
@@ -106,7 +100,7 @@ public record ProximaTerrainDensityFunction(Mode mode) implements DensityFunctio
         // The source profile samples one horizontal cell for every four blocks.
         double roughness = this.roughness(blockX >> 2, blockZ >> 2);
         if (mode == Mode.OFFSET)
-            return (float)((ProximaTerrainProfile.baseHeightFor(roughness) * 4 - 1) / 8);
+            return (ProximaTerrainProfile.baseHeightFor(roughness) * 4 - 1) / 8;
         // A large factor holds the flat centre close to its base height; the outer terrain varies more.
         return (float)(1 / (0.9 * ProximaTerrainProfile.heightVariationFor(roughness) + 0.1));
     }

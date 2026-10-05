@@ -1,25 +1,18 @@
 package reika.chromaticraft.base.tileentity;
 
-import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.Map;
-import java.util.Set;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
-
 import reika.chromaticraft.api.interfaces.customrangeupgrade.RangeUpgradeable;
 import reika.dragonapi.instantiable.data.blockstruct.BreadthFirstSearch;
 import reika.dragonapi.instantiable.data.blockstruct.OpenPathFinder;
 import reika.dragonapi.instantiable.data.blockstruct.OpenPathFinder.PassRules;
 import reika.dragonapi.instantiable.data.immutable.BlockBox;
+
+import java.util.*;
 
 /** V33a area-distributor scan and open-path selection, using 26.3 positions without loading chunks. */
 public abstract class TileEntityAreaDistributor extends TileEntityChromaticBase implements RangeUpgradeable {

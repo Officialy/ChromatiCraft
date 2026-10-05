@@ -1,9 +1,6 @@
 package reika.chromaticraft.client.gui;
 
-import java.util.List;
-
 import com.mojang.blaze3d.platform.InputConstants;
-
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.input.KeyEvent;
@@ -12,12 +9,13 @@ import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Inventory;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.api.abilityapi.Ability;
 import reika.chromaticraft.container.MenuRitualTable;
 import reika.chromaticraft.registry.ChromaSounds;
 import reika.chromaticraft.registry.Chromabilities;
+
+import java.util.List;
 
 public final class ScreenRitualTable extends AbstractContainerScreen<MenuRitualTable> {
 
@@ -110,7 +108,8 @@ public final class ScreenRitualTable extends AbstractContainerScreen<MenuRitualT
         graphics.blit(RenderPipelines.GUI_TEXTURED, ability.getTexture(true), x + 8 + iconInset,
                 topPos + 8 + iconInset, 0, 0, 50 - iconInset * 2, 50 - iconInset * 2,
                 50, 50, 50, 50);
-        graphics.text(font, ability.getDisplayName(), x + 63, topPos + 9,
+        graphics.text(font, ability instanceof Chromabilities chroma ? chroma.getDisplayName(minecraft.player)
+                : Component.literal(ability.getDisplayName()), x + 63, topPos + 9,
                 0xffffffff, false);
         int textY = topPos + 64;
         for (var line : font.split(Component.literal(ability.getDescription()), WIDTH - 18)) {

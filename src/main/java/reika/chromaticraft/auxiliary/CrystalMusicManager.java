@@ -9,15 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.auxiliary;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.EnumMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Random;
-import java.util.Set;
-
 import reika.chromaticraft.magic.CrystalPotionController;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.dragonapi.instantiable.data.maps.MultiMap;
@@ -25,6 +16,8 @@ import reika.dragonapi.instantiable.data.maps.MultiMap.CollectionType;
 import reika.dragonapi.libraries.mathsci.ReikaMusicHelper.KeySignature;
 import reika.dragonapi.libraries.mathsci.ReikaMusicHelper.MusicKey;
 import reika.dragonapi.libraries.mathsci.ReikaMusicHelper.Note;
+
+import java.util.*;
 
 public class CrystalMusicManager {
 
@@ -151,7 +144,7 @@ public class CrystalMusicManager {
 		double base = this.getDingPitchScale(e);
 		switch(n) {
 			case 0:
-				;//base *= 1;
+                //base *= 1;
 				break;
 			case 1:
 				base *= this.isMinorKey(e) ? key.getMinorThird().getRatio(key) : key.getMajorThird().getRatio(key);

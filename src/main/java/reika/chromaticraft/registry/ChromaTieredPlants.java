@@ -1,13 +1,12 @@
 package reika.chromaticraft.registry;
 
-import java.util.List;
-
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-
 import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.world.dimension.DimensionTuningManager;
+
+import java.util.List;
 
 /**
  * V33a {@code BlockTieredPlant.TieredPlants}, as concrete per-plant identities.

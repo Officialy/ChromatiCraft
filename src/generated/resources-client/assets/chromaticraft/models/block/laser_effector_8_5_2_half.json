@@ -1,0 +1,7 @@
+{
+  "parent": "chromaticraft:block/laser_effector_half_parent",
+  "textures": {
+    "all": "chromaticraft:block/dimstruct/laser/device_8_5_2",
+    "particle": "chromaticraft:block/dimstruct/laser/device_8_5_2"
+  }
+}

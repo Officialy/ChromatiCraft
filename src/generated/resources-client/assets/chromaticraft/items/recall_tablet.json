@@ -1,0 +1,19 @@
+{
+  "model": {
+    "type": "minecraft:range_dispatch",
+    "entries": [
+      {
+        "model": {
+          "type": "minecraft:model",
+          "model": "chromaticraft:item/recall_tablet_bound"
+        },
+        "threshold": 1.0
+      }
+    ],
+    "fallback": {
+      "type": "minecraft:model",
+      "model": "chromaticraft:item/recall_tablet"
+    },
+    "property": "chromaticraft:recall_state"
+  }
+}

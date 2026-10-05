@@ -110,7 +110,7 @@ public enum ProgressStage implements ProgressAccess {
 
 	public static final ProgressStage[] list = values();
 
-	private ProgressStage(Shareability s, Reloadability r, boolean... cond) {
+	ProgressStage(Shareability s, Reloadability r, boolean... cond) {
 		boolean flag = true;
 		for (int i = 0; i < cond.length; i++)
 			flag = flag && cond[i];
@@ -174,7 +174,7 @@ public enum ProgressStage implements ProgressAccess {
 		return this.isPlayerAtStage(ep);
 	}
 
-	public static enum Shareability {
+	public enum Shareability {
 		SELFONLY(),
 		PROXIMITY(),
 		ALWAYS();
@@ -192,9 +192,9 @@ public enum ProgressStage implements ProgressAccess {
 		}
 	}
 
-	public static enum Reloadability {
+	public enum Reloadability {
 		NEVER(),
 		TRIGGER(),
-		ALWAYS();
-	}
+		ALWAYS()
+    }
 }

@@ -1,10 +1,5 @@
 package reika.chromaticraft.data;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.stream.Stream;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.data.PackOutput;
 import net.minecraft.resources.ResourceKey;
@@ -15,6 +10,12 @@ import net.neoforged.neoforge.common.data.BlockTagsProvider;
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.dragonapi.libraries.level.LegacyMotionTags;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.stream.Stream;
 
 /** Runtime-semantic tags for ChromatiCraft blocks whose behaviour depends on vanilla families. */
 public final class ChromaBlockTagsProvider extends BlockTagsProvider {
@@ -43,6 +44,13 @@ public final class ChromaBlockTagsProvider extends BlockTagsProvider {
                 });
 
         tag(BlockTags.SMALL_FLOWERS).add(ChromaBlocks.GLOW_DAISY.getKey());
+        // Original natural-stone/stone-ore replacement hooks accepted GeoStrata's natural
+        // smooth rocks. Optional entries retain that support without requiring GeoStrata at runtime.
+        var naturalStone = tag(reika.chromaticraft.registry.ChromaBlockTags.NATURAL_STONE).addTag(BlockTags.BASE_STONE_OVERWORLD);
+        for (var rock : reika.geostrata.registry.RockTypes.rockList)
+            naturalStone.addOptional(ResourceKey.create(net.minecraft.core.registries.Registries.BLOCK,
+                    net.minecraft.resources.Identifier.fromNamespaceAndPath("geostrata",
+                            rock.name().toLowerCase(java.util.Locale.ROOT) + "_smooth")));
 
 		// Tool speed is tag-driven in 26.2. Hardness alone left every ported stone/crystal machine
 		// mining at bare-hand speed even with a netherite pickaxe, so restore the material families

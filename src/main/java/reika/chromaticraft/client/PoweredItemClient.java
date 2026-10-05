@@ -1,11 +1,6 @@
 package reika.chromaticraft.client;
 
-import java.util.function.BiConsumer;
-
 import com.mojang.serialization.MapCodec;
-
-import org.jspecify.annotations.Nullable;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -23,7 +18,7 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.client.IItemDecorator;
 import net.neoforged.neoforge.client.event.RegisterItemDecorationsEvent;
 import net.neoforged.neoforge.client.event.RegisterRangeSelectItemModelPropertyEvent;
-
+import org.jspecify.annotations.Nullable;
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.magic.ToolChargingSystem;
 import reika.chromaticraft.magic.interfaces.PoweredItem;
@@ -31,6 +26,8 @@ import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.dragonapi.instantiable.rendering.ColorBlendList;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
+
+import java.util.function.BiConsumer;
 
 /**
  * Client half of V33a's powered tools: the {@code chromaticraft:charge_state} item-model property (V33a stored the
@@ -58,7 +55,10 @@ public final class PoweredItemClient {
 	}
 
 	private static void registerProperties(RegisterRangeSelectItemModelPropertyEvent event) {
+		event.register(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "magic_branch_frame"), MagicBranchFrame.MAP_CODEC);
 		event.register(CHARGE_STATE, ChargeState.MAP_CODEC);
+		event.register(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "recall_state"), RecallState.MAP_CODEC);
+		event.register(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "recipe_cache_state"), RecipeCacheState.MAP_CODEC);
 	}
 
 	/**
@@ -128,7 +128,7 @@ public final class PoweredItemClient {
 
 			CrystalElement e = pi.getColor(stack);
 			int size = ctrl ? 16 : 8;
-			int c = e.getColor();
+			int c = e.color();
 			int c1 = ReikaColorAPI.mixColors(c, 0xffffff, 0.65F);
 			int c2 = e == CrystalElement.BLACK ? c1 : ReikaColorAPI.mixColors(c, 0x000000, 0.75F);
 			ColorBlendList cbl = new ColorBlendList(10, c, c2, c, c1);
@@ -140,6 +140,23 @@ public final class PoweredItemClient {
 			return false;
 		}
 
+	}
+
+	/** V33a WARPCAPSULE's second sprite, selected once a recall point is stored. */
+	public record RecallState() implements RangeSelectItemModelProperty {
+		public static final MapCodec<RecallState> MAP_CODEC = MapCodec.unit(new RecallState());
+		@Override public float get(ItemStack stack, @Nullable ClientLevel level, @Nullable ItemOwner owner, int seed) {
+			return reika.chromaticraft.items.tools.ItemWarpCapsule.isBound(stack) ? 1 : 0;
+		}
+		@Override public MapCodec<RecallState> type() { return MAP_CODEC; }
+	}
+
+	public record RecipeCacheState() implements RangeSelectItemModelProperty {
+		public static final MapCodec<RecipeCacheState> MAP_CODEC = MapCodec.unit(new RecipeCacheState());
+		@Override public float get(ItemStack stack, @Nullable ClientLevel level, @Nullable ItemOwner owner, int seed) {
+			return reika.chromaticraft.items.tools.ItemRecipeCacheCapsule.hasRecipe(stack) ? 1 : 0;
+		}
+		@Override public MapCodec<RecipeCacheState> type() { return MAP_CODEC; }
 	}
 
 	/** V33a's item damage: the charge state, for picking the sprite. */

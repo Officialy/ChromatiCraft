@@ -1,16 +1,15 @@
 package reika.chromaticraft.world.luminous;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import net.minecraft.core.Holder;
 import net.minecraft.core.QuartPos;
 import net.minecraft.tags.BiomeTags;
 import net.minecraft.world.level.biome.Biome;
-
 import reika.chromaticraft.world.GlowingCliffsColumnShaper.BiomeKind;
 import reika.chromaticraft.world.GlowingCliffsColumnShaper.BiomeMask;
 import reika.chromaticraft.world.biome.ChromaBiomes;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * The shaper's view of the biome layout: what kind of biome each column is, read once per 4x4 quart

@@ -1,0 +1,117 @@
+{
+  "type": "chromaticraft:casting",
+  "completion": {
+    "required_fragment": "BUILDER"
+  },
+  "duration": 100,
+  "experience": 200,
+  "grid": [
+    {
+      "ingredient": "chromaticraft:transformation_core",
+      "slot": 4
+    }
+  ],
+  "penalty_threshold": 1,
+  "result": {
+    "id": "chromaticraft:construction_star"
+  },
+  "stands": [
+    {
+      "ingredient": "#c:rods/wooden",
+      "offset": [
+        -2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "#c:rods/wooden",
+      "offset": [
+        -2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "#c:rods/wooden",
+      "offset": [
+        2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "#c:rods/wooden",
+      "offset": [
+        2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:chroma_ingot",
+      "offset": [
+        -2,
+        0,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:chroma_ingot",
+      "offset": [
+        2,
+        0,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:chroma_ingot",
+      "offset": [
+        0,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:chroma_ingot",
+      "offset": [
+        0,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:infused_dust",
+      "offset": [
+        -4,
+        1,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:infused_dust",
+      "offset": [
+        4,
+        1,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:infused_dust",
+      "offset": [
+        0,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:infused_dust",
+      "offset": [
+        0,
+        1,
+        4
+      ]
+    }
+  ],
+  "tier": "multiblock"
+}

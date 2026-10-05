@@ -9,8 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.items.tools;
 
-import java.util.function.Consumer;
-
 import net.minecraft.ChatFormatting;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
@@ -23,13 +21,13 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.component.TooltipDisplay;
-
 import org.jspecify.annotations.Nullable;
-
 import reika.chromaticraft.base.CrystalBlock;
 import reika.chromaticraft.magic.CrystalPotionController;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.CrystalElement;
+
+import java.util.function.Consumer;
 
 /**
  * V33a {@code ItemPendant} ("Pendant"), one item per element where V33a used metadata. Carried anywhere in the
@@ -64,8 +62,8 @@ public class ItemPendant extends Item {
 					li.accept(Component.translatable("item.chromaticraft.pendant.effect.black"));
 					break;
 				default:
-					CrystalBlock b = (CrystalBlock)(this.isEnhanced(is) ? ChromaBlocks.superCrystal(color).get()
-							: ChromaBlocks.caveCrystal(color).get());
+					CrystalBlock b = this.isEnhanced(is) ? ChromaBlocks.superCrystal(color).get()
+							: ChromaBlocks.caveCrystal(color).get();
 					int lvl = b.getPotionLevel(color);
 					li.accept(Component.literal(CrystalPotionController.instance.getEffectName(color, lvl > 0)));
 					li.accept(Component.translatable("item.chromaticraft.pendant.level", lvl+1));
@@ -129,7 +127,7 @@ public class ItemPendant extends Item {
 	public static int getActivePendantLevel(Player ep, CrystalElement e) {
 		long val = getRootStorage(ep).getLongOr(e.name(), 0);
 		long dur = ep.level().getGameTime()-val;
-		return dur <= 20 ? (int)(dur > 0 ? 1 : 0) : -1;
+		return dur <= 20 ? (dur > 0 ? 1 : 0) : -1;
 	}
 
 	/** Whether any pendant has been carried within V33a's one-second window. */

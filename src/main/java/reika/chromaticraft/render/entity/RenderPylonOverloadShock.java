@@ -33,7 +33,7 @@ public class RenderPylonOverloadShock extends EntityRenderer<EntityPylonOverload
 	@Override
 	public void extractRenderState(EntityPylonOverloadShock entity, State state, float partialTicks) {
 		super.extractRenderState(entity, state, partialTicks);
-		state.color = 0xFF000000 | entity.getColor().getColor();
+		state.color = 0xFF000000 | entity.getColor().color();
 	}
 
 	@Override

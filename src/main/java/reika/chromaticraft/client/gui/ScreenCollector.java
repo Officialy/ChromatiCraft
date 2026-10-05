@@ -1,8 +1,5 @@
 package reika.chromaticraft.client.gui;
 
-import java.util.List;
-import java.util.Optional;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
@@ -13,10 +10,12 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.Fluids;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.container.MenuCollector;
 import reika.chromaticraft.tileentity.acquisition.TileEntityCollector;
+
+import java.util.List;
+import java.util.Optional;
 
 /** Source-faithful V33a Collector screen using the original 176x166 GUI and tank positions. */
 public final class ScreenCollector extends AbstractContainerScreen<MenuCollector> {

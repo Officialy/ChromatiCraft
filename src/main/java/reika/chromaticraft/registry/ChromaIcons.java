@@ -143,7 +143,7 @@ public enum ChromaIcons implements IconEnum {
 
 	public static final ChromaIcons[] iconList = values();
 
-	private ChromaIcons(String icon) {
+	ChromaIcons(String icon) {
 		iconName = icon;
 	}
 

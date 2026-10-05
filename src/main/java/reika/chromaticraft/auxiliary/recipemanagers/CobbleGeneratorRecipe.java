@@ -1,32 +1,25 @@
 package reika.chromaticraft.auxiliary.recipemanagers;
 
-import java.util.List;
-import java.util.Locale;
-
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-
 import net.minecraft.core.Holder;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ItemStackTemplate;
-import net.minecraft.world.item.crafting.PlacementInfo;
-import net.minecraft.world.item.crafting.Recipe;
-import net.minecraft.world.item.crafting.RecipeBookCategories;
-import net.minecraft.world.item.crafting.RecipeBookCategory;
-import net.minecraft.world.item.crafting.RecipeSerializer;
-import net.minecraft.world.item.crafting.RecipeType;
+import net.minecraft.world.item.crafting.*;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.material.Fluid;
 import net.neoforged.neoforge.fluids.FluidInstance;
-
 import reika.chromaticraft.registry.ChromaRecipeSerializers;
 import reika.chromaticraft.registry.ChromaRecipeTypes;
 import reika.chromaticraft.registry.CrystalElement;
+
+import java.util.List;
+import java.util.Locale;
 
 /** Data-owned form of V33a's ordered {@code TileEntityCobbleGen.FluidMix} entries. */
 public final class CobbleGeneratorRecipe implements Recipe<CobbleGeneratorInput> {

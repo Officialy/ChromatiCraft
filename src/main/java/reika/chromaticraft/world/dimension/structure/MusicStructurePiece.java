@@ -1,7 +1,5 @@
 package reika.chromaticraft.world.dimension.structure;
 
-import java.util.List;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -18,7 +16,6 @@ import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.StructurePiece;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
-
 import reika.chromaticraft.block.BlockChromaDoor;
 import reika.chromaticraft.block.BlockHoverBlock;
 import reika.chromaticraft.block.BlockHoverBlock.Decay;

@@ -1,9 +1,5 @@
 package reika.chromaticraft.client.gui;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderDispatcher;
@@ -18,12 +14,15 @@ import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
-
 import reika.chromaticraft.magic.ElementTagCompound;
 import reika.chromaticraft.magic.interfaces.CrystalReceiver;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.dragonapi.instantiable.rendering.structure.StructureRenderState;
 import reika.dragonapi.instantiable.rendering.structure.StructureRenderer;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * V33a {@code GuiMachineDescription.drawMachineRender}: the slowly turning model of the construct a

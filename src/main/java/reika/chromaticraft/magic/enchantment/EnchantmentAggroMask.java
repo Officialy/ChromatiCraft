@@ -10,10 +10,9 @@
 package reika.chromaticraft.magic.enchantment;
 
 import net.minecraft.world.entity.player.Player;
-
+import reika.chromaticraft.base.ChromaticEnchantment;
 import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.registry.Chromabilities;
-import reika.chromaticraft.base.ChromaticEnchantment;
 
 /**
  * V33a Aggro Mask: I keeps a struck zombified piglin from calling the others onto you, II keeps a struck monster from

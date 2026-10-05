@@ -10,9 +10,9 @@ public interface AdjacencyCheckHandler {
 	//public Map<CrystalElementProxy, Integer> getAdjacentUpgrades(Level world, int x, int y, int z);
 
 	/** Returns 1 though 8 for adjacent upgrades tiers 0-7 and 0 for none. */
-	public int getAdjacentUpgradeTier(Level world, int x, int y, int z);
+    int getAdjacentUpgradeTier(Level world, int x, int y, int z);
 
-	public double getFactorSimple(Level world, int x, int y, int z);
+	double getFactorSimple(Level world, int x, int y, int z);
 
 	//public double getFactorSimple(Level world, int x, int y, int z, String color);
 

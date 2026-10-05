@@ -1,9 +1,5 @@
 package reika.chromaticraft.render.particle;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.particle.SingleQuadParticle;
@@ -20,11 +16,14 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.Fluids;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.registry.ChromaFluids;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.render.ChromaRenderPipelines;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
 
 /** Complete client particle implementation for V33a's Coalescence Orchid. */
 public final class CobbleGeneratorParticles {
@@ -99,7 +98,7 @@ public final class CobbleGeneratorParticles {
         if (!(world instanceof ClientLevel level)) return;
         RandomSource random = level.getRandom();
         int offset = random.nextInt(5);
-        int color = element != null ? element.getColor() : 0x22aaff;
+        int color = element != null ? element.color() : 0x22aaff;
         double speed = success ? 0.0625 : 0.375;
         for (int angle = offset; angle < 360; angle += 5) {
             double radians = Math.toRadians(angle);
@@ -223,7 +222,7 @@ public final class CobbleGeneratorParticles {
             this.yd = 0.1875;
             this.quadSize = 0.25F;
             this.lifetime = 25;
-            this.setRgb(CrystalElement.ORANGE.getColor());
+            this.setRgb(CrystalElement.ORANGE.color());
         }
 
         @Override public void tick() {

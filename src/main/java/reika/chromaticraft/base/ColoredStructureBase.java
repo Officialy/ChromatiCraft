@@ -1,11 +1,10 @@
 package reika.chromaticraft.base;
 
-import java.util.Stack;
-
 import net.minecraft.world.level.Level;
-
 import reika.chromaticraft.registry.CrystalElement;
 import reika.dragonapi.instantiable.data.blockstruct.FilledBlockArray;
+
+import java.util.Stack;
 
 /** A {@link ChromaStructureBase} whose layout varies by {@link CrystalElement} colour (pushed per call). */
 public abstract class ColoredStructureBase extends ChromaStructureBase {

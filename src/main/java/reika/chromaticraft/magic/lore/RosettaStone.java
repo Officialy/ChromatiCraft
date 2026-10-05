@@ -1,19 +1,13 @@
 package reika.chromaticraft.magic.lore;
 
+import reika.dragonapi.libraries.io.ImageToStringConverter;
+
+import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Random;
-import java.util.Set;
-
-import javax.imageio.ImageIO;
-
-import reika.dragonapi.libraries.io.ImageToStringConverter;
+import java.util.*;
 
 /** Decodes V33a's deliberately image-embedded Rosetta text and supplies its partial translation. */
 public final class RosettaStone {

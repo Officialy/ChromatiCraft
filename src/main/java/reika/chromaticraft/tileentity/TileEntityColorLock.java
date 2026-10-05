@@ -1,9 +1,5 @@
 package reika.chromaticraft.tileentity;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.EnumSet;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
@@ -18,10 +14,13 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
-
 import reika.chromaticraft.block.dimension.structure.locks.BlockColoredLock;
 import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.CrystalElement;
+
+import java.util.Collection;
+import java.util.Collections;
+import java.util.EnumSet;
 
 /** Required/open color persistence for {@link BlockColoredLock}. */
 public final class TileEntityColorLock extends BlockEntity {

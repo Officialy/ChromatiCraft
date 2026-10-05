@@ -1,228 +1,142 @@
 /*******************************************************************************
  * @author Reika Kalseki
- *
- * Copyright 2017
- *
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
+ * Copyright 2017. All rights reserved.
+ * Distribution requires explicit, prior permission from the owner.
  ******************************************************************************/
 package reika.chromaticraft.items.tools.wands;
 
-import java.util.List;
-
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityList;
-import net.minecraft.entity.EntityLiving;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.MathHelper;
-import net.minecraft.util.Vec3;
-import net.minecraft.world.World;
-import net.minecraftforge.common.util.ForgeDirection;
-
+import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.ProblemReporter;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.*;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.TooltipDisplay;
+import net.minecraft.world.item.context.UseOnContext;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.storage.TagValueInput;
+import net.minecraft.world.level.storage.TagValueOutput;
+import net.neoforged.neoforge.common.Tags;
 import reika.chromaticraft.base.ItemWandBase;
 import reika.chromaticraft.magic.ElementTagCompound;
 import reika.chromaticraft.magic.PlayerElementBuffer;
 import reika.chromaticraft.registry.ChromaSounds;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.dragonapi.interfaces.item.EntityCapturingItem;
-import reika.dragonapi.libraries.ReikaEntityHelper;
+import reika.dragonapi.libraries.registry.ReikaItemHelper;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
+import java.util.function.Consumer;
 
+/** V33a CAPTURE: stores a non-boss mob, paying a tenth of the capture cost each held tick. */
 public class ItemCaptureWand extends ItemWandBase implements EntityCapturingItem {
+    private static final String MOB = "mob";
+    private final ElementTagCompound perTick;
 
-	private final ElementTagCompound perTick;
-	private static final String NBT_TAG = "mob";
+    public ItemCaptureWand(Properties properties) {
+        super(properties);
+        addEnergyCost(CrystalElement.PINK, 10);
+        addEnergyCost(CrystalElement.LIME, 20);
+        addEnergyCost(CrystalElement.LIGHTGRAY, 50);
+        perTick = getEnergy(0.1F);
+    }
 
-	public ItemCaptureWand(int index) {
-		super(index);
-		this.addEnergyCost(CrystalElement.PINK, 10);
-		this.addEnergyCost(CrystalElement.LIME, 20);
-		this.addEnergyCost(CrystalElement.LIGHTGRAY, 50);
+    @Override
+    public void inventoryTick(ItemStack stack, ServerLevel level, Entity owner, EquipmentSlot slot) {
+        if (slot == EquipmentSlot.MAINHAND && owner instanceof Player player && hasEntity(stack) && !player.isCreative()) {
+            if (PlayerElementBuffer.instance.playerHas(player, perTick))
+                PlayerElementBuffer.instance.removeFromPlayer(player, perTick);
+            else {
+                releaseMob(stack, player, level, player.blockPosition());
+                ChromaSounds.ERROR.playSound(player);
+            }
+        }
+    }
 
-		perTick = this.getEnergy(0.1F);
-	}
+    @Override
+    public InteractionResult use(Level level, Player player, InteractionHand hand) {
+        if (hasEntity(player.getItemInHand(hand))) {
+            var look = player.getLookAngle();
+            BlockPos pos = BlockPos.containing(player.getX()+look.x*2, player.getY()+look.y*5, player.getZ()+look.z*2);
+            if (level instanceof ServerLevel server)
+                releaseMob(player.getItemInHand(hand), player, server, pos);
+        }
+        return InteractionResult.SUCCESS;
+    }
 
-	@Override
-	public void onUpdate(ItemStack is, World world, Entity e, int slot, boolean held) {
-		if (held && hasMob(is)) {
-			EntityPlayer ep = (EntityPlayer)e;
-			if (!ep.capabilities.isCreativeMode) {
-				if (PlayerElementBuffer.instance.playerHas(ep, perTick))
-					PlayerElementBuffer.instance.removeFromPlayer(ep, perTick);
-				else {
-					this.releaseMob(is, ep, world, MathHelper.floor_double(ep.posX), MathHelper.floor_double(ep.posY), MathHelper.floor_double(ep.posZ));
-					ChromaSounds.ERROR.playSound(ep);
-				}
-			}
-		}
-	}
+    @Override
+    public InteractionResult useOn(UseOnContext context) {
+        if (!hasEntity(context.getItemInHand()) || context.getPlayer() == null)
+            return InteractionResult.PASS;
+        if (context.getLevel() instanceof ServerLevel level)
+            return releaseMob(context.getItemInHand(), context.getPlayer(), level,
+                    context.getClickedPos().relative(context.getClickedFace())) ? InteractionResult.SUCCESS : InteractionResult.FAIL;
+        return InteractionResult.SUCCESS;
+    }
 
-	@Override
-	public ItemStack onItemRightClick(ItemStack is, World world, EntityPlayer ep) {
-		if (this.hasMob(is)) {
-			double x = ep.posX;
-			double y = ep.posY;
-			double z = ep.posZ;
-			Vec3 vec = ep.getLookVec();
-			vec.xCoord *= 2;
-			vec.yCoord *= 5;
-			vec.zCoord *= 2;
-			int dx = MathHelper.floor_double(x+vec.xCoord);
-			int dy = MathHelper.floor_double(y+vec.yCoord);
-			int dz = MathHelper.floor_double(z+vec.zCoord);
-			this.releaseMob(is, ep, world, dx, dy, dz);
-		}
-		return is;
-	}
+    @Override
+    public InteractionResult interactLivingEntity(ItemStack stack, Player player, LivingEntity target, InteractionHand hand) {
+        if (hasEntity(stack) || !(target instanceof Mob mob) || target.getType().builtInRegistryHolder().is(Tags.EntityTypes.BOSSES)
+                || !sufficientEnergy(player))
+            return InteractionResult.PASS;
+        if (target.level().isClientSide()) return InteractionResult.SUCCESS;
+        TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, target.registryAccess());
+        if (!mob.saveAsPassenger(output)) return InteractionResult.FAIL;
+        CompoundTag data = output.buildResult();
+        // Upstream saved the captured entity, not its passengers. They remain real entities in the world.
+        data.remove("Passengers");
+        ReikaItemHelper.updateStackTag(stack, tag -> tag.put(MOB, data));
+        drainPlayer(player);
+        mob.discard();
+        return InteractionResult.SUCCESS;
+    }
 
-	@Override
-	public boolean onItemUse(ItemStack is, EntityPlayer ep, World world, int x, int y, int z, int s, float a, float b, float c) {
-		if (this.hasMob(is)) {
-			ForgeDirection dir = ForgeDirection.VALID_DIRECTIONS[s];
-			int dx = x+dir.offsetX;
-			int dy = y+dir.offsetY;
-			int dz = z+dir.offsetZ;
-			if (this.releaseMob(is, ep, world, dx, dy, dz))
-				return true;
-		}
-		return false;
-	}
+    private boolean releaseMob(ItemStack stack, Player player, ServerLevel level, BlockPos pos) {
+        Mob mob = getMob(stack, level);
+        if (mob == null) return false;
+        mob.setPos(pos.getX()+0.5, pos.getY(), pos.getZ()+0.5);
+        if (!level.addFreshEntity(mob)) return false;
+        drainPlayer(player);
+        ReikaItemHelper.updateStackTag(stack, tag -> tag.remove(MOB));
+        return true;
+    }
 
-	@Override
-	@SideOnly(Side.CLIENT)
-	public boolean hasEffect(ItemStack is) {
-		return this.hasMob(is);
-	}
+    public static Mob getMob(ItemStack stack, Level level) {
+        CompoundTag tag = ReikaItemHelper.getStackTag(stack);
+        if (tag == null || !tag.contains(MOB)) return null;
+        var input = TagValueInput.create(ProblemReporter.DISCARDING, level.registryAccess(), tag.getCompoundOrEmpty(MOB));
+        Entity entity = EntityType.create(input, level, new net.minecraft.world.entity.EntitySpawnRequest(
+                EntitySpawnReason.LOAD, true)).orElse(null);
+        return entity instanceof Mob mob ? mob : null;
+    }
 
-	@Override
-	public void addInformation(ItemStack is, EntityPlayer ep, List li, boolean vb) {
-		if (this.hasMob(is)) {
-			EntityLiving e = this.getMob(is, ep.worldObj);
-			li.add(String.format("Contains a %s.", EntityList.getEntityString(e)));
-			li.add(String.format("Health: %.0f hearts", e.getHealth()/2));
-		}
-		else {
-			li.add("Contains no mob.");
-		}
-	}
+    @Override public boolean hasEntity(ItemStack stack) {
+        CompoundTag tag = ReikaItemHelper.getStackTag(stack);
+        return tag != null && tag.contains(MOB);
+    }
 
-	@Override
-	public boolean itemInteractionForEntity(ItemStack is, EntityPlayer ep, EntityLivingBase elb) {
-		if (!hasMob(is) && elb instanceof EntityLiving && isEntityCapturable((EntityLiving)elb) && this.sufficientEnergy(ep)) {
-			this.captureMob(is, ep, (EntityLiving)elb);
-			ep.setCurrentItemOrArmor(0, is);
-			return true;
-		}
-		return false;
-	}
+    @Override public String currentEntityName(ItemStack stack) {
+        CompoundTag tag = ReikaItemHelper.getStackTag(stack);
+        return tag != null ? tag.getCompoundOrEmpty(MOB).getStringOr("id", "") : "";
+    }
 
-	private void captureMob(ItemStack is, EntityPlayer ep, EntityLiving el) {
-		this.setMob(is, el);
-		this.drainPlayer(ep);
-		el.setDead();
-	}
+    @Override public boolean isFoil(ItemStack stack) { return hasEntity(stack); }
 
-	private boolean releaseMob(ItemStack is, EntityPlayer ep, World world, int x, int y, int z) {
-		EntityLiving e = this.getMob(is, world);
-		if (e != null) {
-			this.drainPlayer(ep);
-			e.setPosition(x+0.5, y, z+0.5);
-			if (!world.isRemote)
-				world.spawnEntityInWorld(e);
-			is.stackTagCompound.removeTag(NBT_TAG);
-			return true;
-		}
-		return false;
-	}
-
-	private static boolean isEntityCapturable(EntityLiving e) {
-		return !ReikaEntityHelper.isBossMob(e);
-	}
-
-	private static void setMob(ItemStack is, EntityLiving e) {
-		if (is.stackTagCompound == null)
-			is.stackTagCompound = new NBTTagCompound();
-		NBTTagCompound nbt = new NBTTagCompound();
-
-		nbt.setString("name", EntityList.getEntityString(e));
-		NBTTagCompound dat = new NBTTagCompound();
-		try {
-			e.writeToNBT(dat);
-		}
-		catch (Exception ex) {
-			ex.printStackTrace();
-		}
-		nbt.setTag("data", dat);
-
-		is.stackTagCompound.setTag(NBT_TAG, nbt);
-	}
-
-	public static EntityLiving getMob(ItemStack is, World world) {
-		String n = getEntityName(is);
-		EntityLiving e = (EntityLiving)EntityList.createEntityByName(n, world);
-		if (e == null)
-			return null;
-		NBTTagCompound mob = is.stackTagCompound.getCompoundTag(NBT_TAG);
-		NBTTagCompound dat = mob.getCompoundTag("data");
-		e.readFromNBT(dat);
-		return e;
-	}
-
-	private static String getEntityName(ItemStack is) {
-		if (is.stackTagCompound == null || !is.stackTagCompound.hasKey(NBT_TAG))
-			return null;
-		NBTTagCompound mob = is.stackTagCompound.getCompoundTag(NBT_TAG);
-		return mob.getString("name");
-	}
-
-	private static boolean hasMob(ItemStack is) {
-		return is.stackTagCompound != null && is.stackTagCompound.hasKey(NBT_TAG);
-	}
-	/*
-	@Override
-	@SideOnly(Side.CLIENT)
-	public boolean onRender(RenderItem ri, ItemStack is, ItemRenderType type) {
-		if (type == ItemRenderType.EQUIPPED_FIRST_PERSON || type == ItemRenderType.EQUIPPED) {
-			EntityLiving e = this.getMob(is, Minecraft.getMinecraft().theWorld);
-			if (e != null) {
-				GL11.glPushMatrix();
-				//GL11.glScaled(0.2, 0.2, 0.2);
-				//GL11.glRotated(30, 0, 1, 0);
-				//GL11.glRotated(-45, 1, 0, 0);
-				//GL11.glTranslated(0, 1.5, -1);
-				//GL11.glTranslated(type == ItemRenderType.EQUIPPED_FIRST_PERSON ? 1.5 : 1, type == ItemRenderType.EQUIPPED_FIRST_PERSON ? 0.25 : 1, 1);
-				//GL11.glTranslated(EntityRenderDispatcher., y, z);
-				EntityPlayer ep = Minecraft.getMinecraft().thePlayer;
-				Render r = ReikaEntityHelper.getEntityRenderer(e.getClass());
-				if (r == null)
-					ChromatiCraft.logger.logError("Cannot render "+e+", has no renderer!");
-				else
-					r.doRender(e, 0, 0, 0, 0, 0);
-				GL11.glPopMatrix();
-			}
-		}
-		return false;
-	}
-
-	@Override
-	public boolean doPreGLTransforms(ItemStack is, ItemRenderType type) {
-		return false;
-	}
-	 */
-
-	@Override
-	public boolean hasEntity(ItemStack is) {
-		return this.hasMob(is);
-	}
-
-	@Override
-	public String currentEntityName(ItemStack is) {
-		return this.getEntityName(is);
-	}
+    @Override
+    public void appendHoverText(ItemStack stack, TooltipContext context, TooltipDisplay display,
+            Consumer<Component> tooltip, TooltipFlag flag) {
+        super.appendHoverText(stack, context, display, tooltip, flag);
+        if (!hasEntity(stack)) {
+            tooltip.accept(Component.translatable("item.chromaticraft.capture_star.empty"));
+        } else {
+            tooltip.accept(Component.translatable("item.chromaticraft.capture_star.mob", currentEntityName(stack)));
+            CompoundTag mob = ReikaItemHelper.getStackTag(stack).getCompoundOrEmpty(MOB);
+            tooltip.accept(Component.translatable("item.chromaticraft.capture_star.health",
+                    Math.round(mob.getFloatOr("Health", 0)/2)));
+        }
+    }
 }

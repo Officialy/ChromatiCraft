@@ -1,15 +1,13 @@
 package reika.chromaticraft.auxiliary;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-
+import io.netty.buffer.ByteBuf;
 import net.minecraft.util.Mth;
-
 import reika.chromaticraft.registry.CrystalElement;
 import reika.dragonapi.libraries.java.ReikaJavaLibrary;
 
-import io.netty.buffer.ByteBuf;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 
 public final class ElementEncodedNumber {
 

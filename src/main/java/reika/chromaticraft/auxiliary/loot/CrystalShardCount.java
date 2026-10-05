@@ -1,13 +1,12 @@
 package reika.chromaticraft.auxiliary.loot;
 
 import com.mojang.serialization.MapCodec;
-
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.ItemInstance;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.level.storage.loot.LootContext;
-import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.level.storage.loot.ValidationContext;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.level.storage.loot.providers.number.ints.ContextIntProvider;
 
 /**

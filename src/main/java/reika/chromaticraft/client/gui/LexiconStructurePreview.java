@@ -1,5 +1,18 @@
 package reika.chromaticraft.client.gui;
 
+import net.minecraft.client.Minecraft;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.nbt.*;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
+import reika.chromaticraft.ChromatiCraft;
+import reika.chromaticraft.magic.progression.LexiconCatalog;
+import reika.chromaticraft.registry.ChromaBlocks;
+
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -9,30 +22,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import net.minecraft.client.Minecraft;
-import net.minecraft.core.BlockPos;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.NbtAccounter;
-import net.minecraft.nbt.NbtIo;
-import net.minecraft.nbt.NbtUtils;
-import net.minecraft.resources.Identifier;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
-import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.state.BlockState;
-
-import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.magic.progression.LexiconCatalog;
-import reika.chromaticraft.registry.ChromaBlocks;
-
 /** Client-side, read-only view of one canonical generated structure-template NBT. */
 final class LexiconStructurePreview {
 
 	private static final Map<String, LexiconStructurePreview> CACHE = new ConcurrentHashMap<>();
 	private static final Map<String, String> TEMPLATES = Map.ofEntries(
 			Map.entry("pylon", "multiblock/pylon"),
+            Map.entry("voidritual", "multiblock/void_ritual"),
+            Map.entry("nethertrap", "multiblock/nether_trap"),
 			Map.entry("pylonturbo", "multiblock/pylon_turbo"),
 			Map.entry("casting1", "multiblock/casting_l1"),
 			Map.entry("casting2", "multiblock/casting_l2"),

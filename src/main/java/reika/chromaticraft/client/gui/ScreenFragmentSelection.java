@@ -1,7 +1,5 @@
 package reika.chromaticraft.client.gui;
 
-import java.util.List;
-
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
@@ -11,11 +9,12 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.magic.progression.LexiconCatalog;
 import reika.chromaticraft.magic.progression.PlayerResearch;
 import reika.chromaticraft.network.ChromaNetwork;
+
+import java.util.List;
 
 /** V33a blank-fragment selection with server-authoritative candidate validation. */
 public final class ScreenFragmentSelection extends Screen {

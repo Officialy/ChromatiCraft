@@ -1,8 +1,5 @@
 package reika.chromaticraft.block;
 
-import javax.annotation.Nullable;
-
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
@@ -19,9 +16,10 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
-
 import reika.chromaticraft.tileentity.TileEntityDummyAux;
 import reika.chromaticraft.tileentity.TileEntityDummyAux.Flags;
+
+import javax.annotation.Nullable;
 
 /**
  * V33a {@code BlockDummyAux}: the block a structure puts where it needs presence but not a machine.

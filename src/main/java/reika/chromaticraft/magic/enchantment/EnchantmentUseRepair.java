@@ -11,9 +11,8 @@ package reika.chromaticraft.magic.enchantment;
 
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-
-import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.base.ChromaticEnchantment;
+import reika.chromaticraft.magic.progression.ProgressStage;
 
 /** V33a Durability Leech: each hit repairs the weapon a little, at the cost of a little of the damage. */
 public class EnchantmentUseRepair extends ChromaticEnchantment {

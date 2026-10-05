@@ -1,78 +1,43 @@
 package reika.chromaticraft.data;
 
-import java.lang.reflect.Field;
-
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import java.util.List;
-import java.util.Locale;
-import java.util.Optional;
-import java.util.stream.Stream;
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
-
-import net.minecraft.client.data.models.BlockModelGenerators;
-import net.minecraft.core.Holder;
-import net.minecraft.core.Direction;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.client.data.models.ItemModelGenerators;
-import net.minecraft.client.data.models.ItemModelOutput;
-import net.minecraft.client.data.models.ModelProvider;
-import net.minecraft.client.data.models.MultiVariant;
-import net.minecraft.client.data.models.blockstates.BlockModelDefinitionGenerator;
-import net.minecraft.client.data.models.blockstates.MultiVariantGenerator;
-import net.minecraft.client.data.models.blockstates.MultiPartGenerator;
-import net.minecraft.client.data.models.blockstates.ConditionBuilder;
-import net.minecraft.client.data.models.model.ModelLocationUtils;
-import net.minecraft.client.data.models.blockstates.PropertyDispatch;
-import net.minecraft.client.data.models.model.ItemModelUtils;
-import net.minecraft.client.data.models.model.ModelInstance;
-import net.minecraft.client.data.models.model.TextureSlot;
-import net.minecraft.client.data.models.model.ModelTemplates;
-import net.minecraft.client.data.models.model.TextureMapping;
+import net.minecraft.client.color.item.Constant;
+import net.minecraft.client.data.models.*;
+import net.minecraft.client.data.models.blockstates.*;
+import net.minecraft.client.data.models.model.*;
 import net.minecraft.client.renderer.block.dispatch.Variant;
 import net.minecraft.client.resources.model.sprite.Material;
-import net.minecraft.client.color.item.Constant;
+import net.minecraft.core.Direction;
+import net.minecraft.core.Holder;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.data.PackOutput;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.random.WeightedList;
-import net.minecraft.world.level.block.Block;
-
 import net.minecraft.world.item.Item;
+import net.minecraft.world.level.block.Block;
 import net.neoforged.neoforge.client.model.item.DynamicFluidContainerModel;
 import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.base.CrystalTypeBlock;
-import reika.chromaticraft.block.BlockCrystalRune;
-import reika.chromaticraft.block.BlockRitualTable;
-import reika.chromaticraft.block.BlockDecoPlant;
-import reika.chromaticraft.block.BlockChromaDoor;
-import reika.chromaticraft.block.BlockTrapFloor;
-import reika.chromaticraft.block.dimension.structure.shiftmaze.BlockShiftLock;
+import reika.chromaticraft.block.*;
+import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
+import reika.chromaticraft.block.decoration.BlockMetaAlloyLamp;
+import reika.chromaticraft.block.dimension.structure.gol.BlockGOLController;
+import reika.chromaticraft.block.dimension.structure.gol.BlockGOLTile;
+import reika.chromaticraft.block.dimension.structure.laser.BlockLaserEffector26;
 import reika.chromaticraft.block.dimension.structure.lightpanel.BlockLightPanel;
 import reika.chromaticraft.block.dimension.structure.lightpanel.BlockLightSwitch;
 import reika.chromaticraft.block.dimension.structure.locks.BlockColoredLock;
-import reika.chromaticraft.block.dimension.structure.gol.BlockGOLController;
-import reika.chromaticraft.block.dimension.structure.gol.BlockGOLTile;
+import reika.chromaticraft.block.dimension.structure.shiftmaze.BlockShiftLock;
+import reika.chromaticraft.registry.*;
+import reika.chromaticraft.render.item.*;
 import reika.chromaticraft.world.dimension.structure.lightpanel.LightType;
-import reika.chromaticraft.block.decoration.BlockMetaAlloyLamp;
-import reika.chromaticraft.block.BlockCrystallineStone;
-import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
-import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaTieredPlants;
-import reika.chromaticraft.registry.ChromaDecoFlowers;
-import reika.chromaticraft.registry.ChromaShieldTypes;
-import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.registry.ChromaClusterItems;
-import reika.chromaticraft.registry.ChromaCraftingItems;
-import reika.chromaticraft.registry.ChromaItems;
-import reika.chromaticraft.registry.ChromaTieredItems;
-import reika.chromaticraft.registry.StorageCrystalTier;
-import reika.chromaticraft.render.item.ItemStandItemRenderer;
-import reika.chromaticraft.render.item.CrystalChargerItemRenderer;
-import reika.chromaticraft.render.item.ItemAuraInfuserRenderer;
-import reika.chromaticraft.render.item.PersonalChargerItemRenderer;
-import reika.chromaticraft.render.item.PylonTurboItemRenderer;
-import reika.chromaticraft.render.item.RelaySourceItemRenderer;
+
+import java.lang.reflect.Field;
+import java.util.List;
+import java.util.Optional;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 /**
  * ChromatiCraft block/item model provider (port-in-progress). Simple full-cube blocks use
@@ -109,6 +74,7 @@ public class ChromaModelProvider extends ModelProvider {
 		catch (ReflectiveOperationException e) {
 			throw new IllegalStateException("Failed to access BlockModelGenerators sinks — vanilla shape changed?", e);
 		}
+		voidCompatibilityModels(blockStateOut, itemModelOut, modelOut);
 		Identifier powerCrystalModel = ModelTemplates.CUBE_ALL.create(
 				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/power_crystal"),
 				TextureMapping.cube(new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/crystal/chroma"))),
@@ -239,12 +205,39 @@ public class ChromaModelProvider extends ModelProvider {
 					ModelLocationUtils.getModelLocation(item),
 					new TextureMapping().put(TextureSlot.LAYER0, new Material(seedTexture)), modelOut)));
 		}
-		for (Item item : List.of(ChromaItems.GLOW_CAVE_DUST.get(), ChromaItems.UNKNOWN_ARTEFACT_FRAGMENT.get(),
-				ChromaItems.ENDER_EYE.get(), ChromaItems.STRUCTURE_MAP.get(), ChromaItems.PYLON_FINDER.get(),
-				ChromaItems.LIGHT_GUN.get(), ChromaItems.OWNERSHIP_KEY.get(), ChromaItems.CAVE_PATHER.get(),
-				ChromaItems.AURA_POUCH.get(), ChromaItems.LUMA_CAPSULE.get())) {
+		for (var resource : ChromaItems.DIMENSION_RESOURCES.values()) {
+			Item item = resource.get();
 			itemModelOut.accept(item, ItemModelUtils.plainModel(ModelTemplates.FLAT_ITEM.create(
 					ModelLocationUtils.getModelLocation(item), TextureMapping.layer0(item), modelOut)));
+		}
+		for (Item item : List.of(ChromaItems.EFFICIENCY_GEM.get(), ChromaItems.UNKNOWN_ARTEFACT_FRAGMENT.get(),
+				ChromaItems.ENDER_EYE.get(), ChromaItems.STRUCTURE_MAP.get(), ChromaItems.PYLON_FINDER.get(),
+				ChromaItems.LIGHT_GUN.get(), ChromaItems.OWNERSHIP_KEY.get(), ChromaItems.CAVE_PATHER.get(),
+				ChromaItems.AURA_POUCH.get(), ChromaItems.LUMA_CAPSULE.get(), ChromaItems.CAPTURE_WAND.get())) {
+			itemModelOut.accept(item, ItemModelUtils.plainModel(ModelTemplates.FLAT_ITEM.create(
+					ModelLocationUtils.getModelLocation(item), TextureMapping.layer0(item), modelOut)));
+		}
+		{
+			var base = ItemModelUtils.plainModel(ModelTemplates.FLAT_ITEM.create(
+					ModelLocationUtils.getModelLocation(ChromaItems.RECALL_TABLET.get()),
+					TextureMapping.layer0(ChromaItems.RECALL_TABLET.get()), modelOut));
+			var bound = ItemModelUtils.plainModel(ModelTemplates.FLAT_ITEM.create(
+					Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "item/recall_tablet_bound"),
+					new TextureMapping().put(TextureSlot.LAYER0, new Material(
+						Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "item/recall_tablet_bound"))), modelOut));
+			itemModelOut.accept(ChromaItems.RECALL_TABLET.get(), ItemModelUtils.rangeSelect(
+					new reika.chromaticraft.client.PoweredItemClient.RecallState(), base, ItemModelUtils.override(bound, 1)));
+		}
+		{
+			var item = ChromaItems.RECIPE_TABLET.get();
+			var base = ItemModelUtils.plainModel(ModelTemplates.FLAT_ITEM.create(
+					ModelLocationUtils.getModelLocation(item), TextureMapping.layer0(item), modelOut));
+			var filled = ItemModelUtils.plainModel(ModelTemplates.FLAT_ITEM.create(
+					Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "item/recipe_tablet_filled"),
+					new TextureMapping().put(TextureSlot.LAYER0, new Material(
+						Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "item/recipe_tablet_filled"))), modelOut));
+			itemModelOut.accept(item, ItemModelUtils.rangeSelect(
+					new reika.chromaticraft.client.PoweredItemClient.RecipeCacheState(), base, ItemModelUtils.override(filled, 1)));
 		}
 		// Applied Energistics 2 cells: registered (and so modelled) only when datagen runs with AE2.
 		for (var cell : java.util.Arrays.asList(ChromaItems.VOID_CELL, ChromaItems.CRYSTAL_CELL, ChromaItems.SHIELDED_CELL)) {
@@ -282,11 +275,27 @@ public class ChromaModelProvider extends ModelProvider {
 					states[0], ItemModelUtils.override(states[1], 1), ItemModelUtils.override(states[2], 2),
 					ItemModelUtils.override(states[3], 3)));
 		}
-		// V33a wands: items_tool.png sprites 83 (Mobility), 86 (Animal Repulsion), 87 (Growth) and 91 (Light).
+		// V33a items_tool.png: 80 Excavation, 83 Mobility, 84 Construction, 86 Repulsion, 87 Growth, 88 Hover, 91 Light.
 		for (Item wand : List.of(ChromaItems.MOBILITY_WAND.get(), ChromaItems.SHOO_WAND.get(),
-				ChromaItems.GROWTH_WAND.get(), ChromaItems.LIGHT_WAND.get()))
+				ChromaItems.GROWTH_WAND.get(), ChromaItems.LIGHT_WAND.get(), ChromaItems.EXCAVATION_WAND.get(),
+				ChromaItems.CONSTRUCTION_WAND.get(), ChromaItems.HOVER_WAND.get(), ChromaItems.MOB_SONAR.get(),
+                ChromaItems.BULK_MOVER.get(), ChromaItems.MULTITOOL.get(), ChromaItems.ORE_HARVESTER.get(), ChromaItems.BOTTLENECK_FINDER.get(), ChromaItems.SPAWNER_BYPASS.get()))
 			itemModelOut.accept(wand, ItemModelUtils.plainModel(ModelTemplates.FLAT_ITEM.create(
 					ModelLocationUtils.getModelLocation(wand), TextureMapping.layer0(wand), modelOut)));
+
+        // V33a branches.png: sixteen horizontal frames per row, selected at the exact original wall-clock phase.
+        for (var type : reika.chromaticraft.items.ItemMagicBranch.BranchTypes.list) {
+            Item branch=ChromaItems.BRANCHES.get(type).get();
+            net.minecraft.client.renderer.item.ItemModel.Unbaked[] frames=new net.minecraft.client.renderer.item.ItemModel.Unbaked[16];
+            net.minecraft.client.renderer.item.RangeSelectItemModel.Entry[] overrides=new net.minecraft.client.renderer.item.RangeSelectItemModel.Entry[16];
+            for (int frame=0;frame<16;frame++) {
+                Identifier texture=Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,"item/"+type.registryName()+"_"+frame);
+                frames[frame]=ItemModelUtils.plainModel(ModelTemplates.FLAT_ITEM.create(texture,
+                        new TextureMapping().put(TextureSlot.LAYER0,new Material(texture)),modelOut));
+                overrides[frame]=ItemModelUtils.override(frames[frame],frame);
+            }
+            itemModelOut.accept(branch,ItemModelUtils.rangeSelect(new reika.chromaticraft.client.MagicBranchFrame(),frames[0],overrides));
+        }
 		// V33a Pendants: items_color.png sprites 96 + colour (Pendant) and 112 + colour (Enhanced Pendant).
 		for (CrystalElement element : CrystalElement.elements) {
 			for (Item pendant : List.of(ChromaItems.PENDANTS.get(element).get(), ChromaItems.BOOSTED_PENDANTS.get(element).get()))
@@ -379,6 +388,7 @@ public class ChromaModelProvider extends ModelProvider {
 		musicTriggerModel(blockStateOut, itemModelOut, modelOut);
 		musicMemoryModel(blockStateOut, modelOut);
 		golModels(blockStateOut, modelOut);
+		laserModels(blockStateOut, modelOut);
 		biomeReplayModel(blockStateOut, modelOut);
 		warpNodeModel(blockStateOut, modelOut);
 		unknownArtefactBlock(blockStateOut, itemModelOut, modelOut);
@@ -1572,6 +1582,37 @@ public class ChromaModelProvider extends ModelProvider {
 	 * V33a draws the focus crystal entirely through RenderFocusCrystal; the block needs only a particle-carrying
 	 * definition, and the item an inventory base (block display transforms) under its special renderer.
 	 */
+    private static void voidCompatibilityModels(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+            ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+        var essence = ChromaItems.VOID_MONSTER_ESSENCE.get();
+        var essenceModel = ModelTemplates.FLAT_ITEM.create(ModelLocationUtils.getModelLocation(essence),
+                TextureMapping.layer0(essence), modelOut);
+        itemModelOut.accept(essence, ItemModelUtils.plainModel(essenceModel));
+        var fog = ChromaBlocks.DEATH_FOG_EMITTER.get();
+        var fogModel = ModelTemplates.CUBE_BOTTOM_TOP.create(ModelLocationUtils.getModelLocation(fog),
+                new TextureMapping()
+                    .put(TextureSlot.TOP, new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/tile/deathfog_top")))
+                    .put(TextureSlot.BOTTOM, new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/tile/deathfog_bottom")))
+                    .put(TextureSlot.SIDE, new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/tile/deathfog_side"))), modelOut);
+        registerSimple(fog, fogModel, blockStateOut, itemModelOut);
+        var trap = ChromaBlocks.VOID_MONSTER_TRAP.get();
+        var particle = new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/icons/cellflare"));
+        var trapModel = ModelTemplates.PARTICLE_ONLY.create(ModelLocationUtils.getModelLocation(trap),
+                new TextureMapping().put(TextureSlot.PARTICLE, particle), modelOut);
+        blockStateOut.accept(MultiVariantGenerator.dispatch(trap, new MultiVariant(WeightedList.of(new Variant(trapModel)))));
+        var trapItem = ModelTemplates.CUBE_ALL.create(ModelLocationUtils.getModelLocation(trap, "_inventory"), TextureMapping.cube(particle), modelOut);
+        itemModelOut.accept(trap.asItem(), ItemModelUtils.specialModel(trapItem, new reika.chromaticraft.render.item.VoidMonsterTrapItemRenderer.Unbaked()));
+        var altarParticle = new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "entity/colored_altar"));
+        for (var color : CrystalElement.elements) {
+            var altar = ChromaBlocks.COLORED_ALTARS.get(color).get();
+            var altarModel = ModelTemplates.PARTICLE_ONLY.create(ModelLocationUtils.getModelLocation(altar),
+                    new TextureMapping().put(TextureSlot.PARTICLE, altarParticle), modelOut);
+            blockStateOut.accept(MultiVariantGenerator.dispatch(altar, new MultiVariant(WeightedList.of(new Variant(altarModel)))));
+            var altarItem = ModelTemplates.CUBE_ALL.create(ModelLocationUtils.getModelLocation(altar, "_inventory"), TextureMapping.cube(altarParticle), modelOut);
+            itemModelOut.accept(altar.asItem(), ItemModelUtils.specialModel(altarItem, new reika.chromaticraft.render.item.ColoredAltarItemRenderer.Unbaked(color.ordinal())));
+        }
+    }
+
 	private static void focusCrystalModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
 			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
 		Material particle = new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/crystal/chroma"));
@@ -1735,6 +1776,69 @@ public class ChromaModelProvider extends ModelProvider {
 		blockStateOut.accept(MultiVariantGenerator.dispatch(controller).with(controls));
 	}
 
+	/** All authored device identities, headings and RGB combinations remain legible in world. */
+	private static void laserModels(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+			BiConsumer<Identifier, ModelInstance> modelOut) {
+		Block effector = ChromaBlocks.LASER_EFFECTOR.get();
+		PropertyDispatch.C4<MultiVariant, Integer, Integer, Integer, Boolean> variants =
+				PropertyDispatch.initial(BlockLaserEffector26.TYPE, BlockLaserEffector26.DIRECTION,
+						BlockLaserEffector26.COLOR, BlockLaserEffector26.FULL_BLOCK);
+		Identifier halfParent = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
+				"block/laser_effector_half_parent");
+		modelOut.accept(halfParent, ChromaModelProvider::laserEffectorHalfParent);
+		for (int type = 0; type < 12; type++) for (int heading = 0; heading < 8; heading++)
+			for (int color = 0; color < 8; color++) {
+				String suffix = "_" + type + "_" + heading + "_" + color;
+				Identifier texture = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
+						"block/dimstruct/laser/device" + suffix);
+				Identifier fullModel = ModelTemplates.CUBE_ALL.create(
+						ModelLocationUtils.getModelLocation(effector).withSuffix(suffix + "_full"),
+						TextureMapping.cube(new Material(texture)), modelOut);
+				Identifier halfModel = ModelLocationUtils.getModelLocation(effector)
+						.withSuffix(suffix + "_half");
+				modelOut.accept(halfModel, () -> {
+					JsonObject root = new JsonObject();
+					root.addProperty("parent", halfParent.toString());
+					JsonObject textures = new JsonObject();
+					textures.addProperty("all", texture.toString());
+					textures.addProperty("particle", texture.toString());
+					root.add("textures", textures);
+					return root;
+				});
+				variants.select(type, heading, color, false, variant(halfModel));
+				variants.select(type, heading, color, true, variant(fullModel));
+			}
+		blockStateOut.accept(MultiVariantGenerator.dispatch(effector).with(variants).with(
+				PropertyDispatch.modify(BlockLaserEffector26.LIT)
+						.select(false, BlockModelGenerators.NOP)
+						.select(true, BlockModelGenerators.NOP)));
+
+		Block controller = ChromaBlocks.LASER_CONTROLLER.get();
+		Identifier controllerModel = ModelTemplates.CUBE_ALL.create(controller,
+				TextureMapping.cube(new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
+						"block/dimstruct/laser_block_base"))), modelOut);
+		blockStateOut.accept(MultiVariantGenerator.dispatch(controller, variant(controllerModel)));
+	}
+
+	private static JsonObject laserEffectorHalfParent() {
+		JsonObject root = new JsonObject();
+		JsonObject element = new JsonObject();
+		JsonArray from = new JsonArray(); from.add(0); from.add(0); from.add(0);
+		JsonArray to = new JsonArray(); to.add(16); to.add(8); to.add(16);
+		element.add("from", from); element.add("to", to);
+		JsonObject faces = new JsonObject();
+		for (String name : List.of("north", "south", "east", "west", "up", "down")) {
+			JsonObject face = new JsonObject();
+			face.addProperty("texture", "#all");
+			face.addProperty("cullface", name);
+			faces.add(name, face);
+		}
+		element.add("faces", faces);
+		JsonArray elements = new JsonArray(); elements.add(element);
+		root.add("elements", elements);
+		return root;
+	}
+
 	/** NeoForge's canonical bucket silhouette with the registered fluid sprite and tint. */
 	private static void fluidBucket(ItemModelOutput itemModelOut, Item item,
 			net.minecraft.world.level.material.Fluid fluid) {
@@ -1810,7 +1914,7 @@ public class ChromaModelProvider extends ModelProvider {
 		for (CrystalElement element : CrystalElement.elements) {
 			Block block = ChromaBlocks.crystalGlass(element).get();
 			blockStateOut.accept(MultiVariantGenerator.dispatch(block, variant));
-			itemModelOut.accept(block.asItem(), ItemModelUtils.tintedModel(id, new Constant(0xff000000 | element.getColor())));
+			itemModelOut.accept(block.asItem(), ItemModelUtils.tintedModel(id, new Constant(0xff000000 | element.color())));
 		}
 	}
 
@@ -1936,7 +2040,7 @@ public class ChromaModelProvider extends ModelProvider {
 			Identifier saplingModel = ModelTemplates.TINTED_CROSS.create(sapling, TextureMapping.cross(saplingTexture), modelOut);
 			blockStateOut.accept(MultiVariantGenerator.dispatch(sapling,
 					new MultiVariant(WeightedList.of(new Variant(saplingModel)))));
-			itemModelOut.accept(sapling.asItem(), ItemModelUtils.tintedModel(saplingModel, new Constant(element.getColor())));
+			itemModelOut.accept(sapling.asItem(), ItemModelUtils.tintedModel(saplingModel, new Constant(element.color())));
 		}
 
 		Block glowingLeaves = ChromaBlocks.GLOWING_LEAVES.get();
@@ -1981,7 +2085,7 @@ public class ChromaModelProvider extends ModelProvider {
 					new MultiVariant(WeightedList.of(new Variant(flowerModel)))));
 			Identifier flowerItem = ModelTemplates.FLAT_ITEM.create(ModelLocationUtils.getModelLocation(flower.asItem()),
 					TextureMapping.layer0(flowerTexture), modelOut);
-			itemModelOut.accept(flower.asItem(), ItemModelUtils.tintedModel(flowerItem, new Constant(element.getColor())));
+			itemModelOut.accept(flower.asItem(), ItemModelUtils.tintedModel(flowerItem, new Constant(element.color())));
 
 			for (boolean fertile : new boolean[] {false, true}) {
 				Block vine = ChromaBlocks.dyeVine(element, fertile).get();
@@ -1989,7 +2093,7 @@ public class ChromaModelProvider extends ModelProvider {
 						new reika.chromaticraft.render.model.DyeVineModel.Unbaked(strands, glow)));
 				Identifier vineItem = ModelTemplates.FLAT_ITEM.create(ModelLocationUtils.getModelLocation(vine.asItem()),
 						TextureMapping.layer0(vineTexture), modelOut);
-				itemModelOut.accept(vine.asItem(), ItemModelUtils.tintedModel(vineItem, new Constant(element.getColor())));
+				itemModelOut.accept(vine.asItem(), ItemModelUtils.tintedModel(vineItem, new Constant(element.color())));
 			}
 		}
 	}

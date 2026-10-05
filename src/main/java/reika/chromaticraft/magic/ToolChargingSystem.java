@@ -1,7 +1,5 @@
 package reika.chromaticraft.magic;
 
-import java.util.Collection;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
@@ -14,7 +12,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.material.FluidState;
-
 import reika.chromaticraft.base.tileentity.TileEntityLocusPoint;
 import reika.chromaticraft.magic.interfaces.CrystalSource;
 import reika.chromaticraft.magic.interfaces.PoweredItem;
@@ -29,6 +26,8 @@ import reika.dragonapi.interfaces.entity.ChunkLoadingEntity;
 import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
 import reika.dragonapi.libraries.registry.ReikaItemHelper;
 
+import java.util.Collection;
+
 /**
  * V33a {@code ToolChargingSystem}: the charge held by a {@link PoweredItem}, kept in the stack's {@code "charge"} tag.
  * A powered item lying on the ground within 32 blocks of a crystal source conducting its colour fills from it -- faster
@@ -42,9 +41,6 @@ public class ToolChargingSystem {
 	public static final ToolChargingSystem instance = new ToolChargingSystem();
 
 	private static final int CHARGE_RANGE = 32;
-
-	/** V33a {@code ItemEfficiencyCrystal.TAG}, stamped each tick an Efficiency Crystal is carried. */
-	private static final String EFFICIENCY_TAG = "last_efficiency";
 
 	private ToolChargingSystem() {
 
@@ -70,20 +66,12 @@ public class ToolChargingSystem {
 	}
 
 	public int removeCharge(ItemStack is, int amt, Player ep) {
-		if (isEfficiencyActive(ep))
+		if (reika.chromaticraft.items.tools.ItemEfficiencyCrystal.isActive(ep))
 			amt = Math.max(1, amt/3);
 		int get = this.getCharge(is);
 		amt = Math.min(get, amt);
 		this.setCharge(is, get-amt);
 		return amt;
-	}
-
-	/**
-	 * V33a {@code ItemEfficiencyCrystal.isActive}: carried within the last second, it cuts tool drain to a third.
-	 * CHROMA-PORT: the Efficiency Crystal (ENERGY tier) is not ported; it writes this same player tag when it lands.
-	 */
-	private static boolean isEfficiencyActive(Player ep) {
-		return ep.level().getGameTime()-ep.getPersistentData().getLongOr(EFFICIENCY_TAG, Long.MIN_VALUE/2) < 20;
 	}
 
 	private void setCharge(ItemStack is, int amt) {

@@ -1,26 +1,19 @@
 package reika.chromaticraft.registry;
 
-import java.util.HashSet;
-import java.util.Set;
-
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.item.BlockItem;
-import net.minecraft.world.item.BucketItem;
-import net.minecraft.world.item.CreativeModeTab;
-import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
+import net.minecraft.world.item.*;
 import net.minecraft.world.level.block.Block;
-
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
-
 import reika.chromaticraft.ChromatiCraft;
+
+import java.util.HashSet;
+import java.util.Set;
 
 /** The six V33a ChromatiCraft creative inventories, populated from modern registry identities. */
 @EventBusSubscriber(modid = ChromatiCraft.MODID)
@@ -63,6 +56,8 @@ public final class ChromaTabs {
 			Set<Item> seen = new HashSet<>();
 			for (var holder : ChromaBlocks.ITEMS.getEntries()) {
 				Item item = holder.get();
+            if (!reika.dragonapi.ModList.VOIDMONSTER.isLoaded() && (item==ChromaItems.VOID_MONSTER_ESSENCE.get()
+                    || item==ChromaBlocks.VOID_MONSTER_TRAP.get().asItem() || item==ChromaBlocks.DEATH_FOG_EMITTER.get().asItem())) continue;
 				if (!(item instanceof BlockItem blockItem) || item == Items.AIR || !seen.add(item))
 					continue;
 				// V33a ItemAdjacencyPlacer.getSubItems, on the main tab: every tier of each implemented colour.
@@ -84,6 +79,8 @@ public final class ChromaTabs {
 		Set<Item> seen = new HashSet<>();
 		for (var holder : ChromaItems.ITEMS.getEntries()) {
 			Item item = holder.get();
+            if (!reika.dragonapi.ModList.VOIDMONSTER.isLoaded() && (item==ChromaItems.VOID_MONSTER_ESSENCE.get()
+                    || item==ChromaBlocks.VOID_MONSTER_TRAP.get().asItem() || item==ChromaBlocks.DEATH_FOG_EMITTER.get().asItem())) continue;
 			if (item == ChromaItems.INFO_FRAGMENT.get() || !seen.add(item))
 				continue;
 			// Listed per colour below, all seven V33a variants in order.

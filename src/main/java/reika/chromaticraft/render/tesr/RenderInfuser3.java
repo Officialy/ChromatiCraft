@@ -87,8 +87,8 @@ public final class RenderInfuser3 implements BlockEntityRenderer<TileEntityAuraI
 			for (int degrees = 0; degrees < 360; degrees += 45) {
 				int index = (((int)state.tick / 4) + degrees / 45) & 15;
 				int next = (index + 1) & 15;
-				int rgb = ReikaColorAPI.mixColors(CrystalElement.elements[index].getColor(),
-						CrystalElement.elements[next].getColor(), mix);
+				int rgb = ReikaColorAPI.mixColors(CrystalElement.elements[index].color(),
+						CrystalElement.elements[next].color(), mix);
 				double radians = Math.toRadians(degrees);
 				Vector3f normal = new Vector3f((float)(0.5 * Math.cos(radians)), -0.3375F,
 						(float)(0.5 * Math.sin(radians))).normalize();

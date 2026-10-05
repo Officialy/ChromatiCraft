@@ -1,7 +1,5 @@
 package reika.chromaticraft.modinterface.ae;
 
-import net.minecraft.world.item.ItemStack;
-
 import appeng.api.config.Actionable;
 import appeng.api.config.PowerMultiplier;
 import appeng.api.implementations.blockentities.IChestOrDrive;
@@ -9,6 +7,7 @@ import appeng.api.networking.IGrid;
 import appeng.api.networking.energy.IEnergyService;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.storage.cells.StorageCell;
+import net.minecraft.world.item.ItemStack;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.dragonapi.modinteract.deepinteract.MESystemReader;
 

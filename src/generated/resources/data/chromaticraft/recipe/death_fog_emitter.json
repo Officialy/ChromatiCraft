@@ -1,0 +1,87 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "voidmonster"
+    }
+  ],
+  "type": "chromaticraft:casting",
+  "duration": 20,
+  "experience": 40,
+  "grid": [
+    {
+      "ingredient": "minecraft:cobblestone",
+      "slot": 0
+    },
+    {
+      "ingredient": "chromaticraft:aura_dust",
+      "slot": 1
+    },
+    {
+      "ingredient": "minecraft:cobblestone",
+      "slot": 2
+    },
+    {
+      "ingredient": "chromaticraft:void_monster_essence",
+      "slot": 3
+    },
+    {
+      "ingredient": "minecraft:bucket",
+      "slot": 4
+    },
+    {
+      "ingredient": "chromaticraft:void_monster_essence",
+      "slot": 5
+    },
+    {
+      "ingredient": "minecraft:cobblestone",
+      "slot": 6
+    },
+    {
+      "ingredient": "minecraft:cobblestone",
+      "slot": 7
+    },
+    {
+      "ingredient": "minecraft:cobblestone",
+      "slot": 8
+    }
+  ],
+  "result": {
+    "id": "chromaticraft:death_fog_emitter"
+  },
+  "runes": [
+    {
+      "element": "magenta",
+      "offset": [
+        -2,
+        0,
+        5
+      ]
+    },
+    {
+      "element": "lightgray",
+      "offset": [
+        4,
+        0,
+        2
+      ]
+    },
+    {
+      "element": "pink",
+      "offset": [
+        3,
+        0,
+        -4
+      ]
+    },
+    {
+      "element": "gray",
+      "offset": [
+        -4,
+        0,
+        -2
+      ]
+    }
+  ],
+  "tier": "temple"
+}

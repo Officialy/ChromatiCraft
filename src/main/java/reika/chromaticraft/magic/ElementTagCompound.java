@@ -9,18 +9,13 @@
  ******************************************************************************/
 package reika.chromaticraft.magic;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.EnumMap;
-import java.util.Iterator;
-import java.util.Set;
-
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
-
 import reika.chromaticraft.registry.CrystalElement;
 import reika.dragonapi.instantiable.data.Proportionality;
 import reika.dragonapi.instantiable.data.WeightedRandom;
+
+import java.util.*;
 
 public final class ElementTagCompound {
 
@@ -166,11 +161,11 @@ public final class ElementTagCompound {
 	}
 
 	public void maximizeWith(ElementTag tag) {
-		this.setTag(tag.element, Math.max(this.getValue(tag.element), tag.value));
+		this.setTag(tag.element(), Math.max(this.getValue(tag.element()), tag.value()));
 	}
 
 	public void minimizeWith(ElementTag tag) {
-		this.setTag(tag.element, Math.min(this.getValue(tag.element), tag.value));
+		this.setTag(tag.element(), Math.min(this.getValue(tag.element()), tag.value()));
 		this.clearEmptyKeys();
 	}
 
@@ -419,7 +414,7 @@ public final class ElementTagCompound {
 	}
 
 	public int getAverageValue() {
-		return this.getTotalEnergy()/data.keySet().size();
+		return this.getTotalEnergy()/ data.size();
 	}
 
 	public String toDisplay() {

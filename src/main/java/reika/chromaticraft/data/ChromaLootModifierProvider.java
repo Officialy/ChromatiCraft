@@ -1,17 +1,16 @@
 package reika.chromaticraft.data;
 
-import java.util.concurrent.CompletableFuture;
-
+import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.data.PackOutput;
-import net.minecraft.core.Holder;
-import java.util.Optional;
 import net.neoforged.neoforge.common.data.GlobalLootModifierProvider;
 import net.neoforged.neoforge.common.loot.AddTableLootModifier;
 import net.neoforged.neoforge.common.loot.LootTableIdCondition;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.data.ChromaChestLoot.Location;
+
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Attaches each {@link ChromaChestLoot} subtable to the vanilla chest table it belongs to.

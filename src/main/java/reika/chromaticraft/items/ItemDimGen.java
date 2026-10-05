@@ -1,58 +1,41 @@
 /*******************************************************************************
  * @author Reika Kalseki
- * 
- * Copyright 2017
- * 
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
+ * Copyright 2017. All rights reserved.
+ * Distribution requires explicit, prior permission from the owner.
  ******************************************************************************/
 package reika.chromaticraft.items;
 
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
-import net.minecraft.world.World;
-import net.minecraftforge.common.util.ForgeDirection;
-
-import reika.chromaticraft.auxiliary.ChromaStacks;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.context.UseOnContext;
 import reika.chromaticraft.auxiliary.interfaces.TieredItem;
-import reika.chromaticraft.base.ItemChromaMulti;
-import reika.chromaticraft.block.dimension.blockdimensiondeco.DimDecoTypes;
 import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.registry.ChromaBlocks;
-import reika.dragonapi.libraries.registry.ReikaItemHelper;
+import reika.chromaticraft.registry.ChromaDimensionItems;
+import reika.chromaticraft.registry.ProximaDecoTypes;
 
-public class ItemDimGen extends ItemChromaMulti implements TieredItem {
+/** V33a DIMGEN resources; only Miasmatic Essence places its corresponding decoration. */
+public class ItemDimGen extends Item implements TieredItem {
+    private final ChromaDimensionItems type;
+    public ItemDimGen(Properties properties, ChromaDimensionItems type) {
+        super(properties);
+        this.type = type;
+    }
 
-	public ItemDimGen(int tex) {
-		super(tex);
-	}
+    @Override public InteractionResult useOn(UseOnContext context) {
+        if (type != ChromaDimensionItems.MIASMA) return super.useOn(context);
+        var pos = context.getClickedPos().relative(context.getClickedFace());
+        var player = context.getPlayer();
+        if (!context.getLevel().isEmptyBlock(pos) || (player != null
+                && !player.mayUseItemAt(pos, context.getClickedFace(), context.getItemInHand())))
+            return InteractionResult.PASS;
+        if (!context.getLevel().isClientSide()) {
+            context.getLevel().setBlockAndUpdate(pos, ChromaBlocks.deco(ProximaDecoTypes.MIASMA).get().defaultBlockState());
+            if (player == null || !player.isCreative()) context.getItemInHand().shrink(1);
+        }
+        return InteractionResult.SUCCESS;
+    }
 
-	@Override
-	public boolean onItemUse(ItemStack is, EntityPlayer ep, World world, int x, int y, int z, int s, float a, float b, float c) {
-		if (ReikaItemHelper.matchStacks(is, ChromaStacks.miasma)) {
-			ForgeDirection dir = ForgeDirection.VALID_DIRECTIONS[s];
-			int dx = x+dir.offsetX;
-			int dy = y+dir.offsetY;
-			int dz = z+dir.offsetZ;
-			if (world.getBlock(dx, dy, dz).isAir(world, dx, dy, dz)) {
-				world.setBlock(dx, dy, dz, ChromaBlocks.DIMGEN.getBlockInstance(), DimDecoTypes.MIASMA.ordinal(), 3);
-				if (!ep.capabilities.isCreativeMode)
-					is.stackSize--;
-				return true;
-			}
-		}
-		return super.onItemUse(is, ep, world, x, y, z, s, a, b, c);
-	}
-
-	@Override
-	public ProgressStage getDiscoveryTier(ItemStack is) {
-		return ProgressStage.DIMENSION;
-	}
-
-	@Override
-	public boolean isTiered(ItemStack is) {
-		return true;
-	}
-
+    @Override public ProgressStage getDiscoveryTier(net.minecraft.world.item.ItemStack stack) { return ProgressStage.DIMENSION; }
+    @Override public boolean isTiered(net.minecraft.world.item.ItemStack stack) { return true; }
 }

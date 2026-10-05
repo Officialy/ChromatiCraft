@@ -9,13 +9,12 @@
  ******************************************************************************/
 package reika.chromaticraft.render.particle;
 
-import java.util.List;
-
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.phys.Vec3;
-
 import reika.chromaticraft.registry.CrystalElement;
+
+import java.util.List;
 
 public final class EntityRelayPathFX extends ChromaParticle {
 
@@ -46,7 +45,7 @@ public final class EntityRelayPathFX extends ChromaParticle {
         this.gravity = 0;
         this.friction = 0.98F;
         this.xd = this.yd = this.zd = 0;
-        this.setRgb(color.getColor());
+        this.setRgb(color.color());
     }
 
     @Override

@@ -1,7 +1,7 @@
 package reika.chromaticraft.container;
 
-import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.DataSlot;
@@ -10,7 +10,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.Fluids;
-
 import reika.chromaticraft.registry.ChromaMenus;
 import reika.chromaticraft.tileentity.acquisition.TileEntityCollector;
 import reika.dragonapi.base.CoreContainer;

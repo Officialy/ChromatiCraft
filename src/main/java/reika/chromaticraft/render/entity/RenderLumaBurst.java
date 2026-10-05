@@ -44,7 +44,7 @@ public class RenderLumaBurst extends EntityRenderer<EntityLumaBurst, RenderLumaB
 	@Override
 	public void extractRenderState(EntityLumaBurst entity, State state, float partialTicks) {
 		super.extractRenderState(entity, state, partialTicks);
-		state.color = 0xFF000000 | entity.getColor().getColor();
+		state.color = 0xFF000000 | entity.getColor().color();
 	}
 
 	@Override

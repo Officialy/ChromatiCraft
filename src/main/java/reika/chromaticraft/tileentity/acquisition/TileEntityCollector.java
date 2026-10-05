@@ -9,16 +9,9 @@
  ******************************************************************************/
 package reika.chromaticraft.tileentity.acquisition;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.NonNullList;
-import net.minecraft.core.UUIDUtil;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
@@ -43,7 +36,6 @@ import net.neoforged.neoforge.transfer.TransferPreconditions;
 import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import net.neoforged.neoforge.transfer.transaction.SnapshotJournal;
 import net.neoforged.neoforge.transfer.transaction.TransactionContext;
-
 import reika.chromaticraft.auxiliary.interfaces.ChromaExtractable;
 import reika.chromaticraft.auxiliary.interfaces.OwnedTile;
 import reika.chromaticraft.base.tileentity.TileEntityChromaticBase;
@@ -55,6 +47,9 @@ import reika.chromaticraft.registry.ChromaTiles;
 import reika.chromaticraft.render.particle.ChromaParticle;
 import reika.dragonapi.interfaces.blockentity.ConditionBreakDropsInventory;
 import reika.dragonapi.modinteract.ReikaXPFluidHelper;
+
+import java.util.List;
+import java.util.UUID;
 
 /** Complete V33a Chroma Collector on the 26.2 inventory, persistence, and transfer APIs. */
 public final class TileEntityCollector extends TileEntityChromaticBase

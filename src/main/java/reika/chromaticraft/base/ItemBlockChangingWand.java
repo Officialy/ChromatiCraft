@@ -1,25 +1,26 @@
 package reika.chromaticraft.base;
 
-import net.minecraft.block.Block;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
 
 import reika.chromaticraft.registry.CrystalElement;
-import reika.dragonapi.auxiliary.progressiverecursivebreaker.BreakerCallback;
+import reika.dragonapi.auxiliary.ProgressiveRecursiveBreaker.BreakerCallback;
 import reika.dragonapi.instantiable.data.blockstruct.BlockArray;
 
 public abstract class ItemBlockChangingWand extends ItemWandBase implements BreakerCallback {
 
-	public ItemBlockChangingWand(int index) {
-		super(index);
+	public ItemBlockChangingWand(Properties properties) {
+		super(properties);
 		this.addEnergyCost(CrystalElement.BROWN, 1);
 	}
 
-	public abstract int getDepth(EntityPlayer ep, World world, int x, int y, int z);
+    public abstract int getDepth(Player player, Level level, BlockPos pos);
 
-	public abstract void getSpreadBlocks(World world, int x, int y, int z, BlockArray arr, EntityPlayer ep, ItemStack is);
+	public abstract void getSpreadBlocks(Level level, BlockPos pos, BlockArray blocks, Player player, ItemStack stack);
 
-	public abstract boolean canSpreadOn(World world, int x, int y, int z, Block b, int meta);
+	public abstract boolean canSpreadOn(Level level, BlockPos pos, BlockState state);
 
 }

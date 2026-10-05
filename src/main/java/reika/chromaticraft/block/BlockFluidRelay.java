@@ -9,8 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.block;
 
-import java.util.EnumMap;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerPlayer;
@@ -33,9 +31,10 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
-
 import reika.chromaticraft.registry.ChromaTiles;
 import reika.chromaticraft.tileentity.transport.TileEntityFluidRelay;
+
+import java.util.EnumMap;
 
 /**
  * V33a FLUIDRELAY on {@code TILEMODELLED3}: the Fluid Link Anchor. It is placed against a face, which it then holds

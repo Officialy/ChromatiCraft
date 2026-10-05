@@ -141,7 +141,7 @@ public class EntityLumaBurst extends ParticleEntity {
 	}
 
 	private void doParticles() {
-		int c = ReikaColorAPI.mixColors(color.getColor(), 0x000000, 0.5F);
+		int c = ReikaColorAPI.mixColors(color.color(), 0x000000, 0.5F);
 		for (double d = 0; d <= 1; d += 0.25) {
 			double px = this.getX() - (this.getX() - this.xo) * d;
 			double py = this.getY() - (this.getY() - this.yo) * d;
@@ -158,17 +158,14 @@ public class EntityLumaBurst extends ParticleEntity {
 	@Override
 	protected boolean onEnterBlock(Level world, BlockPos pos) {
 		BlockState state = world.getBlockState(pos);
-		if (state.isAir()) {
-			return false;
-		}
+        return !state.isAir();
 		// CHROMA-PORT: V33a routes a Luma Burst that enters a Gravity Tile
 		// (ChromaBlocks.GRAVITY / block.dimension.structure.gravity.BlockGravityTile, still pristine
 		// 1.7.10) into `GravityTiles.list[meta].onPulse(world, x, y, z, this)`, which decides whether
 		// the pulse is absorbed. Neither ChromaBlocks.GRAVITY nor a modern GravityTiles enum exists
 		// yet, so every non-air block currently absorbs the burst (matches V33a's own fallback
 		// `return true` for every other solid block).
-		return true;
-	}
+    }
 
 	@Override
 	public void applyEntityCollision(Entity e) {

@@ -13,8 +13,8 @@ import reika.chromaticraft.registry.CrystalElement;
 
 public interface CrystalBattery extends CrystalReceiver, CrystalSource, ChargingPoint {
 
-	public int getMaxStorage(CrystalElement e);
+	int getMaxStorage(CrystalElement e);
 
-	public float getFillFraction(CrystalElement e);
+	float getFillFraction(CrystalElement e);
 
 }

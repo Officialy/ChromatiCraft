@@ -1,189 +1,129 @@
 package reika.chromaticraft;
 
 import com.mojang.serialization.MapCodec;
-
-import net.minecraft.core.BlockPos;
-import net.minecraft.core.NonNullList;
-import net.minecraft.core.Direction;
-import net.minecraft.core.Holder;
+import net.minecraft.core.*;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.gametest.framework.GameTestInstance;
 import net.minecraft.gametest.framework.TestData;
 import net.minecraft.gametest.framework.TestEnvironmentDefinition;
-import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
-import net.minecraft.world.effect.MobEffects;
-import net.minecraft.world.InteractionResult;
-import net.minecraft.world.entity.EntitySpawnReason;
-import net.minecraft.world.entity.EntityTypes;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.level.GameType;
-import net.minecraft.world.item.ItemStackTemplate;
-import net.minecraft.world.item.Items;
-import net.minecraft.world.item.trading.MerchantOffer;
-import net.minecraft.world.item.trading.VillagerTrade;
-import net.minecraft.world.item.crafting.Ingredient;
-import net.minecraft.world.item.crafting.CraftingInput;
-import net.minecraft.world.item.crafting.CraftingRecipe;
-import net.minecraft.world.item.crafting.RecipeHolder;
-import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.nbt.Tag;
-import net.minecraft.util.RandomSource;
-import net.minecraft.util.ProblemReporter;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.Identifier;
-import net.minecraft.world.entity.item.ItemEntity;
-import net.minecraft.world.entity.boss.enderdragon.EndCrystal;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.ProblemReporter;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.boss.enderdragon.EndCrystal;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.ItemStackTemplate;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.crafting.*;
+import net.minecraft.world.item.trading.MerchantOffer;
+import net.minecraft.world.item.trading.VillagerTrade;
+import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.CrossCollisionBlock;
+import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.block.Rotation;
+import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.loot.BuiltInLootTables;
 import net.minecraft.world.level.storage.loot.LootContext;
-import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.LootParams;
+import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
-import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
-
 import net.neoforged.neoforge.event.RegisterGameTestsEvent;
-import reika.chromaticraft.items.tools.ItemAuraPouch;
+import net.neoforged.neoforge.fluids.FluidType;
+import net.neoforged.neoforge.registries.DeferredRegister;
+import net.neoforged.neoforge.transfer.fluid.FluidResource;
+import net.neoforged.neoforge.transfer.transaction.Transaction;
+import reika.chromaticraft.auxiliary.CrystalNetworkLogger.FlowFail;
 import reika.chromaticraft.auxiliary.ExplorationMonitor;
 import reika.chromaticraft.auxiliary.PoolAlloyingHandler;
 import reika.chromaticraft.auxiliary.recipemanagers.CastingRecipeInput;
 import reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe;
 import reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe.AuraRequirement;
 import reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe.StandIngredient;
-import net.neoforged.neoforge.registries.DeferredRegister;
-
-import reika.chromaticraft.block.BlockEncrustedCrystal;
-import reika.chromaticraft.block.crystal.BlockCaveCrystal;
-import reika.chromaticraft.block.BlockEncrustedCrystal.TileCrystalEncrusted;
-import reika.chromaticraft.data.ChromaChestLoot;
-import reika.chromaticraft.data.ChromaTestStructureProvider;
-import reika.chromaticraft.data.ChromaStructureTemplateProvider;
-import reika.chromaticraft.data.ChromaWorldGenProvider;
 import reika.chromaticraft.auxiliary.structure.NBTStructureLoader;
+import reika.chromaticraft.auxiliary.structure.PortalStructure;
+import reika.chromaticraft.block.BlockChromaPortal;
 import reika.chromaticraft.block.BlockCrystalRune;
 import reika.chromaticraft.block.BlockCrystallineStone;
+import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
+import reika.chromaticraft.block.BlockEncrustedCrystal;
+import reika.chromaticraft.block.BlockEncrustedCrystal.TileCrystalEncrusted;
+import reika.chromaticraft.block.crystal.BlockCaveCrystal;
+import reika.chromaticraft.block.dimension.structure.lightpanel.BlockLightPanel;
+import reika.chromaticraft.block.dimension.structure.lightpanel.BlockLightSwitch;
+import reika.chromaticraft.block.dimension.structure.locks.BlockColoredLock;
 import reika.chromaticraft.block.worldgen26.BlockCliffStone;
-import reika.chromaticraft.base.CrystalTypeBlock;
+import reika.chromaticraft.data.ChromaChestLoot;
+import reika.chromaticraft.data.ChromaStructureTemplateProvider;
+import reika.chromaticraft.data.ChromaTestStructureProvider;
+import reika.chromaticraft.data.ChromaWorldGenProvider;
 import reika.chromaticraft.entity.EntityGlowCloud;
 import reika.chromaticraft.entity.EntityPylonOverloadShock;
-import reika.chromaticraft.auxiliary.CrystalNetworkLogger.FlowFail;
+import reika.chromaticraft.item.ItemCrystalShard;
+import reika.chromaticraft.items.ItemStorageCrystal;
+import reika.chromaticraft.items.tools.ItemAuraPouch;
+import reika.chromaticraft.magic.ChromaAbilityData;
+import reika.chromaticraft.magic.ElementBufferCapacityBoost;
 import reika.chromaticraft.magic.castingtuning.CastingTuningRegistry;
 import reika.chromaticraft.magic.interfaces.CrystalReceiver;
-import reika.chromaticraft.magic.ChromaAbilityData;
 import reika.chromaticraft.magic.interfaces.CrystalSource;
 import reika.chromaticraft.magic.interfaces.CrystalTransmitter;
+import reika.chromaticraft.magic.lore.Towers;
 import reika.chromaticraft.magic.network.CrystalFlow;
 import reika.chromaticraft.magic.network.CrystalNetworker;
 import reika.chromaticraft.magic.network.PylonFinder;
-import reika.chromaticraft.registry.ChromaCraftingItems;
-import reika.chromaticraft.registry.ChromaEntityTypes;
-import reika.chromaticraft.registry.ChromaClusterItems;
-import reika.chromaticraft.registry.ChromaItems;
-import reika.chromaticraft.registry.ChromaTieredItems;
-import reika.chromaticraft.registry.StorageCrystalTier;
-import reika.chromaticraft.item.ItemCrystalShard;
-import reika.chromaticraft.items.ItemStorageCrystal;
-import reika.chromaticraft.magic.progression.CastingProgression;
-import reika.chromaticraft.magic.progression.ProgressStage;
-import reika.chromaticraft.magic.progression.ResearchLevel;
-import reika.chromaticraft.magic.progression.ResearchProgress;
-import reika.chromaticraft.magic.progression.LexiconData;
-import reika.chromaticraft.magic.progression.LexiconCatalog;
-import reika.chromaticraft.magic.progression.LexiconDescriptions;
-import reika.chromaticraft.magic.progression.ProgressionDescriptions;
-import reika.chromaticraft.tileentity.recipe.TileEntityItemStand;
-import reika.chromaticraft.tileentity.recipe.TileEntityCastingTable;
-import reika.chromaticraft.tileentity.recipe.TileEntityItemInfuser;
-import reika.chromaticraft.tileentity.recipe.TileEntityAuraInfuser;
-import reika.chromaticraft.tileentity.recipe.TileEntityPlayerInfuser;
-import reika.chromaticraft.magic.ElementBufferCapacityBoost;
-import reika.chromaticraft.magic.progression.ProgressionManager;
-import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.tileentity.auxiliary.TileEntityFocusCrystal;
-import reika.chromaticraft.tileentity.auxiliary.TileEntityCrystalCharger;
-import reika.chromaticraft.tileentity.auxiliary.TileEntityPylonTurboCharger;
-import reika.chromaticraft.tileentity.TileEntityPersonalCharger;
+import reika.chromaticraft.magic.progression.*;
+import reika.chromaticraft.registry.*;
+import reika.chromaticraft.tileentity.*;
 import reika.chromaticraft.tileentity.acquisition.TileEntityCollector;
-import reika.chromaticraft.registry.ChromaStructures;
-import reika.chromaticraft.registry.ChromaFluids;
-import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.tileentity.TileEntityDisplayPoint;
-import reika.chromaticraft.tileentity.TileEntityLootChest;
-import reika.chromaticraft.tileentity.TileEntityStructureController;
-import reika.chromaticraft.tileentity.TileEntityLockKey;
-import reika.chromaticraft.tileentity.TileEntityChromaDoor;
-import reika.chromaticraft.world.OverworldStructureFeature;
-import reika.chromaticraft.tileentity.networking.TileEntityCompoundRepeater;
 import reika.chromaticraft.tileentity.auxiliary.TileEntityChromaCrystal;
-import reika.chromaticraft.tileentity.networking.TileEntityCrystalPylon;
-import reika.chromaticraft.tileentity.networking.TileEntityCrystalRepeater;
-import reika.chromaticraft.tileentity.networking.TileEntityWeakRepeater;
-import reika.chromaticraft.tileentity.networking.TileEntityRelaySource;
-import reika.dragonapi.instantiable.data.blockstruct.FilledBlockArray;
-import reika.chromaticraft.registry.ChromaDecoFlowers;
+import reika.chromaticraft.tileentity.auxiliary.TileEntityCrystalCharger;
+import reika.chromaticraft.tileentity.auxiliary.TileEntityFocusCrystal;
+import reika.chromaticraft.tileentity.auxiliary.TileEntityPylonTurboCharger;
+import reika.chromaticraft.tileentity.networking.*;
+import reika.chromaticraft.tileentity.recipe.*;
 import reika.chromaticraft.world.CrystalFeature;
 import reika.chromaticraft.world.DataTowerFeature;
-import reika.chromaticraft.magic.lore.Towers;
-import reika.chromaticraft.tileentity.TileEntityDataNode;
-import reika.chromaticraft.tileentity.TileEntityDummyAux;
+import reika.chromaticraft.world.OverworldStructureFeature;
 import reika.chromaticraft.world.PylonFeature;
-import reika.chromaticraft.tileentity.networking.TileEntityPylonLink;
-import reika.dragonapi.instantiable.data.immutable.DecimalPosition;
-import reika.dragonapi.instantiable.data.immutable.WorldLocation;
-import reika.dragonapi.libraries.ReikaPlayerAPI;
-import reika.dragonapi.libraries.registry.ReikaItemHelper;
-import reika.dragonapi.libraries.mathsci.ReikaMusicHelper.MusicKey;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.function.Consumer;
-import net.neoforged.neoforge.transfer.fluid.FluidResource;
-import net.neoforged.neoforge.transfer.transaction.Transaction;
-import net.neoforged.neoforge.fluids.FluidType;
-import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
-import reika.chromaticraft.block.BlockChromaPortal;
-import reika.chromaticraft.tileentity.TileEntityCrystalPortal;
-import reika.chromaticraft.auxiliary.structure.PortalStructure;
-import reika.chromaticraft.world.dimension.DimensionStructureType;
-import reika.chromaticraft.world.dimension.ProximaGenerators;
-import reika.chromaticraft.world.dimension.RegionMapper;
-import reika.chromaticraft.world.dimension.BiomeDistributor;
-import reika.chromaticraft.world.dimension.ProximaTerrainProfile;
-import reika.chromaticraft.registry.ChromaDimensions;
-import reika.chromaticraft.world.dimension.ProximaNoiseSettings;
-import reika.chromaticraft.world.dimension.ProximaTerrainDensityFunction;
+import reika.chromaticraft.world.dimension.*;
+import reika.chromaticraft.world.dimension.biome.ProximaBiomeSource;
 import reika.chromaticraft.world.dimension.biome.ProximaBiomeType;
 import reika.chromaticraft.world.dimension.biome.ProximaBiomes;
 import reika.chromaticraft.world.dimension.biome.ProximaSubBiomes;
-import reika.chromaticraft.world.dimension.biome.ProximaBiomeSource;
-import net.minecraft.core.HolderGetter;
-import net.minecraft.core.QuartPos;
-import net.minecraft.world.level.biome.Biome;
-import reika.chromaticraft.world.dimension.StructureCalculator;
-import reika.chromaticraft.block.dimension.structure.lightpanel.BlockLightPanel;
-import reika.chromaticraft.block.dimension.structure.lightpanel.BlockLightSwitch;
 import reika.chromaticraft.world.dimension.structure.lightpanel.LightType;
-import reika.chromaticraft.block.dimension.structure.locks.BlockColoredLock;
-import reika.chromaticraft.tileentity.TileEntityColorLock;
+import reika.dragonapi.instantiable.data.blockstruct.FilledBlockArray;
+import reika.dragonapi.instantiable.data.immutable.DecimalPosition;
+import reika.dragonapi.instantiable.data.immutable.WorldLocation;
+import reika.dragonapi.libraries.ReikaPlayerAPI;
+import reika.dragonapi.libraries.mathsci.ReikaMusicHelper.MusicKey;
+import reika.dragonapi.libraries.registry.ReikaItemHelper;
+
+import java.util.*;
+import java.util.function.Consumer;
 
 /**
  * In-world game tests for the progression core — runnable headless via
@@ -332,6 +272,16 @@ public final class ChromaGameTests {
 		Holder<TestEnvironmentDefinition<?>> env = event.registerEnvironment(
 				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "default"),
 				new TestEnvironmentDefinition.AllOf(List.of()));
+		WorldgenParityGameTests.register(event, env);
+		ChromaAdvancementTests.register(event, env);
+		ChromaItemPortTests.register(event, env);
+		ChromaWandPortTests.register(event, env);
+        ChromaVoidCompatibilityTests.register(event, env);
+        if (reika.dragonapi.ModList.VOIDMONSTER.isLoaded())
+            reika.chromaticraft.modinterface.voidritual.VoidCompatibilityGameTests.register(event, env);
+		ChromaTextTests.register(event, env);
+		reika.chromaticraft.world.OverworldGenerationGameTests.register(event, env);
+		//reika.chromaticraft.world.OverworldGenerationFixTests.register(event, env);
 
 		// Applied Energistics 2 integration; only with AE2 in run-gametest/mods (the normal GameTest runtime has none).
 		if (reika.dragonapi.ModList.APPENG.isLoaded())
@@ -345,6 +295,7 @@ public final class ChromaGameTests {
 		register(event, env, "pylon_color_discovery_on_sight", ChromaGameTests::pylonColorDiscoveryOnSight);
 		register(event, env, "progression_chained_energy_idea", ChromaGameTests::chainedEnergyIdea);
 		register(event, env, "network_pylon_to_receiver", ChromaGameTests::pylonToReceiver);
+		register(event, env, "wand_bottleneck_network_blink", ChromaGameTests::bottleneckNetworkBlink);
 		register(event, env, "relay_path_routing", ChromaGameTests::relayPathRouting);
 		register(event, env, "relay_consumer_dependencies", ChromaGameTests::relayConsumerDependencies);
 		register(event, env, "network_pylon_repeater_receiver", ChromaGameTests::pylonRepeaterReceiver);
@@ -492,7 +443,11 @@ public final class ChromaGameTests {
 		register(event, env, "music_puzzle_layout", ChromaGameTests::musicPuzzleLayout);
 		register(event, env, "cellular_automata_rules", ChromaGameTests::cellularAutomataRules);
 		register(event, env, "laser_puzzle_blueprints", ChromaGameTests::laserPuzzleBlueprints);
+		register(event, env, "laser_room_templates", ChromaGameTests::laserRoomTemplates);
+		register(event, env, "laser_room_state", ChromaGameTests::laserRoomState);
 		register(event, env, "laser_pulse_interactions", ChromaGameTests::laserPulseInteractions);
+		register(event, env, "laser_runtime_room", ChromaGameTests::laserRuntimeRoom);
+		register(event, env, "laser_structure_chunk", ChromaGameTests::laserStructureChunk);
 		register(event, env, "proxima_structure_completion_loop", ChromaGameTests::proximaStructureCompletionLoop);
 		register(event, env, "aurorae_feature", ChromaGameTests::auroraeFeature);
 		register(event, env, "aurora_curtain_drift", ChromaGameTests::auroraCurtainDrift);
@@ -1078,7 +1033,8 @@ public final class ChromaGameTests {
 			// V33a admits a type only when its generator's test run produces a core.
 			java.util.Set<DimensionStructureType> ported = java.util.EnumSet.of(
 					DimensionStructureType.LIGHTPANEL, DimensionStructureType.TDMAZE,
-					DimensionStructureType.MUSIC, DimensionStructureType.GOL);
+					DimensionStructureType.MUSIC, DimensionStructureType.GOL,
+					DimensionStructureType.LASER);
 			List<DimensionStructureType> usable = DimensionStructureType.usableStructures();
 			helper.assertTrue(usable.size() == ported.size() && ported.containsAll(usable),
 					"exactly the ported puzzle generators must be usable, found " + usable);
@@ -1090,8 +1046,7 @@ public final class ChromaGameTests {
 					"every element must receive one of the ported structures, found " + assigned.size());
 			helper.assertTrue(ProximaGenerators.isReady(ProximaGenerators.Generator.STRUCTURE),
 					"finishing placement must clear the STRUCTURE bit of the generator gate");
-			// V33a's refill loop: four usable types for sixteen elements, drawn without replacement, so
-			// each round of four uses every type once and the next round bumps the generation index.
+			// V33a's refill loop draws each usable type once before bumping the generation index.
 			java.util.Map<DimensionStructureType, java.util.Set<Integer>> rounds =
 					new java.util.EnumMap<>(DimensionStructureType.class);
 			for (int i = 0; i < assigned.size(); i++) {
@@ -1108,8 +1063,9 @@ public final class ChromaGameTests {
 						"a ported type's generator must have laid out " + placement);
 			}
 			helper.assertTrue(rounds.size() == ported.size()
-							&& rounds.values().stream().allMatch(r -> r.size() == 4),
-					"each ported type must appear once in each of the four rounds, found " + rounds);
+							&& rounds.values().stream().allMatch(r -> r.size() >= 3 && r.size() <= 4)
+							&& rounds.values().stream().mapToInt(java.util.Set::size).sum() == 16,
+					"each ported type must appear once per completed round, found " + rounds);
 
 			StructureCalculator.allowUnfinishedStructures = true;
 			StructureCalculator calc = new StructureCalculator(1234L);
@@ -1197,14 +1153,14 @@ public final class ChromaGameTests {
 			// guards the HexFormat replacement that restored it.
 			ServerPlayer player = helper.makeMockServerPlayerInLevel();
 			DimensionStructureType.StructureTypeData first = placed.getFirst().typeData();
-			int password = first.getPassword(player, "26.2");
-			helper.assertTrue(password == first.getPassword(player, "26.2"),
+			int password = first.getPassword(player, "26.3");
+			helper.assertTrue(password == first.getPassword(player, "26.3"),
 					"a structure password must be stable for the same player, type and version");
-			helper.assertTrue(password != first.getPassword(player, "26.1"),
+			helper.assertTrue(password != first.getPassword(player, "26.2"),
 					"the password must depend on the game version, as V33a's Loader.MC_VERSION term does");
-			helper.assertTrue(password != placed.get(1).typeData().getPassword(player, "26.2"),
+			helper.assertTrue(password != placed.get(1).typeData().getPassword(player, "26.3"),
 					"two different structures must not share a password");
-			helper.assertTrue(first.getPassword(null, "26.2") != password,
+			helper.assertTrue(first.getPassword(null, "26.3") != password,
 					"the password must depend on the player, falling back to Reika's UUID when absent");
 		}
 		finally {
@@ -1438,6 +1394,11 @@ public final class ChromaGameTests {
 		helper.assertTrue(helper.getLevel().getBlockState(puzzleDoor).getValue(BlockColoredLock.OPEN),
 				"keys moved above both required runes must open the matching Biome Fragment door");
 		TileEntityLockKey portable = (TileEntityLockKey)helper.getLevel().getBlockEntity(firstRune.above());
+		portable.onChunkUnloaded();
+		portable.setRemoved();
+		helper.assertTrue(helper.getLevel().getBlockState(puzzleDoor).getValue(BlockColoredLock.OPEN),
+				"chunk unloading must leave installed rune keys and their door state intact");
+		portable.clearRemoved();
 		ItemStack keyStack = portable.createPortableStack(controller.getBiomeKeyChannel());
 		CompoundTag keyData = keyStack.getOrDefault(net.minecraft.core.component.DataComponents.CUSTOM_DATA,
 				net.minecraft.world.item.component.CustomData.EMPTY).copyTag();
@@ -1716,7 +1677,7 @@ public final class ChromaGameTests {
 			stacks++;
 			boolean block = net.minecraft.world.level.block.Block.byItem(stack.getItem())
 					!= net.minecraft.world.level.block.Blocks.AIR;
-			helper.assertTrue(slot < 27 ? block : !block,
+			helper.assertTrue((slot < 27) == block,
 					"Burrow cache slot " + slot + " violated V33a's block/item chest-half split");
 		}
 		helper.assertTrue(stacks > 0, "the Burrow cache's 13-20 weighted rolls must produce loot");
@@ -2415,14 +2376,14 @@ public final class ChromaGameTests {
 
 		// Nothing moves vertically, at either end or in between.
 		for (var point : drifted)
-			helper.assertTrue(Math.abs(point.yCoord - 160) < 1E-6, "a curtain point moved to y "
-					+ point.yCoord + "; the drift is sideways only, and y is reset from the baseline");
+			helper.assertTrue(Math.abs(point.yCoord() - 160) < 1E-6, "a curtain point moved to y "
+					+ point.yCoord() + "; the drift is sideways only, and y is reset from the baseline");
 
 		// Something in the middle must actually have moved, or the curtain is static.
 		boolean moved = false;
 		for (int i = 1; i < drifted.size() - 1; i++)
-			if (Math.abs(drifted.get(i).zCoord - initial.get(i).zCoord) > 1E-6
-					|| Math.abs(drifted.get(i).xCoord - initial.get(i).xCoord) > 1E-6) {
+			if (Math.abs(drifted.get(i).zCoord() - initial.get(i).zCoord()) > 1E-6
+					|| Math.abs(drifted.get(i).xCoord() - initial.get(i).xCoord()) > 1E-6) {
 				moved = true;
 				break;
 			}
@@ -2432,8 +2393,8 @@ public final class ChromaGameTests {
 
 	private static boolean near(reika.dragonapi.instantiable.data.immutable.DecimalPosition a,
 			reika.dragonapi.instantiable.data.immutable.DecimalPosition b) {
-		return Math.abs(a.xCoord - b.xCoord) < 1E-6 && Math.abs(a.yCoord - b.yCoord) < 1E-6
-				&& Math.abs(a.zCoord - b.zCoord) < 1E-6;
+		return Math.abs(a.xCoord() - b.xCoord()) < 1E-6 && Math.abs(a.yCoord() - b.yCoord()) < 1E-6
+				&& Math.abs(a.zCoord() - b.zCoord()) < 1E-6;
 	}
 
 	/** The Y=1024 Proxima arrival is survivable, but the protection is not permanent immunity. */
@@ -3218,8 +3179,7 @@ public final class ChromaGameTests {
 			BlockPos at = helper.absolutePos(new BlockPos(1 + i % 8, 2, 1 + i / 8 * 2));
 			i++;
 			var stack = reika.chromaticraft.block.dimension.BlockDimensionCore.of(element);
-			var block = (reika.chromaticraft.block.dimension.BlockDimensionCore)
-					ChromaBlocks.dimensionCore(element).get();
+			var block = ChromaBlocks.dimensionCore(element).get();
 			helper.assertTrue(stack.getItem() == block.asItem(),
 					"the creative stack for " + element + " must be that element's own registered core");
 
@@ -3690,6 +3650,94 @@ public final class ChromaGameTests {
 		helper.succeed();
 	}
 
+	/** V33a LaserLevel shell dimensions and its eighteen-cell room gate for every authored room. */
+	private static void laserRoomTemplates(GameTestHelper helper) {
+		var manager = helper.getLevel().getStructureTemplateManager();
+		var settings = new net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings();
+		for (String name : reika.chromaticraft.world.dimension.structure.LaserPuzzleLayout.roomNames(3)) {
+			var room = reika.chromaticraft.world.dimension.structure.LaserPuzzleLayout.load(name);
+			var template = manager.get(reika.chromaticraft.data.ChromaStructureTemplateProvider.laserRoom(name))
+					.orElse(null);
+			helper.assertTrue(template != null, "missing Chromatic Beams room shell " + name);
+			var size = template.getSize();
+			helper.assertTrue(size.getX() == room.sizeX() + 15 && size.getY() == 14
+					&& size.getZ() == room.sizeZ() + 17,
+					"Chromatic Beams room shell bounds drifted for " + name + ": " + size);
+			int gates = template.filterBlocks(BlockPos.ZERO, settings,
+					reika.chromaticraft.registry.ChromaBlocks.CHROMA_DOOR.get(), false).size();
+			helper.assertTrue(gates == 18,
+					"Chromatic Beams room " + name + " has " + gates + " door blocks instead of 18");
+		}
+		var tunnel = manager.get(reika.chromaticraft.data.ChromaStructureTemplateProvider.PROXIMA_LASER_TUNNEL)
+				.orElse(null);
+		helper.assertTrue(tunnel != null && tunnel.getSize().equals(new BlockPos(8, 6, 7)),
+				"Chromatic Beams connector must retain V33a's 8x6x7 bounds");
+		int tunnelStone = tunnel.filterBlocks(BlockPos.ZERO, settings,
+				reika.chromaticraft.registry.ChromaBlocks.shielding(
+						reika.chromaticraft.registry.ChromaShieldTypes.STONE).get(), false).size();
+		helper.assertTrue(tunnelStone == 160,
+				"Chromatic Beams connector has " + tunnelStone + " shield blocks instead of 160");
+		var loot = manager.get(reika.chromaticraft.data.ChromaStructureTemplateProvider.PROXIMA_LASER_LOOT)
+				.orElse(null);
+		helper.assertTrue(loot != null && loot.getSize().equals(new BlockPos(14, 9, 7)),
+				"Chromatic Beams reward chamber must retain V33a's reflected 14x9x7 bounds");
+		var lootStone = loot.filterBlocks(BlockPos.ZERO, settings,
+				reika.chromaticraft.registry.ChromaBlocks.shielding(
+						reika.chromaticraft.registry.ChromaShieldTypes.STONE).get(), false);
+		long breakable = lootStone.stream().filter(block -> !block.state().getValue(
+				reika.chromaticraft.block.worldgen26.BlockStructureShield.REINFORCED)).count();
+		helper.assertTrue(lootStone.size() == 465 && breakable == 9,
+				"Chromatic Beams reward room lost its 465 shield cells or nine breakable exit cells");
+		helper.assertTrue(loot.filterBlocks(BlockPos.ZERO, settings, Blocks.STRUCTURE_VOID, false).size() == 1,
+				"Chromatic Beams reward room must reserve exactly one runtime-bound objective core");
+		var entrance = manager.get(reika.chromaticraft.data.ChromaStructureTemplateProvider.PROXIMA_LASER_ENTRANCE)
+				.orElse(null);
+		helper.assertTrue(entrance != null && entrance.getSize().equals(new BlockPos(11, 6, 11)),
+				"Chromatic Beams underground entrance must retain V33a's 11x6x11 bounds");
+		int entranceStone = entrance.filterBlocks(BlockPos.ZERO, settings,
+				reika.chromaticraft.registry.ChromaBlocks.shielding(
+						reika.chromaticraft.registry.ChromaShieldTypes.STONE).get(), false).size();
+		int entranceLight = entrance.filterBlocks(BlockPos.ZERO, settings,
+				reika.chromaticraft.registry.ChromaBlocks.shielding(
+						reika.chromaticraft.registry.ChromaShieldTypes.LIGHT).get(), false).size();
+		helper.assertTrue(entranceStone == 396 && entranceLight == 4,
+				"Chromatic Beams entrance walls or four lit corner pillars differ from V33a");
+		helper.succeed();
+	}
+
+	/** V33a switch, multi-target solve, reset and persisted gate state on an authored room. */
+	private static void laserRoomState(GameTestHelper helper) {
+		var blueprint = reika.chromaticraft.world.dimension.structure.LaserPuzzleLayout.load("mirrortut");
+		var room = reika.chromaticraft.world.dimension.structure.laser.LaserRoomState
+				.fromBlueprint(blueprint, new BlockPos(100, 40, 200));
+		helper.assertTrue(room.doorCenter().equals(new BlockPos(113, 43, 203))
+				&& room.emitters().size() == 2 && room.targets().size() == 2,
+				"laser room positions do not match the source's decoded minimum corner and door offset");
+		var start = room.toggle();
+		helper.assertTrue(start.lasersInPlay() && start.fireEmitters().size() == 2
+				&& !start.doorOpen() && !start.clearPulses(),
+				"laser switch must fire both tutorial emitters while keeping its gate shut");
+		var targets = room.targets().stream().toList();
+		var first = room.targetTriggered(targets.get(0), true);
+		helper.assertTrue(!first.doorOpen() && !room.solved(),
+				"a single laser target must not solve a two-target room");
+		var finish = room.targetTriggered(targets.get(1), true);
+		helper.assertTrue(finish.doorOpen() && finish.clearPulses() && room.solved(),
+				"the final laser target must open the door and clear travelling pulses");
+		var saved = reika.chromaticraft.world.dimension.structure.laser.LaserRoomState.load(room.save());
+		helper.assertTrue(saved.solved() && saved.lasersInPlay()
+				&& saved.activeTargets().equals(room.targets())
+				&& saved.doorCenter().equals(room.doorCenter()),
+				"a completed Chromatic Beams room lost its target/door state on save and load");
+		var reset = saved.toggle();
+		helper.assertTrue(reset.clearPulses() && !reset.doorOpen() && !reset.lasersInPlay()
+				&& saved.activeTargets().isEmpty() && !saved.solved(),
+				"switching the lasers off must clear targets, close the door and kill old pulses");
+		helper.assertTrue(saved.forceComplete().doorOpen() && saved.solved(),
+				"the structure-password bypass must open a stopped room");
+		helper.succeed();
+	}
+
 	/** Every V33a laser-effector branch, including absorbed/replacement/continuing distinctions. */
 	private static void laserPulseInteractions(GameTestHelper helper) {
 		var white = reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.BeamColor.WHITE;
@@ -3831,11 +3879,11 @@ public final class ChromaGameTests {
 						reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.SOUTH, white));
 		helper.assertTrue(prismSplit.emittedPulses().equals(List.of(
 				new reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.Pulse(
-						reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.EAST, red),
+						reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.WEST, red),
 				new reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.Pulse(
-						reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.NORTH, green),
+						reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.SOUTH, green),
 				new reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.Pulse(
-						reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.WEST, blue))),
+						reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.EAST, blue))),
 				"the prism did not split reverse white input into the exact RGB directions");
 
 		var target = reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.interact(
@@ -3868,6 +3916,120 @@ public final class ChromaGameTests {
 						reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.EAST, red))
 				&& entity.getDeltaMovement().x > 0 && entity.getDeltaMovement().z == 0,
 				"the travelling pulse did not apply a replacement pulse to its motion/state");
+		helper.succeed();
+	}
+
+	/** The placed switch emits, a real target receives, the gate opens, and reset survives NBT. */
+	private static void laserRuntimeRoom(GameTestHelper helper) {
+		var level = helper.getLevel();
+		var directions = reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections.EAST;
+		var types = reika.chromaticraft.world.dimension.structure.LaserPuzzleLayout.EffectType.values();
+		var emitter = new reika.chromaticraft.world.dimension.structure.LaserPuzzleLayout.Effector(
+				BlockPos.ZERO, types[0], directions, true, true, true,
+				false, false, 0, 2, 0, false, false, 1);
+		var target = new reika.chromaticraft.world.dimension.structure.LaserPuzzleLayout.Effector(
+				new BlockPos(2, 0, 0), types[1], directions, true, true, true,
+				false, false, 0, 2, 0, false, false, 1);
+		var blueprint = new reika.chromaticraft.world.dimension.structure.LaserPuzzleLayout.RoomBlueprint(
+				"runtime", 2, 2, java.util.List.of(emitter, target));
+		BlockPos origin = helper.absolutePos(new BlockPos(3, 3, 8));
+		BlockPos controllerPos = origin.offset(1, 4, -3);
+		BlockPos emitterPos = origin;
+		BlockPos targetPos = origin.offset(2, 0, 0);
+		BlockPos doorPos = origin.offset(9, 3, 3);
+		level.setBlock(controllerPos, ChromaBlocks.LASER_CONTROLLER.get().defaultBlockState(), 3);
+		level.setBlock(controllerPos.below(), ChromaBlocks.LIGHT_PANEL.get().defaultBlockState(), 3);
+		level.setBlock(doorPos, ChromaBlocks.CHROMA_DOOR.get().defaultBlockState(), 3);
+		for (var device : java.util.List.of(emitter, target)) {
+			BlockPos at = origin.offset(device.position());
+			level.setBlock(at, ChromaBlocks.LASER_EFFECTOR.get().defaultBlockState()
+					.setValue(reika.chromaticraft.block.dimension.structure.laser.BlockLaserEffector26.TYPE,
+							device.type().ordinal())
+					.setValue(reika.chromaticraft.block.dimension.structure.laser.BlockLaserEffector26.DIRECTION,
+							device.direction().ordinal()), 3);
+			((reika.chromaticraft.tileentity.TileEntityLaserEffector)level.getBlockEntity(at))
+					.configure(device, controllerPos);
+		}
+		var controller = (reika.chromaticraft.tileentity.TileEntityLaserController)
+				level.getBlockEntity(controllerPos);
+		controller.configure(blueprint, origin);
+		controller.toggle();
+		helper.assertTrue(controller.isFiring()
+				&& level.getBlockState(controllerPos.below()).getValue(
+						reika.chromaticraft.block.dimension.structure.lightpanel.BlockLightPanel.ACTIVE),
+				"Chromatic Beams switch did not start the room or light its panel");
+		var pulse = new reika.chromaticraft.entity.EntityLaserPulse(level, emitterPos,
+				directions, reika.chromaticraft.world.dimension.structure.laser.LaserPulseLogic.BeamColor.WHITE,
+				false, 1);
+		boolean absorbed = ((reika.chromaticraft.tileentity.TileEntityLaserEffector)
+				level.getBlockEntity(targetPos)).receiveLaserPulse(pulse);
+		helper.assertTrue(absorbed && controller.isSolved()
+				&& level.getBlockState(doorPos).getValue(reika.chromaticraft.block.BlockChromaDoor.OPEN)
+				&& level.getBlockState(targetPos).getValue(
+						reika.chromaticraft.block.dimension.structure.laser.BlockLaserEffector26.LIT),
+				"a matching pulse did not activate the target and open the room gate");
+		CompoundTag saved = controller.saveWithoutMetadata(level.registryAccess());
+		var restored = new reika.chromaticraft.tileentity.TileEntityLaserController(controllerPos,
+				level.getBlockState(controllerPos));
+		restored.loadWithComponents(TagValueInput.create(ProblemReporter.DISCARDING,
+				level.registryAccess(), saved));
+		helper.assertTrue(restored.isSolved() && restored.isFiring()
+				&& restored.room().targets().contains(targetPos),
+				"Chromatic Beams controller lost its solution or effector bindings after save/load");
+		helper.runAfterDelay(6, () -> {
+			controller.toggle();
+			helper.assertTrue(!controller.isFiring() && !controller.isSolved()
+					&& !level.getBlockState(doorPos).getValue(reika.chromaticraft.block.BlockChromaDoor.OPEN)
+					&& !level.getBlockState(targetPos).getValue(
+							reika.chromaticraft.block.dimension.structure.laser.BlockLaserEffector26.LIT),
+					"a second switch press did not reset the target, emitter and gate");
+			helper.succeed();
+		});
+	}
+
+	/** The native structure piece installs the authored first room inside a clipped write window. */
+	private static void laserStructureChunk(GameTestHelper helper) {
+		var level = helper.getLevel();
+		BlockPos testOrigin = helper.absolutePos(BlockPos.ZERO);
+		BlockPos placement = testOrigin.offset(-12, 0, 8);
+		var plan = new reika.chromaticraft.world.dimension.structure.LaserStructureGenerator();
+		plan.setType(DimensionStructureType.LASER, 0);
+		plan.startCalculate(CrystalElement.WHITE, placement.getX(), placement.getZ(),
+				new java.util.Random(0x1A53));
+		var first = plan.puzzle().rooms().getFirst();
+		var room = first.blueprint();
+		BlockPos roomOrigin = new BlockPos(placement.getX() + first.x(), plan.getPosY(),
+				placement.getZ() - (room.sizeZ() + 1) / 2);
+		BlockPos controllerPos = roomOrigin.offset((room.sizeX() + 1) / 2, 4, -3);
+		var box = new net.minecraft.world.level.levelgen.structure.BoundingBox(
+				testOrigin.getX(), plan.getPosY() - 1, testOrigin.getZ(),
+				testOrigin.getX() + 15, plan.getPosY() + 12, testOrigin.getZ() + 15);
+		var piece = new reika.chromaticraft.world.dimension.structure.LaserStructurePiece(
+				placement, plan, plan.getPosY() + 20, CrystalElement.WHITE, 0);
+		piece.postProcess(level, level.structureManager(), level.getChunkSource().getGenerator(),
+				RandomSource.create(123), box,
+				net.minecraft.world.level.ChunkPos.containing(controllerPos), placement);
+		helper.assertTrue(level.getBlockEntity(controllerPos)
+				instanceof reika.chromaticraft.tileentity.TileEntityLaserController controller
+				&& controller.room() != null
+				&& controller.room().emitters().size() == room.emitterCount()
+				&& controller.room().targets().size() == room.targetCount(),
+				"the native laser piece did not bind the first room's switch and authored devices");
+		for (var effector : room.effectors()) {
+			BlockPos at = roomOrigin.offset(effector.position());
+			helper.assertTrue(level.getBlockEntity(at)
+					instanceof reika.chromaticraft.tileentity.TileEntityLaserEffector device
+					&& device.effectType() == effector.type()
+					&& device.facing() == effector.direction(),
+					"the native laser piece lost the authored " + effector.type() + " at " + at);
+		}
+		BlockPos door = roomOrigin.offset(room.sizeX() + 7, 3, (room.sizeZ() + 1) / 2);
+		int count = 0;
+		for (int dy = 0; dy <= 3; dy++) for (int dz = -2; dz <= 2; dz++)
+			if (level.getBlockState(door.offset(0, dy, dz)).is(ChromaBlocks.CHROMA_DOOR.get())) count++;
+		helper.assertTrue(count == 18 && level.getBlockEntity(controllerPos.below(2))
+				instanceof reika.chromaticraft.tileentity.TileEntityStructurePassword,
+				"the native laser room lost its eighteen-cell gate or password terminal");
 		helper.succeed();
 	}
 
@@ -4067,15 +4229,15 @@ public final class ChromaGameTests {
 								+ "tunnel; a rider would pass straight through it and fall");
 			}
 			for (var point : points) {
-				double d = Math.sqrt(point.xCoord * point.xCoord + point.zCoord * point.zCoord);
+				double d = Math.sqrt(point.xCoord() * point.xCoord() + point.zCoord() * point.zCoord());
 				farthest = Math.max(farthest, d);
 				nearest = Math.min(nearest, d);
 				// V33a places its control points between 384 and 512, but the curve is a chordal spline
 				// and a chordal spline overshoots its control points slightly at a turn. The band is
 				// therefore checked with room for that: what would matter is a river down at terrain
 				// height or up against the build limit, not a few blocks of overshoot.
-				helper.assertTrue(point.yCoord >= 350 && point.yCoord <= 550,
-						"a sky river point sits at y " + point.yCoord + ", far outside V33a's 384 to 512 "
+				helper.assertTrue(point.yCoord() >= 350 && point.yCoord() <= 550,
+						"a sky river point sits at y " + point.yCoord() + ", far outside V33a's 384 to 512 "
 								+ "band; rivers must hang high above the terrain");
 			}
 		}
@@ -4089,8 +4251,8 @@ public final class ChromaGameTests {
 
 		// A point lookup must find the river that owns it, which is what the whole chunk index is for.
 		var sample = rays.get(0).getPoints().get(5);
-		var inChunk = rivers.getPointsForChunk((int)Math.floor(sample.xCoord) >> 4,
-				(int)Math.floor(sample.zCoord) >> 4);
+		var inChunk = rivers.getPointsForChunk((int)Math.floor(sample.xCoord()) >> 4,
+				(int)Math.floor(sample.zCoord()) >> 4);
 		helper.assertTrue(!inChunk.isEmpty(),
 				"a river point's own chunk holds none of its points; the chunk index is not being built");
 
@@ -5006,7 +5168,7 @@ public final class ChromaGameTests {
 				helper.getLevel().setBlock(pos.below(), Blocks.STONE.defaultBlockState(), 3);
 				helper.getLevel().setBlock(pos, ChromaBlocks.caveCrystal(CrystalElement.CYAN).get().defaultBlockState(), 3);
 				BlockState state = helper.getLevel().getBlockState(pos);
-				int mask = BlockCaveCrystal.armMask(pos);
+				int mask = BlockCaveCrystal.visibleArmMask(helper.getLevel(), pos, false);
 				VoxelShape outline = state.getShape(helper.getLevel(), pos, CollisionContext.empty());
 				VoxelShape collision = state.getCollisionShape(helper.getLevel(), pos, CollisionContext.empty());
 				AABB bounds = outline.bounds();
@@ -5036,6 +5198,31 @@ public final class ChromaGameTests {
 		}
 		helper.assertTrue(sawPositiveX && sawNegativeX && sawPositiveZ && sawNegativeZ,
 				"sample must exercise all four deterministic arm directions");
+
+		// Adjacent opposite arms cross the same boundary. The negative-facing block yields only
+		// while its positive-facing neighbour exists, and the outline follows the culled mesh.
+		boolean foundPair = false;
+		for (int x = 2; x <= 10 && !foundPair; x++) for (int z = 2; z <= 10 && !foundPair; z++) {
+			BlockPos west = helper.absolutePos(new BlockPos(x, 7, z));
+			BlockPos east = west.east();
+			if ((BlockCaveCrystal.armMask(west) & 8) == 0
+					|| (BlockCaveCrystal.armMask(east) & 4) == 0) continue;
+			helper.getLevel().setBlock(west.below(), Blocks.STONE.defaultBlockState(), 3);
+			helper.getLevel().setBlock(east.below(), Blocks.STONE.defaultBlockState(), 3);
+			helper.getLevel().setBlock(west, ChromaBlocks.caveCrystal(CrystalElement.RED).get().defaultBlockState(), 3);
+			helper.getLevel().setBlock(east, ChromaBlocks.caveCrystal(CrystalElement.BLUE).get().defaultBlockState(), 3);
+			helper.assertTrue((BlockCaveCrystal.visibleArmMask(helper.getLevel(), west, false) & 8) != 0
+					&& (BlockCaveCrystal.visibleArmMask(helper.getLevel(), east, false) & 4) == 0,
+					"adjacent opposing spikes must have a single owner");
+			helper.assertTrue(helper.getLevel().getBlockState(east)
+					.getShape(helper.getLevel(), east, CollisionContext.empty()).bounds().minX >= 0,
+					"the culled spike still collides outside the block");
+			helper.getLevel().setBlock(west, Blocks.AIR.defaultBlockState(), 3);
+			helper.assertTrue((BlockCaveCrystal.visibleArmMask(helper.getLevel(), east, false) & 4) != 0,
+					"the omitted spike did not return after removing its neighbour");
+			foundPair = true;
+		}
+		helper.assertTrue(foundPair, "sample did not contain opposing cave-crystal arms");
 
 		BlockPos ceiling = helper.absolutePos(new BlockPos(10, 5, 10));
 		helper.getLevel().setBlock(ceiling.below(), Blocks.AIR.defaultBlockState(), 3);
@@ -5081,7 +5268,8 @@ public final class ChromaGameTests {
 		helper.assertTrue(!reedState.canSurvive(level, reed), "Void Reeds must reject dry sand");
 		level.setBlock(reed.below().east(), Blocks.WATER.defaultBlockState(), 3);
 		helper.assertTrue(reedState.canSurvive(level, reed), "Void Reeds must accept sand beside water");
-		helper.assertTrue(reedState.canSurvive(level, reed.above()) || true, "reed stacking is checked below");
+        reedState.canSurvive(level, reed.above());
+        helper.assertTrue(true, "reed stacking is checked below");
 		level.setBlock(reed, reedState, 3);
 		helper.assertTrue(reedState.canSurvive(level, reed.above()), "Void Reeds must stack on another reed");
 
@@ -5367,6 +5555,30 @@ public final class ChromaGameTests {
 				"the retroactive focus-crystal chain must formulate ENERGYIDEA when USEENERGY lands later");
 		helper.succeed();
 	}
+
+
+    private static void bottleneckNetworkBlink(GameTestHelper helper) {
+        var level=helper.getLevel();
+        var pos=helper.absolutePos(new BlockPos(2,12,2));
+        level.setBlockAndUpdate(pos,ChromaBlocks.CASTING_TABLE.get().defaultBlockState());
+        var table=(TileEntityCastingTable)level.getBlockEntity(pos);
+        table.cachePosition();
+        var player=helper.makeMockServerPlayerInLevel();
+        player.setItemInHand(InteractionHand.MAIN_HAND,new ItemStack(ChromaItems.BOTTLENECK_FINDER.get()));
+        var context=new net.minecraft.world.item.context.UseOnContext(player,InteractionHand.MAIN_HAND,
+                new BlockHitResult(Vec3.atCenterOf(pos),Direction.UP,pos,false));
+        helper.assertTrue(ChromaItems.BOTTLENECK_FINDER.get().useOn(context)==InteractionResult.SUCCESS,
+                "a disconnected receiver must still consume the diagnostic interaction and emit the error sound");
+        var pylon=placePylon(helper,pos.offset(20,0,0),CrystalElement.BLUE);
+        var path=CrystalNetworker.instance.getConnectivity(CrystalElement.BLUE,table);
+        helper.assertTrue(path!=null,"the native casting receiver must discover the test pylon");
+        int energy=pylon.getEnergy(CrystalElement.BLUE);
+        helper.assertTrue(ChromaItems.BOTTLENECK_FINDER.get().useOn(context)==InteractionResult.SUCCESS
+                        && !pylon.getTargets().isEmpty(),"diagnosing a real receiver must blink the connected source beam");
+        helper.assertTrue(pylon.getEnergy(CrystalElement.BLUE)==energy,"diagnostics must not consume pylon energy");
+        table.removeFromCache();
+        helper.succeed();
+    }
 
 	/** Exercises source discovery, flow creation, server ticking, delivery, and source drain. */
 	private static void pylonToReceiver(GameTestHelper helper) {
@@ -5693,7 +5905,7 @@ public final class ChromaGameTests {
 		helper.assertTrue(lightning.getType() == ChromaEntityTypes.BALL_LIGHTNING.get(),
 				"ball lightning must use its own registered entity type");
 		helper.assertTrue(lightning.getElement() == CrystalElement.BLUE
-					&& lightning.getRenderColor() == CrystalElement.BLUE.getColor(),
+					&& lightning.getRenderColor() == CrystalElement.BLUE.color(),
 				"the chosen element and initial render colour must synchronize");
 		helper.assertTrue(!lightning.isPushable() && !lightning.isPushedByFluid(),
 				"ball lightning must remain ethereal and ignore water current");
@@ -9530,12 +9742,17 @@ public final class ChromaGameTests {
 		register(event, env, name, 20, body);
 	}
 
-	static void register(RegisterGameTestsEvent event, Holder<TestEnvironmentDefinition<?>> env,
+	public static void register(RegisterGameTestsEvent event, Holder<TestEnvironmentDefinition<?>> env,
 			String name, int maxTicks, Consumer<GameTestHelper> body) {
+		register(event, env, name, maxTicks, ChromaTestStructureProvider.ARENA, body);
+	}
+
+	public static void register(RegisterGameTestsEvent event, Holder<TestEnvironmentDefinition<?>> env,
+			String name, int maxTicks, Identifier structure, Consumer<GameTestHelper> body) {
 		Identifier id = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, name);
 		TestData<Holder<TestEnvironmentDefinition<?>>> data =
 				new TestData<>(env, net.minecraft.world.level.Level.OVERWORLD,
-						ChromaTestStructureProvider.ARENA, maxTicks, 0, true, Rotation.NONE, false, 1, 1, false, 96);
+						structure, maxTicks, 0, true, Rotation.NONE, false, 1, 1, false, 96);
 		event.registerTest(id, new DirectInstance(data, body));
 	}
 

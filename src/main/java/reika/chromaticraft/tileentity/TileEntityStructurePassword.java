@@ -16,17 +16,12 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
-
 import reika.chromaticraft.auxiliary.ElementEncodedNumber;
 import reika.chromaticraft.container.MenuStructurePassword;
 import reika.chromaticraft.item.ItemChromaBerry;
 import reika.chromaticraft.item.ItemCrystalShard;
 import reika.chromaticraft.item.ItemElementalStone;
-import reika.chromaticraft.registry.ChromaBlockEntities;
-import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaItems;
-import reika.chromaticraft.registry.ChromaSounds;
-import reika.chromaticraft.registry.CrystalElement;
+import reika.chromaticraft.registry.*;
 import reika.chromaticraft.world.dimension.DimensionStructureType;
 import reika.chromaticraft.world.dimension.ProximaGenerators;
 import reika.chromaticraft.world.dimension.StructureCalculator;

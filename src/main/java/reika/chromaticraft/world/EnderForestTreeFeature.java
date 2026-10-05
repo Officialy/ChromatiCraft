@@ -1,17 +1,14 @@
 package reika.chromaticraft.world;
 
-import java.util.List;
-
-import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.features.TreeFeatures;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.util.RandomSource;
-import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.levelgen.feature.Feature;
-
 import reika.dragonapi.instantiable.math.noise.NoiseGeneratorBase;
 import reika.dragonapi.instantiable.math.noise.Simplex3DGenerator;
+
+import java.util.List;
 
 /**
  * V33a {@code BiomeEnderForest}'s tree selector.

@@ -1,0 +1,28 @@
+{
+  "parent": "chromaticraft:progression/dimension",
+  "criteria": {
+    "trigger": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "display": {
+    "announce_to_chat": false,
+    "description": {
+      "translate": "advancements.chromaticraft.structcheat.description"
+    },
+    "hidden": true,
+    "icon": {
+      "id": "chromaticraft:chromic_lexicon"
+    },
+    "show_toast": false,
+    "title": {
+      "translate": "advancements.chromaticraft.structcheat.title"
+    }
+  },
+  "requirements": [
+    [
+      "trigger"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

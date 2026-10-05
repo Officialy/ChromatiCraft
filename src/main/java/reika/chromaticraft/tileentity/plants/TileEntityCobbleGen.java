@@ -9,16 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.tileentity.plants;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -39,22 +29,19 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.FluidState;
 import net.neoforged.neoforge.fluids.FluidType;
-
 import reika.chromaticraft.auxiliary.CobbleGeneratorItemExpiry;
 import reika.chromaticraft.auxiliary.interfaces.OperationInterval;
 import reika.chromaticraft.auxiliary.recipemanagers.CobbleGeneratorRecipe;
 import reika.chromaticraft.base.tileentity.TileEntityMagicPlant;
-import reika.chromaticraft.registry.ChromaBlockEntities;
-import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaRecipeTypes;
-import reika.chromaticraft.registry.ChromaTiles;
-import reika.chromaticraft.registry.CrystalElement;
+import reika.chromaticraft.registry.*;
 import reika.chromaticraft.render.particle.CobbleGeneratorParticles;
 import reika.chromaticraft.tileentity.auxiliary.TileEntityFunctionRelay;
 import reika.dragonapi.instantiable.StepTimer;
 import reika.dragonapi.instantiable.data.immutable.Coordinate;
 import reika.dragonapi.interfaces.block.FluidBlockSurrogate;
 import reika.dragonapi.libraries.io.NBTCompat;
+
+import java.util.*;
 
 /** V33a Coalescence Orchid: combines two nearby source fluids into a short-lived block stack. */
 public final class TileEntityCobbleGen extends TileEntityMagicPlant implements OperationInterval {

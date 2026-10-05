@@ -1,11 +1,8 @@
 package reika.chromaticraft.render.model;
 
-import java.util.List;
-
 import com.mojang.blaze3d.platform.Transparency;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-
 import net.minecraft.client.renderer.block.BlockAndTintGetter;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
@@ -18,13 +15,13 @@ import net.minecraft.core.Direction;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.state.BlockState;
-
 import net.neoforged.neoforge.client.model.DynamicBlockStateModel;
 import net.neoforged.neoforge.client.model.block.CustomUnbakedBlockStateModel;
 import net.neoforged.neoforge.client.model.pipeline.QuadBakingVertexConsumer;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.block.crystal.BlockCrystalGlow;
+
+import java.util.List;
 
 /**
  * V33a {@code CrystalGlowRenderer} in the chunk mesh: the base plate (its material's texture, lit by the world)

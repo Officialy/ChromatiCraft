@@ -3,9 +3,8 @@ package reika.chromaticraft.command;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
-
-import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.CommandBuildContext;
+import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.IdentifierArgument;
@@ -19,7 +18,6 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.commands.PlaceCommand;
 import net.minecraft.world.level.block.Mirror;
 import net.minecraft.world.level.block.Rotation;
-
 import reika.chromaticraft.ChromatiCraft;
 
 /** Operator access to the same ChromatiCraft templates and configured generators used by worldgen. */

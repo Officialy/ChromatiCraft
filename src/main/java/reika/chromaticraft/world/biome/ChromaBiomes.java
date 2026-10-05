@@ -17,11 +17,9 @@ import net.minecraft.world.level.biome.MobSpawnSettings;
 import net.minecraft.world.level.levelgen.GenerationStep;
 import net.minecraft.world.level.levelgen.carver.WorldCarver;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.data.ChromaWorldGenProvider;
 import reika.chromaticraft.registry.ChromaEntityTypes;
-import reika.chromaticraft.registry.CrystalElement;
 
 /** Datapack-backed definitions of the V33a Rainbow Forest and its Rainbow Stream river. */
 public final class ChromaBiomes {
@@ -100,6 +98,7 @@ public final class ChromaBiomes {
         return new Biome.BiomeBuilder()
                 .hasPrecipitation(true)
                 .temperature(stream ? 0.6375F : 0.7F)
+                .setAttribute(reika.chromaticraft.registry.ChromaWeatherAttributes.RAINBOW_COOLING.get(), true)
                 .downfall(0.8F)
                 .setAttribute(EnvironmentAttributes.CREATURE_WORLD_GEN_SPAWN_PROBABILITY,
                         RainbowForestSpawnDensity.spawningChance(6))
@@ -175,6 +174,7 @@ public final class ChromaBiomes {
         return new Biome.BiomeBuilder()
                 // V33a setDisableRain().
                 .hasPrecipitation(false)
+                .setAttribute(reika.chromaticraft.registry.ChromaWeatherAttributes.RAINLESS_THUNDER.get(), true)
                 .temperature(0.7F)
                 .downfall(0.8F)
                 // BiomeEnderForest overrides neither sky nor base water, so both are the 1.7.10 forest's:

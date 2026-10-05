@@ -1,21 +1,19 @@
 package reika.chromaticraft.modinterface.ae;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.function.Predicate;
-
-import it.unimi.dsi.fastutil.objects.Object2LongMap;
-
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.block.entity.BlockEntity;
-
 import appeng.api.networking.IGrid;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.KeyCounter;
 import appeng.parts.storagebus.StorageBusPart;
+import it.unimi.dsi.fastutil.objects.Object2LongMap;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import reika.dragonapi.modinteract.deepinteract.MESystemReader;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.function.Predicate;
 
 /**
  * V33a {@code TileEntityMassStorage.buildCache}: the items in a crate's ME network that the crate could take. Only

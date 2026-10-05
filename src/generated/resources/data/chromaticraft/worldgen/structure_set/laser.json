@@ -1,0 +1,11 @@
+{
+  "placement": {
+    "type": "chromaticraft:laser"
+  },
+  "structures": [
+    {
+      "structure": "chromaticraft:laser",
+      "weight": 1
+    }
+  ]
+}

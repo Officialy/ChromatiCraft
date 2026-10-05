@@ -1,0 +1,8 @@
+{
+  "type": "neoforge:add_features",
+  "biomes": "#minecraft:is_overworld",
+  "features": [
+    "chromaticraft:cave_indicator"
+  ],
+  "step": "underground_decoration"
+}

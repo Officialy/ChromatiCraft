@@ -1,7 +1,5 @@
 package reika.chromaticraft.world.dimension.structure;
 
-import java.util.Random;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -18,24 +16,18 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkGenerator;
-import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.StructurePiece;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
 import net.minecraft.world.level.storage.loot.BuiltInLootTables;
-
 import reika.chromaticraft.block.BlockHoverBlock;
 import reika.chromaticraft.block.BlockHoverBlock.Decay;
 import reika.chromaticraft.block.BlockHoverBlock.HoverType;
 import reika.chromaticraft.block.worldgen26.BlockLootChest;
 import reika.chromaticraft.block.worldgen26.BlockStructureShield;
 import reika.chromaticraft.data.ChromaStructureTemplateProvider;
-import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaCraftingItems;
-import reika.chromaticraft.registry.ChromaItems;
-import reika.chromaticraft.registry.ChromaShieldTypes;
-import reika.chromaticraft.registry.CrystalElement;
+import reika.chromaticraft.registry.*;
 import reika.chromaticraft.tileentity.TileEntityLootChest;
 import reika.chromaticraft.tileentity.technical.TileEntityDimensionCore;
 import reika.chromaticraft.world.dimension.DimensionStructureType;

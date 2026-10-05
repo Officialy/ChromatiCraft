@@ -1,7 +1,5 @@
 package reika.chromaticraft.items.itemblock;
 
-import java.util.function.Consumer;
-
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.BlockItem;
@@ -10,9 +8,10 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.component.TooltipDisplay;
 import net.minecraft.world.item.context.UseOnContext;
-
 import reika.chromaticraft.block.relay.BlockLumenRelay;
 import reika.dragonapi.libraries.ReikaPlayerAPI;
+
+import java.util.function.Consumer;
 
 /** Separate-id replacement for V33a's metadata-valued relay BlockItem. */
 public final class ItemBlockLumenRelay extends BlockItem {

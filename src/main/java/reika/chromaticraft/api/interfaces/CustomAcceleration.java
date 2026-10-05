@@ -16,10 +16,10 @@ import reika.chromaticraft.api.AdjacencyUpgradeAPI;
 public interface CustomAcceleration extends CustomAdjacencyHandler {
 
 	/** This will be called once per tick, with 'factor' being the acceleration factor of the core, eg 16 or 64. */
-	public void tick(int factor);
+    void tick(int factor);
 
 	/** Is this handler being registered for any parent classes; basically does the accelerator need to recursively call super() to get
 	 * the class object on which it needs to operate when starting with the "direct" child class */
-	public boolean usesParentClasses();
+    boolean usesParentClasses();
 
 }

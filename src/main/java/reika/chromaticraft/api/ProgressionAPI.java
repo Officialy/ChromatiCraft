@@ -9,12 +9,11 @@
  ******************************************************************************/
 package reika.chromaticraft.api;
 
-import java.util.HashSet;
-
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-
 import reika.chromaticraft.api.CrystalElementAccessor.CrystalElementProxy;
+
+import java.util.HashSet;
 
 public class ProgressionAPI {
 
@@ -27,29 +26,29 @@ public class ProgressionAPI {
 
 	}
 
-	public static interface ResearchRegistry extends ProgressManager {
+	public interface ResearchRegistry extends ProgressManager {
 
-		public boolean lexiconHasFragment(ItemStack book, String key);
+		boolean lexiconHasFragment(ItemStack book, String key);
 
-		public String getResearchLevelForPlayer(Player ep);
-
-	}
-
-	public static interface ProgressRegistry extends ProgressManager {
-
-		public boolean canPlayerStepTo(Player ep, String key);
-
-		public boolean playerDiscoveredElement(Player ep, CrystalElementProxy e);
+		String getResearchLevelForPlayer(Player ep);
 
 	}
 
-	public static interface ProgressManager {
+	public interface ProgressRegistry extends ProgressManager {
 
-		public boolean playerHasResearch(Player ep, String key);
+		boolean canPlayerStepTo(Player ep, String key);
 
-		public HashSet<String> getPrerequisites(String key);
+		boolean playerDiscoveredElement(Player ep, CrystalElementProxy e);
 
-		public HashSet<String> getAllResearches();
+	}
+
+	public interface ProgressManager {
+
+		boolean playerHasResearch(Player ep, String key);
+
+		HashSet<String> getPrerequisites(String key);
+
+		HashSet<String> getAllResearches();
 
 	}
 

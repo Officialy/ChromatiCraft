@@ -1,236 +1,243 @@
 /*******************************************************************************
  * @author Reika Kalseki
- *
  * Copyright 2017
- *
  * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
+ * Distribution requires the owner's explicit prior permission.
  ******************************************************************************/
 package reika.chromaticraft.items.tools.wands;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Set;
-
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockStairs;
-import net.minecraft.enchantment.Enchantment;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.init.Blocks;
-import net.minecraft.item.ItemStack;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.world.World;
-import net.minecraft.world.WorldServer;
-
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.enchantment.Enchantments;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LightLayer;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.RedStoneOreBlock;
+import net.minecraft.world.level.block.StairBlock;
+import net.minecraft.world.level.block.state.BlockState;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.neoforge.event.level.block.BreakBlockEvent;
 import reika.chromaticraft.api.interfaces.CustomExcavationStarBehavior;
 import reika.chromaticraft.base.ItemBlockChangingWand;
-import reika.chromaticraft.block.decoration.blockethereallight.Flags;
+import reika.chromaticraft.block.decoration.BlockEtherealLight;
 import reika.chromaticraft.magic.interfaces.CrystalNetworkTile;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaEnchants;
 import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.tileentity.technical.TileEntityStructControl;
+import reika.chromaticraft.tileentity.TileEntityStructureController;
 import reika.dragonapi.auxiliary.ProgressiveRecursiveBreaker;
-import reika.dragonapi.auxiliary.progressiverecursivebreaker.ProgressiveBreaker;
-import reika.dragonapi.instantiable.PlayerReference;
+import reika.dragonapi.auxiliary.ProgressiveRecursiveBreaker.ProgressiveBreaker;
 import reika.dragonapi.instantiable.data.blockstruct.BlockArray;
 import reika.dragonapi.instantiable.data.immutable.BlockKey;
-import reika.dragonapi.libraries.ReikaEnchantmentHelper;
 import reika.dragonapi.libraries.ReikaPlayerAPI;
-import reika.dragonapi.libraries.registry.ReikaTreeHelper;
-import reika.dragonapi.modinteract.itemhandlers.TwilightForestHandler;
-import reika.dragonapi.modregistry.ModWoodList;
+import reika.dragonapi.libraries.registry.ReikaItemHelper;
 
-public class ItemExcavationWand extends ItemBlockChangingWand {
+import java.util.*;
 
-	private static final int MAX_DEPTH = 12;
-	private static final int MAX_DEPTH_BOOST = 18;
+/**
+ * V33a Excavation Star, including variant spreading, protected machinery, loot enchantments and cave light.
+ */
+public final class ItemExcavationWand extends ItemBlockChangingWand {
+    private static final ThreadLocal<Boolean> PERMISSION_CHECK = ThreadLocal.withInitial(() -> false);
+    private final Map<ProgressiveBreaker, Operation> operations = new HashMap<>();
 
-	private static final HashMap<Integer, PlayerReference> breakers = new HashMap();
+    public ItemExcavationWand(Properties properties) {
+        super(properties);
+        addEnergyCost(CrystalElement.YELLOW, 2);
+    }
 
-	public ItemExcavationWand(int index) {
-		super(index);
-		this.addEnergyCost(CrystalElement.YELLOW, 2);
-	}
+    public static void register() {
+        NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, ItemExcavationWand::onBreakBlock);
+    }
 
-	@Override
-	public float getDigSpeed(ItemStack is, Block b, int meta) {
-		return 5;
-	}
+    public static void onBreakBlock(BreakBlockEvent event) {
+        // DragonAPI posts this same event to probe permissions for each queued block.
+        if (event.isCanceled() || PERMISSION_CHECK.get()) return;
+        Player player = event.getPlayer();
+        ItemStack stack = player.getMainHandItem();
+        if (!(stack.getItem() instanceof ItemExcavationWand wand)) return;
+        Level level = player.level();
+        BlockPos pos = event.getPos();
+        if (!wand.canSpreadOn(level, pos, event.getState()) || event.getState().isAir()) return;
+        // Like the source onBlockStartBreak, replace the completed ordinary harvest with the wave.
+        event.setCanceled(true);
+        event.setNotifyClient(true);
+        if (!level.isClientSide() && player instanceof ServerPlayer server) wand.startExcavation(stack, pos, server);
+    }
 
-	@Override
-	public boolean canHarvestBlock(Block b, ItemStack is) {
-		return true;
-	}
+    private static int enchantment(ItemStack stack, Level level, net.minecraft.resources.ResourceKey<net.minecraft.world.item.enchantment.Enchantment> key) {
+        return stack.getEnchantmentLevel(level.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.ENCHANTMENT).getOrThrow(key));
+    }
 
-	@Override
-	public int getHarvestLevel(ItemStack stack, String toolClass) {
-		return Integer.MAX_VALUE;
-	}
+    private static boolean active(Player player, Level level) {
+        return !player.isRemoved() && player.level() == level && level.getPlayerByUUID(player.getUUID()) == player;
+    }
 
-	@Override
-	public boolean canSpreadOn(World world, int x, int y, int z, Block b, int meta) {
-		if (world.provider.isSurfaceWorld() && b == Blocks.stone)
-			return false;
-		if (world.provider.isHellWorld && b == Blocks.netherrack)
-			return false;
-		if (world.provider.dimensionId == 1 && (b == Blocks.end_stone || b == Blocks.obsidian))
-			return false;
-		if (b == ChromaBlocks.BEDROCKCRACK.getBlockInstance())
-			return false;
-		TileEntity te = world.getTileEntity(x, y, z);
-		return !(te instanceof CrystalNetworkTile) && !(te instanceof TileEntityStructControl);
-	}
+    @Override
+    public float getDestroySpeed(ItemStack stack, BlockState state) {
+        return 5;
+    }
 
-	@Override
-	public boolean onBlockStartBreak(ItemStack itemstack, int x, int y, int z, EntityPlayer ep) {
-		World world = ep.worldObj;
-		if (!this.canSpreadOn(world, x, y, z, world.getBlock(x, y, z), world.getBlockMetadata(x, y, z)))
-			return false;
-		if (!world.isRemote) {
-			ProgressiveBreaker b = ProgressiveRecursiveBreaker.instance.addCoordinateWithReturn(world, x, y, z, this.getDepth(ep, world, x, y, z));
-			//b.looseMatches.put(Blocks.redstone_ore, new BlockKey(Blocks.lit_redstone_ore));
-			b.call = this;
-			b.silkTouch = ReikaEnchantmentHelper.getEnchantmentLevel(Enchantment.silkTouch, itemstack) > 0;
-			b.drops = !ep.capabilities.isCreativeMode;
-			b.fortune = ReikaEnchantmentHelper.getEnchantmentLevel(Enchantment.fortune, itemstack);
-			if (ep.isSneaking())
-				b.extraSpread = true;
-			if (ReikaEnchantmentHelper.getEnchantmentLevel(ChromaEnchants.AUTOCOLLECT.getEnchantment(), itemstack) > 0) {
-				b.dropInventory = ep.inventory;
-			}
-			b.taxiCabDistance = true;
-			b.player = ep;
-			b.hungerFactor = 0.125F;
-			b.setBlocks(false, this.getSpreadBlocks(world, x, y, z));
-			breakers.put(b.hashCode(), new PlayerReference(ep));
-		}
-		return true;
-	}
+    @Override
+    public boolean isCorrectToolForDrops(ItemStack stack, BlockState state) {
+        return true;
+    }
 
-	private HashSet<BlockKey> getSpreadBlocks(World world, int x, int y, int z) {
-		HashSet<BlockKey> set = new HashSet();
-		Block bk = world.getBlock(x, y, z);
-		set.add(new BlockKey(bk, world.getBlockMetadata(x, y, z)));
-		if (bk == Blocks.lit_redstone_ore)
-			set.add(new BlockKey(Blocks.redstone_ore));
-		else if (bk == Blocks.redstone_ore)
-			set.add(new BlockKey(Blocks.lit_redstone_ore));
-		else if (bk instanceof BlockStairs) {
-			for (int i = 0; i < 16; i++) {
-				set.add(new BlockKey(bk, i));
-			}
-		}
-		else if (bk == TwilightForestHandler.BlockEntry.NAGASTONE.getBlock()) {
-			for (int i = 0; i < 16; i++) {
-				set.add(new BlockKey(bk, i));
-			}
-		}
-		else if (bk == TwilightForestHandler.BlockEntry.AURORA.getBlock()) {
-			for (int i = 0; i < 16; i++) {
-				set.add(new BlockKey(bk, i));
-			}
-		}
-		else if (bk instanceof CustomExcavationStarBehavior) {
-			Collection<BlockKey> c = ((CustomExcavationStarBehavior)bk).getSpreadBlocks(world, x, y, z);
-			if (c != null && !c.isEmpty())
-				set.addAll(c);
-		}
-		ReikaTreeHelper tree = ReikaTreeHelper.getTree(bk, world.getBlockMetadata(x, y, z));
-		if (tree != null) {
-			for (int meta : tree.getLogMetadatas()) {
-				set.add(new BlockKey(bk, meta));
-			}
-		}
-		tree = ReikaTreeHelper.getTreeFromLeaf(bk, world.getBlockMetadata(x, y, z));
-		if (tree != null) {
-			for (int meta : tree.getLeafMetadatas()) {
-				set.add(new BlockKey(bk, meta));
-			}
-		}
-		ModWoodList mod = ModWoodList.getModWood(bk, world.getBlockMetadata(x, y, z));
-		if (mod != null) {
-			for (int meta : mod.getLogMetadatas()) {
-				set.add(new BlockKey(bk, meta));
-			}
-		}
-		mod = ModWoodList.getModWoodFromLeaf(bk, world.getBlockMetadata(x, y, z));
-		if (mod != null) {
-			for (int meta : mod.getLeafMetadatas()) {
-				set.add(new BlockKey(bk, meta));
-			}
-		}
-		return set;
-	}
+    @Override
+    public boolean canSpreadOn(Level level, BlockPos pos, BlockState state) {
+        if (level.dimensionType().hasSkyLight() && state.is(Blocks.STONE)) return false;
+        if (level.environmentAttributes().getValue(net.minecraft.world.attribute.EnvironmentAttributes.WATER_EVAPORATES, pos)
+                && state.is(Blocks.NETHERRACK)) return false;
+        if (level.dimension().equals(Level.END) && (state.is(Blocks.END_STONE) || state.is(Blocks.OBSIDIAN)))
+            return false;
+        if (state.is(ChromaBlocks.BEDROCK_CRACK.get())) return false;
+        var tile = level.getBlockEntity(pos);
+        return !(tile instanceof CrystalNetworkTile) && !(tile instanceof TileEntityStructureController);
+    }
 
-	@Override
-	public int getDepth(EntityPlayer ep, World world, int x, int y, int z) {
-		int base = canUseBoostedEffect(ep) ? MAX_DEPTH_BOOST : MAX_DEPTH;
-		Block b = world.getBlock(x, y, z);
-		if (b instanceof CustomExcavationStarBehavior) {
-			base = Math.max(base, ((CustomExcavationStarBehavior)b).getRange(world, x, y, z, ep));
-		}
-		return base;
-	}
+    public void startExcavation(ItemStack stack, BlockPos pos, ServerPlayer player) {
+        ServerLevel level = player.level();
 
-	@Override
-	public void onPreBreak(ProgressiveBreaker b, World world, int x, int y, int z, Block id, int meta) {
+        if (!player.getAbilities().mayBuild || !sufficientEnergy(player)
+                || !canSpreadOn(level, pos, level.getBlockState(pos))) {
+            return;
+        }
 
-	}
+        ProgressiveBreaker breaker =
+                ProgressiveRecursiveBreaker.instance.addBlockPosWithReturn(
+                        level,
+                        pos,
+                        getDepth(player, level, pos)
+                );
 
-	@Override
-	public void onPostBreak(ProgressiveBreaker b, World world, int x, int y, int z, Block id, int meta) {
-		PlayerReference p = breakers.get(b.hashCode());
-		if (p != null) {
-			EntityPlayer ep = p.getPlayer(world);
-			if (ReikaEnchantmentHelper.hasEnchantment(Enchantment.flame, p.getHeldItem()))
-				this.placeSomeLight(world, x, y, z);
-			if (ep != null) {
-				this.drainPlayer(ep);
-			}
-			else {
-				b.terminate();
-			}
-		}
-	}
+        breaker.call = this;
+        breaker.player = player;
+        breaker.lootTool = stack.copy();
+        breaker.silkTouch = enchantment(stack, level, Enchantments.SILK_TOUCH) > 0;
+        breaker.fortune = enchantment(stack, level, Enchantments.FORTUNE);
+        breaker.drops = !player.getAbilities().instabuild;
+        breaker.extraSpread = player.isShiftKeyDown();
+        breaker.taxiCabDistance = true;
+        breaker.hungerFactor = 0.125F;
+        breaker.setBlocks(false, spreadBlocks(level, pos));
 
-	private void placeSomeLight(World world, int x, int y, int z) {
-		if (world.getBlockLightValue(x, y, z) < 8 && !world.canBlockSeeTheSky(x, y, z)) {
-			world.setBlock(x, y, z, ChromaBlocks.LIGHT.getBlockInstance(), Flags.PARTICLES.getFlag(), 3);
-		}
-	}
+        if (ChromaEnchants.AUTOCOLLECT.getLevel(stack) > 0) {
+            breaker.dropConsumer = (at, drop) -> {
+                player.getInventory().add(drop);
 
-	@Override
-	public boolean canBreak(ProgressiveBreaker b, World world, int x, int y, int z, Block id, int meta) {
-		PlayerReference p = breakers.get(b.hashCode());
-		if (p != null) {
-			EntityPlayer ep = p.getPlayer(world);
-			if (ep != null) {
-				return this.sufficientEnergy(ep) && this.canBreakBlock(world, x, y, z, id, meta, ep);
-			}
-		}
-		return false;
-	}
+                if (!drop.isEmpty()) {
+                    ReikaItemHelper.dropItem(
+                            level,
+                            at.getX(),
+                            at.getY(),
+                            at.getZ(),
+                            drop
+                    );
+                }
+            };
+        }
 
-	private boolean canBreakBlock(World world, int x, int y, int z, Block id, int meta, EntityPlayer ep) {
-		return (world.isRemote || ReikaPlayerAPI.playerCanBreakAt((WorldServer)world, x, y, z, (EntityPlayerMP)ep)) && this.canSpreadOn(world, x, y, z, id, meta);
-	}
+        operations.put(breaker, new Operation(player, stack.copy()));
+    }
 
-	@Override
-	public void onFinish(ProgressiveBreaker b) {
-		breakers.remove(b.hashCode());
-	}
+    private Set<BlockKey> spreadBlocks(Level level, BlockPos pos) {
+        BlockState state = level.getBlockState(pos);
+        Block block = state.getBlock();
+        Set<BlockKey> blocks = new HashSet<>();
+        blocks.add(new BlockKey(state));
+        if (block instanceof RedStoneOreBlock) {
+            for (var variant : block.getStateDefinition().getPossibleStates()) blocks.add(new BlockKey(variant));
+        } else if (block instanceof StairBlock || state.is(BlockTags.LOGS) || state.is(BlockTags.LEAVES)) {
+            // Modern trees retain one block identity per species, with axis/decay/waterlogged states.
+            // All states replace the original vanilla/ModWoodList metadata loops.
+            for (var variant : block.getStateDefinition().getPossibleStates()) blocks.add(new BlockKey(variant));
+        } else if (block instanceof CustomExcavationStarBehavior behavior) {
+            Collection<BlockKey> additional = behavior.getSpreadBlocks(level, pos.getX(), pos.getY(), pos.getZ());
+            if (additional != null) blocks.addAll(additional);
+        }
+        var id = BuiltInRegistries.BLOCK.getKey(block);
+        // The old Nagastone metadata includes both the serpent head and body, now separate blocks.
+        // Aurora's colour variants remain states of aurora_block. Its pillars/slabs are distinct materials.
+        Set<String> twilightFamily = switch (id.getPath()) {
+            case "nagastone", "nagastone_head" -> Set.of("nagastone", "nagastone_head");
+            case "aurora_block", "aurora" -> Set.of(id.getPath());
+            default -> Set.of();
+        };
+        if (id.getNamespace().equals("twilightforest") && !twilightFamily.isEmpty())
+            for (Block candidate : BuiltInRegistries.BLOCK) {
+                var candidateId = BuiltInRegistries.BLOCK.getKey(candidate);
+                if (candidateId.getNamespace().equals("twilightforest") && twilightFamily.contains(candidateId.getPath()))
+                    for (var variant : candidate.getStateDefinition().getPossibleStates())
+                        blocks.add(new BlockKey(variant));
+            }
+        return blocks;
+    }
 
-	@Override
-	public void getSpreadBlocks(World world, int x, int y, int z, BlockArray arr, EntityPlayer ep, ItemStack is) {
-		Set<BlockKey> set = this.getSpreadBlocks(world, x, y, z);
-		if (ep.isSneaking())
-			arr.extraSpread = true;
-		arr.taxiCabDistance = true;
-		arr.recursiveAddMultipleWithBounds(world, x, y, z, set, x-32, y-32, z-32, x+32, y+32, z+32);
-	}
+    @Override
+    public int getDepth(Player player, Level level, BlockPos pos) {
+        int depth = canUseBoostedEffect(player) ? 18 : 12;
+        if (level.getBlockState(pos).getBlock() instanceof CustomExcavationStarBehavior behavior)
+            depth = Math.max(depth, behavior.getRange(level, pos.getX(), pos.getY(), pos.getZ(), player));
+        return depth;
+    }
 
+    @Override
+    public void onPreBreak(ProgressiveBreaker breaker, Level level, BlockPos pos, Block block) {
+    }
+
+    @Override
+    public void onPostBreak(ProgressiveBreaker breaker, Level level, BlockPos pos, Block block) {
+        Operation operation = operations.get(breaker);
+        if (operation == null) return;
+        if (enchantment(operation.tool(), level, Enchantments.FLAME) > 0
+                && level.getBrightness(LightLayer.BLOCK, pos) < 8 && !level.canSeeSky(pos))
+            level.setBlock(pos, ChromaBlocks.ETHEREAL_LIGHT.get().defaultBlockState().setValue(BlockEtherealLight.PARTICLES, true), 3);
+        if (active(operation.player(), level)) drainPlayer(operation.player());
+        else breaker.terminate();
+    }
+
+    @Override
+    public boolean canBreak(ProgressiveBreaker breaker, Level level, BlockPos pos, Block block) {
+        Operation operation = operations.get(breaker);
+        if (operation == null || !active(operation.player(), level)) {
+            breaker.terminate();
+            return false;
+        }
+        BlockState state = level.getBlockState(pos);
+        if (!sufficientEnergy(operation.player()) || state.getDestroySpeed(level, pos) < 0
+                || !canSpreadOn(level, pos, state) || !(level instanceof ServerLevel server)
+                || !(operation.player() instanceof ServerPlayer player)) return false;
+        boolean previous = PERMISSION_CHECK.get();
+        PERMISSION_CHECK.set(true);
+        try {
+            return ReikaPlayerAPI.playerCanBreakAt(server, pos, player);
+        } finally {
+            if (previous) PERMISSION_CHECK.set(true);
+            else PERMISSION_CHECK.remove();
+        }
+    }
+
+    @Override
+    public void onFinish(ProgressiveBreaker breaker) {
+        operations.remove(breaker);
+    }
+
+    @Override
+    public void getSpreadBlocks(Level level, BlockPos pos, BlockArray blocks, Player player, ItemStack stack) {
+        blocks.extraSpread = player.isShiftKeyDown();
+        blocks.taxiCabDistance = true;
+        blocks.recursiveAddMultipleWithBounds(level, pos.getX(), pos.getY(), pos.getZ(), spreadBlocks(level, pos),
+                pos.getX() - 32, pos.getY() - 32, pos.getZ() - 32, pos.getX() + 32, pos.getY() + 32, pos.getZ() + 32);
+    }
+
+    private record Operation(Player player, ItemStack tool) {
+    }
 }
+

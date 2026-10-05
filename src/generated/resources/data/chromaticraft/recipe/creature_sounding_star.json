@@ -1,0 +1,68 @@
+{
+  "type": "chromaticraft:casting",
+  "completion": {
+    "required_fragment": "MOBSONAR"
+  },
+  "duration": 20,
+  "experience": 40,
+  "grid": [
+    {
+      "ingredient": "minecraft:stick",
+      "slot": 0
+    },
+    {
+      "ingredient": "chromaticraft:aura_dust",
+      "slot": 1
+    },
+    {
+      "ingredient": "minecraft:stick",
+      "slot": 2
+    },
+    {
+      "ingredient": "chromaticraft:aura_dust",
+      "slot": 3
+    },
+    {
+      "ingredient": "minecraft:diamond",
+      "slot": 4
+    },
+    {
+      "ingredient": "chromaticraft:aura_dust",
+      "slot": 5
+    },
+    {
+      "ingredient": "minecraft:stick",
+      "slot": 6
+    },
+    {
+      "ingredient": "chromaticraft:aura_dust",
+      "slot": 7
+    },
+    {
+      "ingredient": "minecraft:stick",
+      "slot": 8
+    }
+  ],
+  "result": {
+    "id": "chromaticraft:creature_sounding_star"
+  },
+  "runes": [
+    {
+      "element": "blue",
+      "offset": [
+        -3,
+        -1,
+        -1
+      ]
+    },
+    {
+      "element": "pink",
+      "offset": [
+        3,
+        -1,
+        -1
+      ]
+    }
+  ],
+  "tier": "temple"
+}

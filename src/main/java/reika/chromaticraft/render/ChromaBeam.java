@@ -62,7 +62,7 @@ public final class ChromaBeam {
 		}
 		if (dn > 0) {
 			int ca = c1 != c2 ? ReikaColorAPI.mixColors(c1, c2, 1-(float)(n/dd)) : c1;
-			int cb = c1 != c2 ? c2 : c1;
+			int cb = c2;
 			section(pose, v5, ico, lerp(p1, p2, n/dd), lerp(p1, p2, (dn+n)/dd), a, h, ca, cb);
 		}
 	}

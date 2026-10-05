@@ -223,11 +223,9 @@ public final class RelayNetworker {
 		// Upstream tests `meta % 8 == GLASS.ordinal()`, and the modulo is the point: metadata 8 and up is
 		// the reinforced flag, so reinforced glass shielding passes exactly as plain glass does. Reading
 		// the material and ignoring the REINFORCED property is that same test.
-		if (state.getBlock() instanceof BlockStructureShield shield
-				&& shield.getShieldType() == ChromaShieldTypes.GLASS)
-			return true;
+        return state.getBlock() instanceof BlockStructureShield shield
+                && shield.getShieldType() == ChromaShieldTypes.GLASS;
 		// CHROMA-PORT: upstream additionally passes any Biomes o' Plenty flower. Mod integration, and
 		// the same rule as Thaumcraft's -- recorded, not reproduced.
-		return false;
-	}
+    }
 }

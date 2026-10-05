@@ -1,24 +1,22 @@
 package reika.chromaticraft.world;
 
-import java.util.List;
-import java.util.Locale;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.feature.Feature;
-
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaShieldTypes;
 import reika.dragonapi.instantiable.data.maps.ThresholdMapping;
 import reika.dragonapi.instantiable.math.noise.SimplexNoiseGenerator;
 import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
+
+import java.util.List;
+import java.util.Locale;
 
 /**
  * V33a {@code LavaRiverGenerator}: the rivers of lava that wind across the Nether roof.

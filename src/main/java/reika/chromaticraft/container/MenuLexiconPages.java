@@ -1,9 +1,5 @@
 package reika.chromaticraft.container;
 
-import java.util.ArrayList;
-import java.util.LinkedHashSet;
-import java.util.List;
-
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
@@ -11,13 +7,15 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
-
 import reika.chromaticraft.item.ItemInfoFragment;
 import reika.chromaticraft.magic.progression.LexiconCatalog;
 import reika.chromaticraft.magic.progression.LexiconData;
 import reika.chromaticraft.magic.progression.ResearchFragmentData;
 import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.ChromaMenus;
+
+import java.util.LinkedHashSet;
+import java.util.List;
 
 /** V33a's scrollable 9x3 lexicon fragment inventory, backed directly by the held book. */
 public final class MenuLexiconPages extends AbstractContainerMenu {

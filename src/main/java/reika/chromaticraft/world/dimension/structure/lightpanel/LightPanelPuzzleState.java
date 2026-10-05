@@ -1,13 +1,9 @@
 package reika.chromaticraft.world.dimension.structure.lightpanel;
 
-import java.util.Arrays;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Random;
-
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
+
+import java.util.*;
 
 /** Persistent, generator-independent state for one Glowing Logic room. */
 public final class LightPanelPuzzleState {

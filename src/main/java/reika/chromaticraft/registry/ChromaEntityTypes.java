@@ -9,8 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.registry;
 
-import java.util.function.Supplier;
-
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
@@ -20,17 +18,12 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
-
 import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.entity.EntityGlowCloud;
-import reika.chromaticraft.entity.EntityLumaBurst;
-import reika.chromaticraft.entity.EntityLaserPulse;
-import reika.chromaticraft.entity.EntityPylonOverloadShock;
-import reika.chromaticraft.entity.EntityTunnelNuker;
-import reika.chromaticraft.entity.EntityDataCrystal;
-import reika.chromaticraft.entity.EntityBallLightning;
+import reika.chromaticraft.entity.*;
 
-/** Entity registrations accepted into the active 26.2 port slice. */
+import java.util.function.Supplier;
+
+/** Entity registrations accepted into the active 26.3 port slice. */
 public final class ChromaEntityTypes {
 
 	public static final DeferredRegister<EntityType<?>> ENTITY_TYPES =
@@ -45,7 +38,7 @@ public final class ChromaEntityTypes {
 	 *  behaviour and its CHROMA-PORT-marked gaps. */
 	public static final DeferredHolder<EntityType<?>, EntityType<EntityGlowCloud>> GLOW_CLOUD =
 			register("glow_cloud", () -> EntityType.Builder
-					.<EntityGlowCloud>of(EntityGlowCloud::new, MobCategory.CREATURE)
+					.of(EntityGlowCloud::new, MobCategory.CREATURE)
 					.sized(0.25F, 0.25F).clientTrackingRange(80).updateInterval(1));
 
 	public static final DeferredHolder<EntityType<?>, EntityType<EntityBallLightning>> BALL_LIGHTNING =
@@ -87,7 +80,7 @@ public final class ChromaEntityTypes {
 
 	public static final DeferredHolder<EntityType<?>, EntityType<EntityTunnelNuker>> TUNNEL_NUKER =
 			register("tunnel_nuker", () -> EntityType.Builder
-					.<EntityTunnelNuker>of(EntityTunnelNuker::new, MobCategory.CREATURE)
+					.of(EntityTunnelNuker::new, MobCategory.CREATURE)
 					.sized(1.25F, 0.75F).clientTrackingRange(128).updateInterval(1));
 
 	/**
@@ -96,7 +89,7 @@ public final class ChromaEntityTypes {
 	 */
 	public static final DeferredHolder<EntityType<?>, EntityType<reika.chromaticraft.entity.EntityAurora>>
 			AURORA = register("aurora", () -> EntityType.Builder
-					.<reika.chromaticraft.entity.EntityAurora>of(
+					.of(
 							reika.chromaticraft.entity.EntityAurora::new, MobCategory.MISC)
 					.sized(0.5F, 0.5F).clientTrackingRange(256).updateInterval(20).noSummon());
 
@@ -112,7 +105,9 @@ public final class ChromaEntityTypes {
 					.<reika.chromaticraft.entity.EntityEnderEyeT2>of(reika.chromaticraft.entity.EntityEnderEyeT2::new, MobCategory.MISC)
 					.sized(0.25F, 0.25F).clientTrackingRange(32).updateInterval(1).noSummon());
 
-	private ChromaEntityTypes() {}
+	public static final DeferredHolder<EntityType<?>,EntityType<reika.chromaticraft.entity.EntityMonsterBait>> MONSTER_BAIT = register("monster_bait", () -> EntityType.Builder.of(reika.chromaticraft.modinterface.voidritual.VoidBaitFactory.factory(),MobCategory.MISC).sized(.6F,1.8F).clientTrackingRange(128).updateInterval(1));
+    public static final DeferredHolder<EntityType<?>,EntityType<reika.chromaticraft.entity.EntityDeathFog>> DEATH_FOG = register("death_fog", () -> EntityType.Builder.<reika.chromaticraft.entity.EntityDeathFog>of(reika.chromaticraft.entity.EntityDeathFog::new,MobCategory.MISC).sized(.125F,.125F).clientTrackingRange(128).updateInterval(1));
+    private ChromaEntityTypes() {}
 
 	private static <T extends Entity> DeferredHolder<EntityType<?>, EntityType<T>> register(
 			String name, Supplier<EntityType.Builder<T>> builder) {

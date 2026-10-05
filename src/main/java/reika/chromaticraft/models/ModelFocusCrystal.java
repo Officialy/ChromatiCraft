@@ -9,12 +9,12 @@
  ******************************************************************************/
 package reika.chromaticraft.models;
 
-import java.util.List;
-
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.model.geom.builders.LayerDefinition;
 import net.minecraft.client.model.geom.builders.MeshDefinition;
 import net.minecraft.client.model.geom.builders.PartDefinition;
+
+import java.util.List;
 
 /** V33a ModelFocusCrystal (Techne, 64x32): the ordered ring model of the Refined and better tiers. */
 public final class ModelFocusCrystal extends ModelFocusCrystalBase {

@@ -1,7 +1,5 @@
 package reika.chromaticraft.data;
 
-import java.util.concurrent.CompletableFuture;
-
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.PackOutput;
@@ -12,9 +10,10 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.Biomes;
 import net.neoforged.neoforge.common.Tags;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.world.biome.ChromaBiomes;
+
+import java.util.concurrent.CompletableFuture;
 
 /** Biome classification and feature-target tags for the Rainbow Forest pair. */
 public final class ChromaBiomeTagProvider extends TagsProvider<Biome> {

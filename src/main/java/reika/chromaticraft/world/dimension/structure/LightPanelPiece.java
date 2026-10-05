@@ -1,9 +1,5 @@
 package reika.chromaticraft.world.dimension.structure;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.Identifier;
@@ -11,15 +7,14 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.StructureManager;
 import net.minecraft.world.level.WorldGenLevel;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.chunk.ChunkGenerator;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.StructurePiece;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
-import net.minecraft.world.level.levelgen.Heightmap;
-import net.minecraft.world.level.block.Blocks;
-
 import reika.chromaticraft.block.BlockChromaDoor;
 import reika.chromaticraft.data.ChromaStructureTemplateProvider;
 import reika.chromaticraft.registry.ChromaBlocks;
@@ -32,6 +27,10 @@ import reika.chromaticraft.world.dimension.DimensionStructureType;
 import reika.chromaticraft.world.dimension.ProximaGenerators;
 import reika.chromaticraft.world.dimension.StructureCalculator;
 import reika.chromaticraft.world.dimension.structure.StructureGeneratorBase.StructurePair;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
 
 /** Chunk-clipped NBT composition of V33a's full Glowing Logic structure. */
 public final class LightPanelPiece extends StructurePiece {

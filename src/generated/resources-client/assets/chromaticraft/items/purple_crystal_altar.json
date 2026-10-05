@@ -1,0 +1,10 @@
+{
+  "model": {
+    "type": "minecraft:special",
+    "base": "chromaticraft:block/purple_crystal_altar_inventory",
+    "model": {
+      "type": "chromaticraft:colored_altar",
+      "color": 5
+    }
+  }
+}

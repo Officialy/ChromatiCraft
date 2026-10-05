@@ -1,21 +1,17 @@
 package reika.chromaticraft.world.dimension.structure;
 
-import java.util.HashSet;
-import java.util.Set;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.StructureManager;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
-import net.minecraft.world.level.StructureManager;
 import net.minecraft.world.level.levelgen.structure.StructurePiece;
-
 import reika.chromaticraft.block.decoration.BlockEtherealLight;
 import reika.chromaticraft.block.dimension.BlockBedrockCrack;
 import reika.chromaticraft.block.dimension.BlockVoidCave;
@@ -23,6 +19,9 @@ import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaShieldTypes;
 import reika.chromaticraft.registry.ChromaTieredPlants;
 import reika.chromaticraft.registry.ProximaDecoTypes;
+
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * V33a {@code WorldGenGlowCave}'s writing half: what each cell of {@link GlowCaveShape} becomes.

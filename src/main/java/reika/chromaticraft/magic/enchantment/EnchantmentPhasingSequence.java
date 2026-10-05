@@ -10,10 +10,9 @@
 package reika.chromaticraft.magic.enchantment;
 
 import net.minecraft.world.entity.player.Player;
-
+import reika.chromaticraft.base.ChromaticEnchantment;
 import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
-import reika.chromaticraft.base.ChromaticEnchantment;
 
 /**
  * V33a Armor Breach: part of each hit is also dealt as absolute pylon energy that armour and protection cannot stop,

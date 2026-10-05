@@ -3,11 +3,9 @@ package reika.chromaticraft.registry;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.Level;
-
 import reika.chromaticraft.auxiliary.structure.NBTStructureLoader;
 import reika.chromaticraft.auxiliary.structure.RegistryBlockCheck;
 import reika.chromaticraft.base.ColoredStructureBase;
-import reika.chromaticraft.block.BlockCrystalRune;
 import reika.dragonapi.instantiable.data.blockstruct.FilledBlockArray;
 import reika.dragonapi.interfaces.BlockCheck;
 

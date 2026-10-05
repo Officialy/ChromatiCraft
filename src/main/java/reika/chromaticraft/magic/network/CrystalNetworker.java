@@ -10,66 +10,40 @@
 package reika.chromaticraft.magic.network;
 
 import com.mojang.serialization.Codec;
-
-import net.minecraft.resources.Identifier;
-import net.minecraft.resources.ResourceKey;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.ConcurrentModificationException;
-import java.util.EnumMap;
-import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.Random;
-import java.util.UUID;
-import java.util.WeakHashMap;
-
 import net.minecraft.core.BlockPos;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
-import net.minecraft.util.Mth;
-import net.minecraft.world.level.Level;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.Mth;
 import net.minecraft.util.datafix.DataFixTypes;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.level.saveddata.SavedDataType;
+import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.common.NeoForge;
-import net.neoforged.neoforge.event.level.LevelEvent;
 import net.neoforged.neoforge.event.level.BlockEvent;
-
+import net.neoforged.neoforge.event.level.LevelEvent;
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.auxiliary.CrystalNetworkLogger;
 import reika.chromaticraft.auxiliary.CrystalNetworkLogger.FlowFail;
 import reika.chromaticraft.base.tileentity.TileEntityChromaticBase;
-import reika.chromaticraft.magic.interfaces.CrystalFuse;
-import reika.chromaticraft.magic.interfaces.CrystalNetworkTile;
-import reika.chromaticraft.magic.interfaces.CrystalReceiver;
-import reika.chromaticraft.magic.interfaces.CrystalSource;
-import reika.chromaticraft.magic.interfaces.CrystalTransmitter;
-import reika.chromaticraft.magic.interfaces.NaturalCrystalSource;
-import reika.chromaticraft.magic.interfaces.NotifiedNetworkTile;
-import reika.chromaticraft.magic.interfaces.PylonConnector;
-import reika.chromaticraft.magic.interfaces.RegionalSensitiveRepeater;
+import reika.chromaticraft.magic.interfaces.*;
 import reika.chromaticraft.magic.network.CrystalNetworkException.InvalidLocationException;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.tileentity.networking.TileEntityCompoundRepeater;
-//import reika.chromaticraft.tileentity.networking.TileEntityCrystalBroadcaster; //deferred
 import reika.chromaticraft.tileentity.networking.TileEntityCrystalPylon;
 import reika.chromaticraft.tileentity.networking.TileEntityCrystalRepeater;
 import reika.chromaticraft.tileentity.networking.TileEntitySkypeater;
 import reika.dragonapi.auxiliary.ModularLogger;
+import reika.dragonapi.auxiliary.trackers.TickRegistry;
 import reika.dragonapi.auxiliary.trackers.TickRegistry.Phase;
 import reika.dragonapi.auxiliary.trackers.TickRegistry.TickHandler;
 import reika.dragonapi.auxiliary.trackers.TickRegistry.TickType;
 import reika.dragonapi.instantiable.data.WeightedRandom;
-import reika.dragonapi.instantiable.data.immutable.Coordinate;
 import reika.dragonapi.instantiable.data.immutable.WorldChunk;
 import reika.dragonapi.instantiable.data.immutable.WorldLocation;
 import reika.dragonapi.instantiable.data.maps.MultiMap;
@@ -79,9 +53,9 @@ import reika.dragonapi.instantiable.data.maps.TileEntityCache;
 import reika.dragonapi.instantiable.event.SetBlockEvent;
 import reika.dragonapi.libraries.java.ReikaJavaLibrary;
 
-import reika.dragonapi.auxiliary.trackers.TickRegistry;
-import net.neoforged.bus.api.SubscribeEvent;
+import java.util.*;
 
+//import reika.chromaticraft.tileentity.networking.TileEntityCrystalBroadcaster; //deferred
 
 
 public class CrystalNetworker implements TickHandler {
@@ -620,9 +594,8 @@ public class CrystalNetworker implements TickHandler {
 			for (CrystalElement e : set) {
 				this.removeActiveSource(te, e);
 			} */
-		if (te instanceof TileEntityCrystalPylon) {
-			TileEntityCrystalPylon tile = (TileEntityCrystalPylon)te;
-			TileEntityCache<TileEntityCrystalPylon> c = pylons.get(tile.getColor());
+		if (te instanceof TileEntityCrystalPylon tile) {
+            TileEntityCache<TileEntityCrystalPylon> c = pylons.get(tile.getColor());
 			if (c != null)
 				c.remove(tile);
 		}
@@ -682,9 +655,8 @@ public class CrystalNetworker implements TickHandler {
 			ModularLogger.instance.log(NBT_TAG, "Found "+locs.size()+" transmitters to "+r+": "+locs);
 		for (WorldLocation c : locs) {
 			CrystalNetworkTile tile = tiles.get(c);
-			if (tile instanceof CrystalTransmitter && r != tile) {
-				CrystalTransmitter te = (CrystalTransmitter)tile;
-				if (te.canConduct() && te.canTransmitTo(r) && r.canReceiveFrom(te)) {
+			if (tile instanceof CrystalTransmitter te && r != tile) {
+                if (te.canConduct() && te.canTransmitTo(r) && r.canReceiveFrom(te)) {
 					if (e == null || te.isConductingElement(e)) {
 						boolean flag = r instanceof PylonConnector;
 						double d = flag ? 0 : te.getDistanceSqTo(r.getX(), r.getY(), r.getZ());
@@ -705,9 +677,7 @@ public class CrystalNetworker implements TickHandler {
 		if (src.canConduct() && src.canTransmitTo(tgt)) {
 			if (e == null || src.isConductingElement(e)) {
 				if (tgt.getDistanceSqTo(src.getX(), src.getY(), src.getZ()) <= Math.min(tgt.getReceiveRange()*tgt.getReceiveRange(), src.getSendRange()*src.getSendRange())) {
-					if (this.checkLOS(src, tgt)) {
-						return true;
-					}
+                    return this.checkLOS(src, tgt);
 				}
 			}
 		}
@@ -730,9 +700,8 @@ public class CrystalNetworker implements TickHandler {
 				ModularLogger.instance.log(NBT_TAG, "Found "+locs.size()+" receivers from "+r+": "+locs);
 			for (WorldLocation c : locs) {
 				CrystalNetworkTile tile = tiles.get(c);
-				if (tile instanceof CrystalReceiver && r != tile) {
-					CrystalReceiver te = (CrystalReceiver)tile;
-					//ReikaJavaLibrary.pConsole(te, !(te instanceof TileEntityCrystalRepeater));
+				if (tile instanceof CrystalReceiver te && r != tile) {
+                    //ReikaJavaLibrary.pConsole(te, !(te instanceof TileEntityCrystalRepeater));
 					if (te.canConduct() && r.canTransmitTo(te) && te.canReceiveFrom(r)) {
 						if (e == null || te.isConductingElement(e)) {
 							double d = te.getDistanceSqTo(r.getX(), r.getY(), r.getZ());
@@ -758,9 +727,8 @@ public class CrystalNetworker implements TickHandler {
 		ArrayList<CrystalSource> li = new ArrayList();
 		for (WorldLocation c : tiles.keySet()) {
 			CrystalNetworkTile tile = tiles.get(c);
-			if (tile instanceof CrystalSource) {
-				CrystalSource te = (CrystalSource)tile;
-				if (!activeOnly || te.canConduct()) {
+			if (tile instanceof CrystalSource te) {
+                if (!activeOnly || te.canConduct()) {
 					if (e == null || te.isConductingElement(e)) {
 						li.add(te);
 					}
@@ -1074,13 +1042,11 @@ public class CrystalNetworker implements TickHandler {
 	}
 
 	private String getString(CrystalNetworkTile net) {
-		if (net instanceof TileEntityCrystalPylon) {
-			TileEntityCrystalPylon te = (TileEntityCrystalPylon)net;
-			return te.getColor()+" Pylon ["+te.getEnergy(te.getColor())+"/"+te.getMaxStorage(te.getColor())+"], Struct="+te.hasStructure()+", Turbo="+te.isEnhanced();
+		if (net instanceof TileEntityCrystalPylon te) {
+            return te.getColor()+" Pylon ["+te.getEnergy(te.getColor())+"/"+te.getMaxStorage(te.getColor())+"], Struct="+te.hasStructure()+", Turbo="+te.isEnhanced();
 		}
-		else if (net instanceof TileEntityCrystalRepeater) {
-			TileEntityCrystalRepeater te = (TileEntityCrystalRepeater)net;
-			if (te instanceof TileEntityCompoundRepeater) {
+		else if (net instanceof TileEntityCrystalRepeater te) {
+            if (te instanceof TileEntityCompoundRepeater) {
 				return "Compound Repeater, Struct="+te.canConduct()+", Turbo="+te.isTurbocharged();
 			}
 			//else if (te instanceof TileEntityCrystalBroadcaster) { //broadcaster deferred
@@ -1098,7 +1064,7 @@ public class CrystalNetworker implements TickHandler {
 			for (int i = 0; i < 16; i++) {
 				conn[i] = net.isConductingElement(CrystalElement.elements[i]) ? 1 : 0;
 			}
-			return net.toString()+" : "+net.canConduct()+", E="+Arrays.toString(conn);
+			return net +" : "+net.canConduct()+", E="+Arrays.toString(conn);
 		}
 	}
 

@@ -9,44 +9,25 @@
  ******************************************************************************/
 package reika.chromaticraft.magic.network;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.Set;
-import java.util.function.BiFunction;
-import java.util.function.Predicate;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.tags.TagKey;
-import net.minecraft.world.level.block.Block;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.util.Mth;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.neoforged.neoforge.common.Tags;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.auxiliary.CrystalNetworkLogger;
 import reika.chromaticraft.auxiliary.CrystalNetworkLogger.LoggingLevel;
-import reika.chromaticraft.magic.interfaces.CrystalNetworkTile;
-import reika.chromaticraft.magic.interfaces.CrystalReceiver;
-import reika.chromaticraft.magic.interfaces.CrystalRepeater;
-import reika.chromaticraft.magic.interfaces.CrystalSource;
-import reika.chromaticraft.magic.interfaces.CrystalTransmitter;
-import reika.chromaticraft.magic.interfaces.TemporaryCrystalReceiverProvider;
-import reika.chromaticraft.magic.interfaces.WrapperTile;
+import reika.chromaticraft.magic.interfaces.*;
 import reika.chromaticraft.magic.network.NetworkSorters.TransmitterDistanceSorter;
 import reika.chromaticraft.registry.ChromaOptions;
 import reika.chromaticraft.registry.CrystalElement;
@@ -60,6 +41,9 @@ import reika.dragonapi.instantiable.data.immutable.WorldLocation;
 import reika.dragonapi.instantiable.data.maps.MultiMap;
 import reika.dragonapi.instantiable.data.maps.MultiMap.CollectionType;
 
+import java.util.*;
+import java.util.function.BiFunction;
+import java.util.function.Predicate;
 
 
 public class PylonFinder {
@@ -83,10 +67,10 @@ public class PylonFinder {
 	private final CrystalElement element;
 	private final Player user;
 
-	private int maxSteps = Integer.MAX_VALUE;
+	private final int maxSteps = Integer.MAX_VALUE;
 	private int steps = 0;
 	private int stepsThisTick = 0;
-	private boolean suspended = false;
+	private final boolean suspended = false;
 	public static final int MAX_STEPS_PER_TICK = 1000;
 	private final boolean isValidWorld;
 
@@ -108,7 +92,7 @@ public class PylonFinder {
 		target = r;
 		//stepRange = r;
 		net = CrystalNetworker.instance;
-		blacklist.add(this.getLocation(r));
+		blacklist.add(getLocation(r));
 		user = ep;
 		isValidWorld = r.getWorld().dimension() == Level.OVERWORLD
 				|| pylonWorldPredicates.stream().anyMatch(test -> test.test(r.getWorld()));
@@ -172,7 +156,7 @@ public class PylonFinder {
 	}
 
 	private void optimizeSkypeaterRoute(ArrayList<WorldLocation> path) {
-		this.optimizeRoute(net, CrystalPath.createNodeList(path), Integer.MAX_VALUE, new JumpOptimizationCheck() {
+		optimizeRoute(net, CrystalPath.createNodeList(path), Integer.MAX_VALUE, new JumpOptimizationCheck() {
 
 			@Override
 			public boolean canDirectLink(CrystalNetworkTile t1, CrystalNetworkTile t2) {
@@ -285,9 +269,8 @@ public class PylonFinder {
 		for (int i = 0; i < p.nodes.size(); i++) {
 			PathNode loc = p.nodes.get(i);
 			CrystalNetworkTile te = loc.getTile(true);
-			if (te instanceof CrystalRepeater) {
-				CrystalRepeater tile = (CrystalRepeater)te;
-				tile.setSignalDepth(p.element, p.nodes.size()-1-i);
+			if (te instanceof CrystalRepeater tile) {
+                tile.setSignalDepth(p.element, p.nodes.size()-1-i);
 			}
 		}
 		//ReikaJavaLibrary.pConsole(paths, Side.SERVER);
@@ -315,7 +298,7 @@ public class PylonFinder {
 	}
 
 	public boolean isComplete() {
-		return nodes.size() >= 2 && this.getSourceAt(nodes.getLast(), false) != null;
+		return nodes.size() >= 2 && getSourceAt(nodes.getLast(), false) != null;
 	}
 
 	private void findFrom(CrystalReceiver r, SourceValidityRule rule) {
@@ -564,11 +547,9 @@ public class PylonFinder {
 	public static LOSData lineOfSight(Level world, int x1, int y1, int z1, int x2, int y2, int z2, Block... extra) {
 		tracer.setOrigins(x1, y1, z1, x2, y2, z2);
 		tracer.offset(0.5, 0.5, 0.5);
-		if (extra.length > 0) {
-			for (Block b : extra)
-				tracer.addOneTimeIgnoredBlock(b);
-		}
-		boolean los = tracer.isClearLineOfSight(world);
+        for (Block b : extra)
+            tracer.addOneTimeIgnoredBlock(b);
+        boolean los = tracer.isClearLineOfSight(world);
 		Set<BlockPos> set = tracer.getRayBlocks();
 		return new LOSData(los, canRainOn(world, set), set);
 	}

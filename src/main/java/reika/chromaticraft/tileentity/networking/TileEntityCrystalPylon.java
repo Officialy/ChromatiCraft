@@ -8,78 +8,62 @@
  * explicit, prior permission from the owner.
  ******************************************************************************/
 package reika.chromaticraft.tileentity.networking;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.UUID;
 
-
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
-
-import net.minecraft.core.BlockPos;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.core.Direction;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.LightningBolt;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ChunkPos;
-
-import reika.chromaticraft.block.BlockEncrustedCrystal;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
-import reika.chromaticraft.entity.EntityPylonOverloadShock;
-import reika.chromaticraft.block.BlockEncrustedCrystal.TileCrystalEncrusted;
-import reika.chromaticraft.magic.ChromaAbilityData;
-import reika.chromaticraft.magic.CrystalPotionController;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.neoforged.neoforge.common.NeoForge;
-
 import reika.chromaticraft.auxiliary.event.PylonEvents.PlayerChargedFromPylonEvent;
-import reika.chromaticraft.magic.interfaces.CrystalNetworkTile;
 import reika.chromaticraft.auxiliary.event.PylonEvents.PylonDrainedEvent;
 import reika.chromaticraft.auxiliary.event.PylonEvents.PylonFullyChargedEvent;
-import reika.chromaticraft.magic.network.CrystalNetworker;
-import reika.chromaticraft.magic.network.CrystalPath;
 import reika.chromaticraft.auxiliary.event.PylonEvents.PylonRechargedEvent;
-import reika.chromaticraft.magic.network.PylonFinder;
-import reika.chromaticraft.network.ChromaNetwork;
-import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.base.tileentity.CrystalTransmitterBase;
+import reika.chromaticraft.block.BlockCrystallineStone;
+import reika.chromaticraft.block.BlockEncrustedCrystal;
+import reika.chromaticraft.block.BlockEncrustedCrystal.TileCrystalEncrusted;
+import reika.chromaticraft.client.sound.PylonSoundManager;
+import reika.chromaticraft.entity.EntityPylonOverloadShock;
+import reika.chromaticraft.magic.ChromaAbilityData;
+import reika.chromaticraft.magic.CrystalPotionController;
 import reika.chromaticraft.magic.ElementTagCompound;
 import reika.chromaticraft.magic.interfaces.ChargingPoint;
+import reika.chromaticraft.magic.interfaces.CrystalNetworkTile;
 import reika.chromaticraft.magic.interfaces.CrystalReceiver;
 import reika.chromaticraft.magic.interfaces.NaturalCrystalSource;
-import reika.chromaticraft.registry.ChromaSounds;
+import reika.chromaticraft.magic.network.CrystalNetworker;
+import reika.chromaticraft.magic.network.CrystalPath;
+import reika.chromaticraft.magic.network.PylonFinder;
 import reika.chromaticraft.magic.progression.ProgressStage;
-import reika.chromaticraft.tileentity.auxiliary.TileEntityChromaCrystal;
-import reika.chromaticraft.registry.ChromaStructures;
-import reika.chromaticraft.registry.ChromaTiles;
-import reika.chromaticraft.registry.CrystalElement;
+import reika.chromaticraft.network.ChromaNetwork;
+import reika.chromaticraft.registry.*;
 import reika.chromaticraft.render.particle.ChromaParticle;
-import reika.chromaticraft.client.sound.PylonSoundManager;
+import reika.chromaticraft.tileentity.auxiliary.TileEntityChromaCrystal;
+import reika.dragonapi.auxiliary.ChunkManager;
+import reika.dragonapi.instantiable.data.blockstruct.BlockArray;
 import reika.dragonapi.instantiable.data.blockstruct.FilledBlockArray;
-import reika.dragonapi.libraries.level.ReikaWorldHelper;
 import reika.dragonapi.instantiable.data.immutable.Coordinate;
 import reika.dragonapi.instantiable.data.immutable.WorldLocation;
-import reika.dragonapi.auxiliary.ChunkManager;
 import reika.dragonapi.interfaces.blockentity.ChunkLoadingTile;
+import reika.dragonapi.libraries.level.ReikaWorldHelper;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
-import reika.dragonapi.instantiable.data.blockstruct.BlockArray;
-import reika.chromaticraft.block.BlockCrystallineStone;
-import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
+
+import java.util.*;
 
 /**
  * The crystal pylon, ChromatiCraft's primary natural crystal-network source.
@@ -205,7 +189,7 @@ public class TileEntityCrystalPylon extends CrystalTransmitterBase implements Na
 	}
 
 	public int getRenderColor() {
-		return ReikaColorAPI.mixColors(color.getColor(), 0x888888, (float)energy / this.getCapacity());
+		return ReikaColorAPI.mixColors(color.color(), 0x888888, (float)energy / this.getCapacity());
 	}
 
 	@Override

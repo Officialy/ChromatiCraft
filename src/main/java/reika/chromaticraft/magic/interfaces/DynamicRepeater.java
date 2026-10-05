@@ -12,6 +12,6 @@ package reika.chromaticraft.magic.interfaces;
 
 public interface DynamicRepeater extends CrystalRepeater {
 
-	public int getModifiedThoughput(int basethru, CrystalSource src, CrystalReceiver r);
+	int getModifiedThoughput(int basethru, CrystalSource src, CrystalReceiver r);
 
 }

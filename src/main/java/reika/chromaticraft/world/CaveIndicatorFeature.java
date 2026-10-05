@@ -1,12 +1,9 @@
 package reika.chromaticraft.world;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.feature.Feature;
-
 import reika.chromaticraft.registry.ChromaBlocks;
 
 /**
@@ -16,8 +13,7 @@ import reika.chromaticraft.registry.ChromaBlocks;
  * <p>Upstream sweeps every column of the chunk and makes two attempts per column, so this is a dense
  * pass rather than a scattered one; that whole 16x16x2 loop is kept here because expressing it as
  * vanilla count modifiers would change the distribution from "twice per column" to "N times
- * per chunk". Biome restriction is left to the biome modifier, which attaches this feature to the
- * two Luminous Cliffs biomes only.
+ * per chunk". Each actual column is restricted to the two Luminous Cliffs biomes.
  */
 public final class CaveIndicatorFeature implements Feature {
 
@@ -35,12 +31,15 @@ public final class CaveIndicatorFeature implements Feature {
 
 	@Override
 	public boolean place(net.minecraft.world.level.WorldGenLevel world, net.minecraft.world.level.chunk.ChunkGenerator generator, net.minecraft.util.RandomSource random, net.minecraft.core.BlockPos origin) {
+		if (world.getLevel().isFlat()) return false;
 		BlockState indicator = ChromaBlocks.CAVE_INDICATOR.get().defaultBlockState();
 		boolean placed = false;
 		for (int i = 0; i < 16; i++) {
 			for (int k = 0; k < 16; k++) {
 				int x = origin.getX() + i;
 				int z = origin.getZ() + k;
+				if (!reika.chromaticraft.world.luminous.LuminousCliffsBiomeMask.kindOf(
+						world.getBiome(new BlockPos(x, world.getSeaLevel(), z))).isGlowingCliffs()) continue;
 				for (int n = 0; n < 2; n++) {
 					// V33a: y = 4 + rand(60), an absolute band. It stays absolute for the same
 					// reason the tiered ore band does -- the space below y 0 is deepslate, and this
@@ -73,6 +72,6 @@ public final class CaveIndicatorFeature implements Feature {
 	/** V33a canGenerateIn: stone, or anything ore generation would treat as stone. */
 	public static boolean canGenerateIn(WorldGenLevel world, BlockPos pos) {
 		BlockState state = world.getBlockState(pos);
-		return state.is(Blocks.STONE);
+		return state.is(reika.chromaticraft.registry.ChromaBlockTags.NATURAL_STONE);
 	}
 }

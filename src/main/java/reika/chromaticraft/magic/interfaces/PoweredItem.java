@@ -16,18 +16,18 @@ import reika.chromaticraft.registry.CrystalElement;
  */
 public interface PoweredItem extends DynamicallyGeneratedSubpage {
 
-	public abstract CrystalElement getColor(ItemStack is);
-	public abstract int getMaxCharge();
-	public abstract int getChargeStates();
-	public abstract int getChargeConsumptionRate(Player e, Level world, ItemStack is);
+	CrystalElement getColor(ItemStack is);
+	int getMaxCharge();
+	int getChargeStates();
+	int getChargeConsumptionRate(Player e, Level world, ItemStack is);
 
-	public int getChargeRate(ItemStack is, int base);
-	public boolean hasChargeStates();
-	public int getChargeState(float frac);
+	int getChargeRate(ItemStack is, int base);
+	boolean hasChargeStates();
+	int getChargeState(float frac);
 
-	public float getPlayerChargeCoefficient(Player ep, ChargingPoint te, ItemStack is);
+	float getPlayerChargeCoefficient(Player ep, ChargingPoint te, ItemStack is);
 
 	/** Client only: the effect of a charged item lying on the ground. */
-	public abstract void doChargeFX(ItemEntity ei, int charge);
+    void doChargeFX(ItemEntity ei, int charge);
 
 }

@@ -13,10 +13,10 @@ import net.minecraft.world.entity.player.Player;
 
 public interface SneakPop {
 
-	public void drop();
+	void drop();
 
-	public boolean canDrop(Player ep);
+	boolean canDrop(Player ep);
 	
-	public boolean allowMining(Player ep);
+	boolean allowMining(Player ep);
 
 }

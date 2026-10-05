@@ -1,12 +1,11 @@
 package reika.chromaticraft.auxiliary;
 
+import net.minecraft.util.RandomSource;
+import reika.dragonapi.libraries.mathsci.ReikaMusicHelper.MusicKey;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
-import net.minecraft.util.RandomSource;
-
-import reika.dragonapi.libraries.mathsci.ReikaMusicHelper.MusicKey;
 
 /** The exact prefab melody catalog shared by V33a's music and Biome Fragment puzzles. */
 public final class BiomeStructureMelodies {

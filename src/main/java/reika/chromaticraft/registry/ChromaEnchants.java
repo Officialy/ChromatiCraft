@@ -9,11 +9,11 @@
  ******************************************************************************/
 package reika.chromaticraft.registry;
 
-import java.util.Locale;
-
+import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderGetter;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.BootstrapContext;
 import net.minecraft.network.chat.Component;
@@ -24,25 +24,11 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.ItemEnchantments;
-import net.minecraft.core.component.DataComponents;
-
-import it.unimi.dsi.fastutil.objects.Object2IntMap;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.base.ChromaticEnchantment;
-import reika.chromaticraft.magic.enchantment.EnchantmentAggroMask;
-import reika.chromaticraft.magic.enchantment.EnchantmentAirMiner;
-import reika.chromaticraft.magic.enchantment.EnchantmentAutoCollect;
-import reika.chromaticraft.magic.enchantment.EnchantmentBetterEfficiency;
-import reika.chromaticraft.magic.enchantment.EnchantmentBossKill;
-import reika.chromaticraft.magic.enchantment.EnchantmentDataKeeper;
-import reika.chromaticraft.magic.enchantment.EnchantmentEnderLock;
-import reika.chromaticraft.magic.enchantment.EnchantmentFastSinking;
-import reika.chromaticraft.magic.enchantment.EnchantmentHarvestLevel;
-import reika.chromaticraft.magic.enchantment.EnchantmentPhasingSequence;
-import reika.chromaticraft.magic.enchantment.EnchantmentRareLoot;
-import reika.chromaticraft.magic.enchantment.EnchantmentUseRepair;
-import reika.chromaticraft.magic.enchantment.EnchantmentWeaponAOE;
+import reika.chromaticraft.magic.enchantment.*;
+
+import java.util.Locale;
 
 /**
  * V33a {@code ChromaEnchants}: the thirteen ChromatiCraft enchantments. Each is a data-driven
@@ -75,7 +61,7 @@ public enum ChromaEnchants {
 
 	public static final ChromaEnchants[] enchantmentList = values();
 
-	private ChromaEnchants(String id, ChromaticEnchantment e) {
+	ChromaEnchants(String id, ChromaticEnchantment e) {
 		key = ResourceKey.create(Registries.ENCHANTMENT, Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, id));
 		enchantment = e;
 	}

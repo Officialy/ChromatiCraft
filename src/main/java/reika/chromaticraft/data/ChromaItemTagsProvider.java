@@ -1,20 +1,19 @@
 package reika.chromaticraft.data;
 
-import java.util.concurrent.CompletableFuture;
-
 import net.minecraft.core.HolderLookup;
-import net.minecraft.data.PackOutput;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.data.PackOutput;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.tags.TagKey;
 import net.neoforged.neoforge.common.data.ItemTagsProvider;
-
 import reika.chromaticraft.ChromatiCraft;
+import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaItemTags;
 import reika.chromaticraft.registry.ChromaItems;
-import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.CrystalElement;
+
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Builds the crystal shard tag family.
@@ -57,6 +56,12 @@ public final class ChromaItemTagsProvider extends ItemTagsProvider {
 		weaponOrBow.addTag(net.minecraft.tags.ItemTags.SWORDS);
 		weaponOrBow.add(ResourceKey.create(Registries.ITEM, net.minecraft.resources.Identifier.withDefaultNamespace("bow")));
 		var digger = tag(ChromaItemTags.ENCHANTABLE_DIGGER);
+		digger.add(ChromaItems.EXCAVATION_WAND.getKey());
+        digger.add(ChromaItems.MULTITOOL.getKey(), ChromaItems.ORE_HARVESTER.getKey());
+        tag(net.minecraft.tags.ItemTags.MINING_ENCHANTABLE).add(ChromaItems.MULTITOOL.getKey(), ChromaItems.ORE_HARVESTER.getKey());
+        tag(net.minecraft.tags.ItemTags.MINING_LOOT_ENCHANTABLE).add(ChromaItems.MULTITOOL.getKey());
+        tag(net.minecraft.tags.ItemTags.DURABILITY_ENCHANTABLE).add(ChromaItems.MULTITOOL.getKey(), ChromaItems.ORE_HARVESTER.getKey());
+        tag(net.minecraft.tags.ItemTags.PICKAXES).add(ChromaItems.ORE_HARVESTER.getKey());
 		digger.addTag(net.minecraft.tags.ItemTags.PICKAXES);
 		digger.addTag(net.minecraft.tags.ItemTags.AXES);
 		digger.addTag(net.minecraft.tags.ItemTags.SHOVELS);

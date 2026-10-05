@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "condition": {
+        "type": "minecraft:survives_explosion"
+      },
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "chromaticraft:lightblue_crystal_altar"
+        }
+      ],
+      "rolls": 1
+    }
+  ],
+  "random_sequence": "chromaticraft:blocks/lightblue_crystal_altar"
+}

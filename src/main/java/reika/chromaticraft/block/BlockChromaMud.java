@@ -1,7 +1,5 @@
 package reika.chromaticraft.block;
 
-import org.jspecify.annotations.Nullable;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.InsideBlockEffectApplier;
@@ -12,11 +10,11 @@ import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.redstone.Orientation;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
-
-import net.minecraft.world.level.redstone.Orientation;
+import org.jspecify.annotations.Nullable;
 import reika.chromaticraft.magic.progression.ProgressStage;
 
 /** V33a chroma mud: shallow, fall-safe, slowing ground created underneath Liquid Chroma. */

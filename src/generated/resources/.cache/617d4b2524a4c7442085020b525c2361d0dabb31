@@ -1,4 +1,4 @@
-// 26.3	2026-09-28T15:11:47.1898212	Tags for minecraft:item mod id chromaticraft
+// 26.3	2026-10-05T12:14:17.6612735	Tags for minecraft:item mod id chromaticraft
 feabfa49d9b792553bd1027be79b260ef59c1f69 data/chromaticraft/tags/item/boosted_crystal_shards.json
 2837437a0b60e117de8d248ad6b021c132633d7e data/chromaticraft/tags/item/boosted_crystal_shards/black.json
 ee3045f172b1666e013385a19db8c0f6dbcd266f data/chromaticraft/tags/item/boosted_crystal_shards/blue.json
@@ -33,7 +33,7 @@ b8ff6912390b3a356b5b6a1e992d0adb564eedea data/chromaticraft/tags/item/crystal_sh
 dbd72a67efdf5a99c296baf8891f41bc32ab4bc3 data/chromaticraft/tags/item/crystal_shards/red.json
 8a1385af8ea53a8995d20caf8c3163aecdfd02ca data/chromaticraft/tags/item/crystal_shards/white.json
 dcf617083a8db778f36507880c668d995a5fc93f data/chromaticraft/tags/item/crystal_shards/yellow.json
-c4a9fd03b40d59c17b70f44e504be0f55184f63d data/chromaticraft/tags/item/enchantable/digger.json
+ee06af061dfb25ebd7806e8514a13f516018eb8d data/chromaticraft/tags/item/enchantable/digger.json
 5c6135d42953468e22c2f1061e98411f973205fe data/chromaticraft/tags/item/enchantable/weapon_or_bow.json
 13d2d6fa3cd9128c56d79fa2a59a3ca8e26dca3c data/chromaticraft/tags/item/lumen_relays.json
 d0c390092cba797988b8e891d00856f505854b4a data/chromaticraft/tags/item/plain_crystal_shards.json
@@ -45,3 +45,7 @@ d0c390092cba797988b8e891d00856f505854b4a data/chromaticraft/tags/item/plain_crys
 35133e95f1c8fdd7a1c21afcc231fc0bffefb9a8 data/c/tags/item/ores/nickel.json
 35133e95f1c8fdd7a1c21afcc231fc0bffefb9a8 data/c/tags/item/ores/silver.json
 35133e95f1c8fdd7a1c21afcc231fc0bffefb9a8 data/c/tags/item/ores/tin.json
+eabb53a205cb5e7a7737aaf42609e9397c9af322 data/minecraft/tags/item/enchantable/durability.json
+eabb53a205cb5e7a7737aaf42609e9397c9af322 data/minecraft/tags/item/enchantable/mining.json
+b1ac762a8b0b38a3a0ca81a3e6444141d479a570 data/minecraft/tags/item/enchantable/mining_loot.json
+045cfe5974804e75c69653819e6e7fc9846ea1ed data/minecraft/tags/item/pickaxes.json

@@ -9,20 +9,19 @@
  ******************************************************************************/
 package reika.chromaticraft.base.tileentity;
 
-import java.util.UUID;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
-
 import reika.chromaticraft.auxiliary.CrystalNetworkLogger.FlowFail;
 import reika.chromaticraft.magic.interfaces.CrystalNetworkTile;
 import reika.chromaticraft.magic.network.CrystalFlow;
 import reika.chromaticraft.magic.network.CrystalNetworker;
 import reika.chromaticraft.magic.network.CrystalPath;
+
+import java.util.UUID;
 
 /**
  * Base for every crystal-network BlockEntity — registers itself with the {@link CrystalNetworker} on

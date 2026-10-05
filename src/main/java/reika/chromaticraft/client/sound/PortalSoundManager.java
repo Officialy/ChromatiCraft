@@ -1,14 +1,13 @@
 package reika.chromaticraft.client.sound;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.sounds.SoundManager;
 import net.minecraft.core.BlockPos;
-
 import reika.chromaticraft.tileentity.TileEntityCrystalPortal;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /** Maintains one continuous ambient loop for each loaded, formed Portal Rift centre. */
 public final class PortalSoundManager {

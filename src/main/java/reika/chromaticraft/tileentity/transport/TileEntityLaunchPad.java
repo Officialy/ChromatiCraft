@@ -9,10 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.tileentity.transport;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
@@ -25,19 +21,17 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-
 import reika.chromaticraft.auxiliary.interfaces.MultiBlockChromaTile;
 import reika.chromaticraft.base.ChromaStructureBase;
 import reika.chromaticraft.base.tileentity.TileEntityChromaticBase;
 import reika.chromaticraft.network.ChromaNetwork;
-import reika.chromaticraft.registry.ChromaBlockEntities;
-import reika.chromaticraft.registry.ChromaFluids;
-import reika.chromaticraft.registry.ChromaOptions;
-import reika.chromaticraft.registry.ChromaSounds;
-import reika.chromaticraft.registry.ChromaStructures;
-import reika.chromaticraft.registry.ChromaTiles;
+import reika.chromaticraft.registry.*;
 import reika.dragonapi.instantiable.data.immutable.Coordinate;
 import reika.dragonapi.instantiable.data.maps.TimerMap;
+
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 
 /**
  * V33a {@code TileEntityLaunchPad}, the Vertical Propulsion Panel. On its crystalline-stone frame it charges for 20 ticks

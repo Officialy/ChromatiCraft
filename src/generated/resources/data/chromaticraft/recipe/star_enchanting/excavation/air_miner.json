@@ -1,0 +1,112 @@
+{
+  "type": "chromaticraft:casting",
+  "completion": {
+    "enhancement": {
+      "enchantment": "chromaticraft:air_miner",
+      "level": 1
+    },
+    "required_fragment": "ENCHANTING"
+  },
+  "duration": 1200,
+  "experience": 200,
+  "grid": [
+    {
+      "ingredient": "chromaticraft:excavation_star",
+      "slot": 4
+    }
+  ],
+  "penalty_threshold": 1,
+  "result": {
+    "components": {
+      "minecraft:enchantments": {
+        "chromaticraft:air_miner": 1
+      }
+    },
+    "id": "chromaticraft:excavation_star"
+  },
+  "runes": [
+    {
+      "element": "purple",
+      "offset": [
+        4,
+        -1,
+        -4
+      ]
+    },
+    {
+      "element": "black",
+      "offset": [
+        -4,
+        -1,
+        4
+      ]
+    }
+  ],
+  "stands": [
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_light_blue",
+      "offset": [
+        0,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:floatstone",
+      "offset": [
+        0,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:void_dust",
+      "offset": [
+        -2,
+        0,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:void_dust",
+      "offset": [
+        2,
+        0,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:elemental_stone_purple",
+      "offset": [
+        -2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:elemental_stone_black",
+      "offset": [
+        2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:binding_crystal",
+      "offset": [
+        -2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:binding_crystal",
+      "offset": [
+        2,
+        0,
+        -2
+      ]
+    }
+  ],
+  "tier": "multiblock"
+}

@@ -1,8 +1,5 @@
 package reika.chromaticraft.client.gui;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -18,9 +15,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.Fluids;
-
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.container.MenuTelePump;
 import reika.chromaticraft.network.ChromaNetwork;
@@ -31,6 +26,9 @@ import reika.dragonapi.instantiable.gui.ImagedGuiButton;
 import reika.dragonapi.libraries.ReikaFluidHelper;
 import reika.dragonapi.libraries.mathsci.ReikaEngLibrary;
 import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * V33a {@code GuiTelePump} ({@code telepump3.png}, 194x168): the found fluids as a list three high, most-abundant first

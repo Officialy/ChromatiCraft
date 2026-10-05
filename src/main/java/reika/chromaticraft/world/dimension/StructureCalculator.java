@@ -9,18 +9,7 @@
  ******************************************************************************/
 package reika.chromaticraft.world.dimension;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.EnumMap;
-import java.util.List;
-import java.util.Random;
-
 import net.minecraft.core.BlockPos;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.world.dimension.DimensionStructureType.ProximaStructureGenerator;
@@ -28,6 +17,12 @@ import reika.chromaticraft.world.dimension.DimensionStructureType.StructureTypeD
 import reika.dragonapi.DragonAPI;
 import reika.dragonapi.libraries.java.ReikaRandomHelper;
 import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.util.*;
 
 /**
  * V33a {@code StructureCalculator}: decides which puzzle structure each crystal element gets and

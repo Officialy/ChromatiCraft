@@ -9,13 +9,13 @@
  ******************************************************************************/
 package reika.chromaticraft.auxiliary.interfaces;
 
-import net.minecraft.item.ItemStack;
+import net.minecraft.world.item.ItemStack;
 
 import reika.chromaticraft.magic.progression.ProgressStage;
 
 public interface TieredItem {
 
-	public ProgressStage getDiscoveryTier(ItemStack is);
-	public boolean isTiered(ItemStack is);
+	ProgressStage getDiscoveryTier(ItemStack is);
+	boolean isTiered(ItemStack is);
 
 }

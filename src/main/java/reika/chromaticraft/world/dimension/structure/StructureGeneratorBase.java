@@ -1,24 +1,17 @@
 package reika.chromaticraft.world.dimension.structure;
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Random;
-import java.util.Set;
-import java.util.UUID;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.world.dimension.DimensionStructureType;
 import reika.chromaticraft.world.dimension.DimensionStructureType.ProximaStructureGenerator;
+
+import java.util.*;
 
 /**
  * V33a {@code DimensionStructureGenerator}: the base every Proxima puzzle structure is built on.

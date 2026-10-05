@@ -9,24 +9,23 @@
  ******************************************************************************/
 package reika.chromaticraft.tileentity.aoe.effect;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Supplier;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-
 import reika.chromaticraft.api.interfaces.CustomRangeUpgrade;
 import reika.chromaticraft.api.interfaces.CustomRangeUpgrade.RangeUpgradeable;
 import reika.chromaticraft.base.tileentity.TileEntityAdjacencyUpgrade;
 import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.CrystalElement;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 
 /**
  * V33a {@code TileEntityRangeBoost}, the lime Range Expander. Machines with a range read its tier through their own

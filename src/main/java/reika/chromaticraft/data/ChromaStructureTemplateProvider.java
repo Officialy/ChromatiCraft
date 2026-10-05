@@ -2,19 +2,6 @@ package reika.chromaticraft.data;
 
 import com.google.common.hash.Hashing;
 import com.google.common.hash.HashingOutputStream;
-
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Files;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-
 import net.minecraft.SharedConstants;
 import net.minecraft.core.BlockPos;
 import net.minecraft.data.CachedOutput;
@@ -25,12 +12,24 @@ import net.minecraft.nbt.IntTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.resources.Identifier;
-
 import reika.chromaticraft.ChromatiCraft;
+import reika.chromaticraft.block.BlockCrystallineStone;
+import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
 import reika.chromaticraft.registry.ChromaShieldTypes;
 import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
-import reika.chromaticraft.block.BlockCrystallineStone;
+import reika.chromaticraft.world.dimension.structure.LaserPuzzleLayout;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /** Generates the canonical NBT templates for every active ChromatiCraft multiblock. */
 public final class ChromaStructureTemplateProvider implements DataProvider {
@@ -80,6 +79,9 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
     public static final Identifier PROXIMA_MUSIC_FUNNEL = id("worldgen/proxima/music/funnel");
     public static final Identifier PROXIMA_MUSIC_ROOM = id("worldgen/proxima/music/room");
     public static final Identifier PROXIMA_MUSIC_LOOT = id("worldgen/proxima/music/loot");
+    public static final Identifier PROXIMA_LASER_TUNNEL = id("worldgen/proxima/laser/tunnel");
+    public static final Identifier PROXIMA_LASER_LOOT = id("worldgen/proxima/laser/loot");
+    public static final Identifier PROXIMA_LASER_ENTRANCE = id("worldgen/proxima/laser/entrance");
     public static final Identifier PROXIMA_GOL_ENTRANCE_PREFAB = id("worldgen/proxima/gol/entrance_prefab");
     public static final Identifier PROXIMA_GOL_SURFACE = id("worldgen/proxima/gol/surface");
     public static final Identifier PROXIMA_GOL_ENTRANCE_DOOR = id("worldgen/proxima/gol/entrance_door");
@@ -105,6 +107,8 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
     public CompletableFuture<?> run(CachedOutput cache) {
         return CompletableFuture.allOf(
                 write(cache, PYLON, pylon()),
+                write(cache, id("multiblock/void_ritual"), voidTrapTemplate(false)),
+                write(cache, id("multiblock/nether_trap"), voidTrapTemplate(true)),
                 write(cache, PYLON_TURBO, pylonTurbo()),
                 write(cache, CASTING_L1, castingL1()),
                 write(cache, CASTING_L2, castingL2()),
@@ -159,6 +163,21 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
                 write(cache, PROXIMA_MUSIC_FUNNEL, importMusicFunnel()),
                 write(cache, PROXIMA_MUSIC_ROOM, importMusicRoom()),
                 write(cache, PROXIMA_MUSIC_LOOT, importMusicLoot()),
+                write(cache, PROXIMA_LASER_TUNNEL, laserTunnel()),
+                write(cache, PROXIMA_LASER_LOOT, importLaserLoot()),
+                write(cache, PROXIMA_LASER_ENTRANCE, laserEntrance()),
+                write(cache, laserRoom("mirrortut"), laserRoomShell("mirrortut")),
+                write(cache, laserRoom("mirrors2"), laserRoomShell("mirrors2")),
+                write(cache, laserRoom("refractortut"), laserRoomShell("refractortut")),
+                write(cache, laserRoom("splittertut"), laserRoomShell("splittertut")),
+                write(cache, laserRoom("filtertut"), laserRoomShell("filtertut")),
+                write(cache, laserRoom("polartut"), laserRoomShell("polartut")),
+                write(cache, laserRoom("polar2"), laserRoomShell("polar2")),
+                write(cache, laserRoom("oneway"), laserRoomShell("oneway")),
+                write(cache, laserRoom("prismtut1"), laserRoomShell("prismtut1")),
+                write(cache, laserRoom("prismtut2"), laserRoomShell("prismtut2")),
+                write(cache, laserRoom("prism3"), laserRoomShell("prism3")),
+                write(cache, laserRoom("complex"), laserRoomShell("complex")),
                 write(cache, golChamber(1), golChamberTemplate(1)),
                 write(cache, golChamber(2), golChamberTemplate(2)),
                 write(cache, golChamber(3), golChamberTemplate(3)),
@@ -199,6 +218,12 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
         return id("worldgen/proxima/gol/chamber_" + difficulty);
     }
 
+    public static Identifier laserRoom(String name) {
+        if (!LaserPuzzleLayout.roomNames(3).contains(name))
+            throw new IllegalArgumentException("Unknown Chromatic Beams room " + name);
+        return id("worldgen/proxima/laser/room_" + name);
+    }
+
     /**
      * Mechanical NBT import of V33a {@code VillagersFailChromatiCraft}. The old placement calls are
      * deliberately kept as the single geometry authority; datagen translates their block metadata
@@ -234,8 +259,8 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
             int split = lastTopLevelComma(argument);
             String symbol = split >= 0 ? argument.substring(0, split).trim() : argument;
             int metadata = split >= 0 ? parseLegacyInt(argument.substring(split + 1)) : 0;
-            data.set(Integer.parseInt(matcher.group(1)), Integer.parseInt(matcher.group(2)),
-                    Integer.parseInt(matcher.group(3)), villageState(style, symbol, metadata));
+            data.set(groupInt(matcher, 1), groupInt(matcher, 2),
+                    groupInt(matcher, 3), villageState(style, symbol, metadata));
             found++;
         }
         if (found < (wooden ? 500 : 100))
@@ -680,7 +705,7 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
 			else if (c == '}') depth--;
 		}
 		String body = java.substring(start, end - 1).replaceAll("(?m)^\\s*//.*$", "");
-		Pattern blocks = Pattern.compile("array\\.setBlock\\(x \\+ (\\d+), y \\+ (\\d+), z \\+ (\\d+), (.+?)\\);");
+		Pattern blocks = Pattern.compile("array\\.setBlock\\(x(?: \\+ (\\d+))?, y(?: \\+ (\\d+))?, z(?: \\+ (\\d+))?, (.+?)\\);");
 		Matcher matcher = blocks.matcher(body);
 		int found = 0;
 		while (matcher.find()) {
@@ -697,18 +722,18 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
 				case "shield, BlockType.MOSS.metadata" -> new StateDef("chromaticraft:shielding_moss", Map.of("reinforced", "true"));
 				default -> throw new IllegalStateException("Unhandled Snow state '" + raw + "'");
 			};
-			data.set(Integer.parseInt(matcher.group(1)), Integer.parseInt(matcher.group(2)),
-					Integer.parseInt(matcher.group(3)), state);
+			data.set(groupInt(matcher, 1), groupInt(matcher, 2),
+					groupInt(matcher, 3), state);
 			found++;
 		}
-		Pattern chests = Pattern.compile("addLootChest\\(array, x \\+ (\\d+), y \\+ (\\d+), z \\+ (\\d+), (\\d+)\\)");
+		Pattern chests = Pattern.compile("addLootChest\\(array, x(?: \\+ (\\d+))?, y(?: \\+ (\\d+))?, z(?: \\+ (\\d+))?, (\\d+)\\)");
 		matcher = chests.matcher(body);
 		while (matcher.find()) {
 			String facing = switch (Integer.parseInt(matcher.group(4))) {
 				case 2 -> "north"; case 3 -> "south"; default -> "north";
 			};
-			data.set(Integer.parseInt(matcher.group(1)), Integer.parseInt(matcher.group(2)),
-					Integer.parseInt(matcher.group(3)), lootChest(facing));
+			data.set(groupInt(matcher, 1), groupInt(matcher, 2),
+					groupInt(matcher, 3), lootChest(facing));
 			found++;
 		}
 		return found;
@@ -740,21 +765,21 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
             data.set(groupInt(matcher, 1), groupInt(matcher, 2), groupInt(matcher, 3), state);
             found++;
         }
-        Pattern chests = Pattern.compile("addLootChest\\(array,\\s*x\\+(\\d+),\\s*y\\+(\\d+),\\s*z\\+(\\d+),\\s*(\\d+)\\)");
+        Pattern chests = Pattern.compile("addLootChest\\(array,\\s*x(?:\\+(\\d+))?,\\s*y(?:\\+(\\d+))?,\\s*z(?:\\+(\\d+))?,\\s*(\\d+)\\)");
         matcher = chests.matcher(java);
         while (matcher.find()) {
             int legacy = Integer.parseInt(matcher.group(4)) & 7;
             String facing = switch (legacy) { case 2 -> "north"; case 3 -> "south"; case 4 -> "west"; case 5 -> "east"; default -> "north"; };
-            data.set(Integer.parseInt(matcher.group(1)), Integer.parseInt(matcher.group(2)),
-                    Integer.parseInt(matcher.group(3)), lootChest(facing));
+            data.set(groupInt(matcher, 1), groupInt(matcher, 2),
+                    groupInt(matcher, 3), lootChest(facing));
             found++;
         }
-        Pattern spawners = Pattern.compile("addSpawner\\(array,\\s*x\\+(\\d+),\\s*y\\+(\\d+),\\s*z\\+(\\d+)\\)");
+        Pattern spawners = Pattern.compile("addSpawner\\(array,\\s*x(?:\\+(\\d+))?,\\s*y(?:\\+(\\d+))?,\\s*z(?:\\+(\\d+))?\\)");
         matcher = spawners.matcher(java);
         while (matcher.find()) {
-            int x = Integer.parseInt(matcher.group(1));
-            int y = Integer.parseInt(matcher.group(2));
-            int z = Integer.parseInt(matcher.group(3));
+            int x = groupInt(matcher, 1);
+            int y = groupInt(matcher, 2);
+            int z = groupInt(matcher, 3);
             String mob = y <= 4 ? "minecraft:blaze" : Math.abs(x) == Math.abs(z) ? "minecraft:spider" : "minecraft:silverfish";
             CompoundTag nbt = spawnerNBT(mob, 6, 4, mob.equals("minecraft:blaze") ? 40 : 200,
                     mob.equals("minecraft:blaze") ? 100 : 800);
@@ -818,13 +843,13 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
             else if (c == '}') depth--;
         }
         String body = java.substring(start, end - 1);
-        Pattern blocks = Pattern.compile("array\\.setBlock\\(x\\+(\\d+),\\s*y\\+(\\d+),\\s*z\\+(\\d+),\\s*([^;)]+)\\);");
+        Pattern blocks = Pattern.compile("array\\.setBlock\\(x(?:\\+(\\d+))?,\\s*y(?:\\+(\\d+))?,\\s*z(?:\\+(\\d+))?,\\s*([^;)]+)\\);");
         Matcher matcher = blocks.matcher(body);
         int found = 0;
         while (matcher.find()) {
-            int x = Integer.parseInt(matcher.group(1));
-            int y = Integer.parseInt(matcher.group(2));
-            int z = Integer.parseInt(matcher.group(3));
+            int x = groupInt(matcher, 1);
+            int y = groupInt(matcher, 2);
+            int z = groupInt(matcher, 3);
             String raw = matcher.group(4).trim();
             StateDef state;
             CompoundTag blockEntity = null;
@@ -850,7 +875,7 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
             found++;
         }
         if (method.equals("addChests")) {
-            Pattern chests = Pattern.compile("addLootChest\\(array,\\s*x\\+(\\d+),\\s*y\\+(\\d+),\\s*z\\+(\\d+),\\s*8(?:\\+(\\d+))?\\)");
+            Pattern chests = Pattern.compile("addLootChest\\(array,\\s*x(?:\\+(\\d+))?,\\s*y(?:\\+(\\d+))?,\\s*z(?:\\+(\\d+))?,\\s*8(?:\\+(\\d+))?\\)");
             matcher = chests.matcher(body);
             while (matcher.find()) {
                 String facing = switch (matcher.group(4) == null ? 0 : Integer.parseInt(matcher.group(4))) {
@@ -865,8 +890,8 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
                 // Vertical legacy facings had no horizontal chest equivalent; north is the V33a
                 // block's fallback visual orientation for those two entries.
                 if (facing.equals("up") || facing.equals("down")) facing = "north";
-                data.set(Integer.parseInt(matcher.group(1)), Integer.parseInt(matcher.group(2)),
-                        Integer.parseInt(matcher.group(3)), lootChest(facing));
+                data.set(groupInt(matcher, 1), groupInt(matcher, 2),
+                        groupInt(matcher, 3), lootChest(facing));
                 found++;
             }
         }
@@ -891,13 +916,13 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
             throw new IllegalStateException("Could not isolate V33a Burrow " + method + " in " + source);
         String body = java.substring(start, end).replaceAll("(?m)^\\s*//.*$", "");
         TemplateData data = lootRoom ? new TemplateData(8, 5, 7) : new TemplateData(7, 6, 11);
-        Pattern blocks = Pattern.compile("array\\.setBlock\\(x\\+(\\d+),\\s*y\\+(\\d+),\\s*z\\+(\\d+),\\s*(.+)\\);");
+        Pattern blocks = Pattern.compile("array\\.setBlock\\(x(?:\\+(\\d+))?,\\s*y(?:\\+(\\d+))?,\\s*z(?:\\+(\\d+))?,\\s*(.+)\\);");
         Matcher matcher = blocks.matcher(body);
         int found = 0;
         while (matcher.find()) {
-            int x = Integer.parseInt(matcher.group(1));
-            int y = Integer.parseInt(matcher.group(2));
-            int z = Integer.parseInt(matcher.group(3));
+            int x = groupInt(matcher, 1);
+            int y = groupInt(matcher, 2);
+            int z = groupInt(matcher, 3);
             String raw = matcher.group(4).trim();
             StateDef state;
             if (raw.startsWith("shield,"))
@@ -912,23 +937,23 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
             found++;
         }
         if (lootRoom) {
-            Pattern doors = Pattern.compile("placeDoor\\(array,\\s*x\\+(\\d+),\\s*y\\+(\\d+),\\s*z\\+(\\d+)\\)");
+            Pattern doors = Pattern.compile("placeDoor\\(array,\\s*x(?:\\+(\\d+))?,\\s*y(?:\\+(\\d+))?,\\s*z(?:\\+(\\d+))?\\)");
             matcher = doors.matcher(body);
             while (matcher.find()) {
-                data.set(Integer.parseInt(matcher.group(1)), Integer.parseInt(matcher.group(2)),
-                        Integer.parseInt(matcher.group(3)), STRUCTURE_VOID);
+                data.set(groupInt(matcher, 1), groupInt(matcher, 2),
+                        groupInt(matcher, 3), STRUCTURE_VOID);
                 found++;
             }
             if (found != 104)
                 throw new IllegalStateException("Expected 104 V33a Burrow loot-room cells, parsed " + found);
         }
         else {
-            Pattern furnaces = Pattern.compile("placeFurnace\\(array,\\s*x\\+(\\d+),\\s*y\\+(\\d+),\\s*z\\+(\\d+)\\)");
+            Pattern furnaces = Pattern.compile("placeFurnace\\(array,\\s*x(?:\\+(\\d+))?,\\s*y(?:\\+(\\d+))?,\\s*z(?:\\+(\\d+))?\\)");
             matcher = furnaces.matcher(body);
             while (matcher.find()) {
-                int x = Integer.parseInt(matcher.group(1));
-                int y = Integer.parseInt(matcher.group(2));
-                int z = Integer.parseInt(matcher.group(3));
+                int x = groupInt(matcher, 1);
+                int y = groupInt(matcher, 2);
+                int z = groupInt(matcher, 3);
                 data.set(x, y, z, new StateDef("minecraft:furnace", Map.of("facing", "south", "lit", "true")));
                 // FurnaceCallback installs the attached hot Heat Lamp one block above.
                 data.set(x, y + 1, z, STRUCTURE_VOID);
@@ -961,13 +986,13 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
             throw new IllegalStateException("Could not isolate V33a Burrow base in " + source);
         String body = java.substring(start, end).replaceAll("(?m)^\\s*//.*$", "");
         TemplateData data = new TemplateData(10, 12, 7);
-        Pattern blocks = Pattern.compile("array\\.setBlock\\(x\\+(\\d+),\\s*y\\+(\\d+),\\s*z\\+(\\d+),\\s*([^,);]+)(?:,\\s*([^);]+))?\\);");
+        Pattern blocks = Pattern.compile("array\\.setBlock\\(x(?:\\+(\\d+))?,\\s*y(?:\\+(\\d+))?,\\s*z(?:\\+(\\d+))?,\\s*([^,);]+)(?:,\\s*([^);]+))?\\);");
         Matcher matcher = blocks.matcher(body);
         int found = 0;
         while (matcher.find()) {
-            int x = Integer.parseInt(matcher.group(1));
-            int y = Integer.parseInt(matcher.group(2));
-            int z = Integer.parseInt(matcher.group(3));
+            int x = groupInt(matcher, 1);
+            int y = groupInt(matcher, 2);
+            int z = groupInt(matcher, 3);
             String symbol = matcher.group(4).trim();
             String metadata = matcher.group(5) == null ? "" : matcher.group(5).trim();
             StateDef state = switch (symbol) {
@@ -989,11 +1014,11 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
             throw new IllegalStateException("Missing V33a Burrow colour-lamp callback");
         data.set(3, 1, 3, STRUCTURE_VOID);
         found++;
-        Pattern chests = Pattern.compile("addLootChest\\(array,\\s*x\\+(\\d+),\\s*y\\+(\\d+),\\s*z\\+(\\d+),\\s*ForgeDirection\\.([A-Z]+)\\)");
+        Pattern chests = Pattern.compile("addLootChest\\(array,\\s*x(?:\\+(\\d+))?,\\s*y(?:\\+(\\d+))?,\\s*z(?:\\+(\\d+))?,\\s*ForgeDirection\\.([A-Z]+)\\)");
         matcher = chests.matcher(body);
         while (matcher.find()) {
-            data.set(Integer.parseInt(matcher.group(1)), Integer.parseInt(matcher.group(2)),
-                    Integer.parseInt(matcher.group(3)), lootChest(matcher.group(4).toLowerCase(Locale.ROOT)));
+            data.set(groupInt(matcher, 1), groupInt(matcher, 2),
+                    groupInt(matcher, 3), lootChest(matcher.group(4).toLowerCase(Locale.ROOT)));
             found++;
         }
         if (found != 313)
@@ -1101,12 +1126,12 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
         int found = 0;
 
         Pattern blocks = Pattern.compile(
-                "array\\.setBlock\\(i\\+(\\d+),\\s*j\\+(\\d+),\\s*k\\+(\\d+),\\s*(shield|crystalstone|ch|p)(?:,\\s*(\\d+))?\\);");
+                "array\\.setBlock\\(i(?:\\+(\\d+))?,\\s*j(?:\\+(\\d+))?,\\s*k(?:\\+(\\d+))?,\\s*(shield|crystalstone|ch|p)(?:,\\s*(\\d+))?\\);");
         Matcher matcher = blocks.matcher(java);
         while (matcher.find()) {
-            int x = Integer.parseInt(matcher.group(1));
-            int y = Integer.parseInt(matcher.group(2));
-            int z = Integer.parseInt(matcher.group(3));
+            int x = groupInt(matcher, 1);
+            int y = groupInt(matcher, 2);
+            int z = groupInt(matcher, 3);
             String symbol = matcher.group(4);
             String rawMeta = matcher.group(5);
             int meta = rawMeta == null ? -1 : Integer.parseInt(rawMeta);
@@ -1131,11 +1156,11 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
         }
 
         Pattern fluids = Pattern.compile(
-                "array\\.setFluid\\(i\\+(\\d+),\\s*j\\+(\\d+),\\s*k\\+(\\d+),\\s*er\\);");
+                "array\\.setFluid\\(i(?:\\+(\\d+))?,\\s*j(?:\\+(\\d+))?,\\s*k(?:\\+(\\d+))?,\\s*er\\);");
         matcher = fluids.matcher(java);
         while (matcher.find()) {
-            data.set(Integer.parseInt(matcher.group(1)), Integer.parseInt(matcher.group(2)),
-                    Integer.parseInt(matcher.group(3)),
+            data.set(groupInt(matcher, 1), groupInt(matcher, 2),
+                    groupInt(matcher, 3),
                     new StateDef("chromaticraft:liquid_ender", Map.of("level", "0")));
             found++;
         }
@@ -1152,6 +1177,7 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
         return data;
     }
 
+    /** A bare source coordinate is offset zero; the optional +N capture is absent. */
     private static int groupInt(Matcher matcher, int group) {
         String value = matcher.group(group);
         return value == null ? 0 : Integer.parseInt(value);
@@ -1209,20 +1235,21 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
         catch (IOException e) {
             throw new IllegalStateException("Could not read V33a Nether structure source " + source, e);
         }
-        Pattern call = Pattern.compile("world\\.setBlock\\(i\\s*\\+\\s*(\\d+),\\s*j\\s*\\+\\s*(\\d+),\\s*k\\s*\\+\\s*(\\d+),\\s*([^,);]+)(?:,\\s*([^,);]+),\\s*[^);]+)?\\s*\\);");
+        Pattern call = Pattern.compile("world\\.setBlock\\(i(?:\\s*\\+\\s*(\\d+))?,\\s*j(?:\\s*\\+\\s*(\\d+))?,\\s*k(?:\\s*\\+\\s*(\\d+))?,\\s*([^,);]+)(?:,\\s*([^,);]+),\\s*[^);]+)?\\s*\\);");
         TemplateData data = new TemplateData(sizeX, sizeY, sizeZ);
         Matcher matcher = call.matcher(java);
         int found = 0;
         while (matcher.find()) {
-            int x = Integer.parseInt(matcher.group(1));
-            int y = Integer.parseInt(matcher.group(2));
-            int z = Integer.parseInt(matcher.group(3));
+            int x = groupInt(matcher, 1);
+            int y = groupInt(matcher, 2);
+            int z = groupInt(matcher, 3);
             int metadata = parseLegacyInt(matcher.group(5));
             data.set(x, y, z, legacyNetherState(matcher.group(4).trim(), metadata));
             found++;
         }
-        if (found == 0)
-            throw new IllegalStateException("No V33a setBlock cells parsed from " + source);
+        int sourceCalls = (int) java.lines().filter(line -> line.stripLeading().startsWith("world.setBlock(")).count();
+        if (found == 0 || found != sourceCalls)
+            throw new IllegalStateException("Incomplete V33a Nether import " + source + ": parsed " + found + " of " + sourceCalls + " cells");
         if (fileName.equals("NetherTemple.java")) {
             data.set(12, 0, 14, lootChest("north"));
             data.set(13, 0, 14, lootChest("north"));
@@ -1261,8 +1288,8 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
         Matcher matcher = call.matcher(layerSource);
         int found = 0;
         while (matcher.find()) {
-            int x = Integer.parseInt(matcher.group(1));
-            int z = Integer.parseInt(matcher.group(2));
+            int x = groupInt(matcher, 1);
+            int z = groupInt(matcher, 2);
             StateDef state = legacyNetherState(matcher.group(3).trim(), parseLegacyInt(matcher.group(4)));
             for (int y = 1; y <= 4; y++)
                 data.set(x, y, z, state);
@@ -1377,7 +1404,9 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
 
     /** Parses one {@code i + 16} style argument of a legacy setBlock call. */
     private static int offset(String argument) {
-        return Integer.parseInt(argument.substring(argument.indexOf('+') + 1).trim());
+        String value = argument.trim();
+        if (value.matches("[ijkxyz]")) return 0;
+        return Integer.parseInt(value.substring(value.indexOf('+') + 1).trim());
     }
 
     private static StateDef shielding(ChromaShieldTypes type) {
@@ -1408,14 +1437,14 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
             throw new IllegalStateException("Could not read V33a Glowing Logic entrance " + source, e);
         }
         TemplateData data = new TemplateData(sizeX, sizeY, sizeZ);
-        Pattern placement = Pattern.compile("world\\.setBlock\\(x \\+ (\\d+), y \\+ (\\d+), z \\+ (\\d+), "
+        Pattern placement = Pattern.compile("world\\.setBlock\\(x(?: \\+ (\\d+))?, y(?: \\+ (\\d+))?, z(?: \\+ (\\d+))?, "
                 + "(Blocks\\.(?:air|water)|b)(?:, (m[csml]), 3)?\\);");
         Matcher matcher = placement.matcher(java);
         int found = 0;
         while (matcher.find()) {
-            int x = Integer.parseInt(matcher.group(1));
-            int y = Integer.parseInt(matcher.group(2));
-            int z = Integer.parseInt(matcher.group(3));
+            int x = groupInt(matcher, 1);
+            int y = groupInt(matcher, 2);
+            int z = groupInt(matcher, 3);
             String block = matcher.group(4);
             String metadata = matcher.group(5);
             StateDef state = switch (block) {
@@ -1587,7 +1616,7 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
         TemplateData data = new TemplateData(13, 6, 13);
         for (int x = 0; x <= 12; x++) for (int y = 0; y <= 5; y++) for (int z = 0; z <= 12; z++)
             data.set(x, y, z, AIR);
-        Pattern placement = Pattern.compile("world\\.setBlock\\(x\\+(\\d+), y\\+(\\d+), z\\+(\\d+), "
+        Pattern placement = Pattern.compile("world\\.setBlock\\(x(?:\\+(\\d+))?, y(?:\\+(\\d+))?, z(?:\\+(\\d+))?, "
                 + "(sh|ps)(?:, (m[ls]|\\d+), 3)?\\);");
         Matcher matcher = placement.matcher(java);
         int found = 0;
@@ -1596,8 +1625,8 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
             StateDef state = "sh".equals(matcher.group(4))
                     ? shielding(metadata == 6 ? ChromaShieldTypes.LIGHT : ChromaShieldTypes.STONE)
                     : crystallineStone(metadata);
-            data.set(Integer.parseInt(matcher.group(1)), Integer.parseInt(matcher.group(2)),
-                    Integer.parseInt(matcher.group(3)), state);
+            data.set(groupInt(matcher, 1), groupInt(matcher, 2),
+                    groupInt(matcher, 3), state);
             found++;
         }
         if (found < 150)
@@ -1612,7 +1641,7 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
         StateDef stone = shielding(ChromaShieldTypes.STONE);
         for (int x = 0; x <= 10; x++) for (int z = 0; z <= 10; z++) for (int y = 0; y <= 2; y++)
             data.set(x, y, z, stone);
-        Pattern placement = Pattern.compile("world\\.setBlock\\(x\\+(\\d+), y\\+(\\d+), z\\+(\\d+), "
+        Pattern placement = Pattern.compile("world\\.setBlock\\(x(?:\\+(\\d+))?, y(?:\\+(\\d+))?, z(?:\\+(\\d+))?, "
                 + "(sh|Blocks\\.air)(?:, (m[slg]))?[^;]*\\);");
         Matcher matcher = placement.matcher(java);
         int found = 0;
@@ -1625,8 +1654,8 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
                     default -> ChromaShieldTypes.STONE;
                 });
             };
-            data.set(Integer.parseInt(matcher.group(1)), Integer.parseInt(matcher.group(2)) + 3,
-                    Integer.parseInt(matcher.group(3)), state);
+            data.set(groupInt(matcher, 1), groupInt(matcher, 2) + 3,
+                    groupInt(matcher, 3), state);
             found++;
         }
         if (found < 700)
@@ -1771,13 +1800,13 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
         if (method < 0) throw new IllegalStateException("Missing " + methodName + " in " + source);
         String body = extractJavaBlock(java, java.indexOf('{', method));
         TemplateData data = new TemplateData(sizeX, sizeY, sizeZ);
-        Pattern placement = Pattern.compile("world\\.setBlock\\(x\\+(\\d+),\\s*y\\+(\\d+),\\s*z\\+(\\d+),\\s*([^;]+)\\);");
+        Pattern placement = Pattern.compile("world\\.setBlock\\(x(?:\\+(\\d+))?,\\s*y(?:\\+(\\d+))?,\\s*z(?:\\+(\\d+))?,\\s*([^;]+)\\);");
         Matcher matcher = placement.matcher(body);
         int found = 0;
         while (matcher.find()) {
-            int x = Integer.parseInt(matcher.group(1));
-            int y = Integer.parseInt(matcher.group(2));
-            int z = Integer.parseInt(matcher.group(3));
+            int x = groupInt(matcher, 1);
+            int y = groupInt(matcher, 2);
+            int z = groupInt(matcher, 3);
             String value = matcher.group(4).trim();
             StateDef state = value.startsWith("Blocks.air") ? AIR
                     : value.contains("ml") ? shielding(ChromaShieldTypes.LIGHT)
@@ -1787,11 +1816,11 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
             found++;
         }
         if (kind == GOLTemplateKind.EXIT) {
-            matcher = Pattern.compile("this\\.placeGate\\(world,\\s*x\\+(\\d+),\\s*y\\+(\\d+),\\s*z\\+(\\d+)\\)")
+            matcher = Pattern.compile("this\\.placeGate\\(world,\\s*x(?:\\+(\\d+))?,\\s*y(?:\\+(\\d+))?,\\s*z(?:\\+(\\d+))?\\)")
                     .matcher(body);
             while (matcher.find()) {
-                data.set(Integer.parseInt(matcher.group(1)), Integer.parseInt(matcher.group(2)),
-                        Integer.parseInt(matcher.group(3)),
+                data.set(groupInt(matcher, 1), groupInt(matcher, 2),
+                        groupInt(matcher, 3),
                         new StateDef("chromaticraft:chroma_door", Map.of()));
                 found++;
             }
@@ -1813,7 +1842,7 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
         int method = java.indexOf("void generate");
         String body = extractJavaBlock(java, java.indexOf('{', method));
         TemplateData data = new TemplateData(10, 7, 7);
-        Pattern placement = Pattern.compile("world\\.setBlock\\(x\\+(\\d+),\\s*y\\+(\\d+),\\s*z\\+(\\d+),\\s*([^;]+)\\);");
+        Pattern placement = Pattern.compile("world\\.setBlock\\(x(?:\\+(\\d+))?,\\s*y(?:\\+(\\d+))?,\\s*z(?:\\+(\\d+))?,\\s*([^;]+)\\);");
         Matcher matcher = placement.matcher(body);
         int found = 0;
         while (matcher.find()) {
@@ -1822,18 +1851,18 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
                     : value.contains("mg") ? shielding(ChromaShieldTypes.GLASS)
                     : value.contains("ml") ? shielding(ChromaShieldTypes.LIGHT)
                     : shielding(ChromaShieldTypes.STONE);
-            data.set(Integer.parseInt(matcher.group(1)), Integer.parseInt(matcher.group(2)),
-                    Integer.parseInt(matcher.group(3)), state);
+            data.set(groupInt(matcher, 1), groupInt(matcher, 2),
+                    groupInt(matcher, 3), state);
             found++;
         }
         if (found != 358)
             throw new IllegalStateException("Expected 358 GOLLoot placements, parsed " + found);
-        matcher = Pattern.compile("this\\.addBreakable\\(world,\\s*x\\+(\\d+),\\s*y\\+(\\d+),\\s*z\\+(\\d+)\\)")
+        matcher = Pattern.compile("this\\.addBreakable\\(world,\\s*x(?:\\+(\\d+))?,\\s*y(?:\\+(\\d+))?,\\s*z(?:\\+(\\d+))?\\)")
                 .matcher(body);
         int breakable = 0;
         while (matcher.find()) {
-            data.makePlainShield(Integer.parseInt(matcher.group(1)), Integer.parseInt(matcher.group(2)),
-                    Integer.parseInt(matcher.group(3)));
+            data.makePlainShield(groupInt(matcher, 1), groupInt(matcher, 2),
+                    groupInt(matcher, 3));
             breakable++;
         }
 		if (breakable != 51)
@@ -1855,6 +1884,210 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
     }
 
     private enum GOLTemplateKind { STONE, CLOAK, EXIT }
+
+    /**
+     * V33a LaserLevel's complete room shell, door, ante-room, floor and lighting. The authored
+     * effectors are installed from the decoded .struct blueprint at placement time because their
+     * orientations are seeded per structure. The switch and structure data tiles are likewise
+     * bound to the live room by its structure piece.
+     */
+    private static TemplateData laserRoomShell(String name) {
+        LaserPuzzleLayout.RoomBlueprint room = LaserPuzzleLayout.load(name);
+        int maxX = room.sizeX();
+        int minZ = -(room.sizeZ() + 1) / 2;
+        int maxZ = minZ + room.sizeZ();
+        int centerX = (maxX + 1) / 2;
+        int porchZ = minZ - 3;
+        TemplateData data = new TemplateData(maxX + 15, 14, room.sizeZ() + 17);
+        StateDef stone = shielding(ChromaShieldTypes.STONE);
+        StateDef light = shielding(ChromaShieldTypes.LIGHT);
+        StateDef bricks = new StateDef("minecraft:stone_bricks", Map.of());
+        StateDef eastStair = legacyVillageStair("stone_brick", 0);
+        StateDef westStair = legacyVillageStair("stone_brick", 1);
+        StateDef door = new StateDef("chromaticraft:chroma_door", Map.of(
+                "open", "false", "stay_open", "true"));
+
+        int[] radius = {2, 2, 2, 3, 7, 7, 7, 7, 6, 5, 3, 0, -3, -5};
+        for (int layer = 0; layer < radius.length; layer++) {
+            int xRadius = radius[layer] - 1;
+            int zRadius = xRadius + (layer >= 4 ? 1 : 0);
+            for (int x = -7; x <= maxX + 7; x++) {
+                for (int z = minZ - 8; z <= maxZ + 8; z++) {
+                    boolean wall = layer == 0 || layer == radius.length - 1
+                            || x < -xRadius || x > maxX + xRadius
+                            || z < minZ - zRadius || z > maxZ + zRadius;
+                    laserSet(data, minZ, x, layer - 1, z, wall ? stone : AIR);
+                }
+            }
+        }
+
+        // V33a cuts a west entrance and installs a closed, stay-open door on the east wall.
+        for (int level = 3; level <= 6; level++) {
+            int halfWidth = level == 6 ? 1 : 2;
+            for (int z = -halfWidth; z <= halfWidth; z++) {
+                laserSet(data, minZ, -7, level, z, AIR);
+                laserSet(data, minZ, maxX + 7, level, z, door);
+            }
+        }
+
+        for (int z = porchZ; z >= porchZ - 4; z--) {
+            for (int x = 0; x <= maxX; x++)
+                laserSet(data, minZ, x, 3, z, stone);
+            for (int x = 1; x < maxX; x++)
+                laserSet(data, minZ, x, 4, z,
+                        Math.abs(x - centerX) <= 1 && z == porchZ - 1 ? stone : bricks);
+            laserSet(data, minZ, -1, 3, z, eastStair);
+            laserSet(data, minZ, maxX + 1, 3, z, westStair);
+            laserSet(data, minZ, 0, 4, z, eastStair);
+            laserSet(data, minZ, maxX, 4, z, westStair);
+        }
+        for (int x = -1; x <= maxX + 1; x++) {
+            for (int level = 3; level <= 4; level++) {
+                laserSet(data, minZ, x, level, porchZ, stone);
+                laserSet(data, minZ, x, level, porchZ - 4,
+                        Math.abs(x - centerX) > 2 ? stone : bricks);
+            }
+        }
+
+        // Source floor trim, rear air channel, and the individually authored shield lights.
+        for (int x = -6; x <= maxX + 6; x++) {
+            for (int z = minZ - 6; z <= maxZ + 6; z++) {
+                boolean trim = x > -6 && x < maxX + 6
+                        && (x > maxX + 3 || x < -3 || z > maxZ + 3 || z < minZ - 3);
+                trim |= Math.abs(z) <= 1 && (x == -6 || x == maxX + 6);
+                if (trim) laserSet(data, minZ, x, 2, z, bricks);
+            }
+        }
+        for (int x = 1; x < maxX; x++)
+            laserSet(data, minZ, x, 1, maxZ + 2, AIR);
+
+        for (int x : new int[] {-2, maxX + 2})
+            for (int z : new int[] {minZ - 2, maxZ + 2})
+                laserSet(data, minZ, x, 1, z, light);
+        laserSet(data, minZ, -5, 2, 0, light);
+        laserSet(data, minZ, maxX + 5, 2, 0, light);
+        laserSet(data, minZ, centerX, 2, maxZ + 5, light);
+        for (int x : new int[] {-7, maxX + 7}) {
+            for (int z : new int[] {minZ - 5, maxZ + 5})
+                laserSet(data, minZ, x, 4, z, light);
+            for (int z : new int[] {minZ - 3, maxZ + 3})
+                laserSet(data, minZ, x, 5, z, light);
+        }
+        for (int x : new int[] {-5, maxX + 5})
+            laserSet(data, minZ, x, 4, maxZ + 8, light);
+        for (int x : new int[] {-3, maxX + 3})
+            laserSet(data, minZ, x, 5, maxZ + 8, light);
+        laserSet(data, minZ, 0, 5, minZ - 8, light);
+        laserSet(data, minZ, maxX, 5, minZ - 8, light);
+        laserSet(data, minZ, centerX - 1, 4, porchZ - 1, light);
+        laserSet(data, minZ, centerX + 1, 4, porchZ - 1, light);
+        laserSet(data, minZ, centerX - 1, 11, 0, light);
+        laserSet(data, minZ, centerX, 11, 0, stone);
+        laserSet(data, minZ, centerX + 1, 11, 0, light);
+        return data;
+    }
+
+    private static void laserSet(TemplateData data, int minZ, int x, int y, int z, StateDef state) {
+        data.set(x + 7, y + 1, z - minZ + 8, state);
+    }
+
+    /** Exact eight-block V33a LaserPuzzleGenerator connector between consecutive rooms. */
+    private static TemplateData laserTunnel() {
+        TemplateData data = new TemplateData(8, 6, 7);
+        StateDef stone = shielding(ChromaShieldTypes.STONE);
+        for (int x = 0; x < 8; x++) {
+            for (int y = 0; y < 6; y++) {
+                int halfWidth = y >= 4 ? 2 : 3;
+                for (int z = -halfWidth; z <= halfWidth; z++) {
+                    boolean wall = y == 0 || y == 5 || Math.abs(z) == halfWidth;
+                    data.set(x, y, z + 3, wall ? stone : AIR);
+                }
+            }
+        }
+        return data;
+    }
+
+    /** Exact underground 11x6x11 V33a LaserEntrance; shaft and surface ring follow terrain height. */
+    private static TemplateData laserEntrance() {
+        TemplateData data = new TemplateData(11, 6, 11);
+        StateDef stone = shielding(ChromaShieldTypes.STONE);
+        StateDef light = shielding(ChromaShieldTypes.LIGHT);
+        for (int y = 2; y <= 7; y++) {
+            for (int x = -5; x <= 5; x++) {
+                for (int z = -5; z <= 5; z++) {
+                    boolean cornerPillar = Math.abs(x) == 2 && Math.abs(z) == 2;
+                    boolean wall = Math.abs(x) == 5 || Math.abs(z) == 5 || y == 2 || y == 7
+                            || cornerPillar;
+                    wall &= x != 5 || y > 6 || y == 2 || Math.abs(z) > (y == 6 ? 1 : 2);
+                    data.set(x + 5, y - 2, z + 5,
+                            wall ? cornerPillar && y == 4 ? light : stone : AIR);
+                }
+            }
+        }
+        return data;
+    }
+
+    /**
+     * Mechanical import of all 808 V33a LaserLoot block writes. OriginBlockCache(WEST) reflects
+     * authored X about its origin: the nine addBreakable calls at i+20 correspond to the writes
+     * at i+6, proving the template mapping x=13-rawX. The core at i+23 becomes template x=10.
+     */
+    private static TemplateData importLaserLoot() {
+        Path source = legacyLaserSource("LaserLoot.java");
+        final String java;
+        try { java = Files.readString(source); }
+        catch (IOException e) {
+            throw new IllegalStateException("Could not read V33a Chromatic Beams reward source " + source, e);
+        }
+        TemplateData data = new TemplateData(14, 9, 7);
+        Pattern placement = Pattern.compile("world\\.setBlock\\(i(?: \\+ (\\d+))?, j(?: \\+ (\\d+))?, k(?: \\+ (\\d+))?, "
+                + "(Blocks\\.air|b, m[sglc])\\);");
+        Matcher matcher = placement.matcher(java);
+        int found = 0;
+        while (matcher.find()) {
+            int x = 13 - groupInt(matcher, 1);
+            int y = groupInt(matcher, 2);
+            int z = groupInt(matcher, 3);
+            StateDef state = switch (matcher.group(4)) {
+                case "Blocks.air" -> AIR;
+                case "b, ms" -> shielding(ChromaShieldTypes.STONE);
+                case "b, mg" -> shielding(ChromaShieldTypes.GLASS);
+                case "b, ml" -> shielding(ChromaShieldTypes.LIGHT);
+                case "b, mc" -> shielding(ChromaShieldTypes.CRACK);
+                default -> throw new IllegalStateException("Unmapped LaserLoot state " + matcher.group(4));
+            };
+            data.set(x, y, z, state);
+            found++;
+        }
+        if (found != 808)
+            throw new IllegalStateException("Expected 808 LaserLoot placements, parsed " + found);
+
+        Pattern breakable = Pattern.compile("parent\\.addBreakable\\(i - 6\\+26, j(?: \\+ (\\d+))?, k(?: \\+ (\\d+))?\\);");
+        matcher = breakable.matcher(java);
+        int openings = 0;
+        while (matcher.find()) {
+            data.makePlainShield(7, groupInt(matcher, 1),
+                    groupInt(matcher, 2));
+            openings++;
+        }
+        if (openings != 9)
+            throw new IllegalStateException("Expected nine LaserLoot breakable cells, parsed " + openings);
+        // The live structure piece binds this objective to its assigned colour and position.
+        data.set(10, 2, 3, STRUCTURE_VOID);
+        return data;
+    }
+
+    private static Path legacyLaserSource(String fileName) {
+        Path relative = Path.of("src/main/java/reika/chromaticraft/world/dimension/structure/laser", fileName);
+        Path cursor = Path.of("").toAbsolutePath();
+        for (int depth = 0; depth < 4 && cursor != null; depth++, cursor = cursor.getParent()) {
+            Path direct = cursor.resolve(relative);
+            if (Files.isRegularFile(direct)) return direct;
+            Path module = cursor.resolve("ChromatiCraft").resolve(relative);
+            if (Files.isRegularFile(module)) return module;
+        }
+        return Path.of("").toAbsolutePath().resolve(relative);
+    }
 
     /** Exact V33a surface pavilion for Crystal Music; the terrain shaft remains piece composition. */
     private static TemplateData importMusicFunnel() {
@@ -1885,14 +2118,14 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
         TemplateData data = new TemplateData(sizeX, sizeY, sizeZ);
         for (int x = 0; x < sizeX; x++) for (int y = 0; y < sizeY; y++)
             for (int z = 0; z < sizeZ; z++) data.set(x, y, z, AIR);
-        Pattern placement = Pattern.compile("world\\.setBlock\\(x\\+(\\d+),\\s*y\\+(\\d+),\\s*z\\+(\\d+),\\s*"
+        Pattern placement = Pattern.compile("world\\.setBlock\\(x(?:\\+(\\d+))?,\\s*y(?:\\+(\\d+))?,\\s*z(?:\\+(\\d+))?,\\s*"
                 + "(Blocks\\.air|sh|cry|b)(?:,\\s*([^,\\)]+))?[^;]*\\);");
         Matcher matcher = placement.matcher(java);
         int found = 0;
         while (matcher.find()) {
-            int x = Integer.parseInt(matcher.group(1));
-            int y = Integer.parseInt(matcher.group(2));
-            int z = Integer.parseInt(matcher.group(3));
+            int x = groupInt(matcher, 1);
+            int y = groupInt(matcher, 2);
+            int z = groupInt(matcher, 3);
             if (x >= sizeX || y >= sizeY || z >= sizeZ)
                 throw new IllegalStateException(fileName + " wrote outside declared template at "
                         + x + "," + y + "," + z);
@@ -2139,6 +2372,29 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
         String[] facings = {"south", "west", "north", "east"};
         return new StateDef("minecraft:repeater", Map.of("delay", Integer.toString(((metadata >> 2) & 3) + 1),
                 "facing", facings[metadata & 3], "locked", "false", "powered", Boolean.toString(powered)));
+    }
+
+    /** Build from the live authored layout so handbook and structure validation cannot drift. */
+    private static TemplateData voidTrapTemplate(boolean nether) {
+        reika.chromaticraft.base.ChromaStructureBase structure = nether
+                ? new reika.chromaticraft.modinterface.voidritual.VoidMonsterNetherStructure()
+                : new reika.chromaticraft.modinterface.voidritual.VoidMonsterRitualStructure();
+        var array = structure.getArray(null, 0, 0, 0);
+        var result = new TemplateData(array.getMaxX()-array.getMinX()+1,
+                array.getMaxY()-array.getMinY()+1, array.getMaxZ()-array.getMinZ()+1);
+        for (var pos : array.keySet()) {
+            var state = array.getMultiListAt(pos.getX(), pos.getY(), pos.getZ()).getFirst().blockID;
+            var properties = new LinkedHashMap<String, String>();
+            for (var property : state.getProperties()) properties.put(property.getName(), stateValueName(property, state.getValue(property)));
+            result.set(pos.getX()-array.getMinX(), pos.getY()-array.getMinY(), pos.getZ()-array.getMinZ(),
+                    new StateDef(net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString(), properties));
+        }
+        return result;
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static String stateValueName(net.minecraft.world.level.block.state.properties.Property property, Comparable value) {
+        return property.getName(value);
     }
 
     private CompletableFuture<?> write(CachedOutput cache, Identifier id, TemplateData template) {

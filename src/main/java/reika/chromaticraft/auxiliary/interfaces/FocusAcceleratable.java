@@ -9,20 +9,20 @@
  ******************************************************************************/
 package reika.chromaticraft.auxiliary.interfaces;
 
-import java.util.Collection;
-
 import net.minecraft.core.BlockPos;
+
+import java.util.Collection;
 
 public interface FocusAcceleratable {
 
-	public float getAccelerationFactor();
+	float getAccelerationFactor();
 
-	public float getMaximumAcceleratability();
+	float getMaximumAcceleratability();
 
-	public float getProgressToNextStep();
+	float getProgressToNextStep();
 
-	public void recountFocusCrystals();
+	void recountFocusCrystals();
 
-	public Collection<BlockPos> getRelativeFocusCrystalLocations();
+	Collection<BlockPos> getRelativeFocusCrystalLocations();
 
 }

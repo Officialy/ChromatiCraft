@@ -1,10 +1,5 @@
 package reika.chromaticraft.world;
 
-import java.util.BitSet;
-import java.util.List;
-import java.util.Random;
-import java.util.concurrent.ConcurrentHashMap;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.util.RandomSource;
@@ -13,18 +8,21 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.feature.Feature;
-
 import net.neoforged.neoforge.common.NeoForge;
-
 import reika.chromaticraft.api.event.PylonGenerationEvent;
 import reika.chromaticraft.auxiliary.structure.PylonStructure;
 import reika.chromaticraft.block.BlockCrystallineStone;
+import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaOptions;
 import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.tileentity.networking.TileEntityCrystalPylon;
 import reika.chromaticraft.tileentity.auxiliary.TileEntityChromaCrystal;
-import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
+import reika.chromaticraft.tileentity.networking.TileEntityCrystalPylon;
+
+import java.util.BitSet;
+import java.util.List;
+import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Natural pylon generation, expressed as a modern feature while preserving V33a's shuffled
@@ -103,7 +101,8 @@ public final class PylonFeature implements Feature {
      * why pylons became rare. Descending past the canopy restores the original behaviour.
      */
     private static int groundLevel(WorldGenLevel world, int x, int z) {
-        int y = world.getHeight(Heightmap.Types.WORLD_SURFACE_WG, x, z) - 1;
+        int y = world.getHeight(world instanceof net.minecraft.server.level.WorldGenRegion
+                ? Heightmap.Types.WORLD_SURFACE_WG : Heightmap.Types.WORLD_SURFACE, x, z) - 1;
         int floor = world.getMinY();
         while (y > floor) {
             BlockState state = world.getBlockState(new BlockPos(x, y, z));
@@ -214,7 +213,7 @@ public final class PylonFeature implements Feature {
     }
 
     private static boolean isFloorReplaceable(BlockState state) {
-        return state.canBeReplaced() || state.is(BlockTags.BASE_STONE_OVERWORLD)
+        return state.canBeReplaced() || state.is(reika.chromaticraft.registry.ChromaBlockTags.NATURAL_STONE)
                 || state.is(BlockTags.DIRT) || state.is(BlockTags.GRASS_BLOCKS) || state.is(BlockTags.SAND)
                 || state.is(Blocks.GRAVEL) || state.is(Blocks.TERRACOTTA)
                 || state.is(BlockTags.LOGS) || state.is(BlockTags.LEAVES);

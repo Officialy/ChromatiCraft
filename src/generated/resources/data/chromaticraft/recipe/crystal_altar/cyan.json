@@ -1,0 +1,65 @@
+{
+  "type": "chromaticraft:casting",
+  "duration": 20,
+  "experience": 40,
+  "grid": [
+    {
+      "ingredient": "minecraft:quartz",
+      "slot": 0
+    },
+    {
+      "ingredient": "chromaticraft:crystal_lamp_cyan",
+      "slot": 1
+    },
+    {
+      "ingredient": "minecraft:quartz",
+      "slot": 2
+    },
+    {
+      "ingredient": "minecraft:cobblestone",
+      "slot": 3
+    },
+    {
+      "ingredient": "minecraft:iron_ingot",
+      "slot": 4
+    },
+    {
+      "ingredient": "minecraft:cobblestone",
+      "slot": 5
+    },
+    {
+      "ingredient": "minecraft:smooth_stone_slab",
+      "slot": 6
+    },
+    {
+      "ingredient": "minecraft:obsidian",
+      "slot": 7
+    },
+    {
+      "ingredient": "minecraft:smooth_stone_slab",
+      "slot": 8
+    }
+  ],
+  "result": {
+    "id": "chromaticraft:cyan_crystal_altar"
+  },
+  "runes": [
+    {
+      "element": "cyan",
+      "offset": [
+        2,
+        -1,
+        0
+      ]
+    },
+    {
+      "element": "blue",
+      "offset": [
+        -1,
+        -1,
+        -3
+      ]
+    }
+  ],
+  "tier": "temple"
+}

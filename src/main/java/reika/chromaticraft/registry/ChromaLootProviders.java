@@ -1,16 +1,12 @@
 package reika.chromaticraft.registry;
 
 import com.mojang.serialization.MapCodec;
-
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.world.level.storage.loot.predicates.LootItemCondition;
 import net.minecraft.world.level.storage.loot.providers.number.ints.ContextIntProvider;
-
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
-
 import reika.chromaticraft.ChromatiCraft;
-import net.minecraft.world.level.storage.loot.predicates.LootItemCondition;
-
 import reika.chromaticraft.auxiliary.loot.ChromaBerryCount;
 import reika.chromaticraft.auxiliary.loot.CrystalShardCount;
 import reika.chromaticraft.auxiliary.loot.FortuneScaledChance;

@@ -9,26 +9,24 @@
  ******************************************************************************/
 package reika.chromaticraft.registry;
 
-import java.net.URL;
-import java.util.HashMap;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.Identifier;
 import net.minecraft.network.protocol.game.ClientboundSoundPacket;
-import net.minecraft.sounds.SoundEvent;
-import net.minecraft.sounds.SoundSource;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
-
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.auxiliary.interfaces.ChromaSound;
+
+import java.net.URL;
+import java.util.HashMap;
 
 /**
  * ChromatiCraft's sound registry, ported to 26.2 on the {@link SoundEvent}-registry pattern
@@ -143,6 +141,15 @@ public enum ChromaSounds implements ChromaSound {
 	LOWAMBIENT("lowambient_fade"),
 	LOWAMBIENT_SHORT("lowambient_fade_short"),
 	AURALOCUS("auralocus"),
+	PROXIMA_EXPLORER("music/explorer"),
+	PROXIMA_LUMINESCENCE("music/luminescence"),
+	PROXIMA_GLOWING_HORIZONS("music/glowing_horizons"),
+	PROXIMA_NIGHTFALL("music/nightfall"),
+	PROXIMA_SINGULARITY("music/singularity"),
+	PROXIMA_ELEMENTAL_PRECURSORS("music/elemental_precursors"),
+	PROXIMA_TRANSCENDENTAL_JOURNEY("music/transcendental_journey"),
+	PROXIMA_ETHEREAL_CONTACT("music/ethereal_contact_c"),
+	PROXIMA_POLYCHROMACY("music/polychromacy_c"),
 	;
 
 	public static final ChromaSounds[] soundList = values();
@@ -171,11 +178,11 @@ public enum ChromaSounds implements ChromaSound {
 	private final boolean widePitch;
 	private boolean isVolumed = false;
 
-	private ChromaSounds(String n) {
+	ChromaSounds(String n) {
 		this(n, false);
 	}
 
-	private ChromaSounds(String n, boolean wide) {
+	ChromaSounds(String n, boolean wide) {
 		if (n.startsWith("#")) {
 			isVolumed = true;
 			n = n.substring(1);
@@ -320,6 +327,8 @@ public enum ChromaSounds implements ChromaSound {
 
 	@Override
 	public SoundSource getCategory() {
+		if (this.isProximaTrack())
+			return SoundSource.MUSIC;
 		if (this == GLOWCLOUD || this == BALLLIGHTNING)
 			return SoundSource.NEUTRAL;
 		return SoundSource.MASTER;
@@ -332,6 +341,8 @@ public enum ChromaSounds implements ChromaSound {
 
 	@Override
 	public boolean attenuate() {
+		if (this.isProximaTrack())
+			return false;
 		if (this.isMonumentTrack())
 			return false;
 		return this != GOTODIM && this != PYLONTURBO && this != PYLONFLASH && this != PYLONBOOSTRITUAL && this != PYLONBOOSTSTART && this != REPEATERSURGE && this != MONUMENT && this != MONUMENTRAY && this != GAINPROGRESS && this != LORECOMPLETE;
@@ -403,7 +414,12 @@ public enum ChromaSounds implements ChromaSound {
 
 	@Override
 	public boolean isStreamed() {
-		return this == MONUMENT || this.isMonumentTrack();
+		return this == MONUMENT || this.isMonumentTrack() || this.isProximaTrack();
+	}
+
+	public boolean isProximaTrack() {
+		return this.ordinal() >= PROXIMA_EXPLORER.ordinal()
+				&& this.ordinal() <= PROXIMA_POLYCHROMACY.ordinal();
 	}
 
 	/** The six ritual tracks, which share every one of MONUMENT's own playback flags. */

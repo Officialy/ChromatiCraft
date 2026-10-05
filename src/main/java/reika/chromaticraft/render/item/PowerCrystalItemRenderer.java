@@ -1,10 +1,7 @@
 package reika.chromaticraft.render.item;
 
-import java.util.function.Consumer;
-
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.serialization.MapCodec;
-
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.special.NoDataSpecialModelRenderer;
@@ -15,13 +12,13 @@ import net.minecraft.client.resources.model.sprite.SpriteGetter;
 import net.minecraft.client.resources.model.sprite.SpriteId;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.LightCoordsUtil;
-
 import org.joml.Vector3f;
 import org.joml.Vector3fc;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.render.ChromaRenderPipelines;
 import reika.chromaticraft.render.model.CaveCrystalGeometry;
+
+import java.util.function.Consumer;
 
 /** V33a inventory renderer for the all-armed chroma Power Crystal and its pylon-stone base. */
 public final class PowerCrystalItemRenderer implements NoDataSpecialModelRenderer {

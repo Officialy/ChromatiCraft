@@ -1,21 +1,19 @@
 package reika.chromaticraft.world.dimension;
 
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.Mth;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.registries.DeferredHolder;
+import net.neoforged.neoforge.registries.DeferredRegister;
+import reika.chromaticraft.world.dimension.SkyRiverGenerator.RiverPoint;
+import reika.dragonapi.libraries.mathsci.ReikaVectorHelper;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
-
-import net.minecraft.server.level.ServerLevel;
-import net.neoforged.neoforge.registries.DeferredRegister;
-import net.neoforged.neoforge.registries.DeferredHolder;
-import net.minecraft.world.level.ChunkPos;
-import net.minecraft.util.Mth;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.phys.Vec3;
-
-import reika.chromaticraft.world.dimension.SkyRiverGenerator.RiverPoint;
-import reika.dragonapi.libraries.mathsci.ReikaVectorHelper;
 
 /**
  * V33a {@code SkyRiverManager}: catches a player who drifts into a sky river and carries them along it.
@@ -323,12 +321,12 @@ public final class SkyRiverManager {
 
 	private static double distanceToSegment(reika.dragonapi.instantiable.data.immutable.DecimalPosition from,
 			reika.dragonapi.instantiable.data.immutable.DecimalPosition to, Vec3 point) {
-		return ReikaVectorHelper.getDistFromPointToLine(from.xCoord, from.yCoord, from.zCoord,
-				to.xCoord, to.yCoord, to.zCoord, point.x, point.y, point.z);
+		return ReikaVectorHelper.getDistFromPointToLine(from.xCoord(), from.yCoord(), from.zCoord(),
+                to.xCoord(), to.yCoord(), to.zCoord(), point.x, point.y, point.z);
 	}
 
 	private static Vec3 toVec(reika.dragonapi.instantiable.data.immutable.DecimalPosition position) {
-		return new Vec3(position.xCoord, position.yCoord, position.zCoord);
+		return new Vec3(position.xCoord(), position.yCoord(), position.zCoord());
 	}
 
 	/** Per-player river state: how long they have been riding, and any lockout after an ejection. */

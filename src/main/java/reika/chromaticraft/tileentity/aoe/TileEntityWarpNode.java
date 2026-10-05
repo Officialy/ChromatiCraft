@@ -6,10 +6,9 @@ import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.phys.AABB;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
-
+import net.minecraft.world.phys.AABB;
 import reika.chromaticraft.magic.WarpNetwork;
 import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.dragonapi.instantiable.data.immutable.WorldLocation;

@@ -1,14 +1,13 @@
 package reika.chromaticraft.client.sound;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.sounds.SoundManager;
 import net.minecraft.core.BlockPos;
-
 import reika.chromaticraft.tileentity.aoe.TileEntityAuraPoint;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /** Maintains one loaded Aura Locus loop per block entity, including while initially inaudible. */
 public final class AuraLocusSoundManager {

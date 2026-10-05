@@ -1,10 +1,10 @@
 package reika.chromaticraft.world.dimension.biome;
 
 import net.minecraft.core.HolderGetter;
-import net.minecraft.resources.Identifier;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.BootstrapContext;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeGenerationSettings;
 import net.minecraft.world.level.biome.BiomeSpecialEffects;
@@ -12,7 +12,6 @@ import net.minecraft.world.level.biome.MobSpawnSettings;
 import net.minecraft.world.level.levelgen.GenerationStep;
 import net.minecraft.world.level.levelgen.carver.WorldCarver;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.registry.ChromaEntityTypes;
 import reika.chromaticraft.world.biome.ChromaBiomes;

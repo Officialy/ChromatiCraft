@@ -3,11 +3,9 @@ package reika.chromaticraft.world.luminous;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.tags.BlockTags;
-import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.feature.Feature;
-
 import reika.chromaticraft.registry.ChromaBlocks;
 
 /** V33a LumaGenerator: one or two low cave-floor ellipsoids per selected chunk. */

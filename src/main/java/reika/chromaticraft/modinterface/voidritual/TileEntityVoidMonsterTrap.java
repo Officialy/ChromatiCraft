@@ -1,752 +1,246 @@
 package reika.chromaticraft.modinterface.voidritual;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentHashMap;
-
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.particle.EntityFX;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityLiving;
-import net.minecraft.entity.item.EntityItem;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.nbt.NBTTagList;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.AxisAlignedBB;
-import net.minecraft.util.MathHelper;
-import net.minecraft.world.ChunkCoordIntPair;
-import net.minecraft.world.Teleporter;
-import net.minecraft.world.World;
-import net.minecraft.world.WorldServer;
-
-import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.auxiliary.ChromaAux;
-import reika.chromaticraft.auxiliary.ChromaStacks;
-import reika.chromaticraft.auxiliary.interfaces.Linkable;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.portal.TeleportTransition;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 import reika.chromaticraft.auxiliary.interfaces.MultiBlockChromaTile;
 import reika.chromaticraft.base.tileentity.InventoriedCrystalReceiver;
 import reika.chromaticraft.magic.ElementTagCompound;
-import reika.chromaticraft.registry.ChromaIcons;
-import reika.chromaticraft.registry.ChromaPackets;
-import reika.chromaticraft.registry.ChromaSounds;
-import reika.chromaticraft.registry.ChromaStructures;
-import reika.chromaticraft.registry.ChromaTiles;
-import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.render.particle.EntityCCBlurFX;
+import reika.chromaticraft.registry.*;
 import reika.chromaticraft.tileentity.TileEntityLumenWire;
-import reika.chromaticraft.tileentity.tileentitylumenwire.WireWatcher;
-import reika.dragonapi.ModList;
-import reika.dragonapi.asm.dependentmethodstripper.ModDependent;
 import reika.dragonapi.auxiliary.ChunkManager;
-import reika.dragonapi.instantiable.data.blockstruct.ThreadSafeTileCache;
 import reika.dragonapi.instantiable.data.immutable.Coordinate;
 import reika.dragonapi.instantiable.data.immutable.DecimalPosition;
 import reika.dragonapi.instantiable.data.immutable.WorldLocation;
-import reika.dragonapi.instantiable.math.spline.SplineType;
+import reika.dragonapi.instantiable.math.Spline.SplineType;
 import reika.dragonapi.instantiable.math.VariableEndpointSpline;
-import reika.dragonapi.interfaces.tileentity.BreakAction;
-import reika.dragonapi.interfaces.tileentity.ChunkLoadingTile;
-import reika.dragonapi.interfaces.tileentity.InertIInv;
-import reika.dragonapi.interfaces.tileentity.LocationCached;
-import reika.dragonapi.libraries.ReikaAABBHelper;
-import reika.dragonapi.libraries.ReikaEntityHelper;
-import reika.dragonapi.libraries.ReikaInventoryHelper;
-import reika.dragonapi.libraries.reikanbthelper.NBTTypes;
-import reika.dragonapi.libraries.io.ReikaPacketHelper;
-import reika.dragonapi.libraries.java.ReikaJavaLibrary;
-import reika.dragonapi.libraries.java.ReikaRandomHelper;
-import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
-import reika.dragonapi.libraries.mathsci.ReikaPhysicsHelper;
-import reika.dragonapi.libraries.registry.ReikaItemHelper;
+import reika.dragonapi.interfaces.blockentity.ChunkLoadingTile;
+import reika.dragonapi.interfaces.blockentity.Connectable;
+import reika.dragonapi.interfaces.blockentity.InertIInv;
 import reika.voidmonster.api.MonsterAPI;
 import reika.voidmonster.entity.EntityVoidMonster;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
-
-
-public class TileEntityVoidMonsterTrap extends InventoriedCrystalReceiver implements MultiBlockChromaTile, WireWatcher, LocationCached,
-Linkable, ChunkLoadingTile, BreakAction, InertIInv {
-
-	private static final ElementTagCompound required = new ElementTagCompound();
-
-	private static final ThreadSafeTileCache cache = new ThreadSafeTileCache().setTileClass(TileEntityVoidMonsterTrap.class);
-
-	private static final int RING_DURATION = 400;
-
-	private Collection<Coordinate> wires;
-	private ArrayList<Coordinate> wireSeek = new ArrayList();
-	private ArrayList<Coordinate> explosionSeek = new ArrayList();
-	private ConcurrentHashMap<Integer, VoidMonsterTether> tethers = new ConcurrentHashMap();
-
-	private float flashFactor = 0;
-	private float shaderRotation = 0;
-	private float shaderRotationSpeed = 0;
-
-	private int outerRingActivation = 0;
-	private int innerRingActivation = 0;
-
-	private boolean hasStructure;
-	private WorldLocation link;
-	private VoidMonsterDestructionRitual ritual;
-
-	static {
-		required.addTag(CrystalElement.BLACK, 5);
-		required.addTag(CrystalElement.PINK, 20);
-		required.addTag(CrystalElement.LIGHTGRAY, 4);
-		required.addTag(CrystalElement.GRAY, 1);
-		required.addTag(CrystalElement.WHITE, 10);
-		required.addTag(CrystalElement.MAGENTA, 2);
-	}
-
-	public static ElementTagCompound getRequiredEnergy() {
-		return required.copy();
-	}
-
-	public void activateOuterRing() {
-		outerRingActivation = RING_DURATION;
-	}
-
-	public void activateInnerRing() {
-		if (outerRingActivation > 0) {
-			outerRingActivation = RING_DURATION;
-			innerRingActivation = RING_DURATION;
-		}
-	}
-
-	public void validateStructure() {
-		ChromaStructures s = this.getPrimaryStructure();
-		s.getStructure().resetToDefaults();
-		hasStructure = s.getArray(worldObj, xCoord, yCoord, zCoord).matchInWorld();
-	}
-
-	public boolean canAttractMonster() {
-		return hasStructure && (link != null || !this.isNether()) && !this.isActive();
-	}
-
-	public boolean isNether() {
-		return worldObj != null && worldObj.provider.dimensionId == -1;
-	}
-
-	@Override
-	protected void onFirstTick(World world, int x, int y, int z) {
-		if (this.isNether()) {
-			explosionSeek.addAll(VoidMonsterNetherStructure.getTNTLocations());
-		}
-		else {
-			wires = VoidMonsterRitualStructure.getWireLocations();
-			wireSeek.addAll(wires);
-		}
-		WorldLocation loc = new WorldLocation(this);
-		if (!cache.contains(loc))
-			cache.add(loc);
-		this.validateStructure();
-		ChunkManager.instance.loadChunks(this);
-	}
-
-	@Override
-	protected void onInvalidateOrUnload(World world, int x, int y, int z, boolean invalid) {
-		ChunkManager.instance.unloadChunks(this);
-	}
-
-	@Override
-	public Collection<ChunkCoordIntPair> getChunksToLoad() {
-		return ChunkManager.instance.getChunkSquare(xCoord, yCoord, 2);
-	}
-
-	@Override
-	public void breakBlock() {
-		WorldLocation loc = new WorldLocation(this);
-		cache.remove(loc);
-		if (ritual != null) {
-			ritual.onPrematureTermination();
-			ritual = null;
-		}
-		this.resetOther();
-		this.reset();
-	}
-
-	private void checkAndRequest() {
-		for (CrystalElement e : required.elementSet()) {
-			int amt = this.getRemainingSpace(e);
-			if (amt > 0) {
-				boolean ret = this.requestEnergy(e, amt);
-			}
-		}
-	}
-
-	@Override
-	public void updateEntity(World world, int x, int y, int z, int meta) {
-		super.updateEntity(world, x, y, z, meta);
-
-		if (!world.isRemote && this.hasStructure() && this.getCooldown() == 0 && checkTimer.checkCap()) {
-			this.checkAndRequest();
-		}
-
-		if (!world.isRemote && !hasStructure && this.getTicksExisted() < 5) {
-			this.validateStructure();
-		}
-
-		if (!world.isRemote) {
-			if (inv[0] == null || inv[0].stackSize < this.getInventoryStackLimit()) {
-				this.searchForItems(world, x, y, z);
-			}
-			if (explosionSeek.size() < 4) {
-				hasStructure = false;
-				explosionSeek.clear();
-				explosionSeek.addAll(VoidMonsterNetherStructure.getTNTLocations());
-			}
-			if (this.isNether()) {
-				if (this.canAttractMonster()) {
-					this.attractMonster(world, x, y, z);
-				}
-			}
-			else {
-				if (!wireSeek.isEmpty()) {
-					int idx = rand.nextInt(wireSeek.size());
-					Coordinate c = wireSeek.get(idx);
-					if (c.getBlock(world) == ChromaTiles.LUMENWIRE.getBlock() && c.getBlockMetadata(world) == ChromaTiles.LUMENWIRE.getBlockMetadata()) {
-						TileEntityLumenWire te = (TileEntityLumenWire)c.getTileEntity(world);
-						te.addWatcher(this);
-					}
-				}
-				EntityLiving e = this.getMonster(world, x, y, z);
-				if (e != null) {
-					if (ReikaItemHelper.matchStacks(inv[0], ChromaStacks.voidmonsterEssence)) {
-						if (energy.containsAtLeast(required)) {
-							if (this.isActive()) {
-								if (ritual.tick()) {
-									ritual.onCompletion();
-									ritual = null;
-								}
-							}
-							else {
-								if (this.canAttractMonster()) {
-									double dist = this.attractMonster(world, x, y, z);
-									if (dist < 1) {
-										this.activate(world, x, y, z, e);
-									}
-								}
-							}
-							this.drainEnergy(required);
-							if (rand.nextInt(this.isActive() ? 20 : 60) == 0)
-								ReikaInventoryHelper.decrStack(0, inv);
-						}
-					}
-				}
-			}
-		}
-		else {
-			for (VoidMonsterTether t : tethers.values()) {
-				if (t.tick(world)) {
-					this.removeTether(t, world);
-				}
-			}
-		}
-	}
-
-	@SideOnly(Side.CLIENT)
-	public static void doEatFX(World world, int x, int y, int z) {
-		for (int i = 0; i < 20; i++) {
-			int l = 20+rand.nextInt(60);
-			float s = 1.5F+rand.nextFloat()*2.5F;
-			int c1 = 0xdf3fff;
-			int c2 = 0x202020;
-			double dx = ReikaRandomHelper.getRandomPlusMinus(x+0.5, 0.25);
-			double dz = ReikaRandomHelper.getRandomPlusMinus(z+0.5, 0.25);
-			double dy = y+rand.nextDouble();
-			float f = (float)ReikaRandomHelper.getRandomPlusMinus(0.6, 0.2);
-			double vel = ReikaRandomHelper.getRandomBetween(0.0625, 0.25);
-			double[] v = ReikaPhysicsHelper.polarToCartesian(vel, rand.nextDouble()*360, rand.nextDouble()*360);
-			EntityFX fx1 = new EntityCCBlurFX(world, dx, dy, dz, v[0], v[1], v[2]).setIcon(ChromaIcons.TRANSFADE).setScale(s).setLife(l).setColor(c1).setBasicBlend();
-			EntityFX fx2 = new EntityCCBlurFX(world, dx, dy, dz, v[0], v[1], v[2]).setIcon(ChromaIcons.TRANSFADE).setScale(s*f).setLife(l).setColor(c2).setBasicBlend().lockTo(fx1);
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx1);
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx2);
-		}
-	}
-
-	private void searchForItems(World world, int x, int y, int z) {
-		AxisAlignedBB box = ReikaAABBHelper.getBlockAABB(this).expand(8, 5, 8);
-		List<EntityItem> li = world.selectEntitiesWithinAABB(EntityItem.class, box, new ReikaEntityHelper.SpecificItemSelector(ChromaStacks.voidmonsterEssence));
-		double v = 2.5;
-		for (EntityItem ent : li) {
-			if (ent.ticksExisted > 5) {
-				//Vec3 i2vac = ReikaVectorHelper.getVec2Pt(ent.posX, ent.posY, ent.posZ, x+0.5, y+0.5, z+0.5);
-				//if (ReikaWorldHelper.canBlockSee(world, x, y, z, ent.posX, ent.posY, ent.posZ, this.getRange()+2)) {
-				double dx = (x+0.5 - ent.posX);
-				double dy = (y+0.5 - ent.posY);
-				double dz = (z+0.5 - ent.posZ);
-				double ddt = ReikaMathLibrary.py3d(dx, dy, dz);
-				if (ddt < 0.5) {
-					ItemStack is = ent.getEntityItem();
-					ItemStack is2 = ReikaItemHelper.getSizedItemStack(is, 1);
-					if (ReikaInventoryHelper.addOrSetStack(is2, inv, 0)) {
-						is.stackSize--;
-						if (is.stackSize <= 0) {
-							ent.setDead();
-						}
-						else {
-							ent.setEntityItemStack(is);
-						}
-						ReikaPacketHelper.sendDataPacketWithRadius(ChromatiCraft.packetChannel, ChromaPackets.VOIDTRAPEAT.ordinal(), this, 32);
-						ChromaSounds.BOUNCE.playSoundAtBlock(this, 1, 2F);
-					}
-				}
-				else {
-					double vx = v*dx/ddt;
-					double vy = v*dy/ddt;
-					double vz = v*dz/ddt;
-					double vmax = 0.0625;
-					double f = Math.min(1, ent.ticksExisted/80D);
-					vx = MathHelper.clamp_double(vx, -vmax, vmax);
-					vy = MathHelper.clamp_double(vy, -vmax, vmax);
-					vz = MathHelper.clamp_double(vz, -vmax, vmax);
-					ent.motionX = ent.motionX*(1-f)+vx*f;
-					ent.motionY = ent.motionY*(1-f)+vy*f;
-					ent.motionZ = ent.motionZ*(1-f)+vz*f;
-					if (ent.posY < y)
-						ent.motionY += 0.125;
-					if (!world.isRemote)
-						ent.velocityChanged = true;
-				}
-			}
-		}
-	}
-
-	private EntityLiving getMonster(World world, int x, int y, int z) {
-		return ritual != null ? ritual.getEntity() : MonsterAPI.getNearestMonster(world, x+0.5, y+0.5, z+0.5);
-	}
-
-	private void activate(World world, int x, int y, int z, EntityLiving e) {
-		ritual = new VoidMonsterDestructionRitual(this, e);
-		ReikaJavaLibrary.pConsole("Activating ritual with "+this+" "+e);
-	}
-
-	@ModDependent(ModList.VOIDMONSTER)
-	private double attractMonster(World world, int x, int y, int z) {
-		EntityVoidMonster e = (EntityVoidMonster)this.getMonster(world, x, y, z);
-		if (e == null)
-			return Double.POSITIVE_INFINITY;
-		VoidMonsterTether t = this.getOrCreateTether(e);
-		double dist = e.getDistanceSq(x+0.5, y+0.5, z+0.5);
-		if (this.isNether()) {
-			if (dist > 256) {
-				this.removeTether(t, world);
-				return dist;
-			}
-			t.setDistance(e.moveTowards(x+0.5, y-0.5, z+0.5, Math.min(1, 20/dist)));
-			return t.distance;
-		}
-		else {
-			if (dist > 64) {
-				this.removeTether(t, world);
-				return dist;
-			}
-			double s = 1.5;//innerRingActivation > 0 ? 1.5 : 0.25;
-			t.setDistance(e.moveTowards(x+0.5, y-0.5, z+0.5, s*Math.min(1, 20/dist)));
-			return t.distance;
-		}
-	}
-
-	private void removeTether(VoidMonsterTether t, World world) {
-		tethers.remove(t.ID);
-		Entity e = t.getEntity(world);
-		if (e != null)
-			;//world.newExplosion(e, e.posX, e.posY, e.posZ, 4, true, false);
-	}
-
-	private VoidMonsterTether getOrCreateTether(Entity e) {
-		VoidMonsterTether t = tethers.get(e.getEntityId());
-		if (t == null) {
-			t = new VoidMonsterTether(this, e);
-			tethers.put(t.ID, t);
-			this.syncAllData(true);
-		}
-		return t;
-	}
-
-	public Collection<VoidMonsterTether> getTethers() {
-		return Collections.unmodifiableCollection(tethers.values());
-	}
-
-	@ModDependent(ModList.VOIDMONSTER)
-	private void triggerTeleport() {
-		EntityVoidMonster e = (EntityVoidMonster)MonsterAPI.getNearestMonster(worldObj, xCoord+0.5, yCoord+0.5, zCoord+0.5);
-		if (e == null)
-			return;
-		e.forcePersist = true;
-		e.forceSpawn = true;
-		MonsterTeleporter tel = new MonsterTeleporter((WorldServer)link.getWorld(), link, 24, 60, 6);
-		ReikaEntityHelper.transferEntityToDimension(e, link.dimensionID, tel);
-		worldObj.newExplosion(null, xCoord+0.5, yCoord-0.5, zCoord+0.5, 9, true, true);
-		this.delete();
-	}
-
-	@Override
-	protected void animateWithTick(World world, int x, int y, int z) {
-		if (world != null && world.isRemote) {
-			if (flashFactor > 0) {
-				flashFactor = Math.max(flashFactor*0.92F-0.09F, 0);
-			}
-			else if (rand.nextInt(70) == 0) {
-				flashFactor = 2;
-			}
-
-			if (shaderRotationSpeed > 0) {
-				boolean flag = shaderRotation < 0;
-				shaderRotation += shaderRotationSpeed;
-				if (shaderRotation >= 1) {
-					shaderRotation = -1;
-				}
-				else if (flag && shaderRotation >= 0) {
-					shaderRotation = 0;
-					shaderRotationSpeed = 0;
-				}
-			}
-			else if (rand.nextInt(40) == 0) {
-				shaderRotationSpeed = 0.0625F+rand.nextFloat()*0.0625F;
-			}
-		}
-	}
-
-	public float getFlashBrightness() {
-		if (flashFactor <= 0 || flashFactor > 2)
-			return 0;
-		return flashFactor <= 1 ? flashFactor : 2-flashFactor;
-	}
-
-	public float getShaderRotation() {
-		return shaderRotation;
-	}
-
-	public boolean isActive() {
-		return ritual != null;
-	}
-
-	@Override
-	public int getSizeInventory() {
-		return 1;
-	}
-
-	@Override
-	public int getInventoryStackLimit() {
-		return ChromaStacks.voidmonsterEssence.getMaxStackSize();
-	}
-
-	@Override
-	public boolean canExtractItem(int slot, ItemStack is, int side) {
-		return false;
-	}
-
-	@Override
-	public boolean isItemValidForSlot(int slot, ItemStack is) {
-		return false;
-	}
-
-	@Override
-	public ChromaTiles getTile() {
-		return ChromaTiles.VOIDTRAP;
-	}
-
-	@Override
-	public AxisAlignedBB getRenderBoundingBox() {
-		return ReikaAABBHelper.getBlockAABB(this).expand(2, 2, 2);
-	}
-
-	@Override
-	public void onToggle(Coordinate wire, boolean active) {
-		if (wire.yCoord == yCoord-1) {
-			this.activateInnerRing();
-		}
-		else {
-			this.activateOuterRing();
-		}
-	}
-
-	@Override
-	protected void readSyncTag(NBTTagCompound NBT) {
-		super.readSyncTag(NBT);
-
-		hasStructure = NBT.getBoolean("struct");
-
-		NBTTagList li = NBT.getTagList("tethers", NBTTypes.COMPOUND.ID);
-		for (Object o : li.tagList) {
-			VoidMonsterTether t = VoidMonsterTether.readFromNBT((NBTTagCompound)o);
-			VoidMonsterTether has = tethers.get(t.ID);
-			if (has == null)
-				tethers.put(t.ID, t);
-			else
-				has.copyFrom(t);
-		}
-
-		link = NBT.hasKey("link") ? WorldLocation.readFromNBT("link", NBT) : null;
-	}
-
-	@Override
-	protected void writeSyncTag(NBTTagCompound NBT) {
-		super.writeSyncTag(NBT);
-
-		NBT.setBoolean("struct", hasStructure);
-
-		NBTTagList li = new NBTTagList();
-		for (Entry<Integer, VoidMonsterTether> e : tethers.entrySet()) {
-			li.appendTag(e.getValue().writeToNBT());
-		}
-		NBT.setTag("tethers", li);
-
-		if (link != null) {
-			link.writeToNBT("link", NBT);
-		}
-	}
-
-	@Override
-	public int getPacketDelay() {
-		int base = super.getPacketDelay();
-		return tethers.isEmpty() ? base : base/2;
-	}
-
-	public boolean hasStructure() {
-		return hasStructure;
-	}
-
-	@Override
-	public ChromaStructures getPrimaryStructure() {
-		return this.isNether() ? ChromaStructures.NETHERTRAP : ChromaStructures.VOIDRITUAL;
-	}
-
-	@Override
-	public Coordinate getStructureOffset() {
-		return null;
-	}
-
-	@Override
-	public boolean canStructureBeInspected() {
-		return true;
-	}
-
-	public static boolean handleTNTTrigger(World world, Entity e) {
-		return cache.lookForMatch(world, true, (WorldLocation loc, TileEntity te) -> {
-			return ((TileEntityVoidMonsterTrap)te).handleTNTTrigger(e);
-		}, (WorldLocation loc, TileEntity te) -> {
-			ChromaAux.logTileCacheError(world, loc, te, ChromaTiles.VOIDTRAP);
-		});
-	}
-
-	private boolean handleTNTTrigger(Entity e) {
-		//ReikaJavaLibrary.pConsole(e+" and "+link+" and "+this.hasStructure, yCoord == 133);
-		if (this.isNether() && (hasStructure || explosionSeek.size() < 4) && link != null && ModList.VOIDMONSTER.isLoaded()) {
-			Coordinate c = new Coordinate(e).offset(-xCoord+2, -yCoord+6, -zCoord+2);
-			//ReikaJavaLibrary.pConsole(c+" of "+explosionSeek.size()+":"+explosionSeek+" for "+e);
-			if (explosionSeek.contains(c)) {
-				explosionSeek.remove(c);
-				hasStructure = false;
-				if (explosionSeek.isEmpty()) {
-					this.triggerTeleport();
-				}
-				return true;
-			}
-		}
-		return false;
-	}
-
-	public static void clearCache() {
-		cache.clear();
-	}
-
-	@Override
-	public void reset() {
-		link = null;
-	}
-
-	@Override
-	public void resetOther() {
-		if (link == null)
-			return;
-		TileEntity te = link.getTileEntity();
-		if (te instanceof Linkable) {
-			((Linkable)te).reset();
-		}
-	}
-
-	@Override
-	public boolean tryConnect(World world, int x, int y, int z) {
-		if (ChromaTiles.getTile(world, x, y, z) == this.getTile()) {
-			TileEntityVoidMonsterTrap te = (TileEntityVoidMonsterTrap)world.getTileEntity(x, y, z);
-			te.link = new WorldLocation(this);
-			link = new WorldLocation(te);
-			return true;
-		}
-		return false;
-	}
-
-	@Override
-	public boolean isEmitting() {
-		return true;
-	}
-
-	@Override
-	public WorldLocation getConnection() {
-		return link;
-	}
-
-	@Override
-	public boolean hasValidConnection() {
-		return link != null && link.getTileEntity() instanceof TileEntityVoidMonsterTrap;
-	}
-
-	@Override
-	public int getReceiveRange() {
-		return 24;
-	}
-
-	@Override
-	public boolean isConductingElement(CrystalElement e) {
-		return required.contains(e);
-	}
-
-	@Override
-	public int maxThroughput() {
-		return 100;
-	}
-
-	@Override
-	public boolean canConduct() {
-		return hasStructure;
-	}
-
-	@Override
-	public int getMaxStorage(CrystalElement e) {
-		return required.getValue(e)*600;
-	}
-
-	private static class MonsterTeleporter extends Teleporter {
-
-		private final WorldLocation target;
-		private final double minFuzzRadius;
-		private final double maxFuzzRadius;
-		private final double maxFuzzY;
-
-		private final World world;
-
-		public MonsterTeleporter(WorldServer world, WorldLocation loc, double r, double y) {
-			this(world, loc, r, r, y);
-		}
-
-		public MonsterTeleporter(WorldServer world, WorldLocation loc, double r1, double r2, double y) {
-			super(world);
-			target = loc;
-			this.world = world;
-			minFuzzRadius = r1;
-			maxFuzzRadius = r2;
-			maxFuzzY = y;
-		}
-
-		@Override
-		public void placeInPortal(Entity e, double x, double y, double z, float facing) {
-			double r = ReikaRandomHelper.getRandomBetween(minFuzzRadius, maxFuzzRadius);
-			double ang = Math.toRadians(rand.nextDouble()*360);
-			double dx = r*Math.cos(ang);
-			double dz = r*Math.sin(ang);
-			double dy = ReikaRandomHelper.getRandomPlusMinus(0, maxFuzzY);
-			double dr = 1.5;
-			AxisAlignedBB box = AxisAlignedBB.getBoundingBox(dx-dr, dy-dr, dz-dr, dx+dr, dy+dr, dz+dr);
-			while (!world.getCollidingBoundingBoxes(e, box).isEmpty()) {
-				r = ReikaRandomHelper.getRandomBetween(minFuzzRadius, maxFuzzRadius);
-				ang = Math.toRadians(rand.nextDouble()*360);
-				dx = r*Math.cos(ang);
-				dz = r*Math.sin(ang);
-				dy = ReikaRandomHelper.getRandomPlusMinus(0, maxFuzzY);
-			}
-			e.setLocationAndAngles(target.xCoord+0.5+dx, target.yCoord+0.5+dy, target.zCoord+0.5+dz, e.rotationYaw, e.rotationPitch);
-			this.placeInExistingPortal(e, x, y, z, facing);
-		}
-
-		@Override
-		public boolean placeInExistingPortal(Entity entity, double x, double y, double z, float facing) {
-			return true;
-		}
-
-		private void makeReturnPortal(World world, int x, int y, int z) {
-
-		}
-
-		@Override
-		public boolean makePortal(Entity e) {
-			return false;
-		}
-
-	}
-
-	public static class VoidMonsterTether {
-
-		public final int ID;
-		public final Coordinate location;
-
-		private double distance;
-		private final VariableEndpointSpline[] splines = new VariableEndpointSpline[3];
-
-		VoidMonsterTether(TileEntity te, Entity e) {
-			this(new Coordinate(te), e.getEntityId(), new DecimalPosition(e));
-		}
-
-		private VoidMonsterTether(Coordinate c, int id, DecimalPosition p2) {
-			location = c;
-			ID = id;
-			for (int i = 0; i < splines.length; i++) {
-				splines[i] = new VariableEndpointSpline(c.xCoord+0.5, c.yCoord+0.5, c.zCoord+0.5, p2.xCoord, p2.yCoord, p2.zCoord, SplineType.CENTRIPETAL, 6, 1.2, 0.125);
-			}
-		}
-
-		public boolean tick(World world) {
-			Entity e = this.getEntity(world);
-			if (e == null)
-				return true;
-			for (int i = 0; i < splines.length; i++) {
-				splines[i].setEndpoint(e.posX, e.posY+e.height/2, e.posZ);
-				splines[i].tick();
-			}
-			return false;
-		}
-
-		public void copyFrom(VoidMonsterTether t) {
-			distance = t.distance;
-		}
-
-		public Collection<VariableEndpointSpline> getSplines() {
-			return Arrays.asList(splines);
-		}
-
-		private void setDistance(double d) {
-			distance = d;
-		}
-
-		public double getDistance() {
-			return distance;
-		}
-
-		public Entity getEntity(World world) {
-			return world.getEntityByID(ID);
-		}
-
-		private NBTTagCompound writeToNBT() {
-			NBTTagCompound ret = new NBTTagCompound();
-			ret.setInteger("id", ID);
-			ret.setDouble("dist", distance);
-			location.writeToTag(ret);
-			return ret;
-		}
-
-		private static VoidMonsterTether readFromNBT(NBTTagCompound tag) {
-			VoidMonsterTether ret = new VoidMonsterTether(Coordinate.readTag(tag), tag.getInteger("id"), new DecimalPosition(0, 0, 0));
-			ret.distance = tag.getDouble("dist");
-			return ret;
-		}
-
-	}
-
+import java.util.*;
+
+/** V33a trap, native receiver/inventory, registry-key links, chunk tickets and UUID-qualified tethers. */
+public class TileEntityVoidMonsterTrap extends InventoriedCrystalReceiver implements MultiBlockChromaTile,
+        TileEntityLumenWire.WireWatcher, Connectable<WorldLocation>, ChunkLoadingTile, InertIInv {
+    private static final ElementTagCompound REQUIRED=new ElementTagCompound();
+    private static final Map<Level,Set<BlockPos>> CACHE=new WeakHashMap<>();
+    static { REQUIRED.addTag(CrystalElement.BLACK,5); REQUIRED.addTag(CrystalElement.PINK,20); REQUIRED.addTag(CrystalElement.LIGHTGRAY,4); REQUIRED.addTag(CrystalElement.GRAY,1); REQUIRED.addTag(CrystalElement.WHITE,10); REQUIRED.addTag(CrystalElement.MAGENTA,2); }
+    private static final int RING_DURATION=400;
+    private final List<Coordinate> wireSeek=new ArrayList<>(), explosionSeek=new ArrayList<>();
+    private final Map<UUID,VoidMonsterTether> tethers=new LinkedHashMap<>();
+    private float flashFactor,shaderRotation,shaderRotationSpeed;
+    private int outerRingActivation,innerRingActivation;
+    private boolean hasStructure;
+    private boolean previewNether;
+    public void setPreviewNether(boolean value) { previewNether=value; }
+    public boolean isPreviewNether() { return previewNether; }
+    private WorldLocation link;
+    private VoidMonsterDestructionRitual ritual;
+    public TileEntityVoidMonsterTrap(BlockPos pos,BlockState state) { super(ChromaBlockEntities.VOID_MONSTER_TRAP.get(),pos,state); }
+    public static ElementTagCompound getRequiredEnergy() { return REQUIRED.copy(); }
+    public void activateOuterRing() { outerRingActivation=RING_DURATION; }
+    public void activateInnerRing() { if (outerRingActivation>0) outerRingActivation=innerRingActivation=RING_DURATION; }
+    @Override public void validateStructure() {
+        if (level==null) return;
+        var structure=getPrimaryStructure(); structure.getStructure().resetToDefaults();
+        hasStructure=structure.getArray(level,worldPosition.getX(),worldPosition.getY(),worldPosition.getZ()).matchInWorld();
+        syncAllData(false);
+    }
+    public boolean canAttractMonster() { return hasStructure && (link!=null || !isNether()) && !isActive(); }
+    public boolean isNether() { return level!=null && level.dimension().equals(Level.NETHER); }
+    @Override protected void onFirstTick(Level world,BlockPos pos) {
+        super.onFirstTick(world,pos);
+        if (isNether()) explosionSeek.addAll(VoidMonsterNetherStructure.getTNTLocations());
+        else wireSeek.addAll(VoidMonsterRitualStructure.getWireLocations());
+        CACHE.computeIfAbsent(world,k->new HashSet<>()).add(pos.immutable());
+        validateStructure(); if (!world.isClientSide()) ChunkManager.instance.loadChunks(this);
+    }
+    @Override public Collection<ChunkPos> getChunksToLoad() { return ChunkManager.getChunkSquare(worldPosition.getX(),worldPosition.getZ(),2); }
+    @Override public void onChunkUnloaded() { ChunkManager.instance.unloadChunks(this); super.onChunkUnloaded(); }
+    @Override public void breakBlock() {
+        Set<BlockPos> positions=CACHE.get(level); if (positions!=null) positions.remove(worldPosition);
+        ChunkManager.instance.unloadChunks(this);
+        if (ritual!=null) { ritual.onPrematureTermination(); ritual=null; }
+        resetOther(); reset();
+    }
+    @Override public void updateEntity(Level world,BlockPos pos) {
+        super.updateEntity(world,pos);
+        if (world.isClientSide()) {
+            tethers.values().removeIf(t->t.tick(world)); animate(); return;
+        }
+        if (hasStructure && getCooldown()==0 && checkTimer.checkCap())
+            for (CrystalElement color:REQUIRED.elementSet()) if (getRemainingSpace(color)>0) requestEnergy(color,getRemainingSpace(color));
+        if (!hasStructure && getTicksExisted()<5) validateStructure();
+        if (inv.get(0).isEmpty() || inv.get(0).getCount()<getMaxStackSize()) searchForItems(world,pos);
+        if (isNether()) {
+            if (explosionSeek.size()<4 && hasStructure) hasStructure=false;
+            if (canAttractMonster()) attractMonster();
+        } else {
+            if (!wireSeek.isEmpty()) {
+                Coordinate offset=wireSeek.get(rand.nextInt(wireSeek.size()));
+                BlockPos wire=pos.offset(offset.xCoord() -14, offset.yCoord() -8, offset.zCoord() -14);
+                if (world.getBlockEntity(wire) instanceof TileEntityLumenWire watcher) watcher.addWatcher(this);
+            }
+            EntityVoidMonster monster=getMonster();
+            if (monster!=null && inv.get(0).is(ChromaItems.VOID_MONSTER_ESSENCE.get()) && energy.containsAtLeast(REQUIRED)) {
+                if (isActive()) { if (ritual.tick()) { ritual.onCompletion(); ritual=null; } }
+                else if (canAttractMonster() && attractMonster()<1) ritual=new VoidMonsterDestructionRitual(this,monster);
+                drainEnergy(REQUIRED);
+                if (rand.nextInt(isActive()?20:60)==0) { inv.get(0).shrink(1); setChanged(); }
+            }
+        }
+        if (outerRingActivation>0) outerRingActivation--;
+        if (innerRingActivation>0) innerRingActivation--;
+    }
+    private void searchForItems(Level world,BlockPos pos) {
+        for (ItemEntity item:world.getEntitiesOfClass(ItemEntity.class,new AABB(pos).inflate(8,5,8),e->e.getItem().is(ChromaItems.VOID_MONSTER_ESSENCE.get()))) {
+            if (item.tickCount<=5) continue;
+            Vec3 delta=Vec3.atCenterOf(pos).subtract(item.position()); double distance=delta.length();
+            if (distance<.5) {
+                ItemStack current=inv.get(0),incoming=item.getItem();
+                if (current.isEmpty() || ItemStack.isSameItemSameComponents(current,incoming) && current.getCount()<getMaxStackSize()) {
+                    if (current.isEmpty()) inv.set(0,incoming.copyWithCount(1)); else current.grow(1);
+                    incoming.shrink(1); if (incoming.isEmpty()) item.discard(); else item.setItem(incoming);
+                    setChanged(); VoidRitualNetwork.eat(this); ChromaSounds.BOUNCE.playSoundAtBlock(this,1,2);
+                }
+            } else {
+                double f=Math.min(1,item.tickCount/80D); Vec3 velocity=delta.scale(2.5/distance);
+                velocity=new Vec3(net.minecraft.util.Mth.clamp(velocity.x,-.0625,.0625),net.minecraft.util.Mth.clamp(velocity.y,-.0625,.0625),net.minecraft.util.Mth.clamp(velocity.z,-.0625,.0625));
+                item.setDeltaMovement(item.getDeltaMovement().scale(1-f).add(velocity.scale(f)).add(0,item.getY()<pos.getY()?.125:0,0)); item.syncVelocity=true;
+            }
+        }
+    }
+    private EntityVoidMonster getMonster() { return ritual!=null?ritual.getEntity():(EntityVoidMonster)MonsterAPI.getNearestMonster(level,worldPosition.getX()+.5,worldPosition.getY()+.5,worldPosition.getZ()+.5); }
+    private double attractMonster() {
+        EntityVoidMonster monster=getMonster(); if (monster==null) return Double.POSITIVE_INFINITY;
+        double distance=monster.distanceToSqr(Vec3.atCenterOf(worldPosition));
+        if (distance>(isNether()?256:64)) { tethers.remove(monster.getUUID()); return distance; }
+        var tether=tethers.computeIfAbsent(monster.getUUID(),id->new VoidMonsterTether(worldPosition,monster));
+        tether.distance=monster.moveTowards(worldPosition.getX()+.5,worldPosition.getY()-.5,worldPosition.getZ()+.5,(isNether()?1:1.5)*Math.min(1,20/distance));
+        syncAllData(true); return tether.distance;
+    }
+    private void triggerTeleport() {
+        EntityVoidMonster monster=getMonster();
+        if (monster==null || link==null || !(level instanceof ServerLevel source)) return;
+        ServerLevel target=source.getServer().getLevel(link.getDimension()); if (target==null) return;
+        Vec3 destination=findDestination(target,monster,link.pos);
+        boolean persisted=monster.forcePersist; monster.forcePersist=true;
+        // The randomized exit can lie outside the linked trap's forced chunk square.
+        // Native portal tickets let the destination entity lookup begin tracking the arrival.
+        Entity moved=monster.teleport(new TeleportTransition(target,destination,monster.getDeltaMovement(),monster.getYRot(),monster.getXRot(),TeleportTransition.PLACE_PORTAL_TICKET));
+        if (moved==null) { monster.forcePersist=persisted; return; }
+        source.explode(null,worldPosition.getX()+.5,worldPosition.getY()-.5,worldPosition.getZ()+.5,9,true,Level.ExplosionInteraction.BLOCK);
+        source.removeBlock(worldPosition,false);
+    }
+    private Vec3 findDestination(ServerLevel target,Entity monster,BlockPos center) {
+        // V33a tested a stale box around the offset, then retried forever. Test actual destinations
+        // and walk upward after randomized trials, guaranteeing a collision-free exit.
+        for (int attempt=0;attempt<256;attempt++) {
+            double radius=24+rand.nextDouble()*36,angle=rand.nextDouble()*Math.PI*2;
+            Vec3 point=Vec3.atCenterOf(center).add(radius*Math.cos(angle),rand.nextDouble()*12-6,radius*Math.sin(angle));
+            target.getChunk(BlockPos.containing(point));
+            if (target.noCollision(monster,monster.getBoundingBox().move(point.subtract(monster.position())))) return point;
+        }
+        Vec3 point=Vec3.atCenterOf(center).add(24,0,0);
+        while (point.y<target.getMaxY()+4 && !target.noCollision(monster,monster.getBoundingBox().move(point.subtract(monster.position())))) point=point.add(0,1,0);
+        return point;
+    }
+    @Override protected void animateWithTick(Level world,BlockPos pos) { }
+    private void animate() {
+        if (flashFactor>0) flashFactor=Math.max(flashFactor*.92F-.09F,0); else if (rand.nextInt(70)==0) flashFactor=2;
+        if (shaderRotationSpeed>0) { boolean negative=shaderRotation<0; shaderRotation+=shaderRotationSpeed;
+            if (shaderRotation>=1) shaderRotation=-1; else if (negative && shaderRotation>=0) shaderRotation=shaderRotationSpeed=0;
+        } else if (rand.nextInt(40)==0) shaderRotationSpeed=.0625F+rand.nextFloat()*.0625F;
+    }
+    public float getFlashBrightness() { return flashFactor<=0 || flashFactor>2?0:flashFactor<=1?flashFactor:2-flashFactor; }
+    public float getShaderRotation() { return shaderRotation; }
+    public boolean isActive() { return ritual!=null; }
+    public Collection<VoidMonsterTether> getTethers() { return List.copyOf(tethers.values()); }
+    @Override public int getSizeInventory() { return 1; }
+    @Override public int getMaxStackSize() { return 64; }
+    @Override public boolean canTakeItemThroughFace(int slot,ItemStack stack,Direction side) { return false; }
+    @Override public boolean canPlaceItem(int slot,ItemStack stack) { return false; }
+    @Override public ChromaTiles getTile() { return ChromaTiles.VOIDTRAP; }
+    @Override public void onToggle(Coordinate wire,boolean active) { if (wire.yCoord() ==worldPosition.getY()-1) activateInnerRing(); else activateOuterRing(); }
+    @Override protected void readSyncTag(CompoundTag tag) {
+        super.readSyncTag(tag); hasStructure=tag.getBooleanOr("struct",false); link=WorldLocation.load("link",tag);
+        Set<UUID> received=new HashSet<>();
+        for (Tag value:tag.getListOrEmpty("tethers")) if (value instanceof CompoundTag data) {
+            VoidMonsterTether incoming=VoidMonsterTether.read(data); if (incoming==null) continue; received.add(incoming.uuid);
+            VoidMonsterTether current=tethers.get(incoming.uuid); if (current==null) tethers.put(incoming.uuid,incoming); else current.distance=incoming.distance;
+        }
+        tethers.keySet().retainAll(received);
+    }
+    @Override protected void writeSyncTag(CompoundTag tag) {
+        super.writeSyncTag(tag); tag.putBoolean("struct",hasStructure);
+        ListTag list=new ListTag(); tethers.values().forEach(t->list.add(t.write())); tag.put("tethers",list);
+        if (link!=null) link.saveAdditional("link",tag);
+    }
+    @Override public int getPacketDelay() { return tethers.isEmpty()?super.getPacketDelay():Math.max(1,super.getPacketDelay()/2); }
+    @Override public boolean hasStructure() { return hasStructure; }
+    @Override public ChromaStructures getPrimaryStructure() { return isNether()?ChromaStructures.NETHERTRAP:ChromaStructures.VOIDRITUAL; }
+    @Override public Coordinate getStructureOffset() { return null; }
+    @Override public boolean canStructureBeInspected() { return true; }
+    public static boolean handleTNTTrigger(Level world,Entity entity) {
+        for (BlockPos pos:List.copyOf(CACHE.getOrDefault(world,Set.of()))) if (world.getBlockEntity(pos) instanceof TileEntityVoidMonsterTrap trap && trap.handleTNTTrigger(entity)) return true;
+        return false;
+    }
+    private boolean handleTNTTrigger(Entity entity) {
+        if (!isNether() || !hasValidConnection() || !(hasStructure || explosionSeek.size()<4)) return false;
+        Coordinate point=new Coordinate(entity).offset(-worldPosition.getX()+2,-worldPosition.getY()+6,-worldPosition.getZ()+2);
+        if (!explosionSeek.remove(point)) return false;
+        hasStructure=false; if (explosionSeek.isEmpty()) triggerTeleport(); return true;
+    }
+    public static void clearCache() { CACHE.clear(); }
+    public static void unload(Level world) { CACHE.remove(world); }
+    @Override public void reset() { link=null; setChanged(); }
+    @Override public void resetOther() { if (link!=null && link.getBlockEntity() instanceof Connectable<?> other) other.reset(); }
+    @Override public boolean tryConnect(Level world,BlockPos pos) {
+        if (!(world.getBlockEntity(pos) instanceof TileEntityVoidMonsterTrap other)) return false;
+        other.link=new WorldLocation(this); link=new WorldLocation(other); other.syncAllData(true); syncAllData(true); return true;
+    }
+    @Override public boolean isEmitting() { return true; }
+    @Override public WorldLocation getConnection() { return link; }
+    @Override public boolean hasValidConnection() { return link!=null && link.getBlockEntity() instanceof TileEntityVoidMonsterTrap; }
+    @Override public int getReceiveRange() { return 24; }
+    @Override public boolean isConductingElement(CrystalElement color) { return REQUIRED.contains(color); }
+    @Override public int maxThroughput() { return 100; }
+    @Override public boolean canConduct() { return hasStructure; }
+    @Override public int getMaxStorage(CrystalElement color) { return REQUIRED.getValue(color)*600; }
+    public static final class VoidMonsterTether {
+        public final int ID;
+        public final UUID uuid;
+        public final Coordinate location;
+        private double distance;
+        private final VariableEndpointSpline[] splines=new VariableEndpointSpline[3];
+        private VoidMonsterTether(BlockPos pos,Entity entity) { this(new Coordinate(pos),entity.getId(),entity.getUUID(),new DecimalPosition(entity)); }
+        private VoidMonsterTether(Coordinate pos,int id,UUID uuid,DecimalPosition endpoint) {
+            location=pos; ID=id; this.uuid=uuid;
+            for (int i=0;i<3;i++) splines[i]=new VariableEndpointSpline(pos.xCoord() +.5, pos.yCoord() +.5, pos.zCoord() +.5, endpoint.xCoord(), endpoint.yCoord(), endpoint.zCoord(),SplineType.CENTRIPETAL,6,1.2,.125);
+        }
+        public boolean tick(Level world) {
+            Entity entity=getEntity(world); if (entity==null) return true;
+            for (var spline:splines) { spline.setEndpoint(entity.getX(),entity.getY()+entity.getBbHeight()/2,entity.getZ()); spline.tick(); } return false;
+        }
+        public Collection<VariableEndpointSpline> getSplines() { return Arrays.asList(splines); }
+        public double getDistance() { return distance; }
+        public Entity getEntity(Level world) { Entity entity=world.getEntity(ID); return entity!=null && uuid.equals(entity.getUUID())?entity:null; }
+        private CompoundTag write() { CompoundTag data=new CompoundTag(); data.putInt("id",ID); data.putString("uuid",uuid.toString()); data.putDouble("dist",distance); location.writeToTag(data); return data; }
+        private static VoidMonsterTether read(CompoundTag data) { if (data.read("uuid",net.minecraft.core.UUIDUtil.STRING_CODEC).isEmpty()) return null; var tether=new VoidMonsterTether(Coordinate.readTag(data),data.getIntOr("id",0),UUID.fromString(data.getStringOr("uuid","")),new DecimalPosition(0,0,0)); tether.distance=data.getDoubleOr("dist",0); return tether; }
+    }
 }

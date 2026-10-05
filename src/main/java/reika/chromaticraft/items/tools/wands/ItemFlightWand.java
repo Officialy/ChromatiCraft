@@ -1,118 +1,111 @@
 /*******************************************************************************
  * @author Reika Kalseki
- * 
  * Copyright 2017
- * 
  * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
+ * Distribution requires the owner's explicit prior permission.
  ******************************************************************************/
 package reika.chromaticraft.items.tools.wands;
 
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.MovingObjectPosition;
-import net.minecraft.util.Vec3;
-import net.minecraft.world.World;
-
-import reika.chromaticraft.ChromatiCraft;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.context.UseOnContext;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.neoforged.neoforge.network.PacketDistributor;
+import net.neoforged.neoforge.common.util.BlockSnapshot;
+import net.neoforged.neoforge.event.EventHooks;
 import reika.chromaticraft.base.ItemWandBase;
-import reika.chromaticraft.block.blockhoverblock.HoverType;
+import reika.chromaticraft.block.BlockHoverBlock;
+import reika.chromaticraft.block.BlockHoverBlock.HoverType;
+import reika.chromaticraft.network.ChromaNetwork;
 import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaGuis;
 import reika.chromaticraft.registry.ChromaSounds;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.dragonapi.libraries.ReikaPlayerAPI;
-import reika.dragonapi.libraries.java.ReikaRandomHelper;
-import reika.dragonapi.libraries.registry.ReikaParticleHelper;
+import reika.dragonapi.libraries.registry.ReikaItemHelper;
 
-public class ItemFlightWand extends ItemWandBase {
+/** V33a Hover Star: eight temporary motion-field blocks, with the original four selectable modes. */
+public final class ItemFlightWand extends ItemWandBase {
+    public ItemFlightWand(Properties properties) {
+        super(properties);
+        addEnergyCost(CrystalElement.BLACK, 5);
+        addEnergyCost(CrystalElement.LIME, 20);
+    }
 
-	public ItemFlightWand(int index) {
-		super(index);
+    @Override
+    public InteractionResult use(Level level, Player player, InteractionHand hand) {
+        if (level.isClientSide()) return InteractionResult.SUCCESS;
+        if (!sufficientEnergy(player) || !trigger(level, player.getItemInHand(hand), player,
+                ReikaPlayerAPI.getLookedAtBlock(player, 8, true))) {
+            if (player instanceof ServerPlayer server)
+                PacketDistributor.sendToPlayer(server, new ChromaNetwork.OpenHoverWand(hand == InteractionHand.OFF_HAND));
+        }
+        return InteractionResult.SUCCESS;
+    }
 
-		this.addEnergyCost(CrystalElement.BLACK, 5);
-		this.addEnergyCost(CrystalElement.LIME, 20);
-	}
+    @Override
+    public InteractionResult useOn(UseOnContext context) {
+        if (context.getPlayer() == null) return InteractionResult.PASS;
+        if (context.getLevel().isClientSide()) return InteractionResult.SUCCESS;
+        return sufficientEnergy(context.getPlayer()) && trigger(context.getLevel(), context.getItemInHand(),
+                context.getPlayer(), new BlockHitResult(context.getClickLocation(), context.getClickedFace(),
+                        context.getClickedPos(), false)) ? InteractionResult.SUCCESS : InteractionResult.PASS;
+    }
 
-	@Override
-	public ItemStack onItemRightClick(ItemStack is, World world, EntityPlayer ep) {
-		boolean flag = false;
-		if (this.canUse(ep)) {
-			flag = this.trigger(world, is, ep, ReikaPlayerAPI.getLookedAtBlock(ep, 8, true));
-		}
+    private boolean trigger(Level level, ItemStack stack, Player player, BlockHitResult hit) {
+        if (hit == null || hit.getType() != HitResult.Type.BLOCK || !level.getBlockState(hit.getBlockPos().above()).isAir())
+            return false;
+        HoverType mode = getMode(stack);
+        BlockPos base = hit.getBlockPos();
+        boolean placed = false;
+        for (int i = 1; i <= 8; i++) {
+            BlockPos pos = base.above(i);
+            if (level.isOutsideBuildHeight(pos) || !level.getBlockState(pos).isAir()) continue;
+            if (!player.mayUseItemAt(pos, hit.getDirection(), stack)) continue;
+            BlockSnapshot snapshot = BlockSnapshot.create(level.dimension(), level, pos);
+            if (level.setBlock(pos, ChromaBlocks.HOVER.get().defaultBlockState().setValue(BlockHoverBlock.TYPE, mode)
+                    .setValue(BlockHoverBlock.DECAY, BlockHoverBlock.Decay.ARMED), 3)) {
+                if (EventHooks.onBlockPlace(player, snapshot, hit.getDirection())) {
+                    snapshot.restore();
+                    continue;
+                }
+                // V33a checks the base cost once, then drains for every placed field; the buffer exempts creative users.
+                drainPlayer(player, costFactor(mode));
+                placed = true;
+            }
+        }
+        if (placed) {
+            ChromaSounds.CAST.playSound(player);
+            if (level instanceof ServerLevel server) for (int i = 0; i <= 8; i++) {
+                double d = i / 8D;
+                server.sendParticles(ParticleTypes.ENCHANT, player.getX()+d*(base.getX()-player.getX()),
+                        player.getY()+d*(base.getY()-player.getY()), player.getZ()+d*(base.getZ()-player.getZ()),
+                        0, (player.getRandom().nextDouble()*2-1)*0.03125,
+                        (player.getRandom().nextDouble()*2-1)*0.03125, (player.getRandom().nextDouble()*2-1)*0.03125, 1);
+            }
+        }
+        return placed;
+    }
 
-		if (!flag) {
-			ep.openGui(ChromatiCraft.instance, ChromaGuis.HOVER.ordinal(), world, 0, 0, 0);
-		}
-		return is;
-	}
+    public static HoverType getMode(ItemStack stack) {
+        var data = ReikaItemHelper.getStackTag(stack);
+        int index = data == null ? HoverType.ELEVATE.ordinal() : data.getIntOr("mode", HoverType.ELEVATE.ordinal());
+        return index >= 0 && index < HoverType.values().length ? HoverType.values()[index] : HoverType.ELEVATE;
+    }
 
-	@Override
-	public boolean onItemUse(ItemStack is, EntityPlayer ep, World world, int x, int y, int z, int s, float a, float b, float c) {
-		return this.canUse(ep) && this.trigger(world, is, ep, new MovingObjectPosition(x, y, z, s, Vec3.createVectorHelper(a, b, c)));
-	}
+    public static void setMode(ItemStack stack, HoverType mode) {
+        ReikaItemHelper.updateStackTag(stack, data -> data.putInt("mode", mode.ordinal()));
+    }
 
-	private boolean canUse(EntityPlayer ep) {
-		return this.sufficientEnergy(ep);
-	}
-
-	private boolean trigger(World world, ItemStack is, EntityPlayer ep, MovingObjectPosition mov) {
-		if (mov != null) {
-			if (mov.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK) {
-				int x = mov.blockX;
-				int y = mov.blockY;
-				int z = mov.blockZ;
-				if (world.getBlock(x, y+1, z).isAir(world, x, y+1, z)) {
-
-					ChromaSounds.CAST.playSound(ep);
-
-					for (double d = 0; d <= 1; d += 0.125) {
-						double dx = ep.posX+d*(x-ep.posX);
-						double dy = ep.posY+d*(y-ep.posY);
-						double dz = ep.posZ+d*(z-ep.posZ);
-						double vx = ReikaRandomHelper.getRandomPlusMinus(0, 0.03125);
-						double vy = ReikaRandomHelper.getRandomPlusMinus(0, 0.03125);
-						double vz = ReikaRandomHelper.getRandomPlusMinus(0, 0.03125);
-						ReikaParticleHelper.ENCHANTMENT.spawnAt(world, dx, dy, dz, vx, vy, vz);
-					}
-
-					for (int i = 1; i <= 8; i++) {
-						if (world.getBlock(x, y+i, z).isAir(world, x, y+i, z)) {
-							HoverType mode = this.getMode(is);
-							world.setBlock(x, y+i, z, ChromaBlocks.HOVER.getBlockInstance(), mode.getDecayMeta(), 3);
-							this.drainPlayer(ep, this.getEnergyCostFactor(mode));
-						}
-					}
-
-					return true;
-				}
-			}
-		}
-		return false;
-	}
-
-	public static HoverType getMode(ItemStack is) {
-		return is.stackTagCompound != null ? HoverType.list[is.stackTagCompound.getInteger("mode")] : HoverType.ELEVATE;
-	}
-
-	public static void setMode(ItemStack is, HoverType type) {
-		if (is.stackTagCompound == null)
-			is.stackTagCompound = new NBTTagCompound();
-
-		is.stackTagCompound.setInteger("mode", type.ordinal());
-	}
-
-	private float getEnergyCostFactor(HoverType type) {
-		switch(type) {
-		case ELEVATE:
-			return 1.5F;
-		case FASTELEVATE:
-			return 2F;
-		default:
-			return 1;
-		}
-	}
-
+    public static float costFactor(HoverType mode) {
+        return switch (mode) { case ELEVATE -> 1.5F; case FAST_ELEVATE -> 2F; default -> 1F; };
+    }
 }
+

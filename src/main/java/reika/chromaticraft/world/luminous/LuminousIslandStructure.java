@@ -1,26 +1,20 @@
 package reika.chromaticraft.world.luminous;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Random;
-import java.util.concurrent.ConcurrentHashMap;
-
 import com.mojang.serialization.MapCodec;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureType;
-
-import reika.chromaticraft.world.GlowingCliffsColumnShaper;
-import reika.chromaticraft.world.GlowingCliffsColumnShaper.GlowCliffRegion;
 import reika.chromaticraft.world.dimension.structure.ProximaStructures;
 import reika.dragonapi.instantiable.math.noise.NoiseGeneratorBase;
 import reika.dragonapi.instantiable.math.noise.SimplexNoiseGenerator;
 import reika.dragonapi.libraries.java.ReikaRandomHelper;
 import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
+
+import java.util.Map;
+import java.util.Optional;
+import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * V33a {@code GlowingCliffsAuxGenerator.generateIslands}: where the Luminous Cliffs' floating islands
@@ -33,10 +27,9 @@ import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
  *
  * <p>Upstream built islands after the chunks around them were populated and refused any island that
  * would touch a non-air block. An island is far too large for a feature, so this is a structure: its
- * start is decided here, before the terrain it floats over has been generated, and the ground is
- * predicted instead — the cliffs from {@link GlowingCliffsColumnShaper} (the same function the terrain
- * pass runs), anything else from the chunk generator's own height, blended as the terrain pass blends
- * it. What cannot be predicted is recorded, not guessed: trees, and islands started from other chunks.
+ * start saves a candidate and its random seed. The post-population queue completes its terrain and
+ * vegetation footprint before doing the original air checks. Children are painted as they are
+ * accepted, so their siblings, parent and neighbouring starts see their blocks and decoration.
  */
 public final class LuminousIslandStructure extends Structure {
 
@@ -54,7 +47,8 @@ public final class LuminousIslandStructure extends Structure {
 		long seed = context.seed();
 		int chunkX = context.chunkPos().getMinBlockX();
 		int chunkZ = context.chunkPos().getMinBlockZ();
-		Random random = new Random(context.random().nextLong());
+		long candidateSeed = context.random().nextLong();
+		Random random = new Random(candidateSeed);
 
 		NoiseGeneratorBase frequency = FREQUENCY.computeIfAbsent(seed,
 				s -> new SimplexNoiseGenerator(s << 1).setFrequency(1 / 32D));
@@ -64,79 +58,53 @@ public final class LuminousIslandStructure extends Structure {
 		int x = chunkX + random.nextInt(16) + 8;
 		int z = chunkZ + random.nextInt(16) + 8;
 
-		Prediction terrain = new Prediction(context);
-		if (!terrain.sampler.biome(x, z).isGlowingCliffs())
-			return Optional.empty();
-		boolean water = terrain.column(x, z).region() == GlowCliffRegion.WATER;
-		int c = water ? 3 : 6;
-		if (random.nextInt(c) != 0)
-			return Optional.empty();
-
-		LuminousIsland island = LuminousIsland.initialize(terrain, x, z, random, s, water);
-		List<LuminousIsland> accepted = new ArrayList<>();
-		LuminousIsland.generate(terrain, random, seed, island, accepted);
-		if (accepted.isEmpty())
-			return Optional.empty();
-
-		// V33a draws each accepted island's ore veins from the same random after generating it.
-		List<LuminousIslandPiece> pieces = new ArrayList<>();
-		for (LuminousIsland is : accepted)
-			pieces.add(new LuminousIslandPiece(is, LuminousIslandPiece.rollOres(is, random)));
-		BlockPos anchor = new BlockPos(x, context.chunkGenerator().getSeaLevel(), z);
-		return Optional.of(new Structure.GenerationStub(anchor, builder -> pieces.forEach(builder::addPiece)));
-	}
+		var resolver = context.biomeSource().createUncachedResolver(context.randomState());
+        var mask = new LuminousCliffsBiomeMask(resolver::getNoiseBiome, context.chunkGenerator().getSeaLevel());
+        if (!mask.at(x, z).isGlowingCliffs()) return Optional.empty();
+        var candidate = new LuminousIslandCandidatePiece(x, z, s, candidateSeed,
+                context.heightAccessor().getMinY(), context.heightAccessor().getMaxY() - 1);
+        return Optional.of(new Structure.GenerationStub(new BlockPos(x, context.chunkGenerator().getSeaLevel(), z),
+                builder -> builder.addPiece(candidate)));
+    }
 
 	@Override
 	public StructureType<?> type() {
 		return ProximaStructures.LUMINOUS_ISLAND_TYPE.get();
 	}
 
-	/** The ground an island must clear, predicted from the shaper and the chunk generator. */
-	private static final class Prediction implements LuminousIsland.Terrain {
-
-		private final Structure.GenerationContext context;
-		final GlowingCliffsColumnShaper.Sampler sampler;
-		private final Map<Long, GlowingCliffsColumnShaper.Column> columns = new java.util.HashMap<>();
-		private final Map<Long, Integer> otherTops = new java.util.HashMap<>();
-
-		Prediction(Structure.GenerationContext context) {
-			this.context = context;
-			var source = context.biomeSource();
-			var resolver = source.createUncachedResolver(context.randomState());
-			this.sampler = GlowingCliffsColumnShaper.forSeed(context.seed()).new Sampler(new LuminousCliffsBiomeMask(
-					resolver::getNoiseBiome, context.chunkGenerator().getSeaLevel()));
-		}
-
-		private GlowingCliffsColumnShaper.Column column(int x, int z) {
-			return columns.computeIfAbsent(BlockPos.asLong(x, 0, z), k -> sampler.column(x, z));
-		}
-
-		/** The top solid block of a column outside the cliffs, after the terrain pass's blend. */
-		private int otherTop(int x, int z) {
-			return otherTops.computeIfAbsent(BlockPos.asLong(x, 0, z), k -> this.computeOtherTop(x, z));
-		}
-
-		private int computeOtherTop(int x, int z) {
-			int base = context.chunkGenerator().getBaseHeight(x, z, Heightmap.Types.OCEAN_FLOOR_WG,
-					context.heightAccessor(), context.randomState()) - 1;
-			int blended = sampler.blendedTop(x, z, base);
-			return blended < 0 ? base : blended;
-		}
-
-		/** Minecraft 1.7.10 {@code getTopSolidOrLiquidBlock}: one above the top solid block. */
-		@Override
-		public int topSolidOrLiquid(int x, int z) {
-			if (!sampler.biome(x, z).isGlowingCliffs())
-				return this.otherTop(x, z) + 1;
-			GlowingCliffsColumnShaper.Column col = this.column(x, z);
-			return col.region() == GlowCliffRegion.WATER ? col.oceanFloor() : col.top() + 1;
-		}
-
-		@Override
-		public boolean isSolid(int x, int y, int z) {
-			if (!sampler.biome(x, z).isGlowingCliffs())
-				return y <= this.otherTop(x, z);
-			return this.column(x, z).isSolid(y);
-		}
-	}
+    /** V33a generation against completed terrain; children are committed before the parent continues. */
+    public static void placeAfterPopulation(net.minecraft.server.level.ServerLevel level,
+            net.minecraft.nbt.CompoundTag candidate) {
+        int x = candidate.getIntOr("X", 0), z = candidate.getIntOr("Z", 0);
+        double scale = candidate.getDoubleOr("Scale", 1);
+        Random random = new Random(candidate.getLongOr("Seed", 0));
+        // Replay the selection draws, then continue the very same stream through children and ores.
+        ReikaRandomHelper.doWithChance(33 / scale, random);
+        random.nextInt(16); random.nextInt(16);
+        LuminousIsland.Terrain terrain = new LuminousIsland.Terrain() {
+            public int topSolidOrLiquid(int bx, int bz) {
+                int y = level.getHeight(Heightmap.Types.OCEAN_FLOOR, bx, bz) - 1;
+                BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos(bx, y, bz);
+                while (y >= level.getMinY()) {
+                    var state = level.getBlockState(pos.setY(y));
+                    if (!state.isAir() && !state.is(net.minecraft.tags.BlockTags.LOGS)
+                            && !state.is(net.minecraft.tags.BlockTags.LEAVES)) break;
+                    y--;
+                }
+                return y + 1;
+            }
+            public boolean isSolid(int bx, int by, int bz) {
+                return !level.getBlockState(new BlockPos(bx, by, bz)).isAir();
+            }
+        };
+        boolean water = level.getFluidState(new BlockPos(x, terrain.topSolidOrLiquid(x, z) + 1, z))
+                .is(net.minecraft.tags.FluidTags.WATER);
+        if (random.nextInt(water ? 3 : 6) != 0) return;
+        LuminousIsland island = LuminousIsland.initialize(terrain, x, z, random, scale, water);
+        LuminousIsland.generate(terrain, random, level.getSeed(), island, accepted -> {
+            // This callback paints immediately: subsequent children and parents see its full body,
+            // its trees and its fluids. It also draws ores at the original point in the random stream.
+            new LuminousIslandPiece(accepted).placeAfterPopulation(level, random);
+        });
+    }
 }

@@ -9,24 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.modinterface.ae;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-import java.util.function.Consumer;
-import java.util.function.Supplier;
-
-import javax.annotation.Nullable;
-
-import net.minecraft.network.chat.Component;
-import net.minecraft.world.item.DyeItem;
-import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.item.component.TooltipDisplay;
-import net.minecraft.world.level.ItemLike;
-
 import appeng.api.config.FuzzyMode;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
@@ -35,10 +17,26 @@ import appeng.api.storage.StorageCells;
 import appeng.api.storage.cells.IBasicCellItem;
 import appeng.api.storage.cells.StorageCell;
 import appeng.util.ConfigInventory;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.DyeItem;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.TooltipDisplay;
+import net.minecraft.world.level.ItemLike;
 import reika.chromaticraft.base.ItemChromaTool;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.CrystalElement;
+
+import javax.annotation.Nullable;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 /**
  * V33a {@code ItemCrystalCell}: a 1,048,576-byte, 16-type ME storage cell that only takes one "crystal type" - the

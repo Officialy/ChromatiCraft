@@ -1,0 +1,69 @@
+{
+  "type": "chromaticraft:casting",
+  "completion": {
+    "required_fragment": "MULTITOOL"
+  },
+  "duration": 20,
+  "experience": 40,
+  "grid": [
+    {
+      "ingredient": "minecraft:iron_axe",
+      "slot": 0
+    },
+    {
+      "ingredient": "minecraft:iron_pickaxe",
+      "slot": 1
+    },
+    {
+      "ingredient": "minecraft:iron_shovel",
+      "slot": 2
+    },
+    {
+      "ingredient": "chromaticraft:chromic_dust",
+      "slot": 3
+    },
+    {
+      "ingredient": "minecraft:stick",
+      "slot": 4
+    },
+    {
+      "ingredient": "chromaticraft:chromic_dust",
+      "slot": 5
+    },
+    {
+      "ingredient": "chromaticraft:chromic_dust",
+      "slot": 6
+    },
+    {
+      "ingredient": "minecraft:stick",
+      "slot": 7
+    },
+    {
+      "ingredient": "chromaticraft:chromic_dust",
+      "slot": 8
+    }
+  ],
+  "penalty_threshold": 2,
+  "result": {
+    "id": "chromaticraft:multitool"
+  },
+  "runes": [
+    {
+      "element": "purple",
+      "offset": [
+        2,
+        -1,
+        -1
+      ]
+    },
+    {
+      "element": "brown",
+      "offset": [
+        1,
+        -1,
+        -2
+      ]
+    }
+  ],
+  "tier": "temple"
+}

@@ -1,10 +1,10 @@
 package reika.chromaticraft.world.dimension.structure.laser;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import reika.chromaticraft.world.dimension.structure.LaserPuzzleLayout.EffectType;
 import reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Source-exact, world-independent interaction rules for V33a's Chromatic Beams puzzle.
@@ -100,9 +100,11 @@ public final class LaserPulseLogic {
 			return Interaction.prismContribution(new BeamColor(red, green, blue), targetMatched);
 		}
 		List<Pulse> output = new ArrayList<>(3);
-		if (incoming.color().red()) output.add(new Pulse(facing.getRotation(true, 2), BeamColor.RED));
-		if (incoming.color().green()) output.add(new Pulse(facing, BeamColor.GREEN));
-		if (incoming.color().blue()) output.add(new Pulse(facing.getRotation(false, 2), BeamColor.BLUE));
+		if (incoming.color().red()) output.add(new Pulse(
+				incoming.direction().getRotation(true, 2), BeamColor.RED));
+		if (incoming.color().green()) output.add(new Pulse(incoming.direction(), BeamColor.GREEN));
+		if (incoming.color().blue()) output.add(new Pulse(
+				incoming.direction().getRotation(false, 2), BeamColor.BLUE));
 		return Interaction.replacing(output, targetMatched);
 	}
 

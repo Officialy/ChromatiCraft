@@ -9,9 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.entity;
 
-import java.util.Random;
-import java.util.UUID;
-
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -31,7 +28,6 @@ import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.entity.IEntityWithComplexSpawn;
-
 import reika.chromaticraft.auxiliary.ElementEncodedNumber.EncodedPosition;
 import reika.chromaticraft.magic.lore.LoreManager;
 import reika.chromaticraft.magic.lore.Towers;
@@ -40,6 +36,9 @@ import reika.chromaticraft.registry.ChromaEntityTypes;
 import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.dragonapi.instantiable.Interpolation;
+
+import java.util.Random;
+import java.util.UUID;
 
 /**
  * V33a {@code EntityEnderEyeT2}, the thrown Enhanced Ender Eye.
@@ -383,8 +382,8 @@ public final class EntityEnderEyeT2 extends Entity implements ItemSupplier, IEnt
 				int cr = 3;
 				int c = colorData.isVariableChange(i) ? 0x22aaff : colorData.isPartOfNegative(i) ? 0x000000 : 0xffffff;
 				spiralColor.addPoint(t, c);
-				spiralColor.addPoint(t + cr, e.getColor());
-				spiralColor.addPoint(t2 - cr, e.getColor());
+				spiralColor.addPoint(t + cr, e.color());
+				spiralColor.addPoint(t2 - cr, e.color());
 				spiralColor.addPoint(t2, c);
 			}
 		}

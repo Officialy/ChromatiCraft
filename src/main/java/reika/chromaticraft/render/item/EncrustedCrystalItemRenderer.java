@@ -1,13 +1,8 @@
 package reika.chromaticraft.render.item;
 
-import java.util.Locale;
-import java.util.Random;
-import java.util.function.Consumer;
-
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
@@ -19,13 +14,15 @@ import net.minecraft.client.resources.model.sprite.SpriteGetter;
 import net.minecraft.client.resources.model.sprite.SpriteId;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.Identifier;
-
 import org.joml.Vector3f;
 import org.joml.Vector3fc;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
+
+import java.util.Locale;
+import java.util.Random;
+import java.util.function.Consumer;
 
 /** V33a {@code CrystalEncrustingRenderer.renderInventoryBlock}, on the translucent item target. */
 public final class EncrustedCrystalItemRenderer implements NoDataSpecialModelRenderer {
@@ -51,7 +48,7 @@ public final class EncrustedCrystalItemRenderer implements NoDataSpecialModelRen
 				: 0x6C756D65 ^ element.ordinal();
 		Random random = new Random(seed);
 		random.nextBoolean(); // exact discarded V33a inventory roll
-		int colour = 0xFF000000 | ReikaColorAPI.mixColors(element.getColor(), 0xFFFFFF, 0.85F);
+		int colour = 0xFF000000 | ReikaColorAPI.mixColors(element.color(), 0xFFFFFF, 0.85F);
 		// renderInventoryBlock's glRotatef(90, 0, 1, 0) about the block centre.
 		poseStack.pushPose();
 		poseStack.translate(0.5F, 0.5F, 0.5F);

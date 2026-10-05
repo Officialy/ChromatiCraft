@@ -3,10 +3,10 @@ package reika.chromaticraft.auxiliary.interfaces;
 
 public interface DynamicallyGeneratedSubpage {
 
-	public String getNotes(int subpage);
+	String getNotes(int subpage);
 
-	public int getMaxSubpage();
+	int getMaxSubpage();
 
-	public boolean replaceOriginal();
+	boolean replaceOriginal();
 
 }

@@ -1,16 +1,15 @@
 package reika.chromaticraft.auxiliary.recipemanagers;
 
-import java.util.List;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
-
 import reika.chromaticraft.base.tileentity.TileEntityChromaticBase;
 import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
 import reika.chromaticraft.registry.ChromaBlocks;
+
+import java.util.List;
 
 /** V33a inscription registry. V33a ships one built-in recipe: Smooth Crystal Stone to Pylon Link. */
 public final class InscriptionRecipes {

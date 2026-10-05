@@ -1,20 +1,13 @@
 package reika.chromaticraft.tileentity.recipe;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
-import java.util.function.Predicate;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.WorldlyContainer;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -25,16 +18,12 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
-
 import net.neoforged.neoforge.fluids.FluidType;
 import net.neoforged.neoforge.transfer.ResourceHandler;
 import net.neoforged.neoforge.transfer.TransferPreconditions;
 import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import net.neoforged.neoforge.transfer.transaction.SnapshotJournal;
 import net.neoforged.neoforge.transfer.transaction.TransactionContext;
-
 import reika.chromaticraft.auxiliary.interfaces.FocusAcceleratable;
 import reika.chromaticraft.auxiliary.interfaces.NBTTile;
 import reika.chromaticraft.auxiliary.interfaces.OperationInterval;
@@ -42,8 +31,8 @@ import reika.chromaticraft.auxiliary.interfaces.OwnedTile;
 import reika.chromaticraft.base.tileentity.TileEntityChromaticBase;
 import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaSounds;
 import reika.chromaticraft.registry.ChromaFluids;
+import reika.chromaticraft.registry.ChromaSounds;
 import reika.chromaticraft.registry.ChromaStructures;
 import reika.chromaticraft.tileentity.auxiliary.TileEntityFocusCrystal;
 import reika.chromaticraft.tileentity.auxiliary.TileEntityFocusCrystal.CrystalTier;
@@ -53,6 +42,9 @@ import reika.dragonapi.interfaces.blockentity.BreakAction;
 import reika.dragonapi.interfaces.blockentity.ConditionBreakDropsInventory;
 import reika.dragonapi.interfaces.blockentity.InertIInv;
 import reika.dragonapi.libraries.registry.ReikaItemHelper;
+
+import java.util.*;
+import java.util.function.Predicate;
 
 /**
  * Full 26.2 port of V33a's owned one-slot aura-infusion pedestal. Despite its historical name this

@@ -1,13 +1,12 @@
 package reika.chromaticraft.auxiliary.structure;
 
-import java.util.function.UnaryOperator;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.Level;
-
 import reika.chromaticraft.base.ChromaStructureBase;
 import reika.dragonapi.instantiable.data.blockstruct.FilledBlockArray;
+
+import java.util.function.UnaryOperator;
 
 /** NBT-backed guide representation of V33a's one-log Wooden Repeater support. */
 public final class WeakRepeaterStructure extends ChromaStructureBase {

@@ -1,7 +1,5 @@
 package reika.chromaticraft.tileentity;
 
-import java.util.UUID;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
@@ -12,13 +10,13 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
-
 import org.jspecify.annotations.Nullable;
-
 import reika.chromaticraft.block.dimension.structure.locks.BlockLockKey;
 import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.CrystalElement;
+
+import java.util.UUID;
 
 /** Persistent delegate and portable-item state for {@link BlockLockKey}. */
 public final class TileEntityLockKey extends BlockEntity {
@@ -67,11 +65,11 @@ public final class TileEntityLockKey extends BlockEntity {
 		if (!added) removalNotified = true;
 	}
 
-	/** 26.2 has no general Block.onRemove hook; the BE lifecycle covers commands and replacements. */
+	/** Physical removal, including commands/replacements; unloading keeps the key installed. */
 	@Override
-	public void setRemoved() {
+	public void preRemoveSideEffects(BlockPos pos, BlockState state) {
 		notifyDelegate(false, null);
-		super.setRemoved();
+		super.preRemoveSideEffects(pos, state);
 	}
 
 	public ItemStack createPortableStack(int channel) {

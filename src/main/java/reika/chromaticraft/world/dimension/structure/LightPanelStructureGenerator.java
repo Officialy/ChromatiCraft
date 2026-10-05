@@ -1,18 +1,16 @@
 package reika.chromaticraft.world.dimension.structure;
 
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
+import reika.chromaticraft.block.BlockChromaDoor;
+import reika.chromaticraft.registry.ChromaOptions;
+import reika.chromaticraft.tileentity.TileEntityStructureController;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
-
-import net.minecraft.core.BlockPos;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.state.BlockState;
-
-import reika.chromaticraft.block.BlockChromaDoor;
-import reika.chromaticraft.registry.ChromaOptions;
-import reika.chromaticraft.tileentity.TileEntityStructureController;
-import reika.chromaticraft.tileentity.TileEntityStructurePassword;
 
 /**
  * Modern planner for V33a {@code LightPanelGenerator} (Glowing Logic).

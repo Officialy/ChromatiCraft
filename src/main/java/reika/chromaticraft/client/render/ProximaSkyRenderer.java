@@ -1,22 +1,19 @@
 package reika.chromaticraft.client.render;
 
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.renderpearl.api.buffers.GpuBufferSlice;
-import java.util.Random;
-
 import com.mojang.blaze3d.vertex.BufferBuilder;
-
+import com.mojang.renderpearl.api.buffers.GpuBufferSlice;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.state.level.LevelRenderState;
 import net.minecraft.client.renderer.state.level.SkyRenderState;
 import net.minecraft.resources.Identifier;
 import net.neoforged.neoforge.client.CustomSkyboxRenderer;
-
 import org.joml.Matrix4fc;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.render.ChromaRenderPipelines;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
+
+import java.util.Random;
 
 /**
  * V33a {@code ChromaSkyRenderer}: Proxima's sky.
@@ -196,7 +193,7 @@ public final class ProximaSkyRenderer implements CustomSkyboxRenderer {
 					continue;
 				// V33a dims the stars nearest the end of the list, so the field thins at its edge
 				// rather than new stars appearing at full brightness as the count breathes.
-				float brightness = (float)Math.min(count - i, 24 * alpha);
+				float brightness = Math.min(count - i, 24 * alpha);
 				star.emitStar(buffer, 320 - i / 10D / count, brightness, time);
 			}
 		});

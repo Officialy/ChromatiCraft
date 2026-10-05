@@ -1,28 +1,25 @@
 package reika.chromaticraft.magic;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Map.Entry;
-
 import com.mojang.serialization.Codec;
-
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.datafix.DataFixTypes;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.level.saveddata.SavedDataType;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.dragonapi.instantiable.data.immutable.WorldLocation;
 import reika.dragonapi.instantiable.data.maps.AngleMap;
 import reika.dragonapi.libraries.mathsci.ReikaPhysicsHelper;
 import reika.dragonapi.libraries.mathsci.ReikaVectorHelper;
+
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Map.Entry;
 
 /**
  * V33a {@code WarpNetwork}: which warp node you arrive at is decided by the direction you left in.

@@ -1,14 +1,10 @@
 package reika.chromaticraft.client;
 
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-
 import net.minecraft.client.renderer.block.BlockAndTintGetter;
 import net.minecraft.core.BlockPos;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.world.biome.ChromaBiomes;
 import reika.dragonapi.instantiable.event.client.WaterColorEvent;
@@ -16,6 +12,9 @@ import reika.dragonapi.instantiable.math.noise.NoiseGeneratorBase;
 import reika.dragonapi.instantiable.math.noise.SimplexNoiseGenerator;
 import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
+
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * V33a {@code ChromaClientEventController.biomeWaterColor}: the overworld biomes' positional water.

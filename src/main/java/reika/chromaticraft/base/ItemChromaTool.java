@@ -9,18 +9,17 @@
  ******************************************************************************/
 package reika.chromaticraft.base;
 
-import java.util.UUID;
-
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
-
 import reika.chromaticraft.registry.ChromaSounds;
 import reika.dragonapi.libraries.mathsci.ReikaPhysicsHelper;
 import reika.dragonapi.libraries.registry.ReikaItemHelper;
+
+import java.util.UUID;
 
 /**
  * V33a {@code ItemChromaTool}: a single-stacking ChromatiCraft tool (in the Tools tab, by package), with an optional
@@ -30,7 +29,11 @@ import reika.dragonapi.libraries.registry.ReikaItemHelper;
 public abstract class ItemChromaTool extends Item {
 
 	public ItemChromaTool(Properties properties) {
-		super(properties.stacksTo(1));
+		this(properties, 1);
+	}
+
+	protected ItemChromaTool(Properties properties, int stackSize) {
+		super(properties.stacksTo(stackSize));
 	}
 
 	public UseResult canPlayerUse(Player ep) {
@@ -80,11 +83,11 @@ public abstract class ItemChromaTool extends Item {
 		return UUID.fromString(tag.getStringOr("ownerid", ""));
 	}
 
-	public static enum UseResult {
+	public enum UseResult {
 		ALLOW(),
 		NOTHING(),
 		PUNISH(),
-		PUNISHSEVERE();
-	}
+		PUNISHSEVERE()
+    }
 
 }

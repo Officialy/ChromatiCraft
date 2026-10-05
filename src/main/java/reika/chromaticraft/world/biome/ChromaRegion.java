@@ -1,20 +1,17 @@
 package reika.chromaticraft.world.biome;
 
-import java.util.function.Consumer;
-
 import com.mojang.datafixers.util.Pair;
-
 import net.minecraft.core.Registry;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.biome.Climate;
-
+import reika.chromaticraft.ChromatiCraft;
 import terrablender.api.Region;
 import terrablender.api.RegionType;
 
-import reika.chromaticraft.ChromatiCraft;
+import java.util.function.Consumer;
 
 /** Low-weight overworld climate region that restores Rainbow and Ender Forest generation. */
 public final class ChromaRegion extends Region {

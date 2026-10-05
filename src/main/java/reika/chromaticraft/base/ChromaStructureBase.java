@@ -9,13 +9,12 @@
  ******************************************************************************/
 package reika.chromaticraft.base;
 
-import java.util.Random;
-
 import net.minecraft.world.level.block.Block;
-
+import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.dragonapi.base.StructureBase;
-import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
+
+import java.util.Random;
 
 /**
  * Base for ChromatiCraft's multiblock structure definitions (see {@link reika.chromaticraft.registry.ChromaStructures}).

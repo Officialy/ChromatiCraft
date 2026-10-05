@@ -1,13 +1,9 @@
 package reika.chromaticraft.render.item;
 
-import java.util.function.Consumer;
-
 import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.math.Transformation;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.SubmitNodeCollector;
@@ -21,17 +17,17 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.ItemOwner;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
-
 import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
 import org.joml.Vector3f;
 import org.joml.Vector3fc;
 import org.jspecify.annotations.Nullable;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.client.gui.LexiconIconResolver;
 import reika.chromaticraft.magic.progression.LexiconCatalog;
 import reika.chromaticraft.magic.progression.ResearchFragmentData;
+
+import java.util.function.Consumer;
 
 /**
  * V33a decoded-fragment inventory rendering.

@@ -13,9 +13,9 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Explosion;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
-import net.minecraft.world.level.Explosion;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -23,14 +23,12 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
-
 import org.jspecify.annotations.Nullable;
-
-import java.util.function.BiConsumer;
-
 import reika.chromaticraft.block.BlockCrystalRune;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.tileentity.TileEntityLockKey;
+
+import java.util.function.BiConsumer;
 
 /**
  * V33a's portable structure lock key. The old metadata was a generated room channel, so it is an

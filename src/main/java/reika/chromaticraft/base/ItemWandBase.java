@@ -9,20 +9,19 @@
  ******************************************************************************/
 package reika.chromaticraft.base;
 
-import java.util.function.Consumer;
-
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.component.TooltipDisplay;
-
+import reika.chromaticraft.auxiliary.interfaces.DynamicallyGeneratedSubpage;
 import reika.chromaticraft.magic.ElementTagCompound;
 import reika.chromaticraft.magic.PlayerElementBuffer;
-import reika.chromaticraft.auxiliary.interfaces.DynamicallyGeneratedSubpage;
 import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.registry.CrystalElement;
+
+import java.util.function.Consumer;
 
 /**
  * V33a {@code ItemWandBase}: a Chromatic tool whose uses draw a fixed per-element energy cost from the player's

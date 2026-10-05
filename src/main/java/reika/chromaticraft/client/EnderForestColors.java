@@ -1,8 +1,5 @@
 package reika.chromaticraft.client;
 
-import java.util.Random;
-import java.util.Set;
-
 import net.minecraft.client.color.block.BlockTintSource;
 import net.minecraft.client.renderer.block.BlockAndTintGetter;
 import net.minecraft.core.BlockPos;
@@ -11,12 +8,14 @@ import net.minecraft.world.level.GrassColor;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
-
 import reika.chromaticraft.registry.ChromaOptions;
 import reika.dragonapi.instantiable.data.immutable.Coordinate;
 import reika.dragonapi.instantiable.math.noise.NoiseGeneratorBase;
 import reika.dragonapi.instantiable.math.noise.Simplex3DGenerator;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
+
+import java.util.Random;
+import java.util.Set;
 
 /**
  * V33a {@code BiomeEnderForest}'s grass, foliage and water colouring.

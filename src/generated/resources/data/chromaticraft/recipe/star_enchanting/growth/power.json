@@ -1,0 +1,112 @@
+{
+  "type": "chromaticraft:casting",
+  "completion": {
+    "enhancement": {
+      "enchantment": "minecraft:power",
+      "level": 1
+    },
+    "required_fragment": "ENCHANTING"
+  },
+  "duration": 1200,
+  "experience": 200,
+  "grid": [
+    {
+      "ingredient": "chromaticraft:growth_star",
+      "slot": 4
+    }
+  ],
+  "penalty_threshold": 1,
+  "result": {
+    "components": {
+      "minecraft:enchantments": {
+        "minecraft:power": 1
+      }
+    },
+    "id": "chromaticraft:growth_star"
+  },
+  "runes": [
+    {
+      "element": "purple",
+      "offset": [
+        4,
+        -1,
+        -4
+      ]
+    },
+    {
+      "element": "black",
+      "offset": [
+        -4,
+        -1,
+        4
+      ]
+    }
+  ],
+  "stands": [
+    {
+      "ingredient": "chromaticraft:boosted_crystal_shard_green",
+      "offset": [
+        0,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:infused_dust",
+      "offset": [
+        0,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "minecraft:bone_meal",
+      "offset": [
+        -2,
+        0,
+        0
+      ]
+    },
+    {
+      "ingredient": "minecraft:bone_meal",
+      "offset": [
+        2,
+        0,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:elemental_stone_purple",
+      "offset": [
+        -2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:elemental_stone_black",
+      "offset": [
+        2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:binding_crystal",
+      "offset": [
+        -2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:binding_crystal",
+      "offset": [
+        2,
+        0,
+        -2
+      ]
+    }
+  ],
+  "tier": "multiblock"
+}

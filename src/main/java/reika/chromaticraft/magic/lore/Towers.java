@@ -1,21 +1,13 @@
 package reika.chromaticraft.magic.lore;
 
-import java.util.EnumMap;
-import java.util.HashSet;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Random;
-import java.util.Set;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.StructureTags;
 import net.minecraft.util.Mth;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.ChunkGeneratorStructureState;
 import net.minecraft.world.level.levelgen.structure.placement.StructurePlacement;
-
 import reika.dragonapi.DragonOptions;
 import reika.dragonapi.instantiable.math.hexgrid.HexGrid;
 import reika.dragonapi.instantiable.math.hexgrid.HexGrid.Hex;
@@ -23,6 +15,8 @@ import reika.dragonapi.instantiable.math.hexgrid.HexGrid.MapShape;
 import reika.dragonapi.instantiable.math.hexgrid.HexGrid.Point;
 import reika.dragonapi.libraries.level.ReikaWorldHelper;
 import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
+
+import java.util.*;
 
 /**
  * V33a {@code Towers}: the thirteen lore towers, laid out on a hex grid rather than scattered.
@@ -62,6 +56,7 @@ public enum Towers {
 	private static final Map<ChunkPos, Towers> towerChunkCache = new HashMap<>();
 	private static final EnumMap<Towers, BlockPos> towerCache = new EnumMap<>(Towers.class);
 	private static long lastWorldSeed;
+	private static java.lang.ref.WeakReference<ServerLevel> lastWorld = new java.lang.ref.WeakReference<>(null);
 
 	private static final double TOWER_OFFSET_RADIUS = 2500;
 	/** Keep the lore monuments clear of even the outer pieces of a predicted vanilla village. */
@@ -108,11 +103,11 @@ public enum Towers {
 
 		Set<StructurePlacement> villagePlacements = getVillagePlacements(world);
 		for (Towers t : towerList) {
-			grid.addHex(t.hex.q, t.hex.r, t.hex.s);
-			Hex ref = grid.getHex(t.hex.q, t.hex.r, t.hex.s);
+			grid.addHex(t.hex.q(), t.hex.r(), t.hex.s());
+			Hex ref = grid.getHex(t.hex.q(), t.hex.r(), t.hex.s());
 			Point p = grid.getHexLocation(ref).rotate(a, 0, 0).translate(dx, dz);
-			int x = ReikaMathLibrary.roundToNearestX(16, (int)Math.round(p.x));
-			int y = ReikaMathLibrary.roundToNearestX(16, (int)Math.round(p.y));
+			int x = ReikaMathLibrary.roundToNearestX(16, (int)Math.round(p.x()));
+			int y = ReikaMathLibrary.roundToNearestX(16, (int)Math.round(p.y()));
 			ChunkPos clear = findVillageClearChunk(world, x >> 4, y >> 4, villagePlacements);
 			x = clear.x() << 4;
 			y = clear.z() << 4;
@@ -121,6 +116,7 @@ public enum Towers {
 		}
 
 		lastWorldSeed = world.getSeed();
+		lastWorld = new java.lang.ref.WeakReference<>(world);
 	}
 
 	/**
@@ -186,7 +182,7 @@ public enum Towers {
 	 * Exposed here so consumers do not have to drag in LoreManager, whose other half belongs to the
 	 * lore/research vertical.
 	 */
-	public static Towers getTower(ServerLevel world, int cx, int cz) {
+	public static synchronized Towers getTower(ServerLevel world, int cx, int cz) {
 		if (!initialized(world))
 			loadPositions(world, 64 * 16 * 2);
 		return getTowerForChunk(cx, cz);
@@ -216,7 +212,7 @@ public enum Towers {
 		return towerList[this.ordinal() - 1];
 	}
 
-	public static boolean initialized(ServerLevel world) {
-		return !towerChunkCache.isEmpty() && lastWorldSeed == world.getSeed();
+	public static synchronized boolean initialized(ServerLevel world) {
+		return lastWorld.get() == world && !towerChunkCache.isEmpty() && lastWorldSeed == world.getSeed();
 	}
 }

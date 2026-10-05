@@ -1,0 +1,8 @@
+{
+  "feature": "chromaticraft:glow_root",
+  "placement": [
+    {
+      "type": "minecraft:biome"
+    }
+  ]
+}

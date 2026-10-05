@@ -9,19 +9,17 @@
  ******************************************************************************/
 package reika.chromaticraft.models;
 
-import java.util.List;
-
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
-
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.model.geom.PartPose;
 import net.minecraft.client.model.geom.builders.CubeListBuilder;
 import net.minecraft.client.model.geom.builders.PartDefinition;
 import net.minecraft.client.renderer.texture.OverlayTexture;
-
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
+
+import java.util.List;
 
 /**
  * V33a ModelFocusCrystalBase: the focus crystal's two tilted rings of shards plus the loose shards and posts,

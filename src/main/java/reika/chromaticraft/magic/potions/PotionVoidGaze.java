@@ -36,7 +36,7 @@ public class PotionVoidGaze extends MobEffect {
 		super(MobEffectCategory.BENEFICIAL, 0x61008E);
 	}
 
-	public static enum VoidGazeLevels {
+	public enum VoidGazeLevels {
 		PYLONXRAY(),
 		CAVEPARTICLES(),
 		FACEFLIP();

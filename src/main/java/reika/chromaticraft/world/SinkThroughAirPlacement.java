@@ -1,10 +1,7 @@
 package reika.chromaticraft.world;
 
-import java.util.function.Consumer;
-
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.util.RandomSource;
@@ -14,7 +11,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.placement.PlacementContext;
 import net.minecraft.world.level.levelgen.placement.PlacementModifier;
 
-import reika.chromaticraft.registry.ChromaPlacementModifiers;
+import java.util.function.Consumer;
 
 /**
  * The two ways Minecraft 1.7.10 decorators dropped a starting height to the ground.

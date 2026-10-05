@@ -1,14 +1,13 @@
 package reika.chromaticraft.world.dimension.structure;
 
-import java.util.Optional;
-
 import com.mojang.serialization.MapCodec;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureType;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePiecesBuilder;
+
+import java.util.Optional;
 
 /**
  * The start half of V33a's {@code WorldGenGlassCliffs}. All of the shape lives in

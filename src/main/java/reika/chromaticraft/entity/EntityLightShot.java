@@ -9,8 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.entity;
 
-import java.util.HashSet;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.world.entity.EntityType;
@@ -21,12 +19,13 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-
 import reika.chromaticraft.block.decoration.BlockEtherealLight;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaEntityTypes;
 import reika.chromaticraft.registry.ChromaSounds;
 import reika.dragonapi.libraries.java.ReikaRandomHelper;
+
+import java.util.HashSet;
 
 /**
  * V33a {@code EntityLightShot}, the Illumination Gun's bolt: a fast, unaccelerated fireball (3.5 blocks a tick, slowed

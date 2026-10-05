@@ -1,25 +1,20 @@
 package reika.chromaticraft.registry;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-import java.util.LinkedHashMap;
-import java.util.Map;
-
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.api.abilityapi.Ability;
-import reika.chromaticraft.auxiliary.recipemanagers.AbilityRituals;
-import reika.chromaticraft.auxiliary.ability.AbilityHelper;
 import reika.chromaticraft.auxiliary.ability.AbilityEffects;
-import reika.chromaticraft.magic.ElementTagCompound;
+import reika.chromaticraft.auxiliary.ability.AbilityHelper;
+import reika.chromaticraft.auxiliary.recipemanagers.AbilityRituals;
 import reika.chromaticraft.magic.ChromaAbilityData;
+import reika.chromaticraft.magic.ElementTagCompound;
 import reika.chromaticraft.magic.PlayerElementBuffer;
-import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.magic.progression.LexiconDescriptions;
+import reika.chromaticraft.magic.progression.ProgressStage;
+
+import java.util.*;
 
 /**
  * V33a {@code Chromabilities}: the thirty-nine powers a player can ritual into existence.
@@ -105,10 +100,17 @@ public enum Chromabilities implements Ability {
 
 	@Override
 	public String getDisplayName() {
-		// CHROMA-PORT: V33a scrambles the name until the player holds the ability's lexicon fragment
-		// (deobfuscateIf). The fragment check is ported but the obfuscated font type is not, so the
-		// name currently reads plainly; restore the scramble with the font work.
 		return Component.translatable("chromability." + this.getID()).getString();
+	}
+
+	/** V33a deobfuscateIf; retain the component's glyph font through the client rendering boundary. */
+	public Component getDisplayName(Player player) {
+		var page = reika.chromaticraft.magic.progression.LexiconCatalog.entries().stream()
+				.filter(entry -> entry.section() == reika.chromaticraft.magic.progression.LexiconCatalog.Section.ABILITIES
+						&& entry.sourceId().equals(this.getID())).findFirst().orElse(null);
+		return reika.chromaticraft.auxiliary.render.ChromaText.conceal(
+				Component.translatable("chromability." + this.getID()), player != null && page != null
+				&& !reika.chromaticraft.magic.progression.PlayerResearch.hasFragment(player, page));
 	}
 
 	@Override
@@ -401,6 +403,7 @@ public enum Chromabilities implements Ability {
 				yield true;
 			}
 			case JUMP -> AbilityEffects.jump(player, level);
+            case MOBBAIT -> AbilityEffects.mobBait(player);
 			default -> false;
 		};
 	}

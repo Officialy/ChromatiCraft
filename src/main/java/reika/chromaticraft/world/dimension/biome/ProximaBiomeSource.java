@@ -1,29 +1,25 @@
 package reika.chromaticraft.world.dimension.biome;
 
-import java.util.function.Predicate;
-import java.util.stream.Stream;
-
+import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-
-import net.minecraft.core.Holder;
-import com.mojang.datafixers.util.Pair;
-
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 import net.minecraft.core.HolderGetter;
 import net.minecraft.core.QuartPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.RegistryOps;
+import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.biome.Biome;
-import net.minecraft.world.level.biome.BiomeSource;
 import net.minecraft.world.level.biome.BiomeResolver;
+import net.minecraft.world.level.biome.BiomeSource;
 import net.minecraft.world.level.biome.Climate;
 import net.minecraft.world.level.levelgen.RandomState;
-
-import net.minecraft.world.level.LevelReader;
-
 import reika.chromaticraft.world.dimension.BiomeDistributor;
 import reika.chromaticraft.world.dimension.ProximaGenerators;
+
+import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 /**
  * The {@link BiomeSource} that reads Proxima's painted biome map.

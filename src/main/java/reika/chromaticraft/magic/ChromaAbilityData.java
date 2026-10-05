@@ -12,10 +12,9 @@ package reika.chromaticraft.magic;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
-import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.api.abilityapi.Ability;
 import reika.chromaticraft.registry.Chromabilities;

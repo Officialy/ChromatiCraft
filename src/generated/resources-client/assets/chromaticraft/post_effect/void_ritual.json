@@ -1,0 +1,30 @@
+{
+  "passes": [
+    {
+      "fragment_shader": "minecraft:post/blit",
+      "inputs": [
+        {
+          "sampler_name": "In",
+          "target": "chromaticraft:void_ritual_warped"
+        }
+      ],
+      "output": "minecraft:main",
+      "uniforms": {
+        "BlitConfig": [
+          {
+            "type": "vec4",
+            "name": "ColorModulate",
+            "value": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        ]
+      },
+      "vertex_shader": "minecraft:core/screenquad"
+    }
+  ],
+  "targets": {}
+}

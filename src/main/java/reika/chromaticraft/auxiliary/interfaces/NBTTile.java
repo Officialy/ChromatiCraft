@@ -9,18 +9,18 @@
  ******************************************************************************/
 package reika.chromaticraft.auxiliary.interfaces;
 
-import java.util.List;
-
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.item.ItemStack;
+
+import java.util.List;
 
 public interface NBTTile {
 
-	public void getTagsToWriteToStack(CompoundTag NBT);
+	void getTagsToWriteToStack(CompoundTag NBT);
 
-	public void setDataFromItemStackTag(ItemStack is);
+	void setDataFromItemStackTag(ItemStack is);
 
-	public void addTooltipInfo(List li, boolean shift);
+	void addTooltipInfo(List li, boolean shift);
 
 
 

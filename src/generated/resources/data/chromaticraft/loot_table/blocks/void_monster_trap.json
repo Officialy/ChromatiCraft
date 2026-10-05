@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "condition": {
+        "type": "minecraft:survives_explosion"
+      },
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "chromaticraft:void_monster_trap"
+        }
+      ],
+      "rolls": 1
+    }
+  ],
+  "random_sequence": "chromaticraft:blocks/void_monster_trap"
+}

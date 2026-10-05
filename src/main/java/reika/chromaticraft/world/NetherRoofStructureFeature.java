@@ -1,10 +1,8 @@
 package reika.chromaticraft.world;
 
-import java.util.List;
-
 import net.minecraft.core.BlockPos;
-import net.minecraft.resources.Identifier;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.ProblemReporter;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.EntityType;
@@ -14,13 +12,14 @@ import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.SpawnerBlockEntity;
 import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.storage.loot.BuiltInLootTables;
 import net.minecraft.world.level.storage.TagValueInput;
-
+import net.minecraft.world.level.storage.loot.BuiltInLootTables;
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.auxiliary.structure.NBTStructureLoader;
-import reika.chromaticraft.tileentity.TileEntityLootChest;
 import reika.chromaticraft.magic.progression.ProgressStage;
+import reika.chromaticraft.tileentity.TileEntityLootChest;
+
+import java.util.List;
 
 /**
  * V33a's five structures on top of the Nether roof, now placed from canonical structure NBT.

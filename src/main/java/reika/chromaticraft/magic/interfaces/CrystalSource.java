@@ -18,19 +18,19 @@ public interface CrystalSource extends CrystalTransmitter, LumenTile {
 
 	//public int getTransmissionStrength();
 
-	public boolean drain(CrystalElement e, int amt);
+	boolean drain(CrystalElement e, int amt);
 
 	/** Higher number = higher priority */
 	//public int getSourcePriority();
 
-	public boolean canSupply(CrystalReceiver te, CrystalElement e);
+    boolean canSupply(CrystalReceiver te, CrystalElement e);
 
-	public void onUsedBy(Player ep, CrystalElement e);
+	void onUsedBy(Player ep, CrystalElement e);
 
-	public boolean playerCanUse(Player ep);
+	boolean playerCanUse(Player ep);
 
-	public double getMaximumBeamRadius();
+	double getMaximumBeamRadius();
 
-	public float getDroppedItemChargeRate(ItemStack is);
+	float getDroppedItemChargeRate(ItemStack is);
 
 }

@@ -1,24 +1,21 @@
 package reika.chromaticraft.render.item;
 
-import java.util.function.Consumer;
-
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import com.mojang.serialization.MapCodec;
-
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.special.NoDataSpecialModelRenderer;
 import net.minecraft.client.renderer.special.SpecialModelRenderer;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.Identifier;
-
 import org.joml.Vector3f;
 import org.joml.Vector3fc;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.models.ModelCrystalCharger;
 import reika.chromaticraft.render.tesr.RenderCrystalCharger;
+
+import java.util.function.Consumer;
 
 /** The real V33a Charger model in GUI, hand, frame, and dropped-item contexts. */
 public final class CrystalChargerItemRenderer implements NoDataSpecialModelRenderer {

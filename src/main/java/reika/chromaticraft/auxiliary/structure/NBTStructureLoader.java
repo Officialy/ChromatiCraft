@@ -1,18 +1,13 @@
 package reika.chromaticraft.auxiliary.structure;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.UnaryOperator;
-import java.util.function.BiPredicate;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtUtils;
-import net.minecraft.util.ProblemReporter;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Block;
@@ -21,12 +16,16 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 import net.minecraft.world.level.storage.TagValueInput;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.dragonapi.instantiable.data.blockstruct.FilledBlockArray;
 import reika.dragonapi.instantiable.data.immutable.BlockKey;
 import reika.dragonapi.interfaces.BlockCheck;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.BiPredicate;
+import java.util.function.UnaryOperator;
 
 /**
  * Loads a canonical Minecraft structure NBT and exposes it through DragonAPI's multiblock matcher.
@@ -36,6 +35,18 @@ import reika.dragonapi.interfaces.BlockCheck;
 public final class NBTStructureLoader {
 
     private NBTStructureLoader() {
+    }
+
+    /** Authored non-void cells, for later weathering of an already placed template. */
+    public static List<BlockPos> templatePositions(ServerLevel world, Identifier templateId,
+            BlockPos worldAnchor, BlockPos templateAnchor) {
+        FilledBlockArray array = load(world, templateId, worldAnchor, templateAnchor, state -> state);
+        List<BlockPos> positions = new ArrayList<>(array.getSize());
+        for (int i = 0; i < array.getSize(); i++) {
+            var cell = array.getNthBlock(i);
+            positions.add(cell.immutable());
+        }
+        return positions;
     }
 
     public static FilledBlockArray load(Level world, Identifier templateId, BlockPos worldAnchor,

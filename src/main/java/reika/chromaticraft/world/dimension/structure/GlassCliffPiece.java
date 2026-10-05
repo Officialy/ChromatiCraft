@@ -1,8 +1,5 @@
 package reika.chromaticraft.world.dimension.structure;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.util.Mth;
@@ -17,9 +14,11 @@ import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.StructurePiece;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext;
-
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ProximaDecoTypes;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * V33a {@code WorldGenGlassCliffs}: a chain of glass cliffs sweeping across Proxima's plains.

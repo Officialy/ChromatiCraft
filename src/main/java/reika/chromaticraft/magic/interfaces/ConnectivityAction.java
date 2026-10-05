@@ -14,7 +14,7 @@ import reika.chromaticraft.magic.network.CrystalPath;
 
 public interface ConnectivityAction extends LinkWatchingRepeater {
 
-	public void notifySendingTo(CrystalPath p, CrystalReceiver r);
-	public void notifyReceivingFrom(CrystalPath p, CrystalTransmitter t);
+	void notifySendingTo(CrystalPath p, CrystalReceiver r);
+	void notifyReceivingFrom(CrystalPath p, CrystalTransmitter t);
 
 }

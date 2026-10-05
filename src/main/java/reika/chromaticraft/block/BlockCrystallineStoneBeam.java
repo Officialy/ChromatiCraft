@@ -9,8 +9,6 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
 
-import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
-
 /**
  * A crystalline-stone beam, which runs along X or Z and never vertically.
  *

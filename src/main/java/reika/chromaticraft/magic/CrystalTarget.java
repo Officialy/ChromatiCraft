@@ -90,9 +90,8 @@ public class CrystalTarget {
 
 	@Override
 	public boolean equals(Object o) {
-		if (o instanceof CrystalTarget) {
-			CrystalTarget t = (CrystalTarget)o;
-			return t.location.equals(location) && t.color == color; //ignore render width
+		if (o instanceof CrystalTarget t) {
+            return t.location.equals(location) && t.color == color; //ignore render width
 		}
 		return false;
 	}

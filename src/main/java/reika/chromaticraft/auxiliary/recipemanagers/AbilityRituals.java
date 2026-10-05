@@ -1,21 +1,20 @@
 package reika.chromaticraft.auxiliary.recipemanagers;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Set;
-
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
-
-import reika.chromaticraft.api.RitualAPI;
 import reika.chromaticraft.api.CrystalElementAccessor.CrystalElementProxy;
+import reika.chromaticraft.api.RitualAPI;
 import reika.chromaticraft.api.abilityapi.Ability;
 import reika.chromaticraft.magic.ElementTagCompound;
-import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.registry.Chromabilities;
+import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.tileentity.recipe.TileEntityRitualTable;
 import reika.dragonapi.instantiable.data.immutable.WorldLocation;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * V33a {@code AbilityRituals}: what each Chromability costs to ritual into existence, in elemental

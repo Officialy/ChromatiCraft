@@ -1,9 +1,6 @@
 package reika.chromaticraft.client.hud;
 
-import java.awt.Color;
-
 import com.mojang.blaze3d.platform.InputConstants;
-
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -18,13 +15,14 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.gui.GuiLayer;
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.client.CrystalRuneTextures;
 import reika.chromaticraft.item.ItemManipulator;
 import reika.chromaticraft.magic.PlayerElementBuffer;
 import reika.chromaticraft.registry.ChromaOptions;
 import reika.chromaticraft.registry.CrystalElement;
+
+import java.awt.*;
 
 /**
  * V33a {@code ChromaOverlays.renderElementPie}: the sixteen-wedge wheel showing what the player is
@@ -84,7 +82,7 @@ public final class ElementBufferOverlay implements GuiLayer {
 			CrystalElement e = CrystalElement.elements[i];
 			int amt = PlayerElementBuffer.instance.getPlayerContent(player, e);
 			radii[i] = (float)(r * Math.pow(cap == 0 ? 0 : (double)amt / cap, 0.675));
-			colours[i] = flag > 0 ? pulse(e.getColor()) : e.getColor();
+			colours[i] = flag > 0 ? pulse(e.color()) : e.color();
 		}
 		graphics.submitPictureInPictureRenderState(new ElementPieRenderState(radii, colours, r,
 				ox - r, oy - r, ox + r, oy + r, graphics.peekScissorStack()));

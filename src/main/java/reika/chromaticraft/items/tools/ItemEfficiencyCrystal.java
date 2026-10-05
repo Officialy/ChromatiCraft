@@ -1,68 +1,39 @@
 /*******************************************************************************
  * @author Reika Kalseki
- *
- * Copyright 2017
- *
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
+ * Copyright 2017. All rights reserved.
+ * Distribution requires explicit, prior permission from the owner.
  ******************************************************************************/
 package reika.chromaticraft.items.tools;
 
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.particle.EntityFX;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
-import net.minecraft.world.World;
-
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import reika.chromaticraft.base.ItemChromaTool;
-import reika.chromaticraft.registry.ChromaIcons;
-import reika.chromaticraft.render.particle.EntityCCBlurFX;
-import reika.dragonapi.instantiable.Orbit;
-import reika.dragonapi.instantiable.particlecontroller.OrbitMotionController;
-import reika.dragonapi.libraries.java.ReikaRandomHelper;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
-
-
+/** V33a EFFICIENCY: reduces powered-tool drain and ability costs while carried. */
 public class ItemEfficiencyCrystal extends ItemChromaTool {
+    private static final String TAG = "last_efficiency";
 
-	private static final String TAG = "last_efficiency";
+    public ItemEfficiencyCrystal(Properties properties) { super(properties); }
 
-	public ItemEfficiencyCrystal(int index) {
-		super(index);
-	}
+    @Override
+    public void inventoryTick(ItemStack stack, ServerLevel level, Entity owner, EquipmentSlot slot) {
+        if (owner instanceof Player player)
+            player.getPersistentData().putLong(TAG, level.getGameTime());
+    }
 
-	@Override
-	public void onUpdate(ItemStack is, World world, Entity e, int slot, boolean held) {
-		if (e instanceof EntityPlayer) {
-			e.getEntityData().setLong(TAG, world.getTotalWorldTime());
-			if (world.isRemote)
-				this.doHeldFX(is, e);
-		}
-	}
-
-	@SideOnly(Side.CLIENT)
-	private void doHeldFX(ItemStack is, Entity e) {
-		if (itemRand.nextInt(4*4) == 0) {
-			double r = ReikaRandomHelper.getRandomBetween(1D, 3D);
-			double ec = itemRand.nextDouble()*0.75;
-			double i = ReikaRandomHelper.getRandomPlusMinus(0D, 90D);
-			double raan = itemRand.nextDouble()*360;
-			Orbit o = new Orbit(r, ec, i, raan, 0, 0);
-			OrbitMotionController p = new OrbitMotionController(o, e.posX, e.posY, e.posZ).trackEntity(e);
-			p.thetaSpeed = ReikaRandomHelper.getRandomBetween(1.5, 5);
-			int l = 60+itemRand.nextInt(120);
-			float s = (float)ReikaRandomHelper.getRandomPlusMinus(1, 0.25)*0.5F;
-			EntityFX fx = new EntityCCBlurFX(e.worldObj, e.posX, e.posY, e.posZ).setIcon(ChromaIcons.CHROMA).setPositionController(p).setLife(l).setBasicBlend().setScale(s);
-			Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-		}
-	}
-
-	public static boolean isActive(EntityPlayer ep) {
-		return ep.worldObj.getTotalWorldTime()-ep.getEntityData().getLong(TAG) < 20;
-	}
-
+    public static boolean isActive(Player player) {
+        if (player.level().getGameTime()-player.getPersistentData().getLongOr(TAG, Long.MIN_VALUE/2) < 20)
+            return true;
+        // Server inventory ticks do not sync entity persistent data to the client.
+        if (player.level().isClientSide()) {
+            for (ItemStack stack : player.getInventory())
+                if (stack.getItem() instanceof ItemEfficiencyCrystal)
+                    return true;
+            return ItemAuraPouch.containsActive(player, stack -> stack.getItem() instanceof ItemEfficiencyCrystal);
+        }
+        return false;
+    }
 }

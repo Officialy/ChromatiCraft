@@ -1,0 +1,73 @@
+{
+  "values": [
+    "#minecraft:base_stone_overworld",
+    {
+      "id": "geostrata:granite_smooth",
+      "required": false
+    },
+    {
+      "id": "geostrata:basalt_smooth",
+      "required": false
+    },
+    {
+      "id": "geostrata:marble_smooth",
+      "required": false
+    },
+    {
+      "id": "geostrata:limestone_smooth",
+      "required": false
+    },
+    {
+      "id": "geostrata:shale_smooth",
+      "required": false
+    },
+    {
+      "id": "geostrata:sandstone_smooth",
+      "required": false
+    },
+    {
+      "id": "geostrata:pumice_smooth",
+      "required": false
+    },
+    {
+      "id": "geostrata:slate_smooth",
+      "required": false
+    },
+    {
+      "id": "geostrata:gneiss_smooth",
+      "required": false
+    },
+    {
+      "id": "geostrata:peridotite_smooth",
+      "required": false
+    },
+    {
+      "id": "geostrata:quartz_smooth",
+      "required": false
+    },
+    {
+      "id": "geostrata:granulite_smooth",
+      "required": false
+    },
+    {
+      "id": "geostrata:hornfel_smooth",
+      "required": false
+    },
+    {
+      "id": "geostrata:migmatite_smooth",
+      "required": false
+    },
+    {
+      "id": "geostrata:schist_smooth",
+      "required": false
+    },
+    {
+      "id": "geostrata:onyx_smooth",
+      "required": false
+    },
+    {
+      "id": "geostrata:opal_smooth",
+      "required": false
+    }
+  ]
+}

@@ -9,18 +9,17 @@
  ******************************************************************************/
 package reika.chromaticraft.magic.network;
 
-import java.util.HashSet;
-
 import net.minecraft.core.BlockPos;
-import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
-
+import net.minecraft.world.level.block.entity.BlockEntity;
 import reika.chromaticraft.magic.interfaces.CrystalNetworkTile;
 import reika.chromaticraft.magic.interfaces.LinkWatchingRepeater;
 import reika.dragonapi.instantiable.data.immutable.WorldChunk;
 import reika.dragonapi.instantiable.data.immutable.WorldLocation;
+
+import java.util.HashSet;
 
 public final class CrystalLink {
 
@@ -46,8 +45,7 @@ public final class CrystalLink {
 			int x = Mth.floor(l1.pos.getX()+i*(l2.pos.getX()-l1.pos.getX())/dd);
 			int z = Mth.floor(l1.pos.getZ()+i*(l2.pos.getZ()-l1.pos.getZ())/dd);
 			WorldChunk ch = new WorldChunk(world, new ChunkPos(x >> 4, z >> 4));
-			if (!chunks.contains(ch))
-				chunks.add(ch);
+            chunks.add(ch);
 		}
 		activeEndpoint1 = l1.getBlockEntity() instanceof LinkWatchingRepeater;
 		activeEndpoint2 = l2.getBlockEntity() instanceof LinkWatchingRepeater;
@@ -92,25 +90,24 @@ public final class CrystalLink {
 	}
 
 	@Override
-	public final int hashCode() {
+	public int hashCode() {
 		return loc1.hashCode()^loc2.hashCode();
 	}
 
 	@Override
-	public final boolean equals(Object o) {
-		if (o instanceof CrystalLink) {
-			CrystalLink l = (CrystalLink)o;
-			return (l.loc1.equals(loc1) && l.loc2.equals(loc2)) || (l.loc1.equals(loc2) && l.loc2.equals(loc1)); //order irrelevant
+	public boolean equals(Object o) {
+		if (o instanceof CrystalLink l) {
+            return (l.loc1.equals(loc1) && l.loc2.equals(loc2)) || (l.loc1.equals(loc2) && l.loc2.equals(loc1)); //order irrelevant
 		}
 		return false;
 	}
 
 	@Override
-	public final String toString() {
+	public String toString() {
 		return "["+loc1+" > "+loc2+"]";
 	}
 
-	final boolean hasLineOfSight() {
+	boolean hasLineOfSight() {
 		if (needsCalculation)
 			this.recalculateLOS();
 		//ReikaJavaLibrary.pConsole("Returning LOS for "+this+" (#"+System.identityHashCode(this)+"): "+hasLOS);

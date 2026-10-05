@@ -1,18 +1,6 @@
 package reika.chromaticraft.magic.lore;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import java.util.Set;
-import java.util.UUID;
-
 import net.minecraft.world.entity.player.Player;
-
 import reika.chromaticraft.magic.ElementMixer;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.dragonapi.instantiable.math.hexgrid.HexGrid;
@@ -20,6 +8,8 @@ import reika.dragonapi.instantiable.math.hexgrid.HexGrid.Hex;
 import reika.dragonapi.instantiable.math.hexgrid.HexGrid.MapShape;
 import reika.dragonapi.instantiable.math.hexgrid.HexGrid.Point;
 import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
+
+import java.util.*;
 
 /**
  * Deterministic V33a lore-key board. It retains the 169-cell flower, thirteen voids, 500 legal
@@ -159,7 +149,7 @@ public final class KeyAssemblyPuzzle {
 			Point point = grid.getHexLocation(cell.hex);
 			boolean known = cell.color == null || cell.tower == null
 					|| (scannedMask & 1 << cell.tower.ordinal()) != 0;
-			result.add(new CellView(cell.hex.q, cell.hex.r, cell.hex.s, point.x, point.y,
+			result.add(new CellView(cell.hex.q(), cell.hex.r(), cell.hex.s(), point.x(), point.y(),
 					cell.color, cell.color != null && isValid(cell), known, cell.tower));
 		}
 		result.sort((a, b) -> {
@@ -173,7 +163,7 @@ public final class KeyAssemblyPuzzle {
 		Hex hex = grid.getHexAtLocation((int)Math.round(x), (int)Math.round(y));
 		if (hex == null) return null;
 		for (CellView view : cells(scannedMask))
-			if (view.q == hex.q && view.r == hex.r && view.s == hex.s) return view;
+			if (view.q == hex.q() && view.r == hex.r() && view.s == hex.s()) return view;
 		return null;
 	}
 
@@ -195,9 +185,9 @@ public final class KeyAssemblyPuzzle {
 	}
 
 	private static int compareHex(Hex a, Hex b) {
-		int q = Integer.compare(a.q, b.q);
-		int r = q == 0 ? Integer.compare(a.r, b.r) : q;
-		return r == 0 ? Integer.compare(a.s, b.s) : r;
+		int q = Integer.compare(a.q(), b.q());
+		int r = q == 0 ? Integer.compare(a.r(), b.r()) : q;
+		return r == 0 ? Integer.compare(a.s(), b.s()) : r;
 	}
 
 	private static final class Cell {

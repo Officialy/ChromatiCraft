@@ -9,8 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.block;
 
-import java.util.List;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.BlockGetter;
@@ -23,10 +21,11 @@ import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
-
 import reika.chromaticraft.base.tileentity.TileEntityAdjacencyUpgrade;
 import reika.chromaticraft.registry.AdjacencyUpgrades;
 import reika.chromaticraft.registry.ChromaTiles;
+
+import java.util.List;
 
 /**
  * V33a {@code BlockAdjacencyUpgrade}, one identity per implemented colour (V33a's metadata): no collision, a

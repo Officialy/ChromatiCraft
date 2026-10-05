@@ -1,24 +1,13 @@
 package reika.chromaticraft.data;
 
 import net.minecraft.data.PackOutput;
-
 import net.neoforged.neoforge.common.data.LanguageProvider;
-
 import reika.chromaticraft.ChromatiCraft;
-
-import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.registry.ChromaClusterItems;
-import reika.chromaticraft.registry.ChromaCraftingItems;
-import reika.chromaticraft.registry.ChromaItems;
-import reika.chromaticraft.registry.ChromaTieredItems;
-import reika.chromaticraft.registry.StorageCrystalTier;
-import reika.chromaticraft.registry.ChromaTieredPlants;
-import reika.chromaticraft.registry.ChromaDecoFlowers;
-import reika.chromaticraft.registry.ChromaShieldTypes;
 import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
-import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.magic.progression.ResearchLevel;
 import reika.chromaticraft.magic.progression.LexiconCatalog;
+import reika.chromaticraft.magic.progression.ResearchLevel;
+import reika.chromaticraft.registry.*;
+
 /**
  * ChromatiCraft language provider (port-in-progress; grows as content ports). The 1.7.10 original
  * shipped a flat en_US.lang (preserved as the reference file); names are re-added here per ported block/item.
@@ -49,6 +38,14 @@ public class ChromaLang extends LanguageProvider {
 
 	@Override
 	protected void addTranslations() {
+        add(ChromaItems.VOID_MONSTER_ESSENCE.get(),"Corrupted Essence");
+        add(ChromaBlocks.VOID_MONSTER_TRAP.get(),"Distortion Elimination Focus");
+        add(ChromaBlocks.DEATH_FOG_EMITTER.get(),"Vitality Depletion Field");
+        add("entity.chromaticraft.monster_bait","Monster Bait"); add("entity.chromaticraft.death_fog","Death Fog");
+        add("death.attack.voidmonster.ritual","%1$s was destroyed by a void ritual");
+        add("death.attack.voidmonster.ritual.player","%1$s was destroyed by %2$s's void ritual");
+        for (var color:CrystalElement.elements) add(ChromaBlocks.COLORED_ALTARS.get(color).get(),color.displayName()+" Crystal Altar");
+		ChromaAdvancementProvider.addTranslations(this::add);
 		add("commands.chromaticraft.locate_data_tower.success",
 				"Nearest Data Tower (%s) is at %s, %s blocks away");
 		add("commands.chromaticraft.locate_data_tower.all",
@@ -210,6 +207,45 @@ public class ChromaLang extends LanguageProvider {
 		add(ChromaBlocks.FLUID_DISTRIBUTOR.get(), "Fluid Radiator"); // V33a chroma.fluiddistributor
 		add(ChromaBlocks.RIFT.get(), "World Rift"); // V33a chroma.rift
 		add(ChromaItems.WORLD_RIFT.get(), "World Rift"); // V33a chroma.rift (ChromaItems.RIFT)
+		add(ChromaItems.EFFICIENCY_GEM.get(), "Anti-Attenuation Gem");
+		add(ChromaItems.RECALL_TABLET.get(), "Recall Tablet");
+		add(ChromaItems.CAPTURE_WAND.get(), "Capture Star");
+		add(ChromaItems.EXCAVATION_WAND.get(), "Excavation Star");
+		add(ChromaItems.CONSTRUCTION_WAND.get(), "Construction Star");
+		add(ChromaItems.HOVER_WAND.get(), "Hover Star");
+		add(ChromaItems.MOB_SONAR.get(), "Creature Sounding Star");
+		add(ChromaItems.MULTITOOL.get(), "Multitool");
+		add(ChromaItems.ORE_HARVESTER.get(), "Ore Harvester");
+		add(ChromaItems.BOTTLENECK_FINDER.get(), "Aura Visualization Crystals");
+		add(ChromaItems.SPAWNER_BYPASS.get(), "Spawner Interference Crystal");
+        add(ChromaItems.BULK_MOVER.get(), "Item Mover");
+        add("item.chromaticraft.bulk_mover.empty", "No stored items.");
+        add("item.chromaticraft.bulk_mover.contents", "Has %s of %s; set to move up to %s");
+        add("container.chromaticraft.bulk_mover.quantity", "Number to carry");
+		// V33a omitted chroma.branch from en_US; provide the name used by its Magic Branches research.
+		for (var type : reika.chromaticraft.items.ItemMagicBranch.BranchTypes.list)
+			add(ChromaItems.BRANCHES.get(type).get(), type.name().toLowerCase(java.util.Locale.ROOT)+" Magic Branch");
+		add("screen.chromaticraft.hover_wand", "Hover Selection");
+		for (var mode : reika.chromaticraft.block.BlockHoverBlock.HoverType.values())
+			add("screen.chromaticraft.hover_wand."+mode.getSerializedName(), mode.description);
+		add("item.chromaticraft.construction_star.hold_ctrl", "Hold %s to see additional control info");
+		add("item.chromaticraft.construction_star.control", "%s - %s");
+		add("item.chromaticraft.construction_star.column", "Column");
+		add("item.chromaticraft.construction_star.flat", "Flat");
+		add("item.chromaticraft.construction_star.frame", "Frame Only");
+		add("item.chromaticraft.construction_star.center", "Center Only");
+		add("item.chromaticraft.construction_star.walls", "Walls Only");
+		add(ChromaItems.RECIPE_TABLET.get(), "Recipe Tablet");
+		add("item.chromaticraft.recipe_tablet.empty", "Contains no recipe.");
+		add("item.chromaticraft.recipe_tablet.stored", "Storing recipe: %s at table %s");
+		add("item.chromaticraft.recipe_tablet.unknown", "Unknown");
+		add("item.chromaticraft.recall_tablet.bound", "Linked to around %s in %s");
+		add("item.chromaticraft.capture_star.empty", "Contains no mob.");
+		add("item.chromaticraft.capture_star.mob", "Contains a %s.");
+		add("item.chromaticraft.capture_star.health", "Health: %s hearts");
+		for (var type : reika.chromaticraft.registry.ChromaDimensionItems.values())
+			if (type != reika.chromaticraft.registry.ChromaDimensionItems.GLOWCAVE)
+				add(ChromaItems.DIMENSION_RESOURCES.get(type).get(), type.displayName());
 		add(ChromaItems.AURA_POUCH.get(), "Aura Pouch"); // V33a chroma.aurapouch
 		add(ChromaBlocks.TELEPUMP.get(), "Teleportation Pump"); // V33a chroma.telepump
 		// V33a adjacency.<colour>: each Adjacency Upgrade's name (the items show these); BLUE never had one. The blocks of
@@ -307,7 +343,7 @@ public class ChromaLang extends LanguageProvider {
 		for (CrystalElement element : CrystalElement.elements)
 			add(ChromaBlocks.lumenRelay(element).get(), element.displayName + " Lumen Relay");
 		add(ChromaBlocks.MULTICHROMIC_RELAY.get(), "Omni Lumen Relay"); // V33a getMultiValuedName RELAY meta 16
-		add(ChromaItems.GLOW_CAVE_DUST.get(), "Glow Cave Dust"); // V33a chromaitem.dimgen.glowcave
+		add(ChromaItems.GLOW_CAVE_DUST.get(), "Lumen Essence"); // V33a chromaitem.dimgen.glowcave
 		add(ChromaItems.UNKNOWN_ARTEFACT_FRAGMENT.get(), "Unknown Fragments"); // V33a chromaunknownartefact.fragment
 		add(ChromaItems.ENDER_CRYSTAL_MOVER.get(), "End Crystal Mover");
 		add("item.chromaticraft.ender_crystal_mover.empty", "Can pick up an End Crystal");

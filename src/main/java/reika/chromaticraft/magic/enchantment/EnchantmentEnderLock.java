@@ -10,9 +10,8 @@
 package reika.chromaticraft.magic.enchantment;
 
 import net.minecraft.world.entity.player.Player;
-
-import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.base.ChromaticEnchantment;
+import reika.chromaticraft.magic.progression.ProgressStage;
 
 /** V33a Ender Lock: endermen no longer teleport out of the way of the holder's arrows. */
 public class EnchantmentEnderLock extends ChromaticEnchantment {

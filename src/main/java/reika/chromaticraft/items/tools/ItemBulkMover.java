@@ -1,185 +1,128 @@
 /*******************************************************************************
  * @author Reika Kalseki
- * 
- * Copyright 2017
- * 
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
+ * Copyright 2017. All rights reserved.
+ * Distribution requires explicit, prior permission from the owner.
  ******************************************************************************/
 package reika.chromaticraft.items.tools;
 
-import java.util.List;
-
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.inventory.IInventory;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.world.World;
-import net.minecraftforge.common.util.ForgeDirection;
-
-import reika.chromaticraft.ChromatiCraft;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.SimpleMenuProvider;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.ItemContainerContents;
+import net.minecraft.world.item.component.TooltipDisplay;
+import net.minecraft.world.item.context.UseOnContext;
+import net.minecraft.world.level.Level;
+import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.transfer.ResourceHandler;
+import net.neoforged.neoforge.transfer.item.ItemResource;
+import net.neoforged.neoforge.transfer.transaction.Transaction;
 import reika.chromaticraft.base.ItemChromaTool;
-import reika.chromaticraft.registry.ChromaGuis;
-import reika.dragonapi.libraries.ReikaInventoryHelper;
+import reika.chromaticraft.container.MenuBulkMover;
+import reika.dragonapi.ModList;
 import reika.dragonapi.libraries.registry.ReikaItemHelper;
-import reika.dragonapi.modinteract.deepinteract.MESystemReader;
-import reika.dragonapi.modregistry.InterfaceCache;
 
-import appeng.api.networking.IGridHost;
-import appeng.api.networking.IGridNode;
+import java.util.List;
+import java.util.function.Consumer;
 
+/** V33a Bulk Item Mover: a component-preserving template and a separate bulk count, with native/ME inventory transfers. */
 public class ItemBulkMover extends ItemChromaTool {
+    public ItemBulkMover(Properties properties) { super(properties); }
+    public static int getStoredItems(ItemStack tool) {
+        var tag=ReikaItemHelper.getStackTag(tool);
+        return tag==null ? 0 : Math.max(0,tag.getIntOr("count",0));
+    }
+    public static ItemStack getStoredItem(ItemStack tool) {
+        var contents=tool.getOrDefault(DataComponents.CONTAINER,ItemContainerContents.EMPTY);
+        return contents.copyOne();
+    }
+    public static void setStoredItem(ItemStack tool, ItemStack template) {
+        tool.set(DataComponents.CONTAINER,ItemContainerContents.fromItems(
+                template.isEmpty() ? List.of() : List.of(template.copyWithCount(1))));
+    }
+    public static int getNumberToCarry(ItemStack tool) {
+        var tag=ReikaItemHelper.getStackTag(tool);
+        return tag==null ? 0 : Math.max(0,tag.getIntOr("space",0));
+    }
+    public static void setNumberToCarry(ItemStack tool, int amount) {
+        ReikaItemHelper.updateStackTag(tool,tag->tag.putInt("space",Math.max(0,amount)));
+    }
+    private static void setCount(ItemStack tool,int count) {
+        ReikaItemHelper.updateStackTag(tool,tag->tag.putInt("count",Math.max(0,count)));
+    }
 
-	public ItemBulkMover(int index) {
-		super(index);
-	}
+    @Override public InteractionResult use(Level world,Player player,InteractionHand hand) {
+        if (hand!=InteractionHand.MAIN_HAND) return InteractionResult.PASS; // V33a's held-item menu.
+        var tool=player.getItemInHand(hand);
+        if (getStoredItems(tool)==0 && player instanceof ServerPlayer server)
+            server.openMenu(new SimpleMenuProvider((id,inventory,p)->new MenuBulkMover(id,inventory),getName(tool)));
+        return InteractionResult.SUCCESS;
+    }
 
-	public static int getStoredItems(ItemStack tool) {
-		return tool.stackTagCompound != null ? tool.stackTagCompound.getInteger("count") : 0;
-	}
+    @Override public InteractionResult useOn(UseOnContext context) {
+        if (context.getLevel().isClientSide()) return InteractionResult.SUCCESS;
+        if (!(context.getPlayer() instanceof ServerPlayer player) || !player.mayInteract(player.level(),context.getClickedPos()))
+            return InteractionResult.PASS;
+        var tool=context.getItemInHand();
+        ItemStack template=getStoredItem(tool);
+        int limit=getNumberToCarry(tool);
+        if (template.isEmpty() || limit<=0) return InteractionResult.PASS;
+        InventoryInteraction inventory=null;
+        if (ModList.APPENG.isLoaded())
+            inventory=reika.chromaticraft.modinterface.ae.BulkMoverAE.find(context.getLevel(),context.getClickedPos(),context.getClickedFace(),player);
+        if (inventory==null) {
+            var handler=context.getLevel().getCapability(Capabilities.Item.BLOCK,context.getClickedPos(),context.getClickedFace());
+            if (handler!=null) inventory=new NativeInventory(handler);
+        }
+        if (inventory!=null) transfer(tool,inventory);
+        // V33a onItemUse performed its transfer and returned false.
+        return InteractionResult.PASS;
+    }
 
-	public static ItemStack getStoredItem(ItemStack tool) {
-		return tool.stackTagCompound != null ? ItemStack.loadItemStackFromNBT(tool.stackTagCompound.getCompoundTag("item")) : null;
-	}
+    public static int transfer(ItemStack tool,InventoryInteraction inventory) {
+        ItemStack template=getStoredItem(tool);
+        if (template.isEmpty() || getNumberToCarry(tool)<=0) return 0;
+        int stored=getStoredItems(tool);
+        int moved=stored>0 ? inventory.addItems(template,stored) : inventory.drawItems(template,getNumberToCarry(tool));
+        int requested=stored>0 ? stored : getNumberToCarry(tool);
+        if (moved<0 || moved>requested) throw new IllegalStateException("Inventory returned an invalid bulk transfer amount: "+moved);
+        setCount(tool,stored>0 ? stored-moved : moved);
+        return moved;
+    }
 
-	public static void setStoredItem(ItemStack tool, ItemStack store) {
-		if (tool.stackTagCompound == null)
-			tool.stackTagCompound = new NBTTagCompound();
-		NBTTagCompound tag = new NBTTagCompound();
-		if (store != null)
-			store.writeToNBT(tag);
-		tool.stackTagCompound.setTag("item", tag);
-	}
+    @Override public void appendHoverText(ItemStack stack,TooltipContext context,TooltipDisplay display,
+            Consumer<Component> tooltip,TooltipFlag flag) {
+        ItemStack template=getStoredItem(stack);
+        tooltip.accept(template.isEmpty() ? Component.translatable("item.chromaticraft.bulk_mover.empty")
+                : Component.translatable("item.chromaticraft.bulk_mover.contents",getStoredItems(stack),template.getHoverName(),getNumberToCarry(stack)));
+    }
 
-	public static int getNumberToCarry(ItemStack tool) {
-		return tool.stackTagCompound != null ? tool.stackTagCompound.getInteger("space") : 0;
-	}
+    public interface InventoryInteraction {
+        int addItems(ItemStack template,int maximum);
+        int drawItems(ItemStack template,int maximum);
+    }
 
-	public static void setNumberToCarry(ItemStack tool, int amt) {
-		if (tool.stackTagCompound == null)
-			tool.stackTagCompound = new NBTTagCompound();
-		tool.stackTagCompound.setInteger("space", amt);
-	}
-
-	private static boolean hasItems(ItemStack tool) {
-		return getStoredItems(tool) > 0;
-	}
-
-	private static void removeItems(ItemStack tool, int rem) {
-		int has = tool.stackTagCompound.getInteger("count");
-		tool.stackTagCompound.setInteger("count", has-rem);
-	}
-
-	private static void addItems(ItemStack tool, int add) {
-		int has = tool.stackTagCompound.getInteger("count");
-		tool.stackTagCompound.setInteger("count", has+add);
-	}
-
-	@Override
-	public ItemStack onItemRightClick(ItemStack is, World world, EntityPlayer ep) {
-		if (!this.hasItems(is))
-			ep.openGui(ChromatiCraft.instance, ChromaGuis.BULKMOVER.ordinal(), world, 0, 0, 0);
-		return is;
-	}
-
-	@Override
-	public boolean onItemUse(ItemStack is, EntityPlayer ep, World world, int x, int y, int z, int s, float a, float b, float c) {
-		if (world.isRemote) {
-			return true;
-		}
-
-		if (this.getStoredItem(is) != null && getNumberToCarry(is) > 0) {
-			InventoryInteraction ii = this.getInteraction(world, x, y, z, s, ep);
-			if (ii != null) {
-				if (this.hasItems(is)) {
-					int added = ii.addItems(this.getStoredItem(is), this.getStoredItems(is));
-					removeItems(is, added);
-				}
-				else {
-					int rem = ii.drawItems(this.getStoredItem(is), this.getNumberToCarry(is));
-					addItems(is, rem);
-				}
-			}
-		}
-
-		return false;
-	}
-
-	@Override
-	public void addInformation(ItemStack is, EntityPlayer ep, List li, boolean vb) {
-		int amt = this.getStoredItems(is);
-		ItemStack has = this.getStoredItem(is);
-		if (has != null) {
-			String s = String.format("Has %d of %s; set to move up to %d", amt, has.getDisplayName(), this.getNumberToCarry(is));
-			li.add(s);
-		}
-		else {
-			li.add("No stored items.");
-		}
-	}
-
-	private InventoryInteraction getInteraction(World world, int x, int y, int z, int side, EntityPlayer ep) {
-		TileEntity te = world.getTileEntity(x, y, z);
-		if (InterfaceCache.GRIDHOST.instanceOf(te)) {
-			return new AEInteraction(((IGridHost)te).getGridNode(ForgeDirection.VALID_DIRECTIONS[side]), ep);
-		}
-		else if (te instanceof IInventory) {
-			return new IInvInteraction((IInventory)te);
-		}
-		else
-			return null;
-	}
-
-	private static class AEInteraction implements InventoryInteraction {
-
-		private final MESystemReader me;
-
-		private AEInteraction(IGridNode ign, EntityPlayer ep) {
-			me = new MESystemReader(ign, ep);
-		}
-
-		@Override
-		public int addItems(ItemStack is, int max) {
-			return (int)(max-me.addItem(ReikaItemHelper.getSizedItemStack(is, max), false));
-		}
-
-		@Override
-		public int drawItems(ItemStack is, int max) {
-			return (int)me.removeItem(ReikaItemHelper.getSizedItemStack(is, max), false, true);
-		}
-
-	}
-
-	private static class IInvInteraction implements InventoryInteraction {
-
-		private final IInventory inventory;
-
-		private IInvInteraction(IInventory ii) {
-			inventory = ii;
-		}
-
-		@Override
-		public int addItems(ItemStack is, int max) {
-			return max-ReikaInventoryHelper.addToInventoryWithLeftover(ReikaItemHelper.getSizedItemStack(is, max), inventory, false);
-		}
-
-		@Override
-		public int drawItems(ItemStack is, int max) {
-			return ReikaInventoryHelper.drawFromInventory(is, max, inventory);
-		}
-
-	}
-
-	private static interface InventoryInteraction {
-
-		/** Returns number successfully added. */
-		public int addItems(ItemStack is, int max);
-
-		/** Returns number successfully removed. */
-		public int drawItems(ItemStack is, int max);
-
-	}
-
+    /** Transaction commits before the item's count changes, so rejected/partial transfers cannot duplicate items. */
+    public record NativeInventory(ResourceHandler<ItemResource> handler) implements InventoryInteraction {
+        @Override public int addItems(ItemStack template,int maximum) {
+            try (var transaction=Transaction.openRoot()) {
+                int moved=handler.insert(ItemResource.of(template),maximum,transaction);
+                transaction.commit();
+                return moved;
+            }
+        }
+        @Override public int drawItems(ItemStack template,int maximum) {
+            try (var transaction=Transaction.openRoot()) {
+                int moved=handler.extract(ItemResource.of(template),maximum,transaction);
+                transaction.commit();
+                return moved;
+            }
+        }
+    }
 }
+

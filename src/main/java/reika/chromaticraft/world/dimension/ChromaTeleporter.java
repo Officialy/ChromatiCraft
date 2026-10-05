@@ -1,7 +1,5 @@
 package reika.chromaticraft.world.dimension;
 
-import java.util.Set;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -10,6 +8,8 @@ import net.minecraft.world.entity.Relative;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.portal.TeleportTransition;
 import net.minecraft.world.phys.Vec3;
+
+import java.util.Set;
 
 /**
  * V33a {@code ChromaTeleporter}, expressed as a 26.2 {@link TeleportTransition} factory.

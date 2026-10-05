@@ -1,8 +1,5 @@
 package reika.chromaticraft.auxiliary;
 
-import java.util.List;
-import java.util.Optional;
-
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
@@ -16,14 +13,14 @@ import net.minecraft.world.level.storage.loot.LootContext;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
-
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
-
 import reika.chromaticraft.data.ChromaWorldGenProvider;
 import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.dragonapi.libraries.ReikaPlayerAPI;
+
+import java.util.Optional;
 
 /**
  * V33a's player-specific, non-expiring Focus Crystal villager offer.

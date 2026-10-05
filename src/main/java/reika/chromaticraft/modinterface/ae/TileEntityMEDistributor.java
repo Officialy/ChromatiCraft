@@ -9,8 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.modinterface.ae;
 
-import javax.annotation.Nullable;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -30,7 +28,6 @@ import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.transfer.ResourceHandler;
 import net.neoforged.neoforge.transfer.item.ItemResource;
 import net.neoforged.neoforge.transfer.transaction.Transaction;
-
 import reika.chromaticraft.base.tileentity.TileEntityChromaticBase;
 import reika.chromaticraft.block.BlockMEDistributor;
 import reika.chromaticraft.container.MenuMEDistributor;
@@ -47,6 +44,8 @@ import reika.dragonapi.libraries.ReikaNBTHelper;
 import reika.dragonapi.modinteract.deepinteract.MESystemReader;
 import reika.dragonapi.modinteract.deepinteract.MESystemReader.ExtractedItemGroup;
 import reika.dragonapi.modinteract.deepinteract.MESystemReader.MatchMode;
+
+import javax.annotation.Nullable;
 
 /**
  * V33a {@code TileEntityMEDistributor}, the ME Item Distributor: mounted on an inventory, it joins the ME network on its

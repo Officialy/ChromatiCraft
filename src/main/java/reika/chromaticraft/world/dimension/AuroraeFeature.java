@@ -1,12 +1,10 @@
 package reika.chromaticraft.world.dimension;
 
-import net.minecraft.core.BlockPos;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.feature.Feature;
 import net.minecraft.world.phys.Vec3;
-
 import reika.chromaticraft.entity.AuroraData;
 import reika.chromaticraft.entity.EntityAurora;
 import reika.chromaticraft.registry.ChromaEntityTypes;

@@ -1,18 +1,17 @@
 package reika.chromaticraft.client;
 
-import java.util.EnumMap;
-import java.util.Iterator;
-import java.util.Map;
-
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.resources.Identifier;
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.gui.GuiLayer;
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.registry.CrystalElement;
+
+import java.util.EnumMap;
+import java.util.Iterator;
+import java.util.Map;
 
 /** The V33a pylon-hit colour wash, moved from the removed shader overlay hook to a 26.2 GUI layer. */
 public final class PylonAttackOverlay implements GuiLayer {

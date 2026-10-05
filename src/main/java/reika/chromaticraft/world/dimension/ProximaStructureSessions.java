@@ -1,18 +1,17 @@
 package reika.chromaticraft.world.dimension;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
-
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
-
 import reika.chromaticraft.network.ChromaNetwork;
 import reika.chromaticraft.registry.ChromaDimensions;
 import reika.chromaticraft.world.dimension.structure.StructureGeneratorBase;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 
 /**
  * The active-player half of V33a {@code ChromaDimensionManager}. A structure session is deliberately

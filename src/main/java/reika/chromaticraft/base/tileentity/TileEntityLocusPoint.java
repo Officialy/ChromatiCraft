@@ -1,27 +1,21 @@
 package reika.chromaticraft.base.tileentity;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.function.Consumer;
-import java.util.function.Function;
-
 import net.minecraft.core.BlockPos;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.entity.BlockEntityType;
-
+import net.minecraft.world.level.block.state.BlockState;
 import reika.chromaticraft.auxiliary.interfaces.OwnedTile;
 import reika.dragonapi.instantiable.data.blockstruct.ThreadSafeTileCache;
 import reika.dragonapi.instantiable.data.immutable.WorldLocation;
 import reika.dragonapi.instantiable.data.maps.NestedMap;
 import reika.dragonapi.interfaces.blockentity.LocationCached;
 import reika.dragonapi.libraries.registry.ReikaItemHelper;
+
+import java.util.*;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 /**
  * V33a {@code TileEntityLocusPoint}: the base for tiles a player plants and later wants to find again —

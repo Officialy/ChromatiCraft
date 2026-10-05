@@ -9,21 +9,12 @@
  ******************************************************************************/
 package reika.chromaticraft.tileentity.plants;
 
-import java.util.Collection;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.CactusBlock;
-import net.minecraft.world.level.block.FarmlandBlock;
-import net.minecraft.world.level.block.SaplingBlock;
-import net.minecraft.world.level.block.SugarCaneBlock;
-import net.minecraft.world.level.block.VineBlock;
+import net.minecraft.world.level.block.*;
 import net.minecraft.world.level.block.state.BlockState;
-
 import reika.chromaticraft.auxiliary.interfaces.ComplexAOE;
 import reika.chromaticraft.base.tileentity.TileEntityMagicPlant;
 import reika.chromaticraft.block.worldgen26.BlockDecoFlower;
@@ -35,6 +26,8 @@ import reika.dragonapi.instantiable.data.WeightedRandom;
 import reika.dragonapi.instantiable.data.immutable.Coordinate;
 import reika.dragonapi.libraries.registry.ReikaCropHelper;
 import reika.dragonapi.modregistry.ModCropList;
+
+import java.util.Collection;
 
 /** V33a Crop Speed Plant: hydrates farmland and forces nearby crop growth ticks. */
 public final class TileEntityCropSpeedPlant extends TileEntityMagicPlant implements ComplexAOE {

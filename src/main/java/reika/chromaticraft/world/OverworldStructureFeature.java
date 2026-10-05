@@ -1,41 +1,40 @@
 package reika.chromaticraft.world;
 
-import java.util.List;
-import java.util.UUID;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.tags.TagKey;
 import net.minecraft.tags.BiomeTags;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.tags.TagKey;
 import net.minecraft.util.RandomSource;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.AbstractFurnaceBlockEntity;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.levelgen.feature.Feature;
 import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.level.levelgen.feature.Feature;
 import net.minecraft.world.level.storage.loot.BuiltInLootTables;
-
 import reika.chromaticraft.auxiliary.structure.NBTStructureLoader;
+import reika.chromaticraft.block.BlockChromaDoor;
+import reika.chromaticraft.block.BlockHeatLamp;
+import reika.chromaticraft.item.ItemDoorKey;
 import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.CrystalElement;
+import reika.chromaticraft.tileentity.TileEntityChromaDoor;
+import reika.chromaticraft.tileentity.TileEntityHeatLamp;
 import reika.chromaticraft.tileentity.TileEntityLootChest;
 import reika.chromaticraft.tileentity.TileEntityStructureController;
-import reika.chromaticraft.tileentity.TileEntityHeatLamp;
-import reika.chromaticraft.block.BlockHeatLamp;
-import reika.chromaticraft.block.BlockChromaDoor;
-import reika.chromaticraft.item.ItemDoorKey;
-import reika.chromaticraft.tileentity.TileEntityChromaDoor;
+
+import java.util.List;
+import java.util.UUID;
 
 /** NBT-backed runtime feature family for V33a's six natural overworld structures. */
 public final class OverworldStructureFeature implements Feature {
@@ -111,8 +110,8 @@ public final class OverworldStructureFeature implements Feature {
 	 * ({@code tryGenerateInChunk}), then the same in each surrounding chunk ({@code tryGenerateInChunksAround}),
 	 * and records SUCCESS on the chunk that took it or FAILURE on its own.
 	 *
-	 * <p>V33a kept widening that ring to {@link DungeonZones#keepTryingRange} (48-96 blocks). A 26.2 feature
-	 * may only write into the chunks beside its own, so only the first ring is tried here.
+	 * <p>The saved post-population queue runs the complete 48-96 block search on the server, after
+	 * asynchronously loading its footprint. The feature never escapes its WorldGenRegion.
 	 */
 	private boolean placeNatural(WorldGenLevel world, RandomSource random, BlockPos origin) {
 		net.minecraft.server.level.ServerLevel level = world.getLevel();
@@ -122,37 +121,34 @@ public final class OverworldStructureFeature implements Feature {
 		int cz = origin.getZ() >> 4;
 		if (DungeonZones.isGennableChunk(level, cx << 4, cz << 4, type) != DungeonZones.Status.PLANNED)
 			return false;
-		int tries = reika.chromaticraft.registry.ChromaOptions.getStructureTriesPerChunk();
-		net.minecraft.world.level.ChunkPos placed = this.tryGenerateInChunk(world, level, cx, cz, random, tries);
-		for (int i = -1; placed == null && i <= 1; i++) {
-			for (int k = -1; placed == null && k <= 1; k++) {
-				if (i != 0 || k != 0)
-					placed = this.tryGenerateInChunk(world, level, cx + i, cz + k, random, tries);
-			}
-		}
-		if (placed != null) {
-			DungeonZones.markChunkStatus(level, cx, cz, type, DungeonZones.Status.INERT_GEN);
-			DungeonZones.markChunkStatus(level, placed.x(), placed.z(), type, DungeonZones.Status.SUCCESS);
-			return true;
-		}
-		DungeonZones.markChunkStatus(level, cx, cz, type, DungeonZones.Status.FAILURE);
-		return false;
+		PostPopulationWorldgen.get(level).enqueueDungeon(type,
+				new net.minecraft.world.level.ChunkPos(cx, cz), random.nextLong());
+		return true;
 	}
 
 	/** V33a {@code tryGenerateInChunk}: up to {@code tries} random columns, each checked for biome first. */
-	private net.minecraft.world.level.ChunkPos tryGenerateInChunk(WorldGenLevel world,
+	net.minecraft.world.level.ChunkPos tryGenerateInChunk(WorldGenLevel world,
 			net.minecraft.server.level.ServerLevel level, int cx, int cz, RandomSource random, int tries) {
-		DungeonZones.markChunkStatus(level, cx, cz, type, DungeonZones.Status.GENERATING);
+		DungeonZones.Status previous = DungeonZones.Data.get(level).get(type, cx, cz);
+		if (previous != DungeonZones.Status.SUCCESS)
+			DungeonZones.markChunkStatus(level, cx, cz, type, DungeonZones.Status.GENERATING);
 		for (int n = 0; n < tries; n++) {
 			int x = (cx << 4) + random.nextInt(16);
 			int z = (cz << 4) + random.nextInt(16);
-			int y = world.getHeight(Heightmap.Types.WORLD_SURFACE_WG, x, z);
+			int y = world.getHeight(surfaceHeightmap(world), x, z);
 			if (!DungeonZones.isValidBiome(type, biomeAt(world, new BlockPos(x, y, z))))
 				continue;
 			BlockPos controller = this.placeAt(world, random, new BlockPos(x, world.getMinY(), z));
-			if (controller != null)
+			if (controller != null) {
+				if (previous != DungeonZones.Status.SUCCESS)
+					DungeonZones.markChunkStatus(level, cx, cz, type, DungeonZones.Status.INERT_GEN);
 				return net.minecraft.world.level.ChunkPos.containing(controller);
+			}
 		}
+		// V33a finalizes every searched chunk, not just the zone's flagged origin. Leaving
+		// failed retries GENERATING makes the distribution map advertise nonexistent temples.
+		if (previous != DungeonZones.Status.SUCCESS)
+			DungeonZones.markChunkStatus(level, cx, cz, type, DungeonZones.Status.INERT_GEN);
 		return null;
 	}
 
@@ -166,6 +162,12 @@ public final class OverworldStructureFeature implements Feature {
 			return world.getBiomeManager().withDifferentSource(world::getUncachedNoiseBiome).getBiome(pos);
 		return world.getBiome(pos);
 	}
+
+	/** Full chunks update live heightmaps; generation-only maps may be absent or stale after decoration. */
+    private static Heightmap.Types surfaceHeightmap(WorldGenLevel world) {
+        return world instanceof net.minecraft.server.level.WorldGenRegion
+                ? Heightmap.Types.WORLD_SURFACE_WG : Heightmap.Types.WORLD_SURFACE;
+    }
 
 	/** One placement attempt with {@code origin}'s column; returns the controller position, or null. */
 	private BlockPos placeAt(WorldGenLevel world, RandomSource random, BlockPos originIn) {
@@ -208,8 +210,6 @@ public final class OverworldStructureFeature implements Feature {
 		}
 		else if (type == Type.OCEAN)
 			placeOceanPit(world, controllerPos);
-		else if (type == Type.SNOW && natural)
-			finishNaturalSnow(world, controllerPos);
 
 		world.setBlock(controllerPos, ChromaBlocks.STRUCTURE_CONTROLLER.get().defaultBlockState(), 3);
 		if (!(world.getBlockEntity(controllerPos) instanceof TileEntityStructureController controller))
@@ -219,6 +219,17 @@ public final class OverworldStructureFeature implements Feature {
 			finishBiomeFragment(world, controllerPos, controller, random);
 		if (type == Type.BIOME_FRAGMENT && natural)
 			weatherNaturalBiomeFragment(world, controllerPos, placed, random);
+		if (natural && type == Type.DESERT) finishNaturalDesert(world, placed, random);
+		if (natural && (type == Type.OCEAN || type == Type.SNOW || type == Type.BURROW)) {
+			weatherNaturalBlocks(world, placed, random, type == Type.BURROW);
+			if (type == Type.BURROW) {
+				if (furnaceRoom) weatherNaturalBlocks(world,
+						NBTStructureLoader.templatePositions(world.getLevel(), BURROW_FURNACE, controllerPos, BURROW_ANNEX_ANCHOR), random, true);
+				if (lootRoom) weatherNaturalBlocks(world,
+						NBTStructureLoader.templatePositions(world.getLevel(), BURROW_LOOT, controllerPos, BURROW_ANNEX_ANCHOR), random, true);
+			}
+		}
+		if (natural && type == Type.SNOW) finishNaturalSnow(world, controllerPos, placed);
 		controller.setLootTable(type == Type.SNOW ? BuiltInLootTables.STRONGHOLD_CORRIDOR
 				: BuiltInLootTables.STRONGHOLD_LIBRARY, random.nextLong());
 		int fragments = type == Type.CAVERN ? 1 + random.nextInt(4) * (1 + random.nextInt(2))
@@ -280,21 +291,11 @@ public final class OverworldStructureFeature implements Feature {
 
 	private static void placeOceanPit(WorldGenLevel world, BlockPos controllerPos) {
 		BlockPos anchor = new BlockPos(3, 0, 3);
-		int consecutiveAir = 0;
-		for (int depth = 3; depth < Math.min(32, controllerPos.getY()); depth++) {
+		int exit = oceanCaveDepth(world, controllerPos);
+		// Command placement retains a short inspection shaft if there is no validated cave.
+		int limit = exit >= 0 ? exit : Math.min(32, controllerPos.getY() - world.getMinY());
+		for (int depth = 3; depth < limit; depth++) {
 			BlockPos sliceCenter = controllerPos.below(depth);
-			boolean allAir = true;
-			for (int x = -2; x <= 2 && allAir; x++)
-				for (int z = -2; z <= 2; z++)
-					if (!world.getBlockState(sliceCenter.offset(x, 0, z)).isAir()) {
-						allAir = false;
-						break;
-					}
-			if (allAir && depth > 6) {
-				if (++consecutiveAir >= 1)
-					break;
-			}
-			else consecutiveAir = 0;
 			NBTStructureLoader.place(world, OCEAN_PIT_SLICE, sliceCenter, anchor, state -> state, 2);
 		}
 		BlockState cloak = ChromaBlocks.shielding(reika.chromaticraft.registry.ChromaShieldTypes.CLOAK)
@@ -403,7 +404,7 @@ public final class OverworldStructureFeature implements Feature {
 	 */
 	private static net.minecraft.core.Vec3i naturalControllerOffset(Type type) {
 		return switch (type) {
-			case DESERT -> new net.minecraft.core.Vec3i(7, 0, 7);
+			case DESERT -> net.minecraft.core.Vec3i.ZERO;
 			case SNOW -> new net.minecraft.core.Vec3i(8, 0, 6);
 			// V33a calls BurrowStructure with the grass surface coordinate; its controller is (-5,-8,-2).
 			case BURROW -> new net.minecraft.core.Vec3i(-5, 0, -2);
@@ -411,27 +412,42 @@ public final class OverworldStructureFeature implements Feature {
 		};
 	}
 
+	/** V33a getTop: ground/seabed with logs and leaves ignored after population. */
+	static int terrainTop(WorldGenLevel world, int x, int z) {
+		int y = world.getHeight(world instanceof net.minecraft.server.level.WorldGenRegion
+				? Heightmap.Types.OCEAN_FLOOR_WG : Heightmap.Types.OCEAN_FLOOR, x, z) - 1;
+		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos(x, y, z);
+		while (y >= world.getMinY()) {
+			BlockState state = world.getBlockState(pos.setY(y));
+			if (!state.isAir() && !state.is(BlockTags.LOGS) && !state.is(BlockTags.LEAVES)) break;
+			y--;
+		}
+		return y + 1;
+	}
+
 	private BlockPos naturalControllerPosition(WorldGenLevel world, BlockPos origin, RandomSource random) {
 		if (type == Type.CAVERN)
 			return new BlockPos(origin.getX(), 10 + random.nextInt(40), origin.getZ());
 		if (type == Type.OCEAN) {
-			int top = world.getHeight(Heightmap.Types.WORLD_SURFACE_WG, origin.getX(), origin.getZ());
+			// V33a's getTopSolidOrLiquidBlock ignored water; use the seabed rather than the sea surface.
+			int top = terrainTop(world, origin.getX(), origin.getZ());
 			return new BlockPos(origin.getX(), top - 3, origin.getZ());
 		}
 		if (type == Type.DESERT) {
-			int top = world.getHeight(Heightmap.Types.WORLD_SURFACE_WG, origin.getX(), origin.getZ());
-			return new BlockPos(origin.getX() + 7, top - 5, origin.getZ() + 7);
+			int top = terrainTop(world, origin.getX(), origin.getZ());
+			// V33a subtracts (7,3,7) for the template, then restores it for the controller.
+			return new BlockPos(origin.getX(), top - 8, origin.getZ());
 		}
 		if (type == Type.SNOW) {
-			int top = world.getHeight(Heightmap.Types.WORLD_SURFACE_WG, origin.getX(), origin.getZ());
+			int top = terrainTop(world, origin.getX(), origin.getZ());
 			return new BlockPos(origin.getX() + 8, top - 4, origin.getZ() + 6);
 		}
 		if (type == Type.BIOME_FRAGMENT) {
-			int top = world.getHeight(Heightmap.Types.WORLD_SURFACE_WG, origin.getX(), origin.getZ());
+			int top = terrainTop(world, origin.getX(), origin.getZ());
 			return sinkBiomeFragment(world, new BlockPos(origin.getX(), top - 5, origin.getZ()));
 		}
 		// V33a calls BurrowStructure with the grass surface coordinate; its controller is (-5,-8,-2).
-		int surfaceY = world.getHeight(Heightmap.Types.WORLD_SURFACE_WG, origin.getX(), origin.getZ()) - 1;
+		int surfaceY = terrainTop(world, origin.getX(), origin.getZ()) - 1;
 		return new BlockPos(origin.getX() - 5, surfaceY - 8, origin.getZ() - 2);
 	}
 
@@ -544,6 +560,12 @@ public final class OverworldStructureFeature implements Feature {
 				|| biome.is(reika.chromaticraft.world.biome.ChromaBiomes.LUMINOUS_CLIFFS)
 				|| biome.is(reika.chromaticraft.world.biome.ChromaBiomes.LUMINOUS_CLIFFS_SHORES)))
 			return false;
+		if ((biome.is(reika.chromaticraft.world.biome.ChromaBiomes.LUMINOUS_CLIFFS)
+				|| biome.is(reika.chromaticraft.world.biome.ChromaBiomes.LUMINOUS_CLIFFS_SHORES))
+				&& controllerPos.getY() > GlowingCliffsColumnShaper.MAX_MIDDLE_TOP_Y + 2)
+			return false;
+		if (!levelGround(world, List.of(controllerPos.offset(-7, 0, -7), controllerPos.offset(7, 0, -7),
+				controllerPos.offset(-7, 0, 7), controllerPos.offset(7, 0, 7)), 4)) return false;
 		return NBTStructureLoader.canPlace(world, type.template, controllerPos, type.templateAnchor,
 				state -> state, (pos, authored) -> authored.is(Blocks.STRUCTURE_VOID)
 						|| !(world.getBlockState(pos).getBlock()
@@ -623,25 +645,58 @@ public final class OverworldStructureFeature implements Feature {
 		BlockPos sourceOrigin = controllerPos.offset(-8, 3, -6);
 		List<BlockPos> corners = List.of(sourceOrigin, sourceOrigin.offset(16, 0, 0),
 				sourceOrigin.offset(0, 0, 16), sourceOrigin.offset(16, 0, 16));
-		int min = Integer.MAX_VALUE, max = Integer.MIN_VALUE;
-		var biome = biomeAt(world, corners.getFirst());
-		for (BlockPos corner : corners) {
-			int height = world.getHeight(Heightmap.Types.WORLD_SURFACE_WG, corner.getX(), corner.getZ());
-			min = Math.min(min, height); max = Math.max(max, height);
-			if (!biomeAt(world, corner).equals(biome)) return false;
-			for (int depth = 1; depth <= 5; depth++) {
-				BlockPos support = new BlockPos(corner.getX(), height - depth, corner.getZ());
-				if (world.getBlockState(support).isAir() || !world.getFluidState(support).isEmpty()) return false;
-			}
-		}
-		if (max - min > 2) return false;
+		if (!levelGround(world, corners, 5)) return false;
 		return NBTStructureLoader.canPlace(world, type.template, controllerPos, type.templateAnchor,
 				state -> state, (pos, authored) -> authored.is(Blocks.STRUCTURE_VOID)
 						|| !(world.getBlockState(pos).getBlock()
 								instanceof reika.chromaticraft.block.worldgen26.BlockStructureShield));
 	}
 
-	private static void finishNaturalSnow(WorldGenLevel world, BlockPos controllerPos) {
+	private static boolean levelGround(WorldGenLevel world, List<BlockPos> corners, int supportDepth) {
+		int min = Integer.MAX_VALUE, max = Integer.MIN_VALUE;
+		var biome = biomeAt(world, corners.getFirst());
+		for (BlockPos corner : corners) {
+			int height = terrainTop(world, corner.getX(), corner.getZ());
+			min = Math.min(min, height); max = Math.max(max, height);
+			if (!biomeAt(world, corner).equals(biome)) return false;
+			for (int depth = 1; depth <= supportDepth; depth++) {
+				BlockPos support = new BlockPos(corner.getX(), height - depth, corner.getZ());
+				if (world.getBlockState(support).isAir() || !world.getFluidState(support).isEmpty()) return false;
+			}
+		}
+		return max - min <= 2;
+	}
+
+	private static void finishNaturalSnow(WorldGenLevel world, BlockPos controllerPos, List<BlockPos> cells) {
+		// V33a ADJTREES removes a connected log/leaf group touching an authored cell, bounded
+		// to twelve blocks from the touching log so the entrance cannot be buried by a tree.
+		for (BlockPos cell : cells) for (net.minecraft.core.Direction dir : net.minecraft.core.Direction.values()) {
+			BlockPos start = cell.relative(dir);
+			if (!world.getBlockState(start).is(BlockTags.LOGS)) continue;
+			java.util.ArrayDeque<BlockPos> pending = new java.util.ArrayDeque<>();
+			java.util.HashSet<BlockPos> visited = new java.util.HashSet<>();
+			pending.add(start);
+			while (!pending.isEmpty()) {
+				BlockPos at = pending.removeFirst();
+				if (!visited.add(at) || Math.abs(at.getX() - start.getX()) > 12
+						|| Math.abs(at.getY() - start.getY()) > 12 || Math.abs(at.getZ() - start.getZ()) > 12) continue;
+				BlockState state = world.getBlockState(at);
+				if (!state.is(BlockTags.LOGS) && !state.is(BlockTags.LEAVES)) continue;
+				world.setBlock(at, Blocks.AIR.defaultBlockState(), 2);
+				for (net.minecraft.core.Direction side : net.minecraft.core.Direction.values()) pending.add(at.relative(side));
+			}
+		}
+		var moss = ChromaBlocks.shielding(reika.chromaticraft.registry.ChromaShieldTypes.MOSS).get();
+		for (BlockPos cell : cells) {
+			if (!world.getBlockState(cell).is(moss) || world.getBlockState(cell.above()).is(moss)) continue;
+			for (int rise = 1; rise < 5; rise++) for (int dx = -rise; dx <= rise; dx++) for (int dz = -rise; dz <= rise; dz++) {
+				BlockPos at = cell.offset(dx, rise, dz);
+				BlockState state = world.getBlockState(at);
+				if (state.is(Blocks.GRASS_BLOCK) || state.is(BlockTags.DIRT) || state.is(Blocks.STONE)
+						|| state.is(Blocks.SNOW) || state.canBeReplaced() && state.getFluidState().isEmpty())
+					world.setBlock(at, Blocks.AIR.defaultBlockState(), 2);
+			}
+		}
 		BlockPos min = controllerPos.offset(-8, -3, -6);
 		for (int x = 0; x < 17; x++)
 			for (int z = 0; z < 17; z++) {
@@ -653,19 +708,18 @@ public final class OverworldStructureFeature implements Feature {
 					for (int depth = 0; depth < 5 && world.getBlockState(below).isAir(); depth++, below = below.below())
 						world.setBlock(below, Blocks.STONE.defaultBlockState(), 2);
 				}
-				BlockPos top = new BlockPos(min.getX() + x,
-						world.getHeight(Heightmap.Types.MOTION_BLOCKING, min.getX() + x, min.getZ() + z),
-						min.getZ() + z);
-				if (world.getBlockState(top).isAir() && world.getBlockState(top.below()).isCollisionShapeFullBlock(world, top.below()))
-					world.setBlock(top, Blocks.SNOW.defaultBlockState(), 2);
 			}
+		for (int x = -4; x <= 20; x++) for (int z = -4; z <= 20; z++) {
+			BlockPos top = new BlockPos(min.getX() + x, terrainTop(world, min.getX() + x, min.getZ() + z), min.getZ() + z);
+			if (world.getBlockState(top).isAir() && Blocks.SNOW.defaultBlockState().canSurvive(world, top))
+				world.setBlock(top, Blocks.SNOW.defaultBlockState(), 2);
+		}
 	}
 
 	private boolean validNaturalDesertSite(WorldGenLevel world, BlockPos controllerPos) {
 		BlockPos sourceOrigin = controllerPos.offset(-7, -3, -7);
-		int surface = world.getHeight(Heightmap.Types.WORLD_SURFACE_WG,
-				sourceOrigin.getX(), sourceOrigin.getZ()) - 1;
-		if (!world.getBlockState(new BlockPos(sourceOrigin.getX(), surface, sourceOrigin.getZ())).is(Blocks.SAND))
+		int surface = terrainTop(world, controllerPos.getX(), controllerPos.getZ()) - 1;
+		if (!world.getBlockState(new BlockPos(controllerPos.getX(), surface, controllerPos.getZ())).is(Blocks.SAND))
 			return false;
 		TagKey<net.minecraft.world.level.biome.Biome> sandy = TagKey.create(Registries.BIOME,
 				Identifier.fromNamespaceAndPath("c", "is_sandy"));
@@ -674,6 +728,7 @@ public final class OverworldStructureFeature implements Feature {
 			Holder<Biome> biome = biomeAt(world, corner);
 			if (!biome.is(sandy) || biome.is(BiomeTags.IS_BADLANDS))
 				return false;
+			if (world.getBlockState(corner.above(3)).isAir()) return false;
 		}
 		return NBTStructureLoader.canPlace(world, type.template, controllerPos, type.templateAnchor,
 				state -> state, (pos, authored) -> authored.is(Blocks.STRUCTURE_VOID)
@@ -682,6 +737,7 @@ public final class OverworldStructureFeature implements Feature {
 	}
 
 	private boolean validNaturalOceanSite(WorldGenLevel world, BlockPos controllerPos) {
+		if (controllerPos.getY() - 5 < world.getMinY()) return false;
 		if (!world.getFluidState(controllerPos.above(3)).is(net.minecraft.tags.FluidTags.WATER)
 				|| !world.getFluidState(controllerPos.above(8)).is(net.minecraft.tags.FluidTags.WATER))
 			return false;
@@ -690,19 +746,29 @@ public final class OverworldStructureFeature implements Feature {
 				controllerPos.offset(-3, 0, 27), controllerPos.offset(27, 0, 27)))
 			if (!biomeAt(world, corner).is(BiomeTags.IS_OCEAN))
 				return false;
-		boolean openX = floodedOceanEnd(world, controllerPos.offset(28, 3, 0));
-		boolean openZ = floodedOceanEnd(world, controllerPos.offset(0, 3, 28));
+		// The source's water probes sit five blocks above the actual template mouths. Keep
+		// those probes, but also require a usable mouth so a seabed ridge cannot seal both exits.
+		boolean openX = floodedOceanEnd(world, controllerPos.offset(28, 8, 0), false)
+				&& floodedOceanEnd(world, controllerPos.offset(28, 3, 0), false);
+		boolean openZ = floodedOceanEnd(world, controllerPos.offset(0, 8, 28), true)
+				&& floodedOceanEnd(world, controllerPos.offset(0, 3, 28), true);
 		if (!openX && !openZ)
 			return false;
 		if (!NBTStructureLoader.canPlace(world, type.template, controllerPos, type.templateAnchor,
 				state -> state, (pos, authored) -> authored.is(Blocks.STRUCTURE_VOID)
-						|| !(world.getBlockState(pos).getBlock()
-								instanceof reika.chromaticraft.block.worldgen26.BlockStructureShield)))
+						|| (!(world.getBlockState(pos).getBlock()
+								instanceof reika.chromaticraft.block.worldgen26.BlockStructureShield)
+							&& (pos.getY() < 55 || !world.getBlockState(pos).isAir())
+							&& biomeAt(world, pos).is(BiomeTags.IS_OCEAN))))
 			return false;
 		// The original rejects the site unless the five-wide shaft reaches three consecutive cave-air
 		// slices below it. This prevents an Ocean Temple from producing a blind bedrock chute.
+		return oceanCaveDepth(world, controllerPos) >= 0;
+	}
+
+	private static int oceanCaveDepth(WorldGenLevel world, BlockPos controllerPos) {
 		int consecutive = 0;
-		for (int depth = 3; depth < controllerPos.getY(); depth++) {
+		for (int depth = 3; depth < controllerPos.getY() - world.getMinY(); depth++) {
 			boolean allAir = true;
 			BlockPos center = controllerPos.below(depth);
 			for (int x = -2; x <= 2 && allAir; x++)
@@ -712,17 +778,18 @@ public final class OverworldStructureFeature implements Feature {
 						break;
 					}
 			if (allAir && depth > 6) {
-				if (++consecutive >= 3) return true;
+				if (++consecutive >= 3) return depth - 2;
 			}
 			else consecutive = 0;
 		}
-		return false;
+		return -1;
 	}
 
-	private static boolean floodedOceanEnd(WorldGenLevel world, BlockPos center) {
+	private static boolean floodedOceanEnd(WorldGenLevel world, BlockPos center, boolean alongX) {
 		for (int y = 0; y < 3; y++)
 			for (int side = -1; side <= 1; side++)
-				if (!world.getFluidState(center.offset(0, y, side)).is(net.minecraft.tags.FluidTags.WATER))
+				if (!world.getFluidState(center.offset(alongX ? side : 0, y, alongX ? 0 : side))
+						.is(net.minecraft.tags.FluidTags.WATER))
 					return false;
 		return true;
 	}
@@ -744,6 +811,7 @@ public final class OverworldStructureFeature implements Feature {
 				return false;
 		return NBTStructureLoader.canPlace(world, type.template, controllerPos, type.templateAnchor,
 				state -> state, (pos, authored) -> {
+					if (world.getBlockState(pos).is(ChromaBlocks.CLIFF_STONE.get())) return false;
 					if (authored.is(Blocks.STRUCTURE_VOID) || authored.isAir())
 						return true;
 					if (authored.is(Blocks.STONE)
@@ -754,9 +822,56 @@ public final class OverworldStructureFeature implements Feature {
 							if (world.getBlockState(pos.relative(direction)).isAir())
 								return false;
 					}
-					return world.getHeight(Heightmap.Types.WORLD_SURFACE_WG, pos.getX(), pos.getZ()) - 1
+					return terrainTop(world, pos.getX(), pos.getZ())
 							>= surface.getY() - 2;
 				});
+	}
+
+	/** V33a MOSSIFY and GRASSDIRT, restricted to the authored cells. */
+	private static void weatherNaturalBlocks(WorldGenLevel world, List<BlockPos> cells, RandomSource random, boolean burrow) {
+		int minY = cells.stream().mapToInt(BlockPos::getY).min().orElse(world.getMinY());
+		BlockState moss = ChromaBlocks.shielding(reika.chromaticraft.registry.ChromaShieldTypes.MOSS).get().defaultBlockState();
+		var stone = ChromaBlocks.shielding(reika.chromaticraft.registry.ChromaShieldTypes.STONE).get();
+		for (BlockPos pos : cells) {
+			BlockState state = world.getBlockState(pos);
+			if (state.is(stone)) {
+				int count = Math.max(1, (pos.getY() - minY) * (burrow ? 1 : 2) - 2 + (burrow ? 5 : 0));
+				if (random.nextInt(count) == 0) world.setBlock(pos, moss.setValue(
+						reika.chromaticraft.block.worldgen26.BlockStructureShield.REINFORCED,
+						state.getValue(reika.chromaticraft.block.worldgen26.BlockStructureShield.REINFORCED)), 2);
+			} else if (state.is(Blocks.DIRT) && world.getMaxLocalRawBrightness(pos.above()) > 8)
+				world.setBlock(pos, Blocks.GRASS_BLOCK.defaultBlockState(), 2);
+		}
+	}
+
+	/** V33a's exposed sand erosion and sparse cactus pass over the Sandy Burrow. */
+	private static void finishNaturalDesert(WorldGenLevel world, List<BlockPos> cells, RandomSource random) {
+		int maxY = cells.stream().mapToInt(BlockPos::getY).max().orElse(world.getMinY());
+		int minX = cells.stream().mapToInt(BlockPos::getX).min().orElseThrow();
+		int maxX = cells.stream().mapToInt(BlockPos::getX).max().orElseThrow();
+		int minZ = cells.stream().mapToInt(BlockPos::getZ).min().orElseThrow();
+		int maxZ = cells.stream().mapToInt(BlockPos::getZ).max().orElseThrow();
+		int midX = (minX + maxX) / 2, midZ = (minZ + maxZ) / 2;
+		for (BlockPos pos : cells) {
+			double chance = 20 + 30D * (Math.abs(pos.getX() - midX) + Math.abs(pos.getZ() - midZ)) / 7D;
+			if (pos.getY() > maxY - 2 && world.getBlockState(pos.above()).isAir()
+					&& world.getBlockState(pos.below()).is(Blocks.SAND) && random.nextDouble() * 100 < chance)
+				world.setBlock(pos, Blocks.AIR.defaultBlockState(), 2);
+		}
+		for (int x = minX; x <= maxX; x++) for (int z = minZ; z <= maxZ; z++) {
+			BlockPos top = new BlockPos(x, terrainTop(world, x, z), z);
+			if (!world.getBlockState(top).isAir() || !world.getBlockState(top.below()).is(Blocks.SAND)
+					|| random.nextDouble() >= 0.02) continue;
+			boolean clear = true;
+			for (net.minecraft.core.Direction dir : net.minecraft.core.Direction.Plane.HORIZONTAL)
+				clear &= world.getBlockState(top.relative(dir)).isAir();
+			if (!clear) continue;
+			world.setBlock(top, Blocks.CACTUS.defaultBlockState(), 2);
+			if (random.nextDouble() < 0.4) {
+				world.setBlock(top.above(), Blocks.CACTUS.defaultBlockState(), 2);
+				if (random.nextDouble() < 0.4) world.setBlock(top.above(2), Blocks.CACTUS.defaultBlockState(), 2);
+			}
+		}
 	}
 
 	private static boolean isSolidCaveHost(WorldGenLevel world, BlockPos pos) {

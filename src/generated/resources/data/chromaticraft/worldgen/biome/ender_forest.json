@@ -1,5 +1,6 @@
 {
   "attributes": {
+    "chromaticraft:rainless_thunder": true,
     "minecraft:audio/background_music": {
       "default": {
         "max_delay": 24000,

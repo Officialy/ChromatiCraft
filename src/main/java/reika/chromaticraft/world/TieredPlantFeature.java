@@ -1,9 +1,5 @@
 package reika.chromaticraft.world;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Supplier;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.tags.BlockTags;
@@ -14,10 +10,12 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.feature.Feature;
 import net.minecraft.world.level.material.Fluids;
-
 import net.neoforged.neoforge.common.Tags;
-
 import reika.chromaticraft.registry.ChromaTieredPlants;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Supplier;
 
 /**
  * The plant half of V33a's {@code TieredWorldGenerator}, which the port had never carried — only its

@@ -1,8 +1,5 @@
 package reika.chromaticraft.auxiliary;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -11,10 +8,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.AABB;
-
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.tick.EntityTickEvent;
-
 import reika.chromaticraft.auxiliary.recipemanagers.PoolAlloyingInput;
 import reika.chromaticraft.auxiliary.recipemanagers.PoolAlloyingRecipe;
 import reika.chromaticraft.auxiliary.recipemanagers.poolrecipes.AlloyingEffect;
@@ -23,6 +18,9 @@ import reika.chromaticraft.magic.ChromaAbilityData;
 import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.network.ChromaNetwork;
 import reika.chromaticraft.registry.ChromaRecipeTypes;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /** Server-authoritative V33a dropped-item Pool Recipe runtime. */
 public final class PoolAlloyingHandler {

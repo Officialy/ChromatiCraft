@@ -1,32 +1,30 @@
 package reika.chromaticraft.render.model;
 
-import java.util.List;
-
 import com.mojang.blaze3d.platform.Transparency;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.block.BlockAndTintGetter;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
 import net.minecraft.client.resources.model.ModelBaker;
 import net.minecraft.client.resources.model.SimpleModelWrapper;
-import net.minecraft.client.resources.model.geometry.QuadCollection;
 import net.minecraft.client.resources.model.geometry.BakedQuad;
+import net.minecraft.client.resources.model.geometry.QuadCollection;
 import net.minecraft.client.resources.model.sprite.Material;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.state.BlockState;
-
 import net.neoforged.neoforge.client.model.DynamicBlockStateModel;
 import net.neoforged.neoforge.client.model.block.CustomUnbakedBlockStateModel;
 import net.neoforged.neoforge.client.model.pipeline.QuadBakingVertexConsumer;
-
 import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.dragonapi.instantiable.rendering.connected.ConnectedQuads;
+
+import java.util.Collections;
+import java.util.List;
 
 /**
  * V33a's tiered-ore disguise. {@code TieredOreRenderer} asks
@@ -72,13 +70,13 @@ public final class TieredOreModel implements DynamicBlockStateModel {
 		var player = Minecraft.getInstance().player;
 		boolean sufficient = player == null || player.isCreative() || stage.isPlayerAtStage(player);
 		if (!sufficient) {
-			for (BlockStateModelPart part : disguise) parts.add(part);
+            Collections.addAll(parts, disguise);
 		}
 		else if (geodeVariants != null) {
 			parts.add(geodeVariants[TieredOreGeodeGeometry.patternAt(pos)]);
 		}
 		else {
-			for (BlockStateModelPart part : real) parts.add(part);
+            Collections.addAll(parts, real);
 		}
 	}
 

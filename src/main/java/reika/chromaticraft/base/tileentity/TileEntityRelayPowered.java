@@ -9,9 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.base.tileentity;
 
-import java.util.List;
-import java.util.UUID;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -21,7 +18,6 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
-
 import reika.chromaticraft.magic.ElementTagCompound;
 import reika.chromaticraft.magic.interfaces.AdjacencyUpgradeProvider;
 import reika.chromaticraft.magic.interfaces.LumenConsumer;
@@ -31,6 +27,9 @@ import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.tileentity.networking.TileEntityRelaySource;
 import reika.dragonapi.DragonAPI;
 import reika.dragonapi.libraries.registry.ReikaItemHelper;
+
+import java.util.List;
+import java.util.UUID;
 
 public abstract class TileEntityRelayPowered extends TileEntityChromaticBase implements LumenConsumer {
 

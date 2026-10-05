@@ -9,9 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.items.tools;
 
-import java.util.UUID;
-import java.util.function.Consumer;
-
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
@@ -27,9 +24,11 @@ import net.minecraft.world.item.component.TooltipDisplay;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
-
 import reika.chromaticraft.base.tileentity.TileEntityChromaticBase;
 import reika.chromaticraft.registry.ChromaSounds;
+
+import java.util.UUID;
+import java.util.function.Consumer;
 
 /**
  * V33a {@code ItemOwnerKey}, the Ownership Expansion Key: bound to the first player to hold it (or, from the casting

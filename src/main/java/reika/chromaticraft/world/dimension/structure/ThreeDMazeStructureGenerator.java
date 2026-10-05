@@ -1,10 +1,9 @@
 package reika.chromaticraft.world.dimension.structure;
 
-import java.util.Random;
-
 import net.minecraft.world.level.Level;
-
 import reika.chromaticraft.registry.ChromaOptions;
+
+import java.util.Random;
 
 /** Modern planner for V33a's Three-Dimensional Maze. */
 public final class ThreeDMazeStructureGenerator extends StructureGeneratorBase {

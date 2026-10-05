@@ -1,26 +1,24 @@
 package reika.chromaticraft.client;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.player.LocalPlayer;
-import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
-
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.gui.GuiLayer;
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.auxiliary.interfaces.OperationInterval;
 import reika.chromaticraft.auxiliary.interfaces.OperationInterval.OperationState;
-import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.client.hud.LumenStorageRenderState;
 import reika.chromaticraft.magic.interfaces.LumenTile;
+import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.tileentity.TileEntityDummyAux;
 
 /**
@@ -126,7 +124,7 @@ public final class MouseoverStatusOverlay implements GuiLayer {
 		float[] fractions = new float[count];
 		int index = 0;
 		for (var element : elements) {
-			colors[index] = element.getColor();
+			colors[index] = element.color();
 			int capacity = tile.getMaxStorage(element);
 			fractions[index] = capacity <= 0 ? 0 : Math.clamp(tile.getEnergy(element) / (float)capacity, 0, 1);
 			index++;

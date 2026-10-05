@@ -1,13 +1,12 @@
 package reika.chromaticraft.auxiliary.structure;
 
-import java.util.function.UnaryOperator;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.Level;
-
 import reika.chromaticraft.base.ChromaStructureBase;
 import reika.dragonapi.instantiable.data.blockstruct.FilledBlockArray;
+
+import java.util.function.UnaryOperator;
 
 /**
  * V33a {@code LaunchPadStructure}: the Vertical Propulsion Panel set flush in a 3x3 ring of crystalline stone, corners

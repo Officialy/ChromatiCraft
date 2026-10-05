@@ -1,19 +1,13 @@
 package reika.chromaticraft.client.render;
 
-import java.util.Optional;
-import java.util.Set;
-
-import com.mojang.renderpearl.api.GpuFormat;
-import com.mojang.renderpearl.api.buffers.GpuBuffer;
 import com.mojang.blaze3d.buffers.Std140Builder;
 import com.mojang.blaze3d.framegraph.FrameGraphBuilder;
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.resource.GraphicsResourceAllocator;
-import com.mojang.blaze3d.resource.RenderTargetDescriptor;
 import com.mojang.blaze3d.resource.ResourceHandle;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.renderpearl.api.buffers.GpuBuffer;
 import com.mojang.renderpearl.api.textures.FilterMode;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MappableRingBuffer;
 import net.minecraft.client.renderer.PostChain;
@@ -25,11 +19,9 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.LogicalSide;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
-
 import org.joml.Matrix4fc;
 import org.joml.Vector4f;
 import org.jspecify.annotations.Nullable;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.registry.ChromaSounds;
 import reika.chromaticraft.render.ChromaRenderPipelines;
@@ -38,6 +30,9 @@ import reika.dragonapi.auxiliary.trackers.TickScheduler;
 import reika.dragonapi.instantiable.event.ScheduledTickEvent;
 import reika.dragonapi.instantiable.event.scheduledtickevent.ScheduledEvent;
 import reika.dragonapi.libraries.io.ReikaSoundHelper;
+
+import java.util.Optional;
+import java.util.Set;
 
 /**
  * Client half of V33a {@code ArtefactWithDataCrystalAlloyingEffect}: the rising rays, the shockwave burst, and

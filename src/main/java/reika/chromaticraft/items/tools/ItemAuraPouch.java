@@ -9,16 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.items.tools;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.TreeMap;
-import java.util.function.Predicate;
-
-import org.jspecify.annotations.Nullable;
-
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
@@ -39,10 +29,13 @@ import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.item.component.TooltipDisplay;
 import net.minecraft.world.item.equipment.Equippable;
 import net.minecraft.world.level.Level;
-
+import org.jspecify.annotations.Nullable;
 import reika.chromaticraft.api.interfaces.ProjectileFiringTool;
 import reika.chromaticraft.container.MenuAuraPouch;
 import reika.dragonapi.interfaces.item.ActivatedInventoryItem;
+
+import java.util.*;
+import java.util.function.Predicate;
 
 /**
  * V33a {@code ItemAuraPouch}: a 27-slot bag. Right-click opens it; right-clicking a slot inside toggles it active

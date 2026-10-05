@@ -1,13 +1,8 @@
 package reika.chromaticraft.render.model;
 
-import java.util.EnumMap;
-import java.util.List;
-import java.util.Map;
-
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-
 import net.minecraft.client.renderer.block.BlockAndTintGetter;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
@@ -20,13 +15,15 @@ import net.minecraft.core.Direction;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.state.BlockState;
-
 import net.neoforged.neoforge.client.model.DynamicBlockStateModel;
 import net.neoforged.neoforge.client.model.block.CustomUnbakedBlockStateModel;
-
 import reika.chromaticraft.block.BlockCrystallineStone;
 import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
 import reika.dragonapi.instantiable.rendering.connected.ConnectedQuads;
+
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Crystalline-stone types whose artwork V33a picks from neighbouring blocks rather than from any

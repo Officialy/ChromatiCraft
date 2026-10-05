@@ -1,21 +1,18 @@
 package reika.chromaticraft.render.item;
 
-import java.util.function.Consumer;
-
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.serialization.MapCodec;
-
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.special.NoDataSpecialModelRenderer;
 import net.minecraft.client.renderer.special.SpecialModelRenderer;
 import net.minecraft.resources.Identifier;
-
 import org.joml.Vector3f;
 import org.joml.Vector3fc;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.models.ModelLumenWire;
 import reika.chromaticraft.render.tesr.RenderLumenWire;
+
+import java.util.function.Consumer;
 
 /** V33a drew the Lumen Wire item with its TESR on a render-only tile: the model upright, 2.5x, raised 5/16. */
 public final class LumenWireItemRenderer implements NoDataSpecialModelRenderer {

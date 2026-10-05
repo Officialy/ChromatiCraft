@@ -1,31 +1,28 @@
 package reika.chromaticraft.render.item;
 
-import java.util.function.Consumer;
-
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.special.NoDataSpecialModelRenderer;
 import net.minecraft.client.renderer.special.SpecialModelRenderer;
 import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.util.LightCoordsUtil;
 import net.minecraft.client.resources.model.sprite.SpriteGetter;
 import net.minecraft.client.resources.model.sprite.SpriteId;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.ARGB;
-
+import net.minecraft.util.LightCoordsUtil;
 import org.joml.Vector3f;
 import org.joml.Vector3fc;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.render.model.CaveCrystalGeometry;
-import reika.dragonapi.libraries.rendering.ReikaColorAPI;
 import reika.dragonapi.libraries.registry.ReikaDyeHelper;
+import reika.dragonapi.libraries.rendering.ReikaColorAPI;
+
+import java.util.function.Consumer;
 
 /**
  * Inventory/held rendering for cave crystals, drawing the same V33a spike geometry the in-world
@@ -149,7 +146,7 @@ public final class CaveCrystalItemRenderer implements NoDataSpecialModelRenderer
 			// the saturation-adjusted element colour with the corresponding vanilla dye, then the
 			// inventory renderer darkened that result to 80%. Omitting the first step made several
 			// inventory crystals (especially lime/green) far darker and harsher than their old icons.
-			int adjusted = ReikaColorAPI.getModifiedSat(element.getColor(), 0.65F);
+			int adjusted = ReikaColorAPI.getModifiedSat(element.color(), 0.65F);
 			int crystalTint = ReikaColorAPI.mixColors(adjusted,
 					ReikaDyeHelper.dyes[element.ordinal()].color, 0.65F);
 			int colour = ReikaColorAPI.getColorWithBrightnessMultiplier(crystalTint, 0.8F);

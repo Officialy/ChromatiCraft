@@ -1,28 +1,21 @@
 package reika.chromaticraft.tileentity.recipe;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.NonNullList;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.WorldlyContainer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
-
 import reika.chromaticraft.auxiliary.interfaces.NBTTile;
 import reika.chromaticraft.auxiliary.interfaces.OwnedTile;
 import reika.chromaticraft.base.tileentity.TileEntityChromaticBase;
@@ -33,6 +26,8 @@ import reika.chromaticraft.render.particle.ChromaParticle;
 import reika.dragonapi.interfaces.blockentity.ConditionBreakDropsInventory;
 import reika.dragonapi.interfaces.blockentity.ConditionalUnbreakability;
 import reika.dragonapi.interfaces.blockentity.InertIInv;
+
+import java.util.*;
 
 /** V33a casting stand: one inert slot, owner access, locking, table linking, and spread-fill. */
 public class TileEntityItemStand extends TileEntityChromaticBase

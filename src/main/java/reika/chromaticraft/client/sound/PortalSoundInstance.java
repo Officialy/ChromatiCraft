@@ -1,10 +1,9 @@
 package reika.chromaticraft.client.sound;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.sounds.AbstractTickableSoundInstance;
 import net.minecraft.client.resources.sounds.SoundInstance;
-import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
-
 import reika.chromaticraft.registry.ChromaSounds;
 import reika.chromaticraft.tileentity.TileEntityCrystalPortal;
 

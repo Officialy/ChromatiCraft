@@ -1,28 +1,21 @@
 package reika.chromaticraft.entity;
 
-import java.util.List;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntitySpawnReason;
-import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.SpawnPlacementTypes;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.entity.*;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.level.Level;
@@ -34,17 +27,10 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.event.entity.EntityAttributeCreationEvent;
 import net.neoforged.neoforge.event.entity.RegisterSpawnPlacementsEvent;
-
 import reika.chromaticraft.auxiliary.CrystalMusicManager;
 import reika.chromaticraft.magic.network.CrystalNetworker;
 import reika.chromaticraft.magic.progression.ProgressStage;
-import reika.chromaticraft.registry.ChromaEntityTypes;
-import reika.chromaticraft.registry.ChromaItems;
-import reika.chromaticraft.registry.ChromaOptions;
-import reika.chromaticraft.registry.ChromaSounds;
-import reika.chromaticraft.registry.ChromaTieredItems;
-import reika.chromaticraft.registry.ChromaTieredPlants;
-import reika.chromaticraft.registry.CrystalElement;
+import reika.chromaticraft.registry.*;
 import reika.chromaticraft.render.particle.ChromaParticle;
 import reika.dragonapi.instantiable.data.SphericalVector;
 import reika.dragonapi.interfaces.entity.DestroyOnUnload;
@@ -52,6 +38,8 @@ import reika.dragonapi.libraries.ReikaPlayerAPI;
 import reika.dragonapi.libraries.java.ReikaRandomHelper;
 import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
+
+import java.util.List;
 
 public final class EntityBallLightning extends Mob implements DestroyOnUnload {
 
@@ -84,7 +72,7 @@ public final class EntityBallLightning extends Mob implements DestroyOnUnload {
 		targetPhi = this.random.nextInt(360);
 		targetVelocity = ReikaRandomHelper.getRandomPlusMinus(0.1, 0.1);
 		this.entityData.set(COLOR, color.ordinal());
-		this.entityData.set(RENDER_COLOR, color.getColor());
+		this.entityData.set(RENDER_COLOR, color.color());
 	}
 
 	public EntityBallLightning(Level level, CrystalElement color, double x, double y, double z) {
@@ -105,14 +93,14 @@ public final class EntityBallLightning extends Mob implements DestroyOnUnload {
 	private void setColor(CrystalElement element) {
 		color = element;
 		this.entityData.set(COLOR, element.ordinal());
-		this.entityData.set(RENDER_COLOR, element.getColor());
+		this.entityData.set(RENDER_COLOR, element.color());
 	}
 
 	@Override
 	protected void defineSynchedData(SynchedEntityData.Builder builder) {
 		super.defineSynchedData(builder);
 		builder.define(COLOR, CrystalElement.WHITE.ordinal());
-		builder.define(RENDER_COLOR, CrystalElement.WHITE.getColor());
+		builder.define(RENDER_COLOR, CrystalElement.WHITE.color());
 		builder.define(BOLT_TARGET, 0);
 		builder.define(BOLT_SEQUENCE, 0);
 	}
@@ -212,8 +200,8 @@ public final class EntityBallLightning extends Mob implements DestroyOnUnload {
 				colorTransitionFraction = 0;
 			}
 		}
-		this.entityData.set(RENDER_COLOR, targetColor == null ? color.getColor()
-				: ReikaColorAPI.mixColors(targetColor.getColor(), color.getColor(), colorTransitionFraction));
+		this.entityData.set(RENDER_COLOR, targetColor == null ? color.color()
+				: ReikaColorAPI.mixColors(targetColor.color(), color.color(), colorTransitionFraction));
 	}
 
 	private void touchEntities() {

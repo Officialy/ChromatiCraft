@@ -1,61 +1,25 @@
 package reika.chromaticraft.registry;
 
-import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
-import net.minecraft.world.level.block.state.BlockState;
-
-import net.neoforged.neoforge.registries.DeferredHolder;
-import net.neoforged.neoforge.registries.DeferredRegister;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
-
+import net.neoforged.neoforge.registries.DeferredHolder;
+import net.neoforged.neoforge.registries.DeferredRegister;
 import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.tileentity.TileEntityDisplayPoint;
-import reika.chromaticraft.tileentity.TileEntityDataNode;
-import reika.chromaticraft.tileentity.TileEntityPersonalCharger;
-import reika.chromaticraft.tileentity.TileEntityFarmer;
-import reika.chromaticraft.tileentity.plants.TileEntityBiomeReverter;
-import reika.chromaticraft.tileentity.plants.TileEntityAccelerationPlant;
-import reika.chromaticraft.tileentity.plants.TileEntityCobbleGen;
-import reika.chromaticraft.tileentity.plants.TileEntityCropSpeedPlant;
-import reika.chromaticraft.tileentity.plants.TileEntityHarvesterPlant;
-import reika.chromaticraft.tileentity.plants.TileEntityHeatLily;
-import reika.chromaticraft.tileentity.auxiliary.TileEntityChromaCrystal;
-import reika.chromaticraft.block.BlockEncrustedCrystal.TileCrystalEncrusted;
 import reika.chromaticraft.block.BlockChromaFluid.TileEntityChroma;
-import reika.chromaticraft.tileentity.networking.TileEntityCompoundRepeater;
-import reika.chromaticraft.tileentity.networking.TileEntityPylonLink;
-import reika.chromaticraft.tileentity.networking.TileEntityCreativeSource;
-import reika.chromaticraft.tileentity.networking.TileEntityCrystalPylon;
-import reika.chromaticraft.tileentity.networking.TileEntityCrystalRepeater;
-import reika.chromaticraft.tileentity.networking.TileEntityWeakRepeater;
-import reika.chromaticraft.tileentity.networking.TileEntityRelaySource;
+import reika.chromaticraft.block.BlockEncrustedCrystal.TileCrystalEncrusted;
 import reika.chromaticraft.block.relay.BlockLumenRelay.TileEntityLumenRelay;
-import reika.chromaticraft.tileentity.networking.TileEntitySkypeater;
-import reika.chromaticraft.tileentity.recipe.TileEntityCastingTable;
-import reika.chromaticraft.tileentity.recipe.TileEntityRitualTable;
-import reika.chromaticraft.tileentity.recipe.TileEntityItemInfuser;
-import reika.chromaticraft.tileentity.recipe.TileEntityPlayerInfuser;
-import reika.chromaticraft.tileentity.auxiliary.TileEntityFocusCrystal;
-import reika.chromaticraft.tileentity.auxiliary.TileEntityCrystalCharger;
+import reika.chromaticraft.tileentity.*;
 import reika.chromaticraft.tileentity.acquisition.TileEntityCollector;
-import reika.chromaticraft.tileentity.recipe.TileEntityItemStand;
 import reika.chromaticraft.tileentity.aoe.TileEntityWarpNode;
-import reika.chromaticraft.tileentity.TileEntityDummyAux;
-import reika.chromaticraft.tileentity.TileEntityCrystalPortal;
-import reika.chromaticraft.tileentity.TileEntityLootChest;
-import reika.chromaticraft.tileentity.TileEntityStructureController;
-import reika.chromaticraft.tileentity.TileEntityChromaDoor;
-import reika.chromaticraft.tileentity.TileEntityHeatLamp;
-import reika.chromaticraft.tileentity.TileEntityLightSwitch;
-import reika.chromaticraft.tileentity.TileEntityStructurePassword;
-import reika.chromaticraft.tileentity.TileEntityLockKey;
-import reika.chromaticraft.tileentity.TileEntityColorLock;
-import reika.chromaticraft.tileentity.TileEntityMusicMemory;
-import reika.chromaticraft.tileentity.TileEntityGOLController;
-import reika.chromaticraft.tileentity.TileEntityGOLTile;
+import reika.chromaticraft.tileentity.auxiliary.TileEntityChromaCrystal;
+import reika.chromaticraft.tileentity.auxiliary.TileEntityCrystalCharger;
+import reika.chromaticraft.tileentity.auxiliary.TileEntityFocusCrystal;
+import reika.chromaticraft.tileentity.networking.*;
+import reika.chromaticraft.tileentity.plants.*;
+import reika.chromaticraft.tileentity.recipe.*;
 
 /**
  * ChromatiCraft {@link BlockEntityType} registry (mirrors ReactorBlockEntities). One entry per
@@ -66,6 +30,9 @@ public final class ChromaBlockEntities {
 	public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITIES =
 			DeferredRegister.create(BuiltInRegistries.BLOCK_ENTITY_TYPE, ChromatiCraft.MODID);
 
+    public static final DeferredHolder<BlockEntityType<?>,BlockEntityType<reika.chromaticraft.modinterface.voidritual.TileEntityVoidMonsterTrap>> VOID_MONSTER_TRAP=register("void_monster_trap",ChromaTiles.VOIDTRAP);
+    public static final DeferredHolder<BlockEntityType<?>,BlockEntityType<reika.chromaticraft.tileentity.aoe.TileEntityDeathFogEmitter>> DEATH_FOG_EMITTER=register("death_fog_emitter",ChromaTiles.DEATHFOG);
+    public static final DeferredHolder<BlockEntityType<?>,BlockEntityType<reika.chromaticraft.block.decoration.BlockColoredAltar.TileEntityColoredAltar>> COLORED_ALTAR=BLOCK_ENTITIES.register("colored_altar",()->new BlockEntityType<>(reika.chromaticraft.block.decoration.BlockColoredAltar.TileEntityColoredAltar::new,ChromaBlocks.COLORED_ALTARS.values().stream().map(DeferredHolder::get).toArray(net.minecraft.world.level.block.Block[]::new)));
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityDisplayPoint>> DISPLAY =
 			register("display_point", ChromaTiles.DISPLAY);
 
@@ -266,6 +233,12 @@ public final class ChromaBlockEntities {
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityGOLController>> GOL_CONTROLLER =
 			BLOCK_ENTITIES.register("gol_controller", () -> new BlockEntityType<>(
 					TileEntityGOLController::new, ChromaBlocks.GOL_CONTROLLER.get()));
+	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityLaserEffector>> LASER_EFFECTOR =
+			BLOCK_ENTITIES.register("laser_effector", () -> new BlockEntityType<>(
+					TileEntityLaserEffector::new, ChromaBlocks.LASER_EFFECTOR.get()));
+	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityLaserController>> LASER_CONTROLLER =
+			BLOCK_ENTITIES.register("laser_controller", () -> new BlockEntityType<>(
+					TileEntityLaserController::new, ChromaBlocks.LASER_CONTROLLER.get()));
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityStructurePassword>> STRUCTURE_PASSWORD =
 			BLOCK_ENTITIES.register("structure_password", () -> new BlockEntityType<>(
 					TileEntityStructurePassword::new, ChromaBlocks.STRUCTURE_PASSWORD.get()));

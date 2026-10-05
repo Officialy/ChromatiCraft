@@ -1,17 +1,5 @@
 package reika.chromaticraft.container;
 
-import java.io.BufferedReader;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.EnumMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.SimpleContainer;
@@ -21,13 +9,17 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.DataSlot;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
-
-import reika.chromaticraft.item.ItemInfoFragment;
 import reika.chromaticraft.magic.progression.LexiconCatalog;
 import reika.chromaticraft.magic.progression.PlayerResearch;
 import reika.chromaticraft.magic.progression.ResearchFragmentData;
 import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.ChromaMenus;
+
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
 
 /** V33a one-fragment, three-category decoding container. */
 public final class MenuFragmentSelection extends AbstractContainerMenu {
@@ -266,6 +258,6 @@ public final class MenuFragmentSelection extends AbstractContainerMenu {
 	public enum FragmentCategory {
 		AUTOMATION, DEFENCE, ATTACK, BUILDING, COLLECTION, TRAVEL, CRAFTING, LUMENS,
 		WORLD, CONVERSION, STORAGE, ARTIFACT, IMPROVEMENT, MODINTERFACE, INFO, BLOCK,
-		TOOLARMOR, ABILITY, RESOURCE, STRUCTURE;
-	}
+		TOOLARMOR, ABILITY, RESOURCE, STRUCTURE
+    }
 }

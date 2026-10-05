@@ -1,25 +1,17 @@
 package reika.chromaticraft.render;
 
-import java.util.function.Function;
-
-import com.mojang.renderpearl.api.pipeline.PrimitiveTopology;
-import com.mojang.renderpearl.api.pipeline.BlendFunction;
-import com.mojang.renderpearl.api.pipeline.ColorTargetState;
-import com.mojang.renderpearl.api.pipeline.DepthStencilState;
-import com.mojang.renderpearl.api.pipeline.RenderPipeline;
-import com.mojang.renderpearl.api.pipeline.BlendFactor;
-import com.mojang.renderpearl.api.pipeline.CompareOp;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
-
-import net.minecraft.util.Util;
+import com.mojang.renderpearl.api.pipeline.*;
 import net.minecraft.client.renderer.BindGroupLayouts;
 import net.minecraft.client.renderer.rendertype.RenderSetup;
 import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.resources.Identifier;
+import net.minecraft.util.Util;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.client.event.RegisterRenderPipelinesEvent;
-
 import reika.chromaticraft.ChromatiCraft;
+
+import java.util.function.Function;
 
 /** Additive, full-bright pipelines matching V33a's direct-framebuffer ADDITIVEDARK passes. */
 public final class ChromaRenderPipelines {
@@ -154,6 +146,20 @@ public final class ChromaRenderPipelines {
 			.withVertexBinding(0, DefaultVertexFormat.POSITION_TEX_COLOR)
 			.withPrimitiveTopology(PrimitiveTopology.QUADS)
 			.withDepthStencilState(new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL, false))
+			.withCull(false)
+			.build();
+	public static final RenderPipeline TRANSLUCENT_SPRITE_THROUGH_WALL = RenderPipeline.builder()
+			.withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "pipeline/translucent_sprite_through_wall"))
+			.withBindGroupLayout(BindGroupLayouts.GLOBALS)
+			.withBindGroupLayout(BindGroupLayouts.PROJECTION)
+            .withBindGroupLayout(BindGroupLayouts.DYNAMIC_TRANSFORMS)
+			.withVertexShader("core/position_tex_color")
+			.withFragmentShader("core/position_tex_color")
+			.withBindGroupLayout(BindGroupLayouts.SAMPLER0)
+			.withColorTargetState(new ColorTargetState(BlendFunction.TRANSLUCENT))
+			.withVertexBinding(0, DefaultVertexFormat.POSITION_TEX_COLOR)
+			.withPrimitiveTopology(PrimitiveTopology.QUADS)
+			.withDepthStencilState(new DepthStencilState(CompareOp.ALWAYS_PASS, false))
 			.withCull(false)
 			.build();
 
@@ -420,6 +426,38 @@ public final class ChromaRenderPipelines {
 			.withPrimitiveTopology(PrimitiveTopology.LINES)
 			.withDepthStencilState(new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL, false))
 			.build();
+    public static final RenderPipeline TRANSLUCENT_COLOR_LINES = RenderPipeline.builder()
+			.withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
+					"pipeline/translucent_color_lines"))
+			.withBindGroupLayout(BindGroupLayouts.GLOBALS)
+			.withBindGroupLayout(BindGroupLayouts.PROJECTION)
+            .withBindGroupLayout(BindGroupLayouts.DYNAMIC_TRANSFORMS)
+			.withBindGroupLayout(BindGroupLayouts.FOG)
+			.withVertexShader("core/rendertype_lines")
+			.withFragmentShader("core/rendertype_lines")
+			.withColorTargetState(new ColorTargetState(BlendFunction.TRANSLUCENT))
+			.withCull(false)
+			.withVertexBinding(0, DefaultVertexFormat.POSITION_COLOR_NORMAL_LINE_WIDTH)
+			.withPrimitiveTopology(PrimitiveTopology.LINES)
+			.withDepthStencilState(new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL, false))
+			.build();
+
+	/** V33a sonar: additive coloured lines, through terrain, with no depth writes. */
+    public static final RenderPipeline MOB_SONAR_LINES = RenderPipeline.builder()
+			.withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
+					"pipeline/mob_sonar_lines"))
+			.withBindGroupLayout(BindGroupLayouts.GLOBALS)
+			.withBindGroupLayout(BindGroupLayouts.PROJECTION)
+            .withBindGroupLayout(BindGroupLayouts.DYNAMIC_TRANSFORMS)
+			.withBindGroupLayout(BindGroupLayouts.FOG)
+			.withVertexShader("core/rendertype_lines")
+			.withFragmentShader("core/rendertype_lines")
+			.withColorTargetState(new ColorTargetState(ADDITIVE_DARK))
+			.withCull(false)
+			.withVertexBinding(0, DefaultVertexFormat.POSITION_COLOR_NORMAL_LINE_WIDTH)
+			.withPrimitiveTopology(PrimitiveTopology.LINES)
+			.withDepthStencilState(new DepthStencilState(CompareOp.ALWAYS_PASS, false))
+			.build();
 
 	/**
 	 * V33a untextured ADDITIVEDARK geometry (DragonAPI {@code TruncatedCube}'s faces and corners): position-colour
@@ -433,6 +471,19 @@ public final class ChromaRenderPipelines {
 			.withVertexShader("core/position_color")
 			.withFragmentShader("core/position_color")
 			.withColorTargetState(new ColorTargetState(ADDITIVE_DARK))
+			.withVertexBinding(0, DefaultVertexFormat.POSITION_COLOR)
+			.withPrimitiveTopology(PrimitiveTopology.TRIANGLES)
+			.withDepthStencilState(new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL, false))
+			.withCull(false)
+			.build();
+    public static final RenderPipeline TRANSLUCENT_COLOR_TRIANGLES = RenderPipeline.builder()
+			.withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "pipeline/translucent_color_triangles"))
+			.withBindGroupLayout(BindGroupLayouts.GLOBALS)
+			.withBindGroupLayout(BindGroupLayouts.PROJECTION)
+			.withBindGroupLayout(BindGroupLayouts.DYNAMIC_TRANSFORMS)
+			.withVertexShader("core/position_color")
+			.withFragmentShader("core/position_color")
+			.withColorTargetState(new ColorTargetState(BlendFunction.TRANSLUCENT))
 			.withVertexBinding(0, DefaultVertexFormat.POSITION_COLOR)
 			.withPrimitiveTopology(PrimitiveTopology.TRIANGLES)
 			.withDepthStencilState(new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL, false))
@@ -491,6 +542,16 @@ public final class ChromaRenderPipelines {
         return UNLIT_ENTITY_CUTOUT_TYPES.apply(texture);
     }
 
+    private static final Function<Identifier,RenderType> TRANSLUCENT_THROUGH_WALL_TYPES=Util.memoize(texture ->
+        RenderType.create("chromaticraft_translucent_through_wall",RenderSetup.builder(TRANSLUCENT_SPRITE_THROUGH_WALL)
+            .withTexture("Sampler0",texture).createRenderSetup()));
+    public static RenderType translucentSpriteThroughWall(Identifier texture) { return TRANSLUCENT_THROUGH_WALL_TYPES.apply(texture); }
+    private static final RenderType ALPHA_TRIANGLES=RenderType.create("chromaticraft_alpha_triangles",RenderSetup.builder(TRANSLUCENT_COLOR_TRIANGLES).createRenderSetup());
+    private static final RenderType ALPHA_LINES=RenderType.create("chromaticraft_alpha_lines",RenderSetup.builder(TRANSLUCENT_COLOR_LINES).createRenderSetup());
+    public static RenderType translucentColorTriangles() { return ALPHA_TRIANGLES; }
+    public static RenderType translucentColorLines() { return ALPHA_LINES; }
+    private static final RenderType SONAR_LINES = RenderType.create("chromaticraft_mob_sonar_lines", RenderSetup.builder(MOB_SONAR_LINES).createRenderSetup());
+    public static RenderType mobSonarLines() { return SONAR_LINES; }
     public static RenderType additiveSprite(Identifier texture) {
         return ADDITIVE_TYPES.apply(texture);
     }
@@ -545,9 +606,14 @@ public final class ChromaRenderPipelines {
     private static void registerPipelines(RegisterRenderPipelinesEvent event) {
         event.registerPipeline(ADDITIVE_SPRITE);
         event.registerPipeline(ADDITIVE_COLOR_TRIANGLES);
+        event.registerPipeline(TRANSLUCENT_COLOR_TRIANGLES);
+        event.registerPipeline(TRANSLUCENT_COLOR_LINES);
+        event.registerPipeline(MOB_SONAR_LINES);
+        reika.chromaticraft.client.render.IrisCompatibility.assign(MOB_SONAR_LINES, "LINES");
         event.registerPipeline(ADDITIVE_SPRITE_THROUGH_WALL);
         event.registerPipeline(GUI_ADDITIVE_DARK);
         event.registerPipeline(TRANSLUCENT_SPRITE);
+        event.registerPipeline(TRANSLUCENT_SPRITE_THROUGH_WALL);
 		event.registerPipeline(PYLON_CORE);
 		event.registerPipeline(PYLON_CORE_THROUGH_WALL);
 		event.registerPipeline(ADDITIVE_ALPHA_SPRITE);

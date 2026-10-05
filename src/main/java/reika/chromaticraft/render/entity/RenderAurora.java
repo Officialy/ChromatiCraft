@@ -1,12 +1,7 @@
 package reika.chromaticraft.render.entity;
 
-import java.util.List;
-import java.util.Map;
-import java.util.WeakHashMap;
-
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
@@ -14,13 +9,16 @@ import net.minecraft.client.renderer.entity.state.EntityRenderState;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.phys.Vec3;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.client.render.Aurora;
 import reika.chromaticraft.entity.EntityAurora;
 import reika.chromaticraft.render.ChromaRenderPipelines;
 import reika.dragonapi.instantiable.data.immutable.DecimalPosition;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
+
+import java.util.List;
+import java.util.Map;
+import java.util.WeakHashMap;
 
 /**
  * V33a {@code RenderAurora}: draws one aurora curtain.
@@ -150,13 +148,13 @@ public final class RenderAurora extends EntityRenderer<EntityAurora, RenderAuror
 			int highB = ReikaColorAPI.getColorWithBrightnessMultiplier(colorTo, fadeB);
 
 			// V33a maps v to the base and dv to the top, so the sheet is used upside down; kept as-is.
-			quadVertex(pose, out, first.xCoord - origin.x, y1 - origin.y, first.zCoord - origin.z,
+			quadVertex(pose, out, first.xCoord() - origin.x, y1 - origin.y, first.zCoord() - origin.z,
 					u1, vEnd, lowA);
-			quadVertex(pose, out, first.xCoord - origin.x, y1 + Aurora.HEIGHT - origin.y,
-					first.zCoord - origin.z, u1, v, highA);
-			quadVertex(pose, out, second.xCoord - origin.x, y2 + Aurora.HEIGHT - origin.y,
-					second.zCoord - origin.z, u2, v, highB);
-			quadVertex(pose, out, second.xCoord - origin.x, y2 - origin.y, second.zCoord - origin.z,
+			quadVertex(pose, out, first.xCoord() - origin.x, y1 + Aurora.HEIGHT - origin.y,
+					first.zCoord() - origin.z, u1, v, highA);
+			quadVertex(pose, out, second.xCoord() - origin.x, y2 + Aurora.HEIGHT - origin.y,
+					second.zCoord() - origin.z, u2, v, highB);
+			quadVertex(pose, out, second.xCoord() - origin.x, y2 - origin.y, second.zCoord() - origin.z,
 					u2, vEnd, lowB);
 		}
 	}

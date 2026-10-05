@@ -1,0 +1,85 @@
+{
+  "type": "chromaticraft:casting",
+  "completion": {
+    "required_fragment": "ORESILK"
+  },
+  "duration": 20,
+  "experience": 40,
+  "grid": [
+    {
+      "ingredient": "minecraft:emerald",
+      "slot": 0
+    },
+    {
+      "ingredient": "minecraft:diamond_pickaxe",
+      "slot": 1
+    },
+    {
+      "ingredient": "minecraft:emerald",
+      "slot": 2
+    },
+    {
+      "ingredient": "chromaticraft:chromic_dust",
+      "slot": 3
+    },
+    {
+      "ingredient": "minecraft:diamond",
+      "slot": 4
+    },
+    {
+      "ingredient": "chromaticraft:chromic_dust",
+      "slot": 5
+    },
+    {
+      "ingredient": "chromaticraft:chromic_dust",
+      "slot": 6
+    },
+    {
+      "ingredient": "minecraft:stick",
+      "slot": 7
+    },
+    {
+      "ingredient": "chromaticraft:chromic_dust",
+      "slot": 8
+    }
+  ],
+  "penalty_threshold": 4,
+  "result": {
+    "id": "chromaticraft:ore_harvester"
+  },
+  "runes": [
+    {
+      "element": "purple",
+      "offset": [
+        0,
+        -1,
+        1
+      ]
+    },
+    {
+      "element": "purple",
+      "offset": [
+        0,
+        -1,
+        -1
+      ]
+    },
+    {
+      "element": "lime",
+      "offset": [
+        1,
+        -1,
+        0
+      ]
+    },
+    {
+      "element": "lime",
+      "offset": [
+        -1,
+        -1,
+        0
+      ]
+    }
+  ],
+  "tier": "temple"
+}

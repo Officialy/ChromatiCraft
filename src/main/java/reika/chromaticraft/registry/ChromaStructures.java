@@ -10,20 +10,7 @@
 package reika.chromaticraft.registry;
 
 import net.minecraft.world.level.Level;
-
-import reika.chromaticraft.auxiliary.structure.CompoundRepeaterStructure;
-import reika.chromaticraft.auxiliary.structure.CastingStructure;
-import reika.chromaticraft.auxiliary.structure.DataTowerStructure;
-import reika.chromaticraft.auxiliary.structure.InfusionStructure;
-import reika.chromaticraft.auxiliary.structure.PortalStructure;
-import reika.chromaticraft.auxiliary.structure.PylonStructure;
-import reika.chromaticraft.auxiliary.structure.PylonTurboStructure;
-import reika.chromaticraft.auxiliary.structure.PlayerInfusionStructure;
-import reika.chromaticraft.auxiliary.structure.RitualStructure;
-import reika.chromaticraft.auxiliary.structure.PersonalChargerStructure;
-import reika.chromaticraft.auxiliary.structure.RepeaterStructure;
-import reika.chromaticraft.auxiliary.structure.RelaySourceStructure;
-import reika.chromaticraft.auxiliary.structure.WeakRepeaterStructure;
+import reika.chromaticraft.auxiliary.structure.*;
 import reika.chromaticraft.base.ChromaStructureBase;
 import reika.chromaticraft.base.ColoredStructureBase;
 import reika.dragonapi.instantiable.data.blockstruct.FilledBlockArray;
@@ -35,6 +22,8 @@ import reika.dragonapi.interfaces.registry.StructureEnum;
  */
 public enum ChromaStructures implements StructureEnum<ChromaStructureBase> {
 
+    NETHERTRAP(reika.chromaticraft.modinterface.voidritual.VoidMonsterNetherStructure.class),
+    VOIDRITUAL(reika.chromaticraft.modinterface.voidritual.VoidMonsterRitualStructure.class),
 	PYLON(PylonStructure.class),
 	PYLONTURBO(PylonTurboStructure.class),
 	CASTING1(CastingStructure.Tier1.class),

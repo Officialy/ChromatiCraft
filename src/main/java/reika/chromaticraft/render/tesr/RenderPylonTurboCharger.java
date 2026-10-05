@@ -2,8 +2,6 @@ package reika.chromaticraft.render.tesr;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import java.util.concurrent.ThreadLocalRandom;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.geom.ModelLayerLocation;
 import net.minecraft.client.renderer.SubmitNodeCollector;
@@ -15,20 +13,16 @@ import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
 import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.data.AtlasIds;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-
+import net.neoforged.neoforge.client.submit.RenderPhaseKeys;
 import org.joml.Vector3f;
 import org.jspecify.annotations.Nullable;
-
-import net.neoforged.neoforge.client.extensions.OrderedSubmitNodeCollectorExtension;
-import net.neoforged.neoforge.client.submit.RenderPhaseKeys;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.models.ModelTurbo;
 import reika.chromaticraft.registry.CrystalElement;
@@ -36,6 +30,8 @@ import reika.chromaticraft.render.ChromaRenderPipelines;
 import reika.chromaticraft.tileentity.auxiliary.TileEntityPylonTurboCharger;
 import reika.chromaticraft.tileentity.auxiliary.TileEntityPylonTurboCharger.Location;
 import reika.chromaticraft.tileentity.networking.TileEntityCrystalPylon;
+
+import java.util.concurrent.ThreadLocalRandom;
 
 /** V33a Energy Focal Point body, ritual ring, lightning, and sky-column rendering. */
 public final class RenderPylonTurboCharger
@@ -85,7 +81,7 @@ public final class RenderPylonTurboCharger
 				? new Vec3(0, 8, 0)
 				: Vec3.atLowerCornerOf(location.relativePylonOffset());
 		TileEntityCrystalPylon pylon = charger.getAssociatedPylon();
-		state.color = pylon != null ? pylon.getColor().getColor() : CrystalElement.WHITE.getColor();
+		state.color = pylon != null ? pylon.getColor().color() : CrystalElement.WHITE.color();
 	}
 
 	@Override
@@ -232,7 +228,7 @@ public final class RenderPylonTurboCharger
 			RenderType renderType, SubmitNodeCollector.CustomGeometryRenderer renderer) {
 		CustomFeatureRenderer.Submit submit = new CustomFeatureRenderer.Submit(
 				poseStack.last().copy(), renderType, renderer);
-		((OrderedSubmitNodeCollectorExtension)collector.order(0))
+		collector.order(0)
 				.submitSpecial(RenderPhaseKeys.AFTER_TERRAIN, submit);
 	}
 

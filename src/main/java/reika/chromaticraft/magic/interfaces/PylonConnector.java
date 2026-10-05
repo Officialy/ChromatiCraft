@@ -12,6 +12,6 @@ package reika.chromaticraft.magic.interfaces;
 
 public interface PylonConnector extends CrystalReceiver {
 
-	public double getPylonRange();
+	double getPylonRange();
 
 }

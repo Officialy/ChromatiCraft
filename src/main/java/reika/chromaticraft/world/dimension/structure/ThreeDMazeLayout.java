@@ -1,12 +1,8 @@
 package reika.chromaticraft.world.dimension.structure;
 
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Random;
-
 import net.minecraft.core.Direction;
+
+import java.util.*;
 
 /**
  * Seeded, level-independent topology for V33a's Three-Dimensional Maze.
@@ -144,7 +140,7 @@ public final class ThreeDMazeLayout {
 	private void calculateCellDecoration(Random random) {
 		for (int x = 0; x < width; x++) for (int y = 0; y < height; y++) for (int z = 0; z < width; z++) {
 			int index = index(x, y, z);
-			lighted[index] = x % 3 == 0 && y % (3 / 2) == 0 && z % 3 == 0;
+			lighted[index] = x % 3 == 0 && 0 == 0 && z % 3 == 0;
 			if (x == 0 || y == 0 || z == 0 || x == width - 1 || y == height - 1 || z == width - 1)
 				continue;
 			if (random.nextInt(10) == 0) {

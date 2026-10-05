@@ -1,13 +1,6 @@
 package reika.chromaticraft.client.gui;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Locale;
-import java.util.function.Predicate;
-
 import com.google.common.base.Strings;
-
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
@@ -21,11 +14,16 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.registry.ChromaSounds;
 import reika.dragonapi.instantiable.gui.ImagedGuiButton;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Locale;
+import java.util.function.Predicate;
 
 /**
  * V33a {@code GuiLetterSearchable}: a screen stepping through a sorted list of entries one at a time, with a search

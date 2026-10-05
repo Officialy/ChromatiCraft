@@ -29,6 +29,7 @@ import java.util.concurrent.CompletableFuture;
 public class ChromaTestStructureProvider implements DataProvider {
 
 	public static final Identifier ARENA = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "test_arena");
+	public static final Identifier WAND_ARENA = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "wand_test_arena");
 	private static final int SIZE_XZ = 5;
 	private static final int SIZE_Y = 4;
 
@@ -40,13 +41,17 @@ public class ChromaTestStructureProvider implements DataProvider {
 
 	@Override
 	public CompletableFuture<?> run(CachedOutput cache) {
+		return CompletableFuture.allOf(writeArena(cache, ARENA, SIZE_XZ, SIZE_Y), writeArena(cache, WAND_ARENA, 16, 16));
+	}
+
+	private CompletableFuture<?> writeArena(CachedOutput cache, Identifier id, int width, int height) {
 		CompoundTag root = new CompoundTag();
 		root.putInt("DataVersion", SharedConstants.getCurrentVersion().dataVersion().version());
 
 		ListTag size = new ListTag();
-		size.add(IntTag.valueOf(SIZE_XZ));
-		size.add(IntTag.valueOf(SIZE_Y));
-		size.add(IntTag.valueOf(SIZE_XZ));
+		size.add(IntTag.valueOf(width));
+		size.add(IntTag.valueOf(height));
+		size.add(IntTag.valueOf(width));
 		root.put("size", size);
 
 		root.put("entities", new ListTag());
@@ -58,8 +63,8 @@ public class ChromaTestStructureProvider implements DataProvider {
 		root.put("palette", palette);
 
 		ListTag blocks = new ListTag();
-		for (int x = 0; x < SIZE_XZ; x++) {
-			for (int z = 0; z < SIZE_XZ; z++) {
+		for (int x = 0; x < width; x++) {
+			for (int z = 0; z < width; z++) {
 				CompoundTag b = new CompoundTag();
 				ListTag pos = new ListTag();
 				pos.add(IntTag.valueOf(x));
@@ -73,7 +78,7 @@ public class ChromaTestStructureProvider implements DataProvider {
 		root.put("blocks", blocks);
 
 		Path path = output.getOutputFolder(PackOutput.Target.DATA_PACK)
-				.resolve(ARENA.getNamespace()).resolve("structure").resolve(ARENA.getPath() + ".nbt");
+				.resolve(id.getNamespace()).resolve("structure").resolve(id.getPath() + ".nbt");
 
 		try {
 			ByteArrayOutputStream bytes = new ByteArrayOutputStream();

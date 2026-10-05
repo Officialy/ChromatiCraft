@@ -16,19 +16,19 @@ import reika.chromaticraft.registry.CrystalElement;
 public interface CrystalReceiver extends CrystalNetworkTile, EnergyBeamReceiver {
 
 	/** Returns the amount successfully added. */
-	public int receiveElement(CrystalSource src, CrystalElement e, int amt);
+    int receiveElement(CrystalSource src, CrystalElement e, int amt);
 
-	public void onPathBroken(CrystalFlow p, FlowFail f);
+	void onPathBroken(CrystalFlow p, FlowFail f);
 
-	public int getReceiveRange();
+	int getReceiveRange();
 
-	public void onPathCompleted(CrystalFlow p);
+	void onPathCompleted(CrystalFlow p);
 
-	public boolean canReceiveFrom(CrystalTransmitter r);
+	boolean canReceiveFrom(CrystalTransmitter r);
 
-	public boolean needsLineOfSightFromTransmitter(CrystalTransmitter r);
+	boolean needsLineOfSightFromTransmitter(CrystalTransmitter r);
 
-	public boolean canBeSuppliedBy(CrystalSource te, CrystalElement e);
+	boolean canBeSuppliedBy(CrystalSource te, CrystalElement e);
 
 	//public void markSource(WorldLocation loc);
 

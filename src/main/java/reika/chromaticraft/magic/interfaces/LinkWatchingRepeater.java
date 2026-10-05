@@ -13,6 +13,6 @@ import reika.chromaticraft.magic.network.CrystalLink;
 
 public interface LinkWatchingRepeater extends CrystalRepeater {
 
-	public void onLinkRecalculated(CrystalLink l);
+	void onLinkRecalculated(CrystalLink l);
 
 }

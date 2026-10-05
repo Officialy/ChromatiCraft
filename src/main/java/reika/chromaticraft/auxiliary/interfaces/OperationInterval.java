@@ -29,6 +29,6 @@ public interface OperationInterval {
 		/** Set up, but waiting on something external (the casting table: not enough aura yet). */
 		PENDING,
 		/** Actively working. */
-		RUNNING;
-	}
+		RUNNING
+    }
 }

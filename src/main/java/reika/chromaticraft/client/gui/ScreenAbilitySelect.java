@@ -1,10 +1,6 @@
 package reika.chromaticraft.client.gui;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import com.mojang.blaze3d.platform.InputConstants;
-
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
@@ -15,7 +11,6 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.api.abilityapi.Ability;
 import reika.chromaticraft.magic.ChromaAbilityData;
@@ -25,6 +20,9 @@ import reika.chromaticraft.network.ChromaNetwork;
 import reika.chromaticraft.registry.ChromaOptions;
 import reika.chromaticraft.registry.ChromaSounds;
 import reika.chromaticraft.registry.Chromabilities;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /** V33a's non-pausing ability carousel, modernized onto the 26.2 extracted GUI renderer. */
 public final class ScreenAbilitySelect extends Screen {
@@ -87,7 +85,8 @@ public final class ScreenAbilitySelect extends Screen {
 					size, size, ICON, ICON, ICON, ICON);
 		}
 
-		graphics.centeredText(font, Component.literal(active.getDisplayName()), width / 2,
+		graphics.centeredText(font, active instanceof Chromabilities chroma ? chroma.getDisplayName(player)
+				: Component.literal(active.getDisplayName()), width / 2,
 				height / 2 + 94, 0xffffffff);
 		if (active.getMaxPower() > 0) {
 			int bar = power * 64 / active.getMaxPower();

@@ -1,22 +1,19 @@
 package reika.chromaticraft.render.item;
 
-import java.util.function.Consumer;
-
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import com.mojang.serialization.MapCodec;
-
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.special.NoDataSpecialModelRenderer;
 import net.minecraft.client.renderer.special.SpecialModelRenderer;
 import net.minecraft.resources.Identifier;
-
 import org.joml.Vector3f;
 import org.joml.Vector3fc;
-
+import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.models.ModelRelaySource;
 import reika.chromaticraft.render.tesr.RenderRelaySource;
-import reika.chromaticraft.ChromatiCraft;
+
+import java.util.function.Consumer;
 
 /** The V33a Relay Source Techne model in inventory, hand, frame and dropped-item contexts. */
 public final class RelaySourceItemRenderer implements NoDataSpecialModelRenderer {

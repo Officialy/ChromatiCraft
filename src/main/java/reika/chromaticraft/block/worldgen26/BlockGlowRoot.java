@@ -18,9 +18,8 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
-
-import reika.chromaticraft.render.particle.ChromaParticle;
 import reika.chromaticraft.registry.ChromaBlocks;
+import reika.chromaticraft.render.particle.ChromaParticle;
 
 /** V33a Glow Root: a self-limiting luminous chain suspended from natural cave ceilings. */
 public final class BlockGlowRoot extends Block {
@@ -35,7 +34,7 @@ public final class BlockGlowRoot extends Block {
     @Override
     protected boolean canSurvive(BlockState state, LevelReader level, BlockPos pos) {
         BlockState above = level.getBlockState(pos.above());
-        boolean ceiling = above.is(this) || above.is(BlockTags.BASE_STONE_OVERWORLD)
+        boolean ceiling = above.is(this) || above.is(reika.chromaticraft.registry.ChromaBlockTags.NATURAL_STONE)
                 || above.is(BlockTags.DIRT) || above.is(net.minecraft.world.level.block.Blocks.GRASS_BLOCK)
                 || above.is(ChromaBlocks.CLIFF_STONE.get())
                 || above.is(ChromaBlocks.CLIFF_DIRT.get()) || above.is(ChromaBlocks.CLIFF_GRASS.get());

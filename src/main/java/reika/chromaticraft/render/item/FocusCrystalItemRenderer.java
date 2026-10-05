@@ -1,10 +1,7 @@
 package reika.chromaticraft.render.item;
 
-import java.util.function.Consumer;
-
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.serialization.MapCodec;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.special.SpecialModelRenderer;
@@ -13,16 +10,16 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
-
 import org.joml.Vector3f;
 import org.joml.Vector3fc;
 import org.jspecify.annotations.Nullable;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.models.ModelFocusCrystal;
 import reika.chromaticraft.models.ModelFocusCrystalMessy;
 import reika.chromaticraft.render.tesr.RenderFocusCrystal;
 import reika.chromaticraft.tileentity.auxiliary.TileEntityFocusCrystal.CrystalTier;
+
+import java.util.function.Consumer;
 
 /**
  * V33a's focus crystal item: ChromaItemRenderer ran RenderFocusCrystal on a render-only tile carrying the stack's

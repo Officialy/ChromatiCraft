@@ -9,9 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.base;
 
-import java.util.Locale;
-import java.util.function.Consumer;
-
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
@@ -22,13 +19,15 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.component.TooltipDisplay;
 import net.minecraft.world.level.Level;
-
 import reika.chromaticraft.magic.ToolChargingSystem;
 import reika.chromaticraft.magic.ToolChargingSystem.EntityChargingTool;
 import reika.chromaticraft.magic.interfaces.ChargingPoint;
 import reika.chromaticraft.magic.interfaces.PoweredItem;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.render.particle.ChromaParticle;
+
+import java.util.Locale;
+import java.util.function.Consumer;
 
 /**
  * V33a {@code ItemPoweredChromaTool}: a tool that runs on its charge of one element. It drops as an
@@ -119,7 +118,7 @@ public abstract class ItemPoweredChromaTool extends ItemChromaTool implements Po
 		ItemStack is = ei.getItem();
 		PoweredItem pi = (PoweredItem)is.getItem();
 		ChromaParticle.spawnPoweredItemCharge(ei.level(), ei.getX(), ei.getY(), ei.getZ(), ei.getAge(),
-				pi.getColor(is).getColor(), charge == pi.getMaxCharge());
+				pi.getColor(is).color(), charge == pi.getMaxCharge());
 	}
 
 	public boolean hasChargeStates() {

@@ -9,73 +9,59 @@
  ******************************************************************************/
 package reika.chromaticraft.items.tools;
 
-import java.util.Locale;
-
-import net.minecraft.block.Block;
-import net.minecraft.enchantment.Enchantment;
-import net.minecraft.enchantment.EnumEnchantmentType;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.init.Items;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.IIcon;
-import net.minecraft.world.World;
-
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
+import net.minecraft.tags.ItemTags;
+import net.minecraft.tags.TagKey;
+import net.minecraft.util.TriState;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.enchantment.Enchantment;
+import net.minecraft.world.item.enchantment.Enchantments;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
 import reika.chromaticraft.api.interfaces.EnchantableItem;
 import reika.chromaticraft.base.ItemChromaTool;
-import reika.dragonapi.interfaces.item.ToolSprite;
 
-import cpw.mods.fml.common.eventhandler.Event.Result;
+import java.util.Locale;
 
-public class ItemMultiTool extends ItemChromaTool implements ToolSprite, EnchantableItem {
+/** V33a's constant-speed Multitool: diamond harvesting, 900 uses, gold enchantability. */
+public final class ItemMultiTool extends ItemChromaTool implements EnchantableItem {
+    public ItemMultiTool(Properties properties) {
+        super(properties.durability(900).enchantable(22));
+    }
 
-	public ItemMultiTool(int index) {
-		super(index);
-		this.setMaxDamage(900); //was 400
-	}
+    @Override public boolean isCorrectToolForDrops(ItemStack stack, BlockState state) {
+        return Items.DIAMOND_PICKAXE.isCorrectToolForDrops(stack, state);
+    }
+    @Override public float getDestroySpeed(ItemStack stack, BlockState state) { return 4; }
 
-	@Override
-	public boolean canHarvestBlock(Block b, ItemStack is) {
-		return Items.diamond_pickaxe.canHarvestBlock(b, is);
-	}
+    @Override
+    public boolean mineBlock(ItemStack stack, Level level, BlockState state, BlockPos pos, LivingEntity owner) {
+        if (!level.isClientSide() && state.getDestroySpeed(level,pos)>0)
+            stack.hurtAndBreak(1,owner,EquipmentSlot.MAINHAND);
+        return true;
+    }
 
-	@Override
-	public int getItemEnchantability()
-	{
-		return Items.golden_pickaxe.getItemEnchantability();
-	}
+    static boolean soulbound(Holder<Enchantment> enchantment) {
+        return enchantment.unwrapKey().map(key -> key.identifier().getPath().toLowerCase(Locale.ROOT).contains("soulbound"))
+                .orElse(false) || enchantment.value().description().getString().toLowerCase(Locale.ROOT).contains("soulbound");
+    }
 
-	@Override
-	public int getHarvestLevel(ItemStack stack, String toolClass)
-	{
-		return 3;
-	}
-
-	@Override
-	public float getDigSpeed(ItemStack stack, Block block, int meta) {
-		return 4;
-	}
-
-	@Override
-	public final IIcon getIconFromDamage(int dmg) { //To get around a bug in backtools
-		return Items.stone_pickaxe.getIconFromDamage(0);
-	}
-
-	@Override
-	public boolean onBlockDestroyed(ItemStack is, World world, Block b, int x, int y, int z, EntityLivingBase elb) {
-		if (b.getBlockHardness(world, x, y, z) > 0) {
-			is.damageItem(1, elb);
-		}
-		return true;
-	}
-
-	@Override
-	public Result getEnchantValidity(Enchantment e, ItemStack is) {
-		return e == Enchantment.unbreaking || e == Enchantment.efficiency || e == Enchantment.silkTouch || e == Enchantment.fortune || e.getName().toLowerCase(Locale.ENGLISH).contains("soulbound") ? Result.ALLOW : Result.DENY;
-	}
-
-	@Override
-	public EnumEnchantmentType getEnchantingCategory() {
-		return EnumEnchantmentType.digger;
-	}
-
+    @Override
+    public TriState getEnchantValidity(Holder<Enchantment> enchantment, ItemStack stack) {
+        return enchantment.is(Enchantments.UNBREAKING) || enchantment.is(Enchantments.EFFICIENCY)
+                || enchantment.is(Enchantments.SILK_TOUCH) || enchantment.is(Enchantments.FORTUNE) || soulbound(enchantment)
+                ? TriState.TRUE : TriState.FALSE;
+    }
+    @Override public TagKey<Item> getEnchantingCategory() { return ItemTags.MINING_ENCHANTABLE; }
+    @Override public boolean supportsEnchantment(ItemStack stack, Holder<Enchantment> enchantment) {
+        return getEnchantValidity(enchantment,stack)==TriState.TRUE;
+    }
+    @Override public boolean isPrimaryItemFor(ItemStack stack, Holder<Enchantment> enchantment) {
+        return supportsEnchantment(stack,enchantment);
+    }
 }

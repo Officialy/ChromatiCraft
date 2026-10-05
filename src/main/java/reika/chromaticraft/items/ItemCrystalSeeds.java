@@ -9,11 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.items;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.function.Consumer;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
@@ -29,13 +24,17 @@ import net.minecraft.world.item.component.TooltipDisplay;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.SoundType;
-
 import reika.chromaticraft.block.BlockCrystalPlant;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.tileentity.plants.TileEntityCrystalPlant;
 import reika.chromaticraft.tileentity.plants.TileEntityCrystalPlant.Modifier;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * V33a {@code ItemCrystalSeeds} ("Crystal Seeds"), one item per element where V33a used {@code meta % 16}.

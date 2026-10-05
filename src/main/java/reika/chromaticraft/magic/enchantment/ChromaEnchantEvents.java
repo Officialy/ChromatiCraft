@@ -1,15 +1,8 @@
 package reika.chromaticraft.magic.enchantment;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import java.util.WeakHashMap;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderSet;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -18,7 +11,6 @@ import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.util.RandomSource;
 import net.minecraft.util.TriState;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
@@ -34,7 +26,6 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.Tool;
 import net.minecraft.world.item.enchantment.EnchantmentEffectComponents;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -52,7 +43,6 @@ import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.level.BlockDropsEvent;
 import net.neoforged.neoforge.event.level.block.BreakBlockEvent;
 import net.neoforged.neoforge.event.tick.EntityTickEvent;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.auxiliary.PylonDamage;
 import reika.chromaticraft.registry.ChromaEnchants;
@@ -64,6 +54,8 @@ import reika.dragonapi.interfaces.entity.ClampedDamage;
 import reika.dragonapi.libraries.ReikaAABBHelper;
 import reika.dragonapi.libraries.ReikaEntityHelper;
 import reika.dragonapi.libraries.ReikaPlayerAPI;
+
+import java.util.*;
 
 /**
  * The effects of the ChromatiCraft enchantments: V33a {@code ChromaticEventManager}'s enchantment handlers (that

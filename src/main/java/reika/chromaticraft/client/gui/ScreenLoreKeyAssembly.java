@@ -1,14 +1,12 @@
 package reika.chromaticraft.client.gui;
 
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.navigation.ScreenRectangle;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.magic.lore.KeyAssemblyPuzzle;
 import reika.chromaticraft.magic.lore.RosettaStone;

@@ -14,8 +14,8 @@ import reika.chromaticraft.magic.network.CrystalPath;
 
 public interface NotifiedNetworkTile extends CrystalNetworkTile {
 
-	public void onPathConnected(CrystalPath p);
+	void onPathConnected(CrystalPath p);
 
-	public void onTileNetworkTopologyChange(CrystalNetworkTile te, boolean remove);
+	void onTileNetworkTopologyChange(CrystalNetworkTile te, boolean remove);
 
 }

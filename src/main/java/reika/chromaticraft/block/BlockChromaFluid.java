@@ -1,19 +1,14 @@
 package reika.chromaticraft.block;
 
-import org.jspecify.annotations.Nullable;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.particles.DustParticleOptions;
-import net.minecraft.world.effect.MobEffects;
-/* 26.2 ValueInput networking supersedes the legacy packet callback import.
-import net.minecraft.network.Connection;
-*/
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.InsideBlockEffectApplier;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -27,14 +22,17 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.FlowingFluid;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
-
+import org.jspecify.annotations.Nullable;
 import reika.chromaticraft.magic.CrystalPotionController;
 import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
-import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
+
+/* 26.2 ValueInput networking supersedes the legacy packet callback import.
+import net.minecraft.network.Connection;
+*/
 
 /**
  * V33a active Liquid Chroma re-expressed as a 26.2 flowing-fluid block. Source blocks own the pool
@@ -102,7 +100,7 @@ public final class BlockChromaFluid extends LiquidBlock implements EntityBlock {
 	@Override
 	public void animateTick(BlockState state, Level level, BlockPos pos, RandomSource random) {
 		CrystalElement color = CrystalElement.randomElement();
-		level.addParticle(new DustParticleOptions(color.getColor(), 1F), pos.getX()+random.nextDouble(),
+		level.addParticle(new DustParticleOptions(color.color(), 1F), pos.getX()+random.nextDouble(),
 				pos.getY()+random.nextDouble(), pos.getZ()+random.nextDouble(), 0, 0.01, 0);
 		if (level.getBlockEntity(pos) instanceof TileEntityChroma pool && pool.getEtherCount() > 0) {
 			int count = 1+pool.getEtherCount()/4;
@@ -113,7 +111,7 @@ public final class BlockChromaFluid extends LiquidBlock implements EntityBlock {
 	}
 
 	public static int getColor(CrystalElement element, int berries) {
-		return ReikaColorAPI.mixColors(element.getColor(), 0xFFFFFFFF, berries/(float)TileEntityChroma.BERRY_SATURATION);
+		return ReikaColorAPI.mixColors(element.color(), 0xFFFFFFFF, berries/(float)TileEntityChroma.BERRY_SATURATION);
 	}
 
 	public static float getDoublingChance(int ether) {

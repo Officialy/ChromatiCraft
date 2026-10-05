@@ -10,15 +10,6 @@
 package reika.chromaticraft.magic.network;
 
 import com.mojang.serialization.Codec;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
-import java.util.List;
-
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.resources.Identifier;
@@ -28,12 +19,13 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.level.saveddata.SavedDataType;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.tileentity.networking.TileEntityCrystalPylon;
 import reika.chromaticraft.tileentity.networking.TileEntityPylonLink;
 import reika.dragonapi.instantiable.data.immutable.WorldLocation;
+
+import java.util.*;
 
 /** Persistent owner/colour web connecting the pylon-link tiles in all loaded dimensions. */
 public final class PylonLinkNetwork {

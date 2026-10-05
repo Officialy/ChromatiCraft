@@ -4,6 +4,7 @@ package reika.chromaticraft.block.decoration;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.DustParticleOptions;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
@@ -62,11 +63,11 @@ public final class BlockMusicTrigger extends Block {
 		MusicKey key = CrystalMusicManager.instance.getKeys(element).get(index);
 		ChromaSounds.DING.playSoundAtBlock(level, pos, 1,
 				CrystalMusicManager.instance.getScaledDing(element, index));
-		for (int i = 0; i < 8; i++) {
+		if (level instanceof ServerLevel server) for (int i = 0; i < 8; i++) {
 			double angle = Math.PI * 2 * i / 8D;
-			level.addParticle(new DustParticleOptions(element.getColor(), 1F), pos.getX() + 0.5,
-					pos.getY() + 1.5, pos.getZ() + 0.5, Math.cos(angle) * 0.08, 0.04,
-					Math.sin(angle) * 0.08);
+			server.sendParticles(new DustParticleOptions(element.color(), 1F),
+					pos.getX() + 0.5, pos.getY() + 1.5, pos.getZ() + 0.5,
+					0, Math.cos(angle) * 0.08, 0.04, Math.sin(angle) * 0.08, 1);
 		}
 		Handler handler = findHandler(level, pos);
 		if (handler != null) handler.onMusicTrigger(pos, element, key, player);

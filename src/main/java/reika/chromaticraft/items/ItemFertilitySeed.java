@@ -9,8 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.items;
 
-import java.util.Random;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.BlockTags;
@@ -28,7 +26,6 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.SaplingBlock;
 import net.minecraft.world.level.block.state.BlockState;
-
 import reika.chromaticraft.network.ChromaNetwork;
 import reika.dragonapi.auxiliary.ProgressiveRecursiveBreaker;
 import reika.dragonapi.auxiliary.ProgressiveRecursiveBreaker.BreakerCallback;
@@ -38,6 +35,8 @@ import reika.dragonapi.instantiable.event.BlockTickEvent.UpdateFlags;
 import reika.dragonapi.libraries.java.ReikaRandomHelper;
 import reika.dragonapi.libraries.registry.ReikaCropHelper;
 import reika.dragonapi.modregistry.ModCropList;
+
+import java.util.Random;
 
 /**
  * V33a Fertility Seeds, shaken loose from Glow Roots.

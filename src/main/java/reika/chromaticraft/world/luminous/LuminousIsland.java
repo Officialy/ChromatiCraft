@@ -1,20 +1,18 @@
 package reika.chromaticraft.world.luminous;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import java.util.concurrent.ConcurrentHashMap;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.util.Mth;
-
 import reika.dragonapi.instantiable.math.LobulatedCurve;
 import reika.dragonapi.instantiable.math.noise.NoiseGeneratorBase;
 import reika.dragonapi.instantiable.math.noise.SimplexNoiseGenerator;
 import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * V33a {@code GlowingCliffsAuxGenerator.Island}: one floating island of the Luminous Cliffs.
@@ -107,21 +105,23 @@ public final class LuminousIsland {
 
 	/**
 	 * V33a {@code generateIsland} up to placement: calculate the shape (spawning children as the river
-	 * reaches the rim), then accept it only if every block of it is air. Accepted islands, children
-	 * included, are added to {@code out}; a child can be accepted even when its parent is not, as upstream
-	 * spawned children before checking the parent.
+	 * reaches the rim), then accept it only if every block of it is air. Each accepted island is
+	 * committed immediately through {@code out}; children can be accepted even when their parent is
+	 * rejected. Their blocks and ore draws affect the parent's remaining calculation, as in V33a.
 	 */
-	static boolean generate(Terrain terrain, Random rand, long worldSeed, LuminousIsland is, List<LuminousIsland> out) {
+	static boolean generate(Terrain terrain, Random rand, long worldSeed, LuminousIsland is,
+			java.util.function.Consumer<LuminousIsland> out) {
 		is.curveSeed = rand.nextLong();
 		Shape shape = is.calculate(worldSeed, terrain, rand, out);
 		if (!shape.canGenerate(terrain))
 			return false;
-		out.add(is);
+		out.accept(is);
 		return true;
 	}
 
 	/** V33a {@code generateChild}. */
-	private void generateChild(Terrain terrain, int dx, int dz, Random rand, long worldSeed, List<LuminousIsland> out) {
+	private void generateChild(Terrain terrain, int dx, int dz, Random rand, long worldSeed,
+			java.util.function.Consumer<LuminousIsland> out) {
 		LuminousIsland is = initialize(terrain, dx, dz, rand, scale, overWater);
 		is.originY = originY - (int)maxThickness - 10 - rand.nextInt(30);
 		is.hasLake = true;
@@ -145,7 +145,8 @@ public final class LuminousIsland {
 	 * sample writing a tapered column, later writes replacing earlier ones in the order upstream made
 	 * them.
 	 */
-	private Shape calculate(long worldSeed, Terrain terrain, Random rand, List<LuminousIsland> out) {
+	private Shape calculate(long worldSeed, Terrain terrain, Random rand,
+			java.util.function.Consumer<LuminousIsland> out) {
 		NoiseGeneratorBase contours = contours(worldSeed);
 		Shape shape = new Shape();
 		LobulatedCurve lb = LobulatedCurve.fromMinMaxRadii(innerRadius, outerRadius, degree);

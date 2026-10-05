@@ -9,9 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.block.crystal;
 
-import java.util.Locale;
-import java.util.function.Supplier;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.Identifier;
@@ -21,11 +18,7 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.context.BlockPlaceContext;
-import net.minecraft.world.level.BlockGetter;
-import net.minecraft.world.level.ItemLike;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.level.LevelReader;
-import net.minecraft.world.level.ScheduledTickAccess;
+import net.minecraft.world.level.*;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockBehaviour;
@@ -36,13 +29,15 @@ import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.base.CrystalTypeBlock;
 import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.render.particle.ChromaParticle;
+
+import java.util.Locale;
+import java.util.function.Supplier;
 
 /**
  * V33a {@code BlockCrystalGlow}: a small glowing crystal bar (light 15) mounted on a plate of some base material,
@@ -154,7 +149,7 @@ public class BlockCrystalGlow extends CrystalTypeBlock {
 		level.playSound(null, pos, SoundEvents.STONE_BREAK, SoundSource.BLOCKS, 0.35F, 0.05F);
 	}
 
-	public static enum Mode implements StringRepresentable {
+	public enum Mode implements StringRepresentable {
 		NORMAL,
 		IRIDESCENT,
 		RAINBOW;
@@ -174,7 +169,7 @@ public class BlockCrystalGlow extends CrystalTypeBlock {
 	}
 
 	/** V33a {@code BlockCrystalGlow.Bases}: the plate material, its recipe ingredient and its texture (side 0). */
-	public static enum Bases {
+	public enum Bases {
 		STONE("Stone", () -> Items.STONE, Identifier.withDefaultNamespace("block/stone")),
 		CRYSTALSTONE("Crystal Stone", () -> ChromaBlocks.crystallineStone(StoneTypes.SMOOTH).get(),
 				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/pylon/block_0")),
@@ -189,7 +184,7 @@ public class BlockCrystalGlow extends CrystalTypeBlock {
 		public final Supplier<ItemLike> ingredient;
 		public final Identifier texture;
 
-		private Bases(String s, Supplier<ItemLike> ingredient, Identifier texture) {
+		Bases(String s, Supplier<ItemLike> ingredient, Identifier texture) {
 			displayName = s;
 			this.ingredient = ingredient;
 			this.texture = texture;

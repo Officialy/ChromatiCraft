@@ -1,7 +1,5 @@
 package reika.chromaticraft.item;
 
-import java.util.function.Consumer;
-
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
@@ -16,11 +14,12 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.component.TooltipDisplay;
 import net.minecraft.world.level.Level;
-
 import reika.chromaticraft.magic.progression.LexiconCatalog;
 import reika.chromaticraft.magic.progression.PlayerResearch;
 import reika.chromaticraft.magic.progression.ResearchFragmentData;
 import reika.chromaticraft.registry.ChromaBlocks;
+
+import java.util.function.Consumer;
 
 /** V33a blank, decoded, and chroma-soaked information fragments as one component-backed item. */
 public final class ItemInfoFragment extends Item {

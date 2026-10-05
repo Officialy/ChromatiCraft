@@ -1,13 +1,13 @@
 package reika.chromaticraft.client.render;
 
-import java.util.List;
-
 import reika.chromaticraft.entity.AuroraData;
 import reika.dragonapi.instantiable.data.immutable.DecimalPosition;
 import reika.dragonapi.instantiable.math.Spline;
 import reika.dragonapi.instantiable.math.Spline.BasicSplinePoint;
 import reika.dragonapi.instantiable.math.Spline.SplineType;
 import reika.dragonapi.libraries.mathsci.ReikaPhysicsHelper;
+
+import java.util.List;
 
 /**
  * V33a's {@code Aurora}: the drifting curtain one {@code EntityAurora} draws.
@@ -44,9 +44,9 @@ public final class Aurora {
 
 		DecimalPosition from = new DecimalPosition(data.from().x, data.from().y, data.from().z);
 		DecimalPosition to = new DecimalPosition(data.to().x, data.to().y, data.to().z);
-		double dx = to.xCoord - from.xCoord;
-		double dy = to.yCoord - from.yCoord;
-		double dz = to.zCoord - from.zCoord;
+		double dx = to.xCoord() - from.xCoord();
+		double dy = to.yCoord() - from.yCoord();
+		double dz = to.zCoord() - from.zCoord();
 		// The perpendicular the whole ribbon drifts along, taken from its own bearing.
 		double angle = Math.toRadians(-ReikaPhysicsHelper.cartesianToPolar(dx, dy, dz)[2]);
 		double xFactor = Math.cos(angle);
@@ -122,9 +122,9 @@ public final class Aurora {
 			double tolerance = 1;
 			if (Math.abs(delta) < tolerance)
 				this.pickNewTarget();
-			posY = origin.yCoord + fraction * totalY;
-			posX = origin.xCoord + fraction * totalX + offset * xFactor;
-			posZ = origin.zCoord + fraction * totalZ + offset * zFactor;
+			posY = origin.yCoord() + fraction * totalY;
+			posX = origin.xCoord() + fraction * totalX + offset * xFactor;
+			posZ = origin.zCoord() + fraction * totalZ + offset * zFactor;
 			if (Math.abs(delta) >= tolerance)
 				offset += velocity / 48D * Math.signum(delta);
 		}

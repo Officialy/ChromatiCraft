@@ -1,12 +1,12 @@
 package reika.chromaticraft.auxiliary.interfaces;
 
-import java.util.Collection;
-
 import reika.dragonapi.instantiable.data.immutable.Coordinate;
+
+import java.util.Collection;
 
 public interface ComplexAOE {
 
-	public Collection<Coordinate> getPossibleRelativePositions();
-	public double getNormalizedWeight(Coordinate c);
+	Collection<Coordinate> getPossibleRelativePositions();
+	double getNormalizedWeight(Coordinate c);
 
 }

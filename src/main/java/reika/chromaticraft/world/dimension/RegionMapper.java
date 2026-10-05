@@ -9,9 +9,9 @@
  ******************************************************************************/
 package reika.chromaticraft.world.dimension;
 
-import java.util.Random;
-
 import reika.dragonapi.instantiable.math.LobulatedCurve;
+
+import java.util.Random;
 
 /**
  * V33a {@code RegionMapper}: the irregular boundary between Proxima's central region and its outer

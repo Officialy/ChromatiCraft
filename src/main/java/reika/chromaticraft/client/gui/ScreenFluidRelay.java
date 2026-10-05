@@ -9,9 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.client.gui;
 
-import java.util.ArrayList;
-import java.util.Collection;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Tooltip;
@@ -25,9 +22,7 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.Fluids;
-
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.container.MenuFluidRelay;
 import reika.chromaticraft.network.ChromaNetwork;
@@ -36,6 +31,9 @@ import reika.chromaticraft.tileentity.transport.TileEntityFluidRelay;
 import reika.dragonapi.instantiable.gui.ImagedGuiButton;
 import reika.dragonapi.instantiable.rendering.GuiShapes;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
+
+import java.util.ArrayList;
+import java.util.Collection;
 
 /**
  * V33a {@code GuiFluidRelay}: the seven filter slots with their fluids, the pressure line "Pressure: base + per/B",

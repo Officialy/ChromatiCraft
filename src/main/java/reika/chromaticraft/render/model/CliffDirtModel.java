@@ -1,10 +1,7 @@
 package reika.chromaticraft.render.model;
 
-import java.util.List;
-
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-
 import net.minecraft.client.renderer.block.BlockAndTintGetter;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
@@ -17,12 +14,12 @@ import net.minecraft.core.Direction;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.state.BlockState;
-
 import net.neoforged.neoforge.client.model.DynamicBlockStateModel;
 import net.neoforged.neoforge.client.model.block.CustomUnbakedBlockStateModel;
-
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.dragonapi.instantiable.rendering.connected.ConnectedQuads;
+
+import java.util.List;
 
 /**
  * 26.2 chunk-mesh port of V33a's cliff-dirt neighbour-conditional face selection, from pristine

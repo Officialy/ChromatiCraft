@@ -4,7 +4,7 @@ import net.minecraft.world.item.ItemStack;
 
 public interface CrystalFurnaceMultiplier {
 
-	public int getMultiplyRateAsInput(ItemStack is, ItemStack to);
-	public int getMultiplyRateAsOutput(ItemStack is, ItemStack from);
+	int getMultiplyRateAsInput(ItemStack is, ItemStack to);
+	int getMultiplyRateAsOutput(ItemStack is, ItemStack from);
 
 }

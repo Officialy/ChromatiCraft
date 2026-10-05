@@ -9,9 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.tileentity.plants;
 
-import java.util.ArrayList;
-import java.util.Random;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
@@ -20,21 +17,18 @@ import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
-
 import reika.chromaticraft.block.BlockCrystalPlant;
 import reika.chromaticraft.items.ItemCrystalSeeds;
-import reika.chromaticraft.registry.ChromaBlockEntities;
-import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaItems;
-import reika.chromaticraft.registry.ChromaOptions;
-import reika.chromaticraft.registry.CrystalElement;
+import reika.chromaticraft.registry.*;
 import reika.dragonapi.libraries.java.ReikaRandomHelper;
 import reika.dragonapi.libraries.registry.ReikaItemHelper;
+
+import java.util.ArrayList;
+import java.util.Random;
 
 /**
  * V33a {@code TileEntityCrystalPlant}: the Crystal Bloom's modifiers, sterility and shard timer.
@@ -266,7 +260,7 @@ public class TileEntityCrystalPlant extends BlockEntity {
 		return sterile;
 	}
 
-	public static enum Modifier {
+	public enum Modifier {
 		IMPURE("Impure"),
 		BOOSTED("Enriched"),
 		PRIMAL("Primal");
@@ -276,7 +270,7 @@ public class TileEntityCrystalPlant extends BlockEntity {
 
 		public static final Modifier[] list = values();
 
-		private Modifier(String s) {
+		Modifier(String s) {
 			flag = 1 << (this.ordinal()+4);
 			displayName = s;
 		}

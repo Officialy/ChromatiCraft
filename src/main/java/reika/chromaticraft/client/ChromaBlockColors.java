@@ -1,6 +1,5 @@
 package reika.chromaticraft.client;
 
-import java.util.List;
 import net.minecraft.client.color.block.BlockColors;
 import net.minecraft.client.color.block.BlockTintSource;
 import net.minecraft.client.renderer.block.BlockAndTintGetter;
@@ -14,11 +13,13 @@ import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.RegisterColorHandlersEvent;
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.base.CrystalBlock;
+import reika.chromaticraft.block.BlockHoverBlock;
 import reika.chromaticraft.block.dye26.BlockDyeLeaf;
 import reika.chromaticraft.block.dye26.BlockDyeSapling;
 import reika.chromaticraft.block.dye26.BlockRainbowLeaf;
-import reika.chromaticraft.block.BlockHoverBlock;
 import reika.chromaticraft.registry.ChromaBlocks;
+
+import java.util.List;
 
 /** Block tint sources used by the original tint-indexed crystal outline texture. */
 @EventBusSubscriber(modid = ChromatiCraft.MODID, value = Dist.CLIENT)
@@ -51,7 +52,7 @@ public final class ChromaBlockColors {
         @Override public int color(BlockState state) { return tint(state); }
         @Override public int colorInWorld(BlockState state, BlockAndTintGetter level, BlockPos pos) { return tint(state); }
         private int tint(BlockState state) {
-            return 0xFF000000 | ((reika.chromaticraft.base.CrystalTypeBlock)state.getBlock()).getCrystalElement().getColor();
+            return 0xFF000000 | ((reika.chromaticraft.base.CrystalTypeBlock)state.getBlock()).getCrystalElement().color();
         }
     };
 
@@ -115,7 +116,7 @@ public final class ChromaBlockColors {
         private int tint(BlockState state) {
             return state.getBlock()
                     instanceof reika.chromaticraft.block.dimension.BlockDimensionCore core
-                    ? 0xFF000000 | core.getElement().getColor() : 0xFFFFFFFF;
+                    ? 0xFF000000 | core.getElement().color() : 0xFFFFFFFF;
         }
     };
 
@@ -202,7 +203,7 @@ public final class ChromaBlockColors {
     public static void onComputeCameraAngles(
             net.neoforged.neoforge.client.event.ViewportEvent.ComputeCameraAngles event) {
         reika.chromaticraft.client.render.MonumentRitualEffects.applyCamera(
-                event.getCamera(), (float)event.getPartialTick(), event);
+                event.getCamera(), event.getPartialTick(), event);
     }
 
     /** Builds the cached, blend-radius-aware tint cache the cliff tint wrappers probe. */

@@ -1,23 +1,16 @@
 package reika.chromaticraft.world.dimension;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.ChunkPos;
-
 import reika.dragonapi.instantiable.data.immutable.DecimalPosition;
 import reika.dragonapi.instantiable.math.Spline;
 import reika.dragonapi.instantiable.math.Spline.BasicSplinePoint;
 import reika.dragonapi.instantiable.math.Spline.SplineType;
 import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
 import reika.dragonapi.libraries.mathsci.ReikaVectorHelper;
+
+import java.util.*;
 
 /**
  * V33a {@code SkyRiverGenerator}: the sky rivers, Proxima's long-distance transport.
@@ -177,7 +170,7 @@ public final class SkyRiverGenerator {
 			int count = ray.points.size();
 			for (int i = 1; i < count - 1; i++) {
 				DecimalPosition position = ray.points.get(i);
-				ChunkPos chunk = new ChunkPos(Mth.floor(position.xCoord) >> 4, Mth.floor(position.zCoord) >> 4);
+				ChunkPos chunk = new ChunkPos(Mth.floor(position.xCoord()) >> 4, Mth.floor(position.zCoord()) >> 4);
 				pointsByChunk.computeIfAbsent(ChunkPos.pack(chunk.x(), chunk.z()), key -> new ArrayList<>())
 						.add(new RiverPoint(i, count, position, ray.points.get(i - 1), ray.points.get(i + 1)));
 			}
@@ -227,8 +220,8 @@ public final class SkyRiverGenerator {
 		RiverPoint closest = null;
 		double best = Double.POSITIVE_INFINITY;
 		for (RiverPoint point : this.getPointsWithin(entity, range)) {
-			double distance = entity.distanceToSqr(point.position().xCoord, point.position().yCoord,
-					point.position().zCoord);
+			double distance = entity.distanceToSqr(point.position().xCoord(), point.position().yCoord(),
+                    point.position().zCoord());
 			if (distance < best && distance <= range * range) {
 				best = distance;
 				closest = point;
@@ -244,8 +237,8 @@ public final class SkyRiverGenerator {
 	}
 
 	public static boolean isBetween(DecimalPosition from, DecimalPosition to, Entity entity) {
-		return ReikaVectorHelper.getDistFromPointToLine(from.xCoord, from.yCoord, from.zCoord,
-				to.xCoord, to.yCoord, to.zCoord, entity.getX(), entity.getY(), entity.getZ())
+		return ReikaVectorHelper.getDistFromPointToLine(from.xCoord(), from.yCoord(), from.zCoord(),
+                to.xCoord(), to.yCoord(), to.zCoord(), entity.getX(), entity.getY(), entity.getZ())
 				< RIVER_TUNNEL_RADIUS;
 	}
 
@@ -289,12 +282,12 @@ public final class SkyRiverGenerator {
 					continue;
 				}
 				double steps = Math.ceil(distance / MAX_POINT_DISTANCE);
-				double stepX = (to.xCoord - from.xCoord) / steps;
-				double stepY = (to.yCoord - from.yCoord) / steps;
-				double stepZ = (to.zCoord - from.zCoord) / steps;
+				double stepX = (to.xCoord() - from.xCoord()) / steps;
+				double stepY = (to.yCoord() - from.yCoord()) / steps;
+				double stepZ = (to.zCoord() - from.zCoord()) / steps;
 				for (int step = 0; step < Math.round(steps); step++)
-					resampled.add(new DecimalPosition(from.xCoord + stepX * step,
-							from.yCoord + stepY * step, from.zCoord + stepZ * step));
+					resampled.add(new DecimalPosition(from.xCoord() + stepX * step,
+							from.yCoord() + stepY * step, from.zCoord() + stepZ * step));
 			}
 			resampled.add(points.get(points.size() - 1));
 			points = resampled;

@@ -1,59 +1,42 @@
 package reika.chromaticraft.data;
 
-import java.util.List;
-import java.util.Set;
-import java.util.function.BiConsumer;
-
+import net.minecraft.advancements.predicates.LocationPredicate;
+import net.minecraft.core.HolderSet;
 import net.minecraft.data.loot.BlockLootSubProvider;
 import net.minecraft.data.loot.LootTableProvider;
 import net.minecraft.data.loot.LootTableSubProvider;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.tags.TagKey;
-import net.minecraft.advancements.predicates.LocationPredicate;
-import net.minecraft.core.HolderSet;
 import net.minecraft.world.flag.FeatureFlags;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.level.block.Block;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.Biomes;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.storage.loot.LootPool;
-import net.minecraft.world.level.storage.loot.functions.SetItemCountFunction;
-import net.minecraft.world.level.storage.loot.functions.EnchantWithLevelsFunction;
 import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.entries.EmptyLootItem;
 import net.minecraft.world.level.storage.loot.entries.LootItem;
 import net.minecraft.world.level.storage.loot.entries.TagEntry;
 import net.minecraft.world.level.storage.loot.entries.UniformContainerBase;
+import net.minecraft.world.level.storage.loot.functions.EnchantWithLevelsFunction;
+import net.minecraft.world.level.storage.loot.functions.SetItemCountFunction;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.level.storage.loot.predicates.LocationCheck;
 import net.minecraft.world.level.storage.loot.predicates.LootItemCondition;
 import net.minecraft.world.level.storage.loot.predicates.LootItemRandomChanceCondition;
 import net.minecraft.world.level.storage.loot.providers.number.ints.ContextIntProviders;
-import net.minecraft.advancements.predicates.StatePropertiesPredicate;
-import reika.chromaticraft.block.BlockEncrustedCrystal;
-
-import reika.chromaticraft.block.BlockChromaFluid;
-import reika.chromaticraft.block.BlockChromaMud;
-import reika.chromaticraft.block.BlockCrystalRune;
-import reika.chromaticraft.block.BlockCrystallineStone;
-import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
-import reika.chromaticraft.block.worldgen26.BlockGlowDaisy;
-import reika.chromaticraft.block.worldgen26.BlockGlowRoot;
-import net.minecraft.world.item.Items;
 import reika.chromaticraft.auxiliary.loot.ChromaBerryCount;
 import reika.chromaticraft.auxiliary.loot.FortuneScaledChance;
-import reika.chromaticraft.registry.ChromaItems;
-import reika.chromaticraft.block.worldgen26.BlockTieredOre;
-import reika.chromaticraft.block.worldgen26.BlockTieredPlant;
-import reika.chromaticraft.block.worldgen26.BlockCaveIndicator;
-import reika.chromaticraft.block.worldgen26.BlockDecoFlower;
-import reika.chromaticraft.block.worldgen26.BlockStructureShield;
-import reika.chromaticraft.block.worldgen26.BlockLootChest;
-import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaCraftingItems;
-import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.registry.ChromaTieredItems;
+import reika.chromaticraft.block.*;
+import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
+import reika.chromaticraft.block.worldgen26.*;
+import reika.chromaticraft.registry.*;
 import reika.chromaticraft.world.OverworldStructureFeature;
+
+import java.util.List;
+import java.util.Set;
+import java.util.function.BiConsumer;
 
 /**
  * ChromatiCraft loot tables (port-in-progress). Emits a drops-self table for every registered block so
@@ -77,6 +60,7 @@ public final class ChromaLootProvider extends LootTableProvider {
 	public static final ResourceKey<LootTable> LIGHT_PANEL_ROOM_LOOT = ResourceKey.create(
 			net.minecraft.core.registries.Registries.LOOT_TABLE,
 			net.minecraft.resources.Identifier.fromNamespaceAndPath("chromaticraft", "chests/light_panel_room"));
+	public static final ResourceKey<LootTable> DATA_TOWER_LOOT = reika.chromaticraft.world.DataTowerFeature.LOOT_TABLE;
 
 	public ChromaLootProvider() {
         super(Set.of(), List.of(
@@ -84,10 +68,45 @@ public final class ChromaLootProvider extends LootTableProvider {
 				new SubProviderEntry(BurrowCache::new, LootContextParamSets.CHEST),
 				new SubProviderEntry(VillageCasting::new, LootContextParamSets.CHEST),
 				new SubProviderEntry(LightPanelRoomLoot::new, LootContextParamSets.CHEST),
+				new SubProviderEntry(DataTowerLoot::new, LootContextParamSets.CHEST),
 				// V33a ChromaChests' injections into the vanilla chest tables; attached by
 				// ChromaLootModifierProvider.
 				new SubProviderEntry(ChromaChestLoot::new, LootContextParamSets.CHEST)
 		));
+	}
+
+	/** V33a DataTowerGenerator: library contents, two bonus populations, fragments and six extras. */
+	private record DataTowerLoot(LootTableSubProvider.Context context) implements LootTableSubProvider {
+		@Override
+		public void run() {
+			LootTable.Builder table = LootTable.lootTable();
+			for (int population = 0; population < 3; population++) {
+				LootPool.Builder library = LootPool.lootPool().setRolls(ContextIntProviders.between(
+						population == 0 ? 3 : 2, population == 0 ? 11 : 10));
+				LightPanelRoomLoot.add(library, Items.BOOK, 1, 3, 20);
+				LightPanelRoomLoot.add(library, Items.PAPER, 2, 7, 20);
+				library.add(LootItem.lootTableItem(Items.MAP)).add(LootItem.lootTableItem(Items.COMPASS));
+				library.add(LootItem.lootTableItem(Items.BOOK).setWeight(10)
+						.apply(EnchantWithLevelsFunction.enchantWithLevels(context.lookup(net.minecraft.core.registries.Registries.ENCHANTMENT),
+								ContextIntProviders.exactly(30))));
+				// ChromaChests injects these into the source library's weighted contents.
+				LightPanelRoomLoot.add(library, ChromaItems.LEXICON.get(), 1, 1, 8);
+				LightPanelRoomLoot.add(library, ChromaItems.INFO_FRAGMENT.get(), 1, 3, 50);
+				table.withPool(library);
+			}
+			table.withPool(LootPool.lootPool().setRolls(ContextIntProviders.exactly(1))
+					.when(LootItemRandomChanceCondition.randomChance(0.8F))
+					.add(LootItem.lootTableItem(ChromaItems.INFO_FRAGMENT.get()).setWeight(4)
+							.apply(SetItemCountFunction.setCount(ContextIntProviders.exactly(2))))
+					.add(LootItem.lootTableItem(ChromaItems.INFO_FRAGMENT.get())));
+			for (var extra : List.of(java.util.Map.entry(Items.DIAMOND, 2), java.util.Map.entry(Items.EMERALD, 1),
+					java.util.Map.entry(Items.GOLD_INGOT, 5), java.util.Map.entry(Items.IRON_INGOT, 8),
+					java.util.Map.entry(Items.REDSTONE, 8), java.util.Map.entry(Items.LAPIS_LAZULI, 12)))
+				table.withPool(LootPool.lootPool().setRolls(ContextIntProviders.exactly(1))
+						.add(LootItem.lootTableItem(extra.getKey())
+								.apply(SetItemCountFunction.setCount(ContextIntProviders.between(0, extra.getValue())))));
+			context.accept(DATA_TOWER_LOOT, table);
+		}
 	}
 
 	/**
@@ -441,10 +460,13 @@ public final class ChromaLootProvider extends LootTableProvider {
 					var count = type == reika.chromaticraft.registry.ProximaDecoTypes.GLOWCAVE
 							? reika.chromaticraft.auxiliary.loot.TuningScaledCount.between(1, 6, type.maxDrops())
 							: reika.chromaticraft.auxiliary.loot.TuningScaledCount.single(type.maxDrops());
+					var resources = LootItem.lootTableItem(ChromaItems.DIMENSION_RESOURCES.get(
+							reika.chromaticraft.registry.ChromaDimensionItems.valueOf(type.name())).get())
+							.apply(SetItemCountFunction.setCount(net.minecraft.core.Holder.direct(count)));
+					var entry = type.canSilkTouch()
+							? LootItem.lootTableItem(block).when(this.hasSilkTouch()).otherwise(resources) : resources;
 					this.add(block, LootTable.lootTable().withPool(LootPool.lootPool()
-							.setRolls(ContextIntProviders.exactly(1))
-							.add(LootItem.lootTableItem(block)
-									.apply(SetItemCountFunction.setCount(net.minecraft.core.Holder.direct(count))))));
+							.setRolls(ContextIntProviders.exactly(1)).add(entry)));
 				}
 				else if (block instanceof reika.chromaticraft.block.BlockHoverBlock) {
 					this.add(block, noDrop());

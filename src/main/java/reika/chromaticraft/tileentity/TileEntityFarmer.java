@@ -9,9 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.tileentity;
 
-import java.util.Collection;
-import java.util.EnumMap;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
@@ -20,7 +17,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
-
 import reika.chromaticraft.auxiliary.interfaces.ComplexAOE;
 import reika.chromaticraft.base.tileentity.TileEntityRelayPowered;
 import reika.chromaticraft.magic.ElementTagCompound;
@@ -32,6 +28,9 @@ import reika.dragonapi.instantiable.data.immutable.Coordinate;
 import reika.dragonapi.interfaces.registry.CropType;
 import reika.dragonapi.libraries.registry.ReikaCropHelper;
 import reika.dragonapi.modregistry.ModCropList;
+
+import java.util.Collection;
+import java.util.EnumMap;
 
 public final class TileEntityFarmer extends TileEntityRelayPowered implements ComplexAOE {
 
@@ -83,7 +82,7 @@ public final class TileEntityFarmer extends TileEntityRelayPowered implements Co
         if (allowRelays && world.getBlockEntity(target) instanceof TileEntityFunctionRelay relay) {
             Coordinate next = relay.getRandomCoordinate();
             return next != null && this.operateAt(world,
-                    new BlockPos(next.xCoord, next.yCoord, next.zCoord), false);
+                    new BlockPos(next.xCoord(), next.yCoord(), next.zCoord()), false);
         }
         BlockState state = world.getBlockState(target);
         Block block = state.getBlock();
@@ -130,7 +129,7 @@ public final class TileEntityFarmer extends TileEntityRelayPowered implements Co
                 break;
             }
         }
-        BlockPos target = worldPosition.offset(selected.xCoord, 0, selected.zCoord);
+        BlockPos target = worldPosition.offset(selected.xCoord(), 0, selected.zCoord());
         if (!world.hasChunkAt(target)) return null;
         while (target.getY() > world.getMinY() && world.isEmptyBlock(target))
             target = target.below();

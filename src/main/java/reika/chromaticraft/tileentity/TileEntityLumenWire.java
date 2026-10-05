@@ -9,9 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.tileentity;
 
-import java.util.ArrayList;
-import java.util.UUID;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -32,7 +29,6 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.phys.AABB;
 import net.neoforged.neoforge.common.NeoForge;
-
 import reika.chromaticraft.api.event.LumenWireToggleEvent;
 import reika.chromaticraft.api.interfaces.ManipulatorInteraction;
 import reika.chromaticraft.base.tileentity.TileEntityChromaticBase;
@@ -50,6 +46,9 @@ import reika.dragonapi.interfaces.blockentity.RedstoneTile;
 import reika.dragonapi.libraries.java.ReikaRandomHelper;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
 
+import java.util.ArrayList;
+import java.util.UUID;
+
 /**
  * V33a {@code TileEntityLumenWire}: placed on a block face, it pairs with another wire facing it across up to 6 clear
  * blocks. While anything its mode detects is inside the box spanning the pair, both wires emit a full redstone signal
@@ -60,7 +59,7 @@ import reika.dragonapi.libraries.rendering.ReikaColorAPI;
  */
 public class TileEntityLumenWire extends TileEntityChromaticBase implements BreakAction, RedstoneTile, ManipulatorInteraction {
 
-	private StepTimer checkTimer = new StepTimer(5);
+	private final StepTimer checkTimer = new StepTimer(5);
 
 	private Coordinate connection;
 	private UUID connectionUID;
@@ -214,8 +213,8 @@ public class TileEntityLumenWire extends TileEntityChromaticBase implements Brea
 		AABB box = new AABB(pos);
 		if (connection == null)
 			return box;
-		return new AABB(Math.min(box.minX, connection.xCoord), Math.min(box.minY, connection.yCoord), Math.min(box.minZ, connection.zCoord),
-				Math.max(box.maxX, connection.xCoord+1), Math.max(box.maxY, connection.yCoord+1), Math.max(box.maxZ, connection.zCoord+1));
+		return new AABB(Math.min(box.minX, connection.xCoord()), Math.min(box.minY, connection.yCoord()), Math.min(box.minZ, connection.zCoord()),
+				Math.max(box.maxX, connection.xCoord() +1), Math.max(box.maxY, connection.yCoord() +1), Math.max(box.maxZ, connection.zCoord() +1));
 	}
 
 	/** V33a: glints spread along the pair, thinner (and larger) the further the player is. */
@@ -265,11 +264,11 @@ public class TileEntityLumenWire extends TileEntityChromaticBase implements Brea
 		double inz = f.getStepZ() == 0 ? 0.5 : in;
 		for (int i = 0; i < n; i++) {
 			double d = rand.nextDouble();
-			double dx = x+inx+d*(connection.xCoord+1-inx*2-x);
-			double dy = y+iny+d*(connection.yCoord+1-iny*2-y);
-			double dz = z+inz+d*(connection.zCoord+1-inz*2-z);
+			double dx = x+inx+d*(connection.xCoord() +1-inx*2-x);
+			double dy = y+iny+d*(connection.yCoord() +1-iny*2-y);
+			double dz = z+inz+d*(connection.zCoord() +1-inz*2-z);
 			int l = 10+rand.nextInt(10);
-			float s = 1.5F+rand.nextFloat()*1F+ds;
+			float s = 1.5F+ rand.nextFloat() +ds;
 			int p = rand.nextInt(4);
 			ChromaIcons ico = switch(p) {
 				case 1 -> ChromaIcons.FLARE;
@@ -321,9 +320,9 @@ public class TileEntityLumenWire extends TileEntityChromaticBase implements Brea
 		double iny = f.getStepY() == 0 ? h : in;
 		double inz = f.getStepZ() == 0 ? 0.5 : in;
 		double d = rand.nextDouble();
-		double dx = x+inx+d*(connection.xCoord+1-inx*2-x);
-		double dy = y+iny+d*(connection.yCoord+1-iny*2-y);
-		double dz = z+inz+d*(connection.zCoord+1-inz*2-z);
+		double dx = x+inx+d*(connection.xCoord() +1-inx*2-x);
+		double dy = y+iny+d*(connection.yCoord() +1-iny*2-y);
+		double dz = z+inz+d*(connection.zCoord() +1-inz*2-z);
 		int l = 10+rand.nextInt(10);
 		float s = (float)(2.5+4*(0.5-Math.abs(0.5-d)));
 		int hue = ReikaRandomHelper.getRandomPlusMinus(ReikaColorAPI.getHue(check.renderColor), 60);
@@ -415,7 +414,7 @@ public class TileEntityLumenWire extends TileEntityChromaticBase implements Brea
 		this.disconnect(true);
 	}
 
-	public static enum CheckType {
+	public enum CheckType {
 		ANY(0xffffff),
 		OWNER(0x22aaff),
 		PLAYER(0x0000ff),
@@ -429,7 +428,7 @@ public class TileEntityLumenWire extends TileEntityChromaticBase implements Brea
 
 		public static final CheckType[] list = values();
 
-		private CheckType(int c) {
+		CheckType(int c) {
 			renderColor = c;
 		}
 
@@ -479,26 +478,24 @@ public class TileEntityLumenWire extends TileEntityChromaticBase implements Brea
 		notifyList.add(w);
 	}
 
-	public static interface WireWatcher {
+	public interface WireWatcher {
 
 		void onToggle(Coordinate wire, boolean active);
 
 	}
 
-	private static class TileWireWatcher implements WireWatcher {
+	private record TileWireWatcher(WorldLocation location) implements WireWatcher {
 
-		private final WorldLocation location;
+			public TileWireWatcher(WireWatcher te) {
+				this(new WorldLocation((BlockEntity) te));
+			}
 
-		public TileWireWatcher(WireWatcher te) {
-			location = new WorldLocation((BlockEntity)te);
+			@Override
+			public void onToggle(Coordinate wire, boolean active) {
+				if (location.getBlockEntity() instanceof WireWatcher w)
+					w.onToggle(wire, active);
+			}
+
 		}
-
-		@Override
-		public void onToggle(Coordinate wire, boolean active) {
-			if (location.getBlockEntity() instanceof WireWatcher w)
-				w.onToggle(wire, active);
-		}
-
-	}
 
 }

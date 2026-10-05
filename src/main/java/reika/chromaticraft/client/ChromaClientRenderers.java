@@ -2,47 +2,42 @@ package reika.chromaticraft.client;
 
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
-import net.neoforged.neoforge.client.event.RegisterSpecialModelRendererEvent;
 import net.neoforged.neoforge.client.event.RegisterItemModelsEvent;
+import net.neoforged.neoforge.client.event.RegisterSpecialModelRendererEvent;
 import net.neoforged.neoforge.common.NeoForge;
-
+import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.ChromaEntityTypes;
 import reika.chromaticraft.render.ChromaRenderPipelines;
-import reika.chromaticraft.render.entity.RenderGlowCloud;
-import reika.chromaticraft.render.entity.RenderLumaBurst;
-import reika.chromaticraft.render.entity.RenderLaserPulse;
-import reika.chromaticraft.render.entity.RenderPylonOverloadShock;
-import reika.chromaticraft.render.entity.RenderTunnelNuker;
-import reika.chromaticraft.render.entity.RenderDataCrystal;
-import reika.chromaticraft.render.entity.RenderBallLightning;
-import reika.chromaticraft.render.item.ItemStandItemRenderer;
+import reika.chromaticraft.render.entity.*;
 import reika.chromaticraft.render.item.CrystalChargerItemRenderer;
 import reika.chromaticraft.render.item.ItemAuraInfuserRenderer;
+import reika.chromaticraft.render.item.ItemStandItemRenderer;
 import reika.chromaticraft.render.item.PylonTurboItemRenderer;
-import reika.chromaticraft.render.tesr.RenderCrystalPylon;
-import reika.chromaticraft.render.tesr.RenderCastingTable;
-import reika.chromaticraft.render.tesr.RenderCrystalRepeater;
-import reika.chromaticraft.render.tesr.RenderDataNode;
-import reika.chromaticraft.render.tesr.RenderItemStand;
-import reika.chromaticraft.render.tesr.RenderLootChest;
-import reika.chromaticraft.render.tesr.RenderCrystalCharger;
-import reika.chromaticraft.render.tesr.RenderInfuser3;
-import reika.chromaticraft.render.tesr.RenderCrystalPortal;
-import reika.chromaticraft.render.tesr.RenderRelaySource;
-import reika.chromaticraft.render.tesr.RenderLumenRelay;
-import reika.chromaticraft.render.tesr.RenderPylonTurboCharger;
+import reika.chromaticraft.render.tesr.*;
 
 public final class ChromaClientRenderers {
 
 	private ChromaClientRenderers() {}
 
 	public static void init(IEventBus bus) {
+		ChromaTextClient.init(bus);
 		ChromaRenderPipelines.register(bus);
+		reika.chromaticraft.render.ShaderCompatibleRenderTypes.register(bus);
+		bus.addListener((net.neoforged.neoforge.client.event.RegisterSpriteSourcesEvent event) ->
+				event.register(net.minecraft.resources.Identifier.fromNamespaceAndPath(
+						ChromatiCraft.MODID, "legacy_glow"), reika.chromaticraft.client.render.LegacyGlowSpriteSource.CODEC));
 		NeoForge.EVENT_BUS.addListener(ChromaModelOutlineRenderer::extract);
+		NeoForge.EVENT_BUS.addListener(WandAreaPreview::extract);
 		bus.addListener(ChromaClientRenderers::registerRenderers);
 		PoweredItemClient.init(bus);
 		bus.addListener(ChromaClientRenderers::registerLayers);
+        if (net.neoforged.fml.ModList.get().isLoaded("voidmonster")) {
+            bus.addListener(reika.chromaticraft.modinterface.voidritual.VoidRitualShaders::register);
+            NeoForge.EVENT_BUS.addListener(reika.chromaticraft.modinterface.voidritual.VoidRitualShaders::afterLevel);
+            NeoForge.EVENT_BUS.addListener(reika.chromaticraft.modinterface.voidritual.VoidMonsterRitualClientEffects::tick);
+            NeoForge.EVENT_BUS.addListener(reika.chromaticraft.modinterface.voidritual.VoidMonsterRitualClientEffects::unload);
+        }
 		bus.addListener(ChromaClientRenderers::registerSpecialModelRenderers);
 		bus.addListener(ChromaClientRenderers::registerItemModels);
 		bus.addListener(ChromaClientRenderers::registerClientExtensions);
@@ -78,6 +73,8 @@ public final class ChromaClientRenderers {
 	}
 
 	private static void registerSpecialModelRenderers(RegisterSpecialModelRendererEvent event) {
+        event.register(reika.chromaticraft.render.item.ColoredAltarItemRenderer.ID,reika.chromaticraft.render.item.ColoredAltarItemRenderer.Unbaked.MAP_CODEC);
+        event.register(reika.chromaticraft.render.item.VoidMonsterTrapItemRenderer.ID,reika.chromaticraft.render.item.VoidMonsterTrapItemRenderer.Unbaked.MAP_CODEC);
 		event.register(ItemStandItemRenderer.ID, ItemStandItemRenderer.Unbaked.MAP_CODEC);
 		event.register(reika.chromaticraft.render.item.CrystalGlowItemRenderer.ID,
 				reika.chromaticraft.render.item.CrystalGlowItemRenderer.Unbaked.MAP_CODEC);
@@ -130,6 +127,21 @@ public final class ChromaClientRenderers {
 
 	private static void registerClientExtensions(
 			net.neoforged.neoforge.client.extensions.common.RegisterClientExtensionsEvent event) {
+        event.registerBlock(new net.neoforged.neoforge.client.extensions.common.IClientBlockExtensions() {
+            @Override
+            public boolean addHitEffects(net.minecraft.world.level.block.state.BlockState state,
+                    net.minecraft.world.level.Level level, net.minecraft.core.BlockPos pos,
+                    net.minecraft.core.Direction face, net.minecraft.client.particle.ParticleEngine engine) {
+                return reika.chromaticraft.client.render.ColoredAltarEffects.fragments(state, level, pos, engine, false);
+            }
+            @Override
+            public boolean addDestroyEffects(net.minecraft.world.level.block.state.BlockState state,
+                    net.minecraft.world.level.Level level, net.minecraft.core.BlockPos pos,
+                    net.minecraft.client.particle.ParticleEngine engine) {
+                return reika.chromaticraft.client.render.ColoredAltarEffects.fragments(state, level, pos, engine, true);
+            }
+        }, reika.chromaticraft.registry.ChromaBlocks.COLORED_ALTARS.values().stream()
+                .map(holder -> holder.get()).toArray(net.minecraft.world.level.block.Block[]::new));
 		// These two effects deliberately reuse vanilla semantics and V33a icons. Registering the
 		// vanilla atlas sprites avoids manufacturing duplicate PNGs under ChromatiCraft's namespace.
 		event.registerMobEffect(vanillaEffectIcon("regeneration"),
@@ -196,6 +208,7 @@ public final class ChromaClientRenderers {
 	}
 
 	private static void registerLayers(EntityRenderersEvent.RegisterLayerDefinitions event) {
+        event.registerLayerDefinition(reika.chromaticraft.render.tesr.RenderColoredAltar.MODEL_LAYER,reika.chromaticraft.models.ModelColoredAltar::createBodyLayer);
 		 event.registerLayerDefinition(RenderItemStand.MODEL_LAYER, RenderItemStand::createStandLayer);
 		event.registerLayerDefinition(RenderTunnelNuker.MODEL_LAYER, reika.chromaticraft.models.ModelTunnelNuker::createBodyLayer);
 		event.registerLayerDefinition(RenderLootChest.MODEL_LAYER, reika.chromaticraft.models.ModelLootChest::createBodyLayer);
@@ -223,6 +236,10 @@ public final class ChromaClientRenderers {
 	}
 
 	private static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
+        event.registerEntityRenderer(ChromaEntityTypes.MONSTER_BAIT.get(),reika.chromaticraft.render.entity.RenderMonsterBait::new);
+        event.registerEntityRenderer(ChromaEntityTypes.DEATH_FOG.get(),reika.chromaticraft.render.entity.RenderDeathFog::new);
+        event.registerBlockEntityRenderer(ChromaBlockEntities.COLORED_ALTAR.get(),reika.chromaticraft.render.tesr.RenderColoredAltar::new);
+        if (net.neoforged.fml.ModList.get().isLoaded("voidmonster")) event.registerBlockEntityRenderer(ChromaBlockEntities.VOID_MONSTER_TRAP.get(),reika.chromaticraft.render.tesr.RenderVoidMonsterTrap::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.ITEM_STAND.get(), RenderItemStand::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.GLOWING_CRACKS.get(),
 				reika.chromaticraft.render.tesr.dimension.RenderGlowingCracks::new);

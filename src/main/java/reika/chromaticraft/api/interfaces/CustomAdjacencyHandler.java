@@ -9,16 +9,16 @@
  ******************************************************************************/
 package reika.chromaticraft.api.interfaces;
 
-import java.util.Collection;
-
 import net.minecraft.world.item.ItemStack;
+
+import java.util.Collection;
 
 public interface CustomAdjacencyHandler {
 
 	/** A basic description of the effect. */
-	public String getDescription();
+    String getDescription();
 
 	/** A list of the item/held versions of the blocks on which this effect applies. Used for lexicon "show relevant items" display. */
-	public Collection<ItemStack> getItems();
+    Collection<ItemStack> getItems();
 
 }

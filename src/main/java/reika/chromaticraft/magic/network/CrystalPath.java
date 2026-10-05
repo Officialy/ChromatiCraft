@@ -9,24 +9,17 @@
  ******************************************************************************/
 package reika.chromaticraft.magic.network;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-
-import reika.chromaticraft.magic.interfaces.ConnectivityAction;
-import reika.chromaticraft.magic.interfaces.CrystalNetworkTile;
-import reika.chromaticraft.magic.interfaces.CrystalReceiver;
-import reika.chromaticraft.magic.interfaces.CrystalRepeater;
-import reika.chromaticraft.magic.interfaces.CrystalSource;
-import reika.chromaticraft.magic.interfaces.CrystalTransmitter;
-import reika.chromaticraft.magic.interfaces.ReactiveRepeater;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.Level;
+import reika.chromaticraft.magic.interfaces.*;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.dragonapi.instantiable.data.immutable.DecimalPosition;
 import reika.dragonapi.instantiable.data.immutable.WorldChunk;
 import reika.dragonapi.instantiable.data.immutable.WorldLocation;
 
-import net.minecraft.core.BlockPos;
-import net.minecraft.world.level.Level;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
 
 public class CrystalPath implements Comparable<CrystalPath> {
 
@@ -54,7 +47,7 @@ public class CrystalPath implements Comparable<CrystalPath> {
 			nodes = new ArrayList(li);
 		}
 		else {
-			nodes = this.createNodeList(li);
+			nodes = createNodeList(li);
 		}
 		for (PathNode p : nodes) {
 			p.cacheTile();
@@ -115,11 +108,10 @@ public class CrystalPath implements Comparable<CrystalPath> {
 					if (l.isRainable() && transmitter.getWorld().isRaining())
 						atten *= 1.15;
 					loss += atten;
-					if (te instanceof ConnectivityAction) {
+					if (te instanceof ConnectivityAction ca) {
 						PathNode next = nodes.get(i+1);
 						CrystalNetworkTile tenext = next.getTile(true);
-						ConnectivityAction ca = (ConnectivityAction)te;
-						ca.notifyReceivingFrom(this, (CrystalTransmitter)tenext);
+                        ca.notifyReceivingFrom(this, (CrystalTransmitter)tenext);
 						ca.notifySendingTo(this, (CrystalReceiver)teprev);
 					}
 					if (te instanceof ReactiveRepeater) {
@@ -161,7 +153,7 @@ public class CrystalPath implements Comparable<CrystalPath> {
 
 	@Override
 	public final String toString() {
-		return element+": to "+origin+" from "+transmitter+": "+nodes.size()+"x "+nodes.toString();
+		return element+": to "+origin+" from "+transmitter+": "+nodes.size()+"x "+ nodes;
 	}
 
 	public final boolean contains(CrystalNetworkTile te) {
@@ -236,9 +228,9 @@ public class CrystalPath implements Comparable<CrystalPath> {
 		if (r == null)
 			r = (CrystalReceiver)locs.getTile(true);
 		DecimalPosition offset = r.getTargetRenderOffset(element);
-		double sx = offset != null ? offset.xCoord : 0;
-		double sy = offset != null ? offset.yCoord : 0;
-		double sz = offset != null ? offset.zCoord : 0;
+		double sx = offset != null ? offset.xCoord() : 0;
+		double sy = offset != null ? offset.yCoord() : 0;
+		double sz = offset != null ? offset.zCoord() : 0;
 		src.addSelfTickingTarget(locs.location, element, sx, sy, sz, r.getIncomingBeamRadius(), transmitter.getMaximumBeamRadius(), ticks);
 		for (int i = 1; i < nodes.size()-1; i++) {
 			CrystalNetworkTile te = nodes.get(i).getTile(true);
@@ -246,9 +238,9 @@ public class CrystalPath implements Comparable<CrystalPath> {
 				PathNode tg = nodes.get(i-1);
 				r = (CrystalReceiver)tg.getTile(true);
 				offset = r.getTargetRenderOffset(element);
-				double dx = offset != null ? offset.xCoord : 0;
-				double dy = offset != null ? offset.yCoord : 0;
-				double dz = offset != null ? offset.zCoord : 0;
+				double dx = offset != null ? offset.xCoord() : 0;
+				double dy = offset != null ? offset.yCoord() : 0;
+				double dz = offset != null ? offset.zCoord() : 0;
 				((CrystalTransmitter)te).addSelfTickingTarget(tg.location, element, dx, dy, dz, r.getIncomingBeamRadius(), transmitter.getMaximumBeamRadius(), ticks);
 			}/*
 			if (te instanceof CrystalReceiver) {
@@ -283,9 +275,8 @@ public class CrystalPath implements Comparable<CrystalPath> {
 
 	@Override
 	public final boolean equals(Object o) {
-		if (o instanceof CrystalPath) {
-			CrystalPath p = (CrystalPath)o;
-			return p.element == element && p.nodes.equals(nodes);
+		if (o instanceof CrystalPath p) {
+            return p.element == element && p.nodes.equals(nodes);
 		}
 		return false;
 	}

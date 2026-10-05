@@ -9,25 +9,22 @@
  ******************************************************************************/
 package reika.chromaticraft.render.item;
 
-import java.util.function.Consumer;
-
-import org.joml.Vector3f;
-import org.joml.Vector3fc;
-import org.jspecify.annotations.Nullable;
-
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.serialization.MapCodec;
-
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.special.SpecialModelRenderer;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
-
+import org.joml.Vector3f;
+import org.joml.Vector3fc;
+import org.jspecify.annotations.Nullable;
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.base.tileentity.TileEntityAdjacencyUpgrade;
 import reika.chromaticraft.items.ItemAdjacencyPlacer;
 import reika.chromaticraft.registry.AdjacencyUpgrades;
 import reika.chromaticraft.render.tesr.AdjacencyUpgradeRenderer;
+
+import java.util.function.Consumer;
 
 /**
  * V33a drew each Adjacency Upgrade item with its colour's render-only tile, given the stack's tier: the out-of-world

@@ -1,91 +1,53 @@
 package reika.chromaticraft.registry;
 
-import net.minecraft.sounds.SoundEvents;
-import java.util.EnumMap;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Supplier;
-
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.SoundType;
-import net.minecraft.world.level.material.PushReaction;
-import net.minecraft.world.level.block.LeavesBlock;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.MapColor;
-
+import net.minecraft.world.level.material.PushReaction;
 import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
-
 import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.block.BlockCastingItemStand;
-import reika.chromaticraft.block.BlockCastingTable;
-import reika.chromaticraft.block.BlockRitualTable;
-import reika.chromaticraft.block.BlockCrystalCharger;
-import reika.chromaticraft.block.BlockRelaySource;
-import reika.chromaticraft.block.relay.BlockLumenRelay;
-import reika.chromaticraft.block.BlockCollector;
-import reika.chromaticraft.block.BlockFarmer;
-import reika.chromaticraft.block.BlockDecoPlant;
-import reika.chromaticraft.block.BlockItemAuraInfuser;
-import reika.chromaticraft.block.BlockChromaFluid;
-import reika.chromaticraft.block.BlockChromaMud;
-import reika.chromaticraft.block.BlockChromaPortal;
-import reika.chromaticraft.block.BlockChromaDoor;
-import reika.chromaticraft.block.BlockHeatLamp;
-import reika.chromaticraft.block.BlockTrapFloor;
-import reika.chromaticraft.block.BlockHoverBlock;
+import reika.chromaticraft.block.*;
+import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
+import reika.chromaticraft.block.crystal.BlockCaveCrystal;
+import reika.chromaticraft.block.crystal.BlockCrystalLamp;
+import reika.chromaticraft.block.crystal.BlockSuperCrystal;
+import reika.chromaticraft.block.decoration.BlockMetaAlloyLamp;
+import reika.chromaticraft.block.decoration.BlockMusicTrigger;
+import reika.chromaticraft.block.dimension.structure.BlockBiomeReplay;
+import reika.chromaticraft.block.dimension.structure.BlockStructurePassword;
+import reika.chromaticraft.block.dimension.structure.gol.BlockGOLController;
+import reika.chromaticraft.block.dimension.structure.gol.BlockGOLTile;
+import reika.chromaticraft.block.dimension.structure.laser.BlockLaserController;
+import reika.chromaticraft.block.dimension.structure.laser.BlockLaserEffector26;
 import reika.chromaticraft.block.dimension.structure.lightpanel.BlockLightPanel;
 import reika.chromaticraft.block.dimension.structure.lightpanel.BlockLightSwitch;
 import reika.chromaticraft.block.dimension.structure.locks.BlockColoredLock;
 import reika.chromaticraft.block.dimension.structure.locks.BlockLockKey;
 import reika.chromaticraft.block.dimension.structure.music.BlockMusicMemory;
-import reika.chromaticraft.block.dimension.structure.gol.BlockGOLController;
-import reika.chromaticraft.block.dimension.structure.gol.BlockGOLTile;
-import reika.chromaticraft.block.decoration.BlockMusicTrigger;
 import reika.chromaticraft.block.dimension.structure.shiftmaze.BlockShiftLock;
-import reika.chromaticraft.block.dimension.structure.BlockBiomeReplay;
-import reika.chromaticraft.block.dimension.structure.BlockStructurePassword;
-import reika.chromaticraft.block.BlockChromaticTile;
-import reika.chromaticraft.block.BlockCrystallineStone;
-import reika.chromaticraft.block.BlockCrystallineStoneBeam;
-import reika.chromaticraft.block.BlockCrystalRune;
-import reika.chromaticraft.block.BlockEncrustedCrystal;
-import reika.chromaticraft.block.BlockMultiStorage;
-import reika.chromaticraft.block.BlockCrystallineStone;
-import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
-import reika.chromaticraft.block.crystal.BlockCaveCrystal;
-import reika.chromaticraft.block.crystal.BlockCrystalLamp;
-import reika.chromaticraft.block.crystal.BlockSuperCrystal;
 import reika.chromaticraft.block.dye26.BlockDyeLeaf;
 import reika.chromaticraft.block.dye26.BlockDyeSapling;
 import reika.chromaticraft.block.dye26.BlockRainbowLeaf;
 import reika.chromaticraft.block.dye26.BlockRainbowSapling;
-import reika.chromaticraft.block.decoration.BlockMetaAlloyLamp;
-import reika.chromaticraft.block.worldgen26.BlockCliffStone;
-import reika.chromaticraft.block.worldgen26.BlockEnderFluid;
-import reika.chromaticraft.block.worldgen26.BlockGlowingLeaf;
-import reika.chromaticraft.block.worldgen26.BlockGlowDaisy;
-import reika.chromaticraft.block.worldgen26.BlockGlowRoot;
-import reika.chromaticraft.block.worldgen26.BlockLumaFluid;
-import reika.chromaticraft.block.worldgen26.BlockTieredOre;
-import reika.chromaticraft.block.worldgen26.BlockTieredPlant;
-import reika.chromaticraft.block.worldgen26.BlockCaveIndicator;
-import reika.chromaticraft.block.worldgen26.BlockUnknownArtefact;
-import reika.chromaticraft.block.worldgen26.BlockStructureShield;
-import reika.chromaticraft.block.BlockDummyAux;
-import reika.chromaticraft.block.worldgen26.BlockLootChest;
-import reika.chromaticraft.block.worldgen26.BlockStructureController;
-import reika.chromaticraft.block.worldgen26.BlockWarpNode;
-import reika.chromaticraft.block.worldgen26.BlockDecoFlower;
-import reika.chromaticraft.magic.progression.ProgressStage;
+import reika.chromaticraft.block.relay.BlockLumenRelay;
+import reika.chromaticraft.block.worldgen26.*;
 import reika.chromaticraft.items.itemblock.ItemBlockLumenRelay;
+import reika.chromaticraft.magic.progression.ProgressStage;
+
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Supplier;
 
 /**
  * ChromatiCraft block registry. Port-in-progress rewrite of the 1.7.10 {@code ChromaBlocks} enum
@@ -639,6 +601,13 @@ public final class ChromaBlocks {
 	public static final DeferredBlock<BlockGOLController> GOL_CONTROLLER = registerBlockOnly("gol_controller",
 			() -> new BlockGOLController(blockProperties().mapColor(MapColor.STONE)
 					.strength(-1F, 600000F).sound(SoundType.STONE).lightLevel(state -> 8)));
+	public static final DeferredBlock<BlockLaserEffector26> LASER_EFFECTOR = registerBlockOnly("laser_effector",
+			() -> new BlockLaserEffector26(blockProperties().mapColor(MapColor.COLOR_PURPLE)
+					.strength(-1F, 600000F).sound(SoundType.STONE).noOcclusion()
+					.lightLevel(state -> state.getValue(BlockLaserEffector26.LIT) ? 15 : 2)));
+	public static final DeferredBlock<BlockLaserController> LASER_CONTROLLER = registerBlockOnly("laser_controller",
+			() -> new BlockLaserController(blockProperties().mapColor(MapColor.STONE)
+					.strength(-1F, 600000F).sound(SoundType.STONE).lightLevel(state -> 4)));
 	/** V33a DIMDATA callback cell used by the natural Biome Fragment's melody replay pedestal. */
 	public static final DeferredBlock<BlockBiomeReplay> BIOME_REPLAY = registerBlockOnly("biome_replay",
 			() -> new BlockBiomeReplay(blockProperties().mapColor(MapColor.STONE)
@@ -1012,6 +981,14 @@ public final class ChromaBlocks {
 			register("auto_enchanter", () -> new reika.chromaticraft.block.BlockAutoEnchanter(
 					blockProperties().strength(5F, 8F).requiresCorrectToolForDrops()));
 	/** V33a LUMENWIRE, a BlockModelledChromaTile entry: rock, hardness 5, resistance 40 (8 against explosions). */
+    public static final DeferredBlock<Block> VOID_MONSTER_TRAP=register("void_monster_trap",()->new BlockChromaticTile(blockProperties().strength(5F,8F).requiresCorrectToolForDrops().noOcclusion(),ChromaTiles.VOIDTRAP));
+    public static final DeferredBlock<Block> DEATH_FOG_EMITTER=register("death_fog_emitter",()->new BlockChromaticTile(blockProperties().strength(5F,8F).requiresCorrectToolForDrops(),ChromaTiles.DEATHFOG));
+    public static final EnumMap<CrystalElement,DeferredBlock<reika.chromaticraft.block.decoration.BlockColoredAltar>> COLORED_ALTARS=registerAltars();
+    private static EnumMap<CrystalElement,DeferredBlock<reika.chromaticraft.block.decoration.BlockColoredAltar>> registerAltars() {
+        var map=new EnumMap<CrystalElement,DeferredBlock<reika.chromaticraft.block.decoration.BlockColoredAltar>>(CrystalElement.class);
+        for (var color:CrystalElement.elements) map.put(color,register(color.name().toLowerCase(java.util.Locale.ROOT)+"_crystal_altar",()->new reika.chromaticraft.block.decoration.BlockColoredAltar(blockProperties().strength(2,600000).lightLevel(s->15).noOcclusion().sound(reika.chromaticraft.base.CrystalTypeBlock.SILENT_STONE),color)));
+        return map;
+    }
 	public static final DeferredBlock<Block> LUMEN_WIRE =
 			register("lumen_wire", () -> new reika.chromaticraft.block.BlockLumenWire(
 					blockProperties().strength(5F, 8F).requiresCorrectToolForDrops().noCollision().noOcclusion()));

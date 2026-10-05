@@ -9,29 +9,24 @@
  ******************************************************************************/
 package reika.chromaticraft.tileentity.storage;
 
-import java.util.Locale;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.BowItem;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
-import net.minecraft.world.item.PotionItem;
-import net.minecraft.world.item.ShearsItem;
+import net.minecraft.world.item.*;
 import net.minecraft.world.item.alchemy.PotionContents;
 import net.minecraft.world.item.alchemy.Potions;
 import net.minecraft.world.level.block.state.BlockState;
-
 import reika.chromaticraft.api.interfaces.ManipulatorInteraction;
 import reika.chromaticraft.base.tileentity.TileEntityMassStorage;
 import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.ChromaSounds;
 import reika.chromaticraft.registry.ChromaTiles;
 import reika.dragonapi.instantiable.data.KeyedItemStack;
+
+import java.util.Locale;
 
 /**
  * V33a {@code TileEntityToolStorage}, the Tool Compression Crate: holds up to 360,000 tools of one kind, chosen with the
@@ -118,7 +113,7 @@ public class TileEntityToolStorage extends TileEntityMassStorage implements Mani
 		filter = ToolType.list[Math.clamp(mode, 0, ToolType.list.length-1)];
 	}
 
-	public static enum ToolType {
+	public enum ToolType {
 		PICK(() -> new ItemStack(Items.DIAMOND_PICKAXE)),
 		AXE(() -> new ItemStack(Items.IRON_AXE)),
 		SHOVEL(() -> new ItemStack(Items.GOLDEN_SHOVEL)),
@@ -142,7 +137,7 @@ public class TileEntityToolStorage extends TileEntityMassStorage implements Mani
 		private final java.util.function.Supplier<ItemStack> iconFactory;
 		private ItemStack icon;
 
-		private ToolType(java.util.function.Supplier<ItemStack> is) {
+		ToolType(java.util.function.Supplier<ItemStack> is) {
 			iconFactory = is;
 		}
 
@@ -237,7 +232,7 @@ public class TileEntityToolStorage extends TileEntityMassStorage implements Mani
 		/** V33a {@code ReikaStringParser.capFirstChar}: first letter upper case, the rest lower. */
 		public String displayName() {
 			String n = this.name();
-			return n.substring(0, 1)+n.substring(1).toLowerCase(Locale.ENGLISH);
+			return n.charAt(0)+n.substring(1).toLowerCase(Locale.ENGLISH);
 		}
 	}
 

@@ -9,16 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.tileentity.aoe.effect;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Supplier;
-
-import org.jspecify.annotations.Nullable;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
@@ -32,21 +22,20 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityTicker;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
-
+import org.jspecify.annotations.Nullable;
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.api.AdjacencyUpgradeAPI.BlacklistReason;
 import reika.chromaticraft.api.interfaces.CustomAcceleration;
 import reika.chromaticraft.base.tileentity.TileEntityAdjacencyUpgrade;
 import reika.chromaticraft.base.tileentity.TileEntityChromaticBase;
-import reika.chromaticraft.registry.AdjacencyUpgrades;
-import reika.chromaticraft.registry.ChromaBlockEntities;
-import reika.chromaticraft.registry.ChromaIcons;
-import reika.chromaticraft.registry.ChromaOptions;
-import reika.chromaticraft.registry.ChromaTiles;
-import reika.chromaticraft.registry.CrystalElement;
+import reika.chromaticraft.registry.*;
 import reika.dragonapi.ModList;
 import reika.dragonapi.base.BlockEntityBase;
 import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
+
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 
 /**
  * V33a {@code TileEntityAccelerator}, the light blue Tile Accelerator: each tick it runs every adjacent tile's own tick

@@ -9,18 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.tileentity.processing;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-
-import org.apache.commons.lang3.tuple.ImmutablePair;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Holder;
@@ -33,6 +21,7 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.tags.TagKey;
+import net.minecraft.util.TriState;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Inventory;
@@ -49,13 +38,12 @@ import net.minecraft.world.item.enchantment.ItemEnchantments;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.EnchantingTableBlock;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.util.TriState;
 import net.neoforged.neoforge.transfer.ResourceHandler;
 import net.neoforged.neoforge.transfer.TransferPreconditions;
 import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import net.neoforged.neoforge.transfer.transaction.SnapshotJournal;
 import net.neoforged.neoforge.transfer.transaction.TransactionContext;
-
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.api.interfaces.EnchantableItem;
 import reika.chromaticraft.auxiliary.interfaces.ChromaExtractable;
@@ -65,15 +53,13 @@ import reika.chromaticraft.auxiliary.interfaces.VariableTexture;
 import reika.chromaticraft.base.ItemChromaTool;
 import reika.chromaticraft.base.tileentity.InventoriedChromaticBase;
 import reika.chromaticraft.container.MenuAutoEnchanter;
-import reika.chromaticraft.registry.ChromaBlockEntities;
-import reika.chromaticraft.registry.ChromaEnchants;
-import reika.chromaticraft.registry.ChromaFluids;
-import reika.chromaticraft.registry.ChromaItemTags;
-import reika.chromaticraft.registry.ChromaItems;
-import reika.chromaticraft.registry.ChromaTiles;
+import reika.chromaticraft.registry.*;
 import reika.dragonapi.instantiable.StepTimer;
 import reika.dragonapi.libraries.java.ReikaRandomHelper;
 import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
+
+import java.util.*;
+import java.util.Map.Entry;
 
 /**
  * V33a {@code TileEntityAutoEnchanter}, the Chromatic Enchanter: chosen enchantments (and levels, some beyond vanilla's
@@ -133,7 +119,7 @@ public class TileEntityAutoEnchanter extends InventoriedChromaticBase implements
 		allowedPairs.add(new ImmutablePair<>(Enchantments.SHARPNESS, Enchantments.SMITE));
 	}
 
-	private StepTimer progress = new StepTimer(40);
+	private final StepTimer progress = new StepTimer(40);
 	public int progressTimer;
 
 	private int chroma;
@@ -262,7 +248,7 @@ public class TileEntityAutoEnchanter extends InventoriedChromaticBase implements
 		return true;
 	}
 
-	public static enum EnchantValidity {
+	public enum EnchantValidity {
 		VALID("Valid"),
 		WRONGITEM("Invalid for Item"),
 		INCOMPATIBLEWITHEXISTING("Incompatible with Existing"),
@@ -271,7 +257,7 @@ public class TileEntityAutoEnchanter extends InventoriedChromaticBase implements
 
 		public final String desc;
 
-		private EnchantValidity(String s) {
+		EnchantValidity(String s) {
 			desc = s;
 		}
 
@@ -357,7 +343,7 @@ public class TileEntityAutoEnchanter extends InventoriedChromaticBase implements
 		// CHROMA-PORT: V33a limited Tinkers' Construct tools and weapons to ChromatiCraft digger/weapon enchantments; no
 		// 26.2 Tinkers' Construct is on the classpath.
 
-		return is.is(Items.BOOK) || is.is(Items.ENCHANTED_BOOK) ? true : is.supportsEnchantment(e);
+		return is.is(Items.BOOK) || is.is(Items.ENCHANTED_BOOK) || is.supportsEnchantment(e);
 	}
 
 	/** Whether an enchantment's supported items are this tag (26.2's version of 1.7.10's {@code EnumEnchantmentType}). */
@@ -374,10 +360,8 @@ public class TileEntityAutoEnchanter extends InventoriedChromaticBase implements
 				|| is.is(Items.SHEARS))
 			return true;
 		var equippable = is.get(net.minecraft.core.component.DataComponents.EQUIPPABLE);
-		if (equippable != null && equippable.slot().getType() == EquipmentSlot.Type.HUMANOID_ARMOR)
-			return true;
-		return false;
-	}
+        return equippable != null && equippable.slot().getType() == EquipmentSlot.Type.HUMANOID_ARMOR;
+    }
 
 	private void applyEnchants() {
 		if (inv.get(0).is(Items.BOOK))
@@ -584,7 +568,7 @@ public class TileEntityAutoEnchanter extends InventoriedChromaticBase implements
 		return this.isValid(inv.get(0)) && this.enchanting() ? (this.hasSufficientChroma() ? OperationState.RUNNING : OperationState.PENDING) : OperationState.INVALID;
 	}
 
-	private static enum EnchantmentTier {
+	private enum EnchantmentTier {
 		WORTHLESS(0.25F),
 		BASIC(0.75F),
 		NORMAL(1F),
@@ -593,7 +577,7 @@ public class TileEntityAutoEnchanter extends InventoriedChromaticBase implements
 
 		public final float costFactor;
 
-		private EnchantmentTier(float f) {
+		EnchantmentTier(float f) {
 			costFactor = f;
 		}
 	}

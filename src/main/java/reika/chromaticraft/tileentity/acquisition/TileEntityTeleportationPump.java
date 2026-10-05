@@ -9,15 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.tileentity.acquisition;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Set;
-
-import org.jspecify.annotations.Nullable;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -36,27 +27,23 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.LiquidBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.Fluids;
-
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.transfer.ResourceHandler;
 import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import net.neoforged.neoforge.transfer.transaction.Transaction;
-
+import org.jspecify.annotations.Nullable;
 import reika.chromaticraft.auxiliary.interfaces.AdjacencyUpgrade;
 import reika.chromaticraft.auxiliary.interfaces.OwnedTile;
 import reika.chromaticraft.base.tileentity.ChargedCrystalPowered;
 import reika.chromaticraft.container.MenuTelePump;
 import reika.chromaticraft.magic.ElementTagCompound;
 import reika.chromaticraft.magic.progression.ProgressStage;
-import reika.chromaticraft.registry.ChromaBlockEntities;
-import reika.chromaticraft.registry.ChromaFluids;
-import reika.chromaticraft.registry.ChromaSounds;
-import reika.chromaticraft.registry.ChromaTiles;
-import reika.chromaticraft.registry.CrystalElement;
+import reika.chromaticraft.registry.*;
 import reika.chromaticraft.render.particle.ChromaParticle;
 import reika.dragonapi.auxiliary.ChunkManager;
 import reika.dragonapi.instantiable.HybridTank;
@@ -66,6 +53,8 @@ import reika.dragonapi.interfaces.blockentity.ChunkLoadingTile;
 import reika.dragonapi.libraries.ReikaFluidHelper;
 import reika.dragonapi.libraries.level.ReikaWorldHelper;
 import reika.dragonapi.libraries.registry.ReikaParticleHelper;
+
+import java.util.*;
 
 /**
  * V33a Teleportation Pump: from a storage crystal's cyan/black/lime lumens it pulls fluid source blocks from anywhere
@@ -90,8 +79,8 @@ public class TileEntityTeleportationPump extends ChargedCrystalPowered implement
 	private final HybridTank tank = new HybridTank("telepump", 4000);
 	private final ResourceHandler<FluidResource> fluidHandler = new HybridTankResourceHandler(new HybridTank[] {tank},
 			(i, r) -> false, (i, r) -> ReikaFluidHelper.isFluidDrainableFromTank(r.toStack(1), tank), this::setChanged);
-	private HashMap<Fluid, ArrayList<FluidSource>> fluids = new HashMap<>();
-	private CountMap<Fluid> counts = new CountMap<>();
+	private final HashMap<Fluid, ArrayList<FluidSource>> fluids = new HashMap<>();
+	private final CountMap<Fluid> counts = new CountMap<>();
 
 	private @Nullable Fluid selected = null;
 
@@ -477,30 +466,20 @@ public class TileEntityTeleportationPump extends ChargedCrystalPowered implement
 		return new MenuTelePump(id, inventory, this);
 	}
 
-	private static final class FluidSource {
+    private record FluidSource(BlockPos location, Fluid fluid, int amount) {
 
-		private final BlockPos location;
-		private final Fluid fluid;
-		private final int amount;
+        /**
+         * V33a: the block there is still this fluid's liquid block, at any level (V33a matched the block, not its
+         * metadata). A waterlogged block now standing there is not taken.
+         */
+        public boolean matchInWorld(Level world) {
+            BlockState state = world.getBlockState(location);
+            if (!(state.getBlock() instanceof LiquidBlock))
+                return false;
+            Fluid found = ReikaFluidHelper.lookupFluidForBlock(state);
+            return found != null && found.isSame(fluid);
+        }
 
-		private FluidSource(BlockPos pos, Fluid f, int amt) {
-			location = pos;
-			fluid = f;
-			amount = amt;
-		}
-
-		/**
-		 * V33a: the block there is still this fluid's liquid block, at any level (V33a matched the block, not its
-		 * metadata). A waterlogged block now standing there is not taken.
-		 */
-		public boolean matchInWorld(Level world) {
-			BlockState state = world.getBlockState(location);
-			if (!(state.getBlock() instanceof net.minecraft.world.level.block.LiquidBlock))
-				return false;
-			Fluid found = ReikaFluidHelper.lookupFluidForBlock(state);
-			return found != null && found.isSame(fluid);
-		}
-
-	}
+    }
 
 }

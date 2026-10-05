@@ -1,8 +1,5 @@
 package reika.chromaticraft.world.biome;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -21,12 +18,14 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.LivingDropsEvent;
 import net.neoforged.neoforge.event.entity.living.MobDespawnEvent;
 import net.neoforged.neoforge.event.entity.living.MobSpawnEvent;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.data.ChromaBiomeTagProvider;
 import reika.chromaticraft.entity.EntityBallLightning;
 import reika.chromaticraft.registry.ChromaOptions;
 import reika.dragonapi.libraries.ReikaEntityHelper;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * V33a {@code ChromaticEventManager}'s Rainbow Forest rules: a forest without monsters.

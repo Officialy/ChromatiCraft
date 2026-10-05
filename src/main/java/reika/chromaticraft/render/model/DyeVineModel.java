@@ -1,12 +1,7 @@
 package reika.chromaticraft.render.model;
 
-import net.minecraft.core.Direction;
-import java.util.List;
-import java.util.Random;
-
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-
 import net.minecraft.client.renderer.block.BlockAndTintGetter;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
@@ -16,17 +11,19 @@ import net.minecraft.client.resources.model.geometry.BakedQuad;
 import net.minecraft.client.resources.model.geometry.QuadCollection;
 import net.minecraft.client.resources.model.sprite.Material;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.state.BlockState;
-
 import net.neoforged.neoforge.client.model.DynamicBlockStateModel;
 import net.neoforged.neoforge.client.model.block.CustomUnbakedBlockStateModel;
 import net.neoforged.neoforge.client.model.quad.MutableQuad;
-
 import reika.chromaticraft.block.dye26.BlockDyeVine;
 import reika.dragonapi.libraries.java.ReikaRandomHelper;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
+
+import java.util.List;
+import java.util.Random;
 
 /**
  * V33a {@code DyeVineRenderer} and {@code BlockDyeVine.render}, as a chunk-mesh model.
@@ -91,7 +88,7 @@ public final class DyeVineModel implements DynamicBlockStateModel {
 		QuadCollection.Builder quads = new QuadCollection.Builder();
 		cropPlanes(quads, strand, color, 0, (float)dx, (float)dy, (float)dz, (float)w);
 		if (vine.isFertile())
-			cropPlanes(quads, glow, 0xFF000000 | vine.getElement().getColor(), 15, (float)dx, (float)dy, (float)dz, (float)w);
+			cropPlanes(quads, glow, 0xFF000000 | vine.getElement().color(), 15, (float)dx, (float)dy, (float)dz, (float)w);
 		parts.add(new SimpleModelWrapper(quads.build(), false, strands[0]));
 	}
 

@@ -1,17 +1,16 @@
 package reika.chromaticraft.magic.progression;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.LinkedHashSet;
-import java.util.List;
-
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.world.item.ItemStack;
-
 import reika.dragonapi.libraries.registry.ReikaItemHelper;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedHashSet;
+import java.util.List;
 
 /** Persistent contents of one Chromic Lexicon, stored in the stack's 26.2 custom-data component. */
 public record LexiconData(List<String> pages, boolean creative, int blanks, List<String> notes) {

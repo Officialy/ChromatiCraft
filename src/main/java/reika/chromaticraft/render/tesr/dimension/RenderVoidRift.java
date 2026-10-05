@@ -2,7 +2,6 @@ package reika.chromaticraft.render.tesr.dimension;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
@@ -15,12 +14,8 @@ import net.minecraft.core.Direction;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-
-import org.jspecify.annotations.Nullable;
-
-import net.neoforged.neoforge.client.extensions.OrderedSubmitNodeCollectorExtension;
 import net.neoforged.neoforge.client.submit.RenderPhaseKeys;
-
+import org.jspecify.annotations.Nullable;
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.render.ChromaRenderPipelines;
@@ -52,8 +47,8 @@ public final class RenderVoidRift implements
 		state.worldZ = rift.getBlockPos().getZ();
 		for (Direction direction : Direction.Plane.HORIZONTAL) {
 			CrystalElement adjacent = rift.colorAt(direction);
-			state.colors[index(direction)] = adjacent == own ? 0 : adjacent == null ? own.getColor()
-					: ReikaColorAPI.mixColors(own.getColor(), adjacent.getColor(), 0.5F);
+			state.colors[index(direction)] = adjacent == own ? 0 : adjacent == null ? own.color()
+					: ReikaColorAPI.mixColors(own.color(), adjacent.color(), 0.5F);
 			for (int height = 1; height < TileEntityVoidRift.HEIGHT; height++) {
 				// Do not lay the aura exactly across an opaque terrain face. The animated seam moves
 				// through the block boundary, so a depth bias alone only changes which surface flickers;
@@ -178,7 +173,7 @@ public final class RenderVoidRift implements
 			RenderType renderType, SubmitNodeCollector.CustomGeometryRenderer renderer) {
 		CustomFeatureRenderer.Submit submit = new CustomFeatureRenderer.Submit(
 				poseStack.last().copy(), renderType, renderer);
-		((OrderedSubmitNodeCollectorExtension)collector.order(0))
+		collector.order(0)
 				.submitSpecial(RenderPhaseKeys.AFTER_TERRAIN, submit);
 	}
 

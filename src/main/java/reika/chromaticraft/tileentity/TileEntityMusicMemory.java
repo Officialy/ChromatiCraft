@@ -1,8 +1,5 @@
 package reika.chromaticraft.tileentity;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
@@ -11,9 +8,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
-
 import org.jspecify.annotations.Nullable;
-
 import reika.chromaticraft.block.BlockChromaDoor;
 import reika.chromaticraft.block.decoration.BlockMusicTrigger;
 import reika.chromaticraft.registry.ChromaBlockEntities;
@@ -21,6 +16,9 @@ import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaSounds;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.dragonapi.libraries.mathsci.ReikaMusicHelper.MusicKey;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /** Persistent modern owner for one V33a Crystal Music room. */
 public final class TileEntityMusicMemory extends BlockEntity implements BlockMusicTrigger.Handler {

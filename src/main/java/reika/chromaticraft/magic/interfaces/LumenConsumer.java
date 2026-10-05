@@ -6,7 +6,7 @@ import reika.dragonapi.interfaces.blockentity.AdjacentUpdateWatcher;
 
 public interface LumenConsumer extends LumenTile, NBTTile, AdjacentUpdateWatcher {
 
-	public int getEfficiencyBoost();
+	int getEfficiencyBoost();
 
-	public boolean allowsEfficiencyBoost();
+	boolean allowsEfficiencyBoost();
 }

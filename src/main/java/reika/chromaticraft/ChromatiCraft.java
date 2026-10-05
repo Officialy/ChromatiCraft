@@ -1,46 +1,34 @@
 package reika.chromaticraft;
 
-import java.io.File;
-import java.net.URL;
-
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectCategory;
-
+import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
+import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
-
-import reika.chromaticraft.magic.network.PylonFinder;
-import reika.chromaticraft.network.ChromaNetwork;
-import reika.chromaticraft.magic.potions.PotionBetterSaturation;
-import reika.chromaticraft.magic.potions.PotionCustomRegen;
-import reika.chromaticraft.registry.ChromaBlockEntities;
-import reika.chromaticraft.registry.ChromaEntityTypes;
-import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaFeatures;
-import reika.chromaticraft.registry.ChromaIcons;
-import reika.chromaticraft.registry.ChromaItems;
-import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.registry.ChromaMenus;
-import reika.chromaticraft.registry.ChromaOptions;
-import reika.chromaticraft.registry.ChromaPlacementModifiers;
-import reika.chromaticraft.registry.ChromaTabs;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import reika.chromaticraft.entity.EntityGlowCloud;
 import reika.chromaticraft.entity.EntityTunnelNuker;
+import reika.chromaticraft.items.tools.wands.ItemExcavationWand;
+import reika.chromaticraft.magic.network.PylonFinder;
+import reika.chromaticraft.magic.potions.PotionBetterSaturation;
+import reika.chromaticraft.magic.potions.PotionCustomRegen;
+import reika.chromaticraft.network.ChromaNetwork;
+import reika.chromaticraft.registry.*;
 import reika.dragonapi.base.DragonAPIMod;
 import reika.rotarycraft.registry.RotaryBlocks;
+
+import java.io.File;
+import java.net.URL;
 
 /**
  * ChromatiCraft main mod class. Port-in-progress: this is the minimal 26.2 @Mod entry point that
@@ -86,8 +74,12 @@ public class ChromatiCraft extends DragonAPIMod {
 				reika.chromaticraft.world.dimension.structure.MusicStructureGenerator::new);
 		reika.chromaticraft.world.dimension.DimensionStructureType.GOL.registerGenerator(
 				reika.chromaticraft.world.dimension.structure.GOLStructureGenerator::new);
+		reika.chromaticraft.world.dimension.DimensionStructureType.LASER.registerGenerator(
+				reika.chromaticraft.world.dimension.structure.LaserStructureGenerator::new);
 
 		ChromaBlocks.BLOCKS.register(modEventBus);
+        modEventBus.addListener(reika.chromaticraft.client.render.ColoredAltarEffects::register);
+		reika.chromaticraft.registry.ChromaWeatherAttributes.ATTRIBUTES.register(modEventBus);
 		ChromaBlocks.ITEMS.register(modEventBus);
 		ChromaItems.ITEMS.register(modEventBus);
 		ChromaBlockEntities.BLOCK_ENTITIES.register(modEventBus);
@@ -104,6 +96,8 @@ public class ChromatiCraft extends DragonAPIMod {
 		reika.dragonapi.modinteract.AEHooks.registerGridHost(ChromaBlockEntities.ME_DISTRIBUTOR);
 		ChromaMenus.REGISTRY.register(modEventBus);
 		ChromaEntityTypes.ENTITY_TYPES.register(modEventBus);
+        modEventBus.addListener((net.neoforged.neoforge.event.entity.EntityAttributeCreationEvent event) -> event.put(ChromaEntityTypes.MONSTER_BAIT.get(),net.minecraft.world.entity.Mob.createMobAttributes().build()));
+        if (reika.dragonapi.ModList.VOIDMONSTER.isLoaded()) reika.chromaticraft.modinterface.voidritual.VoidMonsterIntegration.register(modEventBus);
 		modEventBus.addListener(EntityGlowCloud::registerAttributes);
 		modEventBus.addListener(EntityGlowCloud::registerSpawnPlacements);
 		modEventBus.addListener(reika.chromaticraft.entity.EntityBallLightning::registerAttributes);
@@ -114,6 +108,8 @@ public class ChromatiCraft extends DragonAPIMod {
 		ChromaTabs.CREATIVE_MODE_TABS.register(modEventBus);
 		ChromaFeatures.FEATURES.register(modEventBus);
 		reika.chromaticraft.world.dimension.SkyRiverManager.TICKET_TYPES.register(modEventBus);
+		reika.chromaticraft.world.PostPopulationWorldgen.TICKETS.register(modEventBus);
+		reika.chromaticraft.world.luminous.LuminousCliffsTerrainFeature.ATTACHMENTS.register(modEventBus);
 		reika.chromaticraft.world.dimension.structure.ProximaStructures.TYPES.register(modEventBus);
 		reika.chromaticraft.world.dimension.structure.ProximaStructures.PLACEMENTS.register(modEventBus);
 		reika.chromaticraft.world.dimension.structure.ProximaStructurePieces.PIECES.register(modEventBus);
@@ -159,10 +155,15 @@ public class ChromatiCraft extends DragonAPIMod {
 		reika.chromaticraft.auxiliary.PoolAlloyingHandler.register();
 		reika.chromaticraft.auxiliary.CobbleGeneratorItemExpiry.register();
 		reika.chromaticraft.auxiliary.ChromaFreezeHandler.register();
+		ItemExcavationWand.register();
+		reika.chromaticraft.items.tools.ItemOreSilker.register();
 	}
 
 	private void commonSetup(FMLCommonSetupEvent event) {
 		event.enqueueWork(() -> {
+			if (ChromaOptions.HANDBOOK.getState())
+				reika.dragonapi.auxiliary.trackers.PlayerFirstTimeTracker.addTracker(
+						new reika.chromaticraft.auxiliary.ChromaBookSpawner());
 			PylonFinder.registerTransparentBlock(RotaryBlocks.BLASTGLASS.get());
 			reika.chromaticraft.world.iwg.PylonGenerator.register();
 			// V33a load(): ChromatiCraft's icons are addressable by name (the Particle Spawner saves its particle so).
@@ -200,12 +201,14 @@ public class ChromatiCraft extends DragonAPIMod {
 
 	private static void playerLoggedIn(net.neoforged.neoforge.event.entity.player.PlayerEvent.PlayerLoggedInEvent event) {
 		if (event.getEntity() instanceof net.minecraft.server.level.ServerPlayer player) {
+			reika.chromaticraft.magic.progression.ChromaAdvancements.sync(player);
 			reika.dragonapi.libraries.ReikaPlayerAPI.syncCustomData(player);
 			ChromaNetwork.sendTowerLocations(player);
 		}
 	}
 
 	private static void registerScreens(RegisterMenuScreensEvent event) {
+        event.register(ChromaMenus.BULK_MOVER.get(), reika.chromaticraft.client.gui.ScreenBulkMover::new);
 		event.register(ChromaMenus.RITUAL_TABLE.get(),
 				reika.chromaticraft.client.gui.ScreenRitualTable::new);
 		event.register(ChromaMenus.CASTING_TABLE.get(),

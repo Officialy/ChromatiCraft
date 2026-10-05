@@ -1,0 +1,30 @@
+{
+  "sources": [
+    {
+      "type": "minecraft:directory",
+      "prefix": "block/icons/",
+      "source": "block/icons"
+    },
+    {
+      "type": "chromaticraft:legacy_glow",
+      "resource": "chromaticraft:block/icons/roundflare",
+      "sprite": "chromaticraft:block/icons/roundflare_alpha"
+    },
+    {
+      "type": "chromaticraft:legacy_glow",
+      "resource": "chromaticraft:block/icons/sunflare",
+      "sprite": "chromaticraft:block/icons/sunflare_alpha"
+    },
+    {
+      "type": "chromaticraft:legacy_glow",
+      "resource": "chromaticraft:block/icons/turbo",
+      "sprite": "chromaticraft:block/icons/turbo_alpha"
+    },
+    {
+      "type": "chromaticraft:legacy_glow",
+      "core": true,
+      "resource": "chromaticraft:block/icons/roundflare",
+      "sprite": "chromaticraft:block/icons/roundflare_core_alpha"
+    }
+  ]
+}

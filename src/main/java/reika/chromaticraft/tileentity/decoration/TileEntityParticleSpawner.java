@@ -11,7 +11,7 @@ package reika.chromaticraft.tileentity.decoration;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -20,9 +20,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.Fluid;
-import net.minecraft.network.chat.Component;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.base.tileentity.TileEntityChromaticBase;
 import reika.chromaticraft.container.MenuParticleSpawner;
@@ -178,9 +176,9 @@ public class TileEntityParticleSpawner extends TileEntityChromaticBase implement
 		public boolean spawn(Level world, int tick) {
 			if (tick%Math.max(1, (int)particleRate.getValue()) != 0)
 				return false;
-			double px = location.xCoord+0.5+ReikaRandomHelper.getRandomPlusMinus(particlePositionX.getValue(), particlePositionX.getVariation());
-			double py = location.yCoord+0.5+ReikaRandomHelper.getRandomPlusMinus(particlePositionY.getValue(), particlePositionY.getVariation());
-			double pz = location.zCoord+0.5+ReikaRandomHelper.getRandomPlusMinus(particlePositionZ.getValue(), particlePositionZ.getVariation());
+			double px = location.xCoord() +0.5+ReikaRandomHelper.getRandomPlusMinus(particlePositionX.getValue(), particlePositionX.getVariation());
+			double py = location.yCoord() +0.5+ReikaRandomHelper.getRandomPlusMinus(particlePositionY.getValue(), particlePositionY.getVariation());
+			double pz = location.zCoord() +0.5+ReikaRandomHelper.getRandomPlusMinus(particlePositionZ.getValue(), particlePositionZ.getVariation());
 			double vx = ReikaRandomHelper.getRandomPlusMinus(particleVelocityX.getValue(), particleVelocityX.getVariation());
 			double vy = ReikaRandomHelper.getRandomPlusMinus(particleVelocityY.getValue(), particleVelocityY.getVariation());
 			double vz = ReikaRandomHelper.getRandomPlusMinus(particleVelocityZ.getValue(), particleVelocityZ.getVariation());
@@ -371,18 +369,12 @@ public class TileEntityParticleSpawner extends TileEntityChromaticBase implement
 		}
 
 		public boolean increaseVariation() {
-			if (variation.increase()) {
-				return true;
-			}
-			return false;
-		}
+            return variation.increase();
+        }
 
 		public boolean decreaseVariation() {
-			if (variation.decrease()) {
-				return true;
-			}
-			return false;
-		}
+            return variation.decrease();
+        }
 
 		public void setValue(N value) {
 			bounds.setValue(value);

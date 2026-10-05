@@ -25,6 +25,9 @@ public final class ProximaStructurePieces {
 	public static final DeferredHolder<StructurePieceType, StructurePieceType> LUMINOUS_ISLAND =
 			PIECES.register("luminous_island",
 					() -> (StructurePieceType)(context, tag) -> new reika.chromaticraft.world.luminous.LuminousIslandPiece(tag));
+	public static final DeferredHolder<StructurePieceType, StructurePieceType> LUMINOUS_ISLAND_CANDIDATE =
+			PIECES.register("luminous_island_candidate",
+					() -> (StructurePieceType)(context, tag) -> new reika.chromaticraft.world.luminous.LuminousIslandCandidatePiece(tag));
 
 	public static final DeferredHolder<StructurePieceType, StructurePieceType> GLOW_CAVE =
 			PIECES.register("glow_cave",
@@ -49,6 +52,9 @@ public final class ProximaStructurePieces {
 	public static final DeferredHolder<StructurePieceType, StructurePieceType> GOL =
 			PIECES.register("gol",
 					() -> (StructurePieceType)(context, tag) -> new GOLStructurePiece(tag));
+	public static final DeferredHolder<StructurePieceType, StructurePieceType> LASER =
+			PIECES.register("laser",
+					() -> (StructurePieceType)(context, tag) -> new LaserStructurePiece(tag));
 
 	public static final DeferredHolder<StructurePieceType, StructurePieceType> PORTAL =
 			PIECES.register("portal",

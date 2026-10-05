@@ -1,7 +1,5 @@
 package reika.chromaticraft.data;
 
-import java.util.concurrent.CompletableFuture;
-
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.PackOutput;
@@ -9,9 +7,10 @@ import net.minecraft.data.tags.TagsProvider;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.world.damagesource.DamageType;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.auxiliary.PylonDamage;
+
+import java.util.concurrent.CompletableFuture;
 
 /**
  * V33a {@code PylonDamage}'s behaviour as damage-type tags: unblockable (bypasses armour, and a shield, as 1.7.10
@@ -35,6 +34,7 @@ public final class ChromaDamageTypeTagsProvider extends TagsProvider<DamageType>
 			tag(DamageTypeTags.WITCH_RESISTANT_TO).add(key);
 			tag(DamageTypeTags.NO_KNOCKBACK).add(key);
 		}
+        tag(DamageTypeTags.WITCH_RESISTANT_TO).add(reika.chromaticraft.modinterface.voidritual.VoidRitualDamageTypes.KEY);
 		// V33a LumenTurretDamage.isMagicDamage: only witches' resistance followed from that in 1.7.10.
 		tag(DamageTypeTags.WITCH_RESISTANT_TO).add(reika.chromaticraft.auxiliary.LumenTurretDamage.KEY);
 	}

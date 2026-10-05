@@ -9,11 +9,10 @@
  ******************************************************************************/
 package reika.chromaticraft.magic.enchantment;
 
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.LivingEntity;
-
-import reika.chromaticraft.magic.progression.ProgressStage;
+import net.minecraft.world.entity.player.Player;
 import reika.chromaticraft.base.ChromaticEnchantment;
+import reika.chromaticraft.magic.progression.ProgressStage;
 
 /**
  * V33a Capital Strike: against a mob of enough maximum health each hit takes a fixed fraction of it, capped; anything
@@ -30,7 +29,7 @@ public class EnchantmentBossKill extends ChromaticEnchantment {
 		return damageFraction.length;
 	}
 
-	private static DamageProfile[] damageFraction = {
+	private static final DamageProfile[] damageFraction = {
 			new DamageProfile(16, 50, 500),
 			new DamageProfile(4, 80, 300),
 			new DamageProfile(2, 100, 200),
@@ -48,19 +47,13 @@ public class EnchantmentBossKill extends ChromaticEnchantment {
 		}
 	}
 
-	private static class DamageProfile {
+    private record DamageProfile(float damageFraction, int damageCap, int damageThreshold) {
 
-		private final float damageFraction;
-		private final int damageCap;
-		private final int damageThreshold;
+        private DamageProfile(int damageFraction, int damageCap, int damageThreshold) {
+            this(1F / damageFraction, damageCap, damageThreshold);
+        }
 
-		private DamageProfile(int nhits, int cap, int thresh) {
-			damageFraction = 1F/nhits;
-			damageCap = cap;
-			damageThreshold = thresh;
-		}
-
-	}
+    }
 
 	@Override
 	public boolean isVisibleToPlayer(Player ep, int level) {

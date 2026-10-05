@@ -1,24 +1,22 @@
 package reika.chromaticraft.registry;
 
-import java.util.function.Supplier;
-import java.util.EnumMap;
-
-import net.minecraft.world.item.Item;
-import net.minecraft.world.item.BucketItem;
-import net.minecraft.world.item.Items;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.item.BucketItem;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-
+import net.minecraft.world.item.Items;
 import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.item.ItemChromaBerry;
 import reika.chromaticraft.item.ItemChromaEther;
-import reika.chromaticraft.item.ItemElementalStone;
 import reika.chromaticraft.item.ItemCrystalShard;
+import reika.chromaticraft.item.ItemElementalStone;
 import reika.chromaticraft.items.ItemStorageCrystal;
+
+import java.util.EnumMap;
+import java.util.function.Supplier;
 
 /**
  * ChromatiCraft item registry. Port-in-progress rewrite of the 1.7.10 {@code ChromaItems} enum into
@@ -65,7 +63,15 @@ public final class ChromaItems {
 		return item == ChromaCraftingItems.ETHER_BERRIES ? new ItemChromaEther(itemProperties()) : new Item(itemProperties());
 	}
 
-	/** One registered 26.2 item for each former {@code CLUSTER} metadata variant. */
+	/** V33a MAGICBRANCH metadata 0-5, preserving the six animated material variants. */
+	public static final EnumMap<reika.chromaticraft.items.ItemMagicBranch.BranchTypes, DeferredItem<reika.chromaticraft.items.ItemMagicBranch>> BRANCHES =
+			new EnumMap<>(reika.chromaticraft.items.ItemMagicBranch.BranchTypes.class);
+	static {
+		for (var type : reika.chromaticraft.items.ItemMagicBranch.BranchTypes.list)
+			BRANCHES.put(type, reg(type.registryName(), () -> new reika.chromaticraft.items.ItemMagicBranch(itemProperties(),type)));
+	}
+
+	/** One registered 26.3 item for each former {@code CLUSTER} metadata variant. */
 	public static final EnumMap<ChromaClusterItems, DeferredItem<Item>> CLUSTERS =
 			new EnumMap<>(ChromaClusterItems.class);
 	static {
@@ -82,11 +88,20 @@ public final class ChromaItems {
 			new EnumMap<>(ChromaTieredItems.class);
 	static {
 		for (ChromaTieredItems item : ChromaTieredItems.list)
-			TIERED.put(item, reg(item.registryName(), () -> new Item(itemProperties())));
+			TIERED.put(item, reg(item.registryName(), () -> new reika.chromaticraft.items.ItemTieredResource(itemProperties(), item)));
 	}
 
 	public static ItemStack tieredStack(ChromaTieredItems item) {
 		return new ItemStack(TIERED.get(item).get());
+	}
+
+	/** V33a DIMGEN: the resource drops are separate from their decoration blocks. */
+	public static final EnumMap<ChromaDimensionItems, DeferredItem<reika.chromaticraft.items.ItemDimGen>> DIMENSION_RESOURCES =
+			new EnumMap<>(ChromaDimensionItems.class);
+	static {
+		for (ChromaDimensionItems type : ChromaDimensionItems.values())
+			DIMENSION_RESOURCES.put(type, reg(type.registryName(),
+					() -> new reika.chromaticraft.items.ItemDimGen(itemProperties(), type)));
 	}
 
 	/** V33a LENS metadata 0-15, promoted to one stable item identity per element. */
@@ -125,8 +140,16 @@ public final class ChromaItems {
 	public static final DeferredItem<Item> SPEED_UPGRADE =
 			reg("speed_upgrade", () -> new Item(itemProperties().stacksTo(1)));
 	/** V33a DIMGEN metadata 9, consumed by the Player Aura Infuser's DIMENSION boost. */
-	public static final DeferredItem<Item> GLOW_CAVE_DUST =
-			reg("glow_cave_dust", () -> new Item(itemProperties()));
+	public static final DeferredItem<reika.chromaticraft.items.ItemDimGen> GLOW_CAVE_DUST =
+			DIMENSION_RESOURCES.get(ChromaDimensionItems.GLOWCAVE);
+	public static final DeferredItem<reika.chromaticraft.items.tools.ItemEfficiencyCrystal> EFFICIENCY_GEM =
+			reg("efficiency_gem", () -> new reika.chromaticraft.items.tools.ItemEfficiencyCrystal(itemProperties()));
+	public static final DeferredItem<reika.chromaticraft.items.tools.ItemWarpCapsule> RECALL_TABLET =
+			reg("recall_tablet", () -> new reika.chromaticraft.items.tools.ItemWarpCapsule(itemProperties()));
+	public static final DeferredItem<reika.chromaticraft.items.tools.wands.ItemCaptureWand> CAPTURE_WAND =
+			reg("capture_star", () -> new reika.chromaticraft.items.tools.wands.ItemCaptureWand(itemProperties()));
+	public static final DeferredItem<reika.chromaticraft.items.tools.ItemRecipeCacheCapsule> RECIPE_TABLET =
+			reg("recipe_tablet", () -> new reika.chromaticraft.items.tools.ItemRecipeCacheCapsule(itemProperties()));
 	/** V33a ENDERCRYSTAL: captures and replaces vanilla End Crystals; count is component-backed. */
 	public static final DeferredItem<reika.chromaticraft.items.tools.ItemEnderCrystal> ENDER_CRYSTAL_MOVER =
 			reg("ender_crystal_mover", () -> new reika.chromaticraft.items.tools.ItemEnderCrystal(
@@ -163,6 +186,28 @@ public final class ChromaItems {
 	/** V33a LIGHTWAND (tool sprite 91); V33a shipped no name for it. */
 	public static final DeferredItem<reika.chromaticraft.items.tools.wands.ItemLightWand> LIGHT_WAND =
 			reg("light_wand", () -> new reika.chromaticraft.items.tools.wands.ItemLightWand(itemProperties()));
+	public static final DeferredItem<reika.chromaticraft.items.tools.wands.ItemExcavationWand> EXCAVATION_WAND =
+			reg("excavation_star", () -> new reika.chromaticraft.items.tools.wands.ItemExcavationWand(itemProperties()));
+	public static final DeferredItem<reika.chromaticraft.items.tools.wands.ItemBuilderWand> CONSTRUCTION_WAND =
+			reg("construction_star", () -> new reika.chromaticraft.items.tools.wands.ItemBuilderWand(itemProperties()));
+	public static final DeferredItem<reika.chromaticraft.items.tools.wands.ItemFlightWand> HOVER_WAND =
+			reg("hover_star", () -> new reika.chromaticraft.items.tools.wands.ItemFlightWand(itemProperties()));
+	public static final DeferredItem<reika.chromaticraft.items.tools.ItemMultiTool> MULTITOOL =
+			reg("multitool", () -> new reika.chromaticraft.items.tools.ItemMultiTool(itemProperties()));
+	public static final DeferredItem<reika.chromaticraft.items.tools.ItemOreSilker> ORE_HARVESTER =
+			reg("ore_harvester", () -> new reika.chromaticraft.items.tools.ItemOreSilker(itemProperties()));
+	/** V33a SPAWNERBYPASS, tool sprite 43. */
+	public static final DeferredItem<reika.chromaticraft.items.tools.powered.ItemSpawnerBypass> SPAWNER_BYPASS =
+			reg("spawner_bypass", () -> new reika.chromaticraft.items.tools.powered.ItemSpawnerBypass(itemProperties()));
+	/** V33a BULKMOVER, tool sprite 12. */
+	public static final DeferredItem<reika.chromaticraft.items.tools.ItemBulkMover> BULK_MOVER =
+			reg("bulk_mover", () -> new reika.chromaticraft.items.tools.ItemBulkMover(itemProperties()));
+	/** V33a BOTTLENECK, tool sprite 48. */
+	public static final DeferredItem<reika.chromaticraft.items.tools.ItemBottleneckFinder> BOTTLENECK_FINDER =
+			reg("bottleneck_finder", () -> new reika.chromaticraft.items.tools.ItemBottleneckFinder(itemProperties()));
+	/** V33a MOBSONAR, tool sprite 92. */
+	public static final DeferredItem<reika.chromaticraft.items.tools.wands.ItemMobSonar> MOB_SONAR =
+			reg("creature_sounding_star", () -> new reika.chromaticraft.items.tools.wands.ItemMobSonar(itemProperties()));
 	/** V33a RIFT, the World Rift: an ItemLinkedTilePlacer placing ChromaBlocks.RIFT in linked pairs. */
 	public static final DeferredItem<reika.chromaticraft.items.itemblock.ItemLinkedTilePlacer> WORLD_RIFT =
 			reg("world_rift", () -> new reika.chromaticraft.items.itemblock.ItemLinkedTilePlacer(itemProperties()));
@@ -269,7 +314,9 @@ public final class ChromaItems {
 		return new ItemStack(BOOSTED_SHARDS.get(element).get(), count);
 	}
 
-	private ChromaItems() {}
+	// CHROMA-PORT: ItemMagicRegistry/ItemElementCalculator retain the original LIGHTGRAY 2, GRAY 1, PINK 2, GREEN 1 composition; bind this identity when that subsystem ports.
+    public static final DeferredItem<Item> VOID_MONSTER_ESSENCE = reg("void_monster_essence", () -> new Item(itemProperties()));
+    private ChromaItems() {}
 	/** Former BERRY metadata split into sixteen stable color identities. */
 	public static final EnumMap<CrystalElement, DeferredItem<ItemChromaBerry>> BERRIES = new EnumMap<>(CrystalElement.class);
 	/** Former ELEMENTAL metadata split into sixteen stable color identities. */

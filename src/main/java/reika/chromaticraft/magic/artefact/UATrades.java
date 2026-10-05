@@ -9,11 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.magic.artefact;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Optional;
-
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceKey;
@@ -30,10 +25,14 @@ import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
-
 import reika.chromaticraft.data.ChromaWorldGenProvider;
 import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.dragonapi.libraries.ReikaPlayerAPI;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Optional;
 
 /**
  * V33a {@code UATrades}: villagers who will buy an Unknown Artefact (as a Thargoid Sensor) or a Lumen Pod
@@ -165,7 +164,7 @@ public class UATrades {
 	}
 
 	/** V33a {@code EDCommodityHook}: another mod's commodity, priced alongside these. */
-	public static interface EDCommodityHook {
+	public interface EDCommodityHook {
 
 		/** EDDB id */
 		String getCommodityID();

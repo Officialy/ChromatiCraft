@@ -1,17 +1,16 @@
 package reika.chromaticraft.world.dimension;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.feature.Feature;
-
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaShieldTypes;
 import reika.chromaticraft.registry.ProximaDecoTypes;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * V33a {@code WorldGenCrystalTree}: the crystal trees of Proxima's Crystal Forest.

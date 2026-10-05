@@ -1,13 +1,5 @@
 package reika.chromaticraft.magic.progression;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
@@ -15,9 +7,10 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.player.Player;
-
 import reika.dragonapi.libraries.ReikaPlayerAPI;
 import reika.dragonapi.libraries.io.NBTCompat;
+
+import java.util.*;
 
 /** Server-authoritative V33a information-fragment ownership and selection rules. */
 public final class PlayerResearch {
@@ -104,6 +97,16 @@ public final class PlayerResearch {
 				candidates.add(page);
 		}
 		return List.copyOf(candidates);
+	}
+
+	/** Read-only counterpart of nextResearch for client tooltips; never advances a research tier. */
+	public static boolean canStepTo(Player player, LexiconCatalog.Entry page) {
+		if (page == null || !page.obtainable() || hasFragment(player, page)) return false;
+		ResearchLevel level = ResearchProgress.getLevel(player);
+		List<LexiconCatalog.Entry> priority = priorityCandidates(player, level);
+		return !priority.isEmpty() ? priority.contains(page)
+				: page.level() != null && level.isAtLeast(page.level())
+				&& page.canPlayerProgressTo(player) && hasDependency(player, page);
 	}
 
 	public static LexiconCatalog.Entry randomNextResearch(Player player, RandomSource random) {

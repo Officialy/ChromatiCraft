@@ -1,22 +1,15 @@
 package reika.chromaticraft.magic.progression;
 
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.player.Player;
+import reika.chromaticraft.ChromatiCraft;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.EnumMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-
-import net.minecraft.network.chat.Component;
-import net.minecraft.world.entity.player.Player;
-
-import reika.chromaticraft.ChromatiCraft;
+import java.util.*;
 
 /**
  * Dependency-free identity catalog for every V33a Chromic Lexicon entry.
@@ -122,6 +115,7 @@ public final class LexiconCatalog {
 			Map.entry("DEATHFOG", reika.dragonapi.ModList.VOIDMONSTER),
 			Map.entry("VOIDTRAP", reika.dragonapi.ModList.VOIDMONSTER),
 			Map.entry("VOIDTRAPSTRUCT", reika.dragonapi.ModList.VOIDMONSTER),
+            Map.entry("VOIDTRAPSTRUCTN", reika.dragonapi.ModList.VOIDMONSTER),
 			Map.entry("VOIDESSENCE", reika.dragonapi.ModList.VOIDMONSTER),
 			Map.entry("MEDISTRIB", reika.dragonapi.ModList.APPENG),
 			Map.entry("PATTERNS", reika.dragonapi.ModList.APPENG),

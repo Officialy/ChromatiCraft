@@ -1,17 +1,21 @@
 package reika.chromaticraft.data;
 
+import net.minecraft.advancements.Advancement;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.core.HolderGetter;
 import net.minecraft.data.recipes.RecipeOutput;
 import net.minecraft.data.recipes.RecipeProvider;
 import net.minecraft.data.worldgen.BootstrapContext;
-import net.minecraft.advancements.Advancement;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
+import net.minecraft.world.item.enchantment.Enchantment;
+import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.level.block.Blocks;
 import net.neoforged.neoforge.common.Tags;
 import reika.chromaticraft.ChromatiCraft;
@@ -32,7 +36,7 @@ import java.util.Map;
 
 /**
  * Datapack-owned casting recipes, transcribed from V33a {@code RecipesCastingTable}. This first
- * family is the complete ordinary CrystalStoneRecipe set that only depends on registered 26.2
+ * family is the complete ordinary CrystalStoneRecipe set that only depends on registered 26.3
  * content. Boosted-shard stabilizer/resonance recipes follow when boosted shard components land.
  */
 public final class ChromaCastingRecipeProvider {
@@ -44,13 +48,16 @@ public final class ChromaCastingRecipeProvider {
     }
 
 	private static final class Recipes extends RecipeProvider {
+		private final HolderGetter<Enchantment> enchantments;
 
 		private Recipes(BootstrapContext<Recipe<?>> recipes, BootstrapContext<Advancement> advancements) {
             super(recipes, advancements);
+			enchantments = recipes.lookup(Registries.ENCHANTMENT);
 		}
 
 		@Override
 		protected void buildRecipes() {
+            saveVoidCompatibility();
 			Ingredient stone = tag(Tags.Items.STONES);
 			save("crystal_stone/smooth", StoneTypes.SMOOTH, 8,
 					Map.of('S', stone, 'C', tag(ChromaItemTags.PLAIN_CRYSTAL_SHARDS)),
@@ -1164,6 +1171,24 @@ public final class ChromaCastingRecipeProvider {
 					List.of(), 0.97489F, true, true).withPenaltyThreshold(96));
 		}
 
+        /** V33a colored altars and the optional DeathFogRecipe/VoidTrapRecipe. */
+        private void saveVoidCompatibility() {
+            for (var color:CrystalElement.elements) saveShapedTemple("crystal_altar/"+color.getEnglishName(),new ItemStackTemplate(ChromaBlocks.COLORED_ALTARS.get(color).get().asItem()),20,40,List.of(),List.of(runeRingRune(color),new RuneRequirement(new net.minecraft.core.BlockPos(-1,-1,-3),CrystalElement.BLUE)),Map.of('q',Ingredient.of(Items.QUARTZ),'g',Ingredient.of(ChromaBlocks.crystalLamp(color).get().asItem()),'c',Ingredient.of(Items.COBBLESTONE),'I',Ingredient.of(Items.IRON_INGOT),'S',Ingredient.of(Items.SMOOTH_STONE_SLAB),'O',Ingredient.of(Items.OBSIDIAN)),"qgq","cIc","SOS");
+            withConditions(new net.neoforged.neoforge.common.conditions.ModLoadedCondition("voidmonster"),()-> {
+                saveShapedTemple("death_fog_emitter",new ItemStackTemplate(ChromaBlocks.DEATH_FOG_EMITTER.get().asItem()),20,40,List.of(),List.of(new RuneRequirement(new net.minecraft.core.BlockPos(-2,0,5),CrystalElement.MAGENTA),new RuneRequirement(new net.minecraft.core.BlockPos(4,0,2),CrystalElement.LIGHTGRAY),new RuneRequirement(new net.minecraft.core.BlockPos(3,0,-4),CrystalElement.PINK),new RuneRequirement(new net.minecraft.core.BlockPos(-4,0,-2),CrystalElement.GRAY)),Map.of('c',Ingredient.of(Items.COBBLESTONE),'a',tiered(ChromaTieredItems.AURA_DUST),'e',Ingredient.of(ChromaItems.VOID_MONSTER_ESSENCE.get()),'p',Ingredient.of(Items.BUCKET)),"cac","epe","ccc");
+                List<CastingTableRecipe.StandIngredient> stands=new ArrayList<>();
+                for (int x=-4;x<=4;x+=2) for (int z=-4;z<=4;z+=2) {
+                    if (x==0 && z==0) continue;
+                    Ingredient ingredient;
+                    if (Math.abs(x)==Math.abs(z)) ingredient=Ingredient.of(ChromaItems.VOID_MONSTER_ESSENCE.get());
+                    else if ((Math.abs(x)==2 && z==0) || (Math.abs(z)==2 && x==0)) ingredient=Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.SPACE_INGOT).get());
+                    else if ((Math.abs(x)==4 && z==0) || (Math.abs(z)==4 && x==0)) ingredient=tiered(ChromaTieredItems.AVOLITE);
+                    else ingredient=Ingredient.of(ChromaItems.CRYSTAL_POWDER.get());
+                    stands.add(auxStand(x,z,ingredient));
+                }
+                saveRecipe("void_monster_trap",new CastingTableRecipe(CastingTableRecipe.Tier.PYLON,List.of(new GridIngredient(4,Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.HIGH_VOID_CORE).get()))),stands,List.of(),List.of(new AuraRequirement(CrystalElement.PINK,50000),new AuraRequirement(CrystalElement.BLACK,20000),new AuraRequirement(CrystalElement.LIGHTGRAY,30000),new AuraRequirement(CrystalElement.YELLOW,40000),new AuraRequirement(CrystalElement.WHITE,50000),new AuraRequirement(CrystalElement.MAGENTA,10000)),new ItemStackTemplate(ChromaBlocks.VOID_MONSTER_TRAP.get().asItem()),400,500,List.of()));
+            });
+        }
 		/** V33a PylonTurboRecipe: nine Energy Focal Points for the complete ritual ring. */
 		private void savePylonTurbo() {
 			List<CastingTableRecipe.StandIngredient> stands = List.of(
@@ -1441,7 +1466,123 @@ public final class ChromaCastingRecipeProvider {
 		 * penalty starts after one craft. V33a's "stickWood" ore name is the wooden-rod tag. The Growth Star's
 		 * Power upgrade is V33a's Star Enchanting EnchantmentRecipe, which is not ported yet.
 		 */
+		/** V33a item recipes, including the original repeat-XP penalties. */
+		private void saveItemBacklog() {
+			Ingredient aura = tiered(ChromaTieredItems.AURA_DUST);
+			Ingredient iron = Ingredient.of(Items.IRON_INGOT);
+			Ingredient lapis = Ingredient.of(Items.LAPIS_LAZULI);
+			Ingredient space = tiered(ChromaTieredItems.SPACE_DUST);
+			Ingredient gold = Ingredient.of(Items.GOLD_INGOT);
+			saveRecipe("recipe_tablet", new CastingTableRecipe(CastingTableRecipe.Tier.MULTIBLOCK,
+					List.of(new GridIngredient(4, Ingredient.of(Items.OBSIDIAN))),
+					List.of(auxStand(0, 2, aura), auxStand(0, -2, aura), auxStand(-2, 0, aura), auxStand(2, 0, aura),
+							auxStand(-2, 2, iron), auxStand(2, -2, iron), auxStand(-4, 4, lapis), auxStand(4, -4, lapis),
+							auxStand(-4, 2, space), auxStand(-2, 4, space), auxStand(2, -4, space), auxStand(4, -2, space),
+							auxStand(-4, -4, gold), auxStand(4, 4, gold)), List.of(), List.of(),
+					new ItemStackTemplate(ChromaItems.RECIPE_TABLET.get(), 3), 100, 200).withPenaltyThreshold(6));
+			Ingredient stick = tag(Tags.Items.RODS_WOODEN);
+			Ingredient ingot = Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.CHROMA_INGOT).get());
+			Ingredient binding = tiered(ChromaTieredItems.BINDING_CRYSTAL);
+			saveRecipe("capture_star", new CastingTableRecipe(CastingTableRecipe.Tier.MULTIBLOCK,
+					List.of(new GridIngredient(4, Ingredient.of(Items.COBWEB))),
+					List.of(auxStand(-2, -2, stick), auxStand(2, 2, stick), auxStand(-2, 2, stick), auxStand(2, -2, stick),
+							auxStand(-2, 0, ingot), auxStand(2, 0, ingot), auxStand(0, 2, ingot), auxStand(0, -2, ingot),
+							auxStand(-4, 0, binding), auxStand(4, 0, binding), auxStand(0, 4, binding), auxStand(0, -4, binding)),
+					List.of(), List.of(), new ItemStackTemplate(ChromaItems.CAPTURE_WAND.get()), 100, 200).withPenaltyThreshold(1));
+			saveRecipe("recall_tablet", new CastingTableRecipe(CastingTableRecipe.Tier.TEMPLE,
+					shapedGrid(Map.of('e', Ingredient.of(ChromaItems.ELEMENTAL_STONES.get(CrystalElement.LIME).get()),
+							'g', shard(CrystalElement.LIME, false), 'l', shard(CrystalElement.LIGHTBLUE, false),
+							'a', tiered(ChromaTieredItems.AURA_DUST), 'i', Ingredient.of(Items.IRON_INGOT)),
+					" ig", "aea", "li "), List.of(),
+					List.of(new RuneRequirement(new net.minecraft.core.BlockPos(4, 0, 0), CrystalElement.LIME)), List.of(),
+					new ItemStackTemplate(ChromaItems.RECALL_TABLET.get()), 20, 40).withPenaltyThreshold(1));
+			List<CastingTableRecipe.StandIngredient> stands = new ArrayList<>();
+			Ingredient energy = Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.ENERGY_POWDER).get());
+			for (int[] p : new int[][] {{-2,0},{2,0},{0,2},{0,-2},{-4,2},{-4,-2},{4,2},{4,-2}})
+				stands.add(auxStand(p[0], p[1], energy));
+			Ingredient raw = Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.RAW_CRYSTAL).get());
+			for (int[] p : new int[][] {{2,2},{2,-2},{-2,2},{-2,-2}})
+				stands.add(auxStand(p[0], p[1], raw));
+			Ingredient experience = Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.EXPERIENCE_GEM).get());
+			stands.add(auxStand(-4, 0, experience));
+			stands.add(auxStand(4, 0, experience));
+			Ingredient voidDust = Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.VOID_DUST).get());
+			stands.add(auxStand(0, 4, voidDust));
+			stands.add(auxStand(0, -4, voidDust));
+			for (int[] p : new int[][] {{-2,-4},{2,-4},{-2,4},{2,4}})
+				stands.add(auxStand(p[0], p[1], tiered(ChromaTieredItems.LUMA_BEANS)));
+			for (int[] p : new int[][] {{-4,4},{4,4},{-4,-4},{4,-4}})
+				stands.add(auxStand(p[0], p[1], shard(CrystalElement.BLACK, true)));
+			saveRecipe("efficiency_gem", new CastingTableRecipe(CastingTableRecipe.Tier.PYLON,
+					List.of(new GridIngredient(4, Ingredient.of(ChromaBlocks.SUPER_CRYSTALS.get(CrystalElement.BLACK.ordinal()).get()))),
+					stands, List.of(new RuneRequirement(new net.minecraft.core.BlockPos(-4,-1,2), CrystalElement.WHITE),
+							new RuneRequirement(new net.minecraft.core.BlockPos(3,-1,2), CrystalElement.BLACK),
+							new RuneRequirement(new net.minecraft.core.BlockPos(0,-1,-3), CrystalElement.BLACK),
+							new RuneRequirement(new net.minecraft.core.BlockPos(0,-1,-4), CrystalElement.WHITE),
+							runeRingRune(CrystalElement.YELLOW), runeRingRune(CrystalElement.GRAY), runeRingRune(CrystalElement.PURPLE)),
+					List.of(new AuraRequirement(CrystalElement.BLACK, 40000), new AuraRequirement(CrystalElement.WHITE, 60000),
+							new AuraRequirement(CrystalElement.RED, 20000), new AuraRequirement(CrystalElement.MAGENTA, 20000),
+							new AuraRequirement(CrystalElement.BLUE, 10000), new AuraRequirement(CrystalElement.YELLOW, 24000)),
+					new ItemStackTemplate(ChromaItems.EFFICIENCY_GEM.get()), 800, 500).withPenalty(1, 0F));
+		}
+
 		private void saveWands() {
+            // V33a RecipesCastingTable + RecipeItemMover, unchanged shaped recipe and rune coordinates.
+            saveRecipe("bulk_mover", new CastingTableRecipe(CastingTableRecipe.Tier.TEMPLE,
+                    shapedGrid(Map.of('O',Ingredient.of(Items.OBSIDIAN),'C',Ingredient.of(Items.CHEST),
+                            'D',Ingredient.of(Items.DIAMOND),'I',Ingredient.of(Items.IRON_INGOT)),"OCO","ODO"," I "),List.of(),
+                    List.of(new RuneRequirement(new net.minecraft.core.BlockPos(-1,-1,-4),CrystalElement.LIME),
+                            new RuneRequirement(new net.minecraft.core.BlockPos(1,-1,4),CrystalElement.LIME)),List.of(),
+                    new ItemStackTemplate(ChromaItems.BULK_MOVER.get()),20,40).withPenaltyThreshold(1).withRequiredFragment("BULKMOVER"));
+            // V33a RecipesCastingTable + SpawnerBypassRecipe (the unused lapis recipe symbol is not an ingredient).
+            saveRecipe("spawner_bypass", new CastingTableRecipe(CastingTableRecipe.Tier.TEMPLE,
+                    shapedGrid(Map.of('p',Ingredient.of(Items.ENDER_PEARL),'t',tiered(ChromaTieredItems.BEACON_DUST),
+                            'q',Ingredient.of(Items.QUARTZ),'a',tiered(ChromaTieredItems.AURA_DUST),
+                            'd',Ingredient.of(Items.DIAMOND),'r',Ingredient.of(Items.REDSTONE),
+                            'v',Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.VOID_DUST).get())),"ptq","ada","rvp"),List.of(),
+                    List.of(new RuneRequirement(new net.minecraft.core.BlockPos(-1,0,3),CrystalElement.PINK),
+                            new RuneRequirement(new net.minecraft.core.BlockPos(3,0,-1),CrystalElement.LIGHTGRAY)),List.of(),
+                    new ItemStackTemplate(ChromaItems.SPAWNER_BYPASS.get()),20,40).withPenaltyThreshold(1).withRequiredFragment("SPAWNERBYPASS"));
+
+            // V33a BottleneckFinderRecipe: Aura Conducting Ingot, eight raw crystals,
+            // twelve Lumenite gems and four Binding Crystals at the exact authored stands.
+            List<CastingTableRecipe.StandIngredient> diagnosticStands = new java.util.ArrayList<>();
+            for (int[] xy : new int[][] {{-2,4},{2,-4},{4,2},{-4,-2},{-2,2},{2,-2},{2,2},{-2,-2}})
+                diagnosticStands.add(auxStand(xy[0],xy[1],Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.RAW_CRYSTAL).get())));
+            for (int[] xy : new int[][] {{-2,-4},{4,-2},{-4,2},{2,4},{-4,-4},{4,-4},{-4,4},{4,4},{-4,0},{4,0},{0,4},{0,-4}})
+                diagnosticStands.add(auxStand(xy[0],xy[1],tiered(ChromaTieredItems.LUMEN_GEM)));
+            for (int[] xy : new int[][] {{-2,0},{2,0},{0,2},{0,-2}})
+                diagnosticStands.add(auxStand(xy[0],xy[1],tiered(ChromaTieredItems.BINDING_CRYSTAL)));
+            saveRecipe("bottleneck_finder", new CastingTableRecipe(CastingTableRecipe.Tier.MULTIBLOCK,
+                    List.of(new GridIngredient(4,Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.AURA_INGOT).get()))),diagnosticStands,List.of(),List.of(),
+                    new ItemStackTemplate(ChromaItems.BOTTLENECK_FINDER.get()),100,200).withPenaltyThreshold(1).withRequiredFragment("BOTTLENECK"));
+
+			saveItemBacklog();
+			saveExcavationConstructionHover();
+            Ingredient dust = tiered(ChromaTieredItems.CHROMA_DUST);
+            saveRecipe("multitool", new CastingTableRecipe(CastingTableRecipe.Tier.TEMPLE,
+                    shapedGrid(Map.of('A',Ingredient.of(Items.IRON_AXE),'P',Ingredient.of(Items.IRON_PICKAXE),
+                            'S',Ingredient.of(Items.IRON_SHOVEL),'c',dust,'s',Ingredient.of(Items.STICK)),
+                            "APS","csc","csc"),List.of(),
+                    List.of(runeRingRune(CrystalElement.PURPLE),runeRingRune(CrystalElement.BROWN)),List.of(),
+                    new ItemStackTemplate(ChromaItems.MULTITOOL.get()),20,40).withPenaltyThreshold(2).withRequiredFragment("MULTITOOL"));
+            saveRecipe("ore_harvester", new CastingTableRecipe(CastingTableRecipe.Tier.TEMPLE,
+                    shapedGrid(Map.of('E',Ingredient.of(Items.EMERALD),'P',Ingredient.of(Items.DIAMOND_PICKAXE),
+                            'c',dust,'d',Ingredient.of(Items.DIAMOND),'S',Ingredient.of(Items.STICK)),
+                            "EPE","cdc","cSc"),List.of(),
+                    List.of(new RuneRequirement(new net.minecraft.core.BlockPos(0,-1,1),CrystalElement.PURPLE),
+                            new RuneRequirement(new net.minecraft.core.BlockPos(0,-1,-1),CrystalElement.PURPLE),
+                            new RuneRequirement(new net.minecraft.core.BlockPos(1,-1,0),CrystalElement.LIME),
+                            new RuneRequirement(new net.minecraft.core.BlockPos(-1,-1,0),CrystalElement.LIME)),List.of(),
+                    new ItemStackTemplate(ChromaItems.ORE_HARVESTER.get()),20,40).withPenaltyThreshold(4).withRequiredFragment("ORESILK"));
+            // V33a RecipesCastingTable + MobSonarRecipe: diamond centre, vanilla sticks,
+            // aura dust, and the two original Temple runes; default 20 ticks / 40 XP.
+            saveRecipe("creature_sounding_star", new CastingTableRecipe(CastingTableRecipe.Tier.TEMPLE,
+                    shapedGrid(Map.of('s', Ingredient.of(Items.STICK), 'a', tiered(ChromaTieredItems.AURA_DUST),
+                            'b', Ingredient.of(Items.DIAMOND)), "sas", "aba", "sas"), List.of(),
+                    List.of(new RuneRequirement(new net.minecraft.core.BlockPos(-3,-1,-1), CrystalElement.BLUE),
+                            new RuneRequirement(new net.minecraft.core.BlockPos(3,-1,-1), CrystalElement.PINK)), List.of(),
+                    new ItemStackTemplate(ChromaItems.MOB_SONAR.get()), 20, 40).withRequiredFragment("MOBSONAR"));
 			Ingredient stick = tag(Tags.Items.RODS_WOODEN);
 			Ingredient chromaDust = tiered(ChromaTieredItems.CHROMA_DUST);
 			Ingredient auraDust = tiered(ChromaTieredItems.AURA_DUST);
@@ -1473,6 +1614,80 @@ public final class ChromaCastingRecipeProvider {
 							auxStand(-4, 4, bonemeal), auxStand(-4, -4, bonemeal), auxStand(4, 4, bonemeal), auxStand(4, -4, bonemeal)),
 					List.of(), List.of(), new ItemStackTemplate(ChromaItems.GROWTH_WAND.get()), 100, 200)
 					.withPenaltyThreshold(1));
+		}
+
+		/** Exact V33a ExcavatorRecipe, BuilderWandRecipe and RecipeHoverWand stand layouts. */
+		private void saveExcavationConstructionHover() {
+			Ingredient ingot = Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.CHROMA_INGOT).get());
+			Ingredient rod = tag(Tags.Items.RODS_WOODEN);
+			for (boolean excavation : new boolean[]{true, false}) {
+				List<CastingTableRecipe.StandIngredient> stands = new ArrayList<>();
+				Ingredient corners = excavation ? Ingredient.of(Items.STICK) : rod;
+				for (int x : new int[]{-2, 2}) for (int z : new int[]{-2, 2}) stands.add(auxStand(x, z, corners));
+				for (int[] p : new int[][]{{-2,0},{2,0},{0,-2},{0,2}}) stands.add(auxStand(p[0], p[1], ingot));
+				Ingredient outer = excavation ? shard(CrystalElement.BROWN, true) : tiered(ChromaTieredItems.ELEMENT_DUST);
+				for (int[] p : new int[][]{{-4,0},{4,0},{0,-4},{0,4}}) stands.add(auxStand(p[0], p[1], outer));
+				saveRecipe(excavation ? "excavation_star" : "construction_star", new CastingTableRecipe(
+						CastingTableRecipe.Tier.MULTIBLOCK,
+						List.of(new GridIngredient(4, Ingredient.of(ChromaItems.CRAFTING.get(excavation
+								? ChromaCraftingItems.ENERGY_CORE : ChromaCraftingItems.TRANSFORMATION_CORE).get()))),
+						stands, List.of(), List.of(), new ItemStackTemplate(excavation
+								? ChromaItems.EXCAVATION_WAND.get() : ChromaItems.CONSTRUCTION_WAND.get()), 100, 200)
+						.withPenaltyThreshold(1).withRequiredFragment(excavation ? "EXCAVATOR" : "BUILDER"));
+			}
+			List<CastingTableRecipe.StandIngredient> hover = new ArrayList<>();
+			for (int x : new int[]{-2,2}) for (int z : new int[]{-2,2}) hover.add(auxStand(x,z,rod));
+			for (int[] p : new int[][]{{-2,0},{2,0},{0,-2},{0,2}}) hover.add(auxStand(p[0],p[1],Ingredient.of(Items.IRON_INGOT)));
+			for (int x : new int[]{-4,4}) for (int z : new int[]{-4,4}) hover.add(auxStand(x,z,shard(CrystalElement.LIME,true)));
+			for (int[] p : new int[][]{{-4,0},{4,0},{0,-4},{0,4}}) hover.add(auxStand(p[0],p[1],tiered(ChromaTieredItems.SPACE_DUST)));
+			for (int[] p : new int[][]{{-4,-2},{-4,2},{4,-2},{4,2},{-2,-4},{2,-4},{-2,4},{2,4}})
+				hover.add(auxStand(p[0],p[1],tiered(ChromaTieredItems.ENDER_DUST)));
+			saveRecipe("hover_star", new CastingTableRecipe(CastingTableRecipe.Tier.PYLON,
+					List.of(new GridIngredient(4,Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.VOID_CORE).get()))),
+					hover,List.of(),List.of(new AuraRequirement(CrystalElement.BLACK,2000),new AuraRequirement(CrystalElement.LIME,10000)),
+					new ItemStackTemplate(ChromaItems.HOVER_WAND.get()),400,500,List.of(),0.9386F)
+					.withPenaltyThreshold(1).withRequiredFragment("HOVER"));
+
+			Item excavation = ChromaItems.EXCAVATION_WAND.get();
+			saveStarEnchantment("excavation/silk_touch", excavation, tiered(ChromaTieredItems.AURA_DUST), CrystalElement.PURPLE,
+					tiered(ChromaTieredItems.CHROMA_DUST), Enchantments.SILK_TOUCH, 1);
+			saveStarEnchantment("excavation/fortune", excavation, Ingredient.of(Items.LAPIS_LAZULI), CrystalElement.PURPLE,
+					tiered(ChromaTieredItems.FOCUS_DUST), Enchantments.FORTUNE, 5);
+			saveStarEnchantment("excavation/auto_collect", excavation, tiered(ChromaTieredItems.ENDER_DUST), CrystalElement.LIME,
+					tiered(ChromaTieredItems.BEACON_DUST), ChromaEnchants.AUTOCOLLECT.key(), 1);
+			saveStarEnchantment("excavation/mine_time", excavation,
+					Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.ENERGY_POWDER).get()), CrystalElement.BROWN,
+					Ingredient.of(Items.DIAMOND), ChromaEnchants.MINETIME.key(), 1);
+			saveStarEnchantment("excavation/flame", excavation,
+					Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.TELEPORTATION_DUST).get()), CrystalElement.BLUE,
+					tiered(ChromaTieredItems.LUMEN_GEM), Enchantments.FLAME, 1);
+			saveStarEnchantment("excavation/air_miner", excavation,
+					Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.VOID_DUST).get()), CrystalElement.LIGHTBLUE,
+					Ingredient.of(ChromaItems.DIMENSION_RESOURCES.get(ChromaDimensionItems.FLOATSTONE).get()), ChromaEnchants.AIRMINER.key(), 1);
+			saveStarEnchantment("growth/power", ChromaItems.GROWTH_WAND.get(), Ingredient.of(Items.BONE_MEAL), CrystalElement.GREEN,
+					tiered(ChromaTieredItems.ELEMENT_DUST), Enchantments.POWER, 1);
+		}
+
+		private void saveStarEnchantment(String name, Item wand, Ingredient side, CrystalElement top,
+				Ingredient bottom, ResourceKey<Enchantment> key, int level) {
+			var enchantment = enchantments.getOrThrow(key);
+            var enchantments = new net.minecraft.world.item.enchantment.ItemEnchantments.Mutable(
+                    net.minecraft.world.item.enchantment.ItemEnchantments.EMPTY);
+            enchantments.upgrade(enchantment,level);
+            ItemStackTemplate preview = new ItemStackTemplate(wand.builtInRegistryHolder(),1,
+                    net.minecraft.core.component.DataComponentPatch.builder()
+                            .set(net.minecraft.core.component.DataComponents.ENCHANTMENTS,enchantments.toImmutable()).build());
+			Ingredient binding = tiered(ChromaTieredItems.BINDING_CRYSTAL);
+			saveRecipe("star_enchanting/"+name, new CastingTableRecipe(CastingTableRecipe.Tier.MULTIBLOCK,
+					List.of(new GridIngredient(4,Ingredient.of(wand))),
+					List.of(auxStand(0,-2,shard(top,true)),auxStand(0,2,bottom),auxStand(-2,0,side),auxStand(2,0,side),
+							auxStand(-2,-2,Ingredient.of(ChromaItems.ELEMENTAL_STONES.get(CrystalElement.PURPLE).get())),
+							auxStand(2,2,Ingredient.of(ChromaItems.ELEMENTAL_STONES.get(CrystalElement.BLACK).get())),
+							auxStand(-2,2,binding),auxStand(2,-2,binding)),
+					List.of(new RuneRequirement(new net.minecraft.core.BlockPos(4,-1,-4),CrystalElement.PURPLE),
+							new RuneRequirement(new net.minecraft.core.BlockPos(-4,-1,4),CrystalElement.BLACK)), List.of(),
+					preview,1200,200)
+					.withPenaltyThreshold(1).withRequiredFragment("ENCHANTING").withEnhancement(enchantment,level));
 		}
 
 		private Ingredient tiered(ChromaTieredItems item) { return Ingredient.of(ChromaItems.TIERED.get(item).get()); }

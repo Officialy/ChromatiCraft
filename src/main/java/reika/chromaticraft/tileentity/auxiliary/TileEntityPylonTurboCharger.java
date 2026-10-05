@@ -1,7 +1,5 @@
 package reika.chromaticraft.tileentity.auxiliary;
 
-import java.util.UUID;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
@@ -17,7 +15,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
-
 import reika.chromaticraft.base.tileentity.TileEntityPylonEnhancer;
 import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
 import reika.chromaticraft.magic.CrystalPotionController;
@@ -25,15 +22,13 @@ import reika.chromaticraft.magic.network.CrystalNetworker;
 import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.magic.progression.ProgressionManager;
 import reika.chromaticraft.network.ChromaNetwork;
-import reika.chromaticraft.registry.ChromaBlockEntities;
-import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaSounds;
-import reika.chromaticraft.registry.ChromaTiles;
-import reika.chromaticraft.registry.CrystalElement;
+import reika.chromaticraft.registry.*;
 import reika.chromaticraft.render.particle.ChromaParticle;
 import reika.chromaticraft.tileentity.networking.TileEntityCrystalPylon;
 import reika.dragonapi.libraries.java.ReikaRandomHelper;
 import reika.dragonapi.libraries.level.ReikaWorldHelper;
+
+import java.util.UUID;
 
 /** V33a's complete nine-focus pylon turbocharging ritual. */
 public final class TileEntityPylonTurboCharger extends TileEntityPylonEnhancer {

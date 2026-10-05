@@ -9,11 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.tileentity.plants;
 
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -27,7 +22,6 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.VegetationBlock;
 import net.minecraft.world.level.block.state.BlockState;
-
 import reika.chromaticraft.auxiliary.interfaces.ComplexAOE;
 import reika.chromaticraft.base.tileentity.TileEntityMagicPlant;
 import reika.chromaticraft.registry.ChromaBlockEntities;
@@ -39,6 +33,11 @@ import reika.dragonapi.instantiable.data.WeightedRandom;
 import reika.dragonapi.instantiable.data.immutable.BlockKey;
 import reika.dragonapi.instantiable.data.immutable.Coordinate;
 import reika.dragonapi.libraries.io.ReikaSoundHelper;
+
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 /** V33a Scissorweed: shears nearby matching foliage and can redirect attempts through relays. */
 public final class TileEntityHarvesterPlant extends TileEntityMagicPlant implements ComplexAOE {

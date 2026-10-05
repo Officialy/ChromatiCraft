@@ -1,0 +1,9 @@
+{
+  "type": "neoforge:add_features",
+  "biomes": "#minecraft:is_overworld",
+  "features": [
+    "chromaticraft:glow_daisy",
+    "chromaticraft:glow_root"
+  ],
+  "step": "top_layer_modification"
+}

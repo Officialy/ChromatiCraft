@@ -9,9 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.items.tools;
 
-import java.util.ArrayList;
-import java.util.LinkedList;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.InteractionHand;
@@ -21,7 +18,6 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
-
 import reika.chromaticraft.block.BlockChromaTrail.TileChromaTrail;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.dragonapi.instantiable.data.blockstruct.AbstractSearch.PropagationCondition;
@@ -31,6 +27,9 @@ import reika.dragonapi.instantiable.data.blockstruct.BreadthFirstSearch;
 import reika.dragonapi.instantiable.data.immutable.BlockBox;
 import reika.dragonapi.libraries.level.ReikaBlockHelper;
 import reika.dragonapi.libraries.level.ReikaWorldHelper;
+
+import java.util.ArrayList;
+import java.util.LinkedList;
 
 /**
  * V33a {@code ItemCaveExitFinder}, the Subterranean Route Finder. Used underground it finds the shortest open route to
@@ -52,35 +51,23 @@ public class ItemCaveExitFinder extends Item {
 				|| ReikaWorldHelper.softBlocks(world, pos) || ReikaBlockHelper.isLeaf(world, pos);
 	};
 
-	private static final class DownwardsFinder implements PropagationCondition {
+    private record DownwardsFinder(int startY) implements PropagationCondition {
 
-		private final int startY;
+        @Override
+        public boolean isValidLocation(Level world, BlockPos pos, BlockPos from) {
+            return pathFinder.isValidLocation(world, pos, from) && pos.getY() <= startY;
+        }
 
-		private DownwardsFinder(int y) {
-			startY = y;
-		}
+    }
 
-		@Override
-		public boolean isValidLocation(Level world, BlockPos pos, BlockPos from) {
-			return pathFinder.isValidLocation(world, pos, from) && pos.getY() <= startY;
-		}
+    private record LowYFinder(int endY) implements TerminationCondition {
 
-	}
+        @Override
+        public boolean isValidTerminus(Level world, BlockPos pos) {
+            return pos.getY() == endY;
+        }
 
-	private static final class LowYFinder implements TerminationCondition {
-
-		private final int endY;
-
-		private LowYFinder(int y) {
-			endY = y;
-		}
-
-		@Override
-		public boolean isValidTerminus(Level world, BlockPos pos) {
-			return pos.getY() == endY;
-		}
-
-	}
+    }
 
 	public ItemCaveExitFinder(Properties properties) {
 		super(properties);

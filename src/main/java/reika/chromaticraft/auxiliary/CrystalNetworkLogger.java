@@ -9,20 +9,18 @@
  ******************************************************************************/
 package reika.chromaticraft.auxiliary;
 
-import java.util.Locale;
-
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
-
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.magic.interfaces.CrystalNetworkTile;
 import reika.chromaticraft.magic.interfaces.CrystalReceiver;
 import reika.chromaticraft.magic.network.CrystalFlow;
 import reika.chromaticraft.registry.CrystalElement;
+
+import java.util.Locale;
 
 public final class CrystalNetworkLogger {
 

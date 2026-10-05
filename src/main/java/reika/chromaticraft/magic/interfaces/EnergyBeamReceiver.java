@@ -14,8 +14,8 @@ import reika.dragonapi.instantiable.data.immutable.DecimalPosition;
 
 public interface EnergyBeamReceiver {
 
-	public DecimalPosition getTargetRenderOffset(CrystalElement e);
+	DecimalPosition getTargetRenderOffset(CrystalElement e);
 
-	public double getIncomingBeamRadius();
+	double getIncomingBeamRadius();
 
 }

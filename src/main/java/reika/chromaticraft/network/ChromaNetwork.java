@@ -2,11 +2,11 @@ package reika.chromaticraft.network;
 
 import io.netty.buffer.ByteBuf;
 import net.minecraft.core.BlockPos;
-import net.minecraft.network.codec.ByteBufCodecs;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
@@ -18,22 +18,38 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
-
-import reika.chromaticraft.client.ClientPayloadHandlers;
 import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.client.PylonAttackOverlay;
-import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.registry.Chromabilities;
 import reika.chromaticraft.api.abilityapi.Ability;
-import reika.chromaticraft.render.particle.ChromaParticle;
 import reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe;
+import reika.chromaticraft.client.ClientPayloadHandlers;
+import reika.chromaticraft.client.PylonAttackOverlay;
+import reika.chromaticraft.registry.Chromabilities;
+import reika.chromaticraft.registry.CrystalElement;
 
 public final class ChromaNetwork {
 
+    public record BulkMoverNumber(int containerId, int amount) implements CustomPacketPayload {
+        public static final Type<BulkMoverNumber> TYPE = new Type<>(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,"bulk_mover_number"));
+        public static final StreamCodec<ByteBuf,BulkMoverNumber> CODEC = StreamCodec.composite(
+                ByteBufCodecs.VAR_INT,BulkMoverNumber::containerId,ByteBufCodecs.VAR_INT,BulkMoverNumber::amount,BulkMoverNumber::new);
+        @Override public Type<BulkMoverNumber> type() { return TYPE; }
+    }
 	private ChromaNetwork() {}
 
 	public static void register(RegisterPayloadHandlersEvent event) {
-		PayloadRegistrar registrar = event.registrar(ChromatiCraft.MODID).versioned("1");
+		// Casting previews now synchronize Star Enchanting holders and fragment requirements.
+		PayloadRegistrar registrar = event.registrar(ChromatiCraft.MODID).versioned("2");
+		registrar.playToClient(BottleneckWarning.TYPE, BottleneckWarning.CODEC, (payload, context) -> context.enqueueWork(() ->
+				ClientPayloadHandlers.bottleneckWarning(payload.dimension(), payload.pos(), payload.rank(), payload.throughput(), payload.color())));
+		registrar.playToClient(DoggoSonar.TYPE, DoggoSonar.CODEC, (payload, context) -> context.enqueueWork(() ->
+				ClientPayloadHandlers.doggoSonar(payload.pos(), payload.entityType())));
+		registrar.playToClient(OpenHoverWand.TYPE, OpenHoverWand.CODEC, (payload, context) ->
+				context.enqueueWork(() -> ClientPayloadHandlers.openHoverWand(payload.offHand())));
+        registrar.playToServer(BulkMoverNumber.TYPE, BulkMoverNumber.CODEC, (payload, context) -> context.enqueueWork(() -> {
+            if (context.player().containerMenu instanceof reika.chromaticraft.container.MenuBulkMover menu
+                    && menu.containerId == payload.containerId()) menu.setNumberToCarry(context.player(), payload.amount());
+        }));
+		registrar.playToServer(SetHoverWandMode.TYPE, SetHoverWandMode.CODEC, ChromaNetwork::handleHoverWandMode);
 		registrar.playToClient(RelayConnection.TYPE, RelayConnection.CODEC,
 				(payload, context) -> context.enqueueWork(() -> ClientPayloadHandlers.relayConnection(
 						payload.path(), element(payload.color()))));
@@ -130,6 +146,49 @@ public final class ChromaNetwork {
 				ChromaNetwork::handleToggleCrystalCharger);
 		registrar.playToServer(ActivateAbility.TYPE, ActivateAbility.CODEC,
 				ChromaNetwork::handleActivateAbility);
+	}
+
+	public record BottleneckWarning(Identifier dimension, BlockPos pos, int rank, boolean throughput, int color) implements CustomPacketPayload {
+		public static final Type<BottleneckWarning> TYPE = createType("bottleneck_warning");
+		public static final StreamCodec<ByteBuf, BottleneckWarning> CODEC = StreamCodec.composite(
+				Identifier.STREAM_CODEC, BottleneckWarning::dimension, BlockPos.STREAM_CODEC, BottleneckWarning::pos,
+				ByteBufCodecs.VAR_INT, BottleneckWarning::rank, ByteBufCodecs.BOOL, BottleneckWarning::throughput,
+				ByteBufCodecs.VAR_INT, BottleneckWarning::color, BottleneckWarning::new);
+		@Override public Type<BottleneckWarning> type() { return TYPE; }
+	}
+
+	public record DoggoSonar(BlockPos pos, Identifier entityType) implements CustomPacketPayload {
+		public static final Type<DoggoSonar> TYPE = createType("doggo_sonar");
+		public static final StreamCodec<ByteBuf, DoggoSonar> CODEC = StreamCodec.composite(
+				BlockPos.STREAM_CODEC, DoggoSonar::pos, Identifier.STREAM_CODEC, DoggoSonar::entityType, DoggoSonar::new);
+		@Override public Type<DoggoSonar> type() { return TYPE; }
+	}
+
+	/** Opens the source Hover Star selector for the hand that initiated the interaction. */
+	public record OpenHoverWand(boolean offHand) implements CustomPacketPayload {
+		public static final Type<OpenHoverWand> TYPE = createType("open_hover_wand");
+		public static final StreamCodec<ByteBuf, OpenHoverWand> CODEC = StreamCodec.composite(
+				ByteBufCodecs.BOOL, OpenHoverWand::offHand, OpenHoverWand::new);
+		@Override public Type<OpenHoverWand> type() { return TYPE; }
+	}
+
+	public record SetHoverWandMode(boolean offHand, int mode) implements CustomPacketPayload {
+		public static final Type<SetHoverWandMode> TYPE = createType("set_hover_wand_mode");
+		public static final StreamCodec<ByteBuf, SetHoverWandMode> CODEC = StreamCodec.composite(
+				ByteBufCodecs.BOOL, SetHoverWandMode::offHand, ByteBufCodecs.VAR_INT, SetHoverWandMode::mode,
+				SetHoverWandMode::new);
+		@Override public Type<SetHoverWandMode> type() { return TYPE; }
+	}
+
+	private static void handleHoverWandMode(SetHoverWandMode payload, IPayloadContext context) {
+		context.enqueueWork(() -> {
+			var modes = reika.chromaticraft.block.BlockHoverBlock.HoverType.values();
+			if (payload.mode() < 0 || payload.mode() >= modes.length) return;
+			var stack = context.player().getItemInHand(payload.offHand()
+					? net.minecraft.world.InteractionHand.OFF_HAND : net.minecraft.world.InteractionHand.MAIN_HAND);
+			if (stack.getItem() instanceof reika.chromaticraft.items.tools.wands.ItemFlightWand)
+				reika.chromaticraft.items.tools.wands.ItemFlightWand.setMode(stack, modes[payload.mode()]);
+		});
 	}
 
 	/** V33a ABILITY packet, keyed by the stable ability id rather than a load-order integer. */

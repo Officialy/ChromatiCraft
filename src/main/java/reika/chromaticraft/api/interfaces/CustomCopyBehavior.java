@@ -16,12 +16,12 @@ import net.minecraft.world.level.block.Block;
 public interface CustomCopyBehavior {
 
 	/** Return false to disallow copying the block; air will be placed in its place. Args: Block metadata */
-	public boolean allowCopy(int meta);
+    boolean allowCopy(int meta);
 
 	/** Return a different block type than the one in world */
-	public Block getBlock(int meta);
+    Block getBlock(int meta);
 
 	/** Return a different metadata than the one in world */
-	public int getMeta(int meta);
+    int getMeta(int meta);
 
 }

@@ -9,8 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.items;
 
-import java.util.UUID;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponents;
@@ -35,9 +33,10 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-
 import reika.chromaticraft.entity.EntityEnderEyeT2;
 import reika.chromaticraft.registry.ChromaSounds;
+
+import java.util.UUID;
 
 /**
  * V33a {@code ItemT2EnderEye}, the Enhanced Ender Eye, cast three at a time and bound to its caster.

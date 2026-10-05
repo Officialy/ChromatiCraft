@@ -9,12 +9,12 @@
  ******************************************************************************/
 package reika.chromaticraft.magic;
 
-import java.util.ArrayList;
-import java.util.Collection;
-
 import reika.chromaticraft.registry.CrystalElement;
 import reika.dragonapi.instantiable.data.maps.MixMap;
 import reika.dragonapi.instantiable.data.maps.PairMap;
+
+import java.util.ArrayList;
+import java.util.Collection;
 
 public class ElementMixer {
 

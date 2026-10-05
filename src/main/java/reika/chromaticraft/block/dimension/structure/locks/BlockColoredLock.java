@@ -3,7 +3,6 @@ package reika.chromaticraft.block.dimension.structure.locks;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.DustParticleOptions;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -25,9 +24,8 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
-
-import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.ChromaBlockEntities;
+import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.tileentity.TileEntityColorLock;
 
@@ -103,7 +101,7 @@ public final class BlockColoredLock extends Block implements EntityBlock {
 			return;
 		CrystalElement element = lock.randomColor(random);
 		if (element != null) {
-			int color = element.getColor();
+			int color = element.color();
 			level.addParticle(new DustParticleOptions(color, 1F), pos.getX() + random.nextDouble(),
 					pos.getY() + random.nextDouble(), pos.getZ() + random.nextDouble(), 0, 0, 0);
 		}

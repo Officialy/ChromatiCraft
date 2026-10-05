@@ -9,14 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.modinterface.ae;
 
-import java.util.Set;
-import java.util.function.Consumer;
-
-import net.minecraft.network.chat.Component;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.item.component.TooltipDisplay;
-
 import appeng.api.config.FuzzyMode;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.AEKeyType;
@@ -25,7 +17,14 @@ import appeng.api.upgrades.IUpgradeInventory;
 import appeng.api.upgrades.UpgradeInventories;
 import appeng.items.contents.CellConfig;
 import appeng.util.ConfigInventory;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.TooltipDisplay;
 import reika.chromaticraft.base.ItemChromaTool;
+
+import java.util.Set;
+import java.util.function.Consumer;
 
 /**
  * V33a {@code ItemShieldedCell}, the Corrosion Resistant Cell: a small (1024-byte, two-type) ME storage cell that an

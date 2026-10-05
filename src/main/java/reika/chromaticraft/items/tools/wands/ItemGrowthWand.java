@@ -9,12 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.items.tools.wands;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.Random;
-import java.util.TreeMap;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
@@ -27,14 +21,14 @@ import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
-
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.tick.LevelTickEvent;
-
 import reika.chromaticraft.base.ItemWandBase;
 import reika.chromaticraft.network.ChromaNetwork;
 import reika.chromaticraft.registry.ChromaSounds;
 import reika.chromaticraft.registry.CrystalElement;
+
+import java.util.*;
 
 /**
  * V33a {@code ItemGrowthWand} (GROWTH): clicking a block starts a growth wave over the square around it (radius 4,

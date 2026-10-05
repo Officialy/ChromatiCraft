@@ -3,15 +3,18 @@ package reika.chromaticraft.world;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.feature.Feature;
-
+import net.neoforged.neoforge.common.NeoForge;
+import reika.chromaticraft.api.event.NexusGenEvent;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.world.biome.ChromaBiomes;
-import reika.dragonapi.instantiable.data.ShuffledGrid;
+
+import java.util.BitSet;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * V33a {@code WarpNodeGenerator}: warp nodes floating high above the terrain, on their own grid.
@@ -22,7 +25,7 @@ import reika.dragonapi.instantiable.data.ShuffledGrid;
  * Forest four times in five, Luminous Cliffs two in three, and anywhere else only one in three.
  *
  * <p>Nodes sit in open sky well above the ground — at least 48 blocks over the highest block, and
- * never below y 128 — because the whole point is that you reach them by flying and enter them at
+ * at least y 128 in Luminous Cliffs — because the whole point is that you reach them by flying and enter them at
  * speed. The node itself is inert until opened; see {@code BlockWarpNode}.
  */
 public final class WarpNodeFeature implements Feature {
@@ -39,9 +42,7 @@ public final class WarpNodeFeature implements Feature {
 	private static final int GRID_DEVIATION = 20;
 	private static final int GRID_SEPARATION = 55;
 
-	private ShuffledGrid grid;
-	private long gridSeed;
-	private boolean gridReady;
+	private static final ConcurrentHashMap<Long, BitSet> GRIDS = new ConcurrentHashMap<>();
 
 	public WarpNodeFeature() {
 
@@ -51,7 +52,8 @@ public final class WarpNodeFeature implements Feature {
 	public boolean place(net.minecraft.world.level.WorldGenLevel world, net.minecraft.world.level.chunk.ChunkGenerator generator, net.minecraft.util.RandomSource random, net.minecraft.core.BlockPos origin) {
 		if (!(world.getLevel() instanceof ServerLevel server))
 			return false;
-		if (!this.isGennableChunk(server, origin.getX() >> 4, origin.getZ() >> 4))
+		if (server.dimension() != Level.OVERWORLD || server.isFlat()) return false;
+		if (!isSelectedChunk(server.getSeed(), origin.getX() >> 4, origin.getZ() >> 4))
 			return false;
 
 		int x = origin.getX() + random.nextInt(16);
@@ -60,7 +62,8 @@ public final class WarpNodeFeature implements Feature {
 		if (random.nextDouble() >= this.getBiomeSuccessChance(biome))
 			return false;
 
-		int minY = this.getMinY(world, x, z);
+		int minY = minimumHeight(world.getHeight(Heightmap.Types.MOTION_BLOCKING, x, z) - 1,
+				biome.is(ChromaBiomes.LUMINOUS_CLIFFS) || biome.is(ChromaBiomes.LUMINOUS_CLIFFS_SHORES));
 		int maxY = this.getMaxY(biome);
 		if (minY >= maxY)
 			return false;
@@ -69,24 +72,34 @@ public final class WarpNodeFeature implements Feature {
 		if (!canGenerateAt(world, pos))
 			return false;
 		world.setBlock(pos, ChromaBlocks.WARP_NODE.get().defaultBlockState(), 2);
-		// CHROMA-PORT: V33a posts NexusGenEvent here for API consumers; the event is not registered yet.
+		NeoForge.EVENT_BUS.post(new NexusGenEvent(world, pos, random));
 		return true;
 	}
 
-	private boolean isGennableChunk(ServerLevel world, int chunkX, int chunkZ) {
-		long seed = -(world.dimension().hashCode() * 11L - world.getSeed() * 7L);
-		if (!gridReady || gridSeed != seed) {
-			// V33a: ShuffledGrid(2048, 20, 55), seeded from the dimension id and world seed.
-			grid = new ShuffledGrid(GRID_SIZE, GRID_DEVIATION, GRID_SEPARATION);
-			grid.calculate(new java.util.Random(seed));
-			gridSeed = seed;
-			gridReady = true;
-		}
-		return grid.isValid(chunkX, chunkZ);
+	public static boolean isSelectedChunk(long worldSeed, int chunkX, int chunkZ) {
+		BitSet grid = GRIDS.computeIfAbsent(worldSeed, WarpNodeFeature::createGrid);
+		return grid.get(Math.floorMod(chunkX, GRID_SIZE) * GRID_SIZE + Math.floorMod(chunkZ, GRID_SIZE));
+	}
+
+	private static BitSet createGrid(long worldSeed) {
+		// Overworld dimension id was zero. Preserve ShuffledGrid's two discarded draws and
+		// exact x/z traversal; ResourceKey identity hashes are not persistent seed material.
+		var random = new java.util.Random(worldSeed * 7L);
+		random.nextBoolean(); random.nextBoolean();
+		BitSet grid = new BitSet(GRID_SIZE * GRID_SIZE);
+		for (int x = GRID_DEVIATION; x < GRID_SIZE - GRID_DEVIATION; x += GRID_SEPARATION)
+			for (int z = GRID_DEVIATION; z < GRID_SIZE - GRID_DEVIATION; z += GRID_SEPARATION) {
+				int px = x - GRID_DEVIATION + random.nextInt(GRID_DEVIATION * 2 + 1);
+				int pz = z - GRID_DEVIATION + random.nextInt(GRID_DEVIATION * 2 + 1);
+				grid.set(px * GRID_SIZE + pz);
+			}
+		return grid;
 	}
 
 	/** V33a getBiomeSuccessChance. */
 	private double getBiomeSuccessChance(Holder<Biome> biome) {
+		// CHROMA-PORT: Satisforestry Pink Forest bridge: chance 0.75, trueTop+40 floor,
+		// y=255 ceiling. Retain those rules when its biome API is available on 26.3.
 		if (biome.is(ChromaBiomes.ENDER_FOREST))
 			return 1;
 		if (biome.is(ChromaBiomes.RAINBOW_FOREST))
@@ -97,8 +110,9 @@ public final class WarpNodeFeature implements Feature {
 	}
 
 	/** V33a getMinY: 48 above the highest block in the column. */
-	private int getMinY(WorldGenLevel world, int x, int z) {
-		return world.getHeight(Heightmap.Types.MOTION_BLOCKING, x, z) + 48;
+	static int minimumHeight(int topNonAir, boolean cliffs) {
+		int min = topNonAir + 48;
+		return cliffs ? Math.max(min, GlowingCliffsColumnShaper.MAX_MIDDLE_TOP_Y + 16) : min;
 	}
 
 	/**
@@ -109,7 +123,7 @@ public final class WarpNodeFeature implements Feature {
 	private int getMaxY(Holder<Biome> biome) {
 		if (biome.is(ChromaBiomes.LUMINOUS_CLIFFS) || biome.is(ChromaBiomes.LUMINOUS_CLIFFS_SHORES))
 			return 255;
-		return Math.max(128, 192);
+		return 192;
 	}
 
 	/** V33a canGenerateAt: open air with a clear view of the sky. */

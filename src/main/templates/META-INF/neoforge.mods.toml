@@ -8,6 +8,9 @@ credits="Thanks to OfficialyMax for porting ChromatiCraft to modern versions of 
 authors="${mod_authors}"
 description='''${mod_description}'''
 
+[[mixins]]
+config="mixins.chromaticraft.json"
+
 [[dependencies.${mod_id}]]
     modId="neoforge"
     type="required"
@@ -32,6 +35,13 @@ description='''${mod_description}'''
 [[dependencies.${mod_id}]]
     modId="rotarycraft"
     type="required"
+    versionRange="[1.0.0,)"
+    ordering="AFTER"
+    side="BOTH"
+
+[[dependencies.${mod_id}]]
+    modId="voidmonster"
+    type="optional"
     versionRange="[1.0.0,)"
     ordering="AFTER"
     side="BOTH"

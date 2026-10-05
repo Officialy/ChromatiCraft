@@ -1,20 +1,20 @@
 package reika.chromaticraft.block.dye26;
 
-import net.minecraft.util.random.WeightedList;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
+import net.minecraft.util.random.WeightedList;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.SaplingBlock;
 import net.minecraft.world.level.block.BonemealSource;
-import net.minecraft.world.level.block.state.BlockState;
-import reika.dragonapi.libraries.level.ReikaWorldHelper;
+import net.minecraft.world.level.block.SaplingBlock;
 import net.minecraft.world.level.block.grower.TreeGrower;
 import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.block.state.BlockState;
 import reika.chromaticraft.data.ChromaWorldGenProvider;
 import reika.chromaticraft.registry.CrystalElement;
+import reika.dragonapi.libraries.level.ReikaWorldHelper;
 
 /**
  * V33a {@code BlockDyeSapling}, one registered block per former metadata colour.

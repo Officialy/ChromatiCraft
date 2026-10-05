@@ -1,15 +1,13 @@
 package reika.chromaticraft.world.dimension.structure;
 
-import java.util.Optional;
-
 import com.mojang.serialization.MapCodec;
-
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureType;
-import net.minecraft.world.level.levelgen.Heightmap;
-
 import reika.chromaticraft.world.dimension.ProximaGenerators;
+
+import java.util.Optional;
 
 /**
  * The start half of Proxima's monument. All of the shape is in {@link MonumentPiece}; this only says

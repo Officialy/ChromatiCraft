@@ -1,7 +1,5 @@
 package reika.chromaticraft.client.gui;
 
-import java.util.Optional;
-
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -10,12 +8,13 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Inventory;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.container.MenuCrystalCharger;
 import reika.chromaticraft.network.ChromaNetwork;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.tileentity.auxiliary.TileEntityCrystalCharger;
+
+import java.util.Optional;
 
 /** Source-faithful 176x191 Storage Crystal Charger screen on the 26.2 extraction pipeline. */
 public final class ScreenCrystalCharger extends AbstractContainerScreen<MenuCrystalCharger> {
@@ -35,7 +34,7 @@ public final class ScreenCrystalCharger extends AbstractContainerScreen<MenuCrys
 			int x = leftPos + barX(element);
 			int bottom = topPos + (element.ordinal() < 8 ? 51 : 91);
 			int fill = Math.min(34, 34 * menu.energy(element) / TileEntityCrystalCharger.CAPACITY);
-			if (fill > 0) graphics.fill(x, bottom - fill, x + 16, bottom, 0xff000000 | element.getColor());
+			if (fill > 0) graphics.fill(x, bottom - fill, x + 16, bottom, 0xff000000 | element.color());
 			int outline = menu.isToggled(element) ? 0xff00ff00 : 0xffff0000;
 			drawFrame(graphics, x - 1, bottom - 35, 18, 36, outline);
 		}

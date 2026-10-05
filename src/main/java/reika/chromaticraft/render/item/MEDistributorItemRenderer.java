@@ -1,6 +1,5 @@
 package reika.chromaticraft.render.item;
 
-import java.util.function.Consumer;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.client.renderer.SubmitNodeCollector;
@@ -12,6 +11,8 @@ import org.joml.Vector3fc;
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.models.ModelMEDistributor;
 import reika.chromaticraft.render.tesr.RenderMEDistributor;
+
+import java.util.function.Consumer;
 
 /**
  * V33a drew the ME Item Distributor item with its TESR on a render-only tile: the upward-mounted model with its

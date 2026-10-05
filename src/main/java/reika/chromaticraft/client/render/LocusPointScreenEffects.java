@@ -1,21 +1,13 @@
 package reika.chromaticraft.client.render;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-
-import com.mojang.renderpearl.api.GpuFormat;
-import com.mojang.renderpearl.api.buffers.GpuBuffer;
 import com.mojang.blaze3d.buffers.Std140Builder;
 import com.mojang.blaze3d.framegraph.FrameGraphBuilder;
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.resource.GraphicsResourceAllocator;
-import com.mojang.blaze3d.resource.RenderTargetDescriptor;
 import com.mojang.blaze3d.resource.ResourceHandle;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.renderpearl.api.buffers.GpuBuffer;
 import com.mojang.renderpearl.api.textures.FilterMode;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.MappableRingBuffer;
@@ -24,17 +16,20 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.Vec3;
-
 import org.joml.Matrix4fc;
 import org.joml.Vector4f;
 import org.jspecify.annotations.Nullable;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.render.ChromaRenderPipelines;
 import reika.chromaticraft.tileentity.aoe.TileEntityAuraPoint;
 import reika.chromaticraft.tileentity.technical.TileEntityDimensionCore;
 import reika.dragonapi.instantiable.RayTracer;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 /** Modern live-focus host for V33a's DIMCORE, AURALOC, PYLON and PYLONAURA screen effects. */
 public final class LocusPointScreenEffects {
@@ -77,7 +72,7 @@ public final class LocusPointScreenEffects {
 		float intensity = distance <= 32 ? 1F : (float)(1 - (distance - 32) / 96D);
 		CrystalElement element = core.getColor();
 		POINTS.add(new Point(new Vec3(x, y, z), distSq, Math.max(0, intensity),
-				MonumentRitualEffects.getDimensionCoreShaderScale(element), element.getColor(), false));
+				MonumentRitualEffects.getDimensionCoreShaderScale(element), element.color(), false));
 	}
 
 	public static void addAuraPoint(TileEntityAuraPoint point) {
@@ -115,7 +110,7 @@ public final class LocusPointScreenEffects {
 		float grade = Math.max(0, (factor * factor - 0.75F) * 3);
 		if (distance < 6)
 			grade = Math.min(1, grade + (float)(6 - distance) / 12F);
-		POINTS.add(new Point(center, aura, grade, -2, pylon.getColor().getColor(), false));
+		POINTS.add(new Point(center, aura, grade, -2, pylon.getColor().color(), false));
 	}
 
 	private static void addNearbyPylons(ClientLevel level, Vec3 eye) {

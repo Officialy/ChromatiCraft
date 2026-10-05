@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "chromaticraft:block/death_fog_emitter"
+    }
+  }
+}

@@ -1,19 +1,11 @@
 package reika.chromaticraft.auxiliary.ability;
 
-import java.util.ArrayList;
-import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.player.Player;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.api.abilityapi.Ability;
 import reika.chromaticraft.magic.ChromaAbilityData;
@@ -22,6 +14,8 @@ import reika.chromaticraft.magic.ElementTagCompound;
 import reika.chromaticraft.magic.PlayerElementBuffer;
 import reika.chromaticraft.registry.Chromabilities;
 import reika.chromaticraft.registry.CrystalElement;
+
+import java.util.*;
 
 /** V33a Deathproof loss cache, retained between the death event and the replacement player clone. */
 @EventBusSubscriber(modid = ChromatiCraft.MODID)

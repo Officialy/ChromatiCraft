@@ -1,24 +1,23 @@
 package reika.chromaticraft.world.dimension;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Vec3i;
+import net.minecraft.server.level.WorldGenRegion;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.server.level.WorldGenRegion;
-
 import reika.chromaticraft.block.dimension.BlockDimensionCore;
 import reika.chromaticraft.block.dimension.BlockVoidRift;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaShieldTypes;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.registry.ProximaDecoTypes;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * V33a {@code WorldGenFissure}: the Radiant Fissures, and the Void Rifts at the bottom of them.

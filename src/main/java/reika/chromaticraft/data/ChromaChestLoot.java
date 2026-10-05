@@ -1,7 +1,5 @@
 package reika.chromaticraft.data;
 
-import java.util.function.BiConsumer;
-
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.loot.LootTableSubProvider;
 import net.minecraft.resources.Identifier;
@@ -13,12 +11,13 @@ import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.entries.EmptyLootItem;
 import net.minecraft.world.level.storage.loot.entries.LootItem;
 import net.minecraft.world.level.storage.loot.functions.SetItemCountFunction;
-import net.minecraft.world.level.storage.loot.providers.number.ints.ContextIntProviders;
 import net.minecraft.world.level.storage.loot.providers.number.ints.ContextIntProvider;
-
+import net.minecraft.world.level.storage.loot.providers.number.ints.ContextIntProviders;
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.CrystalElement;
+
+import java.util.function.BiConsumer;
 
 /**
  * V33a {@code ChromaChests}, which is how Information Fragments, the Lexicon and elemental shards get

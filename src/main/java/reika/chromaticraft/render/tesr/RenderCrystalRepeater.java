@@ -1,14 +1,8 @@
 package reika.chromaticraft.render.tesr;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
@@ -27,13 +21,9 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-
+import net.neoforged.neoforge.client.submit.RenderPhaseKeys;
 import org.joml.Vector3f;
 import org.jspecify.annotations.Nullable;
-
-import net.neoforged.neoforge.client.extensions.OrderedSubmitNodeCollectorExtension;
-import net.neoforged.neoforge.client.submit.RenderPhaseKeys;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.magic.CrystalTarget;
 import reika.chromaticraft.magic.castingtuning.CastingTuningRegistry;
@@ -43,6 +33,11 @@ import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.render.ChromaRenderPipelines;
 import reika.chromaticraft.tileentity.networking.TileEntityCrystalRepeater;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
+
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 /** Full V33a crystal-repeater presentation on Minecraft 26.2's submit pipeline. */
 public class RenderCrystalRepeater<T extends TileEntityCrystalRepeater>
@@ -149,7 +144,7 @@ public class RenderCrystalRepeater<T extends TileEntityCrystalRepeater>
 
     protected int getHaloRenderColor(TileEntityCrystalRepeater repeater) {
         CrystalElement element = repeater.getActiveColor();
-        return element != null ? element.getColor() : 0xffffff;
+        return element != null ? element.color() : 0xffffff;
     }
 
     private static float updateManipulatorFade(TileEntityCrystalRepeater repeater) {
@@ -310,8 +305,8 @@ public class RenderCrystalRepeater<T extends TileEntityCrystalRepeater>
         if (colors.isEmpty()) return 0;
         int first = (int)(tick / modulus);
         first = (first + colors.size()) % colors.size();
-        int c1 = colors.get(first).getColor();
-        int c2 = colors.get((first + 1) % colors.size()).getColor();
+        int c1 = colors.get(first).color();
+        int c2 = colors.get((first + 1) % colors.size()).color();
         float fraction = (float)(tick % modulus / modulus);
         return ReikaColorAPI.mixColors(c1, c2, 1 - fraction);
     }
@@ -363,7 +358,7 @@ public class RenderCrystalRepeater<T extends TileEntityCrystalRepeater>
             RenderType renderType, SubmitNodeCollector.CustomGeometryRenderer renderer) {
         CustomFeatureRenderer.Submit submit = new CustomFeatureRenderer.Submit(
                 poseStack.last().copy(), renderType, renderer);
-        ((OrderedSubmitNodeCollectorExtension)collector.order(0))
+        collector.order(0)
         // In 26.2 TRANSLUCENT_CUSTOM_GEOMETRY is drained before the translucent chunk layer;
         // AFTER_TERRAIN is the actual post-water hook. Water is therefore already down and can
         // correctly occlude the glow, while the pipeline's depth still orders later compositing.

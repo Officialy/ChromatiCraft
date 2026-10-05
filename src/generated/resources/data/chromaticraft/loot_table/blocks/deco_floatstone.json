@@ -4,16 +4,26 @@
     {
       "entries": [
         {
-          "type": "minecraft:item",
-          "modifier": {
-            "type": "minecraft:set_count",
-            "count": {
-              "type": "chromaticraft:tuning_scaled_count",
-              "base": 1,
-              "maximum": 3
+          "type": "minecraft:alternatives",
+          "children": [
+            {
+              "type": "minecraft:item",
+              "condition": "minecraft:tool/can_silk_touch",
+              "name": "chromaticraft:deco_floatstone"
+            },
+            {
+              "type": "minecraft:item",
+              "modifier": {
+                "type": "minecraft:set_count",
+                "count": {
+                  "type": "chromaticraft:tuning_scaled_count",
+                  "base": 1,
+                  "maximum": 3
+                }
+              },
+              "name": "chromaticraft:floatstone"
             }
-          },
-          "name": "chromaticraft:deco_floatstone"
+          ]
         }
       ],
       "rolls": 1

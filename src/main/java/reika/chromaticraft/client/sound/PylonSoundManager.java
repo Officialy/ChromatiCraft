@@ -1,14 +1,13 @@
 package reika.chromaticraft.client.sound;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.sounds.SoundManager;
 import net.minecraft.core.BlockPos;
-
 import reika.chromaticraft.tileentity.networking.TileEntityCrystalPylon;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /** Maintains exactly one immediately-started ambient loop for each loaded, assembled pylon. */
 public final class PylonSoundManager {

@@ -1,8 +1,5 @@
 package reika.chromaticraft.magic;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
 import net.minecraft.server.level.ServerLevel;
@@ -10,20 +7,22 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
-
 import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.magic.MonumentRitualScore.TimedEvent;
+import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.network.ChromaNetwork;
-import reika.chromaticraft.world.dimension.structure.MonumentMineralBlocks;
-import reika.chromaticraft.world.dimension.structure.MonumentPiece;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaDimensions;
 import reika.chromaticraft.registry.ChromaSounds;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.tileentity.aoe.TileEntityAuraPoint;
 import reika.chromaticraft.tileentity.technical.TileEntityDimensionCore;
+import reika.chromaticraft.world.dimension.structure.MonumentMineralBlocks;
+import reika.chromaticraft.world.dimension.structure.MonumentPiece;
 import reika.dragonapi.libraries.ReikaPlayerAPI;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * V33a {@code MonumentCompletionRitual}: the ceremony that turns Proxima's monument into an Aura Locus.

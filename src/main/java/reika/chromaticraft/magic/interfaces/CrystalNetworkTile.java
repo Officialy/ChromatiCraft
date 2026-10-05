@@ -9,43 +9,42 @@
  ******************************************************************************/
 package reika.chromaticraft.magic.interfaces;
 
-import java.util.UUID;
-
 import net.minecraft.world.level.Level;
-
 import reika.chromaticraft.registry.CrystalElement;
+
+import java.util.UUID;
 
 public interface CrystalNetworkTile {
 
-	public boolean isConductingElement(CrystalElement e);
+	boolean isConductingElement(CrystalElement e);
 
-	public void cachePosition();
+	void cachePosition();
 
-	public void removeFromCache();
+	void removeFromCache();
 
-	public double getDistanceSqTo(double x, double y, double z);
+	double getDistanceSqTo(double x, double y, double z);
 
-	public Level getWorld();
+	Level getWorld();
 
-	public int getX();
+	int getX();
 
-	public int getY();
+	int getY();
 
-	public int getZ();
+	int getZ();
 
 	/** Max per-tick flow. Called on connection for repeaters, called every tick for sources, to let them throttle as they drain. */
-	public int maxThroughput();
+    int maxThroughput();
 
-	public boolean canConduct();
+	boolean canConduct();
 
-	public UUID getUniqueID();
+	UUID getUniqueID();
 
-	public UUID getPlacerUUID();
+	UUID getPlacerUUID();
 
-	public void triggerBottleneckDisplay(int duration);
+	void triggerBottleneckDisplay(int duration);
 
 	/** TileEntity isInvalid, ie has it been removed from the world */
-	public boolean isRemoved();
+    boolean isRemoved();
 
 	//public ResearchLevel getResearchTier();
 

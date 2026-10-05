@@ -9,10 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.tileentity.networking;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.UUID;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
@@ -20,7 +16,6 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-
 import reika.chromaticraft.auxiliary.interfaces.VariableTexture;
 import reika.chromaticraft.base.tileentity.TileEntityChromaticBase;
 import reika.chromaticraft.magic.network.PylonLinkNetwork;
@@ -31,6 +26,10 @@ import reika.dragonapi.auxiliary.ChunkManager;
 import reika.dragonapi.instantiable.data.immutable.WorldLocation;
 import reika.dragonapi.interfaces.blockentity.ChunkLoadingTile;
 import reika.dragonapi.interfaces.blockentity.LocationCached;
+
+import java.util.Collection;
+import java.util.List;
+import java.util.UUID;
 
 /** The owner-bound base tile that joins same-colour pylons into a persistent donation web. */
 public class TileEntityPylonLink extends TileEntityChromaticBase

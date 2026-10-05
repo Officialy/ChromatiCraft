@@ -1,20 +1,9 @@
 package reika.chromaticraft.world;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.EnumMap;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
 import com.mojang.serialization.Codec;
-
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMaps;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
-
-import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.QuartPos;
 import net.minecraft.nbt.CompoundTag;
@@ -30,7 +19,6 @@ import net.minecraft.world.level.levelgen.FlatLevelSource;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.level.saveddata.SavedDataType;
 import net.neoforged.neoforge.common.Tags;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.registry.ChromaOptions;
 import reika.chromaticraft.world.OverworldStructureFeature.Type;
@@ -38,6 +26,9 @@ import reika.chromaticraft.world.biome.ChromaBiomes;
 import reika.dragonapi.instantiable.data.immutable.DecimalPosition;
 import reika.dragonapi.instantiable.data.immutable.WorldLocation;
 import reika.dragonapi.instantiable.math.noise.VoronoiNoiseGenerator;
+
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * The planning half of V33a {@code DungeonGenerator}: where the six natural overworld structures
@@ -125,7 +116,7 @@ public final class DungeonZones {
 		};
 	}
 
-	/** V33a {@code getChunkKeepTryingRange}; 26.2 can only honour the first ring (see the feature). */
+	/** V33a {@code getChunkKeepTryingRange}; the saved post-population queue honours every square. */
 	public static int keepTryingRange(Type s) {
 		return switch (s) {
 			case OCEAN, SNOW -> 96;
@@ -135,14 +126,17 @@ public final class DungeonZones {
 	}
 
 	private static VoronoiNoiseGenerator noise(ServerLevel level, Type s) {
-		return NOISE.computeIfAbsent(level, l -> new EnumMap<>(Type.class)).computeIfAbsent(s, t -> {
-			long sd = level.getSeed() ^ (t.ordinal() * 41381L)
-					^ ~reika.dragonapi.libraries.level.ReikaWorldHelper.getCurrentWorldID(level).worldCreationTime;
-			VoronoiNoiseGenerator v = (VoronoiNoiseGenerator)new VoronoiNoiseGenerator(sd ^ t.ordinal())
-					.setFrequency(0.75D / noiseScale(t));
-			v.randomFactor = 0.55;
-			return v;
-		});
+		var fields = NOISE.computeIfAbsent(level, l -> new EnumMap<>(Type.class));
+		synchronized (fields) {
+			return fields.computeIfAbsent(s, t -> {
+				long sd = level.getSeed() ^ (t.ordinal() * 41381L)
+						^ ~reika.dragonapi.libraries.level.ReikaWorldHelper.getCurrentWorldID(level).worldCreationTime;
+				VoronoiNoiseGenerator v = (VoronoiNoiseGenerator)new VoronoiNoiseGenerator(sd ^ t.ordinal())
+						.setFrequency(0.75D / noiseScale(t));
+				v.randomFactor = 0.55;
+				return v;
+			});
+		}
 	}
 
 	public static void forget(ServerLevel level) {
@@ -164,8 +158,8 @@ public final class DungeonZones {
 		Collection<WorldLocation> ret = new ArrayList<>();
 		Data data = Data.get(level);
 		for (DecimalPosition d : li) {
-			int cx = Mth.floor(d.xCoord) >> 4;
-			int cz = Mth.floor(d.zCoord) >> 4;
+			int cx = Mth.floor(d.xCoord()) >> 4;
+			int cz = Mth.floor(d.zCoord()) >> 4;
 			Status get = data.putIfAbsent(s, cx, cz, Status.PLANNED);
 			if (get != null && get.isFinalized() && !get.hasStructure())
 				continue;

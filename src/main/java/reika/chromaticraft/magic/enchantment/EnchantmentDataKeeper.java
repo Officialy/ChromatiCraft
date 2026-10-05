@@ -9,8 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.magic.enchantment;
 
-import java.util.HashMap;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -21,11 +19,12 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.CakeBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.common.Tags;
-
 import reika.chromaticraft.base.ChromaticEnchantment;
 import reika.chromaticraft.registry.ChromaEnchants;
 import reika.dragonapi.libraries.ReikaPlayerAPI;
 import reika.dragonapi.libraries.registry.ReikaItemHelper;
+
+import java.util.HashMap;
 
 /**
  * V33a Identity Retention: a few blocks that normally drop nothing of themselves (an uneaten cake) break into

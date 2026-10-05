@@ -14,14 +14,9 @@ import net.minecraft.core.Direction;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-
 import reika.chromaticraft.base.tileentity.TileEntityAdjacencyUpgrade;
 import reika.chromaticraft.magic.interfaces.LumenConsumer;
-import reika.chromaticraft.registry.AdjacencyUpgrades;
-import reika.chromaticraft.registry.ChromaBlockEntities;
-import reika.chromaticraft.registry.ChromaOptions;
-import reika.chromaticraft.registry.ChromaTiles;
-import reika.chromaticraft.registry.CrystalElement;
+import reika.chromaticraft.registry.*;
 
 /**
  * V33a {@code TileEntityEfficiencyUpgrade}, the black Efficiency Augment. It does nothing itself; lumen consumers on
@@ -53,7 +48,7 @@ public class TileEntityEfficiencyUpgrade extends TileEntityAdjacencyUpgrade {
 		AdjacencyEffectDescription adj = TileEntityAdjacencyUpgrade.registerEffectDescription(CrystalElement.BLACK, desc);
 		for (int i = 0; i < ChromaTiles.TEList.length; i++) {
 			ChromaTiles r = ChromaTiles.TEList[i];
-			if (r == ChromaTiles.ADJACENCY)
+			if (r == ChromaTiles.ADJACENCY || !r.isAvailable())
 				continue;
 			if (LumenConsumer.class.isAssignableFrom(r.getTEClass()) && !r.isRepeater()) {
 				BlockEntity lc = r.createBlockEntity(BlockPos.ZERO, r.getBlockState());

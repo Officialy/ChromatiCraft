@@ -11,12 +11,12 @@ package reika.chromaticraft.magic.interfaces;
 
 public interface CrystalTransmitter extends CrystalNetworkTile, EnergyBeamRenderer {
 
-	public int getSendRange();
+	int getSendRange();
 
-	public boolean needsLineOfSightToReceiver(CrystalReceiver r);
+	boolean needsLineOfSightToReceiver(CrystalReceiver r);
 
-	public boolean canTransmitTo(CrystalReceiver r);
+	boolean canTransmitTo(CrystalReceiver r);
 
 	/** Larger is higher priority. */
-	public int getPathPriority();
+    int getPathPriority();
 }

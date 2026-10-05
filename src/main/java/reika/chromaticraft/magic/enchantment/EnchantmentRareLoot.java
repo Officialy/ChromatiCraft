@@ -10,9 +10,8 @@
 package reika.chromaticraft.magic.enchantment;
 
 import net.minecraft.world.entity.player.Player;
-
-import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.base.ChromaticEnchantment;
+import reika.chromaticraft.magic.progression.ProgressStage;
 
 /** V33a Reposession: a kill drops the mob's equipment, and often its rare drop and head. */
 public class EnchantmentRareLoot extends ChromaticEnchantment {

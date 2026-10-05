@@ -1,5 +1,9 @@
 package reika.chromaticraft.world.dimension.structure.lightpanel;
 
+import reika.chromaticraft.ChromatiCraft;
+import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
+
+import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.InputStream;
@@ -7,11 +11,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
-
-import javax.imageio.ImageIO;
-
-import reika.chromaticraft.ChromatiCraft;
-import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
 
 /**
  * Server-safe loader for V33a's seven authored Glowing Logic pattern sheets.

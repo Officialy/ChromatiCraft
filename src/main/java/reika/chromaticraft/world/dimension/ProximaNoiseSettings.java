@@ -1,7 +1,5 @@
 package reika.chromaticraft.world.dimension;
 
-import java.util.List;
-
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.BootstrapContext;
 import net.minecraft.resources.Identifier;
@@ -16,9 +14,10 @@ import net.minecraft.world.level.levelgen.material.MaterialRules;
 import net.minecraft.world.level.levelgen.material.rule.MaterialRule;
 import net.minecraft.world.level.levelgen.placement.CaveSurface;
 import net.minecraft.world.level.levelgen.synth.BlendedNoise;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.world.dimension.ProximaTerrainDensityFunction.Mode;
+
+import java.util.List;
 
 /**
  * Proxima's terrain, built out of vanilla 26.2's noise pipeline.

@@ -10,9 +10,8 @@
 package reika.chromaticraft.magic.enchantment;
 
 import net.minecraft.world.entity.player.Player;
-
-import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.base.ChromaticEnchantment;
+import reika.chromaticraft.magic.progression.ProgressStage;
 
 /** V33a Area Strike: a hit also lands, falling off with distance, on nearby mobs of the same kind. */
 public class EnchantmentWeaponAOE extends ChromaticEnchantment {

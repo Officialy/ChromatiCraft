@@ -9,18 +9,10 @@
  ******************************************************************************/
 package reika.chromaticraft.modinterface.ae;
 
-import java.util.Set;
-import java.util.function.Consumer;
-
-import net.minecraft.network.chat.Component;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.item.component.TooltipDisplay;
-
 import appeng.api.config.FuzzyMode;
+import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.AEKeyType;
-import appeng.api.stacks.AEItemKey;
 import appeng.api.storage.StorageCells;
 import appeng.api.storage.cells.IBasicCellItem;
 import appeng.api.storage.cells.StorageCell;
@@ -28,7 +20,14 @@ import appeng.api.upgrades.IUpgradeInventory;
 import appeng.api.upgrades.UpgradeInventories;
 import appeng.items.contents.CellConfig;
 import appeng.util.ConfigInventory;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.TooltipDisplay;
 import reika.chromaticraft.base.ItemChromaTool;
+
+import java.util.Set;
+import java.util.function.Consumer;
 
 /**
  * V33a {@code ItemVoidStorage}, the Void Cell: one item type, (2^30)/4 bytes of it. Two upgrade slots and a 63-slot

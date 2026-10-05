@@ -9,14 +9,11 @@
  ******************************************************************************/
 package reika.chromaticraft.tileentity.networking;
 
-import java.util.EnumMap;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
-
 import reika.chromaticraft.block.BlockCrystallineStone;
 import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
 import reika.chromaticraft.magic.interfaces.ConnectivityAction;
@@ -24,11 +21,12 @@ import reika.chromaticraft.magic.interfaces.CrystalReceiver;
 import reika.chromaticraft.magic.interfaces.CrystalTransmitter;
 import reika.chromaticraft.magic.network.CrystalPath;
 import reika.chromaticraft.registry.ChromaBlockEntities;
-import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaStructures;
 import reika.chromaticraft.registry.ChromaTiles;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.render.particle.ChromaParticle;
+
+import java.util.EnumMap;
 
 /**
  * Compound repeater — a colour-cycling repeater (conducts all colours in turn) built on a taller

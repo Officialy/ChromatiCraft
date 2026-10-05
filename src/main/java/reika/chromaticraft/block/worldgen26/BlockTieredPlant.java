@@ -1,9 +1,5 @@
 package reika.chromaticraft.block.worldgen26;
 
-import java.util.ArrayList;
-import java.util.List;
-
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
@@ -15,28 +11,25 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.item.enchantment.Enchantments;
-import net.minecraft.world.level.BlockGetter;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.level.LevelReader;
-import net.minecraft.world.level.ServerLevelAccessor;
-import net.minecraft.world.level.ScheduledTickAccess;
+import net.minecraft.world.level.*;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.material.Fluids;
-
-import net.neoforged.neoforge.common.Tags;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.EntityCollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
-
-import reika.chromaticraft.registry.ChromaItems;
+import net.neoforged.neoforge.common.Tags;
 import reika.chromaticraft.registry.ChromaDimensions;
+import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.ChromaTieredPlants;
 import reika.chromaticraft.render.particle.ChromaParticle;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * V33a {@code BlockTieredPlant}: a plant that does not exist for a player who has not reached its

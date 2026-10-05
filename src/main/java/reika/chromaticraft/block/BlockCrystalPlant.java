@@ -111,7 +111,7 @@ public final class BlockCrystalPlant extends VegetationBlock implements EntityBl
 	@Override
 	public void animateTick(BlockState state, Level level, BlockPos pos, RandomSource random) {
 		if (level.getBlockEntity(pos) instanceof TileEntityCrystalPlant te && te.isPure())
-			ChromaParticle.spawnCrystalPlant(level, pos, element.getColor(), te.canHarvest(),
+			ChromaParticle.spawnCrystalPlant(level, pos, element.color(), te.canHarvest(),
 					te.is(TileEntityCrystalPlant.Modifier.BOOSTED), te.is(TileEntityCrystalPlant.Modifier.PRIMAL),
 					random);
 	}

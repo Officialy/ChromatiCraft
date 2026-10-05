@@ -13,7 +13,6 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.feature.CustomFeatureRenderer;
-import net.neoforged.neoforge.client.extensions.OrderedSubmitNodeCollectorExtension;
 import net.neoforged.neoforge.client.submit.RenderPhaseKeys;
 import org.joml.Vector3f;
 import reika.dragonapi.instantiable.data.immutable.DecimalPosition;
@@ -64,11 +63,11 @@ public final class GlowKnot {
     private static void addSegment(PoseStack.Pose pose, VertexConsumer vertices,
                                    DecimalPosition first, DecimalPosition second,
                                    int red, int green, int blue, int alpha, Vector3f normal) {
-        vertices.addVertex(pose, (float) (0.5 + first.xCoord), (float) (0.5 + first.yCoord),
-                (float) (0.5 + first.zCoord)).setNormal(pose, normal)
+        vertices.addVertex(pose, (float) (0.5 + first.xCoord()), (float) (0.5 + first.yCoord()),
+                (float) (0.5 + first.zCoord())).setNormal(pose, normal)
                 .setColor(red, green, blue, alpha).setLineWidth(2F);
-        vertices.addVertex(pose, (float) (0.5 + second.xCoord), (float) (0.5 + second.yCoord),
-                (float) (0.5 + second.zCoord)).setNormal(pose, normal)
+        vertices.addVertex(pose, (float) (0.5 + second.xCoord()), (float) (0.5 + second.yCoord()),
+                (float) (0.5 + second.zCoord())).setNormal(pose, normal)
                 .setColor(red, green, blue, alpha).setLineWidth(2F);
     }
 
@@ -91,7 +90,7 @@ public final class GlowKnot {
                 renderPoints(renderPose.last(), vertices, points, color, alpha);
         CustomFeatureRenderer.Submit submit = new CustomFeatureRenderer.Submit(
                 stack.last().copy(), ChromaRenderPipelines.auraLocusLines(), geometry);
-        ((OrderedSubmitNodeCollectorExtension) collector.order(0))
+        collector.order(0)
                 .submitSpecial(RenderPhaseKeys.AFTER_TERRAIN, submit);
     }
 

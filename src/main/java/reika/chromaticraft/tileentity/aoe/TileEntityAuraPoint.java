@@ -1,9 +1,5 @@
 package reika.chromaticraft.tileentity.aoe;
 
-import java.util.HashSet;
-import java.util.Set;
-import java.util.UUID;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
@@ -13,12 +9,15 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
-
+import reika.chromaticraft.base.tileentity.TileEntityLocusPoint;
 import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.ChromaSounds;
 import reika.chromaticraft.registry.ChromaTiles;
-import reika.chromaticraft.base.tileentity.TileEntityLocusPoint;
 import reika.dragonapi.libraries.ReikaEntityHelper;
+
+import java.util.HashSet;
+import java.util.Set;
+import java.util.UUID;
 
 /**
  * V33a {@code TileEntityAuraPoint}: what the monument becomes once its ritual completes.

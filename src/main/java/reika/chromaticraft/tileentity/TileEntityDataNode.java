@@ -1,9 +1,5 @@
 package reika.chromaticraft.tileentity;
 
-import java.util.HashSet;
-import java.util.Set;
-import java.util.UUID;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -15,26 +11,24 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.AABB;
-
 import reika.chromaticraft.auxiliary.interfaces.OperationInterval;
-import reika.chromaticraft.entity.EntityDataCrystal;
-import reika.chromaticraft.block.decoration.BlockMetaAlloyLamp;
 import reika.chromaticraft.base.tileentity.TileEntityChromaticBase;
+import reika.chromaticraft.block.decoration.BlockMetaAlloyLamp;
+import reika.chromaticraft.entity.EntityDataCrystal;
 import reika.chromaticraft.magic.lore.Towers;
 import reika.chromaticraft.magic.progression.ProgressStage;
-import reika.chromaticraft.registry.ChromaBlockEntities;
-import reika.chromaticraft.registry.ChromaItems;
-import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaEntityTypes;
-import reika.chromaticraft.registry.ChromaSounds;
-import reika.chromaticraft.registry.ChromaTiles;
-import reika.chromaticraft.render.particle.ChromaParticle;
 import reika.chromaticraft.network.ChromaNetwork;
+import reika.chromaticraft.registry.*;
+import reika.chromaticraft.render.particle.ChromaParticle;
 import reika.dragonapi.libraries.registry.ReikaItemHelper;
+
+import java.util.HashSet;
+import java.util.Set;
+import java.util.UUID;
 
 /**
  * The V33a lore-tower data node. Its three-stage deployment, scan timing, cooldown, per-player

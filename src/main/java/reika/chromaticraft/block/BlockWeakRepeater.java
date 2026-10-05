@@ -1,7 +1,5 @@
 package reika.chromaticraft.block;
 
-import java.util.List;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.item.ItemStack;
@@ -13,9 +11,10 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
-
 import reika.chromaticraft.registry.ChromaTiles;
 import reika.chromaticraft.tileentity.networking.TileEntityWeakRepeater;
+
+import java.util.List;
 
 /** Block-specific V33a behavior for the obtainable wooden repeater frame. */
 public final class BlockWeakRepeater extends BlockChromaticTile {

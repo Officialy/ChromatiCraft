@@ -2,23 +2,10 @@ package reika.chromaticraft.registry;
 
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.level.levelgen.feature.Feature;
-
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
-
 import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.world.CrystalFeature;
-import reika.chromaticraft.world.DataTowerFeature;
-import reika.chromaticraft.world.PylonFeature;
-import reika.chromaticraft.world.CaveIndicatorFeature;
-import reika.chromaticraft.world.DecoFlowerFeature;
-import reika.chromaticraft.world.EnderForestTreeFeature;
-import reika.chromaticraft.world.UnknownArtefactFeature;
-import reika.chromaticraft.world.WarpNodeFeature;
-import reika.chromaticraft.world.SkypeaterFeature;
-import reika.chromaticraft.world.TieredPlantFeature;
-import reika.chromaticraft.world.NetherRoofStructureFeature;
-import reika.chromaticraft.world.OverworldStructureFeature;
+import reika.chromaticraft.world.*;
 import reika.chromaticraft.world.luminous.LumaPatchFeature;
 import reika.chromaticraft.world.luminous.LuminousCliffsTerrainFeature;
 
@@ -62,6 +49,8 @@ public final class ChromaFeatures {
             FEATURES.register("tiered_plant", () -> TieredPlantFeature.CODEC);
     public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> DECO_FLOWER =
             FEATURES.register("deco_flower", () -> DecoFlowerFeature.CODEC);
+    public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> CLIFFS_FLOWER =
+            FEATURES.register("cliffs_flower", () -> reika.chromaticraft.world.CliffsFlowerFeature.CODEC);
 
     public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends Feature>, com.mojang.serialization.MapCodec<? extends Feature>> ENDER_FOREST_TREE =
             FEATURES.register("ender_forest_tree", () -> EnderForestTreeFeature.CODEC);

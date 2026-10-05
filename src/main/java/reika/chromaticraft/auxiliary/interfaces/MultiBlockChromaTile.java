@@ -14,14 +14,14 @@ import reika.dragonapi.instantiable.data.immutable.Coordinate;
 
 public interface MultiBlockChromaTile {
 
-	public void validateStructure();
+	void validateStructure();
 
-	public ChromaStructures getPrimaryStructure();
+	ChromaStructures getPrimaryStructure();
 
-	public Coordinate getStructureOffset();
+	Coordinate getStructureOffset();
 
-	public boolean canStructureBeInspected();
+	boolean canStructureBeInspected();
 
-	public boolean hasStructure();
+	boolean hasStructure();
 
 }

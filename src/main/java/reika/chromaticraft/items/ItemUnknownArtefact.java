@@ -9,10 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.items;
 
-import java.util.Random;
-import java.util.function.Consumer;
-
-import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
@@ -25,10 +21,12 @@ import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.component.TooltipDisplay;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
-
 import reika.chromaticraft.magic.artefact.UABombingEffects;
 import reika.chromaticraft.render.particle.ChromaParticle;
 import reika.dragonapi.instantiable.Interpolation;
+
+import java.util.Random;
+import java.util.function.Consumer;
 
 /**
  * V33a {@code ItemUnknownArtefact} (metadata ARTIFACT): the whole relic, obtainable only by silk-touching
@@ -126,7 +124,7 @@ public class ItemUnknownArtefact extends BlockItem {
 			cycleRenderText();
 			stepTime = System.currentTimeMillis();
 		}
-		li.accept(Component.literal(getRenderText()).withStyle(ChatFormatting.OBFUSCATED));
+		li.accept(reika.chromaticraft.auxiliary.render.ChromaText.scramble(Component.literal(getRenderText())));
 	}
 
 	private static String getRenderText() {

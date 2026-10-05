@@ -1,14 +1,12 @@
 package reika.chromaticraft.tileentity;
 
-import org.jspecify.annotations.Nullable;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
-
+import org.jspecify.annotations.Nullable;
 import reika.chromaticraft.registry.ChromaBlockEntities;
 
 /** Persistent routing data for a panel switch, replacing V33a's generator UUID lookup. */

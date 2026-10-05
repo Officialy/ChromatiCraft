@@ -1,0 +1,61 @@
+{
+  "type": "chromaticraft:casting",
+  "completion": {
+    "required_fragment": "BULKMOVER"
+  },
+  "duration": 20,
+  "experience": 40,
+  "grid": [
+    {
+      "ingredient": "minecraft:obsidian",
+      "slot": 0
+    },
+    {
+      "ingredient": "minecraft:chest",
+      "slot": 1
+    },
+    {
+      "ingredient": "minecraft:obsidian",
+      "slot": 2
+    },
+    {
+      "ingredient": "minecraft:obsidian",
+      "slot": 3
+    },
+    {
+      "ingredient": "minecraft:diamond",
+      "slot": 4
+    },
+    {
+      "ingredient": "minecraft:obsidian",
+      "slot": 5
+    },
+    {
+      "ingredient": "minecraft:iron_ingot",
+      "slot": 7
+    }
+  ],
+  "penalty_threshold": 1,
+  "result": {
+    "id": "chromaticraft:bulk_mover"
+  },
+  "runes": [
+    {
+      "element": "lime",
+      "offset": [
+        -1,
+        -1,
+        -4
+      ]
+    },
+    {
+      "element": "lime",
+      "offset": [
+        1,
+        -1,
+        4
+      ]
+    }
+  ],
+  "tier": "temple"
+}

@@ -9,9 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.tileentity.networking;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
@@ -25,26 +22,18 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
-
-import reika.chromaticraft.magic.interfaces.CrystalReceiver;
-import reika.chromaticraft.magic.interfaces.CrystalSource;
-import reika.chromaticraft.magic.interfaces.DynamicRepeater;
-import reika.chromaticraft.magic.interfaces.ReactiveRepeater;
-import reika.chromaticraft.magic.interfaces.WeakRepeaterSafeReceiver;
+import reika.chromaticraft.block.BlockWeakRepeater;
+import reika.chromaticraft.magic.interfaces.*;
 import reika.chromaticraft.magic.network.CrystalLink;
 import reika.chromaticraft.magic.network.CrystalNetworker;
 import reika.chromaticraft.magic.progression.ProgressStage;
-import reika.chromaticraft.registry.ChromaBlockEntities;
-import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaItems;
-import reika.chromaticraft.registry.ChromaSounds;
-import reika.chromaticraft.registry.ChromaStructures;
-import reika.chromaticraft.registry.ChromaTiles;
-import reika.chromaticraft.registry.CrystalElement;
+import reika.chromaticraft.registry.*;
 import reika.chromaticraft.render.particle.ChromaParticle;
-import reika.chromaticraft.block.BlockWeakRepeater;
 import reika.dragonapi.instantiable.data.immutable.Coordinate;
 import reika.dragonapi.libraries.level.ReikaWorldHelper;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * V33a's obtainable wooden repeater: short range, high attenuation, and deliberately safe only for

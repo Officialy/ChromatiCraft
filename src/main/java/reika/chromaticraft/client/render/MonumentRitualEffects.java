@@ -1,9 +1,5 @@
 package reika.chromaticraft.client.render;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -14,13 +10,16 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.Marker;
 import net.minecraft.world.phys.Vec3;
-
 import reika.chromaticraft.magic.MonumentRitualScore;
 import reika.chromaticraft.magic.MonumentRitualScore.EventType;
 import reika.chromaticraft.magic.MonumentRitualScore.TimedEvent;
 import reika.chromaticraft.registry.ChromaSounds;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.render.particle.ChromaParticle;
+
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 
 /**
  * The client half of the monument completion ritual: everything the server timeline deliberately does
@@ -439,7 +438,7 @@ public final class MonumentRitualEffects {
 				continue;
 			focus.add(new float[] {v.x / v.w * 0.5F + 0.5F, v.y / v.w * 0.5F + 0.5F,
 					(float)Math.max(0.01, eye.distanceToSqr(cx, cy, cz)), colorFade[i] * 0.7F});
-			int rgb = e.getColor();
+			int rgb = e.color();
 			colors.add(new float[] {((rgb >> 16) & 0xFF) / 255F, ((rgb >> 8) & 0xFF) / 255F,
 					(rgb & 0xFF) / 255F});
 		}

@@ -1,8 +1,5 @@
 package reika.chromaticraft.tileentity.auxiliary;
 
-import java.util.Collection;
-import java.util.List;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
@@ -15,7 +12,6 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
-
 import reika.chromaticraft.auxiliary.interfaces.FocusAcceleratable;
 import reika.chromaticraft.auxiliary.interfaces.NBTTile;
 import reika.chromaticraft.base.tileentity.TileEntityChromaticBase;
@@ -24,6 +20,9 @@ import reika.chromaticraft.registry.ChromaTiles;
 import reika.chromaticraft.render.particle.ChromaParticle;
 import reika.dragonapi.interfaces.blockentity.BreakAction;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
+
+import java.util.Collection;
+import java.util.List;
 
 /** Complete 26.2 port of V33a's focus crystal and its accelerator connection contract. */
 public final class TileEntityFocusCrystal extends TileEntityChromaticBase implements NBTTile, BreakAction {

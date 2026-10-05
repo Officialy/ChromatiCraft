@@ -5,14 +5,13 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.DataSlot;
 import net.minecraft.world.inventory.Slot;
-
-import java.util.ArrayList;
-import java.util.List;
-
 import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.registry.ChromaMenus;
 import reika.chromaticraft.tileentity.recipe.TileEntityCastingTable;
 import reika.dragonapi.base.CoreContainer;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /** Ten-slot casting-table menu: the V33a 3x3 grid, protected output, and player inventory. */
 public final class MenuCastingTable extends CoreContainer<TileEntityCastingTable> {

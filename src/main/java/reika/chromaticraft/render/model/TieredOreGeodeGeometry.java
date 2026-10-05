@@ -1,11 +1,11 @@
 package reika.chromaticraft.render.model;
 
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-
-import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 
 /**
  * V33a {@code TieredOreRenderer.renderGeode} geometry, shared by the chunk and item renderers.

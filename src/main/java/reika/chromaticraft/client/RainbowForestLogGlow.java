@@ -1,7 +1,5 @@
 package reika.chromaticraft.client;
 
-import java.util.List;
-
 import net.minecraft.client.renderer.block.BlockAndTintGetter;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
@@ -22,11 +20,12 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ModelEvent;
 import net.neoforged.neoforge.client.model.DelegateBlockStateModel;
 import net.neoforged.neoforge.client.model.quad.MutableQuad;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.block.dye26.BlockDyeLeaf;
 import reika.chromaticraft.world.RainbowForestTreeFeature;
 import reika.dragonapi.libraries.registry.ReikaDyeHelper;
+
+import java.util.List;
 
 /**
  * V33a {@code ChromaClientEventController}'s Rainbow Forest log glow: in the forest, the trunk of every

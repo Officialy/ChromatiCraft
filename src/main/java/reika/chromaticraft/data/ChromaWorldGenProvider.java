@@ -1,7 +1,5 @@
 package reika.chromaticraft.data;
 
-import java.util.List;
-
 import net.minecraft.core.HolderGetter;
 import net.minecraft.core.RegistrySetBuilder;
 import net.minecraft.core.component.DataComponentPatch;
@@ -10,17 +8,17 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.BootstrapContext;
 import net.minecraft.data.worldgen.placement.PlacementUtils;
 import net.minecraft.data.worldgen.placement.VegetationPlacements;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.nbt.CompoundTag;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.util.random.WeightedList;
+import net.minecraft.util.valueproviders.ConstantInt;
 import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.item.trading.TradeCost;
 import net.minecraft.world.item.trading.VillagerTrade;
-import net.minecraft.util.random.WeightedList;
-import net.minecraft.util.valueproviders.ConstantInt;
-import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.feature.Feature;
@@ -29,23 +27,14 @@ import net.minecraft.world.level.levelgen.feature.foliageplacers.BlobFoliagePlac
 import net.minecraft.world.level.levelgen.feature.stateproviders.BlockStateProvider;
 import net.minecraft.world.level.levelgen.feature.stateproviders.WeightedStateProvider;
 import net.minecraft.world.level.levelgen.feature.trunkplacers.StraightTrunkPlacer;
-import net.minecraft.world.level.levelgen.placement.PlacedFeature;
-import net.minecraft.world.level.levelgen.placement.BiomeFilter;
-import net.minecraft.world.level.levelgen.placement.CountPlacement;
-import net.minecraft.world.level.levelgen.placement.InSquarePlacement;
-import net.minecraft.world.level.levelgen.placement.PlacementModifier;
-import net.minecraft.world.level.levelgen.placement.RarityFilter;
-
-import net.minecraft.tags.BlockTags;
-import reika.dragonapi.libraries.RandomTagSingleStateProvider;
+import net.minecraft.world.level.levelgen.placement.*;
 import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaTieredPlants;
-import reika.chromaticraft.registry.ChromaDecoFlowers;
-import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.registry.ChromaTiles;
+import reika.chromaticraft.registry.*;
 import reika.chromaticraft.world.PylonGridPlacement;
 import reika.chromaticraft.world.biome.ChromaBiomes;
+import reika.dragonapi.libraries.RandomTagSingleStateProvider;
+
+import java.util.List;
 
 /** Datapack registry objects for ChromatiCraft's active 26.2 worldgen features. */
 public final class ChromaWorldGenProvider {
@@ -215,6 +204,7 @@ public final class ChromaWorldGenProvider {
     public static RegistrySetBuilder buildReloadableRegistrySet() {
         RegistrySetBuilder builder = new RegistrySetBuilder();
         builder.add(Registries.LOOT_TABLE, new ChromaLootProvider());
+        builder.add(Registries.ADVANCEMENT, new ChromaAdvancementProvider());
         builder.add(net.minecraft.data.recipes.RecipeProvider.asBootstrap((recipes, advancements) ->
                 new net.minecraft.data.recipes.RecipeProvider(recipes, advancements) {
                     @Override
@@ -231,6 +221,7 @@ public final class ChromaWorldGenProvider {
     public static RegistrySetBuilder buildRegistrySet() {
         RegistrySetBuilder builder = new RegistrySetBuilder();
         builder.add(Registries.DAMAGE_TYPE, context -> {
+            reika.chromaticraft.modinterface.voidritual.VoidRitualDamageTypes.bootstrap(context);
             reika.chromaticraft.auxiliary.PylonDamage.bootstrap(context);
             reika.chromaticraft.auxiliary.LumenTurretDamage.bootstrap(context);
         });
@@ -334,6 +325,8 @@ public final class ChromaWorldGenProvider {
                             new net.minecraft.world.level.levelgen.feature.stateproviders.SimpleStateProvider(Blocks.SHORT_GRASS.defaultBlockState())));
             for (ChromaDecoFlowers flower : ChromaDecoFlowers.list)
                 registerFeature(bootstrap, id(flower.registryName()), new reika.chromaticraft.world.DecoFlowerFeature(flower));
+            registerFeature(bootstrap, id("glow_daisy"), new reika.chromaticraft.world.CliffsFlowerFeature(false));
+            registerFeature(bootstrap, id("glow_root"), new reika.chromaticraft.world.CliffsFlowerFeature(true));
             for (ChromaTieredPlants plant : ChromaTieredPlants.list)
                 registerFeature(bootstrap, id(plant.registryName()), new reika.chromaticraft.world.TieredPlantFeature(plant,
                         () -> ChromaBlocks.tieredPlant(plant).get().defaultBlockState()));
@@ -492,6 +485,14 @@ public final class ChromaWorldGenProvider {
 									java.util.Map.of(),
 									net.minecraft.world.level.levelgen.GenerationStep.Decoration.UNDERGROUND_STRUCTURES,
 									net.minecraft.world.level.levelgen.structure.TerrainAdjustment.NONE)));
+			bootstrap.register(reika.chromaticraft.world.dimension.structure.ProximaStructures.LASER,
+					new reika.chromaticraft.world.dimension.structure.ProximaLaserStructure(
+							new net.minecraft.world.level.levelgen.structure.Structure.StructureSettings(
+									net.minecraft.core.HolderSet.direct(biomes.getOrThrow(
+											reika.chromaticraft.world.dimension.biome.ProximaBiomes.STRUCTURE.biomeKey())),
+									java.util.Map.of(),
+									net.minecraft.world.level.levelgen.GenerationStep.Decoration.UNDERGROUND_STRUCTURES,
+									net.minecraft.world.level.levelgen.structure.TerrainAdjustment.NONE)));
             // Player-built and command-only: no structure set points here, but registering the
             // assembly as a Structure gives it vanilla's /place structure semantics and lets its NBT
             // template span chunks without unsafe feature writes.
@@ -577,6 +578,11 @@ public final class ChromaWorldGenProvider {
 							structures.getOrThrow(
 									reika.chromaticraft.world.dimension.structure.ProximaStructures.GOL),
 							new reika.chromaticraft.world.dimension.structure.GOLPlacement()));
+			bootstrap.register(reika.chromaticraft.world.dimension.structure.ProximaStructures.LASER_SET,
+					new net.minecraft.world.level.levelgen.structure.StructureSet(
+							structures.getOrThrow(
+									reika.chromaticraft.world.dimension.structure.ProximaStructures.LASER),
+							new reika.chromaticraft.world.dimension.structure.LaserPlacement()));
         });
         builder.add(Registries.PLACED_FEATURE, bootstrap -> {
             HolderGetter<Feature> configured = bootstrap.lookup(Registries.FEATURE);
@@ -626,6 +632,8 @@ public final class ChromaWorldGenProvider {
                 registerPlaced(bootstrap, configured, id(flower.registryName()), List.of(
                         RarityFilter.onAverageOnceEvery(flower.generationChance()),
                         BiomeFilter.biome()));
+            registerPlaced(bootstrap, configured, id("glow_daisy"), List.of(RarityFilter.onAverageOnceEvery(2), BiomeFilter.biome()));
+            registerPlaced(bootstrap, configured, id("glow_root"), List.of(BiomeFilter.biome()));
             for (ChromaTieredPlants plant : ChromaTieredPlants.list)
                 registerPlaced(bootstrap, configured, id(plant.registryName()), List.of(
                         RarityFilter.onAverageOnceEvery(plant.generationChance()),

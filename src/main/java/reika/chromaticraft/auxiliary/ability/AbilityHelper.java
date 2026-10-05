@@ -1,24 +1,17 @@
 package reika.chromaticraft.auxiliary.ability;
 
-import java.util.Collection;
-import java.util.EnumMap;
-import java.util.LinkedHashSet;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-
 import net.minecraft.world.entity.player.Player;
-
-import reika.chromaticraft.api.abilityapi.Ability;
 import reika.chromaticraft.api.AbilityAPI;
-import reika.chromaticraft.magic.ChromaAbilityData;
+import reika.chromaticraft.api.abilityapi.Ability;
 import reika.chromaticraft.auxiliary.recipemanagers.AbilityRituals;
+import reika.chromaticraft.magic.ChromaAbilityData;
 import reika.chromaticraft.magic.ElementTagCompound;
 import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.magic.progression.ProgressionManager;
 import reika.chromaticraft.registry.Chromabilities;
 import reika.chromaticraft.registry.CrystalElement;
+
+import java.util.*;
 
 /**
  * V33a {@code AbilityHelper}, data half: what an ability costs to run and what a player must have
@@ -179,8 +172,8 @@ public final class AbilityHelper implements AbilityAPI {
 			tag.scale(5);
 		else if (this.getProgressFor(a).contains(ProgressStage.DIMENSION))
 			tag.scale(2.5F);
-		// CHROMA-PORT: upstream then applies power(0.75) if the player holds an active Efficiency
-		// Crystal. ItemEfficiencyCrystal is not ported, so no discount applies yet.
+		if (reika.chromaticraft.items.tools.ItemEfficiencyCrystal.isActive(player))
+			tag.power(0.75);
 		return tag;
 	}
 

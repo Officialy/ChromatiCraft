@@ -165,7 +165,7 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver
         CastingTableRecipe recipe = activeRecipe.value();
         int amount = this.calculateCraftableAmount(recipe);
         int outputAmount = (recipe.stackable() ? amount : 1) * outputMultiplier(recipe, player);
-        if (amount <= 0 || !this.canAccept(recipe.output(), outputAmount)) return this.rejectCraftingTrigger();
+        if (amount <= 0 || !this.canAccept(recipe.output(this.snapshot()), outputAmount)) return this.rejectCraftingTrigger();
         craftingAmount = amount;
         craftingTick = this.calculateCraftDuration(recipe, amount);
         craftingDuration = craftingTick;
@@ -189,7 +189,7 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver
         if (!(this.getLevel() instanceof ServerLevel server) || activeRecipeKey == null || craftingTick <= 0) return;
         RecipeHolder<?> holder = server.getServer().getRecipeManager().byKey(activeRecipeKey).orElse(null);
         if (holder != null && holder.value() instanceof CastingTableRecipe recipe) {
-            @SuppressWarnings("unchecked") RecipeHolder<CastingTableRecipe> cast = (RecipeHolder<CastingTableRecipe>)(RecipeHolder<?>)holder;
+            @SuppressWarnings("unchecked") RecipeHolder<CastingTableRecipe> cast = (RecipeHolder<CastingTableRecipe>) holder;
             activeRecipe = cast;
         }
     }
@@ -204,7 +204,7 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver
         for (RecipeHolder<?> holder : server.getServer().getRecipeManager().getRecipes()) {
             if (holder.value().getType() != ChromaRecipeTypes.CASTING.get() || !(holder.value() instanceof CastingTableRecipe recipe)) continue;
             if (!this.canUseTier(recipe.tier()) || !recipe.matchesIgnoringAura(input)) continue;
-            @SuppressWarnings("unchecked") RecipeHolder<CastingTableRecipe> cast = (RecipeHolder<CastingTableRecipe>)(RecipeHolder<?>)holder;
+            @SuppressWarnings("unchecked") RecipeHolder<CastingTableRecipe> cast = (RecipeHolder<CastingTableRecipe>) holder;
             if (activeRecipe == null || recipe.tier().ordinal() > activeRecipe.value().tier().ordinal()) activeRecipe = cast;
         }
         if (activeRecipe != null) activeRecipeKey = activeRecipe.id();
@@ -224,6 +224,7 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver
 
     private boolean playerCanRun(CastingTableRecipe recipe, Player player) {
         return this.getMissingProgress(recipe, player).isEmpty()
+                && recipe.hasRequiredFragment(player)
                 && (player == null || recipe.minimumResearch().playerHas(player))
                 && (!recipe.requiresTuningKey() || isTuned);
     }
@@ -399,7 +400,7 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver
             if (stand == null) return 0;
             amount = Math.min(amount, stand.getItem(0).getCount());
         }
-        ItemStack output = recipe.output();
+        ItemStack output = recipe.output(this.snapshot());
         ItemStack current = this.getItem(9);
         int room = current.isEmpty() ? output.getMaxStackSize() : ItemStack.isSameItemSameComponents(current, output) ? current.getMaxStackSize() - current.getCount() : 0;
         amount = Math.min(amount, room / output.getCount());
@@ -454,7 +455,7 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver
         int outputAmount = recipe.stackable() ? craftingAmount : 1;
         return recipe.matchesIgnoringAura(this.snapshot())
                 && this.calculateCraftableAmount(recipe) >= craftingAmount
-                && this.canAccept(recipe.output(), outputAmount);
+                && this.canAccept(recipe.output(this.snapshot()), outputAmount);
     }
 
     private int calculateCraftDuration(CastingTableRecipe recipe, int amount) {
@@ -583,7 +584,7 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver
                 && recipeKey != null && recipeKey.equals(activeRecipeKey)
                 && recipe.matchesIgnoringAura(this.snapshot())
                 && this.calculateCraftableAmount(recipe) >= craftingAmount
-                && this.canAccept(recipe.output(), 1);
+                && this.canAccept(recipe.output(this.snapshot()), 1);
     }
 
     /** V33a attempts to move the completed output into each of the six adjacent inventories. */

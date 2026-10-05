@@ -3,16 +3,14 @@ package reika.chromaticraft.block.crystal;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
-
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.level.Level;
-
 import reika.chromaticraft.auxiliary.interfaces.ProgressionTrigger;
 import reika.chromaticraft.base.CrystalBlock;
 import reika.chromaticraft.magic.progression.ProgressStage;
@@ -48,6 +46,25 @@ public final class BlockCaveCrystal extends CrystalBlock implements ProgressionT
         return random.nextInt(16);
     }
 
+    /**
+     * Opposing arms from adjacent crystals reach across the same block boundary. When both are
+     * present, keep the positive-facing arm and omit the negative-facing one. This keeps isolated
+     * crystals unchanged and gives the chunk mesh and collision shape the same visible arms.
+     */
+    public static int visibleArmMask(BlockGetter level, BlockPos pos, boolean allArms) {
+        int mask = allArms ? 15 : armMask(pos);
+        boolean flipped = isCeilingMounted(level, pos);
+        if ((mask & 4) != 0 && hasOpposingArm(level, pos.west(), 8, flipped)) mask &= ~4;
+        if ((mask & 1) != 0 && hasOpposingArm(level, pos.north(), 2, flipped)) mask &= ~1;
+        return mask;
+    }
+
+    private static boolean hasOpposingArm(BlockGetter level, BlockPos pos, int arm, boolean flipped) {
+        if (!(level.getBlockState(pos).getBlock() instanceof CrystalBlock crystal)) return false;
+        if (isCeilingMounted(level, pos) != flipped) return false;
+        return ((crystal.renderAllArms() ? 15 : armMask(pos)) & arm) != 0;
+    }
+
     public static boolean isCeilingMounted(BlockGetter level, BlockPos pos) {
         BlockPos below = pos.below();
         BlockPos above = pos.above();
@@ -60,7 +77,7 @@ public final class BlockCaveCrystal extends CrystalBlock implements ProgressionT
         boolean flipped = isCeilingMounted(level, pos);
         boolean above = level.getBlockState(pos.above()).getBlock() instanceof BlockCaveCrystal;
         boolean below = level.getBlockState(pos.below()).getBlock() instanceof CrystalBlock;
-        return SHAPES[flipped ? 1 : 0][above ? 1 : 0][below ? 1 : 0][armMask(pos)];
+        return SHAPES[flipped ? 1 : 0][above ? 1 : 0][below ? 1 : 0][visibleArmMask(level, pos, false)];
     }
 
     @Override
@@ -151,7 +168,7 @@ public final class BlockCaveCrystal extends CrystalBlock implements ProgressionT
     @Override public boolean shouldMakeNoise() { return true; }
     @Override public boolean shouldGiveEffects(CrystalElement element) { return true; }
     @Override public boolean performEffect(CrystalElement element) {
-        return element == CrystalElement.BROWN || element == CrystalElement.BLUE ? rand.nextInt(4) == 0 : true;
+        return element != CrystalElement.BROWN && element != CrystalElement.BLUE || rand.nextInt(4) == 0;
     }
     @Override public int getRange() { return 4; }
     @Override public int getDuration(CrystalElement element) { return element == CrystalElement.BROWN ? 5 : 200; }

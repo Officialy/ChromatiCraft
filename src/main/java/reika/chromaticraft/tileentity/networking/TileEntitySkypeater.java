@@ -12,13 +12,8 @@ package reika.chromaticraft.tileentity.networking;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.block.state.BlockState;
-
 import reika.chromaticraft.base.tileentity.CrystalTransmitterBase;
-import reika.chromaticraft.magic.interfaces.CrystalReceiver;
-import reika.chromaticraft.magic.interfaces.CrystalRepeater;
-import reika.chromaticraft.magic.interfaces.CrystalSource;
-import reika.chromaticraft.magic.interfaces.CrystalTransmitter;
-import reika.chromaticraft.magic.interfaces.NaturalNetworkTile;
+import reika.chromaticraft.magic.interfaces.*;
 import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.ChromaTiles;
 import reika.chromaticraft.registry.CrystalElement;
@@ -159,7 +154,7 @@ public class TileEntitySkypeater extends CrystalTransmitterBase implements Cryst
 		type = NodeClass.list[NBT.getIntOr("type", 0)];
 	}
 
-	public static enum NodeClass {
+	public enum NodeClass {
 		WATER(0x22aaff),
 		SHORE(0xff00ff),
 		//PLATEAU(0xff0000),
@@ -169,7 +164,7 @@ public class TileEntitySkypeater extends CrystalTransmitterBase implements Cryst
 
 		private static final NodeClass[] list = values();
 
-		private NodeClass(int c) {
+		NodeClass(int c) {
 			color = c;
 		}
 

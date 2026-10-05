@@ -1,7 +1,5 @@
 package reika.chromaticraft.tileentity.recipe;
 
-import java.util.UUID;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
@@ -20,7 +18,6 @@ import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.common.NeoForge;
-
 import reika.chromaticraft.api.abilityapi.Ability;
 import reika.chromaticraft.api.event.RitualCompletionEvent;
 import reika.chromaticraft.auxiliary.interfaces.MultiBlockChromaTile;
@@ -33,22 +30,19 @@ import reika.chromaticraft.base.tileentity.InventoriedCrystalReceiver;
 import reika.chromaticraft.block.BlockRitualTable;
 import reika.chromaticraft.client.render.RitualTableVisuals;
 import reika.chromaticraft.container.MenuRitualTable;
-import reika.chromaticraft.magic.ElementTagCompound;
 import reika.chromaticraft.magic.ChromaAbilityData;
+import reika.chromaticraft.magic.ElementTagCompound;
 import reika.chromaticraft.magic.interfaces.WeakRepeaterSafeReceiver;
 import reika.chromaticraft.magic.progression.LexiconCatalog;
 import reika.chromaticraft.magic.progression.PlayerResearch;
 import reika.chromaticraft.magic.progression.ProgressStage;
-import reika.chromaticraft.registry.ChromaBlockEntities;
-import reika.chromaticraft.registry.ChromaSounds;
-import reika.chromaticraft.registry.ChromaStructures;
-import reika.chromaticraft.registry.ChromaTiles;
-import reika.chromaticraft.registry.Chromabilities;
-import reika.chromaticraft.registry.CrystalElement;
+import reika.chromaticraft.registry.*;
 import reika.dragonapi.instantiable.data.immutable.Coordinate;
 import reika.dragonapi.interfaces.blockentity.BreakAction;
 import reika.dragonapi.interfaces.blockentity.TriggerableAction;
 import reika.dragonapi.libraries.ReikaPlayerAPI;
+
+import java.util.UUID;
 
 public final class TileEntityRitualTable extends InventoriedCrystalReceiver implements BreakAction,
         TriggerableAction, OwnedTile, OperationInterval, MultiBlockChromaTile, VariableTexture,
@@ -270,8 +264,7 @@ public final class TileEntityRitualTable extends InventoriedCrystalReceiver impl
 
     public boolean triggerRitual(Player player) {
         initEnhancementCheck(player);
-        if (hasStructure && abilityTick == 0 && ability != null
-                && AbilityRituals.instance.hasRitual(ability) && isOwnedByPlayer(player)) {
+        if (hasStructure && abilityTick == 0 && AbilityRituals.instance.hasRitual(ability) && isOwnedByPlayer(player)) {
             ritualPlayer = player.getUUID();
             completionVisualPending = false;
             if (level.isClientSide())

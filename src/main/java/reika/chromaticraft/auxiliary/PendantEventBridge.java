@@ -9,10 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.auxiliary;
 
-import java.util.Collections;
-import java.util.Set;
-import java.util.WeakHashMap;
-
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.ExperienceOrb;
@@ -22,14 +18,12 @@ import net.minecraft.world.entity.boss.enderdragon.EnderDragon;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.entity.living.EffectParticleModificationEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDropsEvent;
 import net.neoforged.neoforge.event.entity.living.LivingExperienceDropEvent;
 import net.neoforged.neoforge.event.entity.player.AttackEntityEvent;
-
 import reika.chromaticraft.items.tools.ItemBoostedPendant;
 import reika.chromaticraft.items.tools.ItemPendant;
 import reika.chromaticraft.items.tools.powered.ItemPurifyCrystal;
@@ -40,6 +34,10 @@ import reika.chromaticraft.registry.Chromabilities;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.dragonapi.interfaces.item.ActivatedInventoryItem;
 import reika.dragonapi.libraries.ReikaEntityHelper;
+
+import java.util.Collections;
+import java.util.Set;
+import java.util.WeakHashMap;
 
 /**
  * The Pendant hooks formerly hosted in V33a's very broad {@code ChromaticEventManager}, each a direct transcription

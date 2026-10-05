@@ -1,17 +1,16 @@
 package reika.chromaticraft.client;
 
-import java.util.Random;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.Entity;
-
+import reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe;
+import reika.chromaticraft.client.gui.ScreenChromicLexicon;
 import reika.chromaticraft.registry.ChromaSounds;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.render.particle.ChromaParticle;
 import reika.chromaticraft.tileentity.networking.TileEntityCrystalRepeater;
-import reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe;
-import reika.chromaticraft.client.gui.ScreenChromicLexicon;
+
+import java.util.Random;
 
 /**
  * The bodies of ChromatiCraft's clientbound payload handlers.
@@ -25,6 +24,31 @@ import reika.chromaticraft.client.gui.ScreenChromicLexicon;
 public final class ClientPayloadHandlers {
 
 	private ClientPayloadHandlers() {}
+
+	public static void bottleneckWarning(net.minecraft.resources.Identifier dimension, BlockPos pos, int rank, boolean throughput, int color) {
+		var level = Minecraft.getInstance().level;
+		if (level == null || !level.dimension().identifier().equals(dimension) || rank < 0 || rank >= 3
+				|| color < 0 || color >= CrystalElement.elements.length) return;
+		reika.chromaticraft.auxiliary.render.PylonFinderOverlay.instance.addBottleneckWarning(
+				new reika.dragonapi.instantiable.data.immutable.WorldLocation(level, pos), CrystalElement.elements[color], rank, throughput);
+	}
+
+	public static void mobSonarPing(net.minecraft.world.entity.player.Player player) {
+		reika.chromaticraft.auxiliary.render.MobSonarRenderer.instance.addPing(player, reika.chromaticraft.auxiliary.MobSonar.RANGE);
+		ChromaSounds.ORB.playSound(player, 1, 0.5F);
+	}
+
+	public static void doggoSonar(BlockPos pos, net.minecraft.resources.Identifier type) {
+		reika.chromaticraft.auxiliary.render.MobSonarRenderer.instance.addSpawnPoint(pos, type);
+	}
+
+	public static void openHoverWand(boolean offHand) {
+		Minecraft minecraft = Minecraft.getInstance();
+		if (minecraft.player != null && minecraft.player.getItemInHand(offHand
+				? net.minecraft.world.InteractionHand.OFF_HAND : net.minecraft.world.InteractionHand.MAIN_HAND)
+				.getItem() instanceof reika.chromaticraft.items.tools.wands.ItemFlightWand)
+			minecraft.gui.setScreen(new reika.chromaticraft.client.gui.ScreenHoverWand(offHand));
+	}
 
 	public static void relayConnection(java.util.List<BlockPos> path, CrystalElement color) {
 		Minecraft minecraft = Minecraft.getInstance();
@@ -285,7 +309,7 @@ public final class ClientPayloadHandlers {
 			if (effect == reika.chromaticraft.tileentity.auxiliary.TileEntityPylonTurboCharger.FxType.FLASH.ordinal()
 					|| effect == reika.chromaticraft.tileentity.auxiliary.TileEntityPylonTurboCharger.FxType.COMPLETE.ordinal()) {
 				int color = data >= 0 && data < reika.chromaticraft.registry.CrystalElement.elements.length
-						? reika.chromaticraft.registry.CrystalElement.elements[data].getColor() : 0xffffff;
+						? reika.chromaticraft.registry.CrystalElement.elements[data].color() : 0xffffff;
 				reika.chromaticraft.client.render.LocusPointScreenEffects.flashTurbo(color,
 						effect == reika.chromaticraft.tileentity.auxiliary.TileEntityPylonTurboCharger.FxType.COMPLETE.ordinal()
 								? 1200 : 350);

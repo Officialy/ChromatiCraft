@@ -1,9 +1,5 @@
 package reika.chromaticraft.tileentity;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
@@ -18,18 +14,17 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.AABB;
-
 import reika.chromaticraft.auxiliary.structure.PortalStructure;
 import reika.chromaticraft.block.BlockChromaPortal;
-import reika.chromaticraft.magic.progression.ProgressStage;
-import reika.chromaticraft.registry.ChromaBlockEntities;
-import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaItems;
-import reika.chromaticraft.registry.ChromaStructures;
-import reika.chromaticraft.registry.ChromaTieredItems;
-import reika.chromaticraft.render.particle.ChromaParticle;
 import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
+import reika.chromaticraft.magic.progression.ProgressStage;
+import reika.chromaticraft.registry.*;
+import reika.chromaticraft.render.particle.ChromaParticle;
 import reika.dragonapi.base.BlockEntityBase;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
 /**
  * V33a {@code BlockChromaPortal.TileEntityCrystalPortal}.

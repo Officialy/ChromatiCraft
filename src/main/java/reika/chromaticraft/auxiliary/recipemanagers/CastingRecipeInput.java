@@ -1,13 +1,12 @@
 package reika.chromaticraft.auxiliary.recipemanagers;
 
-import java.util.List;
-import java.util.Map;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeInput;
-
 import reika.chromaticraft.registry.CrystalElement;
+
+import java.util.List;
+import java.util.Map;
 
 /** Complete immutable server-side snapshot used to match all four V33a casting tiers. */
 public final class CastingRecipeInput implements RecipeInput {

@@ -7,8 +7,8 @@ import net.minecraft.world.item.ItemStack;
 /** V33a {@code OwnableItem}: an item bound to one player, which item collectors must respect. */
 public interface OwnableItem {
 
-	public boolean isUsableBy(ItemStack is, Player ep);
+	boolean isUsableBy(ItemStack is, Player ep);
 
-	public boolean isCollectableBy(ItemEntity ei, Player ep);
+	boolean isCollectableBy(ItemEntity ei, Player ep);
 
 }

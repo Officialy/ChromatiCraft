@@ -1,14 +1,11 @@
 package reika.chromaticraft.tileentity;
 
-import java.util.List;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
-
 import reika.chromaticraft.auxiliary.CrystalMusicManager;
 import reika.chromaticraft.auxiliary.interfaces.ColoredMultiBlockChromaTile;
 import reika.chromaticraft.auxiliary.interfaces.OwnedTile;
@@ -16,15 +13,12 @@ import reika.chromaticraft.base.tileentity.CrystalReceiverBase;
 import reika.chromaticraft.block.BlockCrystalRune;
 import reika.chromaticraft.magic.interfaces.ChargingPoint;
 import reika.chromaticraft.magic.interfaces.WeakRepeaterSafeReceiver;
-import reika.chromaticraft.registry.ChromaBlockEntities;
-import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaSounds;
-import reika.chromaticraft.registry.ChromaStructures;
-import reika.chromaticraft.registry.ChromaTiles;
-import reika.chromaticraft.registry.CrystalElement;
+import reika.chromaticraft.registry.*;
 import reika.chromaticraft.render.particle.ChromaParticle;
 import reika.chromaticraft.tileentity.networking.TileEntityCrystalPylon;
 import reika.dragonapi.instantiable.data.immutable.Coordinate;
+
+import java.util.List;
 
 /**
  * Full 26.2 port of V33a's colour-bound Personal Charger. Its four equal rune sockets choose the
@@ -75,7 +69,7 @@ public final class TileEntityPersonalCharger extends CrystalReceiverBase
 			}
 		}
 		else if (this.canConduct()) {
-			ChromaParticle.spawnPersonalCharger(world, pos, color, this.rand);
+			ChromaParticle.spawnPersonalCharger(world, pos, color, rand);
 		}
 	}
 
@@ -152,7 +146,7 @@ public final class TileEntityPersonalCharger extends CrystalReceiverBase
 	}
 
 	@Override public CrystalElement getColor() { return color; }
-	public int getRenderColor() { return color.getColor(); }
+	public int getRenderColor() { return color.color(); }
 	@Override public Coordinate getChargeParticleOrigin(Player player, CrystalElement element) {
 		return new Coordinate(this);
 	}

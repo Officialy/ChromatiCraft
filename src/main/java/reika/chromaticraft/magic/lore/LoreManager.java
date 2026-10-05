@@ -1,15 +1,14 @@
 package reika.chromaticraft.magic.lore;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
-
 import reika.chromaticraft.magic.progression.ProgressAccess;
 import reika.dragonapi.libraries.ReikaPlayerAPI;
 import reika.dragonapi.libraries.io.NBTCompat;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Server-authoritative persistence and replay boundary for V33a's lore-key assembly.

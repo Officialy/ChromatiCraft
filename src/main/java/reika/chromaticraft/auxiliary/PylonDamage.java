@@ -9,8 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.auxiliary;
 
-import java.util.Locale;
-
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.BootstrapContext;
 import net.minecraft.resources.Identifier;
@@ -22,10 +20,11 @@ import net.minecraft.world.damagesource.DamageType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.registry.CrystalElement;
+
+import java.util.Locale;
 
 /**
  * V33a {@code PylonDamage}: the energy damage of crystal pylons and everything that borrows it, one kind per

@@ -9,15 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.items.tools;
 
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.UUID;
-import java.util.function.Consumer;
-
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
@@ -46,15 +37,18 @@ import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureStart;
 import net.minecraft.world.level.levelgen.structure.placement.ConcentricRingsStructurePlacement;
 import net.minecraft.world.level.levelgen.structure.placement.StructurePlacement;
-
 import reika.chromaticraft.magic.lore.LoreManager;
 import reika.chromaticraft.magic.lore.Towers;
 import reika.chromaticraft.registry.ChromaSounds;
 import reika.chromaticraft.world.DungeonZones;
 import reika.chromaticraft.world.OverworldStructureFeature;
 import reika.dragonapi.instantiable.data.immutable.BlockBox;
-import reika.dragonapi.libraries.registry.ReikaItemHelper;
 import reika.dragonapi.libraries.level.ReikaWorldHelper;
+import reika.dragonapi.libraries.registry.ReikaItemHelper;
+
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.function.Consumer;
 
 /**
  * V33a {@code ItemStructureMap}, the Artifact Distribution Map. Right-click cycles what it seeks (strongholds,
@@ -187,7 +181,7 @@ public class ItemStructureMap extends Item {
 		return StructureMapData.readFromNBT(tag.getCompoundOrEmpty(TAG_NAME));
 	}
 
-	public static enum StructureSearchType {
+	public enum StructureSearchType {
 		STRONGHOLD(),
 		TOWERS(),
 		CAVERN(OverworldStructureFeature.Type.CAVERN, "Crystal Shrine"),
@@ -205,11 +199,11 @@ public class ItemStructureMap extends Item {
 		/** V33a {@code chromastruct.*} display name. */
 		private final String structureName;
 
-		private StructureSearchType() {
+		StructureSearchType() {
 			this(null, null);
 		}
 
-		private StructureSearchType(OverworldStructureFeature.Type s, String name) {
+		StructureSearchType(OverworldStructureFeature.Type s, String name) {
 			structure = s;
 			structureName = name;
 		}
@@ -432,14 +426,14 @@ public class ItemStructureMap extends Item {
 		}
 	}
 
-	public static enum StructurePresence {
+	public enum StructurePresence {
 		EXPECTED(0xffff00),
 		CONFIRMED(0x00ff00),
 		FAILED(0xff0000);
 
 		public final int renderColor;
 
-		private StructurePresence(int c) {
+		StructurePresence(int c) {
 			renderColor = c;
 		}
 	}

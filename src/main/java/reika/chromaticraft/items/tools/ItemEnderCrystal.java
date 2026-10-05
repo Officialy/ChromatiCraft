@@ -1,7 +1,5 @@
 package reika.chromaticraft.items.tools;
 
-import java.util.function.Consumer;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
@@ -20,11 +18,11 @@ import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
-
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
-
 import reika.chromaticraft.ChromatiCraft;
+
+import java.util.function.Consumer;
 
 /**
  * V33a's reusable End Crystal mover. The old item encoded its captured-crystal count in item damage;

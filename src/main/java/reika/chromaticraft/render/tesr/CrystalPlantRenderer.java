@@ -90,7 +90,7 @@ public final class CrystalPlantRenderer implements BlockEntityRenderer<TileEntit
 		BlockEntityRenderer.super.extractRenderState(te, state, partialTick, cameraPosition, breakProgress);
 		state.pod = te.renderPod();
 		state.ripe = te.emitsLight();
-		state.color = te.getColor().getColor();
+		state.color = te.getColor().color();
 	}
 
 	@Override

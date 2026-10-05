@@ -9,23 +9,21 @@
  ******************************************************************************/
 package reika.chromaticraft.render.item;
 
-import java.util.Map.Entry;
-
 import com.mojang.blaze3d.vertex.PoseStack;
-
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.items.tools.ItemStructureMap;
 import reika.chromaticraft.items.tools.ItemStructureMap.StructureMapData;
 import reika.chromaticraft.items.tools.ItemStructureMap.StructurePresence;
 import reika.chromaticraft.items.tools.ItemStructureMap.StructureSearchType;
 import reika.dragonapi.instantiable.rendering.HeldMapRenderers;
+
+import java.util.Map.Entry;
 
 /**
  * V33a {@code StructureMapRenderer} plus {@code ItemStructureMap.renderMap}: in first person the map is held like

@@ -9,20 +9,18 @@
  ******************************************************************************/
 package reika.chromaticraft.registry;
 
-import java.util.Locale;
-
-import org.jspecify.annotations.Nullable;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
-
+import org.jspecify.annotations.Nullable;
 import reika.chromaticraft.base.tileentity.TileEntityAdjacencyUpgrade;
 import reika.chromaticraft.tileentity.aoe.effect.TileEntityAccelerator;
 import reika.chromaticraft.tileentity.aoe.effect.TileEntityEfficiencyUpgrade;
 import reika.chromaticraft.tileentity.aoe.effect.TileEntityRangeBoost;
 import reika.dragonapi.libraries.java.ReikaStringParser;
+
+import java.util.Locale;
 
 /**
  * V33a {@code AdjacencyUpgrades}: the sixteen Adjacency Upgrade colours, their two render colours and their tile. A
@@ -56,11 +54,11 @@ public enum AdjacencyUpgrades {
 
 	public static final AdjacencyUpgrades[] upgrades = values();
 
-	private AdjacencyUpgrades(int c1, int c2) {
+	AdjacencyUpgrades(int c1, int c2) {
 		this(c1, c2, null);
 	}
 
-	private AdjacencyUpgrades(int c1, int c2, @Nullable TileFactory c) {
+	AdjacencyUpgrades(int c1, int c2, @Nullable TileFactory c) {
 		tileFactory = c;
 		color1 = c1;
 		color2 = c2;

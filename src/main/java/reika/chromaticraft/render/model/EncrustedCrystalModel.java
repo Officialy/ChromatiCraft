@@ -1,12 +1,7 @@
 package reika.chromaticraft.render.model;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
-
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-
 import net.minecraft.client.renderer.block.BlockAndTintGetter;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
@@ -16,18 +11,18 @@ import net.minecraft.client.resources.model.geometry.BakedQuad;
 import net.minecraft.client.resources.model.geometry.QuadCollection;
 import net.minecraft.client.resources.model.sprite.Material;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.state.BlockState;
-
 import net.neoforged.neoforge.client.model.DynamicBlockStateModel;
 import net.neoforged.neoforge.client.model.block.CustomUnbakedBlockStateModel;
-
 import reika.chromaticraft.block.BlockEncrustedCrystal;
 import reika.chromaticraft.block.BlockEncrustedCrystal.CrystalGrowth;
 import reika.dragonapi.instantiable.GridDistortion;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
+
+import java.util.List;
+import java.util.Random;
 
 /**
  * V33a {@code CrystalEncrustingRenderer}. Each of the six faces can carry an independently growing
@@ -126,7 +121,7 @@ public final class EncrustedCrystalModel implements DynamicBlockStateModel {
 			Random rand, int a, int b, double w, double h, GridDistortion grid) {
 		float f1 = 0.75F + rand.nextFloat() * 0.25F;
 		float f2 = 0.75F + rand.nextFloat() * 0.25F;
-		int color = ReikaColorAPI.mixColors(growth.color.getColor(), 0xffffff, f1);
+		int color = ReikaColorAPI.mixColors(growth.color.color(), 0xffffff, f1);
 		color = ReikaColorAPI.mixColors(color, 0x000000, f2);
 		int hue = ReikaColorAPI.getHue(color) - 5 + rand.nextInt(11);
 		color = ReikaColorAPI.getModifiedHue(color, hue);

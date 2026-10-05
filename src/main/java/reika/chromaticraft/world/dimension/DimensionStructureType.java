@@ -1,20 +1,15 @@
 package reika.chromaticraft.world.dimension;
 
-import java.util.ArrayList;
-import java.util.EnumMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.function.Supplier;
-
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.player.Player;
-
 import reika.chromaticraft.registry.ChromaOptions;
 import reika.dragonapi.DragonAPI;
 import reika.dragonapi.io.ReikaFileReader;
 import reika.dragonapi.libraries.ReikaPlayerAPI;
 import reika.dragonapi.libraries.io.NBTCompat;
+
+import java.util.*;
+import java.util.function.Supplier;
 
 /**
  * V33a {@code DimensionStructureGenerator.DimensionStructureType}: the eighteen puzzle structures

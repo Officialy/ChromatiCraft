@@ -1,18 +1,17 @@
 package reika.chromaticraft.world.dimension.structure;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.RandomSource;
-
 import reika.dragonapi.instantiable.Interpolation;
 import reika.dragonapi.instantiable.data.immutable.DecimalPosition;
 import reika.dragonapi.instantiable.math.Spline;
 import reika.dragonapi.instantiable.math.Spline.BasicSplinePoint;
 import reika.dragonapi.instantiable.math.Spline.SplineType;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 /**
  * V33a {@code WorldGenGlowCave}'s shape half: the set of cells a glowing cave occupies.
@@ -102,12 +101,12 @@ public final class GlowCaveShape {
 			// A fork that has run back into its own trunk stops there rather than tangling.
 			if (met && forkDepth > 0 && i > 10)
 				break;
-			if (forkDepth <= 3 && rand.nextInt(Math.max(24, (int)p1.yCoord)) == 0) {
+			if (forkDepth <= 3 && rand.nextInt(Math.max(24, (int) p1.yCoord())) == 0) {
 				double f = rand.nextDouble();
 				Set<BlockPos> branch = new HashSet<>();
-				growFrom(rand, p1.xCoord + (p2.xCoord - p1.xCoord) * f,
-						p1.yCoord + (p2.yCoord - p1.yCoord) * f,
-						p1.zCoord + (p2.zCoord - p1.zCoord) * f, radius.getValue(i + f), path, branch,
+				growFrom(rand, p1.xCoord() + (p2.xCoord() - p1.xCoord()) * f,
+						p1.yCoord() + (p2.yCoord() - p1.yCoord()) * f,
+						p1.zCoord() + (p2.zCoord() - p1.zCoord()) * f, radius.getValue(i + f), path, branch,
 						forkDepth + 1, rand.nextInt(3) == 0 ? 0 : between(rand, 6, 20));
 				path.addAll(branch);
 			}
@@ -121,16 +120,16 @@ public final class GlowCaveShape {
 	 */
 	private static boolean sweep(DecimalPosition p1, DecimalPosition p2, double r1, double r2,
 			Set<BlockPos> parent, Set<BlockPos> path) {
-		double dx = p2.xCoord - p1.xCoord;
-		double dy = p2.yCoord - p1.yCoord;
-		double dz = p2.zCoord - p1.zCoord;
+		double dx = p2.xCoord() - p1.xCoord();
+		double dy = p2.yCoord() - p1.yCoord();
+		double dz = p2.zCoord() - p1.zCoord();
 		double dd = Math.sqrt(dx * dx + dy * dy + dz * dz);
 		if (dd <= 0)
 			return false;
 		boolean met = false;
 		for (double d = 0.25; d < dd; d += 1) {
 			double f = d / dd;
-			met |= sphere(p1.xCoord + f * dx, p1.yCoord + f * dy, p1.zCoord + f * dz,
+			met |= sphere(p1.xCoord() + f * dx, p1.yCoord() + f * dy, p1.zCoord() + f * dz,
 					r1 + (r2 - r1) * f, parent, path);
 		}
 		return met;

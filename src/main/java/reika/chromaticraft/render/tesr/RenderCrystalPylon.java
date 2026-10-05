@@ -1,15 +1,8 @@
 package reika.chromaticraft.render.tesr;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ThreadLocalRandom;
-
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
@@ -18,25 +11,32 @@ import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
 import net.minecraft.client.renderer.feature.CustomFeatureRenderer;
 import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.data.AtlasIds;
 import net.minecraft.resources.Identifier;
+import net.minecraft.util.LightCoordsUtil;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.neoforge.client.extensions.OrderedSubmitNodeCollectorExtension;
 import net.neoforged.neoforge.client.submit.RenderPhaseKeys;
-
 import org.joml.Vector3f;
 import org.jspecify.annotations.Nullable;
-
 import reika.chromaticraft.ChromatiCraft;
+import reika.chromaticraft.client.render.IrisCompatibility;
 import reika.chromaticraft.magic.CrystalTarget;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.render.ChromaRenderPipelines;
+import reika.chromaticraft.render.ShaderCompatibleRenderTypes;
 import reika.chromaticraft.tileentity.networking.TileEntityCrystalPylon;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
 
-/** V33a pylon core, enhanced halo, and inherited transmitter beam pass on the 26.2 submit pipeline. */
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
+
+/** V33a pylon core, enhanced halo, and transmitter beams on the 26.3 submit pipeline. */
 public final class RenderCrystalPylon implements BlockEntityRenderer<TileEntityCrystalPylon, RenderCrystalPylon.State> {
 
     private static final Identifier ROUND_FLARE = sprite("roundflare");
@@ -90,6 +90,7 @@ public final class RenderCrystalPylon implements BlockEntityRenderer<TileEntityC
     @Override
     public void submit(State state, PoseStack poseStack, SubmitNodeCollector collector,
             CameraRenderState camera) {
+        if (IrisCompatibility.shadowPass()) return;
         this.submitBeams(state, poseStack, collector);
 
         poseStack.pushPose();
@@ -137,10 +138,9 @@ public final class RenderCrystalPylon implements BlockEntityRenderer<TileEntityC
         poseStack.pushPose();
         poseStack.translate(0.5, 0.5, 0.5);
         for (Beam beam : state.beams) {
-            PoseStack renderPose = new PoseStack();
-            renderPose.last().set(poseStack.last());
-            submitAfterTerrain(poseStack, collector, ChromaRenderPipelines.energyBeam(BEAM),
-                    (pose, vertices) -> beamTube(renderPose.last(), vertices, beam, scroll));
+            submitAfterTerrain(poseStack, collector, IrisCompatibility.shadersEnabled()
+                            ? ShaderCompatibleRenderTypes.beam(BEAM) : ChromaRenderPipelines.energyBeam(BEAM),
+                    (pose, vertices) -> beamTube(pose, vertices, beam, scroll));
         }
         poseStack.popPose();
     }
@@ -164,11 +164,19 @@ public final class RenderCrystalPylon implements BlockEntityRenderer<TileEntityC
                     .add((float)beam.x, (float)beam.y, (float)beam.z);
             Vector3f e1 = ring(side, up, a1, beam.endRadius * 0.75)
                     .add((float)beam.x, (float)beam.y, (float)beam.z);
-            vertices.addVertex(pose, s0.x, s0.y, s0.z).setUv(scroll, scroll + 1).setColor(color);
-            vertices.addVertex(pose, s1.x, s1.y, s1.z).setUv(scroll, scroll + 1).setColor(color);
-            vertices.addVertex(pose, e1.x, e1.y, e1.z).setUv(scroll + 1, scroll).setColor(color);
-            vertices.addVertex(pose, e0.x, e0.y, e0.z).setUv(scroll + 1, scroll).setColor(color);
+            Vector3f normal = ring(side, up, (a0+a1)*0.5, 1);
+            beamVertex(pose, vertices, s0, scroll, scroll+1, color, normal);
+            beamVertex(pose, vertices, s1, scroll, scroll+1, color, normal);
+            beamVertex(pose, vertices, e1, scroll+1, scroll, color, normal);
+            beamVertex(pose, vertices, e0, scroll+1, scroll, color, normal);
         }
+    }
+
+    private static void beamVertex(PoseStack.Pose pose, VertexConsumer vertices, Vector3f point,
+            float u, float v, int color, Vector3f normal) {
+        vertices.addVertex(pose, point.x, point.y, point.z).setUv(u, v).setColor(color)
+                .setOverlay(OverlayTexture.NO_OVERLAY).setLight(LightCoordsUtil.FULL_BRIGHT)
+                .setNormal(pose, normal.x, normal.y, normal.z);
     }
 
     private static Vector3f ring(Vector3f side, Vector3f up, double angle, double radius) {
@@ -180,8 +188,8 @@ public final class RenderCrystalPylon implements BlockEntityRenderer<TileEntityC
         if (colors.isEmpty()) return 0;
         int first = (int)(tick / modulus);
         first = (first + colors.size()) % colors.size();
-        int c1 = colors.get(first).getColor();
-        int c2 = colors.get((first + 1) % colors.size()).getColor();
+        int c1 = colors.get(first).color();
+        int c2 = colors.get((first + 1) % colors.size()).color();
         float fraction = (float)(tick % modulus / modulus);
         return ReikaColorAPI.mixColors(c1, c2, 1 - fraction);
     }
@@ -191,29 +199,35 @@ public final class RenderCrystalPylon implements BlockEntityRenderer<TileEntityC
             boolean core, boolean xray) {
         TextureAtlasSprite sprite = Minecraft.getInstance().getAtlasManager()
                 .getAtlasOrThrow(AtlasIds.BLOCKS).getSprite(spriteId);
+        boolean shaders = IrisCompatibility.shadersEnabled();
         poseStack.pushPose();
         poseStack.rotate(camera.orientation);
         if (roll != 0) poseStack.rotate(Axis.ZP.rotationDegrees(roll));
-        PoseStack renderPose = new PoseStack();
-        renderPose.last().set(poseStack.last());
         if (core) {
             CustomFeatureRenderer.Submit base = new CustomFeatureRenderer.Submit(
                     poseStack.last().copy(),
-                    xray ? ChromaRenderPipelines.pylonCoreThroughWall(TextureAtlas.LOCATION_BLOCKS)
+                    shaders ? ShaderCompatibleRenderTypes.pylon(TextureAtlas.LOCATION_BLOCKS, xray)
+                            : xray ? ChromaRenderPipelines.pylonCoreThroughWall(TextureAtlas.LOCATION_BLOCKS)
                             : ChromaRenderPipelines.pylonCore(TextureAtlas.LOCATION_BLOCKS),
-                    (pose, vertices) -> quad(renderPose.last(), vertices, sprite, scale, color));
-            ((OrderedSubmitNodeCollectorExtension)collector.order(-1))
+                    (pose, vertices) -> quad(pose, vertices, shaders ? alphaSprite(spriteId, true) : sprite, scale, color));
+            collector.order(-1)
                     .submitSpecial(RenderPhaseKeys.AFTER_TERRAIN, base);
         }
         submitAfterTerrain(poseStack, collector,
-                xray ? ChromaRenderPipelines.additiveSpriteThroughWall(TextureAtlas.LOCATION_BLOCKS)
+                shaders ? ShaderCompatibleRenderTypes.pylon(TextureAtlas.LOCATION_BLOCKS, xray)
+                        : xray ? ChromaRenderPipelines.additiveSpriteThroughWall(TextureAtlas.LOCATION_BLOCKS)
                         : ChromaRenderPipelines.additiveSprite(TextureAtlas.LOCATION_BLOCKS),
-                (pose, vertices) -> quad(renderPose.last(), vertices, sprite, scale, color));
+                (pose, vertices) -> quad(pose, vertices, shaders ? alphaSprite(spriteId, false) : sprite, scale, color));
         poseStack.popPose();
     }
 
+    private static TextureAtlasSprite alphaSprite(Identifier original, boolean core) {
+        return Minecraft.getInstance().getAtlasManager().getAtlasOrThrow(AtlasIds.BLOCKS)
+                .getSprite(original.withSuffix(core ? "_core_alpha" : "_alpha"));
+    }
+
     /**
-     * V33a drew the pylon after translucent world geometry. The ordinary 26.2 custom-geometry
+     * V33a drew the pylon after translucent world geometry. The ordinary 26.3 custom-geometry
      * phase runs before water, which lets water and clouds wash the additive colour away.
      */
     private static void submitAfterTerrain(PoseStack poseStack, SubmitNodeCollector collector,
@@ -221,8 +235,8 @@ public final class RenderCrystalPylon implements BlockEntityRenderer<TileEntityC
             SubmitNodeCollector.CustomGeometryRenderer renderer) {
         CustomFeatureRenderer.Submit submit = new CustomFeatureRenderer.Submit(
                 poseStack.last().copy(), renderType, renderer);
-        ((OrderedSubmitNodeCollectorExtension)collector.order(0))
-        // In 26.2 TRANSLUCENT_CUSTOM_GEOMETRY is drained before the translucent chunk layer;
+        collector.order(0)
+        // TRANSLUCENT_CUSTOM_GEOMETRY is drained before the translucent chunk layer;
         // AFTER_TERRAIN is the actual post-water hook. Water is therefore already down and can
         // correctly occlude the glow, while the pipeline's depth still orders later compositing.
                 .submitSpecial(RenderPhaseKeys.AFTER_TERRAIN, submit);
@@ -230,10 +244,15 @@ public final class RenderCrystalPylon implements BlockEntityRenderer<TileEntityC
 
     private static void quad(PoseStack.Pose pose, VertexConsumer vertices,
             TextureAtlasSprite sprite, float scale, int color) {
-        vertices.addVertex(pose, -scale, -scale, 0).setUv(sprite.getU0(), sprite.getV1()).setColor(color);
-        vertices.addVertex(pose, scale, -scale, 0).setUv(sprite.getU1(), sprite.getV1()).setColor(color);
-        vertices.addVertex(pose, scale, scale, 0).setUv(sprite.getU1(), sprite.getV0()).setColor(color);
-        vertices.addVertex(pose, -scale, scale, 0).setUv(sprite.getU0(), sprite.getV0()).setColor(color);
+        flareVertex(pose, vertices, -scale, -scale, sprite.getU0(), sprite.getV1(), color);
+        flareVertex(pose, vertices, scale, -scale, sprite.getU1(), sprite.getV1(), color);
+        flareVertex(pose, vertices, scale, scale, sprite.getU1(), sprite.getV0(), color);
+        flareVertex(pose, vertices, -scale, scale, sprite.getU0(), sprite.getV0(), color);
+    }
+
+    private static void flareVertex(PoseStack.Pose pose, VertexConsumer vertices, float x, float y, float u, float v, int color) {
+        vertices.addVertex(pose, x, y, 0).setUv(u, v).setColor(color)
+                .setOverlay(OverlayTexture.NO_OVERLAY).setLight(LightCoordsUtil.FULL_BRIGHT).setNormal(pose, 0, 0, 1);
     }
 
     @Override

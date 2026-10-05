@@ -1,11 +1,10 @@
 package reika.chromaticraft.auxiliary;
 
+import net.minecraft.util.TriState;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.player.ItemEntityPickupEvent;
-import net.minecraft.util.TriState;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.items.ItemFertilitySeed;
 import reika.dragonapi.instantiable.event.ItemLeafCollisionEvent;

@@ -1,20 +1,17 @@
 package reika.chromaticraft.render.item;
 
-import java.util.function.Consumer;
-
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.serialization.MapCodec;
-
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.special.NoDataSpecialModelRenderer;
 import net.minecraft.client.renderer.special.SpecialModelRenderer;
 import net.minecraft.resources.Identifier;
-
 import org.joml.Vector3f;
 import org.joml.Vector3fc;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.render.tesr.RenderParticleSpawner;
+
+import java.util.function.Consumer;
 
 /** V33a drew the Particle Spawner item with its TESR on a render-only tile, which is never faded: full opacity. */
 public final class ParticleSpawnerItemRenderer implements NoDataSpecialModelRenderer {

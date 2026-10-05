@@ -9,9 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.base.tileentity;
 
-import java.util.Collection;
-import java.util.List;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
@@ -19,7 +16,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
-
 import reika.chromaticraft.auxiliary.interfaces.AdjacencyUpgrade;
 import reika.chromaticraft.magic.ElementTagCompound;
 import reika.chromaticraft.magic.interfaces.LumenConsumer;
@@ -30,6 +26,9 @@ import reika.chromaticraft.tileentity.aoe.TileEntityAuraPoint;
 import reika.chromaticraft.tileentity.aoe.effect.TileEntityEfficiencyUpgrade;
 import reika.dragonapi.DragonAPI;
 import reika.dragonapi.libraries.registry.ReikaItemHelper;
+
+import java.util.Collection;
+import java.util.List;
 
 /**
  * V33a {@code TileEntityWirelessPowered}: a lumen consumer fed without a network path, by requesting from any

@@ -135,8 +135,8 @@ public final class SkyRiverRenderer {
 	 */
 	private static void tube(BufferBuilder buffer, DecimalPosition from, DecimalPosition to,
 			Vec3 camera, double radiusFrom, double radiusTo, int colourFrom, int colourTo, int index) {
-		Vec3 start = new Vec3(from.xCoord, from.yCoord, from.zCoord).subtract(camera);
-		Vec3 end = new Vec3(to.xCoord, to.yCoord, to.zCoord).subtract(camera);
+		Vec3 start = new Vec3(from.xCoord(), from.yCoord(), from.zCoord()).subtract(camera);
+		Vec3 end = new Vec3(to.xCoord(), to.yCoord(), to.zCoord()).subtract(camera);
 		Vec3 axis = end.subtract(start);
 		if (axis.lengthSqr() < 1.0E-6)
 			return;

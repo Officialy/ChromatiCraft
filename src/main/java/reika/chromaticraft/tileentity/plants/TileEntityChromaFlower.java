@@ -27,8 +27,8 @@ import reika.chromaticraft.registry.ChromaTiles;
  */
 public class TileEntityChromaFlower extends TileEntityChromaticBase {
 
-	private int hueBaseOffset = rand.nextInt(360);
-	private int hueOffset = 10+rand.nextInt(21);
+	private final int hueBaseOffset = rand.nextInt(360);
+	private final int hueOffset = 10+rand.nextInt(21);
 
 	public TileEntityChromaFlower(BlockPos pos, BlockState state) {
 		super(ChromaBlockEntities.CHROMA_FLOWER.get(), pos, state);

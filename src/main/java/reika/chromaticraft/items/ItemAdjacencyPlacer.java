@@ -9,10 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.items;
 
-import java.util.function.Consumer;
-
-import org.jspecify.annotations.Nullable;
-
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -30,13 +26,15 @@ import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.phys.AABB;
-
+import org.jspecify.annotations.Nullable;
 import reika.chromaticraft.base.tileentity.TileEntityAdjacencyUpgrade;
 import reika.chromaticraft.block.BlockAdjacencyUpgrade;
 import reika.chromaticraft.registry.AdjacencyUpgrades;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.tileentity.aoe.effect.TileEntityAccelerator;
 import reika.dragonapi.libraries.level.ReikaWorldHelper;
+
+import java.util.function.Consumer;
 
 /**
  * V33a {@code ItemAdjacencyPlacer}, one per implemented colour (V33a's damage value). It goes into an open (soft or

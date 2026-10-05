@@ -1,8 +1,5 @@
 package reika.chromaticraft.client;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.block.FluidModel;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
@@ -23,7 +20,6 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.ViewportEvent;
 import net.neoforged.neoforge.client.event.sound.PlaySoundEvent;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.data.ChromaBiomeTagProvider;
 import reika.chromaticraft.registry.ChromaSounds;
@@ -32,6 +28,9 @@ import reika.dragonapi.instantiable.event.client.SkyColorEvent;
 import reika.dragonapi.instantiable.event.client.WeatherSkyStrengthEvent;
 import reika.dragonapi.libraries.level.ReikaWorldHelper;
 import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
+
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * V33a {@code ChromaClientEventController}'s Luminous Cliffs atmosphere.
@@ -104,12 +103,12 @@ public final class LuminousCliffsClientEffects {
 		FogType fog = event.getCamera().getFluidInCamera();
 		if (fog == FogType.LAVA || fog == FogType.WATER)
 			return;
-		float sun = ReikaWorldHelper.getSunIntensity(level, false, (float)event.getPartialTick());
+		float sun = ReikaWorldHelper.getSunIntensity(level, false, event.getPartialTick());
 		float f = renderFactor * (float)ReikaMathLibrary.normalizeToBounds(sun, 0, 1, 0.2, 0.8);
 		if (f > 0) {
 			event.setRed(event.getRed() * (1 - f) + f * 0.9F);
 			event.setGreen(event.getGreen() * (1 - f) + f * 0.7F);
-			event.setBlue(event.getBlue() * (1 - f) + f * 1F);
+			event.setBlue(event.getBlue() * (1 - f) + f);
 		}
 	}
 

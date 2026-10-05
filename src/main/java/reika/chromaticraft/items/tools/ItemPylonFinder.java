@@ -9,14 +9,13 @@
  ******************************************************************************/
 package reika.chromaticraft.items.tools;
 
-import org.jspecify.annotations.Nullable;
-
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import org.jspecify.annotations.Nullable;
 
 /**
  * V33a {@code ItemPylonFinder}, the Pylon Compass: held, it shows the nearest known pylon of every colour on the HUD

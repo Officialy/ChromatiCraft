@@ -9,17 +9,9 @@
  ******************************************************************************/
 package reika.chromaticraft.magic.progression;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.EnumMap;
-import java.util.HashSet;
-import java.util.List;
-
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.api.CrystalElementAccessor.CrystalElementProxy;
 import reika.chromaticraft.api.ProgressionAPI;
@@ -28,6 +20,8 @@ import reika.chromaticraft.registry.CrystalElement;
 import reika.dragonapi.instantiable.data.maps.SequenceMap;
 import reika.dragonapi.libraries.ReikaPlayerAPI;
 import reika.dragonapi.libraries.io.NBTCompat;
+
+import java.util.*;
 
 /**
  * The server-side core of the player-progression system: it holds the prerequisite DAG of
@@ -363,10 +357,8 @@ public class ProgressionManager implements ProgressRegistry {
 			return false;
 		if (this.isPlayerAtStage(ep, s))
 			return false;
-		if (!this.playerHasPrerequisites(ep, s))
-			return false;
-		return true;
-	}
+        return this.playerHasPrerequisites(ep, s);
+    }
 
 	public void setPlayerStage(Player ep, ProgressStage s, boolean set, boolean notify, boolean syncToCoop) {
 		if (ReikaPlayerAPI.isFake(ep))
@@ -392,8 +384,10 @@ public class ProgressionManager implements ProgressRegistry {
 				changed = true;
 			}
 		}
-		if (changed)
+		if (changed) {
 			this.syncToClient(ep);
+			ChromaAdvancements.sync(ep);
+		}
 		// V33a ChromaResearchManager.notifyPlayerOfProgression -> PROGRESSNOTE -> the client's
 		// ChromaSounds.GAINPROGRESS. Without this a granted stage gives the player no feedback at all.
 		if (changed && set && notify && ep instanceof net.minecraft.server.level.ServerPlayer player)
@@ -455,6 +449,7 @@ public class ProgressionManager implements ProgressRegistry {
 		for (CrystalElement e : CrystalElement.elements)
 			this.markPlayerCompletedStructureColor(ep, null, e, false, false);
 		this.syncToClient(ep); //the stage-tag clear above is a direct write, so sync it explicitly
+		ChromaAdvancements.sync(ep);
 	}
 
 	public void maxPlayerProgression(Player ep, boolean notify) {
@@ -615,30 +610,21 @@ public class ProgressionManager implements ProgressRegistry {
 		return this.hasPlayerDiscoveredColor(ep, (CrystalElement) e);
 	}
 
-	/** A DAG node wrapping one {@link ProgressStage} (identity is the stage). */
-	public static class ProgressLink {
+    /**
+     * A DAG node wrapping one {@link ProgressStage} (identity is the stage).
+     */
+    public record ProgressLink(ProgressStage parent) {
 
-		public final ProgressStage parent;
+        @Override
+        public boolean equals(Object o) {
+            return o instanceof ProgressLink && ((ProgressLink) o).parent == parent;
+        }
 
-		public ProgressLink(ProgressStage p) {
-			parent = p;
-		}
-
-		@Override
-		public boolean equals(Object o) {
-			return o instanceof ProgressLink && ((ProgressLink) o).parent == parent;
-		}
-
-		@Override
-		public int hashCode() {
-			return parent.hashCode();
-		}
-
-		@Override
-		public String toString() {
-			return parent.toString();
-		}
-	}
+        @Override
+        public String toString() {
+            return parent.toString();
+        }
+    }
 
 	private record ProgressChain(ProgressStage progress, ProgressStage prerequisite,
 			boolean notifyOnTrigger, ProgressStage[] exclusions) {

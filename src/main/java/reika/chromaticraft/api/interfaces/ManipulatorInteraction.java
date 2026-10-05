@@ -6,6 +6,6 @@ import net.minecraft.world.entity.player.Player;
 public interface ManipulatorInteraction {
 
 	/** Return true to "eat" the right click */
-	public boolean onManipulatorInteract(Player ep, int side);
+    boolean onManipulatorInteract(Player ep, int side);
 
 }

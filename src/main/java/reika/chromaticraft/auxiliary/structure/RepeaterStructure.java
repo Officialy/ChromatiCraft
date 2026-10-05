@@ -3,9 +3,7 @@ package reika.chromaticraft.auxiliary.structure;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.Level;
-
 import reika.chromaticraft.base.ColoredStructureBase;
-import reika.chromaticraft.block.BlockCrystalRune;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.dragonapi.instantiable.data.blockstruct.FilledBlockArray;
 

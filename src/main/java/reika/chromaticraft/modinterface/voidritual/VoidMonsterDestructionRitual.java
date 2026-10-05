@@ -9,362 +9,95 @@
  ******************************************************************************/
 package reika.chromaticraft.modinterface.voidritual;
 
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Random;
-
-import net.minecraft.client.Minecraft;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityLiving;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.DamageSource;
-import net.minecraft.world.World;
-
-import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.modinterface.voidritual.voidmonsterritualclienteffects.EffectVisual;
-import reika.chromaticraft.registry.ChromaPackets;
-import reika.chromaticraft.registry.ChromaSounds;
-import reika.chromaticraft.render.particle.EntityCCBlurFX;
-import reika.dragonapi.ModList;
-import reika.dragonapi.asm.dependentmethodstripper.ModDependent;
-import reika.dragonapi.auxiliary.trackers.TickScheduler;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.damagesource.DamageType;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
 import reika.dragonapi.instantiable.Interpolation;
 import reika.dragonapi.instantiable.data.immutable.WorldLocation;
-import reika.dragonapi.instantiable.effects.EntityBlurFX;
-import reika.dragonapi.instantiable.event.ScheduledTickEvent;
-import reika.dragonapi.instantiable.event.scheduledtickevent.ScheduledEvent;
-import reika.dragonapi.instantiable.formula.MathExpression;
-import reika.dragonapi.instantiable.formula.PeriodicExpression;
-import reika.dragonapi.instantiable.io.PacketTarget;
-import reika.dragonapi.instantiable.particlecontroller.CollectingPositionController;
-import reika.dragonapi.instantiable.particlecontroller.FlashColorController;
-import reika.dragonapi.libraries.ReikaNBTHelper;
-import reika.dragonapi.libraries.io.ReikaPacketHelper;
-import reika.dragonapi.libraries.io.ReikaSoundHelper;
-import reika.dragonapi.libraries.java.ReikaRandomHelper;
-import reika.dragonapi.libraries.mathsci.ReikaPhysicsHelper;
 import reika.voidmonster.entity.EntityVoidMonster;
 import reika.voidmonster.world.MonsterGenerator;
 
-import cpw.mods.fml.common.FMLCommonHandler;
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
+import java.util.*;
 
-
-public class VoidMonsterDestructionRitual {
-
-	private final WorldLocation center;
-	private final EntityPlayer startingPlayer;
-	private final int monsterID;
-	private final World world;
-	private final int targetDuration;
-
-	private final Interpolation healthCurve = new Interpolation(false);
-
-	private int tick;
-	private int effectCooldown = 0;
-	private long lastWorldTick = -1;
-
-	private static final Random rand = new Random();
-	private static final Collection<VoidMonsterDestructionRitual> activeRituals = new HashSet();
-	private static final HashSet<Integer> ritualEntities = new HashSet();
-
-	private static final int MIN_DURATION = 20*60;
-	private static final int MAX_DURATION = 20*60*3;
-
-	public VoidMonsterDestructionRitual(TileEntityVoidMonsterTrap loc, EntityLiving e) {
-		this(new WorldLocation(loc), loc.getPlacer(), e);
-	}
-
-	private VoidMonsterDestructionRitual(WorldLocation loc, EntityPlayer ep, EntityLiving e) {
-		startingPlayer = ep;
-		center = loc;
-		monsterID = e.getEntityId();
-		world = ep.worldObj;
-		targetDuration = ReikaRandomHelper.getRandomBetween(MIN_DURATION, MAX_DURATION);
-		healthCurve.addPoint(0, 1);
-		for (double d = 0.1; d < 1; d += 0.1) {
-			double f = 1-d;
-			healthCurve.addPoint(ReikaRandomHelper.getRandomPlusMinus(d, 0.045)*targetDuration, ReikaRandomHelper.getRandomPlusMinus(f, 0.2));
-		}
-		healthCurve.addPoint(targetDuration, 0);
-	}
-
-	public EntityLiving getEntity() {
-		return (EntityLiving)world.getEntityByID(monsterID);
-	}
-
-	@ModDependent(ModList.VOIDMONSTER)
-	public boolean tick() {
-		if (world.getTotalWorldTime() <= lastWorldTick)
-			return false;
-		lastWorldTick = world.getTotalWorldTime();
-
-		activeRituals.add(this);
-
-		tick++;
-		if (effectCooldown > 0)
-			effectCooldown--;
-
-		EntityVoidMonster e = (EntityVoidMonster)this.getEntity();
-		e.moveTowards(center.xCoord+0.5, center.yCoord+0.5, center.zCoord+0.5, 2);
-
-		if (effectCooldown == 0) {
-			for (Effects ef : Effects.list) {
-				if (rand.nextInt(ef.effectChance) == 0) {
-					ef.doEffectServer(this, e);
-					effectCooldown = ef.cooldown;
-					break;
-				}
-			}
-		}
-
-		return e.getHealth() <= 0;
-	}
-
-	public static void sync() {
-		ritualEntities.clear();
-		for (VoidMonsterDestructionRitual v : activeRituals) {
-			ritualEntities.add(v.monsterID);
-		}
-		NBTTagCompound NBT = new NBTTagCompound();
-		ReikaNBTHelper.writeCollectionToNBT(ritualEntities, NBT, "data");
-		ReikaPacketHelper.sendNBTPacket(ChromatiCraft.packetChannel, ChromaPackets.VOIDMONSTERRITUALSET.ordinal(), NBT, PacketTarget.allPlayers.allPlayers);
-	}
-
-	@ModDependent(ModList.VOIDMONSTER)
-	void onPrematureTermination() {
-		this.onEnd();
-		EntityVoidMonster el = (EntityVoidMonster)this.getEntity();
-		el.heal(6000);
-		el.setAttackTarget(startingPlayer);
-		el.increaseDifficulty(2);
-	}
-
-	@ModDependent(ModList.VOIDMONSTER)
-	void onCompletion() {
-		MonsterGenerator.instance.addCooldown(this.getEntity(), 20*60*ReikaRandomHelper.getRandomBetween(20, 45));
-		this.onEnd();
-	}
-
-	private void onEnd() {
-		if (FMLCommonHandler.instance().getEffectiveSide() == Side.CLIENT) {
-			for (Effects ef : Effects.list) {
-				ef.visuals.clearShader();
-			}
-		}
-		else {
-			activeRituals.remove(this);
-			sync();
-		}
-	}
-
-	public float getCurrentTargetHealthFraction() {
-		return (float)healthCurve.getValue(tick);
-	}
-
-	@SideOnly(Side.CLIENT)
-	public static void readSync(NBTTagCompound tag) {
-		ritualEntities.clear();
-		if (tag != null) {
-			ReikaNBTHelper.readCollectionFromNBT(ritualEntities, tag, "data");
-		}
-	}
-
-	public static boolean ritualsActive() {
-		return !ritualEntities.isEmpty();
-	}
-
-	public static boolean isFocusOfActiveRitual(Entity e) {
-		return ritualEntities.contains(e.getEntityId());
-	}
-
-	public static enum Effects {
-		COLLAPSING_SPHERE(	70, 20, 40),
-		RAYS(				40, 40, 20),
-		EXPLOSION(			200, 0, 20),
-		WAVE(				400, 20, 120),
-		CURL(				400, 40, 30, 100),
-		STRETCH(			400, 30, 20, 160),
-		;
-
-		private final int effectChance;
-		private final int damageAmount;
-		private final int damageDelay;
-		private final int cooldown;
-
-		@SideOnly(Side.CLIENT)
-		public EffectVisual visuals;
-
-		static Effects[] list = values();
-
-		private Effects(int c, int dmg, int cl) {
-			this(c, dmg, 0, cl);
-		}
-
-		private Effects(int c, int dmg, int del, int cl) {
-			effectChance = c;
-			cooldown = cl;
-			damageAmount = dmg;
-			damageDelay = del;
-		}
-
-		@ModDependent(ModList.VOIDMONSTER)
-		public void doEffectServer(VoidMonsterDestructionRitual rit, EntityLiving e) {
-			if (e.getHealth()/e.getMaxHealth() >= rit.getCurrentTargetHealthFraction()) {
-				DamageSource src = new VoidMonsterRitualDamage(rit.startingPlayer);
-				this.doAttack(e, src, damageAmount);
-			}
-			switch(this) {
-				case COLLAPSING_SPHERE:
-					break;
-				case RAYS:
-					break;
-				case EXPLOSION:
-					e.worldObj.newExplosion(e, e.posX, e.posY, e.posZ, 9, true, false);
-					break;
-				case WAVE:
-					break;
-				case CURL:
-					break;
-				case STRETCH:
-					break;
-			}
-			ReikaPacketHelper.sendDataPacket(ChromatiCraft.packetChannel, ChromaPackets.VOIDMONSTERRITUAL.ordinal(), new PacketTarget.RadiusTarget(e, 128), e.getEntityId(), this.ordinal());
-		}
-
-		private void doAttack(EntityLiving e, DamageSource src, int amt) {
-			if (damageDelay > 0) {
-				TickScheduler.instance.scheduleEvent(new ScheduledTickEvent(new ScheduledDamage(e, src, amt)), damageDelay);
-			}
-			else {
-				runAttack(e, src, amt);
-			}
-		}
-
-		@SideOnly(Side.CLIENT)
-		@ModDependent(ModList.VOIDMONSTER)
-		public void doEffectClient(EntityLiving e) {
-			float f = 1;
-			double ex = e.posX;
-			double ey = e.posY+1;
-			double ez = e.posZ;
-			if (visuals != null) {
-				visuals.activate(e);
-			}
-			switch(this) {
-				case COLLAPSING_SPHERE:
-					for (int i = 0; i < 128; i++) {
-						double a1 = rand.nextDouble()*360;
-						double a2 = rand.nextDouble()*360;
-						double[] xyz = ReikaPhysicsHelper.polarToCartesian(4+rand.nextDouble()*0.25, a1, a2);
-						double px = ex+xyz[0];
-						double py = ey+xyz[1];
-						double pz = ez+xyz[2];
-						EntityBlurFX fx = new EntityCCBlurFX(e.worldObj, px, py, pz).setAlphaFading();
-						int t = ReikaRandomHelper.getRandomBetween(5, 8);
-						fx.setPositionController(new CollectingPositionController(px, py, pz, ex, ey, ez, t));
-						fx.setLife(t+1).setScale(1+rand.nextFloat()*0.5F);
-						Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-					}
-					break;
-				case RAYS:
-					for (int k = 0; k < 9; k++) {
-						double a1 = rand.nextDouble()*360;
-						double a2 = rand.nextDouble()*360;
-						for (int i = 0; i < 128; i++) {
-							double[] xyz = ReikaPhysicsHelper.polarToCartesian(rand.nextDouble()*96, a1, a2);
-							double px = ex+xyz[0];
-							double py = ey+xyz[1];
-							double pz = ez+xyz[2];
-							px = ReikaRandomHelper.getRandomPlusMinus(px, 0.125);
-							py = ReikaRandomHelper.getRandomPlusMinus(py, 0.125);
-							pz = ReikaRandomHelper.getRandomPlusMinus(pz, 0.125);
-							EntityBlurFX fx = new EntityCCBlurFX(e.worldObj, px, py, pz).setAlphaFading();
-							fx.setLife(40).setScale(1.5F+rand.nextFloat()*1.5F);
-							double d = rand.nextDouble()*360;
-							MathExpression exp = new PeriodicExpression().addWave(1, 1, d).addWave(0.5, 2, d+90).addWave(0.125, 4, d).normalize();
-							fx.setColorController(new FlashColorController(exp, 0xffffff, 0x000000));
-							Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-						}
-					}
-					f = 0.5F;
-					break;
-				case EXPLOSION:
-					break;
-				case WAVE:
-					break;
-				case CURL:
-					break;
-				case STRETCH:
-					break;
-			}
-			ReikaSoundHelper.playClientSound(ChromaSounds.FLAREATTACK, e, 1, f, false);
-		}
-	}
-
-	@SideOnly(Side.CLIENT)
-	@ModDependent(ModList.VOIDMONSTER)
-	public static void handlePacket(int entity, int effect) {
-		Entity e = Minecraft.getMinecraft().theWorld.getEntityByID(entity);
-		Effects.list[effect].doEffectClient((EntityLiving)e);
-	}
-
-	private static void runAttack(EntityLiving e, DamageSource src, int amt) {
-		if (amt >= e.getHealth()) { //kill
-			e.setHealth(0.1F);
-			e.attackEntityFrom(src, 1F);
-		}
-		else {
-			e.setHealth(e.getHealth()-amt+1);
-			e.attackEntityFrom(src, 1F);
-		}
-	}
-
-	private static class ScheduledDamage implements ScheduledEvent {
-
-		private final EntityLiving entity;
-		private final DamageSource source;
-		private final int amount;
-
-		public ScheduledDamage(EntityLiving e, DamageSource src, int amt) {
-			entity = e;
-			source = src;
-			amount = amt;
-		}
-
-		@Override
-		public void fire() {
-			runAttack(entity, source, amount);
-		}
-
-		@Override
-		public boolean runOnSide(Side s) {
-			return s == Side.SERVER;
-		}
-
-	}
-
-	public static class VoidMonsterRitualDamage extends DamageSource {
-
-		private final EntityPlayer player;
-
-		public VoidMonsterRitualDamage(EntityPlayer ep) {
-			super("voidmonster.ritual");
-			player = ep;
-		}
-
-		@Override
-		public Entity getEntity() {
-			return player;
-		}
-
-		@Override
-		public boolean isMagicDamage() {
-			return true;
-		}
-
-	}
-
+/** Complete V33a health-curve ritual; identities are scoped to the world and entity UUID. */
+public final class VoidMonsterDestructionRitual {
+    public static final ResourceKey<DamageType> DAMAGE=VoidRitualDamageTypes.KEY;
+    private static final Set<VoidMonsterDestructionRitual> ACTIVE=new HashSet<>();
+    private static final List<DelayedDamage> DELAYED=new ArrayList<>();
+    private final WorldLocation center;
+    private final Player startingPlayer;
+    private final UUID monsterUUID;
+    private final EntityVoidMonster monsterReference;
+    private final ServerLevel world;
+    private final Interpolation healthCurve=new Interpolation(false);
+    private int tick,effectCooldown;
+    private long lastWorldTick=-1;
+    public VoidMonsterDestructionRitual(TileEntityVoidMonsterTrap trap,EntityVoidMonster monster) {
+        center=new WorldLocation(trap); startingPlayer=trap.getPlacer(); monsterUUID=monster.getUUID(); monsterReference=monster; world=(ServerLevel)monster.level();
+        int duration=1200+world.getRandom().nextInt(2401); healthCurve.addPoint(0,1);
+        for (double d=.1;d<1;d+=.1) healthCurve.addPoint((d+world.getRandom().nextDouble()*.09-.045)*duration,1-d+world.getRandom().nextDouble()*.4-.2);
+        healthCurve.addPoint(duration,0); ACTIVE.add(this); sync(world);
+    }
+    public EntityVoidMonster getEntity() { Entity entity=world.getEntity(monsterUUID); return entity instanceof EntityVoidMonster monster?monster:null; }
+    public boolean tick() {
+        if (world.getGameTime()<=lastWorldTick) return false;
+        lastWorldTick=world.getGameTime(); tick++; if (effectCooldown>0) effectCooldown--;
+        EntityVoidMonster monster=getEntity(); if (monster==null) { onEnd(); return true; }
+        monster.moveTowards(center.pos.getX()+.5,center.pos.getY()+.5,center.pos.getZ()+.5,2);
+        if (effectCooldown==0) for (Effects effect:Effects.values()) if (world.getRandom().nextInt(effect.chance)==0) {
+            effect.doEffectServer(this,monster); effectCooldown=effect.cooldown; break;
+        }
+        return monster.getHealth()<=0;
+    }
+    public void onPrematureTermination() {
+        onEnd(); EntityVoidMonster monster=getEntity();
+        if (monster!=null && monster.isAlive()) { monster.heal(6000); monster.setTarget(startingPlayer); monster.increaseDifficulty(2); }
+    }
+    public void onCompletion() {
+        MonsterGenerator.instance.addCooldown(monsterReference,1200*(20+world.getRandom().nextInt(26)));
+        onEnd();
+    }
+    private void onEnd() { ACTIVE.remove(this); sync(world); }
+    public float getCurrentTargetHealthFraction() { return (float)healthCurve.getValue(tick); }
+    public static boolean isFocusOfActiveRitual(Entity entity) {
+        if (entity.level().isClientSide()) return VoidMonsterRitualClientEffects.isFocus(entity);
+        return ACTIVE.stream().anyMatch(r->r.world==entity.level() && r.monsterUUID.equals(entity.getUUID()));
+    }
+    public static Set<UUID> activeEntities(Level world) {
+        Set<UUID> result=new HashSet<>(); ACTIVE.stream().filter(r->r.world==world).forEach(r->result.add(r.monsterUUID)); return result;
+    }
+    public static void sync(ServerLevel world) { VoidRitualNetwork.sync(world,activeEntities(world)); }
+    public static void tickScheduled(ServerLevel world) {
+        Iterator<DelayedDamage> iterator=DELAYED.iterator();
+        while (iterator.hasNext()) { DelayedDamage damage=iterator.next(); if (damage.monster.level()==world && world.getGameTime()>=damage.when) { iterator.remove(); if (!damage.monster.isRemoved()) runAttack(damage.monster,damage.source,damage.amount); } }
+    }
+    public static void unload(Level world) { ACTIVE.removeIf(r->r.world==world); DELAYED.removeIf(d->d.monster.level()==world); }
+    public enum Effects {
+        COLLAPSING_SPHERE(70,20,0,40),RAYS(40,40,0,20),EXPLOSION(200,0,0,20),WAVE(400,20,0,120),CURL(400,40,30,100),STRETCH(400,30,20,160);
+        public final int chance,damage,delay,cooldown;
+        Effects(int chance,int damage,int delay,int cooldown) { this.chance=chance; this.damage=damage; this.delay=delay; this.cooldown=cooldown; }
+        public void doEffectServer(VoidMonsterDestructionRitual ritual,EntityVoidMonster monster) {
+            if (monster.getHealth()/monster.getMaxHealth()>=ritual.getCurrentTargetHealthFraction()) {
+                DamageSource source=new VoidMonsterRitualDamage(ritual.world,ritual.startingPlayer);
+                if (delay>0) DELAYED.add(new DelayedDamage(monster,source,damage,ritual.world.getGameTime()+delay)); else runAttack(monster,source,damage);
+            }
+            if (this==EXPLOSION) ritual.world.explode(monster,monster.getX(),monster.getY(),monster.getZ(),9,true,Level.ExplosionInteraction.NONE);
+            VoidRitualNetwork.effect(monster,this);
+        }
+    }
+    private static void runAttack(EntityVoidMonster monster,DamageSource source,int amount) {
+        if (!monster.isAlive()) return;
+        monster.setHealth(amount>=monster.getHealth()?.1F:monster.getHealth()-amount+1);
+        monster.hurtServer((ServerLevel)monster.level(),source,1);
+    }
+    private record DelayedDamage(EntityVoidMonster monster,DamageSource source,int amount,long when) {}
+    public static final class VoidMonsterRitualDamage extends DamageSource {
+        public VoidMonsterRitualDamage(ServerLevel level,Player player) { super(level.registryAccess().lookupOrThrow(Registries.DAMAGE_TYPE).getOrThrow(DAMAGE),player); }
+    }
+    public static void bootstrap(net.minecraft.data.worldgen.BootstrapContext<DamageType> context) { VoidRitualDamageTypes.bootstrap(context); }
 }

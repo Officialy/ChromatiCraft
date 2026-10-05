@@ -9,16 +9,8 @@
  ******************************************************************************/
 package reika.chromaticraft.registry;
 
-import java.awt.Color;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Random;
-
 import net.minecraft.ChatFormatting;
 import net.minecraft.world.entity.player.Player;
-
 import reika.chromaticraft.api.CrystalElementAccessor.CrystalElementProxy;
 import reika.chromaticraft.api.ProgressionAPI;
 import reika.chromaticraft.auxiliary.OverlayColor;
@@ -29,6 +21,9 @@ import reika.dragonapi.instantiable.data.maps.MultiMap.CollectionType;
 import reika.dragonapi.libraries.java.ReikaJavaLibrary;
 import reika.dragonapi.libraries.registry.ReikaDyeHelper;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
+
+import java.awt.*;
+import java.util.*;
 
 public enum CrystalElement implements reika.dragonapi.interfaces.IconEnum, OverlayColor, ProgressAccess, CrystalElementProxy {
 
@@ -63,7 +58,7 @@ public enum CrystalElement implements reika.dragonapi.interfaces.IconEnum, Overl
 	private static final HashMap<String, CrystalElement> nameMap = new HashMap();
 	private static final HashMap<CrystalElement, Integer> colorMap = new HashMap();
 
-	private CrystalElement(String n, int rgb, ChatFormatting c) {
+	CrystalElement(String n, int rgb, ChatFormatting c) {
 		color = ReikaDyeHelper.dyes[this.ordinal()];
 		displayName = n;
 		this.rgb = 0xff000000 | rgb;
@@ -82,7 +77,12 @@ public enum CrystalElement implements reika.dragonapi.interfaces.IconEnum, Overl
 		return color.dye.getName();
 	}
 
+	@Override
 	public int getColor() {
+		return color();
+	}
+
+	public int color() {
 		return rgb;
 	}
 
@@ -99,15 +99,15 @@ public enum CrystalElement implements reika.dragonapi.interfaces.IconEnum, Overl
 	}
 
 	public int getRed() {
-		return ReikaColorAPI.getRed(this.getColor());
+		return ReikaColorAPI.getRed(this.color());
 	}
 
 	public int getGreen() {
-		return ReikaColorAPI.getGreen(this.getColor());
+		return ReikaColorAPI.getGreen(this.color());
 	}
 
 	public int getBlue() {
-		return ReikaColorAPI.getBlue(this.getColor());
+		return ReikaColorAPI.getBlue(this.color());
 	}
 
 	/** V33a {@code getIcon()} (IconEnum): the element's glow rune, {@code runes/glow/tileN_0}. */
@@ -197,7 +197,7 @@ public enum CrystalElement implements reika.dragonapi.interfaces.IconEnum, Overl
 		CrystalElement e = CrystalElement.elements[(tick/mod)%16];
 		CrystalElement e2 = CrystalElement.elements[(tick/mod+1)%16];
 		float mix = tick%mod/(float)mod;
-		return ReikaColorAPI.mixColors(e2.getColor(), e.getColor(), mix);
+		return ReikaColorAPI.mixColors(e2.color(), e.color(), mix);
 	}
 
 	static {
@@ -206,7 +206,7 @@ public enum CrystalElement implements reika.dragonapi.interfaces.IconEnum, Overl
 			int lvl = e.getLevel();
 			levelMap.addValue(lvl, e);
 			nameMap.put(e.displayName, e);
-			colorMap.put(e, e.getColor());
+			colorMap.put(e, e.color());
 		}
 	}
 

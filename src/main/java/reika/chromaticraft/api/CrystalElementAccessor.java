@@ -9,18 +9,18 @@
  ******************************************************************************/
 package reika.chromaticraft.api;
 
-import java.util.Locale;
-
 import reika.chromaticraft.registry.CrystalElement;
+
+import java.util.Locale;
 
 public class CrystalElementAccessor {
 
 	/** An interface for the internal CrystalElement enum, to which (or just {@link Enum}) you can cast it; consult that enum for thematic meanings. */
-	public static interface CrystalElementProxy {
+	public interface CrystalElementProxy {
 
-		public String displayName();
-		public int getColor();
-		public int ordinal();
+		String displayName();
+		int getColor();
+		int ordinal();
 
 	}
 

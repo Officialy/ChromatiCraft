@@ -1,0 +1,9 @@
+{
+  "model": {
+    "type": "minecraft:special",
+    "base": "chromaticraft:block/void_monster_trap_inventory",
+    "model": {
+      "type": "chromaticraft:void_monster_trap"
+    }
+  }
+}

@@ -9,9 +9,9 @@
  ******************************************************************************/
 package reika.chromaticraft.magic.network;
 
-import java.util.Set;
-
 import net.minecraft.core.BlockPos;
+
+import java.util.Set;
 
 
 public class LOSData {

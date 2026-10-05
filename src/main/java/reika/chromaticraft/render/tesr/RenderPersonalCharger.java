@@ -2,7 +2,6 @@ package reika.chromaticraft.render.tesr;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
@@ -18,11 +17,8 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.util.LightCoordsUtil;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-
-import net.neoforged.neoforge.client.extensions.OrderedSubmitNodeCollectorExtension;
 import net.neoforged.neoforge.client.submit.RenderPhaseKeys;
 import org.jspecify.annotations.Nullable;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.render.ChromaRenderPipelines;
 import reika.chromaticraft.tileentity.TileEntityPersonalCharger;
@@ -85,7 +81,7 @@ public final class RenderPersonalCharger implements
 		if (afterTerrain) {
 			CustomFeatureRenderer.Submit submit = new CustomFeatureRenderer.Submit(
 					drawPose.last().copy(), type, geometry);
-			((OrderedSubmitNodeCollectorExtension)collector.order(0))
+			collector.order(0)
 					.submitSpecial(RenderPhaseKeys.AFTER_TERRAIN, submit);
 		}
 		else collector.submitCustomGeometry(drawPose, type, geometry);

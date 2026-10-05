@@ -32,8 +32,7 @@ public class SourceValidityRule {
 		}
 		if (minAmount > 0) {
 			int has = s.getEnergy(e);
-			if (has < minAmount && !(fullOverride >= 0 && has >= s.getMaxStorage(e)*fullOverride))
-				return false;
+            return has >= minAmount || fullOverride >= 0 && has >= s.getMaxStorage(e) * fullOverride;
 		}
 		return true;
 	}

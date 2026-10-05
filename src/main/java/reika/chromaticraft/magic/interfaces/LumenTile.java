@@ -14,14 +14,14 @@ import reika.chromaticraft.registry.CrystalElement;
 
 public interface LumenTile {
 
-	public int getEnergy(CrystalElement e);
+	int getEnergy(CrystalElement e);
 
-	public ElementTagCompound getEnergy();
+	ElementTagCompound getEnergy();
 
-	public int getMaxStorage(CrystalElement e);
+	int getMaxStorage(CrystalElement e);
 
 	//public ElementTagCompound getRequiredEnergy();
 
-	public int getTicksExisted();
+	int getTicksExisted();
 
 }

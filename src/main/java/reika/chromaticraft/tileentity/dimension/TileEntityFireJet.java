@@ -6,10 +6,9 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
-
+import reika.chromaticraft.base.tileentity.TileEntityChromaticBase;
 import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.ChromaTiles;
-import reika.chromaticraft.base.tileentity.TileEntityChromaticBase;
 import reika.chromaticraft.render.particle.ChromaParticle;
 
 /**

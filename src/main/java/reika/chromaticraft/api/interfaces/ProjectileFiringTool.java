@@ -16,9 +16,9 @@ import net.minecraft.world.level.Level;
 /** Implement this on tools that fire projectiles, to allow CC systems to fire them */
 public interface ProjectileFiringTool {
 
-	public void fire(ItemStack is, Level world, Player ep, boolean randomVec);
+	void fire(ItemStack is, Level world, Player ep, boolean randomVec);
 
 	/** How many ticks per shot */
-	public int getAutofireRate();
+    int getAutofireRate();
 
 }

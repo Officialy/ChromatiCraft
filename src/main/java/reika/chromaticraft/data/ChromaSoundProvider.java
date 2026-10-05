@@ -1,17 +1,15 @@
 package reika.chromaticraft.data;
 
-import java.nio.file.Path;
-import java.util.concurrent.CompletableFuture;
-
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-
 import net.minecraft.data.CachedOutput;
 import net.minecraft.data.DataProvider;
 import net.minecraft.data.PackOutput;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.registry.ChromaSounds;
+
+import java.nio.file.Path;
+import java.util.concurrent.CompletableFuture;
 
 /** Generates the client event-to-OGG map for every registered ChromatiCraft sound. */
 public final class ChromaSoundProvider implements DataProvider {

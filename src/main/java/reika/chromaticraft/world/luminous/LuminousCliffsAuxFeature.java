@@ -2,13 +2,11 @@ package reika.chromaticraft.world.luminous;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.feature.Feature;
-
 import reika.chromaticraft.block.worldgen26.BlockGlowDaisy;
 import reika.chromaticraft.block.worldgen26.BlockTieredPlant;
 import reika.chromaticraft.data.ChromaWorldGenProvider;

@@ -9,18 +9,7 @@
  ******************************************************************************/
 package reika.chromaticraft.world.iwg;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.EnumMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
 import io.netty.buffer.ByteBuf;
-
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.UUIDUtil;
@@ -30,7 +19,6 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -39,8 +27,6 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.dimension.DimensionType;
 import net.neoforged.neoforge.event.level.ChunkEvent;
-
-import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.magic.network.CrystalNetworker;
 import reika.chromaticraft.magic.network.PylonLinkNetwork;
 import reika.chromaticraft.network.ChromaNetwork;
@@ -49,6 +35,8 @@ import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.tileentity.auxiliary.TileEntityChromaCrystal;
 import reika.chromaticraft.tileentity.networking.TileEntityCrystalPylon;
 import reika.dragonapi.instantiable.data.immutable.WorldLocation;
+
+import java.util.*;
 
 /**
  * V33a {@code PylonGenerator}'s pylon location cache: every crystal pylon's colour, place, power crystals, turbocharge,

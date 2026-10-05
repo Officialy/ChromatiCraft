@@ -1,0 +1,19 @@
+{
+  "model": {
+    "type": "minecraft:range_dispatch",
+    "entries": [
+      {
+        "model": {
+          "type": "minecraft:model",
+          "model": "chromaticraft:item/recipe_tablet_filled"
+        },
+        "threshold": 1.0
+      }
+    ],
+    "fallback": {
+      "type": "minecraft:model",
+      "model": "chromaticraft:item/recipe_tablet"
+    },
+    "property": "chromaticraft:recipe_cache_state"
+  }
+}

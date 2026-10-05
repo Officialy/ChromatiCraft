@@ -1,10 +1,8 @@
 package reika.chromaticraft.modinterface.ae;
 
-import java.util.HashMap;
-import java.util.UUID;
-
-import javax.annotation.Nullable;
-
+import appeng.api.networking.GridHelper;
+import appeng.api.networking.IGridNode;
+import appeng.api.networking.IInWorldGridNodeHost;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
@@ -12,25 +10,25 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.TriState;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.common.NeoForge;
-import net.minecraft.util.TriState;
 import net.neoforged.neoforge.event.entity.player.ItemEntityPickupEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
-
-import appeng.api.networking.GridHelper;
-import appeng.api.networking.IGridNode;
-import appeng.api.networking.IInWorldGridNodeHost;
 import reika.chromaticraft.registry.Chromabilities;
 import reika.dragonapi.libraries.ReikaPlayerAPI;
 import reika.dragonapi.libraries.io.NBTCompat;
 import reika.dragonapi.libraries.registry.ReikaItemHelper;
 import reika.dragonapi.modinteract.deepinteract.MESystemReader;
+
+import javax.annotation.Nullable;
+import java.util.HashMap;
+import java.util.UUID;
 
 /**
  * V33a's ME Inventory Link chromability ({@link Chromabilities#MEINV}), the ME half of {@code AbilityHelper}.

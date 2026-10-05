@@ -9,9 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.tileentity.plants;
 
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.tags.BlockTags;
@@ -19,13 +16,15 @@ import net.minecraft.tags.FluidTags;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
-
 import reika.chromaticraft.base.tileentity.TileEntityMagicPlant;
 import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.ChromaTiles;
 import reika.dragonapi.instantiable.StepTimer;
 import reika.dragonapi.instantiable.data.immutable.WorldLocation;
 import reika.dragonapi.interfaces.blockentity.LocationCached;
+
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /** V33a Heat Lily: melts nearby ice and snow and suppresses freezing within seven blocks. */
 public final class TileEntityHeatLily extends TileEntityMagicPlant implements LocationCached {

@@ -1,9 +1,5 @@
 package reika.chromaticraft.client.gui;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.function.Predicate;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
@@ -20,7 +16,6 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.container.MenuAutoEnchanter;
 import reika.chromaticraft.network.ChromaNetwork;
@@ -30,6 +25,10 @@ import reika.chromaticraft.tileentity.processing.TileEntityAutoEnchanter;
 import reika.chromaticraft.tileentity.processing.TileEntityAutoEnchanter.EnchantValidity;
 import reika.dragonapi.instantiable.gui.ImagedGuiButton;
 import reika.dragonapi.instantiable.rendering.GuiShapes;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.function.Predicate;
 
 /**
  * V33a {@code GuiAutoEnchanter}: one enchantment at a time (every enchantment the player may use, by name), stepped with

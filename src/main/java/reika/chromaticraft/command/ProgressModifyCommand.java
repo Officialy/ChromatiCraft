@@ -1,15 +1,11 @@
 package reika.chromaticraft.command;
 
-import java.util.Arrays;
-import java.util.Locale;
-
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
-
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -17,12 +13,14 @@ import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-
+import reika.chromaticraft.magic.progression.PlayerResearch;
 import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.magic.progression.ProgressionManager;
-import reika.chromaticraft.magic.progression.PlayerResearch;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.world.dimension.DimensionTuningManager;
+
+import java.util.Arrays;
+import java.util.Locale;
 
 /**
  * V33a's {@code /chromaprog}, the admin command that hands a player progression they have not earned.

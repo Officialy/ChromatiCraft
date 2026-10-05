@@ -1,27 +1,15 @@
 package reika.chromaticraft.tileentity;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Locale;
-import java.util.List;
-import java.util.Objects;
-import java.util.Random;
-import java.util.Set;
-import java.util.UUID;
-
-import org.jspecify.annotations.Nullable;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.entity.player.Inventory;
@@ -36,26 +24,24 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.AABB;
-
-import reika.chromaticraft.magic.progression.ProgressStage;
+import org.jspecify.annotations.Nullable;
 import reika.chromaticraft.auxiliary.BiomeStructureMelodies;
 import reika.chromaticraft.auxiliary.CrystalMusicManager;
 import reika.chromaticraft.block.BlockChromaDoor;
 import reika.chromaticraft.block.decoration.BlockMusicTrigger;
-import reika.chromaticraft.registry.ChromaBlockEntities;
-import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaShieldTypes;
-import reika.chromaticraft.registry.ChromaSounds;
-import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.block.worldgen26.BlockStructureShield;
-import reika.chromaticraft.block.dimension.structure.shiftmaze.BlockShiftLock;
 import reika.chromaticraft.block.dimension.structure.lightpanel.BlockLightPanel;
 import reika.chromaticraft.block.dimension.structure.lightpanel.BlockLightSwitch;
+import reika.chromaticraft.block.dimension.structure.shiftmaze.BlockShiftLock;
+import reika.chromaticraft.block.worldgen26.BlockStructureShield;
+import reika.chromaticraft.magic.progression.ProgressStage;
+import reika.chromaticraft.registry.*;
 import reika.chromaticraft.world.dimension.structure.lightpanel.FixedLightPattern;
 import reika.chromaticraft.world.dimension.structure.lightpanel.LightPanelPatternLibrary;
 import reika.chromaticraft.world.dimension.structure.lightpanel.LightPanelRoomState;
 import reika.chromaticraft.world.dimension.structure.lightpanel.LightType;
 import reika.dragonapi.libraries.mathsci.ReikaMusicHelper.MusicKey;
+
+import java.util.*;
 
 /**
  * Modern persistence/lifecycle owner for V33a's six natural fragment structures.
@@ -432,7 +418,7 @@ public final class TileEntityStructureController extends RandomizableContainerBl
 				Set<CrystalElement> colors = CrystalMusicManager.instance.getColorsWithKey(key);
 				double radius = 4.5 - 0.5 * (colors.size() - 1);
 				for (CrystalElement element : colors)
-					server.sendParticles(new DustParticleOptions(element.getColor(), 1F),
+					server.sendParticles(new DustParticleOptions(element.color(), 1F),
 							worldPosition.getX() + 0.5, worldPosition.getY() + 3.5,
 							worldPosition.getZ() + 0.5, 6, radius / 6, radius / 6,
 							radius / 6, 0);
@@ -626,8 +612,8 @@ public final class TileEntityStructureController extends RandomizableContainerBl
 			case 2 -> { result.add(worldPosition.offset(2, y, -d)); result.add(worldPosition.offset(d, y, -2)); }
 			case 3 -> { result.add(worldPosition.offset(2, y, d)); result.add(worldPosition.offset(d, y, 2)); }
 			default -> throw new IllegalArgumentException("Door index " + door);
-		};
-		return result;
+		}
+        return result;
 	}
 
 	/**

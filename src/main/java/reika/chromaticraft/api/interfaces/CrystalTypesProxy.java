@@ -16,6 +16,6 @@ import net.minecraft.world.item.ItemStack;
  * and to allow the crystal cell to store it. */
 public interface CrystalTypesProxy {
 
-	public boolean isCrystalType(ItemStack is);
+	boolean isCrystalType(ItemStack is);
 
 }

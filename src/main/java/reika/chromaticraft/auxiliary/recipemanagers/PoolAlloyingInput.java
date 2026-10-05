@@ -1,9 +1,9 @@
 package reika.chromaticraft.auxiliary.recipemanagers;
 
-import java.util.List;
-
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeInput;
+
+import java.util.List;
 
 /** Snapshot of the catalyst and every dropped stack sharing one Liquid Chroma source cell. */
 public record PoolAlloyingInput(ItemStack catalyst, List<ItemStack> items) implements RecipeInput {

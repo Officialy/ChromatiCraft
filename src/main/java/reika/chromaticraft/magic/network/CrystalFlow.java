@@ -9,22 +9,15 @@
  ******************************************************************************/
 package reika.chromaticraft.magic.network;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import reika.chromaticraft.auxiliary.CrystalNetworkLogger;
 import reika.chromaticraft.auxiliary.CrystalNetworkLogger.LoggingLevel;
-import reika.chromaticraft.magic.interfaces.CrystalNetworkTile;
-import reika.chromaticraft.magic.interfaces.CrystalReceiver;
-import reika.chromaticraft.magic.interfaces.CrystalRepeater;
-import reika.chromaticraft.magic.interfaces.CrystalSource;
-import reika.chromaticraft.magic.interfaces.CrystalTransmitter;
-import reika.chromaticraft.magic.interfaces.DynamicRepeater;
-import reika.chromaticraft.magic.interfaces.ReactiveRepeater;
-import reika.chromaticraft.magic.interfaces.WrapperTile;
+import reika.chromaticraft.magic.interfaces.*;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.dragonapi.instantiable.data.immutable.DecimalPosition;
 import reika.dragonapi.instantiable.data.immutable.WorldLocation;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public final class CrystalFlow extends CrystalPath {
 
@@ -41,13 +34,13 @@ public final class CrystalFlow extends CrystalPath {
 	private int offeredThisTick;
 	private int lossThisTick;
 
-	private int throttle = Integer.MAX_VALUE;
+	private final int throttle = Integer.MAX_VALUE;
 
 	CrystalFlow(CrystalNetworker net, CrystalPath p, CrystalReceiver r, int amt, int maxthru) {
 		this(net, r, p.element, amt, p.nodes, maxthru);
 	}
 
-	protected CrystalFlow(CrystalNetworker net, CrystalReceiver r, CrystalElement e, int amt, List li, int maxthru) {
+	CrystalFlow(CrystalNetworker net, CrystalReceiver r, CrystalElement e, int amt, List li, int maxthru) {
 		super(net, !(r instanceof WrapperTile), e, li);
 		requestedAmount = amt;
 		totalCost = requestedAmount+this.getSignalLoss();
@@ -133,9 +126,9 @@ public final class CrystalFlow extends CrystalPath {
 		PathNode locs = nodes.get(nodes.size()-2);
 		CrystalReceiver r = (CrystalReceiver)locs.getTile(true);
 		DecimalPosition offset = r.getTargetRenderOffset(element);
-		double sx = offset != null ? offset.xCoord : 0;
-		double sy = offset != null ? offset.yCoord : 0;
-		double sz = offset != null ? offset.zCoord : 0;
+		double sx = offset != null ? offset.xCoord() : 0;
+		double sy = offset != null ? offset.yCoord() : 0;
+		double sz = offset != null ? offset.zCoord() : 0;
 		CrystalSource src = (CrystalSource)nodes.get(nodes.size()-1).getTile(true);
 		src.addTarget(locs.location, element, sx, sy, sz, r.getIncomingBeamRadius(), src.getMaximumBeamRadius());
 		for (int i = 1; i < nodes.size()-1; i++) {
@@ -144,9 +137,9 @@ public final class CrystalFlow extends CrystalPath {
 				PathNode tg = nodes.get(i-1);
 				r = (CrystalReceiver)tg.getTile(true);
 				offset = r.getTargetRenderOffset(element);
-				double dx = offset != null ? offset.xCoord : 0;
-				double dy = offset != null ? offset.yCoord : 0;
-				double dz = offset != null ? offset.zCoord : 0;
+				double dx = offset != null ? offset.xCoord() : 0;
+				double dy = offset != null ? offset.yCoord() : 0;
+				double dz = offset != null ? offset.zCoord() : 0;
 				((CrystalTransmitter)te).addTarget(tg.location, element, dx, dy, dz, r.getIncomingBeamRadius(), src.getMaximumBeamRadius());
 			}/*
 					if (te instanceof CrystalReceiver) {

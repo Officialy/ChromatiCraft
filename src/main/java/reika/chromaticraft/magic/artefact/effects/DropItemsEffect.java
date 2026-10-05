@@ -9,17 +9,16 @@
  ******************************************************************************/
 package reika.chromaticraft.magic.artefact.effects;
 
-import java.util.ArrayList;
-import java.util.Collections;
-
 import net.minecraft.world.Container;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
-
 import reika.chromaticraft.magic.artefact.UABombingEffect;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.dragonapi.libraries.java.ReikaRandomHelper;
+
+import java.util.ArrayList;
+import java.util.Collections;
 
 /** V33a {@code DropItemsEffect}: flings one random non-artefact stack out of the container. */
 public class DropItemsEffect extends UABombingEffect.BlockEffect {

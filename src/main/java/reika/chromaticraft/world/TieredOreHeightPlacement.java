@@ -1,22 +1,20 @@
 package reika.chromaticraft.world;
 
-import java.util.function.Consumer;
-
+import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.levelgen.placement.PlacementContext;
 import net.minecraft.world.level.levelgen.placement.PlacementModifier;
 
-import reika.chromaticraft.registry.ChromaPlacementModifiers;
+import java.util.function.Consumer;
 
 /**
  * V33a {@code TieredOres.generate} picks its own y, and not from a uniform band:
  *
  * <pre>y = ordinal >= FIRESTONE ? rand(128) : (rand.nextBoolean() ? rand(32) : rand(64))</pre>
- *
+ * <p>
  * The overworld roll is a 50/50 mix of {@code uniform[0,32)} and {@code uniform[0,64)}, which is
  * markedly denser toward bedrock than either band alone; the nether/end ores use a single flat
  * {@code uniform[0,128)}. Neither is expressible with vanilla's height providers, so the roll is
@@ -30,31 +28,22 @@ import reika.chromaticraft.registry.ChromaPlacementModifiers;
  * 0, so only the overworld floor ever moved, and V33a's own {@code rand(128)} nether band already
  * means what it says.
  */
-public final class TieredOreHeightPlacement implements PlacementModifier {
+public record TieredOreHeightPlacement(boolean deepBand) implements PlacementModifier {
 
-	private final boolean deepBand;
 
-	public TieredOreHeightPlacement(boolean deepBand) {
-		this.deepBand = deepBand;
-	}
+    public static final MapCodec<TieredOreHeightPlacement> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
+            Codec.BOOL.fieldOf("deep_band").forGetter(TieredOreHeightPlacement::deepBand)
+    ).apply(i, TieredOreHeightPlacement::new));
 
-	public boolean deepBand() {
-		return deepBand;
-	}
+    @Override
+    public void modify(PlacementContext context, RandomSource random, BlockPos origin, Consumer<BlockPos> output) {
+        int y = deepBand ? random.nextInt(128)
+                : random.nextBoolean() ? random.nextInt(32) : random.nextInt(64);
+        output.accept(new BlockPos(origin.getX(), y, origin.getZ()));
+    }
 
-	public static final MapCodec<TieredOreHeightPlacement> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
-			com.mojang.serialization.Codec.BOOL.fieldOf("deep_band").forGetter(TieredOreHeightPlacement::deepBand)
-	).apply(i, TieredOreHeightPlacement::new));
-
-	@Override
-	public void modify(PlacementContext context, RandomSource random, BlockPos origin, Consumer<BlockPos> output) {
-		int y = deepBand ? random.nextInt(128)
-				: random.nextBoolean() ? random.nextInt(32) : random.nextInt(64);
-		output.accept(new BlockPos(origin.getX(), y, origin.getZ()));
-	}
-
-	@Override
-	public MapCodec<TieredOreHeightPlacement> codec() {
-		return CODEC;
-	}
+    @Override
+    public MapCodec<TieredOreHeightPlacement> codec() {
+        return CODEC;
+    }
 }

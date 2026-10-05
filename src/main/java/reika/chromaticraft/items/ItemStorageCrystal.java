@@ -9,8 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.items;
 
-import java.util.function.Consumer;
-
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
@@ -23,12 +21,13 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.item.component.TooltipDisplay;
-
 import reika.chromaticraft.magic.ElementTagCompound;
 import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.registry.StorageCrystalTier;
+
+import java.util.function.Consumer;
 
 /**
  * V33a's portable sixteen-colour lumen battery.

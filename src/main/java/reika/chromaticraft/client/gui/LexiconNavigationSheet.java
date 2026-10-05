@@ -1,21 +1,20 @@
 package reika.chromaticraft.client.gui;
 
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.data.AtlasIds;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.item.ItemStack;
+import reika.chromaticraft.magic.progression.LexiconCatalog;
+import reika.chromaticraft.magic.progression.ResearchLevel;
+
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
-
-import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.RenderPipelines;
-import net.minecraft.data.AtlasIds;
-import net.minecraft.resources.Identifier;
-import net.minecraft.network.chat.Component;
-import net.minecraft.world.item.ItemStack;
-
-import reika.chromaticraft.magic.progression.LexiconCatalog;
-import reika.chromaticraft.magic.progression.ResearchLevel;
 
 /**
  * V33a {@code GuiNavigation}'s spatial layout: every section on one pannable sheet rather than a
@@ -82,7 +81,7 @@ public final class LexiconNavigationSheet {
 
 		/** V33a: ReikaColorAPI.GStoHex(15 + hoverTime * 12) -- greyscale 15..255. */
 		int color() {
-			int grey = Math.clamp(15 + hoverTime * 12, 0, 255);
+			int grey = Math.clamp(15 + hoverTime * 12L, 0, 255);
 			return 0xff000000 | (grey << 16) | (grey << 8) | grey;
 		}
 	}

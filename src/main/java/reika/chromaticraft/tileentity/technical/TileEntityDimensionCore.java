@@ -1,37 +1,29 @@
 package reika.chromaticraft.tileentity.technical;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.EnumMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.auxiliary.CrystalMusicManager;
 import reika.chromaticraft.base.tileentity.TileEntityLocusPoint;
 import reika.chromaticraft.magic.ElementMixer;
 import reika.chromaticraft.registry.ChromaBlockEntities;
-import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.registry.ChromaSounds;
-import reika.dragonapi.libraries.io.ReikaSoundHelper;
+import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.render.particle.ChromaParticle;
 import reika.chromaticraft.world.dimension.DimensionStructureType;
 import reika.chromaticraft.world.dimension.structure.StructureGeneratorBase;
 import reika.chromaticraft.world.dimension.structure.StructureGeneratorBase.StructurePair;
 import reika.dragonapi.libraries.ReikaPlayerAPI;
+import reika.dragonapi.libraries.io.ReikaSoundHelper;
 import reika.dragonapi.libraries.mathsci.ReikaMusicHelper.MusicKey;
+
+import java.util.*;
 
 /**
  * V33a {@code TileEntityDimensionCore}: the sixteen elemental cores of Proxima.
@@ -208,7 +200,7 @@ public class TileEntityDimensionCore extends TileEntityLocusPoint {
 
 	@Override
 	public int getRenderColor() {
-		return this.getColor().getColor();
+		return this.getColor().color();
 	}
 
 	public void setStructure(StructurePair p) {
@@ -261,7 +253,7 @@ public class TileEntityDimensionCore extends TileEntityLocusPoint {
 		// The controller and the outer ring span several chunks and can load in either order. Repair
 		// this side as well as the controller side so an interrupted, non-persisted ritual cannot leave
 		// a late-loading core permanently silent.
-		BlockPos controller = worldPosition.subtract(this.getLocation(this.getColor()));
+		BlockPos controller = worldPosition.subtract(getLocation(this.getColor()));
 		if (level.getBlockEntity(controller)
 				instanceof reika.chromaticraft.tileentity.TileEntityStructureController monument
 				&& monument.isMonument() && !monument.isMonumentRitualActive())

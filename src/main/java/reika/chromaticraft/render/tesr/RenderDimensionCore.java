@@ -2,7 +2,6 @@ package reika.chromaticraft.render.tesr;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
@@ -15,12 +14,8 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.util.LightCoordsUtil;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-
-import org.jspecify.annotations.Nullable;
-
-import net.neoforged.neoforge.client.extensions.OrderedSubmitNodeCollectorExtension;
 import net.neoforged.neoforge.client.submit.RenderPhaseKeys;
-
+import org.jspecify.annotations.Nullable;
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.render.ChromaRenderPipelines;
 import reika.chromaticraft.tileentity.technical.TileEntityDimensionCore;
@@ -110,7 +105,7 @@ public final class RenderDimensionCore implements
 			RenderType renderType, SubmitNodeCollector.CustomGeometryRenderer renderer) {
 		CustomFeatureRenderer.Submit submit = new CustomFeatureRenderer.Submit(
 				poseStack.last().copy(), renderType, renderer);
-		((OrderedSubmitNodeCollectorExtension)collector.order(0))
+		collector.order(0)
 				.submitSpecial(RenderPhaseKeys.AFTER_TERRAIN, submit);
 	}
 

@@ -1,4 +1,4 @@
-# ChromatiCraft 1.7.10 V33a → Minecraft 26.2 / NeoForge port
+# ChromatiCraft 1.7.10 V33a → Minecraft 26.3 / NeoForge port
 
 ## Working checkpoint — 2026-09-24 (overworld biomes: Ender Forest done, Rainbow Forest in progress)
 
@@ -98,7 +98,8 @@ with their elliptical cavern hollows, dirt thickness, `cleanColumn` (its two qui
 cavern plants (6% Glow Daisy, 0.8% sapling, 0.3% Rock Flower, 0.8% 1-4 Glow Roots, from TerrainShaper's
 per-column seed). Blocks are vanilla stone/dirt/grass as upstream's were. `BIOMEBLEND` outward blending
 (16 blocks, `EDGE_BLENDING` curve) reshapes neighbours and moves their surface layers up or down. Caves
-and aquifers below the pre-shaping ground are kept; raised ground has no carver caves (gap).
+and aquifers below the pre-shaping ground are kept. The original raised-ground carver gap was closed
+by the 2026-10-02 terrain-pipeline hook described below.
 `LuminousFloraFeature` (an approximation of the cavern plants) is removed. `LuminousCliffsAuxFeature`
 ports the aux generator's sapling growth (1/40 big, else small oak, 1/10 glowing leaves) and
 `cleanupBlocks`; Mystcraft crystal veins are CHROMA-PORT. Skypeater siting now uses the real regions and
@@ -111,14 +112,14 @@ V33a's island) is replaced by `LuminousIslandStructure` + `LuminousIslandPiece` 
 port of `GlowingCliffsAuxGenerator.generateIslands/Island`: per-chunk roll (`33/scale`% on a slow
 size-scale noise, 1/3 over sea, 1/6 over land), lobulated outline, contour-noise top, taper, lakes,
 rivers with V33a's rim-water rule (waterfalls; fluid ticks scheduled), Luma lakes on high sea islands,
-child islands from rivers at the rim, transparent cliff stone under vanilla dirt and grass. Collision is
-checked against terrain predicted by the column shaper (cliffs) and the chunk generator's height with the
-outward blend (elsewhere). Island decoration runs V33a's attempts from its world-seeded random (the same
-for every island, as upstream), anchors drawn in order, each executed by the chunk it lands in; the
+child islands from rivers at the rim, transparent cliff stone under vanilla dirt and grass. The initial
+collision check against predicted terrain is superseded by the 2026-10-02 check against actual completed
+terrain and vegetation. Island decoration runs V33a's attempts from its world-seeded random (the same
+for every island, as upstream), anchors drawn in order, now executed for the complete island; the
 `getTopY(j, k)` argument bug is reproduced by its effective value (base height + 1). Ore veins are
 WorldGenMinable into vanilla stone and so, as upstream, rarely do anything in cliff stone.
-Gaps: an island cannot see trees (V33a refused islands that touched them) or islands started from other
-chunks, so two islands can overlap.
+The original gaps (tree collisions and overlapping starts from other chunks) were closed by the
+2026-10-02 saved post-population candidate/air-check pass described below.
 
 **Luminous Cliffs, unit 4 — rules and atmosphere**: `LuminousCliffsEvents` (server) ports V33a's cliff
 rules: no fire ticking and no lava ignition (DragonAPI `FireSpreadEvent`/`LavaSpawnFireEvent` at the
@@ -174,8 +175,8 @@ CLUSTERED, and only the chosen root's chunk is PLANNED. That chunk makes STRUCTT
 attempts, then tries the eight chunks around it, recording SUCCESS/FAILURE. Statuses persist per level
 (`chromaticraft:structure_status`, V33a `StructureStatus.dat`) and are what the Artifact Distribution Map
 reads.
-- Deviations: V33a widened the retry ring to 48-96 blocks; 26.2 features can only write beside their own
-  chunk, so only the first ring is tried. The field seed keeps V33a's world seed, type and DragonAPI
+- The original first-ring-only retry deviation was closed on 2026-10-02 by the saved post-population
+  queue; it now visits all source 48-96 block squares. The field seed keeps V33a's world seed, type and DragonAPI
   world-creation-time terms but drops the save folder's absolute-path hash (it moved every unbuilt
   structure when a world was copied or moved).
 - 1.7.10 biome checks read `topBlock`/decorators; `DungeonZones.isValidBiome` asks the same questions
@@ -7696,7 +7697,7 @@ the original `isComplete()` filter and turn an unfinished upstream shell into fa
 
 `LASER` is intentionally not yet registered in the Proxima assignment pool. The next slice is the
 twelve modern laser-effector blocks/block entities backed by this interaction engine, followed by NBT
-room-shell, entrance and loot composition and the persistent emitter -> target -> room door -> core
+room placement, entrance and loot composition and the persistent emitter -> target -> room door -> core
 solve loop. The entity and rules foundation is accepted, but Chromatic Beams is not yet playable or
 eligible for world assignment until that complete loop exists.
 
@@ -9803,3 +9804,563 @@ AE2 (26.3 port fork) is compile-only; the full integration record is in `Reactor
 - Deferred: Pattern Cache/Crystal (V33a WIP, no recipes);
   Remote Terminal (commented out in V33a); the cells' shift-held stored-item icon overlay (needs a
   custom item model, CHROMA-PORT in the item classes).
+
+## 2026-10-02 — Proxima music and crystal/puzzle feedback
+
+- Proxima now selects the nine original ChromatiCraft dimension recordings through 26.3's
+  `SelectMusicEvent`. The OGGs came from Reika's `ccmusic` manifest and were MD5-checked against
+  every manifest entry before being placed in `assets/chromaticraft/sounds/music/`. They are streamed,
+  use the Music volume slider, play in shuffled cycles, and retain V33a's 300–1200 tick interval.
+  `ethereal contact_c` and `polychromacy_c` still require the CTM progression stage. Entering the
+  monument ritual stops the ambient track so its six-part score plays alone; leaving Proxima stops
+  the dimension recording before normal music resumes. The old `MusicLoader` and
+  `ChromaDimensionalAudioHandler` remain pristine references, outside the source allowlist.
+- Adjacent cave crystals with opposing side arms now give the shared edge a single arm owner. The
+  negative-facing arm yields to the positive-facing one only when both exist at the same mounting
+  orientation; removing either block restores the surviving crystal's seeded arm. The dynamic
+  block mesh and collision/outline use the same resolved mask. The focused
+  `cave_crystal_dynamic_shape_contract` GameTest covers this neighbour transition.
+- Crystal Music trigger sparks now use `ServerLevel.sendParticles`; the previous server-side
+  `Level.addParticle` path never reached clients. Melody playback, door solving and saved room state
+  remain covered by `music_puzzle_layout`.
+- The Proxima placement regression now pins its structure-password version input to 26.3. The
+  focused `proxima_structure_placement` test passed after the music registration changes.
+- The next full puzzle admission remains Chromatic Beams (`LASER`): its authored room layouts and
+  pulse rules are present, while the effector blocks, structure piece and persistent solve loop
+  still need to land together before it can enter Proxima's assignment pool.
+
+## 2026-10-02 — Chromatic Beams room-shell datagen
+
+- Server datagen now emits all twelve `worldgen/proxima/laser/room_*` templates from the exact
+  V33a `LaserLevel` shell algorithm and each decoded `.struct` room's X/Z bounds. The fourteen
+  vertical layers preserve the taper, reinforced stone/air carving, west opening, eighteen-cell
+  closed stay-open door, ante-room stone bricks and stairs, floor trim, rear channel, and authored
+  shield lights. The template origin is translated by (+7,+1,+8-minZ) so its coordinates stay
+  nonnegative; the future structure piece will place seeded effectors and bind its switch/data
+  tiles to the live room after placing the shell.
+- The source's eight-block connector is emitted as `worldgen/proxima/laser/tunnel` with its
+  8x6x7 envelope, tapered top and 160 reinforced shield blocks. It fits the 23-block stride
+  already produced by `LaserPuzzleLayout`.
+- `laser_room_templates` loads all twelve generated NBTs through Minecraft's structure manager
+  and checks the decoded bounds and exact eighteen-block gate, plus the connector dimensions and
+  shield count. Focused GameTest passed 1/1;
+  `:ChromatiCraft:compileJava` and `:ChromatiCraft:runServerData` passed. The room shells are
+  generated assets, not yet world-assigned. Next: modern effector block/entities, runtime
+  placement, entrance/loot, and the persisted room solve loop before admitting `LASER`.
+
+## 2026-10-02 — Chromatic Beams room-state authority
+
+- `LaserRoomState` now derives each room's emitter and target positions and east-gate center from
+  its decoded `.struct` blueprint. It implements the V33a switch sequence: start all emitters,
+  accept target activations, open the gate and clear travelling pulses only when every target is
+  active, then clear targets/pulses and close the gate when stopped. Target auto-reset and the
+  structure-password bypass also have explicit transitions. The room state, including target
+  membership, active targets, firing state and gate, survives NBT save/load.
+- Focused `chromaticraft:laser_room_state` GameTest passed 1/1 on the authored mirror tutorial,
+  covering world offsets, start, partial/full completion, persisted completion, stop/reset and
+  bypass. This state engine is compiled but not yet connected to the world until laser effectors
+  and the structure piece land, so `LASER` remains outside the assignment pool.
+- A concurrent `TestInstance/build.gradle` edit used the nonexistent project path
+  `:Chromaticraft`; its three references now use the included `:ChromatiCraft` project, allowing
+  the Gradle test run to configure again.
+
+## 2026-10-02 — Chromatic Beams reward chamber
+
+- Server datagen now imports all 808 explicit `LaserLoot` block writes into
+  `worldgen/proxima/laser/loot.nbt`. The V33a west-facing `OriginBlockCache` reflects the
+  author's X offsets into the 14x9x7 template; its nine separately registered breakable wall
+  cells become non-reinforced shielding. The objective core at template (10,2,3) is reserved
+  for live structure binding, as in the other Proxima reward templates.
+- The `laser_room_templates` GameTest now also checks the reward footprint, 465 stone-shield
+  cells including exactly nine breakable ones, and the single core reservation. Server datagen
+  and the focused test passed. The reward room remains unplaced until the full laser structure
+  piece is ported and Chromatic Beams is admitted to the assignment pool.
+- The underground `LaserEntrance` 11x6x11 prefab is now generated from its complete V33a wall,
+  opening and diagonal-pillar rules: 396 reinforced stone, four lit pillar cells and 326 air
+  cells. The entrance's vertical shaft and terrain-height surface ring remain dynamic piece
+  composition. The expanded `laser_room_templates` GameTest passed 1/1 after checking this
+  NBT through Minecraft's structure manager; server datagen passed as well.
+
+## 2026-10-02 — Dungeon retries, Luminous Cliffs carvers and island collisions
+
+- Natural dungeon features now enqueue saved post-population work instead of writing farther than
+  their `WorldGenRegion` permits. `DungeonRetryPlan` transcribes `tryGenerateInChunksAround`: the
+  flagged chunk first, then 16-block widening squares through 48 blocks (Cavern/Burrow), 64 blocks
+  (Desert/Biome Fragment) or 96 blocks (Ocean/Snow). It deliberately revisits the inner squares,
+  exactly as V33a did, rather than trying only each square's perimeter.
+- `PostPopulationWorldgen` persists the destination cursor, attempt count and complete 48-bit random
+  state (including cached Gaussian). `SavedWorldgenRandom` retains Java's full 53-bit double draws
+  and strict Gaussian calculation; 26.3's inherited float multiplication would otherwise round the
+  double draws. Only the server performs placement, one candidate chunk per
+  tick, once its local structure/annex/site-check footprint is FULL. Expiring loading tickets request
+  that footprint asynchronously; their window advances with the retry and tickets are released on
+  completion, suspension or level unload. The original SUCCESS/FAILURE destination status remains
+  the Artifact Distribution Map's authority. Jobs are admitted near a player or an explicitly forced
+  origin chunk; work generated by the queue's own tickets cannot recursively expand the world.
+  Unvisited pregenerated areas retain pending jobs until visited/forced. This is fresh-generation
+  work, not retrogen of previously completed chunks.
+- Natural Ocean Temple anchoring now reads the seabed, as V33a's `getTopSolidOrLiquidBlock` did.
+  Anchoring from the water surface made the required water-above-controller checks impossible.
+  Deferred dungeon checks use live heightmaps on FULL chunks; generation-only WG maps are absent
+  or stale after decoration and must not be used for the later server placement.
+- `LuminousCliffsTerrainMixin` targets 26.3's unified `NoiseBasedChunkGenerator.generateCarvers`
+  boundary, after surface building and before vanilla carvers. It applies the same column shaper
+  and outward blend directly to the active protochunk, with biome reads through the seed resolver.
+  Existing noise caves/aquifers are preserved and the raised plateau rock is now available to the
+  ordinary biome carvers. The persisted `cliffs_shaped` attachment prevents the later biome feature
+  from rebuilding the terrain over those caves; non-noise generators keep the feature fallback.
+- Floating-island starts now persist an original candidate seed and footprint. Their post-population
+  pass reads actual terrain and vegetation, replays the frequency/column draws and performs V33a's
+  whole-shape air test before writing. Logs, leaves, liquids and earlier islands reject the complete
+  island, including collisions outside its origin chunk. Child islands are placed immediately while
+  calculating their parent; their blocks, decorations and shared ore random draws affect subsequent
+  siblings and the parent, restoring the source order. Older serialized shaped pieces remain readable
+  and use the same whole-island collision check. Existing chunks retain their terrain and seams.
+- Focused verification is recorded in `ChromatiCraft/build/worldgen-parity/`: retry square/order and
+  random save/load, a real queued Crystal Shrine 48 blocks from its flagged chunk, whole-island
+  log/leaf/water/other-island rejection without partial writes, a serialized candidate placed by the
+  server queue, and real noise terrain/carver execution with holes in raised plateau stone plus
+  protection against a repeated terrain pass. Natural-world density and client visual acceptance
+  still require a fresh exploration pass; no full-mod GameTest suite is claimed for this slice.
+- Final validation: `:ChromatiCraft:compileJava` passes; the final `worldgen_parity_*` suite passes
+  **5/5** in 22.32 s, including explicit cross-chunk obstructions and exact Java double/Gaussian
+  parity. The existing `structure_*` suite passes **8/8** in 29.47 s (controllers, loot fragments,
+  traps, write-window fitting and wiring). The final logs are `worldgen-parity-complete.log` and
+  `worldgen-structure-regression.log` in the folder above. Earlier diagnostic runs are retained there
+  as history, including the precision failure that prompted the `nextDouble()` override.
+
+## 2026-10-03 — Overworld survival generation completion audit
+
+- Audited the V33a registered overworld generator inventory against active feature types, placed
+  features, biome modifiers and structure templates. Skypeaters remain deliberately unattached by
+  the owner's earlier instruction; absent optional Mystcraft/Thaumcraft/Satisforestry/Forestry
+  integrations retain their port boundary. Ordinary overworld content has an active generation path.
+- Ocean Temples now validate both source end probes at +28 (including the previously transposed
+  Z-axis probe) and an actual flooded entrance on the same axis. A temple cannot pass an upper
+  water probe while its five-block-lower physical mouth is buried. The 5x5 cave scan follows the
+  modern world minimum, and the shielded pit reaches the validated cave instead of stopping after
+  32 blocks. Rejected sites leave no partial template or stuck GENERATING status; a failed
+  overlapping retry cannot erase an existing SUCCESS.
+- All six dungeon types are admitted in every overworld biome; the source zone planner and sampled
+  site own the biome restriction. This restores candidates in chunks whose root belongs to a
+  different biome from their decoration samples. Desert controller anchoring, Snow/Shrine support
+  and flatness, tree-canopy ground reads, and Burrow cliff-stone rejection follow their source rules.
+  Natural structure finishing includes source moss/grass weathering, optional annex weathering,
+  Desert sand/cacti and Snow tree clearance, roof cleanup, foundation fill and snow cover.
+- Warp Nexus grids now use the exact overworld seed*7 and ShuffledGrid draw order, rather than a
+  ResourceKey identity hash. Ordinary terrain retains top+48 without the Cliffs-only y=128 floor.
+  NexusGenEvent is fully ported and fired again. Dungeon noise initialization is synchronized.
+  Tower and artefact layout caches now identify the actual server level, not just its seed, so a
+  second world with the same seed rebuilds its creation-dependent layout. Tower initialization and
+  lookup are synchronized; weak level identities avoid retaining a closed world.
+- Restored DecoFlowerGenerator's separate Glow Daisy (one-in-two chunk admission) and Lumen Root
+  (every chunk) passes, usually one placement with the original occasional burst and 40 attempts.
+  Roots consume the initial +/-25 surface draw, then choose inclusive y=4..80 and walk upward to a
+  supported cave ceiling. These and Piezo Crystals inspect actual Cliffs columns and are admitted
+  globally so ordinary-side boundary origins cannot suppress them. Runtime natural-stone tags
+  include optional GeoStrata smooth rocks, restoring root ceilings, Piezo hosts and pylon floors
+  without admitting crafted rock bricks. Artefacts use the seabed under ocean water.
+- Restored DataTowerGenerator's 18-block ocean-island taper and high-altitude crater/headroom pass.
+  Natural towers now enqueue saved work with their tower identity and RNG; the server waits for a
+  bounded FULL footprint before modifying neighbouring columns. Island surfaces/fillers are taken
+  from already generated 26.3 surface-rule terrain, replacing the removed biome topBlock/fillerBlock
+  fields. The source island still targets y=64; high towers reserve space for every dummy relay under
+  the modern ceiling. A dedicated datagen loot table restores library population plus two bonus
+  populations, source fragment rolls and independent diamond/emerald/gold/iron/redstone/lapis extras.
+- Fixed an actual shutdown/unload loop found in the survival tests: Lock Keys notified their puzzle
+  delegate from setRemoved(), which also runs during chunk unloading and force-loaded the controller
+  again. Notification now runs in 26.3's physical preRemoveSideEffects callback and retains
+  physical/explosion/player-removal behavior, including notification to unloaded delegates when an
+  actual removal needs it. Unloading an installed key does
+  not revoke it. Queue loading tickets are also released before the server drains chunks.
+- Queue admission scans only unfinished jobs and retry squares are cached once per job. Finished
+  identities remain saved to prevent duplicate placement; unfinished cursors and exact RNG states
+  remain restartable.
+- Verification: final `overworld_survival_*` contracts pass **8/8** with all six Reika mods loaded
+  (`build/overworld-survival-final.log`), including every natural dungeon family, ocean rejection/
+  below-zero shaft, exhaustive signed warp-grid parity, source flower RNG, ocean/high lore towers
+  with actual loot, GeoStrata support and world-identity isolation. Existing `biome_fragment_*`
+  puzzles pass **3/3**, including installed-key unload versus actual removal
+  (`build/overworld-survival-puzzle-unload-final.log`). Both
+  servers saved and exited successfully. Datagen and compilation pass (`build/overworld-survival-
+  datagen-ready.log`). Existing structure contracts pass **8/8** and terrain/carver/island/retry
+  parity contracts **5/5** in the earlier final logs for this audit.
+  Existing pylon worldgen tests also pass **3/3**, and Data Node template/scanning tests **2/2**
+  (`build/overworld-survival-pylon-regression.log`, `build/overworld-survival-tower-regression.log`).
+- A final normal-noise/TerraBlender population probe passes **1/1** with all Reika mods, using 54 FULL
+  chunks across Rainbow Forest, Ender Forest, Luminous Cliffs, Deep Ocean, Desert and Snowy Plains.
+  It found **1,320 Energized Rock**, **592/624** Cliffs columns retaining their shaped ground after
+  decoration, **4,370 Chroma leaves** and **31 glowing flowers/roots**. Explored queue jobs drained,
+  and saving/exit completed successfully (`build/overworld-survival-population-complete.log`).
+  This uses a disposable build-generated normal-world test preset. GameTest's WorldOptions disable
+  structure sets: it verifies terrain, carvers/decorators and feature admission, while the separate
+  island candidate/queue tests cover island placement. It is not a broad natural structure-density
+  survey or a client visual acceptance pass. Live saves were never used or regenerated.
+- Correction to the early external-pack diagnostic: the failed run loaded stale FTB Library
+  **26.2.0.8-SNAPSHOT** from `TestInstance/mods`, because the launcher added that legacy folder to its
+  runtime classpath (`build/overworld-survival-allmods.log`). Both actual client folders,
+  `TestInstance/run/mods` and `ChromatiCraft/run/mods`, contain **26.3.0.1**, verified from jar metadata.
+  This was a launcher dependency-path problem, not evidence that the user's current FTB Library
+  requires updating. TestInstance now lets clients discover run/mods normally, and sources its
+  isolated headless test dependencies from that same current folder (excluding rendering/zoom/mouse
+  UI jars). The old project-level snapshots are no longer added to the runtime. No jars or live
+  saves were changed.
+  Reverification with the current external jars loaded succeeds: **8/8** survival contracts with
+  FTB Library **26.3.0.1**, FTB Ultimine **26.3.0.6**, AE2's 26.3 port and GuideME's 26.3 port
+  (`build/overworld-survival-current-mods.log`). The normal-world population probe also passes with
+  these jars: **54 FULL chunks**, **1,296 Energized Rock**, **595/624** shaped Cliffs columns,
+  **4,370 Chroma leaves**, **31 glowing flowers/roots**, and explored queues drained
+  (`build/overworld-survival-population-current-mods.log`).
+
+## 2026-10-03 — Login Lexicon and progression advancements
+
+Port and register the original ChromaBookSpawner through DragonAPI's server-login tracker,
+respecting HANDBOOK and retaining its original persistent tracker ID. Starter delivery handles
+full inventories and death/reconnect flags without repeated grants.
+
+Generate a ChromatiCraft advancement root and all 74 authored progression stages except NEVER.
+Titles and descriptions come from ProgressionDescriptions/the original progression XML. Stage
+entries remain hidden until discovered and suppress duplicate advancement toasts/chat, retaining
+the original research-note notifications. Advancement displays choose one original prerequisite
+as their visual parent; ProgressionManager continues enforcing the full research DAG.
+
+ChromaAdvancements synchronizes the projection after changed stages, direct research reset and
+server login. Previously saved research backfills and removed stages revoke their advancements.
+Inactive optional-integration stages remain ungranted; unported gameplay still follows the
+existing accepted/WIP source boundary. Existing ChromatiCraft bonus-chest loot remains intact.
+
+Focused server regressions pass **7/7**, covering the complete generated stage catalog, actual
+login Lexicon, parent/descendant grant/revocation, existing-save backfill, reset, plus ElectriCraft
+and GeoStrata inventory advancement integration (`build/login-advancements-chroma-complete.log`).
+Existing progression regressions pass **6/6**; all six module builds pass
+(`build/login-advancements-package-validation.log`). Release-jar auditing confirms all 75
+ChromatiCraft gameplay advancement definitions and translations are packaged. The wider login,
+original chest loot and all-mod advancement implementation is recorded in ReactorCraft/PORTING.md.
+
+
+## 2026-10-04 — First item backlog slice and Iris world rendering
+
+Port and register the V33a Anti-Attenuation Gem, Recall Tablet, Capture Star and Recipe Tablet
+against the 26.3 APIs. Retain their original charge reductions, recall restrictions/random arrival,
+entity health/name/UUID serialization, charge costs, table ownership and inventory transfer.
+Recipe Tablets save registry-aware ItemStacks including components, validate every destination
+before restoring, and split a single filled tablet from the original four-item empty stack. Missing
+stands, malformed contents and unsuccessful spawns retain the stored inventory/entity. Recall
+uses a bounded search instead of hanging forever when its randomized destination is obstructed.
+Datagen uses the original recipes, runes, aura costs, output counts and XP penalties; model state
+selects the original bound/filled sprites. The gem's Aura Pouch activation and ability/tool savings
+are restored. Sprites are cropped from the authoritative V33a item sheets.
+
+Register all ten original dimensional resource identities and the six remaining tiered-resource
+identities (cavern/burrow/ocean/desert/snow fragments and resonant crystal), bringing the tiered
+catalog to 28. Restore each original discovery stage and dimensional-deco resource drops, including
+source silk-touch exceptions and tuning-scaled quantities. Miasmatic Essence can place Miasma.
+This closes these item identity gaps; it does not claim that every dependent structure acquisition
+path or the unported Aqua/Gemstone deco variants is complete. The rest of the item backlog remains
+outside this slice, with items still taking priority over the missing-machine catalog.
+
+The reported Iris pylon flare used RGB black as transparency, a custom POSITION_TEX_COLOR program
+without an Iris assignment, and a custom geometry callback that ignored the supplied pose. Give
+Iris an explicitly assigned EMISSIVE_ENTITIES pipeline with the standard entity vertex contract,
+full-bright lighting, normals and the submitted world pose. Derive alpha-backed glow/core sprite
+aliases at atlas reload through a registered SpriteSource codec and datagen atlas provider. Preserve
+the ordinary renderer's original sprites/additive pipeline; retain enhanced and unstable animations,
+transmitter beams and Void Gaze depth behavior. Skip the Iris shadow pass for glows and mist.
+The integration uses the optional public Iris API (verified against the installed 26.3 Iris 1.11.7),
+without introducing Iris classes into the non-Iris runtime linkage.
+
+Luminous Cliffs mist now snapshots its simulation during ExtractLevelRenderStateEvent and submits
+immutable geometry through SubmitCustomGeometryEvent / AFTER_TERRAIN. It no longer draws directly
+to the main framebuffer after level/shader composition. Its shader path is assigned to Iris's
+PARTICLES_TRANSLUCENT program; cloud centers stay in world coordinates while only their sheets face
+the camera. Preserve the 48-cloud admission, lifetime/wind/UV animation, repeat sampler and 8x8
+alpha falloff. Both paths use the current 26.3 world submission hooks, not the older 26.2 API.
+
+Validation: compile, client datagen and server datagen pass (`build/shader-item-datagen.log`).
+Focused inventory/serialization GameTests pass **4/4**, including disabled/enabled pouch slots,
+charge expiration, live mob capture/release, recall failure retention and arrival, tablet splitting,
+missing-stand retention and exact component restoration (`build/shader-item-final-validation.log`).
+The initial tablet assertion used the deprecated helper's forced-creative player; the corrected
+contract explicitly uses survival. Build/package succeeds. Client visual acceptance is still pending:
+rotate and translate around ordinary/enhanced/unstable pylons, enable/disable shaders, inspect beams
+and Void Gaze, and enter/leave the Cliffs mist with the user's shader pack. Headless GameTests cannot
+validate an Iris framebuffer or shader-pack-specific fog/compositing.
+
+Final release artifact: `build/libs/ChromatiCraft-1.0.0.jar`, rebuilt after server datagen so the
+packaged resources match its latest output (`build/shader-item-jar-audit.log`). The artifact audit
+checks all 17 required shader/item entries, all five atlas sources, and exact generated/packaged
+Capture Star and Recall Tablet recipes including XP threshold 1 (`build/shader-item-artifact-audit.txt`).
+TestInstance's saved Iris config selects Bliss v2.1.2 (Chocapic13 edit); that identifies a relevant
+visual acceptance target, not evidence of a successful live rendering test.
+
+## 2026-10-04 — Progression text concealment
+
+Restore V33a discovery text in the active 26.3 slice. ChromaText carries the original contextual
+glyph substitution through styled Components, using the unmodified original 16x16 obf_font.png
+and a client datagen bitmap-font provider. Private glyph codepoints conceal the flattened words
+as well as the rendered text; spaces, line breaks, colors and bold survive. Repeated tooltip passes
+are idempotent, and opening a screen or reloading client resources rerandomizes the offsets.
+The legacy custom FontRenderer classes remain pristine and outside the accepted source slice;
+the active renderer uses Minecraft's current component/font pipeline.
+The Unknown Artefact's original scrolling line also uses this glyph font (V33a getRenderText
+prepended FontType.OBFUSCATED).
+
+ChromaNameKnowledge evaluates live player research without caching names. Restore tiered and
+dimensional resource discovery, boosted shard/elemental stone RUNEUSE gates, original colored
+item/block discovery, and GROUPS/CORES/ALLOYS ingredient-name gates. Undiscovered tiered ores
+retain their host block's localized name. The client-only ItemStack mixin applies these gates to
+item and hover names without affecting dedicated/integrated server threads or serialized data.
+No-player startup/search collection remains readable. Crystal/shard effect tooltips are concealed
+until their color is discovered; unrelated item tooltip information does not gain new gates.
+
+Decoded fragment tooltips now distinguish owned (green), next eligible (purple) and unreadable
+glyph text. PlayerResearch.canStepTo is a read-only counterpart of nextResearch, preserving
+priority candidates without advancing a client research tier. Ability names, progression graph
+titles/hints and casting recipe titles use the same component renderer with their original gates.
+One-step-away progression titles remain readable; hints require prerequisites. Preserve the
+existing Teleportation Pump's source behavior: [Unknown] and a randomized amount. V33a item
+inheritance/bytecode auditing excludes relay and potion names from invented color requirements.
+
+Validation: independently compile the changed classes against the resolved 26.3 APIs and last
+accepted module artifact; compile the GameTest registration as well. Component/resource smoke
+checks pass for styling, whitespace, mixed siblings, idempotence, 100 offset rerandomizations
+and all 256 provider-defined font slots (build/chroma-text-smoke.log). The copied glyph texture
+matches the original jar byte-for-byte. Six real 26.3 GameTests pass, covering component safety,
+tier/color/boosted unlock and re-hide, research-fragment unlock/re-hide, ore host disguise,
+artefact glyph output and read-only fragment eligibility parity with nextResearch
+(build/chroma-text-snapshot-gametest.log).
+
+The full current module build is red in the concurrently expanded VoidMonster integration slice.
+Keep both slices on the allowlist; do not exclude its unfinished sources to manufacture a green
+build. Tests run from an isolated copy of the last built artifact with the changed classes and
+resources overlaid, using the current 26.3 runtime. The generated font JSON comes directly from
+the datagen provider's definition; full client datagen and a new release jar remain unvalidated
+until the whole module compiles. Client visual acceptance (glyph rendering, tooltip names,
+fragment colors and Lexicon wrapping) remains pending.
+
+## 2026-10-04 — VoidMonster compatibility on Minecraft 26.3
+
+Port the authored V33a integration into the active source allowlist against VoidMonster's current
+26.3 API. VoidMonster is compile-only and optional at runtime; `-PchromaWithVoidMonster` enables
+the standalone development runs. Metadata orders the optional integration after VoidMonster.
+Presence checks also protect reflective efficiency/range machine scans and client trap registration.
+The bait factory selects its VoidMonster interface adapter only when that API is available.
+
+The accepted cluster includes:
+
+- Corrupted Essence, player-hit drops, look/hurt/death progression and protected standing structure torches.
+  Preserve the original BEDROCK prerequisite through the existing progression manager.
+  Pylon-attributed deaths retain four to seven blank fragments, two complete additional loot/XP
+  rolls, both POWERDOWN sounds and the explosion particle. The public VoidMonster additional-loot
+  entry point preserves custom/API drops and ghost suppression without reflective legacy calls.
+- MOBBAIT: owned bait, hostile target selection, lifetime/attack drain and the original Nether
+  duplicate exception; native synchronized entity data and the nine-layer client rendering.
+- Death Fog and its one-slot emitter: original drift, hostile-only damage, enhanced essence use,
+  lifespan, collision behavior and client opacity/line-of-sight/quad variation. Enhanced fog uses
+  the actual 26.3 `damageCooldownTime` field for the original eleven-tick repeat-hit window.
+- Distortion Elimination Focus: six-color energy costs, original storage/range, essence vacuum,
+  wire activation, spline tethers, chunk loading, persistence and cross-dimension links. Restore
+  all four TNT triggers and the destructive Nether transfer, testing the actual destination box.
+  A native portal ticket makes randomized exits beyond the linked trap's forced chunk square
+  become tracked; tests wait for the destination's entity lookup to observe the arrival.
+  Redstone checks preserve legacy block-identity matching despite modern connection/power states.
+- Full authored Nether and Overworld layouts, including the 29x29 ritual footprint, and the
+  destruction ritual's randomized health curve, six effects, delayed attacks, damage protection,
+  premature-termination penalty and 20–45 minute completion cooldown. Network identity is scoped
+  by dimension and entity UUID; ended ritual foci clear their client shader envelopes.
+- Sixteen colored altars: original model parts, rotating colored overlays, floating cube trails,
+  spill/laser/bolt/shock/break effects, model-texture hit fragments and density-driven hazards.
+  Server ownership replaces the original client requests for authoritative damage and collapse.
+- Native 26.3 entity/block/item renderers, structure previews, sphere/trap post effects and terrain
+  deformation for both separate and multidraw rendering, including all three terrain OIT phases.
+  Preserve the original shader formulas while using current frame graphs, uniforms and pipelines.
+- Datagen for original casting recipes, conditional optional-mod recipes, models, language, loot,
+  damage types and post-chain JSON. Lexicon content, structure templates, previews and creative
+  entries expose the integration under its original dependency/research gates.
+
+The original colored altar texture is byte-identical to the official ChromatiCraft V33a release
+(file 4721192); essence uses the authored sheet's tile 181. Original layouts, casting ingredients,
+stand positions, aura costs, rendering transforms and effects were checked against the retained
+source/official bytecode. Legacy shader sources remain as references, alongside the native shaders.
+The large pristine resource-composition calculator/legacy item registry retain the original
+LIGHTGRAY 2 / GRAY 1 / PINK 2 / GREEN 1 composition; the native item carries a CHROMA-PORT marker.
+Binding the native
+item into those lookups remains explicitly gated until that subsystem lands. This is an integration
+port, not acceptance of those legacy systems.
+
+DragonAPI's FilledBlockArray can now record declared states without a live world during datagen;
+StructuredBlockArray still captures actual live states when scanning. Generated structure templates
+therefore retain authored block properties instead of silently substituting defaults. All seventeen
+existing ChromatiCraft structure contracts pass (`build/void-chroma-structure-regression.log`).
+
+Validation: ten compatibility GameTests pass with VoidMonster (`build/void-chroma-final-10-validated.log`),
+including four TNT activations and real Nether-to-Overworld transfer. Four common contracts pass
+without it (`build/void-chroma-absent-validation-2.log`). Both datagens and the complete module build
+pass (`build/void-chroma-final-client-data.log`, `build/void-chroma-final-server-data.log`,
+`build/void-chroma-release-build.log`). The earlier
+progression-text entry's concurrent red-build limitation is resolved; its six tests also pass in
+the complete module with VoidMonster (`build/void-chroma-text-regression.log`), and the font provider
+now runs under full client datagen. Keep visual text acceptance separate from these server checks.
+
+An isolated client with VoidMonster completed resource/model/atlas/audio initialization and reached
+the UI (`build/void-chroma-client-startup.log`). No new integration loading or shader compilation
+errors appeared; existing unrelated RotaryCraft missing sprites remain. In-world ritual/altar/fog
+visual acceptance and shader-pack interaction remain unverified by this startup check.
+The isolated client without VoidMonster completed the same initialization and exited normally
+(`build/void-chroma-client-absent-startup.log`). Final artifact checks compare every compiled class
+and generated resource with the packaged jar and verify all altar variants, optional recipe gates,
+shader/template entries and the exact original altar texture (`build/void-chroma-artifact-audit.txt`).
+
+
+### Item-first continuation: Excavation, Construction and Hover Stars — 2026-10-04 (validation pending)
+
+The three wand implementations are written in place and included in the active 26.3 source slice.
+This entry records source/API review and authored tests, **not a successful compile, datagen run,
+GameTest run or newly packaged jar**. Gradle validation did not execute: automatic approval review
+failed with an account usage-limit response. Do not count the previous item/shader or VoidMonster
+build logs as validation of this later slice.
+
+- Excavation Star: native NeoForge BreakBlockEvent at LOWEST priority (the 26.3 Item interface
+  has no onBlockStartBreak), preserving the ordinary first-block mining delay and speed enchantments, range 12 / CTM 18 / custom API expansion; actual-state matching; corner
+  spreading while sneaking; protected natural dimension material, crystal-network tiles and
+  structure controllers; real tool components in native block loot; Silk Touch, Fortune,
+  inventory auto collection with world overflow, original exhaustion and lumen costs, and Flame
+  cave lights. Air Miner and Consistent Efficiency use the existing ChromaEnchantEvents handlers.
+  The old isSurfaceWorld guard maps to hasSkyLight, matching the existing Proxima dimension port;
+  isHellWorld maps to the 26.3 WATER_EVAPORATES environment attribute. Player loss or world unload
+  releases the operation through its completion callback.
+- Construction Star: original range 6 / CTM 12, connected face and state preservation, visibility
+  checks, all five COLUMN/FLAT/FRAME/CENTER/WALLS controls, distance-ordered placement, inventory
+  consumption and per-success energy. Native block-place cancellation restores the snapshot before
+  consuming resources. Preserve V33a's asymmetric first-X bound and original wall/neighbor masks.
+- Hover Star: eight temporary motion fields and four original modes, native nonpausing mode
+  selector, hand-aware server-validated mode packets, original mode multipliers, armed/decaying
+  lifetimes and permanent structure fields. Placement obeys player permissions and native placement
+  cancellation. Keep the existing BlockHoverBlock movement and particles.
+- Selection outlines and excavation fill use native extracted block-outline submission with the
+  submitted pose and immutable world-coordinate selections. Skip Iris shadow passes. Visual
+  acceptance with shaders remains pending; this is separate from the earlier pylon/fog fixes.
+- Datagen owns models, language, enchantment target tags and original casting contracts:
+  Excavation (Energy Core; 12 stands; 100 ticks / 200 XP), Construction (Transformation Core;
+  12 stands; 100 / 200), Hover (Void Core; 24 stands; 400 / 500; BLACK 2000 + LIME 10000 aura).
+  Retain the authored research fragments and normal penalty threshold 1. Source tool-sheet sprites
+  80 / 84 / 88 and original hover GUI textures are restored without changing their pixels.
+- CastingTableRecipe adds data-driven Star Enchanting with holder-based enchantments, lower-level
+  input gating, complete central-stack component preservation, fragment gating and both codecs.
+  Output acceptance uses the assembled input-dependent result. Preserve existing completion fields
+  through all recipe-copy helpers. Network protocol is bumped to 2 for the changed casting-preview
+  stream. Restore all six source Excavation upgrades (Silk Touch I, Fortune V, Auto Collect I,
+  Consistent Efficiency I, Flame I, Air Miner I) and Growth's Power I: eight stands, two authored
+  runes, ENCHANTING fragment, 1200 ticks / 200 XP. Binding Crystal and Lumen Gem are **tiered**
+  resources, as ChromaStacks metadata 6 / 23 specifies.
+- DragonAPI ProgressiveRecursiveBreaker: explicit inventories only (default null), optional native
+  loot tool / insertion callback, real block-state and blacklist matching, tree orientation states,
+  queued-state revalidation, world-scoped server-only cleanup, idempotent termination, and corrected
+  native block-update flag arguments. DecimalLineSegment's canonical constructor is now compact,
+  retaining defensive copies; the coordinate constructor still delegates normally.
+
+Optional Twilight Forest mappings were checked against the
+[upstream TFBlocks registry](https://github.com/TeamTwilight/twilightforest/blob/latest/src/main/java/twilightforest/init/TFBlocks.java):
+old Nagastone head/body metadata maps to nagastone_head + nagastone; Aurora colour states stay on
+aurora_block. Do not broaden these into all similarly named stairs, pillars, slabs or glass.
+A current Twilight Forest runtime is not installed here, so runtime integration remains untested.
+
+Six authored GameTests in ChromaWandPortTests use a generated 16×16×16 wand arena:
+wand_construction_controls, wand_construction_resources, wand_hover_modes_and_expiry,
+wand_excavation_variants_and_loot, wand_breaker_queue_revalidation, wand_star_enchanting_components.
+They cover all five controls, material/energy exhaustion, rejected placement, hover modes/decay,
+protected machinery and surface stone, log state spreading/species boundaries, native Silk Touch
+and auto collection, queued-state replacement, blacklist inversion, exactly-once completion,
+enchantment data retention, research and JSON/network codec round trips. **Not run yet.**
+
+Completed static checks: all newly referenced registry enum constants resolve; source sprites and
+GUI images match V33a pixels/bytes; provider/registration/allowlist hooks are present. Current
+Minecraft/NeoForge 26.3 sources were used for the event, environment, GUI, rendering, enchantment
+and recipe APIs. Static checks do not establish Java type correctness or runtime behavior.
+
+Pending validation, in dependency order:
+1. `gradlew :ChromatiCraft:compileJava`
+2. `gradlew :ChromatiCraft:runClientData :ChromatiCraft:runServerData`
+3. `gradlew :ChromatiCraft:runGameTest -PgameTestSelector=chromaticraft:wand_* -PchromaTestDirectory=run-gametest-wands`
+4. Existing wands_basic, item_port_* and casting regressions, then build/artifact audit.
+5. Live pylon anchoring/transparency, Cliffs fog and wand outlines with Iris/shaders toggled.
+
+The remaining item backlog (including Reset, Transition and Creature Sounding wands and their
+larger dependencies) is still open. The earlier 2026-09-29 Flight/Star Enchanting deferral describes
+that historical slice; this entry supersedes it for Hover and the seven authored upgrades above.
+
+
+### Item-first continuation: native tools, network diagnostics and animated materials — 2026-10-05
+
+Continue the owner's full ChromatiCraft authorization while other agents handle the other mods.
+This entry supersedes the earlier validation-pending notes for the Excavation/Construction/Hover
+slice; the entire mod remains a port in progress.
+
+Completed implementation:
+- Compile the Excavation, Construction and Hover Stars, their native selector/preview and all seven
+  source Star Enchanting recipes. Fix modern structure-controller references, native GUI entry points,
+  the Boss Kill DamageProfile record constructor, CrystalElement's API color accessor and actual
+  VoidMonster event imports. DecimalLineSegment's compact canonical constructor compiles and keeps
+  defensive endpoint copies. No further DragonAPI changes in this continuation.
+- Creature Sounding Star: original PINK 4 / BLUE 4 drain, seven ordered entity categories and exact
+  C5-to-note ratios; expanding 64-block cube (1/8 block per client tick event phase), one detection per
+  entity and frozen bounding-box highlights. Preserve both source client tick phases, 20-step fade,
+  highlight shells, 14 source edges and detection sounds. Native extracted AFTER_TERRAIN lines use
+  the source additive blend and ALWAYS_PASS depth test, with Iris LINES assignment and shadow skip.
+  Map both modern aquatic base classes so squid/dolphin remain WATER. Optional Satisforestry bridge
+  calls its original doggo/spawn-point APIs and sends the actual registered type; keep its explicit
+  CHROMA-PORT typed-API gate until that integration lands. No Satisforestry runtime installed here.
+- Multitool: 900 durability, golden-pick enchantability 22, diamond harvest tier, constant speed four,
+  source durability behavior and four digging/soulbound enchantments. Ore Harvester: 180 durability,
+  source pickaxe speed/harvest rules, native silk loot for ores and glowstone only, permission-aware
+  LOWEST completed-break interception, one durability debit, native particles/sound and restricted
+  enchantments. Use both common ore tags and DragonAPI's real mod-ore catalog; require real silk loot
+  to yield the block, without inventing drops. Their original Temple recipes/runes/XP penalties and
+  mining/enchantment tags are generated, with exact original sprites 25/26.
+- Aura Visualization Crystals (Bottleneck Finder): all conducting paths blink for 200 ticks; rank
+  three distinct ascending throughput and descending positive-loss groups per colour, preserve ties,
+  deduplicate each warning category, account for Aura Points at the source 512-block receiver radius.
+  Native dimension-aware warning payloads feed the existing original HUD and skip unnegotiated
+  recipients. Restore the five scheduled repeater tones at 1+13*i ticks without attenuation. Clear
+  stale warnings on client level replacement. Source item name/sprite 48 and full 24-stand Aura Ingot
+  multiblock recipe are retained (100 ticks / 200 XP, penalty threshold 1, BOTTLENECK fragment).
+- Spawner Interference Crystal: charged inventory activation, LIGHTGRAY / 72000 capacity, one sprite,
+  charge only during the source 20-tick nearby-spawner grace period, Creative exemption, and 12x drain
+  in twilightforest:twilight_forest. Verify the dimension against upstream TFDimension.java. A native
+  BaseSpawner mixin applies the source nearest-player visual-LOS rule before countdown/spawning for
+  both blocks and minecarts, retaining transparent spawners/cobwebs and original 5-tick activation.
+  Client inventory fallback preserves local display activation under server-only native inventoryTick.
+  Source Temple grid, two runes, 20 ticks / 40 XP, penalty threshold 1, fragment and sprite 43 generated.
+- All six Magic Branch types are separate stackable registry entries. Crop all 96 original pixels/frames
+  from branches.png and generate sixteen flat models per variant. Native range-select property keeps
+  original wall-clock (milliseconds /32 /4 + metadata*4) modulo16 timing, including phase offsets.
+  V33a's English lang omitted chroma.branch; supply readable variant names from its Magic Branches
+  research. V33a provides no branch crafting/usage recipe; do not invent one.
+- Repair ChromaStructureTemplateProvider's literal-source zero offsets: bare x/y/z/i/j/k means zero,
+  including Monument offsets. Strict authored block counts remain enforced. This restores omitted
+  portal, Burrow and lootroom edge cells and applies the same correct parser across templates.
+- Star Enchanting datagen builds enchantment component patches directly on ItemStackTemplate so it
+  works before native ItemStack components bind; runtime output remains input-component preserving.
+
+Validation so far:
+- Native compile plus client/server datagen succeed through the Spawner slice (spawner-datagen.log).
+  Earlier tools-datagen.log also verifies every strict structure template count and the Star Enchanting
+  JSON. New Magic Branch datagen/runtime validation is ongoing; do not infer success from dispatch.
+- All ten preceding wand/sonar/mining GameTests pass in tools-runtime-final.log. The first fourteen-test
+  pass identified fixture issues: vanilla mock ServerPlayer.gameMode() permanently reports Creative;
+  its embedded connection also has no negotiated payload channel. Replace the survival fixture with
+  a real ServerPlayer on the same embedded connection and apply the existing hasChannel delivery rule.
+  The remaining three newly added checks are awaiting the corrected rerun; no production assertion
+  was weakened. Add a fifteenth test for all six branch registry entries and exact animation boundaries.
+- Datagen and tests must be separate Gradle invocations when generating new recipes: processResources
+  otherwise runs before generation and the test runtime sees the old recipe set.
+- Some validation attempts hit the other agent's temporary RotaryCraft Defoliator compile errors.
+  Preserve those files. A one-off compile using -x RotaryCraft:compileJava exposed incomplete compiled
+  dependencies, so it is not evidence of a complete build. Normal dependency compilation later succeeds.
+
+Next verification: corrected fifteen-tool runtime suite, existing item/casting/structure regressions,
+then release build and artifact audit. Live Iris/shader pylon anchoring/transparency, Cliffs fog, wand
+outlines, sonar lines, HUD diagnostics and branch animation remain visually unverified. Optional
+Satisforestry/Twilight Forest runtime and real multiplayer packet delivery are not covered by headless
+checks. The remaining original registered item/machine clusters remain open; excluded legacy duplicates
+are not a reliable list of missing registered content (see build/original-item-boundary-audit.json).

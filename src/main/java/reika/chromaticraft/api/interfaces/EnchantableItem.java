@@ -10,10 +10,9 @@
 package reika.chromaticraft.api.interfaces;
 
 import net.minecraft.core.Holder;
+import net.minecraft.util.TriState;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.Enchantment;
-import net.minecraft.util.TriState;
-
 import reika.dragonapi.interfaces.item.CustomEnchantingCategory;
 
 /**
@@ -22,6 +21,6 @@ import reika.dragonapi.interfaces.item.CustomEnchantingCategory;
  */
 public interface EnchantableItem extends CustomEnchantingCategory {
 
-	public TriState getEnchantValidity(Holder<Enchantment> e, ItemStack is);
+	TriState getEnchantValidity(Holder<Enchantment> e, ItemStack is);
 
 }

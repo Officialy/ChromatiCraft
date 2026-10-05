@@ -1,9 +1,5 @@
 package reika.chromaticraft.block.dimension;
 
-import java.util.ArrayList;
-import java.util.List;
-
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -16,10 +12,12 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
-
 import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.ChromaTieredItems;
 import reika.chromaticraft.world.dimension.DimensionTuningManager;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * V33a's cracked bedrock: the only thing in Proxima that gives up Proximal Essence, and so the only way

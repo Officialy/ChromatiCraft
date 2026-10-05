@@ -1,11 +1,7 @@
 package reika.chromaticraft.render.tesr;
 
-import java.util.Map;
-import java.util.WeakHashMap;
-
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
@@ -21,16 +17,16 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.util.LightCoordsUtil;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.neoforge.client.extensions.OrderedSubmitNodeCollectorExtension;
 import net.neoforged.neoforge.client.submit.RenderPhaseKeys;
-
 import org.jspecify.annotations.Nullable;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.render.ChromaRenderPipelines;
 import reika.chromaticraft.render.GlowKnot;
 import reika.chromaticraft.tileentity.aoe.TileEntityAuraPoint;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
+
+import java.util.Map;
+import java.util.WeakHashMap;
 
 /** Full 26.2 submit port of V33a's Aura Locus renderer. */
 public final class RenderAuraPoint implements
@@ -118,7 +114,7 @@ public final class RenderAuraPoint implements
 			SubmitNodeCollector.CustomGeometryRenderer renderer) {
 		CustomFeatureRenderer.Submit submit = new CustomFeatureRenderer.Submit(
 				poseStack.last().copy(), renderType, renderer);
-		((OrderedSubmitNodeCollectorExtension)collector.order(0))
+		collector.order(0)
 				.submitSpecial(RenderPhaseKeys.AFTER_TERRAIN, submit);
 	}
 

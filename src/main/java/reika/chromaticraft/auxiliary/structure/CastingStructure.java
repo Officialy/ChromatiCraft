@@ -9,7 +9,6 @@ import reika.chromaticraft.block.BlockCrystallineStone;
 import reika.chromaticraft.magic.castingtuning.CastingTuningRegistry;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.dragonapi.instantiable.data.blockstruct.FilledBlockArray;
-import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
 
 /**
  * NBT-backed V33a casting temple tiers. Templates own all geometry; Java only restores the

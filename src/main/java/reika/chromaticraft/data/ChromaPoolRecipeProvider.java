@@ -1,26 +1,24 @@
 package reika.chromaticraft.data;
 
-import java.util.List;
-
+import net.minecraft.advancements.Advancement;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.data.recipes.RecipeOutput;
 import net.minecraft.data.recipes.RecipeProvider;
 import net.minecraft.data.worldgen.BootstrapContext;
-import net.minecraft.advancements.Advancement;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.auxiliary.recipemanagers.PoolAlloyingRecipe;
 import reika.chromaticraft.auxiliary.recipemanagers.PoolAlloyingRecipe.CountedIngredient;
+import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.registry.ChromaCraftingItems;
 import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.ChromaTieredItems;
-import reika.chromaticraft.magic.progression.ProgressStage;
+
+import java.util.List;
 
 /** Datapack transcription of V33a {@code PoolRecipes}; expanded as its registered ingredients land. */
 public final class ChromaPoolRecipeProvider {

@@ -1,8 +1,8 @@
 package reika.chromaticraft.world.dimension;
 
 import java.util.EnumSet;
-import java.util.concurrent.CompletableFuture;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * V33a's {@code ChunkProviderChroma.areGeneratorsReady()} gate, rebuilt as an explicit registry.

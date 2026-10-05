@@ -1,12 +1,8 @@
 package reika.chromaticraft.render.tesr;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.geom.ModelLayerLocation;
 import net.minecraft.client.renderer.SubmitNodeCollector;
@@ -24,14 +20,15 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.util.LightCoordsUtil;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-
 import org.jspecify.annotations.Nullable;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.models.ModelRelaySource;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.render.ChromaRenderPipelines;
 import reika.chromaticraft.tileentity.networking.TileEntityRelaySource;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /** Submit-pipeline port of V33a's Relay Source body, stored-energy crystals and enhanced caustics. */
 public final class RenderRelaySource
@@ -65,7 +62,7 @@ public final class RenderRelaySource
 		int capacity = source.getRenderedCrystalCapacity();
 		if (capacity > 0) for (CrystalElement element : CrystalElement.elements) {
 			float fraction = source.getRenderedCrystalEnergy(element) / (float)capacity;
-			if (fraction > 0) state.crystals.add(new Crystal(element.getColor(), fraction));
+			if (fraction > 0) state.crystals.add(new Crystal(element.color(), fraction));
 		}
 	}
 

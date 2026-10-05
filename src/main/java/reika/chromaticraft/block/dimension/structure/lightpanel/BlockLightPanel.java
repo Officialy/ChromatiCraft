@@ -2,6 +2,8 @@ package reika.chromaticraft.block.dimension.structure.lightpanel;
 
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
@@ -10,6 +12,9 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
+import net.minecraft.world.phys.BlockHitResult;
+
+import reika.chromaticraft.tileentity.TileEntityLaserController;
 
 import reika.chromaticraft.world.dimension.structure.lightpanel.LightType;
 
@@ -40,5 +45,14 @@ public final class BlockLightPanel extends Block {
 		BlockState state = level.getBlockState(pos);
 		if (state.getBlock() instanceof BlockLightPanel && state.getValue(ACTIVE) != active)
 			level.setBlock(pos, state.setValue(ACTIVE, active), Block.UPDATE_ALL);
+	}
+
+	@Override protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos,
+			Player player, BlockHitResult hit) {
+		if (level.getBlockEntity(pos.above()) instanceof TileEntityLaserController controller) {
+			if (!level.isClientSide()) controller.toggle();
+			return InteractionResult.SUCCESS;
+		}
+		return InteractionResult.PASS;
 	}
 }

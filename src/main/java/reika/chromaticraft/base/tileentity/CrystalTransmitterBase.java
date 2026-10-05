@@ -9,23 +9,22 @@
  ******************************************************************************/
 package reika.chromaticraft.base.tileentity;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Iterator;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
-
 import reika.chromaticraft.magic.CrystalTarget;
 import reika.chromaticraft.magic.CrystalTarget.TickingCrystalTarget;
 import reika.chromaticraft.magic.interfaces.CrystalTransmitter;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.dragonapi.instantiable.data.immutable.WorldLocation;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Iterator;
 
 /**
  * Base for network tiles that transmit to {@link CrystalTarget}s (pylons, repeaters, sources). Holds
@@ -37,7 +36,7 @@ import reika.dragonapi.instantiable.data.immutable.WorldLocation;
 public abstract class CrystalTransmitterBase extends TileEntityCrystalBase implements CrystalTransmitter {
 
 	private ArrayList<CrystalTarget> targets = new ArrayList<>();
-	private ArrayList<TickingCrystalTarget> tickingTargets = new ArrayList<>();
+	private final ArrayList<TickingCrystalTarget> tickingTargets = new ArrayList<>();
 
 	public int renderAlpha;
 

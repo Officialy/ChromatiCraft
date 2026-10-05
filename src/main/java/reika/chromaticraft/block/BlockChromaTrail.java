@@ -9,15 +9,12 @@
  ******************************************************************************/
 package reika.chromaticraft.block;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
@@ -37,7 +34,6 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
-
 import reika.chromaticraft.auxiliary.HoldingChecks;
 import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.render.particle.ChromaParticle;
@@ -45,6 +41,9 @@ import reika.dragonapi.instantiable.data.immutable.DecimalPosition;
 import reika.dragonapi.instantiable.math.Spline;
 import reika.dragonapi.instantiable.math.Spline.BasicVariablePoint;
 import reika.dragonapi.instantiable.math.Spline.SplineType;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * V33a {@code BlockChromaTrail}: one waypoint of a Subterranean Route Finder's trail -- invisible, collisionless, a small

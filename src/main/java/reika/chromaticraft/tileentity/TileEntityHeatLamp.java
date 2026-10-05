@@ -1,7 +1,5 @@
 package reika.chromaticraft.tileentity;
 
-import java.util.Optional;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
@@ -21,13 +19,13 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
-
 import org.jspecify.annotations.Nullable;
-
 import reika.chromaticraft.block.BlockHeatLamp;
 import reika.chromaticraft.container.MenuHeatLamp;
 import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.dragonapi.interfaces.blockentity.ThermalTile;
+
+import java.util.Optional;
 
 /** Persistent temperature controller and source-faithful thermal target loop. */
 public final class TileEntityHeatLamp extends BlockEntity implements MenuProvider {

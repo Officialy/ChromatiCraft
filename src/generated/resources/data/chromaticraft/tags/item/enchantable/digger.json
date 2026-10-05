@@ -1,5 +1,8 @@
 {
   "values": [
+    "chromaticraft:excavation_star",
+    "chromaticraft:multitool",
+    "chromaticraft:ore_harvester",
     "#minecraft:pickaxes",
     "#minecraft:axes",
     "#minecraft:shovels"

@@ -1,0 +1,32 @@
+{
+  "criteria": {
+    "trigger": {
+      "conditions": {
+        "items": [
+          {
+            "items": "chromaticraft:chromic_lexicon"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "background": "minecraft:textures/block/obsidian.png",
+    "description": {
+      "translate": "advancements.chromaticraft.root.description"
+    },
+    "icon": {
+      "id": "chromaticraft:chromic_lexicon"
+    },
+    "title": {
+      "translate": "advancements.chromaticraft.root.title"
+    }
+  },
+  "requirements": [
+    [
+      "trigger"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

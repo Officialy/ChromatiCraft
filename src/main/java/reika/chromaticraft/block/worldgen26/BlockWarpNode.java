@@ -1,8 +1,5 @@
 package reika.chromaticraft.block.worldgen26;
 
-import javax.annotation.Nullable;
-
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
@@ -22,14 +19,14 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
-
 import reika.chromaticraft.magic.WarpNetwork;
-import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.magic.progression.ProgressStage;
-import reika.chromaticraft.registry.ChromaBlockEntities;
+import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.tileentity.aoe.TileEntityWarpNode;
 import reika.dragonapi.instantiable.data.immutable.WorldLocation;
 import reika.dragonapi.libraries.mathsci.ReikaPhysicsHelper;
+
+import javax.annotation.Nullable;
 
 /**
  * V33a {@code BlockWarpNode}: a node you fall through, not one you click a destination on.

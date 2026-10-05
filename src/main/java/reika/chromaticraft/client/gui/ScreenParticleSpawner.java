@@ -1,11 +1,5 @@
 package reika.chromaticraft.client.gui;
 
-import java.awt.Color;
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
@@ -21,7 +15,6 @@ import net.minecraft.data.AtlasIds;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Inventory;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.container.MenuParticleSpawner;
 import reika.chromaticraft.registry.ChromaIcons;
@@ -36,6 +29,12 @@ import reika.dragonapi.instantiable.io.NBTFile.SimpleNBTFile;
 import reika.dragonapi.interfaces.IconEnum;
 import reika.dragonapi.libraries.mathsci.ReikaMathLibrary;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
+
+import java.awt.*;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * V33a {@code GuiParticleSpawner}: seven pages chosen by the tabs down the left -- spawn position, velocity, colour (the
@@ -468,7 +467,7 @@ public final class ScreenParticleSpawner extends AbstractContainerScreen<MenuPar
 			}
 		}
 		else if (id >= 100) {
-			color = CrystalElement.elements[id-100].getColor();
+			color = CrystalElement.elements[id-100].color();
 			this.calcColors(2);
 		}
 	}
@@ -611,12 +610,12 @@ public final class ScreenParticleSpawner extends AbstractContainerScreen<MenuPar
 				dy += 39;
 			i++;
 			graphics.blit(RenderPipelines.GUI_TEXTURED, TEXTURE, dx, dy, 0, 173, 102, 20, 256, 256);
-			String s = o.display+": "+String.valueOf(o.getValue());
+			String s = o.display+": "+ o.getValue();
 			graphics.text(font, s, dx+51-font.width(s)/2, dy+6, 0xffffffff, false);
 			if (o instanceof VariableOption v) {
 				dy += sy;
 				graphics.blit(RenderPipelines.GUI_TEXTURED, TEXTURE, dx, dy, 0, 173, 102, 20, 256, 256);
-				s = "Variance: "+String.valueOf(v.getVariance());
+				s = "Variance: "+ v.getVariance();
 				graphics.text(font, s, dx+51-font.width(s)/2, dy+6, 0xffffffff, false);
 				i++;
 			}

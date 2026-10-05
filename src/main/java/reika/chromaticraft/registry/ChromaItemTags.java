@@ -1,14 +1,13 @@
 package reika.chromaticraft.registry;
 
-import java.util.EnumMap;
-import java.util.Map;
-
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
-
 import reika.chromaticraft.ChromatiCraft;
+
+import java.util.EnumMap;
+import java.util.Map;
 
 /**
  * Item tags for the crystal shard family.

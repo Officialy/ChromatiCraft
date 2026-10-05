@@ -1,23 +1,15 @@
 package reika.chromaticraft.registry;
 
-import java.util.function.Supplier;
-
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.flag.FeatureFlags;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.MenuType;
 import net.neoforged.neoforge.network.IContainerFactory;
 import net.neoforged.neoforge.registries.DeferredRegister;
-
 import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.container.MenuCastingTable;
-import reika.chromaticraft.container.MenuRitualTable;
-import reika.chromaticraft.container.MenuHeatLamp;
-import reika.chromaticraft.container.MenuLexiconPages;
-import reika.chromaticraft.container.MenuFragmentSelection;
-import reika.chromaticraft.container.MenuCrystalCharger;
-import reika.chromaticraft.container.MenuCollector;
-import reika.chromaticraft.container.MenuStructurePassword;
+import reika.chromaticraft.container.*;
+
+import java.util.function.Supplier;
 
 /** Modern menu registrations for ChromatiCraft's accepted GUI slice. */
 public interface ChromaMenus {
@@ -28,6 +20,7 @@ public interface ChromaMenus {
         return REGISTRY.register(id, () -> new MenuType<>(factory, FeatureFlags.DEFAULT_FLAGS));
     }
 
+    Supplier<MenuType<MenuBulkMover>> BULK_MOVER = register("bulk_mover", MenuBulkMover::new);
     Supplier<MenuType<MenuCastingTable>> CASTING_TABLE = register("casting_table", MenuCastingTable::new);
     Supplier<MenuType<MenuRitualTable>> RITUAL_TABLE = register("ritual_table", MenuRitualTable::new);
     Supplier<MenuType<MenuHeatLamp>> HEAT_LAMP = register("heat_lamp", MenuHeatLamp::new);

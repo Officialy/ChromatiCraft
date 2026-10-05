@@ -9,11 +9,7 @@
  ******************************************************************************/
 package reika.chromaticraft.auxiliary.render;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-
 import com.mojang.blaze3d.vertex.PoseStack;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
@@ -25,7 +21,6 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
-
 import reika.chromaticraft.client.render.WorldGeometryPass;
 import reika.chromaticraft.network.ChromaNetwork;
 import reika.chromaticraft.registry.ChromaIcons;
@@ -39,6 +34,9 @@ import reika.dragonapi.interfaces.BlockCheck;
 import reika.dragonapi.libraries.java.ReikaJavaLibrary;
 import reika.dragonapi.libraries.java.ReikaRandomHelper;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
+
+import java.util.ArrayList;
+import java.util.Iterator;
 
 /**
  * V33a {@code StructureErrorOverlays}: where a structure check finds the wrong block, a jittering cube of static is

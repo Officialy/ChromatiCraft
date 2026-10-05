@@ -1,12 +1,11 @@
 package reika.chromaticraft.world.dimension.structure;
 
-import java.util.Random;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
-
 import reika.chromaticraft.registry.ChromaOptions;
 import reika.chromaticraft.tileentity.TileEntityGOLController;
+
+import java.util.Random;
 
 /** Persistent planner for V33a's Cellular Automata structure. */
 public final class GOLStructureGenerator extends StructureGeneratorBase {

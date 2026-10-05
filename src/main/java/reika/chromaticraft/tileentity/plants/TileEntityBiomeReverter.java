@@ -9,8 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.tileentity.plants;
 
-import java.util.Collection;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Holder;
@@ -20,7 +18,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.state.BlockState;
-
 import reika.chromaticraft.auxiliary.interfaces.ComplexAOE;
 import reika.chromaticraft.base.tileentity.TileEntityMagicPlant;
 import reika.chromaticraft.registry.ChromaBlockEntities;
@@ -30,6 +27,8 @@ import reika.chromaticraft.tileentity.auxiliary.TileEntityFunctionRelay;
 import reika.dragonapi.instantiable.StepTimer;
 import reika.dragonapi.instantiable.data.WeightedRandom;
 import reika.dragonapi.instantiable.data.immutable.Coordinate;
+
+import java.util.Collection;
 
 /** V33a Reversion Lotus: restores altered biome cells to the chunk generator's natural biome. */
 public final class TileEntityBiomeReverter extends TileEntityMagicPlant implements ComplexAOE {

@@ -11,8 +11,8 @@ package reika.chromaticraft.magic.interfaces;
 
 public interface WrapperTile {
 
-	public boolean existsInWorld();
+	boolean existsInWorld();
 
-	public Class getTileClass();
+	Class getTileClass();
 
 }

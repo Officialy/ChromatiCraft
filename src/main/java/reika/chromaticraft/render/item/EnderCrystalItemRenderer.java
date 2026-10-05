@@ -1,11 +1,8 @@
 package reika.chromaticraft.render.item;
 
-import java.util.function.Consumer;
-
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.serialization.MapCodec;
-
 import net.minecraft.client.model.geom.ModelLayers;
 import net.minecraft.client.model.object.crystal.EndCrystalModel;
 import net.minecraft.client.renderer.SubmitNodeCollector;
@@ -20,13 +17,13 @@ import net.minecraft.core.Direction;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.LightCoordsUtil;
 import net.minecraft.world.item.ItemStack;
-
 import org.joml.Vector3f;
 import org.joml.Vector3fc;
 import org.jspecify.annotations.Nullable;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.items.tools.ItemEnderCrystal;
+
+import java.util.function.Consumer;
 
 /** V33a's bedrock-base End Crystal item renderer, including its empty flattened blue form. */
 public final class EnderCrystalItemRenderer implements SpecialModelRenderer<Boolean> {

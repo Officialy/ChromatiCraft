@@ -13,36 +13,18 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-
 import net.neoforged.neoforge.registries.DeferredBlock;
-import reika.chromaticraft.tileentity.auxiliary.TileEntityChromaCrystal;
-
-import reika.chromaticraft.tileentity.TileEntityDisplayPoint;
 import reika.chromaticraft.tileentity.TileEntityDataNode;
-import reika.chromaticraft.tileentity.TileEntityPersonalCharger;
+import reika.chromaticraft.tileentity.TileEntityDisplayPoint;
 import reika.chromaticraft.tileentity.TileEntityFarmer;
-import reika.chromaticraft.tileentity.plants.TileEntityBiomeReverter;
-import reika.chromaticraft.tileentity.plants.TileEntityAccelerationPlant;
-import reika.chromaticraft.tileentity.plants.TileEntityCobbleGen;
-import reika.chromaticraft.tileentity.plants.TileEntityCropSpeedPlant;
-import reika.chromaticraft.tileentity.plants.TileEntityHarvesterPlant;
-import reika.chromaticraft.tileentity.plants.TileEntityHeatLily;
-import reika.chromaticraft.tileentity.networking.TileEntityCompoundRepeater;
-import reika.chromaticraft.tileentity.networking.TileEntityPylonLink;
-import reika.chromaticraft.tileentity.networking.TileEntityCreativeSource;
-import reika.chromaticraft.tileentity.networking.TileEntityCrystalPylon;
-import reika.chromaticraft.tileentity.networking.TileEntityCrystalRepeater;
-import reika.chromaticraft.tileentity.networking.TileEntityWeakRepeater;
-import reika.chromaticraft.tileentity.networking.TileEntityRelaySource;
-import reika.chromaticraft.tileentity.networking.TileEntitySkypeater;
-import reika.chromaticraft.tileentity.recipe.TileEntityCastingTable;
-import reika.chromaticraft.tileentity.recipe.TileEntityRitualTable;
-import reika.chromaticraft.tileentity.auxiliary.TileEntityFocusCrystal;
-import reika.chromaticraft.tileentity.auxiliary.TileEntityCrystalCharger;
+import reika.chromaticraft.tileentity.TileEntityPersonalCharger;
 import reika.chromaticraft.tileentity.acquisition.TileEntityCollector;
-import reika.chromaticraft.tileentity.recipe.TileEntityItemInfuser;
-import reika.chromaticraft.tileentity.recipe.TileEntityPlayerInfuser;
-import reika.chromaticraft.tileentity.recipe.TileEntityItemStand;
+import reika.chromaticraft.tileentity.auxiliary.TileEntityChromaCrystal;
+import reika.chromaticraft.tileentity.auxiliary.TileEntityCrystalCharger;
+import reika.chromaticraft.tileentity.auxiliary.TileEntityFocusCrystal;
+import reika.chromaticraft.tileentity.networking.*;
+import reika.chromaticraft.tileentity.plants.*;
+import reika.chromaticraft.tileentity.recipe.*;
 import reika.dragonapi.interfaces.registry.TileEnum;
 
 /**
@@ -77,6 +59,8 @@ public enum ChromaTiles implements TileEnum {
 			reika.chromaticraft.tileentity.storage.TileEntityToolStorage.class),
 	ENCHANTER("chroma.enchanter", ChromaBlocks.AUTO_ENCHANTER,
 			reika.chromaticraft.tileentity.processing.TileEntityAutoEnchanter.class),
+    VOIDTRAP("chroma.voidtrap",ChromaBlocks.VOID_MONSTER_TRAP,reika.chromaticraft.modinterface.voidritual.TileEntityVoidMonsterTrap.class),
+    DEATHFOG("chroma.deathfog",ChromaBlocks.DEATH_FOG_EMITTER,reika.chromaticraft.tileentity.aoe.TileEntityDeathFogEmitter.class),
 	LUMENWIRE("chroma.lumenwire", ChromaBlocks.LUMEN_WIRE,
 			reika.chromaticraft.tileentity.TileEntityLumenWire.class),
 	TURRET("chroma.turret", ChromaBlocks.LUMEN_TURRET,
@@ -205,9 +189,10 @@ public enum ChromaTiles implements TileEnum {
 	public static void loadPostMappings() {
 		for (int i = 0; i < TEList.length; i++) {
 			ChromaTiles r = TEList[i];
+			if (!r.isAvailable()) continue;
 			if (reika.chromaticraft.api.interfaces.CustomRangeUpgrade.RangeUpgradeable.class.isAssignableFrom(r.teClass)) {
 				reika.chromaticraft.tileentity.aoe.effect.TileEntityRangeBoost.addBasicHandling(
-						(Class<? extends reika.chromaticraft.api.interfaces.CustomRangeUpgrade.RangeUpgradeable>)(Class<?>)r.teClass,
+						(Class<? extends reika.chromaticraft.api.interfaces.CustomRangeUpgrade.RangeUpgradeable>) r.teClass,
 						java.util.List.of(r::getCraftedProduct));
 			}
 		}
@@ -227,6 +212,11 @@ public enum ChromaTiles implements TileEnum {
 				return t;
 		}
 		return null;
+	}
+
+	/** Optional machine integrations participate only when their dependency is loaded. */
+	public boolean isAvailable() {
+		return this != VOIDTRAP || reika.dragonapi.ModList.VOIDMONSTER.isLoaded();
 	}
 
 	public BlockEntity createBlockEntity(BlockPos pos, BlockState state) {

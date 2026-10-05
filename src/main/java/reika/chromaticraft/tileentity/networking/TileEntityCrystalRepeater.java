@@ -9,9 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.tileentity.networking;
 
-import java.util.List;
-import java.util.UUID;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -19,7 +16,6 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
-
 import reika.chromaticraft.auxiliary.interfaces.MultiBlockChromaTile;
 import reika.chromaticraft.auxiliary.interfaces.NBTTile;
 import reika.chromaticraft.auxiliary.interfaces.OwnedTile;
@@ -28,27 +24,18 @@ import reika.chromaticraft.base.tileentity.CrystalTransmitterBase;
 import reika.chromaticraft.block.BlockCrystalRune;
 import reika.chromaticraft.block.BlockCrystallineStone;
 import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
-import reika.chromaticraft.magic.interfaces.CrystalFuse;
-import reika.chromaticraft.magic.interfaces.CrystalReceiver;
-import reika.chromaticraft.magic.interfaces.CrystalSource;
-import reika.chromaticraft.magic.interfaces.CrystalTransmitter;
-import reika.chromaticraft.magic.interfaces.LinkWatchingRepeater;
-import reika.chromaticraft.magic.interfaces.NaturalCrystalSource;
-import reika.chromaticraft.magic.interfaces.RegionalSensitiveRepeater;
+import reika.chromaticraft.magic.interfaces.*;
 import reika.chromaticraft.magic.network.CrystalLink;
 import reika.chromaticraft.magic.network.CrystalNetworker;
 import reika.chromaticraft.magic.network.PylonFinder;
-import reika.chromaticraft.registry.ChromaBlockEntities;
-import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaItems;
-import reika.chromaticraft.registry.ChromaSounds;
-import reika.chromaticraft.registry.ChromaStructures;
-import reika.chromaticraft.registry.ChromaTiles;
-import reika.chromaticraft.registry.CrystalElement;
+import reika.chromaticraft.registry.*;
 import reika.chromaticraft.render.particle.ChromaParticle;
 import reika.dragonapi.instantiable.data.immutable.Coordinate;
 import reika.dragonapi.instantiable.data.immutable.DecimalPosition;
 import reika.dragonapi.libraries.registry.ReikaItemHelper;
+
+import java.util.List;
+import java.util.UUID;
 
 /**
  * Crystal repeater — relays network energy through a rune+crystalline-stone stalk. Extends

@@ -9,10 +9,10 @@
  ******************************************************************************/
 package reika.chromaticraft.api.event;
 
-import java.util.UUID;
-
 import net.minecraft.world.level.Level;
 import net.neoforged.bus.api.Event;
+
+import java.util.UUID;
 
 /**
  * V33a API {@code LumenWireToggleEvent}: posted on the NeoForge event bus when a Lumen Wire pair switches on or off,

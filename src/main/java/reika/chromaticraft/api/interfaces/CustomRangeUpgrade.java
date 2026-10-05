@@ -22,13 +22,13 @@ public interface CustomRangeUpgrade extends CustomAdjacencyHandler {
 
 	/** Called every tick; implementation is left up to you, whether it be setting a flag or increasing the range each tick to the maximum, or
 	 * some other entirely different approach. Args: Your TE, Maximum increase factor. */
-	public void upgradeRange(BlockEntity te, double r);
+    void upgradeRange(BlockEntity te, double r);
 
-	public static interface RangeUpgradeable {
+	interface RangeUpgradeable {
 
-		public int getRange();
+		int getRange();
 
-		public void upgradeRange(double r);
+		void upgradeRange(double r);
 
 	}
 

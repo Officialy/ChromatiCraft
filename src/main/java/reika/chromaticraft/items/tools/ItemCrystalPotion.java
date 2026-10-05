@@ -9,20 +9,19 @@
  ******************************************************************************/
 package reika.chromaticraft.items.tools;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.PotionItem;
 import net.minecraft.world.item.alchemy.PotionContents;
-
 import reika.chromaticraft.magic.CrystalPotionController;
 import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.CrystalElement;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 
 /**
  * V33a {@code ItemCrystalPotion} (ChromaItems.POTION): the potions the Crystal Brewery makes for the colours vanilla has
@@ -65,7 +64,7 @@ public class ItemCrystalPotion extends PotionItem {
 				pot = new MobEffectInstance(pot.getEffect(), pot.getDuration(), 1);
 			effects.add(pot);
 		}
-		return new PotionContents(Optional.empty(), Optional.of(color.getColor() & 0xFFFFFF), effects, Optional.empty());
+		return new PotionContents(Optional.empty(), Optional.of(color.color() & 0xFFFFFF), effects, Optional.empty());
 	}
 
 	public static ItemStack create(CrystalElement color, boolean splash, boolean extended, boolean boosted) {

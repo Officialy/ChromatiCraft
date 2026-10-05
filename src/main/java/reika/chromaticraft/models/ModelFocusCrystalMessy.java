@@ -9,12 +9,12 @@
  ******************************************************************************/
 package reika.chromaticraft.models;
 
-import java.util.List;
-
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.model.geom.builders.LayerDefinition;
 import net.minecraft.client.model.geom.builders.MeshDefinition;
 import net.minecraft.client.model.geom.builders.PartDefinition;
+
+import java.util.List;
 
 /** V33a ModelFocusCrystalMessy (Techne, 64x32): the disordered ring model of the Flawed and Default tiers. */
 public final class ModelFocusCrystalMessy extends ModelFocusCrystalBase {

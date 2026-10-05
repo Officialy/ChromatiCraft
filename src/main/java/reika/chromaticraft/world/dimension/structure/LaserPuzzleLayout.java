@@ -1,29 +1,26 @@
 package reika.chromaticraft.world.dimension.structure;
 
-import java.io.ByteArrayInputStream;
-import java.io.DataInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Locale;
-import java.util.Random;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtIo;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.dragonapi.libraries.ReikaDirectionHelper.CubeDirections;
+
+import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 /**
  * Immutable, deterministic view of the authored V33a Chromatic Beams rooms.
  *
  * <p>The original {@code StructureExport} files are not compressed NBT: the entire byte stream is
  * reversed as the old lightweight encryption step. Decoding the stream here preserves every
- * authored effector and tile setting while giving the 26.2 structure/datagen layer a normal model
+ * authored effector and tile setting while giving the 26.3 structure/datagen layer a normal model
  * to convert into structure NBT. Room shells, doors and reward geometry remain the responsibility of
  * the structure piece, just as they were in V33a's {@code LaserLevel}.
  */
@@ -32,6 +29,7 @@ public final class LaserPuzzleLayout {
 	public static final int ROOM_GAP = 23;
 	private static final String RESOURCE_ROOT = "/assets/chromaticraft/structures/laser/";
 	private static final String LEGACY_BLOCK = "ChromatiCraft:chromaticraft_block_lasereffect";
+	private static final ConcurrentMap<String, RoomBlueprint> BLUEPRINTS = new ConcurrentHashMap<>();
 
 	private static final List<String> BASE_ROOMS = List.of(
 			"mirrortut", "mirrors2", "refractortut", "splittertut");
@@ -100,6 +98,10 @@ public final class LaserPuzzleLayout {
 
 	public static RoomBlueprint load(String name) {
 		String normalized = name.toLowerCase(Locale.ROOT);
+		return BLUEPRINTS.computeIfAbsent(normalized, LaserPuzzleLayout::decode);
+	}
+
+	private static RoomBlueprint decode(String normalized) {
 		String path = RESOURCE_ROOT + normalized + ".struct";
 		try (InputStream in = ChromatiCraft.class.getResourceAsStream(path)) {
 			if (in == null)
@@ -117,6 +119,7 @@ public final class LaserPuzzleLayout {
 
 			List<RawEffector> raw = new ArrayList<>(data.size());
 			int minX = Integer.MAX_VALUE;
+			int minY = Integer.MAX_VALUE;
 			int minZ = Integer.MAX_VALUE;
 			int maxX = Integer.MIN_VALUE;
 			int maxZ = Integer.MIN_VALUE;
@@ -134,6 +137,7 @@ public final class LaserPuzzleLayout {
 				CompoundTag tile = entry.getCompoundOrEmpty("tiledat").copy();
 				raw.add(new RawEffector(new BlockPos(x, y, z), effect, tile));
 				minX = Math.min(minX, x);
+				minY = Math.min(minY, y);
 				minZ = Math.min(minZ, z);
 				maxX = Math.max(maxX, x);
 				maxZ = Math.max(maxZ, z);
@@ -143,11 +147,12 @@ public final class LaserPuzzleLayout {
 			for (RawEffector entry : raw) {
 				CompoundTag tile = entry.tile();
 				int direction = Math.floorMod(tile.getIntOr("dir", 0), CubeDirections.list.length);
-				effectors.add(new Effector(entry.position().offset(-minX, 0, -minZ), entry.type(),
+				effectors.add(new Effector(entry.position().offset(-minX, -minY, -minZ), entry.type(),
 						CubeDirections.list[direction], tile.getBooleanOr("red", true),
 						tile.getBooleanOr("green", true), tile.getBooleanOr("blue", true),
 						tile.getBooleanOr("free", false), tile.getBooleanOr("fixed", false),
 						tile.getIntOr("mindiff", 0), tile.getIntOr("timer", 2),
+						tile.getIntOr("reset", 0),
 						tile.getBooleanOr("fullblock", false), tile.getBooleanOr("silent", false),
 						tile.getDoubleOr("speed", 1)));
 			}
@@ -192,7 +197,7 @@ public final class LaserPuzzleLayout {
 
 	public record Effector(BlockPos position, EffectType type, CubeDirections direction,
 			boolean red, boolean green, boolean blue, boolean rotateable, boolean fixed,
-			int rotateableDifficulty, int prismTimer, boolean fullBlock, boolean silent,
+			int rotateableDifficulty, int prismTimer, int autoReset, boolean fullBlock, boolean silent,
 			double speedFactor) {
 
 		private Effector randomizedDirection(Random random) {
@@ -200,7 +205,8 @@ public final class LaserPuzzleLayout {
 					&& !type.isTarget();
 			return randomize ? new Effector(position, type,
 					CubeDirections.list[random.nextInt(CubeDirections.list.length)], red, green, blue,
-					rotateable, fixed, rotateableDifficulty, prismTimer, fullBlock, silent, speedFactor)
+					rotateable, fixed, rotateableDifficulty, prismTimer, autoReset,
+					fullBlock, silent, speedFactor)
 					: this;
 		}
 	}

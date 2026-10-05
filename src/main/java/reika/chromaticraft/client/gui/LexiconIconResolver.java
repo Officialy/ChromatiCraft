@@ -1,20 +1,13 @@
 package reika.chromaticraft.client.gui;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ItemLike;
-
-import reika.chromaticraft.magic.progression.LexiconCatalog;
-import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaClusterItems;
-import reika.chromaticraft.registry.ChromaCraftingItems;
-import reika.chromaticraft.registry.ChromaItems;
-import reika.chromaticraft.registry.ChromaTieredItems;
-import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.registry.ChromaShieldTypes;
 import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
+import reika.chromaticraft.magic.progression.LexiconCatalog;
+import reika.chromaticraft.registry.*;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /** Binds V33a guide source identities to the modern registries as each content family lands. */
 public final class LexiconIconResolver {
@@ -64,7 +57,8 @@ public final class LexiconIconResolver {
 	private static List<ItemStack> variants(LexiconCatalog.Entry entry) {
 		ArrayList<ItemStack> items = new ArrayList<>();
 		switch (entry.sourceId()) {
-			case "elemental" -> addElements(items, element -> ChromaItems.ELEMENTAL_STONES.get(element).get());
+			case "coloraltar" -> addElements(items,color -> ChromaBlocks.COLORED_ALTARS.get(color).get());
+            case "elemental" -> addElements(items, element -> ChromaItems.ELEMENTAL_STONES.get(element).get());
 			case "crystal" -> addElements(items, element -> ChromaBlocks.caveCrystal(element).get());
 			case "rune" -> addElements(items, element -> ChromaBlocks.rune(element).get());
 			case "dyeleaf" -> addElements(items, element -> ChromaBlocks.dyeLeaves(element).get());
@@ -162,7 +156,9 @@ public final class LexiconIconResolver {
 			case "launchpad" -> ChromaBlocks.LAUNCH_PAD.get();
 			case "particles" -> ChromaBlocks.PARTICLE_SPAWNER.get();
 			case "turret" -> ChromaBlocks.LUMEN_TURRET.get();
-			case "lumenwire" -> ChromaBlocks.LUMEN_WIRE.get();
+			case "voidtrap" -> ChromaBlocks.VOID_MONSTER_TRAP.get();
+            case "deathfog" -> ChromaBlocks.DEATH_FOG_EMITTER.get();
+            case "lumenwire" -> ChromaBlocks.LUMEN_WIRE.get();
 			case "fluidrelay" -> ChromaBlocks.FLUID_RELAY.get();
 			case "medistributor" -> ChromaBlocks.ME_DISTRIBUTOR.get();
 			case "telepump" -> ChromaBlocks.TELEPUMP.get();
@@ -206,12 +202,27 @@ public final class LexiconIconResolver {
 			case "tool" -> ChromaItems.MANIPULATOR.get();
 			case "storage" -> ChromaItems.STORAGE_CRYSTALS.get(
 					reika.chromaticraft.registry.StorageCrystalTier.NULA).get();
-			case "elemental" -> ChromaItems.ELEMENTAL_STONES.get(CrystalElement.BLUE).get();
+			case "coloraltar" -> ChromaBlocks.COLORED_ALTARS.get(CrystalElement.BLUE).get();
+            case "elemental" -> ChromaItems.ELEMENTAL_STONES.get(CrystalElement.BLUE).get();
 			case "datacrystal" -> ChromaItems.DATA_CRYSTAL.get();
 			case "fertilityseed" -> ChromaItems.FERTILITY_SEEDS.getFirst().get();
 			// V33a ChromaResearch.SEED: ChromaItems.SEED.getStackOf(CrystalElement.MAGENTA).
 			case "seed" -> ChromaItems.CRYSTAL_SEEDS.get(CrystalElement.MAGENTA).get();
 			case "purify" -> ChromaItems.PURIFY.get();
+			case "efficiency" -> ChromaItems.EFFICIENCY_GEM.get();
+			case "warpcapsule" -> ChromaItems.RECALL_TABLET.get();
+			case "capture" -> ChromaItems.CAPTURE_WAND.get();
+			case "excavator" -> ChromaItems.EXCAVATION_WAND.get();
+			case "builder" -> ChromaItems.CONSTRUCTION_WAND.get();
+			case "hoverwand" -> ChromaItems.HOVER_WAND.get();
+			case "mobsonar" -> ChromaItems.MOB_SONAR.get();
+			case "multitool" -> ChromaItems.MULTITOOL.get();
+			case "bulkmover" -> ChromaItems.BULK_MOVER.get();
+			case "bottleneck" -> ChromaItems.BOTTLENECK_FINDER.get();
+			case "spawnerbypass" -> ChromaItems.SPAWNER_BYPASS.get();
+			case "branches" -> ChromaItems.BRANCHES.get(reika.chromaticraft.items.ItemMagicBranch.BranchTypes.CRYSTAL).get();
+			case "oresilk" -> ChromaItems.ORE_HARVESTER.get();
+			case "recipecache" -> ChromaItems.RECIPE_TABLET.get();
 			case "aurapouch" -> ChromaItems.AURA_POUCH.get();
 			case "etherpendant" -> ChromaItems.LUMA_CAPSULE.get();
 			case "teleport" -> ChromaItems.MOBILITY_WAND.get();
@@ -234,7 +245,8 @@ public final class LexiconIconResolver {
 
 	private static ItemLike resource(String id) {
 		return switch (id) {
-			case "shards" -> ChromaItems.SHARDS.get(CrystalElement.RED).get();
+			case "voidessence" -> ChromaItems.VOID_MONSTER_ESSENCE.get();
+            case "shards" -> ChromaItems.SHARDS.get(CrystalElement.RED).get();
 			case "dusts" -> ChromaItems.TIERED.get(ChromaTieredItems.AURA_DUST).get();
 			case "groups" -> ChromaItems.CLUSTERS.get(ChromaClusterItems.CRYSTAL_CORE).get();
 			case "cores" -> ChromaItems.CRAFTING.get(ChromaCraftingItems.ENERGY_CORE).get();
@@ -247,7 +259,8 @@ public final class LexiconIconResolver {
 
 	private static ItemLike structure(String id) {
 		return switch (id) {
-			case "pylon", "pylonbroadcast" -> ChromaBlocks.PYLON.get();
+			case "nethertrap", "voidritual" -> ChromaBlocks.VOID_MONSTER_TRAP.get();
+            case "pylon", "pylonbroadcast" -> ChromaBlocks.PYLON.get();
 			case "casting1", "casting2", "casting3" -> ChromaBlocks.CASTING_TABLE.get();
 			case "repeater" -> ChromaBlocks.REPEATER.get();
 			case "weakrepeater" -> ChromaBlocks.WEAK_REPEATER.get();

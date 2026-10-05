@@ -1,106 +1,47 @@
-/*******************************************************************************
- * @author Reika Kalseki
- *
- * Copyright 2017
- *
- * All rights reserved.
- * Distribution of the software in any form is only allowed with
- * explicit, prior permission from the owner.
- ******************************************************************************/
 package reika.chromaticraft.items;
 
-import net.minecraft.item.ItemStack;
-
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import reika.chromaticraft.auxiliary.interfaces.TieredItem;
-import reika.chromaticraft.base.ItemChromaMulti;
-import reika.chromaticraft.block.worldgen.blocktieredore.TieredOres;
-import reika.chromaticraft.block.worldgen.blocktieredplant.TieredPlants;
 import reika.chromaticraft.magic.progression.ProgressStage;
-import reika.chromaticraft.registry.ChromaItems;
+import reika.chromaticraft.registry.ChromaTieredItems;
 
-public class ItemTieredResource extends ItemChromaMulti implements TieredItem {
+/** V33a ItemTieredResource: each former metadata variant retains its discovery stage. */
+public final class ItemTieredResource extends Item implements TieredItem {
+    private final ChromaTieredItems type;
 
-	public ItemTieredResource(int tex) {
-		super(tex);
-	}
+    public ItemTieredResource(Properties properties, ChromaTieredItems type) {
+        super(properties);
+        this.type = type;
+    }
 
-	@Override
-	public int getNumberTypes() {
-		return ChromaItems.TIERED.getNumberMetadatas();
-	}
+    @Override
+    public ProgressStage getDiscoveryTier(ItemStack stack) {
+        return switch (type) {
+            case CHROMA_DUST, AURA_DUST -> ProgressStage.CRYSTALS;
+            case PURITY_DUST -> ProgressStage.RUNEUSE;
+            case FOCUS_DUST, RESONANCE_DUST -> ProgressStage.MULTIBLOCK;
+            case ELEMENT_DUST, BINDING_CRYSTAL -> ProgressStage.CHARGE;
+            case BEACON_DUST -> ProgressStage.PYLON;
+            case ENDER_DUST, THERMITIC_CRYSTAL -> ProgressStage.END;
+            case WATER_DUST, OCEAN_FRAGMENT -> ProgressStage.OCEAN;
+            case FIRAXITE -> ProgressStage.NETHER;
+            case LUMA_DUST -> ProgressStage.STRUCTCOMPLETE;
+            case ECHO_CRYSTAL -> ProgressStage.CTM;
+            case CAVERN_FRAGMENT -> ProgressStage.CAVERN;
+            case BURROW_FRAGMENT -> ProgressStage.BURROW;
+            case FIRE_ESSENCE -> ProgressStage.LINK;
+            case RESONANT_CRYSTAL -> ProgressStage.ABILITY;
+            case SPACE_DUST -> ProgressStage.KILLDRAGON;
+            case DESERT_FRAGMENT -> ProgressStage.DESERTSTRUCT;
+            case LUMA_BEANS -> ProgressStage.ALLOY;
+            case BOOST_ROOT -> ProgressStage.TURBOCHARGE;
+            case LUMEN_GEM -> ProgressStage.USEENERGY;
+            case AVOLITE -> ProgressStage.POWERCRYSTAL;
+            case SNOW_FRAGMENT -> ProgressStage.SNOWSTRUCT;
+            case PROXIMAL_ESSENCE, PURE_PROXIMAL_ESSENCE -> ProgressStage.DIMENSION;
+        };
+    }
 
-	@Override
-	public ProgressStage getDiscoveryTier(ItemStack is) {
-		switch(is.getItemDamage()) {
-			case 0:
-				return TieredOres.INFUSED.level;
-			case 1:
-				return TieredPlants.FLOWER.level;
-			case 2:
-				return TieredPlants.CAVE.level;
-			case 3:
-				return TieredOres.FOCAL.level;
-			case 4:
-				return TieredPlants.LILY.level;
-			case 5:
-				return TieredPlants.DESERT.level;
-			case 6:
-				return TieredOres.BINDING.level;
-			case 7:
-				return TieredPlants.BULB.level;
-			case 8:
-				return TieredOres.TELEPORT.level;
-			case 9:
-				return TieredOres.WATERY.level;
-			case 10:
-				return TieredOres.FIRAXITE.level;
-			case 11:
-				return TieredOres.LUMA.level;
-			case 12:
-				return TieredOres.ECHO.level;
-			case 13:
-				return ProgressStage.CAVERN;
-			case 14:
-				return ProgressStage.BURROW;
-			case 15:
-				return ProgressStage.OCEAN;
-			case 16:
-				return TieredOres.FIRESTONE.level;
-			case 17:
-				return TieredOres.THERMITE.level;
-			case 18:
-				return TieredOres.RESO.level;
-			case 19:
-				return TieredOres.SPACERIFT.level;
-			case 20:
-				return ProgressStage.DESERTSTRUCT;
-			case 21:
-				return TieredPlants.POD.level;
-			case 22:
-				return TieredPlants.ROOT.level;
-			case 23:
-				return TieredOres.RAINBOW.level;
-			case 24:
-				return TieredOres.AVOLITE.level;
-			case 25:
-				return ProgressStage.SNOWSTRUCT;
-			case 26:
-			case 27:
-				return ProgressStage.DIMENSION;
-			default:
-				return null;
-		}
-	}
-
-	@Override
-	public boolean isTiered(ItemStack is) {
-		if (is.getItemDamage() <= 16)
-			return true;
-		switch(is.getItemDamage()) {
-
-			default:
-				return true;
-		}
-	}
-
+    @Override public boolean isTiered(ItemStack stack) { return true; }
 }

@@ -1,16 +1,15 @@
 package reika.chromaticraft.world.dimension.structure.lightpanel;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
-
 import reika.dragonapi.libraries.mathsci.ReikaMusicHelper.KeySignature;
 import reika.dragonapi.libraries.mathsci.ReikaMusicHelper.MusicKey;
 import reika.dragonapi.libraries.mathsci.ReikaMusicHelper.Note;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
 
 /** Runtime identity and persistent state of one NBT-owned Glowing Logic room. */
 public final class LightPanelRoomState {

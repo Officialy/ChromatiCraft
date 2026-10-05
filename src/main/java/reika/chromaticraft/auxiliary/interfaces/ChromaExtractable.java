@@ -3,8 +3,8 @@ package reika.chromaticraft.auxiliary.interfaces;
 
 public interface ChromaExtractable {
 
-	public int getChromaLevel();
+	int getChromaLevel();
 
-	public void removeLiquid(int amt);
+	void removeLiquid(int amt);
 
 }

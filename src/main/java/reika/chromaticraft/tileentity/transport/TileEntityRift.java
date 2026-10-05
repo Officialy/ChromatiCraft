@@ -9,13 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.tileentity.transport;
 
-import java.awt.Color;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
-
-import org.jspecify.annotations.Nullable;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -27,7 +20,6 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
-
 import net.neoforged.neoforge.capabilities.BlockCapability;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.transfer.EmptyResourceHandler;
@@ -38,7 +30,7 @@ import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import net.neoforged.neoforge.transfer.item.ItemResource;
 import net.neoforged.neoforge.transfer.resource.Resource;
 import net.neoforged.neoforge.transfer.transaction.TransactionContext;
-
+import org.jspecify.annotations.Nullable;
 import reika.chromaticraft.api.interfaces.WorldRift;
 import reika.chromaticraft.auxiliary.interfaces.LinkedTile;
 import reika.chromaticraft.base.tileentity.LinkedTileBase;
@@ -49,6 +41,11 @@ import reika.dragonapi.auxiliary.ChunkManager;
 import reika.dragonapi.base.BlockEntityBase;
 import reika.dragonapi.instantiable.data.immutable.WorldLocation;
 import reika.dragonapi.interfaces.blockentity.ChunkLoadingTile;
+
+import java.awt.*;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
 
 /**
  * V33a World Rift: one end of a linked pair. Whatever touches one face of this rift is joined to whatever sits on the

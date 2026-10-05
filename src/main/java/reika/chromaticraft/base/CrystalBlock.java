@@ -9,10 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.base;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Random;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -26,13 +22,16 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
-
 import reika.chromaticraft.api.interfaces.CrystalEffectBoostArmor;
 import reika.chromaticraft.magic.CrystalPotionController;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.dragonapi.interfaces.block.SemiUnbreakable;
 import reika.dragonapi.libraries.registry.ReikaDyeHelper;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.Random;
 
 /**
  * Base for the effect-giving crystal blocks. Port note: the 1.7.10 ISBRH/IIcon render surface is
@@ -131,7 +130,7 @@ public abstract class CrystalBlock extends net.minecraft.world.level.block.Block
 
 	/** Per-element tint colour for the block/item colour provider (replaces the ISBRH getTintColor). */
 	public final int getTintColor(int meta) {
-		int c0 = ReikaColorAPI.getModifiedSat(CrystalElement.elements[meta].getColor(), 0.65F);
+		int c0 = ReikaColorAPI.getModifiedSat(CrystalElement.elements[meta].color(), 0.65F);
 		int c1 = ReikaDyeHelper.dyes[meta].color;
 		return ReikaColorAPI.mixColors(c0, c1, 0.65F);
 	}

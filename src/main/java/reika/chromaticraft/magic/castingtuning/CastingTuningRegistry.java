@@ -1,22 +1,14 @@
 package reika.chromaticraft.magic.castingtuning;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.EnumMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
-
 import reika.chromaticraft.registry.CrystalElement;
 import reika.dragonapi.DragonAPI;
 import reika.dragonapi.libraries.ReikaDirectionHelper.FanDirections;
+
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 /** Deterministic V33a casting-key generator and per-player runtime cache. */
 public final class CastingTuningRegistry {

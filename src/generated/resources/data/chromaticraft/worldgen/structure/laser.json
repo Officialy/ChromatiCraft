@@ -1,0 +1,6 @@
+{
+  "type": "chromaticraft:laser",
+  "biomes": "chromaticraft:structure_field",
+  "spawn_overrides": {},
+  "step": "underground_structures"
+}

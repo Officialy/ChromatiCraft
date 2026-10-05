@@ -1,17 +1,15 @@
 package reika.chromaticraft.client;
 
-import java.util.UUID;
-
 import net.minecraft.client.Minecraft;
-
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.registry.ChromaTieredPlants;
+
+import java.util.UUID;
 
 /** Keeps viewer-gated tiered-plant chunk meshes synchronized with the local player's access. */
 @EventBusSubscriber(modid = ChromatiCraft.MODID, value = Dist.CLIENT)

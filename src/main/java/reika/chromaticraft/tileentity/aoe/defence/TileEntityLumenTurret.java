@@ -9,11 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.tileentity.aoe.defence;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.UUID;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
@@ -26,22 +21,21 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
-
 import reika.chromaticraft.auxiliary.LumenTurretDamage;
 import reika.chromaticraft.base.tileentity.TileEntityChromaticBase;
 import reika.chromaticraft.entity.EntityBallLightning;
 import reika.chromaticraft.network.ChromaNetwork;
-import reika.chromaticraft.registry.ChromaBlockEntities;
-import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaSounds;
-import reika.chromaticraft.registry.ChromaTiles;
-import reika.chromaticraft.registry.Chromabilities;
-import reika.chromaticraft.registry.CrystalElement;
+import reika.chromaticraft.registry.*;
 import reika.chromaticraft.render.particle.ChromaParticle;
 import reika.dragonapi.instantiable.RayTracer;
 import reika.dragonapi.instantiable.StepTimer;
 import reika.dragonapi.interfaces.entity.TameHostile;
 import reika.dragonapi.libraries.ReikaEntityHelper;
+
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.UUID;
 
 /**
  * V33a {@code TileEntityLumenTurret}: every 5 ticks, with a view of the sky, it strikes each hostile mob within 6
@@ -93,7 +87,7 @@ public class TileEntityLumenTurret extends TileEntityChromaticBase {
 			float g = -(float)(0.0625+(rand.nextDouble()*2-1)*0.03125);
 			float s = (float)(1.25+(rand.nextDouble()*2-1)*0.25);
 			int l = 10+rand.nextInt(30);
-			ChromaParticle.spawnTurretUpgradeGlow(world, pos.getX()+0.5, pos.getY()+0.625, pos.getZ()+0.5, u.color.getColor(), g, s, l);
+			ChromaParticle.spawnTurretUpgradeGlow(world, pos.getX()+0.5, pos.getY()+0.625, pos.getZ()+0.5, u.color.color(), g, s, l);
 		}
 	}
 
@@ -220,7 +214,7 @@ public class TileEntityLumenTurret extends TileEntityChromaticBase {
 		return sb.toString();
 	}
 
-	public static enum TurretUpgrades {
+	public enum TurretUpgrades {
 		PASSIVE(CrystalElement.GREEN),
 		PLAYERS(CrystalElement.PURPLE),
 		RANGE(CrystalElement.LIME),
@@ -234,7 +228,7 @@ public class TileEntityLumenTurret extends TileEntityChromaticBase {
 
 		private static final TurretUpgrades[] list = values();
 
-		private TurretUpgrades(CrystalElement e) {
+		TurretUpgrades(CrystalElement e) {
 			color = e;
 		}
 

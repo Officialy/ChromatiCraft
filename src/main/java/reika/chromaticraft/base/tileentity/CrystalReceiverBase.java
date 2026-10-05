@@ -9,9 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.base.tileentity;
 
-import java.util.List;
-import java.util.UUID;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.player.Player;
@@ -19,20 +16,18 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
-
 import reika.chromaticraft.auxiliary.interfaces.MultiBlockChromaTile;
 import reika.chromaticraft.magic.ElementTagCompound;
-import reika.chromaticraft.magic.interfaces.CrystalReceiver;
-import reika.chromaticraft.magic.interfaces.CrystalSource;
-import reika.chromaticraft.magic.interfaces.CrystalTransmitter;
-import reika.chromaticraft.magic.interfaces.LumenConsumer;
-import reika.chromaticraft.magic.interfaces.LumenRequestingTile;
+import reika.chromaticraft.magic.interfaces.*;
 import reika.chromaticraft.magic.network.CrystalNetworker;
 import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.dragonapi.instantiable.StepTimer;
 import reika.dragonapi.instantiable.data.immutable.DecimalPosition;
 import reika.dragonapi.libraries.registry.ReikaItemHelper;
+
+import java.util.List;
+import java.util.UUID;
 
 /**
  * Base for network tiles that receive + store crystal energy (per-colour, capped by

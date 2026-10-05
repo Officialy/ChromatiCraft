@@ -9,12 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.tileentity.auxiliary;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.TreeMap;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
@@ -22,13 +16,14 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.base.tileentity.TileEntityChromaticBase;
 import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.ChromaTiles;
 import reika.dragonapi.instantiable.StepTimer;
 import reika.dragonapi.instantiable.data.immutable.Coordinate;
+
+import java.util.*;
 
 public final class TileEntityFunctionRelay extends TileEntityChromaticBase {
     private static final TreeMap<String, RelayedEffectDescription> SPECIAL_EFFECTS = new TreeMap<>();

@@ -13,6 +13,6 @@ import reika.chromaticraft.magic.ElementTagCompound;
 
 public interface LumenRequestingTile extends LumenTile {
 
-	public ElementTagCompound getRequestedTotal();
+	ElementTagCompound getRequestedTotal();
 
 }

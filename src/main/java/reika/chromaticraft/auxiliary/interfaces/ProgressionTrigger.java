@@ -24,6 +24,6 @@ public interface ProgressionTrigger {
 
 	//public boolean canTrigger(Player ep, Level world, BlockPos pos);
 
-	public ProgressStage[] getTriggers(Player ep, Level world, BlockPos pos);
+	ProgressStage[] getTriggers(Player ep, Level world, BlockPos pos);
 
 }

@@ -1,16 +1,13 @@
 package reika.chromaticraft.world;
 
 import com.mojang.serialization.MapCodec;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.levelgen.FlatLevelSource;
 import net.minecraft.world.level.levelgen.placement.PlacementContext;
 import net.minecraft.world.level.levelgen.placement.PlacementFilter;
-
 import reika.chromaticraft.registry.ChromaOptions;
-import reika.chromaticraft.registry.ChromaPlacementModifiers;
 
 /**
  * Applies V33a's seeded shuffled pylon grid to natural placed-feature generation. Keeping this

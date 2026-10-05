@@ -1,15 +1,15 @@
 package reika.chromaticraft.api.interfaces;
 
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.WorldlyContainer;
+import net.minecraft.world.entity.player.Player;
 
 public interface LootChest extends WorldlyContainer {
 
 
-	public boolean isOwnedBy(Player ep);
+	boolean isOwnedBy(Player ep);
 
-	public boolean isAccessibleBy(Player ep);
+	boolean isAccessibleBy(Player ep);
 
-	public boolean isUntouchedWorldgen();
+	boolean isUntouchedWorldgen();
 
 }

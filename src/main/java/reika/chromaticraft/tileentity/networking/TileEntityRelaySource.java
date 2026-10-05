@@ -9,8 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.tileentity.networking;
 
-import java.util.List;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -20,7 +18,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
-
 import reika.chromaticraft.auxiliary.interfaces.MultiBlockChromaTile;
 import reika.chromaticraft.base.tileentity.InventoriedCrystalReceiver;
 import reika.chromaticraft.items.ItemStorageCrystal;
@@ -28,14 +25,12 @@ import reika.chromaticraft.magic.interfaces.WeakRepeaterSafeReceiver;
 import reika.chromaticraft.magic.progression.LexiconCatalog;
 import reika.chromaticraft.magic.progression.PlayerResearch;
 import reika.chromaticraft.magic.progression.ProgressStage;
-import reika.chromaticraft.registry.ChromaBlockEntities;
-import reika.chromaticraft.registry.ChromaItems;
-import reika.chromaticraft.registry.ChromaStructures;
-import reika.chromaticraft.registry.ChromaTiles;
-import reika.chromaticraft.registry.CrystalElement;
+import reika.chromaticraft.registry.*;
 import reika.chromaticraft.render.particle.ChromaParticle;
 import reika.dragonapi.instantiable.data.immutable.Coordinate;
 import reika.dragonapi.interfaces.blockentity.InertIInv;
+
+import java.util.List;
 
 /**
  * V33a's all-colour Lumen Relay source. A charged Storage Crystal can be inserted directly into
@@ -74,7 +69,7 @@ public final class TileEntityRelaySource extends InventoriedCrystalReceiver
 			if (this.getTicksExisted() % 20 == 0) this.validateStructure();
 		}
 		else if (enhanced) {
-			ChromaParticle.spawnRelaySource(world, pos, this.getTicksExisted(), this.rand);
+			ChromaParticle.spawnRelaySource(world, pos, this.getTicksExisted(), rand);
 		}
 	}
 

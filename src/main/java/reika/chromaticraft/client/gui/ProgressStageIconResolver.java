@@ -1,20 +1,13 @@
 package reika.chromaticraft.client.gui;
 
-import java.util.EnumMap;
-
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.ItemLike;
-
 import reika.chromaticraft.block.BlockCrystallineStone.StoneTypes;
 import reika.chromaticraft.magic.progression.ProgressStage;
-import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaClusterItems;
-import reika.chromaticraft.registry.ChromaCraftingItems;
-import reika.chromaticraft.registry.ChromaItems;
-import reika.chromaticraft.registry.ChromaShieldTypes;
-import reika.chromaticraft.registry.ChromaTieredItems;
-import reika.chromaticraft.registry.CrystalElement;
+import reika.chromaticraft.registry.*;
+
+import java.util.EnumMap;
 
 /**
  * V33a {@code ProgressStage.icon}, rebound to the split 26.2 registries.

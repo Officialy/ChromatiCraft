@@ -1,16 +1,8 @@
 package reika.chromaticraft.world.dimension.structure;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-
-import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
-
 import com.mojang.serialization.MapCodec;
-
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.NoiseColumn;
@@ -18,6 +10,11 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureType;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 
 /**
  * The start half of V33a's {@code WorldGenGlowCave}: where a cave's mouth is.

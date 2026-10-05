@@ -9,16 +9,15 @@
  ******************************************************************************/
 package reika.chromaticraft.auxiliary;
 
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.material.Fluid;
+import reika.chromaticraft.tileentity.transport.TileEntityFluidRelay;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
-
-import net.minecraft.core.BlockPos;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.level.material.Fluid;
-
-import reika.chromaticraft.tileentity.transport.TileEntityFluidRelay;
 
 /**
  * V33a {@code FluidNetwork}: the Fluid Link Anchors joined by range. Anchors with positive pressure push the fluids

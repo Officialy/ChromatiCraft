@@ -9,9 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.items.tools;
 
-import java.util.Locale;
-import java.util.function.Consumer;
-
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
@@ -22,15 +19,16 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.component.TooltipDisplay;
 import net.minecraft.world.level.Level;
-
 import org.jspecify.annotations.Nullable;
-
 import reika.chromaticraft.base.ItemPoweredChromaTool;
 import reika.chromaticraft.magic.ToolChargingSystem;
 import reika.chromaticraft.magic.interfaces.ChargingPoint;
 import reika.chromaticraft.magic.interfaces.PoweredItem;
 import reika.chromaticraft.registry.ChromaOptions;
 import reika.chromaticraft.registry.CrystalElement;
+
+import java.util.Locale;
+import java.util.function.Consumer;
 
 /**
  * V33a {@code ItemBoostedPendant} ("Enhanced Pendant"): a Pendant at amplifier 2 with a five-minute effect. With

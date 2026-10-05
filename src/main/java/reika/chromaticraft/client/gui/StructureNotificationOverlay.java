@@ -112,7 +112,7 @@ public final class StructureNotificationOverlay implements GuiLayer {
 			for (int d = 0; d <= 2; d++) {
 				float frameBrightness = 1 - brightness * d / 3F;
 				int frameRgb = reika.dragonapi.libraries.rendering.ReikaColorAPI
-						.getColorWithBrightnessMultiplier(element.getColor(), frameBrightness);
+						.getColorWithBrightnessMultiplier(element.color(), frameBrightness);
 				int color = frameAlpha << 24 | frameRgb & 0xffffff;
 				int offset = d * 2;
 				graphics.outline(x - offset, y - offset,

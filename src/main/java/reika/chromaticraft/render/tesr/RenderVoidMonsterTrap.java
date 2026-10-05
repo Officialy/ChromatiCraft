@@ -9,232 +9,117 @@
  ******************************************************************************/
 package reika.chromaticraft.render.tesr;
 
-import java.util.Collection;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.math.Axis;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
+import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
+import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
+import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.client.renderer.texture.TextureAtlas;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.data.AtlasIds;
+import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
+import reika.chromaticraft.modinterface.voidritual.TileEntityVoidMonsterTrap;
+import reika.chromaticraft.modinterface.voidritual.VoidRitualShaders;
+import reika.chromaticraft.registry.ChromaIcons;
+import reika.chromaticraft.render.ChromaRenderPipelines;
+import reika.dragonapi.instantiable.RayTracer;
+import reika.dragonapi.libraries.rendering.ReikaColorAPI;
+
+import java.util.ArrayList;
 import java.util.List;
 
-import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL12;
-
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.client.renderer.entity.RenderManager;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.IIcon;
-import net.minecraftforge.client.MinecraftForgeClient;
-
-import reika.chromaticraft.auxiliary.ChromaFX;
-import reika.chromaticraft.auxiliary.render.TESRIcon;
-import reika.chromaticraft.base.ChromaRenderBase;
-import reika.chromaticraft.modinterface.voidritual.TileEntityVoidMonsterTrap;
-import reika.chromaticraft.modinterface.voidritual.tileentityvoidmonstertrap.VoidMonsterTether;
-import reika.chromaticraft.registry.ChromaIcons;
-import reika.chromaticraft.registry.ChromaShaders;
-import reika.dragonapi.instantiable.RayTracer;
-import reika.dragonapi.instantiable.raytracer.RayTracerWithCache;
-import reika.dragonapi.instantiable.data.immutable.DecimalPosition;
-import reika.dragonapi.instantiable.math.VariableEndpointSpline;
-import reika.dragonapi.instantiable.rendering.StructureRenderer;
-import reika.dragonapi.interfaces.tileentity.RenderFetcher;
-import reika.dragonapi.libraries.io.ReikaTextureHelper;
-import reika.dragonapi.libraries.java.reikaglhelper.BlendMode;
-import reika.dragonapi.libraries.rendering.ReikaColorAPI;
-import reika.dragonapi.libraries.rendering.ReikaRenderHelper;
-
-
-public class RenderVoidMonsterTrap extends ChromaRenderBase {
-
-	protected static final RayTracerWithCache LOS = RayTracer.getVisualLOSForRenderCulling();
-
-	public static boolean netherRender = false;
-
-	private static TESRIcon[] overworld = {
-			new TESRIcon(ChromaIcons.SUNFLARE, 4, 1.25, 1),
-			new TESRIcon(ChromaIcons.CELLFLARE, 2.75, 1.25, 1),
-			new TESRIcon(ChromaIcons.ECLIPSEFLARE, 3, 0.9375, 0.75F),
-	};
-	private static TESRIcon[] nether = {
-			new TESRIcon(ChromaIcons.WHITEHOLE, 2, 1.25, 1),
-			new TESRIcon(ChromaIcons.PORTALRING, 1.25, 1.25, 2),
-			new TESRIcon(ChromaIcons.HEXFLARE2, 2, 1.25, 0.5F),
-	};
-	private static TESRIcon[] base = {
-			new TESRIcon(ChromaIcons.CELLFLARE, 1.5, 1, 1),
-			new TESRIcon(ChromaIcons.PORTALRING, 0.75, 1, 1),
-			new TESRIcon(ChromaIcons.PORTALRING, 1, 1, 1),
-	};
-
-	@Override
-	public String getImageFileName(RenderFetcher te) {
-		return null;
-	}
-
-	@Override
-	public void renderTileEntityAt(TileEntity tile, double par2, double par4, double par6, float par8) {
-		TileEntityVoidMonsterTrap te = (TileEntityVoidMonsterTrap)tile;
-		GL11.glPushMatrix();
-		GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
-		GL11.glEnable(GL12.GL_RESCALE_NORMAL);
-		GL11.glEnable(GL11.GL_BLEND);
-		GL11.glDisable(GL11.GL_LIGHTING);
-		BlendMode.ADDITIVEDARK.apply();
-		GL11.glDepthMask(false);
-		ReikaRenderHelper.disableEntityLighting();
-		GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
-		GL11.glTranslatef((float)par2, (float)par4 + 1.0F, (float)par6 + 1.0F);
-		GL11.glScalef(1.0F, -1.0F, -1.0F);
-
-		if (te.isInWorld() && te.hasStructure()) {
-			EntityPlayer ep = Minecraft.getMinecraft().thePlayer;
-			//LOS.update(te);
-			LOS.setOrigins(te.xCoord+0.5, te.yCoord+0.5, te.zCoord+0.5, ep.posX, ep.posY, ep.posZ);
-			if (LOS.isClearLineOfSight(te)) {
-				double dist = ep.getDistance(te.xCoord+0.5, te.yCoord+0.5, te.zCoord+0.5);
-				float f = 0;
-				if (dist <= 16) {
-					f = 1;
-				}
-				else if (dist <= 32) {
-					f = 1-(float)((dist-16D)/16D);
-				}
-				ChromaShaders.VOIDTRAP.clearOnRender = true;
-				ChromaShaders.VOIDTRAP.setIntensity(f);
-				ChromaShaders.VOIDTRAP.getShader().setFocus(te);
-				ChromaShaders.VOIDTRAP.getShader().setMatricesToCurrent();
-				ChromaShaders.VOIDTRAP.getShader().setField("distance", dist*dist);
-				ChromaShaders.VOIDTRAP.getShader().setField("rotation", te.getShaderRotation());
-			}
-		}
-
-		if (MinecraftForgeClient.getRenderPass() == 1 || !te.isInWorld() || StructureRenderer.isRenderingTiles()) {
-			this.drawInner(te, par8);
-			if (te.isInWorld() && !StructureRenderer.isRenderingTiles()) {
-				this.renderTethers(te, par8);
-			}
-		}
-
-		GL11.glDisable(GL11.GL_BLEND);
-		if (te.hasWorldObj())
-			GL11.glDisable(GL12.GL_RESCALE_NORMAL);
-		GL11.glPopMatrix();
-		GL11.glPopAttrib();
-		GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
-	}
-
-	private void renderTethers(TileEntityVoidMonsterTrap te, float par8) {
-		Collection<VoidMonsterTether> c = te.getTethers();
-		BlendMode.ADDITIVEDARK.apply();
-		for (VoidMonsterTether v : c) {
-			Entity e = v.getEntity(te.worldObj);
-			double d = 0.25+0.5*(1-v.getDistance()/16D);
-			//ReikaJavaLibrary.pConsole(v.getDistance()+" > "+d);
-			int c1 = 0xffffff;
-			int c2 = 0xda50ff;
-			double dc = te.getTicksExisted()/5D;
-			for (VariableEndpointSpline s : v.getSplines()) {
-				List<DecimalPosition> li = s.getPoints(8);
-				//ReikaJavaLibrary.pConsole(li);
-				//ChromaFX.renderBeam(0.5, 0.5, 0.5, e.posX-te.xCoord, te.yCoord-e.posY, -(e.posZ-te.zCoord), par8, 255, d, 0xffffff);
-				for (int i = 0; i < li.size()-1; i++) {
-					float f = (float)(0.5+0.5*Math.sin(dc));
-					int clr = ReikaColorAPI.mixColors(c1, c2, f);
-					DecimalPosition pos1 = li.get(i);
-					DecimalPosition pos2 = li.get(i+1);
-					ChromaFX.renderBeam(pos1.xCoord-te.xCoord, te.yCoord+1-pos1.yCoord, te.zCoord+1-pos1.zCoord, pos2.xCoord-te.xCoord, te.yCoord+1-pos2.yCoord, te.zCoord+1-pos2.zCoord, par8, 255, d, clr);
-					dc += 0.4;
-				}
-				dc += 0.9;
-			}
-		}
-	}
-
-	private void drawInner(TileEntityVoidMonsterTrap te, float par8) {
-		ReikaTextureHelper.bindTerrainTexture();
-		TESRIcon[] icons = base;
-		if (te.hasStructure() || StructureRenderer.isRenderingTiles())
-			icons = netherRender || te.isNether() ? nether : overworld;
-		else if (!te.isInWorld())
-			icons = overworld;
-
-		Tessellator v5 = Tessellator.instance;
-		GL11.glPushMatrix();
-		GL11.glDisable(GL11.GL_CULL_FACE);
-
-		double s = te.isInWorld() ? 0.4375 : 0.33;
-		if (te.hasWorldObj()) {
-			GL11.glTranslated(0.5, 0.5, 0.5);
-			GL11.glScaled(s, s, s);
-			if (StructureRenderer.isRenderingTiles()) {
-				GL11.glRotated(StructureRenderer.getRenderRY(), 0, 1, 0);
-				GL11.glRotated(-StructureRenderer.getRenderRX(), 1, 0, 0);
-			}
-			else {
-				RenderManager rm = RenderManager.instance;
-				GL11.glRotatef(rm.playerViewY, 0.0F, 1.0F, 0.0F);
-				GL11.glRotatef(rm.playerViewX, 1.0F, 0.0F, 0.0F);
-			}
-		}
-		else {
-			s = 0.5;
-			GL11.glTranslated(0.5, 0.5, 0.5);
-			GL11.glRotated(-45, 0, 1, 0);
-			GL11.glRotated(-30, 1, 0, 0);
-			GL11.glScaled(s, s, s);
-		}
-
-		//double ang = (System.currentTimeMillis()/20D)%360;
-		//GL11.glRotated(ang, 0, 0, 1);
-
-		double t = te.isInWorld() ? (te.getTicksExisted()+par8) : System.currentTimeMillis()/50D;
-
-		double s2 = 2+0.5*Math.sin(t/90D);
-		//float f = te.isInWorld() ? ((float)(Math.sin(t/5.4D)+Math.cos(t/3.9D))*15-14) : 0;
-		//if (f > 1)
-		//	f = 1;
-		float f = te.getFlashBrightness();
-
-		for (int i = 0; i < icons.length; i++) {
-			int c = ReikaColorAPI.getModifiedHue(0xff0000, 265+(int)(15*Math.sin(t/30D+i)));
-			c = ReikaColorAPI.getModifiedSat(c, 0.9F+0.1F*(float)Math.sin(t/20D+i/4D));
-			c = ReikaColorAPI.getModifiedSat(c, 1-0.15F*i);
-			if (f > 0)
-				c = ReikaColorAPI.getModifiedSat(c, 1-f);
-			IIcon ico = icons[i].icon.getIcon();
-			float u = ico.getMinU();
-			float v = ico.getMinV();
-			float du = ico.getMaxU();
-			float dv = ico.getMaxV();
-			float uu = du-u;
-			float vv = dv-v;
-
-			double s3 = s2*icons[i].getSize(te);
-			if (StructureRenderer.isRenderingTiles())
-				s3 *= 0.625;
-
-			GL11.glPushMatrix();
-			GL11.glScaled(s3, s3, s3);
-			double da = 0;
-			if (te.isNether() && i == 0)
-				da = (System.currentTimeMillis()/12D)%360D;
-			else if (!te.isNether() && i == 1)
-				da = (-System.currentTimeMillis()/50D)%360D;
-			if (da != 0)
-				GL11.glRotated(da, 0, 0, 1);
-			v5.startDrawingQuads();
-			v5.setColorOpaque_I(ReikaColorAPI.getColorWithBrightnessMultiplier(c, icons[i].getBrightness(te)));
-			v5.addVertexWithUV(-1, -1, 0, u, v);
-			v5.addVertexWithUV(1, -1, 0, du, v);
-			v5.addVertexWithUV(1, 1, 0, du, dv);
-			v5.addVertexWithUV(-1, 1, 0, u, dv);
-			v5.draw();
-			GL11.glPopMatrix();
-		}
-
-		GL11.glEnable(GL11.GL_CULL_FACE);
-		BlendMode.DEFAULT.apply();
-
-		GL11.glPopMatrix();
-	}
-
+/** Original stacked glows and pulsing spline tethers, snapshotted for native geometry submission. */
+public final class RenderVoidMonsterTrap implements BlockEntityRenderer<TileEntityVoidMonsterTrap,RenderVoidMonsterTrap.State> {
+    private record Icon(ChromaIcons sprite,double worldSize,double previewSize,float brightness) {}
+    private static final Icon[] NORMAL={new Icon(ChromaIcons.SUNFLARE,4,1.25,1),new Icon(ChromaIcons.CELLFLARE,2.75,1.25,1),new Icon(ChromaIcons.ECLIPSEFLARE,3,.9375,.75F)};
+    private static final Icon[] NETHER={new Icon(ChromaIcons.WHITEHOLE,2,1.25,1),new Icon(ChromaIcons.PORTALRING,1.25,1.25,2),new Icon(ChromaIcons.HEXFLARE2,2,1.25,.5F)};
+    private static final Icon[] BASE={new Icon(ChromaIcons.CELLFLARE,1.5,1,1),new Icon(ChromaIcons.PORTALRING,.75,1,1),new Icon(ChromaIcons.PORTALRING,1,1,1)};
+    private static final RayTracer LOS=RayTracer.getVisualLOS();
+    public RenderVoidMonsterTrap(BlockEntityRendererProvider.Context context) { }
+    public State createRenderState() { return new State(); }
+    @Override public void extractRenderState(TileEntityVoidMonsterTrap tile,State state,float partial,Vec3 camera,ModelFeatureRenderer.@Nullable CrumblingOverlay breaking) {
+        BlockEntityRenderer.super.extractRenderState(tile,state,partial,camera,breaking);
+        state.nether=tile.isNether(); state.structure=tile.hasStructure(); state.time=tile.getTicksExisted()+partial; state.flash=tile.getFlashBrightness(); state.beams=List.of();
+        state.structurePreview=reika.dragonapi.instantiable.rendering.structure.StructureRenderer.isRenderingTiles();
+        state.preview=state.structurePreview;
+        if (state.structurePreview) {
+            state.nether=tile.isPreviewNether(); state.time=System.currentTimeMillis()/50D;
+            state.previewRY=(float)reika.dragonapi.instantiable.rendering.structure.StructureRenderer.getRenderRY();
+            state.previewRX=(float)reika.dragonapi.instantiable.rendering.structure.StructureRenderer.getRenderRX();
+            return;
+        }
+        if (tile.getLevel()==null) return;
+        var player=Minecraft.getInstance().player; Vec3 center=Vec3.atCenterOf(tile.getBlockPos());
+        if (state.structure && player!=null) {
+            LOS.setOrigins(center.x,center.y,center.z,player.getX(),player.getY(),player.getZ());
+            if (LOS.isClearLineOfSight(tile.getLevel())) { double d=player.position().distanceTo(center); float intensity=d<=16?1:d<=32?1-(float)((d-16)/16):0; VoidRitualShaders.markTrap(center,intensity,d*d,tile.getShaderRotation()); }
+        }
+        List<Beam> beams=new ArrayList<>(); Vec3 origin=Vec3.atLowerCornerOf(tile.getBlockPos());
+        for (var tether:tile.getTethers()) {
+            float radius=(float)(.25+.5*(1-tether.getDistance()/16)); double phase=tile.getTicksExisted()/5D;
+            for (var spline:tether.getSplines()) {
+                var points=spline.getPoints(8);
+                for (int i=0;i<points.size()-1;i++) {
+                    var a=points.get(i); var b=points.get(i+1); int color=0xff000000|ReikaColorAPI.mixColors(0xffffff,0xda50ff,(float)(.5+.5*Math.sin(phase)));
+                    beams.add(new Beam(new Vec3(a.xCoord(), a.yCoord(), a.zCoord()).subtract(origin),new Vec3(b.xCoord(), b.yCoord(), b.zCoord()).subtract(origin),radius,color)); phase+=.4;
+                }
+                phase+=.9;
+            }
+        }
+        state.beams=List.copyOf(beams);
+    }
+    @Override public void submit(State state,PoseStack stack,SubmitNodeCollector collector,CameraRenderState camera) {
+        drawInner(state,stack,collector,camera);
+        var sprite=Minecraft.getInstance().getAtlasManager().getAtlasOrThrow(AtlasIds.BLOCKS).getSprite(ChromaIcons.LASER.getIcon());
+        var beams=state.beams;
+        collector.submitCustomGeometry(stack,ChromaRenderPipelines.additiveSprite(TextureAtlas.LOCATION_BLOCKS),(pose,out)-> { for (var beam:beams) beam(pose,out,sprite,beam); });
+        collector.submitCustomGeometry(stack,ChromaRenderPipelines.translucentColorLines(),(pose,out)-> {
+            for (var beam:beams) {
+                var direction=beam.end.subtract(beam.start).normalize();
+                for (Vec3 point:new Vec3[]{beam.start,beam.end})
+                    out.addVertex(pose,(float)point.x,(float)point.y,(float)point.z).setColor(beam.color)
+                        .setNormal(pose,(float)direction.x,(float)direction.y,(float)direction.z).setLineWidth(1);
+            }
+        });
+    }
+    public static void drawInner(State state,PoseStack stack,SubmitNodeCollector collector,CameraRenderState camera) {
+        Icon[] icons=state.preview||state.structure?(state.nether?NETHER:NORMAL):BASE;
+        stack.pushPose(); stack.translate(.5,.5,.5);
+        if (state.structurePreview) { stack.rotate(Axis.YP.rotationDegrees(state.previewRY)); stack.rotate(Axis.XP.rotationDegrees(-state.previewRX)); }
+        else if (state.preview) { stack.rotate(Axis.YP.rotationDegrees(-45)); stack.rotate(Axis.XP.rotationDegrees(-30)); } else stack.rotate(camera.orientation);
+        float scale=state.structurePreview?.33F*.625F:state.preview?.5F:.4375F; stack.scale(scale,scale,scale); double time=state.time,swell=2+.5*Math.sin(time/90);
+        for (int i=0;i<icons.length;i++) {
+            Icon entry=icons[i]; int color=ReikaColorAPI.getModifiedHue(0xff0000,265+(int)(15*Math.sin(time/30+i)));
+            color=ReikaColorAPI.getModifiedSat(color,.9F+.1F*(float)Math.sin(time/20+i/4D)); color=ReikaColorAPI.getModifiedSat(color,1-.15F*i);
+            if (state.flash>0) color=ReikaColorAPI.getModifiedSat(color,1-state.flash);
+            color=0xff000000|ReikaColorAPI.getColorWithBrightnessMultiplier(color,entry.brightness);
+            var sprite=Minecraft.getInstance().getAtlasManager().getAtlasOrThrow(AtlasIds.BLOCKS).getSprite(entry.sprite.getIcon());
+            stack.pushPose(); float size=(float)(swell*(state.preview?entry.previewSize:entry.worldSize)); stack.scale(size,size,size);
+            double angle=state.nether&&i==0?(System.currentTimeMillis()/12D)%360:!state.nether&&i==1?(-System.currentTimeMillis()/50D)%360:0;
+            stack.rotate(Axis.ZP.rotationDegrees((float)angle)); int tint=color;
+            collector.submitCustomGeometry(stack,ChromaRenderPipelines.additiveSprite(TextureAtlas.LOCATION_BLOCKS),(pose,out)-> {
+                out.addVertex(pose,-1,-1,0).setColor(tint).setUv(sprite.getU0(),sprite.getV0()); out.addVertex(pose,1,-1,0).setColor(tint).setUv(sprite.getU1(),sprite.getV0());
+                out.addVertex(pose,1,1,0).setColor(tint).setUv(sprite.getU1(),sprite.getV1()); out.addVertex(pose,-1,1,0).setColor(tint).setUv(sprite.getU0(),sprite.getV1());
+            }); stack.popPose();
+        } stack.popPose();
+    }
+    private static void beam(PoseStack.Pose pose,VertexConsumer out,TextureAtlasSprite sprite,Beam beam) {
+        int sections=Math.max(1,(int)Math.ceil(beam.start.distanceTo(beam.end)));
+        for (int section=0;section<sections;section++) {
+            Vec3 start=beam.start.lerp(beam.end,section/(double)sections),end=beam.start.lerp(beam.end,(section+1)/(double)sections);
+            for (Vec3 axis:new Vec3[]{new Vec3(1,0,0),new Vec3(0,1,0),new Vec3(0,0,1)}) {
+                Vec3 offset=axis.scale(beam.radius); vertex(out,pose,start.subtract(offset),sprite.getU0(),sprite.getV0(),beam.color); vertex(out,pose,start.add(offset),sprite.getU0(),sprite.getV1(),beam.color);
+                vertex(out,pose,end.add(offset),sprite.getU1(),sprite.getV1(),beam.color); vertex(out,pose,end.subtract(offset),sprite.getU1(),sprite.getV0(),beam.color);
+            }
+        }
+    }
+    private static void vertex(VertexConsumer out,PoseStack.Pose pose,Vec3 p,float u,float v,int color) { out.addVertex(pose,(float)p.x,(float)p.y,(float)p.z).setColor(color).setUv(u,v); }
+    private record Beam(Vec3 start,Vec3 end,float radius,int color) {}
+    public static final class State extends BlockEntityRenderState { public boolean preview,nether,structure,structurePreview; public float previewRX,previewRY; public double time; public float flash; private List<Beam> beams=List.of(); }
 }

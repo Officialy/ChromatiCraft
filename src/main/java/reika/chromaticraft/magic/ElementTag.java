@@ -11,24 +11,22 @@ package reika.chromaticraft.magic;
 
 import reika.chromaticraft.registry.CrystalElement;
 
-/** An immutable single-colour energy amount (one entry of an {@link ElementTagCompound}). */
-public final class ElementTag {
+/**
+ * An immutable single-colour energy amount (one entry of an {@link ElementTagCompound}).
+ */
+public record ElementTag(int value, CrystalElement element) {
 
-	public final int value;
-	public final CrystalElement element;
+    public ElementTag(CrystalElement e, int value) {
+        this(value, e);
+    }
 
-	public ElementTag(CrystalElement e, int value) {
-		element = e;
-		this.value = value;
-	}
+    @Override
+    public String toString() {
+        return value + "x" + element.getEnglishName();
+    }
 
-	@Override
-	public String toString() {
-		return value + "x" + element.getEnglishName();
-	}
-
-	public ElementTag copy() {
-		return new ElementTag(element, value);
-	}
+    public ElementTag copy() {
+        return new ElementTag(element, value);
+    }
 
 }

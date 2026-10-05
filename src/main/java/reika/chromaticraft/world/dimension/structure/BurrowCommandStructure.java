@@ -1,13 +1,12 @@
 package reika.chromaticraft.world.dimension.structure;
 
-import java.util.Optional;
-
 import com.mojang.serialization.MapCodec;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureType;
+
+import java.util.Optional;
 
 /**
  * Vanilla-command entry for V33a's NBT-backed Crystal Burrow.

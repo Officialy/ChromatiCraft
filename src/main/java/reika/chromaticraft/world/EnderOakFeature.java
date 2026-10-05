@@ -1,13 +1,5 @@
 package reika.chromaticraft.world;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.tags.BlockTags;
@@ -17,9 +9,10 @@ import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.feature.Feature;
-
 import reika.dragonapi.instantiable.math.LobulatedCurve;
 import reika.dragonapi.libraries.mathsci.ReikaPhysicsHelper;
+
+import java.util.*;
 
 /**
  * V33a {@code EnderOakGenerator}: the Ender Forest's own tree shape.

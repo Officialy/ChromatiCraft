@@ -1,15 +1,14 @@
 package reika.chromaticraft.magic.progression;
 
-import java.util.Locale;
-
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.auxiliary.recipemanagers.CastingTableRecipe;
 import reika.dragonapi.libraries.ReikaPlayerAPI;
 import reika.dragonapi.libraries.io.NBTCompat;
+
+import java.util.Locale;
 
 /**
  * V33a's player-owned {@code castingprog} record, separated from the table's own recipe history.

@@ -1,22 +1,21 @@
 package reika.chromaticraft.client.render;
 
-import java.util.UUID;
-
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.particle.SingleQuadParticle;
-import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.renderer.texture.TextureAtlas;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.data.AtlasIds;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.magic.ElementTagCompound;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.render.ChromaRenderPipelines;
+
+import java.util.UUID;
 
 public final class RitualTableVisuals {
 
@@ -70,8 +69,7 @@ public final class RitualTableVisuals {
         }
 
         Minecraft mc = Minecraft.getInstance();
-        if (canTick && mc.player != null && playerId != null
-                && mc.player.getUUID().equals(playerId)) {
+        if (canTick && mc.player != null && mc.player.getUUID().equals(playerId)) {
             if (savedCameraType == null) {
                 savedCameraType = mc.options.getCameraType();
                 savedHiddenHud = mc.gui.hud.isHidden();
@@ -123,7 +121,7 @@ public final class RitualTableVisuals {
             float gravity = -(float) (0.03125 + random.nextDouble() * 0.09375);
             int life = 40 + random.nextInt(61);
             mcParticle(new CompletionBlur(level, player.getX(), player.getY() - 0.82,
-                    player.getZ(), vx, vy, vz, color.getColor(), life, gravity));
+                    player.getZ(), vx, vy, vz, color.color(), life, gravity));
         }
     }
 

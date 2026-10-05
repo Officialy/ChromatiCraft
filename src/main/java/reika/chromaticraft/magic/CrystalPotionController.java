@@ -9,14 +9,6 @@
  ******************************************************************************/
 package reika.chromaticraft.magic;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.EnumMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Random;
-import java.util.Set;
-
 import net.minecraft.core.Holder;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
@@ -29,11 +21,12 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.api.CrystalElementAccessor.CrystalElementProxy;
 import reika.chromaticraft.api.CrystalPotionAPI;
 import reika.chromaticraft.registry.CrystalElement;
+
+import java.util.*;
 
 /**
  * Maps crystal colours to potion (26.2 {@link MobEffect}) effects and applies them. Port note: the
@@ -129,7 +122,7 @@ public class CrystalPotionController implements CrystalPotionAPI {
 			return !isBadEffect(pot);
 		if (!(e instanceof Player)) {
 			boolean flag = e.isInvertedHealAndHarm(); // undead
-			return this.shouldBeHostile(e, e.level()) ? isBadEffect(pot) == flag : true;
+			return !this.shouldBeHostile(e, e.level()) || isBadEffect(pot) == flag;
 		}
 		if (this.shouldBeHostile(e, e.level()))
 			return pot == MobEffects.NIGHT_VISION || isBadEffect(pot);

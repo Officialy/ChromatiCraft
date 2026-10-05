@@ -9,7 +9,6 @@ import net.minecraft.tags.BiomeTags;
 import net.minecraft.tags.BlockItemTags;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.TagKey;
-import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.WorldGenLevel;
@@ -19,13 +18,11 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.FlatLevelSource;
 import net.minecraft.world.level.levelgen.feature.Feature;
-
 import net.neoforged.neoforge.common.NeoForge;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.api.event.CrystalGenEvent;
-import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.registry.ChromaBlocks;
+import reika.chromaticraft.registry.CrystalElement;
 
 /**
  * Modern feature form of V33a's {@code CrystalGenerator}. One invocation owns the original sixty
