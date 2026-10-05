@@ -9,124 +9,167 @@
  ******************************************************************************/
 package reika.chromaticraft.render.tesr.dimension;
 
-import java.util.Collection;
+import java.util.EnumSet;
+import java.util.Set;
 
-import org.lwjgl.opengl.GL11;
+import org.jspecify.annotations.Nullable;
 
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.client.renderer.entity.RenderManager;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.MathHelper;
-import net.minecraftforge.client.MinecraftForgeClient;
-import net.minecraftforge.common.util.ForgeDirection;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
+
+import net.minecraft.client.model.geom.ModelLayerLocation;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
+import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
+import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
+import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.core.Direction;
+import net.minecraft.resources.Identifier;
+import net.minecraft.util.Mth;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 
 import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.base.ChromaRenderBase;
-import reika.chromaticraft.block.dimension.structure.water.blockrotatinglock.TileEntityRotatingLock;
 import reika.chromaticraft.models.ModelWaterLock;
 import reika.chromaticraft.registry.ChromaBlocks;
-import reika.dragonapi.interfaces.tileentity.RenderFetcher;
-import reika.dragonapi.libraries.ReikaDirectionHelper;
-import reika.dragonapi.libraries.io.ReikaTextureHelper;
-import reika.dragonapi.libraries.java.reikaglhelper.BlendMode;
+import reika.chromaticraft.render.ChromaRenderPipelines;
+import reika.chromaticraft.tileentity.TileEntityRotatingLock;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
-import reika.dragonapi.libraries.rendering.ReikaRenderHelper;
-import reika.dragonapi.libraries.java.ReikaJavaLibrary;
 
+/**
+ * V33a {@code RenderWaterLock}. The solid pass draws the lock's four wall segments and, for every arm that is
+ * currently closed, the channel plug, all turned by the in-progress rotation. Checkpoint and endpoint locks
+ * also raise an animated, yaw-facing light cone (ADDITIVEDARK): yellow for the exit, green over a checkpoint
+ * that holds fluid, red over one that does not.
+ */
+public final class RenderWaterLock implements BlockEntityRenderer<TileEntityRotatingLock, RenderWaterLock.State> {
 
-public class RenderWaterLock extends ChromaRenderBase {
+	public static final ModelLayerLocation LAYER = new ModelLayerLocation(
+			Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "water_lock"), "main");
+	private static final Identifier TEXTURE = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
+			"textures/entity/waterlock.png");
+	private static final Identifier LIGHTCONE = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
+			"textures/effect/lightcone-foggy.png");
 
-	private final ModelWaterLock model = new ModelWaterLock();
+	private final ModelWaterLock model;
 
-	@Override
-	public String getImageFileName(RenderFetcher te) {
-		return null;
+	public RenderWaterLock(BlockEntityRendererProvider.Context context) {
+		model = new ModelWaterLock(context.bakeLayer(LAYER));
 	}
 
 	@Override
-	public void renderTileEntityAt(TileEntity tile, double par2, double par4, double par6, float par8) {
-		TileEntityRotatingLock te = (TileEntityRotatingLock)tile;
-		GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
-		GL11.glPushMatrix();
-		GL11.glTranslated(par2, par4+0.95, par6);
+	public State createRenderState() {
+		return new State();
+	}
 
-		if (MinecraftForgeClient.getRenderPass() == 0) {
-			this.bindTextureByName(this.getTextureFolder()+"waterlock.png");
-			this.preRenderModel();
-			//double s = 0.85; //clipping avoidance
-			//GL11.glScaled(s, s, s);
-			Collection<ForgeDirection> li = ReikaJavaLibrary.makeSetFromArray(ForgeDirection.VALID_DIRECTIONS);
-			li.remove(ForgeDirection.UP);
-			li.remove(ForgeDirection.DOWN);
-			li.removeAll(te.getOpenEndsForRender());
-			for (ForgeDirection dir : li) {
-				GL11.glPushMatrix();
-				GL11.glRotated(ReikaDirectionHelper.getHeading(dir)+te.getRotationProgress(), 0, 1, 0);
-				model.renderChannel(te);
-				GL11.glPopMatrix();
-			}
-			for (int i = 2; i < 6; i++) {
-				GL11.glPushMatrix();
-				GL11.glRotated(ReikaDirectionHelper.getHeading(ForgeDirection.VALID_DIRECTIONS[i])+te.getRotationProgress(), 0, 1, 0);
-				model.renderSegment(te);
-				GL11.glPopMatrix();
-			}
-			this.postRenderModel(tile);
+	@Override
+	public void extractRenderState(TileEntityRotatingLock te, State state, float partialTick, Vec3 cameraPosition,
+			ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress) {
+		BlockEntityRenderer.super.extractRenderState(te, state, partialTick, cameraPosition, breakProgress);
+		state.closed.clear();
+		state.closed.addAll(Direction.Plane.HORIZONTAL.stream().toList());
+		te.openEnds().forEach(state.closed::remove);
+		state.rotation = te.rotationProgress();
+		state.checkpoint = te.isCheckpoint();
+		state.endpoint = te.isEndpoint();
+		state.fluid = te.getLevel() != null
+				&& te.getLevel().getBlockState(te.getBlockPos().above()).is(ChromaBlocks.EVER_FLUID.get());
+		state.tick = (te.getLevel() != null ? te.getLevel().getGameTime() : 0) + te.hashCode();
+	}
+
+	/** DragonAPI {@code ReikaDirectionHelper.getHeading}. */
+	private static int heading(Direction dir) {
+		return switch (dir) {
+			case EAST -> 90;
+			case SOUTH -> 180;
+			case WEST -> 270;
+			default -> 0;
+		};
+	}
+
+	@Override
+	public void submit(State state, PoseStack poseStack, SubmitNodeCollector collector, CameraRenderState camera) {
+		poseStack.pushPose();
+		poseStack.translate(0, 0.95, 0);
+
+		// ChromaRenderBase.preRenderModel.
+		poseStack.pushPose();
+		poseStack.scale(1, -1, -1);
+		poseStack.translate(0.5, -1.5, -0.5);
+		int light = state.lightCoords;
+		for (Direction dir : state.closed) {
+			poseStack.pushPose();
+			poseStack.rotate(Axis.YP.rotationDegrees(heading(dir) + state.rotation));
+			PoseStack pose = copy(poseStack);
+			collector.submitCustomGeometry(poseStack, RenderTypes.entityCutout(TEXTURE),
+					(unused, out) -> model.renderChannel(pose, out, light));
+			poseStack.popPose();
 		}
+		for (Direction dir : Direction.Plane.HORIZONTAL) {
+			poseStack.pushPose();
+			poseStack.rotate(Axis.YP.rotationDegrees(heading(dir) + state.rotation));
+			PoseStack pose = copy(poseStack);
+			collector.submitCustomGeometry(poseStack, RenderTypes.entityCutout(TEXTURE),
+					(unused, out) -> model.renderSegment(pose, out, light));
+			poseStack.popPose();
+		}
+		poseStack.popPose();
 
-		if ((te.isCheckpoint() || te.isEndpoint()) && MinecraftForgeClient.getRenderPass() == 1) {
-			GL11.glDisable(GL11.GL_LIGHTING);
-			GL11.glEnable(GL11.GL_BLEND);
-			GL11.glDisable(GL11.GL_ALPHA_TEST);
-			GL11.glDepthMask(false);
-			ReikaRenderHelper.disableEntityLighting();
-			BlendMode.ADDITIVEDARK.apply();
-			GL11.glDisable(GL11.GL_CULL_FACE);
-
-			GL11.glTranslated(0.5, 0, 0.5);
-			double s = 2;
-			GL11.glScaled(s, s, s);
-			ReikaTextureHelper.bindTexture(ChromatiCraft.class, "Textures/lightcone-foggy.png");
-			long tick = Minecraft.getMinecraft().theWorld.getTotalWorldTime()+te.hashCode();
-			int idx = (int)(tick%48);
-			double u = (idx%12)/12D;
-			double v = (idx/12)/4D;
-			double du = u+1/12D;
-			double dv = v+1/4D;
-			Tessellator v5 = Tessellator.instance;
-
-			double h = 2.5;
-			double f = 0.5+0.5*Math.sin(tick/8D)+0.125*Math.sin((tick+300)/3D)+0.25*Math.cos((tick+20)/7D);
+		if (state.checkpoint || state.endpoint) {
+			poseStack.translate(0.5, 0, 0.5);
+			poseStack.scale(2, 2, 2);
+			long tick = state.tick;
+			int idx = (int)Math.floorMod(tick, 48L);
+			float u = (idx % 12) / 12F;
+			float v = (idx / 12) / 4F;
+			float du = u + 1 / 12F;
+			float dv = v + 1 / 4F;
+			float h = 2.5F;
+			double f = 0.5 + 0.5 * Math.sin(tick / 8D) + 0.125 * Math.sin((tick + 300) / 3D) + 0.25 * Math.cos((tick + 20) / 7D);
 			int c1;
 			int c2;
-			if (te.isEndpoint()) {
+			if (state.endpoint) {
 				c1 = 0xffff00;
 				c2 = 0xaaaa44;
 			}
 			else {
-				boolean fluid = te.worldObj.getBlock(te.xCoord, te.yCoord+1, te.zCoord) == ChromaBlocks.EVERFLUID.getBlockInstance();
-				c1 = fluid ? 0x00ff00 : 0xff0000;//0x22aaff;
-				c2 = fluid ? 0x44aa44 : 0xaa4444;//0x5588ff;
+				c1 = state.fluid ? 0x00ff00 : 0xff0000;
+				c2 = state.fluid ? 0x44aa44 : 0xaa4444;
 			}
-			int c = ReikaColorAPI.mixColors(c1, c2, (float)MathHelper.clamp_double(f, 0, 1));
-
-			//for (double a = 0; a < 360; a += 120) {
-			GL11.glPushMatrix();
-			//GL11.glRotated(a, 0, 1, 0);
-			GL11.glRotated(-RenderManager.instance.playerViewY, 0, 1, 0);
-			v5.startDrawingQuads();
-			v5.setColorOpaque_I(c);
-			v5.addVertexWithUV(-0.5, h, 0, u, v);
-			v5.addVertexWithUV(0.5, h, 0, du, v);
-			v5.addVertexWithUV(0.5, 0, 0, du, dv);
-			v5.addVertexWithUV(-0.5, 0, 0, u, dv);
-			v5.draw();
-			GL11.glPopMatrix();
+			int c = 0xff000000 | ReikaColorAPI.mixColors(c1, c2, (float)Mth.clamp(f, 0, 1));
+			poseStack.rotate(Axis.YP.rotationDegrees(-camera.yRot));
+			PoseStack.Pose pose = poseStack.last().copy();
+			collector.submitCustomGeometry(poseStack, ChromaRenderPipelines.legacyAdditiveSprite(LIGHTCONE),
+					(unused, out) -> {
+						out.addVertex(pose, -0.5F, h, 0).setUv(u, v).setColor(c);
+						out.addVertex(pose, 0.5F, h, 0).setUv(du, v).setColor(c);
+						out.addVertex(pose, 0.5F, 0, 0).setUv(du, dv).setColor(c);
+						out.addVertex(pose, -0.5F, 0, 0).setUv(u, dv).setColor(c);
+					});
 		}
-
-		GL11.glPopMatrix();
-		GL11.glPopAttrib();
+		poseStack.popPose();
 	}
 
+	private static PoseStack copy(PoseStack source) {
+		PoseStack copy = new PoseStack();
+		copy.last().set(source.last());
+		return copy;
+	}
+
+	/** V33a {@code getRenderBoundingBox}: the block expanded by the lock size sideways and 3 up/down. */
+	@Override
+	public AABB getRenderBoundingBox(TileEntityRotatingLock te) {
+		return new AABB(te.getBlockPos()).inflate(3, 3, 3).expandTowards(0, 3, 0);
+	}
+
+	public static final class State extends BlockEntityRenderState {
+		private final Set<Direction> closed = EnumSet.noneOf(Direction.class);
+		private int rotation;
+		private boolean checkpoint;
+		private boolean endpoint;
+		private boolean fluid;
+		private long tick;
+	}
 }

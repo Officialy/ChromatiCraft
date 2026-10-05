@@ -605,6 +605,16 @@ public final class ChromaBlocks {
 			() -> new BlockLaserEffector26(blockProperties().mapColor(MapColor.COLOR_PURPLE)
 					.strength(-1F, 600000F).sound(SoundType.STONE).noOcclusion()
 					.lightLevel(state -> state.getValue(BlockLaserEffector26.LIT) ? 15 : 2)));
+	/** V33a WATERLOCK: Channeled Flow's rotating lock (pad=false) and its invisible channel pads (pad=true). */
+	public static final DeferredBlock<reika.chromaticraft.block.dimension.structure.water.BlockRotatingLock26> ROTATING_LOCK =
+			registerBlockOnly("rotating_lock", () -> new reika.chromaticraft.block.dimension.structure.water.BlockRotatingLock26(
+					blockProperties().mapColor(MapColor.STONE).strength(-1F, 6000F).sound(SoundType.STONE).noOcclusion()));
+	/** V33a EVERFLUID: Channeled Flow's source-bound fluid cells (light 10, no collision, no drops). */
+	public static final DeferredBlock<reika.chromaticraft.block.dimension.structure.water.BlockEverFluid26> EVER_FLUID =
+			registerBlockOnly("ever_fluid", () -> new reika.chromaticraft.block.dimension.structure.water.BlockEverFluid26(
+					blockProperties().mapColor(MapColor.WATER).strength(-1F, 60000F).noCollision().replaceable()
+							.noOcclusion().noLootTable().lightLevel(state -> 10)
+							.pushReaction(net.minecraft.world.level.material.PushReaction.POPPED)));
 	public static final DeferredBlock<BlockLaserController> LASER_CONTROLLER = registerBlockOnly("laser_controller",
 			() -> new BlockLaserController(blockProperties().mapColor(MapColor.STONE)
 					.strength(-1F, 600000F).sound(SoundType.STONE).lightLevel(state -> 4)));

@@ -236,6 +236,12 @@ public final class ChromaBlockEntities {
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityLaserEffector>> LASER_EFFECTOR =
 			BLOCK_ENTITIES.register("laser_effector", () -> new BlockEntityType<>(
 					TileEntityLaserEffector::new, ChromaBlocks.LASER_EFFECTOR.get()));
+	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<reika.chromaticraft.tileentity.TileEntityRotatingLock>> ROTATING_LOCK =
+			BLOCK_ENTITIES.register("rotating_lock", () -> new BlockEntityType<>(
+					reika.chromaticraft.tileentity.TileEntityRotatingLock::new, ChromaBlocks.ROTATING_LOCK.get()));
+	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<reika.chromaticraft.tileentity.TileEntityEverFluid>> EVER_FLUID =
+			BLOCK_ENTITIES.register("ever_fluid", () -> new BlockEntityType<>(
+					reika.chromaticraft.tileentity.TileEntityEverFluid::new, ChromaBlocks.EVER_FLUID.get()));
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityLaserController>> LASER_CONTROLLER =
 			BLOCK_ENTITIES.register("laser_controller", () -> new BlockEntityType<>(
 					TileEntityLaserController::new, ChromaBlocks.LASER_CONTROLLER.get()));

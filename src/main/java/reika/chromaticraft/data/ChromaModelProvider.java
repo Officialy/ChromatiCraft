@@ -1787,6 +1787,13 @@ public class ChromaModelProvider extends ModelProvider {
 				TextureMapping.cube(new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
 						"block/dimstruct/dimdata_side"))), modelOut);
 		blockStateOut.accept(MultiVariantGenerator.dispatch(controller, variant(controllerModel)));
+
+		// V33a WATERLOCK meta 0 draws the animated dimstruct/waterlock cube; the pad is RenderShape.INVISIBLE.
+		Block lock = ChromaBlocks.ROTATING_LOCK.get();
+		Identifier lockModel = ModelTemplates.CUBE_ALL.create(lock,
+				TextureMapping.cube(new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
+						"block/dimstruct/waterlock"))), modelOut);
+		blockStateOut.accept(MultiVariantGenerator.dispatch(lock, variant(lockModel)));
 	}
 
 	/** NeoForge's canonical bucket silhouette with the registered fluid sprite and tint. */
@@ -1947,6 +1954,8 @@ public class ChromaModelProvider extends ModelProvider {
 				.filter(h -> h.value() != ChromaBlocks.CLIFF_DIRT.get())
 				// Chromatic Beams effectors are non-cuboid, per-heading geometry (LaserEffectorModel).
 				.filter(h -> h.value() != ChromaBlocks.LASER_EFFECTOR.get())
+				// Channeled Flow's fluid is neighbour-shaped geometry (EverFluidModel).
+				.filter(h -> h.value() != ChromaBlocks.EVER_FLUID.get())
 				// Lamps and potion crystals now ship hand-authored blockstates pointing at the
 				// shared dynamic crystal model, exactly as the cave crystals do.
 				.filter(h -> !(h.value() instanceof reika.chromaticraft.block.crystal.BlockCrystalLamp))

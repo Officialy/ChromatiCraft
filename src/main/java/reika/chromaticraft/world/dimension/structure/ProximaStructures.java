@@ -68,6 +68,8 @@ public final class ProximaStructures {
 			GOL_TYPE = TYPES.register("gol", () -> () -> ProximaGOLStructure.CODEC);
 	public static final DeferredHolder<StructureType<?>, StructureType<ProximaLaserStructure>>
 			LASER_TYPE = TYPES.register("laser", () -> () -> ProximaLaserStructure.CODEC);
+	public static final DeferredHolder<StructureType<?>, StructureType<ProximaWaterStructure>>
+			WATER_TYPE = TYPES.register("water", () -> () -> ProximaWaterStructure.CODEC);
 
 	public static final DeferredHolder<StructureType<?>, StructureType<PortalStructureCommand>>
 			PORTAL_TYPE = TYPES.register("portal", () -> () -> PortalStructureCommand.CODEC);
@@ -123,6 +125,9 @@ public final class ProximaStructures {
 	public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends net.minecraft.world.level.levelgen.structure.placement.StructurePlacement>,
 			com.mojang.serialization.MapCodec<LaserPlacement>>
 			LASER_PLACEMENT = PLACEMENTS.register("laser", () -> LaserPlacement.CODEC);
+	public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends net.minecraft.world.level.levelgen.structure.placement.StructurePlacement>,
+			com.mojang.serialization.MapCodec<WaterPlacement>>
+			WATER_PLACEMENT = PLACEMENTS.register("water", () -> WaterPlacement.CODEC);
 
 	public static final ResourceKey<Structure> MONUMENT = ResourceKey.create(Registries.STRUCTURE,
 			Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "monument"));
@@ -156,6 +161,11 @@ public final class ProximaStructures {
 	public static final ResourceKey<net.minecraft.world.level.levelgen.structure.StructureSet>
 			LASER_SET = ResourceKey.create(Registries.STRUCTURE_SET,
 					Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "laser"));
+	public static final ResourceKey<Structure> WATER = ResourceKey.create(Registries.STRUCTURE,
+			Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "water"));
+	public static final ResourceKey<net.minecraft.world.level.levelgen.structure.StructureSet>
+			WATER_SET = ResourceKey.create(Registries.STRUCTURE_SET,
+					Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "water"));
 
 	private ProximaStructures() {}
 }

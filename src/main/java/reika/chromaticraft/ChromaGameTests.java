@@ -450,6 +450,10 @@ public final class ChromaGameTests {
 		register(event, env, "laser_structure_chunk", ChromaGameTests::laserStructureChunk);
 		register(event, env, "laser_pulse_travel", 120, ChromaGameTests::laserPulseTravel);
 		register(event, env, "laser_effector_geometry", ChromaGameTests::laserEffectorGeometry);
+		register(event, env, "water_puzzle_layout", ChromaGameTests::waterPuzzleLayout);
+		register(event, env, "water_lock_rotation", 80, ChromaGameTests::waterLockRotation);
+		register(event, env, "water_flow_floor", 200, ChromaGameTests::waterFlowFloor);
+		register(event, env, "water_structure_chunk", ChromaGameTests::waterStructureChunk);
 		register(event, env, "proxima_structure_completion_loop", ChromaGameTests::proximaStructureCompletionLoop);
 		register(event, env, "aurorae_feature", ChromaGameTests::auroraeFeature);
 		register(event, env, "aurora_curtain_drift", ChromaGameTests::auroraCurtainDrift);
@@ -1036,7 +1040,7 @@ public final class ChromaGameTests {
 			java.util.Set<DimensionStructureType> ported = java.util.EnumSet.of(
 					DimensionStructureType.LIGHTPANEL, DimensionStructureType.TDMAZE,
 					DimensionStructureType.MUSIC, DimensionStructureType.GOL,
-					DimensionStructureType.LASER);
+					DimensionStructureType.LASER, DimensionStructureType.WATER);
 			List<DimensionStructureType> usable = DimensionStructureType.usableStructures();
 			helper.assertTrue(usable.size() == ported.size() && ported.containsAll(usable),
 					"exactly the ported puzzle generators must be usable, found " + usable);
@@ -1065,7 +1069,8 @@ public final class ChromaGameTests {
 						"a ported type's generator must have laid out " + placement);
 			}
 			helper.assertTrue(rounds.size() == ported.size()
-							&& rounds.values().stream().allMatch(r -> r.size() >= 3 && r.size() <= 4)
+							&& rounds.values().stream().allMatch(r -> r.size() >= 16 / ported.size()
+									&& r.size() <= (16 + ported.size() - 1) / ported.size())
 							&& rounds.values().stream().mapToInt(java.util.Set::size).sum() == 16,
 					"each ported type must appear once per completed round, found " + rounds);
 
@@ -4087,6 +4092,191 @@ public final class ChromaGameTests {
 							.ReikaColorAPI.mixColors(0xFF0000, 0xFFFFFF, 0.675F) & 0xFFFFFF),
 					"the emitter lens lost V33a's 67.5% beam/white mix");
 		}
+		helper.succeed();
+	}
+
+	/**
+	 * V33a WaterPath/WaterFloor: each floor's path is a connected walk from its start to its exit, the next
+	 * floor starts where it ended, every path link is an open arm on both locks once the lock is turned back,
+	 * checkpoints lie on the path (never at its ends), and one seed always gives one puzzle.
+	 */
+	private static void waterPuzzleLayout(GameTestHelper helper) {
+		helper.assertTrue(DimensionStructureType.WATER.isComplete(),
+				"Channeled Flow's generator did not pass the V33a core gate");
+		for (int difficulty = 1; difficulty <= 3; difficulty++) {
+			for (long seed = 0; seed < 24; seed++) {
+				var layout = reika.chromaticraft.world.dimension.structure.WaterPuzzleLayout.create(difficulty, seed);
+				var again = reika.chromaticraft.world.dimension.structure.WaterPuzzleLayout.create(difficulty, seed);
+				helper.assertTrue(layout.floors().size()
+						== reika.chromaticraft.world.dimension.structure.WaterPuzzleLayout.floorCount(difficulty),
+						"wrong floor count for difficulty " + difficulty);
+				helper.assertTrue(layout.coreCorner() >= 0 && layout.coreCorner() < 4, "the core has no loot corner");
+				var previousEnd = (reika.chromaticraft.world.dimension.structure.WaterPuzzleLayout.Cell)null;
+				for (var floor : layout.floors()) {
+					var path = floor.path();
+					var cells = path.solution();
+					helper.assertTrue(cells.getFirst().equals(path.start()) && cells.getLast().equals(path.end()),
+							"floor " + floor.index() + " path does not run start to exit");
+					helper.assertTrue(previousEnd == null || previousEnd.equals(path.start()),
+							"floor " + floor.index() + " does not start under the previous exit");
+					previousEnd = path.end();
+					helper.assertTrue(new java.util.HashSet<>(cells).size() == cells.size(),
+							"floor " + floor.index() + " path revisits a lock");
+					for (int i = 0; i + 1 < cells.size(); i++) {
+						var a = cells.get(i);
+						var b = cells.get(i + 1);
+						helper.assertTrue(Math.abs(a.x() - b.x()) + Math.abs(a.z() - b.z()) == 1
+								&& Math.abs(a.x()) <= floor.radius() && Math.abs(a.z()) <= floor.radius(),
+								"floor " + floor.index() + " path jumps or leaves its grid");
+						var dir = net.minecraft.core.Direction.getNearest(b.x() - a.x(), 0, b.z() - a.z(), null);
+						helper.assertTrue(floor.lock(a.x(), a.z()).openEndsAtZero().contains(dir)
+								&& floor.lock(b.x(), b.z()).openEndsAtZero().contains(dir.getOpposite()),
+								"floor " + floor.index() + " path link is not an arm on both locks");
+					}
+					for (var c : floor.checkpoints())
+						helper.assertTrue(cells.contains(c) && !c.equals(path.start()) && !c.equals(path.end()),
+								"floor " + floor.index() + " checkpoint is off the path or at an end");
+					var twin = again.floors().get(floor.index());
+					helper.assertTrue(twin.path().solution().equals(cells) && twin.checkpoints().equals(floor.checkpoints()),
+							"the same seed produced a different floor");
+					for (var cell : cells) {
+						var lock = floor.lock(cell.x(), cell.z());
+						for (var d : net.minecraft.core.Direction.Plane.HORIZONTAL) {
+							var solved = reika.chromaticraft.world.dimension.structure.WaterPuzzleLayout.Lock.isOpen(
+									lock.openEndsAtZero(), net.minecraft.core.Direction.EAST, d);
+							helper.assertTrue(solved == lock.openEndsAtZero().contains(d),
+									"a lock turned back to EAST does not show its path arms");
+						}
+					}
+				}
+			}
+		}
+		helper.succeed();
+	}
+
+	/** V33a startRotating/finishRotating: 30 ticks later the lock faces right and its channel arm turned with it. */
+	private static void waterLockRotation(GameTestHelper helper) {
+		var level = helper.getLevel();
+		BlockPos lockPos = helper.absolutePos(new BlockPos(4, 2, 4));
+		BlockPos channel = lockPos.above();
+		var pad = ChromaBlocks.ROTATING_LOCK.get().defaultBlockState()
+				.setValue(reika.chromaticraft.block.dimension.structure.water.BlockRotatingLock26.PAD, true);
+		for (int i = -2; i <= 2; i++)
+			for (int k = -2; k <= 2; k++)
+				if (i != 0 || k != 0)
+					level.setBlock(channel.offset(i, 0, k), pad, 3);
+		level.setBlock(channel.east(), Blocks.AIR.defaultBlockState(), 3);
+		level.setBlock(channel.east(2), Blocks.AIR.defaultBlockState(), 3);
+		level.setBlock(lockPos, ChromaBlocks.ROTATING_LOCK.get().defaultBlockState(), 3);
+		var lock = (reika.chromaticraft.tileentity.TileEntityRotatingLock)level.getBlockEntity(lockPos);
+		lock.configure(reika.chromaticraft.world.dimension.structure.WaterPuzzleLayout.Lock.of(0, 0,
+				java.util.EnumSet.of(net.minecraft.core.Direction.EAST), 0), 0, false, false, lockPos.below(), 4, 0);
+		helper.assertTrue(lock.isOpen(net.minecraft.core.Direction.EAST) && !lock.isOpen(net.minecraft.core.Direction.SOUTH),
+				"an unturned lock must be open only along its path arm");
+		lock.startRotating(false);
+		helper.assertTrue(level.getBlockState(channel.east()).is(ChromaBlocks.ROTATING_LOCK.get()),
+				"a turning lock must plug its open arm with pads");
+		helper.runAfterDelay(35, () -> {
+			helper.assertTrue(lock.rotationProgress() == 0 && lock.direction() == net.minecraft.core.Direction.SOUTH,
+					"a clockwise turn must finish facing SOUTH after 30 ticks");
+			helper.assertTrue(level.getBlockState(channel.south()).isAir() && level.getBlockState(channel.south(2)).isAir()
+					&& level.getBlockState(channel.east()).is(ChromaBlocks.ROTATING_LOCK.get()),
+					"the captured channel arm did not turn from EAST to SOUTH");
+			helper.assertTrue(lock.isOpen(net.minecraft.core.Direction.SOUTH) && !lock.isOpen(net.minecraft.core.Direction.EAST),
+					"the lock's open arms did not follow its heading");
+			helper.succeed();
+		});
+	}
+
+	/**
+	 * The fluid loop: a source above a checkpoint lock's channel cell fills it, the lock sees fluid, the floor
+	 * counts as solved and its corner trapdoor opens; removing the source drains the cell, the lock loses its
+	 * fluid and the trapdoor closes again.
+	 */
+	private static void waterFlowFloor(GameTestHelper helper) {
+		var level = helper.getLevel();
+		BlockPos origin = helper.absolutePos(new BlockPos(2, 1, 2));
+		BlockPos lockPos = origin.above();
+		BlockPos channel = lockPos.above();
+		var stone = ChromaBlocks.shielding(ChromaShieldTypes.STONE).get().defaultBlockState()
+				.setValue(reika.chromaticraft.block.worldgen26.BlockStructureShield.REINFORCED, true);
+		var pad = ChromaBlocks.ROTATING_LOCK.get().defaultBlockState()
+				.setValue(reika.chromaticraft.block.dimension.structure.water.BlockRotatingLock26.PAD, true);
+		level.setBlock(origin, stone, 3);
+		for (var d : net.minecraft.core.Direction.Plane.HORIZONTAL)
+			level.setBlock(channel.relative(d), pad, 3);
+		BlockPos door = origin.offset(3, 2, 3);
+		level.setBlock(door, ChromaBlocks.CHROMA_DOOR.get().defaultBlockState(), 3);
+		level.setBlock(lockPos, ChromaBlocks.ROTATING_LOCK.get().defaultBlockState(), 3);
+		var lock = (reika.chromaticraft.tileentity.TileEntityRotatingLock)level.getBlockEntity(lockPos);
+		lock.configure(reika.chromaticraft.world.dimension.structure.WaterPuzzleLayout.Lock.of(0, 0,
+				java.util.EnumSet.noneOf(net.minecraft.core.Direction.class), 0), 0, true, false, origin, 4, 0);
+		BlockPos source = channel.above();
+		level.setBlock(source.east(), stone, 3);
+		level.setBlock(source.west(), stone, 3);
+		level.setBlock(source.north(), stone, 3);
+		level.setBlock(source.south(), stone, 3);
+		reika.chromaticraft.block.dimension.structure.water.BlockEverFluid26.placeSource(level, source);
+		boolean[] drained = {false};
+		helper.onEachTick(() -> {
+			boolean open = level.getBlockState(door).getValue(reika.chromaticraft.block.BlockChromaDoor.OPEN);
+			if (!drained[0] && lock.hasFluid() && open) {
+				drained[0] = true;
+				level.setBlock(source, Blocks.AIR.defaultBlockState(), 3);
+			}
+			else if (drained[0] && !lock.hasFluid() && !open
+					&& !level.getBlockState(channel).is(ChromaBlocks.EVER_FLUID.get())) {
+				helper.succeed();
+			}
+		});
+		helper.runAfterDelay(190, () -> helper.fail(drained[0]
+				? "removing the source did not drain the channel, clear the lock and close the trapdoor"
+				: "the source did not fill the checkpoint's channel and open the trapdoor (fluid="
+						+ level.getBlockState(channel) + ")"));
+	}
+
+	/** The native piece installs a configured lock grid, the structure terminal and the source column. */
+	private static void waterStructureChunk(GameTestHelper helper) {
+		var level = helper.getLevel();
+		BlockPos testOrigin = helper.absolutePos(BlockPos.ZERO);
+		BlockPos placement = testOrigin.offset(8, 0, 8);
+		var plan = new reika.chromaticraft.world.dimension.structure.WaterStructureGenerator();
+		plan.setType(DimensionStructureType.WATER, 0);
+		plan.startCalculate(CrystalElement.BLUE, placement.getX(), placement.getZ(), new java.util.Random(0x3A7E));
+		var layout = plan.layout();
+		helper.assertTrue(plan.hasCore(), "the water planner did not place its core");
+		int topY = layout.topY();
+		var floor = layout.floors().getFirst();
+		BlockPos floorOrigin = new BlockPos(placement.getX(), topY, placement.getZ());
+		var box = new net.minecraft.world.level.levelgen.structure.BoundingBox(testOrigin.getX(), topY - 3,
+				testOrigin.getZ(), testOrigin.getX() + 15, topY + reika.chromaticraft.world.dimension.structure.WaterPuzzleLayout.FLOOR_HEIGHT + 5,
+				testOrigin.getZ() + 15);
+		var piece = new reika.chromaticraft.world.dimension.structure.WaterStructurePiece(placement, plan,
+				topY + 40, CrystalElement.BLUE, 0);
+		piece.postProcess(level, level.structureManager(), level.getChunkSource().getGenerator(),
+				RandomSource.create(7), box, net.minecraft.world.level.ChunkPos.containing(placement), placement);
+		BlockPos centreLock = reika.chromaticraft.tileentity.TileEntityRotatingLock.lockPosition(floorOrigin, 0, 0);
+		var expected = floor.lock(0, 0);
+		helper.assertTrue(level.getBlockEntity(centreLock) instanceof reika.chromaticraft.tileentity.TileEntityRotatingLock tile
+				&& tile.direction() == expected.facing() && tile.floorIndex() == 0
+				&& tile.isCheckpoint() == floor.checkpoints().contains(expected.location()),
+				"the native water piece did not bind the floor's centre lock");
+		for (var d : net.minecraft.core.Direction.Plane.HORIZONTAL) {
+			BlockPos arm = centreLock.above().relative(d);
+			boolean air = level.getBlockState(arm).isAir();
+			helper.assertTrue(air == expected.isOpen(d),
+					"the centre lock's " + d + " channel arm does not match its open ends");
+		}
+		helper.assertTrue(level.getBlockEntity(floorOrigin.above(
+				reika.chromaticraft.world.dimension.structure.WaterPuzzleLayout.FLOOR_HEIGHT))
+				instanceof reika.chromaticraft.tileentity.TileEntityStructurePassword,
+				"the water structure lost its password terminal above the top floor");
+		var start = floor.path().start();
+		BlockPos source = floorOrigin.offset(start.x() * reika.chromaticraft.world.dimension.structure.WaterPuzzleLayout.LOCK_SPACING,
+				reika.chromaticraft.world.dimension.structure.WaterPuzzleLayout.FLOOR_HEIGHT + 4,
+				start.z() * reika.chromaticraft.world.dimension.structure.WaterPuzzleLayout.LOCK_SPACING);
+		helper.assertTrue(!box.isInside(source) || level.getBlockState(source).is(ChromaBlocks.EVER_FLUID.get()),
+				"the water structure lost its fluid source over the first lock");
 		helper.succeed();
 	}
 

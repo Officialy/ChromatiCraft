@@ -1,0 +1,11 @@
+{
+  "placement": {
+    "type": "chromaticraft:water"
+  },
+  "structures": [
+    {
+      "structure": "chromaticraft:water",
+      "weight": 1
+    }
+  ]
+}

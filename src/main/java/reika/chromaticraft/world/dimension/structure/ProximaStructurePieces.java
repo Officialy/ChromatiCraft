@@ -55,6 +55,9 @@ public final class ProximaStructurePieces {
 	public static final DeferredHolder<StructurePieceType, StructurePieceType> LASER =
 			PIECES.register("laser",
 					() -> (StructurePieceType)(context, tag) -> new LaserStructurePiece(tag));
+	public static final DeferredHolder<StructurePieceType, StructurePieceType> WATER =
+			PIECES.register("water",
+					() -> (StructurePieceType)(context, tag) -> new WaterStructurePiece(tag));
 
 	public static final DeferredHolder<StructurePieceType, StructurePieceType> PORTAL =
 			PIECES.register("portal",

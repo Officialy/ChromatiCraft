@@ -81,6 +81,8 @@
     "chromaticraft:gol_tile",
     "chromaticraft:gol_controller",
     "chromaticraft:laser_effector",
+    "chromaticraft:rotating_lock",
+    "chromaticraft:ever_fluid",
     "chromaticraft:laser_controller",
     "chromaticraft:biome_replay",
     "chromaticraft:heat_lamp",

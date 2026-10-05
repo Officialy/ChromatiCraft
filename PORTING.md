@@ -10454,3 +10454,57 @@ open items rather than puzzle work.
 
 The six real remaining puzzles, each of which reaches `placeCore`: WATER (Channeled Flow), PISTONTAPE
 (Filter Cycle), RAYBLEND (Crystal Interference), SHIFTMAZE (Shifting Maze), NONEUCLID (Complex Spaces), LOCKS.
+
+## 2026-10-05 — Channeled Flow (WATER)
+
+Channeled Flow is admitted to the Proxima assignment pool: `WaterStructureGenerator` passes the V33a core gate.
+
+**Layout (`WaterPuzzleLayout`)** ports `WaterPuzzleGenerator.calculate`, `WaterPath` and `WaterFloor`'s lock and checkpoint construction:
+- 3/4/6 floors spaced 11 apart, floor *i* a lock grid of radius 2+i;
+- the path is the shortest walk, widened sideways until it cannot grow;
+- every lock the path crosses gets its two arms, then random clockwise quarter-turns;
+- checkpoints use V33a's `c > 2 && nextInt(max(2, 6-c))` rule;
+- loot corners: the first corner that rolls gets the core.
+
+V33a drew the start/end points and the channel moss from DragonAPI's unseeded statics. Everything here
+comes from the generator's seed, because the chunk-clipped piece rebuilds the layout in every chunk.
+
+**`WaterStructurePiece`** replays V33a's whole ordered write sequence in each chunk and keeps only the writes
+inside that chunk:
+- each floor's ring, cobble, cloak and channel layers, with moss walls 40% of the time (a per-position seed hash);
+- the four 3x3 corner trapdoors;
+- the lower floors' stairwells cutting into the floor above, and their sixteen dungeon chests;
+- lock tiles and their channel arms, plus the ceiling hole over each floor's start;
+- the four loot pits with breakable walls: the core in one, a double slab and cake in the others;
+- the top room, and the glass source column with the everfluid source;
+- the password terminal;
+- the dynamic entrance: a diamond shaft with a damper plus a pool ring, from the centre column's first free height.
+
+**Blocks:**
+- `BlockRotatingLock26` (`chromaticraft:rotating_lock`): V33a WATERLOCK; `pad=true` is the invisible metadata-1 pad.
+- `BlockEverFluid26` (`chromaticraft:ever_fluid`): V33a EVERFLUID.
+- `TileEntityRotatingLock` ports the 30-tick quarter turn exactly. The 5x5 square is drained and its channel pattern captured, then the pattern is plugged with pads and placed again turned (clockwise is (x,z) → (−z,x), from DragonAPI's `rotate90Degrees`). It also ports the click sounds, `updateHasFluidState` on every neighbour change, the harmonic chime, and opening/closing the floor's trapdoors.
+- **Deliberate improvement:** V33a kept checkpoint flags and lock rotations in the generator's memory, which a restart lost. Each lock tile now stores its floor origin, width and radius, and the floor and structure solved checks scan those tiles, so state survives reloads.
+- **EverFluid flow** matches V33a: a cell not face-connected to its source vanishes; a cell falls when it can, drops through a lock as a new source one floor lower, and otherwise spreads sideways. The tick rate starts at 4 and becomes 3 after the first flow (a singleton field upstream), and the block random-ticks.
+- **Known difference:** V33a's `Material.water` also gave the fluid vanilla swimming physics. This block has no fluid state, because a vanilla water state would spread and draw blue water over the V33a mesh.
+
+**Rendering:**
+- `EverFluidModel` (DynamicBlockStateModel) ports `EverFluidRenderer`: 7/8 source and 3/4 flow heights, the corner-averaging rule, two-sided top and sides, the 1.0/0.5/0.8/0.6 face brightness. It uses untinted vanilla `water_still`, so it is grey, as upstream.
+- `RenderWaterLock` (BER) with `ModelWaterLock`: all 20 Techne boxes as a 128x256 layer; four wall segments plus a plug per closed arm, turned by rotation progress.
+- Checkpoint and exit locks raise the animated 12x4 `lightcone-foggy` billboard, yaw-only via `camera.yRot`: yellow for the exit, green or red for fluid.
+
+**Assets:** `textures/entity/waterlock.png` and `textures/effect/lightcone-foggy.png` were copied byte-for-byte
+from the V33a jar; `dimstruct/waterlock` and the `waterlock` sound were already present. V33a has no
+`chroma.lock`/`chroma.everfluid` lang entries (they displayed raw keys upstream), so no names were invented.
+
+**Tests (all four pass):**
+- `water_puzzle_layout`: 72 seeds × 3 difficulties. Checks path continuity and start/exit chaining, that both locks have an arm for every link, checkpoints on the path, determinism, and that a lock turned back shows exactly its arms.
+- `water_lock_rotation`: a real 30-tick turn moves the arm EAST→SOUTH.
+- `water_flow_floor`: source → checkpoint fluid → trapdoor opens; source removed → drains → trapdoor closes.
+- `water_structure_chunk`: real piece placement binds the centre lock and its arms, the password and the source.
+
+`proxima_structure_placement` now includes WATER, and its per-type round count is generalized to ⌊16/n⌋..⌈16/n⌉.
+
+Unverified: in-client visuals (lock model, light cones, grey fluid), and a full natural Proxima walk-through.
+Server datagen also rewrote nether/overworld/laser/light-panel template NBTs whose content differs from the
+committed copies. Nothing in this slice touches those providers, so they are left uncommitted for their owner.

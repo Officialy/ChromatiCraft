@@ -225,6 +225,8 @@ public final class ChromaClientRenderers {
 		event.registerLayerDefinition(RenderPylonTurboCharger.MODEL_LAYER,
 				reika.chromaticraft.models.ModelTurbo::createBodyLayer);
 		event.registerLayerDefinition(RenderInfuser3.MODEL_LAYER, reika.chromaticraft.models.ModelInfuser2::createBodyLayer);
+		event.registerLayerDefinition(reika.chromaticraft.render.tesr.dimension.RenderWaterLock.LAYER,
+				reika.chromaticraft.models.ModelWaterLock::createBodyLayer);
 		event.registerLayerDefinition(reika.chromaticraft.render.tesr.RenderFocusCrystal.ORDERED_LAYER,
 				reika.chromaticraft.models.ModelFocusCrystal::createBodyLayer);
 		event.registerLayerDefinition(reika.chromaticraft.render.tesr.RenderFocusCrystal.MESSY_LAYER,
@@ -252,6 +254,8 @@ public final class ChromaClientRenderers {
 				reika.chromaticraft.render.tesr.RenderFocusCrystal::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.LASER_EFFECTOR.get(),
 				reika.chromaticraft.render.tesr.dimension.RenderLaserTarget::new);
+		event.registerBlockEntityRenderer(ChromaBlockEntities.ROTATING_LOCK.get(),
+				reika.chromaticraft.render.tesr.dimension.RenderWaterLock::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.FUNCTION_RELAY.get(),
 				reika.chromaticraft.render.tesr.RenderFunctionRelay::new);
 		event.registerBlockEntityRenderer(ChromaBlockEntities.LUMEN_RELAY.get(), RenderLumenRelay::new);
