@@ -30,8 +30,13 @@ public final class MenuFragmentSelection extends AbstractContainerMenu {
 			loadCategoryWeights();
 	private final Inventory playerInventory;
 	private final SimpleContainer fragment = new SimpleContainer(1);
-	/** page catalog ordinal in low 11 bits, original category ordinal above it. */
-	private final int[] choices = {-1, -1, -1};
+	/**
+	 * Catalog ordinal of each offered page, and its V33a category ordinal; -1 when unset. Kept as separate data
+	 * slots because container data travels as a signed short: packing the category above an 11-bit page ordinal
+	 * overflowed for the last four categories (TOOLARMOR..STRUCTURE), which then reached the client as -1.
+	 */
+	private final int[] pages = {-1, -1, -1};
+	private final int[] categories = {-1, -1, -1};
 
 	public MenuFragmentSelection(int id, Inventory inventory, FriendlyByteBuf ignored) {
 		this(id, inventory);
@@ -58,13 +63,14 @@ public final class MenuFragmentSelection extends AbstractContainerMenu {
 
 		if (!inventory.player.level().isClientSide())
 			pickChoices();
-		for (int index = 0; index < choices.length; index++) {
-			final int choice = index;
-			addDataSlot(new DataSlot() {
-				@Override public int get() { return choices[choice]; }
-				@Override public void set(int value) { choices[choice] = value; }
-			});
-		}
+		for (int[] synced : new int[][] {pages, categories})
+			for (int index = 0; index < synced.length; index++) {
+				final int choice = index;
+				addDataSlot(new DataSlot() {
+					@Override public int get() { return synced[choice]; }
+					@Override public void set(int value) { synced[choice] = value; }
+				});
+			}
 	}
 
 	private void pickChoices() {
@@ -84,22 +90,23 @@ public final class MenuFragmentSelection extends AbstractContainerMenu {
 		for (FragmentCategory category : categories) {
 			LexiconCatalog.Entry page = weightedPage(next, category, random);
 			if (page != null)
-				choices[count++] = encode(page, category);
-			if (count == choices.length)
+				offer(count++, page, category);
+			if (count == pages.length)
 				return;
 		}
 		// Exact V33a fallback when fewer than three usable categories remain: pick a next page, then
 		// choose one of that page's own categories by its authored weight. The first result is repeated
 		// only if the progression frontier itself has no additional identity.
-		while (count < choices.length) {
+		while (count < pages.length) {
 			LexiconCatalog.Entry page = next.get(random.nextInt(next.size()));
 			FragmentCategory category = weightedCategory(page, random);
-			choices[count++] = encode(page, category);
+			offer(count++, page, category);
 		}
 	}
 
-	private static int encode(LexiconCatalog.Entry page, FragmentCategory category) {
-		return page.ordinal() | category.ordinal() << 11;
+	private void offer(int index, LexiconCatalog.Entry page, FragmentCategory category) {
+		pages[index] = page.ordinal();
+		categories[index] = category.ordinal();
 	}
 
 	private static LexiconCatalog.Entry weightedPage(List<LexiconCatalog.Entry> pages,
@@ -172,16 +179,16 @@ public final class MenuFragmentSelection extends AbstractContainerMenu {
 	}
 
 	public LexiconCatalog.Entry choice(int index) {
-		if (index < 0 || index >= choices.length || choices[index] < 0)
+		if (index < 0 || index >= pages.length || pages[index] < 0)
 			return null;
-		int ordinal = choices[index] & 2047;
+		int ordinal = pages[index];
 		return ordinal < LexiconCatalog.entries().size() ? LexiconCatalog.entries().get(ordinal) : null;
 	}
 
 	public FragmentCategory category(int index) {
-		if (index < 0 || index >= choices.length || choices[index] < 0)
+		if (index < 0 || index >= categories.length || categories[index] < 0)
 			return FragmentCategory.INFO;
-		int ordinal = choices[index] >> 11 & 31;
+		int ordinal = categories[index];
 		return ordinal < FragmentCategory.values().length ? FragmentCategory.values()[ordinal]
 				: FragmentCategory.INFO;
 	}

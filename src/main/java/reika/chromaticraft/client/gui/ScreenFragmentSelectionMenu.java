@@ -24,6 +24,7 @@ public final class ScreenFragmentSelectionMenu extends AbstractContainerScreen<M
 	private static final Identifier FOG = Identifier.fromNamespaceAndPath(
 			ChromatiCraft.MODID, "textures/gui/squarefog.png");
 	private static final long SELECTION_TIME_MS = 1500;
+	private final ChoiceButton[] buttons = new ChoiceButton[3];
 	private int selected = -1;
 	private long selectionEnds;
 
@@ -34,16 +35,27 @@ public final class ScreenFragmentSelectionMenu extends AbstractContainerScreen<M
 	@Override
 	protected void init() {
 		super.init();
-		for (int index = 0; index < 3; index++) {
-			final int choice = index;
-			addRenderableWidget(new ChoiceButton(choice,
-					leftPos + 33 + index * 41, topPos + 37));
+		for (int index = 0; index < buttons.length; index++)
+			buttons[index] = addRenderableWidget(new ChoiceButton(index, leftPos + 33 + index * 41, topPos + 37));
+		refreshButtons();
+	}
+
+	/**
+	 * A choice shows only while a fragment sits in the slot. This must run outside the buttons' own render:
+	 * AbstractWidget skips extractContents for an invisible widget, so a button that hid itself while the slot
+	 * was empty never ran again to reappear.
+	 */
+	private void refreshButtons() {
+		for (ChoiceButton button : buttons) {
+			button.visible = menu.hasFragment() && menu.choice(button.index) != null;
+			button.active = button.visible;
 		}
 	}
 
 	@Override
 	protected void containerTick() {
 		super.containerTick();
+		refreshButtons();
 		if (selected >= 0 && System.currentTimeMillis() >= selectionEnds) {
 			ClientPacketDistributor.sendToServer(new ChromaNetwork.SelectFragmentChoice(selected));
 			selected = -1;
@@ -86,9 +98,7 @@ public final class ScreenFragmentSelectionMenu extends AbstractContainerScreen<M
 
 		@Override
 		protected void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
-			visible = menu.hasFragment() && menu.choice(index) != null;
-			active = visible;
-			if (!visible)
+			if (menu.choice(index) == null)
 				return;
 			graphics.blit(RenderPipelines.GUI_TEXTURED, FOG,
 					getX() - 6, getY() - 6, 0, 0, 44, 44, 256, 256);
