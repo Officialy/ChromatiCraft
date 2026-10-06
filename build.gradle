@@ -590,6 +590,7 @@ sourceSets.main.java {
     include 'reika/chromaticraft/auxiliary/ChromaRecipeSync.java'
     include 'reika/chromaticraft/client/ChromaClientRecipes.java'
     include 'reika/chromaticraft/modinterface/jei/ChromaJEIPlugin.java'
+    include 'reika/chromaticraft/modinterface/jade/ChromaJadePlugin.java'
     include 'reika/chromaticraft/world/DyeTreeFeature.java'
     include 'reika/chromaticraft/world/RainbowForestTreeFeature.java'
     include 'reika/chromaticraft/world/DyeFlowerPatchFeature.java'
