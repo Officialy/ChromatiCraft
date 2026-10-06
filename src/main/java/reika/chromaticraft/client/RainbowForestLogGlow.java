@@ -62,7 +62,7 @@ public final class RainbowForestLogGlow {
 		Material.Baked[] overlays = new Material.Baked[OVERLAYS];
 		for (int i = 0; i < OVERLAYS; i++) {
 			Identifier id = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/dye/tree_overlay/" + i);
-			overlays[i] = new Material.Baked(event.getTextureGetter().apply(id), false);
+			overlays[i] = event.getMaterialBaker().get(new Material(id), () -> "chromaticraft rainbow forest log glow");
 		}
 		int flags = 0;
 		for (Material.Baked overlay : overlays)
