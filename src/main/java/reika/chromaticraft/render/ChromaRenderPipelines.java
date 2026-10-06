@@ -10,6 +10,7 @@ import net.minecraft.util.Util;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.client.event.RegisterRenderPipelinesEvent;
 import reika.chromaticraft.ChromatiCraft;
+import reika.dragonapi.extras.shader.IrisCompat;
 
 import java.util.function.Function;
 
@@ -72,6 +73,25 @@ public final class ChromaRenderPipelines {
 
     public static final RenderPipeline ADDITIVE_SPRITE = RenderPipeline.builder()
             .withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "pipeline/additive_sprite"))
+            .withBindGroupLayout(BindGroupLayouts.GLOBALS)
+            .withBindGroupLayout(BindGroupLayouts.PROJECTION)
+            .withBindGroupLayout(BindGroupLayouts.DYNAMIC_TRANSFORMS)
+            .withVertexShader("core/position_tex_color")
+            .withFragmentShader("core/position_tex_color")
+            .withBindGroupLayout(BindGroupLayouts.SAMPLER0)
+            .withColorTargetState(new ColorTargetState(ADDITIVE_DARK))
+            .withVertexBinding(0, DefaultVertexFormat.POSITION_TEX_COLOR)
+            .withPrimitiveTopology(PrimitiveTopology.QUADS)
+            .withDepthStencilState(new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL, false))
+            .withCull(false)
+            .build();
+
+    /**
+     * {@link #ADDITIVE_SPRITE} for the Proxima sky. Iris holds one program per pipeline, and the sky pass needs
+     * the pack's sky program rather than the emissive one the in-world glows use.
+     */
+    public static final RenderPipeline ADDITIVE_SKY_SPRITE = RenderPipeline.builder()
+            .withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "pipeline/additive_sky_sprite"))
             .withBindGroupLayout(BindGroupLayouts.GLOBALS)
             .withBindGroupLayout(BindGroupLayouts.PROJECTION)
             .withBindGroupLayout(BindGroupLayouts.DYNAMIC_TRANSFORMS)
@@ -609,7 +629,6 @@ public final class ChromaRenderPipelines {
         event.registerPipeline(TRANSLUCENT_COLOR_TRIANGLES);
         event.registerPipeline(TRANSLUCENT_COLOR_LINES);
         event.registerPipeline(MOB_SONAR_LINES);
-        reika.chromaticraft.client.render.IrisCompatibility.assign(MOB_SONAR_LINES, "LINES");
         event.registerPipeline(ADDITIVE_SPRITE_THROUGH_WALL);
         event.registerPipeline(GUI_ADDITIVE_DARK);
         event.registerPipeline(TRANSLUCENT_SPRITE);
@@ -625,17 +644,43 @@ public final class ChromaRenderPipelines {
         event.registerPipeline(LEGACY_TRANSLUCENT_PARTICLE);
         event.registerPipeline(UNLIT_ENTITY_CUTOUT);
         event.registerPipeline(LEGACY_ADDITIVE_PARTICLE_NO_DEPTH);
-        // Under a shader pack Iris replaces each pipeline's program and keeps its blend/depth state; a pipeline it
-        // has no program for falls back to vanilla's and logs "Missing program". All four share vanilla's PARTICLE
-        // vertex format, which Iris's translucent-particle program is built for.
-        reika.chromaticraft.client.render.IrisCompatibility.assign(ADDITIVE_PARTICLE, "PARTICLES_TRANSLUCENT");
-        reika.chromaticraft.client.render.IrisCompatibility.assign(LEGACY_ADDITIVE_PARTICLE, "PARTICLES_TRANSLUCENT");
-        reika.chromaticraft.client.render.IrisCompatibility.assign(LEGACY_TRANSLUCENT_PARTICLE, "PARTICLES_TRANSLUCENT");
-        reika.chromaticraft.client.render.IrisCompatibility.assign(LEGACY_ADDITIVE_PARTICLE_NO_DEPTH, "PARTICLES_TRANSLUCENT");
         event.registerPipeline(MONUMENT_GRADE);
 		event.registerPipeline(LOCUS_POINTS);
 		event.registerPipeline(UA_ZONE);
 		event.registerPipeline(ARTEALLOY);
 		event.registerPipeline(AURA_LOCUS_LINES);
+        event.registerPipeline(ADDITIVE_SKY_SPRITE);
+        assignIrisPrograms();
+    }
+
+    /**
+     * Every pipeline drawn into the world gets an Iris program, picked so Iris finds a variant built for its vertex
+     * format. Iris also applies a pack's blend.<program> override, so additive glows (about half their sprites use
+     * black as transparency) go to EMISSIVE_ENTITIES: packs that override gbuffers_spidereyes keep it additive (Bliss
+     * ONE ONE, SoftVoxels SRC_ALPHA ONE). Alpha-textured ones go to the textured, particle, basic or line program.
+     * Glows, lines and overlays stay out of the shadow map. The GUI pipeline and the full-screen passes are never
+     * drawn while Iris renders the world, so Iris does not override them.
+     */
+    private static void assignIrisPrograms() {
+        for (RenderPipeline glow : new RenderPipeline[] {ADDITIVE_SPRITE, ADDITIVE_SPRITE_THROUGH_WALL, ADDITIVE_ALPHA_SPRITE,
+                LEGACY_ADDITIVE_SPRITE, LEGACY_ADDITIVE_SPRITE_THROUGH_WALL, PYLON_CORE, PYLON_CORE_THROUGH_WALL, ENERGY_BEAM})
+            IrisCompat.assignWithoutShadow(glow, "EMISSIVE_ENTITIES");
+        IrisCompat.assignWithoutShadow(TRANSLUCENT_SPRITE, "TEXTURED");
+        IrisCompat.assignWithoutShadow(TRANSLUCENT_SPRITE_THROUGH_WALL, "TEXTURED");
+        IrisCompat.assignWithoutShadow(ADDITIVE_COLOR_TRIANGLES, "BASIC");
+        IrisCompat.assignWithoutShadow(TRANSLUCENT_COLOR_TRIANGLES, "BASIC");
+        IrisCompat.assignWithoutShadow(AURA_LOCUS_LINES, "LINES");
+        IrisCompat.assignWithoutShadow(TRANSLUCENT_COLOR_LINES, "LINES");
+        IrisCompat.assignWithoutShadow(MOB_SONAR_LINES, "LINES");
+        // Particles are drawn by the particle engine, which the shadow pass does not run. The additive ones share
+        // vanilla's PARTICLE layout, whose first three attributes are exactly the emissive program's.
+        IrisCompat.assign(ADDITIVE_PARTICLE, "EMISSIVE_ENTITIES");
+        IrisCompat.assign(LEGACY_ADDITIVE_PARTICLE, "EMISSIVE_ENTITIES");
+        IrisCompat.assign(LEGACY_ADDITIVE_PARTICLE_NO_DEPTH, "EMISSIVE_ENTITIES");
+        IrisCompat.assign(LEGACY_TRANSLUCENT_PARTICLE, "PARTICLES_TRANSLUCENT");
+        IrisCompat.assign(ADDITIVE_SKY_SPRITE, "SKY_TEXTURED");
+        // Real models (focus crystals, rifts) keep casting shadows.
+        IrisCompat.assign(UNLIT_ENTITY_CUTOUT, "ENTITIES");
+        IrisCompat.assignShadow(UNLIT_ENTITY_CUTOUT, "SHADOW_ENTITIES");
     }
 }

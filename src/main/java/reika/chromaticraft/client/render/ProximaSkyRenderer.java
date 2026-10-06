@@ -175,17 +175,17 @@ public final class ProximaSkyRenderer implements CustomSkyboxRenderer {
 
 		final float alpha = fade;
 		int washColour = ReikaColorAPI.GStoHex((int)(255 * alpha));
-		NEBULA_PASS.draw(ChromaRenderPipelines.ADDITIVE_SPRITE, NEBULAE, matrix, buffer -> {
+		NEBULA_PASS.draw(ChromaRenderPipelines.ADDITIVE_SKY_SPRITE, NEBULAE, matrix, buffer -> {
 			for (int i = 0; i < NEBULA_FIELD.length; i++)
 				if (NEBULA_FIELD[i] != null)
 					NEBULA_FIELD[i].emit(buffer, 380, washColour, nebulaOrientation(i));
 		});
-		PLANET_PASS.draw(ChromaRenderPipelines.ADDITIVE_SPRITE, PLANETS, planetMatrix, buffer -> {
+		PLANET_PASS.draw(ChromaRenderPipelines.ADDITIVE_SKY_SPRITE, PLANETS, planetMatrix, buffer -> {
 			for (int i = 0; i < PLANET_FIELD.length; i++)
 				if (PLANET_FIELD[i] != null)
 					PLANET_FIELD[i].emit(buffer, 380, washColour, planetOrientation(i, time));
 		});
-		STAR_PASS.draw(ChromaRenderPipelines.ADDITIVE_SPRITE, STARS, matrix, buffer -> {
+		STAR_PASS.draw(ChromaRenderPipelines.ADDITIVE_SKY_SPRITE, STARS, matrix, buffer -> {
 			int count = starCount(time);
 			for (int i = 0; i < count; i++) {
 				Star star = STAR_FIELD[i];

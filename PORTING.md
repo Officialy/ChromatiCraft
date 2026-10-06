@@ -10569,3 +10569,37 @@ placement chunk.
 **Tests:** `proxima_structure_reach` checks that every chunk of every ported type's box lies in a region start within 7 chunks, and round-trips a saved region piece. Results: Chromatic Beams 3 starts, Crystal Music 2, everything else 1 apart from Glowing Logic. All 18 `proxima_*`, 8 `laser_*`, 5 `water_*` and both `piston_tape_*` tests pass. `piston_tape_playback` now also plays stage 1 (mirrored orientation) and requires door 0's panel to open.
 
 **Unverified:** a fresh natural Proxima world has not been walked to confirm the far rooms in game.
+
+## 2026-10-06 — Iris program assignments for every world pipeline
+
+With a shader pack active, Iris swaps each pipeline drawn into its world framebuffers for one of the pack's
+programs. A pipeline with no assigned program keeps vanilla's shader and logs "Missing program"; logs showed
+this for `additive_sprite`, `pylon_core`, the particle pipelines and VoidMonster's `growth`. Facts verified
+against Iris 1.11.7 that decide the assignments:
+- Iris picks a variant of the assigned program in four tiers: perfect (vertex format + alpha cutoff), okay
+  (format), fine (cutoff only), decent (program only). A different vertex format in the "decent" tier
+  misreads attributes, so each pipeline goes to a program with a variant for its format.
+- Iris applies the pack's `blend.<program>` override when the pack declares one. Our blend survives only
+  under packs that declare none (PathMax). About half the glow sprites use black as transparency, so additive
+  glows go to `EMISSIVE_ENTITIES` (gbuffers_spidereyes), which Bliss (`ONE ONE`) and SoftVoxels
+  (`SRC_ALPHA ONE`) keep additive. `PARTICLES_TRANSLUCENT` falls back to gbuffers_textured_lit, which Bliss
+  alpha-blends and SoftVoxels does not blend, so the three additive particle pipelines moved off it.
+- Iris's shadow pass re-runs block-entity and entity `submit`, and keeps a separate program table.
+
+Assignments are in `ChromaRenderPipelines.assignIrisPrograms` through DragonAPI's new `IrisCompat`:
+- `EMISSIVE_ENTITIES`: the additive sprites, pylon core, energy beam and the three additive particle pipelines.
+- `TEXTURED`: the translucent sprites. `BASIC`: the colour triangles. `LINES`: the three line pipelines.
+- `PARTICLES_TRANSLUCENT`: the alpha-blended legacy particle.
+- `ENTITIES`, plus shadow program `SHADOW_ENTITIES`: `UNLIT_ENTITY_CUTOUT`, so its models still cast shadows.
+- New `ADDITIVE_SKY_SPRITE` (`SKY_TEXTURED`): the Proxima sky now draws with this instead of the in-world
+  emissive pipeline, because Iris holds one program per pipeline.
+
+Glow, line and overlay pipelines are registered with `IrisCompat.excludeFromShadowPass`. DragonAPI's
+`MixinCustomFeatureRenderer` drops them from custom-geometry batches while Iris renders shadows, so none of
+the ~48 renderers needs its own guard. The GUI pipeline and the full-screen effects (monument grade, UA zone,
+artealloy, locus points) are not assigned: the after-level event fires from `GameRenderer` after Iris has
+composited and left world rendering, so Iris never swaps them. None of their shaders reads depth.
+
+**Unverified:** compile only. No client has been launched with these changes. Check the startup log for one
+"program match" line per assigned pipeline. A "decent" match means a wrong program. Then view the glows,
+particles, Proxima sky and shadows under PathMax and Bliss.
