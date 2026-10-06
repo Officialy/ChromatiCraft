@@ -2065,10 +2065,14 @@ public abstract class ChromaParticle extends SingleQuadParticle {
         double pz = z + (random.nextDouble() - 0.5) * 0.5;
         float gravity = (float)(0.025 + random.nextDouble() * 0.05);
         if (random.nextInt(4) == 0) gravity = -gravity;
-        RitualBlur outer = new RitualBlur(level, px, py, pz, color, 1F,
-                20, gravity, "laser", false, false);
-        RitualBlur inner = new RitualBlur(level, px, py, pz, 0xffffff, 0.42F,
-                20, gravity, "laser", false, false);
+        // V33a EntityLaserFX: the animated 64x sheet (not the block-atlas laser beam icon), 63-tick life.
+        AnimatedSheetParticle outer = new AnimatedSheetParticle(level, px, py, pz, 0, 0, 0,
+                CrystalElement.WHITE, 1F, ADDITIVE_LASER_SHEET, 0);
+        AnimatedSheetParticle inner = new AnimatedSheetParticle(level, px, py, pz, 0, 0, 0,
+                CrystalElement.WHITE, 0.42F, ADDITIVE_LASER_SHEET, 0);
+        outer.setRgb(color);
+        inner.setRgb(0xffffff);
+        outer.gravity = inner.gravity = gravity;
         Minecraft.getInstance().particleEngine.add(outer);
         Minecraft.getInstance().particleEngine.add(inner);
     }
@@ -2094,8 +2098,14 @@ public abstract class ChromaParticle extends SingleQuadParticle {
             double vx = (random.nextDouble() - 0.5) * 0.4;
             double vy = (random.nextDouble() - 0.5) * 0.4;
             double vz = (random.nextDouble() - 0.5) * 0.4;
-            Blur outer = new Blur(level, x, y, z, color, 1.5F, 20);
-            Blur inner = new Blur(level, x, y, z, 0xffffff, 0.5F, 20);
+            // V33a EntityCenterBlurFX: rows 4-5 of the animated 64x sheet, 63-tick life, no gravity.
+            AnimatedSheetParticle outer = new AnimatedSheetParticle(level, x, y, z, 0, 0, 0,
+                    CrystalElement.WHITE, 1.5F, ADDITIVE_LASER_SHEET, 4);
+            AnimatedSheetParticle inner = new AnimatedSheetParticle(level, x, y, z, 0, 0, 0,
+                    CrystalElement.WHITE, 0.5F, ADDITIVE_LASER_SHEET, 4);
+            outer.setRgb(color);
+            inner.setRgb(0xffffff);
+            outer.gravity = inner.gravity = 0;
             outer.xd = inner.xd = vx;
             outer.yd = inner.yd = vy;
             outer.zd = inner.zd = vz;
