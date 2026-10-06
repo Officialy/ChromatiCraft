@@ -625,6 +625,13 @@ public final class ChromaRenderPipelines {
         event.registerPipeline(LEGACY_TRANSLUCENT_PARTICLE);
         event.registerPipeline(UNLIT_ENTITY_CUTOUT);
         event.registerPipeline(LEGACY_ADDITIVE_PARTICLE_NO_DEPTH);
+        // Under a shader pack Iris replaces each pipeline's program and keeps its blend/depth state; a pipeline it
+        // has no program for falls back to vanilla's and logs "Missing program". All four share vanilla's PARTICLE
+        // vertex format, which Iris's translucent-particle program is built for.
+        reika.chromaticraft.client.render.IrisCompatibility.assign(ADDITIVE_PARTICLE, "PARTICLES_TRANSLUCENT");
+        reika.chromaticraft.client.render.IrisCompatibility.assign(LEGACY_ADDITIVE_PARTICLE, "PARTICLES_TRANSLUCENT");
+        reika.chromaticraft.client.render.IrisCompatibility.assign(LEGACY_TRANSLUCENT_PARTICLE, "PARTICLES_TRANSLUCENT");
+        reika.chromaticraft.client.render.IrisCompatibility.assign(LEGACY_ADDITIVE_PARTICLE_NO_DEPTH, "PARTICLES_TRANSLUCENT");
         event.registerPipeline(MONUMENT_GRADE);
 		event.registerPipeline(LOCUS_POINTS);
 		event.registerPipeline(UA_ZONE);
