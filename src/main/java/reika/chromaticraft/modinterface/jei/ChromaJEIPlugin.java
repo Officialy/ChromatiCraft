@@ -134,6 +134,19 @@ public class ChromaJEIPlugin implements IModPlugin {
 		registration.addRecipes(BREWING, brewing);
 	}
 
+	/** The casting table draws its recipe/lumen panel past its declared width (V33a's centring); keep JEI off it. */
+	@Override
+	public void registerGuiHandlers(IGuiHandlerRegistration registration) {
+		registration.addGuiContainerHandler(reika.chromaticraft.client.gui.ScreenCastingTable.class,
+				new mezz.jei.api.gui.handlers.IGuiContainerHandler<>() {
+					@Override
+					public java.util.List<net.minecraft.client.renderer.Rect2i> getGuiExtraAreas(
+							reika.chromaticraft.client.gui.ScreenCastingTable screen) {
+						return java.util.List.of(screen.sidePanelArea());
+					}
+				});
+	}
+
 	@Override
 	public void registerAdvanced(IAdvancedRegistration registration) {
 		registration.addRecipeButtonFactory(new LexiconButtonFactory(registration.getJeiHelpers().getGuiHelper()));

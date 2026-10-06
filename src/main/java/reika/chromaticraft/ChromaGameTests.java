@@ -458,6 +458,7 @@ public final class ChromaGameTests {
 		register(event, env, "piston_tape_plan", ChromaGameTests::pistonTapePlan);
 		register(event, env, "proxima_structure_reach", ChromaGameTests::proximaStructureReach);
 		register(event, env, "piston_tape_playback", 4000, ChromaGameTests::pistonTapePlayback);
+		register(event, env, "look_ray_hits_pylon", ChromaGameTests::lookRayHitsPylon);
 		register(event, env, "proxima_structure_completion_loop", ChromaGameTests::proximaStructureCompletionLoop);
 		register(event, env, "aurorae_feature", ChromaGameTests::auroraeFeature);
 		register(event, env, "aurora_curtain_drift", ChromaGameTests::auroraCurtainDrift);
@@ -4541,6 +4542,23 @@ public final class ChromaGameTests {
 			break;
 		}
 		reika.chromaticraft.ChromatiCraft.LOGGER.info("Proxima structure reach in chunks {}, region starts {}", reach, segments);
+		helper.succeed();
+	}
+
+	/**
+	 * The exploration scan's look ray must stop on a pylon although the pylon has no collision: 1.7.10's
+	 * rayTraceBlocks used selection bounds, and a collider-only ray let the player see straight through it, so
+	 * PYLON, the colour discovery and every stage after them (SHOCK, charging) could never be reached.
+	 */
+	private static void lookRayHitsPylon(GameTestHelper helper) {
+		BlockPos pylon = helper.absolutePos(new BlockPos(2, 2, 3));
+		helper.getLevel().setBlock(pylon, ChromaBlocks.PYLON.get().defaultBlockState(), 3);
+		var player = helper.makeMockServerPlayerInLevel();
+		// Feet placed so the eye is level with the pylon's centre, 1.5 blocks north of it, facing south.
+		player.snapTo(pylon.getX() + 0.5, pylon.getY() + 0.5 - player.getEyeHeight(), pylon.getZ() - 1.5, 0, 0);
+		var hit = reika.dragonapi.libraries.ReikaPlayerAPI.getLookedAtBlock(player, 4, true);
+		helper.assertTrue(hit != null && hit.getBlockPos().equals(pylon),
+				"the look ray passed through the pylon, hit " + (hit == null ? "nothing" : hit.getBlockPos()));
 		helper.succeed();
 	}
 

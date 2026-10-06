@@ -198,6 +198,11 @@ public final class ScreenCastingTable extends AbstractContainerScreen<MenuCastin
                 || mouseY >= top + imageHeight;
     }
 
+    /** The recipe/lumen panel drawn past {@code imageWidth}, so recipe viewers keep clear of it. */
+    public net.minecraft.client.renderer.Rect2i sidePanelArea() {
+        return new net.minecraft.client.renderer.Rect2i(leftPos + BASE_WIDTH, topPos, SIDE_WIDTH, imageHeight);
+    }
+
     @Override
     public boolean isPauseScreen() {
         return false;
