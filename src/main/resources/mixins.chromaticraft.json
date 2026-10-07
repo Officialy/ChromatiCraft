@@ -4,6 +4,6 @@
   "package": "reika.chromaticraft.mixin",
   "compatibilityLevel": "JAVA_25",
   "mixins": ["LuminousCliffsTerrainMixin", "BiomeWeatherMixin", "EnderForestThunderMixin", "SpawnerActivationMixin"],
-  "client": ["ItemStackNameMixin", "VoidRitualTerrainMixin"],
+  "client": ["ItemStackNameMixin", "VoidRitualTerrainMixin", "SoundEngineChromaMusicMixin", "SoundOptionsScreenMixin"],
   "injectors": {"defaultRequire": 1}
 }

@@ -62,6 +62,8 @@ public class ChromatiCraft extends DragonAPIMod {
 	public ChromatiCraft(IEventBus modEventBus, ModContainer modContainer) {
 		instance = this;
 
+		modContainer.registerConfig(net.neoforged.fml.config.ModConfig.Type.CLIENT, ChromaClientConfig.SPEC,
+				"chromaticraft-client.toml");
 		config = new ChromaConfig(instance, ChromaOptions.optionList, null);
 		config.loadSubfolderedConfigFile();
 		config.initProps();

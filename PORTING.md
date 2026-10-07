@@ -10636,3 +10636,10 @@ particles, Proxima sky and shadows under PathMax and Bliss.
 ## 2026-10-07 — Cave crystals below y=0
 
 V33a's `CrystalGenerator` picks y = 4 + rand(60) (Nether 124) in absolute coordinates: 4 above 1.7.10's floor up to 64. The port kept the absolute 4, so the 26.3 overworld's whole range below y=0 (all of deepslate) had no crystals. `CrystalFeature` now starts at `getMinY() + 4` and scales the attempts by the taller span, keeping V33a's crystals per layer; the Nether and Proxima (floor 0) are unchanged. Deepslate was already valid support. `crystal_worldgen_placement_contract` now checks the floor and a crystal on deepslate at y=-30; it passes.
+
+## 2026-10-07 — "ChromatiCraft Music" volume slider
+
+V33a added a `CHROMA_MUSIC` sound category ("ChromatiCraft Music", its own slider on Music & Sounds) and played the Proxima soundtrack in it. 26.3's `SoundSource` is a closed enum NeoForge cannot extend, so:
+- `SoundOptionsScreenMixin` appends a "ChromatiCraft Music" slider (V33a's `soundCategory.chroma_music`) to the per-category grid; the value persists in `config/chromaticraft-client.toml` (`ChromaClientConfig`).
+- `SoundEngineChromaMusicMixin` gives the Proxima tracks the volume *track × ChromatiCraft Music × Master* (the music manager's fade gain still applies) instead of the vanilla Music slider, as V33a's separate category did. A track is re-volumed right after it starts and whenever the slider moves.
+- **Unverified:** client mixins do not load in GameTests; descriptors were checked against the 26.3.0.51 sources and it compiles, but the slider and volume have not been seen in a running client.
