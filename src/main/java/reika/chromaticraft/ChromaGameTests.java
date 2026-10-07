@@ -6169,6 +6169,18 @@ public final class ChromaGameTests {
 			helper.getLevel().setBlock(enclosed.relative(direction), Blocks.STONE.defaultBlockState(), 3);
 		helper.assertTrue(!CrystalFeature.placeCrystal(helper.getLevel(), enclosed, 0),
 				"crystals require at least one air-exposed face");
+
+		// The range starts 4 above the world floor, not at absolute y=4, so deepslate caves get crystals too.
+		var level = helper.getLevel();
+		helper.assertTrue(CrystalFeature.minimumY(level) == level.getMinY() + 4 && CrystalFeature.minimumY(level) < 0,
+				"cave crystals must reach down to 4 above the world floor, found " + CrystalFeature.minimumY(level));
+		BlockPos deep = new BlockPos(valid.getX(), -30, valid.getZ());
+		level.setBlock(deep, Blocks.AIR.defaultBlockState(), 3);
+		level.setBlock(deep.above(), Blocks.AIR.defaultBlockState(), 3);
+		level.setBlock(deep.below(), Blocks.DEEPSLATE.defaultBlockState(), 3);
+		helper.assertTrue(CrystalFeature.placeCrystal(level, deep, CrystalElement.CYAN.ordinal()),
+				"a crystal must grow on deepslate below y=0");
+		level.setBlock(deep, Blocks.AIR.defaultBlockState(), 3);
 		helper.succeed();
 	}
     /** Natural generation must place and validate the canonical NBT pylon plus terrain foundation. */

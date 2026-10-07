@@ -53,12 +53,16 @@ public final class CrystalFeature implements Feature {
 			return false;
 		if (world.getLevel().dimension() == Level.END)
 			return false;
-		int attempts = (int)(PER_CHUNK * getDensityFactor(world, origin));
-		int maximumY = world.getLevel().dimension() == Level.NETHER ? 128 : 64;
+		int minimumY = minimumY(world);
+		int maximumY = maximumY(world);
+		// V33a drew PER_CHUNK attempts over its 60 (Nether 124) layers above y=4; a deeper floor gets proportionally
+		// more, so every layer keeps V33a's density instead of the same crystals being spread over twice the depth.
+		int legacySpan = maximumY - 4;
+		int attempts = (int)(PER_CHUNK * getDensityFactor(world, origin) * (maximumY - minimumY) / legacySpan);
 		boolean placedAny = false;
 		for (int i = 0; i < attempts; i++) {
 			BlockPos pos = new BlockPos(origin.getX() + random.nextInt(16),
-					4 + random.nextInt(maximumY - 4), origin.getZ() + random.nextInt(16));
+					minimumY + random.nextInt(maximumY - minimumY), origin.getZ() + random.nextInt(16));
 			int color = random.nextInt(16);
 			if (placeCrystal(world, pos, color)) {
 				placedAny = true;
@@ -66,6 +70,19 @@ public final class CrystalFeature implements Feature {
 			}
 		}
 		return placedAny;
+	}
+
+	/**
+	 * V33a's lowest crystal: 4 above the world floor. 1.7.10's floor was always y=0; the 26.3 overworld reaches
+	 * y=-64, and an absolute y=4 left every cave below y=0 (all of deepslate) without crystals.
+	 */
+	public static int minimumY(net.minecraft.world.level.LevelHeightAccessor world) {
+		return world.getMinY() + 4;
+	}
+
+	/** V33a's ceiling: 64, or 128 in the Nether (exclusive). */
+	public static int maximumY(WorldGenLevel world) {
+		return world.getLevel().dimension() == Level.NETHER ? 128 : 64;
 	}
 
 	/** Deterministic placement seam used by worldgen and the focused GameTest. */

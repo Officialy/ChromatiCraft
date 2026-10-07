@@ -10632,3 +10632,7 @@ particles, Proxima sky and shadows under PathMax and Bliss.
 **Tests:** `rayblend_layout` (determinism, region size/connectivity/non-uniformity, sudoku uniqueness, blocked/start/cage consistency, doors, bypass, corridor span), `rayblend_room_play` (refusal, solving opens the door, removal keeps it open, a repeat closes it), `rayblend_reward_room`, plus `proxima_structure_*` with RAYBLEND admitted (reach 17 chunks, 2 region starts). All pass.
 
 **Unverified:** in-client visuals (floor model, ping blurs), a natural walk-through.
+
+## 2026-10-07 — Cave crystals below y=0
+
+V33a's `CrystalGenerator` picks y = 4 + rand(60) (Nether 124) in absolute coordinates: 4 above 1.7.10's floor up to 64. The port kept the absolute 4, so the 26.3 overworld's whole range below y=0 (all of deepslate) had no crystals. `CrystalFeature` now starts at `getMinY() + 4` and scales the attempts by the taller span, keeping V33a's crystals per layer; the Nether and Proxima (floor 0) are unchanged. Deepslate was already valid support. `crystal_worldgen_placement_contract` now checks the floor and a crystal on deepslate at y=-30; it passes.
