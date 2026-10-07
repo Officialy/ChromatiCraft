@@ -6137,6 +6137,17 @@ public final class ChromaGameTests {
 		helper.assertTrue(!ivyState.canSurvive(level, ivy), "Aura Ivy must reject open air");
 		level.setBlock(ivy.east(), Blocks.STONE.defaultBlockState(), 3);
 		helper.assertTrue(ivyState.canSurvive(level, ivy), "Aura Ivy must cling to an adjacent stone face");
+		level.setBlock(ivy, ivyState, 3);
+		var ivyShape = ivyState.getShape(level, ivy);
+		helper.assertTrue(ivyShape.bounds().minX >= 15 / 16D,
+				"east-supported Aura Ivy must select a flat wall plane, not a centred plant");
+		level.setBlock(ivy.below(), ivyState, 3);
+		helper.assertTrue(ivyState.canSurvive(level, ivy.below())
+				&& ivyState.getShape(level, ivy.below()).bounds().minX >= 15 / 16D,
+				"a hanging ivy run must inherit its wall orientation");
+		level.setBlock(ivy.east(), Blocks.AIR.defaultBlockState(), 3);
+		helper.assertTrue(!ivyState.canSurvive(level, ivy.below()),
+				"unsupported ivy must lose its inherited attachment");
 
 		helper.succeed();
 	}

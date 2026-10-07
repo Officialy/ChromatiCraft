@@ -1,5 +1,7 @@
 package reika.chromaticraft.world.luminous;
 
+import reika.chromaticraft.world.GlowingCliffsColumnShaper;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -85,11 +87,14 @@ public final class LuminousIsland {
 		is.maxThickness = (18 + 12 * rand.nextDouble()) * sizeScale;
 		is.originX = x;
 		is.originZ = z;
-		is.originY = Math.min(250, Math.max(terrain.topSolidOrLiquid(x, z) + 10 + (int)is.maxThickness, 90) + rand.nextInt(80));
+		is.originY = Math.min(GlowingCliffsColumnShaper.MAX_TERRAIN_Y - MAX_CONTOUR_HEIGHT,
+				Math.max(terrain.topSolidOrLiquid(x, z) + 10 + (int)is.maxThickness,
+						GlowingCliffsColumnShaper.scaleHeight(90))
+						+ rand.nextInt(GlowingCliffsColumnShaper.scaleHeight(142) - GlowingCliffsColumnShaper.SEA_LEVEL));
 		is.hasLake = overWater ? rand.nextInt(3) > 0 : rand.nextInt(2) == 0;
 		is.hasRiver = rand.nextInt(overWater ? 4 : 5) == 0;
 		if (is.hasLake || is.hasRiver) {
-			if (overWater && is.originY > 220 && rand.nextInt(20) == 0)
+			if (overWater && is.originY > GlowingCliffsColumnShaper.MAX_TERRAIN_Y - 30 && rand.nextInt(20) == 0)
 				is.luma = true;
 		}
 		if (rand.nextInt(20) == 0)

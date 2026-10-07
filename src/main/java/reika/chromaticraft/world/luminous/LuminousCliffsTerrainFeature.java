@@ -7,6 +7,7 @@ import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
+import net.minecraft.world.level.chunk.CarvingMask;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator;
 import net.minecraft.world.level.levelgen.RandomState;
@@ -29,7 +30,8 @@ import reika.chromaticraft.world.GlowingCliffsColumnShaper.Cell;
  * reaches the neighbours.
  *
  * <p>The 26.3 terrain hook applies this after the surface pass and before vanilla carvers. Noise caves
- * and aquifers below the original ground survive, and carvers subsequently cut the raised plateaus.
+ * and aquifers below the original ground survive outside the four-block lake bed; carvers cut the dry
+ * raised plateaus while a composed carving filter protects lakes and their immediate banks.
  * A saved chunk attachment prevents the biome feature from rebuilding the terrain over those caves.
  * Custom generators that do not use the noise terrain pipeline retain the feature fallback. The
  * blended neighbours keep their own surface blocks, moved to the new height, where upstream's order
@@ -43,6 +45,38 @@ public final class LuminousCliffsTerrainFeature implements Feature {
     private static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> SHAPED =
             ATTACHMENTS.register("cliffs_shaped", () -> AttachmentType.builder(() -> false)
                     .serialize(com.mojang.serialization.Codec.BOOL.fieldOf("shaped")).build());
+
+    /** Preserve a four-block lake bed and its banks, while allowing caves below and in dry cliffs. */
+    public static CarvingMask.Filter protectLakes(ChunkAccess chunk, NoiseBasedChunkGenerator generator,
+            RandomState random, CarvingMask.Filter existing) {
+        if (!chunk.getData(SHAPED)) return existing;
+        var resolver = generator.getBiomeSource().createUncachedResolver(random);
+        var sampler = GlowingCliffsColumnShaper.forSeed(random.seed()).new Sampler(
+                new LuminousCliffsBiomeMask(resolver::getNoiseBiome, generator.getSeaLevel()));
+        int baseX = chunk.getPos().getMinBlockX(), baseZ = chunk.getPos().getMinBlockZ();
+        if (!nearCliffs(sampler, baseX, baseZ)) return existing;
+        int[] floors = lakeProtectionFloors(sampler, baseX, baseZ);
+        return (x, y, z) -> (existing == null || existing.test(x, y, z))
+                && (y < floors[x * 16 + z] || y > GlowingCliffsColumnShaper.SEA_LEVEL + 1);
+    }
+
+    /** One-column banks prevent a dry neighbouring carver from opening a lake sideways. */
+    public static int[] lakeProtectionFloors(GlowingCliffsColumnShaper.Sampler sampler, int baseX, int baseZ) {
+        int[] floors = new int[256];
+        java.util.Arrays.fill(floors, Integer.MAX_VALUE);
+        for (int dx = -1; dx <= 16; dx++) {
+            for (int dz = -1; dz <= 16; dz++) {
+                int x = baseX + dx, z = baseZ + dz;
+                if (!sampler.biome(x, z).isGlowingCliffs()) continue;
+                var column = sampler.column(x, z);
+                if (column.region() != GlowingCliffsColumnShaper.GlowCliffRegion.WATER) continue;
+                for (int nx = Math.max(0, dx - 1); nx <= Math.min(15, dx + 1); nx++)
+                    for (int nz = Math.max(0, dz - 1); nz <= Math.min(15, dz + 1); nz++)
+                        floors[nx * 16 + nz] = Math.min(floors[nx * 16 + nz], column.oceanFloor() - 4);
+            }
+        }
+        return floors;
+    }
 
     /** Both adapters address one active chunk; no neighbour chunk reads are needed for shaping. */
     private interface Columns {
@@ -116,15 +150,27 @@ public final class LuminousCliffsTerrainFeature implements Feature {
 		if (!nearCliffs(sampler, baseX, baseZ))
 			return false;
 		boolean placed = false;
+		int[] lakeFloors = lakeProtectionFloors(sampler, baseX, baseZ);
 		for (int dx = 0; dx < 16; dx++) {
 			for (int dz = 0; dz < 16; dz++) {
 				int x = baseX + dx;
 				int z = baseZ + dz;
 				BiomeKind kind = sampler.biome(x, z);
 				if (kind.isGlowingCliffs())
-					placed |= this.shapeColumn(level, sampler, x, z);
-				else
+					placed |= this.shapeColumn(level, sampler, x, z, lakeFloors[dx * 16 + dz]);
+				else {
 					placed |= this.blendColumn(level, sampler, x, z);
+					int surface = level.getHeight(Heightmap.Types.OCEAN_FLOOR_WG, x, z) - 1;
+					for (int y = Math.max(level.getMinY() + 1, lakeFloors[dx * 16 + dz]);
+							y <= Math.min(surface, GlowingCliffsColumnShaper.SEA_LEVEL + 1); y++) {
+						BlockPos pos = new BlockPos(x, y, z);
+						BlockState state = level.getBlockState(pos);
+						if (state.isAir() || !state.getFluidState().isEmpty()) {
+							level.setBlock(pos, Blocks.STONE.defaultBlockState(), 2);
+							placed = true;
+						}
+					}
+				}
 			}
 		}
 		return placed;
@@ -140,13 +186,13 @@ public final class LuminousCliffsTerrainFeature implements Feature {
 		return false;
 	}
 
-	private boolean shapeColumn(Columns level, GlowingCliffsColumnShaper.Sampler sampler, int x, int z) {
+	private boolean shapeColumn(Columns level, GlowingCliffsColumnShaper.Sampler sampler, int x, int z, int lakeFloor) {
 		GlowingCliffsColumnShaper.Column column = sampler.column(x, z);
 		Cell[] cells = sampler.shaper().cells(column, x, z);
 		int originalTop = level.getHeight(Heightmap.Types.OCEAN_FLOOR_WG, x, z) - 1;
 		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos(x, 0, z);
 		boolean changed = false;
-		int top = Math.min(level.getMaxY() - 1, GlowingCliffsColumnShaper.HEIGHT + 64);
+		int top = level.getMaxY() - 1;
 		for (int y = Math.max(0, level.getMinY()); y <= top; y++) {
 			pos.setY(y);
 			BlockState current = level.getBlockState(pos);
@@ -154,7 +200,8 @@ public final class LuminousCliffsTerrainFeature implements Feature {
 				continue;
 			Cell cell = y < GlowingCliffsColumnShaper.HEIGHT ? cells[y] : Cell.AIR;
 			BlockState target = this.stateFor(cell);
-			if (cell == Cell.STONE && y <= originalTop && !isSurfaceMaterial(current))
+			boolean lakeBed = y >= lakeFloor && y <= GlowingCliffsColumnShaper.SEA_LEVEL + 1;
+			if (cell == Cell.STONE && y <= originalTop && !lakeBed && !isSurfaceMaterial(current))
 				continue;
 			if (current != target) {
 				level.setBlock(pos, target, 2);

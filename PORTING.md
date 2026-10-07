@@ -10655,3 +10655,48 @@ Full record in `ReactorCraft/PORTING.md` ("ComputerCraft (CC: Tweaked) integrati
 - Pristine until a 26.3 Forestry: AlvearyLuaMethod, LuaCycleBee, LuaGetGenes.
 - World Rift implements DragonAPI `PeripheralRelay`: the ComputerCraft half of the V33a rift `CHROMA-PORT` note is
   done (OpenComputers/ProjectRed/Thaumcraft remain).
+
+
+## 2026-10-07 — Piston-target overlay UV bounds
+
+A full family client launch during the DragonAPI audit hit NativeImage transparency bounds [-1,-1,17,17]
+for every piston-target state. The overlay element intentionally extends from -0.01 to 16.01 to prevent
+z-fighting, but implicit UVs extend beyond the 16x16 texture in 26.3. ChromaModelProvider now writes
+explicit [0,0,16,16] face UVs. Geometry, axis orientation, tint, glow and culling are preserved.
+:ChromatiCraft:runClientData succeeded and regenerated the six piston_target_{0,1}_{x,y,z} models.
+Validation log: dragonapi-audit-datagen.log; full family client log: dragonapi-audit-client.log.
+The subsequent client run passed its fixture with zero piston-target or model-bake errors.
+Its separate background 4x4 puzzle-generation timeout remains unresolved.
+
+
+## 2026-10-08 — Luminous Cliffs lake sealing, Y300 relief and Aura Ivy
+
+- Modern carving filter protects lake columns and immediate banks from the lake floor minus four
+  through Y63; it composes with Blender's filter. The terrain pass fills noise-cave openings in
+  that bed while preserving caves below it, negative-Y terrain and dry-plateau carvers.
+- Sea stays at Y62, ocean floors at 24–48. Reika's simplex shelf thresholds, elliptical undercuts
+  and edge-blending curves remain. Relief above sea stretches by 238/98: shores 62–86, middle tops
+  154–183, upper tops 261–300. Surface cell buffers cover Y300; island origins stop at 294 for the
+  six-block contour, with the above-sea altitude spread scaled. Altitude brightness spans 64–300.
+- The V33a clear-water predicate remains, but its rendering result now softens the coloured water
+  towards teal instead of multiplying the greyscale modern water sprite by white. This fixes
+  flowing/falling, shaded/deep and shallow high-altitude water without dropping the edge distinction.
+- Aura Ivy: dynamic chunk model, double-sided planes inset 1/32 against supporting walls, the
+  existing texture and biome grass tint, flat selection bounds, empty collision and inherited
+  attachment down a hanging run. No state migration; existing ivy also uses the new model.
+  `ChromaModelProvider` generates the custom blockstate; the obsolete cross model is removed by datagen.
+
+Validation: 26.3.0.51 compilation of ChromatiCraft/VoidMonster/GeoStrata; client datagen; all five
+`worldgen_parity_*` native tests (the carver test now checks lake water/bed and heights above Y255);
+`deco_flower_siting_contract` checks wall bounds, hanging inheritance and support removal.
+Logs: root build/cliffs-terrain-validation.log, build/cliffs-ivy-validation.log.
+Terrain changes apply to newly generated chunks; old lakes/cliffs are not rewritten.
+
+
+Final client validation: isolated full-family 26.3.0.51 run in a copied disposable save exited
+successfully (`build/cliffs-client-final.log`, CLIFFS_CLIENT_PASS). The inspected
+`build/cliffs-client-run/screenshots/cliffs-visuals.png` shows water at Y100 plus a falling stream,
+packed-ice textures on all icicle segments and flat ivy against its wall.
+`gui-before-warp.png` / `gui-after-warp.png` show an open screen's grid and text plus the tutorial
+overlay bending under the single post-GUI distortion pass. No Iris/Distant Horizons were loaded
+in this fixture; shader-pack compatibility is not claimed by this visual check.

@@ -18,9 +18,9 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * <p>One large landmass noise, clamped to [0, 1] and called {@code hval}, decides what a column is.
  * Below 0.3 it is sea, its floor sloping from 24-48 up to the shore. Above that the column is land, on
- * one of three shelves chosen against two noisy thresholds: shores (62-72, rising with hval), the middle
- * plateau (100-112) and the high plateau (144-160). Each plateau is undercut near its rim by a cave
- * hollow — a floor, a ceiling at 80-96 (or 128-140 under the high plateau), an elliptical profile — so
+ * one of three shelves chosen against two noisy thresholds: shores (62-86, rising with hval), the middle
+ * plateau (154-183) and the high plateau (261-300). V33a's relief above sea level is stretched by 238/98.
+ * Each plateau is undercut near its rim by a noise-driven cave ceiling and an elliptical profile, so
  * the shelves overhang and enclose lit caverns. Those cavern floors grow Glow Daisies (6% of columns)
  * and the odd oak sapling (0.8%), and their ceilings Rock Flowers (0.3%) or strands of one to four Glow
  * Roots (0.8%). Dirt is 1-4 deep by its own noise, and the column is finished with DragonAPI's
@@ -100,15 +100,21 @@ public final class GlowingCliffsColumnShaper {
 	private static final int MAX_OCEAN_FLOOR_Y = 48;
 	public static final int SEA_LEVEL = 62;
 	private static final int MIN_SHORE_Y = SEA_LEVEL;
-	private static final int MAX_SHORE_Y = 72;
-	private static final int MIN_MIDDLE_BOTTOM_Y = 80;
-	private static final int MAX_MIDDLE_BOTTOM_Y = 96;
-	private static final int MIN_MIDDLE_TOP_Y = 100;
-	public static final int MAX_MIDDLE_TOP_Y = 112;
-	private static final int MIN_UPPER_BOTTOM_Y = 128;
-	private static final int MAX_UPPER_BOTTOM_Y = 140;
-	private static final int MIN_UPPER_TOP_Y = 144;
-	public static final int MAX_UPPER_TOP_Y = 160;
+	/** Stretch V33a's relief above sea level, keeping its shelf and undercut proportions. */
+	public static final int MAX_TERRAIN_Y = 300;
+	public static int scaleHeight(int legacyY) {
+		return legacyY <= SEA_LEVEL ? legacyY
+				: SEA_LEVEL + (int)Math.round((legacyY - SEA_LEVEL) * (MAX_TERRAIN_Y - SEA_LEVEL) / 98D);
+	}
+	private static final int MAX_SHORE_Y = scaleHeight(72);
+	private static final int MIN_MIDDLE_BOTTOM_Y = scaleHeight(80);
+	private static final int MAX_MIDDLE_BOTTOM_Y = scaleHeight(96);
+	private static final int MIN_MIDDLE_TOP_Y = scaleHeight(100);
+	public static final int MAX_MIDDLE_TOP_Y = scaleHeight(112);
+	private static final int MIN_UPPER_BOTTOM_Y = scaleHeight(128);
+	private static final int MAX_UPPER_BOTTOM_Y = scaleHeight(140);
+	private static final int MIN_UPPER_TOP_Y = scaleHeight(144);
+	public static final int MAX_UPPER_TOP_Y = MAX_TERRAIN_Y;
 
 	/** How far {@code calcHval} looks for another biome. */
 	public static final int INWARD_SEARCH = 24;
@@ -285,7 +291,7 @@ public final class GlowingCliffsColumnShaper {
 		dh = top - baseCeil;
 		int newTop = baseCeil + 2 + (int)ReikaMathLibrary.ellipticalInterpolation(hval - caveThresh, 0,
 				caveThresh - thresh, 0, dh);
-		return new Column(r, newTop, caveFloor, caveCeil, dirtt, Integer.MAX_VALUE);
+		return new Column(r, Math.min(MAX_TERRAIN_Y, newTop), caveFloor, caveCeil, dirtt, Integer.MAX_VALUE);
 	}
 
 	private GlowCliffRegion getRegion(Sampler s, int x, int z, BiomeKind b) {
@@ -419,7 +425,7 @@ public final class GlowingCliffsColumnShaper {
 		return (int)ReikaMathLibrary.linterpolate(hval, 0, SHORELINE_THRESHOLD, min, SEA_LEVEL + 1);
 	}
 
-	/** One column's blocks, bottom 0 to 255, in upstream's vocabulary. */
+	/** Shaped surface columns; the modern underground below zero remains generator-owned. */
 	public enum Cell {
 		AIR, STONE, DIRT, GRASS, WATER, GLOW_DAISY, SAPLING, ROCK_FLOWER, GLOW_ROOT;
 
@@ -428,7 +434,7 @@ public final class GlowingCliffsColumnShaper {
 		}
 	}
 
-	public static final int HEIGHT = 256;
+	public static final int HEIGHT = MAX_TERRAIN_Y + 1;
 
 	/**
 	 * V33a {@code generateColumn} in full for a Luminous Cliffs column: the blocks, the cavern plants,

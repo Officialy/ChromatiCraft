@@ -44,12 +44,24 @@
         "down": {
           "cullface": "down",
           "texture": "#overlay",
-          "tintindex": 0
+          "tintindex": 0,
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ]
         },
         "up": {
           "cullface": "up",
           "texture": "#overlay",
-          "tintindex": 0
+          "tintindex": 0,
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ]
         }
       },
       "from": [

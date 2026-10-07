@@ -190,7 +190,7 @@ final class WorldgenParityGameTests {
         var level = helper.getLevel();
         if (!wasForced) level.getChunkSource().updateChunkForced(origin, false);
         int stone = 0;
-        for (int y = 60; y < 260; y++)
+        for (int y = 60; y <= GlowingCliffsColumnShaper.MAX_TERRAIN_Y; y++)
             if (level.getBlockState(new BlockPos(center.getX(), y, center.getZ())).is(ChromaBlocks.CLIFF_STONE.get())) stone++;
         helper.assertTrue(stone > 0, "serialized candidate must paint a floating island through the saved queue");
         helper.succeed();
@@ -228,12 +228,25 @@ final class WorldgenParityGameTests {
             return;
         }
         all.join();
-        int raised = 0, holes = 0;
+        int raised = 0, holes = 0, lakes = 0, high = 0;
         for (ProtoChunk chunk : chunks) {
             for (int dx = 0; dx < 16; dx++) for (int dz = 0; dz < 16; dz++) {
                 int x = chunk.getPos().getMinBlockX() + dx, z = chunk.getPos().getMinBlockZ() + dz;
                 int original = generator.getBaseHeight(x, z, Heightmap.Types.OCEAN_FLOOR_WG, helper.getLevel(), random) - 1;
-                var cells = sampler.shaper().cells(sampler.column(x, z), x, z);
+                var column = sampler.column(x, z);
+                var cells = sampler.shaper().cells(column, x, z);
+                helper.assertTrue(column.top() <= 300, "stretched cliffs must stop at Y300");
+                if (column.top() > 255) high++;
+                if (column.region() == GlowingCliffsColumnShaper.GlowCliffRegion.WATER) {
+                    lakes++;
+                    for (int y = column.oceanFloor(); y <= GlowingCliffsColumnShaper.SEA_LEVEL; y++)
+                        helper.assertTrue(chunk.getBlockState(new BlockPos(x, y, z)).is(Blocks.WATER),
+                                "native carvers removed lake water at " + x + "," + y + "," + z);
+                    for (int y = column.oceanFloor() - 4; y < column.oceanFloor(); y++)
+                        helper.assertTrue(chunk.getBlockState(new BlockPos(x, y, z)).getFluidState().isEmpty()
+                                        && !chunk.getBlockState(new BlockPos(x, y, z)).isAir(),
+                                "noise caves or carvers opened the lake bed at " + x + "," + y + "," + z);
+                }
                 for (int y = Math.max(original + 2, 63); y < cells.length; y++) {
                     if (cells[y] == GlowingCliffsColumnShaper.Cell.STONE) {
                         raised++;
@@ -243,9 +256,13 @@ final class WorldgenParityGameTests {
             }
             helper.assertTrue(!LuminousCliffsTerrainFeature.shapeBeforeCarvers(chunk, generator, random, random.seed()),
                     "a later terrain pass must not refill caves in a shaped chunk");
+            var deny = LuminousCliffsTerrainFeature.protectLakes(chunk, generator, random, (x, y, z) -> false);
+            helper.assertTrue(!deny.test(0, -40, 0), "lake protection must preserve the existing blender veto");
         }
         helper.assertTrue(raised > 0, "fixture must include raised plateau stone");
         helper.assertTrue(holes > 0, "vanilla carvers must cut raised cliff stone above the old ground");
+        helper.assertTrue(lakes > 0, "fixture must include protected lake columns");
+        helper.assertTrue(high > 0, "modern relief must reach above the old Y255 limit");
         helper.succeed();
     }
 }

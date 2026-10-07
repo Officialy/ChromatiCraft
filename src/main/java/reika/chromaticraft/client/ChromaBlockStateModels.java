@@ -16,6 +16,8 @@ public final class ChromaBlockStateModels {
 	private ChromaBlockStateModels() {}
 	@SubscribeEvent
 	public static void register(RegisterBlockStateModels event) {
+		event.registerModel(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "aura_ivy"),
+				reika.chromaticraft.render.model.AuraIvyModel.Unbaked.CODEC);
 		event.registerModel(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "cave_crystal"), CaveCrystalModel.Unbaked.CODEC);
 		event.registerModel(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "selective_glass"),
 				reika.chromaticraft.render.model.SelectiveGlassModel.Unbaked.CODEC);

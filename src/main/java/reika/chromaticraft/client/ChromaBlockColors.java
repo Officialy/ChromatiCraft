@@ -264,6 +264,8 @@ public final class ChromaBlockColors {
         // it renders white. It is a Luminous Cliffs block, so it takes the same position/altitude
         // shift as the vanilla grass around it.
         event.register(List.of(CLIFF_GRASS), ChromaBlocks.CLIFF_GRASS.get());
+        event.register(List.of(CLIFF_GRASS), ChromaBlocks.decoFlower(
+                reika.chromaticraft.registry.ChromaDecoFlowers.AURA_IVY).get());
         registerTerrainTintWrappers(event);
     }
 

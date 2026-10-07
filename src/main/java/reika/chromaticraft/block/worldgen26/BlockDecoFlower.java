@@ -29,6 +29,18 @@ import reika.chromaticraft.registry.ChromaDecoFlowers;
 public class BlockDecoFlower extends Block {
 
 	private static final VoxelShape SHAPE = box(2, 0, 2, 14, 16, 14);
+	private static final VoxelShape[] IVY_SHAPES = new VoxelShape[16];
+	public static final Direction[] IVY_FACES = {Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST};
+	static {
+		VoxelShape[] faces = {box(0, 0, 0, 16, 16, 1), box(15, 0, 0, 16, 16, 16),
+				box(0, 0, 15, 16, 16, 16), box(0, 0, 0, 1, 16, 16)};
+		for (int mask = 0; mask < IVY_SHAPES.length; mask++) {
+			VoxelShape shape = Shapes.empty();
+			for (int i = 0; i < faces.length; i++)
+				if ((mask & (1 << i)) != 0) shape = Shapes.or(shape, faces[i]);
+			IVY_SHAPES[mask] = shape;
+		}
+	}
 
 	private final ChromaDecoFlowers flower;
 
@@ -45,7 +57,23 @@ public class BlockDecoFlower extends Block {
 
 	@Override
 	protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
-		return SHAPE;
+		return flower.siting() == ChromaDecoFlowers.Siting.IVY
+				? IVY_SHAPES[ivyFaces(level, pos)] : SHAPE;
+	}
+
+	/** Wall faces, inherited down a hanging run. No saved properties, so existing ivy updates too. */
+	public static int ivyFaces(BlockGetter level, BlockPos pos) {
+		int mask = 0;
+		BlockPos.MutableBlockPos cursor = pos.mutable();
+		do {
+			for (int i = 0; i < IVY_FACES.length; i++)
+				if (level.getBlockState(cursor.relative(IVY_FACES[i])).isSolidRender()) mask |= 1 << i;
+			cursor.move(Direction.UP);
+			BlockState above = level.getBlockState(cursor);
+			if (!(above.getBlock() instanceof BlockDecoFlower block)
+					|| block.flower.siting() != ChromaDecoFlowers.Siting.IVY) break;
+		} while (cursor.getY() < level.getMaxY() && mask != 15);
+		return mask;
 	}
 
 	@Override
@@ -76,14 +104,7 @@ public class BlockDecoFlower extends Block {
 						yield true;
 				yield false;
 			}
-			case IVY -> {
-				if (level.getBlockState(pos.above()).is(this))
-					yield true;
-				for (Direction dir : Direction.Plane.HORIZONTAL)
-					if (level.getBlockState(pos.relative(dir)).isSolidRender())
-						yield true;
-				yield false;
-			}
+			case IVY -> ivyFaces(level, pos) != 0;
 		};
 	}
 

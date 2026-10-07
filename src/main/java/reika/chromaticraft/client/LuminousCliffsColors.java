@@ -27,7 +27,7 @@ import reika.dragonapi.libraries.rendering.ReikaColorAPI;
  *
  * <p>The 1.7.10 biome overrode {@code getBiomeGrassColor(x,y,z)},
  * {@code getBiomeFoliageColor(x,y,z)} and {@code getWaterColor(world,x,y,z,l)} directly. Minecraft
- * 26.2 resolves those through {@link net.minecraft.world.level.ColorResolver}, whose signature is
+ * 26.3 resolves those through {@link net.minecraft.world.level.ColorResolver}, whose signature is
  * {@code (Biome, int x, int z)} — it never sees Y, so the altitude term cannot live there. The
  * equivalent hook that does receive the full position is
  * {@link BlockTintSource#colorInWorld(BlockState, BlockAndTintGetter, BlockPos)}, which runs during
@@ -138,11 +138,11 @@ public final class LuminousCliffsColors {
 
 	/**
 	 * V33a {@code shiftBrightness}: wash the colour towards white by a noise factor that only takes
-	 * effect above y=64 and saturates at y=189, so the high plateaus glow and the shore does not.
+	 * effect above y=64 and saturates at the modern upper plateau, so the high plateaus glow.
 	 */
 	public static int shiftBrightness(int base, int x, int y, int z) {
 		float f = (float)ReikaMathLibrary.normalizeToBounds(LUM_SHIFT.getValue(x, z), 0.05F, 0.6F);
-		f *= Mth.clamp((y - 64F) / 125F, 0, 1);
+		f *= Mth.clamp((y - 64F) / (reika.chromaticraft.world.GlowingCliffsColumnShaper.MAX_TERRAIN_Y - 64F), 0, 1);
 		return ReikaColorAPI.mixColors(base, 0xffffff, 1 - f);
 	}
 
@@ -157,13 +157,15 @@ public final class LuminousCliffsColors {
 		return ReikaColorAPI.getShiftedHue(SKY_BASE, (float)(15 * SKY_COLOR_MIX.getValue(x, z)));
 	}
 
-	/** V33a {@code getWaterColor}: clear at the edges, otherwise a teal-to-pink simplex mix. */
+	/** V33a's teal/pink palette, including falling, shaded and high-altitude water. */
 	public static int waterColor(BlockAndTintGetter level, BlockPos pos) {
-		if (isClearWater(level, pos))
-			return WATER_CLEAR;
 		float f = (float)ReikaMathLibrary.normalizeToBounds(
 				WATER_COLOR_MIX.getValue(pos.getX(), pos.getZ()), 0, 1);
-		return ReikaColorAPI.mixColors(WATER_TEAL, WATER_PINK, f);
+		int color = ReikaColorAPI.mixColors(WATER_TEAL, WATER_PINK, f);
+		// V33a removed the tint in these cases. Modern water's greyscale sprite turns that
+		// into opaque-looking white sheets. Keep its edge distinction with a softer palette,
+		// retaining colour in waterfalls, deep shade and island pools at every height.
+		return isClearWater(level, pos) ? ReikaColorAPI.mixColors(color, WATER_TEAL, 0.75F) : color;
 	}
 
 	/**
@@ -207,7 +209,7 @@ public final class LuminousCliffsColors {
 	/**
 	 * Applies the V33a shift, faded in over the biome border by {@link #cliffStrength}.
 	 *
-	 * <p>Only the RGB is shifted; the base's alpha is kept. 26.2 multiplies the tint into the quad's
+	 * <p>Only the RGB is shifted; the base's alpha is kept. 26.3 multiplies the tint into the quad's
 	 * ARGB, and {@code mixColors} does not carry alpha through (the white it washes toward has none,
 	 * and it reads an opaque alpha as -1), so without this the cliffs' grass and leaves drew fully
 	 * transparent. 1.7.10 ignored a tint's alpha, which is why upstream never noticed.

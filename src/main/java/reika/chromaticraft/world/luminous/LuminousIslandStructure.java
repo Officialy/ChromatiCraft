@@ -23,7 +23,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p>Every chunk rolls once. A slow noise sets a size scale of 0.5-2, and the chunk gets a candidate with
  * chance {@code 33/scale} percent — so small islands are the common ones. The candidate must stand in the
  * cliffs; over the sea it is kept one time in three, over land one in six. It floats at least ten blocks
- * above the ground plus its own thickness (and never below 90), plus up to 80 more, capped at 250.
+ * above the ground plus its own thickness, with the sea-relative altitude spread stretched for 26.3.
+ * The island origin stops at 294 so its six-block contour reaches at most Y300.
  *
  * <p>Upstream built islands after the chunks around them were populated and refused any island that
  * would touch a non-air block. An island is far too large for a feature, so this is a structure: its

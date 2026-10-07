@@ -44,12 +44,24 @@
         "east": {
           "cullface": "east",
           "texture": "#overlay",
-          "tintindex": 0
+          "tintindex": 0,
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ]
         },
         "west": {
           "cullface": "west",
           "texture": "#overlay",
-          "tintindex": 0
+          "tintindex": 0,
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ]
         }
       },
       "from": [

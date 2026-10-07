@@ -20,14 +20,14 @@ import java.util.concurrent.ConcurrentHashMap;
  * V33a {@code ChromaClientEventController.biomeWaterColor}: the overworld biomes' positional water.
  *
  * <p>Upstream's listener recoloured water in two biome families and deferred to the biome for the
- * colour itself. The Glowing Cliffs' water goes clear at shallow and flowing edges and otherwise drifts
+ * colour itself. The Glowing Cliffs' water retains a softer teal tint at shallow and flowing edges and otherwise drifts
  * between teal and pink ({@link LuminousCliffsColors#waterColor}); the Rainbow Stream's mixes the
  * Rainbow Forest's cyan toward pure blue on simplex noise. The Rainbow Forest itself returned its flat
  * cyan, which is already the biome's static water colour here, so it needs nothing.
  *
  * <p>The Ender Forest was never in that listener: its water came from the biome's water multiplier,
  * which V33a's event default averaged over a 3x3. Its only non-default case is the {@code ENDERCOLORING}
- * pink, and since 26.2 cannot make a biome's static colour depend on a config option it is applied here
+ * pink, and since 26.3 cannot make a biome's static colour depend on a config option it is applied here
  * alongside the others.
  *
  * <p>V33a switched hard at the biome edge. Each recolour here is instead faded in by that biome's

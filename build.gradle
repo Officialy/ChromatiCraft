@@ -1077,6 +1077,7 @@ sourceSets.main.java {
     include 'reika/chromaticraft/registry/ProximaDecoTypes.java'
     include 'reika/chromaticraft/block/dimension/BlockDimensionDeco.java'
     include 'reika/chromaticraft/world/NetherLavaRiverFeature.java'
+    include 'reika/chromaticraft/render/model/AuraIvyModel.java'
     include 'reika/chromaticraft/data/ChromaLootProvider.java'
     include 'reika/chromaticraft/data/ChromaChestLoot.java'
     include 'reika/chromaticraft/data/ChromaLootModifierProvider.java'

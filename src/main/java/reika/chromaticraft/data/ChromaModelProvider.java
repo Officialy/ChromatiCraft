@@ -525,7 +525,7 @@ public class ChromaModelProvider extends ModelProvider {
 	 * extra top-face quad inset 0.1 blocks (1.6 pixels) carrying the inner sprite -- the active one
 	 * at brightness 240, the inactive one lit normally.
 	 */
-	/** V33a renders these as ordinary crossed squares; only Aura Ivy takes the biome grass tint. */
+	/** Deco flowers use crossed squares; Aura Ivy now uses grass-tinted wall planes. */
 	/**
 	 * V33a draws the artefact through its own ISBRH, but the shape it draws is a plain box sunk to
 	 * 0.75 of a block with the single {@code ua} sprite on every face, so a slab-height cube_all
@@ -666,6 +666,11 @@ public class ChromaModelProvider extends ModelProvider {
 				continue;
 			JsonObject f = new JsonObject();
 			f.addProperty("texture", "#overlay");
+			// The 0.01 overhang prevents z-fighting; it must not expand sprite UVs beyond 0..16.
+			// 26.3's material transparency baker rejects the implicit -0.01..16.01 rectangle.
+			JsonArray uv = new JsonArray();
+			for (int coordinate : new int[]{0, 0, 16, 16}) uv.add(coordinate);
+			f.add("uv", uv);
 			f.addProperty("cullface", face.getSerializedName());
 			f.addProperty("tintindex", 0);
 			overFaces.add(face.getSerializedName(), f);
@@ -836,10 +841,15 @@ public class ChromaModelProvider extends ModelProvider {
 			Block block = ChromaBlocks.decoFlower(flower).get();
 			Material texture = new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,
 					flower.texture()));
-			Identifier model = (flower.isBiomeColored() ? ModelTemplates.TINTED_CROSS : ModelTemplates.CROSS)
-					.create(block, TextureMapping.cross(texture), modelOut);
-			blockStateOut.accept(MultiVariantGenerator.dispatch(block,
-					new MultiVariant(WeightedList.of(new Variant(model)))));
+			if (flower == ChromaDecoFlowers.AURA_IVY) {
+				blockStateOut.accept(customBlockState(block, new reika.chromaticraft.render.model.AuraIvyModel.Unbaked(
+						Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, flower.texture()))));
+			}
+			else {
+				Identifier model = ModelTemplates.CROSS.create(block, TextureMapping.cross(texture), modelOut);
+				blockStateOut.accept(MultiVariantGenerator.dispatch(block,
+						new MultiVariant(WeightedList.of(new Variant(model)))));
+			}
 			// A flat sprite, not the cross model. Reusing the block model puts two intersecting planes
 			// in the slot, which at the inventory's viewing angle reads as a pair of slivers -- vanilla
 			// gives every one of its own flowers an item/generated model for exactly this reason.
