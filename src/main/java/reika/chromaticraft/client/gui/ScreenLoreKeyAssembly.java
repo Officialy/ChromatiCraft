@@ -104,7 +104,7 @@ public final class ScreenLoreKeyAssembly extends Screen {
 
 	@Override
 	public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-		if (!complete && !awaitingServer && event.button() == 0) {
+		if (!complete && !awaitingServer && event.button() == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT) {
 			KeyAssemblyPuzzle.CellView cell = puzzle.cellAt(event.x() - left, event.y() - top, scannedMask);
 			if (cell != null && cell.color() != null && cell.known()) {
 				awaitingServer = true;

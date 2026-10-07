@@ -59,7 +59,7 @@ public final class ScreenCrystalCharger extends AbstractContainerScreen<MenuCrys
 
 	@Override
 	public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-		if (event.button() == 0) {
+		if (event.button() == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT) {
 			for (CrystalElement element : CrystalElement.elements) {
 				int x = leftPos + barX(element) - 1;
 				int y = topPos + (element.ordinal() < 8 ? 16 : 56);

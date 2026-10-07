@@ -204,7 +204,7 @@ public final class ScreenAutoEnchanter extends ScreenLetterSearchable<MenuAutoEn
 					.get(ChromaFluids.CHROMA.get().defaultFluidState());
 			TextureAtlasSprite ico = model.stillMaterial().sprite();
 			int h = 54 * level / ench.getCapacity();
-			GuiShapes.sprite(g, RenderPipelines.GUI_TEXTURED, ico, 35, 68-h, 16, h, 0xffffffff);
+			GuiShapes.sprite(g, RenderPipelines.GUI_TEXTURED, ico, 35, 68-h, 35+16, 68, 0xffffffff);
 		}
 
 		int amt = ench.getConsumedChroma();

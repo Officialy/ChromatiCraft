@@ -165,7 +165,7 @@ public final class ScreenFluidRelay extends ScreenLetterSearchable<MenuFluidRela
 					minecraft.level, minecraft.player.blockPosition());
 		else if (tintSource != null)
 			tint = 0xff000000 | tintSource.color(f.defaultFluidState());
-		GuiShapes.sprite(g, RenderPipelines.GUI_TEXTURED, ico, x, y, 16, 16, tint);
+		GuiShapes.sprite(g, RenderPipelines.GUI_TEXTURED, ico, x, y, x+16, y+16, tint);
 	}
 
 	/** V33a {@code api.drawRectFrame}: a one-pixel outline. */
