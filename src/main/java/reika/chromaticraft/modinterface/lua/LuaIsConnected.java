@@ -9,7 +9,7 @@
  ******************************************************************************/
 package reika.chromaticraft.modinterface.lua;
 
-import net.minecraft.tileentity.TileEntity;
+import net.minecraft.world.level.block.entity.BlockEntity;
 
 import reika.chromaticraft.magic.interfaces.CrystalReceiver;
 import reika.chromaticraft.magic.network.CrystalNetworker;
@@ -23,9 +23,13 @@ public class LuaIsConnected extends LuaMethod {
 	}
 
 	@Override
-	protected Object[] invoke(TileEntity te, Object[] args) throws LuaMethodException, InterruptedException {
+	protected Object[] invoke(BlockEntity te, Object[] args) throws LuaMethodException, InterruptedException {
+		//V33a cast to Integer, which a computer's Lua number (a Double) never was
+		int idx = ((Number)args[0]).intValue();
+		if (idx < 0 || idx >= CrystalElement.elements.length)
+			throw new LuaMethodException("Element index must be 0-15");
 		Object[] o = new Object[1];
-		o[0] = CrystalNetworker.instance.checkConnectivity(CrystalElement.elements[(Integer)args[0]], (CrystalReceiver)te);
+		o[0] = CrystalNetworker.instance.checkConnectivity(CrystalElement.elements[idx], (CrystalReceiver)te);
 		return o;
 	}
 

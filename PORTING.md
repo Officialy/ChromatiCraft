@@ -10643,3 +10643,15 @@ V33a added a `CHROMA_MUSIC` sound category ("ChromatiCraft Music", its own slide
 - `SoundOptionsScreenMixin` appends a "ChromatiCraft Music" slider (V33a's `soundCategory.chroma_music`) to the per-category grid; the value persists in `config/chromaticraft-client.toml` (`ChromaClientConfig`).
 - `SoundEngineChromaMusicMixin` gives the Proxima tracks the volume *track × ChromatiCraft Music × Master* (the music manager's fade gain still applies) instead of the vanilla Music slider, as V33a's separate category did. A track is re-volumed right after it starts and whenever the slider moves.
 - **Unverified:** client mixins do not load in GameTests; descriptors were checked against the 26.3.0.51 sources and it compiles, but the slider and volume have not been seen in a running client.
+
+## 2026-10-07 — ComputerCraft (CC: Tweaked) peripherals
+
+Full record in `ReactorCraft/PORTING.md` ("ComputerCraft (CC: Tweaked) integration"). ChromatiCraft part:
+- `ChromatiCraft` constructor registers `modinterface/lua` (V33a ChromatiCraft.load did).
+- Allowlisted and ported: LuaElementColor, LuaGetLumens, LuaIsConnected, LuaSetEnchantments (Integer casts fixed to
+  Number; enchantments by registry name or 1.7.10 numeric id; blacklist honoured; syncs after setting).
+- Ported but waiting on their machines: LuaAddNote (TileEntityCrystalMusic), LuaCrystalConsole
+  (TileEntityCrystalConsole), LuaGetTankFraction (TileEntityCrystalTank) — allowlist them with those machines.
+- Pristine until a 26.3 Forestry: AlvearyLuaMethod, LuaCycleBee, LuaGetGenes.
+- World Rift implements DragonAPI `PeripheralRelay`: the ComputerCraft half of the V33a rift `CHROMA-PORT` note is
+  done (OpenComputers/ProjectRed/Thaumcraft remain).

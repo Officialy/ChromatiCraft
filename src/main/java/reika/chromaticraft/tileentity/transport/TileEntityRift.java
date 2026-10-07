@@ -41,6 +41,7 @@ import reika.dragonapi.auxiliary.ChunkManager;
 import reika.dragonapi.base.BlockEntityBase;
 import reika.dragonapi.instantiable.data.immutable.WorldLocation;
 import reika.dragonapi.interfaces.blockentity.ChunkLoadingTile;
+import reika.dragonapi.interfaces.blockentity.PeripheralRelay;
 
 import java.awt.*;
 import java.util.Arrays;
@@ -57,7 +58,7 @@ import java.util.List;
  * leaves a pipe holding a stale handler. A call that has passed through {@link #MAX_DEPTH} rifts in a row returns
  * nothing: two rift pairs whose far ends face each other forwarded forever in V33a (a stack overflow).
  */
-public class TileEntityRift extends LinkedTileBase implements WorldRift, ChunkLoadingTile {
+public class TileEntityRift extends LinkedTileBase implements WorldRift, ChunkLoadingTile, PeripheralRelay {
 
 	/** Rift-to-rift hops one capability call may make before it gives up. */
 	private static final int MAX_DEPTH = 8;
@@ -72,9 +73,10 @@ public class TileEntityRift extends LinkedTileBase implements WorldRift, ChunkLo
 	private final RiftEnergyHandler[] energyViews = new RiftEnergyHandler[6];
 
 	// CHROMA-PORT: V33a also made the rift an OpenComputers SidedEnvironment (one network node per face, joined to the
-	// far rift's opposite-face node on link and split on reset), a ComputerCraft peripheral and a ProjectRed
-	// IBundledTile, all passing through to the single-direction tile, plus Thaumcraft IEssentiaTransport and
-	// IAspectContainer views of the far side. None of those mods target 26.3; restore them from V33a when they do.
+	// far rift's opposite-face node on link and split on reset) and a ProjectRed IBundledTile, both passing through to
+	// the single-direction tile, plus Thaumcraft IEssentiaTransport and IAspectContainer views of the far side. None of
+	// those mods target 26.3; restore them from V33a when they do. (The ComputerCraft peripheral is ported: see
+	// getRelayedPeripheral.)
 
 	public TileEntityRift(BlockPos pos, BlockState state) {
 		super(ChromaBlockEntities.RIFT.get(), pos, state);
@@ -145,7 +147,37 @@ public class TileEntityRift extends LinkedTileBase implements WorldRift, ChunkLo
 			this.getOther().singleDirection = dir.getOpposite();
 			this.syncAllData(false);
 			this.getOther().syncAllData(false);
+			this.invalidatePeripheral();
+			this.getOther().invalidatePeripheral();
 		}
+	}
+
+	/**
+	 * V33a IPeripheral (getType/getMethodNames/callMethod/attach/detach all forwarded): a computer beside this rift
+	 * talks to the peripheral of the tile beyond the far rift's Manipulator-chosen face, as {@link #getSingleDirection}
+	 * routes items. Null while unlinked or no face is chosen, when V33a answered with a null type.
+	 */
+	@Override
+	public PeripheralRelay.@Nullable Target getRelayedPeripheral() {
+		TileEntityRift te = this.getOther();
+		if (te == null || singleDirection == null || te.getLevel() == null)
+			return null;
+		return new PeripheralRelay.Target(te.getLevel(), te.getBlockPos().relative(singleDirection.getOpposite()), singleDirection);
+	}
+
+	/** Computers cache the peripheral they were handed; make them ask again when the relayed target may differ. */
+	private void invalidatePeripheral() {
+		if (level != null && !level.isClientSide())
+			level.invalidateCapabilities(worldPosition);
+	}
+
+	/** The far side's neighbour changed: the partner's relayed peripheral may have appeared, vanished or changed. */
+	@Override
+	protected void onAdjacentBlockUpdate() {
+		super.onAdjacentBlockUpdate();
+		TileEntityRift te = this.getOther();
+		if (te != null)
+			te.invalidatePeripheral();
 	}
 
 	public @Nullable Direction getSingleDirection() {
@@ -204,6 +236,7 @@ public class TileEntityRift extends LinkedTileBase implements WorldRift, ChunkLo
 	public void assignLinkID(LinkedTile other) {
 		TileEntityRift te = (TileEntityRift)other;
 		color = te.color;
+		this.invalidatePeripheral();
 	}
 
 	@Override
@@ -211,6 +244,7 @@ public class TileEntityRift extends LinkedTileBase implements WorldRift, ChunkLo
 		color = 0xffffff;
 		redstoneCache = new int[6];
 		singleDirection = null;
+		this.invalidatePeripheral();
 	}
 
 	@Override

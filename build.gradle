@@ -821,6 +821,13 @@ sourceSets.main.java {
     include 'reika/chromaticraft/magic/interfaces/CrystalFuse.java'
     include 'reika/chromaticraft/magic/interfaces/CrystalBattery.java'
     include 'reika/chromaticraft/magic/network/*.java'
+    // ComputerCraft peripheral methods whose machines have landed (DragonAPI CCHooks exposes them). The rest of
+    // modinterface/lua is ported too but waits on its machine: LuaAddNote (Crystal Music), LuaCrystalConsole,
+    // LuaGetTankFraction (Crystal Tank); the three Forestry alveary methods wait on a 26.3 Forestry.
+    include 'reika/chromaticraft/modinterface/lua/LuaElementColor.java'
+    include 'reika/chromaticraft/modinterface/lua/LuaGetLumens.java'
+    include 'reika/chromaticraft/modinterface/lua/LuaIsConnected.java'
+    include 'reika/chromaticraft/modinterface/lua/LuaSetEnchantments.java'
     include 'reika/chromaticraft/base/tileentity/TileEntityPylonEnhancer.java'
     include 'reika/chromaticraft/tileentity/auxiliary/TileEntityChromaCrystal.java'
 	include 'reika/chromaticraft/tileentity/auxiliary/TileEntityPylonTurboCharger.java'

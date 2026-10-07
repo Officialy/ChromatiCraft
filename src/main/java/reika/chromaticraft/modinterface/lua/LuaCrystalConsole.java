@@ -9,7 +9,7 @@
  ******************************************************************************/
 package reika.chromaticraft.modinterface.lua;
 
-import net.minecraft.tileentity.TileEntity;
+import net.minecraft.world.level.block.entity.BlockEntity;
 
 import reika.chromaticraft.tileentity.TileEntityCrystalConsole;
 import reika.dragonapi.modinteract.lua.LuaMethod;
@@ -21,7 +21,7 @@ public class LuaCrystalConsole extends LuaMethod {
 	}
 
 	@Override
-	protected Object[] invoke(TileEntity te, Object[] args) throws LuaMethodException, InterruptedException {
+	protected Object[] invoke(BlockEntity te, Object[] args) throws LuaMethodException, InterruptedException {
 		TileEntityCrystalConsole tile = (TileEntityCrystalConsole) te;
 		int slot = ((Double)args[0]).intValue();
 		boolean on = (Boolean)args[1];

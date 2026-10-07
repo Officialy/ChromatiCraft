@@ -102,6 +102,8 @@ public class ChromatiCraft extends DragonAPIMod {
 		// V33a TileEntityMassStorage (the Tool Storage crate) was an AE grid host pulling items from its network.
 		reika.dragonapi.modinteract.AEHooks.registerGridHost(ChromaBlockEntities.TOOL_STORAGE);
 		reika.dragonapi.modinteract.AEHooks.registerGridHost(ChromaBlockEntities.ME_DISTRIBUTOR);
+		// V33a ChromatiCraft.load: the ComputerCraft peripheral methods (DragonAPI CCHooks exposes them to computers).
+		reika.dragonapi.modinteract.lua.LuaMethod.registerMethods("reika.chromaticraft.modinterface.lua");
 		ChromaMenus.REGISTRY.register(modEventBus);
 		ChromaEntityTypes.ENTITY_TYPES.register(modEventBus);
         modEventBus.addListener((net.neoforged.neoforge.event.entity.EntityAttributeCreationEvent event) -> event.put(ChromaEntityTypes.MONSTER_BAIT.get(),net.minecraft.world.entity.Mob.createMobAttributes().build()));

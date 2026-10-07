@@ -9,11 +9,10 @@
  ******************************************************************************/
 package reika.chromaticraft.modinterface.lua;
 
-import net.minecraft.tileentity.TileEntity;
+import net.minecraft.world.level.block.entity.BlockEntity;
 
 import reika.chromaticraft.registry.CrystalElement;
 import reika.dragonapi.modinteract.lua.LibraryLuaMethod;
-
 
 public class LuaElementColor extends LibraryLuaMethod {
 
@@ -22,8 +21,10 @@ public class LuaElementColor extends LibraryLuaMethod {
 	}
 
 	@Override
-	protected Object[] invoke(TileEntity te, Object[] args) throws LuaMethodException, InterruptedException {
+	protected Object[] invoke(BlockEntity te, Object[] args) throws LuaMethodException, InterruptedException {
 		int idx = ((Double)args[0]).intValue();
+		if (idx < 0 || idx >= CrystalElement.elements.length)
+			throw new LuaMethodException("Element index must be 0-15");
 		return new Object[]{CrystalElement.elements[idx].getColor()};
 	}
 
