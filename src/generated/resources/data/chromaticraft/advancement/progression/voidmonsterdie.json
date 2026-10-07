@@ -1,5 +1,5 @@
 {
-  "parent": "chromaticraft:root",
+  "parent": "chromaticraft:progression/voidmonster",
   "criteria": {
     "trigger": {
       "trigger": "minecraft:impossible"

@@ -65,7 +65,10 @@ public final class VoidRitualShaders {
         }
     }
     public static RenderPipeline terrainPipeline(RenderPipeline original) { return terrainActive()?TERRAIN.getOrDefault(original,original):original; }
-    public static boolean terrainActive() { return VoidMonsterRitualClientEffects.visuals().stream().anyMatch(v->v.cause!=VoidMonsterDestructionRitual.Effects.COLLAPSING_SPHERE && v.intensity>0); }
+    public static boolean terrainActive() {
+        if (reika.chromaticraft.client.render.IrisCompatibility.shadowPass()) return false;
+        return VoidMonsterRitualClientEffects.visuals().stream().anyMatch(v->v.cause!=VoidMonsterDestructionRitual.Effects.COLLAPSING_SPHERE && v.intensity>0);
+    }
     public static void bindTerrain(RenderPass pass) {
         if (!terrainActive()) return;
         if (terrainUniform==null) terrainUniform=new MappableRingBuffer(()->"Void ritual terrain",GpuBuffer.USAGE_MAP_WRITE|GpuBuffer.USAGE_UNIFORM,64);
@@ -90,19 +93,25 @@ public final class VoidRitualShaders {
         }
         pass.setUniform("RitualTerrain",terrainUniform.currentBuffer());
     }
-    public static void markTrap(Vec3 center,float intensity,double distance,float rotation) { trapFocus=center; trapIntensity=intensity; trapDistance=(float)distance; trapRotation=rotation; }
+    public static void markTrap(Vec3 center,float intensity,double distance,float rotation) {
+        if (reika.chromaticraft.client.render.IrisCompatibility.shadowPass()) return;
+        trapFocus=center; trapIntensity=intensity; trapDistance=(float)distance; trapRotation=rotation;
+    }
     public static void reset() { trapFocus=null; trapIntensity=0; terrainUploaded=false; }
     public static void afterLevel(RenderLevelStageEvent.AfterLevel event) {
+        if (reika.chromaticraft.client.render.IrisCompatibility.shadowPass()) return;
         try { renderPost(event); }
         finally { trapFocus=null; trapIntensity=0; terrainUploaded=false; if (terrainUniform!=null) terrainUniform.rotate(); }
     }
     private static Vector4f projected(Vec3 focus,RenderLevelStageEvent.AfterLevel event) {
         var camera=event.getLevelRenderState().cameraRenderState;
         var point=new Vector4f((float)(focus.x-camera.pos.x),(float)(focus.y-camera.pos.y),(float)(focus.z-camera.pos.z),1).mul(event.getModelViewMatrix()).mul(camera.projectionMatrix);
-        return point.w<=.0001F?new Vector4f(0,0,0,0):new Vector4f(point.x/point.w*.5F+.5F,point.y/point.w*.5F+.5F,0,1);
+        if (!Float.isFinite(point.x) || !Float.isFinite(point.y) || !Float.isFinite(point.z) || !Float.isFinite(point.w)
+                || point.w<=.0001F || Math.abs(point.x)>point.w || Math.abs(point.y)>point.w) return new Vector4f(0,0,0,0);
+        return new Vector4f(point.x/point.w*.5F+.5F,point.y/point.w*.5F+.5F,0,1);
     }
     private static void renderPost(RenderLevelStageEvent.AfterLevel event) {
-        var mc=Minecraft.getInstance(); Vector4f sphere=new Vector4f(),trap=new Vector4f(); float size=0,thickness=1;
+        var mc=Minecraft.getInstance(); Vector4f sphere=new Vector4f(0,0,0,0),trap=new Vector4f(0,0,0,0); float size=0,thickness=1; // JOML new Vector4f() has w=1
         for (var visual:VoidMonsterRitualClientEffects.visuals()) if (visual.cause==VoidMonsterDestructionRitual.Effects.COLLAPSING_SPHERE && visual.intensity>0) {
             var entity=mc.level==null?null:findEntity(visual.focus); if (entity==null) continue;
             sphere=projected(entity.position(),event); sphere.w*=visual.intensity; size=visual.size; thickness=visual.thickness;

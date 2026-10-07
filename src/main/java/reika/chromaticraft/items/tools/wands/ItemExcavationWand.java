@@ -11,6 +11,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.world.attribute.EnvironmentAttributes;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.Enchantments;
@@ -92,9 +93,10 @@ public final class ItemExcavationWand extends ItemBlockChangingWand {
 
     @Override
     public boolean canSpreadOn(Level level, BlockPos pos, BlockState state) {
-        if (level.dimensionType().hasSkyLight() && state.is(Blocks.STONE)) return false;
-        if (level.environmentAttributes().getValue(net.minecraft.world.attribute.EnvironmentAttributes.WATER_EVAPORATES, pos)
-                && state.is(Blocks.NETHERRACK)) return false;
+        if (level.dimensionType().hasSkyLight() && state.is(Blocks.STONE))
+            return false;
+        if (level.environmentAttributes().getValue(EnvironmentAttributes.WATER_EVAPORATES, pos) && state.is(Blocks.NETHERRACK))
+            return false;
         if (level.dimension().equals(Level.END) && (state.is(Blocks.END_STONE) || state.is(Blocks.OBSIDIAN)))
             return false;
         if (state.is(ChromaBlocks.BEDROCK_CRACK.get())) return false;

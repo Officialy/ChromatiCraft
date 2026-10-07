@@ -1,5 +1,5 @@
 {
-  "parent": "chromaticraft:root",
+  "parent": "chromaticraft:progression/bedrock",
   "criteria": {
     "trigger": {
       "trigger": "minecraft:impossible"

@@ -43,6 +43,7 @@ dependencies {
     implementation project(":GeoStrata")
     implementation project(":ReactorCraft")
     implementation project(":ElectriCraft")
+    implementation project(":VoidMonster")
     implementation "com.github.glitchfiend:TerraBlender-neoforge:26.3-26.3.0.0.7-local.1"
 }
 
