@@ -72,6 +72,8 @@ public final class ProximaStructures {
 			WATER_TYPE = TYPES.register("water", () -> () -> ProximaWaterStructure.CODEC);
 	public static final DeferredHolder<StructureType<?>, StructureType<ProximaPistonTapeStructure>>
 			PISTONTAPE_TYPE = TYPES.register("piston_tape", () -> () -> ProximaPistonTapeStructure.CODEC);
+	public static final DeferredHolder<StructureType<?>, StructureType<ProximaRayBlendStructure>>
+			RAYBLEND_TYPE = TYPES.register("rayblend", () -> () -> ProximaRayBlendStructure.CODEC);
 
 	public static final DeferredHolder<StructureType<?>, StructureType<PortalStructureCommand>>
 			PORTAL_TYPE = TYPES.register("portal", () -> () -> PortalStructureCommand.CODEC);
@@ -133,6 +135,9 @@ public final class ProximaStructures {
 	public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends net.minecraft.world.level.levelgen.structure.placement.StructurePlacement>,
 			com.mojang.serialization.MapCodec<PistonTapePlacement>>
 			PISTONTAPE_PLACEMENT = PLACEMENTS.register("piston_tape", () -> PistonTapePlacement.CODEC);
+	public static final DeferredHolder<com.mojang.serialization.MapCodec<? extends net.minecraft.world.level.levelgen.structure.placement.StructurePlacement>,
+			com.mojang.serialization.MapCodec<RayBlendPlacement>>
+			RAYBLEND_PLACEMENT = PLACEMENTS.register("rayblend", () -> RayBlendPlacement.CODEC);
 
 	public static final ResourceKey<Structure> MONUMENT = ResourceKey.create(Registries.STRUCTURE,
 			Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "monument"));
@@ -176,6 +181,11 @@ public final class ProximaStructures {
 	public static final ResourceKey<net.minecraft.world.level.levelgen.structure.StructureSet>
 			PISTONTAPE_SET = ResourceKey.create(Registries.STRUCTURE_SET,
 					Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "piston_tape"));
+	public static final ResourceKey<Structure> RAYBLEND = ResourceKey.create(Registries.STRUCTURE,
+			Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "rayblend"));
+	public static final ResourceKey<net.minecraft.world.level.levelgen.structure.StructureSet>
+			RAYBLEND_SET = ResourceKey.create(Registries.STRUCTURE_SET,
+					Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "rayblend"));
 
 	private ProximaStructures() {}
 }

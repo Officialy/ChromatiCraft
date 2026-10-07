@@ -627,6 +627,10 @@ public final class ChromaBlocks {
 	public static final DeferredBlock<reika.chromaticraft.block.dimension.structure.pistontape.BlockPistonController26> PISTON_CONTROLLER = registerBlockOnly("piston_controller",
 			() -> new reika.chromaticraft.block.dimension.structure.pistontape.BlockPistonController26(blockProperties().mapColor(MapColor.STONE).strength(-1F, 6000F)
 					.sound(SoundType.STONE).lightLevel(state -> 12)));
+	/** V33a RAYBLEND: Crystal Interference's floor tile (unbreakable, translucent pass). */
+	public static final DeferredBlock<reika.chromaticraft.block.dimension.structure.rayblend.BlockRayblendFloor26> RAYBLEND_FLOOR = registerBlockOnly("rayblend_floor",
+			() -> new reika.chromaticraft.block.dimension.structure.rayblend.BlockRayblendFloor26(blockProperties().mapColor(MapColor.STONE)
+					.strength(-1F, 60000F).sound(SoundType.STONE).noOcclusion()));
 	public static final DeferredBlock<BlockLaserController> LASER_CONTROLLER = registerBlockOnly("laser_controller",
 			() -> new BlockLaserController(blockProperties().mapColor(MapColor.STONE)
 					.strength(-1F, 600000F).sound(SoundType.STONE).lightLevel(state -> 4)));

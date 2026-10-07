@@ -165,6 +165,9 @@ public final class ProximaStructureSegments {
 			case LASER -> g instanceof LaserStructureGenerator plan ? new LaserStructurePiece(p, plan, surface) : null;
 			case WATER -> g instanceof WaterStructureGenerator plan ? new WaterStructurePiece(p, plan, surface) : null;
 			case PISTONTAPE -> g instanceof PistonTapeStructureGenerator plan ? new PistonTapeStructurePiece(p, plan, surface) : null;
+			// The entrance deposits are left out: the piece's box always spans their whole reach.
+			case RAYBLEND -> g instanceof RayBlendStructureGenerator plan
+					? new RayBlendStructurePiece(p, plan, surface, java.util.List.of()) : null;
 			default -> null;
 		};
 	}

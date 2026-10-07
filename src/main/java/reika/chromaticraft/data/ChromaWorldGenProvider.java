@@ -509,6 +509,14 @@ public final class ChromaWorldGenProvider {
 									java.util.Map.of(),
 									net.minecraft.world.level.levelgen.GenerationStep.Decoration.UNDERGROUND_STRUCTURES,
 									net.minecraft.world.level.levelgen.structure.TerrainAdjustment.NONE)));
+			bootstrap.register(reika.chromaticraft.world.dimension.structure.ProximaStructures.RAYBLEND,
+					new reika.chromaticraft.world.dimension.structure.ProximaRayBlendStructure(
+							new net.minecraft.world.level.levelgen.structure.Structure.StructureSettings(
+									net.minecraft.core.HolderSet.direct(biomes.getOrThrow(
+											reika.chromaticraft.world.dimension.biome.ProximaBiomes.STRUCTURE.biomeKey())),
+									java.util.Map.of(),
+									net.minecraft.world.level.levelgen.GenerationStep.Decoration.UNDERGROUND_STRUCTURES,
+									net.minecraft.world.level.levelgen.structure.TerrainAdjustment.NONE)));
             // Player-built and command-only: no structure set points here, but registering the
             // assembly as a Structure gives it vanilla's /place structure semantics and lets its NBT
             // template span chunks without unsafe feature writes.
@@ -609,6 +617,11 @@ public final class ChromaWorldGenProvider {
 							structures.getOrThrow(
 									reika.chromaticraft.world.dimension.structure.ProximaStructures.PISTONTAPE),
 							new reika.chromaticraft.world.dimension.structure.PistonTapePlacement()));
+			bootstrap.register(reika.chromaticraft.world.dimension.structure.ProximaStructures.RAYBLEND_SET,
+					new net.minecraft.world.level.levelgen.structure.StructureSet(
+							structures.getOrThrow(
+									reika.chromaticraft.world.dimension.structure.ProximaStructures.RAYBLEND),
+							new reika.chromaticraft.world.dimension.structure.RayBlendPlacement()));
         });
         builder.add(Registries.PLACED_FEATURE, bootstrap -> {
             HolderGetter<Feature> configured = bootstrap.lookup(Registries.FEATURE);

@@ -80,6 +80,8 @@ public class ChromatiCraft extends DragonAPIMod {
 				reika.chromaticraft.world.dimension.structure.WaterStructureGenerator::new);
 		reika.chromaticraft.world.dimension.DimensionStructureType.PISTONTAPE.registerGenerator(
 				reika.chromaticraft.world.dimension.structure.PistonTapeStructureGenerator::new);
+		reika.chromaticraft.world.dimension.DimensionStructureType.RAYBLEND.registerGenerator(
+				reika.chromaticraft.world.dimension.structure.RayBlendStructureGenerator::new);
 
 		ChromaBlocks.BLOCKS.register(modEventBus);
         modEventBus.addListener(reika.chromaticraft.client.render.ColoredAltarEffects::register);

@@ -1,0 +1,11 @@
+{
+  "placement": {
+    "type": "chromaticraft:rayblend"
+  },
+  "structures": [
+    {
+      "structure": "chromaticraft:rayblend",
+      "weight": 1
+    }
+  ]
+}

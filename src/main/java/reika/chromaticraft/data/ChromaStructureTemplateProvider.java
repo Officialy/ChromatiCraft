@@ -82,6 +82,7 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
     public static final Identifier PROXIMA_LASER_TUNNEL = id("worldgen/proxima/laser/tunnel");
     public static final Identifier PROXIMA_LASER_LOOT = id("worldgen/proxima/laser/loot");
     public static final Identifier PROXIMA_LASER_ENTRANCE = id("worldgen/proxima/laser/entrance");
+    public static final Identifier PROXIMA_RAYBLEND_LOOT = id("worldgen/proxima/rayblend/loot");
     public static final Identifier PROXIMA_GOL_ENTRANCE_PREFAB = id("worldgen/proxima/gol/entrance_prefab");
     public static final Identifier PROXIMA_GOL_SURFACE = id("worldgen/proxima/gol/surface");
     public static final Identifier PROXIMA_GOL_ENTRANCE_DOOR = id("worldgen/proxima/gol/entrance_door");
@@ -165,6 +166,7 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
                 write(cache, PROXIMA_MUSIC_LOOT, importMusicLoot()),
                 write(cache, PROXIMA_LASER_TUNNEL, laserTunnel()),
                 write(cache, PROXIMA_LASER_LOOT, importLaserLoot()),
+                write(cache, PROXIMA_RAYBLEND_LOOT, importRayBlendLoot()),
                 write(cache, PROXIMA_LASER_ENTRANCE, laserEntrance()),
                 write(cache, laserRoom("mirrortut"), laserRoomShell("mirrortut")),
                 write(cache, laserRoom("mirrors2"), laserRoomShell("mirrors2")),
@@ -2075,6 +2077,64 @@ public final class ChromaStructureTemplateProvider implements DataProvider {
         // The live structure piece binds this objective to its assigned colour and position.
         data.set(10, 2, 3, STRUCTURE_VOID);
         return data;
+    }
+
+    /**
+     * Exact V33a Crystal Interference reward room ({@code RayBlendLoot}), parsed from its 1452 literal writes after
+     * the core cavity it clears first. Its two loot chests and its core are placed live by the structure piece; the
+     * cells it never writes stay out of the template so the corridor and rock around it survive, as in V33a.
+     */
+    private static TemplateData importRayBlendLoot() {
+        Path source = legacySource("rayblend", "RayBlendLoot.java");
+        final String java;
+        try { java = Files.readString(source); }
+        catch (IOException e) {
+            throw new IllegalStateException("Could not read V33a Crystal Interference reward source " + source, e);
+        }
+        TemplateData data = new TemplateData(13, 10, 15);
+        for (int i = -1; i <= 1; i++) for (int j = -1; j <= 1; j++) for (int k = -1; k <= 1; k++)
+            data.set(6 + i, 2 + j, 7 + k, AIR);
+        data.set(6, 4, 7, AIR);
+        Pattern placement = Pattern.compile("world\\.setBlock\\(x\\+(\\d+), y\\+(\\d+), z\\+(\\d+), "
+                + "(Blocks\\.air|b, BlockType\\.(\\w+)\\.metadata)\\);");
+        Matcher matcher = placement.matcher(java);
+        int found = 0;
+        while (matcher.find()) {
+            int x = groupInt(matcher, 1), y = groupInt(matcher, 2), z = groupInt(matcher, 3);
+            StateDef state = matcher.group(5) == null ? AIR : switch (matcher.group(5)) {
+                case "STONE" -> shielding(ChromaShieldTypes.STONE);
+                case "CLOAK" -> shielding(ChromaShieldTypes.CLOAK);
+                case "GLASS" -> shielding(ChromaShieldTypes.GLASS);
+                case "LIGHT" -> shielding(ChromaShieldTypes.LIGHT);
+                case "CRACK" -> shielding(ChromaShieldTypes.CRACK);
+                case "CRACKS" -> shielding(ChromaShieldTypes.CRACKS);
+                default -> throw new IllegalStateException("Unmapped RayBlendLoot state " + matcher.group(5));
+            };
+            data.set(x, y, z, state);
+            found++;
+        }
+        if (found != 1452)
+            throw new IllegalStateException("Expected 1452 RayBlendLoot placements, parsed " + found);
+        // V33a addBreakable: the two 3x3 plates at the room's z ends.
+        for (int i = 0; i < 3; i++) for (int h = 0; h < 3; h++) {
+            data.makePlainShield(1 + i, 1 + h, 0);
+            data.makePlainShield(1 + i, 1 + h, 14);
+        }
+        // The live structure piece binds this objective to its assigned colour.
+        data.set(6, 2, 7, STRUCTURE_VOID);
+        return data;
+    }
+
+    private static Path legacySource(String folder, String fileName) {
+        Path relative = Path.of("src/main/java/reika/chromaticraft/world/dimension/structure", folder, fileName);
+        Path cursor = Path.of("").toAbsolutePath();
+        for (int depth = 0; depth < 4 && cursor != null; depth++, cursor = cursor.getParent()) {
+            Path direct = cursor.resolve(relative);
+            if (Files.isRegularFile(direct)) return direct;
+            Path module = cursor.resolve("ChromatiCraft").resolve(relative);
+            if (Files.isRegularFile(module)) return module;
+        }
+        return Path.of("").toAbsolutePath().resolve(relative);
     }
 
     private static Path legacyLaserSource(String fileName) {

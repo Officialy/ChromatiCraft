@@ -252,6 +252,12 @@ public class ItemManipulator extends Item {
 				return InteractionResult.SUCCESS;
 		}
 
+		// V33a: a crystal on a Crystal Interference floor tile re-registers with its puzzle.
+		if (!level.isClientSide()
+				&& reika.chromaticraft.block.dimension.structure.rayblend.BlockRayblendFloor26.crystalOf(level.getBlockState(pos)) != null
+				&& level.getBlockEntity(pos.below()) instanceof reika.chromaticraft.tileentity.TileEntityRayblendFloor floor)
+			floor.blockUpdate();
+
 		// CHROMA-PORT: the remaining V33a dispatch, each blocked on its own unported tile —
 		//   PROGRESSLINK trigger, MINER triggerDigging,
 		//   ITEMRIFT flip, CONSOLE setFacing, AURAPOINT togglePVP, BIOMEPAINTER safeMode,

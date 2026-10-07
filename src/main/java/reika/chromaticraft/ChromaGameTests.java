@@ -459,6 +459,9 @@ public final class ChromaGameTests {
 		register(event, env, "proxima_structure_reach", ChromaGameTests::proximaStructureReach);
 		register(event, env, "piston_tape_playback", 4000, ChromaGameTests::pistonTapePlayback);
 		register(event, env, "look_ray_hits_pylon", ChromaGameTests::lookRayHitsPylon);
+		register(event, env, "rayblend_layout", ChromaGameTests::rayBlendLayout);
+		register(event, env, "rayblend_room_play", 400, ChromaGameTests::rayBlendRoomPlay);
+		register(event, env, "rayblend_reward_room", 400, ChromaGameTests::rayBlendRewardRoom);
 		register(event, env, "proxima_structure_completion_loop", ChromaGameTests::proximaStructureCompletionLoop);
 		register(event, env, "aurorae_feature", ChromaGameTests::auroraeFeature);
 		register(event, env, "aurora_curtain_drift", ChromaGameTests::auroraCurtainDrift);
@@ -1045,7 +1048,8 @@ public final class ChromaGameTests {
 			java.util.Set<DimensionStructureType> ported = java.util.EnumSet.of(
 					DimensionStructureType.LIGHTPANEL, DimensionStructureType.TDMAZE,
 					DimensionStructureType.MUSIC, DimensionStructureType.GOL,
-					DimensionStructureType.LASER, DimensionStructureType.WATER, DimensionStructureType.PISTONTAPE);
+					DimensionStructureType.LASER, DimensionStructureType.WATER, DimensionStructureType.PISTONTAPE,
+					DimensionStructureType.RAYBLEND);
 			List<DimensionStructureType> usable = DimensionStructureType.usableStructures();
 			helper.assertTrue(usable.size() == ported.size() && ported.containsAll(usable),
 					"exactly the ported puzzle generators must be usable, found " + usable);
@@ -4546,6 +4550,106 @@ public final class ChromaGameTests {
 	}
 
 	/**
+	 * V33a RayBlendPuzzle invariants over many seeds: one seed gives one plan; every room is a jigsaw sudoku whose
+	 * regions are connected, the right size and not all the same shape; its solution never repeats a colour in a
+	 * region, row or column; blocked cells have no colour; doors sit in the corridor past each room and only the
+	 * first room has the password alcove. Also reports how often a room exhausts V33a's forty attempts.
+	 */
+	private static void rayBlendLayout(GameTestHelper helper) {
+		helper.assertTrue(DimensionStructureType.RAYBLEND.isComplete(),
+				"Crystal Interference's generator did not pass the V33a core gate");
+		int planned = 0, skipped = 0;
+		for (int difficulty = 1; difficulty <= 3; difficulty++) {
+			int profiles = reika.chromaticraft.world.dimension.structure.RayBlendLayout.profiles(difficulty).length;
+			for (long seed = 0; seed < 12; seed++) {
+				var layout = reika.chromaticraft.world.dimension.structure.RayBlendLayout.create(difficulty, seed, 200, -50);
+				var twin = reika.chromaticraft.world.dimension.structure.RayBlendLayout.create(difficulty, seed, 200, -50);
+				helper.assertTrue(layout.posY() == twin.posY() && layout.rooms().size() == twin.rooms().size()
+						&& layout.length() == twin.length(), "the same seed produced a different Crystal Interference plan");
+				helper.assertTrue(layout.posY() >= 10 && layout.posY() < 80, "V33a's room height is 10 + rand(70)");
+				planned += profiles;
+				skipped += profiles - layout.rooms().size();
+				int lastMaxX = Integer.MIN_VALUE;
+				for (int r = 0; r < layout.rooms().size(); r++) {
+					var room = layout.rooms().get(r);
+					var other = twin.rooms().get(r);
+					helper.assertTrue(java.util.Arrays.equals(room.region(), other.region())
+							&& java.util.Arrays.equals(room.color(), other.color())
+							&& java.util.Arrays.equals(room.start(), other.start())
+							&& java.util.Arrays.equals(room.cage(), other.cage()) && room.doors().equals(other.doors()),
+							"room " + r + " differs between two plans of the same seed");
+					int edge = room.edge();
+					helper.assertTrue(edge == room.gridSize() * room.gridSize(), "a room's edge is gridSize squared");
+					helper.assertTrue(room.minX() > lastMaxX, "rooms must not overlap");
+					lastMaxX = room.maxX();
+					java.util.Map<Integer, java.util.List<int[]>> regions = new java.util.HashMap<>();
+					for (int i = 0; i < edge; i++)
+						for (int k = 0; k < edge; k++)
+							regions.computeIfAbsent(room.region()[room.cell(i, k)], g -> new java.util.ArrayList<>())
+									.add(new int[] {i, k});
+					helper.assertTrue(regions.size() == edge, "room " + r + " has " + regions.size() + " regions, not " + edge);
+					java.util.Set<java.util.Set<Long>> shapes = new java.util.HashSet<>();
+					for (var cells : regions.values()) {
+						helper.assertTrue(cells.size() == edge, "a region of room " + r + " has " + cells.size() + " cells");
+						java.util.Set<Long> in = new java.util.HashSet<>();
+						int minX = Integer.MAX_VALUE, minZ = Integer.MAX_VALUE;
+						for (int[] c : cells) {
+							in.add(((long)c[0] << 32) | (c[1] & 0xffffffffL));
+							minX = Math.min(minX, c[0]);
+							minZ = Math.min(minZ, c[1]);
+						}
+						java.util.Set<Long> seen = new java.util.HashSet<>();
+						java.util.ArrayDeque<int[]> queue = new java.util.ArrayDeque<>(java.util.List.of(cells.getFirst()));
+						while (!queue.isEmpty()) {
+							int[] c = queue.poll();
+							long key = ((long)c[0] << 32) | (c[1] & 0xffffffffL);
+							if (!in.contains(key) || !seen.add(key))
+								continue;
+							queue.add(new int[] {c[0] + 1, c[1]});
+							queue.add(new int[] {c[0] - 1, c[1]});
+							queue.add(new int[] {c[0], c[1] + 1});
+							queue.add(new int[] {c[0], c[1] - 1});
+						}
+						helper.assertTrue(seen.size() == cells.size(), "a region of room " + r + " is not connected");
+						java.util.Set<Long> shape = new java.util.HashSet<>();
+						for (int[] c : cells)
+							shape.add(((long)(c[0] - minX) << 32) | ((c[1] - minZ) & 0xffffffffL));
+						shapes.add(shape);
+					}
+					// V33a rejects a room whose regions are all congruent, so at least two differ even by translation.
+					helper.assertTrue(shapes.size() > 1, "room " + r + " has only one region shape");
+					for (int i = 0; i < edge; i++) {
+						for (int k = 0; k < edge; k++) {
+							int c = room.cell(i, k);
+							var e = room.color()[c];
+							helper.assertTrue(room.blocked()[c] == (e == null), "a cell must be blocked exactly when it has no colour");
+							helper.assertTrue(!room.start()[c] || e != null, "a starting crystal needs a colour");
+							helper.assertTrue(room.cage()[c] == null || e != null, "a caged cell needs a colour");
+							if (e == null)
+								continue;
+							for (int j = 0; j < edge; j++) {
+								helper.assertTrue(j == k || room.color()[room.cell(i, j)] != e, "a colour repeats in a column");
+								helper.assertTrue(j == i || room.color()[room.cell(j, k)] != e, "a colour repeats in a row");
+							}
+							for (int[] o : regions.get(room.region()[c]))
+								helper.assertTrue((o[0] == i && o[1] == k) || room.color()[room.cell(o[0], o[1])] != e,
+										"a colour repeats in a region");
+						}
+					}
+					helper.assertTrue(room.doors().size() == 20 && room.doors().stream().allMatch(d -> d.getX() == room.maxX() + 2),
+							"a room needs V33a's 5x4 door in the corridor two past its wall");
+					helper.assertTrue((room.bypass() != null) == (room.profileIndex() == 0), "only the first room has the bypass");
+					helper.assertTrue(layout.isInRoomGap(room.minX() + 1) && !layout.isInRoomGap(room.maxX() - 1)
+							&& !layout.isInRoomGap(room.maxX() + 2), "the corridor must stop at V33a's GappedRange span");
+				}
+			}
+		}
+		reika.chromaticraft.ChromatiCraft.LOGGER.info("Crystal Interference: {} of {} planned rooms exhausted V33a's forty attempts",
+				skipped, planned);
+		helper.succeed();
+	}
+
+	/**
 	 * The exploration scan's look ray must stop on a pylon although the pylon has no collision: 1.7.10's
 	 * rayTraceBlocks used selection bounds, and a collider-only ray let the player see straight through it, so
 	 * PYLON, the colour discovery and every stage after them (SHOCK, charging) could never be reached.
@@ -4559,6 +4663,138 @@ public final class ChromaGameTests {
 		var hit = reika.dragonapi.libraries.ReikaPlayerAPI.getLookedAtBlock(player, 4, true);
 		helper.assertTrue(hit != null && hit.getBlockPos().equals(pylon),
 				"the look ray passed through the pylon, hit " + (hit == null ? "nothing" : hit.getBlockPos()));
+		helper.succeed();
+	}
+
+	private static reika.chromaticraft.world.dimension.structure.RayBlendStructureGenerator rayBlendPlan(BlockPos origin) {
+		var gen = new reika.chromaticraft.world.dimension.structure.RayBlendStructureGenerator();
+		gen.setType(DimensionStructureType.RAYBLEND, 0);
+		gen.startCalculate(CrystalElement.CYAN, origin.getX(), origin.getZ(), new java.util.Random(0x5A1B));
+		return gen;
+	}
+
+	private static Runnable forceChunks(net.minecraft.server.level.ServerLevel level,
+			net.minecraft.world.level.levelgen.structure.BoundingBox box) {
+		java.util.List<net.minecraft.world.level.ChunkPos> forced = new java.util.ArrayList<>();
+		for (int cx = box.minX() >> 4; cx <= box.maxX() >> 4; cx++)
+			for (int cz = box.minZ() >> 4; cz <= box.maxZ() >> 4; cz++)
+				if (level.setChunkForced(cx, cz, true))
+					forced.add(new net.minecraft.world.level.ChunkPos(cx, cz));
+		return () -> forced.forEach(c -> level.setChunkForced(c.x(), c.z(), false));
+	}
+
+	/**
+	 * The first room, placed by the real piece, played through: the floor refuses a colour its row already holds,
+	 * filling in the solution opens the door, taking a crystal away leaves it open (V33a never clears isComplete on
+	 * removal), and a wrong crystal in that gap closes it again.
+	 */
+	private static void rayBlendRoomPlay(GameTestHelper helper) {
+		var level = helper.getLevel();
+		var gen = rayBlendPlan(helper.absolutePos(new BlockPos(2, 0, 2)));
+		var layout = gen.layout();
+		var room = layout.rooms().getFirst();
+		var box = new net.minecraft.world.level.levelgen.structure.BoundingBox(room.minX(), room.y() - 1, room.minZ(),
+				room.maxX() + 2, room.y() + 8, room.maxZ() + 1);
+		Runnable release = forceChunks(level, box);
+		try {
+			var piece = new reika.chromaticraft.world.dimension.structure.RayBlendStructurePiece(gen, layout.posY() + 40,
+					CrystalElement.CYAN, 0, java.util.List.of());
+			piece.postProcess(level, level.structureManager(), level.getChunkSource().getGenerator(), RandomSource.create(3),
+					box, net.minecraft.world.level.ChunkPos.containing(room.floor(0, 0)), room.floor(0, 0));
+			for (int i = 0; i < room.edge(); i++)
+				for (int k = 0; k < room.edge(); k++)
+					helper.assertTrue(level.getBlockEntity(room.floor(i, k)) instanceof reika.chromaticraft.tileentity.TileEntityRayblendFloor te
+							&& te.cellX() == i && te.cellZ() == k && te.room() != null,
+							"cell " + i + "," + k + " has no configured floor tile");
+			java.util.function.Supplier<Boolean> doorsOpen = () -> room.doors().stream().allMatch(d ->
+					level.getBlockState(d).is(ChromaBlocks.CHROMA_DOOR.get())
+							&& level.getBlockState(d).getValue(reika.chromaticraft.block.BlockChromaDoor.OPEN));
+			helper.assertTrue(room.doors().stream().allMatch(d -> level.getBlockState(d).is(ChromaBlocks.CHROMA_DOOR.get())),
+					"the room's corridor door was not placed");
+			helper.assertTrue(!doorsOpen.get(), "the door must start closed");
+			helper.assertTrue(level.getBlockState(room.bypass().above(2)).is(ChromaBlocks.STRUCTURE_PASSWORD.get()),
+					"the first room's password terminal is missing");
+
+			int gapX = -1, gapZ = -1;
+			for (int i = 0; i < room.edge() && gapX < 0; i++)
+				for (int k = 0; k < room.edge() && gapX < 0; k++)
+					if (!room.blocked()[room.cell(i, k)] && !room.start()[room.cell(i, k)]) {
+						gapX = i;
+						gapZ = k;
+					}
+			helper.assertTrue(gapX >= 0, "the first room started already solved");
+			var gapTile = (reika.chromaticraft.tileentity.TileEntityRayblendFloor)level.getBlockEntity(room.floor(gapX, gapZ));
+			var right = room.color()[room.cell(gapX, gapZ)];
+			helper.assertTrue(gapTile.allowsCrystal(right), "the floor refused the cell's own solution colour");
+			// Any colour already standing in the gap's row must be refused.
+			for (int j = 0; j < room.edge(); j++) {
+				var there = reika.chromaticraft.tileentity.TileEntityRayblendFloor.crystalAt(level, room, j, gapZ);
+				if (there != null)
+					helper.assertTrue(!gapTile.allowsCrystal(there), "the floor allowed a colour its row already holds");
+			}
+
+			for (int i = 0; i < room.edge(); i++)
+				for (int k = 0; k < room.edge(); k++) {
+					int c = room.cell(i, k);
+					if (!room.blocked()[c] && !room.start()[c])
+						level.setBlock(room.floor(i, k).above(), ChromaBlocks.caveCrystal(room.color()[c]).get().defaultBlockState(), 3);
+				}
+			helper.assertTrue(reika.chromaticraft.tileentity.TileEntityRayblendFloor.isComplete(level, room),
+					"laying the solution did not solve the room");
+			// The core opens only once every room is solved; the others were never placed here.
+			helper.assertTrue(!gen.shouldAllowCoreMining(level), "one room must not unlock the core");
+			helper.assertTrue(doorsOpen.get(), "solving the room did not open its door");
+
+			level.setBlock(room.floor(gapX, gapZ).above(), Blocks.AIR.defaultBlockState(), 3);
+			helper.assertTrue(reika.chromaticraft.tileentity.TileEntityRayblendFloor.isComplete(level, room) && doorsOpen.get(),
+					"V33a keeps a room solved when a crystal is taken away");
+
+			CrystalElement wrong = null;
+			for (int j = 0; j < room.edge() && wrong == null; j++)
+				if (j != gapX)
+					wrong = reika.chromaticraft.tileentity.TileEntityRayblendFloor.crystalAt(level, room, j, gapZ);
+			helper.assertTrue(wrong != null, "the gap's row holds no other crystal");
+			level.setBlock(room.floor(gapX, gapZ).above(), ChromaBlocks.caveCrystal(wrong).get().defaultBlockState(), 3);
+			helper.assertTrue(!reika.chromaticraft.tileentity.TileEntityRayblendFloor.isComplete(level, room) && !doorsOpen.get(),
+					"a repeated colour must unsolve the room and close its door");
+		}
+		finally {
+			release.run();
+		}
+		helper.succeed();
+	}
+
+	/** The reward room from the imported V33a template: its walls, breakable plates, two chests and the bound core. */
+	private static void rayBlendRewardRoom(GameTestHelper helper) {
+		var level = helper.getLevel();
+		var gen = rayBlendPlan(helper.absolutePos(new BlockPos(2, 0, 2)).offset(-300, 0, 0));
+		var layout = gen.layout();
+		BlockPos loot = layout.lootOrigin();
+		var box = new net.minecraft.world.level.levelgen.structure.BoundingBox(loot.getX(), loot.getY(), loot.getZ(),
+				loot.getX() + 12, loot.getY() + 9, loot.getZ() + 14);
+		Runnable release = forceChunks(level, box);
+		try {
+			var piece = new reika.chromaticraft.world.dimension.structure.RayBlendStructurePiece(gen, layout.posY() + 40,
+					CrystalElement.CYAN, 0, java.util.List.of());
+			piece.postProcess(level, level.structureManager(), level.getChunkSource().getGenerator(), RandomSource.create(3),
+					box, net.minecraft.world.level.ChunkPos.containing(loot), loot);
+			helper.assertTrue(level.getBlockState(layout.core()).is(ChromaBlocks.dimensionCore(CrystalElement.CYAN).get()),
+					"the reward room's core is missing");
+			for (BlockPos chest : layout.rewardChests())
+				helper.assertTrue(level.getBlockEntity(chest) instanceof reika.chromaticraft.tileentity.TileEntityLootChest,
+						"a reward chest is missing at " + chest);
+			var stone = ChromaBlocks.shielding(reika.chromaticraft.registry.ChromaShieldTypes.STONE).get();
+			helper.assertTrue(level.getBlockState(loot).is(stone)
+					&& level.getBlockState(loot).getValue(reika.chromaticraft.block.worldgen26.BlockStructureShield.REINFORCED),
+					"V33a's first literal write (0,0,0) is reinforced stone");
+			for (BlockPos plate : layout.breakables())
+				helper.assertTrue(level.getBlockState(plate).getBlock() instanceof reika.chromaticraft.block.worldgen26.BlockStructureShield
+						&& !level.getBlockState(plate).getValue(reika.chromaticraft.block.worldgen26.BlockStructureShield.REINFORCED),
+						"breakable plate cell " + plate + " is not a plain shield");
+		}
+		finally {
+			release.run();
+		}
 		helper.succeed();
 	}
 

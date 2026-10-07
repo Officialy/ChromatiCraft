@@ -44,5 +44,7 @@ public final class ChromaBlockStateModels {
 				reika.chromaticraft.render.model.SpecialShieldModel.Unbaked.CODEC);
 		event.registerModel(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "ever_fluid"),
 				reika.chromaticraft.render.model.EverFluidModel.Unbaked.CODEC);
+		event.registerModel(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "rayblend_floor"),
+				reika.chromaticraft.render.model.RayblendFloorModel.Unbaked.CODEC);
 	}
 }

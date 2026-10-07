@@ -22,8 +22,8 @@ import reika.chromaticraft.registry.ChromaShieldTypes;
  *
  * <p>Only five materials exist: V33a's jar ships art for Cloak, Stone, Cobble, Glass and Cracks, and nothing
  * upstream ever places the other three, so they are not registered rather than drawn with a missing texture.
- * V33a's {@code onNeighborBlockChange} forwarded to the owning generator's {@code onBlockUpdate}; Crystal
- * Interference (RAYBLEND) is the only generator that overrides it, and that hook arrives with that puzzle.
+ * V33a's {@code onNeighborBlockChange} forwarded to the owning generator's {@code onBlockUpdate}, but the only
+ * override (Crystal Interference's) is commented out upstream, so the forward has nothing to reach.
  */
 public final class BlockSpecialShield26 extends BlockStructureShield {
 

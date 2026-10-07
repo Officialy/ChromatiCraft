@@ -2092,6 +2092,8 @@ public class ChromaModelProvider extends ModelProvider {
 				.filter(h -> h.value() != ChromaBlocks.LASER_EFFECTOR.get())
 				// Channeled Flow's fluid is neighbour-shaped geometry (EverFluidModel).
 				.filter(h -> h.value() != ChromaBlocks.EVER_FLUID.get())
+				// Crystal Interference's floor outlines its regions from its neighbours (RayblendFloorModel).
+				.filter(h -> h.value() != ChromaBlocks.RAYBLEND_FLOOR.get())
 				// Special shields are face- and neighbour-dependent (SpecialShieldModel).
 				.filter(h -> !(h.value() instanceof reika.chromaticraft.block.dimension.structure.BlockSpecialShield26))
 				// Lamps and potion crystals now ship hand-authored blockstates pointing at the

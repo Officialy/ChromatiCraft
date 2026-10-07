@@ -95,7 +95,7 @@ public final class SpecialShieldModel implements DynamicBlockStateModel {
 	}
 
 	/** DragonAPI {@code EdgeDetectionRenderer}'s icon per face and edge direction. */
-	private static int edgeIcon(Direction face, Direction edge) {
+	static int edgeIcon(Direction face, Direction edge) {
 		Direction.Axis third = face.getAxis() == Direction.Axis.Y ? Direction.Axis.X : Direction.Axis.Y;
 		if (edge.getAxis() == third)
 			return edge.getAxisDirection() == Direction.AxisDirection.POSITIVE ? 2 : 0;
@@ -111,7 +111,7 @@ public final class SpecialShieldModel implements DynamicBlockStateModel {
 	 * One face, pushed out by {@code lift}: in RenderBlocks' corner and UV layout for the icon and overlays, or in
 	 * {@code EdgeDetectionRenderer}'s own layout for the glints.
 	 */
-	private static void quad(QuadCollection.Builder quads, Material.Baked material, Direction face, double lift,
+	static void quad(QuadCollection.Builder quads, Material.Baked material, Direction face, double lift,
 			int color, boolean unlit, boolean edgeLayout) {
 		double lo = -lift, hi = 1 + lift;
 		double[][] v = !edgeLayout ? switch (face) {

@@ -65,6 +65,9 @@ public final class ProximaStructurePieces {
 	public static final DeferredHolder<StructurePieceType, StructurePieceType> PISTONTAPE =
 			PIECES.register("piston_tape",
 					() -> (StructurePieceType)(context, tag) -> new PistonTapeStructurePiece(tag));
+	public static final DeferredHolder<StructurePieceType, StructurePieceType> RAYBLEND =
+			PIECES.register("rayblend",
+					() -> (StructurePieceType)(context, tag) -> new RayBlendStructurePiece(tag));
 
 	public static final DeferredHolder<StructurePieceType, StructurePieceType> PORTAL =
 			PIECES.register("portal",

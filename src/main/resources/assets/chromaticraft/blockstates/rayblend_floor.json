@@ -1,0 +1,33 @@
+{
+  "variants": {
+    "": {
+      "type": "chromaticraft:rayblend_floor",
+      "texture": "chromaticraft:block/dimstruct/rayblendfloor",
+      "cross": "chromaticraft:block/icons/x",
+      "runes": [
+        "chromaticraft:block/runes/engraved/tile0_0",
+        "chromaticraft:block/runes/engraved/tile1_0",
+        "chromaticraft:block/runes/engraved/tile2_0",
+        "chromaticraft:block/runes/engraved/tile3_0",
+        "chromaticraft:block/runes/engraved/tile4_0",
+        "chromaticraft:block/runes/engraved/tile5_0",
+        "chromaticraft:block/runes/engraved/tile6_0",
+        "chromaticraft:block/runes/engraved/tile7_0",
+        "chromaticraft:block/runes/engraved/tile8_0",
+        "chromaticraft:block/runes/engraved/tile9_0",
+        "chromaticraft:block/runes/engraved/tile10_0",
+        "chromaticraft:block/runes/engraved/tile11_0",
+        "chromaticraft:block/runes/engraved/tile12_0",
+        "chromaticraft:block/runes/engraved/tile13_0",
+        "chromaticraft:block/runes/engraved/tile14_0",
+        "chromaticraft:block/runes/engraved/tile15_0"
+      ],
+      "edges": [
+        "chromaticraft:block/basic/side0",
+        "chromaticraft:block/basic/side1",
+        "chromaticraft:block/basic/side2",
+        "chromaticraft:block/basic/side3"
+      ]
+    }
+  }
+}

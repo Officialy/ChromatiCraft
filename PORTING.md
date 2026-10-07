@@ -10525,7 +10525,7 @@ Shifting Maze, Crystal Interference and Complex Spaces also build with it.
   - 0.5/1/0.8/0.65 face shading; Cloak, Stone and Cracks unlit;
   - Cobble's two alternating overlays;
   - Cloak/Stone edge glints with the upstream wildcard neighbour match, keeping its side-0 occlusion-probe quirk.
-- **Deferred:** `onNeighborBlockChange → generator.onBlockUpdate` is used only by RAYBLEND, so it lands with that puzzle.
+- **No hook needed:** the shield's `onNeighborBlockChange → generator.onBlockUpdate` has no live consumer. RAYBLEND was its only override, and V33a commented that override out; Crystal Interference reacts through its floor tiles instead (corrected 2026-10-06).
 - **`EntityLaserPulse` corrected:** V33a lets a pulse pass only *special-shield* glass; the port had used structure-shield glass. Laser tests still pass.
 
 **Filter Cycle** is admitted to the assignment pool.
@@ -10603,3 +10603,32 @@ composited and left world rendering, so Iris never swaps them. None of their sha
 **Unverified:** compile only. No client has been launched with these changes. Check the startup log for one
 "program match" line per assigned pipeline. A "decent" match means a wrong program. Then view the glows,
 particles, Proxima sky and shadows under PathMax and Bliss.
+
+## 2026-10-06 — Crystal Interference (RAYBLEND)
+
+**Plan (`RayBlendLayout`):** V33a `RayBlendGenerator.calculate` + `RayBlendPuzzle` on a seeded stream: y = 10 + rand(70), the per-difficulty `PuzzleProfile` list, rooms spaced by V33a's `5 + 2·3 + 2·4` plus the previous floor, the corridor (shield ring, 5×4 chroma door two past each room) cut by V33a's `GappedRange` semantics (open span `[minX+1, maxX-1)`), and room 0's password alcove.
+- Each room is V33a's jigsaw sudoku: `edge = gridSize²` regions grown exactly as `populate`/`canExpandInto`/stringiness do, rejected when all regions are congruent (DragonAPI `rotateVector` + floor, rounding included), then colours, mix cages (`ElementMixer`, value-list walk so each cage absorbs once per cell), V33a's dead `markIntersections` draws, and the initial-fill crystals.
+- `HashSet<Point>`/`HashMap<Point,?>` iterate in `java.awt.Point` hash order via `Cell`; V33a's identity-hashed sets (cells, regions, cages, `ForgeDirection`, `CrystalElement`) iterate in insertion order. One seed is one structure, which lets every tile and chunk rebuild the plan.
+- **Measured:** 9 of 240 planned rooms (all 4×4, ≈19% of 4×4 rooms) exhaust V33a's 40 attempts and are skipped, logging V33a's own "Failed to generate a 4x4 puzzle" error. The code path matches V33a's; whether V33a's rate was the same is not verified.
+
+**Puzzle state lives in the world.** V33a kept it in the generator's memory under random UUIDs that a restart lost.
+- `TileEntityRayblendFloor` stores seed, origin, room and cell; a cell's crystal is whatever `CrystalBlock`/`CrystalTypeBlock` sits on its tile.
+- V33a's generator wrote the starting crystals without a block update, so they did not count until touched; reading the world counts them from the start, as the puzzle intends.
+- The room's `isComplete` is kept on cell (0,0)'s tile and, as in V33a, recomputed only when a crystal is added; removal leaves it (V33a's `//isComplete = false;`). Doors follow it on every change.
+- The floor refuses a crystal its region, row or column already holds (error sound), passes a valid one through to placement, and swallows everything else, behind the STRUCTURES tuning gate. The Manipulator re-registers a crystal on a floor tile (V33a hook).
+- Ping: DING at the crystal pitched by `CrystalMusicManager`, and V33a's nine CENTER blurs over every other cell of the region/row/column, delivered by block event.
+
+**Floor (`BlockRayblendFloor26`, `RayblendFloorModel`):** state carries region, blocked and cage colour; the chunk model draws `dimstruct/rayblendfloor` tinted by the cage, the X icon or the cage's engraved rune on top, and `EdgeDetectionRenderer` glints outlining regions (renderOnOcclusion off). Textures verified against the V33a jar.
+
+**Reward room:** the 1452 literal `RayBlendLoot` writes are imported by datagen (`PROXIMA_RAYBLEND_LOOT`) after the core cavity, with the two 3×3 breakable plates plain; the piece places the two stronghold-crossing chests (+ luma dust 50%, multi crystal 90%, lumenite 50%, radiant gem 10%, each into a random slot) and binds the core.
+
+**Entrance (`RayBlendEntrancePlan`):** V33a `RayBlendEntrance`: stacked 3×3-cell maze floors, shaft, cobble ring and lit posts, one seeded stream for V33a's three random sources.
+- `getTopSolidOrLiquidBlock` skips fluid, so it is the ocean-floor height (`OCEAN_FLOOR_WG`), not world surface as earlier ports assumed.
+- The eight crystal deposits read terrain beyond a chunk, so they are planned at structure start from the generator's height prediction (a dry column is topped with grass by Proxima's surface rule) and stored with the piece.
+- With no entrance floor (rooms already at the surface) V33a wrote the shaft and markers at the world origin; that stray patch is not reproduced.
+
+**Dead upstream, not ported:** `updateTick`/`CrystalMix` (no mix point is ever created) and `onBlockUpdate` (commented out).
+
+**Tests:** `rayblend_layout` (determinism, region size/connectivity/non-uniformity, sudoku uniqueness, blocked/start/cage consistency, doors, bypass, corridor span), `rayblend_room_play` (refusal, solving opens the door, removal keeps it open, a repeat closes it), `rayblend_reward_room`, plus `proxima_structure_*` with RAYBLEND admitted (reach 17 chunks, 2 region starts). All pass.
+
+**Unverified:** in-client visuals (floor model, ping blurs), a natural walk-through.

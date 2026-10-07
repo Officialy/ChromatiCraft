@@ -245,6 +245,9 @@ public final class ChromaBlockEntities {
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<reika.chromaticraft.tileentity.TileEntityPistonTarget>> PISTON_TARGET =
 			BLOCK_ENTITIES.register("piston_target", () -> new BlockEntityType<>(
 					reika.chromaticraft.tileentity.TileEntityPistonTarget::new, ChromaBlocks.PISTON_TARGET.get()));
+	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<reika.chromaticraft.tileentity.TileEntityRayblendFloor>> RAYBLEND_FLOOR =
+			BLOCK_ENTITIES.register("rayblend_floor", () -> new BlockEntityType<>(
+					reika.chromaticraft.tileentity.TileEntityRayblendFloor::new, ChromaBlocks.RAYBLEND_FLOOR.get()));
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<reika.chromaticraft.tileentity.TileEntityPistonController>> PISTON_CONTROLLER =
 			BLOCK_ENTITIES.register("piston_controller", () -> new BlockEntityType<>(
 					reika.chromaticraft.tileentity.TileEntityPistonController::new, ChromaBlocks.PISTON_CONTROLLER.get()));
