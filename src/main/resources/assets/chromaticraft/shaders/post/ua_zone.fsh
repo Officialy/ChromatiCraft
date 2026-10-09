@@ -36,8 +36,9 @@ vec4 getGrayBlurredPixel(vec2 coord, float dx, float dy) {
 }
 
 vec3 getGrayscaledBlurredEdgeDetectedColor(vec2 coord) {
-    float w = 1.0 / ScreenSize.x;
-    float h = 1.0 / ScreenSize.y;
+    vec2 sourceSize = vec2(textureSize(InSampler, 0));
+    float w = 1.0 / sourceSize.x;
+    float h = 1.0 / sourceSize.y;
     vec4 n[9];
     n[0] = getGrayBlurredPixel(coord + vec2(-w, -h), w, h);
     n[1] = getGrayBlurredPixel(coord + vec2(0.0, -h), w, h);
@@ -135,7 +136,7 @@ void main() {
     vec4 orig = texture(InSampler, texCoord);
     vec3 sobel = getGrayscaledBlurredEdgeDetectedColor(texCoord);
     float dT = Params.y * 0.01;
-    vec2 pos = ScreenSize * texCoord * vec2(0.002, 0.0008);
+    vec2 pos = vec2(textureSize(InSampler, 0)) * texCoord * vec2(0.002, 0.0008);
     float n1 = snoise4d(vec4(pos.x, dT, pos.y, head * 0.02));
     float n2 = snoise4d(vec4(pos.x, dT - 2487.47193, pos.y, head * 0.017));
     float noiseVal = min(1.0, 4.0 * max(0.0, 0.15 - abs(min(n1, n2))));

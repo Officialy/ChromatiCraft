@@ -12,6 +12,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MappableRingBuffer;
 import net.minecraft.client.renderer.PostChain;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.attribute.EnvironmentAttributes;
 import net.minecraft.world.level.Level;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -21,7 +22,6 @@ import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import org.jspecify.annotations.Nullable;
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.render.ChromaRenderPipelines;
-import reika.dragonapi.libraries.level.ReikaWorldHelper;
 
 import java.util.Optional;
 import java.util.Set;
@@ -41,6 +41,7 @@ public final class ArtefactZoneScreenEffect {
 	private static final int UBO_USAGE = GpuBuffer.USAGE_MAP_WRITE | GpuBuffer.USAGE_UNIFORM;
 
 	private static long lastShaderTime = -1;
+	private static @Nullable Level signalWorld;
 	private static float intensity;
 	private static @Nullable MappableRingBuffer ubo;
 
@@ -48,16 +49,19 @@ public final class ArtefactZoneScreenEffect {
 
 	/** V33a {@code refreshShader}. */
 	public static void refresh(Level world) {
+		signalWorld = world;
 		lastShaderTime = world.getGameTime();
 	}
 
 	/** V33a {@code resetShader}. */
 	public static void reset() {
 		lastShaderTime = -1;
+		signalWorld = null;
 	}
 
 	private static boolean isShaderActive(Level world) {
-		return lastShaderTime >= 0 && world.getGameTime() - lastShaderTime <= 10;
+		long age = world.getGameTime() - lastShaderTime;
+		return signalWorld == world && lastShaderTime >= 0 && age >= 0 && age <= 10;
 	}
 
 	/** V33a {@code updateShader}, once per client player tick. */
@@ -68,6 +72,10 @@ public final class ArtefactZoneScreenEffect {
 			intensity = 0;
 			reset();
 			return;
+		}
+		if (signalWorld != null && signalWorld != mc.level) {
+			intensity = 0;
+			reset();
 		}
 		if (isShaderActive(mc.level))
 			intensity = Math.min(1, intensity * 1.005F + 0.008F);
@@ -84,8 +92,10 @@ public final class ArtefactZoneScreenEffect {
 		if (chain == null)
 			return;
 		float ptick = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
-		float skyBright = ReikaWorldHelper.getSunIntensity(mc.level, true, ptick);
 		var camera = mc.gameRenderer.mainCamera();
+		// Use the same interpolated, weather/dimension-aware brightness as the 26.3 lightmap.
+		// The old helper multiplies an already-radian sun angle by 2π a second time.
+		float skyBright = skyBrightness(mc, ptick);
 		float head = camera.xRot() + camera.yRot();
 		upload(intensity, mc.player.tickCount, skyBright, head);
 
@@ -101,6 +111,10 @@ public final class ArtefactZoneScreenEffect {
 		chain.addToFrame(frame, main.width, main.height, new TargetBundle(mainHandle, gradedOut));
 		frame.execute(GraphicsResourceAllocator.UNPOOLED);
 		ubo.rotate();
+	}
+
+	private static float skyBrightness(Minecraft mc, float partialTick) {
+		return mc.gameRenderer.mainCamera().attributeProbe().getValue(EnvironmentAttributes.SKY_LIGHT_FACTOR, partialTick);
 	}
 
 	private static void upload(float intensity, int time, float skyBright, float head) {

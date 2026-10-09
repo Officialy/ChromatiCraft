@@ -10806,3 +10806,28 @@ water meshes/tints and synced biome colours (build/block-array-validation.log an
 build/block-array-client-final.log). Normal Play argument files remain unchanged. DragonAPI's
 restored array/blueprint/selected-NBT contracts are documented in docs/block-array-port.md in
 that module. Actual remote-client and shader/LOD acceptance remain open.
+
+
+## 2026-10-09 — Unknown Artefact zone brightness and signal isolation
+
+The owner reported sharp animated edges/mottled terrain and chose to keep the original effect
+with rendering fixes. The UA host no longer uses the shared sun helper's double radians
+conversion: it reads the camera's native interpolated SKY_LIGHT_FACTOR as the 26.3 lightmap does.
+Weather, timeline and dimension brightness match the rendered scene. Blur/Sobel offsets and
+noise scaling use the sampled texture's dimensions; signal lifetime is scoped to its actual
+world and rejects negative age after clock rollback. Switching worlds clears the old envelope.
+Original shader colour, edge/noise formula, animation, ten-tick lease, ramps/fade and all
+artefact gameplay remain intact. Full contract: docs/artefact-zone-rendering.md.
+
+The isolated native client/GPU audit passes in build/artefact-zone-client.log (1m 44s): the
+actual host attribute, world/rollback/expiry/reset cases, compiled shader into independent
+224x112 targets, zero-intensity/flat-colour conservation, original animation and greater
+night tracery. Green gain is 404762 day / 583520 night; 3584 pixels change across animation
+times. The real AfterLevel/frame-graph/blit path and previous family client checks also run.
+Packaged shader/class checks pass; normal Play argument hashes remain unchanged with auditing
+off, and fixtures remain inert there. Restart normal Play to load Java host changes.
+
+Actual owner shader-pack/Distant Horizons scene acceptance remains open. The underlying shared
+helper is no longer this shader's dependency; its climate/Cliffs consumers and normalized sun
+contract need separate review, now tracked as D63 in the root backlog (13 done / 150 open / 163).
+This repair is included in the local checkpoint; no push is performed.
