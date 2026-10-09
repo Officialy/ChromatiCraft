@@ -10831,3 +10831,24 @@ Actual owner shader-pack/Distant Horizons scene acceptance remains open. The und
 helper is no longer this shader's dependency; its climate/Cliffs consumers and normalized sun
 contract need separate review, now tracked as D63 in the root backlog (13 done / 150 open / 163).
 This repair is included in the local checkpoint; no push is performed.
+
+
+## 2026-10-09 — Adjacency ingredient crash and stable development clients
+
+JEI's native GUI special-model extraction failed to load AdjacencyUpgradeItemRenderer$Args
+at 15:31:59. The record is declared and the source outputs/jar contain it; class timestamps
+of 15:32:02 during the concurrent shader build support a live-output race as the likely
+cause. The renderer is preserved. TestInstance now snapshots the eight source mods before
+FML discovery for both Play and Automated Checks, verifies source/copy hashes and holds a
+lease throughout the same-JVM game loop. Running clients no longer depend on mod output
+folders that a subsequent compile or clean replaces.
+
+The native audit passes in build/client-snapshot-validation.log (2m 43s). All 24 registered
+BLACK/LIME/LIGHTBLUE tier variants resolve through the native GUI special-model path and
+submit both glow quads plus all three rings, without mutating components; renderer, Args
+and Unbaked class resources point to the unique snapshot. The prior artefact GPU and family
+client checks also pass. Three launcher regressions verify lazy class/resource isolation,
+changed/added/deleted output detection and leased snapshot retention. Full contract and
+limits: ../TestInstance/docs/client-runtime-isolation.md. This does not certify the owner's
+complete JEI overlay or external shader/LOD setup. Reload Gradle and restart Play; copies
+add startup time and rebuilt mod code/resources take effect on the next launch.
