@@ -31,18 +31,24 @@ import reika.dragonapi.libraries.mathsci.ReikaVectorHelper;
  *
  * <p>Every room is a jigsaw sudoku: an {@code edge = gridSize^2} square floor split into {@code edge} connected
  * regions of {@code edge} cells, each region, row and column holding each crystal colour at most once. Regions are
- * grown cell by cell exactly as V33a's {@code populate} does (weighted start, frontier expansion that refuses to cut
+ * grown cell by cell with V33a's constraints (weighted start, frontier expansion that refuses to cut
  * the remaining cells into pieces it cannot absorb, a stringiness cap), a whole room is rejected when its regions are
  * all congruent, and then colours, mix cages and the initial crystals are drawn in V33a's order.
  *
- * <p>V33a iterated {@code HashSet<Point>}/{@code HashMap<Point, ?>} in {@code java.awt.Point} hash order and its
- * cell, region and cage sets in identity-hash order. Point-keyed collections here use {@link Cell}, whose hash is
- * {@code Point}'s, so their iteration order is V33a's; the identity-hashed ones (which made V33a's layouts
- * irreproducible) iterate in insertion order. One seed therefore always gives one structure, which is what lets
- * every floor tile and chunk rebuild the same plan.
+ * <p>Version 0 replays the previous port for unversioned saves, including its point-hash iteration and
+ * exhausted-room decisions. Version 1 returns rejected region cells before retrying, measures the growing shape
+ * for compactness weights, and uses insertion order for point collections too: heavily colliding point hashes
+ * otherwise cause hash-map tree bins to use object identity. The version is persisted on both structure pieces
+ * and floor tiles, so new deterministic plans do not reinterpret already generated rooms.
  */
 public final class RayBlendLayout {
 
+	/** Unversioned 26.3 saves replay the original port, including its exhausted-room decisions. */
+	public static final int LEGACY_VERSION = 0;
+	public static final int CURRENT_VERSION = 1;
+	private static final int MAX_ROOM_ATTEMPTS = 40;
+	private static final int MAX_REGION_ATTEMPTS = 80;
+	private static final int MAX_START_ATTEMPTS = 80;
 	public static final int PADDING_LOWER = 3;
 	public static final int STEP_HEIGHT = 1;
 	public static final int PADDING_UPPER = 4;
@@ -100,6 +106,7 @@ public final class RayBlendLayout {
 		void lootChest(int x, int y, int z, Direction facing);
 	}
 
+	private final int version;
 	private final int difficulty;
 	private final long seed;
 	private final int originX;
@@ -110,8 +117,9 @@ public final class RayBlendLayout {
 	private final Set<Integer> corridorFlips;
 	private final Map<Integer, Room> doorColumns;
 
-	private RayBlendLayout(int difficulty, long seed, int x, int z, int y, int length, List<Room> rooms,
+	private RayBlendLayout(int version, int difficulty, long seed, int x, int z, int y, int length, List<Room> rooms,
 			Set<Integer> corridorFlips, Map<Integer, Room> doorColumns) {
+		this.version = version;
 		this.difficulty = difficulty;
 		this.seed = seed;
 		originX = x;
@@ -124,17 +132,28 @@ public final class RayBlendLayout {
 	}
 
 	public static RayBlendLayout cached(int difficulty, long seed, int x, int z) {
-		String key = difficulty + ":" + seed + ":" + x + ":" + z;
+		return cached(CURRENT_VERSION, difficulty, seed, x, z);
+	}
+
+	public static RayBlendLayout cached(int version, int difficulty, long seed, int x, int z) {
+		String key = version + ":" + difficulty + ":" + seed + ":" + x + ":" + z;
 		RayBlendLayout hit = CACHE.get(key);
 		if (hit != null)
 			return hit;
-		RayBlendLayout made = create(difficulty, seed, x, z);
+		RayBlendLayout made = create(version, difficulty, seed, x, z);
 		CACHE.put(key, made);
 		return made;
 	}
 
 	/** V33a {@code RayBlendGenerator.calculate} on its own random stream. */
 	public static RayBlendLayout create(int difficulty, long seed, int x, int z) {
+		return create(CURRENT_VERSION, difficulty, seed, x, z);
+	}
+
+	/** Version is part of the persisted plan key; absent version fields mean {@link #LEGACY_VERSION}. */
+	public static RayBlendLayout create(int version, int difficulty, long seed, int x, int z) {
+		if (version != LEGACY_VERSION && version != CURRENT_VERSION)
+			throw new IllegalArgumentException("Unsupported RayBlend layout version " + version);
 		Random rand = new Random(seed);
 		int y = 10 + rand.nextInt(70);
 		Profile[] sz = profiles(difficulty);
@@ -148,8 +167,8 @@ public final class RayBlendLayout {
 		int dx = x;
 		for (int i = 0; i < sz.length; i++) {
 			Profile p = sz[i];
-			Builder rb = createPuzzle(rand, p);
-			if (rb == null)
+			Builder rb = createPuzzle(rand, p, version);
+			if (rb == null) // Only legacy save replay can reproduce an exhausted, omitted room.
 				continue;
 			int sizePre = i == 0 ? 0 : sz[i - 1].gridSize();
 			dx += EXTRA + sizePre * sizePre;
@@ -162,18 +181,21 @@ public final class RayBlendLayout {
 			doors.put(room.maxX() + 2, room);
 		}
 		len += 7;
-		return new RayBlendLayout(difficulty, seed, x, z, y, len, List.copyOf(rooms), Set.copyOf(flips),
+		return new RayBlendLayout(version, difficulty, seed, x, z, y, len, List.copyOf(rooms), Set.copyOf(flips),
 				Map.copyOf(doors));
 	}
 
-	/** V33a {@code createPuzzle}: up to forty fresh attempts, else the room is skipped. */
-	private static @Nullable Builder createPuzzle(Random rand, Profile p) {
+	/** Forty bounded fresh-room attempts. Only old saves replay V33a's skipped-room behavior. */
+	private static @Nullable Builder createPuzzle(Random rand, Profile p, int version) {
 		int attempts = 1;
-		Builder ret = new Builder(p);
+		Builder ret = new Builder(p, version);
 		while (!ret.prepare(rand)) {
-			ret = new Builder(p);
+			ret = new Builder(p, version);
 			attempts++;
-			if (attempts > 40) {
+			if (attempts > MAX_ROOM_ATTEMPTS) {
+				if (version != LEGACY_VERSION)
+					throw new IllegalStateException("RayBlend could not complete authored " + p.gridSize() + "x"
+							+ p.gridSize() + " room within forty attempts");
 				reika.chromaticraft.ChromatiCraft.LOGGER.error("Failed to generate a {}x{} puzzle in a reasonable time!",
 						p.gridSize(), p.gridSize());
 				return null;
@@ -182,6 +204,7 @@ public final class RayBlendLayout {
 		return ret;
 	}
 
+	public int version() { return version; }
 	public int difficulty() { return difficulty; }
 	public long seed() { return seed; }
 	public int originX() { return originX; }
@@ -480,12 +503,13 @@ public final class RayBlendLayout {
 
 	private static final class Subgrid {
 		final int index;
-		final HashMap<Cell, Slot> slots = new HashMap<>();
+		final Map<Cell, Slot> slots;
 		final Set<Slot> unpopulated = new LinkedHashSet<>();
 		private final Builder parent;
 
 		Subgrid(Builder parent) {
 			this.parent = parent;
+			slots = parent.cellMap();
 			parent.unfinished.add(this);
 			index = parent.subIndex++;
 		}
@@ -502,6 +526,13 @@ public final class RayBlendLayout {
 		}
 
 		void clear() {
+			if (parent.version != LEGACY_VERSION) {
+				for (Slot slot : slots.values()) {
+					parent.grids.remove(slot.key(), this);
+					parent.unGridded.add(slot.key());
+					parent.uncaged.remove(slot);
+				}
+			}
 			slots.clear();
 			unpopulated.clear();
 		}
@@ -599,6 +630,7 @@ public final class RayBlendLayout {
 
 	/** V33a {@code RayBlendPuzzle} during generation. */
 	private static final class Builder {
+		final int version;
 		final Profile profile;
 		final int gridSize;
 		final int edge;
@@ -606,21 +638,34 @@ public final class RayBlendLayout {
 		final int cellsPerSubgrid;
 		final float fill;
 
-		final HashMap<Cell, Subgrid> grids = new HashMap<>();
-		final HashMap<Cell, Cage> cages = new HashMap<>();
-		final HashSet<Cell> unGridded = new HashSet<>();
+		final Map<Cell, Subgrid> grids;
+		final Map<Cell, Cage> cages;
+		final Set<Cell> unGridded;
 		final Set<Subgrid> unfinished = new LinkedHashSet<>();
 		final Set<Slot> uncaged = new LinkedHashSet<>();
 		final Set<Slot> candidateStarts = new LinkedHashSet<>();
 		int subIndex;
 
-		Builder(Profile p) {
+		Builder(Profile p, int version) {
+			this.version = version;
+			grids = cellMap();
+			cages = cellMap();
+			unGridded = cellSet(List.of());
 			profile = p;
 			gridSize = p.gridSize();
 			edge = gridSize * gridSize;
 			total = edge * edge;
 			cellsPerSubgrid = edge;
 			fill = p.initialFill();
+		}
+
+		/** Cell hashes collide heavily; HashMap tree bins otherwise use identity as their tie breaker. */
+		private <T> Map<Cell, T> cellMap() {
+			return version == LEGACY_VERSION ? new HashMap<>() : new LinkedHashMap<>();
+		}
+
+		private Set<Cell> cellSet(Collection<Cell> cells) {
+			return version == LEGACY_VERSION ? new HashSet<>(cells) : new LinkedHashSet<>(cells);
 		}
 
 		boolean prepare(Random rand) {
@@ -656,9 +701,41 @@ public final class RayBlendLayout {
 		}
 
 		private boolean populate(Subgrid sg, Random rand) {
+			if (version == LEGACY_VERSION)
+				return populateLegacy(sg, rand);
+			for (int attempt = 0; attempt < MAX_REGION_ATTEMPTS; attempt++) {
+				sg.clear();
+				Set<Cell> starts = cellSet(unGridded);
+				boolean started = false;
+				for (int startAttempt = 0; startAttempt < MAX_START_ATTEMPTS && !starts.isEmpty(); startAttempt++) {
+					Cell start = weightedStart(rand, starts);
+					starts.remove(start);
+					if (unGridded.size() == total || canExpandInto(sg, start)) {
+						sg.createSlot(start.x(), start.y());
+						started = true;
+						break;
+					}
+				}
+				if (!started)
+					return false;
+				while (sg.size() < cellsPerSubgrid) {
+					Cell next = candidateNextPoint(sg, rand);
+					if (next == null)
+						break;
+					sg.createSlot(next.x(), next.y());
+				}
+				if (sg.size() == cellsPerSubgrid && sg.stringiness() <= maxAllowedStringiness())
+					return true;
+			}
+			sg.clear();
+			return false;
+		}
+
+		/** Kept intact for previously generated floors and chunk-clipped pieces. */
+		private boolean populateLegacy(Subgrid sg, Random rand) {
 			int attempts0 = 0;
-			HashSet<Cell> starts = new HashSet<>(unGridded);
-			while (attempts0 < 80) {
+			Set<Cell> starts = cellSet(unGridded);
+			while (attempts0 < MAX_START_ATTEMPTS) {
 				attempts0++;
 				Cell start = weightedStart(rand, starts);
 				starts.remove(start);
@@ -674,7 +751,7 @@ public final class RayBlendLayout {
 				}
 			}
 			int attempts = 0;
-			while (attempts < 80) {
+			while (attempts < MAX_REGION_ATTEMPTS) {
 				attempts++;
 				while (sg.size() < cellsPerSubgrid) {
 					Cell p = candidateNextPoint(sg, rand);
@@ -704,7 +781,7 @@ public final class RayBlendLayout {
 		private @Nullable Cell weightedStart(Random rand, Set<Cell> starts) {
 			if (starts.isEmpty())
 				return null;
-			HashMap<Cell, Double> wr = new HashMap<>();
+			Map<Cell, Double> wr = cellMap();
 			for (Cell p : starts)
 				wr.put(p, (double)filledNeighbors(p));
 			return weighted(rand, wr);
@@ -741,16 +818,16 @@ public final class RayBlendLayout {
 		}
 
 		private @Nullable Cell candidateNextPoint(Subgrid sg, Random rand) {
-			HashSet<Cell> set = new HashSet<>();
+			Set<Cell> set = cellSet(List.of());
 			for (Cell p : sg.slots.keySet())
 				set.addAll(neighbors(p));
 			set.retainAll(unGridded);
 			if (set.isEmpty())
 				return null;
-			HashMap<Cell, Double> wr = new HashMap<>();
+			Map<Cell, Double> wr = cellMap();
 			for (Cell p : set) {
-				// V33a measures the frontier plus the candidate, which is just the frontier.
-				HashSet<Cell> points = new HashSet<>(set);
+				// Legacy measures the frontier itself. Current plans measure the growing region plus the candidate.
+				Set<Cell> points = cellSet(version == LEGACY_VERSION ? set : sg.slots.keySet());
 				points.add(p);
 				wr.put(p, 100 - 100 * calcStringiness(points));
 			}
@@ -770,7 +847,7 @@ public final class RayBlendLayout {
 			c.retainAll(unGridded);
 			if (c.isEmpty())
 				return true;
-			HashSet<Cell> visited = new HashSet<>();
+			Set<Cell> visited = cellSet(List.of());
 			visited.add(p);
 			List<LinkedList<Cell>> groups = new ArrayList<>();
 			for (Cell p2 : unGridded) {
@@ -882,7 +959,7 @@ public final class RayBlendLayout {
 			if (profile.markIntersections()) {
 				// V33a getValidMix begins with "if (true) return null", so no mix point is ever kept; the draws
 				// that pick each candidate still happen.
-				HashSet<Cell> set = new HashSet<>(grids.keySet());
+				Set<Cell> set = cellSet(grids.keySet());
 				int mixPoints = 0;
 				while (!set.isEmpty() && mixPoints < gridSize) {
 					Cell mix = randomEntry(rand, set);
@@ -973,8 +1050,8 @@ public final class RayBlendLayout {
 		return li.get(rand.nextInt(li.size()));
 	}
 
-	/** DragonAPI {@code WeightedRandom.getRandomEntry} (a HashMap walk, so V33a's order), on the layout's stream. */
-	private static <V> V weighted(Random rand, HashMap<V, Double> wr) {
+	/** DragonAPI's weighted draw, with the iteration order chosen by the saved layout version. */
+	private static <V> V weighted(Random rand, Map<V, Double> wr) {
 		double sum = 0;
 		for (double w : wr.values())
 			sum += w;

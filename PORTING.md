@@ -10700,3 +10700,109 @@ packed-ice textures on all icicle segments and flat ivy against its wall.
 `gui-before-warp.png` / `gui-after-warp.png` show an open screen's grid and text plus the tutorial
 overlay bending under the single post-GUI distortion pass. No Iris/Distant Horizons were loaded
 in this fixture; shader-pack compatibility is not claimed by this visual check.
+
+
+## 2026-10-08 — Second backlog batch: original assets and RayBlend completion
+
+Resolved N03's remaining source provenance: tungsten-alloy material is the original COMPACTS
+metadata 12, type 6 on sheet 0, hence items.png cell 108. The recovery script checks both original
+atlas hashes and verifies four sprites as exact 16x16 RGBA pixels. The zero-byte advancedgear PNG
+is preserved under RotaryCraft/reference/legacy-assets/, outside the atlas scan; worm gear, CVT,
+coil, high gear and creative coil retain generated special item models and original 3D geometry.
+The material's misleading original springtungsten name had caused a second mismatch: it was
+registered as a charged ItemCoil. Its unchanged ID now uses the original stackable crafting-material
+behavior. Full railgun sprite-group/projectile porting is tracked separately as RC19.
+
+N06 baseline: the native layout test reported 9 omitted rooms out of 240 planned rooms but passed.
+It now requires every authored profile, along with connected, correctly sized, nonuniform regions,
+original compactness caps, valid sudoku colours, cages, starting crystals and room/door geometry.
+Failed region attempts previously left cells removed from the remaining pool, and rejected full
+shapes were retried unchanged. New attempts return all owned cells and slots before reseeding;
+frontier weighting measures the region plus its candidate instead of the frontier itself.
+Insertion-ordered point collections avoid identity tie-breaking in colliding hash-map tree bins.
+Work is bounded at forty room attempts, eighty region attempts and eighty start candidates.
+Exhaustion throws for a new plan; it never admits a shortened authored progression.
+
+Layout version 1 is persisted in structure pieces and floor save/client tags, and participates in
+the plan cache key. Missing version fields mean legacy version 0. Existing floors and chunk-clipped
+pieces replay the old algorithm, including any rooms that were historically omitted. A recalculated
+live generator resolves the version of matching saved floors for solving/force-opening. Unsupported
+future versions are rejected rather than silently reinterpreted. The committed pre-fix implementation
+(ChromatiCraft 6e3638aaea2f82583d180548787bfcd91c9399a4) independently produced twelve golden plans;
+all matched legacy replay before those hashes were retained in the permanent regression suite.
+
+Validation: all 240 authored rooms in the original 36-layout seed matrix generate reproducibly;
+128 additional widely spaced seeds (including Long.MIN_VALUE/Long.MAX_VALUE) also complete and
+match their twins. All four native rayblend_* tests pass, including actual old/new piece and floor
+persistence, client-tag replay and existing puzzle-solving/reward behavior. The permanent unit
+suite passes 69 tests: DragonAPI 25, RotaryCraft 33, ReactorCraft 8, ChromatiCraft 3.
+Logs: build/backlog-rayblend-baseline.log, build/backlog-rayblend-ordered.log,
+build/backlog-rayblend-compatibility.log and build/backlog-second-units.log. The legacy compatibility
+fixture intentionally replays an old omitted 4x4 room; its historical diagnostic does not indicate
+failure of version 1. The independent comparison source/fixture was temporary under build/ and is
+not included in production sources or release jars.
+
+
+Final native client validation passed in 2m 1s (build/backlog-second-client.log).
+GEAR_ITEM_AUDIT_CLIENT_PASS resolves actual generated native item models and verifies original
+3D geometry for worm gear, CVT, coil, high gear and creative coil. It verifies the tungsten
+material's real reloaded components (stack size 64, no damage/charge) and absence of the empty
+advancedgear resource. The original four recovered sprites decode natively. TURBINE,
+DROPPER and DRAGONAPI_AUDIT_CLIENT_PASS retain the first batch's regression coverage.
+No corrupt-PNG error or new 4x4 generation failure appears in this client run. A full decode scan
+passes all 2179 RotaryCraft PNGs. Current RotaryCraft/ChromatiCraft jars contain neither the
+archived obsolete PNG nor temporary reference/test classes. Other missing-texture warnings and
+Windows OSHI/Perflib diagnostics remain; this does not claim actual Iris/Distant Horizons/shader
+acceptance. N03/N06 are closed in PROJECT-BACKLOG.md; N07/N08 and RC19 remain open.
+
+Git diff whitespace checks pass for the changed source and ledgers. The user's IDE-maintained
+.idea/workspace.xml still has its pre-existing/dynamically updated whitespace; it was not edited.
+This batch and the earlier first-batch changes remain uncommitted and unpushed.
+
+The reported white Proxima puzzle water exposed a colour migration error. EverFluid used the
+modern greyscale vanilla water_still texture with a white multiplier and no tint. Its old blue
+sprite already supplied colour, so the earlier ledger's claim that grey water matched upstream
+was incorrect. Tint slot zero and a registered constant normal-water blue (26.3 vanilla
+0x3F76E4) restore colour while preserving source/flow height, corner averaging, face brightness,
+two-sided geometry and source-bound flow logic. Structure/Monument biome water likewise used
+V33a's white multiplier as an absolute modern colour; their generated water colour now uses the
+same native normal-water blue. Remaining Proxima/Rainbow biome colours are retained.
+
+Current validation: final ChromatiCraft server datagen, launcher argument preparation and client
+compilation pass (build/proxima-water-datagen.log, 1m 4s). The native client audit subsequently passes (final evidence below).
+WaterPuzzleClientChecks exercises actual reloaded source/flow models, all tint-indexed faces,
+original geometry/animated material and both synced biome definitions without editing play saves.
+
+
+Final water/run-separation validation: build/proxima-water-client-final.log passes in 1m 43s,
+including WATER_PUZZLE_AUDIT_CLIENT_PASS for the actual reloaded source/flow meshes, every face's
+tint, original animated sprite/two-sided geometry and the synced Structure/Monument biome colours.
+Existing turbine/gear/railgun/dropper/DragonAPI client checks pass too. All five native water-puzzle
+layout/lock/flow/structure/descent tests pass (build/proxima-water-gameplay.log, 52s). The first
+client fixture compared decoded opaque ARGB against RGB; correcting only that assertion restores
+the native check. No production colour or gameplay was weakened to pass the fixture.
+
+The finished family unit results are 74/74 (DragonAPI 30 including five Lua regressions,
+RotaryCraft 33, ReactorCraft 8, ChromatiCraft 3). The final DragonAPI unit/jar run is in
+build/proxima-water-client-final.log; all 13 native DragonAPI checks, including actual Lua item
+components and legacy-name resolution, pass in build/lua-enchantment-native.log. Both changed
+module jars contain the required implementation and corrected generated data. Independent checks
+confirm audit execution leaves both normal Play argument files unchanged, testing disabled and
+no automatic audit-world launch. Report: build/proxima-water-final-verification.json.
+
+IntelliJ refresh created duplicate Play/Automated Checks entries alongside the temporary manual
+repair; duplicates are removed while keeping the generated definitions and the user's selected
+normal Gradle play run. Task definitions in TestInstance/build.gradle persist the separation.
+Restart Play to load the code/resource changes; no new world or save removal is required. D18 is
+complete (8 checklist tasks done, 154 open); D19 config version-reset is the next confirmed gap.
+Remote-client and actual Iris/Distant Horizons/shader acceptance remain open. Work is uncommitted
+and unpushed; user play saves and unrelated IDE edits remain intact.
+
+Post-D20 local checkpoint (2026-10-09): the pending RayBlend completeness fix, Proxima water
+colour correction, generated biome data and their regressions are included in the owner's
+requested local checkpoint alongside the family work. Final checkpoint verification passes
+85/85 family units, all 18 DragonAPI native tests, and the isolated client audit including actual
+water meshes/tints and synced biome colours (build/block-array-validation.log and
+build/block-array-client-final.log). Normal Play argument files remain unchanged. DragonAPI's
+restored array/blueprint/selected-NBT contracts are documented in docs/block-array-port.md in
+that module. Actual remote-client and shader/LOD acceptance remain open.

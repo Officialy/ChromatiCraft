@@ -42,6 +42,7 @@ public final class TileEntityRayblendFloor extends BlockEntity {
 	/** Block event on a cell's tile: V33a's {@code RAYBLENDPING} colour-exclusion particles; the param is the colour. */
 	public static final int PING_EVENT = 1;
 
+	private int layoutVersion = RayBlendLayout.CURRENT_VERSION;
 	private int difficulty = 3;
 	private long seed;
 	private int originX;
@@ -56,6 +57,11 @@ public final class TileEntityRayblendFloor extends BlockEntity {
 	}
 
 	public void configure(int difficulty, long seed, int originX, int originZ, int room, int cellX, int cellZ) {
+		configure(RayBlendLayout.CURRENT_VERSION, difficulty, seed, originX, originZ, room, cellX, cellZ);
+	}
+
+	public void configure(int version, int difficulty, long seed, int originX, int originZ, int room, int cellX, int cellZ) {
+		layoutVersion = version;
 		this.difficulty = difficulty;
 		this.seed = seed;
 		this.originX = originX;
@@ -71,7 +77,7 @@ public final class TileEntityRayblendFloor extends BlockEntity {
 	public int roomIndex() { return roomIndex; }
 
 	public @Nullable RayBlendLayout layout() {
-		return roomIndex < 0 ? null : RayBlendLayout.cached(difficulty, seed, originX, originZ);
+		return roomIndex < 0 ? null : RayBlendLayout.cached(layoutVersion, difficulty, seed, originX, originZ);
 	}
 
 	public RayBlendLayout.@Nullable Room room() {
@@ -226,6 +232,7 @@ public final class TileEntityRayblendFloor extends BlockEntity {
 	@Override
 	protected void saveAdditional(ValueOutput output) {
 		super.saveAdditional(output);
+		output.putInt("layoutVersion", layoutVersion);
 		output.putInt("difficulty", difficulty);
 		output.putLong("seed", seed);
 		output.putInt("originX", originX);
@@ -239,6 +246,7 @@ public final class TileEntityRayblendFloor extends BlockEntity {
 	@Override
 	protected void loadAdditional(ValueInput input) {
 		super.loadAdditional(input);
+		layoutVersion = input.getIntOr("layoutVersion", RayBlendLayout.LEGACY_VERSION);
 		difficulty = input.getIntOr("difficulty", 3);
 		seed = input.getLongOr("seed", 0);
 		originX = input.getIntOr("originX", 0);

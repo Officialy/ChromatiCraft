@@ -1,4 +1,4 @@
-// 26.3	2026-10-06T13:24:01.4267908	ChromatiCraft Canonical Structure Templates
+// 26.3	2026-10-09T12:10:30.3998101	ChromatiCraft Canonical Structure Templates
 439d19b3a1fe5a9e4c37aaf0d9c3aeefe6fa9bb8 data/chromaticraft/structure/multiblock/casting_l1.nbt
 a04978a62d159d07a365799ca14fc61e25e258db data/chromaticraft/structure/multiblock/casting_l2.nbt
 73fa45454dad10e36260d940e834134aa7cc95c7 data/chromaticraft/structure/multiblock/casting_l3.nbt
@@ -23,7 +23,7 @@ d98627b616f04f8e7f63310f217ff49679332c54 data/chromaticraft/structure/multiblock
 789a787ff2499003882f072cbc821eceffc56af9 data/chromaticraft/structure/worldgen/nether/hut.nbt
 2e505ed179467a75c50bc24003caa0c24a5a2f21 data/chromaticraft/structure/worldgen/nether/maze.nbt
 ca6533c73995da4c7f4bf3bc21d44b979ca95d3d data/chromaticraft/structure/worldgen/nether/spiral.nbt
-de3b7603c5ef5ebef845039d33bcebbab6240572 data/chromaticraft/structure/worldgen/nether/temple.nbt
+2a3d55c497c128be66a1ef4b07e35779fdd2db0a data/chromaticraft/structure/worldgen/nether/temple.nbt
 e2c10d504e860fce361e9bb6c3a5e40737bf5675 data/chromaticraft/structure/worldgen/overworld/biome_fragment.nbt
 f69dd30bf332297224fef37539dceec3e1a8bbc1 data/chromaticraft/structure/worldgen/overworld/burrow.nbt
 c140a5ecdfa46c0a3e86fb59613c2714bb027436 data/chromaticraft/structure/worldgen/overworld/burrow_furnace.nbt

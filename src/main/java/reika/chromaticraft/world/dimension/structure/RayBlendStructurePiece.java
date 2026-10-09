@@ -59,6 +59,7 @@ public final class RayBlendStructurePiece extends StructurePiece {
 	private final int originX;
 	private final int originZ;
 	private final int surfaceY;
+	private final int layoutVersion;
 	private final int difficulty;
 	private final long puzzleSeed;
 	private final CrystalElement color;
@@ -77,6 +78,7 @@ public final class RayBlendStructurePiece extends StructurePiece {
 		originX = plan.layout().originX();
 		originZ = plan.layout().originZ();
 		this.surfaceY = surfaceY;
+		layoutVersion = plan.layout().version();
 		difficulty = plan.difficulty();
 		puzzleSeed = plan.puzzleSeed();
 		color = element;
@@ -89,6 +91,7 @@ public final class RayBlendStructurePiece extends StructurePiece {
 		originX = tag.getIntOr("X", 0);
 		originZ = tag.getIntOr("Z", 0);
 		surfaceY = tag.getIntOr("SurfaceY", 100);
+		layoutVersion = tag.getIntOr("LayoutVersion", RayBlendLayout.LEGACY_VERSION);
 		difficulty = Math.clamp(tag.getIntOr("Difficulty", 3), 1, 3);
 		puzzleSeed = tag.getLongOr("PuzzleSeed", 0);
 		color = CrystalElement.elements[Math.floorMod(tag.getIntOr("Color", 0), CrystalElement.elements.length)];
@@ -129,6 +132,7 @@ public final class RayBlendStructurePiece extends StructurePiece {
 		tag.putInt("X", originX);
 		tag.putInt("Z", originZ);
 		tag.putInt("SurfaceY", surfaceY);
+		tag.putInt("LayoutVersion", layoutVersion);
 		tag.putInt("Difficulty", difficulty);
 		tag.putLong("PuzzleSeed", puzzleSeed);
 		tag.putInt("Color", color.ordinal());
@@ -150,7 +154,7 @@ public final class RayBlendStructurePiece extends StructurePiece {
 	@Override
 	public void postProcess(WorldGenLevel level, StructureManager structureManager, ChunkGenerator generator,
 			RandomSource random, BoundingBox chunkBox, ChunkPos chunkPos, BlockPos referencePos) {
-		RayBlendLayout layout = RayBlendLayout.cached(difficulty, puzzleSeed, originX, originZ);
+		RayBlendLayout layout = RayBlendLayout.cached(layoutVersion, difficulty, puzzleSeed, originX, originZ);
 		Writer w = new Writer(level, chunkBox);
 		layout.run(w);
 
@@ -269,7 +273,7 @@ public final class RayBlendStructurePiece extends StructurePiece {
 			level.setBlock(cursor, BlockRayblendFloor26.state(ChromaBlocks.RAYBLEND_FLOOR.get().defaultBlockState(),
 					room.region()[c], room.blocked()[c], room.cage()[c]), 2);
 			if (level.getBlockEntity(cursor) instanceof TileEntityRayblendFloor te)
-				te.configure(difficulty, puzzleSeed, originX, originZ, room.index(), cellX, cellZ);
+				te.configure(layoutVersion, difficulty, puzzleSeed, originX, originZ, room.index(), cellX, cellZ);
 		}
 
 		@Override

@@ -30,7 +30,8 @@ import reika.chromaticraft.world.biome.ChromaBiomes;
  *     but most biomes do not render it" note in {@code WorldProviderChroma} refers to.</li>
  * <li>Luminescent Sanctuary is the only biome with a spawn: the Tunnel Nuker, one at a time
  *     ({@code BiomeGenCentral} adds it to the cave-creature list at weight 1, group 1-1).</li>
- * <li>Structure Field brightens its grass and uses white water ({@code StructureBiome}).</li>
+ * <li>Structure Field brightens its grass and leaves the original blue water unchanged with a white
+ *     multiplier ({@code StructureBiome}); modern greyscale water needs the normal water tint.</li>
  * <li>Monument Field replaces the grass base outright with {@code 0x77ccff} ({@code MonumentBiome}).</li>
  * </ul>
  *
@@ -39,7 +40,7 @@ import reika.chromaticraft.world.biome.ChromaBiomes;
  * V33a computes grass colour per position: the base is modulated by a simplex field into the green
  * channel between 1.0x and 1.5x, and Structure/Monument Fields additionally scan four blocks in each
  * cardinal direction and switch to a highlight colour at their own edge, blending toward it by a
- * second noise field. A 26.2 {@code BiomeSpecialEffects} grass override is a single constant, so the
+ * second noise field. A 26.3 {@code BiomeSpecialEffects} grass override is a single constant, so the
  * base colour lives here and the per-position modulation belongs to a client colour resolver
  * alongside the existing {@code ChromaBlockColors}. That is a real remaining piece of work, not a
  * substitution: the constants below are exactly upstream's bases, not invented approximations.
@@ -56,8 +57,8 @@ public final class ProximaBiomeDefinitions {
 
 	/** V33a StructureBiome: the Rainbow Forest grass with its green channel raised, which saturates. */
 	private static final int STRUCTURE_GRASS = 0x79FF5A;
-	/** V33a StructureBiome.getWaterColorMultiplier. */
-	private static final int STRUCTURE_WATER = 0xFFFFFF;
+	/** V33a's neutral multiplier on blue water; 26.3 OverworldBiomes.NORMAL_WATER_COLOR. */
+	private static final int STRUCTURE_WATER = 0x3F76E4;
 	/** V33a MonumentBiome.getBaseColor. */
 	private static final int MONUMENT_GRASS = 0x77CCFF;
 

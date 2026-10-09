@@ -8,6 +8,10 @@ ext {
 // Headless in-world game tests: `gradlew :ChromatiCraft:runGameTest` launches a GameTestServer that
 // runs every test in the chromaticraft namespace (progression core) and exits non-zero on failure.
 neoForge {
+    unitTest {
+        enable()
+        testedMod = mods.named(project.mod_id).get()
+    }
     runs {
         client {
             if (project.hasProperty('chromaClientDirectory'))
@@ -1082,3 +1086,6 @@ sourceSets.main.java {
     include 'reika/chromaticraft/data/ChromaChestLoot.java'
     include 'reika/chromaticraft/data/ChromaLootModifierProvider.java'
 }
+
+// Native FML registry/bootstrap environment for deterministic generation regressions.
+test { useJUnitPlatform() }

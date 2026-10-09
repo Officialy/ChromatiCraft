@@ -249,6 +249,10 @@ public final class ChromaBlockColors {
                 .toArray(net.minecraft.world.level.block.Block[]::new));
         event.register(List.of(RAINBOW_LEAF), ChromaBlocks.RAINBOW_LEAVES.get());
 		event.register(List.of(HOVER), ChromaBlocks.HOVER.get());
+		// V33a's white multiplier preserved the blue already in water_still. Modern water_still
+		// is greyscale: use 26.3's normal water colour, independently of biome, on every fluid face.
+		event.register(List.of(net.minecraft.client.color.block.BlockTintSources.constant(0xFF3F76E4)),
+				ChromaBlocks.EVER_FLUID.get());
 		event.register(List.of(PISTON_BIT), ChromaBlocks.PISTON_TAPE_BIT.get());
 		event.register(List.of(PISTON_TARGET), ChromaBlocks.PISTON_TARGET.get());
         event.register(List.of(CRYSTAL_LEAF), ChromaBlocks.deco(

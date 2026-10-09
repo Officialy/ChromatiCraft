@@ -34,8 +34,9 @@ import reika.chromaticraft.block.dimension.structure.water.BlockEverFluid26;
  * the cell and its three neighbours there (solid neighbours count as the cell's own height, open ones as zero,
  * and any neighbour at 7/8 or more wins), exactly as the old renderer did. The top and the sides are drawn from
  * both faces, the sides sampling half the still-water icon, with V33a's 1.0 / 0.5 / 0.8 / 0.6 face brightness.
- * The icon is vanilla's still water with the block's white colour multiplier, so this fluid is the untinted grey
- * of the water texture, not biome blue.
+ * Upstream's still-water icon already carried blue; its white multiplier left that blue intact. The modern
+ * icon is greyscale, so tint slot zero supplies normal water blue while these vertex colours retain the
+ * original face brightness. This block never used biome-dependent colouring upstream.
  */
 public final class EverFluidModel implements DynamicBlockStateModel {
 
@@ -197,7 +198,7 @@ public final class EverFluidModel implements DynamicBlockStateModel {
 		float fz = len < 1.0E-9 ? 0 : (float)(nz / len);
 		QuadBakingVertexConsumer vertex = new QuadBakingVertexConsumer();
 		vertex.setSprite(still, Transparency.TRANSLUCENT);
-		vertex.setTintIndex(-1);
+		vertex.setTintIndex(0);
 		vertex.setShadeOverride(Direction.UP);
 		vertex.setAmbientOcclusion(false);
 		vertex.setDirection(Direction.getApproximateNearest(fx, fy, fz));

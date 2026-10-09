@@ -460,6 +460,7 @@ public final class ChromaGameTests {
 		register(event, env, "piston_tape_playback", 4000, ChromaGameTests::pistonTapePlayback);
 		register(event, env, "look_ray_hits_pylon", ChromaGameTests::lookRayHitsPylon);
 		register(event, env, "rayblend_layout", ChromaGameTests::rayBlendLayout);
+		register(event, env, "rayblend_persistence", ChromaGameTests::rayBlendPersistence);
 		register(event, env, "rayblend_room_play", 400, ChromaGameTests::rayBlendRoomPlay);
 		register(event, env, "rayblend_reward_room", 400, ChromaGameTests::rayBlendRewardRoom);
 		register(event, env, "proxima_structure_completion_loop", ChromaGameTests::proximaStructureCompletionLoop);
@@ -4553,12 +4554,12 @@ public final class ChromaGameTests {
 	 * V33a RayBlendPuzzle invariants over many seeds: one seed gives one plan; every room is a jigsaw sudoku whose
 	 * regions are connected, the right size and not all the same shape; its solution never repeats a colour in a
 	 * region, row or column; blocked cells have no colour; doors sit in the corridor past each room and only the
-	 * first room has the password alcove. Also reports how often a room exhausts V33a's forty attempts.
+	 * first room has the password alcove. Every authored profile must be present; exhausted-room skips fail the test.
 	 */
 	private static void rayBlendLayout(GameTestHelper helper) {
 		helper.assertTrue(DimensionStructureType.RAYBLEND.isComplete(),
 				"Crystal Interference's generator did not pass the V33a core gate");
-		int planned = 0, skipped = 0;
+		int planned = 0;
 		for (int difficulty = 1; difficulty <= 3; difficulty++) {
 			int profiles = reika.chromaticraft.world.dimension.structure.RayBlendLayout.profiles(difficulty).length;
 			for (long seed = 0; seed < 12; seed++) {
@@ -4568,7 +4569,8 @@ public final class ChromaGameTests {
 						&& layout.length() == twin.length(), "the same seed produced a different Crystal Interference plan");
 				helper.assertTrue(layout.posY() >= 10 && layout.posY() < 80, "V33a's room height is 10 + rand(70)");
 				planned += profiles;
-				skipped += profiles - layout.rooms().size();
+				helper.assertTrue(layout.rooms().size() == profiles,
+						"RayBlend omitted an authored room for difficulty " + difficulty + ", seed " + seed);
 				int lastMaxX = Integer.MIN_VALUE;
 				for (int r = 0; r < layout.rooms().size(); r++) {
 					var room = layout.rooms().get(r);
@@ -4577,7 +4579,7 @@ public final class ChromaGameTests {
 							&& java.util.Arrays.equals(room.color(), other.color())
 							&& java.util.Arrays.equals(room.start(), other.start())
 							&& java.util.Arrays.equals(room.cage(), other.cage()) && room.doors().equals(other.doors()),
-							"room " + r + " differs between two plans of the same seed");
+							"room " + r + " differs for difficulty " + difficulty + ", seed " + seed);
 					int edge = room.edge();
 					helper.assertTrue(edge == room.gridSize() * room.gridSize(), "a room's edge is gridSize squared");
 					helper.assertTrue(room.minX() > lastMaxX, "rooms must not overlap");
@@ -4611,6 +4613,17 @@ public final class ChromaGameTests {
 							queue.add(new int[] {c[0], c[1] - 1});
 						}
 						helper.assertTrue(seen.size() == cells.size(), "a region of room " + r + " is not connected");
+						int stringy = 0;
+						for (int[] c : cells) {
+							int neighbors = 0;
+							for (int[] d : new int[][]{{-1, 0}, {1, 0}, {0, -1}, {0, 1}})
+								if (in.contains(((long)(c[0] + d[0]) << 32) | ((c[1] + d[1]) & 0xffffffffL)))
+									neighbors++;
+							if (neighbors <= 2) stringy++;
+						}
+						double cap = room.gridSize() == 4 ? 0.7 : room.gridSize() == 3 ? 0.9 : 1;
+						helper.assertTrue(stringy / (double)cells.size() <= cap,
+								"a region exceeds its authored compactness limit");
 						java.util.Set<Long> shape = new java.util.HashSet<>();
 						for (int[] c : cells)
 							shape.add(((long)(c[0] - minX) << 32) | ((c[1] - minZ) & 0xffffffffL));
@@ -4644,8 +4657,55 @@ public final class ChromaGameTests {
 				}
 			}
 		}
-		reika.chromaticraft.ChromatiCraft.LOGGER.info("Crystal Interference: {} of {} planned rooms exhausted V33a's forty attempts",
-				skipped, planned);
+		reika.chromaticraft.ChromatiCraft.LOGGER.info("Crystal Interference: all {} authored rooms generated reproducibly", planned);
+		helper.succeed();
+	}
+
+	/** Saved pieces and floor/client tags replay their own version, including pre-versioned worlds. */
+	private static void rayBlendPersistence(GameTestHelper helper) {
+		var level = helper.getLevel();
+		var gen = rayBlendPlan(helper.absolutePos(new BlockPos(2, 0, 2)));
+		var context = net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext.fromLevel(level);
+		var piece = new reika.chromaticraft.world.dimension.structure.RayBlendStructurePiece(gen, gen.layout().posY() + 40,
+				CrystalElement.CYAN, 0, java.util.List.of());
+		CompoundTag currentTag = piece.createTag(context);
+		helper.assertTrue(currentTag.getIntOr("LayoutVersion", -1) == 1, "new structure pieces must save layout version 1");
+		var restored = new reika.chromaticraft.world.dimension.structure.RayBlendStructurePiece(currentTag);
+		helper.assertTrue(restored.createTag(context).equals(currentTag), "piece version or plan key changed across save/load");
+		CompoundTag oldTag = currentTag.copy();
+		oldTag.remove("LayoutVersion");
+		var oldPiece = new reika.chromaticraft.world.dimension.structure.RayBlendStructurePiece(oldTag);
+		helper.assertTrue(oldPiece.createTag(context).getIntOr("LayoutVersion", -1) == 0,
+				"a pre-versioned piece must keep the old generator across subsequent saves");
+		var old = reika.chromaticraft.world.dimension.structure.RayBlendLayout.cached(0, gen.difficulty(), gen.puzzleSeed(),
+				gen.layout().originX(), gen.layout().originZ());
+		helper.assertTrue(old != gen.layout() && old.version() == 0, "the layout cache conflates old and current plans");
+		var room = old.rooms().getFirst();
+		var box = new net.minecraft.world.level.levelgen.structure.BoundingBox(room.minX(), room.y() - 1, room.minZ(),
+				room.maxX() + 2, room.y() + 8, room.maxZ() + 1);
+		Runnable release = forceChunks(level, box);
+		try {
+			oldPiece.postProcess(level, level.structureManager(), level.getChunkSource().getGenerator(), RandomSource.create(3),
+					box, net.minecraft.world.level.ChunkPos.containing(room.floor(0, 0)), room.floor(0, 0));
+			var tile = (reika.chromaticraft.tileentity.TileEntityRayblendFloor)level.getBlockEntity(room.floor(0, 0));
+			helper.assertTrue(tile != null && tile.layout().version() == 0, "old chunk placement configured a new-version floor");
+			CompoundTag floorTag = tile.getUpdateTag(level.registryAccess());
+			floorTag.remove("layoutVersion");
+			var loaded = new reika.chromaticraft.tileentity.TileEntityRayblendFloor(tile.getBlockPos(), tile.getBlockState());
+			loaded.handleUpdateTag(TagValueInput.create(ProblemReporter.DISCARDING, level.registryAccess(), floorTag));
+			helper.assertTrue(loaded.layout().version() == 0
+					&& java.util.Arrays.equals(loaded.room().region(), room.region())
+					&& java.util.Arrays.equals(loaded.room().color(), room.color())
+					&& java.util.Arrays.equals(loaded.room().cage(), room.cage()),
+					"a pre-versioned floor/client update changed its regions, solution or cages");
+			helper.assertTrue(loaded.getUpdateTag(level.registryAccess()).getIntOr("layoutVersion", -1) == 0,
+					"resaving an old floor must persist its legacy version");
+			// A newly recalculated live generator must force open the existing old rooms, not its new plan.
+			gen.forceOpen(level);
+			helper.assertTrue(reika.chromaticraft.tileentity.TileEntityRayblendFloor.isComplete(level, room),
+					"the regenerated live planner did not honor the saved room version");
+		}
+		finally { release.run(); }
 		helper.succeed();
 	}
 

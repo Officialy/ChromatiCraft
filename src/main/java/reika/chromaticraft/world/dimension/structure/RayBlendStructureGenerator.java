@@ -45,7 +45,7 @@ public final class RayBlendStructureGenerator extends StructureGeneratorBase {
 	protected boolean hasBeenSolved(Level level) {
 		if (layout == null)
 			return false;
-		for (RayBlendLayout.Room room : layout.rooms())
+		for (RayBlendLayout.Room room : persistedLayout(level).rooms())
 			if (!TileEntityRayblendFloor.isComplete(level, room))
 				return false;
 		return true;
@@ -56,8 +56,22 @@ public final class RayBlendStructureGenerator extends StructureGeneratorBase {
 	protected void openStructure(Level level) {
 		if (layout == null)
 			return;
-		for (RayBlendLayout.Room room : layout.rooms())
+		for (RayBlendLayout.Room room : persistedLayout(level).rooms())
 			TileEntityRayblendFloor.forceOpen(level, room);
+	}
+
+	/** A regenerated live planner must honor the version of the rooms already present in this world. */
+	private RayBlendLayout persistedLayout(Level level) {
+		for (RayBlendLayout.Room room : layout.rooms()) {
+			BlockPos anchor = room.floor(0, 0);
+			if (level.hasChunkAt(anchor) && level.getBlockEntity(anchor) instanceof TileEntityRayblendFloor floor) {
+				RayBlendLayout saved = floor.layout();
+				if (saved != null && saved.seed() == puzzleSeed && saved.difficulty() == difficulty
+						&& saved.originX() == posX && saved.originZ() == posZ)
+					return saved;
+			}
+		}
+		return layout;
 	}
 
 	@Override

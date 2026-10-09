@@ -1,4 +1,4 @@
-// 26.3	2026-10-06T01:21:19.1993527	Registries for world
+// 26.3	2026-10-09T12:10:30.3945866	Registries for world
 ebba3c085de743cf156dd7ff4cbb48a887aa68dd data/chromaticraft/damage_type/lumen_turret.json
 3d62f58226f2920df21625fc8dfc3699c1952323 data/chromaticraft/damage_type/pylon.json
 36dce11021a30f71d76a37b2f0164c7b422ea902 data/chromaticraft/damage_type/pylon_black.json
@@ -47,12 +47,12 @@ ae6543b08567d26f6292b30f7d505fdd3c2e8c7c data/chromaticraft/worldgen/biome/lumen
 95949c1a1d353a351412ddfc3a31fae81c603d96 data/chromaticraft/worldgen/biome/luminescent_sanctuary.json
 0c9acafb3566e01bf7e7ce7a2f53c33aed7238e3 data/chromaticraft/worldgen/biome/luminous_cliffs.json
 0c9acafb3566e01bf7e7ce7a2f53c33aed7238e3 data/chromaticraft/worldgen/biome/luminous_cliffs_shores.json
-9cd140b82274ce0880a5c5f8f6cb5209d1052816 data/chromaticraft/worldgen/biome/monument_field.json
+f07f606d21a3166fda7231822ae660673f50b861 data/chromaticraft/worldgen/biome/monument_field.json
 b53df502ecbab824fa94a26881fbf5d141d9c4cf data/chromaticraft/worldgen/biome/radiant_fissures.json
 959a6a8c0d82dba1173a74547951e5ebd735b819 data/chromaticraft/worldgen/biome/rainbow_forest.json
 739f7061b31d6e7f33008e51b3eb6dd7e249e6b6 data/chromaticraft/worldgen/biome/rainbow_stream.json
 6a12e9a53a3b3b28189b126243776697bdcfcf94 data/chromaticraft/worldgen/biome/sparkling_sands.json
-b507b12b359e7f7d54921672b7f9cdef73eb96be data/chromaticraft/worldgen/biome/structure_field.json
+4209a23c10f5051b935cda0f3b85fe639ff754c5 data/chromaticraft/worldgen/biome/structure_field.json
 d2f3eddbe507f6ceafd26bf0a9425a4d6ae804c1 data/chromaticraft/worldgen/biome/voidland.json
 168674e1d7c8b27571af189111f3c77e4dc1ac08 data/chromaticraft/worldgen/feature/aura_bloom.json
 06cfdd3ede567c957fb46f1dde72b30ba0c1ba87 data/chromaticraft/worldgen/feature/aura_ivy.json
