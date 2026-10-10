@@ -66,7 +66,7 @@ public class CrystalNetworker implements TickHandler {
 
 	private static final Random rand = new Random();
 
-	private final TileEntityCache<CrystalNetworkTile> tiles = new TileEntityCache();
+	private final TileEntityCache<CrystalNetworkTile> tiles = new TileEntityCache<>(CrystalNetworkTile.class);
 	private final HashSet<WorldLocation> persistedTiles = new HashSet<>();
 	private final EnumMap<CrystalElement, TileEntityCache<TileEntityCrystalPylon>> pylons = new EnumMap(CrystalElement.class);
 	//private final MultiMap<CrystalElement, WorldLocation> sourceCounts = new MultiMap(new MultiMap.HashSetFactory());
@@ -472,7 +472,7 @@ public class CrystalNetworker implements TickHandler {
 		CrystalElement e = te.getColor();
 		TileEntityCache<TileEntityCrystalPylon> c = pylons.get(e);
 		if (c == null) {
-			c = new TileEntityCache();
+			c = new TileEntityCache<>(TileEntityCrystalPylon.class);
 			pylons.put(e, c);
 		}
 		c.put(te);
