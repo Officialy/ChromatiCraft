@@ -10883,3 +10883,39 @@ Contract: DragonAPI/docs/bounded-callback-search-crash.md. Evidence/checkpoint s
 TestInstance/docs/callback-search-crash-2026-10-11.md. Only this fix, fixtures and
 notes are checkpointed; other pending changes are retained. Normal Play argument
 hashes match. No live-client or optional-mod claim is made. Nothing is pushed.
+
+
+## Tiered-resource harvesting/loot contract — D34, 2026-10-11
+
+The missing shared player-removal hook is fully restored. The original false
+canHarvestBlock is intentional because this hook owns harvesting independently
+of tool suitability and must not also run native playerDestroy. Real drops are
+chosen before removal, using NeoForge's pre-damage tool snapshot. Successful
+server survival removal dispatches one modern BlockDropsEvent with the original
+state, owner, tool, mutable items and XP. Cancellation/replacement are honored.
+Creative and unowned generic drops remain empty; sufficient-tier resources retain
+the original 2–6 XP, including plants whose standalone modern port had lost it.
+
+All 15 accepted Chroma ores and seven plants now inherit the common contract.
+Source count/stage/disguise/tuning/Elemental Stone roller rules remain. Generated
+reloadable loot tables use a native dynamic entry instead of empty tables plus
+unconditional manual drops. Native plant Fortune/Looting survives final-use tool
+breakage. Native BlockItem placement is now gated for plants as well as ores, with
+server break effects/removal; creative inspection/building and current host-drop
+disguises remain. The latter deliberately retains the accepted port's improvement
+over upstream's final tier-only drop-spawn check. Actual recursive miners and
+world/Silk Touch helpers recognize these registered resources again; empty
+sufficient-tier Silk Touch collections are handled safely.
+
+Six new native fixtures, the final 11-test Chroma tiered suite and all 16 survival
+fixtures pass. The survival selection also exercises eight pending overworld
+fixtures in the working tree, without checkpointing those unrelated sources.
+Together with 65 passing DragonAPI native fixtures these give 91 distinct IDs.
+All 141 units pass (93 DA + 34 RC + 8 ReC + 6 Chroma); eight class guards verify
+3,266 accepted outputs. Server datagen writes 22 loot tables with matching cache
+hashes; DA/Chroma production jars build. Normal Play argument hashes are unchanged.
+Source contract: DragonAPI/docs/tiered-resource-contract-port.md. Full evidence:
+TestInstance/docs/tiered-resource-contract-2026-10-11.md. Validation is native
+headless server behavior, not graphical or authenticated remote-client acceptance.
+Only this batch's changes are checkpointed; other rift/worldgen/compatibility/
+launcher/IDE work remains separate. Nothing is pushed.

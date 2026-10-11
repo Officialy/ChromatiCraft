@@ -2,21 +2,17 @@ package reika.chromaticraft.block.worldgen26;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.enchantment.Enchantment;
-import net.minecraft.world.item.enchantment.EnchantmentHelper;
+import net.minecraft.world.item.ItemInstance;
 import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.level.*;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.EntityCollisionContext;
@@ -28,6 +24,8 @@ import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.ChromaTieredPlants;
 import reika.chromaticraft.render.particle.ChromaParticle;
 
+import reika.dragonapi.base.BlockTieredResource;
+import java.util.Collection;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -46,7 +44,7 @@ import java.util.List;
  * stand on the block below, while the cave and leaf plants hang from the block above. Glowing
  * Roots use their own dirt-or-grass support rule beside the base of a tree.
  */
-public class BlockTieredPlant extends Block {
+public class BlockTieredPlant extends BlockTieredResource {
 
 	/** V33a resets every non-pod plant's selected bounds to the complete block. Collision stays empty. */
 	private static final VoxelShape SHAPE = Shapes.block();
@@ -165,33 +163,28 @@ public class BlockTieredPlant extends Block {
 		return state.canSurvive(level, pos) ? state : Blocks.AIR.defaultBlockState();
 	}
 
-	/**
-	 * V33a getHarvestResources, reached through BlockTieredResource.removedByPlayer. There is no
-	 * insufficient-player branch here as there is for the tiered ores: an insufficient player cannot
-	 * target the plant at all, so the only way to break one is to already have the stage. The loot
-	 * table is therefore empty and every drop is decided here.
-	 */
 	@Override
-	public boolean onDestroyedByPlayer(BlockState state, Level level, BlockPos pos, Player player,
-			ItemStack toolStack, boolean willHarvest, FluidState fluid) {
-		List<ItemStack> harvested = new ArrayList<>();
-		if (!player.isCreative() && this.isPlayerSufficientTier(player)) {
-			// V33a maxes the tool's Fortune against the player's Looting before switching.
-			int fortune = Math.max(enchantmentLevel(level, toolStack, Enchantments.FORTUNE),
-					enchantmentLevel(level, toolStack, Enchantments.LOOTING));
-			plant.collectDrops(harvested, fortune, level.getRandom(), player,
-					new ItemStack(ChromaItems.TIERED.get(plant.drop()).get()));
-		}
-		boolean removed = super.onDestroyedByPlayer(state, level, pos, player, toolStack, willHarvest, fluid);
-		if (removed)
-			for (ItemStack stack : harvested)
-				popResource(level, pos, stack);
-		return removed;
+	public boolean isPlayerSufficientTier(BlockGetter level, BlockPos pos, Player player) {
+		return this.isPlayerSufficientTier(player);
 	}
 
-	private static int enchantmentLevel(Level level, ItemStack tool, ResourceKey<Enchantment> key) {
-		if (tool.isEmpty()) return 0;
-		return EnchantmentHelper.getItemEnchantmentLevel(
-				level.registryAccess().lookupOrThrow(Registries.ENCHANTMENT).getOrThrow(key), tool);
+	@Override
+	protected Collection<ItemStack> getHarvestResources(Level level, BlockPos pos, ItemInstance tool, Player player) {
+		return this.collectResources(level, player, Math.max(enchantmentLevel(level, tool, Enchantments.FORTUNE),
+				enchantmentLevel(level, tool, Enchantments.LOOTING)));
+	}
+
+	/** Source count/tuning rules also serve DragonAPI's player-owned mining helpers. */
+	@Override
+	public Collection<ItemStack> getHarvestResources(Level level, BlockPos pos, int fortune, Player player) {
+		return this.collectResources(level, player,
+				Math.max(fortune, enchantmentLevel(level, player.getMainHandItem(), Enchantments.LOOTING)));
+	}
+
+	private Collection<ItemStack> collectResources(Level level, Player player, int fortune) {
+		List<ItemStack> harvested = new ArrayList<>();
+		plant.collectDrops(harvested, fortune, level.getRandom(), player,
+				new ItemStack(ChromaItems.TIERED.get(plant.drop()).get()));
+		return harvested;
 	}
 }

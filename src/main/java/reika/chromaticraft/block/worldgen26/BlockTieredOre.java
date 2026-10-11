@@ -3,20 +3,17 @@ package reika.chromaticraft.block.worldgen26;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
-import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.enchantment.Enchantment;
-import net.minecraft.world.item.enchantment.EnchantmentHelper;
+import net.minecraft.world.item.ItemInstance;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.enchantment.Enchantments;
+import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockBehaviour;
-import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import reika.chromaticraft.magic.progression.ProgressStage;
@@ -26,6 +23,9 @@ import reika.dragonapi.instantiable.StatisticalRandom;
 import reika.dragonapi.libraries.ReikaPlayerAPI;
 import reika.dragonapi.libraries.io.NBTCompat;
 
+import reika.dragonapi.base.BlockTieredResource;
+import net.minecraft.world.level.BlockGetter;
+import java.util.Collection;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -38,11 +38,12 @@ import java.util.List;
  * host block itself — so the ore is indistinguishable from ordinary stone until its stage is
  * reached. Only a sufficient player gets the real resources plus V33a's 2-6 experience splash.
  *
- * <p>Because these blocks never drop themselves, the loot table is empty and every drop is decided
- * here; that mirrors V33a, where {@code BlockTieredResource} hard-overrides the whole vanilla drop
- * path to nothing and re-implements harvesting in {@code removedByPlayer}.
+ * <p>Because these blocks never drop themselves, generated loot tables select DragonAPI's
+ * tier-aware dynamic drop. V33a's {@code BlockTieredResource} overrides the vanilla drop
+ * path to nothing and re-implements harvesting in {@code removedByPlayer}. The modern shared
+ * removal hook evaluates the table before removal and dispatches NeoForge's drop event once.
  */
-public class BlockTieredOre extends Block {
+public class BlockTieredOre extends BlockTieredResource {
 
 	private final ProgressStage stage;
 	private final Block host;
@@ -94,30 +95,34 @@ public class BlockTieredOre extends Block {
 		return player != null && (player.isCreative() || stage.isPlayerAtStage(player));
 	}
 
-	/**
-	 * V33a BlockTieredResource.removedByPlayer: the drop set is chosen by tier before the block is
-	 * removed, and a sufficient harvest additionally splits 2-6 experience over the broken block.
-	 */
 	@Override
-	public boolean onDestroyedByPlayer(BlockState state, Level level, BlockPos pos, Player player,
-			ItemStack toolStack, boolean willHarvest, FluidState fluid) {
-		boolean sufficient = this.isPlayerSufficientTier(player);
+	public boolean isPlayerSufficientTier(BlockGetter level, BlockPos pos, Player player) {
+		return this.isPlayerSufficientTier(player);
+	}
+
+	@Override
+	public Collection<ItemStack> getHarvestResources(Level level, BlockPos pos, int fortune, Player player) {
 		List<ItemStack> harvested = new ArrayList<>();
-		if (!player.isCreative()) {
-			int fortune = enchantmentLevel(level, toolStack, Enchantments.FORTUNE);
-			if (sufficient)
-				drops.collect(harvested, fortune, level.getRandom(), player);
-			else
-				harvested.addAll(this.disguisedDrops(level, pos, player, toolStack));
+		drops.collect(harvested, fortune, level.getRandom(), player);
+		return harvested;
+	}
+
+	@Override
+	public Collection<ItemStack> getNoHarvestResources(Level level, BlockPos pos, int fortune, Player player) {
+		ItemStack tool = player != null ? player.getMainHandItem().copy() : ItemStack.EMPTY;
+		// The legacy helper takes an explicit Fortune level, independently of the held tool.
+		if (tool.isEmpty() && fortune > 0)
+			tool = new ItemStack(Items.STICK);
+		if (!tool.isEmpty()) {
+			var enchantment = level.registryAccess().lookupOrThrow(Registries.ENCHANTMENT).getOrThrow(Enchantments.FORTUNE);
+			EnchantmentHelper.updateEnchantments(tool, mutable -> mutable.set(enchantment, fortune));
 		}
-		boolean removed = super.onDestroyedByPlayer(state, level, pos, player, toolStack, willHarvest, fluid);
-		if (removed && !harvested.isEmpty()) {
-			for (ItemStack stack : harvested)
-				popResource(level, pos, stack);
-		}
-		if (removed && sufficient && !player.isCreative() && level instanceof ServerLevel server)
-			popExperience(server, pos, 2 + level.getRandom().nextInt(5));
-		return removed;
+		return this.disguisedDrops(level, pos, player, tool);
+	}
+
+	@Override
+	protected Collection<ItemStack> getNoHarvestResources(Level level, BlockPos pos, ItemInstance tool, Player player) {
+		return this.disguisedDrops(level, pos, player, tool);
 	}
 
 	/**
@@ -125,7 +130,7 @@ public class BlockTieredOre extends Block {
 	 * without the stage cannot tell the ore apart from the stone around it. Silk Touch yields the
 	 * host block itself rather than its broken form, as it would on the real stone.
 	 */
-	private List<ItemStack> disguisedDrops(Level level, BlockPos pos, Player player, ItemStack toolStack) {
+	private List<ItemStack> disguisedDrops(Level level, BlockPos pos, Player player, ItemInstance toolStack) {
 		if (enchantmentLevel(level, toolStack, Enchantments.SILK_TOUCH) > 0)
 			return List.of(new ItemStack(host));
 		if (!(level instanceof ServerLevel server))
@@ -137,23 +142,4 @@ public class BlockTieredOre extends Block {
 		return host.defaultBlockState().getDrops(params);
 	}
 
-	private static int enchantmentLevel(Level level, ItemStack tool, ResourceKey<Enchantment> key) {
-		if (tool.isEmpty()) return 0;
-		return EnchantmentHelper.getItemEnchantmentLevel(
-				level.registryAccess().lookupOrThrow(Registries.ENCHANTMENT).getOrThrow(key), tool);
-	}
-
-	/**
-	 * V33a BlockTieredResource.onBlockPlacedBy: placing an ore you cannot see removes it with the
-	 * host block's break effects, so the disguise cannot be defeated by placing one from creative
-	 * and watching what happens.
-	 */
-	@Override
-	public void setPlacedBy(Level level, BlockPos pos, BlockState state, LivingEntity placer, ItemStack stack) {
-		super.setPlacedBy(level, pos, state, placer, stack);
-		if (placer instanceof Player player && !this.isPlayerSufficientTier(player)) {
-			level.levelEvent(2001, pos, Block.getId(state));
-			level.removeBlock(pos, false);
-		}
-	}
 }

@@ -117,6 +117,7 @@ sourceSets.main.java {
     include 'reika/chromaticraft/auxiliary/interfaces/TieredItem.java'
     include 'reika/chromaticraft/registry/ChromaDimensionItems.java'
     include 'reika/chromaticraft/ChromaItemPortTests.java'
+    include 'reika/chromaticraft/ChromaTieredResourceTests.java'
     include 'reika/chromaticraft/ChromaVoidCompatibilityTests.java'
     include 'reika/chromaticraft/ChromaAdvancementTests.java'
     include 'reika/chromaticraft/data/ChromaAdvancementProvider.java'

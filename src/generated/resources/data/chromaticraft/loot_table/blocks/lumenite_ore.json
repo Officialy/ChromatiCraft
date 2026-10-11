@@ -1,4 +1,15 @@
 {
   "type": "minecraft:block",
+  "pools": [
+    {
+      "entries": [
+        {
+          "type": "minecraft:dynamic",
+          "name": "dragonapi:tiered_resource"
+        }
+      ],
+      "rolls": 1
+    }
+  ],
   "random_sequence": "chromaticraft:blocks/lumenite_ore"
 }
