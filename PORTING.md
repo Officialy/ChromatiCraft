@@ -10954,3 +10954,37 @@ TestInstance/docs/wood-ore-catalogue-2026-10-11.md. D37 plank provenance and D38
 product/drop/multiple-mapping/reload work remain separate. Other pending rift,
 worldgen, compatibility, launcher and IDE changes remain outside this checkpoint.
 Nothing is pushed.
+
+
+## Keyed-stack component matching — D39, 2026-10-11
+
+Reconciled KeyedItemStack against the original metadata/subtype and NBT rules.
+Item/Block constructors regain wildcard variants; ordinary wear is ignored by
+default and explicitly selectable. Variant and additional native component maps
+are independent immutable projections. Potion base identity and custom fields
+are separated; declared family subtypes retain their real canonical defaults.
+Rotary coil/charged-tool item-owned adapters preserve their original charge-as-
+subtype behavior, while Reactor's non-subtype charged tools retain source policy.
+
+Strict collection equality/order remains separate from explicit fuzzy predicates.
+Locks, detached copies, exact/count behavior and registry-aware saves are retained;
+old records default to ignored wear. Key construction migrates a private copy.
+Railgun ammo joins the existing legacy load migration: typed tier wins and obsolete
+DAMAGE is removed. ItemMatch derives extra-data policy after excluding subtype/wear
+patches. The actual Chroma tool crate regains independent subtype and extra-data
+flags, verified through its production counting path for swords and potions.
+
+Final validation passes 156 units (108/34/8/6), all 74 required native DragonAPI
+tests, all 60 required railgun regressions, eight accepted-class guards covering
+3,274 primary outputs, and DA/RC/ReC/Chroma jars. Normal Play argument hashes match
+the preceding checkpoint. Initial unbound-stack unit cases were moved into native
+server fixtures; pure units do not rebind registries. Headless checks do not claim
+interactive/remote-client or absent optional-mod acceptance.
+
+Source pins and matching contract: DragonAPI/docs/keyed-stack-component-matching.md.
+Evidence: TestInstance/docs/keyed-stack-matching-2026-10-11.md and
+build/keyed-stack-family-validation.log / keyed-stack-railgun-validation.log.
+D40 typed-map accumulation and D41 excluded fuzzy-set consumers remain for full
+subsystem ports; D37 still needs authentic plank provenance. Earlier pending
+worldgen, rift, compatibility, launcher, IDE and D31 work remains outside this
+local checkpoint. Nothing is pushed.

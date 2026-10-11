@@ -82,10 +82,10 @@ public class TileEntityToolStorage extends TileEntityMassStorage implements Mani
 		return ChromaTiles.TOOLSTORAGE;
 	}
 
-	/** Counted per kind: ignoring damage and components unless the filter distinguishes by them (V33a meta and NBT). */
+	/** Counted per kind: subtype identity and additional data follow their independent V33a filter policies. */
 	@Override
 	protected KeyedItemStack key(ItemStack is) {
-		return new KeyedItemStack(is).setIgnoreNBT(!filter.isDamageImportant() && !filter.isNBTImportant()).setSized(false).setSimpleHash(true);
+		return new KeyedItemStack(is).setIgnoreVariantComponents(!filter.isDamageImportant()).setIgnoreAdditionalComponents(!filter.isNBTImportant()).setSized(false).setSimpleHash(true);
 	}
 
 	@Override
