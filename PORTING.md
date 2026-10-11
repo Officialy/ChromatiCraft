@@ -10919,3 +10919,38 @@ TestInstance/docs/tiered-resource-contract-2026-10-11.md. Validation is native
 headless server behavior, not graphical or authenticated remote-client acceptance.
 Only this batch's changes are checkpointed; other rift/worldgen/compatibility/
 launcher/IDE work remains separate. Nothing is pushed.
+
+
+## Wood/ore state and item associations — D36, 2026-10-11
+
+WoodSpecies and ModWoodList now provide complete explicit log/leaf/sapling state
+sets, native BLOCK_STATE species items, preserved supplied item components and
+independent inventory snapshots. Log offsets index actual states; invalid offsets
+cannot alias the preferred log. Registration validates conflicts before replacing
+immutable reverse maps. Block-only lookup cannot silently choose between species.
+The accepted glow tree resolves after deferred registration and retains its authored
+never-decaying leaves. Natural-leaf queries require species membership and respect
+native persistence for ordinary trees. Shared legacy field names require verified
+associations from their modern external ports; no optional mods or IDs are invented.
+
+TreeType defaults preserve existing providers; recursive breaking consumes exact
+declared state sets, leaving other variants of the same block. Original depths,
+spatial boxes and diagonal spread remain. Reactor radiation now passes the actual
+leaf state. Ore state APIs retain common-tag membership, returned stacks are detached,
+and native RNG can be supplied. The historical ore damage argument is a saved ordinal:
+getByLegacyOrdinal names it; the deprecated old method preserves ordering and bounds.
+
+Five new unit regressions and four new native catalogue fixtures pass. The full
+DragonAPI suite passes 69 native tests; family units pass 146 (98/34/8/6). Eight guards
+verify 3,268 accepted outputs, and DA/RC/ReC production jars build. The final focused
+run verifies all 28 glow-leaf states against actual loaded sapling loot at the original
+guaranteed Fortune-X threshold, component-bearing shared variants and supplied items.
+Reactor's small caller adaptation is compile-validated, not a new radiation fixture.
+Normal Play argument hashes match; headless checks do not establish visual/remote-client
+acceptance. Logs: build/catalogue-family-validation.log,
+catalogue-final-focused-validation.log and catalogue-radiation-caller-compile.log.
+Contract: DragonAPI/docs/wood-ore-catalogue-port.md. Evidence:
+TestInstance/docs/wood-ore-catalogue-2026-10-11.md. D37 plank provenance and D38 ore
+product/drop/multiple-mapping/reload work remain separate. Other pending rift,
+worldgen, compatibility, launcher and IDE changes remain outside this checkpoint.
+Nothing is pushed.
