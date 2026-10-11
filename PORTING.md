@@ -10852,3 +10852,34 @@ changed/added/deleted output detection and leased snapshot retention. Full contr
 limits: ../TestInstance/docs/client-runtime-isolation.md. This does not certify the owner's
 complete JEI overlay or external shader/LOD setup. Reload Gradle and restart Play; copies
 add startup time and rebuilt mod code/resources take effect on the next launch.
+
+
+## Bounded callback flood-fill crash — 2026-10-11
+
+The supplied server-tick report exhausted the stack in
+BlockArray.recursiveAddCallbackWithBounds. Its overflow diagnostic then failed to
+bootstrap string concatenation on that exhausted stack, producing a secondary
+BootstrapMethodError. The truncated report does not establish the initiating item.
+Both bounded callback APIs now share a constant-stack queue traversal, preserving
+fixed-origin versus predecessor callbacks, inclusive depth and spread/distance
+settings. Explicit/array/native bounds and optional loaded-chunk checks precede
+callback reads. Independent visitation handles existing membership and later
+admission after an edge rejection. Admission is deterministic breadth-first;
+throwOverflow uses parameterized logging for remaining recursive search APIs.
+
+The accepted Subterranean Route Finder depends on minimum height, then a separate
+path search, so does not depend on the previous DFS insertion order. A real sneaking
+tool fixture traverses a sealed 2,156-cell space and verifies actual start/deepest
+trail placement and retained supporting stone. Three native search regressions
+include a 20,000-cell line, limits, clamps, callback contracts and exception identity.
+All seven selected item fixtures and all 59 DragonAPI native fixtures pass; all
+141 units pass (93 DA + 34 RC + 8 ReC + 6 Chroma). Eight accepted-class guards verify
+3,264 primary outputs. Logs: build/callback-search-focused-validation.log,
+cave-exit-deep-validation.log and callback-search-family-validation.log.
+
+Other recursive block/fluid/spherical APIs and incremental scheduling remain for
+separate work. Large connected spaces can still be expensive within one tick.
+Contract: DragonAPI/docs/bounded-callback-search-crash.md. Evidence/checkpoint scope:
+TestInstance/docs/callback-search-crash-2026-10-11.md. Only this fix, fixtures and
+notes are checkpointed; other pending changes are retained. Normal Play argument
+hashes match. No live-client or optional-mod claim is made. Nothing is pushed.

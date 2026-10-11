@@ -32,13 +32,40 @@ import reika.dragonapi.libraries.registry.ReikaItemHelper;
 import java.util.Arrays;
 import java.util.List;
 
-/** Inventory transfers and entity serialization regressions for the first item backlog slice. */
+/** Item behavior, inventory transfers and entity serialization regressions. */
 final class ChromaItemPortTests {
     static void register(RegisterGameTestsEvent event, Holder<TestEnvironmentDefinition<?>> env) {
         ChromaGameTests.register(event, env, "item_port_efficiency", 80, ChromaItemPortTests::efficiency);
         ChromaGameTests.register(event, env, "item_port_capture", 80, ChromaItemPortTests::capture);
         ChromaGameTests.register(event, env, "item_port_recall", 80, ChromaItemPortTests::recall);
         ChromaGameTests.register(event, env, "item_port_recipe_tablet", 80, ChromaItemPortTests::tablet);
+        ChromaGameTests.register(event, env, "item_port_cave_exit_deep", 80,
+                reika.chromaticraft.data.ChromaTestStructureProvider.WAND_ARENA, ChromaItemPortTests::caveExitDeep);
+    }
+
+    private static void caveExitDeep(GameTestHelper h) {
+        // A sealed chamber exercises deep connected-space traversal through the actual tool.
+        for (int x = 0; x <= 15; x++) {
+            for (int y = 1; y <= 14; y++) {
+                for (int z = 0; z <= 15; z++) {
+                    boolean shell = x == 0 || x == 15 || z == 0 || z == 15 || y == 1 || y == 14;
+                    h.setBlock(new BlockPos(x, y, z), shell ? net.minecraft.world.level.block.Blocks.STONE
+                            : net.minecraft.world.level.block.Blocks.AIR);
+                }
+            }
+        }
+        var player = h.makeMockPlayer(GameType.SURVIVAL);
+        BlockPos start = new BlockPos(8, 12, 8), bottom = new BlockPos(8, 2, 8);
+        player.setPos(Vec3.atCenterOf(h.absolutePos(start))); player.setShiftKeyDown(true);
+        player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(ChromaItems.CAVE_PATHER.get()));
+        h.assertTrue(ChromaItems.CAVE_PATHER.get().use(h.getLevel(), player, InteractionHand.MAIN_HAND)
+                == net.minecraft.world.InteractionResult.SUCCESS, "the real sneaking route finder completes its connected-space search");
+        h.assertTrue(h.getBlockState(bottom).is(ChromaBlocks.CHROMA_TRAIL.get())
+                && h.getBlockState(start).is(ChromaBlocks.CHROMA_TRAIL.get())
+                && h.getLevel().getBlockEntity(h.absolutePos(bottom)) instanceof reika.chromaticraft.block.BlockChromaTrail.TileChromaTrail
+                && h.getBlockState(bottom.below()).is(net.minecraft.world.level.block.Blocks.STONE),
+                "the deepest reachable floor receives a real trail waypoint without replacing the supporting floor");
+        h.succeed();
     }
 
     private static void efficiency(GameTestHelper h) {
