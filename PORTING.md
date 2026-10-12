@@ -11285,3 +11285,47 @@ Contract/mapping: DragonAPI/docs/packet-id-port.md and packet-ids-protocol-2.1.j
 Evidence: TestInstance/docs/packet-id-2026-10-12.md and build/packet-id-*.log/json.
 D46 is complete for the accepted port; D47 dimension-field semantics is next. This
 continuation is committed locally after the already verified published checkpoint.
+
+
+## Donation head renders and personal Play identity — 2026-10-12
+
+At the owner's request, fully ported the original spinning HSLA steel gear,
+spinning toroid-magnet head render and ChromatiCraft detached-pylon flare. The
+previous gear method omitted its draw; Reactor/Chroma renderer files were excluded
+legacy code. They now submit the original model/sprite geometry through native
+26.3 item/deferred render paths. Their original translations, animation clocks,
+scales, pitch handling and priorities are retained, including RenderMagnet's
+internal detached 0.4 scale/0.6 offset and the pylon's separate non-world card branch.
+Deferred callbacks capture pose/color data and do not follow a reused player stack.
+
+Client-only load-complete subscriptions restore the original Reika donor + Patreon
+registration through one shared PlayerSpecificRenderer helper. Registrations are
+idempotent, including duplicate roster entries and developer mirrors. Reika and
+Officialy previews use the actual NeoForge production flag rather than interpreting
+26.3's unobfuscated classes as a developer environment. Pylon preview construction
+is deferred until first rendering, after the block registry is bound; constructing
+it while NeoForge discovers subscriber classes failed the first client validation
+and was corrected. The excluded legacy client proxies remain pristine/excluded.
+
+Play now uses OfficialyAwsome / bb5029b7-9381-4d99-aaa9-106da41aa659. Mojang's public
+session profile confirms that account and signed skin. Passing the default dev
+token explicitly enables 26.3's native public skin/profile lookup without storing
+account credentials. Automated Checks keeps its test identity unless the explicit
+donatorIdentityAudit property is supplied; it uses the separate disposable directory.
+The optional officialy_glow mask is missing and has not been replaced with invented
+art. The three restored head effects use existing original models/sprites.
+
+Contract/source pins and validation: TestInstance/docs/donator-head-renders-2026-10-12.md.
+Logs: build/donator-render-family-validation.log and donator-render-client-validation.log.
+The client fixture checks identity/skin, exact registrations, idempotence, native
+gear items, deferred toroid/pylon geometry, pose restoration, transparent ordering
+and the real third-person render path. Existing family regression/acceptance work
+continues independently; D48 EventProfiler remains next on the numbered backlog.
+
+Final head-render validation: 185 family units, all 95 required native DragonAPI
+GameTests and eight guards (3,293 accepted primary outputs) pass. The disposable
+client uses the requested OfficialyAwsome UUID, loads its downloaded skin, checks
+all three original head renders and idempotence, then reaches the real third-person
+render path. The existing full audit/PNG export also passes; clean exit in 3m 40s.
+Default Play and Automated Checks launch files are regenerated separately after
+the opt-in identity test. This continuation is checkpointed locally.

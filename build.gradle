@@ -231,6 +231,7 @@ sourceSets.main.java {
     include 'reika/chromaticraft/client/PylonCacheClientEvents.java'
     include 'reika/chromaticraft/items/tools/ItemPylonFinder.java'
     include 'reika/chromaticraft/auxiliary/render/PylonFinderOverlay.java'
+      include 'reika/chromaticraft/auxiliary/render/DonatorPylonRender.java'
     include 'reika/chromaticraft/auxiliary/render/ChromaColorTiles.java'
     include 'reika/chromaticraft/items/tools/ItemLightGun.java'
     include 'reika/chromaticraft/items/tools/ProjectileToolDispenseBehavior.java'

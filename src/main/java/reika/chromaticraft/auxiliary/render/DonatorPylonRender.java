@@ -9,49 +9,77 @@
  ******************************************************************************/
 package reika.chromaticraft.auxiliary.render;
 
-import org.lwjgl.opengl.GL11;
-
-import net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher;
-import net.minecraft.entity.player.EntityPlayer;
-
-import reika.chromaticraft.registry.ChromaTiles;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.feature.CustomFeatureRenderer;
+import net.minecraft.client.renderer.texture.TextureAtlas;
+import net.minecraft.core.BlockPos;
+import net.minecraft.data.AtlasIds;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.player.Player;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.fml.event.lifecycle.FMLLoadCompleteEvent;
+import net.neoforged.neoforge.client.submit.RenderPhaseKeys;
+import reika.chromaticraft.ChromatiCraft;
+import reika.chromaticraft.client.render.IrisCompatibility;
+import reika.chromaticraft.registry.ChromaBlocks;
+import reika.chromaticraft.render.ChromaRenderPipelines;
+import reika.chromaticraft.render.ShaderCompatibleRenderTypes;
 import reika.chromaticraft.tileentity.networking.TileEntityCrystalPylon;
-import reika.dragonapi.auxiliary.trackers.playerspecificrenderer.PlayerRotationData;
+import reika.dragonapi.auxiliary.trackers.PlayerSpecificRenderer;
 import reika.dragonapi.interfaces.PlayerRenderObj;
-import reika.dragonapi.libraries.rendering.ReikaRenderHelper;
 
-public class DonatorPylonRender implements PlayerRenderObj {
+/** Original detached pylon: a full-bright round-flare card, rather than the placed pylon's halo/beams. */
+@EventBusSubscriber(modid = ChromatiCraft.MODID, value = Dist.CLIENT)
+public final class DonatorPylonRender implements PlayerRenderObj {
+    public static final DonatorPylonRender instance = new DonatorPylonRender();
+    private static final Identifier FLARE = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/icons/roundflare");
+    private TileEntityCrystalPylon preview;
+    private DonatorPylonRender() {}
 
-	public static final DonatorPylonRender instance = new DonatorPylonRender();
+    @SubscribeEvent public static void load(FMLLoadCompleteEvent event) {
+        event.enqueueWork(() -> PlayerSpecificRenderer.instance.registerDonatorRenderer(instance));
+    }
 
-	private DonatorPylonRender() {
-
-	}
-
-	@Override
-	public void render(EntityPlayer ep, float ptick, PlayerRotationData dat) {
-		GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
-		GL11.glPushMatrix();
-		GL11.glTranslated(0, 2.25, 0);
-		//GL11.glRotated(-dat.getRenderYaw(), 0, 1, 0);
-		GL11.glRotated(45, 1, 0, 0);
-		GL11.glRotated(dat.getRenderPitch(), 1, 0, 0);
-		GL11.glRotated(-45, 0, 1, 0);
-		double s = 0.375;
-		GL11.glScaled(s, s, s);
-		//GL11.glRotated(45-ep.rotationPitch+90, 1, 0, 0);
-		//GL11.glRotated(RenderManager.instance.playerViewY-ep.rotationYawHead-45, 0, 1, 0);
-		ReikaRenderHelper.disableEntityLighting();
-		ReikaRenderHelper.disableLighting();
-		TileEntityCrystalPylon te = (TileEntityCrystalPylon)ChromaTiles.PYLON.createTEInstanceForRender(0);
-		TileEntityRendererDispatcher.instance.renderTileEntityAt(te, 0, 0, 0, ptick);
-		GL11.glPopMatrix();
-		GL11.glPopAttrib();
-	}
-
-	@Override
-	public int getRenderPriority() {
-		return Integer.MAX_VALUE;
-	}
-
+    @Override public void extractRenderState(PoseStack stack, Player player, float partialTick,
+            PlayerSpecificRenderer.PlayerRotationData rotation, SubmitNodeCollector collector) {
+        if (IrisCompatibility.shadowPass()) return;
+        if (preview == null) preview = new TileEntityCrystalPylon(BlockPos.ZERO, ChromaBlocks.PYLON.get().defaultBlockState());
+        preview.animateItem();
+        int color = 0xff000000 | preview.getColor().color();
+        boolean shaders = IrisCompatibility.shadersEnabled();
+        var sprite = Minecraft.getInstance().getAtlasManager().getAtlasOrThrow(AtlasIds.BLOCKS)
+                .getSprite(shaders ? FLARE.withSuffix("_alpha") : FLARE);
+        stack.pushPose();
+        try {
+            stack.translate(0, 2.25, 0);
+            stack.rotate(Axis.XP.rotationDegrees(45));
+            stack.rotate(Axis.XP.rotationDegrees(rotation.getRenderPitch()));
+            stack.rotate(Axis.YP.rotationDegrees(-45));
+            stack.scale(0.375F, 0.375F, 0.375F);
+            // Original RenderCrystalPylon's detached-card branch.
+            stack.rotate(Axis.YP.rotationDegrees(45));
+            stack.rotate(Axis.XP.rotationDegrees(-45));
+            var submit = new CustomFeatureRenderer.Submit(stack.last().copy(),
+                    shaders ? ShaderCompatibleRenderTypes.pylon(TextureAtlas.LOCATION_BLOCKS, false)
+                            : ChromaRenderPipelines.additiveSprite(TextureAtlas.LOCATION_BLOCKS),
+                    (pose, vertices) -> {
+                        for (int i = 0; i < 4; i++) {
+                            float x = i == 0 || i == 3 ? -1 : 1;
+                            float y = i < 2 ? -1 : 1;
+                            vertices.addVertex(pose, x, y, 0).setColor(color)
+                                    .setUv(x < 0 ? sprite.getU0() : sprite.getU1(), y < 0 ? sprite.getV0() : sprite.getV1())
+                                    .setLight(net.minecraft.util.LightCoordsUtil.FULL_BRIGHT)
+                                    .setOverlay(net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY)
+                                    .setNormal(pose, 0, 0, 1);
+                        }
+                    });
+            collector.order(0).submitSpecial(RenderPhaseKeys.AFTER_TERRAIN, submit);
+        } finally { stack.popPose(); }
+    }
+    @Override public int getRenderPriority() { return Integer.MAX_VALUE; }
 }
