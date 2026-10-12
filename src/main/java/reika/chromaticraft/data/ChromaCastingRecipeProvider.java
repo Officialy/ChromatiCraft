@@ -58,6 +58,7 @@ public final class ChromaCastingRecipeProvider {
 		@Override
 		protected void buildRecipes() {
             saveVoidCompatibility();
+            saveChromaCrafter();
 			Ingredient stone = tag(Tags.Items.STONES);
 			save("crystal_stone/smooth", StoneTypes.SMOOTH, 8,
 					Map.of('S', stone, 'C', tag(ChromaItemTags.PLAIN_CRYSTAL_SHARDS)),
@@ -1689,6 +1690,34 @@ public final class ChromaCastingRecipeProvider {
 					preview,1200,200)
 					.withPenaltyThreshold(1).withRequiredFragment("ENCHANTING").withEnhancement(enchantment,level));
 		}
+
+
+        /** V33a ChromaCrafterRecipe: the later hopper overwrites the glass at (0,-4). */
+        private void saveChromaCrafter() {
+            List<CastingTableRecipe.StandIngredient> stands = new ArrayList<>();
+            Ingredient glass = Ingredient.of(ChromaBlocks.shielding(ChromaShieldTypes.GLASS).get());
+            for (int[] p : new int[][]{{-2,-4},{2,-4},{-2,-2},{2,-2},{-2,0},{2,0},{-2,2},{0,2},{2,2}})
+                stands.add(auxStand(p[0], p[1], glass));
+            stands.add(auxStand(0,-4, Ingredient.of(Blocks.HOPPER)));
+            stands.add(auxStand(0,-2, Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.IRIDESCENT_CHUNK).get())));
+            for (int z = -4; z <= 4; z += 2) {
+                stands.add(auxStand(4,z,tiered(ChromaTieredItems.WATER_DUST)));
+                stands.add(auxStand(-4,z,tiered(ChromaTieredItems.WATER_DUST)));
+            }
+            stands.add(auxStand(0,4, Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.COMPLEX_INGOT).get())));
+            stands.add(auxStand(-2,4, Ingredient.of(Blocks.OBSIDIAN)));
+            stands.add(auxStand(2,4, Ingredient.of(Blocks.OBSIDIAN)));
+            saveRecipe("chroma_crafter", new CastingTableRecipe(CastingTableRecipe.Tier.PYLON,
+                    List.of(new GridIngredient(4, Ingredient.of(ChromaItems.CRAFTING.get(ChromaCraftingItems.HIGH_TRANSFORMATION_CORE).get()))),
+                    List.copyOf(stands), List.of(runeRingRune(CrystalElement.LIGHTGRAY),
+                            new RuneRequirement(new net.minecraft.core.BlockPos(-4,-1,2), CrystalElement.WHITE),
+                            new RuneRequirement(new net.minecraft.core.BlockPos(0,-1,-1), CrystalElement.PURPLE),
+                            runeRingRune(CrystalElement.BLACK), runeRingRune(CrystalElement.BROWN)),
+                    List.of(new AuraRequirement(CrystalElement.BLACK,20000),
+                            new AuraRequirement(CrystalElement.PURPLE,25000), new AuraRequirement(CrystalElement.GRAY,10000)),
+                    new ItemStackTemplate(ChromaBlocks.CHROMA_CRAFTER.get().asItem()),400,500)
+                    .withPenaltyThreshold(1));
+        }
 
 		private Ingredient tiered(ChromaTieredItems item) { return Ingredient.of(ChromaItems.TIERED.get(item).get()); }
 		private CastingTableRecipe.StandIngredient stand(int x, int y, int z, Ingredient item) { return new CastingTableRecipe.StandIngredient(new net.minecraft.core.BlockPos(x, y, z), item); }

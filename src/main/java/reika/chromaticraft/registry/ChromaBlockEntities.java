@@ -118,6 +118,8 @@ public final class ChromaBlockEntities {
 			register("particle_spawner", ChromaTiles.PARTICLES);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<reika.chromaticraft.tileentity.transport.TileEntityLaunchPad>> LAUNCH_PAD =
 			register("launch_pad", ChromaTiles.LAUNCHPAD);
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<reika.chromaticraft.tileentity.recipe.TileEntityChromaCrafter>> CHROMA_CRAFTER =
+            register("chroma_crafter", ChromaTiles.CHROMACRAFTER);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<reika.chromaticraft.tileentity.recipe.TileEntityCrystalBrewer>> CRYSTAL_BREWER =
 			register("crystal_brewer", ChromaTiles.BREWER);
 	public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TileEntityCollector>> COLLECTOR =
@@ -285,6 +287,7 @@ public final class ChromaBlockEntities {
 	}
 
 	public static void registerCapabilities(RegisterCapabilitiesEvent event) {
+        event.registerBlockEntity(Capabilities.Fluid.BLOCK, CHROMA_CRAFTER.get(), (crafter, side) -> crafter.fluidHandler(side));
 		event.registerBlockEntity(Capabilities.Fluid.BLOCK, ITEM_INFUSER.get(),
 				(infuser, context) -> infuser.fluidHandler());
 		event.registerBlockEntity(Capabilities.Fluid.BLOCK, PLAYER_INFUSER.get(),

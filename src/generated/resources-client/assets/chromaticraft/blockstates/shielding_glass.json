@@ -1,7 +1,13 @@
 {
   "variants": {
-    "": {
+    "crafter_section=0": {
       "model": "chromaticraft:block/shielding_glass"
+    },
+    "crafter_section=1": {
+      "model": "chromaticraft:block/shielding_glass_crafter_1"
+    },
+    "crafter_section=2": {
+      "model": "chromaticraft:block/shielding_glass_crafter_2"
     }
   }
 }

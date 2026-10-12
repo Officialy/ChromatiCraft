@@ -74,6 +74,7 @@ public class ChromaModelProvider extends ModelProvider {
 			throw new IllegalStateException("Failed to access BlockModelGenerators sinks — vanilla shape changed?", e);
 		}
 		voidCompatibilityModels(blockStateOut, itemModelOut, modelOut);
+        chromaCrafterModel(blockStateOut, itemModelOut, modelOut);
 		Identifier powerCrystalModel = ModelTemplates.CUBE_ALL.create(
 				Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/power_crystal"),
 				TextureMapping.cube(new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/crystal/chroma"))),
@@ -705,6 +706,26 @@ public class ChromaModelProvider extends ModelProvider {
 		}
 	}
 
+
+    private static Material crafterTexture(String path) {
+        return new Material(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/" + path));
+    }
+    private static void chromaCrafterModel(Consumer<BlockModelDefinitionGenerator> blockStateOut,
+            ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
+        Material glass = crafterTexture("basic/shield_5");
+        Material empty = crafterTexture("icons/transparent");
+        Identifier plain = ModelTemplates.CUBE_ALL.create(ChromaBlocks.CHROMA_CRAFTER.get(), TextureMapping.cube(glass), modelOut);
+        Identifier formed = ModelTemplates.CUBE_BOTTOM_TOP.create(
+                Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/chroma_crafter_formed"),
+                new TextureMapping().put(TextureSlot.SIDE, crafterTexture("basic/shield_5a"))
+                        .put(TextureSlot.TOP, empty).put(TextureSlot.BOTTOM, glass), modelOut);
+        blockStateOut.accept(MultiVariantGenerator.dispatch(ChromaBlocks.CHROMA_CRAFTER.get()).with(
+                PropertyDispatch.initial(reika.chromaticraft.block.BlockChromaCrafter.FORMED)
+                        .select(false, new MultiVariant(WeightedList.of(new Variant(plain))))
+                        .select(true, new MultiVariant(WeightedList.of(new Variant(formed))))));
+        itemModelOut.accept(ChromaBlocks.CHROMA_CRAFTER.get().asItem(), ItemModelUtils.plainModel(plain));
+    }
+
 	private static void shieldingBlocks(Consumer<BlockModelDefinitionGenerator> blockStateOut,
 			ItemModelOutput itemModelOut, BiConsumer<Identifier, ModelInstance> modelOut) {
 		for (ChromaShieldTypes type : ChromaShieldTypes.list) {
@@ -712,11 +733,23 @@ public class ChromaModelProvider extends ModelProvider {
 			Material texture = new Material(Identifier.fromNamespaceAndPath(
 					ChromatiCraft.MODID, type.texture()));
 			Identifier model = ModelTemplates.CUBE_ALL.create(block, TextureMapping.cube(texture), modelOut);
-			blockStateOut.accept(MultiVariantGenerator.dispatch(block,
-					new MultiVariant(WeightedList.of(new Variant(model)))));
-			itemModelOut.accept(block.asItem(), ItemModelUtils.plainModel(model));
-		}
-	}
+            if (type == ChromaShieldTypes.GLASS) {
+                var dispatch = PropertyDispatch.initial(reika.chromaticraft.block.worldgen26.BlockStructureShield.CRAFTER_SECTION)
+                        .select(0, new MultiVariant(WeightedList.of(new Variant(model))));
+                for (int section = 1; section <= 2; section++) {
+                    Identifier connected = ModelTemplates.CUBE_BOTTOM_TOP.create(
+                            Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/shielding_glass_crafter_" + section),
+                            new TextureMapping().put(TextureSlot.SIDE, crafterTexture("basic/shield_5" + (section == 1 ? "c" : "b")))
+                                    .put(TextureSlot.TOP, section == 1 ? crafterTexture("icons/transparent") : texture)
+                                    .put(TextureSlot.BOTTOM, crafterTexture("icons/transparent")), modelOut);
+                    dispatch.select(section, new MultiVariant(WeightedList.of(new Variant(connected))));
+                }
+                blockStateOut.accept(MultiVariantGenerator.dispatch(block).with(dispatch));
+            } else blockStateOut.accept(MultiVariantGenerator.dispatch(block,
+                    new MultiVariant(WeightedList.of(new Variant(model)))));
+            itemModelOut.accept(block.asItem(), ItemModelUtils.plainModel(model));
+        }
+    }
 
 	/**
 	 * Proxima decoration, as plain cubes of {@link ProximaDecoTypes#modelTexture()}. Floatstone is

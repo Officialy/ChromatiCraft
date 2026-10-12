@@ -153,6 +153,52 @@ public abstract class ChromaParticle extends SingleQuadParticle {
 		Minecraft.getInstance().particleEngine.add(rune);
 	}
 
+
+    /** V33a crafter's rising/falling ChromaFluidFX, emitted while a recipe is active. */
+    public static void spawnChromaCrafter(Level world, BlockPos pos, Random random) {
+        if (!(world instanceof ClientLevel level)) return;
+        double[] velocity = reika.dragonapi.libraries.mathsci.ReikaPhysicsHelper.polarToCartesian(
+                0.03125 + random.nextDouble() * 0.09375, random.nextDouble() * 90, random.nextDouble() * 360);
+        Minecraft.getInstance().particleEngine.add(new Fluid(level, pos.getX() + random.nextDouble(),
+                pos.getY() + random.nextDouble() * 3, pos.getZ() + random.nextDouble(),
+                velocity[0], velocity[1], velocity[2], 1, 60, 0.125F));
+    }
+
+    private static final reika.dragonapi.instantiable.rendering.ColorBlendList CRAFTER_FOCUS_COLORS =
+            new reika.dragonapi.instantiable.rendering.ColorBlendList(6, 0x45ff45, 0x45ff45, 0x45ff45,
+                    0xff4040, 0xff4040, 0xff4040, 0xff4040, 0xff4040, 0xff4040,
+                    0x22aaff, 0x22aaff, 0x22aaff, 0x22aaff, 0xb220ff, 0xb220ff);
+    public static void spawnCrafterFocusHints(Level world, BlockPos origin, Collection<BlockPos> offsets) {
+        if (!(world instanceof ClientLevel level)) return;
+        var player = Minecraft.getInstance().player;
+        if (player == null || !(player.getMainHandItem().is(ChromaBlocks.FOCUS_CRYSTAL.get().asItem())
+                || player.getOffhandItem().is(ChromaBlocks.FOCUS_CRYSTAL.get().asItem()))) return;
+        RandomSource random = world.getRandom();
+        int color = CRAFTER_FOCUS_COLORS.getColor(world.getGameTime() / 8D);
+        for (BlockPos offset : offsets) {
+            BlockPos socket = origin.offset(offset);
+            for (int i = 0, count = 1 + random.nextInt(3); i < count; i++) {
+                boolean centered = random.nextInt(3) == 0;
+                double angle = Math.toRadians((world.getGameTime()/2D + random.nextInt(6)*60 + random.nextDouble()*12-6)%360);
+                double radius = centered ? 0 : 0.15 + random.nextDouble()*0.1;
+                double speed = centered ? 0 : 0.015 + random.nextDouble()*0.015;
+                double x = socket.getX()+0.5 + (random.nextDouble()*2-1)*0.03125 + Math.cos(angle)*radius;
+                double y = socket.getY()+0.125 + (random.nextDouble()*2-1)*0.03125;
+                double z = socket.getZ()+0.5 + (random.nextDouble()*2-1)*0.03125 + Math.sin(angle)*radius;
+                float gravity = -random.nextFloat()*0.125F;
+                int life = 8 + random.nextInt(33);
+                float scale = 0.25F + random.nextFloat();
+                String icon = switch (random.nextInt(4)) { case 0 -> "node2"; case 1 -> "flare"; default -> "fade"; };
+                FadeGlow colored = new FadeGlow(level,x,y,z,Math.cos(angle)*speed,0,Math.sin(angle)*speed,
+                        color,life,scale,true,null,0,icon,true).setGravity(gravity).setAlphaFading();
+                FadeGlow white = new FadeGlow(level,x,y,z,Math.cos(angle)*speed,0,Math.sin(angle)*speed,
+                        0xffffff,life,scale*0.6F,true,null,0,icon,true).setGravity(gravity).setAlphaFading().lockTo(colored);
+                Minecraft.getInstance().particleEngine.add(colored);
+                Minecraft.getInstance().particleEngine.add(white);
+            }
+        }
+    }
+
 	/** Exact V33a enhanced Relay Source ambience: inward chroma droplets plus falling blended blurs. */
 	public static void spawnRelaySource(Level world, BlockPos pos, int ticksExisted, Random random) {
 		if (!(world instanceof ClientLevel level)) return;

@@ -1,4 +1,4 @@
-// 26.3	2026-10-11T18:09:15.5305502	Registries for reloadable
+// 26.3	2026-10-11T22:25:01.8264703	Registries for reloadable
 e6a38e871196a8ae22cd01a33b4c3ce15d9cba71 data/chromaticraft/advancement/progression/ability.json
 9ea98a1504eb3619ce8c212744191024a6b0238e data/chromaticraft/advancement/progression/allcolors.json
 ab49d6f9d592f12d7937de74c2bfb441e2d98f0a data/chromaticraft/advancement/progression/allcores.json
@@ -129,6 +129,7 @@ f461537e9c7b7462742bb99fc05a07c506c7afab data/chromaticraft/loot_table/blocks/ca
 7a0fb741b2d3f7c1bd8820148ca237604ad1cdce data/chromaticraft/loot_table/blocks/cave_crystal_white.json
 c4dfe9ac535ee2d2d046d5d2b1f79d9a71b9aabf data/chromaticraft/loot_table/blocks/cave_crystal_yellow.json
 8d3f08a3d2324bc48389cb95cee49ee6d5646936 data/chromaticraft/loot_table/blocks/cave_indicator.json
+14e1f10ae17ff108d17b3bb94a8fe1f5733fdc82 data/chromaticraft/loot_table/blocks/chroma_crafter.json
 1f20cc42a2cfedb0c7923059b77b1c5f1fb207b8 data/chromaticraft/loot_table/blocks/chroma_door.json
 40f10de287a6594228807a47265c8663fc8c5bd8 data/chromaticraft/loot_table/blocks/chroma_flower.json
 8d9a65b78989520e87842eb1af8e4e421c530c76 data/chromaticraft/loot_table/blocks/chroma_mud.json
@@ -685,6 +686,7 @@ aa2561de25182d0befbad47a1326333c5902489b data/chromaticraft/recipe/buffer_link/e
 c17cca98a223e68f913bbb158b7bcd949b47d064 data/chromaticraft/recipe/casting_item_stand.json
 8d357f3810d3598ce41e1844ec0fab4606b5494b data/chromaticraft/recipe/casting_table.json
 bc04e0bc5086a669d89e32df3372c6eca7d48f0c data/chromaticraft/recipe/cave_pather.json
+04577121a1f95bb6dc300094c8f84a678ac7db4d data/chromaticraft/recipe/chroma_crafter.json
 4dfc55e705b3d97000cb6768c4e971cd891d5c94 data/chromaticraft/recipe/chroma_flower.json
 af0a0d7cb166e2b0d0ddb4234b68c5f547b4e6a0 data/chromaticraft/recipe/chromic_lexicon.json
 f052dc21a4576b35fb5d716a27e73f38774215d3 data/chromaticraft/recipe/cobble_generator.json

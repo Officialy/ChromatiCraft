@@ -25,6 +25,9 @@ public class BlockStructureShield extends Block {
 
 	/** V33a metadata bit 3: this block belongs to a structure rather than a player's inventory. */
 	public static final BooleanProperty REINFORCED = BooleanProperty.create("reinforced");
+    /** Source glass icon connection to an active Chroma Crafter: ordinary/middle/top. */
+    public static final net.minecraft.world.level.block.state.properties.IntegerProperty CRAFTER_SECTION =
+            net.minecraft.world.level.block.state.properties.IntegerProperty.create("crafter_section", 0, 2);
 
 	private final ChromaShieldTypes type;
 
@@ -32,7 +35,7 @@ public class BlockStructureShield extends Block {
 	public BlockStructureShield(BlockBehaviour.Properties properties, ChromaShieldTypes type) {
 		super(properties);
 		this.type = type;
-		registerDefaultState(stateDefinition.any().setValue(REINFORCED, false));
+		registerDefaultState(stateDefinition.any().setValue(REINFORCED, false).setValue(CRAFTER_SECTION, 0));
 	}
 
 
@@ -42,8 +45,21 @@ public class BlockStructureShield extends Block {
 
 	@Override
 	protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-		builder.add(REINFORCED);
+		builder.add(REINFORCED, CRAFTER_SECTION);
 	}
+
+    @Override protected BlockState updateShape(BlockState state, net.minecraft.world.level.LevelReader world,
+            net.minecraft.world.level.ScheduledTickAccess ticks, BlockPos pos, net.minecraft.core.Direction direction,
+            BlockPos neighbour, BlockState neighbourState, net.minecraft.util.RandomSource random) {
+        int section = 0;
+        if (type == ChromaShieldTypes.GLASS) {
+            for (int height = 1; height <= 2; height++) {
+                if (world.getBlockEntity(pos.below(height)) instanceof reika.chromaticraft.tileentity.recipe.TileEntityChromaCrafter crafter
+                        && crafter.hasStructure()) { section = height; break; }
+            }
+        }
+        return super.updateShape(state.setValue(CRAFTER_SECTION, section), world, ticks, pos, direction, neighbour, neighbourState, random);
+    }
 
 	/**
 	 * V33a getBlockHardness: a reinforced, non-cracked shield returns -1, which is vanilla's

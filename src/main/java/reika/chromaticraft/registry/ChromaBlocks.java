@@ -1141,6 +1141,9 @@ public final class ChromaBlocks {
 	public static final DeferredBlock<Block> LAUNCH_PAD =
 			register("launch_pad", () -> new reika.chromaticraft.block.BlockChromaticTile(
 					blockProperties().strength(5F, 8F).requiresCorrectToolForDrops(), ChromaTiles.LAUNCHPAD));
+	/** V33a automated pool alloying chamber, rendered with its original shield glass. */
+    public static final DeferredBlock<Block> CHROMA_CRAFTER = register("chroma_crafter",
+            () -> new reika.chromaticraft.block.BlockChromaCrafter(blockProperties().strength(5F, 8F).requiresCorrectToolForDrops().noOcclusion()));
 	/** V33a BREWER, a BlockChromaTile entry: rock, hardness 5, resistance 40 (so 8 against explosions). */
 	public static final DeferredBlock<Block> CRYSTAL_BREWER =
 			register("crystal_brewer", () -> new reika.chromaticraft.block.BlockCrystalBrewer(

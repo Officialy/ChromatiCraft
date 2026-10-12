@@ -276,6 +276,7 @@ public final class ChromaGameTests {
 		ChromaAdvancementTests.register(event, env);
 		ChromaItemPortTests.register(event, env);
 		ChromaTieredResourceTests.register(event, env);
+		ChromaCrafterTests.register(event, env);
 		ChromaWandPortTests.register(event, env);
         ChromaVoidCompatibilityTests.register(event, env);
         if (reika.dragonapi.ModList.VOIDMONSTER.isLoaded())

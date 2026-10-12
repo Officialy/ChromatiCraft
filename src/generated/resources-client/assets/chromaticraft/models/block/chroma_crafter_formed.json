@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/cube_bottom_top",
+  "textures": {
+    "bottom": "chromaticraft:block/basic/shield_5",
+    "side": "chromaticraft:block/basic/shield_5a",
+    "top": "chromaticraft:block/icons/transparent"
+  }
+}

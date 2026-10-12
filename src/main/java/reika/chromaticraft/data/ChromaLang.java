@@ -199,6 +199,7 @@ public class ChromaLang extends LanguageProvider {
 		for (var seed : ChromaItems.FERTILITY_SEEDS)
 			add(seed.get(), "Fertility Seeds");
 		add(ChromaBlocks.CRYSTAL_CHARGER.get(), "Storage Crystal Charger"); // V33a chroma.charger
+		add(ChromaBlocks.CHROMA_CRAFTER.get(), "Chroma Crafter"); // V33a chroma.chromacrafter
 		add(ChromaBlocks.CRYSTAL_BREWER.get(), "Crystal Brewery"); // V33a chroma.brewer
 		add(ChromaBlocks.LAUNCH_PAD.get(), "Vertical Propulsion Panel"); // V33a chroma.launchpad
 		add(ChromaBlocks.PARTICLE_SPAWNER.get(), "Particle Spawner"); // V33a chroma.particles

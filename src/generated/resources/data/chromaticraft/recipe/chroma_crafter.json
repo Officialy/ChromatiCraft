@@ -1,0 +1,267 @@
+{
+  "type": "chromaticraft:casting",
+  "aura": [
+    {
+      "amount": 20000,
+      "element": "black"
+    },
+    {
+      "amount": 25000,
+      "element": "purple"
+    },
+    {
+      "amount": 10000,
+      "element": "gray"
+    }
+  ],
+  "duration": 400,
+  "experience": 500,
+  "grid": [
+    {
+      "ingredient": "chromaticraft:high_transformation_core",
+      "slot": 4
+    }
+  ],
+  "penalty_threshold": 1,
+  "result": {
+    "id": "chromaticraft:chroma_crafter"
+  },
+  "runes": [
+    {
+      "element": "lightgray",
+      "offset": [
+        2,
+        -1,
+        1
+      ]
+    },
+    {
+      "element": "white",
+      "offset": [
+        -4,
+        -1,
+        2
+      ]
+    },
+    {
+      "element": "purple",
+      "offset": [
+        0,
+        -1,
+        -1
+      ]
+    },
+    {
+      "element": "black",
+      "offset": [
+        -2,
+        -1,
+        -2
+      ]
+    },
+    {
+      "element": "brown",
+      "offset": [
+        1,
+        -1,
+        -2
+      ]
+    }
+  ],
+  "stackable": false,
+  "stands": [
+    {
+      "ingredient": "chromaticraft:shielding_glass",
+      "offset": [
+        -2,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:shielding_glass",
+      "offset": [
+        2,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:shielding_glass",
+      "offset": [
+        -2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:shielding_glass",
+      "offset": [
+        2,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:shielding_glass",
+      "offset": [
+        -2,
+        0,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:shielding_glass",
+      "offset": [
+        2,
+        0,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:shielding_glass",
+      "offset": [
+        -2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:shielding_glass",
+      "offset": [
+        0,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:shielding_glass",
+      "offset": [
+        2,
+        0,
+        2
+      ]
+    },
+    {
+      "ingredient": "minecraft:hopper",
+      "offset": [
+        0,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:iridescent_chunk",
+      "offset": [
+        0,
+        0,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:fluid_essence",
+      "offset": [
+        4,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:fluid_essence",
+      "offset": [
+        -4,
+        1,
+        -4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:fluid_essence",
+      "offset": [
+        4,
+        1,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:fluid_essence",
+      "offset": [
+        -4,
+        1,
+        -2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:fluid_essence",
+      "offset": [
+        4,
+        1,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:fluid_essence",
+      "offset": [
+        -4,
+        1,
+        0
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:fluid_essence",
+      "offset": [
+        4,
+        1,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:fluid_essence",
+      "offset": [
+        -4,
+        1,
+        2
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:fluid_essence",
+      "offset": [
+        4,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:fluid_essence",
+      "offset": [
+        -4,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "chromaticraft:complex_ingot",
+      "offset": [
+        0,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "minecraft:obsidian",
+      "offset": [
+        -2,
+        1,
+        4
+      ]
+    },
+    {
+      "ingredient": "minecraft:obsidian",
+      "offset": [
+        2,
+        1,
+        4
+      ]
+    }
+  ],
+  "tier": "pylon"
+}

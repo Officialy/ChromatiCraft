@@ -11,424 +11,322 @@ package reika.chromaticraft.tileentity.recipe;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Iterator;
-
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.particle.EntityFX;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.AxisAlignedBB;
-import net.minecraft.world.World;
-import net.minecraftforge.common.util.ForgeDirection;
-import net.minecraftforge.fluids.Fluid;
-import net.minecraftforge.fluids.FluidRegistry;
-import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.FluidTankInfo;
-import net.minecraftforge.fluids.IFluidHandler;
-
-import reika.chromaticraft.auxiliary.ChromaFX;
-import reika.chromaticraft.auxiliary.ChromaStacks;
+import java.util.List;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.RecipeHolder;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
+import net.minecraft.world.phys.AABB;
+import net.neoforged.neoforge.common.util.FakePlayer;
+import net.neoforged.neoforge.transfer.ResourceHandler;
+import net.neoforged.neoforge.transfer.TransferPreconditions;
+import net.neoforged.neoforge.transfer.fluid.FluidResource;
+import net.neoforged.neoforge.transfer.transaction.SnapshotJournal;
+import net.neoforged.neoforge.transfer.transaction.TransactionContext;
 import reika.chromaticraft.auxiliary.interfaces.FocusAcceleratable;
 import reika.chromaticraft.auxiliary.interfaces.OperationInterval;
 import reika.chromaticraft.auxiliary.interfaces.OwnedTile;
-import reika.chromaticraft.auxiliary.recipemanagers.PoolRecipes;
-import reika.chromaticraft.auxiliary.recipemanagers.poolrecipes.PoolRecipe;
+import reika.chromaticraft.auxiliary.recipemanagers.PoolAlloyingRecipe;
 import reika.chromaticraft.base.tileentity.InventoriedRelayPowered;
-import reika.chromaticraft.block.blockactivechroma.TileEntityChroma;
-import reika.chromaticraft.block.worldgen.blockstructureshield.BlockType;
+import reika.chromaticraft.magic.ChromaAbilityData;
 import reika.chromaticraft.magic.ElementTagCompound;
-import reika.chromaticraft.registry.ChromaBlocks;
-import reika.chromaticraft.registry.ChromaSounds;
-import reika.chromaticraft.registry.ChromaTiles;
-import reika.chromaticraft.registry.Chromabilities;
-import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.render.particle.EntityChromaFluidFX;
+import reika.chromaticraft.registry.*;
 import reika.chromaticraft.tileentity.auxiliary.TileEntityFocusCrystal;
-import reika.dragonapi.ModList;
-import reika.dragonapi.asm.apistripper.Strippable;
-import reika.dragonapi.asm.dependentmethodstripper.ModDependent;
-import reika.dragonapi.instantiable.HybridTank;
-import reika.dragonapi.instantiable.data.immutable.Coordinate;
 import reika.dragonapi.instantiable.data.maps.ItemHashMap;
-import reika.dragonapi.interfaces.tileentity.BreakAction;
-import reika.dragonapi.libraries.ReikaAABBHelper;
-import reika.dragonapi.libraries.ReikaInventoryHelper;
-import reika.dragonapi.libraries.ReikaNBTHelper;
-import reika.dragonapi.libraries.ReikaPlayerAPI;
-import reika.dragonapi.libraries.java.ReikaRandomHelper;
-import reika.dragonapi.libraries.mathsci.ReikaPhysicsHelper;
+import reika.dragonapi.interfaces.blockentity.BreakAction;
 import reika.dragonapi.libraries.registry.ReikaItemHelper;
 
-import buildcraft.api.transport.IPipeConnection;
-import buildcraft.api.transport.IPipeTile.PipeType;
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
+/** V33a automated pool alloying: two glass shields, 3,000 mB, relay energy and retained surplus inputs. */
+public final class TileEntityChromaCrafter extends InventoriedRelayPowered
+        implements OwnedTile, OperationInterval, BreakAction, FocusAcceleratable {
+    public static final int CRAFTING_DURATION = 300;
+    public static final int CAPACITY = 3000;
+    private static final ElementTagCompound REQUIRED = new ElementTagCompound();
+    static {
+        REQUIRED.setTag(CrystalElement.BLACK, 1000);
+        REQUIRED.setTag(CrystalElement.GRAY, 500);
+        REQUIRED.setTag(CrystalElement.PURPLE, 2500);
+        REQUIRED.setTag(CrystalElement.CYAN, 200);
+        REQUIRED.setTag(CrystalElement.BROWN, 200);
+    }
 
+    private final ArrayList<ItemStack> recipeItems = new ArrayList<>();
+    private List<ItemStack> renderItems = List.of();
+    private Identifier recipeId;
+    private PoolAlloyingRecipe recipe;
+    private int recipeTick;
+    private int hasEtherBerries;
+    private int chromaLevel;
+    private FluidResource chromaFluid = FluidResource.EMPTY;
+    private final ChromaFluidJournal fluidJournal = new ChromaFluidJournal();
+    private final ChromaFluidHandler[] fluidViews = new ChromaFluidHandler[Direction.values().length + 1];
 
-@Strippable(value={"buildcraft.api.transport.IPipeConnection"})
-public class TileEntityChromaCrafter extends InventoriedRelayPowered implements IFluidHandler, OwnedTile, IPipeConnection, OperationInterval,
-BreakAction, FocusAcceleratable {
+    public TileEntityChromaCrafter(BlockPos pos, BlockState state) {
+        super(ChromaBlockEntities.CHROMA_CRAFTER.get(), pos, state);
+        for (Direction side : Direction.values()) fluidViews[side.ordinal()] = new ChromaFluidHandler(side);
+        fluidViews[Direction.values().length] = new ChromaFluidHandler(null);
+    }
 
-	public static final int CRAFTING_DURATION = 300;
+    @Override public ChromaTiles getTile() { return ChromaTiles.CHROMACRAFTER; }
+    @Override public int getSizeInventory() { return 2; }
+    @Override public int getMaxStackSize() { return 64; }
+    @Override public boolean onlyAllowOwnersToUse() { return true; }
+    public int getChromaLevel() { return chromaLevel; }
+    public int getBerryCount() { return hasEtherBerries; }
+    public boolean hasEtherBerries() { return hasEtherBerries > 0; }
+    public PoolAlloyingRecipe getActiveRecipe() { return recipe; }
+    public Identifier getActiveRecipeId() { return recipeId; }
+    public int getRecipeTicks() { return recipeTick; }
+    public List<ItemStack> getStoredRecipeItems() { return recipeItems.stream().map(ItemStack::copy).toList(); }
+    public List<ItemStack> getRenderItems() {
+        if (recipeId == null) return List.of();
+        ArrayList<ItemStack> result = new ArrayList<>(renderItems.stream().map(ItemStack::copy).toList());
+        if (hasEtherBerries()) result.add(ChromaItems.craftingStack(ChromaCraftingItems.ETHER_BERRIES));
+        return result;
+    }
 
-	private static final ElementTagCompound required = new ElementTagCompound();
+    public ItemHashMap<Integer> getCurrentItems() {
+        ItemHashMap<Integer> result = new ItemHashMap<>();
+        for (ItemStack stack : recipeItems) ItemHashMap.add(result, stack, stack.getCount());
+        return result;
+    }
 
-	static {
-		required.addTag(CrystalElement.BLACK, 1000);
-		required.addTag(CrystalElement.GRAY, 500);
-		required.addTag(CrystalElement.PURPLE, 2500);
-		required.addTag(CrystalElement.CYAN, 200);
-		required.addTag(CrystalElement.BROWN, 200);
-	}
+    @Override public void updateEntity(Level world, BlockPos pos) {
+        super.updateEntity(world, pos);
+        if (world.isClientSide()) {
+            // Source client prediction keeps the Manipulator progress display moving between server snapshots.
+            if (recipeId != null && recipeTick > 0 && canWork()) recipeTick--;
+            return;
+        }
+        updateChamberState();
+        refreshRecipe();
+        ItemStack input = inv.get(0);
+        if (!input.isEmpty()) {
+            if (input.is(ChromaItems.CRAFTING.get(ChromaCraftingItems.ETHER_BERRIES).get())) {
+                int taken = Math.min(input.getCount(), Math.max(0, 512 - hasEtherBerries));
+                if (taken > 0) { hasEtherBerries += taken; input.shrink(taken); contentsChanged(); }
+            } else if (recipe == null) {
+                int taken = Math.min(input.getCount(), Math.max(0, 64 - getItemCount(input)));
+                if (taken > 0) {
+                    recipeItems.add(input.copyWithCount(taken));
+                    var collated = ReikaItemHelper.collateItemList(recipeItems);
+                    recipeItems.clear(); recipeItems.addAll(collated);
+                    input.shrink(taken);
+                    selectRecipe();
+                    contentsChanged();
+                }
+            }
+            if (input.isEmpty()) inv.set(0, ItemStack.EMPTY);
+        }
+        if (recipe != null && recipeTick > 0 && canWork()) {
+            recipeTick--;
+            setChanged();
+            if (recipeTick == 0) craft();
+        } else if (recipe != null && recipeTick == 0 && canWork()) craft();
+    }
 
-	private PoolRecipe recipe = null;
-	private int recipeTick = 0;
-	private int hasEtherBerries = 0;
-	private ArrayList<ItemStack> recipeItems = new ArrayList();
+    @Override protected void animateWithTick(Level world, BlockPos pos) {
+        if (!world.isClientSide()) return;
+        if (hasStructure()) reika.chromaticraft.render.particle.ChromaParticle.spawnCrafterFocusHints(world, pos, getRelativeFocusCrystalLocations());
+        if (recipeTick > 0) reika.chromaticraft.render.particle.ChromaParticle.spawnChromaCrafter(world, pos, rand);
+    }
 
-	public static final int CAPACITY = 3000;
+    private void updateChamberState() {
+        boolean formed = hasStructure();
+        BlockState state = getBlockState();
+        if (state.getValue(reika.chromaticraft.block.BlockChromaCrafter.FORMED) != formed)
+            level.setBlock(worldPosition, state.setValue(reika.chromaticraft.block.BlockChromaCrafter.FORMED, formed), 2);
+        for (int height = 1; height <= 2; height++) {
+            BlockPos pos = worldPosition.above(height);
+            BlockState glass = level.getBlockState(pos);
+            if (glass.is(ChromaBlocks.shielding(ChromaShieldTypes.GLASS).get())) {
+                var property = reika.chromaticraft.block.worldgen26.BlockStructureShield.CRAFTER_SECTION;
+                int section = formed ? height : 0;
+                if (glass.getValue(property) != section) level.setBlock(pos, glass.setValue(property, section), 2);
+            }
+        }
+    }
 
-	private final HybridTank tank = new HybridTank("chromacraft", CAPACITY);
+    private void refreshRecipe() {
+        if (!(level instanceof ServerLevel server) || recipeId == null) return;
+        var holder = server.getServer().getRecipeManager().recipeMap().byType(ChromaRecipeTypes.POOL_ALLOYING.get())
+                .stream().filter(h -> h.id().identifier().equals(recipeId)).findFirst().orElse(null);
+        if (holder == null || consumptionPlan(holder.value()) == null) {
+            recipe = null; recipeId = null; recipeTick = 0; contentsChanged();
+        } else recipe = holder.value();
+    }
 
-	public int getChromaLevel() {
-		return tank.getLevel();
-	}
+    private void selectRecipe() {
+        if (!(level instanceof ServerLevel server)) return;
+        for (RecipeHolder<PoolAlloyingRecipe> holder : server.getServer().getRecipeManager().recipeMap().byType(ChromaRecipeTypes.POOL_ALLOYING.get())) {
+            if (consumptionPlan(holder.value()) != null) {
+                recipe = holder.value(); recipeId = holder.id().identifier(); recipeTick = getCraftingDuration();
+                ArrayList<ItemStack> display = new ArrayList<>();
+                display.add(recipeItems.stream().filter(recipe.catalyst()::test).findFirst().orElseThrow().copyWithCount(1));
+                for (var ingredient : recipe.ingredients()) display.add(recipeItems.stream().filter(ingredient.ingredient()::test).findFirst().orElseThrow().copyWithCount(1));
+                renderItems = List.copyOf(display);
+                return;
+            }
+        }
+    }
 
-	public PoolRecipe getActiveRecipe() {
-		return recipe;
-	}
+    /** Reserve catalyst and counted inputs together; one physical item cannot satisfy both. */
+    private int[] consumptionPlan(PoolAlloyingRecipe candidate) {
+        for (int catalyst = 0; catalyst < recipeItems.size(); catalyst++) {
+            if (!candidate.catalyst().test(recipeItems.get(catalyst))) continue;
+            int[] remaining = recipeItems.stream().mapToInt(ItemStack::getCount).toArray();
+            remaining[catalyst]--;
+            boolean valid = true;
+            for (var ingredient : candidate.ingredients()) {
+                int needed = ingredient.count();
+                for (int i = 0; i < remaining.length && needed > 0; i++) {
+                    if (ingredient.ingredient().test(recipeItems.get(i))) {
+                        int taken = Math.min(remaining[i], needed); remaining[i] -= taken; needed -= taken;
+                    }
+                }
+                if (needed > 0) { valid = false; break; }
+            }
+            if (valid) {
+                int[] consumed = new int[remaining.length];
+                for (int i = 0; i < remaining.length; i++) consumed[i] = recipeItems.get(i).getCount() - remaining[i];
+                return consumed;
+            }
+        }
+        return null;
+    }
 
-	public ItemHashMap<Integer> getCurrentItems() {
-		ItemHashMap<Integer> ret = new ItemHashMap();
-		for (ItemStack is : recipeItems) {
-			ret.add(is, is.stackSize);
-		}
-		return ret;
-	}
+    public boolean hasStructure() {
+        return level != null && level.getBlockState(worldPosition.above()).is(ChromaBlocks.shielding(ChromaShieldTypes.GLASS).get())
+                && level.getBlockState(worldPosition.above(2)).is(ChromaBlocks.shielding(ChromaShieldTypes.GLASS).get());
+    }
+    public int getCraftingDuration() {
+        float factor = getAccelerationFactor();
+        return factor >= 1 ? Math.max(1, (int)(CRAFTING_DURATION / factor)) : CRAFTING_DURATION;
+    }
+    private boolean canWork() { return hasStructure() && chromaLevel == CAPACITY && energy.containsAtLeast(REQUIRED); }
 
-	public int getBerryCount() {
-		return hasEtherBerries;
-	}
+    private void craft() {
+        int[] consumed = consumptionPlan(recipe);
+        if (consumed == null) { recipe = null; recipeId = null; recipeTick = 0; contentsChanged(); return; }
+        ItemStack result = recipe.result();
+        boolean berries = recipe.allowDoubling() && hasEtherBerries >= reika.chromaticraft.block.BlockChromaFluid.TileEntityChroma.ETHER_SATURATION;
+        if (berries) result.setCount(result.getCount() * 2);
+        var owner = getPlacer();
+        if (owner != null && !(owner instanceof FakePlayer) && ChromaAbilityData.hasDoubleCraft(owner)) result.setCount(result.getCount() * 2);
+        ItemStack output = inv.get(1);
+        int limit = Math.min(getMaxStackSize(), result.getMaxStackSize());
+        if ((!output.isEmpty() && !ItemStack.isSameItemSameComponents(output, result))
+                || result.getCount() + output.getCount() > limit) return;
+        for (int i = recipeItems.size() - 1; i >= 0; i--) {
+            recipeItems.get(i).shrink(consumed[i]);
+            if (recipeItems.get(i).isEmpty()) recipeItems.remove(i);
+        }
+        if (output.isEmpty()) inv.set(1, result); else output.grow(result.getCount());
+        if (berries) hasEtherBerries -= reika.chromaticraft.block.BlockChromaFluid.TileEntityChroma.ETHER_SATURATION;
+        chromaLevel -= CAPACITY;
+        chromaFluid = FluidResource.EMPTY;
+        energy.subtract(REQUIRED);
+        recipe = null; recipeId = null; recipeTick = 0;
+        ChromaSounds.INFUSE.playSoundAtBlock(this);
+        contentsChanged();
+    }
 
-	@Override
-	protected void writeSyncTag(NBTTagCompound NBT) {
-		super.writeSyncTag(NBT);
+    private int getItemCount(ItemStack template) {
+        return recipeItems.stream().filter(stack -> ReikaItemHelper.matchStacks(stack, template)).mapToInt(ItemStack::getCount).sum();
+    }
+    @Override public boolean canPlaceItem(int slot, ItemStack stack) {
+        return slot == 0 && !stack.isEmpty() && hasStructure()
+                && (stack.is(ChromaItems.CRAFTING.get(ChromaCraftingItems.ETHER_BERRIES).get()) ? hasEtherBerries + stack.getCount() <= 512 : getItemCount(stack) + stack.getCount() <= 64);
+    }
+    @Override public boolean canTakeItemThroughFace(int slot, ItemStack stack, Direction side) { return slot == 1; }
+    public boolean canConnectFluidPipe(Direction side) { return side != null && side.getAxis().isHorizontal(); }
+    public boolean canConnectItemPipe(Direction side) { return side != null && side != Direction.UP; }
+    // CHROMA-PORT: a future native BuildCraft adapter must consume these original FLUID/ITEM connection policies.
+    public ResourceHandler<FluidResource> fluidHandler(Direction side) { return fluidViews[side != null ? side.ordinal() : Direction.values().length]; }
+    @Override protected boolean canReceiveFrom(CrystalElement e, Direction side) { return side != Direction.UP || chromaLevel <= 1000; }
+    @Override public int getMaxStorage(CrystalElement e) { return 10000; }
+    @Override public ElementTagCompound getRequiredEnergy() { return REQUIRED.copy(); }
+    @Override public boolean isAcceptingColor(CrystalElement e) { return REQUIRED.contains(e); }
+    @Override public float getOperationFraction() { return recipeId == null ? 0 : 1 - (float)recipeTick / getCraftingDuration(); }
+    @Override public OperationState getState() { return recipeId == null ? OperationState.INVALID : energy.containsAtLeast(REQUIRED) ? OperationState.RUNNING : OperationState.PENDING; }
+    public boolean hasWork() { return getState() == OperationState.RUNNING; }
+    @Override public AABB getRenderBoundingBox() { return new AABB(worldPosition).expandTowards(0, 2, 0); }
+    @Override public float getAccelerationFactor() { return TileEntityFocusCrystal.getSummedFocusFactorDirect(this, getRelativeFocusCrystalLocations()) / 2; }
+    @Override public float getMaximumAcceleratability() { return 4 * TileEntityFocusCrystal.CrystalTier.TURBOCHARGED.efficiencyFactor(); }
+    @Override public float getProgressToNextStep() { return 0; }
+    @Override public void recountFocusCrystals() { getAccelerationFactor(); }
+    @Override public Collection<BlockPos> getRelativeFocusCrystalLocations() {
+        return List.of(new BlockPos(-2, 0, 0), new BlockPos(2, 0, 0), new BlockPos(0, 0, -2), new BlockPos(0, 0, 2));
+    }
+    @Override public void breakBlock() {
+        if (level == null || level.isClientSide()) return;
+        for (ItemStack stack : recipeItems) ReikaItemHelper.dropItem(level, worldPosition.getX()+0.5, worldPosition.getY()+0.5, worldPosition.getZ()+0.5, stack.copy());
+        for (int count = hasEtherBerries; count > 0;) {
+            int amount = Math.min(64, count); count -= amount;
+            ReikaItemHelper.dropItem(level, worldPosition.getX()+0.5, worldPosition.getY()+0.5, worldPosition.getZ()+0.5, new ItemStack(ChromaItems.CRAFTING.get(ChromaCraftingItems.ETHER_BERRIES).get(), amount));
+        }
+        recipeItems.clear(); hasEtherBerries = 0;
+    }
+    private void contentsChanged() { setChanged(); syncAllData(true); }
+    @Override protected void saveAdditional(ValueOutput output) {
+        super.saveAdditional(output);
+        output.store("recipeItems", ItemStack.CODEC.listOf(), recipeItems);
+        output.store("renderItems", ItemStack.CODEC.listOf(), renderItems);
+        output.putInt("etherb", hasEtherBerries); output.putInt("recipe", recipeTick); output.putInt("chromaLevel", chromaLevel);
+        output.store("chromaFluid", FluidResource.OPTIONAL_CODEC, chromaFluid);
+        if (recipeId != null) output.store("recipetype", Identifier.CODEC, recipeId);
+    }
+    @Override protected void loadAdditional(ValueInput input) {
+        super.loadAdditional(input);
+        recipeItems.clear(); recipeItems.addAll(input.read("recipeItems", ItemStack.CODEC.listOf()).orElse(List.of()));
+        renderItems = input.read("renderItems", ItemStack.CODEC.listOf()).orElse(List.of());
+        hasEtherBerries = Math.max(0, input.getIntOr("etherb", 0)); recipeTick = Math.max(0, input.getIntOr("recipe", 0));
+        chromaLevel = Math.clamp(input.getIntOr("chromaLevel", 0), 0, CAPACITY);
+        chromaFluid = chromaLevel == 0 ? FluidResource.EMPTY : input.read("chromaFluid", FluidResource.OPTIONAL_CODEC).orElse(FluidResource.of(ChromaFluids.CHROMA.get()));
+        if (chromaLevel > 0 && (chromaFluid.isEmpty() || chromaFluid.getFluid() != ChromaFluids.CHROMA.get())) { chromaLevel = 0; chromaFluid = FluidResource.EMPTY; }
+        recipeId = input.read("recipetype", Identifier.CODEC).orElse(null); recipe = null;
+    }
+    @Override protected void writeSyncTag(CompoundTag tag) {
+        super.writeSyncTag(tag); tag.putInt("etherb", hasEtherBerries); tag.putInt("recipe", recipeTick); tag.putInt("chromaLevel", chromaLevel);
+        if (recipeId != null) tag.putString("recipetype", recipeId.toString());
+    }
+    @Override protected void readSyncTag(CompoundTag tag) {
+        super.readSyncTag(tag); hasEtherBerries = tag.getIntOr("etherb", 0); recipeTick = tag.getIntOr("recipe", 0); chromaLevel = tag.getIntOr("chromaLevel", 0);
+        recipeId = Identifier.tryParse(tag.getStringOr("recipetype", ""));
+    }
 
-		NBT.setInteger("etherb", hasEtherBerries);
-		NBT.setInteger("recipe", recipeTick);
-		tank.writeToNBT(NBT);
-	}
+    private record FluidState(int amount, FluidResource resource) {}
+    /** Every sided view journals the same tank, including its component identity. */
+    private final class ChromaFluidJournal extends SnapshotJournal<FluidState> {
+        @Override protected FluidState createSnapshot() { return new FluidState(chromaLevel, chromaFluid); }
+        @Override protected void revertToSnapshot(FluidState state) { chromaLevel = state.amount(); chromaFluid = state.resource(); }
+        @Override protected void onRootCommit(FluidState previous) { contentsChanged(); }
+    }
 
-	@Override
-	protected void readSyncTag(NBTTagCompound NBT) {
-		super.readSyncTag(NBT);
-
-		hasEtherBerries = NBT.getInteger("etherb");
-		recipeTick = NBT.getInteger("recipe");
-		tank.readFromNBT(NBT);
-	}
-
-	@Override
-	public void writeToNBT(NBTTagCompound NBT) {
-		super.writeToNBT(NBT);
-
-		ReikaNBTHelper.writeCollectionToNBT(recipeItems, NBT, "recipeItems");
-		NBT.setString("recipetype", recipe != null ? recipe.ID : "none");
-	}
-
-	@Override
-	public void readFromNBT(NBTTagCompound NBT) {
-		super.readFromNBT(NBT);
-
-		ReikaNBTHelper.readCollectionFromNBT(recipeItems, NBT, "recipeItems");
-		recipe = PoolRecipes.instance.getByID(NBT.getString("recipetype"));
-	}
-
-	@Override
-	public void updateEntity(World world, int x, int y, int z, int meta) {
-		super.updateEntity(world, x, y, z, meta);
-
-		if (inv[0] != null) {
-			//ReikaJavaLibrary.pConsole(inv[0]);
-			if (ReikaItemHelper.matchStacks(inv[0], ChromaStacks.etherBerries)) {
-				hasEtherBerries += inv[0].stackSize;
-				inv[0] = null;
-				//ReikaJavaLibrary.pConsole(hasEtherBerries+" / "+recipeItems.size()+":"+recipeItems+" > "+recipe);
-				this.syncAllData(true);
-			}
-			else if (recipe == null) {
-				recipeItems.add(inv[0]);
-				recipeItems = ReikaItemHelper.collateItemList(recipeItems);
-				inv[0] = null;
-				recipe = this.checkRecipe();
-				//ReikaJavaLibrary.pConsole(hasEtherBerries+" / "+recipeItems.size()+":"+recipeItems+" > "+recipe);
-				if (recipe != null) {
-					recipeTick = this.getCraftingDuration();
-					this.syncAllData(true);
-				}
-			}
-			//ReikaJavaLibrary.pConsole(hasEtherBerries+" ["+(inv[0] != null ? inv[0].getDisplayName() : "null")+"] / "+recipeItems.size()+":"+recipeItems+" > "+recipe);
-		}
-
-		if (recipeTick > 0) {
-			this.onRecipeTick(world, x, y, z);
-		}
-
-		if (world.isRemote && this.hasStructure()) {
-			ChromaFX.doFocusCrystalParticles(world, x, y, z, this);
-		}
-	}
-
-	private int getCraftingDuration() {
-		int base = CRAFTING_DURATION;
-		float f = this.getAccelerationFactor();
-		return f >= 1 ? (int)(base/f) : base;
-	}
-
-	private PoolRecipe checkRecipe() {
-		return PoolRecipes.instance.getPoolRecipe(recipeItems);
-	}
-
-	private void onRecipeTick(World world, int x, int y, int z) {
-		if (energy.containsAtLeast(required) && tank.getLevel() == 3000 && this.hasStructure())
-			recipeTick--;
-		if (recipeTick == 0) {
-			if (!world.isRemote)
-				this.craft();
-		}
-		else {
-			if (world.isRemote)
-				this.recipeParticles(world, x, y, z);
-		}
-	}
-
-	public boolean hasStructure() {
-		for (int i = 1; i <= 2; i++) {
-			if (worldObj.getBlock(xCoord, yCoord+i, zCoord) != ChromaBlocks.STRUCTSHIELD.getBlockInstance() || worldObj.getBlockMetadata(xCoord, yCoord+i, zCoord)%8 != BlockType.GLASS.ordinal())
-				return false;
-		}
-		return true;
-	}
-
-	@SideOnly(Side.CLIENT)
-	private void recipeParticles(World world, int x, int y, int z) {
-		double[] v = ReikaPhysicsHelper.polarToCartesian(ReikaRandomHelper.getRandomBetween(0.03125, 0.125), rand.nextDouble()*90, rand.nextDouble()*360);
-		EntityFX fx = new EntityChromaFluidFX(world, x+rand.nextDouble(), y+rand.nextDouble()*3, z+rand.nextDouble(), v[0], v[1], v[2]).setGravity(0.125F);
-		Minecraft.getMinecraft().effectRenderer.addEffect(fx);
-	}
-
-	private void craft() {
-		recipeTick = 0;
-		Collection<ItemStack> li = recipe.getInputs();
-		li.add(recipe.getMainInput());
-		for (ItemStack is : li) {
-			int val = is.stackSize;
-			Iterator<ItemStack> it = recipeItems.iterator();
-			while (it.hasNext()) {
-				ItemStack is2 = it.next();
-				if (ReikaItemHelper.matchStacks(is, is2)) {
-					int rem = Math.min(val, is2.stackSize);
-					is2.stackSize -= rem;
-					val -= rem;
-					if (is2.stackSize == 0) {
-						it.remove();
-						break;
-					}
-				}
-			}
-		}
-		ItemStack out = recipe.getOutput();
-		if (recipe.allowDoubling() && hasEtherBerries >= TileEntityChroma.ETHER_SATURATION) {
-			out.stackSize *= 2;
-			hasEtherBerries -= TileEntityChroma.ETHER_SATURATION;
-		}
-		EntityPlayer ep = this.getPlacer();
-		if (ep != null && !ReikaPlayerAPI.isFake(ep) && Chromabilities.DOUBLECRAFT.enabledOn(ep))
-			out.stackSize *= 2;
-		//recipeItems.clear();
-		//hasEtherBerries = false;
-		ReikaInventoryHelper.addOrSetStack(out, inv, 1);
-		recipe = null;
-		tank.removeLiquid(3000);
-		energy.subtract(required);
-		ChromaSounds.INFUSE.playSoundAtBlock(this);
-		this.syncAllData(true);
-	}
-
-	@Override
-	public boolean canExtractItem(int slot, ItemStack is, int side) {
-		return slot == 1;
-	}
-
-	@Override
-	public int getSizeInventory() {
-		return 2;
-	}
-
-	@Override
-	public int getInventoryStackLimit() {
-		return 64;
-	}
-
-	@Override
-	public boolean isItemValidForSlot(int slot, ItemStack is) {
-		return slot == 0 && this.hasStructure() && this.canAcceptMoreOf(is);
-	}
-
-	private boolean canAcceptMoreOf(ItemStack is) {
-		return ReikaItemHelper.matchStacks(is, ChromaStacks.etherBerries) ? this.getBerryCount()+is.stackSize <= 512 : this.getItemCount(is)+is.stackSize <= 64;
-	}
-
-	private int getItemCount(ItemStack is) {
-		int ret = 0;
-		for (ItemStack in : recipeItems) {
-			if (ReikaItemHelper.matchStacks(in, is))
-				ret += in.stackSize;
-		}
-		return ret;
-	}
-
-	@Override
-	public int fill(ForgeDirection from, FluidStack resource, boolean doFill) {
-		FluidStack fs = new FluidStack(resource.getFluid(), Math.min(25, resource.amount)); //25mB/t limit
-		return this.canFill(from, resource.getFluid()) ? tank.fill(fs, doFill) : 0;
-	}
-
-	@Override
-	public FluidStack drain(ForgeDirection from, FluidStack resource, boolean doDrain) {
-		return null;
-	}
-
-	@Override
-	public FluidStack drain(ForgeDirection from, int maxDrain, boolean doDrain) {
-		return null;
-	}
-
-	@Override
-	public boolean canFill(ForgeDirection from, Fluid fluid) {
-		return from.offsetY == 0 && fluid == FluidRegistry.getFluid("chroma") && this.hasStructure();
-	}
-
-	@Override
-	public boolean canDrain(ForgeDirection from, Fluid fluid) {
-		return false;
-	}
-
-	@Override
-	public FluidTankInfo[] getTankInfo(ForgeDirection from) {
-		return new FluidTankInfo[]{tank.getInfo()};
-	}
-
-	@Override
-	public int getMaxStorage(CrystalElement e) {
-		return 10000;
-	}
-
-	@Override
-	public ChromaTiles getTile() {
-		return ChromaTiles.CHROMACRAFTER;
-	}
-
-	@Override
-	protected void animateWithTick(World world, int x, int y, int z) {
-
-	}
-
-	@Override
-	protected boolean canReceiveFrom(CrystalElement e, ForgeDirection dir) {
-		return dir != ForgeDirection.UP || tank.getLevel() <= 1000;
-	}
-
-	@Override
-	public ElementTagCompound getRequiredEnergy() {
-		return required.copy();
-	}
-
-	@Override
-	public boolean isAcceptingColor(CrystalElement e) {
-		return required.contains(e);
-	}
-
-	@Override
-	@ModDependent(ModList.BCTRANSPORT)
-	public ConnectOverride overridePipeConnection(PipeType type, ForgeDirection with) {
-		if (type == PipeType.FLUID)
-			return with.offsetY == 0 ? ConnectOverride.CONNECT : ConnectOverride.DISCONNECT;
-		if (type == PipeType.ITEM)
-			return with != ForgeDirection.UP ? ConnectOverride.CONNECT : ConnectOverride.DISCONNECT;
-		return ConnectOverride.DISCONNECT;
-	}
-
-	@Override
-	public boolean onlyAllowOwnersToUse() {
-		return true;
-	}
-
-	@Override
-	public float getOperationFraction() {
-		if (recipe == null)
-			return 0;
-		return 1-(float)recipeTick/this.getCraftingDuration();
-	}
-
-	@Override
-	public OperationState getState() {
-		if (recipe == null)
-			return OperationState.INVALID;
-		return energy.containsAtLeast(required) ? OperationState.RUNNING : OperationState.PENDING;
-	}
-
-	@Override
-	public AxisAlignedBB getRenderBoundingBox() {
-		return ReikaAABBHelper.getBlockAABB(this).addCoord(0, 2, 0);
-	}
-
-	public boolean hasEtherBerries() {
-		return hasEtherBerries > 0;
-	}
-
-	@Override
-	public void breakBlock() {
-		ReikaItemHelper.dropItems(worldObj, xCoord+0.5, yCoord+0.5, zCoord+0.5, recipeItems);
-		for (int i = 0; i < hasEtherBerries; i++) {
-			ReikaItemHelper.dropItem(worldObj, xCoord+0.5, yCoord+0.5, zCoord+0.5, ChromaStacks.etherBerries);
-		}
-	}
-
-	@Override
-	public float getAccelerationFactor() {
-		return TileEntityFocusCrystal.getSummedFocusFactorDirect(this, this.getRelativeFocusCrystalLocations())/2; //caps at 6x for turbo, 4x for exq
-	}
-
-	@Override
-	public float getMaximumAcceleratability() {
-		return 4*TileEntityFocusCrystal.CrystalTier.TURBOCHARGED.efficiencyFactor;
-	}
-
-	@Override
-	public float getProgressToNextStep() {
-		return 0;
-	}
-
-	@Override
-	public void recountFocusCrystals() {
-		this.getAccelerationFactor();
-	}
-
-	@Override
-	public Collection<Coordinate> getRelativeFocusCrystalLocations() {
-		Collection<Coordinate> c = new ArrayList();
-		int d = 2;
-		for (int i = 2; i < 6; i++) {
-			c.add(new Coordinate(dirs[i].offsetX*d, 0, dirs[i].offsetZ*d));
-		}
-		return c;
-	}
-
-	@Override
-	public boolean hasWork() {
-		return this.getState() == OperationState.RUNNING;
-	}
-
+    private final class ChromaFluidHandler implements ResourceHandler<FluidResource> {
+        private final Direction side;
+        ChromaFluidHandler(Direction side) { this.side = side; }
+        @Override public int size() { return 1; }
+        @Override public FluidResource getResource(int index) { return index == 0 && chromaLevel > 0 ? chromaFluid : FluidResource.EMPTY; }
+        @Override public long getAmountAsLong(int index) { return index == 0 ? chromaLevel : 0; }
+        @Override public long getCapacityAsLong(int index, FluidResource resource) { return index == 0 && (resource.isEmpty() || isValid(index, resource)) ? CAPACITY : 0; }
+        @Override public boolean isValid(int index, FluidResource resource) { return index == 0 && !resource.isEmpty() && resource.getFluid() == ChromaFluids.CHROMA.get(); }
+        @Override public int insert(int index, FluidResource resource, int amount, TransactionContext transaction) {
+            TransferPreconditions.checkNonEmptyNonNegative(resource, amount);
+            if (!isValid(index, resource) || (side != null && !canConnectFluidPipe(side)) || !hasStructure() || (chromaLevel > 0 && !chromaFluid.equals(resource))) return 0;
+            int accepted = Math.min(25, Math.min(amount, CAPACITY - chromaLevel));
+            if (accepted > 0) { fluidJournal.updateSnapshots(transaction); chromaLevel += accepted; chromaFluid = resource; }
+            return accepted;
+        }
+        @Override public int extract(int index, FluidResource resource, int amount, TransactionContext transaction) {
+            TransferPreconditions.checkNonEmptyNonNegative(resource, amount); return 0; // Original input-only tank.
+        }
+    }
 }

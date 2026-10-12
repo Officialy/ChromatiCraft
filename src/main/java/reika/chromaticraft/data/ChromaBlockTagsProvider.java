@@ -78,6 +78,7 @@ public final class ChromaBlockTagsProvider extends BlockTagsProvider {
 				ChromaBlocks.POWER_CRYSTAL.getKey());
 		pickaxe.add(ChromaBlocks.CRYSTAL_CHARGER.getKey());
 		pickaxe.add(ChromaBlocks.CRYSTAL_BREWER.getKey());
+		pickaxe.add(ChromaBlocks.CHROMA_CRAFTER.getKey());
 		pickaxe.add(ChromaBlocks.LAUNCH_PAD.getKey());
 		pickaxe.add(ChromaBlocks.PARTICLE_SPAWNER.getKey());
 		pickaxe.add(ChromaBlocks.LUMEN_TURRET.getKey());

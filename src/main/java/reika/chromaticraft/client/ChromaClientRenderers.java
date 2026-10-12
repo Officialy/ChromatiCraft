@@ -238,6 +238,7 @@ public final class ChromaClientRenderers {
 	}
 
 	private static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
+        event.registerBlockEntityRenderer(ChromaBlockEntities.CHROMA_CRAFTER.get(), RenderChromaCrafter::new);
         event.registerEntityRenderer(ChromaEntityTypes.MONSTER_BAIT.get(),reika.chromaticraft.render.entity.RenderMonsterBait::new);
         event.registerEntityRenderer(ChromaEntityTypes.DEATH_FOG.get(),reika.chromaticraft.render.entity.RenderDeathFog::new);
         event.registerBlockEntityRenderer(ChromaBlockEntities.COLORED_ALTAR.get(),reika.chromaticraft.render.tesr.RenderColoredAltar::new);

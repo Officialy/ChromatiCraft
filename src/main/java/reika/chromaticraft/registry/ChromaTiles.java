@@ -110,7 +110,8 @@ public enum ChromaTiles implements TileEnum {
 	VOIDRIFT("chroma.voidrift", ChromaBlocks.voidRiftBlock(CrystalElement.WHITE),
 			reika.chromaticraft.tileentity.dimension.TileEntityVoidRift.class),
 	GLOWCRACKS("chroma.glowcracks", ChromaBlocks.GLOWING_CRACKS,
-			reika.chromaticraft.tileentity.dimension.TileEntityGlowingCracks.class);
+			reika.chromaticraft.tileentity.dimension.TileEntityGlowingCracks.class),
+	CHROMACRAFTER("chroma.chromacrafter", ChromaBlocks.CHROMA_CRAFTER, TileEntityChromaCrafter.class);
 
 	private final String nameKey;
 	private final DeferredBlock<Block> block;

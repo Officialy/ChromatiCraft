@@ -9,220 +9,93 @@
  ******************************************************************************/
 package reika.chromaticraft.render.tesr;
 
-import java.util.Collection;
-
-import org.lwjgl.opengl.GL11;
-
-import net.minecraft.block.Block;
-import net.minecraft.client.renderer.RenderBlocks;
-import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.client.renderer.entity.RenderItem;
-import net.minecraft.client.renderer.entity.RenderManager;
-import net.minecraft.item.ItemStack;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.IIcon;
-import net.minecraftforge.client.MinecraftForgeClient;
-
-import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.auxiliary.ChromaStacks;
-import reika.chromaticraft.auxiliary.recipemanagers.poolrecipes.PoolRecipe;
-import reika.chromaticraft.base.ChromaRenderBase;
-import reika.chromaticraft.block.worldgen.BlockStructureShield;
-import reika.chromaticraft.block.worldgen.blockstructureshield.BlockType;
-import reika.chromaticraft.registry.ChromaBlocks;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.math.Axis;
+import java.util.ArrayList;
+import java.util.List;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
+import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
+import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
+import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
+import net.minecraft.client.renderer.item.ItemModelResolver;
+import net.minecraft.client.renderer.item.ItemStackRenderState;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.client.renderer.texture.TextureAtlas;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.data.AtlasIds;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.item.ItemDisplayContext;
+import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 import reika.chromaticraft.tileentity.recipe.TileEntityChromaCrafter;
-import reika.dragonapi.instantiable.InertItem;
-import reika.dragonapi.interfaces.tileentity.RenderFetcher;
-import reika.dragonapi.libraries.io.ReikaTextureHelper;
-import reika.dragonapi.libraries.java.reikaglhelper.BlendMode;
-import reika.dragonapi.libraries.registry.ReikaItemHelper;
-import reika.dragonapi.libraries.rendering.ReikaLiquidRenderer;
 
-
-public class RenderChromaCrafter extends ChromaRenderBase {
-
-	//private final ModelChromaCrafter model = new ModelChromaCrafter();
-
-	@Override
-	public String getImageFileName(RenderFetcher te) {
-		return "chromacrafter.png";
-	}
-
-	@Override
-	public void renderTileEntityAt(TileEntity tile, double par2, double par4, double par6, float par8) {
-		TileEntityChromaCrafter te = (TileEntityChromaCrafter)tile;
-		GL11.glPushMatrix();
-		GL11.glTranslated(par2, par4, par6);
-		//this.renderModel(te, model);
-		if (!te.isInWorld() || MinecraftForgeClient.getRenderPass() == 0) {
-			Block b = ChromaBlocks.STRUCTSHIELD.getBlockInstance();
-			ReikaTextureHelper.bindTerrainTexture();
-			if (te.isInWorld()) {
-				RenderBlocks.getInstance().setRenderBounds(0, 0, 0, 1, 1, 1);
-				Tessellator.instance.setNormal(0, 1, 0);
-				Tessellator.instance.setBrightness(te.getBlockType().getMixedBrightnessForBlock(te.worldObj, te.xCoord, te.yCoord, te.zCoord));
-				Tessellator.instance.startDrawingQuads();
-				Tessellator.instance.setColorOpaque_F(0.5F, 0.5F, 0.5F);
-				IIcon ico = b.getIcon(1, BlockType.GLASS.ordinal());
-				RenderBlocks.getInstance().renderFaceYNeg(b, 0, 0, 0, ico);
-				if (te.hasStructure()) {
-					Tessellator.instance.setColorOpaque_F(0.75F, 0.75F, 0.75F);
-					RenderBlocks.getInstance().renderFaceXNeg(b, 0, 0, 0, BlockStructureShield.lowerConnectedIcon);
-					RenderBlocks.getInstance().renderFaceXPos(b, 0, 0, 0, BlockStructureShield.lowerConnectedIcon);
-					RenderBlocks.getInstance().renderFaceXNeg(b, 0, 1, 0, BlockStructureShield.centerConnectedIcon);
-					RenderBlocks.getInstance().renderFaceXPos(b, 0, 1, 0, BlockStructureShield.centerConnectedIcon);
-					RenderBlocks.getInstance().renderFaceXNeg(b, 0, 2, 0, BlockStructureShield.upperConnectedIcon);
-					RenderBlocks.getInstance().renderFaceXPos(b, 0, 2, 0, BlockStructureShield.upperConnectedIcon);
-					Tessellator.instance.setColorOpaque_F(0.875F, 0.875F, 0.875F);
-					RenderBlocks.getInstance().renderFaceZNeg(b, 0, 0, 0, BlockStructureShield.lowerConnectedIcon);
-					RenderBlocks.getInstance().renderFaceZPos(b, 0, 0, 0, BlockStructureShield.lowerConnectedIcon);
-					RenderBlocks.getInstance().renderFaceZNeg(b, 0, 1, 0, BlockStructureShield.centerConnectedIcon);
-					RenderBlocks.getInstance().renderFaceZPos(b, 0, 1, 0, BlockStructureShield.centerConnectedIcon);
-					RenderBlocks.getInstance().renderFaceZNeg(b, 0, 2, 0, BlockStructureShield.upperConnectedIcon);
-					RenderBlocks.getInstance().renderFaceZPos(b, 0, 2, 0, BlockStructureShield.upperConnectedIcon);
-				}
-				else {
-					RenderBlocks.getInstance().renderFaceXNeg(b, 0, 0, 0, ico);
-					RenderBlocks.getInstance().renderFaceXPos(b, 0, 0, 0, ico);
-					Tessellator.instance.setColorOpaque_F(0.875F, 0.875F, 0.875F);
-					RenderBlocks.getInstance().renderFaceZNeg(b, 0, 0, 0, ico);
-					RenderBlocks.getInstance().renderFaceZPos(b, 0, 0, 0, ico);
-					Tessellator.instance.setColorOpaque_F(1, 1, 1);
-					RenderBlocks.getInstance().renderFaceYPos(b, 0, 0, 0, b.getIcon(1, BlockType.GLASS.ordinal()));
-				}
-				Tessellator.instance.draw();
-			}
-			else {
-				double d = 0.0625*1.75;
-				GL11.glTranslated(0, d, 0);
-				RenderBlocks.getInstance().renderBlockAsItem(b, BlockType.GLASS.ordinal(), 1);
-			}
-		}
-		if (te.isInWorld() && MinecraftForgeClient.getRenderPass() == 1) {
-			this.renderItems(te, par8);
-			this.renderFluid(te, par8);
-		}
-		GL11.glPopMatrix();
-	}
-
-	private void renderFluid(TileEntityChromaCrafter te, float par8) {
-		double amt = te.getChromaLevel()*3D/te.CAPACITY;
-		if (amt <= 0)
-			return;
-
-		/*
-		FluidStack liquid = new FluidStack(ChromatiCraft.chroma, 1);
-
-		int[] displayList = ReikaLiquidRenderer.getGLLists(liquid, te.worldObj, false);
-
-		if (displayList == null) {
-			return;
-		}
-		 */
-
-		GL11.glPushMatrix();
-		GL11.glPushAttrib(GL11.GL_ENABLE_BIT);
-		GL11.glEnable(GL11.GL_CULL_FACE);
-		GL11.glDisable(GL11.GL_LIGHTING);
-		GL11.glEnable(GL11.GL_BLEND);
-		BlendMode.DEFAULT.apply();
-
-		ReikaLiquidRenderer.bindFluidTexture(ChromatiCraft.chroma);
-		//ReikaLiquidRenderer.setFluidColor(liquid);
-
-		//GL11.glTranslated(0, 0.005, 0);
-		//GL11.glScaled(0.99, 0.99, 0.99);
-
-		IIcon ico = ChromatiCraft.chroma.getStillIcon();
-		float u = ico.getMinU();
-		float v = ico.getMinV();
-		float du = ico.getMaxU();
-		float dv = ico.getMaxV();
-
-		Tessellator.instance.startDrawingQuads();
-		double y = 0;
-		double o = 0.01;
-
-		Tessellator.instance.addVertexWithUV(1-o, o, 0+o, u, v);
-		Tessellator.instance.addVertexWithUV(1-o, o, 1-o, du, v);
-		Tessellator.instance.addVertexWithUV(0+o, o, 1-o, du, dv);
-		Tessellator.instance.addVertexWithUV(0+o, o, 0+o, u, dv);
-
-		while (amt > 0) {
-			double lvl = Math.min(1, amt);
-
-			float dv2 = ico.getInterpolatedV(lvl*16D);
-			double o2 = o;
-			double o3 = o;
-			if (te.worldObj.getBlock(te.xCoord, (int)(te.yCoord+y+1), te.zCoord) == ChromaBlocks.STRUCTSHIELD.getBlockInstance())
-				o2 = 0;
-			Block bb = te.worldObj.getBlock(te.xCoord, (int)(te.yCoord+y-1), te.zCoord);
-			if (bb == ChromaBlocks.STRUCTSHIELD.getBlockInstance() || bb == te.getBlockType())
-				o3 = 0;
-			//GL11.glCallList(displayList[(int)(lvl * (ReikaLiquidRenderer.LEVELS - 1))]);
-			Tessellator.instance.addVertexWithUV(0+o, y-o2+lvl, 0+o, u, dv2);
-			Tessellator.instance.addVertexWithUV(1-o, y-o2+lvl, 0+o, du, dv2);
-			Tessellator.instance.addVertexWithUV(1-o, y+o3, 0+o, du, v);
-			Tessellator.instance.addVertexWithUV(0+o, y+o3, 0+o, u, v);
-
-			Tessellator.instance.addVertexWithUV(0+o, y+o3, 1-o, u, v);
-			Tessellator.instance.addVertexWithUV(1-o, y+o3, 1-o, du, v);
-			Tessellator.instance.addVertexWithUV(1-o, y-o2+lvl, 1-o, du, dv2);
-			Tessellator.instance.addVertexWithUV(0+o, y-o2+lvl, 1-o, u, dv2);
-
-			Tessellator.instance.addVertexWithUV(1-o, y-o2+lvl, 0+o, u, dv2);
-			Tessellator.instance.addVertexWithUV(1-o, y-o2+lvl, 1-o, du, dv2);
-			Tessellator.instance.addVertexWithUV(1-o, y+o3, 1-o, du, v);
-			Tessellator.instance.addVertexWithUV(1-o, y+o3, 0+o, u, v);
-
-			Tessellator.instance.addVertexWithUV(0+o, y+o3, 0+o, u, v);
-			Tessellator.instance.addVertexWithUV(0+o, y+o3, 1-o, du, v);
-			Tessellator.instance.addVertexWithUV(0+o, y-o2+lvl, 1-o, du, dv2);
-			Tessellator.instance.addVertexWithUV(0+o, y-o2+lvl, 0+o, u, dv2);
-			amt -= lvl;
-			y += lvl;
-			if (!te.hasStructure() && y >= 1) {
-				amt = 0;
-			}
-			//GL11.glTranslated(0, lvl, 0);
-		}
-
-		double o2 = y < 3 && te.hasStructure() ? 0 : o;
-		Tessellator.instance.addVertexWithUV(0+o, y-o2, 0+o, u, dv);
-		Tessellator.instance.addVertexWithUV(0+o, y-o2, 1-o, du, dv);
-		Tessellator.instance.addVertexWithUV(1-o, y-o2, 1-o, du, v);
-		Tessellator.instance.addVertexWithUV(1-o, y-o2, 0+o, u, v);
-		Tessellator.instance.draw();
-
-		GL11.glPopAttrib();
-		GL11.glPopMatrix();
-	}
-
-	private void renderItems(TileEntityChromaCrafter te, float par8) {
-		PoolRecipe r = te.getActiveRecipe();
-		if (r != null) {
-			Collection<ItemStack> li = r.getInputs();
-			li.add(r.getMainInput());
-			if (te.hasEtherBerries())
-				li.add(ChromaStacks.etherBerries);
-			int i = 0;
-			double da = 360D*4/li.size();
-			for (ItemStack is : li) {
-				is = ReikaItemHelper.getSizedItemStack(is, 1);
-				InertItem ei = new InertItem(te.worldObj, is);
-				ei.hoverStart = 0;
-				ei.age = te.getTicksExisted();
-				double a = Math.toRadians(te.getTicksExisted()*4D+i*da);
-				double rd = 0.25;
-				double dx = rd*Math.cos(a);
-				double dz = rd*Math.sin(a);
-				double dy = 1.25+1.25*Math.sin(a/4D);
-				RenderItem.renderInFrame = true;
-				RenderManager.instance.renderEntityWithPosYaw(ei, 0.5+dx, dy, 0.5+dz, 0, 0/*tick*/);
-				RenderItem.renderInFrame = false;
-				i++;
-			}
-		}
-	}
-
+/** V33a three-block fluid column and ingredient orbits; the shield body uses data-owned connected models. */
+public final class RenderChromaCrafter implements BlockEntityRenderer<TileEntityChromaCrafter, RenderChromaCrafter.State> {
+    private static final Identifier CHROMA = Identifier.fromNamespaceAndPath("chromaticraft", "block/fluid/activechroma");
+    private final ItemModelResolver resolver;
+    public RenderChromaCrafter(BlockEntityRendererProvider.Context context) { resolver = context.itemModelResolver(); }
+    @Override public State createRenderState() { return new State(); }
+    @Override public void extractRenderState(TileEntityChromaCrafter tile, State state, float partial,
+            Vec3 camera, ModelFeatureRenderer.@Nullable CrumblingOverlay overlay) {
+        BlockEntityRenderer.super.extractRenderState(tile, state, partial, camera, overlay);
+        state.tick = tile.getTicksExisted() + partial;
+        state.height = (float)(tile.getChromaLevel()*3D / TileEntityChromaCrafter.CAPACITY);
+        state.formed = tile.hasStructure();
+        if (!state.formed) state.height = Math.min(1, state.height);
+        state.items = new ArrayList<>();
+        for (var stack : tile.getRenderItems()) {
+            ItemStackRenderState item = new ItemStackRenderState();
+            resolver.updateForTopItem(item, stack.copyWithCount(1), ItemDisplayContext.FIXED, tile.getLevel(), null, state.items.size());
+            state.items.add(item);
+        }
+    }
+    @Override public void submit(State state, PoseStack poses, SubmitNodeCollector collector, CameraRenderState camera) {
+        if (state.height > 0) {
+            TextureAtlasSprite icon = Minecraft.getInstance().getAtlasManager().getAtlasOrThrow(AtlasIds.BLOCKS).getSprite(CHROMA);
+            PoseStack copy = new PoseStack(); copy.last().set(poses.last());
+            collector.submitCustomGeometry(poses, RenderTypes.entityTranslucent(TextureAtlas.LOCATION_BLOCKS),
+                    (unused, vertices) -> fluid(vertices, copy.last(), icon, state.height, state.formed));
+        }
+        for (int i = 0; i < state.items.size(); i++) {
+            double angle = Math.toRadians(state.tick*4 + i*360D*4/state.items.size());
+            poses.pushPose();
+            poses.translate(0.5 + 0.25*Math.cos(angle), 1.25 + 1.25*Math.sin(angle/4), 0.5 + 0.25*Math.sin(angle));
+            poses.rotate(Axis.YP.rotationDegrees(state.tick*4));
+            poses.scale(0.5F, 0.5F, 0.5F);
+            state.items.get(i).submit(poses, collector, state.lightCoords, OverlayTexture.NO_OVERLAY, 0);
+            poses.popPose();
+        }
+    }
+    private static void fluid(VertexConsumer vertices, PoseStack.Pose pose, TextureAtlasSprite icon, float height, boolean formed) {
+        float lo = 0.01F, hi = 0.99F;
+        quad(vertices, pose, icon, new float[][]{{hi,lo,lo},{hi,lo,hi},{lo,lo,hi},{lo,lo,lo}}, 0, 1, 0,-1,0);
+        for (int floor = 0; floor < height; floor++) {
+            float portion = Math.min(1, height-floor);
+            float bottom = floor + (formed && floor > 0 ? 0 : lo);
+            float top = floor + portion - (formed && floor+1 < 3 ? 0 : lo);
+            quad(vertices,pose,icon,new float[][]{{lo,top,lo},{hi,top,lo},{hi,bottom,lo},{lo,bottom,lo}},portion,0,0,0,-1);
+            quad(vertices,pose,icon,new float[][]{{lo,bottom,hi},{hi,bottom,hi},{hi,top,hi},{lo,top,hi}},0,portion,0,0,1);
+            quad(vertices,pose,icon,new float[][]{{hi,top,lo},{hi,top,hi},{hi,bottom,hi},{hi,bottom,lo}},portion,0,1,0,0);
+            quad(vertices,pose,icon,new float[][]{{lo,bottom,lo},{lo,bottom,hi},{lo,top,hi},{lo,top,lo}},0,portion,-1,0,0);
+        }
+        float top = height - (height < 3 && formed ? 0 : lo);
+        quad(vertices,pose,icon,new float[][]{{lo,top,lo},{lo,top,hi},{hi,top,hi},{hi,top,lo}},1,0,0,1,0);
+    }
+    private static void quad(VertexConsumer out, PoseStack.Pose pose, TextureAtlasSprite icon,
+            float[][] points, float firstV, float lastV, float nx, float ny, float nz) {
+        float[] u = {0,1,1,0}, v = {firstV,firstV,lastV,lastV};
+        for (int i = 0; i < 4; i++) out.addVertex(pose, points[i][0],points[i][1],points[i][2])
+                .setColor(0xffffffff).setUv(icon.getU(u[i]),icon.getV(v[i]))
+                .setOverlay(OverlayTexture.NO_OVERLAY).setLight(0xf000f0).setNormal(pose,nx,ny,nz);
+    }
+    public static final class State extends BlockEntityRenderState {
+        private float tick, height;
+        private boolean formed;
+        private List<ItemStackRenderState> items = List.of();
+    }
 }

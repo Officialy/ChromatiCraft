@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "formed=false": {
+      "model": "chromaticraft:block/chroma_crafter"
+    },
+    "formed=true": {
+      "model": "chromaticraft:block/chroma_crafter_formed"
+    }
+  }
+}

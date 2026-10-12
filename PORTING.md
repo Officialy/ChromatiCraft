@@ -10988,3 +10988,41 @@ D40 typed-map accumulation and D41 excluded fuzzy-set consumers remain for full
 subsystem ports; D37 still needs authentic plank provenance. Earlier pending
 worldgen, rift, compatibility, launcher, IDE and D31 work remains outside this
 local checkpoint. Nothing is pushed.
+
+
+## Chroma Crafter — D40 slice and D41 review, 2026-10-12
+
+Fully ported and registered the formerly excluded Chroma Crafter and its
+InventoriedRelayPowered base. Native inventory, transactional fluid capabilities,
+reloadable production pool recipes, relay energy, owner policy, focus acceleration,
+berry/owner doubling, stored surplus, save/resolve, particles and detached native
+render submission preserve the original machine contract. The typed tally uses
+ItemHashMap.add. Output blockage conserves resources; a shared tank journal
+preserves native fluid component identity through nested cross-face rollback and
+save/load. Client prediction retains Manipulator countdown behavior.
+
+Datagen emits the original PYLON creation recipe (24 stands, five runes, three
+aura requirements) and original shield-glass connected models, name and loot.
+ChromaTiles appends the entry without shifting existing ordinals.
+Native pickaxe harvesting follows the original rock material. Unsupported
+BuildCraft connection policy remains behind a CHROMA-PORT adapter marker.
+
+Final eight native crafter fixtures pass, along with two pool regressions, 74
+DragonAPI native regressions, 156 units (108/34/8/6), eight class guards covering
+3,279 primary outputs, server/client datagen and the Chroma jar. A reused block
+entity in the expanded fluid test was corrected before its final passing rerun.
+Normal Play argument hashes remain unchanged. These are working-tree headless
+checks, not interactive/remote/optional-mod or direct 1.7.10-world acceptance.
+
+D41's inspected transporter request sets and aspect recursion guard are
+homogeneous; no fuzzy equality substitution is needed there. Other inspected
+sets are iterated or use consistent criteria. The ItemMagicRegistry external
+KeyedItemStack query overload and optional integrations still need full review.
+D40 remains open for other excluded consumers; D41 remains open for the remaining
+subsystem/integration audit. D37 still requires authentic plank provenance.
+
+Contract: ChromatiCraft/docs/chroma-crafter-port.md.
+Evidence: TestInstance/docs/chroma-crafter-2026-10-12.md and root build/
+chroma-crafter-{datagen,family-validation,pool-validation,final-validation}.log.
+Earlier pending worldgen, rift, compatibility, launcher, IDE and D31 work is
+retained outside this selective local checkpoint. Nothing is pushed.
