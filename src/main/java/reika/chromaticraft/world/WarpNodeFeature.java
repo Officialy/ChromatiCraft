@@ -25,7 +25,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * Forest four times in five, Luminous Cliffs two in three, and anywhere else only one in three.
  *
  * <p>Nodes sit in open sky well above the ground — at least 48 blocks over the highest block, and
- * at least y 128 in Luminous Cliffs — because the whole point is that you reach them by flying and enter them at
+ * above the modern middle plateau in Luminous Cliffs — because the whole point is that you reach them by flying and enter them at
  * speed. The node itself is inert until opened; see {@code BlockWarpNode}.
  */
 public final class WarpNodeFeature implements Feature {
@@ -64,8 +64,8 @@ public final class WarpNodeFeature implements Feature {
 
 		int minY = minimumHeight(world.getHeight(Heightmap.Types.MOTION_BLOCKING, x, z) - 1,
 				biome.is(ChromaBiomes.LUMINOUS_CLIFFS) || biome.is(ChromaBiomes.LUMINOUS_CLIFFS_SHORES));
-		int maxY = this.getMaxY(biome);
-		if (minY >= maxY)
+        int maxY = world.getMaxY();
+        if (minY > maxY)
 			return false;
 		int y = minY + random.nextInt(maxY - minY + 1);
 		BlockPos pos = new BlockPos(x, y, z);
@@ -113,17 +113,6 @@ public final class WarpNodeFeature implements Feature {
 	static int minimumHeight(int topNonAir, boolean cliffs) {
 		int min = topNonAir + 48;
 		return cliffs ? Math.max(min, GlowingCliffsColumnShaper.MAX_MIDDLE_TOP_Y + 16) : min;
-	}
-
-	/**
-	 * V33a getMaxY: {@code min(255, 192 * max(1, rootHeight))}, floored at 128, and unrestricted in
-	 * the cliff biomes. Modern biomes have no rootHeight, so the plain 192 case applies and the two
-	 * Luminous Cliffs biomes keep their raised ceiling.
-	 */
-	private int getMaxY(Holder<Biome> biome) {
-		if (biome.is(ChromaBiomes.LUMINOUS_CLIFFS) || biome.is(ChromaBiomes.LUMINOUS_CLIFFS_SHORES))
-			return 255;
-		return 192;
 	}
 
 	/** V33a canGenerateAt: open air with a clear view of the sky. */

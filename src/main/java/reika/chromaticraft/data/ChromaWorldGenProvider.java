@@ -373,7 +373,9 @@ public final class ChromaWorldGenProvider {
                 // V33a BlockExcludingOreVein targets only the host block, which is what makes these
                 // ores replace stone/netherrack and never the cliff material it explicitly excluded.
                 bootstrap.register(featureKey(ore.name()), new net.minecraft.world.level.levelgen.feature.OreFeature(
-                        new net.minecraft.world.level.levelgen.structure.templatesystem.BlockMatchTest(ore.host()),
+                        ore.host() == Blocks.STONE
+                                ? new net.minecraft.world.level.levelgen.structure.templatesystem.TagMatchTest(BlockTags.BASE_STONE_OVERWORLD)
+                                : new net.minecraft.world.level.levelgen.structure.templatesystem.BlockMatchTest(ore.host()),
                         ore.block().get().defaultBlockState(), ore.veinSize()));
             }
             var belowTrunk = bootstrap.lookup(Registries.BLOCK_STATE_PROVIDER)
@@ -889,7 +891,7 @@ public final class ChromaWorldGenProvider {
         bootstrap.register(deco.lateSandDisk(), new PlacedFeature(sand, disk(deco.lateSandDisks())));
 
         PlacementModifier legacyHeight = net.minecraft.world.level.levelgen.placement.HeightRangePlacement.uniform(
-                net.minecraft.world.level.levelgen.VerticalAnchor.absolute(0),
+                net.minecraft.world.level.levelgen.VerticalAnchor.aboveBottom(4),
                 net.minecraft.world.level.levelgen.VerticalAnchor.absolute(127));
         PlacementModifier intoAir = net.minecraft.world.level.levelgen.placement.BlockPredicateFilter.forPredicate(
                 net.minecraft.world.level.levelgen.blockpredicates.BlockPredicate.ONLY_IN_AIR_PREDICATE);
@@ -921,7 +923,7 @@ public final class ChromaWorldGenProvider {
      * V33a {@code GlowingCliffsDecorator.genDecorations}, with 1.7.10's generators reproduced in
      * placement modifiers as for the Rainbow Forest (see {@link #registerRainbowDecoration}):
      * <ul>
-     * <li>ten gravel veins anywhere from y 0 to 255, which refuse cliff stone and unsupported cells;</li>
+     * <li>ten gravel veins between the dimension floor and ceiling, which refuse cliff stone and unsupported cells;</li>
      * <li>six sand disks and one clay disk under water, then two gravel veins on the top solid block;</li>
      * <li>four trees, five one chunk in ten: a big glowing tree one time in twenty, else a big oak one
      * time in ten, else an oak;</li>
@@ -929,7 +931,7 @@ public final class ChromaWorldGenProvider {
      * cane at {@code rand(height*2)}, and a brown mushroom patch one chunk in four and a red one in
      * eight;</li>
      * <li>twice the ordinary springs: 100 water at {@code rand(rand(248)+8)} and 40 lava at
-     * {@code rand(rand(rand(240)+8)+8)}, heights vanilla's biased providers reproduce exactly.</li>
+     * {@code rand(rand(rand(240)+8)+8)}, biases retained with modern floor/top anchors.</li>
      * </ul>
      */
     private static void registerLuminousPlacements(BootstrapContext<PlacedFeature> bootstrap,
@@ -938,8 +940,8 @@ public final class ChromaWorldGenProvider {
         bootstrap.register(LUMINOUS_GRAVEL_ORE_PLACED, new PlacedFeature(gravel, List.of(
                 CountPlacement.of(10), InSquarePlacement.spread(),
                 net.minecraft.world.level.levelgen.placement.HeightRangePlacement.uniform(
-                        net.minecraft.world.level.levelgen.VerticalAnchor.absolute(0),
-                        net.minecraft.world.level.levelgen.VerticalAnchor.absolute(255)),
+                        net.minecraft.world.level.levelgen.VerticalAnchor.aboveBottom(4),
+                        net.minecraft.world.level.levelgen.VerticalAnchor.belowTop(0)),
                 BiomeFilter.biome())));
         var sand = configured.getOrThrow(net.minecraft.data.worldgen.features.MiscOverworldFeatures.DISK_SAND);
         var clay = configured.getOrThrow(net.minecraft.data.worldgen.features.MiscOverworldFeatures.DISK_CLAY);
@@ -998,16 +1000,16 @@ public final class ChromaWorldGenProvider {
                 List.of(CountPlacement.of(2 * 50), InSquarePlacement.spread(),
                         net.minecraft.world.level.levelgen.placement.HeightRangePlacement.of(
                                 net.minecraft.world.level.levelgen.heightproviders.BiasedToBottomHeight.of(
-                                        net.minecraft.world.level.levelgen.VerticalAnchor.absolute(0),
-                                        net.minecraft.world.level.levelgen.VerticalAnchor.absolute(255), 8)),
+                                        net.minecraft.world.level.levelgen.VerticalAnchor.aboveBottom(4),
+                                        net.minecraft.world.level.levelgen.VerticalAnchor.belowTop(0), 8)),
                         BiomeFilter.biome())));
         bootstrap.register(LUMINOUS_SPRING_LAVA_PLACED, new PlacedFeature(
                 configured.getOrThrow(net.minecraft.data.worldgen.features.MiscOverworldFeatures.SPRING_LAVA_OVERWORLD),
                 List.of(CountPlacement.of(2 * 20), InSquarePlacement.spread(),
                         net.minecraft.world.level.levelgen.placement.HeightRangePlacement.of(
                                 net.minecraft.world.level.levelgen.heightproviders.VeryBiasedToBottomHeight.of(
-                                        net.minecraft.world.level.levelgen.VerticalAnchor.absolute(0),
-                                        net.minecraft.world.level.levelgen.VerticalAnchor.absolute(247), 8)),
+                                        net.minecraft.world.level.levelgen.VerticalAnchor.aboveBottom(4),
+                                        net.minecraft.world.level.levelgen.VerticalAnchor.belowTop(8), 8)),
                         BiomeFilter.biome())));
         // Bone meal only.
         bootstrap.register(LUMINOUS_CLIFFS_FLOWER_PLACED, new PlacedFeature(configured.getOrThrow(LUMINOUS_CLIFFS_FLOWER),

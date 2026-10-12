@@ -33,7 +33,9 @@ import reika.chromaticraft.tileentity.TileEntityHeatLamp;
 import reika.chromaticraft.tileentity.TileEntityLootChest;
 import reika.chromaticraft.tileentity.TileEntityStructureController;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /** NBT-backed runtime feature family for V33a's six natural overworld structures. */
@@ -427,7 +429,9 @@ public final class OverworldStructureFeature implements Feature {
 
 	private BlockPos naturalControllerPosition(WorldGenLevel world, BlockPos origin, RandomSource random) {
 		if (type == Type.CAVERN)
-			return new BlockPos(origin.getX(), 10 + random.nextInt(40), origin.getZ());
+            return new BlockPos(origin.getX(), reika.dragonapi.libraries.level.WorldgenHeight.randomBetween(world, random,
+                    reika.dragonapi.libraries.level.WorldgenHeight.undergroundY(world, 10),
+                    reika.dragonapi.libraries.level.WorldgenHeight.undergroundY(world, 49)), origin.getZ());
 		if (type == Type.OCEAN) {
 			// V33a's getTopSolidOrLiquidBlock ignored water; use the seabed rather than the sea surface.
 			int top = terrainTop(world, origin.getX(), origin.getZ());
@@ -698,16 +702,18 @@ public final class OverworldStructureFeature implements Feature {
 			}
 		}
 		BlockPos min = controllerPos.offset(-8, -3, -6);
-		for (int x = 0; x < 17; x++)
-			for (int z = 0; z < 17; z++) {
-				for (int y = 0; y < 15; y++) {
-					BlockPos at = min.offset(x, y, z);
-					if (!(world.getBlockState(at).getBlock()
-							instanceof reika.chromaticraft.block.worldgen26.BlockStructureShield)) continue;
-					BlockPos below = at.below();
-					for (int depth = 0; depth < 5 && world.getBlockState(below).isAir(); depth++, below = below.below())
-						world.setBlock(below, Blocks.STONE.defaultBlockState(), 2);
-				}
+		// V33a addMissingSupport starts below the lowest authored cell in each column.
+		// Supporting every shield block also treats room ceilings as foundations and
+		// fills the authored interior air with stone.
+		Map<BlockPos, Integer> bottoms = new HashMap<>();
+		for (BlockPos cell : cells)
+			bottoms.merge(new BlockPos(cell.getX(), 0, cell.getZ()), cell.getY(), Math::min);
+		for (Map.Entry<BlockPos, Integer> column : bottoms.entrySet())
+			for (int depth = 1; depth <= 5; depth++) {
+				BlockPos below = new BlockPos(column.getKey().getX(), column.getValue() - 1 - depth,
+						column.getKey().getZ());
+				if (reika.dragonapi.libraries.level.ReikaWorldHelper.softBlocks(world, below))
+					world.setBlock(below, Blocks.STONE.defaultBlockState(), 2);
 			}
 		for (int x = -4; x <= 20; x++) for (int z = -4; z <= 20; z++) {
 			BlockPos top = new BlockPos(min.getX() + x, terrainTop(world, min.getX() + x, min.getZ() + z), min.getZ() + z);

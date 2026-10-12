@@ -8,29 +8,27 @@ import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.biome.Climate;
 import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.registry.ChromaOptions;
 import terrablender.api.Region;
 import terrablender.api.RegionType;
 
 import java.util.List;
 import java.util.function.Consumer;
 
-/** Dedicated overworld region for V33a's large, coherent Luminous Cliffs biome islands. */
+/** Advertises both Cliffs biomes to TerraBlender; LargeBiomePlacement owns their spatial distribution. */
 public final class LuminousCliffsRegion extends Region {
 
 	public LuminousCliffsRegion() {
 		super(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "luminous_cliffs"),
-				RegionType.OVERWORLD, ChromaOptions.getGlowingCliffsWeight());
+				RegionType.OVERWORLD, 0);
 	}
 
 	@Override
 	public void addBiomes(Registry<Biome> registry,
 			Consumer<Pair<Climate.ParameterPoint, ResourceKey<Biome>>> mapper) {
 		this.addModifiedVanillaOverworldBiomes(mapper, builder -> {
-			// V33a inserts Luminous Cliffs as a complete warm/cool biome, not merely as a
-			// replacement for the sparse Windswept climate points. Replacing every ordinary
-			// surface-land target inside this low-weight TerraBlender region gives it that same
-			// coherent footprint while leaving oceans, mushroom islands, and cave biomes intact.
+			// Zero weight is intentional: these mappings keep both entries in possibleBiomes
+			// (decoration ordering and biome serialization), without scattering extra fragments.
+			// The seeded planner applies the biome family to connected land with a minimum core.
 			for (ResourceKey<Biome> biome : LAND_BIOMES)
 				builder.replaceBiome(biome, ChromaBiomes.LUMINOUS_CLIFFS);
 			for (ResourceKey<Biome> biome : EDGE_BIOMES)
@@ -38,7 +36,7 @@ public final class LuminousCliffsRegion extends Region {
 		});
 	}
 
-	private static final List<ResourceKey<Biome>> LAND_BIOMES = List.of(
+	static final List<ResourceKey<Biome>> LAND_BIOMES = List.of(
 			Biomes.PLAINS, Biomes.SUNFLOWER_PLAINS, Biomes.SNOWY_PLAINS, Biomes.ICE_SPIKES,
 			Biomes.DESERT, Biomes.SWAMP, Biomes.MANGROVE_SWAMP, Biomes.FOREST,
 			Biomes.FLOWER_FOREST, Biomes.BIRCH_FOREST, Biomes.DARK_FOREST, Biomes.PALE_GARDEN,
@@ -52,7 +50,7 @@ public final class LuminousCliffsRegion extends Region {
 			Biomes.SNOWY_SLOPES, Biomes.FROZEN_PEAKS, Biomes.JAGGED_PEAKS, Biomes.STONY_PEAKS
 	);
 
-	private static final List<ResourceKey<Biome>> EDGE_BIOMES = List.of(
+	static final List<ResourceKey<Biome>> EDGE_BIOMES = List.of(
 			Biomes.RIVER, Biomes.FROZEN_RIVER, Biomes.BEACH, Biomes.SNOWY_BEACH,
 			Biomes.STONY_SHORE
 	);

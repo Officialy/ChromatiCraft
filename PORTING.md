@@ -1,4 +1,48 @@
+## 2026-10-10 - Bounded terrain-preloader population
+
+DragonAPI now persists finite population scopes shared by ChromatiCraft and GeoStrata. The actual NeoForge 26.3 GenerationTask automatically supplies its square; optional Chunky 1.5.4 hooks observe processed chunks (including skipped FULL chunks) with Chunky's own rounded shape predicate. Completion continues after terrain generation; pause/continue/cancel and interrupted-producer persistence retain queued job cursor/RNG state. /reikapregen provides manual bounded backlog processing and dimension-local status/controls. Supporting chunk tickets cannot admit jobs outside the selected origins.
+
+Both queues now explicitly schedule their entire footprint asynchronously at FULL via the 26.3 addTicketAndLoadWithRadius API, rather than assuming a loading ticket schedules all required FULL tasks. Temporary tickets keep the dimension active, refresh on server ticks and release on loss of admission/shutdown. A shared server hook prevents empty-player pausing while a bounded pass runs. See TestInstance/docs/bounded-pregeneration.md for commands, bounds, restart semantics and the integration API. Tests use disposable levels; the user's Test save has not been populated or edited.
+
+Validation: all 14 overworld GameTests passed with real Chunky NeoForge 1.5.4, all four bounded-population tests passed with Chunky absent, and all 87 DragonAPI unit tests passed. Logs: TestInstance/build/bounded-pregen-validation.log and TestInstance/build/bounded-pregen-no-chunky-validation.log. Fast GameTests service the chunk mailbox and yield to asynchronous workers; production loading stays asynchronous.
+
+## 2026-10-10 - expand active worldgen into modern underground
+
+- Owner requested realistic generation heights for the -64 cave floor. Tiered ores now combine deep and shallow bands across -60..63 and accept vanilla natural deepslate; broad Overworld ores use -60..319. Nether/End stay dimension-specific.
+- Natural cavern controllers now roll -44..34. Cave indicators, ceiling plants, Rainbow Forest underground features and luminous glow roots include negative Y. Cliffs gravel/springs use floor/top anchors; heightmap decorators measure from the current floor. Warp nodes use the inclusive modern ceiling while retaining terrain clearance. Existing cave-crystal depth adaptation is retained.
+- Focused `overworld_modern_heights` checks generated ore placement in deepslate, modern indium feature data and deep/shallow sampling. Natural dungeon and cliff-flower fixtures follow the new height distributions.
+- Full range/legend audit in `TestInstance/docs/worldgen-height-audit-2026-10-10.md`; original 1.7.10 excluded classes remain reference material.
+
+- Validation: fresh isolated full compilation and all 9 Overworld GameTests passed; shared height/vent unit tests also passed.
+
 # ChromatiCraft 1.7.10 V33a → Minecraft 26.3 / NeoForge port
+
+## TestInstance worldgen census and Snow support fix — 2026-10-10
+
+Read-only census of TestInstance's display-named `worldgen` save (stored under
+`TestInstance/run/saves/New World`): 13,455 FULL Overworld chunks, 3,444,480 surface
+columns, zero decoder errors/region changes during the scan. The report and biome
+map are linked from `../TestInstance/docs/worldgen-audit-2026-10-10.md`; reusable
+26.3 palette/region readers live in `TestInstance/tools/worldgen_audit.py`.
+
+The two saved Snow controllers have 298/499 and 498/499 authored air cells filled
+with vanilla stone. `finishNaturalSnow` incorrectly supported every shielding
+block, including ceilings, by filling interior air below it. Restore V33a's
+`addMissingSupport` behavior: probe below each column's lowest authored cell,
+using the original five depth probes and soft-host replacement. Preserve room
+air, spawners, trap/lock cells and exterior support/snow behavior. The existing
+natural-dungeon GameTest now checks every authored Snow air cell and passes
+(`:ChromatiCraft:runGameTest -PgameTestSelector=chromaticraft:overworld_survival_natural_dungeons --offline`).
+No existing save blocks were changed; future generation gets the fix after the
+TestInstance client loads the updated source snapshot.
+
+The save contains 47 cavern, 5 burrow and 2 Snow controllers, 85 pylons and 2
+warp nodes. 663 dungeon jobs remain pending (542 cavern, 110 burrow, 6 Snow,
+5 ocean); completed terrain coverage is not a completed structure-density sample.
+Both Chroma and GeoStrata admit post-population work near players/forced origins.
+65.28% of sampled surface has vanilla snowy/frozen biome IDs, plus 3.81% GeoStrata
+Arctic Spires. GeoStrata paints Arctic/Kelp footprints after population; its old
+`GeoRegion` climate replacement class is not registered by active code.
 
 ## Working checkpoint — 2026-09-24 (overworld biomes: Ender Forest done, Rainbow Forest in progress)
 
@@ -10852,6 +10896,75 @@ changed/added/deleted output detection and leased snapshot retention. Full contr
 limits: ../TestInstance/docs/client-runtime-isolation.md. This does not certify the owner's
 complete JEI overlay or external shader/LOD setup. Reload Gradle and restart Play; copies
 add startup time and rebuilt mod code/resources take effect on the next launch.
+
+## 2026-10-09 — Rare, coherent Luminous Cliffs and Rainbow Forest regions
+
+The owner's exploration report exposed two placement problems: the Cliffs region converted nearly
+all land in a TerraBlender region at the old CLIFFWEIGHT, making it much too common, while Rainbow
+Forest's individual FOREST climate replacements could become small disconnected fragments.
+V33a's jar confirms Cliffs was inserted through SpecialBiomePlacementRegistry's warm/cool slots;
+its weight is not a whole-region percentage. This supersedes the earlier weighted TerraBlender
+placement without removing either biome, its child, or its decoration/terrain implementation.
+
+LargeBiomeLayout chooses at most one family per seeded 1,792-block cell. Existing CLIFFWEIGHT and
+RAINBOWWEIGHT options control candidate frequency (default 4/20 and 10/20); high combined weights
+normalize below full coverage without shrinking regions. Inset centres and irregular radial
+boundaries keep regions separate. Every quart in a 192-block radius core must be eligible surface
+land/river/shore before admission. Outer land must connect to the centre, rejecting small coastal
+remnants and removing detached islands. The minimum is a **384-block-wide biome-family core**:
+streams and Cliffs shores belong to the family. Rainbow Stream applies to rivers; ordinary Rainbow
+Forest beaches are retained. Genuine three-dimensional cave biomes are preserved below the regions.
+
+LargeBiomePlacement binds to TerraBlender Overworld-region sources, including tagged custom
+dimensions, with the world seed, registry and actual noise settings. Both 26.3 createResolver paths
+use the same placement. TerraBlender's per-chunk clones share a world-owned synchronized 256-cell
+mask cache. A private unbounded climate sampler with surface depth zero avoids admission reads
+outside chunk buffers and excludes underground cave entries from coastal validation. The original
+datapack climate table supplies fallback biomes; oceans and mushroom fields are protected. Ender
+Forest keeps its existing placement. TerraBlender advertises all four large-biome entries for
+decoration ordering and serialization. The Cliffs advertising region intentionally has zero draw
+weight; old Rainbow climate fragments are restored to baseline outside planned regions.
+
+Three focused JUnit regressions pass: frequency/config response, determinism across five seeds
+including signed extremes and negative coordinates, region containment, minimum cores, coastal
+rejection and connectivity. The seven-mod natural-world GameTest passes on 26.3/NeoForge
+26.3.0.51-beta/TerraBlender local.1. Its seed-zero survey covers 625 cells, accepting 40 Cliffs and
+118 Rainbow regions from 428 candidates; sampled cores survive and buffered/global lookups agree.
+Across 441 starting positions, approximate straight-line distance to the nearest Cliffs boundary
+is p25 **1,678**, median **2,858**, p75 **4,094** blocks. This calibrates the owner's roughly 3k
+target; it does not guarantee a fixed travel distance across seeds. 495 cave and 1,259 ocean/mushroom
+samples survive, and points outside planned regions cannot leak old climate fragments.
+
+Validation: `gradlew :ChromatiCraft:test --tests reika.chromaticraft.world.biome.LargeBiomeLayoutTest
+:TestInstance:runGameTest -PnaturalWorldGameTest -PexcludeExternalMods
+-PgameTestSelector=chromaticraft:large_biome_regions --offline --console=plain`.
+Evidence: build/biome-placement-final.log and build/test-results/test/
+TEST-reika.chromaticraft.world.biome.LargeBiomeLayoutTest.xml. Play saves were not modified.
+Restart Play to load the rebuilt code; changes apply to newly generated chunks. Existing biome
+patches are retained. External biome mods and in-client appearance were not part of this focused
+survey. The wider D63 climate/Cliffs review remains open.
+
+
+## 2026-10-10 — World Rift complete-state API (D31)
+
+The accepted World Rift exposes its full state getter through both the shared
+DragonAPI contract and ChromatiCraft's public API. Block identity derives from
+that state; the unused fake-zero metadata getter is removed. V33a's actual rules
+are retained: block/state reads mirror the direction, while tile-entity reads use
+the requested face. The old API prose incorrectly equated those rules and is fixed.
+State resolution now uses the owning level's dimension context, follows current
+links and returns null for absent worlds while retaining actual air states.
+
+Two new native fixtures pass through both public interfaces for all six faces,
+multiple properties, changes/relink/reset, native helper writes/notifications,
+missing dimensions and actual Nether reads. Existing rift transfer and shaft-power
+checks pass. The distant-link unload fixture overlaps its neighboring held arena
+in the broad batch; run alone, it passes the actual unload, last-item link and
+fluid transfer unchanged. All 132 affected units and eight accepted-output guards
+pass in build/rift-state-final-validation.log; initial batch evidence is in
+build/rift-state-native-validation.log. Full contract and isolation instructions:
+../DragonAPI/docs/world-rift-state-port.md. Normal Play arguments and saves are
+retained. Unrelated worldgen/IDE edits are preserved; this work is uncommitted.
 
 
 ## Bounded callback flood-fill crash — 2026-10-11

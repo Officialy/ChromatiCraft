@@ -6,6 +6,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.gametest.framework.TestEnvironmentDefinition;
 import net.minecraft.resources.Identifier;
+import net.minecraft.util.RandomSource;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.BiomeTags;
@@ -30,6 +31,19 @@ public final class OverworldGenerationGameTests {
     private record Fixture(Type type, ChunkPos chunk, BlockPos controller, long seed) {}
 
     public static void register(RegisterGameTestsEvent event, Holder<TestEnvironmentDefinition<?>> environment) {
+        ChromaGameTests.register(event, environment, "overworld_bounded_population", 4000,
+                OverworldGenerationGameTests::boundedDungeons);
+        ChromaGameTests.register(event, environment, "overworld_bounded_persistence", 80,
+                OverworldGenerationGameTests::boundedPersistence);
+        ChromaGameTests.register(event, environment, "overworld_bounded_neoforge", 4000,
+                OverworldGenerationGameTests::boundedNeoForge);
+        ChromaGameTests.register(event, environment, "overworld_bounded_unloaded", 4000,
+                OverworldGenerationGameTests::boundedUnloaded);
+        if (net.neoforged.fml.ModList.get().isLoaded("chunky"))
+            ChromaGameTests.register(event, environment, "overworld_bounded_chunky", 4000,
+                    OverworldGenerationGameTests::boundedChunky);
+        ChromaGameTests.register(event, environment, "overworld_modern_heights", 80,
+                OverworldGenerationGameTests::modernHeights);
         ChromaGameTests.register(event, environment, "overworld_survival_natural_dungeons", 4000,
                 OverworldGenerationGameTests::naturalDungeons);
         ChromaGameTests.register(event, environment, "overworld_survival_ocean_rejections", 80,
@@ -49,6 +63,60 @@ public final class OverworldGenerationGameTests {
         if (Boolean.getBoolean("chromaticraft.testNaturalWorld"))
             ChromaGameTests.register(event, environment, "overworld_survival_population", 120000,
                     OverworldGenerationGameTests::population);
+    }
+
+    /** Exercise the emitted features in actual deepslate, not just their configured numbers. */
+    private static void modernHeights(GameTestHelper helper) {
+        var level = helper.getLevel();
+        var generator = level.getChunkSource().getGenerator();
+        var features = level.registryAccess().lookupOrThrow(Registries.FEATURE);
+        var random = RandomSource.create(472694);
+        var context = new net.minecraft.world.level.levelgen.placement.PlacementContext(level, generator, java.util.Optional.empty());
+        var placement = new TieredOreHeightPlacement(false);
+        int[] histogram = new int[3];
+        for (int i = 0; i < 4096; i++) placement.modify(context, random, BlockPos.ZERO, at -> {
+            helper.assertTrue(at.getY() >= -60 && at.getY() <= 63, "tiered ores stay above bedrock and below their cave ceiling");
+            histogram[at.getY() < 0 ? 0 : 1]++;
+        });
+        helper.assertTrue(histogram[0] > 2 * histogram[1] && histogram[1] > 500,
+                "tiered ore mixture must include both cave layers and preserve its deep bias");
+        var base = helper.absolutePos(new BlockPos(0, 0, 0));
+        BlockPos center = new BlockPos(base.getX() + 8, -32, base.getZ() + 8);
+        for (BlockPos at : BlockPos.betweenClosed(center.offset(-16, -28, -16), center.offset(24, 8, 24)))
+            level.setBlock(at, Blocks.DEEPSLATE.defaultBlockState(), 2);
+        var tiered = features.getOrThrow(ResourceKey.create(Registries.FEATURE,
+                Identifier.fromNamespaceAndPath("chromaticraft", "energized_rock"))).value();
+        helper.assertTrue(tiered.place(level, generator, RandomSource.create(47), center),
+                "generated ChromatiCraft ore feature must actually replace deepslate at negative Y");
+        helper.assertTrue(reika.dragonapi.libraries.level.LegacyOreVeins.place(level, RandomSource.create(47),
+                reika.electricraft.registry.ElectriOres.SILVER.getBlock().defaultBlockState(),
+                reika.electricraft.registry.ElectriOres.SILVER.getDeepslateBlock().defaultBlockState(),
+                8, 0, center.getX(), center.getY(), center.getZ()), "ElectriCraft vein must place below zero");
+        int deepSilver = 0;
+        for (BlockPos at : BlockPos.betweenClosed(center.offset(0, -4, 0), center.offset(16, 4, 16)))
+            if (level.getBlockState(at).is(reika.electricraft.registry.ElectriOres.SILVER.getDeepslateBlock())) deepSilver++;
+        helper.assertTrue(deepSilver > 0, "deepslate hosts must yield the registered deepslate silver variant");
+        BlockPos indicator = center.offset(-8, 0, -8);
+        level.setBlock(indicator.above(), Blocks.AIR.defaultBlockState(), 2);
+        helper.assertTrue(CaveIndicatorFeature.canGenerateIn(level, indicator), "cave indicators accept deepslate below zero");
+        var reactor = (reika.reactorcraft.world.ReactorOreFeature)features.getOrThrow(ResourceKey.create(Registries.FEATURE,
+                Identifier.fromNamespaceAndPath("reactorcraft", "indium_ore"))).value();
+        helper.assertTrue(reactor.config().minY() == -60 && reactor.config().maxY() == -32,
+                "datagen must emit the modern indium band");
+        helper.assertTrue(reactor.place(level, generator, RandomSource.create(47), center.atY(-64)),
+                "ReactorCraft indium must place in its new deep band");
+        String legendOutput = System.getProperty("dragonapi.biomeLegendOutput");
+        if (legendOutput != null) try {
+            // Headless Minecraft omits client assets. The export supplies the vanilla colormap explicitly.
+            try (var input = new java.io.FileInputStream(System.getProperty("dragonapi.biomeLegendGrass"))) {
+                var image = javax.imageio.ImageIO.read(input);
+                net.minecraft.world.level.GrassColor.init(image.getRGB(0, 0, 256, 256, null, 0, 256));
+            }
+            reika.dragonapi.command.BiomeMapCommand.writeBiomeLegend(level, new java.io.File(legendOutput));
+        } catch (java.io.IOException error) {
+            throw new RuntimeException("Biome legend export failed", error);
+        }
+        helper.succeed();
     }
 
     private record PopulationSite(ResourceKey<Biome> biome, BlockPos sample) {}
@@ -135,12 +203,14 @@ public final class OverworldGenerationGameTests {
         for (int x = 0; x < 2048; x++) for (int z = 0; z < 2048; z++)
             helper.assertTrue(WarpNodeFeature.isSelectedChunk(seed, x - 2048, z + 2048)
                     == reference.isValid(x, z), "warp candidate differs from V33a at " + x + "," + z);
-        helper.assertTrue(WarpNodeFeature.minimumHeight(40, true) == 128,
+        helper.assertTrue(WarpNodeFeature.minimumHeight(40, true) == 199,
                 "cliff shores must retain their raised warp-node floor");
         helper.assertTrue(WarpNodeFeature.minimumHeight(40, false) == 88,
                 "ordinary low terrain retains the source 48-block clearance");
-        helper.assertTrue(WarpNodeFeature.minimumHeight(150, true) == 198,
-                "high plateaus must still retain 48 blocks of clearance");
+        helper.assertTrue(WarpNodeFeature.minimumHeight(150, true) == 199,
+                "the modern middle plateau must still set the raised floor");
+        helper.assertTrue(WarpNodeFeature.minimumHeight(240, true) == 288,
+                "high plateaus retain 48 blocks of clearance above the old Y255 limit");
         helper.succeed();
     }
 
@@ -155,14 +225,15 @@ public final class OverworldGenerationGameTests {
             level.setBlock(at, (at.getY() == 40 || at.getY() == 100 ? Blocks.DIRT : Blocks.AIR).defaultBlockState(), 2);
         for (boolean root : List.of(false, true)) {
             // A single-placement seed lets the test pin down the column and every source draw,
-            // including the discarded +/-25 height roll before a root chooses 4..80.
+            // including the discarded +/-25 height roll before a root chooses floor+4..80.
             long seed = 1;
             while (new SavedWorldgenRandom(seed).nextInt(5) == 0) seed++;
             var reference = new SavedWorldgenRandom(seed);
             reference.nextInt(5);
             int x = origin.getX() + reference.nextInt(16), z = origin.getZ() + reference.nextInt(16);
             int initial = 101 + reference.nextInt(51) - 25;
-            int y = root ? (4 + reference.nextInt(77) < 40 ? 39 : 99) : (initial < 100 ? 41 : 101);
+            int y = root ? (reika.dragonapi.libraries.level.WorldgenHeight.randomBetween(level, reference,
+                    reika.dragonapi.libraries.level.WorldgenHeight.caveFloor(level), 80) < 40 ? 39 : 99) : (initial < 100 ? 41 : 101);
             helper.assertTrue(new CliffsFlowerFeature(root).placePatch(level, new SavedWorldgenRandom(seed), origin),
                     "Cliffs flower patch must find the supported floor or cave ceiling");
             BlockPos at = new BlockPos(x, y, z);
@@ -298,7 +369,9 @@ public final class OverworldGenerationGameTests {
         for (BlockPos at : BlockPos.betweenClosed(new BlockPos(x - 16, -60, z - 16), new BlockPos(x + 48, ground, z + 48)))
             level.setBlock(at, at.getY() == ground && type != Type.OCEAN ? surface : Blocks.STONE.defaultBlockState(), 2);
         BlockPos controller = switch (type) {
-            case CAVERN -> new BlockPos(x, 10 + random.nextInt(40), z);
+            case CAVERN -> new BlockPos(x, reika.dragonapi.libraries.level.WorldgenHeight.randomBetween(level, random,
+                    reika.dragonapi.libraries.level.WorldgenHeight.undergroundY(level, 10),
+                    reika.dragonapi.libraries.level.WorldgenHeight.undergroundY(level, 49)), z);
             case BURROW -> new BlockPos(x - 5, ground - 8, z - 2);
             case OCEAN -> new BlockPos(x, ground - 2, z);
             case DESERT -> new BlockPos(x, ground - 7, z);
@@ -340,6 +413,181 @@ public final class OverworldGenerationGameTests {
         helper.runAfterDelay(1, () -> pollDungeons(helper, fixtures));
     }
 
+    private static void boundedPersistence(GameTestHelper helper) {
+        var data = reika.dragonapi.auxiliary.trackers.BoundedPopulation.get(helper.getLevel());
+        ChunkPos root = new ChunkPos(12345, -12345);
+        var scope = reika.dragonapi.instantiable.worldgen.PopulationScope.observedChunks();
+        scope.observe(root);
+        long id = data.begin("test-producer", "persistence", scope, true);
+        helper.assertTrue(data.admits(root), "running producer authorizes its root");
+        var tag = reika.dragonapi.auxiliary.trackers.BoundedPopulation.CODEC
+                .encodeStart(net.minecraft.nbt.NbtOps.INSTANCE, data).getOrThrow();
+        var restored = reika.dragonapi.auxiliary.trackers.BoundedPopulation.CODEC
+                .parse(net.minecraft.nbt.NbtOps.INSTANCE, tag).getOrThrow();
+        helper.assertTrue(!restored.admits(root), "an interrupted producer restores paused");
+        restored.resume(id);
+        helper.assertTrue(restored.admits(root), "saved roots can resume without terrain regeneration");
+        helper.assertTrue(!restored.admits(new ChunkPos(root.x() + 1, root.z())), "saved roots do not admit support halo");
+        restored.cancel(id);
+        helper.assertTrue(!restored.admits(root), "cancel revokes admission without deleting queued jobs");
+        data.cancel(id);
+        helper.succeed();
+    }
+
+    private static void boundedDungeons(GameTestHelper helper) {
+        var level = helper.getLevel();
+        var queue = PostPopulationWorldgen.get(level);
+        var population = reika.dragonapi.auxiliary.trackers.BoundedPopulation.get(level);
+        List<Fixture> fixtures = new ArrayList<>();
+        List<Long> scopes = new ArrayList<>();
+        for (Type type : Type.values()) {
+            Fixture f = fixture(helper, type, 32 + type.ordinal(), true);
+            fixtures.add(f);
+            queue.enqueueDungeon(type, f.chunk(), f.seed());
+            long id = population.begin("test-area", type.name(),
+                    reika.dragonapi.instantiable.worldgen.PopulationScope.rectangle(f.chunk().x(), f.chunk().z(), f.chunk().x(), f.chunk().z()), false);
+            population.pause(id); scopes.add(id);
+        }
+        ChunkPos inside = fixtures.getFirst().chunk();
+        ChunkPos outside = new ChunkPos(inside.x() + 20, inside.z() + 20);
+        var geo = reika.geostrata.level.GeoPostPopulation.get(level);
+        geo.enqueue(reika.geostrata.level.GeoPostPopulation.Kind.ORE_CONVERSION, inside, inside.getMinBlockX(), inside.getMinBlockZ(), 47);
+        geo.enqueue(reika.geostrata.level.GeoPostPopulation.Kind.ORE_CONVERSION, outside, outside.getMinBlockX(), outside.getMinBlockZ(), 47);
+        queue.enqueueDungeon(Type.CAVERN, outside, 47);
+        helper.runAfterDelay(5, () -> {
+            helper.assertTrue(fixtures.stream().noneMatch(f -> queue.isDungeonFinished(f.type(), f.chunk())), "paused remote jobs must wait");
+            helper.assertTrue(!geo.finished(reika.geostrata.level.GeoPostPopulation.Kind.ORE_CONVERSION, inside), "Geo queue respects pause");
+            scopes.forEach(population::resume);
+            pollBounded(helper, fixtures, scopes, outside);
+        });
+    }
+
+    private static void pollBounded(GameTestHelper helper, List<Fixture> fixtures, List<Long> scopes, ChunkPos outside) {
+        pumpPopulationMailbox(helper);
+        var level = helper.getLevel();
+        var queue = PostPopulationWorldgen.get(level);
+        var geo = reika.geostrata.level.GeoPostPopulation.get(level);
+        var population = reika.dragonapi.auxiliary.trackers.BoundedPopulation.get(level);
+        helper.assertTrue(!queue.isDungeonFinished(Type.CAVERN, outside), "Chroma halo/outside origins must not recursively run");
+        helper.assertTrue(!geo.finished(reika.geostrata.level.GeoPostPopulation.Kind.ORE_CONVERSION, outside), "Geo outside origins must wait");
+        if (fixtures.stream().anyMatch(f -> !queue.isDungeonFinished(f.type(), f.chunk()))
+                || scopes.stream().anyMatch(id -> !population.finished(id))) {
+            helper.runAfterDelay(1, () -> pollBounded(helper, fixtures, scopes, outside));
+            return;
+        }
+        helper.assertTrue(geo.finished(reika.geostrata.level.GeoPostPopulation.Kind.ORE_CONVERSION, fixtures.getFirst().chunk()), "shared scope completes Geo's queued work");
+        for (Fixture f : fixtures) {
+            helper.assertTrue(!level.getChunkSource().getForceLoadedChunks().contains(f.chunk().pack()), "bounded population must not add vanilla forced chunks");
+            helper.assertTrue(level.getBlockEntity(f.controller()) instanceof TileEntityStructureController, "remote natural " + f.type() + " controller must place");
+            if (f.type() == Type.SNOW) {
+                var authored = reika.chromaticraft.auxiliary.structure.NBTStructureLoader.load(level,
+                        reika.chromaticraft.auxiliary.structure.NBTStructureLoader.chromaTemplate("worldgen/overworld/snow"),
+                        f.controller(), new BlockPos(8, 3, 6), state -> state);
+                int air = 0;
+                for (int i = 0; i < authored.getSize(); i++) {
+                    BlockPos at = authored.getNthBlock(i);
+                    if (authored.getBlockAt(at.getX(), at.getY(), at.getZ()) != Blocks.AIR) continue;
+                    air++;
+                    helper.assertTrue(level.getBlockState(at).isAir(), "bounded snow generation preserves room air at " + at);
+                }
+                helper.assertTrue(air > 450, "bounded snow regression covers the authored rooms");
+            }
+        }
+        helper.succeed();
+    }
+
+    private static void boundedNeoForge(GameTestHelper helper) {
+        var level = helper.getLevel();
+        Fixture f = fixture(helper, Type.BURROW, 48, false);
+        PostPopulationWorldgen.get(level).enqueueDungeon(f.type(), f.chunk(), f.seed());
+        var task = new net.neoforged.neoforge.server.command.generation.GenerationTask(level, f.chunk().x(), f.chunk().z(), 1);
+        task.run(new net.neoforged.neoforge.server.command.generation.GenerationTask.Listener() {
+            @Override public void update(int ok, int error, int skipped, int total) {}
+            @Override public void complete(int error) {}
+        });
+        var population = reika.dragonapi.auxiliary.trackers.BoundedPopulation.get(level);
+        long id = population.sessionId("neoforge", f.chunk().x() + "/" + f.chunk().z() + "/1");
+        helper.assertTrue(id != 0 && population.admits(f.chunk()), "actual NeoForge task must open its area automatically");
+        helper.assertTrue(!population.admits(new ChunkPos(f.chunk().x() + 2, f.chunk().z())), "native command radius is in chunks and has finite edges");
+        pollPreloader(helper, f, id, null);
+    }
+
+    private static void boundedUnloaded(GameTestHelper helper) {
+        var level = helper.getLevel();
+        ChunkPos base = ChunkPos.containing(helper.absolutePos(BlockPos.ZERO));
+        ChunkPos root = new ChunkPos(base.x() + 4096, base.z() - 4096);
+        ChunkPos halo = new ChunkPos(root.x() + 1, root.z());
+        helper.assertTrue(level.getChunkSource().getChunkNow(root.x(), root.z()) == null, "remote origin starts unloaded");
+        var geo = reika.geostrata.level.GeoPostPopulation.get(level);
+        geo.enqueue(reika.geostrata.level.GeoPostPopulation.Kind.ORE_CONVERSION, root, root.getMinBlockX(), root.getMinBlockZ(), 47);
+        geo.enqueue(reika.geostrata.level.GeoPostPopulation.Kind.ORE_CONVERSION, halo, halo.getMinBlockX(), halo.getMinBlockZ(), 47);
+        var population = reika.dragonapi.auxiliary.trackers.BoundedPopulation.get(level);
+        long id = population.begin("test-area", "unloaded/" + root, reika.dragonapi.instantiable.worldgen.PopulationScope.rectangle(
+                root.x(), root.z(), root.x(), root.z()), false);
+        pollUnloaded(helper, root, halo, id);
+    }
+
+    private static void pollUnloaded(GameTestHelper helper, ChunkPos root, ChunkPos halo, long id) {
+        pumpPopulationMailbox(helper);
+        var level = helper.getLevel();
+        var geo = reika.geostrata.level.GeoPostPopulation.get(level);
+        helper.assertTrue(!geo.finished(reika.geostrata.level.GeoPostPopulation.Kind.ORE_CONVERSION, halo), "loading a job's halo must not admit halo jobs");
+        if (!geo.finished(reika.geostrata.level.GeoPostPopulation.Kind.ORE_CONVERSION, root)
+                || !reika.dragonapi.auxiliary.trackers.BoundedPopulation.get(level).finished(id)) {
+            helper.runAfterDelay(1, () -> pollUnloaded(helper, root, halo, id)); return;
+        }
+        helper.succeed();
+    }
+
+    private static void boundedChunky(GameTestHelper helper) {
+        var level = helper.getLevel();
+        Fixture f = fixture(helper, Type.CAVERN, 50, true);
+        PostPopulationWorldgen.get(level).enqueueDungeon(f.type(), f.chunk(), f.seed());
+        ChunkPos outside = new ChunkPos(f.chunk().x() + 2, f.chunk().z() + 2);
+        var geo = reika.geostrata.level.GeoPostPopulation.get(level);
+        geo.enqueue(reika.geostrata.level.GeoPostPopulation.Kind.ORE_CONVERSION, outside, outside.getMinBlockX(), outside.getMinBlockZ(), 47);
+        try {
+            var chunky = Class.forName("org.popcraft.chunky.ChunkyProvider").getMethod("get").invoke(null);
+            var api = chunky.getClass().getMethod("getApi").invoke(chunky);
+            boolean started = (boolean) Class.forName("org.popcraft.chunky.api.ChunkyAPI").getMethod("startTask",
+                    String.class, String.class, double.class, double.class, double.class, double.class, String.class)
+                    .invoke(api, level.dimension().identifier().toString(), "circle", f.chunk().getMinBlockX() + 8d,
+                            f.chunk().getMinBlockZ() + 8d, 32d, 32d, "concentric");
+            helper.assertTrue(started, "real Chunky task must start");
+        } catch (ReflectiveOperationException ex) { throw new IllegalStateException("Real Chunky integration test", ex); }
+        helper.runAfterDelay(5, () -> {
+            var population = reika.dragonapi.auxiliary.trackers.BoundedPopulation.get(level);
+            long id = population.latestSession("chunky");
+            helper.assertTrue(id != 0, "actual Chunky task must open an observed-chunk scope");
+            pollPreloader(helper, f, id, outside);
+        });
+    }
+
+    private static void pollPreloader(GameTestHelper helper, Fixture f, long id, ChunkPos excluded) {
+        pumpPopulationMailbox(helper);
+        var level = helper.getLevel();
+        var queue = PostPopulationWorldgen.get(level);
+        var population = reika.dragonapi.auxiliary.trackers.BoundedPopulation.get(level);
+        if (excluded != null) {
+            helper.assertTrue(!population.admits(excluded), "Chunky's circular scope must exclude its bounding-square corners");
+            helper.assertTrue(!reika.geostrata.level.GeoPostPopulation.get(level).finished(
+                    reika.geostrata.level.GeoPostPopulation.Kind.ORE_CONVERSION, excluded), "excluded corner's deferred job stays pending");
+        }
+        if (!queue.isDungeonFinished(f.type(), f.chunk()) || !population.finished(id)) {
+            helper.runAfterDelay(1, () -> pollPreloader(helper, f, id, excluded)); return;
+        }
+        helper.assertTrue(level.getBlockEntity(f.controller()) instanceof TileEntityStructureController, "preloader must finish the existing remote dungeon candidate");
+        helper.assertTrue(!level.getChunkSource().getForceLoadedChunks().contains(f.chunk().pack()), "preloader completion must not leave a vanilla force-load entry");
+        helper.succeed();
+    }
+
+    private static void pumpPopulationMailbox(GameTestHelper helper) {
+        // GameTestServer fast-forwards without normal tick idle time. Give genuinely asynchronous
+        // chunk loads bounded mailbox service and let background workers progress between fast ticks.
+        for (int i = 0; i < 64 && helper.getLevel().getChunkSource().pollTask(); i++) {}
+        java.util.concurrent.locks.LockSupport.parkNanos(1_000_000);
+    }
+
     private static void pollDungeons(GameTestHelper helper, List<Fixture> fixtures) {
         var level = helper.getLevel();
         var queue = PostPopulationWorldgen.get(level);
@@ -359,6 +607,21 @@ public final class OverworldGenerationGameTests {
                 helper.assertTrue(level.getBlockState(fixture.controller().offset(2, -44, 0)).getBlock()
                         instanceof reika.chromaticraft.block.worldgen26.BlockStructureShield,
                         "deep pit slices must retain their shielding walls");
+            }
+            if (fixture.type() == Type.SNOW) {
+                var authored = reika.chromaticraft.auxiliary.structure.NBTStructureLoader.load(level,
+                        reika.chromaticraft.auxiliary.structure.NBTStructureLoader.chromaTemplate("worldgen/overworld/snow"),
+                        fixture.controller(), new BlockPos(8, 3, 6), state -> state);
+                int airCells = 0;
+                for (int i = 0; i < authored.getSize(); i++) {
+                    BlockPos cell = authored.getNthBlock(i);
+                    if (authored.getBlockAt(cell.getX(), cell.getY(), cell.getZ()) == Blocks.AIR) {
+                        airCells++;
+                        helper.assertTrue(level.getBlockState(cell).isAir(),
+                                "Snow outpost foundation supports must preserve authored interior air at " + cell);
+                    }
+                }
+                helper.assertTrue(airCells > 450, "Snow air-space regression must inspect the complete authored room layout");
             }
         }
         helper.succeed();

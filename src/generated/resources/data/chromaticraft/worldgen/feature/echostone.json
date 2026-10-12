@@ -6,8 +6,8 @@
     {
       "state": "chromaticraft:echostone",
       "target": {
-        "block": "minecraft:stone",
-        "predicate_type": "minecraft:block_match"
+        "predicate_type": "minecraft:tag_match",
+        "tag": "minecraft:base_stone_overworld"
       }
     }
   ]

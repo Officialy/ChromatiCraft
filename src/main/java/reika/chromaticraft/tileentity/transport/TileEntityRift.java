@@ -16,7 +16,6 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
@@ -290,23 +289,13 @@ public class TileEntityRift extends LinkedTileBase implements WorldRift, ChunkLo
 		return tile != null && !tile.isRemoved() ? tile : null;
 	}
 
+	/** V33a block reads mirror the face, independently of the tile-entity lookup's direction. */
 	@Override
-	public @Nullable Block getBlockIDFrom(Direction dir) {
-		return this.isLinked() ? this.getBlockFrom(dir).getBlock() : null;
-	}
-
-	/** 26.x blocks have states, not metadata: 0 for a linked rift, as for any single-state block in 1.7.10. */
-	@Override
-	public int getBlockMetadataFrom(Direction dir) {
-		return this.isLinked() ? 0 : -1;
-	}
-
-	/** The state {@link #getBlockIDFrom} reads, in full. */
 	public @Nullable BlockState getBlockStateFrom(Direction dir) {
-		if (!this.isLinked())
-			return null;
 		WorldLocation loc = this.getBlockFrom(dir);
-		Level world = loc.getWorld();
+		if (loc == null)
+			return null;
+		Level world = loc.getWorld(level);
 		return world != null ? world.getBlockState(loc.pos) : null;
 	}
 

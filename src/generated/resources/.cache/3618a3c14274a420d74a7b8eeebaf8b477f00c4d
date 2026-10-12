@@ -1,4 +1,4 @@
-// 26.3	2026-10-09T12:10:30.3998101	ChromatiCraft Canonical Structure Templates
+// 26.3	2026-10-12T16:38:09.4797361	ChromatiCraft Canonical Structure Templates
 439d19b3a1fe5a9e4c37aaf0d9c3aeefe6fa9bb8 data/chromaticraft/structure/multiblock/casting_l1.nbt
 a04978a62d159d07a365799ca14fc61e25e258db data/chromaticraft/structure/multiblock/casting_l2.nbt
 73fa45454dad10e36260d940e834134aa7cc95c7 data/chromaticraft/structure/multiblock/casting_l3.nbt
@@ -16,14 +16,14 @@ b2b786e51767ebb15824d3ebe30c7bcf94df5d6b data/chromaticraft/structure/multiblock
 19fc3284453276f6e1cdbc98d76bebf270bd365d data/chromaticraft/structure/multiblock/repeater.nbt
 b244ae540579a673f2ae510d3b4c87a065a84efd data/chromaticraft/structure/multiblock/ritual_base.nbt
 5eea64a71be1fa4f888b142e1344d967cd035e71 data/chromaticraft/structure/multiblock/ritual_enhanced.nbt
-a40e39de8ad997527b2be3c3abe12e6978216cab data/chromaticraft/structure/multiblock/void_ritual.nbt
+9622dfaa7eee88fd00f295aae963364f7f379ec0 data/chromaticraft/structure/multiblock/void_ritual.nbt
 d98627b616f04f8e7f63310f217ff49679332c54 data/chromaticraft/structure/multiblock/weak_repeater.nbt
 61066dddb90e40679e28a1e9370e1acbd49938e9 data/chromaticraft/structure/worldgen/data_node.nbt
 84196836717a36438070aad52b12e17d1d89e8e0 data/chromaticraft/structure/worldgen/nether/diorama.nbt
 789a787ff2499003882f072cbc821eceffc56af9 data/chromaticraft/structure/worldgen/nether/hut.nbt
 2e505ed179467a75c50bc24003caa0c24a5a2f21 data/chromaticraft/structure/worldgen/nether/maze.nbt
 ca6533c73995da4c7f4bf3bc21d44b979ca95d3d data/chromaticraft/structure/worldgen/nether/spiral.nbt
-2a3d55c497c128be66a1ef4b07e35779fdd2db0a data/chromaticraft/structure/worldgen/nether/temple.nbt
+de3b7603c5ef5ebef845039d33bcebbab6240572 data/chromaticraft/structure/worldgen/nether/temple.nbt
 e2c10d504e860fce361e9bb6c3a5e40737bf5675 data/chromaticraft/structure/worldgen/overworld/biome_fragment.nbt
 f69dd30bf332297224fef37539dceec3e1a8bbc1 data/chromaticraft/structure/worldgen/overworld/burrow.nbt
 c140a5ecdfa46c0a3e86fb59613c2714bb027436 data/chromaticraft/structure/worldgen/overworld/burrow_furnace.nbt

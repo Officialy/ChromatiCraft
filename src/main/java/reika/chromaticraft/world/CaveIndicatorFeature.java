@@ -41,10 +41,9 @@ public final class CaveIndicatorFeature implements Feature {
 				if (!reika.chromaticraft.world.luminous.LuminousCliffsBiomeMask.kindOf(
 						world.getBiome(new BlockPos(x, world.getSeaLevel(), z))).isGlowingCliffs()) continue;
 				for (int n = 0; n < 2; n++) {
-					// V33a: y = 4 + rand(60), an absolute band. It stays absolute for the same
-					// reason the tiered ore band does -- the space below y 0 is deepslate, and this
-					// replaces stone.
-					BlockPos pos = new BlockPos(x, 4 + random.nextInt(60), z);
+                            // Include deepslate caves beneath the old world floor.
+                            BlockPos pos = new BlockPos(x, reika.dragonapi.libraries.level.WorldgenHeight.randomBetween(
+                                    world, random, reika.dragonapi.libraries.level.WorldgenHeight.caveFloor(world), 63), z);
 					if (canGenerateAt(world, pos)) {
 						world.setBlock(pos, indicator, 2);
 						placed = true;

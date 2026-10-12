@@ -284,6 +284,7 @@ public final class ChromaGameTests {
             reika.chromaticraft.modinterface.voidritual.VoidCompatibilityGameTests.register(event, env);
 		ChromaTextTests.register(event, env);
 		reika.chromaticraft.world.OverworldGenerationGameTests.register(event, env);
+		reika.chromaticraft.world.biome.LargeBiomePlacementGameTests.register(event, env);
 		//reika.chromaticraft.world.OverworldGenerationFixTests.register(event, env);
 
 		// Applied Energistics 2 integration; only with AE2 in run-gametest/mods (the normal GameTest runtime has none).
@@ -391,6 +392,8 @@ public final class ChromaGameTests {
 		register(event, env, "wands_basic", 60, ChromaGameTests::wandsBasic);
 		register(event, env, "fluid_relay_transfer", 60, ChromaGameTests::fluidRelayTransfer);
 		register(event, env, "world_rift_link", 40, ChromaGameTests::worldRiftLink);
+		register(event, env, "world_rift_states", 40, ChromaGameTests::worldRiftStates);
+		register(event, env, "world_rift_state_dimensions", 40, ChromaGameTests::worldRiftStateDimensions);
 		register(event, env, "world_rift_far_link", 400, ChromaGameTests::worldRiftFarLink);
 		register(event, env, "world_rift_shaft_power", 40, ChromaGameTests::worldRiftShaftPower);
 		register(event, env, "aura_pouch_contents", 30, ChromaGameTests::auraPouchContents);
@@ -8305,6 +8308,111 @@ public final class ChromaGameTests {
 					"redstone rejection must leave the target unchanged");
 			helper.succeed();
 		});
+	}
+
+	/** Actual state and tile reads retain V33a's distinct direction conventions through the shared API. */
+	private static void worldRiftStates(GameTestHelper helper) {
+		var level = helper.getLevel();
+		BlockPos nearPos = helper.absolutePos(new BlockPos(1, 4, 1));
+		BlockPos farPos = helper.absolutePos(new BlockPos(4, 4, 4));
+		BlockPos newFarPos = helper.absolutePos(new BlockPos(7, 4, 7));
+		for (BlockPos pos : new BlockPos[] {nearPos, farPos, newFarPos})
+			level.setBlock(pos, ChromaBlocks.RIFT.get().defaultBlockState(), 3);
+		var near = (reika.chromaticraft.tileentity.transport.TileEntityRift)level.getBlockEntity(nearPos);
+		reika.dragonapi.interfaces.blockentity.WorldRift api = near;
+		for (Direction dir : Direction.values())
+			helper.assertTrue(api.getBlockStateFrom(dir) == null && api.getBlockIDFrom(dir) == null
+					&& api.getTileEntityFrom(dir) == null, "unlinked rift reads must be absent on " + dir);
+		helper.assertTrue(near.linkTo(level, farPos), "registered rifts must link for state reads");
+		Direction[] facings = {Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST};
+		for (Direction dir : Direction.values()) {
+			BlockState state = Blocks.CHEST.defaultBlockState()
+					.setValue(net.minecraft.world.level.block.ChestBlock.FACING, facings[dir.ordinal() % 4])
+					.setValue(net.minecraft.world.level.block.ChestBlock.WATERLOGGED, dir.ordinal() % 2 == 0);
+			level.setBlock(farPos.relative(dir), state, 2);
+		}
+		for (Direction dir : Direction.values()) {
+			helper.assertTrue(api.getBlockStateFrom(dir).equals(level.getBlockState(farPos.relative(dir.getOpposite()))),
+					"shared API must retain all properties on the mirrored face " + dir);
+			helper.assertTrue(api.getBlockIDFrom(dir) == api.getBlockStateFrom(dir).getBlock(),
+					"block identity must agree with the complete state on " + dir);
+			helper.assertTrue(api.getTileEntityFrom(dir) == level.getBlockEntity(farPos.relative(dir)),
+					"tile lookup must preserve V33a's requested-face direction on " + dir);
+		}
+		BlockPos readPos = farPos.west();
+		BlockState stairs = Blocks.OAK_STAIRS.defaultBlockState()
+				.setValue(net.minecraft.world.level.block.StairBlock.FACING, Direction.SOUTH)
+				.setValue(net.minecraft.world.level.block.StairBlock.HALF,
+						net.minecraft.world.level.block.state.properties.Half.TOP)
+				.setValue(net.minecraft.world.level.block.StairBlock.SHAPE,
+						net.minecraft.world.level.block.state.properties.StairsShape.INNER_LEFT)
+				.setValue(net.minecraft.world.level.block.StairBlock.WATERLOGGED, true);
+		helper.assertTrue(reika.dragonapi.libraries.level.ReikaWorldHelper.setBlockStateWithNotify(level,
+				readPos.getX(), readPos.getY(), readPos.getZ(), stairs, 2), "state helper must report a successful write");
+		helper.assertTrue(reika.dragonapi.libraries.level.ReikaWorldHelper.getBlockState(level,
+				readPos.getX(), readPos.getY(), readPos.getZ()).equals(stairs)
+				&& api.getBlockStateFrom(Direction.EAST).equals(stairs),
+				"helper and rift reads must retain facing, half, shape and waterlogging after a block change");
+		helper.assertTrue(api.getTileEntityFrom(Direction.EAST) == level.getBlockEntity(farPos.east()),
+				"replacing the west block must not redirect east tile reads");
+		helper.assertTrue(!reika.dragonapi.libraries.level.ReikaWorldHelper.setBlockStateWithNotify(level,
+				readPos.getX(), level.getMaxY() + 1, readPos.getZ(), stairs, 3),
+				"state helper must return native rejection for an out-of-bounds write");
+		level.setBlock(readPos, Blocks.AIR.defaultBlockState(), 2);
+		helper.assertTrue(api.getBlockStateFrom(Direction.EAST).isAir() && api.getBlockIDFrom(Direction.EAST) == Blocks.AIR,
+				"a resolved air block must be distinguishable from an unavailable target");
+		level.setBlock(newFarPos.west(), Blocks.GOLD_BLOCK.defaultBlockState(), 2);
+		helper.assertTrue(near.linkTo(level, newFarPos) && api.getBlockIDFrom(Direction.EAST) == Blocks.GOLD_BLOCK,
+				"relinking must resolve the current far end rather than a cached state");
+		near.reset();
+		helper.assertTrue(api.getBlockStateFrom(Direction.EAST) == null && api.getBlockIDFrom(Direction.EAST) == null,
+				"resetting the pair must invalidate state and block reads");
+		BlockPos lampPos = helper.absolutePos(new BlockPos(10, 4, 10));
+		level.setBlock(lampPos, Blocks.REDSTONE_LAMP.defaultBlockState(), 3);
+		BlockPos powerPos = lampPos.east();
+		reika.dragonapi.libraries.level.ReikaWorldHelper.setBlockStateWithNotify(level,
+				powerPos.getX(), powerPos.getY(), powerPos.getZ(), Blocks.REDSTONE_BLOCK.defaultBlockState(), 3);
+		helper.runAfterDelay(3, () -> {
+			helper.assertTrue(level.getBlockState(lampPos).getValue(net.minecraft.world.level.block.RedstoneLampBlock.LIT),
+					"the helper must deliver the caller's neighbor notification flags to the native world");
+			helper.succeed();
+		});
+	}
+
+	private static void worldRiftStateDimensions(GameTestHelper helper) {
+		var level = helper.getLevel();
+		var nether = level.getServer().getLevel(net.minecraft.world.level.Level.NETHER);
+		helper.assertTrue(nether != null, "the native fixture must supply the actual Nether level");
+		BlockPos nearPos = helper.absolutePos(new BlockPos(2, 4, 2));
+		BlockPos farPos = new BlockPos(nearPos.getX(), 180, nearPos.getZ());
+		level.setBlock(nearPos, ChromaBlocks.RIFT.get().defaultBlockState(), 3);
+		nether.setBlock(farPos, ChromaBlocks.RIFT.get().defaultBlockState(), 3);
+		var near = (reika.chromaticraft.tileentity.transport.TileEntityRift)level.getBlockEntity(nearPos);
+		reika.chromaticraft.api.interfaces.WorldRift api = near;
+		BlockState remote = Blocks.CHEST.defaultBlockState()
+				.setValue(net.minecraft.world.level.block.ChestBlock.FACING, Direction.WEST)
+				.setValue(net.minecraft.world.level.block.ChestBlock.WATERLOGGED, true);
+		try {
+			nether.setBlock(farPos.west(), remote, 2);
+			level.setBlock(farPos.west(), Blocks.STONE.defaultBlockState(), 2);
+			helper.assertTrue(near.linkTo(nether, farPos) && api.getBlockStateFrom(Direction.EAST).equals(remote),
+					"a rift must read the complete state from its far dimension rather than matching local coordinates");
+			near.reset();
+			near.setTarget(new reika.dragonapi.instantiable.data.immutable.WorldLocation(
+					net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.DIMENSION,
+							net.minecraft.resources.Identifier.fromNamespaceAndPath("chromaticraft", "absent_rift_test")),
+					farPos.getX(), farPos.getY(), farPos.getZ()));
+			for (Direction dir : Direction.values())
+				helper.assertTrue(api.getBlockStateFrom(dir) == null && api.getBlockIDFrom(dir) == null
+						&& api.getTileEntityFrom(dir) == null, "a missing dimension must remain unresolved on " + dir);
+		}
+		finally {
+			near.reset();
+			nether.setBlock(farPos.west(), Blocks.AIR.defaultBlockState(), 3);
+			nether.setBlock(farPos, Blocks.AIR.defaultBlockState(), 3);
+			level.setBlock(farPos.west(), Blocks.AIR.defaultBlockState(), 3);
+		}
+		helper.succeed();
 	}
 
 	/**

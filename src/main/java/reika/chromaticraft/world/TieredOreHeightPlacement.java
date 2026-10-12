@@ -11,22 +11,9 @@ import net.minecraft.world.level.levelgen.placement.PlacementModifier;
 import java.util.function.Consumer;
 
 /**
- * V33a {@code TieredOres.generate} picks its own y, and not from a uniform band:
- *
- * <pre>y = ordinal >= FIRESTONE ? rand(128) : (rand.nextBoolean() ? rand(32) : rand(64))</pre>
- * <p>
- * The overworld roll is a 50/50 mix of {@code uniform[0,32)} and {@code uniform[0,64)}, which is
- * markedly denser toward bedrock than either band alone; the nether/end ores use a single flat
- * {@code uniform[0,128)}. Neither is expressible with vanilla's height providers, so the roll is
- * reproduced exactly here.
- *
- * <p>These are absolute y values, and they stay absolute. The earlier port offset them by the level's
- * minimum build height, reasoning that the band should sit the same distance above bedrock as it did
- * when the world floor was 0. That put the whole overworld roll in y [-64, 0) — which is deepslate,
- * while the ore features target {@code minecraft:stone} — so no overworld tiered ore could ever
- * place. Absolute y is also the faithful reading everywhere else: the Nether and End floors are still
- * 0, so only the overworld floor ever moved, and V33a's own {@code rand(128)} nether band already
- * means what it says.
+ * Preserves the original 50/50 deep/shallow bias over the expanded Overworld underground.
+ * The low branches cover floor+4..-1 and floor+4..63; wide Overworld deposits use the full
+ * build height. Nether and End retain the original absolute 0..127 band.
  */
 public record TieredOreHeightPlacement(boolean deepBand) implements PlacementModifier {
 
@@ -37,8 +24,15 @@ public record TieredOreHeightPlacement(boolean deepBand) implements PlacementMod
 
     @Override
     public void modify(PlacementContext context, RandomSource random, BlockPos origin, Consumer<BlockPos> output) {
-        int y = deepBand ? random.nextInt(128)
-                : random.nextBoolean() ? random.nextInt(32) : random.nextInt(64);
+        int y;
+        if (context.getLevel().getLevel().dimension() == net.minecraft.world.level.Level.OVERWORLD) {
+            int ceiling = deepBand ? context.getLevel().getMaxY() : random.nextBoolean()
+                    ? reika.dragonapi.libraries.level.WorldgenHeight.undergroundY(context.getLevel(), 32) - 1 : 63;
+            y = reika.dragonapi.libraries.level.WorldgenHeight.randomBetween(context.getLevel(), random,
+                    reika.dragonapi.libraries.level.WorldgenHeight.caveFloor(context.getLevel()), ceiling);
+        } else {
+            y = deepBand ? random.nextInt(128) : random.nextBoolean() ? random.nextInt(32) : random.nextInt(64);
+        }
         output.accept(new BlockPos(origin.getX(), y, origin.getZ()));
     }
 

@@ -56,7 +56,8 @@ public final class CliffsFlowerFeature implements Feature {
             }
             int y = Math.clamp(surface + random.nextInt(51) - 25, world.getMinY() + 1, world.getMaxY() - 1);
             if (root) {
-                y = 4 + random.nextInt(77);
+                y = reika.dragonapi.libraries.level.WorldgenHeight.randomBetween(world, random,
+                        reika.dragonapi.libraries.level.WorldgenHeight.caveFloor(world), 80);
             } else {
                 while (y > world.getMinY() + 1 && world.getBlockState(new BlockPos(x, y - 1, z)).isAir()) y--;
                 if (y <= world.getMinY() + 1) continue;

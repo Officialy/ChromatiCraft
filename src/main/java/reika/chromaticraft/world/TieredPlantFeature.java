@@ -209,18 +209,15 @@ public final class TieredPlantFeature implements Feature {
 	/**
 	 * V33a CAVE: scanning upward, the first air block whose ceiling is stone or ore.
 	 *
-	 * <p>The source scans y 0..64, and those stay absolute for exactly the reason the tiered ore band
-	 * does: only the overworld floor moved to -64, and that new space is deepslate, where a
-	 * {@code Blocks.STONE} ceiling test can never match. Walking 64 blocks up from {@code getMinY()}
-	 * put this whole scan in deepslate and was why Rock Flower generated in 1 chunk out of 1,764.
+	 * <p>Scan the expanded underground, accepting natural deepslate ceilings as well as stone and ores.
 	 */
 	private BlockPos scanCave(WorldGenLevel world, int x, int z) {
-		for (int i = 0; i < 64; i++) {
+        for (int i = reika.dragonapi.libraries.level.WorldgenHeight.caveFloor(world); i < Math.min(64, world.getMaxY()); i++) {
 			BlockPos pos = new BlockPos(x, i, z);
 			if (!this.inWorld(world, pos.above()))
 				continue;
 			BlockState ceiling = world.getBlockState(pos.above());
-			boolean supports = ceiling.is(Blocks.STONE) || ceiling.is(Tags.Blocks.ORES);
+            boolean supports = ceiling.is(BlockTags.BASE_STONE_OVERWORLD) || ceiling.is(Tags.Blocks.ORES);
 			if (supports && world.getBlockState(pos).isAir())
 				return pos;
 		}

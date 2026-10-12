@@ -13,7 +13,7 @@ import terrablender.api.RegionType;
 
 import java.util.function.Consumer;
 
-/** Low-weight overworld climate region that restores Rainbow and Ender Forest generation. */
+/** Ender Forest's climate placement and advertised Rainbow family; LargeBiomePlacement owns Rainbow regions. */
 public final class ChromaRegion extends Region {
 
     public static final int WEIGHT = 2;
@@ -27,6 +27,8 @@ public final class ChromaRegion extends Region {
     public void addBiomes(Registry<Biome> registry,
             Consumer<Pair<Climate.ParameterPoint, ResourceKey<Biome>>> mapper) {
         this.addModifiedVanillaOverworldBiomes(mapper, builder -> {
+            // Retain these entries in TerraBlender's possibleBiomes list. The resolver replaces
+            // their climate fragments with the planned, minimum-sized Rainbow regions.
             builder.replaceBiome(Biomes.FOREST, ChromaBiomes.RAINBOW_FOREST);
             builder.replaceBiome(Biomes.RIVER, ChromaBiomes.RAINBOW_STREAM);
             // V33a's Ender Forest replaced ordinary forest; dark forest is the closest slot that

@@ -18,8 +18,10 @@ import java.util.function.Consumer;
  * only succeeds where that lands near something it can grow on, which is why 1.7.10 decorators made
  * so many.
  *
+ * <p>Rolls are measured above the current floor and clipped to the inclusive build ceiling.
+ *
  * <p>1.7.10's height map is the first light-blocking block from the top, which counts leaves and water;
- * {@code MOTION_BLOCKING} is the 26.2 height map that does the same.
+ * {@code MOTION_BLOCKING} is the 26.3 height map that does the same.
  */
 public record LegacyHeightmapScaledPlacement(int multiplier, int add) implements PlacementModifier {
 
@@ -32,8 +34,9 @@ public record LegacyHeightmapScaledPlacement(int multiplier, int add) implements
     @Override
     public void modify(PlacementContext context, RandomSource random, BlockPos origin, Consumer<BlockPos> output) {
         int height = context.getHeight(Heightmap.Types.MOTION_BLOCKING, origin.getX(), origin.getZ());
-        int bound = height * multiplier + add;
-        int y = bound <= 1 ? 0 : random.nextInt(bound);
+        int floor = context.getMinY();
+        int bound = Math.min(context.getLevel().getMaxY() - floor + 1, (height - floor) * multiplier + add);
+        int y = floor + (bound <= 1 ? 0 : random.nextInt(bound));
         output.accept(new BlockPos(origin.getX(), y, origin.getZ()));
     }
 
