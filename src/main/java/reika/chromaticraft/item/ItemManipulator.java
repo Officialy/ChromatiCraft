@@ -196,10 +196,10 @@ public class ItemManipulator extends Item {
 				if (element != null) {
 					int color = element.color();
 					ReikaPacketHelper.sendDataPacketWithRadius(DragonAPI.packetChannel,
-							APIPacketHandler.PacketIDs.COLOREDPARTICLE.ordinal(), repeater, 128,
+							APIPacketHandler.PacketIDs.COLOREDPARTICLE.wireId(), repeater, 128,
 							color >> 16 & 255, color >> 8 & 255, color & 255, 32, 8);
 					ReikaPacketHelper.sendDataPacketWithRadius(DragonAPI.packetChannel,
-							APIPacketHandler.PacketIDs.NUMBERPARTICLE.ordinal(), repeater, 128,
+							APIPacketHandler.PacketIDs.NUMBERPARTICLE.wireId(), repeater, 128,
 							repeater.getSignalDepth(element));
 				}
 			}

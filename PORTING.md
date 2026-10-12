@@ -11250,3 +11250,38 @@ Details: ChromatiCraft/docs/cave-route-finder-fix.md; build/cave-route-*.log.
 Validation uses the working tree, including earlier pending ports. This selective
 checkpoint preserves earlier worldgen/rift/launcher/IDE/D31 work outside its
 commits. D45 and the remaining backlog stay open. Nothing is pushed.
+
+
+## Explicit stable packet identities — D46, 2026-10-12
+
+After committing/pushing all earlier work at root 2073045 and its pinned module
+heads, migrated accepted packet discriminators from enum ordinals to explicit
+wireId values. Seven tables preserve all 353 published numbers: category types,
+DragonAPI controls, private field-sync primitive tags, Rotary/Reactor/Electri
+controls and Chroma's complete 212-entry enum. Immutable ID maps reject unknown
+values; duplicate/negative tables fail initialization. Chroma no longer clamps a
+malformed control into another operation. All old constructor payload arguments
+remain unchanged, including counts, type flags and variable-data markers.
+
+The Gradle accepted-source inventory identifies/migrates 101 direct ordinal lines
+and the blower's indexed packet control; private sync tags/category encoding use
+the same API. Gameplay payload enums remain intact. Excluded pristine consumers
+retain source parity and must adopt wireId during their complete subsystem ports.
+The actual bridge registrar uses PROTOCOL_VERSION = 2.1.0: no number/frame/schema
+change is introduced. Future incompatible IDs/schemas require deliberate version
+negotiation; IDs must never be recycled.
+
+Four new units and two native fixtures check scrambled tables, duplicates,
+negative/unknown IDs, independent published table fingerprints, all public lookups,
+native category round trips and old RAW bytes. All 91 DragonAPI native tests,
+182 family units and five packet-selector regressions pass (the latter repeats
+the two new fixtures and additionally covers Sonic/Defoliator/packet authority).
+Eight guards verify 3,287 outputs; development DA/RC jars build. The final 3,461-file
+accepted-source audit finds no packet-discriminator ordinal encoding, and all 353
+constructor payloads are checked against the pushed checkpoint. Normal Play hashes
+are unchanged. Actual remote socket/render acceptance remains separate.
+
+Contract/mapping: DragonAPI/docs/packet-id-port.md and packet-ids-protocol-2.1.json.
+Evidence: TestInstance/docs/packet-id-2026-10-12.md and build/packet-id-*.log/json.
+D46 is complete for the accepted port; D47 dimension-field semantics is next. This
+continuation is committed locally after the already verified published checkpoint.
