@@ -143,39 +143,24 @@ public class BlockChromaTrail extends Block implements EntityBlock {
 			return all.subList(idx, idx+size);
 		}
 
-		private ArrayList<BlockPos> getFullPath() {
-			ArrayList<BlockPos> path = new ArrayList();
-			path.add(this.getBlockPos());
-			if (prevLocation != null) {
-				BlockPos c = prevLocation;
-				BlockEntity te = this.getLevel().getBlockEntity(c);
-				while (te instanceof TileChromaTrail tt) {
-					path.add(0, c);
-					if (tt.prevLocation != null) {
-						c = tt.prevLocation;
-						te = this.getLevel().getBlockEntity(c);
-					}
-					else {
-						te = null;
-					}
-				}
-			}
-			if (nextLocation != null) {
-				BlockPos c = nextLocation;
-				BlockEntity te = this.getLevel().getBlockEntity(c);
-				while (te instanceof TileChromaTrail tt) {
-					path.add(c);
-					if (tt.nextLocation != null) {
-						c = tt.nextLocation;
-						te = this.getLevel().getBlockEntity(c);
-					}
-					else {
-						te = null;
-					}
-				}
-			}
-			return path;
-		}
+        /** Broken/unloaded links end the trail; overlapping routes must never loop forever. */
+        public ArrayList<BlockPos> getFullPath() {
+            java.util.ArrayDeque<BlockPos> path = new java.util.ArrayDeque<>();
+            java.util.HashSet<BlockPos> seen = new java.util.HashSet<>();
+            path.add(getBlockPos()); seen.add(getBlockPos());
+            if (getLevel() == null) return new ArrayList<>(path);
+            collectPath(prevLocation, true, path, seen);
+            collectPath(nextLocation, false, path, seen);
+            return new ArrayList<>(path);
+        }
+        private void collectPath(BlockPos pos, boolean backwards, java.util.ArrayDeque<BlockPos> path,
+                java.util.Set<BlockPos> seen) {
+            while (pos != null && seen.add(pos) && getLevel().hasChunkAt(pos)) {
+                if (!(getLevel().getBlockEntity(pos) instanceof TileChromaTrail trail)) break;
+                if (backwards) path.addFirst(pos); else path.addLast(pos);
+                pos = backwards ? trail.prevLocation : trail.nextLocation;
+            }
+        }
 
 		@Override
 		protected void saveAdditional(ValueOutput output) {

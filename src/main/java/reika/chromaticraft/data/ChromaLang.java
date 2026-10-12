@@ -281,6 +281,12 @@ public class ChromaLang extends LanguageProvider {
 		add(reika.chromaticraft.registry.ChromaEntityTypes.CHARGING_TOOL.get(), "Item");
 		add(ChromaItems.OWNERSHIP_KEY.get(), "Ownership Expansion Key"); // V33a chroma.share
 		add(ChromaItems.CAVE_PATHER.get(), "Subterranean Route Finder"); // V33a chroma.cavepather
+        add("chromaticraft.cave_route.searching", "Searching for a subterranean route...");
+        add("chromaticraft.cave_route.found", "Subterranean route marked.");
+        add("chromaticraft.cave_route.no_route", "No route to the sky found in loaded terrain. Explore further and try again.");
+        add("chromaticraft.cave_route.too_large", "This cave is too large to search from here. Move closer to your destination and try again.");
+        add("chromaticraft.cave_route.changed", "The route changed or unloaded during the search. Try again.");
+        add("chromaticraft.cave_route.busy", "Other subterranean searches are running. Try again shortly.");
 		// V33a's en_US.lang had no chroma.trail entry, so the block showed its raw key; it keeps that key as its name.
 		add(ChromaBlocks.CHROMA_TRAIL.get(), "chroma.trail");
 		add(reika.chromaticraft.registry.ChromaEntityTypes.LIGHT_SHOT.get(), "LightGun Shot"); // V33a ChromaEntities LIGHTGUN

@@ -278,6 +278,7 @@ public final class ChromaGameTests {
 		ChromaTieredResourceTests.register(event, env);
 		ChromaCrafterTests.register(event, env);
 		ChromaWandPortTests.register(event, env);
+        reika.chromaticraft.items.tools.CaveRouteGameTests.register(event, env);
         ChromaVoidCompatibilityTests.register(event, env);
         if (reika.dragonapi.ModList.VOIDMONSTER.isLoaded())
             reika.chromaticraft.modinterface.voidritual.VoidCompatibilityGameTests.register(event, env);
