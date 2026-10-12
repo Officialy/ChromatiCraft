@@ -11067,3 +11067,44 @@ packet-pipeline-{final-validation,final-units,crafter-validation}.log.
 The Chroma caller correction is in ChromatiCraft/docs/chroma-crafter-port.md.
 Earlier pending worldgen, rift, compatibility, launcher, IDE and D31 work is
 preserved outside this selective local checkpoint. Nothing is pushed.
+
+
+## Native compound batching — D44, 2026-10-12
+
+Completed the selected migration through the existing channel bridge. The
+unregistered DragonPayloads early design has no repository senders/registrations;
+its incomplete handlers and the former compound code are preserved byte-for-byte
+as committed-source references under DragonAPI/docs/reference, outside runtime
+source/resource roots. No registered content was excluded to obtain a green build.
+
+CompoundSyncPacket is now a server queue/snapshot API which emits the existing
+BE_NBT_SYNC payloads in native PacketDistributor bundles, at most 256 per bundle.
+No extra transport/payload registration or wire change is introduced. Channel IDs,
+protocol 2.1.0, default frames and initial vanilla full sync are retained. The
+COMPOUNDSYNC option is appended without shifting old ordinals, defaults false and
+wires the real BlockEntityBase periodic branch. Mode transitions carry baseline/
+removal history, force authoritative state and cancel stale queued updates.
+
+Queued tags are detached and compared to the consumed baseline, preserving
+coalesced changes/removals/reversions. Failed sends retain pending work; newer
+reentrant revisions survive flush. Real tile identities, weak references, loaded
+chunks, dimensions, ranges and negotiated channels govern delivery. Per-dimension
+4/20-tick clocks avoid duplicate callbacks; unload/stop clear state. Snapshot codecs
+preserve signed int coordinates and registry identities, bound counts/sizes and
+retain prior state/buffer indices after malformed reads or failed writes. Existing
+compound receiver implementations retain a detached adapter. The casting table's
+explicit empty output remains, with obsolete removal commentary corrected.
+
+Validation passes all 84 DragonAPI native tests, eight crafter regressions, 170
+units (122/34/8/6), final six compound fixtures, eight guards covering 3,280 primary
+outputs and DA/RC development jars. Retired classes/reference files are absent
+from runtime jars; archived bytes and normal Play argument hashes are verified.
+Controlled transport captures are not actual remote socket/render acceptance.
+
+Contract: DragonAPI/docs/compound-sync-port.md.
+Evidence: TestInstance/docs/compound-sync-2026-10-12.md and root build/
+compound-sync-{family-validation,final-validation,crafter-validation}.log.
+D44 is complete. D45 tank sender semantics, D46 legacy sub-IDs, excluded Chroma
+subsystem ports and release/remote acceptance remain open. Earlier pending worldgen,
+rift, compatibility, launcher, IDE and D31 changes remain outside this selective
+local checkpoint. Nothing is pushed.

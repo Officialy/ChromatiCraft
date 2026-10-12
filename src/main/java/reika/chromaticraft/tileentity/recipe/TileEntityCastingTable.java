@@ -835,12 +835,9 @@ public final class TileEntityCastingTable extends InventoriedCrystalReceiver
     @Override protected void writeSyncTag(CompoundTag tag) {
         super.writeSyncTag(tag);
         tag.putInt("castingTick", craftingTick); tag.putInt("castingDuration", craftingDuration); tag.putInt("castingAmount", craftingAmount); tag.putInt("tableXP", tableXP);
-        // This key must be written on EVERY sync, including when the preview is empty.
-        // CompoundSyncPacket diffs by iterating the keys present in the outgoing tag, so a key that
-        // was sent last time and is omitted now is never compared, never marked changed, and never
-        // cleared on the client -- it just keeps the previous value. Omitting it when empty is what
-        // left the last crafted recipe sitting in the result slot after the grid was emptied.
-        // OPTIONAL_CODEC (unlike CODEC) round-trips ItemStack.EMPTY, so the cleared state travels.
+        // Write the preview explicitly on every sync, including the empty state.
+        // OPTIONAL_CODEC round-trips ItemStack.EMPTY. Both modern sync paths also transmit
+        // removed keys; the former dormant compound implementation lacked that deletion logic.
         RegistryAccess access = level == null ? RegistryAccess.EMPTY : level.registryAccess();
         ItemStack.OPTIONAL_CODEC.encodeStart(access.createSerializationContext(NbtOps.INSTANCE), this.getDisplayOutput())
                 .result().ifPresent(encoded -> tag.put("recipeOutput", encoded));
