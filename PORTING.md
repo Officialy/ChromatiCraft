@@ -11026,3 +11026,44 @@ Evidence: TestInstance/docs/chroma-crafter-2026-10-12.md and root build/
 chroma-crafter-{datagen,family-validation,pool-validation,final-validation}.log.
 Earlier pending worldgen, rift, compatibility, launcher, IDE and D31 work is
 retained outside this selective local checkpoint. Nothing is pushed.
+
+
+## Packet pipeline — D43 and Chroma caller follow-up, 2026-10-12
+
+Completed PacketPipeline's native clientbound/serverbound packet construction,
+namespaced connection-scoped replies and functional custom codec registration.
+Each pipeline and helper share one actual bridge. Incoming handlers bind only
+their received native context; nested handlers/failures restore or clear that
+scope. Explicit flow/context overloads cover native callers. Custom encoders and
+decoders register as bounded native PLAY payloads, use authoritative handlers,
+reject duplicate/foreign/late registrations and preserve existing channel IDs,
+protocol 2.1.0, legacy types and default byte framing. Original getMinecraftPacket
+was active; its original reply implementation was commented out, so this also
+completes the previously exposed intended reply API rather than inventing a
+claimed original gameplay regression.
+
+Eight new units and four new native fixtures cover default bytes, both directions,
+codec execution, malformed/foreign rejection, nesting, exceptions, namespace
+isolation and actual NeoForge registration/native stream-codec round trips.
+Final checks pass all 78 DragonAPI native tests, eight crafter regressions, 164
+units (116/34/8/6), eight class guards covering 3,280 primary outputs and DA/RC jars.
+Normal Play hashes remain unchanged and its namespace property does not enable
+the new fixture channels. Controlled receive contexts capture replies in tests;
+actual remote socket delivery is not claimed. Existing deliberate tick-failure
+crash reports remain expected fixture diagnostics, not failing suites.
+
+D41 review corrects the earlier broad FabricationRecipes description: useNBT=false
+stores ignore-extra-data keys while query methods construct strict keys. The full
+fabrication subsystem port must use explicit recipe matching and preserve useNBT.
+Its exported heterogeneous union is iterated by existing NEI callers. Current
+ItemMagicRegistry keyed calls pass its own exported keys; stack overload callers
+use the registry's declared policy. Pristine excluded classes are retained.
+D40/D41 remain open for their full subsystem ports. D44 dormant transport,
+D45 tank sender semantics, D46 legacy sub-IDs and remote acceptance remain open.
+
+Contract: DragonAPI/docs/packet-pipeline-port.md.
+Evidence: TestInstance/docs/packet-pipeline-2026-10-12.md and root build/
+packet-pipeline-{final-validation,final-units,crafter-validation}.log.
+The Chroma caller correction is in ChromatiCraft/docs/chroma-crafter-port.md.
+Earlier pending worldgen, rift, compatibility, launcher, IDE and D31 work is
+preserved outside this selective local checkpoint. Nothing is pushed.

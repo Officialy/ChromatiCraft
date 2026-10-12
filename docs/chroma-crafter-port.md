@@ -83,13 +83,18 @@ recursion guard uses one consistent ignore-NBT policy. ItemElementCalculator's
 calculation guard is a list with homogeneous criteria. CastingRecipe's exported
 input sets are iterated rather than used as fuzzy membership predicates.
 GuardianStoneManager's cited contains call compares Action enums, not keyed
-stacks. FabricationRecipes and PlantDropManager use consistent default key
-criteria in the inspected internal paths. ItemMagicRegistry's KeyedItemStack
-query overload can accept externally supplied criteria and needs its optional
-integration/full-subsystem review. No unsupported equality change was made to
-these pristine excluded classes. D41 remains open; this audit does not certify
-unported optional-mod callers. Already accepted ItemMatch matching uses explicit
-predicates, as recorded by D39.
+stacks. PlantDropManager uses consistent default criteria. The follow-up review
+on 2026-10-12 found that FabricationRecipes.addRecipe(useNBT=false) stores ignore-
+extra-data keys while its item query methods construct strict keys. That complete
+fabrication subsystem port must use explicit recipe predicates and preserve its
+useNBT flag. Its exported getConsumableItems union can mix policies, but current
+NEI callers iterate it; this is not a demonstrated heterogeneous HashSet.contains
+call. ItemMagicRegistry's sole existing keyed caller passes back keys exported
+by the registry itself; remaining item callers use its stack overload. Arbitrary
+external keyed criteria are a future API policy question. The original excluded
+classes are retained unchanged until their full ports. D41 remains open for the
+fabrication matching/subsystem review and optional integrations. Accepted
+ItemMatch matching already uses explicit predicates, as recorded by D39.
 
 ## Evidence
 
