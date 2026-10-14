@@ -10,10 +10,14 @@
         },
         {
           "type": "minecraft:empty",
-          "weight": 100
+          "weight": 80
         }
       ],
-      "rolls": 1
+      "rolls": {
+        "type": "minecraft:uniform",
+        "max": 6,
+        "min": 3
+      }
     }
   ],
   "random_sequence": "chromaticraft:chests/injected/mineshaft"

@@ -202,10 +202,14 @@
         },
         {
           "type": "minecraft:empty",
-          "weight": 100
+          "weight": 64
         }
       ],
-      "rolls": 1
+      "rolls": {
+        "type": "minecraft:uniform",
+        "max": 10,
+        "min": 10
+      }
     }
   ],
   "random_sequence": "chromaticraft:chests/injected/bonus"

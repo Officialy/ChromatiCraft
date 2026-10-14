@@ -11,7 +11,6 @@ import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.entries.EmptyLootItem;
 import net.minecraft.world.level.storage.loot.entries.LootItem;
 import net.minecraft.world.level.storage.loot.functions.SetItemCountFunction;
-import net.minecraft.world.level.storage.loot.providers.number.ints.ContextIntProvider;
 import net.minecraft.world.level.storage.loot.providers.number.ints.ContextIntProviders;
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.registry.ChromaItems;
@@ -24,78 +23,93 @@ import java.util.function.BiConsumer;
  * into ordinary worldgen chests. Without it there is no way to find a Fragment before building a Table,
  * so it is the front door to the whole mod's progression.
  *
- * <h2>What upstream did, and why this cannot be a literal port</h2>
+ * <h2>What upstream did</h2>
  *
- * <p>1.7.10 chest generation was a single flat weighted pool per location, and {@code ChestGenHooks}
- * let a mod push entries straight into it. {@code ChromaChests} does exactly that: {@code addItem(tier,
- * Location.DUNGEON, FRAGMENT, 1, 1, 10)} means "weight 10 against whatever else is in the dungeon
- * pool". 26.2 has no such pool to push into — a vanilla chest table is several pools with their own
- * rolls and entries, generated from data — so the modern seam is a loot modifier that rolls a subtable
- * alongside the vanilla one. This class is those subtables; {@link ChromaLootModifierProvider} is the
- * wiring that attaches each to its vanilla table.
+ * <p>1.7.10 chest generation was a single flat weighted pool per location, and DragonAPI's
+ * {@code LootController} pushed every mod entry straight into that {@code ChestGenHooks} pool.
+ * {@code addItem(tier, Location.DUNGEON, FRAGMENT, 1, 1, 10)} therefore meant "weight 10 in the one
+ * pool holding the vanilla dungeon entries", and the chest drew {@code getCount()} items from that
+ * pool with replacement. 26.x has no such pool to push into — a vanilla chest table is several pools
+ * with their own rolls and entries, generated from data — so the modern seam is a loot modifier that
+ * rolls a subtable alongside the vanilla one. This class is those subtables;
+ * {@link ChromaLootModifierProvider} is the wiring that attaches each to its vanilla table.
  *
- * <h2>What carries over exactly, and the one thing that does not</h2>
+ * <h2>How each subtable reproduces the 1.7.10 odds</h2>
  *
- * <p>Every weight and every stack size below is V33a's, unchanged. Those are what encode the design:
+ * <p>Each subtable is the 1.7.10 pool with its vanilla entries folded into one empty entry, rolled the
+ * 1.7.10 number of times. Every ChromatiCraft item then keeps its original per-roll chance of
+ * {@code weight / (vanilla + ChromatiCraft)} and its original expected count per chest. None of the
+ * three columns is chosen:
+ *
+ * <ul>
+ * <li><b>Weights and stack sizes</b> are V33a's {@code ChromaChests}, unchanged. They encode the design:
  * a Fragment is weight 10 in a dungeon, 20 in a pyramid and <em>50</em> in a stronghold library, so a
- * library is the jackpot and a mineshaft (weight 2) is a consolation prize. The roll counts are each
- * location's own vanilla roll count in 26.2, so a chest that draws many items has many chances at a
- * Fragment, exactly as a 1.7.10 chest with a bigger count did.
+ * library is the jackpot and a mineshaft (weight 2) is a consolation prize.</li>
+ * <li><b>Rolls</b> are Forge 10.13.4.1614 {@code ChestGenHooks.init}'s {@code addInfo} min/max as
+ * {@code getCount} uses them: {@code min + nextInt(max - min)}, so the max is exclusive, and a location
+ * whose min equals its max draws exactly that many.</li>
+ * <li><b>The empty weight</b> is the total of the vanilla content array {@code addInfo} registers (read
+ * from the Forge-patched structure classes) plus the enchanted book {@code init} adds afterwards:
+ * weight 1, weight 2 in the library, and none in the bonus chest, village blacksmith or jungle
+ * dispenser.</li>
+ * </ul>
  *
- * <p>The one value that cannot carry over is the denominator. V33a's weight 10 meant "10 out of the
- * 1.7.10 dungeon pool's total", and that pool no longer exists — 26.2's tables have different entries
- * and different totals, so there is nothing to match against. {@link #VANILLA_POOL_WEIGHT} stands in
- * for it: an empty entry at weight 100, chosen because the surviving vanilla pools these weights were
- * written against still total around a hundred (26.2's jungle temple main pool is 93). It sets the
- * absolute rate while the V33a weights keep every rate relative to every other. Without it the modifier
- * would guarantee ChromatiCraft loot in every single chest.
+ * <p>Other mods' entries are left out of the denominator: each mod's subtable reproduces its own share
+ * against vanilla alone, so the rates do not depend on which other mods are installed. RotaryCraft's
+ * {@code RoCChestLoot} uses the same values.
+ *
+ * <p>Do not swap these for the 26.x vanilla roll counts and a flat filler. That is what this class did
+ * before, with an empty weight of 100: a mineshaft rolled once instead of three to six times, a dungeon
+ * one to three times instead of eight, and a dungeon chest carried a Fragment about a third as often as
+ * in V33a. The faithful values also lower one rate, which is correct and not a regression: the 26.x
+ * stronghold library rolls 2-10 but the 1.7.10 one drew 1-4, so a library chest now carries a Fragment
+ * about 76% of the time rather than 84%.
  */
 public record ChromaChestLoot(LootTableSubProvider.Context context) implements LootTableSubProvider {
 
 	/**
-	 * The stand-in for the 1.7.10 vanilla pool total these weights were written against. See the class
-	 * documentation: this is the single value in the port that is chosen rather than carried over.
-	 */
-	private static final int VANILLA_POOL_WEIGHT = 100;
-
-	/**
-	 * One entry per {@code LootController.Location} that V33a injected into, paired with the 26.2 table
-	 * that replaced it and that table's own roll count.
+	 * One entry per {@code LootController.Location} that V33a injected into, paired with the 26.x table
+	 * that replaced it and the 1.7.10 pool it reproduces: that pool's {@code ChestGenHooks} category and
+	 * vanilla content array (whose total is in brackets), its {@code addInfo} range and its book.
 	 *
 	 * <p>{@code Location.JUNGLE_DISPENSER} carries only the Glowing Sapling; upstream's shard line for
 	 * it is commented out and stays that way.
 	 */
 	public enum Location {
-		/** V33a {@code Location.BONUS} — {@code ChestGenHooks.BONUS_CHEST}. */
-		BONUS(BuiltInLootTables.SPAWN_BONUS_CHEST, ContextIntProviders.exactly(1)),
-		/** V33a {@code Location.VILLAGE} — {@code ChestGenHooks.VILLAGE_BLACKSMITH}. */
-		VILLAGE(BuiltInLootTables.VILLAGE_WEAPONSMITH, ContextIntProviders.between(3, 8)),
-		/** V33a {@code Location.DUNGEON} — {@code ChestGenHooks.DUNGEON_CHEST}. */
-		DUNGEON(BuiltInLootTables.SIMPLE_DUNGEON, ContextIntProviders.between(1, 3)),
-		/** V33a {@code Location.MINESHAFT} — {@code ChestGenHooks.MINESHAFT_CORRIDOR}. */
-		MINESHAFT(BuiltInLootTables.ABANDONED_MINESHAFT, ContextIntProviders.exactly(1)),
-		/** V33a {@code Location.STRONGHOLD_LIBRARY}. */
-		STRONGHOLD_LIBRARY(BuiltInLootTables.STRONGHOLD_LIBRARY, ContextIntProviders.between(2, 10)),
-		/** V33a {@code Location.STRONGHOLD_CROSSING}. */
-		STRONGHOLD_CROSSING(BuiltInLootTables.STRONGHOLD_CROSSING, ContextIntProviders.between(1, 4)),
-		/** V33a {@code Location.STRONGHOLD_HALLWAY} — {@code ChestGenHooks.STRONGHOLD_CORRIDOR}. */
-		STRONGHOLD_HALLWAY(BuiltInLootTables.STRONGHOLD_CORRIDOR, ContextIntProviders.between(2, 3)),
-		/** V33a {@code Location.PYRAMID} — {@code ChestGenHooks.PYRAMID_DESERT_CHEST}. */
-		PYRAMID(BuiltInLootTables.DESERT_PYRAMID, ContextIntProviders.between(2, 4)),
-		/** V33a {@code Location.JUNGLE_PUZZLE} — {@code ChestGenHooks.PYRAMID_JUNGLE_CHEST}. */
-		JUNGLE_PUZZLE(BuiltInLootTables.JUNGLE_TEMPLE, ContextIntProviders.between(2, 6)),
-		/** V33a {@code Location.JUNGLE_DISPENSER} — {@code ChestGenHooks.PYRAMID_JUNGLE_DISPENSER}. */
-		JUNGLE_DISPENSER(BuiltInLootTables.JUNGLE_TEMPLE_DISPENSER, ContextIntProviders.between(1, 2));
+		/** {@code BONUS_CHEST}: {@code WorldServer.bonusChestContent} (64), addInfo 10..10, no book. */
+		BONUS(BuiltInLootTables.SPAWN_BONUS_CHEST, 10, 10, 64),
+		/** {@code VILLAGE_BLACKSMITH}: {@code House2.villageBlacksmithChestContents} (94), addInfo 3..9, no book. */
+		VILLAGE(BuiltInLootTables.VILLAGE_WEAPONSMITH, 3, 8, 94),
+		/** {@code DUNGEON_CHEST}: {@code WorldGenDungeons.field_111189_a} (119) + book, addInfo 8..8. */
+		DUNGEON(BuiltInLootTables.SIMPLE_DUNGEON, 8, 8, 120),
+		/** {@code MINESHAFT_CORRIDOR}: {@code mineshaftChestContents} (79) + book, addInfo 3..7. */
+		MINESHAFT(BuiltInLootTables.ABANDONED_MINESHAFT, 3, 6, 80),
+		/** {@code STRONGHOLD_LIBRARY}: {@code Library} contents (42) + book of weight 2, addInfo 1..5. */
+		STRONGHOLD_LIBRARY(BuiltInLootTables.STRONGHOLD_LIBRARY, 1, 4, 44),
+		/** {@code STRONGHOLD_CROSSING}: {@code RoomCrossing} contents (61) + book, addInfo 1..5. */
+		STRONGHOLD_CROSSING(BuiltInLootTables.STRONGHOLD_CROSSING, 1, 4, 62),
+		/** {@code STRONGHOLD_CORRIDOR}: {@code ChestCorridor.strongholdChestContents} (98) + book, addInfo 2..4. */
+		STRONGHOLD_HALLWAY(BuiltInLootTables.STRONGHOLD_CORRIDOR, 2, 3, 99),
+		/** {@code PYRAMID_DESERT_CHEST}: {@code DesertPyramid.itemsToGenerateInTemple} (72) + book, addInfo 2..7. */
+		PYRAMID(BuiltInLootTables.DESERT_PYRAMID, 2, 6, 73),
+		/** {@code PYRAMID_JUNGLE_CHEST}: {@code JunglePyramid.junglePyramidsChestContents} (72) + book, addInfo 2..7. */
+		JUNGLE_PUZZLE(BuiltInLootTables.JUNGLE_TEMPLE, 2, 6, 73),
+		/** {@code PYRAMID_JUNGLE_DISPENSER}: {@code junglePyramidsDispenserContents} (30), addInfo 2..2, no book. */
+		JUNGLE_DISPENSER(BuiltInLootTables.JUNGLE_TEMPLE_DISPENSER, 2, 2, 30);
 
 		/** The vanilla table this location's loot is added to. */
 		public final ResourceKey<LootTable> target;
 		/** The ChromatiCraft subtable the loot modifier rolls alongside it. */
 		public final ResourceKey<LootTable> subtable;
-		private final net.minecraft.core.Holder<ContextIntProvider> rolls;
+		private final int minRolls;
+		private final int maxRolls;
+		private final int vanillaWeight;
 
-		Location(ResourceKey<LootTable> target, net.minecraft.core.Holder<ContextIntProvider> rolls) {
+		Location(ResourceKey<LootTable> target, int minRolls, int maxRolls, int vanillaWeight) {
 			this.target = target;
-			this.rolls = rolls;
+			this.minRolls = minRolls;
+			this.maxRolls = maxRolls;
+			this.vanillaWeight = vanillaWeight;
 			this.subtable = ResourceKey.create(Registries.LOOT_TABLE, Identifier.fromNamespaceAndPath(
 					ChromatiCraft.MODID, "chests/injected/" + name().toLowerCase(java.util.Locale.ROOT)));
 		}
@@ -110,10 +124,11 @@ public record ChromaChestLoot(LootTableSubProvider.Context context) implements L
 	public void run() {
         BiConsumer<ResourceKey<LootTable>, LootTable.Builder> output = context::accept;
 		for (Location location : Location.values()) {
-			LootPool.Builder pool = LootPool.lootPool().setRolls(location.rolls);
+			LootPool.Builder pool = LootPool.lootPool()
+					.setRolls(ContextIntProviders.between(location.minRolls, location.maxRolls));
 			contents(location, pool);
-			// The filler is what turns "guaranteed" into "at V33a's rate"; see VANILLA_POOL_WEIGHT.
-			pool.add(EmptyLootItem.emptyItem().setWeight(VANILLA_POOL_WEIGHT));
+			// Stands in for the 1.7.10 vanilla entries these weights were drawn against; see the class doc.
+			pool.add(EmptyLootItem.emptyItem().setWeight(location.vanillaWeight));
 			output.accept(location.subtable, LootTable.lootTable().withPool(pool));
 		}
 	}

@@ -1766,21 +1766,23 @@ public final class ChromaGameTests {
 		var tables = helper.getLevel().getServer().reloadableRegistries().lookup()
 				.lookupOrThrow(net.minecraft.core.registries.Registries.LOOT_TABLE);
 
-		// Every location V33a seeded with a Fragment, and the fewest of two hundred rolls that may carry
-		// one. The floors are deliberately far below the rates the weights imply -- a dungeon Fragment is
-		// weight 10 against a filler of 100 over one to three rolls, which lands near twelve percent, and
-		// the observed count is twenty-three. A floor of five catches a modifier that stopped applying
-		// without turning ordinary variance into a failure.
-		record Expectation(ChromaChestLoot.Location location, int floor) {}
+		// Every location V33a seeded with a Fragment, and how many of two hundred chests may carry one.
+		// Each band is four standard deviations either side of the V33a rate: a Fragment's per-draw chance
+		// is its weight over the 1.7.10 vanilla total plus every ChromatiCraft weight in that pool, drawn
+		// the 1.7.10 number of times. A dungeon is 10/165 over eight draws, so 39% of chests (~79); a
+		// mineshaft is 2/82 over three to six, 10.5% (~21). The old 26.x-rolls-against-100 subtables gave
+		// about 26 and 4 there, below both bands. Library 76% (~152), jungle 60% (~120), pyramid 38%
+		// (~76), crossing 30% (~61), hallway 21% (~43), village 19% (~38).
+		record Expectation(ChromaChestLoot.Location location, int floor, int ceiling) {}
 		for (Expectation expectation : java.util.List.of(
-				new Expectation(ChromaChestLoot.Location.DUNGEON, 5),
-				new Expectation(ChromaChestLoot.Location.PYRAMID, 5),
-				new Expectation(ChromaChestLoot.Location.JUNGLE_PUZZLE, 5),
-				new Expectation(ChromaChestLoot.Location.STRONGHOLD_LIBRARY, 5),
-				new Expectation(ChromaChestLoot.Location.STRONGHOLD_CROSSING, 5),
-				new Expectation(ChromaChestLoot.Location.STRONGHOLD_HALLWAY, 5),
-				new Expectation(ChromaChestLoot.Location.MINESHAFT, 1),
-				new Expectation(ChromaChestLoot.Location.VILLAGE, 5))) {
+				new Expectation(ChromaChestLoot.Location.DUNGEON, 51, 107),
+				new Expectation(ChromaChestLoot.Location.PYRAMID, 48, 104),
+				new Expectation(ChromaChestLoot.Location.JUNGLE_PUZZLE, 92, 147),
+				new Expectation(ChromaChestLoot.Location.STRONGHOLD_LIBRARY, 127, 176),
+				new Expectation(ChromaChestLoot.Location.STRONGHOLD_CROSSING, 35, 86),
+				new Expectation(ChromaChestLoot.Location.STRONGHOLD_HALLWAY, 20, 66),
+				new Expectation(ChromaChestLoot.Location.MINESHAFT, 4, 38),
+				new Expectation(ChromaChestLoot.Location.VILLAGE, 16, 60))) {
 			LootTable vanilla = tables.getOrThrow(expectation.location().target).value();
 			int rollsWithFragment = 0;
 			for (long seed = 0; seed < 200; seed++)
@@ -1792,7 +1794,10 @@ public final class ChromaGameTests {
 			helper.assertTrue(rollsWithFragment >= expectation.floor(),
 					"only " + rollsWithFragment + " of 200 rolls of "
 							+ expectation.location().target.identifier() + " carried an Information Fragment; "
-							+ "the ChromaChests loot modifier is not reaching that table");
+							+ "the ChromaChests loot modifier is not reaching that table at its V33a rate");
+			helper.assertTrue(rollsWithFragment <= expectation.ceiling(),
+					rollsWithFragment + " of 200 rolls of " + expectation.location().target.identifier()
+							+ " carried an Information Fragment, above its V33a rate");
 		}
 
 		// The rates above prove the tables; this proves the path a structure actually uses. Both Nether
