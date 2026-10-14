@@ -52,7 +52,7 @@ public final class LargeBiomePlacement {
             int cellX = Math.floorDiv(x, LargeBiomeLayout.CELL_QUARTS);
             int cellZ = Math.floorDiv(z, LargeBiomeLayout.CELL_QUARTS);
             var candidate = layout.candidate(cellX, cellZ);
-            if (candidate == null || !candidate.contains(x, z))
+            if (candidate == null || !candidate.bounds(x, z))
                 return biome;
             var mask = mask(cellX, cellZ, candidate, parameters);
             int surface = mask == null ? 0 : mask.surfaceAt(x, z);

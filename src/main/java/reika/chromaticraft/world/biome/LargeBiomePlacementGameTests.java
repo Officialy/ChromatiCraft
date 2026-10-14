@@ -2,6 +2,7 @@ package reika.chromaticraft.world.biome;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.SplittableRandom;
 import net.minecraft.core.Holder;
@@ -57,14 +58,15 @@ public final class LargeBiomePlacementGameTests {
                         "buffered chunk lookup and global biome lookup must agree");
         }
         helper.assertTrue(!cliffs.isEmpty() && rainbow.size() > cliffs.size(), "Cliffs must be rarer than Rainbow Forest");
+        double[] cliffRadii = cliffs.stream().mapToDouble(region -> region.shape().equivalentRadius()).toArray();
         double[] distances = new double[441];
         int index = 0;
         double originSpacing = LargeBiomeLayout.CELL_QUARTS * 4 * .8;
         for (int x = -10; x <= 10; x++) for (int z = -10; z <= 10; z++) {
             double nearest = Double.POSITIVE_INFINITY;
-            for (var region : cliffs)
-                nearest = Math.min(nearest, Math.max(0, Math.hypot(x * originSpacing - region.x() * 4.0,
-                        z * originSpacing - region.z() * 4.0) - region.radius() * 4.0));
+            for (int i = 0; i < cliffs.size(); i++)
+                nearest = Math.min(nearest, Math.max(0, Math.hypot(x * originSpacing - cliffs.get(i).x() * 4.0,
+                        z * originSpacing - cliffs.get(i).z() * 4.0) - cliffRadii[i] * 4.0));
             distances[index++] = nearest;
         }
         Arrays.sort(distances);
@@ -73,6 +75,7 @@ public final class LargeBiomePlacementGameTests {
                 Math.round(distances[220]), Math.round(distances[330]), (System.nanoTime() - start) / 1e9);
         helper.assertTrue(distances[220] >= 2000 && distances[220] <= 4000,
                 "default cliff exploration should be measured in a few thousand blocks, median=" + distances[220]);
+        var shapes = new HashMap<LargeBiomeLayout.Region, LargeBiomeLayout.Shape>();
         var random = new SplittableRandom(0x4C414E4443415645L);
         int caves = 0, oceans = 0;
         for (int i = 0; i < 4096; i++) {
@@ -93,7 +96,7 @@ public final class LargeBiomePlacementGameTests {
             }
             var region = layout.candidate(Math.floorDiv(x, LargeBiomeLayout.CELL_QUARTS),
                     Math.floorDiv(z, LargeBiomeLayout.CELL_QUARTS));
-            if (region == null || !region.contains(x, z)) {
+            if (region == null || !shapes.computeIfAbsent(region, LargeBiomeLayout.Region::shape).contains(x, z)) {
                 var actual = resolver.getNoiseBiome(x, 80, z);
                 helper.assertTrue(!family(actual, LargeBiomeLayout.Kind.CLIFFS) && !family(actual, LargeBiomeLayout.Kind.RAINBOW),
                         "the old climate mappings must not leak fragments outside planned regions");

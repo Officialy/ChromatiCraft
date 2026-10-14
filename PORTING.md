@@ -10945,6 +10945,26 @@ patches are retained. External biome mods and in-client appearance were not part
 survey. The wider D63 climate/Cliffs review remains open.
 
 
+### 2026-10-15 — Region outlines grown like V33a biomes, not discs
+
+The owner noticed every Rainbow Forest and Cliffs region was a near-perfect circle. The cause was
+`Region.contains`, which used a 60–72-quart radius with a ±6-quart sine wobble. In V33a both biomes
+were ordinary GenLayerBiome entries at 1:256 blocks. Their outlines came from the vanilla
+`GenLayerZoom` cascade (`selectRandom` edges, `selectModeOrRandom` corners) and then `GenLayerSmooth`.
+Each region now does the same on its own lattice. A 5x5-minus-corners block of 32-quart points
+plus 2–5 seeded Eden-growth lobes is zoomed five times down to quarts and then smoothed. Lattice points
+are point samples, so filled lattice squares survive every zoom. The 48-quart core disc is
+therefore covered by construction (a JUnit test checks core+4), and it is also ORed in afterwards.
+MARGIN and EXTENT are now 128 quarts, so a shape never leaves its 448-quart cell. The resolver gates
+on the bounding square and the cached mask instead of a per-quart disc test. Cell selection, weights,
+core admission, the coastal mask and connectivity are unchanged.
+
+The mean equivalent radius is about 66–90 quarts, slightly larger than the old disc. A seed-zero
+survey gives 44 Cliffs and 97 Rainbow regions from 428 candidates. Nearest-Cliffs distance is
+p25 1,563, median 2,538 and p75 3,597 blocks. New chunks only: worlds already generated keep their
+circles, with seams where new terrain meets them. Evidence: build/biome-shape-zoom.log
+(LargeBiomeLayoutTest, including the new irregular-outline test, plus `chromaticraft:large_biome_regions`).
+
 ## 2026-10-10 — World Rift complete-state API (D31)
 
 The accepted World Rift exposes its full state getter through both the shared

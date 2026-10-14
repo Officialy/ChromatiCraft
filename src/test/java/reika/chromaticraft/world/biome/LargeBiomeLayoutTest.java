@@ -19,12 +19,48 @@ class LargeBiomeLayoutTest {
                 assertEquals(x, Math.floorDiv(region.x() + region.extent(), LargeBiomeLayout.CELL_QUARTS));
                 assertEquals(z, Math.floorDiv(region.z() - region.extent(), LargeBiomeLayout.CELL_QUARTS));
                 assertEquals(z, Math.floorDiv(region.z() + region.extent(), LargeBiomeLayout.CELL_QUARTS));
-                int core = LargeBiomeLayout.CORE_QUARTS;
-                for (int dx = -core; dx <= core; dx++) for (int dz = -core; dz <= core; dz++)
-                    if (dx * dx + dz * dz <= core * core)
-                        assertTrue(region.contains(region.x() + dx, region.z() + dz));
+                var shape = region.shape();
+                assertEquals(shape.bits(), twin.candidate(x, z).shape().bits());
+                assertCoreFilled(shape);
             }
         }
+    }
+
+    @Test
+    void zoomedOutlinesAreIrregularBlobsNotDiscs() {
+        var layout = new LargeBiomeLayout(91, 4, 10);
+        int regions = 0, lumpy = 0;
+        double totalRadius = 0;
+        for (int x = -12; x <= 12; x++) for (int z = -12; z <= 12; z++) {
+            var region = layout.candidate(x, z);
+            if (region == null) continue;
+            var shape = region.shape();
+            assertCoreFilled(shape);
+            assertFalse(shape.contains(region.x() + LargeBiomeLayout.EXTENT, region.z()), "edge of the bounding square stays outside");
+            double min = Double.POSITIVE_INFINITY, max = 0;
+            for (int ray = 0; ray < 64; ray++) {
+                double angle = ray * Math.PI / 32, reach = 0;
+                for (double r = 0; r < LargeBiomeLayout.EXTENT; r += .5)
+                    if (shape.contains(region.x() + (int)Math.round(r * Math.cos(angle)), region.z() + (int)Math.round(r * Math.sin(angle))))
+                        reach = r;
+                min = Math.min(min, reach);
+                max = Math.max(max, reach);
+            }
+            // The former disc ranged from radius-6 to radius+6 quarts (max/min about 1.2).
+            if (max / min > 1.5) lumpy++;
+            totalRadius += shape.equivalentRadius();
+            regions++;
+        }
+        assertTrue(lumpy > regions * 3 / 4, "irregular outlines: " + lumpy + "/" + regions);
+        double meanRadius = totalRadius / regions;
+        assertTrue(meanRadius > 66 && meanRadius < 90, "mean equivalent radius in quarts: " + meanRadius);
+    }
+
+    private static void assertCoreFilled(LargeBiomeLayout.Shape shape) {
+        int core = LargeBiomeLayout.CORE_QUARTS;
+        for (int dx = -core - 4; dx <= core + 4; dx++) for (int dz = -core - 4; dz <= core + 4; dz++)
+            if (dx * dx + dz * dz <= (core + 4) * (core + 4))
+                assertTrue(shape.contains(shape.x() + dx, shape.z() + dz), "lattice core must cover the guaranteed disc with slack");
     }
 
     @Test
@@ -46,7 +82,7 @@ class LargeBiomeLayoutTest {
 
     @Test
     void coastalSliversAreRejectedAndDetachedIslandsAreRemoved() {
-        var region = new LargeBiomeLayout.Region(LargeBiomeLayout.Kind.CLIFFS, -400, 700, 72, .3);
+        var region = new LargeBiomeLayout.Region(LargeBiomeLayout.Kind.CLIFFS, -400, 700, 7);
         assertNull(region.fit((x, z) -> x < region.x() + 30 ? 1 : 0), "small coastal remnant");
         assertNull(region.fit((x, z) -> x == region.x() + 12 && z == region.z() ? 0 : 1),
                 "even a protected quart inside the guaranteed core rejects the region");
