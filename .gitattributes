@@ -20,3 +20,5 @@
 *.PDF	 diff=astextplain
 *.rtf	 diff=astextplain
 *.RTF	 diff=astextplain
+# Preserve checksummed legacy references without line-ending conversion.
+/docs/legacy-asm/*.java.reference -text
