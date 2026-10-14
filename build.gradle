@@ -516,6 +516,7 @@ sourceSets.main.java {
     include 'reika/chromaticraft/render/entity/RenderAurora.java'
     include 'reika/chromaticraft/models/ModelTunnelNuker.java'
     include 'reika/chromaticraft/network/ChromaNetwork.java'
+    include 'reika/chromaticraft/network/ColoredAltarNetwork.java'
     include 'reika/chromaticraft/auxiliary/structure/CastingStructure.java'
     include 'reika/chromaticraft/client/ChromaClientRenderers.java'
     include 'reika/chromaticraft/client/ChromaFluidModels.java'

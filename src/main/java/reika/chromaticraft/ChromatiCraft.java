@@ -86,7 +86,7 @@ public class ChromatiCraft extends DragonAPIMod {
 				reika.chromaticraft.world.dimension.structure.RayBlendStructureGenerator::new);
 
 		ChromaBlocks.BLOCKS.register(modEventBus);
-        modEventBus.addListener(reika.chromaticraft.client.render.ColoredAltarEffects::register);
+        modEventBus.addListener(reika.chromaticraft.network.ColoredAltarNetwork::register);
 		reika.chromaticraft.registry.ChromaWeatherAttributes.ATTRIBUTES.register(modEventBus);
 		ChromaBlocks.ITEMS.register(modEventBus);
 		ChromaItems.ITEMS.register(modEventBus);
@@ -147,6 +147,7 @@ public class ChromatiCraft extends DragonAPIMod {
 		reika.chromaticraft.magic.progression.ProgressionManager.init();
 		if (FMLEnvironment.getDist() == Dist.CLIENT) {
 			reika.chromaticraft.client.ChromaClientRenderers.init(modEventBus);
+			modEventBus.addListener(reika.chromaticraft.client.render.ColoredAltarEffects::register);
 			modEventBus.addListener(ChromatiCraft::registerScreens);
 		}
 

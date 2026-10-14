@@ -4,15 +4,9 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.network.codec.ByteBufCodecs;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.Identifier;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.neoforge.network.PacketDistributor;
-import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
+import net.neoforged.neoforge.client.network.event.RegisterClientPayloadHandlersEvent;
+import reika.chromaticraft.network.ColoredAltarNetwork;
 import reika.chromaticraft.block.decoration.BlockColoredAltar.TileEntityColoredAltar;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.CrystalElement;
@@ -50,17 +44,8 @@ public final class ColoredAltarEffects {
         @Override protected float getV0() { return sprite.getV(textureV); }
         @Override protected float getV1() { return sprite.getV(textureV + 1 / 32F); }
     }
-    public record Visual(CompoundTag data) implements CustomPacketPayload {
-        public static final Type<Visual> TYPE=new Type<>(Identifier.fromNamespaceAndPath("chromaticraft","altar_visual"));
-        public static final StreamCodec<RegistryFriendlyByteBuf,Visual> CODEC=StreamCodec.composite(ByteBufCodecs.COMPOUND_TAG,Visual::data,Visual::new);
-        public Type<Visual> type() { return TYPE; }
-    }
-    public static void register(RegisterPayloadHandlersEvent event) { event.registrar("1").playToClient(Visual.TYPE,Visual.CODEC,(packet,context)->handle(packet.data)); }
-    public static void send(ServerLevel level,BlockPos pos,Vec3 target,CrystalElement element,String action) {
-        CompoundTag data=new CompoundTag(); data.putString("dimension",level.dimension().identifier().toString()); data.putLong("pos",pos.asLong());
-        data.putDouble("x",target.x); data.putDouble("y",target.y); data.putDouble("z",target.z); data.putInt("color",element.ordinal()); data.putString("action",action);
-        for (var player:level.players()) if (player.connection!=null && player.connection.hasChannel(Visual.TYPE)
-                && player.position().distanceToSqr(Vec3.atLowerCornerOf(pos))<64*64) PacketDistributor.sendToPlayer(player,new Visual(data));
+    public static void register(RegisterClientPayloadHandlersEvent event) {
+        event.register(ColoredAltarNetwork.Visual.TYPE, (packet, context) -> handle(packet.data()));
     }
     private static FadeGlow glow(ClientLevel world,Vec3 pos,Vec3 velocity,int color,int life,float scale,boolean rapid,String icon) {
         var fx=new FadeGlow(world,pos.x,pos.y,pos.z,velocity.x,velocity.y,velocity.z,color,life,scale,rapid,null,0,icon,true);

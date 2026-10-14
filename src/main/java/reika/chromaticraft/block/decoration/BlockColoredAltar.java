@@ -29,6 +29,7 @@ import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import reika.chromaticraft.base.CrystalTypeBlock;
 import reika.chromaticraft.client.render.ColoredAltarEffects;
+import reika.chromaticraft.network.ColoredAltarNetwork;
 import reika.chromaticraft.registry.ChromaBlockEntities;
 import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.ChromaSounds;
@@ -82,16 +83,16 @@ public final class BlockColoredAltar extends CrystalTypeBlock implements EntityB
                     Vec3 delta=player.position().subtract(center); double length=Math.max(1.0e-7,Math.hypot(delta.x,delta.z));
                     player.setDeltaMovement(player.getDeltaMovement().add(delta.x*1.5/length,.125+random.nextDouble()*.0625,delta.z*1.5/length)); player.syncVelocity=true;
                     reika.chromaticraft.magic.CrystalPotionController.instance.applyEffectFromColor(100,0,player,element,false,false,true);
-                    ColoredAltarEffects.send((ServerLevel)level,worldPosition,player.position().add(0,-.25,0),element,"shock");
+                    ColoredAltarNetwork.send((ServerLevel)level,worldPosition,player.position().add(0,-.25,0),element,"shock");
                     ChromaSounds.MONUMENTRAY.playSoundAtBlock(this,1,(float)reika.chromaticraft.auxiliary.CrystalMusicManager.instance.getDingPitchScale(element));
                 }
             } else {
                 BlockPos other=otherAltars.get(random.nextInt(otherAltars.size()));
-                ColoredAltarEffects.send((ServerLevel)level,worldPosition,Vec3.atCenterOf(other),element,"bolt");
+                ColoredAltarNetwork.send((ServerLevel)level,worldPosition,Vec3.atCenterOf(other),element,"bolt");
                 ChromaSounds.MONUMENTRAY.playSoundAtBlock(this,1,(float)reika.chromaticraft.auxiliary.CrystalMusicManager.instance.getDingPitchScale(element));
             }
             if (density>.0006F && random.nextFloat()<collapse) {
-                ColoredAltarEffects.send((ServerLevel)level,worldPosition,center,element,"break");
+                ColoredAltarNetwork.send((ServerLevel)level,worldPosition,center,element,"break");
                 ChromaSounds.POWERDOWN.playSoundAtBlock(this,1,1);
                 level.levelEvent(2001,worldPosition,Block.getId(getBlockState()));
                 level.removeBlock(worldPosition,false);
