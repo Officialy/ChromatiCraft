@@ -11370,3 +11370,41 @@ Contract, full binding inventory, evidence and rerun commands:
 DragonAPI/docs/mixin-runtime-matrix.md. D56 is complete; D57 live ASM/obfuscation
 helpers and environment detection are next. Public authentication and visual
 shader/LOD acceptance remain separate open tasks. Checkpointed locally.
+
+
+## D57 — Retire legacy ASM and obfuscation framework (2026-10-14)
+
+Removed ReikaASMHelper, Patcher, ASMException, MissingASMException and
+ReikaObfuscationHelper from DragonAPI Java sources. Removed the already-excluded
+ChromaASMHandler from ChromatiCraft Java sources. All six files are preserved
+byte-for-byte as noncompiled .java.reference documents; the original paths and
+SHA-256 digests are in DragonAPI/docs/legacy-asm/manifest.json. No runtime
+transformer framework, SRG map, legacy opcode reflection or hardcoded development
+probe remains in the accepted slice. No gameplay hook was removed: LuaBlock was
+the only nonframework ASM-helper caller; the Chroma handler was never active.
+
+LuaBlock delegates scalar parsing to plain Java LuaValueParser. Numeric hint
+widths, integer/long/double/string inference and overflow fallback are preserved.
+Boolean hints now work, and unrelated bracket text no longer steals the datatype
+match. Malformed annotations retain their text. Two regression tests exercise
+actual LuaBlock map export and preservation rather than the parser implementation.
+
+Active recipe-cache and item-diagnostic callers use the real 26.3 FML 12.0.8
+FMLEnvironment.isProduction() flag; DragonAPIMod names/logs development mode
+accurately. Readable names are not used to detect development. Excluded original
+ChromatiCraft reflection/dev callers remain untouched until their full subsystems
+are ported; the archive README lists the replacement rules and original active
+patch behaviors. Moving reference code does not complete those behavior ports.
+Existing accepted Mixins, accessors and TestInstance's useful ASM inspection remain.
+
+Validation: all 198 units pass (DragonAPI 145, RotaryCraft 34, ReactorCraft 8,
+ChromatiCraft 11), with no failures/errors/skips. All eight accepted-class guards
+pass. Native DragonAPI run passes all 100 required fixtures and the strict common
+MixinAudit (30 transformed bindings, two absent optional integrations). Source
+snapshot digests match; fresh DragonAPI/ChromatiCraft jars contain neither retired
+classes nor reference archives. No stale retired class outputs remain. Evidence:
+build/d57-family.log, build/d57-native.log, build/d57-proof.json and
+build/mixin-audit/20261014-d57-native/gameTest-GameTestServer.json.
+
+Normal Play and updater inactivity are preserved. Local checkpoint only; unrelated
+.idea/workspace.xml edits are excluded. D57 is complete; D58 is next.
