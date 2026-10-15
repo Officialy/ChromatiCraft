@@ -8583,12 +8583,13 @@ public final class ChromaGameTests {
 	/**
 	 * V33a World Rift linking across distance, from a stack of exactly two: the first end, placed ~13 chunks away, has
 	 * had its chunk unload by the time the second (the stack's last item) is placed. V33a's getTileEntity loaded it on
-	 * demand, and a size-0 1.7.10 stack kept its link NBT, so the pair must still link.
+	 * demand, and a size-0 1.7.10 stack kept its link NBT, so the pair must still link. The far end is chosen by
+	 * {@link #unticketedFarEnd} so that no other test of the batch holds its chunk.
 	 */
 	private static void worldRiftFarLink(GameTestHelper helper) {
 		var level = helper.getLevel();
 		var near = helper.absolutePos(new BlockPos(2, 2, 2));
-		var far = near.offset(208, 0, 0);
+		var far = unticketedFarEnd(helper, near);
 		level.setBlock(near.below(), Blocks.STONE.defaultBlockState(), 3);
 		level.setBlock(far.below(), Blocks.STONE.defaultBlockState(), 3);
 		level.setBlock(far, Blocks.AIR.defaultBlockState(), 3);
@@ -9021,6 +9022,38 @@ public final class ChromaGameTests {
 			helper.assertTrue(level.getBlockEntity(chestPos) instanceof net.minecraft.world.level.block.entity.ChestBlockEntity c
 					&& c.getItem(0).is(Items.DIAMOND), "the waterlogged chest and its contents must survive");
 		});
+	}
+
+	/**
+	 * A far end at least 13 chunks north of {@code near} whose chunk nothing else in the run holds. Every test
+	 * force-loads its structure's chunks, and with the 96-block padding the grid places 5-wide arenas 202 blocks
+	 * apart eastward (8 per row, rows 203 blocks apart southward), so a fixed +208 east offset lands 4 blocks past
+	 * the next test's arena, beside that test's joined player, whenever the batch has one. The candidate must be
+	 * unloaded now and more than the player loading radius (view or simulation distance, plus the two border
+	 * levels a ticket propagates as FULL) from every force-loaded chunk and every player.
+	 */
+	private static BlockPos unticketedFarEnd(GameTestHelper helper, BlockPos near) {
+		var level = helper.getLevel();
+		var players = level.getServer().getPlayerList();
+		int clearance = Math.max(players.getViewDistance(), players.getSimulationDistance()) + 3;
+		java.util.List<net.minecraft.world.level.ChunkPos> holders = new java.util.ArrayList<>();
+		for (long forced : level.getForceLoadedChunks())
+			holders.add(net.minecraft.world.level.ChunkPos.unpack(forced));
+		for (ServerPlayer player : level.players())
+			holders.add(player.chunkPosition());
+		for (int dz = 208; dz <= 208+64*256; dz += 64) {
+			BlockPos candidate = near.offset(0, 0, -dz);
+			if (level.isLoaded(candidate))
+				continue;
+			net.minecraft.world.level.ChunkPos chunk = net.minecraft.world.level.ChunkPos.containing(candidate);
+			boolean clear = true;
+			for (net.minecraft.world.level.ChunkPos holder : holders)
+				clear &= Math.max(Math.abs(holder.x()-chunk.x()), Math.abs(holder.z()-chunk.z())) > clearance;
+			if (clear)
+				return candidate;
+		}
+		throw helper.assertionException(Component.literal(
+				"no unloaded far end clear of every force-loaded chunk and player north of the test"));
 	}
 
 	private static void pollUntilUnloaded(GameTestHelper helper, BlockPos pos, int waited, Runnable then) {

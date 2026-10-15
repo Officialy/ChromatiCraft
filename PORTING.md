@@ -11643,3 +11643,32 @@ a player through an unconfigured mock connection.
     removed, so it does not depend on this change. The cause is not investigated.
 - **Not checked.** The headless run has no FTB Ultimine, so it proves no regression and no ConfigSync
   crash, but not the Ultimine path itself. That needs the Play client.
+
+## The two pre-existing mock-player-batch failures, fixed (2026-10-15)
+
+- **`item_port_cave_exit_deep` was stale.** V33a's Cave Pather ran its BFS and placed the trail in
+  the click. The port moved that to `CaveRouteJobs` (9f48ed8d, the day after the test was written),
+  which searches across server ticks, so the click-tick assertions could never hold.
+  - The test now asserts the deferred contract: the click places nothing, then `succeedWhen` waits
+    for the trail at the deepest floor and at the start, with the stone floor still below.
+  - It uses `joinedMockPlayer`. `CaveRouteJobs.runTick` resolves each job's owner through the
+    PlayerList and drops the job if the player is missing, so an unjoined `makeMockPlayer` never
+    gets a trail.
+- **`world_rift_far_link` depended on batch layout.** `register` gives every test 96 blocks of
+  padding. `StructureGridSpawner` advances by the padded bounds, so 5-wide arenas sit 202 blocks
+  apart eastward (8 per row, rows 203 apart southward). Each test force-loads its own arena's
+  chunks.
+  - Tests run alphabetically, so far_link comes first. Its fixed `+208` east far end landed 4 blocks
+    past `world_rift_link`'s arena, which is force-loaded and has a joined player standing in it.
+    Run alone, there is no neighbour, so it passed. The cause has nothing to do with the mock
+    connection.
+  - `unticketedFarEnd` now steps north from 208 blocks in 64-block steps. The grid grows only east
+    and south from its corner. It takes the first candidate that is unloaded now and more than
+    `max(view, simulation distance) + 3` chunks from every force-loaded chunk and every player.
+    That margin is the player ticket radius plus the two FULL border levels, plus one.
+  - The proof is unchanged. `pollUntilUnloaded` still requires the far chunk to unload, and the
+    pair still links, stays loaded and passes fluid.
+- **Validation.** Each test passed alone. The `world_rift_*` batch passed 5/5 twice; it had failed
+  3/3 before. The `item_port_*` batch passed 7/7.
+- **Follow-up, not fixed.** Players joined through `joinMockPlayer` are never removed from the
+  PlayerList. Their loading tickets outlive their test, for the rest of the run.

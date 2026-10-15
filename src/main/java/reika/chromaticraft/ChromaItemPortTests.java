@@ -54,18 +54,21 @@ final class ChromaItemPortTests {
                 }
             }
         }
-        var player = h.makeMockPlayer(GameType.SURVIVAL);
+        // Joined: CaveRouteJobs resolves the owner through the server player list on every slice.
+        var player = ChromaGameTests.joinedMockPlayer(h, GameType.SURVIVAL);
         BlockPos start = new BlockPos(8, 12, 8), bottom = new BlockPos(8, 2, 8);
         player.setPos(Vec3.atCenterOf(h.absolutePos(start))); player.setShiftKeyDown(true);
         player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(ChromaItems.CAVE_PATHER.get()));
         h.assertTrue(ChromaItems.CAVE_PATHER.get().use(h.getLevel(), player, InteractionHand.MAIN_HAND)
-                == net.minecraft.world.InteractionResult.SUCCESS, "the real sneaking route finder completes its connected-space search");
-        h.assertTrue(h.getBlockState(bottom).is(ChromaBlocks.CHROMA_TRAIL.get())
+                == net.minecraft.world.InteractionResult.SUCCESS, "the real sneaking route finder accepts the click");
+        // 1.7.10 searched synchronously; the port deliberately queues the search across server ticks.
+        h.assertTrue(h.getBlockState(start).isAir() && h.getBlockState(bottom).isAir(),
+                "the click queues the connected-space search without searching or placing in the click tick");
+        h.succeedWhen(() -> h.assertTrue(h.getBlockState(bottom).is(ChromaBlocks.CHROMA_TRAIL.get())
                 && h.getBlockState(start).is(ChromaBlocks.CHROMA_TRAIL.get())
                 && h.getLevel().getBlockEntity(h.absolutePos(bottom)) instanceof reika.chromaticraft.block.BlockChromaTrail.TileChromaTrail
                 && h.getBlockState(bottom.below()).is(net.minecraft.world.level.block.Blocks.STONE),
-                "the deepest reachable floor receives a real trail waypoint without replacing the supporting floor");
-        h.succeed();
+                "the deepest reachable floor receives a real trail waypoint without replacing the supporting floor"));
     }
 
     private static void efficiency(GameTestHelper h) {
