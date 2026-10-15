@@ -292,6 +292,7 @@ public final class ChromaGameTests {
 		if (reika.dragonapi.ModList.APPENG.isLoaded())
 			ChromaAETests.register(event, env);
 		register(event, env, "rainbow_leaf_drops", ChromaGameTests::rainbowLeafDrops);
+		register(event, env, "glow_daisy_drops", ChromaGameTests::glowDaisyDrops);
 		register(event, env, "me_distributor_ticks_without_ae", 100, ChromaGameTests::meDistributorTicksWithoutAE);
 		register(event, env, "progression_grant_and_query", ChromaGameTests::grantAndQuery);
 		register(event, env, "progression_recursive_parents", ChromaGameTests::recursiveParents);
@@ -1761,6 +1762,47 @@ public final class ChromaGameTests {
 		java.util.List<ItemStack> sheared = net.minecraft.world.level.block.Block.getDrops(state, level, pos, null, null, new ItemStack(Items.SHEARS));
 		helper.assertTrue(sheared.size() == 1 && sheared.get(0).is(ChromaBlocks.RAINBOW_LEAVES.get().asItem()),
 				"sheared rainbow leaves drop exactly themselves, got " + sheared);
+		helper.succeed();
+	}
+
+	/**
+	 * V33a {@code BlockDecoFlower} GLOWDAISY: {@code getDrops} rolls {@code 1/getDropChance()} = 1/2 for a single
+	 * glowstone dust and never the daisy itself; only shears ({@code onSheared}, with {@code harvestBlock} returning
+	 * early) yield the daisy. So a bare-handed break dropping nothing half the time is the original behaviour.
+	 */
+	private static void glowDaisyDrops(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		net.minecraft.world.level.block.Block daisy = ChromaBlocks.GLOW_DAISY.get();
+		var tables = level.getServer().reloadableRegistries().lookup()
+				.lookupOrThrow(net.minecraft.core.registries.Registries.LOOT_TABLE);
+		helper.assertTrue(tables.get(daisy.getLootTable().orElseThrow()).isPresent(),
+				"the Glowing Daisy loot table must load");
+
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		player.setGameMode(GameType.SURVIVAL);
+		BlockPos pos = helper.absolutePos(new BlockPos(2, 2, 2));
+		level.setBlock(pos.below(), Blocks.GRASS_BLOCK.defaultBlockState(), 3);
+		collectDrops(helper, pos);
+		int dust = 0;
+		for (int i = 0; i < 100; i++) {
+			level.setBlock(pos, daisy.defaultBlockState(), 3);
+			helper.assertTrue(player.gameMode.destroyBlock(pos) && level.getBlockState(pos).isAir(),
+					"a survival player could not break the Glowing Daisy");
+			List<ItemStack> drops = collectDrops(helper, pos);
+			int got = countDropped(drops, Items.GLOWSTONE_DUST);
+			helper.assertTrue(got <= 1 && countDropped(drops, daisy.asItem()) == 0 && drops.size() == got,
+					"a bare-handed Glowing Daisy drops at most one glowstone dust and never itself, got " + drops);
+			dust += got;
+		}
+		helper.assertTrue(dust >= 30 && dust <= 70,
+				"a bare-handed Glowing Daisy drops glowstone dust half the time, got " + dust + "/100");
+
+		player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.SHEARS));
+		level.setBlock(pos, daisy.defaultBlockState(), 3);
+		helper.assertTrue(player.gameMode.destroyBlock(pos), "a survival player could not shear the Glowing Daisy");
+		List<ItemStack> sheared = collectDrops(helper, pos);
+		helper.assertTrue(sheared.size() == 1 && countDropped(sheared, daisy.asItem()) == 1,
+				"a sheared Glowing Daisy drops exactly itself, got " + sheared);
 		helper.succeed();
 	}
 

@@ -11497,3 +11497,29 @@ Still open (CHROMA-PORT in `RenderStructureController`): V33a's client overlay o
 players without the prerequisites (red X, rift layer, glint dome). The gate it illustrates works.
 
 Player guide: `docs/biome-fragment-melody-guide.md`.
+
+### 2026-10-15 — Glowing Daisy drops: faithful to V33a, now covered by a test
+
+Report: breaking a Glowing Daisy in-game dropped nothing. The port was checked against V33a
+`BlockDecoFlower` (GLOWDAISY) and its drops already match, so no loot change was made.
+
+- **V33a behaviour.** `getDrops` returns one glowstone dust when `rand.nextInt(getDropChance())`
+  is 0, and `getDropChance()` is 2 for the daisy. So a bare-handed break gives one glowstone dust
+  half the time and **nothing** the other half. The daisy never drops itself from `getDrops`.
+  Fortune is ignored. Silk Touch does nothing, because the block is not a normal cube. Only shears
+  give the daisy: `IShearable.onSheared` drops it, and `harvestBlock` returns early for shears so
+  no glowstone dust rolls. Glow Root uses the same rule at 1/4.
+- **Port.** `ChromaLootProvider` builds `glowstoneDustTable(block, 0.5F)`, which is
+  `createShearsDispatchTable`: shears give the daisy, otherwise there is a 50% chance of one
+  glowstone dust. The generated `loot_table/blocks/glow_daisy.json` loads (the
+  `minecraft:tool/can_shear` predicate reference resolves). No global loot modifier or
+  `BlockDropsEvent` listener touches it. It is a normal `register` block with an item, and it has
+  no `requiresCorrectToolForDrops`.
+- **Conclusion.** An empty break is the original 50% miss. Creative-mode breaks also drop nothing.
+  The table was not changed to "always drop" or "drop itself", because that would invent behaviour.
+
+New test: `chromaticraft:glow_daisy_drops` (`ChromaGameTests`). It checks that the table is in
+the reloadable loot registry. A survival mock player then breaks the daisy bare-handed 100 times
+with `ServerPlayerGameMode.destroyBlock`. Each break must give at most one glowstone dust and
+never the daisy, and the total must be 30–70 dust. One break with shears must give exactly the
+daisy.
