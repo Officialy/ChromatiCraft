@@ -11556,3 +11556,10 @@ gate it illustrates (`tickBiomeFragment`, unchanged) uses the same check.
 Validation: `:ChromatiCraft:compileJava`, then the `chromaticraft:biome_fragment_*` GameTests (the
 overlay is client-only and does not change the server gate). The visuals have not been checked in a
 client yet.
+
+Known gap, shared with the lexicon graph and not specific to this overlay: the client stage tag is
+re-sent on login (`ChromatiCraft.playerLoggedIn`) and on every stage change, but nothing re-sends it
+after respawn or a dimension change. DragonAPI's `PLAYERDATSYNCREQ_CLIENT` request has no sender. If
+the new `LocalPlayer` starts with empty persistent data, the overlay will show for a qualified player
+until their next stage change or relog. Fix in DragonAPI (resync on respawn/dimension change); confirm
+it in a client first.
