@@ -168,6 +168,25 @@ public final class ChromaRenderPipelines {
 			.withDepthStencilState(new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL, false))
 			.withCull(false)
 			.build();
+	/**
+	 * V33a {@code BlendMode.MULTIPLY} (GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA) world sprites without depth write: the
+	 * darkening X the Biome Fragment hangs over its shaft for a player who may not pass yet.
+	 */
+	public static final RenderPipeline MULTIPLY_SPRITE = RenderPipeline.builder()
+			.withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "pipeline/multiply_sprite"))
+			.withBindGroupLayout(BindGroupLayouts.GLOBALS)
+			.withBindGroupLayout(BindGroupLayouts.PROJECTION)
+            .withBindGroupLayout(BindGroupLayouts.DYNAMIC_TRANSFORMS)
+			.withVertexShader("core/position_tex_color")
+			.withFragmentShader("core/position_tex_color")
+			.withBindGroupLayout(BindGroupLayouts.SAMPLER0)
+			.withColorTargetState(new ColorTargetState(new BlendFunction(BlendFactor.DST_COLOR, BlendFactor.ONE_MINUS_SRC_ALPHA)))
+			.withVertexBinding(0, DefaultVertexFormat.POSITION_TEX_COLOR)
+			.withPrimitiveTopology(PrimitiveTopology.QUADS)
+			.withDepthStencilState(new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL, false))
+			.withCull(false)
+			.build();
+
 	public static final RenderPipeline TRANSLUCENT_SPRITE_THROUGH_WALL = RenderPipeline.builder()
 			.withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "pipeline/translucent_sprite_through_wall"))
 			.withBindGroupLayout(BindGroupLayouts.GLOBALS)
@@ -525,6 +544,9 @@ public final class ChromaRenderPipelines {
 	private static final Function<Identifier, RenderType> TRANSLUCENT_TYPES = Util.memoize(texture ->
 			RenderType.create("chromaticraft_translucent_sprite", RenderSetup.builder(TRANSLUCENT_SPRITE)
 					.withTexture("Sampler0", texture).sortOnUpload().createRenderSetup()));
+	private static final Function<Identifier, RenderType> MULTIPLY_TYPES = Util.memoize(texture ->
+			RenderType.create("chromaticraft_multiply_sprite", RenderSetup.builder(MULTIPLY_SPRITE)
+					.withTexture("Sampler0", texture).sortOnUpload().createRenderSetup()));
 	private static final Function<Identifier, RenderType> PYLON_CORE_TYPES = Util.memoize(texture ->
 			RenderType.create("chromaticraft_pylon_core", RenderSetup.builder(PYLON_CORE)
 					.withTexture("Sampler0", texture).sortOnUpload().createRenderSetup()));
@@ -581,6 +603,11 @@ public final class ChromaRenderPipelines {
 		return TRANSLUCENT_TYPES.apply(texture);
 	}
 
+	/** V33a BlendMode.MULTIPLY sprites without depth write (MULTIPLY_SPRITE), as a render type. */
+	public static RenderType multiplySprite(Identifier texture) {
+		return MULTIPLY_TYPES.apply(texture);
+	}
+
 	public static RenderType pylonCore(Identifier texture) {
 		return PYLON_CORE_TYPES.apply(texture);
 	}
@@ -633,6 +660,7 @@ public final class ChromaRenderPipelines {
         event.registerPipeline(GUI_ADDITIVE_DARK);
         event.registerPipeline(TRANSLUCENT_SPRITE);
         event.registerPipeline(TRANSLUCENT_SPRITE_THROUGH_WALL);
+        event.registerPipeline(MULTIPLY_SPRITE);
 		event.registerPipeline(PYLON_CORE);
 		event.registerPipeline(PYLON_CORE_THROUGH_WALL);
 		event.registerPipeline(ADDITIVE_ALPHA_SPRITE);
@@ -667,6 +695,8 @@ public final class ChromaRenderPipelines {
             IrisCompat.assignWithoutShadow(glow, "EMISSIVE_ENTITIES");
         IrisCompat.assignWithoutShadow(TRANSLUCENT_SPRITE, "TEXTURED");
         IrisCompat.assignWithoutShadow(TRANSLUCENT_SPRITE_THROUGH_WALL, "TEXTURED");
+        // A darkening layer, not a glow: the emissive program's pack blend would turn it additive.
+        IrisCompat.assignWithoutShadow(MULTIPLY_SPRITE, "TEXTURED");
         IrisCompat.assignWithoutShadow(ADDITIVE_COLOR_TRIANGLES, "BASIC");
         IrisCompat.assignWithoutShadow(TRANSLUCENT_COLOR_TRIANGLES, "BASIC");
         IrisCompat.assignWithoutShadow(AURA_LOCUS_LINES, "LINES");

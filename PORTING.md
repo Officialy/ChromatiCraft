@@ -11493,8 +11493,8 @@ because V33a's gate requires it.
 Validation: `gradlew :ChromatiCraft:runGameTest -PgameTestSelector=chromaticraft:biome_fragment_*
 --offline` passes all 4, and `-PgameTestSelector=chromaticraft:music_*` passes 1.
 
-Still open (CHROMA-PORT in `RenderStructureController`): V33a's client overlay over the shaft for
-players without the prerequisites (red X, rift layer, glint dome). The gate it illustrates works.
+The client overlay over the shaft (red X, rift layer, glint dome) landed later the same day; see
+"Biome Fragment prerequisite overlay" below.
 
 Player guide: `docs/biome-fragment-melody-guide.md`.
 
@@ -11523,3 +11523,36 @@ the reloadable loot registry. A survival mock player then breaks the daisy bare-
 with `ServerPlayerGameMode.destroyBlock`. Each break must give at most one glowstone dust and
 never the daisy, and the total must be 30–70 dust. One break with shears must give exactly the
 daisy.
+
+### 2026-10-15 — Biome Fragment prerequisite overlay
+
+The last unported V33a piece of the Biome Fragment, `BiomeStructurePuzzle.render`, is now in
+`RenderStructureController`. It warns a player that the shaft will turn them back, and the server
+gate it illustrates (`tickBiomeFragment`, unchanged) uses the same check.
+
+- **Gate.** `extractRenderState` sets `State.biomeGate` when the controller's synced structure type
+  is `BIOME_FRAGMENT` and the client player fails `ProgressStage.BIOMESTRUCT.playerHasPrerequisites`.
+  That reads the death-persistent stage tag, which `ProgressionManager.setPlayerStage` re-syncs
+  (`ReikaPlayerAPI.syncCustomData`), so the overlay goes away as soon as the last prerequisite lands.
+  The lexicon graph reads progression the same way.
+- **Passes, in V33a's order, at the block origin** (outside the flare's billboard turn), each with its
+  own submit order (1–4, after the flare at 0):
+  1. a 3x3 `ChromaIcons.X` sheet at y 6.75, BlendMode.MULTIPLY;
+  2. the same sheet at alpha 64, BlendMode.DEFAULT (`translucentSprite`);
+  3. ADDITIVEDARK `HIVE` sheets at y 6 and 7 (0x300000) and a red `RIFT` sheet at y 6.5
+     (`additiveSprite` on the block atlas);
+  4. the glint dome: radius 12 around (0.5, 5.5, 0.5), colour pulsing 0xff0000→0x700000 on
+     `sin(ms/100)`, vanilla's `enchanted_glint_item.png` scrolling around and up it. V33a never reset
+     the blend after the hive pass, so the dome is ADDITIVEDARK too. The glint texture's own sampler
+     repeats, which the free-running UVs need.
+- **New pipeline.** `ChromaRenderPipelines.MULTIPLY_SPRITE` / `multiplySprite(...)` is V33a's
+  MULTIPLY (`GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA`, from DragonAPI `ReikaGLHelper.BlendMode`), with
+  no depth write and no culling. Iris: `TEXTURED` without shadow. It darkens rather than glows, and
+  packs force additive blending on the emissive program.
+- **Culling.** `getRenderBoundingBox` covers the whole dome for Biome Fragment controllers, so it
+  doesn't vanish when the controller block leaves view.
+- All sprites are the shipped V33a icons (`block/icons/x`, `hive`, `rift`). Nothing was drawn new.
+
+Validation: `:ChromatiCraft:compileJava`, then the `chromaticraft:biome_fragment_*` GameTests (the
+overlay is client-only and does not change the server gate). The visuals have not been checked in a
+client yet.
