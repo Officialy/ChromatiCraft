@@ -11563,3 +11563,49 @@ after respawn or a dimension change. DragonAPI's `PLAYERDATSYNCREQ_CLIENT` reque
 the new `LocalPlayer` starts with empty persistent data, the overlay will show for a qualified player
 until their next stage change or relog. Fix in DragonAPI (resync on respawn/dimension change); confirm
 it in a client first.
+
+### 2026-10-15 — Structure controller flare was invisible
+
+Report: a naturally generated Biome Fragment (Outpost, Luminous Cliffs) showed no flare at its
+controller. V33a `RenderStructControl` draws it for every in-world controller (`isVisible()` is
+hard-wired true). The port's flare had three faults, one of them fatal:
+
+- **Stale pose (why it vanished).** The deferred geometry callback drew with a `PoseStack.Pose`
+  captured before `popPose()` and ignored the pose the callback is handed. In 26.3, `pushPose`
+  reuses its `Pose` objects (`poses.get(i).set(lastPose)`). By the time the AFTER_TERRAIN submit
+  runs, that object holds whatever transform was pushed to that depth last, so the flare was drawn
+  somewhere else, not at the controller. It now uses the callback's own pose, as the
+  Biome Fragment overlay and the pylon renderer already did.
+- **Texture.** The 64x11520 `rotating_flare_pulse.png` strip was bound as a standalone texture, with
+  the frame stepped by hand on the claim that unreferenced sprites aren't stitched. They are: the
+  block atlas's `directory` source takes everything under `textures/block/`, and the strip's
+  `.mcmeta` animates it at one frame per tick. The flare now uses the `ChromaIcons.SPINFLARE` atlas
+  sprite, as V33a did.
+- **Shape and blend.** V33a scales a ±1 quad by 0.5, so the flare is one block across, not 1.5. It
+  turns by `-playerViewY` then `playerViewX`, a full billboard: `camera.orientation` now, not yaw
+  only. For an in-world, non-monument controller V33a blends INVERTEDADD
+  (`GL_ONE_MINUS_DST_COLOR, GL_ONE_MINUS_SRC_COLOR`). The new `ChromaRenderPipelines.INVERTED_ADD_SPRITE`
+  / `invertedAddSprite` replaces ADDITIVEDARK. Black still drops out; bright texels glow on dark
+  surroundings and invert bright ones, exactly as in 1.7.10. Iris: `EMISSIVE_ENTITIES` without
+  shadow, like the other black-backed glows.
+
+The flare colour is still the controller's synced `CrystalElement` (white by default). The
+monument's ADDITIVEDARK variant waits for `isMonument` with the monument pass (the CHROMA-PORT note in
+the class Javadoc). Validation: compile plus the `biome_fragment_*` GameTests. Not yet checked in a
+client.
+
+
+**Follow-up (2026-10-15): the full-flow test failed in the Play client.** In the modded client the test
+failed with "Payload ftbultimine:sync_ultimine_time_packet may not be sent to the client!".
+- Cause: FTB Ultimine sends that packet from `playerJoined` to every player who joins. The vanilla
+  mock connection had negotiated no mod payloads, so the send threw before the test began.
+- `BiomeFragmentMusicTests` now joins its mock player through
+  `NetworkRegistry.configureMockConnection`, the pattern the RotaryCraft menu tests use.
+- The player is an anonymous `ServerPlayer` subclass, as vanilla's mock is. NeoForge's `ConfigSync`
+  throws for an exact `ServerPlayer` that skipped the configuration phase, and crashes the server.
+- Other mock-player tests that use the vanilla `makeMockServerPlayerInLevel` will fail the same way
+  in a client with FTB Ultimine.
+- The external-mod headless run (`:TestInstance:runGameTest`) could not reproduce this. It currently
+  won't boot: `mezz_config_gui` in `TestInstance/run/mods` needs `mezz_config`, which is missing.
+- Also checked: the luma (or chroma, ender or lava) under the controller is V33a's
+  `getLiquidLocations`/`getLiquid` pool and is correct.

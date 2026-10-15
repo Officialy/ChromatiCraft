@@ -99,7 +99,7 @@ final class BiomeFragmentMusicTests {
 						&& Math.abs(whiteOctave.pitch() - 1F) < 1e-3F,
 				"C7 (white's octave) must play ding2_hi at pitch 1, not DING clamped to 2");
 
-		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		ServerPlayer player = joinMockPlayer(helper);
 		player.snapTo(Vec3.atCenterOf(origin.offset(0, 4, 10)));
 		helper.assertTrue(helper.getLevel().players().contains(player),
 				"the mock player must be a real level player for the 20-block checks");
@@ -296,6 +296,27 @@ final class BiomeFragmentMusicTests {
 		Vec3 local = face.getAxis() == Direction.Axis.X
 				? new Vec3(out, height, along) : new Vec3(along, height, out);
 		click(helper, player, new BlockHitResult(Vec3.atLowerCornerOf(trigger).add(local), face, trigger, false));
+	}
+
+	/**
+	 * A survival player joined through a connection NeoForge treats as having negotiated every
+	 * registered payload. The vanilla mock connection negotiated none, so in a modded client any mod
+	 * that greets joining players (FTB Ultimine's sync_ultimine_time_packet) fails the test with
+	 * "Payload ... may not be sent to the client!" before it starts.
+	 */
+	private static ServerPlayer joinMockPlayer(GameTestHelper helper) {
+		var cookie = net.minecraft.server.network.CommonListenerCookie.createInitial(
+				new com.mojang.authlib.GameProfile(java.util.UUID.randomUUID(), "test-mock-player"), false);
+		// A subclass, as vanilla's own mock is: NeoForge's ConfigSync skips subclasses as test players,
+		// but throws for an exact ServerPlayer that never went through the configuration phase.
+		ServerPlayer player = new ServerPlayer(helper.getLevel().getServer(), helper.getLevel(),
+				cookie.gameProfile(), cookie.clientInformation()) {};
+		var connection = new net.minecraft.network.Connection(net.minecraft.network.protocol.PacketFlow.SERVERBOUND);
+		new io.netty.channel.embedded.EmbeddedChannel(connection);
+		net.neoforged.neoforge.network.registration.NetworkRegistry.configureMockConnection(connection);
+		helper.getLevel().getServer().getPlayerList().placeNewPlayer(connection, player, cookie);
+		player.setGameMode(net.minecraft.world.level.GameType.SURVIVAL);
+		return player;
 	}
 
 	/** The server's own right-click path, as a client's use-item-on packet reaches it. */
