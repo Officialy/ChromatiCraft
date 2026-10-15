@@ -40,7 +40,7 @@ final class ChromaAdvancementTests {
     }
 
     private static void login(GameTestHelper h) {
-        var player = h.makeMockServerPlayerInLevel();
+        var player = ChromaGameTests.joinedCreativeMockPlayer(h);
         int books = 0;
         for (int i = 0; i < player.getInventory().getContainerSize(); i++)
             if (player.getInventory().getItem(i).is(ChromaItems.LEXICON.get())) books += player.getInventory().getItem(i).getCount();
@@ -50,7 +50,7 @@ final class ChromaAdvancementTests {
     }
 
     private static void progress(GameTestHelper h) {
-        var player = h.makeMockServerPlayerInLevel();
+        var player = ChromaGameTests.joinedCreativeMockPlayer(h);
         ProgressionManager.instance.setPlayerStage(player, ProgressStage.CASTING, true, false, false);
         h.assertTrue(done(player, ProgressStage.CASTING), "grant the selected research stage");
         h.assertTrue(done(player, ProgressStage.CRYSTALS), "grant the automatically recorded prerequisite too");
@@ -60,7 +60,7 @@ final class ChromaAdvancementTests {
     }
 
     private static void backfill(GameTestHelper h) {
-        var player = h.makeMockServerPlayerInLevel();
+        var player = ChromaGameTests.joinedCreativeMockPlayer(h);
         ProgressionManager.instance.setPlayerStage(player, ProgressStage.CRYSTALS, true, false, false);
         reika.dragonapi.libraries.AdvancementHelper.revoke(player, reika.chromaticraft.data.ChromaAdvancementProvider.id(ProgressStage.CRYSTALS));
         h.assertTrue(!done(player, ProgressStage.CRYSTALS), "simulate a save made before advancement data existed");
@@ -70,7 +70,7 @@ final class ChromaAdvancementTests {
     }
 
     private static void reset(GameTestHelper h) {
-        var player = h.makeMockServerPlayerInLevel();
+        var player = ChromaGameTests.joinedCreativeMockPlayer(h);
         ProgressionManager.instance.setPlayerStage(player, ProgressStage.CRYSTALS, true, false, false);
         ProgressionManager.instance.resetPlayerProgression(player, false);
         h.assertTrue(!done(player, ProgressStage.CRYSTALS), "the direct stage-tag reset must revoke its advancement");
@@ -89,7 +89,7 @@ final class ChromaAdvancementTests {
     }
 
     private static void electricraft(GameTestHelper h) {
-        var player = h.makeMockServerPlayerInLevel();
+        var player = ChromaGameTests.joinedCreativeMockPlayer(h);
         var book = net.minecraft.core.registries.BuiltInRegistries.ITEM.getOptional(Identifier.parse("electricraft:electribook")).orElseThrow();
         obtain(player, book);
         h.assertTrue(done(player, "electricraft:root"), "handbook inventory criterion");
@@ -102,7 +102,7 @@ final class ChromaAdvancementTests {
     }
 
     private static void geostrata(GameTestHelper h) {
-        var player = h.makeMockServerPlayerInLevel();
+        var player = ChromaGameTests.joinedCreativeMockPlayer(h);
         var granite = reika.geostrata.registry.RockTypes.GRANITE;
         obtain(player, reika.geostrata.registry.RockShapes.COBBLE.getBlock(granite));
         h.assertTrue(done(player, "geostrata:root") && done(player, "geostrata:rocks/granite"), "cobblestone satisfies the rock criterion");

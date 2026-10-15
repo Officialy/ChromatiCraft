@@ -298,25 +298,9 @@ final class BiomeFragmentMusicTests {
 		click(helper, player, new BlockHitResult(Vec3.atLowerCornerOf(trigger).add(local), face, trigger, false));
 	}
 
-	/**
-	 * A survival player joined through a connection NeoForge treats as having negotiated every
-	 * registered payload. The vanilla mock connection negotiated none, so in a modded client any mod
-	 * that greets joining players (FTB Ultimine's sync_ultimine_time_packet) fails the test with
-	 * "Payload ... may not be sent to the client!" before it starts.
-	 */
+	/** A survival player joined with negotiated mod payloads (see {@link ChromaGameTests#joinedMockPlayer}). */
 	private static ServerPlayer joinMockPlayer(GameTestHelper helper) {
-		var cookie = net.minecraft.server.network.CommonListenerCookie.createInitial(
-				new com.mojang.authlib.GameProfile(java.util.UUID.randomUUID(), "test-mock-player"), false);
-		// A subclass, as vanilla's own mock is: NeoForge's ConfigSync skips subclasses as test players,
-		// but throws for an exact ServerPlayer that never went through the configuration phase.
-		ServerPlayer player = new ServerPlayer(helper.getLevel().getServer(), helper.getLevel(),
-				cookie.gameProfile(), cookie.clientInformation()) {};
-		var connection = new net.minecraft.network.Connection(net.minecraft.network.protocol.PacketFlow.SERVERBOUND);
-		new io.netty.channel.embedded.EmbeddedChannel(connection);
-		net.neoforged.neoforge.network.registration.NetworkRegistry.configureMockConnection(connection);
-		helper.getLevel().getServer().getPlayerList().placeNewPlayer(connection, player, cookie);
-		player.setGameMode(net.minecraft.world.level.GameType.SURVIVAL);
-		return player;
+		return ChromaGameTests.joinedMockPlayer(helper, net.minecraft.world.level.GameType.SURVIVAL);
 	}
 
 	/** The server's own right-click path, as a client's use-item-on packet reaches it. */

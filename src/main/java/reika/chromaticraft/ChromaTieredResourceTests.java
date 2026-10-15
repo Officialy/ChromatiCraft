@@ -57,13 +57,7 @@ final class ChromaTieredResourceTests {
     }
 
     private static ServerPlayer connectedPlayer(GameTestHelper h, GameType type) {
-        var player = (ServerPlayer)h.makeMockServerPlayer(type);
-        var cookie = net.minecraft.server.network.CommonListenerCookie.createInitial(player.getGameProfile(), false);
-        var connection = new net.minecraft.network.Connection(net.minecraft.network.protocol.PacketFlow.SERVERBOUND);
-        new io.netty.channel.embedded.EmbeddedChannel(connection);
-        h.getLevel().getServer().getPlayerList().placeNewPlayer(connection, player, cookie);
-        player.gameMode.changeGameModeForPlayer(type);
-        return player;
+        return ChromaGameTests.joinedMockPlayer(h, type);
     }
 
     private static void grant(Player player, ProgressStage stage) {

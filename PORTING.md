@@ -11609,3 +11609,37 @@ failed with "Payload ftbultimine:sync_ultimine_time_packet may not be sent to th
   won't boot: `mezz_config_gui` in `TestInstance/run/mods` needs `mezz_config`, which is missing.
 - Also checked: the luma (or chroma, ender or lava) under the controller is V33a's
   `getLiquidLocations`/`getLiquid` pool and is correct.
+
+### 2026-10-15 — Every joined mock player now negotiates mod payloads
+
+The Biome Fragment fix above was applied to the remaining tests. A ChromatiCraft test no longer joins
+a player through an unconfigured mock connection.
+- **Helpers.** `ChromaGameTests` has two helpers. Both are anonymous `ServerPlayer` subclasses, for
+  ConfigSync, joined via `EmbeddedChannel`, then `NetworkRegistry.configureMockConnection`, then
+  `placeNewPlayer`.
+  - `joinedCreativeMockPlayer(helper)` drops in for vanilla `makeMockServerPlayerInLevel`.
+    `gameMode()` stays pinned to CREATIVE, so `isCreative()` holds. Abilities and the real game mode
+    are the server default, exactly as in vanilla.
+  - `joinedMockPlayer(helper, type)` gives a real game mode that can be changed, always set
+    explicitly. A creative Play world's default is creative, but `runGameTest`'s is survival.
+- **Call sites migrated.**
+  - The ~75 `makeMockServerPlayerInLevel` calls (ChromaGameTests, Text, ItemPort, Advancement, both
+    void-compat suites) use the creative helper.
+  - The hand-built connections (CaveRoute, WandPort `survivalPlayer`, TieredResource
+    `connectedPlayer`, BiomeFragment `joinMockPlayer`) use `joinedMockPlayer`.
+  - CaveRoute previously took the server default mode. It is now explicitly SURVIVAL.
+  - TieredResource loses vanilla `makeMockServerPlayer`'s `isClientAuthoritative() == false`. That
+    flag only decides server-side movement simulation. Mock connections are never ticked, and the
+    tiered tests only call `gameMode.destroyBlock` and item use.
+- **Left alone.** `makeMockPlayer(GameType)` and the unjoined `makeMockServerPlayer` never enter the
+  PlayerList, so no join hook fires for them.
+- **Validation.** `:ChromatiCraft:runGameTest` was run in 29 sequential selector batches covering all
+  ~95 tests that use a helper; all passed except two pre-existing failures:
+  - `item_port_cave_exit_deep` uses the untouched `makeMockPlayer`. It expects the Cave Pather to
+    place its trail in the click tick, which contradicts the deferred search asserted by
+    `cave_route_deferred_exit`. The test is stale.
+  - `world_rift_far_link` passes alone, twice. Inside the `world_rift_*` batch it fails every time
+    with "far chunk never unloaded", because the other rift tests keep the chunk loaded. It fails
+    identically with `configureMockConnection` removed.
+- **Not checked.** The headless run has no FTB Ultimine, so it proves no regression and no ConfigSync
+  crash, but not the Ultimine path itself. That needs the Play client.

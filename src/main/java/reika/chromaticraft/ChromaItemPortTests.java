@@ -69,7 +69,7 @@ final class ChromaItemPortTests {
     }
 
     private static void efficiency(GameTestHelper h) {
-        var player = h.makeMockServerPlayerInLevel();
+        var player = ChromaGameTests.joinedCreativeMockPlayer(h);
         var charging = ToolChargingSystem.instance;
         var powered = charging.getChargedItem(ChromaItems.PURIFY.get(), 100);
         h.assertTrue(!ItemEfficiencyCrystal.isActive(player), "a new player must not have attenuation protection");
@@ -93,7 +93,7 @@ final class ChromaItemPortTests {
     }
 
     private static void capture(GameTestHelper h) {
-        var player = h.makeMockServerPlayerInLevel();
+        var player = ChromaGameTests.joinedCreativeMockPlayer(h);
         player.setGameMode(GameType.CREATIVE);
         var wand = new ItemStack(ChromaItems.CAPTURE_WAND.get());
         player.setItemInHand(InteractionHand.MAIN_HAND, wand);
@@ -122,7 +122,7 @@ final class ChromaItemPortTests {
     }
 
     private static void recall(GameTestHelper h) {
-        var player = h.makeMockServerPlayerInLevel();
+        var player = ChromaGameTests.joinedCreativeMockPlayer(h);
         var item = new ItemStack(ChromaItems.RECALL_TABLET.get());
         player.setItemInHand(InteractionHand.MAIN_HAND, item);
         var target = Vec3.atCenterOf(h.absolutePos(new BlockPos(2, 1, 2))).add(0, 15, 0);

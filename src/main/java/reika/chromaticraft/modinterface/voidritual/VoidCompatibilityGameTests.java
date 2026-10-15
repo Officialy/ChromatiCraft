@@ -38,7 +38,7 @@ public final class VoidCompatibilityGameTests {
         var at=h.absolutePos(new BlockPos(4,2,4)); h.getLevel().setBlockAndUpdate(at,ChromaBlocks.VOID_MONSTER_TRAP.get().defaultBlockState());
         var tile=(TileEntityVoidMonsterTrap)h.getLevel().getBlockEntity(at);
         h.assertTrue(tile!=null,"trap block must instantiate its actual receiver");
-        tile.setPlacer(h.makeMockServerPlayerInLevel()); return tile;
+        tile.setPlacer(reika.chromaticraft.ChromaGameTests.joinedCreativeMockPlayer(h)); return tile;
     }
     private static void pylonBonus(GameTestHelper h) {
         var entity=monster(h);
@@ -55,7 +55,7 @@ public final class VoidCompatibilityGameTests {
         drops.forEach(ItemEntity::discard); entity.discard(); h.succeed();
     }
     private static void essence(GameTestHelper h) {
-        var entity=monster(h); var player=h.makeMockServerPlayerInLevel();
+        var entity=monster(h); var player=reika.chromaticraft.ChromaGameTests.joinedCreativeMockPlayer(h);
         entity.doGhostDamage(player,0,1);
         var items=h.getLevel().getEntitiesOfClass(ItemEntity.class,entity.getBoundingBox().inflate(3), e->e.getItem().is(ChromaItems.VOID_MONSTER_ESSENCE.get()));
         h.assertTrue(!items.isEmpty(),"a 50-damage player ghost hit must produce corrupted essence through LivingIncomingDamageEvent");

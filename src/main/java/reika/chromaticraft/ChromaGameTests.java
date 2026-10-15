@@ -566,7 +566,7 @@ public final class ChromaGameTests {
 				"dropInventory(Level, BlockPos) must drop exactly the 64 wheat, got " + countDropped(drops, Items.WHEAT));
 		helper.assertTrue(chest.isEmpty(), "dropInventory(Level, BlockPos) must empty the inventory it dropped");
 
-		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		ServerPlayer player = joinedCreativeMockPlayer(helper);
 		player.snapTo(net.minecraft.world.phys.Vec3.atCenterOf(chestPos.above()));
 		player.getInventory().setItem(0, sword.copy());
 		player.getInventory().setItem(1, new ItemStack(Items.CARROT, 64));
@@ -601,7 +601,7 @@ public final class ChromaGameTests {
 	 */
 	private static void inventoryTilesDropOnce(GameTestHelper helper) {
 		ServerLevel level = helper.getLevel();
-		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		ServerPlayer player = joinedCreativeMockPlayer(helper);
 		player.setGameMode(GameType.SURVIVAL);
 		ItemStack sword = dropProbe(helper);
 		ItemStack book = dropProbeBook(helper);
@@ -1176,7 +1176,7 @@ public final class ChromaGameTests {
 			// V33a's structure password. Its SHA-1 step returned null in the modern DragonAPI because
 			// the javax.xml.bind hex converter left the JDK, so this both covers the formula and
 			// guards the HexFormat replacement that restored it.
-			ServerPlayer player = helper.makeMockServerPlayerInLevel();
+			ServerPlayer player = joinedCreativeMockPlayer(helper);
 			DimensionStructureType.StructureTypeData first = placed.getFirst().typeData();
 			int password = first.getPassword(player, "26.3");
 			helper.assertTrue(password == first.getPassword(player, "26.3"),
@@ -1238,7 +1238,7 @@ public final class ChromaGameTests {
 					"a complete portal must gain exactly one charge per tick, not consume network energy;"
 							+ " gained " + (portal.getCharge() - chargeStart));
 
-			ServerPlayer player = helper.makeMockServerPlayerInLevel();
+			ServerPlayer player = joinedCreativeMockPlayer(helper);
 			for (ProgressStage stage : ProgressionManager.instance.getPrereqs(ProgressStage.DIMENSION))
 				ProgressionManager.instance.setPlayerStage(player, stage, true, false, false);
 			helper.assertTrue(!portal.canPlayerUse(player),
@@ -1317,7 +1317,7 @@ public final class ChromaGameTests {
 				"the rift must have no collision box: entities fall straight in");
 
 		// Contact on an edge block forwards inward to the centre, exactly as V33a's walk does.
-		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		ServerPlayer player = joinedCreativeMockPlayer(helper);
 		player.fallDistance = 0;
 		BlockPos edge = pad.offset(1, 0, 1);
 		level.getBlockState(edge).entityInside(level, edge, player,
@@ -1370,7 +1370,7 @@ public final class ChromaGameTests {
 
 		BlockPos toggle = panel.east();
 		helper.getLevel().setBlock(toggle, ChromaBlocks.PANEL_SWITCH.get().defaultBlockState(), 3);
-		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		ServerPlayer player = joinedCreativeMockPlayer(helper);
 		BlockHitResult hit = new BlockHitResult(Vec3.atCenterOf(toggle), Direction.UP, toggle, false);
 		helper.assertTrue(helper.getLevel().getBlockState(toggle)
 				.useWithoutItem(helper.getLevel(), player, hit).consumesAction(),
@@ -1474,7 +1474,7 @@ public final class ChromaGameTests {
 				ChromaBlocks.crystalLamp(triggerElement).get().defaultBlockState(), 3);
 		double clickX = triggerIndex == 0 || triggerIndex == 3 ? 0.25 : 0.75;
 		double clickY = triggerIndex <= 1 ? 0.75 : 0.25;
-		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		ServerPlayer player = joinedCreativeMockPlayer(helper);
 		BlockHitResult triggerHit = new BlockHitResult(new Vec3(trigger.getX() + clickX,
 				trigger.getY() + clickY, trigger.getZ() + 1), Direction.SOUTH, trigger, false);
 		helper.assertTrue(helper.getLevel().getBlockState(trigger).useWithoutItem(
@@ -1629,7 +1629,7 @@ public final class ChromaGameTests {
 		helper.assertTrue(spawners == 3, "Snow source geometry must restore all three intended Wolf spawners; got " + spawners);
 		helper.assertTrue(locks == 36, "Snow center must begin behind all thirty-six concealed Shift Locks; got " + locks);
 
-		ServerPlayer entrant = helper.makeMockServerPlayerInLevel();
+		ServerPlayer entrant = joinedCreativeMockPlayer(helper);
 		entrant.snapTo(net.minecraft.world.phys.Vec3.atCenterOf(origin.offset(0, 4, 2)));
 		helper.runAfterDelay(5, () -> {
 			long crackedCenter = BlockPos.betweenClosedStream(origin.offset(-1, 2, 1), origin.offset(1, 2, 4))
@@ -1674,7 +1674,7 @@ public final class ChromaGameTests {
 		helper.assertTrue(helper.getLevel().getBlockState(cover).is(ChromaBlocks.shielding(
 				reika.chromaticraft.registry.ChromaShieldTypes.CLOAK).get()),
 				"the 3x3 source pit cover must begin sealed three blocks below the controller");
-		ServerPlayer entrant = helper.makeMockServerPlayerInLevel();
+		ServerPlayer entrant = joinedCreativeMockPlayer(helper);
 		entrant.snapTo(net.minecraft.world.phys.Vec3.atCenterOf(origin.above(2)));
 		helper.runAfterDelay(5, () -> {
 			BlockState cracked = helper.getLevel().getBlockState(origin.offset(0, 2, 15));
@@ -1778,7 +1778,7 @@ public final class ChromaGameTests {
 		helper.assertTrue(tables.get(daisy.getLootTable().orElseThrow()).isPresent(),
 				"the Glowing Daisy loot table must load");
 
-		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		ServerPlayer player = joinedCreativeMockPlayer(helper);
 		player.setGameMode(GameType.SURVIVAL);
 		BlockPos pos = helper.absolutePos(new BlockPos(2, 2, 2));
 		level.setBlock(pos.below(), Blocks.GRASS_BLOCK.defaultBlockState(), 3);
@@ -2035,7 +2035,7 @@ public final class ChromaGameTests {
 		// unconditional, which would strand any decoration a player brought back.
 		level.setBlock(pos, ChromaBlocks.deco(
 				reika.chromaticraft.registry.ProximaDecoTypes.FLOATSTONE).get().defaultBlockState(), 3);
-		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		ServerPlayer player = joinedCreativeMockPlayer(helper);
 		helper.assertTrue(!reika.chromaticraft.world.dimension.DimensionTuningManager.TuningThresholds
 						.DECOHARVEST.isSufficientlyTuned(player)
 				|| level.getBlockState(pos).getDestroyProgress(player, level, pos) > 0,
@@ -3100,7 +3100,7 @@ public final class ChromaGameTests {
 
 		// Locus-point ownership is also carried by the dropped/placed item. The monument ritual uses
 		// this identity, so losing it here would silently turn a recovered core into an unowned one.
-		var owner = helper.makeMockServerPlayerInLevel();
+		var owner = joinedCreativeMockPlayer(helper);
 		core.setPlacer(owner);
 		CompoundTag itemTag = new CompoundTag();
 		core.getTagsToWriteToStack(itemTag);
@@ -3125,7 +3125,7 @@ public final class ChromaGameTests {
 		// Must be a player actually in the level: BlockEntityBase.getPlacer resolves the stored UUID
 		// through the world, and falls back to a FakePlayer when it cannot find one -- which doChecks
 		// then correctly refuses, since a core placed by a fake player grants no ownership.
-		var player = helper.makeMockServerPlayerInLevel();
+		var player = joinedCreativeMockPlayer(helper);
 
 		var ritual = new reika.chromaticraft.magic.MonumentCompletionRitual(level, centre, player);
 		helper.assertTrue(!ritual.doChecks(), "a monument with no cores at all must refuse to start");
@@ -3203,7 +3203,7 @@ public final class ChromaGameTests {
 	 * gate opens even if a book page has not refreshed.
 	 */
 	private static void progressionMaximize(GameTestHelper helper) {
-		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		ServerPlayer player = joinedCreativeMockPlayer(helper);
 		var manager = reika.chromaticraft.magic.progression.ProgressionManager.instance;
 
 		helper.assertTrue(!ProgressStage.CTM.isPlayerAtStage(player),
@@ -3247,7 +3247,7 @@ public final class ChromaGameTests {
 	 */
 	private static void monumentCorePlacement(GameTestHelper helper) {
 		var level = helper.getLevel();
-		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		ServerPlayer player = joinedCreativeMockPlayer(helper);
 		int i = 0;
 		for (CrystalElement element : CrystalElement.elements) {
 			// Two rows, so no two cores are ever neighbours and a mis-set colour cannot be read off
@@ -3286,7 +3286,7 @@ public final class ChromaGameTests {
 	private static void monumentRitualPlayerHold(GameTestHelper helper) {
 		var level = helper.getLevel();
 		BlockPos centre = helper.absolutePos(new BlockPos(24, 8, 24));
-		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		ServerPlayer player = joinedCreativeMockPlayer(helper);
 		player.snapTo(centre.getX() + 0.5, centre.getY() + 3, centre.getZ() - 8.5);
 		Vec3 anchor = player.position();
 
@@ -4776,7 +4776,7 @@ public final class ChromaGameTests {
 	private static void lookRayHitsPylon(GameTestHelper helper) {
 		BlockPos pylon = helper.absolutePos(new BlockPos(2, 2, 3));
 		helper.getLevel().setBlock(pylon, ChromaBlocks.PYLON.get().defaultBlockState(), 3);
-		var player = helper.makeMockServerPlayerInLevel();
+		var player = joinedCreativeMockPlayer(helper);
 		// Feet placed so the eye is level with the pylon's centre, 1.5 blocks north of it, facing south.
 		player.snapTo(pylon.getX() + 0.5, pylon.getY() + 0.5 - player.getEyeHeight(), pylon.getZ() - 1.5, 0, 0);
 		var hit = reika.dragonapi.libraries.ReikaPlayerAPI.getLookedAtBlock(player, 4, true);
@@ -5010,7 +5010,7 @@ public final class ChromaGameTests {
 
 	/** Entry session, player-attributed core recovery, per-colour persistence, and ALLCORES parity. */
 	private static void proximaStructureCompletionLoop(GameTestHelper helper) {
-		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		ServerPlayer player = joinedCreativeMockPlayer(helper);
 		player.setGameMode(GameType.SURVIVAL);
 		ProgressionManager.instance.resetPlayerProgression(player, false);
 		ProgressionManager.instance.setPlayerStage(player, ProgressStage.ABILITY, true, false, false);
@@ -5367,7 +5367,7 @@ public final class ChromaGameTests {
 		helper.assertTrue(!chest.isOpenedByAnyone() && state.getSignal(level, pos, Direction.NORTH) == 0,
 				"a closed chest must emit nothing");
 
-		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		ServerPlayer player = joinedCreativeMockPlayer(helper);
 		player.snapTo(pos.getX() + 0.5, pos.getY() + 1, pos.getZ() + 0.5);
 		chest.startOpen(player);
 		helper.assertTrue(chest.isOpenedByAnyone(), "opening must register on the opener counter");
@@ -5451,7 +5451,7 @@ public final class ChromaGameTests {
 		door.bindUUID(null, id, false);
 		ItemStack key = new ItemStack(ChromaItems.DOOR_KEY.get());
 		ChromaItems.DOOR_KEY.get().setID(key, id);
-		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		ServerPlayer player = joinedCreativeMockPlayer(helper);
 		player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, key);
 		var hit = new net.minecraft.world.phys.BlockHitResult(net.minecraft.world.phys.Vec3.atCenterOf(root),
 				Direction.NORTH, root, false);
@@ -5556,7 +5556,7 @@ public final class ChromaGameTests {
 		helper.assertTrue(helper.getLevel().getBlockState(triggerBlock).is(ChromaBlocks.shielding(
 				reika.chromaticraft.registry.ChromaShieldTypes.STONE).get()),
 				"the proximity block must begin as the authored reinforced stone cell");
-		ServerPlayer entrant = helper.makeMockServerPlayerInLevel();
+		ServerPlayer entrant = joinedCreativeMockPlayer(helper);
 		entrant.snapTo(net.minecraft.world.phys.Vec3.atCenterOf(triggerBlock));
 		helper.runAfterDelay(5, () -> {
 			BlockState cracked = helper.getLevel().getBlockState(triggerBlock);
@@ -5609,7 +5609,7 @@ public final class ChromaGameTests {
 					&& helper.getLevel().getBlockState(origin.offset(x, -1, 0)).isAir(),
 					"Cavern placement must carve the source two-block-high east tunnel at offset " + x);
 		}
-		ServerPlayer entrant = helper.makeMockServerPlayerInLevel();
+		ServerPlayer entrant = joinedCreativeMockPlayer(helper);
 		entrant.snapTo(net.minecraft.world.phys.Vec3.atCenterOf(origin));
 		helper.runAfterDelay(5, () -> {
 			helper.assertTrue(controller.wasTriggered() && controller.isTriggerPlayer(entrant),
@@ -5813,7 +5813,7 @@ public final class ChromaGameTests {
 
 	/** Blank -> chroma-soaked -> decoded -> owned -> inserted into a lexicon. */
 	private static void informationFragmentResearchLoop(GameTestHelper helper) {
-		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		ServerPlayer player = joinedCreativeMockPlayer(helper);
 		ItemStack fragment = new ItemStack(ChromaItems.INFO_FRAGMENT.get());
 		var blank = reika.chromaticraft.magic.progression.ResearchFragmentData.read(fragment);
 		helper.assertTrue(blank.blank() && !blank.random(), "A fresh information fragment must be undeciphered");
@@ -5907,7 +5907,7 @@ public final class ChromaGameTests {
 		helper.getLevel().setBlock(pos, ChromaBlocks.DATA_NODE.get().defaultBlockState(), 3);
 		TileEntityDataNode node = (TileEntityDataNode)helper.getLevel().getBlockEntity(pos);
 		node.setTower(reika.chromaticraft.magic.lore.Towers.BETA);
-		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		ServerPlayer player = joinedCreativeMockPlayer(helper);
 		player.snapTo(net.minecraft.world.phys.Vec3.atCenterOf(pos));
 		for (int i = 0; i < 110; i++)
 			node.updateEntity(helper.getLevel(), pos);
@@ -5967,7 +5967,7 @@ public final class ChromaGameTests {
 	private static void memoryCrystalInscriptionLoop(GameTestHelper helper) {
 		BlockPos pos = helper.absolutePos(new BlockPos(2, 1, 2));
 		helper.getLevel().setBlock(pos, ChromaBlocks.crystallineStone(StoneTypes.SMOOTH).get().defaultBlockState(), 3);
-		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		ServerPlayer player = joinedCreativeMockPlayer(helper);
 		ProgressionManager.instance.setPlayerStage(player, ProgressStage.TOWER, true, false, false);
 		ItemStack crystal = new ItemStack(ChromaItems.DATA_CRYSTAL.get());
 		player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, crystal);
@@ -6445,7 +6445,7 @@ public final class ChromaGameTests {
         BlockPos pos = helper.absolutePos(new BlockPos(8, 3, 8));
         helper.getLevel().setBlock(pos, ChromaBlocks.CASTING_TABLE.get().defaultBlockState(), 3);
         TileEntityCastingTable table = (TileEntityCastingTable)helper.getLevel().getBlockEntity(pos);
-        ServerPlayer player = helper.makeMockServerPlayerInLevel();
+        ServerPlayer player = joinedCreativeMockPlayer(helper);
         reika.chromaticraft.container.MenuCastingTable menu =
                 new reika.chromaticraft.container.MenuCastingTable(0, player.getInventory(), table);
         helper.assertTrue(menu.slots.size() == 46,
@@ -6459,7 +6459,7 @@ public final class ChromaGameTests {
     }
 	/** Grant a stage directly and read it back; an unrelated stage stays ungranted. */
 	private static void grantAndQuery(GameTestHelper helper) {
-		ServerPlayer p = helper.makeMockServerPlayerInLevel();
+		ServerPlayer p = joinedCreativeMockPlayer(helper);
 		ProgressionManager.instance.setPlayerStage(p, ProgressStage.CRYSTALS, true, false, false);
 		helper.assertTrue(ProgressStage.CRYSTALS.isPlayerAtStage(p), "CRYSTALS should be granted");
 		helper.assertTrue(!ProgressStage.PYLON.isPlayerAtStage(p), "PYLON should NOT be granted");
@@ -6468,7 +6468,7 @@ public final class ChromaGameTests {
 
 	/** Granting a deep stage force-sets its whole recursive-parent chain. */
 	private static void recursiveParents(GameTestHelper helper) {
-		ServerPlayer p = helper.makeMockServerPlayerInLevel();
+		ServerPlayer p = joinedCreativeMockPlayer(helper);
 		// RUNEUSE ← {ALLCOLORS ← PYLON, CASTING ← CRYSTALS}
 		ProgressionManager.instance.setPlayerStage(p, ProgressStage.RUNEUSE, true, false, false);
 		helper.assertTrue(ProgressStage.RUNEUSE.isPlayerAtStage(p), "RUNEUSE granted");
@@ -6481,7 +6481,7 @@ public final class ChromaGameTests {
 
 	/** A stage cannot be stepped to without its prerequisites, and can once they are present. */
 	private static void prereqGating(GameTestHelper helper) {
-		ServerPlayer p = helper.makeMockServerPlayerInLevel();
+		ServerPlayer p = joinedCreativeMockPlayer(helper);
 		helper.assertTrue(!ProgressionManager.instance.canStepPlayerTo(p, ProgressStage.RUNEUSE),
 				"RUNEUSE should be blocked with no prerequisites");
 		ProgressionManager.instance.setPlayerStage(p, ProgressStage.ALLCOLORS, true, false, false);
@@ -6493,7 +6493,7 @@ public final class ChromaGameTests {
 
 	/** Discovering all 16 colours (with the PYLON prereq held) auto-grants ALLCOLORS. */
 	private static void colorDiscovery(GameTestHelper helper) {
-		ServerPlayer p = helper.makeMockServerPlayerInLevel();
+		ServerPlayer p = joinedCreativeMockPlayer(helper);
 		ProgressionManager.instance.setPlayerStage(p, ProgressStage.PYLON, true, false, false);
 		for (CrystalElement e : CrystalElement.elements)
 			ProgressionManager.instance.setPlayerDiscoveredColor(p, e, true, false);
@@ -6508,7 +6508,7 @@ public final class ChromaGameTests {
 	private static void pylonColorDiscoveryOnSight(GameTestHelper helper) {
 		BlockPos pos = helper.absolutePos(new BlockPos(8, 12, 8));
 		TileEntityCrystalPylon pylon = placePylon(helper, pos, CrystalElement.CYAN);
-		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		ServerPlayer player = joinedCreativeMockPlayer(helper);
 		helper.assertTrue(pylon.hasStructure()
 				&& pylon.getEnergy(CrystalElement.CYAN) >= pylon.getMaxStorage(CrystalElement.CYAN) / 10,
 				"the test pylon must meet the original colour discovery threshold");
@@ -6532,7 +6532,7 @@ public final class ChromaGameTests {
 	 * order must converge on the same stage without turning FOCUSCRYSTAL into a hard prerequisite.
 	 */
 	private static void chainedEnergyIdea(GameTestHelper helper) {
-		ServerPlayer focusAfterEnergy = helper.makeMockServerPlayerInLevel();
+		ServerPlayer focusAfterEnergy = joinedCreativeMockPlayer(helper);
 		ProgressionManager.instance.setPlayerStage(
 				focusAfterEnergy, ProgressStage.USEENERGY, true, false, false);
 		helper.assertTrue(ProgressStage.FOCUSCRYSTAL.stepPlayerTo(focusAfterEnergy),
@@ -6540,7 +6540,7 @@ public final class ChromaGameTests {
 		helper.assertTrue(ProgressStage.ENERGYIDEA.isPlayerAtStage(focusAfterEnergy),
 				"discovering a focus crystal after using energy must formulate ENERGYIDEA");
 
-		ServerPlayer energyAfterFocus = helper.makeMockServerPlayerInLevel();
+		ServerPlayer energyAfterFocus = joinedCreativeMockPlayer(helper);
 		ProgressionManager.instance.setPlayerStage(
 				energyAfterFocus, ProgressStage.FOCUSCRYSTAL, true, false, false);
 		helper.assertTrue(!ProgressStage.ENERGYIDEA.isPlayerAtStage(energyAfterFocus),
@@ -6561,7 +6561,7 @@ public final class ChromaGameTests {
         level.setBlockAndUpdate(pos,ChromaBlocks.CASTING_TABLE.get().defaultBlockState());
         var table=(TileEntityCastingTable)level.getBlockEntity(pos);
         table.cachePosition();
-        var player=helper.makeMockServerPlayerInLevel();
+        var player=joinedCreativeMockPlayer(helper);
         player.setItemInHand(InteractionHand.MAIN_HAND,new ItemStack(ChromaItems.BOTTLENECK_FINDER.get()));
         var context=new net.minecraft.world.item.context.UseOnContext(player,InteractionHand.MAIN_HAND,
                 new BlockHitResult(Vec3.atCenterOf(pos),Direction.UP,pos,false));
@@ -6876,7 +6876,7 @@ public final class ChromaGameTests {
 		helper.assertTrue(new reika.chromaticraft.auxiliary.structure.RitualStructure()
 				.getArray(helper.getLevel(), origin.getX(), origin.getY(), origin.getZ()).matchInWorld(),
 				"the command feature must assemble the complete base altar, not only its table");
-		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		ServerPlayer player = joinedCreativeMockPlayer(helper);
 		ProgressionManager.instance.setPlayerStage(player, ProgressStage.DIMENSION, true, false, false);
 		table.initEnhancementCheck(player);
 		helper.assertTrue(!helper.getLevel().getBlockState(tablePos)
@@ -7018,7 +7018,7 @@ public final class ChromaGameTests {
 		helper.assertTrue(pylon.canSupply(receiver, CrystalElement.YELLOW),
 				"a natural pylon should supply an otherwise valid receiver");
 
-		ServerPlayer owner = helper.makeMockServerPlayerInLevel();
+		ServerPlayer owner = joinedCreativeMockPlayer(helper);
 		pylon.setPlacer(owner);
 		pylon.markPlaced();
 		helper.assertTrue(pylon.isPlayerPlaced(), "markPlaced should persist the player-placed state");
@@ -7040,7 +7040,7 @@ public final class ChromaGameTests {
 				"pylon chunk square should include the north-west neighboring chunk");
 		helper.assertTrue(pylon.drain(CrystalElement.LIME, 100),
 				"test pylon should be depleted before chunk loading is requested");
-		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		ServerPlayer player = joinedCreativeMockPlayer(helper);
 		pylon.onUsedBy(player, CrystalElement.LIME);
 		helper.assertTrue(pylon.isForceLoading(),
 				"using a depleted structured pylon should acquire its persistent chunk tickets");
@@ -7055,7 +7055,7 @@ public final class ChromaGameTests {
 	/** Eight same-owner crystals reproduce the exact V33a geometric 768-lumen/tick recharge. */
 	/** Same-owner, same-colour link blocks aggregate throughput and donate V33a recharge. */
 	private static void pylonLinkDonation(GameTestHelper helper) {
-		ServerPlayer owner = helper.makeMockServerPlayerInLevel();
+		ServerPlayer owner = joinedCreativeMockPlayer(helper);
 		BlockPos firstPos = helper.absolutePos(new BlockPos(5, 12, 5));
 		BlockPos secondPos = helper.absolutePos(new BlockPos(12, 12, 12));
 		TileEntityCrystalPylon first = placePylon(helper, firstPos, CrystalElement.PURPLE);
@@ -7092,7 +7092,7 @@ public final class ChromaGameTests {
 	private static void pylonPowerCrystalRecharge(GameTestHelper helper) {
 		BlockPos pylonPos = helper.absolutePos(new BlockPos(8, 12, 8));
 		TileEntityCrystalPylon pylon = placePylon(helper, pylonPos, CrystalElement.CYAN);
-		ServerPlayer owner = helper.makeMockServerPlayerInLevel();
+		ServerPlayer owner = joinedCreativeMockPlayer(helper);
 		List<TileEntityChromaCrystal> crystals = placePowerCrystals(helper, pylon, owner);
 		helper.assertTrue(crystals.size() == 8 && pylon.getBoosterCrystals(true).size() == 8,
 				"all eight legal same-owner sockets must be discovered");
@@ -7122,8 +7122,8 @@ public final class ChromaGameTests {
 	private static void pylonPowerCrystalOwnershipBacklash(GameTestHelper helper) {
 		BlockPos pylonPos = helper.absolutePos(new BlockPos(8, 12, 8));
 		TileEntityCrystalPylon pylon = placePylon(helper, pylonPos, CrystalElement.MAGENTA);
-		ServerPlayer owner = helper.makeMockServerPlayerInLevel();
-		ServerPlayer other = helper.makeMockServerPlayerInLevel();
+		ServerPlayer owner = joinedCreativeMockPlayer(helper);
+		ServerPlayer other = joinedCreativeMockPlayer(helper);
 		List<TileEntityChromaCrystal> crystals = placePowerCrystals(helper, pylon, owner);
 		TileEntityChromaCrystal changed = crystals.get(0);
 		changed.setPlacer(other);
@@ -7395,8 +7395,8 @@ public final class ChromaGameTests {
 	private static void repeaterTwoPlayerOwnership(GameTestHelper helper) {
 		BlockPos repeaterPos = helper.absolutePos(new BlockPos(8, 12, 8));
 		TileEntityCrystalRepeater repeater = placeRepeater(helper, repeaterPos, Direction.NORTH);
-		ServerPlayer owner = helper.makeMockServerPlayerInLevel();
-		ServerPlayer otherPlayer = helper.makeMockServerPlayerInLevel();
+		ServerPlayer owner = joinedCreativeMockPlayer(helper);
+		ServerPlayer otherPlayer = joinedCreativeMockPlayer(helper);
 		helper.assertTrue(!owner.getUUID().equals(otherPlayer.getUUID()),
 				"test setup must create two distinct player UUIDs");
 
@@ -7629,7 +7629,7 @@ public final class ChromaGameTests {
 	 * produce the first Casting Item Stand. No progression stage or recipe object is injected.
 	 */
 	private static void earlyGameCastingStandChain(GameTestHelper helper) {
-		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		ServerPlayer player = joinedCreativeMockPlayer(helper);
 		BlockPos crystalOrigin = helper.absolutePos(new BlockPos(2, 4, 2));
 		for (int i = 0; i < 4; i++) {
 			BlockPos crystalPos = crystalOrigin.offset(i, 0, 0);
@@ -7781,7 +7781,7 @@ public final class ChromaGameTests {
 	 * insufficient player mines the host block's own drops and gets none of the real resource.
 	 */
 	private static void tieredOreProgressionGate(GameTestHelper helper) {
-		// makeMockServerPlayerInLevel is hardcoded to CREATIVE, and V33a's tiered harvest is a
+		// joinedCreativeMockPlayer is hardcoded to CREATIVE, and V33a's tiered harvest is a
 		// no-op in creative, so this needs a survival actor to exercise the gate at all.
 		net.minecraft.world.entity.player.Player player = helper.makeMockPlayer(GameType.SURVIVAL);
 		BlockPos orePos = helper.absolutePos(new BlockPos(3, 3, 3));
@@ -8481,7 +8481,7 @@ public final class ChromaGameTests {
 		var riftB = helper.absolutePos(new BlockPos(3, 2, 3));
 		level.setBlock(riftA.below(), Blocks.STONE.defaultBlockState(), 3);
 		level.setBlock(riftB.below(), Blocks.STONE.defaultBlockState(), 3);
-		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		ServerPlayer player = joinedCreativeMockPlayer(helper);
 		player.setGameMode(GameType.SURVIVAL);
 		player.setPos(riftA.getX()+0.5, riftA.getY()+12, riftA.getZ()+0.5);
 		ItemStack rifts = new ItemStack(ChromaItems.WORLD_RIFT.get(), 3);
@@ -8593,7 +8593,7 @@ public final class ChromaGameTests {
 		level.setBlock(far.below(), Blocks.STONE.defaultBlockState(), 3);
 		level.setBlock(far, Blocks.AIR.defaultBlockState(), 3);
 		level.setBlock(far.south(), ChromaBlocks.AUTO_ENCHANTER.get().defaultBlockState(), 3);
-		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		ServerPlayer player = joinedCreativeMockPlayer(helper);
 		player.setGameMode(GameType.SURVIVAL);
 		player.setPos(near.getX()+0.5, near.getY()+12, near.getZ()+0.5);
 		ItemStack rifts = new ItemStack(ChromaItems.WORLD_RIFT.get(), 2);
@@ -8698,7 +8698,7 @@ public final class ChromaGameTests {
 		helper.assertTrue(all && !pouch.has(net.minecraft.core.component.DataComponents.CUSTOM_DATA),
 				"every slot must start active with no custom data");
 
-		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		ServerPlayer player = joinedCreativeMockPlayer(helper);
 		player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, pouch);
 		helper.assertTrue(ItemAuraPouch.containsActive(player, is -> is.is(ChromaItems.PYLON_FINDER.get())),
 				"an active compass in a carried pouch must count for the HUD");
@@ -8751,12 +8751,12 @@ public final class ChromaGameTests {
 	 */
 	private static void lumaCapsuleVoidGaze(GameTestHelper helper) {
 		var gaze = reika.chromaticraft.magic.potions.PotionVoidGaze.VoidGazeLevels.class;
-		ServerPlayer novice = helper.makeMockServerPlayerInLevel();
+		ServerPlayer novice = joinedCreativeMockPlayer(helper);
 		reika.chromaticraft.block.worldgen26.BlockLumaFluid.addPotions(novice);
 		helper.assertTrue(novice.getEffect(ChromatiCraft.voidGaze) == null,
 				"Luma must give no Void Gaze before the pylon stage");
 
-		ServerPlayer seer = helper.makeMockServerPlayerInLevel();
+		ServerPlayer seer = joinedCreativeMockPlayer(helper);
 		ProgressionManager.instance.setPlayerStage(seer, ProgressStage.PYLON, true, false, false);
 		reika.chromaticraft.block.worldgen26.BlockLumaFluid.addPotions(seer);
 		var eff = seer.getEffect(ChromatiCraft.voidGaze);
@@ -8772,7 +8772,7 @@ public final class ChromaGameTests {
 				&& reika.chromaticraft.magic.potions.PotionVoidGaze.VoidGazeLevels.CAVEPARTICLES.isActiveOnPlayer(seer),
 				"with RUNEUSE, Luma must give level-1 Void Gaze and its cave sparkles");
 
-		ServerPlayer carrier = helper.makeMockServerPlayerInLevel();
+		ServerPlayer carrier = joinedCreativeMockPlayer(helper);
 		ItemStack capsule = new ItemStack(ChromaItems.LUMA_CAPSULE.get());
 		carrier.getInventory().add(capsule);
 		for (var lvl : gaze.getEnumConstants())
@@ -8784,7 +8784,7 @@ public final class ChromaGameTests {
 		helper.assertTrue(carrier.getPersistentData().getLongOr("last_lumapendant", -1) == helper.getLevel().getGameTime(),
 				"the capsule's tick must stamp its carrier");
 
-		ServerPlayer pouched = helper.makeMockServerPlayerInLevel();
+		ServerPlayer pouched = joinedCreativeMockPlayer(helper);
 		ItemStack pouch = new ItemStack(ChromaItems.AURA_POUCH.get());
 		ItemStack[] inv = ChromaItems.AURA_POUCH.get().getInventory(pouch);
 		inv[4] = new ItemStack(ChromaItems.LUMA_CAPSULE.get());
@@ -8889,7 +8889,7 @@ public final class ChromaGameTests {
 		var lime = reika.chromaticraft.registry.AdjacencyUpgrades.LIME;
 		BlockPos floor = helper.absolutePos(new BlockPos(2, 0, 2));
 		BlockPos pos = floor.above();
-		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		ServerPlayer player = joinedCreativeMockPlayer(helper);
 		player.setPos(pos.getX()+3.5, pos.getY(), pos.getZ()+0.5);
 		// The mock player is creative; a survival placement must spend the item.
 		player.getAbilities().instabuild = false;
@@ -8994,7 +8994,7 @@ public final class ChromaGameTests {
 		level.setBlock(pumpPos, ChromaBlocks.TELEPUMP.get().defaultBlockState(), 3);
 		var pump = (reika.chromaticraft.tileentity.acquisition.TileEntityTeleportationPump)level.getBlockEntity(pumpPos);
 		pump.overrideRangeForTest(4);
-		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		ServerPlayer player = joinedCreativeMockPlayer(helper);
 		player.setPos(pumpPos.getX()+0.5, pumpPos.getY()+1, pumpPos.getZ()+0.5);
 		helper.assertTrue(pump.isScanning() && !pump.isPlayerAccessible(player), "the pump must refuse its GUI while scanning");
 		ItemStack crystal = ChromaItems.storageCrystalStack(StorageCrystalTier.SAMI);
@@ -9437,7 +9437,7 @@ public final class ChromaGameTests {
 	private static void castingTableTuningKey(GameTestHelper helper) {
 		BlockPos tablePos = placeCastingTable(helper, ChromaStructures.CASTING2, 2000);
 		TileEntityCastingTable table = (TileEntityCastingTable)helper.getLevel().getBlockEntity(tablePos);
-		ServerPlayer owner = helper.makeMockServerPlayerInLevel();
+		ServerPlayer owner = joinedCreativeMockPlayer(helper);
 		ProgressionManager.instance.setPlayerStage(owner, ProgressStage.MULTIBLOCK, true, false, false);
 		ProgressionManager.instance.setPlayerStage(owner, ProgressStage.CHROMA, true, false, false);
 		table.setPlacer(owner);
@@ -10018,7 +10018,7 @@ public final class ChromaGameTests {
 		helper.assertTrue(chest.getLootTable() != null
 				&& chest.getLootTable().identifier().toString().equals("chromaticraft:chests/village_casting"),
 				"the village chest must retain its data-driven village_casting loot table");
-		ServerPlayer opener = helper.makeMockServerPlayerInLevel();
+		ServerPlayer opener = joinedCreativeMockPlayer(helper);
 		chest.grantProgress(opener);
 		helper.assertTrue(ProgressStage.VILLAGECASTING.isPlayerAtStage(opener),
 				"opening the imported structure chest must grant the V33a VILLAGECASTING stage");
@@ -10189,7 +10189,7 @@ public final class ChromaGameTests {
 		helper.assertTrue(collector.getOutputLevel() == 1075,
 				"a committed transfer transaction must drain the Collector output tank");
 
-		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		ServerPlayer player = joinedCreativeMockPlayer(helper);
 		player.setGameMode(GameType.SURVIVAL);
 		player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, new ItemStack(Items.BUCKET));
 		BlockHitResult hit = new BlockHitResult(Vec3.atCenterOf(absolute), Direction.UP, absolute, false);
@@ -10709,7 +10709,7 @@ public final class ChromaGameTests {
 		helper.assertTrue(infuser.getAccelerationFactor() == 4,
 				"four Exquisite focus crystals must select V33a's maximum 4x craft speed");
 
-		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		ServerPlayer player = joinedCreativeMockPlayer(helper);
 		infuser.setPlacer(player);
 		ProgressionManager.instance.setPlayerStage(player, ProgressStage.ALLOY, true, false, false);
 		ChromaAbilityData.setDoubleCraft(player, true);
@@ -10761,7 +10761,7 @@ public final class ChromaGameTests {
 		helper.assertTrue(infuser.hasStructure() && infuser.getChromaLocations().size() == 32,
 				"the exact 9x4x9 Player Infusion fountain must validate with 32 source-chroma cells");
 
-		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		ServerPlayer player = joinedCreativeMockPlayer(helper);
 		infuser.setPlacer(player);
 		ProgressionManager.instance.setPlayerStage(player, ProgressStage.ALLCOLORS, true, false, false);
 		ProgressionManager.instance.setPlayerStage(player, ProgressStage.ABILITY, true, false, false);
@@ -10857,6 +10857,56 @@ public final class ChromaGameTests {
 				new TestData<>(env, net.minecraft.world.level.Level.OVERWORLD,
 						structure, maxTicks, 0, true, Rotation.NONE, false, 1, 1, false, 96);
 		event.registerTest(id, new DirectInstance(data, body));
+	}
+
+	/**
+	 * Vanilla's {@code makeMockServerPlayerInLevel}, joined through a connection NeoForge treats as
+	 * having negotiated every registered payload: {@code gameMode()} stays pinned to CREATIVE (so
+	 * {@code isCreative()} holds) while the real game mode is the server default, exactly as vanilla.
+	 * The vanilla mock connection negotiated no payloads, so in a modded client any mod that greets
+	 * joining players (FTB Ultimine's sync_ultimine_time_packet) failed the test with "Payload ...
+	 * may not be sent to the client!" before it started.
+	 */
+	public static ServerPlayer joinedCreativeMockPlayer(GameTestHelper helper) {
+		var cookie = mockCookie();
+		ServerPlayer player = new ServerPlayer(helper.getLevel().getServer(), helper.getLevel(),
+				cookie.gameProfile(), cookie.clientInformation()) {
+			@Override
+			public GameType gameMode() {
+				return GameType.CREATIVE;
+			}
+		};
+		return joinMockPlayer(helper, player, cookie);
+	}
+
+	/**
+	 * A mock player joined like {@link #joinedCreativeMockPlayer} whose game mode is real and
+	 * changeable: set explicitly to {@code type}, never the server default, which is creative in a
+	 * creative Play world but survival under {@code runGameTest}.
+	 */
+	public static ServerPlayer joinedMockPlayer(GameTestHelper helper, GameType type) {
+		var cookie = mockCookie();
+		// A subclass, as vanilla's own mock is: NeoForge's ConfigSync skips subclasses as test players,
+		// but throws for an exact ServerPlayer that never went through the configuration phase.
+		ServerPlayer player = new ServerPlayer(helper.getLevel().getServer(), helper.getLevel(),
+				cookie.gameProfile(), cookie.clientInformation()) {};
+		joinMockPlayer(helper, player, cookie);
+		player.setGameMode(type);
+		return player;
+	}
+
+	private static net.minecraft.server.network.CommonListenerCookie mockCookie() {
+		return net.minecraft.server.network.CommonListenerCookie.createInitial(
+				new com.mojang.authlib.GameProfile(UUID.randomUUID(), "test-mock-player"), false);
+	}
+
+	private static ServerPlayer joinMockPlayer(GameTestHelper helper, ServerPlayer player,
+			net.minecraft.server.network.CommonListenerCookie cookie) {
+		var connection = new net.minecraft.network.Connection(net.minecraft.network.protocol.PacketFlow.SERVERBOUND);
+		new io.netty.channel.embedded.EmbeddedChannel(connection);
+		net.neoforged.neoforge.network.registration.NetworkRegistry.configureMockConnection(connection);
+		helper.getLevel().getServer().getPlayerList().placeNewPlayer(connection, player, cookie);
+		return player;
 	}
 
 	/** A {@link GameTestInstance} carrying its body as a plain {@link Consumer} (see class javadoc). */

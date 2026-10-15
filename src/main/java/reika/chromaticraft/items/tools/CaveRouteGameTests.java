@@ -24,12 +24,7 @@ public final class CaveRouteGameTests {
         ChromaGameTests.register(event, env, "cave_route_replacement_cancellation", 30, ChromaTestStructureProvider.WAND_ARENA, CaveRouteGameTests::cancellation);
     }
     private static ServerPlayer player(GameTestHelper h, BlockPos pos) {
-        var profile = new com.mojang.authlib.GameProfile(UUID.randomUUID(), "cave-route-test");
-        var cookie = net.minecraft.server.network.CommonListenerCookie.createInitial(profile, false);
-        var player = new ServerPlayer(h.getLevel().getServer(), h.getLevel(), profile, cookie.clientInformation());
-        var connection = new net.minecraft.network.Connection(net.minecraft.network.protocol.PacketFlow.SERVERBOUND);
-        new io.netty.channel.embedded.EmbeddedChannel(connection);
-        h.getLevel().getServer().getPlayerList().placeNewPlayer(connection, player, cookie);
+        var player = ChromaGameTests.joinedMockPlayer(h, net.minecraft.world.level.GameType.SURVIVAL);
         player.setPos(pos.getX()+0.5,pos.getY(),pos.getZ()+0.5);
         player.setItemInHand(InteractionHand.MAIN_HAND,new ItemStack(ChromaItems.CAVE_PATHER.get()));
         return player;

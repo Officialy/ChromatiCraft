@@ -78,14 +78,8 @@ final class ChromaWandPortTests {
 
     private static ServerPlayer survivalPlayer(GameTestHelper h) {
         // The vanilla helper overrides gameMode() to CREATIVE forever, even after setGameMode.
-        // Use the same embedded connection with a real player whose survival/creative state can change.
-        var cookie = net.minecraft.server.network.CommonListenerCookie.createInitial(
-                new com.mojang.authlib.GameProfile(UUID.randomUUID(), "test-mock-player"), false);
-        ServerPlayer player = new ServerPlayer(h.getLevel().getServer(),h.getLevel(),cookie.gameProfile(),cookie.clientInformation());
-        var connection = new net.minecraft.network.Connection(net.minecraft.network.protocol.PacketFlow.SERVERBOUND);
-        new io.netty.channel.embedded.EmbeddedChannel(connection);
-        h.getLevel().getServer().getPlayerList().placeNewPlayer(connection,player,cookie);
-        player.setGameMode(net.minecraft.world.level.GameType.SURVIVAL);
+        // Use a configured connection with a real player whose survival/creative state can change.
+        ServerPlayer player = ChromaGameTests.joinedMockPlayer(h, net.minecraft.world.level.GameType.SURVIVAL);
         player.getAbilities().instabuild = false;
         player.getAbilities().mayBuild = true;
         player.setPos(Vec3.atCenterOf(h.absolutePos(new BlockPos(8, 8, 8))));

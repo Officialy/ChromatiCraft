@@ -26,7 +26,7 @@ public final class ChromaVoidCompatibilityTests {
         ChromaGameTests.register(event, env, "void_compat_layouts", 80, ChromaVoidCompatibilityTests::layouts);
     }
     private static void bait(GameTestHelper h) {
-        var player=h.makeMockServerPlayerInLevel();
+        var player=ChromaGameTests.joinedCreativeMockPlayer(h);
         player.setPos(Vec3.atCenterOf(h.absolutePos(new BlockPos(4,2,4))));
         player.setOnGround(true);
         h.assertTrue(AbilityEffects.mobBait(player), "grounded MOBBAIT must create a real entity");

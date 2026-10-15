@@ -54,7 +54,7 @@ final class ChromaTextTests {
     }
 
     private static void tiers(GameTestHelper h) {
-        var p = h.makeMockServerPlayerInLevel();
+        var p = ChromaGameTests.joinedCreativeMockPlayer(h);
         var stack = ChromaItems.tieredStack(ChromaTieredItems.CHROMA_DUST);
         h.assertTrue(ChromaNameKnowledge.hidden(stack, p), "fresh player must not read tiered resources");
         ProgressionManager.instance.setPlayerStage(p, ProgressStage.CRYSTALS, true, false, false);
@@ -67,7 +67,7 @@ final class ChromaTextTests {
     }
 
     private static void colors(GameTestHelper h) {
-        var p = h.makeMockServerPlayerInLevel();
+        var p = ChromaGameTests.joinedCreativeMockPlayer(h);
         var color = CrystalElement.RED;
         var plain = ChromaItems.shardStack(color);
         var boosted = ChromaItems.boostedShardStack(color, 1);
@@ -83,7 +83,7 @@ final class ChromaTextTests {
     }
 
     private static void research(GameTestHelper h) {
-        var p = h.makeMockServerPlayerInLevel();
+        var p = ChromaGameTests.joinedCreativeMockPlayer(h);
         var core = ChromaItems.craftingStack(ChromaCraftingItems.ENERGY_CORE);
         var raw = ChromaItems.craftingStack(ChromaCraftingItems.RAW_CRYSTAL);
         h.assertTrue(ChromaNameKnowledge.hidden(core, p), "cores need the CORES fragment");
@@ -97,7 +97,7 @@ final class ChromaTextTests {
     }
 
     private static void ore(GameTestHelper h) {
-        var p = h.makeMockServerPlayerInLevel();
+        var p = ChromaGameTests.joinedCreativeMockPlayer(h);
         var stack = new ItemStack(ChromaBlocks.ENERGIZED_ROCK.get());
         h.assertTrue(ChromaNameKnowledge.disguise(stack, p) == net.minecraft.world.level.block.Blocks.STONE,
                 "undiscovered chroma ore must take the host's localized name");
@@ -107,7 +107,7 @@ final class ChromaTextTests {
     }
 
     private static void fragments(GameTestHelper h) {
-        var p = h.makeMockServerPlayerInLevel();
+        var p = ChromaGameTests.joinedCreativeMockPlayer(h);
         var candidates = PlayerResearch.nextResearch(p);
         h.assertTrue(!candidates.isEmpty(), "a fresh player must have eligible research");
         var level = reika.chromaticraft.magic.progression.ResearchProgress.getLevel(p);
