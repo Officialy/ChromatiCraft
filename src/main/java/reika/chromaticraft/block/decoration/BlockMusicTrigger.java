@@ -7,6 +7,7 @@ import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockBehaviour;
@@ -19,8 +20,12 @@ import org.jspecify.annotations.Nullable;
 
 import reika.chromaticraft.auxiliary.CrystalMusicManager;
 import reika.chromaticraft.base.CrystalTypeBlock;
+import reika.chromaticraft.block.worldgen26.BlockStructureShield;
+import reika.chromaticraft.registry.ChromaDimensions;
 import reika.chromaticraft.registry.ChromaSounds;
 import reika.chromaticraft.registry.CrystalElement;
+import reika.chromaticraft.tileentity.TileEntityMusicMemory;
+import reika.chromaticraft.tileentity.TileEntityStructureController;
 import reika.dragonapi.libraries.mathsci.ReikaMusicHelper.MusicKey;
 
 /** Four-quadrant V33a crystal music trigger, usable by redstone or direct side clicks. */
@@ -34,6 +39,14 @@ public final class BlockMusicTrigger extends Block {
 
 	public BlockMusicTrigger(BlockBehaviour.Properties properties) {
 		super(properties);
+	}
+
+	/** V33a {@code SemiUnbreakable}: the triggers of Proxima's music rooms cannot be mined. */
+	@Override
+	protected float getDestroyProgress(BlockState state, Player player, BlockGetter level, BlockPos pos) {
+		if (level instanceof Level concrete && concrete.dimension() == ChromaDimensions.PROXIMA)
+			return 0;
+		return super.getDestroyProgress(state, player, level, pos);
 	}
 
 
@@ -73,11 +86,30 @@ public final class BlockMusicTrigger extends Block {
 		if (handler != null) handler.onMusicTrigger(pos, element, key, player);
 	}
 
-	/** V33a searches its authored controller offsets; a bounded BE scan is rotation-safe in NBT. */
-	private static @Nullable Handler findHandler(Level level, BlockPos pos) {
-		// A Crystal Music room's farthest authored trigger is eight blocks from its memory.
-		for (BlockPos check : BlockPos.betweenClosed(pos.offset(-9, -3, -9), pos.offset(9, 1, 9)))
-			if (level.getBlockEntity(check) instanceof Handler handler) return handler;
+	/**
+	 * V33a routes a note one of two ways. In Proxima it goes to the room's Music Memory
+	 * ({@code BlockMusicMemory.ping}). Anywhere else only a trigger standing on reinforced structure
+	 * shielding (metadata 8 and up) reports, to the Biome Fragment controller at its authored offset
+	 * ({@code pingCallback}); a crafted trigger anywhere else is only an instrument.
+	 */
+	static @Nullable Handler findHandler(Level level, BlockPos pos) {
+		if (level.dimension() == ChromaDimensions.PROXIMA) {
+			// A Crystal Music room's farthest authored trigger is eight blocks from its memory.
+			for (BlockPos check : BlockPos.betweenClosed(pos.offset(-9, -3, -9), pos.offset(9, 1, 9)))
+				if (level.getBlockEntity(check) instanceof TileEntityMusicMemory memory) return memory;
+			return null;
+		}
+		BlockState below = level.getBlockState(pos.below());
+		if (!(below.getBlock() instanceof BlockStructureShield) || !below.getValue(BlockStructureShield.REINFORCED))
+			return null;
+		// Two blocks down, four or five out along a side, one to that side's left: the controller seen
+		// from each of the fragment's eight triggers.
+		for (Direction side : Direction.Plane.HORIZONTAL)
+			for (int distance = 4; distance <= 5; distance++) {
+				BlockPos at = pos.relative(side, distance).relative(side.getCounterClockWise()).below(2);
+				if (level.getBlockEntity(at) instanceof TileEntityStructureController controller)
+					return controller;
+			}
 		return null;
 	}
 

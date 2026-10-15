@@ -278,6 +278,7 @@ public final class ChromaGameTests {
 		ChromaTieredResourceTests.register(event, env);
 		ChromaCrafterTests.register(event, env);
 		ChromaWandPortTests.register(event, env);
+		BiomeFragmentMusicTests.register(event, env);
         reika.chromaticraft.items.tools.CaveRouteGameTests.register(event, env);
         ChromaVoidCompatibilityTests.register(event, env);
         if (reika.dragonapi.ModList.VOIDMONSTER.isLoaded())
@@ -1461,7 +1462,12 @@ public final class ChromaGameTests {
 						.contains(expected)).findFirst().orElseThrow();
 		int triggerIndex = reika.chromaticraft.auxiliary.CrystalMusicManager.instance
 				.getIntervalFor(triggerElement, expected);
-		BlockPos trigger = controllerPos.offset(4, 2, 0);
+		// An authored east-room trigger: V33a only reports from reinforced shielding, to the controller
+		// two down, four out and one to the left.
+		BlockPos trigger = controllerPos.offset(4, 2, -1);
+		helper.getLevel().setBlock(trigger.below(), ChromaBlocks.shielding(
+				reika.chromaticraft.registry.ChromaShieldTypes.STONE).get().defaultBlockState()
+				.setValue(reika.chromaticraft.block.worldgen26.BlockStructureShield.REINFORCED, true), 3);
 		helper.getLevel().setBlock(trigger, ChromaBlocks.MUSIC_TRIGGER.get().defaultBlockState(), 3);
 		helper.getLevel().setBlock(trigger.above(),
 				ChromaBlocks.crystalLamp(triggerElement).get().defaultBlockState(), 3);

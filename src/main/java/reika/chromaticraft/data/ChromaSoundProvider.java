@@ -41,6 +41,17 @@ public final class ChromaSoundProvider implements DataProvider {
             definition.add("sounds", sounds);
             root.add(sound.getEventName(), definition);
         }
+        // V33a ChromaSoundVariant: the two-octave LO/HI recordings a wide-pitch sound switches to.
+        for (ChromaSounds.Variant variant : ChromaSounds.variants()) {
+            JsonObject definition = new JsonObject();
+            JsonArray sounds = new JsonArray();
+            JsonObject file = new JsonObject();
+            file.addProperty("name", ChromatiCraft.MODID + ":" + variant.getSoundFile());
+            file.addProperty("type", "file");
+            sounds.add(file);
+            definition.add("sounds", sounds);
+            root.add(variant.getEventName(), definition);
+        }
         return DataProvider.saveStable(cache, root, output);
     }
 

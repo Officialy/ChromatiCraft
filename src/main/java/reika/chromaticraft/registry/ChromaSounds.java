@@ -26,19 +26,22 @@ import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.auxiliary.interfaces.ChromaSound;
 
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 /**
  * ChromatiCraft's sound registry, ported to 26.2 on the {@link SoundEvent}-registry pattern
  * ReactorCraft uses ({@link DeferredRegister} of {@code SoundEvent}s and vanilla
  * server→client playback). Implements {@link ChromaSound}.
  *
- * <p>Port note (deferred): the 1.7.10 pitch-variant sub-sound system ({@code SoundVariant}/
- * {@code ChromaSoundVariant} — the wide-pitch LO/HI variants and the ORB/MONUMENT sub-sounds) is left
- * out; {@link #getUpshiftedPitch}/{@link #getDownshiftedPitch} return {@code this} (no pitch shift) and
- * no variant events are registered. Nothing on the crystal-network/casting path uses variants; they are
- * re-added with the music/orchestra subsystem. Volume modulation ({@code ChromaOptions}-driven) is also
- * deferred (getModulatedVolume returns 1).
+ * <p>The wide-pitch LO/HI recordings of V33a's {@code ChromaSoundVariant} are registered as their own
+ * events ({@link Variant}). V33a swapped to them in a client {@code PlaySoundEvent17} handler
+ * ({@code ChromaClientEventController.crystalPitchDing}); 26.3 sends the pitch as an unclamped float, so
+ * the same swap is made here, server-side, before the sound is sent ({@link #resolvePitch}). Without it
+ * the client clamps every DING above C6 to the same pitch 2.0. The ORB/MONUMENT sub-sounds are not
+ * variants here: MONUMENT's tracks are their own entries. Volume modulation ({@code ChromaOptions}-driven)
+ * is deferred (getModulatedVolume returns 1).
  */
 public enum ChromaSounds implements ChromaSound {
 
@@ -161,15 +164,62 @@ public enum ChromaSounds implements ChromaSound {
 			DeferredRegister.create(BuiltInRegistries.SOUND_EVENT, ChromatiCraft.MODID);
 
 	private static final HashMap<ChromaSounds, DeferredHolder<SoundEvent, SoundEvent>> SOUND_EVENT_MAP = new HashMap<>();
+	private static final HashMap<ChromaSounds, Variant> LOW_VARIANTS = new HashMap<>();
+	private static final HashMap<ChromaSounds, Variant> HIGH_VARIANTS = new HashMap<>();
 
 	static {
 		for (ChromaSounds sound : values()) {
-			SOUND_EVENT_MAP.put(sound, SOUND_EVENTS.register(sound.eventName, () -> {
-				Identifier id = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, sound.eventName);
-				float d = sound.getAudibleDistance();
-				return d > 0 ? SoundEvent.createFixedRangeEvent(id, d) : SoundEvent.createVariableRangeEvent(id);
-			}));
+			SOUND_EVENT_MAP.put(sound, registerEvent(sound.eventName, sound.getAudibleDistance()));
+			if (sound.widePitch) {
+				LOW_VARIANTS.put(sound, new Variant(sound, "lo"));
+				HIGH_VARIANTS.put(sound, new Variant(sound, "hi"));
+			}
 		}
+	}
+
+	private static DeferredHolder<SoundEvent, SoundEvent> registerEvent(String name, float distance) {
+		return SOUND_EVENTS.register(name, () -> {
+			Identifier id = Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, name);
+			return distance > 0 ? SoundEvent.createFixedRangeEvent(id, distance)
+					: SoundEvent.createVariableRangeEvent(id);
+		});
+	}
+
+	/** The LO and HI recordings of the wide-pitch sounds, for the sound-definition provider. */
+	public static List<Variant> variants() {
+		ArrayList<Variant> list = new ArrayList<>();
+		for (ChromaSounds sound : values()) {
+			if (sound.widePitch) {
+				list.add(HIGH_VARIANTS.get(sound));
+				list.add(LOW_VARIANTS.get(sound));
+			}
+		}
+		return list;
+	}
+
+	/** A sound and the pitch it is actually sent at. */
+	public record PitchedSound(ChromaSound sound, float pitch) {
+	}
+
+	/**
+	 * V33a {@code crystalPitchDing}: a wide-pitch sound asked for above 2.0 plays its HI recording at
+	 * pitch/4 instead, and below 0.5 its LO recording at pitch*4. The recordings are two octaves apart,
+	 * so the note heard is the one asked for. Anything else plays as given.
+	 */
+	public static PitchedSound resolvePitch(ChromaSound sound, float pitch) {
+		if (sound.hasWiderPitchRange()) {
+			if (pitch > 2) {
+				ChromaSound up = sound.getUpshiftedPitch();
+				if (up != null && up != sound)
+					return new PitchedSound(up, pitch / sound.getRangeInterval());
+			}
+			else if (pitch < 0.5F) {
+				ChromaSound down = sound.getDownshiftedPitch();
+				if (down != null && down != sound)
+					return new PitchedSound(down, pitch * sound.getRangeInterval());
+			}
+		}
+		return new PitchedSound(sound, pitch);
 	}
 
 	private final Identifier path;
@@ -221,8 +271,9 @@ public enum ChromaSounds implements ChromaSound {
 	public void playSound(Level world, double x, double y, double z, float vol, float pitch) {
 		if (world.isClientSide())
 			return;
-		world.playSound(null, x, y, z, this.getSoundEvent(), this.getCategory(),
-				vol * this.getModulatedVolume(), pitch);
+		PitchedSound played = resolvePitch(this, pitch);
+		world.playSound(null, x, y, z, played.sound().getSoundEvent(), this.getCategory(),
+				vol * this.getModulatedVolume(), played.pitch());
 	}
 
 	@Override
@@ -238,8 +289,9 @@ public enum ChromaSounds implements ChromaSound {
 		// SoundEvent is now a real registry entry. Vanilla playback is the authoritative 26.2
 		// path; the old DragonAPI library gate only knew its pre-registry sound collection.
 		float effectiveVolume = attenuate ? vol : Math.max(vol, 16F);
-		world.playSound(null, x, y, z, this.getSoundEvent(), this.getCategory(),
-				effectiveVolume * this.getModulatedVolume(), pitch);
+		PitchedSound played = resolvePitch(this, pitch);
+		world.playSound(null, x, y, z, played.sound().getSoundEvent(), this.getCategory(),
+				effectiveVolume * this.getModulatedVolume(), played.pitch());
 	}
 
 	@Override
@@ -271,8 +323,9 @@ public enum ChromaSounds implements ChromaSound {
 			return;
 		// Registered vanilla events can be heard at range by raising their effective volume.
 		float rangedVolume = Math.max(vol, broadcast / 16F);
-		world.playSound(null, pos, this.getSoundEvent(), this.getCategory(),
-				rangedVolume * this.getModulatedVolume(), pitch);
+		PitchedSound played = resolvePitch(this, pitch);
+		world.playSound(null, pos, played.sound().getSoundEvent(), this.getCategory(),
+				rangedVolume * this.getModulatedVolume(), played.pitch());
 	}
 
 	/**
@@ -305,9 +358,10 @@ public enum ChromaSounds implements ChromaSound {
 
 	/** Sends the sound straight to one player at their own position, ignoring distance entirely. */
 	private void playPersonally(ServerPlayer player, float vol, float pitch) {
+		PitchedSound played = resolvePitch(this, pitch);
 		player.connection.send(new ClientboundSoundPacket(
-				BuiltInRegistries.SOUND_EVENT.wrapAsHolder(this.getSoundEvent()), this.getCategory(),
-				player.getX(), player.getY(), player.getZ(), vol * this.getModulatedVolume(), pitch,
+				BuiltInRegistries.SOUND_EVENT.wrapAsHolder(played.sound().getSoundEvent()), this.getCategory(),
+				player.getX(), player.getY(), player.getZ(), vol * this.getModulatedVolume(), played.pitch(),
 				player.getRandom().nextLong()));
 	}
 
@@ -355,12 +409,14 @@ public enum ChromaSounds implements ChromaSound {
 
 	@Override
 	public ChromaSound getUpshiftedPitch() {
-		return this; //pitch-variant sub-sounds deferred
+		Variant variant = HIGH_VARIANTS.get(this);
+		return variant != null ? variant : this;
 	}
 
 	@Override
 	public ChromaSound getDownshiftedPitch() {
-		return this; //pitch-variant sub-sounds deferred
+		Variant variant = LOW_VARIANTS.get(this);
+		return variant != null ? variant : this;
 	}
 
 	@Override
@@ -435,6 +491,99 @@ public enum ChromaSounds implements ChromaSound {
 	public static ChromaSounds monumentTrack(int step) {
 		ChromaSounds[] tracks = {MONUMENT_1, MONUMENT_2, MONUMENT_3, MONUMENT_4, MONUMENT_5, MONUMENT_6};
 		return step < 0 || step >= tracks.length ? null : tracks[step];
+	}
+
+	/**
+	 * V33a {@code ChromaSoundVariant}: the {@code _lo}/{@code _hi} recording of a wide-pitch sound, two
+	 * octaves below/above it. It plays exactly as asked. V33a looked up {@code key+"_HI"} for a further
+	 * shift, which never existed, so a variant never shifts again.
+	 */
+	public static final class Variant implements ChromaSound {
+
+		private final ChromaSounds root;
+		private final String key;
+		private final String eventName;
+		private final String soundFile;
+		private final DeferredHolder<SoundEvent, SoundEvent> event;
+
+		private Variant(ChromaSounds root, String key) {
+			this.root = root;
+			this.key = key;
+			eventName = root.eventName + "_" + key;
+			soundFile = root.relative + "_" + key;
+			event = registerEvent(eventName, root.getAudibleDistance());
+		}
+
+		public ChromaSounds getRoot() { return root; }
+		public String getEventName() { return eventName; }
+		/** Resource location below assets/chromaticraft/sounds/, without the .ogg extension. */
+		public String getSoundFile() { return soundFile; }
+
+		@Override public SoundEvent getSoundEvent() { return event.get(); }
+		@Override public String getName() { return root.getName() + "_" + key.toUpperCase(java.util.Locale.ROOT); }
+		@Override public Identifier getPath() {
+			return Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, SOUND_FOLDER + soundFile + SOUND_EXT);
+		}
+		@Override public String getRelativePath() { return SOUND_FOLDER + soundFile + SOUND_EXT; }
+		@Override public SoundSource getCategory() { return root.getCategory(); }
+		@Override public int ordinal() { return root.ordinal(); }
+		@Override public boolean canOverlap() { return root.canOverlap(); }
+		@Override public boolean attenuate() { return root.attenuate(); }
+		@Override public float getModulatedVolume() { return root.getModulatedVolume(); }
+		@Override public boolean preload() { return root.preload(); }
+		@Override public boolean isStreamed() { return root.isStreamed(); }
+		@Override public float getAudibleDistance() { return root.getAudibleDistance(); }
+		@Override public boolean hasWiderPitchRange() { return root.hasWiderPitchRange(); }
+		@Override public ChromaSound getUpshiftedPitch() { return this; }
+		@Override public ChromaSound getDownshiftedPitch() { return this; }
+		@Override public float getRangeInterval() { return root.getRangeInterval(); }
+
+		@Override
+		public void playSound(Entity e, float vol, float pitch) {
+			this.playSound(e.level(), e.getX(), e.getY(), e.getZ(), vol, pitch, true);
+		}
+
+		@Override
+		public void playSound(Level world, BlockPos pos, float vol, float pitch) {
+			this.playSound(world, pos, vol, pitch, true);
+		}
+
+		@Override
+		public void playSound(Level world, BlockPos pos, float vol, float pitch, boolean attenuate) {
+			this.playSound(world, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, vol, pitch, attenuate);
+		}
+
+		private void playSound(Level world, double x, double y, double z, float vol, float pitch,
+				boolean attenuate) {
+			if (world.isClientSide())
+				return;
+			float effectiveVolume = attenuate ? vol : Math.max(vol, 16F);
+			world.playSound(null, x, y, z, this.getSoundEvent(), this.getCategory(),
+					effectiveVolume * this.getModulatedVolume(), pitch);
+		}
+
+		@Override
+		public void playSoundNoAttenuation(Level world, BlockPos pos, float vol, float pitch, int broadcast) {
+			if (world.isClientSide())
+				return;
+			world.playSound(null, pos, this.getSoundEvent(), this.getCategory(),
+					Math.max(vol, broadcast / 16F) * this.getModulatedVolume(), pitch);
+		}
+
+		@Override
+		public void playSoundAtBlock(BlockEntity te, float vol, float pitch) {
+			this.playSound(te.getLevel(), te.getBlockPos(), vol, pitch);
+		}
+
+		@Override
+		public void playSoundAtBlock(Level world, BlockPos pos, float vol, float pitch) {
+			this.playSound(world, pos, vol, pitch);
+		}
+
+		@Override
+		public void playSoundAtBlockNoAttenuation(BlockEntity te, float vol, float pitch, int broadcast) {
+			this.playSoundNoAttenuation(te.getLevel(), te.getBlockPos(), vol, pitch, broadcast);
+		}
 	}
 }
 

@@ -33,6 +33,12 @@ import reika.chromaticraft.tileentity.TileEntityStructureController;
  * thing on {@code isVisible}/{@code isMonument}/{@code isInWorld}. None of those flags exist on the
  * ported block entity, so the flare draws unconditionally for now; restore the gating and the
  * monument pass with the monument ritual.
+ *
+ * <p>CHROMA-PORT: upstream's {@code BiomeStructurePuzzle.render} also draws, for a viewer without the
+ * Biome Fragment prerequisites, a red X and rift layer across the shaft six blocks up and a pulsing
+ * glint dome around it. The server-side shaft gate it illustrates is ported
+ * ({@code TileEntityStructureController.tickBiomeFragment}); the overlay waits for this renderer to
+ * branch on the structure type and the client's progression.
  */
 public final class RenderStructureController
 		implements BlockEntityRenderer<TileEntityStructureController, RenderStructureController.State> {

@@ -117,6 +117,8 @@ public final class TileEntityStructureController extends RandomizableContainerBl
 	private int biomeMelodyIndex = -1;
 	private int biomeMusicCooldown;
 	private boolean biomeComplete;
+	/** V33a {@code getTicksExisted()}: ticks since this controller was loaded, not persisted. */
+	private int biomeTicksLoaded;
 	private final ArrayList<LightPanelRoomState> glowingLogicRooms = new ArrayList<>();
 
 	public TileEntityStructureController(BlockPos pos, BlockState state) {
@@ -159,7 +161,7 @@ public final class TileEntityStructureController extends RandomizableContainerBl
 			controller.setChanged();
 		}
 		if (controller.structure == StructureType.BIOME_FRAGMENT)
-			controller.tickBiomeMusic();
+			controller.tickBiomeFragment();
 		if (controller.triggered || level.getGameTime() % 4 != 0)
 			return;
 		for (Player player : level.players()) {
@@ -190,7 +192,8 @@ public final class TileEntityStructureController extends RandomizableContainerBl
 		biomeKeyChannel = random.nextInt(8);
 		java.util.HashSet<Integer> used = new java.util.HashSet<>();
 		for (int i = 0; i < biomeDoorMasks.length; i++) {
-			int ownCorner = 1 << i;
+			// V33a SwitchGroup.isSameCorner: the key may not be "only this door's own corner switch".
+			int ownCorner = 1 << biomeDoorCorner(i);
 			int mask;
 			do mask = random.nextInt(16);
 			while (used.contains(mask) || mask == ownCorner);
@@ -265,10 +268,23 @@ public final class TileEntityStructureController extends RandomizableContainerBl
 
 	/** Attaches every generated interaction tile to this persistent controller. */
 	public void bindBiomePuzzleBlocks() {
-		if (level == null || !biomePuzzleReady) return;
+		if (!bindBiomeDelegates()) return;
+		updateBiomeSwitchDoors(false);
+	}
+
+	/**
+	 * Delegates, door colours and Lock Key channels, then V33a's {@code updateColorDoors}. Unlike
+	 * {@link #bindBiomePuzzleBlocks} it leaves the switch doors alone, so the periodic refresh does not
+	 * close doors a creative-bypass player forced open.
+	 */
+	private boolean bindBiomeDelegates() {
+		if (level == null || !biomePuzzleReady) return false;
 		for (int door = 0; door < 4; door++)
 			for (BlockPos pos : biomeColorDoorLocations(door))
-				if (level.getBlockEntity(pos) instanceof TileEntityColorLock lock)
+				// setColors recloses the lock until updateBiomeColorDoors below, so only a lock that does
+				// not already hold its pair is rewritten; the periodic refresh must not flicker open doors.
+				if (level.getBlockEntity(pos) instanceof TileEntityColorLock lock && !lock.getColors().equals(
+						EnumSet.of(biomeDoorColors[door * 2], biomeDoorColors[door * 2 + 1])))
 					lock.setColors(biomeDoorColors[door * 2], biomeDoorColors[door * 2 + 1]);
 		for (int i = 0; i < 4; i++) {
 			BlockPos pos = biomeSwitchPosition(i);
@@ -288,7 +304,7 @@ public final class TileEntityStructureController extends RandomizableContainerBl
 			}
 		}
 		updateBiomeColorDoors();
-		updateBiomeSwitchDoors(false);
+		return true;
 	}
 
 	public int getBiomeKeyChannel() { return biomeKeyChannel; }
@@ -300,6 +316,9 @@ public final class TileEntityStructureController extends RandomizableContainerBl
 	public int getBiomePlaySpeed() { return biomePlaySpeed; }
 	public int getBiomeGuessIndex() { return biomeGuessIndex; }
 	public boolean isBiomeComplete() { return biomeComplete; }
+	/** True while the source melody is being demonstrated (V33a {@code melodyIndex >= 0}). */
+	public boolean isBiomeMelodyPlaying() { return biomeMelodyIndex >= 0; }
+	public int getBiomeMusicCooldown() { return biomeMusicCooldown; }
 
 	private void initializeBiomeMelody(net.minecraft.util.RandomSource random) {
 		ArrayList<BiomeStructureMelodies.Melody> candidates =
@@ -394,19 +413,41 @@ public final class TileEntityStructureController extends RandomizableContainerBl
 		setChanged();
 	}
 
-	private void tickBiomeMusic() {
+	/** V33a {@code BiomeStructurePuzzle.onTick}. */
+	private void tickBiomeFragment() {
 		if (level == null || !biomePuzzleReady || biomeMelody.isEmpty()) return;
-		boolean playerNearby = level.players().stream().anyMatch(player -> player.distanceToSqr(
-				worldPosition.getX() + 0.5, worldPosition.getY() + 0.5,
-				worldPosition.getZ() + 0.5) <= 400);
-		if (!playerNearby) return;
+		biomeTicksLoaded++;
+		if (biomeTicksLoaded == 5 || biomeTicksLoaded % 200 == 0)
+			bindBiomeDelegates();
+		// V33a getClosestPlayer: any player, creative included (false = do not filter out creative).
+		Player nearest = level.getNearestPlayer(worldPosition.getX() + 0.5, worldPosition.getY() + 0.5,
+				worldPosition.getZ() + 0.5, 20, false);
+		if (nearest == null) return;
+		// The shaft over the controller is closed to anyone who has not reached the structure's
+		// prerequisites: the elevating Hover Field lifts them and they may not sink back down.
+		AABB shaft = new AABB(worldPosition).inflate(1, 0, 1).move(0, 6, 0);
+		for (Player player : level.players())
+			if (player.getBoundingBox().intersects(shaft)
+					&& !ProgressStage.BIOMESTRUCT.playerHasPrerequisites(player))
+				pushBiomePlayer(player);
 		if (biomeMusicCooldown > 0) {
 			biomeMusicCooldown--;
 			setChanged();
 		}
-		if (biomeMelodyIndex < 0) return;
-		biomeMusicTick++;
-		if (biomeMusicTick >= biomeNextNoteTick) playNextBiomeNote();
+		if (biomeMelodyIndex >= 0) {
+			biomeMusicTick++;
+			if (biomeMusicTick >= biomeNextNoteTick) playNextBiomeNote();
+		}
+		// Holding an Examination Crystal near the structure replays the melody, as the pedestal does.
+		else if (nearest.getMainHandItem().is(ChromaItems.PROBE.get()))
+			triggerBiomeMelody();
+	}
+
+	/** V33a {@code pushPlayer}: only the downward motion is removed, then resent to the client. */
+	private static void pushBiomePlayer(Player player) {
+		net.minecraft.world.phys.Vec3 motion = player.getDeltaMovement();
+		player.setDeltaMovement(motion.x, Math.max(0, motion.y), motion.z);
+		player.needsSync = true;
 	}
 
 	private void playNextBiomeNote() {
@@ -438,11 +479,10 @@ public final class TileEntityStructureController extends RandomizableContainerBl
 		biomeComplete = true;
 		biomeGuessIndex = biomeMelody.size();
 		ChromaSounds.CAST.playSoundAtBlock(level, worldPosition);
-		for (BlockPos pos : biomeBarrierLocations()) {
-			BlockState state = level.getBlockState(pos);
-			if (state.is(ChromaBlocks.CHROMA_DOOR.get()))
-				level.setBlock(pos, state.setValue(BlockChromaDoor.OPEN, true), 3);
-		}
+		// V33a BlockChromaDoor.setOpen(..., true): the door entity's open(0), which never recloses.
+		for (BlockPos pos : biomeBarrierLocations())
+			if (level.getBlockEntity(pos) instanceof TileEntityChromaDoor door)
+				door.open(0);
 		for (BlockPos pos : biomeLowerChestLocations())
 			if (level.getBlockEntity(pos) instanceof TileEntityLootChest chest)
 				chest.setStructureLocked(false);
@@ -568,7 +608,7 @@ public final class TileEntityStructureController extends RandomizableContainerBl
 			boolean open = forceOpen || currentBiomeSwitchMask() == biomeDoorMasks[door];
 			for (BlockPos pos : biomeSwitchDoorLocations(door))
 				BlockShiftLock.setOpen(level, pos, open);
-			BlockPos indicator = biomeSwitchPosition(door);
+			BlockPos indicator = biomeSwitchPosition(biomeDoorCorner(door));
 			BlockLightPanel.activate(level, indicator.above(), !open);
 			BlockLightPanel.activate(level, indicator.below(), open);
 		}
@@ -579,6 +619,19 @@ public final class TileEntityStructureController extends RandomizableContainerBl
 		for (int i = 0; i < 4; i++)
 			if (BlockLightSwitch.isSwitchUp(level, biomeSwitchPosition(i))) mask |= 1 << i;
 		return mask;
+	}
+
+	/**
+	 * The switch in the corner a switch door belongs to. V33a's doors run NW, NE, SW, SE ({@code i <= 1}
+	 * is north, {@code i % 2 == 0} is west) while its switch booleans run NW, SW, NE, SE, and
+	 * {@code setDoors} lights the panels of {@code switchLoc(areaNS, areaEW)}, the door's own corner.
+	 */
+	private static int biomeDoorCorner(int door) {
+		return switch (door) {
+			case 1 -> 2;
+			case 2 -> 1;
+			default -> door;
+		};
 	}
 
 	/** NW, SW, NE, SE: the exact ordering used by V33a's four switch booleans. */

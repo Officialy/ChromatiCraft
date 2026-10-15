@@ -212,6 +212,22 @@
       }
     ]
   },
+  "ding2_hi": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:ding2_hi"
+      }
+    ]
+  },
+  "ding2_lo": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:ding2_lo"
+      }
+    ]
+  },
   "dingcharge": {
     "sounds": [
       {
@@ -617,6 +633,22 @@
       {
         "type": "file",
         "name": "chromaticraft:orb/orb"
+      }
+    ]
+  },
+  "orb/orb_hi": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:orb/orb_hi"
+      }
+    ]
+  },
+  "orb/orb_lo": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "chromaticraft:orb/orb_lo"
       }
     ]
   },

@@ -11428,3 +11428,69 @@ build/mixin-audit/20261014-d57-native/gameTest-GameTestServer.json.
 
 Normal Play and updater inactivity are preserved. Local checkpoint only; unrelated
 .idea/workspace.xml edits are excluded. D57 is complete; D58 is next.
+
+
+### 2026-10-15 — Biome Fragment melody puzzle: audit after the demonstration
+
+The owner reported that the overworld melody puzzle (the Magic Outpost / Biome Fragment) plays its
+demonstration and then nothing works. The whole post-demo flow was checked against V33a's
+`BiomeStructurePuzzle`, `BlockMusicTrigger`, `TileEntityStructControl` and `ChromaSounds`.
+
+The server-side note path itself was intact: a quadrant click reached the controller, and right and
+wrong notes were judged correctly. The old tests never proved this from a real click on an authored
+trigger. They also never ticked a player near the controller, so the demonstration, the cooldown and
+the replay had never run in a test. What was actually wrong:
+
+- **Pitch clamp (the in-game symptom).** V33a's wide-pitch sounds (DING, ORB) switch to their
+  `_hi`/`_lo` recordings at pitch/4 above 2.0 and pitch×4 below 0.5. In V33a this happened in the
+  client `crystalPitchDing` handler. The port had deferred the variants, so the 26.3 client clamped
+  every DING to 0.5–2.0.
+  - Every demonstration note above C6 sounded identical.
+  - So did the upper quadrants of white, yellow, light blue, lime and pink, among others.
+  - The melody could not be followed by ear, and different buttons sounded the same.
+  - Fix: `ChromaSounds.Variant` registers `ding2_hi`/`ding2_lo` and `orb/orb_hi`/`orb/orb_lo` (the
+    .ogg files already shipped). `ChromaSounds.resolvePitch` makes V33a's swap on the server, before
+    the unclamped float pitch is sent. `ChromaSoundProvider` emits the four definitions, and
+    `sounds.json` has them.
+- **Examination Crystal replay was missing.** V33a's `onTick` replays the melody when the closest
+  player within 20 blocks holds a PROBE. Only the pedestal path existed. Restored.
+- **Prerequisite shaft gate was missing.** V33a's `pushPlayer` removes downward motion from players
+  without BIOMESTRUCT's prerequisites inside controller+(−1..2, 6..7, −1..2). Restored, synced with
+  `needsSync`.
+- **Switch indicators and own-corner exclusion pointed at the wrong corner for doors 1 and 2.** V33a
+  orders its doors NW, NE, SW, SE but its switch booleans NW, SW, NE, SE, and it lights
+  `switchLoc(door's corner)`. `biomeDoorCorner` maps between the two orders. The NE and SW door
+  indicators had been showing each other's state, and their "own corner only" masks were excluded
+  from the wrong door.
+- **Trigger routing.** V33a reports a note only from a trigger standing on reinforced structure
+  shielding, to the controller at its authored offset (two down, four or five out, one to the left).
+  In Proxima it goes to the room's Music Memory instead. The port had taken the first handler from
+  a 19×5×19 scan, so a crafted trigger near any controller fed it notes. Restored both routes.
+  Triggers are unbreakable in Proxima again (`SemiUnbreakable`).
+- **Smaller parity fixes.**
+  - The door colours and delegates refresh on the controller's 5th tick and every 200 ticks, as in
+    V33a. This refresh deliberately does not re-project the switch doors.
+  - A Color Lock is only given its colour pair when it doesn't already hold it, because
+    `setColors` recloses the lock until the next update. Before this, every load (and now every
+    refresh) shut each open Color Lock and reopened it, with stone-break sounds.
+  - Completion opens the barriers through `TileEntityChromaDoor.open(0)`, which is V33a's
+    `BlockChromaDoor.setOpen`, including its sounds.
+
+New test: `chromaticraft:biome_fragment_music_full_flow` (`BiomeFragmentMusicTests`). It places the
+real structure and asserts that all eight authored triggers have their lamp and reinforced shield.
+Then it waits out the automatic demonstration and replays it from the pedestal and again with an
+Examination Crystal. It checks the shaft gate, and that every melody note is sent at an audible
+pitch. It plays part of the melody with real `ServerPlayerGameMode.useItemOn` quadrant clicks on all
+four face orientations, plays a wrong note (the guess resets to the first note and the puzzle stays
+incomplete), then plays the whole melody. Finally it asserts every barrier is open with no
+collision, the lower caches are unlocked, and both still hold 20 ticks later.
+`biome_fragment_music_loop` now uses an authored trigger offset with reinforced shielding below,
+because V33a's gate requires it.
+
+Validation: `gradlew :ChromatiCraft:runGameTest -PgameTestSelector=chromaticraft:biome_fragment_*
+--offline` passes all 4, and `-PgameTestSelector=chromaticraft:music_*` passes 1.
+
+Still open (CHROMA-PORT in `RenderStructureController`): V33a's client overlay over the shaft for
+players without the prerequisites (red X, rift layer, glint dome). The gate it illustrates works.
+
+Player guide: `docs/biome-fragment-melody-guide.md`.
