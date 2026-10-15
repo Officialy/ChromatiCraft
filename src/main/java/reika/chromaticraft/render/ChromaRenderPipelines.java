@@ -187,6 +187,27 @@ public final class ChromaRenderPipelines {
 			.withCull(false)
 			.build();
 
+	/**
+	 * V33a {@code BlendMode.INVERTEDADD} (GL_ONE_MINUS_DST_COLOR, GL_ONE_MINUS_SRC_COLOR): the in-world structure
+	 * controller flare. The result is src(1-dst) + dst(1-src): black source leaves the frame unchanged, so the
+	 * sprite's black field drops out as under ADDITIVEDARK, while bright texels glow on dark surroundings and
+	 * invert bright ones.
+	 */
+	public static final RenderPipeline INVERTED_ADD_SPRITE = RenderPipeline.builder()
+			.withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "pipeline/inverted_add_sprite"))
+			.withBindGroupLayout(BindGroupLayouts.GLOBALS)
+			.withBindGroupLayout(BindGroupLayouts.PROJECTION)
+            .withBindGroupLayout(BindGroupLayouts.DYNAMIC_TRANSFORMS)
+			.withVertexShader("core/position_tex_color")
+			.withFragmentShader("core/position_tex_color")
+			.withBindGroupLayout(BindGroupLayouts.SAMPLER0)
+			.withColorTargetState(new ColorTargetState(new BlendFunction(BlendFactor.ONE_MINUS_DST_COLOR, BlendFactor.ONE_MINUS_SRC_COLOR)))
+			.withVertexBinding(0, DefaultVertexFormat.POSITION_TEX_COLOR)
+			.withPrimitiveTopology(PrimitiveTopology.QUADS)
+			.withDepthStencilState(new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL, false))
+			.withCull(false)
+			.build();
+
 	public static final RenderPipeline TRANSLUCENT_SPRITE_THROUGH_WALL = RenderPipeline.builder()
 			.withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "pipeline/translucent_sprite_through_wall"))
 			.withBindGroupLayout(BindGroupLayouts.GLOBALS)
@@ -547,6 +568,9 @@ public final class ChromaRenderPipelines {
 	private static final Function<Identifier, RenderType> MULTIPLY_TYPES = Util.memoize(texture ->
 			RenderType.create("chromaticraft_multiply_sprite", RenderSetup.builder(MULTIPLY_SPRITE)
 					.withTexture("Sampler0", texture).sortOnUpload().createRenderSetup()));
+	private static final Function<Identifier, RenderType> INVERTED_ADD_TYPES = Util.memoize(texture ->
+			RenderType.create("chromaticraft_inverted_add_sprite", RenderSetup.builder(INVERTED_ADD_SPRITE)
+					.withTexture("Sampler0", texture).sortOnUpload().createRenderSetup()));
 	private static final Function<Identifier, RenderType> PYLON_CORE_TYPES = Util.memoize(texture ->
 			RenderType.create("chromaticraft_pylon_core", RenderSetup.builder(PYLON_CORE)
 					.withTexture("Sampler0", texture).sortOnUpload().createRenderSetup()));
@@ -608,6 +632,11 @@ public final class ChromaRenderPipelines {
 		return MULTIPLY_TYPES.apply(texture);
 	}
 
+	/** V33a BlendMode.INVERTEDADD sprites without depth write (INVERTED_ADD_SPRITE), as a render type. */
+	public static RenderType invertedAddSprite(Identifier texture) {
+		return INVERTED_ADD_TYPES.apply(texture);
+	}
+
 	public static RenderType pylonCore(Identifier texture) {
 		return PYLON_CORE_TYPES.apply(texture);
 	}
@@ -661,6 +690,7 @@ public final class ChromaRenderPipelines {
         event.registerPipeline(TRANSLUCENT_SPRITE);
         event.registerPipeline(TRANSLUCENT_SPRITE_THROUGH_WALL);
         event.registerPipeline(MULTIPLY_SPRITE);
+        event.registerPipeline(INVERTED_ADD_SPRITE);
 		event.registerPipeline(PYLON_CORE);
 		event.registerPipeline(PYLON_CORE_THROUGH_WALL);
 		event.registerPipeline(ADDITIVE_ALPHA_SPRITE);
@@ -690,7 +720,7 @@ public final class ChromaRenderPipelines {
      * drawn while Iris renders the world, so Iris does not override them.
      */
     private static void assignIrisPrograms() {
-        for (RenderPipeline glow : new RenderPipeline[] {ADDITIVE_SPRITE, ADDITIVE_SPRITE_THROUGH_WALL, ADDITIVE_ALPHA_SPRITE,
+        for (RenderPipeline glow : new RenderPipeline[] {ADDITIVE_SPRITE, ADDITIVE_SPRITE_THROUGH_WALL, ADDITIVE_ALPHA_SPRITE, INVERTED_ADD_SPRITE,
                 LEGACY_ADDITIVE_SPRITE, LEGACY_ADDITIVE_SPRITE_THROUGH_WALL, PYLON_CORE, PYLON_CORE_THROUGH_WALL, ENERGY_BEAM})
             IrisCompat.assignWithoutShadow(glow, "EMISSIVE_ENTITIES");
         IrisCompat.assignWithoutShadow(TRANSLUCENT_SPRITE, "TEXTURED");

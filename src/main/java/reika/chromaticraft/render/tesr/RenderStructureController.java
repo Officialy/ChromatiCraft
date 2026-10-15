@@ -17,13 +17,11 @@ import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.core.BlockPos;
 import net.minecraft.data.AtlasIds;
 import net.minecraft.resources.Identifier;
-import net.minecraft.util.LightCoordsUtil;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.submit.RenderPhaseKeys;
 import org.jspecify.annotations.Nullable;
-import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.registry.ChromaIcons;
 import reika.chromaticraft.registry.CrystalElement;
@@ -33,12 +31,12 @@ import reika.dragonapi.libraries.rendering.ReikaColorAPI;
 
 /**
  * V33a {@code RenderStructControl}: the fragment structure's root is not a solid block but a glowing
- * flare hanging in the air, additively blended and turning on its own.
+ * flare hanging in the air, one block across, facing the viewer and turning on its own.
  *
- * <p>Upstream's flare is {@code ChromaIcons.SPINFLARE}, a 64x11520 strip of 180 frames stepped one
- * per tick. The strip is used directly here rather than through the block atlas: it is referenced by
- * no model, so it is not stitched, and walking the V offset by hand reproduces the animation without
- * needing an atlas source registered for one texture.
+ * <p>Upstream's flare is {@code ChromaIcons.SPINFLARE}, a terrain-atlas sprite whose 180-frame strip
+ * the atlas animates one frame per tick. The port uses the same stitched sprite: everything under
+ * {@code textures/block/} is stitched into the block atlas whether or not a model names it, and its
+ * {@code .mcmeta} keeps the animation. An in-world, non-monument controller blends it INVERTEDADD.
  *
  * <p>CHROMA-PORT: upstream also draws the monument line ring over this (the
  * {@code monument_lines_big.png} pass and the {@code structcontrol} shader), and gates the whole
@@ -57,15 +55,8 @@ import reika.dragonapi.libraries.rendering.ReikaColorAPI;
 public final class RenderStructureController
 		implements BlockEntityRenderer<TileEntityStructureController, RenderStructureController.State> {
 
-	private static final Identifier FLARE = Identifier.fromNamespaceAndPath(
-			ChromatiCraft.MODID, "textures/block/icons/rotating_flare_pulse.png");
-
-	/** The strip is 64 wide and 11520 tall: 180 square frames, one tick each. */
-	private static final int FRAMES = 180;
-	private static final float FRAME_V = 1F / FRAMES;
-
-	/** V33a draws the flare a little over a block across, centred on the block. */
-	private static final float RADIUS = 0.75F;
+	/** V33a scales its +-1 quad by 0.5 about the block centre: the flare is exactly one block across. */
+	private static final float RADIUS = 0.5F;
 
 	/** {@code BiomeStructurePuzzle.render}'s dome: radius 12, centred half a block over the shaft at y 5.5. */
 	private static final double DOME_RADIUS = 12;
@@ -86,13 +77,6 @@ public final class RenderStructureController
 		BlockEntityRenderer.super.extractRenderState(controller, state, partialTick, cameraPosition, breakProgress);
 		CrystalElement colour = controller.getColor();
 		state.colour = colour == null ? 0xffffff : colour.color();
-		// Wall clock, not a tick counter: the controller is not ticked client-side in every state, and
-		// upstream's flare spins regardless of whether the structure is doing anything.
-		state.frame = (int)(System.currentTimeMillis() / 50 % FRAMES);
-		// Face the camera, so the flare reads as a light source rather than a flat decal.
-		state.yaw = (float)Math.toDegrees(Math.atan2(
-				cameraPosition.x - (controller.getBlockPos().getX() + 0.5),
-				cameraPosition.z - (controller.getBlockPos().getZ() + 0.5)));
 		Player viewer = Minecraft.getInstance().player;
 		state.biomeGate = controller.getStructureType() == TileEntityStructureController.StructureType.BIOME_FRAGMENT
 				&& viewer != null && !ProgressStage.BIOMESTRUCT.playerHasPrerequisites(viewer);
@@ -103,27 +87,23 @@ public final class RenderStructureController
 	public void submit(State state, PoseStack poseStack, SubmitNodeCollector collector, CameraRenderState camera) {
 		poseStack.pushPose();
 		poseStack.translate(0.5, 0.5, 0.5);
-		poseStack.rotate(com.mojang.math.Axis.YP.rotationDegrees(state.yaw));
-		PoseStack.Pose pose = poseStack.last();
-		float v0 = state.frame * FRAME_V;
-		float v1 = v0 + FRAME_V;
-		int colour = 0xffffffff & (0xff000000 | state.colour);
-		// Emissive translucent: additive-looking against the world without needing a pipeline modifier,
-		// and one render type for the whole element.
-		submitAfterTerrain(poseStack, collector, ChromaRenderPipelines.additiveSprite(FLARE),
-				(matrix, buffer) -> {
-					buffer.addVertex(pose, -RADIUS, -RADIUS, 0).setColor(colour).setUv(0, v1)
-							.setOverlay(net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY)
-							.setLight(LightCoordsUtil.FULL_BRIGHT).setNormal(pose, 0, 0, 1);
-					buffer.addVertex(pose, RADIUS, -RADIUS, 0).setColor(colour).setUv(1, v1)
-							.setOverlay(net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY)
-							.setLight(LightCoordsUtil.FULL_BRIGHT).setNormal(pose, 0, 0, 1);
-					buffer.addVertex(pose, RADIUS, RADIUS, 0).setColor(colour).setUv(1, v0)
-							.setOverlay(net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY)
-							.setLight(LightCoordsUtil.FULL_BRIGHT).setNormal(pose, 0, 0, 1);
-					buffer.addVertex(pose, -RADIUS, RADIUS, 0).setColor(colour).setUv(0, v0)
-							.setOverlay(net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY)
-							.setLight(LightCoordsUtil.FULL_BRIGHT).setNormal(pose, 0, 0, 1);
+		// V33a turned by -playerViewY then playerViewX: a full billboard, the camera's own rotation.
+		poseStack.rotate(camera.orientation);
+		TextureAtlasSprite flare = sprite(ChromaIcons.SPINFLARE.getIcon());
+		int colour = 0xff000000 | state.colour;
+		// Draw with the pose handed to the callback. PoseStack reuses its Pose objects, so one captured
+		// here is overwritten by later renders before this deferred submit runs, which put the flare
+		// somewhere else entirely.
+		submitAfterTerrain(poseStack, collector, ChromaRenderPipelines.invertedAddSprite(TextureAtlas.LOCATION_BLOCKS),
+				(pose, buffer) -> {
+					float u = flare.getU0();
+					float v = flare.getV0();
+					float du = flare.getU1();
+					float dv = flare.getV1();
+					buffer.addVertex(pose, -RADIUS, -RADIUS, 0).setUv(u, v).setColor(colour);
+					buffer.addVertex(pose, RADIUS, -RADIUS, 0).setUv(du, v).setColor(colour);
+					buffer.addVertex(pose, RADIUS, RADIUS, 0).setUv(du, dv).setColor(colour);
+					buffer.addVertex(pose, -RADIUS, RADIUS, 0).setUv(u, dv).setColor(colour);
 				});
 		poseStack.popPose();
 		// V33a ran the puzzle's render at the block origin, after the flare and outside its billboard turn.
@@ -247,8 +227,6 @@ public final class RenderStructureController
 
 	public static final class State extends BlockEntityRenderState {
 		int colour = 0xffffff;
-		int frame;
-		float yaw;
 		/** A Biome Fragment, viewed by a client player who lacks the {@code BIOMESTRUCT} prerequisites. */
 		boolean biomeGate;
 		long millis;
