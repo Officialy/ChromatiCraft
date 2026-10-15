@@ -11629,8 +11629,8 @@ a player through an unconfigured mock connection.
     `connectedPlayer`, BiomeFragment `joinMockPlayer`) use `joinedMockPlayer`.
   - CaveRoute previously took the server default mode. It is now explicitly SURVIVAL.
   - TieredResource loses vanilla `makeMockServerPlayer`'s `isClientAuthoritative() == false`. That
-    flag only decides server-side movement simulation. Mock connections are never ticked, and the
-    tiered tests only call `gameMode.destroyBlock` and item use.
+    flag only decides server-side movement simulation. The tiered tests only call
+    `gameMode.destroyBlock` and item use, and all six pass.
 - **Left alone.** `makeMockPlayer(GameType)` and the unjoined `makeMockServerPlayer` never enter the
   PlayerList, so no join hook fires for them.
 - **Validation.** `:ChromatiCraft:runGameTest` was run in 29 sequential selector batches covering all
@@ -11638,8 +11638,8 @@ a player through an unconfigured mock connection.
   - `item_port_cave_exit_deep` uses the untouched `makeMockPlayer`. It expects the Cave Pather to
     place its trail in the click tick, which contradicts the deferred search asserted by
     `cave_route_deferred_exit`. The test is stale.
-  - `world_rift_far_link` passes alone, twice. Inside the `world_rift_*` batch it fails every time
-    with "far chunk never unloaded", because the other rift tests keep the chunk loaded. It fails
-    identically with `configureMockConnection` removed.
+  - `world_rift_far_link` passes alone, twice. Inside the `world_rift_*` batch it failed all three
+    times with "far chunk never unloaded". It fails identically with `configureMockConnection`
+    removed, so it does not depend on this change. The cause is not investigated.
 - **Not checked.** The headless run has no FTB Ultimine, so it proves no regression and no ConfigSync
   crash, but not the Ultimine path itself. That needs the Play client.
