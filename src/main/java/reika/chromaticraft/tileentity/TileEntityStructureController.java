@@ -447,7 +447,8 @@ public final class TileEntityStructureController extends RandomizableContainerBl
 	private static void pushBiomePlayer(Player player) {
 		net.minecraft.world.phys.Vec3 motion = player.getDeltaMovement();
 		player.setDeltaMovement(motion.x, Math.max(0, motion.y), motion.z);
-		player.needsSync = true;
+		// V33a velocityChanged: the motion packet goes to the player itself, not only to watchers.
+		player.syncVelocity = true;
 	}
 
 	private void playNextBiomeNote() {

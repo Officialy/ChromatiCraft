@@ -11455,8 +11455,9 @@ the replay had never run in a test. What was actually wrong:
 - **Examination Crystal replay was missing.** V33a's `onTick` replays the melody when the closest
   player within 20 blocks holds a PROBE. Only the pedestal path existed. Restored.
 - **Prerequisite shaft gate was missing.** V33a's `pushPlayer` removes downward motion from players
-  without BIOMESTRUCT's prerequisites inside controller+(−1..2, 6..7, −1..2). Restored, synced with
-  `needsSync`.
+  without BIOMESTRUCT's prerequisites inside controller+(−1..2, 6..7, −1..2). Restored. It sets
+  `syncVelocity`, the 26.3 name for V33a's `velocityChanged`. `needsSync` would only reach the
+  players watching, not the pushed player's own client.
 - **Switch indicators and own-corner exclusion pointed at the wrong corner for doors 1 and 2.** V33a
   orders its doors NW, NE, SW, SE but its switch booleans NW, SW, NE, SE, and it lights
   `switchLoc(door's corner)`. `biomeDoorCorner` maps between the two orders. The NE and SW door
@@ -11479,8 +11480,10 @@ the replay had never run in a test. What was actually wrong:
 New test: `chromaticraft:biome_fragment_music_full_flow` (`BiomeFragmentMusicTests`). It places the
 real structure and asserts that all eight authored triggers have their lamp and reinforced shield.
 Then it waits out the automatic demonstration and replays it from the pedestal and again with an
-Examination Crystal. It checks the shaft gate, and that every melody note is sent at an audible
-pitch. It plays part of the melody with real `ServerPlayerGameMode.useItemOn` quadrant clicks on all
+Examination Crystal. It checks the shaft gate, with a control: once the prerequisites are granted
+the same fall is left alone. It runs the Panel Switch stage through real clicks: each door's pattern
+opens only that door's Shift Locks and lights only its own corner's panels, with positions taken
+from V33a's geometry. It also checks that every melody note is sent at an audible pitch. It plays part of the melody with real `ServerPlayerGameMode.useItemOn` quadrant clicks on all
 four face orientations, plays a wrong note (the guess resets to the first note and the puzzle stays
 incomplete), then plays the whole melody. Finally it asserts every barrier is open with no
 collision, the lower caches are unlocked, and both still hold 20 ticks later.

@@ -18,7 +18,12 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.event.RegisterGameTestsEvent;
 import reika.chromaticraft.auxiliary.CrystalMusicManager;
 import reika.chromaticraft.block.BlockChromaDoor;
+import reika.chromaticraft.block.dimension.structure.lightpanel.BlockLightPanel;
+import reika.chromaticraft.block.dimension.structure.lightpanel.BlockLightSwitch;
+import reika.chromaticraft.block.dimension.structure.shiftmaze.BlockShiftLock;
 import reika.chromaticraft.block.worldgen26.BlockStructureShield;
+import reika.chromaticraft.magic.progression.ProgressStage;
+import reika.chromaticraft.magic.progression.ProgressionManager;
 import reika.chromaticraft.registry.ChromaBlocks;
 import reika.chromaticraft.registry.ChromaItems;
 import reika.chromaticraft.registry.ChromaSounds;
@@ -130,8 +135,22 @@ final class BiomeFragmentMusicTests {
 				.thenExecuteAfter(2, () -> {
 					helper.assertTrue(player.getDeltaMovement().y >= 0,
 							"the shaft must cancel the downward motion of a player without the prerequisites");
+					// Control: once the prerequisites are met the same fall is left alone.
+					for (ProgressStage stage : List.of(ProgressStage.SHARDCHARGE, ProgressStage.MULTIBLOCK,
+							ProgressStage.CHROMA, ProgressStage.ENERGYIDEA))
+						ProgressionManager.instance.setPlayerStage(player, stage, true, false, false);
+					helper.assertTrue(ProgressStage.BIOMESTRUCT.playerHasPrerequisites(player)
+									&& !ProgressStage.CTM.isPlayerAtStage(player),
+							"the player must now meet the prerequisites without the creative bypass");
+					player.setDeltaMovement(0, -0.6, 0);
+				})
+				.thenExecuteAfter(2, () -> {
+					helper.assertTrue(player.getDeltaMovement().y < -0.5,
+							"the shaft must not stop a player who has the prerequisites");
 					player.snapTo(Vec3.atCenterOf(origin.offset(0, 4, 10)));
 				})
+				// 4b. The Panel Switch stage: each corner door opens on its own pattern and lights its corner.
+				.thenExecute(() -> switchStage(helper, player, origin, controller))
 				// 5. Play part of the melody, then a wrong note: the guess restarts from the first note.
 				.thenExecute(() -> {
 					List<MusicKey> notes = melody.stream().filter(Objects::nonNull).toList();
@@ -163,6 +182,58 @@ final class BiomeFragmentMusicTests {
 				// 7. Nothing closes again afterwards.
 				.thenExecuteAfter(20, () -> assertOpened(helper, origin))
 				.thenSucceed();
+	}
+
+	/**
+	 * V33a geometry, independent of the controller's helpers. {@code switchLoc(ns, ew)} is
+	 * {@code (ns.offsetZ*3, 8, ew.offsetX*3)}, so "north" is -x; the mask bits follow
+	 * {@code SwitchGroup.hashCode}: NW, SW, NE, SE.
+	 */
+	private static final int[][] SWITCHES = {{-3,8,-3},{3,8,-3},{-3,8,3},{3,8,3}};
+
+	private static void switchStage(GameTestHelper helper, ServerPlayer player, BlockPos origin,
+			TileEntityStructureController controller) {
+		for (int door = 0; door < 4; door++) {
+			// Doors run NW, NE, SW, SE: i <= 1 is north (-x), i % 2 == 0 is west (-z).
+			BlockPos corner = origin.offset(door <= 1 ? -3 : 3, 8, door % 2 == 0 ? -3 : 3);
+			int cornerBit = -1;
+			for (int b = 0; b < 4; b++)
+				if (origin.offset(SWITCHES[b][0], SWITCHES[b][1], SWITCHES[b][2]).equals(corner)) cornerBit = b;
+			helper.assertTrue(controller.getBiomeDoorMask(door) != 1 << cornerBit,
+					"door " + door + " may not open on its own corner switch alone");
+		}
+		for (int door = 0; door < 4; door++) {
+			int mask = controller.getBiomeDoorMask(door);
+			for (int b = 0; b < 4; b++) {
+				BlockPos at = origin.offset(SWITCHES[b][0], SWITCHES[b][1], SWITCHES[b][2]);
+				if (BlockLightSwitch.isSwitchUp(helper.getLevel(), at) != ((mask >> b & 1) == 1))
+					click(helper, player, new BlockHitResult(Vec3.atCenterOf(at), Direction.UP, at, false));
+			}
+			for (int other = 0; other < 4; other++) {
+				boolean open = other == door;
+				for (BlockPos lock : switchDoorLocks(origin, other))
+					helper.assertTrue(helper.getLevel().getBlockState(lock).getValue(BlockShiftLock.PASSABILITY)
+									== (open ? BlockShiftLock.Passability.OPEN : BlockShiftLock.Passability.CLOSED),
+							"with door " + door + "'s pattern set, door " + other + (open ? " must open" : " must stay shut"));
+				BlockPos corner = origin.offset(other <= 1 ? -3 : 3, 8, other % 2 == 0 ? -3 : 3);
+				helper.assertTrue(helper.getLevel().getBlockState(corner.above()).getValue(BlockLightPanel.ACTIVE) != open
+								&& helper.getLevel().getBlockState(corner.below()).getValue(BlockLightPanel.ACTIVE) == open,
+						"door " + other + "'s own corner panels must show it " + (open ? "open" : "shut"));
+			}
+		}
+	}
+
+	/** V33a {@code getSwitchDoorLocations}: nw, ne, sw, se. */
+	private static List<BlockPos> switchDoorLocks(BlockPos origin, int door) {
+		List<BlockPos> result = new ArrayList<>();
+		int sx = door <= 1 ? -2 : 2;
+		int sz = door % 2 == 0 ? -1 : 1;
+		for (int y = 6; y <= 8; y++)
+			for (int d = 5; d <= 6; d++) {
+				result.add(origin.offset(sx, y, sz * d));
+				result.add(origin.offset(Integer.signum(sx) * d, y, sz * 2));
+			}
+		return result;
 	}
 
 	private static void assertOpened(GameTestHelper helper, BlockPos origin) {
