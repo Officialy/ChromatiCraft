@@ -58,9 +58,8 @@ public final class ElementBufferOverlay implements GuiLayer {
 	public void render(GuiGraphicsExtractor graphics, DeltaTracker delta) {
 		Minecraft mc = Minecraft.getInstance();
 		Player player = mc.player;
-		// No hideGui check: a layer registered through RegisterGuiLayersEvent is already suppressed
-		// with the rest of the HUD when the player hides it.
-		if (player == null)
+		// Native custom layers do not inherit the vanilla layer's visibility predicate.
+		if (player == null || mc.gui.hud.isHidden())
 			return;
 		ItemStack held = player.getMainHandItem();
 		if (!(held.getItem() instanceof ItemManipulator))

@@ -11759,3 +11759,45 @@ D05 is complete. Checklist: 46 complete / 117 open / 163 total. Local checkpoint
 only; the owner's existing .idea/workspace.xml remains separate. D58/D59 and real
 remote-client/external shader acceptance stay open. Next review: D09's live debug
 overlay and accepted HUD visibility against the native 26.3 layer predicates.
+
+## D09 — Native debug HUD contract and actual display (2026-10-18)
+
+Completed DebugOverlay against original DragonAPI de1bcf1f:Auxiliary/DebugOverlay.java
+and actual 26.3 GUI/BlockEntity/SDL sources. A named physical-client layer above
+CAMERA_OVERLAYS replaces the TITLE post-event callback. The original 3x banner now
+scales the actual extractor's 2D pose, with push/pop and opaque no-shadow text;
+the disconnected PoseStack and obsolete registration TODO are removed. A generated
+translation retains the original banner wording. Native F1 and active-world/player
+gates apply explicitly. Valid configured SDL scancodes retain their identity;
+negative/out-of-range values are checked against the real native state buffer.
+
+Held-key NBT keeps the original four-block non-fluid selection ray, screen gate,
+24-row columns, unscaled white text and red serializer errors with up to four
+frames. Registry-aware saveWithFullMetadata restores ID and coordinates as well
+as current inventory/components/custom data. No per-frame error logging is added.
+The accepted Chroma element-buffer HUD also gains the missing F1 guard before
+any buffer/pie/rune extraction; its incorrect inherited-visibility comment is fixed.
+Full source contract and acceptance: DragonAPI/docs/debug-overlay-port.md.
+
+All 269 family units pass (215 DragonAPI, 34 RotaryCraft, 8 ReactorCraft,
+12 ChromatiCraft), zero failures/errors/skips. Datagen produces 53 translations.
+All 104 native GameTests, strict common MixinAudit (30 transformed/two optional
+absences/14 other-side rows), and all eight accepted-class guards pass; process
+exits cleanly in 1m 54s. The isolated native client exits successfully in 2m 38s.
+It verifies actual banner glyph/pose extraction and a live native layer frame;
+SDL state/bounds; a real local chest ray and ID/coordinates/inventory/persistent
+NBT; second-column placement; released input, open screens, miss/reach/non-BE
+paths; real serializer and stackless failures; visible and F1-hidden manipulator
+HUD geometry/PiP. Temporary client cells, player pose/hand/buffer, screen, HUD
+visibility and debug flag restore. Native input memory is not modified. A final
+fixture log-label clarification names persistent data precisely; test logic is
+unchanged. All other automated client checks also pass. Normal Play's VM/program
+argument SHA-256 hashes remain unchanged. Evidence: build/d09-family-native.log,
+build/d09-client.log, build/d09-proof.json and
+build/mixin-audit/20261018-d09-native/.
+
+D09 is complete. Checklist: 47 complete / 116 open / 163 total. Local checkpoints
+only; the owner's existing .idea/workspace.xml remains separate. D62's historical
+key-label migration and broader V09/remote/shader acceptance remain open. Next is
+D10: current render dispatch passes a DeltaTracker where the accepted partial-tick
+consumer expects Float, and does not honor render handler phase selection.
