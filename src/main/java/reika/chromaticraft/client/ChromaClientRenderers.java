@@ -50,9 +50,11 @@ public final class ChromaClientRenderers {
 		NeoForge.EVENT_BUS.addListener(reika.chromaticraft.auxiliary.render.StructureErrorOverlays::render);
 		bus.addListener(MouseoverStatusOverlay::register);
 		bus.addListener(ChromaClientRenderers::registerEnvironmentEffects);
-		bus.addListener((net.neoforged.fml.event.lifecycle.FMLClientSetupEvent event) -> event.enqueueWork(() ->
-				reika.chromaticraft.render.item.StructureMapRenderer.register(
-						reika.chromaticraft.registry.ChromaItems.STRUCTURE_MAP.get())));
+		bus.addListener((net.neoforged.fml.event.lifecycle.FMLClientSetupEvent event) -> event.enqueueWork(() -> {
+			reika.chromaticraft.render.item.StructureMapRenderer.register(reika.chromaticraft.registry.ChromaItems.STRUCTURE_MAP.get());
+			reika.dragonapi.auxiliary.trackers.SettingInterferenceTracker.instance.registerSettingHandler(
+					reika.dragonapi.auxiliary.trackers.SettingInterferenceTracker.muteInterference);
+		}));
 	}
 
 	/**

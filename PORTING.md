@@ -11714,3 +11714,48 @@ D63 is complete. Checklist: 45 complete / 118 open / 163 total. D58/D59 and real
 remote-client/external shader acceptance remain open. Local checkpoints only;
 the owner's existing .idea/workspace.xml change remains separate. Next active
 consumer lead: D05 SettingInterferenceTracker's missing warning icon/live hook.
+
+## D05 — Live client setting warnings and original mute icon (2026-10-18)
+
+Completed the whole accepted SettingInterferenceTracker path against original
+DragonAPI de1bcf1f and actual 26.3 sources. Chroma's modern queued client setup
+registers the original mute handler. Native ClientLoginEvent/ClientLogoutEvent
+now own notifications and session identity; the legacy LOGIN packet posts the
+same event without a duplicate direct call. No player/level object is retained.
+The policy is read at login rather than before configuration loading.
+
+A native physical-client GUI layer restores the original (2,2), 16-pixel icons
+with four-pixel gaps, live detection/relevance, first-registration-wins IDs and
+isolated poses. Original mutewarn.png remains byte-identical to source, SHA-256
+872b6dbb10d1ec20e7b32ec1d956eddbaa2a6ac97785ec5cd69f6851b8f5aac6; its whole 32px
+image fills the 16px quad. Reminder extraction explicitly respects F1; native
+custom layers do not inherit vanilla visibility predicates. The layer sits below
+TITLE so login popups cannot have their text covered by icons. Two generated
+translations preserve the descriptions and explain the actual persistent reminder.
+
+EVERYLOAD/SETTINGCHANGE/VERSION/ONCE and the original cache identity/plain ID
+lines remain. Typed immutable snapshots add UTF-8 comment version metadata;
+VERSION now compares actual client-loaded versions, independent of integrated-
+server/world state. First/legacy VERSION caches migrate once. Unique sibling
+writes replace atomically where supported; read failures preserve originals and
+still warn; failed writes no longer delete the old cache first. Full contract,
+source references and coherent native GUI extension API:
+DragonAPI/docs/setting-interference-port.md. No update feed is enabled.
+
+Five new cache regressions pass with 269 family units (215 DragonAPI, 34 RotaryCraft,
+8 ReactorCraft, 12 ChromatiCraft), zero failures/errors/skips. Datagen produces 52
+language entries. All 104 native GameTests, strict common mixin checks (30
+transformed/two optional absences/14 other-side rows) and all eight accepted-class
+guards pass; final native process exits in 1m 11s. The isolated client exits in
+2m 32s, including live active/cleared HUD frames, four category thresholds,
+original UVs/size, F1, filtering, translated popups, native login/deduplication and
+logout cleanup; options/HUD/popups restore before other passing sound/render checks.
+Normal Play VM/program SHA-256 hashes are unchanged. Evidence:
+build/d05-units-datagen.log, build/d05-accepted-family-native.log,
+build/d05-client.log, build/d05-proof.json and
+build/mixin-audit/20261018-d05-accepted-native/.
+
+D05 is complete. Checklist: 46 complete / 117 open / 163 total. Local checkpoints
+only; the owner's existing .idea/workspace.xml remains separate. D58/D59 and real
+remote-client/external shader acceptance stay open. Next review: D09's live debug
+overlay and accepted HUD visibility against the native 26.3 layer predicates.
