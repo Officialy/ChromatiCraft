@@ -11,6 +11,7 @@ import net.minecraft.data.AtlasIds;
 import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.FluidTags;
+import net.minecraft.world.attribute.EnvironmentAttributes;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.material.FogType;
 import net.neoforged.api.distmarker.Dist;
@@ -103,7 +104,8 @@ public final class LuminousCliffsClientEffects {
 		FogType fog = event.getCamera().getFluidInCamera();
 		if (fog == FogType.LAVA || fog == FogType.WATER)
 			return;
-		float sun = ReikaWorldHelper.getSunIntensity(level, false, event.getPartialTick());
+		float angle = event.getCamera().attributeProbe().getValue(EnvironmentAttributes.SUN_ANGLE, event.getPartialTick());
+		float sun = ReikaWorldHelper.getSunIntensity(angle, 0, 0);
 		float f = renderFactor * (float)ReikaMathLibrary.normalizeToBounds(sun, 0, 1, 0.2, 0.8);
 		if (f > 0) {
 			event.setRed(event.getRed() * (1 - f) + f * 0.9F);

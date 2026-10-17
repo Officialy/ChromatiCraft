@@ -11672,3 +11672,45 @@ a player through an unconfigured mock connection.
   3/3 before. The `item_port_*` batch passed 7/7.
 - **Follow-up, not fixed.** Players joined through `joinMockPlayer` are never removed from the
   PlayerList. Their loading tickets outlive their test, for the rest of the run.
+
+## D63 — Native sunlight normalization and consumer acceptance (2026-10-18)
+
+Completed D63 against generated Minecraft/NeoForge 26.3.0.76 sources and original
+DragonAPI de1bcf1f:Libraries/World/ReikaWorldHelper.java. Removed the reconstructed
+overworld angle, second radians-to-cycle conversion and unintended ambient floor.
+The helper now consumes native positional SUN_ANGLE degrees, converts once to
+radians and returns the original normalized 0-1 sunlight with authored independent
+rain/rain-weighted-thunder attenuation. Retained the position-free public overload
+with documented origin sampling; added position and degree-angle overloads.
+
+Exposed climate samples its own position. Solar plants keep an immutable build
+position, retain their public default constructor and apply the original ambient
+floor only in the consumer, making original moon-phase fallback reachable again.
+Beam mirrors sample their own block position, retaining clock/range/obstacle rules.
+Luminous Cliffs fog reads the event camera's native interpolated SUN_ANGLE at the
+event partial tick. Original violet blending, unclamped normalization, fade and
+fluid exclusions remain. Unknown Artefact still uses native SKY_LIGHT_FACTOR.
+Full contract, source API references and acceptance: DragonAPI/docs/sunlight-port.md.
+
+Two new unit regressions cover 1441 degree samples across four complete cycles,
+normalization, exact noon/midnight and rain/thunder factors. Three new native tests
+cover 96 actual timeline samples, custom positional angles, exposed climate's
+20-degree day/night delta, solar clear/storm/full/new moon behavior and actual
+beam-mirror ranges. Clock, attributes and weather interpolation state restore in
+finally blocks. The isolated client checks actual camera probe values at three
+partial ticks, native Cliffs fog callback colors at three factors, alpha and state.
+
+Final evidence: 264 family units (210 DragonAPI, 34 RotaryCraft, 8 ReactorCraft,
+12 ChromatiCraft), zero failures/errors/skips; all 104 native GameTests; strict
+common MixinAudit (30 transformed, two optional absences, 14 other-side rows);
+all eight accepted-class guards. Clean-source final run exits in 1m 33s. An initial
+comment-encoding diagnostic was corrected to ASCII before that final run. The
+isolated native client exits successfully in 2m 42s, including SUNLIGHT and all
+existing client checks. Normal Play VM/program SHA-256 hashes are unchanged.
+Evidence: build/d63-final-family-native.log, build/d63-client.log,
+build/d63-proof.json and build/mixin-audit/20261018-d63-final-native/.
+
+D63 is complete. Checklist: 45 complete / 118 open / 163 total. D58/D59 and real
+remote-client/external shader acceptance remain open. Local checkpoints only;
+the owner's existing .idea/workspace.xml change remains separate. Next active
+consumer lead: D05 SettingInterferenceTracker's missing warning icon/live hook.
