@@ -31,14 +31,14 @@ public final class ChromaDataProviders {
 		event.createProvider(ChromaTestStructureProvider::new);
 		event.createProvider(ChromaStructureTemplateProvider::new);
 		event.createProvider(ChromaVillagePoolProvider::new);
-		event.createWorldRegistryObjects(ChromaWorldGenProvider.buildRegistrySet());
-		event.createReloadableRegistryObjects(ChromaWorldGenProvider.buildReloadableRegistrySet());
+		event.getDefaultPackGenerator().createWorldRegistryObjects(ChromaWorldGenProvider.buildRegistrySet());
+		event.getDefaultPackGenerator().createReloadableRegistryObjects(ChromaWorldGenProvider.buildReloadableRegistrySet());
 		event.createProvider(ChromaBiomeModifierProvider::new);
-		event.createProvider((output, lookup) -> new ChromaBiomeTagProvider(output, lookup));
-		event.createProvider((output, lookup) -> new ChromaConfiguredFeatureTagProvider(output, lookup));
-		event.createProvider((output, lookup) -> new ChromaBlockTagsProvider(output, lookup));
-		event.createProvider((output, lookup) -> new ChromaFluidTagsProvider(output, lookup));
-		event.createProvider((output, lookup) -> new ChromaItemTagsProvider(output, lookup));
-		event.createProvider((output, lookup) -> new ChromaDamageTypeTagsProvider(output, lookup));
+		event.createProvider(ChromaBiomeTagProvider::new);
+		event.createProvider(ChromaConfiguredFeatureTagProvider::new);
+		event.createProvider(ChromaBlockTagsProvider::new);
+		event.createProvider(ChromaFluidTagsProvider::new);
+		event.createProvider(ChromaItemTagsProvider::new);
+		event.createProvider(ChromaDamageTypeTagsProvider::new);
 	}
 }
