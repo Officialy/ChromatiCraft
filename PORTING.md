@@ -11801,3 +11801,16 @@ only; the owner's existing .idea/workspace.xml remains separate. D62's historica
 key-label migration and broader V09/remote/shader acceptance remain open. Next is
 D10: current render dispatch passes a DeltaTracker where the accepted partial-tick
 consumer expects Float, and does not honor render handler phase selection.
+
+## D10 — Structure-probe decorator timing acceptance (2026-10-18)
+
+DragonAPI's original render clock is now registered during queued client setup,
+receives native pause/freeze-aware Float partial ticks and advances once per
+START frame with long counter storage. PoweredItemClient.probeIcons needs no
+source change: its original getRenderFrame()/6 color cycle now actually advances.
+The fresh isolated client verifies multiple decorator colors across live frames,
+both tick phases, paused/frozen timing and exact-once startup notification;
+all previous client checks pass in 2m 34s. Family units 273/273 and native tests
+104/104 pass. Contract: DragonAPI/docs/tick-registry-port.md; evidence:
+build/d10-proof.json. Root checklist is 48 complete / 115 open / 163 total;
+other rendering contracts and whole-family acceptance remain open.
