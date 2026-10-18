@@ -11814,3 +11814,61 @@ all previous client checks pass in 2m 34s. Family units 273/273 and native tests
 104/104 pass. Contract: DragonAPI/docs/tick-registry-port.md; evidence:
 build/d10-proof.json. Root checklist is 48 complete / 115 open / 163 total;
 other rendering contracts and whole-family acceptance remain open.
+
+
+## D13 - Live Iris query measurements, enabled-phase blocker (2026-10-18)
+
+D13 remains OPEN. Added opt-in query-only instrumentation to both existing Iris
+bridges, retaining their live per-query values and existing cached reflective
+handles. No boolean cache or shader validation bypass has been introduced.
+The dedicated irisQueryAudit mode uses real player donation-render consumers,
+all nine concrete native render stages, frame end and the installed Iris public
+shadow callback. Consumer and fixture-probe counts/timings remain separate.
+It requires actual consumers from both bridges, disabled/enabled/disabled phases
+and twenty same-frame shadow/normal observations before final acceptance. Partial
+progress is saved separately; a completed disabled phase is not enabled acceptance.
+The iris optional runtime selection loads Iris/Sodium in the disposable client;
+normal Play configuration/arguments are unchanged. See
+DragonAPI/docs/iris-query-measurement.md for contract, digests, commands and limits.
+
+Installed Iris 1.11.7+mc26.3 (SHA256 58c6bbd537a63df2ab145cc7de6362d6562445c44be50925f638fbf3705c828b)
+crashes during shader activation in CenterDepthSampler.sampleCenterDepth with
+"Missing uniform InSampler (should be COMBINED_IMAGE_SAMPLER)". Complementary
+Reimagined r5.9.3 and RenderPearl v2.8.0-beta.4 reproduce the same failure. Ordinary
+JDK bytecode inspection records a placeholder COMPOSITE_PIPELINE render pass with
+Iris raw GL program/samplers followed by native draw without a render-pass
+InSampler binding. This is the compatibility lead, not a standalone upstream
+reproducer. The initial abstract-stage subscription error was fixed by concrete
+subscriptions; its startup crash is retained as failed evidence. Only its verified
+isolated crashed audit JVM was terminated; Play was not touched.
+
+The independent RenderPearl attempt retained 120 disabled frames and 720 real
+consumer calls (480 Chroma shadow, 120 Chroma enabled, 120 DragonAPI shadow), all
+false as expected. Instrumented consumer time: 2,700,600 ns total; median 20,000,
+p95 34,000, p99 45,700 and max 158,800 ns per queried frame. These are partial,
+small-scene diagnostic upper bounds with concurrent baseline test work, not an
+FPS claim or an optimization decision. A real active shadow callback confirmed
+both bridges' current state and ordered exclusion before the sampler crash, but
+the required full enabled-phase run did not finish. D13 and N08 stay unchecked.
+
+Final ordinary regressions: all 281 family units (227 DA, 34 RC, 8 ReC, 12 Chroma),
+zero failures/errors/skips; all 104 required native GameTests; all eight accepted
+class guards; strict audits at 30 common transformed/17 other-side/two optional
+absences and 47 client transformed/two optional absences. Final common run passed
+in 1m 20s and the ordinary full graphical suite in 2m 54s, including prior boss,
+popup, artifact, rendering, sound and lifecycle fixtures. Default audit arguments
+are restored. Play VM/program hashes match D12; Play iris.properties still has
+its pre-task October 17 modification time. Evidence: build/d13-proof.json,
+build/d13-final-family-native.log, build/d13-baseline-client.log,
+build/d13-disabled-progress.json, build/d13-iris-stages.log,
+build/d13-iris-renderpearl.log and the corresponding mixin-audit directories.
+
+Checklist stays 50 complete / 113 open / 163 total. Local checkpoint only; owner
+.idea/workspace.xml remains separate. Continue independent D14 native reachability
+work rather than repeatedly re-running the unchanged Iris failure. Initial data/
+math/io candidates are CircularDivisionRenderer, Proportionality, Spline, EnumSound,
+SyncPacket, ControlledConfig and ReikaKeyHelper; ControlledConfig's hit is already
+a comment pointing to its ClientEnvironment bridge. Expand the actual mathsci
+library scan and validate server execution/reflection paths before declaring any
+client import a defect. Revisit D13/N08 with a corrected native Iris binding path
+or changed installed artifact, then rerun every required enabled/shadow phase.

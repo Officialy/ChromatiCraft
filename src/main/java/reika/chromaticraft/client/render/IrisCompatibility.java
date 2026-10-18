@@ -34,10 +34,16 @@ public final class IrisCompatibility {
     public static boolean shadowPass() { return query(true); }
 
     private static boolean query(boolean shadow) {
+        long started = reika.dragonapi.extras.shader.IrisQueryProfiler.start();
         Api api = api();
-        if (api == null) return false;
+        if (api == null) {
+            reika.dragonapi.extras.shader.IrisQueryProfiler.record(started, "ChromatiCraft", shadow, false);
+            return false;
+        }
         try {
-            return (boolean)(shadow ? api.shadow() : api.enabled()).invoke(api.instance());
+            boolean value = (boolean)(shadow ? api.shadow() : api.enabled()).invoke(api.instance());
+            reika.dragonapi.extras.shader.IrisQueryProfiler.record(started, "ChromatiCraft", shadow, value);
+            return value;
         } catch (ReflectiveOperationException e) {
             throw new IllegalStateException("Cannot query the Iris render pass", e);
         }
