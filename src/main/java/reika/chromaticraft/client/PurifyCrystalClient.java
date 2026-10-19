@@ -64,10 +64,10 @@ public final class PurifyCrystalClient {
 			// 1.7.10's client player posY was eye height, so the orbit centred on the eyes.
 			double eye = e.getEyeY()-e.getY();
 			PositionController atEyes = new PositionController() {
-				@Override public void update(Entity ignored) { p.update(ignored); }
-				@Override public double getPositionX(Entity ignored) { return p.getPositionX(ignored); }
-				@Override public double getPositionY(Entity ignored) { return p.getPositionY(ignored)+eye; }
-				@Override public double getPositionZ(Entity ignored) { return p.getPositionZ(ignored); }
+				@Override public void updateTarget(reika.dragonapi.interfaces.ControllerTarget ignored) { p.updateTarget(ignored); }
+				@Override public double getPositionXFor(reika.dragonapi.interfaces.ControllerTarget ignored) { return p.getPositionXFor(ignored); }
+				@Override public double getPositionYFor(reika.dragonapi.interfaces.ControllerTarget ignored) { return p.getPositionYFor(ignored)+eye; }
+				@Override public double getPositionZFor(reika.dragonapi.interfaces.ControllerTarget ignored) { return p.getPositionZFor(ignored); }
 			};
 			ChromaParticle.spawnControlledGlow(e.level(), atEyes.getPositionX(null), atEyes.getPositionY(null),
 					atEyes.getPositionZ(null), 0xffffff, l, s, atEyes, "centerblur3");

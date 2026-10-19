@@ -30,10 +30,10 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Random;
 
-/** Reusable V33a ChromatiCraft particle families on the 26.2 particle pipeline. */
+/** Reusable V33a ChromatiCraft particle families on the 26.3 particle pipeline. */
 public abstract class ChromaParticle extends SingleQuadParticle {
 
-    // Translucent=true routes these through 26.2's particle target, so rune/pylon glows participate
+    // Translucent=true routes these through 26.3's particle target, so rune/pylon glows participate
     // in the water/cloud transparency composition rather than being painted into main too early.
     // Their pipelines depth-test against the scene but, like V33a's particle renderer, do not write
     // depth; overlapping glow quads therefore accumulate instead of masking one another.
@@ -1878,23 +1878,23 @@ public abstract class ChromaParticle extends SingleQuadParticle {
         }
 
         @Override
-        public void update(net.minecraft.world.entity.Entity e) {
+        public void updateTarget(reika.dragonapi.interfaces.ControllerTarget e) {
             spiral.update(null);
             y += verticalVelocity;
         }
 
         @Override
-        public double getPositionX(net.minecraft.world.entity.Entity e) {
+        public double getPositionXFor(reika.dragonapi.interfaces.ControllerTarget e) {
             return spiral.getPositionX(null);
         }
 
         @Override
-        public double getPositionY(net.minecraft.world.entity.Entity e) {
+        public double getPositionYFor(reika.dragonapi.interfaces.ControllerTarget e) {
             return y;
         }
 
         @Override
-        public double getPositionZ(net.minecraft.world.entity.Entity e) {
+        public double getPositionZFor(reika.dragonapi.interfaces.ControllerTarget e) {
             return spiral.getPositionZ(null);
         }
     }
