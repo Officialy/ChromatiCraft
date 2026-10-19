@@ -10901,46 +10901,13 @@ public final class ChromaGameTests {
 	 * may not be sent to the client!" before it started.
 	 */
 	public static ServerPlayer joinedCreativeMockPlayer(GameTestHelper helper) {
-		var cookie = mockCookie();
-		ServerPlayer player = new ServerPlayer(helper.getLevel().getServer(), helper.getLevel(),
-				cookie.gameProfile(), cookie.clientInformation()) {
-			@Override
-			public GameType gameMode() {
-				return GameType.CREATIVE;
-			}
-		};
-		return joinMockPlayer(helper, player, cookie);
-	}
+        return reika.dragonapi.test.GameTestPlayers.joinedCreative(helper);
+    }
 
-	/**
-	 * A mock player joined like {@link #joinedCreativeMockPlayer} whose game mode is real and
-	 * changeable: set explicitly to {@code type}, never the server default, which is creative in a
-	 * creative Play world but survival under {@code runGameTest}.
-	 */
-	public static ServerPlayer joinedMockPlayer(GameTestHelper helper, GameType type) {
-		var cookie = mockCookie();
-		// A subclass, as vanilla's own mock is: NeoForge's ConfigSync skips subclasses as test players,
-		// but throws for an exact ServerPlayer that never went through the configuration phase.
-		ServerPlayer player = new ServerPlayer(helper.getLevel().getServer(), helper.getLevel(),
-				cookie.gameProfile(), cookie.clientInformation()) {};
-		joinMockPlayer(helper, player, cookie);
-		player.setGameMode(type);
-		return player;
-	}
-
-	private static net.minecraft.server.network.CommonListenerCookie mockCookie() {
-		return net.minecraft.server.network.CommonListenerCookie.createInitial(
-				new com.mojang.authlib.GameProfile(UUID.randomUUID(), "test-mock-player"), false);
-	}
-
-	private static ServerPlayer joinMockPlayer(GameTestHelper helper, ServerPlayer player,
-			net.minecraft.server.network.CommonListenerCookie cookie) {
-		var connection = new net.minecraft.network.Connection(net.minecraft.network.protocol.PacketFlow.SERVERBOUND);
-		new io.netty.channel.embedded.EmbeddedChannel(connection);
-		net.neoforged.neoforge.network.registration.NetworkRegistry.configureMockConnection(connection);
-		helper.getLevel().getServer().getPlayerList().placeNewPlayer(connection, player, cookie);
-		return player;
-	}
+    /** A joined mock whose real game mode is explicitly set and remains changeable. */
+    public static ServerPlayer joinedMockPlayer(GameTestHelper helper, GameType type) {
+        return reika.dragonapi.test.GameTestPlayers.joined(helper,type);
+    }
 
 	/** A {@link GameTestInstance} carrying its body as a plain {@link Consumer} (see class javadoc). */
 	private static final class DirectInstance extends GameTestInstance {
