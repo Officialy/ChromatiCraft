@@ -27,9 +27,9 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 import reika.dragonapi.client.EntityLighting;
+import reika.dragonapi.client.ScreenParticleRendering;
 import reika.chromaticraft.registry.ChromaIcons;
 import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.render.ChromaRenderPipelines;
 import reika.chromaticraft.tileentity.transport.TileEntityRift;
 
 /**
@@ -55,6 +55,7 @@ public final class RenderRift implements BlockEntityRenderer<TileEntityRift, Ren
 	public void extractRenderState(TileEntityRift te, State state, float partialTick, Vec3 cameraPosition,
 			ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress) {
 		BlockEntityRenderer.super.extractRenderState(te, state, partialTick, cameraPosition, breakProgress);
+		state.inWorld = te.hasLevel();
 		state.color = te.getColor();
 		state.singleDirection = te.getSingleDirection();
 	}
@@ -62,9 +63,9 @@ public final class RenderRift implements BlockEntityRenderer<TileEntityRift, Ren
 	@Override
 	public void submit(State state, PoseStack poseStack, SubmitNodeCollector collector, CameraRenderState camera) {
 		submitBlackBox(poseStack, collector);
-		if (state.singleDirection != null)
-			submitSideHighlight(poseStack, collector, state.singleDirection);
-		submitAura(poseStack, collector, state.color, 0.05F);
+		if (state.inWorld && state.singleDirection != null)
+			submitSideHighlight(poseStack, collector, state.singleDirection, state.inWorld);
+		submitAura(poseStack, collector, state.color, state.inWorld ? 0.05F : 0.025F, state.inWorld);
 	}
 
 	private static TextureAtlasSprite sprite(Identifier id) {
@@ -113,10 +114,14 @@ public final class RenderRift implements BlockEntityRenderer<TileEntityRift, Ren
 
 	/** V33a {@code renderAura}: shells from 0 to {@code max} in 0.0125 steps, the halo texture in {@code color}. */
 	public static void submitAura(PoseStack poseStack, SubmitNodeCollector collector, int color, float max) {
+		submitAura(poseStack, collector, color, max, false);
+	}
+
+	private static void submitAura(PoseStack poseStack, SubmitNodeCollector collector, int color, float max, boolean world) {
 		TextureAtlasSprite ico = sprite(ChromaIcons.RIFTHALO.getIcon());
 		PoseStack.Pose pose = poseStack.last().copy();
 		int c = 0xff000000 | color;
-		collector.submitCustomGeometry(poseStack, ChromaRenderPipelines.additiveSprite(TextureAtlas.LOCATION_BLOCKS),
+		submitGlow(poseStack, collector, world,
 				(unused, v5) -> {
 					float u = ico.getU0();
 					float du = ico.getU1();
@@ -137,10 +142,10 @@ public final class RenderRift implements BlockEntityRenderer<TileEntityRift, Ren
 	}
 
 	/** V33a {@code renderSideHighlight}: the lime glow rune, half a block wide, just off the chosen face. */
-	private static void submitSideHighlight(PoseStack poseStack, SubmitNodeCollector collector, Direction dir) {
+	private static void submitSideHighlight(PoseStack poseStack, SubmitNodeCollector collector, Direction dir, boolean world) {
 		TextureAtlasSprite ico = sprite(CrystalElement.LIME.getIcon());
 		PoseStack.Pose pose = poseStack.last().copy();
-		collector.submitCustomGeometry(poseStack, ChromaRenderPipelines.additiveSprite(TextureAtlas.LOCATION_BLOCKS),
+		submitGlow(poseStack, collector, world,
 				(unused, v5) -> {
 					float d = 0.501F;
 					float x = 0.5F+dir.getStepX()*d;
@@ -169,16 +174,24 @@ public final class RenderRift implements BlockEntityRenderer<TileEntityRift, Ren
 				});
 	}
 
+    private static void submitGlow(PoseStack pose, SubmitNodeCollector collector, boolean world,
+            SubmitNodeCollector.CustomGeometryRenderer geometry) {
+        var type=EntityLighting.LIGHTMAP_ONLY.screen(TextureAtlas.LOCATION_BLOCKS,false);
+        if(world) ScreenParticleRendering.submitGeometry(collector,pose,type,geometry);
+        else collector.submitCustomGeometry(pose,type,geometry);
+    }
+
 	private static void additiveQuad(VertexConsumer v5, PoseStack.Pose pose, int c,
 			float x1, float y1, float z1, float u1, float v1, float x2, float y2, float z2, float u2, float v2,
 			float x3, float y3, float z3, float u3, float v3, float x4, float y4, float z4, float u4, float v4) {
-		v5.addVertex(pose, x1, y1, z1).setUv(u1, v1).setColor(c);
-		v5.addVertex(pose, x2, y2, z2).setUv(u2, v2).setColor(c);
-		v5.addVertex(pose, x3, y3, z3).setUv(u3, v3).setColor(c);
-		v5.addVertex(pose, x4, y4, z4).setUv(u4, v4).setColor(c);
+		entity(v5, pose, c, x1, y1, z1, u1, v1);
+		entity(v5, pose, c, x2, y2, z2, u2, v2);
+		entity(v5, pose, c, x3, y3, z3, u3, v3);
+		entity(v5, pose, c, x4, y4, z4, u4, v4);
 	}
 
 	public static final class State extends BlockEntityRenderState {
+		private boolean inWorld;
 		private int color = 0xffffff;
 		private @Nullable Direction singleDirection;
 	}

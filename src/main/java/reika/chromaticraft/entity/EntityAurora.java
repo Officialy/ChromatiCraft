@@ -28,10 +28,8 @@ import reika.dragonapi.base.InertEntity;
  * serialised there but every assignment to them is commented out, so they are always zero and the
  * renderer's parameters for them are dead; reproducing them would only preserve two unused zeroes.
  *
- * <p>The ribbon itself is not yet drawn. V33a renders it through a client-only spline class using
- * immediate-mode GL, which is the same rendering effort the Proxima decoration layers and the glow-tree
- * overlays are waiting on. Everything that decides what an aurora <em>is</em> — where it hangs, how long
- * it is, its two colours, its speed, how it persists and syncs — is complete here.
+ * <p>The client renderer owns the animated spline and submits its full-bright ribbon through
+ * the native forward screen-color phase. The common entity remains rendering independent.
  */
 public class EntityAurora extends InertEntity implements IEntityWithComplexSpawn {
 

@@ -13,6 +13,7 @@ import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.client.render.Aurora;
 import reika.chromaticraft.entity.EntityAurora;
 import reika.chromaticraft.render.ChromaRenderPipelines;
+import reika.dragonapi.client.ScreenParticleRendering;
 import reika.dragonapi.instantiable.data.immutable.DecimalPosition;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
 
@@ -38,7 +39,7 @@ import java.util.WeakHashMap;
  *
  * <p>Upstream's Proxima early-return is deliberately <em>not</em> reinstated. V33a skips this renderer
  * inside Proxima and lets the dimension's sky renderer draw aurorae instead, because 1.7.10's fixed
- * function pipeline needed them composited with the sky to sort correctly against it. 26.2 does not:
+ * function pipeline needed them composited with the sky to sort correctly against it. 26.3 does not:
  * this draws through the entity submit pipeline, which already orders against the world, and the sky is
  * drawn far behind everything at a fixed distance. Skipping it here would simply lose the aurorae,
  * since the sky pass has no entity list to draw from.
@@ -55,7 +56,7 @@ public final class RenderAurora extends EntityRenderer<EntityAurora, RenderAuror
 	private static final float FADE_STEPS = 32;
 
 	/**
-	 * Render states are extraction scratch objects in 26.2; they are not guaranteed to stay paired
+	 * Render states are extraction scratch objects in 26.3; they are not guaranteed to stay paired
 	 * with one entity. The animated spline, however, is entity state in V33a and must survive from one
 	 * frame to the next. Weak keys give it that lifetime without retaining unloaded aurora entities.
 	 */
@@ -97,6 +98,7 @@ public final class RenderAurora extends EntityRenderer<EntityAurora, RenderAuror
 		state.aurora = frame.aurora;
 		state.curve = frame.aurora.curve();
 		state.entityPosition = entity.position();
+		state.animationFrame = (int)(System.currentTimeMillis() / FRAME_MILLIS % FRAMES);
 	}
 
 	@Override
@@ -114,14 +116,14 @@ public final class RenderAurora extends EntityRenderer<EntityAurora, RenderAuror
 		int colorTo = state.aurora.data().colorTo();
 		double baseFrom = state.aurora.data().from().y;
 		double baseTo = state.aurora.data().to().y;
-		collector.submitCustomGeometry(poseStack, ChromaRenderPipelines.additiveSprite(TEXTURE),
+		int frame = state.animationFrame;
+		ScreenParticleRendering.submitGeometry(collector, poseStack, ChromaRenderPipelines.additiveSprite(TEXTURE),
 				(pose, out) -> curtain(curtainPose.last(), out, curve, origin, colorFrom, colorTo,
-						baseFrom, baseTo));
+						baseFrom, baseTo, frame));
 	}
 
 	private static void curtain(PoseStack.Pose pose, VertexConsumer out, List<DecimalPosition> curve,
-			Vec3 origin, int colorFrom, int colorTo, double baseFrom, double baseTo) {
-		int frame = (int)(System.currentTimeMillis() / FRAME_MILLIS % FRAMES);
+			Vec3 origin, int colorFrom, int colorTo, double baseFrom, double baseTo, int frame) {
 		// Upstream's indexing: see the class documentation for why the column only walks four of eight.
 		double u = (frame % 4) * 0.125;
 		double v = (frame / 4) * 0.25;
@@ -179,6 +181,7 @@ public final class RenderAurora extends EntityRenderer<EntityAurora, RenderAuror
 	}
 
 	public static final class State extends EntityRenderState {
+		private int animationFrame;
 		private Aurora aurora;
 		private List<DecimalPosition> curve;
 		private Vec3 entityPosition = Vec3.ZERO;
