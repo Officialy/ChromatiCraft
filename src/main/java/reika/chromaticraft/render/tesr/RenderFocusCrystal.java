@@ -19,9 +19,9 @@ import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
 import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
-import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.renderer.texture.TextureAtlas;
+import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.data.AtlasIds;
 import net.minecraft.resources.Identifier;
@@ -35,6 +35,8 @@ import reika.chromaticraft.models.ModelFocusCrystalMessy;
 import reika.chromaticraft.render.ChromaRenderPipelines;
 import reika.chromaticraft.tileentity.auxiliary.TileEntityFocusCrystal;
 import reika.chromaticraft.tileentity.auxiliary.TileEntityFocusCrystal.CrystalTier;
+import reika.dragonapi.client.EntityLighting;
+import reika.dragonapi.client.ScreenParticleRendering;
 import reika.dragonapi.instantiable.effects.TruncatedCube;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
 
@@ -124,7 +126,7 @@ public final class RenderFocusCrystal
 		if (icon != null) {
 			TextureAtlasSprite sprite = Minecraft.getInstance().getAtlasManager().getAtlasOrThrow(AtlasIds.BLOCKS).getSprite(icon);
 			PoseStack.Pose pose = poseStack.last().copy();
-			collector.submitCustomGeometry(poseStack, ChromaRenderPipelines.unlitEntityCutout(TextureAtlas.LOCATION_BLOCKS),
+			collector.submitCustomGeometry(poseStack, EntityLighting.LIT.cutout(TextureAtlas.LOCATION_BLOCKS, false),
 					(unused, out) -> base(pose, out, sprite, light));
 		}
 		poseStack.pushPose();
@@ -132,7 +134,7 @@ public final class RenderFocusCrystal
 		poseStack.rotate(Axis.XP.rotationDegrees(180));
 		PoseStack modelPose = copy(poseStack);
 		int color = tier.renderColor(t);
-		collector.submitCustomGeometry(poseStack, ChromaRenderPipelines.unlitEntityCutout(texture(tier)),
+		collector.submitCustomGeometry(poseStack, EntityLighting.DIRECTIONAL_ONLY.cutout(texture(tier), false),
 				(unused, out) -> model.render(modelPose, out, light, identity, t, color));
 		poseStack.popPose();
 	}
@@ -151,21 +153,21 @@ public final class RenderFocusCrystal
 		int sideX = 0xff9f9f9f;
 		int sideZ = 0xffbfbfbf;
 
-		quad(pose, out, light, top, 0, h, 1, u, dv, 1, h, 1, du, dv, 1, h, 0, du, v, 0, h, 0, u, v);
-		quad(pose, out, light, bottom, 0, 0, 0, u, v, 1, 0, 0, du, v, 1, 0, 1, du, dv, 0, 0, 1, u, dv);
+		quad(pose, out, light, top, 1, 0, h, 1, u, dv, 1, h, 1, du, dv, 1, h, 0, du, v, 0, h, 0, u, v);
+		quad(pose, out, light, bottom, .5F, 0, 0, 0, u, v, 1, 0, 0, du, v, 1, 0, 1, du, dv, 0, 0, 1, u, dv);
 
-		quad(pose, out, light, sideX, 0, 0, 1, u2, dv, 0, h, 1, du2, dv, 0, h, 0, du2, v, 0, 0, 0, u2, v);
-		quad(pose, out, light, sideX, 1, 0, 0, u2, v, 1, h, 0, du2, v, 1, h, 1, du2, dv, 1, 0, 1, u2, dv);
+		quad(pose, out, light, sideX, .625F, 0, 0, 1, u2, dv, 0, h, 1, du2, dv, 0, h, 0, du2, v, 0, 0, 0, u2, v);
+		quad(pose, out, light, sideX, .625F, 1, 0, 0, u2, v, 1, h, 0, du2, v, 1, h, 1, du2, dv, 1, 0, 1, u2, dv);
 
-		quad(pose, out, light, sideZ, 0, 0, 0, u2, v, 0, h, 0, du2, v, 1, h, 0, du2, dv, 1, 0, 0, u2, dv);
-		quad(pose, out, light, sideZ, 1, 0, 1, u2, dv, 1, h, 1, du2, dv, 0, h, 1, du2, v, 0, 0, 1, u2, v);
+		quad(pose, out, light, sideZ, .75F, 0, 0, 0, u2, v, 0, h, 0, du2, v, 1, h, 0, du2, dv, 1, 0, 0, u2, dv);
+		quad(pose, out, light, sideZ, .75F, 1, 0, 1, u2, dv, 1, h, 1, du2, dv, 0, h, 1, du2, v, 0, 0, 1, u2, v);
 	}
 
-	private static void quad(PoseStack.Pose pose, VertexConsumer out, int light, int color, float... d) {
+	private static void quad(PoseStack.Pose pose, VertexConsumer out, int light, int color, float normalY, float... d) {
 		for (int i = 0; i < 4; i++) {
 			int k = i * 5;
 			out.addVertex(pose, d[k], d[k + 1], d[k + 2]).setColor(color).setUv(d[k + 3], d[k + 4])
-					.setLight(light).setNormal(pose, 0, 1, 0);
+					.setOverlay(OverlayTexture.NO_OVERLAY).setLight(light).setNormal(pose, 0, normalY, 0);
 		}
 	}
 
@@ -186,10 +188,10 @@ public final class RenderFocusCrystal
 			c = (c & 0xff000000) | 0xbfbfbf;
 		int fill = c;
 		PoseStack.Pose pose = poseStack.last().copy();
-		collector.submitCustomGeometry(poseStack, RenderTypes.lightning(),
+		ScreenParticleRendering.submitGeometry(collector, poseStack, ChromaRenderPipelines.ADDITIVE_COLOR_TYPE,
 				(unused, out) -> cube.renderFaces(pose, out, 0, 0, 0, fill));
 		float pdist = state.pdist;
-		collector.submitCustomGeometry(poseStack, RenderTypes.linesTranslucent(),
+		ScreenParticleRendering.submitGeometry(collector, poseStack, ChromaRenderPipelines.ADDITIVE_LINES_TYPE,
 				(unused, out) -> cube.renderEdges(pose, out, 0, 0, 0, c2, pdist));
 		poseStack.popPose();
 	}
@@ -205,7 +207,7 @@ public final class RenderFocusCrystal
 		int c = 0xff000000 | ReikaColorAPI.getColorWithBrightnessMultiplier(state.tier.renderColor(state.t), 0.75F);
 		TextureAtlasSprite ico = Minecraft.getInstance().getAtlasManager().getAtlasOrThrow(AtlasIds.BLOCKS).getSprite(STARFLARE);
 		PoseStack.Pose pose = poseStack.last().copy();
-		collector.submitCustomGeometry(poseStack, ChromaRenderPipelines.legacyAdditiveSprite(TextureAtlas.LOCATION_BLOCKS),
+		ScreenParticleRendering.submitGeometry(collector, poseStack, ChromaRenderPipelines.legacyAdditiveSprite(TextureAtlas.LOCATION_BLOCKS),
 				(unused, out) -> {
 					out.addVertex(pose, -1, -1, 0).setUv(ico.getU0(), ico.getV0()).setColor(c);
 					out.addVertex(pose, 1, -1, 0).setUv(ico.getU1(), ico.getV0()).setColor(c);
@@ -223,7 +225,7 @@ public final class RenderFocusCrystal
 		Vec3 start = new Vec3(0.5, 0.25, 0.5);
 		Vec3 end = state.beamEnd;
 		PoseStack.Pose pose = poseStack.last().copy();
-		collector.submitCustomGeometry(poseStack, RenderTypes.linesTranslucent(), (unused, out) -> {
+		ScreenParticleRendering.submitGeometry(collector, poseStack, ChromaRenderPipelines.ADDITIVE_LINES_TYPE, (unused, out) -> {
 			Vec3 d = end.subtract(start).normalize();
 			out.addVertex(pose, (float)start.x, (float)start.y, (float)start.z).setColor(0xffffffff)
 					.setNormal(pose, (float)d.x, (float)d.y, (float)d.z).setLineWidth(2F);
@@ -232,7 +234,7 @@ public final class RenderFocusCrystal
 		});
 		TextureAtlasSprite laser = Minecraft.getInstance().getAtlasManager().getAtlasOrThrow(AtlasIds.BLOCKS).getSprite(LASER);
 		float h = state.beamWidth;
-		collector.submitCustomGeometry(poseStack, ChromaRenderPipelines.additiveSprite(TextureAtlas.LOCATION_BLOCKS),
+		ScreenParticleRendering.submitGeometry(collector, poseStack, ChromaRenderPipelines.additiveSprite(TextureAtlas.LOCATION_BLOCKS),
 				(unused, out) -> {
 					double dd = start.distanceTo(end);
 					int n = (int)dd;

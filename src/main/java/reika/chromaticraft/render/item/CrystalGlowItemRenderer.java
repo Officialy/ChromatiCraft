@@ -18,7 +18,7 @@ import net.minecraft.util.LightCoordsUtil;
 import org.joml.Vector3f;
 import org.joml.Vector3fc;
 import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.render.ChromaRenderPipelines;
+import reika.dragonapi.client.EntityLighting;
 
 import java.util.function.Consumer;
 
@@ -53,7 +53,7 @@ public final class CrystalGlowItemRenderer implements NoDataSpecialModelRenderer
 		PoseStack.Pose pose = poseStack.last().copy();
 		TextureAtlasSprite base = sprites.get(this.base);
 		TextureAtlasSprite lamp = sprites.get(this.lamp);
-		collector.submitCustomGeometry(poseStack, ChromaRenderPipelines.unlitEntityCutout(TextureAtlas.LOCATION_BLOCKS),
+		collector.submitCustomGeometry(poseStack, EntityLighting.LIGHTMAP_ONLY.cutout(TextureAtlas.LOCATION_BLOCKS, false),
 				(unused, out) -> {
 					card(pose, out, base, 0.2875F, 0.4375F, 0);
 					// Drawn after the plate at the same depth upstream; a hair forward here so it wins cleanly.

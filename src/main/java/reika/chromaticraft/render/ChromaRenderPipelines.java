@@ -57,6 +57,31 @@ public final class ChromaRenderPipelines {
 			BlendFactor.SRC_ALPHA, BlendFactor.ONE,
 			BlendFactor.ONE, BlendFactor.ONE_MINUS_SRC_ALPHA);
 
+    /** Untextured V33a ADDITIVEDARK geometry: RGB screen blending on composed scene color. */
+    public static final RenderPipeline ADDITIVE_COLOR = RenderPipeline.builder()
+            .withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,"pipeline/additive_color"))
+            .withBindGroupLayout(BindGroupLayouts.GLOBALS)
+            .withBindGroupLayout(BindGroupLayouts.PROJECTION)
+            .withBindGroupLayout(BindGroupLayouts.DYNAMIC_TRANSFORMS)
+            .withVertexShader("core/position_color").withFragmentShader("core/position_color")
+            .withColorTargetState(new ColorTargetState(ADDITIVE_DARK))
+            .withVertexBinding(0,DefaultVertexFormat.POSITION_COLOR).withPrimitiveTopology(PrimitiveTopology.QUADS)
+            .withDepthStencilState(new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL,false)).withCull(false).build();
+    public static final RenderType ADDITIVE_COLOR_TYPE=RenderType.create("chromaticraft_additive_color",
+            RenderSetup.builder(ADDITIVE_COLOR).createRenderSetup());
+    public static final RenderPipeline ADDITIVE_LINES = RenderPipeline.builder()
+            .withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,"pipeline/additive_lines"))
+            .withBindGroupLayout(BindGroupLayouts.GLOBALS)
+            .withBindGroupLayout(BindGroupLayouts.PROJECTION)
+            .withBindGroupLayout(BindGroupLayouts.DYNAMIC_TRANSFORMS)
+            .withBindGroupLayout(BindGroupLayouts.FOG)
+            .withVertexShader("core/rendertype_lines").withFragmentShader("core/rendertype_lines")
+            .withColorTargetState(new ColorTargetState(ADDITIVE_DARK))
+            .withVertexBinding(0,DefaultVertexFormat.POSITION_COLOR_NORMAL_LINE_WIDTH).withPrimitiveTopology(PrimitiveTopology.LINES)
+            .withDepthStencilState(new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL,false)).withCull(false).build();
+    public static final RenderType ADDITIVE_LINES_TYPE=RenderType.create("chromaticraft_additive_lines",
+            RenderSetup.builder(ADDITIVE_LINES).createRenderSetup());
+
     /** The GUI-textured pipeline with V33a's ADDITIVEDARK blend, for HUD flares (the Pylon Compass turbo halo). */
     public static final RenderPipeline GUI_ADDITIVE_DARK = RenderPipeline.builder()
             .withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "pipeline/gui_additive_dark"))
@@ -361,31 +386,6 @@ public final class ChromaRenderPipelines {
             .withCull(false)
             .build();
 
-    /**
-     * V33a Techne models drawn with {@code ReikaRenderHelper.disableEntityLighting()}: GL lighting off, so no
-     * directional shading, but the lightmap still applied. The vanilla entity shader with NO_CARDINAL_LIGHTING.
-     */
-    public static final RenderPipeline UNLIT_ENTITY_CUTOUT = RenderPipeline.builder()
-            .withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "pipeline/unlit_entity_cutout"))
-            .withBindGroupLayout(BindGroupLayouts.GLOBALS)
-            .withBindGroupLayout(BindGroupLayouts.PROJECTION)
-            .withBindGroupLayout(BindGroupLayouts.DYNAMIC_TRANSFORMS)
-            .withBindGroupLayout(BindGroupLayouts.FOG)
-            .withBindGroupLayout(BindGroupLayouts.LIGHTING)
-            .withVertexShader("core/entity")
-            .withFragmentShader("core/entity")
-            .withBindGroupLayout(BindGroupLayouts.SAMPLER0_SAMPLER2)
-            .withVertexBinding(0, DefaultVertexFormat.ENTITY)
-            .withPrimitiveTopology(PrimitiveTopology.QUADS)
-            .withDepthStencilState(DepthStencilState.DEFAULT)
-            .withShaderDefine("ALPHA_CUTOUT", 0.1F)
-            .withShaderDefine("NO_OVERLAY")
-            .withShaderDefine("NO_CARDINAL_LIGHTING")
-            .withCull(false)
-            // 26.2 defaulted a pipeline with no colour target to this; 26.3 gives it none.
-            .withColorTargetState(ColorTargetState.DEFAULT)
-            .build();
-
     public static final RenderPipeline LEGACY_ADDITIVE_PARTICLE = RenderPipeline.builder()
             .withLocation(Identifier.fromNamespaceAndPath(
                     ChromatiCraft.MODID, "pipeline/legacy_additive_particle"))
@@ -598,15 +598,7 @@ public final class ChromaRenderPipelines {
 					RenderSetup.builder(LEGACY_ADDITIVE_SPRITE_THROUGH_WALL)
 							.withTexture("Sampler0", texture).sortOnUpload().createRenderSetup()));
 
-    private static final Function<Identifier, RenderType> UNLIT_ENTITY_CUTOUT_TYPES = Util.memoize(texture ->
-            RenderType.create("chromaticraft_unlit_entity_cutout", RenderSetup.builder(UNLIT_ENTITY_CUTOUT)
-                    .withTexture("Sampler0", texture).useLightmap().createRenderSetup()));
-
     private ChromaRenderPipelines() {}
-
-    public static RenderType unlitEntityCutout(Identifier texture) {
-        return UNLIT_ENTITY_CUTOUT_TYPES.apply(texture);
-    }
 
     private static final Function<Identifier,RenderType> TRANSLUCENT_THROUGH_WALL_TYPES=Util.memoize(texture ->
         RenderType.create("chromaticraft_translucent_through_wall",RenderSetup.builder(TRANSLUCENT_SPRITE_THROUGH_WALL)
@@ -681,6 +673,10 @@ public final class ChromaRenderPipelines {
 
     private static void registerPipelines(RegisterRenderPipelinesEvent event) {
         event.registerPipeline(ADDITIVE_SPRITE);
+        event.registerPipeline(ADDITIVE_COLOR);
+        event.registerPipeline(ADDITIVE_LINES);
+        IrisCompat.assignWithoutShadow(ADDITIVE_COLOR,"BASIC");
+        IrisCompat.assignWithoutShadow(ADDITIVE_LINES,"LINES");
         event.registerPipeline(ADDITIVE_COLOR_TRIANGLES);
         event.registerPipeline(TRANSLUCENT_COLOR_TRIANGLES);
         event.registerPipeline(TRANSLUCENT_COLOR_LINES);
@@ -700,7 +696,6 @@ public final class ChromaRenderPipelines {
         event.registerPipeline(ADDITIVE_PARTICLE);
         event.registerPipeline(LEGACY_ADDITIVE_PARTICLE);
         event.registerPipeline(LEGACY_TRANSLUCENT_PARTICLE);
-        event.registerPipeline(UNLIT_ENTITY_CUTOUT);
         event.registerPipeline(LEGACY_ADDITIVE_PARTICLE_NO_DEPTH);
         event.registerPipeline(MONUMENT_GRADE);
 		event.registerPipeline(LOCUS_POINTS);
@@ -740,7 +735,5 @@ public final class ChromaRenderPipelines {
         IrisCompat.assign(LEGACY_TRANSLUCENT_PARTICLE, "PARTICLES_TRANSLUCENT");
         IrisCompat.assign(ADDITIVE_SKY_SPRITE, "SKY_TEXTURED");
         // Real models (focus crystals, rifts) keep casting shadows.
-        IrisCompat.assign(UNLIT_ENTITY_CUTOUT, "ENTITIES");
-        IrisCompat.assignShadow(UNLIT_ENTITY_CUTOUT, "SHADOW_ENTITIES");
     }
 }

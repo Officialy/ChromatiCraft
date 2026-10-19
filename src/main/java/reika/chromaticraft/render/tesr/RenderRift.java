@@ -26,6 +26,7 @@ import net.minecraft.data.AtlasIds;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
+import reika.dragonapi.client.EntityLighting;
 import reika.chromaticraft.registry.ChromaIcons;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.render.ChromaRenderPipelines;
@@ -74,7 +75,7 @@ public final class RenderRift implements BlockEntityRenderer<TileEntityRift, Ren
 	public static void submitBlackBox(PoseStack poseStack, SubmitNodeCollector collector) {
 		TextureAtlasSprite ico = sprite(ChromaIcons.RIFT.getIcon());
 		PoseStack.Pose pose = poseStack.last().copy();
-		collector.submitCustomGeometry(poseStack, ChromaRenderPipelines.unlitEntityCutout(TextureAtlas.LOCATION_BLOCKS),
+		collector.submitCustomGeometry(poseStack, EntityLighting.LIGHTMAP_ONLY.cutout(TextureAtlas.LOCATION_BLOCKS, false),
 				(unused, v5) -> {
 					float u = ico.getU0();
 					float du = ico.getU1();
